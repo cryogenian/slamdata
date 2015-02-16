@@ -2,7 +2,6 @@
 
 ![travis build status](https://travis-ci.org/slamdata/slamdata.svg?branch=master)
 
-
 [![Coverage Status](https://coveralls.io/repos/slamdata/slamdata/badge.svg)](https://coveralls.io/r/slamdata/slamdata)
 
 # slamdata
