@@ -124,7 +124,7 @@ function bundleIt(entry) {
     };
 }
 gulp.task("bundle-dev", bundleIt("./" + paths.dest.entry));
-gulp.task("bundle-prod", bundleIt(paths.dest.dist + "/" + paths.dest.file));
+gulp.task("bundle-prod", bundleIt("./" + paths.dest.dist + "/" + paths.dest.file));
 
 gulp.task("bundle-test", function() {
     var bundler = br({
