@@ -1,4 +1,4 @@
-module Signal.Effectful where
+module Signal.Effectful (foldpE)  where
 
 import Signal
 import Control.Monad.Eff
@@ -23,5 +23,9 @@ foreign import foldpEP """
           (Signal a)
           (Eff e (Signal b))
 
-          
+foldpE :: forall a b c e.
+          (a -> b -> Eff e b) ->
+          b ->
+          Signal a ->
+          Eff e (Signal b)
 foldpE = runFn4 foldpEP constant

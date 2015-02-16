@@ -155,34 +155,13 @@
     onLoad :: forall e. Eff e Unit -> Eff e Unit
 
 
-## Module View
-
-### Types
-
-#### `Action`
-
-    data Action
-      = Init 
-
-#### `State`
-
-    type State = Number
-
-
-### Values
-
-#### `view`
-
-    view :: Channel Action -> State -> VTree
-
-
 ## Module Signal.Effectful
 
 ### Values
 
-#### `foldpEP`
+#### `foldpE`
 
-    foldpEP :: forall a b c e. Fn4 (c -> Signal c) (a -> b -> Eff e b) b (Signal a) (Eff e (Signal b))
+    foldpE :: forall a b c e. (a -> b -> Eff e b) -> b -> Signal a -> Eff e (Signal b)
 
 
 ## Module View.Back
