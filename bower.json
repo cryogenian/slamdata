@@ -1,0 +1,37 @@
+{
+  "name": "slamdata-frontend",
+  "version": "0.0.0",
+  "homepage": "https://github.com/cryogenian/slamdata-frontend",
+  "authors": [
+    "Maxim Zimaliev <zimaliev@yandex.ru>"
+  ],
+  "description": "Simple attempt to create frontend for slamdata-engine",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "purescript-monoid": "~0.1.5",
+    "purescript-virtual-dom": "~0.3.0",
+    "purescript-dom": "~0.1.1",
+    "purescript-maps": "~0.2.0",
+    "purescript-tuples": "~0.2.3",
+    "bootstrap": "~3.3.2",
+    "purescript-signal": "~2.2.0",
+    "purescript-strings": "~0.4.2",
+    "purescript-simple-dom": "https://github.com/aktowns/purescript-simple-dom.git#~0.0.1",
+    "purescript-datetime": "~0.2.0",
+    "purescript-timers": "~0.0.8",
+    "purescript-mocha": "~0.0.3",
+    "purescript-chai": "~0.0.3",
+    "purescript-strongcheck": "~0.7.0",
+    "purescript-random": "https://github.com/cryogenian/purescript-random.git#573de58651264a2b04636eed8f4bf09364fbca02"
+  },
+  "resolutions": {
+    "purescript-random": "573de58651264a2b04636eed8f4bf09364fbca02"
+  }
+}
