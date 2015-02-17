@@ -82,6 +82,7 @@ construct = do
   let folder = mkFolder initialState
   signal <- foldpE (foldAll (send chan)) folder (subscribe chan)
 
+  -- This stuff definitely works not how it must.
   hashComponent <- Hash.construct
   runSignal $ hashComponent.signal ~> \hash -> do
     send chan (SearchAction <<< Search.HashChanged $ hash.state)

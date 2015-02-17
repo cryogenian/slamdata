@@ -18,18 +18,14 @@ import Data.Maybe (fromMaybe)
 import Component
 import qualified View.Item as Item
 
-data Sort = None | Asc | Desc
-
 type State = {
-  items :: [Item.State],
-  sort :: Sort 
+  items :: [Item.State]
   }
 
 initialState :: State
 initialState = {
-  items: [{isSelected: false, isHovered: true},
-          {isSelected: false, isHovered: false}],
-  sort: None
+  items: [{isSelected: false, isHovered: false},
+          {isSelected: false, isHovered: false}]
   }
 
 data Action = Init | ItemAction Number Item.Action
@@ -43,7 +39,7 @@ view send st = do
   return $ div {"className": "list-group"} children
 
 foldState :: Action -> State -> Eff _ State
-foldState action state@{items: items, sort: sort} =
+foldState action state@{items: items} =
   case action of
     Init -> return state
     ItemAction i action -> do

@@ -123,8 +123,8 @@ function bundleIt(entry) {
         return bundle();
     };
 }
-gulp.task("bundle-dev", bundleIt("./" + paths.dest.entry));
-gulp.task("bundle-prod", bundleIt("./" + paths.dest.dist + "/" + paths.dest.file));
+gulp.task("bundle-dev", ["make-dev"], bundleIt("./" + paths.dest.entry));
+gulp.task("bundle-prod", ["make-prod"],  bundleIt("./" + paths.dest.dist + "/" + paths.dest.file));
 
 gulp.task("bundle-test", function() {
     var bundler = br({
@@ -172,7 +172,7 @@ gulp.task("cover", function() {
 // Aggregates
 // ====================================================================== //
 
-gulp.task("concat-build", function() {
+gulp.task("concat-build", ["bundle-dev"], function() {
     gulp.src(paths.concatSrc.concat([paths.dest.dist + "/" + paths.dest.file]))
         .pipe(concat("concated.js"))
         .pipe(gulp.dest("public"));
@@ -204,14 +204,8 @@ gulp.task("prod", function(cb) {
         cb);
 });
 
-gulp.task("compile-dev", function(cb) {
-    sequence(
-        "runner",
-        "make-dev",
-        "bundle-dev",
-        cb
-    );
-});
+gulp.task("compile-dev", ["runner", "make-dev", "bundle-dev"]);
+
 
 
 // ====================================================================== //

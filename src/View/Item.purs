@@ -22,17 +22,19 @@ initialState = {isSelected: false, isHovered: false}
 
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
-  log st.isSelected
-  return $ div {"className": "list-group-item" <> isActive st} [
-    div {"className": "row",
-         "ondblclick": send Open,
-         "onclick": send Activate,
-         "onmouseover": send Focus,
-         "onmouseout": send Blur} [
+  return $ div {"className": "list-group-item" <> isActive st,
+                "onclick": send Activate,
+                "ondblclick": send Open,
+                "onmouseover": send Focus,
+                "onmouseout": send Blur
+                } [
+    div {"className": "row"} [
        div {"className": "col-sm-6"} [
-          i {"className": "glyphicon glypicon-stop"} [],
           a {"onclick": send Open,
-             "href": jsVoid} [vtext "Resource name"]
+             "href": jsVoid} [
+             i {"className": "glyphicon glyphicon-hdd"} [],
+             span {style: {"margin-left": "10px"}} [vtext "Resource name"]
+             ]
           ],
      div {"className": "col-sm-6" <> hideBlured st} [
          ul {"className": "list-inline pull-right",

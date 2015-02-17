@@ -155,6 +155,46 @@
     onLoad :: forall e. Eff e Unit -> Eff e Unit
 
 
+## Module View
+
+### Types
+
+#### `Action`
+
+    data Action
+      = Init 
+      | ListAction List.Action
+      | NavbarAction Navbar.Action
+      | ToolbarAction Toolbar.Action
+
+#### `State`
+
+    type State = { toolbar :: Toolbar.State, list :: List.State, navbar :: Navbar.State }
+
+
+### Values
+
+#### `construct`
+
+    construct :: Eff _ (Component Action State)
+
+#### `foldAll`
+
+    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
+
+#### `foldState`
+
+    foldState :: Action -> State -> Eff _ State
+
+#### `initialState`
+
+    initialState :: State
+
+#### `view`
+
+    view :: Receiver Action _ -> State -> Eff _ VTree
+
+
 ## Module Signal.Effectful
 
 ### Values
@@ -259,16 +299,9 @@
       = Init 
       | ItemAction Number Item.Action
 
-#### `Sort`
-
-    data Sort
-      = None 
-      | Asc 
-      | Desc 
-
 #### `State`
 
-    type State = { sort :: Sort, items :: [Item.State] }
+    type State = { items :: [Item.State] }
 
 
 ### Values
@@ -461,6 +494,42 @@
 #### `ul`
 
     ul :: forall props. {  | props } -> [VTree] -> VTree
+
+
+## Module View.Toolbar
+
+### Types
+
+#### `Action`
+
+    data Action
+      = Init 
+      | Sorting 
+      | UploadFile 
+      | MountDB 
+      | CreateNotebook 
+      | CreateFolder 
+
+#### `Sort`
+
+    data Sort
+      = Asc 
+      | Desc 
+
+#### `State`
+
+    type State = { sort :: Sort }
+
+
+### Values
+
+#### `foldState`
+
+    foldState :: Action -> State -> Eff _ State
+
+#### `view`
+
+    view :: Receiver Action _ -> State -> Eff _ VTree
 
 
 ## Module View.User
