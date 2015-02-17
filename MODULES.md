@@ -6,7 +6,11 @@
 
 #### `Component`
 
-    type Component action state = { vt :: VTree, channel :: Channel action, signal :: Signal (Folder state) }
+    type Component action state eff = { insert :: Node -> Eff eff Unit, channel :: Channel action, signal :: Signal state }
+
+#### `ComponentSpec`
+
+    type ComponentSpec state action e1 = { updateState :: action -> state -> Eff e1 state, initSignal :: action, initialState :: state, render :: Receiver action e1 -> state -> Eff e1 VTree }
 
 #### `FoldFn`
 
@@ -27,17 +31,9 @@
 
 ### Values
 
-#### `foldStateToFoldAll`
-
-    foldStateToFoldAll :: forall action state. FoldFn action state _ -> RenderFn action state _ -> Receiver action _ -> action -> Folder state -> Eff _ (Folder state)
-
 #### `mkFolder`
 
     mkFolder :: forall state. state -> Folder state
-
-#### `start`
-
-    start :: forall a b. Component a b -> Node -> Eff _ Unit
 
 #### `toVoid`
 
@@ -66,7 +62,7 @@
 
 #### `construct`
 
-    construct :: forall e. Eff (chan :: Chan | e) (Component Action State)
+    construct :: forall e. Eff (chan :: Chan | e) (Component Action State _)
 
 #### `foldAll`
 
@@ -174,10 +170,6 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
 #### `foldAll`
 
     foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
@@ -189,6 +181,10 @@
 #### `initialState`
 
     initialState :: State
+
+#### `spec`
+
+    spec :: ComponentSpec State Action _
 
 #### `view`
 
@@ -226,14 +222,6 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
 #### `foldState`
 
     foldState :: Action -> State -> Eff _ State
@@ -268,14 +256,6 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
 #### `foldState`
 
     foldState :: Action -> State -> Eff _ State
@@ -306,14 +286,6 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
 #### `foldState`
 
     foldState :: Action -> State -> Eff _ State
@@ -343,14 +315,6 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
 #### `foldState`
 
     foldState :: Action -> State -> Eff _ State
@@ -377,14 +341,6 @@
 
 
 ### Values
-
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
 
 #### `foldState`
 
@@ -417,14 +373,6 @@
 
 
 ### Values
-
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
 
 #### `foldState`
 
@@ -548,14 +496,6 @@
 
 
 ### Values
-
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
 
 #### `foldState`
 

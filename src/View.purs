@@ -1,5 +1,6 @@
 module View where
 
+import DOM
 import Control.Monad.Eff
 import Signal
 import Signal.Effectful
@@ -67,6 +68,15 @@ foldAll receiver action {state: state, current: current, previous: previous} = d
   return {state: new, previous: current, current: newVt}
 
 
+spec :: ComponentSpec State Action _ 
+spec = {
+  initialState: initialState,
+  initSignal: Init,
+  render: view,
+  updateState: foldState
+  }
+
+{-
 construct :: Eff _ (Component Action State)
 construct = do
   chan <- channel Init
@@ -88,5 +98,5 @@ construct = do
     vt: vt
     }
   
-         
+         -}
       

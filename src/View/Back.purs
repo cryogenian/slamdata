@@ -44,21 +44,4 @@ foldState action state =
       return state
     Changed st -> return st
 
-foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-foldAll send action {state: state, current: current, previous: previous} = do
-  new <- foldState action state
-  newVt <- view send new 
-  return {state: new, previous: current, current: newVt}
 
-
-construct :: Eff _ (Component Action State)
-construct = do
-  chan <- channel Init
-  vt <- view (send chan) initialState
-  let folder = mkFolder initialState
-  signal <- foldpE (foldAll (send chan)) folder (subscribe chan)
-  return $ {
-    signal: signal,
-    channel: chan,
-    vt: vt
-    }
