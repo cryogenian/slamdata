@@ -43,8 +43,7 @@ start component node = do
   append node t
   runSignal $ component.signal ~> \all -> do
     let d = diff all.previous all.current
-    patch d t
-    return unit
+    void $ patch d t
 
 
 

@@ -38,7 +38,7 @@ li :: forall props. {  | props } -> [VTree] -> VTree
 li = vnode "li"
 
 emptyVTree :: VTree
-emptyVTree = vnode "" {} []
+emptyVTree = vnode "div" {} []
 
 jsVoid :: String
 jsVoid = "javascript:void(0);"

@@ -207,6 +207,93 @@
     viewIcon :: State -> VTree
 
 
+## Module View.Item
+
+### Types
+
+#### `Action`
+
+    data Action
+      = Init 
+      | Focus 
+      | Blur 
+      | Open 
+      | Activate 
+      | Unactivate 
+
+#### `State`
+
+    type State = { isHovered :: Boolean, isSelected :: Boolean }
+
+
+### Values
+
+#### `construct`
+
+    construct :: Eff _ (Component Action State)
+
+#### `foldAll`
+
+    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
+
+#### `foldState`
+
+    foldState :: Action -> State -> Eff _ State
+
+#### `initialState`
+
+    initialState :: State
+
+#### `view`
+
+    view :: Receiver Action _ -> State -> Eff _ VTree
+
+
+## Module View.List
+
+### Types
+
+#### `Action`
+
+    data Action
+      = Init 
+      | ItemAction Number Item.Action
+
+#### `Sort`
+
+    data Sort
+      = None 
+      | Asc 
+      | Desc 
+
+#### `State`
+
+    type State = { sort :: Sort, items :: [Item.State] }
+
+
+### Values
+
+#### `construct`
+
+    construct :: Eff _ (Component Action State)
+
+#### `foldAll`
+
+    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
+
+#### `foldState`
+
+    foldState :: Action -> State -> Eff _ State
+
+#### `initialState`
+
+    initialState :: State
+
+#### `view`
+
+    view :: Receiver Action _ -> State -> Eff _ VTree
+
+
 ## Module View.Logo
 
 ### Types
@@ -320,6 +407,61 @@
 
 
 ## Module View.Shortcuts
+
+### Values
+
+#### `a`
+
+    a :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `button`
+
+    button :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `div`
+
+    div :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `emptyVTree`
+
+    emptyVTree :: VTree
+
+#### `form`
+
+    form :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `i`
+
+    i :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `input`
+
+    input :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `jsVoid`
+
+    jsVoid :: String
+
+#### `li`
+
+    li :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `nav`
+
+    nav :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `ol`
+
+    ol :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `span`
+
+    span :: forall props. {  | props } -> [VTree] -> VTree
+
+#### `ul`
+
+    ul :: forall props. {  | props } -> [VTree] -> VTree
+
 
 ## Module View.User
 
