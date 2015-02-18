@@ -12,7 +12,7 @@ import Component
 
 type Hash = String
 type State = String
-data Action = SearchQuery String 
+type Action = String
 
 foreign import getHashImpl """
 function getHashImpl() {
@@ -68,22 +68,21 @@ matcher = regex ".+" {
 
 
 foldState :: Action -> State -> Eff _ State
-foldState (SearchQuery st) state = return st
+foldState st state = return st
 
 
-construct :: forall e. Eff (chan::Chan|e) (Component Action State _)
+construct :: forall e. Eff (chan::Chan|e) (Service Action State _)
 construct = do
   current <- getHash
-  chan <- channel (SearchQuery current)
+  chan <- channel current
   onHashChange $ do
-    getHash >>= \x -> send chan (SearchQuery x)
+    getHash >>= send chan
   signal <- foldpE foldState current (subscribe chan)
 
 
   return $  {
     signal: signal,
-    send: send chan,
-    insert: const $ return unit
+    send: send chan
     }
 
 

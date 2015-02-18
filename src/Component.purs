@@ -1,7 +1,8 @@
 module Component (
   Receiver(..),
-  Component(..),
-  ComponentSpec(..),
+  Service(..),
+  Widget(..),
+  WidgetSpec(..),
   UpdateFn(..),
   RenderFn(..),
   Initial(..),
@@ -37,13 +38,18 @@ type Folder a = {
   state :: a
   }
 
-type Component action state eff = {
+type Service action state eff = {
+  signal :: Signal state,
+  send :: Receiver action eff
+  }
+
+type Widget action state eff = {
   signal :: Signal state,
   send :: Receiver action eff,
   insert :: Node -> Eff eff Unit
   }
 
-type ComponentSpec action state eff = {
+type WidgetSpec action state eff = {
   render ::  RenderFn action state eff,
   updateState :: UpdateFn action state eff,
   initial :: Initial action state,
@@ -62,9 +68,9 @@ toVoid :: forall a e. Receiver a e
 toVoid a = return unit
 
 define :: forall state action e.
-             ComponentSpec action state (chan::Chan, dom::DOM|e) ->
+             WidgetSpec action state (chan::Chan, dom::DOM|e) ->
              Eff (chan::Chan, dom::DOM|e)   
-                 (Component action state (chan::Chan, dom::DOM|e))
+                 (Widget action state (chan::Chan, dom::DOM|e))
 define spec@{render: render,
              initial: initial,
              updateState: updateState,

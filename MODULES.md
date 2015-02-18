@@ -4,14 +4,6 @@
 
 ### Types
 
-#### `Component`
-
-    type Component action state eff = { insert :: Node -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
-
-#### `ComponentSpec`
-
-    type ComponentSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
-
 #### `Initial`
 
     type Initial action state = { state :: state, action :: action }
@@ -29,16 +21,28 @@
 
     type RenderFn action state eff = Receiver action eff -> state -> Eff eff VTree
 
+#### `Service`
+
+    type Service action state eff = { send :: Receiver action eff, signal :: Signal state }
+
 #### `UpdateFn`
 
     type UpdateFn action state eff = action -> state -> Eff eff state
+
+#### `Widget`
+
+    type Widget action state eff = { insert :: Node -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
+
+#### `WidgetSpec`
+
+    type WidgetSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
 
 
 ### Values
 
 #### `define`
 
-    define :: forall state action e. ComponentSpec action state (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) (Component action state (dom :: DOM, chan :: Chan | e))
+    define :: forall state action e. WidgetSpec action state (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) (Widget action state (dom :: DOM, chan :: Chan | e))
 
 #### `toVoid`
 
@@ -51,8 +55,7 @@
 
 #### `Action`
 
-    data Action
-      = SearchQuery String
+    type Action = String
 
 #### `Hash`
 
@@ -67,7 +70,7 @@
 
 #### `construct`
 
-    construct :: forall e. Eff (chan :: Chan | e) (Component Action State _)
+    construct :: forall e. Eff (chan :: Chan | e) (Service Action State _)
 
 #### `foldState`
 
@@ -102,6 +105,8 @@
 
     main :: Eff _ Unit
 
+
+## Module Router
 
 ## Module Utils
 
@@ -173,7 +178,7 @@
 
 #### `spec`
 
-    spec :: ComponentSpec Action State _
+    spec :: WidgetSpec Action State _
 
 
 ## Module Signal.Effectful

@@ -70,7 +70,7 @@ hook :: forall e. Receiver Action (chan::Chan|e) -> Eff (chan::Chan|e) Unit
 hook receiver = do
   Navbar.hook (receiver <<< NavbarAction)
 
-spec :: ComponentSpec Action State _ 
+spec :: WidgetSpec Action State _ 
 spec = {
   render: view,
   initial: initial,
