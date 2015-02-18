@@ -71,28 +71,21 @@ foldState :: Action -> State -> Eff _ State
 foldState (SearchQuery st) state = return st
 
 
-foldAll :: Action -> Folder State -> Eff _ (Folder State)
-foldAll action {state: state, current: current, previous: previous} = do
-  new <- foldState action state
-  setHash new
-  return $ mkFolder new
-
-construct :: forall e. Eff (chan::Chan|e) (Component Action State)
+construct :: forall e. Eff (chan::Chan|e) (Component Action State _)
 construct = do
   current <- getHash
   chan <- channel (SearchQuery current)
   onHashChange $ do
     getHash >>= \x -> send chan (SearchQuery x)
-  signal <- foldpE
-            foldAll
-            (mkFolder current)
-            (subscribe chan)
+  signal <- foldpE foldState current (subscribe chan)
 
-  return {
+
+  return $  {
     signal: signal,
-    channel: chan,
-    vt: emptyVTree
+    send: send chan,
+    insert: const $ return unit
     }
+
 
 
     

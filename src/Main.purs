@@ -11,10 +11,10 @@ import qualified View.List as List
 import qualified View as View
 
 main :: Eff _ Unit
-main = onLoad $ do  
-  view <- View.construct
+main = onLoad $ do
+  view <- Component.define View.spec
   body <- bodyNode
-  Component.start view body
+  view.insert body
 
 
   

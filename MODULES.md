@@ -6,38 +6,39 @@
 
 #### `Component`
 
-    type Component action state = { vt :: VTree, channel :: Channel action, signal :: Signal (Folder state) }
+    type Component action state eff = { insert :: Node -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
 
-#### `FoldFn`
+#### `ComponentSpec`
 
-    type FoldFn action state eff = action -> state -> Eff eff state
+    type ComponentSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
 
-#### `Folder`
+#### `Initial`
 
-    type Folder a = { state :: a, previous :: VTree, current :: VTree }
+    type Initial action state = { state :: state, action :: action }
 
 #### `Receiver`
 
-    type Receiver action e = action -> Eff (chan :: Chan | e) Unit
+    
+    TODO : Think about Widgets and GlobalComponents and how to
+    make functions work with them both. Is it better to use
+    row polymorphism or typeclasses
+
+    type Receiver action e = action -> Eff e Unit
 
 #### `RenderFn`
 
     type RenderFn action state eff = Receiver action eff -> state -> Eff eff VTree
 
+#### `UpdateFn`
+
+    type UpdateFn action state eff = action -> state -> Eff eff state
+
 
 ### Values
 
-#### `foldStateToFoldAll`
+#### `define`
 
-    foldStateToFoldAll :: forall action state. FoldFn action state _ -> RenderFn action state _ -> Receiver action _ -> action -> Folder state -> Eff _ (Folder state)
-
-#### `mkFolder`
-
-    mkFolder :: forall state. state -> Folder state
-
-#### `start`
-
-    start :: forall a b. Component a b -> Node -> Eff _ Unit
+    define :: forall state action e. ComponentSpec action state (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) (Component action state (dom :: DOM, chan :: Chan | e))
 
 #### `toVoid`
 
@@ -66,11 +67,7 @@
 
 #### `construct`
 
-    construct :: forall e. Eff (chan :: Chan | e) (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Action -> Folder State -> Eff _ (Folder State)
+    construct :: forall e. Eff (chan :: Chan | e) (Component Action State _)
 
 #### `foldState`
 
@@ -174,25 +171,9 @@
 
 ### Values
 
-#### `construct`
+#### `spec`
 
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
-#### `foldState`
-
-    foldState :: Action -> State -> Eff _ State
-
-#### `initialState`
-
-    initialState :: State
-
-#### `view`
-
-    view :: Receiver Action _ -> State -> Eff _ VTree
+    spec :: ComponentSpec Action State _
 
 
 ## Module Signal.Effectful
@@ -225,14 +206,6 @@
 
 
 ### Values
-
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
 
 #### `foldState`
 
@@ -268,14 +241,6 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
 #### `foldState`
 
     foldState :: Action -> State -> Eff _ State
@@ -306,14 +271,6 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
 #### `foldState`
 
     foldState :: Action -> State -> Eff _ State
@@ -343,14 +300,6 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
 #### `foldState`
 
     foldState :: Action -> State -> Eff _ State
@@ -378,17 +327,13 @@
 
 ### Values
 
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-
 #### `foldState`
 
     foldState :: Action -> State -> Eff _ State
+
+#### `hook`
+
+    hook :: Receiver Action _ -> Eff _ Unit
 
 #### `initialState`
 
@@ -417,14 +362,6 @@
 
 
 ### Values
-
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
 
 #### `foldState`
 
@@ -548,14 +485,6 @@
 
 
 ### Values
-
-#### `construct`
-
-    construct :: Eff _ (Component Action State)
-
-#### `foldAll`
-
-    foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
 
 #### `foldState`
 

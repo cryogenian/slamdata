@@ -69,27 +69,8 @@ foldState action state =
       backState <- Back.foldState action state.back
       return state{back = backState}
 
-foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-foldAll receiver action {state: state, current: current, previous: previous} = do
-  new <- foldState action state
-  newVt <- view receiver new
-  return $ {state: new, previous: current, current: newVt}
-
-construct :: Eff _ (Component Action State)
-construct = do
-  chan <- channel Init
-  vt <- view (send chan) initialState
-  let folder = mkFolder initialState
-  signal <- foldpE (foldAll (send chan)) folder (subscribe chan)
-
-  -- This stuff definitely works not how it must.
-  hashComponent <- Hash.construct
-  runSignal $ hashComponent.signal ~> \hash -> do
-    send chan (SearchAction <<< Search.HashChanged $ hash.state)
-  
-  return $ {
-    signal: signal,
-    channel: chan,
-    vt: vt
-    }
-  
+hook :: Receiver Action _ -> Eff _ Unit
+hook receiver = do
+  hashComp <- Hash.construct
+  runSignal $ hashComp.signal ~> \hash ->
+    receiver $ (SearchAction <<< Search.HashChanged $ hash)

@@ -82,33 +82,3 @@ foldState action state = do
     Submit -> do
       Hash.setHash state.value
       return state
-
-foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-foldAll receiver action {state: state, current: current, previous: previous} = do
-  new <- foldState action state
-  newVt <- view receiver new
-  return $ {state: new, previous: current, current: newVt}
-
-
-construct :: Eff _ (Component Action State)
-construct = do
-  chan <- channel Init
-  let receiver = send chan
-  vt <- view receiver initialState
-  let folder = {
-        state: initialState,
-        current: emptyVTree,
-        previous: emptyVTree
-        }
-  signal <- foldpE (foldAll receiver) folder (subscribe chan)
-
-  hashComponent <- Hash.construct
-  runSignal $ hashComponent.signal ~> \hash -> do
-    send chan (HashChanged hash.state)
-
-  return $ {
-    signal: signal,
-    channel: chan,
-    vt: vt 
-    }
-

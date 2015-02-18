@@ -25,16 +25,4 @@ view send st = return $
 foldState :: Action -> State -> Eff _ State
 foldState action state = return state
 
-foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-foldAll send action all = return all
 
-construct :: Eff _ (Component Action State)
-construct = do
-  chan <- channel Init
-  vt <- view (send chan) {}
-  signal <- foldpE (foldAll (send chan)) (mkFolder {}) (subscribe chan)
-  return {
-    signal: signal,
-    channel: chan,
-    vt: vt
-    }
