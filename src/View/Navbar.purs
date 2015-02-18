@@ -68,3 +68,9 @@ foldState action state =
     BackAction action -> do
       backState <- Back.foldState action state.back
       return state{back = backState}
+
+hook :: Receiver Action _ -> Eff _ Unit
+hook receiver = do
+  hashComp <- Hash.construct
+  runSignal $ hashComp.signal ~> \hash ->
+    receiver $ (SearchAction <<< Search.HashChanged $ hash)
