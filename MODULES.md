@@ -6,6 +6,8 @@
 
 #### `Initial`
 
+This is just for reducing number of fields in spec 
+
     type Initial action state = { state :: state, action :: action }
 
 #### `Receiver`
@@ -14,26 +16,40 @@
     TODO : Think about Widgets and GlobalComponents and how to
     make functions work with them both. Is it better to use
     row polymorphism or typeclasses
+     | This is type of message receiver in component
+     | It takes an **action** and do something with it
 
     type Receiver action e = action -> Eff e Unit
 
 #### `RenderFn`
 
+this function modifies virtual tree 
+
     type RenderFn action state eff = Receiver action eff -> state -> Eff eff VTree
 
 #### `Service`
+
+WIP : This is component that has no render function
+I think it must be global in some cases.
+I suggest to use it for FileUploader, ApiCalls and Router
 
     type Service action state eff = { send :: Receiver action eff, signal :: Signal state }
 
 #### `UpdateFn`
 
+this function fold **state** with **action**
+
     type UpdateFn action state eff = action -> state -> Eff eff state
 
 #### `Widget`
 
+This is basic component that can be rendered to DOM
+
     type Widget action state eff = { insert :: Node -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
 
 #### `WidgetSpec`
+
+Spec of component
 
     type WidgetSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
 
@@ -42,9 +58,13 @@
 
 #### `define`
 
+Takes **WidgetSpec** returns **Widget**
+
     define :: forall state action e. WidgetSpec action state (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) (Widget action state (dom :: DOM, chan :: Chan | e))
 
 #### `toVoid`
+
+Shortcut to void receiver
 
     toVoid :: forall a e. Receiver a e
 
@@ -70,15 +90,23 @@
 
 #### `construct`
 
-    construct :: forall e. Eff (chan :: Chan | e) (Service Action State _)
+constructing service
+
+    construct :: forall e. Eff (chan :: Chan | e) (Service Action State (chan :: Chan | e))
 
 #### `foldState`
+
+If we have a message to set hash we just set hash
 
     foldState :: Action -> State -> Eff _ State
 
 #### `getHashImpl`
 
     getHashImpl :: forall e. Eff e Hash
+
+#### `initialState`
+
+    initialState :: Eff _ State
 
 #### `matcher`
 
@@ -106,7 +134,100 @@
     main :: Eff _ Unit
 
 
+## Module Model
+
+### Types
+
+#### `Sort`
+
+    data Sort
+      = Asc 
+      | Desc 
+
+
+### Values
+
+#### `sortFromString`
+
+    sortFromString :: String -> Maybe Sort
+
+#### `sortToString`
+
+    sortToString :: Sort -> String
+
+
 ## Module Router
+
+### Types
+
+#### `Action`
+
+Incoming messages can be
+HashChanged is external message
+
+    data Action
+      = Init 
+      | Search String
+      | Sorting Sort
+      | HashChanged String
+
+#### `State`
+
+state of routing is sort direction and search string
+
+    type State eff = { hash :: Service Hash.Action Hash.State eff, search :: String, sort :: Sort }
+
+
+### Values
+
+#### `construct`
+
+    construct :: Eff _ (Service Action (State _) _)
+
+#### `extractSearch`
+
+Get search from hash
+
+    extractSearch :: String -> String
+
+#### `extractSort`
+
+Get sort from hash
+
+    extractSort :: String -> Maybe Sort
+
+#### `foldState`
+
+Updating router state by messages
+
+    foldState :: forall e. Action -> State (chan :: Chan | e) -> Eff (chan :: Chan | e) (State (chan :: Chan | e))
+
+#### `fromHash`
+
+Make state without hash-component from hash-string
+
+    fromHash :: String -> { search :: String, sort :: Sort }
+
+#### `initialState`
+
+make initial state 
+
+    initialState :: Eff _ (State _)
+
+#### `setSearch`
+
+shortcut for setting search string
+I think, that after some other services will be
+developed pattern will arise
+
+    setSearch :: String -> Eff _ Unit
+
+#### `toHash`
+
+Make hash
+
+    toHash :: forall o. { search :: String, sort :: Sort | o } -> String
+
 
 ## Module Utils
 
@@ -114,45 +235,72 @@
 
 #### `alert`
 
+Used for mocking somewhere :)
+
     alert :: forall e. String -> Eff e Unit
 
 #### `append`
+
+append one node to another node
+need to rewrite to HTMLElement
+and make PR to simple-dom
 
     append :: forall e. Node -> Node -> Eff (dom :: DOM | e) Node
 
 #### `appendToBody`
 
+Shortcut
+
     appendToBody :: Node -> Eff _ Node
 
 #### `appendToId`
+
+Shortcut : will be removed
 
     appendToId :: String -> Node -> Eff _ (Maybe Node)
 
 #### `bodyNode`
 
+Shortcut
+
     bodyNode :: Eff _ Node
 
 #### `convertToElement`
+
+Will be removed
 
     convertToElement :: Node -> HTMLElement
 
 #### `convertToNode`
 
+Will be removed
+
     convertToNode :: HTMLElement -> Node
 
 #### `hashChanged`
+
+need to PR to simple-dom
 
     hashChanged :: forall a e. (String -> Eff e Unit) -> Eff e Unit
 
 #### `log`
 
+It's simpler for me to use foreign logging
+then add Show instances
+
     log :: forall a e. a -> Eff e Unit
 
 #### `nodeById`
 
+Shortcut
+
     nodeById :: String -> Eff _ (Maybe Node)
 
 #### `onLoad`
+
+This function can be defined via
+purescript-simple-dom but it will be
+harder to understand
 
     onLoad :: forall e. Eff e Unit -> Eff e Unit
 
@@ -163,6 +311,8 @@
 
 #### `Action`
 
+Action is sum of children actions
+
     data Action
       = Init 
       | ListAction List.Action
@@ -171,12 +321,16 @@
 
 #### `State`
 
+State is multiplication of children state
+
     type State = { toolbar :: Toolbar.State, list :: List.State, navbar :: Navbar.State }
 
 
 ### Values
 
 #### `spec`
+
+Spec 
 
     spec :: WidgetSpec Action State _
 
@@ -265,11 +419,16 @@
 
 #### `Action`
 
+External messages will be marked with index of child
+that send it
+
     data Action
       = Init 
       | ItemAction Number Item.Action
 
 #### `State`
+
+Its state has a list of children
 
     type State = { items :: [Item.State] }
 
@@ -286,32 +445,20 @@
 
 #### `view`
 
+Rendering of list
+
     view :: Receiver Action _ -> State -> Eff _ VTree
 
 
 ## Module View.Logo
 
-### Types
-
-#### `Action`
-
-    data Action
-      = Init 
-
-#### `State`
-
-    type State = {  }
-
-
 ### Values
-
-#### `foldState`
-
-    foldState :: Action -> State -> Eff _ State
 
 #### `view`
 
-    view :: Receiver Action _ -> State -> Eff _ VTree
+send and st will be removed
+
+    view :: forall a b. a -> b -> Eff _ VTree
 
 
 ## Module View.Navbar
@@ -320,12 +467,16 @@
 
 #### `Action`
 
+Sum of children actions
+
     data Action
       = Init 
       | SearchAction Search.Action
       | BackAction Back.Action
 
 #### `State`
+
+Multiplication of children state
 
     type State = { user :: User.State, back :: Back.State, search :: Search.State }
 
@@ -334,17 +485,23 @@
 
 #### `foldState`
 
+Update state
+
     foldState :: Action -> State -> Eff _ State
 
 #### `hook`
 
-    hook :: Receiver Action _ -> Eff _ Unit
+listen route changes, called after render
+
+    hook :: forall e. Receiver Action (ref :: Ref, chan :: Chan | e) -> Eff (ref :: Ref, chan :: Chan | e) Unit
 
 #### `initialState`
 
     initialState :: State
 
 #### `view`
+
+Render
 
     view :: Receiver Action _ -> State -> Eff _ VTree
 
@@ -355,10 +512,12 @@
 
 #### `Action`
 
+Route change is external message
+
     data Action
       = Init 
       | Change String
-      | HashChanged String
+      | RouteChanged String
       | Submit 
 
 #### `State`
@@ -369,6 +528,8 @@
 ### Values
 
 #### `foldState`
+
+Update searcher state
 
     foldState :: Action -> State -> Eff _ State
 
@@ -398,6 +559,8 @@
     div :: forall props. {  | props } -> [VTree] -> VTree
 
 #### `emptyVTree`
+
+useful for defining of components
 
     emptyVTree :: VTree
 
@@ -444,6 +607,8 @@
 
 #### `Action`
 
+Output messages
+
     data Action
       = Init 
       | Sorting 
@@ -452,13 +617,9 @@
       | CreateNotebook 
       | CreateFolder 
 
-#### `Sort`
-
-    data Sort
-      = Asc 
-      | Desc 
-
 #### `State`
+
+sort direction in list (used in chevron direction right now only)
 
     type State = { sort :: Sort }
 
@@ -514,12 +675,16 @@
 
 #### `Handler`
 
+Will be changed in favor of HTMLElement, I suppose
+
     type Handler e = Node -> Event -> Eff e Unit
 
 
 ### Values
 
 #### `getValue`
+
+Just get value from **input**
 
     getValue :: forall e. Node -> Eff (dom :: DOM | e) String
 
@@ -528,6 +693,8 @@
     mkCallback :: forall e. Handler e -> Callback
 
 #### `returnFalse`
+
+emptyHandler
 
     returnFalse :: Callback
 

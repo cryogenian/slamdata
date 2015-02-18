@@ -4,6 +4,8 @@ import Signal
 import Control.Monad.Eff
 import Data.Function
 
+
+-- | Fold signal with effectful function
 foreign import foldpEP """
   function foldpEP (constant, upd, seed, sig) {
     return function () {

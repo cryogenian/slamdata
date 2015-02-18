@@ -1,3 +1,5 @@
+-- | This component is not component :)
+-- | It is just two function and even have not action and state
 module View.Logo where
 
 import DOM
@@ -12,17 +14,14 @@ import Control.Monad.Eff
 import VirtualDOM.Events
 import Component
 
-data Action = Init
-type State = {}
-
-view :: Receiver Action _ -> State -> Eff _ VTree
+-- | send and st will be removed
+view :: forall a b. a -> b -> Eff _ VTree
 view send st = return $ 
   a {"className": "navbar-brand",
      "href": jsVoid} [
     vtext "SlamData"
     ]
 
-foldState :: Action -> State -> Eff _ State
-foldState action state = return state
+
 
 

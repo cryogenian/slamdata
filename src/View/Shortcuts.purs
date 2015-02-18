@@ -1,3 +1,4 @@
+-- | Will be moved to VirtualDOM 
 module View.Shortcuts where
 
 import VirtualDOM
@@ -37,6 +38,7 @@ ol = vnode "ol"
 li :: forall props. {  | props } -> [VTree] -> VTree
 li = vnode "li"
 
+-- | useful for defining of components
 emptyVTree :: VTree
 emptyVTree = vnode "div" {} []
 

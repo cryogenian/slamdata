@@ -1,3 +1,4 @@
+-- | This module will be removed, used only for layout
 module View.User where
 
 import DOM

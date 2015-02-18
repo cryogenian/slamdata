@@ -1,3 +1,4 @@
+-- | This component also has no spec, and will not be rendered alone
 module View.Navbar where
 
 import DOM
@@ -9,6 +10,7 @@ import Signal.Effectful
 import VirtualDOM
 import VirtualDOM.VTree
 import Control.Monad.Eff
+import Control.Monad.Eff.Ref
 import Data.Maybe
 import Data.Monoid
 import Control.Timer
@@ -21,7 +23,7 @@ import qualified View.Logo as Logo
 import qualified View.User as User
 import qualified Hash as Hash
 
-
+-- | Multiplication of children state
 type State = {
   search :: Search.State,
   back :: Back.State,
@@ -34,10 +36,15 @@ initialState = {
   user: User.initialState
   }
 
+-- | Sum of children actions
 data Action = Init | SearchAction Search.Action | BackAction Back.Action
 
+-- | Render
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
+  -- rendering children
+  -- we provide them receiver as function builded from Action-constructor
+  -- and state as State fields
   logo <- Logo.view toVoid {}
   back <- Back.view (\x -> send $ BackAction x) st.back
   search <- Search.view (\x -> send $ SearchAction x) st.search
@@ -58,19 +65,28 @@ view send st = do
        ]
     ]
 
+-- | Update state
 foldState :: Action -> State -> Eff _ State
 foldState action state =
   case action of
+    -- Inner message
     Init -> return state
+    -- Children messages
     SearchAction action -> do
+      -- update substate by child updater
       searchState <- Search.foldState action state.search
       return state{search = searchState}
     BackAction action -> do
+      -- update substate by child updater
       backState <- Back.foldState action state.back
       return state{back = backState}
 
-hook :: Receiver Action _ -> Eff _ Unit
+
+-- | listen route changes, called after render
+hook :: forall e.
+        Receiver Action (chan::Chan, ref::Ref|e) -> 
+        Eff (chan::Chan, ref::Ref|e) Unit
 hook receiver = do
-  hashComp <- Hash.construct
-  runSignal $ hashComp.signal ~> \hash ->
-    receiver $ (SearchAction <<< Search.HashChanged $ hash)
+  router <- Router.construct
+  runSignal $ router.signal ~> \route -> do
+    receiver $ (SearchAction <<< Search.RouteChanged $ route.search)

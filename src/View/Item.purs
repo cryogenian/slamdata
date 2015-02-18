@@ -1,3 +1,4 @@
+-- | This component won't be rendered alone, it hasn't spec
 module View.Item where
 
 import Control.Monad.Eff

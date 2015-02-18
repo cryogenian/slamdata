@@ -1,3 +1,5 @@
+-- | Mostly produce messages which must be consumed by external
+-- | i.e. upload file, or call Api
 module View.Toolbar where
 
 import Signal
@@ -10,11 +12,12 @@ import View.Shortcuts
 
 import Utils
 import Component
+import Model (Sort(..))
 
-data Sort = Asc | Desc
-
+-- | Output messages
 data Action = Init | Sorting  | UploadFile | MountDB | CreateNotebook | CreateFolder
 
+-- | sort direction in list (used in chevron direction right now only)
 type State = {
   sort :: Sort
   }
@@ -45,16 +48,20 @@ view send st = do
     where chevronClass {sort: Asc} = "glyphicon glyphicon-chevron-up"
           chevronClass {sort: Desc} = "glyphicon glyphicon-chevron-down"
 
+
 foldState :: Action -> State -> Eff _ State
 foldState action state@{sort: sort} =
   case action of
+    -- This is inner messages
     Init -> return state
     Sorting ->
       let newSort = case state.sort of
             Asc -> Desc
             Desc -> Asc
       in return state{sort = newSort}
+    -- These messages will call external services (after services will be ready)
     UploadFile -> do
+      -- i.e. Api.PUT file 
       log "uploading file signal"
       return state
     MountDB -> do

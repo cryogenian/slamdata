@@ -31,7 +31,8 @@
     "purescript-strongcheck": "~0.7.0",
     "purescript-random": "https://github.com/cryogenian/purescript-random.git#573de58651264a2b04636eed8f4bf09364fbca02",
     "purescript-foldable-traversable": "~0.2.1",
-    "purescript-arrays": "~0.3.1"
+    "purescript-arrays": "~0.3.1",
+    "purescript-refs": "~0.1.2"
   },
   "resolutions": {
     "purescript-random": "573de58651264a2b04636eed8f4bf09364fbca02"

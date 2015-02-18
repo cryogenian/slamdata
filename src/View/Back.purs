@@ -1,3 +1,4 @@
+-- | This component will not be rendered alone, so, it has not a spec
 module View.Back where
 
 import DOM
