@@ -24,7 +24,7 @@ function getHashImpl() {
 """ :: forall e. Eff e Hash
 
 getHash = do
-  let rgx = regex "^#" emptyFlags
+  let rgx = regex "^#" noFlags
   raw <- getHashImpl
   return $ replace rgx "" raw
   

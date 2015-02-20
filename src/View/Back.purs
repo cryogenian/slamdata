@@ -12,10 +12,13 @@ import VirtualDOM.VTree
 import Control.Monad.Eff
 import VirtualDOM.Events
 import Component
+import qualified XHR as XHR
+import qualified Data.DOM.Simple.Ajax as A
+import Data.StrMap (empty, StrMap())
 
 data Action = Init | Clicked | Changed State
 
-data State = Directory | Database | Table | Notebook
+data State = Directory | Database | Table | Notebook 
 
 initialState = Notebook
 
@@ -41,7 +44,14 @@ foldState action state =
   case action of
     Init -> return state
     Clicked -> do
-      alert "clicked"
+      XHR.justSend {
+        method: A.GET,
+        content: A.NoData,
+        additionalHeaders: (empty :: StrMap String),
+        url: "http://localhost:5050/"
+        }
+      -- just to be sure that we catch this click
+      log "clicked"
       return state
     Changed st -> return st
 

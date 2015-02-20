@@ -1,5 +1,7 @@
 # Module Documentation
 
+## Module Api
+
 ## Module Component
 
 ### Types
@@ -45,7 +47,7 @@ this function fold **state** with **action**
 
 This is basic component that can be rendered to DOM
 
-    type Widget action state eff = { insert :: Node -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
+    type Widget action state eff = { insert :: HTMLElement -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
 
 #### `WidgetSpec`
 
@@ -233,49 +235,19 @@ Make hash
 
 ### Values
 
-#### `alert`
-
-Used for mocking somewhere :)
-
-    alert :: forall e. String -> Eff e Unit
-
 #### `append`
 
 append one node to another node
 need to rewrite to HTMLElement
 and make PR to simple-dom
 
-    append :: forall e. Node -> Node -> Eff (dom :: DOM | e) Node
-
-#### `appendToBody`
-
-Shortcut
-
-    appendToBody :: Node -> Eff _ Node
-
-#### `appendToId`
-
-Shortcut : will be removed
-
-    appendToId :: String -> Node -> Eff _ (Maybe Node)
-
-#### `bodyNode`
-
-Shortcut
-
-    bodyNode :: Eff _ Node
+    append :: forall e. HTMLElement -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
 
 #### `convertToElement`
 
-Will be removed
+This function is needed to convert VTree -> Node -> HTMLElement 
 
     convertToElement :: Node -> HTMLElement
-
-#### `convertToNode`
-
-Will be removed
-
-    convertToNode :: HTMLElement -> Node
 
 #### `hashChanged`
 
@@ -288,21 +260,14 @@ need to PR to simple-dom
 It's simpler for me to use foreign logging
 then add Show instances
 
-    log :: forall a e. a -> Eff e Unit
-
-#### `nodeById`
-
-Shortcut
-
-    nodeById :: String -> Eff _ (Maybe Node)
+    log :: forall a e. a -> Eff (trace :: Trace | e) Unit
 
 #### `onLoad`
 
-This function can be defined via
-purescript-simple-dom but it will be
-harder to understand
+Ok, I were was wrong, it's simplier to define onload
+by simple-dom
 
-    onLoad :: forall e. Eff e Unit -> Eff e Unit
+    onLoad :: Eff _ Unit -> Eff _ Unit
 
 
 ## Module View
@@ -318,12 +283,13 @@ Action is sum of children actions
       | ListAction List.Action
       | NavbarAction Navbar.Action
       | ToolbarAction Toolbar.Action
+      | BreadcrumbAction Breadcrumb.Input
 
 #### `State`
 
 State is multiplication of children state
 
-    type State = { toolbar :: Toolbar.State, list :: List.State, navbar :: Navbar.State }
+    type State = { breadcrumb :: Breadcrumb.Output, toolbar :: Toolbar.State, list :: List.State, navbar :: Navbar.State }
 
 
 ### Values
@@ -333,6 +299,43 @@ State is multiplication of children state
 Spec 
 
     spec :: WidgetSpec Action State _
+
+
+## Module XHR
+
+### Types
+
+#### `Input`
+
+    data Input a
+      = Init 
+      | Send (SendRec a)
+
+#### `Output`
+
+    type Output = { content :: String }
+
+#### `SendRec`
+
+    type SendRec a = { url :: String, additionalHeaders :: StrMap String, content :: A.HttpData a, method :: A.HttpMethod }
+
+
+### Values
+
+#### `construct`
+
+    construct :: forall e a. Eff (dom :: DOM, chan :: Chan | e) (Service (Input a) Output (dom :: DOM, chan :: Chan | e))
+
+#### `justSend`
+
+oh... It will not send it anywhere, I need a global state or singleton
+or whatever
+
+    justSend :: forall a. SendRec a -> Eff _ Unit
+
+#### `run`
+
+    run :: forall a. Receiver Output _ -> Input a -> Eff _ Unit
 
 
 ## Module Signal.Effectful
@@ -379,6 +382,56 @@ Spec
     viewIcon :: State -> VTree
 
 
+## Module View.Breadcrumb
+
+### Types
+
+#### `Input`
+
+Input signal: go to search location specified in link
+
+    data Input
+      = Init 
+      | GoTo Link
+
+#### `Link`
+
+Link that will be passed to search query in router
+
+    type Link = { name :: String, href :: String }
+
+#### `Output`
+
+Output signals: init breadcrumbs, set breadcrumbs links to
+signal content
+
+    type Output = { links :: [Link] }
+
+
+### Values
+
+#### `emptyOut`
+
+    emptyOut :: Output
+
+#### `render`
+
+Renders breadcrumb and send <code>GoTo</code> message
+if clicked
+
+    render :: Receiver Input _ -> Output -> Eff _ VTree
+
+#### `renderLink`
+
+    renderLink :: Receiver Input _ -> Link -> VTree
+
+#### `run`
+
+Transforming input signal to output signal 
+
+    run :: Input -> Output -> Eff _ Output
+
+
 ## Module View.Item
 
 ### Types
@@ -392,10 +445,26 @@ Spec
       | Open 
       | Activate 
       | Unactivate 
+      | Configure Logic
+      | Trash Logic
+      | Share Logic
+
+#### `Logic`
+
+    type Logic = { id :: String, name :: String, resource :: ResourceType }
+
+#### `ResourceType`
+
+    data ResourceType
+      = File 
+      | Database 
+      | Notebook 
+      | Directory 
+      | Table 
 
 #### `State`
 
-    type State = { isHovered :: Boolean, isSelected :: Boolean }
+    type State = { isHovered :: Boolean, isSelected :: Boolean, logic :: Logic }
 
 
 ### Values
@@ -407,6 +476,14 @@ Spec
 #### `initialState`
 
     initialState :: State
+
+#### `renderMiniToolbar`
+
+    renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
+
+#### `renderResourceType`
+
+    renderResourceType :: ResourceType -> VTree
 
 #### `view`
 
@@ -425,6 +502,7 @@ that send it
     data Action
       = Init 
       | ItemAction Number Item.Action
+      | SortAction Sort
 
 #### `State`
 
@@ -493,7 +571,7 @@ Update state
 
 listen route changes, called after render
 
-    hook :: forall e. Receiver Action (ref :: Ref, chan :: Chan | e) -> Eff (ref :: Ref, chan :: Chan | e) Unit
+    hook :: forall e. Receiver Action (chan :: Chan | e) -> Eff (chan :: Chan | e) Unit
 
 #### `initialState`
 

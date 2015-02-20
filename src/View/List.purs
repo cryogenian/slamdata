@@ -13,9 +13,10 @@ import Control.Monad.Eff
 
 import Data.Tuple 
 import Data.Traversable (for)
-import Data.Array ((..), length, updateAt, (!!))
+import Data.Array ((..), length, updateAt, (!!), sortBy)
 import Data.Maybe (fromMaybe)
 
+import Model
 import Component
 import qualified View.Item as Item
 
@@ -26,13 +27,20 @@ type State = {
 
 initialState :: State
 initialState = {
-  items: [{isSelected: false, isHovered: false},
-          {isSelected: false, isHovered: false}]
+  items: [{isSelected: false,
+           isHovered: false,
+           logic: {resource: Item.Notebook, id: "a", name: "foo"}},
+          {isSelected: false,
+           isHovered: false,
+           logic: {resource: Item.File, id: "b", name: "bar"}},
+          {isSelected: false,
+           isHovered: false,
+           logic: {resource: Item.Database, id: "c", name: "baz"}}]
   }
 
 -- | External messages will be marked with index of child
 -- | that send it
-data Action = Init | ItemAction Number Item.Action
+data Action = Init | ItemAction Number Item.Action | SortAction Sort
 
 -- | Rendering of list
 view :: Receiver Action _ -> State -> Eff _ VTree
@@ -63,5 +71,10 @@ foldState action state@{items: items} =
       let newStates = updateAt i newItem states
 
       return state{items = newStates}
-
+    SortAction direction -> do
+      let project = _.logic >>> _.name
+      let sortFn a b = case direction of
+            Desc -> compare (project a) (project b)
+            Asc -> compare (project b) (project a)
+      return state{items = sortBy sortFn items}
 

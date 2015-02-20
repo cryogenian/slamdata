@@ -14,6 +14,7 @@ module Component (
   ) where
 
 import DOM
+import Data.DOM.Simple.Types
 import Signal
 import Signal.Channel
 import Signal.Effectful
@@ -68,7 +69,7 @@ type Widget action state eff = {
   -- | Function that take **action** and put it to FoldFn
   send :: Receiver action eff,
   -- | Entry point of component (something like **renderTo** in ReactJS)
-  insert :: Node -> Eff eff Unit
+  insert :: HTMLElement -> Eff eff Unit
   }
 
 -- | Spec of component
@@ -127,7 +128,7 @@ define spec@{render: render,
         -- make element
         let t = createElement emptyVTree
         -- add it to DOM
-        append node t
+        append node (convertToElement t)
         -- on every folder update
         runSignal $ folderSignal ~> \all ->
           -- update DOM

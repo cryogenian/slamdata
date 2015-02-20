@@ -84,8 +84,8 @@ foldState action state =
 
 -- | listen route changes, called after render
 hook :: forall e.
-        Receiver Action (chan::Chan, ref::Ref|e) -> 
-        Eff (chan::Chan, ref::Ref|e) Unit
+        Receiver Action (chan::Chan|e) -> 
+        Eff (chan::Chan|e) Unit
 hook receiver = do
   router <- Router.construct
   runSignal $ router.signal ~> \route -> do

@@ -36,7 +36,7 @@ toHash state =
 -- | Get sort from hash
 extractSort :: String -> Maybe Sort 
 extractSort query = do
-  let sortR = regex "sort=([^&]+)" emptyFlags
+  let sortR = regex "sort=([^&]+)" noFlags
   strings <- match sortR query
   group <- strings !! 1
   sortFromString group
@@ -44,7 +44,7 @@ extractSort query = do
 -- | Get search from hash
 extractSearch :: String -> String 
 extractSearch query =
-  let sortS = regex "q=([^&]+)" emptyFlags
+  let sortS = regex "q=([^&]+)" noFlags
   in fromMaybe "" $ do
     strings <- match sortS query
     strings !! 1
