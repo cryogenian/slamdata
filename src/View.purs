@@ -46,6 +46,13 @@ data Action = Init
             | ToolbarAction Toolbar.Action
             | BreadcrumbAction Breadcrumb.Input
 
+loop :: LoopFn Action State _ 
+loop accept message =
+  case message of
+    StateUpdated state -> do
+      view (accept <<< Event) state >>= accept <<< Render
+    _ -> return unit
+
 -- | Render function
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
@@ -111,5 +118,6 @@ spec = {
   render: view,
   initial: initial,
   updateState: foldState,
-  hook: hook
+  hook: hook,
+  loop: loop
   }

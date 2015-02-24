@@ -26,7 +26,7 @@ type State eff = {
 
 -- | Incoming messages can be
 -- | HashChanged is external message
-data Action = Init | Search String | Sorting Sort | HashChanged String
+data Action = RInit | Search String | Sorting Sort | HashChanged String
 
 -- | Make hash
 toHash :: forall o. {sort::Sort,search::String|o} -> String
@@ -85,7 +85,7 @@ foldState :: forall e. Action -> State (chan::Chan|e) ->
 foldState action state = do
   let new = case action of
         -- Inner messages
-        Init -> state
+        RInit -> state
         Search string -> state{search = string}
         Sorting sort -> state{sort = sort}
         -- External messages
@@ -107,7 +107,7 @@ construct :: Eff _ (Service Action (State _) _)
 construct = do
   -- same stuff as everywhere, init, construct output
   init <- initialState
-  chan <- channel Init
+  chan <- channel RInit
   signal <- foldpE foldState init (subscribe chan)
 
   -- listen messages from hash-component and translate them

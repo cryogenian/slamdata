@@ -2,779 +2,1085 @@
 
 ## Module Api
 
+
+
+
 ## Module Component
 
-### Types
 
-#### `Initial`
+**action** - type of messages to components
+it modifies **state** in function UpdateFn
 
-This is just for reducing number of fields in spec 
+#### `ComponentMessage`
 
-    type Initial action state = { state :: state, action :: action }
+``` purescript
+data ComponentMessage action state
+  = Render VTree
+  | StateUpdated state
+  | Event action
+  | Injected HTMLElement
+  | Rendered HTMLElement
+  | Inject HTMLElement
+  | Constructed 
+```
+
+We can try to emulate ReactJS component life cycle by
+using more precise message to signals
+Using this composed messages eliminates need of initial action
 
 #### `Receiver`
 
-    
-    TODO : Think about Widgets and GlobalComponents and how to
-    make functions work with them both. Is it better to use
-    row polymorphism or typeclasses
-     | This is type of message receiver in component
-     | It takes an **action** and do something with it
+``` purescript
+type Receiver message e = message -> Eff e Unit
+```
 
-    type Receiver action e = action -> Eff e Unit
+One example of **Receiver** can be <code>send channel</code>
+
+#### `LoopFn`
+
+``` purescript
+type LoopFn action state eff = Acceptor action state eff -> ComponentMessage action state -> Eff eff Unit
+```
+
+
+#### `UpdateFn`
+
+``` purescript
+type UpdateFn action state eff = action -> state -> Eff eff state
+```
+
+this function fold **state** with **action**
 
 #### `RenderFn`
 
+``` purescript
+type RenderFn action state eff = Receiver action eff -> state -> Eff eff VTree
+```
+
 this function modifies virtual tree 
 
-    type RenderFn action state eff = Receiver action eff -> state -> Eff eff VTree
+#### `Initial`
+
+``` purescript
+type Initial action state = { state :: state, action :: action }
+```
+
+This is just for reducing number of fields in spec 
 
 #### `Service`
+
+``` purescript
+type Service action state eff = { send :: Receiver action eff, signal :: Signal state }
+```
 
 WIP : This is component that has no render function
 I think it must be global in some cases.
 I suggest to use it for FileUploader, ApiCalls and Router
 
-    type Service action state eff = { send :: Receiver action eff, signal :: Signal state }
-
-#### `UpdateFn`
-
-this function fold **state** with **action**
-
-    type UpdateFn action state eff = action -> state -> Eff eff state
-
 #### `Widget`
+
+``` purescript
+type Widget action state eff = { insert :: HTMLElement -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
+```
 
 This is basic component that can be rendered to DOM
 
-    type Widget action state eff = { insert :: HTMLElement -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
-
 #### `WidgetSpec`
+
+``` purescript
+type WidgetSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, loop :: LoopFn action state eff, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
+```
 
 Spec of component
 
-    type WidgetSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
-
-
-### Values
-
-#### `define`
-
-Takes **WidgetSpec** returns **Widget**
-
-    define :: forall state action e. WidgetSpec action state (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) (Widget action state (dom :: DOM, chan :: Chan | e))
-
 #### `toVoid`
+
+``` purescript
+toVoid :: forall a e. Receiver a e
+```
 
 Shortcut to void receiver
 
-    toVoid :: forall a e. Receiver a e
+#### `define`
+
+``` purescript
+define :: forall state action e. WidgetSpec action state (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) (Widget action state (dom :: DOM, chan :: Chan | e))
+```
+
+Takes **WidgetSpec** returns **Widget**
 
 
 ## Module Hash
 
-### Types
 
-#### `Action`
-
-    type Action = String
+Low level url-hash service
 
 #### `Hash`
 
-    type Hash = String
+``` purescript
+type Hash = String
+```
+
 
 #### `State`
 
-    type State = String
+``` purescript
+type State = String
+```
 
 
-### Values
+#### `Action`
 
-#### `construct`
+``` purescript
+type Action = String
+```
 
-constructing service
-
-    construct :: forall e. Eff (chan :: Chan | e) (Service Action State (chan :: Chan | e))
-
-#### `foldState`
-
-If we have a message to set hash we just set hash
-
-    foldState :: Action -> State -> Eff _ State
 
 #### `getHashImpl`
 
-    getHashImpl :: forall e. Eff e Hash
+``` purescript
+getHashImpl :: forall e. Eff e Hash
+```
 
-#### `initialState`
-
-    initialState :: Eff _ State
-
-#### `matcher`
-
-    matcher :: Regex
-
-#### `onHashChange`
-
-    onHashChange :: forall e a. Eff e Unit -> Eff e Unit
-
-#### `setHash`
-
-    setHash :: forall e. String -> Eff e Unit
 
 #### `setHashImpl`
 
-    setHashImpl :: forall e. String -> Eff e Unit
+``` purescript
+setHashImpl :: forall e. String -> Eff e Unit
+```
+
+
+#### `setHash`
+
+``` purescript
+setHash :: forall e. String -> Eff e Unit
+```
+
+
+#### `onHashChange`
+
+``` purescript
+onHashChange :: forall e a. Eff e Unit -> Eff e Unit
+```
+
+
+#### `matcher`
+
+``` purescript
+matcher :: Regex
+```
+
+
+#### `initialState`
+
+``` purescript
+initialState :: Eff _ State
+```
+
+
+#### `foldState`
+
+``` purescript
+foldState :: Action -> State -> Eff _ State
+```
+
+If we have a message to set hash we just set hash
+
+#### `construct`
+
+``` purescript
+construct :: forall e. Eff (chan :: Chan | e) (Service Action State (chan :: Chan | e))
+```
+
+constructing service
 
 
 ## Module Main
 
-### Values
+
 
 #### `main`
 
-    main :: Eff _ Unit
+``` purescript
+main :: Eff _ Unit
+```
+
 
 
 ## Module Model
 
-### Types
+
+Common stuff to use in many components
 
 #### `Sort`
 
-    data Sort
-      = Asc 
-      | Desc 
+``` purescript
+data Sort
+  = Asc 
+  | Desc 
+```
 
-
-### Values
-
-#### `sortFromString`
-
-    sortFromString :: String -> Maybe Sort
 
 #### `sortToString`
 
-    sortToString :: Sort -> String
+``` purescript
+sortToString :: Sort -> String
+```
+
+
+#### `sortFromString`
+
+``` purescript
+sortFromString :: String -> Maybe Sort
+```
+
 
 
 ## Module Router
 
-### Types
+
+Router component. It works with only one route aggregate
+now :) 
+
+#### `State`
+
+``` purescript
+type State eff = { hash :: Service Hash.Action Hash.State eff, search :: String, sort :: Sort }
+```
+
+state of routing is sort direction and search string
 
 #### `Action`
+
+``` purescript
+data Action
+  = RInit 
+  | Search String
+  | Sorting Sort
+  | HashChanged String
+```
 
 Incoming messages can be
 HashChanged is external message
 
-    data Action
-      = Init 
-      | Search String
-      | Sorting Sort
-      | HashChanged String
+#### `toHash`
 
-#### `State`
+``` purescript
+toHash :: forall o. { search :: String, sort :: Sort | o } -> String
+```
 
-state of routing is sort direction and search string
-
-    type State eff = { hash :: Service Hash.Action Hash.State eff, search :: String, sort :: Sort }
-
-
-### Values
-
-#### `construct`
-
-    construct :: Eff _ (Service Action (State _) _)
-
-#### `extractSearch`
-
-Get search from hash
-
-    extractSearch :: String -> String
+Make hash
 
 #### `extractSort`
 
+``` purescript
+extractSort :: String -> Maybe Sort
+```
+
 Get sort from hash
 
-    extractSort :: String -> Maybe Sort
+#### `extractSearch`
 
-#### `foldState`
+``` purescript
+extractSearch :: String -> String
+```
 
-Updating router state by messages
-
-    foldState :: forall e. Action -> State (chan :: Chan | e) -> Eff (chan :: Chan | e) (State (chan :: Chan | e))
+Get search from hash
 
 #### `fromHash`
 
+``` purescript
+fromHash :: String -> { search :: String, sort :: Sort }
+```
+
 Make state without hash-component from hash-string
 
-    fromHash :: String -> { search :: String, sort :: Sort }
-
-#### `initialState`
-
-make initial state 
-
-    initialState :: Eff _ (State _)
-
 #### `setSearch`
+
+``` purescript
+setSearch :: String -> Eff _ Unit
+```
 
 shortcut for setting search string
 I think, that after some other services will be
 developed pattern will arise
 
-    setSearch :: String -> Eff _ Unit
+#### `initialState`
 
-#### `toHash`
+``` purescript
+initialState :: Eff _ (State _)
+```
 
-Make hash
+make initial state 
 
-    toHash :: forall o. { search :: String, sort :: Sort | o } -> String
+#### `foldState`
+
+``` purescript
+foldState :: forall e. Action -> State (chan :: Chan | e) -> Eff (chan :: Chan | e) (State (chan :: Chan | e))
+```
+
+Updating router state by messages
+
+#### `construct`
+
+``` purescript
+construct :: Eff _ (Service Action (State _) _)
+```
+
 
 
 ## Module Utils
 
-### Values
+
+Shortcuts and glue between different modules
+
+#### `log`
+
+``` purescript
+log :: forall a e. a -> Eff (trace :: Trace | e) Unit
+```
+
+It's simpler for me to use foreign logging
+then add Show instances
+
+#### `onLoad`
+
+``` purescript
+onLoad :: Eff _ Unit -> Eff _ Unit
+```
+
+Ok, I were was wrong, it's simplier to define onload
+by simple-dom
 
 #### `append`
+
+``` purescript
+append :: forall e. HTMLElement -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
+```
 
 append one node to another node
 need to rewrite to HTMLElement
 and make PR to simple-dom
 
-    append :: forall e. HTMLElement -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
-
-#### `convertToElement`
-
-This function is needed to convert VTree -> Node -> HTMLElement 
-
-    convertToElement :: Node -> HTMLElement
-
 #### `hashChanged`
+
+``` purescript
+hashChanged :: forall a e. (String -> Eff e Unit) -> Eff e Unit
+```
 
 need to PR to simple-dom
 
-    hashChanged :: forall a e. (String -> Eff e Unit) -> Eff e Unit
+#### `convertToElement`
 
-#### `log`
+``` purescript
+convertToElement :: Node -> HTMLElement
+```
 
-It's simpler for me to use foreign logging
-then add Show instances
-
-    log :: forall a e. a -> Eff (trace :: Trace | e) Unit
-
-#### `onLoad`
-
-Ok, I were was wrong, it's simplier to define onload
-by simple-dom
-
-    onLoad :: Eff _ Unit -> Eff _ Unit
+This function is needed to convert VTree -> Node -> HTMLElement 
 
 
 ## Module View
 
-### Types
 
-#### `Action`
-
-Action is sum of children actions
-
-    data Action
-      = Init 
-      | ListAction List.Action
-      | NavbarAction Navbar.Action
-      | ToolbarAction Toolbar.Action
-      | BreadcrumbAction Breadcrumb.Input
+Application entry point
 
 #### `State`
 
+``` purescript
+type State = { breadcrumb :: Breadcrumb.Output, toolbar :: Toolbar.State, list :: List.State, navbar :: Navbar.State }
+```
+
 State is multiplication of children state
 
-    type State = { breadcrumb :: Breadcrumb.Output, toolbar :: Toolbar.State, list :: List.State, navbar :: Navbar.State }
+#### `Action`
 
+``` purescript
+data Action
+  = Init 
+  | ListAction List.Action
+  | NavbarAction Navbar.Action
+  | ToolbarAction Toolbar.Action
+  | BreadcrumbAction Breadcrumb.Input
+```
 
-### Values
+Action is sum of children actions
 
 #### `spec`
 
-Spec 
+``` purescript
+spec :: WidgetSpec Action State _
+```
 
-    spec :: WidgetSpec Action State _
+Spec 
 
 
 ## Module XHR
 
-### Types
 
-#### `Input`
-
-    data Input a
-      = Init 
-      | Send (SendRec a)
-
-#### `Output`
-
-    type Output = { content :: String }
+Low level service for managing xhr calls
+It should be wrapped in Api 
 
 #### `SendRec`
 
-    type SendRec a = { url :: String, additionalHeaders :: StrMap String, content :: A.HttpData a, method :: A.HttpMethod }
+``` purescript
+type SendRec a = { url :: String, additionalHeaders :: StrMap String, content :: A.HttpData a, method :: A.HttpMethod }
+```
 
 
-### Values
+#### `Input`
 
-#### `construct`
+``` purescript
+data Input a
+  = Init 
+  | Send (SendRec a)
+```
 
-    construct :: forall e a. Eff (dom :: DOM, chan :: Chan | e) (Service (Input a) Output (dom :: DOM, chan :: Chan | e))
+
+#### `Output`
+
+``` purescript
+type Output = { content :: String }
+```
+
+
+#### `run`
+
+``` purescript
+run :: forall a. Receiver Output _ -> Input a -> Eff _ Unit
+```
+
 
 #### `justSend`
+
+``` purescript
+justSend :: forall a. SendRec a -> Eff _ Unit
+```
 
 oh... It will not send it anywhere, I need a global state or singleton
 or whatever
 
-    justSend :: forall a. SendRec a -> Eff _ Unit
+#### `construct`
 
-#### `run`
+``` purescript
+construct :: forall e a. Eff (dom :: DOM, chan :: Chan | e) (Service (Input a) Output (dom :: DOM, chan :: Chan | e))
+```
 
-    run :: forall a. Receiver Output _ -> Input a -> Eff _ Unit
 
 
 ## Module Signal.Effectful
 
-### Values
+
 
 #### `foldpE`
 
-    foldpE :: forall a b c e. (a -> b -> Eff e b) -> b -> Signal a -> Eff e (Signal b)
+``` purescript
+foldpE :: forall a b c e. (a -> b -> Eff e b) -> b -> Signal a -> Eff e (Signal b)
+```
+
 
 
 ## Module View.Back
 
-### Types
+
+This component will not be rendered alone, so, it has not a spec
 
 #### `Action`
 
-    data Action
-      = Init 
-      | Clicked 
-      | Changed State
+``` purescript
+data Action
+  = Init 
+  | Clicked 
+  | Changed State
+  | Ajax XHR.Output
+```
+
 
 #### `State`
 
-    data State
-      = Directory 
-      | Database 
-      | Table 
-      | Notebook 
+``` purescript
+data State
+  = Directory 
+  | Database 
+  | Table 
+  | Notebook 
+```
 
-
-### Values
-
-#### `foldState`
-
-    foldState :: Action -> State -> Eff _ State
-
-#### `view`
-
-    view :: Receiver Action _ -> State -> Eff _ VTree
 
 #### `viewIcon`
 
-    viewIcon :: State -> VTree
+``` purescript
+viewIcon :: State -> VTree
+```
+
+
+#### `view`
+
+``` purescript
+view :: Receiver Action _ -> State -> Eff _ VTree
+```
+
+
+#### `foldState`
+
+``` purescript
+foldState :: Action -> State -> Eff _ State
+```
+
+
+#### `hook`
+
+``` purescript
+hook :: forall e. Receiver Action (trace :: Trace, dom :: DOM, chan :: Chan | e) -> Eff (trace :: Trace, dom :: DOM, chan :: Chan | e) Unit
+```
+
 
 
 ## Module View.Breadcrumb
 
-### Types
 
-#### `Input`
-
-Input signal: go to search location specified in link
-
-    data Input
-      = Init 
-      | GoTo Link
+Breadcrumb component is used for navigation up and bottom
+in directory structure and to show where is user now
+In this module I won't use terms <code>Action</code>
+and <code>State</code>.
 
 #### `Link`
 
+``` purescript
+type Link = { name :: String, href :: String }
+```
+
 Link that will be passed to search query in router
 
-    type Link = { name :: String, href :: String }
-
 #### `Output`
+
+``` purescript
+type Output = { links :: [Link] }
+```
 
 Output signals: init breadcrumbs, set breadcrumbs links to
 signal content
 
-    type Output = { links :: [Link] }
-
-
-### Values
-
 #### `emptyOut`
 
-    emptyOut :: Output
+``` purescript
+emptyOut :: Output
+```
+
+
+#### `Input`
+
+``` purescript
+data Input
+  = Init 
+  | GoTo Link
+```
+
+Input signal: go to search location specified in link
+
+#### `renderLink`
+
+``` purescript
+renderLink :: Receiver Input _ -> Link -> VTree
+```
+
 
 #### `render`
+
+``` purescript
+render :: Receiver Input _ -> Output -> Eff _ VTree
+```
 
 Renders breadcrumb and send <code>GoTo</code> message
 if clicked
 
-    render :: Receiver Input _ -> Output -> Eff _ VTree
-
-#### `renderLink`
-
-    renderLink :: Receiver Input _ -> Link -> VTree
-
 #### `run`
 
-Transforming input signal to output signal 
+``` purescript
+run :: Input -> Output -> Eff _ Output
+```
 
-    run :: Input -> Output -> Eff _ Output
+Transforming input signal to output signal 
 
 
 ## Module View.Item
 
-### Types
 
-#### `Action`
-
-    data Action
-      = Init 
-      | Focus 
-      | Blur 
-      | Open 
-      | Activate 
-      | Unactivate 
-      | Configure Logic
-      | Trash Logic
-      | Share Logic
-
-#### `Logic`
-
-    type Logic = { id :: String, name :: String, resource :: ResourceType }
+This component won't be rendered alone, it hasn't spec
 
 #### `ResourceType`
 
-    data ResourceType
-      = File 
-      | Database 
-      | Notebook 
-      | Directory 
-      | Table 
+``` purescript
+data ResourceType
+  = File 
+  | Database 
+  | Notebook 
+  | Directory 
+  | Table 
+```
+
+
+#### `Logic`
+
+``` purescript
+type Logic = { id :: String, name :: String, resource :: ResourceType }
+```
+
 
 #### `State`
 
-    type State = { isHovered :: Boolean, isSelected :: Boolean, logic :: Logic }
+``` purescript
+type State = { isHovered :: Boolean, isSelected :: Boolean, logic :: Logic }
+```
 
 
-### Values
+#### `Action`
 
-#### `foldState`
+``` purescript
+data Action
+  = Init 
+  | Focus 
+  | Blur 
+  | Open 
+  | Activate 
+  | Unactivate 
+  | Configure Logic
+  | Trash Logic
+  | Share Logic
+```
 
-    foldState :: Action -> State -> Eff _ State
 
 #### `initialState`
 
-    initialState :: State
+``` purescript
+initialState :: State
+```
 
-#### `renderMiniToolbar`
-
-    renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
 
 #### `renderResourceType`
 
-    renderResourceType :: ResourceType -> VTree
+``` purescript
+renderResourceType :: ResourceType -> VTree
+```
+
+
+#### `renderMiniToolbar`
+
+``` purescript
+renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
+```
+
 
 #### `view`
 
-    view :: Receiver Action _ -> State -> Eff _ VTree
+``` purescript
+view :: Receiver Action _ -> State -> Eff _ VTree
+```
+
+
+#### `foldState`
+
+``` purescript
+foldState :: Action -> State -> Eff _ State
+```
+
 
 
 ## Module View.List
 
-### Types
+
+This component has no spec, it won't be rendered alone
+
+#### `State`
+
+``` purescript
+type State = { items :: [Item.State] }
+```
+
+Its state has a list of children
+
+#### `initialState`
+
+``` purescript
+initialState :: State
+```
+
 
 #### `Action`
+
+``` purescript
+data Action
+  = Init 
+  | ItemAction Number Item.Action
+  | SortAction Sort
+```
 
 External messages will be marked with index of child
 that send it
 
-    data Action
-      = Init 
-      | ItemAction Number Item.Action
-      | SortAction Sort
-
-#### `State`
-
-Its state has a list of children
-
-    type State = { items :: [Item.State] }
-
-
-### Values
-
-#### `foldState`
-
-    foldState :: Action -> State -> Eff _ State
-
-#### `initialState`
-
-    initialState :: State
-
 #### `view`
+
+``` purescript
+view :: Receiver Action _ -> State -> Eff _ VTree
+```
 
 Rendering of list
 
-    view :: Receiver Action _ -> State -> Eff _ VTree
+#### `foldState`
+
+``` purescript
+foldState :: Action -> State -> Eff _ State
+```
+
 
 
 ## Module View.Logo
 
-### Values
+
+This component is not component :)
+It is just two function and even have not action and state
 
 #### `view`
 
-send and st will be removed
+``` purescript
+view :: forall a b. a -> b -> Eff _ VTree
+```
 
-    view :: forall a b. a -> b -> Eff _ VTree
+send and st will be removed
 
 
 ## Module View.Navbar
 
-### Types
 
-#### `Action`
-
-Sum of children actions
-
-    data Action
-      = Init 
-      | SearchAction Search.Action
-      | BackAction Back.Action
+This component also has no spec, and will not be rendered alone
 
 #### `State`
 
+``` purescript
+type State = { user :: User.State, back :: Back.State, search :: Search.State }
+```
+
 Multiplication of children state
-
-    type State = { user :: User.State, back :: Back.State, search :: Search.State }
-
-
-### Values
-
-#### `foldState`
-
-Update state
-
-    foldState :: Action -> State -> Eff _ State
-
-#### `hook`
-
-listen route changes, called after render
-
-    hook :: forall e. Receiver Action (chan :: Chan | e) -> Eff (chan :: Chan | e) Unit
 
 #### `initialState`
 
-    initialState :: State
+``` purescript
+initialState :: State
+```
+
+
+#### `Action`
+
+``` purescript
+data Action
+  = Init 
+  | SearchAction Search.Action
+  | BackAction Back.Action
+```
+
+Sum of children actions
 
 #### `view`
 
+``` purescript
+view :: Receiver Action _ -> State -> Eff _ VTree
+```
+
 Render
 
-    view :: Receiver Action _ -> State -> Eff _ VTree
+#### `foldState`
+
+``` purescript
+foldState :: Action -> State -> Eff _ State
+```
+
+Update state
+
+#### `hook`
+
+``` purescript
+hook :: forall e. Receiver Action _ -> Eff _ Unit
+```
+
+listen route changes, called after render
 
 
 ## Module View.Search
 
-### Types
+
+Search component will not be rendered alone
 
 #### `Action`
 
-Route change is external message
+``` purescript
+data Action
+  = Init 
+  | Change String
+  | RouteChanged String
+  | Submit 
+```
 
-    data Action
-      = Init 
-      | Change String
-      | RouteChanged String
-      | Submit 
+Route change is external message
 
 #### `State`
 
-    type State = { timeout :: Maybe Timeout, value :: String, valid :: Boolean }
+``` purescript
+type State = { timeout :: Maybe Timeout, value :: String, valid :: Boolean }
+```
 
-
-### Values
-
-#### `foldState`
-
-Update searcher state
-
-    foldState :: Action -> State -> Eff _ State
 
 #### `initialState`
 
-    initialState :: State
+``` purescript
+initialState :: State
+```
+
 
 #### `view`
 
-    view :: Receiver Action _ -> State -> Eff _ VTree
+``` purescript
+view :: Receiver Action _ -> State -> Eff _ VTree
+```
+
+
+#### `foldState`
+
+``` purescript
+foldState :: Action -> State -> Eff _ State
+```
+
+Update searcher state
 
 
 ## Module View.Shortcuts
 
-### Values
 
-#### `a`
-
-    a :: forall props. {  | props } -> [VTree] -> VTree
-
-#### `button`
-
-    button :: forall props. {  | props } -> [VTree] -> VTree
+Will be moved to VirtualDOM 
 
 #### `div`
 
-    div :: forall props. {  | props } -> [VTree] -> VTree
+``` purescript
+div :: forall props. {  | props } -> [VTree] -> VTree
+```
 
-#### `emptyVTree`
-
-useful for defining of components
-
-    emptyVTree :: VTree
-
-#### `form`
-
-    form :: forall props. {  | props } -> [VTree] -> VTree
-
-#### `i`
-
-    i :: forall props. {  | props } -> [VTree] -> VTree
-
-#### `input`
-
-    input :: forall props. {  | props } -> [VTree] -> VTree
-
-#### `jsVoid`
-
-    jsVoid :: String
-
-#### `li`
-
-    li :: forall props. {  | props } -> [VTree] -> VTree
 
 #### `nav`
 
-    nav :: forall props. {  | props } -> [VTree] -> VTree
+``` purescript
+nav :: forall props. {  | props } -> [VTree] -> VTree
+```
 
-#### `ol`
 
-    ol :: forall props. {  | props } -> [VTree] -> VTree
+#### `a`
+
+``` purescript
+a :: forall props. {  | props } -> [VTree] -> VTree
+```
+
+
+#### `form`
+
+``` purescript
+form :: forall props. {  | props } -> [VTree] -> VTree
+```
+
+
+#### `input`
+
+``` purescript
+input :: forall props. {  | props } -> [VTree] -> VTree
+```
+
+
+#### `i`
+
+``` purescript
+i :: forall props. {  | props } -> [VTree] -> VTree
+```
+
 
 #### `span`
 
-    span :: forall props. {  | props } -> [VTree] -> VTree
+``` purescript
+span :: forall props. {  | props } -> [VTree] -> VTree
+```
+
+
+#### `button`
+
+``` purescript
+button :: forall props. {  | props } -> [VTree] -> VTree
+```
+
 
 #### `ul`
 
-    ul :: forall props. {  | props } -> [VTree] -> VTree
+``` purescript
+ul :: forall props. {  | props } -> [VTree] -> VTree
+```
+
+
+#### `ol`
+
+``` purescript
+ol :: forall props. {  | props } -> [VTree] -> VTree
+```
+
+
+#### `li`
+
+``` purescript
+li :: forall props. {  | props } -> [VTree] -> VTree
+```
+
+
+#### `emptyVTree`
+
+``` purescript
+emptyVTree :: VTree
+```
+
+useful for defining of components
+
+#### `jsVoid`
+
+``` purescript
+jsVoid :: String
+```
+
 
 
 ## Module View.Toolbar
 
-### Types
+
+Mostly produce messages which must be consumed by external
+i.e. upload file, or call Api
 
 #### `Action`
 
-Output messages
+``` purescript
+data Action
+  = Init 
+  | Sorting 
+  | UploadFile 
+  | MountDB 
+  | CreateNotebook 
+  | CreateFolder 
+```
 
-    data Action
-      = Init 
-      | Sorting 
-      | UploadFile 
-      | MountDB 
-      | CreateNotebook 
-      | CreateFolder 
+Output messages
 
 #### `State`
 
+``` purescript
+type State = { sort :: Sort }
+```
+
 sort direction in list (used in chevron direction right now only)
-
-    type State = { sort :: Sort }
-
-
-### Values
-
-#### `foldState`
-
-    foldState :: Action -> State -> Eff _ State
 
 #### `view`
 
-    view :: Receiver Action _ -> State -> Eff _ VTree
+``` purescript
+view :: Receiver Action _ -> State -> Eff _ VTree
+```
+
+
+#### `foldState`
+
+``` purescript
+foldState :: Action -> State -> Eff _ State
+```
+
 
 
 ## Module View.User
 
-### Types
+
+This module will be removed, used only for layout
 
 #### `Action`
 
-    data Action
-      = Init 
+``` purescript
+data Action
+  = Init 
+```
+
 
 #### `State`
 
-    newtype State
-      = State String
+``` purescript
+newtype State
+  = State String
+```
 
-
-### Values
-
-#### `foldState`
-
-    foldState :: Action -> State -> Eff _ State
 
 #### `view`
 
-    view :: Receiver Action _ -> State -> Eff _ VTree
+``` purescript
+view :: Receiver Action _ -> State -> Eff _ VTree
+```
+
+
+#### `foldState`
+
+``` purescript
+foldState :: Action -> State -> Eff _ State
+```
+
 
 
 ## Module VirtualDOM.Events
 
-### Types
 
-#### `Callback`
-
-    data Callback :: *
+Shortcuts for VirtualDOM events
+They are not well typed, so it's possible
+to put in "onclick" everything
+it works when we put  Eff _ Unit there or
+Callback defined here
 
 #### `Event`
 
-    data Event :: *
+``` purescript
+data Event :: *
+```
+
+
+#### `Callback`
+
+``` purescript
+data Callback :: *
+```
+
 
 #### `Handler`
 
+``` purescript
+type Handler e = Node -> Event -> Eff e Unit
+```
+
 Will be changed in favor of HTMLElement, I suppose
-
-    type Handler e = Node -> Event -> Eff e Unit
-
-
-### Values
-
-#### `getValue`
-
-Just get value from **input**
-
-    getValue :: forall e. Node -> Eff (dom :: DOM | e) String
 
 #### `mkCallback`
 
-    mkCallback :: forall e. Handler e -> Callback
+``` purescript
+mkCallback :: forall e. Handler e -> Callback
+```
+
+
+#### `getValue`
+
+``` purescript
+getValue :: forall e. Node -> Eff (dom :: DOM | e) String
+```
+
+Just get value from **input**
 
 #### `returnFalse`
 
-emptyHandler
+``` purescript
+returnFalse :: Callback
+```
 
-    returnFalse :: Callback
+emptyHandler
 
 
 

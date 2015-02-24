@@ -22,7 +22,9 @@ log a = fprint a *> pure unit
 -- | by simple-dom
 onLoad :: Eff _ Unit -> Eff _ Unit
 onLoad action = do
-  addUIEventListener LoadEvent (const action) globalWindow
+  let handler :: DOMEvent -> _
+      handler _ = action
+  addUIEventListener LoadEvent handler globalWindow
 
 -- | append one node to another node
 -- | need to rewrite to HTMLElement

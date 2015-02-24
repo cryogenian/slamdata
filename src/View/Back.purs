@@ -1,6 +1,7 @@
 -- | This component will not be rendered alone, so, it has not a spec
 module View.Back where
 
+import Debug.Trace (Trace())
 import DOM
 import View.Shortcuts
 import Utils
@@ -16,7 +17,7 @@ import qualified XHR as XHR
 import qualified Data.DOM.Simple.Ajax as A
 import Data.StrMap (empty, StrMap())
 
-data Action = Init | Clicked | Changed State
+data Action = Init | Clicked | Changed State | Ajax XHR.Output
 
 data State = Directory | Database | Table | Notebook 
 
@@ -40,19 +41,27 @@ view send st = do
 
 
 foldState :: Action -> State -> Eff _ State
-foldState action state =
+foldState action state = 
   case action of
     Init -> return state
     Clicked -> do
-      XHR.justSend {
+{-      xhr <- XHR.construct
+      xhr.run (foldState  {
         method: A.GET,
         content: A.NoData,
         additionalHeaders: (empty :: StrMap String),
         url: "http://localhost:5050/"
         }
+-}
       -- just to be sure that we catch this click
       log "clicked"
       return state
     Changed st -> return st
 
 
+hook :: forall e.
+        Receiver Action (chan::Chan,dom::DOM,trace::Trace|e) -> 
+        Eff (chan::Chan,dom::DOM,trace::Trace|e) Unit
+hook receiver = do 
+  return unit
+                              
