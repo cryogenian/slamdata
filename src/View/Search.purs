@@ -15,6 +15,8 @@ import Data.Monoid
 import Control.Timer
 import VirtualDOM.Events
 import Component
+import Control.Reactive.Event
+import Data.DOM.Simple.Element
 
 import qualified Hash as Hash
 import qualified Router as Router
@@ -55,11 +57,10 @@ view emit st = return $
                 "type": "text",
                 "value": st.value,
                 -- Here we making callback from effectful function
-                -- It sends Change event 
-                "oninput": mkCallback $ (\node event -> do
-                                            val <- getValue node
-                                            emit $ Change val)
-                
+                -- It sends Change event
+                "input": hook "input" $ \event -> do
+                  val <- return event >>= target >>= value
+                  emit $ Change val
                } [],
        span {"className": "input-group-btn"} [
          button {"className": "btn btn-default" <> if st.valid

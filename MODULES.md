@@ -11,23 +11,6 @@
 **action** - type of messages to components
 it modifies **state** in function UpdateFn
 
-#### `ComponentMessage`
-
-``` purescript
-data ComponentMessage action state
-  = Render VTree
-  | StateUpdated state
-  | Event action
-  | Injected HTMLElement
-  | Rendered HTMLElement
-  | Inject HTMLElement
-  | Constructed 
-```
-
-We can try to emulate ReactJS component life cycle by
-using more precise message to signals
-Using this composed messages eliminates need of initial action
-
 #### `Receiver`
 
 ``` purescript
@@ -35,13 +18,6 @@ type Receiver message e = message -> Eff e Unit
 ```
 
 One example of **Receiver** can be <code>send channel</code>
-
-#### `LoopFn`
-
-``` purescript
-type LoopFn action state eff = Acceptor action state eff -> ComponentMessage action state -> Eff eff Unit
-```
-
 
 #### `UpdateFn`
 
@@ -88,7 +64,7 @@ This is basic component that can be rendered to DOM
 #### `WidgetSpec`
 
 ``` purescript
-type WidgetSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, loop :: LoopFn action state eff, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
+type WidgetSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
 ```
 
 Spec of component
@@ -1037,13 +1013,6 @@ to put in "onclick" everything
 it works when we put  Eff _ Unit there or
 Callback defined here
 
-#### `Event`
-
-``` purescript
-data Event :: *
-```
-
-
 #### `Callback`
 
 ``` purescript
@@ -1066,14 +1035,6 @@ mkCallback :: forall e. Handler e -> Callback
 ```
 
 
-#### `getValue`
-
-``` purescript
-getValue :: forall e. Node -> Eff (dom :: DOM | e) String
-```
-
-Just get value from **input**
-
 #### `returnFalse`
 
 ``` purescript
@@ -1081,6 +1042,111 @@ returnFalse :: Callback
 ```
 
 emptyHandler
+
+#### `HookFn`
+
+``` purescript
+type HookFn = Fn2 Node String (Eff (dom :: DOM) Unit)
+```
+
+#### `Listener`
+
+``` purescript
+type Listener = { callback :: Callback, event :: String }
+```
+
+
+#### `listener`
+
+``` purescript
+listener :: forall e. String -> (Event -> Eff e Unit) -> Listener
+```
+
+
+#### `mkCb`
+
+``` purescript
+mkCb :: forall e. (Event -> Eff e Unit) -> Callback
+```
+
+
+#### `listen`
+
+``` purescript
+listen :: Listener -> HookFn
+```
+
+
+#### `ignore`
+
+``` purescript
+ignore :: Listener -> HookFn
+```
+
+
+#### `emptyHook`
+
+``` purescript
+emptyHook :: VHook
+```
+
+#### `composeHooks`
+
+``` purescript
+composeHooks :: VHook -> VHook -> VHook
+```
+
+
+
+## Module Control.Reactive.Event
+
+
+
+#### `Event`
+
+``` purescript
+data Event :: *
+```
+
+
+#### `target`
+
+``` purescript
+target :: forall e. Event -> Eff e HTMLElement
+```
+
+
+#### `raiseEventImpl`
+
+``` purescript
+raiseEventImpl :: forall e. Fn2 String HTMLElement (Eff (dom :: DOM | e) HTMLElement)
+```
+
+
+#### `raiseEvent`
+
+``` purescript
+raiseEvent :: forall e. String -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
+```
+
+
+
+## Module Control.Reactive.File
+
+
+
+#### `tst`
+
+``` purescript
+tst :: Event -> Eff _ Unit
+```
+
+#### `uploader`
+
+``` purescript
+uploader :: forall p a. String -> { click :: VHook | p } -> [VTree] -> VTree
+```
+
 
 
 

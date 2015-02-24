@@ -9,8 +9,6 @@ module Component (
   UpdateFn(..),
   RenderFn(..),
   Initial(..),
-  LoopFn(..),
-  ComponentMessage(..),
   define,
   toVoid
   ) where
@@ -31,31 +29,9 @@ import VirtualDOM
 import VirtualDOM.VTree
 
 
--- | We can try to emulate ReactJS component life cycle by
--- | using more precise message to signals
--- | Using this composed messages eliminates need of initial action
-data ComponentMessage action state =
-  -- Render VTree to stated dom-element
-  Render VTree
-  -- Raised after state updated
-  | StateUpdated state
-  -- Raised when user makes some actions
-  | Event action
-  -- Raised after Component start to render in element
-  | Injected HTMLElement
-  -- Raised after Component rendered
-  | Rendered HTMLElement
-  -- Raised when component constructed and need to be injected
-  | Inject HTMLElement
-  -- Raised after calling <code>Component.construct</code>
-  | Constructed
-
 -- | One example of **Receiver** can be <code>send channel</code>
 type Receiver message e = message -> Eff e Unit
-type Acceptor action state eff = Receiver (ComponentMessage action state) eff
-type LoopFn action state eff = Acceptor action state eff ->
-                               ComponentMessage action state ->
-                               Eff eff Unit
+
 
 -- | this function fold **state** with **action**
 type UpdateFn action state eff = action -> state -> Eff eff state
@@ -95,7 +71,6 @@ type Widget action state eff = {
 type WidgetSpec action state eff = {
   render ::  RenderFn action state eff,
   updateState :: UpdateFn action state eff,
-  loop :: LoopFn action state eff,
   initial :: Initial action state,
   -- | This function will be called after inserting to DOM
   hook :: Receiver action eff -> Eff eff Unit

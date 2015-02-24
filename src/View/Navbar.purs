@@ -14,7 +14,7 @@ import Control.Monad.Eff.Ref
 import Data.Maybe
 import Data.Monoid
 import Control.Timer
-import VirtualDOM.Events
+import VirtualDOM.Events hiding (hook)
 import Component
 
 import qualified View.Search as Search

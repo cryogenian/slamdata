@@ -9,7 +9,9 @@ import VirtualDOM
 import VirtualDOM.VTree
 import Control.Monad.Eff
 import View.Shortcuts
+import VirtualDOM.Events (hook)
 
+import Control.Reactive.File
 import Utils
 import Component
 import Model (Sort(..))
@@ -31,14 +33,18 @@ view send st = do
   return $ div {"className": "row"} [
     div {"className": "col-sm-4"} [
        a {"href": jsVoid,
-          "onclick": send Sorting } [
+          "onclick": hook "click" $ const (send Sorting) } [
           vtext "Name",
           i {"className": chevronClass st, "style": {"margin-left": "10px"}} []
           ]
        ],
     div {"className": "col-sm-8"} [
       ul {"className": "list-inline pull-right"} [
-         li {} [a {"href": jsVoid, "onclick": send UploadFile} [vtext "File"]],
+         li {} [uploader "a"
+                  {"href": jsVoid,
+                   "click": hook "click" $ const (send UploadFile),
+                   "runUpload": "click"} [vtext "File"]],
+                                                                
          li {} [a {"href": jsVoid, "onclick": send CreateFolder} [vtext "Folder"]],
          li {} [a {"href": jsVoid, "onclick": send MountDB} [vtext "Mount"]],
          li {} [a {"href": jsVoid, "onclick": send CreateNotebook} [vtext "Notebook"]]
