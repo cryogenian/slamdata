@@ -11,7 +11,7 @@ import Signal.Effectful
 import VirtualDOM
 import VirtualDOM.VTree
 import Control.Monad.Eff
-import VirtualDOM.Events hiding (hook)
+import VirtualDOM.Events 
 import Component
 import qualified XHR as XHR
 import qualified Data.DOM.Simple.Ajax as A
@@ -34,8 +34,8 @@ viewIcon st =
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
   return $ a {"className": "navbar-brand",
-              "href": jsVoid}[
---              "onclick": hook "click" $ const (send Clicked)} [
+              "href": jsVoid,
+              "click": hook "click" $ const (send Clicked)} [
 
     viewIcon st 
     ]
@@ -60,9 +60,9 @@ foldState action state =
     Changed st -> return st
 
 
-hook :: forall e.
+hookFn :: forall e.
         Receiver Action (chan::Chan,dom::DOM,trace::Trace|e) -> 
         Eff (chan::Chan,dom::DOM,trace::Trace|e) Unit
-hook receiver = do 
+hookFn receiver = do 
   return unit
                               

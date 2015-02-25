@@ -83,11 +83,11 @@ foldState action state =
 
 
 -- | listen route changes, called after render
-hook :: forall e.
+hookFn :: forall e.
         Receiver Action _ -> 
         Eff _ Unit
-hook receiver = do
-  Back.hook (receiver <<< BackAction)
+hookFn receiver = do
+  Back.hookFn (receiver <<< BackAction)
   router <- Router.construct
   runSignal $ router.signal ~> \route -> do
     receiver $ (SearchAction <<< Search.RouteChanged $ route.search)

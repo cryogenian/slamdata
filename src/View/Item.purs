@@ -6,6 +6,7 @@ import Component
 import VirtualDOM
 import VirtualDOM.VTree
 import View.Shortcuts
+import VirtualDOM.Events
 import Data.Monoid
 import Utils
 import Signal
@@ -52,13 +53,16 @@ renderResourceType rt =
 renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
 renderMiniToolbar send st = do
   let basic = [
-        li {} [a {"href": jsVoid, "onclick": send $ Trash st.logic}
+        li {} [a {"href": jsVoid,
+                  "click": hook "click" $ const (send $ Trash st.logic)}
                [vtext "trash"]],
-        li {} [a {"href": jsVoid, "onclick": send $ Share st.logic}
+        li {} [a {"href": jsVoid,
+                  "click": hook "click" $ const (send $ Share st.logic)}
                [vtext "share"]]
         ]
   let configure =
-        li {} [a {"href": jsVoid, "onclick": send $ Configure st.logic}
+        li {} [a {"href": jsVoid,
+                  "click": hook "click" $ const (send $ Configure st.logic)}
                [vtext "configure"]]
   case st.logic.resource of
     Database -> return $ configure:basic
@@ -68,14 +72,14 @@ view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
   toolbarItems <- renderMiniToolbar send st
   return $ div {"className": "list-group-item" <> isActive st,
-                "onclick": send Activate,
-                "ondblclick": send Open,
-                "onmouseover": send Focus,
-                "onmouseout": send Blur
+                "mouseout": hook "mouseout" $ const $ (send Blur),
+                "mouseover": hook "mouseover" (const $ send Focus),
+                "dblclick": hook "dblclick" (const $ send Open),
+                "click": hook "click" (const $ send Activate)
                 } [
     div {"className": "row"} [
        div {"className": "col-sm-6"} [
-          a {"onclick": send Open,
+          a {"click": hook "click" (const $ send Open),
              "href": jsVoid} [
              renderResourceType st.logic.resource,
              span {style: {"margin-left": "10px"}} [vtext st.logic.name]

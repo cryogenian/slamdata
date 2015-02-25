@@ -97,10 +97,10 @@ initial =
    state: initialState}
           
 -- | Will be called after render
-hook :: forall e. Receiver Action (chan::Chan, dom::DOM, trace::Trace|e) ->
+hookFn :: forall e. Receiver Action (chan::Chan, dom::DOM, trace::Trace|e) ->
                   Eff (chan::Chan, dom::DOM, trace::Trace|e) Unit
-hook receiver = do
-  Navbar.hook (receiver <<< NavbarAction)
+hookFn receiver = do
+  Navbar.hookFn (receiver <<< NavbarAction)
   xhr <- XHR.construct
   runSignal $  xhr.signal ~> \msg -> do
     log msg
@@ -111,5 +111,5 @@ spec = {
   render: view,
   initial: initial,
   updateState: foldState,
-  hook: hook
+  hook: hookFn
   }

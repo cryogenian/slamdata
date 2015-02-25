@@ -33,7 +33,7 @@ view send st = do
   return $ div {"className": "row"} [
     div {"className": "col-sm-4"} [
        a {"href": jsVoid,
-          "onclick": hook "click" $ const (send Sorting) } [
+          "click": hook "click" $ const (send Sorting) } [
           vtext "Name",
           i {"className": chevronClass st, "style": {"margin-left": "10px"}} []
           ]
@@ -45,9 +45,13 @@ view send st = do
                    "click": hook "click" $ const (send UploadFile),
                    "runUpload": "click"} [vtext "File"]],
                                                                 
-         li {} [a {"href": jsVoid, "onclick": send CreateFolder} [vtext "Folder"]],
-         li {} [a {"href": jsVoid, "onclick": send MountDB} [vtext "Mount"]],
-         li {} [a {"href": jsVoid, "onclick": send CreateNotebook} [vtext "Notebook"]]
+         li {} [a {"href": jsVoid,
+                   "click": hook "click" $ const $  send CreateFolder}
+                [vtext "Folder"]],
+         li {} [a {"href": jsVoid,
+                   "click": hook "click" $ const $ send MountDB} [vtext "Mount"]],
+         li {} [a {"href": jsVoid,
+                   "click": hook "click" $ const $ send CreateNotebook} [vtext "Notebook"]]
          ]
       ]
     ]

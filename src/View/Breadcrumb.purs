@@ -32,7 +32,8 @@ data Input = Init | GoTo Link
 
 renderLink :: Receiver Input _ -> Link -> VTree
 renderLink send link =
-  li {} [a {"href": jsVoid, "onclick": send $ GoTo link} [vtext link.name]]
+  li {} [a {"href": jsVoid, "click": hook "click" $ const (send $ GoTo link)}
+         [vtext link.name]]
 
 -- | Renders breadcrumb and send <code>GoTo</code> message
 -- | if clicked

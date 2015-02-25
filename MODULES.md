@@ -503,10 +503,10 @@ foldState :: Action -> State -> Eff _ State
 ```
 
 
-#### `hook`
+#### `hookFn`
 
 ``` purescript
-hook :: forall e. Receiver Action (trace :: Trace, dom :: DOM, chan :: Chan | e) -> Eff (trace :: Trace, dom :: DOM, chan :: Chan | e) Unit
+hookFn :: forall e. Receiver Action (trace :: Trace, dom :: DOM, chan :: Chan | e) -> Eff (trace :: Trace, dom :: DOM, chan :: Chan | e) Unit
 ```
 
 
@@ -771,10 +771,10 @@ foldState :: Action -> State -> Eff _ State
 
 Update state
 
-#### `hook`
+#### `hookFn`
 
 ``` purescript
-hook :: forall e. Receiver Action _ -> Eff _ Unit
+hookFn :: forall e. Receiver Action _ -> Eff _ Unit
 ```
 
 listen route changes, called after render

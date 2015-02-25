@@ -47,7 +47,7 @@ view emit st = return $
     form {"className": "navbar-form",
           -- on submit we send Submit message to our recevier (emit here)
           -- It will populate in foldState because emit is (send chan)
-          "onsubmit": emit Submit} [
+          "submit": hook "submit" $ const $ (emit Submit) } [
       div {"className": "input-group" <> if st.valid then "" else " has-error",
            "style": {"width": "100%"}} [
          span {"className": "input-group-addon"} [
@@ -68,7 +68,8 @@ view emit st = return $
                                                    else " btn-danger",
                  "type": "submit",
                  -- another submit
-                 "onclick": emit Submit} [
+                 "click": hook "click" $ const $ (emit Submit) } [
+
             i {"className": "glyphicon glyphicon-search"} []
             ]
          ]
