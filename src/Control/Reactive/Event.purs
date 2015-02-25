@@ -15,19 +15,30 @@ function target(ev) {
 }
 """ :: forall e. Event -> Eff e HTMLElement
 
-foreign import raiseEventImpl """
-function raiseEventImpl(name, node) {
+foreign import detail """
+function detail(ev) {
   return function() {
-    var evt = new Event(name);
+    return ev.detail;
+  };
+}
+""" :: forall e a. Event -> Eff e a
+
+
+foreign import raiseEventImpl """
+function raiseEventImpl(name, node, content) {
+  return function() {
+    var evt = new CustomEvent(name, {detail: content});
     evt.initEvent(name, true, true);
     node.dispatchEvent(evt);
     return node;
   };
 }
-""" :: forall e. Fn2 String HTMLElement (Eff (dom::DOM|e) HTMLElement)
+""" :: forall e a. Fn3 String HTMLElement a (Eff (dom::DOM|e) HTMLElement)
 
-raiseEvent :: forall e. String -> HTMLElement -> Eff (dom::DOM|e) HTMLElement
-raiseEvent name el = runFn2 raiseEventImpl name el
+raiseEvent :: forall e a. String -> HTMLElement -> a -> Eff (dom::DOM|e) HTMLElement
+raiseEvent name el content = runFn3 raiseEventImpl name el content
+
+
 
 
 

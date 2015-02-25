@@ -338,6 +338,20 @@ append one node to another node
 need to rewrite to HTMLElement
 and make PR to simple-dom
 
+#### `parentImpl`
+
+``` purescript
+parentImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) HTMLElement (Eff e (Maybe HTMLElement))
+```
+
+
+#### `parent`
+
+``` purescript
+parent :: forall e. HTMLElement -> Eff e (Maybe HTMLElement)
+```
+
+
 #### `hashChanged`
 
 ``` purescript
@@ -1116,17 +1130,24 @@ target :: forall e. Event -> Eff e HTMLElement
 ```
 
 
+#### `detail`
+
+``` purescript
+detail :: forall e a. Event -> Eff e a
+```
+
+
 #### `raiseEventImpl`
 
 ``` purescript
-raiseEventImpl :: forall e. Fn2 String HTMLElement (Eff (dom :: DOM | e) HTMLElement)
+raiseEventImpl :: forall e a. Fn3 String HTMLElement a (Eff (dom :: DOM | e) HTMLElement)
 ```
 
 
 #### `raiseEvent`
 
 ``` purescript
-raiseEvent :: forall e. String -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
+raiseEvent :: forall e a. String -> HTMLElement -> a -> Eff (dom :: DOM | e) HTMLElement
 ```
 
 
@@ -1135,11 +1156,123 @@ raiseEvent :: forall e. String -> HTMLElement -> Eff (dom :: DOM | e) HTMLElemen
 
 
 
+#### `FileReader`
+
+``` purescript
+data FileReader :: *
+```
+
+#### `File`
+
+``` purescript
+data File :: *
+```
+
+
+#### `FileList`
+
+``` purescript
+data FileList :: *
+```
+
+
+#### `fileListToArray`
+
+``` purescript
+fileListToArray :: FileList -> [File]
+```
+
+
+#### `name`
+
+``` purescript
+name :: forall e. File -> Eff e String
+```
+
+
+#### `file2blob`
+
+``` purescript
+file2blob :: File -> Blob
+```
+
+
+#### `newFormData`
+
+``` purescript
+newFormData :: forall e. Eff e FormData
+```
+
+
+#### `append2FormData`
+
+``` purescript
+append2FormData :: forall e a. String -> a -> FormData -> Eff e FormData
+```
+
+
+#### `newReader`
+
+``` purescript
+newReader :: forall e. Eff e FileReader
+```
+
+
+#### `readAsBinaryString`
+
+``` purescript
+readAsBinaryString :: forall e. File -> FileReader -> Eff e Unit
+```
+
+
+#### `str2blob`
+
+``` purescript
+str2blob :: forall e. String -> Blob
+```
+
+
+#### `onload`
+
+``` purescript
+onload :: forall e e'. (Event -> Eff e Unit) -> FileReader -> Eff e' FileReader
+```
+
+
+#### `resultImpl`
+
+``` purescript
+resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) FileReader (Eff e (Maybe String))
+```
+
+
+#### `result`
+
+``` purescript
+result :: forall e. FileReader -> Eff e (Maybe String)
+```
+
+
+#### `files`
+
+``` purescript
+files :: forall e. HTMLElement -> Eff e FileList
+```
+
+
 #### `tst`
 
 ``` purescript
 tst :: Event -> Eff _ Unit
 ```
+
+
+#### `act`
+
+``` purescript
+act :: Event -> Eff _ Unit
+```
+
 
 #### `uploader`
 

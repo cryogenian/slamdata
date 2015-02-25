@@ -12,6 +12,7 @@ import Data.Maybe
 import Debug.Trace
 import Debug.Foreign
 import Control.Apply
+import Data.Function
 
 -- | It's simpler for me to use foreign logging
 -- | then add Show instances
@@ -39,6 +40,20 @@ function append(parent) {
   };
 }
 """ :: forall e. HTMLElement -> HTMLElement -> Eff (dom::DOM|e) HTMLElement
+
+foreign import parentImpl """
+function parentImpl(nothing, just, child) {
+  return function() {
+    var p = child.parentElement;
+    if (!p) return nothing;
+    return just(p);
+  };
+}
+""" :: forall e a.
+       Fn3 (Maybe a) (a -> Maybe a) HTMLElement (Eff e (Maybe HTMLElement))
+
+parent :: forall e. HTMLElement -> Eff e (Maybe HTMLElement)
+parent = runFn3 parentImpl Nothing Just 
 
 -- | need to PR to simple-dom
 foreign import hashChanged """
