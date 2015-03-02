@@ -21,7 +21,7 @@ import qualified View.Search as Search
 import qualified View.Back as Back
 import qualified View.Logo as Logo
 import qualified View.User as User
-import qualified Hash as Hash
+import qualified Router as Router
 
 -- | Multiplication of children state
 type State = {
@@ -88,6 +88,9 @@ hookFn :: forall e.
         Eff _ Unit
 hookFn receiver = do
   Back.hookFn (receiver <<< BackAction)
-  router <- Router.construct
-  runSignal $ router.signal ~> \route -> do
+  Hash.changed $ do
+    route <- Router.getRoute
+    log route
     receiver $ (SearchAction <<< Search.RouteChanged $ route.search)
+
+

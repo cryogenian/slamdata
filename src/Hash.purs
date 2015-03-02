@@ -1,6 +1,5 @@
 -- | Low level url-hash service
-
-module Hash  where
+module Hash (setHash, getHash, changed, Hash(..)) where
 
 import Control.Monad.Eff
 import Signal
@@ -23,6 +22,8 @@ function getHashImpl() {
 }
 """ :: forall e. Eff e Hash
 
+
+getHash :: forall e. Eff e Hash
 getHash = do
   let rgx = regex "^#" noFlags
   raw <- getHashImpl
@@ -42,54 +43,6 @@ setHash hash = do
   setHashImpl hash
 
 
+changed :: forall e. Eff e Unit -> Eff e Unit
+changed act = hashChanged (\_ _ -> act)
 
-foreign import onHashChange """
-function onHashChange(action) {
-  return function() {
-    window.addEventListener('hashchange', function() {
-      action();
-    });
-  };
-}
-""" :: forall e a. Eff e Unit -> Eff e Unit
-
-
-matcher :: Regex
-matcher = regex ".+" {
-  global: true,
-  ignoreCase: false,
-  multiline: false,
-  sticky: false,
-  unicode: false
-  }
-
-initialState :: Eff _ State
-initialState = getHash
-
-
--- | If we have a message to set hash we just set hash
-foldState :: Action -> State -> Eff _ State
-foldState st state = return st
-
--- | constructing service
-construct :: forall e. Eff (chan::Chan|e) (Service Action State (chan::Chan|e))
-construct = do
-  -- we get hash
-  current <- getHash
-  -- to send it as initial state
-  chan <- channel current
-  -- listen hashchange
-  onHashChange $ do
-    getHash >>= send chan
-  -- this signal will just emit hash-string without "#" 
-  signal <- foldpE foldState current (subscribe chan)
-
-  return {
-    signal: signal,
-    send: send chan
-    }
-
-
-
-
-    

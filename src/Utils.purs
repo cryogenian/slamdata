@@ -27,9 +27,8 @@ onLoad action = do
       handler _ = action
   addUIEventListener LoadEvent handler globalWindow
 
--- | append one node to another node
--- | need to rewrite to HTMLElement
--- | and make PR to simple-dom
+-- | append one element to another element
+-- | PR to simple-dom
 foreign import append """
 function append(parent) {
   return function(child) {
@@ -40,6 +39,7 @@ function append(parent) {
   };
 }
 """ :: forall e. HTMLElement -> HTMLElement -> Eff (dom::DOM|e) HTMLElement
+
 
 foreign import parentImpl """
 function parentImpl(nothing, just, child) {
@@ -52,6 +52,8 @@ function parentImpl(nothing, just, child) {
 """ :: forall e a.
        Fn3 (Maybe a) (a -> Maybe a) HTMLElement (Eff e (Maybe HTMLElement))
 
+-- | get parent of element
+-- | PR to simple-dom
 parent :: forall e. HTMLElement -> Eff e (Maybe HTMLElement)
 parent = runFn3 parentImpl Nothing Just 
 
@@ -60,11 +62,11 @@ foreign import hashChanged """
 function hashChanged(callback) {
   return function() {
     window.addEventListener("hashchange", function(ev) {
-      callback(ev.newURL)();
+      callback(ev.newURL)(ev.oldUrl)();
     });
   };
 }
-""" :: forall a e. (String -> Eff e Unit) -> Eff e Unit
+""" :: forall a e. (String -> String -> Eff e Unit) -> Eff e Unit
 
 -- | This function is needed to convert VTree -> Node -> HTMLElement 
 foreign import convertToElement """

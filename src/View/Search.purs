@@ -43,8 +43,12 @@ waitUntilSettingHash = 500
   
 
 view :: Receiver Action _ -> State -> Eff _ VTree
-view emit st = return $ 
-    form {"className": "navbar-form",
+view emit st = do
+  let onInputSend ev = do
+        val <- return ev >>= target >>= value
+        emit $ Change val
+
+  return $ form {"className": "navbar-form",
           -- on submit we send Submit message to our recevier (emit here)
           -- It will populate in foldState because emit is (send chan)
           "submit": hook "submit" $ const $ (emit Submit) } [
@@ -58,9 +62,7 @@ view emit st = return $
                 "value": st.value,
                 -- Here we making callback from effectful function
                 -- It sends Change event
-                "input": hook "input" $ \event -> do
-                  val <- return event >>= target >>= value
-                  emit $ Change val
+                "input": hook "input" onInputSend
                } [],
        span {"className": "input-group-btn"} [
          button {"className": "btn btn-default" <> if st.valid

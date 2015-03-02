@@ -21,7 +21,6 @@ import qualified View.List as List
 import qualified View.Toolbar as Toolbar
 import qualified View.Breadcrumb as Breadcrumb
 import qualified Hash as Hash
-import qualified XHR as XHR 
 
 -- | State is multiplication of children state
 type State = {
@@ -96,14 +95,11 @@ initial =
   {action: Init,
    state: initialState}
           
--- | Will be called after render
+-- | Will be called after inserting
 hookFn :: forall e. Receiver Action (chan::Chan, dom::DOM, trace::Trace|e) ->
                   Eff (chan::Chan, dom::DOM, trace::Trace|e) Unit
 hookFn receiver = do
   Navbar.hookFn (receiver <<< NavbarAction)
-  xhr <- XHR.construct
-  runSignal $  xhr.signal ~> \msg -> do
-    log msg
 
 -- | Spec 
 spec :: WidgetSpec Action State _ 

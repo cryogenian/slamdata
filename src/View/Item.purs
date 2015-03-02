@@ -12,11 +12,10 @@ import Utils
 import Signal
 import Signal.Effectful
 import Signal.Channel
-
-data ResourceType = File | Database | Notebook | Directory | Table 
+import Model (Mount(..))
 
 type Logic = {
-  resource :: ResourceType,
+  resource :: Mount,
   name :: String,
   id :: String 
   }
@@ -41,7 +40,7 @@ initialState = {
     resource: File
     }}
 
-renderResourceType :: ResourceType -> VTree
+renderResourceType :: Mount -> VTree
 renderResourceType rt = 
   case rt of
     Directory -> i {"className": "glyphicon glyphicon-folder-open"} []

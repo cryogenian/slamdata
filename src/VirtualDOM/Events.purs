@@ -29,7 +29,6 @@ function mkCallback(handler) {
 }
 """ :: forall e.  Handler e -> Callback
 
-
 -- | emptyHandler
 foreign import returnFalse """
 function returnFalse() {

@@ -1,9 +1,7 @@
 -- | **action** - type of messages to components
 -- | it modifies **state** in function UpdateFn
-
 module Component (
   Receiver(..),
-  Service(..),
   Widget(..),
   WidgetSpec(..),
   UpdateFn(..),
@@ -21,8 +19,6 @@ import Signal.Effectful
 import VirtualDOM
 import VirtualDOM.VTree
 import Control.Monad.Eff
-import Control.Monad.Eff.Ref
-import Control.Monad.ST
 import Utils
 import View.Shortcuts
 import VirtualDOM
@@ -46,14 +42,6 @@ type Folder a = {
   current :: VTree,
   previous :: VTree,
   state :: a
-  }
-
--- | WIP : This is component that has no render function
--- | I think it must be global in some cases.
--- | I suggest to use it for FileUploader, ApiCalls and Router
-type Service action state eff = {
-  signal :: Signal state,
-  send :: Receiver action eff
   }
 
 -- | This is basic component that can be rendered to DOM

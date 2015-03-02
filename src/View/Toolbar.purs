@@ -17,6 +17,7 @@ import Utils
 import Component
 import Model (Sort(..))
 import qualified Data.DOM.Simple.Ajax as A
+import qualified Config as Config
 
 
 -- | Output messages
@@ -35,6 +36,21 @@ initialState = {
 
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
+  let onFileChanged ev = do
+        log "TROLOLO"
+        det <- detail ev :: Eff _ {file :: File}
+        req <- A.makeXMLHttpRequest
+        let action = do
+              state <- A.readyState req
+              case state of
+                A.Done -> do
+                  send UploadFile
+                _ -> return unit
+        A.onReadyStateChange action req
+        A.open A.POST Config.uploadUrl req
+        n <- name det.file
+        A.send (A.BlobData <<< file2blob $ det.file) req
+          
   return $ div {"className": "row"} [
     div {"className": "col-sm-4"} [
        a {"href": jsVoid,
@@ -47,37 +63,18 @@ view send st = do
       ul {"className": "list-inline pull-right"} [
          li {} [uploader "a"
                   {"href": jsVoid,
-                   "filechanged": hook "filechanged" $ \ev -> do
-                     det <- detail ev :: Eff _ {content :: String, file :: File}
-                     log det
-                     req <- A.makeXMLHttpRequest
-                     let action = do
-                           state <- A.readyState req
-                           case state of
-                             A.Done -> do
-                               send UploadFile
-                             _ -> return unit
-                     A.onReadyStateChange (return unit) req
-                     A.open A.POST "/fileupload" req
-                     n <- name det.file
---                     fd <- newFormData
---                           >>= append2FormData n det.content
-
---                     A.send (A.FormData fd) req,
-                     log $ file2blob det.file
-                     A.send (A.BlobData <<< file2blob $ det.file) req,
-
-
+                   "filechanged": hook "filechanged" onFileChanged,
                    "click": hook "click" $ const (send UploadFile),
                    "runUpload": "click"} [vtext "File"]],
-                                                                
+         
          li {} [a {"href": jsVoid,
                    "click": hook "click" $ const $  send CreateFolder}
                 [vtext "Folder"]],
          li {} [a {"href": jsVoid,
                    "click": hook "click" $ const $ send MountDB} [vtext "Mount"]],
          li {} [a {"href": jsVoid,
-                   "click": hook "click" $ const $ send CreateNotebook} [vtext "Notebook"]]
+                   "click": hook "click" $ const $ send CreateNotebook}
+                [vtext "Notebook"]]
          ]
       ]
     ]
@@ -97,7 +94,6 @@ foldState action state@{sort: sort} =
       in return state{sort = newSort}
     -- These messages will call external services (after services will be ready)
     UploadFile -> do
-      -- i.e. Api.PUT file 
       log "uploading file signal"
       return state
     MountDB -> do

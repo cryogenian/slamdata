@@ -1,3 +1,5 @@
+-- | Custom event module. Probably would be moved to ```simple-dom```
+-- | or other package
 module Control.Reactive.Event where
 
 import Data.DOM.Simple.Types

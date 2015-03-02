@@ -1,4 +1,10 @@
-module Control.Reactive.File where
+-- | Uploading file module probably will be moved out to separate project
+module Control.Reactive.File (
+  FileReader(..), File(..), FileList(..),
+  fileListToArray, name, file2blob, newFormData,
+  append2FormData, newReader, readAsBinaryString,
+  str2blob, onload, result, files, uploader
+  ) where
 
 import VirtualDOM.VTree
 import VirtualDOM
@@ -17,8 +23,8 @@ import Data.Function
 import Utils 
 
 
--- prependFileUploader "li" {} [vtext "foo"] = vnode "li" {} [input {type: "file"}]
-
+-- | prependFileUploader "li" {} [vtext "foo"] = 
+-- |  vnode "li" {} [input {type: "file"}]
 foreign import data FileReader :: *
 foreign import data File :: *
 foreign import data FileList :: *
@@ -123,13 +129,16 @@ function files(el) {
 }
 """ :: forall e. HTMLElement -> Eff e FileList
 
-tst :: Event -> Eff _ Unit
-tst evt = do
+
+-- Internal 
+proxy :: Event -> Eff _ Unit
+proxy evt = do
   mbInput <- target evt >>= querySelector "input"
   case mbInput of
     Nothing -> return unit
     Just input -> void $ raiseEvent "click" input {}
 
+-- Internal
 act :: Event -> Eff _ Unit
 act event = do
   el <- target event
@@ -149,10 +158,9 @@ act event = do
 
 
 
-
 uploader :: forall p a. String -> {click::VHook|p} -> [VTree]  -> VTree
 uploader name props children = 
-  vnode name props{"click" = hook "click" tst `composeHooks` props.click} $ 
+  vnode name props{"click" = hook "click" proxy `composeHooks` props.click} $ 
   (vnode "input" {"type": "file",
                   "change": hook "change" act,
                   "style": {"display": "none"}} []):children

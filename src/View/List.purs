@@ -29,13 +29,13 @@ initialState :: State
 initialState = {
   items: [{isSelected: false,
            isHovered: false,
-           logic: {resource: Item.Notebook, id: "a", name: "foo"}},
+           logic: {resource: Notebook, id: "a", name: "foo"}},
           {isSelected: false,
            isHovered: false,
-           logic: {resource: Item.File, id: "b", name: "bar"}},
+           logic: {resource: File, id: "b", name: "bar"}},
           {isSelected: false,
            isHovered: false,
-           logic: {resource: Item.Database, id: "c", name: "baz"}}]
+           logic: {resource: Database, id: "c", name: "baz"}}]
   }
 
 -- | External messages will be marked with index of child

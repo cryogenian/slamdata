@@ -1,10 +1,5 @@
 # Module Documentation
 
-## Module Api
-
-
-
-
 ## Module Component
 
 
@@ -43,16 +38,6 @@ type Initial action state = { state :: state, action :: action }
 
 This is just for reducing number of fields in spec 
 
-#### `Service`
-
-``` purescript
-type Service action state eff = { send :: Receiver action eff, signal :: Signal state }
-```
-
-WIP : This is component that has no render function
-I think it must be global in some cases.
-I suggest to use it for FileUploader, ApiCalls and Router
-
 #### `Widget`
 
 ``` purescript
@@ -86,6 +71,32 @@ define :: forall state action e. WidgetSpec action state (dom :: DOM, chan :: Ch
 Takes **WidgetSpec** returns **Widget**
 
 
+## Module Config
+
+
+
+#### `uploadUrl`
+
+``` purescript
+uploadUrl :: String
+```
+
+
+#### `metadataUrl`
+
+``` purescript
+metadataUrl :: String
+```
+
+
+#### `dataUrl`
+
+``` purescript
+dataUrl :: String
+```
+
+
+
 ## Module Hash
 
 
@@ -98,31 +109,10 @@ type Hash = String
 ```
 
 
-#### `State`
+#### `getHash`
 
 ``` purescript
-type State = String
-```
-
-
-#### `Action`
-
-``` purescript
-type Action = String
-```
-
-
-#### `getHashImpl`
-
-``` purescript
-getHashImpl :: forall e. Eff e Hash
-```
-
-
-#### `setHashImpl`
-
-``` purescript
-setHashImpl :: forall e. String -> Eff e Unit
+getHash :: forall e. Eff e Hash
 ```
 
 
@@ -133,42 +123,12 @@ setHash :: forall e. String -> Eff e Unit
 ```
 
 
-#### `onHashChange`
+#### `changed`
 
 ``` purescript
-onHashChange :: forall e a. Eff e Unit -> Eff e Unit
+changed :: forall e. Eff e Unit -> Eff e Unit
 ```
 
-
-#### `matcher`
-
-``` purescript
-matcher :: Regex
-```
-
-
-#### `initialState`
-
-``` purescript
-initialState :: Eff _ State
-```
-
-
-#### `foldState`
-
-``` purescript
-foldState :: Action -> State -> Eff _ State
-```
-
-If we have a message to set hash we just set hash
-
-#### `construct`
-
-``` purescript
-construct :: forall e. Eff (chan :: Chan | e) (Service Action State (chan :: Chan | e))
-```
-
-constructing service
 
 
 ## Module Main
@@ -211,33 +171,38 @@ sortFromString :: String -> Maybe Sort
 ```
 
 
+#### `Mount`
+
+``` purescript
+data Mount
+  = File 
+  | Database 
+  | Notebook 
+  | Directory 
+  | Table 
+```
+
+
+#### `decodeJsonMount`
+
+``` purescript
+instance decodeJsonMount :: DecodeJson Mount
+```
+
+
 
 ## Module Router
 
 
-Router component. It works with only one route aggregate
-now :) 
+Router component. It works with only one route aggregate.
 
 #### `State`
 
 ``` purescript
-type State eff = { hash :: Service Hash.Action Hash.State eff, search :: String, sort :: Sort }
+type State = { search :: String, sort :: Sort }
 ```
 
 state of routing is sort direction and search string
-
-#### `Action`
-
-``` purescript
-data Action
-  = RInit 
-  | Search String
-  | Sorting Sort
-  | HashChanged String
-```
-
-Incoming messages can be
-HashChanged is external message
 
 #### `toHash`
 
@@ -281,26 +246,10 @@ shortcut for setting search string
 I think, that after some other services will be
 developed pattern will arise
 
-#### `initialState`
+#### `getRoute`
 
 ``` purescript
-initialState :: Eff _ (State _)
-```
-
-make initial state 
-
-#### `foldState`
-
-``` purescript
-foldState :: forall e. Action -> State (chan :: Chan | e) -> Eff (chan :: Chan | e) (State (chan :: Chan | e))
-```
-
-Updating router state by messages
-
-#### `construct`
-
-``` purescript
-construct :: Eff _ (Service Action (State _) _)
+getRoute :: forall e. Eff e State
 ```
 
 
@@ -334,9 +283,8 @@ by simple-dom
 append :: forall e. HTMLElement -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
 ```
 
-append one node to another node
-need to rewrite to HTMLElement
-and make PR to simple-dom
+append one element to another element
+PR to simple-dom
 
 #### `parentImpl`
 
@@ -351,11 +299,13 @@ parentImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) HTMLElement (Eff e (Maybe
 parent :: forall e. HTMLElement -> Eff e (Maybe HTMLElement)
 ```
 
+get parent of element
+PR to simple-dom
 
 #### `hashChanged`
 
 ``` purescript
-hashChanged :: forall a e. (String -> Eff e Unit) -> Eff e Unit
+hashChanged :: forall a e. (String -> String -> Eff e Unit) -> Eff e Unit
 ```
 
 need to PR to simple-dom
@@ -408,21 +358,12 @@ Spec
 
 
 Low level service for managing xhr calls
-It should be wrapped in Api 
-
-#### `SendRec`
-
-``` purescript
-type SendRec a = { url :: String, additionalHeaders :: StrMap String, content :: A.HttpData a, method :: A.HttpMethod }
-```
-
+Probably will be removed after moving to purescript-aff
 
 #### `Input`
 
 ``` purescript
-data Input a
-  = Init 
-  | Send (SendRec a)
+type Input a = { url :: String, additionalHeaders :: StrMap String, content :: A.HttpData a, method :: A.HttpMethod }
 ```
 
 
@@ -440,19 +381,73 @@ run :: forall a. Receiver Output _ -> Input a -> Eff _ Unit
 ```
 
 
-#### `justSend`
+
+## Module Api.Fs
+
+
+Should be rewritten with purescript-aff
+
+#### `Metadata`
 
 ``` purescript
-justSend :: forall a. SendRec a -> Eff _ Unit
+newtype Metadata
+  = Metadata { mount :: Mount, name :: String }
 ```
 
-oh... It will not send it anywhere, I need a global state or singleton
-or whatever
-
-#### `construct`
+#### `MetadataResponse`
 
 ``` purescript
-construct :: forall e a. Eff (dom :: DOM, chan :: Chan | e) (Service (Input a) Output (dom :: DOM, chan :: Chan | e))
+newtype MetadataResponse
+  = MetadataResponse { children :: [Metadata] }
+```
+
+
+#### `decodeJsonMetadata`
+
+``` purescript
+instance decodeJsonMetadata :: DecodeJson Metadata
+```
+
+
+#### `decodeJsonMetadataResponse`
+
+``` purescript
+instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse
+```
+
+
+#### `metadata`
+
+``` purescript
+metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+```
+
+
+#### `get`
+
+``` purescript
+get :: forall e. String -> Maybe Number -> Maybe Number -> ([Json] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+```
+
+
+#### `post`
+
+``` purescript
+post :: forall e. String -> Json -> ([Json] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+```
+
+
+#### `put`
+
+``` purescript
+put :: forall e. String -> Json -> (Boolean -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+```
+
+
+#### `move`
+
+``` purescript
+move :: forall e. String -> String -> (Boolean -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
@@ -597,22 +592,10 @@ Transforming input signal to output signal
 
 This component won't be rendered alone, it hasn't spec
 
-#### `ResourceType`
-
-``` purescript
-data ResourceType
-  = File 
-  | Database 
-  | Notebook 
-  | Directory 
-  | Table 
-```
-
-
 #### `Logic`
 
 ``` purescript
-type Logic = { id :: String, name :: String, resource :: ResourceType }
+type Logic = { id :: String, name :: String, resource :: Mount }
 ```
 
 
@@ -649,7 +632,7 @@ initialState :: State
 #### `renderResourceType`
 
 ``` purescript
-renderResourceType :: ResourceType -> VTree
+renderResourceType :: Mount -> VTree
 ```
 
 
@@ -1115,6 +1098,8 @@ composeHooks :: VHook -> VHook -> VHook
 ## Module Control.Reactive.Event
 
 
+Custom event module. Probably would be moved to ```simple-dom```
+or other package
 
 #### `Event`
 
@@ -1155,12 +1140,16 @@ raiseEvent :: forall e a. String -> HTMLElement -> a -> Eff (dom :: DOM | e) HTM
 ## Module Control.Reactive.File
 
 
+Uploading file module probably will be moved out to separate project
 
 #### `FileReader`
 
 ``` purescript
 data FileReader :: *
 ```
+
+prependFileUploader "li" {} [vtext "foo"] = 
+ vnode "li" {} [input {type: "file"}]
 
 #### `File`
 
@@ -1239,13 +1228,6 @@ onload :: forall e e'. (Event -> Eff e Unit) -> FileReader -> Eff e' FileReader
 ```
 
 
-#### `resultImpl`
-
-``` purescript
-resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) FileReader (Eff e (Maybe String))
-```
-
-
 #### `result`
 
 ``` purescript
@@ -1257,20 +1239,6 @@ result :: forall e. FileReader -> Eff e (Maybe String)
 
 ``` purescript
 files :: forall e. HTMLElement -> Eff e FileList
-```
-
-
-#### `tst`
-
-``` purescript
-tst :: Event -> Eff _ Unit
-```
-
-
-#### `act`
-
-``` purescript
-act :: Event -> Eff _ Unit
 ```
 
 

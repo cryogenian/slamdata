@@ -33,9 +33,18 @@ viewIcon st =
 
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
+  let onClicked _ = do
+        XHR.run  (Ajax >>> send) {
+          method: A.GET,
+          content: A.NoData,
+          additionalHeaders: (empty :: StrMap String),
+          url: "http://localhost:5050/"
+          }
+        send Clicked
+        
   return $ a {"className": "navbar-brand",
               "href": jsVoid,
-              "click": hook "click" $ const (send Clicked)} [
+              "click": hook "click" onClicked} [
 
     viewIcon st 
     ]
@@ -45,19 +54,11 @@ foldState :: Action -> State -> Eff _ State
 foldState action state = 
   case action of
     Init -> return state
-    Clicked -> do
-{-      xhr <- XHR.construct
-      xhr.run (foldState  {
-        method: A.GET,
-        content: A.NoData,
-        additionalHeaders: (empty :: StrMap String),
-        url: "http://localhost:5050/"
-        }
--}
-      -- just to be sure that we catch this click
-      log "clicked"
-      return state
+    Clicked -> return state
     Changed st -> return st
+    Ajax content -> do
+      log content
+      return state
 
 
 hookFn :: forall e.
