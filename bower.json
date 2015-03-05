@@ -28,10 +28,12 @@
     "purescript-timers": "~0.0.8",
     "purescript-mocha": "~0.0.3",
     "purescript-chai": "~0.0.3",
-    "purescript-strongcheck": "~0.7.0",
-    "purescript-random": "https://github.com/cryogenian/purescript-random.git#573de58651264a2b04636eed8f4bf09364fbca02"
-  },
-  "resolutions": {
-    "purescript-random": "573de58651264a2b04636eed8f4bf09364fbca02"
+    "purescript-foldable-traversable": "~0.2.1",
+    "purescript-arrays": "~0.3.1",
+    "purescript-refs": "~0.1.2",
+    "purescript-debug-foreign": "~0.0.4",
+    "purescript-random": "~0.1.2",
+    "purescript-strongcheck": "~0.8.0",
+    "purescript-argonaut": "~0.4.0"
   }
 }

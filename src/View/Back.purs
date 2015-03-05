@@ -1,5 +1,7 @@
+-- | This component will not be rendered alone, so, it has not a spec
 module View.Back where
 
+import Debug.Trace (Trace())
 import DOM
 import View.Shortcuts
 import Utils
@@ -9,12 +11,15 @@ import Signal.Effectful
 import VirtualDOM
 import VirtualDOM.VTree
 import Control.Monad.Eff
-import VirtualDOM.Events
+import VirtualDOM.Events 
 import Component
+import qualified XHR as XHR
+import qualified Data.DOM.Simple.Ajax as A
+import Data.StrMap (empty, StrMap())
 
-data Action = Init | Clicked | Changed State
+data Action = Init | Clicked | Changed State | Ajax XHR.Output
 
-data State = Directory | Database | Table | Notebook
+data State = Directory | Database | Table | Notebook 
 
 initialState = Notebook
 
@@ -28,37 +33,37 @@ viewIcon st =
 
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
+  let onClicked _ = do
+        XHR.run  (Ajax >>> send) {
+          method: A.GET,
+          content: A.NoData,
+          additionalHeaders: (empty :: StrMap String),
+          url: "http://localhost:5050/"
+          }
+        send Clicked
+        
   return $ a {"className": "navbar-brand",
               "href": jsVoid,
-              "onclick": send Clicked} [
+              "click": hook "click" onClicked} [
+
     viewIcon st 
     ]
 
 
 foldState :: Action -> State -> Eff _ State
-foldState action state =
+foldState action state = 
   case action of
     Init -> return state
-    Clicked -> do
-      alert "clicked"
-      return state
+    Clicked -> return state
     Changed st -> return st
-
-foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-foldAll send action {state: state, current: current, previous: previous} = do
-  new <- foldState action state
-  newVt <- view send new 
-  return {state: new, previous: current, current: newVt}
+    Ajax content -> do
+      log content
+      return state
 
 
-construct :: Eff _ (Component Action State)
-construct = do
-  chan <- channel Init
-  vt <- view (send chan) initialState
-  let folder = mkFolder initialState
-  signal <- foldpE (foldAll (send chan)) folder (subscribe chan)
-  return $ {
-    signal: signal,
-    channel: chan,
-    vt: vt
-    }
+hookFn :: forall e.
+        Receiver Action (chan::Chan,dom::DOM,trace::Trace|e) -> 
+        Eff (chan::Chan,dom::DOM,trace::Trace|e) Unit
+hookFn receiver = do 
+  return unit
+                              

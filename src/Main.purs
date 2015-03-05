@@ -2,20 +2,27 @@ module Main where
 
 import Control.Monad.Eff
 import Data.Maybe
+import Signal
 
 import Utils
 import qualified Component as Component
-import qualified View.Navbar as Navbar
+--import qualified View.Navbar as View
+import qualified View.List as List
+import qualified View as View
+import qualified Router as Router
+
+import Signal
+import Signal.Channel
 
 
 main :: Eff _ Unit
 main = onLoad $ do
-  navbarComp <- Navbar.construct
-  elToInsertNavbar <- nodeById "navbar"
-  case elToInsertNavbar of
-    Nothing -> log "there is no element to insert navbar"
-    Just el -> do
-      Component.start navbarComp el
+  -- construct
+  view <- Component.define View.spec
+  -- get node to insert
+  body <- bodyNode
+  -- start
+  view.insert body
 
 
 

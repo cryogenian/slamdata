@@ -1,3 +1,4 @@
+-- | Search component will not be rendered alone
 module View.Search where
 
 import DOM
@@ -14,10 +15,14 @@ import Data.Monoid
 import Control.Timer
 import VirtualDOM.Events
 import Component
+import Control.Reactive.Event
+import Data.DOM.Simple.Element
 
 import qualified Hash as Hash
+import qualified Router as Router
 
-data Action = Init | Change String | HashChanged String | Submit
+-- | Route change is external message
+data Action = Init | Change String | RouteChanged String | Submit
 
 type State = {
   valid :: Boolean,
@@ -38,9 +43,15 @@ waitUntilSettingHash = 500
   
 
 view :: Receiver Action _ -> State -> Eff _ VTree
-view emit st = return $ 
-    form {"className": "navbar-form",
-          "onsubmit": emit Submit} [
+view emit st = do
+  let onInputSend ev = do
+        val <- return ev >>= target >>= value
+        emit $ Change val
+
+  return $ form {"className": "navbar-form",
+          -- on submit we send Submit message to our recevier (emit here)
+          -- It will populate in foldState because emit is (send chan)
+          "submit": hook "submit" $ const $ (emit Submit) } [
       div {"className": "input-group" <> if st.valid then "" else " has-error",
            "style": {"width": "100%"}} [
          span {"className": "input-group-addon"} [
@@ -49,66 +60,44 @@ view emit st = return $
          input {"className": "form-control",
                 "type": "text",
                 "value": st.value,
-                "oninput": mkCallback $ (\node event -> do
-                                            val <- getValue node
-                                            emit $ Change val)
-                
+                -- Here we making callback from effectful function
+                -- It sends Change event
+                "input": hook "input" onInputSend
                } [],
        span {"className": "input-group-btn"} [
          button {"className": "btn btn-default" <> if st.valid
                                                    then ""
                                                    else " btn-danger",
                  "type": "submit",
-                 "onclick": emit Submit} [
+                 -- another submit
+                 "click": hook "click" $ const $ (emit Submit) } [
+
             i {"className": "glyphicon glyphicon-search"} []
             ]
          ]
          ]
       ]
     
-
+-- | Update searcher state
 foldState :: Action -> State -> Eff _ State
 foldState action state = do 
-  case action of 
+  case action of
+    -- just constructed
     Init -> return state
-    HashChanged hash -> do
+    -- Current route changed - external message
+    RouteChanged hash -> do
       return state{value = hash}
+    -- User input
     Change val -> do
+      -- if there was some input before we will have Just timeout 
       case state.timeout of
         Nothing -> return unit
         Just t -> clearTimeout t
-      newTimeout <- timeout waitUntilSettingHash $ Hash.setHash val
+      -- construct timeout that will change route
+      newTimeout <- timeout waitUntilSettingHash $ Router.setSearch val
       return state{timeout = Just newTimeout, value = val}
+    -- on submit we don't wait
     Submit -> do
-      Hash.setHash state.value
+      Router.setSearch state.value
       return state
-
-foldAll :: Receiver Action _ -> Action -> Folder State -> Eff _ (Folder State)
-foldAll receiver action {state: state, current: current, previous: previous} = do
-  new <- foldState action state
-  newVt <- view receiver new
-  return $ {state: new, previous: current, current: newVt}
-
-
-construct :: Eff _ (Component Action State)
-construct = do
-  chan <- channel Init
-  let receiver = send chan
-  vt <- view receiver initialState
-  let folder = {
-        state: initialState,
-        current: emptyVTree,
-        previous: emptyVTree
-        }
-  signal <- foldpE (foldAll receiver) folder (subscribe chan)
-
-  hashComponent <- Hash.construct
-  runSignal $ hashComponent.signal ~> \hash -> do
-    send chan (HashChanged hash.state)
-
-  return $ {
-    signal: signal,
-    channel: chan,
-    vt: vt 
-    }
 

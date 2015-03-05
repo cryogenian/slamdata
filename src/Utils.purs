@@ -1,3 +1,4 @@
+-- | Shortcuts and glue between different modules
 module Utils where
 
 import Control.Monad.Eff
@@ -6,36 +7,28 @@ import Data.DOM.Simple.Types
 import Data.DOM.Simple.Document
 import Data.DOM.Simple.Window
 import Data.DOM.Simple.Element
+import Data.DOM.Simple.Events
 import Data.Maybe
+import Debug.Trace
+import Debug.Foreign
+import Control.Apply
+import Data.Function
 
+-- | It's simpler for me to use foreign logging
+-- | then add Show instances
+log :: forall a e. a -> Eff (trace::Trace|e) Unit 
+log a = fprint a *> pure unit
 
+-- | Ok, I were was wrong, it's simplier to define onload
+-- | by simple-dom
+onLoad :: Eff _ Unit -> Eff _ Unit
+onLoad action = do
+  let handler :: DOMEvent -> _
+      handler _ = action
+  addUIEventListener LoadEvent handler globalWindow
 
-foreign import log """
-function log(a) {
-  return function() {
-    console.log(a);
-  };
-}
-""" :: forall a e. a -> Eff e Unit
-
-foreign import alert """
-function alert(str) {
-  return function() {
-    window.alert(str);
-  };
-}
-""" :: forall e. String -> Eff e Unit
-
-foreign import onLoad """
-function onLoad(action) {
-  return function( ){
-    window.addEventListener("load", function() {
-      action();
-    });
-  };
-}
-""" :: forall e. Eff e Unit -> Eff e Unit
-
+-- | append one element to another element
+-- | PR to simple-dom
 foreign import append """
 function append(parent) {
   return function(child) {
@@ -45,47 +38,44 @@ function append(parent) {
     };
   };
 }
-""" :: forall e. Node -> Node -> Eff (dom::DOM|e) Node
+""" :: forall e. HTMLElement -> HTMLElement -> Eff (dom::DOM|e) HTMLElement
 
+
+foreign import parentImpl """
+function parentImpl(nothing, just, child) {
+  return function() {
+    var p = child.parentElement;
+    if (!p) return nothing;
+    return just(p);
+  };
+}
+""" :: forall e a.
+       Fn3 (Maybe a) (a -> Maybe a) HTMLElement (Eff e (Maybe HTMLElement))
+
+-- | get parent of element
+-- | PR to simple-dom
+parent :: forall e. HTMLElement -> Eff e (Maybe HTMLElement)
+parent = runFn3 parentImpl Nothing Just 
+
+-- | need to PR to simple-dom
 foreign import hashChanged """
 function hashChanged(callback) {
   return function() {
     window.addEventListener("hashchange", function(ev) {
-      callback(ev.newURL)();
+      callback(ev.newURL)(ev.oldUrl)();
     });
   };
 }
-""" :: forall a e. (String -> Eff e Unit) -> Eff e Unit
+""" :: forall a e. (String -> String -> Eff e Unit) -> Eff e Unit
 
-
-foreign import convertToNode """
-function convertToNode(a) {return a;}
-""" :: HTMLElement -> Node
+-- | This function is needed to convert VTree -> Node -> HTMLElement 
 foreign import convertToElement """
 function convertToElement(a) {return a;}
 """ :: Node -> HTMLElement
 
 
-appendToId :: String -> Node -> Eff _ (Maybe Node)
-appendToId id node = do
-  mbEl <- document globalWindow >>= getElementById id
-  case mbEl of
-    Nothing -> return Nothing
-    Just el -> do
-      el <- append (convertToNode el) node
-      return $ Just el
-
-appendToBody :: Node -> Eff _ Node
-appendToBody node = do
-  bd <- document globalWindow >>= body
-  append (convertToNode bd) node
-
-nodeById :: String -> Eff _ (Maybe Node)
-nodeById id = do
-  mbEl <- document globalWindow >>= getElementById id
-  return $ convertToNode <$> mbEl
-
-bodyNode :: Eff _ Node
+-- | Shortcut
 bodyNode = do
-  convertToNode <$> (document globalWindow >>= body)
+  document globalWindow >>= body
   
+
