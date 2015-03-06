@@ -12,7 +12,8 @@ import Utils
 import Signal
 import Signal.Effectful
 import Signal.Channel
-import Model (Mount(..))
+import Model 
+import Api.Fs
 
 type Logic = {
   resource :: Mount,
@@ -29,6 +30,24 @@ data Action = Init
             | Focus | Blur | Open | Activate | Unactivate
             | Configure Logic | Trash Logic | Share Logic 
                                                       
+
+fromMetadata :: Metadata -> State
+fromMetadata (Metadata meta) = {
+  isSelected: false,
+  isHovered: false,
+  logic: {
+    name: meta.name,
+    resource: meta.mount,
+    id: ""
+    }
+  }
+
+sort :: Sort -> State -> State -> Ordering
+sort dir a b =
+  let project = _.logic >>> _.name
+  in case dir of
+    Asc -> compare (project a) (project b)
+    Desc -> compare (project b) (project a)
 
 initialState :: State
 initialState = {

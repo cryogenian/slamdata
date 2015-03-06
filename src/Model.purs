@@ -11,6 +11,10 @@ import Prelude
 
 data Sort = Asc | Desc
 
+sortNot :: Sort -> Sort
+sortNot Asc = Desc
+sortNot Desc = Asc
+
 sortToString :: Sort -> String
 sortToString Asc = "asc"
 sortToString Desc = "desc"

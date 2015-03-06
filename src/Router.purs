@@ -70,6 +70,15 @@ setSearch search = do
       newHash = toHash newSt
   Hash.setHash newHash
 
+setSort :: Sort -> Eff _ Unit
+setSort sort = do
+  current <- Hash.getHash
+  let st = fromHash current
+      newSt = st{sort = sort}
+      newHash = toHash newSt
+  log newHash
+  Hash.setHash newHash
+
 getRoute :: forall e. Eff e State
 getRoute = fromHash <$> Hash.getHash
 

@@ -11,17 +11,19 @@ import Control.Monad.Eff
 import View.Shortcuts
 import VirtualDOM.Events (hook)
 
+import Data.Maybe
 import Control.Reactive.File
 import Control.Reactive.Event
 import Utils
 import Component
-import Model (Sort(..))
+import Model 
 import qualified Data.DOM.Simple.Ajax as A
 import qualified Config as Config
-
+import Router (setSort)
 
 -- | Output messages
-data Action = Init | Sorting
+data Action = Init
+            | Sorting Sort
             | UploadFile 
             | MountDB | CreateNotebook | CreateFolder
 
@@ -34,10 +36,15 @@ initialState = {
   sort: Asc
   }
 
+sortHandler :: Receiver Action _ -> State -> Eff _ Unit
+sortHandler sendBack st = do
+  let newSort = sortNot st.sort
+  Router.setSort newSort
+  sendBack (Sorting newSort)
+
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
   let onFileChanged ev = do
-        log "TROLOLO"
         det <- detail ev :: Eff _ {file :: File}
         req <- A.makeXMLHttpRequest
         let action = do
@@ -54,7 +61,7 @@ view send st = do
   return $ div {"className": "row"} [
     div {"className": "col-sm-4"} [
        a {"href": jsVoid,
-          "click": hook "click" $ const (send Sorting) } [
+          "click": hook "click" $ const (sortHandler send st) } [
           vtext "Name",
           i {"className": chevronClass st, "style": {"margin-left": "10px"}} []
           ]
@@ -78,20 +85,16 @@ view send st = do
          ]
       ]
     ]
-    where chevronClass {sort: Asc} = "glyphicon glyphicon-chevron-up"
-          chevronClass {sort: Desc} = "glyphicon glyphicon-chevron-down"
+    where chevronClass {sort: Asc} = "glyphicon glyphicon-chevron-down"
+          chevronClass {sort: Desc} = "glyphicon glyphicon-chevron-up"
 
 
 foldState :: Action -> State -> Eff _ State
 foldState action state@{sort: sort} =
   case action of
-    -- This is inner messages
     Init -> return state
-    Sorting ->
-      let newSort = case state.sort of
-            Asc -> Desc
-            Desc -> Asc
-      in return state{sort = newSort}
+    Sorting sort ->
+      return state{sort = sort}
     -- These messages will call external services (after services will be ready)
     UploadFile -> do
       log "uploading file signal"
@@ -106,5 +109,10 @@ foldState action state@{sort: sort} =
       log "creating folder"
       return state
 
+hookFn :: Receiver Action _ -> Eff _ Unit
+hookFn sendBack = do
+  Hash.changed $ do
+    route <- Router.getRoute
+    sendBack (Sorting route.sort)
 
 

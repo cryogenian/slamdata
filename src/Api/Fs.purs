@@ -18,6 +18,8 @@ import Model
 import Utils
 import qualified Config as Config
 
+import Debug.Foreign
+
 -- Since we know exact form of metadata
 -- we can decode it from json
 newtype Metadata = Metadata {
@@ -33,7 +35,7 @@ instance decodeJsonMetadata :: DecodeJson Metadata where
   decodeJson json = do
     obj <- decodeJson json
     name <- obj .? "name"
-    mount <- obj .? "mount"
+    mount <- obj .? "type"
     return $ Metadata {
       name: name,
       mount: mount
@@ -42,9 +44,9 @@ instance decodeJsonMetadata :: DecodeJson Metadata where
 instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse where
   decodeJson json = do
     obj <- decodeJson json
-    children <- obj .? "children"
+    children <- fprintUnsafe $ obj .? "children"
     return $ MetadataResponse {
-      children: children
+      children: fprintUnsafe children
       }
 
 metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff (dom::DOM|e) Unit
@@ -55,7 +57,7 @@ metadata path callback = do
         case state of
           A.Done -> do
             response <- A.responseText req
-            case (jsonParser response >>= decodeJson) of
+            case (jsonParser (fprintUnsafe response) >>= decodeJson) of
               Left error -> do
                 log error
               Right (MetadataResponse{children: res}) ->
