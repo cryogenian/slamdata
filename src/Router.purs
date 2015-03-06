@@ -8,10 +8,13 @@ import Signal.Channel
 import Signal.Effectful
 import Data.String.Regex
 import Data.Maybe
+import Data.Tuple (Tuple(..))
+import Data.StrMap (fromList)
 import Data.Array hiding (map, append)
+import Data.DOM.Simple.Encode
+import Debug.Foreign
 
 import Utils 
-import Component
 import qualified Hash as Hash
 import Model 
 
@@ -25,7 +28,13 @@ type State = {
 -- | Make hash
 toHash :: forall o. {sort::Sort,search::String|o} -> String
 toHash state =
-  "?sort=" <> sortToString state.sort <> "&q=" <> state.search
+  let encoded = paramatize $ fromList [
+        Tuple "sort" $ sortToString state.sort,
+        Tuple "q" $ state.search
+        ]
+
+  in "?" <> encoded
+
 
 -- | Get sort from hash
 extractSort :: String -> Maybe Sort 
@@ -47,7 +56,7 @@ extractSearch query =
 fromHash :: String -> {sort::Sort, search::String}
 fromHash hash =
   {sort: fromMaybe Asc $ extractSort hash,
-   search: extractSearch hash}
+   search: decodeURIComponent (extractSearch hash)}
 
 -- | shortcut for setting search string
 -- | I think, that after some other services will be
@@ -56,6 +65,7 @@ setSearch :: String -> Eff _ Unit
 setSearch search = do
   current <- Hash.getHash
   let st = fromHash current
+      
       newSt = st{search = search}
       newHash = toHash newSt
   Hash.setHash newHash

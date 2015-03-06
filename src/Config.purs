@@ -8,3 +8,7 @@ metadataUrl = "/metadata/fs/"
 
 dataUrl :: String
 dataUrl = "/data/fs/"
+
+
+searchTimeout :: Number
+searchTimeout = 500

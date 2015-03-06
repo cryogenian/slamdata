@@ -14,6 +14,7 @@ import qualified Router as Router
 import Signal
 import Signal.Channel
 
+import Data.DOM.Simple.Encode
 
 main :: Eff _ Unit
 main = onLoad $ do

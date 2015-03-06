@@ -61,6 +61,7 @@ parent = runFn3 parentImpl Nothing Just
 foreign import hashChanged """
 function hashChanged(callback) {
   return function() {
+    callback(location.hash)("")();
     window.addEventListener("hashchange", function(ev) {
       callback(ev.newURL)(ev.oldUrl)();
     });

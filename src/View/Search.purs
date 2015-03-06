@@ -4,25 +4,24 @@ module View.Search where
 import DOM
 import View.Shortcuts
 import Utils
-import Signal
-import Signal.Channel
-import Signal.Effectful
 import VirtualDOM
 import VirtualDOM.VTree
 import Control.Monad.Eff
 import Data.Maybe
-import Data.Monoid
 import Control.Timer
 import VirtualDOM.Events
-import Component
-import Control.Reactive.Event
-import Data.DOM.Simple.Element
+import Component (Receiver(..))
+import Control.Reactive.Event (Event(..), target)
+import Data.DOM.Simple.Element (value)
+import Data.Either
+import Text.SlamSearch.Parser (parseSearchQuery)
 
 import qualified Hash as Hash
 import qualified Router as Router
+import qualified Config as Config
 
 -- | Route change is external message
-data Action = Init | Change String | RouteChanged String | Submit
+data Action = Init | Change Timeout String | RouteChanged String | Disable | Enable
 
 type State = {
   valid :: Boolean,
@@ -35,23 +34,31 @@ initialState =
   {
     valid: true,
     value: "",
-    timeout: (Nothing :: Maybe Timeout)
+    timeout: Nothing
   }
 
+changeHandler :: Receiver Action _ -> State -> Event -> Eff _ Unit
+changeHandler sendBack state evt = do 
+  val <- target evt >>= value
+  case state.timeout of
+    Nothing -> return unit
+    Just t -> clearTimeout t
+  newTimeout <- timeout Config.searchTimeout $ do
+    submitHandler sendBack state{value = val}
+  sendBack $ Change newTimeout val
 
-waitUntilSettingHash = 500
-  
+submitHandler :: Receiver Action _ -> State -> Eff _ Unit
+submitHandler sendBack state = do
+  case parseSearchQuery state.value of
+    Left _ -> sendBack Disable
+    Right _ -> do
+      Router.setSearch state.value
+      sendBack Enable
 
 view :: Receiver Action _ -> State -> Eff _ VTree
 view emit st = do
-  let onInputSend ev = do
-        val <- return ev >>= target >>= value
-        emit $ Change val
-
   return $ form {"className": "navbar-form",
-          -- on submit we send Submit message to our recevier (emit here)
-          -- It will populate in foldState because emit is (send chan)
-          "submit": hook "submit" $ const $ (emit Submit) } [
+          "submit": hook "submit" $ const $ (submitHandler emit st) } [
       div {"className": "input-group" <> if st.valid then "" else " has-error",
            "style": {"width": "100%"}} [
          span {"className": "input-group-addon"} [
@@ -60,17 +67,15 @@ view emit st = do
          input {"className": "form-control",
                 "type": "text",
                 "value": st.value,
-                -- Here we making callback from effectful function
-                -- It sends Change event
-                "input": hook "input" onInputSend
+                "input": hook "input" (changeHandler emit st) 
                } [],
        span {"className": "input-group-btn"} [
          button {"className": "btn btn-default" <> if st.valid
                                                    then ""
                                                    else " btn-danger",
                  "type": "submit",
-                 -- another submit
-                 "click": hook "click" $ const $ (emit Submit) } [
+                 "disabled": not st.valid,
+                 "click": hook "click" $ const $ (submitHandler emit st) } [
 
             i {"className": "glyphicon glyphicon-search"} []
             ]
@@ -82,22 +87,12 @@ view emit st = do
 foldState :: Action -> State -> Eff _ State
 foldState action state = do 
   case action of
-    -- just constructed
     Init -> return state
-    -- Current route changed - external message
     RouteChanged hash -> do
       return state{value = hash}
-    -- User input
-    Change val -> do
-      -- if there was some input before we will have Just timeout 
-      case state.timeout of
-        Nothing -> return unit
-        Just t -> clearTimeout t
-      -- construct timeout that will change route
-      newTimeout <- timeout waitUntilSettingHash $ Router.setSearch val
-      return state{timeout = Just newTimeout, value = val}
-    -- on submit we don't wait
-    Submit -> do
-      Router.setSearch state.value
-      return state
+    Change timeout val -> do
+      return state{timeout = Just timeout, value = val}
+    Disable -> return state{valid = false}
+    Enable -> return state{valid = true}
+
 

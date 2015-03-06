@@ -7,6 +7,8 @@ import Data.Either
 import Data.Argonaut.Decode
 import Data.Argonaut.Combinators
 
+import Prelude
+
 data Sort = Asc | Desc
 
 sortToString :: Sort -> String

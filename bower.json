@@ -23,7 +23,6 @@
     "bootstrap": "~3.3.2",
     "purescript-signal": "~2.2.0",
     "purescript-strings": "~0.4.2",
-    "purescript-simple-dom": "https://github.com/aktowns/purescript-simple-dom.git#~0.0.1",
     "purescript-datetime": "~0.2.0",
     "purescript-timers": "~0.0.8",
     "purescript-mocha": "~0.0.3",
@@ -35,11 +34,15 @@
     "purescript-random": "~0.1.2",
     "purescript-strongcheck": "~0.8.0",
     "purescript-argonaut": "~0.4.0",
-    "purescript-search": "https://github.com/slamdata/purescript-search.git"
+    "purescript-search": "https://github.com/slamdata/purescript-search.git",
+    "purescript-simple-dom": "https://github.com/aktowns/purescript-simple-dom.git#master"
   },
   "resolutions": {
     "purescript-tuples": "~0.3.0",
     "purescript-monoid": "~0.2.0",
-    "purescript-foldable-traversable": "0.3.0"
+    "purescript-foldable-traversable": "~0.3.0",
+    "purescript-enums": "~0.4.0",
+    "purescript-maps": "~0.3.0",
+    "purescript-unfoldable": "~0.3.0"
   }
 }
