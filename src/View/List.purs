@@ -11,6 +11,7 @@ import VirtualDOM
 import VirtualDOM.VTree
 import Control.Monad.Eff
 
+import Data.Either
 import Data.Tuple 
 import Data.Traversable (for)
 import Data.Array ((..), length, updateAt, (!!), sortBy)
@@ -22,6 +23,10 @@ import qualified View.Item as Item
 import qualified Hash as Hash
 import qualified Router as Router 
 import qualified Api.Fs as Fs
+
+import Text.SlamSearch.Parser
+import Text.SlamSearch.Parser.Terms
+import Text.SlamSearch.Printer
 
 -- | Its state has a list of children
 type State = {
@@ -72,11 +77,21 @@ foldState action state@{items: items} =
 
 
 hookFn :: Receiver Action _ -> Eff _ Unit
-hookFn sendBack =
+hookFn sendBack = do
   Hash.changed $ do
     route <- Router.getRoute
     sendBack (SortAction route.sort)
-    Fs.metadata route.search $ \res -> do
-      sendBack $ Update  (Item.fromMetadata <$> res)
+    case parseSearchQuery route.search of
+      Left _ -> return unit
+      Right ast -> do
+        let path = case getPathTerm ast of
+              Nothing -> ""
+              Just term ->
+                case extractSimpleTerm term of
+                  SearchTermSimple _ p -> 
+                    prettyPredicate p
+        Fs.metadata path $ \res -> do
+          sendBack $ Update  (Item.fromMetadata <$> res)
+
 
 
