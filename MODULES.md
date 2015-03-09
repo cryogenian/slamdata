@@ -96,6 +96,27 @@ dataUrl :: String
 ```
 
 
+#### `searchTimeout`
+
+``` purescript
+searchTimeout :: Number
+```
+
+
+#### `slamDataHome`
+
+``` purescript
+slamDataHome :: String
+```
+
+
+#### `userEnabled`
+
+``` purescript
+userEnabled :: Boolean
+```
+
+
 
 ## Module Hash
 
@@ -146,7 +167,6 @@ main :: Eff _ Unit
 ## Module Model
 
 
-Common stuff to use in many components
 
 #### `Sort`
 
@@ -154,6 +174,13 @@ Common stuff to use in many components
 data Sort
   = Asc 
   | Desc 
+```
+
+
+#### `sortNot`
+
+``` purescript
+sortNot :: Sort -> Sort
 ```
 
 
@@ -183,10 +210,135 @@ data Mount
 ```
 
 
+#### `mountFromString`
+
+``` purescript
+mountFromString :: String -> Either String Mount
+```
+
+
+#### `mountToString`
+
+``` purescript
+mountToString :: Mount -> String
+```
+
+
+#### `eqMount`
+
+``` purescript
+instance eqMount :: Eq Mount
+```
+
+
 #### `decodeJsonMount`
 
 ``` purescript
 instance decodeJsonMount :: DecodeJson Mount
+```
+
+
+#### `filterTerm`
+
+``` purescript
+filterTerm :: SearchQuery -> (SearchTerm -> Boolean) -> [SearchTerm]
+```
+
+
+#### `extractSimpleTerm`
+
+``` purescript
+extractSimpleTerm :: SearchTerm -> SearchTermSimple
+```
+
+
+#### `getPathTerms`
+
+``` purescript
+getPathTerms :: SearchQuery -> [SearchTerm]
+```
+
+
+#### `getPathTerm`
+
+``` purescript
+getPathTerm :: SearchQuery -> Maybe SearchTerm
+```
+
+
+#### `getNotPathTerms`
+
+``` purescript
+getNotPathTerms :: SearchQuery -> [SearchTerm]
+```
+
+
+#### `ItemLogic`
+
+``` purescript
+type ItemLogic = { name :: String, resource :: Mount }
+```
+
+
+#### `queryToTerms`
+
+``` purescript
+queryToTerms :: SearchQuery -> [SearchTerm]
+```
+
+#### `conformQuery`
+
+``` purescript
+conformQuery :: SearchQuery -> ItemLogic -> Boolean
+```
+
+
+#### `conformAnd`
+
+``` purescript
+conformAnd :: ItemLogic -> [SearchTerm] -> Boolean
+```
+
+
+#### `conformTerm`
+
+``` purescript
+conformTerm :: ItemLogic -> SearchTerm -> Boolean
+```
+
+
+#### `conformT`
+
+``` purescript
+conformT :: ItemLogic -> SearchTermSimple -> Boolean
+```
+
+
+#### `overOr`
+
+``` purescript
+overOr :: ItemLogic -> Predicate -> Boolean
+```
+
+
+#### `overType`
+
+``` purescript
+overType :: ItemLogic -> Predicate -> Boolean
+```
+
+
+#### `overName`
+
+``` purescript
+overName :: ItemLogic -> Predicate -> Boolean
+```
+
+
+#### `check`
+
+``` purescript
+check :: Predicate -> String -> Boolean
 ```
 
 
@@ -202,7 +354,6 @@ Router component. It works with only one route aggregate.
 type State = { search :: String, sort :: Sort }
 ```
 
-state of routing is sort direction and search string
 
 #### `toHash`
 
@@ -210,7 +361,6 @@ state of routing is sort direction and search string
 toHash :: forall o. { search :: String, sort :: Sort | o } -> String
 ```
 
-Make hash
 
 #### `extractSort`
 
@@ -218,7 +368,6 @@ Make hash
 extractSort :: String -> Maybe Sort
 ```
 
-Get sort from hash
 
 #### `extractSearch`
 
@@ -226,7 +375,6 @@ Get sort from hash
 extractSearch :: String -> String
 ```
 
-Get search from hash
 
 #### `fromHash`
 
@@ -234,7 +382,6 @@ Get search from hash
 fromHash :: String -> { search :: String, sort :: Sort }
 ```
 
-Make state without hash-component from hash-string
 
 #### `setSearch`
 
@@ -242,14 +389,32 @@ Make state without hash-component from hash-string
 setSearch :: String -> Eff _ Unit
 ```
 
-shortcut for setting search string
-I think, that after some other services will be
-developed pattern will arise
+
+#### `setSort`
+
+``` purescript
+setSort :: Sort -> Eff _ Unit
+```
+
 
 #### `getRoute`
 
 ``` purescript
 getRoute :: forall e. Eff e State
+```
+
+
+#### `extractPath`
+
+``` purescript
+extractPath :: State -> String
+```
+
+
+#### `setPath`
+
+``` purescript
+setPath :: String -> Eff _ Unit
 ```
 
 
@@ -419,7 +584,7 @@ instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse
 #### `metadata`
 
 ``` purescript
-metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff _ Unit
 ```
 
 
@@ -474,9 +639,7 @@ This component will not be rendered alone, so, it has not a spec
 ``` purescript
 data Action
   = Init 
-  | Clicked 
   | Changed State
-  | Ajax XHR.Output
 ```
 
 
@@ -512,13 +675,6 @@ foldState :: Action -> State -> Eff _ State
 ```
 
 
-#### `hookFn`
-
-``` purescript
-hookFn :: forall e. Receiver Action (trace :: Trace, dom :: DOM, chan :: Chan | e) -> Eff (trace :: Trace, dom :: DOM, chan :: Chan | e) Unit
-```
-
-
 
 ## Module View.Breadcrumb
 
@@ -531,10 +687,9 @@ and <code>State</code>.
 #### `Link`
 
 ``` purescript
-type Link = { name :: String, href :: String }
+type Link = { name :: String, link :: String }
 ```
 
-Link that will be passed to search query in router
 
 #### `Output`
 
@@ -542,8 +697,6 @@ Link that will be passed to search query in router
 type Output = { links :: [Link] }
 ```
 
-Output signals: init breadcrumbs, set breadcrumbs links to
-signal content
 
 #### `emptyOut`
 
@@ -557,10 +710,16 @@ emptyOut :: Output
 ``` purescript
 data Input
   = Init 
-  | GoTo Link
+  | Update [Link]
 ```
 
-Input signal: go to search location specified in link
+
+#### `goto`
+
+``` purescript
+goto :: Link -> Eff _ Unit
+```
+
 
 #### `renderLink`
 
@@ -575,8 +734,6 @@ renderLink :: Receiver Input _ -> Link -> VTree
 render :: Receiver Input _ -> Output -> Eff _ VTree
 ```
 
-Renders breadcrumb and send <code>GoTo</code> message
-if clicked
 
 #### `run`
 
@@ -584,7 +741,13 @@ if clicked
 run :: Input -> Output -> Eff _ Output
 ```
 
-Transforming input signal to output signal 
+
+#### `hookFn`
+
+``` purescript
+hookFn :: Receiver Input _ -> Eff _ Unit
+```
+
 
 
 ## Module View.Item
@@ -592,17 +755,10 @@ Transforming input signal to output signal
 
 This component won't be rendered alone, it hasn't spec
 
-#### `Logic`
-
-``` purescript
-type Logic = { id :: String, name :: String, resource :: Mount }
-```
-
-
 #### `State`
 
 ``` purescript
-type State = { isHovered :: Boolean, isSelected :: Boolean, logic :: Logic }
+type State = { isHovered :: Boolean, isSelected :: Boolean, logic :: ItemLogic }
 ```
 
 
@@ -616,9 +772,23 @@ data Action
   | Open 
   | Activate 
   | Unactivate 
-  | Configure Logic
-  | Trash Logic
-  | Share Logic
+  | Configure ItemLogic
+  | Trash ItemLogic
+  | Share ItemLogic
+```
+
+
+#### `fromMetadata`
+
+``` purescript
+fromMetadata :: Fs.Metadata -> State
+```
+
+
+#### `sort`
+
+``` purescript
+sort :: Sort -> State -> State -> Ordering
 ```
 
 
@@ -626,6 +796,13 @@ data Action
 
 ``` purescript
 initialState :: State
+```
+
+
+#### `upNavState`
+
+``` purescript
+upNavState :: State
 ```
 
 
@@ -640,6 +817,13 @@ renderResourceType :: Mount -> VTree
 
 ``` purescript
 renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
+```
+
+
+#### `open`
+
+``` purescript
+open :: Receiver Action _ -> State -> Eff _ Unit
 ```
 
 
@@ -666,7 +850,7 @@ This component has no spec, it won't be rendered alone
 #### `State`
 
 ``` purescript
-type State = { items :: [Item.State] }
+type State = { items :: [Item.State], sort :: Sort }
 ```
 
 Its state has a list of children
@@ -684,7 +868,9 @@ initialState :: State
 data Action
   = Init 
   | ItemAction Number Item.Action
+  | UpNav Item.Action
   | SortAction Sort
+  | Update [Item.State]
 ```
 
 External messages will be marked with index of child
@@ -696,7 +882,6 @@ that send it
 view :: Receiver Action _ -> State -> Eff _ VTree
 ```
 
-Rendering of list
 
 #### `foldState`
 
@@ -705,12 +890,17 @@ foldState :: Action -> State -> Eff _ State
 ```
 
 
+#### `hookFn`
+
+``` purescript
+hookFn :: Receiver Action _ -> Eff _ Unit
+```
+
+
 
 ## Module View.Logo
 
 
-This component is not component :)
-It is just two function and even have not action and state
 
 #### `view`
 
@@ -774,7 +964,7 @@ Update state
 hookFn :: forall e. Receiver Action _ -> Eff _ Unit
 ```
 
-listen route changes, called after render
+listen route changes, called after inserting in DOM
 
 
 ## Module View.Search
@@ -787,9 +977,10 @@ Search component will not be rendered alone
 ``` purescript
 data Action
   = Init 
-  | Change String
+  | Change Timeout String
   | RouteChanged String
-  | Submit 
+  | Disable 
+  | Enable 
 ```
 
 Route change is external message
@@ -805,6 +996,20 @@ type State = { timeout :: Maybe Timeout, value :: String, valid :: Boolean }
 
 ``` purescript
 initialState :: State
+```
+
+
+#### `changeHandler`
+
+``` purescript
+changeHandler :: Receiver Action _ -> State -> Event -> Eff _ Unit
+```
+
+
+#### `submitHandler`
+
+``` purescript
+submitHandler :: Receiver Action _ -> State -> Eff _ Unit
 ```
 
 
@@ -933,7 +1138,7 @@ i.e. upload file, or call Api
 ``` purescript
 data Action
   = Init 
-  | Sorting 
+  | Sorting Sort
   | UploadFile 
   | MountDB 
   | CreateNotebook 
@@ -950,6 +1155,34 @@ type State = { sort :: Sort }
 
 sort direction in list (used in chevron direction right now only)
 
+#### `sortHandler`
+
+``` purescript
+sortHandler :: Receiver Action _ -> State -> Eff _ Unit
+```
+
+
+#### `onFileChanged`
+
+``` purescript
+onFileChanged :: Receiver Action _ -> Event -> Eff _ Unit
+```
+
+
+#### `unsafeJson`
+
+``` purescript
+unsafeJson :: forall a. a -> Json
+```
+
+
+#### `onFolderCreate`
+
+``` purescript
+onFolderCreate :: Receiver Action _ -> Event -> Eff _ Unit
+```
+
+
 #### `view`
 
 ``` purescript
@@ -961,6 +1194,13 @@ view :: Receiver Action _ -> State -> Eff _ VTree
 
 ``` purescript
 foldState :: Action -> State -> Eff _ State
+```
+
+
+#### `hookFn`
+
+``` purescript
+hookFn :: Receiver Action _ -> Eff _ Unit
 ```
 
 
