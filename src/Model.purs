@@ -31,6 +31,15 @@ sortFromString _ = Nothing
 
 data Mount =  File | Database | Notebook | Directory | Table 
 
+instance eqMount :: Eq Mount where
+  (==) File File = true
+  (==) Database Database = true
+  (==) Notebook Notebook = true
+  (==) Directory Directory = true
+  (==) Table Table = true
+  (==) a b = false
+  (/=) a b = not $ a == b
+
 instance decodeJsonMount :: DecodeJson Mount where
   decodeJson json = do
     str <- decodeJson json

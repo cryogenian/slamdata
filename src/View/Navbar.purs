@@ -22,6 +22,7 @@ import qualified View.Back as Back
 import qualified View.Logo as Logo
 import qualified View.User as User
 import qualified Router as Router
+import qualified Config as Config
 
 -- | Multiplication of children state
 type State = {
@@ -42,13 +43,12 @@ data Action = Init | SearchAction Search.Action | BackAction Back.Action
 -- | Render
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
-  -- rendering children
-  -- we provide them receiver as function builded from Action-constructor
-  -- and state as State fields
   logo <- Logo.view toVoid {}
   back <- Back.view (\x -> send $ BackAction x) st.back
   search <- Search.view (\x -> send $ SearchAction x) st.search
-  user <- User.view toVoid st.user
+  user <- if Config.userEnabled then
+            User.view toVoid st.user
+            else return emptyVTree
 
   return $ nav {"className": "navbar navbar-inverse navbar-fixed-top"} [
     div {"className": "container"} [
@@ -56,10 +56,10 @@ view send st = do
           back,
           logo
           ],
-       div {"className": "col-sm-6"} [
+       div {"className": "col-sm-7"} [
          search
          ],
-       div {"className": "col-sm-3"} [
+       div {"className": "col-sm-2"} [
          user
          ]
        ]
@@ -69,28 +69,22 @@ view send st = do
 foldState :: Action -> State -> Eff _ State
 foldState action state =
   case action of
-    -- Inner message
     Init -> return state
-    -- Children messages
     SearchAction action -> do
-      -- update substate by child updater
       searchState <- Search.foldState action state.search
       return state{search = searchState}
     BackAction action -> do
-      -- update substate by child updater
       backState <- Back.foldState action state.back
       return state{back = backState}
 
 
--- | listen route changes, called after render
+-- | listen route changes, called after inserting in DOM
 hookFn :: forall e.
         Receiver Action _ -> 
         Eff _ Unit
 hookFn receiver = do
-  Back.hookFn (receiver <<< BackAction)
   Hash.changed $ do
     route <- Router.getRoute
-    log route
     receiver $ (SearchAction <<< Search.RouteChanged $ route.search)
 
 

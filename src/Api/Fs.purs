@@ -49,7 +49,7 @@ instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse where
       children: fprintUnsafe children
       }
 
-metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff _ Unit --Eff (dom::DOM|e) Unit
+metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff _ Unit 
 metadata path callback = do
   req <- A.makeXMLHttpRequest
   let action = do
@@ -57,11 +57,16 @@ metadata path callback = do
         case state of
           A.Done -> do
             response <- A.responseText req
-            case (jsonParser (fprintUnsafe response) >>= decodeJson) of
-              Left error -> do
-                log error
-              Right (MetadataResponse{children: res}) ->
-                callback res
+            status <- A.status req
+            log status
+            if status /= 200 then
+              callback []
+              else 
+              case (jsonParser (fprintUnsafe response) >>= decodeJson) of
+                Left error -> do
+                  log error
+                Right (MetadataResponse{children: res}) ->
+                  callback res
           _ -> return unit
 
   A.onReadyStateChange action req

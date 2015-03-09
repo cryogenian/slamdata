@@ -108,7 +108,9 @@ open sendBack state = do
   route <- Router.getRoute
   let name = state.logic.name
       path = Router.extractPath route
-  Router.setPath (path <> name <> "/")
+  if state.logic.resource == Directory || state.logic.resource == Database then 
+    Router.setPath (path <> name <> "/")
+    else return unit
 
     
 view :: Receiver Action _ -> State -> Eff _ VTree

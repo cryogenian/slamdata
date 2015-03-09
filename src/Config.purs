@@ -12,3 +12,10 @@ dataUrl = "/data/fs/"
 
 searchTimeout :: Number
 searchTimeout = 500
+
+slamDataHome :: String
+slamDataHome = "http://slamdata.com"
+
+
+userEnabled :: Boolean
+userEnabled = false

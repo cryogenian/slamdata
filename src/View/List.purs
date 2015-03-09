@@ -52,9 +52,7 @@ data Action = Init
 
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send state = do
-  route <- Router.getRoute
-  let path = Router.extractPath route
-      items = state.items
+  let items = state.items
       len = length items
       enumerated = zip (0..len) items
   
