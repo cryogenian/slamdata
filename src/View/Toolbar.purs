@@ -67,9 +67,7 @@ function unsafeJson(a) {return JSON.stringify(a);}
 
 onFolderCreate :: Receiver Action _ -> Event -> Eff _ Unit
 onFolderCreate sendBack event = do
-  Fs.post "foo/bar/baz" (unsafeJson {"type": "folder", "name": "foobar"}) $
-    do \js ->
-         log js
+  Fs.post "foo/bar/baz" (unsafeJson {"type": "folder", "name": "foobar"}) $ log
                                                                      
 
 view :: Receiver Action _ -> State -> Eff _ VTree

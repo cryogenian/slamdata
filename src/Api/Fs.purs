@@ -58,7 +58,6 @@ metadata path callback = do
           A.Done -> do
             response <- A.responseText req
             status <- A.status req
-            log status
             if status /= 200 then
               callback []
               else 

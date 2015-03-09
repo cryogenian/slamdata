@@ -21,7 +21,6 @@ import Data.Foldable
 import qualified Hash as Hash
 import qualified Router as Router
 
-
 type Link = {link :: String, name :: String}
 
 type Output = {links :: [Link]}
@@ -46,7 +45,6 @@ render send out = do
     (li {} [i {"className": "glyphicon glyphicon-chevron-right"} []]) :
     (renderLink send <$> out.links)
     )
-
 
 run :: Input -> Output -> Eff _ Output
 run input output =
