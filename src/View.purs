@@ -99,6 +99,7 @@ initial =
 hookFn :: forall e. Receiver Action (chan::Chan, dom::DOM, trace::Trace|e) ->
                   Eff (chan::Chan, dom::DOM, trace::Trace|e) Unit
 hookFn receiver = do
+  Breadcrumb.hookFn (receiver <<< BreadcrumbAction)
   Navbar.hookFn (receiver <<< NavbarAction)
   List.hookFn (receiver <<< ListAction)
   Toolbar.hookFn (receiver <<< ToolbarAction)

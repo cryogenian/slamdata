@@ -38,7 +38,9 @@ initialState = {
   }
 
 -- | Sum of children actions
-data Action = Init | SearchAction Search.Action | BackAction Back.Action
+data Action = Init
+            | SearchAction Search.Action
+            | BackAction Back.Action
 
 -- | Render
 view :: Receiver Action _ -> State -> Eff _ VTree
