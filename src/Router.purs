@@ -6,18 +6,25 @@ import Control.Monad.Eff.Ref
 import Signal
 import Signal.Channel
 import Signal.Effectful
-import Data.String.Regex
+import Data.String.Regex (regex, match, noFlags)
 import Data.Maybe
 import Data.Tuple (Tuple(..))
 import Data.StrMap (fromList)
 import Data.Array hiding (map, append)
 import Data.DOM.Simple.Encode
 import Debug.Foreign
+import Data.Foldable
+import Data.String (split, joinWith, replace)
 
 import Utils 
 import qualified Hash as Hash
-import Model 
+import Model
+import Control.Monad.Error
 
+import Data.Either
+import Text.SlamSearch.Parser
+import Text.SlamSearch.Parser.Terms
+import Text.SlamSearch.Printer
 
 -- | state of routing is sort direction and search string
 type State = {
@@ -76,11 +83,40 @@ setSort sort = do
   let st = fromHash current
       newSt = st{sort = sort}
       newHash = toHash newSt
-  log newHash
   Hash.setHash newHash
 
 getRoute :: forall e. Eff e State
 getRoute = fromHash <$> Hash.getHash
 
 
+extractPath :: State -> String
+extractPath {search: search} =
+  let eitherTerm = do
+        ast <- parseSearchQuery search
+        term <- maybe (Left (strMsg "There is no path")) Right (getPathTerm ast)
+        case extractSimpleTerm term of
+          SearchTermSimple _ p -> return $ prettyPredicate p
+  in either (const "") id eitherTerm
 
+
+
+setPath :: String -> Eff _ Unit
+setPath path = do
+  let pathParts = split "/" path
+      removeUp lst acc =
+        case lst of
+          [] -> acc
+          x:"..":xs -> removeUp xs acc
+          "":xs -> removeUp xs acc
+          x:xs -> removeUp xs (x:acc)
+      filtered = reverse $ removeUp pathParts []
+      correct = replace "//" "/" $ "/" <> (joinWith "/" filtered) <> "/"
+
+  {search: search} <- getRoute
+  let eitherQuery = do
+        ast <- parseSearchQuery search
+        let terms = getNotPathTerms ast
+            strs = prettyTerm <$> terms
+        return $ joinWith " " strs 
+  setSearch $ (either (const "") id eitherQuery) <> " path:" <> correct
+        

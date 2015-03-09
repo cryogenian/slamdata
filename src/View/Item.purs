@@ -13,7 +13,9 @@ import Signal
 import Signal.Effectful
 import Signal.Channel
 import Model 
-import Api.Fs
+import qualified Api.Fs as Fs
+
+
 
 type Logic = {
   resource :: Mount,
@@ -28,11 +30,12 @@ type State = {
   }
 data Action = Init
             | Focus | Blur | Open | Activate | Unactivate
-            | Configure Logic | Trash Logic | Share Logic 
+            | Configure Logic | Trash Logic | Share Logic
+                                              
                                                       
 
-fromMetadata :: Metadata -> State
-fromMetadata (Metadata meta) = {
+fromMetadata :: Fs.Metadata -> State
+fromMetadata (Fs.Metadata meta) = {
   isSelected: false,
   isHovered: false,
   logic: {
@@ -45,9 +48,10 @@ fromMetadata (Metadata meta) = {
 sort :: Sort -> State -> State -> Ordering
 sort dir a b =
   let project = _.logic >>> _.name
-  in case dir of
-    Asc -> compare (project a) (project b)
-    Desc -> compare (project b) (project a)
+  in if project a == ".." then LT
+     else case dir of
+       Asc -> compare (project a) (project b)
+       Desc -> compare (project b) (project a)
 
 initialState :: State
 initialState = {
@@ -58,6 +62,17 @@ initialState = {
     id: "",
     resource: File
     }}
+
+upNavState :: State
+upNavState = {
+  isSelected: false,
+  isHovered: false,
+  logic: {
+    name: "..",
+    id: "",
+    resource: Directory
+    }
+  }
 
 renderResourceType :: Mount -> VTree
 renderResourceType rt = 
@@ -84,15 +99,25 @@ renderMiniToolbar send st = do
                [vtext "configure"]]
   case st.logic.resource of
     Database -> return $ configure:basic
+    x | st.logic.name == ".." -> return []
     _ -> return basic
 
+
+open :: Receiver Action _ -> State -> Eff _ Unit
+open sendBack state = do 
+  route <- Router.getRoute
+  let name = state.logic.name
+      path = Router.extractPath route
+  Router.setPath (path <> name <> "/")
+
+    
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
   toolbarItems <- renderMiniToolbar send st
   return $ div {"className": "list-group-item" <> isActive st,
                 "mouseout": hook "mouseout" $ const $ (send Blur),
                 "mouseover": hook "mouseover" (const $ send Focus),
-                "dblclick": hook "dblclick" (const $ send Open),
+                "dblclick": hook "dblclick" (const $ open send st),
                 "click": hook "click" (const $ send Activate)
                 } [
     div {"className": "row"} [

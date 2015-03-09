@@ -49,7 +49,7 @@ instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse where
       children: fprintUnsafe children
       }
 
-metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff (dom::DOM|e) Unit
+metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff _ Unit --Eff (dom::DOM|e) Unit
 metadata path callback = do
   req <- A.makeXMLHttpRequest
   let action = do

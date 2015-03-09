@@ -14,8 +14,9 @@ import Control.Monad.Eff
 import Data.Either
 import Data.Tuple 
 import Data.Traversable (for)
-import Data.Array ((..), length, updateAt, (!!), sortBy)
-import Data.Maybe 
+import Data.Array ((..), length, updateAt, (!!), sortBy, reverse, drop)
+import Data.Maybe
+import Data.String (split, joinWith)
 
 import Model
 import Component
@@ -44,17 +45,25 @@ initialState = {
 -- | that send it
 data Action = Init
             | ItemAction Number Item.Action
+            | UpNav Item.Action
             | SortAction Sort
             | Update [Item.State]
 
 
 view :: Receiver Action _ -> State -> Eff _ VTree
-view send st = do
-  let len = length st.items
-  let enumerated = zip (0..len) st.items
-  children <- for enumerated (\(Tuple i st) -> do
-                                 Item.view (\x -> send $ ItemAction i x) st)
+view send state = do
+  route <- Router.getRoute
+  let path = Router.extractPath route
+      items = state.items
+      len = length items
+      enumerated = zip (0..len) items
+  
+  children <- for enumerated
+              (\(Tuple i st) -> do
+                  Item.view (\x -> send $ ItemAction i x) st)
+
   return $ div {"className": "list-group"} children
+    
 
 foldState :: Action -> State -> Eff _ State
 foldState action state@{items: items} =
@@ -62,10 +71,9 @@ foldState action state@{items: items} =
     Init -> return state
     Update children -> return state{items = sortBy (Item.sort state.sort) children}
     ItemAction i action -> do
-      let states = 
-            case action of
-              Item.Activate -> (\x -> x{isSelected = false}) <$> items
-              _ -> items
+      states <- case action of
+              Item.Activate -> return $ (\x -> x{isSelected = false}) <$> items
+              _ -> return items
       newItem <- Item.foldState action $
                  fromMaybe Item.initialState $
                  states !! i
@@ -80,18 +88,13 @@ hookFn :: Receiver Action _ -> Eff _ Unit
 hookFn sendBack = do
   Hash.changed $ do
     route <- Router.getRoute
+    let path = Router.extractPath route
     sendBack (SortAction route.sort)
-    case parseSearchQuery route.search of
-      Left _ -> return unit
-      Right ast -> do
-        let path = case getPathTerm ast of
-              Nothing -> ""
-              Just term ->
-                case extractSimpleTerm term of
-                  SearchTermSimple _ p -> 
-                    prettyPredicate p
-        Fs.metadata path $ \res -> do
-          sendBack $ Update  (Item.fromMetadata <$> res)
+    Fs.metadata path $ \res -> do
+      let resData = Item.fromMetadata <$> res
+          toSend = if path == "/" || path == "" then resData
+                   else Item.upNavState:resData
+      sendBack $ Update toSend
 
 
 

@@ -1,7 +1,7 @@
 module Config where
 
 uploadUrl :: String
-uploadUrl = "/fileupload"
+uploadUrl = "/upload"
 
 metadataUrl :: String
 metadataUrl = "/metadata/fs/"

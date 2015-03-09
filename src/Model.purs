@@ -36,7 +36,7 @@ instance decodeJsonMount :: DecodeJson Mount where
     str <- decodeJson json
     case str of
       "file" -> return File
-      "database" -> return Database
+      "mount" -> return Database
       "notebook" -> return Notebook
       "directory" -> return Directory
       "table" -> return Table
@@ -71,3 +71,12 @@ getPathTerm query =
     [] -> Nothing
     x:xs -> Just x
             
+
+getNotPathTerms :: SearchQuery -> [SearchTerm]
+getNotPathTerms query =
+  let filterFn term =
+        case extractSimpleTerm term of
+          SearchTermSimple [Common("path")] p -> false
+          _ -> true
+  in filterTerm query filterFn
+

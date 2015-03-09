@@ -20,6 +20,8 @@ import Model
 import qualified Data.DOM.Simple.Ajax as A
 import qualified Config as Config
 import Router (setSort)
+import qualified Api.Fs as Fs
+import Data.Argonaut.Core
 
 -- | Output messages
 data Action = Init
@@ -42,22 +44,36 @@ sortHandler sendBack st = do
   Router.setSort newSort
   sendBack (Sorting newSort)
 
+
+onFileChanged :: Receiver Action _ -> Event -> Eff _ Unit
+onFileChanged sendBack event =  do
+  det <- detail event :: Eff _ {file :: File}
+  req <- A.makeXMLHttpRequest
+  let action = do
+        state <- A.readyState req
+        case state of
+          A.Done -> do
+            sendBack UploadFile
+          _ -> return unit
+  A.onReadyStateChange action req
+  A.open A.POST Config.uploadUrl req
+  n <- name det.file
+  A.send (A.BlobData <<< file2blob $ det.file) req
+
+
+foreign import unsafeJson """
+function unsafeJson(a) {return JSON.stringify(a);}
+""" :: forall a. a -> Json
+
+onFolderCreate :: Receiver Action _ -> Event -> Eff _ Unit
+onFolderCreate sendBack event = do
+  Fs.post "foo/bar/baz" (unsafeJson {"type": "folder", "name": "foobar"}) $
+    do \js ->
+         log js
+                                                                     
+
 view :: Receiver Action _ -> State -> Eff _ VTree
 view send st = do
-  let onFileChanged ev = do
-        det <- detail ev :: Eff _ {file :: File}
-        req <- A.makeXMLHttpRequest
-        let action = do
-              state <- A.readyState req
-              case state of
-                A.Done -> do
-                  send UploadFile
-                _ -> return unit
-        A.onReadyStateChange action req
-        A.open A.POST Config.uploadUrl req
-        n <- name det.file
-        A.send (A.BlobData <<< file2blob $ det.file) req
-          
   return $ div {"className": "row"} [
     div {"className": "col-sm-4"} [
        a {"href": jsVoid,
@@ -70,12 +86,12 @@ view send st = do
       ul {"className": "list-inline pull-right"} [
          li {} [uploader "a"
                   {"href": jsVoid,
-                   "filechanged": hook "filechanged" onFileChanged,
+                   "filechanged": hook "filechanged" (onFileChanged send),
                    "click": hook "click" $ const (send UploadFile),
                    "runUpload": "click"} [vtext "File"]],
          
          li {} [a {"href": jsVoid,
-                   "click": hook "click" $ const $  send CreateFolder}
+                   "click": hook "click" $ (onFolderCreate send)}
                 [vtext "Folder"]],
          li {} [a {"href": jsVoid,
                    "click": hook "click" $ const $ send MountDB} [vtext "Mount"]],
