@@ -82,7 +82,6 @@ setSort sort = do
 getRoute :: forall e. Eff e State
 getRoute = fromHash <$> Hash.getHash
 
-
 extractPath :: State -> String
 extractPath {search: search} =
   let eitherTerm = do
@@ -91,8 +90,6 @@ extractPath {search: search} =
         case extractSimpleTerm term of
           SearchTermSimple _ p -> return $ prettyPredicate p
   in either (const "") id eitherTerm
-
-
 
 setPath :: String -> Eff _ Unit
 setPath path = do

@@ -16,21 +16,14 @@ import Model
 import qualified Api.Fs as Fs
 
 
-
-type Logic = {
-  resource :: Mount,
-  name :: String,
-  id :: String 
-  }
-
 type State = {
-  logic :: Logic,
+  logic :: ItemLogic,
   isSelected :: Boolean,
   isHovered :: Boolean
   }
 data Action = Init
             | Focus | Blur | Open | Activate | Unactivate
-            | Configure Logic | Trash Logic | Share Logic
+            | Configure ItemLogic | Trash ItemLogic | Share ItemLogic
                                               
                                                       
 
@@ -40,8 +33,7 @@ fromMetadata (Fs.Metadata meta) = {
   isHovered: false,
   logic: {
     name: meta.name,
-    resource: meta.mount,
-    id: ""
+    resource: meta.mount
     }
   }
 
@@ -59,7 +51,6 @@ initialState = {
   isHovered: false,
   logic: {
     name: "",
-    id: "",
     resource: File
     }}
 
@@ -69,7 +60,6 @@ upNavState = {
   isHovered: false,
   logic: {
     name: "..",
-    id: "",
     resource: Directory
     }
   }
@@ -145,22 +135,13 @@ view send st = do
                           ""
                           else " hidden"
 foldState :: Action -> State -> Eff _ State
-foldState Focus state = do
-  return state{isHovered = true}
-foldState Blur state = do
-  return state{isHovered = false}
-foldState Activate state = do
-  return state{isSelected = true}
-foldState Unactivate state = do
-  return state{isSelected = false}
-foldState Open state = do
-  return state
-foldState Init state = do
-  return state
-foldState (Share l) state = do
-  return state
-foldState (Configure l) state = do
-  return state
-foldState (Trash l) state = do
-  return state
+foldState action state =
+  case action of
+    Focus -> return state{isHovered = true}
+    Blur -> return state{isHovered = false}
+    Activate -> return state{isSelected = true}
+    Unactivate -> return state{isSelected = false}
+    Open -> return state
+    Init -> return state
+    _ -> return state
 

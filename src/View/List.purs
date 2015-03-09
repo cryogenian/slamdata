@@ -14,7 +14,7 @@ import Control.Monad.Eff
 import Data.Either
 import Data.Tuple 
 import Data.Traversable (for)
-import Data.Array ((..), length, updateAt, (!!), sortBy, reverse, drop)
+import Data.Array ((..), length, updateAt, (!!), sortBy, reverse, drop, filter)
 import Data.Maybe
 import Data.String (split, joinWith)
 
@@ -87,11 +87,13 @@ hookFn sendBack = do
   Hash.changed $ do
     route <- Router.getRoute
     let path = Router.extractPath route
+    let ast = either (const EmptyQuery) id $ parseSearchQuery route.search
     sendBack (SortAction route.sort)
     Fs.metadata path $ \res -> do
       let resData = Item.fromMetadata <$> res
-          toSend = if path == "/" || path == "" then resData
-                   else Item.upNavState:resData
+          filtered = filter (conformQuery ast <<< _.logic) resData
+          toSend = if path == "/" || path == "" then filtered
+                   else Item.upNavState:filtered
       sendBack $ Update toSend
 
 

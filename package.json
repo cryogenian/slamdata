@@ -19,6 +19,7 @@
   "dependencies": {
     "gulp": "^3.8.11",
     "mandragora-bucket": "^0.1.12",
+    "minimatch": "^2.0.1",
     "virtual-dom": "^2.0.0"
   }
 }
