@@ -21,7 +21,8 @@ import Data.String (split, joinWith)
 import Model
 import Component
 import qualified View.Item as Item
-import qualified Hash as Hash
+
+import Hash
 import qualified Router as Router 
 import qualified Api.Fs as Fs
 

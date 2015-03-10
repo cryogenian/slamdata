@@ -5,7 +5,7 @@ import Signal
 import VirtualDOM
 import VirtualDOM.VTree
 import Control.Monad.Eff
-import qualified Config as Config
+import Config
 
 -- | send and st will be removed
 view :: forall a b. a -> b -> Eff _ VTree

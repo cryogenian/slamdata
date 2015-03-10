@@ -61,7 +61,7 @@ instance eqMount :: Eq Mount where
   (==) Notebook Notebook = true
   (==) Directory Directory = true
   (==) Table Table = true
-  (==) a b = false
+  (==) _ _ = false
   (/=) a b = not $ a == b
 
 instance decodeJsonMount :: DecodeJson Mount where
@@ -87,7 +87,7 @@ getPathTerms :: SearchQuery -> [SearchTerm]
 getPathTerms query =
   let filterFn term =
         case extractSimpleTerm term of
-          SearchTermSimple [Common("path")] p -> true
+          SearchTermSimple [Common("path")] _ -> true
           _ -> false 
   in filterTerm query filterFn
 
@@ -103,7 +103,7 @@ getNotPathTerms :: SearchQuery -> [SearchTerm]
 getNotPathTerms query =
   let filterFn term =
         case extractSimpleTerm term of
-          SearchTermSimple [Common("path")] p -> false
+          SearchTermSimple [Common("path")] _ -> false
           _ -> true
   in filterTerm query filterFn
 
@@ -135,7 +135,7 @@ conformTerm a (ExcludeTerm simple) = not $ conformT a simple
 
 conformT :: ItemLogic -> SearchTermSimple -> Boolean
 conformT a (SearchTermSimple [] p) = overOr a p 
-conformT a (SearchTermSimple [Common("path")] p) = true
+conformT a (SearchTermSimple [Common("path")] _) = true
 conformT a (SearchTermSimple [Common("type")] p) = overType a p
 conformT a (SearchTermSimple [Common("name")] p) = overName a p
 

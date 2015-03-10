@@ -13,7 +13,6 @@ import VirtualDOM.VTree
 import Control.Monad.Eff
 import VirtualDOM.Events 
 import Component
-import qualified XHR as XHR
 import qualified Data.DOM.Simple.Ajax as A
 import Data.StrMap (empty, StrMap())
 import qualified Router as Router

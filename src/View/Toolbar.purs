@@ -18,7 +18,7 @@ import Utils
 import Component
 import Model 
 import qualified Data.DOM.Simple.Ajax as A
-import qualified Config as Config
+import Config
 import Router (setSort)
 import qualified Api.Fs as Fs
 import Data.Argonaut.Core

@@ -18,7 +18,7 @@ import Text.SlamSearch.Parser (parseSearchQuery)
 
 import qualified Hash as Hash
 import qualified Router as Router
-import qualified Config as Config
+import Config
 
 -- | Route change is external message
 data Action = Init | Change Timeout String | RouteChanged String | Disable | Enable

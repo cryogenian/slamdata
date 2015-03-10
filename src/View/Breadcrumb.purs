@@ -18,8 +18,10 @@ import Component
 import Data.String
 import Data.Array (filter, reverse)
 import Data.Foldable
-import qualified Hash as Hash
-import qualified Router as Router
+
+import Hash
+import Router
+
 
 type Link = {link :: String, name :: String}
 

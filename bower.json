@@ -35,8 +35,8 @@
     "purescript-strongcheck": "~0.8.0",
     "purescript-argonaut": "~0.4.0",
     "purescript-search": "https://github.com/cryogenian/purescript-search.git",
-    "purescript-simple-dom": "https://github.com/aktowns/purescript-simple-dom.git#master",
-    "purescript-minimatch": "~0.1.0"
+    "purescript-minimatch": "~0.1.0",
+    "purescript-simple-dom": "2edd5c04b5cd02e097cb85e99df6e38a02a6a165"
   },
   "resolutions": {
     "purescript-tuples": "~0.3.0",

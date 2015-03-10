@@ -22,7 +22,7 @@ import qualified View.Back as Back
 import qualified View.Logo as Logo
 import qualified View.User as User
 import qualified Router as Router
-import qualified Config as Config
+import Config
 
 -- | Multiplication of children state
 type State = {
