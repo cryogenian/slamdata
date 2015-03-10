@@ -1,24 +1,24 @@
 -- | Search component will not be rendered alone
 module View.Search where
 
-import DOM
-import View.Shortcuts
-import Utils
-import VirtualDOM
-import VirtualDOM.VTree
 import Control.Monad.Eff
 import Data.Maybe
-import Control.Timer
-import VirtualDOM.Events
+import Data.Either
+
+import DOM (DOM())
+import View.Shortcuts (div, input, span, button, form, i)
+import VirtualDOM.VTree (VTree(), vtext)
+import Control.Timer (Timer(), Timeout(), clearTimeout, timeout)
+import VirtualDOM.Events (hook)
 import Component (Receiver(..))
 import Control.Reactive.Event (Event(..), target)
 import Data.DOM.Simple.Element (value)
-import Data.Either
 import Text.SlamSearch.Parser (parseSearchQuery)
+import Signal.Channel (Chan())
 
 import qualified Hash as Hash
 import qualified Router as Router
-import Config
+import qualified Config as Config
 
 -- | Route change is external message
 data Action = Init | Change Timeout String | RouteChanged String | Disable | Enable
@@ -37,7 +37,8 @@ initialState =
     timeout: Nothing
   }
 
-changeHandler :: Receiver Action _ -> State -> Event -> Eff _ Unit
+changeHandler :: forall e. Receiver Action (chan::Chan, dom::DOM, timer::Timer|e) -> 
+                 State -> Event -> Eff (chan::Chan, dom::DOM, timer::Timer|e) Unit
 changeHandler sendBack state evt = do 
   val <- target evt >>= value
   case state.timeout of
@@ -47,7 +48,8 @@ changeHandler sendBack state evt = do
     submitHandler sendBack state{value = val}
   sendBack $ Change newTimeout val
 
-submitHandler :: Receiver Action _ -> State -> Eff _ Unit
+submitHandler :: forall e. Receiver Action (chan::Chan, dom::DOM|e) -> 
+                 State -> Eff (chan::Chan, dom::DOM|e) Unit
 submitHandler sendBack state = do
   case parseSearchQuery state.value of
     Left _ -> sendBack Disable
@@ -55,7 +57,8 @@ submitHandler sendBack state = do
       Router.setSearch state.value
       sendBack Enable
 
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (chan::Chan, dom::DOM, timer::Timer|e) -> 
+        State -> Eff (chan::Chan, dom::DOM, timer::Timer|e) VTree
 view emit st = do
   return $ form {"className": "navbar-form",
           "submit": hook "submit" $ const $ (submitHandler emit st) } [
@@ -84,7 +87,7 @@ view emit st = do
       ]
     
 -- | Update searcher state
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 foldState action state = do 
   case action of
     Init -> return state

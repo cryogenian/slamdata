@@ -159,7 +159,7 @@ changed :: forall e. Eff e Unit -> Eff e Unit
 #### `main`
 
 ``` purescript
-main :: Eff _ Unit
+main :: forall e. Eff (trace :: Trace, dom :: DOM, timer :: Timer, chan :: Chan | e) Unit
 ```
 
 
@@ -386,14 +386,14 @@ fromHash :: String -> { search :: String, sort :: Sort }
 #### `setSearch`
 
 ``` purescript
-setSearch :: String -> Eff _ Unit
+setSearch :: forall e. String -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `setSort`
 
 ``` purescript
-setSort :: Sort -> Eff _ Unit
+setSort :: forall e. Sort -> Eff (dom :: DOM | e) Unit
 ```
 
 
@@ -414,7 +414,7 @@ extractPath :: State -> String
 #### `setPath`
 
 ``` purescript
-setPath :: String -> Eff _ Unit
+setPath :: forall e. String -> Eff (dom :: DOM | e) Unit
 ```
 
 
@@ -436,7 +436,7 @@ then add Show instances
 #### `onLoad`
 
 ``` purescript
-onLoad :: Eff _ Unit -> Eff _ Unit
+onLoad :: forall e. Eff (dom :: DOM | e) Unit -> Eff (dom :: DOM | e) Unit
 ```
 
 Ok, I were was wrong, it's simplier to define onload
@@ -487,7 +487,6 @@ This function is needed to convert VTree -> Node -> HTMLElement
 ## Module View
 
 
-Application entry point
 
 #### `State`
 
@@ -513,7 +512,7 @@ Action is sum of children actions
 #### `spec`
 
 ``` purescript
-spec :: WidgetSpec Action State _
+spec :: forall e. WidgetSpec Action State (timer :: Timer, trace :: Trace, dom :: DOM, chan :: Chan | e)
 ```
 
 Spec 
@@ -522,8 +521,6 @@ Spec
 ## Module XHR
 
 
-Low level service for managing xhr calls
-Probably will be removed after moving to purescript-aff
 
 #### `Input`
 
@@ -542,7 +539,7 @@ type Output = { content :: String }
 #### `run`
 
 ``` purescript
-run :: forall a. Receiver Output _ -> Input a -> Eff _ Unit
+run :: forall a e. Receiver Output (dom :: DOM | e) -> Input a -> Eff (dom :: DOM | e) Unit
 ```
 
 
@@ -556,7 +553,7 @@ Should be rewritten with purescript-aff
 
 ``` purescript
 newtype Metadata
-  = Metadata { mount :: Mount, name :: String }
+  = Metadata { mount :: Model.Mount, name :: String }
 ```
 
 #### `MetadataResponse`
@@ -584,35 +581,35 @@ instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse
 #### `metadata`
 
 ``` purescript
-metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff _ Unit
+metadata :: forall e. String -> ([Metadata] -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `get`
 
 ``` purescript
-get :: forall e. String -> Maybe Number -> Maybe Number -> ([Json] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+get :: forall e. String -> Maybe Number -> Maybe Number -> ([Json] -> Eff (dom :: DOM) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `post`
 
 ``` purescript
-post :: forall e. String -> Json -> ([Json] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+post :: forall e. String -> Json -> ([Json] -> Eff (dom :: DOM) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `put`
 
 ``` purescript
-put :: forall e. String -> Json -> (Boolean -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+put :: forall e. String -> Json -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `move`
 
 ``` purescript
-move :: forall e. String -> String -> (Boolean -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+move :: forall e. String -> String -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
@@ -664,14 +661,14 @@ viewIcon :: State -> VTree
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom :: DOM | e) -> State -> Eff (dom :: DOM | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 
@@ -717,35 +714,35 @@ data Input
 #### `goto`
 
 ``` purescript
-goto :: Link -> Eff _ Unit
+goto :: forall e. Link -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `renderLink`
 
 ``` purescript
-renderLink :: Receiver Input _ -> Link -> VTree
+renderLink :: forall e. Receiver Input e -> Link -> VTree
 ```
 
 
 #### `render`
 
 ``` purescript
-render :: Receiver Input _ -> Output -> Eff _ VTree
+render :: forall e. Receiver Input (chan :: Chan, dom :: DOM | e) -> Output -> Eff (chan :: Chan, dom :: DOM | e) VTree
 ```
 
 
 #### `run`
 
 ``` purescript
-run :: Input -> Output -> Eff _ Output
+run :: forall e. Input -> Output -> Eff e Output
 ```
 
 
 #### `hookFn`
 
 ``` purescript
-hookFn :: Receiver Input _ -> Eff _ Unit
+hookFn :: forall e. Receiver Input (chan :: Chan | e) -> Eff (chan :: Chan | e) Unit
 ```
 
 
@@ -816,28 +813,28 @@ renderResourceType :: Mount -> VTree
 #### `renderMiniToolbar`
 
 ``` purescript
-renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
+renderMiniToolbar :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) [VTree]
 ```
 
 
 #### `open`
 
 ``` purescript
-open :: Receiver Action _ -> State -> Eff _ Unit
+open :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) Unit
 ```
 
 
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 
@@ -879,21 +876,21 @@ that send it
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 
 #### `hookFn`
 
 ``` purescript
-hookFn :: Receiver Action _ -> Eff _ Unit
+hookFn :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) Unit
 ```
 
 
@@ -905,7 +902,7 @@ hookFn :: Receiver Action _ -> Eff _ Unit
 #### `view`
 
 ``` purescript
-view :: forall a b. a -> b -> Eff _ VTree
+view :: forall a b e. a -> b -> Eff e VTree
 ```
 
 send and st will be removed
@@ -945,7 +942,7 @@ Sum of children actions
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom :: DOM, timer :: Timer, chan :: Chan | e) -> State -> Eff (dom :: DOM, timer :: Timer, chan :: Chan | e) VTree
 ```
 
 Render
@@ -953,7 +950,7 @@ Render
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 Update state
@@ -961,7 +958,7 @@ Update state
 #### `hookFn`
 
 ``` purescript
-hookFn :: forall e. Receiver Action _ -> Eff _ Unit
+hookFn :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> Eff (chan :: Chan, dom :: DOM | e) Unit
 ```
 
 listen route changes, called after inserting in DOM
@@ -1002,28 +999,28 @@ initialState :: State
 #### `changeHandler`
 
 ``` purescript
-changeHandler :: Receiver Action _ -> State -> Event -> Eff _ Unit
+changeHandler :: forall e. Receiver Action (timer :: Timer, dom :: DOM, chan :: Chan | e) -> State -> Event -> Eff (timer :: Timer, dom :: DOM, chan :: Chan | e) Unit
 ```
 
 
 #### `submitHandler`
 
 ``` purescript
-submitHandler :: Receiver Action _ -> State -> Eff _ Unit
+submitHandler :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) Unit
 ```
 
 
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (timer :: Timer, dom :: DOM, chan :: Chan | e) -> State -> Eff (timer :: Timer, dom :: DOM, chan :: Chan | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 Update searcher state
@@ -1158,21 +1155,21 @@ sort direction in list (used in chevron direction right now only)
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff (trace :: Trace | e) State
 ```
 
 
 #### `hookFn`
 
 ``` purescript
-hookFn :: Receiver Action _ -> Eff _ Unit
+hookFn :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> Eff (chan :: Chan, dom :: DOM | e) Unit
 ```
 
 
@@ -1201,14 +1198,14 @@ newtype State
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 

@@ -6,16 +6,13 @@ import Data.Tuple
 import Data.Monoid.All (All(..), runAll)
 import Data.Foldable (fold)
 import Data.String (toLower, indexOf, localeCompare)
-
-import Data.Argonaut.Decode
-import Data.Argonaut.Combinators
-
-import Text.SlamSearch.Parser
-import Text.SlamSearch.Parser.Terms
-import Text.SlamSearch.Parser.Tokens
-import Text.SlamSearch.Parser.Values
-
-import Data.Minimatch
+import Data.Argonaut.Decode (decodeJson, DecodeJson)
+import Text.SlamSearch.Parser (parseSearchQuery, SearchQuery(..)) 
+import Text.SlamSearch.Parser.Terms (
+  SearchTerm(..), SearchTermSimple(..), Predicate(..), Label(..)
+  )
+import Text.SlamSearch.Parser.Values (Value(..))
+import Data.Minimatch (minimatch)
 
 data Sort = Asc | Desc
 

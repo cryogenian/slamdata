@@ -11,18 +11,16 @@ module Component (
   toVoid
   ) where
 
-import DOM
-import Data.DOM.Simple.Types
-import Signal
-import Signal.Channel
-import Signal.Effectful
-import VirtualDOM
-import VirtualDOM.VTree
+import DOM (DOM())
+import Data.DOM.Simple.Types (HTMLElement())
+import Signal (Signal(), runSignal, (~>))
+import Signal.Channel (channel, send, Chan(), subscribe)
+import Signal.Effectful (foldpE)
+import VirtualDOM (createElement, patch, diff)
+import VirtualDOM.VTree (VTree())
 import Control.Monad.Eff
-import Utils
-import View.Shortcuts
-import VirtualDOM
-import VirtualDOM.VTree
+import Utils (log, convertToElement, append)
+import View.Shortcuts (emptyVTree)
 
 
 -- | One example of **Receiver** can be <code>send channel</code>

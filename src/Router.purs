@@ -2,29 +2,24 @@
 module Router where
 
 import Control.Monad.Eff
-import Control.Monad.Eff.Ref
-import Signal
-import Signal.Channel
-import Signal.Effectful
-import Data.String.Regex (regex, match, noFlags)
 import Data.Maybe
+import Data.Either
 import Data.Tuple (Tuple(..))
+import DOM (DOM())
+import Data.String.Regex (regex, match, noFlags)
 import Data.StrMap (fromList)
 import Data.Array hiding (map, append)
-import Data.DOM.Simple.Encode
-import Debug.Foreign
-import Data.Foldable
+import Data.DOM.Simple.Encode (paramatize, decodeURIComponent)
 import Data.String (split, joinWith, replace)
+import Control.Monad.Error (strMsg)
 
-import Utils 
+import Utils (log)
 import qualified Hash as Hash
-import Model
-import Control.Monad.Error
-
-import Data.Either
-import Text.SlamSearch.Parser
-import Text.SlamSearch.Parser.Terms
-import Text.SlamSearch.Printer
+import Model (extractSimpleTerm, Sort(..),
+              getPathTerm, getNotPathTerms, sortFromString, sortToString)
+import Text.SlamSearch.Parser (parseSearchQuery)
+import Text.SlamSearch.Parser.Terms (SearchTermSimple(..))
+import Text.SlamSearch.Printer (prettyPredicate, prettyTerm)
 
 type State = {
   sort :: Sort,
@@ -62,7 +57,7 @@ fromHash hash =
   {sort: fromMaybe Asc $ extractSort hash,
    search: decodeURIComponent (extractSearch hash)}
 
-setSearch :: String -> Eff _ Unit
+setSearch :: forall e. String -> Eff (dom::DOM|e) Unit
 setSearch search = do
   current <- Hash.getHash
   let st = fromHash current
@@ -71,7 +66,7 @@ setSearch search = do
       newHash = toHash newSt
   Hash.setHash newHash
 
-setSort :: Sort -> Eff _ Unit
+setSort :: forall e. Sort -> Eff (dom::DOM|e) Unit
 setSort sort = do
   current <- Hash.getHash
   let st = fromHash current
@@ -91,7 +86,7 @@ extractPath {search: search} =
           SearchTermSimple _ p -> return $ prettyPredicate p
   in either (const "") id eitherTerm
 
-setPath :: String -> Eff _ Unit
+setPath :: forall e. String -> Eff (dom::DOM|e) Unit
 setPath path = do
   let pathParts = split "/" path
       removeUp lst acc =

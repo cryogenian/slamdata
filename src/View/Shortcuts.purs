@@ -1,8 +1,7 @@
 -- | Will be moved to VirtualDOM 
 module View.Shortcuts where
 
-import VirtualDOM
-import VirtualDOM.VTree
+import VirtualDOM.VTree (VTree(), vnode)
 
 
 div :: forall props. {  | props } -> [VTree] -> VTree

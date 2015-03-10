@@ -1,20 +1,16 @@
--- | Low level service for managing xhr calls
--- | Probably will be removed after moving to purescript-aff
 module XHR where
 
 import Control.Monad.Eff
 import Signal hiding (map)
-import Signal.Channel
-import Signal.Effectful
-import Utils
+import Utils (log)
 
-import DOM
+import DOM (DOM())
 import Data.Foldable (for_)
-import Data.StrMap
+import Data.StrMap (StrMap(), toList)
 import Data.Tuple (Tuple(..))
 import qualified Data.DOM.Simple.Ajax as A
 
-import Component
+import Component (Receiver())
 
 type Input a = {
   method :: A.HttpMethod,
@@ -27,7 +23,7 @@ type Output = {
   content :: String
   }
 
-run :: forall a. Receiver Output _ ->  Input a ->  Eff _ Unit
+run :: forall a e. Receiver Output (dom::DOM|e) ->  Input a ->  Eff (dom::DOM|e) Unit
 run sendToOutput inp = do 
   req <- A.makeXMLHttpRequest
   let action = do

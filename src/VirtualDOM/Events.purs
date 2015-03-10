@@ -6,14 +6,11 @@
 module VirtualDOM.Events where
 
 import Control.Monad.Eff
-import DOM
-import Data.DOM.Simple.Types
-import Data.DOM.Simple.Element
-import Utils
 import Data.Function
-import VirtualDOM
-import VirtualDOM.VTree
-import Control.Reactive.Event
+import DOM (DOM(), Node())
+import Data.DOM.Simple.Types (HTMLElement())
+import VirtualDOM.VTree (VTree(), VHook(), vhook)
+import Control.Reactive.Event (Event())
 
 
 foreign import data Callback :: *

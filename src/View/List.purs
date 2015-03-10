@@ -1,34 +1,28 @@
 -- | This component has no spec, it won't be rendered alone
 module View.List where
 
-import DOM
-import View.Shortcuts
-import Utils
-import Signal hiding (zip)
-import Signal.Channel
-import Signal.Effectful
-import VirtualDOM
-import VirtualDOM.VTree
 import Control.Monad.Eff
-
+import Data.Maybe
 import Data.Either
 import Data.Tuple 
+
+import DOM (DOM())
+import View.Shortcuts (div)
+import Signal hiding (zip)
+import Signal.Channel (Chan())
+import VirtualDOM.VTree (VTree())
 import Data.Traversable (for)
 import Data.Array ((..), length, updateAt, (!!), sortBy, reverse, drop, filter)
-import Data.Maybe
 import Data.String (split, joinWith)
 
-import Model
-import Component
+import Model (Sort(..), conformQuery)
+import Component (Receiver())
 import qualified View.Item as Item
-
-import Hash
+import qualified Hash as Hash
 import qualified Router as Router 
 import qualified Api.Fs as Fs
 
-import Text.SlamSearch.Parser
-import Text.SlamSearch.Parser.Terms
-import Text.SlamSearch.Printer
+import Text.SlamSearch.Parser (parseSearchQuery, SearchQuery(..))
 
 -- | Its state has a list of children
 type State = {
@@ -51,7 +45,9 @@ data Action = Init
             | Update [Item.State]
 
 
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e.
+        Receiver Action (dom::DOM, chan::Chan|e) -> State ->
+        Eff (dom::DOM, chan::Chan|e) VTree
 view send state = do
   let items = state.items
       len = length items
@@ -64,7 +60,7 @@ view send state = do
   return $ div {"className": "list-group"} children
     
 
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 foldState action state@{items: items} =
   case action of
     Init -> return state
@@ -83,7 +79,8 @@ foldState action state@{items: items} =
       return state{items = sortBy (Item.sort direction) items, sort = direction}
 
 
-hookFn :: Receiver Action _ -> Eff _ Unit
+hookFn :: forall e. Receiver Action (chan::Chan, dom::DOM|e) -> 
+          Eff (chan::Chan, dom::DOM|e) Unit
 hookFn sendBack = do
   Hash.changed $ do
     route <- Router.getRoute

@@ -2,29 +2,25 @@
 module Api.Fs where
 
 import Control.Monad.Eff
-import Data.Either
+import Data.Either 
 import Data.Maybe
-import Data.Foldable
+import Data.Foldable (foldl)
 
-import DOM
+import DOM (DOM())
 import qualified Data.DOM.Simple.Ajax as A
+import Data.Argonaut.Core (Json())
+import Data.Argonaut.Parser (jsonParser)
+import Data.Argonaut.Decode (decodeJson, DecodeJson) 
+import Data.Argonaut.Combinators ((.?))
 
-import Data.Argonaut.Core
-import Data.Argonaut.Parser
-import Data.Argonaut.Decode
-import Data.Argonaut.Combinators
-
-import Model
-import Utils
+import qualified Model as Model
 import qualified Config as Config
-
-import Debug.Foreign
 
 -- Since we know exact form of metadata
 -- we can decode it from json
 newtype Metadata = Metadata {
   name :: String,
-  mount :: Mount
+  mount :: Model.Mount
   }
 
 newtype MetadataResponse = MetadataResponse {
@@ -44,12 +40,13 @@ instance decodeJsonMetadata :: DecodeJson Metadata where
 instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse where
   decodeJson json = do
     obj <- decodeJson json
-    children <- fprintUnsafe $ obj .? "children"
+    children <- obj .? "children"
     return $ MetadataResponse {
-      children: fprintUnsafe children
+      children: children
       }
 
-metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff _ Unit 
+metadata :: forall e. String -> ([Metadata] -> Eff (dom::DOM|e) Unit) -> 
+            Eff (dom::DOM|e) Unit 
 metadata path callback = do
   req <- A.makeXMLHttpRequest
   let action = do
@@ -61,9 +58,9 @@ metadata path callback = do
             if status /= 200 then
               callback []
               else 
-              case (jsonParser (fprintUnsafe response) >>= decodeJson) of
+              case jsonParser response >>= decodeJson of
                 Left error -> do
-                  log error
+                  pure unit
                 Right (MetadataResponse{children: res}) ->
                   callback res
           _ -> return unit
@@ -75,7 +72,7 @@ metadata path callback = do
 
 
 get :: forall e. String -> Maybe Number -> Maybe Number ->
-       ([Json] -> Eff _ Unit) -> Eff (dom::DOM|e) Unit 
+       ([Json] -> Eff (dom::DOM) Unit) -> Eff (dom::DOM|e) Unit 
 get path offset limit callback = do 
   req <- A.makeXMLHttpRequest
   let action = do
@@ -84,7 +81,7 @@ get path offset limit callback = do
           A.Done -> do
             response <- A.responseText req
             case (jsonParser response >>= decodeJson) of
-              Left error -> do log error
+              Left error -> pure unit
               Right json -> callback json
           _ -> return unit
 
@@ -98,7 +95,8 @@ get path offset limit callback = do
   A.send A.NoData req
 
 
-post :: forall e. String -> Json -> ([Json] -> Eff _ Unit) -> Eff (dom::DOM|e) Unit
+post :: forall e. String -> Json -> ([Json] -> Eff (dom::DOM) Unit) ->
+        Eff (dom::DOM|e) Unit
 post path obj callback = do 
   req <- A.makeXMLHttpRequest
   let action = do
@@ -107,7 +105,7 @@ post path obj callback = do
           A.Done -> do
             response <- A.responseText req
             case (jsonParser response >>= decodeJson) of
-              Left error -> do log error
+              Left error -> pure unit
               Right jsons -> callback jsons
 
   A.onReadyStateChange action req
@@ -115,7 +113,8 @@ post path obj callback = do
   A.send (A.JsonData obj) req 
 
 
-put :: forall e. String -> Json -> (Boolean -> Eff _ Unit) -> Eff (dom::DOM|e) Unit 
+put :: forall e. String -> Json -> (Boolean -> Eff (dom::DOM|e) Unit) -> 
+       Eff (dom::DOM|e) Unit 
 put path obj callback = do 
   req <- A.makeXMLHttpRequest
   let action = do
@@ -130,7 +129,8 @@ put path obj callback = do
   A.send (A.JsonData obj) req
 
 
-move :: forall e. String -> String -> (Boolean -> Eff _ Unit) -> Eff (dom::DOM|e) Unit
+move :: forall e. String -> String -> (Boolean -> Eff (dom::DOM|e) Unit) ->
+        Eff (dom::DOM|e) Unit
 move src tgt callback = do 
   req <- A.makeXMLHttpRequest
   let action = do
