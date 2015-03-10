@@ -56,7 +56,7 @@ view send st = do
   list <- List.view (send <<< ListAction) st.list
   toolbar <- Toolbar.view (send <<< ToolbarAction) st.toolbar
   breadcrumb <- Breadcrumb.render (send <<< BreadcrumbAction) st.breadcrumb
-  -- Now as we have vtrees, we can add them to our template
+  -- Now as we have vtrees, we can add them to our templatиe
   return $ div {} [
     navbar,
     div {"className": "container"} [

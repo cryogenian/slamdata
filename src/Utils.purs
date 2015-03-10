@@ -36,7 +36,7 @@ function append(parent) {
       parent.appendChild(child);
       return parent;
     };
-  };
+};
 }
 """ :: forall e. HTMLElement -> HTMLElement -> Eff (dom::DOM|e) HTMLElement
 

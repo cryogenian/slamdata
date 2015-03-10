@@ -36,7 +36,8 @@
     "purescript-argonaut": "~0.4.0",
     "purescript-search": "https://github.com/cryogenian/purescript-search.git",
     "purescript-minimatch": "~0.1.0",
-    "purescript-simple-dom": "2edd5c04b5cd02e097cb85e99df6e38a02a6a165"
+    "purescript-simple-dom": "2edd5c04b5cd02e097cb85e99df6e38a02a6a165",
+    "purescript-halogen": "~0.3.0"
   },
   "resolutions": {
     "purescript-tuples": "~0.3.0",

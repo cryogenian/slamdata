@@ -5,25 +5,19 @@ import Data.Maybe
 import Signal
 
 import Utils
-import qualified Component as Component
---import qualified View.Navbar as View
-import qualified View.List as List
-import qualified View as View
-import qualified Router as Router
-
-import Signal
-import Signal.Channel
-
-import Data.DOM.Simple.Encode
+import Halogen
+import Halide (ui)
 
 main :: Eff _ Unit
-main = onLoad $ do
+main = onLoad $ void $ do
+  view <- convertToElement <$> runUI ui
   -- construct
-  view <- Component.define View.spec
+--  view <- Component.define View.spec
   -- get node to insert
   body <- bodyNode
   -- start
-  view.insert body
+  append body view
+--  view.insert body
 
 
 
