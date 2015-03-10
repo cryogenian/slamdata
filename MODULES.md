@@ -1155,34 +1155,6 @@ type State = { sort :: Sort }
 
 sort direction in list (used in chevron direction right now only)
 
-#### `sortHandler`
-
-``` purescript
-sortHandler :: Receiver Action _ -> State -> Eff _ Unit
-```
-
-
-#### `onFileChanged`
-
-``` purescript
-onFileChanged :: Receiver Action _ -> Event -> Eff _ Unit
-```
-
-
-#### `unsafeJson`
-
-``` purescript
-unsafeJson :: forall a. a -> Json
-```
-
-
-#### `onFolderCreate`
-
-``` purescript
-onFolderCreate :: Receiver Action _ -> Event -> Eff _ Unit
-```
-
-
 #### `view`
 
 ``` purescript

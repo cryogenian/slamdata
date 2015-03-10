@@ -1,6 +1,12 @@
 -- | Mostly produce messages which must be consumed by external
 -- | i.e. upload file, or call Api
-module View.Toolbar where
+module View.Toolbar (
+  view,
+  foldState,
+  hookFn,
+  Action(..),
+  State(..),
+  initialState) where
 
 import Signal
 import Signal.Channel
@@ -61,13 +67,9 @@ onFileChanged sendBack event =  do
   A.send (A.BlobData <<< file2blob $ det.file) req
 
 
-foreign import unsafeJson """
-function unsafeJson(a) {return JSON.stringify(a);}
-""" :: forall a. a -> Json
-
 onFolderCreate :: Receiver Action _ -> Event -> Eff _ Unit
 onFolderCreate sendBack event = do
-  Fs.post "foo/bar/baz" (unsafeJson {"type": "folder", "name": "foobar"}) $ log
+  return unit
                                                                      
 
 view :: Receiver Action _ -> State -> Eff _ VTree
