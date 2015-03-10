@@ -1,27 +1,22 @@
 -- | This component will not be rendered alone, so, it has not a spec
 module View.Back where
 
-import Debug.Trace (Trace())
-import DOM
-import View.Shortcuts
-import Utils
-import Signal
-import Signal.Channel
-import Signal.Effectful
-import VirtualDOM
-import VirtualDOM.VTree
 import Control.Monad.Eff
-import VirtualDOM.Events 
-import Component
-import qualified XHR as XHR
+import Debug.Trace (Trace())
+import DOM (DOM())
+import View.Shortcuts (i, a, jsVoid)
+import VirtualDOM.VTree (VTree())
+import VirtualDOM.Events (hook)
+import Component (Receiver())
 import qualified Data.DOM.Simple.Ajax as A
 import Data.StrMap (empty, StrMap())
+import qualified Router as Router
 
-data Action = Init | Clicked | Changed State | Ajax XHR.Output
+data Action = Init | Changed State
 
 data State = Directory | Database | Table | Notebook 
 
-initialState = Notebook
+initialState = Directory
 
 viewIcon :: State -> VTree
 viewIcon st =
@@ -31,16 +26,10 @@ viewIcon st =
     Notebook -> i {"className": "glyphicon glyphicon-list-alt"} []
     Table -> i {"className": "glyphicon glyphicon-th"} []
 
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom::DOM|e) -> State -> Eff (dom::DOM|e) VTree
 view send st = do
   let onClicked _ = do
-        XHR.run  (Ajax >>> send) {
-          method: A.GET,
-          content: A.NoData,
-          additionalHeaders: (empty :: StrMap String),
-          url: "http://localhost:5050/"
-          }
-        send Clicked
+        Router.setPath ""
         
   return $ a {"className": "navbar-brand",
               "href": jsVoid,
@@ -50,20 +39,11 @@ view send st = do
     ]
 
 
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 foldState action state = 
   case action of
     Init -> return state
-    Clicked -> return state
     Changed st -> return st
-    Ajax content -> do
-      log content
-      return state
 
 
-hookFn :: forall e.
-        Receiver Action (chan::Chan,dom::DOM,trace::Trace|e) -> 
-        Eff (chan::Chan,dom::DOM,trace::Trace|e) Unit
-hookFn receiver = do 
-  return unit
                               

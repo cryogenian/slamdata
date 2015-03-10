@@ -1,21 +1,16 @@
 module Main where
 
 import Control.Monad.Eff
-import Data.Maybe
-import Signal
 
-import Utils
+import Signal.Channel (Chan())
+import DOM (DOM())
+import Debug.Trace (Trace())
+import Utils (bodyNode, onLoad)
+import Control.Timer (Timer())
 import qualified Component as Component
---import qualified View.Navbar as View
-import qualified View.List as List
-import qualified View as View
-import qualified Router as Router
+import qualified View as View 
 
-import Signal
-import Signal.Channel
-
-
-main :: Eff _ Unit
+main :: forall e. Eff (chan::Chan, timer::Timer, dom::DOM, trace::Trace|e) Unit
 main = onLoad $ do
   -- construct
   view <- Component.define View.spec

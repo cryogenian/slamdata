@@ -1,8 +1,8 @@
 module Signal.Effectful (foldpE)  where
 
-import Signal
+import Signal (Signal(), constant)
 import Control.Monad.Eff
-import Data.Function
+import Data.Function (runFn4, Fn4())
 
 
 -- | Fold signal with effectful function

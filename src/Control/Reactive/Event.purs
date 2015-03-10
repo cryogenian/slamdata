@@ -2,10 +2,10 @@
 -- | or other package
 module Control.Reactive.Event where
 
-import Data.DOM.Simple.Types
+import Data.DOM.Simple.Types (HTMLElement())
 import Control.Monad.Eff
-import Data.Function
-import DOM
+import Data.Function (Fn3(), runFn3)
+import DOM (DOM())
 
 foreign import data Event :: *
 

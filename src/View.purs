@@ -1,26 +1,23 @@
--- | Application entry point
-
 module View (State(..), Action(..), spec) where
 
-import DOM
-import Control.Monad.Eff
-import Signal
-import Signal.Effectful
-import Signal.Channel
-import VirtualDOM
-import VirtualDOM.VTree
-
 import Debug.Trace
+import DOM (DOM())
+import Control.Monad.Eff
+import Signal.Channel (Chan())
+import VirtualDOM.VTree (VTree())
 
-import Utils
-import Component
-import View.Shortcuts 
+import Utils (log)
+import Component (Receiver(), Initial(), WidgetSpec())
+import View.Shortcuts (div)
+import Control.Timer (Timer())
 import qualified View.Navbar as Navbar
 import qualified View.Search as Search
 import qualified View.List as List
 import qualified View.Toolbar as Toolbar
 import qualified View.Breadcrumb as Breadcrumb
 import qualified Hash as Hash
+
+
 
 -- | State is multiplication of children state
 type State = {
@@ -46,7 +43,8 @@ data Action = Init
             | BreadcrumbAction Breadcrumb.Input
 
 -- | Render function
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (chan::Chan,dom::DOM,timer::Timer|e) -> State ->
+        Eff (chan::Chan, dom::DOM, timer::Timer|e) VTree
 view send st = do
   -- Get children vtrees by sending substate and
   -- function projection to child receivers
@@ -69,16 +67,14 @@ view send st = do
 -- | Almost all components that have children
 -- | will use pattern matching to now if action
 -- | have been sent by themself or their children
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State ->
+             Eff (chan::Chan, dom::DOM, timer::Timer, trace::Trace|e) State
 foldState action state =
   case action of
     -- Component action
     Init -> return initialState
     -- Children actions
     ListAction action ->
-      -- We update substate by calling update function
-      -- of substate module
-      -- Will be changed to List.spec.render for unimofity
       state{list = _} <$> List.foldState action state.list
     NavbarAction action ->
       state{navbar = _} <$> Navbar.foldState action state.navbar
@@ -99,10 +95,16 @@ initial =
 hookFn :: forall e. Receiver Action (chan::Chan, dom::DOM, trace::Trace|e) ->
                   Eff (chan::Chan, dom::DOM, trace::Trace|e) Unit
 hookFn receiver = do
+  Breadcrumb.hookFn (receiver <<< BreadcrumbAction)
   Navbar.hookFn (receiver <<< NavbarAction)
+  List.hookFn (receiver <<< ListAction)
+  Toolbar.hookFn (receiver <<< ToolbarAction)
 
 -- | Spec 
-spec :: WidgetSpec Action State _ 
+spec :: forall e. WidgetSpec Action State (chan::Chan,
+                                           dom::DOM,
+                                           trace::Trace,
+                                           timer::Timer|e)
 spec = {
   render: view,
   initial: initial,

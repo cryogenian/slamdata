@@ -2,33 +2,44 @@
 module View.Item where
 
 import Control.Monad.Eff
-import Component
-import VirtualDOM
-import VirtualDOM.VTree
-import View.Shortcuts
-import VirtualDOM.Events
-import Data.Monoid
-import Utils
-import Signal
-import Signal.Effectful
-import Signal.Channel
-import Model (Mount(..))
+import Component (Receiver())
+import VirtualDOM.VTree (VTree(), vtext)
+import View.Shortcuts (li, a, span, div, jsVoid, i, ul)
+import VirtualDOM.Events (hook)
+import Signal.Channel (Chan())
+import Model (Mount(..), ItemLogic(..), Sort(..))
+import qualified Api.Fs as Fs
+import DOM (DOM())
 
-type Logic = {
-  resource :: Mount,
-  name :: String,
-  id :: String 
-  }
 
 type State = {
-  logic :: Logic,
+  logic :: ItemLogic,
   isSelected :: Boolean,
   isHovered :: Boolean
   }
 data Action = Init
             | Focus | Blur | Open | Activate | Unactivate
-            | Configure Logic | Trash Logic | Share Logic 
+            | Configure ItemLogic | Trash ItemLogic | Share ItemLogic
+                                              
                                                       
+
+fromMetadata :: Fs.Metadata -> State
+fromMetadata (Fs.Metadata meta) = {
+  isSelected: false,
+  isHovered: false,
+  logic: {
+    name: meta.name,
+    resource: meta.mount
+    }
+  }
+
+sort :: Sort -> State -> State -> Ordering
+sort dir a b =
+  let project = _.logic >>> _.name
+  in if project a == ".." then LT
+     else case dir of
+       Asc -> compare (project a) (project b)
+       Desc -> compare (project b) (project a)
 
 initialState :: State
 initialState = {
@@ -36,9 +47,18 @@ initialState = {
   isHovered: false,
   logic: {
     name: "",
-    id: "",
     resource: File
     }}
+
+upNavState :: State
+upNavState = {
+  isSelected: false,
+  isHovered: false,
+  logic: {
+    name: "..",
+    resource: Directory
+    }
+  }
 
 renderResourceType :: Mount -> VTree
 renderResourceType rt = 
@@ -49,7 +69,9 @@ renderResourceType rt =
     Table -> i {"className": "glyphicon glyphicon-th"}[]
     File -> i {"className": "glyphicon glyphicon-file"}[]
 
-renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
+renderMiniToolbar :: forall e.
+                     Receiver Action (chan::Chan, dom::DOM|e) -> State ->
+                     Eff (chan::Chan, dom::DOM|e) [VTree]
 renderMiniToolbar send st = do
   let basic = [
         li {} [a {"href": jsVoid,
@@ -65,15 +87,29 @@ renderMiniToolbar send st = do
                [vtext "configure"]]
   case st.logic.resource of
     Database -> return $ configure:basic
+    x | st.logic.name == ".." -> return []
     _ -> return basic
 
-view :: Receiver Action _ -> State -> Eff _ VTree
+
+open :: forall e. Receiver Action (chan::Chan,dom::DOM|e) -> State -> 
+        Eff (chan::Chan, dom::DOM|e) Unit
+open sendBack state = do 
+  route <- Router.getRoute
+  let name = state.logic.name
+      path = Router.extractPath route
+  if state.logic.resource == Directory || state.logic.resource == Database then 
+    Router.setPath (path <> name <> "/")
+    else return unit
+
+    
+view :: forall e. Receiver Action (chan::Chan, dom::DOM|e)  -> State -> 
+        Eff (dom::DOM, chan::Chan|e) VTree
 view send st = do
   toolbarItems <- renderMiniToolbar send st
   return $ div {"className": "list-group-item" <> isActive st,
                 "mouseout": hook "mouseout" $ const $ (send Blur),
                 "mouseover": hook "mouseover" (const $ send Focus),
-                "dblclick": hook "dblclick" (const $ send Open),
+                "dblclick": hook "dblclick" (const $ open send st),
                 "click": hook "click" (const $ send Activate)
                 } [
     div {"className": "row"} [
@@ -98,23 +134,14 @@ view send st = do
         hideBlured st = if st.isHovered || st.isSelected then
                           ""
                           else " hidden"
-foldState :: Action -> State -> Eff _ State
-foldState Focus state = do
-  return state{isHovered = true}
-foldState Blur state = do
-  return state{isHovered = false}
-foldState Activate state = do
-  return state{isSelected = true}
-foldState Unactivate state = do
-  return state{isSelected = false}
-foldState Open state = do
-  return state
-foldState Init state = do
-  return state
-foldState (Share l) state = do
-  return state
-foldState (Configure l) state = do
-  return state
-foldState (Trash l) state = do
-  return state
+foldState :: forall e. Action -> State -> Eff e State
+foldState action state =
+  case action of
+    Focus -> return state{isHovered = true}
+    Blur -> return state{isHovered = false}
+    Activate -> return state{isSelected = true}
+    Unactivate -> return state{isSelected = false}
+    Open -> return state
+    Init -> return state
+    _ -> return state
 

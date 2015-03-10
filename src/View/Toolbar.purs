@@ -1,27 +1,35 @@
 -- | Mostly produce messages which must be consumed by external
 -- | i.e. upload file, or call Api
-module View.Toolbar where
+module View.Toolbar (
+  view,
+  foldState,
+  hookFn,
+  Action(..),
+  State(..),
+  initialState) where
 
-import Signal
-import Signal.Channel
-import Signal.Effectful
-import VirtualDOM
-import VirtualDOM.VTree
 import Control.Monad.Eff
-import View.Shortcuts
+import Data.Maybe
+import DOM (DOM())
+import Debug.Trace (Trace())
+import Signal.Channel (Chan())
+import VirtualDOM.VTree (VTree(), vtext)
+import View.Shortcuts (div, a, ul, li, jsVoid, i)
 import VirtualDOM.Events (hook)
-
-import Control.Reactive.File
-import Control.Reactive.Event
-import Utils
-import Component
-import Model (Sort(..))
+import Utils (log)
+import Control.Reactive.File (uploader, File(), name, file2blob)
+import Control.Reactive.Event (Event(), detail)
+import Component (Receiver())
+import Model (Mount(), Sort(..), sortNot)
 import qualified Data.DOM.Simple.Ajax as A
 import qualified Config as Config
+import qualified Router as Router
+import qualified Api.Fs as Fs
 
 
 -- | Output messages
-data Action = Init | Sorting
+data Action = Init
+            | Sorting Sort
             | UploadFile 
             | MountDB | CreateNotebook | CreateFolder
 
@@ -34,27 +42,43 @@ initialState = {
   sort: Asc
   }
 
-view :: Receiver Action _ -> State -> Eff _ VTree
+sortHandler :: forall e. Receiver Action (dom::DOM, chan::Chan|e) -> State -> 
+               Eff (dom::DOM, chan::Chan|e) Unit
+sortHandler sendBack st = do
+  let newSort = sortNot st.sort
+  Router.setSort newSort
+  sendBack (Sorting newSort)
+
+
+onFileChanged :: forall e. Receiver Action (dom::DOM, chan::Chan|e) -> 
+                 Event -> Eff (dom::DOM, chan::Chan|e) Unit
+onFileChanged sendBack event =  do
+  det <- detail event :: Eff _ {file :: File}
+  req <- A.makeXMLHttpRequest
+  let action = do
+        state <- A.readyState req
+        case state of
+          A.Done -> do
+            sendBack UploadFile
+          _ -> return unit
+  A.onReadyStateChange action req
+  A.open A.POST Config.uploadUrl req
+  n <- name det.file
+  A.send (A.BlobData <<< file2blob $ det.file) req
+
+
+onFolderCreate :: forall e. Receiver Action e -> Event -> Eff e Unit
+onFolderCreate sendBack event = do
+  return unit
+                                                                     
+
+view :: forall e. Receiver Action (chan::Chan, dom::DOM|e) -> State ->
+        Eff (chan::Chan, dom::DOM|e) VTree
 view send st = do
-  let onFileChanged ev = do
-        log "TROLOLO"
-        det <- detail ev :: Eff _ {file :: File}
-        req <- A.makeXMLHttpRequest
-        let action = do
-              state <- A.readyState req
-              case state of
-                A.Done -> do
-                  send UploadFile
-                _ -> return unit
-        A.onReadyStateChange action req
-        A.open A.POST Config.uploadUrl req
-        n <- name det.file
-        A.send (A.BlobData <<< file2blob $ det.file) req
-          
   return $ div {"className": "row"} [
     div {"className": "col-sm-4"} [
        a {"href": jsVoid,
-          "click": hook "click" $ const (send Sorting) } [
+          "click": hook "click" $ const (sortHandler send st) } [
           vtext "Name",
           i {"className": chevronClass st, "style": {"margin-left": "10px"}} []
           ]
@@ -63,12 +87,12 @@ view send st = do
       ul {"className": "list-inline pull-right"} [
          li {} [uploader "a"
                   {"href": jsVoid,
-                   "filechanged": hook "filechanged" onFileChanged,
+                   "filechanged": hook "filechanged" (onFileChanged send),
                    "click": hook "click" $ const (send UploadFile),
                    "runUpload": "click"} [vtext "File"]],
          
          li {} [a {"href": jsVoid,
-                   "click": hook "click" $ const $  send CreateFolder}
+                   "click": hook "click" $ (onFolderCreate send)}
                 [vtext "Folder"]],
          li {} [a {"href": jsVoid,
                    "click": hook "click" $ const $ send MountDB} [vtext "Mount"]],
@@ -78,21 +102,16 @@ view send st = do
          ]
       ]
     ]
-    where chevronClass {sort: Asc} = "glyphicon glyphicon-chevron-up"
-          chevronClass {sort: Desc} = "glyphicon glyphicon-chevron-down"
+    where chevronClass {sort: Asc} = "glyphicon glyphicon-chevron-down"
+          chevronClass {sort: Desc} = "glyphicon glyphicon-chevron-up"
 
 
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff (trace::Trace|e) State
 foldState action state@{sort: sort} =
   case action of
-    -- This is inner messages
     Init -> return state
-    Sorting ->
-      let newSort = case state.sort of
-            Asc -> Desc
-            Desc -> Asc
-      in return state{sort = newSort}
-    -- These messages will call external services (after services will be ready)
+    Sorting sort ->
+      return state{sort = sort}
     UploadFile -> do
       log "uploading file signal"
       return state
@@ -106,5 +125,11 @@ foldState action state@{sort: sort} =
       log "creating folder"
       return state
 
+hookFn :: forall e. Receiver Action (chan::Chan, dom::DOM|e) -> 
+          Eff (dom::DOM, chan::Chan|e) Unit
+hookFn sendBack = do
+  Hash.changed $ do
+    route <- Router.getRoute
+    sendBack (Sorting route.sort)
 
 

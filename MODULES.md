@@ -96,6 +96,27 @@ dataUrl :: String
 ```
 
 
+#### `searchTimeout`
+
+``` purescript
+searchTimeout :: Number
+```
+
+
+#### `slamDataHome`
+
+``` purescript
+slamDataHome :: String
+```
+
+
+#### `userEnabled`
+
+``` purescript
+userEnabled :: Boolean
+```
+
+
 
 ## Module Hash
 
@@ -138,7 +159,7 @@ changed :: forall e. Eff e Unit -> Eff e Unit
 #### `main`
 
 ``` purescript
-main :: Eff _ Unit
+main :: forall e. Eff (trace :: Trace, dom :: DOM, timer :: Timer, chan :: Chan | e) Unit
 ```
 
 
@@ -146,7 +167,6 @@ main :: Eff _ Unit
 ## Module Model
 
 
-Common stuff to use in many components
 
 #### `Sort`
 
@@ -154,6 +174,13 @@ Common stuff to use in many components
 data Sort
   = Asc 
   | Desc 
+```
+
+
+#### `sortNot`
+
+``` purescript
+sortNot :: Sort -> Sort
 ```
 
 
@@ -183,10 +210,135 @@ data Mount
 ```
 
 
+#### `mountFromString`
+
+``` purescript
+mountFromString :: String -> Either String Mount
+```
+
+
+#### `mountToString`
+
+``` purescript
+mountToString :: Mount -> String
+```
+
+
+#### `eqMount`
+
+``` purescript
+instance eqMount :: Eq Mount
+```
+
+
 #### `decodeJsonMount`
 
 ``` purescript
 instance decodeJsonMount :: DecodeJson Mount
+```
+
+
+#### `filterTerm`
+
+``` purescript
+filterTerm :: SearchQuery -> (SearchTerm -> Boolean) -> [SearchTerm]
+```
+
+
+#### `extractSimpleTerm`
+
+``` purescript
+extractSimpleTerm :: SearchTerm -> SearchTermSimple
+```
+
+
+#### `getPathTerms`
+
+``` purescript
+getPathTerms :: SearchQuery -> [SearchTerm]
+```
+
+
+#### `getPathTerm`
+
+``` purescript
+getPathTerm :: SearchQuery -> Maybe SearchTerm
+```
+
+
+#### `getNotPathTerms`
+
+``` purescript
+getNotPathTerms :: SearchQuery -> [SearchTerm]
+```
+
+
+#### `ItemLogic`
+
+``` purescript
+type ItemLogic = { name :: String, resource :: Mount }
+```
+
+
+#### `queryToTerms`
+
+``` purescript
+queryToTerms :: SearchQuery -> [SearchTerm]
+```
+
+#### `conformQuery`
+
+``` purescript
+conformQuery :: SearchQuery -> ItemLogic -> Boolean
+```
+
+
+#### `conformAnd`
+
+``` purescript
+conformAnd :: ItemLogic -> [SearchTerm] -> Boolean
+```
+
+
+#### `conformTerm`
+
+``` purescript
+conformTerm :: ItemLogic -> SearchTerm -> Boolean
+```
+
+
+#### `conformT`
+
+``` purescript
+conformT :: ItemLogic -> SearchTermSimple -> Boolean
+```
+
+
+#### `overOr`
+
+``` purescript
+overOr :: ItemLogic -> Predicate -> Boolean
+```
+
+
+#### `overType`
+
+``` purescript
+overType :: ItemLogic -> Predicate -> Boolean
+```
+
+
+#### `overName`
+
+``` purescript
+overName :: ItemLogic -> Predicate -> Boolean
+```
+
+
+#### `check`
+
+``` purescript
+check :: Predicate -> String -> Boolean
 ```
 
 
@@ -202,7 +354,6 @@ Router component. It works with only one route aggregate.
 type State = { search :: String, sort :: Sort }
 ```
 
-state of routing is sort direction and search string
 
 #### `toHash`
 
@@ -210,7 +361,6 @@ state of routing is sort direction and search string
 toHash :: forall o. { search :: String, sort :: Sort | o } -> String
 ```
 
-Make hash
 
 #### `extractSort`
 
@@ -218,7 +368,6 @@ Make hash
 extractSort :: String -> Maybe Sort
 ```
 
-Get sort from hash
 
 #### `extractSearch`
 
@@ -226,7 +375,6 @@ Get sort from hash
 extractSearch :: String -> String
 ```
 
-Get search from hash
 
 #### `fromHash`
 
@@ -234,22 +382,39 @@ Get search from hash
 fromHash :: String -> { search :: String, sort :: Sort }
 ```
 
-Make state without hash-component from hash-string
 
 #### `setSearch`
 
 ``` purescript
-setSearch :: String -> Eff _ Unit
+setSearch :: forall e. String -> Eff (dom :: DOM | e) Unit
 ```
 
-shortcut for setting search string
-I think, that after some other services will be
-developed pattern will arise
+
+#### `setSort`
+
+``` purescript
+setSort :: forall e. Sort -> Eff (dom :: DOM | e) Unit
+```
+
 
 #### `getRoute`
 
 ``` purescript
 getRoute :: forall e. Eff e State
+```
+
+
+#### `extractPath`
+
+``` purescript
+extractPath :: State -> String
+```
+
+
+#### `setPath`
+
+``` purescript
+setPath :: forall e. String -> Eff (dom :: DOM | e) Unit
 ```
 
 
@@ -271,7 +436,7 @@ then add Show instances
 #### `onLoad`
 
 ``` purescript
-onLoad :: Eff _ Unit -> Eff _ Unit
+onLoad :: forall e. Eff (dom :: DOM | e) Unit -> Eff (dom :: DOM | e) Unit
 ```
 
 Ok, I were was wrong, it's simplier to define onload
@@ -322,7 +487,6 @@ This function is needed to convert VTree -> Node -> HTMLElement
 ## Module View
 
 
-Application entry point
 
 #### `State`
 
@@ -348,7 +512,7 @@ Action is sum of children actions
 #### `spec`
 
 ``` purescript
-spec :: WidgetSpec Action State _
+spec :: forall e. WidgetSpec Action State (timer :: Timer, trace :: Trace, dom :: DOM, chan :: Chan | e)
 ```
 
 Spec 
@@ -357,8 +521,6 @@ Spec
 ## Module XHR
 
 
-Low level service for managing xhr calls
-Probably will be removed after moving to purescript-aff
 
 #### `Input`
 
@@ -377,7 +539,7 @@ type Output = { content :: String }
 #### `run`
 
 ``` purescript
-run :: forall a. Receiver Output _ -> Input a -> Eff _ Unit
+run :: forall a e. Receiver Output (dom :: DOM | e) -> Input a -> Eff (dom :: DOM | e) Unit
 ```
 
 
@@ -391,7 +553,7 @@ Should be rewritten with purescript-aff
 
 ``` purescript
 newtype Metadata
-  = Metadata { mount :: Mount, name :: String }
+  = Metadata { mount :: Model.Mount, name :: String }
 ```
 
 #### `MetadataResponse`
@@ -419,35 +581,35 @@ instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse
 #### `metadata`
 
 ``` purescript
-metadata :: forall e. String -> ([Metadata] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+metadata :: forall e. String -> ([Metadata] -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `get`
 
 ``` purescript
-get :: forall e. String -> Maybe Number -> Maybe Number -> ([Json] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+get :: forall e. String -> Maybe Number -> Maybe Number -> ([Json] -> Eff (dom :: DOM) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `post`
 
 ``` purescript
-post :: forall e. String -> Json -> ([Json] -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+post :: forall e. String -> Json -> ([Json] -> Eff (dom :: DOM) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `put`
 
 ``` purescript
-put :: forall e. String -> Json -> (Boolean -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+put :: forall e. String -> Json -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
 #### `move`
 
 ``` purescript
-move :: forall e. String -> String -> (Boolean -> Eff _ Unit) -> Eff (dom :: DOM | e) Unit
+move :: forall e. String -> String -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
 ```
 
 
@@ -474,9 +636,7 @@ This component will not be rendered alone, so, it has not a spec
 ``` purescript
 data Action
   = Init 
-  | Clicked 
   | Changed State
-  | Ajax XHR.Output
 ```
 
 
@@ -501,21 +661,14 @@ viewIcon :: State -> VTree
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom :: DOM | e) -> State -> Eff (dom :: DOM | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
-```
-
-
-#### `hookFn`
-
-``` purescript
-hookFn :: forall e. Receiver Action (trace :: Trace, dom :: DOM, chan :: Chan | e) -> Eff (trace :: Trace, dom :: DOM, chan :: Chan | e) Unit
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 
@@ -531,10 +684,9 @@ and <code>State</code>.
 #### `Link`
 
 ``` purescript
-type Link = { name :: String, href :: String }
+type Link = { name :: String, link :: String }
 ```
 
-Link that will be passed to search query in router
 
 #### `Output`
 
@@ -542,8 +694,6 @@ Link that will be passed to search query in router
 type Output = { links :: [Link] }
 ```
 
-Output signals: init breadcrumbs, set breadcrumbs links to
-signal content
 
 #### `emptyOut`
 
@@ -557,34 +707,44 @@ emptyOut :: Output
 ``` purescript
 data Input
   = Init 
-  | GoTo Link
+  | Update [Link]
 ```
 
-Input signal: go to search location specified in link
+
+#### `goto`
+
+``` purescript
+goto :: forall e. Link -> Eff (dom :: DOM | e) Unit
+```
+
 
 #### `renderLink`
 
 ``` purescript
-renderLink :: Receiver Input _ -> Link -> VTree
+renderLink :: forall e. Receiver Input e -> Link -> VTree
 ```
 
 
 #### `render`
 
 ``` purescript
-render :: Receiver Input _ -> Output -> Eff _ VTree
+render :: forall e. Receiver Input (chan :: Chan, dom :: DOM | e) -> Output -> Eff (chan :: Chan, dom :: DOM | e) VTree
 ```
 
-Renders breadcrumb and send <code>GoTo</code> message
-if clicked
 
 #### `run`
 
 ``` purescript
-run :: Input -> Output -> Eff _ Output
+run :: forall e. Input -> Output -> Eff e Output
 ```
 
-Transforming input signal to output signal 
+
+#### `hookFn`
+
+``` purescript
+hookFn :: forall e. Receiver Input (chan :: Chan | e) -> Eff (chan :: Chan | e) Unit
+```
+
 
 
 ## Module View.Item
@@ -592,17 +752,10 @@ Transforming input signal to output signal
 
 This component won't be rendered alone, it hasn't spec
 
-#### `Logic`
-
-``` purescript
-type Logic = { id :: String, name :: String, resource :: Mount }
-```
-
-
 #### `State`
 
 ``` purescript
-type State = { isHovered :: Boolean, isSelected :: Boolean, logic :: Logic }
+type State = { isHovered :: Boolean, isSelected :: Boolean, logic :: ItemLogic }
 ```
 
 
@@ -616,9 +769,23 @@ data Action
   | Open 
   | Activate 
   | Unactivate 
-  | Configure Logic
-  | Trash Logic
-  | Share Logic
+  | Configure ItemLogic
+  | Trash ItemLogic
+  | Share ItemLogic
+```
+
+
+#### `fromMetadata`
+
+``` purescript
+fromMetadata :: Fs.Metadata -> State
+```
+
+
+#### `sort`
+
+``` purescript
+sort :: Sort -> State -> State -> Ordering
 ```
 
 
@@ -626,6 +793,13 @@ data Action
 
 ``` purescript
 initialState :: State
+```
+
+
+#### `upNavState`
+
+``` purescript
+upNavState :: State
 ```
 
 
@@ -639,21 +813,28 @@ renderResourceType :: Mount -> VTree
 #### `renderMiniToolbar`
 
 ``` purescript
-renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
+renderMiniToolbar :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) [VTree]
+```
+
+
+#### `open`
+
+``` purescript
+open :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) Unit
 ```
 
 
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 
@@ -666,7 +847,7 @@ This component has no spec, it won't be rendered alone
 #### `State`
 
 ``` purescript
-type State = { items :: [Item.State] }
+type State = { items :: [Item.State], sort :: Sort }
 ```
 
 Its state has a list of children
@@ -684,7 +865,9 @@ initialState :: State
 data Action
   = Init 
   | ItemAction Number Item.Action
+  | UpNav Item.Action
   | SortAction Sort
+  | Update [Item.State]
 ```
 
 External messages will be marked with index of child
@@ -693,15 +876,21 @@ that send it
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
 ```
 
-Rendering of list
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
+```
+
+
+#### `hookFn`
+
+``` purescript
+hookFn :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) Unit
 ```
 
 
@@ -709,13 +898,11 @@ foldState :: Action -> State -> Eff _ State
 ## Module View.Logo
 
 
-This component is not component :)
-It is just two function and even have not action and state
 
 #### `view`
 
 ``` purescript
-view :: forall a b. a -> b -> Eff _ VTree
+view :: forall a b e. a -> b -> Eff e VTree
 ```
 
 send and st will be removed
@@ -755,7 +942,7 @@ Sum of children actions
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom :: DOM, timer :: Timer, chan :: Chan | e) -> State -> Eff (dom :: DOM, timer :: Timer, chan :: Chan | e) VTree
 ```
 
 Render
@@ -763,7 +950,7 @@ Render
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 Update state
@@ -771,10 +958,10 @@ Update state
 #### `hookFn`
 
 ``` purescript
-hookFn :: forall e. Receiver Action _ -> Eff _ Unit
+hookFn :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> Eff (chan :: Chan, dom :: DOM | e) Unit
 ```
 
-listen route changes, called after render
+listen route changes, called after inserting in DOM
 
 
 ## Module View.Search
@@ -787,9 +974,10 @@ Search component will not be rendered alone
 ``` purescript
 data Action
   = Init 
-  | Change String
+  | Change Timeout String
   | RouteChanged String
-  | Submit 
+  | Disable 
+  | Enable 
 ```
 
 Route change is external message
@@ -808,17 +996,31 @@ initialState :: State
 ```
 
 
+#### `changeHandler`
+
+``` purescript
+changeHandler :: forall e. Receiver Action (timer :: Timer, dom :: DOM, chan :: Chan | e) -> State -> Event -> Eff (timer :: Timer, dom :: DOM, chan :: Chan | e) Unit
+```
+
+
+#### `submitHandler`
+
+``` purescript
+submitHandler :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) Unit
+```
+
+
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (timer :: Timer, dom :: DOM, chan :: Chan | e) -> State -> Eff (timer :: Timer, dom :: DOM, chan :: Chan | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 Update searcher state
@@ -933,7 +1135,7 @@ i.e. upload file, or call Api
 ``` purescript
 data Action
   = Init 
-  | Sorting 
+  | Sorting Sort
   | UploadFile 
   | MountDB 
   | CreateNotebook 
@@ -953,14 +1155,21 @@ sort direction in list (used in chevron direction right now only)
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff (trace :: Trace | e) State
+```
+
+
+#### `hookFn`
+
+``` purescript
+hookFn :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> Eff (chan :: Chan, dom :: DOM | e) Unit
 ```
 
 
@@ -989,14 +1198,14 @@ newtype State
 #### `view`
 
 ``` purescript
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
 ```
 
 
 #### `foldState`
 
 ``` purescript
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 ```
 
 
