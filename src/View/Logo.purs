@@ -1,14 +1,12 @@
 module View.Logo where
 
-import View.Shortcuts
-import Signal
-import VirtualDOM
-import VirtualDOM.VTree
 import Control.Monad.Eff
-import Config
+import View.Shortcuts (a)
+import VirtualDOM.VTree (VTree(), vtext)
+import qualified Config as Config
 
 -- | send and st will be removed
-view :: forall a b. a -> b -> Eff _ VTree
+view :: forall a b e. a -> b -> Eff e VTree
 view send st = return $ 
   a {"className": "navbar-brand",
      "href": Config.slamDataHome} [

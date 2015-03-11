@@ -2,17 +2,20 @@
 module Utils where
 
 import Control.Monad.Eff
-import DOM
-import Data.DOM.Simple.Types
-import Data.DOM.Simple.Document
-import Data.DOM.Simple.Window
-import Data.DOM.Simple.Element
-import Data.DOM.Simple.Events
 import Data.Maybe
-import Debug.Trace
+import Debug.Trace 
 import Debug.Foreign
 import Control.Apply
 import Data.Function
+
+import DOM (DOM(), Node())
+import Data.DOM.Simple.Types (HTMLElement(), DOMEvent())
+import Data.DOM.Simple.Document (body)
+import Data.DOM.Simple.Window (globalWindow, document)
+import Data.DOM.Simple.Events (addUIEventListener, UIEventType(..))
+
+
+
 
 -- | It's simpler for me to use foreign logging
 -- | then add Show instances
@@ -21,7 +24,7 @@ log a = fprint a *> pure unit
 
 -- | Ok, I were was wrong, it's simplier to define onload
 -- | by simple-dom
-onLoad :: Eff _ Unit -> Eff _ Unit
+onLoad :: forall e. Eff (dom::DOM|e) Unit -> Eff (dom::DOM|e) Unit
 onLoad action = do
   let handler :: DOMEvent -> _
       handler _ = action

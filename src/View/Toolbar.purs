@@ -1,27 +1,31 @@
 -- | Mostly produce messages which must be consumed by external
 -- | i.e. upload file, or call Api
-module View.Toolbar where
+module View.Toolbar (
+  view,
+  foldState,
+  hookFn,
+  Action(..),
+  State(..),
+  initialState) where
 
-import Signal
-import Signal.Channel
-import Signal.Effectful
-import VirtualDOM
-import VirtualDOM.VTree
 import Control.Monad.Eff
-import View.Shortcuts
-import VirtualDOM.Events (hook)
-
 import Data.Maybe
-import Control.Reactive.File
-import Control.Reactive.Event
-import Utils
-import Component
-import Model 
+import DOM (DOM())
+import Debug.Trace (Trace())
+import Signal.Channel (Chan())
+import VirtualDOM.VTree (VTree(), vtext)
+import View.Shortcuts (div, a, ul, li, jsVoid, i)
+import VirtualDOM.Events (hook)
+import Utils (log)
+import Control.Reactive.File (uploader, File(), name, file2blob)
+import Control.Reactive.Event (Event(), detail)
+import Component (Receiver())
+import Model (Mount(), Sort(..), sortNot)
 import qualified Data.DOM.Simple.Ajax as A
-import Config
-import Router (setSort)
+import qualified Config as Config
+import qualified Router as Router
 import qualified Api.Fs as Fs
-import Data.Argonaut.Core
+
 
 -- | Output messages
 data Action = Init
@@ -38,14 +42,16 @@ initialState = {
   sort: Asc
   }
 
-sortHandler :: Receiver Action _ -> State -> Eff _ Unit
+sortHandler :: forall e. Receiver Action (dom::DOM, chan::Chan|e) -> State -> 
+               Eff (dom::DOM, chan::Chan|e) Unit
 sortHandler sendBack st = do
   let newSort = sortNot st.sort
   Router.setSort newSort
   sendBack (Sorting newSort)
 
 
-onFileChanged :: Receiver Action _ -> Event -> Eff _ Unit
+onFileChanged :: forall e. Receiver Action (dom::DOM, chan::Chan|e) -> 
+                 Event -> Eff (dom::DOM, chan::Chan|e) Unit
 onFileChanged sendBack event =  do
   det <- detail event :: Eff _ {file :: File}
   req <- A.makeXMLHttpRequest
@@ -61,16 +67,13 @@ onFileChanged sendBack event =  do
   A.send (A.BlobData <<< file2blob $ det.file) req
 
 
-foreign import unsafeJson """
-function unsafeJson(a) {return JSON.stringify(a);}
-""" :: forall a. a -> Json
-
-onFolderCreate :: Receiver Action _ -> Event -> Eff _ Unit
+onFolderCreate :: forall e. Receiver Action e -> Event -> Eff e Unit
 onFolderCreate sendBack event = do
-  Fs.post "foo/bar/baz" (unsafeJson {"type": "folder", "name": "foobar"}) $ log
+  return unit
                                                                      
 
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (chan::Chan, dom::DOM|e) -> State ->
+        Eff (chan::Chan, dom::DOM|e) VTree
 view send st = do
   return $ div {"className": "row"} [
     div {"className": "col-sm-4"} [
@@ -103,13 +106,12 @@ view send st = do
           chevronClass {sort: Desc} = "glyphicon glyphicon-chevron-up"
 
 
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff (trace::Trace|e) State
 foldState action state@{sort: sort} =
   case action of
     Init -> return state
     Sorting sort ->
       return state{sort = sort}
-    -- These messages will call external services (after services will be ready)
     UploadFile -> do
       log "uploading file signal"
       return state
@@ -123,7 +125,8 @@ foldState action state@{sort: sort} =
       log "creating folder"
       return state
 
-hookFn :: Receiver Action _ -> Eff _ Unit
+hookFn :: forall e. Receiver Action (chan::Chan, dom::DOM|e) -> 
+          Eff (dom::DOM, chan::Chan|e) Unit
 hookFn sendBack = do
   Hash.changed $ do
     route <- Router.getRoute

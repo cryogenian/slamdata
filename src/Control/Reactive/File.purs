@@ -6,21 +6,19 @@ module Control.Reactive.File (
   str2blob, onload, result, files, uploader
   ) where
 
-import VirtualDOM.VTree
-import VirtualDOM
-import Utils
-import VirtualDOM.Events
+import VirtualDOM.VTree (VTree(), VHook(), vnode)
+import Utils (log, parent)
+import VirtualDOM.Events (hook, composeHooks)
 import Control.Apply
 import Control.Monad.Eff
-import Control.Reactive.Event
-import Data.DOM.Simple.Element
-import Data.DOM.Simple.Types
-import Data.DOM.Simple.Ajax
-import DOM
+import Control.Reactive.Event (Event(), target, raiseEvent)
+import Data.DOM.Simple.Element (querySelector)
+import Data.DOM.Simple.Types (HTMLElement())
+import Data.DOM.Simple.Ajax (Blob(), FormData())
+import DOM (DOM())
 import Data.Maybe
 import Data.Array (head)
 import Data.Function
-import Utils 
 
 
 -- | prependFileUploader "li" {} [vtext "foo"] = 
@@ -131,7 +129,7 @@ function files(el) {
 
 
 -- Internal 
-proxy :: Event -> Eff _ Unit
+proxy :: forall e. Event -> Eff (dom::DOM|e) Unit
 proxy evt = do
   mbInput <- target evt >>= querySelector "input"
   case mbInput of
@@ -139,7 +137,7 @@ proxy evt = do
     Just input -> void $ raiseEvent "click" input {}
 
 -- Internal
-act :: Event -> Eff _ Unit
+act :: forall e. Event -> Eff (dom::DOM|e) Unit
 act event = do
   el <- target event
   fileList <- files el

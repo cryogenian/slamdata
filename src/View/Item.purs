@@ -2,18 +2,14 @@
 module View.Item where
 
 import Control.Monad.Eff
-import Component
-import VirtualDOM
-import VirtualDOM.VTree
-import View.Shortcuts
-import VirtualDOM.Events
-import Data.Monoid
-import Utils
-import Signal
-import Signal.Effectful
-import Signal.Channel
-import Model 
+import Component (Receiver())
+import VirtualDOM.VTree (VTree(), vtext)
+import View.Shortcuts (li, a, span, div, jsVoid, i, ul)
+import VirtualDOM.Events (hook)
+import Signal.Channel (Chan())
+import Model (Mount(..), ItemLogic(..), Sort(..))
 import qualified Api.Fs as Fs
+import DOM (DOM())
 
 
 type State = {
@@ -73,7 +69,9 @@ renderResourceType rt =
     Table -> i {"className": "glyphicon glyphicon-th"}[]
     File -> i {"className": "glyphicon glyphicon-file"}[]
 
-renderMiniToolbar :: Receiver Action _ -> State -> Eff _ [VTree]
+renderMiniToolbar :: forall e.
+                     Receiver Action (chan::Chan, dom::DOM|e) -> State ->
+                     Eff (chan::Chan, dom::DOM|e) [VTree]
 renderMiniToolbar send st = do
   let basic = [
         li {} [a {"href": jsVoid,
@@ -93,7 +91,8 @@ renderMiniToolbar send st = do
     _ -> return basic
 
 
-open :: Receiver Action _ -> State -> Eff _ Unit
+open :: forall e. Receiver Action (chan::Chan,dom::DOM|e) -> State -> 
+        Eff (chan::Chan, dom::DOM|e) Unit
 open sendBack state = do 
   route <- Router.getRoute
   let name = state.logic.name
@@ -103,7 +102,8 @@ open sendBack state = do
     else return unit
 
     
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (chan::Chan, dom::DOM|e)  -> State -> 
+        Eff (dom::DOM, chan::Chan|e) VTree
 view send st = do
   toolbarItems <- renderMiniToolbar send st
   return $ div {"className": "list-group-item" <> isActive st,
@@ -134,7 +134,7 @@ view send st = do
         hideBlured st = if st.isHovered || st.isSelected then
                           ""
                           else " hidden"
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 foldState action state =
   case action of
     Focus -> return state{isHovered = true}

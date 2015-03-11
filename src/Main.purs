@@ -1,23 +1,40 @@
 module Main where
 
 import Control.Monad.Eff
-import Data.Maybe
-import Signal
 
-import Utils
-import Halogen
-import Halide (ui)
+import Data.Tuple
 
-main :: Eff _ Unit
+import Halogen (runUIEff, Handler(..))
+import Halide (ui, Input(..), Request(..))
+import Data.Void
+import Signal.Channel (Chan())
+import DOM (DOM())
+import Debug.Trace (Trace())
+import Utils (bodyNode, onLoad, convertToElement, append, log)
+import qualified Component as Component
+import qualified View as View
+import Control.Timer (interval, timeout, Timer())
+import Debug.Trace
+
+handler :: forall e. Handler Request Input (trace::Trace, timer::Timer|e)
+handler r k =
+  case r of
+    Up -> do
+      log "UP"
+      void $ timeout 5000 $ do
+        log "!!!!!"
+        k Inc
+        k Inc
+        k Inc
+        k Inc
+
 main = onLoad $ void $ do
-  view <- convertToElement <$> runUI ui
-  -- construct
---  view <- Component.define View.spec
-  -- get node to insert
+  Tuple node driver <- runUIEff ui absurd handler
   body <- bodyNode
-  -- start
-  append body view
---  view.insert body
+  append body (convertToElement node)
+  void $ interval 1000 $ do
+    log "TICK"
+    driver Inc
 
 
 

@@ -1,23 +1,20 @@
 -- | This module will be removed, used only for layout
 module View.User where
 
-import DOM
-import View.Shortcuts
-import Utils
-import Signal
-import Signal.Channel
-import Signal.Effectful
-import VirtualDOM
-import VirtualDOM.VTree
 import Control.Monad.Eff
-import VirtualDOM.Events
-import Component
+import View.Shortcuts (li, ul, a, jsVoid, i)
+import Signal.Channel (Chan())
+import VirtualDOM.VTree (VTree(), vtext)
+import VirtualDOM.Events (hook)
+import Component (Receiver())
+import DOM (DOM())
 
 data Action = Init
 newtype State = State String
 initialState = State "Maxim Zimaliev"
 
-view :: Receiver Action _ -> State -> Eff _ VTree
+view :: forall e. Receiver Action (dom::DOM, chan::Chan|e) -> State -> 
+        Eff (dom::DOM, chan::Chan|e) VTree
 view send (State st) = do
   return $ ul {"className": "nav navbar-nav navbar-right"} [
     li {} [
@@ -28,5 +25,5 @@ view send (State st) = do
        ]
     ]
 
-foldState :: Action -> State -> Eff _ State
+foldState :: forall e. Action -> State -> Eff e State
 foldState _ state = return state

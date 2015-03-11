@@ -2,15 +2,8 @@
 module Hash (setHash, getHash, changed, Hash(..)) where
 
 import Control.Monad.Eff
-import Signal
-import Signal.Channel
-import Signal.Effectful
-import View.Shortcuts
-import Data.String.Regex
-import Utils
-import Component
-import Control.Monad.Eff.Ref
-
+import Data.String.Regex (replace, regex, noFlags)
+import Utils (hashChanged, parent)
 
 type Hash = String
 type State = String

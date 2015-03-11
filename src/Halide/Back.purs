@@ -11,7 +11,7 @@ type State = Mount
 
 data Input = Update State | GoHome
 
-viewIcon :: State -> HTML Input
+--viewIcon :: State -> HTML Input
 viewIcon state =
   case state of
     File -> icon "glyphicon-file" 
@@ -22,7 +22,7 @@ viewIcon state =
   where icon additionalClass =
           i (classes [className "glyphicon", className additionalClass]) []
 
-view :: State -> HTML Input
+--view :: State -> HTML Input
 view state =
   a (class_ (className "navbar-brand") <>
      href "javascript:void(0);" <>
