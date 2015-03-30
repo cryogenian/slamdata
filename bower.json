@@ -33,7 +33,7 @@
     "purescript-random": "~0.1.2",
     "purescript-strongcheck": "~0.8.0",
     "purescript-argonaut": "~0.4.0",
-    "purescript-search": "https://github.com/cryogenian/purescript-search.git",
+    "purescript-search": "b12bf9a7f4ed0ccd7cf26ae6f6aa7da04bae0023",
     "purescript-minimatch": "~0.1.0",
     "purescript-simple-dom": "2edd5c04b5cd02e097cb85e99df6e38a02a6a165"
   }
