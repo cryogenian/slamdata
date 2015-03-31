@@ -1,53 +1,32 @@
--- | Should be rewritten with purescript-aff
-module Api.Fs where
+-- | This module will be reworked after `affjax` is ready.
+module Api.Fs (
+  metadata,
+  makeNotebook,
+  deleteItem,
+  makeFile,
+  move
+  ) where
 
 import Control.Monad.Eff
-import Data.Either 
-import Data.Maybe
-import Data.Foldable (foldl)
-
 import DOM (DOM())
+import Data.Foreign
+import Data.Foreign.Class
+import Data.Maybe
+import Data.Foldable
+import Data.Traversable 
+import Data.Either
+import Data.Function
+
+
 import qualified Data.DOM.Simple.Ajax as A
-import Data.Argonaut.Core (Json())
-import Data.Argonaut.Parser (jsonParser)
-import Data.Argonaut.Decode (decodeJson, DecodeJson) 
-import Data.Argonaut.Combinators ((.?))
+import qualified Data.Array as Ar
+import qualified Data.String as Str
+import qualified Model as M
 
-import qualified Model as Model
-import qualified Config as Config
-
--- Since we know exact form of metadata
--- we can decode it from json
-newtype Metadata = Metadata {
-  name :: String,
-  mount :: Model.Mount
-  }
-
-newtype MetadataResponse = MetadataResponse {
-  children :: [Metadata]
-  }
-
-instance decodeJsonMetadata :: DecodeJson Metadata where
-  decodeJson json = do
-    obj <- decodeJson json
-    name <- obj .? "name"
-    mount <- obj .? "type"
-    return $ Metadata {
-      name: name,
-      mount: mount
-      }
-
-instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse where
-  decodeJson json = do
-    obj <- decodeJson json
-    children <- obj .? "children"
-    return $ MetadataResponse {
-      children: children
-      }
-
-metadata :: forall e. String -> ([Metadata] -> Eff (dom::DOM|e) Unit) -> 
+-- gets raw metadata
+metadataF :: forall e. String -> (Foreign -> Eff (dom::DOM|e) Unit) -> 
             Eff (dom::DOM|e) Unit 
-metadata path callback = do
+metadataF path callback = do
   req <- A.makeXMLHttpRequest
   let action = do
         state <- A.readyState req
@@ -55,67 +34,47 @@ metadata path callback = do
           A.Done -> do
             response <- A.responseText req
             status <- A.status req
-            if status /= 200 then
-              callback []
-              else 
-              case jsonParser response >>= decodeJson of
-                Left error -> do
-                  pure unit
-                Right (MetadataResponse{children: res}) ->
-                  callback res
-          _ -> return unit
-
+            case parseJSON response of
+              Right f | status == 200 -> callback f
+              _ -> pure unit 
+          _ -> pure unit
+          
   A.onReadyStateChange action req
   A.open A.GET (Config.metadataUrl <> path) req
   A.send A.NoData req
-            
 
+-- | gets current directory children
+metadata :: forall e. String -> ([M.Item] -> Eff (dom :: DOM | e) Unit) ->
+            Eff (dom :: DOM|e) Unit 
+metadata path callback = 
+  metadataF path $ \f -> do
+    let readed = readProp "children" f >>= readArray >>= traverse M.readItem
+    either (const $ pure unit) callback readed 
+          
+          
+foreign import f2jsonImpl """
+function f2jsonImpl(f, nothing, just ) {
+  var res = JSON.stringify(f);
+  if (typeof res == 'undefined') {
+    return nothing;
+  } else if (typeof f == 'string') {
+    return just(f);
+  }
+  else {
+    return just(res)
+  }
+}
+""" :: forall a. Fn3 Foreign (Maybe a) (a -> Maybe a) (Maybe String)
 
-get :: forall e. String -> Maybe Number -> Maybe Number ->
-       ([Json] -> Eff (dom::DOM) Unit) -> Eff (dom::DOM|e) Unit 
-get path offset limit callback = do 
-  req <- A.makeXMLHttpRequest
-  let action = do
-        state <- A.readyState req
-        case state of
-          A.Done -> do
-            response <- A.responseText req
-            case (jsonParser response >>= decodeJson) of
-              Left error -> pure unit
-              Right json -> callback json
-          _ -> return unit
+-- converting js-objects to json representation
+-- if input is json-string will return it
+f2json :: Foreign -> Maybe String
+f2json f = runFn3 f2jsonImpl f Nothing Just 
 
-  A.onReadyStateChange action req
-  let off = fromMaybe "" $ (\o -> "offset=" <> o) <$> (show <$> offset)
-      lim = fromMaybe "" $ (\l -> "limit=" <> l) <$> (show <$> limit)
-      args = foldl (\a b -> a <> "&" <> b) "" [off, lim]
-      q = if args == "" then "" else "?" <> args
-      url = Config.dataUrl <> path <> q 
-  A.open A.GET (Config.dataUrl <> path) req
-  A.send A.NoData req
-
-
-post :: forall e. String -> Json -> ([Json] -> Eff (dom::DOM) Unit) ->
-        Eff (dom::DOM|e) Unit
-post path obj callback = do 
-  req <- A.makeXMLHttpRequest
-  let action = do
-        state <- A.readyState req
-        case state of
-          A.Done -> do
-            response <- A.responseText req
-            case (jsonParser response >>= decodeJson) of
-              Left error -> pure unit
-              Right jsons -> callback jsons
-
-  A.onReadyStateChange action req
-  A.open A.POST (Config.dataUrl <> path) req
-  A.send (A.JsonData obj) req 
-
-
-put :: forall e. String -> Json -> (Boolean -> Eff (dom::DOM|e) Unit) -> 
+-- | put raw data
+putF :: forall e. String -> Foreign -> (Boolean -> Eff (dom::DOM|e) Unit) -> 
        Eff (dom::DOM|e) Unit 
-put path obj callback = do 
+putF path obj callback = do 
   req <- A.makeXMLHttpRequest
   let action = do
         state <- A.readyState req
@@ -124,15 +83,40 @@ put path obj callback = do
             status <- A.status req
             callback $ status == 200
           _ -> return unit
-  A.onReadyStateChange action req
-  A.open A.PUT (Config.dataUrl <> path) req
-  A.send (A.JsonData obj) req
+  case f2json obj of
+    Nothing -> pure unit
+    Just obj -> do 
+      A.onReadyStateChange action req
+      A.open A.PUT (Config.dataUrl <> path) req
+      A.send (A.JsonData obj) req
+
+
+makeNotebook :: forall e. String -> M.Notebook ->
+                (Boolean -> Eff (dom::DOM|e) Unit) ->
+                Eff (dom::DOM|e) Unit 
+makeNotebook path notebook callback = 
+  putF path (toForeign notebook) callback
+
+
+makeFile :: forall e. String -> String ->
+            (Boolean -> Eff (dom :: DOM|e) Unit) -> 
+            Eff (dom :: DOM|e) Unit 
+makeFile path content callback = 
+  let isJson = either (const false) (const true) $ do
+        hd <- maybe (Left (JSONError "incorrect")) Right $
+              Ar.head $ Str.split "\n" content
+        parseJSON hd
+  in if isJson then do
+    putF path (toForeign content) callback
+     else
+     callback false
 
 
 move :: forall e. String -> String -> (Boolean -> Eff (dom::DOM|e) Unit) ->
         Eff (dom::DOM|e) Unit
 move src tgt callback = do 
   req <- A.makeXMLHttpRequest
+  
   let action = do
         state <- A.readyState req
         case state of 
@@ -140,7 +124,36 @@ move src tgt callback = do
             status <- A.status req
             callback $ status == 200
           _ -> return unit
+          
   A.onReadyStateChange action req
   A.open (A.HttpMethod "MOVE") (Config.dataUrl <> src) req
   A.setRequestHeader "Destination" tgt req
   A.send A.NoData req 
+
+-- | delete item by path
+delete :: forall e. String -> (Boolean -> Eff (dom :: DOM | e) Unit) ->
+           Eff (dom::DOM|e) Unit 
+delete path callback = do
+  req <- A.makeXMLHttpRequest
+  
+  let action = do
+        state <- A.readyState req
+        case state of 
+          A.Done -> do
+            status <- A.status req
+            callback $ status == 200
+          _ -> return unit
+          
+  A.onReadyStateChange action req
+  A.open (A.HttpMethod "DELETE") (Config.dataUrl <> path) req
+  A.send A.NoData req 
+
+-- | delete item
+deleteItem :: forall e. M.Item -> (Boolean -> Eff (dom :: DOM|e) Unit) ->
+              Eff (dom :: DOM|e) Unit 
+deleteItem item callback = 
+  let path = item.root <> item.name <>
+      if item.resource /= M.File && item.resource /= M.Notebook then "/"
+        else ""
+  in delete path callback
+                                                   

@@ -1,58 +1,75 @@
+-- | Input, output messages and state
 module Model where
 
+import  Control.Timer (Timeout())
 import Data.Maybe
+import Data.Foreign
+import Data.Foreign.Class
 import Data.Either
-import Data.Tuple
-import Data.Monoid.All (All(..), runAll)
-import Data.Foldable (fold)
-import Data.String (toLower, indexOf, localeCompare)
-import Data.Argonaut.Decode (decodeJson, DecodeJson)
-import Text.SlamSearch.Parser (parseSearchQuery, SearchQuery(..)) 
-import Text.SlamSearch.Parser.Terms (
-  SearchTerm(..), SearchTermSimple(..), Predicate(..), Label(..)
-  )
-import Text.SlamSearch.Parser.Values (Value(..))
-import Data.Minimatch (minimatch)
+import DOM
+import qualified Data.String.Regex as Rgx
 
+-- | Input messages 
+data Input
+  = Sorting Sort
+  | BreadcrumbUpdate [Breadcrumb]
+  | ItemsUpdate [Item]
+  | ItemHover Number Boolean
+  | ItemSelect Number Boolean
+  | ItemAdd Item
+  | SearchValidation Boolean
+  | SearchSet String
+  | SearchTimeout Timeout
+  | SearchNextValue String
+  | SetPath String
+  | Resort
+  | Remove Item
+
+-- | Request Messages 
+data Request
+  = GoToRoute String
+  | SetSort Sort
+  | SearchChange (Maybe Timeout) String
+  | Breadcrumb Breadcrumb
+  | SearchSubmit Search
+  | Open Item
+  | Delete Item
+  | Share Item
+  | Move Item
+  | Configure Item
+  | CreateNotebook State
+  | MountDatabase State
+  | CreateFolder State
+  | UploadFile Node State
+  | FileListChanged Node State
+
+-- | Sort direction
 data Sort = Asc | Desc
 
-sortNot :: Sort -> Sort
-sortNot Asc = Desc
-sortNot Desc = Asc
+-- | revese sort
+notSort :: Sort -> Sort
+notSort Asc = Desc
+notSort _ = Asc
 
-sortToString :: Sort -> String
-sortToString Asc = "asc"
-sortToString Desc = "desc"
+sort2string :: Sort -> String
+sort2string Asc = "asc"
+sort2string Desc = "desc"
 
-sortFromString :: String -> Maybe Sort
-sortFromString "asc" = Just Asc
-sortFromString "desc" = Just Desc
-sortFromString _ = Nothing
+string2sort :: String -> Maybe Sort
+string2sort "asc" = Just Asc
+string2sort "desc" = Just Desc
+string2sort _ = Nothing
 
+instance eqSort :: Eq Sort where
+  (==) Asc Asc = true
+  (==) Desc Desc = true
+  (==) _ _ = false
+  (/=) a b = not $ a == b
 
-data Mount =  File | Database | Notebook | Directory | Table 
+-- | Resource tag for item 
+data Resource = File | Database | Notebook | Directory | Table
 
-mountFromString :: String -> Either String Mount
-mountFromString str = 
-  case toLower str of
-    "file" -> return File
-    "mount" -> return Database
-    "notebook" -> return Notebook
-    "directory" -> return Directory
-    "table" -> return Table
-    _ -> Left "incorrect string in decoding Mount type"
-
-mountToString :: Mount -> String
-mountToString mount =
-  case mount of
-    File -> "file"
-    Database -> "mount"
-    Notebook -> "notebook"
-    Directory -> "directory"
-    Table -> "table"
-    
-    
-instance eqMount :: Eq Mount where
+instance eqResource :: Eq Resource where
   (==) File File = true
   (==) Database Database = true
   (==) Notebook Notebook = true
@@ -61,139 +78,182 @@ instance eqMount :: Eq Mount where
   (==) _ _ = false
   (/=) a b = not $ a == b
 
-instance decodeJsonMount :: DecodeJson Mount where
-  decodeJson json = do
-    str <- decodeJson json
-    mountFromString str
+resource2str :: Resource -> String
+resource2str r = case r of
+  File -> "file"
+  Database -> "mount"
+  Notebook -> "notebook"
+  Directory -> "directory"
+  Table -> "table" 
+  
+-- | Now only `IsForeign`. After switching to `purescript-affjax`
+-- | will be `EncodeJson`
+instance resourceIsForeign :: IsForeign Resource where
+  read f = do
+    str <- read f 
+    case str of
+      "file" -> pure File
+      "mount" -> pure Database
+      "notebook" -> pure Notebook 
+      "directory" -> pure Directory
+      "table" -> pure Table
+      _ -> Left $ TypeMismatch "resource" "string"
 
+-- | Item in list
+type Item = {
+  selected :: Boolean,
+  hovered :: Boolean,
+  name :: String,
+  resource :: Resource,
+  root :: String,
+  phantom :: Boolean
+  }
 
-filterTerm :: SearchQuery -> (SearchTerm -> Boolean) -> [SearchTerm]
-filterTerm query fn =
-  filterTerm' query []
-  where filterTerm' EmptyQuery acc = acc
-        filterTerm' (SearchAnd term query') acc
-          | fn term = filterTerm' query' (term:acc)
-          | otherwise = filterTerm' query' acc
+-- | Will be `DecodeJson` instance or `Json -> Maybe Item`
+-- | after switching to `affjax`
+readItem :: Foreign -> F Item
+readItem f = do
+  name <- readProp "name" f
+  resource <- readProp "type" f
+  pure $
+    if isNotebook name && resource == File then
+      {
+        selected: false,
+        hovered: false,
+        name: name,
+        resource: Notebook,
+        root: "",
+        phantom: false
+      }
+      else
+       {
+         selected: false,
+         hovered: false,
+         name: name,
+         resource: resource,
+         root: "",
+         phantom: false
+       }
+  where isNotebook name = name /=
+                          Rgx.replace (Rgx.regex "\\.nb$" Rgx.noFlags) "" name
 
+-- | link to upper directory
+up :: String
+up = ".."
 
-extractSimpleTerm :: SearchTerm -> SearchTermSimple
-extractSimpleTerm (IncludeTerm term) = term
-extractSimpleTerm (ExcludeTerm term) = term 
+-- | default item
+initItem :: Item
+initItem = {
+  resource: Directory,
+  hovered: false,
+  selected: false,
+  root: "",
+  name: "",
+  phantom: false
+  }
 
-getPathTerms :: SearchQuery -> [SearchTerm]
-getPathTerms query =
-  let filterFn term =
-        case extractSimpleTerm term of
-          SearchTermSimple [Common("path")] _ -> true
-          _ -> false 
-  in filterTerm query filterFn
+-- | upper directory
+upLink :: Item
+upLink = initItem{name = up}
 
-getPathTerm :: SearchQuery -> Maybe SearchTerm
-getPathTerm query =
-  let terms = getPathTerms query in
-  case terms of
-    [] -> Nothing
-    x:xs -> Just x
-            
+-- | new directory conf
+initDirectory :: Item
+initDirectory = initItem{phantom = true}
 
-getNotPathTerms :: SearchQuery -> [SearchTerm]
-getNotPathTerms query =
-  let filterFn term =
-        case extractSimpleTerm term of
-          SearchTermSimple [Common("path")] _ -> false
-          _ -> true
-  in filterTerm query filterFn
+-- | new notebook item conf
+initNotebook :: Item
+initNotebook = initItem{resource = Notebook}
 
+-- | new file item conf
+initFile :: Item
+initFile = initItem{resource = File}
 
-type ItemLogic = {
-  resource :: Mount,
+-- | sorting item list with preserving `upItem` in top
+sortItem :: Sort -> Item -> Item -> Ordering
+sortItem dir a b =
+ let project = _.name
+ in if project a == up then LT
+    else if project b == up then GT
+         else case dir of
+           Asc -> compare (project a) (project b)
+           Desc -> compare (project b) (project a)
+
+-- | Model for one breadcrumb 
+type Breadcrumb = {
+  link :: String,
   name :: String
   }
--- To slamdata/purescript-search#5 mostly and
--- probably slamdata/purescript-search#6
-queryToTerms :: SearchQuery -> [SearchTerm]
-queryToTerms query =
-  queryToTerms' query []
-  where queryToTerms' query acc =
-          case query of
-            EmptyQuery -> acc
-            SearchAnd term query' -> queryToTerms' query' (term:acc)
 
-conformQuery :: SearchQuery -> ItemLogic -> Boolean
-conformQuery query a = conformAnd a (queryToTerms query)
+rootBreadcrumb :: Breadcrumb
+rootBreadcrumb = {
+  name: "root",
+  link: "/"
+  }
 
-conformAnd :: ItemLogic -> [SearchTerm] -> Boolean
-conformAnd a terms =
-  runAll $ fold $ (All <<< conformTerm a) <$> terms 
+-- | State of search field
+type Search = {
+  valid :: Boolean,
+  value :: String,
+  -- if _value_ has been changed but path hasn't been setted
+  timeout :: Maybe Timeout,
+  -- value to set path
+  nextValue :: String
+  }
 
-conformTerm :: ItemLogic -> SearchTerm -> Boolean
-conformTerm a (IncludeTerm simple) = conformT a simple
-conformTerm a (ExcludeTerm simple) = not $ conformT a simple
+initialSearch :: Search
+initialSearch = {
+  valid : true,
+  value : "",
+  timeout : Nothing,
+  nextValue: ""
+  }
+-- | Application state
+type State = {
+  search :: Search,
+  sort :: Sort,
+  items :: [Item],
+  breadcrumbs :: [Breadcrumb],
+  path :: String
+  }
 
-conformT :: ItemLogic -> SearchTermSimple -> Boolean
-conformT a (SearchTermSimple [] p) = overOr a p 
-conformT a (SearchTermSimple [Common("path")] _) = true
-conformT a (SearchTermSimple [Common("type")] p) = overType a p
-conformT a (SearchTermSimple [Common("name")] p) = overName a p
+initialState :: State
+initialState = {
+  search : initialSearch,
+  sort : Asc,
+  items : [],
+  breadcrumbs : [],
+  path: ""
+  }
 
-overOr :: ItemLogic -> Predicate -> Boolean
-overOr a p = overType a p || overName a p
+-- | Notebook cell type
+data CellType
+  = Evaluate
+  | Explore
+  | Search
+  | Query
+  | Visualize
+  | Markdown
 
-overType :: ItemLogic -> Predicate -> Boolean
-overType a p = check p $ mountToString a.resource
+type CellMetadata = {}
 
-overName :: ItemLogic -> Predicate -> Boolean
-overName a p = check p $ a.name
+-- | Cell model
+type Cell = {
+  input :: String,
+  output :: String,
+  cellType :: CellType,
+  metadata :: CellMetadata
+  }
 
-check :: Predicate -> String -> Boolean
-check (ContainsPredicate (TextVal tst)) probe =
-  indexOf tst probe /= -1
-check (EqPredicate (TextVal tst)) probe =
-  tst == probe
-check (GtPredicate (TextVal tst)) probe = 
-  localeCompare tst probe > 0
-check (LtPredicate (TextVal tst)) probe =
-  localeCompare tst probe < 0
-check (GtePredicate (TextVal tst)) probe =
-  localeCompare tst probe >= 0
-check (LtePredicate (TextVal tst)) probe =
-  localeCompare tst probe <= 0
-check (NePredicate (TextVal tst)) probe =
-  localeCompare tst probe /= 0
-check (LikePredicate (TextVal tst)) probe =
-  -- since it is not Glob, but TextVal
-  tst == probe
-check (ContainsPredicate (RangeVal start end)) probe =
-  localeCompare start probe < 0 && localeCompare end probe > 0
-check (EqPredicate (RangeVal start end)) probe =
-  localeCompare start probe < 0 && localeCompare end probe > 0
-check (GtPredicate (RangeVal start end)) probe =
-  localeCompare start probe < 0 && localeCompare end probe < 0
-check (GtePredicate (RangeVal start end)) probe =
-  localeCompare start probe <= 0 && localeCompare end probe <= 0
-check (LtPredicate (RangeVal start end)) probe =
-  localeCompare start probe > 0 && localeCompare end probe > 0
-check (LtePredicate (RangeVal start end)) probe =
-  localeCompare start probe >= 0 && localeCompare end probe >= 0
-check (NePredicate (RangeVal start end)) probe =
-  localeCompare start probe > 0 && localeCompare end probe < 0
-check (LikePredicate (RangeVal start end)) probe =
-  check (EqPredicate (RangeVal start end)) probe
+type NbMetadata = {}
 
-check (ContainsPredicate (Glob tst)) probe =
-  check (ContainsPredicate (TextVal tst)) probe
-check (EqPredicate (Glob tst)) probe = check (EqPredicate (TextVal tst)) probe
-check (LtPredicate (Glob tst)) probe = check (LtPredicate (TextVal tst)) probe
-check (GtPredicate (Glob tst)) probe = check (GtPredicate (TextVal tst)) probe
-check (LtePredicate (Glob tst)) probe = check (LtePredicate (TextVal tst)) probe
-check (GtePredicate (Glob tst)) probe = check (GtePredicate (TextVal tst)) probe
-check (NePredicate (Glob tst)) probe = check (NePredicate (TextVal tst)) probe
-check (LikePredicate (Glob tst)) probe = 
-  minimatch tst probe
-check _ probe = true
+type Notebook = {
+  metadata :: NbMetadata,
+  cells :: [Cell]
+  }
 
+newNotebook :: Notebook
+newNotebook = {
+  metadata: {},
+  cells: []
+  }
   
-
-
-
-

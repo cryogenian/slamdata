@@ -1,7 +1,6 @@
 {
-  "name": "slamdata-frontend",
-  "version": "0.0.0",
-  "homepage": "https://github.com/cryogenian/slamdata-frontend",
+  "name": "slamdata",
+  "homepage": "https://github.com/slamdata/slamdata",
   "authors": [
     "Maxim Zimaliev <zimaliev@yandex.ru>"
   ],
@@ -15,35 +14,27 @@
     "tests"
   ],
   "dependencies": {
-    "purescript-monoid": "~0.1.5",
-    "purescript-virtual-dom": "~0.3.0",
-    "purescript-dom": "~0.1.1",
-    "purescript-maps": "~0.2.0",
-    "purescript-tuples": "~0.2.3",
-    "bootstrap": "~3.3.2",
-    "purescript-signal": "~2.2.0",
-    "purescript-strings": "~0.4.2",
-    "purescript-datetime": "~0.2.0",
+    "purescript-tuples": "~0.3.1",
+    "purescript-either": "~0.1.6",
+    "purescript-foldable-traversable": "~0.3.1",
+    "purescript-arrays": "~0.3.5",
+    "purescript-maybe": "~0.2.2",
+    "purescript-maps": "~0.3.3",
+    "purescript-monoid": "~0.2.0",
+    "purescript-dom": "~0.1.2",
+    "purescript-halogen": "c138c57b134dbae3fcbefe60135faaff3a03e248",
+    "purescript-aff": "~0.7.0",
+      "purescript-search": "https://github.com/cryogenian/purescript-search.git#908263d464458d393018308d701972ba7d8aee0f",
+      "purescript-routing": "https://github.com/cryogenian/purescript-routing.git#4c39b0cb0d0a2437c09b2d8dcf9e9c5b535105b8",
     "purescript-timers": "~0.0.8",
-    "purescript-mocha": "~0.0.3",
-    "purescript-chai": "~0.0.3",
-    "purescript-foldable-traversable": "~0.2.1",
-    "purescript-arrays": "~0.3.1",
-    "purescript-refs": "~0.1.2",
+    "purescript-simple-dom": "master",
     "purescript-debug-foreign": "~0.0.4",
-    "purescript-random": "~0.1.2",
-    "purescript-strongcheck": "~0.8.0",
-    "purescript-argonaut": "~0.4.0",
-    "purescript-search": "https://github.com/cryogenian/purescript-search.git",
-    "purescript-minimatch": "~0.1.0",
-    "purescript-simple-dom": "2edd5c04b5cd02e097cb85e99df6e38a02a6a165",
-    "purescript-halogen": "master"
+    "purescript-foreign": "~0.4.2",
+      "purescript-minimatch": "~0.1.0",
+      "purescript-debug-foreign": "~0.0.4"
   },
   "resolutions": {
-    "purescript-tuples": "~0.3.0",
-    "purescript-monoid": "~0.2.0",
-    "purescript-foldable-traversable": "~0.3.0",
-    "purescript-enums": "~0.4.0",
-    "purescript-maps": "~0.3.0"
+    "purescript-aff": "~0.7.0",
+    "purescript-semirings": "master"
   }
 }

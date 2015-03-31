@@ -15,23 +15,20 @@ import Data.DOM.Simple.Window (globalWindow, document)
 import Data.DOM.Simple.Events (addUIEventListener, UIEventType(..))
 
 
+-- I think that we will be able to switch from `purescript-simple-dom`
+-- if we use `affjax`
+foreign import encodeURIComponent :: String -> String
+foreign import decodeURIComponent :: String -> String
 
-
--- | It's simpler for me to use foreign logging
--- | then add Show instances
 log :: forall a e. a -> Eff (trace::Trace|e) Unit 
 log a = fprint a *> pure unit
 
--- | Ok, I were was wrong, it's simplier to define onload
--- | by simple-dom
 onLoad :: forall e. Eff (dom::DOM|e) Unit -> Eff (dom::DOM|e) Unit
 onLoad action = do
   let handler :: DOMEvent -> _
       handler _ = action
   addUIEventListener LoadEvent handler globalWindow
 
--- | append one element to another element
--- | PR to simple-dom
 foreign import append """
 function append(parent) {
   return function(child) {
@@ -43,42 +40,33 @@ function append(parent) {
 }
 """ :: forall e. HTMLElement -> HTMLElement -> Eff (dom::DOM|e) HTMLElement
 
-
-foreign import parentImpl """
-function parentImpl(nothing, just, child) {
+-- | Opens url in new tab or window
+foreign import newTab """
+function newTab(url) {
   return function() {
-    var p = child.parentElement;
-    if (!p) return nothing;
-    return just(p);
+    window.open(url, "_blank");
   };
 }
-""" :: forall e a.
-       Fn3 (Maybe a) (a -> Maybe a) HTMLElement (Eff e (Maybe HTMLElement))
+""" :: forall e. String -> Eff (dom::DOM|e) Unit 
 
--- | get parent of element
--- | PR to simple-dom
-parent :: forall e. HTMLElement -> Eff e (Maybe HTMLElement)
-parent = runFn3 parentImpl Nothing Just 
-
--- | need to PR to simple-dom
-foreign import hashChanged """
-function hashChanged(callback) {
-  return function() {
-    callback(location.hash)("")();
-    window.addEventListener("hashchange", function(ev) {
-      callback(ev.newURL)(ev.oldUrl)();
-    });
-  };
+-- | gets current hash
+foreign import currentHash """
+function currentHash() {
+  return document.location.hash.replace(/^[^#]*#/g, "");
 }
-""" :: forall a e. (String -> String -> Eff e Unit) -> Eff e Unit
+""" :: forall e. Eff e String
 
--- | This function is needed to convert VTree -> Node -> HTMLElement 
+-- | converts `Node` to `HTMLElement`
 foreign import convertToElement """
 function convertToElement(a) {return a;}
 """ :: Node -> HTMLElement
 
+foreign import reload """
+function reload() {
+  document.location.reload();
+}
+""" :: forall e. Eff e Unit
 
--- | Shortcut
 bodyNode = do
   document globalWindow >>= body
   

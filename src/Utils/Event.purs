@@ -1,6 +1,4 @@
--- | Custom event module. Probably would be moved to ```simple-dom```
--- | or other package
-module Control.Reactive.Event where
+module Utils.Event (raiseEvent) where
 
 import Data.DOM.Simple.Types (HTMLElement())
 import Control.Monad.Eff
@@ -16,7 +14,6 @@ function target(ev) {
   };
 }
 """ :: forall e. Event -> Eff e HTMLElement
-
 foreign import detail """
 function detail(ev) {
   return function() {
@@ -24,8 +21,6 @@ function detail(ev) {
   };
 }
 """ :: forall e a. Event -> Eff e a
-
-
 foreign import raiseEventImpl """
 function raiseEventImpl(name, node, content) {
   return function() {
@@ -36,11 +31,5 @@ function raiseEventImpl(name, node, content) {
   };
 }
 """ :: forall e a. Fn3 String HTMLElement a (Eff (dom::DOM|e) HTMLElement)
-
 raiseEvent :: forall e a. String -> HTMLElement -> a -> Eff (dom::DOM|e) HTMLElement
 raiseEvent name el content = runFn3 raiseEventImpl name el content
-
-
-
-
-
