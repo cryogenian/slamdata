@@ -5,22 +5,16 @@ import Data.Tuple
 import Data.Monoid (mempty)
 import Data.Array
 
-import Utils.Halide (back, request)
+import Utils.Halide (back, request, targetLink)
 import qualified Model as M
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
+import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Forms as F
-import qualified Halogen.HTML.Target as T
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Data.StrMap as SM
 import qualified Config as Config
-
-link :: forall a i node. (H.HTMLRepr node) => [A.Attr i] -> [node a i] -> node a i
-link attrs children = H.a ((A.href "javascript:void(0);"):attrs) children
-
-link_ :: forall a i node. (H.HTMLRepr node) => [node a i] -> node a i
-link_ children = link mempty children
 
 logo :: forall a i node. (H.HTMLRepr node) => node a i
 logo =
@@ -64,14 +58,14 @@ breadcrumbs state =
     [H.li_ [H.i [A.classes [B.glyphicon, B.glyphiconChevronRight]] []]] <>
     (breadcrumbView <$> state.breadcrumbs)
   where breadcrumbView b =
-          H.li_ [H.a (T.target (T.DataTarget <<< Right <<< M.Breadcrumb $ b))
+          H.li_ [H.a (targetLink <<< M.Breadcrumb $ b)
                  [H.text b.name]] 
 
 sorting :: forall u node. (H.HTMLRepr node) =>
            M.State -> node u (Either M.Input M.Request)
 sorting state =
     H.div [A.class_ B.colSm4] [
-       link [E.onclick (const $ request $ M.SetSort (M.notSort state.sort))] [
+      H.a (targetLink <<< M.SetSort $ M.notSort state.sort) [
           H.text "Name",
           H.i [chevron state,
                A.style (A.styles $ SM.fromList [Tuple "margin-left" "10px"])] []
@@ -93,18 +87,19 @@ toolbar state =
       notebook
       ]
     ]
-  where mount = H.li_ [link [E.onclick (const <<< request $ M.MountDatabase state)]
+  where mount = H.li_ [H.a (targetLink <<< M.MountDatabase $ state) 
                        [H.text "Mount"]]
         file = H.li_
-               [link [E.onclick (\ev -> request $ M.UploadFile ev.target state)]
+               [H.a
+                [E.onclick (\ev -> request $ M.UploadFile ev.target state)]
                 [H.input [A.class_ B.hidden,
                           A.type_ "file",
-                          E.onchange (\ev -> request $ M.FileListChanged ev.target state)]
-                       [],
-                       H.text "File"]]
-        folder = H.li_ [link [E.onclick (const <<< request $ M.CreateFolder state)]
+                          E.onchange (\ev -> request $
+                                             M.FileListChanged ev.target state)][],
+                 H.text "File"]]
+        folder = H.li_ [H.a (targetLink <<< M.CreateFolder $ state)
                         [H.text "Folder"]]
-        notebook = H.li_ [link [E.onclick (const <<< request $ M.CreateNotebook state)]
+        notebook = H.li_ [H.a (targetLink <<< M.CreateNotebook $ state)
                           [H.text "Notebook"]]
         inRoot state = state.path == "" || state.path == "/"
 
@@ -120,7 +115,7 @@ item ix state =
          E.ondblclick (const <<< request $ M.Open state)] [
     H.div [A.class_ B.row] [
        H.div [A.class_ B.colSm6] [
-          link [E.onclick (const <<< request $ M.Open state)] [
+          H.a (targetLink <<< M.Open $ state) [
              H.i [iconClasses state] [],
              H.span [A.style $ A.styles $ SM.fromList [Tuple "margin-left" "20px"]] [
                H.text state.name
@@ -153,15 +148,15 @@ item ix state =
             let conf = case item.resource of
                   M.Database ->
                     [H.li_
-                     [link [E.onclick (const <<< request $ M.Configure item)]
+                     [H.a (targetLink <<< M.Configure $ item) 
                       [H.text "configure"]]]
                   _ -> []
             in conf <> [
-              H.li_ [link [E.onclick (const <<< request $ M.Move item)]
+              H.li_ [H.a (targetLink <<< M.Move $ item)
                      [H.text "move"]],
-              H.li_ [link [E.onclick (const <<< request $ M.Delete item)]
+              H.li_ [H.a (targetLink <<< M.Delete $ item)
                      [H.text "trash"]],
-              H.li_ [link [E.onclick (const <<< request $ M.Share item)]
+              H.li_ [H.a (targetLink <<< M.Share $ item)
                      [H.text "share"]]
               ]
             

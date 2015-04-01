@@ -2,9 +2,10 @@
 module Controller.Input where
 
 import Data.Maybe
-
+import Data.Foldable
 import qualified Model as M
 import qualified Data.Array as A
+import qualified Data.String as Str
 
 inner :: M.State -> M.Input -> M.State
 inner state input =
@@ -19,8 +20,6 @@ inner state input =
       state{sort = sort, items = A.sortBy (M.sortItem sort) state.items}
     M.SearchNextValue next ->
       state{search = state.search{nextValue = next}}
-    M.BreadcrumbUpdate bs ->
-      state{breadcrumbs = bs}
     M.ItemsUpdate is -> 
       state{items = A.concat [A.filter (\x -> x.root == state.path) $
                               A.filter _.phantom state.items, is]}
@@ -35,12 +34,23 @@ inner state input =
     M.ItemSelect ix h ->
       state{items = modify (flip _{selected = _}) ix}
     M.SetPath str ->
-      state{path = str}
+      state{path = str, breadcrumbs = mkBreadcrumbs str}
     M.ItemAdd item ->
       state{items = item:state.items}
+      
   where modify func ix =
           let unmodify = func false <$> state.items
               el = func true  <$> unmodify A.!! ix
           in case el of
             Nothing -> unmodify
             Just el -> A.updateAt ix el unmodify
+
+        mkBreadcrumbs :: String -> [M.Breadcrumb]
+        mkBreadcrumbs path =
+          A.reverse $ foldl foldFn [M.rootBreadcrumb] parts
+          where parts = A.filter ((/=) "") $ Str.split "/" path
+                foldFn (head:tail) a =
+                  let res = {name: a, link: head.link <> a <> "/"} in
+                  res:head:tail 
+
+        

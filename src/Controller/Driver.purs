@@ -44,13 +44,13 @@ outside :: forall e. Hl.Driver M.Input (timer :: Tm.Timer|e) ->
 outside driver = handleRoute driver 
 
 -- | Routing schema
-data Routes = SortAndQ M.Sort S.SearchQuery | SortOnly M.Sort | Index 
+data Routes = SortAndQ M.Sort S.SearchQuery | Sort M.Sort | Index 
 
 -- | Route parsing match objects
 routing :: R.Match Routes
 routing = bothRoute <|> oneRoute <|> index
   where bothRoute = SortAndQ <$> sort <*> query
-        oneRoute = SortOnly <$> sort
+        oneRoute = Sort <$> sort
         index = pure Index
         sort = R.lit "sort" *>
                ((R.lit "asc" *> pure M.Asc) <|> (R.lit "desc" *> pure M.Desc))
@@ -68,7 +68,6 @@ handleRoute driver = do
         let path = cleanPath $ fromMaybe "" $ searchPath query
         driver $ M.SetPath path 
         driver $ M.SearchSet (S.strQuery query)
-        driver $ M.BreadcrumbUpdate (mkBreadcrumbs path)
         Api.metadata path $ \items -> do
           driver $ M.ItemsUpdate $
             (_{root = path}) <$> 
@@ -79,7 +78,7 @@ handleRoute driver = do
       Index -> do
         RS.setRouteState $ SortSetter M.Asc
       -- Only sort setted -> redirects to `q=` 
-      SortOnly sort -> do
+      Sort sort -> do
         driver $ M.SearchSet ""
         driver $ M.SetPath ""
         Api.metadata "" $ \items -> do
@@ -90,13 +89,8 @@ handleRoute driver = do
         cleanPath input =
           let rgx = Rgx.regex "\"" Rgx.noFlags{global=true}
           in Str.trim $ Rgx.replace rgx "" input
-        mkBreadcrumbs :: String -> [M.Breadcrumb]
-        mkBreadcrumbs path =
-          reverse $ foldl foldFn [M.rootBreadcrumb] parts
-          where parts = filter ((/=) "") $ Str.split "/" path
-                foldFn (head:tail) a =
-                  let res = {name: a, link: head.link <> a <> "/"} in
-                  res:head:tail 
+
+
 
 -- | check if string satisfies predicate from `purescript-search`
 check :: S.Predicate -> String -> Boolean

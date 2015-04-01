@@ -12,7 +12,6 @@ import qualified Data.String.Regex as Rgx
 -- | Input messages 
 data Input
   = Sorting Sort
-  | BreadcrumbUpdate [Breadcrumb]
   | ItemsUpdate [Item]
   | ItemHover Number Boolean
   | ItemSelect Number Boolean
