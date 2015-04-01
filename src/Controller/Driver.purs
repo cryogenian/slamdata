@@ -12,6 +12,7 @@ module Controller.Driver (
 
 
 import Control.Monad.Eff
+import Control.Monad.Eff.Class
 import Control.Apply
 import Control.Alt
 import Data.Monoid.First
@@ -20,8 +21,8 @@ import Data.Maybe
 import Data.Either
 import Data.Semiring.Free
 import Data.Array (filter, reverse, (!!), drop)
-import Utils 
 
+import qualified Utils as U
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
 import qualified Control.Timer as Tm
@@ -34,13 +35,14 @@ import qualified Text.SlamSearch as S
 import qualified Text.SlamSearch.Types as S
 import qualified Text.SlamSearch.Printer as S
 import qualified Data.Minimatch as MM
-
+import qualified Control.Monad.Aff as Aff
 import qualified Model as M
 import qualified Api.Fs as Api
+import qualified Network.HTTP.Affjax as Af
 
 -- | Entry, used in `halogen` app
-outside :: forall e. Hl.Driver M.Input (timer :: Tm.Timer|e) ->
-           Eff (Hl.HalogenEffects (timer :: Tm.Timer|e)) Unit
+outside :: forall e. Hl.Driver M.Input (timer :: Tm.Timer, ajax :: Af.Ajax|e) ->
+           Eff (Hl.HalogenEffects (timer :: Tm.Timer, ajax :: Af.Ajax|e)) Unit
 outside driver = handleRoute driver 
 
 -- | Routing schema
@@ -58,8 +60,8 @@ routing = bothRoute <|> oneRoute <|> index
         query = R.eitherMatch (S.mkQuery <$> R.param "q")
 
 -- | Stream of routes 
-handleRoute :: forall e. Hl.Driver M.Input (timer :: Tm.Timer|e) ->
-           Eff (Hl.HalogenEffects (timer :: Tm.Timer|e)) Unit
+handleRoute :: forall e. Hl.Driver M.Input (timer :: Tm.Timer, ajax :: Af.Ajax |e) ->
+           Eff (Hl.HalogenEffects (timer :: Tm.Timer, ajax :: Af.Ajax|e)) Unit
 handleRoute driver = do
   R.matches routing \_ new -> do
     case new of
@@ -68,6 +70,11 @@ handleRoute driver = do
         let path = cleanPath $ fromMaybe "" $ searchPath query
         driver $ M.SetPath path 
         driver $ M.SearchSet (S.strQuery query)
+        Aff.launchAff $ do
+--          
+          (Api.Metadata {children: cs}) <- _.response <$> Api.meta path
+          liftEff $ U.log cs
+
         Api.metadata path $ \items -> do
           driver $ M.ItemsUpdate $
             (_{root = path}) <$> 
@@ -182,7 +189,7 @@ data QSetter = QSetter String
 instance routeModifierQSetter :: RS.RouteModifier QSetter where
   toHashModifier (QSetter str) =
     Rgx.replace qRgx res 
-    where res = "$1" <> encodeURIComponent str
+    where res = "$1" <> U.encodeURIComponent str
 
 instance routeSetterSortSetter :: RS.RouteState SortSetter where
   toHash (SortSetter sort) = "sort/" <> M.sort2string sort <> "/?q="
@@ -192,7 +199,7 @@ getPath :: String -> String
 getPath hash = 
   fromMaybe "" do
     matches <- Rgx.match qRgx hash
-    q <- decodeURIComponent <$> matches !! 2
+    q <- U.decodeURIComponent <$> matches !! 2
     query <- either (const Nothing) Just (S.mkQuery q)
     searchPath query
 

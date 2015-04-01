@@ -22,19 +22,19 @@
     "purescript-maps": "~0.3.3",
     "purescript-monoid": "~0.2.0",
     "purescript-dom": "~0.1.2",
-    "purescript-halogen": "c138c57b134dbae3fcbefe60135faaff3a03e248",
+    "purescript-halogen": "https://github.com/cryogenian/purescript-halogen.git#mvc",
     "purescript-aff": "~0.7.0",
-      "purescript-search": "https://github.com/cryogenian/purescript-search.git#908263d464458d393018308d701972ba7d8aee0f",
-      "purescript-routing": "https://github.com/cryogenian/purescript-routing.git#4c39b0cb0d0a2437c09b2d8dcf9e9c5b535105b8",
+    "purescript-search": "https://github.com/cryogenian/purescript-search.git#908263d464458d393018308d701972ba7d8aee0f",
+    "purescript-routing": "https://github.com/cryogenian/purescript-routing.git#4c39b0cb0d0a2437c09b2d8dcf9e9c5b535105b8",
     "purescript-timers": "~0.0.8",
     "purescript-simple-dom": "master",
     "purescript-debug-foreign": "~0.0.4",
     "purescript-foreign": "~0.4.2",
-      "purescript-minimatch": "~0.1.0",
-      "purescript-debug-foreign": "~0.0.4"
+    "purescript-minimatch": "~0.1.0",
+    "purescript-affjax": "https://github.com/slamdata/purescript-affjax.git#310c8b51aaeb8544d41369ce2d1cd281ffa173e6",
+    "purescript-argonaut": "https://github.com/cryogenian/purescript-argonaut.git#master"
   },
   "resolutions": {
-    "purescript-aff": "~0.7.0",
-    "purescript-semirings": "master"
+    "purescript-semirings": "~0.1.1"
   }
 }
