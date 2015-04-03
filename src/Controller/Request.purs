@@ -161,6 +161,8 @@ handler r = Aff.makeAff $ \_ k -> do
             getNewName' name 1
             else name
           where getNewName' name i =
+                  -- Str.split and Str.joinWith work with []
+                  -- converting from/to List will be too expensive 
                   case Str.split "." name of
                     [] -> "" 
                     body:suffixes ->
