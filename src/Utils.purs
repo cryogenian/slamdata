@@ -13,7 +13,7 @@ import Data.DOM.Simple.Types (HTMLElement(), DOMEvent())
 import Data.DOM.Simple.Document (body)
 import Data.DOM.Simple.Window (globalWindow, document)
 import Data.DOM.Simple.Events (addUIEventListener, UIEventType(..))
-
+import qualified Data.String.Regex as Rgx
 
 -- I think that we will be able to switch from `purescript-simple-dom`
 -- if we use `affjax`
@@ -73,3 +73,7 @@ bodyNode = do
   document globalWindow >>= body
   
 
+trimQuotes :: String -> String
+trimQuotes input = Rgx.replace start "" $ Rgx.replace end "" input
+  where start = Rgx.regex "^\"" Rgx.noFlags
+        end = Rgx.regex "\"$" Rgx.noFlags

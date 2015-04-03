@@ -32,6 +32,7 @@ import qualified Model.Item as Mi
 import qualified Model.Notebook as Mn
 import qualified Model.Resource as Mr
 import qualified Api.Fs as Api
+import Debug.Trace
 
 handler :: forall e. M.Request ->
            Aff.Aff (Hl.HalogenEffects
@@ -39,28 +40,46 @@ handler :: forall e. M.Request ->
 handler r = 
   case r of
     M.Delete item -> do
+      -- No need to lock it. Every item is unique
       Api.deleteItem item
       pure $ M.Remove item
 
     M.CreateNotebook state -> do
       let name = getNewName Config.newNotebookName state
       path <- liftEff $ Cd.getPath <$> Rh.getHash
-      let notebook = Mi.initNotebook{root = path, name = name}
-      Api.makeNotebook (path <> name) Mn.newNotebook
-      pure $ M.ItemAdd notebook
+      let notebook = Mi.initNotebook{root = path, name = name, phantom = true}
+      -- immidiately updating state 
+      Aff.forkAff (pure $ M.ItemAdd notebook)
+
+      f <- Aff.attempt $ Api.makeNotebook notebook Mn.newNotebook
+      case f of
+        Left _ -> 
+          -- we can't create notebook. Remove phantom
+          pure $ M.Remove notebook
+        Right _ -> do
+          -- we created notebook, replace phantom
+          Aff.forkAff $ (pure $ M.Remove notebook)
+          pure $ M.ItemAdd notebook{phantom = false}
 
     M.FileListChanged node state -> do
       fileArr <- Uf.fileListToArray <$> Uf.files node
+      liftEff $ U.clearValue node
       case A.head fileArr of
         Nothing -> throwError $ error "empty filelist" 
         Just file -> do
-          liftEff $ U.clearValue node
           path <- Cd.getPath <$> (liftEff Rh.getHash)
           name <- flip getNewName state <$> (liftEff $ Uf.name file)
+          let fileItem = Mi.initFile{root = path, name = name, phantom = true}
           reader <- Uf.newReader
           content <- Uf.readAsBinaryString file reader
-          Api.makeFile (path <> name) content
-          pure $ M.ItemAdd Mi.initFile{root = path, name = name}
+          Aff.forkAff (pure $ M.ItemAdd fileItem)
+          f <- Aff.attempt $ Api.makeFile fileItem content
+          case f of
+            Left _ ->
+              pure $ M.Remove fileItem
+            Right _ -> do
+              Aff.forkAff (pure $ M.Remove fileItem)
+              pure $ M.ItemAdd fileItem{phantom = false}
           
     _ -> Aff.makeAff $ \_ k -> do 
       case r of
@@ -141,7 +160,7 @@ handler r =
         -- open notebook or file
         open item isNew = U.newTab $ foldl (<>) ""
                           ([Config.notebookUrl,
-                            "#", item.root, item.name] <>
+                            "#", Mi.itemPath item] <>
                              if isNew then 
                              ["/?q=", U.encodeURIComponent ("select * from ...")]
                            else [])

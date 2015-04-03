@@ -219,6 +219,13 @@ clearValue :: forall e. Node -> Eff (dom :: DOM | e) Unit
 ```
 
 
+#### `trimQuotes`
+
+``` purescript
+trimQuotes :: String -> String
+```
+
+
 
 ## Module View
 
@@ -266,21 +273,21 @@ listing :: forall e. String -> Aff.Aff (ajax :: Af.Ajax | e) [Mi.Item]
 #### `makeFile`
 
 ``` purescript
-makeFile :: forall e. String -> String -> Af.Affjax e Unit
+makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax :: Af.Ajax | e) Unit
 ```
 
 
 #### `makeNotebook`
 
 ``` purescript
-makeNotebook :: forall e. Af.URL -> Mn.Notebook -> Af.Affjax e Unit
+makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax :: Af.Ajax | e) Unit
 ```
 
 
 #### `deleteItem`
 
 ``` purescript
-deleteItem :: forall e. Mi.Item -> Af.Affjax e Unit
+deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax | e) Unit
 ```
 
 
@@ -389,14 +396,12 @@ type Item = { phantom :: Boolean, root :: String, resource :: Resource, name :: 
 
 Item in list
 
-#### `readItem`
+#### `itemPath`
 
 ``` purescript
-readItem :: Foreign -> F Item
+itemPath :: Item -> String
 ```
 
-Will be `DecodeJson` instance or `Json -> Maybe Item`
-after switching to `affjax`
 
 #### `up`
 
@@ -420,7 +425,7 @@ default item
 upLink :: Item
 ```
 
-upper directory
+upper directory 
 
 #### `initDirectory`
 

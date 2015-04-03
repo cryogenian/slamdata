@@ -146,7 +146,7 @@ item ix state =
         showToolbar :: forall node. (H.HTMLRepr node) =>
                       M.Item -> [node u (Either M.Input M.Request)]
         showToolbar item =
-          if item.name == ".." then []
+          if item.name == M.up then []
             else
             let conf = case item.resource of
                   Mr.Database ->

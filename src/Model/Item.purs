@@ -6,6 +6,7 @@ import Data.Foreign
 import Data.Foreign.Class
 import qualified Data.String.Regex as Rgx
 import qualified Network.HTTP.Affjax.Request as Ar
+import Utils (trimQuotes)
 
 import Model.Sort
 import Model.Resource
@@ -22,33 +23,9 @@ type Item = {
   phantom :: Boolean
   }
 
--- | Will be `DecodeJson` instance or `Json -> Maybe Item`
--- | after switching to `affjax`
-readItem :: Foreign -> F Item
-readItem f = do
-  name <- readProp "name" f
-  resource <- readProp "type" f
-  pure $
-    if isNotebook name && resource == File then
-      {
-        selected: false,
-        hovered: false,
-        name: name,
-        resource: Notebook,
-        root: "",
-        phantom: false
-      }
-      else
-       {
-         selected: false,
-         hovered: false,
-         name: name,
-         resource: resource,
-         root: "",
-         phantom: false
-       }
-  where isNotebook name = name /=
-                          Rgx.replace (Rgx.regex "\\.nb$" Rgx.noFlags) "" name
+itemPath :: Item -> String
+itemPath item =
+  trimQuotes item.root <> trimQuotes item.name
 
 -- | link to upper directory
 up :: String
@@ -65,9 +42,9 @@ initItem = {
   phantom: false
   }
 
--- | upper directory
+-- | upper directory 
 upLink :: Item
-upLink = initItem{name = up}
+upLink = initItem{name = ".."}
 
 -- | new directory conf
 initDirectory :: Item

@@ -24,7 +24,7 @@
     "purescript-dom": "~0.1.2",
     "purescript-halogen": "https://github.com/cryogenian/purescript-halogen.git#mvc",
     "purescript-aff": "~0.7.0",
-    "purescript-search": "https://github.com/cryogenian/purescript-search.git#908263d464458d393018308d701972ba7d8aee0f",
+    "purescript-search": "https://github.com/cryogenian/purescript-search.git#master",
     "purescript-timers": "~0.0.8",
     "purescript-simple-dom": "master",
     "purescript-debug-foreign": "~0.0.4",

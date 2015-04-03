@@ -32,7 +32,6 @@ import qualified Model.Item as Mi
 import qualified Model.Resource as Mr
 import qualified Model.Notebook as Mn
 
-import Debug.Foreign
 
 newtype Listing = Listing [Child]
 
@@ -90,9 +89,10 @@ listing' path = Af.get (Config.metadataUrl <> path)
 listing :: forall e. String -> Aff.Aff (ajax::Af.Ajax|e) [Mi.Item]
 listing path = (listing2items <<< _.response) <$> listing' path
 
-makeFile :: forall e. String -> String -> Aff.Aff (ajax::Af.Ajax|e) Unit
-makeFile path content =
-  let isJson = either (const false) (const true) do
+makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax::Af.Ajax|e) Unit
+makeFile item content =
+  let path = Mi.itemPath item
+      isJson = either (const false) (const true) do
         hd <- maybe (Left "empty file") Right $
               Arr.head $ Str.split "\n" content
         Ap.jsonParser hd
@@ -101,8 +101,9 @@ makeFile path content =
     Af.put_ (Config.dataUrl <> path) content
     else throwError $ error "file has incorrect format" 
                         
-makeNotebook :: forall e. Af.URL -> Mn.Notebook -> Aff.Aff (ajax::Af.Ajax|e) Unit 
-makeNotebook path notebook =
+makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax::Af.Ajax|e) Unit 
+makeNotebook item notebook =
+  let path = Mi.itemPath item in
   getResponse ("error while creating notebook " <> path) $ 
   Af.put_ (Config.dataUrl <> path) notebook
 
@@ -112,7 +113,8 @@ delete path = getResponse ("can not delete " <> path) $
 
 deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax|e) Unit
 deleteItem item =
-    let path = item.root <> item.name <>
-               if item.resource /= Mr.File && item.resource /= Mr.Notebook then "/"
+    let path = Mi.itemPath item <>
+               if item.resource /= Mr.File &&
+                  item.resource /= Mr.Notebook then "/"
                else ""
     in delete path 

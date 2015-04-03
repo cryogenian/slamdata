@@ -44,14 +44,16 @@ import qualified Api.Fs as Api
 import qualified Network.HTTP.Affjax as Af
 import qualified Control.Monad.Aff as Aff
 
-
 -- | Entry, used in `halogen` app
 outside :: forall e. Hl.Driver M.Input (timer :: Tm.Timer, ajax :: Af.Ajax|e) ->
            Eff (Hl.HalogenEffects (timer :: Tm.Timer, ajax :: Af.Ajax|e)) Unit
 outside driver = handleRoute driver 
 
 -- | Routing schema
-data Routes = SortAndQ Ms.Sort S.SearchQuery | Sort Ms.Sort | Index 
+data Routes
+  = SortAndQ Ms.Sort S.SearchQuery
+  | Sort Ms.Sort
+  | Index 
 
 -- | Route parsing match objects
 routing :: R.Match Routes
@@ -62,7 +64,7 @@ routing = bothRoute <|> oneRoute <|> index
         sort = R.lit "sort" *>
                ((R.lit "asc" *> pure Ms.Asc) <|> (R.lit "desc" *> pure Ms.Desc))
 
-        query = R.eitherMatch (S.mkQuery <$> R.param "q")
+        query = R.eitherMatch (S.mkQuery <<< U.decodeURIComponent <$> R.param "q")
 
 -- | Stream of routes 
 handleRoute :: forall e. Hl.Driver M.Input (timer :: Tm.Timer, ajax :: Af.Ajax |e) ->
@@ -203,13 +205,17 @@ getPath hash =
 updatePath :: String -> String -> String
 updatePath str oldHash =
   let pathOld = "path:" <> getPath oldHash
-      pathNew = "path:" <>  str 
+      pathNew = "path:" <> escape str 
       replaced = Str.replace pathOld pathNew oldHash
   in if replaced == oldHash then
        updateQ pathNew oldHash
      else
        replaced
-
+  where escape :: String -> String
+        escape str = if Str.indexOf " " str /= -1 then
+                       "\"" <> str <> "\""
+                       else str
+                            
 -- | Add to _path_ value in path-labeled predicate 
 addToPath :: String -> String -> String
 addToPath str oldHash = 
@@ -220,6 +226,6 @@ addToPath str oldHash =
                 else
                   Str.joinWith "/" $
                   reverse $ drop 1 $ reverse $ 
-                  filter (/= "") $ Str.split "/" pathOld
+                  filter (/= "") $ Str.split "/" $ U.trimQuotes pathOld
     in updatePath pathNew oldHash
 
