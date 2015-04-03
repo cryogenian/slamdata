@@ -61,7 +61,7 @@ handler r = Aff.makeAff $ \_ k -> do
           open item false
 
     -- move/rename item
-    M.Move item ->
+    M.Move _ ->
       U.log "move/rename"
 
     -- clicked on breadcrumb
@@ -69,7 +69,7 @@ handler r = Aff.makeAff $ \_ k -> do
       Rh.modifyHash $ Cd.updatePath b.link
 
     -- clicked on _File_ link triggering file uploading
-    M.UploadFile node state -> do
+    M.UploadFile node _ -> do
       let el = U.convertToElement node
       mbInput <- El.querySelector "input" el
       case mbInput of 
@@ -84,7 +84,7 @@ handler r = Aff.makeAff $ \_ k -> do
       k $ M.ItemAdd $ M.initDirectory{root = path, name = name}
       k $ M.Resort
 
-    M.MountDatabase state ->
+    M.MountDatabase _ ->
       U.log "mount database"
 
     M.CreateNotebook state -> do
@@ -107,11 +107,11 @@ handler r = Aff.makeAff $ \_ k -> do
          else
           pure unit
     
-    M.Share item -> do
+    M.Share _ -> do
       U.log "share"
 
     -- configure db
-    M.Configure item -> do
+    M.Configure _ -> do
       U.log "configure"
 
     -- triggered when files changed in file selecting dialog
