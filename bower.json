@@ -33,7 +33,8 @@
     "purescript-affjax": "https://github.com/slamdata/purescript-affjax.git#310c8b51aaeb8544d41369ce2d1cd281ffa173e6",
     "purescript-argonaut": "https://github.com/cryogenian/purescript-argonaut.git#master",
     "purescript-routing": "https://github.com/slamdata/purescript-routing.git#aaa82cc6f504d979a5f69d41ea50bf9a9e21d5f8",
-    "purescript-lists": "~0.6.0"
+    "purescript-lists": "~0.6.0",
+    "purescript-integers": "~0.0.1"
   },
   "resolutions": {
     "purescript-semirings": "~0.1.1"

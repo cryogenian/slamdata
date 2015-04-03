@@ -14,6 +14,7 @@ import Data.Either
 import Control.Monad.Error.Class
 import Data.Foreign
 import Data.Foreign.Class
+import Data.Int
 
 import qualified Control.Monad.Aff as Aff
 import qualified Data.Array as Arr
@@ -23,6 +24,7 @@ import qualified Data.Argonaut.Parser as Ap
 import qualified Network.HTTP.Affjax.Response as Ar
 import qualified Network.HTTP.Affjax.ResponseType as At
 import qualified Network.HTTP.Affjax as Af
+import qualified Network.HTTP.StatusCode as Sc
 
 import qualified Config as Config
 import qualified Model as M
@@ -71,29 +73,44 @@ listing2items (Listing cs) =
              else item
 
 
+successStatus :: Sc.StatusCode
+successStatus = Sc.StatusCode $ fromNumber 200
+
+getResponse :: forall e a. String -> Af.Affjax e a -> Aff.Aff (ajax::Af.Ajax|e) a 
+getResponse msg affjax = do
+  res <- affjax
+  if res.status /= successStatus then
+    throwError $ error msg
+    else
+    pure res.response
+
 listing' :: forall e. String -> Af.Affjax e Listing
 listing' path = Af.get (Config.metadataUrl <> path)
 
 listing :: forall e. String -> Aff.Aff (ajax::Af.Ajax|e) [Mi.Item]
 listing path = (listing2items <<< _.response) <$> listing' path
 
-makeFile :: forall e. String -> String -> Af.Affjax e Unit
+makeFile :: forall e. String -> String -> Aff.Aff (ajax::Af.Ajax|e) Unit
 makeFile path content =
   let isJson = either (const false) (const true) do
         hd <- maybe (Left "empty file") Right $
               Arr.head $ Str.split "\n" content
         Ap.jsonParser hd
-  in if isJson then do 
+  in if isJson then do
+    getResponse ("error while creating file " <> path) $
     Af.put_ (Config.dataUrl <> path) content
     else throwError $ error "file has incorrect format" 
                         
-makeNotebook :: forall e. Af.URL -> Mn.Notebook -> Af.Affjax e Unit 
-makeNotebook path notebook = Af.put_ (Config.dataUrl <> path) notebook
+makeNotebook :: forall e. Af.URL -> Mn.Notebook -> Aff.Aff (ajax::Af.Ajax|e) Unit 
+makeNotebook path notebook =
+  getResponse ("error while creating notebook " <> path) $ 
+  Af.put_ (Config.dataUrl <> path) notebook
 
-delete :: forall e. String -> Af.Affjax e Unit
-delete path = Af.delete_ (Config.dataUrl <> path)
+delete :: forall e. String -> Aff.Aff (ajax::Af.Ajax|e) Unit
+delete path = getResponse ("can not delete " <> path) $ 
+              Af.delete_ (Config.dataUrl <> path)
 
-deleteItem :: forall e. Mi.Item -> Af.Affjax e Unit
+deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax|e) Unit
 deleteItem item =
     let path = item.root <> item.name <>
                if item.resource /= Mr.File && item.resource /= Mr.Notebook then "/"
