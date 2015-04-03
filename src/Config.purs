@@ -22,8 +22,12 @@ slamDataHome = "http://slamdata.com"
 userEnabled :: Boolean
 userEnabled = false
 
-newNotebookName :: String
-newNotebookName = "NewNotebook.nb"
-
 newFolderName :: String
-newFolderName = "NewFolder"
+newFolderName = "Untitled Folder"
+
+notebookExtension :: String
+notebookExtension = ".slam"
+
+
+newNotebookName :: String
+newNotebookName = "Untitled Notebook" <> notebookExtension 
