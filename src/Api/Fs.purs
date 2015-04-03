@@ -1,6 +1,5 @@
 -- | This module will be reworked after `affjax` is ready.
 module Api.Fs (
---  meta, Metadata(..),
   metadata,
   makeNotebook,
   deleteItem,
@@ -9,6 +8,8 @@ module Api.Fs (
   ) where
 
 import Control.Monad.Eff
+import Control.Monad.Eff.Exception (error)
+
 import DOM (DOM())
 import Data.Foreign
 import Data.Foreign.Class
@@ -18,20 +19,22 @@ import Data.Traversable
 import Data.Either
 import Data.Function
 import Debug.Foreign
+import Control.Monad.Error.Class
 
-import qualified Network.HTTP.Affjax.Response as Af
+import qualified Network.HTTP.Affjax.Response as Ar
 import qualified Network.HTTP.Affjax.ResponseType as At
 import qualified Network.HTTP.Affjax as Af
 import qualified Data.DOM.Simple.Ajax as A
 import qualified Data.Array as Ar
 import qualified Data.String as Str
 import qualified Model as M
+import qualified Model.Notebook as Mn
 import Data.Foreign
 import Data.Foreign.Class
 
 import Data.Argonaut ((.?))
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
-
+import qualified Data.Argonaut.Parser as Ap
 
 -- gets raw metadata
 metadataF :: forall e. String -> (Foreign -> Eff (dom::DOM|e) Unit) -> 
@@ -80,7 +83,7 @@ function f2jsonImpl(f, nothing, just ) {
 -- if input is json-string will return it
 f2json :: Foreign -> Maybe String
 f2json f = runFn3 f2jsonImpl f Nothing Just 
-
+{-
 -- | put raw data
 putF :: forall e. String -> Foreign -> (Boolean -> Eff (dom::DOM|e) Unit) -> 
        Eff (dom::DOM|e) Unit 
@@ -120,7 +123,20 @@ makeFile path content callback =
     putF path (toForeign content) callback
      else
      callback false
+-}
 
+makeFile :: forall e. String -> String -> Af.Affjax e Unit
+makeFile path content =
+  let isJson = either (const false) (const true) do
+        hd <- maybe (Left "empty file") Right $
+              Ar.head $ Str.split "\n" content
+        Ap.jsonParser hd
+  in if isJson then do 
+    Af.put_ (Config.dataUrl <> path) content
+    else throwError $ error "file has incorrect format" 
+                        
+makeNotebook :: forall e. Af.URL -> Mn.Notebook -> Af.Affjax e Unit 
+makeNotebook path notebook = Af.put_ (Config.dataUrl <> path) notebook
 
 move :: forall e. String -> String -> (Boolean -> Eff (dom::DOM|e) Unit) ->
         Eff (dom::DOM|e) Unit
@@ -138,32 +154,15 @@ move src tgt callback = do
   A.onReadyStateChange action req
   A.open (A.HttpMethod "MOVE") (Config.dataUrl <> src) req
   A.setRequestHeader "Destination" tgt req
-  A.send A.NoData req 
+  A.send A.NoData req
 
--- | delete item by path
-delete :: forall e. String -> (Boolean -> Eff (dom :: DOM | e) Unit) ->
-           Eff (dom::DOM|e) Unit 
-delete path callback = do
-  req <- A.makeXMLHttpRequest
-  
-  let action = do
-        state <- A.readyState req
-        case state of 
-          A.Done -> do
-            status <- A.status req
-            callback $ status == 200
-          _ -> return unit
-          
-  A.onReadyStateChange action req
-  A.open (A.HttpMethod "DELETE") (Config.dataUrl <> path) req
-  A.send A.NoData req 
 
--- | delete item
-deleteItem :: forall e. M.Item -> (Boolean -> Eff (dom :: DOM|e) Unit) ->
-              Eff (dom :: DOM|e) Unit 
-deleteItem item callback = 
-  let path = item.root <> item.name <>
-      if item.resource /= M.File && item.resource /= M.Notebook then "/"
-        else ""
-  in delete path callback
-                                                   
+delete :: forall e. String -> Af.Affjax e Unit
+delete path = Af.delete_ (Config.dataUrl <> path)
+
+deleteItem :: forall e. M.Item -> Af.Affjax e Unit
+deleteItem item =
+    let path = item.root <> item.name <>
+               if item.resource /= M.File && item.resource /= M.Notebook then "/"
+               else ""
+    in delete path 

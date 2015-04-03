@@ -2,11 +2,16 @@
 module Controller.Request where
 
 import Control.Monad.Eff
+import Control.Monad.Eff.Class
+import Control.Monad.Eff.Exception
+import Control.Monad.Error.Class
+
 import Data.Maybe
 import Data.Tuple
 import Data.Either
 import Debug.Trace
 import Data.Foldable
+import Control.Apply
 
 import qualified Utils as U
 import qualified Utils.Event as Ue
@@ -21,122 +26,112 @@ import qualified Routing.Hash as Rh
 import qualified Data.String as Str
 import qualified Data.DOM.Simple.Element as El
 import qualified Controller.Driver as Cd 
+import qualified Network.HTTP.Affjax as Af
 
 import qualified Model as M
+import qualified Model.Notebook as Mn
 import qualified Api.Fs as Api
 
 handler :: forall e. M.Request ->
-           Aff.Aff (Hl.HalogenEffects (timer::Tm.Timer, file :: Uf.ReadFile|e)) M.Input
-handler r = Aff.makeAff $ \_ k -> do 
+           Aff.Aff (Hl.HalogenEffects
+                    (timer::Tm.Timer, file :: Uf.ReadFile, ajax :: Af.Ajax|e)) M.Input
+handler r = 
   case r of
-    -- value of search has been changed
-    M.SearchChange mbTimeout ch -> do
-      k $ M.SearchNextValue ch
-      maybe (pure unit) Tm.clearTimeout mbTimeout
-      tim <- Tm.timeout Config.searchTimeout $ setQ k ch 
-      k $ M.SearchTimeout tim
-      k $ M.SearchValidation true
-
-    -- pressed button or enter in search's input
-    M.SearchSubmit s -> do
-      maybe (pure unit) Tm.clearTimeout s.timeout
-      setQ k s.nextValue
-
-    -- sets sort 
-    M.SetSort sort -> do
-      Rh.modifyHash $ Cd.updateSort sort
-
-    -- opens item
-    M.Open item -> do
-      case item.resource of
-        M.Directory ->
-          moveDown item
-        M.Database ->
-          moveDown item
-        M.File ->
-          open item true
-        M.Table ->
-          open item true
-        M.Notebook -> do
-          open item false
-
-    -- move/rename item
-    M.Move _ ->
-      U.log "move/rename"
-
-    -- clicked on breadcrumb
-    M.Breadcrumb b -> do
-      Rh.modifyHash $ Cd.updatePath b.link
-
-    -- clicked on _File_ link triggering file uploading
-    M.UploadFile node _ -> do
-      let el = U.convertToElement node
-      mbInput <- El.querySelector "input" el
-      case mbInput of 
-        Nothing -> pure unit
-        Just input -> do
-          void $ Ue.raiseEvent "click" input 
-
-    -- clicked on _Folder_ link, create phantom folder
-    M.CreateFolder state -> do
-      let name = getNewName Config.newFolderName state
-      path <- Cd.getPath <$> Rh.getHash
-      k $ M.ItemAdd $ M.initDirectory{root = path, name = name}
-      k $ M.Resort
-
-    M.MountDatabase _ ->
-      U.log "mount database"
+    M.Delete item -> do
+      Api.deleteItem item
+      pure $ M.Remove item
 
     M.CreateNotebook state -> do
       let name = getNewName Config.newNotebookName state
-      path <- Cd.getPath <$> Rh.getHash
-      let notebook = M.initNotebook{root = path, name = name} 
-      k $ M.ItemAdd notebook
-      k $ M.Resort 
-      Api.makeNotebook (path <> name) M.newNotebook $ \success -> do
-        if success then 
-          k M.Resort
-          else
-          k $ M.Remove notebook
+      path <- liftEff $ Cd.getPath <$> Rh.getHash
+      let notebook = M.initNotebook{root = path, name = name}
+      Api.makeNotebook (path <> name) Mn.newNotebook
+      pure $ M.ItemAdd notebook
 
-    M.Delete item -> do
-      Api.deleteItem item $ \success -> 
-        if success then do
-          k $ M.Remove item
-          k $ M.Resort
-         else
-          pure unit
+    M.FileListChanged node state -> do
+      fileArr <- Uf.fileListToArray <$> Uf.files node
+      case A.head fileArr of
+        Nothing -> throwError $ error "empty filelist" 
+        Just file -> do
+          liftEff $ U.clearValue node
+          path <- Cd.getPath <$> (liftEff Rh.getHash)
+          name <- flip getNewName state <$> (liftEff $ Uf.name file)
+          reader <- Uf.newReader
+          content <- Uf.readAsBinaryString file reader
+          Api.makeFile (path <> name) content
+          pure $ M.ItemAdd M.initFile{root = path, name = name}
+          
+    _ -> Aff.makeAff $ \_ k -> do 
+
+      case r of
+    -- value of search has been changed
+        M.SearchChange mbTimeout ch -> do
+          k $ M.SearchNextValue ch
+          maybe (pure unit) Tm.clearTimeout mbTimeout
+          tim <- Tm.timeout Config.searchTimeout $ setQ k ch 
+          k $ M.SearchTimeout tim
+          k $ M.SearchValidation true
     
-    M.Share _ -> do
-      U.log "share"
+        -- pressed button or enter in search's input
+        M.SearchSubmit s -> do
+          maybe (pure unit) Tm.clearTimeout s.timeout
+          setQ k s.nextValue
+
+    -- sets sort 
+        M.SetSort sort -> do
+          Rh.modifyHash $ Cd.updateSort sort
+
+    -- opens item
+        M.Open item -> do
+          case item.resource of
+            M.Directory ->
+              moveDown item
+            M.Database ->
+              moveDown item
+            M.File ->
+              open item true
+            M.Table ->
+              open item true
+            M.Notebook -> do
+              open item false
+
+    -- move/rename item
+        M.Move _ ->
+          U.log "move/rename"
+
+      -- clicked on breadcrumb
+        M.Breadcrumb b -> do
+          Rh.modifyHash $ Cd.updatePath b.link
+
+    -- clicked on _File_ link triggering file uploading
+        M.UploadFile node _ -> do
+          let el = U.convertToElement node
+          mbInput <- El.querySelector "input" el
+          case mbInput of 
+            Nothing -> pure unit
+            Just input -> do
+              void $ Ue.raiseEvent "click" input 
+
+    -- clicked on _Folder_ link, create phantom folder
+        M.CreateFolder state -> do
+          let name = getNewName Config.newFolderName state
+          path <- Cd.getPath <$> Rh.getHash
+          k $ M.ItemAdd $ M.initDirectory{root = path, name = name}
+
+        M.MountDatabase _ ->
+          U.log "mount database"
+
+
+    
+        M.Share _ -> do
+          U.log "share"
 
     -- configure db
-    M.Configure _ -> do
-      U.log "configure"
+        M.Configure _ -> do
+          U.log "configure"
 
     -- triggered when files changed in file selecting dialog
-    M.FileListChanged node state -> do
-      let el = U.convertToElement node
-      fileArr <- Uf.fileListToArray <$> Uf.files el
-      U.clearValue el
-      case A.head fileArr of
-        Nothing -> pure unit
-        Just file -> void $ do
-          reader <- Uf.newReader
-          Uf.readAsBinaryString file reader
-          Uf.onload reader $ do
-            cont <- Uf.result reader
-            case cont of
-              Nothing -> pure unit
-              Just res -> do
-                path <- Cd.getPath <$> Rh.getHash
-                name <- flip getNewName state <$> Uf.name file
-                Api.makeFile (path <> name) res \success -> 
-                  if success then do
-                    k $ M.ItemAdd $ M.initFile{root = path, name = name}
-                    k $ M.Resort
-                    else 
-                    pure unit
+        
 
         -- set `q` in route
   where setQ k q =

@@ -67,7 +67,7 @@ function clearValue(el) {
     el.value = null;
   };
 }
-""" :: forall e. HTMLElement -> Eff (dom :: DOM |e) Unit
+""" :: forall e. Node -> Eff (dom :: DOM |e) Unit
 
 bodyNode = do
   document globalWindow >>= body

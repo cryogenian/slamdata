@@ -8,6 +8,9 @@ import Data.Foreign.Class
 import Data.Either
 import DOM
 import qualified Data.String.Regex as Rgx
+import qualified Network.HTTP.Affjax.Request as Ar
+
+
 
 -- | Input messages 
 data Input
@@ -224,35 +227,3 @@ initialState = {
   path: ""
   }
 
--- | Notebook cell type
-data CellType
-  = Evaluate
-  | Explore
-  | Search
-  | Query
-  | Visualize
-  | Markdown
-
-type CellMetadata = {}
-
--- | Cell model
-type Cell = {
-  input :: String,
-  output :: String,
-  cellType :: CellType,
-  metadata :: CellMetadata
-  }
-
-type NbMetadata = {}
-
-type Notebook = {
-  metadata :: NbMetadata,
-  cells :: [Cell]
-  }
-
-newNotebook :: Notebook
-newNotebook = {
-  metadata: {},
-  cells: []
-  }
-  

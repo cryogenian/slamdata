@@ -12,8 +12,10 @@ inner :: M.State -> M.Input -> M.State
 inner state input =
   case input of
     M.Remove item ->
-      state{items = A.filter (\x -> not $ x.name == item.name && x.root == item.root)
-                    state.items}
+      inner state{items = A.filter
+                          (\x -> not $ x.name == item.name && x.root == item.root)
+                          state.items} M.Resort
+
     -- Used to not call `reload`
     M.Resort ->
       state{items = A.sortBy (M.sortItem  state.sort) state.items}
@@ -37,7 +39,7 @@ inner state input =
     M.SetPath str ->
       state{path = str, breadcrumbs = mkBreadcrumbs str}
     M.ItemAdd item ->
-      state{items = item:state.items}
+      inner state{items = item:state.items} M.Resort
       
   where modify func ix =
           let unmodify = func false <$> state.items
