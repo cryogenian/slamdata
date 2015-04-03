@@ -6,6 +6,7 @@ import Data.Foldable
 import qualified Model as M
 import qualified Data.Array as A
 import qualified Data.String as Str
+import qualified Data.List as L
 
 inner :: M.State -> M.Input -> M.State
 inner state input =
@@ -47,10 +48,12 @@ inner state input =
 
         mkBreadcrumbs :: String -> [M.Breadcrumb]
         mkBreadcrumbs path =
-          A.reverse $ foldl foldFn [M.rootBreadcrumb] parts
-          where parts = A.filter ((/=) "") $ Str.split "/" path
-                foldFn (head:tail) a =
+          A.reverse <<< L.toArray $
+          foldl foldFn (L.Cons M.rootBreadcrumb L.Nil) parts
+          where parts = L.fromArray <<< A.filter ((/=) "") $ Str.split "/" path
+                foldFn (L.Cons head tail) a =
                   let res = {name: a, link: head.link <> a <> "/"} in
-                  res:head:tail 
+                  L.Cons res (L.Cons head tail)
+
 
         
