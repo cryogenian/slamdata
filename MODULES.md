@@ -684,12 +684,6 @@ name :: forall e. File -> Eff (file :: ReadFile | e) String
 ```
 
 
-#### `newReaderEff`
-
-``` purescript
-newReaderEff :: forall e. Eff e FileReader
-```
-
 #### `newReader`
 
 ``` purescript
@@ -697,44 +691,10 @@ newReader :: forall e. Aff e FileReader
 ```
 
 
-#### `readAsBinaryStringEff`
-
-``` purescript
-readAsBinaryStringEff :: forall e. File -> FileReader -> Eff (file :: ReadFile | e) Unit
-```
-
-
-#### `resultImpl`
-
-``` purescript
-resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) FileReader (Eff (file :: ReadFile | e) (Maybe String))
-```
-
-
-#### `resultEff`
-
-``` purescript
-resultEff :: forall e. FileReader -> Eff (file :: ReadFile | e) (Maybe String)
-```
-
-
-#### `filesEff`
-
-``` purescript
-filesEff :: forall e. Node -> Eff (dom :: DOM | e) FileList
-```
-
 #### `files`
 
 ``` purescript
 files :: forall e. Node -> Aff (dom :: DOM | e) FileList
-```
-
-
-#### `onloadEff`
-
-``` purescript
-onloadEff :: forall e e'. FileReader -> Eff e Unit -> Eff (file :: ReadFile | e') Unit
 ```
 
 

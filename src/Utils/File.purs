@@ -1,4 +1,14 @@
-module Utils.File where
+module Utils.File (
+  fileListToArray,
+  files,
+  newReader,
+  readAsBinaryString,
+  name,
+  File(),
+  FileList(),
+  FileReader(),
+  ReadFile()
+  ) where
 
 import Control.Monad.Eff
 import Control.Monad.Eff.Exception
