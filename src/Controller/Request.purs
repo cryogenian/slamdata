@@ -9,7 +9,6 @@ import Control.Monad.Error.Class
 import Data.Maybe
 import Data.Tuple
 import Data.Either
-import Debug.Trace
 import Data.Foldable
 import Control.Apply
 

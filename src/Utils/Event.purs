@@ -7,6 +7,7 @@ import DOM (DOM())
 
 foreign import data Event :: *
 
+-- Not sure if it must have any effect
 foreign import target """
 function target(ev) {
   return function() {

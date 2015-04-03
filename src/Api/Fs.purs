@@ -30,6 +30,8 @@ import qualified Model.Item as Mi
 import qualified Model.Resource as Mr
 import qualified Model.Notebook as Mn
 
+import Debug.Foreign
+
 newtype Listing = Listing [Child]
 
 instance listingIsForeign :: IsForeign Listing where
@@ -53,8 +55,8 @@ listing2items (Listing cs) =
   child2item <$> cs
   where nbExtensionRgx = Rgx.regex ("\\" <> Config.notebookExtension) Rgx.noFlags
         isNotebook r = r.resource == Mr.File &&
-                     r.name ==
-                     Rgx.replace nbExtensionRgx "" r.name
+                       r.name /=
+                       Rgx.replace nbExtensionRgx "" r.name
         child2item (Child r) =
           let item = {
                 resource: r.resource,
