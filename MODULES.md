@@ -5,7 +5,7 @@
 #### `app`
 
 ``` purescript
-app :: forall e. Hl.UI M.Input Void M.Request (timer :: Tm.Timer | e)
+app :: forall e. Hl.UI M.Input Void M.Request (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)
 ```
 
 
@@ -61,17 +61,24 @@ userEnabled :: Boolean
 ```
 
 
-#### `newNotebookName`
-
-``` purescript
-newNotebookName :: String
-```
-
-
 #### `newFolderName`
 
 ``` purescript
 newFolderName :: String
+```
+
+
+#### `notebookExtension`
+
+``` purescript
+notebookExtension :: String
+```
+
+
+#### `newNotebookName`
+
+``` purescript
+newNotebookName :: String
 ```
 
 
@@ -89,8 +96,7 @@ Input, output messages and state
 ``` purescript
 data Input
   = Sorting Sort
-  | BreadcrumbUpdate [Breadcrumb]
-  | ItemsUpdate [Item]
+  | ItemsUpdate [Item] Sort
   | ItemHover Number Boolean
   | ItemSelect Number Boolean
   | ItemAdd Item
@@ -128,80 +134,252 @@ data Request
 
 Request Messages 
 
-#### `Sort`
+#### `State`
 
 ``` purescript
-data Sort
-  = Asc 
-  | Desc 
+type State = { path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
 ```
 
-Sort direction
+Application state
 
-#### `notSort`
-
-``` purescript
-notSort :: Sort -> Sort
-```
-
-revese sort
-
-#### `sort2string`
+#### `initialState`
 
 ``` purescript
-sort2string :: Sort -> String
+initialState :: State
 ```
 
 
-#### `string2sort`
+
+## Module Utils
+
+
+Shortcuts and glue between different modules
+
+#### `encodeURIComponent`
 
 ``` purescript
-string2sort :: String -> Maybe Sort
+encodeURIComponent :: String -> String
+```
+
+#### `decodeURIComponent`
+
+``` purescript
+decodeURIComponent :: String -> String
 ```
 
 
-#### `eqSort`
+#### `log`
 
 ``` purescript
-instance eqSort :: Eq Sort
+log :: forall a e. a -> Eff (trace :: Trace | e) Unit
 ```
 
 
-#### `Resource`
+#### `onLoad`
 
 ``` purescript
-data Resource
-  = File 
-  | Database 
-  | Notebook 
-  | Directory 
-  | Table 
-```
-
-Resource tag for item 
-
-#### `eqResource`
-
-``` purescript
-instance eqResource :: Eq Resource
+onLoad :: forall e. Eff (dom :: DOM | e) Unit -> Eff (dom :: DOM | e) Unit
 ```
 
 
-#### `resource2str`
+#### `append`
 
 ``` purescript
-resource2str :: Resource -> String
+append :: forall e. HTMLElement -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
 ```
 
 
-#### `resourceIsForeign`
+#### `newTab`
 
 ``` purescript
-instance resourceIsForeign :: IsForeign Resource
+newTab :: forall e. String -> Eff (dom :: DOM | e) Unit
 ```
 
-Now only `IsForeign`. After switching to `purescript-affjax`
-will be `EncodeJson`
+Opens url in new tab or window
+
+#### `convertToElement`
+
+``` purescript
+convertToElement :: Node -> HTMLElement
+```
+
+converts `Node` to `HTMLElement`
+
+#### `reload`
+
+``` purescript
+reload :: forall e. Eff (dom :: DOM | e) Unit
+```
+
+
+#### `clearValue`
+
+``` purescript
+clearValue :: forall e. Node -> Eff (dom :: DOM | e) Unit
+```
+
+
+
+## Module View
+
+#### `view`
+
+``` purescript
+view :: forall u node. (H.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
+```
+
+
+
+## Module Api.Fs
+
+
+This module will be reworked after `affjax` is ready.
+
+#### `listingIsForeign`
+
+``` purescript
+instance listingIsForeign :: IsForeign Listing
+```
+
+
+#### `childIsForeign`
+
+``` purescript
+instance childIsForeign :: IsForeign Child
+```
+
+
+#### `listingResponsable`
+
+``` purescript
+instance listingResponsable :: Ar.Responsable Listing
+```
+
+
+#### `listing`
+
+``` purescript
+listing :: forall e. String -> Aff.Aff (ajax :: Af.Ajax | e) [Mi.Item]
+```
+
+
+#### `makeFile`
+
+``` purescript
+makeFile :: forall e. String -> String -> Af.Affjax e Unit
+```
+
+
+#### `makeNotebook`
+
+``` purescript
+makeNotebook :: forall e. Af.URL -> Mn.Notebook -> Af.Affjax e Unit
+```
+
+
+#### `deleteItem`
+
+``` purescript
+deleteItem :: forall e. Mi.Item -> Af.Affjax e Unit
+```
+
+
+
+## Module Controller.Driver
+
+
+Module handles outer messages to `halogen` application
+Mostly consists of routing functions 
+
+#### `outside`
+
+``` purescript
+outside :: forall e. Hl.Driver M.Input (ajax :: Af.Ajax, timer :: Tm.Timer | e) -> Eff (Hl.HalogenEffects (ajax :: Af.Ajax, timer :: Tm.Timer | e)) Unit
+```
+
+Entry, used in `halogen` app
+
+#### `searchPath`
+
+``` purescript
+searchPath :: S.SearchQuery -> Maybe String
+```
+
+Extract path predicate from search query
+
+#### `updateSort`
+
+``` purescript
+updateSort :: Ms.Sort -> String -> String
+```
+
+
+#### `updateQ`
+
+``` purescript
+updateQ :: String -> String -> String
+```
+
+
+#### `setSort`
+
+``` purescript
+setSort :: Ms.Sort -> String
+```
+
+
+#### `getPath`
+
+``` purescript
+getPath :: String -> String
+```
+
+extract path from full hash
+
+#### `updatePath`
+
+``` purescript
+updatePath :: String -> String -> String
+```
+
+set _path_ value in path-labeled predicate in route
+
+#### `addToPath`
+
+``` purescript
+addToPath :: String -> String -> String
+```
+
+Add to _path_ value in path-labeled predicate 
+
+
+## Module Controller.Input
+
+
+state update function 
+
+#### `inner`
+
+``` purescript
+inner :: M.State -> M.Input -> M.State
+```
+
+
+
+## Module Controller.Request
+
+
+Main app handler
+
+#### `handler`
+
+``` purescript
+handler :: forall e. M.Request -> Aff.Aff (Hl.HalogenEffects (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)) M.Input
+```
+
+
+
+## Module Model.Item
 
 #### `Item`
 
@@ -306,20 +484,8 @@ initialSearch :: Search
 ```
 
 
-#### `State`
 
-``` purescript
-type State = { path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
-```
-
-Application state
-
-#### `initialState`
-
-``` purescript
-initialState :: State
-```
-
+## Module Model.Notebook
 
 #### `CellType`
 
@@ -333,34 +499,20 @@ data CellType
   | Markdown 
 ```
 
-Notebook cell type
-
-#### `CellMetadata`
-
-``` purescript
-type CellMetadata = {  }
-```
-
 
 #### `Cell`
 
 ``` purescript
-type Cell = { metadata :: CellMetadata, cellType :: CellType, output :: String, input :: String }
-```
-
-Cell model
-
-#### `NbMetadata`
-
-``` purescript
-type NbMetadata = {  }
+newtype Cell
+  = Cell { metadata :: String, cellType :: CellType, output :: String, input :: String }
 ```
 
 
 #### `Notebook`
 
 ``` purescript
-type Notebook = { cells :: [Cell], metadata :: NbMetadata }
+newtype Notebook
+  = Notebook { cells :: [Cell], metadata :: String }
 ```
 
 
@@ -371,255 +523,109 @@ newNotebook :: Notebook
 ```
 
 
-
-## Module Utils
-
-
-Shortcuts and glue between different modules
-
-#### `encodeURIComponent`
+#### `cellTypeEncode`
 
 ``` purescript
-encodeURIComponent :: String -> String
-```
-
-#### `decodeURIComponent`
-
-``` purescript
-decodeURIComponent :: String -> String
+instance cellTypeEncode :: Ae.EncodeJson CellType
 ```
 
 
-#### `log`
+#### `cellEncode`
 
 ``` purescript
-log :: forall a e. a -> Eff (trace :: Trace | e) Unit
+instance cellEncode :: Ae.EncodeJson Cell
 ```
 
 
-#### `onLoad`
+#### `notebookEncode`
 
 ``` purescript
-onLoad :: forall e. Eff (dom :: DOM | e) Unit -> Eff (dom :: DOM | e) Unit
+instance notebookEncode :: Ae.EncodeJson Notebook
 ```
 
 
-#### `append`
+#### `notebookRequestable`
 
 ``` purescript
-append :: forall e. HTMLElement -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
-```
-
-
-#### `newTab`
-
-``` purescript
-newTab :: forall e. String -> Eff (dom :: DOM | e) Unit
-```
-
-Opens url in new tab or window
-
-#### `currentHash`
-
-``` purescript
-currentHash :: forall e. Eff e String
-```
-
-gets current hash
-
-#### `convertToElement`
-
-``` purescript
-convertToElement :: Node -> HTMLElement
-```
-
-converts `Node` to `HTMLElement`
-
-#### `reload`
-
-``` purescript
-reload :: forall e. Eff e Unit
+instance notebookRequestable :: Ar.Requestable Notebook
 ```
 
 
 
-## Module View
+## Module Model.Resource
 
-#### `view`
+
+Resource tag for item 
+
+#### `Resource`
 
 ``` purescript
-view :: forall u node. (H.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
+data Resource
+  = File 
+  | Database 
+  | Notebook 
+  | Directory 
+  | Table 
 ```
 
 
-
-## Module Api.Fs
-
-
-This module will be reworked after `affjax` is ready.
-
-#### `metadata`
+#### `eqResource`
 
 ``` purescript
-metadata :: forall e. String -> ([M.Item] -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
-```
-
-gets current directory children
-
-#### `makeNotebook`
-
-``` purescript
-makeNotebook :: forall e. String -> M.Notebook -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
+instance eqResource :: Eq Resource
 ```
 
 
-#### `makeFile`
+#### `resource2str`
 
 ``` purescript
-makeFile :: forall e. String -> String -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
+resource2str :: Resource -> String
 ```
 
 
-#### `move`
+#### `resourceIsForeign`
 
 ``` purescript
-move :: forall e. String -> String -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
+instance resourceIsForeign :: IsForeign Resource
+```
+
+Now only `IsForeign`. After switching to `purescript-affjax`
+will be `EncodeJson`
+
+
+## Module Model.Sort
+
+
+Sort direction
+
+#### `Sort`
+
+``` purescript
+data Sort
+  = Asc 
+  | Desc 
 ```
 
 
-#### `deleteItem`
+#### `notSort`
 
 ``` purescript
-deleteItem :: forall e. M.Item -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
+notSort :: Sort -> Sort
 ```
 
-delete item
+revese sort
 
-
-## Module Controller.Driver
-
-
-Module handles outer messages to `halogen` application
-Mostly consists of routing functions 
-
-#### `outside`
+#### `sort2string`
 
 ``` purescript
-outside :: forall e. Hl.Driver M.Input (timer :: Tm.Timer | e) -> Eff (Hl.HalogenEffects (timer :: Tm.Timer | e)) Unit
-```
-
-Entry, used in `halogen` app
-
-#### `searchPath`
-
-``` purescript
-searchPath :: S.SearchQuery -> Maybe String
-```
-
-Extract path predicate from search query
-
-#### `SortSetter`
-
-``` purescript
-data SortSetter
-  = SortSetter M.Sort
-```
-
-Set _sort_ in route
-
-#### `routeModifierSortSetter`
-
-``` purescript
-instance routeModifierSortSetter :: RS.RouteModifier SortSetter
+sort2string :: Sort -> String
 ```
 
 
-#### `QSetter`
+#### `eqSort`
 
 ``` purescript
-data QSetter
-  = QSetter String
-```
-
-Set _q_ in route
-
-#### `routeModifierQSetter`
-
-``` purescript
-instance routeModifierQSetter :: RS.RouteModifier QSetter
-```
-
-
-#### `routeSetterSortSetter`
-
-``` purescript
-instance routeSetterSortSetter :: RS.RouteState SortSetter
-```
-
-
-#### `getPath`
-
-``` purescript
-getPath :: String -> String
-```
-
-extract path from full hash
-
-#### `PathSetter`
-
-``` purescript
-newtype PathSetter
-  = PathSetter String
-```
-
-set _path_ value in path-labeled predicate in route
-
-#### `routeModifierPathSetter`
-
-``` purescript
-instance routeModifierPathSetter :: RS.RouteModifier PathSetter
-```
-
-
-#### `PathAdder`
-
-``` purescript
-newtype PathAdder
-  = PathAdder String
-```
-
-Add to _path_ value in path-labeled predicate 
-
-#### `routeModifierPathAdder`
-
-``` purescript
-instance routeModifierPathAdder :: RS.RouteModifier PathAdder
-```
-
-
-
-## Module Controller.Input
-
-
-state update function 
-
-#### `inner`
-
-``` purescript
-inner :: M.State -> M.Input -> M.State
-```
-
-
-
-## Module Controller.Request
-
-
-Main app handler
-
-#### `handler`
-
-``` purescript
-handler :: forall e. M.Request -> Aff.Aff (Hl.HalogenEffects (timer :: Tm.Timer | e)) M.Input
+instance eqSort :: Eq Sort
 ```
 
 
@@ -629,7 +635,7 @@ handler :: forall e. M.Request -> Aff.Aff (Hl.HalogenEffects (timer :: Tm.Timer 
 #### `raiseEvent`
 
 ``` purescript
-raiseEvent :: forall e a. String -> HTMLElement -> a -> Eff (dom :: DOM | e) HTMLElement
+raiseEvent :: forall e a. String -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
 ```
 
 
@@ -657,6 +663,13 @@ data FileList :: *
 ```
 
 
+#### `ReadFile`
+
+``` purescript
+data ReadFile :: !
+```
+
+
 #### `fileListToArray`
 
 ``` purescript
@@ -667,84 +680,68 @@ fileListToArray :: FileList -> [File]
 #### `name`
 
 ``` purescript
-name :: forall e. File -> Eff e String
+name :: forall e. File -> Eff (file :: ReadFile | e) String
 ```
 
 
-#### `file2blob`
+#### `newReaderEff`
 
 ``` purescript
-file2blob :: File -> Blob
+newReaderEff :: forall e. Eff e FileReader
 ```
-
-
-#### `newFormData`
-
-``` purescript
-newFormData :: forall e. Eff e FormData
-```
-
-
-#### `append2FormData`
-
-``` purescript
-append2FormData :: forall e a. String -> a -> FormData -> Eff e FormData
-```
-
 
 #### `newReader`
 
 ``` purescript
-newReader :: forall e. Eff e FileReader
+newReader :: forall e. Aff e FileReader
 ```
 
 
-#### `readAsBinaryString`
+#### `readAsBinaryStringEff`
 
 ``` purescript
-readAsBinaryString :: forall e. File -> FileReader -> Eff e Unit
-```
-
-
-#### `str2blob`
-
-``` purescript
-str2blob :: forall e. String -> Blob
+readAsBinaryStringEff :: forall e. File -> FileReader -> Eff (file :: ReadFile | e) Unit
 ```
 
 
 #### `resultImpl`
 
 ``` purescript
-resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) FileReader (Eff e (Maybe String))
+resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) FileReader (Eff (file :: ReadFile | e) (Maybe String))
 ```
 
 
-#### `result`
+#### `resultEff`
 
 ``` purescript
-result :: forall e. FileReader -> Eff e (Maybe String)
+resultEff :: forall e. FileReader -> Eff (file :: ReadFile | e) (Maybe String)
 ```
 
+
+#### `filesEff`
+
+``` purescript
+filesEff :: forall e. Node -> Eff (dom :: DOM | e) FileList
+```
 
 #### `files`
 
 ``` purescript
-files :: forall e. HTMLElement -> Eff e FileList
+files :: forall e. Node -> Aff (dom :: DOM | e) FileList
 ```
 
 
-#### `onload`
+#### `onloadEff`
 
 ``` purescript
-onload :: forall e e'. FileReader -> Eff e Unit -> Eff e' FileReader
+onloadEff :: forall e e'. FileReader -> Eff e Unit -> Eff (file :: ReadFile | e') Unit
 ```
 
 
-#### `clearValue`
+#### `readAsBinaryString`
 
 ``` purescript
-clearValue :: forall e. HTMLElement -> Eff e Unit
+readAsBinaryString :: forall e. File -> FileReader -> Aff (file :: ReadFile | e) String
 ```
 
 
@@ -762,6 +759,13 @@ back :: forall e i r. i -> EventHandler (Either i r)
 
 ``` purescript
 request :: forall e i r. r -> EventHandler (Either i r)
+```
+
+
+#### `targetLink`
+
+``` purescript
+targetLink :: forall a b. b -> [A.Attr (Either a b)]
 ```
 
 
