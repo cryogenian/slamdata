@@ -2,7 +2,7 @@ module Utils.Event (raiseEvent) where
 
 import Data.DOM.Simple.Types (HTMLElement())
 import Control.Monad.Eff
-import Data.Function (Fn3(), runFn3)
+import Data.Function (Fn2(), runFn2)
 import DOM (DOM())
 
 foreign import data Event :: *
@@ -14,22 +14,16 @@ function target(ev) {
   };
 }
 """ :: forall e. Event -> Eff e HTMLElement
-foreign import detail """
-function detail(ev) {
-  return function() {
-    return ev.detail;
-  };
-}
-""" :: forall e a. Event -> Eff e a
+
 foreign import raiseEventImpl """
-function raiseEventImpl(name, node, content) {
+function raiseEventImpl(name, node) {
   return function() {
-    var evt = new CustomEvent(name, {detail: content});
+    var evt = new CustomEvent(name)
     evt.initEvent(name, true, true);
     node.dispatchEvent(evt);
     return node;
   };
 }
-""" :: forall e a. Fn3 String HTMLElement a (Eff (dom::DOM|e) HTMLElement)
-raiseEvent :: forall e a. String -> HTMLElement -> a -> Eff (dom::DOM|e) HTMLElement
-raiseEvent name el content = runFn3 raiseEventImpl name el content
+""" :: forall e a. Fn2 String HTMLElement (Eff (dom::DOM|e) HTMLElement)
+raiseEvent :: forall e a. String -> HTMLElement -> Eff (dom::DOM|e) HTMLElement
+raiseEvent name el = runFn2 raiseEventImpl name el

@@ -17,6 +17,7 @@ import Data.Foldable
 import Data.Traversable 
 import Data.Either
 import Data.Function
+import Debug.Foreign
 
 import qualified Network.HTTP.Affjax.Response as Af
 import qualified Network.HTTP.Affjax.ResponseType as At
@@ -111,7 +112,7 @@ makeFile :: forall e. String -> String ->
             (Boolean -> Eff (dom :: DOM|e) Unit) -> 
             Eff (dom :: DOM|e) Unit 
 makeFile path content callback = 
-  let isJson = either (const false) (const true) $ do
+  let isJson = either (const false) (const true) do
         hd <- maybe (Left (JSONError "incorrect")) Right $
               Ar.head $ Str.split "\n" content
         parseJSON hd

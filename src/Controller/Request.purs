@@ -26,7 +26,7 @@ import qualified Model as M
 import qualified Api.Fs as Api
 
 handler :: forall e. M.Request ->
-           Aff.Aff (Hl.HalogenEffects (timer::Tm.Timer|e)) M.Input
+           Aff.Aff (Hl.HalogenEffects (timer::Tm.Timer, file :: Uf.ReadFile|e)) M.Input
 handler r = Aff.makeAff $ \_ k -> do 
   case r of
     -- value of search has been changed
@@ -75,12 +75,12 @@ handler r = Aff.makeAff $ \_ k -> do
       case mbInput of 
         Nothing -> pure unit
         Just input -> do
-          void $ Ue.raiseEvent "click" input {}
+          void $ Ue.raiseEvent "click" input 
 
     -- clicked on _Folder_ link, create phantom folder
     M.CreateFolder state -> do
       let name = getNewName Config.newFolderName state
-      path <- Cd.getPath <$> U.currentHash
+      path <- Cd.getPath <$> Rh.getHash
       k $ M.ItemAdd $ M.initDirectory{root = path, name = name}
       k $ M.Resort
 
@@ -89,7 +89,7 @@ handler r = Aff.makeAff $ \_ k -> do
 
     M.CreateNotebook state -> do
       let name = getNewName Config.newNotebookName state
-      path <- Cd.getPath <$> U.currentHash
+      path <- Cd.getPath <$> Rh.getHash
       let notebook = M.initNotebook{root = path, name = name} 
       k $ M.ItemAdd notebook
       k $ M.Resort 
@@ -118,7 +118,7 @@ handler r = Aff.makeAff $ \_ k -> do
     M.FileListChanged node state -> do
       let el = U.convertToElement node
       fileArr <- Uf.fileListToArray <$> Uf.files el
-      Uf.clearValue el
+      U.clearValue el
       case A.head fileArr of
         Nothing -> pure unit
         Just file -> void $ do
@@ -129,11 +129,14 @@ handler r = Aff.makeAff $ \_ k -> do
             case cont of
               Nothing -> pure unit
               Just res -> do
-                path <- Cd.getPath <$> U.currentHash
+                path <- Cd.getPath <$> Rh.getHash
                 name <- flip getNewName state <$> Uf.name file
-                Api.makeFile (path <> name) res \success -> do
-                  k $ M.ItemAdd $ M.initFile{root = path, name = name}
-                  k $ M.Resort
+                Api.makeFile (path <> name) res \success -> 
+                  if success then do
+                    k $ M.ItemAdd $ M.initFile{root = path, name = name}
+                    k $ M.Resort
+                    else 
+                    pure unit
 
         -- set `q` in route
   where setQ k q =

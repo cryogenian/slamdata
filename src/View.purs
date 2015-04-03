@@ -4,7 +4,6 @@ import Data.Either
 import Data.Tuple
 import Data.Monoid (mempty)
 import Data.Array
-
 import Utils.Halide (back, request, targetLink)
 import qualified Model as M
 import qualified Halogen.HTML as H
@@ -90,8 +89,9 @@ toolbar state =
   where mount = H.li_ [H.a (targetLink <<< M.MountDatabase $ state) 
                        [H.text "Mount"]]
         file = H.li_
-               [H.a
-                [E.onclick (\ev -> request $ M.UploadFile ev.target state)]
+               [H.a 
+                [A.href "javascript:void(0);",
+                 E.onclick (\ev -> request $ M.UploadFile ev.target state)]
                 [H.input [A.class_ B.hidden,
                           A.type_ "file",
                           E.onchange (\ev -> request $

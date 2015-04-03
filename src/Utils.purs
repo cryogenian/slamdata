@@ -49,13 +49,6 @@ function newTab(url) {
 }
 """ :: forall e. String -> Eff (dom::DOM|e) Unit 
 
--- | gets current hash
-foreign import currentHash """
-function currentHash() {
-  return document.location.hash.replace(/^[^#]*#/g, "");
-}
-""" :: forall e. Eff e String
-
 -- | converts `Node` to `HTMLElement`
 foreign import convertToElement """
 function convertToElement(a) {return a;}
@@ -65,7 +58,16 @@ foreign import reload """
 function reload() {
   document.location.reload();
 }
-""" :: forall e. Eff e Unit
+""" :: forall e. Eff (dom :: DOM|e) Unit
+
+
+foreign import clearValue """
+function clearValue(el) {
+  return function() {
+    el.value = null;
+  };
+}
+""" :: forall e. HTMLElement -> Eff (dom :: DOM |e) Unit
 
 bodyNode = do
   document globalWindow >>= body
