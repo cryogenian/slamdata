@@ -11,7 +11,6 @@ module Controller.Driver (
   updatePath
   ) where
 
-
 import Control.Monad.Eff
 import Control.Monad.Eff.Class
 import Control.Apply
@@ -38,8 +37,13 @@ import qualified Text.SlamSearch.Printer as S
 import qualified Data.Minimatch as MM
 import qualified Control.Monad.Aff as Aff
 import qualified Model as M
+import qualified Model.Item as Mi
+import qualified Model.Sort as Ms
+import qualified Model.Resource as Mr
 import qualified Api.Fs as Api
 import qualified Network.HTTP.Affjax as Af
+import qualified Control.Monad.Aff as Aff
+
 
 -- | Entry, used in `halogen` app
 outside :: forall e. Hl.Driver M.Input (timer :: Tm.Timer, ajax :: Af.Ajax|e) ->
@@ -47,7 +51,7 @@ outside :: forall e. Hl.Driver M.Input (timer :: Tm.Timer, ajax :: Af.Ajax|e) ->
 outside driver = handleRoute driver 
 
 -- | Routing schema
-data Routes = SortAndQ M.Sort S.SearchQuery | Sort M.Sort | Index 
+data Routes = SortAndQ Ms.Sort S.SearchQuery | Sort Ms.Sort | Index 
 
 -- | Route parsing match objects
 routing :: R.Match Routes
@@ -56,7 +60,7 @@ routing = bothRoute <|> oneRoute <|> index
         oneRoute = Sort <$> sort
         index = pure Index
         sort = R.lit "sort" *>
-               ((R.lit "asc" *> pure M.Asc) <|> (R.lit "desc" *> pure M.Desc))
+               ((R.lit "asc" *> pure Ms.Asc) <|> (R.lit "desc" *> pure Ms.Desc))
 
         query = R.eitherMatch (S.mkQuery <$> R.param "q")
 
@@ -71,24 +75,23 @@ handleRoute driver = do
         let path = cleanPath $ fromMaybe "" $ searchPath query
         driver $ M.SetPath path 
         driver $ M.SearchSet (S.strQuery query)
+        Aff.launchAff $ do
+          unfiltered <- Api.listing path
+          let items = _{root = path} <$>
+                      (if (path /= "/" && path /= "") then [Mi.upLink] else []) <>
+                      (filter (filterByQuery query) unfiltered)
+          liftEff (driver $ M.ItemsUpdate items sort)
 
-
-        Api.metadata path $ \items -> do
-          driver $ M.ItemsUpdate $
-            (_{root = path}) <$> 
-            (if (path /= "/" && path /= "") then [M.upLink] else []) <>
-            (filter (filterByQuery query) items)
-          driver $ M.Sorting sort
       -- Fired by default -> redirect to sorted route
       Index -> do
-        Rh.setHash $ setSort M.Asc 
+        Rh.setHash $ setSort Ms.Asc 
       -- Only sort setted -> redirects to `q=` 
       Sort sort -> do
         driver $ M.SearchSet ""
         driver $ M.SetPath ""
-        Api.metadata "" $ \items -> do
-          driver $ M.ItemsUpdate items
-          driver $ M.Sorting sort
+        Aff.launchAff $ do
+          items <- Api.listing ""
+          liftEff (driver $ M.ItemsUpdate items sort)
           
   where cleanPath :: String -> String
         cleanPath input =
@@ -127,10 +130,10 @@ check p prj =
                 flags = Rgx.noFlags{global = true}
 
 -- | Filtering function for items and predicates
-filterByTerm :: M.Item -> S.Term -> Boolean
+filterByTerm :: Mi.Item -> S.Term -> Boolean
 filterByTerm {name: name, resource: resource}
   (S.Term {predicate: predicate, labels: labels, include: include}) =
-  let res = M.resource2str resource
+  let res = Mr.resource2str resource
       -- checking _include_ field in predicate
       mbNot :: Boolean -> Boolean
       mbNot = if include then id else not
@@ -150,7 +153,7 @@ filterByTerm {name: name, resource: resource}
     _ -> false 
 
 -- | Filter by full search query 
-filterByQuery :: S.SearchQuery -> M.Item -> Boolean
+filterByQuery :: S.SearchQuery -> Mi.Item -> Boolean
 filterByQuery query item = 
   S.check item query filterByTerm
   
@@ -173,10 +176,10 @@ sortRgx = Rgx.regex "(sort/)([^/]*)" Rgx.noFlags
 qRgx :: Rgx.Regex
 qRgx = Rgx.regex "(q=)([^/&]*)" Rgx.noFlags
 
-updateSort :: M.Sort -> String -> String
+updateSort :: Ms.Sort -> String -> String
 updateSort sort = 
   Rgx.replace sortRgx res
-  where res = "$1" <> M.sort2string sort
+  where res = "$1" <> Ms.sort2string sort
         
 updateQ :: String -> String -> String
 updateQ q = 
@@ -184,8 +187,8 @@ updateQ q =
   where res = "$1" <> U.encodeURIComponent q
 
 
-setSort :: M.Sort -> String
-setSort sort = "sort/" <> M.sort2string sort <> "/?q="
+setSort :: Ms.Sort -> String
+setSort sort = "sort/" <> Ms.sort2string sort <> "/?q="
 
 -- | extract path from full hash
 getPath :: String -> String

@@ -6,6 +6,9 @@ import Data.Monoid (mempty)
 import Data.Array
 import Utils.Halide (back, request, targetLink)
 import qualified Model as M
+import qualified Model.Item as M
+import qualified Model.Sort as Ms
+import qualified Model.Resource as Mr
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
@@ -64,14 +67,14 @@ sorting :: forall u node. (H.HTMLRepr node) =>
            M.State -> node u (Either M.Input M.Request)
 sorting state =
     H.div [A.class_ B.colSm4] [
-      H.a (targetLink <<< M.SetSort $ M.notSort state.sort) [
+      H.a (targetLink <<< M.SetSort $ Ms.notSort state.sort) [
           H.text "Name",
           H.i [chevron state,
                A.style (A.styles $ SM.fromList [Tuple "margin-left" "10px"])] []
           ]
        ]
-    where chevron {sort: M.Asc} = A.classes [B.glyphicon, B.glyphiconChevronUp]
-          chevron {sort: M.Desc} = A.classes [B.glyphicon, B.glyphiconChevronDown]
+    where chevron {sort: Ms.Asc} = A.classes [B.glyphicon, B.glyphiconChevronUp]
+          chevron {sort: Ms.Desc} = A.classes [B.glyphicon, B.glyphiconChevronDown]
 
 toolbar :: forall u node. (H.HTMLRepr node) =>
            M.State -> node u (Either M.Input M.Request)
@@ -134,11 +137,11 @@ item ix state =
     ]
   where iconClasses state = A.classes [B.glyphicon, iconClass state.resource]
         iconClass res = case res of
-          M.File -> B.glyphiconFile
-          M.Database -> B.glyphiconHdd
-          M.Notebook -> B.glyphiconBook
-          M.Directory -> B.glyphiconFolderOpen
-          M.Table -> B.glyphiconTh
+          Mr.File -> B.glyphiconFile
+          Mr.Database -> B.glyphiconHdd
+          Mr.Notebook -> B.glyphiconBook
+          Mr.Directory -> B.glyphiconFolderOpen
+          Mr.Table -> B.glyphiconTh
 
         showToolbar :: forall node. (H.HTMLRepr node) =>
                       M.Item -> [node u (Either M.Input M.Request)]
@@ -146,7 +149,7 @@ item ix state =
           if item.name == ".." then []
             else
             let conf = case item.resource of
-                  M.Database ->
+                  Mr.Database ->
                     [H.li_
                      [H.a (targetLink <<< M.Configure $ item) 
                       [H.text "configure"]]]

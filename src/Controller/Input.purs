@@ -4,6 +4,7 @@ module Controller.Input where
 import Data.Maybe
 import Data.Foldable
 import qualified Model as M
+import qualified Model.Item as M
 import qualified Data.Array as A
 import qualified Data.String as Str
 import qualified Data.List as L
@@ -23,8 +24,10 @@ inner state input =
       state{sort = sort, items = A.sortBy (M.sortItem sort) state.items}
     M.SearchNextValue next ->
       state{search = state.search{nextValue = next}}
-    M.ItemsUpdate is -> 
-      state{items = A.concat [A.filter (\x -> x.root == state.path) $
+    M.ItemsUpdate is sort -> 
+      state{sort = sort,
+            items = A.sortBy (M.sortItem sort) $
+                    A.concat [A.filter (\x -> x.root == state.path) $
                               A.filter _.phantom state.items, is]}
     M.SearchValidation v ->
       state{search = state.search{valid = v}}

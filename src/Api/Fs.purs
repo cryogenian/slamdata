@@ -1,135 +1,85 @@
 -- | This module will be reworked after `affjax` is ready.
 module Api.Fs (
-  metadata,
   makeNotebook,
   deleteItem,
   makeFile,
-  move
+  listing
   ) where
 
 import Control.Monad.Eff
 import Control.Monad.Eff.Exception (error)
-
 import DOM (DOM())
+import Data.Maybe
+import Data.Either
+import Control.Monad.Error.Class
 import Data.Foreign
 import Data.Foreign.Class
-import Data.Maybe
-import Data.Foldable
-import Data.Traversable 
-import Data.Either
-import Data.Function
-import Debug.Foreign
-import Control.Monad.Error.Class
 
+import qualified Control.Monad.Aff as Aff
+import qualified Data.Array as Arr
+import qualified Data.String as Str
+import qualified Data.String.Regex as Rgx
+import qualified Data.Argonaut.Parser as Ap
 import qualified Network.HTTP.Affjax.Response as Ar
 import qualified Network.HTTP.Affjax.ResponseType as At
 import qualified Network.HTTP.Affjax as Af
-import qualified Data.DOM.Simple.Ajax as A
-import qualified Data.Array as Ar
-import qualified Data.String as Str
+
+import qualified Config as Config
 import qualified Model as M
+import qualified Model.Item as Mi
+import qualified Model.Resource as Mr
 import qualified Model.Notebook as Mn
-import Data.Foreign
-import Data.Foreign.Class
 
-import Data.Argonaut ((.?))
-import Data.Argonaut.Decode (DecodeJson, decodeJson)
-import qualified Data.Argonaut.Parser as Ap
+newtype Listing = Listing [Child]
 
--- gets raw metadata
-metadataF :: forall e. String -> (Foreign -> Eff (dom::DOM|e) Unit) -> 
-            Eff (dom::DOM|e) Unit 
-metadataF path callback = do
-  req <- A.makeXMLHttpRequest
-  let action = do
-        state <- A.readyState req
-        case state of
-          A.Done -> do
-            response <- A.responseText req
-            status <- A.status req
-            case parseJSON response of
-              Right f | status == 200 -> callback f
-              _ -> pure unit 
-          _ -> pure unit
-          
-  A.onReadyStateChange action req
-  A.open A.GET (Config.metadataUrl <> path) req
-  A.send A.NoData req
+instance listingIsForeign :: IsForeign Listing where
+  read f = Listing <$> readProp "children" f
 
--- | gets current directory children
-metadata :: forall e. String -> ([M.Item] -> Eff (dom :: DOM | e) Unit) ->
-            Eff (dom :: DOM|e) Unit 
-metadata path callback = 
-  metadataF path $ \f -> do
-    let readed = readProp "children" f >>= readArray >>= traverse M.readItem
-    either (const $ pure unit) callback readed 
-          
-          
-foreign import f2jsonImpl """
-function f2jsonImpl(f, nothing, just ) {
-  var res = JSON.stringify(f);
-  if (typeof res == 'undefined') {
-    return nothing;
-  } else if (typeof f == 'string') {
-    return just(f);
-  }
-  else {
-    return just(res)
-  }
-}
-""" :: forall a. Fn3 Foreign (Maybe a) (a -> Maybe a) (Maybe String)
+newtype Child = Child {name :: String, resource :: Mr.Resource}
 
--- converting js-objects to json representation
--- if input is json-string will return it
-f2json :: Foreign -> Maybe String
-f2json f = runFn3 f2jsonImpl f Nothing Just 
-{-
--- | put raw data
-putF :: forall e. String -> Foreign -> (Boolean -> Eff (dom::DOM|e) Unit) -> 
-       Eff (dom::DOM|e) Unit 
-putF path obj callback = do 
-  req <- A.makeXMLHttpRequest
-  let action = do
-        state <- A.readyState req
-        case state of
-          A.Done -> do
-            status <- A.status req
-            callback $ status == 200
-          _ -> return unit
-  case f2json obj of
-    Nothing -> pure unit
-    Just obj -> do 
-      A.onReadyStateChange action req
-      A.open A.PUT (Config.dataUrl <> path) req
-      A.send (A.JsonData obj) req
+instance childIsForeign :: IsForeign Child where
+  read f = Child <$> 
+    ({name: _, resource: _} <$>
+     readProp "name" f <*>
+     readProp "type" f)
 
 
-makeNotebook :: forall e. String -> M.Notebook ->
-                (Boolean -> Eff (dom::DOM|e) Unit) ->
-                Eff (dom::DOM|e) Unit 
-makeNotebook path notebook callback = 
-  putF path (toForeign notebook) callback
+instance listingResponsable :: Ar.Responsable Listing where
+  responseType _ = At.JSONResponse
+  fromResponse = read
+
+listing2items :: Listing -> [Mi.Item]
+listing2items (Listing cs) =
+  child2item <$> cs
+  where nbExtensionRgx = Rgx.regex ("\\" <> Config.notebookExtension) Rgx.noFlags
+        isNotebook r = r.resource == Mr.File &&
+                     r.name ==
+                     Rgx.replace nbExtensionRgx "" r.name
+        child2item (Child r) =
+          let item = {
+                resource: r.resource,
+                name: r.name,
+                selected: false,
+                hovered: false,
+                phantom: false,
+                root: ""
+                }
+          in if isNotebook r then
+               item{resource = Mr.Notebook}
+             else item
 
 
-makeFile :: forall e. String -> String ->
-            (Boolean -> Eff (dom :: DOM|e) Unit) -> 
-            Eff (dom :: DOM|e) Unit 
-makeFile path content callback = 
-  let isJson = either (const false) (const true) do
-        hd <- maybe (Left (JSONError "incorrect")) Right $
-              Ar.head $ Str.split "\n" content
-        parseJSON hd
-  in if isJson then do
-    putF path (toForeign content) callback
-     else
-     callback false
--}
+listing' :: forall e. String -> Af.Affjax e Listing
+listing' path = Af.get (Config.metadataUrl <> path)
+
+listing :: forall e. String -> Aff.Aff (ajax::Af.Ajax|e) [Mi.Item]
+listing path = (listing2items <<< _.response) <$> listing' path
 
 makeFile :: forall e. String -> String -> Af.Affjax e Unit
 makeFile path content =
   let isJson = either (const false) (const true) do
         hd <- maybe (Left "empty file") Right $
-              Ar.head $ Str.split "\n" content
+              Arr.head $ Str.split "\n" content
         Ap.jsonParser hd
   in if isJson then do 
     Af.put_ (Config.dataUrl <> path) content
@@ -138,31 +88,12 @@ makeFile path content =
 makeNotebook :: forall e. Af.URL -> Mn.Notebook -> Af.Affjax e Unit 
 makeNotebook path notebook = Af.put_ (Config.dataUrl <> path) notebook
 
-move :: forall e. String -> String -> (Boolean -> Eff (dom::DOM|e) Unit) ->
-        Eff (dom::DOM|e) Unit
-move src tgt callback = do 
-  req <- A.makeXMLHttpRequest
-  
-  let action = do
-        state <- A.readyState req
-        case state of 
-          A.Done -> do
-            status <- A.status req
-            callback $ status == 200
-          _ -> return unit
-          
-  A.onReadyStateChange action req
-  A.open (A.HttpMethod "MOVE") (Config.dataUrl <> src) req
-  A.setRequestHeader "Destination" tgt req
-  A.send A.NoData req
-
-
 delete :: forall e. String -> Af.Affjax e Unit
 delete path = Af.delete_ (Config.dataUrl <> path)
 
-deleteItem :: forall e. M.Item -> Af.Affjax e Unit
+deleteItem :: forall e. Mi.Item -> Af.Affjax e Unit
 deleteItem item =
     let path = item.root <> item.name <>
-               if item.resource /= M.File && item.resource /= M.Notebook then "/"
+               if item.resource /= Mr.File && item.resource /= Mr.Notebook then "/"
                else ""
     in delete path 

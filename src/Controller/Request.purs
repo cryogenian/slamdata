@@ -29,7 +29,9 @@ import qualified Controller.Driver as Cd
 import qualified Network.HTTP.Affjax as Af
 
 import qualified Model as M
+import qualified Model.Item as Mi
 import qualified Model.Notebook as Mn
+import qualified Model.Resource as Mr
 import qualified Api.Fs as Api
 
 handler :: forall e. M.Request ->
@@ -44,7 +46,7 @@ handler r =
     M.CreateNotebook state -> do
       let name = getNewName Config.newNotebookName state
       path <- liftEff $ Cd.getPath <$> Rh.getHash
-      let notebook = M.initNotebook{root = path, name = name}
+      let notebook = Mi.initNotebook{root = path, name = name}
       Api.makeNotebook (path <> name) Mn.newNotebook
       pure $ M.ItemAdd notebook
 
@@ -59,12 +61,11 @@ handler r =
           reader <- Uf.newReader
           content <- Uf.readAsBinaryString file reader
           Api.makeFile (path <> name) content
-          pure $ M.ItemAdd M.initFile{root = path, name = name}
+          pure $ M.ItemAdd Mi.initFile{root = path, name = name}
           
     _ -> Aff.makeAff $ \_ k -> do 
-
       case r of
-    -- value of search has been changed
+        -- value of search has been changed
         M.SearchChange mbTimeout ch -> do
           k $ M.SearchNextValue ch
           maybe (pure unit) Tm.clearTimeout mbTimeout
@@ -77,33 +78,33 @@ handler r =
           maybe (pure unit) Tm.clearTimeout s.timeout
           setQ k s.nextValue
 
-    -- sets sort 
+        -- sets sort 
         M.SetSort sort -> do
           Rh.modifyHash $ Cd.updateSort sort
 
-    -- opens item
+        -- opens item
         M.Open item -> do
           case item.resource of
-            M.Directory ->
+            Mr.Directory ->
               moveDown item
-            M.Database ->
+            Mr.Database ->
               moveDown item
-            M.File ->
+            Mr.File ->
               open item true
-            M.Table ->
+            Mr.Table ->
               open item true
-            M.Notebook -> do
+            Mr.Notebook -> do
               open item false
 
-    -- move/rename item
+        -- move/rename item
         M.Move _ ->
           U.log "move/rename"
 
-      -- clicked on breadcrumb
+        -- clicked on breadcrumb
         M.Breadcrumb b -> do
           Rh.modifyHash $ Cd.updatePath b.link
 
-    -- clicked on _File_ link triggering file uploading
+        -- clicked on _File_ link triggering file uploading
         M.UploadFile node _ -> do
           let el = U.convertToElement node
           mbInput <- El.querySelector "input" el
@@ -112,28 +113,21 @@ handler r =
             Just input -> do
               void $ Ue.raiseEvent "click" input 
 
-    -- clicked on _Folder_ link, create phantom folder
+        -- clicked on _Folder_ link, create phantom folder
         M.CreateFolder state -> do
           let name = getNewName Config.newFolderName state
           path <- Cd.getPath <$> Rh.getHash
-          k $ M.ItemAdd $ M.initDirectory{root = path, name = name}
+          k $ M.ItemAdd $ Mi.initDirectory{root = path, name = name}
 
         M.MountDatabase _ ->
           U.log "mount database"
-
-
     
         M.Share _ -> do
           U.log "share"
 
-    -- configure db
         M.Configure _ -> do
           U.log "configure"
 
-    -- triggered when files changed in file selecting dialog
-        
-
-        -- set `q` in route
   where setQ k q =
           case S.mkQuery q of
             Left _ | q /= "" -> k $ M.SearchValidation false
