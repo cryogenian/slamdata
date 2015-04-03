@@ -17,7 +17,7 @@ import qualified Control.Timer as Tm
 import qualified Config as Config
 import qualified Control.Monad.Aff as Aff
 import qualified Text.SlamSearch as S
-import qualified Routing.Setter as RS 
+import qualified Routing.Hash as Rh
 import qualified Data.String as Str
 import qualified Data.DOM.Simple.Element as El
 import qualified Controller.Driver as Cd 
@@ -44,7 +44,7 @@ handler r = Aff.makeAff $ \_ k -> do
 
     -- sets sort 
     M.SetSort sort -> do
-      RS.modifyRoute $ Cd.SortSetter sort
+      Rh.modifyHash $ Cd.updateSort sort
 
     -- opens item
     M.Open item -> do
@@ -66,7 +66,7 @@ handler r = Aff.makeAff $ \_ k -> do
 
     -- clicked on breadcrumb
     M.Breadcrumb b -> do
-      RS.modifyRoute $ Cd.PathSetter b.link
+      Rh.modifyHash $ Cd.updatePath b.link
 
     -- clicked on _File_ link triggering file uploading
     M.UploadFile node state -> do
@@ -140,13 +140,13 @@ handler r = Aff.makeAff $ \_ k -> do
           case S.mkQuery q of
             Left _ | q /= "" -> k $ M.SearchValidation false
             Right _ -> do
-              RS.modifyRoute $ Cd.QSetter q
+              Rh.modifyHash $ Cd.updateQ q 
               k $ M.SearchValidation true
             _ -> do
-              RS.modifyRoute $ Cd.QSetter ""
+              Rh.modifyHash $ Cd.updateQ ""
               k $ M.SearchValidation true
         -- open dir or db
-        moveDown item = RS.modifyRoute $ Cd.PathAdder $ item.name 
+        moveDown item = Rh.modifyHash $ Cd.addToPath item.name
         -- open notebook or file
         open item isNew = U.newTab $ foldl (<>) ""
                           ([Config.notebookUrl,

@@ -4,10 +4,11 @@ module Controller.Driver (
   outside,
   getPath,
   searchPath,
-  PathSetter(..),
-  SortSetter(..),
-  QSetter(..),
-  PathAdder(..)
+  updateSort,
+  updateQ,
+  setSort,
+  addToPath,
+  updatePath
   ) where
 
 
@@ -30,7 +31,7 @@ import qualified Halogen as Hl
 import qualified Routing as R
 import qualified Routing.Match as R
 import qualified Routing.Match.Class as R
-import qualified Routing.Setter as RS 
+import qualified Routing.Hash as Rh
 import qualified Text.SlamSearch as S
 import qualified Text.SlamSearch.Types as S
 import qualified Text.SlamSearch.Printer as S
@@ -70,10 +71,7 @@ handleRoute driver = do
         let path = cleanPath $ fromMaybe "" $ searchPath query
         driver $ M.SetPath path 
         driver $ M.SearchSet (S.strQuery query)
-        Aff.launchAff $ do
---          
-          (Api.Metadata {children: cs}) <- _.response <$> Api.meta path
-          liftEff $ U.log cs
+
 
         Api.metadata path $ \items -> do
           driver $ M.ItemsUpdate $
@@ -83,7 +81,7 @@ handleRoute driver = do
           driver $ M.Sorting sort
       -- Fired by default -> redirect to sorted route
       Index -> do
-        RS.setRouteState $ SortSetter M.Asc
+        Rh.setHash $ setSort M.Asc 
       -- Only sort setted -> redirects to `q=` 
       Sort sort -> do
         driver $ M.SearchSet ""
@@ -175,24 +173,19 @@ sortRgx = Rgx.regex "(sort/)([^/]*)" Rgx.noFlags
 qRgx :: Rgx.Regex
 qRgx = Rgx.regex "(q=)([^/&]*)" Rgx.noFlags
 
--- | Set _sort_ in route
-data SortSetter = SortSetter M.Sort
+updateSort :: M.Sort -> String -> String
+updateSort sort = 
+  Rgx.replace sortRgx res
+  where res = "$1" <> M.sort2string sort
+        
+updateQ :: String -> String -> String
+updateQ q = 
+  Rgx.replace qRgx res 
+  where res = "$1" <> U.encodeURIComponent q
 
-instance routeModifierSortSetter :: RS.RouteModifier SortSetter where
-  toHashModifier (SortSetter sort) =
-    Rgx.replace sortRgx res
-    where res = "$1" <> M.sort2string sort 
 
--- | Set _q_ in route
-data QSetter = QSetter String
-
-instance routeModifierQSetter :: RS.RouteModifier QSetter where
-  toHashModifier (QSetter str) =
-    Rgx.replace qRgx res 
-    where res = "$1" <> U.encodeURIComponent str
-
-instance routeSetterSortSetter :: RS.RouteState SortSetter where
-  toHash (SortSetter sort) = "sort/" <> M.sort2string sort <> "/?q="
+setSort :: M.Sort -> String
+setSort sort = "sort/" <> M.sort2string sort <> "/?q="
 
 -- | extract path from full hash
 getPath :: String -> String
@@ -204,31 +197,26 @@ getPath hash =
     searchPath query
 
 -- | set _path_ value in path-labeled predicate in route
-newtype PathSetter = PathSetter String
-
-instance routeModifierPathSetter :: RS.RouteModifier PathSetter where
-  toHashModifier (PathSetter str) oldHash =
-    let pathOld = "path:" <> getPath oldHash
-        pathNew = "path:" <>  str 
-        replaced = Str.replace pathOld pathNew oldHash
-    in if replaced == oldHash then
-         RS.toHashModifier (QSetter pathNew) oldHash 
-       else
-         replaced
+updatePath :: String -> String -> String
+updatePath str oldHash =
+  let pathOld = "path:" <> getPath oldHash
+      pathNew = "path:" <>  str 
+      replaced = Str.replace pathOld pathNew oldHash
+  in if replaced == oldHash then
+       updateQ pathNew oldHash
+     else
+       replaced
 
 -- | Add to _path_ value in path-labeled predicate 
-newtype PathAdder = PathAdder String
-
-instance routeModifierPathAdder :: RS.RouteModifier PathAdder where
-  toHashModifier (PathAdder str) oldHash =
-    let pathOld = getPath oldHash
-        pathNew = flip (<>) "/" $
-                  if str /= ".." then
-                    pathOld <> str 
-                  else
-                    Str.joinWith "/" $
-                    reverse $ drop 1 $ reverse $ 
-                    filter (/= "") $ Str.split "/" pathOld
-    in RS.toHashModifier (PathSetter pathNew) oldHash
-
+addToPath :: String -> String -> String
+addToPath str oldHash = 
+  let pathOld = getPath oldHash
+      pathNew = flip (<>) "/" $
+                if str /= ".." then
+                  pathOld <> str 
+                else
+                  Str.joinWith "/" $
+                  reverse $ drop 1 $ reverse $ 
+                  filter (/= "") $ Str.split "/" pathOld
+    in updatePath pathNew oldHash
 

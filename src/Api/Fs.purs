@@ -1,6 +1,6 @@
 -- | This module will be reworked after `affjax` is ready.
 module Api.Fs (
-  meta, Metadata(..),
+--  meta, Metadata(..),
   metadata,
   makeNotebook,
   deleteItem,
@@ -25,18 +25,11 @@ import qualified Data.DOM.Simple.Ajax as A
 import qualified Data.Array as Ar
 import qualified Data.String as Str
 import qualified Model as M
+import Data.Foreign
+import Data.Foreign.Class
 
-newtype Metadata = Metadata {
-  children :: [M.Item]
-  }
-
-instance metadataResponse :: Af.Responsable Metadata where
-  responseType _ = At.JSONResponse
-  fromResponse a = pure $ Metadata {children: []}
-
-meta :: forall e. String -> Af.Affjax e Metadata
-meta path = Af.get path
-
+import Data.Argonaut ((.?))
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
 
 
 -- gets raw metadata
