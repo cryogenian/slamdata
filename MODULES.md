@@ -1,79 +1,16 @@
 # Module Documentation
 
-## Module Component
+## Module App
 
-
-**action** - type of messages to components
-it modifies **state** in function UpdateFn
-
-#### `Receiver`
+#### `app`
 
 ``` purescript
-type Receiver message e = message -> Eff e Unit
+app :: forall e. Hl.UI M.Input Void M.Request (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)
 ```
 
-One example of **Receiver** can be <code>send channel</code>
-
-#### `UpdateFn`
-
-``` purescript
-type UpdateFn action state eff = action -> state -> Eff eff state
-```
-
-this function fold **state** with **action**
-
-#### `RenderFn`
-
-``` purescript
-type RenderFn action state eff = Receiver action eff -> state -> Eff eff VTree
-```
-
-this function modifies virtual tree 
-
-#### `Initial`
-
-``` purescript
-type Initial action state = { state :: state, action :: action }
-```
-
-This is just for reducing number of fields in spec 
-
-#### `Widget`
-
-``` purescript
-type Widget action state eff = { insert :: HTMLElement -> Eff eff Unit, send :: Receiver action eff, signal :: Signal state }
-```
-
-This is basic component that can be rendered to DOM
-
-#### `WidgetSpec`
-
-``` purescript
-type WidgetSpec action state eff = { hook :: Receiver action eff -> Eff eff Unit, initial :: Initial action state, updateState :: UpdateFn action state eff, render :: RenderFn action state eff }
-```
-
-Spec of component
-
-#### `toVoid`
-
-``` purescript
-toVoid :: forall a e. Receiver a e
-```
-
-Shortcut to void receiver
-
-#### `define`
-
-``` purescript
-define :: forall state action e. WidgetSpec action state (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) (Widget action state (dom :: DOM, chan :: Chan | e))
-```
-
-Takes **WidgetSpec** returns **Widget**
 
 
 ## Module Config
-
-
 
 #### `uploadUrl`
 
@@ -93,6 +30,13 @@ metadataUrl :: String
 
 ``` purescript
 dataUrl :: String
+```
+
+
+#### `notebookUrl`
+
+``` purescript
+notebookUrl :: String
 ```
 
 
@@ -117,37 +61,24 @@ userEnabled :: Boolean
 ```
 
 
-
-## Module Hash
-
-
-Low level url-hash service
-
-#### `Hash`
+#### `newFolderName`
 
 ``` purescript
-type Hash = String
+newFolderName :: String
 ```
 
 
-#### `getHash`
+#### `notebookExtension`
 
 ``` purescript
-getHash :: forall e. Eff e Hash
+notebookExtension :: String
 ```
 
 
-#### `setHash`
+#### `newNotebookName`
 
 ``` purescript
-setHash :: forall e. String -> Eff e Unit
-```
-
-
-#### `changed`
-
-``` purescript
-changed :: forall e. Eff e Unit -> Eff e Unit
+newNotebookName :: String
 ```
 
 
@@ -155,18 +86,522 @@ changed :: forall e. Eff e Unit -> Eff e Unit
 ## Module Main
 
 
+## Module Model
 
-#### `main`
+
+Input, output messages and state
+
+#### `Input`
 
 ``` purescript
-main :: forall e. Eff (trace :: Trace, dom :: DOM, timer :: Timer, chan :: Chan | e) Unit
+data Input
+  = Sorting Sort
+  | ItemsUpdate [Item] Sort
+  | ItemHover Number Boolean
+  | ItemSelect Number Boolean
+  | ItemAdd Item
+  | SearchValidation Boolean
+  | SearchSet String
+  | SearchTimeout Timeout
+  | SearchNextValue String
+  | SetPath String
+  | Resort 
+  | Remove Item
+```
+
+Input messages 
+
+#### `Request`
+
+``` purescript
+data Request
+  = GoToRoute String
+  | SetSort Sort
+  | SearchChange (Maybe Timeout) String
+  | Breadcrumb Breadcrumb
+  | SearchSubmit Search
+  | Open Item
+  | Delete Item
+  | Share Item
+  | Move Item
+  | Configure Item
+  | CreateNotebook State
+  | MountDatabase State
+  | CreateFolder State
+  | UploadFile Node State
+  | FileListChanged Node State
+```
+
+Request Messages 
+
+#### `State`
+
+``` purescript
+type State = { path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
+```
+
+Application state
+
+#### `initialState`
+
+``` purescript
+initialState :: State
 ```
 
 
 
-## Module Model
+## Module Utils
 
 
+Shortcuts and glue between different modules
+
+#### `encodeURIComponent`
+
+``` purescript
+encodeURIComponent :: String -> String
+```
+
+#### `decodeURIComponent`
+
+``` purescript
+decodeURIComponent :: String -> String
+```
+
+
+#### `log`
+
+``` purescript
+log :: forall a e. a -> Eff (trace :: Trace | e) Unit
+```
+
+
+#### `onLoad`
+
+``` purescript
+onLoad :: forall e. Eff (dom :: DOM | e) Unit -> Eff (dom :: DOM | e) Unit
+```
+
+
+#### `append`
+
+``` purescript
+append :: forall e. HTMLElement -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
+```
+
+
+#### `newTab`
+
+``` purescript
+newTab :: forall e. String -> Eff (dom :: DOM | e) Unit
+```
+
+Opens url in new tab or window
+
+#### `convertToElement`
+
+``` purescript
+convertToElement :: Node -> HTMLElement
+```
+
+converts `Node` to `HTMLElement`
+
+#### `reload`
+
+``` purescript
+reload :: forall e. Eff (dom :: DOM | e) Unit
+```
+
+
+#### `clearValue`
+
+``` purescript
+clearValue :: forall e. Node -> Eff (dom :: DOM | e) Unit
+```
+
+
+#### `trimQuotes`
+
+``` purescript
+trimQuotes :: String -> String
+```
+
+
+
+## Module View
+
+#### `view`
+
+``` purescript
+view :: forall u node. (H.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
+```
+
+
+
+## Module Api.Fs
+
+
+This module will be reworked after `affjax` is ready.
+
+#### `listingIsForeign`
+
+``` purescript
+instance listingIsForeign :: IsForeign Listing
+```
+
+
+#### `childIsForeign`
+
+``` purescript
+instance childIsForeign :: IsForeign Child
+```
+
+
+#### `listingResponsable`
+
+``` purescript
+instance listingResponsable :: Ar.Responsable Listing
+```
+
+
+#### `listing`
+
+``` purescript
+listing :: forall e. String -> Aff.Aff (ajax :: Af.Ajax | e) [Mi.Item]
+```
+
+
+#### `makeFile`
+
+``` purescript
+makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+```
+
+
+#### `makeNotebook`
+
+``` purescript
+makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+```
+
+
+#### `deleteItem`
+
+``` purescript
+deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+```
+
+
+
+## Module Controller.Driver
+
+
+Module handles outer messages to `halogen` application
+Mostly consists of routing functions 
+
+#### `outside`
+
+``` purescript
+outside :: forall e. Hl.Driver M.Input (ajax :: Af.Ajax, timer :: Tm.Timer | e) -> Eff (Hl.HalogenEffects (ajax :: Af.Ajax, timer :: Tm.Timer | e)) Unit
+```
+
+Entry, used in `halogen` app
+
+#### `searchPath`
+
+``` purescript
+searchPath :: S.SearchQuery -> Maybe String
+```
+
+Extract path predicate from search query
+
+#### `updateSort`
+
+``` purescript
+updateSort :: Ms.Sort -> String -> String
+```
+
+
+#### `updateQ`
+
+``` purescript
+updateQ :: String -> String -> String
+```
+
+
+#### `setSort`
+
+``` purescript
+setSort :: Ms.Sort -> String
+```
+
+
+#### `getPath`
+
+``` purescript
+getPath :: String -> String
+```
+
+extract path from full hash
+
+#### `updatePath`
+
+``` purescript
+updatePath :: String -> String -> String
+```
+
+set _path_ value in path-labeled predicate in route
+
+#### `addToPath`
+
+``` purescript
+addToPath :: String -> String -> String
+```
+
+Add to _path_ value in path-labeled predicate 
+
+
+## Module Controller.Input
+
+
+state update function 
+
+#### `inner`
+
+``` purescript
+inner :: M.State -> M.Input -> M.State
+```
+
+
+
+## Module Controller.Request
+
+
+Main app handler
+
+#### `handler`
+
+``` purescript
+handler :: forall e. M.Request -> Aff.Aff (Hl.HalogenEffects (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)) M.Input
+```
+
+
+
+## Module Model.Item
+
+#### `Item`
+
+``` purescript
+type Item = { phantom :: Boolean, root :: String, resource :: Resource, name :: String, hovered :: Boolean, selected :: Boolean }
+```
+
+Item in list
+
+#### `itemPath`
+
+``` purescript
+itemPath :: Item -> String
+```
+
+
+#### `up`
+
+``` purescript
+up :: String
+```
+
+link to upper directory
+
+#### `initItem`
+
+``` purescript
+initItem :: Item
+```
+
+default item
+
+#### `upLink`
+
+``` purescript
+upLink :: Item
+```
+
+upper directory 
+
+#### `initDirectory`
+
+``` purescript
+initDirectory :: Item
+```
+
+new directory conf
+
+#### `initNotebook`
+
+``` purescript
+initNotebook :: Item
+```
+
+new notebook item conf
+
+#### `initFile`
+
+``` purescript
+initFile :: Item
+```
+
+new file item conf
+
+#### `sortItem`
+
+``` purescript
+sortItem :: Sort -> Item -> Item -> Ordering
+```
+
+sorting item list with preserving `upItem` in top
+
+#### `Breadcrumb`
+
+``` purescript
+type Breadcrumb = { name :: String, link :: String }
+```
+
+Model for one breadcrumb 
+
+#### `rootBreadcrumb`
+
+``` purescript
+rootBreadcrumb :: Breadcrumb
+```
+
+
+#### `Search`
+
+``` purescript
+type Search = { nextValue :: String, timeout :: Maybe Timeout, value :: String, valid :: Boolean }
+```
+
+State of search field
+
+#### `initialSearch`
+
+``` purescript
+initialSearch :: Search
+```
+
+
+
+## Module Model.Notebook
+
+#### `CellType`
+
+``` purescript
+data CellType
+  = Evaluate 
+  | Explore 
+  | Search 
+  | Query 
+  | Visualize 
+  | Markdown 
+```
+
+
+#### `Cell`
+
+``` purescript
+newtype Cell
+  = Cell { metadata :: String, cellType :: CellType, output :: String, input :: String }
+```
+
+
+#### `Notebook`
+
+``` purescript
+newtype Notebook
+  = Notebook { cells :: [Cell], metadata :: String }
+```
+
+
+#### `newNotebook`
+
+``` purescript
+newNotebook :: Notebook
+```
+
+
+#### `cellTypeEncode`
+
+``` purescript
+instance cellTypeEncode :: Ae.EncodeJson CellType
+```
+
+
+#### `cellEncode`
+
+``` purescript
+instance cellEncode :: Ae.EncodeJson Cell
+```
+
+
+#### `notebookEncode`
+
+``` purescript
+instance notebookEncode :: Ae.EncodeJson Notebook
+```
+
+
+#### `notebookRequestable`
+
+``` purescript
+instance notebookRequestable :: Ar.Requestable Notebook
+```
+
+
+
+## Module Model.Resource
+
+
+Resource tag for item 
+
+#### `Resource`
+
+``` purescript
+data Resource
+  = File 
+  | Database 
+  | Notebook 
+  | Directory 
+  | Table 
+```
+
+
+#### `eqResource`
+
+``` purescript
+instance eqResource :: Eq Resource
+```
+
+
+#### `resource2str`
+
+``` purescript
+resource2str :: Resource -> String
+```
+
+
+#### `resourceIsForeign`
+
+``` purescript
+instance resourceIsForeign :: IsForeign Resource
+```
+
+Now only `IsForeign`. After switching to `purescript-affjax`
+will be `EncodeJson`
+
+
+## Module Model.Sort
+
+
+Sort direction
 
 #### `Sort`
 
@@ -177,1179 +612,40 @@ data Sort
 ```
 
 
-#### `sortNot`
+#### `notSort`
 
 ``` purescript
-sortNot :: Sort -> Sort
+notSort :: Sort -> Sort
 ```
 
+revese sort
 
-#### `sortToString`
+#### `sort2string`
 
 ``` purescript
-sortToString :: Sort -> String
+sort2string :: Sort -> String
 ```
 
 
-#### `sortFromString`
+#### `eqSort`
 
 ``` purescript
-sortFromString :: String -> Maybe Sort
+instance eqSort :: Eq Sort
 ```
 
 
-#### `Mount`
 
-``` purescript
-data Mount
-  = File 
-  | Database 
-  | Notebook 
-  | Directory 
-  | Table 
-```
-
-
-#### `mountFromString`
-
-``` purescript
-mountFromString :: String -> Either String Mount
-```
-
-
-#### `mountToString`
-
-``` purescript
-mountToString :: Mount -> String
-```
-
-
-#### `eqMount`
-
-``` purescript
-instance eqMount :: Eq Mount
-```
-
-
-#### `decodeJsonMount`
-
-``` purescript
-instance decodeJsonMount :: DecodeJson Mount
-```
-
-
-#### `filterTerm`
-
-``` purescript
-filterTerm :: SearchQuery -> (SearchTerm -> Boolean) -> [SearchTerm]
-```
-
-
-#### `extractSimpleTerm`
-
-``` purescript
-extractSimpleTerm :: SearchTerm -> SearchTermSimple
-```
-
-
-#### `getPathTerms`
-
-``` purescript
-getPathTerms :: SearchQuery -> [SearchTerm]
-```
-
-
-#### `getPathTerm`
-
-``` purescript
-getPathTerm :: SearchQuery -> Maybe SearchTerm
-```
-
-
-#### `getNotPathTerms`
-
-``` purescript
-getNotPathTerms :: SearchQuery -> [SearchTerm]
-```
-
-
-#### `ItemLogic`
-
-``` purescript
-type ItemLogic = { name :: String, resource :: Mount }
-```
-
-
-#### `queryToTerms`
-
-``` purescript
-queryToTerms :: SearchQuery -> [SearchTerm]
-```
-
-#### `conformQuery`
-
-``` purescript
-conformQuery :: SearchQuery -> ItemLogic -> Boolean
-```
-
-
-#### `conformAnd`
-
-``` purescript
-conformAnd :: ItemLogic -> [SearchTerm] -> Boolean
-```
-
-
-#### `conformTerm`
-
-``` purescript
-conformTerm :: ItemLogic -> SearchTerm -> Boolean
-```
-
-
-#### `conformT`
-
-``` purescript
-conformT :: ItemLogic -> SearchTermSimple -> Boolean
-```
-
-
-#### `overOr`
-
-``` purescript
-overOr :: ItemLogic -> Predicate -> Boolean
-```
-
-
-#### `overType`
-
-``` purescript
-overType :: ItemLogic -> Predicate -> Boolean
-```
-
-
-#### `overName`
-
-``` purescript
-overName :: ItemLogic -> Predicate -> Boolean
-```
-
-
-#### `check`
-
-``` purescript
-check :: Predicate -> String -> Boolean
-```
-
-
-
-## Module Router
-
-
-Router component. It works with only one route aggregate.
-
-#### `State`
-
-``` purescript
-type State = { search :: String, sort :: Sort }
-```
-
-
-#### `toHash`
-
-``` purescript
-toHash :: forall o. { search :: String, sort :: Sort | o } -> String
-```
-
-
-#### `extractSort`
-
-``` purescript
-extractSort :: String -> Maybe Sort
-```
-
-
-#### `extractSearch`
-
-``` purescript
-extractSearch :: String -> String
-```
-
-
-#### `fromHash`
-
-``` purescript
-fromHash :: String -> { search :: String, sort :: Sort }
-```
-
-
-#### `setSearch`
-
-``` purescript
-setSearch :: forall e. String -> Eff (dom :: DOM | e) Unit
-```
-
-
-#### `setSort`
-
-``` purescript
-setSort :: forall e. Sort -> Eff (dom :: DOM | e) Unit
-```
-
-
-#### `getRoute`
-
-``` purescript
-getRoute :: forall e. Eff e State
-```
-
-
-#### `extractPath`
-
-``` purescript
-extractPath :: State -> String
-```
-
-
-#### `setPath`
-
-``` purescript
-setPath :: forall e. String -> Eff (dom :: DOM | e) Unit
-```
-
-
-
-## Module Utils
-
-
-Shortcuts and glue between different modules
-
-#### `log`
-
-``` purescript
-log :: forall a e. a -> Eff (trace :: Trace | e) Unit
-```
-
-It's simpler for me to use foreign logging
-then add Show instances
-
-#### `onLoad`
-
-``` purescript
-onLoad :: forall e. Eff (dom :: DOM | e) Unit -> Eff (dom :: DOM | e) Unit
-```
-
-Ok, I were was wrong, it's simplier to define onload
-by simple-dom
-
-#### `append`
-
-``` purescript
-append :: forall e. HTMLElement -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
-```
-
-append one element to another element
-PR to simple-dom
-
-#### `parentImpl`
-
-``` purescript
-parentImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) HTMLElement (Eff e (Maybe HTMLElement))
-```
-
-
-#### `parent`
-
-``` purescript
-parent :: forall e. HTMLElement -> Eff e (Maybe HTMLElement)
-```
-
-get parent of element
-PR to simple-dom
-
-#### `hashChanged`
-
-``` purescript
-hashChanged :: forall a e. (String -> String -> Eff e Unit) -> Eff e Unit
-```
-
-need to PR to simple-dom
-
-#### `convertToElement`
-
-``` purescript
-convertToElement :: Node -> HTMLElement
-```
-
-This function is needed to convert VTree -> Node -> HTMLElement 
-
-
-## Module View
-
-
-
-#### `State`
-
-``` purescript
-type State = { breadcrumb :: Breadcrumb.Output, toolbar :: Toolbar.State, list :: List.State, navbar :: Navbar.State }
-```
-
-State is multiplication of children state
-
-#### `Action`
-
-``` purescript
-data Action
-  = Init 
-  | ListAction List.Action
-  | NavbarAction Navbar.Action
-  | ToolbarAction Toolbar.Action
-  | BreadcrumbAction Breadcrumb.Input
-```
-
-Action is sum of children actions
-
-#### `spec`
-
-``` purescript
-spec :: forall e. WidgetSpec Action State (timer :: Timer, trace :: Trace, dom :: DOM, chan :: Chan | e)
-```
-
-Spec 
-
-
-## Module XHR
-
-
-
-#### `Input`
-
-``` purescript
-type Input a = { url :: String, additionalHeaders :: StrMap String, content :: A.HttpData a, method :: A.HttpMethod }
-```
-
-
-#### `Output`
-
-``` purescript
-type Output = { content :: String }
-```
-
-
-#### `run`
-
-``` purescript
-run :: forall a e. Receiver Output (dom :: DOM | e) -> Input a -> Eff (dom :: DOM | e) Unit
-```
-
-
-
-## Module Api.Fs
-
-
-Should be rewritten with purescript-aff
-
-#### `Metadata`
-
-``` purescript
-newtype Metadata
-  = Metadata { mount :: Model.Mount, name :: String }
-```
-
-#### `MetadataResponse`
-
-``` purescript
-newtype MetadataResponse
-  = MetadataResponse { children :: [Metadata] }
-```
-
-
-#### `decodeJsonMetadata`
-
-``` purescript
-instance decodeJsonMetadata :: DecodeJson Metadata
-```
-
-
-#### `decodeJsonMetadataResponse`
-
-``` purescript
-instance decodeJsonMetadataResponse :: DecodeJson MetadataResponse
-```
-
-
-#### `metadata`
-
-``` purescript
-metadata :: forall e. String -> ([Metadata] -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
-```
-
-
-#### `get`
-
-``` purescript
-get :: forall e. String -> Maybe Number -> Maybe Number -> ([Json] -> Eff (dom :: DOM) Unit) -> Eff (dom :: DOM | e) Unit
-```
-
-
-#### `post`
-
-``` purescript
-post :: forall e. String -> Json -> ([Json] -> Eff (dom :: DOM) Unit) -> Eff (dom :: DOM | e) Unit
-```
-
-
-#### `put`
-
-``` purescript
-put :: forall e. String -> Json -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
-```
-
-
-#### `move`
-
-``` purescript
-move :: forall e. String -> String -> (Boolean -> Eff (dom :: DOM | e) Unit) -> Eff (dom :: DOM | e) Unit
-```
-
-
-
-## Module Signal.Effectful
-
-
-
-#### `foldpE`
-
-``` purescript
-foldpE :: forall a b c e. (a -> b -> Eff e b) -> b -> Signal a -> Eff e (Signal b)
-```
-
-
-
-## Module View.Back
-
-
-This component will not be rendered alone, so, it has not a spec
-
-#### `Action`
-
-``` purescript
-data Action
-  = Init 
-  | Changed State
-```
-
-
-#### `State`
-
-``` purescript
-data State
-  = Directory 
-  | Database 
-  | Table 
-  | Notebook 
-```
-
-
-#### `viewIcon`
-
-``` purescript
-viewIcon :: State -> VTree
-```
-
-
-#### `view`
-
-``` purescript
-view :: forall e. Receiver Action (dom :: DOM | e) -> State -> Eff (dom :: DOM | e) VTree
-```
-
-
-#### `foldState`
-
-``` purescript
-foldState :: forall e. Action -> State -> Eff e State
-```
-
-
-
-## Module View.Breadcrumb
-
-
-Breadcrumb component is used for navigation up and bottom
-in directory structure and to show where is user now
-In this module I won't use terms <code>Action</code>
-and <code>State</code>.
-
-#### `Link`
-
-``` purescript
-type Link = { name :: String, link :: String }
-```
-
-
-#### `Output`
-
-``` purescript
-type Output = { links :: [Link] }
-```
-
-
-#### `emptyOut`
-
-``` purescript
-emptyOut :: Output
-```
-
-
-#### `Input`
-
-``` purescript
-data Input
-  = Init 
-  | Update [Link]
-```
-
-
-#### `goto`
-
-``` purescript
-goto :: forall e. Link -> Eff (dom :: DOM | e) Unit
-```
-
-
-#### `renderLink`
-
-``` purescript
-renderLink :: forall e. Receiver Input e -> Link -> VTree
-```
-
-
-#### `render`
-
-``` purescript
-render :: forall e. Receiver Input (chan :: Chan, dom :: DOM | e) -> Output -> Eff (chan :: Chan, dom :: DOM | e) VTree
-```
-
-
-#### `run`
-
-``` purescript
-run :: forall e. Input -> Output -> Eff e Output
-```
-
-
-#### `hookFn`
-
-``` purescript
-hookFn :: forall e. Receiver Input (chan :: Chan | e) -> Eff (chan :: Chan | e) Unit
-```
-
-
-
-## Module View.Item
-
-
-This component won't be rendered alone, it hasn't spec
-
-#### `State`
-
-``` purescript
-type State = { isHovered :: Boolean, isSelected :: Boolean, logic :: ItemLogic }
-```
-
-
-#### `Action`
-
-``` purescript
-data Action
-  = Init 
-  | Focus 
-  | Blur 
-  | Open 
-  | Activate 
-  | Unactivate 
-  | Configure ItemLogic
-  | Trash ItemLogic
-  | Share ItemLogic
-```
-
-
-#### `fromMetadata`
-
-``` purescript
-fromMetadata :: Fs.Metadata -> State
-```
-
-
-#### `sort`
-
-``` purescript
-sort :: Sort -> State -> State -> Ordering
-```
-
-
-#### `initialState`
-
-``` purescript
-initialState :: State
-```
-
-
-#### `upNavState`
-
-``` purescript
-upNavState :: State
-```
-
-
-#### `renderResourceType`
-
-``` purescript
-renderResourceType :: Mount -> VTree
-```
-
-
-#### `renderMiniToolbar`
-
-``` purescript
-renderMiniToolbar :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) [VTree]
-```
-
-
-#### `open`
-
-``` purescript
-open :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) Unit
-```
-
-
-#### `view`
-
-``` purescript
-view :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
-```
-
-
-#### `foldState`
-
-``` purescript
-foldState :: forall e. Action -> State -> Eff e State
-```
-
-
-
-## Module View.List
-
-
-This component has no spec, it won't be rendered alone
-
-#### `State`
-
-``` purescript
-type State = { items :: [Item.State], sort :: Sort }
-```
-
-Its state has a list of children
-
-#### `initialState`
-
-``` purescript
-initialState :: State
-```
-
-
-#### `Action`
-
-``` purescript
-data Action
-  = Init 
-  | ItemAction Number Item.Action
-  | UpNav Item.Action
-  | SortAction Sort
-  | Update [Item.State]
-```
-
-External messages will be marked with index of child
-that send it
-
-#### `view`
-
-``` purescript
-view :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
-```
-
-
-#### `foldState`
-
-``` purescript
-foldState :: forall e. Action -> State -> Eff e State
-```
-
-
-#### `hookFn`
-
-``` purescript
-hookFn :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> Eff (dom :: DOM, chan :: Chan | e) Unit
-```
-
-
-
-## Module View.Logo
-
-
-
-#### `view`
-
-``` purescript
-view :: forall a b e. a -> b -> Eff e VTree
-```
-
-send and st will be removed
-
-
-## Module View.Navbar
-
-
-This component also has no spec, and will not be rendered alone
-
-#### `State`
-
-``` purescript
-type State = { user :: User.State, back :: Back.State, search :: Search.State }
-```
-
-Multiplication of children state
-
-#### `initialState`
-
-``` purescript
-initialState :: State
-```
-
-
-#### `Action`
-
-``` purescript
-data Action
-  = Init 
-  | SearchAction Search.Action
-  | BackAction Back.Action
-```
-
-Sum of children actions
-
-#### `view`
-
-``` purescript
-view :: forall e. Receiver Action (dom :: DOM, timer :: Timer, chan :: Chan | e) -> State -> Eff (dom :: DOM, timer :: Timer, chan :: Chan | e) VTree
-```
-
-Render
-
-#### `foldState`
-
-``` purescript
-foldState :: forall e. Action -> State -> Eff e State
-```
-
-Update state
-
-#### `hookFn`
-
-``` purescript
-hookFn :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> Eff (chan :: Chan, dom :: DOM | e) Unit
-```
-
-listen route changes, called after inserting in DOM
-
-
-## Module View.Search
-
-
-Search component will not be rendered alone
-
-#### `Action`
-
-``` purescript
-data Action
-  = Init 
-  | Change Timeout String
-  | RouteChanged String
-  | Disable 
-  | Enable 
-```
-
-Route change is external message
-
-#### `State`
-
-``` purescript
-type State = { timeout :: Maybe Timeout, value :: String, valid :: Boolean }
-```
-
-
-#### `initialState`
-
-``` purescript
-initialState :: State
-```
-
-
-#### `changeHandler`
-
-``` purescript
-changeHandler :: forall e. Receiver Action (timer :: Timer, dom :: DOM, chan :: Chan | e) -> State -> Event -> Eff (timer :: Timer, dom :: DOM, chan :: Chan | e) Unit
-```
-
-
-#### `submitHandler`
-
-``` purescript
-submitHandler :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) Unit
-```
-
-
-#### `view`
-
-``` purescript
-view :: forall e. Receiver Action (timer :: Timer, dom :: DOM, chan :: Chan | e) -> State -> Eff (timer :: Timer, dom :: DOM, chan :: Chan | e) VTree
-```
-
-
-#### `foldState`
-
-``` purescript
-foldState :: forall e. Action -> State -> Eff e State
-```
-
-Update searcher state
-
-
-## Module View.Shortcuts
-
-
-Will be moved to VirtualDOM 
-
-#### `div`
-
-``` purescript
-div :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `nav`
-
-``` purescript
-nav :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `a`
-
-``` purescript
-a :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `form`
-
-``` purescript
-form :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `input`
-
-``` purescript
-input :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `i`
-
-``` purescript
-i :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `span`
-
-``` purescript
-span :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `button`
-
-``` purescript
-button :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `ul`
-
-``` purescript
-ul :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `ol`
-
-``` purescript
-ol :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `li`
-
-``` purescript
-li :: forall props. {  | props } -> [VTree] -> VTree
-```
-
-
-#### `emptyVTree`
-
-``` purescript
-emptyVTree :: VTree
-```
-
-useful for defining of components
-
-#### `jsVoid`
-
-``` purescript
-jsVoid :: String
-```
-
-
-
-## Module View.Toolbar
-
-
-Mostly produce messages which must be consumed by external
-i.e. upload file, or call Api
-
-#### `Action`
-
-``` purescript
-data Action
-  = Init 
-  | Sorting Sort
-  | UploadFile 
-  | MountDB 
-  | CreateNotebook 
-  | CreateFolder 
-```
-
-Output messages
-
-#### `State`
-
-``` purescript
-type State = { sort :: Sort }
-```
-
-sort direction in list (used in chevron direction right now only)
-
-#### `view`
-
-``` purescript
-view :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> State -> Eff (dom :: DOM, chan :: Chan | e) VTree
-```
-
-
-#### `foldState`
-
-``` purescript
-foldState :: forall e. Action -> State -> Eff (trace :: Trace | e) State
-```
-
-
-#### `hookFn`
-
-``` purescript
-hookFn :: forall e. Receiver Action (dom :: DOM, chan :: Chan | e) -> Eff (chan :: Chan, dom :: DOM | e) Unit
-```
-
-
-
-## Module View.User
-
-
-This module will be removed, used only for layout
-
-#### `Action`
-
-``` purescript
-data Action
-  = Init 
-```
-
-
-#### `State`
-
-``` purescript
-newtype State
-  = State String
-```
-
-
-#### `view`
-
-``` purescript
-view :: forall e. Receiver Action (chan :: Chan, dom :: DOM | e) -> State -> Eff (chan :: Chan, dom :: DOM | e) VTree
-```
-
-
-#### `foldState`
-
-``` purescript
-foldState :: forall e. Action -> State -> Eff e State
-```
-
-
-
-## Module VirtualDOM.Events
-
-
-Shortcuts for VirtualDOM events
-They are not well typed, so it's possible
-to put in "onclick" everything
-it works when we put  Eff _ Unit there or
-Callback defined here
-
-#### `Callback`
-
-``` purescript
-data Callback :: *
-```
-
-
-#### `Handler`
-
-``` purescript
-type Handler e = Node -> Event -> Eff e Unit
-```
-
-Will be changed in favor of HTMLElement, I suppose
-
-#### `mkCallback`
-
-``` purescript
-mkCallback :: forall e. Handler e -> Callback
-```
-
-
-#### `returnFalse`
-
-``` purescript
-returnFalse :: Callback
-```
-
-emptyHandler
-
-#### `HookFn`
-
-``` purescript
-type HookFn = Fn2 Node String (Eff (dom :: DOM) Unit)
-```
-
-#### `Listener`
-
-``` purescript
-type Listener = { callback :: Callback, event :: String }
-```
-
-
-#### `listener`
-
-``` purescript
-listener :: forall e. String -> (Event -> Eff e Unit) -> Listener
-```
-
-
-#### `mkCb`
-
-``` purescript
-mkCb :: forall e. (Event -> Eff e Unit) -> Callback
-```
-
-
-#### `listen`
-
-``` purescript
-listen :: Listener -> HookFn
-```
-
-
-#### `ignore`
-
-``` purescript
-ignore :: Listener -> HookFn
-```
-
-
-#### `emptyHook`
-
-``` purescript
-emptyHook :: VHook
-```
-
-#### `composeHooks`
-
-``` purescript
-composeHooks :: VHook -> VHook -> VHook
-```
-
-
-
-## Module Control.Reactive.Event
-
-
-Custom event module. Probably would be moved to ```simple-dom```
-or other package
-
-#### `Event`
-
-``` purescript
-data Event :: *
-```
-
-
-#### `target`
-
-``` purescript
-target :: forall e. Event -> Eff e HTMLElement
-```
-
-
-#### `detail`
-
-``` purescript
-detail :: forall e a. Event -> Eff e a
-```
-
-
-#### `raiseEventImpl`
-
-``` purescript
-raiseEventImpl :: forall e a. Fn3 String HTMLElement a (Eff (dom :: DOM | e) HTMLElement)
-```
-
+## Module Utils.Event
 
 #### `raiseEvent`
 
 ``` purescript
-raiseEvent :: forall e a. String -> HTMLElement -> a -> Eff (dom :: DOM | e) HTMLElement
+raiseEvent :: forall e a. String -> HTMLElement -> Eff (dom :: DOM | e) HTMLElement
 ```
 
 
 
-## Module Control.Reactive.File
-
-
-Uploading file module probably will be moved out to separate project
+## Module Utils.File
 
 #### `FileReader`
 
@@ -1357,8 +653,6 @@ Uploading file module probably will be moved out to separate project
 data FileReader :: *
 ```
 
-prependFileUploader "li" {} [vtext "foo"] = 
- vnode "li" {} [input {type: "file"}]
 
 #### `File`
 
@@ -1374,6 +668,13 @@ data FileList :: *
 ```
 
 
+#### `ReadFile`
+
+``` purescript
+data ReadFile :: !
+```
+
+
 #### `fileListToArray`
 
 ``` purescript
@@ -1384,77 +685,52 @@ fileListToArray :: FileList -> [File]
 #### `name`
 
 ``` purescript
-name :: forall e. File -> Eff e String
-```
-
-
-#### `file2blob`
-
-``` purescript
-file2blob :: File -> Blob
-```
-
-
-#### `newFormData`
-
-``` purescript
-newFormData :: forall e. Eff e FormData
-```
-
-
-#### `append2FormData`
-
-``` purescript
-append2FormData :: forall e a. String -> a -> FormData -> Eff e FormData
+name :: forall e. File -> Eff (file :: ReadFile | e) String
 ```
 
 
 #### `newReader`
 
 ``` purescript
-newReader :: forall e. Eff e FileReader
-```
-
-
-#### `readAsBinaryString`
-
-``` purescript
-readAsBinaryString :: forall e. File -> FileReader -> Eff e Unit
-```
-
-
-#### `str2blob`
-
-``` purescript
-str2blob :: forall e. String -> Blob
-```
-
-
-#### `onload`
-
-``` purescript
-onload :: forall e e'. (Event -> Eff e Unit) -> FileReader -> Eff e' FileReader
-```
-
-
-#### `result`
-
-``` purescript
-result :: forall e. FileReader -> Eff e (Maybe String)
+newReader :: forall e. Aff e FileReader
 ```
 
 
 #### `files`
 
 ``` purescript
-files :: forall e. HTMLElement -> Eff e FileList
+files :: forall e. Node -> Aff (dom :: DOM | e) FileList
 ```
 
 
-#### `uploader`
+#### `readAsBinaryString`
 
 ``` purescript
-uploader :: forall p a. String -> { click :: VHook | p } -> [VTree] -> VTree
+readAsBinaryString :: forall e. File -> FileReader -> Aff (file :: ReadFile | e) String
+```
+
+
+
+## Module Utils.Halide
+
+#### `back`
+
+``` purescript
+back :: forall e i r. i -> EventHandler (Either i r)
+```
+
+
+#### `request`
+
+``` purescript
+request :: forall e i r. r -> EventHandler (Either i r)
+```
+
+
+#### `targetLink`
+
+``` purescript
+targetLink :: forall a b. b -> [A.Attr (Either a b)]
 ```
 
 

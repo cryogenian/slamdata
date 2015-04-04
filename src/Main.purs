@@ -1,26 +1,21 @@
 module Main where
 
-import Control.Monad.Eff
+import Utils
+import Data.Tuple
+import qualified Halogen as Hl
+import qualified App as App
+import qualified Controller.Driver as Cd
+import Control.Monad.Aff
+import Control.Monad.Aff.Queue
+import Control.Monad.Eff.Class
+import Utils
+import Debug.Trace
 
-import Signal.Channel (Chan())
-import DOM (DOM())
-import Debug.Trace (Trace())
-import Utils (bodyNode, onLoad)
-import Control.Timer (Timer())
-import qualified Component as Component
-import qualified View as View 
 
-main :: forall e. Eff (chan::Chan, timer::Timer, dom::DOM, trace::Trace|e) Unit
-main = onLoad $ do
-  -- construct
-  view <- Component.define View.spec
-  -- get node to insert
+
+main = onLoad $ void $ do
+  Tuple node driver <- Hl.runUI App.app
   body <- bodyNode
-  -- start
-  view.insert body
+  append body (convertToElement node)
+  Cd.outside driver
 
-
-
-  
-
-  

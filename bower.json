@@ -14,27 +14,29 @@
     "tests"
   ],
   "dependencies": {
+    "purescript-tuples": "~0.3.1",
+    "purescript-either": "~0.1.6",
+    "purescript-foldable-traversable": "~0.3.1",
+    "purescript-arrays": "~0.3.5",
+    "purescript-maybe": "~0.2.2",
+    "purescript-maps": "~0.3.3",
     "purescript-monoid": "~0.2.0",
-    "purescript-virtual-dom": "~0.3.0",
-    "purescript-dom": "~0.1.1",
-    "purescript-maps": "~0.3.2",
-    "purescript-tuples": "~0.3.0",
-    "bootstrap": "~3.3.2",
-    "purescript-signal": "~2.2.1",
-    "purescript-strings": "~0.4.3",
-    "purescript-datetime": "~0.3.1",
+    "purescript-dom": "~0.1.2",
+    "purescript-halogen": "https://github.com/cryogenian/purescript-halogen.git#mvc",
+    "purescript-aff": "~0.7.0",
+    "purescript-search": "https://github.com/cryogenian/purescript-search.git#master",
     "purescript-timers": "~0.0.8",
-    "purescript-mocha": "~0.0.3",
-    "purescript-chai": "~0.0.3",
-    "purescript-foldable-traversable": "~0.3.0",
-    "purescript-arrays": "~0.3.3",
-    "purescript-refs": "~0.1.2",
+    "purescript-simple-dom": "master",
     "purescript-debug-foreign": "~0.0.4",
-    "purescript-random": "~0.1.2",
-    "purescript-strongcheck": "~0.8.0",
-    "purescript-argonaut": "~0.4.0",
-    "purescript-search": "b12bf9a7f4ed0ccd7cf26ae6f6aa7da04bae0023",
+    "purescript-foreign": "~0.4.2",
     "purescript-minimatch": "~0.1.0",
-    "purescript-simple-dom": "2edd5c04b5cd02e097cb85e99df6e38a02a6a165"
+    "purescript-affjax": "https://github.com/slamdata/purescript-affjax.git#310c8b51aaeb8544d41369ce2d1cd281ffa173e6",
+    "purescript-argonaut": "https://github.com/cryogenian/purescript-argonaut.git#master",
+    "purescript-routing": "https://github.com/slamdata/purescript-routing.git#aaa82cc6f504d979a5f69d41ea50bf9a9e21d5f8",
+    "purescript-lists": "~0.6.0",
+    "purescript-integers": "~0.0.1"
+  },
+  "resolutions": {
+    "purescript-semirings": "~0.1.1"
   }
 }
