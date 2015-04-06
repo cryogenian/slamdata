@@ -76,7 +76,7 @@ type Breadcrumb = {
 
 rootBreadcrumb :: Breadcrumb
 rootBreadcrumb = {
-  name: "root",
+  name: "Home",
   link: "/"
   }
 
