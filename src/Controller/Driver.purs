@@ -61,9 +61,7 @@ routing = bothRoute <|> oneRoute <|> index
   where bothRoute = SortAndQ <$> sort <*> query
         oneRoute = Sort <$> sort
         index = pure Index
-        sort = R.lit "sort" *>
-               ((R.lit "asc" *> pure Ms.Asc) <|> (R.lit "desc" *> pure Ms.Desc))
-
+        sort = R.eitherMatch (Ms.string2sort <$> R.param "sort")
         query = R.eitherMatch (S.mkQuery <<< U.decodeURIComponent <$> R.param "q")
 
 -- | Stream of routes 
@@ -173,7 +171,7 @@ searchPath query =
 --        Setters
 ----------------------------------------------------------------------
 sortRgx :: Rgx.Regex
-sortRgx = Rgx.regex "(sort/)([^/]*)" Rgx.noFlags
+sortRgx = Rgx.regex "(sort=)([^/&]*)" Rgx.noFlags
 
 qRgx :: Rgx.Regex
 qRgx = Rgx.regex "(q=)([^/&]*)" Rgx.noFlags
@@ -190,7 +188,7 @@ updateQ q =
 
 
 setSort :: Ms.Sort -> String
-setSort sort = "sort/" <> Ms.sort2string sort <> "/?q="
+setSort sort = "?sort=" <> Ms.sort2string sort <> "&q="
 
 -- | extract path from full hash
 getPath :: String -> String

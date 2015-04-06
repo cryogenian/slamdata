@@ -17,11 +17,12 @@ import qualified Halogen.HTML.Events.Forms as F
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Data.StrMap as SM
 import qualified Config as Config
+import qualified View.Css as Vc
 
 logo :: forall a i node. (H.HTMLRepr node) => node a i
 logo =
   H.div [A.class_ B.colSm3] [
-    H.a [A.class_ B.navbarBrand, A.href "#sort/asc/?q="] [
+    H.a [A.class_ B.navbarBrand, A.href "#?sort=asc&q="] [
        H.i [A.classes [B.glyphicon, B.glyphiconFolderOpen]] []
        ],
     H.a [A.href Config.slamDataHome, A.class_ B.navbarBrand] [
@@ -35,11 +36,10 @@ search state =
   H.div [A.class_ B.colSm7] [
     H.form [A.class_ B.navbarForm,
             E.onsubmit (\_ -> pure $ Right $ M.SearchSubmit state.search)] [
-       H.div [A.classes ([B.inputGroup] <> if state.search.valid then
+       H.div [A.classes ([B.inputGroup, Vc.searchInput] <> if state.search.valid then
                                               mempty
                                             else [B.hasError])] [
-          H.span [A.class_ B.inputGroupAddon] [H.text "Path:"],
-          H.input [A.class_ B.formControl,
+          H.input [A.classes [B.formControl],
                    A.value state.search.value,
                    (F.onInput (pure <<< Right <<< M.SearchChange state.search.timeout))
                    ] [],
@@ -57,7 +57,7 @@ breadcrumbs :: forall u node. (H.HTMLRepr node) =>
                M.State -> node u (Either M.Input M.Request)
 breadcrumbs state =
   H.ol [A.class_ B.breadcrumb] $
-    [H.li_ [H.i [A.classes [B.glyphicon, B.glyphiconChevronRight]] []]] <>
+    [H.li_ []] <>
     (breadcrumbView <$> state.breadcrumbs)
   where breadcrumbView b =
           H.li_ [H.a (targetLink <<< M.Breadcrumb $ b)
@@ -89,21 +89,30 @@ toolbar state =
       notebook
       ]
     ]
-  where mount = H.li_ [H.a (targetLink <<< M.MountDatabase $ state) 
-                       [H.text "Mount"]]
+  where mount = H.li_ [H.a (targetLink <<< M.MountDatabase $ state)
+                       [H.i [A.title "mount database",
+                             A.classes [B.btnLg, B.glyphicon, B.glyphiconHdd]][]]]
         file = H.li_
                [H.a 
                 [A.href "javascript:void(0);",
-                 E.onclick (\ev -> request $ M.UploadFile ev.target state)]
-                [H.input [A.class_ B.hidden,
-                          A.type_ "file",
-                          E.onchange (\ev -> request $
-                                             M.FileListChanged ev.target state)][],
-                 H.text "File"]]
+                 E.onclick (\ev -> request $ M.UploadFile ev.target state)][
+                  H.i [A.classes [B.btnLg, B.glyphicon, B.glyphiconFile],
+                       A.title "upload file"]
+                  [H.input [A.class_ B.hidden,
+                            A.type_ "file",
+                            E.onchange (
+                              \ev -> request $
+                                     M.FileListChanged ev.target state)][]]]]
         folder = H.li_ [H.a (targetLink <<< M.CreateFolder $ state)
-                        [H.text "Folder"]]
+                        [H.i [A.title "create folder",
+                              A.classes [B.btnLg,
+                                         B.glyphicon,
+                                         B.glyphiconFolderClose]][]]]
         notebook = H.li_ [H.a (targetLink <<< M.CreateNotebook $ state)
-                          [H.text "Notebook"]]
+                          [H.i [A.title "create notebook",
+                                A.classes [B.btnLg,
+                                           B.glyphicon,
+                                           B.glyphiconBook]][]]]
         inRoot state = state.path == "" || state.path == "/"
 
 
@@ -151,23 +160,27 @@ item ix state =
             let conf = case item.resource of
                   Mr.Database ->
                     [H.li_
-                     [H.a (targetLink <<< M.Configure $ item) 
-                      [H.text "configure"]]]
+                     [H.a (targetLink <<< M.Configure $ item)
+                      [H.i [A.classes [B.glyphicon, B.glyphiconWrench],
+                            A.title "configure"] []]]]
                   _ -> []
             in conf <> [
               H.li_ [H.a (targetLink <<< M.Move $ item)
-                     [H.text "move"]],
+                     [H.i [A.classes [B.glyphicon, B.glyphiconMove],
+                           A.title "move/rename"] []]],
               H.li_ [H.a (targetLink <<< M.Delete $ item)
-                     [H.text "trash"]],
+                     [H.i [A.classes [B.glyphicon, B.glyphiconTrash],
+                           A.title "remove"][]]],
               H.li_ [H.a (targetLink <<< M.Share $ item)
-                     [H.text "share"]]
+                     [H.i [A.classes [B.glyphicon, B.glyphiconShare],
+                           A.title "share"][]]]
               ]
             
 
 items :: forall u node. (H.HTMLRepr node) => M.State ->
          node u (Either M.Input M.Request)
 items state =
-  H.div [A.class_ B.listGroup] $ zipWith item (0..length state.items) state.items
+  H.div [A.classes [B.listGroup, Vc.results]] $ zipWith item (0..length state.items) state.items
 
 
 

@@ -1,0 +1,19 @@
+.search-input {
+    width: 100%;
+}
+
+.search-input.input-group span.input-group-btn {
+    width: 34px;
+}
+
+.breadcrumb {
+    background-color: white;
+}
+
+.results.list-group .list-group-item {
+    border-right: none;
+    border-left: none;
+    border-radius: 0;
+    padding-top: 14px;
+    padding-bottom: 14px;
+}

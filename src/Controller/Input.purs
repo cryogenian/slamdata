@@ -32,7 +32,9 @@ inner state input =
     M.SearchValidation v ->
       state{search = state.search{valid = v}}
     M.SearchSet s ->
-      state{search = state.search{value = s}}
+      if state.search.value == "" then 
+        state{search = state.search{value = s}}
+        else state
     M.SearchTimeout t ->
       state{search = state.search{timeout = Just t}}
     M.ItemHover ix h ->

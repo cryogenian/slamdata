@@ -35,3 +35,4 @@ target' (T.DataTarget i) = [ A.href "#",
 
 targetLink :: forall a b. b -> [A.Attr (Either a b)]
 targetLink b = target' $ (T.DataTarget <<< Right $ b)
+
