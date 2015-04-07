@@ -8,6 +8,7 @@ import qualified Model.Item as M
 import qualified Data.Array as A
 import qualified Data.String as Str
 import qualified Data.List as L
+import Debug.Foreign
 
 inner :: M.State -> M.Input -> M.State
 inner state input =
@@ -32,7 +33,7 @@ inner state input =
     M.SearchValidation v ->
       state{search = state.search{valid = v}}
     M.SearchSet s ->
-      if state.search.value == "" then 
+      if state.search.nextValue /= s then
         state{search = state.search{value = s}}
         else state
     M.SearchTimeout t ->
