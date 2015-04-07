@@ -1,0 +1,82 @@
+body {
+    font-family: Ubuntu, sanc-serif;
+    @media (max-width: 768px) {
+        padding-top: 150px;
+    }
+    @media (min-width: 769px) {
+        padding-top: 75px;
+    }
+}
+
+.nav-logo {
+    width: 180px;
+    padding-right: 0;
+    @media (max-width: 768px) {
+        padding-bottom: 7px;
+    }
+    .logo {
+        padding-right: 0;
+        img {
+            height: 36px;
+            @media (max-width: 768px) {
+                padding-top: 7px;
+                height: 43px;
+            }
+        }
+    }
+}
+
+.search .search-input {
+    width: 100%;
+    padding-top: 13px;
+    border-radius: 0;
+    input, button {
+        border-radius: 0
+    }
+    &.input-group {
+        span.input-group-btn {
+            width: 34px;
+        }
+    }
+}
+
+.container .nav-cont {
+    a {
+        font-size: 2em;
+        color: #f0f0f0;
+        &:hover {
+            color: #fff;
+        }
+    }
+    .nav-icon {
+        @media (max-width: 768px) {
+            padding-top: 14px;
+            width: 54px;
+        }
+        @media (min-width: 769px) {
+            padding-top: 8px;
+            width: 44px;
+        }
+    }
+}
+
+/* Bootstrap overloads */
+
+.breadcrumb {
+    background-color: white;
+}
+
+.results.list-group .list-group-item {
+    border-right: none;
+    border-left: none;
+    border-radius: 0;
+    padding-top: 14px;
+    padding-bottom: 14px;
+}
+
+.navbar.navbar-inverse {
+    background-color: #262626;
+    min-height: 70px;
+}
+
+/* End of bootstrap overloads */
