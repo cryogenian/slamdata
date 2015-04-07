@@ -12,7 +12,6 @@ mandragora(gulp, {
         test: ["test/**/*.purs"],
         src: ["src/**/*.purs"]
     },
-    tmpDir: "tmp",
     entries: {
         "Entries.File": {
             "name": "file",
