@@ -1,5 +1,8 @@
-var mandragora = require("mandragora-bucket/index.js");
-var gulp = require("gulp");
+var mandragora = require("mandragora-bucket/index.js"),
+    gulp = require("gulp"),
+    less = require("gulp-less");
+
+
 mandragora(gulp, {
     paths: {
         bower: [
@@ -25,4 +28,19 @@ mandragora(gulp, {
 });
 
 
-gulp.task("default", ["watch-main"]);
+gulp.task("less", function() {
+    return gulp.src(["less/main.less"])
+        .pipe(less({
+            paths: ["less/**/*.less"]g
+        }))
+        .pipe(gulp.dest("public"));
+           
+
+});
+
+gulp.task("watch-less", ["less"], function() {
+    return gulp.watch(["less/**/*.less"],
+                      ["less"]);
+});
+
+

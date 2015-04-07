@@ -19,21 +19,28 @@ import qualified Data.StrMap as SM
 import qualified Config as Config
 import qualified View.Css as Vc
 
+icon :: forall a i node. (H.HTMLRepr node) => node a i
+icon =
+  H.div [A.classes [B.colXs1, Vc.navIcon]] [
+    H.a [A.href "#?sort=asc&q=",
+         A.classes [B.navbarBrand, Vc.logo]] [
+       H.i [A.classes [B.glyphicon, B.glyphiconFolderOpen]][]
+       ]
+    ]
+
 logo :: forall a i node. (H.HTMLRepr node) => node a i
 logo =
-  H.div [A.class_ B.colSm3] [
-    H.a [A.class_ B.navbarBrand, A.href "#?sort=asc&q="] [
-       H.i [A.classes [B.glyphicon, B.glyphiconFolderOpen]] []
-       ],
-    H.a [A.href Config.slamDataHome, A.class_ B.navbarBrand] [
-      H.text "SlamData"
+  
+  H.div [A.classes [B.colXs3, Vc.navLogo]] [
+    H.a [A.href Config.slamDataHome, A.classes [B.navbarBrand, Vc.logo]] [
+      H.img [A.src "./logo.svg"] []
       ]
     ]
 
 search :: forall u node. (H.HTMLRepr node) => M.State ->
           node u (Either M.Input M.Request)
 search state =
-  H.div [A.class_ B.colSm7] [
+  H.div [A.classes [B.colXs12, B.colSm8, Vc.search]] [
     H.form [A.class_ B.navbarForm,
             E.onsubmit (\_ -> pure $ Right $ M.SearchSubmit state.search)] [
        H.div [A.classes ([B.inputGroup, Vc.searchInput] <> if state.search.valid then
@@ -183,18 +190,18 @@ items state =
   H.div [A.classes [B.listGroup, Vc.results]] $ zipWith item (0..length state.items) state.items
 
 
-
 view :: forall u node. (H.HTMLRepr node) => M.State ->
         node u (Either M.Input M.Request)
 view state =
   H.div_ [
     navbar [
-       content [
+       content [A.classes [Vc.navCont, B.container]][
+          icon,
           logo,
           search state
           ]
        ],
-    content [
+    content [] [
       breadcrumbs state,
       row [
         sorting state,
@@ -203,8 +210,9 @@ view state =
       items state
       ]
     ]
-  where content :: forall a i node. (H.HTMLRepr node) => [node a i] -> node a i
-        content =  H.div [A.class_ B.container]
+  where content :: forall a i node. (H.HTMLRepr node) =>
+                   [A.Attr i] -> [node a i] -> node a i
+        content attrs =  H.div ([A.class_ B.container] <> attrs)
 
         row :: forall a i node. (H.HTMLRepr node) => [node a i] -> node a i
         row = H.div [A.class_ B.row]
