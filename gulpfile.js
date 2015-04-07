@@ -31,7 +31,7 @@ mandragora(gulp, {
 gulp.task("less", function() {
     return gulp.src(["less/main.less"])
         .pipe(less({
-            paths: ["less/**/*.less"]g
+            paths: ["less/**/*.less"]
         }))
         .pipe(gulp.dest("public"));
            
