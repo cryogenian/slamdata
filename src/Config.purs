@@ -10,7 +10,7 @@ dataUrl :: String
 dataUrl = "/data/fs/"
 
 notebookUrl :: String
-notebookUrl = "/notebook/"
+notebookUrl = "/notebook.html"
 
 
 searchTimeout :: Number

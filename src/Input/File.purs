@@ -1,14 +1,16 @@
--- | state update function 
-module Controller.Input where
+-- | file component state update function 
+module Input.File where
 
 import Data.Maybe
+import Data.Either
 import Data.Foldable
-import qualified Model as M
+import Text.SlamSearch.Printer (strQuery)
+import Text.SlamSearch (mkQuery)
+import qualified Model.File as M
 import qualified Model.Item as M
 import qualified Data.Array as A
 import qualified Data.String as Str
 import qualified Data.List as L
-import Debug.Foreign
 
 inner :: M.State -> M.Input -> M.State
 inner state input =
@@ -33,7 +35,8 @@ inner state input =
     M.SearchValidation v ->
       state{search = state.search{valid = v}}
     M.SearchSet s ->
-      if state.search.nextValue /= s then
+      let nq = either (const "") id (strQuery <$> mkQuery state.search.nextValue)
+      in if nq /= s then
         state{search = state.search{value = s}}
         else state
     M.SearchTimeout t ->

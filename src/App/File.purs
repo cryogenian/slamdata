@@ -1,11 +1,11 @@
-module App where
+module App.File where
 
 import Data.Void
 import qualified Utils.File as Uf
-import qualified Model as M
-import qualified View as V
-import qualified Controller.Input as Ci
-import qualified Controller.Request as Cr
+import qualified Model.File as M
+import qualified View.File as V
+import qualified Input.File as Ci
+import qualified Controller.File as Cr
 import qualified Control.Timer as Tm
 import qualified Halogen as Hl
 import qualified Halogen.Signal as HS

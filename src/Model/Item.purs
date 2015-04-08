@@ -5,12 +5,13 @@ import Control.Timer (Timeout())
 import Data.Foreign
 import Data.Foreign.Class
 import qualified Data.String.Regex as Rgx
+import qualified Data.String as Str
 import qualified Network.HTTP.Affjax.Request as Ar
 import Utils (trimQuotes)
 
 import Model.Sort
 import Model.Resource
-
+import Model.Path
 
 -- | Item in list
 
@@ -24,8 +25,13 @@ type Item = {
   }
 
 itemPath :: Item -> String
-itemPath item =
-  trimQuotes item.root <> trimQuotes item.name
+itemPath item = encodeURIPath $
+                leadingSlash $ 
+                trimQuotes item.root <> trimQuotes item.name
+  where leadingSlash input =
+          if Str.indexOf "/" input == 0 then
+            input
+            else "/" <> input 
 
 -- | link to upper directory
 up :: String

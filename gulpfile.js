@@ -3,29 +3,17 @@ var mandragora = require("mandragora-bucket/index.js"),
     less = require("gulp-less");
 
 
-mandragora(gulp, {
-    paths: {
-        bower: [
-            "bower_components/purescript-*/src/**/*.purs",
-            "bower_components/purescript-*/purescript-*/src/**/*.purs"
-        ],
-        test: ["test/**/*.purs"],
-        src: ["src/**/*.purs"]
+mandragora.config.entries = {
+    "Entries.File": {
+        "name": "file",
+        "dir": "public"
     },
-    entries: {
-        "Entries.File": {
-            "name": "file",
-            "dir": "public"
-        },
-        "Entries.Notebook": {
-            "name": "notebook",
-            "dir": "public"
-        }
-    },
-    docs: "MODULES.md",
-    tmpDir: "dist"
-});
-
+    "Entries.Notebook": {
+        "name": "notebook",
+        "dir": "public"
+    }
+};
+mandragora(gulp);
 
 gulp.task("less", function() {
     return gulp.src(["less/main.less"])
