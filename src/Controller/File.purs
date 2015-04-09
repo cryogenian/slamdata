@@ -1,5 +1,5 @@
--- | Main app handler
-module Controller.Request where
+-- | File component main handler 
+module Controller.File where
 
 import Control.Monad.Eff
 import Control.Monad.Eff.Class
@@ -24,10 +24,10 @@ import qualified Text.SlamSearch as S
 import qualified Routing.Hash as Rh
 import qualified Data.String as Str
 import qualified Data.DOM.Simple.Element as El
-import qualified Controller.Driver as Cd 
+import qualified Driver.File as Cd 
 import qualified Network.HTTP.Affjax as Af
 
-import qualified Model as M
+import qualified Model.File as M
 import qualified Model.Item as Mi
 import qualified Model.Notebook as Mn
 import qualified Model.Resource as Mr
@@ -160,7 +160,8 @@ handler r =
         -- open notebook or file
         open item isNew = U.newTab $ foldl (<>) ""
                           ([Config.notebookUrl,
-                            "#", Mi.itemPath item] <>
+                            "#", Mi.itemPath item,
+                            "/edit"] <>
                              if isNew then 
                              ["/?q=", U.encodeURIComponent ("select * from ...")]
                            else [])
@@ -182,4 +183,6 @@ handler r =
                             state.items /= -1 
                          then getNewName' name (i + 1)
                          else newName 
+
+
 

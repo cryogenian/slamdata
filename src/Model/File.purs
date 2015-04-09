@@ -1,5 +1,5 @@
--- | Input, output messages and state
-module Model where
+-- | Input, output messages and state for file component
+module Model.File where
 
 import Control.Timer (Timeout())
 import Data.Maybe

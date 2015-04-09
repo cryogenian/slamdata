@@ -1,6 +1,6 @@
 -- | Module handles outer messages to `halogen` application
 -- | Mostly consists of routing functions 
-module Controller.Driver (
+module Driver.File (
   outside,
   getPath,
   searchPath,
@@ -36,7 +36,7 @@ import qualified Text.SlamSearch.Types as S
 import qualified Text.SlamSearch.Printer as S
 import qualified Data.Minimatch as MM
 import qualified Control.Monad.Aff as Aff
-import qualified Model as M
+import qualified Model.File as M
 import qualified Model.Item as Mi
 import qualified Model.Sort as Ms
 import qualified Model.Resource as Mr

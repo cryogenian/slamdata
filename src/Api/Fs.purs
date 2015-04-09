@@ -27,7 +27,7 @@ import qualified Network.HTTP.Affjax as Af
 import qualified Network.HTTP.StatusCode as Sc
 
 import qualified Config as Config
-import qualified Model as M
+import qualified Model.File as M
 import qualified Model.Item as Mi
 import qualified Model.Resource as Mr
 import qualified Model.Notebook as Mn

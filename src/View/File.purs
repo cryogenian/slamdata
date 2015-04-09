@@ -1,11 +1,11 @@
-module View (view) where
+module View.File (view) where
 
 import Data.Either
 import Data.Tuple
 import Data.Monoid (mempty)
 import Data.Array
 import Utils.Halide (back, request, targetLink)
-import qualified Model as M
+import qualified Model.File as M
 import qualified Model.Item as M
 import qualified Model.Sort as Ms
 import qualified Model.Resource as Mr

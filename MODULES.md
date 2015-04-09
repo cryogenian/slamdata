@@ -1,15 +1,5 @@
 # Module Documentation
 
-## Module App
-
-#### `app`
-
-``` purescript
-app :: forall e. Hl.UI M.Input Void M.Request (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)
-```
-
-
-
 ## Module Config
 
 #### `uploadUrl`
@@ -79,73 +69,6 @@ notebookExtension :: String
 
 ``` purescript
 newNotebookName :: String
-```
-
-
-
-## Module Main
-
-
-## Module Model
-
-
-Input, output messages and state
-
-#### `Input`
-
-``` purescript
-data Input
-  = Sorting Sort
-  | ItemsUpdate [Item] Sort
-  | ItemHover Number Boolean
-  | ItemSelect Number Boolean
-  | ItemAdd Item
-  | SearchValidation Boolean
-  | SearchSet String
-  | SearchTimeout Timeout
-  | SearchNextValue String
-  | SetPath String
-  | Resort 
-  | Remove Item
-```
-
-Input messages 
-
-#### `Request`
-
-``` purescript
-data Request
-  = GoToRoute String
-  | SetSort Sort
-  | SearchChange (Maybe Timeout) String
-  | Breadcrumb Breadcrumb
-  | SearchSubmit Search
-  | Open Item
-  | Delete Item
-  | Share Item
-  | Move Item
-  | Configure Item
-  | CreateNotebook State
-  | MountDatabase State
-  | CreateFolder State
-  | UploadFile Node State
-  | FileListChanged Node State
-```
-
-Request Messages 
-
-#### `State`
-
-``` purescript
-type State = { path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
-```
-
-Application state
-
-#### `initialState`
-
-``` purescript
-initialState :: State
 ```
 
 
@@ -227,16 +150,6 @@ trimQuotes :: String -> String
 
 
 
-## Module View
-
-#### `view`
-
-``` purescript
-view :: forall u node. (H.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
-```
-
-
-
 ## Module Api.Fs
 
 
@@ -292,7 +205,50 @@ deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax | e) Unit
 
 
 
-## Module Controller.Driver
+## Module App.File
+
+#### `app`
+
+``` purescript
+app :: forall e. Hl.UI M.Input Void M.Request (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)
+```
+
+
+
+## Module App.Notebook
+
+#### `app`
+
+``` purescript
+app :: forall e. H.UI M.Input Void M.Request e
+```
+
+
+
+## Module Controller.File
+
+
+File component main handler 
+
+#### `handler`
+
+``` purescript
+handler :: forall e. M.Request -> Aff.Aff (Hl.HalogenEffects (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)) M.Input
+```
+
+
+
+## Module Controller.Notebook
+
+#### `handler`
+
+``` purescript
+handler :: forall e. M.Request -> Aff (H.HalogenEffects e) M.Input
+```
+
+
+
+## Module Driver.File
 
 
 Module handles outer messages to `halogen` application
@@ -360,10 +316,41 @@ addToPath :: String -> String -> String
 Add to _path_ value in path-labeled predicate 
 
 
-## Module Controller.Input
+## Module Driver.Notebook
+
+#### `Routes`
+
+``` purescript
+data Routes
+  = Cell M.Path M.CellId Resume
+  | Notebook M.Path Resume
+```
 
 
-state update function 
+#### `routing`
+
+``` purescript
+routing :: R.Match Routes
+```
+
+
+#### `driver`
+
+``` purescript
+driver :: forall e. H.Driver M.Input e -> Eff (H.HalogenEffects e) Unit
+```
+
+
+## Module Entries.File
+
+
+## Module Entries.Notebook
+
+
+## Module Input.File
+
+
+file component state update function 
 
 #### `inner`
 
@@ -373,15 +360,76 @@ inner :: M.State -> M.Input -> M.State
 
 
 
-## Module Controller.Request
+## Module Input.Notebook
 
-
-Main app handler
-
-#### `handler`
+#### `updateState`
 
 ``` purescript
-handler :: forall e. M.Request -> Aff.Aff (Hl.HalogenEffects (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)) M.Input
+updateState :: M.State -> M.Input -> M.State
+```
+
+
+
+## Module Model.File
+
+
+Input, output messages and state for file component
+
+#### `Input`
+
+``` purescript
+data Input
+  = Sorting Sort
+  | ItemsUpdate [Item] Sort
+  | ItemHover Number Boolean
+  | ItemSelect Number Boolean
+  | ItemAdd Item
+  | SearchValidation Boolean
+  | SearchSet String
+  | SearchTimeout Timeout
+  | SearchNextValue String
+  | SetPath String
+  | Resort 
+  | Remove Item
+```
+
+Input messages 
+
+#### `Request`
+
+``` purescript
+data Request
+  = GoToRoute String
+  | SetSort Sort
+  | SearchChange (Maybe Timeout) String
+  | Breadcrumb Breadcrumb
+  | SearchSubmit Search
+  | Open Item
+  | Delete Item
+  | Share Item
+  | Move Item
+  | Configure Item
+  | CreateNotebook State
+  | MountDatabase State
+  | CreateFolder State
+  | UploadFile Node State
+  | FileListChanged Node State
+```
+
+Request Messages 
+
+#### `State`
+
+``` purescript
+type State = { path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
+```
+
+Application state
+
+#### `initialState`
+
+``` purescript
+initialState :: State
 ```
 
 
@@ -492,6 +540,69 @@ initialSearch :: Search
 
 ## Module Model.Notebook
 
+#### `Input`
+
+``` purescript
+data Input
+  = ViewNotebook String (List CellState)
+  | EditNotebook String (List CellState)
+  | ViewCell CellState
+  | EditCell CellState
+```
+
+
+#### `Request`
+
+``` purescript
+data Request
+  = Request 
+```
+
+
+#### `State`
+
+``` purescript
+data State
+  = OneCellView Resume CellState
+  | NotebookView Resume String (List CellState)
+```
+
+
+#### `CellState`
+
+``` purescript
+type CellState = { id :: String }
+```
+
+
+#### `initialCell`
+
+``` purescript
+initialCell :: CellState
+```
+
+
+#### `initialState`
+
+``` purescript
+initialState :: State
+```
+
+
+#### `CellId`
+
+``` purescript
+type CellId = String
+```
+
+
+#### `string2cellId`
+
+``` purescript
+string2cellId :: String -> Either String CellId
+```
+
+
 #### `CellType`
 
 ``` purescript
@@ -557,6 +668,38 @@ instance notebookRequestable :: Ar.Requestable Notebook
 
 
 
+## Module Model.Path
+
+#### `Path`
+
+``` purescript
+data Path
+  = Path (List String) String
+```
+
+
+#### `path2str`
+
+``` purescript
+path2str :: Path -> String
+```
+
+
+#### `decodeURIPath`
+
+``` purescript
+decodeURIPath :: String -> String
+```
+
+
+#### `encodeURIPath`
+
+``` purescript
+encodeURIPath :: String -> String
+```
+
+
+
 ## Module Model.Resource
 
 
@@ -598,6 +741,32 @@ Now only `IsForeign`. After switching to `purescript-affjax`
 will be `EncodeJson`
 
 
+## Module Model.Resume
+
+#### `Resume`
+
+``` purescript
+data Resume
+  = View 
+  | Edit 
+```
+
+
+#### `string2resume`
+
+``` purescript
+string2resume :: String -> Either String Resume
+```
+
+
+#### `resumeEq`
+
+``` purescript
+instance resumeEq :: Eq Resume
+```
+
+
+
 ## Module Model.Sort
 
 
@@ -624,6 +793,13 @@ revese sort
 
 ``` purescript
 sort2string :: Sort -> String
+```
+
+
+#### `string2sort`
+
+``` purescript
+string2sort :: String -> Either String Sort
 ```
 
 
@@ -731,6 +907,78 @@ request :: forall e i r. r -> EventHandler (Either i r)
 
 ``` purescript
 targetLink :: forall a b. b -> [A.Attr (Either a b)]
+```
+
+
+
+## Module View.Css
+
+#### `searchInput`
+
+``` purescript
+searchInput :: ClassName
+```
+
+
+#### `results`
+
+``` purescript
+results :: ClassName
+```
+
+
+#### `logo`
+
+``` purescript
+logo :: ClassName
+```
+
+
+#### `navCont`
+
+``` purescript
+navCont :: ClassName
+```
+
+
+#### `navIcon`
+
+``` purescript
+navIcon :: ClassName
+```
+
+
+#### `navLogo`
+
+``` purescript
+navLogo :: ClassName
+```
+
+
+#### `search`
+
+``` purescript
+search :: ClassName
+```
+
+
+
+## Module View.File
+
+#### `view`
+
+``` purescript
+view :: forall u node. (H.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
+```
+
+
+
+## Module View.Notebook
+
+#### `view`
+
+``` purescript
+view :: forall u node. (Ht.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
 ```
 
 
