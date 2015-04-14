@@ -172,7 +172,7 @@ item searching ix state =
                ]
             ]
          ],
-       H.div [A.class_ B.colSm3] [
+       H.div [A.classes [B.colSm3, Vc.itemToolbar]] [
          H.ul [A.classes ([B.listInline, B.pullRight] <>
                          if not $ state.hovered || state.selected then
                            [B.hidden]

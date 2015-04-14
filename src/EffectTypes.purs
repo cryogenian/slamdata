@@ -8,7 +8,7 @@ import qualified Halogen as Hl
 import qualified Utils.File as Uf
 
 type FileComponentEff e = (timer :: Tm.Timer,
-                           ajax :: Af.Ajax,
+                           ajax :: Af.AJAX,
                            avar :: A.AVAR,
                            file :: Uf.ReadFile,
                            random :: Random|e)

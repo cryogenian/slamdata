@@ -50,4 +50,5 @@ toolbarMenu = className "toolbar-menu"
 itemIcon :: ClassName
 itemIcon = className "item-icon"
 
-
+itemToolbar :: ClassName
+itemToolbar = className "item-toolbar"
