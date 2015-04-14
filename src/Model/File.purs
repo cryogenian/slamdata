@@ -1,6 +1,7 @@
 -- | Input, output messages and state for file component
 module Model.File where
 
+import Control.Monad.Aff
 import Control.Timer (Timeout())
 import Data.Maybe
 import Data.Foreign
@@ -12,6 +13,8 @@ import DOM
 import Model.Sort
 import Model.Resource
 import Model.Item
+import Model.Search
+import Model.Breadcrumb
 
 -- | Input messages 
 data Input
@@ -27,14 +30,18 @@ data Input
   | SetPath String
   | Resort
   | Remove Item
-
+  | Loading Boolean
+  | Focus Boolean
+  | SetSearching Boolean
+    
 -- | Request Messages 
 data Request
   = GoToRoute String
   | SetSort Sort
-  | SearchChange (Maybe Timeout) String
-  | Breadcrumb Breadcrumb
-  | SearchSubmit Search
+  | SearchChange Search String String
+  | SearchClear Boolean Search
+  | Breadcrumb Breadcrumb 
+  | SearchSubmit Search String
   | Open Item
   | Delete Item
   | Share Item
@@ -52,7 +59,8 @@ type State = {
   sort :: Sort,
   items :: [Item],
   breadcrumbs :: [Breadcrumb],
-  path :: String
+  path :: String,
+  searching :: Boolean
   }
 
 initialState :: State
@@ -61,5 +69,6 @@ initialState = {
   sort : Asc,
   items : [],
   breadcrumbs : [],
-  path: ""
+  path: "/",
+  searching: false
   }

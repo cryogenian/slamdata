@@ -8,6 +8,8 @@ import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch (mkQuery)
 import qualified Model.File as M
 import qualified Model.Item as M
+import qualified Model.Search as M
+import qualified Model.Breadcrumb as M
 import qualified Data.Array as A
 import qualified Data.String as Str
 import qualified Data.List as L
@@ -22,23 +24,25 @@ inner state input =
 
     -- Used to not call `reload`
     M.Resort ->
-      state{items = A.sortBy (M.sortItem  state.sort) state.items}
+      state{items = A.sortBy (M.sortItem state.searching state.sort) state.items}
     M.Sorting sort ->
-      state{sort = sort, items = A.sortBy (M.sortItem sort) state.items}
+      state{sort = sort,
+            items = A.sortBy (M.sortItem state.searching sort) state.items}
     M.SearchNextValue next ->
       state{search = state.search{nextValue = next}}
-    M.ItemsUpdate is sort -> 
+    M.ItemsUpdate is sort ->
       state{sort = sort,
-            items = A.sortBy (M.sortItem sort) $
+            items = A.sortBy (M.sortItem state.searching sort) $
                     A.concat [A.filter (\x -> x.root == state.path) $
                               A.filter _.phantom state.items, is]}
     M.SearchValidation v ->
       state{search = state.search{valid = v}}
     M.SearchSet s ->
       let nq = either (const "") id (strQuery <$> mkQuery state.search.nextValue)
-      in if nq /= s then
-        state{search = state.search{value = s}}
-        else state
+      in if (s /= "" && nq /= "" &&  nq == s) then
+           state{search = state.search{value = state.search.nextValue}}
+         else
+           state{search = state.search{value = s, nextValue = s}}
     M.SearchTimeout t ->
       state{search = state.search{timeout = Just t}}
     M.ItemHover ix h ->
@@ -48,7 +52,14 @@ inner state input =
     M.SetPath str ->
       state{path = str, breadcrumbs = mkBreadcrumbs str}
     M.ItemAdd item ->
-      inner state{items = item:state.items} M.Resort
+      inner state{items = A.sortBy (M.sortItem state.searching state.sort)
+                          (item:state.items)} M.Resort
+    M.Loading loading ->
+      state{search = state.search{loading=loading}}
+    M.Focus focus ->
+      state{search = state.search{focused = focus}}
+    M.SetSearching s ->
+      state{searching = s}
       
   where modify func ix =
           let unmodify = func false <$> state.items

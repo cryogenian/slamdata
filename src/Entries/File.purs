@@ -6,7 +6,6 @@ import qualified Halogen as Hl
 import qualified App.File as App
 import qualified Driver.File as D
 import Control.Monad.Aff
-import Control.Monad.Aff.Queue
 import Control.Monad.Eff.Class
 import Utils
 import Debug.Trace

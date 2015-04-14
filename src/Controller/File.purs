@@ -5,7 +5,7 @@ import Control.Monad.Eff
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Exception
 import Control.Monad.Error.Class
-
+import Control.Monad.Eff.Random
 import Data.Maybe
 import Data.Tuple
 import Data.Either
@@ -32,11 +32,9 @@ import qualified Model.Item as Mi
 import qualified Model.Notebook as Mn
 import qualified Model.Resource as Mr
 import qualified Api.Fs as Api
-import Debug.Trace
+import EffectTypes
 
-handler :: forall e. M.Request ->
-           Aff.Aff (Hl.HalogenEffects
-                    (timer::Tm.Timer, file :: Uf.ReadFile, ajax :: Af.Ajax|e)) M.Input
+handler :: forall e. M.Request -> Aff.Aff (FileAppEff e) M.Input
 handler r = 
   case r of
     M.Delete item -> do
@@ -59,6 +57,7 @@ handler r =
         Right _ -> do
           -- we created notebook, replace phantom
           Aff.forkAff $ (pure $ M.Remove notebook)
+          liftEff $ open notebook{phantom = false} false
           pure $ M.ItemAdd notebook{phantom = false}
 
     M.FileListChanged node state -> do
@@ -78,23 +77,35 @@ handler r =
             Left _ ->
               pure $ M.Remove fileItem
             Right _ -> do
+              liftEff $ open fileItem{phantom = false} false
               Aff.forkAff (pure $ M.Remove fileItem)
               pure $ M.ItemAdd fileItem{phantom = false}
+
           
     _ -> Aff.makeAff $ \_ k -> do 
       case r of
         -- value of search has been changed
-        M.SearchChange mbTimeout ch -> do
+        M.SearchChange search ch p -> do
           k $ M.SearchNextValue ch
-          maybe (pure unit) Tm.clearTimeout mbTimeout
-          tim <- Tm.timeout Config.searchTimeout $ setQ k ch 
+          maybe (pure unit) Tm.clearTimeout search.timeout
+          tim <- Tm.timeout Config.searchTimeout $ do
+            setQ k (ch <> " path:\"" <> p <> "\"")
           k $ M.SearchTimeout tim
           k $ M.SearchValidation true
     
         -- pressed button or enter in search's input
-        M.SearchSubmit s -> do
+        M.SearchSubmit s p -> do
           maybe (pure unit) Tm.clearTimeout s.timeout
-          setQ k s.nextValue
+          setQ k (s.nextValue <> " +path:" <> p)
+
+        M.SearchClear isSearching search -> do
+          maybe (pure unit) Tm.clearTimeout search.timeout
+          if isSearching then do
+            rnd <- show <$> randomInt 1000000 2000000
+            Rh.modifyHash $ Cd.updateSalt rnd
+            k $ M.SetSearching false
+            else 
+            setQ k $ "path:/"
 
         -- sets sort 
         M.SetSort sort -> do
@@ -146,17 +157,17 @@ handler r =
         M.Configure _ -> do
           U.log "configure"
 
-  where setQ k q =
+  where setQ k q = do
           case S.mkQuery q of
             Left _ | q /= "" -> k $ M.SearchValidation false
             Right _ -> do
-              Rh.modifyHash $ Cd.updateQ q 
+              Rh.modifyHash $ Cd.updateQ q
               k $ M.SearchValidation true
             _ -> do
               Rh.modifyHash $ Cd.updateQ ""
               k $ M.SearchValidation true
         -- open dir or db
-        moveDown item = Rh.modifyHash $ Cd.addToPath item.name
+        moveDown item = Rh.modifyHash $ Cd.updatePath (item.root <> "/" <> item.name <> "/")
         -- open notebook or file
         open item isNew = U.newTab $ foldl (<>) ""
                           ([Config.notebookUrl,

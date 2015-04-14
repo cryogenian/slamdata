@@ -10,10 +10,9 @@ import qualified Control.Timer as Tm
 import qualified Halogen as Hl
 import qualified Halogen.Signal as HS
 import qualified Network.HTTP.Affjax as Af
+import EffectTypes 
 
-
-app :: forall e. Hl.UI M.Input Void M.Request
-       (timer::Tm.Timer, file::Uf.ReadFile, ajax::Af.Ajax|e)
+app :: forall e. Hl.UI M.Input Void M.Request (FileComponentEff e)
 app = {
   view: V.view <$> HS.stateful M.initialState Ci.inner,
   handler: Cr.handler,

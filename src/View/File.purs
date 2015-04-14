@@ -9,6 +9,7 @@ import qualified Model.File as M
 import qualified Model.Item as M
 import qualified Model.Sort as Ms
 import qualified Model.Resource as Mr
+import qualified Model.Path as M
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
@@ -19,10 +20,13 @@ import qualified Data.StrMap as SM
 import qualified Config as Config
 import qualified View.Css as Vc
 
+homeHash :: String
+homeHash = "#?sort=asc&q=path%3A%2F&salt="
+
 icon :: forall a i node. (H.HTMLRepr node) => node a i
 icon =
   H.div [A.classes [B.colXs1, Vc.navIcon]] [
-    H.a [A.href "#?sort=asc&q=",
+    H.a [A.href homeHash,
          A.classes [B.navbarBrand, Vc.logo]] [
        H.i [A.classes [B.glyphicon, B.glyphiconFolderOpen]][]
        ]
@@ -36,20 +40,46 @@ logo =
       H.img [A.src "./logo.svg"] []
       ]
     ]
-
+ 
 search :: forall u node. (H.HTMLRepr node) => M.State ->
           node u (Either M.Input M.Request)
 search state =
   H.div [A.classes [B.colXs12, B.colSm8, Vc.search]] [
     H.form [A.class_ B.navbarForm,
-            E.onsubmit (\_ -> pure $ Right $ M.SearchSubmit state.search)] [
+            E.onsubmit (\_ -> pure $ Right $ M.SearchSubmit state.search state.path)] [
        H.div [A.classes ([B.inputGroup, Vc.searchInput] <> if state.search.valid then
                                               mempty
                                             else [B.hasError])] [
           H.input [A.classes [B.formControl],
                    A.value state.search.value,
-                   (F.onInput (pure <<< Right <<< M.SearchChange state.search.timeout))
+                   A.title state.search.value,
+                   E.onfocus (\_ -> pure <<< Left $ M.Focus true),
+                   E.onblur (\_ -> pure <<< Left $ M.Focus false),
+                   F.onInput (\v ->
+                               pure <<< Right $ M.SearchChange
+                               state.search v state.path)
                    ] [],
+          H.span [A.class_ (if state.search.focused then
+                              Vc.searchPathActive
+                              else
+                              Vc.searchPath)]
+          [H.span [A.class_ Vc.searchPathBody]
+            [H.text  state.search.nextValue],
+           H.span [A.class_ (if state.search.nextValue == ""
+                             then Vc.searchAffixEmpty
+                             else Vc.searchAffix)] [
+             H.text $ "path:" <> state.path]],
+
+          
+                              
+          H.img [E.onclick
+                 (\_ -> pure <<< Right $ M.SearchClear state.searching state.search),
+                 A.class_ Vc.searchClear,
+                 (if state.search.loading
+                  then A.src "./spin.svg"
+                  else A.src "./remove.svg")][],
+
+
           H.span [A.class_ B.inputGroupBtn] [
             H.button [A.classes [B.btn, B.btnDefault],
                       A.disabled (not state.search.valid)] [
@@ -64,7 +94,6 @@ breadcrumbs :: forall u node. (H.HTMLRepr node) =>
                M.State -> node u (Either M.Input M.Request)
 breadcrumbs state =
   H.ol [A.class_ B.breadcrumb] $
-    [H.li_ []] <>
     (breadcrumbView <$> state.breadcrumbs)
   where breadcrumbView b =
           H.li_ [H.a (targetLink <<< M.Breadcrumb $ b)
@@ -73,7 +102,7 @@ breadcrumbs state =
 sorting :: forall u node. (H.HTMLRepr node) =>
            M.State -> node u (Either M.Input M.Request)
 sorting state =
-    H.div [A.class_ B.colSm4] [
+    H.div [A.classes [B.colXs4, Vc.toolbarSort]] [
       H.a (targetLink <<< M.SetSort $ Ms.notSort state.sort) [
           H.text "Name",
           H.i [chevron state,
@@ -86,7 +115,7 @@ sorting state =
 toolbar :: forall u node. (H.HTMLRepr node) =>
            M.State -> node u (Either M.Input M.Request)
 toolbar state =
-  H.div [A.class_ B.colSm8] [
+  H.div [A.classes [B.colXs8, Vc.toolbarMenu]] [
     H.ul [A.classes [B.listInline, B.pullRight]]
     if inRoot state then [mount]
     else  [
@@ -124,8 +153,8 @@ toolbar state =
 
 
 item :: forall u node. (H.HTMLRepr node) =>
-        Number -> M.Item -> node u (Either M.Input M.Request)
-item ix state =
+        Boolean -> Number -> M.Item -> node u (Either M.Input M.Request)
+item searching ix state =
   H.div [A.classes ([B.listGroupItem] <> if state.selected then
                                           [B.listGroupItemInfo]
                                           else mempty),
@@ -133,15 +162,17 @@ item ix state =
          E.onclick (const <<< back $ M.ItemSelect ix true),
          E.ondblclick (const <<< request $ M.Open state)] [
     H.div [A.class_ B.row] [
-       H.div [A.class_ B.colSm6] [
-          H.a (targetLink <<< M.Open $ state) [
-             H.i [iconClasses state] [],
-             H.span [A.style $ A.styles $ SM.fromList [Tuple "margin-left" "20px"]] [
-               H.text state.name
+       H.div [A.class_ B.colSm9] [
+         H.a (targetLink <<< M.Open $ state) [
+            H.span [] [
+               H.i [iconClasses state] [],
+               H.text $ (if searching
+                         then M.decodeURIPath state.root
+                         else "") <> state.name
                ]
-             ]
-          ],
-       H.div [A.class_ B.colSm6] [
+            ]
+         ],
+       H.div [A.class_ B.colSm3] [
          H.ul [A.classes ([B.listInline, B.pullRight] <>
                          if not $ state.hovered || state.selected then
                            [B.hidden]
@@ -151,7 +182,7 @@ item ix state =
          ]
        ]
     ]
-  where iconClasses state = A.classes [B.glyphicon, iconClass state.resource]
+  where iconClasses state = A.classes [B.glyphicon, Vc.itemIcon, iconClass state.resource]
         iconClass res = case res of
           Mr.File -> B.glyphiconFile
           Mr.Database -> B.glyphiconHdd
@@ -187,7 +218,9 @@ item ix state =
 items :: forall u node. (H.HTMLRepr node) => M.State ->
          node u (Either M.Input M.Request)
 items state =
-  H.div [A.classes [B.listGroup, Vc.results]] $ zipWith item (0..length state.items) state.items
+  H.div [A.classes [B.listGroup, Vc.results]] $
+  ((uncurry (item state.searching)) <$>  zip (0..length state.items) state.items)
+--  zipWith item (0..length state.items) state.items
 
 
 view :: forall u node. (H.HTMLRepr node) => M.State ->
@@ -195,7 +228,8 @@ view :: forall u node. (H.HTMLRepr node) => M.State ->
 view state =
   H.div_ [
     navbar [
-       content [A.classes [Vc.navCont, B.container]][
+       
+       H.div [A.classes [Vc.navCont, B.containerFluid]][
           icon,
           logo,
           search state
@@ -212,7 +246,12 @@ view state =
     ]
   where content :: forall a i node. (H.HTMLRepr node) =>
                    [A.Attr i] -> [node a i] -> node a i
-        content attrs =  H.div ([A.class_ B.container] <> attrs)
+        content attrs nodes =  H.div ([A.class_ B.container] <> attrs) [
+          H.div [A.class_ B.row] [
+             H.div [A.classes [B.colMd8, B.colMdOffset2,
+                               B.colSm10, B.colSmOffset1]] nodes
+             ]
+          ]
 
         row :: forall a i node. (H.HTMLRepr node) => [node a i] -> node a i
         row = H.div [A.class_ B.row]

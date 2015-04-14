@@ -17,7 +17,7 @@ body {
     .logo {
         padding-right: 0;
         img {
-            height: 36px;
+            height: 32px;
             @media (max-width: 768px) {
                 padding-top: 7px;
                 height: 43px;
@@ -26,13 +26,73 @@ body {
     }
 }
 
+.item-icon {
+    margin-right: 20px;
+}
+
 .search .search-input {
     width: 100%;
-    padding-top: 13px;
+    padding-top: 10px;
     border-radius: 0;
     input, button {
-        border-radius: 0
+        border-radius: 0;
+        z-input: 1;
+        background-color: transparent;
     }
+    img.search-clear {
+        width: 16px;
+        height: 16px;
+        position: absolute;
+        right: 44px;
+        top: 19px;
+        z-index: 100;
+        color: #0f0f0f;
+        cursor: pointer;
+        text-decoration: none;
+        &:hover {
+            text-decoration: none;
+            color: #000;
+        }
+    }
+    .search-path {
+        .search-affix, .search-affix-empty {
+            color: #000;
+        }
+        .search-path-body {
+            color: transparent;
+        }
+        .search-affix-empty {
+            margin-left: 0;
+        }
+        .search-affix {
+            margin-left: 6px;
+        }
+        &-active {
+            .search-affix, .search-affix-empty {
+                color: #999;
+            }
+            .search-path-body {
+                color: transparent;
+            }
+            .search-affix-empty {
+                margin-left: 0;
+            }
+            .search-affix {
+                margin-left: 6px;
+            }
+        }
+        &, &-active {
+            top: 11px;
+            left: 0;
+            z-index: 0;
+            width: 100%;
+            background-color: white;
+            padding: 6px 13px;
+            position: absolute;
+        }
+    }
+        
+
     &.input-group {
         span.input-group-btn {
             width: 34px;
@@ -40,15 +100,16 @@ body {
     }
 }
 
-.container .nav-cont {
-    a {
-        font-size: 2em;
-        color: #f0f0f0;
-        &:hover {
-            color: #fff;
-        }
-    }
+.container-fluid.nav-cont {
     .nav-icon {
+        a {
+            font-size: 1.6em;
+            color: #f0f0f0;
+            padding-bottom: 4px;
+            &:hover {
+                color: #fff;
+            }
+        }
         @media (max-width: 768px) {
             padding-top: 14px;
             width: 54px;
@@ -59,6 +120,19 @@ body {
         }
     }
 }
+ol.breadcrumb {
+    padding-left: 0;
+}
+
+.toolbar-sort {
+    padding-top: 14px;
+}
+.toolbar-menu {
+    ul {
+        margin-bottom: 0
+    }
+}
+
 
 /* Bootstrap overloads */
 
