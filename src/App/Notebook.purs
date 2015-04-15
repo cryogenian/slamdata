@@ -1,19 +1,10 @@
 module App.Notebook where
 
-import Data.Void
-import Control.Monad.Eff 
-import qualified Halogen as H
-import qualified Halogen.Signal as Hs
+import Halogen.Component (Component(), component)
+import Halogen.Signal (stateful)
+import Input.Notebook (updateState)
+import Model.Notebook (Input(), initialState)
+import View.Notebook (view)
 
-import qualified View.Notebook as V
-import qualified Model.Notebook as M
-import qualified Controller.Notebook as C
-import qualified Input.Notebook as I
-
-app :: forall e. H.UI M.Input Void M.Request e
-app = {
-  view: V.view <$> Hs.stateful M.initialState I.updateState,
-  handler: C.handler,
-  renderer: H.defaultRenderer
-  }
-       
+app :: forall p m. (Applicative m) => Component p m Input Input
+app = component $ view <$> stateful initialState updateState
