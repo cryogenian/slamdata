@@ -177,7 +177,7 @@ isSearchQuery query =
 check :: S.Predicate -> String -> Boolean
 check p prj =
   case p of
-    S.Contains (S.Text str) -> match $ "*" <> str <> "*"
+    S.Contains (S.Text str) -> match $ "*" <> escapeGlob str <> "*"
     S.Gt (S.Text str) -> compare str > 0
     S.Gte (S.Text str) -> compare str >= 0 
     S.Lt (S.Text str) -> compare str < 0 
@@ -195,7 +195,8 @@ check p prj =
     -- filters only when it means something. S.Eq S.Range - meaningless
     -- searching by tag in this context has no meaning too
     _ -> true
-  where percentRgx = Rgx.regex "%" flags
+  where escapeGlob str = Str.replace "*" "\\*" $ Str.replace "?" "\\?" str
+        percentRgx = Rgx.regex "%" flags
         underscoreRgx = Rgx.regex "_" flags
         flags = Rgx.noFlags{global = true}
         match a = MM.minimatch (Str.toLower a) (Str.toLower prj)
