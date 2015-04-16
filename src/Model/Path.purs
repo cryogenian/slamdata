@@ -24,3 +24,17 @@ encodeURIPath path =
   (encodeURIComponent <$>) <$>
   Str.split " " <$>
   Str.split "/" path
+
+
+hidePath :: String -> String -> String
+hidePath path input =
+  Str.trim $ 
+  Str.replace ("+path:\"" <> path <> "\"") "" $
+  Str.replace ("+path:" <> path) "" input
+
+cleanPath :: String -> String
+cleanPath input =
+  let rgx = Rgx.regex "\"" Rgx.noFlags{global=true}
+      doubleSlash = Rgx.regex "//" Rgx.noFlags{global=true}
+  in Rgx.replace doubleSlash "/" $
+     "/" <> (Str.trim $ Rgx.replace rgx "" input)

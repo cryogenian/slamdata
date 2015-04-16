@@ -75,7 +75,7 @@ listing2items (Listing cs) =
 successStatus :: Sc.StatusCode
 successStatus = Sc.StatusCode $ fromNumber 200
 
-getResponse :: forall e a. String -> Af.Affjax e a -> Aff.Aff (ajax::Af.Ajax|e) a 
+getResponse :: forall e a. String -> Af.Affjax e a -> Aff.Aff (ajax::Af.AJAX|e) a 
 getResponse msg affjax = do
   res <- affjax
   if res.status /= successStatus then
@@ -86,10 +86,10 @@ getResponse msg affjax = do
 listing' :: forall e. String -> Af.Affjax e Listing
 listing' path = Af.get (Config.metadataUrl <> path)
 
-listing :: forall e. String -> Aff.Aff (ajax::Af.Ajax|e) [Mi.Item]
+listing :: forall e. String -> Aff.Aff (ajax::Af.AJAX|e) [Mi.Item]
 listing path = (listing2items <<< _.response) <$> listing' path
 
-makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax::Af.Ajax|e) Unit
+makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax::Af.AJAX|e) Unit
 makeFile item content =
   let path = Mi.itemPath item
       isJson = either (const false) (const true) do
@@ -101,17 +101,17 @@ makeFile item content =
     Af.put_ (Config.dataUrl <> path) content
     else throwError $ error "file has incorrect format" 
                         
-makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax::Af.Ajax|e) Unit 
+makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax::Af.AJAX|e) Unit 
 makeNotebook item notebook =
   let path = Mi.itemPath item in
   getResponse ("error while creating notebook " <> path) $ 
   Af.put_ (Config.dataUrl <> path) notebook
 
-delete :: forall e. String -> Aff.Aff (ajax::Af.Ajax|e) Unit
+delete :: forall e. String -> Aff.Aff (ajax::Af.AJAX|e) Unit
 delete path = getResponse ("can not delete " <> path) $ 
               Af.delete_ (Config.dataUrl <> path)
 
-deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax|e) Unit
+deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.AJAX|e) Unit
 deleteItem item =
     let path = Mi.itemPath item <>
                if item.resource /= Mr.File &&

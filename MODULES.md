@@ -73,6 +73,23 @@ newNotebookName :: String
 
 
 
+## Module EffectTypes
+
+#### `FileComponentEff`
+
+``` purescript
+type FileComponentEff e = (random :: Random, file :: Uf.ReadFile, avar :: A.AVAR, ajax :: Af.AJAX, timer :: Tm.Timer | e)
+```
+
+
+#### `FileAppEff`
+
+``` purescript
+type FileAppEff e = Hl.HalogenEffects (FileComponentEff e)
+```
+
+
+
 ## Module Utils
 
 
@@ -179,28 +196,28 @@ instance listingResponsable :: Ar.Responsable Listing
 #### `listing`
 
 ``` purescript
-listing :: forall e. String -> Aff.Aff (ajax :: Af.Ajax | e) [Mi.Item]
+listing :: forall e. String -> Aff.Aff (ajax :: Af.AJAX | e) [Mi.Item]
 ```
 
 
 #### `makeFile`
 
 ``` purescript
-makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax :: Af.AJAX | e) Unit
 ```
 
 
 #### `makeNotebook`
 
 ``` purescript
-makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax :: Af.AJAX | e) Unit
 ```
 
 
 #### `deleteItem`
 
 ``` purescript
-deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.AJAX | e) Unit
 ```
 
 
@@ -210,7 +227,7 @@ deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax | e) Unit
 #### `app`
 
 ``` purescript
-app :: forall e. Hl.UI M.Input Void M.Request (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)
+app :: forall e. Hl.UI M.Input Void M.Request (FileComponentEff e)
 ```
 
 
@@ -233,7 +250,7 @@ File component main handler
 #### `handler`
 
 ``` purescript
-handler :: forall e. M.Request -> Aff.Aff (Hl.HalogenEffects (ajax :: Af.Ajax, file :: Uf.ReadFile, timer :: Tm.Timer | e)) M.Input
+handler :: forall e. M.Request -> Aff.Aff (FileAppEff e) M.Input
 ```
 
 
@@ -257,7 +274,7 @@ Mostly consists of routing functions
 #### `outside`
 
 ``` purescript
-outside :: forall e. Hl.Driver M.Input (ajax :: Af.Ajax, timer :: Tm.Timer | e) -> Eff (Hl.HalogenEffects (ajax :: Af.Ajax, timer :: Tm.Timer | e)) Unit
+outside :: forall e. Hl.Driver M.Input (FileComponentEff e) -> Eff (FileAppEff e) Unit
 ```
 
 Entry, used in `halogen` app
@@ -284,6 +301,13 @@ updateQ :: String -> String -> String
 ```
 
 
+#### `updateSalt`
+
+``` purescript
+updateSalt :: String -> String -> String
+```
+
+
 #### `setSort`
 
 ``` purescript
@@ -306,14 +330,6 @@ updatePath :: String -> String -> String
 ```
 
 set _path_ value in path-labeled predicate in route
-
-#### `addToPath`
-
-``` purescript
-addToPath :: String -> String -> String
-```
-
-Add to _path_ value in path-labeled predicate 
 
 
 ## Module Driver.Notebook
@@ -370,6 +386,24 @@ updateState :: M.State -> M.Input -> M.State
 
 
 
+## Module Model.Breadcrumb
+
+#### `Breadcrumb`
+
+``` purescript
+type Breadcrumb = { name :: String, link :: String }
+```
+
+Model for one breadcrumb 
+
+#### `rootBreadcrumb`
+
+``` purescript
+rootBreadcrumb :: Breadcrumb
+```
+
+
+
 ## Module Model.File
 
 
@@ -391,6 +425,9 @@ data Input
   | SetPath String
   | Resort 
   | Remove Item
+  | Loading Boolean
+  | Focus Boolean
+  | SetSearching Boolean
 ```
 
 Input messages 
@@ -401,9 +438,10 @@ Input messages
 data Request
   = GoToRoute String
   | SetSort Sort
-  | SearchChange (Maybe Timeout) String
+  | SearchChange Search String String
+  | SearchClear Boolean Search
   | Breadcrumb Breadcrumb
-  | SearchSubmit Search
+  | SearchSubmit Search String
   | Open Item
   | Delete Item
   | Share Item
@@ -421,7 +459,7 @@ Request Messages
 #### `State`
 
 ``` purescript
-type State = { path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
+type State = { searching :: Boolean, path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
 ```
 
 Application state
@@ -502,40 +540,12 @@ new file item conf
 #### `sortItem`
 
 ``` purescript
-sortItem :: Sort -> Item -> Item -> Ordering
+sortItem :: Boolean -> Sort -> Item -> Item -> Ordering
 ```
 
 sorting item list with preserving `upItem` in top
-
-#### `Breadcrumb`
-
-``` purescript
-type Breadcrumb = { name :: String, link :: String }
-```
-
-Model for one breadcrumb 
-
-#### `rootBreadcrumb`
-
-``` purescript
-rootBreadcrumb :: Breadcrumb
-```
-
-
-#### `Search`
-
-``` purescript
-type Search = { nextValue :: String, timeout :: Maybe Timeout, value :: String, valid :: Boolean }
-```
-
-State of search field
-
-#### `initialSearch`
-
-``` purescript
-initialSearch :: Search
-```
-
+If first argument is true then sorting not only by name
+but by `item.root <> item.name`
 
 
 ## Module Model.Notebook
@@ -699,6 +709,20 @@ encodeURIPath :: String -> String
 ```
 
 
+#### `hidePath`
+
+``` purescript
+hidePath :: String -> String -> String
+```
+
+
+#### `cleanPath`
+
+``` purescript
+cleanPath :: String -> String
+```
+
+
 
 ## Module Model.Resource
 
@@ -763,6 +787,24 @@ string2resume :: String -> Either String Resume
 
 ``` purescript
 instance resumeEq :: Eq Resume
+```
+
+
+
+## Module Model.Search
+
+#### `Search`
+
+``` purescript
+type Search = { loading :: Boolean, nextValue :: String, timeout :: Maybe Timeout, value :: String, focused :: Boolean, valid :: Boolean }
+```
+
+State of search field
+
+#### `initialSearch`
+
+``` purescript
+initialSearch :: Search
 ```
 
 
@@ -920,6 +962,48 @@ searchInput :: ClassName
 ```
 
 
+#### `searchClear`
+
+``` purescript
+searchClear :: ClassName
+```
+
+
+#### `searchPath`
+
+``` purescript
+searchPath :: ClassName
+```
+
+
+#### `searchPathActive`
+
+``` purescript
+searchPathActive :: ClassName
+```
+
+
+#### `searchAffix`
+
+``` purescript
+searchAffix :: ClassName
+```
+
+
+#### `searchPathBody`
+
+``` purescript
+searchPathBody :: ClassName
+```
+
+
+#### `searchAffixEmpty`
+
+``` purescript
+searchAffixEmpty :: ClassName
+```
+
+
 #### `results`
 
 ``` purescript
@@ -962,6 +1046,34 @@ search :: ClassName
 ```
 
 
+#### `toolbarSort`
+
+``` purescript
+toolbarSort :: ClassName
+```
+
+
+#### `toolbarMenu`
+
+``` purescript
+toolbarMenu :: ClassName
+```
+
+
+#### `itemIcon`
+
+``` purescript
+itemIcon :: ClassName
+```
+
+
+#### `itemToolbar`
+
+``` purescript
+itemToolbar :: ClassName
+```
+
+
 
 ## Module View.File
 
@@ -970,7 +1082,6 @@ search :: ClassName
 ``` purescript
 view :: forall u node. (H.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
 ```
-
 
 
 ## Module View.Notebook

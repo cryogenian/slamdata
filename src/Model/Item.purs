@@ -25,9 +25,10 @@ type Item = {
   }
 
 itemPath :: Item -> String
-itemPath item = encodeURIPath $
+itemPath item = (encodeURIPath $
                 leadingSlash $ 
-                trimQuotes item.root <> trimQuotes item.name
+                trimQuotes item.root <> trimQuotes item.name) <>
+                (if item.resource == Directory || item.resource == Database then "/" else  "")
   where leadingSlash input =
           if Str.indexOf "/" input == 0 then
             input
@@ -65,43 +66,19 @@ initFile :: Item
 initFile = initItem{resource = File}
 
 -- | sorting item list with preserving `upItem` in top
-sortItem :: Sort -> Item -> Item -> Ordering
-sortItem dir a b =
- let project = _.name
- in if project a == up then LT
-    else if project b == up then GT
-         else case dir of
-           Asc -> compare (project a) (project b)
-           Desc -> compare (project b) (project a)
-
--- | Model for one breadcrumb 
-type Breadcrumb = {
-  link :: String,
-  name :: String
-  }
-
-rootBreadcrumb :: Breadcrumb
-rootBreadcrumb = {
-  name: "Home",
-  link: "/"
-  }
-
--- | State of search field
-type Search = {
-  valid :: Boolean,
-  value :: String,
-  -- if _value_ has been changed but path hasn't been setted
-  timeout :: Maybe Timeout,
-  -- value to set path
-  nextValue :: String
-  }
-
-initialSearch :: Search
-initialSearch = {
-  valid : true,
-  value : "",
-  timeout : Nothing,
-  nextValue: ""
-  }
-
+-- | If first argument is true then sorting not only by name
+-- | but by `item.root <> item.name`
+sortItem :: Boolean -> Sort -> Item -> Item -> Ordering
+sortItem full dir a b =
+  if project a == up
+  then LT
+  else if project b == up
+       then GT
+       else case dir of
+         Asc -> compare (project a) (project b)
+         Desc -> compare (project b) (project a)
+  where project =
+          if full
+          then \x -> x.root <> x.name
+          else _.name
 

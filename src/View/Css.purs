@@ -5,6 +5,24 @@ import Halogen.HTML.Attributes (className, ClassName())
 searchInput :: ClassName
 searchInput = className "search-input"
 
+searchClear :: ClassName
+searchClear = className "search-clear"
+
+searchPath :: ClassName
+searchPath = className "search-path"
+
+searchPathActive :: ClassName
+searchPathActive = className "search-path-active"
+
+searchAffix :: ClassName
+searchAffix = className "search-affix"
+
+searchPathBody :: ClassName
+searchPathBody = className "search-path-body"
+
+searchAffixEmpty :: ClassName
+searchAffixEmpty = className "search-affix-empty"
+
 results :: ClassName
 results = className "results"
 
@@ -22,3 +40,15 @@ navLogo = className "nav-logo"
 
 search :: ClassName
 search = className "search"
+
+toolbarSort :: ClassName
+toolbarSort = className "toolbar-sort"
+
+toolbarMenu :: ClassName
+toolbarMenu = className "toolbar-menu"
+
+itemIcon :: ClassName
+itemIcon = className "item-icon"
+
+itemToolbar :: ClassName
+itemToolbar = className "item-toolbar"
