@@ -78,7 +78,7 @@ newNotebookName :: String
 #### `FileComponentEff`
 
 ``` purescript
-type FileComponentEff e = (random :: Random, file :: Uf.ReadFile, avar :: A.AVAR, ajax :: Af.Ajax, timer :: Tm.Timer | e)
+type FileComponentEff e = (random :: Random, file :: Uf.ReadFile, avar :: A.AVAR, ajax :: Af.AJAX, timer :: Tm.Timer | e)
 ```
 
 
@@ -196,28 +196,28 @@ instance listingResponsable :: Ar.Responsable Listing
 #### `listing`
 
 ``` purescript
-listing :: forall e. String -> Aff.Aff (ajax :: Af.Ajax | e) [Mi.Item]
+listing :: forall e. String -> Aff.Aff (ajax :: Af.AJAX | e) [Mi.Item]
 ```
 
 
 #### `makeFile`
 
 ``` purescript
-makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+makeFile :: forall e. Mi.Item -> String -> Aff.Aff (ajax :: Af.AJAX | e) Unit
 ```
 
 
 #### `makeNotebook`
 
 ``` purescript
-makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+makeNotebook :: forall e. Mi.Item -> Mn.Notebook -> Aff.Aff (ajax :: Af.AJAX | e) Unit
 ```
 
 
 #### `deleteItem`
 
 ``` purescript
-deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.Ajax | e) Unit
+deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.AJAX | e) Unit
 ```
 
 
@@ -1064,6 +1064,13 @@ toolbarMenu :: ClassName
 
 ``` purescript
 itemIcon :: ClassName
+```
+
+
+#### `itemToolbar`
+
+``` purescript
+itemToolbar :: ClassName
 ```
 
 

@@ -120,7 +120,7 @@ handleRoute driver =
         Rh.setHash $ setSort Ms.Asc 
       Sort sort -> do
         Rh.modifyHash $ updatePath "/"
-      SortAndQ sort query -> do 
+      SortAndQ sort query -> do
         rnd <- show <$> (liftEff $ randomInt 1000000 2000000)
         Rh.modifyHash $ updateSalt rnd
     where initialAVar = Tuple mempty M.empty
@@ -156,7 +156,8 @@ handleRoute driver =
                                               
               Tuple c r <- A.takeVar var
               if (foldl (+) 0 $ M.values r) == 0 then do
-                liftEff (driver $ M.Loading false)
+                liftEff do
+                  driver $ M.Loading false
                 A.putVar var initialAVar
                 else
                 A.putVar var (Tuple c r)            

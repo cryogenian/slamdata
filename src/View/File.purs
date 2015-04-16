@@ -73,7 +73,7 @@ search state =
           
                               
           H.img [E.onclick
-                 (\_ -> pure <<< Right $ M.SearchClear state.searching state.search),
+                 (\_ -> pure <<< Right $ M.SearchClear (state.searching && state.search.loading) state.search),
                  A.class_ Vc.searchClear,
                  (if state.search.loading
                   then A.src "./spin.svg"

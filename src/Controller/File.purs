@@ -103,7 +103,7 @@ handler r =
           if isSearching then do
             rnd <- show <$> randomInt 1000000 2000000
             Rh.modifyHash $ Cd.updateSalt rnd
-            k $ M.SetSearching false
+            k $ M.Loading false
             else 
             setQ k $ "path:/"
 
