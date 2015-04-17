@@ -60,6 +60,8 @@ inner state input =
       state{search = state.search{focused = focus}}
     M.SetSearching s ->
       state{searching = s}
+    M.SetDialog d ->
+      state{dialog = d}
       
   where modify func ix =
           let unmodify = func false <$> state.items

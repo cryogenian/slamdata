@@ -12,6 +12,12 @@ import Data.Either
 import Data.Foldable
 import Control.Apply
 
+import Data.DOM.Simple.Types
+import Data.DOM.Simple.Document
+import Data.DOM.Simple.Window
+import Data.DOM.Simple.Element
+
+
 import qualified Utils as U
 import qualified Utils.Event as Ue
 import qualified Utils.File as Uf
@@ -23,15 +29,16 @@ import qualified Control.Monad.Aff as Aff
 import qualified Text.SlamSearch as S
 import qualified Routing.Hash as Rh
 import qualified Data.String as Str
-import qualified Data.DOM.Simple.Element as El
 import qualified Driver.File as Cd 
 import qualified Network.HTTP.Affjax as Af
 
+import qualified Data.String.Regex as Rgx
 import qualified Model.File as M
 import qualified Model.Item as Mi
 import qualified Model.Notebook as Mn
 import qualified Model.Resource as Mr
 import qualified Api.Fs as Api
+import qualified Control.UI.ZClipboard as Z
 import EffectTypes
 
 handler :: forall e. M.Request -> Aff.Aff (FileAppEff e) M.Input
@@ -82,7 +89,7 @@ handler r =
               pure $ M.ItemAdd fileItem{phantom = false}
 
           
-    _ -> Aff.makeAff $ \_ k -> do 
+    _ -> Aff.makeAff $ \_ k -> do
       case r of
         -- value of search has been changed
         M.SearchChange search ch p -> do
@@ -125,9 +132,6 @@ handler r =
             Mr.Notebook -> do
               open item false
 
-        -- move/rename item
-        M.Move _ ->
-          U.log "move/rename"
 
         -- clicked on breadcrumb
         M.Breadcrumb b -> do
@@ -136,7 +140,7 @@ handler r =
         -- clicked on _File_ link triggering file uploading
         M.UploadFile node _ -> do
           let el = U.convertToElement node
-          mbInput <- El.querySelector "input" el
+          mbInput <- querySelector "input" el
           case mbInput of 
             Nothing -> pure unit
             Just input -> do
@@ -149,15 +153,54 @@ handler r =
           k $ M.ItemAdd $ Mi.initDirectory{root = path, name = name}
 
         M.MountDatabase _ ->
-          U.log "mount database"
-    
-        M.Share _ -> do
-          U.log "share"
+          k $ M.SetDialog (Just M.MountDialog)
+
+
+        -- This all should be moved to `initializer` 
+        M.Share item -> do
+          url <- itemURL item
+          k $ M.SetDialog (Just $ M.ShareDialog url)
+          mbCopy <- document globalWindow >>= getElementById "copy-button"
+          case mbCopy of
+            Nothing -> pure unit
+            Just btn -> void do 
+              Z.make btn >>= Z.onCopy (Z.setData "text/plain" url)
+
 
         M.Configure _ -> do
-          U.log "configure"
+          k $ M.SetDialog (Just M.ConfigureDialog)
 
-  where setQ k q = do
+        -- move/rename item
+        M.Move _ ->
+          k $ M.SetDialog (Just M.RenameDialog)
+
+        M.ToSelect node -> do
+          U.select node
+
+        M.ToClipboard str -> do
+          k $ M.SetDialog Nothing
+          pure unit
+
+
+  where itemURL item = do
+          loc <- U.locationString
+          hash <- Rh.getHash
+          let newUrl = loc <> case item.resource of
+                Mr.File -> foldl (<>) ""
+                     [Config.notebookUrl,
+                      "#", Mi.itemPath item,
+                      "/view",
+                      "/?q=", U.encodeURIComponent ("select * from ...")
+                     ]
+                Mr.Notebook -> foldl (<>) ""
+                     [Config.notebookUrl,
+                      "#", Mi.itemPath item,
+                      "/view"]
+                _ -> "#" <> Cd.updatePath (item.root <> "/" <> item.name) hash
+          pure $ newUrl
+            
+
+        setQ k q = do
           case S.mkQuery q of
             Left _ | q /= "" -> k $ M.SearchValidation false
             Right _ -> do

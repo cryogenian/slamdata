@@ -9,9 +9,9 @@ import Control.Apply
 import Data.Function
 
 import DOM (DOM(), Node())
-import Data.DOM.Simple.Types (HTMLElement(), DOMEvent())
+import Data.DOM.Simple.Types (HTMLElement(), DOMEvent(), DOMLocation())
 import Data.DOM.Simple.Document (body)
-import Data.DOM.Simple.Window (globalWindow, document)
+import Data.DOM.Simple.Window (globalWindow, document, getLocation, location)
 import Data.DOM.Simple.Events (addUIEventListener, UIEventType(..))
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
@@ -70,9 +70,30 @@ function clearValue(el) {
 }
 """ :: forall e. Node -> Eff (dom :: DOM |e) Unit
 
+foreign import select """
+function select(node) {
+  return function() {
+    node.select();
+  };
+}
+""" :: forall e. Node -> Eff (dom :: DOM |e) Unit
+
 bodyNode = do
   document globalWindow >>= body
-  
+
+
+foreign import locationOrigin """
+function locationOrigin(loc) {
+  return function() {
+    return loc.origin;
+  }
+}
+""" :: forall e. DOMLocation -> Eff (dom :: DOM|e) String 
+
+locationString :: forall e. Eff (dom :: DOM |e) String
+locationString = do
+  location globalWindow >>= locationOrigin
+
 
 trimQuotes :: String -> String
 trimQuotes input = Rgx.replace start "" $ Rgx.replace end "" input

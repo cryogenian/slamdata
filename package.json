@@ -18,8 +18,9 @@
   "dependencies": {
     "gulp": "^3.8.11",
     "gulp-less": "^3.0.2",
-    "mandragora-bucket": "^0.2.3",
+    "mandragora-bucket": "^0.3.0",
     "minimatch": "^2.0.1",
-    "virtual-dom": "^2.0.0"
+    "virtual-dom": "^2.0.0",
+    "zeroclipboard": "^2.2.0"
   }
 }
