@@ -9,6 +9,7 @@ import qualified Data.String as Str
 import qualified Network.HTTP.Affjax.Request as Ar
 import Utils (trimQuotes)
 
+
 import Model.Sort
 import Model.Resource
 import Model.Path
@@ -81,4 +82,6 @@ sortItem full dir a b =
           if full
           then \x -> x.root <> x.name
           else _.name
+
+
 

@@ -52,3 +52,6 @@ itemIcon = className "item-icon"
 
 itemToolbar :: ClassName
 itemToolbar = className "item-toolbar"
+
+itemContent :: ClassName
+itemContent = className "item-content"

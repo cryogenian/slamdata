@@ -1,7 +1,9 @@
 module Utils.Halide (
+  awful,
   back,
   request,
-  targetLink
+  targetLink,
+  readonly
   ) where
 
 import Data.Either
@@ -35,4 +37,8 @@ target' (T.DataTarget i) = [ A.href "#",
 
 targetLink :: forall a b. b -> [A.Attr (Either a b)]
 targetLink b = target' $ (T.DataTarget <<< Right $ b)
+
+readonly :: forall i. Boolean -> A.Attr i
+readonly = A.attr $ A.attributeName "readonly"
+
 

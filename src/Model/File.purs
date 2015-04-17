@@ -33,6 +33,7 @@ data Input
   | Loading Boolean
   | Focus Boolean
   | SetSearching Boolean
+  | SetDialog (Maybe DialogResume)
     
 -- | Request Messages 
 data Request
@@ -44,7 +45,7 @@ data Request
   | SearchSubmit Search String
   | Open Item
   | Delete Item
-  | Share Item
+  | Share Item 
   | Move Item
   | Configure Item
   | CreateNotebook State
@@ -52,6 +53,23 @@ data Request
   | CreateFolder State
   | UploadFile Node State
   | FileListChanged Node State
+  | ToSelect Node
+  | ToClipboard String
+
+data DialogResume 
+  = RenameDialog
+  | ConfigureDialog
+  | MountDialog
+  | ShareDialog String
+
+instance eqDialogResume :: Eq DialogResume where
+  (==) RenameDialog RenameDialog = true
+  (==) ConfigureDialog ConfigureDialog = true
+  (==) MountDialog MountDialog = true
+  (==) (ShareDialog s) (ShareDialog s') = s == s'
+  (==) _ _ = false
+  (/=) a b = not $ a == b
+  
 
 -- | Application state
 type State = {
@@ -60,7 +78,8 @@ type State = {
   items :: [Item],
   breadcrumbs :: [Breadcrumb],
   path :: String,
-  searching :: Boolean
+  searching :: Boolean,
+  dialog :: Maybe DialogResume
   }
 
 initialState :: State
@@ -70,5 +89,8 @@ initialState = {
   items : [],
   breadcrumbs : [],
   path: "/",
-  searching: false
+  searching: false,
+  dialog: Nothing
   }
+
+

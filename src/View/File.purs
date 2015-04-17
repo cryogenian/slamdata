@@ -2,9 +2,12 @@ module View.File (view) where
 
 import Data.Either
 import Data.Tuple
+import Data.Maybe
 import Data.Monoid (mempty)
 import Data.Array
-import Utils.Halide (back, request, targetLink)
+import Control.Functor
+import Control.Apply
+import Utils.Halide 
 import qualified Model.File as M
 import qualified Model.Item as M
 import qualified Model.Sort as Ms
@@ -162,7 +165,7 @@ item searching ix state =
          E.onclick (const <<< back $ M.ItemSelect ix true),
          E.ondblclick (const <<< request $ M.Open state)] [
     H.div [A.class_ B.row] [
-       H.div [A.class_ B.colSm9] [
+       H.div [A.classes [B.colSm9, Vc.itemContent]] [
          H.a (targetLink <<< M.Open $ state) [
             H.span [] [
                H.i [iconClasses state] [],
@@ -182,7 +185,9 @@ item searching ix state =
          ]
        ]
     ]
-  where iconClasses state = A.classes [B.glyphicon, Vc.itemIcon, iconClass state.resource]
+  where iconClasses state = A.classes [B.glyphicon,
+                                       Vc.itemIcon,
+                                       iconClass state.resource]
         iconClass res = case res of
           Mr.File -> B.glyphiconFile
           Mr.Database -> B.glyphiconHdd
@@ -203,13 +208,15 @@ item searching ix state =
                             A.title "configure"] []]]]
                   _ -> []
             in conf <> [
-              H.li_ [H.a (targetLink <<< M.Move $ item)
+              H.li_ [H.a
+                     (targetLink <<< M.Move $ item)
                      [H.i [A.classes [B.glyphicon, B.glyphiconMove],
                            A.title "move/rename"] []]],
               H.li_ [H.a (targetLink <<< M.Delete $ item)
                      [H.i [A.classes [B.glyphicon, B.glyphiconTrash],
                            A.title "remove"][]]],
-              H.li_ [H.a (targetLink <<< M.Share $ item)
+              H.li_ [H.a
+                     (targetLink <<< M.Share $ item)
                      [H.i [A.classes [B.glyphicon, B.glyphiconShare],
                            A.title "share"][]]]
               ]
@@ -220,8 +227,70 @@ items :: forall u node. (H.HTMLRepr node) => M.State ->
 items state =
   H.div [A.classes [B.listGroup, Vc.results]] $
   ((uncurry (item state.searching)) <$>  zip (0..length state.items) state.items)
---  zipWith item (0..length state.items) state.items
 
+modal :: forall a node. (H.HTMLRepr node) =>
+                 M.State -> 
+                 node a (Either M.Input M.Request)
+modal state =
+  H.div [E.onclick (\ev -> pure (Left $ M.SetDialog Nothing)),
+         A.classes 
+         ([B.modal, B.fade] <> maybe [] (const [B.in_]) state.dialog)] [
+    
+    H.div [A.classes [B.modalDialog]] [
+       H.div [E.onclick (\_ -> E.stopPropagation $> Left M.Resort),
+              A.classes [B.modalContent]] 
+       (modalContent state)
+       ]
+    ]
+
+    where h4 str = [H.h4_ [H.text str]]
+          header children =
+            H.div [A.classes [B.modalHeader]] children
+          body children =
+            H.div [A.classes [B.modalBody]] children
+          footer children =
+            H.div [A.classes [B.modalFooter]] children
+          modalContent state =
+            case state.dialog of
+              Just (M.ShareDialog url) ->
+                [header $ h4 "URL",
+                 body [
+                   H.form_ [
+                      H.div [
+                         A.classes [B.formGroup],
+                         E.onclick (\ev -> pure (Right $ M.ToSelect ev.target))] [
+                         H.input [
+                            readonly true,
+                            A.classes [B.formControl],
+                            A.value url][]
+                         ]
+                      ]
+                   ],
+                      
+                 footer [
+                   H.button [
+                      A.id_ "copy-button",
+                      E.onclick (\_ -> pure (Right $ M.ToClipboard url)),
+                      A.classes [B.btn, B.btnPrimary]] [
+                      H.text "Copy"
+                      ]
+                   ]]
+              Just M.MountDialog -> 
+                [header $ h4 "Mount",
+                 body [], footer []]
+              Just M.RenameDialog ->
+                [header $ h4 "Rename",
+                 body [], footer[]]
+              Just M.ConfigureDialog ->
+                [header $ h4 "Configure",
+                 body [], footer []]
+              Nothing -> []
+                
+
+    
+                         
+
+    
 
 view :: forall u node. (H.HTMLRepr node) => M.State ->
         node u (Either M.Input M.Request)
@@ -242,8 +311,10 @@ view state =
         toolbar state
         ],
       items state
-      ]
+      ],
+    modal state
     ]
+
   where content :: forall a i node. (H.HTMLRepr node) =>
                    [A.Attr i] -> [node a i] -> node a i
         content attrs nodes =  H.div ([A.class_ B.container] <> attrs) [
@@ -258,3 +329,5 @@ view state =
 
         navbar :: forall a i node. (H.HTMLRepr node) => [node a i] ->  node a i
         navbar = H.nav [A.classes [B.navbar, B.navbarInverse, B.navbarFixedTop]]
+
+        

@@ -38,6 +38,9 @@ body {
 .item-toolbar {
   padding-right: 0px;
 }
+.item-content {
+  padding-left: 5px;
+}
 .search .search-input {
   width: 100%;
   padding-top: 10px;
@@ -125,12 +128,20 @@ body {
 }
 ol.breadcrumb {
   padding-left: 0;
+  margin-bottom: 6px;
+  margin-top: 12px;
+}
+ol.breadcrumb > li + li:before {
+  padding-right: 1px;
 }
 .toolbar-sort {
   padding-top: 14px;
 }
-.toolbar-menu ul {
+.toolbar-menu ul.list-inline {
   margin-bottom: 0;
+}
+.toolbar-menu ul.list-inline li a i.btn-lg.glyphicon {
+  padding-right: 0 !important;
 }
 /* Bootstrap overloads */
 .breadcrumb {
@@ -146,5 +157,13 @@ ol.breadcrumb {
 .navbar.navbar-inverse {
   background-color: #262626;
   min-height: 70px;
+}
+.modal.fade {
+  display: block;
+  z-index: -1051;
+  background: rgba(0, 0, 0, 0.3);
+}
+.modal.fade.in {
+  z-index: 1051;
 }
 /* End of bootstrap overloads */
