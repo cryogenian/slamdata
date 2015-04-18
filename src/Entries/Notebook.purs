@@ -1,15 +1,13 @@
 module Entries.Notebook where
 
-import Debug.Trace
-import Utils
-import Data.Tuple
-import qualified Halogen as Hl
-import qualified App.Notebook as App
+import App.Notebook (app)
+import Control.Monad.Eff (Eff())
+import Data.Tuple (Tuple(..))
+import Halogen (runUI)
+import Utils (onLoad, append, bodyNode, convertToElement)
 import qualified Driver.Notebook as D
 
 main = onLoad $ void $ do
-  Tuple node driver <- Hl.runUI App.app
-  body <- bodyNode
-  append body (convertToElement node)
+  Tuple node driver <- runUI app
+  append <$> bodyNode <*> pure (convertToElement node)
   D.driver driver
-       

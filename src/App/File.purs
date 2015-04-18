@@ -1,20 +1,18 @@
-module App.File where
+module App.File (app) where
 
-import Data.Void
-import qualified Utils.File as Uf
-import qualified Model.File as M
-import qualified View.File as V
-import qualified Input.File as Ci
-import qualified Controller.File as Cr
-import qualified Control.Timer as Tm
-import qualified Halogen as Hl
-import qualified Halogen.Signal as HS
-import qualified Network.HTTP.Affjax as Af
-import EffectTypes 
+import Control.Alternative (Alternative)
+import Control.Monad.Aff (Aff())
+import Controller.File (handler)
+import EffectTypes (FileAppEff())
+import Halogen.Component (Component(), component)
+import Halogen.HTML.Events.Monad (Event(), async)
+import Halogen.Signal (stateful)
+import Input.File (inner)
+import Model.File (Input(), Request(), initialState)
+import View.File (view)
 
-app :: forall e. Hl.UI M.Input Void M.Request (FileComponentEff e)
-app = {
-  view: V.view <$> HS.stateful M.initialState Ci.inner,
-  handler: Cr.handler,
-  renderer: Hl.defaultRenderer
-  }
+app :: forall p e. Component p (Event (FileAppEff e)) Input Input
+app = component (view handler' <$> stateful initialState inner)
+
+handler' :: forall e. Request -> Event (FileAppEff e) Input
+handler' = async <<< handler

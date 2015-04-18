@@ -1,17 +1,18 @@
 module Entries.File where
 
-import Utils
-import Data.Tuple
-import qualified Halogen as Hl
-import qualified App.File as App
-import qualified Driver.File as D
-import Control.Monad.Aff
-import Control.Monad.Eff.Class
-import Utils
-import Debug.Trace
+import App.File (app)
+import Control.Monad.Eff (Eff())
+import Control.Timer (Timer())
+import Data.Tuple (Tuple(..))
+import Driver.File (outside)
+import EffectTypes (FileAppEff())
+import Halogen (runUI)
+import Network.HTTP.Affjax (AJAX())
+import Utils (onLoad, append, bodyNode, convertToElement)
+import Utils.File (ReadFile())
 
+main :: Eff (FileAppEff ()) Unit
 main = onLoad $ void $ do
-  Tuple node driver <- Hl.runUI App.app
-  body <- bodyNode
-  append body (convertToElement node)
-  D.outside driver
+  Tuple node driver <- runUI app
+  append <$> bodyNode <*> pure (convertToElement node)
+  outside driver
