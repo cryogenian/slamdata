@@ -3,10 +3,10 @@
   "homepage": "https://github.com/slamdata/slamdata",
   "authors": [
     "Maxim Zimaliev <zimaliev@yandex.ru>",
-    "Gary Burgess <gary.burgess@gmail.com>"
+    "Gary Burgess <gary@slamdata.com>"
   ],
   "description": "The web-based front-end for SlamData.",
-  "license": "MIT",
+  "license": "AGPL3",
   "ignore": [
     "**/.*",
     "node_modules",
