@@ -1,20 +1,19 @@
 {
-  "name": "slamdata-frontend",
-  "description": "Simple attempt to create frontend for slamdata-engine",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "name": "slamdata",
+  "description": "The web-based front-end for SlamData.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cryogenian/slamdata-frontend"
+    "url": "https://github.com/slamdata/slamdata"
   },
-  "author": "Maxim Zimaliev",
-  "license": "MIT",
+  "contributors": [
+    "Maxim Zimaliev <zimaliev@yandex.ru>",
+    "Gary Burgess <gary@slamdata.com>"
+  ],
+  "license": "AGPL3",
   "bugs": {
-    "url": "https://github.com/cryogenian/slamdata-frontend/issues"
+    "url": "https://github.com/slamdata/slamdata/issues"
   },
-  "homepage": "https://github.com/cryogenian/slamdata-frontend",
+  "homepage": "https://github.com/slamdata/slamdata",
   "dependencies": {
     "gulp": "^3.8.11",
     "gulp-less": "^3.0.2",
