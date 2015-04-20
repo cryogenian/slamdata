@@ -260,7 +260,8 @@ modal handler state =
       , body [ H.form_ [ H.div [ A.classes [B.formGroup]
                                , E.onClick (\ev -> pure $ handler $ ToSelect ev.target)
                                ]
-                               [ H.input [ A.classes [B.formControl]
+                               [ H.input [
+                                         A.classes [B.formControl]
                                          , A.value url
                                          , readonly true
                                          ]
@@ -287,7 +288,7 @@ modal handler state =
 
 view :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
 view handler state =
-  H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.container] ]
+  H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.containerFluid] ]
                           [ icon, logo, search handler state ]
                   ]
          , content [ breadcrumbs handler state
