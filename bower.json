@@ -24,7 +24,7 @@
     "purescript-either": "~0.1.6",
     "purescript-foldable-traversable": "~0.3.1",
     "purescript-foreign": "~0.4.2",
-    "purescript-halogen": "025ee936e6161ecb68071b1b29edc43ea44290d9",
+    "purescript-halogen": "https://github.com/cryogenian/purescript-halogen.git#master",
     "purescript-integers": "~0.0.1",
     "purescript-lazy": "~0.3.1",
     "purescript-lens": "~0.7.0",
@@ -48,6 +48,7 @@
     "purescript-contravariant": "~0.1.0",
     "purescript-lens": "master",
     "purescript-profunctor": "~0.2.1",
-    "purescript-simple-dom": "master"
+    "purescript-simple-dom": "master",
+    "purescript-aff": "~0.10.0"
   }
 }

@@ -13,6 +13,7 @@ import Utils.File (ReadFile())
 
 main :: Eff (FileAppEff ()) Unit
 main = onLoad $ void $ do
+  fprint "!!!"
   Tuple node driver <- runUI app
-  append <$> bodyNode <*> pure (convertToElement node)
+  bodyNode >>= flip append (convertToElement node) 
   outside driver
