@@ -44,7 +44,7 @@ logo = H.div [ A.classes [ B.colXs3, Vc.navLogo ] ]
              [ H.a [ A.href Config.slamDataHome
                    , A.classes [B.navbarBrand, Vc.logo]
                    ]
-                   [ H.img [A.src "./logo.svg"]
+                   [ H.img [A.src "img/logo.svg"]
                            []
                    ]
              ]
@@ -72,7 +72,7 @@ search handler state =
                                   ]
                          , H.img [ E.onClick (\_ -> pure $ handler $ SearchClear (state.searching && state.search.loading) state.search)
                                  , A.class_ Vc.searchClear
-                                 , (if state.search.loading then A.src "./spin.svg" else A.src "./remove.svg")
+                                 , (if state.search.loading then A.src "img/spin.svg" else A.src "img/remove.svg")
                                  ]
                                  []
                          , H.span [ A.class_ B.inputGroupBtn ]
@@ -87,7 +87,7 @@ search handler state =
 
 breadcrumbs :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
 breadcrumbs handler state =
-  H.ol [ A.class_ B.breadcrumb ]
+  H.ol [ A.classes [B.breadcrumb, B.colXs8] ]
        (breadcrumbView <$> state.breadcrumbs)
   where
   breadcrumbView :: Breadcrumb -> H.HTML p (m Input)
@@ -112,7 +112,7 @@ sorting handler state =
 
 toolbar :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
 toolbar handler state =
-  H.div [ A.classes [B.colXs8, Vc.toolbarMenu] ]
+  H.div [ A.classes [B.colXs4, Vc.toolbarMenu] ]
         [ H.ul [ A.classes [B.listInline, B.pullRight] ]
                if inRoot state then [mount] else [file, folder, mount, notebook]
         ]
@@ -225,10 +225,11 @@ view handler state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.containerFluid] ]
                           [ icon, logo, search handler state ]
                   ]
-         , content [ breadcrumbs handler state
-                   , row [ sorting handler state
-                         , toolbar handler state
-                         ]
+         , content [ H.div [ A.class_ B.clearfix ]
+                           [ breadcrumbs handler state
+                           , toolbar handler state
+                           ]
+                   , row [ sorting handler state ]
                    , items handler state
                    ]
          , modal handler state

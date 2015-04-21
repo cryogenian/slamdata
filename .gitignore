@@ -4,6 +4,8 @@
 /dist/
 /output/
 /coverage/
-public/*.js
+public/js/*.js
+public/css/*.css
+public/css/!bootstrap*.css
 .psci_modules
 .psci
