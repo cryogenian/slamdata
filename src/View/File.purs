@@ -1,7 +1,6 @@
 module View.File (view) where
 
 import Control.Alternative (Alternative)
--- import Control.Apply
 import Control.Functor (($>))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Array ((..), length, zipWith)
@@ -13,6 +12,7 @@ import Model.Item
 import Model.Path
 import Model.Resource
 import Model.Sort
+import View.File.Modal
 import Utils.Halide (targetLink', readonly)
 import qualified Config as Config
 import qualified Data.StrMap as SM
@@ -219,72 +219,6 @@ items :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML 
 items handler state =
   H.div [ A.classes [B.listGroup, Vc.results] ]
         $ zipWith (item handler state.searching) (0..length state.items) state.items
-
-modal :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
-modal handler state =
-  H.div [ A.classes ([B.modal, B.fade] <> maybe [] (const [B.in_]) state.dialog)
-        , E.onClick (E.input_ $ SetDialog Nothing)
-        ]
-        [ H.div [ A.classes [B.modalDialog] ]
-                [ H.div [ E.onClick (\_ -> E.stopPropagation $> pure Resort)
-                        , A.classes [B.modalContent]
-                        ]
-                        (modalContent state.dialog)
-                ]
-        ]
-
-    where
-
-    h4 :: forall i. String -> [H.HTML p i]
-    h4 str = [ H.h4_ [H.text str] ]
-
-    section :: forall i. [A.ClassName] -> [H.HTML p i] -> H.HTML p i
-    section clss = H.div [A.classes clss]
-
-    header :: forall i. [H.HTML p i] -> H.HTML p i
-    header = section [B.modalHeader]
-
-    body :: forall i. [H.HTML p i] -> H.HTML p i
-    body = section [B.modalBody]
-
-    footer :: forall i. [H.HTML p i] -> H.HTML p i
-    footer = section [B.modalFooter]
-
-    modalContent :: Maybe DialogResume -> [H.HTML p (m Input)]
-    modalContent Nothing = []
-    modalContent (Just dialog) = dialogContent dialog
-
-    dialogContent :: DialogResume -> [H.HTML p (m Input)]
-    dialogContent (ShareDialog url) =
-      [ header $ h4 "URL"
-      , body [ H.form_ [ H.div [ A.classes [B.formGroup]
-                               , E.onClick (\ev -> pure $ handler $ ToSelect ev.target)
-                               ]
-                               [ H.input [
-                                         A.classes [B.formControl]
-                                         , A.value url
-                                         , readonly true
-                                         ]
-                                         []
-                               ]
-                       ]
-             ]
-      , footer [ H.button [ A.id_ "copy-button"
-                          , A.classes [B.btn, B.btnPrimary]
-                          , E.onClick (\_ -> pure $ handler $ ToClipboard url)
-                          ]
-                          [ H.text "Copy" ]
-               ]
-      ]
-    dialogContent MountDialog = emptyDialog "Mount"
-    dialogContent RenameDialog = emptyDialog "Rename"
-    dialogContent ConfigureDialog = emptyDialog "Configure"
-
-    emptyDialog :: forall i. String -> [H.HTML p i]
-    emptyDialog title = [ header $ h4 title
-                        , body []
-                        , footer []
-                        ]
 
 view :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
 view handler state =
