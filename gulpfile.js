@@ -6,11 +6,11 @@ var mandragora = require("mandragora-bucket/index.js"),
 mandragora.config.entries = {
     "Entries.File": {
         "name": "file",
-        "dir": "public"
+        "dir": "public/js"
     },
     "Entries.Notebook": {
         "name": "notebook",
-        "dir": "public"
+        "dir": "public/js"
     }
 };
 mandragora(gulp);
@@ -20,8 +20,8 @@ gulp.task("less", function() {
         .pipe(less({
             paths: ["less/**/*.less"]
         }))
-        .pipe(gulp.dest("public"));
-           
+        .pipe(gulp.dest("public/css"));
+
 
 });
 
