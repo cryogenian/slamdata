@@ -2,6 +2,12 @@ module View.File (view) where
 
 import Control.Alternative (Alternative)
 import Control.Functor (($>))
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Aff.Class (liftAff)
+import Control.Monad.Aff
+import Control.Apply ((*>))
+import Control.Alt ((<|>))
+import Control.Plus (empty)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Array ((..), length, zipWith)
 import Data.Monoid (mempty)
@@ -13,7 +19,9 @@ import Model.Path
 import Model.Resource
 import Model.Sort
 import View.File.Modal
+import Controller.File
 import Utils.Halide (targetLink', readonly)
+import qualified Utils as U
 import qualified Config as Config
 import qualified Data.StrMap as SM
 import qualified Halogen.HTML as H
@@ -23,7 +31,9 @@ import qualified Halogen.HTML.Events.Forms as E
 import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
+
 import qualified View.Css as Vc
+import qualified Config as Config
 
 homeHash :: String
 homeHash = "#?sort=asc&q=path%3A%2F&salt="
@@ -95,7 +105,7 @@ breadcrumbs handler state =
                                  [ H.text b.name ]
                            ]
 
-sorting :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
+sorting :: forall p. (Request -> E.Event _ Input) -> State -> H.HTML p (E.Event _ Input)
 sorting handler state =
   H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
         [ H.a (targetLink' $ handler $ SetSort $ notSort state.sort)
@@ -220,7 +230,7 @@ items handler state =
   H.div [ A.classes [B.listGroup, Vc.results] ]
         $ zipWith (item handler state.searching) (0..length state.items) state.items
 
-view :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
+view :: forall p e. (Request -> E.Event _ Input) -> State -> H.HTML p (E.Event _ Input)
 view handler state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.containerFluid] ]
                           [ icon, logo, search handler state ]
@@ -232,22 +242,22 @@ view handler state =
                    , row [ sorting handler state ]
                    , items handler state
                    ]
-         , modal handler state
+         , modal state
          ]
   where
 
   contentClasses :: [A.ClassName]
   contentClasses = [B.colMd8, B.colMdOffset2, B.colSm10, B.colSmOffset1]
 
-  content :: [H.HTML p (m Input)] -> H.HTML p (m Input)
+  content :: forall m. (Alternative m) => [H.HTML p (m Input)] -> H.HTML p (m Input)
   content nodes = H.div [ A.class_ B.container ]
                         [ row [ H.div [ A.classes contentClasses ]
                                       nodes
                               ]
                         ]
 
-  row :: [H.HTML p (m Input)] -> H.HTML p (m Input)
+  row :: forall m. (Alternative m) => [H.HTML p (m Input)] -> H.HTML p (m Input)
   row = H.div [ A.class_ B.row ]
 
-  navbar :: [H.HTML p (m Input)] -> H.HTML p (m Input)
+  navbar :: forall m. (Alternative m) => [H.HTML p (m Input)] -> H.HTML p (m Input)
   navbar = H.nav [ A.classes [B.navbar, B.navbarInverse, B.navbarFixedTop] ]

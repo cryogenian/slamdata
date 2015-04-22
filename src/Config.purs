@@ -28,6 +28,5 @@ newFolderName = "Untitled Folder"
 notebookExtension :: String
 notebookExtension = ".slam"
 
-
 newNotebookName :: String
 newNotebookName = "Untitled Notebook" <> notebookExtension 

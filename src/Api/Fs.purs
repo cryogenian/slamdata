@@ -3,6 +3,7 @@ module Api.Fs (
   makeNotebook,
   deleteItem,
   makeFile,
+  moveItem,
   listing
   ) where
 
@@ -15,6 +16,11 @@ import Control.Monad.Error.Class
 import Data.Foreign
 import Data.Foreign.Class
 import Data.Int
+
+import Network.HTTP.Affjax.Request
+import Network.HTTP.Affjax.Response
+import Network.HTTP.RequestHeader
+import Network.HTTP.Method
 
 import qualified Control.Monad.Aff as Aff
 import qualified Data.Array as Arr
@@ -31,6 +37,7 @@ import qualified Model.File as M
 import qualified Model.Item as Mi
 import qualified Model.Resource as Mr
 import qualified Model.Notebook as Mn
+import Model.Path (encodeURIPath)
 
 
 newtype Listing = Listing [Child]
@@ -75,11 +82,17 @@ listing2items (Listing cs) =
 successStatus :: Sc.StatusCode
 successStatus = Sc.StatusCode $ fromNumber 200
 
+successed :: Sc.StatusCode -> Boolean
+successed (Sc.StatusCode int) =
+  200 <= code && code < 300
+  where code = toNumber int
+
+
 getResponse :: forall e a. String -> Af.Affjax e a -> Aff.Aff (ajax::Af.AJAX|e) a 
 getResponse msg affjax = do
   res <- affjax
-  if res.status /= successStatus then
-    throwError $ error msg
+  if not $ successed res.status 
+    then throwError $ error msg
     else
     pure res.response
 
@@ -113,8 +126,28 @@ delete path = getResponse ("can not delete " <> path) $
 
 deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.AJAX|e) Unit
 deleteItem item =
-    let path = Mi.itemPath item <>
-               if item.resource /= Mr.File &&
-                  item.resource /= Mr.Notebook then "/"
-               else ""
+    let path = Mi.itemPath item 
     in delete path 
+
+
+moveItem :: forall e. Mi.Item -> String -> Aff.Aff (ajax :: Af.AJAX|e) String
+moveItem item destination = do
+  let path = Config.dataUrl <> Mi.itemPath item
+      dest = if item.resource == Mr.Notebook
+             then case Arr.last $ Str.split "." destination of
+               Just "slam" -> destination
+               Just _ -> destination <> ".slam"
+               Nothing -> destination
+             else destination
+      dest' = case item.resource of
+        Mr.Directory -> dest <> "/"
+        Mr.Database -> dest <> "/"
+        _ -> dest
+  result <- Af.affjax $  Af.defaultRequest {
+    method = MOVE,
+    headers = [RequestHeader "Destination" dest'],
+    url = path
+    }
+  if successed result.status
+    then pure ""
+    else pure result.response

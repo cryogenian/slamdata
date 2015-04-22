@@ -9,5 +9,5 @@ import qualified Driver.Notebook as D
 
 main = onLoad $ void $ do
   Tuple node driver <- runUI app
-  append <$> bodyNode <*> pure (convertToElement node)
+  bodyNode >>= flip append (convertToElement node)
   D.driver driver

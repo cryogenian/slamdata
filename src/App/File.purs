@@ -12,7 +12,7 @@ import Model.File (Input(), Request(), initialState)
 import View.File (view)
 
 app :: forall p e. Component p (Event (FileAppEff e)) Input Input
-app = component (view handler' <$> stateful initialState inner)
+app = component (view handler <$> stateful initialState inner)
 
-handler' :: forall e. Request -> Event (FileAppEff e) Input
-handler' = async <<< handler
+
+

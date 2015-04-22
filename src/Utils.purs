@@ -2,6 +2,8 @@
 module Utils where
 
 import Control.Monad.Eff
+import Control.Monad.Eff.Class
+import Control.Monad.Aff
 import Data.Maybe
 import Debug.Trace 
 import Debug.Foreign
@@ -77,6 +79,9 @@ function select(node) {
   };
 }
 """ :: forall e. Node -> Eff (dom :: DOM |e) Unit
+
+selectAff :: forall e. Node -> Aff (dom :: DOM|e) Unit 
+selectAff = liftEff <<< select 
 
 bodyNode = do
   document globalWindow >>= body

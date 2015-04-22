@@ -29,7 +29,8 @@ itemPath :: Item -> String
 itemPath item = (encodeURIPath $
                 leadingSlash $ 
                 trimQuotes item.root <> trimQuotes item.name) <>
-                (if item.resource == Directory || item.resource == Database then "/" else  "")
+                (if item.resource == Directory ||
+                    item.resource == Database then "/" else  "")
   where leadingSlash input =
           if Str.indexOf "/" input == 0 then
             input
