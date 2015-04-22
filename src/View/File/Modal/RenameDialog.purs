@@ -67,7 +67,7 @@ renameDialog dialog =
                       , A.classes [B.btn, B.btnPrimary]
                       , E.onClick (\_ -> rename dialog.item
                                          (dialog.selected <> "/" <> dialog.target))]
-             [H.text "Ok"]]
+             [H.text "Rename"]]
   ]
   where
   renameItem :: forall i. String -> String -> H.HTML p (_ Input)
