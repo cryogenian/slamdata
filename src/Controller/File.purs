@@ -315,17 +315,6 @@ checkRename name r = pure do
      else checkList name r.selectedContent) `E.andThen` \_ -> 
     pure $ M.RenameChanged name
 
---updateSelectedContent :: forall e. String -> String -> 
---                         E.EventHandler (E.Event (FileAppEff e) M.Input)
---updateSelectedContent target path = pure $ do
---  (pure $ M.SetRenameSelected path) `E.andThen` \_ -> do
---    items <- liftAff $ Api.listing path
---    
---    (pure $ (M.RenameSelectedContent (_.name <$> list))) `E.andThen` \_ ->
---      checkList target list 
-
-
-
 renameItemClicked :: forall e. String -> String -> 
                      E.EventHandler (E.Event (FileAppEff e) M.Input)
 renameItemClicked target dir = pure $ do
