@@ -318,10 +318,10 @@ checkRename name r = pure do
 renameItemClicked :: forall e. String -> String -> 
                      E.EventHandler (E.Event (FileAppEff e) M.Input)
 renameItemClicked target dir = pure $ do
-  items <- liftAff $ Api.listing dir
-  let list = _.name <$> items
-  (pure $ M.RenameSelectedContent list) `E.andThen` \_ ->
-      (pure $ M.SetRenameSelected dir) `E.andThen` \_ -> 
+  (pure $ M.SetRenameSelected dir) `E.andThen` \_ -> do
+    items <- liftAff $ Api.listing dir
+    let list = _.name <$> items
+    (pure $ M.RenameSelectedContent list) `E.andThen` \_ ->
       checkList target list 
 
 checkList :: forall e. String -> [String] -> E.Event (FileAppEff e) M.Input 
