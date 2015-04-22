@@ -55,3 +55,6 @@ itemToolbar = className "item-toolbar"
 
 itemContent :: ClassName
 itemContent = className "item-content"
+
+directoryListGroup :: ClassName
+directoryListGroup = className "directory-list-group"

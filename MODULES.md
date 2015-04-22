@@ -78,7 +78,7 @@ newNotebookName :: String
 #### `FileComponentEff`
 
 ``` purescript
-type FileComponentEff e = (random :: Random, file :: Uf.ReadFile, avar :: A.AVAR, ajax :: Af.AJAX, timer :: Tm.Timer | e)
+type FileComponentEff e = (random :: Random, zClipboard :: Z.ZCLIPBOARD, file :: Uf.ReadFile, avar :: A.AVAR, ajax :: Af.AJAX, timer :: Tm.Timer | e)
 ```
 
 
@@ -159,6 +159,34 @@ clearValue :: forall e. Node -> Eff (dom :: DOM | e) Unit
 ```
 
 
+#### `select`
+
+``` purescript
+select :: forall e. Node -> Eff (dom :: DOM | e) Unit
+```
+
+
+#### `selectAff`
+
+``` purescript
+selectAff :: forall e. Node -> Aff (dom :: DOM | e) Unit
+```
+
+
+#### `locationOrigin`
+
+``` purescript
+locationOrigin :: forall e. DOMLocation -> Eff (dom :: DOM | e) String
+```
+
+
+#### `locationString`
+
+``` purescript
+locationString :: forall e. Eff (dom :: DOM | e) String
+```
+
+
 #### `trimQuotes`
 
 ``` purescript
@@ -221,13 +249,20 @@ deleteItem :: forall e. Mi.Item -> Aff.Aff (ajax :: Af.AJAX | e) Unit
 ```
 
 
+#### `moveItem`
+
+``` purescript
+moveItem :: forall e. Mi.Item -> String -> Aff.Aff (ajax :: Af.AJAX | e) String
+```
+
+
 
 ## Module App.File
 
 #### `app`
 
 ``` purescript
-app :: forall e. Hl.UI M.Input Void M.Request (FileComponentEff e)
+app :: forall p e. Component p (Event (FileAppEff e)) Input Input
 ```
 
 
@@ -237,7 +272,7 @@ app :: forall e. Hl.UI M.Input Void M.Request (FileComponentEff e)
 #### `app`
 
 ``` purescript
-app :: forall e. H.UI M.Input Void M.Request e
+app :: forall p m. (Applicative m) => Component p m Input Input
 ```
 
 
@@ -250,19 +285,43 @@ File component main handler
 #### `handler`
 
 ``` purescript
-handler :: forall e. M.Request -> Aff.Aff (FileAppEff e) M.Input
+handler :: forall e. M.Request -> E.Event (FileAppEff e) M.Input
 ```
 
 
-
-## Module Controller.Notebook
-
-#### `handler`
+#### `getDirectories`
 
 ``` purescript
-handler :: forall e. M.Request -> Aff (H.HalogenEffects e) M.Input
+getDirectories :: forall e. String -> E.Event (FileAppEff e) M.Input
 ```
 
+
+#### `selectThis`
+
+``` purescript
+selectThis :: forall e o. Et.Event o -> E.EventHandler (E.Event (dom :: DOM | e) M.Input)
+```
+
+
+#### `rename`
+
+``` purescript
+rename :: forall e. Mi.Item -> String -> E.EventHandler (E.Event (FileAppEff e) M.Input)
+```
+
+
+#### `checkRename`
+
+``` purescript
+checkRename :: forall e. String -> M.RenameDialogRec -> E.EventHandler (E.Event (FileAppEff e) M.Input)
+```
+
+
+#### `renameItemClicked`
+
+``` purescript
+renameItemClicked :: forall e. String -> String -> E.EventHandler (E.Event (FileAppEff e) M.Input)
+```
 
 
 ## Module Driver.File
@@ -359,6 +418,13 @@ driver :: forall e. H.Driver M.Input e -> Eff (H.HalogenEffects e) Unit
 
 ## Module Entries.File
 
+#### `main`
+
+``` purescript
+main :: Eff (FileAppEff ()) Unit
+```
+
+
 
 ## Module Entries.Notebook
 
@@ -428,6 +494,13 @@ data Input
   | Loading Boolean
   | Focus Boolean
   | SetSearching Boolean
+  | SetDialog (Maybe DialogResume)
+  | AddRenameDirs [String]
+  | SetRenameSelected String
+  | RenameChanged String
+  | RenameError String
+  | RenameIncorrect Boolean
+  | RenameSelectedContent [String]
 ```
 
 Input messages 
@@ -456,10 +529,42 @@ data Request
 
 Request Messages 
 
+#### `RenameDialogRec`
+
+``` purescript
+type RenameDialogRec = { selectedContent :: [String], incorrect :: Boolean, error :: String, target :: String, selected :: String, dirs :: [String], item :: Item, showList :: Boolean }
+```
+
+
+#### `initialRenameDialog`
+
+``` purescript
+initialRenameDialog :: Item -> RenameDialogRec
+```
+
+
+#### `DialogResume`
+
+``` purescript
+data DialogResume
+  = RenameDialog RenameDialogRec
+  | ConfigureDialog 
+  | MountDialog 
+  | ShareDialog String
+```
+
+
+#### `eqDialogResume`
+
+``` purescript
+instance eqDialogResume :: Eq DialogResume
+```
+
+
 #### `State`
 
 ``` purescript
-type State = { searching :: Boolean, path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
+type State = { dialog :: Maybe DialogResume, searching :: Boolean, path :: String, breadcrumbs :: [Breadcrumb], items :: [Item], sort :: Sort, search :: Search }
 ```
 
 Application state
@@ -907,10 +1012,23 @@ name :: forall e. File -> Eff (file :: ReadFile | e) String
 ```
 
 
+#### `newReaderEff`
+
+``` purescript
+newReaderEff :: forall e. Eff e FileReader
+```
+
 #### `newReader`
 
 ``` purescript
 newReader :: forall e. Aff e FileReader
+```
+
+
+#### `readAsBinaryStringEff`
+
+``` purescript
+readAsBinaryStringEff :: forall e. File -> FileReader -> Eff (file :: ReadFile | e) Unit
 ```
 
 
@@ -931,24 +1049,24 @@ readAsBinaryString :: forall e. File -> FileReader -> Aff (file :: ReadFile | e)
 
 ## Module Utils.Halide
 
-#### `back`
-
-``` purescript
-back :: forall e i r. i -> EventHandler (Either i r)
-```
-
-
-#### `request`
-
-``` purescript
-request :: forall e i r. r -> EventHandler (Either i r)
-```
-
-
 #### `targetLink`
 
 ``` purescript
-targetLink :: forall a b. b -> [A.Attr (Either a b)]
+targetLink :: forall i m. (Alternative m) => i -> [A.Attr (m i)]
+```
+
+
+#### `targetLink'`
+
+``` purescript
+targetLink' :: forall i m. (Alternative m) => m i -> [A.Attr (m i)]
+```
+
+
+#### `readonly`
+
+``` purescript
+readonly :: forall i. Boolean -> A.Attr i
 ```
 
 
@@ -1074,14 +1192,29 @@ itemToolbar :: ClassName
 ```
 
 
+#### `itemContent`
+
+``` purescript
+itemContent :: ClassName
+```
+
+
+#### `directoryListGroup`
+
+``` purescript
+directoryListGroup :: ClassName
+```
+
+
 
 ## Module View.File
 
 #### `view`
 
 ``` purescript
-view :: forall u node. (H.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
+view :: forall p e. (Request -> E.Event _ Input) -> State -> H.HTML p (E.Event _ Input)
 ```
+
 
 
 ## Module View.Notebook
@@ -1089,7 +1222,75 @@ view :: forall u node. (H.HTMLRepr node) => M.State -> node u (Either M.Input M.
 #### `view`
 
 ``` purescript
-view :: forall u node. (Ht.HTMLRepr node) => M.State -> node u (Either M.Input M.Request)
+view :: forall p i. State -> H.HTML p i
+```
+
+
+
+## Module View.File.Modal
+
+#### `modal`
+
+``` purescript
+modal :: forall p e. State -> H.HTML p (E.Event (FileAppEff e) Input)
+```
+
+
+
+## Module View.File.Modal.Common
+
+#### `h4`
+
+``` purescript
+h4 :: forall p i. String -> [H.HTML p i]
+```
+
+
+#### `section`
+
+``` purescript
+section :: forall p i. [A.ClassName] -> [H.HTML p i] -> H.HTML p i
+```
+
+
+#### `header`
+
+``` purescript
+header :: forall p i. [H.HTML p i] -> H.HTML p i
+```
+
+
+#### `body`
+
+``` purescript
+body :: forall p i. [H.HTML p i] -> H.HTML p i
+```
+
+
+#### `footer`
+
+``` purescript
+footer :: forall p i. [H.HTML p i] -> H.HTML p i
+```
+
+
+
+## Module View.File.Modal.RenameDialog
+
+#### `renameDialog`
+
+``` purescript
+renameDialog :: forall p e. RenameDialogRec -> [H.HTML p (E.Event (FileAppEff e) Input)]
+```
+
+
+
+## Module View.File.Modal.ShareDialog
+
+#### `shareDialog`
+
+``` purescript
+shareDialog :: forall p e. String -> [H.HTML p (E.Event (FileAppEff e) Input)]
 ```
 
 

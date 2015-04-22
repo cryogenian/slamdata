@@ -13,6 +13,8 @@ import qualified Model.Breadcrumb as M
 import qualified Data.Array as A
 import qualified Data.String as Str
 import qualified Data.List as L
+import Data.Set (fromList, toList)
+
 
 inner :: M.State -> M.Input -> M.State
 inner state input =
@@ -22,7 +24,6 @@ inner state input =
                           (\x -> not $ x.name == item.name && x.root == item.root)
                           state.items} M.Resort
 
-    -- Used to not call `reload`
     M.Resort ->
       state{items = A.sortBy (M.sortItem state.searching state.sort) state.items}
     M.Sorting sort ->
@@ -62,6 +63,39 @@ inner state input =
       state{searching = s}
     M.SetDialog d ->
       state{dialog = d}
+    M.AddRenameDirs dirs ->
+      case state.dialog of
+        Just (M.RenameDialog d) ->
+          state{dialog = Just (M.RenameDialog d{dirs = A.sort $ unique $ d.dirs <> dirs})}
+        _ -> state
+
+    M.SetRenameSelected toSelect ->
+      case state.dialog of
+        Just (M.RenameDialog d) ->
+          state{dialog = Just (M.RenameDialog d{selected = toSelect,
+                                                showList = false,
+                                                error = ""})}
+        _ -> state
+    M.RenameChanged newVal ->
+      case state.dialog of
+        Just (M.RenameDialog d) ->
+          state{dialog = Just (M.RenameDialog d{target = newVal})}
+        _ -> state
+    M.RenameError err ->
+      let incorrect = Str.length err /= 0 in
+      case state.dialog of
+        Just (M.RenameDialog d) ->
+          state{dialog = Just (M.RenameDialog d{error = err, incorrect = incorrect})}
+        _ -> state
+
+    M.RenameSelectedContent cont ->
+      case state.dialog of
+        Just (M.RenameDialog d) ->
+          state{dialog = Just (M.RenameDialog d{selectedContent = cont})}
+        _ -> state
+
+        
+                             
       
   where modify func ix =
           let unmodify = func false <$> state.items
@@ -78,6 +112,8 @@ inner state input =
                 foldFn (L.Cons head tail) a =
                   let res = {name: a, link: head.link <> a <> "/"} in
                   L.Cons res (L.Cons head tail)
+
+        unique = toList <<< fromList
 
 
         
