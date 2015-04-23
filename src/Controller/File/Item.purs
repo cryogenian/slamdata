@@ -12,8 +12,9 @@ import Data.Array (filter)
 import Data.DOM.Simple.Element (getElementById)
 import Data.DOM.Simple.Window (document, globalWindow)
 import Data.Either (Either(..))
-import Data.Foldable (fold, foldl)
+import Data.Foldable (fold)
 import Data.Maybe (Maybe(..))
+import Data.String (joinWith)
 import DOM (DOM())
 import Driver.File (updatePath)
 import EffectTypes (FileAppEff())
@@ -70,13 +71,13 @@ itemURL item = do
   loc <- locationString
   hash <- getHash
   let newUrl = loc <> case item.resource of
-        File -> foldl (<>) ""
+        File -> joinWith ""
              [Config.notebookUrl,
               "#", itemPath item,
               "/view",
               "/?q=", encodeURIComponent ("select * from ...")
              ]
-        Notebook -> foldl (<>) ""
+        Notebook -> joinWith ""
              [Config.notebookUrl,
               "#", itemPath item,
               "/view"]
