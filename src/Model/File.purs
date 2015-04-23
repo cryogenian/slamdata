@@ -29,24 +29,6 @@ data Input1
   | SetSearching Boolean
   | SetDialog (Maybe DialogResume)
 
--- | Request Messages
-data Request
-  = GoToRoute String
-  | SetSort Sort
-  | SearchChange Search String String
-  | SearchClear Boolean Search
-  | SearchSubmit Search String
-  | Open Item
-  | Delete Item
-  | Share Item
-  | Move Item
-  | Configure Item
-  | CreateNotebook State
-  | MountDatabase State
-  | CreateFolder State
-  | UploadFile Node State
-  | FileListChanged Node State
-
 -- | Application state
 type State = {
   search :: Search,
@@ -68,5 +50,3 @@ initialState = {
   searching: false,
   dialog: Nothing
   }
-
-

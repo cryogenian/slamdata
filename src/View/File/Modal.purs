@@ -3,7 +3,6 @@ module View.File.Modal where
 import Control.Functor (($>))
 import Control.Inject1 (inj)
 import Control.Plus
-import Controller.File (handler)
 import Data.Maybe (Maybe(..), maybe)
 import EffectTypes
 import Model.File

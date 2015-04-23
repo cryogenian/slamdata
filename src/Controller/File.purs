@@ -1,5 +1,6 @@
 -- | File component main handler
 module Controller.File
+  {-
   ( handler
   , getDirectories
   , selectThis
@@ -7,7 +8,8 @@ module Controller.File
   , checkRename
   , renameItemClicked
   , breadcrumbClicked
-  ) where
+  )
+  -} where
 
 import Control.Apply
 import Control.Inject1 (Inject1, inj)
@@ -143,8 +145,8 @@ handleOpenItem item = do
       open item false
   empty
 
-handleUploadFile :: forall e. Node -> E.Event (FileAppEff e) M.Input
-handleUploadFile node = do
+handleUploadFile :: forall e. Node -> M.State -> E.Event (FileAppEff e) M.Input
+handleUploadFile node _ = do
   let el = U.convertToElement node
   mbInput <- liftEff $ querySelector "input" el
   case mbInput of
@@ -160,11 +162,11 @@ handleCreateFolder state = do
   path <- liftEff (Cd.getPath <$> Rh.getHash)
   toInput $ ItemAdd $ Mi.initDirectory { root = path, name = name }
 
-handleMountDatabase :: forall e. E.Event (FileAppEff e) M.Input
-handleMountDatabase = toInput $ M.SetDialog (Just MountDialog)
+handleMountDatabase :: forall e. M.State -> E.Event (FileAppEff e) M.Input
+handleMountDatabase _ = toInput $ M.SetDialog (Just MountDialog)
 
-handleConfigure :: forall e. E.Event (FileAppEff e) M.Input
-handleConfigure = toInput $ M.SetDialog (Just ConfigureDialog)
+handleConfigure :: forall e. Mi.Item -> E.Event (FileAppEff e) M.Input
+handleConfigure _ = toInput $ M.SetDialog (Just ConfigureDialog)
 
 handleSearchClear :: forall e. Boolean -> Search -> E.Event (FileAppEff e) M.Input
 handleSearchClear isSearching search = do
@@ -186,7 +188,6 @@ handleSearchChange search ch path = E.async $ Aff.makeAff $ \_ k -> do
         setQE (ch <> " path:\"" <> path <> "\"")
     k $ inj $ SearchTimeout tim
     k $ inj $ SearchValidation true
-
   -- ATTENTION
   -- This works too slow
   --      (toInput $ M.SearchNextValue ch) `E.andThen` \_ -> do
@@ -214,24 +215,6 @@ handleShare item = E.async $ Aff.makeAff $ \_ k -> do
     Nothing -> pure unit
     Just btn -> void do
       Z.make btn >>= Z.onCopy (Z.setData "text/plain" url)
-
-handler :: forall e. M.Request -> E.Event (FileAppEff e) M.Input
-handler r =
-  case r of
-    M.Delete item -> handleDeleteItem item
-    M.CreateNotebook state -> handleCreateNotebook state
-    M.FileListChanged node state -> handleFileListChanged node state
-    M.Move item -> handleMoveItem item
-    M.SetSort sort -> handleSetSort sort
-    M.Open item -> handleOpenItem item
-    M.CreateFolder state -> handleCreateFolder state
-    M.UploadFile node _ -> handleUploadFile node
-    M.MountDatabase _ -> handleMountDatabase
-    M.Configure _ -> handleConfigure
-    M.SearchSubmit s p -> handleSearchSubmit s p
-    M.SearchClear isSearching search -> handleSearchClear isSearching search
-    M.SearchChange search ch p -> handleSearchChange search ch p
-    M.Share item -> handleShare item
 
 itemURL :: forall e. Mi.Item -> Eff (dom :: DOM | e) String
 itemURL item = do

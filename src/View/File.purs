@@ -62,11 +62,11 @@ logo = H.div [ A.classes [ B.colXs3, Vc.navLogo ] ]
                    ]
              ]
 
-search :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
-search handler state =
+search :: forall p e. State -> H.HTML p (I e)
+search state =
   H.div [ A.classes [B.colXs12, B.colSm8, Vc.search] ]
         [ H.form [ A.class_ B.navbarForm
-                 , E.onSubmit (\_ -> pure $ handler $ SearchSubmit state.search state.path)
+                 , E.onSubmit (\_ -> pure $ handleSearchSubmit state.search state.path)
                  ]
                  [ H.div [ A.classes ([B.inputGroup, Vc.searchInput] <> if state.search.valid then mempty else [B.hasError])]
                          [ H.input [ A.classes [B.formControl]
@@ -74,7 +74,7 @@ search handler state =
                                    , A.title state.search.value
                                    , E.onFocus (E.input_ $ inj $ Focus true)
                                    , E.onBlur (E.input_ $ inj $ Focus false)
-                                   , E.onInput (\v -> pure $ handler $ SearchChange state.search v state.path)
+                                   , E.onInput (\v -> pure $ handleSearchChange state.search v state.path)
                                    ]
                                    []
                          , H.span [ A.class_ (if state.search.focused then Vc.searchPathActive else Vc.searchPath) ]
@@ -83,7 +83,7 @@ search handler state =
                                   , H.span [ A.class_ (if state.search.nextValue == "" then Vc.searchAffixEmpty else Vc.searchAffix) ]
                                            [ H.text $ "path:" <> state.path ]
                                   ]
-                         , H.img [ E.onClick (\_ -> pure $ handler $ SearchClear (state.searching && state.search.loading) state.search)
+                         , H.img [ E.onClick (\_ -> pure $ handleSearchClear (state.searching && state.search.loading) state.search)
                                  , A.class_ Vc.searchClear
                                  , (if state.search.loading then A.src "img/spin.svg" else A.src "img/remove.svg")
                                  ]
@@ -100,10 +100,10 @@ search handler state =
 
 
 
-sorting :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
-sorting handler state =
+sorting :: forall p e. State -> H.HTML p (I e)
+sorting state =
   H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
-        [ H.a (targetLink' $ handler $ SetSort $ notSort state.sort)
+        [ H.a (targetLink' $ handleSetSort $ notSort state.sort)
               [ H.text "Name"
               , H.i [ chevron state
                     , A.style (A.styles $ SM.fromList [Tuple "margin-left" "10px"])
@@ -115,8 +115,8 @@ sorting handler state =
   chevron { sort: Asc  } = A.classes [B.glyphicon, B.glyphiconChevronUp]
   chevron { sort: Desc } = A.classes [B.glyphicon, B.glyphiconChevronDown]
 
-toolbar :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
-toolbar handler state =
+toolbar :: forall p e. State -> H.HTML p (I e)
+toolbar state =
   H.div [ A.classes [B.colXs4, Vc.toolbarMenu] ]
         [ H.ul [ A.classes [B.listInline, B.pullRight] ]
                if inRoot state then [mount] else [file, folder, mount, notebook]
@@ -124,14 +124,14 @@ toolbar handler state =
   where
   file :: H.HTML p (I e)
   file = H.li_ [ H.a [ A.href "javascript:void(0);"
-                     , E.onClick (\ev -> pure $ handler $ UploadFile ev.target state)
+                     , E.onClick (\ev -> pure $ handleUploadFile ev.target state)
                      ]
                      [ H.i [ A.title "upload file"
                            , A.classes [B.btnLg, B.glyphicon, B.glyphiconFile]
                            ]
                            [ H.input [ A.class_ B.hidden
                                      , A.type_ "file"
-                                     , E.onChange (\ev -> pure $ handler $ FileListChanged ev.target state)
+                                     , E.onChange (\ev -> pure $ handleFileListChanged ev.target state)
                                      ]
                                      []
                            ]
@@ -139,31 +139,31 @@ toolbar handler state =
                ]
 
   folder :: H.HTML p (I e)
-  folder = toolItem' CreateFolder "create folder" B.glyphiconFolderClose
+  folder = toolItem' handleCreateFolder "create folder" B.glyphiconFolderClose
 
   notebook :: H.HTML p (I e)
-  notebook = toolItem' CreateNotebook "create notebook" B.glyphiconBook
+  notebook = toolItem' handleCreateNotebook "create notebook" B.glyphiconBook
 
   mount :: H.HTML p (I e)
-  mount = toolItem' MountDatabase "mount database" B.glyphiconHdd
+  mount = toolItem' handleMountDatabase "mount database" B.glyphiconHdd
 
-  toolItem' :: (State -> Request) -> String -> A.ClassName -> H.HTML p (I e)
-  toolItem' f = toolItem [B.btnLg] state (handler <<< f)
+  toolItem' :: (State -> I e) -> String -> A.ClassName -> H.HTML p (I e)
+  toolItem' f = toolItem [B.btnLg] state f
 
   inRoot :: State -> Boolean
   inRoot state = state.path == "" || state.path == "/"
 
-view :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
-view handler state =
+view :: forall p e. State -> H.HTML p (I e)
+view state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.containerFluid] ]
-                          [ icon, logo, search handler state ]
+                          [ icon, logo, search state ]
                   ]
          , content [ H.div [ A.class_ B.clearfix ]
                            [ breadcrumbs state.breadcrumbs
-                           , toolbar handler state
+                           , toolbar state
                            ]
-                   , row [ sorting handler state ]
-                   , items handler state
+                   , row [ sorting state ]
+                   , items state
                    ]
          , modal state
          ]
