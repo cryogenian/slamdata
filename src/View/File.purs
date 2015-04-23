@@ -1,4 +1,4 @@
-module View.File (view) where
+module View.File (I(), view) where
 
 import Control.Alt ((<|>))
 import Control.Alternative (Alternative)
@@ -23,6 +23,7 @@ import Model.Resource
 import Model.Sort
 import Utils.Halide (targetLink', readonly)
 import View.File.Modal
+import EffectTypes
 import qualified Data.StrMap as SM
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -33,6 +34,8 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Utils as U
 import qualified View.Css as Vc
+
+type I e = E.Event (FileAppEff e) Input
 
 homeHash :: String
 homeHash = "#?sort=asc&q=path%3A%2F&salt="
@@ -58,7 +61,7 @@ logo = H.div [ A.classes [ B.colXs3, Vc.navLogo ] ]
                    ]
              ]
 
-search :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
+search :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
 search handler state =
   H.div [ A.classes [B.colXs12, B.colSm8, Vc.search] ]
         [ H.form [ A.class_ B.navbarForm
@@ -94,17 +97,17 @@ search handler state =
                  ]
         ]
 
-breadcrumbs :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
+breadcrumbs :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
 breadcrumbs handler state =
   H.ol [ A.classes [B.breadcrumb, B.colXs8] ]
        (breadcrumbView <$> state.breadcrumbs)
   where
-  breadcrumbView :: Breadcrumb -> H.HTML p (m Input)
+  breadcrumbView :: Breadcrumb -> H.HTML p (I e)
   breadcrumbView b = H.li_ [ H.a (targetLink' $ handler $ Breadcrumb b)
                                  [ H.text b.name ]
                            ]
 
-sorting :: forall p. (Request -> E.Event _ Input) -> State -> H.HTML p (E.Event _ Input)
+sorting :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
 sorting handler state =
   H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
         [ H.a (targetLink' $ handler $ SetSort $ notSort state.sort)
@@ -119,14 +122,14 @@ sorting handler state =
   chevron { sort: Asc  } = A.classes [B.glyphicon, B.glyphiconChevronUp]
   chevron { sort: Desc } = A.classes [B.glyphicon, B.glyphiconChevronDown]
 
-toolbar :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
+toolbar :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
 toolbar handler state =
   H.div [ A.classes [B.colXs4, Vc.toolbarMenu] ]
         [ H.ul [ A.classes [B.listInline, B.pullRight] ]
                if inRoot state then [mount] else [file, folder, mount, notebook]
         ]
   where
-  file :: H.HTML p (m Input)
+  file :: H.HTML p (I e)
   file = H.li_ [ H.a [ A.href "javascript:void(0);"
                      , E.onClick (\ev -> pure $ handler $ UploadFile ev.target state)
                      ]
@@ -142,23 +145,23 @@ toolbar handler state =
                      ]
                ]
 
-  folder :: H.HTML p (m Input)
+  folder :: H.HTML p (I e)
   folder = toolItem' CreateFolder "create folder" B.glyphiconFolderClose
 
-  notebook :: H.HTML p (m Input)
+  notebook :: H.HTML p (I e)
   notebook = toolItem' CreateNotebook "create notebook" B.glyphiconBook
 
-  mount :: H.HTML p (m Input)
+  mount :: H.HTML p (I e)
   mount = toolItem' MountDatabase "mount database" B.glyphiconHdd
 
-  toolItem' :: (State -> Request) -> String -> A.ClassName -> H.HTML p (m Input)
+  toolItem' :: (State -> Request) -> String -> A.ClassName -> H.HTML p (I e)
   toolItem' f = toolItem [B.btnLg] state (handler <<< f)
 
   inRoot :: State -> Boolean
   inRoot state = state.path == "" || state.path == "/"
 
 
-toolItem :: forall a p m. (Alternative m) => [A.ClassName] -> a -> (a -> m Input) -> String -> A.ClassName -> H.HTML p (m Input)
+toolItem :: forall a p e. [A.ClassName] -> a -> (a -> I e) -> String -> A.ClassName -> H.HTML p (I e)
 toolItem classes actionArg action title icon =
   H.li_ [ H.a (targetLink' $ action actionArg)
               [ H.i [ A.title title
@@ -168,7 +171,7 @@ toolItem classes actionArg action title icon =
               ]
         ]
 
-item :: forall p m. (Alternative m) => (Request -> m Input) -> Boolean -> Number -> Item -> H.HTML p (m Input)
+item :: forall p e. (Request -> I e) -> Boolean -> Number -> Item -> H.HTML p (I e)
 item handler searching ix state =
   H.div [ A.classes ([B.listGroupItem] ++ if state.selected then [B.listGroupItemInfo] else mempty)
         , E.onMouseOver (E.input_ $ inj $ ItemHover ix true)
@@ -194,7 +197,7 @@ item handler searching ix state =
         ]
   where
 
-  iconClasses :: Item -> A.Attr (m Input)
+  iconClasses :: Item -> A.Attr (I e)
   iconClasses state = A.classes [B.glyphicon, Vc.itemIcon, iconClass state.resource]
 
   iconClass :: Resource -> A.ClassName
@@ -221,15 +224,15 @@ item handler searching ix state =
                , toolItem' Share "share" B.glyphiconShare
                ]
     where
-    toolItem' :: (Item -> Request) -> String -> A.ClassName -> H.HTML p (m Input)
+    toolItem' :: (Item -> Request) -> String -> A.ClassName -> H.HTML p (I e)
     toolItem' f = toolItem [] item (handler <<< f)
 
-items :: forall p m. (Alternative m) => (Request -> m Input) -> State -> H.HTML p (m Input)
+items :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
 items handler state =
   H.div [ A.classes [B.listGroup, Vc.results] ]
         $ zipWith (item handler state.searching) (0..length state.items) state.items
 
-view :: forall p e. (Request -> E.Event _ Input) -> State -> H.HTML p (E.Event _ Input)
+view :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
 view handler state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.containerFluid] ]
                           [ icon, logo, search handler state ]
@@ -248,15 +251,15 @@ view handler state =
   contentClasses :: [A.ClassName]
   contentClasses = [B.colMd8, B.colMdOffset2, B.colSm10, B.colSmOffset1]
 
-  content :: forall m. (Alternative m) => [H.HTML p (m Input)] -> H.HTML p (m Input)
+  content :: [H.HTML p (I e)] -> H.HTML p (I e)
   content nodes = H.div [ A.class_ B.container ]
                         [ row [ H.div [ A.classes contentClasses ]
                                       nodes
                               ]
                         ]
 
-  row :: forall m. (Alternative m) => [H.HTML p (m Input)] -> H.HTML p (m Input)
+  row :: [H.HTML p (I e)] -> H.HTML p (I e)
   row = H.div [ A.class_ B.row ]
 
-  navbar :: forall m. (Alternative m) => [H.HTML p (m Input)] -> H.HTML p (m Input)
+  navbar :: [H.HTML p (I e)] -> H.HTML p (I e)
   navbar = H.nav [ A.classes [B.navbar, B.navbarInverse, B.navbarFixedTop] ]
