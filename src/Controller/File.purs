@@ -168,41 +168,6 @@ handleMountDatabase _ = toInput $ M.SetDialog (Just MountDialog)
 handleConfigure :: forall e. Mi.Item -> E.Event (FileAppEff e) M.Input
 handleConfigure _ = toInput $ M.SetDialog (Just ConfigureDialog)
 
-handleSearchClear :: forall e. Boolean -> Search -> E.Event (FileAppEff e) M.Input
-handleSearchClear isSearching search = do
-  liftEff $ maybe (pure unit) Tm.clearTimeout search.timeout
-  if isSearching then do
-    rnd <- show <$> (liftEff $ randomInt 1000000 2000000)
-    liftEff (Rh.modifyHash $ Cd.updateSalt rnd)
-    toInput $ M.Loading false
-    else
-    setQE "path:/"
-
--- TODO: String/Path type alias? Maybe a real path when new library is done
-handleSearchChange :: forall e. Search -> String -> String -> E.Event (FileAppEff e) M.Input
-handleSearchChange search ch path = E.async $ Aff.makeAff $ \_ k -> do
-    k $ inj $ SearchNextValue ch
-    maybe (pure unit) Tm.clearTimeout search.timeout
-    tim <- Tm.timeout Config.searchTimeout $ do
-      E.runEvent (const $ pure unit) (const $ pure unit) $
-        setQE (ch <> " path:\"" <> path <> "\"")
-    k $ inj $ SearchTimeout tim
-    k $ inj $ SearchValidation true
-  -- ATTENTION
-  -- This works too slow
-  --      (toInput $ M.SearchNextValue ch) `E.andThen` \_ -> do
-  --        tim <- liftEff $ Tm.timeout Config.searchTimeout $ do
-  --          E.runEvent (const $ pure unit) (const $ pure unit) $
-  --            setQE (ch <> " path:\"" <> p <> "\"")
-  --        (toInput $ M.SearchTimeout tim) `E.andThen` \_ -> do
-  --          toInput $ M.SearchValidation true
-
--- TODO: String/Path type again?
-handleSearchSubmit :: forall e. Search -> String -> E.Event (FileAppEff e) M.Input
-handleSearchSubmit search path = do
-  liftEff $ maybe (pure unit) Tm.clearTimeout search.timeout
-  setQE (search.nextValue <> " +path:" <> path)
-
 -- ATTENTION
 -- This all should be moved to `initializer`
 -- ATTENTION
@@ -233,17 +198,6 @@ itemURL item = do
               "/view"]
         _ -> "#" <> Cd.updatePath (item.root <> "/" <> item.name) hash
   pure $ newUrl
-
-setQE :: forall e. String -> E.Event (FileAppEff e) M.Input
-setQE q = do
-  case S.mkQuery q of
-    Left _ | q /= "" -> toInput $ SearchValidation false
-    Right _ -> do
-      liftEff (Rh.modifyHash $ Cd.updateQ q)
-      toInput $ SearchValidation true
-    _ -> do
-      liftEff (Rh.modifyHash $ Cd.updateQ "")
-      toInput $ SearchValidation true
 
 -- open dir or db
 moveDown :: forall e. Mi.Item -> Eff (dom :: DOM | e) Unit
