@@ -35,6 +35,8 @@ import Input.File.Rename (RenameInput(..))
 import Input.File.Search (SearchInput(..))
 import Model.DialogResume
 import Model.Breadcrumb
+import Model.Sort
+import Model.Search
 import qualified Api.Fs as Api
 import qualified Config as Config
 import qualified Control.Monad.Aff as Aff
@@ -62,214 +64,236 @@ import qualified Utils.File as Uf
 toInput :: forall m a b. (Applicative m, Inject1 a b) => a -> m b
 toInput = pure <<< inj
 
-handler :: forall e. M.Request -> E.Event (FileAppEff e) M.Input
-handler r =
-  case r of
-    M.Delete item -> E.async $ do
-      Api.deleteItem item
-      toInput $ ItemRemove item
+handleDeleteItem :: forall e. Mi.Item -> E.Event (FileAppEff e) M.Input
+handleDeleteItem item = E.async $ do
+  Api.deleteItem item
+  toInput $ ItemRemove item
 
-    M.CreateNotebook state -> do
-      let name = getNewName Config.newNotebookName state
-      path <- liftEff $ Cd.getPath <$> Rh.getHash
-      let notebook = Mi.initNotebook{root = path, name = name, phantom = true}
-      -- immidiately updating state and then
-      (toInput $ ItemAdd notebook) `E.andThen` \_ -> do
-        f <- liftAff $ Aff.attempt $ Api.makeNotebook notebook Mn.newNotebook
-        (toInput $ ItemRemove notebook) `E.andThen` \_ ->  do
+handleCreateNotebook :: forall e. M.State -> E.Event (FileAppEff e) M.Input
+handleCreateNotebook state = do
+  let name = getNewName Config.newNotebookName state
+  path <- liftEff $ Cd.getPath <$> Rh.getHash
+  let notebook = Mi.initNotebook{root = path, name = name, phantom = true}
+  -- immidiately updating state and then
+  (toInput $ ItemAdd notebook) `E.andThen` \_ -> do
+    f <- liftAff $ Aff.attempt $ Api.makeNotebook notebook Mn.newNotebook
+    (toInput $ ItemRemove notebook) `E.andThen` \_ ->  do
+      case f of
+        Left _ -> empty
+        Right _ -> do
+          liftEff $ open notebook{phantom = false} false
+          -- and add real notebook to list
+          toInput $ ItemAdd notebook{phantom = false}
+
+handleFileListChanged :: forall e. Node -> M.State -> E.Event (FileAppEff e) M.Input
+handleFileListChanged node state = do
+  fileArr <- Uf.fileListToArray <$> (liftAff $ Uf.files node)
+  liftEff $ U.clearValue node
+  case A.head fileArr of
+    Nothing ->
+      let err :: Aff.Aff (FileAppEff e) M.Input
+          err = throwError $ error "empty filelist"
+      in liftAff err
+    Just file -> do
+      let newReader :: Eff (FileAppEff e) _
+          newReader = Uf.newReaderEff
+
+          readAsBinaryString :: _ -> _ -> Aff.Aff (FileAppEff e) _
+          readAsBinaryString = Uf.readAsBinaryString
+
+      path <- liftEff (Cd.getPath <$> Rh.getHash)
+      name <- flip getNewName state <$> (liftEff $ Uf.name file)
+      let fileItem = Mi.initFile{root = path, name = name, phantom = true}
+
+      reader <- liftEff newReader
+      content <- liftAff $ readAsBinaryString file reader
+
+      (toInput $ ItemAdd fileItem) `E.andThen` \_ -> do
+        f <- liftAff $ Aff.attempt $ Api.makeFile fileItem content
+        (toInput $ ItemRemove fileItem) `E.andThen` \_ -> do
           case f of
             Left _ -> empty
             Right _ -> do
-              liftEff $ open notebook{phantom = false} false
-              -- and add real notebook to list
-              toInput $ ItemAdd notebook{phantom = false}
+              liftEff $ open fileItem{phantom = false} false
+              toInput $ ItemAdd fileItem{phantom = false}
 
+handleMoveItem :: forall e. Mi.Item -> E.Event (FileAppEff e) M.Input
+handleMoveItem item = do
+  (toInput $ M.SetDialog (Just (RenameDialog $ initialRenameDialog item)))
+    `E.andThen` \_ -> do
+    getDirectories "/"
 
-    M.FileListChanged node state -> do
-      fileArr <- Uf.fileListToArray <$> (liftAff $ Uf.files node)
-      liftEff $ U.clearValue node
-      case A.head fileArr of
-        Nothing ->
-          let err :: Aff.Aff (FileAppEff e) M.Input
-              err = throwError $ error "empty filelist"
-          in liftAff err
-        Just file -> do
-          let newReader :: Eff (FileAppEff e) _
-              newReader = Uf.newReaderEff
+handleSetSort :: forall e. Sort -> E.Event (FileAppEff e) M.Input
+handleSetSort sort = do
+  liftEff $ Rh.modifyHash $ Cd.updateSort sort
+  empty
 
-              readAsBinaryString :: _ -> _ -> Aff.Aff (FileAppEff e) _
-              readAsBinaryString = Uf.readAsBinaryString
+handleOpenItem :: forall e. Mi.Item -> E.Event (FileAppEff e) M.Input
+handleOpenItem item = do
+  liftEff $ case item.resource of
+    Mr.Directory ->
+      moveDown item
+    Mr.Database ->
+      moveDown item
+    Mr.File ->
+      open item true
+    Mr.Table ->
+      open item true
+    Mr.Notebook ->
+      open item false
+  empty
 
-          path <- liftEff (Cd.getPath <$> Rh.getHash)
-          name <- flip getNewName state <$> (liftEff $ Uf.name file)
-          let fileItem = Mi.initFile{root = path, name = name, phantom = true}
-
-          reader <- liftEff newReader
-          content <- liftAff $ readAsBinaryString file reader
-
-          (toInput $ ItemAdd fileItem) `E.andThen` \_ -> do
-            f <- liftAff $ Aff.attempt $ Api.makeFile fileItem content
-            (toInput $ ItemRemove fileItem) `E.andThen` \_ -> do
-              case f of
-                Left _ -> empty
-                Right _ -> do
-                  liftEff $ open fileItem{phantom = false} false
-                  toInput $ ItemAdd fileItem{phantom = false}
-
-    M.Move item -> do
-      (toInput $ M.SetDialog (Just (RenameDialog $ initialRenameDialog item)))
-        `E.andThen` \_ -> do
-        getDirectories "/"
-
-    M.SetSort sort -> do
-      liftEff $ Rh.modifyHash $ Cd.updateSort sort
+handleUploadFile :: forall e. Node -> E.Event (FileAppEff e) M.Input
+handleUploadFile node = do
+  let el = U.convertToElement node
+  mbInput <- liftEff $ querySelector "input" el
+  case mbInput of
+    Nothing -> empty
+    Just input -> do
+      liftEff $ Ue.raiseEvent "click" input
       empty
 
-    -- opens item
-    M.Open item -> do
-      liftEff $ case item.resource of
-        Mr.Directory ->
-          moveDown item
-        Mr.Database ->
-          moveDown item
-        Mr.File ->
-          open item true
-        Mr.Table ->
-          open item true
-        Mr.Notebook ->
-          open item false
-      empty
+-- | clicked on _Folder_ link, create phantom folder
+handleCreateFolder :: forall e. M.State -> E.Event (FileAppEff e) M.Input
+handleCreateFolder state = do
+  let name = getNewName Config.newFolderName state
+  path <- liftEff (Cd.getPath <$> Rh.getHash)
+  toInput $ ItemAdd $ Mi.initDirectory { root = path, name = name }
 
-    -- clicked on _Folder_ link, create phantom folder
-    M.CreateFolder state -> do
-      let name = getNewName Config.newFolderName state
-      path <- liftEff (Cd.getPath <$> Rh.getHash)
-      toInput $ ItemAdd $ Mi.initDirectory{root = path, name = name}
+handleMountDatabase :: forall e. E.Event (FileAppEff e) M.Input
+handleMountDatabase = toInput $ M.SetDialog (Just MountDialog)
 
-    -- clicked on _File_ link triggering file uploading
-    M.UploadFile node _ -> do
-      let el = U.convertToElement node
-      mbInput <- liftEff $ querySelector "input" el
-      case mbInput of
-        Nothing -> empty
-        Just input -> do
-          liftEff $ Ue.raiseEvent "click" input
-          empty
+handleConfigure :: forall e. E.Event (FileAppEff e) M.Input
+handleConfigure = toInput $ M.SetDialog (Just ConfigureDialog)
 
-    M.MountDatabase _ ->
-      toInput $ M.SetDialog (Just MountDialog)
+handleSearchClear :: forall e. Boolean -> Search -> E.Event (FileAppEff e) M.Input
+handleSearchClear isSearching search = do
+  liftEff $ maybe (pure unit) Tm.clearTimeout search.timeout
+  if isSearching then do
+    rnd <- show <$> (liftEff $ randomInt 1000000 2000000)
+    liftEff (Rh.modifyHash $ Cd.updateSalt rnd)
+    toInput $ M.Loading false
+    else
+    setQE "path:/"
 
-    M.Configure _ -> do
-      toInput $ M.SetDialog (Just ConfigureDialog)
+-- TODO: String/Path type alias? Maybe a real path when new library is done
+handleSearchChange :: forall e. Search -> String -> String -> E.Event (FileAppEff e) M.Input
+handleSearchChange search ch path = E.async $ Aff.makeAff $ \_ k -> do
+    k $ inj $ SearchNextValue ch
+    maybe (pure unit) Tm.clearTimeout search.timeout
+    tim <- Tm.timeout Config.searchTimeout $ do
+      E.runEvent (const $ pure unit) (const $ pure unit) $
+        setQE (ch <> " path:\"" <> path <> "\"")
+    k $ inj $ SearchTimeout tim
+    k $ inj $ SearchValidation true
 
+  -- ATTENTION
+  -- This works too slow
+  --      (toInput $ M.SearchNextValue ch) `E.andThen` \_ -> do
+  --        tim <- liftEff $ Tm.timeout Config.searchTimeout $ do
+  --          E.runEvent (const $ pure unit) (const $ pure unit) $
+  --            setQE (ch <> " path:\"" <> p <> "\"")
+  --        (toInput $ M.SearchTimeout tim) `E.andThen` \_ -> do
+  --          toInput $ M.SearchValidation true
 
-    M.SearchSubmit s p -> do
-      liftEff $ maybe (pure unit) Tm.clearTimeout s.timeout
-      setQE (s.nextValue <> " +path:" <> p)
+-- TODO: String/Path type again?
+handleSearchSubmit :: forall e. Search -> String -> E.Event (FileAppEff e) M.Input
+handleSearchSubmit search path = do
+  liftEff $ maybe (pure unit) Tm.clearTimeout search.timeout
+  setQE (search.nextValue <> " +path:" <> path)
 
-    M.SearchClear isSearching search -> do
-      liftEff $ maybe (pure unit) Tm.clearTimeout search.timeout
-      if isSearching then do
-        rnd <- show <$> (liftEff $ randomInt 1000000 2000000)
-        liftEff (Rh.modifyHash $ Cd.updateSalt rnd)
-        toInput $ M.Loading false
-        else
-        setQE "path:/"
+-- ATTENTION
+-- This all should be moved to `initializer`
+-- ATTENTION
+handleShare :: forall e. Mi.Item -> E.Event (FileAppEff e) M.Input
+handleShare item = E.async $ Aff.makeAff $ \_ k -> do
+  url <- itemURL item
+  k $ inj $ M.SetDialog (Just $ ShareDialog url)
+  mbCopy <- document globalWindow >>= getElementById "copy-button"
+  case mbCopy of
+    Nothing -> pure unit
+    Just btn -> void do
+      Z.make btn >>= Z.onCopy (Z.setData "text/plain" url)
 
-    M.SearchChange search ch p -> E.async $ Aff.makeAff $ \_ k -> do
-      k $ inj $ SearchNextValue ch
-      maybe (pure unit) Tm.clearTimeout search.timeout
-      tim <- Tm.timeout Config.searchTimeout $ do
-        E.runEvent (const $ pure unit) (const $ pure unit) $
-          setQE (ch <> " path:\"" <> p <> "\"")
-      k $ inj $ SearchTimeout tim
-      k $ inj $ SearchValidation true
+handler :: forall e. M.Request -> E.Event (FileAppEff e) M.Input
+handler r =
+  case r of
+    M.Delete item -> handleDeleteItem item
+    M.CreateNotebook state -> handleCreateNotebook state
+    M.FileListChanged node state -> handleFileListChanged node state
+    M.Move item -> handleMoveItem item
+    M.SetSort sort -> handleSetSort sort
+    M.Open item -> handleOpenItem item
+    M.CreateFolder state -> handleCreateFolder state
+    M.UploadFile node _ -> handleUploadFile node
+    M.MountDatabase _ -> handleMountDatabase
+    M.Configure _ -> handleConfigure
+    M.SearchSubmit s p -> handleSearchSubmit s p
+    M.SearchClear isSearching search -> handleSearchClear isSearching search
+    M.SearchChange search ch p -> handleSearchChange search ch p
+    M.Share item -> handleShare item
 
-    -- ATTENTION
-    -- This works too slow
-    --      (toInput $ M.SearchNextValue ch) `E.andThen` \_ -> do
-    --        tim <- liftEff $ Tm.timeout Config.searchTimeout $ do
-    --          E.runEvent (const $ pure unit) (const $ pure unit) $
-    --            setQE (ch <> " path:\"" <> p <> "\"")
-    --        (toInput $ M.SearchTimeout tim) `E.andThen` \_ -> do
-    --          toInput $ M.SearchValidation true
+itemURL :: forall e. Mi.Item -> Eff (dom :: DOM | e) String
+itemURL item = do
+  loc <- U.locationString
+  hash <- Rh.getHash
+  let newUrl = loc <> case item.resource of
+        Mr.File -> foldl (<>) ""
+             [Config.notebookUrl,
+              "#", Mi.itemPath item,
+              "/view",
+              "/?q=", U.encodeURIComponent ("select * from ...")
+             ]
+        Mr.Notebook -> foldl (<>) ""
+             [Config.notebookUrl,
+              "#", Mi.itemPath item,
+              "/view"]
+        _ -> "#" <> Cd.updatePath (item.root <> "/" <> item.name) hash
+  pure $ newUrl
 
+setQE :: forall e. String -> E.Event (FileAppEff e) M.Input
+setQE q = do
+  case S.mkQuery q of
+    Left _ | q /= "" -> toInput $ SearchValidation false
+    Right _ -> do
+      liftEff (Rh.modifyHash $ Cd.updateQ q)
+      toInput $ SearchValidation true
+    _ -> do
+      liftEff (Rh.modifyHash $ Cd.updateQ "")
+      toInput $ SearchValidation true
 
-    -- ATTENTION
-    -- This all should be moved to `initializer`
-    -- ATTENTION
-    M.Share item -> E.async $ Aff.makeAff $ \_ k -> do
-      url <- itemURL item
-      k $ inj $ M.SetDialog (Just $ ShareDialog url)
-      mbCopy <- document globalWindow >>= getElementById "copy-button"
-      case mbCopy of
-        Nothing -> pure unit
-        Just btn -> void do
-          Z.make btn >>= Z.onCopy (Z.setData "text/plain" url)
+-- open dir or db
+moveDown :: forall e. Mi.Item -> Eff (dom :: DOM | e) Unit
+moveDown item = Rh.modifyHash $ Cd.updatePath (item.root <> "/" <> item.name <> "/")
 
-  where
+-- open notebook or file
+open :: forall e. Mi.Item -> Boolean -> Eff (dom :: DOM | e) Unit
+open item isNew = U.newTab $ foldl (<>) ""
+                  ([Config.notebookUrl,
+                    "#", Mi.itemPath item,
+                    "/edit"] <>
+                     if isNew then
+                     ["/?q=", U.encodeURIComponent ("select * from ...")]
+                   else [])
 
-  itemURL :: forall e. Mi.Item -> Eff _ String
-  itemURL item = do
-    loc <- U.locationString
-    hash <- Rh.getHash
-    let newUrl = loc <> case item.resource of
-          Mr.File -> foldl (<>) ""
-               [Config.notebookUrl,
-                "#", Mi.itemPath item,
-                "/view",
-                "/?q=", U.encodeURIComponent ("select * from ...")
-               ]
-          Mr.Notebook -> foldl (<>) ""
-               [Config.notebookUrl,
-                "#", Mi.itemPath item,
-                "/view"]
-          _ -> "#" <> Cd.updatePath (item.root <> "/" <> item.name) hash
-    pure $ newUrl
-
-  setQE :: String -> E.Event (FileAppEff e) M.Input
-  setQE q = do
-    case S.mkQuery q of
-      Left _ | q /= "" -> toInput $ SearchValidation false
-      Right _ -> do
-        liftEff (Rh.modifyHash $ Cd.updateQ q)
-        toInput $ SearchValidation true
-      _ -> do
-        liftEff (Rh.modifyHash $ Cd.updateQ "")
-        toInput $ SearchValidation true
-
-  -- open dir or db
-  moveDown :: Mi.Item -> Eff _ Unit
-  moveDown item = Rh.modifyHash $ Cd.updatePath (item.root <> "/" <> item.name <> "/")
-
-  -- open notebook or file
-  open :: Mi.Item -> Boolean -> Eff _ Unit
-  open item isNew = U.newTab $ foldl (<>) ""
-                    ([Config.notebookUrl,
-                      "#", Mi.itemPath item,
-                      "/edit"] <>
-                       if isNew then
-                       ["/?q=", U.encodeURIComponent ("select * from ...")]
-                     else [])
-
-  -- get fresh name for this state
-  getNewName :: String -> M.State -> String
-  getNewName name state =
-    if A.findIndex (\x -> x.name == name) state.items /= -1 then
-      getNewName' name 1
-      else name
-    where getNewName' name i =
-            -- Str.split and Str.joinWith work with []
-            -- converting from/to List will be too expensive
-            case Str.split "." name of
-              [] -> ""
-              body:suffixes ->
-                let newName = Str.joinWith "." $ (body <> show i):suffixes
-                in if A.findIndex
-                      (\x -> x.name == newName)
-                      state.items /= -1
-                   then getNewName' name (i + 1)
-                   else newName
+-- get fresh name for this state
+getNewName :: String -> M.State -> String
+getNewName name state =
+  if A.findIndex (\x -> x.name == name) state.items /= -1 then
+    getNewName' name 1
+    else name
+  where getNewName' name i =
+          -- Str.split and Str.joinWith work with []
+          -- converting from/to List will be too expensive
+          case Str.split "." name of
+            [] -> ""
+            body:suffixes ->
+              let newName = Str.joinWith "." $ (body <> show i):suffixes
+              in if A.findIndex
+                    (\x -> x.name == newName)
+                    state.items /= -1
+                 then getNewName' name (i + 1)
+                 else newName
 
 getDirectories :: forall e. String -> E.Event (FileAppEff e) M.Input
 getDirectories path = do
@@ -335,4 +359,3 @@ breadcrumbClicked :: forall e. Breadcrumb -> E.Event (FileAppEff e) M.Input
 breadcrumbClicked b = do
   liftEff $ Rh.modifyHash $ Cd.updatePath b.link
   empty
-
