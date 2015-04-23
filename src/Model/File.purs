@@ -15,8 +15,9 @@ import Model.Resource
 import Model.Item
 import Model.Search
 import Model.Breadcrumb
+import Input.File.Search (SearchInput())
 
-type Input = Either Unit Input1
+type Input = Either Input1 SearchInput
 
 -- | Input messages
 data Input1
@@ -25,10 +26,6 @@ data Input1
   | ItemHover Number Boolean
   | ItemSelect Number Boolean
   | ItemAdd Item
-  | SearchValidation Boolean
-  | SearchSet String
-  | SearchTimeout Timeout
-  | SearchNextValue String
   | SetPath String
   | Resort
   | Remove Item

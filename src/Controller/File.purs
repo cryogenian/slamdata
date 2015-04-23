@@ -29,6 +29,7 @@ import Data.Traversable
 import Data.Tuple
 import DOM
 import EffectTypes
+import Input.File.Search (SearchInput(..))
 import qualified Api.Fs as Api
 import qualified Config as Config
 import qualified Control.Monad.Aff as Aff
@@ -177,13 +178,13 @@ handler r =
         setQE "path:/"
 
     M.SearchChange search ch p -> E.async $ Aff.makeAff $ \_ k -> do
-      k $ inj $ M.SearchNextValue ch
+      k $ inj $ SearchNextValue ch
       maybe (pure unit) Tm.clearTimeout search.timeout
       tim <- Tm.timeout Config.searchTimeout $ do
         E.runEvent (const $ pure unit) (const $ pure unit) $
           setQE (ch <> " path:\"" <> p <> "\"")
-      k $ inj $ M.SearchTimeout tim
-      k $ inj $ M.SearchValidation true
+      k $ inj $ SearchTimeout tim
+      k $ inj $ SearchValidation true
 
     -- ATTENTION
     -- This works too slow
@@ -230,13 +231,13 @@ handler r =
   setQE :: String -> E.Event (FileAppEff e) M.Input
   setQE q = do
     case S.mkQuery q of
-      Left _ | q /= "" -> toInput $ M.SearchValidation false
+      Left _ | q /= "" -> toInput $ SearchValidation false
       Right _ -> do
         liftEff (Rh.modifyHash $ Cd.updateQ q)
-        toInput $ M.SearchValidation true
+        toInput $ SearchValidation true
       _ -> do
         liftEff (Rh.modifyHash $ Cd.updateQ "")
-        toInput $ M.SearchValidation true
+        toInput $ SearchValidation true
 
   -- open dir or db
   moveDown :: Mi.Item -> Eff _ Unit

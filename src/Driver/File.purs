@@ -30,6 +30,7 @@ import Data.Tuple
 import EffectTypes
 import Optic.Core
 import Optic.Refractor.Lens
+import Input.File.Search (SearchInput(..))
 import qualified Api.Fs as Api
 import qualified Control.Monad.Aff as Aff
 import qualified Control.Monad.Aff.AVar as A
@@ -109,7 +110,7 @@ handleRoute driver =
           liftEff $ do
             driver $ inj $ M.Loading true
             driver $ inj $ M.SetPath path
-            driver $ inj $ M.SearchSet (Mp.hidePath path $ S.strQuery query)
+            driver $ inj $ SearchSet (Mp.hidePath path $ S.strQuery query)
             driver $ inj $ M.ItemsUpdate [] sort
             driver $ inj $ M.SetSearching (isSearchQuery query)
           listPath query 0 var path

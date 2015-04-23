@@ -1,12 +1,14 @@
 -- | file component state update function
 module Input.File where
 
-import Control.Inject1
+import Control.Alt ((<|>))
+import Control.Inject1 (prj)
 import Data.Either
 import Data.Foldable
 import Data.Maybe
 import Data.Maybe.Unsafe (fromJust)
 import Data.Set (fromList, toList)
+import Input.File.Search (inputSearch)
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Printer (strQuery)
 import qualified Data.Array as A
@@ -18,8 +20,9 @@ import qualified Model.Item as M
 import qualified Model.Search as M
 
 inner :: M.State -> M.Input -> M.State
-inner state input = fromJust $ (input1 state <$> prj input)
-                           -- <|> (input2 state <$> prj input)
+inner state input = fromJust $
+  (input1 state <$> prj input) <|>
+  ((\i -> state { search = inputSearch state.search i }) <$> prj input)
 
 input1 :: M.State -> M.Input1 -> M.State
 input1 state input =
@@ -34,23 +37,11 @@ input1 state input =
     M.Sorting sort ->
       state{sort = sort,
             items = A.sortBy (M.sortItem state.searching sort) state.items}
-    M.SearchNextValue next ->
-      state{search = state.search{nextValue = next}}
     M.ItemsUpdate is sort ->
       state{sort = sort,
             items = A.sortBy (M.sortItem state.searching sort) $
                     A.concat [A.filter (\x -> x.root == state.path) $
                               A.filter _.phantom state.items, is]}
-    M.SearchValidation v ->
-      state{search = state.search{valid = v}}
-    M.SearchSet s ->
-      let nq = either (const "") id (strQuery <$> mkQuery state.search.nextValue)
-      in if (s /= "" && nq /= "" &&  nq == s) then
-           state{search = state.search{value = state.search.nextValue}}
-         else
-           state{search = state.search{value = s, nextValue = s}}
-    M.SearchTimeout t ->
-      state{search = state.search{timeout = Just t}}
     M.ItemHover ix h ->
       state{items = modify (flip _{hovered = _}) ix}
     M.ItemSelect ix h ->
