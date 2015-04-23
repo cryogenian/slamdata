@@ -23,6 +23,7 @@ import Model.Resource
 import Model.Sort
 import Utils.Halide (targetLink', readonly)
 import View.File.Modal
+import View.File.Breadcrumb
 import EffectTypes
 import qualified Data.StrMap as SM
 import qualified Halogen.HTML as H
@@ -97,15 +98,7 @@ search handler state =
                  ]
         ]
 
-breadcrumbs :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
-breadcrumbs handler state =
-  H.ol [ A.classes [B.breadcrumb, B.colXs8] ]
-       (breadcrumbView <$> state.breadcrumbs)
-  where
-  breadcrumbView :: Breadcrumb -> H.HTML p (I e)
-  breadcrumbView b = H.li_ [ H.a (targetLink' $ handler $ Breadcrumb b)
-                                 [ H.text b.name ]
-                           ]
+
 
 sorting :: forall p e. (Request -> I e) -> State -> H.HTML p (I e)
 sorting handler state =
@@ -238,7 +231,7 @@ view handler state =
                           [ icon, logo, search handler state ]
                   ]
          , content [ H.div [ A.class_ B.clearfix ]
-                           [ breadcrumbs handler state
+                           [ breadcrumbs state.breadcrumbs
                            , toolbar handler state
                            ]
                    , row [ sorting handler state ]

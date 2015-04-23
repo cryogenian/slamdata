@@ -1,11 +1,12 @@
 -- | File component main handler
-module Controller.File (
-  handler,
-  getDirectories,
-  selectThis,
-  rename,
-  checkRename,
-  renameItemClicked
+module Controller.File
+  ( handler
+  , getDirectories
+  , selectThis
+  , rename
+  , checkRename
+  , renameItemClicked
+  , breadcrumbClicked
   ) where
 
 import Control.Apply
@@ -33,6 +34,7 @@ import Input.File.Item (ItemInput(..))
 import Input.File.Rename (RenameInput(..))
 import Input.File.Search (SearchInput(..))
 import Model.DialogResume
+import Model.Breadcrumb
 import qualified Api.Fs as Api
 import qualified Config as Config
 import qualified Control.Monad.Aff as Aff
@@ -136,11 +138,6 @@ handler r =
           open item true
         Mr.Notebook ->
           open item false
-      empty
-
-    -- clicked on breadcrumb
-    M.Breadcrumb b -> do
-      liftEff $ Rh.modifyHash $ Cd.updatePath b.link
       empty
 
     -- clicked on _Folder_ link, create phantom folder
@@ -333,3 +330,9 @@ checkList target list =
   toInput case A.elemIndex target list of
     -1 -> RenameError ""
     _ ->  RenameError "Item with such name exists in target folder"
+
+breadcrumbClicked :: forall e. Breadcrumb -> E.Event (FileAppEff e) M.Input
+breadcrumbClicked b = do
+  liftEff $ Rh.modifyHash $ Cd.updatePath b.link
+  empty
+

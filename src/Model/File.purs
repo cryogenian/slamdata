@@ -35,7 +35,6 @@ data Request
   | SetSort Sort
   | SearchChange Search String String
   | SearchClear Boolean Search
-  | Breadcrumb Breadcrumb
   | SearchSubmit Search String
   | Open Item
   | Delete Item
