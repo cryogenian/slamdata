@@ -9,6 +9,7 @@ module Controller.File (
   ) where
 
 import Control.Apply
+import Control.Inject1 (Inject1, inj)
 import Control.Monad.Aff.Class
 import Control.Monad.Eff
 import Control.Monad.Eff.Class
@@ -16,7 +17,6 @@ import Control.Monad.Eff.Exception
 import Control.Monad.Eff.Random
 import Control.Monad.Error.Class
 import Control.Monad.Trans
-import Control.Inject1 (Inject1, inj)
 import Control.Plus (empty)
 import Data.DOM.Simple.Document
 import Data.DOM.Simple.Element
@@ -29,9 +29,10 @@ import Data.Traversable
 import Data.Tuple
 import DOM
 import EffectTypes
-import Model.DialogResume
-import Input.File.Search (SearchInput(..))
+import Input.File.Item (ItemInput(..))
 import Input.File.Rename (RenameInput(..))
+import Input.File.Search (SearchInput(..))
+import Model.DialogResume
 import qualified Api.Fs as Api
 import qualified Config as Config
 import qualified Control.Monad.Aff as Aff
@@ -64,22 +65,22 @@ handler r =
   case r of
     M.Delete item -> E.async $ do
       Api.deleteItem item
-      toInput $ M.Remove item
+      toInput $ ItemRemove item
 
     M.CreateNotebook state -> do
       let name = getNewName Config.newNotebookName state
       path <- liftEff $ Cd.getPath <$> Rh.getHash
       let notebook = Mi.initNotebook{root = path, name = name, phantom = true}
       -- immidiately updating state and then
-      (toInput $ M.ItemAdd notebook) `E.andThen` \_ -> do
+      (toInput $ ItemAdd notebook) `E.andThen` \_ -> do
         f <- liftAff $ Aff.attempt $ Api.makeNotebook notebook Mn.newNotebook
-        (toInput $ M.Remove notebook) `E.andThen` \_ ->  do
+        (toInput $ ItemRemove notebook) `E.andThen` \_ ->  do
           case f of
             Left _ -> empty
             Right _ -> do
               liftEff $ open notebook{phantom = false} false
               -- and add real notebook to list
-              toInput $ M.ItemAdd notebook{phantom = false}
+              toInput $ ItemAdd notebook{phantom = false}
 
 
     M.FileListChanged node state -> do
@@ -104,14 +105,14 @@ handler r =
           reader <- liftEff newReader
           content <- liftAff $ readAsBinaryString file reader
 
-          (toInput $ M.ItemAdd fileItem) `E.andThen` \_ -> do
+          (toInput $ ItemAdd fileItem) `E.andThen` \_ -> do
             f <- liftAff $ Aff.attempt $ Api.makeFile fileItem content
-            (toInput $ M.Remove fileItem) `E.andThen` \_ -> do
+            (toInput $ ItemRemove fileItem) `E.andThen` \_ -> do
               case f of
                 Left _ -> empty
                 Right _ -> do
                   liftEff $ open fileItem{phantom = false} false
-                  toInput $ M.ItemAdd fileItem{phantom = false}
+                  toInput $ ItemAdd fileItem{phantom = false}
 
     M.Move item -> do
       (toInput $ M.SetDialog (Just (RenameDialog $ initialRenameDialog item)))
@@ -146,7 +147,7 @@ handler r =
     M.CreateFolder state -> do
       let name = getNewName Config.newFolderName state
       path <- liftEff (Cd.getPath <$> Rh.getHash)
-      toInput $ M.ItemAdd $ Mi.initDirectory{root = path, name = name}
+      toInput $ ItemAdd $ Mi.initDirectory{root = path, name = name}
 
     -- clicked on _File_ link triggering file uploading
     M.UploadFile node _ -> do
@@ -168,7 +169,6 @@ handler r =
     M.SearchSubmit s p -> do
       liftEff $ maybe (pure unit) Tm.clearTimeout s.timeout
       setQE (s.nextValue <> " +path:" <> p)
-
 
     M.SearchClear isSearching search -> do
       liftEff $ maybe (pure unit) Tm.clearTimeout search.timeout

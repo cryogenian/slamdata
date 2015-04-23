@@ -14,6 +14,7 @@ import Data.Array ((..), length, zipWith)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
 import Data.Tuple (Tuple(..))
+import Input.File.Item (ItemInput(..))
 import Model.Breadcrumb
 import Model.File
 import Model.Item

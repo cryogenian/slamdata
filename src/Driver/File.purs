@@ -28,9 +28,10 @@ import Data.Semiring.Free
 import Data.Traversable
 import Data.Tuple
 import EffectTypes
+import Input.File.Item (ItemInput(..))
+import Input.File.Search (SearchInput(..))
 import Optic.Core
 import Optic.Refractor.Lens
-import Input.File.Search (SearchInput(..))
 import qualified Api.Fs as Api
 import qualified Control.Monad.Aff as Aff
 import qualified Control.Monad.Aff.AVar as A
@@ -142,7 +143,7 @@ handleRoute driver =
                       test = filterByQuery query
                       children = filter (\x -> x.resource == Mr.Directory ||
                                                x.resource == Mr.Database) items
-                  traverse_ (liftEff <<< driver <<< inj <<< M.ItemAdd) $
+                  traverse_ (liftEff <<< driver <<< inj <<< ItemAdd) $
                     filter test items
                   if isSearchQuery query then
                     traverse_ ((listPath query (deep + 1) var) <<<

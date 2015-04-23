@@ -7,8 +7,9 @@ import Data.Either
 import Data.Foreign
 import Data.Maybe
 import DOM
-import Input.File.Search (SearchInput())
+import Input.File.Item (ItemInput())
 import Input.File.Rename (RenameInput())
+import Input.File.Search (SearchInput())
 import Model.Breadcrumb
 import Model.DialogResume
 import Model.Item
@@ -16,18 +17,13 @@ import Model.Resource
 import Model.Search
 import Model.Sort
 
-type Input = Either Input1 (Either SearchInput RenameInput)
+type Input = Either ItemInput (Either Input1 (Either SearchInput RenameInput))
 
 -- | Input messages
 data Input1
   = Sorting Sort
-  | ItemsUpdate [Item] Sort
-  | ItemHover Number Boolean
-  | ItemSelect Number Boolean
-  | ItemAdd Item
   | SetPath String
-  | Resort
-  | Remove Item
+  | ItemsUpdate [Item] Sort
   | Loading Boolean
   | Focus Boolean
   | SetSearching Boolean

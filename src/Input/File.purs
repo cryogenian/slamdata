@@ -8,6 +8,7 @@ import Data.Foldable
 import Data.Maybe
 import Data.Maybe.Unsafe (fromJust)
 import Data.Set (fromList, toList)
+import Input.File.Item (inputItem)
 import Input.File.Rename (inputRename)
 import Input.File.Search (inputSearch)
 import Text.SlamSearch (mkQuery)
@@ -25,34 +26,24 @@ inner state input =
   fromJust $ (input1 state <$> prj input)
          <|> ((\i -> state { search = inputSearch state.search i }) <$> prj input)
          <|> ((\i -> state { dialog = flip inputRename i <$> state.dialog }) <$> prj input)
+         <|> ((\i -> state { items = inputItem state.sort state.searching state.items i }) <$> prj input)
 
 input1 :: M.State -> M.Input1 -> M.State
 input1 state input =
   case input of
-    M.Remove item ->
-      input1 state{items = A.filter
-                          (\x -> not $ x.name == item.name && x.root == item.root)
-                          state.items} M.Resort
 
-    M.Resort ->
-      state{items = A.sortBy (M.sortItem state.searching state.sort) state.items}
     M.Sorting sort ->
       state{sort = sort,
             items = A.sortBy (M.sortItem state.searching sort) state.items}
+
     M.ItemsUpdate is sort ->
       state{sort = sort,
             items = A.sortBy (M.sortItem state.searching sort) $
                     A.concat [A.filter (\x -> x.root == state.path) $
                               A.filter _.phantom state.items, is]}
-    M.ItemHover ix h ->
-      state{items = modify (flip _{hovered = _}) ix}
-    M.ItemSelect ix h ->
-      state{items = modify (flip _{selected = _}) ix}
+
     M.SetPath str ->
       state{path = str, breadcrumbs = mkBreadcrumbs str}
-    M.ItemAdd item ->
-      input1 state{items = A.sortBy (M.sortItem state.searching state.sort)
-                          (item:state.items)} M.Resort
     M.Loading loading ->
       state{search = state.search{loading=loading}}
     M.Focus focus ->
@@ -62,12 +53,7 @@ input1 state input =
     M.SetDialog d ->
       state{dialog = d}
 
-  where modify func ix =
-          let unmodify = func false <$> state.items
-              el = func true  <$> unmodify A.!! ix
-          in case el of
-            Nothing -> unmodify
-            Just el -> A.updateAt ix el unmodify
+  where
 
         mkBreadcrumbs :: String -> [M.Breadcrumb]
         mkBreadcrumbs path =
