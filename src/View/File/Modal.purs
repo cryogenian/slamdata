@@ -7,6 +7,7 @@ import Controller.File (handler)
 import Data.Maybe (Maybe(..), maybe)
 import EffectTypes
 import Model.File
+import Model.DialogResume
 import View.File.Modal.Common
 import View.File.Modal.RenameDialog
 import View.File.Modal.ShareDialog

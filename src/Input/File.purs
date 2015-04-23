@@ -8,6 +8,7 @@ import Data.Foldable
 import Data.Maybe
 import Data.Maybe.Unsafe (fromJust)
 import Data.Set (fromList, toList)
+import Input.File.Rename (inputRename)
 import Input.File.Search (inputSearch)
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Printer (strQuery)
@@ -20,9 +21,10 @@ import qualified Model.Item as M
 import qualified Model.Search as M
 
 inner :: M.State -> M.Input -> M.State
-inner state input = fromJust $
-  (input1 state <$> prj input) <|>
-  ((\i -> state { search = inputSearch state.search i }) <$> prj input)
+inner state input =
+  fromJust $ (input1 state <$> prj input)
+         <|> ((\i -> state { search = inputSearch state.search i }) <$> prj input)
+         <|> ((\i -> state { dialog = flip inputRename i <$> state.dialog }) <$> prj input)
 
 input1 :: M.State -> M.Input1 -> M.State
 input1 state input =
@@ -59,39 +61,6 @@ input1 state input =
       state{searching = s}
     M.SetDialog d ->
       state{dialog = d}
-    M.AddRenameDirs dirs ->
-      case state.dialog of
-        Just (M.RenameDialog d) ->
-          state{dialog = Just (M.RenameDialog d{dirs = A.sort $ unique $ d.dirs <> dirs})}
-        _ -> state
-
-    M.SetRenameSelected toSelect ->
-      case state.dialog of
-        Just (M.RenameDialog d) ->
-          state{dialog = Just (M.RenameDialog d{selected = toSelect,
-                                                showList = false,
-                                                error = ""})}
-        _ -> state
-    M.RenameChanged newVal ->
-      case state.dialog of
-        Just (M.RenameDialog d) ->
-          state{dialog = Just (M.RenameDialog d{target = newVal})}
-        _ -> state
-    M.RenameError err ->
-      let incorrect = Str.length err /= 0 in
-      case state.dialog of
-        Just (M.RenameDialog d) ->
-          state{dialog = Just (M.RenameDialog d{error = err, incorrect = incorrect})}
-        _ -> state
-
-    M.RenameSelectedContent cont ->
-      case state.dialog of
-        Just (M.RenameDialog d) ->
-          state{dialog = Just (M.RenameDialog d{selectedContent = cont})}
-        _ -> state
-
-
-
 
   where modify func ix =
           let unmodify = func false <$> state.items
@@ -108,8 +77,3 @@ input1 state input =
                 foldFn (L.Cons head tail) a =
                   let res = {name: a, link: head.link <> a <> "/"} in
                   L.Cons res (L.Cons head tail)
-
-        unique = toList <<< fromList
-
-
-

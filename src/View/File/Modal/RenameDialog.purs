@@ -7,6 +7,8 @@ import Controller.File
 import Data.Maybe
 import EffectTypes
 import Model.File
+import Model.DialogResume
+import Input.File.Rename (RenameInput(..))
 import View.File.Modal.Common
 import qualified Config as Config
 import qualified Data.String as Str

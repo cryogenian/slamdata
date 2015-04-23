@@ -29,7 +29,9 @@ import Data.Traversable
 import Data.Tuple
 import DOM
 import EffectTypes
+import Model.DialogResume
 import Input.File.Search (SearchInput(..))
+import Input.File.Rename (RenameInput(..))
 import qualified Api.Fs as Api
 import qualified Config as Config
 import qualified Control.Monad.Aff as Aff
@@ -112,7 +114,7 @@ handler r =
                   toInput $ M.ItemAdd fileItem{phantom = false}
 
     M.Move item -> do
-      (toInput $ M.SetDialog (Just (M.RenameDialog $ M.initialRenameDialog item)))
+      (toInput $ M.SetDialog (Just (RenameDialog $ initialRenameDialog item)))
         `E.andThen` \_ -> do
         getDirectories "/"
 
@@ -157,10 +159,10 @@ handler r =
           empty
 
     M.MountDatabase _ ->
-      toInput $ M.SetDialog (Just M.MountDialog)
+      toInput $ M.SetDialog (Just MountDialog)
 
     M.Configure _ -> do
-      toInput $ M.SetDialog (Just M.ConfigureDialog)
+      toInput $ M.SetDialog (Just ConfigureDialog)
 
 
     M.SearchSubmit s p -> do
@@ -201,7 +203,7 @@ handler r =
     -- ATTENTION
     M.Share item -> E.async $ Aff.makeAff $ \_ k -> do
       url <- itemURL item
-      k $ inj $ M.SetDialog (Just $ M.ShareDialog url)
+      k $ inj $ M.SetDialog (Just $ ShareDialog url)
       mbCopy <- document globalWindow >>= getElementById "copy-button"
       case mbCopy of
         Nothing -> pure unit
@@ -281,7 +283,7 @@ getDirectories path = do
                                    x.resource == Mr.Database) items
           directories = (\x -> path <> x.name <> "/") <$> children
 
-      (toInput $ M.AddRenameDirs directories) `E.andThen` \_ ->
+      (toInput $ AddRenameDirs directories) `E.andThen` \_ ->
         fold (getDirectories <$> directories)
     _ -> empty
 
@@ -300,34 +302,34 @@ rename item dest = pure do
       move :: Aff.Aff (FileAppEff e) String
       move = Api.moveItem item dest
   errorString <- liftAff $ move
-  (toInput $ M.RenameError errorString) `E.andThen` \_ -> do
+  (toInput $ RenameError errorString) `E.andThen` \_ -> do
     case errorString of
       "" -> do liftEff U.reload
                empty
       _ -> empty
 
-checkRename :: forall e. String -> M.RenameDialogRec ->
+checkRename :: forall e. String -> RenameDialogRec ->
                E.EventHandler (E.Event (FileAppEff e) M.Input)
 checkRename name r = pure do
   if name == ""
-    then toInput $ M.RenameError "Please, enter new name"
+    then toInput $ RenameError "Please, enter new name"
     else
     (if Str.indexOf "/" name /= -1
-     then toInput $ M.RenameError "Incorrect File Name"
+     then toInput $ RenameError "Incorrect File Name"
      else checkList name r.selectedContent) `E.andThen` \_ ->
-    toInput $ M.RenameChanged name
+    toInput $ RenameChanged name
 
 renameItemClicked :: forall e. String -> String ->
                      E.EventHandler (E.Event (FileAppEff e) M.Input)
 renameItemClicked target dir = pure $ do
-  (toInput $ M.SetRenameSelected dir) `E.andThen` \_ -> do
+  (toInput $ SetRenameSelected dir) `E.andThen` \_ -> do
     items <- liftAff $ Api.listing dir
     let list = _.name <$> items
-    (toInput $ M.RenameSelectedContent list) `E.andThen` \_ ->
+    (toInput $ RenameSelectedContent list) `E.andThen` \_ ->
       checkList target list
 
 checkList :: forall e. String -> [String] -> E.Event (FileAppEff e) M.Input
 checkList target list =
   toInput case A.elemIndex target list of
-    -1 -> M.RenameError ""
-    _ ->  M.RenameError "Item with such name exists in target folder"
+    -1 -> RenameError ""
+    _ ->  RenameError "Item with such name exists in target folder"
