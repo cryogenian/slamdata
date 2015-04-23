@@ -1,26 +1,31 @@
--- | file component state update function 
+-- | file component state update function
 module Input.File where
 
-import Data.Maybe
+import Control.Inject1
 import Data.Either
 import Data.Foldable
-import Text.SlamSearch.Printer (strQuery)
+import Data.Maybe
+import Data.Maybe.Unsafe (fromJust)
+import Data.Set (fromList, toList)
 import Text.SlamSearch (mkQuery)
+import Text.SlamSearch.Printer (strQuery)
+import qualified Data.Array as A
+import qualified Data.List as L
+import qualified Data.String as Str
+import qualified Model.Breadcrumb as M
 import qualified Model.File as M
 import qualified Model.Item as M
 import qualified Model.Search as M
-import qualified Model.Breadcrumb as M
-import qualified Data.Array as A
-import qualified Data.String as Str
-import qualified Data.List as L
-import Data.Set (fromList, toList)
-
 
 inner :: M.State -> M.Input -> M.State
-inner state input =
+inner state input = fromJust $ (input1 state <$> prj input)
+                           -- <|> (input2 state <$> prj input)
+
+input1 :: M.State -> M.Input1 -> M.State
+input1 state input =
   case input of
     M.Remove item ->
-      inner state{items = A.filter
+      input1 state{items = A.filter
                           (\x -> not $ x.name == item.name && x.root == item.root)
                           state.items} M.Resort
 
@@ -53,7 +58,7 @@ inner state input =
     M.SetPath str ->
       state{path = str, breadcrumbs = mkBreadcrumbs str}
     M.ItemAdd item ->
-      inner state{items = A.sortBy (M.sortItem state.searching state.sort)
+      input1 state{items = A.sortBy (M.sortItem state.searching state.sort)
                           (item:state.items)} M.Resort
     M.Loading loading ->
       state{search = state.search{loading=loading}}
@@ -94,9 +99,9 @@ inner state input =
           state{dialog = Just (M.RenameDialog d{selectedContent = cont})}
         _ -> state
 
-        
-                             
-      
+
+
+
   where modify func ix =
           let unmodify = func false <$> state.items
               el = func true  <$> unmodify A.!! ix
@@ -116,4 +121,4 @@ inner state input =
         unique = toList <<< fromList
 
 
-        
+

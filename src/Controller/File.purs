@@ -1,4 +1,4 @@
--- | File component main handler 
+-- | File component main handler
 module Controller.File (
   handler,
   getDirectories,
@@ -8,80 +8,77 @@ module Controller.File (
   renameItemClicked
   ) where
 
+import Control.Apply
+import Control.Monad.Aff.Class
 import Control.Monad.Eff
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Exception
-import Control.Monad.Error.Class
 import Control.Monad.Eff.Random
-import Control.Monad.Aff.Class
+import Control.Monad.Error.Class
 import Control.Monad.Trans
+import Control.Inject1 (Inject1, inj)
 import Control.Plus (empty)
-
-
-import DOM
-import Data.Maybe
-import Data.Tuple
+import Data.DOM.Simple.Document
+import Data.DOM.Simple.Element
+import Data.DOM.Simple.Types
+import Data.DOM.Simple.Window
 import Data.Either
 import Data.Foldable
+import Data.Maybe
 import Data.Traversable
-import Control.Apply
-
-
-import Data.DOM.Simple.Types
-import Data.DOM.Simple.Document
-import Data.DOM.Simple.Window
-import Data.DOM.Simple.Element
+import Data.Tuple
+import DOM
 import EffectTypes
-
-import qualified Utils as U
-import qualified Utils.Event as Ue
-import qualified Utils.File as Uf
-import qualified Data.Array as A
-import qualified Halogen as Hl
-import qualified Control.Timer as Tm
+import qualified Api.Fs as Api
 import qualified Config as Config
 import qualified Control.Monad.Aff as Aff
-import qualified Text.SlamSearch as S
-import qualified Routing.Hash as Rh
+import qualified Control.Timer as Tm
+import qualified Control.UI.ZClipboard as Z
+import qualified Data.Array as A
 import qualified Data.String as Str
-import qualified Driver.File as Cd 
-import qualified Network.HTTP.Affjax as Af
-
 import qualified Data.String.Regex as Rgx
+import qualified Driver.File as Cd
+import qualified Halogen as Hl
+import qualified Halogen.HTML.Events.Handler as E
+import qualified Halogen.HTML.Events.Monad as E
+import qualified Halogen.HTML.Events.Types as Et
 import qualified Model.File as M
 import qualified Model.Item as Mi
 import qualified Model.Notebook as Mn
 import qualified Model.Resource as Mr
-import qualified Api.Fs as Api
-import qualified Control.UI.ZClipboard as Z
+import qualified Network.HTTP.Affjax as Af
+import qualified Routing.Hash as Rh
+import qualified Text.SlamSearch as S
+import qualified Utils as U
+import qualified Utils.Event as Ue
+import qualified Utils.File as Uf
 
-import qualified Halogen.HTML.Events.Handler as E
-import qualified Halogen.HTML.Events.Monad as E
-import qualified Halogen.HTML.Events.Types as Et
+toInput :: forall m a b. (Applicative m, Inject1 a b) => a -> m b
+toInput = pure <<< inj
 
 handler :: forall e. M.Request -> E.Event (FileAppEff e) M.Input
-handler r = 
+handler r =
   case r of
-    M.Delete item -> E.async $ do 
+    M.Delete item -> E.async $ do
       Api.deleteItem item
-      pure $ M.Remove item
+      toInput $ M.Remove item
 
     M.CreateNotebook state -> do
       let name = getNewName Config.newNotebookName state
       path <- liftEff $ Cd.getPath <$> Rh.getHash
       let notebook = Mi.initNotebook{root = path, name = name, phantom = true}
       -- immidiately updating state and then
-      (pure $ M.ItemAdd notebook) `E.andThen` \_ -> do
+      (toInput $ M.ItemAdd notebook) `E.andThen` \_ -> do
         f <- liftAff $ Aff.attempt $ Api.makeNotebook notebook Mn.newNotebook
-        (pure $ M.Remove notebook) `E.andThen` \_ ->  do
+        (toInput $ M.Remove notebook) `E.andThen` \_ ->  do
           case f of
             Left _ -> empty
             Right _ -> do
               liftEff $ open notebook{phantom = false} false
               -- and add real notebook to list
-              pure $ M.ItemAdd notebook{phantom = false}
+              toInput $ M.ItemAdd notebook{phantom = false}
 
-        
+
     M.FileListChanged node state -> do
       fileArr <- Uf.fileListToArray <$> (liftAff $ Uf.files node)
       liftEff $ U.clearValue node
@@ -96,34 +93,33 @@ handler r =
 
               readAsBinaryString :: _ -> _ -> Aff.Aff (FileAppEff e) _
               readAsBinaryString = Uf.readAsBinaryString
-              
-          path <- liftEff (Cd.getPath <$> Rh.getHash) 
+
+          path <- liftEff (Cd.getPath <$> Rh.getHash)
           name <- flip getNewName state <$> (liftEff $ Uf.name file)
           let fileItem = Mi.initFile{root = path, name = name, phantom = true}
-              
-          reader <- liftEff newReader 
+
+          reader <- liftEff newReader
           content <- liftAff $ readAsBinaryString file reader
-          
-          (pure $ M.ItemAdd fileItem) `E.andThen` \_ -> do
+
+          (toInput $ M.ItemAdd fileItem) `E.andThen` \_ -> do
             f <- liftAff $ Aff.attempt $ Api.makeFile fileItem content
-            (pure $ M.Remove fileItem) `E.andThen` \_ -> do
+            (toInput $ M.Remove fileItem) `E.andThen` \_ -> do
               case f of
                 Left _ -> empty
                 Right _ -> do
                   liftEff $ open fileItem{phantom = false} false
-                  pure $ M.ItemAdd fileItem{phantom = false}
+                  toInput $ M.ItemAdd fileItem{phantom = false}
 
-                  
     M.Move item -> do
-      (pure $ M.SetDialog (Just (M.RenameDialog $ M.initialRenameDialog item)))
+      (toInput $ M.SetDialog (Just (M.RenameDialog $ M.initialRenameDialog item)))
         `E.andThen` \_ -> do
-        getDirectories "/" 
+        getDirectories "/"
 
     M.SetSort sort -> do
       liftEff $ Rh.modifyHash $ Cd.updateSort sort
       empty
 
-            -- opens item
+    -- opens item
     M.Open item -> do
       liftEff $ case item.resource of
         Mr.Directory ->
@@ -134,11 +130,11 @@ handler r =
           open item true
         Mr.Table ->
           open item true
-        Mr.Notebook -> 
+        Mr.Notebook ->
           open item false
       empty
 
-            -- clicked on breadcrumb
+    -- clicked on breadcrumb
     M.Breadcrumb b -> do
       liftEff $ Rh.modifyHash $ Cd.updatePath b.link
       empty
@@ -147,25 +143,23 @@ handler r =
     M.CreateFolder state -> do
       let name = getNewName Config.newFolderName state
       path <- liftEff (Cd.getPath <$> Rh.getHash)
-      pure $ M.ItemAdd $ Mi.initDirectory{root = path, name = name}
-
-
+      toInput $ M.ItemAdd $ Mi.initDirectory{root = path, name = name}
 
     -- clicked on _File_ link triggering file uploading
     M.UploadFile node _ -> do
       let el = U.convertToElement node
       mbInput <- liftEff $ querySelector "input" el
-      case mbInput of 
-        Nothing -> empty 
+      case mbInput of
+        Nothing -> empty
         Just input -> do
           liftEff $ Ue.raiseEvent "click" input
           empty
 
     M.MountDatabase _ ->
-      pure $ M.SetDialog (Just M.MountDialog)
+      toInput $ M.SetDialog (Just M.MountDialog)
 
     M.Configure _ -> do
-      pure $ M.SetDialog (Just M.ConfigureDialog)
+      toInput $ M.SetDialog (Just M.ConfigureDialog)
 
 
     M.SearchSubmit s p -> do
@@ -178,97 +172,104 @@ handler r =
       if isSearching then do
         rnd <- show <$> (liftEff $ randomInt 1000000 2000000)
         liftEff (Rh.modifyHash $ Cd.updateSalt rnd)
-        pure $ M.Loading false
-        else 
+        toInput $ M.Loading false
+        else
         setQE "path:/"
-        
+
     M.SearchChange search ch p -> E.async $ Aff.makeAff $ \_ k -> do
-      k $ M.SearchNextValue ch
+      k $ inj $ M.SearchNextValue ch
       maybe (pure unit) Tm.clearTimeout search.timeout
       tim <- Tm.timeout Config.searchTimeout $ do
         E.runEvent (const $ pure unit) (const $ pure unit) $
           setQE (ch <> " path:\"" <> p <> "\"")
-      k $ M.SearchTimeout tim
-      k $ M.SearchValidation true
-      
--- ATTENTION 
--- This works too slow 
---      (pure $ M.SearchNextValue ch) `E.andThen` \_ -> do
---        tim <- liftEff $ Tm.timeout Config.searchTimeout $ do
---          E.runEvent (const $ pure unit) (const $ pure unit) $
---            setQE (ch <> " path:\"" <> p <> "\"")
---        (pure $ M.SearchTimeout tim) `E.andThen` \_ -> do
---          pure $ M.SearchValidation true
+      k $ inj $ M.SearchTimeout tim
+      k $ inj $ M.SearchValidation true
 
-      
-    -- ATTENTION 
+    -- ATTENTION
+    -- This works too slow
+    --      (toInput $ M.SearchNextValue ch) `E.andThen` \_ -> do
+    --        tim <- liftEff $ Tm.timeout Config.searchTimeout $ do
+    --          E.runEvent (const $ pure unit) (const $ pure unit) $
+    --            setQE (ch <> " path:\"" <> p <> "\"")
+    --        (toInput $ M.SearchTimeout tim) `E.andThen` \_ -> do
+    --          toInput $ M.SearchValidation true
+
+
+    -- ATTENTION
     -- This all should be moved to `initializer`
     -- ATTENTION
     M.Share item -> E.async $ Aff.makeAff $ \_ k -> do
       url <- itemURL item
-      k $ M.SetDialog (Just $ M.ShareDialog url)
+      k $ inj $ M.SetDialog (Just $ M.ShareDialog url)
       mbCopy <- document globalWindow >>= getElementById "copy-button"
       case mbCopy of
         Nothing -> pure unit
         Just btn -> void do
           Z.make btn >>= Z.onCopy (Z.setData "text/plain" url)
 
-  where itemURL item = do
-          loc <- U.locationString
-          hash <- Rh.getHash
-          let newUrl = loc <> case item.resource of
-                Mr.File -> foldl (<>) ""
-                     [Config.notebookUrl,
+  where
+
+  itemURL :: forall e. Mi.Item -> Eff _ String
+  itemURL item = do
+    loc <- U.locationString
+    hash <- Rh.getHash
+    let newUrl = loc <> case item.resource of
+          Mr.File -> foldl (<>) ""
+               [Config.notebookUrl,
+                "#", Mi.itemPath item,
+                "/view",
+                "/?q=", U.encodeURIComponent ("select * from ...")
+               ]
+          Mr.Notebook -> foldl (<>) ""
+               [Config.notebookUrl,
+                "#", Mi.itemPath item,
+                "/view"]
+          _ -> "#" <> Cd.updatePath (item.root <> "/" <> item.name) hash
+    pure $ newUrl
+
+  setQE :: String -> E.Event (FileAppEff e) M.Input
+  setQE q = do
+    case S.mkQuery q of
+      Left _ | q /= "" -> toInput $ M.SearchValidation false
+      Right _ -> do
+        liftEff (Rh.modifyHash $ Cd.updateQ q)
+        toInput $ M.SearchValidation true
+      _ -> do
+        liftEff (Rh.modifyHash $ Cd.updateQ "")
+        toInput $ M.SearchValidation true
+
+  -- open dir or db
+  moveDown :: Mi.Item -> Eff _ Unit
+  moveDown item = Rh.modifyHash $ Cd.updatePath (item.root <> "/" <> item.name <> "/")
+
+  -- open notebook or file
+  open :: Mi.Item -> Boolean -> Eff _ Unit
+  open item isNew = U.newTab $ foldl (<>) ""
+                    ([Config.notebookUrl,
                       "#", Mi.itemPath item,
-                      "/view",
-                      "/?q=", U.encodeURIComponent ("select * from ...")
-                     ]
-                Mr.Notebook -> foldl (<>) ""
-                     [Config.notebookUrl,
-                      "#", Mi.itemPath item,
-                      "/view"]
-                _ -> "#" <> Cd.updatePath (item.root <> "/" <> item.name) hash
-          pure $ newUrl 
+                      "/edit"] <>
+                       if isNew then
+                       ["/?q=", U.encodeURIComponent ("select * from ...")]
+                     else [])
 
-
-        setQE q = do
-          case S.mkQuery q of
-            Left _ | q /= "" -> pure $ M.SearchValidation false
-            Right _ -> do
-              liftEff (Rh.modifyHash $ Cd.updateQ q)
-              pure $ M.SearchValidation true
-            _ -> do
-              liftEff (Rh.modifyHash $ Cd.updateQ "")
-              pure $ M.SearchValidation true
-
-        -- open dir or db
-        moveDown item = Rh.modifyHash $ Cd.updatePath (item.root <> "/" <> item.name <> "/")
-        -- open notebook or file
-        open item isNew = U.newTab $ foldl (<>) ""
-                          ([Config.notebookUrl,
-                            "#", Mi.itemPath item,
-                            "/edit"] <>
-                             if isNew then 
-                             ["/?q=", U.encodeURIComponent ("select * from ...")]
-                           else [])
-        -- get fresh name for this state
-        getNewName :: String -> M.State -> String
-        getNewName name state =
-          if A.findIndex (\x -> x.name == name) state.items /= -1 then
-            getNewName' name 1
-            else name
-          where getNewName' name i =
-                  -- Str.split and Str.joinWith work with []
-                  -- converting from/to List will be too expensive 
-                  case Str.split "." name of
-                    [] -> "" 
-                    body:suffixes ->
-                      let newName = Str.joinWith "." $ (body <> show i):suffixes 
-                      in if A.findIndex
-                            (\x -> x.name == newName)
-                            state.items /= -1 
-                         then getNewName' name (i + 1)
-                         else newName 
+  -- get fresh name for this state
+  getNewName :: String -> M.State -> String
+  getNewName name state =
+    if A.findIndex (\x -> x.name == name) state.items /= -1 then
+      getNewName' name 1
+      else name
+    where getNewName' name i =
+            -- Str.split and Str.joinWith work with []
+            -- converting from/to List will be too expensive
+            case Str.split "." name of
+              [] -> ""
+              body:suffixes ->
+                let newName = Str.joinWith "." $ (body <> show i):suffixes
+                in if A.findIndex
+                      (\x -> x.name == newName)
+                      state.items /= -1
+                   then getNewName' name (i + 1)
+                   else newName
 
 getDirectories :: forall e. String -> E.Event (FileAppEff e) M.Input
 getDirectories path = do
@@ -279,14 +280,14 @@ getDirectories path = do
                                    x.resource == Mr.Database) items
           directories = (\x -> path <> x.name <> "/") <$> children
 
-      (pure $  M.AddRenameDirs directories) `E.andThen` \_ ->
+      (toInput $ M.AddRenameDirs directories) `E.andThen` \_ ->
         fold (getDirectories <$> directories)
     _ -> empty
 
 
 selectThis :: forall e o. Et.Event (|o) ->
               E.EventHandler (E.Event (dom :: DOM|e) M.Input)
-selectThis ev = 
+selectThis ev =
   pure $ (E.async $ Aff.makeAff \_ _ -> U.select ev.target)
 
 import Debug.Foreign
@@ -294,11 +295,11 @@ import Debug.Foreign
 rename :: forall e. Mi.Item -> String ->
           E.EventHandler (E.Event (FileAppEff e) M.Input)
 rename item dest = pure do
-  let o = fprintUnsafe dest 
+  let o = fprintUnsafe dest
       move :: Aff.Aff (FileAppEff e) String
       move = Api.moveItem item dest
   errorString <- liftAff $ move
-  (pure $ M.RenameError errorString) `E.andThen` \_ -> do
+  (toInput $ M.RenameError errorString) `E.andThen` \_ -> do
     case errorString of
       "" -> do liftEff U.reload
                empty
@@ -308,24 +309,24 @@ checkRename :: forall e. String -> M.RenameDialogRec ->
                E.EventHandler (E.Event (FileAppEff e) M.Input)
 checkRename name r = pure do
   if name == ""
-    then pure $ M.RenameError "Please, enter new name"
+    then toInput $ M.RenameError "Please, enter new name"
     else
     (if Str.indexOf "/" name /= -1
-     then pure $ M.RenameError "Incorrect File Name"
-     else checkList name r.selectedContent) `E.andThen` \_ -> 
-    pure $ M.RenameChanged name
+     then toInput $ M.RenameError "Incorrect File Name"
+     else checkList name r.selectedContent) `E.andThen` \_ ->
+    toInput $ M.RenameChanged name
 
-renameItemClicked :: forall e. String -> String -> 
+renameItemClicked :: forall e. String -> String ->
                      E.EventHandler (E.Event (FileAppEff e) M.Input)
 renameItemClicked target dir = pure $ do
-  (pure $ M.SetRenameSelected dir) `E.andThen` \_ -> do
+  (toInput $ M.SetRenameSelected dir) `E.andThen` \_ -> do
     items <- liftAff $ Api.listing dir
     let list = _.name <$> items
-    (pure $ M.RenameSelectedContent list) `E.andThen` \_ ->
-      checkList target list 
+    (toInput $ M.RenameSelectedContent list) `E.andThen` \_ ->
+      checkList target list
 
-checkList :: forall e. String -> [String] -> E.Event (FileAppEff e) M.Input 
+checkList :: forall e. String -> [String] -> E.Event (FileAppEff e) M.Input
 checkList target list =
-  pure case A.elemIndex target list of 
+  toInput case A.elemIndex target list of
     -1 -> M.RenameError ""
     _ ->  M.RenameError "Item with such name exists in target folder"

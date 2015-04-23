@@ -13,6 +13,3 @@ import View.File (view)
 
 app :: forall p e. Component p (Event (FileAppEff e)) Input Input
 app = component (view handler <$> stateful initialState inner)
-
-
-

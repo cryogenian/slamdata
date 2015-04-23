@@ -16,10 +16,12 @@ import Model.Item
 import Model.Search
 import Model.Breadcrumb
 
--- | Input messages 
-data Input
+type Input = Either Unit Input1
+
+-- | Input messages
+data Input1
   = Sorting Sort
-  | ItemsUpdate [Item] Sort 
+  | ItemsUpdate [Item] Sort
   | ItemHover Number Boolean
   | ItemSelect Number Boolean
   | ItemAdd Item
@@ -40,18 +42,18 @@ data Input
   | RenameError String
   | RenameIncorrect Boolean
   | RenameSelectedContent [String]
-    
--- | Request Messages 
+
+-- | Request Messages
 data Request
   = GoToRoute String
   | SetSort Sort
   | SearchChange Search String String
   | SearchClear Boolean Search
-  | Breadcrumb Breadcrumb 
+  | Breadcrumb Breadcrumb
   | SearchSubmit Search String
   | Open Item
   | Delete Item
-  | Share Item 
+  | Share Item
   | Move Item
   | Configure Item
   | CreateNotebook State
@@ -82,9 +84,9 @@ initialRenameDialog item = {
   error: "",
   selectedContent: []}
 
-data DialogResume 
+data DialogResume
   = RenameDialog RenameDialogRec
-  | ConfigureDialog 
+  | ConfigureDialog
   | MountDialog
   | ShareDialog String
 
@@ -101,7 +103,7 @@ instance eqDialogResume :: Eq DialogResume where
   (==) (ShareDialog s) (ShareDialog s') = s == s'
   (==) _ _ = false
   (/=) a b = not $ a == b
-  
+
 
 -- | Application state
 type State = {

@@ -1,15 +1,17 @@
 module View.File (view) where
 
-import Control.Alternative (Alternative)
-import Control.Functor (($>))
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Aff.Class (liftAff)
-import Control.Monad.Aff
-import Control.Apply ((*>))
 import Control.Alt ((<|>))
+import Control.Alternative (Alternative)
+import Control.Apply ((*>))
+import Control.Functor (($>))
+import Control.Inject1 (inj)
+import Control.Monad.Aff
+import Control.Monad.Aff.Class (liftAff)
+import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
-import Data.Maybe (Maybe(..), maybe)
+import Controller.File
 import Data.Array ((..), length, zipWith)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
 import Data.Tuple (Tuple(..))
 import Model.Breadcrumb
@@ -18,11 +20,8 @@ import Model.Item
 import Model.Path
 import Model.Resource
 import Model.Sort
-import View.File.Modal
-import Controller.File
 import Utils.Halide (targetLink', readonly)
-import qualified Utils as U
-import qualified Config as Config
+import View.File.Modal
 import qualified Data.StrMap as SM
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -31,9 +30,8 @@ import qualified Halogen.HTML.Events.Forms as E
 import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
-
+import qualified Utils as U
 import qualified View.Css as Vc
-import qualified Config as Config
 
 homeHash :: String
 homeHash = "#?sort=asc&q=path%3A%2F&salt="
@@ -69,8 +67,8 @@ search handler state =
                          [ H.input [ A.classes [B.formControl]
                                    , A.value state.search.value
                                    , A.title state.search.value
-                                   , E.onFocus (E.input_ $ Focus true)
-                                   , E.onBlur (E.input_ $ Focus false)
+                                   , E.onFocus (E.input_ $ inj $ Focus true)
+                                   , E.onBlur (E.input_ $ inj $ Focus false)
                                    , E.onInput (\v -> pure $ handler $ SearchChange state.search v state.path)
                                    ]
                                    []
@@ -172,8 +170,8 @@ toolItem classes actionArg action title icon =
 item :: forall p m. (Alternative m) => (Request -> m Input) -> Boolean -> Number -> Item -> H.HTML p (m Input)
 item handler searching ix state =
   H.div [ A.classes ([B.listGroupItem] ++ if state.selected then [B.listGroupItemInfo] else mempty)
-        , E.onMouseOver (E.input_ $ ItemHover ix true)
-        , E.onClick (E.input_ $ ItemSelect ix true)
+        , E.onMouseOver (E.input_ $ inj $ ItemHover ix true)
+        , E.onClick (E.input_ $ inj $ ItemSelect ix true)
         , E.onDoubleClick (\_ -> pure $ handler $ Open state)
         ]
         [ H.div [ A.class_ B.row ]
