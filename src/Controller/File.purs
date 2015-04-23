@@ -251,47 +251,6 @@ selectThis :: forall e o. Et.Event (|o) ->
 selectThis ev =
   pure $ (E.async $ Aff.makeAff \_ _ -> U.select ev.target)
 
-import Debug.Foreign
-
-rename :: forall e. Mi.Item -> String ->
-          E.EventHandler (E.Event (FileAppEff e) M.Input)
-rename item dest = pure do
-  let o = fprintUnsafe dest
-      move :: Aff.Aff (FileAppEff e) String
-      move = Api.moveItem item dest
-  errorString <- liftAff $ move
-  (toInput $ RenameError errorString) `E.andThen` \_ -> do
-    case errorString of
-      "" -> do liftEff U.reload
-               empty
-      _ -> empty
-
-checkRename :: forall e. String -> RenameDialogRec ->
-               E.EventHandler (E.Event (FileAppEff e) M.Input)
-checkRename name r = pure do
-  if name == ""
-    then toInput $ RenameError "Please, enter new name"
-    else
-    (if Str.indexOf "/" name /= -1
-     then toInput $ RenameError "Incorrect File Name"
-     else checkList name r.selectedContent) `E.andThen` \_ ->
-    toInput $ RenameChanged name
-
-renameItemClicked :: forall e. String -> String ->
-                     E.EventHandler (E.Event (FileAppEff e) M.Input)
-renameItemClicked target dir = pure $ do
-  (toInput $ SetRenameSelected dir) `E.andThen` \_ -> do
-    items <- liftAff $ Api.listing dir
-    let list = _.name <$> items
-    (toInput $ RenameSelectedContent list) `E.andThen` \_ ->
-      checkList target list
-
-checkList :: forall e. String -> [String] -> E.Event (FileAppEff e) M.Input
-checkList target list =
-  toInput case A.elemIndex target list of
-    -1 -> RenameError ""
-    _ ->  RenameError "Item with such name exists in target folder"
-
 breadcrumbClicked :: forall e. Breadcrumb -> E.Event (FileAppEff e) M.Input
 breadcrumbClicked b = do
   liftEff $ Rh.modifyHash $ Cd.updatePath b.link

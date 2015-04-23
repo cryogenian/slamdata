@@ -3,7 +3,7 @@ module View.File.Modal.RenameDialog where
 import Control.Apply ((*>))
 import Control.Functor (($>))
 import Control.Inject1 (inj)
-import Controller.File
+import Controller.File.Rename
 import Data.Maybe
 import EffectTypes
 import Model.File
