@@ -1,7 +1,6 @@
--- | Input, output messages and state for file component
-module Model.DialogResume where
+module Model.File.Dialog where
 
-import Model.Item
+import Model.File.Item
 
 type RenameDialogRec = {
   showList :: Boolean,
@@ -25,13 +24,13 @@ initialRenameDialog item = {
   error: "",
   selectedContent: []}
 
-data DialogResume
+data Dialog
   = RenameDialog RenameDialogRec
   | ConfigureDialog
   | MountDialog
   | ShareDialog String
 
-instance eqDialogResume :: Eq DialogResume where
+instance eqDialog :: Eq Dialog where
   (==) (RenameDialog r) (RenameDialog r') =
     r.showList == r'.showList &&
     r.item.name == r'.item.name &&

@@ -1,15 +1,15 @@
-module Model.Resume where
+module Model.Action where
 
 import Data.Either
 
-data Resume = View | Edit
+data Action = View | Edit
 
-string2resume :: String -> Either String Resume
-string2resume "view" = Right View
-string2resume "edit" = Right Edit
-string2resume _ = Left "incorrect resume string"
+string2action :: String -> Either String Action
+string2action "view" = Right View
+string2action "edit" = Right Edit
+string2action _ = Left "incorrect action string"
 
-instance resumeEq :: Eq Resume where
+instance resumeEq :: Eq Action where
   (==) View View = true
   (==) Edit Edit = true
   (==) _ _ = false

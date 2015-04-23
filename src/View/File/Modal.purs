@@ -1,15 +1,16 @@
-module View.File.Modal where
+module View.File.Modal (modal) where
 
 import Control.Functor (($>))
 import Control.Inject1 (inj)
-import Control.Plus
+import Control.Plus (empty)
 import Data.Maybe (Maybe(..), maybe)
-import EffectTypes
-import Model.File
-import Model.DialogResume
-import View.File.Modal.Common
-import View.File.Modal.RenameDialog
-import View.File.Modal.ShareDialog
+import EffectTypes (FileAppEff())
+import Input.File (Input(), FileInput(SetDialog))
+import Model.File.Dialog (Dialog(..))
+import Model.File (State())
+import View.File.Modal.Common (header, h4, body, footer)
+import View.File.Modal.RenameDialog (renameDialog)
+import View.File.Modal.ShareDialog (shareDialog)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
@@ -30,20 +31,19 @@ modal state =
                 ]
         ]
 
-    where
+modalContent :: forall p e. Maybe Dialog -> [H.HTML p (E.Event (FileAppEff e) Input)]
+modalContent Nothing = []
+modalContent (Just dialog) = dialogContent dialog
 
-    modalContent :: Maybe DialogResume -> [H.HTML p (_ Input)]
-    modalContent Nothing = []
-    modalContent (Just dialog) = dialogContent dialog
+dialogContent :: forall p e. Dialog -> [H.HTML p (E.Event (FileAppEff e) Input)]
+dialogContent (ShareDialog url) = shareDialog url
+dialogContent (RenameDialog dialog) = renameDialog dialog
+dialogContent MountDialog = emptyDialog "Mount"
+dialogContent ConfigureDialog = emptyDialog "Configure"
 
-    dialogContent :: DialogResume -> [H.HTML p (_ Input)]
-    dialogContent (ShareDialog url) = shareDialog url
-    dialogContent (RenameDialog dialog) = renameDialog dialog
-    dialogContent MountDialog = emptyDialog "Mount"
-    dialogContent ConfigureDialog = emptyDialog "Configure"
-
-    emptyDialog :: forall i. String -> [H.HTML p i]
-    emptyDialog title = [ header $ h4 title
-                        , body []
-                        , footer []
-                        ]
+emptyDialog :: forall p i. String -> [H.HTML p i]
+emptyDialog title =
+    [ header $ h4 title
+    , body []
+    , footer []
+    ]

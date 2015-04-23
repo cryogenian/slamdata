@@ -1,9 +1,12 @@
-module Input.File.Search where
+module Input.File.Search
+  ( SearchInput(..)
+  , inputSearch
+  ) where
 
 import Control.Timer (Timeout())
 import Data.Either (either)
 import Data.Maybe (Maybe(..))
-import Model.Search
+import Model.Search (Search())
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Printer (strQuery)
 

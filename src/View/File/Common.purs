@@ -1,8 +1,8 @@
 module View.File.Common where
 
 import Control.Alternative (Alternative)
+import Input.File (Input())
 import EffectTypes (FileAppEff ())
-import Model.File (Input())
 import Utils.Halide (targetLink')
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A

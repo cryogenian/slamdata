@@ -1,8 +1,11 @@
-module Input.File.Rename where
+module Input.File.Rename
+  ( RenameInput(..)
+  , inputRename
+  ) where
 
 import Data.Array (sort, nub)
 import Data.String (length)
-import Model.DialogResume
+import Model.File.Dialog (Dialog(RenameDialog))
 
 data RenameInput
   = RenameChanged String
@@ -12,7 +15,7 @@ data RenameInput
   | SetRenameSelected String
   | AddRenameDirs [String]
 
-inputRename :: DialogResume -> RenameInput -> DialogResume
+inputRename :: Dialog -> RenameInput -> Dialog
 inputRename (RenameDialog d) input = RenameDialog $ case input of
 
   RenameChanged newVal ->

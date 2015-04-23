@@ -1,14 +1,14 @@
 -- | Module handles outer messages to `halogen` application
 -- | Mostly consists of routing functions
-module Driver.File (
-  outside,
-  getPath,
-  searchPath,
-  updateSort,
-  updateQ,
-  updateSalt,
-  setSort,
-  updatePath
+module Driver.File
+  ( outside
+  , getPath
+  , searchPath
+  , updateSort
+  , updateQ
+  , updateSalt
+  , setSort
+  , updatePath
   ) where
 
 import Control.Alt
@@ -27,7 +27,8 @@ import Data.Monoid.First
 import Data.Semiring.Free
 import Data.Traversable
 import Data.Tuple
-import EffectTypes
+import EffectTypes (FileAppEff(), FileComponentEff())
+import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..))
 import Input.File.Search (SearchInput(..))
 import Optic.Core
@@ -42,9 +43,9 @@ import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
 import qualified Halogen as Hl
 import qualified Model.File as M
-import qualified Model.Item as Mi
+import qualified Model.File.Item as Mi
+import qualified Model.File.Resource as Mr
 import qualified Model.Path as Mp
-import qualified Model.Resource as Mr
 import qualified Model.Sort as Ms
 import qualified Network.HTTP.Affjax as Af
 import qualified Routing as R
@@ -58,7 +59,7 @@ import qualified Utils as U
 
 
 -- | Entry, used in `halogen` app
-outside :: forall e. Hl.Driver M.Input (FileComponentEff e) ->
+outside :: forall e. Hl.Driver Input (FileComponentEff e) ->
            Eff (FileAppEff e) Unit
 outside driver = handleRoute driver
 
@@ -87,7 +88,7 @@ routing = salted <|> bothRoute <|> oneRoute <|> index
 
 -- | Stream of routes
 handleRoute :: forall e.
-               Hl.Driver M.Input (FileComponentEff e) ->
+               Hl.Driver Input (FileComponentEff e) ->
                Eff (FileAppEff e) Unit
 handleRoute driver =
   Aff.launchAff $ do
@@ -105,15 +106,15 @@ handleRoute driver =
         Tuple c _ <- A.takeVar var
         Aff.cancel c $ error "cancel search"
         A.putVar var initialAVar
-        liftEff (driver $ inj $ M.Loading false)
+        liftEff (driver $ inj $ Loading false)
         if newPage then do
           let path = Mp.cleanPath $ fromMaybe "/" $ searchPath query
           liftEff $ do
-            driver $ inj $ M.Loading true
-            driver $ inj $ M.SetPath path
+            driver $ inj $ Loading true
+            driver $ inj $ SetPath path
             driver $ inj $ SearchSet (Mp.hidePath path $ S.strQuery query)
-            driver $ inj $ M.ItemsUpdate [] sort
-            driver $ inj $ M.SetSearching (isSearchQuery query)
+            driver $ inj $ ItemsUpdate [] sort
+            driver $ inj $ SetSearching (isSearchQuery query)
           listPath query 0 var path
           else do
           pure unit
@@ -159,7 +160,7 @@ handleRoute driver =
               Tuple c r <- A.takeVar var
               if (foldl (+) 0 $ M.values r) == 0 then do
                 liftEff do
-                  driver $ inj $ M.Loading false
+                  driver $ inj $ Loading false
                 A.putVar var initialAVar
                 else
                 A.putVar var (Tuple c r)

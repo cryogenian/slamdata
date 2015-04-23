@@ -1,24 +1,22 @@
 module Controller.File.Rename where
 
-import Control.Plus (empty)
 import Control.Inject1 (Inject1, inj)
 import Control.Monad.Aff (Aff())
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Plus (empty)
+import Controller.File.Common (toInput)
 import Data.Array (elemIndex)
 import Data.String (indexOf)
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Handler (EventHandler())
 import Halogen.HTML.Events.Monad (Event(), andThen)
+import Input.File (Input())
 import Input.File.Rename (RenameInput(..))
-import Model.DialogResume
-import Model.File
-import Model.Item
+import Model.File.Dialog (RenameDialogRec())
+import Model.File.Item (Item())
 import Utils (reload)
 import qualified Api.Fs as Api
-
-toInput :: forall m a b. (Applicative m, Inject1 a b) => a -> m b
-toInput = pure <<< inj
 
 rename :: forall e. Item -> String -> EventHandler (Event (FileAppEff e) Input)
 rename item dest = pure do

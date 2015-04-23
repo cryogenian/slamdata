@@ -29,4 +29,7 @@ notebookExtension :: String
 notebookExtension = ".slam"
 
 newNotebookName :: String
-newNotebookName = "Untitled Notebook" <> notebookExtension 
+newNotebookName = "Untitled Notebook" <> notebookExtension
+
+homeHash :: String
+homeHash = "#?sort=asc&q=path%3A%2F&salt="

@@ -1,33 +1,16 @@
 module View.File (view) where
 
-import Control.Alt ((<|>))
-import Control.Alternative (Alternative)
-import Control.Apply ((*>))
-import Control.Functor (($>))
-import Control.Inject1 (inj)
-import Control.Monad.Aff
-import Control.Monad.Aff.Class (liftAff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Plus (empty)
-import Controller.File
-import Data.Array ((..), length, zipWith)
-import Data.Maybe (Maybe(..), maybe)
-import Data.Monoid (mempty)
+import Controller.File (handleSetSort)
 import Data.Tuple (Tuple(..))
-import Input.File.Item (ItemInput(..))
-import Model.Breadcrumb
-import Model.File
-import Model.Item
-import Model.Path
-import Model.Resource
-import Model.Sort
-import Utils.Halide (targetLink', readonly)
-import View.File.Common
-import View.File.Modal
+import Model.File (State())
+import Model.Sort (Sort(Asc, Desc), notSort)
+import Utils.Halide (targetLink')
 import View.File.Breadcrumb (breadcrumbs)
+import View.File.Common (I(), glyph)
 import View.File.Item (items)
+import View.File.Modal (modal)
 import View.File.Search (search)
-import EffectTypes
+import View.File.Toolbar (toolbar)
 import qualified Data.StrMap as SM
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -36,82 +19,7 @@ import qualified Halogen.HTML.Events.Forms as E
 import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
-import qualified Utils as U
 import qualified View.Css as Vc
-
-homeHash :: String
-homeHash = "#?sort=asc&q=path%3A%2F&salt="
-
-icon :: forall p i. H.HTML p i
-icon = H.div [ A.classes [ B.colXs1, Vc.navIcon ] ]
-             [ H.a [ A.href homeHash
-                   , A.classes [B.navbarBrand, Vc.logo]
-                   ]
-                   [ glyph B.glyphiconFolderOpen ]
-             ]
-
-logo :: forall p i. H.HTML p i
-logo = H.div [ A.classes [ B.colXs3, Vc.navLogo ] ]
-             [ H.a [ A.href Config.slamDataHome
-                   , A.classes [B.navbarBrand, Vc.logo]
-                   ]
-                   [ H.img [A.src "img/logo.svg"]
-                           []
-                   ]
-             ]
-
-sorting :: forall p e. State -> H.HTML p (I e)
-sorting state =
-  H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
-        [ H.a (targetLink' $ handleSetSort $ notSort state.sort)
-              [ H.text "Name"
-              , H.i [ chevron state
-                    , A.style (A.styles $ SM.fromList [Tuple "margin-left" "10px"])
-                    ]
-                    []
-              ]
-        ]
-  where
-  chevron { sort: Asc  } = A.classes [B.glyphicon, B.glyphiconChevronUp]
-  chevron { sort: Desc } = A.classes [B.glyphicon, B.glyphiconChevronDown]
-
-toolbar :: forall p e. State -> H.HTML p (I e)
-toolbar state =
-  H.div [ A.classes [B.colXs4, Vc.toolbarMenu] ]
-        [ H.ul [ A.classes [B.listInline, B.pullRight] ]
-               if inRoot state then [mount] else [file, folder, mount, notebook]
-        ]
-  where
-  file :: H.HTML p (I e)
-  file = H.li_ [ H.a [ A.href "javascript:void(0);"
-                     , E.onClick (\ev -> pure $ handleUploadFile ev.target state)
-                     ]
-                     [ H.i [ A.title "upload file"
-                           , A.classes [B.btnLg, B.glyphicon, B.glyphiconFile]
-                           ]
-                           [ H.input [ A.class_ B.hidden
-                                     , A.type_ "file"
-                                     , E.onChange (\ev -> pure $ handleFileListChanged ev.target state)
-                                     ]
-                                     []
-                           ]
-                     ]
-               ]
-
-  folder :: H.HTML p (I e)
-  folder = toolItem' handleCreateFolder "create folder" B.glyphiconFolderClose
-
-  notebook :: H.HTML p (I e)
-  notebook = toolItem' handleCreateNotebook "create notebook" B.glyphiconBook
-
-  mount :: H.HTML p (I e)
-  mount = toolItem' handleMountDatabase "mount database" B.glyphiconHdd
-
-  toolItem' :: (State -> I e) -> String -> A.ClassName -> H.HTML p (I e)
-  toolItem' f = toolItem [B.btnLg] state f
-
-  inRoot :: State -> Boolean
-  inRoot state = state.path == "" || state.path == "/"
 
 view :: forall p e. State -> H.HTML p (I e)
 view state =
@@ -127,20 +35,52 @@ view state =
                    ]
          , modal state
          ]
-  where
 
+navbar :: forall p e. [H.HTML p (I e)] -> H.HTML p (I e)
+navbar = H.nav [ A.classes [B.navbar, B.navbarInverse, B.navbarFixedTop] ]
+
+icon :: forall p i. H.HTML p i
+icon = H.div [ A.classes [ B.colXs1, Vc.navIcon ] ]
+             [ H.a [ A.href Config.homeHash
+                   , A.classes [B.navbarBrand, Vc.logo]
+                   ]
+                   [ glyph B.glyphiconFolderOpen ]
+             ]
+
+logo :: forall p i. H.HTML p i
+logo = H.div [ A.classes [ B.colXs3, Vc.navLogo ] ]
+             [ H.a [ A.href Config.slamDataHome
+                   , A.classes [B.navbarBrand, Vc.logo]
+                   ]
+                   [ H.img [A.src "img/logo.svg"]
+                           []
+                   ]
+             ]
+
+content :: forall p e. [H.HTML p (I e)] -> H.HTML p (I e)
+content nodes = H.div [ A.class_ B.container ]
+                      [ row [ H.div [ A.classes contentClasses ]
+                                    nodes
+                            ]
+                      ]
+  where
   contentClasses :: [A.ClassName]
   contentClasses = [B.colMd8, B.colMdOffset2, B.colSm10, B.colSmOffset1]
 
-  content :: [H.HTML p (I e)] -> H.HTML p (I e)
-  content nodes = H.div [ A.class_ B.container ]
-                        [ row [ H.div [ A.classes contentClasses ]
-                                      nodes
-                              ]
-                        ]
+row :: forall p e. [H.HTML p (I e)] -> H.HTML p (I e)
+row = H.div [ A.class_ B.row ]
 
-  row :: [H.HTML p (I e)] -> H.HTML p (I e)
-  row = H.div [ A.class_ B.row ]
-
-  navbar :: [H.HTML p (I e)] -> H.HTML p (I e)
-  navbar = H.nav [ A.classes [B.navbar, B.navbarInverse, B.navbarFixedTop] ]
+sorting :: forall p e. State -> H.HTML p (I e)
+sorting state =
+  H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
+        [ H.a (targetLink' $ handleSetSort $ notSort state.sort)
+              [ H.text "Name"
+              , H.i [ chevron state
+                    , A.style (A.styles $ SM.fromList [Tuple "margin-left" "10px"])
+                    ]
+                    []
+              ]
+        ]
+  where
+  chevron { sort: Asc  } = A.classes [B.glyphicon, B.glyphiconChevronUp]
+  chevron { sort: Desc } = A.classes [B.glyphicon, B.glyphiconChevronDown]

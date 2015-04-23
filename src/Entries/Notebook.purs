@@ -1,7 +1,6 @@
 module Entries.Notebook where
 
 import App.Notebook (app)
-import Control.Monad.Eff (Eff())
 import Data.Tuple (Tuple(..))
 import Halogen (runUI)
 import Utils (onLoad, append, bodyNode, convertToElement)

@@ -1,10 +1,11 @@
 module View.File.Search where
 
 import Control.Inject1 (inj)
-import Controller.File.Search
+import Controller.File.Search (handleSearchSubmit, handleSearchChange, handleSearchClear)
 import Data.Monoid (mempty)
-import Model.File
-import View.File.Common
+import Input.File (FileInput(Focus))
+import Model.File (State())
+import View.File.Common (I(), glyph)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E

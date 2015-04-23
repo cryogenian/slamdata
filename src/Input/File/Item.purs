@@ -3,10 +3,10 @@ module Input.File.Item
   , inputItem
   ) where
 
+import Data.Array ((!!), filter, sortBy, updateAt)
 import Data.Maybe (maybe)
-import Model.Item
-import Model.Sort
-import qualified Data.Array as A
+import Model.File.Item (Item(), sortItem)
+import Model.Sort (Sort())
 
 data ItemInput
   = ItemAdd Item
@@ -22,7 +22,7 @@ inputItem sort searching items input = case input of
     resort sort searching $ item : items
 
   ItemRemove item ->
-    resort sort searching $ A.filter (\x -> not $ x.name == item.name && x.root == item.root) items
+    resort sort searching $ filter (\x -> not $ x.name == item.name && x.root == item.root) items
 
   ItemHover ix h ->
     modify (flip _ { hovered = _ }) items ix
@@ -31,10 +31,10 @@ inputItem sort searching items input = case input of
     modify (flip _ { selected = _ }) items ix
 
 resort :: Sort -> Boolean -> [Item] -> [Item]
-resort sort searching = A.sortBy (sortItem searching sort)
+resort sort searching = sortBy (sortItem searching sort)
 
 modify :: (Boolean -> Item -> Item) -> [Item] -> Number -> [Item]
 modify func items ix =
   let unmodify = func false <$> items
-      el = func true <$> unmodify A.!! ix
-  in maybe unmodify (\el' -> A.updateAt ix el' unmodify) el
+      el = func true <$> unmodify !! ix
+  in maybe unmodify (\el' -> updateAt ix el' unmodify) el

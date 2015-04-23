@@ -7,10 +7,11 @@ import Controller.File.Rename
 import Data.Maybe
 import EffectTypes
 import Model.File
-import Model.DialogResume
+import Model.File.Dialog
+import Input.File (FileInput(SetDialog))
 import Input.File.Rename (RenameInput(..))
+import View.File.Common (I())
 import View.File.Modal.Common
-import qualified Config as Config
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
 import qualified Halogen.HTML as H
@@ -22,8 +23,7 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
 
-renameDialog :: forall p e. RenameDialogRec ->
-                [H.HTML p (E.Event (FileAppEff e) Input)]
+renameDialog :: forall p e. RenameDialogRec -> [H.HTML p (I e)]
 renameDialog dialog =
   [ header $ h4 "Rename"
   , body
@@ -72,7 +72,7 @@ renameDialog dialog =
   ]
   where
 
-  renameItem :: forall i. String -> String -> H.HTML p (_ Input)
+  renameItem :: forall i. String -> String -> H.HTML p (I e)
   renameItem target dir =
     H.a [ A.href "#"
         , E.onClick (\_ -> E.preventDefault *> renameItemClicked target dir)
