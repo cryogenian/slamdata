@@ -5,26 +5,26 @@ import Data.List
 import qualified Data.String as Str
 
 import Data.Argonaut.Combinators
-import qualified Data.Argonaut.Core as Ac 
+import qualified Data.Argonaut.Core as Ac
 import qualified Data.Argonaut.Decode as Ad
 import qualified Data.Argonaut.Encode as Ae
 import qualified Data.Argonaut.Printer as Ap
 import qualified Network.HTTP.Affjax.Request as Ar
 
 
-import Model.Resume
+import Model.Action
 
 data Input
   = ViewNotebook String (List CellState)
   | EditNotebook String (List CellState)
   | ViewCell CellState
   | EditCell CellState
-    
+
 data Request = Request
 
 data State
-  = OneCellView Resume CellState
-  | NotebookView Resume String (List CellState)
+  = OneCellView Action CellState
+  | NotebookView Action String (List CellState)
 
 
 type CellState = {id :: String}
@@ -40,7 +40,7 @@ type CellId = String
 
 string2cellId :: String -> Either String CellId
 string2cellId "" = Left "incorrect cellid"
-string2cellId a = Right a 
+string2cellId a = Right a
 
 data CellType
   = Evaluate
@@ -61,7 +61,7 @@ newtype Notebook = Notebook {
   metadata :: String,
   cells :: [Cell]
   }
-                   
+
 newNotebook :: Notebook
 newNotebook = Notebook {
   metadata: "",
@@ -75,10 +75,10 @@ instance cellTypeEncode :: Ae.EncodeJson CellType where
     Search -> "search"
     Query -> "query"
     Visualize -> "visualize"
-    Markdown -> "markdown" 
+    Markdown -> "markdown"
 
 instance cellEncode :: Ae.EncodeJson Cell where
-  encodeJson (Cell cell) 
+  encodeJson (Cell cell)
     =  "input" := cell.input
     ~> "output" := cell.output
     ~> "cellType" := cell.cellType
@@ -86,10 +86,10 @@ instance cellEncode :: Ae.EncodeJson Cell where
     ~> Ac.jsonEmptyObject
 
 instance notebookEncode :: Ae.EncodeJson Notebook where
-  encodeJson (Notebook {metadata: metadata, cells: cells}) 
+  encodeJson (Notebook {metadata: metadata, cells: cells})
     =  "metadata" := metadata
     ~> "cells" := cells
-    ~> Ac.jsonEmptyObject 
+    ~> Ac.jsonEmptyObject
 
 
 instance notebookRequestable :: Ar.Requestable Notebook where

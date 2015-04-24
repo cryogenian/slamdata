@@ -1,18 +1,21 @@
 module View.File.Modal.ShareDialog where
 
+import Control.Inject1 (inj)
+import Controller.File (selectThis)
 import Data.Maybe
-import Model.File
 import EffectTypes
+import Input.File (FileInput(SetDialog))
+import Model.File
+import Utils.Halide (readonly)
+import View.File.Common (I())
+import View.File.Modal.Common
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
-import Utils.Halide (readonly)
-import Controller.File (selectThis)
-import View.File.Modal.Common
 
-shareDialog :: forall p e. String -> [H.HTML p (E.Event (FileAppEff e) Input)]
+shareDialog :: forall p e. String -> [H.HTML p (I e)]
 shareDialog url =
   [ header $ h4 "URL"
   , body [ H.form_ [ H.div [ A.classes [B.formGroup]
@@ -29,7 +32,7 @@ shareDialog url =
          ]
   , footer [ H.button [ A.id_ "copy-button"
                       , A.classes [B.btn, B.btnPrimary]
-                      , E.onClick (E.input_ $ SetDialog Nothing)
+                      , E.onClick (E.input_ $ inj $ SetDialog Nothing)
                       ]
                       [ H.text "Copy" ]
            ]

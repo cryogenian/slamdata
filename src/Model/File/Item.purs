@@ -1,18 +1,10 @@
-module Model.Item where
+module Model.File.Item where
 
-import Data.Maybe
-import Control.Timer (Timeout())
-import Data.Foreign
-import Data.Foreign.Class
-import qualified Data.String.Regex as Rgx
-import qualified Data.String as Str
-import qualified Network.HTTP.Affjax.Request as Ar
+import Data.String (indexOf)
+import Model.File.Resource (Resource(..))
+import Model.Path (encodeURIPath)
+import Model.Sort (Sort(..))
 import Utils (trimQuotes)
-
-
-import Model.Sort
-import Model.Resource
-import Model.Path
 
 -- | Item in list
 
@@ -27,14 +19,14 @@ type Item = {
 
 itemPath :: Item -> String
 itemPath item = (encodeURIPath $
-                leadingSlash $ 
+                leadingSlash $
                 trimQuotes item.root <> trimQuotes item.name) <>
                 (if item.resource == Directory ||
                     item.resource == Database then "/" else  "")
   where leadingSlash input =
-          if Str.indexOf "/" input == 0 then
+          if indexOf "/" input == 0 then
             input
-            else "/" <> input 
+            else "/" <> input
 
 -- | link to upper directory
 up :: String
@@ -51,7 +43,7 @@ initItem = {
   phantom: false
   }
 
--- | upper directory 
+-- | upper directory
 upLink :: Item
 upLink = initItem{name = ".."}
 
@@ -83,6 +75,3 @@ sortItem full dir a b =
           if full
           then \x -> x.root <> x.name
           else _.name
-
-
-

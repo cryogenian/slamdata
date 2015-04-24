@@ -1,10 +1,9 @@
--- | Resource tag for item 
-module Model.Resource where
+-- | Resource tag for item
+module Model.File.Resource where
 
-import Data.Foreign.Class
-import Data.Either
-import Data.Foreign
-import Network.HTTP.Affjax.Response 
+import Data.Either (Either(..))
+import Data.Foreign (ForeignError(TypeMismatch))
+import Data.Foreign.Class (IsForeign, read)
 
 data Resource = File | Database | Notebook | Directory | Table
 
@@ -29,11 +28,11 @@ resource2str r = case r of
 -- | will be `EncodeJson`
 instance resourceIsForeign :: IsForeign Resource where
   read f = do
-    str <- read f 
+    str <- read f
     case str of
       "file" -> pure File
       "mount" -> pure Database
-      "notebook" -> pure Notebook 
+      "notebook" -> pure Notebook
       "directory" -> pure Directory
       "table" -> pure Table
       _ -> Left $ TypeMismatch "resource" "string"

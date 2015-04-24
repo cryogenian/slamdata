@@ -5,7 +5,7 @@ import Data.List
 import Control.Alt
 import Control.Apply
 import Control.Monad.Eff
-import Model.Resume
+import Model.Action
 
 import qualified Utils as U
 import qualified Data.String as Str
@@ -18,14 +18,14 @@ import qualified Routing.Hash as R
 import qualified Model.Notebook as M
 import qualified Model.Path as M
 
-data Routes 
-  = Cell M.Path M.CellId Resume
-  | Notebook M.Path Resume 
+data Routes
+  = Cell M.Path M.CellId Action
+  | Notebook M.Path Action
 
 routing :: R.Match Routes
-routing = Cell <$> notebook <*> (R.lit "cells" *> cellId) <*> resume
+routing = Cell <$> notebook <*> (R.lit "cells" *> cellId) <*> action
           <|>
-          Notebook <$> notebook <*> resume
+          Notebook <$> notebook <*> action
   where notebook = M.Path <$> (oneSlash *> (R.list notName)) <*> name
         oneSlash = R.lit ""
         notebookName input =
@@ -35,24 +35,24 @@ routing = Cell <$> notebook <*> (R.lit "cells" *> cellId) <*> resume
         pathPart input =
           if input == "" || Str.indexOf ".slam" input /= -1 then
             Left "incorrect path part"
-          else Right input 
-               
+          else Right input
+
         name = R.eitherMatch (notebookName <$> R.str)
         notName = R.eitherMatch (pathPart <$> R.str)
 
-        resume = (R.eitherMatch (string2resume <$> R.str)) <|> pure View
+        action = (R.eitherMatch (string2action <$> R.str)) <|> pure View
         cellId = R.eitherMatch (M.string2cellId <$> R.str)
 
 -- Mock
 driver :: forall e. H.Driver M.Input e -> Eff (H.HalogenEffects e) Unit
 driver k =
   R.matches' M.decodeURIPath routing \old new -> do
-    case new of 
+    case new of
       Cell path id View -> k $ M.ViewCell (cell path id)
       Cell path id Edit -> k $ M.EditCell (cell path id)
       Notebook path View -> k $ M.ViewNotebook (M.path2str path) (cells path)
       Notebook path Edit -> k $ M.EditNotebook (M.path2str path) (cells path)
-                            
+
   where cell path id = {id: M.path2str path <> ":" <> id}
         cells path =
           (Cons (cell path "3")
