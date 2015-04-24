@@ -12,12 +12,11 @@ dataUrl = "/data/fs/"
 notebookUrl :: String
 notebookUrl = "/notebook.html"
 
-
 searchTimeout :: Number
 searchTimeout = 500
 
 slamDataHome :: String
-slamDataHome = "http://slamdata.com"
+slamDataHome = "/"
 
 userEnabled :: Boolean
 userEnabled = false
