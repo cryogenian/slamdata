@@ -7,9 +7,28 @@ import qualified Data.String.Regex as Rgx
 
 data Path = Path (List String) String
 
+emptyPath :: Path
+emptyPath = Path Nil ""
+
+getName :: Path -> String
+getName (Path _ name) = name
+
+parent :: Path -> Path
+parent (Path dir name) =
+  case reverse dir of
+    Cons p t -> Path (reverse t) p
+    Nil -> Path Nil ""
+
+
+updateName :: String -> Path -> Path
+updateName name (Path ps _) = Path ps name
+
 path2str :: Path -> String
-path2str (Path lst name) =
-  "/" <> (Str.joinWith "/" $ toArray lst) <> "/" <> name
+path2str (Path lst name) = Rgx.replace rgx "/" strpath
+  where
+  strpath = 
+    "/" <> (Str.joinWith "/" $ toArray $  lst) <> "/" <> name
+  rgx = Rgx.regex "(/+)" Rgx.noFlags{global = true}
 
 
 decodeURIPath :: String -> String

@@ -1,8 +1,15 @@
 module Model.Notebook where
 
 import Data.Either
-import Data.List
-import qualified Data.String as Str
+import Data.Maybe
+import Control.Inject1 (prj, inj)
+import Halogen.HTML.Events.Monad (Event())
+import Optic.Core (lens, Lens())
+import Control.Timer (Timeout())
+import Model.Path (Path(), emptyPath)
+import Model.File.Item (Item()) 
+import EffectTypes (NotebookAppEff())
+import Model.Notebook.Menu (initialDropdowns, DropdownItem())
 
 import Data.Argonaut.Combinators
 import qualified Data.Argonaut.Core as Ac
@@ -10,30 +17,49 @@ import qualified Data.Argonaut.Decode as Ad
 import qualified Data.Argonaut.Encode as Ae
 import qualified Data.Argonaut.Printer as Ap
 import qualified Network.HTTP.Affjax.Request as Ar
+import qualified Data.StrMap as M
 
+type I e = Event (NotebookAppEff e) Input
 
-import Model.Action
+type State =
+  { dropdowns :: [DropdownItem]
+  , timeout :: Maybe Timeout
+  , path :: Path
+  , name :: String
+  , items :: [Item]
+  , loaded :: Boolean
+  , error :: String
+  , editable :: Boolean 
+  }
 
-data Input
-  = ViewNotebook String (List CellState)
-  | EditNotebook String (List CellState)
-  | ViewCell CellState
-  | EditCell CellState
+dropdowns :: forall a. Lens State State [DropdownItem] [DropdownItem]
+dropdowns = lens _.dropdowns _{dropdowns = _}
 
-data Request = Request
-
-data State
-  = OneCellView Action CellState
-  | NotebookView Action String (List CellState)
-
-
-type CellState = {id :: String}
-
-initialCell :: CellState
-initialCell = {id: ""}
 
 initialState :: State
-initialState = NotebookView View "" Nil
+initialState =
+  { dropdowns: initialDropdowns
+  , timeout: Nothing
+  , path: emptyPath
+  , name: ""
+  , items: []
+  , loaded: false
+  , error: ""
+  , editable: true
+  }
+
+data Input
+  = Dropdown Number 
+  | CloseDropdowns
+  | SetTimeout (Maybe Timeout)
+  | SetName String
+  | SetPath Path
+  | SetItems [Item]
+  | SetLoaded Boolean
+  | SetError String
+  | SetEditable Boolean
+
+
 
 type CellId = String
 
@@ -96,3 +122,4 @@ instance notebookRequestable :: Ar.Requestable Notebook where
   toRequest notebook =
     let str = Ap.printJson (Ae.encodeJson notebook) :: String
     in Ar.toRequest str
+

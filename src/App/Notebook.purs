@@ -2,9 +2,11 @@ module App.Notebook where
 
 import Halogen.Component (Component(), component)
 import Halogen.Signal (stateful)
-import Input.Notebook (updateState)
 import Model.Notebook (Input(), initialState)
+import Input.Notebook (updateState)
 import View.Notebook (view)
+import Halogen.HTML.Events.Monad (Event())
+import EffectTypes (NotebookAppEff())
 
-app :: forall p m. (Applicative m) => Component p m Input Input
+app :: forall p e. Component p (Event (NotebookAppEff e)) Input Input
 app = component $ view <$> stateful initialState updateState

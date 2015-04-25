@@ -47,6 +47,6 @@ renameItemClicked target dir = pure $ do
 
 checkList :: forall e. String -> [String] -> Event (FileAppEff e) Input
 checkList target list =
-  toInput case elemIndex target list of
-    -1 -> RenameError ""
-    _ ->  RenameError "Item with such name exists in target folder"
+  case elemIndex target list of
+    -1 -> (toInput $ RenameError "") `andThen` \_ -> toInput $ RenameIncorrect false
+    _ ->  toInput $ RenameError "Item with such name exists in target folder"
