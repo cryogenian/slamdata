@@ -58,3 +58,9 @@ itemContent = className "item-content"
 
 directoryListGroup :: ClassName
 directoryListGroup = className "directory-list-group"
+
+notebookName :: ClassName
+notebookName = className "notebook-name"
+
+notebookNav :: ClassName
+notebookNav = className "notebook-nav"

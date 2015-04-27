@@ -1,10 +1,15 @@
+html {height: 100%;}
 body {
     font-family: Ubuntu, sans-serif;
+    height: 100%;
     @media (max-width: 768px) {
         padding-top: 150px;
     }
     @media (min-width: 769px) {
         padding-top: 75px;
+    }
+    > div {
+        min-height: 100%;
     }
 }
 
@@ -140,6 +145,9 @@ input.form-control {
 }
 
 .container-fluid.nav-cont {
+    &.notebook-nav {
+        border-bottom: 1px #ccc solid;
+    }
     .nav-icon {
         a {
             font-size: 1.6em;
@@ -183,6 +191,19 @@ ol.breadcrumb {
     }
 }
 
+.notebook-name {
+    color: #f0f0f0;
+    padding-top: 16px;
+    font-size: 28px;
+    outline: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    &:hover {
+        color: #fff;
+    }
+}
+
 /* Bootstrap overloads */
 
 .breadcrumb {
@@ -206,6 +227,12 @@ ol.breadcrumb {
 .navbar.navbar-inverse {
     background-color: #262626;
     min-height: 70px;
+    .navbar-nav {
+        margin-left: 15px;
+        & > li > a {
+            color: #f0f0f0;
+        }
+    }
 }
 
 .modal.fade {

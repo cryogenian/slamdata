@@ -5,7 +5,8 @@ import Controller.File.Search (handleSearchSubmit, handleSearchChange, handleSea
 import Data.Monoid (mempty)
 import Input.File (FileInput(Focus))
 import Model.File (State())
-import View.File.Common (I(), glyph)
+import View.Common (glyph)
+import View.File.Common (I())
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E

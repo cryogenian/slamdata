@@ -18,17 +18,18 @@ import qualified Halogen.Themes.Bootstrap3 as B
 shareDialog :: forall p e. String -> [H.HTML p (I e)]
 shareDialog url =
   [ header $ h4 "URL"
-  , body [ H.form_ [ H.div [ A.classes [B.formGroup]
-                           , E.onClick selectThis
-                           ]
-                           [ H.input [
-                                     A.classes [B.formControl]
-                                     , A.value url
-                                     , readonly true
-                                     ]
-                                     []
-                           ]
+  , body [ H.form [ nonSubmit ]
+           [ H.div [ A.classes [B.formGroup]
+                   , E.onClick selectThis
                    ]
+             [ H.input [
+                  A.classes [B.formControl]
+                  , A.value url
+                  , readonly true
+                  ]
+               []
+             ]
+           ]
          ]
   , footer [ H.button [ A.id_ "copy-button"
                       , A.classes [B.btn, B.btnPrimary]

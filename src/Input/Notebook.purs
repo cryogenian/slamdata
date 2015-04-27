@@ -1,12 +1,37 @@
-module Input.Notebook where
+module Input.Notebook (updateState) where
 
-import Model.Action (Action(..))
-import Model.Notebook
+import Data.Array (modifyAt)
+import Model.Path (getName, updateName)
+import Model.Notebook (State(..), Input(..), dropdowns)
+import Optic.Core ((%~))
 
 updateState :: State -> Input -> State
-updateState state input =
-  case input of
-    ViewNotebook id cs -> NotebookView View id cs
-    EditNotebook id cs -> NotebookView Edit id cs
-    ViewCell c -> OneCellView View c
-    EditCell c -> OneCellView Edit c
+
+updateState state (Dropdown i) =
+  state # dropdowns %~
+  (modifyAt i (\x -> x{visible = not x.visible})) <<<  (_{visible = false} <$>)
+  
+updateState state CloseDropdowns =
+  state # dropdowns %~ (_{visible = false} <$>)
+
+updateState state (SetTimeout mbTm) =
+  state{timeout = mbTm}
+
+updateState state (SetPath path) =
+  state{path = path, name = getName path}
+
+updateState state (SetName name) =
+  state{path = updateName name state.path}
+
+updateState state (SetItems items) =
+  state{items = items} 
+
+updateState state (SetLoaded loaded) =
+  state{loaded = loaded}
+
+updateState state (SetError error) =
+  state{error = error}
+
+updateState state (SetEditable editable) =
+  state{editable = editable}
+

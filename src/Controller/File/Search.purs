@@ -37,14 +37,6 @@ handleSearchChange search ch path = async $ makeAff $ \_ k -> do
         setQE (ch <> " path:\"" <> path <> "\"")
     k $ inj $ SearchTimeout tim
     k $ inj $ SearchValidation true
-  -- ATTENTION
-  -- This works too slow
-  --      (toInput $ M.SearchNextValue ch) `andThen` \_ -> do
-  --        tim <- liftEff $ timeout Config.searchTimeout $ do
-  --          runEvent (const $ pure unit) (const $ pure unit) $
-  --            setQE (ch <> " path:\"" <> p <> "\"")
-  --        (toInput $ M.SearchTimeout tim) `andThen` \_ -> do
-  --          toInput $ M.SearchValidation true
 
 -- TODO: String/Path type again?
 handleSearchSubmit :: forall e. Search -> String -> Event (FileAppEff e) Input

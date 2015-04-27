@@ -27,9 +27,12 @@ renameDialog :: forall p e. RenameDialogRec -> [H.HTML p (I e)]
 renameDialog dialog =
   [ header $ h4 "Rename"
   , body
-    [ H.form [ E.onClick (E.input_ $ inj $ SetDialog
-                          (Just (RenameDialog
-                                 dialog{showList = false})))]
+    [ H.form [ E.onClick (\_ -> 
+                             E.stopPropagation $> 
+                             (pure $ inj $ SetDialog
+                              (Just (RenameDialog
+                                     dialog{showList = false}))))
+             , nonSubmit ]
       [ H.div [ A.classes [B.formGroup]]
         [ H.input [ A.classes [B.formControl]
                   , A.value (removeExtension dialog.item.name)

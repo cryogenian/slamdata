@@ -4,6 +4,7 @@ module Api.Fs
   , makeFile
   , moveItem
   , listing
+  , move
   ) where
 
 import Control.Monad.Aff (Aff())
@@ -113,10 +114,22 @@ deleteItem item =
     let path = itemPath item
     in delete path
 
+
+move :: forall e. String -> String -> Aff (ajax :: AJAX | e) String 
+move oldPath newPath = do
+  let old = Config.dataUrl <> oldPath
+  result <- affjax $ defaultRequest {
+    method = MOVE,
+    headers = [RequestHeader "Destination" newPath],
+    url = old 
+    }
+  if succeeded result.status
+    then pure ""
+    else pure result.response
+
 moveItem :: forall e. Item -> String -> Aff (ajax :: AJAX | e) String
 moveItem item destination = do
-  let path = Config.dataUrl <> itemPath item
-      dest = if item.resource == Notebook
+  let dest = if item.resource == Notebook
              then case last $ split "." destination of
                Just "slam" -> destination
                Just _ -> destination <> ".slam"
@@ -126,11 +139,4 @@ moveItem item destination = do
         Directory -> dest <> "/"
         Database -> dest <> "/"
         _ -> dest
-  result <- affjax $ defaultRequest {
-    method = MOVE,
-    headers = [RequestHeader "Destination" dest'],
-    url = path
-    }
-  if succeeded result.status
-    then pure ""
-    else pure result.response
+  move (itemPath item) dest'

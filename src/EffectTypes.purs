@@ -16,3 +16,9 @@ type FileComponentEff e = (timer :: Tm.Timer,
                            zClipboard :: Z.ZCLIPBOARD,
                            random :: Random|e)
 type FileAppEff e = Hl.HalogenEffects (FileComponentEff e)
+
+
+type NotebookComponentEff e = ( timer :: Tm.Timer
+                              , ajax :: Af.AJAX | e) 
+
+type NotebookAppEff e = Hl.HalogenEffects (NotebookComponentEff e)

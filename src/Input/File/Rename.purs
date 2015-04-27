@@ -22,9 +22,9 @@ inputRename (RenameDialog d) input = RenameDialog $ case input of
     d { target = newVal }
 
   RenameError err ->
-    d { error = err
-      , incorrect = length err /= 0
-      }
+    _{error = err} $ if length err /= 0
+                     then d {incorrect = true}
+                     else d 
 
   RenameSelectedContent cont ->
     d { selectedContent = cont }
@@ -36,5 +36,7 @@ inputRename (RenameDialog d) input = RenameDialog $ case input of
       }
   AddRenameDirs dirs ->
     d { dirs = sort $ nub $ d.dirs <> dirs }
+  RenameIncorrect incorrect ->
+    d { incorrect = incorrect }
 
 inputRename dialog _ = dialog
