@@ -1,20 +1,19 @@
 module View.Common where
 
-import Control.Alternative (Alternative) 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Config as Config
 import qualified View.Css as Vc
 
-navbar :: forall m p i. (Alternative m) => [H.HTML p (m i)] -> H.HTML p (m i)
+navbar :: forall p i. [H.HTML p i] -> H.HTML p i
 navbar = H.nav [ A.classes [ B.navbar, B.navbarInverse, B.navbarFixedTop ] ]
 
-row :: forall m p i. (Alternative m) => [H.HTML p (m i)] -> H.HTML p (m i)
+row :: forall p i. [H.HTML p i ] -> H.HTML p i
 row = H.div [ A.classes [ B.row ] ]
 
-genericContainer :: forall m p i. (Alternative m) => [A.ClassName] -> [A.ClassName] ->
-                    [H.HTML p (m i)] -> H.HTML p (m i) 
+genericContainer :: forall p i. [A.ClassName] -> [A.ClassName] ->
+                    [H.HTML p i] -> H.HTML p i 
 genericContainer wrapperClasses contentClasses nodes =
   H.div [ A.classes wrapperClasses ]
   [ row [ H.div [ A.classes contentClasses ]
@@ -22,12 +21,12 @@ genericContainer wrapperClasses contentClasses nodes =
         ]
   ]
 
-content :: forall m p i. (Alternative m) => [H.HTML p (m i)] -> H.HTML p (m i)
+content :: forall p i. [H.HTML p i] -> H.HTML p i
 content = genericContainer
           [ B.container ]
           [ B.colMd8, B.colMdOffset2, B.colSm10, B.colSmOffset1 ]
 
-contentFluid :: forall m p i. (Alternative m) => [H.HTML p (m i)] -> H.HTML p (m i)
+contentFluid :: forall p i. [H.HTML p i] -> H.HTML p i
 contentFluid = genericContainer
                [ B.containerFluid ]
                [ ]

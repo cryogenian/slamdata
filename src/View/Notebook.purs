@@ -1,4 +1,4 @@
-module View.Notebook (view, View()) where
+module View.Notebook (view, HTML()) where
 
 import Data.Maybe (maybe)
 import Control.Functor (($>))
@@ -23,67 +23,67 @@ import qualified Halogen.HTML.Events.Forms as E
 import qualified Config as Config
 import qualified View.Css as Vc
 
-type View p e = State -> H.HTML p (E.Event (NotebookAppEff e) Input)
+type HTML p e = H.HTML p (E.Event (NotebookAppEff e) Input)
 
-view :: forall p e. View p e
+view :: forall p e. State -> HTML p e
 view state = 
   H.div [ E.onClick (E.input_ CloseDropdowns) ]
   (navigation state <> body state) 
   
-  where
-  navigation :: State -> [H.HTML _ _]
-  navigation state =
-    if not state.editable 
-    then []  
-    else 
-      [ navbar
-        [ H.div [ A.classes [ Vc.navCont, Vc.notebookNav, B.containerFluid ] ]
-          [ icon B.glyphiconBook
-          , logo
-          , name state ]
-        , H.ul [ A.classes [ B.nav, B.navbarNav ] ]
-          ( zipWith li (0 .. length state.dropdowns) state.dropdowns )
-        ] ]
 
-  body :: State -> [H.HTML _ _ ]
-  body state =
-    [ if not state.loaded 
-      then H.h1 [ A.classes [ B.textCenter ] ] [H.text "Loading..." ]
-      else if state.error /= ""
-           then H.div [ A.classes [ B.alert, B.alertDanger ] ]
-                [ H.h1 [ A.classes [ B.textCenter ] ] [H.text state.error] ]
-           else contentFluid [ H.div [ A.class_ B.clearfix ]  [ ] ] ]
+navigation :: forall p e. State -> [HTML p e]
+navigation state =
+  if not state.editable 
+  then []  
+  else 
+    [ navbar
+      [ H.div [ A.classes [ Vc.navCont, Vc.notebookNav, B.containerFluid ] ]
+        [ icon B.glyphiconBook
+        , logo
+        , name state ]
+      , H.ul [ A.classes [ B.nav, B.navbarNav ] ]
+        ( zipWith li (0 .. length state.dropdowns) state.dropdowns )
+      ] ]
 
-  txt :: Int -> String -> [H.HTML _ _]
-  txt lvl text =
-    [ H.text $ (joinWith "" $ replicate (toNumber lvl) "--") <> " " <> text ]
+body :: forall p e. State -> [HTML p e]
+body state =
+  [ if not state.loaded 
+    then H.h1 [ A.classes [ B.textCenter ] ] [H.text "Loading..." ]
+    else if state.error /= ""
+         then H.div [ A.classes [ B.alert, B.alertDanger ] ]
+              [ H.h1 [ A.classes [ B.textCenter ] ] [H.text state.error] ]
+         else contentFluid [ H.div [ A.class_ B.clearfix ]  [ ] ] ]
+  
+txt :: forall p e. Int -> String -> [HTML p e]
+txt lvl text =
+  [ H.text $ (joinWith "" $ replicate (toNumber lvl) "--") <> " " <> text ]
+  
 
-
-  li :: Number ->  DropdownItem -> H.HTML _ _
-  li i {visible: visible, name: name, children: children} =
-    H.li [ E.onClick (\ev -> do E.stopPropagation
-                                E.input_ (Dropdown i) ev)
-         , A.classes $ [ B.dropdown ] <>
-           (if visible then [ B.open ] else [ ]) ]
-    [ H.a [ A.href "#"
-          , E.onClick (\_ -> E.preventDefault $> empty)] (txt (fromNumber 0) name) 
-    , H.ul [ A.classes [ B.dropdownMenu ] ] 
-      (menuItem <$> children) ]
-    
-  menuItem :: MenuElement -> H.HTML _ _
-  menuItem {name: name, message: mbMessage, lvl: lvl} =
-    H.li [ A.classes (maybe [B.disabled] (const []) mbMessage) ]
-    [ H.a [ A.href "#" 
-          , E.onClick (\e -> E.preventDefault $>
-                             maybe empty (handleMenuSignal <<< inj) mbMessage) ]
-      [H.span_ $ (txt lvl name) <> 
-       (maybe [glyph B.glyphiconChevronRight] (const []) mbMessage) ]]
-
+li :: forall p e. Number ->  DropdownItem -> HTML p e
+li i {visible: visible, name: name, children: children} =
+  H.li [ E.onClick (\ev -> do E.stopPropagation
+                              E.input_ (Dropdown i) ev)
+       , A.classes $ [ B.dropdown ] <>
+         (if visible then [ B.open ] else [ ]) ]
+  [ H.a [ A.href "#"
+        , E.onClick (\_ -> E.preventDefault $> empty)] (txt (fromNumber 0) name) 
+  , H.ul [ A.classes [ B.dropdownMenu ] ] 
+    (menuItem <$> children) ]
+  
+menuItem :: forall p e. MenuElement -> HTML p e
+menuItem {name: name, message: mbMessage, lvl: lvl} =
+  H.li [ A.classes (maybe [B.disabled] (const []) mbMessage) ]
+  [ H.a [ A.href "#" 
+        , E.onClick (\e -> E.preventDefault $>
+                           maybe empty (handleMenuSignal <<< inj) mbMessage) ]
+    [H.span_ $ (txt lvl name) <> 
+     (maybe [glyph B.glyphiconChevronRight] (const []) mbMessage) ]]
+  
         
-  name :: View p e
-  name state =
-    H.div [ A.classes [ B.colXs12, B.colSm8 ] ]
-    [ H.input [ A.classes [ Vc.notebookName ]
-              , E.onInput (\v -> pure $ pure $ SetName v)
-              , A.value (state.name)  ] [] ]
-    
+name :: forall p e. State -> HTML p e
+name state =
+  H.div [ A.classes [ B.colXs12, B.colSm8 ] ]
+  [ H.input [ A.classes [ Vc.notebookName ]
+            , E.onInput (E.input SetName)
+            , A.value (state.name)  ] [] ]
+  
