@@ -1,6 +1,6 @@
 module Controller.File.Rename where
 
-import Control.Inject1 (Inject1, inj)
+import Data.Inject1 (Inject1, inj)
 import Control.Monad.Aff (Aff())
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)

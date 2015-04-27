@@ -5,19 +5,19 @@ import Control.Alt ((<|>))
 import Control.Plus (empty)
 import Control.Monad.Eff.Class
 import Model.Notebook.Menu (
-  MenuNotebookSignal(..), 
+  MenuNotebookSignal(..),
   MenuEditSignal(..),
   MenuInsertSignal(..),
   MenuCellSignal(..),
   MenuHelpSignal(..),
   MenuSignal(..))
 import Model.Notebook (I())
-import Control.Inject1 (prj)
+import Data.Inject1 (prj)
 import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
 
 
 handleMenuNotebook :: forall e. MenuNotebookSignal -> I e
-handleMenuNotebook signal = do 
+handleMenuNotebook signal = do
   liftEff $ fprint signal
   empty
 

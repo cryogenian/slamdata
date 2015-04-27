@@ -1,7 +1,7 @@
 module View.File.Modal (modal) where
 
 import Control.Functor (($>))
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 import Control.Plus (empty)
 import Data.Maybe (Maybe(..), maybe)
 import EffectTypes (FileAppEff())

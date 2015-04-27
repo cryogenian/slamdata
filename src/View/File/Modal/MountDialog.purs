@@ -1,6 +1,6 @@
 module View.File.Modal.MountDialog (mountDialog) where
 
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 import Controller.File (selectThis)
 import Data.Array ((..), length, zipWith)
 import Data.Int (toNumber)

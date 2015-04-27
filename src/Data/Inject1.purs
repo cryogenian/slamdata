@@ -1,4 +1,4 @@
-module Control.Inject1 where
+module Data.Inject1 where
 
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..))

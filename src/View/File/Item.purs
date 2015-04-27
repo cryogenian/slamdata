@@ -1,6 +1,6 @@
 module View.File.Item (items) where
 
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 import Controller.File.Item (handleOpenItem, handleMoveItem, handleDeleteItem, handleShare, handleConfigure)
 import Data.Array ((..), length, zipWith)
 import Data.Monoid (mempty)

@@ -1,6 +1,6 @@
 module View.File.Modal.ShareDialog where
 
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 import Controller.File (selectThis)
 import Data.Maybe
 import EffectTypes

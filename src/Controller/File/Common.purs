@@ -1,6 +1,6 @@
 module Controller.File.Common where
 
-import Control.Inject1 (Inject1, inj)
+import Data.Inject1 (Inject1, inj)
 import Control.Monad.Eff (Eff())
 import Data.String (joinWith)
 import DOM (DOM())
