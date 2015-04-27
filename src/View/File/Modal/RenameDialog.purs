@@ -7,11 +7,12 @@ import Controller.File.Rename
 import Data.Maybe
 import EffectTypes
 import Model.File
-import Model.File.Dialog
+import Model.File.Dialog (Dialog(RenameDialog))
+import Model.File.Dialog.Rename (RenameDialogRec())
 import Input.File (FileInput(SetDialog))
 import Input.File.Rename (RenameInput(..))
 import View.File.Common (I())
-import View.File.Modal.Common
+import View.File.Modal.Common (header, h4, body, footer, nonSubmit)
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
 import qualified Halogen.HTML as H
@@ -27,8 +28,8 @@ renameDialog :: forall p e. RenameDialogRec -> [H.HTML p (I e)]
 renameDialog dialog =
   [ header $ h4 "Rename"
   , body
-    [ H.form [ E.onClick (\_ -> 
-                             E.stopPropagation $> 
+    [ H.form [ E.onClick (\_ ->
+                             E.stopPropagation $>
                              (pure $ inj $ SetDialog
                               (Just (RenameDialog
                                      dialog{showList = false}))))

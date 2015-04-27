@@ -13,7 +13,7 @@ import Halogen.HTML.Events.Handler (EventHandler())
 import Halogen.HTML.Events.Monad (Event(), andThen)
 import Input.File (Input())
 import Input.File.Rename (RenameInput(..))
-import Model.File.Dialog (RenameDialogRec())
+import Model.File.Dialog.Rename (RenameDialogRec())
 import Model.File.Item (Item())
 import Utils (reload)
 import qualified Api.Fs as Api

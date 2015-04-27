@@ -9,6 +9,7 @@ import Input.File (Input(), FileInput(SetDialog))
 import Model.File.Dialog (Dialog(..))
 import Model.File (State())
 import View.File.Modal.Common (header, h4, body, footer)
+import View.File.Modal.MountDialog (mountDialog)
 import View.File.Modal.RenameDialog (renameDialog)
 import View.File.Modal.ShareDialog (shareDialog)
 import qualified Halogen.HTML as H
@@ -38,8 +39,7 @@ modalContent (Just dialog) = dialogContent dialog
 dialogContent :: forall p e. Dialog -> [H.HTML p (E.Event (FileAppEff e) Input)]
 dialogContent (ShareDialog url) = shareDialog url
 dialogContent (RenameDialog dialog) = renameDialog dialog
-dialogContent MountDialog = emptyDialog "Mount"
-dialogContent ConfigureDialog = emptyDialog "Configure"
+dialogContent (MountDialog dialog) = mountDialog dialog
 
 emptyDialog :: forall p i. String -> [H.HTML p i]
 emptyDialog title =

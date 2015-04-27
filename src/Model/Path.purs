@@ -47,7 +47,7 @@ encodeURIPath path =
 
 hidePath :: String -> String -> String
 hidePath path input =
-  Str.trim $ 
+  Str.trim $
   Str.replace ("+path:\"" <> path <> "\"") "" $
   Str.replace ("+path:" <> path) "" input
 

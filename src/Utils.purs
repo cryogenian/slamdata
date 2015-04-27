@@ -5,13 +5,14 @@ import Control.Monad.Eff
 import Control.Monad.Eff.Class
 import Control.Monad.Aff
 import Data.Maybe
-import Debug.Trace 
+import Debug.Trace
 import Debug.Foreign
 import Control.Apply
 import Data.Function
 
-import DOM (DOM(), Node())
+import DOM (DOM())
 import Data.DOM.Simple.Types (HTMLElement(), DOMEvent(), DOMLocation())
+import Data.DOM.Simple.Element (appendChild)
 import Data.DOM.Simple.Document (body)
 import Data.DOM.Simple.Window (globalWindow, document, getLocation, location)
 import Data.DOM.Simple.Events (addUIEventListener, UIEventType(..))
@@ -23,7 +24,7 @@ import qualified Data.String.Regex as Rgx
 foreign import encodeURIComponent :: String -> String
 foreign import decodeURIComponent :: String -> String
 
-log :: forall a e. a -> Eff (trace::Trace|e) Unit 
+log :: forall a e. a -> Eff (trace::Trace|e) Unit
 log a = fprint a *> pure unit
 
 onLoad :: forall e. Eff (dom::DOM|e) Unit -> Eff (dom::DOM|e) Unit
@@ -32,68 +33,55 @@ onLoad action = do
       handler _ = action
   addUIEventListener LoadEvent handler globalWindow
 
-foreign import append """
-function append(parent) {
-  return function(child) {
-    return function() {
-      parent.appendChild(child);
-      return parent;
-    };
-};
-}
-""" :: forall e. HTMLElement -> HTMLElement -> Eff (dom::DOM|e) HTMLElement
-
 -- | Opens url in new tab or window
-foreign import newTab """
-function newTab(url) {
-  return function() {
-    window.open(url, "_blank");
-  };
-}
-""" :: forall e. String -> Eff (dom::DOM|e) Unit 
-
--- | converts `Node` to `HTMLElement`
-foreign import convertToElement """
-function convertToElement(a) {return a;}
-""" :: Node -> HTMLElement
-
-foreign import reload """
-function reload() {
-  document.location.reload();
-}
-""" :: forall e. Eff (dom :: DOM|e) Unit
-
-
-foreign import clearValue """
-function clearValue(el) {
-  return function() {
-    el.value = null;
-  };
-}
-""" :: forall e. Node -> Eff (dom :: DOM |e) Unit
-
-foreign import select """
-function select(node) {
-  return function() {
-    node.select();
-  };
-}
-""" :: forall e. Node -> Eff (dom :: DOM |e) Unit
-
-selectAff :: forall e. Node -> Aff (dom :: DOM|e) Unit 
-selectAff = liftEff <<< select 
-
-bodyNode = do
-  document globalWindow >>= body
-
-
-foreign import locationOrigin """
-function locationOrigin(loc) {
-  return function() {
-    return loc.origin;
+foreign import newTab
+  """
+  function newTab(url) {
+    return function() {
+      window.open(url, "_blank");
+    };
   }
-}
-""" :: forall e. DOMLocation -> Eff (dom :: DOM|e) String 
+  """ :: forall e. String -> Eff (dom :: DOM | e) Unit
+
+foreign import reload
+  """
+  function reload() {
+    document.location.reload();
+  }
+  """ :: forall e. Eff (dom :: DOM|e) Unit
+
+foreign import clearValue
+  """
+  function clearValue(el) {
+    return function() {
+      el.value = null;
+    };
+  }
+  """ :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
+
+foreign import select
+  """
+  function select(node) {
+    return function() {
+      node.select();
+    };
+  }
+  """ :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
+
+bodyHTMLElement :: forall e. Eff (dom :: DOM | e) HTMLElement
+bodyHTMLElement = document globalWindow >>= body
+
+mountUI :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
+mountUI node = bodyHTMLElement >>= flip appendChild node
+
+foreign import locationOrigin
+  """
+  function locationOrigin(loc) {
+    return function() {
+      return loc.origin;
+    }
+  }
+  """ :: forall e. DOMLocation -> Eff (dom :: DOM|e) String
 
 locationString :: forall e. Eff (dom :: DOM |e) String
 locationString = do
@@ -104,6 +92,3 @@ trimQuotes :: String -> String
 trimQuotes input = Rgx.replace start "" $ Rgx.replace end "" input
   where start = Rgx.regex "^\"" Rgx.noFlags
         end = Rgx.regex "\"$" Rgx.noFlags
-
-
-
