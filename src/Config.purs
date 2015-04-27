@@ -1,22 +1,25 @@
 module Config where
 
+baseUrl :: String
+baseUrl = "/"
+
 uploadUrl :: String
-uploadUrl = "/upload"
+uploadUrl = baseUrl <> "upload"
 
 metadataUrl :: String
-metadataUrl = "/metadata/fs/"
+metadataUrl = baseUrl <> "metadata/fs/"
 
 dataUrl :: String
-dataUrl = "/data/fs/"
+dataUrl = baseUrl <> "data/fs/"
 
 notebookUrl :: String
-notebookUrl = "/notebook.html"
+notebookUrl = baseUrl <> "notebook.html"
 
 searchTimeout :: Number
 searchTimeout = 500
 
 slamDataHome :: String
-slamDataHome = "/"
+slamDataHome = baseUrl
 
 userEnabled :: Boolean
 userEnabled = false
