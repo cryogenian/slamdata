@@ -12,6 +12,7 @@ import Data.Maybe
 import Data.Maybe.Unsafe (fromJust)
 import Data.Set (fromList, toList)
 import Input.File.Item (ItemInput(), inputItem)
+import Input.File.Mount (MountInput(), inputMount)
 import Input.File.Rename (RenameInput(), inputRename)
 import Input.File.Search (SearchInput(), inputSearch)
 import Model.Breadcrumb (Breadcrumb(), rootBreadcrumb)
@@ -25,7 +26,7 @@ import qualified Data.Array as A
 import qualified Data.List as L
 import qualified Data.String as Str
 
-type Input = Either ItemInput (Either FileInput (Either SearchInput RenameInput))
+type Input = Either ItemInput (Either FileInput (Either SearchInput (Either RenameInput MountInput)))
 
 data FileInput
   = Sorting Sort
@@ -39,9 +40,10 @@ data FileInput
 updateState :: State -> Input -> State
 updateState state input =
   fromJust $ (inputFile state <$> prj input)
+         <|> ((\i -> state { items = inputItem state.sort state.searching state.items i }) <$> prj input)
          <|> ((\i -> state { search = inputSearch state.search i }) <$> prj input)
          <|> ((\i -> state { dialog = flip inputRename i <$> state.dialog }) <$> prj input)
-         <|> ((\i -> state { items = inputItem state.sort state.searching state.items i }) <$> prj input)
+         <|> ((\i -> state { dialog = flip inputMount i <$> state.dialog }) <$> prj input)
 
 inputFile :: State -> FileInput -> State
 inputFile state input =

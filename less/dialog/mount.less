@@ -1,0 +1,63 @@
+.dialog-mount {
+
+    label {
+        line-height: 34px;
+        width: 100%;
+        span {
+            width: 100px;
+            display: block;
+            float: left;
+        }
+        input.form-control {
+            width: ~"calc(100% - 100px)";
+        }
+        select.form-control {
+            width: auto;
+        }
+    }
+
+    .mount-uri label {
+        line-height: 125%;
+    }
+
+    .mount-host {
+        label:nth-child(1) {
+            width: 70%;
+        }
+        label:nth-child(2) {
+            width: 30%;
+            span {
+                margin-left: 30px;
+                width: 40px;
+            }
+            input.form-control {
+                width: ~"calc(100% - 70px)";
+            }
+        }
+    }
+
+    .mount-props {
+        width: ~"calc(100% - 100px)";
+        input.form-control {
+            width: 100%;
+            border: none;
+        }
+        th {
+            width: 50%;
+        }
+        td {
+            padding: 0px;
+            table {
+                td {
+                    width: 50%;
+                }
+                width: 100%;
+            }
+        }
+    }
+
+    .mount-props-scrollbox {
+        max-height: 110px;
+        overflow: auto;
+    }
+}

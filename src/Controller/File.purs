@@ -11,11 +11,12 @@ import Control.Monad.Error.Class (throwError)
 import Control.Plus (empty)
 import Controller.File.Common (toInput, open)
 import Data.Array (head, findIndex)
+import Data.DOM.Simple.Types (HTMLElement())
 import Data.DOM.Simple.Element (querySelector)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.String (split, joinWith)
-import DOM (DOM(), Node())
+import DOM (DOM())
 import Driver.File (getPath, updatePath, updateSort)
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Handler (EventHandler())
@@ -25,13 +26,15 @@ import Input.File.Item (ItemInput(..))
 import Model.Breadcrumb (Breadcrumb())
 import Model.File (State())
 import Model.File.Dialog (Dialog(..))
+import Model.File.Dialog.Mount (initialMountDialog)
+import Model.File.Dialog.Rename (initialRenameDialog)
 import Model.File.Item (initNotebook, initDirectory, initFile)
 import Model.Notebook (newNotebook)
 import Model.Sort (Sort())
 import qualified Halogen.HTML.Events.Types as Et
 import qualified Utils.File as Uf
 import Routing.Hash (getHash, modifyHash)
-import Utils (clearValue, convertToElement, select)
+import Utils (clearValue, select)
 import Utils.Event (raiseEvent)
 
 handleCreateNotebook :: forall e. State -> Event (FileAppEff e) Input
@@ -50,10 +53,10 @@ handleCreateNotebook state = do
           -- and add real notebook to list
           toInput $ ItemAdd notebook{phantom = false}
 
-handleFileListChanged :: forall e. Node -> State -> Event (FileAppEff e) Input
-handleFileListChanged node state = do
-  fileArr <- Uf.fileListToArray <$> (liftAff $ Uf.files node)
-  liftEff $ clearValue node
+handleFileListChanged :: forall e. HTMLElement -> State -> Event (FileAppEff e) Input
+handleFileListChanged el state = do
+  fileArr <- Uf.fileListToArray <$> (liftAff $ Uf.files el)
+  liftEff $ clearValue el
   case head fileArr of
     Nothing ->
       let err :: Aff (FileAppEff e) Input
@@ -87,9 +90,8 @@ handleSetSort sort = do
   liftEff $ modifyHash $ updateSort sort
   empty
 
-handleUploadFile :: forall e. Node -> State -> Event (FileAppEff e) Input
-handleUploadFile node _ = do
-  let el = convertToElement node
+handleUploadFile :: forall e. HTMLElement -> State -> Event (FileAppEff e) Input
+handleUploadFile el _ = do
   mbInput <- liftEff $ querySelector "input" el
   case mbInput of
     Nothing -> empty
@@ -105,7 +107,7 @@ handleCreateFolder state = do
   toInput $ ItemAdd $ initDirectory { root = path, name = name }
 
 handleMountDatabase :: forall e. State -> Event (FileAppEff e) Input
-handleMountDatabase _ = toInput $ SetDialog (Just MountDialog)
+handleMountDatabase _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog)
 
 -- get fresh name for this state
 getNewName :: String -> State -> String

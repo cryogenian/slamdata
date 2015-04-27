@@ -16,7 +16,7 @@ import Control.Monad.Eff
 import Control.Monad.Eff.Exception
 
 import Control.Monad.Aff
-import DOM
+import DOM (DOM())
 import Data.Function
 import Data.Maybe
 import Data.DOM.Simple.Types (HTMLElement())
@@ -46,8 +46,8 @@ function name(file) {
 }
 """ :: forall e. File -> Eff (file :: ReadFile|e) String
 
--- Creating new FileReader doesn't produce any effects 
--- since it can be not used in example and than garbage collected in example. 
+-- Creating new FileReader doesn't produce any effects
+-- since it can be not used in example and than garbage collected in example.
 foreign import newReaderEff """
 function newReaderEff() {
   return new FileReader();
@@ -57,7 +57,7 @@ function newReaderEff() {
 newReader :: forall e. Aff e FileReader
 newReader = makeAff \_ k ->
   newReaderEff >>= \r -> k r
-       
+
 
 foreign import readAsBinaryStringEff """
 function readAsBinaryStringEff(file) {
@@ -96,13 +96,13 @@ function filesEff(el) {
     return el.files;
   };
 }
-""" :: forall e. Node -> Eff (dom :: DOM|e) FileList
+""" :: forall e. HTMLElement -> Eff (dom :: DOM|e) FileList
 
-files :: forall e. Node -> Aff (dom :: DOM|e) FileList 
-files node = makeAff \_ k -> do 
+files :: forall e. HTMLElement -> Aff (dom :: DOM|e) FileList
+files node = makeAff \_ k -> do
   fs <- filesEff node
-  k fs 
-  
+  k fs
+
 
 foreign import onloadEff """
 function onloadEff(reader) {
@@ -118,11 +118,11 @@ function onloadEff(reader) {
 
 
 readAsBinaryString :: forall e. File -> FileReader -> Aff (file :: ReadFile|e) String
-readAsBinaryString file reader = makeAff \er k -> do 
+readAsBinaryString file reader = makeAff \er k -> do
   readAsBinaryStringEff file reader
   onloadEff reader $ do
     mbRes <- resultEff reader
     case mbRes of
       Nothing -> er $ error "files has not been read"
       Just res -> k $ res
-  
+

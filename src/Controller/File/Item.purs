@@ -22,7 +22,9 @@ import Halogen.HTML.Events.Monad (Event(), async, andThen)
 import Input.File (Input(), FileInput(SetDialog))
 import Input.File.Item (ItemInput(..))
 import Input.File.Rename (RenameInput(..))
-import Model.File.Dialog (Dialog(..), initialRenameDialog)
+import Model.File.Dialog (Dialog(..))
+import Model.File.Dialog.Mount (initialMountDialog)
+import Model.File.Dialog.Rename (initialRenameDialog)
 import Model.File.Item (Item(), itemPath)
 import Model.File.Resource (Resource(..))
 import Routing.Hash (getHash, modifyHash)
@@ -85,7 +87,7 @@ itemURL item = do
   pure $ newUrl
 
 handleConfigure :: forall e. Item -> Event (FileAppEff e) Input
-handleConfigure _ = toInput $ SetDialog (Just ConfigureDialog)
+handleConfigure _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog { new = false })
 
 -- open dir or db
 moveDown :: forall e. Item -> Eff (dom :: DOM | e) Unit
