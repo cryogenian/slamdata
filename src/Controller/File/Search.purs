@@ -1,6 +1,6 @@
 module Controller.File.Search where
 
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 import Control.Monad.Aff (makeAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (randomInt)

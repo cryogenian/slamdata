@@ -5,7 +5,7 @@ module Input.File
   ) where
 
 import Control.Alt ((<|>))
-import Control.Inject1 (prj)
+import Data.Inject1 (prj)
 import Data.Either
 import Data.Foldable
 import Data.Maybe

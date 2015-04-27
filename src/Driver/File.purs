@@ -13,7 +13,7 @@ module Driver.File
 
 import Control.Alt
 import Control.Apply
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 import Control.Monad.Eff
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Exception

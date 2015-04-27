@@ -1,7 +1,7 @@
 module Controller.File where
 
 import Api.Fs (makeNotebook, makeFile)
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 import Control.Monad.Aff (Aff(), makeAff, attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())

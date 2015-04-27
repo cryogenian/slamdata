@@ -1,6 +1,6 @@
 module View.File.Search where
 
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 import Controller.File.Search (handleSearchSubmit, handleSearchChange, handleSearchClear)
 import Data.Monoid (mempty)
 import Input.File (FileInput(Focus))

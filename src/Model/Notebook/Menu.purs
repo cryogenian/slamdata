@@ -1,9 +1,9 @@
 module Model.Notebook.Menu where
 
 import Data.Either
-import Data.Maybe 
+import Data.Maybe
 import Data.Int (Int(), fromNumber)
-import Control.Inject1 (inj)
+import Data.Inject1 (inj)
 
 data MenuNotebookSignal
   = RenameNotebook
@@ -46,8 +46,8 @@ type MenuElement =
   , message :: Maybe MenuSignal
   , lvl :: Int }
 
-type DropdownItem = 
-  { name :: String 
+type DropdownItem =
+  { name :: String
   , visible :: Boolean
   , children :: [ MenuElement ]
   }
@@ -66,7 +66,7 @@ initialDropdowns =
         , lvl: fromNumber 0 }
       , { name: "Delete"
         , message: Just $ inj DeleteNotebook
-        , lvl: fromNumber 0} 
+        , lvl: fromNumber 0}
       ]
     }
   , { visible: false

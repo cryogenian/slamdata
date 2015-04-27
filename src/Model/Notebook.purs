@@ -2,12 +2,12 @@ module Model.Notebook where
 
 import Data.Either
 import Data.Maybe
-import Control.Inject1 (prj, inj)
+import Data.Inject1 (prj, inj)
 import Halogen.HTML.Events.Monad (Event())
 import Optic.Core (lens, Lens())
 import Control.Timer (Timeout())
 import Model.Path (Path(), emptyPath)
-import Model.File.Item (Item()) 
+import Model.File.Item (Item())
 import EffectTypes (NotebookAppEff())
 import Model.Notebook.Menu (initialDropdowns, DropdownItem())
 
@@ -29,7 +29,7 @@ type State =
   , items :: [Item]
   , loaded :: Boolean
   , error :: String
-  , editable :: Boolean 
+  , editable :: Boolean
   }
 
 dropdowns :: forall a. Lens State State [DropdownItem] [DropdownItem]
@@ -49,7 +49,7 @@ initialState =
   }
 
 data Input
-  = Dropdown Number 
+  = Dropdown Number
   | CloseDropdowns
   | SetTimeout (Maybe Timeout)
   | SetName String
