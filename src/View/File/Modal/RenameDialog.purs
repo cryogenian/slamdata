@@ -31,7 +31,8 @@ renameDialog dialog =
                              E.stopPropagation $> 
                              (pure $ inj $ SetDialog
                               (Just (RenameDialog
-                                     dialog{showList = false}))))]
+                                     dialog{showList = false}))))
+             , nonSubmit ]
       [ H.div [ A.classes [B.formGroup]]
         [ H.input [ A.classes [B.formControl]
                   , A.value (removeExtension dialog.item.name)
