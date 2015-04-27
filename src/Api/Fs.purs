@@ -7,6 +7,7 @@ module Api.Fs
   , move
   ) where
 
+import Config
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
@@ -16,7 +17,6 @@ import Data.Either (Either(..), either)
 import Data.Foreign.Class (IsForeign, readProp, read)
 import Data.Int (fromNumber, toNumber)
 import Data.Maybe (Maybe(..), maybe)
-import Data.String (split)
 import Model.File.Item (Item(), itemPath)
 import Model.File.Resource (Resource(..))
 import Model.Notebook (Notebook())
@@ -25,6 +25,7 @@ import Network.HTTP.Affjax.Response (Respondable, ResponseType(..))
 import Network.HTTP.Method (Method(MOVE))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
+import qualified Data.String as S
 import qualified Data.String.Regex as Rgx
 
 newtype Listing = Listing [Child]
@@ -92,7 +93,7 @@ makeFile item content =
   let path = itemPath item
       isJson = either (const false) (const true) do
         hd <- maybe (Left "empty file") Right $
-              head $ split "\n" content
+              head $ S.split "\n" content
         jsonParser hd
   in if isJson then do
     getResponse ("error while creating file " <> path) $
@@ -130,13 +131,15 @@ move oldPath newPath = do
 moveItem :: forall e. Item -> String -> Aff (ajax :: AJAX | e) String
 moveItem item destination = do
   let dest = if item.resource == Notebook
-             then case last $ split "." destination of
-               Just "slam" -> destination
-               Just _ -> destination <> ".slam"
-               Nothing -> destination
+             then if endsWith notebookExtension destination
+               then destination
+               else if S.indexOf "." destination /= -1
+                    then destination <> notebookExtension
+                    else destination
              else destination
       dest' = case item.resource of
         Directory -> dest <> "/"
         Database -> dest <> "/"
         _ -> dest
+      endsWith needle haystack = S.indexOf' needle (S.length haystack - S.length needle) haystack /= -1
   move (itemPath item) dest'

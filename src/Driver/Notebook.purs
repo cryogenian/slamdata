@@ -1,5 +1,6 @@
 module Driver.Notebook where
 
+import Config
 import Data.Either
 import Data.List
 import Control.Alt
@@ -35,11 +36,11 @@ routing = CellRoute <$> notebook <*> (R.lit "cells" *> cellId) <*> action
   where notebook = Path <$> (oneSlash *> (R.list notName)) <*> name
         oneSlash = R.lit ""
         notebookName input =
-          if Str.indexOf ".slam" input == -1 then
+          if Str.indexOf notebookExtension input == -1 then
             Left input
           else Right input
         pathPart input =
-          if input == "" || Str.indexOf ".slam" input /= -1 then
+          if input == "" || Str.indexOf notebookExtension input /= -1 then
             Left "incorrect path part"
           else Right input
 
