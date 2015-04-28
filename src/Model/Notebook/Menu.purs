@@ -7,8 +7,8 @@ import Data.Inject1 (inj)
 
 data MenuNotebookSignal
   = RenameNotebook
-  | MoveNotebook
   | DeleteNotebook
+  | PublishNotebook
 
 data MenuEditSignal
   = CopyEdit
@@ -58,27 +58,27 @@ initialDropdowns =
   [ { visible: false
     , name: "Notebook"
     , children:
-      [ { name: "Rename"
+      [ { name: "Rename/Move (Cmd + Shift + S)"
         , message: Just $ inj RenameNotebook
-        , lvl: fromNumber 0 }
-      , { name: "Move"
-        , message: Just $ inj MoveNotebook
         , lvl: fromNumber 0 }
       , { name: "Delete"
         , message: Just $ inj DeleteNotebook
+        , lvl: fromNumber 0}
+      , { name: "Publish (Cmd + P)"
+        , message: Just $ inj PublishNotebook
         , lvl: fromNumber 0}
       ]
     }
   , { visible: false
     , name: "Edit"
     , children:
-      [ { name: "Copy"
+      [ { name: "Copy (Cmd + C)"
         , message: Just $ inj CopyEdit
         , lvl: fromNumber 0 }
-      , { name: "Cut"
+      , { name: "Cut (Cmd + X)"
         , message: Just $ inj CutEdit
         , lvl: fromNumber 0 }
-      , { name: "Paste"
+      , { name: "Paste (Cmd + V)"
         , message: Just $ inj PasteEdit
         , lvl: fromNumber 0 }]}
   , { visible: false
@@ -87,22 +87,23 @@ initialDropdowns =
       [ { name: "Cell"
         , message: Nothing
         , lvl: fromNumber 0 }
-      , { name: "Explore"
-        , message: Just $ inj ExploreInsert
-        , lvl: fromNumber 1 }
-      , { name: "Markdown"
-        , message: Just $ inj MarkdownInsert
-        , lvl: fromNumber 1 }
-      , { name: "Query"
+      , { name: "Query (Cmd + 1)"
         , message: Just $ inj QueryInsert
         , lvl: fromNumber 1 }
-      , { name: "Search"
+      , { name: "Markdown (Cmd + 2)"
+        , message: Just $ inj MarkdownInsert
+        , lvl: fromNumber 1 }
+      , { name: "Explore (Cmd + 3)"
+        , message: Just $ inj ExploreInsert
+        , lvl: fromNumber 1 }
+      , { name: "Search (Cmd + 4)"
         , message: Just $ inj SearchInsert
-        , lvl: fromNumber 1 } ] }
+        , lvl: fromNumber 1 }
+       ] }
   , { visible: false
     , name: "Cell"
     , children:
-      [ { name: "Evaluate"
+      [ { name: "Evaluate (Cmd + Enter)"
         , message: Just $ inj $ EvaluateCell
         , lvl: fromNumber 0 }
       , { name: "Delete"
