@@ -5,10 +5,11 @@ import Control.Functor (($>))
 import Data.Inject1 (inj)
 import Control.Plus (empty)
 import View.Common (contentFluid, navbar, icon, logo, glyph)
+
 import Data.Array ((..), length, zipWith, replicate)
 import Model.Notebook (Input(..), State(..))
 import Model.Notebook.Menu (DropdownItem(), MenuElement())
-import Controller.Notebook (handleMenuSignal)
+import Controller.Notebook (handleMenuSignal, handleSubmitName)
 import Data.Int (toNumber, fromNumber, Int())
 import Data.String (joinWith)
 import EffectTypes (NotebookAppEff())
@@ -22,13 +23,16 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Forms as E
 import qualified Config as Config
 import qualified View.Css as Vc
+import qualified View.File.Modal.Common as Vm
+
 
 type HTML p e = H.HTML p (E.Event (NotebookAppEff e) Input)
 
 view :: forall p e. State -> HTML p e
 view state =
-  H.div [ E.onClick (E.input_ CloseDropdowns) ]
-  (navigation state <> body state)
+  H.div [ E.onClick (E.input_ CloseDropdowns) ] $
+  (navigation state <> body state <>  modal state)
+
 
 
 navigation :: forall p e. State -> [HTML p e]
@@ -74,8 +78,10 @@ menuItem :: forall p e. MenuElement -> HTML p e
 menuItem {name: name, message: mbMessage, lvl: lvl} =
   H.li [ A.classes (maybe [B.disabled] (const []) mbMessage) ]
   [ H.a [ A.href "#"
-        , E.onClick (\e -> E.preventDefault $>
-                           maybe empty (handleMenuSignal <<< inj) mbMessage) ]
+        , E.onClick (\e -> do
+                        E.stopPropagation 
+                        E.preventDefault $>
+                          maybe empty (handleMenuSignal <<< inj) mbMessage) ]
     [H.span_ $ (txt lvl name) <>
      (maybe [glyph B.glyphiconChevronRight] (const []) mbMessage) ]]
 
@@ -84,6 +90,29 @@ name :: forall p e. State -> HTML p e
 name state =
   H.div [ A.classes [ B.colXs12, B.colSm8 ] ]
   [ H.input [ A.classes [ Vc.notebookName ]
+            , A.id_ Config.notebookNameEditorId
             , E.onInput (E.input SetName)
+            , E.onKeyUp (\e -> if e.keyCode == 13 then
+                                 pure $ handleSubmitName state
+                               else pure empty)
             , A.value (state.name)  ] [] ]
 
+
+
+modal :: forall p e. State -> [HTML p e]
+modal state =
+  [ H.div [ A.classes ([B.modal, B.fade] <> if state.modalError /= ""
+                                            then [B.in_]
+                                            else [])
+          , E.onClick (E.input_ $ SetModalError "") ]
+    [ H.div [ A.classes [ B.modalDialog ] ]
+      [ H.div [ A.classes [ B.modalContent ] ]
+        [ Vm.header $ Vm.h4 "Error"
+        , Vm.body
+          [ H.div [ A.classes [ B.alert, B.alertDanger ] ]
+            [ H.text state.modalError ] ] 
+        ]
+      ]
+    ]
+  ]
+  

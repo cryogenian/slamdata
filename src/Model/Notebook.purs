@@ -30,6 +30,7 @@ type State =
   , loaded :: Boolean
   , error :: String
   , editable :: Boolean
+  , modalError :: String
   }
 
 dropdowns :: forall a. Lens State State [DropdownItem] [DropdownItem]
@@ -46,6 +47,7 @@ initialState =
   , loaded: false
   , error: ""
   , editable: true
+  , modalError: ""
   }
 
 data Input
@@ -58,7 +60,7 @@ data Input
   | SetLoaded Boolean
   | SetError String
   | SetEditable Boolean
-
+  | SetModalError String
 
 
 type CellId = String

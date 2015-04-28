@@ -1,15 +1,10 @@
 module Driver.Notebook where
 
-import Config
 import Data.Either
-import Data.List
 import Data.Maybe
-import Control.Alt
-import Control.Apply
 import Control.Monad.Eff
 import Control.Monad.Aff (runAff, attempt)
 import Data.Array (findIndex)
-import Model.Path
 import Data.DOM.Simple.Types (DOMEvent())
 import Data.DOM.Simple.Document 
 import Data.DOM.Simple.Events (
@@ -21,15 +16,9 @@ import Data.DOM.Simple.Window (
   globalWindow,
   document)
 import DOM (DOM())
-import Model.Action
-import qualified Utils as U
-import qualified Data.String as Str
-import qualified Data.String.Regex as Rgx
-import qualified Halogen as H
-import qualified Routing as R
-import qualified Routing.Match as R
-import qualified Routing.Match.Class as R
-import qualified Routing.Hash as R
+import Utils (log)
+import Model.Path (decodeURIPath, path2str, parent, getName)
+import Model.Action (isEdit)
 import Model.Notebook
 import Model.File.Item
 import Api.Fs (listing)
@@ -45,34 +34,12 @@ import Model.Notebook.Menu (
   MenuHelpSignal(..),
   MenuSignal(..))
 import Data.Inject1 (inj)
-
-
-data Routes
-  = CellRoute Path CellId Action
-  | NotebookRoute Path Action
-
-
-routing :: R.Match Routes
-routing = CellRoute <$> notebook <*> (R.lit "cells" *> cellId) <*> action
-          <|>
-          NotebookRoute <$> notebook <*> action
-  where notebook = Path <$> (oneSlash *> (R.list notName)) <*> name
-        oneSlash = R.lit ""
-        notebookName input =
-          if Str.indexOf notebookExtension input == -1 then
-            Left input
-          else Right input
-        pathPart input =
-          if input == "" || Str.indexOf notebookExtension input /= -1 then
-            Left "incorrect path part"
-          else Right input
-
-        name = R.eitherMatch (notebookName <$> R.str)
-        notName = R.eitherMatch (pathPart <$> R.str)
-
-        action = (R.eitherMatch (string2action <$> R.str)) <|> pure View
-        cellId = R.eitherMatch (string2cellId <$> R.str)
-
+import Driver.Notebook.Routing (routing, Routes(..))
+import qualified Halogen as H
+import qualified Routing as R
+import qualified Routing.Match as R
+import qualified Routing.Match.Class as R
+import qualified Routing.Hash as R
 
 driver :: forall e. H.Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
@@ -105,32 +72,34 @@ handleShortcuts k =
   where
   handler :: DOMEvent -> _
   handler e = void do
-    preventDefault e 
     meta <- (||) <$> ctrlKey e <*> metaKey e
     shift <- shiftKey e
-    code <- keyCode e 
-    let event =  case code of
-          83 | meta && shift ->
-            handleMenuSignal $ inj $ RenameNotebook
-          80 | meta ->
-            handleMenuSignal $ inj $ PublishNotebook
-          67 | meta ->
-            handleMenuSignal $ inj $ CopyEdit 
-          88 | meta ->
-            handleMenuSignal $ inj $ CutEdit 
-          86 | meta ->
-            handleMenuSignal $ inj $ PasteEdit 
-          49 | meta ->
-            handleMenuSignal $ inj $ QueryInsert 
-          50 | meta ->
-            handleMenuSignal $ inj $ MarkdownInsert 
-          51 | meta ->
-            handleMenuSignal $ inj $ ExploreInsert 
-          52 | meta ->
-            handleMenuSignal $ inj $ SearchInsert 
-          13 | meta ->
-            handleMenuSignal $ inj $ EvaluateCell
-          _ -> empty
-    runEvent (\_ -> U.log "Error in handleShortcuts") k event
+    code <- keyCode e
+    let handle signal = do
+          preventDefault e
+          pure $ handleMenuSignal signal
+    event <- case code of
+      83 | meta && shift -> do 
+        handle $ inj $ RenameNotebook
+      80 | meta ->
+        handle $ inj $ PublishNotebook
+      67 | meta ->
+        handle $ inj $ CopyEdit 
+      88 | meta ->
+        handle $ inj $ CutEdit 
+      86 | meta ->
+        handle $ inj $ PasteEdit 
+      49 | meta ->
+        handle $ inj $ QueryInsert 
+      50 | meta ->
+        handle $ inj $ MarkdownInsert 
+      51 | meta ->
+        handle $ inj $ ExploreInsert 
+      52 | meta ->
+        handle $ inj $ SearchInsert 
+      13 | meta ->
+        handle $ inj $ EvaluateCell
+      _ -> pure empty
+    runEvent (\_ -> log "Error in handleShortcuts") k event
     
                      

@@ -35,3 +35,5 @@ updateState state (SetError error) =
 updateState state (SetEditable editable) =
   state{editable = editable}
 
+updateState state (SetModalError error) =
+  state{modalError = error}

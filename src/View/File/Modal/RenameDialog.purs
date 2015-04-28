@@ -2,6 +2,7 @@ module View.File.Modal.RenameDialog where
 
 import Control.Apply ((*>))
 import Control.Functor (($>))
+import Control.Plus (empty)
 import Data.Inject1 (inj)
 import Controller.File.Rename
 import Data.Maybe
@@ -29,11 +30,10 @@ renameDialog dialog =
   [ header $ h4 "Rename"
   , body
     [ H.form [ E.onClick (\_ ->
-                             E.stopPropagation $>
-                             (pure $ inj $ SetDialog
-                              (Just (RenameDialog
-                                     dialog{showList = false}))))
-             , nonSubmit ]
+                           E.stopPropagation $>
+                           (pure $ inj $ SetDialog
+                            (Just (RenameDialog
+                                   dialog{showList = false}))))]
       [ H.div [ A.classes [B.formGroup]]
         [ H.input [ A.classes [B.formControl]
                   , A.value (removeExtension dialog.item.name)
@@ -46,6 +46,7 @@ renameDialog dialog =
                   , A.value (dialog.selected) ] []
         , H.span [ A.classes [B.inputGroupBtn]]
           [ H.button [ A.classes [B.btn, B.btnDefault]
+                     , A.type_ "button"
                      , E.onClick (\_ -> E.stopPropagation $>
                                         (pure $ inj $ SetDialog
                                          (Just (RenameDialog

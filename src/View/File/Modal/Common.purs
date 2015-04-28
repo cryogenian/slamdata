@@ -26,3 +26,4 @@ footer = section [B.modalFooter]
 
 nonSubmit :: forall i e. A.Attr ((E.Event e) i)
 nonSubmit = E.onSubmit (\_ -> E.preventDefault $> empty)
+
