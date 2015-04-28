@@ -3,12 +3,25 @@ module Driver.Notebook where
 import Config
 import Data.Either
 import Data.List
+import Data.Maybe
 import Control.Alt
 import Control.Apply
 import Control.Monad.Eff
-import Control.Monad.Aff (runAff, attempt) 
+import Control.Monad.Aff (runAff, attempt)
+import Data.Array (findIndex)
+import Model.Path
+import Data.DOM.Simple.Types (DOMEvent())
+import Data.DOM.Simple.Document 
+import Data.DOM.Simple.Events (
+  KeyboardEventType(KeydownEvent),
+  metaKey, shiftKey, ctrlKey, keyCode,
+  addKeyboardEventListener,
+  preventDefault)
+import Data.DOM.Simple.Window (
+  globalWindow,
+  document)
+import DOM (DOM())
 import Model.Action
-
 import qualified Utils as U
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
@@ -21,8 +34,18 @@ import Model.Notebook
 import Model.File.Item
 import Api.Fs (listing)
 import EffectTypes
-import Data.Array (findIndex)
-import Model.Path
+import Halogen.HTML.Events.Monad (runEvent)
+import Controller.Notebook (handleMenuSignal)
+import Control.Plus (empty)
+import Model.Notebook.Menu (
+  MenuNotebookSignal(..),
+  MenuEditSignal(..),
+  MenuInsertSignal(..),
+  MenuCellSignal(..),
+  MenuHelpSignal(..),
+  MenuSignal(..))
+import Data.Inject1 (inj)
+
 
 data Routes
   = CellRoute Path CellId Action
@@ -57,7 +80,7 @@ driver k =
   R.matches' decodeURIPath routing \old new -> do
     case new of
       NotebookRoute path editable -> do
-        k $ SetEditable (isEdit editable)
+        k $ SetEditable (isEdit editable) 
         let uri = (path2str $ parent path) <> "/"
         flip (runAff (const $ pure unit)) (attempt $ listing uri) $ \ei -> do
           k $ SetLoaded true
@@ -69,5 +92,45 @@ driver k =
               then SetError ("There is no notebook at " <> path2str path)
               else SetItems items
         k $ SetPath path
+
+        handleShortcuts k
+        
       _ -> k $ SetError "Incorrect path"
 
+handleShortcuts :: forall e. (Input -> Eff (NotebookAppEff e) Unit) ->
+                   Eff (NotebookAppEff e) Unit
+handleShortcuts k = 
+  document globalWindow >>=
+  addKeyboardEventListener KeydownEvent handler 
+  where
+  handler :: DOMEvent -> _
+  handler e = void do
+    preventDefault e 
+    meta <- (||) <$> ctrlKey e <*> metaKey e
+    shift <- shiftKey e
+    code <- keyCode e 
+    let event =  case code of
+          83 | meta && shift ->
+            handleMenuSignal $ inj $ RenameNotebook
+          80 | meta ->
+            handleMenuSignal $ inj $ PublishNotebook
+          67 | meta ->
+            handleMenuSignal $ inj $ CopyEdit 
+          88 | meta ->
+            handleMenuSignal $ inj $ CutEdit 
+          86 | meta ->
+            handleMenuSignal $ inj $ PasteEdit 
+          49 | meta ->
+            handleMenuSignal $ inj $ QueryInsert 
+          50 | meta ->
+            handleMenuSignal $ inj $ MarkdownInsert 
+          51 | meta ->
+            handleMenuSignal $ inj $ ExploreInsert 
+          52 | meta ->
+            handleMenuSignal $ inj $ SearchInsert 
+          13 | meta ->
+            handleMenuSignal $ inj $ EvaluateCell
+          _ -> empty
+    runEvent (\_ -> U.log "Error in handleShortcuts") k event
+    
+                     

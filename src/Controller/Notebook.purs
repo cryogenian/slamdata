@@ -1,4 +1,5 @@
-module Controller.Notebook (handleMenuSignal) where
+module Controller.Notebook (
+  handleMenuSignal) where
 
 import Data.Maybe
 import Control.Alt ((<|>))
@@ -14,7 +15,7 @@ import Model.Notebook.Menu (
 import Model.Notebook (I())
 import Data.Inject1 (prj)
 import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
-
+import qualified Halogen.HTML.Events.Types as E
 
 handleMenuNotebook :: forall e. MenuNotebookSignal -> I e
 handleMenuNotebook signal = do
@@ -53,3 +54,5 @@ handleMenuSignal signal =
   (handleMenuCell <$> prj signal)
   <|>
   (handleMenuHelp <$> prj signal)
+
+
