@@ -36,9 +36,10 @@ glyph :: forall p i. A.ClassName -> H.HTML p i
 glyph g = H.i [ A.classes [B.glyphicon, g] ] []
 
 
-icon :: forall p i. A.ClassName -> H.HTML p i
-icon c = H.div [ A.classes [ B.colXs1, Vc.navIcon ] ]
-             [ H.a [ A.href Config.homeHash
+icon :: forall p i. A.ClassName -> String -> H.HTML p i
+icon c href = H.div [ A.classes [ B.colXs1, Vc.navIcon ] ]
+             [ H.a [ A.href href
+                  --A.href Config.homeHash
                    , A.classes [B.navbarBrand, Vc.logo]
                    ]
                    [ glyph c ]
