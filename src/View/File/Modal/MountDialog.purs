@@ -29,11 +29,12 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.HTML.Events.Types as ET
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Model.File.Dialog.Mount as M
+import qualified View.Css as VC
 
 mountDialog :: forall p e. M.MountDialogRec -> [H.HTML p (I e)]
 mountDialog state =
   [ header $ h4 "Mount"
-  , body [ H.form [ A.class_ (A.className "dialog-mount") ]
+  , body [ H.form [ A.class_ VC.dialogMount ]
                   $ (if state.new then [fldName state] else [])
                  ++ [ fldConnectionURI state
                     , selScheme state
@@ -55,7 +56,7 @@ fldName state =
 
 fldConnectionURI :: forall p e. M.MountDialogRec -> H.HTML p (I e)
 fldConnectionURI state =
-  H.div [ A.classes [B.formGroup, A.className "mount-uri"] ]
+  H.div [ A.classes [B.formGroup, VC.mountURI] ]
         [ label "Connection URI"
                 [ H.input [ A.class_ B.formControl
                           , A.value state.connectionURI
@@ -101,12 +102,12 @@ selScheme state =
 
 hosts :: forall p e. M.MountDialogRec -> H.HTML p (I e)
 hosts state =
-  H.div [ A.classes [B.formGroup, A.className "mount-host-list"] ]
+  H.div [ A.classes [B.formGroup, VC.mountHostList] ]
         $ (host state) <$> 0 .. (length state.hosts - 1)
 
 host :: forall p e. M.MountDialogRec -> Number -> H.HTML p (I e)
 host state index =
-  H.div [ A.class_ (A.className "mount-host") ]
+  H.div [ A.class_ VC.mountHost ]
         [ label "Host" [ input state (M.hosts <<< ix index <<< M.host) [] ]
         , label "Port" [ input state (M.hosts <<< ix index <<< M.port) [] ]
         ]
@@ -125,13 +126,13 @@ props :: forall p e. M.MountDialogRec -> H.HTML p (I e)
 props state =
   H.div [ A.class_ B.formGroup ]
         [ label "Properties"
-                [ H.table [ A.classes [B.table, B.tableBordered, A.className "mount-props"] ]
+                [ H.table [ A.classes [B.table, B.tableBordered, VC.mountProps] ]
                           [ H.thead_ [ H.tr_ [ H.th_ [ H.text "Name" ]
                                              , H.th_ [ H.text "Value" ]
                                              ]
                                      ]
                           , H.tbody_ [ H.tr_ [ H.td [ A.colSpan 2 ]
-                                                    [ H.div [ A.class_ (A.className "mount-props-scrollbox") ]
+                                                    [ H.div [ A.class_ VC.mountPropsScrollbox ]
                                                             [ H.table_ $ (prop state) <$> 0 .. (length state.props - 1) ]
                                                     ]
                                              ]
