@@ -61,13 +61,13 @@ parseURI = do
          }
 
 parseCredentials :: Parser { user :: String, password :: String }
-parseCredentials = { user: _, password: _ }
+parseCredentials = lookAhead (string "@") *> ({ user: _, password: _ }
   <$> (joinWith "" <$> manyTill anyChar (string ":"))
-  <*> (joinWith "" <$> manyTill anyChar (string "@"))
+  <*> (joinWith "" <$> manyTill anyChar (string "@")))
 
 parseHost :: Parser { host :: String, port :: Maybe String }
 parseHost = { host: _, port: _ }
-  <$> (joinWith "" <$> manyTill anyChar (string ":" <|> string "/"))
+  <$> (joinWith "" <$> manyTill anyChar (string ":" <|> string "/" <|> (lookAhead (string ","))))
   <*> (optionMaybe $ joinWith "" <$> many1 anyDigit)
 
 parseDatabaseName :: Parser String

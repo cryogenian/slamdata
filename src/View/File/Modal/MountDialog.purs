@@ -61,8 +61,8 @@ fldConnectionURI state =
                           , A.value state.connectionURI
                           , E.onKeyDown clearText
                           , E.onKeyPress handleKeyInput
-                          , onPaste selectText
                           , E.onInput (E.input \value -> inj $ UpdateConnectionURI value)
+                          , pasteHandler
                           ]
                           []
                 ]
@@ -82,13 +82,13 @@ fldConnectionURI state =
   handleKeyInput e =
     if (e.ctrlKey || e.metaKey) && e.charCode == 118
     then pure empty
-    else E.preventDefault $> (liftEff (select e.target) *> empty)
+    else E.preventDefault *> selectThis e
 
   -- In Chrome, this is used to prevent multiple values being pasted in the
   -- field - once pasted, the value is selected so that the new value replaces
   -- it.
-  selectText :: forall a. ET.Event a -> E.EventHandler (I e)
-  selectText e = pure $ liftEff (select e.target) *> empty
+  pasteHandler :: A.Attr (I e)
+  pasteHandler = onPaste selectThis
 
 selScheme :: forall p e. M.MountDialogRec -> H.HTML p (I e)
 selScheme state =

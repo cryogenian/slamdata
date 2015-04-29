@@ -39,7 +39,7 @@
     "purescript-routing": "1e7cf5687ddab496f926fce4f7d64fa587041f92",
     "purescript-search": "3cfb60a64c0696e8456c94274d84e2730704a423",
     "purescript-simple-dom": "master",
-    "purescript-string-parsers": "9fc2cf0b701dd012873f2296f4065871b343ec36",
+    "purescript-string-parsers": "~0.4.1",
     "purescript-timers": "~0.0.8",
     "purescript-tuples": "~0.3.1",
     "purescript-zeroclipboard": "https://github.com/slamdata/purescript-zclipboard.git#~0.1.0",
