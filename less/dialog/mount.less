@@ -1,8 +1,17 @@
 .dialog-mount {
 
+    .form-group {
+        margin-bottom: 0;
+        +.form-group {
+            margin-top: 15px;
+        }
+    }
+
+
     label {
         line-height: 34px;
         width: 100%;
+        margin-bottom: 0;
         span {
             width: 100px;
             display: block;
@@ -16,8 +25,13 @@
         }
     }
 
-    .mount-uri label {
-        line-height: 125%;
+    .mount-uri {
+        label {
+            line-height: 125%;
+        }
+        input {
+            background: #eee;
+        }
     }
 
     .mount-host-list {
@@ -38,6 +52,9 @@
             label span {
                 visibility: hidden;
             }
+            +.mount-host {
+                margin-top: 5px;
+            }
         }
         .mount-host:first-child label span {
             visibility: visible;
@@ -52,6 +69,7 @@
         }
         th {
             width: 50%;
+            border-bottom-width: 1px;
         }
         td {
             padding: 0px;
@@ -62,10 +80,15 @@
                 width: 100%;
             }
         }
+        margin-bottom: 0;
     }
 
     .mount-props-scrollbox {
         max-height: 110px;
         overflow: auto;
+    }
+
+    .alert {
+        height: 42px;
     }
 }

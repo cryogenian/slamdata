@@ -4,6 +4,7 @@ module Utils.ConnectionURI
   , HostParams()
   , PropParams()
   , parse
+  , toURI
   ) where
 
 import Control.Alt ((<|>))
@@ -67,11 +68,12 @@ parseCredentials = lookAhead (string "@") *> ({ user: _, password: _ }
 
 parseHost :: Parser { host :: String, port :: Maybe String }
 parseHost = { host: _, port: _ }
-  <$> (joinWith "" <$> manyTill anyChar (string ":" <|> string "/" <|> (lookAhead (string ","))))
+  <$> (joinWith "" <$> manyTill anyChar (string ":" <|> (lookAhead (string "/" <|> string ","))))
   <*> (optionMaybe $ joinWith "" <$> many1 anyDigit)
 
 parseDatabaseName :: Parser String
-parseDatabaseName =
+parseDatabaseName = do
+  string "/"
   joinWith "" <$> manyTill anyChar ((string "?" *> pure unit) <|> eof)
 
 parseProp :: Parser { name :: String, value :: String }
