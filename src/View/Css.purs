@@ -65,6 +65,12 @@ notebookName = className "notebook-name"
 notebookNav :: ClassName
 notebookNav = className "notebook-nav"
 
+notebookAddCellButton :: ClassName
+notebookAddCellButton = className "notebook-add-cell-button"
+
+notebookAddCellMenu :: ClassName
+notebookAddCellMenu = className "notebook-add-cell-menu"
+
 notebookContent :: ClassName
 notebookContent = className "notebook-content"
 

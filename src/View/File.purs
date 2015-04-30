@@ -30,7 +30,9 @@ import qualified View.Css as Vc
 view :: forall p e. State -> H.HTML p (I e)
 view state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.containerFluid] ]
-                          [ icon B.glyphiconFolderOpen, logo, search state ]
+                          [ icon B.glyphiconFolderOpen Config.homeHash
+                          , logo
+                          , search state ]
                   ]
          , content [ H.div [ A.class_ B.clearfix ]
                            [ breadcrumbs state.breadcrumbs

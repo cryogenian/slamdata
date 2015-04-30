@@ -204,6 +204,33 @@ ol.breadcrumb {
     }
 }
 
+.notebook-add-cell-button {
+    i.glyphicon {
+        font-size: 24pt;
+    }
+}
+
+.notebook-add-cell-menu {
+    &.panel {
+        border-radius: 0;
+        margin-left: 12px;
+        
+        float: left;
+    }
+    .list-inline {
+        margin-bottom: 0;
+        li {
+            font-size: 24pt;
+            border: 1px solid #ccc;
+            border-right: none;
+            padding: 8pt 12pt;
+        }
+        li:last-child {
+            border-right: 1px solid #ccc;
+        }
+    }
+}
+
 .cell-input {
     height: 10em;
     textarea {

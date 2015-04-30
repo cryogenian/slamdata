@@ -1,5 +1,6 @@
 module Api.Fs
   ( makeNotebook
+  , delete
   , deleteItem
   , makeFile
   , moveItem
@@ -8,6 +9,7 @@ module Api.Fs
   ) where
 
 import Config
+import Utils (endsWith)
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
@@ -132,14 +134,12 @@ moveItem :: forall e. Item -> String -> Aff (ajax :: AJAX | e) String
 moveItem item destination = do
   let dest = if item.resource == Notebook
              then if endsWith notebookExtension destination
-               then destination
-               else if S.indexOf "." destination /= -1
-                    then destination <> notebookExtension
-                    else destination
+                  then destination
+                  else destination <> notebookExtension
              else destination
+
       dest' = case item.resource of
         Directory -> dest <> "/"
         Database -> dest <> "/"
         _ -> dest
-      endsWith needle haystack = S.indexOf' needle (S.length haystack - S.length needle) haystack /= -1
   move (itemPath item) dest'

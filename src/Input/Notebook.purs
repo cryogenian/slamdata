@@ -1,6 +1,7 @@
 module Input.Notebook (updateState) where
 
-import Data.Array (modifyAt)
+import Data.Maybe (maybe)
+import Data.Array (modifyAt, (!!))
 import Model.Path (getName, updateName)
 import Model.Notebook
 import Optic.Core ((..), (<>~), (%~), (+~))
@@ -9,11 +10,12 @@ import Optic.Setter (mapped, over)
 updateState :: State -> Input -> State
 
 updateState state (Dropdown i) =
+  let visSet = maybe true not (_.visible <$> state.dropdowns !! i) in
   state # dropdowns %~
-  (modifyAt i (\x -> x{visible = not x.visible})) <<<  (_{visible = false} <$>)
+  (modifyAt i (\x -> x{visible = visSet})) <<<  (_{visible = false} <$>)
 
 updateState state CloseDropdowns =
-  state # dropdowns %~ (_{visible = false} <$>)
+  state{addingCell = false} # dropdowns %~ (_{visible = false} <$>)
 
 updateState state (SetTimeout mbTm) =
   state{timeout = mbTm}
@@ -36,11 +38,17 @@ updateState state (SetError error) =
 updateState state (SetEditable editable) =
   state{editable = editable}
 
+updateState state (SetModalError error) =
+  state{modalError = error}
+
+updateState state (SetAddingCell adding) =
+  state{addingCell = adding}
+
 updateState state (AddCell cellType) =
   state # (nextCellId +~ 1)..addCell cellType
 
 updateState state (ToggleEditorCell cellId) =
-  state # notebook..cells..mapped %~ toggleEditor cellId
+  state # notebook..notebookCells..mapped %~ toggleEditor cellId
 
 toggleEditor :: CellId -> Cell -> Cell
 toggleEditor ci (Cell o) | o.cellId == ci = Cell $ o { hiddenEditor = not o.hiddenEditor }
@@ -48,4 +56,4 @@ toggleEditor _ c = c
 
 addCell :: CellType -> State -> State
 addCell cellType state =
-  state # notebook..cells <>~ [ newCell (show state.nextCellId) cellType ]
+  state # notebook..notebookCells <>~ [ newCell (show state.nextCellId) cellType ]

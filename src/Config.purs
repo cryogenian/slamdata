@@ -36,3 +36,5 @@ newNotebookName = "Untitled Notebook" <> notebookExtension
 homeHash :: String
 homeHash = "index.html#?sort=asc&q=path%3A%2F&salt="
 
+notebookNameEditorId :: String
+notebookNameEditorId = "name-editor"

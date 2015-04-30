@@ -4,7 +4,8 @@ import Data.String (indexOf)
 import Model.File.Resource (Resource(..))
 import Model.Path (encodeURIPath)
 import Model.Sort (Sort(..))
-import Utils (trimQuotes)
+import Utils (trimQuotes, endsWith)
+import Config (notebookExtension)
 
 -- | Item in list
 
@@ -20,10 +21,16 @@ type Item = {
 itemPath :: Item -> String
 itemPath item = (encodeURIPath $
                 leadingSlash $
-                trimQuotes item.root <> trimQuotes item.name) <>
+                trimQuotes item.root <> trimQuotes (name item.resource item.name)) <>
                 (if item.resource == Directory ||
-                    item.resource == Database then "/" else  "")
-  where leadingSlash input =
+                    item.resource == Database then "" else  "")
+  where
+    name Notebook n = if endsWith notebookExtension n then
+                        n
+                      else 
+                        n <> notebookExtension
+    name _ n = n
+    leadingSlash input =
           if indexOf "/" input == 0 then
             input
             else "/" <> input

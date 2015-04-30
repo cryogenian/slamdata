@@ -30,6 +30,8 @@ type State =
   , loaded :: Boolean
   , error :: String
   , editable :: Boolean
+  , modalError :: String
+  , addingCell :: Boolean
   , notebook :: Notebook
   , nextCellId :: Number
   }
@@ -53,6 +55,8 @@ initialState =
   , loaded: false
   , error: ""
   , editable: true
+  , modalError: ""
+  , addingCell: false
   , notebook: newNotebook
   -- TODO: We use CellId = String below - how do we gen one?
   , nextCellId: 0
@@ -68,9 +72,10 @@ data Input
   | SetLoaded Boolean
   | SetError String
   | SetEditable Boolean
+  | SetModalError String
+  | SetAddingCell Boolean
   | AddCell CellType
   | ToggleEditorCell CellId
-
 
 
 type CellId = String
@@ -118,8 +123,8 @@ newNotebook = Notebook {
   cells: []
   }
 
-cells :: LensP Notebook [Cell]
-cells = lens (\(Notebook {cells = cs}) -> cs) (\(Notebook o) cs -> Notebook $ o { cells = cs })
+notebookCells :: LensP Notebook [Cell]
+notebookCells = lens (\(Notebook {cells = cs}) -> cs) (\(Notebook o) cs -> Notebook $ o { cells = cs })
 
 instance cellTypeEncode :: Ae.EncodeJson CellType where
   encodeJson cell = Ac.fromString $ case cell of
