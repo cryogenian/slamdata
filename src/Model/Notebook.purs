@@ -124,8 +124,11 @@ newNotebook = Notebook {
   cells: []
   }
 
+notebookLens :: LensP Notebook _
+notebookLens = lens (\(Notebook obj) -> obj) (const Notebook)
+
 notebookCells :: LensP Notebook [Cell]
-notebookCells = lens (\(Notebook {cells = cs}) -> cs) (\(Notebook o) cs -> Notebook $ o { cells = cs })
+notebookCells = notebookLens <<< lens _.cells (_ { cells = _ })
 
 instance cellTypeEncode :: Ae.EncodeJson CellType where
   encodeJson cell = Ac.fromString $ case cell of
