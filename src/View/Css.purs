@@ -64,3 +64,18 @@ notebookName = className "notebook-name"
 
 notebookNav :: ClassName
 notebookNav = className "notebook-nav"
+
+notebookContent :: ClassName
+notebookContent = className "notebook-content"
+
+notebookCell :: ClassName
+notebookCell = className "notebook-cell"
+
+cellInput :: ClassName
+cellInput = className "cell-input"
+
+cellOutput :: ClassName
+cellOutput = className "cell-output"
+
+cellNextActions :: ClassName
+cellNextActions = className "cell-next-actions"

@@ -6,12 +6,16 @@ import Data.Inject1 (inj)
 import Control.Plus (empty)
 import View.Common (contentFluid, navbar, icon, logo, glyph)
 import Data.Array ((..), length, zipWith, replicate)
-import Model.Notebook (Input(..), State(..))
+import Model.Notebook (Input(..), State(..), Notebook(..), Cell(..), notebook, cells)
 import Model.Notebook.Menu (DropdownItem(), MenuElement())
 import Controller.Notebook (handleMenuSignal)
 import Data.Int (toNumber, fromNumber, Int())
 import Data.String (joinWith)
 import EffectTypes (NotebookAppEff())
+import Optic.Core ((^.))
+
+import qualified Data.Argonaut.Encode as Ae
+import qualified Data.Argonaut.Printer as Ap
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -48,11 +52,44 @@ navigation state =
 body :: forall p e. State -> [HTML p e]
 body state =
   [ if not state.loaded
-    then H.h1 [ A.classes [ B.textCenter ] ] [H.text "Loading..." ]
+    then H.h1 [ A.classes [ B.textCenter ] ] [ H.text "Loading..." ]
     else if state.error /= ""
          then H.div [ A.classes [ B.alert, B.alertDanger ] ]
-              [ H.h1 [ A.classes [ B.textCenter ] ] [H.text state.error] ]
-         else contentFluid [ H.div [ A.class_ B.clearfix ]  [ ] ] ]
+              [ H.h1 [ A.classes [ B.textCenter ] ] [ H.text state.error ] ]
+         else contentFluid [ H.div [ A.class_ B.clearfix ] [ ]
+                           , H.div [ A.classes [ Vc.notebookContent ] ] (notebook' state.notebook) ] ]
+
+notebook' :: forall p e. Notebook -> [HTML p e]
+notebook' n = n ^. cells >>= cell
+
+cell :: forall p e. Cell -> [HTML p e]
+cell (Cell o) =
+  [ H.div [ A.classes [ B.container, Vc.notebookCell ] ]
+    [ divRow [ H.div [ A.classes [ B.btnGroup, B.pullRight ]
+                     , E.onClick (E.input_ (ToggleEditorCell o.cellId))
+                     ]
+                     [ H.button [ A.classes [ B.btn ] ] [ H.text "Settings" ]
+                     , H.button [ A.classes [ B.btn ] ] [ H.text (if o.hiddenEditor then "Show" else "Hide") ]
+                     , H.button [ A.classes [ B.btn ] ] [ H.text "Trash" ]
+                     ]
+             ]
+    , divRow (if o.hiddenEditor
+              then [ ]
+              else [ H.div [ A.classes [ B.colMdOffset2, B.colMd10, Vc.cellInput ] ] [ H.textarea [ ] [ H.text o.input ] ] ])
+    , margined [ H.button [ A.classes [ B.btn ] ] [ H.text "Run" ] ]
+               [ H.text (Ap.printJson (Ae.encodeJson o.cellType)) ]
+               -- , H.button [ A.classes [ B.btn ] ] [ H.text "Status Details" ]
+    , H.div [ A.classes [ B.row, Vc.cellOutput ] ] [ H.text o.output ]
+    , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ]
+    ] ]
+
+divRow :: forall p e. [HTML p e] -> HTML p e
+divRow = H.div [ A.classes [ B.row ] ]
+
+margined :: forall p e. [HTML p e] -> [HTML p e] -> HTML p e
+margined l r = divRow [ H.div [ A.classes [ B.colMd2 ] ] l
+                      , H.div [ A.classes [ B.colMd10 ] ] r
+                      ]
 
 txt :: forall p e. Int -> String -> [HTML p e]
 txt lvl text =
@@ -86,4 +123,3 @@ name state =
   [ H.input [ A.classes [ Vc.notebookName ]
             , E.onInput (E.input SetName)
             , A.value (state.name)  ] [] ]
-

@@ -4,7 +4,7 @@ import Data.Either
 import Data.Maybe
 import Data.Inject1 (prj, inj)
 import Halogen.HTML.Events.Monad (Event())
-import Optic.Core (lens, Lens())
+import Optic.Core (lens, LensP())
 import Control.Timer (Timeout())
 import Model.Path (Path(), emptyPath)
 import Model.File.Item (Item())
@@ -30,11 +30,18 @@ type State =
   , loaded :: Boolean
   , error :: String
   , editable :: Boolean
+  , notebook :: Notebook
+  , nextCellId :: Number
   }
 
-dropdowns :: forall a. Lens State State [DropdownItem] [DropdownItem]
+dropdowns :: LensP State [DropdownItem]
 dropdowns = lens _.dropdowns _{dropdowns = _}
 
+notebook :: LensP State Notebook
+notebook = lens _.notebook _{notebook = _}
+
+nextCellId :: LensP State Number
+nextCellId = lens _.nextCellId _{nextCellId = _}
 
 initialState :: State
 initialState =
@@ -46,6 +53,9 @@ initialState =
   , loaded: false
   , error: ""
   , editable: true
+  , notebook: newNotebook
+  -- TODO: We use CellId = String below - how do we gen one?
+  , nextCellId: 0
   }
 
 data Input
@@ -58,6 +68,8 @@ data Input
   | SetLoaded Boolean
   | SetError String
   | SetEditable Boolean
+  | AddCell CellType
+  | ToggleEditorCell CellId
 
 
 
@@ -77,11 +89,23 @@ data CellType
   | Markdown
 
 newtype Cell = Cell {
+  cellId :: CellId,
   input :: String,
   output :: String,
   cellType :: CellType,
-  metadata :: String
+  metadata :: String,
+  hiddenEditor :: Boolean
   }
+
+newCell :: CellId -> CellType -> Cell
+newCell cellId cellType =
+  Cell { cellId: cellId
+       , input: ""
+       , output: ""
+       , cellType: cellType
+       , metadata: ""
+       , hiddenEditor: false
+       }
 
 newtype Notebook = Notebook {
   metadata :: String,
@@ -93,6 +117,9 @@ newNotebook = Notebook {
   metadata: "",
   cells: []
   }
+
+cells :: LensP Notebook [Cell]
+cells = lens (\(Notebook {cells = cs}) -> cs) (\(Notebook o) cs -> Notebook $ o { cells = cs })
 
 instance cellTypeEncode :: Ae.EncodeJson CellType where
   encodeJson cell = Ac.fromString $ case cell of
