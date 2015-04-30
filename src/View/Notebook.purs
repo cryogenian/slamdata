@@ -77,8 +77,7 @@ cell (Cell o) =
   [ H.div [ A.classes [ B.container, Vc.notebookCell ] ]
     [ divRow [ H.div [ A.classes [ B.btnGroup, B.pullRight ]
                      ]
-                     [ H.button [ A.classes [ B.btn ] ] [ H.text "Settings" ]
-                     , H.button [ A.classes [ B.btn ]
+                     [ H.button [ A.classes [ B.btn ]
                                 , E.onClick (E.input_ (ToggleEditorCell o.cellId))
                                 ] [ H.text (if o.hiddenEditor then "Show" else "Hide") ]
                      , H.button [ A.classes [ B.btn ]
