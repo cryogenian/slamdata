@@ -16,7 +16,7 @@ import Model.Notebook.Menu (
   MenuCellSignal(..),
   MenuHelpSignal(..),
   MenuSignal(..))
-import Model.Notebook (I(), State(), Input(..))
+import Model.Notebook (I(), State(), Input(..), CellType(..))
 import Data.Inject1 (prj)
 import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
 import Model.Path (path2str, updateName, parent, getName, decodeURIPath)
@@ -71,9 +71,10 @@ handleMenuEdit signal = do
   empty
 
 handleMenuInsert :: forall e. MenuInsertSignal -> I e
-handleMenuInsert signal = do
-  liftEff $ fprint signal
-  empty
+handleMenuInsert ExploreInsert = pure $ AddCell Explore
+handleMenuInsert MarkdownInsert = pure $ AddCell Markdown
+handleMenuInsert QueryInsert = pure $ AddCell Query
+handleMenuInsert SearchInsert = pure $ AddCell Search
 
 handleMenuCell :: forall e. MenuCellSignal -> I e
 handleMenuCell signal = do

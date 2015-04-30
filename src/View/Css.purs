@@ -88,3 +88,18 @@ mountProps = className "mount-props"
 
 mountPropsScrollbox :: ClassName
 mountPropsScrollbox = className "mount-props-scrollbox"
+
+notebookContent :: ClassName
+notebookContent = className "notebook-content"
+
+notebookCell :: ClassName
+notebookCell = className "notebook-cell"
+
+cellInput :: ClassName
+cellInput = className "cell-input"
+
+cellOutput :: ClassName
+cellOutput = className "cell-output"
+
+cellNextActions :: ClassName
+cellNextActions = className "cell-next-actions"
