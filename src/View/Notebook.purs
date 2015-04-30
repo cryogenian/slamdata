@@ -76,11 +76,14 @@ cell :: forall p e. Cell -> [HTML p e]
 cell (Cell o) =
   [ H.div [ A.classes [ B.container, Vc.notebookCell ] ]
     [ divRow [ H.div [ A.classes [ B.btnGroup, B.pullRight ]
-                     , E.onClick (E.input_ (ToggleEditorCell o.cellId))
                      ]
                      [ H.button [ A.classes [ B.btn ] ] [ H.text "Settings" ]
-                     , H.button [ A.classes [ B.btn ] ] [ H.text (if o.hiddenEditor then "Show" else "Hide") ]
-                     , H.button [ A.classes [ B.btn ] ] [ H.text "Trash" ]
+                     , H.button [ A.classes [ B.btn ]
+                                , E.onClick (E.input_ (ToggleEditorCell o.cellId))
+                                ] [ H.text (if o.hiddenEditor then "Show" else "Hide") ]
+                     , H.button [ A.classes [ B.btn ]
+                                , E.onClick (E.input_ (TrashCell o.cellId))
+                                ] [ H.text "Trash" ]
                      ]
              ]
     , divRow (if o.hiddenEditor

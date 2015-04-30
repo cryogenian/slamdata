@@ -1,7 +1,7 @@
 module Input.Notebook (updateState) where
 
 import Data.Maybe (maybe)
-import Data.Array (modifyAt, (!!))
+import Data.Array (filter, modifyAt, (!!))
 import Model.Path (getName, updateName)
 import Model.Notebook
 import Optic.Core ((..), (<>~), (%~), (+~))
@@ -50,9 +50,15 @@ updateState state (AddCell cellType) =
 updateState state (ToggleEditorCell cellId) =
   state # notebook..notebookCells..mapped %~ toggleEditor cellId
 
+updateState state (TrashCell cellId) =
+  state # notebook..notebookCells %~ filter (not <<< isCell cellId)
+
 toggleEditor :: CellId -> Cell -> Cell
-toggleEditor ci (Cell o) | o.cellId == ci = Cell $ o { hiddenEditor = not o.hiddenEditor }
+toggleEditor ci c@(Cell o) | isCell ci c = Cell $ o { hiddenEditor = not o.hiddenEditor }
 toggleEditor _ c = c
+
+isCell :: CellId -> Cell -> Boolean
+isCell ci (Cell { cellId = ci' }) = ci == ci'
 
 addCell :: CellType -> State -> State
 addCell cellType state =

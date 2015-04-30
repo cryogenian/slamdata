@@ -76,6 +76,7 @@ data Input
   | SetAddingCell Boolean
   | AddCell CellType
   | ToggleEditorCell CellId
+  | TrashCell CellId
 
 
 type CellId = String
