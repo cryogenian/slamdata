@@ -71,6 +71,24 @@ notebookAddCellButton = className "notebook-add-cell-button"
 notebookAddCellMenu :: ClassName
 notebookAddCellMenu = className "notebook-add-cell-menu"
 
+dialogMount :: ClassName
+dialogMount = className "dialog-mount"
+
+mountURI :: ClassName
+mountURI = className "mount-uri"
+
+mountHostList :: ClassName
+mountHostList = className "mount-host-list"
+
+mountHost :: ClassName
+mountHost = className "mount-host"
+
+mountProps :: ClassName
+mountProps = className "mount-props"
+
+mountPropsScrollbox :: ClassName
+mountPropsScrollbox = className "mount-props-scrollbox"
+
 notebookContent :: ClassName
 notebookContent = className "notebook-content"
 

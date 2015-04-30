@@ -1,7 +1,7 @@
 module Controller.File where
 
 import Api.Fs (makeNotebook, makeFile)
-import Data.Inject1 (inj)
+import Control.Apply ((*>))
 import Control.Monad.Aff (Aff(), makeAff, attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())
@@ -11,9 +11,10 @@ import Control.Monad.Error.Class (throwError)
 import Control.Plus (empty)
 import Controller.File.Common (toInput, open)
 import Data.Array (head, findIndex)
-import Data.DOM.Simple.Types (HTMLElement())
 import Data.DOM.Simple.Element (querySelector)
+import Data.DOM.Simple.Types (HTMLElement())
 import Data.Either (Either(..))
+import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..))
 import Data.String (split, joinWith)
 import DOM (DOM())
@@ -31,11 +32,11 @@ import Model.File.Dialog.Rename (initialRenameDialog)
 import Model.File.Item (initNotebook, initDirectory, initFile)
 import Model.Notebook (newNotebook)
 import Model.Sort (Sort())
-import qualified Halogen.HTML.Events.Types as Et
-import qualified Utils.File as Uf
 import Routing.Hash (getHash, modifyHash)
 import Utils (clearValue, select)
 import Utils.Event (raiseEvent)
+import qualified Halogen.HTML.Events.Types as Et
+import qualified Utils.File as Uf
 
 handleCreateNotebook :: forall e. State -> Event (FileAppEff e) Input
 handleCreateNotebook state = do
@@ -131,7 +132,7 @@ getNewName name state =
 selectThis :: forall e o. Et.Event (|o) ->
               EventHandler (Event (dom :: DOM|e) Input)
 selectThis ev =
-  pure $ (async $ makeAff \_ _ -> select ev.target)
+  pure $ liftEff (select ev.target) *> empty
 
 breadcrumbClicked :: forall e. Breadcrumb -> Event (FileAppEff e) Input
 breadcrumbClicked b = do
