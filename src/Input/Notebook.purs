@@ -6,6 +6,7 @@ import Model.Path (getName, updateName)
 import Model.Notebook
 import Optic.Core ((..), (<>~), (%~), (+~))
 import Optic.Setter (mapped, over)
+import qualified App.Notebook.Ace as NA
 
 updateState :: State -> Input -> State
 
@@ -52,6 +53,9 @@ updateState state (ToggleEditorCell cellId) =
 
 updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
+
+updateState state (AceInput (NA.TextCopied _)) =
+  state
 
 toggleEditor :: CellId -> Cell -> Cell
 toggleEditor ci c@(Cell o) | isCell ci c = Cell $ o { hiddenEditor = not o.hiddenEditor }
