@@ -158,4 +158,3 @@ instance notebookRequestable :: Ar.Requestable Notebook where
   toRequest notebook =
     let str = Ap.printJson (Ae.encodeJson notebook) :: String
     in Ar.toRequest str
-

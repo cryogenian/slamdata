@@ -8,7 +8,7 @@ import Control.Plus (empty)
 import View.Common (contentFluid, navbar, icon, logo, glyph)
 
 import Data.Array ((..), length, zipWith, replicate)
-import Model.Notebook (Input(..), State(..), Notebook(..), Cell(..), notebook, notebookCells)
+import Model.Notebook
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Controller.Notebook (handleMenuSignal, handleSubmitName)
 import Model.Path (path2str, parent)
@@ -20,6 +20,8 @@ import Optic.Core ((^.))
 import qualified Data.Argonaut.Encode as Ae
 import qualified Data.Argonaut.Printer as Ap
 
+import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen)
+import Text.Markdown.SlamDown.Parser (parseMd)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.Themes.Bootstrap3 as B
@@ -91,9 +93,19 @@ cell (Cell o) =
     , margined [ H.button [ A.classes [ B.btn ] ] [ H.text "Run" ] ]
                [ H.text (Ap.printJson (Ae.encodeJson o.cellType)) ]
                -- , H.button [ A.classes [ B.btn ] ] [ H.text "Status Details" ]
-    , H.div [ A.classes [ B.row, Vc.cellOutput ] ] [ H.text o.output ]
+    , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.input)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ]
     ] ]
+
+renderOutput :: forall p e. CellType -> String -> [HTML p e]
+renderOutput Markdown = markdownOutput
+renderOutput _ = const [ ]
+
+-- TODO: Interpret the SlamDownEvent instead of discarding.
+markdownOutput :: forall p e. String -> [HTML p e] --- [H.HTML p (E.Event (NotebookAppEff e) SlamDownEvent)]
+markdownOutput = fromSlamDownEvents <<< renderHalogen <<< parseMd
+  where fromSlamDownEvents :: [H.HTML p (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML p e]
+        fromSlamDownEvents = (($> empty) <$>)
 
 divRow :: forall p e. [HTML p e] -> HTML p e
 divRow = H.div [ A.classes [ B.row ] ]
