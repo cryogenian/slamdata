@@ -54,7 +54,10 @@ updateState state (ToggleEditorCell cellId) =
 updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
 
-updateState state (AceInput (NA.TextCopied _)) =
+updateState state (AceTextCopied _) =
+  state
+
+updateState state (RunCell _) =
   state
 
 toggleEditor :: CellId -> Cell -> Cell

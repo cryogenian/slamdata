@@ -1,5 +1,7 @@
 module App.Notebook.Ace where
 
+import Model.Notebook (Input(..))
+
 import Data.Void
 import Data.Maybe
 import Data.Tuple
@@ -41,32 +43,30 @@ foreign import createEditorNode
   \  return document.createElement('div');\
   \}" :: forall eff. Eff (dom :: DOM | eff) HTMLElement
 
--- | The type of outputs/events from the Ace widget.
-data AceEvent = TextCopied String
-
 -- | The application state, which stores the string most recently copied to the clipboard.
 data State = State (Maybe String)
 
-ui :: forall m eff req. (Applicative m) => Component (Widget (HalogenEffects (ace :: EAce | eff)) AceEvent) m req AceEvent
+ui :: forall m eff. (Applicative m) => Component (Widget (HalogenEffects (ace :: EAce | eff)) Input) m Input Input
 ui = runComponent (component' <<< (render <$>)) aceEditor
   where
   render :: forall a. H.HTML _ a -> H.HTML _ a
   render c  = H.div [ A.class_ (A.className "ace-container") ] [ c ]
 
 -- | The Ace editor is represented as a `Component`, created using `Component.widget`.
-aceEditor :: forall req m eff. (Functor m) => Component (Widget (HalogenEffects (ace :: EAce | eff)) AceEvent) m req AceEvent
+aceEditor :: forall m eff. (Functor m) => Component (Widget (HalogenEffects (ace :: EAce | eff)) Input) m Input Input
 aceEditor = widget { name: "AceEditor", id: "editor1", init: init, update: update, destroy: destroy }
   where
-  init :: forall eff. (AceEvent -> Eff (ace :: EAce, dom :: DOM | eff) Unit) -> Eff (ace :: EAce, dom :: DOM | eff) { state :: Editor, node :: HTMLElement }
+  init :: forall eff. (Input -> Eff (ace :: EAce, dom :: DOM | eff) Unit) -> Eff (ace :: EAce, dom :: DOM | eff) { state :: Editor, node :: HTMLElement }
   init driver = do
     node <- createEditorNode
     editor <- Ace.editNode node ace
     Editor.setTheme "ace/theme/monokai" editor
-    Editor.onCopy editor (driver <<< TextCopied)
+    Editor.onCopy editor (driver <<< AceTextCopied)
     return { state: editor, node: node }
 
-  update :: forall req eff. req  -> Editor -> HTMLElement -> Eff (ace :: EAce, dom :: DOM | eff) (Maybe HTMLElement)
-  update _ editor _ = Editor.setValue "" Nothing editor $> Nothing
+  update :: forall eff. Input  -> Editor -> HTMLElement -> Eff (ace :: EAce, dom :: DOM | eff) (Maybe HTMLElement)
+  update (RunCell _) editor _ = Editor.setValue "" Nothing editor $> Nothing
+  update _ _ _ = return Nothing
 
   destroy :: forall eff. Editor -> HTMLElement -> Eff (ace :: EAce, dom :: DOM | eff) Unit
   destroy editor _ = Editor.destroy editor

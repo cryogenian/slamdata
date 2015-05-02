@@ -10,7 +10,6 @@ import Model.Path (Path(), emptyPath)
 import Model.File.Item (Item())
 import EffectTypes (NotebookAppEff())
 import Model.Notebook.Menu (initialDropdowns, DropdownItem())
-import qualified App.Notebook.Ace as NA
 
 import Data.Argonaut.Combinators
 import qualified Data.Argonaut.Core as Ac
@@ -78,7 +77,8 @@ data Input
   | AddCell CellType
   | ToggleEditorCell CellId
   | TrashCell CellId
-  | AceInput NA.AceEvent
+  | AceTextCopied String
+  | RunCell CellId
 
 
 type CellId = String
