@@ -13,10 +13,12 @@ type MountDialogRec =
   , name :: String
   , connectionURI :: String
   , hosts :: [MountHostRec]
+  , path :: String
   , user :: String
   , password :: String
   , props :: [MountPropRec]
   , message :: Maybe String
+  , valid :: Boolean
   }
 
 type MountHostRec =
@@ -37,6 +39,9 @@ connectionURI = lens _.connectionURI (_ { connectionURI = _ })
 
 hosts :: LensP MountDialogRec [MountHostRec]
 hosts = lens _.hosts (_ { hosts = _ })
+
+path :: LensP MountDialogRec String
+path = lens _.path (_ { path = _ })
 
 user :: LensP MountDialogRec String
 user = lens _.user (_ { user = _ })
@@ -62,10 +67,12 @@ initialMountDialog =
   , name: ""
   , connectionURI: ""
   , hosts: [initialMountHost]
+  , path: ""
   , user: ""
   , password: ""
   , props: [initialMountProp]
   , message: Nothing
+  , valid: false
   }
 
 initialMountHost :: MountHostRec
@@ -84,6 +91,7 @@ eqMountDialog :: MountDialogRec -> MountDialogRec -> Boolean
 eqMountDialog m1 m2 = m1.name == m2.name
                    && length m1.hosts == length m2.hosts
                    && and (m1.hosts `zipWith eqMountHost` m2.hosts)
+                   && m1.path == m2.path
                    && m1.user == m2.user
                    && m1.password == m2.password
                    && length m1.props == length m2.props

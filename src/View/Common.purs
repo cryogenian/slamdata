@@ -1,7 +1,12 @@
 module View.Common where
 
+import Data.Char (fromCharCode)
+import Data.String (fromChar)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
+import qualified Halogen.HTML.Events as E
+import qualified Halogen.HTML.Events.Handler as E
+import qualified Halogen.HTML.Events.Types as ET
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Config as Config
 import qualified View.Css as Vc
@@ -13,7 +18,7 @@ row :: forall p i. [H.HTML p i ] -> H.HTML p i
 row = H.div [ A.classes [ B.row ] ]
 
 genericContainer :: forall p i. [A.ClassName] -> [A.ClassName] ->
-                    [H.HTML p i] -> H.HTML p i 
+                    [H.HTML p i] -> H.HTML p i
 genericContainer wrapperClasses contentClasses nodes =
   H.div [ A.classes wrapperClasses ]
   [ row [ H.div [ A.classes contentClasses ]
@@ -54,3 +59,9 @@ logo = H.div [ A.classes [ B.colXs3, Vc.navLogo ] ]
                            []
                    ]
              ]
+
+closeButton :: forall p i. (ET.Event ET.MouseEvent -> E.EventHandler i) -> H.HTML p i
+closeButton handler =
+  H.button [ A.class_ B.close
+           , E.onClick handler ]
+           [ H.span_ [ H.text (fromChar $ fromCharCode 215) ] ]

@@ -1,15 +1,16 @@
 module View.File.Modal.MountDialog (mountDialog) where
 
 import Data.Inject1 (inj)
+
 import Control.Apply ((*>))
 import Control.Functor (($>))
 import Control.Plus (empty)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Controller.File (selectThis)
-import Data.Array ((..), length, zipWith)
+import Data.Array ((..), length, zipWith, singleton)
 import Data.Int (toNumber)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, isJust)
 import Input.File (FileInput(SetDialog))
 import Input.File.Mount (MountInput(..))
 import Optic.Core ((.~), (^.))
@@ -17,7 +18,7 @@ import Optic.Index (ix)
 import Optic.Index.Types (TraversalP())
 import Utils.Halide (readonly, onPaste)
 import Utils (select, clearValue)
-import View.Common (glyph)
+import View.Common (glyph, closeButton)
 import View.File.Common (I())
 import View.File.Modal.Common (header, h4, body, footer)
 import qualified Halogen.HTML as H
@@ -38,14 +39,16 @@ mountDialog state =
                   $ (if state.new then [fldName state] else [])
                  ++ [ fldConnectionURI state
                     , selScheme state
+                    , fldPath state
                     , hosts state
                     , fldUser state
                     , fldPass state
                     , props state
+                    , message state.message
                     ]
          ]
   , footer [ btnCancel
-           , btnMount (if state.new then "Mount" else "Save changes")
+           , btnMount (if state.new then "Mount" else "Save changes") state.valid
            ]
   ]
 
@@ -59,6 +62,7 @@ fldConnectionURI state =
   H.div [ A.classes [B.formGroup, VC.mountURI] ]
         [ label "Connection URI"
                 [ H.input [ A.class_ B.formControl
+                          , A.placeholder "Paste connection URI here"
                           , A.value state.connectionURI
                           , E.onKeyDown clearText
                           , E.onKeyPress handleKeyInput
@@ -112,6 +116,11 @@ host state index =
         , label "Port" [ input state (M.hosts <<< ix index <<< M.port) [] ]
         ]
 
+fldPath :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+fldPath state =
+  H.div [ A.class_ B.formGroup ]
+        [ label "Path" [ input state M.path [] ] ]
+
 fldUser :: forall p e. M.MountDialogRec -> H.HTML p (I e)
 fldUser state =
   H.div [ A.class_ B.formGroup ]
@@ -147,6 +156,11 @@ prop state index =
         , H.td_ [ input state (M.props <<< ix index <<< M.value) [ A.classes [B.formControl, B.inputSm] ] ]
         ]
 
+message :: forall p e. Maybe String -> H.HTML p (I e)
+message msg =
+  H.div [ A.classes $ [B.alert, B.alertDanger, B.alertDismissable, B.fade] ++ if isJust msg then [B.in_] else [] ]
+      $ [ closeButton (E.input_ $ inj ClearMessage) ] ++ maybe [] (singleton <<< H.text) msg
+
 btnCancel :: forall p e. H.HTML p (I e)
 btnCancel =
   H.button [ A.classes [B.btn]
@@ -154,9 +168,10 @@ btnCancel =
            ]
            [ H.text "Cancel" ]
 
-btnMount :: forall p e. String -> H.HTML p (I e)
-btnMount text =
+btnMount :: forall p e. String -> Boolean -> H.HTML p (I e)
+btnMount text enabled =
   H.button [ A.classes [B.btn, B.btnPrimary]
+           , A.disabled (not enabled)
            , E.onClick (E.input_ $ inj $ SetDialog Nothing)
            ]
            [ H.text text ]
