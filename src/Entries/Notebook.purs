@@ -6,9 +6,10 @@ import Data.Tuple (Tuple(..))
 import EffectTypes (NotebookAppEff())
 import Halogen (runUI)
 import Utils (onLoad, mountUI)
+import Ace.Types (EAce())
 import qualified Driver.Notebook as D
 
-main :: Eff (NotebookAppEff ()) Unit
+main :: Eff (NotebookAppEff (ace :: EAce)) Unit
 main = onLoad $ void $ do
   Tuple node driver <- runUI app
   mountUI node

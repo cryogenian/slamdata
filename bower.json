@@ -43,15 +43,18 @@
     "purescript-timers": "~0.0.8",
     "purescript-tuples": "~0.3.1",
     "purescript-zeroclipboard": "https://github.com/slamdata/purescript-zclipboard.git#~0.1.0",
-    "zeroclipboard": "~2.2.0"
+    "zeroclipboard": "~2.2.0",
+    "purescript-markdown": "~1.1.0",
+    "purescript-ace": "~0.3.0"
   },
   "resolutions": {
-    "purescript-aff": "~0.10.1",
+    "purescript-aff": "~0.10.0",
     "purescript-const": "~0.4.1",
     "purescript-contravariant": "~0.1.0",
     "purescript-integers": "~0.1.0",
     "purescript-lens": "master",
     "purescript-profunctor": "~0.2.1",
-    "purescript-simple-dom": "master"
+    "purescript-simple-dom": "master",
+    "purescript-halogen": "4280176b479082b9e2a30dcf965cdc3d0d00c51b"
   }
 }

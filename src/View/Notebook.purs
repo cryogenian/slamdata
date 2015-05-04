@@ -1,6 +1,8 @@
-module View.Notebook (view, HTML()) where
+module View.Notebook (view, Placeholder(..), HTML()) where
 
 import Data.Maybe (maybe)
+import Data.Bifunctor (bimap)
+import Data.Void
 import Control.Functor (($>))
 import Control.Apply ((*>))
 import Data.Inject1 (inj)
@@ -8,7 +10,7 @@ import Control.Plus (empty)
 import View.Common (contentFluid, navbar, icon, logo, glyph)
 
 import Data.Array ((..), length, zipWith, replicate)
-import Model.Notebook (Input(..), State(..), Notebook(..), Cell(..), notebook, notebookCells)
+import Model.Notebook
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Controller.Notebook (handleMenuSignal, handleSubmitName)
 import Model.Path (path2str, parent)
@@ -20,6 +22,8 @@ import Optic.Core ((^.))
 import qualified Data.Argonaut.Encode as Ae
 import qualified Data.Argonaut.Printer as Ap
 
+import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen)
+import Text.Markdown.SlamDown.Parser (parseMd)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.Themes.Bootstrap3 as B
@@ -32,14 +36,16 @@ import qualified View.Css as Vc
 import qualified View.File.Modal.Common as Vm
 import Driver.File (updatePath)
 
-type HTML p e = H.HTML p (E.Event (NotebookAppEff e) Input)
+data Placeholder = AceEditor
 
-view :: forall p e. State -> HTML p e
+type HTML e = H.HTML Placeholder (E.Event (NotebookAppEff e) Input)
+
+view :: forall e. State -> HTML e
 view state =
   H.div [ E.onClick (E.input_ CloseDropdowns) ]
   (navigation state <> body state <>  modal state)
 
-navigation :: forall p e. State -> [HTML p e]
+navigation :: forall e. State -> [HTML e]
 navigation state =
   if not state.editable
   then []
@@ -58,7 +64,7 @@ navigation state =
     let u = path2str $ parent state.path in
     updatePath u Config.homeHash
 
-body :: forall p e. State -> [HTML p e]
+body :: forall e. State -> [HTML e]
 body state =
   [ if not state.loaded
     then H.h1 [ A.classes [ B.textCenter ] ] [ H.text "Loading..." ]
@@ -69,10 +75,10 @@ body state =
               [ H.div [ A.class_ B.clearfix ]
                 (cells state <> newCellMenu state)] ]
 
-cells :: forall p e. State -> [HTML p e]
+cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ] (state ^. notebook <<< notebookCells >>= cell) ]
 
-cell :: forall p e. Cell -> [HTML p e]
+cell :: forall e. Cell -> [HTML e]
 cell (Cell o) =
   [ H.div [ A.classes [ B.container, Vc.notebookCell ] ]
     [ divRow [ H.div [ A.classes [ B.btnGroup, B.pullRight ]
@@ -87,22 +93,31 @@ cell (Cell o) =
              ]
     , divRow (if o.hiddenEditor
               then [ ]
-              else [ H.div [ A.classes [ B.colMdOffset2, B.colMd10, Vc.cellInput ] ] [ H.textarea [ ] [ H.text o.input ] ] ])
-    , margined [ H.button [ A.classes [ B.btn ] ] [ H.text "Run" ] ]
+              else [ H.div [ A.classes [ B.colMdOffset2, B.colMd10, Vc.cellInput ] ] [ H.placeholder AceEditor ] ])
+    , margined [ H.button [ A.classes [ B.btn ], E.onClick (E.input_ (RunCell o.cellId)) ] [ H.text "Run" ] ]
                [ H.text (Ap.printJson (Ae.encodeJson o.cellType)) ]
-               -- , H.button [ A.classes [ B.btn ] ] [ H.text "Status Details" ]
-    , H.div [ A.classes [ B.row, Vc.cellOutput ] ] [ H.text o.output ]
+    , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.input)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ]
     ] ]
 
-divRow :: forall p e. [HTML p e] -> HTML p e
+renderOutput :: forall e. CellType -> String -> [HTML e]
+renderOutput Markdown = markdownOutput
+renderOutput _ = const [ ]
+
+-- TODO: Interpret the SlamDownEvent instead of discarding.
+markdownOutput :: forall e. String -> [HTML e]
+markdownOutput = fromSlamDownEvents <<< renderHalogen <<< parseMd
+  where fromSlamDownEvents :: forall p. [H.HTML Void (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
+        fromSlamDownEvents xs = bimap absurd (const empty) <$> xs
+
+divRow :: forall e. [HTML e] -> HTML e
 divRow = H.div [ A.classes [ B.row ] ]
 
-margined :: forall p e. [HTML p e] -> [HTML p e] -> HTML p e
+margined :: forall e. [HTML e] -> [HTML e] -> HTML e
 margined l r = divRow [ H.div [ A.classes [ B.colMd2 ] ] l
                       , H.div [ A.classes [ B.colMd10 ] ] r
                       ]
-newCellMenu :: forall p e. State -> [HTML p e]
+newCellMenu :: forall e. State -> [HTML e]
 newCellMenu state =
   [ H.a [ A.href "#"
         , A.classes [ B.btn, B.btnLink, B.btnLg, Vc.notebookAddCellButton ]
@@ -125,7 +140,7 @@ newCellMenu state =
         , li MarkdownInsert B.glyphiconEdit
         , li SearchInsert B.glyphiconSearch ] ] ] ]
   where
-  li :: MenuInsertSignal -> A.ClassName -> HTML p e
+  li :: MenuInsertSignal -> A.ClassName -> HTML e
   li inp cls =
     H.li_ [ H.a [ A.href "#"
                 , E.onClick (\e -> do
@@ -134,12 +149,12 @@ newCellMenu state =
                                   handleMenuSignal <<< inj $ inp ) ]
             [ glyph cls ] ]
 
-txt :: forall p e. Int -> String -> [HTML p e]
+txt :: forall e. Int -> String -> [HTML e]
 txt lvl text =
   [ H.text $ (joinWith "" $ replicate (toNumber lvl) "--") <> " " <> text ]
 
 
-li :: forall p e. Number ->  DropdownItem -> HTML p e
+li :: forall e. Number ->  DropdownItem -> HTML e
 li i {visible: visible, name: name, children: children} =
   H.li [ E.onClick (\ev -> do E.stopPropagation
                               E.input_ (Dropdown i) ev)
@@ -150,7 +165,7 @@ li i {visible: visible, name: name, children: children} =
   , H.ul [ A.classes [ B.dropdownMenu ] ]
     (menuItem <$> children) ]
 
-menuItem :: forall p e. MenuElement -> HTML p e
+menuItem :: forall e. MenuElement -> HTML e
 menuItem {name: name, message: mbMessage, lvl: lvl} =
   H.li [ A.classes (maybe [B.disabled] (const []) mbMessage) ]
   [ H.a [ A.href "#"
@@ -162,7 +177,7 @@ menuItem {name: name, message: mbMessage, lvl: lvl} =
      (maybe [glyph B.glyphiconChevronRight] (const []) mbMessage) ]]
 
 
-name :: forall p e. State -> HTML p e
+name :: forall e. State -> HTML e
 name state =
   H.div [ A.classes [ B.colXs12, B.colSm8 ] ]
   [ H.input [ A.classes [ Vc.notebookName ]
@@ -173,7 +188,7 @@ name state =
                                else pure empty)
             , A.value (state.name)  ] [] ]
 
-modal :: forall p e. State -> [HTML p e]
+modal :: forall e. State -> [HTML e]
 modal state =
   [ H.div [ A.classes ([B.modal, B.fade] <> if state.modalError /= ""
                                             then [B.in_]

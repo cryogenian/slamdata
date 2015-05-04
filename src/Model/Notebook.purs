@@ -77,6 +77,8 @@ data Input
   | AddCell CellType
   | ToggleEditorCell CellId
   | TrashCell CellId
+  | AceTextCopied String
+  | RunCell CellId
 
 
 type CellId = String
@@ -124,8 +126,11 @@ newNotebook = Notebook {
   cells: []
   }
 
+notebookLens :: LensP Notebook _
+notebookLens = lens (\(Notebook obj) -> obj) (const Notebook)
+
 notebookCells :: LensP Notebook [Cell]
-notebookCells = lens (\(Notebook {cells = cs}) -> cs) (\(Notebook o) cs -> Notebook $ o { cells = cs })
+notebookCells = notebookLens <<< lens _.cells (_ { cells = _ })
 
 instance cellTypeEncode :: Ae.EncodeJson CellType where
   encodeJson cell = Ac.fromString $ case cell of
@@ -155,4 +160,3 @@ instance notebookRequestable :: Ar.Requestable Notebook where
   toRequest notebook =
     let str = Ap.printJson (Ae.encodeJson notebook) :: String
     in Ar.toRequest str
-
