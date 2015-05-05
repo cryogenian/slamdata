@@ -27,7 +27,7 @@ import qualified View.Css as Vc
 
 
 
-view :: forall p e. State -> H.HTML p (I e)
+view :: forall e. State -> H.HTML (I e)
 view state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.containerFluid] ]
                           [ icon B.glyphiconFolderOpen Config.homeHash
@@ -46,7 +46,7 @@ view state =
 
 
 
-sorting :: forall p e. State -> H.HTML p (I e)
+sorting :: forall e. State -> H.HTML (I e)
 sorting state =
   H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
         [ H.a (targetLink' $ handleSetSort $ notSort state.sort)

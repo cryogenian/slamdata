@@ -32,7 +32,7 @@ import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Model.File.Dialog.Mount as M
 import qualified View.Css as VC
 
-mountDialog :: forall p e. M.MountDialogRec -> [H.HTML p (I e)]
+mountDialog :: forall e. M.MountDialogRec -> [H.HTML (I e)]
 mountDialog state =
   [ header $ h4 "Mount"
   , body [ H.form [ A.class_ VC.dialogMount ]
@@ -52,12 +52,12 @@ mountDialog state =
            ]
   ]
 
-fldName :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+fldName :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldName state =
   H.div [ A.class_ B.formGroup ]
         [ label "Name" [ input state M.name [] ] ]
 
-fldConnectionURI :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+fldConnectionURI :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldConnectionURI state =
   H.div [ A.classes [B.formGroup, VC.mountURI] ]
         [ label "Connection URI"
@@ -95,7 +95,7 @@ fldConnectionURI state =
   pasteHandler :: A.Attr (I e)
   pasteHandler = onPaste selectThis
 
-selScheme :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+selScheme :: forall e. M.MountDialogRec -> H.HTML (I e)
 selScheme state =
   H.div [ A.class_ B.formGroup ]
         [ label "Scheme"
@@ -104,34 +104,34 @@ selScheme state =
                 ]
         ]
 
-hosts :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+hosts :: forall e. M.MountDialogRec -> H.HTML (I e)
 hosts state =
   H.div [ A.classes [B.formGroup, VC.mountHostList] ]
         $ (host state) <$> 0 .. (length state.hosts - 1)
 
-host :: forall p e. M.MountDialogRec -> Number -> H.HTML p (I e)
+host :: forall e. M.MountDialogRec -> Number -> H.HTML (I e)
 host state index =
   H.div [ A.class_ VC.mountHost ]
         [ label "Host" [ input state (M.hosts <<< ix index <<< M.host) [] ]
         , label "Port" [ input state (M.hosts <<< ix index <<< M.port) [] ]
         ]
 
-fldPath :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+fldPath :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldPath state =
   H.div [ A.class_ B.formGroup ]
         [ label "Path" [ input state M.path [] ] ]
 
-fldUser :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+fldUser :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldUser state =
   H.div [ A.class_ B.formGroup ]
         [ label "Username" [ input state M.user [] ] ]
 
-fldPass :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+fldPass :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldPass state =
   H.div [ A.class_ B.formGroup ]
         [ label "Password" [ input state M.password [ A.type_ "password" ] ] ]
 
-props :: forall p e. M.MountDialogRec -> H.HTML p (I e)
+props :: forall e. M.MountDialogRec -> H.HTML (I e)
 props state =
   H.div [ A.class_ B.formGroup ]
         [ label "Properties"
@@ -150,25 +150,25 @@ props state =
                 ]
         ]
 
-prop :: forall p e. M.MountDialogRec -> Number -> H.HTML p (I e)
+prop :: forall e. M.MountDialogRec -> Number -> H.HTML (I e)
 prop state index =
   H.tr_ [ H.td_ [ input state (M.props <<< ix index <<< M.name) [ A.classes [B.formControl, B.inputSm] ] ]
         , H.td_ [ input state (M.props <<< ix index <<< M.value) [ A.classes [B.formControl, B.inputSm] ] ]
         ]
 
-message :: forall p e. Maybe String -> H.HTML p (I e)
+message :: forall e. Maybe String -> H.HTML (I e)
 message msg =
   H.div [ A.classes $ [B.alert, B.alertDanger, B.alertDismissable, B.fade] ++ if isJust msg then [B.in_] else [] ]
       $ [ closeButton (E.input_ $ inj ClearMessage) ] ++ maybe [] (singleton <<< H.text) msg
 
-btnCancel :: forall p e. H.HTML p (I e)
+btnCancel :: forall e. H.HTML (I e)
 btnCancel =
   H.button [ A.classes [B.btn]
            , E.onClick (E.input_ $ inj $ SetDialog Nothing)
            ]
            [ H.text "Cancel" ]
 
-btnMount :: forall p e. String -> Boolean -> H.HTML p (I e)
+btnMount :: forall e. String -> Boolean -> H.HTML (I e)
 btnMount text enabled =
   H.button [ A.classes [B.btn, B.btnPrimary]
            , A.disabled (not enabled)
@@ -177,15 +177,15 @@ btnMount text enabled =
            [ H.text text ]
 
 -- | A labelled section within the form.
-label :: forall p i. String -> [H.HTML p i] -> H.HTML p i
+label :: forall i. String -> [H.HTML i] -> H.HTML i
 label text inner = H.label_ $ [ H.span_ [ H.text text ] ] ++ inner
 
 -- | A basic text input field that uses a lens to read from and update the
 -- | state.
-input :: forall p e. M.MountDialogRec
+input :: forall e. M.MountDialogRec
                   -> TraversalP M.MountDialogRec String
                   -> [A.Attr (I e)]
-                  -> H.HTML p (I e)
+                  -> H.HTML (I e)
 input state lens attrs =
   H.input ([ A.class_ B.formControl
            , E.onInput (E.input \val -> inj $ ValueChanged (lens .~ val))

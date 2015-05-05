@@ -2,16 +2,18 @@ module App.Notebook.Ace where
 
 import Model.Notebook (Input(..))
 
-import Data.Void
 import Data.Maybe
 import Data.Tuple
 import Data.Either
 import Data.Function
+import Data.Foldable (for_)
 import Data.Profunctor (lmap)
 
 import Control.Functor (($>))
+import Control.Plus (empty)
 import Control.Bind
 import Control.Monad.Eff
+import Control.Monad.Eff.Class
 
 import DOM
 
@@ -25,11 +27,11 @@ import Debug.Trace
 import Halogen
 import Halogen.Signal
 import Halogen.Component
-import Halogen.Internal.VirtualDOM (Widget())
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as A
+import qualified Halogen.HTML.Events.Monad as E
 
 import qualified Halogen.Themes.Bootstrap3 as B
 
@@ -43,30 +45,28 @@ foreign import createEditorNode
   \  return document.createElement('div');\
   \}" :: forall eff. Eff (dom :: DOM | eff) HTMLElement
 
--- | The application state, which stores the string most recently copied to the clipboard.
-data State = State (Maybe String)
+data State = State String
 
-ui :: forall m eff. (Applicative m) => Component (Widget (HalogenEffects (ace :: EAce | eff)) Input) m Input Input
-ui = runComponent (component' <<< (render <$>)) aceEditor
+ui :: forall eff. String -> Component (E.Event (dom :: DOM | eff)) Input Input
+ui s = render <$> stateful (State "") const
   where
-  render :: forall a. H.HTML _ a -> H.HTML _ a
-  render c  = H.div [ A.class_ (A.className "ace-container") ] [ c ]
+  render :: State -> H.HTML (E.Event (dom :: DOM | eff) Input)
+  render (State c) = H.div [ A.initializer (initializer s)
+                           , A.classes [A.className "ace-container", A.className ("ace" <> s)]
+                           ] [ ]
 
--- | The Ace editor is represented as a `Component`, created using `Component.widget`.
-aceEditor :: forall m eff. (Functor m) => Component (Widget (HalogenEffects (ace :: EAce | eff)) Input) m Input Input
-aceEditor = widget { name: "AceEditor", id: "editor1", init: init, update: update, destroy: destroy }
-  where
-  init :: forall eff. (Input -> Eff (ace :: EAce, dom :: DOM | eff) Unit) -> Eff (ace :: EAce, dom :: DOM | eff) { state :: Editor, node :: HTMLElement }
-  init driver = do
-    node <- createEditorNode
-    editor <- Ace.editNode node ace
-    Editor.setTheme "ace/theme/monokai" editor
-    Editor.onCopy editor (driver <<< AceTextCopied)
-    return { state: editor, node: node }
+-- TOOD: Get events out.
+initializer :: forall eff. String -> E.Event (dom :: DOM | eff) Input
+initializer s = do
+  liftEff $ do
+    doc <- document globalWindow
+    b <- body doc
+    els <- querySelector (".ace-" <> s) b
+    for_ els \el -> do
+      -- Setup the Ace editor
+      editor <- Ace.editNode el ace
+      session <- Editor.getSession editor
+      Editor.setTheme "ace/theme/monokai" editor
+  empty
 
-  update :: forall eff. Input  -> Editor -> HTMLElement -> Eff (ace :: EAce, dom :: DOM | eff) (Maybe HTMLElement)
-  update (RunCell _) editor _ = Editor.setValue "" Nothing editor $> Nothing
-  update _ _ _ = return Nothing
-
-  destroy :: forall eff. Editor -> HTMLElement -> Eff (ace :: EAce, dom :: DOM | eff) Unit
-  destroy editor _ = Editor.destroy editor
+-- TOOD: Add a finalizer.
