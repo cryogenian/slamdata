@@ -12,6 +12,7 @@ type RenameDialogRec =
   , error :: String
   , incorrect :: Boolean
   , selectedContent :: [Resource]
+  , dirView :: String
   }
 
 initialRenameDialog :: Resource -> RenameDialogRec
@@ -24,6 +25,7 @@ initialRenameDialog resource =
   , incorrect: true
   , error: ""
   , selectedContent: []
+  , dirView: printPath $ resourceDir resource
   }
 
 eqRenameDialog :: RenameDialogRec -> RenameDialogRec -> Boolean

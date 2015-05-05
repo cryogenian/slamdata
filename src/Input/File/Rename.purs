@@ -15,6 +15,7 @@ data RenameInput
   | RenameSelectedContent [Resource]
   | SetRenameSelected String
   | AddRenameDirs [Resource]
+  | UpdateRenameSelected String 
 
 inputRename :: Dialog -> RenameInput -> Dialog
 inputRename (RenameDialog d) input = RenameDialog $ case input of
@@ -31,6 +32,13 @@ inputRename (RenameDialog d) input = RenameDialog $ case input of
     d { selectedContent = cont }
 
   SetRenameSelected toSelect ->
+    d { selected = toSelect
+      , dirView = toSelect
+      , showList = false
+      , error = ""
+      }
+
+  UpdateRenameSelected toSelect ->
     d { selected = toSelect
       , showList = false
       , error = ""

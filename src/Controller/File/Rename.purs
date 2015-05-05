@@ -1,4 +1,9 @@
-module Controller.File.Rename where
+module Controller.File.Rename (
+  rename,
+  checkRename,
+  renameItemClicked,
+  renameDirInput
+  ) where
 
 import Data.Maybe (maybe)
 import Data.Inject1 (Inject1, inj)
@@ -44,15 +49,23 @@ checkRename name r = pure do
     toInput $ RenameChanged name
 
 renameItemClicked :: forall e. String -> Resource -> String -> EventHandler (Event (FileAppEff e) Input)
-renameItemClicked target res dest = pure do
-  (toInput $ SetRenameSelected dest) `andThen` \_ -> do
+renameItemClicked = handler SetRenameSelected
+
+renameDirInput :: forall e. String -> Resource -> String -> EventHandler (Event (FileAppEff e) Input)
+renameDirInput = handler UpdateRenameSelected
+  
+
+handler :: forall e. (String -> RenameInput) -> String -> Resource -> String ->
+           EventHandler (Event (FileAppEff e) Input)
+handler constructor target res dest = pure do 
+  (toInput $ constructor dest) `andThen` \_ -> do
     maybe empty go (parseAbsDir ("/" <> dest <> "/")  >>= sandbox rootDir)
   where
   go d = do
     items <- liftAff $ Api.children (newDirectory # pathL .~ (Right $ rootDir </> d))
     (toInput $ RenameSelectedContent items) `andThen` \_ ->
       checkList target items res
-
+  
 checkList :: forall e. String -> [Resource] -> Resource -> Event (FileAppEff e) Input
 checkList target list res =
   let lst = resourceName <$> list

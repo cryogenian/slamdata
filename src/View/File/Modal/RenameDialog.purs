@@ -46,8 +46,8 @@ renameDialog dialog =
       , H.div [A.classes [B.inputGroup]]
         [ H.input [ A.classes [B.formControl]
                   , A.placeholder "New directory"
-                  , E.onInput (renameItemClicked dialog.target dialog.resource)
-                  , A.value (dialog.selected) ] []
+                  , E.onInput (renameDirInput dialog.target dialog.resource)
+                  , A.value (dialog.dirView) ] []
         , H.span [ A.classes [B.inputGroupBtn]]
           [ H.button [ A.classes [B.btn, B.btnDefault]
                      , A.type_ "button"
