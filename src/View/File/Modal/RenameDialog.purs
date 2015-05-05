@@ -26,7 +26,7 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
 
-renameDialog :: forall p e. RenameDialogRec -> [H.HTML p (I e)]
+renameDialog :: forall e. RenameDialogRec -> [H.HTML (I e)]
 renameDialog dialog =
   [ header $ h4 "Rename"
   , body
@@ -79,7 +79,7 @@ renameDialog dialog =
   ]
   where
 
-  renameItem :: forall i. String -> Resource -> String -> H.HTML p (I e)
+  renameItem :: forall i. String -> Resource -> String -> H.HTML (I e)
   renameItem target res dir =
     H.a [ A.href "#"
         , E.onClick (\_ -> E.preventDefault *> renameItemClicked target res dir)

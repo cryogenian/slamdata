@@ -1,8 +1,7 @@
-module View.Notebook (view, Placeholder(..), HTML()) where
+module View.Notebook (view, HTML()) where
 
 import Data.Maybe (maybe)
 import Data.Bifunctor (bimap)
-import Data.Void
 import Control.Functor (($>))
 import Control.Apply ((*>))
 import Data.Inject1 (inj)
@@ -36,9 +35,7 @@ import qualified View.Css as Vc
 import qualified View.File.Modal.Common as Vm
 import Driver.File (updatePath)
 
-data Placeholder = AceEditor
-
-type HTML e = H.HTML Placeholder (E.Event (NotebookAppEff e) Input)
+type HTML e = H.HTML (E.Event (NotebookAppEff e) Input)
 
 view :: forall e. State -> HTML e
 view state =
@@ -93,7 +90,7 @@ cell (Cell o) =
              ]
     , divRow (if o.hiddenEditor
               then [ ]
-              else [ H.div [ A.classes [ B.colMdOffset2, B.colMd10, Vc.cellInput ] ] [ H.placeholder AceEditor ] ])
+              else [ H.div [ A.classes [ B.colMdOffset2, B.colMd10, Vc.cellInput ] ] [ ] ])
     , margined [ H.button [ A.classes [ B.btn ], E.onClick (E.input_ (RunCell o.cellId)) ] [ H.text "Run" ] ]
                [ H.text (Ap.printJson (Ae.encodeJson o.cellType)) ]
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.input)
@@ -107,8 +104,8 @@ renderOutput _ = const [ ]
 -- TODO: Interpret the SlamDownEvent instead of discarding.
 markdownOutput :: forall e. String -> [HTML e]
 markdownOutput = fromSlamDownEvents <<< renderHalogen <<< parseMd
-  where fromSlamDownEvents :: forall p. [H.HTML Void (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
-        fromSlamDownEvents xs = bimap absurd (const empty) <$> xs
+  where fromSlamDownEvents :: [H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
+        fromSlamDownEvents = (($> empty) <$>)
 
 divRow :: forall e. [HTML e] -> HTML e
 divRow = H.div [ A.classes [ B.row ] ]

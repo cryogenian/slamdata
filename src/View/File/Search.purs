@@ -15,7 +15,7 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
 
-search :: forall p e. State -> H.HTML p (I e)
+search :: forall e. State -> H.HTML (I e)
 search state =
   H.div [ A.classes [B.colXs12, B.colSm8, Vc.search] ]
         [ H.form [ A.class_ B.navbarForm

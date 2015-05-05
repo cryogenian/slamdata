@@ -15,7 +15,7 @@ import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 
-shareDialog :: forall p e. String -> [H.HTML p (I e)]
+shareDialog :: forall e. String -> [H.HTML (I e)]
 shareDialog url =
   [ header $ h4 "URL"
   , body [ H.form [ nonSubmit ]

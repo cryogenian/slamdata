@@ -20,12 +20,12 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
 
-items :: forall p e. State -> H.HTML p (I e)
+items :: forall e. State -> H.HTML (I e)
 items state =
   H.div [ A.classes [B.listGroup, Vc.results] ]
         $ zipWith (item state.searching) (0..length state.items) state.items
 
-item :: forall p e. Boolean -> Number -> Item -> H.HTML p (I e)
+item :: forall e. Boolean -> Number -> Item -> H.HTML (I e)
 item searching ix state =
   H.div [ A.classes ([B.listGroupItem] ++ if state.selected then [B.listGroupItemInfo] else mempty)
         , E.onMouseOver (E.input_ $ inj $ ItemHover ix true)
@@ -60,7 +60,7 @@ iconClasses item = A.classes [B.glyphicon, Vc.itemIcon, iconClass item.resource]
   iconClass Directory = B.glyphiconFolderOpen
   iconClass Table     = B.glyphiconTh
 
-showToolbar :: forall p e. Item -> [H.HTML p (I e)]
+showToolbar :: forall e. Item -> [H.HTML (I e)]
 showToolbar item | item.name == up = []
                  | otherwise =
   let conf = case item.resource of
@@ -71,5 +71,5 @@ showToolbar item | item.name == up = []
              , toolItem' handleShare "share" B.glyphiconShare
              ]
   where
-  toolItem' :: forall p e. (Item -> I e) -> String -> A.ClassName -> H.HTML p (I e)
+  toolItem' :: forall e. (Item -> I e) -> String -> A.ClassName -> H.HTML (I e)
   toolItem' f = toolItem [] item f

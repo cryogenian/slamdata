@@ -19,7 +19,7 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 
-modal :: forall p e. State -> H.HTML p (E.Event (FileAppEff e) Input)
+modal :: forall e. State -> H.HTML (E.Event (FileAppEff e) Input)
 modal state =
   H.div [ A.classes ([B.modal, B.fade] <> maybe [] (const [B.in_]) state.dialog)
         , E.onClick (E.input_ $ inj $ SetDialog Nothing)
@@ -32,16 +32,16 @@ modal state =
                 ]
         ]
 
-modalContent :: forall p e. Maybe Dialog -> [H.HTML p (E.Event (FileAppEff e) Input)]
+modalContent :: forall e. Maybe Dialog -> [H.HTML (E.Event (FileAppEff e) Input)]
 modalContent Nothing = []
 modalContent (Just dialog) = dialogContent dialog
 
-dialogContent :: forall p e. Dialog -> [H.HTML p (E.Event (FileAppEff e) Input)]
+dialogContent :: forall e. Dialog -> [H.HTML (E.Event (FileAppEff e) Input)]
 dialogContent (ShareDialog url) = shareDialog url
 dialogContent (RenameDialog dialog) = renameDialog dialog
 dialogContent (MountDialog dialog) = mountDialog dialog
 
-emptyDialog :: forall p i. String -> [H.HTML p i]
+emptyDialog :: forall i. String -> [H.HTML i]
 emptyDialog title =
     [ header $ h4 title
     , body []

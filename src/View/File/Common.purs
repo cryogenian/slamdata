@@ -14,7 +14,7 @@ import qualified View.Css as Vc
 
 type I e = E.Event (FileAppEff e) Input
 
-toolItem :: forall a m i p. (Alternative m) => [A.ClassName] -> a -> (a -> m i) -> String -> A.ClassName -> H.HTML p (m i)
+toolItem :: forall a m i. (Alternative m) => [A.ClassName] -> a -> (a -> m i) -> String -> A.ClassName -> H.HTML (m i)
 toolItem classes actionArg action title icon =
   H.li_ [ H.a (targetLink' $ action actionArg)
               [ H.i [ A.title title
