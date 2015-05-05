@@ -1,20 +1,19 @@
 language: node_js
 node_js:
-- 0.1
+  - 0.10
 env:
-- TAG=v0.6.9.3
+  - TAG=v0.6.9.3
 install:
-- wget -O $HOME/purescript.tar.gz https://github.com/purescript/purescript/releases/download/$TAG/linux64.tar.gz
-- sudo tar zxvf $HOME/purescript.tar.gz -C /usr/local/bin purescript/psc{,i,-docs,-make}
-  --strip-components=1
-- sudo chmod a+x /usr/local/bin/psc{,i,-docs,-make}
-- npm install bower gulp -g
-- npm install && bower install --force
+  - wget -O $HOME/purescript.tar.gz https://github.com/purescript/purescript/releases/download/$TAG/linux64.tar.gz
+  - sudo tar zxvf $HOME/purescript.tar.gz -C /usr/local/bin purescript/psc{,i,-docs,-make} --strip-components=1
+  - sudo chmod a+x /usr/local/bin/psc{,i,-docs,-make}
+  - npm install bower gulp -g
+  - npm install && bower install --force
 script:
-- gulp deploy-prod
+  - gulp deploy-prod
 before_deploy:
-- cp -r public slamdata
-- tar cjf slamdata.tar.bz2 slamdata
+  - cp -r public slamdata
+  - tar cjf slamdata.tar.bz2 slamdata
 deploy:
   provider: releases
   api-key:
@@ -28,7 +27,6 @@ deploy:
 notifications:
   irc:
     channels:
-    - chat.freenode.net#slamdata
+      - "chat.freenode.net#slamdata"
     template:
-    - '%{result}: %{repository_slug}#%{build_number} (%{branch}@%{commit}: %{author})
-      %{build_url}'
+      - "%{result}: %{repository_slug}#%{build_number} (%{branch}@%{commit}: %{author}) %{build_url}"
