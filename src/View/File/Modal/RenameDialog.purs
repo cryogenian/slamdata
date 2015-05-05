@@ -8,6 +8,7 @@ import Controller.File.Rename
 import Data.Maybe
 import EffectTypes
 import Model.File
+import Model.File.Resource 
 import Model.File.Dialog (Dialog(RenameDialog))
 import Model.File.Dialog.Rename (RenameDialogRec())
 import Input.File (FileInput(SetDialog))
@@ -29,7 +30,8 @@ renameDialog :: forall p e. RenameDialogRec -> [H.HTML p (I e)]
 renameDialog dialog =
   [ header $ h4 "Rename"
   , body
-    [ H.form [ E.onClick (\_ ->
+    [ H.form [ A.classes [ Vc.renameDialogForm ] 
+             , E.onClick (\_ ->
                            E.stopPropagation $>
                            (pure $ inj $ SetDialog
                             (Just (RenameDialog
@@ -42,7 +44,7 @@ renameDialog dialog =
       , H.div [A.classes [B.inputGroup]]
         [ H.input [ A.classes [B.formControl]
                   , A.placeholder "New directory"
-                  , E.onInput (renameItemClicked dialog.target)
+                  , E.onInput (renameItemClicked dialog.target dialog.item.resource)
                   , A.value (dialog.selected) ] []
         , H.span [ A.classes [B.inputGroupBtn]]
           [ H.button [ A.classes [B.btn, B.btnDefault]
@@ -57,7 +59,7 @@ renameDialog dialog =
                           , B.fade] <> if dialog.showList
                                        then [B.in_]
                                        else []]
-        (renameItem dialog.target <$> dialog.dirs)
+        (renameItem dialog.target dialog.item.resource <$> dialog.dirs)
       , H.div [ E.onClick (E.input_ $ inj $ RenameError "")
               , A.classes $ [B.alert, B.alertDanger, B.fade ]
                 <> (if Str.length dialog.error == 0
@@ -66,7 +68,7 @@ renameDialog dialog =
         [H.text dialog.error] ]]
 
 
-  , footer [ H.button [ A.classes [B.btn, B.btnDanger]
+  , footer [ H.button [ A.classes [B.btn]
                       , E.onClick (E.input_ $ inj $ SetDialog Nothing)]
              [ H.text "Cancel" ]
            , H.button [ A.disabled $ dialog.incorrect
@@ -77,10 +79,10 @@ renameDialog dialog =
   ]
   where
 
-  renameItem :: forall i. String -> String -> H.HTML p (I e)
-  renameItem target dir =
+  renameItem :: forall i. String -> Resource -> String -> H.HTML p (I e)
+  renameItem target res dir =
     H.a [ A.href "#"
-        , E.onClick (\_ -> E.preventDefault *> renameItemClicked target dir)
+        , E.onClick (\_ -> E.preventDefault *> renameItemClicked target res dir)
         , A.classes [B.listGroupItem]]
     [ H.text dir ]
 
