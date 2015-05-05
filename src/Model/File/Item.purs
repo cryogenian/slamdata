@@ -23,7 +23,7 @@ itemPath item = (encodeURIPath $
                 leadingSlash $
                 trimQuotes item.root <> trimQuotes (name item.resource item.name)) <>
                 (if item.resource == Directory ||
-                    item.resource == Database then "" else  "")
+                    item.resource == Database then "/" else  "")
   where
     name Notebook n = if endsWith notebookExtension n then
                         n

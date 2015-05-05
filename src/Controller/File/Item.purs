@@ -41,7 +41,11 @@ handleDeleteItem item = async $ do
 
 handleMoveItem :: forall e. Item -> Event (FileAppEff e) Input
 handleMoveItem item = do
-  (toInput $ SetDialog (Just (RenameDialog $ initialRenameDialog item)))
+  items <- liftAff $ listing item.root
+  let dialog = RenameDialog $
+               _{selectedContent = (\x -> x.name) <$> items} $
+               initialRenameDialog item
+  (toInput $ SetDialog (Just dialog))
     `andThen` \_ -> do
     getDirectories "/"
 

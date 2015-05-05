@@ -74,6 +74,9 @@ notebookAddCellMenu = className "notebook-add-cell-menu"
 dialogMount :: ClassName
 dialogMount = className "dialog-mount"
 
+renameDialogForm :: ClassName
+renameDialogForm = className "rename-dialog-form"
+
 mountURI :: ClassName
 mountURI = className "mount-uri"
 
