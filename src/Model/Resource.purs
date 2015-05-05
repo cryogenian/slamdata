@@ -1,4 +1,14 @@
-module Model.Resource where
+module Model.Resource (
+  FilePath(), DirPath(), AnyPath(), Resource(),
+  isNotebook, isFile, isDatabase, isDirectory,
+  resourceTag, getPath, getNameStr, getDir,
+  setDir, renameAny, resourceName, resourceDir,
+  nameOfFileOrDir, root, resourcePath,
+  newFile, newDatabase, newDirectory, newNotebook,
+  mkFile, mkDatabase, mkDirectory, mkNotebook,
+  setPath, setName, nameAnyPath, rootAnyPath,
+  pathL, rootL, nameL, sortResource
+  ) where
 
 import Data.Tuple
 import Data.Maybe
