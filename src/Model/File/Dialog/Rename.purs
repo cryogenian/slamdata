@@ -1,24 +1,25 @@
 module Model.File.Dialog.Rename where
 
-import Model.File.Item
+import Model.Resource
+import Data.Path.Pathy
 
 type RenameDialogRec =
   { showList :: Boolean
-  , item :: Item
-  , dirs :: [String]
+  , resource :: Resource
+  , dirs :: [Resource]
   , selected :: String
   , target :: String
   , error :: String
   , incorrect :: Boolean
-  , selectedContent :: [String]
+  , selectedContent :: [Resource]
   }
 
-initialRenameDialog :: Item -> RenameDialogRec
-initialRenameDialog item =
+initialRenameDialog :: Resource -> RenameDialogRec
+initialRenameDialog resource =
   { showList: false
-  , item: item
-  , selected: item.root
-  , target: item.name
+  , resource: resource
+  , selected: printPath $ resourceDir resource
+  , target: resourceName resource
   , dirs: []
   , incorrect: true
   , error: ""
@@ -27,7 +28,5 @@ initialRenameDialog item =
 
 eqRenameDialog :: RenameDialogRec -> RenameDialogRec -> Boolean
 eqRenameDialog r r' = r.showList == r'.showList
-                   && r.item.name == r'.item.name
-                   && r.item.root == r'.item.root
-                   && r.item.phantom == r'.item.phantom
-                   && r.dirs == r'.dirs
+                      && r.resource == r'.resource
+                      && r.dirs == r'.dirs

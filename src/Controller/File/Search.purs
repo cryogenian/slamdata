@@ -8,7 +8,7 @@ import Control.Timer (timeout, clearTimeout)
 import Controller.File.Common (toInput)
 import Data.Either (Either(..))
 import Data.Maybe (maybe)
-import Driver.File (updateQ, updateSalt)
+import Driver.File.Path (updateQ, updateSalt)
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Monad (Event(), runEvent, async)
 import Input.File (Input(), FileInput(Loading))
@@ -16,6 +16,8 @@ import Input.File.Search (SearchInput(..))
 import Model.Search (Search())
 import Routing.Hash (modifyHash)
 import Text.SlamSearch (mkQuery)
+import Model.Resource (DirPath())
+import Data.Path.Pathy
 
 handleSearchClear :: forall e. Boolean -> Search -> Event (FileAppEff e) Input
 handleSearchClear isSearching search = do
@@ -27,22 +29,20 @@ handleSearchClear isSearching search = do
     else
     setQE "path:/"
 
--- TODO: String/Path type alias? Maybe a real path when new library is done
-handleSearchChange :: forall e. Search -> String -> String -> Event (FileAppEff e) Input
+handleSearchChange :: forall e. Search -> String -> DirPath -> Event (FileAppEff e) Input
 handleSearchChange search ch path = async $ makeAff $ \_ k -> do
     k $ inj $ SearchNextValue ch
     maybe (pure unit) clearTimeout search.timeout
     tim <- timeout Config.searchTimeout $ do
       runEvent (const $ pure unit) (const $ pure unit) $
-        setQE (ch <> " path:\"" <> path <> "\"")
+        setQE (ch <> " path:\"" <> printPath path <> "\"")
     k $ inj $ SearchTimeout tim
     k $ inj $ SearchValidation true
 
--- TODO: String/Path type again?
-handleSearchSubmit :: forall e. Search -> String -> Event (FileAppEff e) Input
+handleSearchSubmit :: forall e. Search -> DirPath -> Event (FileAppEff e) Input
 handleSearchSubmit search path = do
   liftEff $ maybe (pure unit) clearTimeout search.timeout
-  setQE (search.nextValue <> " +path:" <> path)
+  setQE (search.nextValue <> " +path:" <> printPath path)
 
 setQE :: forall e. String -> Event (FileAppEff e) Input
 setQE q = do

@@ -5,9 +5,13 @@ import Data.Either (Either())
 import Data.Maybe (Maybe(..))
 import Model.Breadcrumb (Breadcrumb())
 import Model.File.Dialog (Dialog())
-import Model.File.Item (Item())
+import Model.File.Item (Item(), wrap)
 import Model.Search (Search(), initialSearch)
 import Model.Sort (Sort(..))
+
+import Model.Resource
+import Data.Path.Pathy
+
 
 -- | Application state
 type State =
@@ -15,7 +19,7 @@ type State =
   , sort :: Sort
   , items :: [Item]
   , breadcrumbs :: [Breadcrumb]
-  , path :: String
+  , path :: DirPath
   , searching :: Boolean
   , dialog :: Maybe Dialog
   }
@@ -26,7 +30,7 @@ initialState =
   , sort : Asc
   , items : []
   , breadcrumbs : []
-  , path: "/"
+  , path: rootDir
   , searching: false
   , dialog: Nothing
   }

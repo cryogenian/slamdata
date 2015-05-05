@@ -28,10 +28,16 @@ newFolderName :: String
 newFolderName = "Untitled Folder"
 
 notebookExtension :: String
-notebookExtension = ".slam"
+notebookExtension = "slam"
 
 newNotebookName :: String
-newNotebookName = "Untitled Notebook" <> notebookExtension
+newNotebookName = "Untitled Notebook." <> notebookExtension
+
+newFileName :: String
+newFileName = "Untitled File"
+
+newDatabaseName :: String
+newDatabaseName = "Untitled Database"
 
 homeHash :: String
 homeHash = "index.html#?sort=asc&q=path%3A%2F&salt="
