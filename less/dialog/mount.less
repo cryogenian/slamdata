@@ -7,7 +7,6 @@
         }
     }
 
-
     label {
         line-height: 34px;
         width: 100%;
@@ -25,12 +24,19 @@
         }
     }
 
-    .mount-uri {
+    .mount-uri input {
+        background: #eee;
+    }
+
+    .mount-userinfo {
         label {
-            line-height: 125%;
+            width: 50%;
         }
-        input {
-            background: #eee;
+        label+label {
+            span {
+                padding-right: 10px;
+                text-align: right;
+            }
         }
     }
 
@@ -62,25 +68,31 @@
     }
 
     .mount-props {
-        width: ~"calc(100% - 100px)";
-        input.form-control {
-            width: 100%;
-            border: none;
+        label {
+            width: auto;
+            float: left;
         }
-        th {
-            width: 50%;
-            border-bottom-width: 1px;
-        }
-        td {
-            padding: 0px;
-            table {
-                td {
-                    width: 50%;
-                }
+        table {
+            width: ~"calc(100% - 100px)";
+            input.form-control {
                 width: 100%;
+                border: none;
             }
+            th {
+                width: 50%;
+                border-bottom-width: 1px;
+            }
+            td {
+                padding: 0px;
+                table {
+                    td {
+                        width: 50%;
+                    }
+                    width: 100%;
+                }
+            }
+            margin-bottom: 0;
         }
-        margin-bottom: 0;
     }
 
     .mount-props-scrollbox {

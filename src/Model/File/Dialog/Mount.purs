@@ -66,7 +66,7 @@ initialMountDialog =
   { new: true
   , name: ""
   , connectionURI: ""
-  , hosts: [initialMountHost]
+  , hosts: [initialMountHost, initialMountHost]
   , path: ""
   , user: ""
   , password: ""
@@ -104,3 +104,9 @@ eqMountHost m1 m2 = m1.host == m2.host
 eqMountProp :: MountPropRec -> MountPropRec -> Boolean
 eqMountProp m1 m2 = m1.name == m2.name
                  && m1.value == m2.value
+
+isEmptyHost :: MountHostRec -> Boolean
+isEmptyHost h = h.host == "" && h.port == ""
+
+isEmptyProp :: MountPropRec -> Boolean
+isEmptyProp p = p.name == "" && p.value == ""
