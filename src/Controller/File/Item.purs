@@ -44,11 +44,10 @@ handleDeleteItem item = async $ do
 
 handleMoveItem :: forall e. Item -> Event (FileAppEff e) Input
 handleMoveItem item = do
-  siblings <- liftAff $ children
-              (newDirectory # pathL .~ (Right $ resourceDir item.resource))
+  siblings <- liftAff $ children (parent item.resource)
   let dialog = RenameDialog $
-               _{selectedContent = siblings} $
-               initialRenameDialog item.resource
+               _{siblings = siblings} $
+               initialRenameDialog item.resource 
   (toInput $ SetDialog (Just dialog))
     `andThen` \_ -> do
     getDirectories root
@@ -109,6 +108,6 @@ getDirectories r = do
   case ei of
     Right items -> do
       let cs = filter (\x -> isDirectory x || isDatabase x) items
-      (toInput $ AddRenameDirs cs) `andThen` \_ ->
+      (toInput $ AddDirs cs) `andThen` \_ ->
         fold (getDirectories <$> cs)
     _ -> empty

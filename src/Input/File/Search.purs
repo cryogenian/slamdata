@@ -14,7 +14,6 @@ data SearchInput
   = SearchValidation Boolean
   | SearchSet String
   | SearchTimeout Timeout
-  | SearchNextValue String
 
 inputSearch :: Search -> SearchInput -> Search
 inputSearch state input = case input of
@@ -23,13 +22,7 @@ inputSearch state input = case input of
     state { valid = v }
 
   SearchSet s ->
-    let nq = either (const "") id (strQuery <$> mkQuery state.nextValue)
-    in if (s /= "" && nq /= "" &&  nq == s)
-       then state { value = state.nextValue }
-       else state { value = s, nextValue = s }
+    state { value = s }
 
   SearchTimeout t ->
     state { timeout = Just t }
-
-  SearchNextValue next ->
-    state { nextValue = next }

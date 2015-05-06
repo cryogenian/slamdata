@@ -5,25 +5,23 @@ import Data.Path.Pathy
 
 type RenameDialogRec =
   { showList :: Boolean
+  , initial :: Resource
   , resource :: Resource
   , dirs :: [Resource]
-  , selected :: String
-  , target :: String
+  , dir :: Resource
+  , siblings :: [Resource]
   , error :: String
   , incorrect :: Boolean
-  , selectedContent :: [Resource]
-  , dirView :: String
   }
 
 initialRenameDialog :: Resource -> RenameDialogRec
-initialRenameDialog resource =
+initialRenameDialog resource  =
   { showList: false
+  , initial: resource
   , resource: resource
-  , selected: printPath $ resourceDir resource
-  , target: resourceName resource
+  , dir: parent resource
+  , siblings: []
   , dirs: []
   , incorrect: true
   , error: ""
-  , selectedContent: []
-  , dirView: printPath $ resourceDir resource
   }

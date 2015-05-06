@@ -40,14 +40,14 @@ renameDialog dialog =
                                    dialog{showList = false}))))]
       [ H.div [ A.classes [B.formGroup]]
         [ H.input [ A.classes [B.formControl]
-                  , A.value (resourceName dialog.resource)
+                  , A.value (resourceFileName dialog.resource)
                   , A.placeholder "New name"
                   , E.onInput (\v -> checkRename v dialog) ] []]
       , H.div [A.classes [B.inputGroup]]
         [ H.input [ A.classes [B.formControl]
                   , A.placeholder "New directory"
-                  , E.onInput (renameDirInput dialog.target dialog.resource)
-                  , A.value (dialog.dirView) ] []
+                  , E.onInput (renameDirInput dialog.resource)
+                  , A.value (resourcePath dialog.dir) ] []
         , H.span [ A.classes [B.inputGroupBtn]]
           [ H.button [ A.classes [B.btn, B.btnDefault]
                      , A.type_ "button"
@@ -61,7 +61,7 @@ renameDialog dialog =
                           , B.fade] <> if dialog.showList
                                        then [B.in_]
                                        else []]
-        (renameItem dialog.target dialog.resource <$> resourcePath <$> dialog.dirs)
+        (renameItem dialog.resource <$> dialog.dirs)
       , H.div [ E.onClick (E.input_ $ inj $ RenameError "")
               , A.classes $ [B.alert, B.alertDanger, B.fade ]
                 <> (if Str.length dialog.error == 0
@@ -75,16 +75,19 @@ renameDialog dialog =
              [ H.text "Cancel" ]
            , H.button [ A.disabled $ dialog.incorrect
                       , A.classes [B.btn, B.btnPrimary]
-                      , E.onClick (\_ -> rename dialog.resource (Left $ rootDir </> dir dialog.selected </> file dialog.target)) ]
+                      , E.onClick (\_ -> rename dialog) ]
              [H.text "Rename"]]
   ]
   where
 
-  renameItem :: forall i. String -> Resource -> String -> H.HTML (I e)
-  renameItem target res dest =
+  renameItem :: forall i. Resource -> Resource -> H.HTML (I e)
+  renameItem target res =
     H.a [ A.href "#"
-        , E.onClick (\_ -> E.stopPropagation *> E.preventDefault *> renameItemClicked target res dest)
+        , E.onClick (\_ -> do
+                        E.stopPropagation
+                        E.preventDefault
+                        renameItemClicked target res)
         , A.classes [B.listGroupItem]]
-    [ H.text dest ]
+    [ H.text (resourcePath res) ]
 
 

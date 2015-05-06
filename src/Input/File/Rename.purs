@@ -7,45 +7,40 @@ import Data.Array (sort, nub, sortBy)
 import Data.String (length)
 import Model.File.Dialog (Dialog(RenameDialog))
 import Model.Resource
+import Optic.Core
 
 data RenameInput
-  = RenameChanged String
-  | RenameError String
+  = RenameError String
   | RenameIncorrect Boolean
-  | RenameSelectedContent [Resource]
-  | SetRenameSelected String
-  | AddRenameDirs [Resource]
-  | UpdateRenameSelected String 
-
+  | SetResource Resource
+  | SetDir Resource
+  | SetSiblings [Resource]
+  | AddDirs [Resource]
+    
 inputRename :: Dialog -> RenameInput -> Dialog
 inputRename (RenameDialog d) input = RenameDialog $ case input of
-
-  RenameChanged newVal ->
-    d { target = newVal }
+  RenameIncorrect incorrect ->
+    d { incorrect = incorrect }
 
   RenameError err ->
     _{error = err} $ if length err /= 0
                      then d {incorrect = true}
                      else d 
 
-  RenameSelectedContent cont ->
-    d { selectedContent = cont }
+  SetResource newRes ->
+    d { resource = newRes}
 
-  SetRenameSelected toSelect ->
-    d { selected = toSelect
-      , dirView = toSelect
+  SetDir toSelect ->
+    d { dir = toSelect
       , showList = false
       , error = ""
       }
 
-  UpdateRenameSelected toSelect ->
-    d { selected = toSelect
-      , showList = false
-      , error = ""
-      }
-  AddRenameDirs dirs ->
+  AddDirs dirs ->
     d { dirs = sort $ nub $ (d.dirs <> dirs) }
-  RenameIncorrect incorrect ->
-    d { incorrect = incorrect }
+
+
+  SetSiblings ss ->
+    d { siblings = ss }
 
 inputRename dialog _ = dialog

@@ -5,9 +5,10 @@ module Controller.File.Rename (
   renameDirInput
   ) where
 
+import Control.Apply ((*>))
 import Data.Maybe (maybe)
 import Data.Inject1 (Inject1, inj)
-import Data.Either (Either(Right))
+import Data.Either (Either(Right), either)
 import Control.Monad.Aff (Aff())
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
@@ -29,47 +30,48 @@ import Model.Resource
 import Optic.Core
 import Data.Path.Pathy
 
-rename :: forall e. Resource -> AnyPath -> EventHandler (Event (FileAppEff e) Input)
-rename resource dest = pure do
-  errorString <- liftAff $ Api.move resource dest
+rename :: forall e. RenameDialogRec -> EventHandler (Event (FileAppEff e) Input)
+rename d = pure do
+  let src = d.initial
+      tgt = getPath (d.resource # rootL .~ (either (const rootDir) id $ getPath d.dir))
+  errorString <- liftAff $ Api.move src tgt
   (toInput $ RenameError errorString) `andThen` \_ -> do
-    case errorString of
-      "" -> do liftEff reload
-               empty
+    case errorString of 
+      "" -> (liftEff reload) *> empty
       _ -> empty
-
+      
 checkRename :: forall e. String -> RenameDialogRec -> EventHandler (Event (FileAppEff e) Input)
-checkRename name r = pure do
-  if name == ""
+checkRename name dialog = pure do
+  (toInput $ SetResource res) `andThen` \_ -> 
+    if name == ""
     then toInput $ RenameError "Please, enter new name"
     else
-    (if indexOf "/" name /= -1
-     then toInput $ RenameError "Incorrect File Name"
-     else checkList name r.selectedContent r.resource ) `andThen` \_ ->
-    toInput $ RenameChanged name
+      if indexOf "/" name /= -1
+      then toInput $ RenameError "Incorrect File Name"
+      else checkList res dialog.siblings
+  where res = dialog.resource # nameL .~ name 
 
-renameItemClicked :: forall e. String -> Resource -> String -> EventHandler (Event (FileAppEff e) Input)
-renameItemClicked = handler SetRenameSelected
+renameItemClicked :: forall e. Resource -> Resource -> EventHandler (Event (FileAppEff e) Input)
+renameItemClicked target res = pure (renameItemClicked' target res)
 
-renameDirInput :: forall e. String -> Resource -> String -> EventHandler (Event (FileAppEff e) Input)
-renameDirInput = handler UpdateRenameSelected
-  
+renameItemClicked' :: forall e. Resource -> Resource -> Event (FileAppEff e) Input
+renameItemClicked' target res = do
+  (toInput $ SetDir res) `andThen` \_ -> do
+    ress <- liftAff $ Api.children res
+    (toInput $ SetSiblings ress) `andThen` \_ ->
+      checkList target ress
+      
+renameDirInput :: forall e. Resource -> String -> EventHandler (Event (FileAppEff e) Input)
+renameDirInput target dirStr = pure do
+  -- TODO: Make incorrect on keydown.
+  --  (toInput $ RenameIncorrect true) `andThen` \_ -> 
+  maybe empty (\p -> renameItemClicked' target (mkDirectory $ Right p)) $ do
+    d <- parseAbsDir dirStr
+    s <- sandbox rootDir d
+    pure $ rootDir </> s
 
-handler :: forall e. (String -> RenameInput) -> String -> Resource -> String ->
-           EventHandler (Event (FileAppEff e) Input)
-handler constructor target res dest = pure do 
-  (toInput $ constructor dest) `andThen` \_ -> do
-    maybe empty go (parseAbsDir ("/" <> dest <> "/")  >>= sandbox rootDir)
-  where
-  go d = do
-    items <- liftAff $ Api.children (newDirectory # pathL .~ (Right $ rootDir </> d))
-    (toInput $ RenameSelectedContent items) `andThen` \_ ->
-      checkList target items res
-  
-checkList :: forall e. String -> [Resource] -> Resource -> Event (FileAppEff e) Input
-checkList target list res =
-  let lst = resourceName <$> list
-      tgt = resourceName (res # nameL .~ target)
-  in case elemIndex tgt lst of
+checkList :: forall e. Resource -> [Resource] -> Event (FileAppEff e) Input
+checkList tgt list =
+  case elemIndex (resourceName tgt) (resourceName <$> list) of
     -1 -> (toInput $ RenameError "") `andThen` \_ -> toInput $ RenameIncorrect false
     _ -> toInput $ RenameError "Item with such name exists in target folder"

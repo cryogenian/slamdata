@@ -33,8 +33,8 @@ search state =
                                    []
                          , H.span [ A.class_ (if state.search.focused then Vc.searchPathActive else Vc.searchPath) ]
                                   [ H.span [ A.class_ Vc.searchPathBody ]
-                                           [ H.text state.search.nextValue ]
-                                  , H.span [ A.class_ (if state.search.nextValue == "" then Vc.searchAffixEmpty else Vc.searchAffix) ]
+                                           [ H.text state.search.value ]
+                                  , H.span [ A.class_ (if state.search.value == "" then Vc.searchAffixEmpty else Vc.searchAffix) ]
                                            [ H.text $ "path:" <> printPath state.path ]
                                   ]
                          , H.img [ E.onClick (\_ -> pure $ handleSearchClear (state.searching && state.search.loading) state.search)
