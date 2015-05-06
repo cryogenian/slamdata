@@ -19,9 +19,8 @@ import Model.Notebook.Menu (
 import Model.Notebook (I(), State(), Input(..), CellType(..))
 import Data.Inject1 (prj)
 import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
-import Model.Path (path2str, updateName, parent, getName, decodeURIPath)
-import Model.File.Item (initNotebook, itemPath)
-import Api.Fs (moveItem, listing, delete)
+import Model.Path (decodeURIPath)
+import Api.Fs (move, children, delete)
 import Routing.Hash (setHash, getHash)
 import Config (notebookExtension, notebookNameEditorId, notebookUrl, homeHash)
 import Data.Array (elemIndex)
@@ -33,6 +32,9 @@ import Routing (matchHash')
 import Driver.Notebook.Routing (routing, Routes(..))
 import qualified Data.String.Regex as Rgx
 import qualified Halogen.HTML.Events.Types as E
+import Optic.Core
+import Model.Resource
+import Data.Path.Pathy
 
 handleMenuNotebook :: forall e. MenuNotebookSignal -> I e
 handleMenuNotebook RenameNotebook = do
@@ -51,15 +53,15 @@ handleMenuNotebook PublishNotebook = do
   toView = ((notebookUrl <> "#") <>) <<< 
            (Rgx.replace editSuffix "/view")
 handleMenuNotebook signal = do
-  mbPath <- liftEff $ do
+  mbRes <- liftEff $ do
     h <- getHash 
     flip (either (const $ pure Nothing))
       (matchHash' decodeURIPath routing h) \r -> do
       case r of
-        NotebookRoute path _ -> do
-          pure $ Just (path2str path) 
+        NotebookRoute res _ -> do
+          pure $ Just res
         _ -> pure Nothing
-  liftAff $ maybe (pure unit) delete mbPath
+  liftAff $ maybe (pure unit) delete mbRes
   liftEff $ do
     location globalWindow
       >>= setLocation homeHash
@@ -101,30 +103,26 @@ handleMenuSignal signal =
 
 handleSubmitName :: forall e. State -> I e
 handleSubmitName state = do
-  let root = (path2str $ parent $ state.path) <> "/"
-      oldItem = initNotebook {
-        root = root,
-        name = state.name
-        }
-      destination = path2str $ state.path
-      newName = getName state.path
-      newItem = oldItem {
-        name = newName
-        }
-
+  let oldResource = state.resource # nameL .~ state.name
+      newResource = state.resource
+      parent = oldResource 
   -- slamdata/slamengine#693
-  if newName == state.name || newName <> notebookExtension == state.name
+  if oldResource == newResource 
     then empty
     else do
-    siblings <- liftAff $ listing root
+    siblings <- liftAff $ children
+                (newDirectory `setPath`
+                 (Right
+                  (maybe rootDir (rootDir </>)
+                   (sandbox rootDir $ resourceDir oldResource))))
     -- slamdata/slamengine#693
-    if elemIndex newName (_.name <$> siblings) /= -1
-      then pure $ SetModalError ("File " <> destination <> " already exists")
+    if elemIndex (newResource ^. nameL) ((\x -> x ^. nameL) <$> siblings) /= -1
+      then pure $ SetModalError ("File " <> (resourcePath newResource) <> " already exists")
       else do 
-      error <- liftAff $ moveItem oldItem destination
+      error <- liftAff $ move oldResource (getPath newResource) 
       case error of
         "" -> do
-          liftEff $ setHash $ itemPath newItem <> "/edit"
+          liftEff $ setHash $ resourcePath newResource <> "/edit"
           empty
         e -> 
           pure $ SetModalError ("Rename error: " <> e)

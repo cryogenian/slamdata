@@ -8,6 +8,7 @@ import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
+import Data.Path.Pathy
 
 toolbar :: forall e. State -> H.HTML (I e)
 toolbar state =
@@ -47,4 +48,4 @@ toolbar state =
   toolItem' f = toolItem [B.btnLg] state f
 
   inRoot :: State -> Boolean
-  inRoot state = state.path == "" || state.path == "/"
+  inRoot state = state.path == rootDir --"" || state.path == "/"

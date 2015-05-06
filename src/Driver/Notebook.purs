@@ -4,7 +4,7 @@ import Data.Either
 import Data.Maybe
 import Control.Monad.Eff
 import Control.Monad.Aff (runAff, attempt)
-import Data.Array (findIndex)
+import Data.Array (elemIndex)
 import Data.DOM.Simple.Types (DOMEvent())
 import Data.DOM.Simple.Document 
 import Data.DOM.Simple.Events (
@@ -17,11 +17,9 @@ import Data.DOM.Simple.Window (
   document)
 import DOM (DOM())
 import Utils (log)
-import Model.Path (decodeURIPath, path2str, parent, getName)
+import Model.Path (decodeURIPath)
 import Model.Action (isEdit)
 import Model.Notebook
-import Model.File.Item
-import Api.Fs (listing)
 import EffectTypes
 import Halogen.HTML.Events.Monad (runEvent)
 import Controller.Notebook (handleMenuSignal)
@@ -40,25 +38,27 @@ import qualified Routing as R
 import qualified Routing.Match as R
 import qualified Routing.Match.Class as R
 import qualified Routing.Hash as R
+import Model.Resource (setPath, resourceDir, newDirectory, resourcePath)
+import Api.Fs (children)
 
 driver :: forall e. H.Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
 driver k =
   R.matches' decodeURIPath routing \old new -> do
     case new of
-      NotebookRoute path editable -> do
-        k $ SetEditable (isEdit editable) 
-        let uri = (path2str $ parent path) <> "/"
-        flip (runAff (const $ pure unit)) (attempt $ listing uri) $ \ei -> do
+      NotebookRoute res editable -> do
+        k $ SetEditable (isEdit editable)
+        let parent = newDirectory `setPath` (inj (resourceDir res))
+        flip (runAff (const $ pure unit)) (attempt $ children parent) $ \ei -> do
           k $ SetLoaded true
           k $ case ei of
             Left _ ->
               SetError "Incorrect path" 
-            Right items -> 
-              if findIndex (\x -> x.name == getName path) items == -1
-              then SetError ("There is no notebook at " <> path2str path)
-              else SetItems items
-        k $ SetPath path
+            Right siblings -> 
+              if elemIndex res siblings == -1 
+              then SetError ("There is no notebook at " <> resourcePath res)
+              else SetSiblings siblings
+        k $ SetResource res
 
         handleShortcuts k
         

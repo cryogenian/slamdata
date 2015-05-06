@@ -1,6 +1,5 @@
 module Model.File.Dialog where
 
-import Model.File.Item
 import Model.File.Dialog.Mount
 import Model.File.Dialog.Rename
 

@@ -3,17 +3,19 @@ module Input.File.Rename
   , inputRename
   ) where
 
-import Data.Array (sort, nub)
+import Data.Array (sort, nub, sortBy)
 import Data.String (length)
 import Model.File.Dialog (Dialog(RenameDialog))
+import Model.Resource
 
 data RenameInput
   = RenameChanged String
   | RenameError String
   | RenameIncorrect Boolean
-  | RenameSelectedContent [String]
+  | RenameSelectedContent [Resource]
   | SetRenameSelected String
-  | AddRenameDirs [String]
+  | AddRenameDirs [Resource]
+  | UpdateRenameSelected String 
 
 inputRename :: Dialog -> RenameInput -> Dialog
 inputRename (RenameDialog d) input = RenameDialog $ case input of
@@ -31,11 +33,18 @@ inputRename (RenameDialog d) input = RenameDialog $ case input of
 
   SetRenameSelected toSelect ->
     d { selected = toSelect
+      , dirView = toSelect
+      , showList = false
+      , error = ""
+      }
+
+  UpdateRenameSelected toSelect ->
+    d { selected = toSelect
       , showList = false
       , error = ""
       }
   AddRenameDirs dirs ->
-    d { dirs = sort $ nub $ d.dirs <> dirs }
+    d { dirs = sort $ nub $ (d.dirs <> dirs) }
   RenameIncorrect incorrect ->
     d { incorrect = incorrect }
 
