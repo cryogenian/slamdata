@@ -87,24 +87,6 @@ initialMountProp =
   , value: ""
   }
 
-eqMountDialog :: MountDialogRec -> MountDialogRec -> Boolean
-eqMountDialog m1 m2 = m1.name == m2.name
-                   && length m1.hosts == length m2.hosts
-                   && and (m1.hosts `zipWith eqMountHost` m2.hosts)
-                   && m1.path == m2.path
-                   && m1.user == m2.user
-                   && m1.password == m2.password
-                   && length m1.props == length m2.props
-                   && and (m1.props `zipWith eqMountProp` m2.props)
-
-eqMountHost :: MountHostRec -> MountHostRec -> Boolean
-eqMountHost m1 m2 = m1.host == m2.host
-                 && m1.port == m2.port
-
-eqMountProp :: MountPropRec -> MountPropRec -> Boolean
-eqMountProp m1 m2 = m1.name == m2.name
-                 && m1.value == m2.value
-
 isEmptyHost :: MountHostRec -> Boolean
 isEmptyHost h = h.host == "" && h.port == ""
 

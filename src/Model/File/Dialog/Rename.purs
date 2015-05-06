@@ -27,8 +27,3 @@ initialRenameDialog resource =
   , selectedContent: []
   , dirView: printPath $ resourceDir resource
   }
-
-eqRenameDialog :: RenameDialogRec -> RenameDialogRec -> Boolean
-eqRenameDialog r r' = r.showList == r'.showList
-                      && r.resource == r'.resource
-                      && r.dirs == r'.dirs

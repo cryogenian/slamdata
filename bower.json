@@ -24,7 +24,7 @@
     "purescript-either": "~0.1.6",
     "purescript-foldable-traversable": "~0.3.1",
     "purescript-foreign": "~0.4.2",
-    "purescript-halogen": "e7914c885689e19147f02db7ecc27745a7a3b8f8",
+    "purescript-halogen": "157d1d88c2e64a74fba1de1ebe938276d36cdc94",
     "purescript-halogen-bootstrap": "b163b1eb7200ad9af9ddd700c80872a6386ba76d",
     "purescript-index": "~0.3.0",
     "purescript-integers": "~0.0.1",
@@ -57,7 +57,7 @@
     "purescript-lens": "master",
     "purescript-profunctor": "~0.2.1",
     "purescript-simple-dom": "master",
-    "purescript-halogen": "e7914c885689e19147f02db7ecc27745a7a3b8f8",
+    "purescript-halogen": "157d1d88c2e64a74fba1de1ebe938276d36cdc94",
     "purescript-markdown": "2f7d778a630917540e009d5db921e7617b513e37"
   }
 }
