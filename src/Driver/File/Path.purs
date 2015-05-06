@@ -1,4 +1,4 @@
-module Driver.File.Path 
+module Driver.File.Path
   ( extractDir
   , updateSort
   , updateQ
@@ -8,18 +8,18 @@ module Driver.File.Path
   , renderPath
   ) where
 
-import Data.Maybe 
-import Data.Either (either)
-import Model.Sort (Sort(..), sort2string)
-import Utils (encodeURIComponent, endsWith, decodeURIComponent, trimQuotes)
 import Data.Array (reverse, filter, take, (!!), drop)
-import Text.SlamSearch (mkQuery)
+import Data.DOM.Simple.Encode (encodeURIComponent, decodeURIComponent)
+import Data.Either (either)
+import Data.Maybe
+import Data.Path.Pathy
+import Driver.File.Search (searchPath)
+import Model.Resource
+import Model.Sort (Sort(..), sort2string)
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
-import Driver.File.Search (searchPath)
-import Model.Resource 
-import Data.Path.Pathy
-
+import Text.SlamSearch (mkQuery)
+import Utils (endsWith, trimQuotes)
 
 sortRgx :: Rgx.Regex
 sortRgx = Rgx.regex "(sort=)([^/&]*)" Rgx.noFlags

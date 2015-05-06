@@ -31,10 +31,10 @@ handleSearchClear isSearching search = do
 
 handleSearchChange :: forall e. Search -> String -> DirPath -> Event (FileAppEff e) Input
 handleSearchChange search ch path = async $ makeAff $ \_ k -> do
-    k $ inj $ SearchNextValue ch
+    k $ inj $ SearchSet ch
     maybe (pure unit) clearTimeout search.timeout
     tim <- timeout Config.searchTimeout $ do
-      runEvent (const $ pure unit) (const $ pure unit) $
+      runEvent (const $ pure unit) k $
         setQE (ch <> " path:\"" <> printPath path <> "\"")
     k $ inj $ SearchTimeout tim
     k $ inj $ SearchValidation true
@@ -42,7 +42,7 @@ handleSearchChange search ch path = async $ makeAff $ \_ k -> do
 handleSearchSubmit :: forall e. Search -> DirPath -> Event (FileAppEff e) Input
 handleSearchSubmit search path = do
   liftEff $ maybe (pure unit) clearTimeout search.timeout
-  setQE (search.nextValue <> " +path:" <> printPath path)
+  setQE (search.value <> " +path:" <> printPath path)
 
 setQE :: forall e. String -> Event (FileAppEff e) Input
 setQE q = do

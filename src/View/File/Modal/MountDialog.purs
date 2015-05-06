@@ -17,7 +17,7 @@ import Input.File.Mount (MountInput(..))
 import Optic.Core ((.~), (^.))
 import Optic.Index (ix)
 import Optic.Index.Types (TraversalP())
-import Utils.Halide (readonly, onPaste, onInputMapped)
+import Utils.Halide (onPaste)
 import Utils (select, clearValue)
 import View.Common (glyph, closeButton)
 import View.File.Common (I())
@@ -209,7 +209,7 @@ input' :: forall p e. (String -> String)
                    -> H.HTML (I e)
 input' f state lens attrs =
   H.input ([ A.class_ B.formControl
-           , onInputMapped f (\val -> inj $ ValueChanged (lens .~ val))
+           , E.onInput (E.input \val -> inj $ ValueChanged (lens .~ f val))
            , A.value (state ^. lens)
            ] ++ attrs)
           []

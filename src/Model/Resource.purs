@@ -7,7 +7,8 @@ module Model.Resource (
   newFile, newDatabase, newDirectory, newNotebook,
   mkFile, mkDatabase, mkDirectory, mkNotebook,
   setPath, setName, nameAnyPath, rootAnyPath,
-  pathL, rootL, nameL, sortResource
+  pathL, rootL, nameL, sortResource, parent,
+  resourceFileName
   ) where
 
 import Data.Tuple
@@ -104,6 +105,17 @@ resourceName = getPath >>> getNameStr
 resourceDir :: Resource -> DirPath
 resourceDir = getPath >>> getDir
 
+resourceFileName :: Resource -> String
+resourceFileName r =
+  if isNotebook r 
+  then resourceFileName' $ getPath r
+  else resourceName r
+  where
+  resourceFileName' ap = maybe "" (snd >>> dropExt >>> nameOfFileOrDir) $
+                         either peel peel ap
+  dropExt = bimap id dropExtension
+
+
 nameOfFileOrDir :: Either DirName FileName -> String
 nameOfFileOrDir (Left (DirName name)) = name
 nameOfFileOrDir (Right (FileName name)) = name
@@ -111,6 +123,11 @@ nameOfFileOrDir (Right (FileName name)) = name
 
 root :: Resource
 root = Directory rootDir
+
+-- This is not real parent because it can't determine 
+-- is it a directory or mount
+parent :: Resource -> Resource 
+parent = Directory <<< resourceDir
 
 resourcePath :: Resource -> String
 resourcePath r = either printPath printPath $ getPath r

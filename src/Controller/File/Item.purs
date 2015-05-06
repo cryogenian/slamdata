@@ -1,7 +1,6 @@
 module Controller.File.Item where
 
 import Api.Fs (delete, children)
-import Data.Inject1 (Inject1, inj)
 import Control.Monad.Aff (makeAff, attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())
@@ -10,14 +9,16 @@ import Control.Plus (empty)
 import Controller.File.Common (open)
 import Data.Array (filter)
 import Data.DOM.Simple.Element (getElementById)
+import Data.DOM.Simple.Encode (encodeURIComponent)
 import Data.DOM.Simple.Window (document, globalWindow)
 import Data.Either (Either(..))
 import Data.Foldable (fold)
+import Data.Inject1 (Inject1, inj)
 import Data.Maybe (Maybe(..))
+import Data.Path.Pathy
 import Data.String (joinWith)
 import DOM (DOM())
 import Driver.File.Path (updatePath)
-import Data.Path.Pathy 
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Monad (Event(), async, andThen)
 import Input.File (Input(), FileInput(SetDialog))
@@ -26,11 +27,11 @@ import Input.File.Rename (RenameInput(..))
 import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (initialMountDialog)
 import Model.File.Dialog.Rename (initialRenameDialog)
-import Model.Resource 
 import Model.File.Item (Item())
-import Routing.Hash (getHash, modifyHash)
-import Utils (locationString, encodeURIComponent)
+import Model.Resource
 import Optic.Core ((.~))
+import Routing.Hash (getHash, modifyHash)
+import Utils (locationString)
 import qualified Control.UI.ZClipboard as Z
 
 toInput :: forall m a b. (Applicative m, Inject1 a b) => a -> m b
@@ -43,11 +44,10 @@ handleDeleteItem item = async $ do
 
 handleMoveItem :: forall e. Item -> Event (FileAppEff e) Input
 handleMoveItem item = do
-  siblings <- liftAff $ children
-              (newDirectory # pathL .~ (Right $ resourceDir item.resource))
+  siblings <- liftAff $ children (parent item.resource)
   let dialog = RenameDialog $
-               _{selectedContent = siblings} $ 
-               initialRenameDialog item.resource
+               _{siblings = siblings} $
+               initialRenameDialog item.resource 
   (toInput $ SetDialog (Just dialog))
     `andThen` \_ -> do
     getDirectories root
@@ -89,7 +89,7 @@ itemURL item = do
        else if isNotebook item.resource
             then joinWith "" [ Config.notebookUrl
                              , "#"
-                             , resourcePath item.resource 
+                             , resourcePath item.resource
                              , "/view"]
             else "#"
 
@@ -108,6 +108,6 @@ getDirectories r = do
   case ei of
     Right items -> do
       let cs = filter (\x -> isDirectory x || isDatabase x) items
-      (toInput $ AddRenameDirs cs) `andThen` \_ ->
+      (toInput $ AddDirs cs) `andThen` \_ ->
         fold (getDirectories <$> cs)
     _ -> empty

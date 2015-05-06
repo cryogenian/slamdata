@@ -1,14 +1,13 @@
 module Utils.Halide
   ( targetLink
   , targetLink'
-  , readonly
   , onPaste
-  , onInputMapped
   ) where
 
 import Control.Alternative (Alternative)
 import Control.Apply ((*>), (<*))
 import Control.Monad.Eff.Class (MonadEff, liftEff)
+import Control.Monad (when)
 import Control.MonadPlus (MonadPlus)
 import Control.Plus (empty)
 import Data.DOM.Simple.Element (setValue)
@@ -38,24 +37,8 @@ targetLink = targetLink' <<< pure
 targetLink' :: forall i m. (Alternative m) => m i -> [A.Attr (m i)]
 targetLink' x = target' (T.DataTarget x)
 
--- | TODO: remove this once halogen is updated - it now has a readonly attr.
-readonly :: forall i. Boolean -> A.Attr i
-readonly = A.attr $ A.attributeName "readonly"
-
 -- | Clipboard events actually should have an extended type with a
 -- | `clipboardData :: DataTransfer` property, but we don't need that so it is
 -- | ignored (for now at least).
 onPaste :: forall i. (ET.Event () -> E.EventHandler i) -> A.Attr i
 onPaste = A.handler (A.eventName "paste")
-
-onInputMapped :: forall m e i. (MonadPlus m, MonadEff (dom :: DOM | e) m) => (String -> String) -> (String -> i) -> A.Attr (m i)
-onInputMapped map f = A.handler (A.eventName "input") (\e -> handler e.target)
-  where
-  handler :: HTMLElement -> E.EventHandler (m i)
-  handler e = case readProp "value" (toForeign e) of
-                Left _ -> pure empty
-                Right a ->
-                  let b = map a
-                  in pure $ do
-                    liftEff (setValue b e)
-                    return $ f b
