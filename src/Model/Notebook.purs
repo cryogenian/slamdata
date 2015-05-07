@@ -76,7 +76,7 @@ data Input
   | AddCell CellType
   | ToggleEditorCell CellId
   | TrashCell CellId
-  | AceTextCopied String
+  | AceContent CellId String
   | RunCell CellId
 
 

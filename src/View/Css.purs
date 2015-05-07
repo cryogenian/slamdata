@@ -109,3 +109,6 @@ cellOutput = className "cell-output"
 
 cellNextActions :: ClassName
 cellNextActions = className "cell-next-actions"
+
+aceContainer :: ClassName
+aceContainer = className "ace-container"
