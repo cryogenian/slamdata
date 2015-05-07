@@ -1,4 +1,5 @@
 module Controller.Notebook (
+  I(),
   handleMenuSignal,
   handleSubmitName) where
 
@@ -16,7 +17,8 @@ import Model.Notebook.Menu (
   MenuCellSignal(..),
   MenuHelpSignal(..),
   MenuSignal(..))
-import Model.Notebook (I(), State(), Input(..), CellType(..))
+import Model.Notebook (State(), CellType(..))
+import Input.Notebook (Input(..))
 import Data.Inject1 (prj)
 import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
 import Model.Path (decodeURIPath)
@@ -27,7 +29,7 @@ import Data.Array (elemIndex)
 import Data.DOM.Simple.Window (globalWindow, document, location, setLocation)
 import Data.DOM.Simple.Document 
 import Data.DOM.Simple.Element (getElementById, focus)
-import Utils (newTab)
+import Utils (newTab, mailOpen)
 import Routing (matchHash')
 import Driver.Notebook.Routing (routing, Routes(..))
 import qualified Data.String.Regex as Rgx
@@ -35,6 +37,10 @@ import qualified Halogen.HTML.Events.Types as E
 import Optic.Core
 import Model.Resource
 import Data.Path.Pathy
+import Halogen.HTML.Events.Monad (Event())
+import EffectTypes (NotebookAppEff())
+
+type I e = Event (NotebookAppEff e) Input
 
 handleMenuNotebook :: forall e. MenuNotebookSignal -> I e
 handleMenuNotebook RenameNotebook = do
@@ -84,9 +90,22 @@ handleMenuCell signal = do
   empty
 
 handleMenuHelp :: forall e. MenuHelpSignal -> I e
-handleMenuHelp signal = do
-  liftEff $ fprint signal
+handleMenuHelp TutorialHelp = do
+  liftEff $ newTab "http://slamdata.com/documentation"
   empty
+handleMenuHelp SQLTutorialHelp = do
+  liftEff $ newTab "http://slamdata.com/documentation"
+  empty
+handleMenuHelp SQLReferenceHelp = do
+  liftEff $ newTab "http://slamdata.com/documentation"
+  empty
+handleMenuHelp ReportBugHelp = do
+  liftEff $ mailOpen "mailto:support@slamdatacom?subject=Bug%20Found"
+  empty
+handleMenuHelp RequestSupportHelp = do 
+  liftEff $ mailOpen "mailto:support@slamdatacom?subject=Request%20Help"
+  empty
+  
 
 handleMenuSignal :: forall e. MenuSignal -> I e
 handleMenuSignal signal =

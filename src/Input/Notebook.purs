@@ -1,12 +1,31 @@
-module Input.Notebook (updateState) where
+module Input.Notebook (updateState, Input(..)) where
 
-import Data.Maybe (maybe)
+import Data.Maybe (maybe, Maybe())
 import Data.Array (filter, modifyAt, (!!))
-import Model.Notebook
-import Model.Resource (resourceName, nameL)
+import Model.Notebook 
+import Model.Resource (resourceName, nameL, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~))
 import Optic.Setter (mapped, over)
-import qualified App.Notebook.Ace as NA
+import Halogen.HTML.Events.Monad (Event())
+import Control.Timer (Timeout())
+
+data Input
+  = Dropdown Number
+  | CloseDropdowns
+  | SetTimeout (Maybe Timeout)
+  | SetName String
+  | SetResource Resource
+  | SetSiblings [Resource]
+  | SetLoaded Boolean
+  | SetError String
+  | SetEditable Boolean
+  | SetModalError String
+  | SetAddingCell Boolean
+  | AddCell CellType
+  | ToggleEditorCell CellId
+  | TrashCell CellId
+  | AceContent CellId String
+  | RunCell CellId
 
 
 updateState :: State -> Input -> State
@@ -55,6 +74,8 @@ updateState state (ToggleEditorCell cellId) =
 updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
 
+
+
 updateState state (AceContent cellId content) =
   state # notebook..notebookCells..mapped %~ setContent cellId content
 
@@ -74,4 +95,4 @@ isCell ci (Cell { cellId = ci' }) = ci == ci'
 
 addCell :: CellType -> State -> State
 addCell cellType state =
-  state # notebook..notebookCells <>~ [ newCell (show state.nextCellId) cellType ]
+  state # notebook..notebookCells <>~ [ newCell state.nextCellId cellType ]

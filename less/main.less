@@ -214,8 +214,20 @@ ol.breadcrumb {
     &.panel {
         border-radius: 0;
         margin-left: 12px;
-        
         float: left;
+        &.fade {
+            z-index: -100500;
+            * {
+                z-index: -100500;
+            }
+            &.fade.in {
+                z-index: 100;
+                * {
+                    z-index: 100;
+                }
+            }
+        }
+
     }
     .list-inline {
         margin-bottom: 0;
@@ -232,16 +244,60 @@ ol.breadcrumb {
 }
 
 .cell-input {
-    height: 10em;
+
     textarea {
         width: 100%;
         height: 100%;
+    }
+    &.fade {
+        height: 0;
+    }
+    &.fade.in {
+        height: 10em;   
+    }
+}
+
+
+.notebook-cell {
+    margin-top: 18px;
+    .row {
+        padding-left: 13px;
+        padding-right: 13px;
+    }
+
+    button.play-button {
+        border-radius: 0;
+        width: 41px;
+    }
+    .row.cell-output {
+        padding-left: 58px;
+        &.fade.in {
+            padding-top: 12px;
+        }
+        &.fade {
+            padding-top: 0;
+        }
+    }
+    .cell-next-actions {
+        height: 40px;
+        background-color: #dfdfdf;
+        margin-left: -2px;
+        margin-right: -2px;
+    }
+    .cell-controls {
+        position: relative;
+        top: 36px;
+        right: 6px;
+        z-index: 100;
+        background: transparent;
     }
 }
 
 .ace-container, .ace_editor {
     height: 100%;
 }
+
+
 
 @import "bootstrap-overloads";
 @import "dialog/mount";
