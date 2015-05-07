@@ -218,7 +218,9 @@ instance resourceIsForeign :: IsForeign Resource where
     ty <- readProp "type" f
     template <- case ty of
       "mount" -> pure newDatabase
-      "directory" -> pure newDirectory
+      "directory" -> pure $ if endsWith notebookExtension name
+                       then newNotebook
+                       else newDirectory
       "file" -> pure $ if endsWith notebookExtension name
                        then newNotebook
                        else newFile
