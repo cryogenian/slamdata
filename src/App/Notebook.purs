@@ -2,8 +2,8 @@ module App.Notebook where
 
 import Halogen.Component (Component())
 import Halogen.Signal (stateful)
-import Model.Notebook (Input(), initialState)
-import Input.Notebook (updateState)
+import Model.Notebook (initialState)
+import Input.Notebook (Input(), updateState)
 import View.Notebook (view)
 import Halogen.HTML.Events.Monad (Event())
 import EffectTypes (NotebookAppEff())

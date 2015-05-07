@@ -40,6 +40,7 @@ import qualified Routing.Match.Class as R
 import qualified Routing.Hash as R
 import Model.Resource (setPath, resourceDir, newDirectory, resourcePath)
 import Api.Fs (children)
+import Input.Notebook (Input(..))
 
 driver :: forall e. H.Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit

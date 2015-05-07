@@ -6,10 +6,11 @@ import Control.Functor (($>))
 import Control.Apply ((*>))
 import Data.Inject1 (inj)
 import Control.Plus (empty)
-import View.Common (contentFluid, navbar, icon, logo, glyph)
+import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 
 import Data.Array ((..), length, zipWith, replicate)
-import Model.Notebook
+import Model.Notebook 
+import Input.Notebook (Input(..))
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Controller.Notebook (handleMenuSignal, handleSubmitName)
 import Data.Int (toNumber, fromNumber, Int())
@@ -33,10 +34,19 @@ import qualified Config as Config
 import qualified View.Css as Vc
 import qualified View.File.Modal.Common as Vm
 import Driver.File.Path (updatePath)
+import View.Notebook.Cell.Search (searchOutput)
 import Data.Path.Pathy
 import Model.Resource (resourceDir)
 
 type HTML e = H.HTML (E.Event (NotebookAppEff e) Input)
+
+dataCellId :: forall i. Number -> A.Attr i
+dataCellId = A.attr $ A.attributeName "data-cell-id"
+
+dataCellType :: forall i. CellType -> A.Attr i
+dataCellType ct = (A.attr $ A.attributeName "data-cell-type") str
+  where str :: String
+        str = celltype2str ct
 
 view :: forall e. State -> HTML e
 view state =
@@ -78,33 +88,46 @@ body state =
                   else []))] ]
 
 cells :: forall e. State -> [HTML e]
-cells state = [ H.div [ A.classes [ Vc.notebookContent ] ] (state ^. notebook <<< notebookCells >>= cell) ]
+cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
+                (state ^. notebook <<< notebookCells >>= cell) ]
+
 
 cell :: forall e. Cell -> [HTML e]
 cell (Cell o) =
-  [ H.div [ A.classes [ B.container, Vc.notebookCell ] ]
-    [ divRow [ H.div [ A.classes [ B.btnGroup, B.pullRight ]
-                     ]
-                     [ H.button [ A.classes [ B.btn ]
-                                , E.onClick (E.input_ (ToggleEditorCell o.cellId))
-                                ] [ H.text (if o.hiddenEditor then "Show" else "Hide") ]
-                     , H.button [ A.classes [ B.btn ]
-                                , E.onClick (E.input_ (TrashCell o.cellId))
-                                ] [ H.text "Trash" ]
-                     ]
-             ]
-    , divRow (if o.hiddenEditor
-              then [ ]
-              else [ H.div [ A.classes [ B.colMdOffset2, B.colMd10, Vc.cellInput ] ] [ H.div [ A.attr (A.attributeName "data-cell-id") o.cellId, A.classes [ Vc.aceContainer ] ] [ ] ] ])
-    , margined [ H.button [ A.classes [ B.btn ], E.onClick (E.input_ (RunCell o.cellId)) ] [ H.text "Run" ] ]
-               [ H.text (Ap.printJson (Ae.encodeJson o.cellType)) ]
+  [ H.div [ A.classes [ B.containerFluid, Vc.notebookCell ] ]
+    [ row [ H.div [ A.classes [ B.btnGroup, B.pullRight, Vc.cellControls ] ]
+               [ H.button [ A.classes [ B.btn ]
+                          , E.onClick (E.input_ (ToggleEditorCell o.cellId))
+                          ] [ H.text (if o.hiddenEditor then "Show" else "Hide") ]
+               , H.button [ A.classes [ B.btn ]
+                          , E.onClick (E.input_ (TrashCell o.cellId))
+                          ] [ H.text "Trash" ]
+               ]
+             ] 
+    , row
+      [ H.div
+        [ A.classes $ ([ Vc.cellInput ] <> fadeWhen o.hiddenEditor) ] 
+        [ H.div [ dataCellId o.cellId
+                , dataCellType o.cellType
+                , A.classes [ Vc.aceContainer ] ] [ ] ] ] 
+    , row [ H.div [ A.classes $ fadeWhen o.hiddenEditor ] 
+            [ H.button [ A.classes [ B.btn, B.btnPrimary, Vc.playButton ]
+                       , E.onClick (E.input_ (RunCell o.cellId)) ]
+              [ glyph B.glyphiconPlay ] ] ] 
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.input)
-    , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ]
+    , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
     ] ]
+
+  where fadeWhen :: Boolean -> [A.ClassName]
+        fadeWhen true = [B.fade]
+        fadeWhen false = [B.fade, B.in_]
+
 
 renderOutput :: forall e. CellType -> String -> [HTML e]
 renderOutput Markdown = markdownOutput
+renderOutput Search = searchOutput 
 renderOutput _ = const [ ]
+
 
 -- TODO: Interpret the SlamDownEvent instead of discarding.
 markdownOutput :: forall e. String -> [HTML e]
@@ -112,11 +135,8 @@ markdownOutput = fromSlamDownEvents <<< renderHalogen <<< parseMd
   where fromSlamDownEvents :: [H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
         fromSlamDownEvents = (($> empty) <$>)
 
-divRow :: forall e. [HTML e] -> HTML e
-divRow = H.div [ A.classes [ B.row ] ]
-
 margined :: forall e. [HTML e] -> [HTML e] -> HTML e
-margined l r = divRow [ H.div [ A.classes [ B.colMd2 ] ] l
+margined l r = row [ H.div [ A.classes [ B.colMd2 ] ] l
                       , H.div [ A.classes [ B.colMd10 ] ] r
                       ]
 newCellMenu :: forall e. State -> [HTML e]

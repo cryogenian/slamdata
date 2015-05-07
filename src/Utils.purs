@@ -33,6 +33,14 @@ foreign import newTab
   }
   """ :: forall e. String -> Eff (dom :: DOM | e) Unit
 
+foreign import mailOpen """
+function mailOpen(url) {
+  return function() {
+    window.open(url);
+  };
+}
+""" :: forall e. String -> Eff (dom :: DOM | e) Unit
+
 foreign import reload
   """
   function reload() {

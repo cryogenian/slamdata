@@ -2,7 +2,10 @@ module Model.Notebook where
 
 import Data.Either
 import Data.Maybe
+import Data.Foreign (toForeign)
+import Data.Foreign.Class (read)
 import Data.Inject1 (prj, inj)
+import Data.Bifunctor (lmap)
 import Halogen.HTML.Events.Monad (Event())
 import Optic.Core (lens, LensP())
 import Control.Timer (Timeout())
@@ -17,8 +20,8 @@ import qualified Data.Argonaut.Printer as Ap
 import qualified Network.HTTP.Affjax.Request as Ar
 import qualified Data.StrMap as M
 import Model.Resource (Resource(), newNotebook)
+import Global
 
-type I e = Event (NotebookAppEff e) Input
 
 type State =
   { dropdowns :: [DropdownItem]
@@ -61,31 +64,13 @@ initialState =
   , nextCellId: 0
   }
 
-data Input
-  = Dropdown Number
-  | CloseDropdowns
-  | SetTimeout (Maybe Timeout)
-  | SetName String
-  | SetResource Resource
-  | SetSiblings [Resource]
-  | SetLoaded Boolean
-  | SetError String
-  | SetEditable Boolean
-  | SetModalError String
-  | SetAddingCell Boolean
-  | AddCell CellType
-  | ToggleEditorCell CellId
-  | TrashCell CellId
-  | AceContent CellId String
-  | RunCell CellId
-
-
-type CellId = String
-
+type CellId = Number
 
 string2cellId :: String -> Either String CellId
-string2cellId "" = Left "incorrect cellid"
-string2cellId a = Right a
+string2cellId str =
+  if isNaN int then Left "incorrect cell id" else Right int
+  where int = readFloat str 
+
 
 data CellType
   = Evaluate
@@ -94,6 +79,14 @@ data CellType
   | Query
   | Visualize
   | Markdown
+
+celltype2str :: CellType -> String
+celltype2str Evaluate = "evaluate"
+celltype2str Explore = "explore"
+celltype2str Search = "search"
+celltype2str Query = "query"
+celltype2str Visualize = "visualize"
+celltype2str Markdown = "markdown"
 
 newtype Cell = Cell {
   cellId :: CellId,
@@ -131,13 +124,7 @@ notebookCells :: LensP Notebook [Cell]
 notebookCells = notebookLens <<< lens _.cells (_ { cells = _ })
 
 instance cellTypeEncode :: Ae.EncodeJson CellType where
-  encodeJson cell = Ac.fromString $ case cell of
-    Evaluate -> "evaluate"
-    Explore -> "explore"
-    Search -> "search"
-    Query -> "query"
-    Visualize -> "visualize"
-    Markdown -> "markdown"
+  encodeJson = Ac.fromString <<< celltype2str 
 
 instance cellEncode :: Ae.EncodeJson Cell where
   encodeJson (Cell cell)

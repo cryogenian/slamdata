@@ -112,3 +112,9 @@ cellNextActions = className "cell-next-actions"
 
 aceContainer :: ClassName
 aceContainer = className "ace-container"
+
+playButton :: ClassName
+playButton = className "play-button"
+
+cellControls :: ClassName
+cellControls = className "cell-controls"
