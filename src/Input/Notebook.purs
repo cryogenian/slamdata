@@ -54,8 +54,8 @@ updateState state (ToggleEditorCell cellId) =
 updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
 
-updateState state (AceTextCopied _) =
-  state
+updateState state (AceContent cellId content) =
+  state # notebook..notebookCells..mapped %~ setContent cellId content
 
 updateState state (RunCell _) =
   state
@@ -63,6 +63,10 @@ updateState state (RunCell _) =
 toggleEditor :: CellId -> Cell -> Cell
 toggleEditor ci c@(Cell o) | isCell ci c = Cell $ o { hiddenEditor = not o.hiddenEditor }
 toggleEditor _ c = c
+
+setContent :: CellId -> String -> Cell -> Cell
+setContent ci content c@(Cell o) | isCell ci c = Cell $ o { input = content }
+setContent _ _ c = c
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'

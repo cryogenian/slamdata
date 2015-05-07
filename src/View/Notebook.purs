@@ -90,7 +90,7 @@ cell (Cell o) =
              ]
     , divRow (if o.hiddenEditor
               then [ ]
-              else [ H.div [ A.classes [ B.colMdOffset2, B.colMd10, Vc.cellInput ] ] [ ] ])
+              else [ H.div [ A.classes [ B.colMdOffset2, B.colMd10, Vc.cellInput ] ] [ H.div [ A.attr (A.attributeName "data-cell-id") o.cellId, A.classes [ Vc.aceContainer ] ] [ ] ] ])
     , margined [ H.button [ A.classes [ B.btn ], E.onClick (E.input_ (RunCell o.cellId)) ] [ H.text "Run" ] ]
                [ H.text (Ap.printJson (Ae.encodeJson o.cellType)) ]
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.input)
