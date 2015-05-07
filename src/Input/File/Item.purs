@@ -22,7 +22,7 @@ inputItem sort searching items input = case input of
     resort sort searching $ item : items
 
   ItemRemove item ->
-    resort sort searching $ filter (\x -> not $ x.name == item.name && x.root == item.root) items
+    resort sort searching $ filter (\x -> not $ x.resource == item.resource) items
 
   ItemHover ix h ->
     modify (flip _ { hovered = _ }) items ix
@@ -32,6 +32,7 @@ inputItem sort searching items input = case input of
 
 resort :: Sort -> Boolean -> [Item] -> [Item]
 resort sort searching = sortBy (sortItem searching sort)
+                        
 
 modify :: (Boolean -> Item -> Item) -> [Item] -> Number -> [Item]
 modify func items ix =

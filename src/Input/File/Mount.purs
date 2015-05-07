@@ -3,13 +3,13 @@ module Input.File.Mount
   , inputMount
   ) where
 
-import Data.Array (filter, replicate)
+import Data.Array (filter, replicate, null)
 import Data.Char (fromCharCode)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
+import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust, isNothing)
 import Data.Foldable (any)
 import Model.File.Dialog (Dialog(MountDialog))
-import Model.File.Dialog.Mount (MountDialogRec(), MountHostRec(), MountPropRec(), initialMountDialog, initialMountHost, initialMountProp)
+import Model.File.Dialog.Mount (MountDialogRec(), MountHostRec(), MountPropRec(), initialMountDialog, initialMountHost, initialMountProp, isEmptyHost, isEmptyProp)
 import Utils.ConnectionURI (parse, toURI)
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rx
@@ -25,11 +25,14 @@ inputMount (MountDialog d) (ValueChanged fn) =
       hosts = (filter (not <<< isEmptyHost) d'.hosts)
       props = (filter (not <<< isEmptyProp) d'.props)
       connectionURI = mkURI d'.path d'.user d'.password hosts props
+      validation = validate d'.name hosts
   in MountDialog d' { connectionURI = connectionURI
-                    , hosts = hosts ++ [initialMountHost]
+                    , hosts = if null hosts
+                              then [initialMountHost, initialMountHost]
+                              else hosts ++ [initialMountHost]
                     , props = props ++ [initialMountProp]
-                    , message = Nothing
-                    , valid = true
+                    , message = validation
+                    , valid = isNothing validation
                     }
 inputMount (MountDialog d) (UpdateConnectionURI "") = MountDialog initialMountDialog
 inputMount (MountDialog d) (UpdateConnectionURI uri) =
@@ -39,23 +42,19 @@ inputMount (MountDialog d) (UpdateConnectionURI uri) =
                 , valid = false
                 }
     Right params ->
-      d { connectionURI = uri
+      let hosts' = ((\host -> host { port = fromMaybe "" host.port }) <$> params.hosts) ++ [initialMountHost]
+          validation = validate d.name hosts'
+      in d { connectionURI = uri
         , path = fromMaybe "" params.name
         , user = maybe "" (_.user) params.credentials
         , password = maybe "" (_.password) params.credentials
-        , hosts = ((\host -> host { port = fromMaybe "" host.port }) <$> params.hosts) ++ [initialMountHost]
+        , hosts = hosts'
         , props = params.props ++ [initialMountProp]
-        , message = Nothing
-        , valid = true
+        , message = validation
+        , valid = isNothing validation
         }
 inputMount (MountDialog d) ClearMessage = MountDialog $ d { message = Nothing }
 inputMount dialog _ = dialog
-
-isEmptyHost :: MountHostRec -> Boolean
-isEmptyHost h = h.host == "" && h.port == ""
-
-isEmptyProp :: MountPropRec -> Boolean
-isEmptyProp p = p.name == "" && p.value == ""
 
 mkURI :: String -> String -> String -> Array MountHostRec -> Array MountPropRec -> String
 mkURI name user password hosts props =
@@ -81,3 +80,8 @@ rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
 
 hidePassword :: String -> String
 hidePassword s = Str.joinWith "" $ replicate (Str.length s) (Str.fromChar $ fromCharCode 8226)
+
+validate :: String -> [MountHostRec] -> Maybe String
+validate "" _ = Just "Please enter a name for the mount"
+validate _ [] = Just "Please enter at least one host"
+validate _ _  = Nothing

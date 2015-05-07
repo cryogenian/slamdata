@@ -10,8 +10,6 @@ type Search = {
   value :: String,
   -- if _value_ has been changed but path hasn't been setted
   timeout :: Maybe Timeout,
-  -- value to set path
-  nextValue :: String,
   loading :: Boolean
   }
 
@@ -21,6 +19,5 @@ initialSearch = {
   value : "",
   focused: false,
   timeout : Nothing,
-  nextValue: "",
   loading: false
   }

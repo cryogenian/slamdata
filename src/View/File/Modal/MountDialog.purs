@@ -11,16 +11,18 @@ import Controller.File (selectThis)
 import Data.Array ((..), length, zipWith, singleton)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), maybe, isJust)
+import Data.Foldable (all)
 import Input.File (FileInput(SetDialog))
 import Input.File.Mount (MountInput(..))
 import Optic.Core ((.~), (^.))
 import Optic.Index (ix)
 import Optic.Index.Types (TraversalP())
-import Utils.Halide (readonly, onPaste)
+import Utils.Halide (onPaste)
 import Utils (select, clearValue)
 import View.Common (glyph, closeButton)
 import View.File.Common (I())
 import View.File.Modal.Common (header, h4, body, footer)
+import qualified Data.String.Regex as Rx
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
@@ -39,10 +41,9 @@ mountDialog state =
                   $ (if state.new then [fldName state] else [])
                  ++ [ fldConnectionURI state
                     , selScheme state
-                    , fldPath state
+                    , userinfo state
                     , hosts state
-                    , fldUser state
-                    , fldPass state
+                    , fldPath state
                     , props state
                     , message state.message
                     ]
@@ -60,7 +61,7 @@ fldName state =
 fldConnectionURI :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldConnectionURI state =
   H.div [ A.classes [B.formGroup, VC.mountURI] ]
-        [ label "Connection URI"
+        [ label "URI"
                 [ H.input [ A.class_ B.formControl
                           , A.placeholder "Paste connection URI here"
                           , A.value state.connectionURI
@@ -106,48 +107,59 @@ selScheme state =
 
 hosts :: forall e. M.MountDialogRec -> H.HTML (I e)
 hosts state =
-  H.div [ A.classes [B.formGroup, VC.mountHostList] ]
-        $ (host state) <$> 0 .. (length state.hosts - 1)
+  let allEmpty = M.isEmptyHost `all` state.hosts
+  in H.div [ A.classes [B.formGroup, VC.mountHostList] ]
+           $ (\ix -> host state ix (ix > 0 && allEmpty)) <$> 0 .. (length state.hosts - 1)
 
-host :: forall e. M.MountDialogRec -> Number -> H.HTML (I e)
-host state index =
+host :: forall p e. M.MountDialogRec -> Number -> Boolean -> H.HTML (I e)
+host state index enabled =
   H.div [ A.class_ VC.mountHost ]
-        [ label "Host" [ input state (M.hosts <<< ix index <<< M.host) [] ]
-        , label "Port" [ input state (M.hosts <<< ix index <<< M.port) [] ]
+        [ label "Host" [ input' rejectNonHostname state (M.hosts <<< ix index <<< M.host) [ A.disabled enabled ] ]
+        , label "Port" [ input' rejectNonPort state (M.hosts <<< ix index <<< M.port) [ A.disabled enabled ] ]
         ]
+  where
+  rejectNonHostname :: String -> String
+  rejectNonHostname = Rx.replace rxNonHostname ""
+  rxNonHostname :: Rx.Regex
+  rxNonHostname = Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
+  rejectNonPort :: String -> String
+  rejectNonPort = Rx.replace rxNonPort ""
+  rxNonPort :: Rx.Regex
+  rxNonPort = Rx.regex "[^0-9]" (Rx.noFlags { global = true })
 
 fldPath :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldPath state =
   H.div [ A.class_ B.formGroup ]
         [ label "Path" [ input state M.path [] ] ]
 
-fldUser :: forall e. M.MountDialogRec -> H.HTML (I e)
-fldUser state =
-  H.div [ A.class_ B.formGroup ]
-        [ label "Username" [ input state M.user [] ] ]
+userinfo state =
+  H.div [ A.classes [B.formGroup, VC.mountUserInfo] ]
+        [ fldUser state
+        , fldPass state
+        ]
 
-fldPass :: forall e. M.MountDialogRec -> H.HTML (I e)
-fldPass state =
-  H.div [ A.class_ B.formGroup ]
-        [ label "Password" [ input state M.password [ A.type_ "password" ] ] ]
+fldUser :: forall p e. M.MountDialogRec -> H.HTML (I e)
+fldUser state = label "Username" [ input state M.user [] ]
+
+fldPass :: forall p e. M.MountDialogRec -> H.HTML (I e)
+fldPass state = label "Password" [ input state M.password [ A.type_ "password" ] ]
 
 props :: forall e. M.MountDialogRec -> H.HTML (I e)
 props state =
-  H.div [ A.class_ B.formGroup ]
-        [ label "Properties"
-                [ H.table [ A.classes [B.table, B.tableBordered, VC.mountProps] ]
-                          [ H.thead_ [ H.tr_ [ H.th_ [ H.text "Name" ]
-                                             , H.th_ [ H.text "Value" ]
-                                             ]
+  H.div [ A.classes [B.formGroup, VC.mountProps] ]
+        [ label "Properties" []
+        , H.table [ A.classes [B.table, B.tableBordered] ]
+                  [ H.thead_ [ H.tr_ [ H.th_ [ H.text "Name" ]
+                                     , H.th_ [ H.text "Value" ]
                                      ]
-                          , H.tbody_ [ H.tr_ [ H.td [ A.colSpan 2 ]
-                                                    [ H.div [ A.class_ VC.mountPropsScrollbox ]
-                                                            [ H.table_ $ (prop state) <$> 0 .. (length state.props - 1) ]
-                                                    ]
-                                             ]
+                             ]
+                  , H.tbody_ [ H.tr_ [ H.td [ A.colSpan 2 ]
+                                            [ H.div [ A.class_ VC.mountPropsScrollbox ]
+                                                    [ H.table_ $ (prop state) <$> 0 .. (length state.props - 1) ]
+                                            ]
                                      ]
-                          ]
-                ]
+                             ]
+                  ]
         ]
 
 prop :: forall e. M.MountDialogRec -> Number -> H.HTML (I e)
@@ -186,9 +198,18 @@ input :: forall e. M.MountDialogRec
                   -> TraversalP M.MountDialogRec String
                   -> [A.Attr (I e)]
                   -> H.HTML (I e)
-input state lens attrs =
+input state lens = input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
+
+-- | A basic text input field that uses a lens to read from and update the
+-- | state, and allows for the input value to be modified.
+input' :: forall p e. (String -> String)
+                   -> M.MountDialogRec
+                   -> TraversalP M.MountDialogRec String
+                   -> [A.Attr (I e)]
+                   -> H.HTML (I e)
+input' f state lens attrs =
   H.input ([ A.class_ B.formControl
-           , E.onInput (E.input \val -> inj $ ValueChanged (lens .~ val))
+           , E.onInput (E.input \val -> inj $ ValueChanged (lens .~ f val))
            , A.value (state ^. lens)
            ] ++ attrs)
           []

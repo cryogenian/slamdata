@@ -83,6 +83,9 @@ mountURI = className "mount-uri"
 mountHostList :: ClassName
 mountHostList = className "mount-host-list"
 
+mountUserInfo :: ClassName
+mountUserInfo = className "mount-userinfo"
+
 mountHost :: ClassName
 mountHost = className "mount-host"
 

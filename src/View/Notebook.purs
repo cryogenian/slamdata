@@ -12,7 +12,6 @@ import Data.Array ((..), length, zipWith, replicate)
 import Model.Notebook
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Controller.Notebook (handleMenuSignal, handleSubmitName)
-import Model.Path (path2str, parent)
 import Data.Int (toNumber, fromNumber, Int())
 import Data.String (joinWith)
 import EffectTypes (NotebookAppEff())
@@ -33,7 +32,9 @@ import qualified Halogen.HTML.Events.Forms as E
 import qualified Config as Config
 import qualified View.Css as Vc
 import qualified View.File.Modal.Common as Vm
-import Driver.File (updatePath)
+import Driver.File.Path (updatePath)
+import Data.Path.Pathy
+import Model.Resource (resourceDir)
 
 type HTML e = H.HTML (E.Event (NotebookAppEff e) Input)
 
@@ -58,8 +59,9 @@ navigation state =
   where
   notebookHref :: State -> String
   notebookHref state =
-    let u = path2str $ parent state.path in
-    updatePath u Config.homeHash
+    let u = maybe rootDir (rootDir </>) $ 
+        sandbox rootDir $ resourceDir state.resource
+    in updatePath (pure u) Config.homeHash
 
 body :: forall e. State -> [HTML e]
 body state =
@@ -70,7 +72,10 @@ body state =
               [ H.h1 [ A.classes [ B.textCenter ] ] [ H.text state.error ] ]
          else contentFluid
               [ H.div [ A.class_ B.clearfix ]
-                (cells state <> newCellMenu state)] ]
+                (cells state <>
+                 (if state.editable
+                  then newCellMenu state
+                  else []))] ]
 
 cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ] (state ^. notebook <<< notebookCells >>= cell) ]
@@ -145,6 +150,7 @@ newCellMenu state =
                                 E.preventDefault $> do
                                   handleMenuSignal <<< inj $ inp ) ]
             [ glyph cls ] ]
+
 
 txt :: forall e. Int -> String -> [HTML e]
 txt lvl text =

@@ -6,7 +6,6 @@ import Data.Maybe
 import EffectTypes
 import Input.File (FileInput(SetDialog))
 import Model.File
-import Utils.Halide (readonly)
 import View.File.Common (I())
 import View.File.Modal.Common
 import qualified Halogen.HTML as H
@@ -25,7 +24,7 @@ shareDialog url =
              [ H.input [
                   A.classes [B.formControl]
                   , A.value url
-                  , readonly true
+                  , A.readonly true
                   ]
                []
              ]

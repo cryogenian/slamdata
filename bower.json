@@ -46,7 +46,8 @@
     "purescript-zeroclipboard": "https://github.com/slamdata/purescript-zclipboard.git#~0.1.0",
     "zeroclipboard": "~2.2.0",
     "purescript-markdown": "2f7d778a630917540e009d5db921e7617b513e37",
-    "purescript-ace": "~0.3.0"
+    "purescript-ace": "~0.3.0",
+    "purescript-pathy": "~0.1.3"
   },
   "resolutions": {
     "purescript-aff": "~0.10.0",

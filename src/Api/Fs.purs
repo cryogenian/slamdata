@@ -1,72 +1,39 @@
-module Api.Fs
-  ( makeNotebook
-  , delete
-  , deleteItem
-  , makeFile
-  , moveItem
-  , listing
-  , move
-  ) where
+module Api.Fs where
 
-import Config
-import Utils (endsWith)
-import Control.Monad.Aff (Aff())
+import Control.Monad.Aff(Aff())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
-import Data.Argonaut.Parser (jsonParser)
-import Data.Array (head, last)
 import Data.Either (Either(..), either)
-import Data.Foreign.Class (IsForeign, readProp, read)
-import Data.Int (fromNumber, toNumber)
-import Data.Maybe (Maybe(..), maybe)
-import Model.File.Item (Item(), itemPath)
-import Model.File.Resource (Resource(..))
-import Model.Notebook (Notebook())
-import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest, get, put_, delete_)
-import Network.HTTP.Affjax.Response (Respondable, ResponseType(..))
-import Network.HTTP.Method (Method(MOVE))
-import Network.HTTP.RequestHeader (RequestHeader(..))
-import Network.HTTP.StatusCode (StatusCode(..))
-import qualified Data.String as S
-import qualified Data.String.Regex as Rgx
+import Data.Maybe 
 
-newtype Listing = Listing [Child]
+import Data.Array (head)
+import Data.String (split)
+import Data.Foreign.Class (readProp, read, IsForeign)
+import Data.Int (fromNumber, toNumber)
+import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
+import Network.HTTP.StatusCode (StatusCode(..))
+import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, get, put_, delete_, defaultRequest)
+import Network.HTTP.RequestHeader (RequestHeader(..))
+import Network.HTTP.Method (Method(MOVE))
+import Data.Argonaut.Parser (jsonParser)
+
+import Model.Notebook (Notebook())
+import Model.Resource
+import Config
+import Data.Path.Pathy
+import Optic.Core
+
+newtype Listing = Listing [Resource]
+
+runListing :: Listing -> [Resource]
+runListing (Listing rs) = rs 
 
 instance listingIsForeign :: IsForeign Listing where
-  read f = Listing <$> readProp "children" f
-
-newtype Child = Child { name :: String, resource :: Resource }
-
-instance childIsForeign :: IsForeign Child where
-  read f = Child <$>
-    ({name: _, resource: _} <$>
-     readProp "name" f <*>
-     readProp "type" f)
+  read f = Listing <$> readProp "children" f 
 
 instance listingRespondable :: Respondable Listing where
   responseType = JSONResponse
-  fromResponse = read
-
-listing2items :: Listing -> [Item]
-listing2items (Listing cs) =
-  child2item <$> cs
-  where nbExtensionRgx = Rgx.regex ("\\" <> Config.notebookExtension) Rgx.noFlags
-        isNotebook r = r.resource == File &&
-                       r.name /=
-                       Rgx.replace nbExtensionRgx "" r.name
-        child2item (Child r) =
-          let item = {
-                resource: r.resource,
-                name: r.name,
-                selected: false,
-                hovered: false,
-                phantom: false,
-                root: ""
-                }
-          in if isNotebook r then
-               item{resource = Notebook}
-             else item
-
+  fromResponse = read 
 
 successStatus :: StatusCode
 successStatus = StatusCode $ fromNumber 200
@@ -76,70 +43,68 @@ succeeded (StatusCode int) =
   200 <= code && code < 300
   where code = toNumber int
 
-getResponse :: forall e a. String -> Affjax e a -> Aff (ajax :: AJAX | e) a
-getResponse msg affjax = do
+getResponse :: forall a e. String -> Affjax e a -> Aff (ajax :: AJAX | e) a 
+getResponse msg affjax = do 
   res <- affjax
   if not $ succeeded res.status
     then throwError $ error msg
-    else
-    pure res.response
+    else pure res.response
 
-listing' :: forall e. String -> Affjax e Listing
-listing' path = get (Config.metadataUrl <> path)
+children :: forall e. Resource -> Aff (ajax :: AJAX | e) [Resource] 
+children r = do
+  cs <- children' $ resourcePath r 
+  pure $ (\x -> x # rootL .~ (either (const rootDir) id $ getPath r)) <$> cs 
+  where
+  msg = "error getting resource children"
+  
+  children' :: String -> Aff _ [Resource]
+  children' str = runListing <$> (getResponse msg $ listing str)
+  
+  listing :: String -> Affjax _ Listing
+  listing str = get (Config.metadataUrl <> str)
 
-listing :: forall e. String -> Aff (ajax :: AJAX | e) [Item]
-listing path = (listing2items <<< _.response) <$> listing' path
+makeFile :: forall e. AnyPath -> String -> Aff (ajax :: AJAX | e) Unit 
+makeFile ap content = 
+  getResponse msg $ either err go isJson
+  where
+  resource :: Resource
+  resource = setPath newFile ap
 
-makeFile :: forall e. Item -> String -> Aff (ajax :: AJAX | e) Unit
-makeFile item content =
-  let path = itemPath item
-      isJson = either (const false) (const true) do
-        hd <- maybe (Left "empty file") Right $
-              head $ S.split "\n" content
-        jsonParser hd
-  in if isJson then do
-    getResponse ("error while creating file " <> path) $
-    put_ (Config.dataUrl <> path) content
-    else throwError $ error "file has incorrect format"
+  msg :: String 
+  msg = "error while creating file"
+  
+  err :: _ -> Aff _ _
+  err _ = throwError $ error "file has incorrect format" 
+    
+  firstLine :: Maybe String 
+  firstLine = head $ split "\n" content
 
-makeNotebook :: forall e. Item -> Notebook -> Aff (ajax :: AJAX | e) Unit
-makeNotebook item notebook =
-  let path = itemPath item in
-  getResponse ("error while creating notebook " <> path) $
-  put_ (Config.dataUrl <> path) notebook
+  isJson :: Either _ _
+  isJson = maybe (Left "empty file") Right firstLine >>= jsonParser
 
-delete :: forall e. String -> Aff (ajax :: AJAX | e) Unit
-delete path = getResponse ("can not delete " <> path) $
-              delete_ (Config.dataUrl <> path)
+  go :: _ -> Aff _ _
+  go _ = put_ (Config.dataUrl <> resourcePath resource) content
+    
 
-deleteItem :: forall e. Item -> Aff (ajax :: AJAX | e) Unit
-deleteItem item =
-    let path = itemPath item
-    in delete path
+makeNotebook :: forall e. AnyPath -> Notebook -> Aff (ajax :: AJAX | e) Unit 
+makeNotebook ap notebook = 
+  getResponse msg $ put_ (Config.dataUrl <> resourcePath resource) notebook
+  where msg = "error while creating notebook"
+        resource = setPath newNotebook ap
+
+delete :: forall e. Resource -> Aff (ajax :: AJAX | e) Unit 
+delete resource = 
+  getResponse msg $ delete_ (Config.dataUrl <> resourcePath resource) 
+  where msg = "can not delete" 
 
 
-move :: forall e. String -> String -> Aff (ajax :: AJAX | e) String 
-move oldPath newPath = do
-  let old = Config.dataUrl <> oldPath
-  result <- affjax $ defaultRequest {
-    method = MOVE,
-    headers = [RequestHeader "Destination" newPath],
-    url = old 
+move :: forall e. Resource -> AnyPath -> Aff (ajax :: AJAX | e) String 
+move src tgt = do
+  result <- affjax $ defaultRequest 
+    { method = MOVE
+    , headers = [RequestHeader "Destination" $ resourcePath (setPath src tgt)]
+    , url = Config.dataUrl <> resourcePath src 
     }
-  if succeeded result.status
-    then pure ""
-    else pure result.response
-
-moveItem :: forall e. Item -> String -> Aff (ajax :: AJAX | e) String
-moveItem item destination = do
-  let dest = if item.resource == Notebook
-             then if endsWith notebookExtension destination
-                  then destination
-                  else destination <> notebookExtension
-             else destination
-
-      dest' = case item.resource of
-        Directory -> dest <> "/"
-        Database -> dest <> "/"
-        _ -> dest
-  move (itemPath item) dest'
+  pure if succeeded result.status
+       then ""
+       else result.response 

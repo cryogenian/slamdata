@@ -6,8 +6,6 @@ import Data.Inject1 (prj, inj)
 import Halogen.HTML.Events.Monad (Event())
 import Optic.Core (lens, LensP())
 import Control.Timer (Timeout())
-import Model.Path (Path(), emptyPath)
-import Model.File.Item (Item())
 import EffectTypes (NotebookAppEff())
 import Model.Notebook.Menu (initialDropdowns, DropdownItem())
 
@@ -18,15 +16,16 @@ import qualified Data.Argonaut.Encode as Ae
 import qualified Data.Argonaut.Printer as Ap
 import qualified Network.HTTP.Affjax.Request as Ar
 import qualified Data.StrMap as M
+import Model.Resource (Resource(), newNotebook)
 
 type I e = Event (NotebookAppEff e) Input
 
 type State =
   { dropdowns :: [DropdownItem]
   , timeout :: Maybe Timeout
-  , path :: Path
+  , resource :: Resource
   , name :: String
-  , items :: [Item]
+  , siblings :: [Resource]
   , loaded :: Boolean
   , error :: String
   , editable :: Boolean
@@ -49,15 +48,15 @@ initialState :: State
 initialState =
   { dropdowns: initialDropdowns
   , timeout: Nothing
-  , path: emptyPath
+  , resource: newNotebook
   , name: ""
-  , items: []
+  , siblings: []
   , loaded: false
   , error: ""
   , editable: true
   , modalError: ""
   , addingCell: false
-  , notebook: newNotebook
+  , notebook: emptyNotebook
   -- TODO: We use CellId = String below - how do we gen one?
   , nextCellId: 0
   }
@@ -67,8 +66,8 @@ data Input
   | CloseDropdowns
   | SetTimeout (Maybe Timeout)
   | SetName String
-  | SetPath Path
-  | SetItems [Item]
+  | SetResource Resource
+  | SetSiblings [Resource]
   | SetLoaded Boolean
   | SetError String
   | SetEditable Boolean
@@ -120,11 +119,10 @@ newtype Notebook = Notebook {
   cells :: [Cell]
   }
 
-newNotebook :: Notebook
-newNotebook = Notebook {
-  metadata: "",
-  cells: []
-  }
+emptyNotebook :: Notebook
+emptyNotebook = Notebook
+  { metadata: ""
+  , cells: [] }
 
 notebookLens :: LensP Notebook _
 notebookLens = lens (\(Notebook obj) -> obj) (const Notebook)

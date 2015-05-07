@@ -4,11 +4,11 @@ import Control.Apply ((*>))
 import Control.Functor (($>))
 import Control.Plus (empty)
 import Data.Inject1 (inj)
+import Data.Either (Either(Left))
 import Controller.File.Rename
 import Data.Maybe
 import EffectTypes
 import Model.File
-import Model.File.Resource 
 import Model.File.Dialog (Dialog(RenameDialog))
 import Model.File.Dialog.Rename (RenameDialogRec())
 import Input.File (FileInput(SetDialog))
@@ -25,6 +25,8 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
+import Model.Resource
+import Data.Path.Pathy
 
 renameDialog :: forall e. RenameDialogRec -> [H.HTML (I e)]
 renameDialog dialog =
@@ -38,14 +40,14 @@ renameDialog dialog =
                                    dialog{showList = false}))))]
       [ H.div [ A.classes [B.formGroup]]
         [ H.input [ A.classes [B.formControl]
-                  , A.value (removeExtension dialog.item.name)
+                  , A.value (resourceFileName dialog.resource)
                   , A.placeholder "New name"
                   , E.onInput (\v -> checkRename v dialog) ] []]
       , H.div [A.classes [B.inputGroup]]
         [ H.input [ A.classes [B.formControl]
                   , A.placeholder "New directory"
-                  , E.onInput (renameItemClicked dialog.target dialog.item.resource)
-                  , A.value (dialog.selected) ] []
+                  , E.onInput (renameDirInput dialog.resource)
+                  , A.value (resourcePath dialog.dir) ] []
         , H.span [ A.classes [B.inputGroupBtn]]
           [ H.button [ A.classes [B.btn, B.btnDefault]
                      , A.type_ "button"
@@ -59,7 +61,7 @@ renameDialog dialog =
                           , B.fade] <> if dialog.showList
                                        then [B.in_]
                                        else []]
-        (renameItem dialog.target dialog.item.resource <$> dialog.dirs)
+        (renameItem dialog.resource <$> dialog.dirs)
       , H.div [ E.onClick (E.input_ $ inj $ RenameError "")
               , A.classes $ [B.alert, B.alertDanger, B.fade ]
                 <> (if Str.length dialog.error == 0
@@ -73,21 +75,19 @@ renameDialog dialog =
              [ H.text "Cancel" ]
            , H.button [ A.disabled $ dialog.incorrect
                       , A.classes [B.btn, B.btnPrimary]
-                      , E.onClick (\_ -> rename dialog.item
-                                         (dialog.selected <> "/" <> dialog.target))]
+                      , E.onClick (\_ -> rename dialog) ]
              [H.text "Rename"]]
   ]
   where
 
-  renameItem :: forall i. String -> Resource -> String -> H.HTML (I e)
-  renameItem target res dir =
+  renameItem :: forall i. Resource -> Resource -> H.HTML (I e)
+  renameItem target res =
     H.a [ A.href "#"
-        , E.onClick (\_ -> E.preventDefault *> renameItemClicked target res dir)
+        , E.onClick (\_ -> do
+                        E.stopPropagation
+                        E.preventDefault
+                        renameItemClicked target res)
         , A.classes [B.listGroupItem]]
-    [ H.text dir ]
+    [ H.text (resourcePath res) ]
 
-  extensionRgx :: Rgx.Regex
-  extensionRgx = Rgx.regex (Config.notebookExtension <> "$") Rgx.noFlags
 
-  removeExtension :: String -> String
-  removeExtension = Rgx.replace extensionRgx ""

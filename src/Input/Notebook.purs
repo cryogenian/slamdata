@@ -2,11 +2,12 @@ module Input.Notebook (updateState) where
 
 import Data.Maybe (maybe)
 import Data.Array (filter, modifyAt, (!!))
-import Model.Path (getName, updateName)
 import Model.Notebook
-import Optic.Core ((..), (<>~), (%~), (+~))
+import Model.Resource (resourceName, nameL)
+import Optic.Core ((..), (<>~), (%~), (+~), (.~))
 import Optic.Setter (mapped, over)
 import qualified App.Notebook.Ace as NA
+
 
 updateState :: State -> Input -> State
 
@@ -21,14 +22,14 @@ updateState state CloseDropdowns =
 updateState state (SetTimeout mbTm) =
   state{timeout = mbTm}
 
-updateState state (SetPath path) =
-  state{path = path, name = getName path}
+updateState state (SetResource res) =
+  state{resource = res, name = resourceName res}
 
 updateState state (SetName name) =
-  state{path = updateName name state.path}
+  state{resource = state.resource # nameL .~ name}
 
-updateState state (SetItems items) =
-  state{items = items}
+updateState state (SetSiblings ss) =
+  state{siblings = ss} 
 
 updateState state (SetLoaded loaded) =
   state{loaded = loaded}

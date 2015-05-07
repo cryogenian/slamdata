@@ -1,16 +1,25 @@
 module Utils.Halide
   ( targetLink
   , targetLink'
-  , readonly
   , onPaste
   ) where
 
-import Control.Apply ((*>))
-import Control.Plus (empty)
 import Control.Alternative (Alternative)
+import Control.Apply ((*>), (<*))
+import Control.Monad.Eff.Class (MonadEff, liftEff)
+import Control.Monad (when)
+import Control.MonadPlus (MonadPlus)
+import Control.Plus (empty)
+import Data.DOM.Simple.Element (setValue)
+import Data.DOM.Simple.Types (HTMLElement())
+import Data.Either (Either(..))
+import Data.Foreign (Foreign(), toForeign)
+import Data.Foreign.Class (IsForeign, readProp)
+import DOM (DOM())
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Handler as E
+import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.HTML.Events.Types as ET
 import qualified Halogen.HTML.Target as T
 
@@ -27,10 +36,6 @@ targetLink = targetLink' <<< pure
 
 targetLink' :: forall i m. (Alternative m) => m i -> [A.Attr (m i)]
 targetLink' x = target' (T.DataTarget x)
-
--- | TODO: remove this once halogen is updated - it now has a readonly attr.
-readonly :: forall i. Boolean -> A.Attr i
-readonly = A.attr $ A.attributeName "readonly"
 
 -- | Clipboard events actually should have an extended type with a
 -- | `clipboardData :: DataTransfer` property, but we don't need that so it is

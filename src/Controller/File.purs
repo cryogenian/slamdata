@@ -15,10 +15,11 @@ import Data.DOM.Simple.Element (querySelector)
 import Data.DOM.Simple.Types (HTMLElement())
 import Data.Either (Either(..))
 import Data.Inject1 (inj)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.String (split, joinWith)
 import DOM (DOM())
-import Driver.File (getPath, updatePath, updateSort)
+import Driver.File.Path (extractDir, updatePath, updateSort)
+import Data.Path.Pathy (dir, file, (</>))
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Handler (EventHandler())
 import Halogen.HTML.Events.Monad (Event(), async, andThen)
@@ -29,23 +30,28 @@ import Model.File (State())
 import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (initialMountDialog)
 import Model.File.Dialog.Rename (initialRenameDialog)
-import Model.File.Item (initNotebook, initDirectory, initFile)
-import Model.Notebook (newNotebook)
+import Model.File.Item
+import Model.Resource (pathL, nameL, resourcePath)
+import Model.Notebook (emptyNotebook)
 import Model.Sort (Sort())
 import Routing.Hash (getHash, modifyHash)
 import Utils (clearValue, select)
 import Utils.Event (raiseEvent)
 import qualified Halogen.HTML.Events.Types as Et
 import qualified Utils.File as Uf
+import Optic.Core
+import Data.Path.Pathy
 
 handleCreateNotebook :: forall e. State -> Event (FileAppEff e) Input
 handleCreateNotebook state = do
   let name = getNewName Config.newNotebookName state
-  path <- liftEff $ getPath <$> getHash
-  let notebook = initNotebook{root = path, name = name, phantom = true}
+  path <- liftEff $ extractDir <$> getHash
+  let notebookPath = inj $ path </> file name 
+      notebook = initNotebook{phantom = true} #
+                 resourceL <<< pathL .~ notebookPath
   -- immidiately updating state and then
   (toInput $ ItemAdd notebook) `andThen` \_ -> do
-    f <- liftAff $ attempt $ makeNotebook notebook newNotebook
+    f <- liftAff $ attempt $ makeNotebook (notebook ^. resourceL .. pathL) emptyNotebook
     (toInput $ ItemRemove notebook) `andThen` \_ ->  do
       case f of
         Left _ -> empty
@@ -63,22 +69,24 @@ handleFileListChanged el state = do
       let err :: Aff (FileAppEff e) Input
           err = throwError $ error "empty filelist"
       in liftAff err
-    Just file -> do
+    Just f -> do
       let newReader :: Eff (FileAppEff e) _
           newReader = Uf.newReaderEff
 
           readAsBinaryString :: _ -> _ -> Aff (FileAppEff e) _
           readAsBinaryString = Uf.readAsBinaryString
 
-      path <- liftEff (getPath <$> getHash)
-      name <- flip getNewName state <$> (liftEff $ Uf.name file)
-      let fileItem = initFile{root = path, name = name, phantom = true}
+      path <- liftEff (extractDir <$> getHash)
+      name <- flip getNewName state <$> (liftEff $ Uf.name f)
+      let fileName = path </> file name 
+          fileItem = initFile{phantom = true} #
+                     (resourceL <<< pathL) .~ inj (path </> file name)
 
       reader <- liftEff newReader
-      content <- liftAff $ readAsBinaryString file reader
+      content <- liftAff $ readAsBinaryString f reader
 
       (toInput $ ItemAdd fileItem) `andThen` \_ -> do
-        f <- liftAff $ attempt $ makeFile fileItem content
+        f <- liftAff $ attempt $ makeFile (fileItem.resource ^. pathL) content
         (toInput $ ItemRemove fileItem) `andThen` \_ -> do
           case f of
             Left _ -> empty
@@ -103,31 +111,28 @@ handleUploadFile el _ = do
 -- | clicked on _Folder_ link, create phantom folder
 handleCreateFolder :: forall e. State -> Event (FileAppEff e) Input
 handleCreateFolder state = do
-  let name = getNewName Config.newFolderName state
-  path <- liftEff (getPath <$> getHash)
-  toInput $ ItemAdd $ initDirectory { root = path, name = name }
+  let dirName = dir $ getNewName Config.newFolderName state
+  path <- liftEff (extractDir <$> getHash)
+  toInput $ ItemAdd $ (initDirectory # resourceL .. pathL .~ (inj (path </> dirName))) 
 
 handleMountDatabase :: forall e. State -> Event (FileAppEff e) Input
 handleMountDatabase _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog)
 
--- get fresh name for this state
 getNewName :: String -> State -> String
 getNewName name state =
-  if findIndex (\x -> x.name == name) state.items /= -1 then
+  if findIndex (\x -> x ^. resourceL .. nameL == name) state.items /= -1 then
     getNewName' name 1
     else name
-  where getNewName' name i =
-          -- split and joinWith work with []
-          -- converting from/to List will be too expensive
-          case split "." name of
-            [] -> ""
-            body:suffixes ->
-              let newName = joinWith "." $ (body <> show i):suffixes
-              in if findIndex
-                    (\x -> x.name == newName)
-                    state.items /= -1
-                 then getNewName' name (i + 1)
-                 else newName
+  where
+  getNewName' name i =
+    case split "." name of
+      [] -> ""
+      body:suffixes ->
+        let newName = joinWith "." $ (body <> show i):suffixes
+        in if findIndex (\x -> x ^. resourceL .. nameL == newName)
+              state.items /= -1
+           then getNewName' name (i + 1)
+           else newName
 
 selectThis :: forall e o. Et.Event (|o) ->
               EventHandler (Event (dom :: DOM|e) Input)
@@ -136,5 +141,6 @@ selectThis ev =
 
 breadcrumbClicked :: forall e. Breadcrumb -> Event (FileAppEff e) Input
 breadcrumbClicked b = do
-  liftEff $ modifyHash $ updatePath b.link
+  liftEff $ modifyHash $ updatePath $ Right $ maybe rootDir (rootDir </>) $
+    (parseAbsDir b.link >>= sandbox rootDir)
   empty
