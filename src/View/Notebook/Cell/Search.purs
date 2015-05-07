@@ -10,9 +10,6 @@ import qualified Halogen.HTML.Events.Monad as E
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Types 
 
-import Debug.Foreign
-
-
 searchOutput :: forall e i. String -> [ H.HTML (E.Event e i) ]
 searchOutput input =
   flip (either (const [])) (mkQuery input) $ \query -> 
@@ -34,3 +31,8 @@ termToSQL (Term {include: include, predicate: p, labels: ls}) =
   else renderPredicate p $ labelsProjection ls 
 
 
+renderPredicate :: Predicate -> [String] -> String
+renderPredicate _ _ = ""
+
+labelsProjection :: [Label] -> [String]
+labelsProjection _ = []

@@ -27,7 +27,6 @@ data Input
   | AceContent CellId String
   | RunCell CellId
 
-import Debug.Foreign
 
 updateState :: State -> Input -> State
 
