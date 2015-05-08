@@ -109,21 +109,7 @@ initialDropdowns =
       , { name: "Delete"
         , message: Just $ inj $ DeleteCell
         , lvl: fromNumber 0 }
-      , { name: "Split"
-        , message: Nothing
-        , lvl: fromNumber 0 }
-      , { name: "2 Column"
-        , message: Just $ inj $ SplitCell (fromNumber 2)
-        , lvl: fromNumber 1 }
-      , { name: "3 Column"
-        , message: Just $ inj $ SplitCell (fromNumber 3)
-        , lvl: fromNumber 1 }
-      , { name: "4 Column"
-        , message: Just $ inj $ SplitCell (fromNumber 4)
-        , lvl: fromNumber 1 }
-      , { name: "5 Column"
-        , message: Just $ inj $ SplitCell (fromNumber 5)
-        , lvl: fromNumber 1 } ] }
+      ] }
   , { visible: false
     , name: "Help"
     , children:

@@ -73,8 +73,8 @@ handleMenuNotebook signal = do
       >>= setLocation homeHash
   empty
 
-handleMenuEdit :: forall e. MenuEditSignal -> I e
-handleMenuEdit signal = do
+handleMenuCell :: forall e. MenuCellSignal -> I e
+handleMenuCell signal = do
   liftEff $ fprint signal
   empty
 
@@ -84,10 +84,12 @@ handleMenuInsert MarkdownInsert = pure $ AddCell Markdown
 handleMenuInsert QueryInsert = pure $ AddCell Query
 handleMenuInsert SearchInsert = pure $ AddCell Search
 
-handleMenuCell :: forall e. MenuCellSignal -> I e
-handleMenuCell signal = do
+handleMenuEdit :: forall e. MenuEditSignal -> I e
+handleMenuEdit signal = do
   liftEff $ fprint signal
   empty
+
+
 
 handleMenuHelp :: forall e. MenuHelpSignal -> I e
 handleMenuHelp TutorialHelp = do

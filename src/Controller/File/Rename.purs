@@ -39,7 +39,7 @@ rename d = pure do
     case errorString of 
       "" -> (liftEff reload) *> empty
       _ -> empty
-      
+
 checkRename :: forall e. String -> RenameDialogRec -> EventHandler (Event (FileAppEff e) Input)
 checkRename name dialog = pure do
   (toInput $ SetResource res) `andThen` \_ -> 

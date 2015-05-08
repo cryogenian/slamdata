@@ -18,9 +18,10 @@ import Data.Inject1
 import Data.Path.Pathy
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign (ForeignError(TypeMismatch))
-import Data.Bifunctor (bimap)
+import Data.Bifunctor (bimap, rmap)
 import Optic.Core (lens, LensP())
 import Model.Sort (Sort(..))
+import qualified Data.String as S 
 import Utils
 import Config 
 
@@ -30,10 +31,35 @@ type AnyPath = Either FilePath DirPath
 
 data Resource
   = File FilePath
-  | Notebook FilePath
+  | Notebook DirPath
   | Directory DirPath
   | Database DirPath
 
+infixl 6 <./> 
+(<./>) :: forall a s. Path a Dir s -> String -> Path a Dir s
+(<./>) p ext = renameDir (changeDirExt $ const ext) p
+
+changeDirExt :: (String -> String) -> DirName -> DirName
+changeDirExt f (DirName name) =
+  DirName ((if ext == ""
+            then name 
+            else n) <> "." <> f ext)
+  where
+  idx = S.lastIndexOf "." name 
+  n = case idx of
+    -1 -> name
+    _ -> S.take idx name
+  ext = case idx of
+    -1 -> ""
+    _ -> S.drop (idx + 1) name 
+
+dropDirExt :: DirName -> DirName
+dropDirExt (DirName d) =
+  DirName $ case idx of
+    -1 -> d
+    _ -> S.take idx d 
+  where
+  idx = S.lastIndexOf "." d
 
 isNotebook :: Resource -> Boolean
 isNotebook (Notebook _) = true
@@ -113,7 +139,7 @@ resourceFileName r =
   where
   resourceFileName' ap = maybe "" (snd >>> dropExt >>> nameOfFileOrDir) $
                          either peel peel ap
-  dropExt = bimap id dropExtension
+  dropExt = bimap dropDirExt dropExtension
 
 
 nameOfFileOrDir :: Either DirName FileName -> String
@@ -133,7 +159,7 @@ resourcePath :: Resource -> String
 resourcePath r = either printPath printPath $ getPath r
 
 newNotebook :: Resource
-newNotebook = Notebook $ rootDir </> file newNotebookName
+newNotebook = Notebook $ rootDir </> dir newNotebookName <./> notebookExtension
 
 newFile :: Resource
 newFile = File $ rootDir </> file newFileName
@@ -145,14 +171,14 @@ newDatabase :: Resource
 newDatabase = Database $ rootDir </> dir newDatabaseName
 
 mkNotebook :: AnyPath -> Resource
-mkNotebook ap =
-  either (Notebook <<< (<.> notebookExtension)) go ap
+mkNotebook ap = 
+  either go (Notebook <<< (<./> notebookExtension)) ap
   where
-  go :: DirPath -> Resource
+  go :: FilePath -> Resource
   go p = maybe newNotebook id do
     Tuple pp dirOrFile <- peel p
-    pure $ Notebook
-      (pp </> file (nameOfFileOrDir dirOrFile) <.> notebookExtension)
+    pure $ Notebook $
+      (pp </> dir (nameOfFileOrDir dirOrFile) <./> notebookExtension)
 
 mkFile :: AnyPath -> Resource
 mkFile ap = either File go ap
@@ -221,9 +247,10 @@ instance resourceIsForeign :: IsForeign Resource where
       "directory" -> pure $ if endsWith notebookExtension name
                        then newNotebook
                        else newDirectory
-      "file" -> pure $ if endsWith notebookExtension name
-                       then newNotebook
-                       else newFile
+      "file" -> pure newFile
+--                pure $ if endsWith notebookExtension name
+--                       then newNotebook
+--                       else newFile
       _ -> Left $ TypeMismatch "resource" "string"
     pure $ setName template name
     

@@ -20,5 +20,8 @@ toInput = pure <<< inj
 open :: forall e. Item -> Boolean -> Eff (dom :: DOM | e) Unit
 open item isNew =
   newTab $ joinWith "" $
-    [Config.notebookUrl, "#", (encodeURIPath $ resourcePath $ item ^. resourceL), "/edit"]
+    [Config.notebookUrl
+    , "#"
+    , (encodeURIPath $ resourcePath $ item ^. resourceL)
+    , "edit"]
     <> if isNew then ["/?q=", encodeURIComponent ("select * from ...")] else []

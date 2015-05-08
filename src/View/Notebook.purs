@@ -114,7 +114,7 @@ cell (Cell o) =
             [ H.button [ A.classes [ B.btn, B.btnPrimary, Vc.playButton ]
                        , E.onClick (E.input_ (RunCell o.cellId)) ]
               [ glyph B.glyphiconPlay ] ] ] 
-    , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.input)
+    , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.content)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
     ] ]
 
