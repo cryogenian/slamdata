@@ -88,7 +88,7 @@ makeFile ap content =
 
 makeNotebook :: forall e. AnyPath -> Notebook -> Aff (ajax :: AJAX | e) Unit 
 makeNotebook ap notebook = 
-  getResponse msg $ put_ (Config.dataUrl <> resourcePath resource) notebook
+  getResponse msg $ put_ (Config.dataUrl <> resourcePath resource <> "/index") notebook
   where msg = "error while creating notebook"
         resource = setPath newNotebook ap
 

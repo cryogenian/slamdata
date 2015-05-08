@@ -30,8 +30,10 @@ modeByCellTag tag = case tag of
   _ -> "ace/mode/plain_text"
 
 
-initialize :: forall eff. RefVal (M.Map CellId EditSession) -> HTMLElement -> Eff (HalogenEffects (ace :: EAce | eff)) Unit
-initialize m b = do
+initialize :: forall eff. RefVal (M.Map CellId EditSession) -> HTMLElement ->
+              Driver Input (ace :: EAce | eff) -> 
+              Eff (HalogenEffects (ace :: EAce | eff)) Unit
+initialize m b d = do
   els <- getElementsByClassName "ace-container" b
   for_ els \el -> do
     mode <- modeByCellTag <$> getAttribute "data-cell-type" el
@@ -41,7 +43,10 @@ initialize m b = do
     Editor.setTheme "ace/theme/github" editor
 
     cellId <- string2cellId  <$> getAttribute "data-cell-id" el
-    either (const $ pure unit) (\x -> modifyRef m $ M.insert x session) cellId
+    flip (either (const $ pure unit)) cellId \cid -> do
+      modifyRef m $ M.insert cid session
+      Editor.onFocus editor (d $ SetActiveCell cid)
+      
 
 handleInput :: forall eff. RefVal (M.Map CellId EditSession) -> Input ->
                Driver Input (ace :: EAce | eff) -> Eff (HalogenEffects (ace :: EAce | eff)) Unit
@@ -54,7 +59,7 @@ handleInput _ _ _ = return unit
 acePostRender :: forall eff. RefVal (M.Map CellId EditSession) -> Input ->
                  HTMLElement -> Driver Input (ace :: EAce | eff) -> Eff (HalogenEffects (ace :: EAce | eff)) Unit
 acePostRender m i b d = do
-  initialize m b
+  initialize m b d
   handleInput m i d
 
 ref :: forall e.  Eff (ref :: Ref | e) (RefVal (M.Map CellId EditSession)) 

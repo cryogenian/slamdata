@@ -79,19 +79,20 @@ itemURL :: forall e. Item -> Eff (dom :: DOM | e) String
 itemURL item = do
   loc <- locationString
   hash <- getHash
-  pure if isFile item.resource
-       then joinWith ""
-            [ Config.notebookUrl
-            , "#"
-            , resourcePath item.resource
-            , "/view"
-            , "/?q=", encodeURIComponent ("select * from ...") ]
-       else if isNotebook item.resource
-            then joinWith "" [ Config.notebookUrl
-                             , "#"
-                             , resourcePath item.resource
-                             , "/view"]
-            else "#"
+  pure $ loc <>
+    if isFile item.resource
+    then joinWith ""
+         [ Config.notebookUrl
+         , "#"
+         , resourcePath item.resource
+         , "/view"
+         , "/?q=", encodeURIComponent ("select * from ...") ]
+    else if isNotebook item.resource
+         then joinWith "" [ Config.notebookUrl
+                          , "#"
+                          , resourcePath item.resource
+                          , "view"]
+         else "/index.html#" <> updatePath (getPath $ item.resource) hash
 
 
 

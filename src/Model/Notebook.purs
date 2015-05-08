@@ -35,7 +35,8 @@ type State =
   , modalError :: String
   , addingCell :: Boolean
   , notebook :: Notebook
-  , nextCellId :: Number
+  , nextCellId :: CellId
+  , activeCellId :: CellId 
   }
 
 dropdowns :: LensP State [DropdownItem]
@@ -60,8 +61,8 @@ initialState =
   , modalError: ""
   , addingCell: false
   , notebook: emptyNotebook
-  -- TODO: We use CellId = String below - how do we gen one?
   , nextCellId: 0
+  , activeCellId: 0
   }
 
 type CellId = Number
@@ -88,10 +89,13 @@ celltype2str Query = "query"
 celltype2str Visualize = "visualize"
 celltype2str Markdown = "markdown"
 
+-- input and output are ports for cells i.e data uri,
+-- content is cell content i.e. markdown
 newtype Cell = Cell {
   cellId :: CellId,
   input :: String,
   output :: String,
+  content :: String,
   cellType :: CellType,
   metadata :: String,
   hiddenEditor :: Boolean
@@ -102,6 +106,7 @@ newCell cellId cellType =
   Cell { cellId: cellId
        , input: ""
        , output: ""
+       , content: ""
        , cellType: cellType
        , metadata: ""
        , hiddenEditor: false
