@@ -4,11 +4,13 @@ import Data.Maybe (maybe)
 import Data.Bifunctor (bimap)
 import Control.Functor (($>))
 import Control.Apply ((*>))
+import Control.Monad.Eff.Class (liftEff)
 import Data.Inject1 (inj)
 import Control.Plus (empty)
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 
 import Data.Array ((..), length, zipWith, replicate)
+import Data.Date (now)
 import Model.Notebook 
 import Input.Notebook (Input(..))
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
@@ -111,9 +113,9 @@ cell (Cell o) =
                 , dataCellType o.cellType
                 , A.classes [ Vc.aceContainer ] ] [ ] ] ] 
     , row [ H.div [ A.classes $ fadeWhen o.hiddenEditor ] 
-            [ H.button [ A.classes [ B.btn, B.btnPrimary, if o.isRunning then Vc.stopButton else Vc.playButton ]
-                       , E.onClick (E.input_ (RunCell o.cellId)) ]
-              [ if o.isRunning then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ] ]
+            [ H.button [ A.classes [ B.btn, B.btnPrimary, if isRunning o.runState then Vc.stopButton else Vc.playButton ]
+                       , E.onClick (\_ -> pure (E.async (RunCell o.cellId <$> liftEff now))) ]
+              [ if isRunning o.runState then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ] ]
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.content)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
     ] ]
@@ -122,6 +124,9 @@ cell (Cell o) =
         fadeWhen true = [B.fade]
         fadeWhen false = [B.fade, B.in_]
 
+isRunning :: RunState -> Boolean
+isRunning (RunningSince _) = true
+isRunning _ = false
 
 renderOutput :: forall e. CellType -> String -> [HTML e]
 renderOutput Markdown = markdownOutput

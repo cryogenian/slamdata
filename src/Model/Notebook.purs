@@ -1,11 +1,13 @@
 module Model.Notebook where
 
+import Data.Date (Date())
 import Data.Either
 import Data.Maybe
 import Data.Foreign (toForeign)
 import Data.Foreign.Class (read)
 import Data.Inject1 (prj, inj)
 import Data.Bifunctor (lmap)
+import Data.Time (Milliseconds())
 import Halogen.HTML.Events.Monad (Event())
 import Optic.Core (lens, LensP())
 import Control.Timer (Timeout())
@@ -99,8 +101,12 @@ newtype Cell = Cell {
   cellType :: CellType,
   metadata :: String,
   hiddenEditor :: Boolean,
-  isRunning :: Boolean
+  runState :: RunState
   }
+
+data RunState = RunInitial
+              | RunningSince Date
+              | RunFinished Milliseconds
 
 newCell :: CellId -> CellType -> Cell
 newCell cellId cellType =
@@ -111,7 +117,7 @@ newCell cellId cellType =
        , cellType: cellType
        , metadata: ""
        , hiddenEditor: false
-       , isRunning: false
+       , runState: RunInitial
        }
 
 newtype Notebook = Notebook {

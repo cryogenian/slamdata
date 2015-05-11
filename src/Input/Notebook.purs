@@ -2,7 +2,8 @@ module Input.Notebook (updateState, Input(..)) where
 
 import Data.Maybe (maybe, Maybe())
 import Data.Array (filter, modifyAt, (!!))
-import Model.Notebook 
+import Data.Date (Date())
+import Model.Notebook
 import Model.Resource (resourceName, nameL, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~))
 import Optic.Setter (mapped, over)
@@ -25,7 +26,7 @@ data Input
   | ToggleEditorCell CellId
   | TrashCell CellId
   | AceContent CellId String
-  | RunCell CellId
+  | RunCell CellId Date
   | SetActiveCell CellId
   | Copy
   | Paste
@@ -79,13 +80,13 @@ updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
 
 updateState state (AceContent cellId content) =
-  state # notebook..notebookCells..mapped %~ onCell cellId (setRunning false <<< setContent content)
+  state # notebook..notebookCells..mapped %~ onCell cellId (setRunState RunInitial <<< setContent content)
 
 updateState state (SetActiveCell cellId) =
   state{activeCellId = cellId}
 
-updateState state (RunCell cellId) =
-  state # notebook..notebookCells..mapped %~ onCell cellId (setRunning true)
+updateState state (RunCell cellId date) =
+  state # notebook..notebookCells..mapped %~ onCell cellId (setRunState $ RunningSince date)
 
 updateState state i = state
 
@@ -98,8 +99,8 @@ toggleEditor (Cell o) = Cell $ o { hiddenEditor = not o.hiddenEditor }
 setContent :: String -> Cell -> Cell
 setContent content (Cell o) = Cell $ o { content = content }
 
-setRunning :: Boolean -> Cell -> Cell
-setRunning b (Cell o) = Cell $ o { isRunning = b }
+setRunState :: RunState -> Cell -> Cell
+setRunState b (Cell o) = Cell $ o { runState = b }
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
