@@ -3,12 +3,13 @@ module App.Notebook.Ace (acePostRender, ref) where
 import Input.Notebook (Input(..))
 
 import Control.Bind ((>=>))
+import Control.Monad (when)
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Ref (Ref(), RefVal(), modifyRef, readRef, newRef)
+import Control.Monad.Eff.Ref (Ref(), RefVal(), readRef, newRef, writeRef)
 import Data.Foldable (for_)
 
 import Data.Either (either)
-import Data.Maybe (maybe)
+import Data.Maybe (isNothing, maybe)
 import qualified Data.Map as M
 
 import DOM
@@ -35,18 +36,19 @@ initialize :: forall eff. RefVal (M.Map CellId EditSession) -> HTMLElement ->
               Eff (HalogenEffects (ace :: EAce | eff)) Unit
 initialize m b d = do
   els <- getElementsByClassName "ace-container" b
+  m' <- readRef m
   for_ els \el -> do
-    mode <- modeByCellTag <$> getAttribute "data-cell-type" el
-    editor <- Ace.editNode el ace
-    session <- Editor.getSession editor
-    setMode mode session
-    Editor.setTheme "ace/theme/github" editor
-
-    cellId <- string2cellId  <$> getAttribute "data-cell-id" el
+    cellId <- string2cellId <$> getAttribute "data-cell-id" el
     flip (either (const $ pure unit)) cellId \cid -> do
-      modifyRef m $ M.insert cid session
-      Editor.onFocus editor (d $ SetActiveCell cid)
-      
+      when (isNothing $ M.lookup cid m') $ do
+        mode <- modeByCellTag <$> getAttribute "data-cell-type" el
+        editor <- Ace.editNode el ace
+        session <- Editor.getSession editor
+        setMode mode session
+        Editor.setTheme "ace/theme/github" editor
+
+        writeRef m $ M.insert cid session m'
+        Editor.onFocus editor (d $ SetActiveCell cid)
 
 handleInput :: forall eff. RefVal (M.Map CellId EditSession) -> Input ->
                Driver Input (ace :: EAce | eff) -> Eff (HalogenEffects (ace :: EAce | eff)) Unit
