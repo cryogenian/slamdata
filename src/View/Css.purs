@@ -116,5 +116,8 @@ aceContainer = className "ace-container"
 playButton :: ClassName
 playButton = className "play-button"
 
+stopButton :: ClassName
+stopButton = className "stop-button"
+
 cellControls :: ClassName
 cellControls = className "cell-controls"
