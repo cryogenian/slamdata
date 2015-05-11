@@ -7,7 +7,7 @@ import Data.String (joinWith)
 import DOM (DOM())
 import Model.File.Item (Item(), resourceL)
 import Model.Path (encodeURIPath)
-import Model.Resource (resourcePath)
+import Model.Resource (resourcePath, isFile)
 import Optic.Core ((^.))
 import Utils (newTab)
 
@@ -17,11 +17,9 @@ toInput :: forall m a b. (Applicative m, Inject1 a b) => a -> m b
 toInput = pure <<< inj
 
 -- | Open a notebook or file.
-open :: forall e. Item -> Boolean -> Eff (dom :: DOM | e) Unit
-open item isNew =
-  newTab $ joinWith "" $
-    [Config.notebookUrl
-    , "#"
-    , (encodeURIPath $ resourcePath $ item ^. resourceL)
-    , "edit"]
-    <> if isNew then ["/?q=", encodeURIComponent ("select * from ...")] else []
+open :: forall e. Item -> Eff (dom :: DOM | e) Unit
+open item = newTab $ joinWith "" $ [ Config.notebookUrl
+                                   , "#"
+                                   , encodeURIPath $ resourcePath $ item ^. resourceL
+                                   , if isFile item.resource then "/explore" else "edit"
+                                   ]

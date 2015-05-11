@@ -8,7 +8,7 @@ module Model.Resource (
   mkFile, mkDatabase, mkDirectory, mkNotebook,
   setPath, setName, nameAnyPath, rootAnyPath,
   pathL, rootL, nameL, sortResource, parent,
-  resourceFileName
+  resourceFileName, notebookPath
   ) where
 
 import Data.Tuple
@@ -19,14 +19,16 @@ import Data.Path.Pathy
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign (ForeignError(TypeMismatch))
 import Data.Bifunctor (bimap, rmap)
-import Optic.Core (lens, LensP())
+import Optic.Core (lens)
+import Optic.Prism
+import Optic.Types
 import Model.Sort (Sort(..))
-import qualified Data.String as S 
+import qualified Data.String as S
 import Utils
-import Config 
+import Config
 
 type FilePath = AbsFile Sandboxed
-type DirPath = AbsDir Sandboxed 
+type DirPath = AbsDir Sandboxed
 type AnyPath = Either FilePath DirPath
 
 data Resource
@@ -35,31 +37,36 @@ data Resource
   | Directory DirPath
   | Database DirPath
 
-infixl 6 <./> 
+infixl 6 <./>
 (<./>) :: forall a s. Path a Dir s -> String -> Path a Dir s
 (<./>) p ext = renameDir (changeDirExt $ const ext) p
 
 changeDirExt :: (String -> String) -> DirName -> DirName
 changeDirExt f (DirName name) =
   DirName ((if ext == ""
-            then name 
+            then name
             else n) <> "." <> f ext)
   where
-  idx = S.lastIndexOf "." name 
+  idx = S.lastIndexOf "." name
   n = case idx of
     -1 -> name
     _ -> S.take idx name
   ext = case idx of
     -1 -> ""
-    _ -> S.drop (idx + 1) name 
+    _ -> S.drop (idx + 1) name
 
 dropDirExt :: DirName -> DirName
 dropDirExt (DirName d) =
   DirName $ case idx of
     -1 -> d
-    _ -> S.take idx d 
+    _ -> S.take idx d
   where
   idx = S.lastIndexOf "." d
+
+notebookPath :: PrismP Resource DirPath
+notebookPath = prism' Notebook $ \s -> case s of
+  Notebook fp -> Just fp
+  _ -> Nothing
 
 isNotebook :: Resource -> Boolean
 isNotebook (Notebook _) = true
@@ -75,14 +82,14 @@ isDirectory _ = false
 
 isDatabase :: Resource -> Boolean
 isDatabase (Database _) = true
-isDatabase _ = false 
+isDatabase _ = false
 
 resourceTag :: Resource -> String
 resourceTag r = case r of
   File _ -> "file"
   Database _ -> "mount"
   Notebook _ -> "notebook"
-  Directory _ -> "directory" 
+  Directory _ -> "directory"
 
 getPath :: Resource -> AnyPath
 getPath r = case r of
@@ -92,7 +99,7 @@ getPath r = case r of
   Database p -> inj p
 
 getNameStr :: AnyPath -> String
-getNameStr ap = either getNameStr' getNameStr' ap 
+getNameStr ap = either getNameStr' getNameStr' ap
   where
   getNameStr' :: forall b a s. Path a b s -> String
   getNameStr' p = maybe "" (snd >>> nameOfFileOrDir) $ peel p
@@ -105,7 +112,7 @@ getDir ap = either getDir' getDir' ap
   getDir' p = maybe rootDir fst $ peel p
 
 setDir :: AnyPath -> DirPath -> AnyPath
-setDir ap d = bimap (setFile' d) (setDir' d) ap 
+setDir ap d = bimap (setFile' d) (setDir' d) ap
   where
   setDir' :: DirPath -> DirPath -> DirPath
   setDir' d p =
@@ -133,7 +140,7 @@ resourceDir = getPath >>> getDir
 
 resourceFileName :: Resource -> String
 resourceFileName r =
-  if isNotebook r 
+  if isNotebook r
   then resourceFileName' $ getPath r
   else resourceName r
   where
@@ -150,9 +157,9 @@ nameOfFileOrDir (Right (FileName name)) = name
 root :: Resource
 root = Directory rootDir
 
--- This is not real parent because it can't determine 
+-- This is not real parent because it can't determine
 -- is it a directory or mount
-parent :: Resource -> Resource 
+parent :: Resource -> Resource
 parent = Directory <<< resourceDir
 
 resourcePath :: Resource -> String
@@ -171,7 +178,7 @@ newDatabase :: Resource
 newDatabase = Database $ rootDir </> dir newDatabaseName
 
 mkNotebook :: AnyPath -> Resource
-mkNotebook ap = 
+mkNotebook ap =
   either go (Notebook <<< (<./> notebookExtension)) ap
   where
   go :: FilePath -> Resource
@@ -189,14 +196,14 @@ mkFile ap = either File go ap
     pure $ File (pp </> file (nameOfFileOrDir dirOrFile))
 
 mkDirectory :: AnyPath -> Resource
-mkDirectory ap = either go Directory ap 
+mkDirectory ap = either go Directory ap
   where
   go :: FilePath -> Resource
   go p = maybe newDirectory id do
     Tuple pp dirOrFile <- peel p
     pure $ Directory (pp </> dir (nameOfFileOrDir dirOrFile))
 
-mkDatabase :: AnyPath -> Resource 
+mkDatabase :: AnyPath -> Resource
 mkDatabase ap = either go Database ap
   where
   go :: FilePath -> Resource
@@ -237,10 +244,10 @@ instance resourceEq :: Eq Resource where
   (==) _ _ = false
   (/=) a b = not $ a == b
 
-  
+
 instance resourceIsForeign :: IsForeign Resource where
   read f = do
-    name <- readProp "name" f 
+    name <- readProp "name" f
     ty <- readProp "type" f
     template <- case ty of
       "mount" -> pure newDatabase
@@ -253,9 +260,9 @@ instance resourceIsForeign :: IsForeign Resource where
 --                       else newFile
       _ -> Left $ TypeMismatch "resource" "string"
     pure $ setName template name
-    
 
-sortResource :: (Resource -> String) -> Sort -> Resource -> Resource -> Ordering 
+
+sortResource :: (Resource -> String) -> Sort -> Resource -> Resource -> Ordering
 sortResource project direction a b =
   case direction of
     Asc -> compare (project a) (project b)

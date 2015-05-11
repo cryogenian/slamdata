@@ -47,7 +47,7 @@ handleMoveItem item = do
   siblings <- liftAff $ children (parent item.resource)
   let dialog = RenameDialog $
                _{siblings = siblings} $
-               initialRenameDialog item.resource 
+               initialRenameDialog item.resource
   (toInput $ SetDialog (Just dialog))
     `andThen` \_ -> do
     getDirectories root
@@ -55,11 +55,9 @@ handleMoveItem item = do
 handleOpenItem :: forall e. Item -> Event (FileAppEff e) Input
 handleOpenItem item = do
   liftEff $
-    if isNotebook item.resource
-    then open item false
-    else if isFile item.resource
-         then open item true
-         else moveDown item
+    if isNotebook item.resource || isFile item.resource
+    then open item
+    else moveDown item
   empty
 
 -- ATTENTION
