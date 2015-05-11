@@ -46,7 +46,7 @@ handleCreateNotebook :: forall e. State -> Event (FileAppEff e) Input
 handleCreateNotebook state = do
   let name = getNewName Config.newNotebookName state
   path <- liftEff $ extractDir <$> getHash
-  let notebookPath = inj $ path </> file name 
+  let notebookPath = inj $ path </> file name
       notebook = initNotebook{phantom = true} #
                  resourceL <<< pathL .~ notebookPath
   -- immidiately updating state and then
@@ -56,7 +56,7 @@ handleCreateNotebook state = do
       case f of
         Left _ -> empty
         Right _ -> do
-          liftEff $ open notebook{phantom = false} false
+          liftEff $ open notebook{phantom = false}
           -- and add real notebook to list
           toInput $ ItemAdd notebook{phantom = false}
 
@@ -78,7 +78,7 @@ handleFileListChanged el state = do
 
       path <- liftEff (extractDir <$> getHash)
       name <- flip getNewName state <$> (liftEff $ Uf.name f)
-      let fileName = path </> file name 
+      let fileName = path </> file name
           fileItem = initFile{phantom = true} #
                      (resourceL <<< pathL) .~ inj (path </> file name)
 
@@ -91,7 +91,7 @@ handleFileListChanged el state = do
           case f of
             Left _ -> empty
             Right _ -> do
-              liftEff $ open fileItem{phantom = false} false
+              liftEff $ open fileItem{phantom = false}
               toInput $ ItemAdd fileItem{phantom = false}
 
 handleSetSort :: forall e. Sort -> Event (FileAppEff e) Input
@@ -113,7 +113,7 @@ handleCreateFolder :: forall e. State -> Event (FileAppEff e) Input
 handleCreateFolder state = do
   let dirName = dir $ getNewName Config.newFolderName state
   path <- liftEff (extractDir <$> getHash)
-  toInput $ ItemAdd $ (initDirectory # resourceL .. pathL .~ (inj (path </> dirName))) 
+  toInput $ ItemAdd $ (initDirectory # resourceL .. pathL .~ (inj (path </> dirName)))
 
 handleMountDatabase :: forall e. State -> Event (FileAppEff e) Input
 handleMountDatabase _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog)

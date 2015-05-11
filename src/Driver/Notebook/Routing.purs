@@ -1,54 +1,64 @@
 module Driver.Notebook.Routing where
 
-import Data.Either
-import Data.Tuple
-import Control.Apply
-import Control.Alt
-import Model.Notebook
-import Model.Action
-import Data.Foldable
 import Config (notebookExtension)
-import qualified Routing as R
-import qualified Routing.Match as R
-import qualified Routing.Match.Class as R
-import qualified Routing.Hash as R
-import qualified Data.String as Str
---import qualified Model.Resource as M
-import Model.Resource (newNotebook, setPath, Resource())
-import Data.Path.Pathy
+import Control.Alt ((<|>))
+import Control.Apply ((*>))
+import Data.Either (Either(..))
+import Data.Foldable (foldl)
+import Data.List (List())
+import Data.Path.Pathy ((</>), rootDir, dir, file)
+import Data.String (indexOf, length)
+import Data.Tuple (Tuple(..))
+import Model.Action (Action(..), string2action)
+import Model.Notebook (CellId(), string2cellId)
+import Model.Resource (Resource(), newNotebook, setPath, notebookPath)
+import Optic.Core ((.~))
+import Routing.Match (Match(), list, eitherMatch)
+import Routing.Match.Class (lit, str)
 
 data Routes
   = CellRoute Resource CellId Action
+  | ExploreRoute Resource String
   | NotebookRoute Resource Action
 
-
-routing :: R.Match Routes
-routing = CellRoute <$> notebook <*> (R.lit "cells" *> cellId) <*> action
-          <|>
-          NotebookRoute <$> notebook <*> action
+routing :: Match Routes
+routing = CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
+      <|> ExploreRoute <$> notebook <*> (lit "explore" *> str)
+      <|> NotebookRoute <$> notebook <*> action
   where
-  partsAndName = Tuple <$> (oneSlash *> (R.list notName)) <*> name
 
+  partsAndName :: Match (Tuple (List String) String)
+  partsAndName = Tuple <$> (oneSlash *> (list notName)) <*> name
+
+  notebookFromParts :: Tuple (List String) String -> Resource
   notebookFromParts (Tuple ps name) =
-    newNotebook `setPath` (Left $ 
-                           (foldl (</>) rootDir (dir <$> ps)) </> file name)
+    newNotebook # notebookPath .~ foldl (</>) rootDir (dir <$> ps) </> dir name
 
-  notebook :: R.Match Resource
-  notebook = notebookFromParts <$> partsAndName 
-        
-        
-  oneSlash = R.lit ""
-  notebookName input =
-    if Str.indexOf notebookExtension input == -1 then
-      Left input
-    else Right input
-  pathPart input =
-    if input == "" || Str.indexOf notebookExtension input /= -1 then
-      Left "incorrect path part"
-    else Right input
+  notebook :: Match Resource
+  notebook = notebookFromParts <$> partsAndName
 
-  name = R.eitherMatch (notebookName <$> R.str)
-  notName = R.eitherMatch (pathPart <$> R.str)
+  oneSlash :: Match Unit
+  oneSlash = lit ""
 
-  action = (R.eitherMatch (string2action <$> R.str)) <|> pure View
-  cellId = R.eitherMatch (string2cellId <$> R.str)
+  name :: Match String
+  name = eitherMatch (notebookName <$> str)
+
+  notName :: Match String
+  notName = eitherMatch (pathPart <$> str)
+
+  action :: Match Action
+  action = (eitherMatch (string2action <$> str)) <|> pure View
+
+  cellId :: Match CellId
+  cellId = eitherMatch (string2cellId <$> str)
+
+  notebookName :: String -> Either String String
+  notebookName input | checkExtension input = Right input
+                     | otherwise = Left input
+
+  pathPart :: String -> Either String String
+  pathPart input | input == "" || checkExtension input = Left "incorrect path part"
+                 | otherwise = Right input
+
+  checkExtension :: String -> Boolean
+  checkExtension input = indexOf notebookExtension input == length input - length notebookExtension
