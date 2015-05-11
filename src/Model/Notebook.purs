@@ -98,7 +98,8 @@ newtype Cell = Cell {
   content :: String,
   cellType :: CellType,
   metadata :: String,
-  hiddenEditor :: Boolean
+  hiddenEditor :: Boolean,
+  isRunning :: Boolean
   }
 
 newCell :: CellId -> CellType -> Cell
@@ -110,6 +111,7 @@ newCell cellId cellType =
        , cellType: cellType
        , metadata: ""
        , hiddenEditor: false
+       , isRunning: false
        }
 
 newtype Notebook = Notebook {

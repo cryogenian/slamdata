@@ -73,29 +73,33 @@ updateState state (AddCell cellType) =
   state # (nextCellId +~ 1)..addCell cellType
 
 updateState state (ToggleEditorCell cellId) =
-  state # notebook..notebookCells..mapped %~ toggleEditor cellId
+  state # notebook..notebookCells..mapped %~ onCell cellId toggleEditor
 
 updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
 
 updateState state (AceContent cellId content) =
-  state # notebook..notebookCells..mapped %~ setContent cellId content
+  state # notebook..notebookCells..mapped %~ onCell cellId (setContent content)
 
 updateState state (SetActiveCell cellId) =
   state{activeCellId = cellId}
 
-updateState state (RunCell _) =
-  state
+updateState state (RunCell cellId) =
+  state # notebook..notebookCells..mapped %~ onCell cellId setRunning
 
 updateState state i = state
 
-toggleEditor :: CellId -> Cell -> Cell
-toggleEditor ci c@(Cell o) | isCell ci c = Cell $ o { hiddenEditor = not o.hiddenEditor }
-toggleEditor _ c = c
+onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
+onCell ci f c = if isCell ci c then f c else c
 
-setContent :: CellId -> String -> Cell -> Cell
-setContent ci content c@(Cell o) | isCell ci c = Cell $ o { content = content }
-setContent _ _ c = c
+toggleEditor :: Cell -> Cell
+toggleEditor (Cell o) = Cell $ o { hiddenEditor = not o.hiddenEditor }
+
+setContent :: String -> Cell -> Cell
+setContent content (Cell o) = Cell $ o { content = content }
+
+setRunning :: Cell -> Cell
+setRunning (Cell o) = Cell $ o { isRunning = true }
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
