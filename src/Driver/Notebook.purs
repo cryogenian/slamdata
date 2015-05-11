@@ -2,7 +2,9 @@ module Driver.Notebook where
 
 import Data.Either
 import Data.Maybe
+import Data.Tuple (Tuple(..))
 import Control.Monad.Eff
+import Control.Monad.Eff.Ref (RefVal(), readRef)
 import Control.Monad.Aff (runAff, attempt)
 import Data.Array (elemIndex)
 import Data.DOM.Simple.Types (DOMEvent())
@@ -26,7 +28,6 @@ import Controller.Notebook (handleMenuSignal)
 import Control.Plus (empty)
 import Model.Notebook.Menu (
   MenuNotebookSignal(..),
-  MenuEditSignal(..),
   MenuInsertSignal(..),
   MenuCellSignal(..),
   MenuHelpSignal(..),
@@ -41,10 +42,13 @@ import qualified Routing.Hash as R
 import Model.Resource (setPath, resourceDir, newDirectory, resourcePath)
 import Api.Fs (children)
 import Input.Notebook (Input(..))
+import App.Notebook.Ace (AceKnot())
+import Optic.Core ((.~))
 
-driver :: forall e. H.Driver Input (NotebookComponentEff e) ->
+driver :: forall e. RefVal AceKnot -> 
+          H.Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
-driver k =
+driver ref k =
   R.matches' decodeURIPath routing \old new -> do
     case new of
       NotebookRoute res editable -> do
@@ -61,35 +65,31 @@ driver k =
               else SetSiblings siblings
         k $ SetResource res
 
-        handleShortcuts k
+        handleShortcuts ref k
         
       _ -> k $ SetError "Incorrect path"
 
-handleShortcuts :: forall e. (Input -> Eff (NotebookAppEff e) Unit) ->
+handleShortcuts :: forall e. RefVal AceKnot -> 
+                   (Input -> Eff (NotebookAppEff e) Unit) ->
                    Eff (NotebookAppEff e) Unit
-handleShortcuts k = 
+handleShortcuts ref k = 
   document globalWindow >>=
-  addKeyboardEventListener KeydownEvent handler 
+  addKeyboardEventListener KeydownEvent (handler ref)
   where
-  handler :: DOMEvent -> _
-  handler e = void do
+  handler :: RefVal AceKnot -> DOMEvent -> _
+  handler ref e = void do
     meta <- (||) <$> ctrlKey e <*> metaKey e
     shift <- shiftKey e
     code <- keyCode e
+    Tuple cid _ <- readRef ref
     let handle signal = do
           preventDefault e
-          pure $ handleMenuSignal signal
+          pure $ handleMenuSignal (initialState # activeCellId .~ cid) signal
     event <- case code of
       83 | meta && shift -> do 
         handle $ inj $ RenameNotebook
       80 | meta ->
         handle $ inj $ PublishNotebook
-      67 | meta ->
-        handle $ inj $ CopyEdit 
-      88 | meta ->
-        handle $ inj $ CutEdit 
-      86 | meta ->
-        handle $ inj $ PasteEdit 
       49 | meta ->
         handle $ inj $ QueryInsert 
       50 | meta ->

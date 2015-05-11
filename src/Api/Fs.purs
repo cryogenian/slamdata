@@ -17,7 +17,7 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.Method (Method(MOVE))
 import Data.Argonaut.Parser (jsonParser)
 
-import Model.Notebook (Notebook())
+import Model.Notebook.Domain (Notebook())
 import Model.Resource
 import Config
 import Data.Path.Pathy
