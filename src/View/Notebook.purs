@@ -11,6 +11,7 @@ import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 
 import Data.Array ((..), length, zipWith, replicate)
 import Data.Date (now)
+import Data.Time (Milliseconds(..))
 import Model.Notebook 
 import Input.Notebook (Input(..))
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
@@ -115,7 +116,9 @@ cell (Cell o) =
     , row [ H.div [ A.classes $ fadeWhen o.hiddenEditor ] 
             [ H.button [ A.classes [ B.btn, B.btnPrimary, if isRunning o.runState then Vc.stopButton else Vc.playButton ]
                        , E.onClick (\_ -> pure (E.async (RunCell o.cellId <$> liftEff now))) ]
-              [ if isRunning o.runState then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ] ]
+              [ if isRunning o.runState then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ]
+          , H.div [ A.classes [ Vc.statusText ] ] [ H.text (statusText o.runState) ]
+          ]
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.content)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
     ] ]
@@ -127,6 +130,11 @@ cell (Cell o) =
 isRunning :: RunState -> Boolean
 isRunning (RunningSince _) = true
 isRunning _ = false
+
+statusText :: RunState -> String
+statusText RunInitial = ""
+statusText (RunningSince _) = "Running..."
+statusText (RunFinished (Milliseconds ms)) = "Finished: took " <> show ms <> "ms"
 
 renderOutput :: forall e. CellType -> String -> [HTML e]
 renderOutput Markdown = markdownOutput
