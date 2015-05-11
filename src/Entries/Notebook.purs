@@ -9,16 +9,13 @@ import EffectTypes (NotebookAppEff())
 import Halogen (runUIWith)
 import Utils (onLoad, mountUI)
 import Ace.Types (EAce())
-
---import qualified Data.StrMap as M
---import qualified Data.Map as M
 import qualified Driver.Notebook as D
 
 
 
-main :: Eff (NotebookAppEff (now :: Now, ace :: EAce)) Unit
+main :: Eff (NotebookAppEff (ace :: EAce)) Unit
 main = onLoad $ void $ do
   m <- ref
   Tuple node driver <- runUIWith app (acePostRender m)
   mountUI node
-  D.driver driver
+  D.driver m driver

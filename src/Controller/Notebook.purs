@@ -3,6 +3,7 @@ module Controller.Notebook (
   handleMenuSignal,
   handleSubmitName) where
 
+import Data.Date (now)
 import Data.Maybe
 import Data.Either
 import Control.Alt ((<|>))
@@ -12,13 +13,13 @@ import Control.Monad.Aff.Class
 import Control.Monad.Aff (attempt)
 import Model.Notebook.Menu (
   MenuNotebookSignal(..),
-  MenuEditSignal(..),
   MenuInsertSignal(..),
   MenuCellSignal(..),
   MenuHelpSignal(..),
   MenuSignal(..))
-import Model.Notebook (State(), CellType(..))
-import Input.Notebook (Input(..))
+import Model.Notebook (State(), activeCellId)
+import Model.Notebook.Cell (CellType(..))
+import Input.Notebook (Input(..), runCellEvent)
 import Data.Inject1 (prj)
 import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
 import Model.Path (decodeURIPath)
@@ -73,22 +74,18 @@ handleMenuNotebook signal = do
       >>= setLocation homeHash
   empty
 
-handleMenuCell :: forall e. MenuCellSignal -> I e
-handleMenuCell signal = do
-  liftEff $ fprint signal
-  empty
+handleMenuCell :: forall e. State -> MenuCellSignal -> I e
+handleMenuCell state signal =
+  case signal of
+    EvaluateCell -> runCellEvent (state ^. activeCellId)
+    DeleteCell -> pure $ TrashCell (state ^. activeCellId)
+    _ -> empty
 
 handleMenuInsert :: forall e. MenuInsertSignal -> I e
 handleMenuInsert ExploreInsert = pure $ AddCell Explore
 handleMenuInsert MarkdownInsert = pure $ AddCell Markdown
 handleMenuInsert QueryInsert = pure $ AddCell Query
 handleMenuInsert SearchInsert = pure $ AddCell Search
-
-handleMenuEdit :: forall e. MenuEditSignal -> I e
-handleMenuEdit signal = do
-  liftEff $ fprint signal
-  empty
-
 
 
 handleMenuHelp :: forall e. MenuHelpSignal -> I e
@@ -109,16 +106,14 @@ handleMenuHelp RequestSupportHelp = do
   empty
   
 
-handleMenuSignal :: forall e. MenuSignal -> I e
-handleMenuSignal signal =
+handleMenuSignal :: forall e. State -> MenuSignal -> I e
+handleMenuSignal state signal =
   maybe empty id $
   (handleMenuNotebook <$> prj signal)
   <|>
-  (handleMenuEdit <$> prj signal)
-  <|>
   (handleMenuInsert <$> prj signal)
   <|>
-  (handleMenuCell <$> prj signal)
+  (handleMenuCell state <$> prj signal)
   <|>
   (handleMenuHelp <$> prj signal)
 

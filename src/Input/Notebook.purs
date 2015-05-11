@@ -1,14 +1,18 @@
-module Input.Notebook (updateState, CellResultContent(..), Input(..)) where
+module Input.Notebook (runCellEvent, updateState, CellResultContent(..), Input(..)) where
 
-import Data.Maybe (maybe, Maybe())
+import Data.Tuple (fst)
+import Data.Maybe (maybe, Maybe(..))
 import Data.Array (filter, modifyAt, (!!))
 import Data.Function (on)
-import Data.Date (Date(), toEpochMilliseconds)
+import Data.Date (Date(), Now(), now, toEpochMilliseconds)
+import Control.Monad.Eff.Class (liftEff)
 import Model.Notebook
+import Model.Notebook.Cell
+import Model.Notebook.Domain (notebookCells, addCell)
 import Model.Resource (resourceName, nameL, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~))
 import Optic.Setter (mapped, over)
-import Halogen.HTML.Events.Monad (Event())
+import Halogen.HTML.Events.Monad (Event(), async)
 import Control.Timer (Timeout())
 
 data CellResultContent = AceContent String
@@ -35,6 +39,8 @@ data Input
   | Paste
   | Cut
 
+runCellEvent :: forall eff. CellId -> Event (now :: Now | eff) Input
+runCellEvent cid = async $ RunCell cid <$> liftEff now
 
 updateState :: State -> Input -> State
 
@@ -74,7 +80,7 @@ updateState state (SetAddingCell adding) =
   state{addingCell = adding}
 
 updateState state (AddCell cellType) =
-  state # (nextCellId +~ 1)..addCell cellType
+  state # notebook %~ (addCell cellType Nothing >>> fst)
 
 updateState state (ToggleEditorCell cellId) =
   state # notebook..notebookCells..mapped %~ onCell cellId toggleEditor
@@ -88,7 +94,7 @@ updateState state (CellResult cellId date (AceContent content)) =
   in state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState f <<< setContent content)
 
 updateState state (SetActiveCell cellId) =
-  state{activeCellId = cellId}
+  state # activeCellId .~ cellId
 
 updateState state (RunCell cellId date) =
   state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
@@ -110,6 +116,3 @@ modifyRunState f (Cell o) = Cell $ o { runState = f o.runState }
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
 
-addCell :: CellType -> State -> State
-addCell cellType state =
-  state # notebook..notebookCells <>~ [ newCell state.nextCellId cellType ]
