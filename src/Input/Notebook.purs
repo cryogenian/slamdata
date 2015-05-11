@@ -1,14 +1,17 @@
-module Input.Notebook (updateState, Input(..)) where
+module Input.Notebook (updateState, CellResultContent(..), Input(..)) where
 
 import Data.Maybe (maybe, Maybe())
 import Data.Array (filter, modifyAt, (!!))
-import Data.Date (Date())
+import Data.Function (on)
+import Data.Date (Date(), toEpochMilliseconds)
 import Model.Notebook
 import Model.Resource (resourceName, nameL, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~))
 import Optic.Setter (mapped, over)
 import Halogen.HTML.Events.Monad (Event())
 import Control.Timer (Timeout())
+
+data CellResultContent = AceContent String
 
 data Input
   = Dropdown Number
@@ -25,12 +28,12 @@ data Input
   | AddCell CellType
   | ToggleEditorCell CellId
   | TrashCell CellId
-  | AceContent CellId String
   | RunCell CellId Date
+  | CellResult CellId Date CellResultContent
   | SetActiveCell CellId
   | Copy
   | Paste
-  | Cut 
+  | Cut
 
 
 updateState :: State -> Input -> State
@@ -79,14 +82,16 @@ updateState state (ToggleEditorCell cellId) =
 updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
 
-updateState state (AceContent cellId content) =
-  state # notebook..notebookCells..mapped %~ onCell cellId (setRunState RunInitial <<< setContent content)
+updateState state (CellResult cellId date (AceContent content)) =
+  let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
+      f _                = RunInitial -- TODO: Cell in bad state
+  in state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState f <<< setContent content)
 
 updateState state (SetActiveCell cellId) =
   state{activeCellId = cellId}
 
 updateState state (RunCell cellId date) =
-  state # notebook..notebookCells..mapped %~ onCell cellId (setRunState $ RunningSince date)
+  state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
 
 updateState state i = state
 
@@ -99,8 +104,8 @@ toggleEditor (Cell o) = Cell $ o { hiddenEditor = not o.hiddenEditor }
 setContent :: String -> Cell -> Cell
 setContent content (Cell o) = Cell $ o { content = content }
 
-setRunState :: RunState -> Cell -> Cell
-setRunState b (Cell o) = Cell $ o { runState = b }
+modifyRunState :: (RunState -> RunState) -> Cell -> Cell
+modifyRunState f (Cell o) = Cell $ o { runState = f o.runState }
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'

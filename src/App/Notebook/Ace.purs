@@ -1,6 +1,6 @@
 module App.Notebook.Ace (acePostRender, ref) where
 
-import Input.Notebook (Input(..))
+import Input.Notebook (CellResultContent(..), Input(..))
 
 import Control.Bind ((>=>))
 import Control.Monad (when)
@@ -10,6 +10,7 @@ import Data.Foldable (for_)
 
 import Data.Either (either)
 import Data.Maybe (isNothing, maybe)
+import Data.Date (Now(), now)
 import qualified Data.Map as M
 
 import DOM
@@ -52,15 +53,16 @@ initialize m b d = do
         Editor.onFocus editor (d $ SetActiveCell cid)
 
 handleInput :: forall eff. RefVal (M.Map CellId EditSession) -> Input ->
-               Driver Input (ace :: EAce | eff) -> Eff (HalogenEffects (ace :: EAce | eff)) Unit
-handleInput m (RunCell cellId) d = do
+               Driver Input (now :: Now, ace :: EAce | eff) -> Eff (HalogenEffects (now :: Now, ace :: EAce | eff)) Unit
+handleInput m (RunCell cellId _) d = do
   m' <- readRef m
-  maybe (return unit) (getValue >=> d <<< AceContent cellId) $
+  now' <- now
+  maybe (return unit) (getValue >=> d <<< CellResult cellId now' <<< AceContent) $
     M.lookup cellId m'
 handleInput _ _ _ = return unit
 
 acePostRender :: forall eff. RefVal (M.Map CellId EditSession) -> Input ->
-                 HTMLElement -> Driver Input (ace :: EAce | eff) -> Eff (HalogenEffects (ace :: EAce | eff)) Unit
+                 HTMLElement -> Driver Input (now :: Now, ace :: EAce | eff) -> Eff (HalogenEffects (now :: Now, ace :: EAce | eff)) Unit
 acePostRender m i b d = do
   initialize m b d
   handleInput m i d
