@@ -79,13 +79,13 @@ updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
 
 updateState state (AceContent cellId content) =
-  state # notebook..notebookCells..mapped %~ onCell cellId (setContent content)
+  state # notebook..notebookCells..mapped %~ onCell cellId (setRunning false <<< setContent content)
 
 updateState state (SetActiveCell cellId) =
   state{activeCellId = cellId}
 
 updateState state (RunCell cellId) =
-  state # notebook..notebookCells..mapped %~ onCell cellId setRunning
+  state # notebook..notebookCells..mapped %~ onCell cellId (setRunning true)
 
 updateState state i = state
 
@@ -98,8 +98,8 @@ toggleEditor (Cell o) = Cell $ o { hiddenEditor = not o.hiddenEditor }
 setContent :: String -> Cell -> Cell
 setContent content (Cell o) = Cell $ o { content = content }
 
-setRunning :: Cell -> Cell
-setRunning (Cell o) = Cell $ o { isRunning = true }
+setRunning :: Boolean -> Cell -> Cell
+setRunning b (Cell o) = Cell $ o { isRunning = b }
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
