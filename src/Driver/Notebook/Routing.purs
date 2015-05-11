@@ -10,11 +10,12 @@ import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.String (indexOf, length)
 import Data.Tuple (Tuple(..))
 import Model.Action (Action(..), string2action)
-import Model.Notebook (CellId(), string2cellId)
+import Model.Notebook.Cell (CellId(), string2cellId)
 import Model.Resource (Resource(), newNotebook, setPath, notebookPath)
 import Optic.Core ((.~))
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
+
 
 data Routes
   = CellRoute Resource CellId Action

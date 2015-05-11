@@ -10,11 +10,6 @@ data MenuNotebookSignal
   | DeleteNotebook
   | PublishNotebook
 
-data MenuEditSignal
-  = CopyEdit
-  | PasteEdit
-  | CutEdit
-
 data MenuInsertSignal
   = ExploreInsert
   | MarkdownInsert
@@ -34,10 +29,9 @@ data MenuHelpSignal
   | RequestSupportHelp
 
 type MenuSignal = Either MenuNotebookSignal
-                 (Either MenuEditSignal
                   (Either MenuInsertSignal
                    (Either MenuCellSignal
-                    MenuHelpSignal)))
+                    MenuHelpSignal))
 
 
 
@@ -69,18 +63,6 @@ initialDropdowns =
         , lvl: fromNumber 0}
       ]
     }
-  , { visible: false
-    , name: "Edit"
-    , children:
-      [ { name: "Copy (Cmd + C)"
-        , message: Just $ inj CopyEdit
-        , lvl: fromNumber 0 }
-      , { name: "Cut (Cmd + X)"
-        , message: Just $ inj CutEdit
-        , lvl: fromNumber 0 }
-      , { name: "Paste (Cmd + V)"
-        , message: Just $ inj PasteEdit
-        , lvl: fromNumber 0 }]}
   , { visible: false
     , name: "Insert"
     , children:

@@ -1,8 +1,11 @@
 module Input.Notebook (updateState, Input(..)) where
 
-import Data.Maybe (maybe, Maybe())
+import Data.Tuple (fst)
+import Data.Maybe (maybe, Maybe(..))
 import Data.Array (filter, modifyAt, (!!))
-import Model.Notebook 
+import Model.Notebook
+import Model.Notebook.Cell
+import Model.Notebook.Domain (notebookCells, addCell)
 import Model.Resource (resourceName, nameL, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~))
 import Optic.Setter (mapped, over)
@@ -27,9 +30,6 @@ data Input
   | AceContent CellId String
   | RunCell CellId
   | SetActiveCell CellId
-  | Copy
-  | Paste
-  | Cut 
 
 
 updateState :: State -> Input -> State
@@ -70,7 +70,7 @@ updateState state (SetAddingCell adding) =
   state{addingCell = adding}
 
 updateState state (AddCell cellType) =
-  state # (nextCellId +~ 1)..addCell cellType
+  state # notebook %~ (addCell cellType Nothing >>> fst)
 
 updateState state (ToggleEditorCell cellId) =
   state # notebook..notebookCells..mapped %~ onCell cellId toggleEditor
@@ -82,7 +82,7 @@ updateState state (AceContent cellId content) =
   state # notebook..notebookCells..mapped %~ onCell cellId (setRunning false <<< setContent content)
 
 updateState state (SetActiveCell cellId) =
-  state{activeCellId = cellId}
+  state # activeCellId .~ cellId
 
 updateState state (RunCell cellId) =
   state # notebook..notebookCells..mapped %~ onCell cellId (setRunning true)
@@ -104,6 +104,3 @@ setRunning b (Cell o) = Cell $ o { isRunning = b }
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
 
-addCell :: CellType -> State -> State
-addCell cellType state =
-  state # notebook..notebookCells <>~ [ newCell state.nextCellId cellType ]

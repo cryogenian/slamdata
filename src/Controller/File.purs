@@ -32,7 +32,7 @@ import Model.File.Dialog.Mount (initialMountDialog)
 import Model.File.Dialog.Rename (initialRenameDialog)
 import Model.File.Item
 import Model.Resource (pathL, nameL, resourcePath)
-import Model.Notebook (emptyNotebook)
+import Model.Notebook.Domain (emptyNotebook)
 import Model.Sort (Sort())
 import Routing.Hash (getHash, modifyHash)
 import Utils (clearValue, select)

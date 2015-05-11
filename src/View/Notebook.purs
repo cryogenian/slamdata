@@ -8,8 +8,10 @@ import Data.Inject1 (inj)
 import Control.Plus (empty)
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 
-import Data.Array ((..), length, zipWith, replicate)
-import Model.Notebook 
+import Data.Array ((..), length, zipWith, replicate, sort)
+import Model.Notebook
+import Model.Notebook.Cell
+import Model.Notebook.Domain (notebookCells)
 import Input.Notebook (Input(..))
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Controller.Notebook (handleMenuSignal, handleSubmitName)
@@ -64,7 +66,7 @@ navigation state =
         , logo 
         , name state ]
       , H.ul [ A.classes [ B.nav, B.navbarNav ] ]
-        ( zipWith li (0 .. length state.dropdowns) state.dropdowns )
+        ( zipWith (li state) (0 .. length state.dropdowns) state.dropdowns )
       ] ]
   where
   notebookHref :: State -> String
@@ -89,7 +91,7 @@ body state =
 
 cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
-                (state ^. notebook <<< notebookCells >>= cell) ]
+                ((sort $ state ^. notebook <<< notebookCells) >>= cell) ]
 
 
 cell :: forall e. Cell -> [HTML e]
@@ -168,7 +170,7 @@ newCellMenu state =
                 , E.onClick (\e -> do
                                 E.stopPropagation
                                 E.preventDefault $> do
-                                  handleMenuSignal <<< inj $ inp ) ]
+                                  (handleMenuSignal state) <<< inj $ inp ) ]
             [ glyph cls ] ]
 
 
@@ -177,8 +179,8 @@ txt lvl text =
   [ H.text $ (joinWith "" $ replicate (toNumber lvl) "--") <> " " <> text ]
 
 
-li :: forall e. Number ->  DropdownItem -> HTML e
-li i {visible: visible, name: name, children: children} =
+li :: forall e. State -> Number ->  DropdownItem -> HTML e
+li state i {visible: visible, name: name, children: children} =
   H.li [ E.onClick (\ev -> do E.stopPropagation
                               E.input_ (Dropdown i) ev)
        , A.classes $ [ B.dropdown ] <>
@@ -186,16 +188,16 @@ li i {visible: visible, name: name, children: children} =
   [ H.a [ A.href "#"
         , E.onClick (\_ -> E.preventDefault $> empty)] (txt (fromNumber 0) name)
   , H.ul [ A.classes [ B.dropdownMenu ] ]
-    (menuItem <$> children) ]
+    (menuItem state <$> children) ]
 
-menuItem :: forall e. MenuElement -> HTML e
-menuItem {name: name, message: mbMessage, lvl: lvl} =
+menuItem :: forall e. State -> MenuElement -> HTML e
+menuItem state {name: name, message: mbMessage, lvl: lvl} =
   H.li [ A.classes (maybe [B.disabled] (const []) mbMessage) ]
   [ H.a [ A.href "#"
         , E.onClick (\e -> do
                         E.stopPropagation 
                         E.preventDefault $>
-                          maybe empty handleMenuSignal mbMessage) ]
+                          maybe empty (handleMenuSignal state) mbMessage) ]
     [H.span_ $ (txt lvl name) <>
      (maybe [glyph B.glyphiconChevronRight] (const []) mbMessage) ]]
 
