@@ -111,9 +111,9 @@ cell (Cell o) =
                 , dataCellType o.cellType
                 , A.classes [ Vc.aceContainer ] ] [ ] ] ] 
     , row [ H.div [ A.classes $ fadeWhen o.hiddenEditor ] 
-            [ H.button [ A.classes [ B.btn, B.btnPrimary, Vc.playButton ]
+            [ H.button [ A.classes [ B.btn, B.btnPrimary, if o.isRunning then Vc.stopButton else Vc.playButton ]
                        , E.onClick (E.input_ (RunCell o.cellId)) ]
-              [ glyph B.glyphiconPlay ] ] ] 
+              [ if o.isRunning then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ] ]
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.content)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
     ] ]
