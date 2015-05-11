@@ -45,7 +45,8 @@ initialize m b d = do
         editor <- Ace.editNode el ace
         session <- Editor.getSession editor
         setMode mode session
-        Editor.setTheme "ace/theme/github" editor
+        -- Chrome theme does useful highlighting of Markdown syntax.
+        Editor.setTheme "ace/theme/chrome" editor
 
         writeRef m $ M.insert cid session m'
         Editor.onFocus editor (d $ SetActiveCell cid)
