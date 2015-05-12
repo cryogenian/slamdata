@@ -35,6 +35,7 @@ data Input
   | RunCell CellId Date
   | CellResult CellId Date CellResultContent
   | SetActiveCell CellId
+  | SecondTick Date
 
 runCellEvent :: forall eff. CellId -> Event (now :: Now | eff) Input
 runCellEvent cid = async $ RunCell cid <$> liftEff now
@@ -95,6 +96,9 @@ updateState state (SetActiveCell cellId) =
 
 updateState state (RunCell cellId date) =
   state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
+
+updateState state (SecondTick date) =
+  state{tickDate = Just date}
 
 updateState state i = state
 

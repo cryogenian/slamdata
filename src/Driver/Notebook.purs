@@ -24,8 +24,10 @@ import Model.Action (isEdit)
 import Model.Notebook
 import EffectTypes
 import Halogen.HTML.Events.Monad (runEvent)
+import Data.Date (now)
 import Controller.Notebook (handleMenuSignal)
 import Control.Plus (empty)
+import Control.Timer (interval)
 import Model.Notebook.Menu (
   MenuNotebookSignal(..),
   MenuInsertSignal(..),
@@ -44,6 +46,9 @@ import Api.Fs (children)
 import Input.Notebook (Input(..))
 import App.Notebook.Ace (AceKnot())
 import Optic.Core ((.~))
+
+tickDriver :: forall e. H.Driver Input (NotebookComponentEff e) -> Eff (NotebookAppEff e) Unit
+tickDriver k = void $ interval 1000 $ now >>= k <<< SecondTick
 
 driver :: forall e. RefVal AceKnot -> 
           H.Driver Input (NotebookComponentEff e) ->
@@ -66,7 +71,7 @@ driver ref k =
         k $ SetResource res
 
         handleShortcuts ref k
-        
+
       _ -> k $ SetError "Incorrect path"
 
 handleShortcuts :: forall e. RefVal AceKnot -> 

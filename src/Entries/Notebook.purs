@@ -18,4 +18,5 @@ main = onLoad $ void $ do
   m <- ref
   Tuple node driver <- runUIWith app (acePostRender m)
   mountUI node
+  D.tickDriver driver
   D.driver m driver
