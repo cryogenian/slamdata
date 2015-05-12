@@ -35,9 +35,6 @@ data Input
   | RunCell CellId Date
   | CellResult CellId Date CellResultContent
   | SetActiveCell CellId
-  | Copy
-  | Paste
-  | Cut
 
 runCellEvent :: forall eff. CellId -> Event (now :: Now | eff) Input
 runCellEvent cid = async $ RunCell cid <$> liftEff now
