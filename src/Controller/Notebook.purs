@@ -27,7 +27,7 @@ import Routing.Hash (setHash, getHash)
 import Config (notebookExtension, notebookNameEditorId, notebookUrl, homeHash)
 import Data.Array (elemIndex)
 import Data.DOM.Simple.Window (globalWindow, document, location, setLocation)
-import Data.DOM.Simple.Document 
+import Data.DOM.Simple.Document
 import Data.DOM.Simple.Element (getElementById, focus)
 import Utils (newTab, mailOpen)
 import Routing (matchHash')
@@ -56,11 +56,11 @@ handleMenuNotebook PublishNotebook = do
   where
   editSuffix = Rgx.regex "/edit$" Rgx.noFlags
   toView :: String -> String
-  toView = ((notebookUrl <> "#") <>) <<< 
+  toView = ((notebookUrl <> "#") <>) <<<
            (Rgx.replace editSuffix "/view")
 handleMenuNotebook signal = do
   mbRes <- liftEff $ do
-    h <- getHash 
+    h <- getHash
     flip (either (const $ pure Nothing))
       (matchHash' decodeURIPath routing h) \r -> do
       case r of
@@ -100,10 +100,10 @@ handleMenuHelp SQLReferenceHelp = do
 handleMenuHelp ReportBugHelp = do
   liftEff $ mailOpen "mailto:support@slamdatacom?subject=Bug%20Found"
   empty
-handleMenuHelp RequestSupportHelp = do 
+handleMenuHelp RequestSupportHelp = do
   liftEff $ mailOpen "mailto:support@slamdatacom?subject=Request%20Help"
   empty
-  
+
 
 handleMenuSignal :: forall e. State -> MenuSignal -> I e
 handleMenuSignal state signal =
@@ -120,9 +120,9 @@ handleSubmitName :: forall e. State -> I e
 handleSubmitName state = do
   let oldResource = state.resource # nameL .~ state.name
       newResource = state.resource
-      parent = oldResource 
+      parent = oldResource
   -- slamdata/slamengine#693
-  if oldResource == newResource 
+  if oldResource == newResource
     then empty
     else do
     siblings <- liftAff $ children
@@ -133,11 +133,11 @@ handleSubmitName state = do
     -- slamdata/slamengine#693
     if elemIndex (newResource ^. nameL) ((\x -> x ^. nameL) <$> siblings) /= -1
       then pure $ SetModalError ("File " <> (resourcePath newResource) <> " already exists")
-      else do 
-      error <- liftAff $ move oldResource (getPath newResource) 
-      case error of
-        "" -> do
+      else do
+      result <- liftAff $ move oldResource (getPath newResource)
+      case result of
+        Right _ -> do
           liftEff $ setHash $ resourcePath newResource <> "/edit"
           empty
-        e -> 
+        Left e ->
           pure $ SetModalError ("Rename error: " <> e)
