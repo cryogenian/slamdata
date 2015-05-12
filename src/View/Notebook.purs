@@ -10,6 +10,7 @@ import Control.Apply ((*>))
 import Control.Monad.Eff.Class (liftEff)
 import Data.Inject1 (inj)
 import Control.Plus (empty)
+import Number.Format (toFixed)
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 import qualified Math as Math
 
@@ -46,15 +47,6 @@ import Data.Path.Pathy
 import Model.Resource (resourceDir)
 
 type HTML e = H.HTML (E.Event (NotebookAppEff e) Input)
-
-foreign import toFixed
-  """
-  function toFixed (n) {
-    return function (m) {
-      return m.toFixed(n);
-    };
-  }
-  """ :: Number -> Number -> String
 
 dataCellId :: forall i. Number -> A.Attr i
 dataCellId = A.attr $ A.attributeName "data-cell-id"
@@ -146,11 +138,11 @@ isRunning _ = false
 
 statusText :: Maybe Date -> RunState -> String
 statusText _ RunInitial = ""
-statusText d (RunningSince d') = maybe "" (\d'' -> "Running for " <> secondsText d'' d') d
+statusText d (RunningSince d') = maybe "" (\s -> "Running for " <> s <> "s") $ d >>= flip secondsText d'
 statusText _ (RunFinished (Milliseconds ms)) = "Finished: took " <> show ms <> "ms"
 
-secondsText :: Date -> Date -> String
-secondsText a b = toFixed 0 (Math.max 0 <<< unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b) <> "s"
+secondsText :: Date -> Date -> Maybe String
+secondsText a b = toFixed 0 <<< Math.max 0 <<< unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b
   where unSeconds (Seconds n) = n
 
 renderOutput :: forall e. CellType -> String -> [HTML e]
