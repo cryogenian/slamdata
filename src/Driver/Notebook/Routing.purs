@@ -53,13 +53,14 @@ routing = CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
   cellId :: Match CellId
   cellId = eitherMatch (string2cellId <$> str)
 
+
   notebookName :: String -> Either String String
-  notebookName input | checkExtension input = Right input
+  notebookName input | checkExtension input = Right input 
                      | otherwise = Left input
 
   pathPart :: String -> Either String String
   pathPart input | input == "" || checkExtension input = Left "incorrect path part"
-                 | otherwise = Right input
+                 | otherwise = Right input 
 
   checkExtension :: String -> Boolean
-  checkExtension input = indexOf notebookExtension input == length input - length notebookExtension
+  checkExtension input = indexOf notebookExtension input /= -1

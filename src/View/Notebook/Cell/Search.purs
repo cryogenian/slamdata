@@ -46,8 +46,16 @@ renderPredicate p prj =
 
 predicateToSQL :: Predicate -> String -> String
 predicateToSQL (Contains (Range v v')) s = range v v' s 
-predicateToSQL (Contains (Text v)) s = s <> " LIKE '%" <> v <> "%'"
-predicateToSQL (Contains (Tag v)) s = s <> " LIKE '%" <> v <> "%'"
+predicateToSQL (Contains (Text v)) s =
+  joinWith " OR " $
+  [s <> " LIKE '%" <> v <> "%'",
+   s <> " = '" <> v <> "'"] <>
+  (if needUnq v then [ s <> " = " <> v ] else []) <> 
+  (if needDate v then [ s <> " = " <> date ] else []) 
+  where
+  quoted = "'" <> v <> "'"
+  date = "DATE " <> quoted 
+predicateToSQL (Contains (Tag v)) s = predicateToSQL (Contains (Text v)) (s <> "[*]")
 predicateToSQL (Eq v) s = qUnQ s "=" v
 predicateToSQL (Gt v) s = qUnQ s ">" v
 predicateToSQL (Gte v) s = qUnQ s ">=" v 

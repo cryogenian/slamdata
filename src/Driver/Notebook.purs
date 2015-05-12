@@ -39,7 +39,7 @@ import qualified Routing as R
 import qualified Routing.Match as R
 import qualified Routing.Match.Class as R
 import qualified Routing.Hash as R
-import Model.Resource (setPath, resourceDir, newDirectory, resourcePath)
+import Model.Resource (setPath, resourceDir, newDirectory, resourcePath, parent)
 import Api.Fs (children)
 import Input.Notebook (Input(..))
 import App.Notebook.Ace (AceKnot())
@@ -53,8 +53,8 @@ driver ref k =
     case new of
       NotebookRoute res editable -> do
         k $ SetEditable (isEdit editable)
-        let parent = newDirectory `setPath` (inj (resourceDir res))
-        flip (runAff (const $ pure unit)) (attempt $ children parent) $ \ei -> do
+
+        flip (runAff (const $ pure unit)) (attempt $ children (parent res)) $ \ei -> do
           k $ SetLoaded true
           k $ case ei of
             Left _ ->
