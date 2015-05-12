@@ -3,16 +3,18 @@ module View.File.Modal.RenameDialog where
 import Control.Apply ((*>))
 import Control.Functor (($>))
 import Control.Plus (empty)
-import Data.Inject1 (inj)
-import Data.Either (Either(Left))
 import Controller.File.Rename
+import Data.Either (Either(Left))
+import Data.Inject1 (inj)
 import Data.Maybe
 import EffectTypes
-import Model.File
-import Model.File.Dialog (Dialog(RenameDialog))
-import Model.File.Dialog.Rename (RenameDialogRec())
 import Input.File (FileInput(SetDialog))
 import Input.File.Rename (RenameInput(..))
+import Model.File
+import Model.File.Dialog (Dialog(RenameDialog))
+import Model.File.Dialog.Rename (RenameDialogRec(), _showList, _resource, _dir, _dirs, _error)
+import Model.Resource
+import Optic.Core
 import View.File.Common (I())
 import View.File.Modal.Common (header, h4, body, footer, nonSubmit)
 import qualified Data.String as Str
@@ -25,55 +27,44 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
-import Model.Resource
-import Data.Path.Pathy
 
 renameDialog :: forall e. RenameDialogRec -> [H.HTML (I e)]
 renameDialog dialog =
   [ header $ h4 "Rename"
   , body
-    [ H.form [ A.classes [ Vc.renameDialogForm ] 
+    [ H.form [ A.classes [ Vc.renameDialogForm ]
              , E.onClick (\_ ->
                            E.stopPropagation $>
-                           (pure $ inj $ SetDialog
-                            (Just (RenameDialog
-                                   dialog{showList = false}))))]
+                           (pure $ inj $ Update $ _showList .~ false))]
       [ H.div [ A.classes [B.formGroup]]
         [ H.input [ A.classes [B.formControl]
-                  , A.value (resourceFileName dialog.resource)
+                  , A.value (resourceFileName $ dialog ^. _resource)
                   , A.placeholder "New name"
                   , E.onInput (\v -> checkRename v dialog) ] []]
       , H.div [A.classes [B.inputGroup]]
         [ H.input [ A.classes [B.formControl]
                   , A.placeholder "New directory"
-                  , E.onInput (renameDirInput dialog.resource)
-                  , A.value (resourcePath dialog.dir) ] []
-        , H.span [ A.classes [B.inputGroupBtn]]
-          [ H.button [ A.classes [B.btn, B.btnDefault]
-                     , A.type_ "button"
-                     , E.onClick (\_ -> E.stopPropagation $>
-                                        (pure $ inj $ SetDialog
-                                         (Just (RenameDialog
-                                                dialog{showList = not dialog.showList}))))]
-          [ H.span [ A.classes [B.caret]] []]]]
+                  , E.onInput (renameDirInput $ dialog ^. _resource)
+                  , A.value (resourcePath $ dialog ^. _dir) ] []
+
+        , browseDropdown
+        ]
       , H.ul [A.classes $ [ B.listGroup
                           , Vc.directoryListGroup
-                          , B.fade] <> if dialog.showList
+                          , B.fade] <> if dialog ^. _showList
                                        then [B.in_]
                                        else []]
-        (renameItem dialog.resource <$> dialog.dirs)
-      , H.div [ E.onClick (E.input_ $ inj $ RenameError "")
+        (renameItem (dialog ^. _resource) <$> dialog ^. _dirs)
+      , H.div [ E.onClick (E.input_ $ inj $ Update $ _error .~ Nothing)
               , A.classes $ [B.alert, B.alertDanger, B.fade ]
-                <> (if Str.length dialog.error == 0
-                    then []
-                    else [B.in_]) ]
-        [H.text dialog.error] ]]
+                <> (if isJust (dialog ^. _error) then [B.in_] else []) ]
+        [H.text $ fromMaybe "" (dialog ^. _error)] ]]
 
 
   , footer [ H.button [ A.classes [B.btn]
                       , E.onClick (E.input_ $ inj $ SetDialog Nothing)]
              [ H.text "Cancel" ]
-           , H.button [ A.disabled $ dialog.incorrect
+           , H.button [ A.disabled $ isJust $ dialog ^. _error
                       , A.classes [B.btn, B.btnPrimary]
                       , E.onClick (\_ -> rename dialog) ]
              [H.text "Rename"]]
@@ -90,4 +81,14 @@ renameDialog dialog =
         , A.classes [B.listGroupItem]]
     [ H.text (resourcePath res) ]
 
-
+  browseDropdown :: H.HTML (I e)
+  browseDropdown =
+    H.span [ A.classes [B.inputGroupBtn] ]
+           [ H.button [ A.classes [B.btn, B.btnDefault]
+                      , A.type_ "button"
+                      , E.onClick (\_ -> E.stopPropagation $> (pure $ inj $ Update $ _showList %~ not))
+                      ]
+                      [ H.span [ A.classes [B.caret] ]
+                               []
+                      ]
+           ]
