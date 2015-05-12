@@ -47,6 +47,9 @@ import Input.Notebook (Input(..))
 import App.Notebook.Ace (AceKnot())
 import Optic.Core ((.~))
 
+tickDriver :: forall e. H.Driver Input (NotebookComponentEff e) -> Eff (NotebookAppEff e) Unit
+tickDriver k = void $ interval 1000 $ now >>= k <<< SecondTick
+
 driver :: forall e. RefVal AceKnot -> 
           H.Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
@@ -66,10 +69,6 @@ driver ref k =
               then SetError ("There is no notebook at " <> resourcePath res)
               else SetSiblings siblings
         k $ SetResource res
-
-        interval 1000 do
-          now' <- now
-          k $ SecondTick now'
 
         handleShortcuts ref k
 
