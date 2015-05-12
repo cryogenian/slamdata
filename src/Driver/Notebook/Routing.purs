@@ -8,6 +8,7 @@ import Data.Foldable (foldl)
 import Data.List (List())
 import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.String (indexOf, length)
+import Data.String.Regex (noFlags, regex, test, Regex())
 import Data.Tuple (Tuple(..))
 import Model.Action (Action(..), string2action)
 import Model.Notebook.Cell (CellId(), string2cellId)
@@ -62,5 +63,10 @@ routing = CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
   pathPart input | input == "" || checkExtension input = Left "incorrect path part"
                  | otherwise = Right input 
 
+
+  extensionRegex :: Regex
+  extensionRegex = regex ("\\." <> notebookExtension <> "$") noFlags
+  
   checkExtension :: String -> Boolean
-  checkExtension input = indexOf notebookExtension input /= -1
+  checkExtension = test extensionRegex
+
