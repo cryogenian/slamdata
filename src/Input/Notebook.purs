@@ -33,6 +33,7 @@ data Input
   | ToggleEditorCell CellId
   | TrashCell CellId
   | RunCell CellId Date
+  | StopCell CellId
   | CellResult CellId Date CellResultContent
   | SetActiveCell CellId
   | SecondTick Date

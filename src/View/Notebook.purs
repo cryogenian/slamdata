@@ -120,7 +120,7 @@ cell d (Cell o) =
                 , A.classes [ Vc.aceContainer ] ] [ ] ] ] 
     , row [ H.div [ A.classes $ fadeWhen o.hiddenEditor ] 
             [ H.button [ A.classes [ B.btn, B.btnPrimary, if isRunning o.runState then Vc.stopButton else Vc.playButton ]
-                       , E.onClick (\_ -> pure (runCellEvent o.cellId)) ]
+                       , E.onClick (\_ -> pure (if isRunning o.runState then pure (StopCell o.cellId) else runCellEvent o.cellId)) ]
               [ if isRunning o.runState then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ]
           , H.div [ A.classes [ Vc.statusText ] ] [ H.text (statusText d o.runState) ]
           ]
