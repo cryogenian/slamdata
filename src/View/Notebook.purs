@@ -1,16 +1,19 @@
 module View.Notebook (view, HTML()) where
 
-import Data.Maybe (maybe)
 import Data.Bifunctor (bimap)
+import Data.Date (Date(), toEpochMilliseconds)
+import Data.Function (on)
+import Data.Maybe (Maybe(), maybe)
+import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
 import Control.Functor (($>))
 import Control.Apply ((*>))
 import Control.Monad.Eff.Class (liftEff)
 import Data.Inject1 (inj)
 import Control.Plus (empty)
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
+import qualified Math as Math
 
 import Data.Array ((..), length, zipWith, replicate, sort)
-import Data.Time (Milliseconds(..))
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (notebookCells)
@@ -43,6 +46,15 @@ import Data.Path.Pathy
 import Model.Resource (resourceDir)
 
 type HTML e = H.HTML (E.Event (NotebookAppEff e) Input)
+
+foreign import toFixed
+  """
+  function toFixed (n) {
+    return function (m) {
+      return m.toFixed(n);
+    };
+  }
+  """ :: Number -> Number -> String
 
 dataCellId :: forall i. Number -> A.Attr i
 dataCellId = A.attr $ A.attributeName "data-cell-id"
@@ -93,11 +105,11 @@ body state =
 
 cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
-                ((sort $ state ^. notebook <<< notebookCells) >>= cell) ]
+                ((sort $ state ^. notebook <<< notebookCells) >>= cell state.tickDate) ]
 
 
-cell :: forall e. Cell -> [HTML e]
-cell (Cell o) =
+cell :: forall e. Maybe Date -> Cell -> [HTML e]
+cell d (Cell o) =
   [ H.div [ A.classes [ B.containerFluid, Vc.notebookCell ] ]
     [ row [ H.div [ A.classes [ B.btnGroup, B.pullRight, Vc.cellControls ] ]
                [ H.button [ A.classes [ B.btn ]
@@ -118,7 +130,7 @@ cell (Cell o) =
             [ H.button [ A.classes [ B.btn, B.btnPrimary, if isRunning o.runState then Vc.stopButton else Vc.playButton ]
                        , E.onClick (\_ -> pure (runCellEvent o.cellId)) ]
               [ if isRunning o.runState then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ]
-          , H.div [ A.classes [ Vc.statusText ] ] [ H.text (statusText o.runState) ]
+          , H.div [ A.classes [ Vc.statusText ] ] [ H.text (statusText d o.runState) ]
           ]
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.content)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
@@ -132,10 +144,14 @@ isRunning :: RunState -> Boolean
 isRunning (RunningSince _) = true
 isRunning _ = false
 
-statusText :: RunState -> String
-statusText RunInitial = ""
-statusText (RunningSince _) = "Running..."
-statusText (RunFinished (Milliseconds ms)) = "Finished: took " <> show ms <> "ms"
+statusText :: Maybe Date -> RunState -> String
+statusText _ RunInitial = ""
+statusText d (RunningSince d') = maybe "" (\d'' -> "Running for " <> secondsText d'' d') d
+statusText _ (RunFinished (Milliseconds ms)) = "Finished: took " <> show ms <> "ms"
+
+secondsText :: Date -> Date -> String
+secondsText a b = toFixed 0 (Math.max 0 <<< unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b) <> "s"
+  where unSeconds (Seconds n) = n
 
 renderOutput :: forall e. CellType -> String -> [HTML e]
 renderOutput Markdown = markdownOutput

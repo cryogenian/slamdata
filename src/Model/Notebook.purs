@@ -1,5 +1,6 @@
 module Model.Notebook where
 
+import Data.Date (Date())
 import Data.Maybe
 import Data.Inject1 (prj, inj)
 import Control.Timer (Timeout())
@@ -22,6 +23,7 @@ type State =
   , modalError :: String
   , addingCell :: Boolean
   , notebook :: Notebook
+  , tickDate :: Maybe Date
   }
 
 dropdowns :: LensP State [DropdownItem]
@@ -46,4 +48,5 @@ initialState =
   , modalError: ""
   , addingCell: false
   , notebook: emptyNotebook
+  , tickDate: Nothing
   }

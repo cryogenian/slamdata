@@ -24,8 +24,10 @@ import Model.Action (isEdit)
 import Model.Notebook
 import EffectTypes
 import Halogen.HTML.Events.Monad (runEvent)
+import Data.Date (now)
 import Controller.Notebook (handleMenuSignal)
 import Control.Plus (empty)
+import Control.Timer (interval)
 import Model.Notebook.Menu (
   MenuNotebookSignal(..),
   MenuInsertSignal(..),
@@ -65,8 +67,12 @@ driver ref k =
               else SetSiblings siblings
         k $ SetResource res
 
+        interval 1000 do
+          now' <- now
+          k $ SecondTick now'
+
         handleShortcuts ref k
-        
+
       _ -> k $ SetError "Incorrect path"
 
 handleShortcuts :: forall e. RefVal AceKnot -> 
