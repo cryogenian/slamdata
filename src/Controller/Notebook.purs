@@ -3,6 +3,7 @@ module Controller.Notebook (
   handleMenuSignal,
   handleSubmitName) where
 
+import Data.Date (now)
 import Data.Maybe
 import Data.Either
 import Control.Alt ((<|>))
@@ -18,7 +19,7 @@ import Model.Notebook.Menu (
   MenuSignal(..))
 import Model.Notebook (State(), activeCellId)
 import Model.Notebook.Cell (CellType(..))
-import Input.Notebook (Input(..))
+import Input.Notebook (Input(..), runCellEvent)
 import Data.Inject1 (prj)
 import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
 import Model.Path (decodeURIPath)
@@ -76,7 +77,7 @@ handleMenuNotebook signal = do
 handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
-    EvaluateCell -> pure $ RunCell (state ^. activeCellId)
+    EvaluateCell -> runCellEvent (state ^. activeCellId)
     DeleteCell -> pure $ TrashCell (state ^. activeCellId)
     _ -> empty
 

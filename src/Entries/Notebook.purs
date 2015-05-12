@@ -3,6 +3,7 @@ module Entries.Notebook where
 import App.Notebook (app)
 import App.Notebook.Ace (acePostRender, ref)
 import Control.Monad.Eff (Eff())
+import Data.Date (Now())
 import Data.Tuple (Tuple(..))
 import EffectTypes (NotebookAppEff())
 import Halogen (runUIWith)

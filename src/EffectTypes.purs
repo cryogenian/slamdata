@@ -1,5 +1,6 @@
 module EffectTypes where
 
+import Data.Date (Now())
 import Control.Monad.Eff.Random
 import qualified Control.Timer as Tm
 import qualified Network.HTTP.Affjax as Af
@@ -19,6 +20,7 @@ type FileAppEff e = Hl.HalogenEffects (FileComponentEff e)
 
 
 type NotebookComponentEff e = ( timer :: Tm.Timer
+                              , now :: Now
                               , ajax :: Af.AJAX | e) 
 
 type NotebookAppEff e = Hl.HalogenEffects (NotebookComponentEff e)

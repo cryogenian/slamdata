@@ -1,6 +1,6 @@
 module App.Notebook.Ace (acePostRender, ref, AceKnot()) where
 
-import Input.Notebook (Input(..))
+import Input.Notebook (CellResultContent(..), Input(..))
 
 import Control.Bind ((>=>))
 import Control.Monad (when)
@@ -10,8 +10,8 @@ import Data.Foldable (for_)
 
 import Data.Tuple
 import Data.Either (either)
-import Data.Maybe (maybe, Maybe(..))
-
+import Data.Maybe (Maybe(..), isNothing, maybe)
+import Data.Date (Now(), now)
 
 import qualified Data.Map as M
 
@@ -82,17 +82,18 @@ initialize m b d = do
 
 
 handleInput :: forall eff. RefVal AceKnot -> Input ->
-               Driver Input (ace :: EAce | eff) -> Eff (HalogenEffects (ace :: EAce | eff)) Unit
-handleInput m (RunCell cellId) d = do
+               Driver Input (now :: Now, ace :: EAce | eff) -> Eff (HalogenEffects (now :: Now, ace :: EAce | eff)) Unit
+handleInput m (RunCell cellId _) d = do
   Tuple _ m' <- readRef m
-  maybe (return unit) (getValue >=> d <<< AceContent cellId) $
+  now' <- now
+  maybe (return unit) (getValue >=> d <<< CellResult cellId now' <<< AceContent) $
     M.lookup cellId m'
 handleInput m (TrashCell cellId) _ = do
   modifyRef m $ (\x -> x # _2 %~ M.delete cellId)
 handleInput _ _ _ = return unit
 
 acePostRender :: forall eff. RefVal AceKnot -> Input ->
-                 HTMLElement -> Driver Input (ace :: EAce | eff) -> Eff (HalogenEffects (ace :: EAce | eff)) Unit
+                 HTMLElement -> Driver Input (now :: Now, ace :: EAce | eff) -> Eff (HalogenEffects (now :: Now, ace :: EAce | eff)) Unit
 acePostRender m i b d = do
   initialize m b d
   handleInput m i d

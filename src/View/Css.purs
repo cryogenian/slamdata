@@ -121,3 +121,6 @@ stopButton = className "stop-button"
 
 cellControls :: ClassName
 cellControls = className "cell-controls"
+
+statusText :: ClassName
+statusText = className "status-text"

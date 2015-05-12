@@ -4,15 +4,17 @@ import Data.Maybe (maybe)
 import Data.Bifunctor (bimap)
 import Control.Functor (($>))
 import Control.Apply ((*>))
+import Control.Monad.Eff.Class (liftEff)
 import Data.Inject1 (inj)
 import Control.Plus (empty)
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 
 import Data.Array ((..), length, zipWith, replicate, sort)
+import Data.Time (Milliseconds(..))
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (notebookCells)
-import Input.Notebook (Input(..))
+import Input.Notebook (Input(..), runCellEvent)
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Controller.Notebook (handleMenuSignal, handleSubmitName)
 import Data.Int (toNumber, fromNumber, Int())
@@ -113,9 +115,11 @@ cell (Cell o) =
                 , dataCellType o.cellType
                 , A.classes [ Vc.aceContainer ] ] [ ] ] ] 
     , row [ H.div [ A.classes $ fadeWhen o.hiddenEditor ] 
-            [ H.button [ A.classes [ B.btn, B.btnPrimary, if o.isRunning then Vc.stopButton else Vc.playButton ]
-                       , E.onClick (E.input_ (RunCell o.cellId)) ]
-              [ if o.isRunning then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ] ]
+            [ H.button [ A.classes [ B.btn, B.btnPrimary, if isRunning o.runState then Vc.stopButton else Vc.playButton ]
+                       , E.onClick (\_ -> pure (runCellEvent o.cellId)) ]
+              [ if isRunning o.runState then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ]
+          , H.div [ A.classes [ Vc.statusText ] ] [ H.text (statusText o.runState) ]
+          ]
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.content)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
     ] ]
@@ -124,6 +128,14 @@ cell (Cell o) =
         fadeWhen true = [B.fade]
         fadeWhen false = [B.fade, B.in_]
 
+isRunning :: RunState -> Boolean
+isRunning (RunningSince _) = true
+isRunning _ = false
+
+statusText :: RunState -> String
+statusText RunInitial = ""
+statusText (RunningSince _) = "Running..."
+statusText (RunFinished (Milliseconds ms)) = "Finished: took " <> show ms <> "ms"
 
 renderOutput :: forall e. CellType -> String -> [HTML e]
 renderOutput Markdown = markdownOutput

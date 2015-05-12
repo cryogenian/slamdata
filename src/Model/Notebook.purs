@@ -47,4 +47,3 @@ initialState =
   , addingCell: false
   , notebook: emptyNotebook
   }
-

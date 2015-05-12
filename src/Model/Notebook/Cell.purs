@@ -1,5 +1,7 @@
 module Model.Notebook.Cell where
 
+import Data.Date (Date())
+import Data.Time (Milliseconds())
 import Data.Either
 import Global
 import Model.Notebook.Port
@@ -43,8 +45,12 @@ newtype Cell =
        , cellType :: CellType
        , metadata :: String
        , hiddenEditor :: Boolean
-       , isRunning :: Boolean
+       , runState :: RunState
        }
+
+data RunState = RunInitial
+              | RunningSince Date
+              | RunFinished Milliseconds
 
 newCell :: CellId -> CellType -> Cell
 newCell cellId cellType =
@@ -55,7 +61,7 @@ newCell cellId cellType =
        , cellType: cellType
        , metadata: ""
        , hiddenEditor: false
-       , isRunning: false
+       , runState: RunInitial
        }
 
 instance cellEq :: Eq Cell where

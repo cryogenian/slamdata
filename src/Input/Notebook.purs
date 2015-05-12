@@ -1,16 +1,21 @@
-module Input.Notebook (updateState, Input(..)) where
+module Input.Notebook (runCellEvent, updateState, CellResultContent(..), Input(..)) where
 
 import Data.Tuple (fst)
 import Data.Maybe (maybe, Maybe(..))
 import Data.Array (filter, modifyAt, (!!))
+import Data.Function (on)
+import Data.Date (Date(), Now(), now, toEpochMilliseconds)
+import Control.Monad.Eff.Class (liftEff)
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (notebookCells, addCell)
 import Model.Resource (resourceName, nameL, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~))
 import Optic.Setter (mapped, over)
-import Halogen.HTML.Events.Monad (Event())
+import Halogen.HTML.Events.Monad (Event(), async)
 import Control.Timer (Timeout())
+
+data CellResultContent = AceContent String
 
 data Input
   = Dropdown Number
@@ -27,10 +32,12 @@ data Input
   | AddCell CellType
   | ToggleEditorCell CellId
   | TrashCell CellId
-  | AceContent CellId String
-  | RunCell CellId
+  | RunCell CellId Date
+  | CellResult CellId Date CellResultContent
   | SetActiveCell CellId
 
+runCellEvent :: forall eff. CellId -> Event (now :: Now | eff) Input
+runCellEvent cid = async $ RunCell cid <$> liftEff now
 
 updateState :: State -> Input -> State
 
@@ -78,14 +85,16 @@ updateState state (ToggleEditorCell cellId) =
 updateState state (TrashCell cellId) =
   state # notebook..notebookCells %~ filter (not <<< isCell cellId)
 
-updateState state (AceContent cellId content) =
-  state # notebook..notebookCells..mapped %~ onCell cellId (setRunning false <<< setContent content)
+updateState state (CellResult cellId date (AceContent content)) =
+  let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
+      f _                = RunInitial -- TODO: Cell in bad state
+  in state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState f <<< setContent content)
 
 updateState state (SetActiveCell cellId) =
   state # activeCellId .~ cellId
 
-updateState state (RunCell cellId) =
-  state # notebook..notebookCells..mapped %~ onCell cellId (setRunning true)
+updateState state (RunCell cellId date) =
+  state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
 
 updateState state i = state
 
@@ -98,8 +107,8 @@ toggleEditor (Cell o) = Cell $ o { hiddenEditor = not o.hiddenEditor }
 setContent :: String -> Cell -> Cell
 setContent content (Cell o) = Cell $ o { content = content }
 
-setRunning :: Boolean -> Cell -> Cell
-setRunning b (Cell o) = Cell $ o { isRunning = b }
+modifyRunState :: (RunState -> RunState) -> Cell -> Cell
+modifyRunState f (Cell o) = Cell $ o { runState = f o.runState }
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
