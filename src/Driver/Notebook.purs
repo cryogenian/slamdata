@@ -41,7 +41,7 @@ import qualified Routing as R
 import qualified Routing.Match as R
 import qualified Routing.Match.Class as R
 import qualified Routing.Hash as R
-import Model.Resource (setPath, resourceDir, newDirectory, resourcePath, parent)
+import Model.Resource (resourcePath, parent)
 import Api.Fs (children)
 import Input.Notebook (Input(..))
 import App.Notebook.Ace (AceKnot())
@@ -89,7 +89,7 @@ handleShortcuts ref k =
     Tuple cid _ <- readRef ref
     let handle signal = do
           preventDefault e
-          pure $ handleMenuSignal (initialState # activeCellId .~ cid) signal
+          pure $ handleMenuSignal (initialState # _activeCellId .~ cid) signal
     event <- case code of
       83 | meta && shift -> do 
         handle $ inj $ RenameNotebook

@@ -11,7 +11,7 @@ import qualified Data.Argonaut.Encode as Ae
 import qualified Data.Argonaut.Printer as Ap
 import qualified Network.HTTP.Affjax.Request as Ar
 
-import Optic.Core (lens, LensP())
+import Optic.Core (lens, LensP(), (..))
 import Model.Notebook.Cell
 
 -- We have no any cells that have more than one
@@ -38,14 +38,14 @@ type NotebookRec =
 newtype Notebook = Notebook NotebookRec 
 
 
-notebookRecL :: LensP Notebook NotebookRec
-notebookRecL = lens (\(Notebook r) -> r) (\_ r -> Notebook r)
+_notebookRec :: LensP Notebook NotebookRec
+_notebookRec = lens (\(Notebook r) -> r) (\_ r -> Notebook r)
 
-activeCellIdRecL :: LensP NotebookRec CellId
-activeCellIdRecL = lens _.activeCellId _{activeCellId = _}
+_activeCellIdRec :: LensP NotebookRec CellId
+_activeCellIdRec = lens _.activeCellId _{activeCellId = _}
 
-activeCellIdL :: LensP Notebook CellId
-activeCellIdL = notebookRecL <<< activeCellIdRecL
+_activeCellId :: LensP Notebook CellId
+_activeCellId = _notebookRec .. _activeCellIdRec
 
 emptyNotebook :: Notebook
 emptyNotebook = Notebook
@@ -68,11 +68,11 @@ addCell cellType mbCellId (Notebook n) = Tuple notebook cell
   
 
 
-notebookLens :: LensP Notebook _
-notebookLens = lens (\(Notebook obj) -> obj) (const Notebook)
+_notebookLens :: LensP Notebook _
+_notebookLens = lens (\(Notebook obj) -> obj) (const Notebook)
 
-notebookCells :: LensP Notebook [Cell]
-notebookCells = notebookLens <<< lens _.cells (_ { cells = _ })
+_notebookCells :: LensP Notebook [Cell]
+_notebookCells = _notebookLens .. lens _.cells (_ { cells = _ })
 
 
 instance notebookEncode :: Ae.EncodeJson Notebook where

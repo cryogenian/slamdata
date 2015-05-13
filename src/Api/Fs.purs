@@ -9,19 +9,18 @@ import Data.Maybe
 import Data.Array (head)
 import Data.String (split)
 import Data.Foreign.Class (readProp, read, IsForeign)
-import Data.Int (fromNumber, toNumber)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
-import Network.HTTP.StatusCode (StatusCode(..))
 import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, get, put_, delete_, defaultRequest)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.Method (Method(MOVE))
 import Data.Argonaut.Parser (jsonParser)
 
+import Api.Common (succeeded, getResponse)
 import Model.Notebook.Domain (Notebook())
-import Model.Resource
+import Model.Resource (getPath, Resource(), resourcePath, _root, AnyPath(), newNotebook, newFile, _path)
+import Data.Path.Pathy (rootDir)
+import Optic.Core ((.~))
 import Config
-import Data.Path.Pathy
-import Optic.Core
 
 newtype Listing = Listing [Resource]
 
@@ -35,25 +34,10 @@ instance listingRespondable :: Respondable Listing where
   responseType = JSONResponse
   fromResponse = read
 
-successStatus :: StatusCode
-successStatus = StatusCode $ fromNumber 200
-
-succeeded :: StatusCode -> Boolean
-succeeded (StatusCode int) =
-  200 <= code && code < 300
-  where code = toNumber int
-
-getResponse :: forall a e. String -> Affjax e a -> Aff (ajax :: AJAX | e) a
-getResponse msg affjax = do
-  res <- affjax
-  if not $ succeeded res.status
-    then throwError $ error msg
-    else pure res.response
-
-children :: forall e. Resource -> Aff (ajax :: AJAX | e) [Resource]
+children :: forall e. Resource -> Aff (ajax :: AJAX | e) [Resource] 
 children r = do
-  cs <- children' $ resourcePath r
-  pure $ (\x -> x # rootL .~ (either (const rootDir) id $ getPath r)) <$> cs
+  cs <- children' $ resourcePath r 
+  pure $ (_root .~ (either (const rootDir) id $ getPath r)) <$> cs 
   where
   msg = "error getting resource children"
 
@@ -68,7 +52,7 @@ makeFile ap content =
   getResponse msg $ either err go isJson
   where
   resource :: Resource
-  resource = setPath newFile ap
+  resource = newFile # _path .~ ap 
 
   msg :: String
   msg = "error while creating file"
@@ -90,7 +74,7 @@ makeNotebook :: forall e. AnyPath -> Notebook -> Aff (ajax :: AJAX | e) Unit
 makeNotebook ap notebook =
   getResponse msg $ put_ (Config.dataUrl <> resourcePath resource <> "/index") notebook
   where msg = "error while creating notebook"
-        resource = setPath newNotebook ap
+        resource = newNotebook # _path .~ ap 
 
 delete :: forall e. Resource -> Aff (ajax :: AJAX | e) Unit
 delete resource =
@@ -102,8 +86,8 @@ move :: forall e. Resource -> AnyPath -> Aff (ajax :: AJAX | e) (Either String A
 move src tgt = do
   result <- affjax $ defaultRequest
     { method = MOVE
-    , headers = [RequestHeader "Destination" $ resourcePath (setPath src tgt)]
-    , url = Config.dataUrl <> resourcePath src
+    , headers = [RequestHeader "Destination" $ resourcePath (src # _path .~ tgt) ]
+    , url = Config.dataUrl <> resourcePath src 
     }
   pure if succeeded result.status
        then Right tgt

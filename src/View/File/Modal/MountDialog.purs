@@ -56,7 +56,7 @@ mountDialog state =
 fldName :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldName state =
   H.div [ A.class_ B.formGroup ]
-        [ label "Name" [ input state M.name [] ] ]
+        [ label "Name" [ input state M._name [] ] ]
 
 fldConnectionURI :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldConnectionURI state =
@@ -114,8 +114,8 @@ hosts state =
 host :: forall p e. M.MountDialogRec -> Number -> Boolean -> H.HTML (I e)
 host state index enabled =
   H.div [ A.class_ VC.mountHost ]
-        [ label "Host" [ input' rejectNonHostname state (M.hosts <<< ix index <<< M.host) [ A.disabled enabled ] ]
-        , label "Port" [ input' rejectNonPort state (M.hosts <<< ix index <<< M.port) [ A.disabled enabled ] ]
+        [ label "Host" [ input' rejectNonHostname state (M._hosts <<< ix index <<< M._host) [ A.disabled enabled ] ]
+        , label "Port" [ input' rejectNonPort state (M._hosts <<< ix index <<< M._port) [ A.disabled enabled ] ]
         ]
   where
   rejectNonHostname :: String -> String
@@ -130,7 +130,7 @@ host state index enabled =
 fldPath :: forall e. M.MountDialogRec -> H.HTML (I e)
 fldPath state =
   H.div [ A.class_ B.formGroup ]
-        [ label "Path" [ input state M.path [] ] ]
+        [ label "Path" [ input state M._path [] ] ]
 
 userinfo state =
   H.div [ A.classes [B.formGroup, VC.mountUserInfo] ]
@@ -139,10 +139,10 @@ userinfo state =
         ]
 
 fldUser :: forall p e. M.MountDialogRec -> H.HTML (I e)
-fldUser state = label "Username" [ input state M.user [] ]
+fldUser state = label "Username" [ input state M._user [] ]
 
 fldPass :: forall p e. M.MountDialogRec -> H.HTML (I e)
-fldPass state = label "Password" [ input state M.password [ A.type_ "password" ] ]
+fldPass state = label "Password" [ input state M._password [ A.type_ "password" ] ]
 
 props :: forall e. M.MountDialogRec -> H.HTML (I e)
 props state =
@@ -164,8 +164,8 @@ props state =
 
 prop :: forall e. M.MountDialogRec -> Number -> H.HTML (I e)
 prop state index =
-  H.tr_ [ H.td_ [ input state (M.props <<< ix index <<< M.name) [ A.classes [B.formControl, B.inputSm] ] ]
-        , H.td_ [ input state (M.props <<< ix index <<< M.value) [ A.classes [B.formControl, B.inputSm] ] ]
+  H.tr_ [ H.td_ [ input state (M._props <<< ix index <<< M._name) [ A.classes [B.formControl, B.inputSm] ] ]
+        , H.td_ [ input state (M._props <<< ix index <<< M._value) [ A.classes [B.formControl, B.inputSm] ] ]
         ]
 
 message :: forall e. Maybe String -> H.HTML (I e)

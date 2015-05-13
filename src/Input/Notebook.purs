@@ -8,9 +8,9 @@ import Data.Date (Date(), Now(), now, toEpochMilliseconds)
 import Control.Monad.Eff.Class (liftEff)
 import Model.Notebook
 import Model.Notebook.Cell
-import Model.Notebook.Domain (notebookCells, addCell)
-import Model.Resource (resourceName, nameL, Resource())
-import Optic.Core ((..), (<>~), (%~), (+~), (.~))
+import Model.Notebook.Domain (_notebookCells, addCell)
+import Model.Resource (_name, Resource())
+import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.))
 import Optic.Setter (mapped, over)
 import Halogen.HTML.Events.Monad (Event(), async)
 import Control.Timer (Timeout())
@@ -44,20 +44,20 @@ updateState :: State -> Input -> State
 
 updateState state (Dropdown i) =
   let visSet = maybe true not (_.visible <$> state.dropdowns !! i) in
-  state # dropdowns %~
-  (modifyAt i (\x -> x{visible = visSet})) <<<  (_{visible = false} <$>)
+  state # _dropdowns %~
+  (modifyAt i _{visible = visSet}) <<<  (_{visible = false} <$>)
 
 updateState state CloseDropdowns =
-  state{addingCell = false} # dropdowns %~ (_{visible = false} <$>)
+  state{addingCell = false} # _dropdowns %~ (_{visible = false} <$>)
 
 updateState state (SetTimeout mbTm) =
   state{timeout = mbTm}
 
 updateState state (SetResource res) =
-  state{resource = res, name = resourceName res}
+  state{resource = res, initialName = res ^. _name}
 
 updateState state (SetName name) =
-  state{resource = state.resource # nameL .~ name}
+  state{resource = state.resource # _name .~ name}
 
 updateState state (SetSiblings ss) =
   state{siblings = ss} 
@@ -78,24 +78,24 @@ updateState state (SetAddingCell adding) =
   state{addingCell = adding}
 
 updateState state (AddCell cellType) =
-  state # notebook %~ (addCell cellType Nothing >>> fst)
+  state # _notebook %~ (addCell cellType Nothing >>> fst)
 
 updateState state (ToggleEditorCell cellId) =
-  state # notebook..notebookCells..mapped %~ onCell cellId toggleEditor
+  state # _notebook.._notebookCells..mapped %~ onCell cellId toggleEditor
 
 updateState state (TrashCell cellId) =
-  state # notebook..notebookCells %~ filter (not <<< isCell cellId)
+  state # _notebook.._notebookCells %~ filter (not <<< isCell cellId)
 
 updateState state (CellResult cellId date (AceContent content)) =
   let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
       f _                = RunInitial -- TODO: Cell in bad state
-  in state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState f <<< setContent content)
+  in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< setContent content)
 
 updateState state (SetActiveCell cellId) =
-  state # activeCellId .~ cellId
+  state # _activeCellId .~ cellId
 
 updateState state (RunCell cellId date) =
-  state # notebook..notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
+  state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
 
 updateState state (SecondTick date) =
   state{tickDate = Just date}

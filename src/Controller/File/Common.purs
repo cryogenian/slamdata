@@ -5,9 +5,9 @@ import Data.DOM.Simple.Encode (encodeURIComponent)
 import Data.Inject1 (Inject1, inj)
 import Data.String (joinWith)
 import DOM (DOM())
-import Model.File.Item (Item(), resourceL)
+import Model.File.Item (Item(), _resource)
 import Model.Path (encodeURIPath)
-import Model.Resource (resourcePath, isFile)
+import Model.Resource (_path, isFile, resourcePath)
 import Optic.Core ((^.))
 import Utils (newTab)
 
@@ -20,6 +20,6 @@ toInput = pure <<< inj
 open :: forall e. Item -> Eff (dom :: DOM | e) Unit
 open item = newTab $ joinWith "" $ [ Config.notebookUrl
                                    , "#"
-                                   , encodeURIPath $ resourcePath $ item ^. resourceL
+                                   , encodeURIPath $ resourcePath $ item ^. _resource
                                    , if isFile item.resource then "/explore" else "edit"
                                    ]

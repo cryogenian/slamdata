@@ -26,15 +26,15 @@ import Model.File.Item (Item())
 import Utils (reload)
 import Config (notebookExtension)
 import qualified Api.Fs as Api
-import Model.Resource
-import Optic.Core
+import Model.Resource (Resource(), _path, _name, _root, mkDirectory)
+import Optic.Core ((..), (^.), (.~))
 import Data.Path.Pathy (rootDir, (</>), parseAbsDir, sandbox)
 
 rename :: forall e. RenameDialogRec -> EventHandler (Event (FileAppEff e) Input)
 rename d = pure do
   let src = d ^. _initial
-      dt = either (const rootDir) id $ getPath (d ^. _dir)
-      tgt = getPath (d ^. _resource # rootL .~ dt)
+      dt = either (const rootDir) id $ d ^. _dir .. _path
+      tgt = (d ^. _resource # _root .~ dt) ^. _path
   result <- liftAff $ Api.move src tgt
   (toInput $ Update $ _error .~ either Just (const Nothing) result) `andThen` \_ ->
     case result of
@@ -51,7 +51,7 @@ checkRename name dialog = pure do
       then toInput $ Update $ _error .~ Just "Please enter a valid name for the file"
       else checkList res (dialog ^. _siblings)
   where
-  res = dialog ^. _resource # nameL .~ name
+  res = dialog ^. _resource # _name .~ name
 
 renameItemClicked :: forall e. Resource -> Resource -> EventHandler (Event (FileAppEff e) Input)
 renameItemClicked target res = pure (renameItemClicked' target res)
@@ -74,6 +74,6 @@ renameDirInput target dirStr = pure do
 
 checkList :: forall e. Resource -> [Resource] -> Event (FileAppEff e) Input
 checkList tgt list =
-  case elemIndex (resourceName tgt) (resourceName <$> list) of
+  case elemIndex (tgt ^. _name) ((^. _name) <$> list) of
     -1 -> toInput $ Update $ _error .~ Nothing
     _ -> toInput $ Update $ _error .~ Just "An item with this name already exists in the target folder"

@@ -12,7 +12,7 @@ import Data.String.Regex (noFlags, regex, test, Regex())
 import Data.Tuple (Tuple(..))
 import Model.Action (Action(..), string2action)
 import Model.Notebook.Cell (CellId(), string2cellId)
-import Model.Resource (Resource(), newNotebook, setPath, notebookPath)
+import Model.Resource (Resource(), newNotebook, _notebookPath)
 import Optic.Core ((.~))
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
@@ -34,7 +34,7 @@ routing = CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
 
   notebookFromParts :: Tuple (List String) String -> Resource
   notebookFromParts (Tuple ps name) =
-    newNotebook # notebookPath .~ foldl (</>) rootDir (dir <$> ps) </> dir name
+    newNotebook # _notebookPath .~ foldl (</>) rootDir (dir <$> ps) </> dir name
 
   notebook :: Match Resource
   notebook = notebookFromParts <$> partsAndName
