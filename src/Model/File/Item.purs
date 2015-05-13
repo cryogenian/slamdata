@@ -12,8 +12,8 @@ type Item =
   }
 
 
-resourceL :: LensP Item Resource
-resourceL = lens _.resource (_{resource = _})
+_resource :: LensP Item Resource
+_resource = lens _.resource (_{resource = _})
 
 wrap :: Resource -> Item
 wrap r =

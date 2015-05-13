@@ -1,7 +1,7 @@
 module Config where
 
 baseUrl :: String
-baseUrl = "/"
+baseUrl = "http://gus.brianmckenna.org:8000/"
 
 uploadUrl :: String
 uploadUrl = baseUrl <> "upload"
@@ -11,6 +11,9 @@ metadataUrl = baseUrl <> "metadata/fs/"
 
 dataUrl :: String
 dataUrl = baseUrl <> "data/fs/"
+
+queryUrl :: String
+queryUrl = baseUrl <> "query/fs/"
 
 notebookUrl :: String
 notebookUrl = baseUrl <> "notebook.html"
@@ -28,7 +31,7 @@ newFolderName :: String
 newFolderName = "Untitled Folder"
 
 notebookExtension :: String
-notebookExtension = "slam"
+notebookExtension = "nb"
 
 newNotebookName :: String
 newNotebookName = "Untitled Notebook." <> notebookExtension

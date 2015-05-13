@@ -26,7 +26,7 @@ import Input.File.Item (ItemInput(..))
 import Input.File.Rename (RenameInput(..))
 import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (initialMountDialog)
-import Model.File.Dialog.Rename (initialRenameDialog)
+import Model.File.Dialog.Rename (initialRenameDialog, _siblings)
 import Model.File.Item (Item())
 import Model.Resource
 import Optic.Core ((.~))
@@ -44,10 +44,8 @@ handleDeleteItem item = async $ do
 
 handleMoveItem :: forall e. Item -> Event (FileAppEff e) Input
 handleMoveItem item = do
-  siblings <- liftAff $ children (parent item.resource)
-  let dialog = RenameDialog $
-               _{siblings = siblings} $
-               initialRenameDialog item.resource
+  ss <- liftAff $ children (parent item.resource)
+  let dialog = RenameDialog $ (initialRenameDialog item.resource # _siblings .~ ss)
   (toInput $ SetDialog (Just dialog))
     `andThen` \_ -> do
     getDirectories root

@@ -31,35 +31,35 @@ type MountPropRec =
   , value :: String
   }
 
-name :: forall a. LensP { name :: String | a } String
-name = lens _.name (_ { name = _ })
+_name :: forall a. LensP { name :: String | a } String
+_name = lens _.name (_ { name = _ })
 
-connectionURI :: LensP MountDialogRec String
-connectionURI = lens _.connectionURI (_ { connectionURI = _ })
+_connectionURI :: LensP MountDialogRec String
+_connectionURI = lens _.connectionURI (_ { connectionURI = _ })
 
-hosts :: LensP MountDialogRec [MountHostRec]
-hosts = lens _.hosts (_ { hosts = _ })
+_hosts :: LensP MountDialogRec [MountHostRec]
+_hosts = lens _.hosts (_ { hosts = _ })
 
-path :: LensP MountDialogRec String
-path = lens _.path (_ { path = _ })
+_path :: LensP MountDialogRec String
+_path = lens _.path (_ { path = _ })
 
-user :: LensP MountDialogRec String
-user = lens _.user (_ { user = _ })
+_user :: LensP MountDialogRec String
+_user = lens _.user (_ { user = _ })
 
-password :: LensP MountDialogRec String
-password = lens _.password (_ { password = _ })
+_password :: LensP MountDialogRec String
+_password = lens _.password (_ { password = _ })
 
-props :: LensP MountDialogRec [MountPropRec]
-props = lens _.props (_ { props = _ })
+_props :: LensP MountDialogRec [MountPropRec]
+_props = lens _.props (_ { props = _ })
 
-host :: LensP MountHostRec String
-host = lens _.host (_ { host = _ })
+_host :: LensP MountHostRec String
+_host = lens _.host (_ { host = _ })
 
-port :: LensP MountHostRec String
-port = lens _.port (_ { port = _ })
+_port :: LensP MountHostRec String
+_port = lens _.port (_ { port = _ })
 
-value :: LensP MountPropRec String
-value = lens _.value (_ { value = _ })
+_value :: LensP MountPropRec String
+_value = lens _.value (_ { value = _ })
 
 initialMountDialog :: MountDialogRec
 initialMountDialog =

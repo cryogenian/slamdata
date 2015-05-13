@@ -17,7 +17,7 @@ import Model.Notebook.Menu (
   MenuCellSignal(..),
   MenuHelpSignal(..),
   MenuSignal(..))
-import Model.Notebook (State(), activeCellId)
+import Model.Notebook (State(), _activeCellId)
 import Model.Notebook.Cell (CellType(..))
 import Input.Notebook (Input(..), runCellEvent)
 import Data.Inject1 (prj)
@@ -28,7 +28,7 @@ import Routing.Hash (setHash, getHash)
 import Config (notebookExtension, notebookNameEditorId, notebookUrl, homeHash)
 import Data.Array (elemIndex)
 import Data.DOM.Simple.Window (globalWindow, document, location, setLocation)
-import Data.DOM.Simple.Document 
+import Data.DOM.Simple.Document
 import Data.DOM.Simple.Element (getElementById, focus)
 import Utils (newTab, mailOpen)
 import Routing (matchHash')
@@ -57,11 +57,11 @@ handleMenuNotebook PublishNotebook = do
   where
   editSuffix = Rgx.regex "/edit$" Rgx.noFlags
   toView :: String -> String
-  toView = ((notebookUrl <> "#") <>) <<< 
+  toView = ((notebookUrl <> "#") <>) <<<
            (Rgx.replace editSuffix "/view")
 handleMenuNotebook signal = do
   mbRes <- liftEff $ do
-    h <- getHash 
+    h <- getHash
     flip (either (const $ pure Nothing))
       (matchHash' decodeURIPath routing h) \r -> do
       case r of
@@ -77,8 +77,8 @@ handleMenuNotebook signal = do
 handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
-    EvaluateCell -> runCellEvent (state ^. activeCellId)
-    DeleteCell -> pure $ TrashCell (state ^. activeCellId)
+    EvaluateCell -> runCellEvent (state ^. _activeCellId)
+    DeleteCell -> pure $ TrashCell (state ^. _activeCellId)
     _ -> empty
 
 handleMenuInsert :: forall e. MenuInsertSignal -> I e
@@ -101,10 +101,10 @@ handleMenuHelp SQLReferenceHelp = do
 handleMenuHelp ReportBugHelp = do
   liftEff $ mailOpen "mailto:support@slamdatacom?subject=Bug%20Found"
   empty
-handleMenuHelp RequestSupportHelp = do 
+handleMenuHelp RequestSupportHelp = do
   liftEff $ mailOpen "mailto:support@slamdatacom?subject=Request%20Help"
   empty
-  
+
 
 handleMenuSignal :: forall e. State -> MenuSignal -> I e
 handleMenuSignal state signal =
@@ -119,26 +119,21 @@ handleMenuSignal state signal =
 
 handleSubmitName :: forall e. State -> I e
 handleSubmitName state = do
-  let oldResource = state.resource # nameL .~ state.name
+  let oldResource = state.resource # _name .~ state.initialName
       newResource = state.resource
-      parent = oldResource 
   -- slamdata/slamengine#693
-  if oldResource == newResource 
+  if oldResource == newResource
     then empty
     else do
-    siblings <- liftAff $ children
-                (newDirectory `setPath`
-                 (Right
-                  (maybe rootDir (rootDir </>)
-                   (sandbox rootDir $ resourceDir oldResource))))
+    siblings <- liftAff $ children (parent oldResource)
     -- slamdata/slamengine#693
-    if elemIndex (newResource ^. nameL) ((\x -> x ^. nameL) <$> siblings) /= -1
+    if elemIndex (newResource ^. _name) ((^. _name) <$> siblings) /= -1
       then pure $ SetModalError ("File " <> (resourcePath newResource) <> " already exists")
-      else do 
-      error <- liftAff $ move oldResource (getPath newResource) 
-      case error of
-        "" -> do
-          liftEff $ setHash $ resourcePath newResource <> "/edit"
+      else do
+      result <- liftAff $ move oldResource (getPath newResource)
+      case result of
+        Right _ -> do
+          liftEff $ setHash $ resourcePath newResource <> "edit"
           empty
-        e -> 
+        Left e ->
           pure $ SetModalError ("Rename error: " <> e)
