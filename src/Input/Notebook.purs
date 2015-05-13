@@ -10,12 +10,12 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Timer (Timeout())
 import Data.Array (filter, modifyAt, (!!))
 import Data.Date (Date(), Now(), now, toEpochMilliseconds)
+import Data.Either (Either(), either)
 import Data.Function (on)
 import Data.Inject1 (inj, prj)
 import Data.Maybe (maybe, Maybe(..))
 import Data.Maybe.Unsafe (fromJust)
 import Data.Tuple (fst)
-import Data.Either (Either())
 import Halogen.HTML.Events.Monad (Event(), async)
 import Model.Notebook
 import Model.Notebook.Cell
@@ -23,6 +23,7 @@ import Model.Notebook.Domain (_notebookCells, addCell)
 import Model.Resource (_name, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.))
 import Optic.Setter (mapped, over)
+import qualified Data.Array.NonEmpty as NEL
 
 data CellResultContent = AceContent String
 
@@ -42,9 +43,11 @@ data NotebookInput
   | SetAddingCell Boolean
   | AddCell CellContent
   | ToggleEditorCell CellId
+  | ToggleFailuresCell CellId
   | TrashCell CellId
   | RunCell CellId Date
-  | CellResult CellId Date CellResultContent
+  | StopCell CellId
+  | CellResult CellId Date (Either (NEL.NonEmpty FailureMessage) CellResultContent)
   | SetActiveCell CellId
   | SecondTick Date
 
@@ -54,10 +57,6 @@ runCellEvent cid = async $ inj <<< RunCell cid <$> liftEff now
 updateState :: State -> Input -> State
 updateState state input =
   fromJust $ (inputNotebook state <$> prj input)
-         -- <|> ((\i -> state { items = inputItem state.sort state.searching state.items i }) <$> prj input)
-         -- <|> ((\i -> state { search = inputSearch state.search i }) <$> prj input)
-         -- <|> ((\i -> state { dialog = flip inputRename i <$> state.dialog }) <$> prj input)
-         -- <|> ((\i -> state { dialog = flip inputMount i <$> state.dialog }) <$> prj input)
 
 inputNotebook :: State -> NotebookInput -> State
 
@@ -105,10 +104,10 @@ inputNotebook state (ToggleEditorCell cellId) =
 inputNotebook state (TrashCell cellId) =
   state # _notebook.._notebookCells %~ filter (not <<< isCell cellId)
 
-inputNotebook state (CellResult cellId date (AceContent content)) =
+inputNotebook state (CellResult cellId date content) =
   let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
       f _                = RunInitial -- TODO: Cell in bad state
-  in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< setContent content)
+  in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
 
 inputNotebook state (SetActiveCell cellId) =
   state # _activeCellId .~ cellId
@@ -121,11 +120,21 @@ inputNotebook state (SecondTick date) =
 
 inputNotebook state i = state
 
+cellContent :: Either (NEL.NonEmpty FailureMessage) CellResultContent -> Cell -> Cell
+cellContent = either (setFailures <<< NEL.toArray) success
+  where success (AceContent content) = setFailures [ ] <<< setContent content
+
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
 onCell ci f c = if isCell ci c then f c else c
 
 toggleEditor :: Cell -> Cell
 toggleEditor (Cell o) = Cell $ o { hiddenEditor = not o.hiddenEditor }
+
+toggleFailures :: Cell -> Cell
+toggleFailures (Cell o) = Cell $ o { expandedStatus = not o.expandedStatus }
+
+setFailures :: [FailureMessage] -> Cell -> Cell
+setFailures fs (Cell o) = Cell $ o { failures = fs }
 
 setContent :: String -> Cell -> Cell
 setContent content (Cell o) =
@@ -143,4 +152,3 @@ modifyRunState f (Cell o) = Cell $ o { runState = f o.runState }
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
-

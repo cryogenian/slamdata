@@ -124,3 +124,6 @@ cellControls = className "cell-controls"
 
 statusText :: ClassName
 statusText = className "status-text"
+
+cellFailures :: ClassName
+cellFailures = className "cell-failures"

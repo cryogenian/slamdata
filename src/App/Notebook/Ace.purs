@@ -7,9 +7,9 @@ import Control.Monad (when)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Ref (Ref(), RefVal(), readRef, newRef, modifyRef)
 
-import Data.Foldable (for_)
 import Data.Date (Now(), now)
-import Data.Either (either)
+import Data.Either (Either(..), either)
+import Data.Foldable (for_)
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.Tuple
@@ -89,7 +89,7 @@ handleInput :: forall eff. RefVal AceKnot
 handleInput m (RunCell cellId _) d = do
   Tuple _ m' <- readRef m
   now' <- now
-  maybe (return unit) (getValue >=> d <<< inj <<< (CellResult cellId now') <<< AceContent) $
+  maybe (return unit) (getValue >=> d <<< inj <<< CellResult cellId now' <<< Right <<< AceContent) $
     M.lookup cellId m'
 handleInput m (TrashCell cellId) _ = do
   modifyRef m $ (\x -> x # _2 %~ M.delete cellId)

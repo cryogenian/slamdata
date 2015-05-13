@@ -25,6 +25,8 @@ newtype Cell =
        , input :: Port
        , output :: Port
        , content :: CellContent
+       , expandedStatus :: Boolean
+       , failures :: [FailureMessage]
        , metadata :: String
        , hiddenEditor :: Boolean
        , runState :: RunState
@@ -46,6 +48,8 @@ cellContentType (Query _) = "query"
 cellContentType (Visualize _) = "visualize"
 cellContentType (Markdown _) = "markdown"
 
+type FailureMessage = String
+
 data RunState = RunInitial
               | RunningSince Date
               | RunFinished Milliseconds
@@ -56,6 +60,8 @@ newCell cellId content =
        , input: Closed
        , output: Closed
        , content: content
+       , expandedStatus: false
+       , failures: []
        , metadata: ""
        , hiddenEditor: false
        , runState: RunInitial
@@ -102,3 +108,9 @@ _hiddenEditor = _cell <<< lens _.hiddenEditor (_ { hiddenEditor = _ })
 
 _runState :: LensP Cell RunState
 _runState = _cell <<< lens _.runState (_ { runState = _ })
+
+_expandedStatus :: LensP Cell Boolean
+_expandedStatus = _cell <<< lens _.expandedStatus (_ { expandedStatus = _ })
+
+_failures :: LensP Cell [FailureMessage]
+_failures = _cell <<< lens _.failures (_ { failures = _ })
