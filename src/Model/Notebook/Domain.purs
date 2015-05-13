@@ -3,7 +3,7 @@ module Model.Notebook.Domain where
 import Data.Array (length, sort, reverse, head)
 import Data.Tuple
 import Data.Maybe
-import Data.Map 
+import Data.Map
 import Data.Argonaut.Combinators
 import qualified Data.Argonaut.Core as Ac
 import qualified Data.Argonaut.Decode as Ad
@@ -16,7 +16,7 @@ import Model.Notebook.Cell
 
 -- We have no any cells that have more than one
 -- dependency right now. And have no ui to make
--- cell that has more than one deps.  
+-- cell that has more than one deps.
 type Dependencies = Map CellId CellId
 
 deps :: CellId -> Dependencies -> [CellId]
@@ -35,7 +35,7 @@ type NotebookRec =
   , activeCellId :: CellId
   }
 
-newtype Notebook = Notebook NotebookRec 
+newtype Notebook = Notebook NotebookRec
 
 
 _notebookRec :: LensP Notebook NotebookRec
@@ -55,17 +55,17 @@ emptyNotebook = Notebook
   , activeCellId: 0
   }
 
-addCell :: CellType -> Maybe CellId -> Notebook -> Tuple Notebook Cell 
-addCell cellType mbCellId (Notebook n) = Tuple notebook cell
-  where 
+addCell :: CellContent -> Maybe CellId -> Notebook -> Tuple Notebook Cell
+addCell content mbCellId (Notebook n) = Tuple notebook cell
+  where
   newId = maybe 0 (+ 1) $ head $ reverse $ sort $ (\(Cell x) -> x.cellId) <$> n.cells
-  cell = newCell newId cellType
-  newDeps = maybe n.dependencies (\x -> insert newId x n.dependencies) mbCellId 
+  cell = newCell newId content
+  newDeps = maybe n.dependencies (\x -> insert newId x n.dependencies) mbCellId
   notebook = Notebook $ n { cells = cell : n.cells
                           , dependencies = newDeps
                           , activeCellId = newId
                           }
-  
+
 
 
 _notebookLens :: LensP Notebook _

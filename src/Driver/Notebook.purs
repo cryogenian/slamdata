@@ -8,7 +8,7 @@ import Control.Monad.Eff.Ref (RefVal(), readRef)
 import Control.Monad.Aff (runAff, attempt)
 import Data.Array (elemIndex)
 import Data.DOM.Simple.Types (DOMEvent())
-import Data.DOM.Simple.Document 
+import Data.DOM.Simple.Document
 import Data.DOM.Simple.Events (
   KeyboardEventType(KeydownEvent),
   metaKey, shiftKey, ctrlKey, keyCode,
@@ -43,41 +43,41 @@ import qualified Routing.Match.Class as R
 import qualified Routing.Hash as R
 import Model.Resource (resourcePath, parent)
 import Api.Fs (children)
-import Input.Notebook (Input(..))
+import Input.Notebook (Input(), NotebookInput(..))
 import App.Notebook.Ace (AceKnot())
 import Optic.Core ((.~))
 
 tickDriver :: forall e. H.Driver Input (NotebookComponentEff e) -> Eff (NotebookAppEff e) Unit
-tickDriver k = void $ interval 1000 $ now >>= k <<< SecondTick
+tickDriver k = void $ interval 1000 $ now >>= k <<< inj <<< SecondTick
 
-driver :: forall e. RefVal AceKnot -> 
+driver :: forall e. RefVal AceKnot ->
           H.Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
 driver ref k =
   R.matches' decodeURIPath routing \old new -> do
     case new of
       NotebookRoute res editable -> do
-        k $ SetEditable (isEdit editable)
+        k $ inj $ SetEditable (isEdit editable)
 
         flip (runAff (const $ pure unit)) (attempt $ children (parent res)) $ \ei -> do
-          k $ SetLoaded true
-          k $ case ei of
+          k $ inj $ SetLoaded true
+          k $ inj $ case ei of
             Left _ ->
-              SetError "Incorrect path" 
-            Right siblings -> 
-              if elemIndex res siblings == -1 
+              SetError "Incorrect path"
+            Right siblings ->
+              if elemIndex res siblings == -1
               then SetError ("There is no notebook at " <> resourcePath res)
               else SetSiblings siblings
-        k $ SetResource res
+        k $ inj $ SetResource res
 
         handleShortcuts ref k
 
-      _ -> k $ SetError "Incorrect path"
+      _ -> k $ inj $ SetError "Incorrect path"
 
-handleShortcuts :: forall e. RefVal AceKnot -> 
+handleShortcuts :: forall e. RefVal AceKnot ->
                    (Input -> Eff (NotebookAppEff e) Unit) ->
                    Eff (NotebookAppEff e) Unit
-handleShortcuts ref k = 
+handleShortcuts ref k =
   document globalWindow >>=
   addKeyboardEventListener KeydownEvent (handler ref)
   where
@@ -91,21 +91,21 @@ handleShortcuts ref k =
           preventDefault e
           pure $ handleMenuSignal (initialState # _activeCellId .~ cid) signal
     event <- case code of
-      83 | meta && shift -> do 
+      83 | meta && shift -> do
         handle $ inj $ RenameNotebook
       80 | meta ->
         handle $ inj $ PublishNotebook
       49 | meta ->
-        handle $ inj $ QueryInsert 
+        handle $ inj $ QueryInsert
       50 | meta ->
-        handle $ inj $ MarkdownInsert 
+        handle $ inj $ MarkdownInsert
       51 | meta ->
-        handle $ inj $ ExploreInsert 
+        handle $ inj $ ExploreInsert
       52 | meta ->
-        handle $ inj $ SearchInsert 
+        handle $ inj $ SearchInsert
       13 | meta ->
         handle $ inj $ EvaluateCell
       _ -> pure empty
     runEvent (\_ -> log "Error in handleShortcuts") k event
-    
-                     
+
+

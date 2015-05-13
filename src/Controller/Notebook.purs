@@ -18,9 +18,10 @@ import Model.Notebook.Menu (
   MenuHelpSignal(..),
   MenuSignal(..))
 import Model.Notebook (State(), _activeCellId)
-import Model.Notebook.Cell (CellType(..))
-import Input.Notebook (Input(..), runCellEvent)
-import Data.Inject1 (prj)
+import Model.Notebook.Cell (CellContent(..))
+import Model.Notebook.Cell.Explore (initialExploreRec)
+import Input.Notebook (Input(), NotebookInput(..), runCellEvent)
+import Data.Inject1 (inj, prj)
 import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
 import Model.Path (decodeURIPath)
 import Api.Fs (move, children, delete)
@@ -49,7 +50,7 @@ handleMenuNotebook RenameNotebook = do
     document globalWindow
       >>= getElementById notebookNameEditorId
       >>= maybe (pure unit) focus
-  pure $ CloseDropdowns
+  pure $ inj $ CloseDropdowns
 handleMenuNotebook PublishNotebook = do
   liftEff $ do
     (toView <$> getHash) >>= newTab
@@ -78,15 +79,14 @@ handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
     EvaluateCell -> runCellEvent (state ^. _activeCellId)
-    DeleteCell -> pure $ TrashCell (state ^. _activeCellId)
+    DeleteCell -> pure $ inj $ TrashCell (state ^. _activeCellId)
     _ -> empty
 
 handleMenuInsert :: forall e. MenuInsertSignal -> I e
-handleMenuInsert ExploreInsert = pure $ AddCell Explore
-handleMenuInsert MarkdownInsert = pure $ AddCell Markdown
-handleMenuInsert QueryInsert = pure $ AddCell Query
-handleMenuInsert SearchInsert = pure $ AddCell Search
-
+handleMenuInsert ExploreInsert = pure $ inj $ AddCell (Explore initialExploreRec)
+handleMenuInsert MarkdownInsert = pure $ inj $ AddCell (Markdown "")
+handleMenuInsert QueryInsert = pure $ inj $ AddCell (Query "")
+handleMenuInsert SearchInsert = pure $ inj $ AddCell (Search "")
 
 handleMenuHelp :: forall e. MenuHelpSignal -> I e
 handleMenuHelp TutorialHelp = do
@@ -128,7 +128,7 @@ handleSubmitName state = do
     siblings <- liftAff $ children (parent oldResource)
     -- slamdata/slamengine#693
     if elemIndex (newResource ^. _name) ((^. _name) <$> siblings) /= -1
-      then pure $ SetModalError ("File " <> (resourcePath newResource) <> " already exists")
+      then pure $ inj $ SetModalError ("File " <> (resourcePath newResource) <> " already exists")
       else do
       result <- liftAff $ move oldResource (getPath newResource)
       case result of
@@ -136,4 +136,4 @@ handleSubmitName state = do
           liftEff $ setHash $ resourcePath newResource <> "edit"
           empty
         Left e ->
-          pure $ SetModalError ("Rename error: " <> e)
+          pure $ inj $ SetModalError ("Rename error: " <> e)
