@@ -95,7 +95,7 @@ handleRoute driver = launchAff $ do
           driver $ inj $ SearchSet $ (hidePath (renderPath $ inj path) $ (strQuery query))
           driver $ inj $ ItemsUpdate [] sort
           driver $ inj $ SetSearching (isSearchQuery query)
-        listPath driver query 0 var (newDirectory # pathL .~ Right path)
+        listPath driver query 0 var (newDirectory # _path .~ Right path)
         else do
         pure unit
 
@@ -105,7 +105,7 @@ listPath :: forall e. Hl.Driver Input (FileComponentEff e) ->
             Resource -> Aff _ Unit
 listPath driver query deep var res = do
   modifyVar
-    (\t -> t # _2 %~ M.alter (maybe (Just 1) (\x -> Just (x + 1))) deep) var
+    (_2 %~ M.alter (maybe (Just 1) (\x -> Just (x + 1))) deep) var
 
   canceler <- forkAff do
     ei <- attempt $ children res
@@ -120,8 +120,8 @@ listPath driver query deep var res = do
         else pure unit
 
     modifyVar
-      (\t -> t # _2 %~ M.update (\v -> if v > 1 then Just (v - 1)
-                                       else Nothing) deep) var
+      (_2 %~ M.update (\v -> if v > 1 then Just (v - 1)
+                             else Nothing) deep) var
 
     Tuple c r <- takeVar var
     if (foldl (+) 0 $ M.values r) == 0 then do
@@ -130,4 +130,4 @@ listPath driver query deep var res = do
       putVar var initialAVar
       else
       putVar var (Tuple c r)
-  modifyVar (\t -> t # _1 %~ (<> canceler)) var
+  modifyVar (_1 <>~ canceler) var 

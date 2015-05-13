@@ -31,7 +31,7 @@ import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (initialMountDialog)
 import Model.File.Dialog.Rename (initialRenameDialog)
 import Model.File.Item
-import Model.Resource (pathL, nameL, resourcePath)
+import Model.Resource (_path, _name, resourcePath)
 import Model.Notebook.Domain (emptyNotebook)
 import Model.Sort (Sort())
 import Routing.Hash (getHash, modifyHash)
@@ -48,10 +48,10 @@ handleCreateNotebook state = do
   path <- liftEff $ extractDir <$> getHash
   let notebookPath = inj $ path </> file name
       notebook = initNotebook{phantom = true} #
-                 resourceL <<< pathL .~ notebookPath
+                 _resource <<< _path .~ notebookPath
   -- immidiately updating state and then
   (toInput $ ItemAdd notebook) `andThen` \_ -> do
-    f <- liftAff $ attempt $ makeNotebook (notebook ^. resourceL .. pathL) emptyNotebook
+    f <- liftAff $ attempt $ makeNotebook (notebook ^. _resource .. _path) emptyNotebook
     (toInput $ ItemRemove notebook) `andThen` \_ ->  do
       case f of
         Left _ -> empty
@@ -80,13 +80,13 @@ handleFileListChanged el state = do
       name <- flip getNewName state <$> (liftEff $ Uf.name f)
       let fileName = path </> file name
           fileItem = initFile{phantom = true} #
-                     (resourceL <<< pathL) .~ inj (path </> file name)
+                     (_resource <<< _path) .~ inj (path </> file name)
 
       reader <- liftEff newReader
       content <- liftAff $ readAsBinaryString f reader
 
       (toInput $ ItemAdd fileItem) `andThen` \_ -> do
-        f <- liftAff $ attempt $ makeFile (fileItem.resource ^. pathL) content
+        f <- liftAff $ attempt $ makeFile (fileItem.resource ^. _path) content
         (toInput $ ItemRemove fileItem) `andThen` \_ -> do
           case f of
             Left _ -> empty
@@ -113,14 +113,14 @@ handleCreateFolder :: forall e. State -> Event (FileAppEff e) Input
 handleCreateFolder state = do
   let dirName = dir $ getNewName Config.newFolderName state
   path <- liftEff (extractDir <$> getHash)
-  toInput $ ItemAdd $ (initDirectory # resourceL .. pathL .~ (inj (path </> dirName)))
+  toInput $ ItemAdd $ (initDirectory # _resource .. _path .~ (inj (path </> dirName)))
 
 handleMountDatabase :: forall e. State -> Event (FileAppEff e) Input
 handleMountDatabase _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog)
 
 getNewName :: String -> State -> String
 getNewName name state =
-  if findIndex (\x -> x ^. resourceL .. nameL == name) state.items /= -1 then
+  if findIndex (\x -> x ^. _resource .. _name == name) state.items /= -1 then
     getNewName' name 1
     else name
   where
@@ -129,7 +129,7 @@ getNewName name state =
       [] -> ""
       body:suffixes ->
         let newName = joinWith "." $ (body <> show i):suffixes
-        in if findIndex (\x -> x ^. resourceL .. nameL == newName)
+        in if findIndex (\x -> x ^. _resource .. _name == newName)
               state.items /= -1
            then getNewName' name (i + 1)
            else newName

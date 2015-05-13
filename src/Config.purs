@@ -12,6 +12,9 @@ metadataUrl = baseUrl <> "metadata/fs/"
 dataUrl :: String
 dataUrl = baseUrl <> "data/fs/"
 
+queryUrl :: String
+queryUrl = baseUrl <> "query/fs/"
+
 notebookUrl :: String
 notebookUrl = baseUrl <> "notebook.html"
 

@@ -6,9 +6,8 @@ module Model.Resource (
   nameOfFileOrDir, root, resourcePath,
   newFile, newDatabase, newDirectory, newNotebook,
   mkFile, mkDatabase, mkDirectory, mkNotebook,
-  setPath, setName, nameAnyPath, rootAnyPath,
-  pathL, rootL, nameL, sortResource, parent,
-  resourceFileName, notebookPath
+  setPath, setName, _path, _root, _name, _notebookPath,
+  sortResource, parent, resourceFileName
   ) where
 
 import Data.Tuple
@@ -19,7 +18,7 @@ import Data.Path.Pathy
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign (ForeignError(TypeMismatch))
 import Data.Bifunctor (bimap, rmap)
-import Optic.Core (lens)
+import Optic.Core (lens, (..))
 import Optic.Prism
 import Optic.Types
 import Model.Sort (Sort(..))
@@ -63,8 +62,8 @@ dropDirExt (DirName d) =
   where
   idx = S.lastIndexOf "." d
 
-notebookPath :: PrismP Resource DirPath
-notebookPath = prism' Notebook $ \s -> case s of
+_notebookPath :: PrismP Resource DirPath
+_notebookPath = prism' Notebook $ \s -> case s of
   Notebook fp -> Just fp
   _ -> Nothing
 
@@ -221,20 +220,20 @@ setName :: Resource -> String -> Resource
 setName r name =
   setPath r ((renameAny (const name) (getPath r)))
 
-pathL :: LensP Resource AnyPath
-pathL = lens getPath setPath
+_path :: LensP Resource AnyPath
+_path = lens getPath setPath
 
-nameAnyPath :: LensP AnyPath String
-nameAnyPath = lens getNameStr (\p x -> renameAny (const x) p)
+_nameAnyPath :: LensP AnyPath String
+_nameAnyPath = lens getNameStr (\p x -> renameAny (const x) p)
 
-nameL :: LensP Resource String
-nameL = pathL <<< nameAnyPath
+_name :: LensP Resource String
+_name = _path ..  _nameAnyPath
 
-rootAnyPath :: LensP AnyPath DirPath
-rootAnyPath = lens getDir setDir
+_rootAnyPath :: LensP AnyPath DirPath
+_rootAnyPath = lens getDir setDir
 
-rootL :: LensP Resource DirPath
-rootL = pathL <<< rootAnyPath
+_root :: LensP Resource DirPath
+_root = _path .. _rootAnyPath
 
 instance resourceEq :: Eq Resource where
   (==) (File p) (File p') = p == p'

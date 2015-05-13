@@ -61,7 +61,7 @@ filterByTerm :: M.Resource -> S.Term -> Boolean
 filterByTerm r
   (S.Term {predicate: predicate, labels: labels, include: include}) =
   let name :: String
-      name = r ^. M.nameL
+      name = r ^. M._name
 
       res :: String
       res = M.resourceTag r

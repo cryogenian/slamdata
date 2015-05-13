@@ -16,9 +16,9 @@ import Driver.File.Path (updatePath)
 import Input.Notebook (Input(..))
 import Model.Notebook
 import Model.Notebook.Cell
-import Model.Notebook.Domain (notebookCells)
+import Model.Notebook.Domain (_notebookCells)
+import Input.Notebook (Input(..), runCellEvent)
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
-import Model.Resource (resourceDir)
 import Optic.Core ((^.))
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 import View.Notebook.Cell (cell)
@@ -36,6 +36,8 @@ import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Math as Math
 import qualified View.Css as Vc
 import qualified View.File.Modal.Common as Vm
+import View.Notebook.Cell.Search (searchOutput)
+import Model.Resource (resourceDir, resourceFileName)
 
 view :: forall e. State -> HTML e
 view state =
@@ -78,7 +80,7 @@ body state =
 
 cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
-                ((sort $ state ^. notebook <<< notebookCells) >>= cell state.tickDate) ]
+                ((sort $ state ^. _notebook <<< _notebookCells) >>= cell state.tickDate) ]
 
 margined :: forall e. [HTML e] -> [HTML e] -> HTML e
 margined l r = row [ H.div [ A.classes [ B.colMd2 ] ] l
@@ -155,7 +157,7 @@ name state =
             , E.onKeyUp (\e -> if e.keyCode == 13 then
                                  pure $ handleSubmitName state
                                else pure empty)
-            , A.value (state.name)  ] [] ]
+            , A.value (resourceFileName state.resource)  ] [] ]
 
 modal :: forall e. State -> [HTML e]
 modal state =
