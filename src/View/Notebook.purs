@@ -14,7 +14,7 @@ import Number.Format (toFixed)
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 import qualified Math as Math
 
-import Data.Array ((..), length, zipWith, replicate, sort)
+import Data.Array ((..), head, length, zipWith, replicate, singleton, sort)
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (notebookCells)
@@ -123,6 +123,7 @@ cell d (Cell o) =
                        , E.onClick (\_ -> pure (if isRunning o.runState then pure (StopCell o.cellId) else runCellEvent o.cellId)) ]
               [ if isRunning o.runState then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ]
           , H.div [ A.classes [ Vc.statusText ] ] [ H.text (statusText d o.runState) ]
+          , H.div [ A.classes [ Vc.cellFailures ] ] (failureText o.cellId o.expandedStatus o.failures)
           ]
     , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.content)
     , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
@@ -131,6 +132,20 @@ cell d (Cell o) =
   where fadeWhen :: Boolean -> [A.ClassName]
         fadeWhen true = [B.fade]
         fadeWhen false = [B.fade, B.in_]
+
+failureText :: forall e. CellId -> Boolean -> [FailureMessage] -> [HTML e]
+failureText _ _ [ ] = [ ]
+failureText cellId expanded fs =
+  [ H.div_ [ H.text (show (length fs) <> " error(s) during evaluation. ")
+  , H.a [ A.href "#", E.onClick (\_ -> E.preventDefault $> pure (ToggleFailuresCell cellId)) ] linkText ]
+  ] <>
+    if expanded
+    then (\f -> H.div_ [ H.text f ]) <$> fs
+    else [ ]
+  where linkText =
+          [ H.text (if expanded
+                    then "Hide details"
+                    else "Show details") ]
 
 isRunning :: RunState -> Boolean
 isRunning (RunningSince _) = true

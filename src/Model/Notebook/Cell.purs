@@ -42,11 +42,15 @@ newtype Cell =
        , input :: Port
        , output :: Port
        , content :: String
+       , expandedStatus :: Boolean
+       , failures :: [FailureMessage]
        , cellType :: CellType
        , metadata :: String
        , hiddenEditor :: Boolean
        , runState :: RunState
        }
+
+type FailureMessage = String
 
 data RunState = RunInitial
               | RunningSince Date
@@ -58,6 +62,8 @@ newCell cellId cellType =
        , input: Closed 
        , output: Closed
        , content: ""
+       , expandedStatus: false
+       , failures: []
        , cellType: cellType
        , metadata: ""
        , hiddenEditor: false
