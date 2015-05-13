@@ -42,11 +42,15 @@ newtype Cell =
        , input :: Port
        , output :: Port
        , content :: String
+       , expandedStatus :: Boolean
+       , failures :: [FailureMessage]
        , cellType :: CellType
        , metadata :: String
        , hiddenEditor :: Boolean
        , runState :: RunState
        }
+
+type FailureMessage = String
 
 data RunState = RunInitial
               | RunningSince Date
@@ -58,6 +62,8 @@ newCell cellId cellType =
        , input: Closed
        , output: Closed
        , content: ""
+       , expandedStatus: false
+       , failures: []
        , cellType: cellType
        , metadata: ""
        , hiddenEditor: false
@@ -109,3 +115,9 @@ _hiddenEditor = _cell <<< lens _.hiddenEditor (_ { hiddenEditor = _ })
 
 _runState :: LensP Cell RunState
 _runState = _cell <<< lens _.runState (_ { runState = _ })
+
+_expandedStatus :: LensP Cell Boolean
+_expandedStatus = _cell <<< lens _.expandedStatus (_ { expandedStatus = _ })
+
+_failures :: LensP Cell [FailureMessage]
+_failures = _cell <<< lens _.failures (_ { failures = _ })

@@ -2,6 +2,7 @@ module View.Notebook.Cell (cell) where
 
 import Control.Functor (($>))
 import Control.Plus (empty)
+import Data.Array (length)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Function (on)
 import Data.Inject1 (inj)
@@ -50,6 +51,8 @@ cell d state =
                         ]
                 , H.div [ A.classes [ VC.statusText ] ]
                         [ H.text $ statusText d (state ^. _runState) ]
+                , H.div [ A.classes [ VC.cellFailures ] ]
+                        (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
                 ]
           , H.div [ A.classes [B.row, VC.cellOutput] ]
                   $ renderOutput (state ^. _cellType) (state ^. _content)
@@ -57,6 +60,20 @@ cell d state =
                   []
           ]
   ]
+
+failureText :: forall e. CellId -> Boolean -> [FailureMessage] -> [HTML e]
+failureText _ _ [ ] = [ ]
+failureText cellId expanded fs =
+  [ H.div_ [ H.text (show (length fs) <> " error(s) during evaluation. ")
+  , H.a [ A.href "#", E.onClick (\_ -> E.preventDefault $> pure (ToggleFailuresCell cellId)) ] linkText ]
+  ] <>
+    if expanded
+    then (\f -> H.div_ [ H.text f ]) <$> fs
+    else [ ]
+  where linkText =
+          [ H.text (if expanded
+                    then "Hide details"
+                    else "Show details") ]
 
 isRunning :: RunState -> Boolean
 isRunning (RunningSince _) = true

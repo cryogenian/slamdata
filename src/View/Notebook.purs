@@ -13,11 +13,11 @@ import Data.Maybe (maybe)
 import Data.Path.Pathy
 import Data.String (joinWith)
 import Driver.File.Path (updatePath)
-import Input.Notebook (Input(..))
+import Input.Notebook (Input(..), runCellEvent)
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (_notebookCells)
-import Input.Notebook (Input(..), runCellEvent)
+import Number.Format (toFixed)
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Optic.Core ((^.))
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)

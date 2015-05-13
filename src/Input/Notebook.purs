@@ -2,7 +2,9 @@ module Input.Notebook (runCellEvent, updateState, CellResultContent(..), Input(.
 
 import Data.Tuple (fst)
 import Data.Maybe (maybe, Maybe(..))
+import Data.Either (Either(), either)
 import Data.Array (filter, modifyAt, (!!))
+import qualified Data.Array.NonEmpty as NEL
 import Data.Function (on)
 import Data.Date (Date(), Now(), now, toEpochMilliseconds)
 import Control.Monad.Eff.Class (liftEff)
@@ -31,9 +33,11 @@ data Input
   | SetAddingCell Boolean
   | AddCell CellType
   | ToggleEditorCell CellId
+  | ToggleFailuresCell CellId
   | TrashCell CellId
   | RunCell CellId Date
-  | CellResult CellId Date CellResultContent
+  | StopCell CellId
+  | CellResult CellId Date (Either (NEL.NonEmpty FailureMessage) CellResultContent)
   | SetActiveCell CellId
   | SecondTick Date
 
@@ -83,13 +87,16 @@ updateState state (AddCell cellType) =
 updateState state (ToggleEditorCell cellId) =
   state # _notebook.._notebookCells..mapped %~ onCell cellId toggleEditor
 
+updateState state (ToggleFailuresCell cellId) =
+  state # _notebook.._notebookCells..mapped %~ onCell cellId toggleFailures
+
 updateState state (TrashCell cellId) =
   state # _notebook.._notebookCells %~ filter (not <<< isCell cellId)
 
-updateState state (CellResult cellId date (AceContent content)) =
+updateState state (CellResult cellId date content) =
   let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
       f _                = RunInitial -- TODO: Cell in bad state
-  in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< setContent content)
+  in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
 
 updateState state (SetActiveCell cellId) =
   state # _activeCellId .~ cellId
@@ -102,11 +109,21 @@ updateState state (SecondTick date) =
 
 updateState state i = state
 
+cellContent :: Either (NEL.NonEmpty FailureMessage) CellResultContent -> Cell -> Cell
+cellContent = either (setFailures <<< NEL.toArray) success
+  where success (AceContent content) = setFailures [ ] <<< setContent content
+
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
 onCell ci f c = if isCell ci c then f c else c
 
 toggleEditor :: Cell -> Cell
 toggleEditor (Cell o) = Cell $ o { hiddenEditor = not o.hiddenEditor }
+
+toggleFailures :: Cell -> Cell
+toggleFailures (Cell o) = Cell $ o { expandedStatus = not o.expandedStatus }
+
+setFailures :: [FailureMessage] -> Cell -> Cell
+setFailures fs (Cell o) = Cell $ o { failures = fs }
 
 setContent :: String -> Cell -> Cell
 setContent content (Cell o) = Cell $ o { content = content }
@@ -116,4 +133,3 @@ modifyRunState f (Cell o) = Cell $ o { runState = f o.runState }
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
-
