@@ -1,60 +1,41 @@
-module View.Notebook (view, HTML()) where
+module View.Notebook (view) where
 
-import Data.Bifunctor (bimap)
-import Data.Date (Date(), toEpochMilliseconds)
-import Data.Function (on)
-import Data.Maybe (Maybe(), maybe)
-import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
-import Control.Functor (($>))
 import Control.Apply ((*>))
+import Control.Functor (($>))
 import Control.Monad.Eff.Class (liftEff)
-import Data.Inject1 (inj)
 import Control.Plus (empty)
-import Number.Format (toFixed)
-import View.Common (contentFluid, navbar, icon, logo, glyph, row)
-import qualified Math as Math
-
+import Controller.Notebook (handleMenuSignal, handleSubmitName)
 import Data.Array ((..), length, zipWith, replicate, sort)
+import Data.Bifunctor (bimap)
+import Data.Inject1 (inj)
+import Data.Int (toNumber, fromNumber, Int())
+import Data.Maybe (maybe)
+import Data.Path.Pathy
+import Data.String (joinWith)
+import Driver.File.Path (updatePath)
+import Input.Notebook (Input(..))
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (notebookCells)
-import Input.Notebook (Input(..), runCellEvent)
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
-import Controller.Notebook (handleMenuSignal, handleSubmitName)
-import Data.Int (toNumber, fromNumber, Int())
-import Data.String (joinWith)
-import EffectTypes (NotebookAppEff())
+import Model.Resource (resourceDir)
 import Optic.Core ((^.))
-
+import View.Common (contentFluid, navbar, icon, logo, glyph, row)
+import View.Notebook.Cell (cell)
+import View.Notebook.Common (HTML())
+import qualified Config as Config
 import qualified Data.Argonaut.Encode as Ae
 import qualified Data.Argonaut.Printer as Ap
-
-import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen)
-import Text.Markdown.SlamDown.Parser (parseMd)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
-import qualified Halogen.Themes.Bootstrap3 as B
-import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.HTML.Events as E
-import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Forms as E
-import qualified Config as Config
+import qualified Halogen.HTML.Events.Handler as E
+import qualified Halogen.HTML.Events.Monad as E
+import qualified Halogen.Themes.Bootstrap3 as B
+import qualified Math as Math
 import qualified View.Css as Vc
 import qualified View.File.Modal.Common as Vm
-import Driver.File.Path (updatePath)
-import View.Notebook.Cell.Search (searchOutput)
-import Data.Path.Pathy
-import Model.Resource (resourceDir)
-
-type HTML e = H.HTML (E.Event (NotebookAppEff e) Input)
-
-dataCellId :: forall i. Number -> A.Attr i
-dataCellId = A.attr $ A.attributeName "data-cell-id"
-
-dataCellType :: forall i. CellType -> A.Attr i
-dataCellType ct = (A.attr $ A.attributeName "data-cell-type") str
-  where str :: String
-        str = celltype2str ct
 
 view :: forall e. State -> HTML e
 view state =
@@ -69,7 +50,7 @@ navigation state =
     [ navbar
       [ H.div [ A.classes [ Vc.navCont, Vc.notebookNav, B.containerFluid ] ]
         [ icon B.glyphiconBook $ notebookHref state
-        , logo 
+        , logo
         , name state ]
       , H.ul [ A.classes [ B.nav, B.navbarNav ] ]
         ( zipWith (li state) (0 .. length state.dropdowns) state.dropdowns )
@@ -77,7 +58,7 @@ navigation state =
   where
   notebookHref :: State -> String
   notebookHref state =
-    let u = maybe rootDir (rootDir </>) $ 
+    let u = maybe rootDir (rootDir </>) $
         sandbox rootDir $ resourceDir state.resource
     in updatePath (pure u) Config.homeHash
 
@@ -99,68 +80,11 @@ cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
                 ((sort $ state ^. notebook <<< notebookCells) >>= cell state.tickDate) ]
 
-
-cell :: forall e. Maybe Date -> Cell -> [HTML e]
-cell d (Cell o) =
-  [ H.div [ A.classes [ B.containerFluid, Vc.notebookCell ] ]
-    [ row [ H.div [ A.classes [ B.btnGroup, B.pullRight, Vc.cellControls ] ]
-               [ H.button [ A.classes [ B.btn ]
-                          , E.onClick (E.input_ (ToggleEditorCell o.cellId))
-                          ] [ H.text (if o.hiddenEditor then "Show" else "Hide") ]
-               , H.button [ A.classes [ B.btn ]
-                          , E.onClick (E.input_ (TrashCell o.cellId))
-                          ] [ H.text "Trash" ]
-               ]
-             ] 
-    , row
-      [ H.div
-        [ A.classes $ ([ Vc.cellInput ] <> fadeWhen o.hiddenEditor) ] 
-        [ H.div [ dataCellId o.cellId
-                , dataCellType o.cellType
-                , A.classes [ Vc.aceContainer ] ] [ ] ] ] 
-    , row [ H.div [ A.classes $ fadeWhen o.hiddenEditor ] 
-            [ H.button [ A.classes [ B.btn, B.btnPrimary, if isRunning o.runState then Vc.stopButton else Vc.playButton ]
-                       , E.onClick (\_ -> pure (runCellEvent o.cellId)) ]
-              [ if isRunning o.runState then glyph B.glyphiconStop else glyph B.glyphiconPlay ] ]
-          , H.div [ A.classes [ Vc.statusText ] ] [ H.text (statusText d o.runState) ]
-          ]
-    , H.div [ A.classes [ B.row, Vc.cellOutput ] ] (renderOutput o.cellType o.content)
-    , H.div [ A.classes [ B.row, Vc.cellNextActions ] ] [ ] 
-    ] ]
-
-  where fadeWhen :: Boolean -> [A.ClassName]
-        fadeWhen true = [B.fade]
-        fadeWhen false = [B.fade, B.in_]
-
-isRunning :: RunState -> Boolean
-isRunning (RunningSince _) = true
-isRunning _ = false
-
-statusText :: Maybe Date -> RunState -> String
-statusText _ RunInitial = ""
-statusText d (RunningSince d') = maybe "" (\s -> "Running for " <> s <> "s") $ d >>= flip secondsText d'
-statusText _ (RunFinished (Milliseconds ms)) = "Finished: took " <> show ms <> "ms"
-
-secondsText :: Date -> Date -> Maybe String
-secondsText a b = toFixed 0 <<< Math.max 0 <<< unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b
-  where unSeconds (Seconds n) = n
-
-renderOutput :: forall e. CellType -> String -> [HTML e]
-renderOutput Markdown = markdownOutput
-renderOutput Search = searchOutput 
-renderOutput _ = const [ ]
-
-
--- TODO: Interpret the SlamDownEvent instead of discarding.
-markdownOutput :: forall e. String -> [HTML e]
-markdownOutput = fromSlamDownEvents <<< renderHalogen <<< parseMd
-  where fromSlamDownEvents :: [H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
-        fromSlamDownEvents = (($> empty) <$>)
-
 margined :: forall e. [HTML e] -> [HTML e] -> HTML e
 margined l r = row [ H.div [ A.classes [ B.colMd2 ] ] l
                       , H.div [ A.classes [ B.colMd10 ] ] r
                       ]
+
 newCellMenu :: forall e. State -> [HTML e]
 newCellMenu state =
   [ H.a [ A.href "#"
@@ -169,8 +93,8 @@ newCellMenu state =
                            E.preventDefault $>
                            (pure $ SetAddingCell (not state.addingCell))) ]
     [ glyph B.glyphiconPlusSign ]
-  , H.div [ A.classes [ B.clearfix ] ] [] 
-  , H.div [ E.onClick (\_ -> E.stopPropagation $> empty) 
+  , H.div [ A.classes [ B.clearfix ] ] []
+  , H.div [ E.onClick (\_ -> E.stopPropagation $> empty)
           , A.classes ([ B.panel
                        , B.panelDefault
                        , B.fade
@@ -215,7 +139,7 @@ menuItem state {name: name, message: mbMessage, lvl: lvl} =
   H.li [ A.classes (maybe [B.disabled] (const []) mbMessage) ]
   [ H.a [ A.href "#"
         , E.onClick (\e -> do
-                        E.stopPropagation 
+                        E.stopPropagation
                         E.preventDefault $>
                           maybe empty (handleMenuSignal state) mbMessage) ]
     [H.span_ $ (txt lvl name) <>
@@ -244,9 +168,9 @@ modal state =
         [ Vm.header $ Vm.h4 "Error"
         , Vm.body
           [ H.div [ A.classes [ B.alert, B.alertDanger ] ]
-            [ H.text state.modalError ] ] 
+            [ H.text state.modalError ] ]
         ]
       ]
     ]
   ]
-  
+

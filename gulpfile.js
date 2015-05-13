@@ -30,4 +30,4 @@ gulp.task("watch-less", ["less"], function() {
                       ["less"]);
 });
 
-gulp.task("dev", ["watch-less", "watch-entries-file"]);
+gulp.task("dev", ["watch-less", "watch-entries-file", "watch-entries-notebook"]);

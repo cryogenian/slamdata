@@ -2,13 +2,13 @@ module Model.Notebook.Cell where
 
 import Data.Date (Date())
 import Data.Time (Milliseconds())
+import Data.Argonaut.Combinators
 import Data.Either
 import Global
 import Model.Notebook.Port
-import Data.Argonaut.Combinators
+import Optic.Core (lens, LensP())
 import qualified Data.Argonaut.Core as Ac
 import qualified Data.Argonaut.Encode as Ae
-
 
 type CellId = Number
 
@@ -37,7 +37,7 @@ celltype2str Markdown = "markdown"
 
 -- input and output are ports for cells i.e data uri,
 -- content is cell content i.e. markdown
-newtype Cell = 
+newtype Cell =
   Cell { cellId :: CellId
        , input :: Port
        , output :: Port
@@ -55,7 +55,7 @@ data RunState = RunInitial
 newCell :: CellId -> CellType -> Cell
 newCell cellId cellType =
   Cell { cellId: cellId
-       , input: Closed 
+       , input: Closed
        , output: Closed
        , content: ""
        , cellType: cellType
@@ -73,7 +73,7 @@ instance cellOrd :: Ord Cell where
   compare (Cell c) (Cell c') = compare c.cellId c'.cellId
 
 instance cellTypeEncode :: Ae.EncodeJson CellType where
-  encodeJson = Ac.fromString <<< celltype2str 
+  encodeJson = Ac.fromString <<< celltype2str
 
 instance cellEncode :: Ae.EncodeJson Cell where
   encodeJson (Cell cell)
@@ -82,3 +82,30 @@ instance cellEncode :: Ae.EncodeJson Cell where
     ~> "cellType" := cell.cellType
     ~> "metadata" := cell.metadata
     ~> Ac.jsonEmptyObject
+
+_cell :: LensP Cell _
+_cell = lens (\(Cell obj) -> obj) (const Cell)
+
+_cellId :: LensP Cell CellId
+_cellId = _cell <<< lens _.cellId (_ { cellId = _ })
+
+_input :: LensP Cell Port
+_input = _cell <<< lens _.input (_ { input = _ })
+
+_output :: LensP Cell Port
+_output = _cell <<< lens _.output (_ { output = _ })
+
+_content :: LensP Cell String
+_content = _cell <<< lens _.content (_ { content = _ })
+
+_cellType :: LensP Cell CellType
+_cellType = _cell <<< lens _.cellType (_ { cellType = _ })
+
+_metadata :: LensP Cell String
+_metadata = _cell <<< lens _.metadata (_ { metadata = _ })
+
+_hiddenEditor :: LensP Cell Boolean
+_hiddenEditor = _cell <<< lens _.hiddenEditor (_ { hiddenEditor = _ })
+
+_runState :: LensP Cell RunState
+_runState = _cell <<< lens _.runState (_ { runState = _ })
