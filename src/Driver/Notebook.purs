@@ -41,14 +41,14 @@ import qualified Routing as R
 import qualified Routing.Match as R
 import qualified Routing.Match.Class as R
 import qualified Routing.Hash as R
-import Model.Resource (resourcePath, parent)
+import Model.Resource (resourcePath, parent, _name)
 import Api.Fs (children)
 import Input.Notebook (Input(), NotebookInput(..))
 import App.Notebook.Ace (AceKnot())
-import Optic.Core ((.~))
+import Optic.Core ((.~), (^.))
 
 tickDriver :: forall e. H.Driver Input (NotebookComponentEff e) -> Eff (NotebookAppEff e) Unit
-tickDriver k = void $ interval 1000 $ now >>= k <<< inj <<< SecondTick
+tickDriver k = void $ interval 1000 $ now >>= k <<< inj <<< (_tickDate .~) <<< Just 
 
 driver :: forall e. RefVal AceKnot ->
           H.Driver Input (NotebookComponentEff e) ->
@@ -57,22 +57,23 @@ driver ref k =
   R.matches' decodeURIPath routing \old new -> do
     case new of
       NotebookRoute res editable -> do
-        k $ inj $ SetEditable (isEdit editable)
-
+        update (_editable .~ isEdit editable) 
         flip (runAff (const $ pure unit)) (attempt $ children (parent res)) $ \ei -> do
-          k $ inj $ SetLoaded true
-          k $ inj $ case ei of
+          update (_loaded .~ true)
+          update case ei of
             Left _ ->
-              SetError "Incorrect path"
-            Right siblings ->
-              if elemIndex res siblings == -1
-              then SetError ("There is no notebook at " <> resourcePath res)
-              else SetSiblings siblings
-        k $ inj $ SetResource res
-
+              _error .~ "Incorrect path"
+            Right siblings -> 
+              if elemIndex res siblings == -1 
+              then _error .~ ("There is no notebook at " <> resourcePath res)
+              else _siblings .~ siblings
+        update  (\x -> x # _resource .~ res
+                       # _initialName .~ (res ^. _name))
         handleShortcuts ref k
 
-      _ -> k $ inj $ SetError "Incorrect path"
+      _ -> update (_error .~ "Incorrect path")
+   where update = k <<< inj 
+
 
 handleShortcuts :: forall e. RefVal AceKnot ->
                    (Input -> Eff (NotebookAppEff e) Unit) ->

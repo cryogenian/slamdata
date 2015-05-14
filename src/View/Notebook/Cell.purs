@@ -9,7 +9,7 @@ import Data.Inject1 (inj)
 import Data.Maybe (Maybe(), maybe)
 import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
 import EffectTypes (NotebookAppEff())
-import Input.Notebook (Input(), NotebookInput(..), runCellEvent)
+import Input.Notebook (Input(), NotebookInput(..))
 import Model.Notebook.Cell
 import Number.Format (toFixed)
 import Optic.Core ((^.))
@@ -17,8 +17,9 @@ import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen)
 import Text.Markdown.SlamDown.Parser (parseMd)
 import View.Common
 import View.Notebook.Cell.Explore (exploreEditor, exploreOutput)
-import View.Notebook.Cell.Search (searchOutput)
+import View.Notebook.Cell.Search (searchOutput, searchEditor)
 import View.Notebook.Common
+import Controller.Notebook.Cell (runCellEvent)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
@@ -31,34 +32,41 @@ import qualified View.Css as VC
 cell :: forall e. Maybe Date -> Cell -> [HTML e]
 cell d state =
   [ H.div [ A.classes [B.containerFluid, VC.notebookCell] ]
-          [ row [ H.div [ A.classes [B.btnGroup, B.pullRight, VC.cellControls] ]
-                        [ H.button [ A.classes [B.btn]
-                                   , E.onClick $ E.input_ $ inj $ ToggleEditorCell $ state ^. _cellId
-                                   ]
-                                   [ H.text (if state ^. _hiddenEditor then "Show" else "Hide") ]
-                        , H.button [ A.classes [B.btn]
-                                   , E.onClick $ E.input_ $ inj $ TrashCell $ state ^. _cellId
-                                   ]
-                                   [ H.text "Trash" ]
-                        ]
-                ]
-          , editor state
-          , row [ H.div [ A.classes $ fadeWhen $ state ^. _hiddenEditor ]
-                        [ H.button [ A.classes [ B.btn, B.btnPrimary, if isRunning (state ^. _runState) then VC.stopButton else VC.playButton ]
-                                   , E.onClick (\_ -> pure $ runCellEvent (state ^. _cellId))
-                                   ]
-                                   [ if isRunning (state ^. _runState) then glyph B.glyphiconStop else glyph B.glyphiconPlay ]
-                        ]
-                , H.div [ A.classes [ VC.statusText ] ]
-                        [ H.text $ statusText d (state ^. _runState) ]
-                , H.div [ A.classes [ VC.cellFailures ] ]
-                        (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
-                ]
-          , H.div [ A.classes [B.row, VC.cellOutput] ]
-                  $ renderOutput (state ^. _content)
-          , H.div [ A.classes [B.row, VC.cellNextActions] ]
-                  []
+    [ row [ H.div [ A.classes [B.btnGroup, B.pullRight, VC.cellControls] ]
+            [ H.button [ A.classes [B.btn]
+                       , E.onClick $ E.input_ $ inj $ ToggleEditorCell $ state ^. _cellId
+                       ]
+              [ H.text (if state ^. _hiddenEditor then "Show" else "Hide") ]
+            , H.button [ A.classes [B.btn]
+                       , E.onClick $ E.input_ $ inj $ TrashCell $ state ^. _cellId
+                       ]
+              [ H.text "Trash" ]
+            ]
           ]
+    
+    , editor state
+    , row [ H.div [ A.classes $ fadeWhen $ state ^. _hiddenEditor ]
+            [ H.button [ A.classes [ B.btn
+                                   , B.btnPrimary
+                                   , if isRunning (state ^. _runState)
+                                     then VC.stopButton
+                                     else VC.playButton ]
+                       , E.onClick (\_ -> pure (runCellEvent state))
+                       ]
+              [ if isRunning (state ^. _runState)
+                then glyph B.glyphiconStop
+                else glyph B.glyphiconPlay ]
+            ]
+          , H.div [ A.classes [ VC.statusText ] ]
+            [ H.text $ statusText d (state ^. _runState) ]
+          , H.div [ A.classes [ VC.cellFailures ] ]
+            (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
+          ]
+    , H.div [ A.classes [B.row, VC.cellOutput] ]
+      $ renderOutput (state ^. _content)
+    , H.div [ A.classes [B.row, VC.cellNextActions] ]
+      [ ]
+    ]
   ]
 
 failureText :: forall e. CellId -> Boolean -> [FailureMessage] -> [HTML e]
@@ -91,6 +99,7 @@ secondsText a b = toFixed 0 <<< Math.max 0 <<< unSeconds $ on (-) (toSeconds <<<
 editor :: forall e. Cell -> HTML e
 editor state = case state ^. _content of
   (Explore _) -> exploreEditor
+  (Search _) -> searchEditor state 
   _ -> row [ H.div [ A.classes $ [VC.cellInput] <> fadeWhen (state ^. _hiddenEditor) ]
                       [ H.div [ dataCellId $ state ^. _cellId
                               , dataCellType $ state ^. _content
@@ -112,7 +121,6 @@ renderOutput (Markdown s) = markdownOutput s
 renderOutput (Search s) = searchOutput s
 renderOutput _ = []
 
--- TODO: Interpret the SlamDownEvent instead of discarding.
 markdownOutput :: forall e. String -> [HTML e]
 markdownOutput = fromSlamDownEvents <<< renderHalogen <<< parseMd
   where fromSlamDownEvents :: [H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]

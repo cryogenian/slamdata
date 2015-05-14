@@ -28,6 +28,7 @@ import Ace.Selection (getRange)
 import Ace.Types (EditSession(), EAce(), Editor(), TextMode())
 import qualified Ace.Editor as Editor
 
+import Model.Notebook 
 import Model.Notebook.Cell (CellId(), string2cellId)
 
 import Optic.Core
@@ -72,10 +73,11 @@ initialize m b d = do
   initialize' mode editor cid = do
     session <- createEditSession "" mode ace
     Editor.focus editor
-    modifyRef m $ \x -> x # _2 %~ M.insert cid session
+    modifyRef m (_2 %~ M.insert cid session)
     Editor.onFocus editor do
-      modifyRef m $ \x -> x # _1 .~ cid
-      d $ inj $ SetActiveCell cid
+      modifyRef m (_1 .~ cid)
+      d $ inj $ (_activeCellId .~ cid)
+
 
   reinit :: Editor -> EditSession -> Eff _ Unit
   reinit editor session = do
@@ -92,7 +94,7 @@ handleInput m (RunCell cellId _) d = do
   maybe (return unit) (getValue >=> d <<< inj <<< CellResult cellId now' <<< Right <<< AceContent) $
     M.lookup cellId m'
 handleInput m (TrashCell cellId) _ = do
-  modifyRef m $ (\x -> x # _2 %~ M.delete cellId)
+  modifyRef m (_2 %~ M.delete cellId)
 handleInput _ _ _ = return unit
 
 acePostRender :: forall eff. RefVal AceKnot -> NotebookInput ->

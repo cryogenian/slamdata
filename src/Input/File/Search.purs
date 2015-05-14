@@ -6,7 +6,7 @@ module Input.File.Search
 import Control.Timer (Timeout())
 import Data.Either (either)
 import Data.Maybe (Maybe(..))
-import Model.Search (Search())
+import Model.File.Search (Search())
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Printer (strQuery)
 

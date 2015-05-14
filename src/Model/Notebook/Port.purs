@@ -13,8 +13,8 @@ data Port
   = Closed
   | PortResource Resource
   | VarMap (StrMap VarMapValue)
-    
-    
+
+
 instance portEncode :: Ae.EncodeJson Port where
   encodeJson Closed = Ac.jsonEmptyObject
   encodeJson (PortResource res) =

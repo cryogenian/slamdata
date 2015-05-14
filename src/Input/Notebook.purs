@@ -1,13 +1,13 @@
 module Input.Notebook
   ( Input()
   , NotebookInput(..)
-  , runCellEvent
   , updateState
   , CellResultContent(..)
   ) where
 
 import Control.Monad.Eff.Class (liftEff)
 import Control.Timer (Timeout())
+import Control.Alt ((<|>))
 import Data.Array (filter, modifyAt, (!!))
 import Data.Date (Date(), Now(), now, toEpochMilliseconds)
 import Data.Either (Either(), either)
@@ -23,24 +23,17 @@ import Model.Notebook.Domain (_notebookCells, addCell)
 import Model.Resource (_name, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.))
 import Optic.Setter (mapped, over)
+import Control.Timer (Timeout())
 import qualified Data.Array.NonEmpty as NEL
 
 data CellResultContent = AceContent String
 
-type Input = Either NotebookInput Unit
+type Input = Either NotebookInput
+             (Either (State -> State) Unit)
 
 data NotebookInput
   = Dropdown Number
   | CloseDropdowns
-  | SetTimeout (Maybe Timeout)
-  | SetName String
-  | SetResource Resource
-  | SetSiblings [Resource]
-  | SetLoaded Boolean
-  | SetError String
-  | SetEditable Boolean
-  | SetModalError String
-  | SetAddingCell Boolean
   | AddCell CellContent
   | ToggleEditorCell CellId
   | ToggleFailuresCell CellId
@@ -48,17 +41,19 @@ data NotebookInput
   | RunCell CellId Date
   | StopCell CellId
   | CellResult CellId Date (Either (NEL.NonEmpty FailureMessage) CellResultContent)
-  | SetActiveCell CellId
-  | SecondTick Date
-
-runCellEvent :: forall eff. CellId -> Event (now :: Now | eff) Input
-runCellEvent cid = async $ inj <<< RunCell cid <$> liftEff now
+  | UpdateCell CellId (Cell -> Cell)
 
 updateState :: State -> Input -> State
 updateState state input =
-  fromJust $ (inputNotebook state <$> prj input)
+  fromJust $
+  (inputNotebook state <$> prj input)
+  <|> (update state <$> prj input)
 
-inputNotebook :: State -> NotebookInput -> State
+update :: State -> (State -> State) -> State
+update state fn = fn state 
+
+inputNotebook state (UpdateCell cellId fn) = 
+    state # _notebook.._notebookCells..mapped %~ onCell cellId fn
 
 inputNotebook state (Dropdown i) =
   let visSet = maybe true not (_.visible <$> state.dropdowns !! i) in
@@ -67,33 +62,6 @@ inputNotebook state (Dropdown i) =
 
 inputNotebook state CloseDropdowns =
   state{addingCell = false} # _dropdowns %~ (_{visible = false} <$>)
-
-inputNotebook state (SetTimeout mbTm) =
-  state{timeout = mbTm}
-
-inputNotebook state (SetResource res) =
-  state{resource = res, initialName = res ^. _name}
-
-inputNotebook state (SetName name) =
-  state{resource = state.resource # _name .~ name}
-
-inputNotebook state (SetSiblings ss) =
-  state{siblings = ss}
-
-inputNotebook state (SetLoaded loaded) =
-  state{loaded = loaded}
-
-inputNotebook state (SetError error) =
-  state{error = error}
-
-inputNotebook state (SetEditable editable) =
-  state{editable = editable}
-
-inputNotebook state (SetModalError error) =
-  state{modalError = error}
-
-inputNotebook state (SetAddingCell adding) =
-  state{addingCell = adding}
 
 inputNotebook state (AddCell cellType) =
   state # _notebook %~ (addCell cellType Nothing >>> fst)
@@ -109,14 +77,9 @@ inputNotebook state (CellResult cellId date content) =
       f _                = RunInitial -- TODO: Cell in bad state
   in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
 
-inputNotebook state (SetActiveCell cellId) =
-  state # _activeCellId .~ cellId
 
 inputNotebook state (RunCell cellId date) =
   state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
-
-inputNotebook state (SecondTick date) =
-  state{tickDate = Just date}
 
 inputNotebook state i = state
 
