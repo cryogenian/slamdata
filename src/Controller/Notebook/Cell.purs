@@ -4,7 +4,7 @@ import Control.Plus
 import Control.Monad.Eff.Class
 import Control.Monad.Aff.Class
 import Data.Either (Either(..), either)
-import Input.Notebook (Input(..), NotebookInput(..))
+import Input.Notebook (Input(..))
 import Halogen.HTML.Events.Monad (Event(), async, andThen)
 import Data.Date (now, Now())
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _content, _search)

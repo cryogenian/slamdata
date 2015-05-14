@@ -9,8 +9,7 @@ import View.Common
 import View.Notebook.Common
 import Model.Notebook.Cell
 import EffectTypes 
-import Input.Notebook (Input(..), NotebookInput(..))
-
+import Input.Notebook (Input(..))
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -18,15 +17,12 @@ import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Monad as E 
 import qualified Halogen.HTML.Events.Forms as E
 
-
 import Optic.Core ((^.), (.~), (..))
-
 
 handleSearchInput :: forall e. Cell -> String -> E.Event (NotebookAppEff e) Input
 handleSearchInput cell value = do
-  pure $ inj $ UpdateCell (cell ^. _cellId) (_content .. _search .~ value)
+  pure $ UpdateCell (cell ^. _cellId) (_content .. _search .~ value)
 
-  
 searchEditor :: forall e. Cell -> HTML e
 searchEditor cell =
   row [ H.form_

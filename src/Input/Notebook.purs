@@ -1,6 +1,5 @@
 module Input.Notebook
-  ( Input()
-  , NotebookInput(..)
+  ( Input(..)
   , updateState
   , CellResultContent(..)
   ) where
@@ -23,65 +22,57 @@ import Model.Notebook.Domain (_notebookCells, addCell)
 import Model.Resource (_name, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.))
 import Optic.Setter (mapped, over)
+import Text.Markdown.SlamDown.Html (SlamDownEvent())
 import Control.Timer (Timeout())
 import qualified Data.Array.NonEmpty as NEL
 
 data CellResultContent = AceContent String
 
-type Input = Either NotebookInput
-             (Either (State -> State) Unit)
-
-data NotebookInput
-  = Dropdown Number
+data Input
+  = WithState (State -> State)
+  | Dropdown Number
   | CloseDropdowns
   | AddCell CellContent
-  | ToggleEditorCell CellId
-  | ToggleFailuresCell CellId
   | TrashCell CellId
   | RunCell CellId Date
   | StopCell CellId
   | CellResult CellId Date (Either (NEL.NonEmpty FailureMessage) CellResultContent)
   | UpdateCell CellId (Cell -> Cell)
+  | CellSlamDownEvent CellId SlamDownEvent
 
-updateState :: State -> Input -> State
-updateState state input =
-  fromJust $
-  (inputNotebook state <$> prj input)
-  <|> (update state <$> prj input)
+updateState state (WithState f) =
+  f state
 
-update :: State -> (State -> State) -> State
-update state fn = fn state 
+updateState state (UpdateCell cellId fn) = 
+  state # _notebook.._notebookCells..mapped %~ onCell cellId fn
 
-inputNotebook state (UpdateCell cellId fn) = 
-    state # _notebook.._notebookCells..mapped %~ onCell cellId fn
-
-inputNotebook state (Dropdown i) =
+updateState state (Dropdown i) =
   let visSet = maybe true not (_.visible <$> state.dropdowns !! i) in
   state # _dropdowns %~
   (modifyAt i _{visible = visSet}) <<<  (_{visible = false} <$>)
 
-inputNotebook state CloseDropdowns =
+updateState state CloseDropdowns =
   state{addingCell = false} # _dropdowns %~ (_{visible = false} <$>)
 
-inputNotebook state (AddCell cellType) =
+updateState state (AddCell cellType) =
   state # _notebook %~ (addCell cellType Nothing >>> fst)
 
-inputNotebook state (ToggleEditorCell cellId) =
-  state # _notebook.._notebookCells..mapped %~ onCell cellId toggleEditor
+-- updateState state (ToggleEditorCell cellId) =
+--   state # _notebook.._notebookCells..mapped %~ onCell cellId toggleEditor
 
-inputNotebook state (TrashCell cellId) =
+updateState state (TrashCell cellId) =
   state # _notebook.._notebookCells %~ filter (not <<< isCell cellId)
 
-inputNotebook state (CellResult cellId date content) =
+updateState state (CellResult cellId date content) =
   let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
       f _                = RunInitial -- TODO: Cell in bad state
   in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
 
 
-inputNotebook state (RunCell cellId date) =
+updateState state (RunCell cellId date) =
   state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
 
-inputNotebook state i = state
+updateState state i = state
 
 cellContent :: Either (NEL.NonEmpty FailureMessage) CellResultContent -> Cell -> Cell
 cellContent = either (setFailures <<< NEL.toArray) success
