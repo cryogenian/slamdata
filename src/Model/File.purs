@@ -6,7 +6,7 @@ import Data.Maybe (Maybe(..))
 import Model.Breadcrumb (Breadcrumb())
 import Model.File.Dialog (Dialog())
 import Model.File.Item (Item(), wrap)
-import Model.Search (Search(), initialSearch)
+import Model.File.Search (Search(), initialSearch)
 import Model.Sort (Sort(..))
 
 import Model.Resource

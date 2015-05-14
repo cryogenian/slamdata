@@ -13,14 +13,16 @@ module Model.Resource (
 import Data.Tuple
 import Data.Maybe
 import Data.Either
+import Data.Either.Unsafe (fromRight)
 import Data.Inject1
 import Data.Path.Pathy
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign (ForeignError(TypeMismatch))
 import Data.Bifunctor (bimap, rmap)
-import Optic.Core (lens, (..))
+import Optic.Core (lens, (..), (^.), (%~), (.~))
 import Optic.Prism
 import Optic.Types
+import Optic.Refractor.Prism (_Right)
 import Model.Sort (Sort(..))
 import qualified Data.String as S
 import Utils
@@ -209,6 +211,12 @@ mkDatabase ap = either go Database ap
   go p = maybe newDatabase id do
     Tuple pp dirOrFile <- peel p
     pure $ Database (pp </> dir (nameOfFileOrDir dirOrFile))
+
+child :: Resource -> String -> Resource
+child res name =
+  let p = fromRight (mkDirectory (res ^. _path) ^. _path)
+  in mkFile $ Left $ p </> file name
+
 
 setPath :: Resource -> AnyPath -> Resource
 setPath (Notebook _) p = mkNotebook p

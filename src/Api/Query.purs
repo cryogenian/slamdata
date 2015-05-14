@@ -116,10 +116,10 @@ getFields' acc json =
 
 goArr :: [String] -> JArray -> [String]
 goArr acc arr =
-  concat $ [acc] <> (getFields' ((<> "[*]") <$> acc) <$> arr)
+  concat $ (getFields' ((<> "[*]") <$> acc) <$> arr)
 
 goObj :: [String] -> JObject -> [String]
-goObj acc obj = concat $ [acc] <> (goTuple acc <$> (toList obj))
+goObj acc obj = concat $ (goTuple acc <$> (toList obj))
 
 goTuple :: [String] -> Tuple String Json -> [String]
 goTuple acc (Tuple key json) = getFields' ((\x -> x <> "." <> key) <$> acc) json 

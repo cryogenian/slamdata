@@ -13,13 +13,14 @@ import Data.Maybe (maybe)
 import Data.Path.Pathy
 import Data.String (joinWith)
 import Driver.File.Path (updatePath)
-import Input.Notebook (NotebookInput(..), runCellEvent)
+import Input.Notebook (NotebookInput(..))
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (_notebookCells)
-import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
+import Controller.Notebook.Cell (runCellEvent)
 import Number.Format (toFixed)
-import Optic.Core ((^.))
+import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
+import Optic.Core ((^.), (.~))
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 import View.Notebook.Cell (cell)
 import View.Notebook.Common (HTML())
@@ -37,7 +38,7 @@ import qualified Math as Math
 import qualified View.Css as Vc
 import qualified View.File.Modal.Common as Vm
 import View.Notebook.Cell.Search (searchOutput)
-import Model.Resource (resourceDir, resourceFileName)
+import Model.Resource (resourceDir, resourceFileName, _name)
 
 view :: forall e. State -> HTML e
 view state =
@@ -93,7 +94,7 @@ newCellMenu state =
         , A.classes [ B.btn, B.btnLink, B.btnLg, Vc.notebookAddCellButton ]
         , E.onClick (\_ -> E.stopPropagation *>
                            E.preventDefault $>
-                           (pure $ inj $ SetAddingCell (not state.addingCell))) ]
+                           (pure $ inj $  (_addingCell .~ not state.addingCell))) ]
     [ glyph B.glyphiconPlusSign ]
   , H.div [ A.classes [ B.clearfix ] ] []
   , H.div [ E.onClick (\_ -> E.stopPropagation $> empty)
@@ -153,7 +154,7 @@ name state =
   H.div [ A.classes [ B.colXs12, B.colSm8 ] ]
   [ H.input [ A.classes [ Vc.notebookName ]
             , A.id_ Config.notebookNameEditorId
-            , E.onInput (E.input $ inj <<< SetName)
+            , E.onInput $ E.input (\v -> inj $ (_resource <<< _name .~ v))
             , E.onKeyUp (\e -> if e.keyCode == 13 then
                                  pure $ handleSubmitName state
                                else pure empty)
@@ -164,7 +165,7 @@ modal state =
   [ H.div [ A.classes ([B.modal, B.fade] <> if state.modalError /= ""
                                             then [B.in_]
                                             else [])
-          , E.onClick (E.input_ $ inj $ SetModalError "") ]
+          , E.onClick (E.input_ (inj $ (_modalError .~ ""))) ]
     [ H.div [ A.classes [ B.modalDialog ] ]
       [ H.div [ A.classes [ B.modalContent ] ]
         [ Vm.header $ Vm.h4 "Error"

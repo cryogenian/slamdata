@@ -1,19 +1,23 @@
 module Model.Notebook where
 
-import Data.Date (Date())
 import Data.Maybe
+import Data.Date (Date())
 import Data.Inject1 (prj, inj)
+import Data.Array ((!!))
 import Control.Timer (Timeout())
-import Optic.Core (lens, LensP(), (..))
+import Optic.Core (lens, LensP(), (..), (^.))
+import Optic.Index (ix)
+import Optic.Index.Types (TraversalP())
+
 import EffectTypes (NotebookAppEff())
 import Model.Notebook.Menu (initialDropdowns, DropdownItem())
-import Model.Notebook.Cell (CellId())
+import Model.Notebook.Cell (CellId(), Cell())
 import Model.Resource (Resource(), newNotebook)
 import qualified Model.Notebook.Domain as D 
 
+
 type State =
   { dropdowns :: [DropdownItem]
-  , timeout :: Maybe Timeout
   , resource :: Resource
   , siblings :: [Resource]
   , loaded :: Boolean
@@ -29,16 +33,45 @@ type State =
 _dropdowns :: LensP State [DropdownItem]
 _dropdowns = lens _.dropdowns _{dropdowns = _}
 
+_resource :: LensP State Resource
+_resource = lens _.resource _{resource = _}
+
 _notebook :: LensP State D.Notebook
 _notebook = lens _.notebook _{notebook = _}
 
 _activeCellId :: LensP State CellId
 _activeCellId = _notebook .. D._activeCellId
 
+_siblings :: LensP State [Resource]
+_siblings = lens _.siblings _{siblings = _}
+
+_loaded :: LensP State Boolean
+_loaded = lens _.loaded _{loaded = _}
+
+_error :: LensP State String
+_error = lens _.error _{error = _}
+
+_editable :: LensP State Boolean
+_editable = lens _.editable _{editable = _}
+
+_modalError :: LensP State String
+_modalError = lens _.modalError _{modalError = _}
+
+_addingCell :: LensP State Boolean
+_addingCell = lens _.addingCell _{addingCell = _}
+
+_initialName :: LensP State String
+_initialName = lens _.initialName _{initialName = _}
+
+_tickDate :: LensP State (Maybe Date)
+_tickDate = lens _.tickDate _{tickDate = _}
+
+_activeCell :: TraversalP State Cell
+_activeCell f s = (_notebook .. D._notebookCells .. ix (s ^. _activeCellId)) f s
+
 initialState :: State
 initialState =
   { dropdowns: initialDropdowns
-  , timeout: Nothing
   , resource: newNotebook
   , siblings: []
   , loaded: false

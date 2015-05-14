@@ -4,10 +4,11 @@ import Data.Date (Date())
 import Data.Time (Milliseconds())
 import Data.Argonaut.Combinators
 import Data.Either
+import Data.Maybe (Maybe(..))
 import Global
 import Model.Notebook.Port
 import Model.Notebook.Cell.Explore (ExploreRec())
-import Optic.Core (lens, LensP())
+import Optic.Core (lens, LensP(), prism', PrismP())
 import qualified Data.Argonaut.Core as Ac
 import qualified Data.Argonaut.Encode as Ae
 
@@ -18,8 +19,6 @@ string2cellId str =
   if isNaN int then Left "incorrect cell id" else Right int
   where int = readFloat str
 
--- input and output are ports for cells i.e data uri,
--- content is cell content i.e. markdown
 newtype Cell =
   Cell { cellId :: CellId
        , input :: Port
@@ -47,6 +46,39 @@ cellContentType (Search _) = "search"
 cellContentType (Query _) = "query"
 cellContentType (Visualize _) = "visualize"
 cellContentType (Markdown _) = "markdown"
+
+_evaluate :: PrismP CellContent String
+_evaluate = prism' Evaluate $ \s -> case s of
+  Evaluate s -> Just s
+  _ -> Nothing
+
+_explore :: PrismP CellContent ExploreRec
+_explore = prism' Explore $ \s -> case s of
+  Explore r -> Just r
+  _ -> Nothing
+
+_search :: PrismP CellContent String
+_search = prism' Search $ \s -> case s of
+  Search s -> Just s
+  _ -> Nothing
+
+_query :: PrismP CellContent String
+_query = prism' Query $ \s -> case s of
+  Query s -> Just s
+  _ -> Nothing
+
+_visualize :: PrismP CellContent String
+_visualize = prism' Visualize $ \s -> case s of
+  Visualize s -> Just s
+  _ -> Nothing
+
+_markdown :: PrismP CellContent String
+_markdown = prism' Markdown $ \s -> case s of
+  Markdown s -> Just s
+  _ -> Nothing
+  
+
+
 
 type FailureMessage = String
 

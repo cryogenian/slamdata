@@ -17,12 +17,13 @@ import Model.Notebook.Menu (
   MenuCellSignal(..),
   MenuHelpSignal(..),
   MenuSignal(..))
-import Model.Notebook (State(), _activeCellId)
+
+import Model.Notebook (State(), _activeCellId, _activeCell, _modalError)
+import Controller.Notebook.Cell (runCellEvent)
 import Model.Notebook.Cell (CellContent(..))
 import Model.Notebook.Cell.Explore (initialExploreRec)
-import Input.Notebook (Input(), NotebookInput(..), runCellEvent)
+import Input.Notebook (Input(), NotebookInput(..))
 import Data.Inject1 (inj, prj)
-import Debug.Foreign -- mark for grep -nr to not remove. mocking handlers
 import Model.Path (decodeURIPath)
 import Api.Fs (move, children, delete)
 import Routing.Hash (setHash, getHash)
@@ -37,10 +38,12 @@ import Driver.Notebook.Routing (routing, Routes(..))
 import qualified Data.String.Regex as Rgx
 import qualified Halogen.HTML.Events.Types as E
 import Optic.Core
+import Optic.Fold ((^?))
 import Model.Resource
 import Data.Path.Pathy
 import Halogen.HTML.Events.Monad (Event())
 import EffectTypes (NotebookAppEff())
+
 
 type I e = Event (NotebookAppEff e) Input
 
@@ -78,7 +81,7 @@ handleMenuNotebook signal = do
 handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
-    EvaluateCell -> runCellEvent (state ^. _activeCellId)
+    EvaluateCell -> maybe empty runCellEvent (state ^? _activeCell)
     DeleteCell -> pure $ inj $ TrashCell (state ^. _activeCellId)
     _ -> empty
 
@@ -121,14 +124,12 @@ handleSubmitName :: forall e. State -> I e
 handleSubmitName state = do
   let oldResource = state.resource # _name .~ state.initialName
       newResource = state.resource
-  -- slamdata/slamengine#693
   if oldResource == newResource
     then empty
     else do
     siblings <- liftAff $ children (parent oldResource)
-    -- slamdata/slamengine#693
     if elemIndex (newResource ^. _name) ((^. _name) <$> siblings) /= -1
-      then pure $ inj $ SetModalError ("File " <> (resourcePath newResource) <> " already exists")
+      then pure $ inj $ (_modalError .~ ("File " <> (resourcePath newResource) <> " already exists"))
       else do
       result <- liftAff $ move oldResource (getPath newResource)
       case result of
@@ -136,4 +137,4 @@ handleSubmitName state = do
           liftEff $ setHash $ resourcePath newResource <> "edit"
           empty
         Left e ->
-          pure $ inj $ SetModalError ("Rename error: " <> e)
+          pure $ inj $ (_modalError .~ ("Rename error: " <> e))

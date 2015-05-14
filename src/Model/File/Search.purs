@@ -1,4 +1,4 @@
-module Model.Search where
+module Model.File.Search where
 
 import Data.Maybe
 import Control.Timer
