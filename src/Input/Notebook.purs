@@ -57,9 +57,6 @@ updateState state CloseDropdowns =
 updateState state (AddCell cellType) =
   state # _notebook %~ (addCell cellType Nothing >>> fst)
 
--- updateState state (ToggleEditorCell cellId) =
---   state # _notebook.._notebookCells..mapped %~ onCell cellId toggleEditor
-
 updateState state (TrashCell cellId) =
   state # _notebook.._notebookCells %~ filter (not <<< isCell cellId)
 
@@ -80,12 +77,6 @@ cellContent = either (setFailures <<< NEL.toArray) success
 
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
 onCell ci f c = if isCell ci c then f c else c
-
-toggleEditor :: Cell -> Cell
-toggleEditor (Cell o) = Cell $ o { hiddenEditor = not o.hiddenEditor }
-
-toggleFailures :: Cell -> Cell
-toggleFailures (Cell o) = Cell $ o { expandedStatus = not o.expandedStatus }
 
 setFailures :: [FailureMessage] -> Cell -> Cell
 setFailures fs (Cell o) = Cell $ o { failures = fs }
