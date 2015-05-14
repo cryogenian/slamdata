@@ -6,6 +6,9 @@ import Data.Inject1 (prj, inj)
 import Data.Array ((!!))
 import Control.Timer (Timeout())
 import Optic.Core (lens, LensP(), (..), (^.))
+import Optic.Index (ix)
+import Optic.Index.Types (TraversalP())
+
 import EffectTypes (NotebookAppEff())
 import Model.Notebook.Menu (initialDropdowns, DropdownItem())
 import Model.Notebook.Cell (CellId(), Cell())
@@ -63,8 +66,8 @@ _initialName = lens _.initialName _{initialName = _}
 _tickDate :: LensP State (Maybe Date)
 _tickDate = lens _.tickDate _{tickDate = _}
 
-activeCell :: State -> Maybe Cell
-activeCell state = (state ^. _notebook .. D._notebookCells) !! (state ^. _activeCellId)
+_activeCell :: TraversalP State Cell
+_activeCell f s = (_notebook .. D._notebookCells .. ix (s ^. _activeCellId)) f s
 
 initialState :: State
 initialState =

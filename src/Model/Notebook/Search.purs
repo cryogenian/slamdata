@@ -7,7 +7,7 @@ import Data.Date (fromString)
 import Data.Semiring.Free
 import Data.Foldable
 import Data.String (joinWith)
-import Data.String.Regex (regex, noFlags, replace, Regex())
+import Data.String.Regex (regex, noFlags, replace, Regex(), test)
 import Text.SlamSearch (mkQuery, check)
 import Text.SlamSearch.Types
 import Global
@@ -102,7 +102,9 @@ needUnq s = (not $ (show num /= s || isNaN num))
  where num = readFloat s 
 
 needDate :: String -> Boolean
-needDate s = maybe false (const true) $ fromString s
+needDate = test dateRegex
+  where 
+  dateRegex = regex """(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[4678]|1[02])[-](0[1-9]|[12][0-9]|30)|(19|20)[0-9]{2}[-](0[1359]|11)[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))""" noFlags
 
 
 valueToSQL :: Value -> String

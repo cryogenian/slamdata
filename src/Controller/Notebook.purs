@@ -18,7 +18,7 @@ import Model.Notebook.Menu (
   MenuHelpSignal(..),
   MenuSignal(..))
 
-import Model.Notebook (State(), _activeCellId, activeCell, _modalError)
+import Model.Notebook (State(), _activeCellId, _activeCell, _modalError)
 import Controller.Notebook.Cell (runCellEvent)
 import Model.Notebook.Cell (CellContent(..))
 import Model.Notebook.Cell.Explore (initialExploreRec)
@@ -38,6 +38,7 @@ import Driver.Notebook.Routing (routing, Routes(..))
 import qualified Data.String.Regex as Rgx
 import qualified Halogen.HTML.Events.Types as E
 import Optic.Core
+import Optic.Fold ((^?))
 import Model.Resource
 import Data.Path.Pathy
 import Halogen.HTML.Events.Monad (Event())
@@ -80,7 +81,7 @@ handleMenuNotebook signal = do
 handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
-    EvaluateCell -> maybe empty runCellEvent (activeCell state)
+    EvaluateCell -> maybe empty runCellEvent (state ^? _activeCell)
     DeleteCell -> pure $ inj $ TrashCell (state ^. _activeCellId)
     _ -> empty
 
