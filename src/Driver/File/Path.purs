@@ -8,7 +8,7 @@ module Driver.File.Path
   , renderPath
   ) where
 
-import Data.Array (reverse, filter, take, (!!), drop)
+import Data.Array (reverse, filter, take, (!!), drop, intersect, length)
 import Data.DOM.Simple.Encode (encodeURIComponent, decodeURIComponent)
 import Data.Either (either)
 import Data.Maybe
@@ -19,6 +19,7 @@ import Model.Sort (Sort(..), sort2string)
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
 import Text.SlamSearch (mkQuery)
+import Text.SlamSearch.Parser.Tokens (keyChars)
 import Utils (endsWith, trimQuotes)
 
 sortRgx :: Rgx.Regex
@@ -73,7 +74,7 @@ updatePath path hash =
 
 renderPath :: AnyPath -> String
 renderPath ap =
-  if Str.indexOf " " rendered == -1
+  if 0 == (length $ intersect (Str.split "" rendered) (" ":keyChars))
   then rendered
   else "\"" <> rendered <> "\""
   where
