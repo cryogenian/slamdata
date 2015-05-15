@@ -62,7 +62,7 @@ cell d state =
             (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
           ]
     , H.div [ A.classes [B.row, VC.cellOutput] ]
-      $ renderOutput (state ^. _content)
+      $ renderOutput (state ^. _content) (state ^. _cellId)
     , H.div [ A.classes [B.row, VC.cellNextActions] ]
       [ ]
     ]
@@ -114,16 +114,16 @@ editor state = case state ^. _content of
   dataCellType :: forall i. CellContent -> A.Attr i
   dataCellType = A.attr (A.attributeName "data-cell-type") <<< cellContentType
 
-renderOutput :: forall e. CellContent -> [HTML e]
-renderOutput (Explore rec) = exploreOutput rec
+renderOutput :: forall e. CellContent -> CellId -> [HTML e]
+renderOutput (Explore rec) = const $ exploreOutput rec
 renderOutput (Markdown s) = markdownOutput s
-renderOutput (Search s) = searchOutput s
-renderOutput _ = []
+renderOutput (Search s) = const $ searchOutput s
+renderOutput _ = const []
 
-markdownOutput :: forall e. String -> [HTML e]
-markdownOutput = fromSlamDownEvents <<< renderHalogen <<< parseMd
+markdownOutput :: forall e. String -> CellId -> [HTML e]
+markdownOutput s cellId = fromSlamDownEvents <<< renderHalogen $ parseMd s
   where fromSlamDownEvents :: [H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
-        fromSlamDownEvents = (($> empty) <$>)
+        fromSlamDownEvents = ((((CellSlamDownEvent cellId) <$>) <$>) <$>)
 
 fadeWhen :: Boolean -> [A.ClassName]
 fadeWhen true = [B.fade]
