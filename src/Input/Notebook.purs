@@ -19,12 +19,14 @@ import Halogen.HTML.Events.Monad (Event(), async)
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (_notebookCells, addCell)
+import Model.Notebook.Port (Port(..), VarMapValue())
 import Model.Resource (_name, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.))
 import Optic.Setter (mapped, over)
-import Text.Markdown.SlamDown.Html (SlamDownEvent())
+import Text.Markdown.SlamDown.Html (SlamDownEvent(..))
 import Control.Timer (Timeout())
 import qualified Data.Array.NonEmpty as NEL
+import qualified Data.StrMap as M
 
 data CellResultContent = AceContent String
 
@@ -65,11 +67,18 @@ updateState state (CellResult cellId date content) =
       f _                = RunInitial -- TODO: Cell in bad state
   in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
 
-
 updateState state (RunCell cellId date) =
   state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
 
+updateState state (CellSlamDownEvent cellId (FormValueChanged name value)) =
+  state # _notebook.._notebookCells..mapped %~ onCell cellId (addVar name value)
+
 updateState state i = state
+
+addVar :: String -> VarMapValue -> Cell -> Cell
+addVar name value (Cell o) = Cell $ o { output = VarMap <<< M.insert name value $ m o.output }
+  where m (VarMap n) = n
+        m _ = M.empty
 
 cellContent :: Either (NEL.NonEmpty FailureMessage) CellResultContent -> Cell -> Cell
 cellContent = either (setFailures <<< NEL.toArray) success
