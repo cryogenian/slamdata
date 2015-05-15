@@ -43,12 +43,12 @@ import qualified Routing.Match.Class as R
 import qualified Routing.Hash as R
 import Model.Resource (resourcePath, parent, _name)
 import Api.Fs (children)
-import Input.Notebook (Input(), NotebookInput(..))
+import Input.Notebook (Input(..))
 import App.Notebook.Ace (AceKnot())
 import Optic.Core ((.~), (^.))
 
 tickDriver :: forall e. H.Driver Input (NotebookComponentEff e) -> Eff (NotebookAppEff e) Unit
-tickDriver k = void $ interval 1000 $ now >>= k <<< inj <<< (_tickDate .~) <<< Just 
+tickDriver k = void $ interval 1000 $ now >>= k <<< WithState <<< (_tickDate .~) <<< Just
 
 driver :: forall e. RefVal AceKnot ->
           H.Driver Input (NotebookComponentEff e) ->
@@ -72,8 +72,7 @@ driver ref k =
         handleShortcuts ref k
 
       _ -> update (_error .~ "Incorrect path")
-   where update = k <<< inj 
-
+   where update = k <<< WithState
 
 handleShortcuts :: forall e. RefVal AceKnot ->
                    (Input -> Eff (NotebookAppEff e) Unit) ->

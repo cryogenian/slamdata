@@ -22,8 +22,8 @@ import Model.Notebook (State(), _activeCellId, _activeCell, _modalError)
 import Controller.Notebook.Cell (runCellEvent)
 import Model.Notebook.Cell (CellContent(..))
 import Model.Notebook.Cell.Explore (initialExploreRec)
-import Input.Notebook (Input(), NotebookInput(..))
-import Data.Inject1 (inj, prj)
+import Input.Notebook (Input(..))
+import Data.Inject1 (prj)
 import Model.Path (decodeURIPath)
 import Api.Fs (move, children, delete)
 import Routing.Hash (setHash, getHash)
@@ -53,7 +53,7 @@ handleMenuNotebook RenameNotebook = do
     document globalWindow
       >>= getElementById notebookNameEditorId
       >>= maybe (pure unit) focus
-  pure $ inj $ CloseDropdowns
+  pure $ CloseDropdowns
 handleMenuNotebook PublishNotebook = do
   liftEff $ do
     (toView <$> getHash) >>= newTab
@@ -82,14 +82,14 @@ handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
     EvaluateCell -> maybe empty runCellEvent (state ^? _activeCell)
-    DeleteCell -> pure $ inj $ TrashCell (state ^. _activeCellId)
+    DeleteCell -> pure $ TrashCell (state ^. _activeCellId)
     _ -> empty
 
 handleMenuInsert :: forall e. MenuInsertSignal -> I e
-handleMenuInsert ExploreInsert = pure $ inj $ AddCell (Explore initialExploreRec)
-handleMenuInsert MarkdownInsert = pure $ inj $ AddCell (Markdown "")
-handleMenuInsert QueryInsert = pure $ inj $ AddCell (Query "")
-handleMenuInsert SearchInsert = pure $ inj $ AddCell (Search "")
+handleMenuInsert ExploreInsert = pure $ AddCell (Explore initialExploreRec)
+handleMenuInsert MarkdownInsert = pure $ AddCell (Markdown "")
+handleMenuInsert QueryInsert = pure $ AddCell (Query "")
+handleMenuInsert SearchInsert = pure $ AddCell (Search "")
 
 handleMenuHelp :: forall e. MenuHelpSignal -> I e
 handleMenuHelp TutorialHelp = do
@@ -129,7 +129,7 @@ handleSubmitName state = do
     else do
     siblings <- liftAff $ children (parent oldResource)
     if elemIndex (newResource ^. _name) ((^. _name) <$> siblings) /= -1
-      then pure $ inj $ (_modalError .~ ("File " <> (resourcePath newResource) <> " already exists"))
+      then pure $ WithState (_modalError .~ ("File " <> (resourcePath newResource) <> " already exists"))
       else do
       result <- liftAff $ move oldResource (getPath newResource)
       case result of
@@ -137,4 +137,4 @@ handleSubmitName state = do
           liftEff $ setHash $ resourcePath newResource <> "edit"
           empty
         Left e ->
-          pure $ inj $ (_modalError .~ ("Rename error: " <> e))
+          pure $ WithState (_modalError .~ ("Rename error: " <> e))

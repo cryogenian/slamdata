@@ -1,6 +1,6 @@
 module App.Notebook.Ace (acePostRender, ref, AceKnot()) where
 
-import Input.Notebook (CellResultContent(..), Input(), NotebookInput(..))
+import Input.Notebook (CellResultContent(..), Input(..))
 
 import Control.Bind ((>=>))
 import Control.Monad (when)
@@ -10,7 +10,6 @@ import Control.Monad.Eff.Ref (Ref(), RefVal(), readRef, newRef, modifyRef)
 import Data.Date (Now(), now)
 import Data.Either (Either(..), either)
 import Data.Foldable (for_)
-import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.Tuple
 
@@ -76,7 +75,7 @@ initialize m b d = do
     modifyRef m (_2 %~ M.insert cid session)
     Editor.onFocus editor do
       modifyRef m (_1 .~ cid)
-      d $ inj $ (_activeCellId .~ cid)
+      d $ WithState (_activeCellId .~ cid)
 
 
   reinit :: Editor -> EditSession -> Eff _ Unit
@@ -85,19 +84,19 @@ initialize m b d = do
 
 
 handleInput :: forall eff. RefVal AceKnot
-                        -> NotebookInput
+                        -> Input
                         -> Driver Input (now :: Now, ace :: EAce | eff)
                         -> Eff (HalogenEffects (now :: Now, ace :: EAce | eff)) Unit
 handleInput m (RunCell cellId _) d = do
   Tuple _ m' <- readRef m
   now' <- now
-  maybe (return unit) (getValue >=> d <<< inj <<< CellResult cellId now' <<< Right <<< AceContent) $
+  maybe (return unit) (getValue >=> d <<< CellResult cellId now' <<< Right <<< AceContent) $
     M.lookup cellId m'
 handleInput m (TrashCell cellId) _ = do
   modifyRef m (_2 %~ M.delete cellId)
 handleInput _ _ _ = return unit
 
-acePostRender :: forall eff. RefVal AceKnot -> NotebookInput ->
+acePostRender :: forall eff. RefVal AceKnot -> Input ->
                  HTMLElement -> Driver Input (now :: Now, ace :: EAce | eff) -> Eff (HalogenEffects (now :: Now, ace :: EAce | eff)) Unit
 acePostRender m i b d = do
   initialize m b d

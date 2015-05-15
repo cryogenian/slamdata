@@ -5,14 +5,13 @@ import Control.Plus (empty)
 import Data.Array (length)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Function (on)
-import Data.Inject1 (inj)
 import Data.Maybe (Maybe(), maybe)
 import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
 import EffectTypes (NotebookAppEff())
-import Input.Notebook (Input(), NotebookInput(..))
+import Input.Notebook (Input(..))
 import Model.Notebook.Cell
 import Number.Format (toFixed)
-import Optic.Core ((^.))
+import Optic.Core ((^.), (%~))
 import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen)
 import Text.Markdown.SlamDown.Parser (parseMd)
 import View.Common
@@ -34,11 +33,11 @@ cell d state =
   [ H.div [ A.classes [B.containerFluid, VC.notebookCell] ]
     [ row [ H.div [ A.classes [B.btnGroup, B.pullRight, VC.cellControls] ]
             [ H.button [ A.classes [B.btn]
-                       , E.onClick $ E.input_ $ inj $ ToggleEditorCell $ state ^. _cellId
+                       , E.onClick $ E.input_ $ UpdateCell (state ^. _cellId) (_hiddenEditor %~ not)
                        ]
               [ H.text (if state ^. _hiddenEditor then "Show" else "Hide") ]
             , H.button [ A.classes [B.btn]
-                       , E.onClick $ E.input_ $ inj $ TrashCell $ state ^. _cellId
+                       , E.onClick $ E.input_ $ TrashCell $ state ^. _cellId
                        ]
               [ H.text "Trash" ]
             ]
@@ -73,7 +72,7 @@ failureText :: forall e. CellId -> Boolean -> [FailureMessage] -> [HTML e]
 failureText _ _ [ ] = [ ]
 failureText cellId expanded fs =
   [ H.div_ [ H.text (show (length fs) <> " error(s) during evaluation. ")
-  , H.a [ A.href "#", E.onClick (\_ -> E.preventDefault $> pure (inj $ ToggleFailuresCell cellId)) ] linkText ]
+  , H.a [ A.href "#", E.onClick (\_ -> E.preventDefault $> pure (UpdateCell cellId (_expandedStatus %~ not))) ] linkText ]
   ] <>
     if expanded
     then (\f -> H.div_ [ H.text f ]) <$> fs
