@@ -1,7 +1,7 @@
 module Config where
 
 baseUrl :: String
-baseUrl = "http://local.slamdata.com/"
+baseUrl = "/"
 
 uploadUrl :: String
 uploadUrl = baseUrl <> "upload"
