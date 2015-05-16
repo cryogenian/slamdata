@@ -20,6 +20,7 @@ toInput = pure <<< inj
 open :: forall e. Item -> Eff (dom :: DOM | e) Unit
 open item = newTab $ joinWith "" $ [ Config.notebookUrl
                                    , "#"
+                                   , if isFile item.resource then "/explore" else ""
                                    , encodeURIPath $ resourcePath $ item ^. _resource
-                                   , if isFile item.resource then "/explore" else "edit"
+                                   , if isFile item.resource then "" else "edit"
                                    ]

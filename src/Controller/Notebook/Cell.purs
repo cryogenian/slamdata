@@ -1,32 +1,30 @@
 module Controller.Notebook.Cell where
 
-import Control.Plus 
-import Control.Monad.Eff.Class
-import Control.Monad.Aff.Class
-import Data.Either (Either(..), either)
-import Input.Notebook (Input(..))
-import Halogen.HTML.Events.Monad (Event(), async, andThen)
-import Data.Date (now, Now())
-import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _content, _search)
-import Optic.Core ((^.), (.~), (..))
-import Data.Inject1 (inj)
-import EffectTypes
-import Model.Notebook.Search (needFields, queryToSQL)
-import Text.SlamSearch (mkQuery)
 import Api.Query (fields, query)
-import Model.Resource (newFile, _path, AnyPath(), Resource())
-import Data.Path.Pathy 
-
-
+import Control.Monad.Aff.Class
+import Control.Monad.Eff.Class
+import Control.Plus
+import Controller.Notebook.Cell.Explore (runExplore)
+import Controller.Notebook.Common
+import Data.Date (now, Now())
+import Data.Either (Either(..), either)
+import Data.Inject1 (inj)
+import Data.Path.Pathy
 import Debug.Foreign
-
-type I e = Event (NotebookAppEff e) Input 
+import Halogen.HTML.Events.Monad (Event(), async, andThen)
+import Input.Notebook (Input(..))
+import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _content, _Search)
+import Model.Notebook.Search (needFields, queryToSQL)
+import Model.Resource (newFile, _path, AnyPath(), Resource())
+import Optic.Core ((^.), (.~), (..))
+import Text.SlamSearch (mkQuery)
 
 runCellEvent :: forall eff. Cell -> I eff
-runCellEvent cell = do 
+runCellEvent cell = do
   ((inj <<< RunCell (cell ^. _cellId)) <$> liftEff now) `andThen` \_ ->
     case cell ^. _content of
-      Search s -> runSearch cell
+      Search _ -> runSearch cell
+      Explore _ -> runExplore cell
       _ -> empty
 
 
@@ -35,7 +33,7 @@ tstFile = newFile # _path .~ (Left $ rootDir </> dir "foo" </> dir "foo" </> fil
 
 runSearch :: forall eff. Cell -> I eff
 runSearch input =
-  either errored go $ mkQuery (input ^. _content .. _search)
+  either errored go $ mkQuery (input ^. _content .. _Search)
   where
   errored :: _ -> I eff
   errored _ = empty
@@ -49,7 +47,3 @@ runSearch input =
     res <- liftAff $ query tstFile (queryToSQL fs q)
     liftEff $ fprint $ res
     empty
-    
-
-
-

@@ -17,7 +17,7 @@
   "dependencies": {
     "purescript-aff": "~0.10.0",
     "purescript-affjax": "~0.2.1",
-    "purescript-argonaut": "https://github.com/cryogenian/purescript-argonaut.git#4c15ff94bbde4d3995559cd3c9d17c8775993f46",
+    "purescript-argonaut": "https://github.com/cryogenian/purescript-argonaut.git#242a8f46abda11e761a78b76d032270ec2d52468",
     "purescript-arrays": "~0.3.5",
     "purescript-debug-foreign": "~0.0.4",
     "purescript-dom": "~0.1.2",
@@ -51,7 +51,8 @@
     "purescript-globals": "~0.1.6",
     "purescript-datetime": "~0.5.2",
     "purescript-number-format": "~0.2.1",
-    "purescript-nonempty-arrays": "~0.2.0"
+    "purescript-nonempty-arrays": "~0.2.0",
+    "purescript-jtable": "*"
   },
   "resolutions": {
     "purescript-aff": "~0.10.0",
@@ -62,6 +63,8 @@
     "purescript-profunctor": "~0.2.1",
     "purescript-simple-dom": "master",
     "purescript-halogen": "219bab3df06bbcd32e1ae22c97707b1afec36cf1",
-    "purescript-markdown": "2f7d778a630917540e009d5db921e7617b513e37"
+    "purescript-markdown": "2f7d778a630917540e009d5db921e7617b513e37",
+    "purescript-argonaut": "242a8f46abda11e761a78b76d032270ec2d52468",
+    "purescript-optic": "master"
   }
 }

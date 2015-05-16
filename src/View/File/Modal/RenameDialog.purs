@@ -47,10 +47,18 @@ renameDialog dialog =
                   , E.onInput (renameDirInput $ dialog ^. _resource)
                   , A.value (resourcePath $ dialog ^. _dir) ] []
 
-        , browseDropdown
+        , H.span [ A.classes [B.inputGroupBtn] ]
+                 [ H.button [ A.classes [B.btn, B.btnDefault]
+                            , A.type_ "button"
+                            , E.onClick (\_ -> E.stopPropagation $> (pure $ inj $ Update $ _showList %~ not))
+                            ]
+                            [ H.span [ A.classes [B.caret] ]
+                                     []
+                            ]
+                 ]
         ]
       , H.ul [A.classes $ [ B.listGroup
-                          , Vc.directoryListGroup
+                          , Vc.fileListGroup
                           , B.fade] <> if dialog ^. _showList
                                        then [B.in_]
                                        else []]
@@ -80,15 +88,3 @@ renameDialog dialog =
                         renameItemClicked target res)
         , A.classes [B.listGroupItem]]
     [ H.text (resourcePath res) ]
-
-  browseDropdown :: H.HTML (I e)
-  browseDropdown =
-    H.span [ A.classes [B.inputGroupBtn] ]
-           [ H.button [ A.classes [B.btn, B.btnDefault]
-                      , A.type_ "button"
-                      , E.onClick (\_ -> E.stopPropagation $> (pure $ inj $ Update $ _showList %~ not))
-                      ]
-                      [ H.span [ A.classes [B.caret] ]
-                               []
-                      ]
-           ]

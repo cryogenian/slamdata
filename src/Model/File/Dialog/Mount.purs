@@ -6,7 +6,6 @@ import Data.Maybe (Maybe(..))
 import Data.Foldable (and, all)
 import Data.Tuple (Tuple(..), zip)
 import Optic.Core ((.~), lens, LensP())
-import Optic.Index (ix)
 
 type MountDialogRec =
   { new :: Boolean

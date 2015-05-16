@@ -7,8 +7,11 @@ import Data.Either
 import Data.Maybe (Maybe(..))
 import Global
 import Model.Notebook.Port
-import Model.Notebook.Cell.Explore (ExploreRec())
-import Optic.Core (lens, LensP(), prism', PrismP())
+import Model.Notebook.Cell.FileInput
+import Model.Notebook.Cell.JTableContent
+import Optic.Core ((..), lens, LensP(), prism', PrismP())
+import Optic.Extended (TraversalP())
+import qualified Model.Notebook.Cell.Explore as Ex
 import qualified Data.Argonaut.Core as Ac
 import qualified Data.Argonaut.Encode as Ae
 
@@ -33,7 +36,7 @@ newtype Cell =
 
 data CellContent
   = Evaluate String
-  | Explore ExploreRec
+  | Explore Ex.ExploreRec
   | Search String
   | Query String
   | Visualize String
@@ -47,44 +50,78 @@ cellContentType (Query _) = "query"
 cellContentType (Visualize _) = "visualize"
 cellContentType (Markdown _) = "markdown"
 
-_evaluate :: PrismP CellContent String
-_evaluate = prism' Evaluate $ \s -> case s of
+_Evaluate :: PrismP CellContent String
+_Evaluate = prism' Evaluate $ \s -> case s of
   Evaluate s -> Just s
   _ -> Nothing
 
-_explore :: PrismP CellContent ExploreRec
-_explore = prism' Explore $ \s -> case s of
+_Explore :: PrismP CellContent Ex.ExploreRec
+_Explore = prism' Explore $ \s -> case s of
   Explore r -> Just r
   _ -> Nothing
 
-_search :: PrismP CellContent String
-_search = prism' Search $ \s -> case s of
+_Search :: PrismP CellContent String
+_Search = prism' Search $ \s -> case s of
   Search s -> Just s
   _ -> Nothing
 
-_query :: PrismP CellContent String
-_query = prism' Query $ \s -> case s of
+_Query :: PrismP CellContent String
+_Query = prism' Query $ \s -> case s of
   Query s -> Just s
   _ -> Nothing
 
-_visualize :: PrismP CellContent String
-_visualize = prism' Visualize $ \s -> case s of
+_Visualize :: PrismP CellContent String
+_Visualize = prism' Visualize $ \s -> case s of
   Visualize s -> Just s
   _ -> Nothing
 
-_markdown :: PrismP CellContent String
-_markdown = prism' Markdown $ \s -> case s of
+_Markdown :: PrismP CellContent String
+_Markdown = prism' Markdown $ \s -> case s of
   Markdown s -> Just s
   _ -> Nothing
-  
 
+_FileInput :: TraversalP CellContent FileInput
+_FileInput f s = case s of
+  Explore _ -> (_Explore .. Ex._input) f s
+  _  -> _const f s
 
+_JTableContent :: TraversalP CellContent JTableContent
+_JTableContent f s = case s of
+  Explore _ -> (_Explore .. Ex._table) f s
+  _  -> _const f s
+
+_AceContent :: TraversalP CellContent String
+_AceContent f s = case s of
+  Evaluate _ -> _Evaluate f s
+  Search _ -> _Search f s
+  Query _ -> _Query f s
+  Visualize _ -> _Visualize f s
+  Markdown _ -> _Markdown f s
+  _ -> _const f s
+
+_const :: forall a b. TraversalP a b
+_const _ s = pure s
 
 type FailureMessage = String
 
 data RunState = RunInitial
               | RunningSince Date
               | RunFinished Milliseconds
+
+_RunInitial :: PrismP RunState Unit
+_RunInitial = prism' (const RunInitial) $ \r -> case r of
+  RunInitial -> Just unit
+  _ -> Nothing
+
+_RunningSince :: PrismP RunState Date
+_RunningSince = prism' RunningSince $ \r -> case r of
+  RunningSince d -> Just d
+  _ -> Nothing
+
+_RunFinished :: PrismP RunState Milliseconds
+_RunFinished = prism' RunFinished $ \r -> case r of
+  RunFinished m -> Just m
+  _ -> Nothing
 
 newCell :: CellId -> CellContent -> Cell
 newCell cellId content =
