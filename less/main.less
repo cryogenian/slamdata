@@ -31,11 +31,16 @@ body {
     }
 }
 
-.directory-list-group {
+.file-list-field {
+    width: 568px;
+}
+
+.file-list-group {
     position: absolute;
     width: 568px;
     max-height: 150px;
     overflow-y: scroll;
+    border-bottom: 1px solid #ddd;
 }
 
 .item-icon {
@@ -253,7 +258,7 @@ ol.breadcrumb {
         height: 0;
     }
     &.fade.in {
-        height: 10em;   
+        height: 10em;
     }
 }
 
@@ -265,22 +270,38 @@ ol.breadcrumb {
         padding-right: 13px;
     }
 
-    button.play-button {
+    .status-text {
+        line-height: 34px;
+        padding-left: 10px;
+        float: left;
+    }
+
+    .cell-failures {
+        padding-left: 10px;
+        > div:first-child {
+            margin-left: 4px;
+            display: inline-block;
+            line-height: 34px;
+        }
+        > div:nth-child(2) {
+            background: #f0f0f0;
+            padding: 8px 0 8px 51px;
+            margin-left: -10px;
+        }
+    }
+
+    button.play-button, button.stop-button {
+        float: left;
         border-radius: 0;
         width: 41px;
     }
     .row.cell-output {
-        padding-left: 58px;
-        &.fade.in {
-            padding-top: 12px;
-        }
-        &.fade {
-            padding-top: 0;
-        }
+        margin-left: -2px;
+        border-left: 41px #f0f0f0 solid;
     }
     .cell-next-actions {
         height: 40px;
-        background-color: #dfdfdf;
+        background-color: #f0f0f0;
         margin-left: -2px;
         margin-right: -2px;
     }
@@ -291,13 +312,45 @@ ol.breadcrumb {
         z-index: 100;
         background: transparent;
     }
+
+    .cell-eval-line {
+        background: #dcdcdc;
+    }
 }
 
 .ace-container, .ace_editor {
     height: 100%;
 }
 
+.explore-cell-editor {
+    margin-bottom: 20px;
+}
 
+.page-input {
+    display: inline-block;
+    margin: 0 4px;
+
+    input {
+        display: inline-block;
+        text-align: center;
+        width: 3.5em;
+        margin: 0 4px;
+    }
+}
+
+.page-size {
+    display: inline-block;
+    margin-left: 10px;
+    select {
+        display: inline-block;
+        margin-left: 4px;
+        width: auto;
+    }
+}
+
+.markdown-output {
+    padding-top: 10px;
+}
 
 @import "bootstrap-overloads";
 @import "dialog/mount";

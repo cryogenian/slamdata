@@ -6,6 +6,7 @@ import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
+import Controller.Common
 import Controller.File.Common (open)
 import Data.Array (filter)
 import Data.DOM.Simple.Element (getElementById)
@@ -47,8 +48,7 @@ handleMoveItem item = do
   ss <- liftAff $ children (parent item.resource)
   let dialog = RenameDialog $ (initialRenameDialog item.resource # _siblings .~ ss)
   (toInput $ SetDialog (Just dialog))
-    `andThen` \_ -> do
-    getDirectories root
+    `andThen` \_ -> getDirectories (toInput <<< AddDirs) root
 
 handleOpenItem :: forall e. Item -> Event (FileAppEff e) Input
 handleOpenItem item = do
@@ -98,13 +98,3 @@ handleConfigure _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog {
 -- open dir or db
 moveDown :: forall e. Item -> Eff (dom :: DOM | e) Unit
 moveDown item = modifyHash $ updatePath (getPath $ item.resource)
-
-getDirectories :: forall e. Resource -> Event (FileAppEff e) Input
-getDirectories r = do
-  ei <- liftAff $ attempt $ children r
-  case ei of
-    Right items -> do
-      let cs = filter (\x -> isDirectory x || isDatabase x) items
-      (toInput $ AddDirs cs) `andThen` \_ ->
-        fold (getDirectories <$> cs)
-    _ -> empty

@@ -56,8 +56,11 @@ itemToolbar = className "item-toolbar"
 itemContent :: ClassName
 itemContent = className "item-content"
 
-directoryListGroup :: ClassName
-directoryListGroup = className "directory-list-group"
+fileListField :: ClassName
+fileListField = className "file-list-field"
+
+fileListGroup :: ClassName
+fileListGroup = className "file-list-group"
 
 notebookName :: ClassName
 notebookName = className "notebook-name"
@@ -127,3 +130,18 @@ statusText = className "status-text"
 
 cellFailures :: ClassName
 cellFailures = className "cell-failures"
+
+cellEvalLine :: ClassName
+cellEvalLine = className "cell-eval-line"
+
+exploreCellEditor :: ClassName
+exploreCellEditor = className "explore-cell-editor"
+
+pageInput :: ClassName
+pageInput = className "page-input"
+
+pageSize :: ClassName
+pageSize = className "page-size"
+
+markdownOutput :: ClassName
+markdownOutput = className "markdown-output"

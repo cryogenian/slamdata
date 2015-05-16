@@ -1,11 +1,19 @@
 module View.Notebook.Cell.Explore (exploreEditor, exploreOutput) where
 
-import Model.Notebook.Cell.Explore
-import View.Notebook.Common
+import Controller.Notebook.Cell.Explore (runExplore)
+import Model.Notebook.Cell (Cell(), _FileInput, _JTableContent, _content)
+import Optic.Core ((..))
+import View.Notebook.Cell.FileInput (fileInput)
+import View.Notebook.Cell.JTableCell (renderJTableOutput)
+import View.Notebook.Common (HTML())
+
 import qualified Halogen.HTML as H
+import qualified Halogen.HTML.Attributes as A
+import qualified View.Css as VC
 
-exploreEditor :: forall e. HTML e
-exploreEditor = H.div_ []
+exploreEditor :: forall e. Cell -> HTML e
+exploreEditor cell = H.div [ A.class_ VC.exploreCellEditor ]
+                           $ fileInput (_content .. _FileInput) cell
 
-exploreOutput :: forall e. ExploreRec -> [HTML e]
-exploreOutput = const []
+exploreOutput :: forall e. Cell -> [HTML e]
+exploreOutput = renderJTableOutput (_content .. _JTableContent) runExplore

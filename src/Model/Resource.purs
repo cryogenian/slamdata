@@ -6,7 +6,7 @@ module Model.Resource (
   nameOfFileOrDir, root, resourcePath,
   newFile, newDatabase, newDirectory, newNotebook,
   mkFile, mkDatabase, mkDirectory, mkNotebook,
-  setPath, setName, _path, _root, _name, _notebookPath,
+  setPath, setName, _path, _root, _name, _notebookPath, _filePath,
   sortResource, parent, resourceFileName
   ) where
 
@@ -67,6 +67,11 @@ dropDirExt (DirName d) =
 _notebookPath :: PrismP Resource DirPath
 _notebookPath = prism' Notebook $ \s -> case s of
   Notebook fp -> Just fp
+  _ -> Nothing
+
+_filePath :: PrismP Resource FilePath
+_filePath = prism' File $ \s -> case s of
+  File fp -> Just fp
   _ -> Nothing
 
 isNotebook :: Resource -> Boolean

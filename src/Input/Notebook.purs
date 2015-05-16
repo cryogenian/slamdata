@@ -4,9 +4,9 @@ module Input.Notebook
   , CellResultContent(..)
   ) where
 
+import Control.Alt ((<|>))
 import Control.Monad.Eff.Class (liftEff)
 import Control.Timer (Timeout())
-import Control.Alt ((<|>))
 import Data.Array (filter, modifyAt, (!!))
 import Data.Date (Date(), Now(), now, toEpochMilliseconds)
 import Data.Either (Either(), either)
@@ -21,14 +21,17 @@ import Model.Notebook.Cell
 import Model.Notebook.Domain (_notebookCells, addCell)
 import Model.Notebook.Port (Port(..), VarMapValue())
 import Model.Resource (_name, Resource())
-import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.))
+import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.), (?~))
 import Optic.Setter (mapped, over)
 import Text.Markdown.SlamDown.Html (SlamDownEvent(..))
-import Control.Timer (Timeout())
+
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.StrMap as M
+import qualified Model.Notebook.Cell.JTableContent as JTC
 
-data CellResultContent = AceContent String
+data CellResultContent
+  = AceContent String
+  | JTableContent JTC.JTableContent
 
 data Input
   = WithState (State -> State)
@@ -45,7 +48,7 @@ data Input
 updateState state (WithState f) =
   f state
 
-updateState state (UpdateCell cellId fn) = 
+updateState state (UpdateCell cellId fn) =
   state # _notebook.._notebookCells..mapped %~ onCell cellId fn
 
 updateState state (Dropdown i) =
@@ -82,24 +85,16 @@ addVar name value (Cell o) = Cell $ o { output = VarMap <<< M.insert name value 
 
 cellContent :: Either (NEL.NonEmpty FailureMessage) CellResultContent -> Cell -> Cell
 cellContent = either (setFailures <<< NEL.toArray) success
-  where success (AceContent content) = setFailures [ ] <<< setContent content
+  where
+  success :: CellResultContent -> Cell -> Cell
+  success (AceContent content) = setFailures [ ] <<< (_content .. _AceContent .~ content)
+  success (JTableContent content) = setFailures [ ] <<< (_content .. _JTableContent .~ content)
 
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
 onCell ci f c = if isCell ci c then f c else c
 
 setFailures :: [FailureMessage] -> Cell -> Cell
 setFailures fs (Cell o) = Cell $ o { failures = fs }
-
-setContent :: String -> Cell -> Cell
-setContent content (Cell o) =
-  let content' = case o.content of
-                  Evaluate _ -> Evaluate content
-                  Search _ -> Search content
-                  Query _ -> Query content
-                  Visualize _ -> Visualize content
-                  Markdown _ -> Markdown content
-                  other -> other
-  in Cell $ o { content = content' }
 
 modifyRunState :: (RunState -> RunState) -> Cell -> Cell
 modifyRunState f (Cell o) = Cell $ o { runState = f o.runState }

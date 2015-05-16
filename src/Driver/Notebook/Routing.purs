@@ -2,17 +2,18 @@ module Driver.Notebook.Routing where
 
 import Config (notebookExtension)
 import Control.Alt ((<|>))
-import Control.Apply ((*>))
+import Control.Apply ((*>), (<*))
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
-import Data.List (List())
+import Data.Maybe.Unsafe (fromJust)
+import Data.List (List(..), last, init)
 import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.String (indexOf, length)
 import Data.String.Regex (noFlags, regex, test, Regex())
 import Data.Tuple (Tuple(..))
 import Model.Action (Action(..), string2action)
 import Model.Notebook.Cell (CellId(), string2cellId)
-import Model.Resource (Resource(), newNotebook, _notebookPath)
+import Model.Resource (Resource(), newNotebook, newFile, _notebookPath, _filePath)
 import Optic.Core ((.~))
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
@@ -20,12 +21,12 @@ import Routing.Match.Class (lit, str)
 
 data Routes
   = CellRoute Resource CellId Action
-  | ExploreRoute Resource String
+  | ExploreRoute Resource
   | NotebookRoute Resource Action
 
 routing :: Match Routes
-routing = CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
-      <|> ExploreRoute <$> notebook <*> (lit "explore" *> str)
+routing = ExploreRoute <$> (oneSlash *> lit "explore" *> (fileFromParts <$> list str))
+      <|> CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
       <|> NotebookRoute <$> notebook <*> action
   where
 
@@ -35,6 +36,13 @@ routing = CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
   notebookFromParts :: Tuple (List String) String -> Resource
   notebookFromParts (Tuple ps name) =
     newNotebook # _notebookPath .~ foldl (</>) rootDir (dir <$> ps) </> dir name
+
+  fileFromParts :: List String -> Resource
+  fileFromParts (Cons name Nil) = newFile # _filePath .~ rootDir </> file name
+  fileFromParts ps =
+    let name = fromJust $ last ps
+        ps' = fromJust $ init ps
+    in newFile # _filePath .~ foldl (</>) rootDir (dir <$> ps') </> file name
 
   notebook :: Match Resource
   notebook = notebookFromParts <$> partsAndName
@@ -56,17 +64,17 @@ routing = CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
 
 
   notebookName :: String -> Either String String
-  notebookName input | checkExtension input = Right input 
+  notebookName input | checkExtension input = Right input
                      | otherwise = Left input
 
   pathPart :: String -> Either String String
   pathPart input | input == "" || checkExtension input = Left "incorrect path part"
-                 | otherwise = Right input 
+                 | otherwise = Right input
 
 
   extensionRegex :: Regex
   extensionRegex = regex ("\\." <> notebookExtension <> "$") noFlags
-  
+
   checkExtension :: String -> Boolean
   checkExtension = test extensionRegex
 

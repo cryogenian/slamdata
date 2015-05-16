@@ -1,20 +1,19 @@
 module Model.Notebook where
 
-import Data.Maybe
+import Control.Timer (Timeout())
+import Data.Array ((!!))
 import Data.Date (Date())
 import Data.Inject1 (prj, inj)
-import Data.Array ((!!))
-import Control.Timer (Timeout())
+import Data.Maybe
+import EffectTypes (NotebookAppEff())
+import Model.Notebook.Cell (CellId(), Cell())
+import Model.Notebook.Menu (initialDropdowns, DropdownItem())
+import Model.Resource (Resource(), newNotebook)
 import Optic.Core (lens, LensP(), (..), (^.))
 import Optic.Index (ix)
 import Optic.Index.Types (TraversalP())
 
-import EffectTypes (NotebookAppEff())
-import Model.Notebook.Menu (initialDropdowns, DropdownItem())
-import Model.Notebook.Cell (CellId(), Cell())
-import Model.Resource (Resource(), newNotebook)
-import qualified Model.Notebook.Domain as D 
-
+import qualified Model.Notebook.Domain as D
 
 type State =
   { dropdowns :: [DropdownItem]
@@ -26,7 +25,7 @@ type State =
   , modalError :: String
   , addingCell :: Boolean
   , notebook :: D.Notebook
-  , initialName :: String 
+  , initialName :: String
   , tickDate :: Maybe Date
   }
 
@@ -66,6 +65,7 @@ _initialName = lens _.initialName _{initialName = _}
 _tickDate :: LensP State (Maybe Date)
 _tickDate = lens _.tickDate _{tickDate = _}
 
+-- TODO: this probably isn't right actually, instead of using `ix` we need a real lookup
 _activeCell :: TraversalP State Cell
 _activeCell f s = (_notebook .. D._notebookCells .. ix (s ^. _activeCellId)) f s
 

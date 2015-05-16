@@ -14,8 +14,11 @@ import qualified View.Css as Vc
 navbar :: forall i. [H.HTML i] -> H.HTML i
 navbar = H.nav [ A.classes [ B.navbar, B.navbarInverse, B.navbarFixedTop ] ]
 
-row :: forall i. [H.HTML i ] -> H.HTML i
-row = H.div [ A.classes [ B.row ] ]
+row :: forall i. [H.HTML i] -> H.HTML i
+row = H.div [ A.class_ B.row ]
+
+row' :: forall i. [A.ClassName] -> [H.HTML i] -> H.HTML i
+row' cs = H.div [ A.classes $ cs ++ [B.row] ]
 
 genericContainer :: forall i. [A.ClassName] -> [A.ClassName] ->
                     [H.HTML i] -> H.HTML i
