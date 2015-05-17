@@ -145,3 +145,9 @@ pageSize = className "page-size"
 
 markdownOutput :: ClassName
 markdownOutput = className "markdown-output"
+
+searchCellInput :: ClassName
+searchCellInput = className "search-cell-input"
+
+searchCellButton :: ClassName
+searchCellButton = className "search-cell-button"

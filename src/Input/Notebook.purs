@@ -18,7 +18,7 @@ import Data.Tuple (fst)
 import Halogen.HTML.Events.Monad (Event(), async)
 import Model.Notebook
 import Model.Notebook.Cell
-import Model.Notebook.Domain (_notebookCells, addCell)
+import Model.Notebook.Domain (_cells, addCell)
 import Model.Notebook.Port (Port(..), VarMapValue())
 import Model.Resource (_name, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.), (?~))
@@ -49,7 +49,7 @@ updateState state (WithState f) =
   f state
 
 updateState state (UpdateCell cellId fn) =
-  state # _notebook.._notebookCells..mapped %~ onCell cellId fn
+  state # _notebook.._cells..mapped %~ onCell cellId fn
 
 updateState state (Dropdown i) =
   let visSet = maybe true not (_.visible <$> state.dropdowns !! i) in
@@ -63,18 +63,19 @@ updateState state (AddCell cellType) =
   state # _notebook %~ (addCell cellType Nothing >>> fst)
 
 updateState state (TrashCell cellId) =
-  state # _notebook.._notebookCells %~ filter (not <<< isCell cellId)
+  state # _notebook.._cells %~ filter (not <<< isCell cellId)
 
 updateState state (CellResult cellId date content) =
   let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
       f _                = RunInitial -- TODO: Cell in bad state
-  in state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
+  in state # _notebook.._cells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
 
 updateState state (RunCell cellId date) =
-  state # _notebook.._notebookCells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
+  state # _notebook.._cells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
+
 
 updateState state (CellSlamDownEvent cellId (FormValueChanged name value)) =
-  state # _notebook.._notebookCells..mapped %~ onCell cellId (addVar name value)
+  state # _notebook.._cells..mapped %~ onCell cellId (addVar name value)
 
 updateState state i = state
 

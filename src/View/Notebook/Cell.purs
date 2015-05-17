@@ -120,7 +120,7 @@ renderOutput :: forall e. Cell -> [HTML e]
 renderOutput cell = case cell ^. _content of
   Explore _ -> exploreOutput cell
   Markdown s -> [markdownOutput s (cell ^. _cellId)]
-  Search s -> searchOutput s
+  Search s -> searchOutput cell
   _ -> []
 
 markdownOutput :: forall e. String -> CellId -> HTML e

@@ -7,7 +7,7 @@ module Model.Resource (
   newFile, newDatabase, newDirectory, newNotebook,
   mkFile, mkDatabase, mkDirectory, mkNotebook,
   setPath, setName, _path, _root, _name, _notebookPath, _filePath,
-  sortResource, parent, resourceFileName
+  sortResource, parent, resourceFileName, child
   ) where
 
 import Data.Tuple

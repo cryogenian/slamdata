@@ -16,7 +16,7 @@ import Driver.File.Path (updatePath)
 import Input.Notebook (Input(..))
 import Model.Notebook
 import Model.Notebook.Cell
-import Model.Notebook.Domain (_notebookCells)
+import Model.Notebook.Domain (_cells)
 import Controller.Notebook.Cell (runCellEvent)
 import Number.Format (toFixed)
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
@@ -62,7 +62,7 @@ navigation state =
   notebookHref :: State -> String
   notebookHref state =
     let u = maybe rootDir (rootDir </>) $
-        sandbox rootDir $ resourceDir state.resource
+        sandbox rootDir $ resourceDir (state ^. _resource)
     in updatePath (pure u) Config.homeHash
 
 body :: forall e. State -> [HTML e]
@@ -81,7 +81,7 @@ body state =
 
 cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
-                ((sort $ state ^. _notebook <<< _notebookCells) >>= cell state.tickDate) ]
+                ((sort $ state ^. _notebook <<< _cells) >>= cell state.tickDate) ]
 
 margined :: forall e. [HTML e] -> [HTML e] -> HTML e
 margined l r = row [ H.div [ A.classes [ B.colMd2 ] ] l
@@ -158,7 +158,7 @@ name state =
             , E.onKeyUp (\e -> if e.keyCode == 13 then
                                  pure $ handleSubmitName state
                                else pure empty)
-            , A.value (resourceFileName state.resource)  ] [] ]
+            , A.value (resourceFileName $ state ^. _resource)  ] [] ]
 
 modal :: forall e. State -> [HTML e]
 modal state =

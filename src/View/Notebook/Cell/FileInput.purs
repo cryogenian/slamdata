@@ -1,7 +1,6 @@
 module View.Notebook.Cell.FileInput (fileInput) where
 
 import Control.Apply ((*>))
-import Control.Functor (($>))
 import Controller.Notebook.Cell.FileInput (toggleFileList, selectFile)
 import Data.Maybe (maybe, fromMaybe)
 import Model.Notebook.Cell (Cell())

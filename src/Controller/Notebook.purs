@@ -18,10 +18,11 @@ import Model.Notebook.Menu (
   MenuHelpSignal(..),
   MenuSignal(..))
 
-import Model.Notebook (State(), _activeCellId, _activeCell, _modalError)
+import Model.Notebook (State(), _activeCellId, _activeCell, _modalError, _resource, _initialName)
 import Controller.Notebook.Cell (runCellEvent)
 import Model.Notebook.Cell (CellContent(..))
 import Model.Notebook.Cell.Explore (initialExploreRec)
+import Model.Notebook.Cell.Search (initialSearchRec)
 import Input.Notebook (Input(..))
 import Data.Inject1 (prj)
 import Model.Path (decodeURIPath)
@@ -89,7 +90,8 @@ handleMenuInsert :: forall e. MenuInsertSignal -> I e
 handleMenuInsert ExploreInsert = pure $ AddCell (Explore initialExploreRec)
 handleMenuInsert MarkdownInsert = pure $ AddCell (Markdown "")
 handleMenuInsert QueryInsert = pure $ AddCell (Query "")
-handleMenuInsert SearchInsert = pure $ AddCell (Search "")
+handleMenuInsert SearchInsert = pure $ AddCell (Search initialSearchRec)
+
 
 handleMenuHelp :: forall e. MenuHelpSignal -> I e
 handleMenuHelp TutorialHelp = do
@@ -122,8 +124,8 @@ handleMenuSignal state signal =
 
 handleSubmitName :: forall e. State -> I e
 handleSubmitName state = do
-  let oldResource = state.resource # _name .~ state.initialName
-      newResource = state.resource
+  let newResource = state ^. _resource
+      oldResource = newResource # _name .~ (state ^. _initialName)
   if oldResource == newResource
     then empty
     else do

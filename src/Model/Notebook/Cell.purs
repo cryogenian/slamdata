@@ -7,11 +7,13 @@ import Data.Either
 import Data.Maybe (Maybe(..))
 import Global
 import Model.Notebook.Port
+import Optic.Core (lens, LensP(), prism', PrismP(), (..))
 import Model.Notebook.Cell.FileInput
 import Model.Notebook.Cell.JTableContent
-import Optic.Core ((..), lens, LensP(), prism', PrismP())
 import Optic.Extended (TraversalP())
 import qualified Model.Notebook.Cell.Explore as Ex
+import qualified Model.Notebook.Cell.Search as Sr
+import qualified Model.Notebook.Cell.Common as Cm
 import qualified Data.Argonaut.Core as Ac
 import qualified Data.Argonaut.Encode as Ae
 
@@ -36,8 +38,8 @@ newtype Cell =
 
 data CellContent
   = Evaluate String
+  | Search Sr.SearchRec
   | Explore Ex.ExploreRec
-  | Search String
   | Query String
   | Visualize String
   | Markdown String
@@ -60,7 +62,7 @@ _Explore = prism' Explore $ \s -> case s of
   Explore r -> Just r
   _ -> Nothing
 
-_Search :: PrismP CellContent String
+_Search :: PrismP CellContent Sr.SearchRec
 _Search = prism' Search $ \s -> case s of
   Search s -> Just s
   _ -> Nothing
@@ -83,17 +85,19 @@ _Markdown = prism' Markdown $ \s -> case s of
 _FileInput :: TraversalP CellContent FileInput
 _FileInput f s = case s of
   Explore _ -> (_Explore .. Ex._input) f s
+  Search _ -> (_Search .. Cm._input) f s
   _  -> _const f s
 
 _JTableContent :: TraversalP CellContent JTableContent
 _JTableContent f s = case s of
   Explore _ -> (_Explore .. Ex._table) f s
+  Search _ -> (_Search .. Cm._table) f s 
   _  -> _const f s
 
 _AceContent :: TraversalP CellContent String
 _AceContent f s = case s of
   Evaluate _ -> _Evaluate f s
-  Search _ -> _Search f s
+  Search _ -> (_Search .. Sr._buffer) f s
   Query _ -> _Query f s
   Visualize _ -> _Visualize f s
   Markdown _ -> _Markdown f s
