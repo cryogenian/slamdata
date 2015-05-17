@@ -48,7 +48,8 @@ port res dest sql =
     result <- affjax $ defaultRequest
             { method = POST
             , headers = [RequestHeader "Destination" $ resourcePath dest]
-            , url = mkURI res sql
+            , url = queryUrl <> resourcePath res
+            , content = Just (templated res sql)
             }
 
     either (throwError <<< error) pure $ content result.response
@@ -80,15 +81,19 @@ sample res offset limit =
 fields :: forall e. Resource -> Aff (ajax :: AJAX | e) [String]
 fields res = do
   jarr <- sample res (fromNumber 0) (fromNumber 100)
-  pure $ nub $ concat (getFields <$> jarr)
+  case jarr of
+    [] -> throwError $ error "empty file"
+    _ -> pure $ nub $ concat (getFields <$> jarr)
+
 
 
 
 mkURI :: Resource -> SQL -> String
 mkURI res sql = 
-  queryUrl <> resourcePath res <> "?q=" <> encodeURIComponent templated
-  where
-  templated = replace "{{path}}" ("\"" <> resourcePath res <> "\"") sql
+  queryUrl <> resourcePath res <> "?q=" <> encodeURIComponent (templated res sql)
+
+templated :: Resource -> SQL -> SQL
+templated res = replace "{{path}}" ("\"" <> resourcePath res <> "\"") 
 
   
 extractJArray :: String -> JArray
@@ -122,5 +127,5 @@ goObj :: [String] -> JObject -> [String]
 goObj acc obj = concat $ (goTuple acc <$> (toList obj))
 
 goTuple :: [String] -> Tuple String Json -> [String]
-goTuple acc (Tuple key json) = getFields' ((\x -> x <> "." <> key) <$> acc) json 
+goTuple acc (Tuple key json) = getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json 
     

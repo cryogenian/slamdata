@@ -8,7 +8,8 @@ import Data.Either (Either(..))
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..))
 import Input.Notebook (Input(CellResult))
-import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId)
+import Model.Notebook.Port (_PortResource)
+import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId, _input)
 import Model.Notebook.Cell.FileInput (_file)
 import Optic.Core ((^.), (..))
 import Optic.Fold ((^?))
@@ -18,7 +19,7 @@ import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Int as I
 
 runExplore :: forall e. Cell -> I e
-runExplore cell = case cell ^? _content .. _FileInput .. _file .. _Just of
+runExplore cell = case cell ^? _input .. _PortResource of 
   Just file -> runJTable file cell
   Nothing -> do
     now' <- liftEff now

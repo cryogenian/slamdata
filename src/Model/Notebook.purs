@@ -1,13 +1,15 @@
 module Model.Notebook where
 
 import Control.Timer (Timeout())
-import Data.Array ((!!))
 import Data.Date (Date())
 import Data.Inject1 (prj, inj)
+import Data.Array ((!!), findIndex)
+import Optic.Index (ix)
+import Optic.Index.Types (TraversalP())
+import Model.Notebook.Menu (initialDropdowns, DropdownItem())
 import Data.Maybe
 import EffectTypes (NotebookAppEff())
-import Model.Notebook.Cell (CellId(), Cell())
-import Model.Notebook.Menu (initialDropdowns, DropdownItem())
+import Model.Notebook.Cell (CellId(), Cell(), _cellId)
 import Model.Resource (Resource(), newNotebook)
 import Optic.Core (lens, LensP(), (..), (^.))
 import Optic.Index (ix)
@@ -17,7 +19,6 @@ import qualified Model.Notebook.Domain as D
 
 type State =
   { dropdowns :: [DropdownItem]
-  , resource :: Resource
   , siblings :: [Resource]
   , loaded :: Boolean
   , error :: String
@@ -33,7 +34,7 @@ _dropdowns :: LensP State [DropdownItem]
 _dropdowns = lens _.dropdowns _{dropdowns = _}
 
 _resource :: LensP State Resource
-_resource = lens _.resource _{resource = _}
+_resource = _notebook .. D._resource
 
 _notebook :: LensP State D.Notebook
 _notebook = lens _.notebook _{notebook = _}
@@ -65,14 +66,14 @@ _initialName = lens _.initialName _{initialName = _}
 _tickDate :: LensP State (Maybe Date)
 _tickDate = lens _.tickDate _{tickDate = _}
 
--- TODO: this probably isn't right actually, instead of using `ix` we need a real lookup
 _activeCell :: TraversalP State Cell
-_activeCell f s = (_notebook .. D._notebookCells .. ix (s ^. _activeCellId)) f s
+_activeCell f s = (_notebook .. D._cells .. ix activeIndex) f s 
+  where activeIndex = findIndex (\cell -> cell ^. _cellId == s ^. _activeCellId)
+                      (s ^. _notebook .. D._cells)
 
 initialState :: State
 initialState =
   { dropdowns: initialDropdowns
-  , resource: newNotebook
   , siblings: []
   , loaded: false
   , error: ""

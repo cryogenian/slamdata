@@ -1,40 +1,61 @@
-module View.Notebook.Cell.Search where
+module View.Notebook.Cell.Search (
+  searchEditor,
+  searchOutput
+  ) where
 
-import Control.Plus
-import Data.Either
-import Data.Inject1 (inj)
-import Data.Maybe
-import Data.String.Regex (regex, noFlags, replace)
-import EffectTypes (NotebookAppEff())
-import Input.Notebook (Input(..))
-import Model.Notebook.Cell
-import View.Common
-import View.Notebook.Common
+import Control.Plus (empty)
+import Control.Functor (($>))
+import Optic.Core ((^.), (.~), (..))
+import Optic.Extended (TraversalP())
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.HTML.Events.Forms as E
+import qualified Halogen.HTML.Events.Handler as E
+import qualified Halogen.Themes.Bootstrap3 as B
 
-import Optic.Core ((^.), (.~), (..))
-
-handleSearchInput :: forall e. Cell -> String -> E.Event (NotebookAppEff e) Input
-handleSearchInput cell value = do
-  pure $ UpdateCell (cell ^. _cellId) (_content .. _Search .~ value)
+import Input.Notebook (Input(..))
+import Controller.Notebook.Cell (runCellEvent)
+import Controller.Notebook.Cell.Search (runSearch)
+import Model.Notebook (_activeCellId)
+import Model.Notebook.Cell (Cell(), _FileInput, _JTableContent, _content, _Search, _cellId)
+import Model.Notebook.Cell.Search (_buffer)
+import View.Common (glyph)
+import View.Notebook.Common (HTML())
+import View.Notebook.Cell.JTableCell (renderJTableOutput)
+import View.Notebook.Cell.FileInput (fileInput)
+import qualified View.Css as Vc
 
 searchEditor :: forall e. Cell -> HTML e
 searchEditor cell =
-  row [ H.form_
-        [H.input
-         [ A.value (cell ^. _content .. _Search)
-         , E.onInput (\v -> pure $ handleSearchInput cell v)
-         ] [ ] ] ]
+  H.div
+  [ A.classes [ Vc.exploreCellEditor ] ] $ 
+  (fileInput (_content .. _FileInput) cell) <>
+  [ H.div [ A.classes [ Vc.fileListField, B.inputGroup ] ]
+    [ H.input 
+      [ A.value (cell ^. _lens)
+      , A.classes [ B.formControl, Vc.searchCellInput ]
+      , A.placeholder "Input search string"
+      , E.onInput (E.input updateBuffer)
+      , E.onFocus (E.input_ $ WithState (_activeCellId .~ (cell ^. _cellId)))
+      ] [ ]
+    , H.span [ A.classes [ B.inputGroupBtn ] ]
+      [ H.button [ A.classes [ B.btn, B.btnDefault, Vc.searchCellButton]
+                 , A.type_ "button"
+                 , E.onClick (E.input_ $ updateBuffer "")
+                 ] [ glyph B.glyphiconRemove ]
+      ]
+    ]
+  ]
+  where
+  updateBuffer :: String -> Input 
+  updateBuffer v = UpdateCell (cell ^. _cellId) (_lens .~ v)
 
-searchOutput :: forall e i. String -> [ H.HTML (E.Event e i) ]
-searchOutput rawInput =
-  [ H.p_ [ H.text $ "trololo" ] ]
---  let input = replace (regex "\\s+" noFlags{global = true}) " " rawInput in
---  flip (either (const [])) (mkQuery input) $ \query ->
---  [ H.p_ [ H.text $ "select * from path where " <> (queryToSQL query) ] ]
+_lens :: TraversalP Cell String
+_lens = _content .. _Search .. _buffer
+
+searchOutput :: forall e. Cell -> [ HTML e ]
+searchOutput = renderJTableOutput (_content .. _JTableContent) runSearch
 
