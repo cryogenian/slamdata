@@ -36,7 +36,7 @@ import Optic.Refractor.Lens
 type AceKnot = Tuple CellId (M.Map CellId EditSession)
 
 foreign import markdownMode """
-  var markdownMode = "/ace/mode/markdown";
+  var markdownMode = "ace/mode/markdown";
 """ :: TextMode
 foreign import plainTextMode """
   var plainTextMode = "ace/mode/plain_text";
