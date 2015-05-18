@@ -38,6 +38,11 @@ type AceKnot = Tuple CellId (M.Map CellId EditSession)
 foreign import markdownMode """
   var markdownMode = "ace/mode/markdown";
 """ :: TextMode
+
+foreign import sqlMode """
+  var sqlMode = "ace/mode/sql";
+""" :: TextMode
+
 foreign import plainTextMode """
   var plainTextMode = "ace/mode/plain_text";
 """ :: TextMode
@@ -45,6 +50,7 @@ foreign import plainTextMode """
 modeByCellTag :: String -> TextMode
 modeByCellTag tag = case tag of
   "markdown" -> markdownMode
+  "query" -> sqlMode
   _ -> plainTextMode
 
 
