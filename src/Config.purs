@@ -1,7 +1,7 @@
 module Config where
 
 baseUrl :: String
-baseUrl = "/"
+baseUrl = ""
 
 uploadUrl :: String
 uploadUrl = baseUrl <> "upload"
@@ -22,7 +22,7 @@ searchTimeout :: Number
 searchTimeout = 500
 
 slamDataHome :: String
-slamDataHome = baseUrl
+slamDataHome = baseUrl <> "index.html"
 
 userEnabled :: Boolean
 userEnabled = false
