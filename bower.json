@@ -15,6 +15,7 @@
     "tests"
   ],
   "dependencies": {
+    "bootstrap": "~3.3.4",
     "purescript-ace": "~0.3.0",
     "purescript-aff": "~0.10.0",
     "purescript-affjax": "~0.3.0",
@@ -31,7 +32,7 @@
     "purescript-halogen-bootstrap": "b163b1eb7200ad9af9ddd700c80872a6386ba76d",
     "purescript-index": "~0.3.0",
     "purescript-integers": "~0.1.0",
-    "purescript-jtable": "*",
+    "purescript-jtable": "~0.1.0",
     "purescript-lazy": "~0.3.1",
     "purescript-lens": "~0.7.0",
     "purescript-lists": "~0.6.0",
@@ -51,9 +52,8 @@
     "purescript-string-parsers": "~0.4.1",
     "purescript-timers": "~0.0.8",
     "purescript-tuples": "~0.3.1",
-    "purescript-zeroclipboard": "https://github.com/slamdata/purescript-zclipboard.git#~0.1.0",
-    "zeroclipboard": "~2.2.0",
-    "bootstrap": "~3.3.4"
+    "purescript-zclipboard": "~0.1.0",
+    "zeroclipboard": "~2.2.0"
   },
   "resolutions": {
     "purescript-halogen": "219bab3df06bbcd32e1ae22c97707b1afec36cf1"
