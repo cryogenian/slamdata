@@ -10,8 +10,7 @@ install:
   - npm install bower gulp -g
   - npm install && bower install --force
 script:
-  - gulp deploy-prod
-  - gulp less
+  - gulp less deploy-prod
 before_deploy:
   - cp -r public slamdata
   - tar cjf slamdata.tar.bz2 slamdata
