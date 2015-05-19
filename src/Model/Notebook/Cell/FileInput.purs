@@ -1,8 +1,14 @@
 module Model.Notebook.Cell.FileInput where
 
-import Data.Either (Either(..))
-import Model.Resource (Resource())
-import Optic.Core (LensP(), lens)
+import Data.Argonaut.Combinators ((~>), (:=), (.?))
+import Data.Argonaut.Core (Json(), jsonEmptyObject)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
+import Data.Argonaut.Encode (EncodeJson)
+import Data.Either (Either(..), either)
+import Data.Maybe (Maybe(..))
+import Data.Path.Pathy ((</>), parseAbsFile, sandbox, rootDir)
+import Model.Resource (Resource(), resourcePath, newFile, _path)
+import Optic.Core (LensP(), lens, (.~))
 
 newtype FileInput =
   FileInput { showFiles :: Boolean
@@ -28,3 +34,21 @@ _files = _fileInput <<< lens _.files (_ { files = _ })
 
 _file :: LensP FileInput (Either String Resource)
 _file = _fileInput <<< lens _.file (_ { file = _ })
+
+fileFromString :: String -> Either String Resource
+fileFromString path =
+  case (rootDir </>) <$> (parseAbsFile path >>= sandbox rootDir) of
+    Just path' -> Right (newFile # _path .~ Left path')
+    Nothing -> Left path
+
+instance encodeJsonFileInput :: EncodeJson FileInput where
+  encodeJson (FileInput rec)
+    =  "file" := either id resourcePath rec.file
+    ~> jsonEmptyObject
+
+instance decodeJsonFileInput :: DecodeJson FileInput where
+  decodeJson json = do
+    obj <- decodeJson json
+    rec <- { showFiles: false, files: [], file: _ }
+        <$> (fileFromString <$> obj .? "file")
+    return $ FileInput rec
