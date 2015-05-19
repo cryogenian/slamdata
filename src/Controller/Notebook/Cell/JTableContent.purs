@@ -3,26 +3,32 @@ module Controller.Notebook.Cell.JTableContent
   , stepPage
   , changePageSize
   , runJTable
+  , queryToJTable
   ) where
 
-import Api.Query (query, sample)
+import Api.Fs (delete)
+import Api.Query (port, query, sample)
 import Control.Bind ((<=<), (>=>))
+import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (message)
 import Control.Plus (empty)
 import Controller.Notebook.Common (I())
 import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (Json(), JObject(), fromArray, toObject, toNumber, fromObject)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Array (head)
-import Data.Date (now)
-import Data.Either (Either(..))
+import Data.Date (now, nowEpochMilliseconds, toEpochMilliseconds)
+import Data.Either (Either(..), either)
 import Data.Either.Unsafe (fromRight)
 import Data.Foreign.Class (readJSON)
+import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Time (Milliseconds())
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
-import Model.Notebook.Cell (Cell(), _JTableContent, _content, _cellId)
+import Model.Notebook.Cell
 import Model.Resource (Resource())
 import Optic.Core ((^.), (.~), (..))
 import Optic.Extended (TraversalP(), (^?))
@@ -86,3 +92,32 @@ runJTable file cell = fromMaybe empty $ do
            else value
       else pure obj 
 
+queryToJTable :: forall e. Cell -> String -> Resource -> Resource -> I e
+queryToJTable cell sql inp out = do
+  jobj <- liftAff do
+    delete out
+    attempt (port inp out sql)
+  either errorInQuery (const $ runJTable out cell) jobj
+  where
+  started :: Maybe Milliseconds
+  started = toEpochMilliseconds <$> (cell ^? _runState .. _RunningSince)
+
+  update :: (Cell -> Cell) -> Input
+  update = UpdateCell (cell ^. _cellId)
+
+  correct :: String -> Resource -> Resource -> I e
+  correct sql inp out = do
+    jobj <- liftAff do
+      delete out
+      attempt (port inp out sql)
+    either errorInQuery (const $ runJTable out cell) jobj
+
+  errorInQuery :: _ -> I e
+  errorInQuery err =
+    (pure $ update (_failures .~ ["Error in query: " <> message err]))
+    `andThen` \_ -> finish
+
+  finish :: I e
+  finish = do
+    d <- liftEff nowEpochMilliseconds
+    pure $ update (_runState .~ RunFinished (maybe zero (d -) started))

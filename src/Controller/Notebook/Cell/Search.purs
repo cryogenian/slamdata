@@ -13,7 +13,7 @@ import Control.Monad.Aff.Class (liftAff)
 import Optic.Core ((^.), (.~), (..))
 import Optic.Fold ((^?))
 
-import Data.Maybe (maybe, Maybe(..))
+import Data.Maybe (fromMaybe, maybe, Maybe(..))
 import Data.Either (either, Either())
 import Data.Either.Unsafe (fromRight)
 import Data.Tuple (Tuple(..), uncurry)
@@ -30,7 +30,7 @@ import Text.SlamSearch (mkQuery)
 
 import Input.Notebook (Input(..))
 import Controller.Notebook.Common (I())
-import Controller.Notebook.Cell.JTableContent (runJTable)
+import Controller.Notebook.Cell.JTableContent (runJTable, queryToJTable)
 import Model.Resource (newFile, _path, AnyPath(), Resource())
 import Model.Notebook.Port (_PortResource)
 import Model.Notebook.Search (needFields, queryToSQL)
@@ -64,17 +64,8 @@ runSearch cell =
       guard (needFields q)
       input
     flip (either errorInFields) fs \fs ->
-      maybe errorInPorts
-      (uncurry $ correct $ queryToSQL fs q) $ lift2 Tuple input output
-
-
-  correct :: String -> Resource -> Resource -> I eff 
-  correct sql inp out = do
-    jobj <- liftAff do
-      delete out
-      attempt (port inp out sql)
-    either errorInQuery (const $ runJTable out cell) jobj
-
+      fromMaybe errorInPorts
+      (queryToJTable cell (queryToSQL fs q) <$> input <*> output)
 
   errorInParse :: _ -> I eff
   errorInParse _ =
@@ -91,13 +82,7 @@ runSearch cell =
     (pure $ update (_failures .~ ["Incorrect type of input or output"]))
     `andThen` \_ -> finish 
 
-  errorInQuery :: _ -> I eff
-  errorInQuery err =
-    (pure $ update (_failures .~ ["Error in query: " <> message err]))
-    `andThen` \_ -> finish
-
   finish :: I eff
   finish = do 
     d <- liftEff nowEpochMilliseconds
     pure $ update (_runState .~ RunFinished (maybe zero (d -) started))
-      
