@@ -65,7 +65,7 @@ driver ref k =
         handleShortcuts ref k
       ExploreRoute res -> do
         -- TODO: what to do about the resource here? it doesn't exist yet, and we can't really invent a name for it until we actually need to save it
-        let nb = fst $ addCell (Explore (initialExploreRec # _input .. _file ?~ res)) emptyNotebook
+        let nb = fst $ addCell (Explore (initialExploreRec # _input .. _file .~ Right res)) emptyNotebook
         update $ (_editable .~ true)
               .. (_loaded .~ true)
               .. (_error .~ "")

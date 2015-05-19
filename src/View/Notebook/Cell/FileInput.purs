@@ -1,7 +1,8 @@
 module View.Notebook.Cell.FileInput (fileInput) where
 
 import Control.Apply ((*>))
-import Controller.Notebook.Cell.FileInput (toggleFileList, selectFile)
+import Controller.Notebook.Cell.FileInput (toggleFileList, selectFile, updateFile)
+import Data.Either (either)
 import Data.Maybe (maybe, fromMaybe)
 import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.FileInput (FileInput(), _file, _files, _showFiles)
@@ -13,18 +14,20 @@ import View.Notebook.Common (HTML())
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
+import qualified Halogen.HTML.Events.Forms as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
 fileInput :: forall e. TraversalP Cell FileInput -> Cell -> [HTML e]
 fileInput _input cell = fromMaybe [] $ do
   state <- cell ^? _input
-  let selectedFile = maybe "" resourcePath (state ^. _file)
+  let selectedFile = either id resourcePath (state ^. _file)
   return
     [ H.div [ A.classes [B.inputGroup, VC.fileListField] ]
             [ H.input [ A.classes [B.formControl]
                       , A.placeholder "Select a file"
                       , A.value selectedFile
+                      , E.onInput (pure <<< updateFile cell)
                       ]
                       []
             , H.span [ A.classes [B.inputGroupBtn] ]

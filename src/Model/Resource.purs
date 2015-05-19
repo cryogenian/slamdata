@@ -10,23 +10,24 @@ module Model.Resource (
   sortResource, parent, resourceFileName, child
   ) where
 
-import Data.Tuple
-import Data.Maybe
+import Config
+import Data.Bifunctor (bimap, rmap)
 import Data.Either
 import Data.Either.Unsafe (fromRight)
-import Data.Inject1
-import Data.Path.Pathy
-import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign (ForeignError(TypeMismatch))
-import Data.Bifunctor (bimap, rmap)
+import Data.Foreign.Class (readProp, read, IsForeign)
+import Data.Inject1
+import Data.Maybe
+import Data.Path.Pathy
+import Data.Tuple
+import Model.Sort (Sort(..))
 import Optic.Core (lens, (..), (^.), (%~), (.~))
 import Optic.Prism
-import Optic.Types
 import Optic.Refractor.Prism (_Right)
-import Model.Sort (Sort(..))
-import qualified Data.String as S
+import Optic.Types
 import Utils
-import Config
+
+import qualified Data.String as S
 
 type FilePath = AbsFile Sandboxed
 type DirPath = AbsDir Sandboxed
@@ -44,9 +45,7 @@ infixl 6 <./>
 
 changeDirExt :: (String -> String) -> DirName -> DirName
 changeDirExt f (DirName name) =
-  DirName ((if ext == ""
-            then name
-            else n) <> "." <> f ext)
+  DirName ((if ext == "" then name else n) <> "." <> f ext)
   where
   idx = S.lastIndexOf "." name
   n = case idx of
@@ -110,7 +109,6 @@ getNameStr ap = either getNameStr' getNameStr' ap
   getNameStr' :: forall b a s. Path a b s -> String
   getNameStr' p = maybe "" (snd >>> nameOfFileOrDir) $ peel p
 
-
 getDir :: AnyPath -> DirPath
 getDir ap = either getDir' getDir' ap
   where
@@ -129,8 +127,6 @@ setDir ap d = bimap (setFile' d) (setDir' d) ap
   setFile' d p =
     d </>
     (maybe (file "") (snd >>> nameOfFileOrDir >>> file) $ peel p)
-
-
 
 renameAny :: (String -> String) -> AnyPath -> AnyPath
 renameAny fn ap = bimap (renameFile $ liftFile fn) (renameDir $ liftDir fn) ap
@@ -158,7 +154,6 @@ resourceFileName r =
 nameOfFileOrDir :: Either DirName FileName -> String
 nameOfFileOrDir (Left (DirName name)) = name
 nameOfFileOrDir (Right (FileName name)) = name
-
 
 root :: Resource
 root = Directory rootDir
@@ -256,7 +251,6 @@ instance resourceEq :: Eq Resource where
   (==) _ _ = false
   (/=) a b = not $ a == b
 
-
 instance resourceIsForeign :: IsForeign Resource where
   read f = do
     name <- readProp "name" f
@@ -264,15 +258,11 @@ instance resourceIsForeign :: IsForeign Resource where
     template <- case ty of
       "mount" -> pure newDatabase
       "directory" -> pure $ if endsWith notebookExtension name
-                       then newNotebook
-                       else newDirectory
+                            then newNotebook
+                            else newDirectory
       "file" -> pure newFile
---                pure $ if endsWith notebookExtension name
---                       then newNotebook
---                       else newFile
       _ -> Left $ TypeMismatch "resource" "string"
     pure $ setName template name
-
 
 sortResource :: (Resource -> String) -> Sort -> Resource -> Resource -> Ordering
 sortResource project direction a b =
