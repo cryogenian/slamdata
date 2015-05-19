@@ -5,10 +5,15 @@ module Model.Notebook.Cell.Explore
   , _table
   ) where
 
+import Data.Argonaut.Combinators ((~>), (:=), (.?))
+import Data.Argonaut.Core (jsonEmptyObject)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
+import Data.Argonaut.Encode (EncodeJson)
 import Model.Notebook.Cell.FileInput (FileInput(), initialFileInput)
 import Model.Notebook.Cell.JTableContent (JTableContent(), initialJTableContent)
-import qualified Model.Notebook.Cell.Common as C 
 import Optic.Core (LensP(), lens)
+
+import qualified Model.Notebook.Cell.Common as C
 
 newtype ExploreRec =
   ExploreRec { input :: FileInput
@@ -25,7 +30,21 @@ _ExploreRec :: LensP ExploreRec _
 _ExploreRec = lens (\(ExploreRec obj) -> obj) (const ExploreRec)
 
 _input :: LensP ExploreRec FileInput
-_input = _ExploreRec <<< C._input 
+_input = _ExploreRec <<< C._input
 
 _table :: LensP ExploreRec JTableContent
 _table = _ExploreRec <<< C._table
+
+instance encodeJsonCell :: EncodeJson ExploreRec where
+  encodeJson (ExploreRec rec)
+    =  "input" := rec.input
+    ~> "table" := rec.table
+    ~> jsonEmptyObject
+
+instance decodeJsonFileInput :: DecodeJson ExploreRec where
+  decodeJson json = do
+    obj <- decodeJson json
+    rec <- { input: _, table: _ }
+        <$> obj .? "input"
+        <*> obj .? "table"
+    return $ ExploreRec rec

@@ -1,24 +1,22 @@
 module Controller.Notebook.Cell.FileInput
   ( toggleFileList
   , selectFile
+  , updateFile
   ) where
 
 import Controller.Common (getFiles)
-import Controller.Notebook.Common
+import Controller.Notebook.Common (I())
 import Data.Array (sort, nub)
+import Data.Either (Either(..), either)
 import Data.Maybe (fromMaybe)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(UpdateCell))
-import Model.Notebook (State(), _notebook)
+import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId, _input)
+import Model.Notebook.Cell.FileInput (FileInput(), _files, _showFiles, _file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..))
-import Model.Notebook.Cell (Cell(), CellId(), _FileInput, _content, _cellId, _input)
-import Model.Notebook.Cell.FileInput (FileInput(), _files, _showFiles, _file)
-import Model.Notebook.Domain (_cells)
 import Model.Resource (Resource(), root)
-import Optic.Core ((^.), (.~), (%~), (?~), (..), (+~))
-import Optic.Extended (TraversalP())
-import Optic.Fold ((^?))
-import Optic.Index (ix)
+import Optic.Core ((^.), (.~), (%~), (..))
+import Optic.Extended (TraversalP(), (^?))
 
 toggleFileList :: forall e. Cell -> I e
 toggleFileList cell =
@@ -36,9 +34,15 @@ populateFiles cell =
 selectFile :: forall e. Cell -> Resource -> I e
 selectFile cell res =
   pure $ UpdateCell (cell ^. _cellId) $ (_lens .. _showFiles .~ false)
-                                     .. (_lens .. _file ?~ res)
+                                     .. (_lens .. _file .~ Right res)
                                      .. (_input .~ PortResource res)
 
+updateFile :: forall e. Cell -> String -> I e
+updateFile cell path =
+  let file = fileFromString path
+      port = portFromFile file
+  in pure $ UpdateCell (cell ^. _cellId) $ (_lens .. _file .~ file)
+                                        .. (_input .~ port)
 
 _lens :: TraversalP Cell FileInput
 _lens = _content .. _FileInput

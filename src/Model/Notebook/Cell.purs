@@ -1,28 +1,29 @@
 module Model.Notebook.Cell where
 
+import Data.Argonaut.Combinators ((~>), (:=))
+import Data.Argonaut.Core (jsonEmptyObject)
+import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Date (Date())
-import Data.Time (Milliseconds())
-import Data.Argonaut.Combinators
 import Data.Either
 import Data.Maybe (Maybe(..))
-import Global
-import Model.Notebook.Port
-import Optic.Core (lens, LensP(), prism', PrismP(), (..))
+import Data.Time (Milliseconds())
+import Global (readInt, isNaN)
 import Model.Notebook.Cell.FileInput
 import Model.Notebook.Cell.JTableContent
+import Model.Notebook.Port
+import Optic.Core (lens, LensP(), prism', PrismP(), (..))
 import Optic.Extended (TraversalP())
+
+import qualified Model.Notebook.Cell.Common as Cm
 import qualified Model.Notebook.Cell.Explore as Ex
 import qualified Model.Notebook.Cell.Search as Sr
-import qualified Model.Notebook.Cell.Common as Cm
-import qualified Data.Argonaut.Core as Ac
-import qualified Data.Argonaut.Encode as Ae
 
 type CellId = Number
 
 string2cellId :: String -> Either String CellId
 string2cellId str =
-  if isNaN int then Left "incorrect cell id" else Right int
-  where int = readFloat str
+  let int = readInt 10 str
+  in if isNaN int then Left "incorrect cell id" else Right int
 
 newtype Cell =
   Cell { cellId :: CellId
@@ -110,7 +111,7 @@ _FileInput f s = case s of
 _JTableContent :: TraversalP CellContent JTableContent
 _JTableContent f s = case s of
   Explore _ -> (_Explore .. Ex._table) f s
-  Search _ -> (_Search .. Cm._table) f s 
+  Search _ -> (_Search .. Cm._table) f s
   _  -> _const f s
 
 _AceContent :: TraversalP CellContent String
@@ -160,23 +161,27 @@ newCell cellId content =
        , addingNextCell: false 
        }
 
-instance cellEq :: Eq Cell where
+instance eqCell :: Eq Cell where
   (==) (Cell c) (Cell c') = c.cellId == c'.cellId
   (/=) a b = not $ a == b
 
-instance cellOrd :: Ord Cell where
+instance ordCell :: Ord Cell where
   compare (Cell c) (Cell c') = compare c.cellId c'.cellId
 
--- instance cellTypeEncode :: Ae.EncodeJson CellType where
---   encodeJson = Ac.fromString <<< celltype2str
-
-instance cellEncode :: Ae.EncodeJson Cell where
+instance encodeJsonCell :: EncodeJson Cell where
   encodeJson (Cell cell)
     =  "input" := cell.input
     ~> "output" := cell.output
-    -- ~> "cellType" := cell.cellType
+    ~> "content" := cell.content
     ~> "metadata" := cell.metadata
-    ~> Ac.jsonEmptyObject
+    ~> jsonEmptyObject
+
+instance encodeJsonCellContent :: EncodeJson CellContent where
+  encodeJson cc
+    =  "type" := cellContentType cc
+    ~> case cc of
+      Explore rec -> encodeJson rec
+      _ -> jsonEmptyObject
 
 
 
