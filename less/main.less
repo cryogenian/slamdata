@@ -297,13 +297,14 @@ ol.breadcrumb {
     }
     .row.cell-output {
         margin-left: -2px;
+        &.fade.in {
+            padding-bottom: 12px;
+        }
         border-left: 41px #f0f0f0 solid;
     }
     .cell-next-actions {
         height: 40px;
         background-color: #f0f0f0;
-        margin-left: -2px;
-        margin-right: -2px;
     }
     .cell-controls {
         position: relative;
@@ -315,6 +316,25 @@ ol.breadcrumb {
 
     .cell-eval-line {
         background: #dcdcdc;
+    }
+    .next-cell-list {
+        margin-bottom: 0;
+        float: left;
+        padding-left: 12px;
+        &.fade {
+            li { 
+               display: none 
+            }
+            &.in {
+                li {
+                    display: inline-block;
+                }
+            }
+        }
+        .btn {
+            padding-left: 6px;
+            padding-right: 6px;
+        }
     }
 }
 
@@ -352,7 +372,9 @@ ol.breadcrumb {
 }
 
 .markdown-output {
-    padding-top: 10px;
+    &.fade.in { 
+        padding-top: 10px;
+    } 
 }
 
 .search-cell-input {

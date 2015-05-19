@@ -52,7 +52,8 @@
     "purescript-timers": "~0.0.8",
     "purescript-tuples": "~0.3.1",
     "purescript-zeroclipboard": "https://github.com/slamdata/purescript-zclipboard.git#~0.1.0",
-    "zeroclipboard": "~2.2.0"
+    "zeroclipboard": "~2.2.0",
+    "bootstrap": "~3.3.4"
   },
   "resolutions": {
     "purescript-halogen": "219bab3df06bbcd32e1ae22c97707b1afec36cf1"

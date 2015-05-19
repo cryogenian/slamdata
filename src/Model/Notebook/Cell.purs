@@ -34,6 +34,7 @@ newtype Cell =
        , metadata :: String
        , hiddenEditor :: Boolean
        , runState :: RunState
+       , addingNextCell :: Boolean 
        }
 
 data CellContent
@@ -51,6 +52,24 @@ cellContentType (Search _) = "search"
 cellContentType (Query _) = "query"
 cellContentType (Visualize _) = "visualize"
 cellContentType (Markdown _) = "markdown"
+
+newEvaluateContent :: CellContent
+newEvaluateContent = Evaluate ""
+
+newSearchContent :: CellContent
+newSearchContent = Search Sr.initialSearchRec
+
+newExploreContent :: CellContent
+newExploreContent = Explore Ex.initialExploreRec
+
+newQueryContent :: CellContent
+newQueryContent = Query ""
+
+newVisualizeContent :: CellContent
+newVisualizeContent = Visualize ""
+
+newMarkdownContent :: CellContent
+newMarkdownContent = Markdown "" 
 
 _Evaluate :: PrismP CellContent String
 _Evaluate = prism' Evaluate $ \s -> case s of
@@ -138,6 +157,7 @@ newCell cellId content =
        , metadata: ""
        , hiddenEditor: false
        , runState: RunInitial
+       , addingNextCell: false 
        }
 
 instance cellEq :: Eq Cell where
@@ -158,8 +178,13 @@ instance cellEncode :: Ae.EncodeJson Cell where
     ~> "metadata" := cell.metadata
     ~> Ac.jsonEmptyObject
 
+
+
 _cell :: LensP Cell _
 _cell = lens (\(Cell obj) -> obj) (const Cell)
+
+_addingNextCell :: LensP Cell Boolean
+_addingNextCell = _cell <<< lens _.addingNextCell _{addingNextCell = _ }
 
 _cellId :: LensP Cell CellId
 _cellId = _cell <<< lens _.cellId (_ { cellId = _ })
