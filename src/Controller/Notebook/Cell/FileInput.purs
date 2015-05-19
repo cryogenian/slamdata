@@ -12,7 +12,7 @@ import Data.Maybe (fromMaybe)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(UpdateCell))
 import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId, _input)
-import Model.Notebook.Cell.FileInput (FileInput(), _files, _showFiles, _file, fileFromString)
+import Model.Notebook.Cell.FileInput (FileInput(), _files, _showFiles, _file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..))
 import Model.Resource (Resource(), root)
 import Optic.Core ((^.), (.~), (%~), (..))
@@ -39,9 +39,9 @@ selectFile cell res =
 
 updateFile :: forall e. Cell -> String -> I e
 updateFile cell path =
-  let path' = fileFromString path
-      port = either (\_ -> PortInvalid "Please enter a valid file path") PortResource path'
-  in pure $ UpdateCell (cell ^. _cellId) $ (_lens .. _file .~ path')
+  let file = fileFromString path
+      port = portFromFile file
+  in pure $ UpdateCell (cell ^. _cellId) $ (_lens .. _file .~ file)
                                         .. (_input .~ port)
 
 _lens :: TraversalP Cell FileInput

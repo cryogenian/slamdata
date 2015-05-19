@@ -8,6 +8,7 @@ import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy ((</>), parseAbsFile, sandbox, rootDir)
 import Model.Resource (Resource(), resourcePath, newFile, _path)
+import Model.Notebook.Port (Port(PortInvalid, PortResource))
 import Optic.Core (LensP(), lens, (.~))
 
 newtype FileInput =
@@ -40,6 +41,9 @@ fileFromString path =
   case (rootDir </>) <$> (parseAbsFile path >>= sandbox rootDir) of
     Just path' -> Right (newFile # _path .~ Left path')
     Nothing -> Left path
+
+portFromFile :: Either String Resource -> Port
+portFromFile = either (\_ -> PortInvalid "Please enter a valid file path") PortResource
 
 instance encodeJsonFileInput :: EncodeJson FileInput where
   encodeJson (FileInput rec)
