@@ -16,6 +16,7 @@ import Optic.Extended (TraversalP())
 
 import qualified Model.Notebook.Cell.Common as Cm
 import qualified Model.Notebook.Cell.Explore as Ex
+import qualified Model.Notebook.Cell.Query as Qu
 import qualified Model.Notebook.Cell.Search as Sr
 
 type CellId = Number
@@ -42,7 +43,7 @@ data CellContent
   = Evaluate String
   | Search Sr.SearchRec
   | Explore Ex.ExploreRec
-  | Query String
+  | Query Qu.QueryRec
   | Visualize String
   | Markdown String
 
@@ -64,7 +65,7 @@ newExploreContent :: CellContent
 newExploreContent = Explore Ex.initialExploreRec
 
 newQueryContent :: CellContent
-newQueryContent = Query ""
+newQueryContent = Query Qu.initialQueryRec
 
 newVisualizeContent :: CellContent
 newVisualizeContent = Visualize ""
@@ -87,7 +88,7 @@ _Search = prism' Search $ \s -> case s of
   Search s -> Just s
   _ -> Nothing
 
-_Query :: PrismP CellContent String
+_Query :: PrismP CellContent Qu.QueryRec
 _Query = prism' Query $ \s -> case s of
   Query s -> Just s
   _ -> Nothing
@@ -112,13 +113,14 @@ _JTableContent :: TraversalP CellContent JTableContent
 _JTableContent f s = case s of
   Explore _ -> (_Explore .. Ex._table) f s
   Search _ -> (_Search .. Cm._table) f s
+  Query _ -> (_Query .. Cm._table) f s
   _  -> _const f s
 
 _AceContent :: TraversalP CellContent String
 _AceContent f s = case s of
   Evaluate _ -> _Evaluate f s
   Search _ -> (_Search .. Sr._buffer) f s
-  Query _ -> _Query f s
+  Query _ -> (_Query .. Qu._input) f s
   Visualize _ -> _Visualize f s
   Markdown _ -> _Markdown f s
   _ -> _const f s

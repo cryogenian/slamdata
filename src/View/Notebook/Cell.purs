@@ -18,6 +18,7 @@ import Text.Markdown.SlamDown.Parser (parseMd)
 import View.Common
 import View.Notebook.Cell.Explore (exploreEditor, exploreOutput)
 import View.Notebook.Cell.Search (searchOutput, searchEditor)
+import View.Notebook.Cell.Query (queryOutput)
 import View.Notebook.Common
 
 import qualified Halogen.HTML as H
@@ -160,6 +161,7 @@ renderOutput cell = case cell ^. _content of
   Explore _ -> exploreOutput cell
   Markdown s -> [markdownOutput s (cell ^. _cellId)]
   Search s -> searchOutput cell
+  Query s -> queryOutput cell
   _ -> []
 
 markdownOutput :: forall e. String -> CellId -> HTML e

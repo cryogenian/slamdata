@@ -115,9 +115,12 @@ insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
          # (_output .~ port) .. (_input .~ (parent ^. _output))
   port = portByContent oldNotebook content newId
 
+cellOut :: Notebook -> CellId -> Port
+cellOut (Notebook n) cid = PortResource (n.resource `child` ("out" <> show cid))
+
 portByContent :: Notebook -> CellContent -> CellId -> Port
-portByContent (Notebook n) (Search _) cid =
-  PortResource (n.resource `child` ("out" <> show cid))
+portByContent n (Search _) cid = cellOut n cid
+portByContent n (Query _) cid = cellOut n cid
 portByContent _ content@(Explore _) _ =
   maybe Closed portFromFile (content ^? _FileInput .. _file)
 portByContent _ _ _ = Closed
