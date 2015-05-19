@@ -18,7 +18,7 @@ import Data.Tuple (fst)
 import Halogen.HTML.Events.Monad (Event(), async)
 import Model.Notebook
 import Model.Notebook.Cell
-import Model.Notebook.Domain (_cells, addCell)
+import Model.Notebook.Domain (_cells, addCell, insertCell)
 import Model.Notebook.Port (Port(..), VarMapValue())
 import Model.Resource (_name, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.), (?~))
@@ -44,6 +44,7 @@ data Input
   | CellResult CellId Date (Either (NEL.NonEmpty FailureMessage) CellResultContent)
   | UpdateCell CellId (Cell -> Cell)
   | CellSlamDownEvent CellId SlamDownEvent
+  | InsertCell Cell CellContent
 
 updateState state (WithState f) =
   f state
@@ -59,8 +60,11 @@ updateState state (Dropdown i) =
 updateState state CloseDropdowns =
   state{addingCell = false} # _dropdowns %~ (_{visible = false} <$>)
 
-updateState state (AddCell cellType) =
-  state # _notebook %~ (addCell cellType Nothing >>> fst)
+updateState state (AddCell content) =
+  state # _notebook %~ (addCell content >>> fst)
+
+updateState state (InsertCell parent content) =
+  state # _notebook %~ (insertCell parent content >>> fst)
 
 updateState state (TrashCell cellId) =
   state # _notebook.._cells %~ filter (not <<< isCell cellId)

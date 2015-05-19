@@ -1,6 +1,6 @@
 module Model.Notebook.Domain where
 
-import Data.Array (length, sort, reverse, head)
+import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex)
 import Data.Tuple
 import Data.Maybe
 import Data.Map
@@ -12,8 +12,10 @@ import qualified Data.Argonaut.Printer as Ap
 import qualified Network.HTTP.Affjax.Request as Ar
 
 import Optic.Core (lens, LensP(), (..), (.~), (^.))
-import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell)
-import Model.Notebook.Port (Port(..))
+import Optic.Fold ((^?))
+import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _FileInput)
+import Model.Notebook.Cell.FileInput (_file)
+import Model.Notebook.Port (Port(..), _PortResource)
 import Model.Resource 
 
 -- We have no any cells that have more than one
@@ -84,21 +86,46 @@ emptyNotebook = Notebook
   , activeCellId: 0
   }
 
-addCell :: CellContent -> Maybe CellId -> Notebook -> Tuple Notebook Cell
-addCell content mbCellId (Notebook n) = Tuple notebook cell
+addCell :: CellContent -> Notebook -> Tuple Notebook Cell
+addCell content oldNotebook@(Notebook n) = Tuple notebook cell
   where
-  newId = maybe 0 (+ 1) $ head $ reverse $ sort $ (^. _cellId) <$> n.cells
-  cell = newCell newId content # _output .~ port 
-  newDeps = maybe n.dependencies (\x -> insert newId x n.dependencies) mbCellId
+  newId = freeId oldNotebook 
+  cell = newCell newId content # (_output .~ port) .. setInp 
+  setInp = case content of
+    Explore r -> _input .~ port
+    _ -> id 
   notebook = Notebook $ n { cells = cell : n.cells
-                          , dependencies = newDeps
                           , activeCellId = newId
                           }
-  port = case content of
-    Search _ -> PortResource (n.resource `child` ("out" <> show newId))
-    _ -> Closed
+  port = portByContent oldNotebook content newId 
 
+insertCell :: Cell -> CellContent -> Notebook -> Tuple Notebook Cell 
+insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
+  where
+  new = Notebook $ n { cells = insertAt (i + 1) cell n.cells 
+                     , dependencies = newDeps 
+                     }
+  
+  i = elemIndex parent n.cells
+  
+  newDeps = insert newId (parent ^. _cellId) n.dependencies
+  newId = freeId oldNotebook
+  cell = newCell newId (content # _FileInput .. _file .~ (port ^? _PortResource))
+         # (_output .~ port) .. (_input .~ (parent ^. _output))
+  port = portByContent oldNotebook content newId
 
+portByContent :: Notebook -> CellContent -> CellId -> Port
+portByContent (Notebook n) (Search _) cid =
+  PortResource (n.resource `child` ("out" <> show cid))
+portByContent _ content@(Explore _) _ = maybe Closed PortResource $ 
+  (content ^? _FileInput) >>= (^. _file)
+portByContent _ _ _ = Closed 
+  
+
+freeId :: Notebook -> CellId
+freeId (Notebook n) =
+  maybe 0 (+ 1) $ head $ reverse $ sort $ (^. _cellId) <$> n.cells
+   
 
 instance notebookEncode :: Ae.EncodeJson Notebook where
   encodeJson (Notebook {metadata: metadata, cells: cells})

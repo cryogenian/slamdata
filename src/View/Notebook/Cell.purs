@@ -10,6 +10,7 @@ import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
 import EffectTypes (NotebookAppEff())
 import Input.Notebook (Input(..))
 import Model.Notebook.Cell
+import Model.Notebook.Port (Port(..))
 import Number.Format (toFixed)
 import Optic.Core ((^.), (%~), (..), is)
 import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen)
@@ -66,9 +67,47 @@ cell d state =
                                                             then [B.in_]
                                                             else [] ]
             $ renderOutput state
-    -- , H.div [ A.classes [B.row, VC.cellNextActions] ] [ ]
+    , row (insertNextCell state)
     ]
   ]
+
+insertNextCell :: forall e. Cell -> [HTML e]
+insertNextCell state =
+  [ H.div [ A.classes [ VC.cellEvalLine, B.clearfix ] ]
+    [ H.button
+      [ A.classes [ B.btn
+                  , B.btnPrimary
+                  , VC.playButton
+                  ]
+      , E.onClick $ E.input_ $ UpdateCell (state ^. _cellId) (_addingNextCell %~ not)
+      ]
+      [ glyph if state ^. _addingNextCell
+              then B.glyphiconMenuLeft
+              else B.glyphiconMenuRight ]
+    , H.ul [ A.classes ([ B.listInline, VC.nextCellList ] <>
+                        (fadeWhen $ not $ (state ^. _addingNextCell))) ]
+      (nextCellChoices state)
+    ]
+  ]
+  
+nextCellChoices :: forall e. Cell -> [HTML e]
+nextCellChoices state =
+  [ li "Query cell" newQueryContent  B.glyphiconHdd
+  , li "Explore cell" newExploreContent B.glyphiconEyeOpen
+  , li "Markdown cell" newMarkdownContent B.glyphiconEdit
+  , li "Search cell" newSearchContent B.glyphiconSearch] <> 
+  case state ^. _output of
+    PortResource _ -> [ li "Visualization cell" newVisualizeContent B.glyphiconPicture ]
+    _ -> [ ]
+
+
+  where
+  li :: String -> CellContent -> A.ClassName -> HTML e
+  li title content c =
+    H.li_ [ H.a [ A.href "#"
+                , E.onClick \_ -> E.preventDefault $> pure (InsertCell state content)
+                , A.title title
+                , A.classes [ B.btn ] ] [ glyph c ] ]
 
 failureText :: forall e. CellId -> Boolean -> [FailureMessage] -> [HTML e]
 failureText _ _ [ ] = [ ]
@@ -124,9 +163,12 @@ renderOutput cell = case cell ^. _content of
   _ -> []
 
 markdownOutput :: forall e. String -> CellId -> HTML e
-markdownOutput s cellId = H.div [A.class_ VC.markdownOutput] <<< fromSlamDownEvents <<< renderHalogen $ parseMd s
-  where fromSlamDownEvents :: [H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
-        fromSlamDownEvents = ((((CellSlamDownEvent cellId) <$>) <$>) <$>)
+markdownOutput s cellId =
+  H.div [A.classes ([ VC.markdownOutput ] <> (fadeWhen $ s == "")) ]
+  <<< fromSlamDownEvents <<< renderHalogen $ parseMd s
+  where
+  fromSlamDownEvents :: [H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
+  fromSlamDownEvents = ((((CellSlamDownEvent cellId) <$>) <$>) <$>)
 
 fadeWhen :: Boolean -> [A.ClassName]
 fadeWhen true = [B.fade]

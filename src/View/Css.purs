@@ -151,3 +151,6 @@ searchCellInput = className "search-cell-input"
 
 searchCellButton :: ClassName
 searchCellButton = className "search-cell-button"
+
+nextCellList :: ClassName
+nextCellList = className "next-cell-list"
