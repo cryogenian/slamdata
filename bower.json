@@ -15,7 +15,6 @@
     "tests"
   ],
   "dependencies": {
-    "bootstrap": "~3.3.4",
     "purescript-ace": "~0.3.0",
     "purescript-aff": "~0.10.0",
     "purescript-affjax": "~0.3.0",
