@@ -22,6 +22,7 @@ import Model.Notebook (State(), _activeCellId, _activeCell, _modalError, _resour
 import Controller.Notebook.Cell (runCellEvent)
 import Model.Notebook.Cell (CellContent(..))
 import Model.Notebook.Cell.Explore (initialExploreRec)
+import Model.Notebook.Cell.Query (initialQueryRec)
 import Model.Notebook.Cell.Search (initialSearchRec)
 import Input.Notebook (Input(..))
 import Data.Inject1 (prj)
@@ -89,7 +90,7 @@ handleMenuCell state signal =
 handleMenuInsert :: forall e. MenuInsertSignal -> I e
 handleMenuInsert ExploreInsert = pure $ AddCell (Explore initialExploreRec)
 handleMenuInsert MarkdownInsert = pure $ AddCell (Markdown "")
-handleMenuInsert QueryInsert = pure $ AddCell (Query "")
+handleMenuInsert QueryInsert = pure $ AddCell (Query initialQueryRec)
 handleMenuInsert SearchInsert = pure $ AddCell (Search initialSearchRec)
 
 

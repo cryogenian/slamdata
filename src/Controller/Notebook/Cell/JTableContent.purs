@@ -5,28 +5,33 @@ module Controller.Notebook.Cell.JTableContent
   , loadPage
   , changePageSize
   , runJTable
+  , queryToJTable
   ) where
 
-import Api.Query (query, sample)
+import Api.Fs (delete)
+import Api.Query (port, query, sample)
 import Control.Bind ((<=<), (>=>))
+import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (message)
 import Control.Plus (empty)
-import Controller.Notebook.Common (I())
+import Controller.Notebook.Common (I(), finish, update)
 import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (Json(), JObject(), fromArray, toObject, toNumber, fromObject)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Array (head)
 import Data.Date (now)
 import Data.These (These(..), these, theseRight, thisOrBoth)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Data.Either.Unsafe (fromRight)
 import Data.Foreign.Class (readJSON)
+import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Global (isNaN, readInt)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
-import Model.Notebook.Cell (Cell(), _JTableContent, _content, _cellId)
+import Model.Notebook.Cell
 import Model.Resource (Resource())
 import Optic.Core ((^.), (.~), (..))
 import Optic.Extended (TraversalP(), (^?))
@@ -107,3 +112,21 @@ runJTable file cell = fromMaybe empty $ do
            else value
       else pure obj
 
+queryToJTable :: forall e. Cell -> String -> Resource -> Resource -> I e
+queryToJTable cell sql inp out = do
+  jobj <- liftAff do
+    delete out
+    attempt (port inp out sql)
+  either errorInQuery (const $ runJTable out cell) jobj
+  where
+  correct :: String -> Resource -> Resource -> I e
+  correct sql inp out = do
+    jobj <- liftAff do
+      delete out
+      attempt (port inp out sql)
+    either errorInQuery (const $ runJTable out cell) jobj
+
+  errorInQuery :: _ -> I e
+  errorInQuery err =
+    (pure $ update cell (_failures .~ ["Error in query: " <> message err]))
+    `andThen` \_ -> finish cell

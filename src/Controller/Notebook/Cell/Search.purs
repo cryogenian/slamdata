@@ -13,7 +13,7 @@ import Control.Monad.Aff.Class (liftAff)
 import Optic.Core ((^.), (.~), (..))
 import Optic.Fold ((^?))
 
-import Data.Maybe (maybe, Maybe(..))
+import Data.Maybe (fromMaybe, maybe, Maybe(..))
 import Data.Either (either, Either())
 import Data.Either.Unsafe (fromRight)
 import Data.Tuple (Tuple(..), uncurry)
@@ -29,8 +29,8 @@ import Halogen.HTML.Events.Monad (andThen)
 import Text.SlamSearch (mkQuery)
 
 import Input.Notebook (Input(..))
-import Controller.Notebook.Common (I())
-import Controller.Notebook.Cell.JTableContent (runJTable)
+import Controller.Notebook.Common (I(), finish, update)
+import Controller.Notebook.Cell.JTableContent (runJTable, queryToJTable)
 import Model.Resource (newFile, _path, AnyPath(), Resource())
 import Model.Notebook.Port (_PortResource)
 import Model.Notebook.Search (needFields, queryToSQL)
@@ -45,18 +45,12 @@ runSearch cell =
   where
   input :: Maybe Resource
   input = cell ^? _input .. _PortResource
-  
+
   output :: Maybe Resource
   output = cell ^? _output .. _PortResource
 
   buffer :: String
   buffer = cell ^. _content .. _Search .. _buffer
-
-  update :: (Cell -> Cell) -> Input 
-  update = UpdateCell (cell ^. _cellId)
-
-  started :: Maybe Milliseconds
-  started = toEpochMilliseconds <$> (cell ^? _runState .. _RunningSince)
 
   go :: _ -> I eff
   go q = do
@@ -64,40 +58,20 @@ runSearch cell =
       guard (needFields q)
       input
     flip (either errorInFields) fs \fs ->
-      maybe errorInPorts
-      (uncurry $ correct $ queryToSQL fs q) $ lift2 Tuple input output
-
-
-  correct :: String -> Resource -> Resource -> I eff 
-  correct sql inp out = do
-    jobj <- liftAff do
-      delete out
-      attempt (port inp out sql)
-    either errorInQuery (const $ runJTable out cell) jobj
-
+      fromMaybe errorInPorts
+      (queryToJTable cell (queryToSQL fs q) <$> input <*> output)
 
   errorInParse :: _ -> I eff
   errorInParse _ =
-    (pure $ update (_failures .~ ["Incorrect query string"]))
-    `andThen` \_ -> finish
+    (pure $ update cell (_failures .~ ["Incorrect query string"]))
+    `andThen` \_ -> finish cell
 
   errorInFields :: _ -> I eff
   errorInFields _ =
-    (pure $ update (_failures .~ ["selected file is empty"]))
-    `andThen` \_ -> finish
+    (pure $ update cell (_failures .~ ["selected file is empty"]))
+    `andThen` \_ -> finish cell
 
   errorInPorts :: I eff
   errorInPorts =
-    (pure $ update (_failures .~ ["Incorrect type of input or output"]))
-    `andThen` \_ -> finish 
-
-  errorInQuery :: _ -> I eff
-  errorInQuery err =
-    (pure $ update (_failures .~ ["Error in query: " <> message err]))
-    `andThen` \_ -> finish
-
-  finish :: I eff
-  finish = do 
-    d <- liftEff nowEpochMilliseconds
-    pure $ update (_runState .~ RunFinished (maybe zero (d -) started))
-      
+    (pure $ update cell (_failures .~ ["Incorrect type of input or output"]))
+    `andThen` \_ -> finish cell

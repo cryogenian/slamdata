@@ -42,7 +42,7 @@ query res sql =
 port :: forall e. Resource -> Resource -> SQL ->
         Aff (ajax :: AJAX | e) JObject 
 port res dest sql = 
-  if not (isFile res && isFile dest)
+  if not (isFile dest)
   then pure empty
   else do 
     result <- affjax $ defaultRequest
@@ -54,9 +54,6 @@ port res dest sql =
 
     either (throwError <<< error) pure $ content result.response
   where
-  msg :: String
-  msg = "error in calling `port`"  
-
   swap :: forall a b. Either a b -> Either b a
   swap (Right a) = Left a
   swap (Left a) = Right a
