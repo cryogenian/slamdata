@@ -29,7 +29,7 @@ import Halogen.HTML.Events.Monad (andThen)
 import Text.SlamSearch (mkQuery)
 
 import Input.Notebook (Input(..))
-import Controller.Notebook.Common (I())
+import Controller.Notebook.Common (I(), finish, update)
 import Controller.Notebook.Cell.JTableContent (runJTable, queryToJTable)
 import Model.Resource (newFile, _path, AnyPath(), Resource())
 import Model.Notebook.Port (_PortResource)
@@ -45,18 +45,12 @@ runSearch cell =
   where
   input :: Maybe Resource
   input = cell ^? _input .. _PortResource
-  
+
   output :: Maybe Resource
   output = cell ^? _output .. _PortResource
 
   buffer :: String
   buffer = cell ^. _content .. _Search .. _buffer
-
-  update :: (Cell -> Cell) -> Input 
-  update = UpdateCell (cell ^. _cellId)
-
-  started :: Maybe Milliseconds
-  started = toEpochMilliseconds <$> (cell ^? _runState .. _RunningSince)
 
   go :: _ -> I eff
   go q = do
@@ -69,20 +63,15 @@ runSearch cell =
 
   errorInParse :: _ -> I eff
   errorInParse _ =
-    (pure $ update (_failures .~ ["Incorrect query string"]))
-    `andThen` \_ -> finish
+    (pure $ update cell (_failures .~ ["Incorrect query string"]))
+    `andThen` \_ -> finish cell
 
   errorInFields :: _ -> I eff
   errorInFields _ =
-    (pure $ update (_failures .~ ["selected file is empty"]))
-    `andThen` \_ -> finish
+    (pure $ update cell (_failures .~ ["selected file is empty"]))
+    `andThen` \_ -> finish cell
 
   errorInPorts :: I eff
   errorInPorts =
-    (pure $ update (_failures .~ ["Incorrect type of input or output"]))
-    `andThen` \_ -> finish 
-
-  finish :: I eff
-  finish = do 
-    d <- liftEff nowEpochMilliseconds
-    pure $ update (_runState .~ RunFinished (maybe zero (d -) started))
+    (pure $ update cell (_failures .~ ["Incorrect type of input or output"]))
+    `andThen` \_ -> finish cell
