@@ -4,10 +4,12 @@ import Api.Fs (children)
 import App.Notebook.Ace (AceKnot())
 import Control.Monad.Aff (runAff, attempt)
 import Control.Monad.Eff
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (RefVal(), readRef)
 import Control.Plus (empty)
 import Control.Timer (interval)
 import Controller.Notebook (handleMenuSignal)
+import Controller.Notebook.Cell.Explore (runExplore)
 import Data.Array (elemIndex)
 import Data.Date (now)
 import Data.DOM.Simple.Document
@@ -17,15 +19,15 @@ import Data.DOM.Simple.Window (globalWindow, document)
 import Data.Either
 import Data.Inject1 (inj)
 import Data.Maybe
-import Data.Tuple (Tuple(..), fst)
+import Data.Tuple (Tuple(..), fst, snd)
 import DOM (DOM())
 import Driver.Notebook.Routing (routing, Routes(..))
 import EffectTypes
-import Halogen.HTML.Events.Monad (runEvent)
+import Halogen.HTML.Events.Monad (runEvent, andThen)
 import Input.Notebook (Input(..))
 import Model.Action (isEdit)
 import Model.Notebook
-import Model.Notebook.Cell (CellContent(..))
+import Model.Notebook.Cell (CellContent(..), _cellId)
 import Model.Notebook.Cell.Explore (initialExploreRec, _input)
 import Model.Notebook.Cell.FileInput
 import Model.Notebook.Domain (emptyNotebook, addCell, insertCell)
@@ -63,14 +65,17 @@ driver ref k =
         update $ (_resource .~ res)
               .. (_initialName .~ (res ^. _name))
         handleShortcuts ref k
-      ExploreRoute res -> do
+      ExploreRoute res ->
         -- TODO: what to do about the resource here? it doesn't exist yet, and we can't really invent a name for it until we actually need to save it
-        let nb = fst $ addCell (Explore (initialExploreRec # _input .. _file .~ Right res)) emptyNotebook
-        update $ (_editable .~ true)
-              .. (_loaded .~ true)
-              .. (_error .~ "")
-              .. (_initialName .~ "")
-              .. (_notebook .~ nb)
+        case addCell (Explore (initialExploreRec # _input .. _file .~ Right res)) emptyNotebook of
+          Tuple notebook cell -> do
+            update $ (_editable .~ true)
+                  .. (_loaded .~ true)
+                  .. (_error .~ "")
+                  .. (_initialName .~ "")
+                  .. (_notebook .~ notebook)
+            runEvent (\_ -> log "Error in runExplore in driver") k $
+              ((RunCell (cell ^. _cellId)) <$> liftEff now) `andThen` \_ -> runExplore cell
       _ -> update (_error .~ "Incorrect path")
    where update = k <<< WithState
 
