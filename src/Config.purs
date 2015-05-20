@@ -3,17 +3,20 @@ module Config where
 baseUrl :: String
 baseUrl = ""
 
+serviceBaseUrl :: String
+serviceBaseUrl = "/"
+
 uploadUrl :: String
-uploadUrl = baseUrl <> "upload"
+uploadUrl = serviceBaseUrl <> "upload"
 
 metadataUrl :: String
-metadataUrl = baseUrl <> "metadata/fs/"
+metadataUrl = serviceBaseUrl <> "metadata/fs/"
 
 dataUrl :: String
-dataUrl = baseUrl <> "data/fs/"
+dataUrl = serviceBaseUrl <> "data/fs/"
 
 queryUrl :: String
-queryUrl = baseUrl <> "query/fs/"
+queryUrl = serviceBaseUrl <> "query/fs/"
 
 notebookUrl :: String
 notebookUrl = baseUrl <> "notebook.html"
