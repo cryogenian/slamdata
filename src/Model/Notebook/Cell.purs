@@ -18,6 +18,7 @@ import qualified Model.Notebook.Cell.Common as Cm
 import qualified Model.Notebook.Cell.Explore as Ex
 import qualified Model.Notebook.Cell.Query as Qu
 import qualified Model.Notebook.Cell.Search as Sr
+import qualified Model.Notebook.Cell.Viz as Vz 
 
 type CellId = Number
 
@@ -43,8 +44,8 @@ data CellContent
   = Evaluate String
   | Search Sr.SearchRec
   | Explore Ex.ExploreRec
+  | Visualize Vz.VizRec
   | Query Qu.QueryRec
-  | Visualize String
   | Markdown String
 
 cellContentType :: CellContent -> String
@@ -68,7 +69,7 @@ newQueryContent :: CellContent
 newQueryContent = Query Qu.initialQueryRec
 
 newVisualizeContent :: CellContent
-newVisualizeContent = Visualize ""
+newVisualizeContent = Visualize Vz.initialVizRec 
 
 newMarkdownContent :: CellContent
 newMarkdownContent = Markdown "" 
@@ -93,7 +94,7 @@ _Query = prism' Query $ \s -> case s of
   Query s -> Just s
   _ -> Nothing
 
-_Visualize :: PrismP CellContent String
+_Visualize :: PrismP CellContent Vz.VizRec
 _Visualize = prism' Visualize $ \s -> case s of
   Visualize s -> Just s
   _ -> Nothing
@@ -121,7 +122,6 @@ _AceContent f s = case s of
   Evaluate _ -> _Evaluate f s
   Search _ -> (_Search .. Sr._buffer) f s
   Query _ -> (_Query .. Qu._input) f s
-  Visualize _ -> _Visualize f s
   Markdown _ -> _Markdown f s
   _ -> _const f s
 
@@ -184,6 +184,8 @@ instance encodeJsonCellContent :: EncodeJson CellContent where
     ~> case cc of
       Explore rec -> encodeJson rec
       _ -> jsonEmptyObject
+
+
 
 
 

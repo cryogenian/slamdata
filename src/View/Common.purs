@@ -68,3 +68,7 @@ closeButton handler =
   H.button [ A.class_ B.close
            , E.onClick handler ]
            [ H.span_ [ H.text (fromChar $ fromCharCode 215) ] ]
+
+fadeWhen :: Boolean -> [A.ClassName]
+fadeWhen true = [B.fade]
+fadeWhen false = [B.fade, B.in_]

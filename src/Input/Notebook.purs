@@ -24,6 +24,8 @@ import Model.Resource (_name, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.), (?~))
 import Optic.Setter (mapped, over)
 import Text.Markdown.SlamDown.Html (SlamDownEvent(..))
+import qualified ECharts.Options as EC
+
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.StrMap as M
@@ -45,6 +47,7 @@ data Input
   | UpdateCell CellId (Cell -> Cell)
   | CellSlamDownEvent CellId SlamDownEvent
   | InsertCell Cell CellContent
+  | SetEChartsOption String EC.Option
 
 updateState state (WithState f) =
   f state
