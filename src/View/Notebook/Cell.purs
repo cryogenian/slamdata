@@ -2,22 +2,25 @@ module View.Notebook.Cell (cell) where
 
 import Control.Functor (($>))
 import Controller.Notebook.Cell (runCellEvent)
+import Controller.Notebook.Cell.Viz (insertViz)
 import Data.Array (length)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Function (on)
 import Data.Maybe (Maybe(), maybe)
 import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
-import EffectTypes (NotebookAppEff())
 import Input.Notebook (Input(..))
+import Model.Notebook 
 import Model.Notebook.Cell
 import Model.Notebook.Port (Port(..))
 import Number.Format (toFixed)
 import Optic.Core ((^.), (%~), (..), is)
-import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen)
-import Text.Markdown.SlamDown.Parser (parseMd)
+
 import View.Common
+import View.Notebook.Cell.Ace (aceEditor)
 import View.Notebook.Cell.Explore (exploreEditor, exploreOutput)
 import View.Notebook.Cell.Search (searchOutput, searchEditor)
+import View.Notebook.Cell.Viz (vizChoices, vizOutput)
+import View.Notebook.Cell.Markdown (markdownOutput)
 import View.Notebook.Cell.Query (queryOutput)
 import View.Notebook.Common
 
@@ -30,51 +33,63 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
-cell :: forall e. Maybe Date -> Cell -> [HTML e]
-cell d state =
+cell :: forall e. State -> Cell -> [HTML e]
+cell notebook state =
   [ H.div [ A.classes [B.containerFluid, VC.notebookCell] ]
-    [ row [ H.div [ A.classes [B.btnGroup, B.pullRight, VC.cellControls] ]
-            [ H.button [ A.classes [B.btn]
-                       , E.onClick $ E.input_ $ UpdateCell (state ^. _cellId) (_hiddenEditor %~ not)
-                       ]
-              [ H.text (if state ^. _hiddenEditor then "Show" else "Hide") ]
-            , H.button [ A.classes [B.btn]
-                       , E.onClick $ E.input_ $ TrashCell $ state ^. _cellId
-                       ]
-              [ H.text "Trash" ]
-            ]
-          ]
-
+    [ controls state 
     , editor state
-    , row' (fadeWhen (state ^. _hiddenEditor))
-           [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
-                   [ H.button [ A.classes [ B.btn
-                                          , B.btnPrimary
-                                          , if isRunning (state ^. _runState)
-                                            then VC.stopButton
-                                            else VC.playButton ]
-                              , E.onClick \_ -> pure (runCellEvent state)
-                              ]
-                              [ if isRunning (state ^. _runState)
-                                then glyph B.glyphiconStop
-                                else glyph B.glyphiconPlay ]
-                   , H.div [ A.classes [ VC.statusText ] ]
-                           [ H.text $ statusText d (state ^. _runState) ]
-                   , H.div [ A.classes [ VC.cellFailures ] ]
-                           (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
-                   ]
-           ]
-    , H.div [ A.classes $ [B.row, VC.cellOutput, B.fade]
-                       ++ if _RunFinished `is` (state ^. _runState)
-                          then [B.in_]
-                          else [] ]
-            $ renderOutput state
-    , row (insertNextCell state)
+    , statusBar notebook.tickDate state
+    , output state 
+    , insertNextCell notebook state 
     ]
   ]
 
-insertNextCell :: forall e. Cell -> [HTML e]
-insertNextCell state =
+controls :: forall e. Cell -> HTML e
+controls state =
+  row [ H.div [ A.classes [B.btnGroup, B.pullRight, VC.cellControls] ]
+        [ H.button [ A.classes [B.btn]
+                   , E.onClick $ E.input_ $ UpdateCell (state ^. _cellId) (_hiddenEditor %~ not)
+                   ]
+          [ H.text (if state ^. _hiddenEditor then "Show" else "Hide") ]
+        , H.button [ A.classes [B.btn]
+                   , E.onClick $ E.input_ $ TrashCell $ state ^. _cellId
+                   ]
+          [ H.text "Trash" ]
+        ]
+      ]
+
+output :: forall e. Cell -> HTML e
+output state =
+   H.div [ A.classes $ [B.row, VC.cellOutput, B.fade] ++
+           if _RunFinished `is` (state ^. _runState) || _Visualize `is` (state ^. _content)
+           then [B.in_]
+           else [] ]
+   $ renderOutput state
+
+statusBar :: forall e. Maybe Date -> Cell -> HTML e
+statusBar d state = 
+  row' (fadeWhen (state ^. _hiddenEditor))
+  [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
+    [ H.button [ A.classes [ B.btn
+                           , B.btnPrimary
+                           , if isRunning (state ^. _runState)
+                             then VC.stopButton
+                             else VC.playButton ]
+               , E.onClick \_ -> pure (runCellEvent state)
+               ]
+      [ if isRunning (state ^. _runState)
+        then glyph B.glyphiconStop
+        else glyph B.glyphiconPlay ]
+    , H.div [ A.classes [ VC.statusText ] ]
+      [ H.text $ statusText d (state ^. _runState) ]
+    , H.div [ A.classes [ VC.cellFailures ] ]
+      (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
+      
+    ]
+  ]
+
+insertNextCell :: forall e. State -> Cell -> HTML e
+insertNextCell notebook state = row
   [ H.div [ A.classes [ VC.cellEvalLine, B.clearfix ] ]
     [ H.button
       [ A.classes [ B.btn
@@ -88,18 +103,25 @@ insertNextCell state =
               else B.glyphiconMenuRight ]
     , H.ul [ A.classes ([ B.listInline, VC.nextCellList ] <>
                         (fadeWhen $ not $ (state ^. _addingNextCell))) ]
-      (nextCellChoices state)
+      (nextCellChoices notebook state)
     ]
   ]
-
-nextCellChoices :: forall e. Cell -> [HTML e]
-nextCellChoices state =
+nextCellChoices :: forall e. State -> Cell -> [HTML e]
+nextCellChoices notebook state =
   [ li "Query cell" newQueryContent  B.glyphiconHdd
   , li "Explore cell" newExploreContent B.glyphiconEyeOpen
   , li "Markdown cell" newMarkdownContent B.glyphiconEdit
   , li "Search cell" newSearchContent B.glyphiconSearch] <>
   case state ^. _output of
-    PortResource _ -> [ li "Visualization cell" newVisualizeContent B.glyphiconPicture ]
+    PortResource _ ->
+      [ H.li_ [ H.a [ A.href "#"
+                  , E.onClick (\_ -> E.preventDefault $> insertViz notebook state)
+                  , A.title "Visualization cell"
+                  , A.classes [ B.btn ]
+                  ]
+              [ glyph B.glyphiconPicture ]
+              ]
+      ]
     _ -> [ ]
 
 
@@ -142,37 +164,16 @@ editor :: forall e. Cell -> HTML e
 editor state = case state ^. _content of
   (Explore rec) -> exploreEditor state
   (Search _) -> searchEditor state
-  _ -> row [ H.div [ A.classes $ [VC.cellInput] <> fadeWhen (state ^. _hiddenEditor) ]
-                      [ H.div [ dataCellId $ state ^. _cellId
-                              , dataCellType $ state ^. _content
-                              , A.classes [ VC.aceContainer ]
-                              ]
-                              []
-                      ]
-              ]
-  where
-  dataCellId :: forall i. Number -> A.Attr i
-  dataCellId = A.attr (A.attributeName "data-cell-id")
+  (Visualize _) -> vizChoices state 
+  _ -> aceEditor state
 
-  dataCellType :: forall i. CellContent -> A.Attr i
-  dataCellType = A.attr (A.attributeName "data-cell-type") <<< cellContentType
 
 renderOutput :: forall e. Cell -> [HTML e]
 renderOutput cell = case cell ^. _content of
   Explore _ -> exploreOutput cell
   Markdown s -> [markdownOutput s (cell ^. _cellId)]
   Search s -> searchOutput cell
+  Visualize s -> vizOutput cell
   Query s -> queryOutput cell
   _ -> []
 
-markdownOutput :: forall e. String -> CellId -> HTML e
-markdownOutput s cellId =
-  H.div [A.classes ([ VC.markdownOutput ] <> (fadeWhen $ s == "")) ]
-  <<< fromSlamDownEvents <<< renderHalogen $ parseMd s
-  where
-  fromSlamDownEvents :: [H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)] -> [HTML e]
-  fromSlamDownEvents = ((((CellSlamDownEvent cellId) <$>) <$>) <$>)
-
-fadeWhen :: Boolean -> [A.ClassName]
-fadeWhen true = [B.fade]
-fadeWhen false = [B.fade, B.in_]

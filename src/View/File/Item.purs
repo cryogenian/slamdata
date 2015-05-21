@@ -23,6 +23,10 @@ import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
+import qualified Halogen.HTML.CSS as CSS
+import Css.Size (px)
+import Css.Geometry
+import Css.String
 import qualified View.Css as Vc
 import Data.Path.Pathy
 
@@ -55,7 +59,7 @@ item searching ix state =
                                 if not $ state.hovered || state.selected
                                 then [B.hidden]
                                 else mempty)
-                   , A.style $ A.styles $ SM.fromList [Tuple "margin-bottom" "0"]
+                   , CSS.style (marginBottom $ px 0)
                    ]
               (showToolbar state)
             ]

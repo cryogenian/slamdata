@@ -81,7 +81,7 @@ body state =
 
 cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
-                ((state ^. _notebook <<< _cells) >>= cell state.tickDate) ]
+                ((state ^. _notebook <<< _cells) >>= cell state) ]
 
 margined :: forall e. [HTML e] -> [HTML e] -> HTML e
 margined l r = row [ H.div [ A.classes [ B.colMd2 ] ] l

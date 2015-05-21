@@ -154,3 +154,7 @@ searchCellButton = className "search-cell-button"
 
 nextCellList :: ClassName
 nextCellList = className "next-cell-list"
+
+echartsContainer :: ClassName
+echartsContainer = className "echarts-container"
+

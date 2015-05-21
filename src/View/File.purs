@@ -24,7 +24,10 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
-
+import qualified Halogen.HTML.CSS as CSS
+import Css.Size
+import Css.Geometry
+import Css.String
 
 
 view :: forall e. State -> H.HTML (I e)
@@ -52,7 +55,7 @@ sorting state =
         [ H.a (targetLink' $ handleSetSort $ notSort state.sort)
               [ H.text "Name"
               , H.i [ chevron state
-                    , A.style (A.styles $ SM.fromList [Tuple "margin-left" "10px"])
+                    , CSS.style (marginLeft $ px 10)
                     ]
                     []
               ]

@@ -19,6 +19,7 @@ import Model.Notebook.Cell.FileInput (_file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..), _PortResource)
 import Model.Resource
 
+
 -- We have no any cells that have more than one
 -- dependency right now. And have no ui to make
 -- cell that has more than one deps.
@@ -128,7 +129,7 @@ portByContent _ _ _ = Closed
 freeId :: Notebook -> CellId
 freeId (Notebook n) =
   maybe 0 (+ 1) $ head $ reverse $ sort $ (^. _cellId) <$> n.cells
-
+   
 
 instance notebookEncode :: Ae.EncodeJson Notebook where
   encodeJson (Notebook {metadata: metadata, cells: cells})

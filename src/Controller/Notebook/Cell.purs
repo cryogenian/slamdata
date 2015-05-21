@@ -13,6 +13,7 @@ import Input.Notebook (Input(..))
 import Controller.Notebook.Common (I())
 import Controller.Notebook.Cell.Search (runSearch)
 import Controller.Notebook.Cell.Explore (runExplore)
+import Controller.Notebook.Cell.Viz (runViz)
 import Controller.Notebook.Cell.Query (runQuery)
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..))
 
@@ -23,5 +24,6 @@ runCellEvent cell = do
     case cell ^. _content of
       Search _ -> runSearch (cell # _runState .~ (RunningSince d))
       Explore _ -> runExplore cell
+      Visualize _ -> runViz cell
       Query _ -> runQuery cell
       _ -> empty
