@@ -3,13 +3,13 @@ module View.Notebook.Cell (cell) where
 import Control.Functor (($>))
 import Controller.Notebook.Cell (runCellEvent)
 import Controller.Notebook.Cell.Viz (insertViz)
-import Data.Array (length)
+import Data.Array (length, null)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Function (on)
 import Data.Maybe (Maybe(), maybe)
 import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
 import Input.Notebook (Input(..))
-import Model.Notebook 
+import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Port (Port(..))
 import Number.Format (toFixed)
@@ -36,11 +36,11 @@ import qualified View.Css as VC
 cell :: forall e. State -> Cell -> [HTML e]
 cell notebook state =
   [ H.div [ A.classes [B.containerFluid, VC.notebookCell] ]
-    [ controls state 
+    [ controls state
     , editor state
     , statusBar notebook.tickDate state
-    , output state 
-    , insertNextCell notebook state 
+    , output state
+    , insertNextCell notebook state
     ]
   ]
 
@@ -61,13 +61,13 @@ controls state =
 output :: forall e. Cell -> HTML e
 output state =
    H.div [ A.classes $ [B.row, VC.cellOutput, B.fade] ++
-           if _RunFinished `is` (state ^. _runState) || _Visualize `is` (state ^. _content)
+           if (_RunFinished `is` (state ^. _runState) || _Visualize `is` (state ^. _content)) && null (state ^. _failures)
            then [B.in_]
            else [] ]
    $ renderOutput state
 
 statusBar :: forall e. Maybe Date -> Cell -> HTML e
-statusBar d state = 
+statusBar d state =
   row' (fadeWhen (state ^. _hiddenEditor))
   [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
     [ H.button [ A.classes [ B.btn
@@ -84,7 +84,6 @@ statusBar d state =
       [ H.text $ statusText d (state ^. _runState) ]
     , H.div [ A.classes [ VC.cellFailures ] ]
       (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
-      
     ]
   ]
 
@@ -164,16 +163,18 @@ editor :: forall e. Cell -> HTML e
 editor state = case state ^. _content of
   (Explore rec) -> exploreEditor state
   (Search _) -> searchEditor state
-  (Visualize _) -> vizChoices state 
+  (Visualize _) -> vizChoices state
   _ -> aceEditor state
 
 
 renderOutput :: forall e. Cell -> [HTML e]
-renderOutput cell = case cell ^. _content of
-  Explore _ -> exploreOutput cell
-  Markdown s -> [markdownOutput s (cell ^. _cellId)]
-  Search s -> searchOutput cell
-  Visualize s -> vizOutput cell
-  Query s -> queryOutput cell
-  _ -> []
-
+renderOutput cell =
+  if not (null $ cell ^. _failures)
+  then []
+  else case cell ^. _content of
+    Explore _ -> exploreOutput cell
+    Markdown s -> [markdownOutput s (cell ^. _cellId)]
+    Search _ -> searchOutput cell
+    Visualize _ -> vizOutput cell
+    Query _ -> queryOutput cell
+    _ -> []
