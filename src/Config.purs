@@ -1,5 +1,7 @@
 module Config where
 
+import Data.Int (Int(), fromNumber)
+
 baseUrl :: String
 baseUrl = ""
 
@@ -50,3 +52,6 @@ homeHash = "index.html#?sort=asc&q=path%3A%2F&salt="
 
 notebookNameEditorId :: String
 notebookNameEditorId = "name-editor"
+
+defaultPageSize :: Int
+defaultPageSize = fromNumber 10
