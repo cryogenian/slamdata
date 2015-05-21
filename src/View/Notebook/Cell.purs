@@ -64,9 +64,10 @@ cell d state =
                            (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
                    ]
            ]
-    , H.div [ A.classes $ [B.row, VC.cellOutput, B.fade] ++ if _RunFinished `is` (state ^. _runState)
-                                                            then [B.in_]
-                                                            else [] ]
+    , H.div [ A.classes $ [B.row, VC.cellOutput, B.fade]
+                       ++ if _RunFinished `is` (state ^. _runState)
+                          then [B.in_]
+                          else [] ]
             $ renderOutput state
     , row (insertNextCell state)
     ]
@@ -90,13 +91,13 @@ insertNextCell state =
       (nextCellChoices state)
     ]
   ]
-  
+
 nextCellChoices :: forall e. Cell -> [HTML e]
 nextCellChoices state =
   [ li "Query cell" newQueryContent  B.glyphiconHdd
   , li "Explore cell" newExploreContent B.glyphiconEyeOpen
   , li "Markdown cell" newMarkdownContent B.glyphiconEdit
-  , li "Search cell" newSearchContent B.glyphiconSearch] <> 
+  , li "Search cell" newSearchContent B.glyphiconSearch] <>
   case state ^. _output of
     PortResource _ -> [ li "Visualization cell" newVisualizeContent B.glyphiconPicture ]
     _ -> [ ]
