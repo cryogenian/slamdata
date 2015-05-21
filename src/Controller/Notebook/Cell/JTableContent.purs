@@ -36,9 +36,10 @@ import Model.Resource (Resource())
 import Optic.Core ((^.), (.~), (..))
 import Optic.Extended (TraversalP(), (^?))
 
-import qualified Model.Notebook.Cell.JTableContent as JTC
+import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Int as I
 import qualified Data.StrMap as SM
+import qualified Model.Notebook.Cell.JTableContent as JTC
 
 _page :: TraversalP Cell (These String I.Int)
 _page = _content .. _JTableContent .. JTC._page
@@ -84,18 +85,21 @@ runJTable file cell = fromMaybe empty $ do
     let perPage = table ^. JTC._perPage
         pageNumber = fromMaybe one $ theseRight (table ^. JTC._page)
         pageIndex = pageNumber - one
-    -- TODO: catch aff failures?
-    numItems <- liftAff $ fromMaybe 0 <<< readTotal <$> query file "SELECT COUNT(*) AS total FROM {{path}}"
-    result <- liftAff $ sample file (pageIndex * perPage) perPage
+    results <- liftAff $ attempt $ { numItems: _, json: _ }
+      <$> fromMaybe 0 <<< readTotal <$> query file "SELECT COUNT(*) AS total FROM {{path}}"
+      <*> sample file (pageIndex * perPage) perPage
     now' <- liftEff now
-    return $ CellResult (cell ^. _cellId) now' $ Right $ JTableContent $
-      JTC.JTableContent { perPage: perPage
-                        , page: That pageNumber
-                        , result: Just $ JTC.Result
-                          { totalPages: I.fromNumber $ Math.ceil (numItems / I.toNumber perPage)
-                          , values: Just $ fromArray (readValue <$> result)
-                          }
-                        }
+    return $ case results of
+      Left err -> CellResult (cell ^. _cellId) now' (Left $ NEL.singleton $ message err)
+      Right results -> do
+        CellResult (cell ^. _cellId) now' $ Right $ JTableContent $
+          JTC.JTableContent { perPage: perPage
+                            , page: That pageNumber
+                            , result: Just $ JTC.Result
+                              { totalPages: I.fromNumber $ Math.ceil (results.numItems / I.toNumber perPage)
+                              , values: Just $ fromArray (readValue <$> results.json)
+                              }
+                            }
   where
   readTotal :: [Json] -> Maybe Number
   readTotal = toNumber <=< SM.lookup "total" <=< toObject <=< head
