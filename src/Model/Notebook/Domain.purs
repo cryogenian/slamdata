@@ -24,7 +24,6 @@ import Model.Resource
 -- dependency right now. And have no ui to make
 -- cell that has more than one deps.
 type Dependencies = Map CellId CellId
-type Metadata = String
 
 deps :: CellId -> Dependencies -> [CellId]
 deps cid ds = deps' cid ds []
@@ -36,8 +35,7 @@ deps cid ds = deps' cid ds []
 
 
 type NotebookRec =
-  { metadata :: Metadata
-  , cells :: [Cell]
+  { cells :: [Cell]
   , dependencies :: Dependencies
   , activeCellId :: CellId
   , resource :: Resource
@@ -73,16 +71,9 @@ _cellsRec = lens _.cells _{cells = _}
 _cells :: LensP Notebook [Cell]
 _cells = _notebookRec .. _cellsRec
 
-_metadataRec :: LensP NotebookRec Metadata
-_metadataRec = lens _.metadata _{metadata = _}
-
-_metadata :: LensP Notebook Metadata
-_metadata = _notebookRec .. _metadataRec
-
 emptyNotebook :: Notebook
 emptyNotebook = Notebook
-  { metadata: ""
-  , resource: newNotebook
+  { resource: newNotebook
   , cells: []
   , dependencies: empty
   , activeCellId: 0
@@ -129,12 +120,11 @@ portByContent _ _ _ = Closed
 freeId :: Notebook -> CellId
 freeId (Notebook n) =
   maybe 0 (+ 1) $ head $ reverse $ sort $ (^. _cellId) <$> n.cells
-   
+
 
 instance notebookEncode :: Ae.EncodeJson Notebook where
-  encodeJson (Notebook {metadata: metadata, cells: cells})
-    =  "metadata" := metadata
-    ~> "cells" := cells
+  encodeJson (Notebook { cells: cells })
+    =  "cells" := cells
     ~> Ac.jsonEmptyObject
 
 

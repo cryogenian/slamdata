@@ -1,12 +1,13 @@
 module Model.Notebook.Port where
 
-import Model.Resource
-import Data.StrMap
-import Data.Argonaut.Combinators
-import qualified Data.Argonaut.Core as Ac
-import qualified Data.Argonaut.Encode as Ae
-import Optic.Core (prism', PrismP())
+import Data.Argonaut.Combinators ((~>), (:=), (.?))
+import Data.Argonaut.Core (jsonEmptyObject)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
+import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Maybe
+import Data.StrMap
+import Model.Resource
+import Optic.Core (prism', PrismP())
 
 type VarMapValue = String
 
@@ -31,15 +32,27 @@ _VarMap = prism' VarMap $ \p -> case p of
   VarMap m -> Just m
   _ -> Nothing
 
-instance portEncode :: Ae.EncodeJson Port where
-  encodeJson Closed = Ac.jsonEmptyObject
-  encodeJson (PortResource res) = "type" := "resource"
-    ~> "path" := resourcePath res
-    ~> Ac.jsonEmptyObject
-  encodeJson (PortInvalid msg) = "type" := "invalid"
+instance encodeJsonPort :: EncodeJson Port where
+  encodeJson Closed = jsonEmptyObject
+  encodeJson (PortResource res)
+    =  "type" := "resource"
+    ~> "res" := encodeJson res
+    ~> jsonEmptyObject
+  encodeJson (PortInvalid msg)
+    =  "type" := "invalid"
     ~> "message" := msg
-    ~> Ac.jsonEmptyObject
-  encodeJson (VarMap map) =
-    "type" := "map"
-    ~> "content" := map
-    ~> Ac.jsonEmptyObject
+    ~> jsonEmptyObject
+  encodeJson (VarMap sm)
+    =  "type" := "map"
+    ~> "content" := sm
+    ~> jsonEmptyObject
+
+instance decodeJsonPort :: DecodeJson Port where
+  decodeJson json = do
+    obj <- decodeJson json
+    portType <- obj .? "type"
+    case portType of
+      "resource" -> PortResource <$> obj .? "res"
+      "invalid" -> PortInvalid <$> obj .? "msg"
+      "map" -> VarMap <$> obj .? "content"
+      _ -> pure Closed
