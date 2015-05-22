@@ -1,5 +1,5 @@
 module Controller.Notebook.Cell.Search (
-  runSearch 
+  runSearch
   ) where
 
 import Control.Plus (empty)
@@ -35,7 +35,7 @@ import Model.Resource (newFile, _path, AnyPath(), Resource())
 import Model.Notebook.Port (_PortResource)
 import Model.Notebook.Search (needFields, queryToSQL)
 import Model.Notebook.Cell (Cell(), RunState(..), _RunningSince, _runState,  _cellId, _content, _Search, _failures, _input, _output)
-import Model.Notebook.Cell.Search (SearchRec(), _buffer, initialSearchRec) 
+import Model.Notebook.Cell.Search (SearchRec(), _buffer, initialSearchRec)
 import Api.Fs (delete)
 import Api.Query (fields, port, sample)
 
@@ -54,7 +54,7 @@ runSearch cell =
 
   go :: _ -> I eff
   go q = do
-    fs <- maybe (pure $ pure []) (liftAff <<< attempt <<< fields) do 
+    fs <- maybe (pure $ pure []) (liftAff <<< attempt <<< fields) do
       guard (needFields q)
       input
     flip (either errorInFields) fs \fs ->
@@ -63,15 +63,15 @@ runSearch cell =
 
   errorInParse :: _ -> I eff
   errorInParse _ =
-    (pure $ update cell (_failures .~ ["Incorrect query string"]))
-    `andThen` \_ -> finish cell
+    update cell (_failures .~ ["Incorrect query string"])
+      `andThen` \_ -> finish cell
 
   errorInFields :: _ -> I eff
   errorInFields _ =
-    (pure $ update cell (_failures .~ ["selected file is empty"]))
-    `andThen` \_ -> finish cell
+    update cell (_failures .~ ["selected file is empty"])
+      `andThen` \_ -> finish cell
 
   errorInPorts :: I eff
   errorInPorts =
-    (pure $ update cell (_failures .~ ["Incorrect type of input or output"]))
-    `andThen` \_ -> finish cell
+    update cell (_failures .~ ["Incorrect type of input or output"])
+      `andThen` \_ -> finish cell
