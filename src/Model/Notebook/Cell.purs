@@ -36,7 +36,6 @@ newtype Cell =
        , content :: CellContent
        , expandedStatus :: Boolean
        , failures :: [FailureMessage]
-       , metadata :: String
        , hiddenEditor :: Boolean
        , runState :: RunState
        , addingNextCell :: Boolean
@@ -50,7 +49,6 @@ newCell cellId content =
        , content: content
        , expandedStatus: false
        , failures: []
-       , metadata: ""
        , hiddenEditor: false
        , runState: RunInitial
        , addingNextCell: false
@@ -73,9 +71,6 @@ _output = _Cell <<< lens _.output (_ { output = _ })
 
 _content :: LensP Cell CellContent
 _content = _Cell <<< lens _.content (_ { content = _ })
-
-_metadata :: LensP Cell String
-_metadata = _Cell <<< lens _.metadata (_ { metadata = _ })
 
 _hiddenEditor :: LensP Cell Boolean
 _hiddenEditor = _Cell <<< lens _.hiddenEditor (_ { hiddenEditor = _ })
@@ -102,7 +97,6 @@ instance encodeJsonCell :: EncodeJson Cell where
     ~> "input" := cell.input
     ~> "output" := cell.output
     ~> "content" := cell.content
-    ~> "metadata" := cell.metadata
     ~> jsonEmptyObject
 
 instance decodeJsonCell :: DecodeJson Cell where
@@ -112,10 +106,8 @@ instance decodeJsonCell :: DecodeJson Cell where
                     <*> obj .? "content"
     input <- obj .? "input"
     output <- obj .? "output"
-    metadata <- obj .? "metadata"
     pure (cell # (_input .~ input)
-              .. (_output .~ output)
-              .. (_metadata .~ metadata))
+              .. (_output .~ output))
 
 data CellContent
   = Evaluate String
