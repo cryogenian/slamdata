@@ -110,23 +110,18 @@ instance decodeJsonCell :: DecodeJson Cell where
               .. (_output .~ output))
 
 data CellContent
-  = Evaluate String
-  | Search Sr.SearchRec
+  = Search Sr.SearchRec
   | Explore Ex.ExploreRec
   | Visualize Vz.VizRec
   | Query Qu.QueryRec
   | Markdown String
 
 cellContentType :: CellContent -> String
-cellContentType (Evaluate _) = "evaluate"
 cellContentType (Explore _) = "explore"
 cellContentType (Search _) = "search"
 cellContentType (Query _) = "query"
 cellContentType (Visualize _) = "visualize"
 cellContentType (Markdown _) = "markdown"
-
-newEvaluateContent :: CellContent
-newEvaluateContent = Evaluate ""
 
 newSearchContent :: CellContent
 newSearchContent = Search Sr.initialSearchRec
@@ -142,11 +137,6 @@ newVisualizeContent = Visualize Vz.initialVizRec
 
 newMarkdownContent :: CellContent
 newMarkdownContent = Markdown ""
-
-_Evaluate :: PrismP CellContent String
-_Evaluate = prism' Evaluate $ \s -> case s of
-  Evaluate s -> Just s
-  _ -> Nothing
 
 _Explore :: PrismP CellContent Ex.ExploreRec
 _Explore = prism' Explore $ \s -> case s of
@@ -188,7 +178,6 @@ _JTableContent f s = case s of
 
 _AceContent :: TraversalP CellContent String
 _AceContent f s = case s of
-  Evaluate _ -> _Evaluate f s
   Search _ -> (_Search .. Sr._buffer) f s
   Query _ -> (_Query .. Qu._input) f s
   Markdown _ -> _Markdown f s
