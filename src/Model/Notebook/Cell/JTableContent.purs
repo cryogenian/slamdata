@@ -1,4 +1,13 @@
-module Model.Notebook.Cell.JTableContent where
+module Model.Notebook.Cell.JTableContent
+  ( JTableContent(..)
+  , initialJTableContent
+  , _page
+  , _perPage
+  , _result
+  , Result(..)
+  , _totalPages
+  , _values
+  ) where
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (Json(), jsonEmptyObject)
@@ -10,12 +19,15 @@ import Data.Maybe (Maybe(..))
 import Data.These (These(..), these)
 import Optic.Core (LensP(), lens)
 
+-- | The current JTable pagination parameters and loaded JSON values if present.
 newtype JTableContent =
-  JTableContent { perPage :: Either (These String Int) Int
-                , page :: These String Int
+  JTableContent { page :: These String Int
+                , perPage :: Either (These String Int) Int
                 , result :: Maybe Result
                 }
 
+-- | The initial JTable value used when constructing a cell with JTableContent
+-- | output.
 initialJTableContent :: JTableContent
 initialJTableContent =
   JTableContent { perPage: Right Config.defaultPageSize
@@ -23,17 +35,27 @@ initialJTableContent =
                 , result: Nothing
                 }
 
-_jTableContent :: LensP JTableContent _
-_jTableContent = lens (\(JTableContent obj) -> obj) (const JTableContent)
+-- | Lens for the JTableContent newtype.
+_JTableContent :: LensP JTableContent _
+_JTableContent = lens (\(JTableContent obj) -> obj) (const JTableContent)
 
-_perPage :: LensP JTableContent (Either (These String Int) Int)
-_perPage = _jTableContent <<< lens _.perPage (_ { perPage = _ })
-
+-- | The current page number. The `This` part of the value is used
+-- | when a value has been typed in the page number input field but not yet
+-- | "accepted". The `That` is used for the actual current page value.
 _page :: LensP JTableContent (These String Int)
-_page = _jTableContent <<< lens _.page (_ { page = _ })
+_page = _JTableContent <<< lens _.page (_ { page = _ })
 
+-- | The maximum number of items to show in the table at any one
+-- | time. A `Right` value indicates a choice has been made from the dropdown
+-- | list of preset sizes. A `Left` value indicates a custom page size is
+-- | desired, and the `This` and `That` parts work much as with the `page`
+-- | value.
+_perPage :: LensP JTableContent (Either (These String Int) Int)
+_perPage = _JTableContent <<< lens _.perPage (_ { perPage = _ })
+
+-- | The current result values used to render a JTable.
 _result :: LensP JTableContent (Maybe Result)
-_result = _jTableContent <<< lens _.result (_ { result = _ })
+_result = _JTableContent <<< lens _.result (_ { result = _ })
 
 instance encodeJsonJTableContent :: EncodeJson JTableContent where
   encodeJson (JTableContent rec)
@@ -52,16 +74,20 @@ instance decodeJsonJTableContent :: DecodeJson JTableContent where
         <*> (That <$> obj .? "page")
     return $ JTableContent rec
 
+-- | The current result values used to render a JTable.
 newtype Result =
   Result { totalPages :: Int
          , values :: Maybe Json
          }
 
-_resultRec :: LensP Result _
-_resultRec = lens (\(Result obj) -> obj) (const Result)
+-- | Lens for the Result newtype.
+_Result :: LensP Result _
+_Result = lens (\(Result obj) -> obj) (const Result)
 
+-- | The total number of pages available for the current pagination settings.
 _totalPages :: LensP Result Int
-_totalPages = _resultRec <<< lens _.totalPages (_ { totalPages = _ })
+_totalPages = _Result <<< lens _.totalPages (_ { totalPages = _ })
 
+-- | The result from the server.
 _values :: LensP Result (Maybe Json)
-_values = _resultRec <<< lens _.values (_ { values = _ })
+_values = _Result <<< lens _.values (_ { values = _ })

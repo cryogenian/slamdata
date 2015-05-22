@@ -1,7 +1,8 @@
 module Controller.Notebook.Cell.JTableContent
   ( goPage
   , stepPage
-  , updatePage
+  , inputPage
+  , inputPageSize
   , loadPage
   , changePageSize
   , runJTable
@@ -59,14 +60,20 @@ goPage page cell go = run cell `andThen` \_ -> go (cell # _page .~ That page)
 stepPage :: forall e. I.Int -> Cell -> (Cell -> I e) -> I e
 stepPage delta cell = goPage (maybe one (delta +) (currentPage cell)) cell
 
-updatePage :: forall e. Cell -> String -> I e
-updatePage cell val = update cell (_page .~ thisOrBoth val (currentPage cell))
+inputPage :: forall e. Cell -> String -> I e
+inputPage cell val = update cell (_page .~ thisOrBoth val (currentPage cell))
+
+inputPageSize :: forall e. Cell -> String -> I e
+inputPageSize cell val = update cell (_perPage .~ Left (thisOrBoth val $ currentPageSize cell))
 
 loadPage :: forall e. Cell -> (Cell -> I e) -> I e
 loadPage cell go = case cell ^? _content .. _JTableContent of
   Nothing -> empty
   Just table ->
-    goPage (these (readPageNum one) id (flip readPageNum) (table ^. JTC._page)) cell go
+    let page = these (readPageNum one) id (flip readPageNum) (table ^. JTC._page)
+        perPage = either (these (readPageNum one) id (flip readPageNum)) id (table ^. JTC._perPage)
+    in run cell `andThen` \_ -> go (cell # (_page .~ That page)
+                                        .. (_perPage .~ Right perPage))
     where
     readPageNum :: I.Int -> String -> I.Int
     readPageNum default str =
@@ -74,6 +81,7 @@ loadPage cell go = case cell ^? _content .. _JTableContent of
       in if isNaN num then default else I.fromNumber num
 
 changePageSize :: forall e. Cell -> (Cell -> I e) -> String -> I e
+changePageSize cell go "Custom" = update cell (_perPage .~ Left (That $ fromMaybe Config.defaultPageSize $ currentPageSize cell))
 changePageSize cell go value = case readJSON value of
   Left _ -> empty
   Right n -> run cell
