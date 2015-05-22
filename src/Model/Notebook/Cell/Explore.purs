@@ -35,13 +35,13 @@ _input = _ExploreRec <<< C._input
 _table :: LensP ExploreRec JTableContent
 _table = _ExploreRec <<< C._table
 
-instance encodeJsonCell :: EncodeJson ExploreRec where
+instance encodeJsonExploreRec :: EncodeJson ExploreRec where
   encodeJson (ExploreRec rec)
     =  "input" := rec.input
     ~> "table" := rec.table
     ~> jsonEmptyObject
 
-instance decodeJsonFileInput :: DecodeJson ExploreRec where
+instance decodeJsonExploreRec :: DecodeJson ExploreRec where
   decodeJson json = do
     obj <- decodeJson json
     rec <- { input: _, table: _ }

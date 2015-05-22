@@ -1,4 +1,12 @@
-module Model.Notebook.Cell.FileInput where
+module Model.Notebook.Cell.FileInput
+  ( FileInput(..)
+  , initialFileInput
+  , _showFiles
+  , _files
+  , _file
+  , fileFromString
+  , portFromFile
+  ) where
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (Json(), jsonEmptyObject)
@@ -24,17 +32,17 @@ initialFileInput =
             , file: Left ""
             }
 
-_fileInput :: LensP FileInput _
-_fileInput = lens (\(FileInput obj) -> obj) (const FileInput)
+_FileInput :: LensP FileInput _
+_FileInput = lens (\(FileInput obj) -> obj) (const FileInput)
 
 _showFiles :: LensP FileInput Boolean
-_showFiles = _fileInput <<< lens _.showFiles (_ { showFiles = _ })
+_showFiles = _FileInput <<< lens _.showFiles (_ { showFiles = _ })
 
 _files :: LensP FileInput [Resource]
-_files = _fileInput <<< lens _.files (_ { files = _ })
+_files = _FileInput <<< lens _.files (_ { files = _ })
 
 _file :: LensP FileInput (Either String Resource)
-_file = _fileInput <<< lens _.file (_ { file = _ })
+_file = _FileInput <<< lens _.file (_ { file = _ })
 
 fileFromString :: String -> Either String Resource
 fileFromString path =

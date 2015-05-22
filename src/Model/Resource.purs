@@ -11,6 +11,11 @@ module Model.Resource (
   ) where
 
 import Config
+import Control.Bind ((=<<))
+import Data.Argonaut.Combinators ((~>), (:=), (.?))
+import Data.Argonaut.Core (jsonEmptyObject)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
+import Data.Argonaut.Encode (EncodeJson)
 import Data.Bifunctor (bimap, rmap)
 import Data.Either
 import Data.Either.Unsafe (fromRight)
@@ -263,6 +268,26 @@ instance resourceIsForeign :: IsForeign Resource where
       "file" -> pure newFile
       _ -> Left $ TypeMismatch "resource" "string"
     pure $ setName template name
+
+instance encodeJsonResource :: EncodeJson Resource where
+  encodeJson res = "type" := resourceTag res
+                ~> "path" := resourcePath res
+                ~> jsonEmptyObject
+
+instance decodeJsonResource :: DecodeJson Resource where
+  decodeJson json = do
+    obj <- decodeJson json
+    resType <- obj .? "type"
+    path <- obj .? "path"
+    case resType of
+      -- type inference bug prevents use of a generic `parsePath` which accepts `parseAbsFile` or `parseAbsDir` as an argument
+      "file" -> maybe (Left $ "Invalid file path") (Right <<< File) $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile path)
+      "notebook" -> parseDirPath "notebook" Notebook path
+      "directory" -> parseDirPath "directory" Directory path
+      "mount" -> parseDirPath "mount" Database path
+    where
+    parseDirPath :: String -> (DirPath -> Resource) -> String -> Either String Resource
+    parseDirPath ty ctor s = maybe (Left $ "Invalid " ++ ty ++ " path") (Right <<< ctor) $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsDir s)
 
 sortResource :: (Resource -> String) -> Sort -> Resource -> Resource -> Ordering
 sortResource project direction a b =
