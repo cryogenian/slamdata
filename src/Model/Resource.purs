@@ -1,5 +1,5 @@
 module Model.Resource (
-  FilePath(), DirPath(), AnyPath(), Resource(),
+  Resource(..),
   isNotebook, isFile, isDatabase, isDirectory,
   resourceTag, getPath, getNameStr, getDir,
   setDir, renameAny, resourceName, resourceDir,
@@ -26,6 +26,7 @@ import Data.Maybe
 import Data.Path.Pathy
 import Data.Tuple
 import Model.Sort (Sort(..))
+import Model.Path
 import Optic.Core (lens, (..), (^.), (%~), (.~))
 import Optic.Prism
 import Optic.Refractor.Prism (_Right)
@@ -34,39 +35,11 @@ import Utils
 
 import qualified Data.String as S
 
-type FilePath = AbsFile Sandboxed
-type DirPath = AbsDir Sandboxed
-type AnyPath = Either FilePath DirPath
-
 data Resource
   = File FilePath
   | Notebook DirPath
   | Directory DirPath
   | Database DirPath
-
-infixl 6 <./>
-(<./>) :: forall a s. Path a Dir s -> String -> Path a Dir s
-(<./>) p ext = renameDir (changeDirExt $ const ext) p
-
-changeDirExt :: (String -> String) -> DirName -> DirName
-changeDirExt f (DirName name) =
-  DirName ((if ext == "" then name else n) <> "." <> f ext)
-  where
-  idx = S.lastIndexOf "." name
-  n = case idx of
-    -1 -> name
-    _ -> S.take idx name
-  ext = case idx of
-    -1 -> ""
-    _ -> S.drop (idx + 1) name
-
-dropDirExt :: DirName -> DirName
-dropDirExt (DirName d) =
-  DirName $ case idx of
-    -1 -> d
-    _ -> S.take idx d
-  where
-  idx = S.lastIndexOf "." d
 
 _notebookPath :: PrismP Resource DirPath
 _notebookPath = prism' Notebook $ \s -> case s of

@@ -5,30 +5,23 @@ module Input.Notebook
   , cellContent
   ) where
 
-import Control.Alt ((<|>))
-import Control.Monad.Eff.Class (liftEff)
-import Control.Timer (Timeout())
 import Data.Array (filter, modifyAt, (!!))
-import Data.Date (Date(), Now(), now, toEpochMilliseconds)
+import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), either)
 import Data.Function (on)
-import Data.Inject1 (inj, prj)
-import Data.Maybe (maybe, Maybe(..))
-import Data.Maybe.Unsafe (fromJust)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (fst)
-import Halogen.HTML.Events.Monad (Event(), async)
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (_cells, addCell, insertCell)
 import Model.Notebook.Port (Port(..), VarMapValue())
-import Model.Resource (_name, Resource())
-import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.), (?~))
-import Optic.Setter (mapped, over)
+import Optic.Core ((..), (%~), (.~), (^.))
+import Optic.Setter (mapped)
 import Text.Markdown.SlamDown.Html (SlamDownEvent(..))
-import qualified ECharts.Options as EC
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.StrMap as M
+import qualified ECharts.Options as EC
 import qualified Model.Notebook.Cell.JTableContent as JTC
 
 data CellResultContent
@@ -55,25 +48,27 @@ data Input
   | InsertCell Cell CellContent
   | SetEChartsOption String EC.Option
 
+updateState :: State -> Input -> State
+
 updateState state (WithState f) =
   f state
 
-updateState state (UpdateCell cellId fn) = 
+updateState state (UpdateCell cellId fn) =
   state # _notebook.._cells..mapped %~ onCell cellId fn
 
 updateState state (Dropdown i) =
   let visSet = maybe true not (_.visible <$> state.dropdowns !! i) in
   state # _dropdowns %~
-  (modifyAt i _{visible = visSet}) <<<  (_{visible = false} <$>)
+  (modifyAt i _{visible = visSet}) <<< (_{visible = false} <$>)
 
 updateState state CloseDropdowns =
   state{addingCell = false} # _dropdowns %~ (_{visible = false} <$>)
 
 updateState state (AddCell content) =
-  state # _notebook %~ (addCell content >>> fst)
+  state # _notebook %~ (fst <<< addCell content)
 
 updateState state (InsertCell parent content) =
-  state # _notebook %~ (insertCell parent content >>> fst)
+  state # _notebook %~ (fst <<< insertCell parent content)
 
 updateState state (TrashCell cellId) =
   state # _notebook.._cells %~ filter (not <<< isCell cellId)

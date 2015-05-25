@@ -8,7 +8,7 @@ import Model.Breadcrumb (Breadcrumb())
 import Model.File.Dialog (Dialog())
 import Model.File.Item (Item(), wrap)
 import Model.File.Search (Search(), initialSearch)
-import Model.Resource (DirPath())
+import Model.Path (DirPath())
 import Model.Salt (Salt(..))
 import Model.Sort (Sort(..))
 

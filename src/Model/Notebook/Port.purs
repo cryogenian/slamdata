@@ -53,6 +53,6 @@ instance decodeJsonPort :: DecodeJson Port where
     portType <- obj .? "type"
     case portType of
       "resource" -> PortResource <$> obj .? "res"
-      "invalid" -> PortInvalid <$> obj .? "msg"
+      "invalid" -> PortInvalid <$> obj .? "message"
       "map" -> VarMap <$> obj .? "content"
       _ -> pure Closed

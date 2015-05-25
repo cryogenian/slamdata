@@ -9,9 +9,10 @@ import Control.Apply ((*>))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Inject1 (Inject1, inj)
 import Data.Either (Either(..), either)
-import Control.Monad.Aff (Aff())
+import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (message)
 import Control.Plus (empty)
 import Controller.File.Common (toInput)
 import Data.Array (elemIndex)
@@ -24,19 +25,18 @@ import Input.File.Rename (RenameInput(..))
 import Model.File.Dialog.Rename (RenameDialogRec(), _initial, _resource, _siblings, _dir, _error)
 import Model.File.Item (Item())
 import Utils (reload)
-import Config (notebookExtension)
 import qualified Api.Fs as Api
-import Model.Resource (Resource(), _path, _name, _root, mkDirectory)
+import Model.Resource (Resource(), _path, _name, _root, mkDirectory, getPath)
 import Optic.Core ((..), (^.), (.~))
 import Data.Path.Pathy (rootDir, (</>), parseAbsDir, sandbox)
 
 rename :: forall e. RenameDialogRec -> EventHandler (Event (FileAppEff e) Input)
 rename d = pure do
-  let src = d ^. _initial
+  let src = getPath (d ^. _initial)
       dt = either (const rootDir) id $ d ^. _dir .. _path
       tgt = (d ^. _resource # _root .~ dt) ^. _path
-  result <- liftAff $ Api.move src tgt
-  (toInput $ Update $ _error .~ either Just (const Nothing) result) `andThen` \_ ->
+  result <- liftAff $ attempt (Api.move src tgt)
+  (toInput $ Update $ _error .~ either (Just <<< message) (const Nothing) result) `andThen` \_ ->
     case result of
       Left _ -> empty
       Right _ -> liftEff reload *> empty

@@ -1,24 +1,105 @@
-module Model.Notebook.Domain where
+module Model.Notebook.Domain
+  ( Notebook()
+  , emptyNotebook
+  , _cells
+  , _dependencies
+  , _activeCellId
+  , _name
+  , _path
+  , _activeCell
+  , Dependencies()
+  , deps
+  , addCell
+  , insertCell
+  , notebookPath
+  , notebookURL
+  ) where
 
+import Data.Argonaut.Combinators ((~>), (:=), (.?))
+import Data.Argonaut.Core (jsonEmptyObject)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
+import Data.Argonaut.Encode (EncodeJson, encodeJson)
+import Data.Argonaut.Printer (printJson)
 import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex)
-import Data.Tuple
-import Data.Maybe
 import Data.Either (Either(..))
-import Data.Map
-import Data.Argonaut.Combinators
-import qualified Data.Argonaut.Core as Ac
-import qualified Data.Argonaut.Decode as Ad
-import qualified Data.Argonaut.Encode as Ae
-import qualified Data.Argonaut.Printer as Ap
-import qualified Network.HTTP.Affjax.Request as Ar
-
-import Optic.Core (lens, LensP(), (..), (.~), (^.))
-import Optic.Fold ((^?))
+import Data.Map (Map(), insert, lookup, empty, toList, fromList)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Path.Pathy (rootDir, dir, file, (</>), printPath)
+import Data.These (These(..), these, theseRight)
+import Data.Tuple (Tuple(..))
 import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _FileInput)
 import Model.Notebook.Cell.FileInput (_file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..), _PortResource)
-import Model.Resource
+import Model.Action (Action(), printAction)
+import Model.Path (DirPath(), (<./>), encodeURIPath)
+import Model.Resource (Resource(File))
+import Network.HTTP.Affjax.Request (Requestable, toRequest)
+import Optic.Core (lens, LensP(), (..), (.~), (^.))
+import Optic.Extended (TraversalP())
+import Optic.Fold ((^?))
+import Optic.Index (ix)
 
+newtype Notebook =
+  Notebook { cells :: [Cell]
+           , dependencies :: Dependencies
+           , activeCellId :: CellId
+           , name :: These String String
+           , path :: DirPath
+           }
+
+emptyNotebook :: Notebook
+emptyNotebook = Notebook
+  { cells: []
+  , dependencies: empty
+  , activeCellId: 0
+  , name: This Config.newNotebookName
+  , path: rootDir
+  }
+
+_Notebook :: LensP Notebook _
+_Notebook = lens (\(Notebook r) -> r) (\_ r -> Notebook r)
+
+_cells :: LensP Notebook [Cell]
+_cells = _Notebook .. lens _.cells _{cells = _}
+
+_dependencies :: LensP Notebook Dependencies
+_dependencies = _Notebook .. lens _.dependencies _{dependencies = _}
+
+_activeCellId :: LensP Notebook CellId
+_activeCellId = _Notebook .. lens _.activeCellId _{activeCellId = _}
+
+_name :: LensP Notebook (These String String)
+_name = _Notebook .. lens _.name _{name = _}
+
+_path :: LensP Notebook DirPath
+_path = _Notebook .. lens _.path _{path = _}
+
+_activeCell :: TraversalP Notebook Cell
+_activeCell f s = cellById (s ^. _activeCellId) f s
+
+cellById :: CellId -> TraversalP Notebook Cell
+cellById cellId f s =
+  let i = findIndex (\cell -> cell ^. _cellId == cellId) (s ^. _cells)
+  in (_cells .. ix i) f s
+
+instance encodeJsonNotebook :: EncodeJson Notebook where
+  encodeJson (Notebook obj)
+    =  "cells" := obj.cells
+    ~> "dependencies" := toList obj.dependencies
+    ~> jsonEmptyObject
+
+instance decodeJsonNotebook :: DecodeJson Notebook where
+  decodeJson json = do
+    obj <- decodeJson json
+    cells <- obj .? "cells"
+    dependencies <- obj .? "dependencies"
+    return (emptyNotebook # (_cells .~ cells)
+                         .. (_dependencies .~ fromList dependencies))
+
+instance requestableNotebook :: Requestable Notebook where
+  toRequest notebook =
+    let str = printJson (encodeJson notebook) :: String
+    in toRequest str
 
 -- We have no any cells that have more than one
 -- dependency right now. And have no ui to make
@@ -32,52 +113,6 @@ deps cid ds = deps' cid ds []
     case lookup cid ds of
       Nothing -> agg
       Just a -> deps' a ds (a : agg)
-
-
-type NotebookRec =
-  { cells :: [Cell]
-  , dependencies :: Dependencies
-  , activeCellId :: CellId
-  , resource :: Resource
-  }
-
-newtype Notebook = Notebook NotebookRec
-
-
-_notebookRec :: LensP Notebook NotebookRec
-_notebookRec = lens (\(Notebook r) -> r) (\_ r -> Notebook r)
-
-_activeCellIdRec :: LensP NotebookRec CellId
-_activeCellIdRec = lens _.activeCellId _{activeCellId = _}
-
-_resourceRec :: LensP NotebookRec Resource
-_resourceRec = lens _.resource _{resource = _}
-
-_activeCellId :: LensP Notebook CellId
-_activeCellId = _notebookRec .. _activeCellIdRec
-
-_resource :: LensP Notebook Resource
-_resource = _notebookRec .. _resourceRec
-
-_dependenciesRec :: LensP NotebookRec Dependencies
-_dependenciesRec = lens _.dependencies _{dependencies = _}
-
-_dependencies :: LensP Notebook Dependencies
-_dependencies = _notebookRec .. _dependenciesRec
-
-_cellsRec :: LensP NotebookRec [Cell]
-_cellsRec = lens _.cells _{cells = _}
-
-_cells :: LensP Notebook [Cell]
-_cells = _notebookRec .. _cellsRec
-
-emptyNotebook :: Notebook
-emptyNotebook = Notebook
-  { resource: newNotebook
-  , cells: []
-  , dependencies: empty
-  , activeCellId: 0
-  }
 
 addCell :: CellContent -> Notebook -> Tuple Notebook Cell
 addCell content oldNotebook@(Notebook n) = Tuple notebook cell
@@ -108,27 +143,23 @@ insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
   port = portByContent oldNotebook content newId
 
 cellOut :: Notebook -> CellId -> Port
-cellOut (Notebook n) cid = PortResource (n.resource `child` ("out" <> show cid))
+cellOut (Notebook n) cid = these (const Closed) portRes (\_ -> portRes) n.name
+  where
+  portRes :: String -> Port
+  portRes _ = PortResource $ File $ n.path </> file ("out" <> show cid)
 
 portByContent :: Notebook -> CellContent -> CellId -> Port
 portByContent n (Search _) cid = cellOut n cid
 portByContent n (Query _) cid = cellOut n cid
-portByContent _ content@(Explore _) _ =
-  maybe Closed portFromFile (content ^? _FileInput .. _file)
+portByContent _ content@(Explore _) _ = maybe Closed portFromFile (content ^? _FileInput .. _file)
 portByContent _ _ _ = Closed
 
 freeId :: Notebook -> CellId
 freeId (Notebook n) =
   maybe 0 (+ 1) $ head $ reverse $ sort $ (^. _cellId) <$> n.cells
 
+notebookPath :: Notebook -> Maybe DirPath
+notebookPath nb = (\name -> (nb ^. _path) </> dir name <./> Config.notebookExtension) <$> theseRight (nb ^. _name)
 
-instance notebookEncode :: Ae.EncodeJson Notebook where
-  encodeJson (Notebook { cells: cells })
-    =  "cells" := cells
-    ~> Ac.jsonEmptyObject
-
-
-instance notebookRequestable :: Ar.Requestable Notebook where
-  toRequest notebook =
-    let str = Ap.printJson (Ae.encodeJson notebook) :: String
-    in Ar.toRequest str
+notebookURL :: Notebook -> Action -> Maybe String
+notebookURL nb act = (\path -> Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAction act) <$> notebookPath nb

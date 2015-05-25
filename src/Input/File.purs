@@ -20,6 +20,7 @@ import Model.Breadcrumb (Breadcrumb(), rootBreadcrumb)
 import Model.File (State())
 import Model.File.Dialog (Dialog())
 import Model.File.Item (Item(), sortItem)
+import Model.Path
 import Model.Resource
 import Model.Salt (Salt())
 import Model.Sort (Sort())

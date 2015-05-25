@@ -1,23 +1,23 @@
 module Controller.File.Search where
 
-import Data.Inject1 (inj)
 import Control.Monad.Aff (makeAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (randomInt)
 import Control.Timer (timeout, clearTimeout)
 import Controller.File.Common (toInput)
 import Data.Either (Either(..))
+import Data.Inject1 (inj)
 import Data.Maybe (maybe)
+import Data.Path.Pathy
 import Driver.File.Path (updateQ, updateSalt)
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Monad (Event(), runEvent, async)
 import Input.File (Input(), FileInput(Loading))
 import Input.File.Search (SearchInput(..))
 import Model.File.Search (Search())
+import Model.Path (DirPath())
 import Routing.Hash (modifyHash)
 import Text.SlamSearch (mkQuery)
-import Model.Resource (DirPath())
-import Data.Path.Pathy
 
 handleSearchClear :: forall e. Boolean -> Search -> Event (FileAppEff e) Input
 handleSearchClear isSearching search = do
