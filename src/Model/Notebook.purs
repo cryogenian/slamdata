@@ -1,15 +1,14 @@
 module Model.Notebook where
 
 import Control.Timer (Timeout())
+import Data.Array ((!!), findIndex)
 import Data.Date (Date())
 import Data.Inject1 (prj, inj)
-import Data.Array ((!!), findIndex)
-import Optic.Index (ix)
-import Optic.Index.Types (TraversalP())
-import Model.Notebook.Menu (initialDropdowns, DropdownItem())
 import Data.Maybe
+import Data.Platform
 import EffectTypes (NotebookAppEff())
 import Model.Notebook.Cell (CellId(), Cell(), _cellId)
+import Model.Notebook.Menu (initialDropdowns, DropdownItem())
 import Model.Resource (Resource(), newNotebook)
 import Optic.Core (lens, LensP(), (..), (^.))
 import Optic.Index (ix)
@@ -28,6 +27,7 @@ type State =
   , notebook :: D.Notebook
   , initialName :: String
   , tickDate :: Maybe Date
+  , platform :: Platform
   }
 
 _dropdowns :: LensP State [DropdownItem]
@@ -67,9 +67,12 @@ _tickDate :: LensP State (Maybe Date)
 _tickDate = lens _.tickDate _{tickDate = _}
 
 _activeCell :: TraversalP State Cell
-_activeCell f s = (_notebook .. D._cells .. ix activeIndex) f s 
+_activeCell f s = (_notebook .. D._cells .. ix activeIndex) f s
   where activeIndex = findIndex (\cell -> cell ^. _cellId == s ^. _activeCellId)
                       (s ^. _notebook .. D._cells)
+
+_platform :: LensP State Platform
+_platform = lens _.platform _{platform = _}
 
 initialState :: State
 initialState =
@@ -83,4 +86,5 @@ initialState =
   , notebook: D.emptyNotebook
   , initialName: ""
   , tickDate: Nothing
+  , platform: Other
   }

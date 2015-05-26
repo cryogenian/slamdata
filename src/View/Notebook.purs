@@ -5,26 +5,30 @@ import Control.Functor (($>))
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
 import Controller.Notebook (handleMenuSignal, handleSubmitName)
-import Data.Array ((..), length, zipWith, replicate, sort)
+import Controller.Notebook.Cell (runCellEvent)
+import Data.Array ((..), length, zipWith, replicate, sort, singleton)
 import Data.Bifunctor (bimap)
 import Data.Inject1 (inj)
 import Data.Int (toNumber, fromNumber, Int())
+import Data.KeyCombo (printKeyComboWin, printKeyComboMac, printKeyComboLinux)
 import Data.Maybe (maybe)
 import Data.Path.Pathy
+import Data.Platform (Platform(..))
 import Data.String (joinWith)
 import Driver.File.Path (updatePath)
 import Input.Notebook (Input(..))
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Domain (_cells)
-import Controller.Notebook.Cell (runCellEvent)
-import Number.Format (toFixed)
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
+import Model.Resource (resourceDir, resourceFileName, _name)
+import Number.Format (toFixed)
 import Optic.Core ((^.), (.~))
 import View.Common (contentFluid, navbar, icon, logo, glyph, row)
 import View.Notebook.Cell (cell)
+import View.Notebook.Cell.Search (searchOutput)
 import View.Notebook.Common (HTML())
-import qualified Config as Config
+
 import qualified Data.Argonaut.Encode as Ae
 import qualified Data.Argonaut.Printer as Ap
 import qualified Halogen.HTML as H
@@ -34,11 +38,8 @@ import qualified Halogen.HTML.Events.Forms as E
 import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
-import qualified Math as Math
 import qualified View.Css as Vc
 import qualified View.File.Modal.Common as Vm
-import View.Notebook.Cell.Search (searchOutput)
-import Model.Resource (resourceDir, resourceFileName, _name)
 
 view :: forall e. State -> HTML e
 view state =
@@ -120,11 +121,9 @@ newCellMenu state =
                                   (handleMenuSignal state) <<< inj $ inp ) ]
             [ glyph cls ] ]
 
-
 txt :: forall e. Int -> String -> [HTML e]
 txt lvl text =
   [ H.text $ (joinWith "" $ replicate (toNumber lvl) "--") <> " " <> text ]
-
 
 li :: forall e. State -> Number ->  DropdownItem -> HTML e
 li state i {visible: visible, name: name, children: children} =
@@ -138,16 +137,22 @@ li state i {visible: visible, name: name, children: children} =
     (menuItem state <$> children) ]
 
 menuItem :: forall e. State -> MenuElement -> HTML e
-menuItem state {name: name, message: mbMessage, lvl: lvl} =
+menuItem state {name: name, message: mbMessage, lvl: lvl, shortcut: shortcut} =
   H.li [ A.classes (maybe [B.disabled] (const []) mbMessage) ]
   [ H.a [ A.href "#"
+        , A.class_ B.clearfix
         , E.onClick (\e -> do
                         E.stopPropagation
                         E.preventDefault $>
                           maybe empty (handleMenuSignal state) mbMessage) ]
-    [H.span_ $ (txt lvl name) <>
-     (maybe [glyph B.glyphiconChevronRight] (const []) mbMessage) ]]
-
+    ([ H.span [A.class_ B.pullLeft] $ (txt lvl name) <>
+                 (maybe [glyph B.glyphiconChevronRight] (const []) mbMessage)
+     ] ++ maybe [] (\s -> [H.span [A.class_ B.pullRight] [ H.text $ printKeyCombo s ]]) shortcut)
+  ]
+  where
+  printKeyCombo | state ^. _platform == Win = printKeyComboWin
+                | state ^. _platform == Mac = printKeyComboMac
+                | otherwise = printKeyComboLinux
 
 name :: forall e. State -> HTML e
 name state =
@@ -176,4 +181,3 @@ modal state =
       ]
     ]
   ]
-
