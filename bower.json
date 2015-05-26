@@ -50,7 +50,7 @@
     "purescript-simple-dom": "~0.0.2",
     "purescript-string-parsers": "~0.4.1",
     "purescript-these": "~0.2.1",
-    "purescript-timers": "~0.0.8",
+    "purescript-timers": "~0.0.9",
     "purescript-tuples": "~0.3.1",
     "purescript-zclipboard": "~0.1.0",
     "zeroclipboard": "~2.2.0",
