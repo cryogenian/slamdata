@@ -57,14 +57,19 @@ instance eqKeyCombo :: Eq KeyCombo where
 instance ordKeyCombo :: Ord KeyCombo where
   compare Meta Meta = EQ
   compare Meta _ = LT
+  compare _ Meta = GT
   compare Alt Alt = EQ
   compare Alt _ = EQ
+  compare _ Alt = GT
   compare Shift Shift = EQ
   compare Shift _ = LT
+  compare _ Shift = GT
   compare (Letter x) (Letter y) = compare x y
   compare (Letter _) _ = LT
+  compare _ (Letter _) = GT
   compare Enter Enter = EQ
   compare Enter _ = LT
+  compare _ Enter = GT
   compare (Combo xs) (Combo ys) = compare xs ys
 
 instance showKeyCombo :: Show KeyCombo where
