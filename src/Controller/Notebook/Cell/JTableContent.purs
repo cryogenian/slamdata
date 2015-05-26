@@ -10,8 +10,7 @@ module Controller.Notebook.Cell.JTableContent
   ) where
 
 import Api.Fs (delete)
-import Api.Query (port, query, sample)
-import Control.Bind ((<=<), (>=>))
+import Api.Query (port, query, sample, count)
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
@@ -19,12 +18,11 @@ import Control.Monad.Eff.Exception (message)
 import Control.Plus (empty)
 import Controller.Notebook.Common (I(), run, update, finish)
 import Data.Argonaut.Combinators ((.?))
-import Data.Argonaut.Core (Json(), JObject(), fromArray, toObject, toNumber, fromObject)
+import Data.Argonaut.Core (Json(), JObject(), fromArray)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Array (head)
 import Data.Date (now)
 import Data.Either (Either(..), either)
-import Data.Either.Unsafe (fromRight)
 import Data.Foreign.Class (readJSON)
 import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -39,7 +37,6 @@ import Optic.Extended (TraversalP(), (^?))
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Int as I
-import qualified Data.StrMap as SM
 import qualified Model.Notebook.Cell.JTableContent as JTC
 
 _page :: TraversalP Cell (These String I.Int)
@@ -94,7 +91,7 @@ runJTable file cell = do
       pageNumber = fromMaybe one (currentPage cell)
       pageIndex = pageNumber - one
   results <- liftAff $ attempt $ { numItems: _, json: _ }
-    <$> fromMaybe 0 <<< readTotal <$> query file "SELECT COUNT(*) AS total FROM {{path}}"
+    <$> count file 
     <*> sample file (pageIndex * perPage) perPage
   now' <- liftEff now
   return $ case results of
@@ -105,24 +102,9 @@ runJTable file cell = do
                             , page: That pageNumber
                             , result: Just $ JTC.Result
                               { totalPages: I.fromNumber $ Math.ceil (results.numItems / I.toNumber perPage)
-                              , values: Just $ fromArray (readValue <$> results.json)
+                              , values: Just $ fromArray results.json
                               }
                             }
-  where
-  readTotal :: [Json] -> Maybe Number
-  readTotal = toNumber <=< SM.lookup "total" <=< toObject <=< head
-
-  -- temporary files are written to `value` field or even `value.value`
-  readValue :: Json -> Json
-  readValue json = fromObject $ fromRight do
-    obj <- decodeJson json
-    if SM.keys obj == ["value"]
-      then let value :: Either _ JObject
-               value = obj .? "value" in
-           if SM.keys <$> value == pure ["value"]
-           then (.? "value") >=> (.? "value") $ obj
-           else value
-      else pure obj
 
 queryToJTable :: forall e. Cell -> String -> Resource -> Resource -> I e
 queryToJTable cell sql inp out = do

@@ -15,7 +15,6 @@ import qualified Driver.Notebook as D
 import qualified App.Notebook.Ace as A
 import qualified App.Notebook.ECharts as EC
 
-
 main :: Eff (NotebookAppEff (ace :: EAce)) Unit
 main = onLoad $ void $ do
   aceKnot <- A.ref
