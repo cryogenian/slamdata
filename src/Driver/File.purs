@@ -98,7 +98,7 @@ handleRoute driver = launchAff $ do
           driver $ inj $ ItemsUpdate [] sort
           driver $ inj $ SetSearching (isSearchQuery query)
           h <- getHash
-          driver $ inj $ SetHash h
+          driver $ inj $ SetSalt salt
         listPath driver query 0 var (newDirectory # _path .~ Right path)
         else do
         pure unit

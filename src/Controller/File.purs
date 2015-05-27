@@ -56,7 +56,7 @@ handleCreateNotebook state = do
     f <- liftAff $ attempt $ makeNotebook (notebook ^. _resource .. _path) emptyNotebook
     case f of
       Left _ -> toInput (ItemRemove notebook)
-      Right _ -> (liftEff $ location globalWindow >>= setLocation (itemURL notebook state.hash)) *> empty
+      Right _ -> (liftEff $ location globalWindow >>= setLocation (itemURL notebook state.sort state.salt)) *> empty
 
 handleFileListChanged :: forall e. HTMLElement -> State -> Event (FileAppEff e) Input
 handleFileListChanged el state = do
@@ -87,7 +87,7 @@ handleFileListChanged el state = do
         f <- liftAff $ attempt $ makeFile (fileItem.resource ^. _path) content
         case f of
           Left _ -> toInput (ItemRemove fileItem)
-          Right _ -> (liftEff $ location globalWindow >>= setLocation (itemURL fileItem state.hash)) *> empty
+          Right _ -> (liftEff $ location globalWindow >>= setLocation (itemURL fileItem state.sort state.salt)) *> empty
 
 handleSetSort :: forall e. Sort -> Event (FileAppEff e) Input
 handleSetSort sort = do

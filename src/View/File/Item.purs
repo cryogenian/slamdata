@@ -28,11 +28,11 @@ import Data.Path.Pathy
 items :: forall e. State -> H.HTML (I e)
 items state =
   H.div [ A.classes [B.listGroup, Vc.results] ]
-        $ zipWith (item state.searching state.hash) (0..length state.items) state.items
+        $ zipWith (item state) (0..length state.items) state.items
 
-item :: forall e. Boolean -> String -> Number -> Item -> H.HTML (I e)
-item searching hash ix state =
-  H.div [ A.classes ([B.listGroupItem] ++ if state.selected
+item :: forall e. State -> Number -> Item -> H.HTML (I e)
+item state ix item =
+  H.div [ A.classes ([B.listGroupItem] ++ if item.selected
                                           then [B.listGroupItemInfo]
                                           else mempty)
         , E.onMouseOver (E.input_ $ inj $ ItemHover ix true)
@@ -41,22 +41,22 @@ item searching hash ix state =
         [ H.div [ A.class_ B.row ]
           [ H.div [ A.classes [B.colSm9, Vc.itemContent] ]
             [ H.a
-              [ A.href $ itemURL state hash ]
-              [ H.span_ [ H.i [ iconClasses state ] []
-                        , H.text $ (if searching
+              [ A.href $ itemURL item state.sort state.salt ]
+              [ H.span_ [ H.i [ iconClasses item ] []
+                        , H.text $ (if state.searching
                                     then resourcePath
-                                    else resourceName) state.resource
+                                    else resourceName) item.resource
                         ]
               ]
             ]
           , H.div [ A.classes [B.colSm3, Vc.itemToolbar] ]
             [ H.ul [ A.classes ([B.listInline, B.pullRight] ++
-                                if not $ state.hovered || state.selected
+                                if not $ item.hovered || item.selected
                                 then [B.hidden]
                                 else mempty)
                    , CSS.style (marginBottom $ px 0)
                    ]
-              (showToolbar hash state)
+              (showToolbar item state)
             ]
           ]
         ]
@@ -76,15 +76,15 @@ iconClasses item = A.classes [B.glyphicon, Vc.itemIcon, iconClass item.resource]
 
 
 
-showToolbar :: forall e. String -> Item -> [H.HTML (I e)]
-showToolbar hash item =
+showToolbar :: forall e. Item -> State -> [H.HTML (I e)]
+showToolbar item state =
   let conf = if isDatabase item.resource
              then [toolItem' handleConfigure "configure" B.glyphiconWrench]
              else []
 
   in conf <> [ toolItem' handleMoveItem "move/rename" B.glyphiconMove
              , toolItem' handleDeleteItem "remove" B.glyphiconTrash
-             , toolItem' (handleShare hash) "share" B.glyphiconShare
+             , toolItem' (handleShare state.sort state.salt) "share" B.glyphiconShare
              ]
   where
 

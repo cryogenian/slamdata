@@ -5,11 +5,12 @@ module Input.File
   ) where
 
 import Control.Alt ((<|>))
-import Data.Inject1 (prj, inj)
 import Data.Either
 import Data.Foldable
+import Data.Inject1 (prj, inj)
 import Data.Maybe
 import Data.Maybe.Unsafe (fromJust)
+import Data.Path.Pathy
 import Data.Set (fromList, toList)
 import Input.File.Item (ItemInput(), inputItem)
 import Input.File.Mount (MountInput(), inputMount)
@@ -20,10 +21,11 @@ import Model.File (State())
 import Model.File.Dialog (Dialog())
 import Model.File.Item (Item(), sortItem)
 import Model.Resource
+import Model.Salt (Salt())
 import Model.Sort (Sort())
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Printer (strQuery)
-import Data.Path.Pathy
+
 import qualified Data.Array as A
 import qualified Data.List as L
 import qualified Data.String as Str
@@ -38,7 +40,7 @@ data FileInput
   | Loading Boolean
   | Focus Boolean
   | SetSearching Boolean
-  | SetHash String
+  | SetSalt Salt
   | SetDialog (Maybe Dialog)
 
 updateState :: State -> Input -> State
@@ -72,8 +74,8 @@ inputFile state input =
       state{search = state.search{focused = focus}}
     SetSearching s ->
       state{searching = s}
-    SetHash s ->
-      state{hash = s}
+    SetSalt s ->
+      state{salt = s}
     SetDialog d ->
       state{dialog = d}
 

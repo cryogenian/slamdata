@@ -3,15 +3,14 @@ module Model.File where
 
 import Data.Either (Either())
 import Data.Maybe (Maybe(..))
+import Data.Path.Pathy (rootDir)
 import Model.Breadcrumb (Breadcrumb())
 import Model.File.Dialog (Dialog())
 import Model.File.Item (Item(), wrap)
 import Model.File.Search (Search(), initialSearch)
+import Model.Resource (DirPath())
+import Model.Salt (Salt(..))
 import Model.Sort (Sort(..))
-
-import Model.Resource
-import Data.Path.Pathy
-
 
 -- | Application state
 type State =
@@ -22,7 +21,7 @@ type State =
   , path :: DirPath
   , searching :: Boolean
   , dialog :: Maybe Dialog
-  , hash :: String
+  , salt :: Salt
   }
 
 initialState :: State
@@ -34,5 +33,5 @@ initialState =
   , path: rootDir
   , searching: false
   , dialog: Nothing
-  , hash: ""
+  , salt: Salt ""
   }
