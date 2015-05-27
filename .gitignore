@@ -5,6 +5,7 @@
 /output/
 /coverage/
 public/js/*.js
+public/js/!ace*
 public/css/*.css
 public/css/!bootstrap*.css
 .psci_modules

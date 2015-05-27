@@ -1,6 +1,6 @@
 module Entries.Notebook where
 
-import Ace.Types (EAce())
+import Ace.Types (ACE())
 import App.Notebook (app)
 import Control.Monad.Eff (Eff())
 import Data.Date (Now())
@@ -23,7 +23,7 @@ import qualified App.Notebook.Ace as A
 import qualified App.Notebook.ECharts as EC
 import qualified Driver.Notebook as D
 
-main :: Eff (NotebookAppEff (ace :: EAce)) Unit
+main :: Eff (NotebookAppEff (ace :: ACE)) Unit
 main = onLoad $ void $ do
   aceKnot <- A.ref
   echartsKnot <- EC.ref

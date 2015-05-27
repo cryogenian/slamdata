@@ -22,12 +22,13 @@ import Data.DOM.Simple.Types
 import Halogen
 
 import Ace
+import qualified Ace.Config as AceConfig
 import Ace.EditSession (getValue, setMode)
 import Ace.Selection (getRange)
-import Ace.Types (EditSession(), EAce(), Editor(), TextMode())
+import Ace.Types (EditSession(), ACE(), Editor(), TextMode())
 import qualified Ace.Editor as Editor
 
-import Model.Notebook 
+import Model.Notebook
 import Model.Notebook.Cell (CellId(), string2cellId)
 
 import Optic.Core
@@ -61,9 +62,10 @@ dataCellType :: String
 dataCellType = "data-cell-type"
 
 initialize :: forall eff. RefVal AceKnot -> HTMLElement ->
-              Driver Input (ace :: EAce | eff) ->
-              Eff (HalogenEffects (ace :: EAce | eff)) Unit
+              Driver Input (ace :: ACE | eff) ->
+              Eff (HalogenEffects (ace :: ACE | eff)) Unit
 initialize m b d = do
+  AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
   els <- getElementsByClassName "ace-container" b
   Tuple _ mr <- readRef m
   for_ els \el -> do
@@ -91,8 +93,8 @@ initialize m b d = do
 
 handleInput :: forall eff. RefVal AceKnot
                         -> Input
-                        -> Driver Input (now :: Now, ace :: EAce | eff)
-                        -> Eff (HalogenEffects (now :: Now, ace :: EAce | eff)) Unit
+                        -> Driver Input (now :: Now, ace :: ACE | eff)
+                        -> Eff (HalogenEffects (now :: Now, ace :: ACE | eff)) Unit
 handleInput m (RunCell cellId _) d = do
   Tuple _ m' <- readRef m
   now' <- now
@@ -103,7 +105,7 @@ handleInput m (TrashCell cellId) _ = do
 handleInput _ _ _ = return unit
 
 acePostRender :: forall eff. RefVal AceKnot -> Input ->
-                 HTMLElement -> Driver Input (now :: Now, ace :: EAce | eff) -> Eff (HalogenEffects (now :: Now, ace :: EAce | eff)) Unit
+                 HTMLElement -> Driver Input (now :: Now, ace :: ACE | eff) -> Eff (HalogenEffects (now :: Now, ace :: ACE | eff)) Unit
 acePostRender m i b d = do
   initialize m b d
   handleInput m i d
