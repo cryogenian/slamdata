@@ -25,7 +25,7 @@ import Ace
 import qualified Ace.Config as AceConfig
 import Ace.EditSession (getValue, setMode)
 import Ace.Selection (getRange)
-import Ace.Types (EditSession(), ACE(), Editor(), TextMode())
+import Ace.Types (EditSession(), ACE(), Editor(), TextMode(..))
 import qualified Ace.Editor as Editor
 
 import Model.Notebook
@@ -36,17 +36,14 @@ import Optic.Refractor.Lens
 
 type AceKnot = Tuple CellId (M.Map CellId EditSession)
 
-foreign import markdownMode """
-  var markdownMode = "ace/mode/markdown";
-""" :: TextMode
+markdownMode :: TextMode
+markdownMode = TextMode "ace/mode/markdown"
 
-foreign import sqlMode """
-  var sqlMode = "ace/mode/sql";
-""" :: TextMode
+sqlMode :: TextMode
+sqlMode = TextMode "ace/mode/sql"
 
-foreign import plainTextMode """
-  var plainTextMode = "ace/mode/plain_text";
-""" :: TextMode
+plainTextMode :: TextMode
+plainTextMode = TextMode "ace/mode/plain_text"
 
 modeByCellTag :: String -> TextMode
 modeByCellTag tag = case tag of
