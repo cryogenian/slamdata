@@ -22,6 +22,7 @@ type State =
   , path :: DirPath
   , searching :: Boolean
   , dialog :: Maybe Dialog
+  , hash :: String
   }
 
 initialState :: State
@@ -33,4 +34,5 @@ initialState =
   , path: rootDir
   , searching: false
   , dialog: Nothing
+  , hash: ""
   }

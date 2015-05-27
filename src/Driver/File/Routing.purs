@@ -29,4 +29,4 @@ routing = salted <|> bothRoute <|> oneRoute <|> index
   sort = eitherMatch (M.string2sort <$> param "sort")
   query = eitherMatch (mkQuery <$> param "q")
   salt = eitherMatch (getSalt <$> param "salt")
-  
+

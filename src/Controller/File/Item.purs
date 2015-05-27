@@ -7,7 +7,6 @@ import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
 import Controller.Common
-import Controller.File.Common (open)
 import Data.Array (filter)
 import Data.DOM.Simple.Element (getElementById)
 import Data.DOM.Simple.Encode (encodeURIComponent)
@@ -19,7 +18,7 @@ import Data.Maybe (Maybe(..))
 import Data.Path.Pathy
 import Data.String (joinWith)
 import DOM (DOM())
-import Driver.File.Path (updatePath)
+import Driver.File.Path (updatePath, renderPath)
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Monad (Event(), async, andThen)
 import Input.File (Input(), FileInput(SetDialog))
@@ -29,10 +28,12 @@ import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (initialMountDialog)
 import Model.File.Dialog.Rename (initialRenameDialog, _siblings)
 import Model.File.Item (Item())
+import Model.Path (encodeURIPath)
 import Model.Resource
 import Optic.Core ((.~))
 import Routing.Hash (getHash, modifyHash)
 import Utils (locationString)
+
 import qualified Control.UI.ZClipboard as Z
 
 toInput :: forall m a b. (Applicative m, Inject1 a b) => a -> m b
@@ -50,20 +51,13 @@ handleMoveItem item = do
   (toInput $ SetDialog (Just dialog))
     `andThen` \_ -> getDirectories (toInput <<< AddDirs) root
 
-handleOpenItem :: forall e. Item -> Event (FileAppEff e) Input
-handleOpenItem item = do
-  liftEff $
-    if isNotebook item.resource || isFile item.resource
-    then open item
-    else moveDown item
-  empty
-
 -- ATTENTION
 -- This all should be moved to `initializer`
 -- ATTENTION
-handleShare :: forall e. Item -> Event (FileAppEff e) Input
-handleShare item = async $ makeAff $ \_ k -> do
-  url <- itemURL item
+handleShare :: forall e. String -> Item -> Event (FileAppEff e) Input
+handleShare hash item = async $ makeAff $ \_ k -> do
+  loc <- locationString
+  let url = loc ++ "/" ++ itemURL item hash
   k $ inj $ SetDialog (Just $ ShareDialog url)
   mbCopy <- document globalWindow >>= getElementById "copy-button"
   case mbCopy of
@@ -71,30 +65,16 @@ handleShare item = async $ makeAff $ \_ k -> do
     Just btn -> void do
       Z.make btn >>= Z.onCopy (Z.setData "text/plain" url)
 
-itemURL :: forall e. Item -> Eff (dom :: DOM | e) String
-itemURL item = do
-  loc <- locationString
-  hash <- getHash
-  pure $ loc <>
-    if isFile item.resource
-    then joinWith ""
-         [ Config.notebookUrl
-         , "#"
-         , resourcePath item.resource
-         , "/view"
-         , "/?q=", encodeURIComponent ("select * from ...") ]
-    else if isNotebook item.resource
-         then joinWith "" [ Config.notebookUrl
-                          , "#"
-                          , resourcePath item.resource
-                          , "view"]
-         else "/index.html#" <> updatePath (getPath $ item.resource) hash
-
-
+itemURL :: Item -> String -> String
+itemURL item hash =
+  if isNotebook item.resource || isFile item.resource
+  then joinWith "" $ [ Config.notebookUrl
+                     , "#"
+                     , if isFile item.resource then "/explore" else ""
+                     , encodeURIPath $ resourcePath $ item.resource
+                     , if isFile item.resource then "" else "edit"
+                     ]
+  else Config.browserUrl ++ "#" ++ updatePath (getPath $ item.resource) hash
 
 handleConfigure :: forall e. Item -> Event (FileAppEff e) Input
 handleConfigure _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog { new = false })
-
--- open dir or db
-moveDown :: forall e. Item -> Eff (dom :: DOM | e) Unit
-moveDown item = modifyHash $ updatePath (getPath $ item.resource)

@@ -19,7 +19,7 @@ import Model.Breadcrumb (Breadcrumb(), rootBreadcrumb)
 import Model.File (State())
 import Model.File.Dialog (Dialog())
 import Model.File.Item (Item(), sortItem)
-import Model.Resource 
+import Model.Resource
 import Model.Sort (Sort())
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Printer (strQuery)
@@ -38,6 +38,7 @@ data FileInput
   | Loading Boolean
   | Focus Boolean
   | SetSearching Boolean
+  | SetHash String
   | SetDialog (Maybe Dialog)
 
 updateState :: State -> Input -> State
@@ -58,7 +59,7 @@ inputFile state input =
     ItemsUpdate is sort ->
       state{ sort = sort
            , items = A.sortBy (sortItem state.searching sort) $
-                     A.concat [ A.filter (\x -> getPath x.resource == inj state.path) $ 
+                     A.concat [ A.filter (\x -> getPath x.resource == inj state.path) $
                                 A.filter _.phantom state.items
                               , is
                               ] }
@@ -71,9 +72,11 @@ inputFile state input =
       state{search = state.search{focused = focus}}
     SetSearching s ->
       state{searching = s}
+    SetHash s ->
+      state{hash = s}
     SetDialog d ->
       state{dialog = d}
-      
+
 
   where
   mkBreadcrumbs :: DirPath -> [Breadcrumb]
