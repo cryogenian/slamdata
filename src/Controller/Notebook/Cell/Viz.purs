@@ -1,7 +1,7 @@
 module Controller.Notebook.Cell.Viz where
 
-
 import Api.Query (count, all, sample)
+import Control.Apply ((*>))
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.MonadPlus (guard)
@@ -33,8 +33,8 @@ import ECharts.Tooltip
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..))
 import Model.Notebook (State(), _notebook)
-import Model.Notebook.Cell (Cell(), CellContent(..), CellId(), _cellId, _runState, RunState(..), newVisualizeContent, _content, _Visualize, _input)
-import Model.Notebook.Cell.Viz (VizRec(), initialVizRec, _error, _output, _xs, _all, _ys, _yCursor, _xCursor, _selectedFlag, ChartType(..), _chartType)
+import Model.Notebook.Cell (Cell(), _content, _Visualize, _cellId, CellId(), _runState, _input, newVisualizeContent, RunState(..))
+import Model.Notebook.Cell.Viz 
 import Model.Notebook.Domain
 import Model.Notebook.Port (_PortResource)
 import Model.Resource (Resource())
@@ -42,68 +42,145 @@ import Optic.Core ((^.), (.~), (..), (%~))
 import Optic.Fold ((^?))
 import Optic.Extended (TraversalP())
 import Data.Argonaut.JCursor (JCursor())
-import Data.Map (Map(), keys, toList, lookup)
+import Data.Map (Map(), keys, toList, lookup, values)
 import qualified Model.Notebook.ECharts as Me
 import Global (readInt, isNaN)
+import qualified Data.Set as S
+import Utils (s2i, s2n)
+
+_chartOpts :: TraversalP Cell ChartOptions
+_chartOpts = _content.._Visualize.._chartOptions
+
+setBarGap :: forall e. Cell -> String -> I e
+setBarGap cell gapStr =
+  go $ fromMaybe 30 $ s2i gapStr
+  where
+  go gap =
+    pure (UpdateCell (cell ^._cellId) (_chartOpts.._barGap .~ gap))
+
+toggleSmooth :: forall e. Cell -> Boolean -> I e
+toggleSmooth cell smooth =
+  pure (UpdateCell (cell ^._cellId) (_chartOpts.._smooth .~ smooth))
+
+setSymbolSize :: forall e. Cell -> String -> I e
+setSymbolSize cell sizeStr =
+  go $ fromMaybe 0 $ s2i sizeStr
+  where
+  go size =
+    pure (UpdateCell (cell ^._cellId) (_chartOpts.._symbolSize .~ size))
+
+setPieRose :: forall e. Cell -> String -> I e
+setPieRose cell name =
+  pure (UpdateCell (cell ^. _cellId) (_chartOpts.._roseType .~ name))
+
+setDonutRatio :: forall e. Cell -> String -> I e
+setDonutRatio cell ratioStr =
+  go $ fromMaybe 0 $ s2n ratioStr
+  where
+  go ratio = 
+    pure (UpdateCell (cell ^. _cellId) (_chartOpts.._donutRatio .~ ratio))
+
+setMinimalAngle :: forall e. Cell -> String -> I e
+setMinimalAngle cell angleStr =
+  go $ fromMaybe 0 $ s2n angleStr
+  where
+  go angle = 
+    pure (UpdateCell (cell ^. _cellId) (_chartOpts.._minimalAngle .~ angle))
+
+setXAxisPosition :: forall e. Cell -> String -> I e
+setXAxisPosition cell pos =
+  pure (UpdateCell (cell ^._cellId) (_chartOpts.._xAxisPosition .~ pos))
+
+setYAxisPosition :: forall e. Cell -> String -> I e
+setYAxisPosition cell pos =
+  pure (UpdateCell (cell ^._cellId) (_chartOpts.._yAxisPosition .~ pos))
 
 handleChartType :: forall e. ChartType -> Cell -> I e
-handleChartType chartType cell = 
-  (update (_content.._Visualize.._chartType .~ chartType)) `andThen` \_ -> 
-  maybe empty (updateOpts cell <<< (_chartType .~ chartType)) (cell ^? _content.._Visualize)
+handleChartType chartType cell =
+  maybe empty go $ cell ^? _content.._Visualize 
   where
+  go :: VizRec -> I e
+  go r =
+    let newR = updateR chartType r in
+    (update (_content.._Visualize .~ newR)) <>
+    (updateOpts cell newR)
+    
   cid :: CellId
   cid = cell ^._cellId
   update :: (Cell -> Cell) -> I e
   update = pure <<< (UpdateCell cid)
 
+  updateR :: ChartType -> VizRec -> VizRec
+  updateR chartType r =
+    r #
+    (_chartType .~ chartType) ..
+    (_xs .~ xs chartType r) ..
+    (_ys .~ ys chartType r)
+
+  xs :: ChartType -> VizRec -> [JCursor]
+  xs chartType r =
+    let fn = case chartType of
+          Line -> const true
+          _ -> not <<< Me.isValAxis
+    in fst <$> (filter (fn <<< snd) $ toList (r ^._all))
+
+  ys :: ChartType -> VizRec -> [JCursor]
+  ys chartType r =
+    let fn = Me.isValAxis in
+    fst <$> (filter (fn <<< snd) $ toList (r ^._all))
+
+
+
 updateOpts :: forall e. Cell -> VizRec -> I e
 updateOpts cell r =
-  let opts = mkOption r
-      cid = cell ^._cellId
-  in 
-   (pure (UpdateCell cid (_content.._Visualize.._output .~ opts))) <>
-   (pure (SetEChartsOption (show cid) opts))
+  (pure (UpdateCell cid (_content.._Visualize.._output .~ opts))) `andThen` \_ ->
+  maybe empty go $ ((r ^._xCursor) *> (r^._yCursor))
+
+  where
+  cid = cell ^._cellId
+  opts = mkOption r 
+  go = const $ pure (SetEChartsOption (show cid) opts)
   
-handleAxis :: forall e. TraversalP Cell [JCursor] ->
-              TraversalP Cell (Maybe JCursor) ->
+handleAxis :: forall e.
+              TraversalP Cell [JCursor] ->
+              TraversalP Cell [JCursor] ->
+              TraversalP VizRec (Maybe JCursor) ->
               String -> Cell -> I e
-handleAxis _xys _cursor ix cell =
-  maybe empty go (cell ^? _content.._Visualize.._selectedFlag)
+handleAxis _xys _yxs _cursor ix cell =
+  maybe empty go $ cell ^? _content.._Visualize 
   where
   update :: (Cell -> Cell) -> I e
   update = pure <<< (UpdateCell (cell ^._cellId))
 
-  go :: Boolean -> I e
-  go flag =
-    (update (_content.._Visualize.._selectedFlag %~ not)) `andThen` \_ ->
-    case availableAxises ix cell of
+  go :: VizRec -> I e
+  go r =
+    case availableAxises ix cell _yxs of
       Tuple mbCursor xys ->
-        update (_cursor .~ mbCursor) `andThen` \_ ->
-        if flag then empty
-        else update (_xys .~ xys)
-       
+        let newR = r # _selectedFlag %~ not 
+                     # _cursor .~ mbCursor
+            cellR = cell # _content.._Visualize .~ newR 
+            newCell = cellR # _xys .~ xys
+        in update (const cellR) `andThen` \_ ->
+        (updateOpts cell newR) `andThen` \_ -> 
+        if r ^. _selectedFlag then empty
+        else update (const newCell)
+  
 handleXAxisSelected :: forall e. String -> Cell -> I e
 handleXAxisSelected =
-  handleAxis (_content.._Visualize.._ys) (_content.._Visualize.._xCursor)
+  handleAxis (_content.._Visualize.._ys) (_content.._Visualize.._xs) _xCursor
 
 handleYAxisSelected :: forall e. String -> Cell -> I e
 handleYAxisSelected =
-  handleAxis (_content.._Visualize.._xs) (_content.._Visualize.._yCursor)
+  handleAxis (_content.._Visualize.._xs) (_content.._Visualize.._ys) _yCursor
                      
-availableAxises :: String -> Cell -> Tuple (Maybe JCursor) [JCursor]
-availableAxises ix cell =
+availableAxises :: String -> Cell -> TraversalP Cell [JCursor] ->
+                   Tuple (Maybe JCursor) [JCursor]
+availableAxises ix cell _xys =
   Tuple mbCursor (maybe ks cursors $ mbCursor)
   where
   mbCursor :: Maybe JCursor 
-  mbCursor = s2n ix >>= (ks !!)
+  mbCursor = s2i ix >>= ((cell ^._xys) !!)
   
-  s2n :: String -> Maybe Number 
-  s2n s =
-    let n = readInt 10 s in 
-    if isNaN n
-    then Nothing
-    else Just n
-         
   m :: Map JCursor Me.Axis 
   m = cell ^. _content .. _Visualize .. _all
 
@@ -165,18 +242,56 @@ updateData cell update file = do
     all <- Me.analyzeJArray <$> (liftAff $ all file)
     let vizRec = fromMaybe initialVizRec $ cell ^? _content.._Visualize
         axes = keys all
-        vRec = vizRec { all = all
-                      , sample = sample
-                      , ys = axes
-                      , xs = axes
-                      }
-        output = mkOption vRec
-        newVizRec = vRec{output = output}
-    (update $ (_content .. _Visualize .~ vRec)) <>
-    (updateOpts cell vRec)
+        vRec = mkAvailableChartTypes $ mkOutput $ vizRec { all = all
+                                                         , sample = sample
+                                                         , ys = axes
+                                                         , xs = axes
+                                                         }
+    if length (S.toList vRec.availableChartTypes) == 0
+      then errorNoAvailableCharts 
+      else
+      (update $ (_content .. _Visualize .~ vRec)) <>
+      (updateOpts cell vRec)
   where
+  errored :: String -> I e
+  errored msg = update $ (_content.._Visualize.._error .~ msg) ..
+                (_content.._Visualize.._xCursor .~ Nothing) ..
+                (_content.._Visualize.._yCursor .~ Nothing)
+  
   errorEmptyInput :: I e
-  errorEmptyInput = update (_content.._Visualize.._error .~ "Empty input")
+  errorEmptyInput = errored "Empty input"
+
+  errorNoAvailableCharts :: I e
+  errorNoAvailableCharts = errored "There is no availbale chart type for this data"
+
+mkAvailableChartTypes :: VizRec -> VizRec
+mkAvailableChartTypes r = r { availableChartTypes = selectAvailableChartTypes r}
+
+selectAvailableChartTypes :: VizRec -> S.Set ChartType
+selectAvailableChartTypes r =
+  S.fromList 
+  (   (if pieAvailable then [Pie] else []) 
+   <> (if lineAvailable then [Line] else []) 
+   <> (if barAvailable then [Bar] else [])
+  ) 
+  where
+  axises = values (r ^. _all)
+  valCount = length $ filter Me.isValAxis axises
+  catCount = length $ filter (\x -> Me.isTimeAxis x || Me.isCatAxis x) axises
+  
+  pieAvailable :: Boolean
+  pieAvailable = valCount > 0 && catCount > 0
+
+  lineAvailable :: Boolean
+  lineAvailable = pieAvailable || (valCount > 1)
+
+  barAvailable :: Boolean
+  barAvailable = pieAvailable
+
+
+mkOutput :: VizRec -> VizRec
+mkOutput r = r { output = mkOption r}
+
 
 mkOption :: VizRec -> Option
 mkOption r =
@@ -184,7 +299,6 @@ mkOption r =
     Pie ->  mkPie r
     Line -> mkLine r
     Bar -> mkBar r
-
 
 mkPie :: VizRec -> Option
 mkPie r =
@@ -211,7 +325,7 @@ mkPie r =
     maybe [ ] Me.runAxis $ ((r ^._xCursor) >>= (\x -> lookup x (r^._all)))
   
   valAxis :: [Maybe Me.Semanthic]
-  valAxis =
+  valAxis = 
     maybe [ ] Me.runAxis  $ ((r^._yCursor) >>= (\y -> lookup y (r^._all)))
 
   mkPieDatum :: Maybe Me.Semanthic -> Maybe Me.Semanthic -> Maybe ItemData 
@@ -236,13 +350,11 @@ mkBar = mkLinear barSeries
 
 
 mkLinear :: ([Number] -> Maybe [Maybe Series]) -> VizRec -> Option
-mkLinear series r =
-  Option $ optionDefault { xAxis = xAxis (fst <$> preparedData)
-                         , yAxis = yAxis
-                         , series = series (snd <$> preparedData)
-                         }
+mkLinear series r = Option option
   where
-  
+  option = optionDefault { series = series (snd <$> preparedData)
+                                   , xAxis = xAxis (fst <$> preparedData)
+                                   , yAxis = yAxis}
   yAxis :: Maybe Axises 
   yAxis = Just $ OneAxis $ Axis $ axisDefault { "type" = Just ValueAxis }
                                                          
@@ -256,7 +368,6 @@ mkLinear series r =
   valAxis :: [Maybe Me.Semanthic]
   valAxis =
     maybe [ ] Me.runAxis  $ ((r^._yCursor) >>= (\y -> lookup y (r^._all)))
-
 
   xAxisRec :: [String] -> AxisRec
   xAxisRec strs =

@@ -35,6 +35,7 @@ newtype Cell =
        , output :: Port
        , content :: CellContent
        , expandedStatus :: Boolean
+       , message :: String
        , failures :: [FailureMessage]
        , hiddenEditor :: Boolean
        , runState :: RunState
@@ -49,6 +50,7 @@ newCell cellId content =
        , content: content
        , expandedStatus: false
        , failures: []
+       , message: ""
        , hiddenEditor: false
        , runState: RunInitial
        , addingNextCell: false
@@ -83,6 +85,9 @@ _expandedStatus = _Cell <<< lens _.expandedStatus (_ { expandedStatus = _ })
 
 _failures :: LensP Cell [FailureMessage]
 _failures = _Cell <<< lens _.failures (_ { failures = _ })
+
+_message :: LensP Cell String
+_message = _Cell <<< lens _.message _{message = _}
 
 instance eqCell :: Eq Cell where
   (==) (Cell c) (Cell c') = c.cellId == c'.cellId

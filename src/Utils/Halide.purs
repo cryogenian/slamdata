@@ -2,6 +2,9 @@ module Utils.Halide
   ( targetLink
   , targetLink'
   , onPaste
+  , max
+  , min
+  , step
   ) where
 
 import Control.Alternative (Alternative)
@@ -42,3 +45,12 @@ targetLink' x = target' (T.DataTarget x)
 -- | ignored (for now at least).
 onPaste :: forall i. (ET.Event () -> E.EventHandler i) -> A.Attr i
 onPaste = A.handler (A.eventName "paste")
+
+step :: forall i. Number -> A.Attr i
+step = A.attr (A.attributeName "step") <<< show
+
+max :: forall i. Number -> A.Attr i
+max = A.attr (A.attributeName "max") <<< show
+
+min :: forall i. Number -> A.Attr i
+min = A.attr (A.attributeName "min") <<< show

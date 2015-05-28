@@ -54,7 +54,8 @@
     "purescript-timers": "^0.0.9",
     "purescript-tuples": "^0.3.1",
     "purescript-zclipboard": "^0.1.0",
-    "zeroclipboard": "^2.2.0"
+    "zeroclipboard": "^2.2.0",
+    "purescript-sets": "~0.3.2"
   },
   "resolutions": {
     "purescript-argonaut": "^0.6.0",

@@ -55,8 +55,8 @@ predicateToSQL :: Predicate -> String -> String
 predicateToSQL (Contains (Range v v')) s = range v v' s 
 predicateToSQL (Contains (Text v)) s =
   joinWith " OR " $
-  [s <> " LIKE '%" <> v <> "%'"] <>
-  (if needUnq v then render v else [ ] ) <>
+  ["LOWER(" <> s <> ")" <> " LIKE '%" <> v <> "%'"] <>
+  (if needUnq v then render' v else [ ] ) <>
   (if not (needDateTime v) && needDate v then render date else [ ]) <>
   (if needTime v then render time  else [] ) <>
   (if needDateTime v then render ts else [] ) <>
@@ -68,6 +68,7 @@ predicateToSQL (Contains (Text v)) s =
   time = timed quoted 
   ts = datetimed quoted
   i = intervaled quoted
+  render' v = [ "LOWER(" <> s <> ") = " <> v]
   render v = [s <> " = " <> v ]
 
 
@@ -85,7 +86,7 @@ predicateToSQL _ _ = ""
 range :: String -> String -> String -> String
 range v v' s =
   joinWith " OR " $
-  [ forR quoted quoted' ] <> 
+  [ forR' quoted quoted' ] <> 
   (if needUnq v && needUnq v' then [ forR v v' ] else [ ]) <>
   (if needDate v && needDate v' then [ forR date date' ] else [ ])
   where
@@ -95,6 +96,9 @@ range v v' s =
   date = dated quoted
   date' = dated quoted'
 
+  forR' :: String -> String -> String
+  forR' v v' =
+    fold ["(LOWER(", s, ") >=", v, " AND LOWER(", s, ") <= ", v', ")"]
   forR :: String -> String -> String
   forR v v' =
     fold ["(", s, " >= ", v, " AND ", s, " <= ", v', ")"]
@@ -102,7 +106,7 @@ range v v' s =
 qUnQ :: String -> String -> Value -> String
 qUnQ s op v = pars $ 
   joinWith " OR " $ 
-  [ forV quoted ] <>
+  [ forV' quoted ] <>
   (if needUnq unquoted then [ forV unquoted ] else [] ) <>
   (if not (needDateTime unquoted) && needDate unquoted then [ forV date ] else [] ) <> 
   (if needTime unquoted then [ forV time ] else [] ) <>
@@ -116,6 +120,7 @@ qUnQ s op v = pars $
   ts = datetimed quoted 
   i = intervaled quoted
 
+  forV' v = fold ["LOWER(", s, ") ", op, " ", v]
   forV v = fold [s, " ", op, " ", v]
 
 needUnq :: String -> Boolean

@@ -20,7 +20,7 @@ import Input.Notebook (Input(..))
 import Controller.Notebook.Cell (runCellEvent)
 import Controller.Notebook.Cell.Search (runSearch)
 import Model.Notebook (_activeCellId)
-import Model.Notebook.Cell (Cell(), _FileInput, _JTableContent, _content, _Search, _cellId)
+import Model.Notebook.Cell (Cell(), _FileInput, _JTableContent, _content, _Search, _cellId, _runState, RunState(..))
 import Model.Notebook.Cell.Search (_buffer)
 import View.Common (glyph)
 import View.Notebook.Common (HTML())
@@ -41,11 +41,17 @@ searchEditor cell =
       , E.onInput (E.input updateBuffer)
       , E.onFocus (E.input_ $ WithState (_activeCellId .~ (cell ^. _cellId)))
       ] [ ]
+    , H.img [ E.onClick (E.input_ $ updateBuffer "")
+            , A.class_ Vc.searchClear
+            , A.src (case cell ^. _runState of
+                        RunningSince _ -> "img/spin.svg"
+                        _ -> "img/remove.svg")
+            ] [ ]
     , H.span [ A.classes [ B.inputGroupBtn ] ]
       [ H.button [ A.classes [ B.btn, B.btnDefault, Vc.searchCellButton]
                  , A.type_ "button"
-                 , E.onClick (E.input_ $ updateBuffer "")
-                 ] [ glyph B.glyphiconRemove ]
+                 , E.onClick \_ -> pure (runCellEvent cell)
+                 ] [ glyph B.glyphiconSearch ]
       ]
     ]
   ]

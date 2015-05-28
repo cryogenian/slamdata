@@ -83,7 +83,8 @@ statusBar d state =
     , H.div [ A.classes [ VC.statusText ] ]
       [ H.text $ statusText d (state ^. _runState) ]
     , H.div [ A.classes [ VC.cellFailures ] ]
-      (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
+      (message state)
+--      (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
     ]
   ]
 
@@ -132,19 +133,47 @@ nextCellChoices notebook state =
                 , A.title title
                 , A.classes [ B.btn ] ] [ glyph c ] ]
 
-failureText :: forall e. CellId -> Boolean -> [FailureMessage] -> [HTML e]
-failureText _ _ [ ] = [ ]
-failureText cellId expanded fs =
-  [ H.div_ [ H.text (show (length fs) <> " error(s) during evaluation. ")
-  , H.a [ A.href "#", E.onClick (\_ -> E.preventDefault $> pure (UpdateCell cellId (_expandedStatus %~ not))) ] linkText ]
+message :: forall e. Cell -> [HTML e]
+message cell =
+  if null (cell ^._failures)
+  then if (cell ^._message) /= ""
+       then details cell
+       else [ ]
+  else failureText cell
+
+details :: forall e. Cell -> [HTML e]
+details cell = commonMessage "" [H.div_ [H.text (cell^._message)]] cell
+
+failureText :: forall e. Cell -> [HTML e]
+failureText cell =
+  commonMessage
+  (show (length fs) <> " error(s) during evaluation. ")
+  ((\f -> H.div_ [H.text f]) <$> fs)
+  cell
+  where fs = cell ^._failures
+
+commonMessage :: forall e. String -> [HTML e] -> Cell -> [HTML e]
+commonMessage intro children cell = 
+  [ H.div_
+    [ H.text intro
+    , H.a [ A.href "#"
+          , E.onClick (\_ -> E.preventDefault $>
+                            pure (UpdateCell (cell ^._cellId)
+                                  (_expandedStatus %~ not)))
+          ] 
+      (linkText (cell ^._expandedStatus))
+    ]
   ] <>
-    if expanded
-    then (\f -> H.div_ [ H.text f ]) <$> fs
-    else [ ]
-  where linkText =
-          [ H.text (if expanded
-                    then "Hide details"
-                    else "Show details") ]
+  if (cell ^._expandedStatus)
+  then children
+  else [ ]
+
+linkText :: forall e. Boolean -> [HTML e]
+linkText expanded =
+  [H.text (if expanded
+           then "Hide details"
+           else "Show details")
+  ]
 
 isRunning :: RunState -> Boolean
 isRunning (RunningSince _) = true
