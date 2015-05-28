@@ -20,6 +20,9 @@ dataUrl = serviceBaseUrl <> "data/fs/"
 queryUrl :: String
 queryUrl = serviceBaseUrl <> "query/fs/"
 
+browserUrl :: String
+browserUrl = baseUrl <> "index.html"
+
 notebookUrl :: String
 notebookUrl = baseUrl <> "notebook.html"
 

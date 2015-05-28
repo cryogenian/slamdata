@@ -4,6 +4,7 @@ module Driver.File
   ( outside ) where
 
 import Data.Inject1 (inj)
+import Control.Apply ((*>))
 import Control.Monad.Eff
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Exception
@@ -32,6 +33,7 @@ import Model.Path (cleanPath, hidePath)
 import Model.File.Item (wrap)
 import Api.Fs (children)
 import Routing (matchesAff)
+import Routing.Hash (getHash)
 import Routing.Hash.Aff (setHash, modifyHash)
 import Text.SlamSearch.Types (SearchQuery())
 import Text.SlamSearch.Printer (strQuery)
@@ -91,10 +93,12 @@ handleRoute driver = launchAff $ do
                     (searchPath query >>= parseAbsDir >>= sandbox rootDir))
         liftEff $ do
           driver $ inj $ Loading true
-          driver $ inj $ SetPath path 
+          driver $ inj $ SetPath path
           driver $ inj $ SearchSet $ (hidePath (renderPath $ inj path) $ (strQuery query))
           driver $ inj $ ItemsUpdate [] sort
           driver $ inj $ SetSearching (isSearchQuery query)
+          h <- getHash
+          driver $ inj $ SetSalt salt
         listPath driver query 0 var (newDirectory # _path .~ Right path)
         else do
         pure unit
@@ -115,7 +119,7 @@ listPath driver query deep var res = do
 
       traverse_ (liftEff <<< driver <<< inj <<< ItemAdd) (wrap <$> toAdd)
 
-      if isSearchQuery query 
+      if isSearchQuery query
         then traverse_ (listPath driver query (deep + 1) var) next
         else pure unit
 
@@ -130,4 +134,4 @@ listPath driver query deep var res = do
       putVar var initialAVar
       else
       putVar var (Tuple c r)
-  modifyVar (_1 <>~ canceler) var 
+  modifyVar (_1 <>~ canceler) var

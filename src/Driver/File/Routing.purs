@@ -1,22 +1,26 @@
-module Driver.File.Routing (routing, Routes(..)) where
+module Driver.File.Routing
+  ( Routes(..)
+  , routing
+  ) where
 
-import Data.Either
 import Control.Alt ((<|>))
+import Data.Either (Either(..))
+import Model.Salt (Salt(..))
+import Model.Sort (Sort(..), string2sort)
 import Routing.Match (Match(), eitherMatch)
 import Routing.Match.Class (param)
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Types (SearchQuery())
-import qualified Model.Sort as M
 
 data Routes
-  = Salted M.Sort SearchQuery String
-  | SortAndQ M.Sort SearchQuery
-  | Sort M.Sort
+  = Salted Sort SearchQuery Salt
+  | SortAndQ Sort SearchQuery
+  | Sort Sort
   | Index
 
-getSalt :: String -> Either String String
+getSalt :: String -> Either String Salt
 getSalt input =
-  if input /= "" then Right input
+  if input /= "" then Right (Salt input)
   else Left "incorrect salt"
 
 routing :: Match Routes
@@ -26,7 +30,7 @@ routing = salted <|> bothRoute <|> oneRoute <|> index
   bothRoute = SortAndQ <$> sort <*> query
   oneRoute = Sort <$> sort
   index = pure Index
-  sort = eitherMatch (M.string2sort <$> param "sort")
+  sort = eitherMatch (string2sort <$> param "sort")
   query = eitherMatch (mkQuery <$> param "q")
   salt = eitherMatch (getSalt <$> param "salt")
-  
+
