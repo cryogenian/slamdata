@@ -1,7 +1,7 @@
 module View.Notebook.Cell (cell) where
 
 import Control.Functor (($>))
-import Controller.Notebook.Cell (runCellEvent)
+import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Cell.Viz (insertViz)
 import Data.Array (length, null)
 import Data.Date (Date(), toEpochMilliseconds)
@@ -60,10 +60,7 @@ controls state =
 
 output :: forall e. Cell -> HTML e
 output state =
-   H.div [ A.classes $ [B.row, VC.cellOutput, B.fade] ++
-           if (_RunFinished `is` (state ^. _runState) || _Visualize `is` (state ^. _content)) && null (state ^. _failures)
-           then [B.in_]
-           else [] ]
+   H.div [ A.classes $ [B.row, VC.cellOutput] ]
    $ renderOutput state
 
 statusBar :: forall e. Maybe Date -> Cell -> HTML e
@@ -75,7 +72,7 @@ statusBar d state =
                            , if isRunning (state ^. _runState)
                              then VC.stopButton
                              else VC.playButton ]
-               , E.onClick \_ -> pure (runCellEvent state)
+               , E.onClick \_ -> pure (requestCellContent state)
                ]
       [ if isRunning (state ^. _runState)
         then glyph B.glyphiconStop

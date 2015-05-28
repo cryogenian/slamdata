@@ -1,5 +1,6 @@
 module Controller.Notebook.Cell (
-  runCellEvent
+  requestCellContent
+, runCell
   ) where
 
 import Control.Plus (empty)
@@ -17,13 +18,15 @@ import Controller.Notebook.Cell.Viz (runViz)
 import Controller.Notebook.Cell.Query (runQuery)
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..))
 
-runCellEvent :: forall eff. Cell -> I eff
-runCellEvent cell = do
+runCell :: forall eff. Cell -> I eff
+runCell cell = do
   d <- liftEff now
-  (pure (RunCell (cell ^. _cellId) d)) `andThen` \_ ->
-    case cell ^. _content of
-      Search _ -> runSearch (cell # _runState .~ (RunningSince d))
-      Explore _ -> runExplore cell
-      Visualize _ -> runViz cell
-      Query _ -> runQuery cell
-      _ -> empty
+  case cell ^. _content of
+    Search _ -> runSearch (cell # _runState .~ (RunningSince d))
+    Explore _ -> runExplore cell
+    Visualize _ -> runViz cell
+    Query _ -> runQuery cell
+    _ -> empty
+
+requestCellContent :: forall eff. Cell -> I eff
+requestCellContent cell = pure (RequestCellContent cell)

@@ -10,6 +10,7 @@ import Control.Plus (empty)
 import Control.Timer (interval)
 import Controller.Notebook (handleMenuSignal)
 import Controller.Notebook.Cell.Explore (runExplore)
+import Controller.Notebook.Common (run)
 import Data.Array (elemIndex)
 import Data.Date (now)
 import Data.DOM.Simple.Document
@@ -80,7 +81,7 @@ driver ref k =
                   .. (_initialName .~ "")
                   .. (_notebook .~ notebook)
             runEvent (\_ -> log "Error in runExplore in driver") k $
-              ((RunCell (cell ^. _cellId)) <$> liftEff now) `andThen` \_ -> runExplore cell
+              run cell `andThen` \_ -> runExplore cell
       _ -> update (_error .~ "Incorrect path")
    where update = k <<< WithState
 
@@ -117,5 +118,3 @@ handleShortcuts ref k =
         handle $ inj $ EvaluateCell
       _ -> pure empty
     runEvent (\_ -> log "Error in handleShortcuts") k event
-
-
