@@ -10,9 +10,11 @@ import Data.DOM.Simple.Types (HTMLElement(), DOMEvent(), DOMLocation())
 import Data.DOM.Simple.Window (globalWindow, document, getLocation, location)
 import Debug.Foreign (fprint)
 import Debug.Trace (Trace())
+import Data.Maybe (Maybe(..))
 import DOM (DOM())
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
+import Global (readFloat, isNaN, readInt)
 
 log :: forall a e. a -> Eff (trace::Trace|e) Unit
 log a = fprint a *> pure unit
@@ -93,3 +95,18 @@ trimQuotes input = Rgx.replace start "" $ Rgx.replace end "" input
 endsWith :: String -> String -> Boolean
 endsWith needle haystack =
   Str.indexOf' needle (Str.length haystack - Str.length needle) haystack /= -1
+
+
+s2i :: String -> Maybe Number 
+s2i s =
+  let n = readInt 10 s in 
+  if isNaN n
+  then Nothing
+  else Just n
+
+s2n :: String -> Maybe Number
+s2n s =
+  let n = readFloat s in
+  if isNaN n
+  then Nothing
+  else Just n

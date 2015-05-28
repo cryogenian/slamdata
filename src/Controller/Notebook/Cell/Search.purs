@@ -21,6 +21,7 @@ import Data.StrMap (keys)
 import Data.Int (Int())
 import Data.Time (Milliseconds())
 import Data.Date (now, toEpochMilliseconds, nowEpochMilliseconds)
+import Data.String (toLower)
 
 import Data.Argonaut.Core (JObject(), Json(), JArray(), fromObject)
 import Data.Argonaut.Combinators ((.?))
@@ -34,14 +35,14 @@ import Controller.Notebook.Cell.JTableContent (runJTable, queryToJTable)
 import Model.Resource (newFile, _path, AnyPath(), Resource())
 import Model.Notebook.Port (_PortResource)
 import Model.Notebook.Search (needFields, queryToSQL)
-import Model.Notebook.Cell (Cell(), RunState(..), _RunningSince, _runState,  _cellId, _content, _Search, _failures, _input, _output)
+import Model.Notebook.Cell (Cell(), RunState(..), _RunningSince, _runState,  _cellId, _content, _Search, _failures, _input, _output, _message)
 import Model.Notebook.Cell.Search (SearchRec(), _buffer, initialSearchRec)
 import Api.Fs (delete)
-import Api.Query (fields, port, sample)
+import Api.Query (fields, port, sample, templated)
 
 runSearch :: forall eff. Cell -> I eff
 runSearch cell =
-  either errorInParse go $ mkQuery buffer
+  either errorInParse go $ mkQuery $ toLower buffer
   where
   input :: Maybe Resource
   input = cell ^? _input .. _PortResource
@@ -58,8 +59,14 @@ runSearch cell =
       guard (needFields q)
       input
     flip (either errorInFields) fs \fs ->
-      fromMaybe errorInPorts
-      (queryToJTable cell (queryToSQL fs q) <$> input <*> output)
+      let tmpl = queryToSQL fs q 
+          sql :: Maybe String
+          sql = templated <$> input <*> (pure tmpl) in
+      maybe empty (\s -> update cell (_message .~ ("Generated SQL: " <> s))) sql 
+      `andThen` \_ ->
+      (fromMaybe errorInPorts (queryToJTable cell tmpl <$> input <*> output))
+
+      
 
   errorInParse :: _ -> I eff
   errorInParse _ =

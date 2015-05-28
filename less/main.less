@@ -59,6 +59,9 @@ body {
 
 .file-list-field {
     width: 568px;
+    img.search-clear {
+        top: 9px;
+    }
 }
 
 .file-list-group {
@@ -99,6 +102,22 @@ select.form-control, input.form-control {
     }
 }
 
+img.search-clear {
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    right: 44px;
+    top: 19px;
+    z-index: 100;
+    color: #0f0f0f;
+    cursor: pointer;
+    text-decoration: none;
+    &:hover {
+        text-decoration: none;
+        color: #000;
+    }
+}
+
 .search .search-input {
     width: 100%;
     padding-top: 10px;
@@ -108,21 +127,7 @@ select.form-control, input.form-control {
         z-input: 1;
         background-color: transparent;
     }
-    img.search-clear {
-        width: 16px;
-        height: 16px;
-        position: absolute;
-        right: 44px;
-        top: 19px;
-        z-index: 100;
-        color: #0f0f0f;
-        cursor: pointer;
-        text-decoration: none;
-        &:hover {
-            text-decoration: none;
-            color: #000;
-        }
-    }
+    
     .search-path {
         .search-affix, .search-affix-empty {
             color: #000;
@@ -415,6 +420,7 @@ ol.breadcrumb {
 
 .search-cell-input {
     border-top: none;
+
 }
 
 .search-cell-button {
@@ -431,6 +437,10 @@ ol.breadcrumb {
         height: 100px;
         width: 200px;
     }
+}
+
+.chart-configure-form {
+    width: 568px;
 }
 
 @import "bootstrap-overloads";

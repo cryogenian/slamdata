@@ -42,9 +42,6 @@ handleMoveItem item = do
   (toInput $ SetDialog (Just dialog))
     `andThen` \_ -> getDirectories (toInput <<< AddDirs) root
 
--- ATTENTION
--- This all should be moved to `initializer`
--- ATTENTION
 handleShare :: forall e. Sort -> Salt -> Item -> Event (FileAppEff e) Input
 handleShare sort salt item = async $ makeAff $ \_ k -> do
   loc <- locationString

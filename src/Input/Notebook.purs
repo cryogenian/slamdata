@@ -52,7 +52,7 @@ data Input
 updateState state (WithState f) =
   f state
 
-updateState state (UpdateCell cellId fn) =
+updateState state (UpdateCell cellId fn) = 
   state # _notebook.._cells..mapped %~ onCell cellId fn
 
 updateState state (Dropdown i) =

@@ -1,4 +1,4 @@
-module Api.Query (query, port, sample, SQL(), fields, count, all) where
+module Api.Query (query, port, sample, SQL(), fields, count, all, templated) where
 
 import Data.Either (Either(..), either)
 import Data.Either.Unsafe (fromRight)

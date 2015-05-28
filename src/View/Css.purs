@@ -158,3 +158,5 @@ nextCellList = className "next-cell-list"
 echartsContainer :: ClassName
 echartsContainer = className "echarts-container"
 
+chartConfigureForm :: ClassName
+chartConfigureForm = className "chart-configure-form"

@@ -30,10 +30,10 @@ import Model.Notebook
 import Model.Notebook.Cell (CellContent(..), _cellId)
 import Model.Notebook.Cell.Explore (initialExploreRec, _input)
 import Model.Notebook.Cell.FileInput
-import Model.Notebook.Domain (emptyNotebook, addCell, insertCell)
 import Model.Notebook.Menu
 import Model.Path (decodeURIPath)
-import Model.Resource (resourcePath, parent, _name)
+import Model.Resource (resourcePath, parent, _name, _root)
+import qualified Model.Notebook.Domain as D 
 import Optic.Core ((.~), (^.), (..), (?~))
 import Utils (log)
 
@@ -66,8 +66,13 @@ driver ref k =
               .. (_initialName .~ (res ^. _name))
         handleShortcuts ref k
       ExploreRoute res ->
-        -- TODO: what to do about the resource here? it doesn't exist yet, and we can't really invent a name for it until we actually need to save it
-        case addCell (Explore (initialExploreRec # _input .. _file .~ Right res)) emptyNotebook of
+        -- TODO: what to do about the resource here? it doesn't exist yet, 
+        -- and we can't really invent a name for it until we actually need to
+        -- save it
+        let newNote = D.emptyNotebook # D._resource.._root .~ (res ^._root)
+            newCell = Explore (initialExploreRec # _input .. _file .~ Right res)
+        in case D.addCell newCell newNote of 
+
           Tuple notebook cell -> do
             update $ (_editable .~ true)
                   .. (_loaded .~ true)
