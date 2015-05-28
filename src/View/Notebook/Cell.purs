@@ -72,7 +72,9 @@ statusBar d state =
                            , if isRunning (state ^. _runState)
                              then VC.stopButton
                              else VC.playButton ]
-               , E.onClick \_ -> pure (requestCellContent state)
+               , E.onClick \_ -> if isRunning (state ^. _runState)
+                                 then pure (pure (StopCell $ state ^. _cellId))
+                                 else pure (requestCellContent state)
                ]
       [ if isRunning (state ^. _runState)
         then glyph B.glyphiconStop
