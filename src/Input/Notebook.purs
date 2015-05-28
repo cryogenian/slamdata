@@ -34,6 +34,7 @@ import qualified Model.Notebook.Cell.JTableContent as JTC
 data CellResultContent
   = AceContent String
   | JTableContent JTC.JTableContent
+  | MarkdownContent
 
 data Input
   = WithState (State -> State)
@@ -104,6 +105,7 @@ cellContent = either (setFailures <<< NEL.toArray) success
   success :: CellResultContent -> Cell -> Cell
   success (AceContent content) = setFailures [ ] <<< (_content .. _AceContent .~ content)
   success (JTableContent content) = setFailures [ ] <<< (_content .. _JTableContent .~ content)
+  success MarkdownContent = setFailures [ ]
 
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
 onCell ci f c = if isCell ci c then f c else c
