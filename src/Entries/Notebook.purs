@@ -3,7 +3,6 @@ module Entries.Notebook where
 import Ace.Types (ACE())
 import App.Notebook (app)
 import Control.Monad.Eff (Eff())
-import Data.Date (Now())
 import Data.DOM.Simple.Navigator (platform)
 import Data.DOM.Simple.Window (globalWindow, navigator)
 import Data.Inject1 (prj)
@@ -22,6 +21,7 @@ import Utils (onLoad, mountUI)
 import qualified App.Notebook.Ace as A
 import qualified App.Notebook.ECharts as EC
 import qualified Driver.Notebook as D
+import qualified Driver.Notebook.Cell as DC
 
 main :: Eff (NotebookAppEff (ace :: ACE)) Unit
 main = onLoad $ void $ do
@@ -40,5 +40,6 @@ main = onLoad $ void $ do
   D.driver aceKnot driver
   where
   postRender aKnot eKnot input node driver = do
+    DC.driveCellContent input driver
     A.acePostRender aKnot input node driver
     EC.echartsPostRender eKnot input node driver

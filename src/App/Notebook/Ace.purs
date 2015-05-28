@@ -1,6 +1,6 @@
 module App.Notebook.Ace (acePostRender, ref, AceKnot()) where
 
-import Input.Notebook (CellResultContent(..), Input(..))
+import Input.Notebook (CellResultContent(..), Input(..), cellContent)
 
 import Control.Bind ((>=>))
 import Control.Monad (when)
@@ -29,7 +29,7 @@ import Ace.Types (EditSession(), ACE(), Editor(), TextMode(..))
 import qualified Ace.Editor as Editor
 
 import Model.Notebook
-import Model.Notebook.Cell (CellId(), string2cellId)
+import Model.Notebook.Cell (CellId(), string2cellId, _cellId, _content)
 
 import Optic.Core
 import Optic.Refractor.Lens
@@ -87,15 +87,16 @@ initialize m b d = do
   reinit editor session = do
     Editor.setSession session editor
 
-
 handleInput :: forall eff. RefVal AceKnot
                         -> Input
                         -> Driver Input (now :: Now, ace :: ACE | eff)
                         -> Eff (HalogenEffects (now :: Now, ace :: ACE | eff)) Unit
-handleInput m (RunCell cellId _) d = do
+handleInput m (RequestCellContent cell) d = do
   Tuple _ m' <- readRef m
   now' <- now
-  maybe (return unit) (getValue >=> d <<< CellResult cellId now' <<< Right <<< AceContent) $
+  let cellId = cell ^. _cellId
+  let updateCell c = cellContent (Right $ AceContent c) cell
+  maybe (return unit) (getValue >=> d <<< ReceiveCellContent <<< updateCell) $
     M.lookup cellId m'
 handleInput m (TrashCell cellId) _ = do
   modifyRef m (_2 %~ M.delete cellId)

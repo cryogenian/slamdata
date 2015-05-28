@@ -17,7 +17,7 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.Themes.Bootstrap3 as B
 
 import Input.Notebook (Input(..))
-import Controller.Notebook.Cell (runCellEvent)
+import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Cell.Search (runSearch)
 import Model.Notebook (_activeCellId)
 import Model.Notebook.Cell (Cell(), _FileInput, _JTableContent, _content, _Search, _cellId, _runState, RunState(..))
@@ -50,7 +50,7 @@ searchEditor cell =
     , H.span [ A.classes [ B.inputGroupBtn ] ]
       [ H.button [ A.classes [ B.btn, B.btnDefault, Vc.searchCellButton]
                  , A.type_ "button"
-                 , E.onClick \_ -> pure (runCellEvent cell)
+                 , E.onClick \_ -> pure (requestCellContent cell)
                  ] [ glyph B.glyphiconSearch ]
       ]
     ]

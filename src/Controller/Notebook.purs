@@ -19,7 +19,7 @@ import Model.Notebook.Menu (
   MenuSignal(..))
 
 import Model.Notebook (State(), _activeCellId, _activeCell, _modalError, _resource, _initialName)
-import Controller.Notebook.Cell (runCellEvent)
+import Controller.Notebook.Cell (requestCellContent)
 import Model.Notebook.Cell (CellContent(..))
 import Model.Notebook.Cell.Explore (initialExploreRec)
 import Model.Notebook.Cell.Query (initialQueryRec)
@@ -83,7 +83,7 @@ handleMenuNotebook signal = do
 handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
-    EvaluateCell -> maybe empty runCellEvent (state ^? _activeCell)
+    EvaluateCell -> maybe empty requestCellContent (state ^? _activeCell)
     DeleteCell -> pure $ TrashCell (state ^. _activeCellId)
     _ -> empty
 

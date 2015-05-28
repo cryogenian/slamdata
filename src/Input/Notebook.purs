@@ -1,7 +1,8 @@
 module Input.Notebook
-  ( Input(..)
+  ( CellResultContent(..)
+  , Input(..)
   , updateState
-  , CellResultContent(..)
+  , cellContent
   ) where
 
 import Control.Alt ((<|>))
@@ -9,7 +10,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Timer (Timeout())
 import Data.Array (filter, modifyAt, (!!))
 import Data.Date (Date(), Now(), now, toEpochMilliseconds)
-import Data.Either (Either(), either)
+import Data.Either (Either(..), either)
 import Data.Function (on)
 import Data.Inject1 (inj, prj)
 import Data.Maybe (maybe, Maybe(..))
@@ -26,7 +27,6 @@ import Optic.Setter (mapped, over)
 import Text.Markdown.SlamDown.Html (SlamDownEvent(..))
 import qualified ECharts.Options as EC
 
-
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.StrMap as M
 import qualified Model.Notebook.Cell.JTableContent as JTC
@@ -34,6 +34,7 @@ import qualified Model.Notebook.Cell.JTableContent as JTC
 data CellResultContent
   = AceContent String
   | JTableContent JTC.JTableContent
+  | MarkdownContent
 
 data Input
   = WithState (State -> State)
@@ -41,9 +42,14 @@ data Input
   | CloseDropdowns
   | AddCell CellContent
   | TrashCell CellId
-  | RunCell CellId Date
+
+  | RequestCellContent Cell
+  | ReceiveCellContent Cell
+
+  | StartRunCell CellId Date
   | StopCell CellId
   | CellResult CellId Date (Either (NEL.NonEmpty FailureMessage) CellResultContent)
+
   | UpdateCell CellId (Cell -> Cell)
   | CellSlamDownEvent CellId SlamDownEvent
   | InsertCell Cell CellContent
@@ -74,12 +80,14 @@ updateState state (TrashCell cellId) =
 
 updateState state (CellResult cellId date content) =
   let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
-      f _                = RunInitial -- TODO: Cell in bad state
+      f a                = a -- TODO: Cell in bad state
   in state # _notebook.._cells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
 
-updateState state (RunCell cellId date) =
-  state # _notebook.._cells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
+updateState state (ReceiveCellContent cell) =
+  state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const cell)
 
+updateState state (StartRunCell cellId date) =
+  state # _notebook.._cells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
 
 updateState state (CellSlamDownEvent cellId (FormValueChanged name value)) =
   state # _notebook.._cells..mapped %~ onCell cellId (addVar name value)
@@ -97,6 +105,7 @@ cellContent = either (setFailures <<< NEL.toArray) success
   success :: CellResultContent -> Cell -> Cell
   success (AceContent content) = setFailures [ ] <<< (_content .. _AceContent .~ content)
   success (JTableContent content) = setFailures [ ] <<< (_content .. _JTableContent .~ content)
+  success MarkdownContent = setFailures [ ]
 
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
 onCell ci f c = if isCell ci c then f c else c
