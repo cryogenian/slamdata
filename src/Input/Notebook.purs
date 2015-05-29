@@ -79,15 +79,23 @@ updateState state (TrashCell cellId) =
   state # _notebook.._cells %~ filter (not <<< isCell cellId)
 
 updateState state (CellResult cellId date content) =
-  let f (RunningSince d) = RunFinished $ on (-) toEpochMilliseconds date d
-      f a                = a -- TODO: Cell in bad state
-  in state # _notebook.._cells..mapped %~ onCell cellId (modifyRunState f <<< cellContent content)
+  let finished d = RunFinished $ on (-) toEpochMilliseconds date d
+
+      fromState (RunningSince d) = cellContent content <<< setRunState (finished d)
+      fromState a = setRunState a -- In bad state or cancelled. Leave content.
+
+      f cell = fromState (cell ^. _runState) cell
+
+  in state # _notebook.._cells..mapped %~ onCell cellId f
 
 updateState state (ReceiveCellContent cell) =
   state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const cell)
 
 updateState state (StartRunCell cellId date) =
-  state # _notebook.._cells..mapped %~ onCell cellId (modifyRunState <<< const $ RunningSince date)
+  state # _notebook.._cells..mapped %~ onCell cellId (setRunState $ RunningSince date)
+
+updateState state (StopCell cellId) =
+  state # _notebook.._cells..mapped %~ onCell cellId (setRunState RunInitial)
 
 updateState state (CellSlamDownEvent cellId (FormValueChanged name value)) =
   state # _notebook.._cells..mapped %~ onCell cellId (addVar name value)
@@ -112,6 +120,9 @@ onCell ci f c = if isCell ci c then f c else c
 
 setFailures :: [FailureMessage] -> Cell -> Cell
 setFailures fs (Cell o) = Cell $ o { failures = fs }
+
+setRunState :: RunState -> Cell -> Cell
+setRunState = modifyRunState <<< const
 
 modifyRunState :: (RunState -> RunState) -> Cell -> Cell
 modifyRunState f (Cell o) = Cell $ o { runState = f o.runState }
