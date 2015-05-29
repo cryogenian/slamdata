@@ -17,7 +17,7 @@ before_deploy:
 deploy:
   provider: releases
   api-key:
-    secure: WsPNt1CA/TeWXJfMXpvuCuED14XYGxJ9m8Fji/SxpT6ja3jjKIB6yKePu4NI1C7WZCK9qKegPWwzzk+MOJj/HKa72gQdQq7eLqliP3JF8GjP0KDNfpxd5kyc6Nelxq1UVy9N2JoaYM4PaQ2lZIo86Etw8v7jaCKj59+dKO6+ZH0=
+    secure: "VeEwQn8CDYPdHtNX3Sx88EvBCuYti6w1ciuDvUrhFf87iSAZS5D5yXwN/kXcTVZ9jtQdIG3u/8KisNZCdtGSkUaHU4FNJgMSGFl6kqSEx4/Tu87xu8Crpq/SgGTwI1OUKBVg720XycE1ii5GwjcESSBELDH0unPFVpVoCpqDWwg="
   file: slamdata.tar.bz2
   skip_cleanup: true
   on:
