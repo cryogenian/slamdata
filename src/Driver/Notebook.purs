@@ -1,7 +1,7 @@
 module Driver.Notebook where
 
 import Api.Fs (children)
-import App.Notebook.Ace (AceKnot())
+import App.Notebook.Ace (AceSessions())
 import Control.Monad.Aff (runAff, attempt)
 import Control.Monad.Eff
 import Control.Monad.Eff.Class (liftEff)
@@ -34,7 +34,7 @@ import Model.Notebook.Cell.FileInput
 import Model.Notebook.Menu
 import Model.Path (decodeURIPath)
 import Model.Resource (resourcePath, parent, _name, _root)
-import qualified Model.Notebook.Domain as D 
+import qualified Model.Notebook.Domain as D
 import Optic.Core ((.~), (^.), (..), (?~))
 import Utils (log)
 
@@ -47,7 +47,7 @@ import qualified Routing.Match.Class as R
 tickDriver :: forall e. H.Driver Input (NotebookComponentEff e) -> Eff (NotebookAppEff e) Unit
 tickDriver k = void $ interval 1000 $ now >>= k <<< WithState <<< (_tickDate .~) <<< Just
 
-driver :: forall e. RefVal AceKnot ->
+driver :: forall e. RefVal State ->
           H.Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
 driver ref k =
@@ -85,22 +85,22 @@ driver ref k =
       _ -> update (_error .~ "Incorrect path")
    where update = k <<< WithState
 
-handleShortcuts :: forall e. RefVal AceKnot ->
+handleShortcuts :: forall e. RefVal State ->
                    (Input -> Eff (NotebookAppEff e) Unit) ->
                    Eff (NotebookAppEff e) Unit
 handleShortcuts ref k =
   document globalWindow >>=
   addKeyboardEventListener KeydownEvent (handler ref)
   where
-  handler :: RefVal AceKnot -> DOMEvent -> _
+  handler :: RefVal State -> DOMEvent -> _
   handler ref e = void do
     meta <- (||) <$> ctrlKey e <*> metaKey e
     shift <- shiftKey e
     code <- keyCode e
-    Tuple cid _ <- readRef ref
+    state <- readRef ref
     let handle signal = do
           preventDefault e
-          pure $ handleMenuSignal (initialState # _activeCellId .~ cid) signal
+          pure $ handleMenuSignal state signal
     event <- case code of
       83 | meta && shift -> do
         handle $ inj $ RenameNotebook

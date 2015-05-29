@@ -83,7 +83,9 @@ handleMenuNotebook signal = do
 handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
-    EvaluateCell -> maybe empty requestCellContent (state ^? _activeCell)
+    EvaluateCell ->
+      let activeCell = state ^? _activeCell
+      in maybe empty requestCellContent activeCell
     DeleteCell -> pure $ TrashCell (state ^. _activeCellId)
     _ -> empty
 

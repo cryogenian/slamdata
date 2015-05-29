@@ -1,4 +1,4 @@
-module App.Notebook.Ace (acePostRender, ref, AceKnot()) where
+module App.Notebook.Ace (acePostRender, AceSessions()) where
 
 import Global (infinity)
 import Input.Notebook (CellResultContent(..), Input(..), cellContent)
@@ -6,7 +6,7 @@ import Input.Notebook (CellResultContent(..), Input(..), cellContent)
 import Control.Bind ((>=>))
 import Control.Monad (when)
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Ref (Ref(), RefVal(), readRef, newRef, modifyRef)
+import Control.Monad.Eff.Ref (RefVal(), readRef, modifyRef)
 
 import Data.Date (Now(), now)
 import Data.Either (Either(..), either)
@@ -35,7 +35,7 @@ import Model.Notebook.Cell (CellId(), string2cellId, _cellId, _content)
 import Optic.Core
 import Optic.Refractor.Lens
 
-type AceKnot = Tuple CellId (M.Map CellId EditSession)
+type AceSessions = M.Map CellId EditSession
 
 markdownMode :: TextMode
 markdownMode = TextMode "ace/mode/markdown"
@@ -72,13 +72,13 @@ foreign import aceSetOption """
   }
   """ :: forall a eff. String -> a -> Editor -> Eff (ace :: ACE | eff) Unit
 
-initialize :: forall eff. RefVal AceKnot -> HTMLElement ->
+initialize :: forall eff. RefVal AceSessions -> HTMLElement ->
               Driver Input (ace :: ACE | eff) ->
               Eff (HalogenEffects (ace :: ACE | eff)) Unit
 initialize m b d = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
   els <- getElementsByClassName "ace-container" b
-  Tuple _ mr <- readRef m
+  mr <- readRef m
   for_ els \el -> do
     cellId <- string2cellId <$> getAttribute dataCellId el
     flip (either (const $ pure unit)) cellId \cid -> do
@@ -95,9 +95,8 @@ initialize m b d = do
   initialize' mode editor cid = do
     session <- createEditSession "" mode ace
     Editor.focus editor
-    modifyRef m (_2 %~ M.insert cid session)
+    modifyRef m (M.insert cid session)
     Editor.onFocus editor do
-      modifyRef m (_1 .~ cid)
       d $ WithState (_activeCellId .~ cid)
 
 
@@ -105,26 +104,23 @@ initialize m b d = do
   reinit editor session = do
     Editor.setSession session editor
 
-handleInput :: forall eff. RefVal AceKnot
+handleInput :: forall eff. RefVal AceSessions
                         -> Input
                         -> Driver Input (now :: Now, ace :: ACE | eff)
                         -> Eff (HalogenEffects (now :: Now, ace :: ACE | eff)) Unit
 handleInput m (RequestCellContent cell) d = do
-  Tuple _ m' <- readRef m
+  m' <- readRef m
   now' <- now
   let cellId = cell ^. _cellId
   let updateCell c = cellContent (Right $ AceContent c) cell
   maybe (return unit) (getValue >=> d <<< ReceiveCellContent <<< updateCell) $
     M.lookup cellId m'
 handleInput m (TrashCell cellId) _ = do
-  modifyRef m (_2 %~ M.delete cellId)
+  modifyRef m (M.delete cellId)
 handleInput _ _ _ = return unit
 
-acePostRender :: forall eff. RefVal AceKnot -> Input ->
+acePostRender :: forall eff. RefVal AceSessions -> Input ->
                  HTMLElement -> Driver Input (now :: Now, ace :: ACE | eff) -> Eff (HalogenEffects (now :: Now, ace :: ACE | eff)) Unit
 acePostRender m i b d = do
   initialize m b d
   handleInput m i d
-
-ref :: forall e.  Eff (ref :: Ref | e) (RefVal AceKnot)
-ref = newRef (Tuple 0 M.empty)
