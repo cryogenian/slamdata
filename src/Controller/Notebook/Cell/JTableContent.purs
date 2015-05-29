@@ -21,6 +21,7 @@ import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (Json(), JObject(), fromArray)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Array (head)
+import Data.Bifunctor (lmap)
 import Data.Date (now)
 import Data.Either (Either(..), either)
 import Data.Foreign.Class (readJSON)
@@ -31,9 +32,11 @@ import Global (isNaN, readInt)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
-import Model.Resource (Resource())
+import Model.Resource (Resource(), mkFile)
 import Optic.Core ((^.), (.~), (..))
 import Optic.Extended (TraversalP(), (^?))
+
+import Data.Path.Pathy ((</>), parseAbsFile, rootDir, sandbox)
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Int as I
@@ -106,21 +109,19 @@ runJTable file cell = do
                               }
                             }
 
+-- TODO: Remove String from being our error type.
 queryToJTable :: forall e. Cell -> String -> Resource -> Resource -> I e
 queryToJTable cell sql inp out = do
   jobj <- liftAff do
     delete out
     attempt (port inp out sql)
-  either errorInQuery (const $ runJTable out cell) jobj
+  either errorInQuery (\out -> runJTable (mkFile (Left $ rootDir </> out)) cell) do
+    j <- lmap message jobj
+    out' <- j .? "out"
+    path <- maybe (Left "Invalid file from SlamEngine") Right $ parseAbsFile out'
+    maybe (Left "Could not sandbox SlamEngine file") Right $ sandbox rootDir path
   where
-  correct :: String -> Resource -> Resource -> I e
-  correct sql inp out = do
-    jobj <- liftAff do
-      delete out
-      attempt (port inp out sql)
-    either errorInQuery (const $ runJTable out cell) jobj
-
   errorInQuery :: _ -> I e
   errorInQuery err =
-    update cell (_failures .~ ["Error in query: " <> message err])
+    update cell (_failures .~ ["Error in query: " <> err])
       `andThen` \_ -> finish cell
