@@ -3,6 +3,7 @@ module Entries.Notebook where
 import Ace.Types (ACE())
 import App.Notebook (app)
 import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Ref (modifyRef, newRef)
 import Data.DOM.Simple.Navigator (platform)
 import Data.DOM.Simple.Window (globalWindow, navigator)
 import Data.Inject1 (prj)
@@ -10,24 +11,27 @@ import Data.Maybe (fromMaybe)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Platform (Platform(..))
 import Data.String (indexOf)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), snd)
 import EffectTypes (NotebookAppEff())
 import Halogen (runUIWith)
-import Input.Notebook (Input(..))
-import Model.Notebook (_platform)
+import Input.Notebook (Input(..), updateState)
+import Model.Notebook (_platform, initialState)
 import Optic.Core ((.~))
 import Utils (onLoad, mountUI)
 
 import qualified App.Notebook.Ace as A
 import qualified App.Notebook.ECharts as EC
+import qualified Data.Map as M
 import qualified Driver.Notebook as D
 import qualified Driver.Notebook.Cell as DC
 
 main :: Eff (NotebookAppEff (ace :: ACE)) Unit
 main = onLoad $ void $ do
-  aceKnot <- A.ref
+  stateKnot <- newRef initialState
+  aceKnot <- newRef M.empty
   echartsKnot <- EC.ref
-  Tuple node driver <- runUIWith app (postRender aceKnot echartsKnot)
+  let post = postRender stateKnot aceKnot echartsKnot
+  Tuple node driver <- runUIWith app post
   mountUI node
   platformName <- navigator globalWindow >>= platform
   let p = if indexOf "Win" platformName >= 0
@@ -37,9 +41,10 @@ main = onLoad $ void $ do
                else Other
   driver $ WithState (_platform .~ p)
   D.tickDriver driver
-  D.driver aceKnot driver
+  D.driver stateKnot driver
   where
-  postRender aKnot eKnot input node driver = do
+  postRender sKnot aKnot eKnot input node driver = do
+    modifyRef sKnot (flip updateState input)
     DC.driveCellContent input driver
     A.acePostRender aKnot input node driver
     EC.echartsPostRender eKnot input node driver
