@@ -1,5 +1,6 @@
 module App.Notebook.Ace (acePostRender, ref, AceKnot()) where
 
+import Global (infinity)
 import Input.Notebook (CellResultContent(..), Input(..), cellContent)
 
 import Control.Bind ((>=>))
@@ -58,6 +59,19 @@ dataCellId = "data-cell-id"
 dataCellType :: String
 dataCellType = "data-cell-type"
 
+-- TODO: Put this in purescript-ace and fix parametricity.
+foreign import aceSetOption """
+  function aceSetOption (s) {
+    return function (a) {
+      return function (editor) {
+        return function () {
+          editor.setOption(s, a);
+        };
+      };
+    };
+  }
+  """ :: forall a eff. String -> a -> Editor -> Eff (ace :: ACE | eff) Unit
+
 initialize :: forall eff. RefVal AceKnot -> HTMLElement ->
               Driver Input (ace :: ACE | eff) ->
               Eff (HalogenEffects (ace :: ACE | eff)) Unit
@@ -70,6 +84,10 @@ initialize m b d = do
     flip (either (const $ pure unit)) cellId \cid -> do
       mode <- modeByCellTag <$> getAttribute dataCellType el
       editor <- Ace.editNode el ace
+
+      aceSetOption "maxLines" infinity editor
+      aceSetOption "autoScrollEditorIntoView" true editor
+
       Editor.setTheme "ace/theme/chrome" editor
       maybe (initialize' mode editor cid) (reinit editor) $ M.lookup cid mr
   where
