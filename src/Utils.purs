@@ -7,14 +7,15 @@ import Data.DOM.Simple.Document (body)
 import Data.DOM.Simple.Element (appendChild)
 import Data.DOM.Simple.Events (addUIEventListener, UIEventType(..))
 import Data.DOM.Simple.Types (HTMLElement(), DOMEvent(), DOMLocation())
-import Data.DOM.Simple.Window (globalWindow, document, getLocation, location)
 import Debug.Foreign (fprint)
 import Debug.Trace (Trace())
 import Data.Maybe (Maybe(..))
 import DOM (DOM())
+import Global (readFloat, isNaN, readInt)
+
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
-import Global (readFloat, isNaN, readInt)
+import qualified Data.DOM.Simple.Window as W
 
 log :: forall a e. a -> Eff (trace::Trace|e) Unit
 log a = fprint a *> pure unit
@@ -23,7 +24,7 @@ onLoad :: forall e. Eff (dom::DOM|e) Unit -> Eff (dom::DOM|e) Unit
 onLoad action = do
   let handler :: DOMEvent -> _
       handler _ = action
-  addUIEventListener LoadEvent handler globalWindow
+  addUIEventListener LoadEvent handler W.globalWindow
 
 -- | Opens url in new tab or window
 foreign import newTab
@@ -69,7 +70,7 @@ foreign import select
   """ :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
 
 bodyHTMLElement :: forall e. Eff (dom :: DOM | e) HTMLElement
-bodyHTMLElement = document globalWindow >>= body
+bodyHTMLElement = W.document W.globalWindow >>= body
 
 mountUI :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
 mountUI node = bodyHTMLElement >>= flip appendChild node
@@ -84,8 +85,7 @@ foreign import locationOrigin
   """ :: forall e. DOMLocation -> Eff (dom :: DOM|e) String
 
 locationString :: forall e. Eff (dom :: DOM |e) String
-locationString = do
-  location globalWindow >>= locationOrigin
+locationString = W.location W.globalWindow >>= locationOrigin
 
 trimQuotes :: String -> String
 trimQuotes input = Rgx.replace start "" $ Rgx.replace end "" input
@@ -96,10 +96,12 @@ endsWith :: String -> String -> Boolean
 endsWith needle haystack =
   Str.indexOf' needle (Str.length haystack - Str.length needle) haystack /= -1
 
+setLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
+setLocation url = W.location W.globalWindow >>= W.setLocation url
 
-s2i :: String -> Maybe Number 
+s2i :: String -> Maybe Number
 s2i s =
-  let n = readInt 10 s in 
+  let n = readInt 10 s in
   if isNaN n
   then Nothing
   else Just n

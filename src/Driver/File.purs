@@ -29,7 +29,7 @@ import Input.File.Search (SearchInput(..))
 import qualified Halogen as Hl
 import qualified Text.SlamSearch.Printer as S
 import Model.Sort (Sort(Asc))
-import Model.Path (cleanPath, hidePath)
+import Model.Path (AnyPath(), DirPath(), cleanPath, hidePath)
 import Model.File.Item (wrap)
 import Api.Fs (children)
 import Routing (matchesAff)

@@ -1,39 +1,39 @@
 module Api.Query (query, port, sample, SQL(), fields, count, all, templated) where
 
-import Data.Either (Either(..), either)
-import Data.Either.Unsafe (fromRight)
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
-import Data.Tuple (Tuple(..))
+import Api.Common (getResponse, succeeded)
+import Config (queryUrl, dataUrl)
+import Control.Apply (lift2)
 import Control.Bind ((<=<), (>=>))
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
+import Data.Argonaut.Combinators ((.?))
+import Data.Argonaut.Core (JArray(), Json(), JObject(), jsonEmptyObject, isArray, isObject, foldJson, toArray, toObject, toNumber, fromObject)
+import Data.Argonaut.Decode (decodeJson)
+import Data.Argonaut.Parser (jsonParser)
+import Data.Array (concat, nub, filter, head)
+import Data.DOM.Simple.Encode (encodeURIComponent)
+import Data.Either (Either(..), either)
+import Data.Either.Unsafe (fromRight)
+import Data.Foldable (foldl)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.String (split, replace)
+import Data.StrMap (keys, toList, empty, lookup)
+import Data.Tuple (Tuple(..))
+import Model.Path (AnyPath())
+import Model.Resource (Resource(), resourcePath, isFile, _name, parent)
 import Network.HTTP.Affjax (Affjax(), AJAX(), get, affjax, defaultRequest)
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Api.Common (getResponse, succeeded)
-import Config (queryUrl, dataUrl)
-import Model.Resource (Resource(), resourcePath, AnyPath(), isFile, _name, parent)
-import Data.Argonaut.Parser (jsonParser)
-import Data.Argonaut.Core (JArray(), Json(), JObject(), jsonEmptyObject, isArray, isObject, foldJson, toArray, toObject, toNumber, fromObject)
-import Data.Argonaut.Combinators ((.?))
-import Data.Argonaut.Decode (decodeJson)
-import Data.String (split, replace)
-import Data.Foldable (foldl)
-import Optic.Core ((.~))
-import Data.DOM.Simple.Encode (encodeURIComponent)
-import qualified Data.Int as I
-import Data.StrMap (keys, toList, empty, lookup)
-import Control.Apply (lift2)
-import Data.Array (concat, nub, filter, head)
 import Optic.Core ((^.))
+import qualified Data.Int as I
 
 
 -- | This is template string where actual path is encoded like {{path}}
-type SQL = String 
+type SQL = String
 
 query :: forall e. Resource -> SQL -> Aff (ajax :: AJAX | e) JArray
-query res sql = 
+query res sql =
   if not $ isFile res
   then pure []
   else extractJArray <$> (getResponse msg $ get uri)
@@ -41,22 +41,22 @@ query res sql =
   msg = "error in query"
   uri = mkURI res sql
 
-count :: forall e. Resource -> Aff (ajax :: AJAX | e) Number 
-count res = do 
+count :: forall e. Resource -> Aff (ajax :: AJAX | e) Number
+count res = do
   fromMaybe 0 <<< readTotal <$> query res sql
   where
-  sql :: SQL 
+  sql :: SQL
   sql = "SELECT COUNT(*) as total FROM {{path}}"
 
-  readTotal :: JArray -> Maybe Number 
+  readTotal :: JArray -> Maybe Number
   readTotal = toNumber <=< lookup "total" <=< toObject <=< head
 
 port :: forall e. Resource -> Resource -> SQL ->
-        Aff (ajax :: AJAX | e) JObject 
-port res dest sql = 
+        Aff (ajax :: AJAX | e) JObject
+port res dest sql =
   if not (isFile dest)
   then pure empty
-  else do 
+  else do
     result <- affjax $ defaultRequest
             { method = POST
             , headers = [RequestHeader "Destination" $ resourcePath dest]
@@ -76,8 +76,8 @@ port res dest sql =
     swap $ json .? "error"
     pure json
 
-sample' :: forall e. Resource -> Maybe I.Int -> Maybe I.Int -> Aff (ajax :: AJAX |e) JArray 
-sample' res mbOffset mbLimit = 
+sample' :: forall e. Resource -> Maybe I.Int -> Maybe I.Int -> Aff (ajax :: AJAX |e) JArray
+sample' res mbOffset mbLimit =
   if not $ isFile res
   then pure []
   else (readValue <$>) <$> (extractJArray <$> (getResponse msg $ get uri))
@@ -87,10 +87,10 @@ sample' res mbOffset mbLimit =
         (maybe "" (("?offset=" <>) <<< show <<< I.toNumber) mbOffset) <>
         (maybe "" (("&limit=" <>) <<< show <<< I.toNumber) mbLimit)
 
-sample :: forall e. Resource -> I.Int -> I.Int -> Aff (ajax :: AJAX | e) JArray 
-sample res offset limit = sample' res (Just offset) (Just limit)        
+sample :: forall e. Resource -> I.Int -> I.Int -> Aff (ajax :: AJAX | e) JArray
+sample res offset limit = sample' res (Just offset) (Just limit)
 
-all :: forall e. Resource -> Aff (ajax :: AJAX | e) JArray 
+all :: forall e. Resource -> Aff (ajax :: AJAX | e) JArray
 all res = sample' res Nothing Nothing
 
 fields :: forall e. Resource -> Aff (ajax :: AJAX | e) [String]
@@ -102,13 +102,13 @@ fields res = do
 
 
 mkURI :: Resource -> SQL -> String
-mkURI res sql = 
+mkURI res sql =
   queryUrl <> resourcePath res <> "?q=" <> encodeURIComponent (templated res sql)
 
 templated :: Resource -> SQL -> SQL
-templated res = replace "{{path}}" ("\"" <> resourcePath res <> "\"") 
+templated res = replace "{{path}}" ("\"" <> resourcePath res <> "\"")
 
-  
+
 extractJArray :: String -> JArray
 extractJArray =
   (foldl folder []) <<< (jsonParser <$>) <<< (split "\n")
@@ -130,7 +130,7 @@ getFields' acc json =
   then maybe acc (goObj acc) $ toObject json
   else if isArray json
        then maybe acc (goArr acc) $ toArray json
-       else acc 
+       else acc
 
 goArr :: [String] -> JArray -> [String]
 goArr acc arr =
@@ -140,7 +140,7 @@ goObj :: [String] -> JObject -> [String]
 goObj acc obj = concat $ (goTuple acc <$> (toList obj))
 
 goTuple :: [String] -> Tuple String Json -> [String]
-goTuple acc (Tuple key json) = getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json 
+goTuple acc (Tuple key json) = getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json
 
 -- temporary files are written to `value` field or even `value.value`
 readValue :: Json -> Json

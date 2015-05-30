@@ -42,7 +42,7 @@ notebookExtension :: String
 notebookExtension = "slam"
 
 newNotebookName :: String
-newNotebookName = "Untitled Notebook." <> notebookExtension
+newNotebookName = "Untitled Notebook"
 
 newFileName :: String
 newFileName = "Untitled File"

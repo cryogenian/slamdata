@@ -1,10 +1,10 @@
-module Controller.Notebook.Cell (
-  requestCellContent
-, runCell
+module Controller.Notebook.Cell
+  ( requestCellContent
+  , runCell
   ) where
 
 import Control.Plus (empty)
-import Control.Monad.Eff.Class (liftEff) 
+import Control.Monad.Eff.Class (liftEff)
 import Optic.Core ((.~), (^.))
 import Data.Date (now)
 import Data.Either (Either(..))

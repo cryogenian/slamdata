@@ -14,6 +14,7 @@ import Data.Either (either)
 import Data.Maybe
 import Data.Path.Pathy
 import Driver.File.Search (searchPath)
+import Model.Path
 import Model.Resource
 import Model.Sort (Sort(..), sort2string)
 import qualified Data.String as Str

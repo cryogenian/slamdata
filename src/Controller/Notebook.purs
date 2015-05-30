@@ -1,51 +1,52 @@
-module Controller.Notebook (
-  I(),
-  handleMenuSignal,
-  handleSubmitName) where
+module Controller.Notebook
+  ( I()
+  , handleMenuSignal
+  , handleSubmitName
+  , handleNameInput
+  ) where
 
-import Data.Date (now)
-import Data.Maybe
-import Data.Either
+import Api.Fs (move, children, delete, saveNotebook)
+import Config (notebookNameEditorId, notebookUrl, homeHash)
 import Control.Alt ((<|>))
-import Control.Plus (empty)
-import Control.Monad.Eff.Class
-import Control.Monad.Aff.Class
 import Control.Monad.Aff (attempt)
-import Model.Notebook.Menu (
-  MenuNotebookSignal(..),
-  MenuInsertSignal(..),
-  MenuCellSignal(..),
-  MenuHelpSignal(..),
-  MenuSignal(..))
-
-import Model.Notebook (State(), _activeCellId, _activeCell, _modalError, _resource, _initialName)
+import Control.Monad.Aff.Class
+import Control.Monad.Eff.Class
+import Control.Monad.Eff.Exception (Error(), message)
+import Control.Plus (empty)
 import Controller.Notebook.Cell (requestCellContent)
+import Data.Array (elemIndex)
+import Data.Date (now)
+import Data.DOM.Simple.Document
+import Data.DOM.Simple.Element (getElementById, focus)
+import Data.DOM.Simple.Window (globalWindow, document)
+import Data.Either
+import Data.Inject1 (prj)
+import Data.Maybe
+import Data.Path.Pathy
+import Data.These
+import Driver.Notebook.Routing (routing, Routes(..))
+import EffectTypes (NotebookAppEff())
+import Halogen.HTML.Events.Monad (Event())
+import Input.Notebook (Input(..))
+import Model.Action (Action(Edit))
+import Model.Notebook (State(), _modalError, _notebook)
 import Model.Notebook.Cell (CellContent(..))
 import Model.Notebook.Cell.Explore (initialExploreRec)
 import Model.Notebook.Cell.Query (initialQueryRec)
 import Model.Notebook.Cell.Search (initialSearchRec)
-import Input.Notebook (Input(..))
-import Data.Inject1 (prj)
+import Model.Notebook.Menu (MenuNotebookSignal(..), MenuInsertSignal(..), MenuCellSignal(..), MenuHelpSignal(..), MenuSignal(..))
 import Model.Path (decodeURIPath)
-import Api.Fs (move, children, delete)
-import Routing.Hash (setHash, getHash)
-import Config (notebookExtension, notebookNameEditorId, notebookUrl, homeHash)
-import Data.Array (elemIndex)
-import Data.DOM.Simple.Window (globalWindow, document, location, setLocation)
-import Data.DOM.Simple.Document
-import Data.DOM.Simple.Element (getElementById, focus)
-import Utils (newTab, mailOpen)
-import Routing (matchHash')
-import Driver.Notebook.Routing (routing, Routes(..))
-import qualified Data.String.Regex as Rgx
-import qualified Halogen.HTML.Events.Types as E
+import Model.Resource
 import Optic.Core
 import Optic.Fold ((^?))
-import Model.Resource
-import Data.Path.Pathy
-import Halogen.HTML.Events.Monad (Event())
-import EffectTypes (NotebookAppEff())
+import Routing (matchHash')
+import Routing.Hash (setHash, getHash)
+import Utils (newTab, mailOpen, setLocation)
 
+import qualified Data.Maybe.Unsafe as U
+import qualified Data.String.Regex as Rgx
+import qualified Halogen.HTML.Events.Types as E
+import qualified Model.Notebook.Domain as N
 
 type I e = Event (NotebookAppEff e) Input
 
@@ -75,18 +76,16 @@ handleMenuNotebook signal = do
           pure $ Just res
         _ -> pure Nothing
   liftAff $ maybe (pure unit) delete mbRes
-  liftEff $ do
-    location globalWindow
-      >>= setLocation homeHash
+  liftEff $ setLocation homeHash
   empty
 
 handleMenuCell :: forall e. State -> MenuCellSignal -> I e
 handleMenuCell state signal =
   case signal of
     EvaluateCell ->
-      let activeCell = state ^? _activeCell
+      let activeCell = state ^? _notebook .. N._activeCell
       in maybe empty requestCellContent activeCell
-    DeleteCell -> pure $ TrashCell (state ^. _activeCellId)
+    DeleteCell -> pure $ TrashCell (state ^. _notebook .. N._activeCellId)
     _ -> empty
 
 handleMenuInsert :: forall e. MenuInsertSignal -> I e
@@ -107,39 +106,29 @@ handleMenuHelp SQLReferenceHelp = do
   liftEff $ newTab "http://slamdata.com/documentation"
   empty
 handleMenuHelp ReportBugHelp = do
-  liftEff $ mailOpen "mailto:support@slamdatacom?subject=Bug%20Found"
+  liftEff $ mailOpen "mailto:support@slamdata.com?subject=Bug%20Found"
   empty
 handleMenuHelp RequestSupportHelp = do
-  liftEff $ mailOpen "mailto:support@slamdatacom?subject=Request%20Help"
+  liftEff $ mailOpen "mailto:support@slamdata.com?subject=Request%20Help"
   empty
 
 
 handleMenuSignal :: forall e. State -> MenuSignal -> I e
 handleMenuSignal state signal =
-  maybe empty id $
-  (handleMenuNotebook <$> prj signal)
-  <|>
-  (handleMenuInsert <$> prj signal)
-  <|>
-  (handleMenuCell state <$> prj signal)
-  <|>
-  (handleMenuHelp <$> prj signal)
+  maybe empty id $ (handleMenuNotebook <$> prj signal)
+               <|> (handleMenuInsert <$> prj signal)
+               <|> (handleMenuCell state <$> prj signal)
+               <|> (handleMenuHelp <$> prj signal)
+
+handleNameInput :: forall e. String -> I e
+handleNameInput newName =
+  pure $ WithState $ _notebook .. N._name %~ (thisOrBoth newName <<< theseRight)
 
 handleSubmitName :: forall e. State -> I e
-handleSubmitName state = do
-  let newResource = state ^. _resource
-      oldResource = newResource # _name .~ (state ^. _initialName)
-  if oldResource == newResource
-    then empty
-    else do
-    siblings <- liftAff $ children (parent oldResource)
-    if elemIndex (newResource ^. _name) ((^. _name) <$> siblings) /= -1
-      then pure $ WithState (_modalError .~ ("File " <> (resourcePath newResource) <> " already exists"))
-      else do
-      result <- liftAff $ move oldResource (getPath newResource)
-      case result of
-        Right _ -> do
-          liftEff $ setHash $ resourcePath newResource <> "edit"
-          empty
-        Left e ->
-          pure $ WithState (_modalError .~ ("Rename error: " <> e))
+handleSubmitName state = liftAff (attempt $ saveNotebook (state ^. _notebook)) >>= go
+  where
+  go :: Either Error N.Notebook -> I e
+  go (Left err) = pure $ WithState (_modalError .~ message err)
+  go (Right nb) = do
+    liftEff $ setLocation $ U.fromJust $ N.notebookURL nb Edit
+    pure $ WithState $ _notebook .~ nb

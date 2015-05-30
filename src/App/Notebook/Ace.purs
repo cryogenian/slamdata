@@ -30,6 +30,7 @@ import Ace.Types (EditSession(), ACE(), Editor(), TextMode(..))
 import qualified Ace.Editor as Editor
 
 import Model.Notebook
+import Model.Notebook.Domain
 import Model.Notebook.Cell (CellId(), string2cellId, _cellId, _content)
 
 import Optic.Core
@@ -98,8 +99,7 @@ initialize m b d = do
     Editor.focus editor
     modifyRef m (M.insert cid session)
     Editor.onFocus editor do
-      d $ WithState (_activeCellId .~ cid)
-
+      d $ WithState (_notebook .. _activeCellId .~ cid)
 
   reinit :: Editor -> EditSession -> Eff _ Unit
   reinit editor session = do

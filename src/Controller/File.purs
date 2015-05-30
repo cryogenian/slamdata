@@ -1,6 +1,6 @@
 module Controller.File where
 
-import Api.Fs (makeNotebook, makeFile)
+import Api.Fs (saveNotebook, makeFile)
 import Control.Apply ((*>))
 import Control.Monad.Aff (Aff(), makeAff, attempt)
 import Control.Monad.Aff.Class (liftAff)
@@ -14,10 +14,10 @@ import Controller.File.Item (itemURL)
 import Data.Array (head, findIndex)
 import Data.DOM.Simple.Element (querySelector)
 import Data.DOM.Simple.Types (HTMLElement())
-import Data.DOM.Simple.Window (globalWindow, location, setLocation)
 import Data.Either (Either(..))
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), maybe)
+import Data.These (These(..))
 import Data.Path.Pathy
 import Data.String (split, joinWith)
 import DOM (DOM())
@@ -28,35 +28,31 @@ import Halogen.HTML.Events.Monad (Event(), async, andThen)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..))
 import Model.Breadcrumb (Breadcrumb())
+import Model.Action (Action(Edit))
 import Model.File (State())
 import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (initialMountDialog)
 import Model.File.Dialog.Rename (initialRenameDialog)
 import Model.File.Item
-import Model.Notebook.Domain (emptyNotebook)
 import Model.Resource (_path, _name, resourcePath)
 import Model.Sort (Sort())
 import Optic.Core
 import Routing.Hash (getHash, setHash, modifyHash)
-import Utils (clearValue, select)
+import Utils (clearValue, select, setLocation)
 import Utils.Event (raiseEvent)
 
 import qualified Halogen.HTML.Events.Types as Et
+import qualified Model.Notebook.Domain as N
 import qualified Utils.File as Uf
 
 handleCreateNotebook :: forall e. State -> Event (FileAppEff e) Input
 handleCreateNotebook state = do
-  let name = getNewName Config.newNotebookName state
-  path <- liftEff $ extractDir <$> getHash
-  let notebookPath = inj $ path </> file name
-      notebook = initNotebook{phantom = true} #
-                 _resource <<< _path .~ notebookPath
-  -- immidiately updating state and then
-  toInput (ItemAdd notebook) `andThen` \_ -> do
-    f <- liftAff $ attempt $ makeNotebook (notebook ^. _resource .. _path) emptyNotebook
-    case f of
-      Left _ -> toInput (ItemRemove notebook)
-      Right _ -> (liftEff $ location globalWindow >>= setLocation (itemURL notebook state.sort state.salt)) *> empty
+  f <- liftAff $ attempt $ saveNotebook (N.emptyNotebook # N._path .~ state.path)
+  case f of
+    Left err -> empty -- TODO: show error
+    Right notebook -> case N.notebookURL notebook Edit of
+      Just url -> liftEff (setLocation url) *> empty
+      Nothing -> empty
 
 handleFileListChanged :: forall e. HTMLElement -> State -> Event (FileAppEff e) Input
 handleFileListChanged el state = do
@@ -87,7 +83,7 @@ handleFileListChanged el state = do
         f <- liftAff $ attempt $ makeFile (fileItem.resource ^. _path) content
         case f of
           Left _ -> toInput (ItemRemove fileItem)
-          Right _ -> (liftEff $ location globalWindow >>= setLocation (itemURL fileItem state.sort state.salt)) *> empty
+          Right _ -> liftEff (setLocation $ itemURL fileItem state.sort state.salt) *> empty
 
 handleSetSort :: forall e. Sort -> Event (FileAppEff e) Input
 handleSetSort sort = do
