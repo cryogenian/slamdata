@@ -85,6 +85,7 @@ initialize m b d = do
       mode <- modeByCellTag <$> getAttribute dataCellType el
       editor <- Ace.editNode el ace
 
+      aceSetOption "minLines" 4 editor
       aceSetOption "maxLines" infinity editor
       aceSetOption "autoScrollEditorIntoView" true editor
 
