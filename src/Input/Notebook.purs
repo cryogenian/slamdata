@@ -13,6 +13,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (fst)
 import Model.Notebook
 import Model.Notebook.Cell
+import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell)
 import Model.Notebook.Port (Port(..), VarMapValue())
 import Optic.Core ((..), (%~), (.~), (^.))
@@ -62,7 +63,9 @@ updateState state (Dropdown i) =
   (modifyAt i _{visible = visSet}) <<< (_{visible = false} <$>)
 
 updateState state CloseDropdowns =
-  state{addingCell = false} # _dropdowns %~ (_{visible = false} <$>)
+  state{addingCell = false} # (_dropdowns %~ (_{visible = false} <$>))
+                           .. (_notebook .. _cells .. mapped %~ _content .. _FileInput .. _showFiles .~ false)
+
 
 updateState state (AddCell content) =
   state # _notebook %~ (fst <<< addCell content)

@@ -1,6 +1,7 @@
 module View.Notebook.Cell.FileInput (fileInput) where
 
 import Control.Apply ((*>))
+import Control.Functor (($>))
 import Controller.Notebook.Cell.FileInput (toggleFileList, selectFile, updateFile)
 import Data.Either (either)
 import Data.Maybe (maybe, fromMaybe)
@@ -15,6 +16,7 @@ import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Forms as E
+import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
@@ -33,7 +35,7 @@ fileInput _input cell = fromMaybe [] $ do
             , H.span [ A.classes [B.inputGroupBtn] ]
                      [ H.button [ A.classes [B.btn, B.btnDefault]
                                 , A.type_ "button"
-                                , E.onClick \_ -> pure (toggleFileList cell)
+                                , E.onClick \_ -> E.stopPropagation $> toggleFileList cell
                                 ]
                                 [ H.span [ A.classes [B.caret] ] [] ]
                      ]
