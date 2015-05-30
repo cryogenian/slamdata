@@ -1,27 +1,27 @@
 module View.Notebook.Cell (cell) where
 
 import Control.Functor (($>))
-import Controller.Notebook.Cell (requestCellContent)
+import Controller.Notebook.Cell
 import Controller.Notebook.Cell.Viz (insertViz)
 import Data.Array (length, null, catMaybes)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Function (on)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
 import Input.Notebook (Input(..))
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Port (Port(..))
+import Model.Resource (resourceName)
 import Number.Format (toFixed)
 import Optic.Core ((^.), (%~), (..), is)
-
 import View.Common
 import View.Notebook.Cell.Ace (aceEditor)
 import View.Notebook.Cell.Explore (exploreEditor, exploreOutput)
-import View.Notebook.Cell.Search (searchOutput, searchEditor)
-import View.Notebook.Cell.Viz (vizChoices, vizOutput)
 import View.Notebook.Cell.Markdown (markdownOutput)
 import View.Notebook.Cell.Query (queryOutput)
+import View.Notebook.Cell.Search (searchOutput, searchEditor)
+import View.Notebook.Cell.Viz (vizChoices, vizOutput)
 import View.Notebook.Common
 
 import qualified Halogen.HTML as H
@@ -34,131 +34,126 @@ import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
 cell :: forall e. State -> Cell -> [HTML e]
-cell notebook state =
-  [ H.div [ A.classes [B.containerFluid, VC.notebookCell] ]
-          $ catMaybes [ Just $ controls state
-                      , if state ^. _hiddenEditor then Nothing else Just $ editor state
-                      , Just $ statusBar notebook.tickDate state
-                      , Just $ output state
-                      , Just $ insertNextCell notebook state
-                      ]
-  ]
+cell notebook cell =
+  let outputContent = output notebook cell
+  in [ H.div [ A.classes $ [B.containerFluid, VC.notebookCell, B.clearfix] ++ if cell ^. _hiddenEditor then [VC.collapsed] else [] ]
+             $ catMaybes [ Just $ header cell
+                         , if cell ^. _hiddenEditor then Nothing else Just $ editor cell
+                         , if cell ^. _hiddenEditor then Nothing else Just $ statusBar notebook (isJust outputContent) cell
+                         , outputContent
+                         ]
+     ]
+
+header :: forall e. Cell -> HTML e
+header cell =
+  let info = cellInfo cell
+  in H.div [ A.classes [VC.cellHeader, B.clearfix] ]
+           [ H.div [ A.class_ VC.cellIcon ]
+                   [ glyph info.glyph ]
+           , H.div [ A.class_ VC.cellName ]
+                   [ H.text info.name ]
+           , controls cell
+           ]
 
 controls :: forall e. Cell -> HTML e
-controls state =
-  row [ H.div [ A.classes [B.btnGroup, B.pullRight, VC.cellControls] ]
-        [ H.button [ A.classes [ B.btn
-                               , B.glyphicon
-                               , if state ^. _hiddenEditor
-                                 then B.glyphiconEyeOpen
-                                 else B.glyphiconEyeClose
-                               ]
-                   , E.onClick $ E.input_ $ UpdateCell (state ^. _cellId) (_hiddenEditor %~ not)
+controls cell =
+  H.div [ A.classes [B.pullRight, VC.cellControls] ]
+        [ H.button [ A.title if cell ^. _hiddenEditor
+                             then "Show cell options"
+                             else "Hide cell options"
+                   , E.onClick $ E.input_ $ UpdateCell (cell ^. _cellId) (_hiddenEditor %~ not) ]
+                   [ glyph if cell ^. _hiddenEditor
+                           then B.glyphiconEyeOpen
+                           else B.glyphiconEyeClose
                    ]
-          [ ]
-        , H.button [ A.classes [ B.btn
-                               , B.glyphicon
-                               , B.glyphiconTrash
-                               ]
-                   , E.onClick $ E.input_ $ TrashCell $ state ^. _cellId
-                   ]
-          [ ]
+        , H.button [ A.title "Delete cell"
+                   , E.onClick $ E.input_ $ TrashCell $ cell ^. _cellId ]
+                   [ glyph B.glyphiconTrash ]
         ]
+
+output :: forall e. State -> Cell -> Maybe (HTML e)
+output notebook cell =
+  let out = renderOutput cell
+  in if null out
+     then Nothing
+     else Just $ H.div [ A.classes [B.row, VC.cellOutput] ]
+                       [ H.div [ A.class_ VC.cellOutputLabel ]
+                               $ cellOutputBar notebook cell
+                       , H.div [ A.class_ VC.cellOutputResult ]
+                               out
+                       ]
+
+cellOutputBar :: forall e. State -> Cell -> [HTML e]
+cellOutputBar notebook cell =
+  case cell ^. _output of
+    PortResource res ->
+      [ H.text $ resourceName res ++ " := "
+      , H.ul [ A.classes [VC.nextCellList] ]
+             [ li "Query this output" (E.input_ $ InsertCell cell $ newQueryContent res) B.glyphiconHdd
+             , li "Search this output" (E.input_ $ InsertCell cell $ newSearchContent res) B.glyphiconSearch
+             , li "Visualize this output" (\_ -> pure $ insertViz notebook cell) B.glyphiconPicture
+             ]
       ]
 
-output :: forall e. Cell -> HTML e
-output state =
-   H.div [ A.classes $ [B.row, VC.cellOutput] ]
-   $ renderOutput state
-
-statusBar :: forall e. Maybe Date -> Cell -> HTML e
-statusBar d state =
-  row' (fadeWhen (state ^. _hiddenEditor))
-  [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
-    [ H.button [ A.classes [ B.btn
-                           , B.btnPrimary
-                           , if isRunning (state ^. _runState)
-                             then VC.stopButton
-                             else VC.playButton ]
-               , E.onClick \_ -> if isRunning (state ^. _runState)
-                                 then pure (pure (StopCell $ state ^. _cellId))
-                                 else pure (requestCellContent state)
-               ]
-      [ if isRunning (state ^. _runState)
-        then glyph B.glyphiconStop
-        else glyph B.glyphiconPlay ]
-    , H.div [ A.classes [ VC.statusText ] ]
-      [ H.text $ statusText d (state ^. _runState) ]
-    , H.div [ A.classes [ B.pullRight ] ]
-      [ H.button [ A.classes [ B.btn
-                             , B.glyphicon
-                             , if state ^._expandedStatus
-                               then B.glyphiconEyeClose
-                               else B.glyphiconEyeOpen
-                             ]
-                 , E.onClick (\_ -> E.preventDefault $>
-                                   pure (UpdateCell (state ^._cellId)
-                                         (_expandedStatus %~ not)))
-                 ]
-                 [ ]
-      ]
-    , H.div [ A.classes [ VC.cellFailures ] ]
-      (message state)
-    ]
-  ]
-
-insertNextCell :: forall e. State -> Cell -> HTML e
-insertNextCell notebook state = row
-  [ H.div [ A.classes [ VC.cellEvalLine, B.clearfix ] ]
-    [ H.button
-      [ A.classes [ B.btn
-                  , B.btnPrimary
-                  , VC.playButton
-                  ]
-      , E.onClick $ E.input_ $ UpdateCell (state ^. _cellId) (_addingNextCell %~ not)
-      ]
-      [ glyph if state ^. _addingNextCell
-              then B.glyphiconMenuLeft
-              else B.glyphiconMenuRight ]
-    , H.ul [ A.classes ([ B.listInline, VC.nextCellList ] <>
-                        (fadeWhen $ not $ (state ^. _addingNextCell))) ]
-      (nextCellChoices notebook state)
-    ]
-  ]
-nextCellChoices :: forall e. State -> Cell -> [HTML e]
-nextCellChoices notebook state =
-  [ li "Query cell" newQueryContent  B.glyphiconHdd
-  , li "Explore cell" newExploreContent B.glyphiconEyeOpen
-  , li "Markdown cell" newMarkdownContent B.glyphiconEdit
-  , li "Search cell" newSearchContent B.glyphiconSearch] <>
-  case state ^. _output of
-    PortResource _ ->
-      [ H.li_ [ H.a [ A.href "#"
-                  , E.onClick (\_ -> E.preventDefault $> insertViz notebook state)
-                  , A.title "Visualization cell"
-                  , A.classes [ B.btn ]
-                  ]
-              [ glyph B.glyphiconPicture ]
-              ]
-      ]
-    _ -> [ ]
-
-
+    _ -> []
   where
-  li :: String -> CellContent -> A.ClassName -> HTML e
-  li title content c =
-    H.li_ [ H.a [ A.href "#"
-                , E.onClick \_ -> E.preventDefault $> pure (InsertCell state content)
-                , A.title title
-                , A.classes [ B.btn ] ] [ glyph c ] ]
+  li :: String -> _ -> A.ClassName -> HTML e
+  li title handler c =
+    H.li_ [ H.button [A.title title, E.onClick handler] [glyph c] ]
+
+statusBar :: forall e. State -> Boolean -> Cell -> HTML e
+statusBar notebook hasOutput cell =
+  let buttonClass = if isRunning cell then VC.stopButton else VC.playButton
+      buttonGlyph = if isRunning cell then B.glyphiconStop else B.glyphiconPlay
+      messages = message cell
+      toggleMessageButton =
+        if null messages
+        then Nothing
+        else Just $ H.button [ A.title if cell ^._expandedStatus
+                                       then "Hide messages"
+                                       else "Show messages"
+                             , E.onClick (\_ -> E.preventDefault $> pure (UpdateCell (cell ^._cellId) (_expandedStatus %~ not))) ]
+                             [ glyph if cell ^._expandedStatus
+                                     then B.glyphiconEyeClose
+                                     else B.glyphiconEyeOpen ]
+      linkButton =
+        if not hasOutput
+        then Nothing
+        else Just $ H.button [ A.title "Share cell output"
+                             , E.onClick (\_ -> pure $ handleShareClick notebook cell)
+                             ]
+                             [ glyph B.glyphiconShare ]
+  in row' (fadeWhen (cell ^. _hiddenEditor))
+     [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
+             $ [ H.button [ A.classes [B.btn, B.btnPrimary, buttonClass]
+                          , E.onClick \_ -> pure $ handleRunClick cell
+                          ]
+                          [ glyph buttonGlyph ]
+               , H.div [ A.classes [ VC.statusText ] ]
+                       [ H.text $ statusText notebook.tickDate (cell ^. _runState) ]
+               , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
+                       $ catMaybes [ toggleMessageButton
+                                   , linkButton
+                                   ]
+               ] ++ messages
+     ]
 
 message :: forall e. Cell -> [HTML e]
 message cell =
-  if null (cell ^._failures)
-  then if (cell ^._message) /= ""
-       then details cell
-       else [ ]
-  else failureText cell
+  let collapsed = if cell ^._expandedStatus then [] else [VC.collapsed]
+  in if null (cell ^._failures)
+     then if (cell ^._message) /= ""
+          then [ H.div [ A.classes $ [VC.cellMessages] ++ collapsed ]
+                       $ if cell ^._expandedStatus
+                         then [ H.div_ []
+                              , H.div_ [ H.text $ cell ^._message ]
+                              ]
+                         else []
+               ]
+          else [ ]
+     else [ H.div [ A.classes $ [VC.cellFailures] ++ collapsed ]
+                              $ failureText cell
+          ]
 
 details :: forall e. Cell -> [HTML e]
 details cell = commonMessage "" [H.div_ [H.text (cell^._message)]] cell
@@ -179,10 +174,6 @@ commonMessage intro children cell =
   then children
   else [ ]
 
-isRunning :: RunState -> Boolean
-isRunning (RunningSince _) = true
-isRunning _ = false
-
 statusText :: Maybe Date -> RunState -> String
 statusText _ RunInitial = ""
 statusText d (RunningSince d') = maybe "" (\s -> "Running for " <> s <> "s") $ d >>= flip secondsText d'
@@ -192,6 +183,14 @@ secondsText :: Date -> Date -> Maybe String
 secondsText a b = toFixed 0 <<< Math.max 0 <<< unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b
   where unSeconds (Seconds n) = n
 
+cellInfo :: Cell -> { name :: String, glyph :: A.ClassName }
+cellInfo cell = case cell ^. _content of
+  Explore _ -> { name: "Explore", glyph: B.glyphiconEyeOpen }
+  Markdown _ -> { name: "Markdown", glyph: B.glyphiconEdit }
+  Search _ -> { name: "Search", glyph: B.glyphiconSearch }
+  Visualize _ -> { name: "Visualize", glyph: B.glyphiconPicture }
+  Query _ -> { name: "Query", glyph: B.glyphiconHdd }
+
 editor :: forall e. Cell -> HTML e
 editor state = case state ^. _content of
   (Explore rec) -> exploreEditor state
@@ -199,15 +198,13 @@ editor state = case state ^. _content of
   (Visualize _) -> vizChoices state
   _ -> aceEditor state
 
-
 renderOutput :: forall e. Cell -> [HTML e]
 renderOutput cell =
   if not (null $ cell ^. _failures)
   then []
   else case cell ^. _content of
     Explore _ -> exploreOutput cell
-    Markdown s -> [markdownOutput s (cell ^. _cellId)]
+    Markdown s -> markdownOutput s (cell ^. _cellId)
     Search _ -> searchOutput cell
     Visualize _ -> vizOutput cell
     Query _ -> queryOutput cell
-    _ -> []

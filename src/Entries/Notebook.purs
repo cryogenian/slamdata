@@ -2,9 +2,9 @@ module Entries.Notebook where
 
 import Ace.Types (ACE())
 import App.Notebook (app)
-import Control.Timer (timeout)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Ref (modifyRef, newRef)
+import Control.Timer (timeout)
 import Data.DOM.Simple.Navigator (platform)
 import Data.DOM.Simple.Window (globalWindow, navigator)
 import Data.Inject1 (prj)
@@ -13,6 +13,7 @@ import Data.Maybe.Unsafe (fromJust)
 import Data.Platform (Platform(..))
 import Data.String (indexOf)
 import Data.Tuple (Tuple(..), snd)
+import Driver.ZClipboard (initZClipboard)
 import EffectTypes (NotebookAppEff())
 import Halogen (runUIWith)
 import Input.Notebook (Input(..), updateState)
@@ -48,6 +49,7 @@ main = onLoad $ void $ do
   where
   postRender sKnot aKnot eKnot autosaveTimer input node driver = do
     modifyRef sKnot (flip updateState input)
+    initZClipboard node
     D.notebookAutosave sKnot autosaveTimer input driver
     DC.driveCellContent input driver
     A.acePostRender aKnot input node driver

@@ -16,7 +16,8 @@ import Model.File.Dialog.Rename (RenameDialogRec(), _showList, _resource, _dir, 
 import Model.Resource
 import Optic.Core
 import View.File.Common (I())
-import View.File.Modal.Common (header, h4, body, footer, nonSubmit)
+import View.Modal.Common (header, h4, body, footer, nonSubmit)
+
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
 import qualified Halogen.HTML as H

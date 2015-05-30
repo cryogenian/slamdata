@@ -12,6 +12,7 @@ import Global (readInt, isNaN)
 import Model.Notebook.Cell.FileInput
 import Model.Notebook.Cell.JTableContent
 import Model.Notebook.Port
+import Model.Resource
 import Optic.Core (lens, LensP(), prism', PrismP(), (..), (.~))
 import Optic.Extended (TraversalP())
 
@@ -39,7 +40,6 @@ newtype Cell =
        , failures :: [FailureMessage]
        , hiddenEditor :: Boolean
        , runState :: RunState
-       , addingNextCell :: Boolean
        }
 
 newCell :: CellId -> CellContent -> Cell
@@ -53,14 +53,10 @@ newCell cellId content =
        , message: ""
        , hiddenEditor: false
        , runState: RunInitial
-       , addingNextCell: false
        }
 
 _Cell :: LensP Cell _
 _Cell = lens (\(Cell obj) -> obj) (const Cell)
-
-_addingNextCell :: LensP Cell Boolean
-_addingNextCell = _Cell <<< lens _.addingNextCell _{addingNextCell = _ }
 
 _cellId :: LensP Cell CellId
 _cellId = _Cell <<< lens _.cellId (_ { cellId = _ })
@@ -128,14 +124,14 @@ cellContentType (Query _) = "query"
 cellContentType (Visualize _) = "visualize"
 cellContentType (Markdown _) = "markdown"
 
-newSearchContent :: CellContent
-newSearchContent = Search Sr.initialSearchRec
+newSearchContent :: Resource -> CellContent
+newSearchContent res = Search (Sr.initialSearchRec # Sr._input .. _file .~ Right res)
 
 newExploreContent :: CellContent
 newExploreContent = Explore Ex.initialExploreRec
 
-newQueryContent :: CellContent
-newQueryContent = Query Qu.initialQueryRec
+newQueryContent :: Resource -> CellContent
+newQueryContent res = Query (Qu.initialQueryRec # Qu._input .~ "SELECT * FROM \"" ++ resourcePath res ++ "\"")
 
 newVisualizeContent :: CellContent
 newVisualizeContent = Visualize Vz.initialVizRec

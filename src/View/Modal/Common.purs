@@ -1,13 +1,14 @@
-module View.File.Modal.Common where
+module View.Modal.Common where
 
 import Control.Functor (($>))
 import Control.Plus (empty)
+
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
-import qualified Halogen.Themes.Bootstrap3 as B
+import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
-import qualified Halogen.HTML.Events as E 
+import qualified Halogen.Themes.Bootstrap3 as B
 
 h4 :: forall i. String -> [H.HTML i]
 h4 str = [ H.h4_ [H.text str] ]

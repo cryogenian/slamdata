@@ -90,8 +90,9 @@ showToolbar item state =
 
   in conf <> [ toolItem' handleMoveItem "move/rename" B.glyphiconMove
              , toolItem' handleDeleteItem "remove" B.glyphiconTrash
-             , toolItem' (handleShare state.sort state.salt) "share" B.glyphiconShare
-             ]
+             ] ++ if isFile item.resource || isNotebook item.resource
+                  then [toolItem' (handleShare state.sort state.salt) "share" B.glyphiconShare]
+                  else []
   where
 
   toolItem' :: forall e. (Item -> I e) -> String -> A.ClassName -> H.HTML (I e)

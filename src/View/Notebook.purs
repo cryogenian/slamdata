@@ -33,10 +33,11 @@ import Number.Format (toFixed)
 import Optic.Core ((..), (^.), (.~))
 import Optic.Fold ((^?))
 import Optic.Index (ix)
-import View.Common (fadeWhen, contentFluid, navbar, icon, logo, glyph, row)
+import View.Common
 import View.Notebook.Cell (cell)
 import View.Notebook.Cell.Search (searchOutput)
 import View.Notebook.Common (HTML())
+import View.Notebook.Modal (modal)
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -46,12 +47,12 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
-import qualified View.File.Modal.Common as Vm
+import qualified View.Modal.Common as Vm
 
 view :: forall e. State -> HTML e
 view state =
   H.div [ E.onClick (E.input_ CloseDropdowns) ]
-  (navigation state <> [body state] <> modal state)
+  (navigation state <> [body state] <> [modal state])
 
 navigation :: forall e. State -> [HTML e]
 navigation state =
@@ -109,35 +110,22 @@ margined l r = row [ H.div [ A.classes [ B.colMd2 ] ] l
 
 newCellMenu :: forall e. State -> [HTML e]
 newCellMenu state =
-  [ H.a [ A.href "#"
-        , A.classes [ B.btn, B.btnLink, B.btnLg, Vc.notebookAddCellButton ]
-        , E.onClick (\_ -> E.stopPropagation *>
-                           E.preventDefault $>
-                           (pure $ WithState (_addingCell .~ not state.addingCell))) ]
-    [ glyph B.glyphiconPlusSign ]
-  , H.div [ A.classes [ B.clearfix ] ] []
-  , H.div [ E.onClick (\_ -> E.stopPropagation $> empty)
-          , A.classes ([ B.panel
-                       , B.panelDefault
-                       , B.fade
-                       , Vc.notebookAddCellMenu ] <>
-                       if state.addingCell
-                       then [B.in_]
-                       else [])]
-    [ H.div [ A.classes [ B.panelBody ] ]
-      [ H.ul [ A.classes [ B.listInline ] ]
-        [ li QueryInsert B.glyphiconHdd
-        , li MarkdownInsert B.glyphiconEdit
-        , li SearchInsert B.glyphiconSearch ] ] ] ]
+  [ H.ul [ A.classes [ Vc.newCellMenu ] ]
+         [ H.li_ [ H.span_ [ glyph B.glyphiconPlus ] ]
+         , li "Query" QueryInsert B.glyphiconHdd
+         , li "Markdown" MarkdownInsert B.glyphiconEdit
+         , li "Explore" ExploreInsert B.glyphiconEyeOpen
+         , li "Search" SearchInsert B.glyphiconSearch
+         ]
+  ]
   where
-  li :: MenuInsertSignal -> A.ClassName -> HTML e
-  li inp cls =
-    H.li_ [ H.a [ A.href "#"
-                , E.onClick (\e -> do
-                                E.stopPropagation
-                                E.preventDefault $> do
-                                  (handleMenuSignal state) <<< inj $ inp ) ]
-            [ glyph cls ] ]
+  li :: String -> MenuInsertSignal -> A.ClassName -> HTML e
+  li title inp cls =
+    H.li_ [ H.button [ A.title title
+                     , E.onClick (\_ -> pure <<< handleMenuSignal state <<< inj $ inp)
+                     ]
+                     [ glyph cls ]
+          ]
 
 txt :: forall e. Int -> String -> [HTML e]
 txt lvl text =
@@ -184,18 +172,3 @@ name state =
                            []
                  ]
         ]
-
-modal :: forall e. State -> [HTML e]
-modal state =
-  [ H.div [ A.classes ([B.modal] ++ fadeWhen (state.modalError == ""))
-          , E.onClick (E.input_ (WithState (_modalError .~ ""))) ]
-    [ H.div [ A.classes [ B.modalDialog ] ]
-      [ H.div [ A.classes [ B.modalContent ] ]
-        [ Vm.header $ Vm.h4 "Error"
-        , Vm.body
-          [ H.div [ A.classes [ B.alert, B.alertDanger ] ]
-            [ H.text state.modalError ] ]
-        ]
-      ]
-    ]
-  ]

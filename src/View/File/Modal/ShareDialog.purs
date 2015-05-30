@@ -1,13 +1,14 @@
 module View.File.Modal.ShareDialog where
 
 import Data.Inject1 (inj)
-import Controller.File (selectThis)
 import Data.Maybe
 import EffectTypes
 import Input.File (FileInput(SetDialog))
 import Model.File
+import Utils.Halide (dataZeroClipboard, selectThis)
 import View.File.Common (I())
-import View.File.Modal.Common
+import View.Modal.Common
+
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
@@ -33,6 +34,7 @@ shareDialog url =
   , footer [ H.button [ A.id_ "copy-button"
                       , A.classes [B.btn, B.btnPrimary]
                       , E.onClick (E.input_ $ inj $ SetDialog Nothing)
+                      , dataZeroClipboard url
                       ]
                       [ H.text "Copy" ]
            ]

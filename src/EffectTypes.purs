@@ -25,6 +25,7 @@ type NotebookComponentEff e = ( timer :: Tm.Timer
                               , echartSetOption :: EC.EChartOptionSet
                               , echartDispose :: EC.EChartDispose
                               , now :: Now
-                              , ajax :: Af.AJAX | e) 
+                              , ajax :: Af.AJAX
+                              , zClipboard :: Z.ZCLIPBOARD | e)
 
 type NotebookAppEff e = Hl.HalogenEffects (NotebookComponentEff e)

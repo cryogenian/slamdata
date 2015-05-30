@@ -4,6 +4,7 @@ import Data.Date (Date())
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy
 import Data.Platform (Platform(..))
+import Model.Notebook.Dialog
 import Model.Notebook.Domain (Notebook(), emptyNotebook)
 import Model.Notebook.Menu (DropdownItem(), initialDropdowns)
 import Model.Path
@@ -14,11 +15,10 @@ type State =
   , loaded :: Boolean
   , error :: Maybe String
   , editable :: Boolean
-  , modalError :: String
-  , addingCell :: Boolean
   , notebook :: Notebook
   , tickDate :: Maybe Date
   , platform :: Platform
+  , dialog :: Maybe Dialog
   }
 
 _dropdowns :: LensP State [DropdownItem]
@@ -33,12 +33,6 @@ _error = lens _.error _{error = _}
 _editable :: LensP State Boolean
 _editable = lens _.editable _{editable = _}
 
-_modalError :: LensP State String
-_modalError = lens _.modalError _{modalError = _}
-
-_addingCell :: LensP State Boolean
-_addingCell = lens _.addingCell _{addingCell = _}
-
 _notebook :: LensP State Notebook
 _notebook = lens _.notebook _{notebook = _}
 
@@ -48,15 +42,17 @@ _tickDate = lens _.tickDate _{tickDate = _}
 _platform :: LensP State Platform
 _platform = lens _.platform _{platform = _}
 
+_dialog :: LensP State (Maybe Dialog)
+_dialog = lens _.dialog _{dialog = _}
+
 initialState :: State
 initialState =
   { dropdowns: initialDropdowns
   , loaded: false
   , error: Nothing
   , editable: true
-  , modalError: ""
-  , addingCell: false
   , notebook: emptyNotebook
   , tickDate: Nothing
   , platform: Other
+  , dialog: Nothing
   }

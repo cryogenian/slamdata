@@ -29,11 +29,12 @@ import EffectTypes (NotebookAppEff())
 import Halogen.HTML.Events.Monad (Event())
 import Input.Notebook (Input(..))
 import Model.Action (Action(Edit))
-import Model.Notebook (State(), _modalError, _notebook)
+import Model.Notebook (State(), _dialog, _notebook)
 import Model.Notebook.Cell (CellContent(..))
 import Model.Notebook.Cell.Explore (initialExploreRec)
 import Model.Notebook.Cell.Query (initialQueryRec)
 import Model.Notebook.Cell.Search (initialSearchRec)
+import Model.Notebook.Dialog
 import Model.Notebook.Menu (MenuNotebookSignal(..), MenuInsertSignal(..), MenuCellSignal(..), MenuHelpSignal(..), MenuSignal(..))
 import Model.Path (decodeURIPath)
 import Model.Resource
@@ -128,7 +129,7 @@ handleSubmitName :: forall e. State -> I e
 handleSubmitName state = liftAff (attempt $ saveNotebook (state ^. _notebook)) >>= go
   where
   go :: Either Error N.Notebook -> I e
-  go (Left err) = pure $ WithState (_modalError .~ message err)
+  go (Left err) = pure $ WithState (_dialog ?~ ErrorDialog (message err))
   go (Right nb) = do
     liftEff $ setLocation $ U.fromJust $ N.notebookURL nb Edit
     pure $ WithState $ _notebook .~ nb

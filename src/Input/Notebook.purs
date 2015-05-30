@@ -63,9 +63,8 @@ updateState state (Dropdown i) =
   (modifyAt i _{visible = visSet}) <<< (_{visible = false} <$>)
 
 updateState state CloseDropdowns =
-  state{addingCell = false} # (_dropdowns %~ (_{visible = false} <$>))
-                           .. (_notebook .. _cells .. mapped %~ _content .. _FileInput .. _showFiles .~ false)
-
+  state # (_dropdowns %~ (_{visible = false} <$>))
+       .. (_notebook .. _cells .. mapped %~ _content .. _FileInput .. _showFiles .~ false)
 
 updateState state (AddCell content) =
   state # _notebook %~ (fst <<< addCell content)
@@ -90,7 +89,7 @@ updateState state (ReceiveCellContent cell) =
   state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const cell)
 
 updateState state (StartRunCell cellId date) =
-  state # _notebook.._cells..mapped %~ onCell cellId (setRunState $ RunningSince date)
+  state # _notebook.._cells..mapped %~ onCell cellId (setRunState (RunningSince date) <<< (_expandedStatus .~ false))
 
 updateState state (StopCell cellId) =
   state # _notebook.._cells..mapped %~ onCell cellId (setRunState RunInitial)
