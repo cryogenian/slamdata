@@ -81,9 +81,21 @@ statusBar d state =
         else glyph B.glyphiconPlay ]
     , H.div [ A.classes [ VC.statusText ] ]
       [ H.text $ statusText d (state ^. _runState) ]
+    , H.div [ A.classes [ B.pullRight ] ]
+      [ H.button [ A.classes [ B.btn
+                             , B.glyphicon
+                             , if state ^._expandedStatus
+                               then B.glyphiconEyeClose
+                               else B.glyphiconEyeOpen
+                             ]
+                 , E.onClick (\_ -> E.preventDefault $>
+                                   pure (UpdateCell (state ^._cellId)
+                                         (_expandedStatus %~ not)))
+                 ]
+                 [ ]
+      ]
     , H.div [ A.classes [ VC.cellFailures ] ]
       (message state)
---      (failureText (state ^. _cellId) (state ^. _expandedStatus) (state ^. _failures))
     ]
   ]
 
@@ -153,26 +165,11 @@ failureText cell =
 
 commonMessage :: forall e. String -> [HTML e] -> Cell -> [HTML e]
 commonMessage intro children cell = 
-  [ H.div_
-    [ H.text intro
-    , H.a [ A.href "#"
-          , E.onClick (\_ -> E.preventDefault $>
-                            pure (UpdateCell (cell ^._cellId)
-                                  (_expandedStatus %~ not)))
-          ] 
-      (linkText (cell ^._expandedStatus))
-    ]
+  [ H.div_ [ H.text intro ]
   ] <>
   if (cell ^._expandedStatus)
   then children
   else [ ]
-
-linkText :: forall e. Boolean -> [HTML e]
-linkText expanded =
-  [H.text (if expanded
-           then "Hide details"
-           else "Show details")
-  ]
 
 isRunning :: RunState -> Boolean
 isRunning (RunningSince _) = true
