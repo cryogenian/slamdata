@@ -47,14 +47,22 @@ cell notebook state =
 controls :: forall e. Cell -> HTML e
 controls state =
   row [ H.div [ A.classes [B.btnGroup, B.pullRight, VC.cellControls] ]
-        [ H.button [ A.classes [B.btn]
+        [ H.button [ A.classes [ B.btn
+                               , B.glyphicon
+                               , if state ^. _hiddenEditor
+                                 then B.glyphiconEyeOpen
+                                 else B.glyphiconEyeClose
+                               ]
                    , E.onClick $ E.input_ $ UpdateCell (state ^. _cellId) (_hiddenEditor %~ not)
                    ]
-          [ H.text (if state ^. _hiddenEditor then "Show" else "Hide") ]
-        , H.button [ A.classes [B.btn]
+          [ ]
+        , H.button [ A.classes [ B.btn
+                               , B.glyphicon
+                               , B.glyphiconTrash
+                               ]
                    , E.onClick $ E.input_ $ TrashCell $ state ^. _cellId
                    ]
-          [ H.text "Trash" ]
+          [ ]
         ]
       ]
 
