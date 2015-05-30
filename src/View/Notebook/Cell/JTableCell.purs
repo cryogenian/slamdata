@@ -39,10 +39,12 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
       pageSizeValue = either valueFromThese (show <<< toNumber) (table ^. _perPage)
   return
     [ absurd <$> output
-    , prevButtons (page <= one)
-    , pageField (valueFromThese (table ^. _page)) totalPages
-    , nextButtons (page >= totalPages) totalPages
-    , pageSize (isLeft (table ^. _perPage)) pageSizeValue
+    , H.div [ A.class_ VC.pagination ]
+            [ prevButtons (page <= one)
+            , pageField (valueFromThese (table ^. _page)) totalPages
+            , nextButtons (page >= totalPages) totalPages
+            , pageSize (isLeft (table ^. _perPage)) pageSizeValue
+            ]
     ]
   where
   valueFromThese :: These String Int -> String

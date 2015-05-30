@@ -137,6 +137,9 @@ cellEvalLine = className "cell-eval-line"
 exploreCellEditor :: ClassName
 exploreCellEditor = className "explore-cell-editor"
 
+pagination :: ClassName
+pagination = className "pagination"
+
 pageInput :: ClassName
 pageInput = className "page-input"
 

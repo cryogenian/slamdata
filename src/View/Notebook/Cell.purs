@@ -3,10 +3,10 @@ module View.Notebook.Cell (cell) where
 import Control.Functor (($>))
 import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Cell.Viz (insertViz)
-import Data.Array (length, null)
+import Data.Array (length, null, catMaybes)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Function (on)
-import Data.Maybe (Maybe(), maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
 import Input.Notebook (Input(..))
 import Model.Notebook
@@ -36,12 +36,12 @@ import qualified View.Css as VC
 cell :: forall e. State -> Cell -> [HTML e]
 cell notebook state =
   [ H.div [ A.classes [B.containerFluid, VC.notebookCell] ]
-    [ controls state
-    , editor state
-    , statusBar notebook.tickDate state
-    , output state
-    , insertNextCell notebook state
-    ]
+          $ catMaybes [ Just $ controls state
+                      , if state ^. _hiddenEditor then Nothing else Just $ editor state
+                      , Just $ statusBar notebook.tickDate state
+                      , Just $ output state
+                      , Just $ insertNextCell notebook state
+                      ]
   ]
 
 controls :: forall e. Cell -> HTML e
@@ -172,7 +172,7 @@ failureText cell =
   where fs = cell ^._failures
 
 commonMessage :: forall e. String -> [HTML e] -> Cell -> [HTML e]
-commonMessage intro children cell = 
+commonMessage intro children cell =
   [ H.div_ [ H.text intro ]
   ] <>
   if (cell ^._expandedStatus)

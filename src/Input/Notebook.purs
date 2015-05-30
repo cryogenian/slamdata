@@ -19,16 +19,17 @@ import Data.Tuple (fst)
 import Halogen.HTML.Events.Monad (Event(), async)
 import Model.Notebook
 import Model.Notebook.Cell
+import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell)
 import Model.Notebook.Port (Port(..), VarMapValue())
 import Model.Resource (_name, Resource())
 import Optic.Core ((..), (<>~), (%~), (+~), (.~), (^.), (?~))
 import Optic.Setter (mapped, over)
 import Text.Markdown.SlamDown.Html (SlamDownEvent(..))
-import qualified ECharts.Options as EC
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.StrMap as M
+import qualified ECharts.Options as EC
 import qualified Model.Notebook.Cell.JTableContent as JTC
 
 data CellResultContent
@@ -58,7 +59,7 @@ data Input
 updateState state (WithState f) =
   f state
 
-updateState state (UpdateCell cellId fn) = 
+updateState state (UpdateCell cellId fn) =
   state # _notebook.._cells..mapped %~ onCell cellId fn
 
 updateState state (Dropdown i) =
@@ -67,7 +68,9 @@ updateState state (Dropdown i) =
   (modifyAt i _{visible = visSet}) <<<  (_{visible = false} <$>)
 
 updateState state CloseDropdowns =
-  state{addingCell = false} # _dropdowns %~ (_{visible = false} <$>)
+  state{addingCell = false} # (_dropdowns %~ (_{visible = false} <$>))
+                           .. (_notebook .. _cells .. mapped %~ _content .. _FileInput .. _showFiles .~ false)
+
 
 updateState state (AddCell content) =
   state # _notebook %~ (addCell content >>> fst)
