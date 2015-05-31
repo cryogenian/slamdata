@@ -68,12 +68,6 @@ notebookName = className "notebook-name"
 notebookNav :: ClassName
 notebookNav = className "notebook-nav"
 
-notebookAddCellButton :: ClassName
-notebookAddCellButton = className "notebook-add-cell-button"
-
-notebookAddCellMenu :: ClassName
-notebookAddCellMenu = className "notebook-add-cell-menu"
-
 dialogMount :: ClassName
 dialogMount = className "dialog-mount"
 
@@ -104,14 +98,32 @@ notebookContent = className "notebook-content"
 notebookCell :: ClassName
 notebookCell = className "notebook-cell"
 
+cellHeader :: ClassName
+cellHeader = className "cell-header"
+
+cellIcon :: ClassName
+cellIcon = className "cell-icon"
+
+cellName :: ClassName
+cellName = className "cell-name"
+
 cellInput :: ClassName
 cellInput = className "cell-input"
 
 cellOutput :: ClassName
 cellOutput = className "cell-output"
 
+cellOutputLabel :: ClassName
+cellOutputLabel = className "cell-output-label"
+
+cellOutputResult :: ClassName
+cellOutputResult = className "cell-output-result"
+
 cellNextActions :: ClassName
 cellNextActions = className "cell-next-actions"
+
+newCellMenu :: ClassName
+newCellMenu = className "new-cell-menu"
 
 aceContainer :: ClassName
 aceContainer = className "ace-container"
@@ -130,6 +142,9 @@ statusText = className "status-text"
 
 cellFailures :: ClassName
 cellFailures = className "cell-failures"
+
+cellMessages :: ClassName
+cellMessages = className "cell-messages"
 
 cellEvalLine :: ClassName
 cellEvalLine = className "cell-eval-line"
@@ -163,3 +178,9 @@ echartsContainer = className "echarts-container"
 
 chartConfigureForm :: ClassName
 chartConfigureForm = className "chart-configure-form"
+
+collapsed :: ClassName
+collapsed = className "collapsed"
+
+scrollbox :: ClassName
+scrollbox = className "scrollbox"

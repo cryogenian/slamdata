@@ -13,6 +13,7 @@ module Model.Notebook.Domain
   , insertCell
   , notebookPath
   , notebookURL
+  , cellURL
   ) where
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
@@ -20,7 +21,7 @@ import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Argonaut.Printer (printJson)
-import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex)
+import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex, snoc)
 import Data.Either (Either(..))
 import Data.Map (Map(), insert, lookup, empty, toList, fromList)
 import Data.Maybe (Maybe(..), maybe)
@@ -118,14 +119,11 @@ addCell :: CellContent -> Notebook -> Tuple Notebook Cell
 addCell content oldNotebook@(Notebook n) = Tuple notebook cell
   where
   newId = freeId oldNotebook
-  cell = newCell newId content # (_output .~ port) .. setInp
-  setInp = case content of
-    Explore r -> _input .~ port
-    _ -> id
-  notebook = Notebook $ n { cells = cell : n.cells
+  cell = newCell newId content # (_output .~ cellOut oldNotebook newId)
+                              .. (_input .~ cellIn content)
+  notebook = Notebook $ n { cells = n.cells `snoc` cell
                           , activeCellId = newId
                           }
-  port = portByContent oldNotebook content newId
 
 insertCell :: Cell -> CellContent -> Notebook -> Tuple Notebook Cell
 insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
@@ -140,19 +138,17 @@ insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
   newId = freeId oldNotebook
   cell = newCell newId (content # _FileInput .. _file .~ maybe (Left "") Right (port ^? _PortResource))
          # (_output .~ port) .. (_input .~ (parent ^. _output))
-  port = portByContent oldNotebook content newId
+  port = cellOut oldNotebook newId
 
 cellOut :: Notebook -> CellId -> Port
-cellOut (Notebook n) cid = these (const Closed) portRes (\_ -> portRes) n.name
+cellOut n cid = these (const Closed) portRes (\_ -> portRes) (n ^. _name)
   where
   portRes :: String -> Port
-  portRes _ = PortResource $ File $ n.path </> file ("out" <> show cid)
+  portRes _ = maybe Closed (\p -> PortResource $ File $ p </> file ("out" <> show cid)) (notebookPath n)
 
-portByContent :: Notebook -> CellContent -> CellId -> Port
-portByContent n (Search _) cid = cellOut n cid
-portByContent n (Query _) cid = cellOut n cid
-portByContent _ content@(Explore _) _ = maybe Closed portFromFile (content ^? _FileInput .. _file)
-portByContent _ _ _ = Closed
+cellIn :: CellContent -> Port
+cellIn content@(Explore _) = maybe Closed portFromFile (content ^? _FileInput .. _file)
+cellIn _ = Closed
 
 freeId :: Notebook -> CellId
 freeId (Notebook n) =
@@ -163,3 +159,6 @@ notebookPath nb = (\name -> (nb ^. _path) </> dir name <./> Config.notebookExten
 
 notebookURL :: Notebook -> Action -> Maybe String
 notebookURL nb act = (\path -> Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAction act) <$> notebookPath nb
+
+cellURL :: Notebook -> CellId -> Action -> Maybe String
+cellURL nb cid act = (\path -> Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ "cells" ++ show cid ++ "/" ++ printAction act) <$> notebookPath nb

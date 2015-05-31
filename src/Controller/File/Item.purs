@@ -30,8 +30,6 @@ import Model.Sort (Sort(), sort2string)
 import Optic.Core ((.~))
 import Utils (locationString, setLocation)
 
-import qualified Control.UI.ZClipboard as Z
-
 handleDeleteItem :: forall e. Item -> Event (FileAppEff e) Input
 handleDeleteItem item = async $ do
   delete item.resource
@@ -45,15 +43,10 @@ handleMoveItem item = do
     `andThen` \_ -> getDirectories (toInput <<< AddDirs) root
 
 handleShare :: forall e. Sort -> Salt -> Item -> Event (FileAppEff e) Input
-handleShare sort salt item = async $ makeAff $ \_ k -> do
-  loc <- locationString
+handleShare sort salt item = do
+  loc <- liftEff locationString
   let url = loc ++ "/" ++ itemURL item sort salt
-  k $ inj $ SetDialog (Just $ ShareDialog url)
-  mbCopy <- document globalWindow >>= getElementById "copy-button"
-  case mbCopy of
-    Nothing -> pure unit
-    Just btn -> void do
-      Z.make btn >>= Z.onCopy (Z.setData "text/plain" url)
+  pure $ inj $ SetDialog (Just $ ShareDialog url)
 
 itemURL :: Item -> Sort -> Salt -> String
 itemURL item sort salt =

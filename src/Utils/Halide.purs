@@ -5,12 +5,14 @@ module Utils.Halide
   , max
   , min
   , step
+  , selectThis
+  , dataZeroClipboard
   ) where
 
 import Control.Alternative (Alternative)
 import Control.Apply ((*>), (<*))
-import Control.Monad.Eff.Class (MonadEff, liftEff)
 import Control.Monad (when)
+import Control.Monad.Eff.Class (MonadEff, liftEff)
 import Control.MonadPlus (MonadPlus)
 import Control.Plus (empty)
 import Data.DOM.Simple.Element (setValue)
@@ -19,6 +21,8 @@ import Data.Either (Either(..))
 import Data.Foreign (Foreign(), toForeign)
 import Data.Foreign.Class (IsForeign, readProp)
 import DOM (DOM())
+import Utils (select)
+
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Handler as E
@@ -54,3 +58,9 @@ max = A.attr (A.attributeName "max") <<< show
 
 min :: forall i. Number -> A.Attr i
 min = A.attr (A.attributeName "min") <<< show
+
+selectThis :: forall e o i. ET.Event o -> E.EventHandler (E.Event (dom :: DOM | e) i)
+selectThis ev = pure $ liftEff (select ev.target) *> empty
+
+dataZeroClipboard :: forall i. String -> A.Attr i
+dataZeroClipboard content = A.attr (A.attributeName "data-zclipboard") content

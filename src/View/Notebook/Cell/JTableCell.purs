@@ -38,7 +38,8 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
       output = renderJTable (jTableOptsDefault { style = bootstrapStyle }) json
       pageSizeValue = either valueFromThese (show <<< toNumber) (table ^. _perPage)
   return
-    [ absurd <$> output
+    [ H.div [ A.class_ VC.scrollbox ]
+            [ absurd <$> output ]
     , H.div [ A.class_ VC.pagination ]
             [ prevButtons (page <= one)
             , pageField (valueFromThese (table ^. _page)) totalPages
