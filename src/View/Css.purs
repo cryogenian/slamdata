@@ -179,6 +179,15 @@ echartsContainer = className "echarts-container"
 chartConfigureForm :: ClassName
 chartConfigureForm = className "chart-configure-form"
 
+vizCellEditor :: ClassName
+vizCellEditor = className "viz-cell-editor"
+
+vizChartTypeSelector :: ClassName
+vizChartTypeSelector = className "viz-chart-type-selector"
+
+vizChartConfiguration :: ClassName
+vizChartConfiguration = className "viz-chart-configuration"
+
 collapsed :: ClassName
 collapsed = className "collapsed"
 
