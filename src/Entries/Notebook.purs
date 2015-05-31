@@ -52,5 +52,5 @@ main = onLoad $ void $ do
     initZClipboard node
     D.notebookAutosave sKnot autosaveTimer input driver
     DC.driveCellContent input driver
-    A.acePostRender aKnot input node driver
+    A.acePostRender sKnot aKnot input node driver
     EC.echartsPostRender eKnot input node driver

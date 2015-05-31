@@ -1,40 +1,34 @@
 module App.Notebook.Ace (acePostRender, AceSessions()) where
 
-import Global (infinity)
-import Input.Notebook (CellResultContent(..), Input(..), cellContent)
-
+import Ace
+import Ace.EditSession (getValue, setMode)
+import Ace.Selection (getRange)
+import Ace.Types (EditSession(), ACE(), Editor(), TextMode(..))
 import Control.Bind ((>=>))
 import Control.Monad (when)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Ref (RefVal(), readRef, modifyRef)
-
 import Data.Date (Now(), now)
-import Data.Either (Either(..), either)
-import Data.Foldable (for_)
-import Data.Maybe (Maybe(..), isNothing, maybe)
-import Data.Tuple
-
-import qualified Data.Map as M
-
-import DOM
 import Data.DOM.Simple.Element
 import Data.DOM.Simple.Types
-
+import Data.Either (Either(..), either)
+import Data.Foldable (for_)
+import Data.Maybe (Maybe(..), isNothing, maybe, fromMaybe)
+import Data.Tuple
+import DOM
+import Global (infinity)
 import Halogen
-
-import Ace
-import qualified Ace.Config as AceConfig
-import Ace.EditSession (getValue, setMode)
-import Ace.Selection (getRange)
-import Ace.Types (EditSession(), ACE(), Editor(), TextMode(..))
-import qualified Ace.Editor as Editor
-
+import Input.Notebook (CellResultContent(..), Input(..), cellContent)
 import Model.Notebook
+import Model.Notebook.Cell (CellId(), _AceContent, string2cellId, _cellId, _content)
 import Model.Notebook.Domain
-import Model.Notebook.Cell (CellId(), string2cellId, _cellId, _content)
-
 import Optic.Core
+import Optic.Extended ((^?))
 import Optic.Refractor.Lens
+
+import qualified Ace.Config as AceConfig
+import qualified Ace.Editor as Editor
+import qualified Data.Map as M
 
 type AceSessions = M.Map CellId EditSession
 
@@ -52,7 +46,6 @@ modeByCellTag tag = case tag of
   "markdown" -> markdownMode
   "query" -> sqlMode
   _ -> plainTextMode
-
 
 dataCellId :: String
 dataCellId = "data-cell-id"
@@ -73,13 +66,16 @@ foreign import aceSetOption """
   }
   """ :: forall a eff. String -> a -> Editor -> Eff (ace :: ACE | eff) Unit
 
-initialize :: forall eff. RefVal AceSessions -> HTMLElement ->
-              Driver Input (ace :: ACE | eff) ->
-              Eff (HalogenEffects (ace :: ACE | eff)) Unit
-initialize m b d = do
+initialize :: forall eff. RefVal State
+                       -> RefVal AceSessions
+                       -> HTMLElement
+                       -> Driver Input (ace :: ACE | eff)
+                       -> Eff (HalogenEffects (ace :: ACE | eff)) Unit
+initialize s m b d = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
   els <- getElementsByClassName "ace-container" b
   mr <- readRef m
+  state <- readRef s
   for_ els \el -> do
     cellId <- string2cellId <$> getAttribute dataCellId el
     flip (either (const $ pure unit)) cellId \cid -> do
@@ -91,11 +87,13 @@ initialize m b d = do
       aceSetOption "autoScrollEditorIntoView" true editor
 
       Editor.setTheme "ace/theme/chrome" editor
-      maybe (initialize' mode editor cid) (reinit editor) $ M.lookup cid mr
+      maybe (initialize' mode editor state cid) (reinit editor) $ M.lookup cid mr
   where
-  initialize' :: _ -> _ -> CellId -> Eff _ Unit
-  initialize' mode editor cid = do
-    session <- createEditSession "" mode ace
+  initialize' :: _ -> _ -> State -> CellId -> Eff _ Unit
+  initialize' mode editor state cid = do
+    let cell = state ^? _notebook .. cellById cid .. _content .. _AceContent
+        value = fromMaybe "" cell
+    session <- createEditSession value mode ace
     Editor.focus editor
     modifyRef m (M.insert cid session)
     Editor.onFocus editor do
@@ -120,8 +118,12 @@ handleInput m (TrashCell cellId) _ = do
   modifyRef m (M.delete cellId)
 handleInput _ _ _ = return unit
 
-acePostRender :: forall eff. RefVal AceSessions -> Input ->
-                 HTMLElement -> Driver Input (now :: Now, ace :: ACE | eff) -> Eff (HalogenEffects (now :: Now, ace :: ACE | eff)) Unit
-acePostRender m i b d = do
-  initialize m b d
+acePostRender :: forall eff. RefVal State
+                          -> RefVal AceSessions
+                          -> Input
+                          -> HTMLElement
+                          -> Driver Input (now :: Now, ace :: ACE | eff)
+                          -> Eff (HalogenEffects (now :: Now, ace :: ACE | eff)) Unit
+acePostRender s m i b d = do
+  initialize s m b d
   handleInput m i d
