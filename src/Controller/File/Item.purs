@@ -3,6 +3,8 @@ module Controller.File.Item where
 import Api.Fs (delete, children)
 import Control.Monad.Aff (makeAff)
 import Control.Monad.Aff.Class (liftAff)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Plus (empty)
 import Controller.Common (getDirectories)
 import Controller.File.Common (toInput)
 import Data.DOM.Simple.Encode (encodeURIComponent)
@@ -26,7 +28,7 @@ import Model.Resource (resourcePath, parent, root, isNotebook, isFile, getPath)
 import Model.Salt (Salt(), runSalt)
 import Model.Sort (Sort(), sort2string)
 import Optic.Core ((.~))
-import Utils (locationString)
+import Utils (locationString, setLocation)
 
 import qualified Control.UI.ZClipboard as Z
 
@@ -66,6 +68,11 @@ itemURL item sort salt =
                          ++ "?q=" ++ encodeURIComponent ("path:" ++ renderPath (getPath item.resource))
                          ++ "&sort=" ++ sort2string sort
                          ++ "&salt=" ++ runSalt salt
+
+openItem :: forall e. Item -> Sort -> Salt -> Event (FileAppEff e) Input
+openItem item sort salt = do
+  liftEff $ setLocation $ itemURL item sort salt
+  empty
 
 handleConfigure :: forall e. Item -> Event (FileAppEff e) Input
 handleConfigure _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog { new = false })
