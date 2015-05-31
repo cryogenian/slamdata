@@ -98,14 +98,9 @@ body state =
 
 
 cells :: forall e. State -> [HTML e]
-cells state = ((saveOnCellUpdate state) <$>) <$> [ H.div [ A.classes [ Vc.notebookContent ] ]
-                ((state ^. _notebook .. _cells) >>= cell state) ]
-
-saveOnCellUpdate :: forall e. State -> I e -> I e
-saveOnCellUpdate state e = e
-  -- `E.andThen` \_ -> do
-  -- liftAff (saveNotebook (state ^. _notebook))
-  -- empty
+cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
+                      $ (state ^. _notebook .. _cells) >>= cell state
+              ]
 
 margined :: forall e. [HTML e] -> [HTML e] -> HTML e
 margined l r = row [ H.div [ A.classes [ B.colMd2 ] ] l
