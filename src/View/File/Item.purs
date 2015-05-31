@@ -1,29 +1,34 @@
 module View.File.Item (items) where
 
-import Data.Inject1 (inj)
+import Control.Apply ((*>))
+import Control.Monad.Eff.Class (liftEff)
+import Control.Plus (empty)
 import Controller.File.Item
+import Css.Geometry
+import Css.Size (px)
+import Css.String
 import Data.Array ((..), length, zipWith)
+import Data.Inject1 (inj)
 import Data.Monoid (mempty)
+import Data.Path.Pathy
 import Data.Tuple (Tuple(..))
 import Input.File.Item (ItemInput(..))
 import Model.File (State())
 import Model.File.Item
-import Model.Resource
 import Model.Path (decodeURIPath)
+import Model.Resource
+import Utils (setLocation)
 import Utils.Halide (targetLink')
 import View.File.Common (I(), toolItem)
+
 import qualified Data.StrMap as SM
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
+import qualified Halogen.HTML.CSS as CSS
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
-import qualified Halogen.HTML.CSS as CSS
-import Css.Size (px)
-import Css.Geometry
-import Css.String
 import qualified View.Css as Vc
-import Data.Path.Pathy
 
 items :: forall e. State -> H.HTML (I e)
 items state =
@@ -37,6 +42,7 @@ item state ix item =
                                           else mempty)
         , E.onMouseOver (E.input_ $ inj $ ItemHover ix true)
         , E.onClick (E.input_ $ inj $ ItemSelect ix true)
+        , E.onDoubleClick (\_ -> pure $ openItem item state.sort state.salt)
         ]
         [ H.div [ A.class_ B.row ]
           [ H.div [ A.classes [B.colSm9, Vc.itemContent] ]
