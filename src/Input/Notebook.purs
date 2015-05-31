@@ -8,6 +8,7 @@ module Input.Notebook
 import Data.Array (filter, modifyAt, (!!))
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), either)
+import Data.Foldable (intercalate)
 import Data.Function (on)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (fst)
@@ -16,14 +17,18 @@ import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell)
 import Model.Notebook.Port (Port(..), VarMapValue())
-import Optic.Core ((..), (%~), (.~), (^.))
+import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
+import Optic.Fold ((^?))
 import Optic.Setter (mapped)
-import Text.Markdown.SlamDown.Html (SlamDownEvent(..))
+import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent)
 
 import qualified Data.Array.NonEmpty as NEL
-import qualified Data.StrMap as M
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Data.StrMap as SM
 import qualified ECharts.Options as EC
 import qualified Model.Notebook.Cell.JTableContent as JTC
+import qualified Model.Notebook.Cell.Markdown as Ma
 
 data CellResultContent
   = AceContent String
@@ -94,15 +99,29 @@ updateState state (StartRunCell cellId date) =
 updateState state (StopCell cellId) =
   state # _notebook.._cells..mapped %~ onCell cellId (setRunState RunInitial)
 
-updateState state (CellSlamDownEvent cellId (FormValueChanged name value)) =
-  state # _notebook.._cells..mapped %~ onCell cellId (addVar name value)
+updateState state (CellSlamDownEvent cellId event) =
+  state # _notebook.._cells..mapped %~ onCell cellId (slamDownOutput <<< runSlamDownEvent event)
 
 updateState state i = state
 
-addVar :: String -> VarMapValue -> Cell -> Cell
-addVar name value (Cell o) = Cell $ o { output = VarMap <<< M.insert name value $ m o.output }
-  where m (VarMap n) = n
-        m _ = M.empty
+toStrMap :: forall a. M.Map String a -> SM.StrMap a
+toStrMap = SM.fromList <<< M.toList
+
+slamDownStateMap :: LensP SlamDownState (M.Map String FormFieldValue)
+slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)
+
+slamDownOutput :: Cell -> Cell
+slamDownOutput cell =
+  cell # _output .~ VarMap m
+  where
+    m = maybe SM.empty ((fromFormValue <$>) <<< toStrMap) state
+    fromFormValue (SingleValue s) = s
+    fromFormValue (MultipleValues s) = "[" <> intercalate ", " (S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
+    state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
+
+runSlamDownEvent :: SlamDownEvent -> Cell -> Cell
+runSlamDownEvent event cell =
+  cell # _content.._Markdown..Ma._state %~ flip applySlamDownEvent event
 
 cellContent :: Either (NEL.NonEmpty FailureMessage) CellResultContent -> Cell -> Cell
 cellContent = either (setFailures <<< NEL.toArray) success

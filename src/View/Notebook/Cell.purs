@@ -193,9 +193,9 @@ cellInfo cell = case cell ^. _content of
 
 editor :: forall e. Cell -> HTML e
 editor state = case state ^. _content of
-  (Explore rec) -> exploreEditor state
-  (Search _) -> searchEditor state
-  (Visualize _) -> vizChoices state
+  Explore rec -> exploreEditor state
+  Search _ ->searchEditor state
+  Visualize _ -> vizChoices state
   _ -> aceEditor state
 
 renderOutput :: forall e. Cell -> [HTML e]
@@ -204,7 +204,7 @@ renderOutput cell =
   then []
   else case cell ^. _content of
     Explore _ -> exploreOutput cell
-    Markdown s -> markdownOutput s (cell ^. _cellId)
+    Markdown mr -> markdownOutput mr cell
     Search _ -> searchOutput cell
     Visualize _ -> vizOutput cell
     Query _ -> queryOutput cell

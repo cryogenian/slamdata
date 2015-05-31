@@ -18,6 +18,7 @@ import Optic.Extended (TraversalP())
 
 import qualified Model.Notebook.Cell.Common as Cm
 import qualified Model.Notebook.Cell.Explore as Ex
+import qualified Model.Notebook.Cell.Markdown as Ma
 import qualified Model.Notebook.Cell.Query as Qu
 import qualified Model.Notebook.Cell.Search as Sr
 import qualified Model.Notebook.Cell.Viz as Vz
@@ -123,7 +124,7 @@ data CellContent
   | Explore Ex.ExploreRec
   | Visualize Vz.VizRec
   | Query Qu.QueryRec
-  | Markdown String
+  | Markdown Ma.MarkdownRec
 
 cellContentType :: CellContent -> String
 cellContentType (Explore _) = "explore"
@@ -145,7 +146,7 @@ newVisualizeContent :: CellContent
 newVisualizeContent = Visualize Vz.initialVizRec
 
 newMarkdownContent :: CellContent
-newMarkdownContent = Markdown ""
+newMarkdownContent = Markdown Ma.initialMarkdownRec
 
 _Explore :: PrismP CellContent Ex.ExploreRec
 _Explore = prism' Explore $ \s -> case s of
@@ -167,7 +168,7 @@ _Visualize = prism' Visualize $ \s -> case s of
   Visualize s -> Just s
   _ -> Nothing
 
-_Markdown :: PrismP CellContent String
+_Markdown :: PrismP CellContent Ma.MarkdownRec
 _Markdown = prism' Markdown $ \s -> case s of
   Markdown s -> Just s
   _ -> Nothing
@@ -189,7 +190,7 @@ _AceContent :: TraversalP CellContent String
 _AceContent f s = case s of
   Search _ -> (_Search .. Sr._buffer) f s
   Query _ -> (_Query .. Qu._input) f s
-  Markdown _ -> _Markdown f s
+  Markdown _ -> (_Markdown .. Ma._input) f s
   _ -> _const f s
 
 _const :: forall a b. TraversalP a b
@@ -202,7 +203,7 @@ instance encodeJsonCellContent :: EncodeJson CellContent where
       Search rec -> encodeJson rec
       Explore rec -> encodeJson rec
       Query rec -> encodeJson rec
-      Markdown s -> "value" := s ~> jsonEmptyObject
+      Markdown rec -> encodeJson rec
       -- TODO: Visualize
       _ -> jsonEmptyObject
 
@@ -214,7 +215,7 @@ instance decodeJsonExploreRec :: DecodeJson CellContent where
       "search" -> Search <$> decodeJson json
       "explore" -> Explore <$> decodeJson json
       "query" -> Query <$> decodeJson json
-      "markdown" -> Markdown <$> obj .? "value"
+      "markdown" -> Markdown <$> decodeJson json
       -- TODO: Visualize
       _ -> Left $ "Unknown CellContent type: '" ++ cellType ++ "'"
 
