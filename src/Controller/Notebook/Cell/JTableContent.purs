@@ -10,7 +10,7 @@ module Controller.Notebook.Cell.JTableContent
   ) where
 
 import Api.Fs (delete)
-import Api.Query (port, query, sample, count)
+import Api.Query (port, sample, count)
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
@@ -32,6 +32,7 @@ import Global (isNaN, readInt)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
+import Model.Notebook.Port (VarMapValue(), _VarMap)
 import Model.Resource (Resource(), mkFile)
 import Optic.Core ((^.), (.~), (..))
 import Optic.Extended (TraversalP(), (^?))
@@ -40,7 +41,10 @@ import Data.Path.Pathy ((</>), parseAbsFile, rootDir, sandbox)
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Int as I
+import qualified Data.StrMap as SM
 import qualified Model.Notebook.Cell.JTableContent as JTC
+
+import qualified Data.StrMap as SM
 
 _page :: TraversalP Cell (These String I.Int)
 _page = _content .. _JTableContent .. JTC._page
@@ -114,13 +118,16 @@ queryToJTable :: forall e. Cell -> String -> Resource -> Resource -> I e
 queryToJTable cell sql inp out = do
   jobj <- liftAff do
     delete out
-    attempt (port inp out sql)
+    attempt (port inp out sql varMap)
   either errorInQuery (\out -> runJTable (mkFile (Left $ rootDir </> out)) cell) do
     j <- lmap message jobj
     out' <- j .? "out"
     path <- maybe (Left "Invalid file from SlamEngine") Right $ parseAbsFile out'
     maybe (Left "Could not sandbox SlamEngine file") Right $ sandbox rootDir path
   where
+  varMap :: SM.StrMap VarMapValue
+  varMap = fromMaybe SM.empty $ cell ^? _input.._VarMap
+
   errorInQuery :: _ -> I e
   errorInQuery err =
     update cell (_failures .~ ["Error in query: " <> err])
