@@ -20,7 +20,7 @@ import Model.Notebook.Port (Port(..), VarMapValue())
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
-import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent)
+import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, emptySlamDownState)
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Map as M
@@ -127,8 +127,13 @@ cellContent :: Either (NEL.NonEmpty FailureMessage) CellResultContent -> Cell ->
 cellContent = either (setFailures <<< NEL.toArray) success
   where
   success :: CellResultContent -> Cell -> Cell
-  success (AceContent content) = setFailures [ ] <<< (_content .. _AceContent .~ content)
-  success (JTableContent content) = setFailures [ ] <<< (_content .. _JTableContent .~ content)
+  success (AceContent content) =
+    setFailures [ ]
+    <<< (_content.._AceContent .~ content)
+    <<< (_content.._Markdown..Ma._state .~ emptySlamDownState)
+  success (JTableContent content) =
+    setFailures [ ]
+    <<< (_content.._JTableContent .~ content)
   success MarkdownContent = setFailures [ ]
 
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
