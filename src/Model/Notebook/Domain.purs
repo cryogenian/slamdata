@@ -7,6 +7,7 @@ module Model.Notebook.Domain
   , _name
   , _path
   , _activeCell
+  , cellById
   , Dependencies()
   , deps
   , addCell
