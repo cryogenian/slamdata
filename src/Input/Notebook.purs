@@ -81,7 +81,7 @@ updateState state (CellResult cellId date content) =
       fromState (RunningSince d) = cellContent content <<< setRunState (finished d)
       fromState a = setRunState a -- In bad state or cancelled. Leave content.
 
-      f cell = fromState (cell ^. _runState) cell
+      f cell = fromState (cell ^. _runState) cell # (_hasRun .~ true)
 
   in state # _notebook.._cells..mapped %~ onCell cellId f
 

@@ -9,6 +9,7 @@ import Control.Monad.Eff.Ref (RefVal(), readRef, modifyRef, writeRef)
 import Control.Plus (empty)
 import Control.Timer (Timeout(), timeout, clearTimeout, interval)
 import Controller.Notebook (handleMenuSignal)
+import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Cell.Explore (runExplore)
 import Controller.Notebook.Common (run)
 import Data.Date (now)
@@ -17,10 +18,11 @@ import Data.DOM.Simple.Events (KeyboardEventType(KeydownEvent), metaKey, shiftKe
 import Data.DOM.Simple.Types (DOMEvent())
 import Data.DOM.Simple.Window (globalWindow, document)
 import Data.Either (Either(..))
+import Data.Foldable (for_)
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isJust)
-import Data.Tuple (Tuple(..), fst)
 import Data.These (theseRight, theseLeft)
+import Data.Tuple (Tuple(..), fst)
 import Driver.Notebook.Routing (Routes(..), routing)
 import EffectTypes (NotebookComponentEff(), NotebookAppEff())
 import Halogen (Driver())
@@ -28,10 +30,10 @@ import Halogen.HTML.Events.Monad (runEvent, andThen)
 import Input.Notebook (Input(..))
 import Model.Action (Action(Edit), isEdit)
 import Model.Notebook
-import Model.Notebook.Cell (CellContent(..), _cellId)
+import Model.Notebook.Cell (CellContent(..), _cellId, _hasRun)
 import Model.Notebook.Cell.Explore (initialExploreRec, _input)
 import Model.Notebook.Cell.FileInput
-import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, notebookURL)
+import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, _cells, notebookURL)
 import Model.Notebook.Menu
 import Model.Path (decodeURIPath, dropNotebookExt)
 import Model.Resource (resourceName, resourceDir)
@@ -63,9 +65,14 @@ driver ref k =
           runAff' (loadNotebook res) \result -> do
             update $ (_loaded .~ true)
                   .. (_editable .~ isEdit editable)
-            update case result of
-              Left err -> _error ?~ message err
-              Right nb -> _notebook .~ nb
+            case result of
+              Left err -> update (_error ?~ message err)
+              Right nb -> do
+                update (_notebook .~ nb)
+                for_ (nb ^. _cells) \cell ->
+                  when (cell ^. _hasRun) $
+                    runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $
+                      requestCellContent cell
         handleShortcuts ref k
       ExploreRoute res -> do
         let newNotebook = emptyNotebook # _path .~ resourceDir res

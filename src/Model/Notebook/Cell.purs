@@ -5,7 +5,7 @@ import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Date (Date())
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..))
 import Data.Time (Milliseconds())
 import Global (readInt, isNaN)
@@ -40,6 +40,7 @@ newtype Cell =
        , failures :: [FailureMessage]
        , hiddenEditor :: Boolean
        , runState :: RunState
+       , hasRun :: Boolean
        }
 
 newCell :: CellId -> CellContent -> Cell
@@ -53,6 +54,7 @@ newCell cellId content =
        , message: ""
        , hiddenEditor: false
        , runState: RunInitial
+       , hasRun: false
        }
 
 _Cell :: LensP Cell _
@@ -85,6 +87,9 @@ _failures = _Cell <<< lens _.failures (_ { failures = _ })
 _message :: LensP Cell String
 _message = _Cell <<< lens _.message _{message = _}
 
+_hasRun :: LensP Cell Boolean
+_hasRun = _Cell <<< lens _.hasRun _{hasRun = _}
+
 instance eqCell :: Eq Cell where
   (==) (Cell c) (Cell c') = c.cellId == c'.cellId
   (/=) a b = not $ a == b
@@ -98,6 +103,7 @@ instance encodeJsonCell :: EncodeJson Cell where
     ~> "input" := cell.input
     ~> "output" := cell.output
     ~> "content" := cell.content
+    ~> "hasRun" := cell.hasRun
     ~> jsonEmptyObject
 
 instance decodeJsonCell :: DecodeJson Cell where
@@ -107,8 +113,10 @@ instance decodeJsonCell :: DecodeJson Cell where
                     <*> obj .? "content"
     input <- obj .? "input"
     output <- obj .? "output"
+    let hasRun = either (const false) id (obj .? "hasRun")
     pure (cell # (_input .~ input)
-              .. (_output .~ output))
+              .. (_output .~ output)
+              .. (_hasRun .~ hasRun))
 
 data CellContent
   = Search Sr.SearchRec
