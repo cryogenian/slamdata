@@ -5,6 +5,7 @@ module Input.Notebook
   , cellContent
   ) where
 
+import Control.Bind (join)
 import Data.Array (filter, modifyAt, (!!))
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), either)
@@ -20,7 +21,9 @@ import Model.Notebook.Port (Port(..), VarMapValue())
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
+import Text.Markdown.SlamDown (SlamDown(..), Block(..), Inline(..), FormField(..))
 import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, emptySlamDownState)
+import Text.Markdown.SlamDown.Parser (parseMd)
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Map as M
@@ -91,7 +94,7 @@ updateState state (CellResult cellId date content) =
   in state # _notebook.._cells..mapped %~ onCell cellId f
 
 updateState state (ReceiveCellContent cell) =
-  state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const cell)
+  state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const $  setSlamDownStatus cell)
 
 updateState state (StartRunCell cellId date) =
   state # _notebook.._cells..mapped %~ onCell cellId (setRunState (RunningSince date) <<< (_expandedStatus .~ false))
@@ -118,6 +121,29 @@ slamDownOutput cell =
     fromFormValue (SingleValue s) = s
     fromFormValue (MultipleValues s) = "[" <> intercalate ", " (S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
+
+-- TODO: This should probably live in purescript-markdown
+slamDownFields :: SlamDown -> [String]
+slamDownFields (SlamDown bs) = bs >>= block
+  where
+    block (Paragraph is) = is >>= inline
+    block (Header _ is) = is >>= inline
+    block (Blockquote bs) = bs >>= block
+    block (List _ bss) = join bss >>= block
+    block _ = []
+    inline (Emph is) = is >>= inline
+    inline (Strong is) = is >>= inline
+    inline (Link is _) = is >>= inline
+    inline (Image is _) = is >>= inline
+    inline (FormField s _ _) = [s]
+    inline _ = []
+
+setSlamDownStatus :: Cell -> Cell
+setSlamDownStatus cell =
+  let input' = cell ^? _content.._Markdown..Ma._input
+      message = ("Exported fields: "<>) <<< intercalate ", " <<< slamDownFields <<< parseMd
+      changeMessage m = cell # _message .~ message m
+  in maybe cell changeMessage input'
 
 runSlamDownEvent :: SlamDownEvent -> Cell -> Cell
 runSlamDownEvent event cell =
