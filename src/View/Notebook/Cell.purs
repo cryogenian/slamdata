@@ -31,6 +31,7 @@ import qualified Halogen.HTML.Events.Forms as E
 import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
+import qualified Model.Notebook.Cell.Query as Qu
 import qualified View.Css as VC
 
 cell :: forall e. State -> Cell -> [HTML e]
@@ -92,6 +93,12 @@ cellOutputBar notebook cell =
              [ li "Query this output" (E.input_ $ InsertCell cell $ newQueryContent res) B.glyphiconHdd
              , li "Search this output" (E.input_ $ InsertCell cell $ newSearchContent res) B.glyphiconSearch
              , li "Visualize this output" (\_ -> pure $ insertViz notebook cell) B.glyphiconPicture
+             ]
+      ]
+
+    VarMap _ ->
+      [ H.ul [ A.classes [VC.nextCellList] ]
+             [ li "Query using fields" (E.input_ $ InsertCell cell $ Query Qu.initialQueryRec) B.glyphiconHdd
              ]
       ]
 
