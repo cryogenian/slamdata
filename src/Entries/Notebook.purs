@@ -2,6 +2,7 @@ module Entries.Notebook where
 
 import Ace.Types (ACE())
 import App.Notebook (app)
+import Control.Timer (timeout)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Ref (modifyRef, newRef)
 import Data.DOM.Simple.Navigator (platform)
@@ -29,8 +30,10 @@ main :: Eff (NotebookAppEff (ace :: ACE)) Unit
 main = onLoad $ void $ do
   stateKnot <- newRef initialState
   aceKnot <- newRef M.empty
+  t <- timeout 0 (pure unit)
+  autosaveTimer <- newRef t
   echartsKnot <- EC.ref
-  let post = postRender stateKnot aceKnot echartsKnot
+  let post = postRender stateKnot aceKnot echartsKnot autosaveTimer
   Tuple node driver <- runUIWith app post
   mountUI node
   platformName <- navigator globalWindow >>= platform
@@ -43,8 +46,9 @@ main = onLoad $ void $ do
   D.tickDriver driver
   D.driver stateKnot driver
   where
-  postRender sKnot aKnot eKnot input node driver = do
+  postRender sKnot aKnot eKnot autosaveTimer input node driver = do
     modifyRef sKnot (flip updateState input)
+    D.notebookAutosave sKnot autosaveTimer input driver
     DC.driveCellContent input driver
     A.acePostRender aKnot input node driver
     EC.echartsPostRender eKnot input node driver

@@ -33,7 +33,9 @@ _VarMap = prism' VarMap $ \p -> case p of
   _ -> Nothing
 
 instance encodeJsonPort :: EncodeJson Port where
-  encodeJson Closed = jsonEmptyObject
+  encodeJson Closed
+    =  "type" := "closed"
+    ~> jsonEmptyObject
   encodeJson (PortResource res)
     =  "type" := "resource"
     ~> "res" := encodeJson res
