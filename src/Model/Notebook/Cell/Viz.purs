@@ -1,17 +1,21 @@
 module Model.Notebook.Cell.Viz where
 
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import ECharts.Chart
 import ECharts.Options
 
 import Data.Argonaut.JCursor (JCursor())
 import Data.Map (Map(), empty, keys)
-import Model.Notebook.ECharts (Semanthic(..), Axis(..))
+import Model.Notebook.ECharts (Semanthic(..), Axis(..), dependsOn)
 import Data.Argonaut.JCursor (JCursor())
 import Optic.Core (Lens(), lens)
 import qualified Data.Set as S 
 import Data.Argonaut.Core (JArray())
-import Data.Array (findIndex)
+import Data.Array (findIndex, filter, head, sort, reverse, length)
+import Data.Foldable (foldl)
+
+
+
 
 data ChartType
   = Pie
@@ -47,92 +51,162 @@ str2chartType str = case str of
   "bar" -> pure Bar
   _ -> Nothing
 
-type ChartOptions =
-  { roseType :: String
-  , donutRatio :: Number
-  , minimalAngle :: Number
-  , smooth :: Boolean
-  , symbolSize :: Number
-  , barGap :: Number
-  , xAxisPosition :: String
-  , yAxisPosition :: String
+
+type Selection a =
+  { variants :: [a]
+  , selection :: Maybe a
   }
 
-initialChartOptions :: ChartOptions
-initialChartOptions =
-  { roseType: "none"
-  , donutRatio: 0
-  , minimalAngle: 0
-  , smooth: false
-  , symbolSize: 0
-  , barGap: 30
-  , yAxisPosition: "left"
-  , xAxisPosition: "bottom"
+_variants :: forall a b r. Lens {variants :: a | r} {variants :: b |r} a b 
+_variants = lens _.variants _{variants = _}
+
+_selection :: forall a b r. Lens {selection :: a | r} {selection :: b |r} a b 
+_selection = lens _.selection _{selection = _} 
+
+initialSelection :: forall a. Selection a
+initialSelection = {variants: [], selection: Nothing}
+
+newSelection :: forall a. [a] -> Selection a
+newSelection as = {variants: as, selection: Nothing}
+
+except :: forall a. (Eq a) => Selection a -> Selection a -> Selection a
+except sel sel' = sel{variants = except' sel.variants sel'}
+
+except' :: forall a. (Eq a) => [a] -> Selection a -> [a]
+except' lst sel = filter (\x -> Just x /= sel.selection) lst
+
+type JSelection = Selection JCursor 
+
+depends :: JSelection -> [JCursor] -> [JCursor]
+depends sel lst = maybe lst go sel.selection
+  where
+  go y = filter (dependsOn y) lst
+
+data Aggregation
+  = Maximum 
+  | Minimum  
+  | Average 
+  | Sum
+  | Product
+
+aggregation2str :: Aggregation -> String
+aggregation2str Maximum = "⋀"
+aggregation2str Minimum = "⋁"
+aggregation2str Average = "μ"
+aggregation2str Sum = "Σ"
+aggregation2str Product = "Π"
+
+allAggregation :: [Aggregation]
+allAggregation = [Maximum, Minimum, Average, Sum, Product]
+
+aggregationDefault :: Aggregation
+aggregationDefault = Sum
+
+runAggregation :: Aggregation -> [Number] -> Number
+runAggregation Maximum nums = fromMaybe 0 $ head $ reverse (sort nums)
+runAggregation Minimum nums = fromMaybe 0 $ head (sort nums)
+runAggregation Average nums = (foldl (+) 0 nums) / (length nums)
+runAggregation Sum nums = foldl (+) 0 nums
+runAggregation Product nums = foldl (*) 1 nums 
+
+
+type PieConfiguration =
+  { cats :: JSelection
+  , firstMeasures :: JSelection
+  , firstSeries :: JSelection
+  , secondSeries :: JSelection
+  , firstAggregation :: Aggregation
   }
 
-_roseType :: forall a b r. Lens {roseType :: a | r} {roseType :: b | r} a b 
-_roseType = lens _.roseType _{roseType = _}
+initialPieConfiguration :: PieConfiguration
+initialPieConfiguration =
+  { cats: initialSelection
+  , firstMeasures: initialSelection
+  , firstSeries: initialSelection
+  , secondSeries: initialSelection
+  , firstAggregation: aggregationDefault
+  }
 
-_donutRatio :: forall a b r. Lens {donutRatio :: a | r} {donutRatio :: b |r} a b 
-_donutRatio = lens _.donutRatio _{donutRatio = _} 
+type LineConfiguration =
+  { dims :: JSelection
+  , firstMeasures :: JSelection
+  , secondMeasures :: JSelection
+  , firstSeries :: JSelection
+  , secondSeries :: JSelection
+  , firstAggregation :: Aggregation
+  , secondAggregation :: Aggregation
+  }
 
-_minimalAngle :: forall a b r. Lens {minimalAngle :: a | r} {minimalAngle :: b|r} a b
-_minimalAngle = lens _.minimalAngle _{minimalAngle = _}
+initialLineConfiguration :: LineConfiguration
+initialLineConfiguration =
+  { dims: initialSelection
+  , firstMeasures: initialSelection
+  , secondMeasures: initialSelection
+  , firstSeries: initialSelection
+  , secondSeries: initialSelection
+  , firstAggregation: aggregationDefault
+  , secondAggregation: aggregationDefault
+  }
 
-_smooth :: forall a b r. Lens {smooth :: a | r} {smooth :: b | r} a b 
-_smooth = lens _.smooth _{smooth = _}
+type BarConfiguration = PieConfiguration
 
-_symbolSize :: forall a b r. Lens {symbolSize :: a | r} {symbolSize :: b | r} a b 
-_symbolSize = lens _.symbolSize _{symbolSize = _}
+initialBarConfiguration :: BarConfiguration
+initialBarConfiguration = initialPieConfiguration 
 
-_barGap :: forall a b r. Lens {barGap :: a | r} {barGap :: b | r} a b 
-_barGap = lens _.barGap _{barGap = _}
+_cats :: forall a b r. Lens {cats::a|r} {cats::b|r} a b 
+_cats = lens _.cats _{cats = _}
 
-_xAxisPosition :: forall a b r. Lens {xAxisPosition :: a | r} {xAxisPosition :: b | r} a b 
-_xAxisPosition = lens _.xAxisPosition _{xAxisPosition = _} 
+_dims :: forall a b r. Lens {dims::a|r} {dims::b|r} a b
+_dims = lens _.dims _{dims = _} 
 
-_yAxisPosition :: forall a b r. Lens {yAxisPosition :: a | r} {yAxisPosition :: b |r} a b 
-_yAxisPosition = lens _.yAxisPosition _{yAxisPosition = _}
+_firstMeasures :: forall a b r. Lens {firstMeasures :: a |r} {firstMeasures :: b |r} a b 
+_firstMeasures = lens _.firstMeasures _{firstMeasures = _}
+
+_secondMeasures :: forall a b r. Lens {secondMeasures :: a |r} {secondMeasures :: b |r} a b
+_secondMeasures = lens _.secondMeasures _{secondMeasures = _}
+
+_firstSeries :: forall a b r. Lens {firstSeries :: a |r} {firstSeries :: b |r} a b 
+_firstSeries = lens _.firstSeries _{firstSeries = _} 
+
+_secondSeries :: forall a b r. Lens {secondSeries :: a|r} {secondSeries :: b|r} a b 
+_secondSeries = lens _.secondSeries _{secondSeries = _}
+
+--_firstAggregation :: forall a b r. Lens {firstAggregation :: a |r} {firstAggregation :: b | r} a b 
+_firstAggregation = lens _.firstAggregation _{firstAggregation = _} 
+
+--_secondAggregation :: forall a b r. Lens {secondAggregation :: a } {secondAggregation :: b | r} a b
+_secondAggregation = lens _.secondAggregation _{secondAggregation = _} 
+
+
 
 type VizRec =
   { output :: Option
+  , all :: Map JCursor Axis
   , sample :: Map JCursor Axis
-  , all :: Map JCursor Axis 
   , error :: String
-  , xs :: [JCursor]
-  , ys :: [JCursor]
-  , xCursor :: Maybe JCursor
-  , yCursor :: Maybe JCursor
   , selectedFlag :: Boolean
   , availableChartTypes :: S.Set ChartType
   , chartType :: ChartType
-  , chartOptions :: ChartOptions
+    -- product because we don't need to drop selection when user choice
+    -- another type of chart
+  , pieConfiguration :: PieConfiguration
+  , lineConfiguration :: LineConfiguration
+  , barConfiguration :: BarConfiguration 
   }
 
 initialVizRec :: VizRec
 initialVizRec =
   { output: Option optionDefault
-  , sample: empty
   , all: empty
-  , error: ""
-  , xCursor: Nothing
-  , yCursor: Nothing
-  , xs: [ ]
-  , ys: [ ]
+  , sample: empty
+  , error: "No available chart types"
   , selectedFlag: false
   , availableChartTypes: S.empty
   , chartType: Pie
-  , chartOptions: initialChartOptions
+  , pieConfiguration: initialPieConfiguration
+  , lineConfiguration: initialLineConfiguration
+  , barConfiguration: initialBarConfiguration
   }
-
-ixx :: VizRec -> Number
-ixx r =
-  maybe (-1) (\x -> findIndex (\y -> show y == show x) (keys r.all))  r.xCursor
-
-ixy :: VizRec -> Number
-ixy r =
-  maybe (-1) (\x -> findIndex (\y -> show y == show x) (keys r.all)) r.yCursor
-
 
 _output :: forall a b r. Lens {output :: a | r} {output :: b | r} a b 
 _output = lens _.output _{output = _} 
@@ -146,17 +220,6 @@ _sample = lens _.sample _{sample = _}
 _all :: forall a b r. Lens {all :: a | r} {all :: b |r} a b 
 _all = lens _.all _{all = _}
 
-_xs :: forall a b r. Lens {xs :: a | r} {xs :: b | r} a b 
-_xs = lens _.xs _{xs = _} 
-
-_ys :: forall a b r. Lens {ys :: a | r } {ys :: b | r} a b 
-_ys = lens _.ys _{ys = _} 
-
-_xCursor :: forall a b r. Lens {xCursor :: a | r} {xCursor :: b | r} a b 
-_xCursor = lens _.xCursor _{xCursor = _} 
-
-_yCursor :: forall a b r. Lens {yCursor :: a | r} {yCursor :: b | r} a b 
-_yCursor = lens _.yCursor _{yCursor = _}
 
 _selectedFlag :: forall a b r. Lens {selectedFlag :: a | r} {selectedFlag :: b |r} a b
 _selectedFlag = lens _.selectedFlag _{selectedFlag = _}
@@ -167,7 +230,12 @@ _chartType = lens _.chartType _{chartType = _}
 _availableChartTypes :: forall a b r. Lens {availableChartTypes :: a | r} {availableChartTypes :: b | r} a b 
 _availableChartTypes = lens _.availableChartTypes _{availableChartTypes = _}
 
-_chartOptions :: forall a b r. Lens {chartOptions :: a | r} {chartOptions :: b |r} a b 
-_chartOptions = lens _.chartOptions _{chartOptions = _}
 
+_pieConfiguration :: forall a b r. Lens {pieConfiguration :: a |r} {pieConfiguration :: b|r} a b 
+_pieConfiguration = lens _.pieConfiguration _{pieConfiguration = _} 
 
+_lineConfiguration :: forall a b r. Lens {lineConfiguration :: a |r} {lineConfiguration :: b|r} a b 
+_lineConfiguration = lens _.lineConfiguration _{lineConfiguration = _} 
+
+_barConfiguration :: forall a b r. Lens {barConfiguration :: a |r} {barConfiguration :: b |r} a b 
+_barConfiguration = lens _.barConfiguration _{barConfiguration = _}

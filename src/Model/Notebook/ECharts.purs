@@ -182,7 +182,24 @@ instance semanthicEq :: Eq Semanthic where
   (==) (Time t) (Time t') = t == t'
   (==) (Category c) (Category c') = c == c'
   (==) _ _ = false
-  (/=) a b = not $ a == b 
+  (/=) a b = not $ a == b
+
+instance semanthicOrd :: Ord Semanthic where
+  compare (Time t) (Time t') = compare t t'
+  compare (Time _) _ = LT
+  compare (Money v a) (Money v' a') =
+    if curComp == EQ
+    then compare v v'
+    else curComp
+    where
+    curComp = compare a a'
+  compare (Money _ _) _ = LT
+  compare (Percent v) (Percent v') = compare v v'
+  compare (Percent _) _ = LT
+  compare (Value v) (Value v') = compare v v'
+  compare (Value _) _ = LT
+  compare (Category c) (Category c') = compare c c'
+
 
 toPrims' :: JArray -> [Tuple JCursor JsonPrim]
 toPrims' arr = (nubBy (on (==) fst)) <<< concat $ (toPrims <$> arr)

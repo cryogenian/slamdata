@@ -523,8 +523,42 @@ ol.breadcrumb {
     }
 }
 
-.chart-configure-form {
-    width: 568px;
+form.chart-configure-form {
+    padding-bottom: 10px;
+    label.control-label {
+        width: 70px;
+    }
+    select.form-control {
+        width: ~"calc(100% - 70px)";
+        display: inline-block;
+    }
+}
+
+div.viz-cell-editor {
+    min-height: 160px;
+    padding-right: 80px;
+    .viz-chart-type-selector {
+        position: absolute;
+        left: 13px;
+        width: 41px;
+        height: 160px;
+        background-color: #f0f0f0;
+        img {
+            width: 41px;
+            padding-left: 4px;
+            padding-right: 4px;
+            bacground-color: transparent;
+            padding-bottom: 10px;
+            padding-top: 10px;
+            cursor: pointer;
+            &.active {
+                background-color: white;
+            }
+        }
+    }
+    .viz-chart-configuration {
+        margin-left: 40px;
+    }
 }
 
 @import "bootstrap-overloads";

@@ -1,12 +1,13 @@
 module View.Notebook.Cell.Viz (vizChoices, vizOutput) where
 
+import Control.Plus (empty)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 
 import qualified Data.StrMap as M 
-import Optic.Core ((^.), (..))
+import Optic.Core ((^.), (..), LensP(), (.~))
 import Optic.Fold ((^?))
 import Optic.Extended (TraversalP())
-import Data.Array (range, zipWith, length, drop, take)
+import Data.Array (range, zipWith, length, drop, take, (!!), null)
 import Data.Argonaut.JCursor (JCursor())
 import qualified Data.Set as S 
 
@@ -29,305 +30,205 @@ import Model.Notebook.ECharts (Axis(..))
 import Model.Notebook.Cell (Cell(), _cellId, _content, _Visualize)
 
 import Controller.Notebook.Common (I())
-import View.Common (row)
+import View.Common (row, row')
 import qualified View.Css as VC 
 import View.Notebook.Common (HTML(), dataCellId, dataCellType, dataEChartsId)
 import Data.Foreign.Class ()
 import Utils.Halide (max, min, step)
 
--- to many imports from it to make it explicit
+-- to many imports from thiese modules to make them explicit
 import Model.Notebook.Cell.Viz
 import Controller.Notebook.Cell.Viz
+import Utils (s2i)
 
 vizChoices :: forall e. Cell -> HTML e
-vizChoices cell = 
+vizChoices cell =
+  H.div_ 
   case cell ^. _err of
     "" -> correct cell
     str -> errored str
 
-correct :: forall e. Cell -> HTML e
+correct :: forall e. Cell -> [HTML e]
 correct cell =
-  row 
-  [ H.form [ A.classes [ VC.chartConfigureForm ] ]
-    ([ H.div [ A.classes [ B.formGroup ] ]
-      (maybe [] (\s -> chartOption cell <$> S.toList s) 
-       (cell ^? _content.._Visualize.._availableChartTypes))
-     ] <>
-     (maybe [] (chartConfiguration cell)
-      (cell ^? _content.._Visualize.._chartType)))
+  maybe [ ] go $ (cell ^? _content.._Visualize)
+  where
+  go :: VizRec -> [HTML e]
+  go r = 
+    [H.div [ A.classes [ VC.vizCellEditor ] ] $
+     (chartTypeSelector cell r) <>
+     (chartConfiguration cell r)
+    ]
+
+chartTypeSelector :: forall e. Cell -> VizRec -> [HTML e]
+chartTypeSelector cell r =
+  [H.div [ A.classes [ VC.vizChartTypeSelector ] ]
+   (img <$> S.toList (r ^._availableChartTypes))
   ] 
-  
-chartConfiguration :: forall e. Cell -> ChartType -> [HTML e]
-chartConfiguration cell chartType = 
-  case chartType of
-    Pie -> pieConfiguration cell
-    Line -> lineConfiguration cell
-    Bar -> barConfiguration cell
+  where
+  img :: ChartType -> HTML e
+  img ct =
+    H.img [ A.src (src ct)
+          , A.classes (if (r ^._chartType) == ct
+                       then [B.active]
+                       else [])
+          , E.onClick (\_ -> pure $ selectChartType cell ct)
+          ]
+    [ ]
+  src :: ChartType -> String
+  src Pie = "img/pie.svg"
+  src Line = "img/line.svg"
+  src Bar = "img/bar.svg"
 
-sourceSelect :: forall e. String -> String -> Cell -> [HTML e]
-sourceSelect firstLabel secondLabel cell = 
-  [ H.div [ A.classes [B.formGroup] ]
-    [ H.label_ [ H.text firstLabel ]
-    , H.select [ A.classes [ B.formControl ]
-               , E.onInput (\ix -> pure $ handleXAxisSelected ix cell)
-               ]
-      ((defaultXOption cell) <> (xOptions cell))
-    ]
-  , H.div [ A.classes [ B.formGroup ] ]
-    [ H.label_ [ H.text secondLabel ]
-    , H.select [ A.classes [ B.formControl ]
-               , E.onInput (\ix -> pure $ handleYAxisSelected ix cell)
-               ]
-      ((defaultYOption cell) <> (yOptions cell))
-    ]
+chartConfiguration :: forall e. Cell -> VizRec -> [HTML e]
+chartConfiguration cell r =
+  [H.div [ A.classes [ VC.vizChartConfiguration ] ]
+   [ pieConfiguration cell r (ct == Pie) 
+   , lineConfiguration cell r (ct == Line) 
+   , barConfiguration cell r (ct == Bar)
+   ] 
   ]
+  where ct = r ^._chartType
 
-defaultOption :: forall e. String -> (VizRec -> Number) -> Cell -> [HTML e]
-defaultOption txt ix cell =
-  maybe [] go (cell ^? _content.._Visualize)
-  where
-  go :: VizRec -> [HTML e]
-  go r =
-    [ H.option [ A.value "-1"
-               , A.selected (-1 == ix r)
-               ]
-      [ H.text txt]
-    ]
-
-defaultXOption :: forall e. Cell -> [HTML e]
-defaultXOption = defaultOption "Please select x-axis/category source" ixx
-
-defaultYOption :: forall e. Cell -> [HTML e]
-defaultYOption = defaultOption "Please select y-axis/value source" ixy
-
-xOptions :: forall e. Cell -> [HTML e]
-xOptions cell =
-  maybe [] go (cell ^? _content.._Visualize)
-  where
-  go :: VizRec -> [HTML e]
-  go r = zipWith (optionX r) xs (range 0 (length xs))
-    where
-    xs :: [JCursor]
-    xs = r ^. _xs
-    
-yOptions :: forall e. Cell -> [HTML e]
-yOptions cell =
-  maybe [] go (cell ^? _content.._Visualize)
-  where
-  go :: VizRec -> [HTML e]
-  go r = zipWith (optionY r) ys (range 0 (length ys))
-    where
-    ys :: [JCursor]
-    ys = r ^. _ys
-
-optionX :: forall e. VizRec -> JCursor -> Number -> HTML e
-optionX r cursor number =
-  H.option [ A.value (show number)
-           , A.selected (number == ixx r)
-           ]
-  [ H.text (show cursor) ]
-
-optionY :: forall e. VizRec -> JCursor -> Number -> HTML e
-optionY r cursor number = 
-  H.option [ A.value (show number)
-           , A.selected (number == ixy r)
-           ]
-  [ H.text (show cursor) ]
-
-
-pieConfiguration :: forall e. Cell -> [HTML e]
-pieConfiguration cell =
-  (sourceSelect "Category axis" "Value axis" cell) <>
-  [ H.div [ A.classes [ B.formGroup ] ]
-    [ H.label_ [ H.text "Pie rose type" ] ]
-  , H.div [ A.classes [ B.formGroup ] ]
-    [ H.label [ A.classes [ B.radioInline ] ]
-      [ H.input [ A.type_ "radio"
-                , A.value "area"
-                , A.name "pie-rose"
-                , A.selected (Just "area" == currentRoseType) 
-                , E.onClick (\_ -> pure $ setPieRose cell "area")
-                ]  [ ]
-      , H.text "Area"
+pieConfiguration :: forall e. Cell -> VizRec -> Boolean ->  HTML e
+pieConfiguration cell r visible =
+  H.div [ A.classes (if visible then [] else [B.hide]) ]
+  [ row
+    [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
+      [ categoryLabel
+      , (options cell r (_pieConfiguration.._cats))
       ]
-    , H.label [ A.classes [ B.radioInline ] ]
-      [ H.input [ A.type_ "radio"
-                , A.value "radius"
-                , A.name "pie-rose"
-                , A.selected (Just "radius" == currentRoseType)
-                , E.onClick (\_ -> pure $ setPieRose cell "radius")
-                ] [ ]
-      , H.text "Radius"
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+      [ measureLabel
+      , (options cell r (_pieConfiguration.._firstMeasures))
       ]
-    , H.label [ A.classes [ B.radioInline ] ]
-      [ H.input [ A.type_ "radio"
-                , A.value "none"
-                , A.name "pie-rose"
-                , A.selected (Just "none" == currentRoseType ||
-                              Nothing == currentRoseType)
-                , E.onClick (\_ -> pure $ setPieRose cell "none")
-                ] [ ]
-      , H.text "None"
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+      [ seriesLabel
+      , (options cell r (_pieConfiguration.._firstSeries))
       ]
     ]
-  , H.div [ A.classes [ B.formGroup ] ]
-    [ H.label_ [ H.text "donut radius ratio" ]
-    , H.input [ A.type_ "number"
-              , A.classes [ B.formControl ]
-              , A.value (show currentDonutRatio)
-              , step 1
-              , min 0
-              , max 100
-              , E.onInput (\v -> pure $ setDonutRatio cell v)  
-              ] [ ]
-    ]
-  , H.div [ A.classes [ B.formGroup ] ]
-    [ H.label_ [ H.text "minimal angle" ]
-    , H.input [ A.type_ "number"
-              , A.classes [ B.formControl ]
-              , A.value (show currentMinAngle)
-              , min 0
-              , max 360
-              , E.onInput (\v -> pure $ setMinimalAngle cell v)
-              ] [ ]
+  , row
+    [ H.form [ A.classes [ B.colXs4, B.colXsOffset8, VC.chartConfigureForm ] ]
+      [ seriesLabel
+      , (options cell r (_pieConfiguration.._secondSeries))
+      ]
     ] 
   ]
+
+option :: forall e. Maybe JCursor -> JCursor -> Number -> HTML e
+option selected cursor ix =
+  H.option [ A.selected (Just cursor == selected) 
+           , A.value (show ix) ]
+  [ H.text (show cursor) ]
+
+defaultOption :: forall e. Maybe JCursor ->  HTML e
+defaultOption selected =
+  H.option [ A.selected (selected == Nothing)
+           , A.value "-1" ]
+  [ H.text "Select axis source" ]
+
+options :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> HTML e
+options cell r _sel =
+  H.select [ A.classes [ B.formControl ]
+           , E.onInput (\ix -> pure $ updateR (byIx ix vars))
+           , A.disabled (length vars < 1)
+           ] 
+  ((defaultOption selected):(zipWith (option selected) vars (range 0 (length vars))))
   where
-  currentRoseType :: Maybe String
-  currentRoseType = cell ^? _chartOpts.._roseType
+  vars :: [JCursor]
+  vars = r ^._sel.._variants
 
-  currentDonutRatio :: Number
-  currentDonutRatio = fromMaybe 0 (cell ^? _chartOpts.._donutRatio)
+  selected :: Maybe JCursor
+  selected = r ^._sel.._selection
 
-  currentMinAngle :: Number
-  currentMinAngle = fromMaybe 0 (cell ^? _chartOpts.._minimalAngle)
-    
+  byIx :: String -> [JCursor] -> Maybe JCursor
+  byIx ix xs = s2i ix >>= (xs !!)
 
-lineConfiguration :: forall e. Cell -> [HTML e]
-lineConfiguration cell =
-  (sourceSelect "X-axis" "Y-axis" cell) <>
-  ([ H.div [ A.classes [ B.checkbox ] ]
-    [ H.label_
-      [ H.input [ A.type_ "checkbox"
-                , A.checked currentSmooth
-                , E.onChecked (\v -> pure $ toggleSmooth cell v) ] [ ]
-      , H.text "smooth"
-      ]
-    ]
-  , H.div [ A.classes [ B.formGroup ] ]
-    [ H.label_ [ H.text "symbol size" ]
-    , H.input [ A.type_ "number"
-              , A.classes [ B.formControl ]
-              , A.value (show currentSymbolSize)
-              , min 0
-              , max 20
-              , step 1
-              , E.onInput (\v -> pure $ setSymbolSize cell v)
-              ]
-      [ ]
-    ]
-  ]) <>
-  (configureAxisPositions cell)
-  where
-  currentSmooth :: Boolean
-  currentSmooth = fromMaybe false (cell ^? _chartOpts.._smooth)
-
-  currentSymbolSize :: Number
-  currentSymbolSize = fromMaybe 0 (cell ^? _chartOpts.._symbolSize)
-
-barConfiguration :: forall e. Cell -> [HTML e]
-barConfiguration cell =
-  (sourceSelect "X-axis" "Y-axis" cell) <>
-  ([ H.div [ A.classes [ B.formGroup ] ]
-     [ H.label_ [ H.text "Bar gap" ]
-     , H.input [ A.type_ "number"
-               , A.classes [ B.formControl ]
-               , A.value (show currentBarGap)
-               , min 0
-               , max 100
-               , step 1
-               , E.onInput (\v -> pure $ setBarGap cell v) ] [ ]
-     ] 
-   ]) <>
-  (configureAxisPositions cell)
-  where
-  currentBarGap :: Number
-  currentBarGap = fromMaybe 30 (cell ^? _chartOpts.._barGap)
-
-configureAxisPositions :: forall e. Cell -> [HTML e]
-configureAxisPositions cell =
-  [ H.div [ A.classes [ B.formGroup ] ]
-    [ H.label_ [ H.text "Y-axis position" ]
-    ] 
-  , H.div [ A.classes [ B.formGroup ] ] 
-    [ H.label [ A.classes [ B.radioInline ] ]
-      [ H.input [ A.type_ "radio"
-                , A.value "left"
-                , A.name "y-axis-position"
-                , A.selected (currentYAxisPosition == "left")
-                , E.onClick (\_ -> pure $ setYAxisPosition cell "left") ] [ ]
-      , H.text "Left"
-      ]
-    , H.label [ A.classes [ B.radioInline ] ]
-      [ H.input [ A.type_ "radio"
-                , A.value "right"
-                , A.name "y-axis-position"
-                , A.selected (currentYAxisPosition == "right")
-                , E.onClick (\_ -> pure $ setYAxisPosition cell "right") ] [ ]
-      , H.text "Right"
-      ]
-    ]
-  , H.div [ A.classes [ B.formGroup ] ]
-    [ H.label_ [ H.text "X-axis position" ]
-    ]
-  , H.div [ A.classes [ B.formGroup ] ]
-    [ H.label [ A.classes [ B.radioInline ] ]
-      [ H.input [ A.type_ "radio"
-                , A.value "bottom"
-                , A.name "x-axis-position"
-                , A.selected (currentXAxisPosition == "bottom")
-                , E.onClick (\_ -> pure $ setXAxisPosition cell "bottom") ] [ ]
-      , H.text "Bottom"
-      ]
-    , H.label [ A.classes [ B.radioInline ] ]
-      [ H.input [ A.type_ "radio"
-                , A.value "top"
-                , A.name "x-axis-position"
-                , A.selected (currentXAxisPosition == "top")
-                , E.onClick (\_ -> pure $ setXAxisPosition cell "top") ] [ ]
-      , H.text "Top"
-      ]
-    ]
-  ]
-  where
-  currentXAxisPosition :: String
-  currentXAxisPosition = fromMaybe "bottom" (cell ^? _chartOpts.._xAxisPosition)
-
-  currentYAxisPosition :: String
-  currentYAxisPosition = fromMaybe "top" (cell ^? _chartOpts.._yAxisPosition)
+  updateR :: Maybe JCursor -> I e
+  updateR cursor =
+    updateViz cell (r # _sel.._selection .~ cursor)
 
   
-chartOption :: forall e. Cell -> ChartType -> HTML e 
-chartOption cell chartType =
-  H.label [ A.classes [ B.radioInline ] ]
-  [ H.input [ A.type_ "radio"
-            , A.value txt
-            , A.name "chart-type"
-            , E.onClick (\_ -> pure $ handleChartType chartType cell)
-            ] [ ]
-  , H.text txt
+barConfiguration :: forall e. Cell -> VizRec -> Boolean -> HTML e
+barConfiguration cell r visible = 
+  H.div [ A.classes (if visible then [] else [B.hide]) ]
+  [ row
+    [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
+      [ categoryLabel
+      , (options cell r (_barConfiguration.._cats))
+      ]
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+      [ measureLabel
+      , (options cell r (_barConfiguration.._firstMeasures))
+      ]
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+      [ seriesLabel
+      , (options cell r (_barConfiguration.._firstSeries))
+      ]
+    ]
+  , row
+    [ H.form [ A.classes [ B.colXs4, B.colXsOffset8, VC.chartConfigureForm ] ]
+      [ seriesLabel
+      , (options cell r (_barConfiguration.._secondSeries))
+      ]
+    ] 
   ]
-  where txt = chartType2str chartType
+ 
+lineConfiguration :: forall e. Cell -> VizRec -> Boolean -> HTML e
+lineConfiguration cell r visible =
+  H.div [ A.classes (if visible then [] else [B.hide]) ]
+  [ row
+    [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
+      [ dimensionLabel
+      , (options cell r (_lineConfiguration.._dims))
+      ]
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+      [ measureLabel
+      , (options cell r (_lineConfiguration.._firstMeasures))
+      ]
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+      [ seriesLabel
+      , (options cell r (_lineConfiguration.._firstSeries))
+      ]
+    ]
+  , row
+    [ H.form [ A.classes [ B.colXs4, B.colXsOffset4, VC.chartConfigureForm ] ]
+      [ measureLabel
+      , (options cell r (_lineConfiguration.._secondMeasures))
+      ]
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+      [ seriesLabel
+      , (options cell r (_lineConfiguration.._secondSeries))
+      ] 
+    ] 
+  ]
+
+seriesLabel :: forall e. HTML e
+seriesLabel = label "Series"
+
+measureLabel :: forall e. HTML e
+measureLabel = label "Measure"
+
+categoryLabel :: forall e. HTML e
+categoryLabel = label "Category"
+
+dimensionLabel :: forall e. HTML e
+dimensionLabel = label "Dimension"
+
+label :: forall e. String -> HTML e
+label str =
+  H.label [ A.classes [ B.controlLabel ] ]
+  [ H.text str ]
 
 
-
-errored :: forall e. String -> HTML e
+  
+errored :: forall e. String -> [HTML e]
 errored message =
-  H.div [ A.classes [ B.alert, B.alertDanger ]
-        , CSS.style do
-             marginBottom $ px 12
-        ]
-  [ H.text message ]
+  [H.div [ A.classes [ B.alert, B.alertDanger ]
+         , CSS.style do
+              marginBottom $ px 12
+         ]
+   [ H.text message ]
+  ]
   
 
 vizOutput :: forall e. Cell -> [ HTML e ]
@@ -353,16 +254,4 @@ _viz = _content .. _Visualize
 
 _err :: TraversalP Cell String
 _err = _viz .. _error
-
-_xxs :: TraversalP Cell [JCursor]
-_xxs = _viz .. _xs
-
-_yys :: TraversalP Cell [JCursor]
-_yys = _viz .._ys
-
-_cursorX :: TraversalP Cell (Maybe JCursor)
-_cursorX = _viz .. _xCursor
-
-_cursorY :: TraversalP Cell (Maybe JCursor)
-_cursorY = _viz .. _yCursor
 
