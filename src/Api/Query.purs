@@ -143,7 +143,7 @@ extractJArray =
   (foldl folder []) <<< (jsonParser <$>) <<< (split "\n")
   where
   folder :: JArray -> Either _ Json -> JArray
-  folder agg (Right j) = j:agg
+  folder agg (Right j) = agg ++ [j]
   folder agg _ = agg
 
 
