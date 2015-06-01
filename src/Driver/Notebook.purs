@@ -53,27 +53,8 @@ driver :: forall e. RefVal State
 driver ref k =
   matches' decodeURIPath routing \old new -> do
     case new of
-      NotebookRoute res editable -> do
-        state <- readRef ref
-        let name = dropNotebookExt (resourceName res)
-            path = resourceDir res
-            oldNotebook = state ^. _notebook
-            pathChanged = oldNotebook ^. _path /= path
-            oldName = theseLeft (oldNotebook ^. _name)
-            nameChanged = oldName /= Nothing && oldName /= Just name
-        when (pathChanged || nameChanged) do
-          runAff' (loadNotebook res) \result -> do
-            update $ (_loaded .~ true)
-                  .. (_editable .~ isEdit editable)
-            case result of
-              Left err -> update (_error ?~ message err)
-              Right nb -> do
-                update (_notebook .~ nb)
-                for_ (nb ^. _cells) \cell ->
-                  when (cell ^. _hasRun) $
-                    runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $
-                      requestCellContent cell
-        handleShortcuts ref k
+      CellRoute res cellId editable -> notebook res editable $ Just cellId
+      NotebookRoute res editable -> notebook res editable Nothing
       ExploreRoute res -> do
         let newNotebook = emptyNotebook # _path .~ resourceDir res
             newCell = Explore (initialExploreRec # _input .. _file .~ Right res)
@@ -86,8 +67,29 @@ driver ref k =
             runEvent (\_ -> log "Error in runExplore in driver") k $
               run cell `andThen` \_ -> runExplore cell
         handleShortcuts ref k
-      _ -> update (_error ?~ "Incorrect path")
-   where update = k <<< WithState
+   where notebook res editable viewing = do
+           state <- readRef ref
+           let name = dropNotebookExt (resourceName res)
+               path = resourceDir res
+               oldNotebook = state ^. _notebook
+               pathChanged = oldNotebook ^. _path /= path
+               oldName = theseLeft (oldNotebook ^. _name)
+               nameChanged = oldName /= Nothing && oldName /= Just name
+           when (pathChanged || nameChanged) do
+             runAff' (loadNotebook res) \result -> do
+               update $ (_loaded .~ true)
+                     .. (_editable .~ isEdit editable)
+                     .. (_viewingCell .~ viewing)
+               case result of
+                 Left err -> update (_error ?~ message err)
+                 Right nb -> do
+                   update (_notebook .~ nb)
+                   for_ (nb ^. _cells) \cell ->
+                     when (cell ^. _hasRun) $
+                       runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $
+                         requestCellContent cell
+           handleShortcuts ref k
+         update = k <<< WithState
 
 handleShortcuts :: forall e. RefVal State
                           -> Driver Input (NotebookComponentEff e)
