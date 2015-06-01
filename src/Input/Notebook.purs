@@ -109,6 +109,8 @@ updateState state (CellSlamDownEvent cellId event) =
 
 updateState state i = state
 
+import Debug.Foreign
+
 toStrMap :: forall a. M.Map String a -> SM.StrMap a
 toStrMap = SM.fromList <<< M.toList
 
