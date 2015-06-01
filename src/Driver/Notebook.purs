@@ -101,8 +101,6 @@ driver ref k =
          update = k <<< WithState
          cellUpdate cell = k <<< (UpdateCell (cell ^._cellId))
 
-import Debug.Foreign
-
 handleShortcuts :: forall e. RefVal State
                           -> Driver Input (NotebookComponentEff e)
                           -> Eff (NotebookAppEff e) Unit
