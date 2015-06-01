@@ -4,6 +4,7 @@ import Data.Date (Date())
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy
 import Data.Platform (Platform(..))
+import Model.Notebook.Cell (CellId())
 import Model.Notebook.Dialog
 import Model.Notebook.Domain (Notebook(), emptyNotebook)
 import Model.Notebook.Menu (DropdownItem(), initialDropdowns)
@@ -16,6 +17,7 @@ type State =
   , error :: Maybe String
   , editable :: Boolean
   , notebook :: Notebook
+  , viewingCell :: Maybe CellId
   , tickDate :: Maybe Date
   , platform :: Platform
   , dialog :: Maybe Dialog
@@ -32,6 +34,9 @@ _error = lens _.error _{error = _}
 
 _editable :: LensP State Boolean
 _editable = lens _.editable _{editable = _}
+
+_viewingCell :: LensP State (Maybe CellId)
+_viewingCell = lens _.viewingCell _{viewingCell = _}
 
 _notebook :: LensP State Notebook
 _notebook = lens _.notebook _{notebook = _}
@@ -52,6 +57,7 @@ initialState =
   , error: Nothing
   , editable: true
   , notebook: emptyNotebook
+  , viewingCell: Nothing
   , tickDate: Nothing
   , platform: Other
   , dialog: Nothing

@@ -3,6 +3,7 @@ module View.Notebook.Cell (cell) where
 import Control.Functor (($>))
 import Controller.Notebook.Cell
 import Controller.Notebook.Cell.Viz (insertViz)
+import Css.Display
 import Data.Array (length, null, catMaybes)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Function (on)
@@ -26,6 +27,7 @@ import View.Notebook.Common
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
+import qualified Halogen.HTML.CSS as CSS
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Forms as E
 import qualified Halogen.HTML.Events.Handler as E
@@ -37,13 +39,18 @@ import qualified View.Css as VC
 cell :: forall e. State -> Cell -> [HTML e]
 cell notebook cell =
   let outputContent = output notebook cell
-  in [ H.div [ A.classes $ [B.containerFluid, VC.notebookCell, B.clearfix] ++ if cell ^. _hiddenEditor then [VC.collapsed] else [] ]
+  in [ H.div ([ A.classes $ [B.containerFluid, VC.notebookCell, B.clearfix] ++ if cell ^. _hiddenEditor then [VC.collapsed] else [] ] <> maybe [ ] viewingStyle (notebook ^. _viewingCell))
              $ catMaybes [ Just $ header cell
                          , if cell ^. _hiddenEditor then Nothing else Just $ editor cell
                          , if cell ^. _hiddenEditor then Nothing else Just $ statusBar notebook (isJust outputContent) cell
                          , outputContent
                          ]
      ]
+  where
+     viewingStyle cellId =
+       if cellId == cell ^. _cellId
+       then [ ]
+       else [ CSS.style (display displayNone) ]
 
 header :: forall e. Cell -> HTML e
 header cell =
