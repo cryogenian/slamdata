@@ -120,7 +120,7 @@ addCell :: CellContent -> Notebook -> Tuple Notebook Cell
 addCell content oldNotebook@(Notebook n) = Tuple notebook cell
   where
   newId = freeId oldNotebook
-  cell = newCell newId content # (_output .~ cellOut oldNotebook newId)
+  cell = newCell newId content # (_output .~ cellOut content oldNotebook newId)
                               .. (_input .~ cellIn content)
   notebook = Notebook $ n { cells = n.cells `snoc` cell
                           , activeCellId = newId
@@ -141,10 +141,12 @@ insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
          # (_output .~ port)
          ..(_input  .~ (parent ^. _output))
          ..(_parent .~ Just (parent ^. _cellId))
-  port = cellOut oldNotebook newId
+  port = cellOut content oldNotebook newId
 
-cellOut :: Notebook -> CellId -> Port
-cellOut n cid = these (const Closed) portRes (\_ -> portRes) (n ^. _name)
+cellOut :: CellContent -> Notebook -> CellId -> Port
+cellOut content n cid = case content of
+  (Explore _) -> Closed
+  _ -> these (const Closed) portRes (\_ -> portRes) (n ^. _name)
   where
   portRes :: String -> Port
   portRes _ = maybe Closed (\p -> PortResource $ File $ p </> file ("out" <> show cid)) (notebookPath n)
