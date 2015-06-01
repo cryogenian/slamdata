@@ -38,6 +38,7 @@ import Controller.Notebook.Cell.Viz.Pie (mkPie)
 import Controller.Notebook.Cell.Viz.Line (mkLine)
 import Controller.Notebook.Cell.Viz.Bar (mkBar)
 import qualified Model.Notebook.ECharts as Me
+import Data.Date (now)
 
 import ECharts.Options
 

@@ -10,6 +10,7 @@ import Data.Function (on)
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
 import Input.Notebook (Input(..))
+import Model.Action (isView)
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Port (Port(..))
@@ -41,16 +42,18 @@ cell notebook cell =
   let outputContent = output notebook cell
   in [ H.div ([ A.classes $ [B.containerFluid, VC.notebookCell, B.clearfix] ++ if cell ^. _hiddenEditor then [VC.collapsed] else [] ] <> maybe [ ] viewingStyle (notebook ^. _viewingCell))
              $ catMaybes [ Just $ header cell
-                         , if cell ^. _hiddenEditor then Nothing else Just $ editor cell
-                         , if cell ^. _hiddenEditor then Nothing else Just $ statusBar notebook (isJust outputContent) cell
+                         , if hidden then Nothing else Just $ editor cell
+                         , if hidden then Nothing else Just $ statusBar notebook (isJust outputContent) cell
                          , outputContent
                          ]
      ]
   where
-     viewingStyle cellId =
-       if cellId == cell ^. _cellId
-       then [ ]
-       else [ CSS.style (display displayNone) ]
+  hidden = (cell ^. _hiddenEditor) || (not (notebook ^. _editable))
+  
+  viewingStyle cellId =
+    if cellId == cell ^. _cellId
+    then [ ]
+    else [ CSS.style (display displayNone) ]
 
 header :: forall e. Cell -> HTML e
 header cell =

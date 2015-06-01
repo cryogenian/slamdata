@@ -30,11 +30,12 @@ import Halogen.HTML.Events.Monad (runEvent, andThen)
 import Input.Notebook (Input(..))
 import Model.Action (Action(Edit), isEdit)
 import Model.Notebook
-import Model.Notebook.Cell (CellContent(..), _cellId, _hasRun)
+import Model.Notebook.Cell (CellContent(..), _cellId, _hasRun, _content, _output)
 import Model.Notebook.Cell.Explore (initialExploreRec, _input)
 import Model.Notebook.Cell.FileInput
-import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, _cells, notebookURL)
+import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, _cells, notebookURL, cellOut)
 import Model.Notebook.Menu
+import Model.Notebook.Port 
 import Model.Path (decodeURIPath, dropNotebookExt)
 import Model.Resource (resourceName, resourceDir)
 import Optic.Core ((.~), (^.), (..), (?~))
@@ -74,7 +75,7 @@ driver ref k =
                oldNotebook = state ^. _notebook
                pathChanged = oldNotebook ^. _path /= path
                oldName = theseLeft (oldNotebook ^. _name)
-               nameChanged = oldName /= Nothing && oldName /= Just name
+               nameChanged = oldName /= Just name
            when (pathChanged || nameChanged) do
              runAff' (loadNotebook res) \result -> do
                update $ (_loaded .~ true)
@@ -84,12 +85,23 @@ driver ref k =
                  Left err -> update (_error ?~ message err)
                  Right nb -> do
                    update (_notebook .~ nb)
-                   for_ (nb ^. _cells) \cell ->
+                   for_ (nb ^. _cells) \cell -> do
+                     case (cell ^. _content) of
+                       Search _ ->
+                         case (cell ^. _output) of
+                           Closed -> cellUpdate cell
+                                     (_output .~ cellOut (cell ^._content)
+                                      nb (cell ^._cellId))
+                           _ -> pure unit
+                       _ -> pure unit 
                      when (cell ^. _hasRun) $
                        runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $
                          requestCellContent cell
            handleShortcuts ref k
          update = k <<< WithState
+         cellUpdate cell = k <<< (UpdateCell (cell ^._cellId))
+
+import Debug.Foreign
 
 handleShortcuts :: forall e. RefVal State
                           -> Driver Input (NotebookComponentEff e)

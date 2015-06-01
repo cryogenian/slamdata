@@ -15,6 +15,7 @@ module Model.Notebook.Domain
   , notebookPath
   , notebookURL
   , cellURL
+  , cellOut
   ) where
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
@@ -25,7 +26,7 @@ import Data.Argonaut.Printer (printJson)
 import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex, snoc)
 import Data.Either (Either(..))
 import Data.Map (Map(), insert, lookup, empty, toList, fromList)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (rootDir, dir, file, (</>), printPath)
 import Data.These (These(..), these, theseRight)
 import Data.Tuple (Tuple(..))
