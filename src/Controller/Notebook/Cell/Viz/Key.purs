@@ -4,8 +4,8 @@ import Data.Tuple
 import Data.Maybe
 
 -- Tuple category $ Just (Tuple firstSeries (Just secondSeries))
-type Key = Tuple String (Maybe (Tuple String (Maybe String)))
-
+type Key = Tuple String SeriesKey
+type SeriesKey = Maybe (Tuple String (Maybe String))
 
 keyCategory :: Key -> String
 keyCategory (Tuple cat _) = cat
@@ -23,3 +23,5 @@ mkKey cat f s =
 keyName :: Key -> String
 keyName k =
   (fromMaybe "" (keyMbSeries1 k)) <> (maybe "" (":" <>) (keyMbSeries2 k))
+
+

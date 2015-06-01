@@ -31,30 +31,31 @@ import Data.Foldable (foldl)
 import Data.Argonaut.JCursor (JCursor())
 import Controller.Notebook.Cell.Viz.Key
 import Controller.Notebook.Cell.Viz.Bar (extractClean, AggregatedAccum())
-import Data.Bifunctor (lmap)
+import Data.Bifunctor (lmap, bimap)
 import Data.String (split)
 import Math (floor)
+import Data.String (split)
 
 rowLength :: Number
 rowLength = 4
 
 mkSeries :: AggregatedAccum -> [Series]
 mkSeries acc =
-  concat (zipWith (rows $ length srcs) (range 0 $ length srcs) srcs)
+  concat (zipWith (rows $ length groupped) (range 0 $ length groupped) groupped)
   where
-  rows :: Number -> Number -> [[Tuple Key ItemData]] -> [Series]
+  rows :: Number -> Number -> [PieSeriesRec] -> [Series]
   rows count ix lst =
     zipWith (donut count ix $ length lst) (range 0 $ length lst) lst 
 
-  donut :: Number -> Number -> Number -> Number -> [Tuple Key ItemData] -> Series
-  donut rowCount rowIx donutCount donutIx src =
+  donut :: Number -> Number -> Number -> Number -> PieSeriesRec -> Series
+  donut rowCount rowIx donutCount donutIx r  =
     case mkRadius rowCount rowIx of
       Tuple maxR center -> 
         PieSeries { common: universalSeriesDefault
-                  , pieSeries: pieSeriesDefault { "data" = Just $ snd <$> src
-                                                , center = center
-                                                , radius = radius maxR donutCount donutIx 
-                                                }
+                  , pieSeries: r { radius = radius maxR donutCount donutIx
+                                 , center = center
+                                 , startAngle = Just $ (45 * donutIx) % 360
+                                 }
                   }
   radius :: Number -> Number -> Number -> Maybe Radius
   radius max count ix =
@@ -64,7 +65,7 @@ mkSeries acc =
 
   radius' :: Number -> Number -> Number -> Maybe Radius
   radius' max count ix =
-    let step = max / count
+    let step = max / (count + 1)
         record = {inner: Percent (step * (ix + 1)), outer: Percent (step * (ix + 2))}
     in Just $ Rs record
     
@@ -90,31 +91,61 @@ mkSeries acc =
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c
 
-  itemDatas :: [Tuple Key ItemData]
-  itemDatas = mkItemData <$> (toList acc)
+  nameMap :: [Tuple Key Number] -> Map String [Tuple String Number]
+  nameMap = named' >>> named''
 
-  mkItemData :: Tuple Key Number -> Tuple Key ItemData
-  mkItemData (Tuple k n) =
-    Tuple k 
-    (Dat $ (dataDefault $ Simple n) {name = Just $ str})
-    where name = keyName k
-          cat = keyCategory k
-          str = cat <> (if name == ""
-                        then ""
-                        else " " <> name)
+  named :: [Tuple Key Number] -> String -> Map String (Tuple String Number)
+  named lst cat =
+    fromList
+    ((bimap keyName (Tuple cat)) <$>
+     (filter (\(Tuple k _) -> keyCategory k == cat) lst))
 
-  src :: [[Tuple Key ItemData]]
-  src = groupBy (\(Tuple a _) (Tuple b _) -> keyMbSeries1 a == keyMbSeries1 b) itemDatas
+  named' :: [Tuple Key Number] -> [Map String (Tuple String Number)]
+  named' lst = named lst <$> catVals
 
-  srcs :: [[[Tuple Key ItemData]]]
-  srcs = (groupBy (\(Tuple a _) (Tuple b _) -> keyMbSeries2 a == keyMbSeries2 b)) <$> src
+  catVals :: [String]
+  catVals = nub $ keyCategory <$> ks
 
-  mkSerie :: [Tuple Key ItemData] -> Series
-  mkSerie lst =
-    PieSeries { common: universalSeriesDefault
-              , pieSeries: pieSeriesDefault { "data" = Just $ snd <$> lst }
-              }
+  ks :: [Key]
+  ks = keys acc
 
+  named'' :: [Map String (Tuple String Number)] -> Map String [Tuple String Number]
+  named'' m =
+    reverse <$> (foldl foldFn empty (toList <$> m))
+
+  foldFn :: Map String [Tuple String Number] ->
+            [Tuple String (Tuple String Number)] ->
+            Map String [Tuple String Number]
+  foldFn m tpls =
+    foldl (\m (Tuple k n) -> alter (alterNamed n) k m) m tpls
+
+  alterNamed :: Tuple String Number -> Maybe [Tuple String Number] ->
+                Maybe [Tuple String Number]
+  alterNamed n ns =
+    Just $ (n:(fromMaybe [] ns))
+
+  group :: Map String [Tuple String Number]
+  group = nameMap $ toList acc
+
+  dat :: String -> Tuple String Number -> ItemData 
+  dat str (Tuple s n) = (Dat $ (dataDefault $ Simple n) {name = Just $ s <>
+                                                                (if str == ""
+                                                                then ""
+                                                                else ":" <> str)})
+
+  serie :: Tuple String [Tuple String Number] -> Tuple String PieSeriesRec 
+  serie (Tuple k tpls) =
+    Tuple k (pieSeriesDefault { "data" = Just $ (dat k) <$> tpls})
+
+  series :: [Tuple String PieSeriesRec]
+  series = serie <$> (toList group)
+
+  groupped :: [[PieSeriesRec]]
+  groupped =
+    (snd <$>) <$>
+    (groupBy (\a b -> (split ":" (fst a) !! 1) == (split ":" (fst b) !! 1)) series)
+
+  
 mkPie :: forall e. VizRec -> _ -> Option
 mkPie r conf =
   Option $ optionDefault { tooltip = Just $ Tooltip $
