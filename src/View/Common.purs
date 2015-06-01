@@ -12,7 +12,7 @@ import qualified Config as Config
 import qualified View.Css as Vc
 
 navbar :: forall i. [H.HTML i] -> H.HTML i
-navbar = H.nav [ A.classes [ B.navbar, B.navbarInverse, B.navbarFixedTop ] ]
+navbar = H.nav [ A.class_ B.clearfix ]
 
 row :: forall i. [H.HTML i] -> H.HTML i
 row = H.div [ A.class_ B.row ]
@@ -30,9 +30,7 @@ genericContainer wrapperClasses contentClasses nodes =
   ]
 
 content :: forall i. [H.HTML i] -> H.HTML i
-content = genericContainer
-          [ B.container ]
-          [ B.colMd8, B.colMdOffset2, B.colSm10, B.colSmOffset1 ]
+content = H.div [ A.class_ Vc.content ]
 
 contentFluid :: forall i. [H.HTML i] -> H.HTML i
 contentFluid = genericContainer
@@ -45,22 +43,15 @@ glyph g = H.i [ A.classes [B.glyphicon, g] ] []
 
 
 icon :: forall i. A.ClassName -> String -> H.HTML i
-icon c href = H.div [ A.classes [ B.colXs1, Vc.navIcon ] ]
-             [ H.a [ A.href href
-                  --A.href Config.homeHash
-                   , A.classes [B.navbarBrand, Vc.logo]
-                   ]
+icon c href = H.div [ A.classes [Vc.navIcon] ]
+             [ H.a [ A.href href ]
                    [ glyph c ]
              ]
 
 logo :: forall i. H.HTML i
-logo = H.div [ A.classes [ B.colXs3, Vc.navLogo ] ]
-             [ H.a [ A.href Config.slamDataHome
-                   , A.classes [B.navbarBrand, Vc.logo]
-                   ]
-                   [ H.img [A.src "img/logo.svg"]
-                           []
-                   ]
+logo = H.div [ A.class_ Vc.navLogo ]
+             [ H.a [ A.href Config.slamDataHome ]
+                   [ H.img [A.src "img/logo.svg"] [] ]
              ]
 
 closeButton :: forall i. (ET.Event ET.MouseEvent -> E.EventHandler i) -> H.HTML i

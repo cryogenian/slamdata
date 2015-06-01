@@ -1,0 +1,101 @@
+nav {
+
+    background: #262626;
+    min-height: 70px;
+
+    &.notebook-nav {
+        border-bottom: 1px #ccc solid;
+    }
+
+    .header {
+
+        line-height: 70px;
+
+        .nav-icon {
+            float: left;
+            width: 80px;
+            height: 70px;
+            text-align: center;
+            // padding-left: 14px;
+            // padding-top: 5px;
+            a {
+                font-size: 22px;
+                color: #fff;
+                opacity: 0.8;
+                &:hover {
+                    opacity: 1;
+                }
+            }
+        }
+
+        .nav-logo {
+            float: left;
+            width: 140px;
+            margin-top: -7px;
+            margin-left: -5px;
+        }
+
+        .notebook-name, .search {
+            margin-left: 24px;
+            float: left;
+        }
+
+        .notebook-name {
+             width: ~"calc(100% - 250px)";
+            color: #f0f0f0;
+            font-size: 28px;
+            &:hover {
+                color: #fff;
+            }
+
+            input {
+                padding: 0;
+                width: 100%;
+                outline: none;
+                background: none;
+                border: none;
+            }
+        }
+
+        .search {
+
+            width: ~"calc(100% - 255px)";
+            max-width: 800px;
+            line-height: 20px;
+            margin-top: 7px;
+
+            @media (min-width: 1260px) {
+                position: absolute;
+                left: 50%;
+                margin-left: -400px;
+            }
+        }
+
+    }
+
+    .header-menu {
+        display: block;
+        border-top: 1px solid #fff;
+        line-height: 40px;
+        list-style: none;
+        padding: 0;
+        > li {
+            float: left;
+            > a {
+                color: #9d9d9d;
+                display: block;
+                padding: 0 15px;
+                &:hover {
+                    color: #fff;
+                    text-decoration: none;
+                }
+            }
+        }
+
+        ul.dropdown-menu {
+            margin-top: -1px;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+        }
+    }
+}

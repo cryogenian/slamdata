@@ -45,7 +45,7 @@ item state ix item =
         , E.onDoubleClick (\_ -> pure $ openItem item state.sort state.salt)
         ]
         [ H.div [ A.class_ B.row ]
-          [ H.div [ A.classes [B.colSm9, Vc.itemContent] ]
+          [ H.div [ A.classes [B.colXs9, Vc.itemContent] ]
             [ H.a
               [ A.href $ itemURL item state.sort state.salt ]
               [ H.span_ [ H.i [ iconClasses item ] []
@@ -55,7 +55,7 @@ item state ix item =
                         ]
               ]
             ]
-          , H.div [ A.classes [B.colSm3, Vc.itemToolbar] ]
+          , H.div [ A.classes [B.colXs3, Vc.itemToolbar] ]
             [ H.ul [ A.classes ([B.listInline, B.pullRight] ++
                                 if not $ item.hovered || item.selected
                                 then [B.hidden]
