@@ -1,6 +1,5 @@
 module Controller.File where
 
-import Api.Fs (saveNotebook, makeFile)
 import Control.Apply ((*>))
 import Control.Monad.Aff (Aff(), makeAff, attempt)
 import Control.Monad.Aff.Class (liftAff)
@@ -31,23 +30,24 @@ import Model.Breadcrumb (Breadcrumb())
 import Model.Action (Action(Edit))
 import Model.File (State())
 import Model.File.Dialog (Dialog(..))
-import Model.File.Dialog.Mount (initialMountDialog)
+import Model.File.Dialog.Mount (MountDialogRec(), initialMountDialog)
 import Model.File.Dialog.Rename (initialRenameDialog)
 import Model.File.Item
-import Model.Resource (_path, _name, resourcePath)
+import Model.Resource (Resource(..), _path, _name, resourcePath)
 import Model.Sort (Sort())
 import Optic.Core
 import Routing.Hash (getHash, setHash, modifyHash)
 import Utils (clearValue, select, setLocation)
 import Utils.Event (raiseEvent)
 
+import qualified Api.Fs as API
 import qualified Halogen.HTML.Events.Types as Et
 import qualified Model.Notebook.Domain as N
 import qualified Utils.File as Uf
 
 handleCreateNotebook :: forall e. State -> Event (FileAppEff e) Input
 handleCreateNotebook state = do
-  f <- liftAff $ attempt $ saveNotebook (N.emptyNotebook # N._path .~ state.path)
+  f <- liftAff $ attempt $ API.saveNotebook (N.emptyNotebook # N._path .~ state.path)
   case f of
     Left err -> empty -- TODO: show error
     Right notebook -> case N.notebookURL notebook Edit of
@@ -80,7 +80,7 @@ handleFileListChanged el state = do
       content <- liftAff $ readAsBinaryString f reader
 
       toInput (ItemAdd fileItem) `andThen` \_ -> do
-        f <- liftAff $ attempt $ makeFile (fileItem.resource ^. _path) content
+        f <- liftAff $ attempt $ API.makeFile (fileItem.resource ^. _path) content
         case f of
           Left _ -> toInput (ItemRemove fileItem)
           Right _ -> liftEff (setLocation $ itemURL fileItem state.sort state.salt) *> empty
@@ -107,7 +107,16 @@ handleCreateFolder state = do
   toInput $ ItemAdd $ (initDirectory # _resource .. _path .~ (inj (path </> dirName)))
 
 handleMountDatabase :: forall e. State -> Event (FileAppEff e) Input
-handleMountDatabase _ = toInput $ SetDialog (Just $ MountDialog initialMountDialog)
+handleMountDatabase _ = do
+  path <- liftEff (extractDir <$> getHash)
+  toInput $ SetDialog (Just $ MountDialog initialMountDialog { parent = path })
+
+saveMount :: forall e. MountDialogRec -> Event (FileAppEff e) Input
+saveMount rec = do
+  result <- liftAff $ attempt $ API.saveMount (Database $ rec.parent </> dir rec.name) rec.connectionURI
+  case result of
+    Left err -> pure $ inj $ SetDialog Nothing -- TODO: show error
+    Right _ -> pure $ inj $ SetDialog Nothing
 
 getNewName :: String -> State -> String
 getNewName name state =
@@ -124,11 +133,6 @@ getNewName name state =
               state.items /= -1
            then getNewName' name (i + 1)
            else newName
-
-selectThis :: forall e o. Et.Event (|o) ->
-              EventHandler (Event (dom :: DOM|e) Input)
-selectThis ev =
-  pure $ liftEff (select ev.target) *> empty
 
 breadcrumbClicked :: forall e. Breadcrumb -> Event (FileAppEff e) Input
 breadcrumbClicked b = do

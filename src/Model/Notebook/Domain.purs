@@ -164,4 +164,4 @@ notebookURL :: Notebook -> Action -> Maybe String
 notebookURL nb act = (\path -> Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAction act) <$> notebookPath nb
 
 cellURL :: Notebook -> CellId -> Action -> Maybe String
-cellURL nb cid act = (\path -> Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ "cells" ++ show cid ++ "/" ++ printAction act) <$> notebookPath nb
+cellURL nb cid act = (\path -> Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ "cells" ++ "/" ++ show cid ++ "/" ++ printAction act) <$> notebookPath nb

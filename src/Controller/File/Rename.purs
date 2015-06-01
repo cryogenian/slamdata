@@ -32,7 +32,7 @@ import Data.Path.Pathy (rootDir, (</>), parseAbsDir, sandbox)
 
 rename :: forall e. RenameDialogRec -> EventHandler (Event (FileAppEff e) Input)
 rename d = pure do
-  let src = getPath (d ^. _initial)
+  let src = d ^. _initial
       dt = either (const rootDir) id $ d ^. _dir .. _path
       tgt = (d ^. _resource # _root .~ dt) ^. _path
   result <- liftAff $ attempt (Api.move src tgt)

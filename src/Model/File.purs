@@ -22,6 +22,7 @@ type State =
   , searching :: Boolean
   , dialog :: Maybe Dialog
   , salt :: Salt
+  , hasMountRoot :: Boolean
   }
 
 initialState :: State
@@ -34,4 +35,5 @@ initialState =
   , searching: false
   , dialog: Nothing
   , salt: Salt ""
+  , hasMountRoot: false
   }

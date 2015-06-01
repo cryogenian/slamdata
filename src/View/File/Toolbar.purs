@@ -1,7 +1,9 @@
 module View.File.Toolbar (toolbar) where
 
-import Controller.File (handleUploadFile, handleFileListChanged, handleCreateFolder, handleCreateNotebook, handleMountDatabase)
+import Controller.File
+import Controller.File.Item
 import Model.File (State())
+import Model.Resource (Resource(..))
 import View.File.Common (I(), toolItem)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -14,7 +16,9 @@ toolbar :: forall e. State -> H.HTML (I e)
 toolbar state =
   H.div [ A.classes [B.colXs4, Vc.toolbarMenu] ]
         [ H.ul [ A.classes [B.listInline, B.pullRight] ]
-               if inRoot state then [mount] else [file, folder, mount, notebook]
+               if inRoot state
+               then if state.hasMountRoot then [editMount] else [mount]
+               else [file, folder, notebook]
         ]
 
   where
@@ -43,6 +47,9 @@ toolbar state =
 
   mount :: H.HTML (I e)
   mount = toolItem' handleMountDatabase "mount database" B.glyphiconHdd
+
+  editMount :: H.HTML (I e)
+  editMount = toolItem [B.btnLg] (Database rootDir) handleConfigure "configure mount" B.glyphiconWrench
 
   toolItem' :: (State -> I e) -> String -> A.ClassName -> H.HTML (I e)
   toolItem' f = toolItem [B.btnLg] state f
