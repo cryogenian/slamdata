@@ -33,6 +33,7 @@ string2cellId str =
 
 newtype Cell =
   Cell { cellId :: CellId
+       , parent :: Maybe CellId
        , input :: Port
        , output :: Port
        , content :: CellContent
@@ -47,6 +48,7 @@ newtype Cell =
 newCell :: CellId -> CellContent -> Cell
 newCell cellId content =
   Cell { cellId: cellId
+       , parent: Nothing
        , input: Closed
        , output: Closed
        , content: content
@@ -63,6 +65,9 @@ _Cell = lens (\(Cell obj) -> obj) (const Cell)
 
 _cellId :: LensP Cell CellId
 _cellId = _Cell <<< lens _.cellId (_ { cellId = _ })
+
+_parent :: LensP Cell (Maybe CellId)
+_parent = _Cell <<< lens _.parent (_ { parent = _ })
 
 _input :: LensP Cell Port
 _input = _Cell <<< lens _.input (_ { input = _ })
@@ -101,6 +106,7 @@ instance ordCell :: Ord Cell where
 instance encodeJsonCell :: EncodeJson Cell where
   encodeJson (Cell cell)
     =  "cellId" := cell.cellId
+    ~> "parent" := cell.parent
     ~> "input" := cell.input
     ~> "output" := cell.output
     ~> "content" := cell.content
@@ -112,10 +118,12 @@ instance decodeJsonCell :: DecodeJson Cell where
     obj <- decodeJson json
     cell <- newCell <$> obj .? "cellId"
                     <*> obj .? "content"
+    parent <- obj .? "parent"
     input <- obj .? "input"
     output <- obj .? "output"
     let hasRun = either (const false) id (obj .? "hasRun")
-    pure (cell # (_input .~ input)
+    pure (cell # (_parent .~ parent)
+              .. (_input  .~ input)
               .. (_output .~ output)
               .. (_hasRun .~ hasRun))
 

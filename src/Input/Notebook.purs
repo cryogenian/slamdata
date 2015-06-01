@@ -105,6 +105,7 @@ updateState state (StopCell cellId) =
 
 updateState state (CellSlamDownEvent cellId event) =
   state # _notebook.._cells..mapped %~ onCell cellId (slamDownOutput <<< runSlamDownEvent event)
+        # _notebook.._cells %~ syncParents
 
 updateState state i = state
 
@@ -113,6 +114,17 @@ toStrMap = SM.fromList <<< M.toList
 
 slamDownStateMap :: LensP SlamDownState (M.Map String FormFieldValue)
 slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)
+
+-- TODO: We need a much better solution to this.
+syncParents :: [Cell] -> [Cell]
+syncParents cells = updateCell <$> cells
+  where updateCell cell = fromMaybe cell $ fromParent cell
+        fromParent cell = do
+          pid <- cell ^. _parent
+          parent <- M.lookup pid m
+          return (cell # _input .~ (parent ^. _output))
+        m = M.fromList $ pair <$> cells
+        pair cell = Tuple (cell ^. _cellId) cell
 
 slamDownOutput :: Cell -> Cell
 slamDownOutput cell =
