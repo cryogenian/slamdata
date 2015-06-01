@@ -18,8 +18,9 @@ import Data.Either.Unsafe (fromRight)
 import Data.Foldable (foldl)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.String (split, replace)
-import Data.StrMap (keys, toList, empty, lookup)
+import Data.StrMap (StrMap(), keys, toList, empty, lookup)
 import Data.Tuple (Tuple(..))
+import Model.Notebook.Port (VarMapValue())
 import Model.Path (AnyPath())
 import Model.Resource (Resource(), resourcePath, isFile, _name, parent)
 import Network.HTTP.Affjax (Affjax(), AJAX(), get, affjax, defaultRequest)
@@ -51,16 +52,30 @@ count res = do
   readTotal :: JArray -> Maybe Number
   readTotal = toNumber <=< lookup "total" <=< toObject <=< head
 
+foreign import unconsNative """
+  function unconsNative (empty) {
+    return function (next) {
+      return function (xs) {
+        return xs.length === 0 ? empty({}) : next(xs[0])(xs.slice(1));
+      };
+    };
+  }
+  """ :: forall a b. (Unit -> b) ->
+                     (a -> Array a -> b) ->
+                     Array a ->
+                     b
+
 port :: forall e. Resource -> Resource -> SQL ->
+        StrMap VarMapValue ->
         Aff (ajax :: AJAX | e) JObject
-port res dest sql =
+port res dest sql vars =
   if not (isFile dest)
   then pure empty
   else do
     result <- affjax $ defaultRequest
             { method = POST
             , headers = [RequestHeader "Destination" $ resourcePath dest]
-            , url = queryUrl <> resourcePath res
+            , url = queryUrl <> resourcePath res <> queryVars
             , content = Just (templated res sql)
             }
 
@@ -69,6 +84,20 @@ port res dest sql =
   swap :: forall a b. Either a b -> Either b a
   swap (Right a) = Left a
   swap (Left a) = Right a
+
+  -- TODO: This should be somewhere better.
+  queryVars :: String
+  queryVars = maybe "" makeQueryVars <<< uncons $ toList vars
+
+  -- TODO: Need to encode query component.
+  pair :: Tuple String VarMapValue -> String
+  pair (Tuple a b) = a <> "=" <> b
+
+  makeQueryVars { head = h, tail = t } =
+    foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
+
+  uncons :: forall a. Array a -> Maybe { head :: a, tail :: Array a }
+  uncons = unconsNative (const Nothing) \x xs -> Just { head: x, tail: xs }
 
   content :: String -> Either String JObject
   content input = do

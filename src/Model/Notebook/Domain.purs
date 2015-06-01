@@ -29,7 +29,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Path.Pathy (rootDir, dir, file, (</>), printPath)
 import Data.These (These(..), these, theseRight)
 import Data.Tuple (Tuple(..))
-import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _FileInput)
+import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _parent, _FileInput)
 import Model.Notebook.Cell.FileInput (_file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..), _PortResource)
 import Model.Action (Action(), printAction)
@@ -138,7 +138,9 @@ insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
   newDeps = insert newId (parent ^. _cellId) n.dependencies
   newId = freeId oldNotebook
   cell = newCell newId (content # _FileInput .. _file .~ maybe (Left "") Right (port ^? _PortResource))
-         # (_output .~ port) .. (_input .~ (parent ^. _output))
+         # (_output .~ port)
+         ..(_input  .~ (parent ^. _output))
+         ..(_parent .~ Just (parent ^. _cellId))
   port = cellOut oldNotebook newId
 
 cellOut :: Notebook -> CellId -> Port

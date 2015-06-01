@@ -5,25 +5,34 @@ module Input.Notebook
   , cellContent
   ) where
 
+import Control.Bind (join)
 import Data.Array (filter, modifyAt, (!!))
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), either)
+import Data.Foldable (intercalate)
 import Data.Function (on)
-import Data.Maybe (Maybe(..), maybe)
-import Data.Tuple (fst)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..), fst)
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell)
 import Model.Notebook.Port (Port(..), VarMapValue())
-import Optic.Core ((..), (%~), (.~), (^.))
+import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
+import Optic.Fold ((^?))
 import Optic.Setter (mapped)
-import Text.Markdown.SlamDown.Html (SlamDownEvent(..))
+import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..))
+import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, emptySlamDownState)
+import Text.Markdown.SlamDown.Parser (parseMd)
 
 import qualified Data.Array.NonEmpty as NEL
-import qualified Data.StrMap as M
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Data.StrMap as SM
 import qualified ECharts.Options as EC
 import qualified Model.Notebook.Cell.JTableContent as JTC
+import qualified Model.Notebook.Cell.Markdown as Ma
 
 data CellResultContent
   = AceContent String
@@ -86,7 +95,7 @@ updateState state (CellResult cellId date content) =
   in state # _notebook.._cells..mapped %~ onCell cellId f
 
 updateState state (ReceiveCellContent cell) =
-  state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const cell)
+  state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const $  setSlamDownStatus cell)
 
 updateState state (StartRunCell cellId date) =
   state # _notebook.._cells..mapped %~ onCell cellId (setRunState (RunningSince date) <<< (_expandedStatus .~ false))
@@ -94,22 +103,91 @@ updateState state (StartRunCell cellId date) =
 updateState state (StopCell cellId) =
   state # _notebook.._cells..mapped %~ onCell cellId (setRunState RunInitial)
 
-updateState state (CellSlamDownEvent cellId (FormValueChanged name value)) =
-  state # _notebook.._cells..mapped %~ onCell cellId (addVar name value)
+updateState state (CellSlamDownEvent cellId event) =
+  state # _notebook.._cells..mapped %~ onCell cellId (slamDownOutput <<< runSlamDownEvent event)
+        # _notebook.._cells %~ syncParents
 
 updateState state i = state
 
-addVar :: String -> VarMapValue -> Cell -> Cell
-addVar name value (Cell o) = Cell $ o { output = VarMap <<< M.insert name value $ m o.output }
-  where m (VarMap n) = n
-        m _ = M.empty
+toStrMap :: forall a. M.Map String a -> SM.StrMap a
+toStrMap = SM.fromList <<< M.toList
+
+slamDownStateMap :: LensP SlamDownState (M.Map String FormFieldValue)
+slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)
+
+-- TODO: We need a much better solution to this.
+syncParents :: [Cell] -> [Cell]
+syncParents cells = updateCell <$> cells
+  where updateCell cell = fromMaybe cell $ fromParent cell
+        fromParent cell = do
+          pid <- cell ^. _parent
+          parent <- M.lookup pid m
+          return (cell # _input .~ (parent ^. _output))
+        m = M.fromList $ pair <$> cells
+        pair cell = Tuple (cell ^. _cellId) cell
+
+slamDownOutput :: Cell -> Cell
+slamDownOutput cell =
+  cell # _output .~ VarMap m
+  where
+    m = maybe SM.empty ((fromFormValue <$>) <<< toStrMap) state
+    fromFormValue (SingleValue s) = s
+    fromFormValue (MultipleValues s) = "[" <> intercalate ", " (S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
+    state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
+
+-- TODO: This should probably live in purescript-markdown
+slamDownFields :: String -> [Tuple String FormField]
+slamDownFields s =
+  case parseMd s of
+    SlamDown bs -> bs >>= block
+  where
+    block (Paragraph is) = is >>= inline
+    block (Header _ is) = is >>= inline
+    block (Blockquote bs) = bs >>= block
+    block (List _ bss) = join bss >>= block
+    block _ = []
+    inline (Emph is) = is >>= inline
+    inline (Strong is) = is >>= inline
+    inline (Link is _) = is >>= inline
+    inline (Image is _) = is >>= inline
+    inline (FormField s _ ff) = [Tuple s ff]
+    inline _ = []
+
+-- TODO: Change Port to SlamDownState and use slamDownOutput instead.
+initialSlamDownOutput :: [Tuple String FormField] -> Port
+initialSlamDownOutput sf = VarMap sm
+  where sm :: SM.StrMap VarMapValue
+        sm = fromMaybe SM.empty <<< traverse toValue $ SM.fromList sf
+        toValue :: FormField -> Maybe VarMapValue
+        toValue (TextBox _ (Literal s)) = Just s
+        toValue (RadioButtons (Literal s) _) = Just s
+        toValue (DropDown _ (Literal s)) = Just s
+        toValue (CheckBoxes _ (Literal ss)) = Nothing
+        toValue _ = Nothing
+
+setSlamDownStatus :: Cell -> Cell
+setSlamDownStatus cell =
+  let input' = cell ^? _content.._Markdown..Ma._input
+      message = ("Exported fields: " <>) <<< intercalate ", " <<< (fst <$>)
+      initial fields = cell # _message .~ message fields
+                            # _output .~ initialSlamDownOutput fields
+  in maybe cell (initial <<< slamDownFields) input'
+
+runSlamDownEvent :: SlamDownEvent -> Cell -> Cell
+runSlamDownEvent event cell =
+  cell # _content.._Markdown..Ma._state %~ flip applySlamDownEvent event
 
 cellContent :: Either (NEL.NonEmpty FailureMessage) CellResultContent -> Cell -> Cell
 cellContent = either (setFailures <<< NEL.toArray) success
   where
   success :: CellResultContent -> Cell -> Cell
-  success (AceContent content) = setFailures [ ] <<< (_content .. _AceContent .~ content)
-  success (JTableContent content) = setFailures [ ] <<< (_content .. _JTableContent .~ content)
+  success (AceContent content) =
+    setFailures [ ]
+    <<< (_content.._AceContent .~ content)
+    <<< (_content.._Markdown..Ma._state .~ emptySlamDownState)
+  success (JTableContent content) =
+    setFailures [ ]
+    <<< (_content.._JTableContent .~ content)
   success MarkdownContent = setFailures [ ]
 
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell

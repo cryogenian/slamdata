@@ -18,6 +18,7 @@ import Optic.Extended (TraversalP())
 
 import qualified Model.Notebook.Cell.Common as Cm
 import qualified Model.Notebook.Cell.Explore as Ex
+import qualified Model.Notebook.Cell.Markdown as Ma
 import qualified Model.Notebook.Cell.Query as Qu
 import qualified Model.Notebook.Cell.Search as Sr
 import qualified Model.Notebook.Cell.Viz as Vz
@@ -32,6 +33,7 @@ string2cellId str =
 
 newtype Cell =
   Cell { cellId :: CellId
+       , parent :: Maybe CellId
        , input :: Port
        , output :: Port
        , content :: CellContent
@@ -46,6 +48,7 @@ newtype Cell =
 newCell :: CellId -> CellContent -> Cell
 newCell cellId content =
   Cell { cellId: cellId
+       , parent: Nothing
        , input: Closed
        , output: Closed
        , content: content
@@ -62,6 +65,9 @@ _Cell = lens (\(Cell obj) -> obj) (const Cell)
 
 _cellId :: LensP Cell CellId
 _cellId = _Cell <<< lens _.cellId (_ { cellId = _ })
+
+_parent :: LensP Cell (Maybe CellId)
+_parent = _Cell <<< lens _.parent (_ { parent = _ })
 
 _input :: LensP Cell Port
 _input = _Cell <<< lens _.input (_ { input = _ })
@@ -100,6 +106,7 @@ instance ordCell :: Ord Cell where
 instance encodeJsonCell :: EncodeJson Cell where
   encodeJson (Cell cell)
     =  "cellId" := cell.cellId
+    ~> "parent" := cell.parent
     ~> "input" := cell.input
     ~> "output" := cell.output
     ~> "content" := cell.content
@@ -111,10 +118,12 @@ instance decodeJsonCell :: DecodeJson Cell where
     obj <- decodeJson json
     cell <- newCell <$> obj .? "cellId"
                     <*> obj .? "content"
+    parent <- obj .? "parent"
     input <- obj .? "input"
     output <- obj .? "output"
     let hasRun = either (const false) id (obj .? "hasRun")
-    pure (cell # (_input .~ input)
+    pure (cell # (_parent .~ parent)
+              .. (_input  .~ input)
               .. (_output .~ output)
               .. (_hasRun .~ hasRun))
 
@@ -123,7 +132,7 @@ data CellContent
   | Explore Ex.ExploreRec
   | Visualize Vz.VizRec
   | Query Qu.QueryRec
-  | Markdown String
+  | Markdown Ma.MarkdownRec
 
 cellContentType :: CellContent -> String
 cellContentType (Explore _) = "explore"
@@ -145,7 +154,7 @@ newVisualizeContent :: CellContent
 newVisualizeContent = Visualize Vz.initialVizRec
 
 newMarkdownContent :: CellContent
-newMarkdownContent = Markdown ""
+newMarkdownContent = Markdown Ma.initialMarkdownRec
 
 _Explore :: PrismP CellContent Ex.ExploreRec
 _Explore = prism' Explore $ \s -> case s of
@@ -167,7 +176,7 @@ _Visualize = prism' Visualize $ \s -> case s of
   Visualize s -> Just s
   _ -> Nothing
 
-_Markdown :: PrismP CellContent String
+_Markdown :: PrismP CellContent Ma.MarkdownRec
 _Markdown = prism' Markdown $ \s -> case s of
   Markdown s -> Just s
   _ -> Nothing
@@ -189,7 +198,7 @@ _AceContent :: TraversalP CellContent String
 _AceContent f s = case s of
   Search _ -> (_Search .. Sr._buffer) f s
   Query _ -> (_Query .. Qu._input) f s
-  Markdown _ -> _Markdown f s
+  Markdown _ -> (_Markdown .. Ma._input) f s
   _ -> _const f s
 
 _const :: forall a b. TraversalP a b
@@ -202,7 +211,7 @@ instance encodeJsonCellContent :: EncodeJson CellContent where
       Search rec -> encodeJson rec
       Explore rec -> encodeJson rec
       Query rec -> encodeJson rec
-      Markdown s -> "value" := s ~> jsonEmptyObject
+      Markdown rec -> encodeJson rec
       -- TODO: Visualize
       _ -> jsonEmptyObject
 
@@ -214,7 +223,7 @@ instance decodeJsonExploreRec :: DecodeJson CellContent where
       "search" -> Search <$> decodeJson json
       "explore" -> Explore <$> decodeJson json
       "query" -> Query <$> decodeJson json
-      "markdown" -> Markdown <$> obj .? "value"
+      "markdown" -> Markdown <$> decodeJson json
       -- TODO: Visualize
       _ -> Left $ "Unknown CellContent type: '" ++ cellType ++ "'"
 
