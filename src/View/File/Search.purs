@@ -18,10 +18,8 @@ import Data.Path.Pathy
 
 search :: forall e. State -> H.HTML (I e)
 search state =
-  H.div [ A.classes [B.colXs12, B.colSm8, Vc.search] ]
-  [ H.form [ A.class_ B.navbarForm
-           , E.onSubmit (\_ -> pure $ handleSearchSubmit state.search state.path)
-           ]
+  H.div [ A.classes [Vc.search] ]
+  [ H.form [ E.onSubmit (\_ -> pure $ handleSearchSubmit state.search state.path) ]
     [ H.div [ A.classes ([B.inputGroup, Vc.searchInput] <>
                          if state.search.valid
                          then mempty
@@ -60,4 +58,4 @@ search state =
       ]
     ]
   ]
-  
+

@@ -32,7 +32,7 @@ import Css.String
 
 view :: forall e. State -> H.HTML (I e)
 view state =
-  H.div_ [ navbar [ H.div [ A.classes [Vc.navCont, B.containerFluid] ]
+  H.div_ [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
                           [ icon B.glyphiconFolderOpen Config.homeHash
                           , logo
                           , search state ]

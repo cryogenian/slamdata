@@ -26,6 +26,12 @@ searchAffixEmpty = className "search-affix-empty"
 results :: ClassName
 results = className "results"
 
+header :: ClassName
+header = className "header"
+
+headerMenu :: ClassName
+headerMenu = className "header-menu"
+
 logo :: ClassName
 logo = className "logo"
 
@@ -40,6 +46,12 @@ navLogo = className "nav-logo"
 
 search :: ClassName
 search = className "search"
+
+notebookName :: ClassName
+notebookName = className "notebook-name"
+
+content :: ClassName
+content = className "content"
 
 toolbarSort :: ClassName
 toolbarSort = className "toolbar-sort"
@@ -61,9 +73,6 @@ fileListField = className "file-list-field"
 
 fileListGroup :: ClassName
 fileListGroup = className "file-list-group"
-
-notebookName :: ClassName
-notebookName = className "notebook-name"
 
 notebookNav :: ClassName
 notebookNav = className "notebook-nav"

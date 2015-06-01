@@ -62,15 +62,14 @@ navigation state =
   let notebookHref = these exploreHref editHref (\_ -> editHref) (state ^. _notebook .. _name)
   in if not state.editable
      then []
-     else
-       [ navbar
-         [ H.div [ A.classes [ Vc.navCont, Vc.notebookNav, B.containerFluid ] ]
-           [ icon B.glyphiconBook notebookHref
-           , logo
-           , name state ]
-         , H.ul [ A.classes [ B.nav, B.navbarNav ] ]
-           ( zipWith (li state) (range 0 (length state.dropdowns)) state.dropdowns )
-         ] ]
+     else [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
+                           [ icon B.glyphiconBook notebookHref
+                           , logo
+                           , name state ]
+                   , H.ul [ A.classes [Vc.headerMenu] ]
+                          $ zipWith (li state) (range 0 (length state.dropdowns)) state.dropdowns
+                   ]
+          ]
   where
   exploreHref :: String -> String
   exploreHref _ =
@@ -105,11 +104,6 @@ cells :: forall e. State -> [HTML e]
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
                       $ (state ^. _notebook .. _cells) >>= cell state
               ]
-
-margined :: forall e. [HTML e] -> [HTML e] -> HTML e
-margined l r = row [ H.div [ A.classes [ B.colMd2 ] ] l
-                      , H.div [ A.classes [ B.colMd10 ] ] r
-                      ]
 
 newCellMenu :: forall e. State -> [HTML e]
 newCellMenu state =
@@ -165,10 +159,9 @@ menuItem state {name: name, message: mbMessage, lvl: lvl, shortcut: shortcut} =
 
 name :: forall e. State -> HTML e
 name state =
-  H.div [ A.classes [ B.colXs12, B.colSm8 ] ]
+  H.div [ A.classes [Vc.notebookName] ]
         [ H.form [ E.onSubmit (\_ -> E.preventDefault $> handleSubmitName state) ]
-                 [ H.input [ A.class_ Vc.notebookName
-                           , A.id_ Config.notebookNameEditorId
+                 [ H.input [ A.id_ Config.notebookNameEditorId
                            , E.onInput (pure <<< handleNameInput)
                            , A.value (these id id (\n _ -> n) $ state ^. _notebook .. _name)
                            ]

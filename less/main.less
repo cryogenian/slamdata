@@ -28,19 +28,9 @@ html {height: 100%;}
 body {
     font-family: Ubuntu, Arial, Helvetica, sans-serif;
     height: 100%;
-    @media (max-width: 768px) {
-        padding-top: 150px;
-    }
-    @media (min-width: 769px) {
-        padding-top: 75px;
-    }
     > div {
         min-height: 100%;
     }
-}
-
-body.notebook-page {
-    padding-top: 111px;
 }
 
 .notebook-view-hack {
@@ -53,26 +43,14 @@ body.notebook-page {
     }
 }
 
-button:focus {
-    outline:0;
+.content {
+    max-width: 750px;
+    margin: auto;
+    padding: 0px 15px;
 }
 
-.nav-logo {
-    width: 180px;
-    padding-right: 0;
-    @media (max-width: 768px) {
-        padding-bottom: 7px;
-    }
-    .logo {
-        padding-right: 0;
-        img {
-            height: 32px;
-            @media (max-width: 768px) {
-                padding-top: 7px;
-                height: 43px;
-            }
-        }
-    }
+button:focus {
+    outline:0;
 }
 
 .file-list-field {
@@ -213,29 +191,6 @@ img.search-clear {
     }
 }
 
-.container-fluid.nav-cont {
-    &.notebook-nav {
-        border-bottom: 1px #ccc solid;
-    }
-    .nav-icon {
-        a {
-            font-size: 1.6em;
-            color: #f0f0f0;
-            padding-bottom: 4px;
-            &:hover {
-                color: #fff;
-            }
-        }
-        @media (max-width: 768px) {
-            padding-top: 14px;
-            width: 54px;
-        }
-        @media (min-width: 769px) {
-            padding-top: 8px;
-            width: 44px;
-        }
-    }
-}
 ol.breadcrumb {
     padding-left: 0;
     margin-bottom: 6px;
@@ -257,19 +212,6 @@ ol.breadcrumb {
         li a i.btn-lg.glyphicon {
             padding-right: 0 !important;
         }
-    }
-}
-
-.notebook-name {
-    color: #f0f0f0;
-    padding-top: 16px;
-    font-size: 28px;
-    outline: none;
-    background: transparent;
-    border: none;
-    width: 100%;
-    &:hover {
-        color: #fff;
     }
 }
 
@@ -581,5 +523,6 @@ div.viz-cell-editor {
 }
 
 @import "bootstrap-overloads";
+@import "nav";
 @import "dialog/mount";
 @import "dialog/rename";
