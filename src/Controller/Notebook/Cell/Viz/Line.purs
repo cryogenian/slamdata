@@ -37,7 +37,7 @@ type AggregatedAccum = Map Key (Tuple Number Number)
 
 simpleData = Value <<< Simple
 
-extractData :: VizRec -> LineConfiguration -> Accum
+extractData :: VizRec -> _ -> Accum
 extractData r conf =
   extractData' dims sers1 sers2 vals1 vals2 empty
   where
@@ -95,7 +95,7 @@ alter' (Tuple v1 v2) val =
     Tuple v1s v2s ->
       Just $ Tuple (v1:v1s) (v2:v2s)
 
-aggregate :: Accum -> LineConfiguration -> AggregatedAccum
+aggregate :: Accum -> _ -> AggregatedAccum
 aggregate acc conf =
   (bimap firstAgg secondAgg) <$> acc
   where
@@ -103,11 +103,11 @@ aggregate acc conf =
   secondAgg = runAggregation (conf ^._secondAggregation)
 
 
-extractClean :: VizRec -> LineConfiguration -> AggregatedAccum
+extractClean :: VizRec -> _ -> AggregatedAccum
 extractClean r conf =
   aggregate (extractData r conf) conf
 
-getXAxisType :: VizRec -> LineConfiguration -> AxisType
+getXAxisType :: VizRec -> _ -> AxisType
 getXAxisType r conf =
   case (conf ^._dims.._selection) >>= (flip lookup (r ^._all)) of
     Just (Me.TimeAxis _) -> TimeAxis
@@ -203,11 +203,11 @@ mkSeries needTwoAxis ty acc =
     Just $ (n:(fromMaybe [] ns))
 
 
-needTwoAxises :: VizRec -> LineConfiguration -> Boolean
+needTwoAxises :: VizRec -> _ -> Boolean
 needTwoAxises r conf =
   isJust ((conf ^._secondMeasures.._selection) >>= (flip lookup (r ^._all)))
 
-mkLine :: VizRec -> LineConfiguration -> Option
+mkLine :: VizRec -> _ -> Option
 mkLine r conf =
   case tpls of
     Tuple xAxis series ->

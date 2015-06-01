@@ -212,7 +212,7 @@ instance encodeJsonCellContent :: EncodeJson CellContent where
       Explore rec -> encodeJson rec
       Query rec -> encodeJson rec
       Markdown rec -> encodeJson rec
-      -- TODO: Visualize
+      Visualize rec -> encodeJson rec
       _ -> jsonEmptyObject
 
 instance decodeJsonExploreRec :: DecodeJson CellContent where
@@ -224,7 +224,7 @@ instance decodeJsonExploreRec :: DecodeJson CellContent where
       "explore" -> Explore <$> decodeJson json
       "query" -> Query <$> decodeJson json
       "markdown" -> Markdown <$> decodeJson json
-      -- TODO: Visualize
+      "visualize" -> Visualize <$> decodeJson json
       _ -> Left $ "Unknown CellContent type: '" ++ cellType ++ "'"
 
 data RunState = RunInitial

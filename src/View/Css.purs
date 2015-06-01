@@ -196,3 +196,6 @@ collapsed = className "collapsed"
 
 scrollbox :: ClassName
 scrollbox = className "scrollbox"
+
+loadingMessage :: ClassName
+loadingMessage = className "loading-message"

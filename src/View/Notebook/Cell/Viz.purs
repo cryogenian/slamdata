@@ -27,7 +27,7 @@ import Css.String
 import ECharts.Options
 
 import Model.Notebook.ECharts (Axis(..))
-import Model.Notebook.Cell (Cell(), _cellId, _content, _Visualize)
+import Model.Notebook.Cell (Cell(), _cellId, _content, _Visualize, _runState, RunState(..))
 
 import Controller.Notebook.Common (I())
 import View.Common (row, row')
@@ -44,9 +44,11 @@ import Utils (s2i)
 vizChoices :: forall e. Cell -> HTML e
 vizChoices cell =
   H.div_ 
-  case cell ^. _err of
-    "" -> correct cell
-    str -> errored str
+  case cell ^. _runState of
+    RunningSince _ -> loading
+    _ -> case cell ^. _err of
+      "" -> correct cell
+      str -> errored str
 
 correct :: forall e. Cell -> [HTML e]
 correct cell =
@@ -219,6 +221,15 @@ label str =
   H.label [ A.classes [ B.controlLabel ] ]
   [ H.text str ]
 
+
+loading :: forall e. [HTML e]
+loading =
+  [H.div [ A.classes [ B.alert, B.alertInfo, VC.loadingMessage ]
+         ]
+   [ H.text "Loading"
+   , H.img [ A.src "/img/blue-spin.svg" ] [ ]
+   ]
+  ] 
 
   
 errored :: forall e. String -> [HTML e]

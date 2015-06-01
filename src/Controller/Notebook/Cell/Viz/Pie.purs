@@ -115,7 +115,7 @@ mkSeries acc =
               , pieSeries: pieSeriesDefault { "data" = Just $ snd <$> lst }
               }
 
-mkPie :: forall e. VizRec -> PieConfiguration -> Option
+mkPie :: forall e. VizRec -> _ -> Option
 mkPie r conf =
   Option $ optionDefault { tooltip = Just $ Tooltip $
                                      tooltipDefault {trigger = Just TriggerItem}

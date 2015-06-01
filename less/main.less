@@ -531,38 +531,52 @@ ol.breadcrumb {
 form.chart-configure-form {
     padding-bottom: 10px;
     label.control-label {
-        width: 70px;
+        width: 75px;
     }
     select.form-control {
-        width: ~"calc(100% - 70px)";
+        width: ~"calc(100% - 75px)";
         display: inline-block;
     }
 }
 
+div.loading-message.alert.alert-info {
+    text-align: center;
+    margin-bottom: 12px;
+    margin-top: 12px;
+    height: 136px;
+    line-height: 130px;
+    font-size: 28px;
+    font-weight: 28px;
+}
+
 div.viz-cell-editor {
     min-height: 160px;
-    padding-right: 80px;
+    div.loading-message.alert.alert-info {
+        height: 160px;
+    }
     .viz-chart-type-selector {
         position: absolute;
-        left: 13px;
-        width: 41px;
+        left: 0;
+        width: 60px;
         height: 160px;
         background-color: #f0f0f0;
         img {
-            width: 41px;
-            padding-left: 4px;
-            padding-right: 4px;
-            bacground-color: transparent;
-            padding-bottom: 10px;
-            padding-top: 10px;
+            width: 32px;
+            height: 32px;
+            padding: 6px;
+            background-color: #aaa;
             cursor: pointer;
-            &.active {
-                background-color: white;
+            margin-left: 16px;
+            margin-top: 8px;
+            left: 50%;
+            &.active, &:hover {
+                background-color: #337ab7;
             }
         }
     }
     .viz-chart-configuration {
-        margin-left: 40px;
+        margin-left: 60px;
+        padding-top: 10px;
     }
 }
 
