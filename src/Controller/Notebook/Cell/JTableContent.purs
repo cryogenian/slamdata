@@ -97,16 +97,19 @@ runJTable file cell = do
   let perPage = fromMaybe Config.defaultPageSize (currentPageSize cell)
       pageNumber = fromMaybe one (currentPage cell)
       pageIndex = pageNumber - one
-  results <- liftAff $ attempt $ { numItems: _, json: _ }
-    <$> count file 
-    <*> sample file (pageIndex * perPage) perPage
+  results <- liftAff $ attempt $ do
+    numItems <- count file
+    let numPages = Math.ceil (numItems / I.toNumber perPage)
+        pageIndex' = I.fromNumber $ Math.min (I.toNumber pageIndex) (numPages - 1)
+    json <- sample file (pageIndex' * perPage) perPage
+    return { numItems: numItems, pageNumber: pageIndex' + one, json: json }
   now' <- liftEff now
   return $ case results of
       Left err -> CellResult (cell ^. _cellId) now' (Left $ NEL.singleton $ message err)
       Right results -> do
         CellResult (cell ^. _cellId) now' $ Right $ JTableContent $
           JTC.JTableContent { perPage: Right perPage
-                            , page: That pageNumber
+                            , page: That results.pageNumber
                             , result: Just $ JTC.Result
                               { totalPages: I.fromNumber $ Math.ceil (results.numItems / I.toNumber perPage)
                               , values: Just $ fromArray results.json
