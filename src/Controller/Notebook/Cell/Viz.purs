@@ -121,26 +121,25 @@ configure r =
       cats = fst <$> (filter (snd >>> Me.isCatAxis) tpls)
       vals = fst <$> (filter (snd >>> Me.isValAxis) tpls)
       times = fst <$> (filter (snd >>> Me.isTimeAxis) tpls)
-
-
+      
       pie = (r ^._pieConfiguration) #
             (_cats.._variants .~ cats) ..
-            (_firstSeries.._variants .~ (cats <-> p.cats)) ..
-            (_secondSeries.._variants .~ (cats <-> p.cats <-> p.firstSeries)) ..
+            (_firstSeries.._variants .~ ((cats <-> p.cats) `onlyIfSelected` p.cats)) ..
+            (_secondSeries.._variants .~ ((cats <-> p.cats <-> p.firstSeries) `onlyIfSelected` p.firstSeries)) ..
             (_firstMeasures.._variants .~ (depends p.cats vals))
 
       bar = (r ^._barConfiguration) #
             (_cats.._variants .~ cats) ..
-            (_firstSeries.._variants .~ (cats <-> b.cats)) ..
-            (_secondSeries.._variants .~ (cats <-> b.cats <-> b.firstSeries)) ..
+            (_firstSeries.._variants .~ ((cats <-> b.cats) `onlyIfSelected` b.cats)) ..
+            (_secondSeries.._variants .~ ((cats <-> b.cats <-> b.firstSeries) `onlyIfSelected` b.firstSeries)) ..
             (_firstMeasures.._variants .~ (depends b.cats vals))
 
       line = (r ^._lineConfiguration) #
              (_dims.._variants .~ (times <> cats)) ..
-             (_firstSeries.._variants .~ (cats <-> l.dims)) ..
-             (_secondSeries.._variants .~ (cats <-> l.dims <-> l.firstSeries)) ..
+             (_firstSeries.._variants .~ ((cats <-> l.dims) `onlyIfSelected` l.dims)) ..
+             (_secondSeries.._variants .~ ((cats <-> l.dims <-> l.firstSeries) `onlyIfSelected` l.firstSeries)) ..
              (_firstMeasures.._variants .~ (depends l.dims vals)) ..
-             (_secondMeasures.._variants .~ (depends l.dims $(vals <-> l.firstMeasures)))
+             (_secondMeasures.._variants .~ ((depends l.dims $(vals <-> l.firstMeasures)) `onlyIfSelected` l.firstMeasures))
       available = if null vals
                   then []
                   else if not $ null cats
@@ -161,6 +160,9 @@ configure r =
     p = r.pieConfiguration
     b = r.barConfiguration
     l = r.lineConfiguration
+
+    onlyIfSelected :: forall a. [a] -> Selection a -> [a]
+    onlyIfSelected lst sel = maybe [] (const lst) sel.selection
 import Debug.Foreign
 
 updateOpts :: forall e. Cell -> I e

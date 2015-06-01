@@ -199,7 +199,7 @@ initialVizRec =
   { output: Option optionDefault
   , all: empty
   , sample: empty
-  , error: "No available chart types"
+  , error: ""
   , selectedFlag: false
   , availableChartTypes: S.empty
   , chartType: Pie
