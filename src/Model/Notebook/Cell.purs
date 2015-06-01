@@ -144,17 +144,11 @@ cellContentType (Markdown _) = "markdown"
 newSearchContent :: Resource -> CellContent
 newSearchContent res = Search (Sr.initialSearchRec # Sr._input .. _file .~ Right res)
 
-newExploreContent :: CellContent
-newExploreContent = Explore Ex.initialExploreRec
-
 newQueryContent :: Resource -> CellContent
 newQueryContent res = Query (Qu.initialQueryRec # Qu._input .~ "SELECT * FROM \"" ++ resourcePath res ++ "\"")
 
 newVisualizeContent :: CellContent
 newVisualizeContent = Visualize Vz.initialVizRec
-
-newMarkdownContent :: CellContent
-newMarkdownContent = Markdown Ma.initialMarkdownRec
 
 _Explore :: PrismP CellContent Ex.ExploreRec
 _Explore = prism' Explore $ \s -> case s of
