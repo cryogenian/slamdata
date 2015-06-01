@@ -11,8 +11,9 @@ import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
 import Data.Function (on)
-import Data.Maybe (Maybe(..), maybe)
-import Data.Tuple (fst)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..), fst)
 import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
@@ -21,7 +22,7 @@ import Model.Notebook.Port (Port(..), VarMapValue())
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
-import Text.Markdown.SlamDown (SlamDown(..), Block(..), Inline(..), FormField(..))
+import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..))
 import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, emptySlamDownState)
 import Text.Markdown.SlamDown.Parser (parseMd)
 
@@ -123,8 +124,10 @@ slamDownOutput cell =
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
 
 -- TODO: This should probably live in purescript-markdown
-slamDownFields :: SlamDown -> [String]
-slamDownFields (SlamDown bs) = bs >>= block
+slamDownFields :: String -> [Tuple String FormField]
+slamDownFields s =
+  case parseMd s of
+    SlamDown bs -> bs >>= block
   where
     block (Paragraph is) = is >>= inline
     block (Header _ is) = is >>= inline
@@ -135,15 +138,28 @@ slamDownFields (SlamDown bs) = bs >>= block
     inline (Strong is) = is >>= inline
     inline (Link is _) = is >>= inline
     inline (Image is _) = is >>= inline
-    inline (FormField s _ _) = [s]
+    inline (FormField s _ ff) = [Tuple s ff]
     inline _ = []
+
+-- TODO: Change Port to SlamDownState and use slamDownOutput instead.
+initialSlamDownOutput :: [Tuple String FormField] -> Port
+initialSlamDownOutput sf = VarMap sm
+  where sm :: SM.StrMap VarMapValue
+        sm = fromMaybe SM.empty <<< traverse toValue $ SM.fromList sf
+        toValue :: FormField -> Maybe VarMapValue
+        toValue (TextBox _ (Literal s)) = Just s
+        toValue (RadioButtons (Literal s) _) = Just s
+        toValue (DropDown _ (Literal s)) = Just s
+        toValue (CheckBoxes _ (Literal ss)) = Nothing
+        toValue _ = Nothing
 
 setSlamDownStatus :: Cell -> Cell
 setSlamDownStatus cell =
   let input' = cell ^? _content.._Markdown..Ma._input
-      message = ("Exported fields: "<>) <<< intercalate ", " <<< slamDownFields <<< parseMd
-      changeMessage m = cell # _message .~ message m
-  in maybe cell changeMessage input'
+      message = ("Exported fields: " <>) <<< intercalate ", " <<< (fst <$>)
+      initial fields = cell # _message .~ message fields
+                            # _output .~ initialSlamDownOutput fields
+  in maybe cell (initial <<< slamDownFields) input'
 
 runSlamDownEvent :: SlamDownEvent -> Cell -> Cell
 runSlamDownEvent event cell =
