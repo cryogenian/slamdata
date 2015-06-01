@@ -51,8 +51,11 @@ import qualified View.Modal.Common as Vm
 
 view :: forall e. State -> HTML e
 view state =
-  H.div [ E.onClick (E.input_ CloseDropdowns) ]
+  H.div [ A.classes classes, E.onClick (E.input_ CloseDropdowns) ]
   (navigation state <> [body state] <> [modal state])
+  where classes = if not state.editable
+                  then [ Vc.notebookViewHack ]
+                  else [ ]
 
 navigation :: forall e. State -> [HTML e]
 navigation state =

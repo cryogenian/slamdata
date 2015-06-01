@@ -43,6 +43,16 @@ body.notebook-page {
     padding-top: 111px;
 }
 
+.notebook-view-hack {
+    margin-top: -111px;
+    .cell-controls, .cell-input, .cell-output-label {
+        display: none;
+    }
+    .notebook-cell .row.cell-output div.cell-output-result {
+        width: 100%;
+    }
+}
+
 button:focus {
     outline:0;
 }

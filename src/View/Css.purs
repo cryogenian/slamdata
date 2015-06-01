@@ -95,6 +95,9 @@ mountPropsScrollbox = className "mount-props-scrollbox"
 notebookContent :: ClassName
 notebookContent = className "notebook-content"
 
+notebookViewHack :: ClassName
+notebookViewHack = className "notebook-view-hack"
+
 notebookCell :: ClassName
 notebookCell = className "notebook-cell"
 
