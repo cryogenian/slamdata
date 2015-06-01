@@ -6,13 +6,14 @@ module Input.File.Mount
 import Data.Array (filter, replicate, null)
 import Data.Char (fromCharCode)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust, isNothing)
 import Data.Foldable (any)
+import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust, isNothing)
+import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
 import Model.File.Dialog (Dialog(MountDialog))
-import Model.File.Dialog.Mount (MountDialogRec(), MountHostRec(), MountPropRec(), initialMountDialog, initialMountHost, initialMountProp, isEmptyHost, isEmptyProp)
-import Utils.ConnectionURI (parse, toURI)
+import Model.File.Dialog.Mount
 import qualified Data.String as Str
 import qualified Data.String.Regex as Rx
+import Utils.ConnectionURI (toURI)
 
 data MountInput
   = ValueChanged (MountDialogRec -> MountDialogRec)
@@ -34,25 +35,33 @@ inputMount (MountDialog d) (ValueChanged fn) =
                     , message = validation
                     , valid = isNothing validation
                     }
-inputMount (MountDialog d) (UpdateConnectionURI "") = MountDialog initialMountDialog
+inputMount (MountDialog d) (UpdateConnectionURI "") =
+  let parent = d.parent
+  in MountDialog initialMountDialog { parent = parent }
 inputMount (MountDialog d) (UpdateConnectionURI uri) =
-  MountDialog $ case parse uri of
+  MountDialog $ case runParseAbsoluteURI uri of
     Left _ -> d { connectionURI = uri
                 , message = Just "Pasted value does not appear to be a valid connection URI"
                 , valid = false
                 }
-    Right params ->
-      let hosts' = ((\host -> host { port = fromMaybe "" host.port }) <$> params.hosts) ++ [initialMountHost]
-          validation = validate d.name hosts'
-      in d { connectionURI = uri
-        , path = fromMaybe "" params.name
-        , user = maybe "" (_.user) params.credentials
-        , password = maybe "" (_.password) params.credentials
-        , hosts = hosts'
-        , props = params.props ++ [initialMountProp]
-        , message = validation
-        , valid = isNothing validation
-        }
+    Right uri' ->
+      if schemeFromURI uri' /= "mongodb"
+      then d { connectionURI = uri
+             , message = Just "Pasted value does not appear to be a mongodb connection URI"
+             , valid = false
+             }
+      else
+        let hosts = hostsFromURI uri'
+            validation = validate d.name hosts
+        in d { connectionURI = printAbsoluteURI uri'
+             , hosts = hosts ++ [initialMountHost]
+             , path = pathFromURI uri'
+             , user = userFromURI uri'
+             , password = passwordFromURI uri'
+             , props = propsFromURI uri' ++ [initialMountProp]
+             , message = validation
+             , valid = isNothing validation
+             }
 inputMount (MountDialog d) ClearMessage = MountDialog $ d { message = Nothing }
 inputMount dialog _ = dialog
 

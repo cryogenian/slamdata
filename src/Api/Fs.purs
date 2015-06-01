@@ -2,6 +2,7 @@ module Api.Fs where
 
 import Api.Common (succeeded, getResponse)
 import Control.Apply ((*>))
+import Control.Bind ((>=>))
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
@@ -10,20 +11,22 @@ import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Array (head, findIndex)
 import Data.Either (Either(..), either)
-import Data.Foreign (Foreign())
+import Data.Foreign (Foreign(), F(), parseJSON)
+import Data.Foreign.Index (prop)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Maybe
 import Data.Path.Pathy
-import Data.String (split, length, take, joinWith)
 import Data.These (These(..), theseLeft, theseRight)
 import Model.Path
 import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, get, put_, delete_, defaultRequest)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
-import Network.HTTP.Method (Method(MOVE))
+import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
+import Network.HTTP.MimeType.Common (applicationJSON)
 import Optic.Core ((..), (.~), (^.))
 
 import qualified Data.Maybe.Unsafe as U
+import qualified Data.String as S
 import qualified Model.Notebook.Domain as N
 import qualified Model.Resource as R
 
@@ -66,7 +69,7 @@ makeFile ap content =
   err _ = throwError $ error "file has incorrect format"
 
   firstLine :: Maybe String
-  firstLine = head $ split "\n" content
+  firstLine = head $ S.split "\n" content
 
   isJson :: Either _ _
   isJson = maybe (Left "empty file") Right firstLine >>= jsonParser
@@ -110,9 +113,9 @@ saveNotebook notebook = case notebook ^. N._name of
     if alreadyExists
       then throwError (error "A file already exists with the specified name")
       else
-        let oldPath = Right $ (notebook ^. N._path) </> dir oldName <./> Config.notebookExtension
+        let oldPath = (notebook ^. N._path) </> dir oldName <./> Config.notebookExtension
             newPath = Right $ (notebook ^. N._path) </> dir newName <./> Config.notebookExtension
-        in move oldPath newPath *> pure (notebook # N._name .~ That newName)
+        in move (R.Directory oldPath) newPath *> pure (notebook # N._name .~ That newName)
   where
   save name =
     let notebookPath = (notebook ^. N._path) </> dir name <./> Config.notebookExtension </> file "index"
@@ -127,10 +130,10 @@ getNewName parent name = do
   pure if exists' name items then getNewName' items 1 else name
   where
   getNewName' items i =
-    case split "." name of
+    case S.split "." name of
       [] -> ""
       body:suffixes ->
-        let newName = joinWith "." $ (body ++ " " ++ show i):suffixes
+        let newName = S.joinWith "." $ (body ++ " " ++ show i):suffixes
         in if exists' newName items then getNewName' items (i + 1) else newName
 
 exists :: forall e. String -> DirPath -> Aff (ajax :: AJAX | e) Boolean
@@ -141,16 +144,54 @@ exists' name items = findIndex (\r -> r ^. R._name == name) items /= -1
 
 delete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit
 delete resource =
-  getResponse msg $ delete_ (Config.dataUrl <> R.resourcePath resource)
+  let url = if R.isDatabase resource
+            then Config.mountUrl
+            else Config.dataUrl
+  in getResponse msg $ delete_ (url <> R.resourcePath resource)
   where msg = "can not delete"
 
-move :: forall a e. AnyPath -> AnyPath -> Aff (ajax :: AJAX | e) AnyPath
+move :: forall a e. R.Resource -> AnyPath -> Aff (ajax :: AJAX | e) AnyPath
 move src tgt = do
+  let url = if R.isDatabase src
+            then Config.mountUrl
+            else Config.dataUrl
   result <- affjax $ defaultRequest
     { method = MOVE
     , headers = [RequestHeader "Destination" $ either printPath printPath tgt]
-    , url = Config.dataUrl <> either printPath printPath src
+    , url = url <> R.resourcePath src
     }
   if succeeded result.status
      then pure tgt
      else throwError (error result.response)
+
+mountInfo :: forall e. R.Resource -> Aff (ajax :: AJAX | e) String
+mountInfo res = do
+  result <- get (Config.mountUrl <> R.resourcePath res)
+  if succeeded result.status
+     then case parse result.response of
+       Left err -> throwError $ error (show err)
+       Right uri -> pure uri
+     else throwError (error result.response)
+  where
+  parse :: String -> F String
+  parse = parseJSON >=> prop "mongodb" >=> readProp "connectionUri"
+
+saveMount :: forall e. R.Resource -> String -> Aff (ajax :: AJAX | e) Unit
+saveMount res uri = do
+  result <- affjax $ defaultRequest
+    { method = PUT
+    , headers = [ContentType applicationJSON]
+    , content = Just $ stringify { mongodb: { connectionUri: uri } }
+    , url = Config.mountUrl <> R.resourcePath res
+    }
+  if succeeded result.status
+     then pure unit
+     else throwError (error result.response)
+
+foreign import stringify
+  """
+  function stringify(x) {
+    return JSON.stringify(x);
+  };
+  """ :: forall r. { | r } -> String
+

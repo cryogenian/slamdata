@@ -14,6 +14,9 @@ uploadUrl = serviceBaseUrl <> "upload"
 metadataUrl :: String
 metadataUrl = serviceBaseUrl <> "metadata/fs/"
 
+mountUrl :: String
+mountUrl = serviceBaseUrl <> "mount/fs/"
+
 dataUrl :: String
 dataUrl = serviceBaseUrl <> "data/fs/"
 

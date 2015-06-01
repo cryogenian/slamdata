@@ -1,14 +1,22 @@
 module Model.File.Dialog.Mount where
 
 import Data.Array (length, zipWith)
-import Data.Int (Int(), fromNumber)
-import Data.Maybe (Maybe(..))
+import Data.Either (either)
 import Data.Foldable (and, all)
+import Data.Int (Int(), fromNumber, toNumber)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Path.Pathy (rootDir, printPath)
+import Data.String (indexOf, take, drop)
+import Data.StrMap (toList)
 import Data.Tuple (Tuple(..), zip)
+import Data.URI (printAbsoluteURI)
+import Data.URI.Types
+import Model.Path
 import Optic.Core ((.~), lens, LensP())
 
 type MountDialogRec =
   { new :: Boolean
+  , parent :: DirPath
   , name :: String
   , connectionURI :: String
   , hosts :: [MountHostRec]
@@ -63,6 +71,7 @@ _value = lens _.value (_ { value = _ })
 initialMountDialog :: MountDialogRec
 initialMountDialog =
   { new: true
+  , parent: rootDir
   , name: ""
   , connectionURI: ""
   , hosts: [initialMountHost, initialMountHost]
@@ -91,3 +100,55 @@ isEmptyHost h = h.host == "" && h.port == ""
 
 isEmptyProp :: MountPropRec -> Boolean
 isEmptyProp p = p.name == "" && p.value == ""
+
+mountDialogFromURI :: AbsoluteURI -> MountDialogRec
+mountDialogFromURI uri =
+  initialMountDialog { connectionURI = printAbsoluteURI uri
+                     , hosts = hostsFromURI uri ++ [initialMountHost]
+                     , path = pathFromURI uri
+                     , user = userFromURI uri
+                     , password = passwordFromURI uri
+                     , props = propsFromURI uri ++ [initialMountProp]
+                     }
+
+schemeFromURI :: AbsoluteURI -> String
+schemeFromURI (AbsoluteURI (Just (URIScheme s)) _ _) = s
+schemeFromURI _ = ""
+
+hostsFromURI :: AbsoluteURI -> [MountHostRec]
+hostsFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority _ hs)) _) _) = go <$> hs
+  where
+  go :: Tuple Host (Maybe Port) -> MountHostRec
+  go (Tuple h p) = { host: getHost h, port: maybe "" (show <<< toNumber) p }
+  getHost :: Host -> String
+  getHost (IPv6Address s) = s
+  getHost (IPv4Address s) = s
+  getHost (NameAddress s) = s
+hostsFromURI _ = []
+
+pathFromURI :: AbsoluteURI -> String
+pathFromURI (AbsoluteURI _ (HierarchicalPart _ (Just p)) _) = either printPath printPath p
+pathFromURI _ = ""
+
+userFromURI :: AbsoluteURI -> String
+userFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority (Just ui) _)) _) _) =
+  let ix = indexOf ":" ui
+  in if ix == -1
+     then ui
+     else take ix ui
+userFromURI _ = ""
+
+passwordFromURI :: AbsoluteURI -> String
+passwordFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority (Just ui) _)) _) _) =
+  let ix = indexOf ":" ui
+  in if ix == -1
+     then ""
+     else drop (ix + 1) ui
+passwordFromURI _ = ""
+
+propsFromURI :: AbsoluteURI -> [MountPropRec]
+propsFromURI (AbsoluteURI _ _ (Just (Query qs))) = go <$> toList qs
+  where
+  go :: Tuple String (Maybe String) -> MountPropRec
+  go (Tuple k v) = { name: k, value: fromMaybe "" v }
+propsFromURI _ = []

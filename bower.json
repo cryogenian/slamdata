@@ -55,7 +55,8 @@
     "purescript-tuples": "^0.3.1",
     "purescript-zclipboard": "^0.1.0",
     "zeroclipboard": "^2.2.0",
-    "purescript-sets": "~0.3.2"
+    "purescript-sets": "~0.3.2",
+    "purescript-uri": "dd41ddb8e4aac2e7c2cdc3aa631c5669b5a50293"
   },
   "resolutions": {
     "purescript-argonaut": "^0.6.0",
