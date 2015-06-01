@@ -43,6 +43,7 @@ data FileInput
   | SetSearching Boolean
   | SetSalt Salt
   | SetDialog (Maybe Dialog)
+  | SetHasMountRoot Boolean
 
 updateState :: State -> Input -> State
 updateState state input =
@@ -79,6 +80,8 @@ inputFile state input =
       state{salt = s}
     SetDialog d ->
       state{dialog = d}
+    SetHasMountRoot b ->
+      state{hasMountRoot = b}
 
 
   where

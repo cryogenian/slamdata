@@ -1,21 +1,15 @@
+-- TODO: eliminate the use of this entirely in favour of purescript-uri
 module Utils.ConnectionURI
   ( URIParams()
   , CredentialParams()
   , HostParams()
   , PropParams()
-  , parse
   , toURI
   ) where
 
-import Control.Alt ((<|>))
-import Control.Apply ((*>))
 import Data.Array (null)
-import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
-import Data.String (joinWith, charAt, fromChar)
-import Text.Parsing.StringParser (Parser(), ParseError(), runParser)
-import Text.Parsing.StringParser.Combinators (many1, sepBy, sepBy1, optionMaybe, manyTill, lookAhead)
-import Text.Parsing.StringParser.String (string, anyChar, anyDigit, eof)
+import Data.String (joinWith)
 
 type URIParams =
   { name :: Maybe String
@@ -43,43 +37,3 @@ toURI params = "mongodb://"
   hostToURI host = host.host ++ (maybe "" (":" ++) host.port)
   propToURI :: PropParams -> String
   propToURI prop = prop.name ++ "=" ++ prop.value
-
-parse :: String -> Either ParseError URIParams
-parse = runParser parseURI
-
-parseURI :: Parser URIParams
-parseURI = do
-  string "mongodb://"
-  credentials <- optionMaybe parseCredentials
-  hosts <- sepBy1 parseHost (string ",")
-  name <- optionMaybe parseDatabaseName
-  options <- sepBy parseProp parsePropSep
-  eof
-  return { name: name
-         , credentials: credentials
-         , hosts: hosts
-         , props: options
-         }
-
-parseCredentials :: Parser { user :: String, password :: String }
-parseCredentials = lookAhead (string "@") *> ({ user: _, password: _ }
-  <$> (joinWith "" <$> manyTill anyChar (string ":"))
-  <*> (joinWith "" <$> manyTill anyChar (string "@")))
-
-parseHost :: Parser { host :: String, port :: Maybe String }
-parseHost = { host: _, port: _ }
-  <$> (joinWith "" <$> manyTill anyChar (string ":" <|> (lookAhead (string "/" <|> string ","))))
-  <*> (optionMaybe $ joinWith "" <$> many1 anyDigit)
-
-parseDatabaseName :: Parser String
-parseDatabaseName = do
-  string "/"
-  joinWith "" <$> manyTill anyChar ((string "?" *> pure unit) <|> eof)
-
-parseProp :: Parser { name :: String, value :: String }
-parseProp = { name: _, value: _ }
-  <$> (joinWith "" <$> manyTill anyChar (string "="))
-  <*> (joinWith "" <$> manyTill anyChar (lookAhead parsePropSep <|> eof))
-
-parsePropSep :: Parser Unit
-parsePropSep = (string "&" <|> string ";") *> pure unit

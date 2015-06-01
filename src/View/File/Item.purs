@@ -85,7 +85,7 @@ iconClasses item = A.classes [B.glyphicon, Vc.itemIcon, iconClass item.resource]
 showToolbar :: forall e. Item -> State -> [H.HTML (I e)]
 showToolbar item state =
   let conf = if isDatabase item.resource
-             then [toolItem' handleConfigure "configure" B.glyphiconWrench]
+             then [toolItem' (handleConfigure <<< _.resource) "configure" B.glyphiconWrench]
              else []
 
   in conf <> [ toolItem' handleMoveItem "move/rename" B.glyphiconMove

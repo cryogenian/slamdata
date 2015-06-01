@@ -7,6 +7,7 @@ import Control.Functor (($>))
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
+import Controller.File (saveMount)
 import Data.Array ((..), length, zipWith, singleton)
 import Data.Foldable (all)
 import Data.Int (toNumber)
@@ -49,7 +50,7 @@ mountDialog state =
                     ]
          ]
   , footer [ btnCancel
-           , btnMount (if state.new then "Mount" else "Save changes") state.valid
+           , btnMount state (if state.new then "Mount" else "Save changes") state.valid
            ]
   ]
 
@@ -180,11 +181,11 @@ btnCancel =
            ]
            [ H.text "Cancel" ]
 
-btnMount :: forall e. String -> Boolean -> H.HTML (I e)
-btnMount text enabled =
+btnMount :: forall e. M.MountDialogRec -> String -> Boolean -> H.HTML (I e)
+btnMount state text enabled =
   H.button [ A.classes [B.btn, B.btnPrimary]
            , A.disabled (not enabled)
-           , E.onClick (E.input_ $ inj $ SetDialog Nothing)
+           , E.onClick (\_ -> pure $ saveMount state)
            ]
            [ H.text text ]
 
