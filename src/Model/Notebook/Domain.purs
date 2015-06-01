@@ -146,6 +146,7 @@ insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
 cellOut :: CellContent -> Notebook -> CellId -> Port
 cellOut content n cid = case content of
   (Explore _) -> Closed
+  (Visualize _) -> Closed
   _ -> these (const Closed) portRes (\_ -> portRes) (n ^. _name)
   where
   portRes :: String -> Port
