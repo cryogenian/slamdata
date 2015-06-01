@@ -42,6 +42,8 @@ import Optic.Extended (TraversalP())
 import Optic.Fold ((^?))
 import Optic.Index (ix)
 
+import qualified Data.StrMap as SM
+
 newtype Notebook =
   Notebook { cells :: [Cell]
            , dependencies :: Dependencies
@@ -122,7 +124,6 @@ addCell content oldNotebook@(Notebook n) = Tuple notebook cell
   where
   newId = freeId oldNotebook
   cell = newCell newId content # (_output .~ cellOut content oldNotebook newId)
-                              .. (_input .~ cellIn content)
   notebook = Notebook $ n { cells = n.cells `snoc` cell
                           , activeCellId = newId
                           }
@@ -133,14 +134,13 @@ insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
   new = Notebook $ n { cells = insertAt (i + 1) cell n.cells
                      , dependencies = newDeps
                      }
-
   i = elemIndex parent n.cells
-
   newDeps = insert newId (parent ^. _cellId) n.dependencies
   newId = freeId oldNotebook
-  cell = newCell newId (content # _FileInput .. _file .~ maybe (Left "") Right (port ^? _PortResource))
+  input = parent ^. _output
+  cell = newCell newId (content # _FileInput .. _file .~ maybe (Left "") Right (input ^? _PortResource))
          # (_output .~ port)
-         ..(_input  .~ (parent ^. _output))
+         ..(_input  .~ input)
          ..(_parent .~ Just (parent ^. _cellId))
   port = cellOut content oldNotebook newId
 
@@ -148,14 +148,11 @@ cellOut :: CellContent -> Notebook -> CellId -> Port
 cellOut content n cid = case content of
   (Explore _) -> Closed
   (Visualize _) -> Closed
+  (Markdown _) -> VarMap SM.empty
   _ -> these (const Closed) portRes (\_ -> portRes) (n ^. _name)
   where
   portRes :: String -> Port
   portRes _ = maybe Closed (\p -> PortResource $ File $ p </> file ("out" <> show cid)) (notebookPath n)
-
-cellIn :: CellContent -> Port
-cellIn content@(Explore _) = maybe Closed portFromFile (content ^? _FileInput .. _file)
-cellIn _ = Closed
 
 freeId :: Notebook -> CellId
 freeId (Notebook n) =
