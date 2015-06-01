@@ -30,10 +30,10 @@ import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (rootDir, dir, file, (</>), printPath)
 import Data.These (These(..), these, theseRight)
 import Data.Tuple (Tuple(..))
+import Model.Action (Action(), printAction)
 import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _parent, _FileInput)
 import Model.Notebook.Cell.FileInput (_file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..), _PortResource)
-import Model.Action (Action(), printAction)
 import Model.Path (DirPath(), (<./>), encodeURIPath)
 import Model.Resource (Resource(File))
 import Network.HTTP.Affjax.Request (Requestable, toRequest)
@@ -41,6 +41,7 @@ import Optic.Core (lens, LensP(), (..), (.~), (^.))
 import Optic.Extended (TraversalP())
 import Optic.Fold ((^?))
 import Optic.Index (ix)
+import Optic.Refractor.Prism (_Right)
 
 import qualified Data.StrMap as SM
 
@@ -120,11 +121,14 @@ deps cid ds = deps' cid ds []
       Just a -> deps' a ds (a : agg)
 
 addCell :: CellContent -> Notebook -> Tuple Notebook Cell
-addCell content oldNotebook@(Notebook n) = Tuple notebook cell
+addCell content oldNotebook@(Notebook n) = Tuple notebook cell'
   where
   newId = freeId oldNotebook
   cell = newCell newId content # (_output .~ cellOut content oldNotebook newId)
-  notebook = Notebook $ n { cells = n.cells `snoc` cell
+  cell' = case content of
+    (Explore _) -> cell # (_input .~ maybe Closed PortResource (content ^? _FileInput .. _file .. _Right))
+    _ -> cell
+  notebook = Notebook $ n { cells = n.cells `snoc` cell'
                           , activeCellId = newId
                           }
 
