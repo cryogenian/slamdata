@@ -94,9 +94,9 @@ updateData cell file = do
     all <- Me.analyzeJArray <$> (liftAff $ all file)
     let vizRec = fromMaybe initialVizRec $ cell ^? _content.._Visualize
         axes = keys all
-        vRec = configure $ vizRec { all = all
-                                  , sample = sample
-                                  }
+        vRec = configure $ (vizRec # _all .~ all
+                                   # _sample .~ sample
+                           )
     (update cell (_content .. _Visualize .~ vRec)) <>
     (updateOpts (cell # _content.._Visualize .~ vRec))
 
@@ -157,12 +157,12 @@ configure r =
        # _availableChartTypes .~ S.fromList available
        # _error .~ error
   where
-    p = r.pieConfiguration
-    b = r.barConfiguration
-    l = r.lineConfiguration
+    p = r ^._pieConfiguration
+    b = r ^._barConfiguration
+    l = r ^._lineConfiguration
 
     onlyIfSelected :: forall a. [a] -> Selection a -> [a]
-    onlyIfSelected lst sel = maybe [] (const lst) sel.selection
+    onlyIfSelected lst sel = maybe [] (const lst) (sel ^._selection)
 import Debug.Foreign
 
 updateOpts :: forall e. Cell -> I e

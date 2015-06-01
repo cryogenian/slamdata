@@ -34,6 +34,12 @@ import Data.String (take)
 import Data.String.Regex (noFlags, regex, match, test)
 import Data.Tuple (Tuple(..), fst, snd)
 import Global (readFloat, isNaN)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
+import Data.Argonaut.Encode (EncodeJson)
+import Data.Argonaut.Combinators ((~>), (:=), (.?))
+import Data.Argonaut.Core (fromString, jsonEmptyObject, JArray(), Json())
+import Data.Either
+
 
 dependsOn :: JCursor -> JCursor -> Boolean
 dependsOn a b = a /= b &&
@@ -55,11 +61,91 @@ data Semanthic
   | Category String 
   | Time String
 
+instance encodeJsonSemanthic :: EncodeJson Semanthic where
+  encodeJson (Value n) = "type" := "value"
+                         ~> "value" := n
+                         ~> jsonEmptyObject
+
+  encodeJson (Percent n) = "type" := "percent"
+                           ~> "value" := n
+                           ~> jsonEmptyObject
+
+  encodeJson (Money n v) = "type" := "money"
+                           ~> "value" := n
+                           ~> "currency" := v
+                           ~> jsonEmptyObject
+
+  encodeJson (Bool b) = "type" := "bool"
+                        ~> "value" := b
+                        ~> jsonEmptyObject
+
+  encodeJson (Category c) = "type" := "category"
+                            ~> "value" := c
+                            ~> jsonEmptyObject
+
+  encodeJson (Time t) = "type" := "time"
+                        ~> "value" := t
+                        ~> jsonEmptyObject
+
+instance decodeJsonSemanthic :: DecodeJson Semanthic where
+  decodeJson json = do
+    obj <- decodeJson json
+    ty <- obj .? "type"
+    case ty of
+      "money" -> do
+        curr <- obj .? "currency"
+        m <- obj .? "value"
+        pure (Money m curr)
+      "time" -> do
+        t <- obj .? "value"
+        pure $ Time t
+      "bool" -> do
+        b <- obj .? "value"
+        pure $ Bool b
+      "category" -> do
+        c <- obj .? "value"
+        pure $ Category c
+      "value" -> do
+        v <- obj .? "value"
+        pure $ Value v
+      "percent" -> do
+        p <- obj .? "value"
+        pure $ Percent p
+      _ -> Left "incorrect type of semanthic"
+
+    
+
 data Axis
   = ValAxis [Maybe Semanthic]
   | CatAxis [Maybe Semanthic]
   | TimeAxis [Maybe Semanthic]
 
+
+instance encodeJsonAxis :: EncodeJson Axis where
+  encodeJson (ValAxis mbs) = "type" := "val-axis"
+                             ~> "els" := mbs
+                             ~> jsonEmptyObject
+
+  encodeJson (CatAxis mbs) = "type" := "cat-axis"
+                             ~> "els" := mbs
+                             ~> jsonEmptyObject
+
+  encodeJson (TimeAxis mbs) = "type" := "time-axis"
+                              ~> "els" := mbs
+                              ~> jsonEmptyObject
+
+instance decodeJsonAxis :: DecodeJson Axis where
+  decodeJson json = do
+    obj <- decodeJson json
+    ty <- obj .? "type"
+    mbs <- obj .? "els"
+    case ty of
+      "val-axis" -> pure $ ValAxis mbs
+      "cat-axis" -> pure $ CatAxis mbs
+      "time-axis" -> pure $ TimeAxis mbs
+      _ -> Left "incorrect axis type"
+
+    
 
 isValAxis :: Axis -> Boolean
 isValAxis (ValAxis _) = true

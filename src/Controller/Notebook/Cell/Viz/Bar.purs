@@ -39,7 +39,7 @@ simpleData = Value <<< Simple
 type Accum = Map Key [Number]
 type AggregatedAccum = Map Key Number
 
-extractData :: VizRec -> BarConfiguration -> Accum
+extractData :: VizRec -> _ -> Accum
 extractData r conf =
   extractData' cats sers1 sers2 vals empty
   where
@@ -89,12 +89,12 @@ alter' :: Number -> Maybe [Number] -> Maybe [Number]
 alter' v vals =
   Just (v:(fromMaybe [] vals ))
 
-aggregate :: Accum -> BarConfiguration -> AggregatedAccum 
+aggregate :: Accum -> _ -> AggregatedAccum 
 aggregate acc conf =
   agg <$> acc
   where agg = runAggregation (conf ^._firstAggregation)
 
-extractClean :: VizRec -> BarConfiguration -> AggregatedAccum
+extractClean :: VizRec -> _ -> AggregatedAccum
 extractClean r conf =
   aggregate (extractData r conf) conf
 
@@ -176,7 +176,7 @@ mkSeries acc =
   series =
     serie <$> (toList group)
 
-mkBar :: forall e. VizRec -> BarConfiguration -> Option
+mkBar :: forall e. VizRec -> _ -> Option
 mkBar r conf =
   case tpls of
     Tuple xAxis series ->
