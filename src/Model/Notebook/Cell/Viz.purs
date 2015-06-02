@@ -18,6 +18,7 @@ import Data.Argonaut.Encode (EncodeJson)
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (fromString, Json(), JArray(), jsonEmptyObject, toString)
 import Data.Either
+import Control.Alt ((<|>))
 
 data ChartType
   = Pie
@@ -339,7 +340,9 @@ newtype VizRec = VizRec
     -- another type of chart
   , pieConfiguration :: PieConfiguration
   , lineConfiguration :: LineConfiguration
-  , barConfiguration :: BarConfiguration 
+  , barConfiguration :: BarConfiguration
+  , chartHeight :: Number
+  , chartWidth :: Number
   }
 
 initialVizRec :: VizRec
@@ -353,6 +356,8 @@ initialVizRec = VizRec
   , pieConfiguration: initialPieConfiguration
   , lineConfiguration: initialLineConfiguration
   , barConfiguration: initialBarConfiguration
+  , chartHeight: 400
+  , chartWidth: 600
   }
 
 instance encodeJsonVizRec :: EncodeJson VizRec where
@@ -363,6 +368,8 @@ instance encodeJsonVizRec :: EncodeJson VizRec where
                           ~> "pie" := r.pieConfiguration
                           ~> "line" := r.lineConfiguration
                           ~> "bar" := r.barConfiguration
+                          ~> "height" := r.chartHeight
+                          ~> "width" := r.chartWidth
                           ~> jsonEmptyObject
 
 instance decodeJsonVizRec :: DecodeJson VizRec where
@@ -377,13 +384,17 @@ instance decodeJsonVizRec :: DecodeJson VizRec where
         , chartType: _
         , pieConfiguration: _
         , lineConfiguration: _
-        , barConfiguration: _ } <$>
+        , barConfiguration: _
+        , chartHeight: _
+        , chartWidth: _} <$>
         (obj .? "sample") <*>
         (obj .? "error") <*>
         (obj .? "chartType") <*>
         (obj .? "pie") <*>
         (obj .? "line") <*>
-        (obj .? "bar")
+        (obj .? "bar") <*>
+        ((obj .? "height") <|> pure 400) <*>
+        ((obj .? "width") <|> pure 600)
     pure $ VizRec r
     
 
@@ -405,6 +416,12 @@ _all = _VizRec <<< lens _.all _{all = _}
 
 _chartType :: LensP VizRec ChartType
 _chartType = _VizRec <<< lens _.chartType _{chartType = _}
+
+_chartHeight :: LensP VizRec Number
+_chartHeight = _VizRec <<< lens _.chartHeight _{chartHeight = _}
+
+_chartWidth :: LensP VizRec Number
+_chartWidth = _VizRec <<< lens _.chartWidth _{chartWidth = _}
 
 _availableChartTypes :: LensP VizRec (S.Set ChartType)
 _availableChartTypes = _VizRec <<< lens _.availableChartTypes _{availableChartTypes = _}
