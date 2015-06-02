@@ -1,7 +1,7 @@
 module Driver.Notebook.Cell where
 
 import Control.Monad.Eff (Eff())
-import Controller.Notebook.Cell (runCell)
+import Controller.Notebook.Cell (runCell, viewCell)
 import Controller.Notebook.Common (I())
 import Data.Date (now)
 import EffectTypes (NotebookAppEff(), NotebookComponentEff())
@@ -22,6 +22,13 @@ driveCellContent (RequestCellContent cell) driver =
     Visualize _ -> runWith cell driver
     _ -> return unit
 driveCellContent (ReceiveCellContent cell) driver = runWith cell driver
+driveCellContent (ViewCellContent cell) driver =
+  case cell ^. _content of
+    Search _ -> view cell driver
+    Explore _ -> view cell driver
+    Visualize _ -> view cell driver
+    Query _ -> view cell driver
+    _ -> pure unit 
 driveCellContent _ _ = return unit
 
 runWith :: forall eff. Cell -> Driver Input (NotebookComponentEff eff) -> Eff (NotebookAppEff eff) Unit
@@ -29,3 +36,10 @@ runWith cell driver = do
   d <- now
   driver $ StartRunCell (cell ^. _cellId) d
   driveEvent driver $ runCell cell
+
+view :: forall eff. Cell -> Driver Input (NotebookComponentEff eff) -> Eff (NotebookAppEff eff) Unit
+view cell driver = do
+  d <- now
+  driver $ StartRunCell (cell ^. _cellId) d
+  driveEvent driver $ viewCell cell
+

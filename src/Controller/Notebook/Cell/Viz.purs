@@ -19,7 +19,7 @@ import Data.Tuple
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..))
 import Model.Notebook (State(), _notebook)
-import Model.Notebook.Cell (Cell(), _content, _Visualize, _cellId, CellId(), _runState, _input, newVisualizeContent, RunState(..))
+import Model.Notebook.Cell (Cell(), _content, _Visualize, _cellId, CellId(), _runState, _input, _hasRun, newVisualizeContent, RunState(..))
 import Model.Notebook.Cell.Viz 
 import Model.Notebook.Domain
 import Model.Notebook.Port (_PortResource)
@@ -108,7 +108,7 @@ updateData cell file = do
         vRec = configure $ (vizRec # _all .~ all
                                    # _sample .~ sample
                            )
-    (update cell (_content .. _Visualize .~ vRec)) <>
+    (update cell ((_content .. _Visualize .~ vRec) .. (_hasRun .~ true))) <>
     (updateOpts (cell # _content.._Visualize .~ vRec))
 
   where

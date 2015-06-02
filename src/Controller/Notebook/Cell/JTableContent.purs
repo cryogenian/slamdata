@@ -135,3 +135,4 @@ queryToJTable cell sql inp out = do
   errorInQuery err =
     update cell (_failures .~ ["Error in query: " <> err])
       `andThen` \_ -> finish cell
+

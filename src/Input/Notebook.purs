@@ -48,6 +48,7 @@ data Input
 
   | RequestCellContent Cell
   | ReceiveCellContent Cell
+  | ViewCellContent Cell
 
   | StartRunCell CellId Date
   | StopCell CellId
