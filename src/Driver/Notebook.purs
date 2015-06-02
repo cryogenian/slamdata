@@ -33,12 +33,12 @@ import Model.Notebook
 import Model.Notebook.Cell (CellContent(..), _cellId, _hasRun, _content, _output)
 import Model.Notebook.Cell.Explore (initialExploreRec, _input)
 import Model.Notebook.Cell.FileInput
-import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, _cells, notebookURL, cellOut)
+import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, _cells, notebookURL, cellOut, replacePendingPorts)
 import Model.Notebook.Menu
-import Model.Notebook.Port 
+import Model.Notebook.Port
 import Model.Path (decodeURIPath, dropNotebookExt)
 import Model.Resource (resourceName, resourceDir)
-import Optic.Core ((.~), (^.), (..), (?~))
+import Optic.Core ((.~), (^.), (..), (?~), (%~))
 import Routing (matches')
 import Utils (log, setLocation)
 
@@ -67,7 +67,6 @@ driver ref k =
                   .. (_notebook .~ notebook)
             runEvent (\_ -> log "Error in runExplore in driver") k $
               run cell `andThen` \_ -> runExplore cell
-        handleShortcuts ref k
    where notebook res editable viewing = do
            state <- readRef ref
            let name = dropNotebookExt (resourceName res)
@@ -93,11 +92,10 @@ driver ref k =
                                      (_output .~ cellOut (cell ^._content)
                                       nb (cell ^._cellId))
                            _ -> pure unit
-                       _ -> pure unit 
+                       _ -> pure unit
                      when (cell ^. _hasRun) $
                        runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $
                          requestCellContent cell
-           handleShortcuts ref k
          update = k <<< WithState
          cellUpdate cell = k <<< (UpdateCell (cell ^._cellId))
 
@@ -113,19 +111,20 @@ handleShortcuts ref k =
     shift <- shiftKey e
     code <- keyCode e
     state <- readRef ref
-    let handle signal = do
-          preventDefault e
-          pure $ handleMenuSignal state signal
-    event <- case code of
-      83 | meta && shift -> handle $ inj $ RenameNotebook
-      80 | meta -> handle $ inj $ PublishNotebook
-      49 | meta -> handle $ inj $ QueryInsert
-      50 | meta -> handle $ inj $ MarkdownInsert
-      51 | meta -> handle $ inj $ ExploreInsert
-      52 | meta -> handle $ inj $ SearchInsert
-      13 | meta -> handle $ inj $ EvaluateCell
-      _ -> pure empty
-    runEvent (\_ -> log "Error in handleShortcuts") k event
+    when (state ^. _editable) $ do
+      let handle signal = do
+            preventDefault e
+            pure $ handleMenuSignal state signal
+      event <- case code of
+        83 | meta && shift -> handle $ inj $ RenameNotebook
+        80 | meta -> handle $ inj $ PublishNotebook
+        49 | meta -> handle $ inj $ QueryInsert
+        50 | meta -> handle $ inj $ MarkdownInsert
+        51 | meta -> handle $ inj $ ExploreInsert
+        52 | meta -> handle $ inj $ SearchInsert
+        13 | meta -> handle $ inj $ EvaluateCell
+        _ -> pure empty
+      runEvent (\_ -> log "Error in handleShortcuts") k event
 
 notebookAutosave :: forall e. RefVal State
                            -> RefVal Timeout
@@ -143,14 +142,15 @@ notebookAutosave refState refTimer input k = do
           case result of
             Left err -> k $ WithState (_error ?~ message err)
             Right nb -> do
-              let setName = _notebook .. _name .~ (nb ^. _name)
-              k $ WithState setName
+              let update = (_notebook %~ replacePendingPorts)
+                       <<< (_notebook .. _name .~ (nb ^. _name))
+              k $ WithState update
               -- This crime is to update the state so that when NotebookRoute is
               -- triggered in the router, the state will have the saved-name for
               -- the notebook, which will prevent it from re-loading it. We need
               -- to do this now because the stateRef is updated in postRender,
               -- but changing the URL happens immediately.
-              modifyRef refState setName
+              modifyRef refState update
               unless hasBeenSaved $ setLocation $ U.fromJust $ notebookURL nb Edit
         writeRef refTimer t'
   case input of

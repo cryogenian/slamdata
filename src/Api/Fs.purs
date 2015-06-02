@@ -18,12 +18,14 @@ import Data.Maybe
 import Data.Path.Pathy
 import Data.These (These(..), theseLeft, theseRight)
 import Model.Path
+import Model.Notebook.Cell
+import Model.Notebook.Port
 import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, get, put_, delete_, defaultRequest)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.MimeType.Common (applicationJSON)
-import Optic.Core ((..), (.~), (^.))
+import Optic.Core ((..), (.~), (^.), (%~), mapped)
 
 import qualified Data.Maybe.Unsafe as U
 import qualified Data.String as S
@@ -106,7 +108,7 @@ saveNotebook notebook = case notebook ^. N._name of
     let baseName = (U.fromJust $ theseLeft (notebook ^. N._name)) ++ "." ++ Config.notebookExtension
     name <- getNewName (notebook ^. N._path) baseName
     save name
-    pure (notebook # N._name .~ That (dropNotebookExt name))
+    pure $ N.replacePendingPorts (notebook # N._name .~ That (dropNotebookExt name))
   Both newName oldName | newName /= oldName -> do
     save oldName
     alreadyExists <- exists (newName ++ "." ++ Config.notebookExtension) (notebook ^. N._path)
@@ -117,6 +119,8 @@ saveNotebook notebook = case notebook ^. N._name of
             newPath = Right $ (notebook ^. N._path) </> dir newName <./> Config.notebookExtension
         in move (R.Directory oldPath) newPath *> pure (notebook # N._name .~ That newName)
   where
+
+  save :: String -> Aff (ajax :: AJAX | e) Unit
   save name =
     let notebookPath = (notebook ^. N._path) </> dir name <./> Config.notebookExtension </> file "index"
     in getResponse "error while saving notebook" $ put_ (Config.dataUrl <> printPath notebookPath) notebook

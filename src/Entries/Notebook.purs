@@ -46,6 +46,7 @@ main = onLoad $ void $ do
   driver $ WithState (_platform .~ p)
   D.tickDriver driver
   D.driver stateKnot driver
+  D.handleShortcuts stateKnot driver
   where
   postRender sKnot aKnot eKnot autosaveTimer input node driver = do
     modifyRef sKnot (flip updateState input)
