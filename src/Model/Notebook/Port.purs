@@ -6,13 +6,18 @@ import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Maybe
 import Data.StrMap
+import Model.Path
 import Model.Resource
 import Optic.Core (prism', PrismP())
 
 type VarMapValue = String
 
+-- | PortResourcePending is converted into a PortResource once a notebook is
+-- | saved - before a notebook is saved, it is not possible to provide a
+-- | filename for a PortResource for a temporary output file.
 data Port
   = Closed
+  | PortResourcePending
   | PortResource Resource
   | PortInvalid String
   | VarMap (StrMap VarMapValue)
@@ -36,6 +41,9 @@ instance encodeJsonPort :: EncodeJson Port where
   encodeJson Closed
     =  "type" := "closed"
     ~> jsonEmptyObject
+  encodeJson PortResourcePending
+    =  "type" := "pending"
+    ~> jsonEmptyObject
   encodeJson (PortResource res)
     =  "type" := "resource"
     ~> "res" := encodeJson res
@@ -57,4 +65,5 @@ instance decodeJsonPort :: DecodeJson Port where
       "resource" -> PortResource <$> obj .? "res"
       "invalid" -> PortInvalid <$> obj .? "message"
       "map" -> VarMap <$> obj .? "content"
+      "pending" -> pure PortResourcePending
       _ -> pure Closed

@@ -16,6 +16,7 @@ module Model.Notebook.Domain
   , notebookURL
   , cellURL
   , cellOut
+  , replacePendingPorts
   ) where
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
@@ -31,13 +32,13 @@ import Data.Path.Pathy (rootDir, dir, file, (</>), printPath)
 import Data.These (These(..), these, theseRight)
 import Data.Tuple (Tuple(..))
 import Model.Action (Action(), printAction)
-import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _parent, _FileInput)
+import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _parent, _FileInput, _content)
 import Model.Notebook.Cell.FileInput (_file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..), _PortResource)
 import Model.Path (DirPath(), (<./>), encodeURIPath)
 import Model.Resource (Resource(File))
 import Network.HTTP.Affjax.Request (Requestable, toRequest)
-import Optic.Core (lens, LensP(), (..), (.~), (^.))
+import Optic.Core (lens, LensP(), (..), (.~), (^.), (%~), mapped)
 import Optic.Extended (TraversalP())
 import Optic.Fold ((^?))
 import Optic.Index (ix)
@@ -153,10 +154,7 @@ cellOut content n cid = case content of
   (Explore _) -> Closed
   (Visualize _) -> Closed
   (Markdown _) -> VarMap SM.empty
-  _ -> these (const Closed) portRes (\_ -> portRes) (n ^. _name)
-  where
-  portRes :: String -> Port
-  portRes _ = maybe Closed (\p -> PortResource $ File $ p </> file ("out" <> show cid)) (notebookPath n)
+  _ -> maybe PortResourcePending (\p -> PortResource $ File $ p </> file ("out" <> show cid)) (notebookPath n)
 
 freeId :: Notebook -> CellId
 freeId (Notebook n) =
@@ -170,3 +168,11 @@ notebookURL nb act = (\path -> Config.notebookUrl ++ "#" ++ encodeURIPath (print
 
 cellURL :: Notebook -> CellId -> Action -> Maybe String
 cellURL nb cid act = (\path -> Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ "cells" ++ "/" ++ show cid ++ "/" ++ printAction act) <$> notebookPath nb
+
+replacePendingPorts :: Notebook -> Notebook
+replacePendingPorts nb = nb # _cells .. mapped %~ replacePendingPort nb
+
+replacePendingPort :: Notebook -> Cell -> Cell
+replacePendingPort nb cell = case cell ^. _output of
+  PortResourcePending -> cell # _output .~ cellOut (cell ^. _content) nb (cell ^. _cellId)
+  _ -> cell
