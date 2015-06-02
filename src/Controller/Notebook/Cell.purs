@@ -46,6 +46,7 @@ runCell cell = do
     Markdown _ -> runMarkdown cell
     Query _ -> runQuery cell
 
+
 viewCell :: forall eff. Cell -> I eff
 viewCell cell = do
   d <- liftEff now

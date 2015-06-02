@@ -88,7 +88,7 @@ runSearch cell =
 
 viewSearch :: forall e. Cell -> I e
 viewSearch cell =
-  maybe error (flip runJTable cell) (cell ^? _input.._PortResource)
+  maybe error (flip runJTable cell) (cell ^? _output.._PortResource)
   where
   error :: I e
   error =

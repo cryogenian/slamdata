@@ -26,4 +26,5 @@ runQuery cell = fromMaybe empty $ queryToJTable cell input <$> path <*> output
 
 viewQuery :: forall e. Cell -> I e
 viewQuery cell =
-  fromMaybe empty ((flip runJTable cell) <$> (cell ^? _input.._PortResource))
+  fromMaybe empty ((flip runJTable cell) <$> (cell ^? _output.._PortResource))
+

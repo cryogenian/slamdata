@@ -94,7 +94,8 @@ driver ref k =
                      when (cell ^. _hasRun) do
                        if isEdit editable
                          then runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $ requestCellContent cell
-                         else k (ViewCellContent cell)
+                         else do
+                         k (ViewCellContent cell)
 
          update = k <<< WithState
          cellUpdate cell = k <<< (UpdateCell (cell ^._cellId))

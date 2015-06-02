@@ -27,6 +27,7 @@ driveCellContent (ViewCellContent cell) driver =
     Search _ -> view cell driver
     Explore _ -> view cell driver
     Visualize _ -> view cell driver
+    Query _ -> view cell driver
     _ -> pure unit 
 driveCellContent _ _ = return unit
 
