@@ -478,6 +478,15 @@ form.chart-configure-form {
         width: ~"calc(100% - 75px)";
         display: inline-block;
     }
+    &.with-aggregation {
+        .form-control {
+            width: ~"calc(100% - 115px)";
+            &.aggregation {
+                width: 40px;
+                font-weight: bold;
+            }
+        }
+    }
 }
 
 div.loading-message.alert.alert-info {

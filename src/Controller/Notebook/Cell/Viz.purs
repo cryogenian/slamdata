@@ -24,7 +24,7 @@ import Model.Notebook.Cell.Viz
 import Model.Notebook.Domain
 import Model.Notebook.Port (_PortResource)
 import Model.Resource (Resource())
-import Optic.Core ((^.), (.~), (..), (%~))
+import Optic.Core ((^.), (.~), (..), (%~), LensP())
 import Optic.Fold ((^?))
 import Optic.Extended (TraversalP())
 import Data.Argonaut.JCursor (JCursor())
@@ -39,6 +39,12 @@ import Controller.Notebook.Cell.Viz.Line (mkLine)
 import Controller.Notebook.Cell.Viz.Bar (mkBar)
 import qualified Model.Notebook.ECharts as Me
 import ECharts.Options
+
+selectAgg :: forall e. Cell -> LensP VizRec Aggregation -> Aggregation -> I e
+selectAgg cell _agg agg =
+  (update cell upd) <>
+  (updateOpts (upd cell))
+  where upd = _content.._Visualize.._agg .~ agg
 
 setChartHeight :: forall e. Cell -> Number -> I e
 setChartHeight cell height =
@@ -158,7 +164,7 @@ configure r =
                        else if null times
                             then []
                             else [Line]
-      error = if null available then "No available chart types" else ""
+      error = if null available then "No available chart types, please, rerun cell" else ""
       
       
 
