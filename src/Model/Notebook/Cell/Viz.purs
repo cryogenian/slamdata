@@ -226,7 +226,7 @@ instance decodeJsonPieConfiguration :: DecodeJson PieConfiguration where
          (obj .? "firstMeasures") <*>
          (obj .? "firstSeries") <*>
          (obj .? "secondSeries") <*>
-         (obj .? "firstAggregation")
+         ((obj .? "firstAggregation") <|> pure Sum)
     pure $ PieConfiguration r
 
 newtype LineConfiguration = LineConfiguration
@@ -275,8 +275,8 @@ instance decodeJsonLineConfiguration :: DecodeJson LineConfiguration where
          (obj .? "secondMeasures") <*> 
          (obj .? "firstSeries") <*>
          (obj .? "secondSeries") <*>
-         (obj .? "firstAggregation") <*>
-         (obj .? "secondAggregation")
+         ((obj .? "firstAggregation") <|> pure Sum) <*>
+         ((obj .? "secondAggregation") <|> pure Sum)
     pure $ LineConfiguration r
 
 newtype BarConfiguration = BarConfiguration
@@ -316,7 +316,7 @@ instance decodeJsonBarConfiguration :: DecodeJson BarConfiguration where
          (obj .? "firstMeasures") <*>
          (obj .? "firstSeries") <*>
          (obj .? "secondSeries") <*>
-         (obj .? "firstAggregation")
+         ((obj .? "firstAggregation") <|> pure Sum)
     pure $ BarConfiguration r
 
 
