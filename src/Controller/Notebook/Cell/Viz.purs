@@ -40,6 +40,18 @@ import Controller.Notebook.Cell.Viz.Bar (mkBar)
 import qualified Model.Notebook.ECharts as Me
 import ECharts.Options
 
+setChartHeight :: forall e. Cell -> Number -> I e
+setChartHeight cell height =
+  (update cell upd) <>
+  (updateOpts (upd cell))
+  where upd = _content.._Visualize.._chartHeight .~ height
+
+setChartWidth :: forall e. Cell -> Number -> I e
+setChartWidth cell width =
+  (update cell upd) <>
+  (updateOpts (upd cell))
+  where upd = _content.._Visualize.._chartWidth .~ width
+
 selectChartType :: forall e. Cell -> ChartType -> I e
 selectChartType cell ct =
   (update cell (_content.._Visualize.._chartType .~ ct)) <>

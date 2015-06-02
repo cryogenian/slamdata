@@ -71,23 +71,25 @@ mkSeries acc =
     
   mkRadius :: Number -> Number -> Tuple Number (Maybe Center)
   mkRadius count ix =
-    if count < rowLength
+    if count <= rowLength
     then mkRadius' count ix
     else mkRadius'' count ix
 
   mkRadius' :: Number -> Number -> Tuple Number (Maybe Center)
   mkRadius' count ix =
-    let r = 80 / count
-        y = r / 2 + 10
-        x = r * ix + r / 2  
+    let r = 85 / count
+        step = 100 / count
+        x = 50 + ((ix % count) + 0.5 - count/2) * step
+        y = 50
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c
 
   mkRadius'' :: Number -> Number -> Tuple Number (Maybe Center)
   mkRadius'' count ix =
-    let r = 80 / rowLength
+    let r = 85 / rowLength
+        step = 100 / rowLength
+        x = 50 + ((ix % rowLength) - rowLength/2 + 0.5) * step
         y = 1.2 * floor (ix / rowLength) * r + r
-        x = r * (ix % rowLength) + r / 2
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c
 

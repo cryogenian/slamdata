@@ -23,6 +23,7 @@ import qualified Halogen.HTML.CSS as CSS
 import Css.Size
 import Css.Geometry
 import Css.String
+import Css.Display
 
 import ECharts.Options
 
@@ -87,6 +88,28 @@ chartConfiguration cell r =
    [ pieConfiguration cell r (ct == Pie) 
    , lineConfiguration cell r (ct == Line) 
    , barConfiguration cell r (ct == Bar)
+   , row
+     [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+       [ label "Height"
+       , H.input [ A.value (if 0 == (r ^._chartHeight)
+                            then ""
+                            else show (r ^._chartHeight))
+                 , A.classes [ B.formControl ]
+                 , A.type_ "number"
+                 , E.onInput (\v -> pure $ maybe empty (setChartHeight cell) $ s2i v)
+                 ] [ ]
+       ]
+     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+       [ label "Width"
+       , H.input [ A.value (if 0 == (r ^._chartWidth)
+                            then ""
+                            else show (r ^._chartWidth))
+                 , A.classes [ B.formControl ]
+                 , A.type_ "number"
+                 , E.onInput (\v -> pure $ maybe empty (setChartWidth cell) $ s2i v)
+                 ] [ ]
+       ]
+     ]
    ] 
   ]
   where ct = r ^._chartType
@@ -245,18 +268,27 @@ errored message =
 vizOutput :: forall e. Cell -> [ HTML e ]
 vizOutput state =
   case state ^. _err of
-    "" -> [chart ((show $ state ^._cellId)) 300 ]
+    "" -> [chart
+           (show $ state ^._cellId)
+           (fromMaybe 0 (state ^? _viz.._chartHeight))
+           (fromMaybe 0 (state ^? _viz.._chartWidth))
+          ]
     _ -> [ ]
 
-chart' :: forall e i. [A.Attr (I e)] -> String -> Number -> HTML e
-chart' attrs chartId h =
+chart' :: forall e i. [A.Attr (I e)] -> String -> Number -> Number -> HTML e
+chart' attrs chartId h w =
   H.div (attrs <>
          [ dataEChartsId chartId
          , A.key ("echarts-key" <> chartId)
-         , CSS.style (height $ px h)
+         , CSS.style (do height $ px h
+                         width $ px w
+                         position relative
+                         left $ pct 50
+                         marginLeft $ px $ -0.5 * w
+                     )
          ]) [ ]
 
-chart :: forall e. String -> Number -> HTML e
+chart :: forall e. String -> Number -> Number -> HTML e
 chart = chart' []
 
 

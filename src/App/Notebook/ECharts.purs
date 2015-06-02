@@ -97,7 +97,10 @@ init el key knotRef = do
   maybe (pure unit) (set chart) $ M.lookup key knot.options
 
 set :: forall e. EC.EChart -> EC.Option -> Eff (NotebookAppEff e) Unit 
-set chart opts = void $ EC.setOption opts true chart
+set chart opts = void $ do
+  EC.setOption opts true chart
+  EC.resize chart
+  
 
 reinit :: forall e. HTMLElement -> String -> RefVal EChartsKnot -> EChartsRec ->
           Eff (NotebookAppEff e) Unit 
