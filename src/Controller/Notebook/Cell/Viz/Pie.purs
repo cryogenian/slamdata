@@ -23,7 +23,7 @@ import ECharts.Tooltip
 import Data.Maybe
 import Data.Maybe.Unsafe
 import Data.Tuple
-import Data.Array (range, filter, zipWith, replicate, length, (!!), reverse, nub, concat, groupBy)
+import Data.Array (range, filter, zipWith, replicate, length, (!!), reverse, nub, concat, groupBy, catMaybes)
 import Data.Map (lookup, Map(), alter, values, empty, keys, toList, fromList)
 import qualified Model.Notebook.ECharts as Me
 import Optic.Core
@@ -39,6 +39,7 @@ import Data.String (split)
 rowLength :: Number
 rowLength = 4
 
+
 mkSeries :: AggregatedAccum -> [Series]
 mkSeries acc =
   concat (zipWith (rows $ length groupped) (range 0 $ length groupped) groupped)
@@ -51,12 +52,21 @@ mkSeries acc =
   donut rowCount rowIx donutCount donutIx r  =
     case mkRadius rowCount rowIx of
       Tuple maxR center -> 
-        PieSeries { common: universalSeriesDefault
-                  , pieSeries: r { radius = radius maxR donutCount donutIx
-                                 , center = center
-                                 , startAngle = Just $ (45 * donutIx) % 360
-                                 }
+        PieSeries {
+          common: universalSeriesDefault {
+             itemStyle = Just $ ItemStyle {
+                emphasis: Nothing
+                , normal: Just $ IStyle $ istyleDefault {
+                  label = Just $ ItemLabel $ itemLabelDefault {show = Just false}
+                  , labelLine = Just $ ItemLabelLine $ itemLabelLineDefault {show = Just false}
                   }
+                }
+             }
+          , pieSeries: r { radius = radius maxR donutCount donutIx
+                         , center = center
+                         , startAngle = Just $ (45 * donutIx) % 360
+                         }
+          }
   radius :: Number -> Number -> Number -> Maybe Radius
   radius max count ix =
     if count == 1
@@ -79,7 +89,7 @@ mkSeries acc =
   mkRadius' count ix =
     let r = 85 / count
         step = 100 / count
-        x = 50 + ((ix % count) + 0.5 - count/2) * step
+        x = 55 + ((ix % count) + 0.5 - count/2) * step 
         y = 50
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c
@@ -88,7 +98,7 @@ mkSeries acc =
   mkRadius'' count ix =
     let r = 85 / rowLength
         step = 100 / rowLength
-        x = 50 + ((ix % rowLength) - rowLength/2 + 0.5) * step
+        x = 55 + ((ix % rowLength) - rowLength/2 + 0.5) * step 
         y = 1.2 * floor (ix / rowLength) * r + r
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c
@@ -153,8 +163,27 @@ mkPie r conf =
   Option $ optionDefault { tooltip = Just $ Tooltip $
                                      tooltipDefault {trigger = Just TriggerItem}
                          , series = Just $ Just <$> series
+                         , legend = Just $ mkLegend series 
                          }
   where
+  mkLegend :: [Series] -> Legend
+  mkLegend ss =
+    Legend legendDefault { "data" = Just $ legendItemDefault <$> (extractNames series)
+                         , orient = Just Vertical
+                         , x = Just XLeft}
+
+  extractNames :: [Series] -> [String]
+  extractNames ss = nub $ catMaybes $ concat $ (extractName <$> ss)
+
+  extractName :: Series -> [Maybe String]
+  extractName (PieSeries r) = extractOneDatum <$> (fromMaybe [] r.pieSeries."data")
+  extractname _ = []
+
+  extractOneDatum :: ItemData -> Maybe String
+  extractOneDatum (Dat r) = r.name
+  extractOneDatum _ = Nothing
+  
+    
   series = mkSeries extracted
   extracted = extractClean r conf 
   
