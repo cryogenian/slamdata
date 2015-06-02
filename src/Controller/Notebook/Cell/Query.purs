@@ -1,10 +1,10 @@
 module Controller.Notebook.Cell.Query where
 
 import Control.Plus (empty)
-import Controller.Notebook.Cell.JTableContent (queryToJTable)
+import Controller.Notebook.Cell.JTableContent (queryToJTable, runJTable)
 import Controller.Notebook.Common (I())
 import Data.Maybe (Maybe(), fromMaybe)
-import Model.Notebook.Cell (Cell(), _Query, _content, _output)
+import Model.Notebook.Cell (Cell(), _Query, _content, _output, _input)
 import Model.Notebook.Port (_PortResource)
 import Model.Resource (Resource(), parent, root)
 import Optic.Core ((^.), (..))
@@ -22,3 +22,8 @@ runQuery cell = fromMaybe empty $ queryToJTable cell input <$> path <*> output
 
   input :: String
   input = cell ^. _content .. _Query .. Qu._input
+
+
+viewQuery :: forall e. Cell -> I e
+viewQuery cell =
+  fromMaybe empty ((flip runJTable cell) <$> (cell ^? _input.._PortResource))

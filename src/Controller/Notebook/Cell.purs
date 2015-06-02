@@ -1,6 +1,7 @@
 module Controller.Notebook.Cell
   ( requestCellContent
   , runCell
+  , viewCell
   , handleRunClick
   , handleShareClick
   , isRunning
@@ -12,9 +13,9 @@ import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (message)
 import Control.Plus (empty)
-import Controller.Notebook.Cell.Explore (runExplore)
-import Controller.Notebook.Cell.Query (runQuery)
-import Controller.Notebook.Cell.Search (runSearch)
+import Controller.Notebook.Cell.Explore (runExplore, viewExplore)
+import Controller.Notebook.Cell.Query (runQuery, viewQuery)
+import Controller.Notebook.Cell.Search (runSearch, viewSearch)
 import Controller.Notebook.Cell.Viz (runViz)
 import Controller.Notebook.Common (I())
 import Data.Date (now)
@@ -44,6 +45,16 @@ runCell cell = do
     Visualize _ -> runViz cell
     Markdown _ -> runMarkdown cell
     Query _ -> runQuery cell
+
+viewCell :: forall eff. Cell -> I eff
+viewCell cell = do
+  d <- liftEff now
+  case cell ^._content of
+    Search _ -> viewSearch (cell # _runState .~ (RunningSince d))
+    Explore _ -> viewExplore cell
+    Visualize _ -> runViz cell
+    Markdown _ -> runMarkdown cell
+    Query _ -> viewQuery cell
 
 requestCellContent :: forall eff. Cell -> I eff
 requestCellContent cell = pure $ RequestCellContent cell

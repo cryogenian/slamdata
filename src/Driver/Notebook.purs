@@ -85,17 +85,17 @@ driver ref k =
                  Right nb -> do
                    update (_notebook .~ nb)
                    for_ (nb ^. _cells) \cell -> do
-                     case (cell ^. _content) of
-                       Search _ ->
-                         case (cell ^. _output) of
-                           Closed -> cellUpdate cell
-                                     (_output .~ cellOut (cell ^._content)
-                                      nb (cell ^._cellId))
-                           _ -> pure unit
+                     case Tuple (cell ^. _content) (cell ^._output) of
+                       Tuple (Search _) Closed ->
+                         cellUpdate cell
+                         (_output .~ cellOut (cell ^._content)
+                          nb (cell ^._cellId))
                        _ -> pure unit
-                     when (cell ^. _hasRun) $
-                       runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $
-                         requestCellContent cell
+                     when (cell ^. _hasRun) do
+                       if isEdit editable
+                         then runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $ requestCellContent cell
+                         else k (ViewCellContent cell)
+
          update = k <<< WithState
          cellUpdate cell = k <<< (UpdateCell (cell ^._cellId))
 

@@ -1,5 +1,6 @@
 module Controller.Notebook.Cell.Search (
   runSearch
+  , viewSearch
   ) where
 
 import Control.Plus (empty)
@@ -83,3 +84,14 @@ runSearch cell =
   errorInPorts =
     update cell (_failures .~ ["Incorrect type of input or output"])
       `andThen` \_ -> finish cell
+
+
+viewSearch :: forall e. Cell -> I e
+viewSearch cell =
+  maybe error (flip runJTable cell) (cell ^? _input.._PortResource)
+  where
+  error :: I e
+  error =
+    update cell (_failures .~ ["Incorrect type of input"])
+      `andThen` \_ -> finish cell
+  
