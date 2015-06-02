@@ -20,7 +20,7 @@ import Data.DOM.Simple.Window (globalWindow, document)
 import Data.Either (Either(..))
 import Data.Foldable (for_)
 import Data.Inject1 (inj)
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..), isJust, isNothing)
 import Data.These (theseRight, theseLeft)
 import Data.Tuple (Tuple(..), fst)
 import Driver.Notebook.Routing (Routes(..), routing)
@@ -30,14 +30,14 @@ import Halogen.HTML.Events.Monad (runEvent, andThen)
 import Input.Notebook (Input(..))
 import Model.Action (Action(Edit), isEdit)
 import Model.Notebook
-import Model.Notebook.Cell (CellContent(..), _cellId, _hasRun, _content, _output)
+import Model.Notebook.Cell (Cell(), CellId(), CellContent(..), _cellId, _hasRun, _content, _output)
 import Model.Notebook.Cell.Explore (initialExploreRec, _input)
 import Model.Notebook.Cell.FileInput
 import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, _cells, notebookURL, cellOut, replacePendingPorts)
 import Model.Notebook.Menu
 import Model.Notebook.Port
 import Model.Path (decodeURIPath, dropNotebookExt)
-import Model.Resource (resourceName, resourceDir)
+import Model.Resource (Resource(), resourceName, resourceDir)
 import Optic.Core ((.~), (^.), (..), (?~), (%~))
 import Routing (matches')
 import Utils (log, setLocation)
@@ -65,40 +65,49 @@ driver ref k =
                   .. (_loaded .~ true)
                   .. (_error .~ Nothing)
                   .. (_notebook .~ notebook)
-            runEvent (\_ -> log "Error in runExplore in driver") k $
-              run cell `andThen` \_ -> runExplore cell
-   where notebook res editable viewing = do
-           state <- readRef ref
-           let name = dropNotebookExt (resourceName res)
-               path = resourceDir res
-               oldNotebook = state ^. _notebook
-               pathChanged = oldNotebook ^. _path /= path
-               oldName = theseLeft (oldNotebook ^. _name)
-               nameChanged = oldName /= Just name
-           when (pathChanged || nameChanged) do
-             runAff' (loadNotebook res) \result -> do
-               update $ (_loaded .~ true)
-                     .. (_editable .~ isEdit editable)
-                     .. (_viewingCell .~ viewing)
-               case result of
-                 Left err -> update (_error ?~ message err)
-                 Right nb -> do
-                   update (_notebook .~ nb)
-                   for_ (nb ^. _cells) \cell -> do
-                     case Tuple (cell ^. _content) (cell ^._output) of
-                       Tuple (Search _) Closed ->
-                         cellUpdate cell
-                         (_output .~ cellOut (cell ^._content)
-                          nb (cell ^._cellId))
-                       _ -> pure unit
-                     when (cell ^. _hasRun) do
-                       if isEdit editable
-                         then runEvent (\err -> log $ "Error requestCellContent in driver: " ++ show err) k $ requestCellContent cell
-                         else do
-                         k (ViewCellContent cell)
+            runEvent (runError "runExplore") k $ run cell `andThen` \_ -> runExplore cell
 
-         update = k <<< WithState
-         cellUpdate cell = k <<< (UpdateCell (cell ^._cellId))
+  where
+
+  update :: (State -> State) -> Eff (NotebookAppEff e) Unit
+  update = k <<< WithState
+
+  cellUpdate :: Cell -> (Cell -> Cell) -> Eff (NotebookAppEff e) Unit
+  cellUpdate cell = k <<< (UpdateCell (cell ^._cellId))
+
+  runError :: String -> Error -> Eff (NotebookAppEff e) Unit
+  runError from err = log $ "Error for " ++ from ++ " in driver: " ++ show err
+
+  notebook :: Resource -> Action -> Maybe CellId -> Eff (NotebookAppEff e) Unit
+  notebook res editable viewing = do
+    state <- readRef ref
+    let name = dropNotebookExt (resourceName res)
+        path = resourceDir res
+        oldNotebook = state ^. _notebook
+        pathChanged = oldNotebook ^. _path /= path
+        oldName = theseLeft (oldNotebook ^. _name)
+        nameChanged = oldName /= Just name
+    when (pathChanged || nameChanged) do
+      runAff' (loadNotebook res) \result -> do
+        update $ (_loaded .~ true)
+              .. (_editable .~ isEdit editable)
+              .. (_viewingCell .~ viewing)
+        case result of
+          Left err -> update (_error ?~ message err)
+          Right nb -> do
+            update (_notebook .~ nb)
+            for_ (nb ^. _cells) \cell -> do
+              case Tuple (cell ^. _content) (cell ^._output) of
+                Tuple (Search _) Closed ->
+                  cellUpdate cell
+                  (_output .~ cellOut (cell ^._content)
+                   nb (cell ^._cellId))
+                _ -> pure unit
+              if ((cell ^. _hasRun) && (isNothing viewing || viewing == Just (cell ^. _cellId)))
+                then if isEdit editable
+                       then runEvent (runError "requestCellContent") k $ requestCellContent cell
+                       else k (ViewCellContent cell)
+                else pure unit
 
 handleShortcuts :: forall e. RefVal State
                           -> Driver Input (NotebookComponentEff e)

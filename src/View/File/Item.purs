@@ -13,6 +13,7 @@ import Data.Monoid (mempty)
 import Data.Path.Pathy
 import Data.Tuple (Tuple(..))
 import Input.File.Item (ItemInput(..))
+import Model.Action
 import Model.File (State())
 import Model.File.Item
 import Model.Path (decodeURIPath)
@@ -47,7 +48,7 @@ item state ix item =
         [ H.div [ A.class_ B.row ]
           [ H.div [ A.classes [B.colXs9, Vc.itemContent] ]
             [ H.a
-              [ A.href $ itemURL item state.sort state.salt ]
+              [ A.href $ itemURL state.sort state.salt Edit item ]
               [ H.span_ [ H.i [ iconClasses item ] []
                         , H.text $ (if state.searching
                                     then resourcePath
