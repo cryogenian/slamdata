@@ -41,15 +41,15 @@ cell :: forall e. State -> Cell -> [HTML e]
 cell notebook cell =
   let outputContent = output notebook cell
   in [ H.div ([ A.classes $ [B.containerFluid, VC.notebookCell, B.clearfix] ++ if cell ^. _hiddenEditor then [VC.collapsed] else [] ] <> maybe [ ] viewingStyle (notebook ^. _viewingCell))
-             $ catMaybes [ Just $ header cell
+             $ catMaybes [ if hidden then Nothing else Just $ header cell
                          , if hidden then Nothing else Just $ editor cell
-                         , if hidden then Nothing else Just $ statusBar notebook (isJust outputContent) cell
+                         , Just $ statusBar notebook (isJust outputContent) cell
                          , outputContent
                          ]
      ]
   where
   hidden = (cell ^. _hiddenEditor) || (not (notebook ^. _editable))
-  
+
   viewingStyle cellId =
     if cellId == cell ^. _cellId
     then [ ]
