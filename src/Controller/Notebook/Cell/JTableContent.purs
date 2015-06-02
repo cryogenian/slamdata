@@ -100,7 +100,7 @@ runJTable file cell = do
   results <- liftAff $ attempt $ do
     numItems <- count file
     let numPages = Math.ceil (numItems / I.toNumber perPage)
-        pageIndex' = I.fromNumber $ Math.min (I.toNumber pageIndex) (numPages - 1)
+        pageIndex' = I.fromNumber $ Math.max 0 $ Math.min (I.toNumber pageIndex) (numPages - 1)
     json <- sample file (pageIndex' * perPage) perPage
     return { numItems: numItems, pageNumber: pageIndex' + one, json: json }
   now' <- liftEff now
