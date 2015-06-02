@@ -83,7 +83,7 @@ handleFileListChanged el state = do
         f <- liftAff $ attempt $ API.makeFile (fileItem.resource ^. _path) content
         case f of
           Left _ -> toInput (ItemRemove fileItem)
-          Right _ -> liftEff (setLocation $ itemURL fileItem state.sort state.salt) *> empty
+          Right _ -> liftEff (setLocation $ itemURL state.sort state.salt Edit fileItem) *> empty
 
 handleSetSort :: forall e. Sort -> Event (FileAppEff e) Input
 handleSetSort sort = do

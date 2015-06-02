@@ -22,6 +22,7 @@ import Halogen.HTML.Events.Monad (Event(), async, andThen)
 import Input.File (Input(), FileInput(SetDialog))
 import Input.File.Item (ItemInput(..))
 import Input.File.Rename (RenameInput(..))
+import Model.Action
 import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount
 import Model.File.Dialog.Rename (initialRenameDialog, _siblings)
@@ -48,26 +49,22 @@ handleMoveItem item = do
 handleShare :: forall e. Sort -> Salt -> Item -> Event (FileAppEff e) Input
 handleShare sort salt item = do
   loc <- liftEff locationString
-  let url = loc ++ "/" ++ itemURL item sort salt
+  let url = loc ++ "/" ++ itemURL sort salt View item
   pure $ inj $ SetDialog (Just $ ShareDialog url)
 
-itemURL :: Item -> Sort -> Salt -> String
-itemURL item sort salt =
-  if isNotebook item.resource || isFile item.resource
-  then joinWith "" $ [ Config.notebookUrl
-                     , "#"
-                     , if isFile item.resource then "/explore" else ""
-                     , encodeURIPath $ resourcePath $ item.resource
-                     , if isFile item.resource then "" else "edit"
-                     ]
-  else Config.browserUrl ++ "#"
-                         ++ "?q=" ++ encodeURIComponent ("path:" ++ renderPath (getPath item.resource))
-                         ++ "&sort=" ++ sort2string sort
-                         ++ "&salt=" ++ runSalt salt
+itemURL :: Sort -> Salt -> Action -> Item -> String
+itemURL _ _ act item | isNotebook item.resource =
+  Config.notebookUrl ++ "#" ++ encodeURIPath (resourcePath item.resource) ++ (printAction act)
+itemURL _ _ _ item | isFile item.resource =
+  Config.notebookUrl ++ "#/explore" ++ encodeURIPath (resourcePath item.resource)
+itemURL sort salt _ item =
+  Config.browserUrl ++ "#?q=" ++ encodeURIComponent ("path:" ++ renderPath (getPath item.resource))
+                    ++ "&sort=" ++ sort2string sort
+                    ++ "&salt=" ++ runSalt salt
 
 openItem :: forall e. Item -> Sort -> Salt -> Event (FileAppEff e) Input
 openItem item sort salt = do
-  liftEff $ setLocation $ itemURL item sort salt
+  liftEff $ setLocation $ itemURL sort salt Edit item
   empty
 
 handleConfigure :: forall e. Resource -> Event (FileAppEff e) Input
