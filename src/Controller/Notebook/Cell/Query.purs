@@ -18,7 +18,7 @@ runQuery cell = fromMaybe empty $ queryToJTable cell input <$> path <*> output
   output = cell ^? _output .. _PortResource
 
   path :: Maybe Resource
-  path = parent <<< parent <$> output
+  path = parent <$> output
 
   input :: String
   input = cell ^. _content .. _Query .. Qu._input
