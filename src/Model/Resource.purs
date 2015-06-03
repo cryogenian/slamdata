@@ -7,7 +7,7 @@ module Model.Resource (
   newFile, newDatabase, newDirectory, newNotebook,
   mkFile, mkDatabase, mkDirectory, mkNotebook,
   setPath, setName, _path, _root, _name, _notebookPath, _filePath,
-  sortResource, parent, resourceFileName, child
+  sortResource, parent, resourceFileName, child, _tempFile
   ) where
 
 import Config
@@ -41,6 +41,36 @@ data Resource
   | Directory DirPath
   | Database DirPath
 
+_File :: PrismP Resource FilePath
+_File = prism' File $ \s -> case s of
+  File p -> Just p
+  _ -> Nothing
+
+_Notebook :: PrismP Resource DirPath
+_Notebook = prism' Notebook $ \s -> case s of
+  Notebook p -> Just p
+  _ -> Nothing
+  
+_Directory :: PrismP Resource DirPath
+_Directory = prism' Directory $ \s -> case s of
+  Directory p -> Just p
+  _ -> Nothing
+
+_Database :: PrismP Resource DirPath
+_Database = prism' Database $ \s -> case s of
+  Database p -> Just p
+  _ -> Nothing
+
+_tempFile :: LensP Resource Resource
+_tempFile = lens id \r s -> case s of 
+  File p ->
+    if (takeDirExt <$> (dirName (resourceDir s))) == Just notebookExtension
+    then s
+    else r 
+  _ -> r
+
+
+  
 _notebookPath :: PrismP Resource DirPath
 _notebookPath = prism' Notebook $ \s -> case s of
   Notebook fp -> Just fp
@@ -80,6 +110,9 @@ getPath r = case r of
   Notebook p -> inj p
   Directory p -> inj p
   Database p -> inj p
+
+
+
 
 getNameStr :: AnyPath -> String
 getNameStr ap = either getNameStr' getNameStr' ap

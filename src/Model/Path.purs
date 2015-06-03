@@ -36,6 +36,14 @@ dropDirExt (DirName d) =
   where
   idx = lastIndexOf "." d
 
+takeDirExt :: DirName -> String
+takeDirExt (DirName d) =
+  case idx of
+    -1 -> ""
+    _ -> drop (idx + 1) d
+  where idx = lastIndexOf "." d
+
+
 dropNotebookExt :: String -> String
 dropNotebookExt name = take (length name - length Config.notebookExtension - 1) name
 
