@@ -208,3 +208,9 @@ scrollbox = className "scrollbox"
 
 loadingMessage :: ClassName
 loadingMessage = className "loading-message"
+
+withAggregation :: ClassName
+withAggregation = className "with-aggregation"
+
+aggregation :: ClassName
+aggregation = className "aggregation"

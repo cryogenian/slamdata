@@ -23,7 +23,7 @@ import ECharts.Tooltip
 
 import Data.Maybe
 import Data.Tuple
-import Data.Array (filter, zipWith, head, reverse, sort, length, replicate, nub, concat)
+import Data.Array (filter, zipWith, head, reverse, sort, length, replicate, nub, concat, catMaybes)
 import Data.Map (lookup)
 import qualified Model.Notebook.ECharts as Me
 import Optic.Core
@@ -216,8 +216,21 @@ mkLine r conf =
                            , yAxis = Just yAxis
                            , tooltip = Just $ Tooltip $
                                        tooltipDefault {trigger = Just TriggerItem}
+                           , legend = Just $ mkLegend series 
                            }
   where
+
+  mkLegend :: [Series] -> Legend
+  mkLegend series =
+    Legend legendDefault { "data" = Just $ legendItemDefault <$> extractNames series}
+
+  extractNames :: [Series] -> [String]
+  extractNames ss = catMaybes (extractName <$> ss)
+
+  extractName :: Series -> Maybe String
+  extractName (LineSeries r) = r.common.name
+  extractName _ = Nothing
+
   xAxisType :: AxisType
   xAxisType = getXAxisType r conf
 

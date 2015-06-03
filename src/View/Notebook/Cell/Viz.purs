@@ -122,9 +122,10 @@ pieConfiguration cell r visible =
       [ categoryLabel
       , (options cell r (_pieConfiguration.._cats))
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
       , (options cell r (_pieConfiguration.._firstMeasures))
+      , aggSelect cell r (_pieConfiguration.._firstMeasures) (_pieConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
@@ -138,6 +139,19 @@ pieConfiguration cell r visible =
       ]
     ] 
   ]
+aggSelect :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> LensP VizRec Aggregation -> HTML e
+aggSelect cell r _blocker _agg =
+  H.select [ A.classes [ B.formControl, VC.aggregation, B.btnPrimary ]
+           , E.onInput (\s -> pure $ maybe empty (selectAgg cell _agg) $ str2aggregation s),
+             A.disabled (null (r ^._blocker.._variants))
+           ]
+  (aggOpt (r ^._agg) <$> allAggregations)
+  
+aggOpt :: forall e. Aggregation -> Aggregation -> HTML e
+aggOpt sel a =
+  H.option [ A.value (aggregation2str a)
+           , A.selected (sel == a)
+           ] [ H.text (aggregation2str a) ]
 
 option :: forall e. Maybe JCursor -> JCursor -> Number -> HTML e
 option selected cursor ix =
@@ -181,9 +195,10 @@ barConfiguration cell r visible =
       [ categoryLabel
       , (options cell r (_barConfiguration.._cats))
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
       , (options cell r (_barConfiguration.._firstMeasures))
+      , aggSelect cell r (_barConfiguration.._firstMeasures) (_barConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
@@ -206,9 +221,10 @@ lineConfiguration cell r visible =
       [ dimensionLabel
       , (options cell r (_lineConfiguration.._dims))
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
       , (options cell r (_lineConfiguration.._firstMeasures))
+      , aggSelect cell r (_lineConfiguration.._firstMeasures) (_lineConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
@@ -216,9 +232,10 @@ lineConfiguration cell r visible =
       ]
     ]
   , row
-    [ H.form [ A.classes [ B.colXs4, B.colXsOffset4, VC.chartConfigureForm ] ]
+    [ H.form [ A.classes [ B.colXs4, B.colXsOffset4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
       , (options cell r (_lineConfiguration.._secondMeasures))
+      , aggSelect cell r (_lineConfiguration.._secondMeasures) (_lineConfiguration.._secondAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel

@@ -128,6 +128,24 @@ data Aggregation
   | Sum
   | Product
 
+
+instance eqAggregation :: Eq Aggregation where
+  (==) Maximum Maximum = true
+  (==) Minimum Minimum = true
+  (==) Average Average = true
+  (==) Sum Sum = true
+  (==) Product Product = true
+  (==) _ _ = false
+  (/=) a b = not $ a == b
+
+allAggregation :: [Aggregation]
+allAggregation = [ Maximum
+                 , Minimum
+                 , Average
+                 , Sum
+                 , Product
+                 ]
+
 aggregation2str :: Aggregation -> String
 aggregation2str Maximum = "⋀"
 aggregation2str Minimum = "⋁"
@@ -135,8 +153,16 @@ aggregation2str Average = "μ"
 aggregation2str Sum = "Σ"
 aggregation2str Product = "Π"
 
-allAggregation :: [Aggregation]
-allAggregation = [Maximum, Minimum, Average, Sum, Product]
+str2aggregation :: String -> Maybe Aggregation
+str2aggregation "⋀" = pure Maximum
+str2aggregation "⋁" = pure Minimum
+str2aggregation "μ" = pure Average
+str2aggregation "Σ" = pure Sum
+str2aggregation "Π" = pure Product
+str2aggregation _ = Nothing
+
+allAggregations :: [Aggregation]
+allAggregations = [Maximum, Minimum, Average, Sum, Product]
 
 aggregationDefault :: Aggregation
 aggregationDefault = Sum
@@ -200,7 +226,7 @@ instance decodeJsonPieConfiguration :: DecodeJson PieConfiguration where
          (obj .? "firstMeasures") <*>
          (obj .? "firstSeries") <*>
          (obj .? "secondSeries") <*>
-         (obj .? "firstAggregation")
+         ((obj .? "firstAggregation") <|> pure Sum)
     pure $ PieConfiguration r
 
 newtype LineConfiguration = LineConfiguration
@@ -249,8 +275,8 @@ instance decodeJsonLineConfiguration :: DecodeJson LineConfiguration where
          (obj .? "secondMeasures") <*> 
          (obj .? "firstSeries") <*>
          (obj .? "secondSeries") <*>
-         (obj .? "firstAggregation") <*>
-         (obj .? "secondAggregation")
+         ((obj .? "firstAggregation") <|> pure Sum) <*>
+         ((obj .? "secondAggregation") <|> pure Sum)
     pure $ LineConfiguration r
 
 newtype BarConfiguration = BarConfiguration
@@ -290,7 +316,7 @@ instance decodeJsonBarConfiguration :: DecodeJson BarConfiguration where
          (obj .? "firstMeasures") <*>
          (obj .? "firstSeries") <*>
          (obj .? "secondSeries") <*>
-         (obj .? "firstAggregation")
+         ((obj .? "firstAggregation") <|> pure Sum)
     pure $ BarConfiguration r
 
 

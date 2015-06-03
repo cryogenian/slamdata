@@ -24,7 +24,7 @@ import ECharts.Tooltip
 import Data.Maybe
 import Data.Maybe.Unsafe
 import Data.Tuple
-import Data.Array (filter, zipWith, replicate, length, (!!), reverse, nub, concat)
+import Data.Array (filter, zipWith, replicate, length, (!!), reverse, nub, concat, catMaybes)
 import Data.Map (lookup, Map(), alter, values, empty, keys, toList, fromList)
 import qualified Model.Notebook.ECharts as Me
 import Optic.Core
@@ -157,14 +157,16 @@ mkSeries acc =
   group = nameMap $ toList acc 
 
   serie :: Tuple String [Number] -> Series
-  serie (Tuple name nums) =
-    BarSeries { common: if name == ""
-                        then universalSeriesDefault
-                        else universalSeriesDefault {"name" = Just name}
-              , barSeries: barSeriesDefault { "data" = Just $ simpleData <$> (nums)
-                                            , stack = Just $ "total" <> stackFromName name
-                                            }
-              }
+  serie (Tuple name nums) = 
+  BarSeries { common: universalSeriesDefault { name = if name == ""
+                                                      then Nothing
+                                                      else Just name
+                                             }
+
+            , barSeries: barSeriesDefault { "data" = Just $ simpleData <$> (nums)
+                                          , stack = Just $ "total" <> stackFromName name
+                                          }
+            }
   stackFromName :: String -> String
   stackFromName str =
     case split ":" str of
@@ -185,9 +187,21 @@ mkBar r conf =
                            , yAxis = Just yAxis
                            , tooltip = Just $ Tooltip $
                                        tooltipDefault {trigger = Just TriggerAxis}
+                           , legend = Just $ mkLegend series 
                            } 
 
   where
+  mkLegend :: [Series] -> Legend
+  mkLegend series =
+    Legend legendDefault { "data" = Just $ legendItemDefault <$> extractNames series}
+
+  extractNames :: [Series] -> [String]
+  extractNames ss = catMaybes (extractName <$> ss)
+
+  extractName :: Series -> Maybe String
+  extractName (BarSeries r) = r.common.name
+  extractName _ = Nothing
+    
   tpls :: Tuple Axises [Series]
   tpls = mkSeries extracted
 
