@@ -66,9 +66,9 @@ inputMount (MountDialog d) ClearMessage = MountDialog $ d { message = Nothing }
 inputMount dialog _ = dialog
 
 mkURI :: String -> String -> String -> Array MountHostRec -> Array MountPropRec -> String
-mkURI name user password hosts props =
+mkURI path user password hosts props =
   if any isValidHost hosts
-  then toURI { name: nonEmpty name
+  then toURI { path: nonEmpty path
              , credentials: { user: _, password: _ }
                             <$> nonEmpty user
                             <*> nonEmpty (hidePassword password)
