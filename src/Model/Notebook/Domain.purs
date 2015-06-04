@@ -17,6 +17,7 @@ module Model.Notebook.Domain
   , cellURL
   , cellOut
   , replacePendingPorts
+  , syncCellsOuts
   ) where
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
@@ -36,7 +37,7 @@ import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output,
 import Model.Notebook.Cell.FileInput (_file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..), _PortResource)
 import Model.Path (DirPath(), (<./>), encodeURIPath)
-import Model.Resource (Resource(File))
+import Model.Resource (Resource(File), _tempFile, _root)
 import Network.HTTP.Affjax.Request (Requestable, toRequest)
 import Optic.Core (lens, LensP(), (..), (.~), (^.), (%~), mapped)
 import Optic.Extended (TraversalP())
@@ -176,3 +177,9 @@ replacePendingPort :: Notebook -> Cell -> Cell
 replacePendingPort nb cell = case cell ^. _output of
   PortResourcePending -> cell # _output .~ cellOut (cell ^. _content) nb (cell ^. _cellId)
   _ -> cell
+
+
+syncCellsOuts :: DirPath -> Notebook -> Notebook
+syncCellsOuts path notebook =
+  notebook # (_cells..mapped.._input.._PortResource.._tempFile.._root .~ path)
+           ..(_cells..mapped.._output.._PortResource.._tempFile.._root .~ path)

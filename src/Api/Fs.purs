@@ -91,9 +91,8 @@ loadNotebook res = do
           nPath = either (const rootDir) id (R.getPath res)
       in pure $  (notebook # (N._path .~ R.resourceDir res)
                   .. (N._name .~ That name)
-                  .. (N._cells .. mapped .. _input .. _PortResource .. R._tempFile.. R._root .~ nPath)
-                  .. (N._cells .. mapped .. _output .. _PortResource .. R._tempFile.. R._root .~ nPath)
-              )
+                  .. (N.syncCellsOuts nPath)
+                 )
 
 
 -- TODO: Not this. either add to Argonaut, or make a Respondable Json instance (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
@@ -119,11 +118,14 @@ saveNotebook notebook = case notebook ^. N._name of
     save oldName
     if newName /= oldName
       then do
-        newName' <- getNewName' newName
-        let oldPath = (notebook ^. N._path) </> dir oldName <./> Config.notebookExtension
-            newPath = Right $ (notebook ^. N._path) </> dir newName' <./> Config.notebookExtension
-        move (R.Directory oldPath) newPath
-        pure (notebook # N._name .~ That (dropNotebookExt newName'))
+      newName' <- getNewName' newName
+      let oldPath = (notebook ^. N._path) </> dir oldName <./> Config.notebookExtension
+          path = (notebook ^. N._path) </> dir newName' <./> Config.notebookExtension
+          newPath = Right $ path
+      move (R.Directory oldPath) newPath
+      pure (notebook # (N._name .~ That (dropNotebookExt newName'))
+                    .. (N.syncCellsOuts path))
+
       else pure notebook
   where
 
