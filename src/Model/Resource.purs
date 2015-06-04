@@ -61,10 +61,11 @@ _Database = prism' Database $ \s -> case s of
   Database p -> Just p
   _ -> Nothing
 
+
 _tempFile :: LensP Resource Resource
-_tempFile = lens id \r s -> case s of 
+_tempFile = lens id \r s -> case r of 
   File p ->
-    if (takeDirExt <$> (dirName (resourceDir s))) == Just notebookExtension
+    if (takeDirExt <$> (dirName (resourceDir r))) == Just notebookExtension
     then s
     else r 
   _ -> r
