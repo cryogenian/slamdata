@@ -88,11 +88,13 @@ loadNotebook res = do
     Right notebook ->
       let name = dropNotebookExt (R.resourceName res)
           path = R.resourceDir res
-      in pure (notebook # (N._path .~ R.resourceDir res)
-                       .. (N._name .~ That name)
-                       .. (N._cells .. mapped .. _input .. _PortResource .. R._tempFile.. R._root .~ path)
-                       .. (N._cells .. mapped .. _output .. _PortResource .. R._tempFile.. R._root .~ path)
+          nPath = either (const rootDir) id (R.getPath res)
+      in pure $  (notebook # (N._path .~ R.resourceDir res)
+                  .. (N._name .~ That name)
+                  .. (N._cells .. mapped .. _input .. _PortResource .. R._tempFile.. R._root .~ nPath)
+                  .. (N._cells .. mapped .. _output .. _PortResource .. R._tempFile.. R._root .~ nPath)
               )
+
 
 -- TODO: Not this. either add to Argonaut, or make a Respondable Json instance (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
 foreign import foreignToJson
