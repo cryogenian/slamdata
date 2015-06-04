@@ -112,20 +112,25 @@ saveNotebook :: forall e. N.Notebook -> Aff (ajax :: AJAX | e) N.Notebook
 saveNotebook notebook = case notebook ^. N._name of
   That name -> save name *> pure notebook
   This name -> do
-    let baseName = (U.fromJust $ theseLeft (notebook ^. N._name)) ++ "." ++ Config.notebookExtension
-    name <- getNewName (notebook ^. N._path) baseName
+    name <- getNewName' (U.fromJust $ theseLeft (notebook ^. N._name))
     save name
     pure $ N.replacePendingPorts (notebook # N._name .~ That (dropNotebookExt name))
-  Both newName oldName | newName /= oldName -> do
+  Both newName oldName -> do
     save oldName
-    alreadyExists <- exists (newName ++ "." ++ Config.notebookExtension) (notebook ^. N._path)
-    if alreadyExists
-      then throwError (error "A file already exists with the specified name")
-      else
+    if newName /= oldName
+      then do
+        newName' <- getNewName' newName
         let oldPath = (notebook ^. N._path) </> dir oldName <./> Config.notebookExtension
-            newPath = Right $ (notebook ^. N._path) </> dir newName <./> Config.notebookExtension
-        in move (R.Directory oldPath) newPath *> pure (notebook # N._name .~ That newName)
+            newPath = Right $ (notebook ^. N._path) </> dir newName' <./> Config.notebookExtension
+        move (R.Directory oldPath) newPath
+        pure (notebook # N._name .~ That (dropNotebookExt newName'))
+      else pure notebook
   where
+
+  getNewName' :: String -> Aff (ajax :: AJAX | e) String
+  getNewName' name =
+    let baseName = name ++ "." ++ Config.notebookExtension
+    in getNewName (notebook ^. N._path) baseName
 
   save :: String -> Aff (ajax :: AJAX | e) Unit
   save name =
