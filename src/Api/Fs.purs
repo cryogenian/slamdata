@@ -31,6 +31,7 @@ import qualified Data.Maybe.Unsafe as U
 import qualified Data.String as S
 import qualified Model.Notebook.Domain as N
 import qualified Model.Resource as R
+import Model.Notebook.Port (_PortResource)
 
 newtype Listing = Listing [R.Resource]
 
@@ -86,8 +87,12 @@ loadNotebook res = do
     Left err -> throwError (error err)
     Right notebook ->
       let name = dropNotebookExt (R.resourceName res)
+          path = R.resourceDir res
       in pure (notebook # (N._path .~ R.resourceDir res)
-                       .. (N._name .~ That name))
+                       .. (N._name .~ That name)
+                       .. (N._cells .. mapped .. _input .. _PortResource .. R._tempFile.. R._root .~ path)
+                       .. (N._cells .. mapped .. _output .. _PortResource .. R._tempFile.. R._root .~ path)
+              )
 
 -- TODO: Not this. either add to Argonaut, or make a Respondable Json instance (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
 foreign import foreignToJson
