@@ -43,7 +43,7 @@ import Optic.Core
 import Optic.Fold ((^?))
 import Routing (matchHash')
 import Routing.Hash (setHash, getHash)
-import Utils (newTab, mailOpen, setLocation)
+import Utils (newTab, mailOpen, setLocation, replaceLocation)
 
 import qualified Data.Maybe.Unsafe as U
 import qualified Data.String.Regex as Rgx
@@ -132,5 +132,5 @@ handleSubmitName state = liftAff (attempt $ saveNotebook (state ^. _notebook)) >
   go :: Either Error N.Notebook -> I e
   go (Left err) = pure $ WithState (_dialog ?~ ErrorDialog (message err))
   go (Right nb) = do
-    liftEff $ setLocation $ U.fromJust $ N.notebookURL nb Edit
+    liftEff $ replaceLocation $ U.fromJust $ N.notebookURL nb Edit
     pure $ WithState $ _notebook .~ nb
