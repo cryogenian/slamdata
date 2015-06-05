@@ -160,11 +160,10 @@ menuItem state {name: name, message: mbMessage, lvl: lvl, shortcut: shortcut} =
 name :: forall e. State -> HTML e
 name state =
   H.div [ A.classes [Vc.notebookName] ]
-        [ H.form_ [ H.input [ A.id_ Config.notebookNameEditorId
-                            , E.onInput (pure <<< handleNameInput)
-                            , E.onChange (\_ -> pure $ handleSubmitName state)
-                            , A.value (these id id (\n _ -> n) $ state ^. _notebook .. _name)
-                            ]
-                            []
+        [ H.input [ A.id_ Config.notebookNameEditorId
+                  , E.onInput (pure <<< handleNameInput)
+                  , E.onChange (\_ -> pure $ handleSubmitName state)
+                  , A.value (these id id (\n _ -> n) $ state ^. _notebook .. _name)
                   ]
+                  []
         ]

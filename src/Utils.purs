@@ -99,6 +99,15 @@ endsWith needle haystack =
 setLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
 setLocation url = W.location W.globalWindow >>= W.setLocation url
 
+foreign import replaceLocation
+  """
+  function replaceLocation(url) {
+    return function() {
+      window.location.replace(url);
+    };
+  }
+  """ :: forall e. String -> Eff (dom :: DOM | e) Unit
+
 s2i :: String -> Maybe Number
 s2i s =
   let n = readInt 10 s in

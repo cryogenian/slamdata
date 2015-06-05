@@ -40,7 +40,7 @@ import Model.Path (decodeURIPath, dropNotebookExt)
 import Model.Resource (Resource(), resourceName, resourceDir)
 import Optic.Core ((.~), (^.), (..), (?~), (%~))
 import Routing (matches')
-import Utils (log, setLocation)
+import Utils (log, replaceLocation)
 
 import qualified Data.Maybe.Unsafe as U
 
@@ -161,7 +161,7 @@ notebookAutosave refState refTimer input k = do
               -- to do this now because the stateRef is updated in postRender,
               -- but changing the URL happens immediately.
               modifyRef refState update
-              unless hasBeenSaved $ setLocation $ U.fromJust $ notebookURL nb Edit
+              unless hasBeenSaved $ replaceLocation $ U.fromJust $ notebookURL nb Edit
         writeRef refTimer t'
   case input of
     AddCell _ -> save

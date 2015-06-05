@@ -18,8 +18,6 @@ import Model.File (State())
 import Model.File.Item
 import Model.Path (decodeURIPath)
 import Model.Resource
-import Utils (setLocation)
-import Utils.Halide (targetLink')
 import View.File.Common (I(), toolItem)
 
 import qualified Data.StrMap as SM

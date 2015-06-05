@@ -28,7 +28,7 @@ import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _conten
 import Model.Notebook.Domain (notebookURL, cellURL)
 import Model.Notebook.Dialog
 import Optic.Core ((.~), (^.), (?~))
-import Utils (locationString, setLocation)
+import Utils (locationString, replaceLocation)
 
 import qualified Data.Maybe.Unsafe as U
 
@@ -71,7 +71,7 @@ handleShareClick state cell = do
     Left err -> pure $ WithState $ _dialog ?~ ErrorDialog ("Could not save notebook for sharing: " ++ message err)
     Right nb -> do
       loc <- liftEff $ do
-        setLocation $ U.fromJust $ notebookURL nb Edit
+        replaceLocation $ U.fromJust $ notebookURL nb Edit
         locationString
       let url = U.fromJust $ cellURL nb (cell ^. _cellId) View
       pure $ WithState $ _dialog ?~ ShareDialog (loc ++ "/" ++ url)
