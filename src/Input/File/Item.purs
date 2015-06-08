@@ -14,6 +14,7 @@ data ItemInput
   | ItemHover Number Boolean
   | ItemSelect Number Boolean
   | Resort
+  | Clear
 
 inputItem :: Sort -> Boolean -> [Item] -> ItemInput -> [Item]
 inputItem sort searching items input = case input of
@@ -30,9 +31,12 @@ inputItem sort searching items input = case input of
   ItemSelect ix h ->
     modify (flip _ { selected = _ }) items ix
 
+  Clear ->
+    []
+
 resort :: Sort -> Boolean -> [Item] -> [Item]
 resort sort searching = sortBy (sortItem searching sort)
-                        
+
 
 modify :: (Boolean -> Item -> Item) -> [Item] -> Number -> [Item]
 modify func items ix =

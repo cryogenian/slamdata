@@ -95,7 +95,7 @@ handleRoute driver = launchAff $ do
           driver $ inj $ Loading true
           driver $ inj $ SetPath path
           driver $ inj $ SearchSet $ (hidePath (renderPath $ inj path) $ (strQuery query))
-          driver $ inj $ ItemsUpdate [] sort
+          driver $ inj $ Clear
           driver $ inj $ SetSearching (isSearchQuery query)
           h <- getHash
           driver $ inj $ SetSalt salt
@@ -113,15 +113,17 @@ listPath driver query deep var res = do
 
   canceler <- forkAff do
     ei <- attempt $ children res
-    flip (either (const $ pure unit)) ei \ress -> do
-      let next = filter (\x -> isDirectory x || isDatabase x) ress
-          toAdd = filter (filterByQuery query) ress
+    case ei of
+      Left err -> pure unit -- TODO: show error
+      Right ress -> do
+        let next = filter (\x -> isDirectory x || isDatabase x) ress
+            toAdd = filter (filterByQuery query) ress
 
-      traverse_ (liftEff <<< driver <<< inj <<< ItemAdd) (wrap <$> toAdd)
+        traverse_ (liftEff <<< driver <<< inj <<< ItemAdd) (wrap <$> toAdd)
 
-      if isSearchQuery query
-        then traverse_ (listPath driver query (deep + 1) var) next
-        else pure unit
+        if isSearchQuery query
+          then traverse_ (listPath driver query (deep + 1) var) next
+          else pure unit
 
     modifyVar
       (_2 %~ M.update (\v -> if v > 1 then Just (v - 1)
