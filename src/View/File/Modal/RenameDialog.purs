@@ -87,5 +87,8 @@ renameDialog dialog =
                         E.stopPropagation
                         E.preventDefault
                         renameItemClicked target res)
-        , A.classes [B.listGroupItem]]
+        , A.classes ([B.listGroupItem] <>
+                     (if isHidden res
+                      then [Vc.itemHidden]
+                      else []))]
     [ H.text (resourcePath res) ]

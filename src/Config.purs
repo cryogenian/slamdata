@@ -41,6 +41,9 @@ userEnabled = false
 newFolderName :: String
 newFolderName = "Untitled Folder"
 
+folderMark :: String
+folderMark = ".folder"
+
 notebookExtension :: String
 notebookExtension = "slam"
 

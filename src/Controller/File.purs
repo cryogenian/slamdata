@@ -104,7 +104,20 @@ handleCreateFolder :: forall e. State -> Event (FileAppEff e) Input
 handleCreateFolder state = do
   let dirName = dir $ getNewName Config.newFolderName state
   path <- liftEff (extractDir <$> getHash)
-  toInput $ ItemAdd $ (initDirectory # _resource .. _path .~ (inj (path </> dirName)))
+  let dirPath = path </> dirName
+      dir = initDirectory{phantom = true} #
+            _resource.._path .~ inj dirPath
+      hiddenFile = dirPath </> file (Config.folderMark)
+  added <- liftAff $ attempt $ API.makeFile (inj hiddenFile) "{}"
+  (toInput (ItemRemove dir)) `andThen` \_ -> 
+  case added of
+    Left _ -> empty
+    Right _ -> toInput (ItemAdd (dir{phantom = false} # _resource .. _path .~ inj dirPath))
+
+
+handleHiddenFiles :: forall e a. Boolean -> Event (FileAppEff e) Input
+handleHiddenFiles = toInput <<< SetShowHiddenFiles <<< not
+
 
 handleMountDatabase :: forall e. State -> Event (FileAppEff e) Input
 handleMountDatabase _ = do

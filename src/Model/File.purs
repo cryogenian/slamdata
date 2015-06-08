@@ -23,6 +23,7 @@ type State =
   , dialog :: Maybe Dialog
   , salt :: Salt
   , hasMountRoot :: Boolean
+  , showHiddenFiles :: Boolean
   }
 
 initialState :: State
@@ -36,4 +37,5 @@ initialState =
   , dialog: Nothing
   , salt: Salt ""
   , hasMountRoot: false
+  , showHiddenFiles: false
   }

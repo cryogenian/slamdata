@@ -44,6 +44,7 @@ data FileInput
   | SetSalt Salt
   | SetDialog (Maybe Dialog)
   | SetHasMountRoot Boolean
+  | SetShowHiddenFiles Boolean
 
 updateState :: State -> Input -> State
 updateState state input =
@@ -82,6 +83,8 @@ inputFile state input =
       state{dialog = d}
     SetHasMountRoot b ->
       state{hasMountRoot = b}
+    SetShowHiddenFiles a ->
+      state{showHiddenFiles = a}
 
 
   where

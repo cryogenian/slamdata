@@ -7,7 +7,9 @@ module Model.Resource (
   newFile, newDatabase, newDirectory, newNotebook,
   mkFile, mkDatabase, mkDirectory, mkNotebook,
   setPath, setName, _path, _root, _name, _notebookPath, _filePath,
-  sortResource, parent, resourceFileName, child, _tempFile
+  sortResource, parent, resourceFileName, child, _tempFile, isHidden,
+  hiddenTopLevel
+                                                            
   ) where
 
 import Config
@@ -113,6 +115,20 @@ getPath r = case r of
   Database p -> inj p
 
 
+isHidden :: Resource -> Boolean
+isHidden r =
+  either isHidden' isHidden' (getPath r) 
+  where
+  isHidden' :: forall a b s. Path a b s -> Boolean
+  isHidden' p = fromMaybe false do
+    Tuple p' name <- peel p
+    if (S.indexOf "." $ nameOfFileOrDir name) == 0
+      then pure true
+      else pure $ isHidden' p'
+
+hiddenTopLevel :: Resource -> Boolean
+hiddenTopLevel r =
+  (S.indexOf "." (resourceName r)) == 0
 
 
 getNameStr :: AnyPath -> String
@@ -298,9 +314,11 @@ instance decodeJsonResource :: DecodeJson Resource where
 
 sortResource :: (Resource -> String) -> Sort -> Resource -> Resource -> Ordering
 sortResource project direction a b =
-  case direction of
-    Asc -> compare (project a) (project b)
-    Desc -> compare (project b) (project a)
+  if (isHidden a) && (not $ isHidden b) then GT else
+    if (isHidden b) && (not $ isHidden a) then LT else 
+      case direction of
+        Asc -> compare (project a) (project b)
+        Desc -> compare (project b) (project a)
 
 instance resourceOrd :: Ord Resource where
   compare = sortResource resourcePath Asc
