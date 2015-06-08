@@ -9,7 +9,6 @@ import Css.Size (px)
 import Css.String
 import Data.Array ((..), length, zipWith)
 import Data.Inject1 (inj)
-import Data.Monoid (mempty)
 import Data.Path.Pathy
 import Data.Tuple (Tuple(..))
 import Input.File.Item (ItemInput(..))
@@ -36,15 +35,21 @@ items state =
 
 item :: forall e. State -> Number -> Item -> H.HTML (I e)
 item state ix item =
-  H.div [ A.classes ([B.listGroupItem] ++ if item.selected
-                                          then [B.listGroupItemInfo]
-                                          else mempty)
+  H.div [ A.classes ([B.listGroupItem] ++
+                     (if item.selected
+                      then [B.listGroupItemInfo]
+                      else []) ++
+                     (if hiddenTopLevel item.resource
+                      then if state.showHiddenFiles
+                           then [Vc.itemHidden]
+                           else [B.hidden]
+                      else []))
         , E.onMouseOver (E.input_ $ inj $ ItemHover ix true)
         , E.onClick (E.input_ $ inj $ ItemSelect ix true)
         , E.onDoubleClick (\_ -> pure $ openItem item state.sort state.salt)
         ]
         [ H.div [ A.class_ B.row ]
-          [ H.div [ A.classes [B.colXs9, Vc.itemContent] ]
+          [ H.div [ A.classes [B.colXs9, Vc.itemContent]]
             [ H.a
               [ A.href $ itemURL state.sort state.salt Edit item ]
               [ H.span_ [ H.i [ iconClasses item ] []
@@ -58,7 +63,7 @@ item state ix item =
             [ H.ul [ A.classes ([B.listInline, B.pullRight] ++
                                 if not $ item.hovered || item.selected
                                 then [B.hidden]
-                                else mempty)
+                                else [])
                    , CSS.style (marginBottom $ px 0)
                    ]
               (showToolbar item state)

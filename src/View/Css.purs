@@ -68,6 +68,9 @@ itemToolbar = className "item-toolbar"
 itemContent :: ClassName
 itemContent = className "item-content"
 
+itemHidden :: ClassName
+itemHidden = className "item-hidden"
+
 fileListField :: ClassName
 fileListField = className "file-list-field"
 

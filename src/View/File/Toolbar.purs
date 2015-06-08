@@ -18,10 +18,22 @@ toolbar state =
         [ H.ul [ A.classes [B.listInline, B.pullRight] ]
                if inRoot state
                then if state.hasMountRoot then [editMount] else [mount]
-               else [file, folder, notebook]
+               else showHide <> [file, folder, notebook]
         ]
 
   where
+
+  showHide :: [H.HTML (I e)]
+  showHide =
+    if state.showHiddenFiles
+    then [hideFiles]
+    else [showFiles]
+
+  hideFiles :: H.HTML (I e)
+  hideFiles = toolItem [B.btnLg] true handleHiddenFiles "hide hidden files" B.glyphiconEyeClose
+
+  showFiles :: H.HTML (I e)
+  showFiles = toolItem [B.btnLg] false handleHiddenFiles "show hidden files" B.glyphiconEyeOpen
 
   file :: H.HTML (I e)
   file = H.li_ [ H.a [ A.href "javascript:void(0);"
@@ -38,6 +50,9 @@ toolbar state =
                            ]
                      ]
                ]
+
+
+  
 
   folder :: H.HTML (I e)
   folder = toolItem' handleCreateFolder "create folder" B.glyphiconFolderClose

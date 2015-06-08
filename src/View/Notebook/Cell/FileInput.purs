@@ -7,7 +7,7 @@ import Data.Either (either)
 import Data.Maybe (maybe, fromMaybe)
 import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.FileInput (FileInput(), _file, _files, _showFiles)
-import Model.Resource (Resource(), resourcePath)
+import Model.Resource (Resource(), resourcePath, isHidden)
 import Optic.Core ((^.))
 import Optic.Extended (TraversalP(), (^?))
 import View.Notebook.Common (HTML())
@@ -48,7 +48,11 @@ fileInput _input cell = fromMaybe [] $ do
 
 item :: forall e. Cell -> Resource -> HTML e
 item cell res =
-  H.button [ A.classes [B.listGroupItem]
+  H.button [ A.classes ([B.listGroupItem] <>
+                        if isHidden res
+                        then [VC.itemHidden]
+                        else []
+                       )
            , E.onClick \_ -> pure (selectFile cell res)
            ]
            [ H.text (resourcePath res) ]
