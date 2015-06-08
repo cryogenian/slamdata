@@ -112,10 +112,7 @@ updateState state i = state
 
 import Debug.Foreign
 
-toStrMap :: forall a. M.Map String a -> SM.StrMap a
-toStrMap = SM.fromList <<< M.toList
-
-slamDownStateMap :: LensP SlamDownState (M.Map String FormFieldValue)
+slamDownStateMap :: LensP SlamDownState (SM.StrMap FormFieldValue)
 slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)
 
 -- TODO: We need a much better solution to this.
@@ -133,8 +130,8 @@ slamDownOutput :: Cell -> Cell
 slamDownOutput cell =
   cell # _output .~ VarMap m
   where
-    m = maybe SM.empty ((fromFormValue <$>) <<< toStrMap) state
-    fromFormValue (SingleValue s) = s
+    m = maybe SM.empty (fromFormValue <$>) state
+    fromFormValue (SingleValue _ s) = s
     fromFormValue (MultipleValues s) = "[" <> intercalate ", " (S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
 
