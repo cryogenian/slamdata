@@ -41,7 +41,7 @@ cell :: forall e. State -> Cell -> [HTML e]
 cell notebook cell =
   let outputContent = output notebook cell
   in [ H.div ([ A.classes $ [B.containerFluid, VC.notebookCell, B.clearfix] ++ if cell ^. _hiddenEditor then [VC.collapsed] else [] ] <> maybe [ ] viewingStyle (notebook ^. _viewingCell))
-             $ catMaybes [ if hidden then Nothing else Just $ header cell
+             $ catMaybes [ if not (notebook ^. _editable) then Nothing else Just $ header cell
                          , if hidden then Nothing else Just $ editor cell
                          , Just $ statusBar notebook (isJust outputContent) cell
                          , outputContent
@@ -141,19 +141,21 @@ statusBar notebook hasOutput cell =
                              ]
                              [ glyph B.glyphiconShare ]
   in row' (fadeWhen (cell ^. _hiddenEditor))
-     [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
-             $ [ H.button [ A.classes [B.btn, B.btnPrimary, buttonClass]
-                          , E.onClick \_ -> pure $ handleRunClick cell
-                          ]
-                          [ glyph buttonGlyph ]
-               , H.div [ A.classes [ VC.statusText ] ]
-                       [ H.text $ statusText notebook.tickDate (cell ^. _runState) ]
-               , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
-                       $ catMaybes [ toggleMessageButton
-                                   , linkButton
-                                   ]
-               ] ++ messages
-     ]
+          $ if (cell ^. _hiddenEditor)
+            then []
+            else [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
+                         $ [ H.button [ A.classes [B.btn, B.btnPrimary, buttonClass]
+                                      , E.onClick \_ -> pure $ handleRunClick cell
+                                      ]
+                                      [ glyph buttonGlyph ]
+                           , H.div [ A.classes [ VC.statusText ] ]
+                                   [ H.text $ statusText notebook.tickDate (cell ^. _runState) ]
+                           , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
+                                   $ catMaybes [ toggleMessageButton
+                                               , linkButton
+                                               ]
+                           ] ++ messages
+                 ]
 
 message :: forall e. Cell -> [HTML e]
 message cell =
