@@ -37,7 +37,6 @@ type Input = Either ItemInput (Either FileInput (Either SearchInput (Either Rena
 data FileInput
   = Sorting Sort
   | SetPath DirPath
-  | ItemsUpdate [Item] Sort
   | Loading Boolean
   | Focus Boolean
   | SetSearching Boolean
@@ -59,15 +58,6 @@ inputFile state input =
     Sorting sort ->
       state { sort = sort
             , items = A.sortBy (sortItem state.searching sort) state.items}
-
-    ItemsUpdate is sort ->
-      state{ sort = sort
-           , items = A.sortBy (sortItem state.searching sort) $
-                     A.concat [ A.filter (\x -> getPath x.resource == inj state.path) $
-                                A.filter _.phantom state.items
-                              , is
-                              ] }
-
     SetPath p ->
       state{path = p, breadcrumbs = mkBreadcrumbs p}
     Loading loading ->
