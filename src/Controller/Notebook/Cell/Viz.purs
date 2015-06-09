@@ -111,11 +111,20 @@ updateData cell file = do
     all <- Me.analyzeJArray <$> (liftAff $ all file)
     let vizRec = fromMaybe initialVizRec $ cell ^? _content.._Visualize
         axes = keys all
-        vRec = configure $ (vizRec # _all .~ all
+    if null axes
+      then updateOpts cell
+      else 
+      let vRec = configure $ (vizRec # _all .~ all
                                    # _sample .~ sample
                            )
-    (update cell ((_content .. _Visualize .~ vRec) .. (_hasRun .~ true))) <>
-    (updateOpts (cell # _content.._Visualize .~ vRec))
+          vRec' = vRec # _error .~ if S.isEmpty (vRec ^._availableChartTypes)
+                                   then "There is no availbale chart type for this data"
+                                   else ""
+
+
+      in (update cell ((_content .. _Visualize .~ vRec')
+                    .. (_hasRun .~ true))) <> 
+         (updateOpts (cell # _content.._Visualize .~ vRec'))
 
   where
   errored :: String -> I e
@@ -123,9 +132,6 @@ updateData cell file = do
   
   errorEmptyInput :: I e
   errorEmptyInput = errored "Empty input"
-
-  errorNoAvailableCharts :: I e
-  errorNoAvailableCharts = errored "There is no availbale chart type for this data"
 
 infix 9 <->
 (<->) = except'
@@ -172,7 +178,6 @@ configure r =
        # _barConfiguration .~ bar
        # _lineConfiguration .~ line
        # _availableChartTypes .~ S.fromList available
-       # _error .~ error
   where
     p = r ^._pieConfiguration
     b = r ^._barConfiguration
@@ -180,13 +185,12 @@ configure r =
 
     onlyIfSelected :: forall a. [a] -> Selection a -> [a]
     onlyIfSelected lst sel = maybe [] (const lst) (sel ^._selection)
-import Debug.Foreign
 
 updateOpts :: forall e. Cell -> I e
 updateOpts cell =
   -- options event with true in updateOptio in echarts
   -- don't update properly :(
-  (cleanChart cell) `andThen` \_ -> 
+  (setOutput cell) `andThen` \_ ->
   (maybe empty go (cell ^? _content.._Visualize))
   where
   go r = do
@@ -194,5 +198,17 @@ updateOpts cell =
           Pie -> mkPie r (r ^. _pieConfiguration) 
           Line -> mkLine r (r ^. _lineConfiguration)
           Bar -> mkBar r (r ^. _barConfiguration)
-    pure $ SetEChartsOption (show $ cell ^._cellId) opts
+    if keys (r ^._all) == []
+      then empty :: I e
+      else
+      (update cell (_content.._Visualize.._output .~ opts)) `andThen` \_ ->
+      (setOutput (cell # _content.._Visualize.._output .~ opts))
 
+
+setOutput :: forall e. Cell -> I e
+setOutput cell =
+  (cleanChart cell) `andThen` \_ ->
+  (maybe empty go (cell ^? _content.._Visualize.._output))
+  where
+  go opts =
+    pure $ SetEChartsOption (show $ cell ^._cellId) opts

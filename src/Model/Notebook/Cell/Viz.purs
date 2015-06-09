@@ -396,31 +396,33 @@ instance encodeJsonVizRec :: EncodeJson VizRec where
                           ~> "bar" := r.barConfiguration
                           ~> "height" := r.chartHeight
                           ~> "width" := r.chartWidth
+                          ~> "output" := r.output
                           ~> jsonEmptyObject
 
 instance decodeJsonVizRec :: DecodeJson VizRec where
   decodeJson json = do
     obj <- decodeJson json
     av <- obj .? "availableChartTypes"
-    r <- { output: Option optionDefault
-        , all: empty
-        , sample: _
-        , error: _
-        , availableChartTypes: S.fromList av
-        , chartType: _
-        , pieConfiguration: _
-        , lineConfiguration: _
-        , barConfiguration: _
-        , chartHeight: _
-        , chartWidth: _} <$>
-        (obj .? "sample") <*>
-        (obj .? "error") <*>
-        (obj .? "chartType") <*>
-        (obj .? "pie") <*>
-        (obj .? "line") <*>
-        (obj .? "bar") <*>
-        ((obj .? "height") <|> pure 400) <*>
-        ((obj .? "width") <|> pure 600)
+    r <- { output: _
+         , all: empty
+         , sample: _
+         , error: _
+         , availableChartTypes: S.fromList av
+         , chartType: _
+         , pieConfiguration: _
+         , lineConfiguration: _
+         , barConfiguration: _
+         , chartHeight: _
+         , chartWidth: _} <$>
+         ((obj .? "output") <|> (pure $ Option optionDefault)) <*>
+         (obj .? "sample") <*>
+         (obj .? "error") <*>
+         (obj .? "chartType") <*>
+         (obj .? "pie") <*>
+         (obj .? "line") <*>
+         (obj .? "bar") <*>
+         ((obj .? "height") <|> pure 400) <*>
+         ((obj .? "width") <|> pure 600)
     pure $ VizRec r
     
 

@@ -65,7 +65,7 @@ correct cell =
 chartTypeSelector :: forall e. Cell -> VizRec -> [HTML e]
 chartTypeSelector cell r =
   [H.div [ A.classes [ VC.vizChartTypeSelector ] ]
-   (img <$> S.toList (r ^._availableChartTypes))
+   (img <$> S.toList  (r ^._availableChartTypes))
   ] 
   where
   img :: ChartType -> HTML e

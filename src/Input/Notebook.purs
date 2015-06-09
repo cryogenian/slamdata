@@ -110,7 +110,6 @@ updateState state (CellSlamDownEvent cellId event) =
 
 updateState state i = state
 
-import Debug.Foreign
 
 slamDownStateMap :: LensP SlamDownState (SM.StrMap FormFieldValue)
 slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)
