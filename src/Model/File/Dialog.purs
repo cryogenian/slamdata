@@ -7,3 +7,4 @@ data Dialog
   = RenameDialog RenameDialogRec
   | MountDialog MountDialogRec
   | ShareDialog String
+  | ErrorDialog String

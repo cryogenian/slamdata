@@ -3,54 +3,45 @@
 module Driver.File
   ( outside ) where
 
-import Data.Inject1 (inj)
+import Api.Fs (children)
 import Control.Apply ((*>))
+import Control.Monad.Aff (launchAff, cancel, attempt, Canceler(), Aff(), forkAff)
+import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar(), AVAR())
 import Control.Monad.Eff
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Exception
 import Control.Monad.Eff.Random
-import Control.Monad.Aff (launchAff, cancel, attempt, Canceler(), Aff(), forkAff)
-import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar(), AVAR())
+import Controller.File.Common
+import Data.Array (filter)
 import Data.Either
 import Data.Foldable
+import Data.Inject1 (inj)
 import Data.Maybe
-import Data.Tuple
-import Data.Array (filter)
 import Data.Monoid (mempty)
-import qualified Data.Map as M
-import Optic.Core
-import Optic.Refractor.Lens
-
+import Data.Path.Pathy
+import Data.Tuple
+import Driver.File.Path (updateSalt, updatePath, setSort, renderPath)
+import Driver.File.Routing (routing, Routes(..))
+import Driver.File.Search (isSearchQuery, filterByQuery, searchPath)
 import EffectTypes (FileAppEff(), FileComponentEff())
+import Halogen.HTML.Events.Monad (runEvent)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..))
 import Input.File.Search (SearchInput(..))
-
-import qualified Halogen as Hl
-import qualified Text.SlamSearch.Printer as S
-import Model.Sort (Sort(Asc))
-import Model.Path (AnyPath(), DirPath(), cleanPath, hidePath)
 import Model.File.Item (wrap)
-import Api.Fs (children)
+import Model.Path (AnyPath(), DirPath(), cleanPath, hidePath)
+import Model.Resource
+import Model.Sort (Sort(Asc))
+import Optic.Core
+import Optic.Refractor.Lens
 import Routing (matchesAff)
 import Routing.Hash (getHash)
 import Routing.Hash.Aff (setHash, modifyHash)
-import Text.SlamSearch.Types (SearchQuery())
 import Text.SlamSearch.Printer (strQuery)
+import Text.SlamSearch.Types (SearchQuery())
 
-import Driver.File.Routing (routing, Routes(..))
-import Driver.File.Search (isSearchQuery, filterByQuery, searchPath)
-import Driver.File.Path (updateSalt, updatePath, setSort, renderPath)
-import Model.Resource
-import Data.Path.Pathy (
-  currentDir,
-  parseAbsDir,
-  sandbox,
-  printPath,
-  Path(), Sandboxed(), Rel(),
-  relativeTo,
-  rootDir,
-  (</>))
+import qualified Data.Map as M
+import qualified Halogen as Hl
 
 outside :: forall e. Hl.Driver Input (FileComponentEff e) ->
            Eff (FileAppEff e) Unit
@@ -114,7 +105,7 @@ listPath driver query deep var res = do
   canceler <- forkAff do
     ei <- attempt $ children res
     case ei of
-      Left err -> pure unit -- TODO: show error
+      Left err -> liftEff $ runEvent (const $ pure unit) driver $ showError ("There was a problem listing the current directory: " ++ message err)
       Right ress -> do
         let next = filter (\x -> isDirectory x || isDatabase x) ress
             toAdd = filter (filterByQuery query) ress

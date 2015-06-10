@@ -5,12 +5,12 @@ import Control.Monad.Aff (Aff(), makeAff, attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (error)
+import Control.Monad.Eff.Exception (error, message)
 import Control.Monad.Error.Class (throwError)
 import Control.Plus (empty)
-import Controller.File.Common (toInput)
+import Controller.File.Common (toInput, showError)
 import Controller.File.Item (itemURL)
-import Data.Array (head, findIndex)
+import Data.Array (head, findIndex, last)
 import Data.DOM.Simple.Element (querySelector)
 import Data.DOM.Simple.Types (HTMLElement())
 import Data.Either (Either(..))
@@ -36,6 +36,7 @@ import Model.File.Item
 import Model.Resource (Resource(..), _path, _name, resourcePath)
 import Model.Sort (Sort())
 import Optic.Core
+import Network.HTTP.MimeType.Common (textCSV)
 import Routing.Hash (getHash, setHash, modifyHash)
 import Utils (clearValue, select, setLocation)
 import Utils.Event (raiseEvent)
@@ -49,7 +50,7 @@ handleCreateNotebook :: forall e. State -> Event (FileAppEff e) Input
 handleCreateNotebook state = do
   f <- liftAff $ attempt $ API.saveNotebook (N.emptyNotebook # N._path .~ state.path)
   case f of
-    Left err -> empty -- TODO: show error
+    Left err -> showError ("There was a problem creating the notebook: " ++ message err)
     Right notebook -> case N.notebookURL notebook Edit of
       Just url -> liftEff (setLocation url) *> empty
       Nothing -> empty
@@ -75,14 +76,19 @@ handleFileListChanged el state = do
       let fileName = path </> file name
           fileItem = initFile{phantom = true} #
                      (_resource <<< _path) .~ inj (path </> file name)
+          ext = last (split "." name)
+          mime = if ext == Just "csv" then Just textCSV else Nothing
 
       reader <- liftEff newReader
       content <- liftAff $ readAsBinaryString f reader
 
       toInput (ItemAdd fileItem) `andThen` \_ -> do
-        f <- liftAff $ attempt $ API.makeFile (fileItem.resource ^. _path) content
+        f <- liftAff $ attempt $ API.makeFile (fileItem.resource ^. _path) mime content
         case f of
-          Left _ -> toInput (ItemRemove fileItem)
+          Left err ->
+            -- TODO: compiler issue? using `showError` here doesn't typecheck
+            toInput (SetDialog $ Just $ ErrorDialog $ "There was a problem uploading the file: " ++ message err)
+              `andThen` \_ -> toInput (ItemRemove fileItem)
           Right _ -> liftEff (setLocation $ itemURL state.sort state.salt Edit fileItem) *> empty
 
 handleSetSort :: forall e. Sort -> Event (FileAppEff e) Input
@@ -90,8 +96,8 @@ handleSetSort sort = do
   liftEff $ modifyHash $ updateSort sort
   empty
 
-handleUploadFile :: forall e. HTMLElement -> State -> Event (FileAppEff e) Input
-handleUploadFile el _ = do
+handleUploadFile :: forall e. HTMLElement -> Event (FileAppEff e) Input
+handleUploadFile el = do
   mbInput <- liftEff $ querySelector "input" el
   case mbInput of
     Nothing -> empty
@@ -128,7 +134,7 @@ saveMount :: forall e. MountDialogRec -> Event (FileAppEff e) Input
 saveMount rec = do
   result <- liftAff $ attempt $ API.saveMount (Database $ rec.parent </> dir rec.name) rec.connectionURI
   case result of
-    Left err -> pure $ inj $ SetDialog Nothing -- TODO: show error
+    Left err -> showError ("There was a problem saving the mount: " ++ message err)
     Right _ -> pure $ inj $ SetDialog Nothing
 
 getNewName :: String -> State -> String

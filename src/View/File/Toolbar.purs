@@ -36,19 +36,17 @@ toolbar state =
   showFiles = toolItem [B.btnLg] false handleHiddenFiles "show hidden files" B.glyphiconEyeOpen
 
   file :: H.HTML (I e)
-  file = H.li_ [ H.a [ A.href "javascript:void(0);"
-                     , E.onClick (\ev -> pure $ handleUploadFile ev.target state)
-                     ]
-                     [ H.i [ A.title "upload file"
-                           , A.classes [B.btnLg, B.glyphicon, B.glyphiconFile]
-                           ]
-                           [ H.input [ A.class_ B.hidden
-                                     , A.type_ "file"
-                                     , E.onChange (\ev -> pure $ handleFileListChanged ev.target state)
-                                     ]
-                                     []
-                           ]
-                     ]
+  file = H.li_ [ H.button [ E.onClick (\ev -> pure $ handleUploadFile ev.target) ]
+                          [ H.i [ A.title "upload file"
+                                , A.classes [B.btnLg, B.glyphicon, B.glyphiconFile]
+                                ]
+                                [ H.input [ A.class_ B.hidden
+                                          , A.type_ "file"
+                                          , E.onChange (\ev -> pure $ handleFileListChanged ev.target state)
+                                          ]
+                                          []
+                                ]
+                          ]
                ]
 
 
