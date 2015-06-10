@@ -9,7 +9,7 @@ import Data.Either (Either(..))
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Input.Notebook (Input(CellResult))
-import Model.Notebook.Cell (Cell(), _Query, _content, _input, _output, _cellId)
+import Model.Notebook.Cell (Cell(), _Query, _content, _input, _output, _cellId, outFile)
 import Model.Notebook.Port (_PortResource)
 import Model.Resource (Resource(), parent, root)
 import Optic.Core ((^.), (..))
@@ -19,7 +19,7 @@ import qualified Data.Array.NonEmpty as NEL
 import qualified Model.Notebook.Cell.Query as Qu
 
 runQuery :: forall e. Cell -> I e
-runQuery cell = case queryToJTable cell input <$> path <*> output of
+runQuery cell = case queryToJTable cell input <$> path <*> (pure $ outFile cell) of
   Just x -> x
   Nothing -> do
     now' <- liftEff now

@@ -8,7 +8,7 @@ module Model.Resource (
   mkFile, mkDatabase, mkDirectory, mkNotebook,
   setPath, setName, _path, _root, _name, _notebookPath, _filePath,
   sortResource, parent, resourceFileName, child, _tempFile, isHidden,
-  hiddenTopLevel
+  hiddenTopLevel, isTempFile
                                                             
   ) where
 
@@ -67,11 +67,14 @@ _Database = prism' Database $ \s -> case s of
 _tempFile :: LensP Resource Resource
 _tempFile = lens id \r s -> case r of 
   File p ->
-    if (takeDirExt <$> (dirName (resourceDir r))) == Just notebookExtension
+    if isTempFile r 
     then s
     else r 
   _ -> r
 
+isTempFile :: Resource -> Boolean
+isTempFile r =
+  (takeDirExt <$> (dirName (resourceDir r))) == Just notebookExtension 
 
   
 _notebookPath :: PrismP Resource DirPath

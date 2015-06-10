@@ -56,7 +56,7 @@
     "zeroclipboard": "^2.2.0",
     "purescript-sets": "~0.3.2",
     "purescript-uri": "dd41ddb8e4aac2e7c2cdc3aa631c5669b5a50293",
-    "purescript-echarts": "https://github.com/cryogenian/purescript-echarts.git#master"
+    "purescript-echarts": "~0.2.1"
   },
   "resolutions": {
     "purescript-argonaut": "^0.6.0",
