@@ -131,7 +131,7 @@ queryToJTable cell sql inp out = do
   go realOut =
     let file = mkFile (Left $ rootDir </> realOut) in 
     (update cell (_output .~ PortResource file)) <>
-    (pure $ UpdatedOutput out file) <>
+    (pure $ UpdatedOutput (cell ^._cellId) file) <>
     (runJTable file cell)
     
   varMap :: SM.StrMap VarMapValue

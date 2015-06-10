@@ -6,19 +6,19 @@ module Input.Notebook
   ) where
 
 import Control.Bind (join)
-import Data.Array (filter, modifyAt, (!!))
+import Data.Array (filter, modifyAt, (!!), elemIndex)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), either)
 import Data.Foldable (intercalate)
 import Data.Function (on)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), fst)
+import Data.Tuple (Tuple(..), fst, snd)
 import Model.Notebook
 import Model.Resource (Resource()) 
 import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
-import Model.Notebook.Domain (_cells, addCell, insertCell)
+import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies)
 import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource)
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
@@ -61,7 +61,7 @@ data Input
   | InsertCell Cell CellContent
   | SetEChartsOption String EC.Option
 
-  | UpdatedOutput Resource Resource
+  | UpdatedOutput CellId Resource
 
 updateState :: State -> Input -> State
 
@@ -112,16 +112,15 @@ updateState state (CellSlamDownEvent cellId event) =
   state # _notebook.._cells..mapped %~ onCell cellId (slamDownOutput <<< runSlamDownEvent event)
         # _notebook.._cells %~ syncParents
 
-updateState state (UpdatedOutput oldOutput newOutput) =
-  state # _notebook.._cells..mapped %~ changeOutput oldOutput newOutput
+updateState state (UpdatedOutput cid newInput) =
+  let depIds = fst <$>
+             filter (\x -> snd x == cid) (M.toList (state ^._notebook.._dependencies))
+      changed cell = if elemIndex (cell ^._cellId) depIds == -1
+                     then cell
+                     else cell # _input.._PortResource .~ newInput
+  in state # _notebook.._cells..mapped %~ changed 
 
 updateState state i = state
-
-changeOutput :: Resource -> Resource -> Cell -> Cell
-changeOutput old new cell =
-  if (cell ^?_input.._PortResource) == Just old
-  then cell # _input.._PortResource .~ new
-  else cell
 
 slamDownStateMap :: LensP SlamDownState (SM.StrMap FormFieldValue)
 slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)
