@@ -21,10 +21,10 @@ type FileAppEff e = Hl.HalogenEffects (FileComponentEff e)
 
 
 type NotebookComponentEff e = ( timer :: Tm.Timer
-                              , echartInit :: EC.EChartInit
-                              , echartSetOption :: EC.EChartOptionSet
-                              , echartDispose :: EC.EChartDispose
-                              , echartResize :: EC.EChartResize
+                              , echartInit :: EC.ECHARTS_INIT
+                              , echartSetOption :: EC.ECHARTS_OPTION_SET
+                              , echartDispose :: EC.ECHARTS_DISPOSE
+                              , echartResize :: EC.ECHARTS_RESIZE 
                               , now :: Now
                               , ajax :: Af.AJAX
                               , zClipboard :: Z.ZCLIPBOARD | e)

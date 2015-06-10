@@ -1,20 +1,23 @@
 module Model.Notebook.Cell where
 
+import Control.Alt ((<|>))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Date (Date())
 import Data.Either (Either(..), either)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Time (Milliseconds())
 import Global (readInt, isNaN)
 import Model.Notebook.Cell.FileInput
 import Model.Notebook.Cell.JTableContent
 import Model.Notebook.Port
-import Model.Resource
-import Optic.Core (lens, LensP(), prism', PrismP(), (..), (.~))
+import Model.Resource 
+import Optic.Core (lens, LensP(), prism', PrismP(), (..), (.~), (^.))
 import Optic.Extended (TraversalP())
+import Data.Path.Pathy (rootDir, parseAbsDir, sandbox, (</>), printPath, file)
+import Model.Path (DirPath(), phantomNotebookPath)
 
 import qualified Model.Notebook.Cell.Common as Cm
 import qualified Model.Notebook.Cell.Explore as Ex
@@ -43,6 +46,7 @@ newtype Cell =
        , hiddenEditor :: Boolean
        , runState :: RunState
        , hasRun :: Boolean
+       , pathToNotebook :: DirPath
        }
 
 newCell :: CellId -> CellContent -> Cell
@@ -58,6 +62,7 @@ newCell cellId content =
        , hiddenEditor: false
        , runState: RunInitial
        , hasRun: false
+       , pathToNotebook: rootDir
        }
 
 _Cell :: LensP Cell _
@@ -96,6 +101,9 @@ _message = _Cell <<< lens _.message _{message = _}
 _hasRun :: LensP Cell Boolean
 _hasRun = _Cell <<< lens _.hasRun _{hasRun = _}
 
+_pathToNotebook :: LensP Cell DirPath
+_pathToNotebook = _Cell <<< lens _.pathToNotebook _{pathToNotebook = _}
+
 instance eqCell :: Eq Cell where
   (==) (Cell c) (Cell c') = c.cellId == c'.cellId
   (/=) a b = not $ a == b
@@ -125,7 +133,8 @@ instance decodeJsonCell :: DecodeJson Cell where
     pure (cell # (_parent .~ parent)
               .. (_input  .~ input)
               .. (_output .~ output)
-              .. (_hasRun .~ hasRun))
+              .. (_hasRun .~ hasRun)
+              .. (_pathToNotebook .~ phantomNotebookPath))
 
 data CellContent
   = Search Sr.SearchRec
@@ -239,3 +248,6 @@ _RunFinished :: PrismP RunState Milliseconds
 _RunFinished = prism' RunFinished $ \r -> case r of
   RunFinished m -> Just m
   _ -> Nothing
+
+outFile :: Cell -> Resource
+outFile cell = mkFile $ Left $ (cell ^._pathToNotebook) </> file ("out" <> show (cell ^._cellId))

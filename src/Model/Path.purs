@@ -5,7 +5,7 @@ import Data.DOM.Simple.Encode (encodeURIComponent, decodeURIComponent)
 import Data.Either (Either(..))
 import Data.Path.Pathy
 import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, length)
-
+import Config (notebookExtension)
 import qualified Data.String.Regex as Rgx
 
 type FilePath = AbsFile Sandboxed
@@ -15,6 +15,13 @@ type AnyPath = Either FilePath DirPath
 infixl 6 <./>
 (<./>) :: forall a s. Path a Dir s -> String -> Path a Dir s
 (<./>) p ext = renameDir (changeDirExt $ const ext) p
+
+-- | Setted by default to support cells without
+-- | `pathToNotebook` field. After first save `pathToNotebook` is
+-- | setted to correct notebook path. 
+phantomNotebookPath :: DirPath
+phantomNotebookPath = rootDir </> dir "phantom" <./> notebookExtension
+
 
 changeDirExt :: (String -> String) -> DirName -> DirName
 changeDirExt f (DirName name) =

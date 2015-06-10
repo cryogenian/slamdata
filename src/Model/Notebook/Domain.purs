@@ -33,7 +33,7 @@ import Data.Path.Pathy (rootDir, dir, file, (</>), printPath)
 import Data.These (These(..), these, theseRight)
 import Data.Tuple (Tuple(..))
 import Model.Action (Action(), printAction)
-import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _parent, _FileInput, _content)
+import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _parent, _FileInput, _content, _pathToNotebook)
 import Model.Notebook.Cell.FileInput (_file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..), _PortResource)
 import Model.Path (DirPath(), (<./>), encodeURIPath)
@@ -126,7 +126,10 @@ addCell :: CellContent -> Notebook -> Tuple Notebook Cell
 addCell content oldNotebook@(Notebook n) = Tuple notebook cell'
   where
   newId = freeId oldNotebook
-  cell = newCell newId content # (_output .~ cellOut content oldNotebook newId)
+  cell = newCell newId content #
+           (_output .~ cellOut content oldNotebook newId)
+         ..(_pathToNotebook .~ (fromMaybe rootDir $ notebookPath oldNotebook))
+           
   cell' = case content of
     (Explore _) -> cell # (_input .~ maybe Closed PortResource (content ^? _FileInput .. _file .. _Right))
     _ -> cell
@@ -147,6 +150,7 @@ insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
   cell = newCell newId (content # _FileInput .. _file .~ maybe (Left "") Right (input ^? _PortResource))
          # (_output .~ port)
          ..(_input  .~ input)
+         ..(_pathToNotebook .~ (fromMaybe rootDir $ notebookPath oldNotebook))
          ..(_parent .~ Just (parent ^. _cellId))
   port = cellOut content oldNotebook newId
 
@@ -183,3 +187,4 @@ syncCellsOuts :: DirPath -> Notebook -> Notebook
 syncCellsOuts path notebook =
   notebook # (_cells..mapped.._input.._PortResource.._tempFile.._root .~ path)
            ..(_cells..mapped.._output.._PortResource.._tempFile.._root .~ path)
+           ..(_cells..mapped.._pathToNotebook .~ path)

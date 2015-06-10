@@ -32,8 +32,8 @@ import Global (isNaN, readInt)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
-import Model.Notebook.Port (VarMapValue(), _VarMap)
-import Model.Resource (Resource(), mkFile)
+import Model.Notebook.Port (VarMapValue(), _VarMap, Port(..))
+import Model.Resource (Resource(), mkFile, isTempFile, _path)
 import Optic.Core ((^.), (.~), (..))
 import Optic.Extended (TraversalP(), (^?))
 
@@ -120,14 +120,20 @@ runJTable file cell = do
 queryToJTable :: forall e. Cell -> String -> Resource -> Resource -> I e
 queryToJTable cell sql inp out = do
   jobj <- liftAff do
-    delete out
+    if isTempFile out then delete out else pure unit
     attempt (port inp out sql varMap)
-  either errorInQuery (\out -> runJTable (mkFile (Left $ rootDir </> out)) cell) do
+  either errorInQuery go do
     j <- lmap message jobj
     out' <- j .? "out"
     path <- maybe (Left "Invalid file from SlamEngine") Right $ parseAbsFile out'
     maybe (Left "Could not sandbox SlamEngine file") Right $ sandbox rootDir path
   where
+  go realOut =
+    let file = mkFile (Left $ rootDir </> realOut) in 
+    (update cell (_output .~ PortResource file)) <>
+    (pure $ UpdatedOutput (cell ^._cellId) file) <>
+    (runJTable file cell)
+    
   varMap :: SM.StrMap VarMapValue
   varMap = fromMaybe SM.empty $ cell ^? _input.._VarMap
 
