@@ -114,8 +114,8 @@ handleCreateFolder state = do
       dir = initDirectory{phantom = true} #
             _resource.._path .~ inj dirPath
       hiddenFile = dirPath </> file (Config.folderMark)
-  added <- liftAff $ attempt $ API.makeFile (inj hiddenFile) "{}"
-  (toInput (ItemRemove dir)) `andThen` \_ -> 
+  added <- liftAff $ attempt $ API.makeFile (inj hiddenFile) Nothing "{}"
+  (toInput (ItemRemove dir)) `andThen` \_ ->
   case added of
     Left _ -> empty
     Right _ -> toInput (ItemAdd (dir{phantom = false} # _resource .. _path .~ inj dirPath))
