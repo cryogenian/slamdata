@@ -119,7 +119,6 @@ instance encodeJsonCell :: EncodeJson Cell where
     ~> "output" := cell.output
     ~> "content" := cell.content
     ~> "hasRun" := cell.hasRun
-    ~> "pathToNotebook" := printPath cell.pathToNotebook
     ~> jsonEmptyObject
 
 instance decodeJsonCell :: DecodeJson Cell where
@@ -130,17 +129,12 @@ instance decodeJsonCell :: DecodeJson Cell where
     parent <- obj .? "parent"
     input <- obj .? "input"
     output <- obj .? "output"
-    pathToNotebook <- case obj .? "pathToNotebook" of
-      Left _ -> pure rootDir
-      Right str -> pure $
-                   maybe phantomNotebookPath (rootDir </>)
-                   (parseAbsDir str >>= sandbox rootDir)
     let hasRun = either (const false) id (obj .? "hasRun")
     pure (cell # (_parent .~ parent)
               .. (_input  .~ input)
               .. (_output .~ output)
               .. (_hasRun .~ hasRun)
-              .. (_pathToNotebook .~ pathToNotebook))
+              .. (_pathToNotebook .~ phantomNotebookPath))
 
 data CellContent
   = Search Sr.SearchRec
