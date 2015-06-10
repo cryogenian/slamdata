@@ -16,10 +16,10 @@ type I e = E.Event (FileAppEff e) Input
 
 toolItem :: forall a m i. (Alternative m) => [A.ClassName] -> a -> (a -> m i) -> String -> A.ClassName -> H.HTML (m i)
 toolItem classes actionArg action title icon =
-  H.li_ [ H.a (targetLink' $ action actionArg)
-              [ H.i [ A.title title
-                    , A.classes (classes ++ [B.glyphicon, icon])
-                    ]
-                    []
-              ]
+  H.li_ [ H.button [ E.onClick (\_ -> pure $ action actionArg) ]
+                   [ H.i [ A.title title
+                         , A.classes (classes ++ [B.glyphicon, icon])
+                         ]
+                         []
+                   ]
         ]

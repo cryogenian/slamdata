@@ -24,6 +24,7 @@ import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, get, put_, delete_, defaul
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
+import Network.HTTP.MimeType (MimeType())
 import Network.HTTP.MimeType.Common (applicationJSON)
 import Optic.Core ((..), (.~), (^.), (%~), mapped)
 
@@ -58,9 +59,9 @@ children' str = runListing <$> (getResponse msg $ listing str)
 listing :: forall e. String -> Affjax e Listing
 listing str = get (Config.metadataUrl <> str)
 
-makeFile :: forall e. AnyPath -> String -> Aff (ajax :: AJAX | e) Unit
-makeFile ap content =
-  getResponse msg $ either err go isJson
+makeFile :: forall e. AnyPath -> Maybe MimeType -> String -> Aff (ajax :: AJAX | e) Unit
+makeFile ap mime content =
+  getResponse msg $ go unit -- either err go isJson
   where
   resource :: R.Resource
   resource = R.newFile # R._path .~ ap
@@ -78,7 +79,12 @@ makeFile ap content =
   isJson = maybe (Left "empty file") Right firstLine >>= jsonParser
 
   go :: _ -> Aff _ _
-  go _ = put_ (Config.dataUrl <> R.resourcePath resource) content
+  go _ = affjax $ defaultRequest
+    { method = PUT
+    , headers = maybe [] (pure <<< ContentType) mime
+    , content = Just content
+    , url = Config.dataUrl <> R.resourcePath resource
+    }
 
 loadNotebook :: forall e. R.Resource -> Aff (ajax :: AJAX | e) N.Notebook
 loadNotebook res = do

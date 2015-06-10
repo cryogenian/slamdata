@@ -8,6 +8,7 @@ import EffectTypes (FileAppEff())
 import Input.File (Input(), FileInput(SetDialog))
 import Model.File (State())
 import Model.File.Dialog (Dialog(..))
+import View.File.Modal.ErrorDialog (errorDialog)
 import View.File.Modal.MountDialog (mountDialog)
 import View.File.Modal.RenameDialog (renameDialog)
 import View.File.Modal.ShareDialog (shareDialog)
@@ -37,3 +38,4 @@ dialogContent :: forall e. Dialog -> [H.HTML (E.Event (FileAppEff e) Input)]
 dialogContent (ShareDialog url) = shareDialog url
 dialogContent (RenameDialog dialog) = renameDialog dialog
 dialogContent (MountDialog dialog) = mountDialog dialog
+dialogContent (ErrorDialog msg) = errorDialog msg

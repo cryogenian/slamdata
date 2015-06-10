@@ -6,7 +6,7 @@ import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
 import Controller.Common (getDirectories)
-import Controller.File.Common (toInput)
+import Controller.File.Common (toInput, showError)
 import Data.DOM.Simple.Element (getElementById)
 import Data.DOM.Simple.Encode (encodeURIComponent)
 import Data.DOM.Simple.Window (document, globalWindow)
@@ -71,7 +71,7 @@ handleConfigure :: forall e. Resource -> Event (FileAppEff e) Input
 handleConfigure res = do
   x <- liftAff $ mountInfo res
   case runParseAbsoluteURI x of
-    Left err -> empty -- TODO: show error in the unlikely event that this happens
+    Left err -> showError ("There was a problem reading the mount settings: " ++ show err)
     Right uri ->
       let rec = (mountDialogFromURI uri) { new = false
                                          , name = if getPath res == Right rootDir then "/" else resourceName res
