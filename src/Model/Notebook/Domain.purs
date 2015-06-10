@@ -187,3 +187,4 @@ syncCellsOuts :: DirPath -> Notebook -> Notebook
 syncCellsOuts path notebook =
   notebook # (_cells..mapped.._input.._PortResource.._tempFile.._root .~ path)
            ..(_cells..mapped.._output.._PortResource.._tempFile.._root .~ path)
+           ..(_cells..mapped.._pathToNotebook .~ path)

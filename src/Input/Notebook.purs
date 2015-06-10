@@ -15,10 +15,11 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst)
 import Model.Notebook
+import Model.Resource (Resource()) 
 import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell)
-import Model.Notebook.Port (Port(..), VarMapValue())
+import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource)
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
@@ -33,6 +34,7 @@ import qualified Data.StrMap as SM
 import qualified ECharts.Options as EC
 import qualified Model.Notebook.Cell.JTableContent as JTC
 import qualified Model.Notebook.Cell.Markdown as Ma
+import Model.Path (FilePath(), AnyPath())
 
 data CellResultContent
   = AceContent String
@@ -58,6 +60,8 @@ data Input
   | CellSlamDownEvent CellId SlamDownEvent
   | InsertCell Cell CellContent
   | SetEChartsOption String EC.Option
+
+  | UpdatedOutput Resource Resource
 
 updateState :: State -> Input -> State
 
@@ -108,8 +112,16 @@ updateState state (CellSlamDownEvent cellId event) =
   state # _notebook.._cells..mapped %~ onCell cellId (slamDownOutput <<< runSlamDownEvent event)
         # _notebook.._cells %~ syncParents
 
+updateState state (UpdatedOutput oldOutput newOutput) =
+  state # _notebook.._cells..mapped %~ changeOutput oldOutput newOutput
+
 updateState state i = state
 
+changeOutput :: Resource -> Resource -> Cell -> Cell
+changeOutput old new cell =
+  if (cell ^?_input.._PortResource) == Just old
+  then cell # _input.._PortResource .~ new
+  else cell
 
 slamDownStateMap :: LensP SlamDownState (SM.StrMap FormFieldValue)
 slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)

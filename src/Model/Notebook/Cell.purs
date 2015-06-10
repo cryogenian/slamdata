@@ -17,7 +17,7 @@ import Model.Resource
 import Optic.Core (lens, LensP(), prism', PrismP(), (..), (.~), (^.))
 import Optic.Extended (TraversalP())
 import Data.Path.Pathy (rootDir, parseAbsDir, sandbox, (</>), printPath, file)
-import Model.Path (DirPath())
+import Model.Path (DirPath(), phantomNotebookPath)
 
 import qualified Model.Notebook.Cell.Common as Cm
 import qualified Model.Notebook.Cell.Explore as Ex
@@ -133,7 +133,7 @@ instance decodeJsonCell :: DecodeJson Cell where
     pathToNotebook <- case obj .? "pathToNotebook" of
       Left _ -> pure rootDir
       Right str -> pure $
-                   maybe rootDir (rootDir </>)
+                   maybe phantomNotebookPath (rootDir </>)
                    (parseAbsDir str >>= sandbox rootDir)
     let hasRun = either (const false) id (obj .? "hasRun")
     pure (cell # (_parent .~ parent)

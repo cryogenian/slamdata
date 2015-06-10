@@ -33,7 +33,7 @@ import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
 import Model.Notebook.Port (VarMapValue(), _VarMap, Port(..))
-import Model.Resource (Resource(), mkFile, isTempFile)
+import Model.Resource (Resource(), mkFile, isTempFile, _path)
 import Optic.Core ((^.), (.~), (..))
 import Optic.Extended (TraversalP(), (^?))
 
@@ -128,9 +128,10 @@ queryToJTable cell sql inp out = do
     path <- maybe (Left "Invalid file from SlamEngine") Right $ parseAbsFile out'
     maybe (Left "Could not sandbox SlamEngine file") Right $ sandbox rootDir path
   where
-  go out =
-    let file = mkFile (Left $ rootDir </> out) in 
-    (update cell (_output .~ PortResource file)) <> 
+  go realOut =
+    let file = mkFile (Left $ rootDir </> realOut) in 
+    (update cell (_output .~ PortResource file)) <>
+    (pure $ UpdatedOutput out file) <>
     (runJTable file cell)
     
   varMap :: SM.StrMap VarMapValue
