@@ -1,7 +1,5 @@
 module View.File.Modal.MountDialog (mountDialog) where
 
-import Data.Inject1 (inj)
-
 import Control.Apply ((*>))
 import Control.Functor (($>))
 import Control.Monad.Aff.Class (liftAff)
@@ -9,9 +7,12 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
 import Controller.File (saveMount)
 import Data.Array ((..), length, zipWith, singleton)
+import Data.Either (either)
 import Data.Foldable (all)
+import Data.Inject1 (inj)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), maybe, isJust)
+import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
 import Input.File (FileInput(SetDialog))
 import Input.File.Mount (MountInput(..))
 import Optic.Core ((.~), (^.))
@@ -65,7 +66,7 @@ fldConnectionURI state =
         [ label "URI"
                 [ H.input [ A.class_ B.formControl
                           , A.placeholder "Paste connection URI here"
-                          , A.value state.connectionURI
+                          , A.value (hidePassword state.connectionURI)
                           , E.onKeyDown clearText
                           , E.onKeyPress handleKeyInput
                           , E.onInput (E.input \value -> inj $ UpdateConnectionURI value)
@@ -96,6 +97,11 @@ fldConnectionURI state =
   -- it.
   pasteHandler :: A.Attr (I e)
   pasteHandler = onPaste selectThis
+
+  hidePassword :: String -> String
+  hidePassword s = either (const s) go $ runParseAbsoluteURI s
+    where
+    go uri = printAbsoluteURI $ M.setURIPassword (M.hidePassword (M.passwordFromURI uri)) uri
 
 selScheme :: forall e. M.MountDialogRec -> H.HTML (I e)
 selScheme state =
