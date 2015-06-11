@@ -34,42 +34,53 @@ items state =
         $ zipWith (item state) (0..length state.items) state.items
 
 item :: forall e. State -> Number -> Item -> H.HTML (I e)
-item state ix item =
-  H.div [ A.classes ([B.listGroupItem] ++
-                     (if item.selected
-                      then [B.listGroupItemInfo]
-                      else []) ++
-                     (if hiddenTopLevel item.resource
-                      then if state.showHiddenFiles
-                           then [Vc.itemHidden]
-                           else [B.hidden]
-                      else []))
-        , E.onMouseOver (E.input_ $ inj $ ItemHover ix true)
-        , E.onClick (E.input_ $ inj $ ItemSelect ix true)
-        , E.onDoubleClick (\_ -> pure $ openItem item state.sort state.salt)
-        ]
-        [ H.div [ A.class_ B.row ]
-          [ H.div [ A.classes [B.colXs9, Vc.itemContent]]
-            [ H.a
-              [ A.href $ itemURL state.sort state.salt Edit item ]
-              [ H.span_ [ H.i [ iconClasses item ] []
+item state ix item
+  | item.phantom =
+    H.div [ A.classes [B.listGroupItem, Vc.phantom] ]
+          [ H.div [ A.class_ B.row ]
+            [ H.div [ A.classes [B.colXs9, Vc.itemContent]]
+              [ H.span_ [ H.img [ A.src "img/spin.svg" ] [ ]
                         , H.text $ (if state.searching
                                     then resourcePath
                                     else resourceName) item.resource
                         ]
               ]
             ]
-          , H.div [ A.classes [B.colXs3, Vc.itemToolbar] ]
-            [ H.ul [ A.classes ([B.listInline, B.pullRight] ++
-                                if not $ item.hovered || item.selected
-                                then [B.hidden]
-                                else [])
-                   , CSS.style (marginBottom $ px 0)
-                   ]
-              (showToolbar item state)
+          ]
+  | otherwise =
+    H.div [ A.classes ([B.listGroupItem] ++
+                       (if item.selected
+                        then [B.listGroupItemInfo]
+                        else []) ++
+                       (if hiddenTopLevel item.resource
+                        then if state.showHiddenFiles
+                             then [Vc.itemHidden]
+                             else [B.hidden]
+                        else []))
+          , E.onClick (E.input_ $ inj $ ItemSelect ix true)
+          , E.onDoubleClick (\_ -> pure $ openItem item state.sort state.salt)
+          ]
+          [ H.div [ A.class_ B.row ]
+            [ H.div [ A.classes [B.colXs9, Vc.itemContent]]
+              [ H.a
+                [ A.href $ itemURL state.sort state.salt Edit item ]
+                [ H.span_ [ H.i [ iconClasses item ] []
+                          , H.text $ (if state.searching
+                                      then resourcePath
+                                      else resourceName) item.resource
+                          ]
+                ]
+              ]
+            , H.div [ A.classes $ [B.colXs3, Vc.itemToolbar] ++ if item.selected
+                                                                then [Vc.selected]
+                                                                else [] ]
+              [ H.ul [ A.classes ([B.listInline, B.pullRight])
+                     , CSS.style (marginBottom $ px 0)
+                     ]
+                (showToolbar item state)
+              ]
             ]
           ]
-        ]
 
 iconClasses :: forall e. Item -> A.Attr (I e)
 iconClasses item = A.classes [B.glyphicon, Vc.itemIcon, iconClass item.resource]

@@ -1,6 +1,5 @@
 module Driver.File.Path
-  ( extractDir
-  , updateSort
+  ( updateSort
   , updateQ
   , updateSalt
   , setSort
@@ -51,10 +50,6 @@ updateSalt salt old =
 
 setSort :: Sort -> String
 setSort sort = "?sort=" <> sort2string sort <> "&q=&salt="
-
-extractDir :: String -> DirPath
-extractDir hash =
-  maybe rootDir (rootDir </>) (parseAbsDir (getPath' hash) >>= sandbox rootDir)
 
 getPath' :: String -> String
 getPath' hash =

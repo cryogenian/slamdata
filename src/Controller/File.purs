@@ -1,6 +1,7 @@
 module Controller.File where
 
 import Control.Apply ((*>))
+import Control.Bind ((=<<))
 import Control.Monad.Aff (Aff(), makeAff, attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())
@@ -20,7 +21,7 @@ import Data.These (These(..))
 import Data.Path.Pathy
 import Data.String (split, joinWith)
 import DOM (DOM())
-import Driver.File.Path (extractDir, updatePath, updateSort)
+import Driver.File.Path (updatePath, updateSort)
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Handler (EventHandler())
 import Halogen.HTML.Events.Monad (Event(), async, andThen)
@@ -71,9 +72,9 @@ handleFileListChanged el state = do
           readAsBinaryString :: _ -> _ -> Aff (FileAppEff e) _
           readAsBinaryString = Uf.readAsBinaryString
 
-      path <- liftEff (extractDir <$> getHash)
-      name <- flip getNewName state <$> (liftEff $ Uf.name f)
-      let fileName = path </> file name
+      name <- liftAff $ API.getNewName state.path =<< liftEff (Uf.name f)
+      let path = state.path
+          fileName = path </> file name
           fileItem = initFile{phantom = true} #
                      (_resource <<< _path) .~ inj (path </> file name)
           ext = last (split "." name)
@@ -108,27 +109,24 @@ handleUploadFile el = do
 -- | clicked on _Folder_ link, create phantom folder
 handleCreateFolder :: forall e. State -> Event (FileAppEff e) Input
 handleCreateFolder state = do
-  let dirName = dir $ getNewName Config.newFolderName state
-  path <- liftEff (extractDir <$> getHash)
-  let dirPath = path </> dirName
-      dir = initDirectory{phantom = true} #
-            _resource.._path .~ inj dirPath
+  dirName <- liftAff $ API.getNewName state.path Config.newFolderName
+  let dirPath = state.path </> dir dirName
+      dirItem = initDirectory{phantom = true} #
+                _resource.._path .~ inj dirPath
       hiddenFile = dirPath </> file (Config.folderMark)
-  added <- liftAff $ attempt $ API.makeFile (inj hiddenFile) Nothing "{}"
-  (toInput (ItemRemove dir)) `andThen` \_ ->
-  case added of
-    Left _ -> empty
-    Right _ -> toInput (ItemAdd (dir{phantom = false} # _resource .. _path .~ inj dirPath))
-
+  (toInput (ItemAdd dirItem)) `andThen` \_ -> do
+    added <- liftAff $ attempt $ API.makeFile (inj hiddenFile) Nothing "{}"
+    toInput (ItemRemove dirItem) `andThen` \_ ->
+      case added of
+        Left _ -> empty
+        Right _ -> toInput (ItemAdd (dirItem {phantom = false} # _resource .. _path .~ inj dirPath))
 
 handleHiddenFiles :: forall e a. Boolean -> Event (FileAppEff e) Input
 handleHiddenFiles = toInput <<< SetShowHiddenFiles <<< not
 
-
 handleMountDatabase :: forall e. State -> Event (FileAppEff e) Input
-handleMountDatabase _ = do
-  path <- liftEff (extractDir <$> getHash)
-  toInput $ SetDialog (Just $ MountDialog initialMountDialog { parent = path })
+handleMountDatabase state = do
+  toInput $ SetDialog (Just $ MountDialog initialMountDialog { parent = state.path })
 
 saveMount :: forall e. MountDialogRec -> Event (FileAppEff e) Input
 saveMount rec = do
@@ -136,22 +134,6 @@ saveMount rec = do
   case result of
     Left err -> showError ("There was a problem saving the mount: " ++ message err)
     Right _ -> pure $ inj $ SetDialog Nothing
-
-getNewName :: String -> State -> String
-getNewName name state =
-  if findIndex (\x -> x ^. _resource .. _name == name) state.items /= -1 then
-    getNewName' name 1
-    else name
-  where
-  getNewName' name i =
-    case split "." name of
-      [] -> ""
-      body:suffixes ->
-        let newName = joinWith "." $ (body <> show i):suffixes
-        in if findIndex (\x -> x ^. _resource .. _name == newName)
-              state.items /= -1
-           then getNewName' name (i + 1)
-           else newName
 
 breadcrumbClicked :: forall e. Breadcrumb -> Event (FileAppEff e) Input
 breadcrumbClicked b = do

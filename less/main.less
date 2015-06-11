@@ -77,6 +77,19 @@ button:focus {
 }
 .item-toolbar {
     padding-right: 0px;
+    display: none;
+}
+
+.list-group-item:hover .item-toolbar, .item-toolbar.selected {
+    display: block;
+}
+
+.list-group-item.phantom {
+    color: #999;
+    img {
+        width: 16px;
+        margin-right: 18px;
+    }
 }
 
 .item-content {
