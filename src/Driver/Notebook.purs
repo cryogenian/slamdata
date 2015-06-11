@@ -21,7 +21,7 @@ import Data.Either (Either(..))
 import Data.Foldable (for_)
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isJust, isNothing)
-import Data.These (theseRight, theseLeft)
+import Data.These (These(..), theseRight, theseLeft)
 import Data.Tuple (Tuple(..), fst)
 import Driver.Notebook.Routing (Routes(..), routing)
 import EffectTypes (NotebookComponentEff(), NotebookAppEff())
@@ -90,6 +90,7 @@ driver ref k =
     when (pathChanged || nameChanged) do
       runAff' (loadNotebook res) \result -> do
         update $ (_loaded .~ true)
+              .. (_notebook .. _name .~ This "")
               .. (_editable .~ isEdit editable)
               .. (_viewingCell .~ viewing)
         case result of
