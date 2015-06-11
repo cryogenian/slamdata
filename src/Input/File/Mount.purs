@@ -71,7 +71,7 @@ mkURI path user password hosts props =
   then toURI { path: nonEmpty path
              , credentials: { user: _, password: _ }
                             <$> nonEmpty user
-                            <*> nonEmpty (hidePassword password)
+                            <*> nonEmpty password
              , hosts: (\h -> h { port = nonEmpty h.port }) <$> hosts
              , props: props
              }
@@ -86,9 +86,6 @@ nonEmpty s = Just s
 
 rxEmpty :: Rx.Regex
 rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
-
-hidePassword :: String -> String
-hidePassword s = Str.joinWith "" $ replicate (Str.length s) (Str.fromChar $ fromCharCode 8226)
 
 validate :: String -> [MountHostRec] -> Maybe String
 validate "" _ = Just "Please enter a name for the mount"

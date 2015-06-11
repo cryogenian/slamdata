@@ -1,18 +1,20 @@
 module Model.File.Dialog.Mount where
 
-import Data.Array (length, zipWith)
+import Data.Array (length, zipWith, replicate)
+import Data.Char (fromCharCode)
 import Data.Either (either)
 import Data.Foldable (and, all)
 import Data.Int (Int(), fromNumber, toNumber)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (rootDir, printPath)
-import Data.String (indexOf, take, drop)
 import Data.StrMap (toList)
 import Data.Tuple (Tuple(..), zip)
 import Data.URI (printAbsoluteURI)
 import Data.URI.Types
 import Model.Path
 import Optic.Core ((.~), lens, LensP())
+
+import qualified Data.String as S
 
 type MountDialogRec =
   { new :: Boolean
@@ -132,19 +134,29 @@ pathFromURI _ = ""
 
 userFromURI :: AbsoluteURI -> String
 userFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority (Just ui) _)) _) _) =
-  let ix = indexOf ":" ui
+  let ix = S.indexOf ":" ui
   in if ix == -1
      then ui
-     else take ix ui
+     else S.take ix ui
 userFromURI _ = ""
 
 passwordFromURI :: AbsoluteURI -> String
 passwordFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority (Just ui) _)) _) _) =
-  let ix = indexOf ":" ui
+  let ix = S.indexOf ":" ui
   in if ix == -1
      then ""
-     else drop (ix + 1) ui
+     else S.drop (ix + 1) ui
 passwordFromURI _ = ""
+
+setURIPassword :: String -> AbsoluteURI -> AbsoluteURI
+setURIPassword pass (AbsoluteURI s (HierarchicalPart (Just (Authority (Just ui) hs)) p) q) =
+  let ix = S.indexOf ":" ui
+      user = if ix == -1
+             then ui
+             else S.take ix ui
+      pass' = if pass == "" then "" else ":" ++ pass
+  in AbsoluteURI s (HierarchicalPart (Just (Authority (Just $ user ++ pass') hs)) p) q
+setURIPassword _ uri = uri
 
 propsFromURI :: AbsoluteURI -> [MountPropRec]
 propsFromURI (AbsoluteURI _ _ (Just (Query qs))) = go <$> toList qs
@@ -152,3 +164,6 @@ propsFromURI (AbsoluteURI _ _ (Just (Query qs))) = go <$> toList qs
   go :: Tuple String (Maybe String) -> MountPropRec
   go (Tuple k v) = { name: k, value: fromMaybe "" v }
 propsFromURI _ = []
+
+hidePassword :: String -> String
+hidePassword s = S.joinWith "" $ replicate (S.length s) (S.fromChar $ fromCharCode 8226)
