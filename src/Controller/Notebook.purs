@@ -17,7 +17,8 @@ import Controller.Notebook.Cell (requestCellContent)
 import Data.Array (elemIndex)
 import Data.Date (now)
 import Data.DOM.Simple.Document
-import Data.DOM.Simple.Element (getElementById, focus)
+import Data.DOM.Simple.Element (getElementById, focus, blur)
+import Data.DOM.Simple.Types (HTMLElement())
 import Data.DOM.Simple.Window (globalWindow, document)
 import Data.Either
 import Data.Inject1 (prj)
@@ -126,8 +127,10 @@ handleNameInput :: forall e. String -> I e
 handleNameInput newName =
   pure $ WithState $ _notebook .. N._name %~ (thisOrBoth newName <<< theseRight)
 
-handleSubmitName :: forall e. State -> I e
-handleSubmitName state = liftAff (attempt $ saveNotebook (state ^. _notebook)) >>= go
+handleSubmitName :: forall e. State -> HTMLElement -> I e
+handleSubmitName state el = do
+  liftEff $ blur el
+  liftAff (attempt $ saveNotebook (state ^. _notebook)) >>= go
   where
   go :: Either Error N.Notebook -> I e
   go (Left err) = pure $ WithState (_dialog ?~ ErrorDialog (message err))

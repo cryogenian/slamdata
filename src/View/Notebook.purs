@@ -2,10 +2,10 @@ module View.Notebook (view) where
 
 import Api.Fs (saveNotebook)
 import Control.Apply ((*>))
+import Control.Bind ((=<<))
 import Control.Functor (($>))
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Bind ((=<<))
 import Control.Plus (empty)
 import Controller.Notebook (I(), handleMenuSignal, handleSubmitName, handleNameInput)
 import Controller.Notebook.Cell (runCell)
@@ -162,7 +162,7 @@ name state =
   H.div [ A.classes [Vc.notebookName] ]
         [ H.input [ A.id_ Config.notebookNameEditorId
                   , E.onInput (pure <<< handleNameInput)
-                  , E.onChange (\_ -> pure $ handleSubmitName state)
+                  , E.onChange (\ev -> pure $ handleSubmitName state ev.target)
                   , A.value (these id id (\n _ -> n) $ state ^. _notebook .. _name)
                   ]
                   []
