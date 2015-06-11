@@ -2,6 +2,12 @@ module View.Css where
 
 import Halogen.HTML.Attributes (className, ClassName())
 
+selected :: ClassName
+selected = className "selected"
+
+phantom :: ClassName
+phantom = className "phantom"
+
 searchInput :: ClassName
 searchInput = className "search-input"
 

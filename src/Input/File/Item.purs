@@ -11,7 +11,6 @@ import Model.Sort (Sort())
 data ItemInput
   = ItemAdd Item
   | ItemRemove Item
-  | ItemHover Number Boolean
   | ItemSelect Number Boolean
   | Resort
   | Clear
@@ -24,9 +23,6 @@ inputItem sort searching items input = case input of
 
   ItemRemove item ->
     resort sort searching $ filter (\x -> not $ x.resource == item.resource) items
-
-  ItemHover ix h ->
-    modify (flip _ { hovered = _ }) items ix
 
   ItemSelect ix h ->
     modify (flip _ { selected = _ }) items ix
