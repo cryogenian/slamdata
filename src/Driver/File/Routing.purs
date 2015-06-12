@@ -5,8 +5,8 @@ module Driver.File.Routing
 
 import Control.Alt ((<|>))
 import Data.Either (Either(..))
-import Model.Salt (Salt(..))
-import Model.Sort (Sort(..), string2sort)
+import Model.File.Salt (Salt(..))
+import Model.File.Sort (Sort(..), string2sort)
 import Routing.Match (Match(), eitherMatch)
 import Routing.Match.Class (param)
 import Text.SlamSearch (mkQuery)
@@ -33,4 +33,3 @@ routing = salted <|> bothRoute <|> oneRoute <|> index
   sort = eitherMatch (string2sort <$> param "sort")
   query = eitherMatch (mkQuery <$> param "q")
   salt = eitherMatch (getSalt <$> param "salt")
-

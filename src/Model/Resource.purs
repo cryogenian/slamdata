@@ -9,7 +9,7 @@ module Model.Resource (
   setPath, setName, _path, _root, _name, _notebookPath, _filePath,
   sortResource, parent, resourceFileName, child, _tempFile, isHidden,
   hiddenTopLevel, isTempFile
-                                                            
+
   ) where
 
 import Config
@@ -27,7 +27,7 @@ import Data.Inject1
 import Data.Maybe
 import Data.Path.Pathy
 import Data.Tuple
-import Model.Sort (Sort(..))
+import Model.File.Sort (Sort(..))
 import Model.Path
 import Optic.Core (lens, (..), (^.), (%~), (.~))
 import Optic.Prism
@@ -52,7 +52,7 @@ _Notebook :: PrismP Resource DirPath
 _Notebook = prism' Notebook $ \s -> case s of
   Notebook p -> Just p
   _ -> Nothing
-  
+
 _Directory :: PrismP Resource DirPath
 _Directory = prism' Directory $ \s -> case s of
   Directory p -> Just p
@@ -65,18 +65,18 @@ _Database = prism' Database $ \s -> case s of
 
 
 _tempFile :: LensP Resource Resource
-_tempFile = lens id \r s -> case r of 
+_tempFile = lens id \r s -> case r of
   File p ->
-    if isTempFile r 
+    if isTempFile r
     then s
-    else r 
+    else r
   _ -> r
 
 isTempFile :: Resource -> Boolean
 isTempFile r =
-  (takeDirExt <$> (dirName (resourceDir r))) == Just notebookExtension 
+  (takeDirExt <$> (dirName (resourceDir r))) == Just notebookExtension
 
-  
+
 _notebookPath :: PrismP Resource DirPath
 _notebookPath = prism' Notebook $ \s -> case s of
   Notebook fp -> Just fp
@@ -120,7 +120,7 @@ getPath r = case r of
 
 isHidden :: Resource -> Boolean
 isHidden r =
-  either isHidden' isHidden' (getPath r) 
+  either isHidden' isHidden' (getPath r)
   where
   isHidden' :: forall a b s. Path a b s -> Boolean
   isHidden' p = fromMaybe false do
@@ -318,7 +318,7 @@ instance decodeJsonResource :: DecodeJson Resource where
 sortResource :: (Resource -> String) -> Sort -> Resource -> Resource -> Ordering
 sortResource project direction a b =
   if (isHidden a) && (not $ isHidden b) then GT else
-    if (isHidden b) && (not $ isHidden a) then LT else 
+    if (isHidden b) && (not $ isHidden a) then LT else
       case direction of
         Asc -> compare (project a) (project b)
         Desc -> compare (project b) (project a)

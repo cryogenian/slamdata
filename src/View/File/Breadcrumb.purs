@@ -1,22 +1,26 @@
 module View.File.Breadcrumb (breadcrumbs) where
 
-import Controller.File (breadcrumbClicked)
-import EffectTypes (FileAppEff())
-import Model.Breadcrumb (Breadcrumb())
-import Utils.Halide (targetLink')
-import View.File.Common (I())
+import Controller.File.Common (browseURL)
+import Data.Maybe (Maybe(..))
+import Model.File
+import Model.File.Breadcrumb (Breadcrumb())
+import View.File.Common (HTML())
+import Optic.Core ((^.))
+
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
-import qualified Halogen.HTML.Events as E
-import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 
-breadcrumbs :: forall e. [Breadcrumb] -> H.HTML (I e)
-breadcrumbs breadcrumbs =
+breadcrumbs :: forall e. State -> HTML e
+breadcrumbs state =
   H.ol [ A.classes [B.breadcrumb, B.colXs8] ]
-       (breadcrumb <$> breadcrumbs)
+       $ breadcrumb state <$> (state ^. _breadcrumbs)
 
-breadcrumb :: forall e. Breadcrumb -> H.HTML (I e)
-breadcrumb b = H.li_ [ H.a (targetLink' $ breadcrumbClicked b)
-                           [ H.text b.name ]
-                     ]
+breadcrumb :: forall e. State -> Breadcrumb -> HTML e
+breadcrumb state b =
+  H.li_ [ H.a [ A.href (browseURL Nothing
+                                  (state ^. _sort)
+                                  (state ^. _salt)
+                                  b.link) ]
+              [ H.text b.name ]
+        ]

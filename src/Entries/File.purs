@@ -13,7 +13,9 @@ import Driver.ZClipboard (initZClipboard)
 import EffectTypes (FileAppEff())
 import Halogen (runUIWith)
 import Input.File
+import Model.File (_hasMountRoot)
 import Model.Resource (Resource(..))
+import Optic.Core ((.~))
 import Utils (onLoad, mountUI)
 
 main :: Eff (FileAppEff ()) Unit
@@ -24,6 +26,6 @@ main = onLoad $ void $ do
   flip (runAff (const $ pure unit)) (attempt $ mountInfo (Database rootDir)) \result -> do
     case result of
       Left _ -> pure unit
-      Right _ -> driver $ inj (SetHasMountRoot true)
+      Right _ -> driver $ inj $ WithState (_hasMountRoot .~ true)
   where
   postRender _ node _ = initZClipboard node

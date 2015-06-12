@@ -18,7 +18,7 @@ infixl 6 <./>
 
 -- | Setted by default to support cells without
 -- | `pathToNotebook` field. After first save `pathToNotebook` is
--- | setted to correct notebook path. 
+-- | setted to correct notebook path.
 phantomNotebookPath :: DirPath
 phantomNotebookPath = rootDir </> dir "phantom" <./> notebookExtension
 
@@ -72,10 +72,3 @@ hidePath path input =
   trim $
   replace ("+path:\"" <> path <> "\"") "" $
   replace ("+path:" <> path) "" input
-
-cleanPath :: String -> String
-cleanPath input =
-  let rgx = Rgx.regex "\"" Rgx.noFlags{global=true}
-      doubleSlash = Rgx.regex "//" Rgx.noFlags{global=true}
-  in Rgx.replace doubleSlash "/" $
-     "/" <> (trim $ Rgx.replace rgx "" input)

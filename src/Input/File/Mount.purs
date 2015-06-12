@@ -20,8 +20,8 @@ data MountInput
   | UpdateConnectionURI String
   | ClearMessage
 
-inputMount :: Dialog -> MountInput -> Dialog
-inputMount (MountDialog d) (ValueChanged fn) =
+inputMount :: MountInput -> Dialog -> Dialog
+inputMount (ValueChanged fn) (MountDialog d) =
   let d' = fn d
       hosts = (filter (not <<< isEmptyHost) d'.hosts)
       props = (filter (not <<< isEmptyProp) d'.props)
@@ -35,10 +35,10 @@ inputMount (MountDialog d) (ValueChanged fn) =
                     , message = validation
                     , valid = isNothing validation
                     }
-inputMount (MountDialog d) (UpdateConnectionURI "") =
+inputMount (UpdateConnectionURI "") (MountDialog d) =
   let parent = d.parent
   in MountDialog initialMountDialog { parent = parent }
-inputMount (MountDialog d) (UpdateConnectionURI uri) =
+inputMount (UpdateConnectionURI uri) (MountDialog d) =
   MountDialog $ case runParseAbsoluteURI uri of
     Left _ -> d { connectionURI = uri
                 , message = Just "Pasted value does not appear to be a valid connection URI"
@@ -62,8 +62,8 @@ inputMount (MountDialog d) (UpdateConnectionURI uri) =
              , message = validation
              , valid = isNothing validation
              }
-inputMount (MountDialog d) ClearMessage = MountDialog $ d { message = Nothing }
-inputMount dialog _ = dialog
+inputMount ClearMessage (MountDialog d) = MountDialog $ d { message = Nothing }
+inputMount _ dialog = dialog
 
 mkURI :: String -> String -> String -> Array MountHostRec -> Array MountPropRec -> String
 mkURI path user password hosts props =

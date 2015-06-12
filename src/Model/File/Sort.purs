@@ -1,5 +1,5 @@
 -- | Sort direction
-module Model.Sort where
+module Model.File.Sort where
 
 import Data.Either
 

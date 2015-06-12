@@ -1,37 +1,22 @@
 module Model.File.Item where
 
-import Model.Resource
-import Model.Sort
-import Optic.Core
+import Model.Resource (Resource(..), resourcePath, resourceName, sortResource)
+import Model.File.Sort (Sort())
+import Optic.Core (LensP(), lens)
 
-type Item =
-  { selected :: Boolean
-  , phantom :: Boolean
-  , resource :: Resource
-  }
+data Item
+  = Item Resource
+  | SelectedItem Resource
+  | PhantomItem Resource
 
-
-_resource :: LensP Item Resource
-_resource = lens _.resource (_{resource = _})
-
-wrap :: Resource -> Item
-wrap r =
-  { selected: false
-  , phantom: false
-  , resource: r}
-
-initFile :: Item
-initFile = wrap newFile
-
-initDirectory :: Item
-initDirectory = wrap newDirectory
-
-initNotebook :: Item
-initNotebook = wrap newNotebook
+itemResource :: Item -> Resource
+itemResource (Item r) = r
+itemResource (SelectedItem r) = r
+itemResource (PhantomItem r) = r
 
 sortItem :: Boolean -> Sort -> Item -> Item -> Ordering
 sortItem isSearching sort a b =
-    sortResource (sortProjection isSearching) sort a.resource b.resource
-    where
-    sortProjection true = resourcePath
-    sortProjection _ = resourceName
+  sortResource (sortProjection isSearching) sort (itemResource a) (itemResource b)
+  where
+  sortProjection true = resourcePath
+  sortProjection _ = resourceName

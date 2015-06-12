@@ -4,10 +4,11 @@ import Control.Functor (($>))
 import Control.Plus (empty)
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), maybe)
-import EffectTypes (FileAppEff())
-import Input.File (Input(), FileInput(SetDialog))
-import Model.File (State())
+import Input.File (FileInput(..))
+import Model.File (State(), _dialog)
 import Model.File.Dialog (Dialog(..))
+import Optic.Core ((.~), (^.))
+import View.File.Common (HTML())
 import View.File.Modal.ErrorDialog (errorDialog)
 import View.File.Modal.MountDialog (mountDialog)
 import View.File.Modal.RenameDialog (renameDialog)
@@ -21,20 +22,20 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 
-modal :: forall e. State -> H.HTML (E.Event (FileAppEff e) Input)
+modal :: forall e. State -> HTML e
 modal state =
-  H.div [ A.classes ([B.modal, B.fade] <> maybe [] (const [B.in_]) state.dialog)
-        , E.onClick (E.input_ $ inj $ SetDialog Nothing)
+  H.div [ A.classes ([B.modal, B.fade] <> maybe [] (const [B.in_]) (state ^. _dialog))
+        , E.onClick (E.input_ $ inj $ WithState (_dialog .~ Nothing))
         ]
         [ H.div [ A.classes [B.modalDialog] ]
                 [ H.div [ E.onClick (\_ -> E.stopPropagation $> empty)
                         , A.classes [B.modalContent]
                         ]
-                        (maybe [] dialogContent state.dialog)
+                        $ maybe [] dialogContent (state ^. _dialog)
                 ]
         ]
 
-dialogContent :: forall e. Dialog -> [H.HTML (E.Event (FileAppEff e) Input)]
+dialogContent :: forall e. Dialog -> [HTML e]
 dialogContent (ShareDialog url) = shareDialog url
 dialogContent (RenameDialog dialog) = renameDialog dialog
 dialogContent (MountDialog dialog) = mountDialog dialog

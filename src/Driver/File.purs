@@ -1,71 +1,64 @@
 -- | Module handles outer messages to `halogen` application
 -- | Mostly consists of routing functions
-module Driver.File
-  ( outside ) where
+module Driver.File (outside) where
 
 import Api.Fs (children)
-import Control.Apply ((*>))
 import Control.Monad.Aff (launchAff, cancel, attempt, Canceler(), Aff(), forkAff)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar(), AVAR())
-import Control.Monad.Eff
-import Control.Monad.Eff.Class
-import Control.Monad.Eff.Exception
-import Control.Monad.Eff.Random
-import Controller.File.Common
+import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (error, message)
+import Controller.File.Common (showError, browseURL)
 import Data.Array (filter)
-import Data.Either
-import Data.Foldable
+import Data.Either (Either(..))
+import Data.Foldable (foldl, traverse_)
 import Data.Inject1 (inj)
-import Data.Maybe
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
-import Data.Path.Pathy
-import Data.Tuple
-import Driver.File.Path (updateSalt, updatePath, setSort, renderPath)
+import Data.Path.Pathy ((</>), rootDir, currentDir, parseAbsDir, sandbox)
+import Data.These (These(..))
+import Data.Tuple (Tuple(..))
+import Driver.File.Path (renderPath)
 import Driver.File.Routing (routing, Routes(..))
 import Driver.File.Search (isSearchQuery, filterByQuery, searchPath)
 import EffectTypes (FileAppEff(), FileComponentEff())
+import Halogen (Driver())
 import Halogen.HTML.Events.Monad (runEvent)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..))
-import Input.File.Search (SearchInput(..))
-import Model.File.Item (wrap)
-import Model.Path (AnyPath(), DirPath(), cleanPath, hidePath)
-import Model.Resource
-import Model.Sort (Sort(Asc))
-import Optic.Core
-import Optic.Refractor.Lens
+import Model.File (_items, _search, _path, _breadcrumbs, _sort, _salt)
+import Model.File.Breadcrumb (mkBreadcrumbs)
+import Model.File.Item (Item(..))
+import Model.File.Salt (Salt(..), newSalt)
+import Model.File.Search (_loading, _value, _valid)
+import Model.File.Sort (Sort(Asc))
+import Model.Path (AnyPath(), DirPath(), hidePath)
+import Model.Resource (Resource(..), isDirectory, isDatabase, root)
+import Optic.Core ((..), (^.), (.~), (%~), (<>~))
+import Optic.Refractor.Lens (_1, _2)
 import Routing (matchesAff)
-import Routing.Hash (getHash)
-import Routing.Hash.Aff (setHash, modifyHash)
 import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery())
+import Utils (replaceLocation)
 
 import qualified Data.Map as M
-import qualified Halogen as Hl
 
-outside :: forall e. Hl.Driver Input (FileComponentEff e) ->
-           Eff (FileAppEff e) Unit
+outside :: forall e. Driver Input (FileComponentEff e)
+                  -> Eff (FileAppEff e) Unit
 outside driver = handleRoute driver
 
-
-initialAVar :: Tuple (Canceler _) (M.Map Number Number)
-initialAVar = Tuple mempty M.empty
-
-handleRoute :: forall e.
-               Hl.Driver Input (FileComponentEff e) ->
-               Eff (FileAppEff e) Unit
+handleRoute :: forall e. Driver Input (FileComponentEff e)
+                      -> Eff (FileAppEff e) Unit
 handleRoute driver = launchAff $ do
+  -- TODO: after we fix black holes - search.timeout should be cleared when the URL changes
   var <- makeVar' initialAVar
   Tuple mbOld new <- matchesAff routing
   case new of
-    Index -> do
-      setHash $ setSort Asc
-    Sort sort -> do
-      modifyHash $ updatePath (getPath root)
-    SortAndQ sort query -> do
-      rnd <- show <$> (liftEff $ randomInt 1000000 2000000)
-      modifyHash $ updateSalt rnd
-
+    Index -> liftEff $ updateURL Nothing Asc Nothing rootDir
+    Sort sort -> liftEff $ updateURL Nothing sort Nothing rootDir
+    SortAndQ sort query ->
+      let queryParts = splitQuery query
+      in liftEff $ updateURL queryParts.query sort Nothing queryParts.path
     Salted sort query salt -> do
       let newPage = maybe true id $ do
             old <- mbOld
@@ -76,28 +69,47 @@ handleRoute driver = launchAff $ do
       Tuple c _ <- takeVar var
       cancel c $ error "cancel search"
       putVar var initialAVar
-      liftEff (driver $ inj $ Loading false)
-      if newPage then do
-        let path :: forall a b. DirPath
-            path = rootDir </>
-                   (maybe currentDir id $
-                    (searchPath query >>= parseAbsDir >>= sandbox rootDir))
-        liftEff $ do
-          driver $ inj $ Loading true
-          driver $ inj $ SetPath path
-          driver $ inj $ SearchSet $ (hidePath (renderPath $ inj path) $ (strQuery query))
-          driver $ inj $ Clear
-          driver $ inj $ SetSearching (isSearchQuery query)
-          h <- getHash
-          driver $ inj $ SetSalt salt
-        listPath driver query 0 var (newDirectory # _path .~ Right path)
-        else do
-        pure unit
+      if newPage
+        then do
+          let queryParts = splitQuery query
+          liftEff $ driver $ inj $ WithState $ (_items .~ [])
+                                            .. (_path .~ queryParts.path)
+                                            .. (_breadcrumbs .~ mkBreadcrumbs queryParts.path)
+                                            .. (_sort .~ sort)
+                                            .. (_salt .~ salt)
+                                            .. (_search .. _loading .~ true)
+                                            .. (_search .. _value .~ maybe (This "") That queryParts.query)
+                                            .. (_search .. _valid .~ true)
+          listPath driver query 0 var (Directory queryParts.path)
+        else
+          liftEff $ driver $ inj $ WithState (_search .. _loading .~ false)
 
-listPath :: forall e. Hl.Driver Input (FileComponentEff e) ->
-            SearchQuery -> Number ->
-            AVar (Tuple (Canceler _) (M.Map Number Number)) ->
-            Resource -> Aff _ Unit
+initialAVar :: Tuple (Canceler _) (M.Map Number Number)
+initialAVar = Tuple mempty M.empty
+
+updateURL :: forall e. Maybe String -> Sort -> Maybe Salt -> DirPath -> Eff _ Unit
+updateURL query sort salt path = do
+  salt' <- case salt of
+    Nothing -> newSalt
+    Just s -> pure s
+  replaceLocation $ browseURL query sort salt' path
+
+-- | Extracts the path and query value components from a SearchQuery value.
+splitQuery :: SearchQuery -> { path :: DirPath, query :: Maybe String }
+splitQuery q =
+  let path = rootDir </> maybe currentDir id (searchPath q >>= parseAbsDir >>= sandbox rootDir)
+  in { path: path
+     , query: if isSearchQuery q
+              then Just $ hidePath (renderPath $ Right path) (strQuery q)
+              else Nothing
+     }
+
+listPath :: forall e. Driver Input (FileComponentEff e)
+                   -> SearchQuery
+                   -> Number
+                   -> AVar (Tuple (Canceler _) (M.Map Number Number))
+                   -> Resource
+                   -> Aff _ Unit
 listPath driver query deep var res = do
   modifyVar
     (_2 %~ M.alter (maybe (Just 1) (\x -> Just (x + 1))) deep) var
@@ -110,7 +122,7 @@ listPath driver query deep var res = do
         let next = filter (\x -> isDirectory x || isDatabase x) ress
             toAdd = filter (filterByQuery query) ress
 
-        traverse_ (liftEff <<< driver <<< inj <<< ItemAdd) (wrap <$> toAdd)
+        traverse_ (liftEff <<< driver <<< inj <<< ItemAdd) (Item <$> toAdd)
 
         if isSearchQuery query
           then traverse_ (listPath driver query (deep + 1) var) next
@@ -123,7 +135,7 @@ listPath driver query deep var res = do
     Tuple c r <- takeVar var
     if (foldl (+) 0 $ M.values r) == 0 then do
       liftEff do
-        driver $ inj $ Loading false
+        driver $ inj $ WithState (_search .. _loading .~ false)
       putVar var initialAVar
       else
       putVar var (Tuple c r)
