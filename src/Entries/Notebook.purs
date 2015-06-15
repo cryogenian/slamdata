@@ -8,7 +8,7 @@ import Control.Timer (timeout)
 import Data.DOM.Simple.Navigator (platform)
 import Data.DOM.Simple.Window (globalWindow, navigator)
 import Data.Inject1 (prj)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, Maybe(..))
 import Data.Maybe.Unsafe (fromJust)
 import Data.Platform (Platform(..))
 import Data.String (indexOf)
@@ -21,11 +21,12 @@ import Model.Notebook (_platform, initialState)
 import Optic.Core ((.~))
 import Utils (onLoad, mountUI)
 
-import qualified App.Notebook.Ace as A
-import qualified App.Notebook.ECharts as EC
+import qualified Driver.Notebook.Ace as A
+import qualified Driver.Notebook.ECharts as EC
 import qualified Data.Map as M
 import qualified Driver.Notebook as D
 import qualified Driver.Notebook.Cell as DC
+import qualified Driver.Notebook.Notify as N
 
 main :: Eff (NotebookAppEff (ace :: ACE)) Unit
 main = onLoad $ void $ do
@@ -34,7 +35,8 @@ main = onLoad $ void $ do
   t <- timeout 0 (pure unit)
   autosaveTimer <- newRef t
   echartsKnot <- EC.ref
-  let post = postRender stateKnot aceKnot echartsKnot autosaveTimer
+  notifyKnot <- newRef Nothing
+  let post = postRender stateKnot aceKnot echartsKnot autosaveTimer notifyKnot
   Tuple node driver <- runUIWith app post
   mountUI node
   platformName <- navigator globalWindow >>= platform
@@ -48,10 +50,11 @@ main = onLoad $ void $ do
   D.driver stateKnot driver
   D.handleShortcuts stateKnot driver
   where
-  postRender sKnot aKnot eKnot autosaveTimer input node driver = do
+  postRender sKnot aKnot eKnot autosaveTimer notifyKnot input node driver = do
     modifyRef sKnot (flip updateState input)
     initZClipboard node
     D.notebookAutosave sKnot autosaveTimer input driver
     DC.driveCellContent input driver
     A.acePostRender sKnot aKnot input node driver
     EC.echartsPostRender eKnot input node driver
+    N.notifyDriver sKnot notifyKnot input driver

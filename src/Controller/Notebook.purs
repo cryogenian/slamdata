@@ -87,7 +87,7 @@ handleMenuCell state signal =
   case signal of
     EvaluateCell ->
       let activeCell = state ^? _notebook .. N._activeCell
-      in maybe empty requestCellContent activeCell
+      in maybe empty (requestCellContent (state ^._notebook)) activeCell
     DeleteCell -> pure $ TrashCell (state ^. _notebook .. N._activeCellId)
     _ -> empty
 

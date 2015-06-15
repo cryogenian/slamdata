@@ -36,7 +36,7 @@
     "purescript-lens": "^0.7.0",
     "purescript-lists": "^0.6.0",
     "purescript-maps": "^0.3.3",
-    "purescript-markdown": "722ce2b55e8184b57c3f2d69fee89c1fb17a9685",
+    "purescript-markdown": "1.4.0",
     "purescript-maybe": "^0.2.2",
     "purescript-minimatch": "^0.1.0",
     "purescript-monoid": "^0.2.0",

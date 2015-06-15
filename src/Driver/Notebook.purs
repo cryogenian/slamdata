@@ -19,8 +19,9 @@ import Data.DOM.Simple.Types (DOMEvent())
 import Data.DOM.Simple.Window (globalWindow, document)
 import Data.Either (Either(..))
 import Data.Foldable (for_)
+import Data.Array (filter)
 import Data.Inject1 (inj)
-import Data.Maybe (Maybe(..), isJust, isNothing)
+import Data.Maybe (Maybe(..), isJust, isNothing, maybe)
 import Data.These (These(..), theseRight, theseLeft)
 import Data.Tuple (Tuple(..), fst)
 import Driver.Notebook.Routing (Routes(..), routing)
@@ -30,10 +31,10 @@ import Halogen.HTML.Events.Monad (runEvent, andThen)
 import Input.Notebook (Input(..))
 import Model.Action (Action(Edit), isEdit)
 import Model.Notebook
-import Model.Notebook.Cell (Cell(), CellId(), CellContent(..), _cellId, _hasRun, _content, _output)
+import Model.Notebook.Cell (Cell(), CellId(), CellContent(..), _cellId, _hasRun, _content, _output, _parent)
 import Model.Notebook.Cell.Explore (initialExploreRec, _input)
 import Model.Notebook.Cell.FileInput
-import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, _cells, notebookURL, cellOut, replacePendingPorts)
+import Model.Notebook.Domain (addCell, emptyNotebook, _activeCellId, _path, _name, _cells, notebookURL, cellOut, replacePendingPorts, _dependencies, Dependencies())
 import Model.Notebook.Menu
 import Model.Notebook.Port
 import Model.Path (decodeURIPath, dropNotebookExt)
@@ -41,7 +42,7 @@ import Model.Resource (Resource(), resourceName, resourceDir)
 import Optic.Core ((.~), (^.), (..), (?~), (%~))
 import Routing (matches')
 import Utils (log, replaceLocation)
-
+import Data.Map (lookup)
 import qualified Data.Maybe.Unsafe as U
 
 tickDriver :: forall e. Driver Input (NotebookComponentEff e)
@@ -97,6 +98,16 @@ driver ref k =
           Left err -> update (_error ?~ message err)
           Right nb -> do
             update (_notebook .~ nb)
+            
+            if isEdit editable
+              then
+              for_ (filter (filterFn (nb ^._dependencies)) 
+                    (nb ^._cells)) \cell -> do
+                update (_requesting ?~ (cell ^._cellId))
+                k $ RequestCellContent cell
+              else 
+              for_ (filter (^._hasRun) (nb ^._cells)) (k <<< ViewCellContent)
+              
             for_ (nb ^. _cells) \cell -> do
               case Tuple (cell ^. _content) (cell ^._output) of
                 Tuple (Search _) Closed ->
@@ -104,11 +115,9 @@ driver ref k =
                   (_output .~ cellOut (cell ^._content)
                    nb (cell ^._cellId))
                 _ -> pure unit
-              if ((cell ^. _hasRun) && (isNothing viewing || viewing == Just (cell ^. _cellId)))
-                then if isEdit editable
-                       then runEvent (runError "requestCellContent") k $ requestCellContent cell
-                       else k (ViewCellContent cell)
-                else pure unit
+  filterFn :: Dependencies -> Cell -> Boolean
+  filterFn dpMap cell =
+    (maybe true (const false) $ lookup (cell ^._cellId) dpMap) && (cell ^._hasRun)
 
 handleShortcuts :: forall e. RefVal State
                           -> Driver Input (NotebookComponentEff e)

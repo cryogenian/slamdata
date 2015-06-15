@@ -1,4 +1,4 @@
-module App.Notebook.Ace (acePostRender, AceSessions()) where
+module Driver.Notebook.Ace (acePostRender, AceSessions()) where
 
 import Ace
 import Ace.EditSession (getValue, setMode)
@@ -20,7 +20,7 @@ import Global (infinity)
 import Halogen
 import Input.Notebook (CellResultContent(..), Input(..), cellContent)
 import Model.Notebook
-import Model.Notebook.Cell (CellId(), _AceContent, string2cellId, _cellId, _content)
+import Model.Notebook.Cell (CellContent(..), CellId(), _AceContent, string2cellId, _cellId, _content)
 import Model.Notebook.Domain
 import Optic.Core
 import Optic.Extended ((^?))
@@ -112,8 +112,15 @@ handleInput m (RequestCellContent cell) d = do
   now' <- now
   let cellId = cell ^. _cellId
   let updateCell c = cellContent (Right $ AceContent c) cell
-  maybe (return unit) (getValue >=> d <<< ReceiveCellContent <<< updateCell) $
+  maybe reemit (getValue >=> d <<< ReceiveCellContent <<< updateCell) $
     M.lookup cellId m'
+  where
+  reemit =
+    case cell ^._content of
+      Explore _ -> pure unit
+      Search _ -> pure unit
+      _ -> d $ ReceiveCellContent cell
+
 handleInput m (TrashCell cellId) _ = do
   modifyRef m (M.delete cellId)
 handleInput _ _ _ = return unit
@@ -127,3 +134,5 @@ acePostRender :: forall eff. RefVal State
 acePostRender s m i b d = do
   initialize s m b d
   handleInput m i d
+
+

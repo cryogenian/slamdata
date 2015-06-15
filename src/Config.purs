@@ -64,3 +64,6 @@ notebookNameEditorId = "name-editor"
 
 defaultPageSize :: Int
 defaultPageSize = fromNumber 10
+
+notifyTimeout :: Number
+notifyTimeout = 500

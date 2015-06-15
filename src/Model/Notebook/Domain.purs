@@ -9,7 +9,6 @@ module Model.Notebook.Domain
   , _activeCell
   , cellById
   , Dependencies()
-  , deps
   , addCell
   , insertCell
   , notebookPath
@@ -18,6 +17,8 @@ module Model.Notebook.Domain
   , cellOut
   , replacePendingPorts
   , syncCellsOuts
+  , deps
+  , trash
   ) where
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
@@ -25,13 +26,14 @@ import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Argonaut.Printer (printJson)
-import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex, snoc)
+import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex, snoc, filter)
 import Data.Either (Either(..))
-import Data.Map (Map(), insert, lookup, empty, toList, fromList)
+import Data.Foldable (foldl)
+import Data.Map (Map(), insert, lookup, empty, toList, fromList, delete)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (rootDir, dir, file, (</>), printPath)
 import Data.These (These(..), these, theseRight)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst, snd)
 import Model.Action (Action(), printAction)
 import Model.Notebook.Cell (CellContent(..), CellId(), Cell(), _cellId, _output, newCell, _input, _parent, _FileInput, _content, _pathToNotebook)
 import Model.Notebook.Cell.FileInput (_file, fileFromString, portFromFile)
@@ -121,6 +123,15 @@ deps cid ds = deps' cid ds []
     case lookup cid ds of
       Nothing -> agg
       Just a -> deps' a ds (a : agg)
+
+trash :: CellId -> Dependencies -> Dependencies
+trash cid ds =
+  let ds' = delete cid ds 
+  in case fst <$> (filter (\x -> snd x == cid) $ toList ds') of
+    [] -> ds'
+    xs -> foldl (\d x -> trash x d) ds' xs
+
+    
 
 addCell :: CellContent -> Notebook -> Tuple Notebook Cell
 addCell content oldNotebook@(Notebook n) = Tuple notebook cell'
