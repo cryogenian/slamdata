@@ -73,7 +73,9 @@ insertViz state parent =
     Tuple note cell ->
       (pure $ WithState (_notebook .~ note)) 
       `andThen` \_ ->
-      updateInserted cell 
+      (updateInserted cell)
+      `andThen` \_ ->
+      (pure ForceSave)
 
 runViz :: forall e. Cell -> I e
 runViz cell =

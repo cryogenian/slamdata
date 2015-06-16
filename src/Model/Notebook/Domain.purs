@@ -138,43 +138,38 @@ trash cid ds =
     
 
 addCell :: CellContent -> Notebook -> Tuple Notebook Cell
-addCell content oldNotebook@(Notebook n) = Tuple notebook cell'
-  where
-  newId = freeId oldNotebook
-  cell = newCell newId content #
-           (_output .~ cellOut content oldNotebook newId)
-         ..(_pathToNotebook .~ (fromMaybe rootDir $ notebookPath oldNotebook))
-           
-  cell' = case content of
-    (Explore _) -> cell # (_input .~ maybe Closed PortResource (content ^? _FileInput .. _file .. _Right))
-    _ -> cell
-  notebook = Notebook $ n { cells = n.cells `snoc` cell'
-                          , activeCellId = newId
-                          }
+addCell content oldNotebook = insertCell' Nothing content oldNotebook
 
 insertCell :: Cell -> CellContent -> Notebook -> Tuple Notebook Cell
-insertCell parent content oldNotebook@(Notebook n) = Tuple new cell
+insertCell parent content oldNotebook = insertCell' (Just parent) content oldNotebook 
+
+insertCell' :: Maybe Cell -> CellContent -> Notebook -> Tuple Notebook Cell
+insertCell' mbParent content oldNotebook@(Notebook n) = Tuple new cell
   where
   new = Notebook $ n { cells = insertAt (i + 1) cell n.cells
                      , dependencies = newDeps
                      }
-  i = elemIndex parent n.cells
-  newDeps = insert newId (parent ^. _cellId) n.dependencies
+  i = maybe (length n.cells) (flip elemIndex n.cells) mbParent
+  newDeps = maybe n.dependencies (\parent -> insert newId (parent ^. _cellId) n.dependencies) mbParent
   newId = freeId oldNotebook
-  input = parent ^. _output
-  cell = newCell newId (content # _FileInput .. _file .~ maybe (Left "") Right (input ^? _PortResource))
-         # (_output .~ port)
-         ..(_input  .~ input)
+  input = case content of
+    Explore _ -> maybe Closed PortResource (content ^? _FileInput .. _file .. _Right)
+    _ -> maybe Closed (^. _output) mbParent
+  cell = newCell newId content 
+         # (_input .~ input)
          ..(_pathToNotebook .~ (fromMaybe rootDir $ notebookPath oldNotebook))
-         ..(_parent .~ Just (parent ^. _cellId))
-  port = cellOut content oldNotebook newId
+         ..(_parent .~ ((^. _cellId) <$> mbParent))
+         # setPort
+  setPort :: Cell -> Cell
+  setPort cell = cell # _output .~ (cellOut cell oldNotebook)
 
-cellOut :: CellContent -> Notebook -> CellId -> Port
-cellOut content n cid = case content of
-  (Explore _) -> Closed
+cellOut :: Cell -> Notebook -> Port
+cellOut cell n = case cell ^._content of
+  (Explore _) -> cell ^._input
   (Visualize _) -> Closed
   (Markdown _) -> VarMap SM.empty
   _ -> maybe PortResourcePending (\p -> PortResource $ File $ p </> file ("out" <> show cid)) (notebookPath n)
+  where cid = cell ^._cellId
 
 freeId :: Notebook -> CellId
 freeId (Notebook n) =
@@ -193,13 +188,14 @@ replacePendingPorts :: Notebook -> Notebook
 replacePendingPorts nb = nb # _cells .. mapped %~ replacePendingPort nb
 
 replacePendingPort :: Notebook -> Cell -> Cell
-replacePendingPort nb cell = case cell ^. _output of
-  PortResourcePending -> cell # _output .~ cellOut (cell ^. _content) nb (cell ^. _cellId)
+replacePendingPort nb cell = case cell ^._output of
+  PortResourcePending -> cell # _output .~ cellOut cell nb
   _ -> cell
-
 
 syncCellsOuts :: DirPath -> Notebook -> Notebook
 syncCellsOuts path notebook =
+  let o = fprintUnsafe notebook in
   notebook # (_cells..mapped.._input.._PortResource.._tempFile.._root .~ path)
            ..(_cells..mapped.._output.._PortResource.._tempFile.._root .~ path)
            ..(_cells..mapped.._pathToNotebook .~ path)
+import Debug.Foreign

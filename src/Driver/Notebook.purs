@@ -98,7 +98,6 @@ driver ref k =
           Left err -> update (_error ?~ message err)
           Right nb -> do
             update (_notebook .~ nb)
-            
             if isEdit editable
               then
               for_ (filter (filterFn (nb ^._dependencies)) 
@@ -112,8 +111,7 @@ driver ref k =
               case Tuple (cell ^. _content) (cell ^._output) of
                 Tuple (Search _) Closed ->
                   cellUpdate cell
-                  (_output .~ cellOut (cell ^._content)
-                   nb (cell ^._cellId))
+                  (_output .~ cellOut cell nb)
                 _ -> pure unit
   filterFn :: Dependencies -> Cell -> Boolean
   filterFn dpMap cell =
@@ -164,6 +162,7 @@ notebookAutosave refState refTimer input k = do
             Right nb -> do
               let update = (_notebook %~ replacePendingPorts)
                        <<< (_notebook .. _name .~ (nb ^. _name))
+                           
               k $ WithState update
               -- This crime is to update the state so that when NotebookRoute is
               -- triggered in the router, the state will have the saved-name for
@@ -174,6 +173,7 @@ notebookAutosave refState refTimer input k = do
               unless hasBeenSaved $ replaceLocation $ U.fromJust $ notebookURL nb Edit
         writeRef refTimer t'
   case input of
+    ForceSave -> save
     AddCell _ -> save
     InsertCell _ _ -> save
     UpdateCell _ _ | hasBeenSaved -> save

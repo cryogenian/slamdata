@@ -62,6 +62,7 @@ data Input
   | SetEChartsOption String EC.Option
 
   | UpdatedOutput CellId Port
+  | ForceSave
 
     
 updateState :: State -> Input -> State
@@ -122,10 +123,9 @@ updateState state (UpdatedOutput cid newInput) =
       changed cell = if elemIndex (cell ^._cellId) depIds == -1
                      then cell
                      else cell # _input .~ newInput
-  in state # _notebook.._cells..mapped %~ changed 
+  in state # _notebook.._cells..mapped %~ changed
 
 updateState state i = state
-
 
 slamDownStateMap :: LensP SlamDownState (SM.StrMap FormFieldValue)
 slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)

@@ -9,7 +9,7 @@ import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Cell.Search (runSearch)
 import Input.Notebook (Input(..))
 import Model.Notebook (_notebook)
-import Model.Notebook.Cell (Cell(), RunState(..), _FileInput, _JTableContent, _content, _Search, _cellId, _runState)
+import Model.Notebook.Cell (Cell(), RunState(..), _FileInput, _JTableContent, _content, _Search, _cellId, _runState, _input)
 import Model.Notebook.Cell.Search (_buffer)
 import Model.Notebook.Domain (_activeCellId, Notebook())
 import Optic.Core ((^.), (.~), (..))
@@ -32,7 +32,7 @@ searchEditor :: forall e. Notebook -> Cell -> HTML e
 searchEditor notebook cell =
   H.div
   [ A.classes [ Vc.exploreCellEditor ] ] $
-  (fileInput (_content .. _FileInput) cell) <>
+  (fileInput (_content .. _FileInput) (\port -> _input .~ port) cell) <>
   [ H.div [ A.classes [ Vc.fileListField, B.inputGroup ] ]
     [ H.input
       [ A.value (cell ^. _lens)

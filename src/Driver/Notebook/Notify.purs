@@ -20,7 +20,7 @@ import EffectTypes
 import Halogen (Driver())
 import Input.Notebook (Input(..))
 import Model.Notebook (State(), _notebook, _requesting)
-import Model.Notebook.Cell (Cell(), _cellId, CellId())
+import Model.Notebook.Cell (Cell(), _cellId, CellId(), _hasRun)
 import Model.Notebook.Domain
 import Optic.Core  ((^.), (%~))
 import Optic.Fold ((^?))
@@ -103,7 +103,7 @@ notify notebook cellId requestedIds driver =
     notebook ^? cellById cid 
 
   dependentCells :: CellId -> [Cell]
-  dependentCells cid = filter (\x -> elem (x ^._cellId) (dependencies cid))
+  dependentCells cid = filter (\x -> elem (x ^._cellId) (dependencies cid) && (x ^. _hasRun))
                        (notebook ^. _cells)
 
   dependencies :: CellId -> [CellId]

@@ -10,8 +10,8 @@ import Data.Array (sort, nub)
 import Data.Either (Either(..), either)
 import Data.Maybe (fromMaybe)
 import Halogen.HTML.Events.Monad (andThen)
-import Input.Notebook (Input(UpdateCell))
-import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId, _input)
+import Input.Notebook (Input(..))
+import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId, _input, _output)
 import Model.Notebook.Cell.FileInput (FileInput(), _files, _showFiles, _file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..))
 import Model.Resource (Resource(), root)
@@ -31,18 +31,26 @@ populateFiles cell =
   updateFiles :: [Resource] -> [Resource] -> [Resource]
   updateFiles newFiles oldFiles = sort $ nub $ (oldFiles ++ newFiles)
 
-selectFile :: forall e. Cell -> Resource -> I e
-selectFile cell res =
-  pure $ UpdateCell (cell ^. _cellId) $ (_lens .. _showFiles .~ false)
-                                     .. (_lens .. _file .~ Right res)
-                                     .. (_input .~ PortResource res)
+selectFile :: forall e. Cell -> (Port -> Cell -> Cell) -> Resource -> I e
+selectFile cell setFn res =
+  let port = PortResource res
+      cell' = setFn (PortResource res) cell
+      
+  in (pure $ UpdateCell (cell ^. _cellId)  $ (_lens .. _showFiles .~ false)
+                                          .. (_lens .. _file .~ Right res)
+                                          .. (setFn $ PortResource res)) <>
+  (pure $ UpdatedOutput (cell ^. _cellId) (cell' ^. _output))
+  
 
-updateFile :: forall e. Cell -> String -> I e
-updateFile cell path =
+updateFile :: forall e. Cell -> (Port -> Cell -> Cell) -> String -> I e
+updateFile cell setFn path =
   let file = fileFromString path
       port = portFromFile file
-  in pure $ UpdateCell (cell ^. _cellId) $ (_lens .. _file .~ file)
-                                        .. (_input .~ port)
+      cell' = setFn port cell 
+  in (pure $ UpdateCell (cell ^. _cellId) $ (_lens .. _file .~ file)
+                                         .. (setFn port)) <>
+     (pure $ UpdatedOutput (cell ^. _cellId) (cell' ^. _output))
+
 
 _lens :: TraversalP Cell FileInput
 _lens = _content .. _FileInput

@@ -115,13 +115,14 @@ foreign import foreignToJson
 -- | and then moved. If the name is a `That` the notebook will be saved.
 saveNotebook :: forall e. N.Notebook -> Aff (ajax :: AJAX | e) N.Notebook
 saveNotebook notebook = case notebook ^. N._name of
-  That name -> save name *> pure notebook
+  That name -> save name notebook *> pure notebook
   This name -> do
     name <- getNewName' (U.fromJust $ theseLeft (notebook ^. N._name))
-    save name
-    pure $ N.replacePendingPorts (notebook # N._name .~ That (dropNotebookExt name))
+    let notebook' = N.replacePendingPorts (notebook # N._name .~ That (dropNotebookExt name))
+    save name notebook' 
+    pure notebook'
   Both newName oldName -> do
-    save oldName
+    save oldName notebook
     if newName /= oldName
       then do
       newName' <- getNewName' newName
@@ -140,8 +141,8 @@ saveNotebook notebook = case notebook ^. N._name of
     let baseName = name ++ "." ++ Config.notebookExtension
     in getNewName (notebook ^. N._path) baseName
 
-  save :: String -> Aff (ajax :: AJAX | e) Unit
-  save name =
+  save :: String -> N.Notebook -> Aff (ajax :: AJAX | e) Unit
+  save name notebook =
     let notebookPath = (notebook ^. N._path) </> dir name <./> Config.notebookExtension </> file "index"
     in getResponse "error while saving notebook" $ put_ (Config.dataUrl <> printPath notebookPath) notebook
 

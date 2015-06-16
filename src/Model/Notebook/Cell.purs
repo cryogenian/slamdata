@@ -155,7 +155,10 @@ newSearchContent :: Resource -> CellContent
 newSearchContent res = Search (Sr.initialSearchRec # Sr._input .. _file .~ Right res)
 
 newQueryContent :: Resource -> CellContent
-newQueryContent res = Query (Qu.initialQueryRec # Qu._input .~ "SELECT * FROM \"" ++ resourceName res ++ "\"")
+newQueryContent res = Query (Qu.initialQueryRec # Qu._input .~ "SELECT * FROM \"" ++ resString ++ "\"")
+  where resString = if isTempFile res
+                    then resourceName res
+                    else resourcePath res
 
 newVisualizeContent :: CellContent
 newVisualizeContent = Visualize Vz.initialVizRec
