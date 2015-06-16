@@ -35,7 +35,7 @@ main = onLoad $ void $ do
   t <- timeout 0 (pure unit)
   autosaveTimer <- newRef t
   echartsKnot <- EC.ref
-  notifyKnot <- newRef Nothing
+  notifyKnot <- newRef M.empty
   let post = postRender stateKnot aceKnot echartsKnot autosaveTimer notifyKnot
   Tuple node driver <- runUIWith app post
   mountUI node

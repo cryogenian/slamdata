@@ -17,7 +17,8 @@ module Model.Notebook.Domain
   , cellOut
   , replacePendingPorts
   , syncCellsOuts
-  , deps
+  , ancestors
+  , descendants
   , trash
   ) where
 
@@ -116,18 +117,21 @@ instance requestableNotebook :: Requestable Notebook where
 -- cell that has more than one deps.
 type Dependencies = Map CellId CellId
 
-deps :: CellId -> Dependencies -> [CellId]
-deps cid ds = deps' cid ds []
+ancestors :: CellId -> Dependencies -> [CellId]
+ancestors cid ds = deps' cid ds []
   where
   deps' cid ds agg =
     case lookup cid ds of
       Nothing -> agg
       Just a -> deps' a ds (a : agg)
 
+descendants :: CellId -> Dependencies -> [CellId]
+descendants cid ds = fst <$> (filter (\x -> snd x == cid) $ toList ds)
+
 trash :: CellId -> Dependencies -> Dependencies
 trash cid ds =
   let ds' = delete cid ds 
-  in case fst <$> (filter (\x -> snd x == cid) $ toList ds') of
+  in case descendants cid ds' of
     [] -> ds'
     xs -> foldl (\d x -> trash x d) ds' xs
 

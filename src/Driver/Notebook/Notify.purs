@@ -9,8 +9,8 @@ import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Common (I())
 import Data.Array (filter, elemIndex, (!!), singleton)
 import Data.Either (Either(..))
-import Data.Foldable (for_)
-import Data.Map (toList)
+import Data.Foldable (traverse_)
+import Data.Map (toList, empty, insert, lookup, Map(), delete)
 import Data.Maybe (maybe, Maybe(..))
 import Data.Tuple (fst, snd)
 import EffectTypes
@@ -24,55 +24,66 @@ import Optic.Fold ((^?))
 import Utils (elem)
 
 
-type NotifyKnot = Maybe Timeout 
+type NotifyKnot = Map CellId Timeout 
 
 notifyDriver :: forall e. RefVal State -> RefVal NotifyKnot -> Input ->
                 Driver Input (NotebookComponentEff e) -> 
                 Eff (NotebookAppEff e) Unit
-notifyDriver sKnot nKnot input driver = do
-  state <- readRef sKnot
-  maybe
-    (pure unit)
-    (notifyChildren (state ^._notebook) nKnot input driver)
-    (state ^. _requesting)
-
-notifyChildren :: forall e. Notebook -> 
-                  RefVal NotifyKnot -> Input -> 
-                  Driver Input (NotebookComponentEff e) ->
-                  CellId ->
-                  Eff (NotebookAppEff e) Unit
-notifyChildren notebook nKnot (CellResult cellId _ (Right _)) driver requestedId =
-  notify notebook requestedId cellId nKnot driver 
-notifyChildren notebook nKnot (CellSlamDownEvent cellId _) driver requestedId =
-  notify notebook requestedId cellId nKnot driver
-notifyChildren _ _ _ _ _ = pure unit
-
-notify :: forall e. Notebook -> CellId -> CellId -> RefVal NotifyKnot -> 
-          Driver Input (NotebookComponentEff e) ->
-          Eff (NotebookAppEff e) Unit
-notify notebook requestedId cellId nKnot driver = do
-  mbTimeout <- readRef nKnot
-  maybe setTimeout (\t -> clearTimeout t *> setTimeout) mbTimeout
+notifyDriver sKnot nKnot input driver =
+  case input of
+    -- We've got result from other cell, just notify children
+    CellResult cellId _ (Right _) -> do 
+      state <- readRef sKnot
+      go state cellId
+    -- Markdown cell's updated, check timeout and notify children
+    CellSlamDownEvent cellId _ -> do
+      state <- readRef sKnot
+      map <- readRef nKnot
+      maybe
+        (setTimeout state cellId)
+        (\t -> do
+            clearTimeout t
+            setTimeout state cellId)
+        (lookup cellId map) 
+    _ -> pure unit
   where
-  setTimeout = do
-    t <- timeout Config.notifyTimeout go
-    writeRef nKnot (Just t) 
+  setTimeout state cellId = do
+    t <- timeout Config.notifyTimeout do
+      go state cellId
+      modifyRef nKnot (delete cellId) 
+    modifyRef nKnot (insert cellId t) 
+  go state cellId = 
+    maybe (pure unit)
+    (notify (state ^. _notebook) cellId driver)
+    (state ^._requesting)
     
-  go = case elemIndex cellId ancestors of
-    -1 -> for_ (dependentCells cellId) request
-    x -> maybe (for_ ds request) request 
-        ((ancestors <> [requestedId]) !! (x + 1) >>=
-         \x -> notebook ^? cellById x)
 
+
+notify :: forall e. Notebook -> CellId -> 
+          Driver Input (NotebookComponentEff e) -> CellId -> 
+          Eff (NotebookAppEff e) Unit
+notify notebook cellId driver requestedId =
+  -- check if current cell is parent of requested 
+  case elemIndex cellId ancestors' of
+    -- It's not, update children of this cell
+    -1 -> traverse_ request $ dependentCells cellId
+    -- It is. Get next cell in this hierarchy and if there is
+    -- no such cell update children for requested cell. 
+    x -> maybe (traverse_ request $ dependentCells requestedId) request
+         ((ancestors' <> [requestedId]) !! (x + 1) >>=
+          \x -> notebook ^? cellById x) 
+  where
+  request :: Cell -> Eff _ Unit
   request = driver <<< RequestCellContent
 
-  ancestors = deps requestedId (notebook ^._dependencies)
-  
-  ds = dependentCells requestedId
+  -- list of dependencies of requested cell from top to bottom
+  ancestors' :: [CellId]
+  ancestors' = ancestors requestedId (notebook ^._dependencies)
 
+  dependentCells :: CellId -> [Cell]
   dependentCells cid = filter (\x -> elem (x ^._cellId) (dependencies cid))
                        (notebook ^. _cells)
 
-  dependencies cid = fst <$> (filter (\x -> snd x == cid) $
-                              toList (notebook ^._dependencies))
+  dependencies :: CellId -> [CellId]
+  dependencies = flip descendants (notebook ^._dependencies)
 

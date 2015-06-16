@@ -18,7 +18,7 @@ import Model.Notebook
 import Model.Resource (Resource()) 
 import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
-import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies, Notebook(), trash, deps)
+import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies, Notebook(), trash, ancestors)
 import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource, _VarMap)
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
@@ -222,4 +222,4 @@ isCell ci (Cell { cellId = ci' }) = ci == ci'
 
 depends :: Notebook -> CellId -> Cell -> Boolean
 depends notebook cellId cell =
-  elemIndex cellId (deps (cell ^._cellId) (notebook ^._dependencies)) /= -1
+  elemIndex cellId (ancestors (cell ^._cellId) (notebook ^._dependencies)) /= -1

@@ -25,7 +25,7 @@ import Input.Notebook (CellResultContent(MarkdownContent), Input(..))
 import Model.Action
 import Model.Notebook (State(), _dialog, _notebook, _requesting)
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..))
-import Model.Notebook.Domain (notebookURL, cellURL, Notebook(), deps, _dependencies, cellById)
+import Model.Notebook.Domain (notebookURL, cellURL, Notebook(), ancestors, _dependencies, cellById)
 import Model.Notebook.Dialog
 import Optic.Core ((.~), (^.), (?~))
 import Optic.Fold ((^?))
@@ -72,7 +72,7 @@ requestCellContent notebook cell =
       [] -> go
       x:_ -> maybe go (pure <<< RequestCellContent) (notebook ^? cellById  x))
   where
-  ps = deps (cell ^._cellId) (notebook ^._dependencies)
+  ps = ancestors (cell ^._cellId) (notebook ^._dependencies)
   go = pure $ RequestCellContent cell
 
 handleShareClick :: forall e. State -> Cell -> I e
