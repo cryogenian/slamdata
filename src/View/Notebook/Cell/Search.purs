@@ -11,7 +11,7 @@ import Input.Notebook (Input(..))
 import Model.Notebook (_notebook)
 import Model.Notebook.Cell (Cell(), RunState(..), _FileInput, _JTableContent, _content, _Search, _cellId, _runState)
 import Model.Notebook.Cell.Search (_buffer)
-import Model.Notebook.Domain (_activeCellId)
+import Model.Notebook.Domain (_activeCellId, Notebook())
 import Optic.Core ((^.), (.~), (..))
 import Optic.Extended (TraversalP())
 import View.Common (glyph)
@@ -28,8 +28,8 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
 
-searchEditor :: forall e. Cell -> HTML e
-searchEditor cell =
+searchEditor :: forall e. Notebook -> Cell -> HTML e
+searchEditor notebook cell =
   H.div
   [ A.classes [ Vc.exploreCellEditor ] ] $
   (fileInput (_content .. _FileInput) cell) <>
@@ -50,7 +50,7 @@ searchEditor cell =
     , H.span [ A.classes [ B.inputGroupBtn ] ]
       [ H.button [ A.classes [ B.btn, B.btnDefault, Vc.searchCellButton]
                  , A.type_ "button"
-                 , E.onClick \_ -> pure (requestCellContent cell)
+                 , E.onClick \_ -> pure (requestCellContent notebook cell)
                  ] [ glyph B.glyphiconSearch ]
       ]
     ]

@@ -21,6 +21,7 @@ type State =
   , tickDate :: Maybe Date
   , platform :: Platform
   , dialog :: Maybe Dialog
+  , requesting :: [CellId]
   }
 
 _dropdowns :: LensP State [DropdownItem]
@@ -50,6 +51,9 @@ _platform = lens _.platform _{platform = _}
 _dialog :: LensP State (Maybe Dialog)
 _dialog = lens _.dialog _{dialog = _}
 
+_requesting :: LensP State [CellId]
+_requesting = lens _.requesting _{requesting = _}
+
 initialState :: State
 initialState =
   { dropdowns: initialDropdowns
@@ -61,4 +65,5 @@ initialState =
   , tickDate: Nothing
   , platform: Other
   , dialog: Nothing
+  , requesting: []
   }

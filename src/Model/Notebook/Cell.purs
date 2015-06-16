@@ -27,6 +27,7 @@ import qualified Model.Notebook.Cell.Search as Sr
 import qualified Model.Notebook.Cell.Viz as Vz
 
 type CellId = Number
+
 type FailureMessage = String
 
 string2cellId :: String -> Either String CellId

@@ -9,7 +9,7 @@ import Control.Bind (join)
 import Data.Array (filter, modifyAt, (!!), elemIndex)
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), either)
-import Data.Foldable (intercalate)
+import Data.Foldable (intercalate, foldl)
 import Data.Function (on)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Traversable (traverse)
@@ -18,8 +18,8 @@ import Model.Notebook
 import Model.Resource (Resource()) 
 import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
-import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies)
-import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource)
+import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies, Notebook(), trash, ancestors)
+import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource, _VarMap)
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
@@ -61,8 +61,9 @@ data Input
   | InsertCell Cell CellContent
   | SetEChartsOption String EC.Option
 
-  | UpdatedOutput CellId Resource
+  | UpdatedOutput CellId Port
 
+    
 updateState :: State -> Input -> State
 
 updateState state (WithState f) =
@@ -87,7 +88,9 @@ updateState state (InsertCell parent content) =
   state # _notebook %~ (fst <<< insertCell parent content)
 
 updateState state (TrashCell cellId) =
-  state # _notebook.._cells %~ filter (not <<< isCell cellId)
+  state # _notebook.._cells %~ filter (not <<< depends (state ^._notebook) cellId)
+        # _notebook.._cells %~ filter (not <<< isCell cellId)
+        # _notebook.._dependencies %~ trash cellId
 
 updateState state (CellResult cellId date content) =
   let finished d = RunFinished $ on (-) toEpochMilliseconds date d
@@ -111,16 +114,18 @@ updateState state (StopCell cellId) =
 updateState state (CellSlamDownEvent cellId event) =
   state # _notebook.._cells..mapped %~ onCell cellId (slamDownOutput <<< runSlamDownEvent event)
         # _notebook.._cells %~ syncParents
+        # _requesting <>~ [cellId]
 
 updateState state (UpdatedOutput cid newInput) =
   let depIds = fst <$>
              filter (\x -> snd x == cid) (M.toList (state ^._notebook.._dependencies))
       changed cell = if elemIndex (cell ^._cellId) depIds == -1
                      then cell
-                     else cell # _input.._PortResource .~ newInput
+                     else cell # _input .~ newInput
   in state # _notebook.._cells..mapped %~ changed 
 
 updateState state i = state
+
 
 slamDownStateMap :: LensP SlamDownState (SM.StrMap FormFieldValue)
 slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)
@@ -138,9 +143,10 @@ syncParents cells = updateCell <$> cells
 
 slamDownOutput :: Cell -> Cell
 slamDownOutput cell =
-  cell # _output .~ VarMap m
+  cell # _output .. _VarMap  %~ modifyVarMap
   where
-    m = maybe SM.empty (fromFormValue <$>) state
+    modifyVarMap m = foldl (\m (Tuple key val) -> SM.insert key val m) m tplLst
+    tplLst = maybe [] SM.toList ((fromFormValue <$>) <$> state)
     fromFormValue (SingleValue _ s) = s
     fromFormValue (MultipleValues s) = "[" <> intercalate ", " (S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
@@ -194,7 +200,6 @@ cellContent = either (setFailures <<< NEL.toArray) success
   success (AceContent content) =
     setFailures [ ]
     <<< (_content.._AceContent .~ content)
-    <<< (_content.._Markdown..Ma._state .~ emptySlamDownState)
   success (JTableContent content) =
     setFailures [ ]
     <<< (_content.._JTableContent .~ content)
@@ -214,3 +219,7 @@ modifyRunState f (Cell o) = Cell $ o { runState = f o.runState }
 
 isCell :: CellId -> Cell -> Boolean
 isCell ci (Cell { cellId = ci' }) = ci == ci'
+
+depends :: Notebook -> CellId -> Cell -> Boolean
+depends notebook cellId cell =
+  elemIndex cellId (ancestors (cell ^._cellId) (notebook ^._dependencies)) /= -1

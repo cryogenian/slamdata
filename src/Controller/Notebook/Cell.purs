@@ -17,19 +17,21 @@ import Controller.Notebook.Cell.Explore (runExplore, viewExplore)
 import Controller.Notebook.Cell.Query (runQuery, viewQuery)
 import Controller.Notebook.Cell.Search (runSearch, viewSearch)
 import Controller.Notebook.Cell.Viz (runViz)
-import Controller.Notebook.Common (I())
+import Controller.Notebook.Common (I(), update)
 import Data.Date (now)
 import Data.Either (Either(..))
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (CellResultContent(MarkdownContent), Input(..))
 import Model.Action
-import Model.Notebook (State(), _dialog, _notebook)
+import Model.Notebook (State(), _dialog, _notebook, _requesting)
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..))
-import Model.Notebook.Domain (notebookURL, cellURL)
+import Model.Notebook.Domain (notebookURL, cellURL, Notebook(), ancestors, _dependencies, cellById)
 import Model.Notebook.Dialog
-import Optic.Core ((.~), (^.), (?~))
+import Optic.Core ((.~), (^.), (?~), (<>~))
+import Optic.Fold ((^?))
 import Utils (locationString, replaceLocation)
 
+import Data.Maybe (maybe)
 import qualified Data.Maybe.Unsafe as U
 
 runMarkdown :: forall eff. Cell -> I eff
@@ -38,31 +40,40 @@ runMarkdown cell = result <$> liftEff now
 
 runCell :: forall eff. Cell -> I eff
 runCell cell = do
-  d <- liftEff now
   case cell ^. _content of
-    Search _ -> runSearch (cell # _runState .~ (RunningSince d))
+    Search _ -> runSearch cell
     Explore _ -> runExplore cell
     Visualize _ -> runViz cell
     Markdown _ -> runMarkdown cell
     Query _ -> runQuery cell
 
-
 viewCell :: forall eff. Cell -> I eff
 viewCell cell = do
-  d <- liftEff now
   case cell ^._content of
-    Search _ -> viewSearch (cell # _runState .~ (RunningSince d))
+    Search _ -> viewSearch cell
     Explore _ -> viewExplore cell
     Visualize _ -> runViz cell
     Markdown _ -> runMarkdown cell
     Query _ -> viewQuery cell
 
-requestCellContent :: forall eff. Cell -> I eff
-requestCellContent cell = pure $ RequestCellContent cell
 
-handleRunClick :: forall e. Cell -> I e
-handleRunClick cell | isRunning cell = pure (StopCell $ cell ^. _cellId)
-                    | otherwise = requestCellContent cell
+handleRunClick :: forall e. Notebook -> Cell -> I e
+handleRunClick notebook cell | isRunning cell = stopCell notebook cell 
+                             | otherwise = requestCellContent notebook cell
+
+stopCell :: forall e. Notebook -> Cell -> I e
+stopCell notebook cell =
+  pure (StopCell (cell ^._cellId))
+
+requestCellContent :: forall eff. Notebook -> Cell -> I eff
+requestCellContent notebook cell =
+  (pure $ WithState (_requesting <>~ [cell ^._cellId])) <>
+  (case ps of
+      [] -> go
+      x:_ -> maybe go (pure <<< RequestCellContent) (notebook ^? cellById  x))
+  where
+  ps = ancestors (cell ^._cellId) (notebook ^._dependencies)
+  go = pure $ RequestCellContent cell
 
 handleShareClick :: forall e. State -> Cell -> I e
 handleShareClick state cell = do

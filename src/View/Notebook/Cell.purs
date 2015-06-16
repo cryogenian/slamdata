@@ -40,9 +40,13 @@ import qualified View.Css as VC
 cell :: forall e. State -> Cell -> [HTML e]
 cell notebook cell =
   let outputContent = output notebook cell
-  in [ H.div ([ A.classes $ [B.containerFluid, VC.notebookCell, B.clearfix] ++ if cell ^. _hiddenEditor then [VC.collapsed] else [] ] <> maybe [ ] viewingStyle (notebook ^. _viewingCell))
+  in [ H.div ([ A.classes $ [ B.containerFluid, VC.notebookCell, B.clearfix] ++
+                            if cell ^. _hiddenEditor
+                            then [VC.collapsed]
+                            else [] ] <>
+                            maybe [ ] viewingStyle (notebook ^. _viewingCell))
              $ catMaybes [ if not (notebook ^. _editable) then Nothing else Just $ header cell
-                         , if hidden then Nothing else Just $ editor cell
+                         , if hidden then Nothing else Just $ editor notebook cell
                          , Just $ statusBar notebook (isJust outputContent) cell
                          , outputContent
                          ]
@@ -145,7 +149,7 @@ statusBar notebook hasOutput cell =
             then []
             else [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
                          $ [ H.button [ A.classes [B.btn, B.btnPrimary, buttonClass]
-                                      , E.onClick \_ -> pure $ handleRunClick cell
+                                      , E.onClick \_ -> pure $ handleRunClick (notebook ^._notebook) cell
                                       ]
                                       [ glyph buttonGlyph ]
                            , H.div [ A.classes [ VC.statusText ] ]
@@ -210,12 +214,12 @@ cellInfo cell = case cell ^. _content of
   Visualize _ -> { name: "Visualize", glyph: B.glyphiconPicture }
   Query _ -> { name: "Query", glyph: B.glyphiconHdd }
 
-editor :: forall e. Cell -> HTML e
-editor state = case state ^. _content of
-  Explore rec -> exploreEditor state
-  Search _ ->searchEditor state
-  Visualize _ -> vizChoices state
-  _ -> aceEditor state
+editor :: forall e. State -> Cell -> HTML e
+editor state cell = case cell ^. _content of
+  Explore rec -> exploreEditor cell
+  Search _ -> searchEditor (state ^._notebook) cell
+  Visualize _ -> vizChoices cell
+  _ -> aceEditor cell
 
 renderOutput :: forall e. Cell -> [HTML e]
 renderOutput cell =

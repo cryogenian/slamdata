@@ -1,4 +1,4 @@
-module App.Notebook.ECharts (
+module Driver.Notebook.ECharts (
   echartsPostRender,
   ref,
   EChartsKnot(),

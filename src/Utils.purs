@@ -10,6 +10,7 @@ import Data.DOM.Simple.Types (HTMLElement(), DOMEvent(), DOMLocation())
 import Debug.Foreign (fprint)
 import Debug.Trace (Trace())
 import Data.Maybe (Maybe(..))
+import Data.Array (elemIndex)
 import DOM (DOM())
 import Global (readFloat, isNaN, readInt)
 
@@ -121,3 +122,7 @@ s2n s =
   if isNaN n
   then Nothing
   else Just n
+
+
+elem :: forall a. (Eq a) => a -> [a] -> Boolean
+elem a lst = elemIndex a lst /= -1
