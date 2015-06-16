@@ -13,8 +13,9 @@ import Data.Inject1 (inj)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
-import Input.File (FileInput(SetDialog))
+import Input.File (FileInput(..))
 import Input.File.Mount (MountInput(..))
+import Model.File (_dialog)
 import Optic.Core ((.~), (^.))
 import Optic.Index (ix)
 import Optic.Index.Types (TraversalP())
@@ -183,7 +184,7 @@ message msg =
 btnCancel :: forall e. H.HTML (I e)
 btnCancel =
   H.button [ A.classes [B.btn]
-           , E.onClick (E.input_ $ inj $ SetDialog Nothing)
+           , E.onClick (E.input_ $ inj $ WithState (_dialog .~ Nothing))
            ]
            [ H.text "Cancel" ]
 

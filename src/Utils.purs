@@ -88,11 +88,6 @@ foreign import locationOrigin
 locationString :: forall e. Eff (dom :: DOM |e) String
 locationString = W.location W.globalWindow >>= locationOrigin
 
-trimQuotes :: String -> String
-trimQuotes input = Rgx.replace start "" $ Rgx.replace end "" input
-  where start = Rgx.regex "^\"" Rgx.noFlags
-        end = Rgx.regex "\"$" Rgx.noFlags
-
 endsWith :: String -> String -> Boolean
 endsWith needle haystack =
   Str.indexOf' needle (Str.length haystack - Str.length needle) haystack /= -1

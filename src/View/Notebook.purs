@@ -20,7 +20,6 @@ import Data.Path.Pathy
 import Data.Platform (Platform(..))
 import Data.String (joinWith)
 import Data.These (these)
-import Driver.File.Path (updatePath)
 import Input.Notebook (Input(..))
 import Model.Notebook
 import Model.Notebook.Cell

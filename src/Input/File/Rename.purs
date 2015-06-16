@@ -15,11 +15,11 @@ data RenameInput
   | AddDirs [Resource]
   | Update (RenameDialogRec -> RenameDialogRec)
 
-inputRename :: Dialog -> RenameInput -> Dialog
-inputRename (RenameDialog d) input = RenameDialog $ case input of
+inputRename :: RenameInput -> Dialog -> Dialog
+inputRename input (RenameDialog d) = RenameDialog $ case input of
   SetDir toSelect -> d # _dir .~ toSelect
                        # _showList .~ false
   AddDirs newDirs -> d # _dirs %~ \oldDirs -> sort $ nub $ (oldDirs <> newDirs)
   Update f -> f d
 
-inputRename dialog _ = dialog
+inputRename _ dialog = dialog

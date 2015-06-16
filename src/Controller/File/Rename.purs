@@ -30,8 +30,8 @@ import Model.Resource (Resource(), _path, _name, _root, mkDirectory, getPath)
 import Optic.Core ((..), (^.), (.~))
 import Data.Path.Pathy (rootDir, (</>), parseAbsDir, sandbox)
 
-rename :: forall e. RenameDialogRec -> EventHandler (Event (FileAppEff e) Input)
-rename d = pure do
+rename :: forall e. RenameDialogRec -> Event (FileAppEff e) Input
+rename d = do
   let src = d ^. _initial
       dt = either (const rootDir) id $ d ^. _dir .. _path
       tgt = (d ^. _resource # _root .~ dt) ^. _path
@@ -41,8 +41,8 @@ rename d = pure do
       Left _ -> empty
       Right _ -> liftEff reload *> empty
 
-checkRename :: forall e. String -> RenameDialogRec -> EventHandler (Event (FileAppEff e) Input)
-checkRename name dialog = pure do
+checkRename :: forall e. RenameDialogRec -> String -> Event (FileAppEff e) Input
+checkRename dialog name = do
   (toInput $ Update $ _resource .~ res) `andThen` \_ ->
     if name == ""
     then toInput $ Update $ _error .~ Just "Please enter a name for the file"
@@ -53,21 +53,18 @@ checkRename name dialog = pure do
   where
   res = dialog ^. _resource # _name .~ name
 
-renameItemClicked :: forall e. Resource -> Resource -> EventHandler (Event (FileAppEff e) Input)
-renameItemClicked target res = pure (renameItemClicked' target res)
-
-renameItemClicked' :: forall e. Resource -> Resource -> Event (FileAppEff e) Input
-renameItemClicked' target res = do
+renameItemClicked :: forall e. Resource -> Resource -> Event (FileAppEff e) Input
+renameItemClicked target res = do
   (toInput $ SetDir res) `andThen` \_ -> do
     ress <- liftAff $ Api.children res
     (toInput $ Update $ _siblings .~ ress) `andThen` \_ ->
       checkList target ress
 
-renameDirInput :: forall e. Resource -> String -> EventHandler (Event (FileAppEff e) Input)
-renameDirInput target dirStr = pure do
+renameDirInput :: forall e. Resource -> String -> Event (FileAppEff e) Input
+renameDirInput target dirStr = do
   -- TODO: Make incorrect on keydown.
   --  (toInput $ RenameIncorrect true) `andThen` \_ ->
-  maybe empty (\p -> renameItemClicked' target (mkDirectory $ Right p)) $ do
+  maybe empty (\p -> renameItemClicked target (mkDirectory $ Right p)) $ do
     d <- parseAbsDir dirStr
     s <- sandbox rootDir d
     pure $ rootDir </> s

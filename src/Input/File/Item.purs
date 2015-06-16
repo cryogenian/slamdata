@@ -5,34 +5,35 @@ module Input.File.Item
 
 import Data.Array ((!!), filter, sortBy, updateAt)
 import Data.Maybe (maybe)
-import Model.File.Item (Item(), sortItem)
-import Model.Sort (Sort())
+import Model.File.Item (Item(..), sortItem, itemResource)
+import Model.File.Sort (Sort())
 
 data ItemInput
   = ItemAdd Item
   | ItemRemove Item
-  | ItemSelect Number Boolean
+  | ItemSelect Number
   | Resort
-  | Clear
 
-inputItem :: Sort -> Boolean -> [Item] -> ItemInput -> [Item]
-inputItem sort searching items input = case input of
+inputItem :: Sort -> Boolean -> ItemInput -> [Item] -> [Item]
+inputItem sort searching input items = case input of
 
   ItemAdd item ->
     resort sort searching $ item : items
 
   ItemRemove item ->
-    resort sort searching $ filter (\x -> not $ x.resource == item.resource) items
+    let r = itemResource item
+    in resort sort searching $ filter (\x -> itemResource x /= r) items
 
-  ItemSelect ix h ->
-    modify (flip _ { selected = _ }) items ix
+  ItemSelect ix ->
+    modify toggleItem items ix
 
-  Clear ->
-    []
+toggleItem :: Boolean -> Item -> Item
+toggleItem true (Item r) = SelectedItem r
+toggleItem false (SelectedItem r) = Item r
+toggleItem _ i = i
 
 resort :: Sort -> Boolean -> [Item] -> [Item]
 resort sort searching = sortBy (sortItem searching sort)
-
 
 modify :: (Boolean -> Item -> Item) -> [Item] -> Number -> [Item]
 modify func items ix =

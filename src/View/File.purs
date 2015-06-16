@@ -1,34 +1,35 @@
 module View.File (view) where
 
-import Controller.File (handleSetSort)
+import Controller.File.Common (browseURL)
+import Css.Geometry
+import Css.Size
+import Css.String
+import Data.These (theseRight)
 import Data.Tuple (Tuple(..))
-import qualified Utils as U
-import qualified Config as Config
-import Model.File (State())
-import Model.Sort (Sort(Asc, Desc), notSort)
-import Utils.Halide (targetLink')
+import Model.File
+import Model.File.Search (_value)
+import Model.File.Sort (Sort(..), notSort)
+import Optic.Core ((..), (^.))
 import View.Common (glyph)
+import View.Common (navbar, icon, logo, content, row)
 import View.File.Breadcrumb (breadcrumbs)
 import View.File.Common (I())
 import View.File.Item (items)
 import View.File.Modal (modal)
 import View.File.Search (search)
 import View.File.Toolbar (toolbar)
-import View.Common (navbar, icon, logo, content, row)
+
 import qualified Data.StrMap as SM
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
+import qualified Halogen.HTML.CSS as CSS
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Forms as E
 import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
+import qualified Utils as U
 import qualified View.Css as Vc
-import qualified Halogen.HTML.CSS as CSS
-import Css.Size
-import Css.Geometry
-import Css.String
-
 
 view :: forall e. State -> H.HTML (I e)
 view state =
@@ -38,7 +39,7 @@ view state =
                           , search state ]
                   ]
          , content [ H.div [ A.class_ B.clearfix ]
-                           [ breadcrumbs state.breadcrumbs
+                           [ breadcrumbs state
                            , toolbar state
                            ]
                    , row [ sorting state ]
@@ -47,21 +48,17 @@ view state =
          , modal state
          ]
 
-
-
 sorting :: forall e. State -> H.HTML (I e)
 sorting state =
   H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
-        [ H.a (targetLink' $ handleSetSort $ notSort state.sort)
+        [ H.a [ A.href (browseURL (theseRight $ state ^. _search .. _value) (notSort (state ^. _sort)) (state ^. _salt) (state ^. _path)) ]
               [ H.text "Name"
-              , H.i [ chevron state
+              , H.i [ chevron (state ^. _sort)
                     , CSS.style (marginLeft $ px 10)
                     ]
                     []
               ]
         ]
   where
-  chevron { sort: Asc  } = A.classes [B.glyphicon, B.glyphiconChevronUp]
-  chevron { sort: Desc } = A.classes [B.glyphicon, B.glyphiconChevronDown]
-
-
+  chevron Asc = A.classes [B.glyphicon, B.glyphiconChevronUp]
+  chevron Desc = A.classes [B.glyphicon, B.glyphiconChevronDown]
