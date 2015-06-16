@@ -9,9 +9,12 @@ import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Common (I())
 import Data.Array (filter, elemIndex, (!!), singleton)
 import Data.Either (Either(..))
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, fold)
 import Data.Map (toList, empty, insert, lookup, Map(), delete)
-import Data.Maybe (maybe, Maybe(..))
+import Data.Maybe (maybe, Maybe(..), isJust)
+import Data.Maybe.Unsafe (fromJust)
+import Data.Monoid.All (All(..), runAll)
+import Data.Monoid.First (First(..), runFirst)
 import Data.Tuple (fst, snd)
 import EffectTypes
 import Halogen (Driver())
@@ -19,7 +22,7 @@ import Input.Notebook (Input(..))
 import Model.Notebook (State(), _notebook, _requesting)
 import Model.Notebook.Cell (Cell(), _cellId, CellId())
 import Model.Notebook.Domain
-import Optic.Core  ((^.))
+import Optic.Core  ((^.), (%~))
 import Optic.Fold ((^?))
 import Utils (elem)
 
@@ -50,35 +53,54 @@ notifyDriver sKnot nKnot input driver =
   setTimeout state cellId = do
     t <- timeout Config.notifyTimeout do
       go state cellId
-      modifyRef nKnot (delete cellId) 
+      modifyRef nKnot (delete cellId)
+      -- after we get requested id we can safely remove it from
+      -- notebook state 
+      driver $ WithState (_requesting %~ filter (/= cellId))
     modifyRef nKnot (insert cellId t) 
-  go state cellId = 
-    maybe (pure unit)
-    (notify (state ^. _notebook) cellId driver)
-    (state ^._requesting)
+  go state cellId = notify (state ^. _notebook) cellId (state ^. _requesting) driver 
+
     
 
 
-notify :: forall e. Notebook -> CellId -> 
-          Driver Input (NotebookComponentEff e) -> CellId -> 
+notify :: forall e. Notebook -> CellId -> [CellId] -> 
+          Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
-notify notebook cellId driver requestedId =
-  -- check if current cell is parent of requested 
-  case elemIndex cellId ancestors' of
-    -- It's not, update children of this cell
-    -1 -> traverse_ request $ dependentCells cellId
-    -- It is. Get next cell in this hierarchy and if there is
-    -- no such cell update children for requested cell. 
-    x -> maybe (traverse_ request $ dependentCells requestedId) request
-         ((ancestors' <> [requestedId]) !! (x + 1) >>=
-          \x -> notebook ^? cellById x) 
+notify notebook cellId requestedIds driver =
+  -- If current cell is parent for all requested cell
+  -- and we can get next cell in ancestors list
+  if isParent && isJust nextCell
+  -- then we get this next cell
+  then request $ fromJust nextCell
+  -- else we get all children
+  else requestForChildren
   where
   request :: Cell -> Eff _ Unit
   request = driver <<< RequestCellContent
 
-  -- list of dependencies of requested cell from top to bottom
-  ancestors' :: [CellId]
-  ancestors' = ancestors requestedId (notebook ^._dependencies)
+  requestForChildren :: Eff _ Unit 
+  requestForChildren = traverse_ request $ dependentCells cellId
+
+  -- list of list of dependencies of requested cell from top to bottom
+  ancestors' :: [[CellId]]
+  ancestors' = flip ancestors (notebook ^._dependencies) <$> requestedIds
+
+  -- if current cell is parent for all requested cells
+  isParent :: Boolean
+  isParent = runAll $ fold (All <$> (elem cellId) <$> ancestors')
+
+  -- if current cell is parent for all requested cells we get
+  -- next cell in this hierarchy and return it 
+  nextCell :: Maybe Cell
+  nextCell = do
+    cid <- runFirst $ fold
+           (First <$> ((\as -> do
+                           i <- case elemIndex cellId as of
+                             -1 -> Nothing
+                             i -> pure i
+                           as !! (i + 1)) <$> ancestors'))
+
+    notebook ^? cellById cid 
 
   dependentCells :: CellId -> [Cell]
   dependentCells cid = filter (\x -> elem (x ^._cellId) (dependencies cid))

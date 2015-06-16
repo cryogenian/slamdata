@@ -114,7 +114,7 @@ updateState state (StopCell cellId) =
 updateState state (CellSlamDownEvent cellId event) =
   state # _notebook.._cells..mapped %~ onCell cellId (slamDownOutput <<< runSlamDownEvent event)
         # _notebook.._cells %~ syncParents
-        # _requesting ?~ cellId
+        # _requesting <>~ [cellId]
 
 updateState state (UpdatedOutput cid newInput) =
   let depIds = fst <$>

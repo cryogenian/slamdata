@@ -39,7 +39,7 @@ import Model.Notebook.Menu
 import Model.Notebook.Port
 import Model.Path (decodeURIPath, dropNotebookExt)
 import Model.Resource (Resource(), resourceName, resourceDir)
-import Optic.Core ((.~), (^.), (..), (?~), (%~))
+import Optic.Core ((.~), (^.), (..), (?~), (%~), (<>~))
 import Routing (matches')
 import Utils (log, replaceLocation)
 import Data.Map (lookup)
@@ -103,7 +103,7 @@ driver ref k =
               then
               for_ (filter (filterFn (nb ^._dependencies)) 
                     (nb ^._cells)) \cell -> do
-                update (_requesting ?~ (cell ^._cellId))
+                update (_requesting <>~ [cell ^._cellId])
                 k $ RequestCellContent cell
               else 
               for_ (filter (^._hasRun) (nb ^._cells)) (k <<< ViewCellContent)

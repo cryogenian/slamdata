@@ -27,7 +27,7 @@ import Model.Notebook (State(), _dialog, _notebook, _requesting)
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..))
 import Model.Notebook.Domain (notebookURL, cellURL, Notebook(), ancestors, _dependencies, cellById)
 import Model.Notebook.Dialog
-import Optic.Core ((.~), (^.), (?~))
+import Optic.Core ((.~), (^.), (?~), (<>~))
 import Optic.Fold ((^?))
 import Utils (locationString, replaceLocation)
 
@@ -67,7 +67,7 @@ stopCell notebook cell =
 
 requestCellContent :: forall eff. Notebook -> Cell -> I eff
 requestCellContent notebook cell =
-  (pure $ WithState (_requesting ?~ (cell ^._cellId))) <>
+  (pure $ WithState (_requesting <>~ [cell ^._cellId])) <>
   (case ps of
       [] -> go
       x:_ -> maybe go (pure <<< RequestCellContent) (notebook ^? cellById  x))
