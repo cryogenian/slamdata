@@ -1,6 +1,5 @@
 module View.Notebook (view) where
 
-import Api.Fs (saveNotebook)
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
 import Control.Functor (($>))

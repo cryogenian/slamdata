@@ -8,6 +8,7 @@ import Data.Maybe (maybe, fromMaybe)
 import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.FileInput (FileInput(), _file, _files, _showFiles)
 import Model.Resource (Resource(), resourcePath, isHidden)
+import Model.Notebook.Port (Port())
 import Optic.Core ((^.))
 import Optic.Extended (TraversalP(), (^?))
 import View.Notebook.Common (HTML())
@@ -20,8 +21,8 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
-fileInput :: forall e. TraversalP Cell FileInput -> Cell -> [HTML e]
-fileInput _input cell = fromMaybe [] $ do
+fileInput :: forall e. TraversalP Cell FileInput -> (Port -> Cell -> Cell) -> Cell -> [HTML e]
+fileInput _input setFn cell = fromMaybe [] $ do
   state <- cell ^? _input
   let selectedFile = either id resourcePath (state ^. _file)
   return
@@ -29,7 +30,7 @@ fileInput _input cell = fromMaybe [] $ do
             [ H.input [ A.classes [B.formControl]
                       , A.placeholder "Select a file"
                       , A.value selectedFile
-                      , E.onInput (pure <<< updateFile cell)
+                      , E.onInput (pure <<< updateFile cell setFn)
                       ]
                       []
             , H.span [ A.classes [B.inputGroupBtn] ]
@@ -43,16 +44,16 @@ fileInput _input cell = fromMaybe [] $ do
     , H.ul [ A.classes $ [VC.fileListGroup, B.listGroup, B.fade]
                       ++ if state ^. _showFiles then [B.in_] else []
            ]
-           $ item cell <$> state ^. _files
+           $ item cell setFn <$> state ^. _files
     ]
 
-item :: forall e. Cell -> Resource -> HTML e
-item cell res =
+item :: forall e. Cell -> (Port -> Cell -> Cell) -> Resource -> HTML e
+item cell setFn res =
   H.button [ A.classes ([B.listGroupItem] <>
                         if isHidden res
                         then [VC.itemHidden]
                         else []
                        )
-           , E.onClick \_ -> pure (selectFile cell res)
+           , E.onClick \_ -> pure (selectFile cell setFn res)
            ]
            [ H.text (resourcePath res) ]

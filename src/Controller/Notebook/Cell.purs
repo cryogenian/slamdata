@@ -24,7 +24,7 @@ import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (CellResultContent(MarkdownContent), Input(..))
 import Model.Action
 import Model.Notebook (State(), _dialog, _notebook, _requesting)
-import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..))
+import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..), _hasRun)
 import Model.Notebook.Domain (notebookURL, cellURL, Notebook(), ancestors, _dependencies, cellById)
 import Model.Notebook.Dialog
 import Optic.Core ((.~), (^.), (?~), (<>~))
@@ -68,6 +68,7 @@ stopCell notebook cell =
 requestCellContent :: forall eff. Notebook -> Cell -> I eff
 requestCellContent notebook cell =
   (pure $ WithState (_requesting <>~ [cell ^._cellId])) <>
+  (update cell (_hasRun .~ true)) <>
   (case ps of
       [] -> go
       x:_ -> maybe go (pure <<< RequestCellContent) (notebook ^? cellById  x))
