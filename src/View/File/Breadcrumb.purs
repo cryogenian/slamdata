@@ -13,7 +13,7 @@ import qualified Halogen.Themes.Bootstrap3 as B
 
 breadcrumbs :: forall e. State -> HTML e
 breadcrumbs state =
-  H.ol [ A.classes [B.breadcrumb, B.colXs8] ]
+  H.ol [ A.classes [B.breadcrumb, B.colXs7] ]
        $ breadcrumb state <$> (state ^. _breadcrumbs)
 
 breadcrumb :: forall e. State -> Breadcrumb -> HTML e

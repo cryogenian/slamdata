@@ -2,7 +2,7 @@
 -- | Mostly consists of routing functions
 module Driver.File (outside) where
 
-import Api.Fs (children)
+import Api.Fs (children, mountInfo)
 import Control.Monad.Aff (launchAff, cancel, attempt, Canceler(), Aff(), forkAff)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar(), AVAR())
 import Control.Monad.Eff (Eff())
@@ -26,7 +26,7 @@ import Halogen (Driver())
 import Halogen.HTML.Events.Monad (runEvent)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..))
-import Model.File (_items, _search, _path, _breadcrumbs, _sort, _salt)
+import Model.File (_items, _search, _path, _breadcrumbs, _sort, _salt, _isMount)
 import Model.File.Breadcrumb (mkBreadcrumbs)
 import Model.File.Item (Item(..))
 import Model.File.Salt (Salt(..), newSalt)
@@ -77,10 +77,12 @@ handleRoute driver = launchAff $ do
                                             .. (_breadcrumbs .~ mkBreadcrumbs queryParts.path)
                                             .. (_sort .~ sort)
                                             .. (_salt .~ salt)
+                                            .. (_isMount .~ false)
                                             .. (_search .. _loading .~ true)
                                             .. (_search .. _value .~ maybe (This "") That queryParts.query)
                                             .. (_search .. _valid .~ true)
           listPath driver query 0 var (Directory queryParts.path)
+          maybe (checkMount driver queryParts.path) (const $ pure unit) queryParts.query
         else
           liftEff $ driver $ inj $ WithState (_search .. _loading .~ false)
 
@@ -140,3 +142,12 @@ listPath driver query deep var res = do
       else
       putVar var (Tuple c r)
   modifyVar (_1 <>~ canceler) var
+
+checkMount :: forall e. Driver Input (FileComponentEff e)
+                     -> DirPath
+                     -> Aff _ Unit
+checkMount driver path = do
+  result <- attempt $ mountInfo (Database path)
+  case result of
+    Left _ -> pure unit
+    Right _ -> liftEff $ driver $ inj $ WithState (_isMount .~ true)

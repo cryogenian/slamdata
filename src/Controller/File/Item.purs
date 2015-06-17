@@ -65,7 +65,7 @@ openItem item sort salt = do
   empty
 
 handleConfigure :: forall e. Resource -> Event (FileAppEff e) Input
-handleConfigure res@(Directory _) = do
+handleConfigure res@(Database _) = do
   x <- liftAff $ mountInfo res
   case runParseAbsoluteURI x of
     Left err -> showError ("There was a problem reading the mount settings: " ++ show err)
