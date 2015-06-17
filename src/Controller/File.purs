@@ -105,7 +105,7 @@ handleCreateFolder state = do
     added <- liftAff $ attempt $ API.makeFile (inj hiddenFile) Nothing "{}"
     toInput (ItemRemove dirItem) `andThen` \_ ->
       case added of
-        Left _ -> empty
+        Left err -> showError ("There was a problem creating the directory: " ++ message err)
         Right _ -> toInput $ ItemAdd $ Item $ R.Directory dirPath
 
 handleHiddenFiles :: forall e a. Boolean -> Event (FileAppEff e) Input
