@@ -10,7 +10,7 @@ module Model.File
   , _path
   , _dialog
   , _salt
-  , _hasMountRoot
+  , _isMount
   , _showHiddenFiles
   , isSearching
   ) where
@@ -39,7 +39,7 @@ type StateRec =
   , path :: DirPath
   , dialog :: Maybe Dialog
   , salt :: Salt
-  , hasMountRoot :: Boolean
+  , isMount :: Boolean
   , showHiddenFiles :: Boolean
   }
 
@@ -52,7 +52,7 @@ initialState = State
   , path: rootDir
   , dialog: Nothing
   , salt: Salt ""
-  , hasMountRoot: false
+  , isMount: false
   , showHiddenFiles: false
   }
 
@@ -80,8 +80,8 @@ _dialog = _State .. lens _.dialog _{dialog = _}
 _salt :: LensP State Salt
 _salt = _State .. lens _.salt _{salt = _}
 
-_hasMountRoot :: LensP State Boolean
-_hasMountRoot = _State .. lens _.hasMountRoot _{hasMountRoot = _}
+_isMount :: LensP State Boolean
+_isMount = _State .. lens _.isMount _{isMount = _}
 
 _showHiddenFiles :: LensP State Boolean
 _showHiddenFiles = _State .. lens _.showHiddenFiles _{showHiddenFiles = _}

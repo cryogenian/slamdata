@@ -16,11 +16,9 @@ import qualified View.Css as Vc
 
 toolbar :: forall e. State -> H.HTML (I e)
 toolbar state =
-  H.div [ A.classes [B.colXs4, Vc.toolbarMenu] ]
+  H.div [ A.classes [B.colXs5, Vc.toolbarMenu] ]
         [ H.ul [ A.classes [B.listInline, B.pullRight] ]
-               if inRoot state
-               then [mount]
-               else [showHide, file, folder, notebook]
+               $ [showHide] ++ mount ++ [folder, file, notebook]
         ]
 
   where
@@ -51,14 +49,11 @@ toolbar state =
   notebook :: H.HTML (I e)
   notebook = toolItem' handleCreateNotebook "create notebook" B.glyphiconBook
 
-  mount :: H.HTML (I e)
-  mount =
-    if state ^. _hasMountRoot
-    then toolItem [B.btnLg] (Database rootDir) handleConfigure "configure mount" B.glyphiconWrench
-    else toolItem' handleMountDatabase "mount database" B.glyphiconHdd
+  mount :: [H.HTML (I e)]
+  mount = (if state ^. _isMount
+           then [toolItem [B.btnLg] (Database (state ^. _path)) handleConfigure "configure mount" B.glyphiconWrench]
+           else [])
+          ++ [toolItem' handleMountDatabase "mount database" B.glyphiconHdd]
 
   toolItem' :: (State -> I e) -> String -> A.ClassName -> H.HTML (I e)
   toolItem' f = toolItem [B.btnLg] state f
-
-  inRoot :: State -> Boolean
-  inRoot state = state ^. _path == rootDir
