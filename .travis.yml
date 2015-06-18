@@ -1,18 +1,22 @@
 language: node_js
+sudo: false
 node_js:
   - 0.10
 env:
-  - TAG=v0.6.9.3
+  - TAG=v0.6.9.5
 install:
+  - mkdir $HOME/bin
   - wget -O $HOME/purescript.tar.gz https://github.com/purescript/purescript/releases/download/$TAG/linux64.tar.gz
-  - sudo tar zxvf $HOME/purescript.tar.gz -C /usr/local/bin purescript/psc{,i,-docs,-make} --strip-components=1
-  - sudo chmod a+x /usr/local/bin/psc{,i,-docs,-make}
+  - tar zxvf $HOME/purescript.tar.gz -C $HOME/bin purescript/psc{,i,-docs,-make} --strip-components=1
+  - chmod a+x $HOME/bin/psc{,i,-docs,-make}
+  - export PATH=$HOME/bin:$PATH
   - npm install bower gulp -g
-  - npm install && bower install --force
+  - npm install
+  - bower install --force
 script:
   - gulp less
-  - travis_wait gulp deploy-prod-entries-file
-  - travis_wait gulp deploy-prod-entries-notebook
+  - gulp deploy-prod-entries-file
+  - gulp deploy-prod-entries-notebook
 before_deploy:
   - cp -r public slamdata
   - tar cjf slamdata.tar.bz2 slamdata
