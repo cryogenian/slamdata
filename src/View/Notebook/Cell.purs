@@ -140,10 +140,10 @@ statusBar notebook hasOutput cell =
       linkButton =
         if not hasOutput
         then Nothing
-        else Just $ H.button [ A.title "Share cell output"
-                             , E.onClick (\_ -> pure $ handleShareClick notebook cell)
+        else Just $ H.button [ A.title "Embed cell output"
+                             , E.onClick (\_ -> pure $ handleEmbedClick notebook cell)
                              ]
-                             [ glyph B.glyphiconShare ]
+                             [ H.img [ A.src "img/code-icon.svg", A.width 16 ] [] ]
   in row' (fadeWhen (cell ^. _hiddenEditor))
           $ if (cell ^. _hiddenEditor)
             then []
