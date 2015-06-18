@@ -2,12 +2,13 @@ module View.Notebook.Modal.EmbedDialog (embedDialog) where
 
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..))
+import Halogen.HTML.Renderer.String (renderHTMLToString)
 import Input.Notebook (Input(..))
 import Model.Notebook (_dialog)
 import Optic.Core ((.~))
-import Utils.Halide (dataZeroClipboard, selectThis)
-import View.Notebook.Common (HTML())
+import Utils.Halide (dataZeroClipboard, selectThis, width', height', frameBorder)
 import View.Modal.Common (header, body, footer, h4, nonSubmit)
+import View.Notebook.Common (HTML())
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -17,7 +18,12 @@ import qualified View.Css as VC
 
 embedDialog :: forall e. String -> [HTML e]
 embedDialog url =
-  let code = """<iframe src=""" ++ "\"" ++ url ++ "\"" ++ """ width="100%" height="500" frameBorder="0"></iframe>"""
+  let code = renderHTMLToString $
+    H.iframe [ A.src url
+             , width' "100%"
+             , height' "100%"
+             , frameBorder 0
+             ] []
   in [ header $ h4 "Embed cell"
      , body [ H.form [ nonSubmit ]
                      [ H.div [ A.classes [B.formGroup]
@@ -39,4 +45,3 @@ embedDialog url =
                          [ H.text "Copy" ]
               ]
      ]
-
