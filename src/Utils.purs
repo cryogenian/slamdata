@@ -76,17 +76,19 @@ bodyHTMLElement = W.document W.globalWindow >>= body
 mountUI :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
 mountUI node = bodyHTMLElement >>= flip appendChild node
 
-foreign import locationOrigin
+foreign import locationParent
   """
-  function locationOrigin(loc) {
+  function locationParent(loc) {
     return function() {
-      return loc.origin;
+      var path = loc.pathname.split("/");
+      path.pop();
+      return loc.origin + path.join("/");
     }
   }
   """ :: forall e. DOMLocation -> Eff (dom :: DOM|e) String
 
 locationString :: forall e. Eff (dom :: DOM |e) String
-locationString = W.location W.globalWindow >>= locationOrigin
+locationString = W.location W.globalWindow >>= locationParent
 
 endsWith :: String -> String -> Boolean
 endsWith needle haystack =

@@ -3,7 +3,7 @@ module Controller.Notebook.Cell
   , runCell
   , viewCell
   , handleRunClick
-  , handleShareClick
+  , handleEmbedClick
   , isRunning
   ) where
 
@@ -58,7 +58,7 @@ viewCell cell = do
 
 
 handleRunClick :: forall e. Notebook -> Cell -> I e
-handleRunClick notebook cell | isRunning cell = stopCell notebook cell 
+handleRunClick notebook cell | isRunning cell = stopCell notebook cell
                              | otherwise = requestCellContent notebook cell
 
 stopCell :: forall e. Notebook -> Cell -> I e
@@ -76,8 +76,8 @@ requestCellContent notebook cell =
   ps = ancestors (cell ^._cellId) (notebook ^._dependencies)
   go = pure $ RequestCellContent cell
 
-handleShareClick :: forall e. State -> Cell -> I e
-handleShareClick state cell = do
+handleEmbedClick :: forall e. State -> Cell -> I e
+handleEmbedClick state cell = do
   r <- liftAff $ attempt $ saveNotebook (state ^. _notebook)
   case r of
     Left err -> pure $ WithState $ _dialog ?~ ErrorDialog ("Could not save notebook for sharing: " ++ message err)
@@ -86,7 +86,7 @@ handleShareClick state cell = do
         replaceLocation $ U.fromJust $ notebookURL nb Edit
         locationString
       let url = U.fromJust $ cellURL nb (cell ^. _cellId) View
-      pure $ WithState $ _dialog ?~ ShareDialog (loc ++ "/" ++ url)
+      pure $ WithState $ _dialog ?~ EmbedDialog (loc ++ "/" ++ url)
 
 isRunning :: Cell -> Boolean
 isRunning cell = case cell ^. _runState of

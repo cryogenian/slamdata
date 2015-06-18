@@ -223,3 +223,6 @@ withAggregation = className "with-aggregation"
 
 aggregation :: ClassName
 aggregation = className "aggregation"
+
+embedBox :: ClassName
+embedBox = className "embed-box"

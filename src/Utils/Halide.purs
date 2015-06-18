@@ -1,5 +1,8 @@
 module Utils.Halide
   ( onPaste
+  , width'
+  , height'
+  , frameBorder
   , max
   , min
   , step
@@ -25,6 +28,15 @@ import qualified Halogen.HTML.Target as T
 -- | ignored (for now at least).
 onPaste :: forall i. (ET.Event () -> E.EventHandler i) -> A.Attr i
 onPaste = A.handler (A.eventName "paste")
+
+width' :: forall i. String -> A.Attr i
+width' = A.attr (A.attributeName "width")
+
+height' :: forall i. String -> A.Attr i
+height' = A.attr (A.attributeName "height")
+
+frameBorder :: forall i. Number -> A.Attr i
+frameBorder = A.attr (A.attributeName "frameBorder") <<< show
 
 step :: forall i. Number -> A.Attr i
 step = A.attr (A.attributeName "step") <<< show

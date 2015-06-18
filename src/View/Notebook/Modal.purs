@@ -10,7 +10,7 @@ import Optic.Core ((.~))
 import View.Modal.Common (header, h4, body, footer)
 import View.Notebook.Common (HTML())
 import View.Notebook.Modal.ErrorDialog (errorDialog)
-import View.Notebook.Modal.ShareDialog (shareDialog)
+import View.Notebook.Modal.EmbedDialog (embedDialog)
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -34,4 +34,4 @@ modal state =
 
 dialogContent :: forall e. Dialog -> [HTML e]
 dialogContent (ErrorDialog msg) = errorDialog msg
-dialogContent (ShareDialog url) = shareDialog url
+dialogContent (EmbedDialog url) = embedDialog url
