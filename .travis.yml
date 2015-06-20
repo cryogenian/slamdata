@@ -3,8 +3,7 @@ sudo: false
 node_js:
   - 0.10
 env:
-  - TAG=v0.6.9.5
-  - PATH=$HOME/bin:$PATH
+  - TAG=v0.6.9.5 PATH=$HOME/bin:$PATH
 install:
   - mkdir $HOME/bin
   - wget -O $HOME/purescript.tar.gz 'https://drive.google.com/uc?export=download&id=0Bx4xybkHUCukQ2RqS2huQm9FQzA'
