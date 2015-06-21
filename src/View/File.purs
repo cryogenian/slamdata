@@ -13,7 +13,7 @@ import Optic.Core ((..), (^.))
 import View.Common (glyph)
 import View.Common (navbar, icon, logo, content, row)
 import View.File.Breadcrumb (breadcrumbs)
-import View.File.Common (I())
+import View.File.Common (HTML())
 import View.File.Item (items)
 import View.File.Modal (modal)
 import View.File.Search (search)
@@ -31,7 +31,7 @@ import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Utils as U
 import qualified View.Css as Vc
 
-view :: forall e. State -> H.HTML (I e)
+view :: forall e. State -> HTML e
 view state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
                           [ icon B.glyphiconFolderOpen Config.homeHash
@@ -48,7 +48,7 @@ view state =
          , modal state
          ]
 
-sorting :: forall e. State -> H.HTML (I e)
+sorting :: forall e. State -> HTML e
 sorting state =
   H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
         [ H.a [ A.href (browseURL (theseRight $ state ^. _search .. _value) (notSort (state ^. _sort)) (state ^. _salt) (state ^. _path)) ]

@@ -9,7 +9,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error, message)
 import Control.Monad.Error.Class (throwError)
 import Control.Plus (empty)
-import Controller.File.Common (toInput, showError)
+import Controller.File.Common (Event(), toInput, showError)
 import Controller.File.Item (itemURL)
 import Data.Array (head, last)
 import Data.DOM.Simple.Element (querySelector)
@@ -21,7 +21,7 @@ import Data.Path.Pathy ((</>), file, dir)
 import Data.String (split)
 import Data.These (These(..))
 import EffectTypes (FileAppEff())
-import Halogen.HTML.Events.Monad (Event(), andThen)
+import Halogen.HTML.Events.Monad (andThen)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..))
 import Model.Action (Action(Edit))
@@ -40,7 +40,7 @@ import qualified Model.Notebook.Domain as N
 import qualified Model.Resource as R
 import qualified Utils.File as Uf
 
-handleCreateNotebook :: forall e. State -> Event (FileAppEff e) Input
+handleCreateNotebook :: forall e. State -> Event e
 handleCreateNotebook state = do
   f <- liftAff $ attempt $ API.saveNotebook (N.emptyNotebook # N._path .~ (state ^. _path))
   case f of
@@ -49,7 +49,7 @@ handleCreateNotebook state = do
       Just url -> liftEff (setLocation url) *> empty
       Nothing -> empty
 
-handleFileListChanged :: forall e. HTMLElement -> State -> Event (FileAppEff e) Input
+handleFileListChanged :: forall e. HTMLElement -> State -> Event e
 handleFileListChanged el state = do
   fileArr <- Uf.fileListToArray <$> (liftAff $ Uf.files el)
   liftEff $ clearValue el
@@ -84,7 +84,7 @@ handleFileListChanged el state = do
               `andThen` \_ -> toInput (ItemRemove fileItem)
           Right _ -> liftEff (setLocation $ itemURL (state ^. _sort) (state ^. _salt) Edit fileItem) *> empty
 
-handleUploadFile :: forall e. HTMLElement -> Event (FileAppEff e) Input
+handleUploadFile :: forall e. HTMLElement -> Event e
 handleUploadFile el = do
   mbInput <- liftEff $ querySelector "input" el
   case mbInput of
@@ -94,7 +94,7 @@ handleUploadFile el = do
       empty
 
 -- | clicked on _Folder_ link, create phantom folder
-handleCreateFolder :: forall e. State -> Event (FileAppEff e) Input
+handleCreateFolder :: forall e. State -> Event e
 handleCreateFolder state = do
   let path = state ^. _path
   dirName <- liftAff $ API.getNewName path Config.newFolderName
@@ -108,14 +108,14 @@ handleCreateFolder state = do
         Left err -> showError ("There was a problem creating the directory: " ++ message err)
         Right _ -> toInput $ ItemAdd $ Item $ R.Directory dirPath
 
-handleHiddenFiles :: forall e a. Boolean -> Event (FileAppEff e) Input
+handleHiddenFiles :: forall e a. Boolean -> Event e
 handleHiddenFiles b = toInput $ WithState (_showHiddenFiles .~ b)
 
-handleMountDatabase :: forall e. State -> Event (FileAppEff e) Input
+handleMountDatabase :: forall e. State -> Event e
 handleMountDatabase state = do
   toInput $ WithState (_dialog ?~ MountDialog initialMountDialog { parent = state ^. _path })
 
-saveMount :: forall e. MountDialogRec -> Event (FileAppEff e) Input
+saveMount :: forall e. MountDialogRec -> Event e
 saveMount rec = do
   result <- liftAff $ attempt $ API.saveMount (R.Database $ rec.parent </> dir rec.name) rec.connectionURI
   case result of

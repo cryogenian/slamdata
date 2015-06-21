@@ -1,0 +1,141 @@
+.dialog-download {
+
+    .form-group {
+        margin-bottom: 0;
+        +.form-group {
+            margin-top: 15px;
+        }
+    }
+
+    input[type=radio] {
+        margin-right: 10px;
+    }
+
+    label {
+        line-height: 34px;
+        width: 100%;
+        margin-bottom: 0;
+        input, select {
+            font-weight: normal;
+        }
+        > span:first-child {
+            width: 100px;
+            display: block;
+            float: left;
+        }
+        input.form-control {
+            width: ~"calc(100% - 100px)";
+        }
+        select.form-control {
+            width: auto;
+        }
+    }
+
+    .download-source {
+        label input.form-control {
+           width: ~"calc(100% - 100px - 33px)";
+           float: left;
+        }
+        ul.file-list-group {
+            width: 468px;
+            left: 115px;
+            margin-top: -5px;
+        }
+    }
+
+    .download-target {
+        label {
+            position: relative;
+        }
+        input {
+            background: transparent;
+        }
+
+        .download-target-box {
+            position: absolute;
+            top: 0px;
+            left: 113px;
+            font-weight: normal;
+            span:nth-child(1) {
+                color: transparent;
+            }
+            span:nth-child(2) {
+                opacity: 0.5;
+            }
+        }
+    }
+
+    .download-csv-delimiters {
+        list-style: none;
+        padding: 0;
+        margin-top: 10px;
+        li {
+            float: left;
+            display: block;
+            width: 50%;
+            margin: 5px 0;
+            span {
+                width: 50%;
+            }
+            input {
+                width: 4em;
+            }
+        }
+    }
+
+    .download-array-mode {
+        > label {
+            width: 25%;
+            float: left;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            float: left;
+            width: 75%;
+
+            li {
+                label {
+                    cursor: pointer;
+                    display: inline;
+                }
+                display: block;
+                input.form-control {
+                    margin-left: 10px;
+                    width: 4em;
+                    display: inline-block;
+                }
+            }
+        }
+    }
+
+    .download-json-options {
+        margin-top: 15px;
+        > div > label {
+            width: 25%;
+            float: left;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            width: 75%;
+            float: left;
+            margin-bottom: 0px;
+            li {
+                label {
+                    cursor: pointer;
+                    display: inline;
+                }
+                float: left;
+                width: 50%;
+            }
+            li:first-child {
+                width: 45%;
+            }
+        }
+    }
+
+    .alert {
+        height: 42px;
+    }
+}

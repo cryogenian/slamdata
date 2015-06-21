@@ -1,8 +1,8 @@
-module Controller.File.Rename (
-  rename,
-  checkRename,
-  renameItemClicked,
-  renameDirInput
+module Controller.File.Dialog.Rename
+  ( rename
+  , checkRename
+  , renameItemClicked
+  , renameDirInput
   ) where
 
 import Control.Apply ((*>))
@@ -14,13 +14,11 @@ import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (message)
 import Control.Plus (empty)
-import Controller.File.Common (toInput)
+import Controller.File.Common (Event(), toInput)
 import Data.Array (elemIndex)
 import Data.String (indexOf)
-import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Handler (EventHandler())
-import Halogen.HTML.Events.Monad (Event(), andThen)
-import Input.File (Input())
+import Halogen.HTML.Events.Monad (andThen)
 import Input.File.Rename (RenameInput(..))
 import Model.File.Dialog.Rename (RenameDialogRec(), _initial, _resource, _siblings, _dir, _error)
 import Model.File.Item (Item())
@@ -30,7 +28,7 @@ import Model.Resource (Resource(), _path, _name, _root, mkDirectory, getPath)
 import Optic.Core ((..), (^.), (.~))
 import Data.Path.Pathy (rootDir, (</>), parseAbsDir, sandbox)
 
-rename :: forall e. RenameDialogRec -> Event (FileAppEff e) Input
+rename :: forall e. RenameDialogRec -> Event e
 rename d = do
   let src = d ^. _initial
       dt = either (const rootDir) id $ d ^. _dir .. _path
@@ -41,7 +39,7 @@ rename d = do
       Left _ -> empty
       Right _ -> liftEff reload *> empty
 
-checkRename :: forall e. RenameDialogRec -> String -> Event (FileAppEff e) Input
+checkRename :: forall e. RenameDialogRec -> String -> Event e
 checkRename dialog name = do
   (toInput $ Update $ _resource .~ res) `andThen` \_ ->
     if name == ""
@@ -53,14 +51,14 @@ checkRename dialog name = do
   where
   res = dialog ^. _resource # _name .~ name
 
-renameItemClicked :: forall e. Resource -> Resource -> Event (FileAppEff e) Input
+renameItemClicked :: forall e. Resource -> Resource -> Event e
 renameItemClicked target res = do
   (toInput $ SetDir res) `andThen` \_ -> do
     ress <- liftAff $ Api.children res
     (toInput $ Update $ _siblings .~ ress) `andThen` \_ ->
       checkList target ress
 
-renameDirInput :: forall e. Resource -> String -> Event (FileAppEff e) Input
+renameDirInput :: forall e. Resource -> String -> Event e
 renameDirInput target dirStr = do
   -- TODO: Make incorrect on keydown.
   --  (toInput $ RenameIncorrect true) `andThen` \_ ->
@@ -69,7 +67,7 @@ renameDirInput target dirStr = do
     s <- sandbox rootDir d
     pure $ rootDir </> s
 
-checkList :: forall e. Resource -> [Resource] -> Event (FileAppEff e) Input
+checkList :: forall e. Resource -> [Resource] -> Event e
 checkList tgt list =
   case elemIndex (tgt ^. _name) ((^. _name) <$> list) of
     -1 -> toInput $ Update $ _error .~ Nothing

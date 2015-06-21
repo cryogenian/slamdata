@@ -1,5 +1,6 @@
 module View.File.Item (items) where
 
+import Controller.File.Common (Event())
 import Controller.File.Item
 import Css.Geometry
 import Css.Size (px)
@@ -11,7 +12,7 @@ import Model.Action (Action(..))
 import Model.File
 import Model.File.Item
 import Model.Resource (Resource(..), resourcePath, resourceName, isFile, isDatabase, isNotebook, hiddenTopLevel)
-import View.File.Common (HTML(), I(), toolItem)
+import View.File.Common (HTML(), toolItem)
 import Optic.Core ((^.))
 
 import qualified Halogen.HTML as H
@@ -81,7 +82,7 @@ item state ix item =
   itemName | isSearching state = resourcePath <<< itemResource
            | otherwise = resourceName <<< itemResource
 
-iconClasses :: forall e. Item -> A.Attr (I e)
+iconClasses :: forall i. Item -> A.Attr i
 iconClasses item = A.classes [B.glyphicon, Vc.itemIcon, iconClass $ itemResource item]
   where
   iconClass :: Resource -> A.ClassName
@@ -94,13 +95,14 @@ showToolbar :: forall e. Item -> State -> [HTML e]
 showToolbar item state =
   let r = itemResource item
       conf = if isDatabase r
-             then [toolItem' (handleConfigure <<< itemResource) "configure" B.glyphiconWrench]
+             then [toolItem' handleConfigureItem "configure" B.glyphiconWrench]
              else []
   in conf <> [ toolItem' handleMoveItem "move/rename" B.glyphiconMove
+             , toolItem' handleDownloadItem "download" B.glyphiconDownloadAlt
              , toolItem' handleDeleteItem "remove" B.glyphiconTrash
              ] ++ if isFile r || isNotebook r
                   then [toolItem' (handleShare (state ^. _sort) (state ^. _salt)) "share" B.glyphiconShare]
                   else []
   where
-  toolItem' :: forall e. (Item -> I e) -> String -> A.ClassName -> HTML e
+  toolItem' :: forall e. (Item -> Event e) -> String -> A.ClassName -> HTML e
   toolItem' f = toolItem [] item f

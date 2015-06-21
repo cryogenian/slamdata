@@ -86,6 +86,9 @@ fileListGroup = className "file-list-group"
 notebookNav :: ClassName
 notebookNav = className "notebook-nav"
 
+dialogDownload :: ClassName
+dialogDownload = className "dialog-download"
+
 dialogMount :: ClassName
 dialogMount = className "dialog-mount"
 
@@ -226,3 +229,21 @@ aggregation = className "aggregation"
 
 embedBox :: ClassName
 embedBox = className "embed-box"
+
+downloadSource :: ClassName
+downloadSource = className "download-source"
+
+downloadTarget :: ClassName
+downloadTarget = className "download-target"
+
+downloadTargetBox :: ClassName
+downloadTargetBox = className "download-target-box"
+
+downloadCSVDelimiters :: ClassName
+downloadCSVDelimiters = className "download-csv-delimiters"
+
+downloadArrayMode :: ClassName
+downloadArrayMode = className "download-array-mode"
+
+downloadJSONOptions :: ClassName
+downloadJSONOptions = className "download-json-options"
