@@ -5,10 +5,12 @@ module Input.Notebook
   , cellContent
   ) where
 
+import Control.Alt ((<|>))
+import Control.Apply ((*>))
 import Control.Bind (join)
 import Data.Array (filter, modifyAt, (!!), elemIndex)
 import Data.Date (Date(), toEpochMilliseconds)
-import Data.Either (Either(..), either)
+import Data.Either (Either(..), isRight, either)
 import Data.Foldable (intercalate, foldl)
 import Data.Function (on)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -36,6 +38,9 @@ import qualified Data.StrMap as SM
 import qualified ECharts.Options as EC
 import qualified Model.Notebook.Cell.JTableContent as JTC
 import qualified Model.Notebook.Cell.Markdown as Ma
+import qualified Text.Parsing.StringParser as SP
+import qualified Text.Parsing.StringParser.Combinators as SP
+import qualified Text.Parsing.StringParser.String as SP
 import Model.Path (FilePath(), AnyPath())
 
 data CellResultContent
@@ -152,10 +157,15 @@ slamDownOutput cell =
     fromFormValue (SingleValue _ s) = quoteString s
     fromFormValue (MultipleValues s) = "[" <> intercalate ", " (quoteString <$> S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
-    quoteString s | needsQuoting s = "'" ++ Rx.replace (rxQuot) "''" s ++ "'"
-                  | otherwise = s
-    needsQuoting s = indexOf " " s /= -1 || indexOf "'" s /= -1
+    quoteString s | isSQLNum s = s
+                  | otherwise = "'" ++ Rx.replace (rxQuot) "''" s ++ "'"
     rxQuot = Rx.regex "'" Rx.noFlags { global = true }
+    isSQLNum s = isRight $ flip SP.runParser s $ do
+      SP.many1 SP.anyDigit
+      SP.optional $ SP.string "." *> SP.many SP.anyDigit
+      SP.optional $ (SP.string "e" <|> SP.string "E")
+                 *> (SP.string "-" <|> SP.string "+")
+                 *> SP.many SP.anyDigit
 
 -- TODO: This should probably live in purescript-markdown
 slamDownFields :: String -> [Tuple String FormField]
