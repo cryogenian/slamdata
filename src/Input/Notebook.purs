@@ -12,10 +12,11 @@ import Data.Either (Either(..), either)
 import Data.Foldable (intercalate, foldl)
 import Data.Function (on)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.String (indexOf)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Model.Notebook
-import Model.Resource (Resource()) 
+import Model.Resource (Resource())
 import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies, Notebook(), trash, ancestors)
@@ -30,6 +31,7 @@ import Text.Markdown.SlamDown.Parser (parseMd)
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.String.Regex as Rx
 import qualified Data.StrMap as SM
 import qualified ECharts.Options as EC
 import qualified Model.Notebook.Cell.JTableContent as JTC
@@ -64,7 +66,7 @@ data Input
   | UpdatedOutput CellId Port
   | ForceSave
 
-    
+
 updateState :: State -> Input -> State
 
 updateState state (WithState f) =
@@ -147,9 +149,13 @@ slamDownOutput cell =
   where
     modifyVarMap m = foldl (\m (Tuple key val) -> SM.insert key val m) m tplLst
     tplLst = maybe [] SM.toList ((fromFormValue <$>) <$> state)
-    fromFormValue (SingleValue _ s) = s
-    fromFormValue (MultipleValues s) = "[" <> intercalate ", " (S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
+    fromFormValue (SingleValue _ s) = quoteString s
+    fromFormValue (MultipleValues s) = "[" <> intercalate ", " (quoteString <$> S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
+    quoteString s | needsQuoting s = "'" ++ Rx.replace (rxQuot) "''" s ++ "'"
+                  | otherwise = s
+    needsQuoting s = indexOf " " s /= -1 || indexOf "'" s /= -1
+    rxQuot = Rx.regex "'" Rx.noFlags { global = true }
 
 -- TODO: This should probably live in purescript-markdown
 slamDownFields :: String -> [Tuple String FormField]
