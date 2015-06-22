@@ -95,8 +95,7 @@ chartConfiguration cell r =
                             then ""
                             else show (r ^._chartHeight))
                  , A.classes [ B.formControl ]
-                 , A.type_ "number"
-                 , E.onInput (\v -> pure $ maybe empty (setChartHeight cell) $ s2i v)
+                 , E.onInput (\v -> pure $ setChartHeight cell v)
                  ] [ ]
        ]
      , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
@@ -105,8 +104,7 @@ chartConfiguration cell r =
                             then ""
                             else show (r ^._chartWidth))
                  , A.classes [ B.formControl ]
-                 , A.type_ "number"
-                 , E.onInput (\v -> pure $ maybe empty (setChartWidth cell) $ s2i v)
+                 , E.onInput (\v -> pure $ setChartWidth cell v)
                  ] [ ]
        ]
      ]
