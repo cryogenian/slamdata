@@ -60,6 +60,7 @@ data Input
   | CellSlamDownEvent CellId SlamDownEvent
   | InsertCell Cell CellContent
   | SetEChartsOption String EC.Option
+  | ResizeECharts String
 
   | UpdatedOutput CellId Port
   | ForceSave

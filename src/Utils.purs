@@ -106,10 +106,11 @@ foreign import replaceLocation
   }
   """ :: forall e. String -> Eff (dom :: DOM | e) Unit
 
+
 s2i :: String -> Maybe Number
 s2i s =
   let n = readInt 10 s in
-  if isNaN n
+  if isNaN n || show n /= s
   then Nothing
   else Just n
 

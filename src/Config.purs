@@ -67,3 +67,6 @@ defaultPageSize = fromNumber 10
 
 notifyTimeout :: Number
 notifyTimeout = 500
+
+resizeEChartsTimeout :: Number
+resizeEChartsTimeout = 0

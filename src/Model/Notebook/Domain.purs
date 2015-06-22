@@ -194,8 +194,6 @@ replacePendingPort nb cell = case cell ^._output of
 
 syncCellsOuts :: DirPath -> Notebook -> Notebook
 syncCellsOuts path notebook =
-  let o = fprintUnsafe notebook in
   notebook # (_cells..mapped.._input.._PortResource.._tempFile.._root .~ path)
            ..(_cells..mapped.._output.._PortResource.._tempFile.._root .~ path)
            ..(_cells..mapped.._pathToNotebook .~ path)
-import Debug.Foreign

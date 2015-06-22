@@ -39,6 +39,7 @@ import Controller.Notebook.Cell.Viz.Line (mkLine)
 import Controller.Notebook.Cell.Viz.Bar (mkBar)
 import qualified Model.Notebook.ECharts as Me
 import ECharts.Options
+import Utils (s2i)
 
 selectAgg :: forall e. Cell -> LensP VizRec Aggregation -> Aggregation -> I e
 selectAgg cell _agg agg =
@@ -46,17 +47,26 @@ selectAgg cell _agg agg =
   (updateOpts (upd cell))
   where upd = _content.._Visualize.._agg .~ agg
 
-setChartHeight :: forall e. Cell -> Number -> I e
+setChartHeight :: forall e. Cell -> String -> I e
 setChartHeight cell height =
-  (update cell upd) <>
-  (updateOpts (upd cell))
-  where upd = _content.._Visualize.._chartHeight .~ height
+  case s2i' height of
+    Nothing -> empty
+    Just h ->
+      (update cell (_content.._Visualize.._chartHeight .~ h)) <>
+      (pure $ ResizeECharts (show $ cell ^. _cellId))
+      
+s2i' :: String -> Maybe Number
+s2i' s = if s == "" then pure 0 else s2i s
 
-setChartWidth :: forall e. Cell -> Number -> I e
+
+setChartWidth :: forall e. Cell -> String -> I e
 setChartWidth cell width =
-  (update cell upd) <>
-  (updateOpts (upd cell))
-  where upd = _content.._Visualize.._chartWidth .~ width
+  case s2i' width of
+    Nothing -> empty
+    Just w ->
+      (update cell (_content .. _Visualize .. _chartWidth .~ w)) <>
+      (pure $ ResizeECharts (show $ cell ^. _cellId))
+
 
 selectChartType :: forall e. Cell -> ChartType -> I e
 selectChartType cell ct =

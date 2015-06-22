@@ -24,7 +24,8 @@ import Data.Argonaut.Encode (encodeJson)
 
 import EffectTypes (NotebookComponentEff(), NotebookAppEff())
 import Input.Notebook (Input(..))
-
+import Control.Timer (Timeout(), timeout, clearTimeout)
+import qualified Config as Config
 
 type EChartsKey = String
 
@@ -49,6 +50,7 @@ type EChartsRec =
   } 
 type EChartsKnot = { charts :: M.StrMap EChartsRec
                    , options :: M.StrMap EC.Option
+                   , timeouts :: M.StrMap Timeout
                    }
 
 _charts :: forall a b r. Lens { charts :: a | r} { charts :: b | r} a b 
@@ -67,6 +69,7 @@ initKnot :: EChartsKnot
 initKnot =
   { charts: M.empty
   , options: M.empty
+  , timeouts: M.empty
   } 
 
 ref :: forall e. Eff (ref :: Ref | e) (RefVal EChartsKnot) 
@@ -85,7 +88,18 @@ echartsPostRender knotRef input node driver = do
     SetEChartsOption k newOpts -> do
       modifyRef knotRef (_options %~ M.insert k newOpts)
       maybe (pure unit) (_.chart >>> flip set newOpts) $ M.lookup k knot.charts
+    ResizeECharts k -> do
+      flip (maybe (pure unit)) (M.lookup k knot.charts) \chart ->
+        maybe (setTimeout chart k) (\t -> do
+                                     clearTimeout t
+                                     setTimeout chart k) $ M.lookup k knot.timeouts
+
     _ -> pure unit
+  where
+  setTimeout chart k = do
+    t <- timeout Config.resizeEChartsTimeout do
+      EC.resize chart.chart
+    modifyRef knotRef (\s -> s{timeouts = M.insert k t s.timeouts})
 
 init :: forall e. HTMLElement -> String -> RefVal EChartsKnot ->
         Eff (NotebookAppEff e) Unit
