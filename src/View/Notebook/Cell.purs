@@ -6,6 +6,7 @@ import Controller.Notebook.Cell.Viz (insertViz)
 import Css.Display
 import Data.Array (length, null, catMaybes)
 import Data.Date (Date(), toEpochMilliseconds)
+import Data.String (indexOf)
 import Data.Function (on)
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Time (Milliseconds(..), Seconds(..), toSeconds)
@@ -185,7 +186,7 @@ failureText :: forall e. Cell -> [HTML e]
 failureText cell =
   commonMessage
   (show (length fs) <> " error(s) during evaluation. ")
-  ((\f -> H.div_ [H.text f]) <$> fs)
+  ((\f -> if indexOf "\n" f > -1 then H.pre_ [H.text f] else H.div_ [H.text f]) <$> fs)
   cell
   where fs = cell ^._failures
 

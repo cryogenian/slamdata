@@ -5,17 +5,20 @@ module Input.Notebook
   , cellContent
   ) where
 
+import Control.Alt ((<|>))
+import Control.Apply ((*>))
 import Control.Bind (join)
 import Data.Array (filter, modifyAt, (!!), elemIndex)
 import Data.Date (Date(), toEpochMilliseconds)
-import Data.Either (Either(..), either)
+import Data.Either (Either(..), isRight, either)
 import Data.Foldable (intercalate, foldl)
 import Data.Function (on)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.String (indexOf)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Model.Notebook
-import Model.Resource (Resource()) 
+import Model.Resource (Resource())
 import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies, Notebook(), trash, ancestors)
@@ -30,10 +33,14 @@ import Text.Markdown.SlamDown.Parser (parseMd)
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.String.Regex as Rx
 import qualified Data.StrMap as SM
 import qualified ECharts.Options as EC
 import qualified Model.Notebook.Cell.JTableContent as JTC
 import qualified Model.Notebook.Cell.Markdown as Ma
+import qualified Text.Parsing.StringParser as SP
+import qualified Text.Parsing.StringParser.Combinators as SP
+import qualified Text.Parsing.StringParser.String as SP
 import Model.Path (FilePath(), AnyPath())
 
 data CellResultContent
@@ -65,7 +72,7 @@ data Input
   | UpdatedOutput CellId Port
   | ForceSave
 
-    
+
 updateState :: State -> Input -> State
 
 updateState state (WithState f) =
@@ -148,9 +155,18 @@ slamDownOutput cell =
   where
     modifyVarMap m = foldl (\m (Tuple key val) -> SM.insert key val m) m tplLst
     tplLst = maybe [] SM.toList ((fromFormValue <$>) <$> state)
-    fromFormValue (SingleValue _ s) = s
-    fromFormValue (MultipleValues s) = "[" <> intercalate ", " (S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
+    fromFormValue (SingleValue _ s) = quoteString s
+    fromFormValue (MultipleValues s) = "[" <> intercalate ", " (quoteString <$> S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
+    quoteString s | isSQLNum s = s
+                  | otherwise = "'" ++ Rx.replace (rxQuot) "''" s ++ "'"
+    rxQuot = Rx.regex "'" Rx.noFlags { global = true }
+    isSQLNum s = isRight $ flip SP.runParser s $ do
+      SP.many1 SP.anyDigit
+      SP.optional $ SP.string "." *> SP.many SP.anyDigit
+      SP.optional $ (SP.string "e" <|> SP.string "E")
+                 *> (SP.string "-" <|> SP.string "+")
+                 *> SP.many SP.anyDigit
 
 -- TODO: This should probably live in purescript-markdown
 slamDownFields :: String -> [Tuple String FormField]
