@@ -1,6 +1,9 @@
 module Model.Path where
 
+import Control.Alt ((<|>))
+import Control.Bind ((=<<))
 import Data.Array ()
+import Data.Maybe (Maybe(..))
 import Data.DOM.Simple.Encode (encodeURIComponent, decodeURIComponent)
 import Data.Either (Either(..))
 import Data.Path.Pathy
@@ -22,6 +25,9 @@ infixl 6 <./>
 phantomNotebookPath :: DirPath
 phantomNotebookPath = rootDir </> dir "phantom" <./> notebookExtension
 
+parseAnyPath :: String -> Maybe AnyPath
+parseAnyPath s = Left <<< (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile s)
+             <|> Right <<< (rootDir </>) <$> (sandbox rootDir =<< parseAbsDir s)
 
 changeDirExt :: (String -> String) -> DirName -> DirName
 changeDirExt f (DirName name) =

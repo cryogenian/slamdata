@@ -1,7 +1,7 @@
 module View.File.Modal.RenameDialog (renameDialog) where
 
 import Control.Functor (($>))
-import Controller.File.Rename
+import Controller.File.Dialog.Rename
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isNothing, isJust, maybe)
 import Input.File (FileInput(..))

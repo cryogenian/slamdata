@@ -9,6 +9,7 @@ import Model.File (State(), _dialog)
 import Model.File.Dialog (Dialog(..))
 import Optic.Core ((.~), (^.))
 import View.File.Common (HTML())
+import View.File.Modal.DownloadDialog (downloadDialog)
 import View.File.Modal.ErrorDialog (errorDialog)
 import View.File.Modal.MountDialog (mountDialog)
 import View.File.Modal.RenameDialog (renameDialog)
@@ -40,3 +41,4 @@ dialogContent (ShareDialog url) = shareDialog url
 dialogContent (RenameDialog dialog) = renameDialog dialog
 dialogContent (MountDialog dialog) = mountDialog dialog
 dialogContent (ErrorDialog msg) = errorDialog msg
+dialogContent (DownloadDialog dialog) = downloadDialog dialog
