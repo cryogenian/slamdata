@@ -85,6 +85,7 @@ controls cell =
         , H.button [ A.title "Delete cell"
                    , E.onClick $ E.input_ $ TrashCell $ cell ^. _cellId ]
                    [ glyph B.glyphiconTrash ]
+        , glyph B.glyphiconChevronLeft
         ]
 
 output :: forall e. State -> Cell -> Maybe (HTML e)
@@ -158,6 +159,7 @@ statusBar notebook hasOutput cell =
                            , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
                                    $ catMaybes [ toggleMessageButton
                                                , linkButton
+                                               , Just $ glyph B.glyphiconChevronLeft
                                                ]
                            ] ++ messages
                  ]
