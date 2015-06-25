@@ -1,74 +1,108 @@
 module Controller.File.Dialog.Rename
-  ( rename
+  ( hideList
+  , toggleList
+  , rename
   , checkRename
   , renameItemClicked
   , renameDirInput
   ) where
 
 import Control.Apply ((*>))
-import Data.Maybe (Maybe(..), maybe)
-import Data.Inject1 (Inject1, inj)
-import Data.Either (Either(..), either)
+import Control.Monad (when)
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (message)
+import Control.Monad.Error.Class (throwError)
 import Control.Plus (empty)
 import Controller.File.Common (Event(), toInput)
 import Data.Array (elemIndex)
+import Data.Either (Either(..), either)
+import Data.Inject1 (Inject1, inj)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Path.Pathy (rootDir, (</>), parseAbsDir, sandbox)
 import Data.String (indexOf)
 import Halogen.HTML.Events.Handler (EventHandler())
 import Halogen.HTML.Events.Monad (andThen)
-import Input.File.Rename (RenameInput(..))
-import Model.File.Dialog.Rename (RenameDialogRec(), _initial, _resource, _siblings, _dir, _error)
+import Input.File (FileInput(..))
+import Model.File (_dialog)
+import Model.File.Dialog (_RenameDialog)
+import Model.File.Dialog.Rename (RenameDialogRec(), _initial, _name, _siblings, _dir, _error, _showList)
 import Model.File.Item (Item())
-import Utils (reload)
+import Optic.Core ((..), (^.), (.~), (%~), (?~))
+import Optic.Refractor.Prism (_Just)
+import Utils (reload, endsWith)
+
 import qualified Api.Fs as Api
-import Model.Resource (Resource(), _path, _name, _root, mkDirectory, getPath)
-import Optic.Core ((..), (^.), (.~))
-import Data.Path.Pathy (rootDir, (</>), parseAbsDir, sandbox)
+import qualified Model.Resource as R
+
+hideList :: forall e. Event e
+hideList = toInput' $ _showList .~ false
+
+toggleList :: forall e. Event e
+toggleList = toInput' $ _showList %~ not
 
 rename :: forall e. RenameDialogRec -> Event e
 rename d = do
   let src = d ^. _initial
-      dt = either (const rootDir) id $ d ^. _dir .. _path
-      tgt = (d ^. _resource # _root .~ dt) ^. _path
+      tgt = R.getPath $ renameTarget d
   result <- liftAff $ attempt (Api.move src tgt)
-  (toInput $ Update $ _error .~ either (Just <<< message) (const Nothing) result) `andThen` \_ ->
+  (toInput' $ _error .~ either (Just <<< message) (const Nothing) result) `andThen` \_ ->
     case result of
       Left _ -> empty
       Right _ -> liftEff reload *> empty
 
-checkRename :: forall e. RenameDialogRec -> String -> Event e
-checkRename dialog name = do
-  (toInput $ Update $ _resource .~ res) `andThen` \_ ->
-    if name == ""
-    then toInput $ Update $ _error .~ Just "Please enter a name for the file"
-    else
-      if indexOf "/" name /= -1
-      then toInput $ Update $ _error .~ Just "Please enter a valid name for the file"
-      else checkList res (dialog ^. _siblings)
-  where
-  res = dialog ^. _resource # _name .~ name
+checkRename :: forall e. String -> Event e
+checkRename name = toInput' $ _name .~ name
 
-renameItemClicked :: forall e. Resource -> Resource -> Event e
-renameItemClicked target res = do
-  (toInput $ SetDir res) `andThen` \_ -> do
-    ress <- liftAff $ Api.children res
-    (toInput $ Update $ _siblings .~ ress) `andThen` \_ ->
-      checkList target ress
+renameItemClicked :: forall e. R.Resource -> Event e
+renameItemClicked res = case R.getPath res of
+  Right dir -> do
+    siblings <- liftAff $ Api.children dir
+    toInput' $ (_dir .~ dir)
+            .. (_showList .~ false)
+            .. (_siblings .~ siblings)
+  Left _ -> empty
 
-renameDirInput :: forall e. Resource -> String -> Event e
-renameDirInput target dirStr = do
-  -- TODO: Make incorrect on keydown.
-  --  (toInput $ RenameIncorrect true) `andThen` \_ ->
-  maybe empty (\p -> renameItemClicked target (mkDirectory $ Right p)) $ do
+renameDirInput :: forall e. String -> Event e
+renameDirInput dirStr = do
+  maybe empty (\p -> renameItemClicked (R.mkDirectory $ Right p)) $ do
     d <- parseAbsDir dirStr
     s <- sandbox rootDir d
     pure $ rootDir </> s
 
-checkList :: forall e. Resource -> [Resource] -> Event e
-checkList tgt list =
-  case elemIndex (tgt ^. _name) ((^. _name) <$> list) of
-    -1 -> toInput $ Update $ _error .~ Nothing
-    _ -> toInput $ Update $ _error .~ Just "An item with this name already exists in the target folder"
+toInput' :: forall e. (RenameDialogRec -> RenameDialogRec) -> Event e
+toInput' f = toInput $ WithState $ _dialog .. _Just .. _RenameDialog %~ validate <<< f
+
+validate :: RenameDialogRec -> RenameDialogRec
+validate rec
+  | rec ^. _initial == renameTarget rec = rec # _error .~ Nothing
+  | otherwise = rec # _error .~ either Just (const Nothing) do
+
+  let name = rec ^._name
+
+  when (name == "") $
+    throwError "Please enter a name for the file"
+
+  when (endsWith ("." ++ Config.notebookExtension) name) $
+    throwError $ "Pleaase choose an alternative name, ." ++ Config.notebookExtension ++ " is a reserved extension"
+
+  when (indexOf "/" name /= -1) $
+    throwError "Please enter a valid name for the file"
+
+  let nameWithExt = if R.isNotebook (rec ^. _initial)
+                    then name ++ "." ++ Config.notebookExtension
+                    else name
+
+  when (elemIndex nameWithExt ((^. R._name) <$> (rec ^. _siblings)) /= -1) $
+    throwError "An item with this name already exists in the target folder"
+
+renameTarget :: RenameDialogRec -> R.Resource
+renameTarget rec =
+  let initial = rec ^. _initial
+      name = rec ^. _name
+      nameWithExt = if R.isNotebook initial
+                    then name ++ "." ++ Config.notebookExtension
+                    else name
+  in initial # (R._name .~ nameWithExt)
+            .. (R._root .~ (rec ^. _dir))

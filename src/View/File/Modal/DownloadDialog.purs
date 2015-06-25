@@ -10,7 +10,7 @@ import Data.Maybe (Maybe(..), isJust, isNothing, maybe, fromMaybe)
 import Input.File (FileInput(..))
 import Model.File (_dialog)
 import Model.File.Dialog.Download
-import Model.Resource (Resource(), resourcePath, resourceFileName, isHidden, isFile)
+import Model.Resource (Resource(), resourcePath, isHidden, isFile)
 import Optic.Core (LensP(), (..), (^.), (.~), set)
 import Optic.Refractor.Prism (_Left, _Right)
 import View.Common (closeButton, fadeWhen)

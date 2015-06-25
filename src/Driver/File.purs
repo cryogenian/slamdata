@@ -9,8 +9,8 @@ import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error, message)
 import Controller.File.Common (showError, browseURL)
-import Data.Array (filter)
-import Data.Either (Either(..))
+import Data.Array (filter, mapMaybe)
+import Data.Either (Either(..), either)
 import Data.Foldable (foldl, traverse_)
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), maybe)
@@ -33,7 +33,7 @@ import Model.File.Salt (Salt(..), newSalt)
 import Model.File.Search (_loading, _value, _valid)
 import Model.File.Sort (Sort(Asc))
 import Model.Path (AnyPath(), DirPath(), hidePath)
-import Model.Resource (Resource(..), isDirectory, isDatabase, root)
+import Model.Resource (Resource(..), root, getPath)
 import Optic.Core ((..), (^.), (.~), (%~), (<>~))
 import Optic.Refractor.Lens (_1, _2)
 import Routing (matchesAff)
@@ -81,7 +81,7 @@ handleRoute driver = launchAff $ do
                                             .. (_search .. _loading .~ true)
                                             .. (_search .. _value .~ maybe (This "") That queryParts.query)
                                             .. (_search .. _valid .~ true)
-          listPath driver query 0 var (Directory queryParts.path)
+          listPath driver query 0 var queryParts.path
           maybe (checkMount driver queryParts.path) (const $ pure unit) queryParts.query
         else
           liftEff $ driver $ inj $ WithState (_search .. _loading .~ false)
@@ -110,18 +110,18 @@ listPath :: forall e. Driver Input (FileComponentEff e)
                    -> SearchQuery
                    -> Number
                    -> AVar (Tuple (Canceler _) (M.Map Number Number))
-                   -> Resource
+                   -> DirPath
                    -> Aff _ Unit
-listPath driver query deep var res = do
+listPath driver query deep var dir = do
   modifyVar
     (_2 %~ M.alter (maybe (Just 1) (\x -> Just (x + 1))) deep) var
 
   canceler <- forkAff do
-    ei <- attempt $ children res
+    ei <- attempt $ children dir
     case ei of
       Left err -> liftEff $ runEvent (const $ pure unit) driver $ showError ("There was a problem listing the current directory: " ++ message err)
       Right ress -> do
-        let next = filter (\x -> isDirectory x || isDatabase x) ress
+        let next = mapMaybe (either (const Nothing) Just <<< getPath) ress
             toAdd = filter (filterByQuery query) ress
 
         traverse_ (liftEff <<< driver <<< inj <<< ItemAdd) (Item <$> toAdd)

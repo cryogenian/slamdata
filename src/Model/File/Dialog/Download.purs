@@ -3,7 +3,7 @@ module Model.File.Dialog.Download where
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (rootDir)
-import Model.Resource (Resource(..), resourceFileName)
+import Model.Resource (Resource(..), resourceName, root)
 import Optic.Core (LensP(), (^.), lens)
 import Optic.Extended (TraversalP())
 import Network.HTTP.MimeType (MimeType(..))
@@ -26,9 +26,9 @@ newtype DownloadDialogRec = DownloadDialogRec
 initialDownloadDialog :: Resource -> DownloadDialogRec
 initialDownloadDialog res = DownloadDialogRec
   { source: Right res
-  , sources: [Database rootDir]
+  , sources: [root]
   , showSourcesList: false
-  , targetName: let name = resourceFileName res
+  , targetName: let name = resourceName res
                 in Right $ if name == "" then "archive" else name
   , compress: false
   , options: Left initialCSVOptions

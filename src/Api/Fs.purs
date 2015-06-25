@@ -46,10 +46,10 @@ instance listingRespondable :: Respondable Listing where
   responseType = JSONResponse
   fromResponse = read
 
-children :: forall e. R.Resource -> Aff (ajax :: AJAX | e) [R.Resource]
-children r = do
-  cs <- children' $ R.resourcePath r
-  pure $ (R._root .~ (either (const rootDir) id $ R.getPath r)) <$> cs
+children :: forall e. DirPath -> Aff (ajax :: AJAX | e) [R.Resource]
+children dir = do
+  cs <- children' $ printPath dir
+  pure $ (R._root .~ (either (const rootDir) id (Right dir))) <$> cs
 
 children' :: forall e. String -> Aff (ajax :: AJAX | e) [R.Resource]
 children' str = runListing <$> (getResponse msg $ listing str)
@@ -119,7 +119,7 @@ saveNotebook notebook = case notebook ^. N._name of
   This name -> do
     name <- getNewName' (U.fromJust $ theseLeft (notebook ^. N._name))
     let notebook' = N.replacePendingPorts (notebook # N._name .~ That (dropNotebookExt name))
-    save name notebook' 
+    save name notebook'
     pure notebook'
   Both newName oldName -> do
     save oldName notebook

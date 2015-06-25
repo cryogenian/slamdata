@@ -6,7 +6,7 @@ import Controller.File.Common (Event())
 import Data.Path.Pathy
 import Model.File
 import Model.File.Item (Item(..))
-import Model.Resource (Resource(..))
+import Model.Resource (Resource(..), root)
 import View.File.Common (HTML(), toolItem)
 import Optic.Core ((^.))
 
@@ -34,7 +34,7 @@ toolbar state =
   download :: [HTML e]
   download =
     if state ^. _path == rootDir
-    then [toolItem [] (Item $ Directory rootDir) handleDownloadItem "download" B.glyphiconDownloadAlt]
+    then [toolItem [] (Item root) handleDownloadItem "download" B.glyphiconDownloadAlt]
     else []
 
   mount :: [HTML e]
