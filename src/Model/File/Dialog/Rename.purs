@@ -1,15 +1,17 @@
 module Model.File.Dialog.Rename where
 
 import Data.Maybe (Maybe(..))
-import Model.Resource
+import Data.Path.Pathy (rootDir)
+import Model.Path (DirPath(), dropNotebookExt)
+import Model.Resource (Resource(..), resourceDir, resourceName, root, isNotebook)
 import Optic.Core (lens, LensP())
 
 newtype RenameDialogRec = RenameDialogRec
   { showList :: Boolean
   , initial :: Resource
-  , resource :: Resource
+  , name :: String
   , dirs :: [Resource]
-  , dir :: Resource
+  , dir :: DirPath
   , siblings :: [Resource]
   , error :: Maybe String
   }
@@ -18,10 +20,12 @@ initialRenameDialog :: Resource -> RenameDialogRec
 initialRenameDialog resource = RenameDialogRec
   { showList: false
   , initial: resource
-  , resource: resource
-  , dir: parent resource
+  , name: if isNotebook resource
+          then dropNotebookExt $ resourceName resource
+          else resourceName resource
+  , dir: resourceDir resource
   , siblings: []
-  , dirs: []
+  , dirs: [root]
   , error: Nothing
   }
 
@@ -34,13 +38,13 @@ _showList = _renameDialogRec <<< lens _.showList (_ { showList = _ })
 _initial :: LensP RenameDialogRec Resource
 _initial = _renameDialogRec <<< lens _.initial (_ { initial = _ })
 
-_resource :: LensP RenameDialogRec Resource
-_resource = _renameDialogRec <<< lens _.resource (_ { resource = _ })
+_name :: LensP RenameDialogRec String
+_name = _renameDialogRec <<< lens _.name (_ { name = _ })
 
 _dirs :: LensP RenameDialogRec [Resource]
 _dirs = _renameDialogRec <<< lens _.dirs (_ { dirs = _ })
 
-_dir :: LensP RenameDialogRec Resource
+_dir :: LensP RenameDialogRec DirPath
 _dir = _renameDialogRec <<< lens _.dir (_ { dir = _ })
 
 _siblings :: LensP RenameDialogRec [Resource]

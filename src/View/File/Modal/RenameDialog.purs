@@ -4,11 +4,11 @@ import Control.Functor (($>))
 import Controller.File.Dialog.Rename
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isNothing, isJust, maybe)
+import Data.Path.Pathy (printPath)
 import Input.File (FileInput(..))
-import Input.File.Rename (RenameInput(..))
 import Model.File (_dialog)
-import Model.File.Dialog.Rename (RenameDialogRec(), _showList, _resource, _dir, _dirs, _error)
-import Model.Resource (Resource(), resourcePath, resourceFileName, isHidden)
+import Model.File.Dialog.Rename (RenameDialogRec(), _showList, _name, _dir, _dirs, _error)
+import Model.Resource (Resource(), resourcePath, isHidden)
 import Optic.Core ((^.), (.~), (%~))
 import View.Common (fadeWhen)
 import View.File.Common (HTML())
@@ -27,7 +27,7 @@ renameDialog dialog =
   [ header $ h4 "Rename"
   , body [ H.form [ A.classes [ Vc.renameDialogForm ]
                   , nonSubmit
-                  , E.onClick (\_ -> E.stopPropagation $> (pure $ inj $ Update $ _showList .~ false))
+                  , E.onClick (\_ -> E.stopPropagation $> hideList)
                   ]
                   [ nameInput
                   , dirDropdownField
@@ -53,9 +53,9 @@ renameDialog dialog =
   nameInput =
     H.div [ A.class_ B.formGroup ]
           [ H.input [ A.classes [B.formControl]
-                    , A.value (resourceFileName $ dialog ^. _resource)
+                    , A.value (dialog ^. _name)
                     , A.placeholder "New name"
-                    , E.onInput (pure <<< checkRename dialog)
+                    , E.onInput (pure <<< checkRename)
                     ]
                     []
           ]
@@ -65,13 +65,13 @@ renameDialog dialog =
     H.div [ A.classes [B.inputGroup] ]
           [ H.input [ A.classes [B.formControl]
                     , A.placeholder "New directory"
-                    , E.onInput (pure <<< renameDirInput (dialog ^. _resource))
-                    , A.value (resourcePath $ dialog ^. _dir)
+                    , E.onInput (pure <<< renameDirInput)
+                    , A.value (printPath $ dialog ^. _dir)
                     ]
                     []
           , H.span [ A.classes [B.inputGroupBtn] ]
                    [ H.button [ A.classes [B.btn, B.btnDefault]
-                              , E.onClick (\_ -> E.stopPropagation $> (pure $ inj $ Update $ _showList %~ not))
+                              , E.onClick (\_ -> E.stopPropagation $> toggleList)
                               ]
                               [ H.span [ A.classes [B.caret] ] [] ]
                    ]
@@ -80,20 +80,18 @@ renameDialog dialog =
   dirDropdownList :: HTML e
   dirDropdownList =
    H.ul [ A.classes $ [B.listGroup, Vc.fileListGroup, B.fade] <> fadeWhen (not $ dialog ^. _showList) ]
-        $ renameItem (dialog ^. _resource) <$> dialog ^. _dirs
+        $ renameItem <$> dialog ^. _dirs
 
   errorMessage :: HTML e
   errorMessage =
-    H.div [ A.classes $ [B.alert, B.alertDanger, B.fade] <> fadeWhen (isNothing (dialog ^. _error))
-          , E.onClick (E.input_ $ inj $ Update $ _error .~ Nothing)
-          ]
+    H.div [ A.classes $ [B.alert, B.alertDanger, B.fade] <> fadeWhen (isNothing (dialog ^. _error)) ]
           $ maybe [] (pure <<< H.text) (dialog ^. _error)
 
-  renameItem :: forall i. Resource -> Resource -> HTML e
-  renameItem target res =
+  renameItem :: forall i. Resource -> HTML e
+  renameItem res =
     H.button [ A.classes ([B.listGroupItem] <> (if isHidden res
                                                 then [Vc.itemHidden]
                                                 else []))
-             , E.onClick (\_ -> pure $ renameItemClicked target res)
+             , E.onClick (\_ -> pure $ renameItemClicked res)
              ]
              [ H.text (resourcePath res) ]

@@ -15,19 +15,19 @@ import Data.URI (runParseAbsoluteURI)
 import Halogen.HTML.Events.Monad (async, andThen)
 import Input.File (FileInput(..))
 import Input.File.Item (ItemInput(..))
-import Input.File.Rename (RenameInput(..))
 import Model.Action
-import Model.File (_dialog)
-import Model.File.Dialog (Dialog(..), _DownloadDialog)
+import Model.File (State(), _dialog)
+import Model.File.Dialog (Dialog(..), _DownloadDialog, _RenameDialog)
 import Model.File.Dialog.Download (initialDownloadDialog, _sources)
 import Model.File.Dialog.Mount
-import Model.File.Dialog.Rename (initialRenameDialog, _siblings)
+import Model.File.Dialog.Rename (initialRenameDialog, _dirs, _siblings)
 import Model.File.Item (Item(..), itemResource)
 import Model.File.Salt (Salt())
 import Model.File.Sort (Sort())
 import Model.Path (encodeURIPath)
-import Model.Resource (Resource(..), resourceName, resourceDir, parent, root, getPath)
+import Model.Resource (Resource(..), resourceName, resourceDir, getPath, root)
 import Optic.Core ((..), (?~), (.~), (++~), (%~))
+import Optic.Extended (TraversalP())
 import Optic.Refractor.Prism (_Just)
 import Utils (locationString, setLocation)
 
@@ -41,10 +41,12 @@ handleMoveItem :: forall e. Item -> Event e
 handleMoveItem (PhantomItem _) = empty
 handleMoveItem item = do
   let res = itemResource item
-  ss <- liftAff $ children $ parent res
+  ss <- liftAff $ children $ resourceDir res
   let dialog = RenameDialog $ (initialRenameDialog res # _siblings .~ ss)
-  showDialog dialog
-    `andThen` \_ -> getDirectories (toInput <<< AddDirs) root
+  showDialog dialog `andThen` \_ -> getDirectories (updateAndSort lens) rootDir
+  where
+  lens :: TraversalP State [Resource]
+  lens = _dialog .. _Just .. _RenameDialog .. _dirs
 
 handleShare :: forall e. Sort -> Salt -> Item -> Event e
 handleShare _ _ (PhantomItem _) = empty
@@ -77,7 +79,7 @@ handleConfigure res@(Database _) = do
     Left err -> showError ("There was a problem reading the mount settings: " ++ show err)
     Right uri ->
       let rec = (mountDialogFromURI uri) { new = false
-                                         , name = if getPath res == Right rootDir then "/" else resourceName res
+                                         , name = if res == root then "/" else resourceName res
                                          , parent = resourceDir res
                                          , valid = true
                                          }
@@ -88,9 +90,13 @@ handleDownloadItem :: forall e. Item -> Event e
 handleDownloadItem (PhantomItem _) = empty
 handleDownloadItem item =
   showDialog (DownloadDialog $ initialDownloadDialog $ itemResource item)
-    `andThen` \_ -> getChildren (const true) (\rs -> toInput $ WithState $ (lens %~ sort) .. (lens ++~ rs)) root
+    `andThen` \_ -> getChildren (const true) (updateAndSort lens) rootDir
   where
+  lens :: TraversalP State [Resource]
   lens = _dialog .. _Just .. _DownloadDialog .. _sources
 
 showDialog :: forall e. Dialog -> Event e
 showDialog = toInput <<< WithState <<< (_dialog ?~)
+
+updateAndSort :: forall a e. (Ord a) => TraversalP State [a] -> [a] -> Event e
+updateAndSort lens xs = toInput $ WithState $ (lens %~ sort) .. (lens ++~ xs)

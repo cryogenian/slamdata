@@ -13,7 +13,7 @@ import Data.String.Regex (noFlags, regex, test, Regex())
 import Data.Tuple (Tuple(..))
 import Model.Action (Action(..), string2action)
 import Model.Notebook.Cell (CellId(), string2cellId)
-import Model.Resource (Resource(), newNotebook, newFile, _notebookPath, _filePath)
+import Model.Resource (Resource(..), newNotebook, newFile, _filePath)
 import Optic.Core ((.~))
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
@@ -35,7 +35,7 @@ routing = ExploreRoute <$> (oneSlash *> lit "explore" *> (fileFromParts <$> list
 
   notebookFromParts :: Tuple (List String) String -> Resource
   notebookFromParts (Tuple ps name) =
-    newNotebook # _notebookPath .~ foldl (</>) rootDir (dir <$> ps) </> dir name
+    Notebook $ foldl (</>) rootDir (dir <$> ps) </> dir name
 
   fileFromParts :: List String -> Resource
   fileFromParts (Cons name Nil) = newFile # _filePath .~ rootDir </> file name

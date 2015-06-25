@@ -1,15 +1,33 @@
-module Model.Resource (
-  Resource(..),
-  isNotebook, isFile, isDatabase, isDirectory,
-  resourceTag, getPath, getNameStr, getDir,
-  setDir, renameAny, resourceName, resourceDir,
-  nameOfFileOrDir, root, resourcePath,
-  newFile, newDatabase, newDirectory, newNotebook,
-  mkFile, mkDatabase, mkDirectory, mkNotebook,
-  setPath, setName, _path, _root, _name, _notebookPath, _filePath,
-  sortResource, parent, resourceFileName, child, _tempFile, isHidden,
-  hiddenTopLevel, isTempFile
-
+module Model.Resource
+  ( Resource(..)
+  , _filePath
+  , _name
+  , _path
+  , _root
+  , _tempFile
+  , getPath
+  , hiddenTopLevel
+  , isDatabase
+  , isDirectory
+  , isFile
+  , isHidden
+  , isNotebook
+  , isTempFile
+  , mkDatabase
+  , mkDirectory
+  , mkFile
+  , mkNotebook
+  , newDatabase
+  , newDirectory
+  , newFile
+  , newNotebook
+  , parent
+  , resourceDir
+  , resourceName
+  , resourcePath
+  , resourceTag
+  , root
+  , sortResource
   ) where
 
 import Config
@@ -43,27 +61,6 @@ data Resource
   | Directory DirPath
   | Database DirPath
 
-_File :: PrismP Resource FilePath
-_File = prism' File $ \s -> case s of
-  File p -> Just p
-  _ -> Nothing
-
-_Notebook :: PrismP Resource DirPath
-_Notebook = prism' Notebook $ \s -> case s of
-  Notebook p -> Just p
-  _ -> Nothing
-
-_Directory :: PrismP Resource DirPath
-_Directory = prism' Directory $ \s -> case s of
-  Directory p -> Just p
-  _ -> Nothing
-
-_Database :: PrismP Resource DirPath
-_Database = prism' Database $ \s -> case s of
-  Database p -> Just p
-  _ -> Nothing
-
-
 _tempFile :: LensP Resource Resource
 _tempFile = lens id \r s -> case r of
   File p ->
@@ -75,12 +72,6 @@ _tempFile = lens id \r s -> case r of
 isTempFile :: Resource -> Boolean
 isTempFile r =
   (takeDirExt <$> (dirName (resourceDir r))) == Just notebookExtension
-
-
-_notebookPath :: PrismP Resource DirPath
-_notebookPath = prism' Notebook $ \s -> case s of
-  Notebook fp -> Just fp
-  _ -> Nothing
 
 _filePath :: PrismP Resource FilePath
 _filePath = prism' File $ \s -> case s of
@@ -117,7 +108,6 @@ getPath r = case r of
   Directory p -> inj p
   Database p -> inj p
 
-
 isHidden :: Resource -> Boolean
 isHidden r =
   either isHidden' isHidden' (getPath r)
@@ -132,7 +122,6 @@ isHidden r =
 hiddenTopLevel :: Resource -> Boolean
 hiddenTopLevel r =
   (S.indexOf "." (resourceName r)) == 0
-
 
 getNameStr :: AnyPath -> String
 getNameStr ap = either getNameStr' getNameStr' ap
@@ -170,17 +159,6 @@ resourceName = getPath >>> getNameStr
 
 resourceDir :: Resource -> DirPath
 resourceDir = getPath >>> getDir
-
-resourceFileName :: Resource -> String
-resourceFileName r =
-  if isNotebook r
-  then resourceFileName' $ getPath r
-  else resourceName r
-  where
-  resourceFileName' ap = maybe "" (snd >>> dropExt >>> nameOfFileOrDir) $
-                         either peel peel ap
-  dropExt = bimap dropDirExt dropExtension
-
 
 nameOfFileOrDir :: Either DirName FileName -> String
 nameOfFileOrDir (Left (DirName name)) = name
@@ -242,12 +220,6 @@ mkDatabase ap = either go Database ap
   go p = maybe newDatabase id do
     Tuple pp dirOrFile <- peel p
     pure $ Database (pp </> dir (nameOfFileOrDir dirOrFile))
-
-child :: Resource -> String -> Resource
-child res name =
-  let p = fromRight (mkDirectory (res ^. _path) ^. _path)
-  in mkFile $ Left $ p </> file name
-
 
 setPath :: Resource -> AnyPath -> Resource
 setPath (Notebook _) p = mkNotebook p
