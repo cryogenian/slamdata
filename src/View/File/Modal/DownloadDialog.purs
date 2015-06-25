@@ -101,7 +101,7 @@ downloadDialog state =
     H.div [ A.class_ B.formGroup ]
           [ H.label_ [ H.span_ [ H.text "Compress" ]
                      , H.input [ A.type_ "checkbox"
-                               , A.enabled (not compressed)
+                               , A.enabled $ either (const false) isFile (state ^. _source)
                                , A.checked compressed
                                , E.onChange (\_ -> pure $ handleCompressToggle)
                                ]
