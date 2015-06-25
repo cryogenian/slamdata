@@ -20,10 +20,16 @@ toolbar :: forall e. State -> HTML e
 toolbar state =
   H.div [ A.classes [B.colXs5, Vc.toolbarMenu] ]
         [ H.ul [ A.classes [B.listInline, B.pullRight] ]
-               $ [showHide] ++ download ++ mount ++ [folder, file, notebook]
+               $ configure ++ [showHide, download, mount, folder, file, notebook]
         ]
 
   where
+
+  configure :: [HTML e]
+  configure =
+    if state ^. _isMount
+    then [toolItem [] (Database (state ^. _path)) handleConfigure "configure mount" B.glyphiconWrench]
+    else []
 
   showHide :: HTML e
   showHide =
@@ -31,17 +37,11 @@ toolbar state =
     then toolItem [] false handleHiddenFiles "hide hidden files" B.glyphiconEyeClose
     else toolItem [] true handleHiddenFiles "show hidden files" B.glyphiconEyeOpen
 
-  download :: [HTML e]
-  download =
-    if state ^. _path == rootDir
-    then [toolItem [] (Item root) handleDownloadItem "download" B.glyphiconDownloadAlt]
-    else []
+  download :: HTML e
+  download = toolItem [] (Item root) handleDownloadItem "download" B.glyphiconDownloadAlt
 
-  mount :: [HTML e]
-  mount = (if state ^. _isMount
-           then [toolItem [] (Database (state ^. _path)) handleConfigure "configure mount" B.glyphiconWrench]
-           else [])
-          ++ [toolItem' handleMountDatabase "mount database" B.glyphiconHdd]
+  mount :: HTML e
+  mount = toolItem' handleMountDatabase "mount database" B.glyphiconHdd
 
   folder :: HTML e
   folder = toolItem' handleCreateFolder "create folder" B.glyphiconFolderClose
