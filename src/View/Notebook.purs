@@ -84,7 +84,8 @@ body state =
   if not state.loaded
   then H.h1 [ A.classes [ B.textCenter ] ]
             [ H.text "Loading..." ]
-  else case state.error of
+  else
+  case state.error of
     Just err ->
       H.div [ A.classes [ B.alert, B.alertDanger ] ]
             [ H.h1 [ A.classes [ B.textCenter ] ]

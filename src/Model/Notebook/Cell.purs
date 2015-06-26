@@ -8,7 +8,7 @@ import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Date (Date())
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), maybe)
-import Data.Time (Milliseconds())
+import Data.Time (Milliseconds(..))
 import Global (readInt, isNaN)
 import Model.Notebook.Cell.FileInput
 import Model.Notebook.Cell.JTableContent
@@ -120,6 +120,7 @@ instance encodeJsonCell :: EncodeJson Cell where
     ~> "output" := cell.output
     ~> "content" := cell.content
     ~> "hasRun" := cell.hasRun
+    ~> "runState" := cell.runState 
     ~> jsonEmptyObject
 
 instance decodeJsonCell :: DecodeJson Cell where
@@ -130,11 +131,13 @@ instance decodeJsonCell :: DecodeJson Cell where
     parent <- obj .? "parent"
     input <- obj .? "input"
     output <- obj .? "output"
+    runState <- obj .? "runState" <|> pure RunInitial 
     let hasRun = either (const false) id (obj .? "hasRun")
     pure (cell # (_parent .~ parent)
               .. (_input  .~ input)
               .. (_output .~ output)
               .. (_hasRun .~ hasRun)
+              .. (_runState .~ runState)
               .. (_pathToNotebook .~ phantomNotebookPath))
 
 data CellContent
@@ -252,6 +255,21 @@ _RunFinished :: PrismP RunState Milliseconds
 _RunFinished = prism' RunFinished $ \r -> case r of
   RunFinished m -> Just m
   _ -> Nothing
+
+
+instance encodeRunState :: EncodeJson RunState where
+  encodeJson RunInitial = encodeJson "run-initial"
+  encodeJson (RunningSince _) = encodeJson ""
+  encodeJson (RunFinished (Milliseconds n)) = encodeJson n
+
+instance decodeRunState :: DecodeJson RunState where
+  decodeJson json =
+    ( do r <- decodeJson json
+         case r of
+           "run-initial" -> pure RunInitial
+           _ -> Left "incorrect RunState"
+    ) <|>
+    ( RunFinished <$> (Milliseconds <$> decodeJson json))
 
 outFile :: Cell -> Resource
 outFile cell = mkFile $ Left $ (cell ^._pathToNotebook) </> file ("out" <> show (cell ^._cellId))

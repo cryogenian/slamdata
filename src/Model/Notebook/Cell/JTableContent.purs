@@ -9,6 +9,7 @@ module Model.Notebook.Cell.JTableContent
   , _values
   ) where
 
+import Control.Alt ((<|>))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (Json(), jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
@@ -61,6 +62,7 @@ instance encodeJsonJTableContent :: EncodeJson JTableContent where
   encodeJson (JTableContent rec)
     =  "perPage" := either readThese id rec.perPage
     ~> "page" := readThese rec.page
+    ~> "result" := rec.result
     ~> jsonEmptyObject
     where
     readThese :: These String Int -> Int
@@ -69,9 +71,10 @@ instance encodeJsonJTableContent :: EncodeJson JTableContent where
 instance decodeJsonJTableContent :: DecodeJson JTableContent where
   decodeJson json = do
     obj <- decodeJson json
-    rec <- { perPage: _, page: _, result: Nothing }
+    rec <- { perPage: _, page: _, result: _ }
         <$> (Right <$> obj .? "perPage")
         <*> (That <$> obj .? "page")
+        <*> ((obj .? "result") <|> pure Nothing)
     return $ JTableContent rec
 
 -- | The current result values used to render a JTable.
@@ -79,6 +82,21 @@ newtype Result =
   Result { totalPages :: Int
          , values :: Maybe Json
          }
+
+instance encodeResult :: EncodeJson Result where
+  encodeJson (Result r)
+   =  "totalPages" := r.totalPages
+   ~> "values" := r.values
+   ~> jsonEmptyObject
+
+instance decodeResult :: DecodeJson Result where
+  decodeJson json = do
+    obj <- decodeJson json
+    r <- {totalPages: _, values: _}
+         <$> obj .? "totalPages"
+         <*> obj .? "values"
+    pure $ Result r
+    
 
 -- | Lens for the Result newtype.
 _Result :: LensP Result _

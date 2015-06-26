@@ -118,7 +118,10 @@ saveNotebook notebook = case notebook ^. N._name of
   That name -> save name notebook *> pure notebook
   This name -> do
     name <- getNewName' (U.fromJust $ theseLeft (notebook ^. N._name))
-    let notebook' = N.replacePendingPorts (notebook # N._name .~ That (dropNotebookExt name))
+    let notebook' = N.replacePendingPorts (
+          notebook # (N._name .~ That (dropNotebookExt name))
+                   ..(N._cells .. mapped .. _hasRun .~ false)
+          )
     save name notebook'
     pure notebook'
   Both newName oldName -> do
