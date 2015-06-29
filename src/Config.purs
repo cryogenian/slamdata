@@ -70,3 +70,6 @@ notifyTimeout = 500
 
 resizeEChartsTimeout :: Number
 resizeEChartsTimeout = 0
+
+trashFolder :: String
+trashFolder = ".trash"

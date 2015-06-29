@@ -9,12 +9,13 @@ import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Core (Json())
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
-import Data.Array (head, findIndex)
+import Data.Array (head, findIndex, filter, elemIndex)
 import Data.Either (Either(..), either)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Index (prop)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Maybe
+import Data.Bifunctor (bimap)
 import Data.Path.Pathy
 import Data.These (These(..), theseLeft, theseRight)
 import Model.Path
@@ -172,12 +173,49 @@ exists' name items = findIndex (\r -> r ^. R._name == name) items /= -1
 
 delete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit
 delete resource =
-  let url = if R.isDatabase resource
-            then Config.mountUrl
-            else Config.dataUrl
-  in getResponse msg $ delete_ (url <> R.resourcePath resource)
-  where msg = "can not delete"
+  if R.isDatabase resource
+  then getResponse msg $ delete_ (Config.mountUrl <> R.resourcePath resource)
+  else moveToTrash resource 
+  where
+  msg :: String 
+  msg = "can not delete"
 
+  moveToTrash :: R.Resource -> Aff _ Unit 
+  moveToTrash res = void do
+    db <- getMount res
+    move res (trashed (db ^. R._path) (res ^. R._path))
+
+
+  trashedF :: forall a. DirPath -> Path Abs a Sandboxed -> Path Abs a Sandboxed
+  trashedF db src = 
+    let s = U.fromJust (relativeTo src rootDir)
+    in db </> dir Config.trashFolder </> s
+
+  trashed :: AnyPath -> AnyPath -> AnyPath
+  trashed db source =
+    let db' :: DirPath
+        db' = either (const rootDir) id db
+    in bimap (trashedF db') (trashedF db') source
+
+
+getMount :: forall e. R.Resource -> Aff (ajax :: AJAX | e) R.Resource 
+getMount resource = 
+  if R.isDatabase resource
+  then pure resource
+  else getMount' resource 
+  where
+  getMount' :: R.Resource -> Aff (ajax :: AJAX | e)  R.Resource 
+  getMount' resource = do
+    if R.parent resource == R.root
+      then pure $ R.Database rootDir
+      else do 
+      siblings <- children $ R.resourceDir resource
+      let paths = R.resourcePath <$> (filter R.isDatabase siblings)
+      if elemIndex (R.resourcePath resource) paths == -1
+        then getMount' $ R.parent resource
+        else pure resource
+
+  
 move :: forall a e. R.Resource -> AnyPath -> Aff (ajax :: AJAX | e) AnyPath
 move src tgt = do
   let url = if R.isDatabase src

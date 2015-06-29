@@ -258,6 +258,12 @@ ol.breadcrumb {
     }
     li {
         float: left;
+        .fade {
+            display: none;
+        }
+        .fade.in {
+            display: inline-block;
+        }
     }
     span {
         padding: 10px;
@@ -269,6 +275,7 @@ ol.breadcrumb {
         background: none;
         border: 0;
         color: #337ab7;
+        cursor: pointer;
         &:hover {
             color: #286090;
         }

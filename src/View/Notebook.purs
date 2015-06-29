@@ -28,7 +28,7 @@ import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Model.Path ((<./>), encodeURIPath)
 import Model.Resource (Resource(), resourcePath)
 import Number.Format (toFixed)
-import Optic.Core ((..), (^.), (.~))
+import Optic.Core ((..), (^.), (.~), (%~))
 import Optic.Fold ((^?))
 import Optic.Index (ix)
 import View.Common
@@ -106,22 +106,41 @@ cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
 
 newCellMenu :: forall e. State -> [HTML e]
 newCellMenu state =
-  [ H.ul [ A.classes [ Vc.newCellMenu ] ]
-         [ H.li_ [ H.span_ [ glyph B.glyphiconPlus ] ]
-         , li "Query" QueryInsert B.glyphiconHdd
-         , li "Markdown" MarkdownInsert B.glyphiconEdit
-         , li "Explore" ExploreInsert B.glyphiconEyeOpen
-         , li "Search" SearchInsert B.glyphiconSearch
-         ]
-  ]
+  [ H.ul [ A.classes [ Vc.newCellMenu ] ] $ 
+    [ H.li_ [ H.button [ A.classes [ B.btnLg, B.btnLink ]
+                       , E.onClick (E.input_ $ WithState (_addingCell %~ not))
+                       , A.title "Insert new cell"
+                       ] 
+
+              [ glyph $ if state ^. _addingCell
+                        then B.glyphiconMinus
+                        else B.glyphiconPlus
+              ]
+                
+            ]
+    ] <> listElements 
+   ]
   where
+  listElements :: [HTML e]
+  listElements =
+    [ li "Query" QueryInsert B.glyphiconHdd
+    , li "Markdown" MarkdownInsert B.glyphiconEdit
+    , li "Explore" ExploreInsert B.glyphiconEyeOpen
+    , li "Search" SearchInsert B.glyphiconSearch
+    ]
+
+   
   li :: String -> MenuInsertSignal -> A.ClassName -> HTML e
   li title inp cls =
-    H.li_ [ H.button [ A.title title
-                     , E.onClick (\_ -> pure <<< handleMenuSignal state <<< inj $ inp)
-                     ]
-                     [ glyph cls ]
-          ]
+    H.li_
+    [ H.button [ A.title title
+               , E.onClick (\_ -> pure <<< handleMenuSignal state <<< inj $ inp)
+               , A.classes (fadeWhen $ not (state ^. _addingCell))
+               ]
+
+      [ glyph cls ]
+    ]
+
 
 txt :: forall e. Int -> String -> [HTML e]
 txt lvl text =
