@@ -2,6 +2,7 @@ module Model.Resource
   ( Resource(..)
   , _filePath
   , _name
+  , _nameAnyPath
   , _path
   , _root
   , _tempFile

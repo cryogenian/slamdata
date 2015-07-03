@@ -18,6 +18,7 @@ import Data.Maybe
 import Data.Bifunctor (bimap)
 import Data.Path.Pathy
 import Data.These (These(..), theseLeft, theseRight)
+import Data.Tuple (Tuple(..))
 import Model.Path
 import Model.Notebook.Cell
 import Model.Notebook.Port
@@ -173,7 +174,7 @@ exists' name items = findIndex (\r -> r ^. R._name == name) items /= -1
 
 delete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit
 delete resource =
-  if R.isDatabase resource
+  if R.isDatabase resource || alreadyInTrash resource 
   then getResponse msg $ delete_ (Config.mountUrl <> R.resourcePath resource)
   else moveToTrash resource 
   where
@@ -182,39 +183,29 @@ delete resource =
 
   moveToTrash :: R.Resource -> Aff _ Unit 
   moveToTrash res = void do
-    db <- getMount res
-    move res (trashed (db ^. R._path) (res ^. R._path))
+    let d = (res ^. R._root) </> dir Config.trashFolder
+        path = (res # R._root .~ d) ^. R._path 
+    name <- getNewName d (res ^. R._name)
+    move res (path # R._nameAnyPath .~ name)
 
+  alreadyInTrash :: R.Resource -> Boolean
+  alreadyInTrash res =
+    case res ^. R._path of
+      Left _ -> alreadyInTrash' (res ^. R._root)
+      Right path -> alreadyInTrash' path
 
-  trashedF :: forall a. DirPath -> Path Abs a Sandboxed -> Path Abs a Sandboxed
-  trashedF db src = 
-    let s = U.fromJust (relativeTo src rootDir)
-    in db </> dir Config.trashFolder </> s
+  alreadyInTrash' :: DirPath -> Boolean
+  alreadyInTrash' d =
+    if d == rootDir
+    then false
+    else maybe false go $ peel d
 
-  trashed :: AnyPath -> AnyPath -> AnyPath
-  trashed db source =
-    let db' :: DirPath
-        db' = either (const rootDir) id db
-    in bimap (trashedF db') (trashedF db') source
-
-
-getMount :: forall e. R.Resource -> Aff (ajax :: AJAX | e) R.Resource 
-getMount resource = 
-  if R.isDatabase resource
-  then pure resource
-  else getMount' resource 
-  where
-  getMount' :: R.Resource -> Aff (ajax :: AJAX | e)  R.Resource 
-  getMount' resource = do
-    if R.parent resource == R.root
-      then pure $ R.Database rootDir
-      else do 
-      siblings <- children $ R.resourceDir resource
-      let paths = R.resourcePath <$> (filter R.isDatabase siblings)
-      if elemIndex (R.resourcePath resource) paths == -1
-        then getMount' $ R.parent resource
-        else pure resource
-
+  go :: Tuple DirPath (Either DirName FileName) -> Boolean
+  go (Tuple d name) =
+    case name of
+      Right _ -> false
+      Left n -> if n == DirName Config.trashFolder then true else alreadyInTrash' d 
+    
   
 move :: forall a e. R.Resource -> AnyPath -> Aff (ajax :: AJAX | e) AnyPath
 move src tgt = do
