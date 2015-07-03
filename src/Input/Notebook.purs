@@ -29,6 +29,7 @@ import Optic.Setter (mapped)
 import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..))
 import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, emptySlamDownState)
 import Text.Markdown.SlamDown.Parser (parseMd)
+import Utils (elem)
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.Map as M
@@ -58,7 +59,8 @@ data Input
   | RequestCellContent Cell
   | ReceiveCellContent Cell
   | ViewCellContent Cell
-
+  | RefreshCell Cell
+    
   | StartRunCell CellId Date
   | StopCell CellId
   | CellResult CellId Date (Either (NEL.NonEmpty FailureMessage) CellResultContent)
@@ -132,6 +134,13 @@ updateState state (UpdatedOutput cid newInput) =
                      then cell
                      else cell # _input .~ newInput
   in state # _notebook.._cells..mapped %~ changed
+
+updateState state (RefreshCell cell) =
+  let requesting = state ^. _requesting
+      cid = cell ^. _cellId 
+  in if elem cid requesting
+     then state
+     else state # _refreshing <>~ [cell ^. _cellId] 
 
 updateState state i = state
 

@@ -23,6 +23,7 @@ type State =
   , dialog :: Maybe Dialog
   , requesting :: [CellId]
   , addingCell :: Boolean 
+  , refreshing :: [CellId]
   }
 
 _dropdowns :: LensP State [DropdownItem]
@@ -58,6 +59,10 @@ _requesting = lens _.requesting _{requesting = _}
 _addingCell :: LensP State Boolean
 _addingCell = lens _.addingCell _{addingCell = _} 
 
+_refreshing :: LensP State [CellId]
+_refreshing = lens _.refreshing _{refreshing = _}
+
+
 initialState :: State
 initialState =
   { dropdowns: initialDropdowns
@@ -71,4 +76,5 @@ initialState =
   , dialog: Nothing
   , requesting: []
   , addingCell: false
+  , refreshing: []
   }

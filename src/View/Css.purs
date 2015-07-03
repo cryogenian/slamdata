@@ -247,3 +247,6 @@ downloadArrayMode = className "download-array-mode"
 
 downloadJSONOptions :: ClassName
 downloadJSONOptions = className "download-json-options"
+
+refreshButton :: ClassName
+refreshButton = className "refresh-button"

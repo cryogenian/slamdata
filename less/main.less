@@ -34,11 +34,21 @@ body {
 }
 
 .notebook-view-hack {
-    .cell-controls, .cell-input, .cell-output-label {
+    .cell-input, .cell-output-label {
         display: none;
     }
     .notebook-cell .row.cell-output div.cell-output-result {
         width: 100%;
+    }
+    .cell-controls {
+        > * {
+            display: none;
+        }
+        button {
+            &.refresh-button {
+                display: inline-block;
+            }
+        }
     }
 }
 

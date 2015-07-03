@@ -126,43 +126,62 @@ cellOutputBar notebook cell =
 
 statusBar :: forall e. State -> Boolean -> Cell -> HTML e
 statusBar notebook hasOutput cell =
-  let buttonClass = if isRunning cell then VC.stopButton else VC.playButton
-      buttonGlyph = if isRunning cell then B.glyphiconStop else B.glyphiconPlay
-      messages = message cell
-      toggleMessageButton =
-        if null messages
-        then Nothing
-        else Just $ H.button [ A.title if cell ^._expandedStatus
-                                       then "Hide messages"
-                                       else "Show messages"
-                             , E.onClick (\_ -> E.preventDefault $> pure (UpdateCell (cell ^._cellId) (_expandedStatus %~ not))) ]
-                             [ glyph if cell ^._expandedStatus
-                                     then B.glyphiconEyeClose
-                                     else B.glyphiconEyeOpen ]
-      linkButton =
-        if not hasOutput
-        then Nothing
-        else Just $ H.button [ A.title "Embed cell output"
-                             , E.onClick (\_ -> pure $ handleEmbedClick notebook cell)
-                             ]
-                             [ H.img [ A.src "img/code-icon.svg", A.width 16 ] [] ]
-  in row' (fadeWhen (cell ^. _hiddenEditor))
-          $ if (cell ^. _hiddenEditor)
-            then []
-            else [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
-                         $ [ H.button [ A.classes [B.btn, B.btnPrimary, buttonClass]
-                                      , E.onClick \_ -> pure $ handleRunClick (notebook ^._notebook) cell
-                                      ]
-                                      [ glyph buttonGlyph ]
-                           , H.div [ A.classes [ VC.statusText ] ]
-                                   [ H.text $ statusText notebook.tickDate (cell ^. _runState) ]
-                           , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
-                                   $ catMaybes [ toggleMessageButton
-                                               , linkButton
-                                               , Just $ glyph B.glyphiconChevronLeft
-                                               ]
-                           ] ++ messages
-                 ]
+  row' (fadeWhen (cell ^. _hiddenEditor))
+  $ if (cell ^. _hiddenEditor)
+    then []
+    else [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
+           $ [ H.button [ A.classes [B.btn, B.btnPrimary, buttonClass]
+                        , E.onClick \_ -> pure $ handleRunClick (notebook ^._notebook) cell
+                        ]
+               [ glyph buttonGlyph ]
+             , H.div [ A.classes [ VC.statusText ] ]
+               [ H.text $ statusText notebook.tickDate (cell ^. _runState) ]
+             , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
+               $ catMaybes [ refreshButton 
+                           , toggleMessageButton
+                           , linkButton
+                           , Just $ glyph B.glyphiconChevronLeft
+                           ]
+             ] ++ messages
+         ]
+  where
+  buttonClass :: A.ClassName 
+  buttonClass = if isRunning cell then VC.stopButton else VC.playButton
+  
+  buttonGlyph :: A.ClassName 
+  buttonGlyph = if isRunning cell then B.glyphiconStop else B.glyphiconPlay
+
+  messages :: [HTML e]
+  messages = message cell
+  
+  toggleMessageButton :: Maybe (HTML e)
+  toggleMessageButton =
+    if null messages
+    then Nothing
+    else Just $ H.button [ A.title if cell ^._expandedStatus
+                                   then "Hide messages"
+                                   else "Show messages"
+                         , E.onClick (\_ -> E.preventDefault $> pure (UpdateCell (cell ^._cellId) (_expandedStatus %~ not))) ]
+         [ glyph if cell ^._expandedStatus
+                 then B.glyphiconEyeClose
+                 else B.glyphiconEyeOpen ]
+         
+  linkButton :: Maybe (HTML e)
+  linkButton =
+    if not hasOutput
+    then Nothing
+    else Just $ H.button [ A.title "Embed cell output"
+                         , E.onClick (\_ -> pure $ handleEmbedClick notebook cell)
+                         ]
+         [ H.img [ A.src "img/code-icon.svg", A.width 16 ] [] ]
+    
+  refreshButton :: Maybe (HTML e)
+  refreshButton =
+    Just $ H.button [ A.title "Refresh cell content"
+                    , A.classes [VC.refreshButton]
+                    , E.onClick (\_ -> pure $ handleRefreshClick cell)
+                    ]
+    [ glyph B.glyphiconRefresh ] 
 
 message :: forall e. Cell -> [HTML e]
 message cell =

@@ -19,10 +19,10 @@ import Data.Tuple (fst, snd)
 import EffectTypes
 import Halogen (Driver())
 import Input.Notebook (Input(..))
-import Model.Notebook (State(), _notebook, _requesting)
+import Model.Notebook (State(), _notebook, _requesting, _refreshing)
 import Model.Notebook.Cell (Cell(), _cellId, CellId(), _hasRun)
 import Model.Notebook.Domain
-import Optic.Core  ((^.), (%~))
+import Optic.Core  ((^.), (%~), (..))
 import Optic.Fold ((^?))
 import Utils (elem)
 
@@ -47,43 +47,58 @@ notifyDriver sKnot nKnot input driver =
         (\t -> do
             clearTimeout t
             setTimeout state cellId)
-        (lookup cellId map) 
+        (lookup cellId map)
+    RefreshCell cell -> do 
+      state <- readRef sKnot
+      case ancestors (cell ^. _cellId) (state ^. _notebook .. _dependencies) of
+        [] -> driver $ RequestCellContent cell
+        cid:_ ->
+          maybe (pure unit) (driver <<< RequestCellContent) $
+          state ^? _notebook .. cellById cid
     _ -> pure unit
   where
+  setTimeout :: State -> CellId -> Eff _ Unit 
   setTimeout state cellId = do
     t <- timeout Config.notifyTimeout do
       go state cellId
       modifyRef nKnot (delete cellId)
-      -- after we get requested id we can safely remove it from
-      -- notebook state 
-      driver $ WithState (_requesting %~ filter (/= cellId))
-    modifyRef nKnot (insert cellId t) 
-  go state cellId = notify (state ^. _notebook) cellId (state ^. _requesting) driver 
+    modifyRef nKnot (insert cellId t)
 
+  go :: State -> CellId -> Eff _ Unit 
+  go state cellId = do
+    notify (state ^. _notebook) cellId (state ^. _requesting) (state ^. _refreshing) driver
+    cleanId cellId
+
+  cleanId :: CellId -> Eff _ Unit 
+  cleanId cellId =
+    driver $ WithState ((_requesting %~ filter (/= cellId))
+                     .. (_refreshing %~ filter (/= cellId)))
     
-
-
-notify :: forall e. Notebook -> CellId -> [CellId] -> 
+notify :: forall e. Notebook -> CellId -> [CellId] -> [CellId] ->
           Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
-notify notebook cellId requestedIds driver =
-  -- If current cell is parent for all requested cell
+notify notebook cellId requestedIds refreshingIds driver = do
+  -- If current cell is parent for all requested or refreshing cells
   -- and we can get next cell in ancestors list
   if isParent && isJust nextCell
   -- then we get this next cell
-  then request $ fromJust nextCell
+    then request $ fromJust nextCell
   -- else we get all children
-  else requestForChildren
+    else requestForChildren
   where
   request :: Cell -> Eff _ Unit
   request = driver <<< RequestCellContent
 
   requestForChildren :: Eff _ Unit 
-  requestForChildren = traverse_ request $ dependentCells cellId
+  requestForChildren =
+    if elem cellId refreshingIds
+    then pure unit 
+    else traverse_ request $ dependentCells cellId
 
   -- list of list of dependencies of requested cell from top to bottom
   ancestors' :: [[CellId]]
-  ancestors' = flip ancestors (notebook ^._dependencies) <$> requestedIds
+  ancestors' = flip ancestors (notebook ^._dependencies) <$>
+               (requestedIds <> refreshingIds)
 
   -- if current cell is parent for all requested cells
   isParent :: Boolean

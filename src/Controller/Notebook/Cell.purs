@@ -4,6 +4,7 @@ module Controller.Notebook.Cell
   , viewCell
   , handleRunClick
   , handleEmbedClick
+  , handleRefreshClick
   , isRunning
   ) where
 
@@ -60,6 +61,10 @@ viewCell cell = do
 handleRunClick :: forall e. Notebook -> Cell -> I e
 handleRunClick notebook cell | isRunning cell = stopCell notebook cell
                              | otherwise = requestCellContent notebook cell
+
+handleRefreshClick :: forall e. Cell -> I e
+handleRefreshClick  cell =
+  pure $ (RefreshCell cell) 
 
 stopCell :: forall e. Notebook -> Cell -> I e
 stopCell notebook cell =
