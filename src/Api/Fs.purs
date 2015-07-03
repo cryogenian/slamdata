@@ -9,14 +9,16 @@ import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Core (Json())
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
-import Data.Array (head, findIndex)
+import Data.Array (head, findIndex, filter, elemIndex)
 import Data.Either (Either(..), either)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Index (prop)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Maybe
+import Data.Bifunctor (bimap)
 import Data.Path.Pathy
 import Data.These (These(..), theseLeft, theseRight)
+import Data.Tuple (Tuple(..))
 import Model.Path
 import Model.Notebook.Cell
 import Model.Notebook.Port
@@ -170,14 +172,55 @@ exists name parent = exists' name <$> children' (printPath parent)
 exists' :: forall e. String -> [R.Resource] -> Boolean
 exists' name items = findIndex (\r -> r ^. R._name == name) items /= -1
 
-delete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit
-delete resource =
-  let url = if R.isDatabase resource
-            then Config.mountUrl
-            else Config.dataUrl
-  in getResponse msg $ delete_ (url <> R.resourcePath resource)
-  where msg = "can not delete"
+forceDelete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit 
+forceDelete resource = 
+  getResponse msg $ delete_ path
+  where
+  msg :: String
+  msg = "can not delete"
 
+  path = (if R.isDatabase resource then Config.mountUrl else Config.dataUrl)
+         <> R.resourcePath resource
+         
+delete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) (Maybe R.Resource)
+delete resource =
+  if not (R.isDatabase resource || alreadyInTrash resource)
+  then 
+    moveToTrash resource
+  else do
+    forceDelete resource
+    pure Nothing
+  where
+  msg :: String 
+  msg = "can not delete"
+
+  moveToTrash :: R.Resource -> Aff _ (Maybe R.Resource)
+  moveToTrash res = do
+    let d = (res ^. R._root) </> dir Config.trashFolder
+        path = (res # R._root .~ d) ^. R._path 
+    name <- getNewName d (res ^. R._name)
+    move res (path # R._nameAnyPath .~ name)
+    pure (Just $ R.Directory d)
+
+  alreadyInTrash :: R.Resource -> Boolean
+  alreadyInTrash res =
+    case res ^. R._path of
+      Left _ -> alreadyInTrash' (res ^. R._root)
+      Right path -> alreadyInTrash' path
+
+  alreadyInTrash' :: DirPath -> Boolean
+  alreadyInTrash' d =
+    if d == rootDir
+    then false
+    else maybe false go $ peel d
+
+  go :: Tuple DirPath (Either DirName FileName) -> Boolean
+  go (Tuple d name) =
+    case name of
+      Right _ -> false
+      Left n -> if n == DirName Config.trashFolder then true else alreadyInTrash' d 
+    
+  
 move :: forall a e. R.Resource -> AnyPath -> Aff (ajax :: AJAX | e) AnyPath
 move src tgt = do
   let url = if R.isDatabase src

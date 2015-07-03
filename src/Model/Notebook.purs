@@ -22,6 +22,7 @@ type State =
   , platform :: Platform
   , dialog :: Maybe Dialog
   , requesting :: [CellId]
+  , addingCell :: Boolean 
   }
 
 _dropdowns :: LensP State [DropdownItem]
@@ -54,6 +55,9 @@ _dialog = lens _.dialog _{dialog = _}
 _requesting :: LensP State [CellId]
 _requesting = lens _.requesting _{requesting = _}
 
+_addingCell :: LensP State Boolean
+_addingCell = lens _.addingCell _{addingCell = _} 
+
 initialState :: State
 initialState =
   { dropdowns: initialDropdowns
@@ -66,4 +70,5 @@ initialState =
   , platform: Other
   , dialog: Nothing
   , requesting: []
+  , addingCell: false
   }

@@ -78,7 +78,7 @@ handleMenuNotebook signal = do
         NotebookRoute res _ -> do
           pure $ Just res
         _ -> pure Nothing
-  liftAff $ maybe (pure unit) delete mbRes
+  liftAff $ maybe (pure unit) (void <<< delete) mbRes
   liftEff $ setLocation homeHash
   empty
 

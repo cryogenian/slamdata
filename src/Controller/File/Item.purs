@@ -9,7 +9,7 @@ import Controller.File.Common (Event(), toInput, showError, browseURL)
 import Data.Array (sort)
 import Data.Either (Either(..), either)
 import Data.Inject1 (Inject1, inj)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Path.Pathy (rootDir, printPath)
 import Data.URI (runParseAbsoluteURI)
 import Halogen.HTML.Events.Monad (async, andThen)
@@ -34,8 +34,9 @@ import Utils (locationString, setLocation)
 handleDeleteItem :: forall e. Item -> Event e
 handleDeleteItem (PhantomItem _) = empty
 handleDeleteItem item = do
-  liftAff $ delete (itemResource item)
-  toInput $ ItemRemove item
+  mbTrashFolder <- liftAff $ delete (itemResource item)
+  (toInput $ ItemRemove item) <> 
+  (maybe empty (toInput <<< ItemAdd <<< Item) mbTrashFolder)
 
 handleMoveItem :: forall e. Item -> Event e
 handleMoveItem (PhantomItem _) = empty
