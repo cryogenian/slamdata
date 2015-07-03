@@ -9,7 +9,7 @@ module Controller.Notebook.Cell.JTableContent
   , queryToJTable
   ) where
 
-import Api.Fs (delete)
+import Api.Fs (forceDelete)
 import Api.Query (port, sample, count)
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
@@ -120,7 +120,7 @@ runJTable file cell = do
 queryToJTable :: forall e. Cell -> String -> Resource -> Resource -> I e
 queryToJTable cell sql inp out = do
   jobj <- liftAff do
-    if isTempFile out then delete out else pure unit
+    if isTempFile out then forceDelete out else pure unit
     attempt (port inp out sql varMap)
   either errorInQuery go do
     j <- lmap message jobj

@@ -172,21 +172,35 @@ exists name parent = exists' name <$> children' (printPath parent)
 exists' :: forall e. String -> [R.Resource] -> Boolean
 exists' name items = findIndex (\r -> r ^. R._name == name) items /= -1
 
-delete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit
+forceDelete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit 
+forceDelete resource = 
+  getResponse msg $ delete_ path
+  where
+  msg :: String
+  msg = "can not delete"
+
+  path = (if R.isDatabase resource then Config.mountUrl else Config.dataUrl)
+         <> R.resourcePath resource
+         
+delete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) (Maybe R.Resource)
 delete resource =
-  if R.isDatabase resource || alreadyInTrash resource 
-  then getResponse msg $ delete_ (Config.mountUrl <> R.resourcePath resource)
-  else moveToTrash resource 
+  if not (R.isDatabase resource || alreadyInTrash resource)
+  then 
+    moveToTrash resource
+  else do
+    forceDelete resource
+    pure Nothing
   where
   msg :: String 
   msg = "can not delete"
 
-  moveToTrash :: R.Resource -> Aff _ Unit 
-  moveToTrash res = void do
+  moveToTrash :: R.Resource -> Aff _ (Maybe R.Resource)
+  moveToTrash res = do
     let d = (res ^. R._root) </> dir Config.trashFolder
         path = (res # R._root .~ d) ^. R._path 
     name <- getNewName d (res ^. R._name)
     move res (path # R._nameAnyPath .~ name)
+    pure (Just $ R.Directory d)
 
   alreadyInTrash :: R.Resource -> Boolean
   alreadyInTrash res =
