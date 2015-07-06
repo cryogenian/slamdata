@@ -20,7 +20,7 @@ import Controller.Notebook.Common (I(), run, update, finish)
 import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (Json(), JObject(), fromArray)
 import Data.Argonaut.Decode (decodeJson)
-import Data.Array (head)
+import Data.Array (head, last)
 import Data.Bifunctor (lmap)
 import Data.Date (now)
 import Data.Either (Either(..), either)
@@ -125,15 +125,18 @@ queryToJTable cell sql inp out = do
   either errorInQuery go do
     j <- lmap message jobj
     out' <- j .? "out"
+    planPhases <- last <$> j .? "phases"
+    let plan = maybe "" (\p -> either (const "") id $ p .? "detail") planPhases
     path <- maybe (Left "Invalid file from SlamEngine") Right $ parseAbsFile out'
-    maybe (Left "Could not sandbox SlamEngine file") Right $ sandbox rootDir path
+    realOut <- maybe (Left "Could not sandbox SlamEngine file") Right $ sandbox rootDir path
+    pure { realOut: realOut, plan: plan }
   where
-  go realOut =
-    let file = mkFile (Left $ rootDir </> realOut) in 
-    (update cell (_output .~ PortResource file)) <>
+  go { realOut: realOut, plan: plan } =
+    let file = mkFile (Left $ rootDir </> realOut) in
+    (update cell $ (_output .~ PortResource file) .. (_message .~ plan)) <>
     (pure $ UpdatedOutput (cell ^._cellId) (PortResource file)) <>
     (runJTable file cell)
-    
+
   varMap :: SM.StrMap VarMapValue
   varMap = fromMaybe SM.empty $ cell ^? _input.._VarMap
 
