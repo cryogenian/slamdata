@@ -27,7 +27,7 @@
     "purescript-foldable-traversable": "^0.3.1",
     "purescript-foreign": "^0.4.2",
     "purescript-globals": "^0.1.6",
-    "purescript-halogen": "3e189cf7f4b191dc82d01b4cb9ab2f119342a6d7",
+    "purescript-halogen": "b1636e2537526963f89134c7b4fd8005c1b62e37",
     "purescript-halogen-bootstrap": "b163b1eb7200ad9af9ddd700c80872a6386ba76d",
     "purescript-index": "^0.3.0",
     "purescript-integers": "^0.1.0",
@@ -36,7 +36,7 @@
     "purescript-lens": "^0.7.0",
     "purescript-lists": "^0.6.0",
     "purescript-maps": "^0.3.3",
-    "purescript-markdown": "1.4.0",
+    "purescript-markdown-halogen": "^0.1.2",
     "purescript-maybe": "^0.2.2",
     "purescript-minimatch": "^0.1.0",
     "purescript-monoid": "^0.2.0",
@@ -60,7 +60,7 @@
   },
   "resolutions": {
     "purescript-argonaut": "^0.6.0",
-    "purescript-halogen": "3e189cf7f4b191dc82d01b4cb9ab2f119342a6d7",
+    "purescript-halogen": "b1636e2537526963f89134c7b4fd8005c1b62e37",
     "purescript-random": "573de58651264a2b04636eed8f4bf09364fbca02",
     "purescript-timers": "^0.0.9"
   }

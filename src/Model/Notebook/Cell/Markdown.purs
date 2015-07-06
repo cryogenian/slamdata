@@ -7,10 +7,10 @@ import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Either (Either(..))
 import Optic.Core (LensP(), lens)
-import Text.Markdown.SlamDown (TextBoxType(..))
-import Text.Markdown.SlamDown.Html (SlamDownState(..), emptySlamDownState, FormFieldValue(..))
+import Text.Markdown.SlamDown (SlamDown(..), TextBoxType(..))
+import Text.Markdown.SlamDown.Html (SlamDownState(..), initSlamDownState, FormFieldValue(..))
 import qualified Data.StrMap as M
-import qualified Data.Set as S 
+import qualified Data.Set as S
 import qualified Model.Notebook.Cell.Common as C
 
 
@@ -46,7 +46,7 @@ instance encodeEncFormField :: EncodeJson EncFormField where
   encodeJson (EncFormField (SingleValue tx str)) =
     "type" := encodeTextBox tx
     ~> "value" := str
-    ~> jsonEmptyObject 
+    ~> jsonEmptyObject
   encodeJson (EncFormField (MultipleValues ss)) = encodeJson (S.toList ss)
 
 instance decodeEncFormField :: DecodeJson EncFormField where
@@ -59,7 +59,7 @@ instance decodeEncFormField :: DecodeJson EncFormField where
         pure $ EncFormField $ SingleValue tx v)
 
 prepareToEnc :: SlamDownState -> M.StrMap EncFormField
-prepareToEnc (SlamDownState m) = EncFormField <$> m 
+prepareToEnc (SlamDownState m) = EncFormField <$> m
 
 encodeState :: SlamDownState -> Json
 encodeState = encodeJson <<< prepareToEnc
@@ -98,3 +98,7 @@ _input = _MarkdownRec <<< C._input
 
 _state :: LensP MarkdownRec SlamDownState
 _state = _MarkdownRec <<< lens _.state _{state = _}
+
+-- TODO: re-look at this, we may be able to simplify things elsewhere if we use `initSlamDownState` properly
+emptySlamDownState :: SlamDownState
+emptySlamDownState = initSlamDownState (SlamDown [])

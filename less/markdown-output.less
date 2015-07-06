@@ -1,0 +1,62 @@
+.markdown-output {
+
+    margin-left: 1em;
+
+    &.fade.in {
+        padding-top: 10px;
+    }
+
+    span.slamdown-field {
+      > label {
+        margin-left: 1.5em;
+      }
+      > input {
+        margin-left: 0.5em;
+        margin-right: 1em;
+      }
+    }
+
+    span.slamdown-field:first-child {
+      > label {
+          margin-left: 0;
+          display: block;
+          width: calc(100px - 0.5em);
+          padding-top: 7px;
+          padding-right: 0.5em;
+          float: left;
+      }
+      input {
+        margin: 0;
+      }
+      overflow: hidden;
+    }
+
+    ul.slamdown-radios, ul.slamdown-checkboxes {
+      list-style: none;
+      padding: 7px 0 0;
+      li {
+        display: inline;
+        margin-right: 1.5em;
+        label {
+          margin-left: 0.5em;
+        }
+      }
+    }
+
+    input {
+      padding: 0 6px;
+      height: 34px;
+    }
+
+    input[type=radio], input[type=checkbox] {
+      height: auto;
+    }
+
+    select {
+      margin-top: 7px;
+    }
+
+    p {
+      overflow: hidden;
+    }
+}

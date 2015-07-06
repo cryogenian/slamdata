@@ -1,7 +1,7 @@
 module View.Notebook.Cell.Markdown (markdownOutput) where
 
 import Data.Array (null)
-import EffectTypes (NotebookAppEff()) 
+import EffectTypes (NotebookAppEff())
 import Input.Notebook (Input(..))
 import Model.Notebook.Cell (Cell(), _cellId)
 import Model.Notebook.Cell.Markdown (MarkdownRec(), _input, _state)
@@ -22,7 +22,7 @@ type SlamDownHTML e = H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)
 markdownOutput :: forall e. MarkdownRec -> Cell -> [HTML e]
 markdownOutput mr cell =
   optionalHTML
-  <<< renderHalogen (mr ^. _state)
+  <<< renderHalogen ("slamdata-frm-" ++ show (cell ^. _cellId)) (mr ^. _state)
   <<< parseMd
   $ mr ^. _input
   where
