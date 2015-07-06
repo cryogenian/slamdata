@@ -26,7 +26,7 @@ import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource, _VarMap)
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
-import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..))
+import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..), TextBoxType(..))
 import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent)
 import Text.Markdown.SlamDown.Parser (parseMd)
 import Utils (elem)
@@ -164,12 +164,17 @@ slamDownOutput cell =
   where
     modifyVarMap m = foldl (\m (Tuple key val) -> SM.insert key val m) m tplLst
     tplLst = maybe [] SM.toList ((fromFormValue <$>) <$> state)
-    fromFormValue (SingleValue _ s) = quoteString s
+    fromFormValue (SingleValue PlainText s) = quoteString s
+    fromFormValue (SingleValue Date s) = "DATE '" ++ s ++ "'"
+    fromFormValue (SingleValue Time s) = "TIME '" ++ s ++ "'"
+    fromFormValue (SingleValue DateTime s) = "TIMESTAMP '" ++ processTimestamp s ++ "'"
     fromFormValue (MultipleValues s) = "[" <> intercalate ", " (quoteString <$> S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
+    processTimestamp s = s ++ ":00Z"
     quoteString s | isSQLNum s = s
-                  | otherwise = "'" ++ Rx.replace (rxQuot) "''" s ++ "'"
+                  | otherwise = "'" ++ Rx.replace rxQuot "''" s ++ "'"
     rxQuot = Rx.regex "'" Rx.noFlags { global = true }
+    rxT = Rx.regex "T" Rx.noFlags
     isSQLNum s = isRight $ flip SP.runParser s $ do
       SP.many1 SP.anyDigit
       SP.optional $ SP.string "." *> SP.many SP.anyDigit
