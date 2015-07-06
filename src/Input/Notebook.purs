@@ -27,7 +27,7 @@ import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
 import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..))
-import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, emptySlamDownState)
+import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent)
 import Text.Markdown.SlamDown.Parser (parseMd)
 import Utils (elem)
 
@@ -60,7 +60,7 @@ data Input
   | ReceiveCellContent Cell
   | ViewCellContent Cell
   | RefreshCell Cell
-    
+
   | StartRunCell CellId Date
   | StopCell CellId
   | CellResult CellId Date (Either (NEL.NonEmpty FailureMessage) CellResultContent)
@@ -137,10 +137,10 @@ updateState state (UpdatedOutput cid newInput) =
 
 updateState state (RefreshCell cell) =
   let requesting = state ^. _requesting
-      cid = cell ^. _cellId 
+      cid = cell ^. _cellId
   in if elem cid requesting
      then state
-     else state # _refreshing <>~ [cell ^. _cellId] 
+     else state # _refreshing <>~ [cell ^. _cellId]
 
 updateState state i = state
 
@@ -201,9 +201,9 @@ initialSlamDownOutput sf = VarMap sm
   where sm :: SM.StrMap VarMapValue
         sm = fromMaybe SM.empty <<< traverse toValue $ SM.fromList sf
         toValue :: FormField -> Maybe VarMapValue
-        toValue (TextBox _ (Literal s)) = Just s
+        toValue (TextBox _ (Just (Literal s))) = Just s
         toValue (RadioButtons (Literal s) _) = Just s
-        toValue (DropDown _ (Literal s)) = Just s
+        toValue (DropDown _ (Just (Literal s))) = Just s
         toValue (CheckBoxes _ (Literal ss)) = Nothing
         toValue _ = Nothing
 
