@@ -137,7 +137,7 @@ statusBar notebook hasOutput cell =
              , H.div [ A.classes [ VC.statusText ] ]
                [ H.text $ statusText notebook.tickDate (cell ^. _runState) ]
              , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
-               $ catMaybes [ refreshButton 
+               $ catMaybes [ refreshButton
                            , toggleMessageButton
                            , linkButton
                            , Just $ glyph B.glyphiconChevronLeft
@@ -145,15 +145,15 @@ statusBar notebook hasOutput cell =
              ] ++ messages
          ]
   where
-  buttonClass :: A.ClassName 
+  buttonClass :: A.ClassName
   buttonClass = if isRunning cell then VC.stopButton else VC.playButton
-  
-  buttonGlyph :: A.ClassName 
+
+  buttonGlyph :: A.ClassName
   buttonGlyph = if isRunning cell then B.glyphiconStop else B.glyphiconPlay
 
   messages :: [HTML e]
   messages = message cell
-  
+
   toggleMessageButton :: Maybe (HTML e)
   toggleMessageButton =
     if null messages
@@ -165,7 +165,7 @@ statusBar notebook hasOutput cell =
          [ glyph if cell ^._expandedStatus
                  then B.glyphiconEyeClose
                  else B.glyphiconEyeOpen ]
-         
+
   linkButton :: Maybe (HTML e)
   linkButton =
     if not hasOutput
@@ -174,14 +174,14 @@ statusBar notebook hasOutput cell =
                          , E.onClick (\_ -> pure $ handleEmbedClick notebook cell)
                          ]
          [ H.img [ A.src "img/code-icon.svg", A.width 16 ] [] ]
-    
+
   refreshButton :: Maybe (HTML e)
   refreshButton =
     Just $ H.button [ A.title "Refresh cell content"
                     , A.classes [VC.refreshButton]
                     , E.onClick (\_ -> pure $ handleRefreshClick cell)
                     ]
-    [ glyph B.glyphiconRefresh ] 
+    [ glyph B.glyphiconRefresh ]
 
 message :: forall e. Cell -> [HTML e]
 message cell =
@@ -191,7 +191,7 @@ message cell =
           then [ H.div [ A.classes $ [VC.cellMessages] ++ collapsed ]
                        $ if cell ^._expandedStatus
                          then [ H.div_ []
-                              , H.div_ [ H.text $ cell ^._message ]
+                              , messageText cell
                               ]
                          else []
                ]
@@ -202,6 +202,11 @@ message cell =
 
 details :: forall e. Cell -> [HTML e]
 details cell = commonMessage "" [H.div_ [H.text (cell^._message)]] cell
+
+messageText :: forall e. Cell -> HTML e
+messageText cell =
+  if indexOf "\n" m > -1 then H.pre_ [H.text m] else H.div_ [H.text m]
+  where m = cell ^._message
 
 failureText :: forall e. Cell -> [HTML e]
 failureText cell =
