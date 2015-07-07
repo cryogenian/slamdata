@@ -26,8 +26,8 @@ import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource, _VarMap)
 import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
-import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..), TextBoxType(..))
-import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent)
+import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..), TextBoxType(..), everything)
+import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, initSlamDownState)
 import Text.Markdown.SlamDown.Parser (parseMd)
 import Utils (elem)
 
@@ -114,7 +114,7 @@ updateState state (CellResult cellId date content) =
   in state # _notebook.._cells..mapped %~ onCell cellId f
 
 updateState state (ReceiveCellContent cell) =
-  state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const $  setSlamDownStatus cell)
+  state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const $ setSlamDownStatus cell)
 
 updateState state (StartRunCell cellId date) =
   state # _notebook.._cells..mapped %~ onCell cellId (setRunState (RunningSince date) <<< (_expandedStatus .~ false))
@@ -169,6 +169,7 @@ slamDownOutput cell =
     fromFormValue (SingleValue Time s) = "TIME '" ++ s ++ "'"
     fromFormValue (SingleValue DateTime s) = "TIMESTAMP '" ++ processTimestamp s ++ "'"
     fromFormValue (MultipleValues s) = "[" <> intercalate ", " (quoteString <$> S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
+    state :: Maybe (SM.StrMap FormFieldValue)
     state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
     processTimestamp s = s ++ ":00Z"
     quoteString s | isSQLNum s = s
@@ -182,23 +183,11 @@ slamDownOutput cell =
                  *> (SP.string "-" <|> SP.string "+")
                  *> SP.many SP.anyDigit
 
--- TODO: This should probably live in purescript-markdown
-slamDownFields :: String -> [Tuple String FormField]
-slamDownFields s =
-  case parseMd s of
-    SlamDown bs -> bs >>= block
+slamDownFields :: SlamDown -> [Tuple String FormField]
+slamDownFields = everything (const []) go
   where
-    block (Paragraph is) = is >>= inline
-    block (Header _ is) = is >>= inline
-    block (Blockquote bs) = bs >>= block
-    block (List _ bss) = join bss >>= block
-    block _ = []
-    inline (Emph is) = is >>= inline
-    inline (Strong is) = is >>= inline
-    inline (Link is _) = is >>= inline
-    inline (Image is _) = is >>= inline
-    inline (FormField s _ ff) = [Tuple s ff]
-    inline _ = []
+  go (FormField s _ ff) = [Tuple s ff]
+  go _ = []
 
 -- TODO: Change Port to SlamDownState and use slamDownOutput instead.
 initialSlamDownOutput :: [Tuple String FormField] -> Port
@@ -216,9 +205,14 @@ setSlamDownStatus :: Cell -> Cell
 setSlamDownStatus cell =
   let input' = cell ^? _content.._Markdown..Ma._input
       message = ("Exported fields: " <>) <<< intercalate ", " <<< (fst <$>)
-      initial fields = cell # _message .~ message fields
-                            # _output .~ initialSlamDownOutput fields
-  in maybe cell (initial <<< slamDownFields) input'
+      initial md =
+        let fields = slamDownFields md
+            updateState (SlamDownState s) | SM.isEmpty s = initSlamDownState md
+                                          | otherwise = SlamDownState s
+        in cell # _message .~ message fields
+                # _output .~ initialSlamDownOutput fields
+                # _content .. _Markdown .. Ma._state %~ updateState
+  in maybe cell (initial <<< parseMd) input'
 
 runSlamDownEvent :: SlamDownEvent -> Cell -> Cell
 runSlamDownEvent event cell =
