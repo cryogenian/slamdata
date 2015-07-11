@@ -28,10 +28,8 @@
     "purescript-foreign": "^0.4.2",
     "purescript-globals": "^0.1.6",
     "purescript-halogen": "b1636e2537526963f89134c7b4fd8005c1b62e37",
-    "purescript-halogen-bootstrap": "b163b1eb7200ad9af9ddd700c80872a6386ba76d",
     "purescript-index": "^0.3.0",
     "purescript-integers": "^0.1.0",
-    "purescript-jtable": "^0.2.0",
     "purescript-lazy": "^0.3.1",
     "purescript-lens": "^0.7.0",
     "purescript-lists": "^0.6.0",
@@ -56,12 +54,14 @@
     "zeroclipboard": "^2.2.0",
     "purescript-sets": "~0.3.2",
     "purescript-uri": "dd41ddb8e4aac2e7c2cdc3aa631c5669b5a50293",
-    "purescript-echarts": "~0.2.1"
+    "purescript-echarts": "~0.2.1",
+    "purescript-jtable": "https://github.com/cryogenian/purescript-jtable.git#master",
+    "purescript-halogen-bootstrap": "https://github.com/cryogenian/purescript-halogen-bootstrap.git#master"
   },
   "resolutions": {
     "purescript-argonaut": "^0.6.0",
-    "purescript-halogen": "b1636e2537526963f89134c7b4fd8005c1b62e37",
     "purescript-random": "573de58651264a2b04636eed8f4bf09364fbca02",
-    "purescript-timers": "^0.0.9"
+    "purescript-timers": "^0.0.9",
+    "purescript-control": "~0.2.5"
   }
 }

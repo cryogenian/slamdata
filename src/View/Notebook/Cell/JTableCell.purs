@@ -7,7 +7,7 @@ import Data.Array (elemIndex)
 import Data.Char (fromCharCode)
 import Data.Either (either, isLeft)
 import Data.Int (Int(), toNumber)
-import Data.Json.JTable (renderJTable, jTableOptsDefault, bootstrapStyle)
+import Data.Json.JTable (renderJTable, jTableOptsDefault, bootstrapStyle, alphaOrdering)
 import Data.Maybe (fromMaybe)
 import Data.String (fromChar)
 import Data.These (These(), these, theseRight)
@@ -35,7 +35,8 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
   json <- result ^? _values .. _Just
   let totalPages = result ^. _totalPages
       page = fromMaybe one $ theseRight (table ^. _page)
-      output = renderJTable (jTableOptsDefault { style = bootstrapStyle }) json
+      output = renderJTable (jTableOptsDefault { style = bootstrapStyle
+                                               , columnOrdering = alphaOrdering}) json
       pageSizeValue = either valueFromThese (show <<< toNumber) (table ^. _perPage)
   return
     [ H.div [ A.class_ VC.scrollbox ]
