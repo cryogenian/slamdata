@@ -57,10 +57,9 @@ view state =
 
 navigation :: forall e. State -> [HTML e]
 navigation state =
-  let notebookHref = these exploreHref editHref (\_ -> editHref) (state ^. _notebook .. _name)
-  in if not state.editable
-     then []
-     else [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
+  if (not state.loaded) || (not state.editable) 
+  then [ ]
+  else [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
                            [ icon B.glyphiconBook notebookHref
                            , logo
                            , name state ]
@@ -69,6 +68,8 @@ navigation state =
                    ]
           ]
   where
+  notebookHref = these exploreHref editHref (\_ -> editHref) (state ^. _notebook .. _name)
+
   exploreHref :: String -> String
   exploreHref _ =
     let inputRes = either (const Nothing) Just =<< state ^? _notebook .. _cells .. ix 0 .. _content .. _FileInput .. _file
