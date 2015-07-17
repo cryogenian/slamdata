@@ -8,7 +8,7 @@ module Input.Notebook
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Bind (join)
-import Data.Array (filter, modifyAt, (!!), elemIndex)
+import Data.Array (filter, modifyAt, (!!), elemIndex, (\\))
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), isRight, either)
 import Data.Foldable (intercalate, foldl)
@@ -144,8 +144,8 @@ updateState state (RefreshCell cell) =
 
 updateState state i = state
 
-slamDownStateMap :: LensP SlamDownState (SM.StrMap FormFieldValue)
-slamDownStateMap = lens (\(SlamDownState m) -> m) (const SlamDownState)
+_SlamDownState :: LensP SlamDownState (SM.StrMap FormFieldValue)
+_SlamDownState = lens (\(SlamDownState m) -> m) (const SlamDownState)
 
 -- TODO: We need a much better solution to this.
 syncParents :: [Cell] -> [Cell]
@@ -170,7 +170,7 @@ slamDownOutput cell =
     fromFormValue (SingleValue DateTime s) = "TIMESTAMP '" ++ processTimestamp s ++ "'"
     fromFormValue (MultipleValues s) = "[" <> intercalate ", " (quoteString <$> S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
     state :: Maybe (SM.StrMap FormFieldValue)
-    state = cell ^? _content.._Markdown..Ma._state..slamDownStateMap
+    state = cell ^? _content.._Markdown..Ma._state.._SlamDownState
     processTimestamp s = s ++ ":00Z"
     quoteString s | isSQLNum s = s
                   | otherwise = "'" ++ Rx.replace rxQuot "''" s ++ "'"
@@ -189,29 +189,20 @@ slamDownFields = everything (const []) go
   go (FormField s _ ff) = [Tuple s ff]
   go _ = []
 
--- TODO: Change Port to SlamDownState and use slamDownOutput instead.
-initialSlamDownOutput :: [Tuple String FormField] -> Port
-initialSlamDownOutput sf = VarMap sm
-  where sm :: SM.StrMap VarMapValue
-        sm = fromMaybe SM.empty <<< traverse toValue $ SM.fromList sf
-        toValue :: FormField -> Maybe VarMapValue
-        toValue (TextBox _ (Just (Literal s))) = Just s
-        toValue (RadioButtons (Literal s) _) = Just s
-        toValue (DropDown _ (Just (Literal s))) = Just s
-        toValue (CheckBoxes _ (Literal ss)) = Nothing
-        toValue _ = Nothing
-
 setSlamDownStatus :: Cell -> Cell
 setSlamDownStatus cell =
   let input' = cell ^? _content.._Markdown..Ma._input
       message = ("Exported fields: " <>) <<< intercalate ", " <<< (fst <$>)
       initial md =
         let fields = slamDownFields md
-            updateState (SlamDownState s) | SM.isEmpty s = initSlamDownState md
-                                          | otherwise = SlamDownState s
-        in cell # _message .~ message fields
-                # _output .~ initialSlamDownOutput fields
-                # _content .. _Markdown .. Ma._state %~ updateState
+            updateState (SlamDownState s) = case initSlamDownState md of
+              SlamDownState s' ->
+                let removedKeys = SM.keys s \\ SM.keys s'
+                    mergedSM = s `SM.union` s'
+                    prunedSM = foldl (\f k -> SM.delete k f) mergedSM removedKeys
+                in SlamDownState prunedSM
+        in slamDownOutput (cell # _message .~ message fields
+                                # _content .. _Markdown .. Ma._state %~ updateState)
   in maybe cell (initial <<< parseMd) input'
 
 runSlamDownEvent :: SlamDownEvent -> Cell -> Cell
