@@ -55,8 +55,8 @@
     "purescript-sets": "~0.3.2",
     "purescript-uri": "dd41ddb8e4aac2e7c2cdc3aa631c5669b5a50293",
     "purescript-echarts": "~0.2.1",
-    "purescript-jtable": "https://github.com/cryogenian/purescript-jtable.git#master",
-    "purescript-halogen-bootstrap": "https://github.com/cryogenian/purescript-halogen-bootstrap.git#master"
+    "purescript-jtable": "e92411f841096530388caf3e8597968aa1bbc813",
+    "purescript-halogen-bootstrap": "cryogenian/purescript-halogen-bootstrap#10d78863b11be88e96c451d6c9736e486d2731eb"
   },
   "resolutions": {
     "purescript-argonaut": "^0.6.0",
