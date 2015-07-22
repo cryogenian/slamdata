@@ -1,28 +1,28 @@
 language: node_js
 sudo: false
 node_js:
-  - 0.10
+- 0.1
 env:
-  - TAG=v0.6.9.5 PATH=$HOME/bin:$PATH
+- TAG=v0.6.9.5 PATH=$HOME/bin:$PATH
 install:
-  - mkdir $HOME/bin
-  - wget -O $HOME/purescript.tar.gz 'https://drive.google.com/uc?export=download&id=0Bx4xybkHUCukQ2RqS2huQm9FQzA'
-  - tar zxvf $HOME/purescript.tar.gz -C $HOME/bin purescript/psc{,i,-docs,-make} --strip-components=1
-  - chmod a+x $HOME/bin/psc{,i,-docs,-make}
-  - npm install bower gulp -g
-  - npm install
-  - bower install --force
+- mkdir $HOME/bin
+- wget -O $HOME/purescript.tar.gz 'https://drive.google.com/uc?export=download&id=0Bx4xybkHUCukQ2RqS2huQm9FQzA'
+- tar zxvf $HOME/purescript.tar.gz -C $HOME/bin purescript/psc{,i,-docs,-make} --strip-components=1
+- chmod a+x $HOME/bin/psc{,i,-docs,-make}
+- npm install bower gulp -g
+- npm install
+- bower install --force
 script:
-  - gulp less
-  - gulp deploy-prod-entries-file
-  - gulp deploy-prod-entries-notebook
+- gulp less
+- gulp deploy-prod-entries-file
+- gulp deploy-prod-entries-notebook
 before_deploy:
-  - cp -r public slamdata
-  - tar cjf slamdata.tar.bz2 slamdata
+- cp -r public slamdata
+- tar cjf slamdata.tar.bz2 slamdata
 deploy:
   provider: releases
   api-key:
-    secure: "TitL0gINR0xhcMdNBSFKulH7VlS+q1bAkmkWe5H5drTGesqFQprmnoHxPM8Sstfr0DGrAsSKweN/SsUpmVpK8fUE3AcK9kNqt9HXIXr2UotYa1f3jqQKc4+KRXOOf4qjEdUwYRYYMUayR4psA/mijm3WxoVG/jrOjRZAkal/NAY="
+    secure: TitL0gINR0xhcMdNBSFKulH7VlS+q1bAkmkWe5H5drTGesqFQprmnoHxPM8Sstfr0DGrAsSKweN/SsUpmVpK8fUE3AcK9kNqt9HXIXr2UotYa1f3jqQKc4+KRXOOf4qjEdUwYRYYMUayR4psA/mijm3WxoVG/jrOjRZAkal/NAY=
   file: slamdata.tar.bz2
   skip_cleanup: true
   on:
@@ -30,8 +30,5 @@ deploy:
     branch: master
     tags: true
 notifications:
-  irc:
-    channels:
-      - "chat.freenode.net#slamdata"
-    template:
-      - "%{result}: %{repository_slug}#%{build_number} (%{branch}@%{commit}: %{author}) %{build_url}"
+  slack:
+    secure: EbxkmDGMm5b2K5tpFrcjEmywSzhU6TSJM6VuCzIfpZ78UWqxQ6u2bbpL5a7FYjYqLZI4U/+7p+M85o0Sj58KHgfwWtpgJn84uKvIkSHo808LU/zmCBuiY4kB4z5AnTXVVFdJ2Lx+vjaeBvZA0XNztdDAViT0QM0nTAs7T94oAW8=
