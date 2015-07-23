@@ -46,6 +46,7 @@ newtype Cell =
        , message :: String
        , failures :: Array FailureMessage
        , hiddenEditor :: Boolean
+       , embedHovered :: Boolean
        , runState :: RunState
        , hasRun :: Boolean
        , pathToNotebook :: DirPath
@@ -63,6 +64,7 @@ newCell cellId content =
        , message: ""
        , hiddenEditor: false
        , runState: RunInitial
+       , embedHovered: false 
        , hasRun: false
        , pathToNotebook: rootDir
        }
@@ -105,6 +107,10 @@ _hasRun = _Cell <<< lens _.hasRun _{hasRun = _}
 
 _pathToNotebook :: LensP Cell DirPath
 _pathToNotebook = _Cell <<< lens _.pathToNotebook _{pathToNotebook = _}
+
+_embedHovered :: LensP Cell Boolean
+_embedHovered = _Cell <<< lens _.embedHovered _{embedHovered = _}
+
 
 instance eqCell :: Eq Cell where
   eq (Cell c) (Cell c') = c.cellId == c'.cellId

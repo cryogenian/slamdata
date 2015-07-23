@@ -172,8 +172,13 @@ statusBar notebook hasOutput cell =
     then Nothing
     else Just $ H.button [ A.title "Embed cell output"
                          , E.onClick (\_ -> pure $ handleEmbedClick notebook cell)
+                         , E.onMouseEnter $ E.input_ (UpdateCell (cell ^. _cellId) (_embedHovered .~ true))
+                         , E.onMouseLeave $ E.input_ (UpdateCell (cell ^. _cellId) (_embedHovered .~ false))
                          ]
-         [ H.img [ A.src "img/code-icon.svg", A.width 16.0 ] [] ]
+         [ H.img [ A.src if (cell ^. _embedHovered)
+                         then "img/code-icon-blue.svg"
+                         else "img/code-icon.svg"
+                 , A.width 16.0 ] [] ]
 
   refreshButton :: Maybe (HTML e)
   refreshButton =
