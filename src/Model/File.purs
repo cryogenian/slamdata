@@ -1,4 +1,4 @@
--- | Input, output messages and state for file component
+-- | Input , output messages and state for file component
 module Model.File
   ( State()
   , StateRec()
@@ -15,6 +15,7 @@ module Model.File
   , isSearching
   ) where
 
+import Prelude
 import Data.Either (Either())
 import Data.Maybe (Maybe(..), isJust)
 import Data.Path.Pathy (rootDir)
@@ -26,7 +27,7 @@ import Model.File.Salt (Salt(..))
 import Model.File.Search (Search(), initialSearch, _value)
 import Model.File.Sort (Sort(..))
 import Model.Path (DirPath())
-import Optic.Core (LensP(), lens, (..), (^.))
+import Optic.Core 
 
 -- | Application state
 newtype State = State StateRec
@@ -34,8 +35,8 @@ newtype State = State StateRec
 type StateRec =
   { search :: Search
   , sort :: Sort
-  , items :: [Item]
-  , breadcrumbs :: [Breadcrumb]
+  , items :: Array Item
+  , breadcrumbs :: Array Breadcrumb
   , path :: DirPath
   , dialog :: Maybe Dialog
   , salt :: Salt
@@ -65,10 +66,10 @@ _search = _State .. lens _.search _{search = _}
 _sort :: LensP State Sort
 _sort = _State .. lens _.sort _{sort = _}
 
-_items :: LensP State [Item]
+_items :: LensP State (Array Item)
 _items = _State .. lens _.items _{items = _}
 
-_breadcrumbs :: LensP State [Breadcrumb]
+_breadcrumbs :: LensP State (Array Breadcrumb)
 _breadcrumbs = _State .. lens _.breadcrumbs _{breadcrumbs = _}
 
 _path :: LensP State DirPath

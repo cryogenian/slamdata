@@ -1,5 +1,6 @@
 module Entries.Notebook where
 
+import Prelude
 import Ace.Types (ACE())
 import App.Notebook (app)
 import Control.Monad.Eff (Eff())
@@ -8,7 +9,7 @@ import Control.Timer (timeout)
 import Data.DOM.Simple.Navigator (platform)
 import Data.DOM.Simple.Window (globalWindow, navigator)
 import Data.Inject1 (prj)
-import Data.Maybe (fromMaybe, Maybe(..))
+import Data.Maybe (fromMaybe, Maybe(..), isJust)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Platform (Platform(..))
 import Data.String (indexOf)
@@ -18,7 +19,7 @@ import EffectTypes (NotebookAppEff())
 import Halogen (runUIWith)
 import Input.Notebook (Input(..), updateState)
 import Model.Notebook (_platform, initialState)
-import Optic.Core ((.~))
+import Optic.Setter ((.~))
 import Utils (onLoad, mountUI)
 
 import qualified Driver.Notebook.Ace as A
@@ -40,9 +41,9 @@ main = onLoad $ void $ do
   Tuple node driver <- runUIWith app post
   mountUI node
   platformName <- navigator globalWindow >>= platform
-  let p = if indexOf "Win" platformName >= 0
+  let p = if isJust $ indexOf "Win" platformName 
           then Win
-          else if indexOf "Mac" platformName >= 0
+          else if isJust $ indexOf "Mac" platformName 
                then Mac
                else Other
   driver $ WithState (_platform .~ p)
@@ -58,3 +59,4 @@ main = onLoad $ void $ do
     A.acePostRender sKnot aKnot input node driver
     EC.echartsPostRender eKnot input node driver
     N.notifyDriver sKnot notifyKnot input driver
+

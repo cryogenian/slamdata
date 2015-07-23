@@ -31,6 +31,7 @@ module Model.Resource
   , sortResource
   ) where
 
+import Prelude
 import Config
 import Control.Bind ((=<<))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
@@ -48,8 +49,7 @@ import Data.Path.Pathy
 import Data.Tuple
 import Model.File.Sort (Sort(..))
 import Model.Path
-import Optic.Core (lens, (..), (^.), (%~), (.~))
-import Optic.Prism
+import Optic.Core 
 import Optic.Refractor.Prism (_Right)
 import Optic.Types
 import Utils
@@ -116,13 +116,13 @@ isHidden r =
   isHidden' :: forall a b s. Path a b s -> Boolean
   isHidden' p = fromMaybe false do
     Tuple p' name <- peel p
-    if (S.indexOf "." $ nameOfFileOrDir name) == 0
+    if "." == S.take 1 (nameOfFileOrDir name)
       then pure true
       else pure $ isHidden' p'
 
 hiddenTopLevel :: Resource -> Boolean
-hiddenTopLevel r =
-  (S.indexOf "." (resourceName r)) == 0
+hiddenTopLevel r = "." == S.take 1 (resourceName r)
+
 
 getNameStr :: AnyPath -> String
 getNameStr ap = either getNameStr' getNameStr' ap
@@ -248,12 +248,11 @@ _root :: LensP Resource DirPath
 _root = _path .. _rootAnyPath
 
 instance resourceEq :: Eq Resource where
-  (==) (File p) (File p') = p == p'
-  (==) (Notebook p) (Notebook p') = p == p'
-  (==) (Directory p) (Directory p') = p == p'
-  (==) (Database p) (Database p') = p == p'
-  (==) _ _ = false
-  (/=) a b = not $ a == b
+  eq (File p) (File p') = p == p'
+  eq (Notebook p) (Notebook p') = p == p'
+  eq (Directory p) (Directory p') = p == p'
+  eq (Database p) (Database p') = p == p'
+  eq _ _ = false
 
 instance resourceIsForeign :: IsForeign Resource where
   read f = do

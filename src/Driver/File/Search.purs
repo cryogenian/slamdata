@@ -3,8 +3,11 @@ module Driver.File.Search (
   filterByQuery,
   searchPath
   ) where
+
+import Prelude
+import Data.List (List(..), singleton)
 import Data.Maybe
-import Data.Monoid.First (First(..), runFirst)
+import Data.Maybe.First (First(..), runFirst)
 import Data.Foldable (foldMap)
 import qualified Text.SlamSearch as S
 import qualified Text.SlamSearch.Printer as S
@@ -13,7 +16,7 @@ import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
 import qualified Data.Minimatch as MM
 import qualified Model.Resource as M
-import Optic.Core ((^.))
+import Optic.Core 
 
 isSearchQuery :: S.SearchQuery -> Boolean
 isSearchQuery query =
@@ -21,7 +24,7 @@ isSearchQuery query =
   where isNotSearchTerm :: S.Term -> Boolean
         isNotSearchTerm (S.Term {predicate: p, labels: ls, include: i}) =
           case ls of
-            [S.Common "path"] -> true
+            Cons (S.Common "path") Nil -> true
             _ -> false
 
 -- | check if string satisfies predicate from `purescript-search`
@@ -29,12 +32,12 @@ check :: S.Predicate -> String -> Boolean
 check p prj =
   case p of
     S.Contains (S.Text str) -> match $ "*" <> escapeGlob str <> "*"
-    S.Gt (S.Text str) -> compare str > 0
-    S.Gte (S.Text str) -> compare str >= 0
-    S.Lt (S.Text str) -> compare str < 0
-    S.Lte (S.Text str) -> compare str <= 0
-    S.Ne (S.Text str) -> compare str /= 0
-    S.Eq (S.Text str) -> compare str == 0
+    S.Gt (S.Text str) -> compare str == GT
+    S.Gte (S.Text str) -> compare str == GT || compare str == EQ
+    S.Lt (S.Text str) -> compare str == LT 
+    S.Lte (S.Text str) -> compare str == LT || compare str == EQ
+    S.Ne (S.Text str) -> compare str == LT || compare str == GT
+    S.Eq (S.Text str) -> compare str == EQ
     -- since we use _minimatch_ to check `Contains` predicate
     -- `Like` predicate works exactly like `Contains` if we
     -- replace `% -> *` and `_ -> ?`
@@ -74,15 +77,15 @@ filterByTerm r
   in
   case labels of
     -- no labels -> check by both fields
-    [] -> check' name || check' res
+    Nil -> check' name || check' res
     -- we've already checked _path_ when had got it from backend
-    [S.Common "path"] -> true
+    Cons (S.Common "path") Nil -> true
     -- check _name_
-    [S.Common "name"] -> check' name
+    Cons (S.Common "name") Nil -> check' name
     -- check _type_
-    [S.Common "type"] -> check' res
+    Cons (S.Common "type") Nil -> check' res
     -- check _type_
-    [S.Common "resource"] -> check' res
+    Cons (S.Common "resource") Nil -> check' res
     _ -> false
 
 -- | Filter by full search query
@@ -94,8 +97,9 @@ filterByQuery query res =
 searchPath :: S.SearchQuery -> Maybe String
 searchPath query =
   runFirst $ foldMap fn query
-  where fn term = First case term of
-          S.Term {include: true,
-                  predicate: S.Contains (S.Text path),
-                  labels: [S.Common "path"]} -> Just path
-          _ -> Nothing
+  where
+  fn term = First $ case term of
+    S.Term { include: true
+           , predicate: S.Contains (S.Text path)
+           , labels: Cons (S.Common "path") Nil } -> Just path
+    _ -> Nothing

@@ -1,6 +1,7 @@
 module Controller.File.Common where
 
-import Data.DOM.Simple.Encode (encodeURIComponent)
+import Prelude
+import Utils (encodeURIComponent)
 import Data.Inject1 (Inject1, inj)
 import Data.Maybe (Maybe(), maybe)
 import Data.Path.Pathy (printPath)
@@ -11,7 +12,7 @@ import Model.File.Dialog (Dialog(..))
 import Model.File.Salt (Salt(), runSalt)
 import Model.File.Sort (Sort(), sort2string)
 import Model.Path (DirPath())
-import Optic.Core ((?~))
+import Optic.Core
 
 import qualified Halogen.HTML.Events.Monad as E
 

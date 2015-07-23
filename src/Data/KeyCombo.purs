@@ -11,8 +11,9 @@ module Data.KeyCombo
   , printKeyComboMac
   ) where
 
+import Prelude 
 import Data.Array (nub, sort, snoc)
-import Data.Char (Char(), fromCharCode)
+import Data.Char (fromCharCode)
 import Data.Foldable (foldl)
 import Data.String (charAt, fromChar, joinWith, toUpper)
 
@@ -24,7 +25,7 @@ data KeyCombo
   | Shift
   | Letter Char
   | Enter
-  | Combo [KeyCombo]
+  | Combo (Array KeyCombo)
 
 meta :: KeyCombo
 meta = Meta
@@ -41,18 +42,17 @@ letter = Letter <<< U.charAt 0 <<< toUpper <<< fromChar
 enter :: KeyCombo
 enter = Enter
 
-combo :: [KeyCombo] -> KeyCombo
+combo :: Array KeyCombo -> KeyCombo
 combo ks = Combo $ sort $ nub $ foldl snoc [] ks
 
 instance eqKeyCombo :: Eq KeyCombo where
-  (==) Meta Meta = true
-  (==) Alt Alt = true
-  (==) Shift Shift = true
-  (==) (Letter x) (Letter y) = x == y
-  (==) Enter Enter = true
-  (==) (Combo xs) (Combo ys) = xs == ys
-  (==) _ _ = false
-  (/=) x y = not (x == y)
+  eq Meta Meta = true
+  eq Alt Alt = true
+  eq Shift Shift = true
+  eq (Letter x) (Letter y) = x == y
+  eq Enter Enter = true
+  eq (Combo xs) (Combo ys) = xs == ys
+  eq _ _ = false
 
 instance ordKeyCombo :: Ord KeyCombo where
   compare Meta Meta = EQ
@@ -81,11 +81,11 @@ instance showKeyCombo :: Show KeyCombo where
   show (Combo ks) = "Combo " ++ show ks
 
 instance semigroupKeyCombo :: Semigroup KeyCombo where
-  (<>) (Combo xs) (Combo ys) = Combo $ sort $ nub $ xs ++ ys
-  (<>) (Combo xs) y = Combo $ sort $ nub $ xs ++ [y]
-  (<>) x (Combo ys) = Combo $ sort $ nub $ [x] ++ ys
-  (<>) x y | x == y = x
-           | otherwise = Combo $ sort [x, y]
+  append (Combo xs) (Combo ys) = Combo $ sort $ nub $ xs ++ ys
+  append (Combo xs) y = Combo $ sort $ nub $ xs ++ [y]
+  append x (Combo ys) = Combo $ sort $ nub $ [x] ++ ys
+  append x y | x == y = x
+             | otherwise = Combo $ sort [x, y]
 
 printKeyComboWin :: KeyCombo -> String
 printKeyComboWin Meta = "Ctrl"

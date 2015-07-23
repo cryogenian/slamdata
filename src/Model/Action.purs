@@ -1,6 +1,7 @@
 module Model.Action where
 
-import Data.Either
+import Prelude
+import Data.Either (Either(..))
 
 data Action = View | Edit
 
@@ -21,7 +22,7 @@ isEdit :: Action -> Boolean
 isEdit = not <<< isView
 
 instance resumeEq :: Eq Action where
-  (==) View View = true
-  (==) Edit Edit = true
-  (==) _ _ = false
-  (/=) a b = not $ a == b
+  eq View View = true
+  eq Edit Edit = true
+  eq _ _ = false
+

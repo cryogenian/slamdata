@@ -22,12 +22,13 @@ module Model.Notebook.Domain
   , trash
   ) where
 
+import Prelude
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Argonaut.Printer (printJson)
-import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex, snoc, filter)
+import Data.Array (length, sort, reverse, head, insertAt, findIndex, elemIndex, snoc, filter, (:))
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Map (Map(), insert, lookup, empty, toList, fromList, delete)
@@ -42,16 +43,17 @@ import Model.Notebook.Port (Port(..), _PortResource)
 import Model.Path (DirPath(), (<./>), encodeURIPath)
 import Model.Resource (Resource(File), _tempFile, _root)
 import Network.HTTP.Affjax.Request (Requestable, toRequest)
-import Optic.Core (lens, LensP(), (..), (.~), (^.), (%~), mapped)
+import Optic.Core
 import Optic.Extended (TraversalP())
 import Optic.Fold ((^?))
 import Optic.Index (ix)
 import Optic.Refractor.Prism (_Right)
 
 import qualified Data.StrMap as SM
+import qualified Data.List as L
 
 newtype Notebook =
-  Notebook { cells :: [Cell]
+  Notebook { cells :: Array Cell
            , dependencies :: Dependencies
            , activeCellId :: CellId
            , name :: These String String
@@ -70,7 +72,7 @@ emptyNotebook = Notebook
 _Notebook :: LensP Notebook _
 _Notebook = lens (\(Notebook r) -> r) (\_ r -> Notebook r)
 
-_cells :: LensP Notebook [Cell]
+_cells :: LensP Notebook (Array Cell)
 _cells = _Notebook .. lens _.cells _{cells = _}
 
 _dependencies :: LensP Notebook Dependencies
@@ -89,9 +91,11 @@ _activeCell :: TraversalP Notebook Cell
 _activeCell f s = cellById (s ^. _activeCellId) f s
 
 cellById :: CellId -> TraversalP Notebook Cell
-cellById cellId f s =
-  let i = findIndex (\cell -> cell ^. _cellId == cellId) (s ^. _cells)
-  in (_cells .. ix i) f s
+cellById cellId f s = 
+  case findIndex (\cell -> cell ^. _cellId == cellId) (s ^. _cells) of
+    Nothing -> pure s
+    Just i -> (_cells .. ix i) f s
+     
 
 instance encodeJsonNotebook :: EncodeJson Notebook where
   encodeJson (Notebook obj)
@@ -117,7 +121,7 @@ instance requestableNotebook :: Requestable Notebook where
 -- cell that has more than one deps.
 type Dependencies = Map CellId CellId
 
-ancestors :: CellId -> Dependencies -> [CellId]
+ancestors :: CellId -> Dependencies -> Array CellId
 ancestors cid ds = deps' cid ds []
   where
   deps' cid ds agg =
@@ -125,8 +129,8 @@ ancestors cid ds = deps' cid ds []
       Nothing -> agg
       Just a -> deps' a ds (a : agg)
 
-descendants :: CellId -> Dependencies -> [CellId]
-descendants cid ds = fst <$> (filter (\x -> snd x == cid) $ toList ds)
+descendants :: CellId -> Dependencies -> Array CellId
+descendants cid ds = L.fromList (fst <$> (L.filter (\x -> snd x == cid) $ toList ds))
 
 trash :: CellId -> Dependencies -> Dependencies
 trash cid ds =
@@ -146,10 +150,11 @@ insertCell parent content oldNotebook = insertCell' (Just parent) content oldNot
 insertCell' :: Maybe Cell -> CellContent -> Notebook -> Tuple Notebook Cell
 insertCell' mbParent content oldNotebook@(Notebook n) = Tuple new cell
   where
-  new = Notebook $ n { cells = insertAt (i + 1) cell n.cells
+  new = Notebook $ n { cells = fromMaybe (snoc n.cells cell)
+                               $ insertAt (i + 1) cell n.cells
                      , dependencies = newDeps
                      }
-  i = maybe (length n.cells) (flip elemIndex n.cells) mbParent
+  i = fromMaybe (length n.cells) $ mbParent >>= flip elemIndex n.cells
   newDeps = maybe n.dependencies (\parent -> insert newId (parent ^. _cellId) n.dependencies) mbParent
   newId = freeId oldNotebook
   input = case content of

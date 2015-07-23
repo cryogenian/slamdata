@@ -1,5 +1,6 @@
 module Controller.Notebook.Cell.Viz where
 
+import Prelude 
 import Api.Query (count, all, sample)
 import Control.Apply ((*>))
 import Control.Monad.Aff.Class (liftAff)
@@ -10,11 +11,11 @@ import Data.Argonaut.Core (JArray())
 import Data.Array (range, zipWith, concat, replicate, length, filter, (!!), null)
 import Data.Foldable (fold, foldl)
 import Data.Function (on)
-import Data.Int (Int(), fromNumber, toNumber)
+import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Time (Milliseconds(..))
-import Data.Tuple
+import Data.Tuple (Tuple(..), fst, snd)
 
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..))
@@ -24,7 +25,7 @@ import Model.Notebook.Cell.Viz
 import Model.Notebook.Domain
 import Model.Notebook.Port (_PortResource)
 import Model.Resource (Resource())
-import Optic.Core ((^.), (.~), (..), (%~), LensP())
+import Optic.Core 
 import Optic.Fold ((^?))
 import Optic.Extended (TraversalP())
 import Data.Argonaut.JCursor (JCursor())
@@ -40,6 +41,7 @@ import Controller.Notebook.Cell.Viz.Bar (mkBar)
 import qualified Model.Notebook.ECharts as Me
 import ECharts.Options
 import Utils (s2i)
+import qualified Data.List as L
 
 selectAgg :: forall e. Cell -> LensP VizRec Aggregation -> Aggregation -> I e
 selectAgg cell _agg agg =
@@ -52,10 +54,10 @@ setChartHeight cell height =
   case s2i' height of
     Nothing -> empty
     Just h ->
-      (update cell (_content.._Visualize.._chartHeight .~ h)) <>
+      (update cell (_content.._Visualize.._chartHeight .~ toNumber h)) <>
       (pure $ ResizeECharts (show $ cell ^. _cellId))
       
-s2i' :: String -> Maybe Number
+s2i' :: String -> Maybe Int
 s2i' s = if s == "" then pure 0 else s2i s
 
 
@@ -64,7 +66,7 @@ setChartWidth cell width =
   case s2i' width of
     Nothing -> empty
     Just w ->
-      (update cell (_content .. _Visualize .. _chartWidth .~ w)) <>
+      (update cell (_content .. _Visualize .. _chartWidth .~ toNumber w)) <>
       (pure $ ResizeECharts (show $ cell ^. _cellId))
 
 
@@ -119,11 +121,11 @@ updateData cell file = do
     then errorEmptyInput
     else do
     sample <- Me.analyzeJArray <$>
-              (liftAff $ sample file (fromNumber 0) (fromNumber 20))
+              (liftAff $ sample file 0 20)
     all <- Me.analyzeJArray <$> (liftAff $ all file)
     let vizRec = fromMaybe initialVizRec $ cell ^? _content.._Visualize
         axes = keys all
-    if null axes
+    if L.null axes
       then updateOpts cell
       else 
       let vRec = configure $ (vizRec # _all .~ all
@@ -152,7 +154,7 @@ infix 9 <->
 
 configure :: VizRec -> VizRec
 configure r =
-  let tpls = toList (r ^._sample)
+  let tpls = L.fromList $ toList (r ^._sample)
       cats = fst <$> (filter (snd >>> Me.isCatAxis) tpls)
       vals = fst <$> (filter (snd >>> Me.isValAxis) tpls)
       times = fst <$> (filter (snd >>> Me.isTimeAxis) tpls)
@@ -176,13 +178,13 @@ configure r =
              (_firstMeasures.._variants .~ (depends l.dims vals)) ..
              (_secondMeasures.._variants .~ ((depends l.dims $(vals <-> l.firstMeasures)) `onlyIfSelected` l.firstMeasures))
       available = if null vals
-                  then []
+                  then L.Nil
                   else if not $ null cats
-                       then [Pie, Bar, Line]
+                       then L.toList [Pie, Bar, Line]
                        else if null times
-                            then []
-                            else [Line]
-      error = if null available then "No available chart types, please, rerun cell" else ""
+                            then L.Nil
+                            else L.singleton Line
+      error = if L.null available then "No available chart types, please, rerun cell" else ""
       
       
 
@@ -195,7 +197,7 @@ configure r =
     b = r ^._barConfiguration
     l = r ^._lineConfiguration
 
-    onlyIfSelected :: forall a. [a] -> Selection a -> [a]
+    onlyIfSelected :: forall a. Array a -> Selection a -> Array a
     onlyIfSelected lst sel = maybe [] (const lst) (sel ^._selection)
 
 updateOpts :: forall e. Cell -> I e
@@ -210,7 +212,7 @@ updateOpts cell =
           Pie -> mkPie r (r ^. _pieConfiguration) 
           Line -> mkLine r (r ^. _lineConfiguration)
           Bar -> mkBar r (r ^. _barConfiguration)
-    if keys (r ^._all) == []
+    if L.null $ keys (r ^._all) 
       then empty :: I e
       else
       (update cell (_content.._Visualize.._output .~ opts)) `andThen` \_ ->

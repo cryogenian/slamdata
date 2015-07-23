@@ -1,15 +1,16 @@
 module Utils.Halide
-  ( onPaste
-  , width'
-  , height'
-  , frameBorder
-  , max
-  , min
-  , step
-  , selectThis
-  , dataZeroClipboard
-  ) where
+       ( onPaste
+       , width'
+       , height'
+       , frameBorder
+       , max
+       , min
+       , step
+       , selectThis
+       , dataZeroClipboard
+       ) where
 
+import Prelude
 import Control.Apply ((*>))
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
@@ -35,7 +36,7 @@ width' = A.attr (A.attributeName "width")
 height' :: forall i. String -> A.Attr i
 height' = A.attr (A.attributeName "height")
 
-frameBorder :: forall i. Number -> A.Attr i
+frameBorder :: forall i. Int -> A.Attr i
 frameBorder = A.attr (A.attributeName "frameBorder") <<< show
 
 step :: forall i. Number -> A.Attr i

@@ -1,7 +1,8 @@
 module View.Notebook.Cell.FileInput (fileInput) where
 
+import Prelude
 import Control.Apply ((*>))
-import Control.Functor (($>))
+import Data.Functor (($>))
 import Controller.Notebook.Cell.FileInput (toggleFileList, selectFile, updateFile)
 import Data.Either (either)
 import Data.Maybe (maybe, fromMaybe)
@@ -9,7 +10,7 @@ import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.FileInput (FileInput(), _file, _files, _showFiles)
 import Model.Resource (Resource(), resourcePath, isHidden)
 import Model.Notebook.Port (Port())
-import Optic.Core ((^.))
+import Optic.Getter ((^.))
 import Optic.Extended (TraversalP(), (^?))
 import View.Notebook.Common (HTML())
 
@@ -21,7 +22,7 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
-fileInput :: forall e. TraversalP Cell FileInput -> (Port -> Cell -> Cell) -> Cell -> [HTML e]
+fileInput :: forall e. TraversalP Cell FileInput -> (Port -> Cell -> Cell) -> Cell -> Array (HTML e)
 fileInput _input setFn cell = fromMaybe [] $ do
   state <- cell ^? _input
   let selectedFile = either id resourcePath (state ^. _file)

@@ -1,6 +1,6 @@
 module Config where
 
-import Data.Int (Int(), fromNumber)
+import Prelude ((<>))
 
 baseUrl :: String
 baseUrl = ""
@@ -29,7 +29,7 @@ browserUrl = baseUrl <> "index.html"
 notebookUrl :: String
 notebookUrl = baseUrl <> "notebook.html"
 
-searchTimeout :: Number
+searchTimeout :: Int
 searchTimeout = 500
 
 slamDataHome :: String
@@ -63,12 +63,12 @@ notebookNameEditorId :: String
 notebookNameEditorId = "name-editor"
 
 defaultPageSize :: Int
-defaultPageSize = fromNumber 10
+defaultPageSize = 10
 
-notifyTimeout :: Number
+notifyTimeout :: Int
 notifyTimeout = 500
 
-resizeEChartsTimeout :: Number
+resizeEChartsTimeout :: Int
 resizeEChartsTimeout = 0
 
 trashFolder :: String

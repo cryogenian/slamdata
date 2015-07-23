@@ -1,128 +1,63 @@
-module Utils.File (
-  fileListToArray,
-  files,
-  newReader,
-  newReaderEff,
-  readAsBinaryString,
-  readAsBinaryStringEff,
-  name,
-  File(),
-  FileList(),
-  FileReader(),
-  ReadFile()
-  ) where
+module Utils.File 
+       ( fileListToArray
+       , files
+       , newReader
+       , newReaderEff
+       , readAsBinaryString
+       , readAsBinaryStringEff
+       , name
+       , File()
+       , FileList()
+       , FileReader()
+       , READ_FILE()
+       ) where
 
-import Control.Monad.Eff
-import Control.Monad.Eff.Exception
-
-import Control.Monad.Aff
+import Prelude
+import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Exception (error)
+import Control.Monad.Aff (Aff(), makeAff)
 import DOM (DOM())
-import Data.Function
-import Data.Maybe
+import Data.Function (Fn3(), runFn3)
+import Data.Maybe (Maybe(..))
 import Data.DOM.Simple.Types (HTMLElement())
-import Data.DOM.Simple.Ajax (Blob(), FormData())
+
 
 foreign import data FileReader :: *
 foreign import data File :: *
 foreign import data FileList :: *
-foreign import data ReadFile :: !
+foreign import data READ_FILE :: !
 
-foreign import fileListToArray """
-function fileListToArray(fl) {
-  var result = [];
-  for (var i = 0; i < fl.length; i++) {
-    result.push(fl[i]);
-  }
-  return result;
-}
-""" :: FileList -> [File]
+foreign import fileListToArray :: FileList -> Array File
+foreign import name :: forall e. File -> Eff (file :: READ_FILE |e) String 
+foreign import newReaderEff :: forall e. Eff e FileReader 
+foreign import readAsBinaryStringEff :: forall e. File -> FileReader ->
+                                        Eff (file :: READ_FILE |e) Unit
+foreign import resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) 
+                             FileReader (Eff (file :: READ_FILE |e) (Maybe String))
+foreign import filesEff :: forall e. HTMLElement -> Eff (dom :: DOM |e) FileList
+foreign import onloadEff :: forall e e'. FileReader -> Eff e Unit -> 
+                            Eff (file :: READ_FILE |e') Unit
 
 
-foreign import name """
-function name(file) {
-  return function() {
-    return file.name;
-  };
-}
-""" :: forall e. File -> Eff (file :: ReadFile|e) String
 
--- Creating new FileReader doesn't produce any effects
--- since it can be not used in example and than garbage collected in example.
-foreign import newReaderEff """
-function newReaderEff() {
-  return new FileReader();
-}
-""" :: forall e. Eff e FileReader
 
 newReader :: forall e. Aff e FileReader
 newReader = makeAff \_ k ->
   newReaderEff >>= \r -> k r
 
-
-foreign import readAsBinaryStringEff """
-function readAsBinaryStringEff(file) {
-  return function(reader) {
-    return function() {
-      reader.readAsBinaryString(file);
-    };
-  };
-}
-""" :: forall e. File -> FileReader -> Eff (file :: ReadFile|e) Unit
-
-
-foreign import resultImpl """
-function resultImpl(nothing, just, fr) {
-  return function() {
-    var res = fr.result;
-    if (res === null) return nothing;
-    return just(res);
-  };
-}
-""" :: forall e a.
-       Fn3 (Maybe a)
-       (a -> Maybe a)
-       FileReader
-       (Eff (file :: ReadFile|e) (Maybe String))
-
-
-resultEff :: forall e. FileReader -> Eff (file::ReadFile|e) (Maybe String)
+resultEff :: forall e. FileReader -> Eff (file :: READ_FILE |e) (Maybe String) 
 resultEff fr = runFn3 resultImpl Nothing Just fr
 
--- getting list of uploaded files has only `DOM` effect (we have not read it yet)
-foreign import filesEff """
-function filesEff(el) {
-  return function() {
-    if (!el.files) return [];
-    return el.files;
-  };
-}
-""" :: forall e. HTMLElement -> Eff (dom :: DOM|e) FileList
-
-files :: forall e. HTMLElement -> Aff (dom :: DOM|e) FileList
-files node = makeAff \_ k -> do
+files :: forall e. HTMLElement -> Aff (dom :: DOM |e) FileList 
+files node = makeAff \_ k -> do 
   fs <- filesEff node
   k fs
 
-
-foreign import onloadEff """
-function onloadEff(reader) {
-  return function(action) {
-    return function() {
-      reader.onload = function(ev) {
-        action();
-      };
-    };
-  };
-}
-""" :: forall e e'. FileReader -> Eff e Unit -> Eff (file :: ReadFile|e') Unit
-
-
-readAsBinaryString :: forall e. File -> FileReader -> Aff (file :: ReadFile|e) String
+readAsBinaryString :: forall e. File -> FileReader -> Aff (file :: READ_FILE|e) String
 readAsBinaryString file reader = makeAff \er k -> do
   readAsBinaryStringEff file reader
-  onloadEff reader $ do
+  onloadEff reader do
     mbRes <- resultEff reader
     case mbRes of
       Nothing -> er $ error "files has not been read"
-      Just res -> k $ res
-
+      Just res -> k res 

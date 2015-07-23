@@ -4,6 +4,7 @@ module Input.File
   , updateState
   ) where
 
+import Prelude
 import Control.Alt ((<|>))
 import Data.Either (Either())
 import Data.Inject1 (prj)
@@ -11,7 +12,7 @@ import Data.Maybe.Unsafe (fromJust)
 import Input.File.Item (ItemInput(), inputItem)
 import Input.File.Mount (MountInput(), inputMount)
 import Model.File (State(), _items, _dialog, _sort, isSearching)
-import Optic.Core ((..), (^.), (%~))
+import Optic.Core 
 import Optic.Refractor.Prism (_Just)
 
 type Input = Either ItemInput (Either FileInput MountInput)

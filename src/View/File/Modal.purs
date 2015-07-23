@@ -1,13 +1,15 @@
 module View.File.Modal (modal) where
 
-import Control.Functor (($>))
+import Prelude
+import Data.Functor (($>))
 import Control.Plus (empty)
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), maybe)
 import Input.File (FileInput(..))
 import Model.File (State(), _dialog)
 import Model.File.Dialog (Dialog(..))
-import Optic.Core ((.~), (^.))
+import Optic.Getter ((^.))
+import Optic.Setter ((.~))
 import View.File.Common (HTML())
 import View.File.Modal.DownloadDialog (downloadDialog)
 import View.File.Modal.ErrorDialog (errorDialog)
@@ -36,7 +38,7 @@ modal state =
                 ]
         ]
 
-dialogContent :: forall e. Dialog -> [HTML e]
+dialogContent :: forall e. Dialog -> Array (HTML e)
 dialogContent (ShareDialog url) = shareDialog url
 dialogContent (RenameDialog dialog) = renameDialog dialog
 dialogContent (MountDialog dialog) = mountDialog dialog

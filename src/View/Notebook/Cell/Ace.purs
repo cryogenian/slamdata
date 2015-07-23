@@ -1,6 +1,7 @@
 module View.Notebook.Cell.Ace (aceEditor) where
 
-import Optic.Core ((^.))
+import Prelude
+import Optic.Getter ((^.))
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A

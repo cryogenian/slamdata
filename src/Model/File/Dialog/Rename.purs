@@ -1,18 +1,19 @@
 module Model.File.Dialog.Rename where
 
+import Prelude
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (rootDir)
 import Model.Path (DirPath(), dropNotebookExt)
 import Model.Resource (Resource(..), resourceDir, resourceName, root, isNotebook)
-import Optic.Core (lens, LensP())
+import Optic.Core 
 
 newtype RenameDialogRec = RenameDialogRec
   { showList :: Boolean
   , initial :: Resource
   , name :: String
-  , dirs :: [Resource]
+  , dirs :: Array Resource
   , dir :: DirPath
-  , siblings :: [Resource]
+  , siblings :: Array Resource
   , error :: Maybe String
   }
 
@@ -41,13 +42,13 @@ _initial = _renameDialogRec <<< lens _.initial (_ { initial = _ })
 _name :: LensP RenameDialogRec String
 _name = _renameDialogRec <<< lens _.name (_ { name = _ })
 
-_dirs :: LensP RenameDialogRec [Resource]
+_dirs :: LensP RenameDialogRec (Array Resource)
 _dirs = _renameDialogRec <<< lens _.dirs (_ { dirs = _ })
 
 _dir :: LensP RenameDialogRec DirPath
 _dir = _renameDialogRec <<< lens _.dir (_ { dir = _ })
 
-_siblings :: LensP RenameDialogRec [Resource]
+_siblings :: LensP RenameDialogRec (Array Resource)
 _siblings = _renameDialogRec <<< lens _.siblings (_ { siblings = _ })
 
 _error :: LensP RenameDialogRec (Maybe String)

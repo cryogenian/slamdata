@@ -8,6 +8,7 @@ module Controller.Notebook.Cell
   , isRunning
   ) where
 
+import Prelude
 import Api.Fs (saveNotebook)
 import Control.Monad.Aff (attempt)
 import Control.Monad.Aff.Class (liftAff)
@@ -19,6 +20,7 @@ import Controller.Notebook.Cell.Query (runQuery, viewQuery)
 import Controller.Notebook.Cell.Search (runSearch, viewSearch)
 import Controller.Notebook.Cell.Viz (runViz)
 import Controller.Notebook.Common (I(), update)
+import Data.Array (head)
 import Data.Date (now)
 import Data.Either (Either(..))
 import Halogen.HTML.Events.Monad (andThen)
@@ -28,7 +30,7 @@ import Model.Notebook (State(), _dialog, _notebook, _requesting)
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..), _hasRun)
 import Model.Notebook.Domain (notebookURL, cellURL, Notebook(), ancestors, _dependencies, cellById)
 import Model.Notebook.Dialog
-import Optic.Core ((.~), (^.), (?~), (<>~))
+import Optic.Core 
 import Optic.Fold ((^?))
 import Utils (locationString, replaceLocation)
 
@@ -74,9 +76,8 @@ requestCellContent :: forall eff. Notebook -> Cell -> I eff
 requestCellContent notebook cell =
   (pure $ WithState (_requesting <>~ [cell ^._cellId])) <>
   (update cell (_hasRun .~ true)) <>
-  (case ps of
-      [] -> go
-      x:_ -> maybe go (pure <<< RequestCellContent) (notebook ^? cellById  x))
+  (maybe go (pure <<< RequestCellContent) $
+   head ps >>= (\x -> notebook ^? cellById x))
   where
   ps = ancestors (cell ^._cellId) (notebook ^._dependencies)
   go = pure $ RequestCellContent cell

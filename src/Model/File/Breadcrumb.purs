@@ -1,6 +1,7 @@
 module Model.File.Breadcrumb where
 
-import Data.List (List(..), toArray)
+import Prelude
+import Data.List (List(..), fromList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Path.Pathy (rootDir, parentDir, dirName, runDirName)
 import Model.Path (DirPath())
@@ -19,8 +20,8 @@ rootBreadcrumb =
   }
 
 -- | Make `Breadcrumb` entries for each directory up to the specified path.
-mkBreadcrumbs :: DirPath -> [Breadcrumb]
-mkBreadcrumbs path = toArray $ go Nil path
+mkBreadcrumbs :: DirPath -> Array Breadcrumb
+mkBreadcrumbs path = fromList $ go Nil path
   where
   go :: List Breadcrumb -> DirPath -> List Breadcrumb
   go result p =

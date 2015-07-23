@@ -9,6 +9,7 @@ module Controller.Notebook.Cell.JTableContent
   , queryToJTable
   ) where
 
+import Prelude
 import Api.Fs (forceDelete)
 import Api.Query (port, sample, count)
 import Control.Monad.Aff (Aff(), attempt)
@@ -34,8 +35,9 @@ import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
 import Model.Notebook.Port (VarMapValue(), _VarMap, Port(..))
 import Model.Resource (Resource(), mkFile, isTempFile, _path)
-import Optic.Core ((^.), (.~), (..))
+import Optic.Core 
 import Optic.Extended (TraversalP(), (^?))
+import Utils (s2i)
 
 import Data.Path.Pathy ((</>), parseAbsFile, rootDir, sandbox)
 
@@ -46,22 +48,22 @@ import qualified Model.Notebook.Cell.JTableContent as JTC
 
 import qualified Data.StrMap as SM
 
-_page :: TraversalP Cell (These String I.Int)
+_page :: TraversalP Cell (These String Int)
 _page = _content .. _JTableContent .. JTC._page
 
-_perPage :: TraversalP Cell (Either (These String I.Int) I.Int)
+_perPage :: TraversalP Cell (Either (These String Int) Int)
 _perPage = _content .. _JTableContent .. JTC._perPage
 
-currentPage :: Cell -> Maybe I.Int
+currentPage :: Cell -> Maybe Int
 currentPage cell = maybe Nothing theseRight (cell ^? _page)
 
-currentPageSize :: Cell -> Maybe I.Int
+currentPageSize :: Cell -> Maybe Int
 currentPageSize cell = maybe Nothing (either theseRight Just) (cell ^? _perPage)
 
-goPage :: forall e. I.Int -> Cell -> (Cell -> I e) -> I e
+goPage :: forall e. Int -> Cell -> (Cell -> I e) -> I e
 goPage page cell go = run cell `andThen` \_ -> go (cell # _page .~ That page)
 
-stepPage :: forall e. I.Int -> Cell -> (Cell -> I e) -> I e
+stepPage :: forall e. Int -> Cell -> (Cell -> I e) -> I e
 stepPage delta cell = goPage (maybe one (delta +) (currentPage cell)) cell
 
 inputPage :: forall e. Cell -> String -> I e
@@ -79,17 +81,16 @@ loadPage cell go = case cell ^? _content .. _JTableContent of
     in run cell `andThen` \_ -> go (cell # (_page .~ That page)
                                         .. (_perPage .~ Right perPage))
     where
-    readPageNum :: I.Int -> String -> I.Int
-    readPageNum default str =
-      let num = readInt 10 str
-      in if isNaN num then default else I.fromNumber num
+    readPageNum :: Int -> String -> Int
+    readPageNum default str = fromMaybe default $ s2i str
+
 
 changePageSize :: forall e. Cell -> (Cell -> I e) -> String -> I e
 changePageSize cell go "Custom" = update cell (_perPage .~ Left (That $ fromMaybe Config.defaultPageSize $ currentPageSize cell))
 changePageSize cell go value = case readJSON value of
   Left _ -> empty
   Right n -> run cell
-    `andThen` \_ -> go (cell # (_perPage .~ Right (I.fromNumber n))
+    `andThen` \_ -> go (cell # (_perPage .~ Right n)
                             .. (_page .~ That one))
 
 runJTable :: forall e. Resource -> Cell -> I e
@@ -99,8 +100,8 @@ runJTable file cell = do
       pageIndex = pageNumber - one
   results <- liftAff $ attempt $ do
     numItems <- count file
-    let numPages = Math.ceil (numItems / I.toNumber perPage)
-        pageIndex' = I.fromNumber $ Math.max 0 $ Math.min (I.toNumber pageIndex) (numPages - 1)
+    let numPages = Math.ceil (I.toNumber numItems / I.toNumber perPage)
+        pageIndex' = fromMaybe 0 $ I.fromNumber $ Math.max 0.0 $ Math.min (I.toNumber pageIndex) (numPages - 1.0)
     json <- sample file (pageIndex' * perPage) perPage
     return { numItems: numItems, pageNumber: pageIndex' + one, json: json }
   now' <- liftEff now
@@ -111,7 +112,8 @@ runJTable file cell = do
           JTC.JTableContent { perPage: Right perPage
                             , page: That results.pageNumber
                             , result: Just $ JTC.Result
-                              { totalPages: I.fromNumber $ Math.ceil (results.numItems / I.toNumber perPage)
+                              { totalPages: fromMaybe 0 $ I.fromNumber $
+                                Math.ceil (I.toNumber results.numItems / I.toNumber perPage)
                               , values: Just $ fromArray results.json
                               }
                             }

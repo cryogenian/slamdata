@@ -1,6 +1,7 @@
 module View.File.Modal.RenameDialog (renameDialog) where
 
-import Control.Functor (($>))
+import Prelude
+import Data.Functor (($>))
 import Controller.File.Dialog.Rename
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isNothing, isJust, maybe)
@@ -9,7 +10,7 @@ import Input.File (FileInput(..))
 import Model.File (_dialog)
 import Model.File.Dialog.Rename (RenameDialogRec(), _showList, _name, _dir, _dirs, _error)
 import Model.Resource (Resource(), resourcePath, isHidden)
-import Optic.Core ((^.), (.~), (%~))
+import Optic.Core 
 import View.Common (fadeWhen)
 import View.File.Common (HTML())
 import View.Modal.Common (header, h4, body, footer, nonSubmit)
@@ -22,7 +23,7 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
 
-renameDialog :: forall e. RenameDialogRec -> [HTML e]
+renameDialog :: forall e. RenameDialogRec -> Array (HTML e)
 renameDialog dialog =
   [ header $ h4 "Rename"
   , body [ H.form [ A.classes [ Vc.renameDialogForm ]

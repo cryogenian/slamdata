@@ -1,5 +1,6 @@
 module Driver.ZClipboard where
 
+import Prelude
 import Control.Monad.Eff (Eff())
 import Data.DOM.Simple.Element
 import Data.DOM.Simple.NodeList

@@ -1,5 +1,6 @@
 module Controller.Notebook.Cell.Explore (runExplore, viewExplore) where
 
+import Prelude
 import Control.Plus (empty)
 import Control.Monad.Eff.Class (liftEff)
 import Controller.Notebook.Cell.JTableContent (runJTable)
@@ -12,7 +13,7 @@ import Input.Notebook (Input(CellResult))
 import Model.Notebook.Port (_PortResource, _PortInvalid)
 import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId, _input)
 import Model.Notebook.Cell.FileInput (_file)
-import Optic.Core ((^.), (..))
+import Optic.Core
 import Optic.Fold ((^?))
 import Optic.Refractor.Prism (_Just)
 

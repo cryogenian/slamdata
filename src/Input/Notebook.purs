@@ -5,15 +5,17 @@ module Input.Notebook
   , cellContent
   ) where
 
+import Prelude
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Bind (join)
 import Data.Array (filter, modifyAt, (!!), elemIndex, (\\))
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.Either (Either(..), isRight, either)
-import Data.Foldable (intercalate, foldl)
+import Data.Foldable (intercalate, foldl, elem)
 import Data.Function (on)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+
+import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
 import Data.String (indexOf)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
@@ -23,15 +25,16 @@ import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies, Notebook(), trash, ancestors)
 import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource, _VarMap)
-import Optic.Core (LensP(), (..), (<>~), (%~), (+~), (.~), (^.), (?~), lens)
+import Optic.Core 
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
 import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..), TextBoxType(..), everything)
 import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, initSlamDownState)
 import Text.Markdown.SlamDown.Parser (parseMd)
-import Utils (elem)
+
 
 import qualified Data.Array.NonEmpty as NEL
+import qualified Data.List as L
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.String.Regex as Rx
@@ -51,7 +54,7 @@ data CellResultContent
 
 data Input
   = WithState (State -> State)
-  | Dropdown Number
+  | Dropdown Int
   | CloseDropdowns
   | AddCell CellContent
   | TrashCell CellId
@@ -75,6 +78,8 @@ data Input
   | ForceSave
 
 
+import Utils.Log
+
 updateState :: State -> Input -> State
 
 updateState state (WithState f) =
@@ -86,7 +91,9 @@ updateState state (UpdateCell cellId fn) =
 updateState state (Dropdown i) =
   let visSet = maybe true not (_.visible <$> state.dropdowns !! i) in
   state # _dropdowns %~
-  (modifyAt i _{visible = visSet}) <<< (_{visible = false} <$>)
+  ((fromMaybe (state ^. _dropdowns)) <<< 
+   (modifyAt i _{visible = visSet}) <<<
+   (_{visible = false} <$>))
 
 updateState state CloseDropdowns =
   state # (_dropdowns %~ (_{visible = false} <$>))
@@ -128,12 +135,15 @@ updateState state (CellSlamDownEvent cellId event) =
         # _requesting <>~ [cellId]
 
 updateState state (UpdatedOutput cid newInput) =
-  let depIds = fst <$>
-             filter (\x -> snd x == cid) (M.toList (state ^._notebook.._dependencies))
-      changed cell = if elemIndex (cell ^._cellId) depIds == -1
-                     then cell
-                     else cell # _input .~ newInput
-  in state # _notebook.._cells..mapped %~ changed
+  state # _notebook.._cells..mapped %~ changed
+  where
+  changed cell = if not $ elem (cell ^. _cellId) depIds
+                 then cell
+                 else cell # _input .~ newInput
+  depIds = 
+    fst <$>
+    L.filter (\x -> snd x == cid) (M.toList (state ^. _notebook .. _dependencies))
+
 
 updateState state (RefreshCell cell) =
   let requesting = state ^. _requesting
@@ -144,18 +154,19 @@ updateState state (RefreshCell cell) =
 
 updateState state i = state
 
+
 _SlamDownState :: LensP SlamDownState (SM.StrMap FormFieldValue)
 _SlamDownState = lens (\(SlamDownState m) -> m) (const SlamDownState)
 
 -- TODO: We need a much better solution to this.
-syncParents :: [Cell] -> [Cell]
+syncParents :: Array Cell -> Array Cell
 syncParents cells = updateCell <$> cells
   where updateCell cell = fromMaybe cell $ fromParent cell
         fromParent cell = do
           pid <- cell ^. _parent
           parent <- M.lookup pid m
           return (cell # _input .~ (parent ^. _output))
-        m = M.fromList $ pair <$> cells
+        m = M.fromList <<< L.toList $ pair <$> cells
         pair cell = Tuple (cell ^. _cellId) cell
 
 slamDownOutput :: Cell -> Cell
@@ -163,7 +174,7 @@ slamDownOutput cell =
   cell # _output .. _VarMap  %~ modifyVarMap
   where
     modifyVarMap m = foldl (\m (Tuple key val) -> SM.insert key val m) m tplLst
-    tplLst = maybe [] SM.toList ((fromFormValue <$>) <$> state)
+    tplLst = maybe L.Nil SM.toList ((fromFormValue <$>) <$> state)
     fromFormValue (SingleValue PlainText s) = quoteString s
     fromFormValue (SingleValue Date s) = "DATE '" ++ s ++ "'"
     fromFormValue (SingleValue Time s) = "TIME '" ++ s ++ "'"
@@ -183,7 +194,7 @@ slamDownOutput cell =
                  *> (SP.string "-" <|> SP.string "+")
                  *> SP.many SP.anyDigit
 
-slamDownFields :: SlamDown -> [Tuple String FormField]
+slamDownFields :: SlamDown -> Array (Tuple String FormField)
 slamDownFields = everything (const []) go
   where
   go (FormField s _ ff) = [Tuple s ff]
@@ -224,7 +235,7 @@ cellContent = either (setFailures <<< NEL.toArray) success
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
 onCell ci f c = if isCell ci c then f c else c
 
-setFailures :: [FailureMessage] -> Cell -> Cell
+setFailures :: Array FailureMessage -> Cell -> Cell
 setFailures fs (Cell o) = Cell $ o { failures = fs }
 
 setRunState :: RunState -> Cell -> Cell
@@ -238,4 +249,4 @@ isCell ci (Cell { cellId = ci' }) = ci == ci'
 
 depends :: Notebook -> CellId -> Cell -> Boolean
 depends notebook cellId cell =
-  elemIndex cellId (ancestors (cell ^._cellId) (notebook ^._dependencies)) /= -1
+  isJust $ elemIndex cellId (ancestors (cell ^._cellId) (notebook ^._dependencies))

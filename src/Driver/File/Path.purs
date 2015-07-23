@@ -1,6 +1,7 @@
 module Driver.File.Path (renderPath) where
 
-import Data.Array (intersect, length)
+import Prelude
+import Data.Array (intersect, length, (:), null)
 import Data.Either (either)
 import Data.Maybe (maybe)
 import Data.Path.Pathy ((</>), printPath, canonicalize, sandbox, rootDir, file)
@@ -8,10 +9,11 @@ import Model.Path (AnyPath())
 import Text.SlamSearch.Parser.Tokens (keyChars)
 
 import qualified Data.String as Str
+import qualified Data.Char as Ch
 
 renderPath :: AnyPath -> String
 renderPath ap =
-  if 0 == (length $ intersect (Str.split "" rendered) (" ":keyChars))
+  if null $ intersect (Str.toCharArray rendered) ((Ch.fromCharCode 32):keyChars)
   then rendered
   else "\"" <> rendered <> "\""
   where

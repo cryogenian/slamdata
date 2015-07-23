@@ -9,10 +9,12 @@ module Model.File.Search
   , _timeout
   ) where
 
+import Prelude
 import Control.Timer (Timeout())
 import Data.Maybe (Maybe(..))
 import Data.These (These(..))
-import Optic.Core (LensP(), lens, (..))
+
+import Optic.Core 
 
 -- | State of search field
 newtype Search = Search SearchRec

@@ -1,5 +1,6 @@
 module Api.Common where
 
+import Prelude
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
@@ -13,12 +14,12 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
 
 successStatus :: StatusCode
-successStatus = StatusCode $ fromNumber 200
+successStatus = StatusCode 200
 
 succeeded :: StatusCode -> Boolean
 succeeded (StatusCode int) =
   200 <= code && code < 300
-  where code = toNumber int
+  where code = int
 
 getResponse :: forall a e. String -> Affjax e a -> Aff (ajax :: AJAX | e) a
 getResponse msg affjax = do
@@ -27,7 +28,7 @@ getResponse msg affjax = do
     then throwError $ error msg
     else pure res.response
 
-reqHeadersToJSON :: [RequestHeader] -> Json
+reqHeadersToJSON :: Array RequestHeader -> Json
 reqHeadersToJSON = foldl go jsonEmptyObject
   where
   go obj (Accept mime) = "Accept" := mimeTypeToString mime ~> obj

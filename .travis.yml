@@ -1,21 +1,14 @@
 language: node_js
 sudo: false
 node_js:
-- 0.1
-env:
-- TAG=v0.6.9.5 PATH=$HOME/bin:$PATH
+  - 0.10
 install:
-- mkdir $HOME/bin
-- wget -O $HOME/purescript.tar.gz 'https://drive.google.com/uc?export=download&id=0Bx4xybkHUCukQ2RqS2huQm9FQzA'
-- tar zxvf $HOME/purescript.tar.gz -C $HOME/bin purescript/psc{,i,-docs,-make} --strip-components=1
-- chmod a+x $HOME/bin/psc{,i,-docs,-make}
-- npm install bower gulp -g
-- npm install
-- bower install --force
+  - npm install bower gulp -g
+  - npm install
+  - bower install 
 script:
-- gulp less
-- gulp deploy-prod-entries-file
-- gulp deploy-prod-entries-notebook
+  - gulp less
+  - gulp bundle
 before_deploy:
 - cp -r public slamdata
 - tar cjf slamdata.tar.bz2 slamdata

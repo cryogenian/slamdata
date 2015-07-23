@@ -1,12 +1,13 @@
 module View.Notebook.Modal (modal) where
 
-import Control.Functor (($>))
+import Prelude
+import Data.Functor (($>))
 import Control.Plus (empty)
 import Data.Maybe (Maybe(..), maybe)
 import Input.Notebook
 import Model.Notebook
 import Model.Notebook.Dialog
-import Optic.Core ((.~))
+import Optic.Setter ((.~))
 import View.Modal.Common (header, h4, body, footer)
 import View.Notebook.Common (HTML())
 import View.Notebook.Modal.ErrorDialog (errorDialog)
@@ -32,6 +33,6 @@ modal state =
                 ]
         ]
 
-dialogContent :: forall e. Dialog -> [HTML e]
+dialogContent :: forall e. Dialog -> Array (HTML e)
 dialogContent (ErrorDialog msg) = errorDialog msg
 dialogContent (EmbedDialog url) = embedDialog url

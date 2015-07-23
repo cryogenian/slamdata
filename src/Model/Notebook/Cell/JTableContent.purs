@@ -9,16 +9,16 @@ module Model.Notebook.Cell.JTableContent
   , _values
   ) where
 
+import Prelude
 import Control.Alt ((<|>))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (Json(), jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson)
 import Data.Either (Either(..), either)
-import Data.Int (Int(), fromNumber)
 import Data.Maybe (Maybe(..))
 import Data.These (These(..), these)
-import Optic.Core (LensP(), lens)
+import Optic.Core 
 
 -- | The current JTable pagination parameters and loaded JSON values if present.
 newtype JTableContent =

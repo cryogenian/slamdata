@@ -15,11 +15,21 @@
   },
   "homepage": "https://github.com/slamdata/slamdata",
   "dependencies": {
-    "gulp": "^3.8.11",
-    "gulp-less": "^3.0.2",
-    "mandragora-bucket": "^0.3.2",
-    "minimatch": "^2.0.1",
-    "virtual-dom": "^2.0.0",
+    "browserify": "^11.0.0",
+    "chalk": "^1.1.0",
+    "gulp": "^3.9.0",
+    "gulp-less": "^3.0.3",
+    "gulp-plumber": "^1.0.1",
+    "gulp-purescript": "^0.5.0",
+    "gulp-run": "^1.6.8",
+    "gulp-util": "^3.0.6",
+    "gulp-watch": "^4.3.3",
+    "minimatch": "^2.0.8",
+    "purescript": "^0.7.1",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-source-stream": "^1.1.0",
+    "virtual-dom": "^2.0.1",
+    "watchify": "^3.2.3",
     "zeroclipboard": "^2.2.0"
   }
 }

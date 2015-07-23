@@ -1,5 +1,6 @@
 module Model.Notebook.Cell where
 
+import Prelude
 import Control.Alt ((<|>))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
@@ -14,10 +15,11 @@ import Model.Notebook.Cell.FileInput
 import Model.Notebook.Cell.JTableContent
 import Model.Notebook.Port
 import Model.Resource 
-import Optic.Core (lens, LensP(), prism', PrismP(), (..), (.~), (^.))
+import Optic.Core 
 import Optic.Extended (TraversalP())
 import Data.Path.Pathy (rootDir, parseAbsDir, sandbox, (</>), printPath, file)
 import Model.Path (DirPath(), phantomNotebookPath)
+import Utils (s2i)
 
 import qualified Model.Notebook.Cell.Common as Cm
 import qualified Model.Notebook.Cell.Explore as Ex
@@ -26,14 +28,13 @@ import qualified Model.Notebook.Cell.Query as Qu
 import qualified Model.Notebook.Cell.Search as Sr
 import qualified Model.Notebook.Cell.Viz as Vz
 
-type CellId = Number
+type CellId = Int
 
 type FailureMessage = String
 
 string2cellId :: String -> Either String CellId
-string2cellId str =
-  let int = readInt 10 str
-  in if isNaN int then Left "incorrect cell id" else Right int
+string2cellId str = maybe (Left "incorrect cell id") Right $ s2i str
+
 
 newtype Cell =
   Cell { cellId :: CellId
@@ -43,7 +44,7 @@ newtype Cell =
        , content :: CellContent
        , expandedStatus :: Boolean
        , message :: String
-       , failures :: [FailureMessage]
+       , failures :: Array FailureMessage
        , hiddenEditor :: Boolean
        , runState :: RunState
        , hasRun :: Boolean
@@ -93,7 +94,7 @@ _runState = _Cell <<< lens _.runState (_ { runState = _ })
 _expandedStatus :: LensP Cell Boolean
 _expandedStatus = _Cell <<< lens _.expandedStatus (_ { expandedStatus = _ })
 
-_failures :: LensP Cell [FailureMessage]
+_failures :: LensP Cell (Array FailureMessage)
 _failures = _Cell <<< lens _.failures (_ { failures = _ })
 
 _message :: LensP Cell String
@@ -106,8 +107,7 @@ _pathToNotebook :: LensP Cell DirPath
 _pathToNotebook = _Cell <<< lens _.pathToNotebook _{pathToNotebook = _}
 
 instance eqCell :: Eq Cell where
-  (==) (Cell c) (Cell c') = c.cellId == c'.cellId
-  (/=) a b = not $ a == b
+  eq (Cell c) (Cell c') = c.cellId == c'.cellId
 
 instance ordCell :: Ord Cell where
   compare (Cell c) (Cell c') = compare c.cellId c'.cellId

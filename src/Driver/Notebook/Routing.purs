@@ -1,5 +1,6 @@
 module Driver.Notebook.Routing where
 
+import Prelude
 import Config (notebookExtension)
 import Control.Alt ((<|>))
 import Control.Apply ((*>), (<*))
@@ -14,7 +15,7 @@ import Data.Tuple (Tuple(..))
 import Model.Action (Action(..), string2action)
 import Model.Notebook.Cell (CellId(), string2cellId)
 import Model.Resource (Resource(..), newNotebook, newFile, _filePath)
-import Optic.Core ((.~))
+import Optic.Core
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
 

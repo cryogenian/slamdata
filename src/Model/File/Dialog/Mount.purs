@@ -1,18 +1,20 @@
 module Model.File.Dialog.Mount where
 
-import Data.Array (length, zipWith, replicate)
+import Prelude
+import Data.Array (length, zipWith, replicate, zip)
 import Data.Char (fromCharCode)
 import Data.Either (either)
 import Data.Foldable (and, all)
-import Data.Int (Int(), fromNumber, toNumber)
+import Data.Int (fromNumber, toNumber)
+import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (rootDir, printPath)
 import Data.StrMap (toList)
-import Data.Tuple (Tuple(..), zip)
+import Data.Tuple (Tuple(..))
 import Data.URI (printAbsoluteURI)
 import Data.URI.Types
 import Model.Path
-import Optic.Core ((.~), lens, LensP())
+import Optic.Core 
 
 import qualified Data.String as S
 
@@ -21,11 +23,11 @@ type MountDialogRec =
   , parent :: DirPath
   , name :: String
   , connectionURI :: String
-  , hosts :: [MountHostRec]
+  , hosts :: (Array MountHostRec)
   , path :: String
   , user :: String
   , password :: String
-  , props :: [MountPropRec]
+  , props :: (Array MountPropRec)
   , message :: Maybe String
   , valid :: Boolean
   }
@@ -46,7 +48,7 @@ _name = lens _.name (_ { name = _ })
 _connectionURI :: LensP MountDialogRec String
 _connectionURI = lens _.connectionURI (_ { connectionURI = _ })
 
-_hosts :: LensP MountDialogRec [MountHostRec]
+_hosts :: LensP MountDialogRec (Array MountHostRec)
 _hosts = lens _.hosts (_ { hosts = _ })
 
 _path :: LensP MountDialogRec String
@@ -58,7 +60,7 @@ _user = lens _.user (_ { user = _ })
 _password :: LensP MountDialogRec String
 _password = lens _.password (_ { password = _ })
 
-_props :: LensP MountDialogRec [MountPropRec]
+_props :: LensP MountDialogRec (Array MountPropRec)
 _props = lens _.props (_ { props = _ })
 
 _host :: LensP MountHostRec String
@@ -117,7 +119,7 @@ schemeFromURI :: AbsoluteURI -> String
 schemeFromURI (AbsoluteURI (Just (URIScheme s)) _ _) = s
 schemeFromURI _ = ""
 
-hostsFromURI :: AbsoluteURI -> [MountHostRec]
+hostsFromURI :: AbsoluteURI -> Array MountHostRec
 hostsFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority _ hs)) _) _) = go <$> hs
   where
   go :: Tuple Host (Maybe Port) -> MountHostRec
@@ -134,32 +136,25 @@ pathFromURI _ = ""
 
 userFromURI :: AbsoluteURI -> String
 userFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority (Just ui) _)) _) _) =
-  let ix = S.indexOf ":" ui
-  in if ix == -1
-     then ui
-     else S.take ix ui
+  maybe ui (\ix -> S.take ix ui) $ S.indexOf ":" ui
 userFromURI _ = ""
 
 passwordFromURI :: AbsoluteURI -> String
 passwordFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority (Just ui) _)) _) _) =
-  let ix = S.indexOf ":" ui
-  in if ix == -1
-     then ""
-     else S.drop (ix + 1) ui
+  maybe "" (\ix -> S.drop (ix + 1) ui) $ S.indexOf ":" ui
 passwordFromURI _ = ""
 
 setURIPassword :: String -> AbsoluteURI -> AbsoluteURI
 setURIPassword pass (AbsoluteURI s (HierarchicalPart (Just (Authority (Just ui) hs)) p) q) =
-  let ix = S.indexOf ":" ui
-      user = if ix == -1
-             then ui
-             else S.take ix ui
+  let mbIx = S.indexOf ":" ui
+      user = maybe ui (\ix -> S.take ix ui) mbIx 
       pass' = if pass == "" then "" else ":" ++ pass
   in AbsoluteURI s (HierarchicalPart (Just (Authority (Just $ user ++ pass') hs)) p) q
 setURIPassword _ uri = uri
 
-propsFromURI :: AbsoluteURI -> [MountPropRec]
-propsFromURI (AbsoluteURI _ _ (Just (Query qs))) = go <$> toList qs
+propsFromURI :: AbsoluteURI -> Array MountPropRec
+propsFromURI (AbsoluteURI _ _ (Just (Query qs))) =
+  fromList <<< (go <$>) <<< toList $ qs
   where
   go :: Tuple String (Maybe String) -> MountPropRec
   go (Tuple k v) = { name: k, value: fromMaybe "" v }

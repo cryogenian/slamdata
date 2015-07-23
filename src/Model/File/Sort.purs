@@ -1,7 +1,8 @@
 -- | Sort direction
 module Model.File.Sort where
 
-import Data.Either
+import Prelude
+import Data.Either (Either(..))
 
 data Sort = Asc | Desc
 
@@ -20,7 +21,6 @@ string2sort "desc" = Right Desc
 string2sort _ = Left "incorrect sort string"
 
 instance eqSort :: Eq Sort where
-  (==) Asc Asc = true
-  (==) Desc Desc = true
-  (==) _ _ = false
-  (/=) a b = not $ a == b
+  eq Asc Asc = true
+  eq Desc Desc = true
+  eq _ _ = false

@@ -6,13 +6,14 @@ module Model.Notebook.Cell.Search
   , _buffer
   ) where
 
+import Prelude
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson)
 import Model.Notebook.Cell.FileInput (FileInput(), initialFileInput)
 import Model.Notebook.Cell.JTableContent (JTableContent(), initialJTableContent)
-import Optic.Core (LensP(), lens)
+import Optic.Core 
 
 import qualified Model.Notebook.Cell.Common as C
 

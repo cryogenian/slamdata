@@ -1,5 +1,6 @@
 module Driver.Notebook.Cell where
 
+import Prelude
 import Control.Monad.Eff (Eff())
 import Controller.Notebook.Cell (runCell, viewCell)
 import Controller.Notebook.Common (I())
@@ -9,7 +10,8 @@ import Halogen (Driver())
 import Halogen.HTML.Events.Monad (runEvent)
 import Input.Notebook (Input(..))
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _content)
-import Optic.Core ((^.))
+import Optic.Getter ((^.))
+
 
 driveEvent :: forall e. Driver Input (NotebookComponentEff e) -> I e -> Eff (NotebookAppEff e) Unit
 driveEvent = runEvent (const $ return unit)

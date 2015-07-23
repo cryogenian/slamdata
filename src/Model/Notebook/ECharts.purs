@@ -19,17 +19,18 @@ module Model.Notebook.ECharts (
   valFromSemanthic
   ) where
 
+import Prelude
 import Control.Alt ((<|>))
 import Data.Argonaut.Core (Json(), JArray(), toNumber, toString)
 import Data.Argonaut.JCursor (JCursor(..), JsonPrim(), toPrims, runJsonPrim, insideOut)
-import Data.Array (filter, concat, nubBy, singleton, sortBy, head, reverse, length)
+import Data.Array (filter, concat, nubBy, singleton, sortBy, head, reverse, length, tail, (!!), (:))
 import Data.Bifunctor (rmap)
 import Data.Foldable (for_, traverse_, foldl, fold)
 import Data.Function (on)
 import Data.Map (fromList, Map(), toList, empty, alter, insert, keys, lookup, delete)
-import Data.Maybe (Maybe(..), maybe, isJust, isNothing)
+import Data.Maybe (Maybe(..), maybe, isJust, isNothing, fromMaybe)
 import Data.Maybe.Unsafe (fromJust)
-import Data.Monoid.All (All(..), runAll)
+import Data.Monoid.Conj (Conj(..), runConj)
 import Data.String (take)
 import Data.String.Regex (noFlags, regex, match, test)
 import Data.Tuple (Tuple(..), fst, snd)
@@ -39,7 +40,8 @@ import Data.Argonaut.Encode (EncodeJson)
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (fromString, jsonEmptyObject, JArray(), Json())
 import Data.Either
-
+import Utils (s2n)
+import qualified Data.List as L
 
 dependsOn :: JCursor -> JCursor -> Boolean
 dependsOn a b = a /= b &&
@@ -116,9 +118,9 @@ instance decodeJsonSemanthic :: DecodeJson Semanthic where
     
 
 data Axis
-  = ValAxis [Maybe Semanthic]
-  | CatAxis [Maybe Semanthic]
-  | TimeAxis [Maybe Semanthic]
+  = ValAxis (Array (Maybe Semanthic))
+  | CatAxis (Array (Maybe Semanthic))
+  | TimeAxis (Array (Maybe Semanthic))
 
 
 instance encodeJsonAxis :: EncodeJson Axis where
@@ -159,7 +161,7 @@ isTimeAxis :: Axis -> Boolean
 isTimeAxis (TimeAxis _) = true
 isTimeAxis _ = false
 
-runAxis :: Axis -> [Maybe Semanthic]
+runAxis :: Axis -> Array (Maybe Semanthic)
 runAxis (ValAxis a) = a
 runAxis (CatAxis a) = a
 runAxis (TimeAxis a) = a
@@ -218,7 +220,7 @@ valFromSemanthic v =
     _ -> Nothing
 
 
-check :: [Maybe Semanthic] -> Maybe Axis
+check :: Array (Maybe Semanthic) -> Maybe Axis
 check lst =
   (ValAxis <$> checkValues lst) <|>
   (ValAxis <$> checkMoney lst) <|>
@@ -227,30 +229,30 @@ check lst =
   (TimeAxis <$> checkTime lst) <|>
   (CatAxis <$> checkCategory lst)
 
-checkPredicate :: (Semanthic -> Boolean) -> [Maybe Semanthic] ->
-                  Maybe [Maybe Semanthic]
+checkPredicate :: (Semanthic -> Boolean) -> Array (Maybe Semanthic) ->
+                  Maybe (Array (Maybe Semanthic))
 checkPredicate p lst =
-  if runAll (fold (isPredicate <$> lst))
+  if runConj (fold (isPredicate <$> lst))
   then Just lst
   else Nothing
-  where isPredicate = All <<< (maybe true p)
+  where isPredicate = Conj <<< (maybe true p)
         
-checkValues :: [Maybe Semanthic] -> Maybe [Maybe Semanthic]
+checkValues :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
 checkValues = checkPredicate isValue
 
-checkMoney :: [Maybe Semanthic] -> Maybe [Maybe Semanthic]
+checkMoney :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
 checkMoney = checkPredicate isMoney 
 
-checkPercent :: [Maybe Semanthic] -> Maybe [Maybe Semanthic]
+checkPercent :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
 checkPercent = checkPredicate isPercent 
 
-checkBool :: [Maybe Semanthic] -> Maybe [Maybe Semanthic]
+checkBool :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
 checkBool = checkPredicate isBool
 
-checkTime :: [Maybe Semanthic] -> Maybe [Maybe Semanthic]
+checkTime :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
 checkTime = checkPredicate isTime
 
-checkCategory :: [Maybe Semanthic] -> Maybe [Maybe Semanthic]
+checkCategory :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
 checkCategory = checkPredicate isCategory
 
 instance semanthicShow :: Show Semanthic where
@@ -262,13 +264,12 @@ instance semanthicShow :: Show Semanthic where
   show (Time t) = "(Time " <> t <> ")"
 
 instance semanthicEq :: Eq Semanthic where
-  (==) (Value v) (Value v') = v == v'
-  (==) (Percent p) (Percent p') = p == p'
-  (==) (Money m c) (Money m' c') = m == m' && c == c'
-  (==) (Time t) (Time t') = t == t'
-  (==) (Category c) (Category c') = c == c'
-  (==) _ _ = false
-  (/=) a b = not $ a == b
+  eq (Value v) (Value v') = v == v'
+  eq (Percent p) (Percent p') = p == p'
+  eq (Money m c) (Money m' c') = m == m' && c == c'
+  eq (Time t) (Time t') = t == t'
+  eq (Category c) (Category c') = c == c'
+  eq _ _ = false
 
 instance semanthicOrd :: Ord Semanthic where
   compare (Time t) (Time t') = compare t t'
@@ -287,9 +288,6 @@ instance semanthicOrd :: Ord Semanthic where
   compare (Category c) (Category c') = compare c c'
 
 
-toPrims' :: JArray -> [Tuple JCursor JsonPrim]
-toPrims' arr = (nubBy (on (==) fst)) <<< concat $ (toPrims <$> arr)
-
 analyze :: JsonPrim -> Maybe Semanthic
 analyze p = runJsonPrim p
             (const Nothing)
@@ -304,37 +302,32 @@ analyzeString str =
   (analyzePercent str) <|>
   (Just $ Category str)
 
-s2n :: String -> Maybe Number
-s2n s =
-  if isNaN num
-  then Nothing
-  else Just num
-  where num = readFloat s 
-
 analyzePercent :: String -> Maybe Semanthic
-analyzePercent input = 
-  case match rgx input of
-    Just (_:s:_) -> Percent <$> s2n s
-    _ -> Nothing
-  where rgx = regex """^(-?\d+(\.\d+)?)\%$""" noFlags 
+analyzePercent input = do
+  ms <- match rgx input
+  s <- (ms !! 1)
+  n <- (s >>= s2n)
+  pure $ Percent n
+  where rgx = regex """^(-?\d+(\.\d+)?)\%$""" noFlags
 
 curSymbols :: String
 curSymbols = """[\$\u20A0-\u20CF\u00A2\u00A3\u00A4\u00A5\u058F\u060B\u09F2\u09F3\u09FB\u0AF1\u0BF9\u0E3F\u17DB\uA838\uFDFC\uFE69\uFF04\uFFE0\uFFE1\uFFE5\uFFE6]"""
 
 analyzeMoney :: String -> Maybe Semanthic
-analyzeMoney str =
-  case match rgx str of
-    Just (_:s:_) -> Money <$> s2n s <*> curSymbol
-    _ -> Nothing
+analyzeMoney str = do
+  ms <- match rgx str
+  s <- (ms !! 1)
+  n <- (s >>= s2n) 
+  curSymbol <- let fstSymbol = take 1 str
+               in if fstSymbol == ""
+                  then Nothing
+                  else pure fstSymbol
+
+  pure $ Money n curSymbol
   where
   rgx = regex rgxStr noFlags
   rgxStr = "^" <> curSymbols <> """?(([0-9]{1,3},([0-9]{3},)*[0-9]{3}|[0-9]+)(.[0-9][0-9])?)$"""
-  fstSymbol = take 1 str
-  curSymbol :: Maybe String
-  curSymbol =
-    if fstSymbol /= "" 
-    then Just fstSymbol
-    else Nothing
+
 
 analyzeDate :: String -> Maybe Semanthic
 analyzeDate str =
@@ -348,23 +341,28 @@ analyzeDate str =
 toSemanthic :: Json -> Map JCursor Semanthic
 toSemanthic j = fromList' empty (rmap analyze <$> toPrims j)
   where
-  fromList' acc [] = acc
-  fromList' acc ((Tuple _ Nothing):lst) = fromList' acc lst
-  fromList' acc ((Tuple k (Just el)):lst) = fromList' (insert k el acc) lst
+  fromList' acc L.Nil = acc
+  fromList' acc (L.Cons (Tuple _ Nothing) lst) = fromList' acc lst
+  fromList' acc (L.Cons (Tuple k (Just el)) lst) = fromList' (insert k el acc) lst
 
-toSemanthic' :: JArray -> Map JCursor [Maybe Semanthic] 
+toSemanthic' :: JArray -> Map JCursor (Array (Maybe Semanthic))
 toSemanthic' arr =
   reverse <$> (mergeMaps empty (toSemanthic <$> arr))
   where
-  mergeMaps :: Map JCursor [Maybe Semanthic] -> [Map JCursor Semanthic] -> Map JCursor [Maybe Semanthic]
-  mergeMaps acc [] = acc
-  mergeMaps acc (m:lst) =
+  mergeMaps :: Map JCursor (Array (Maybe Semanthic)) ->
+               Array (Map JCursor Semanthic) ->
+               Map JCursor (Array (Maybe Semanthic))
+  mergeMaps acc arr = fromMaybe acc do
+    m <- head arr
+    lst <- tail arr
     let alter' a k = alter (mergeFn k) k a
-        mergeFn :: JCursor -> Maybe [Maybe Semanthic] -> Maybe [Maybe Semanthic]
+        mergeFn :: JCursor -> Maybe (Array (Maybe Semanthic)) ->
+                   Maybe (Array (Maybe Semanthic))
         mergeFn k Nothing = Just [lookup k m]
         mergeFn k (Just l) = Just $ (lookup k m):l
         newMap = foldl alter' acc $ keys m
-    in mergeMaps newMap lst 
+    pure $ mergeMaps newMap lst
+
 
 
 analyzeJArray :: JArray -> Map JCursor Axis
@@ -372,13 +370,13 @@ analyzeJArray arr =
   checkPairs $ 
   fromList $ 
   (rmap fromJust) <$> 
-  (filter (isJust <<< snd) $ 
+  (L.filter (isJust <<< snd) $ 
     (toList (check <$> (toSemanthic' arr))))
 
 
-getPossibleDependencies :: JCursor -> Map JCursor Axis -> [JCursor]
+getPossibleDependencies :: JCursor -> Map JCursor Axis -> Array JCursor
 getPossibleDependencies cursor m =
-  filter (dependsOn cursor) $ keys m
+  filter (dependsOn cursor) $ L.fromList $ keys m
 
 
 checkPairs :: Map JCursor Axis -> Map JCursor Axis

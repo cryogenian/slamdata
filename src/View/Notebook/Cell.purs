@@ -1,6 +1,7 @@
 module View.Notebook.Cell (cell) where
 
-import Control.Functor (($>))
+import Prelude
+import Data.Functor (($>))
 import Controller.Notebook.Cell
 import Controller.Notebook.Cell.Viz (insertViz)
 import Css.Display
@@ -16,8 +17,7 @@ import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Port (Port(..))
 import Model.Resource (resourceName)
-import Number.Format (toFixed)
-import Optic.Core ((^.), (%~), (..), is)
+import Optic.Core 
 import View.Common
 import View.Notebook.Cell.Ace (aceEditor)
 import View.Notebook.Cell.Explore (exploreEditor, exploreOutput)
@@ -38,7 +38,7 @@ import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Model.Notebook.Cell.Query as Qu
 import qualified View.Css as VC
 
-cell :: forall e. State -> Cell -> [HTML e]
+cell :: forall e. State -> Cell -> Array (HTML e)
 cell notebook cell =
   let outputContent = output notebook cell
   in [ H.div ([ A.classes $ [ B.containerFluid, VC.notebookCell, B.clearfix] ++
@@ -100,7 +100,7 @@ output notebook cell =
                                out
                        ]
 
-cellOutputBar :: forall e. State -> Cell -> [HTML e]
+cellOutputBar :: forall e. State -> Cell -> Array (HTML e)
 cellOutputBar notebook cell =
   case cell ^. _output of
     PortResource res ->
@@ -151,7 +151,7 @@ statusBar notebook hasOutput cell =
   buttonGlyph :: A.ClassName
   buttonGlyph = if isRunning cell then B.glyphiconStop else B.glyphiconPlay
 
-  messages :: [HTML e]
+  messages :: Array (HTML e)
   messages = message cell
 
   toggleMessageButton :: Maybe (HTML e)
@@ -173,7 +173,7 @@ statusBar notebook hasOutput cell =
     else Just $ H.button [ A.title "Embed cell output"
                          , E.onClick (\_ -> pure $ handleEmbedClick notebook cell)
                          ]
-         [ H.img [ A.src "img/code-icon.svg", A.width 16 ] [] ]
+         [ H.img [ A.src "img/code-icon.svg", A.width 16.0 ] [] ]
 
   refreshButton :: Maybe (HTML e)
   refreshButton =
@@ -183,7 +183,7 @@ statusBar notebook hasOutput cell =
                     ]
     [ glyph B.glyphiconRefresh ]
 
-message :: forall e. Cell -> [HTML e]
+message :: forall e. Cell -> Array (HTML e)
 message cell =
   let collapsed = if cell ^._expandedStatus then [] else [VC.collapsed]
   in if null (cell ^._failures)
@@ -200,23 +200,27 @@ message cell =
                               $ failureText cell
           ]
 
-details :: forall e. Cell -> [HTML e]
+details :: forall e. Cell -> Array (HTML e)
 details cell = commonMessage "" [H.div_ [H.text (cell^._message)]] cell
 
 messageText :: forall e. Cell -> HTML e
 messageText cell =
-  if indexOf "\n" m > -1 then H.pre_ [H.text m] else H.div_ [H.text m]
+  if isJust $ indexOf "\n" m
+  then H.pre_ [H.text m]
+  else H.div_ [H.text m]
   where m = cell ^._message
 
-failureText :: forall e. Cell -> [HTML e]
+failureText :: forall e. Cell -> Array (HTML e)
 failureText cell =
   commonMessage
   (show (length fs) <> " error(s) during evaluation. ")
-  ((\f -> if indexOf "\n" f > -1 then H.pre_ [H.text f] else H.div_ [H.text f]) <$> fs)
+  ((\f -> if isJust $ indexOf "\n" f
+          then H.pre_ [H.text f]
+          else H.div_ [H.text f]) <$> fs)
   cell
   where fs = cell ^._failures
 
-commonMessage :: forall e. String -> [HTML e] -> Cell -> [HTML e]
+commonMessage :: forall e. String -> Array (HTML e) -> Cell -> Array (HTML e)
 commonMessage intro children cell =
   [ H.div_ [ H.text intro ]
   ] <>
@@ -226,12 +230,17 @@ commonMessage intro children cell =
 
 statusText :: Maybe Date -> RunState -> String
 statusText _ RunInitial = ""
-statusText d (RunningSince d') = maybe "" (\s -> "Running for " <> s <> "s") $ d >>= flip secondsText d'
+statusText d (RunningSince d') =
+  maybe "" (\s -> "Running for " <> s <> "s") $ ((flip secondsText d') <$> d)
 statusText _ (RunFinished (Milliseconds ms)) = "Finished: took " <> show ms <> "ms."
 
-secondsText :: Date -> Date -> Maybe String
-secondsText a b = toFixed 0 <<< Math.max 0 <<< unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b
-  where unSeconds (Seconds n) = n
+secondsText :: Date -> Date -> String
+secondsText a b = show <<< max 0 <<<
+                  unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b
+  where
+  max :: forall a. (Ord a) => a -> a -> a
+  max a b = if a > b then b else a
+  unSeconds (Seconds n) = n
 
 cellInfo :: Cell -> { name :: String, glyph :: A.ClassName }
 cellInfo cell = case cell ^. _content of
@@ -248,7 +257,7 @@ editor state cell = case cell ^. _content of
   Visualize _ -> vizChoices cell
   _ -> aceEditor cell
 
-renderOutput :: forall e. Cell -> [HTML e]
+renderOutput :: forall e. Cell -> Array (HTML e)
 renderOutput cell =
   if not (null $ cell ^. _failures)
   then []

@@ -8,6 +8,7 @@ module Model.Notebook.Cell.FileInput
   , portFromFile
   ) where
 
+import Prelude
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (Json(), jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
@@ -17,11 +18,11 @@ import Data.Maybe (Maybe(..))
 import Data.Path.Pathy ((</>), parseAbsFile, sandbox, rootDir)
 import Model.Resource (Resource(), resourcePath, newFile, _path)
 import Model.Notebook.Port (Port(PortInvalid, PortResource))
-import Optic.Core (LensP(), lens, (.~))
+import Optic.Core 
 
 newtype FileInput =
   FileInput { showFiles :: Boolean
-            , files :: [Resource]
+            , files :: Array Resource
             , file :: Either String Resource
             }
 
@@ -38,7 +39,7 @@ _FileInput = lens (\(FileInput obj) -> obj) (const FileInput)
 _showFiles :: LensP FileInput Boolean
 _showFiles = _FileInput <<< lens _.showFiles (_ { showFiles = _ })
 
-_files :: LensP FileInput [Resource]
+_files :: LensP FileInput (Array Resource)
 _files = _FileInput <<< lens _.files (_ { files = _ })
 
 _file :: LensP FileInput (Either String Resource)

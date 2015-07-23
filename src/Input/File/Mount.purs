@@ -3,6 +3,7 @@ module Input.File.Mount
   , inputMount
   ) where
 
+import Prelude
 import Data.Array (filter, replicate, null)
 import Data.Char (fromCharCode)
 import Data.Either (Either(..))
@@ -87,7 +88,7 @@ nonEmpty s = Just s
 rxEmpty :: Rx.Regex
 rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
 
-validate :: String -> [MountHostRec] -> Maybe String
+validate :: String -> Array MountHostRec -> Maybe String
 validate "" _ = Just "Please enter a name for the mount"
 validate _ [] = Just "Please enter at least one host"
 validate _ _  = Nothing

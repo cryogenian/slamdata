@@ -3,7 +3,9 @@ module Input.File.Item
   , inputItem
   ) where
 
-import Data.Array ((!!), filter, sortBy, updateAt)
+import Prelude
+import Data.Array ((!!), filter, sortBy, updateAt, (:), zip, range, length)
+import Data.Tuple (Tuple(..))
 import Data.Maybe (maybe)
 import Model.File.Item (Item(..), sortItem, itemResource)
 import Model.File.Sort (Sort())
@@ -11,10 +13,10 @@ import Model.File.Sort (Sort())
 data ItemInput
   = ItemAdd Item
   | ItemRemove Item
-  | ItemSelect Number
+  | ItemSelect Int
   | Resort
 
-inputItem :: Sort -> Boolean -> ItemInput -> [Item] -> [Item]
+inputItem :: Sort -> Boolean -> ItemInput -> Array Item -> Array Item
 inputItem sort searching input items = case input of
 
   ItemAdd item ->
@@ -32,11 +34,16 @@ toggleItem true (Item r) = SelectedItem r
 toggleItem false (SelectedItem r) = Item r
 toggleItem _ i = i
 
-resort :: Sort -> Boolean -> [Item] -> [Item]
+resort :: Sort -> Boolean -> Array Item -> Array Item
 resort sort searching = sortBy (sortItem searching sort)
 
-modify :: (Boolean -> Item -> Item) -> [Item] -> Number -> [Item]
+modify :: (Boolean -> Item -> Item) -> Array Item -> Int -> Array Item
 modify func items ix =
-  let unmodify = func false <$> items
-      el = func true <$> unmodify !! ix
-  in maybe unmodify (\el' -> updateAt ix el' unmodify) el
+  modifyIfIx ix <$> tpls
+  where
+  tpls = zip (range 0 $ length items) items
+  modifyIfIx ix (Tuple i item) =
+    if ix == i
+    then func true item
+    else func false item
+ 

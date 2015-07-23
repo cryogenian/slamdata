@@ -7,6 +7,7 @@ module Utils.ConnectionURI
   , toURI
   ) where
 
+import Prelude
 import Data.Array (null)
 import Data.Maybe (Maybe(..), isJust, maybe, fromMaybe)
 import qualified Data.String as S

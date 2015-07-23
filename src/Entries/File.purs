@@ -1,5 +1,6 @@
 module Entries.File where
 
+import Prelude
 import App.File (app)
 import Control.Monad.Eff (Eff())
 import Data.Tuple (Tuple(..))
@@ -8,6 +9,7 @@ import Driver.ZClipboard (initZClipboard)
 import EffectTypes (FileAppEff())
 import Halogen (runUIWith)
 import Utils (onLoad, mountUI)
+import Utils.Log
 
 main :: Eff (FileAppEff ()) Unit
 main = onLoad $ void $ do
@@ -15,4 +17,4 @@ main = onLoad $ void $ do
   mountUI node
   outside driver
   where
-  postRender _ node _ = initZClipboard node
+  postRender _ node _ = initZClipboard node 

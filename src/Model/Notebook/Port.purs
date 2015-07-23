@@ -1,5 +1,6 @@
 module Model.Notebook.Port where
 
+import Prelude
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
@@ -8,7 +9,7 @@ import Data.Maybe
 import Data.StrMap
 import Model.Path
 import Model.Resource
-import Optic.Core (prism', PrismP())
+import Optic.Core
 
 type VarMapValue = String
 

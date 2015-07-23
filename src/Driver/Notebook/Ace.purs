@@ -1,5 +1,6 @@
 module Driver.Notebook.Ace (acePostRender, AceSessions()) where
 
+import Prelude
 import Ace
 import Ace.EditSession (getValue, setMode)
 import Ace.Selection (getRange)
@@ -7,7 +8,7 @@ import Ace.Types (EditSession(), ACE(), Editor(), TextMode(..))
 import Control.Bind ((>=>))
 import Control.Monad (when)
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Ref (RefVal(), readRef, modifyRef)
+import Control.Monad.Eff.Ref (Ref(), readRef, modifyRef)
 import Data.Date (Now(), now)
 import Data.DOM.Simple.Element
 import Data.DOM.Simple.Types
@@ -54,20 +55,11 @@ dataCellType :: String
 dataCellType = "data-cell-type"
 
 -- TODO: Put this in purescript-ace and fix parametricity.
-foreign import aceSetOption """
-  function aceSetOption (s) {
-    return function (a) {
-      return function (editor) {
-        return function () {
-          editor.setOption(s, a);
-        };
-      };
-    };
-  }
-  """ :: forall a eff. String -> a -> Editor -> Eff (ace :: ACE | eff) Unit
+foreign import aceSetOption :: forall a eff. String -> a -> Editor ->
+                               Eff (ace :: ACE | eff) Unit
 
-initialize :: forall eff. RefVal State
-                       -> RefVal AceSessions
+initialize :: forall eff. Ref State
+                       -> Ref AceSessions
                        -> HTMLElement
                        -> Driver Input (ace :: ACE | eff)
                        -> Eff (HalogenEffects (ace :: ACE | eff)) Unit
@@ -81,7 +73,6 @@ initialize s m b d = do
     flip (either (const $ pure unit)) cellId \cid -> do
       mode <- modeByCellTag <$> getAttribute dataCellType el
       editor <- Ace.editNode el ace
-
       aceSetOption "minLines" 4 editor
       aceSetOption "maxLines" infinity editor
       aceSetOption "autoScrollEditorIntoView" true editor
@@ -103,7 +94,7 @@ initialize s m b d = do
   reinit editor session = do
     Editor.setSession session editor
 
-handleInput :: forall eff. RefVal AceSessions
+handleInput :: forall eff. Ref AceSessions
                         -> Input
                         -> Driver Input (now :: Now, ace :: ACE | eff)
                         -> Eff (HalogenEffects (now :: Now, ace :: ACE | eff)) Unit
@@ -125,8 +116,8 @@ handleInput m (TrashCell cellId) _ = do
   modifyRef m (M.delete cellId)
 handleInput _ _ _ = return unit
 
-acePostRender :: forall eff. RefVal State
-                          -> RefVal AceSessions
+acePostRender :: forall eff. Ref State
+                          -> Ref AceSessions
                           -> Input
                           -> HTMLElement
                           -> Driver Input (now :: Now, ace :: ACE | eff)

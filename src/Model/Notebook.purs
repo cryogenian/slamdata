@@ -9,10 +9,10 @@ import Model.Notebook.Dialog
 import Model.Notebook.Domain (Notebook(), emptyNotebook)
 import Model.Notebook.Menu (DropdownItem(), initialDropdowns)
 import Model.Path
-import Optic.Core (LensP(), lens, (^.))
+import Optic.Core
 
 type State =
-  { dropdowns :: [DropdownItem]
+  { dropdowns :: Array DropdownItem
   , loaded :: Boolean
   , error :: Maybe String
   , editable :: Boolean
@@ -21,12 +21,12 @@ type State =
   , tickDate :: Maybe Date
   , platform :: Platform
   , dialog :: Maybe Dialog
-  , requesting :: [CellId]
+  , requesting :: Array CellId
   , addingCell :: Boolean 
-  , refreshing :: [CellId]
+  , refreshing :: Array CellId
   }
 
-_dropdowns :: LensP State [DropdownItem]
+_dropdowns :: LensP State (Array DropdownItem)
 _dropdowns = lens _.dropdowns _{dropdowns = _}
 
 _loaded :: LensP State Boolean
@@ -53,13 +53,13 @@ _platform = lens _.platform _{platform = _}
 _dialog :: LensP State (Maybe Dialog)
 _dialog = lens _.dialog _{dialog = _}
 
-_requesting :: LensP State [CellId]
+_requesting :: LensP State (Array CellId)
 _requesting = lens _.requesting _{requesting = _}
 
 _addingCell :: LensP State Boolean
 _addingCell = lens _.addingCell _{addingCell = _} 
 
-_refreshing :: LensP State [CellId]
+_refreshing :: LensP State (Array CellId)
 _refreshing = lens _.refreshing _{refreshing = _}
 
 
