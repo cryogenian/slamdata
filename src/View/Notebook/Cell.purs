@@ -239,7 +239,7 @@ secondsText a b = show <<< max 0 <<<
                   unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b
   where
   max :: forall a. (Ord a) => a -> a -> a
-  max a b = if a > b then b else a
+  max a b = if a > b then a else b
   unSeconds (Seconds n) = n
 
 cellInfo :: Cell -> { name :: String, glyph :: A.ClassName }
