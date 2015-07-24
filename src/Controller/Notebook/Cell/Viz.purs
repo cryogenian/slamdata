@@ -30,6 +30,7 @@ import Optic.Fold ((^?))
 import Optic.Extended (TraversalP())
 import Data.Argonaut.JCursor (JCursor())
 import Data.Map (Map(), keys, toList, lookup, values)
+import Data.Selection
 import qualified Model.Notebook.ECharts as Me
 import Global (readInt, isNaN)
 import qualified Data.Set as S
@@ -122,15 +123,17 @@ updateData cell file = do
     else do
     sample <- Me.analyzeJArray <$>
               (liftAff $ sample file 0 20)
+
     all <- Me.analyzeJArray <$> (liftAff $ all file)
+
     let vizRec = fromMaybe initialVizRec $ cell ^? _content.._Visualize
         axes = keys all
     if L.null axes
       then updateOpts cell
       else 
       let vRec = configure $ (vizRec # _all .~ all
-                                   # _sample .~ sample
-                           )
+                                     # _sample .~ sample
+                             )
           vRec' = vRec # _error .~ if S.isEmpty (vRec ^._availableChartTypes)
                                    then "There is no availbale chart type for this data"
                                    else ""
@@ -147,11 +150,6 @@ updateData cell file = do
   errorEmptyInput :: I e
   errorEmptyInput = errored "Empty input"
 
-infix 9 <->
-(<->) = except'
-
-
-
 configure :: VizRec -> VizRec
 configure r =
   let tpls = L.fromList $ toList (r ^._sample)
@@ -160,23 +158,33 @@ configure r =
       times = fst <$> (filter (snd >>> Me.isTimeAxis) tpls)
       
       pie = (r ^._pieConfiguration) #
+            (_cats %~ autoSelect) ..
+            (_firstMeasures %~ autoSelect) ..
             (_cats.._variants .~ cats) ..
             (_firstSeries.._variants .~ ((cats <-> p.cats) `onlyIfSelected` p.cats)) ..
             (_secondSeries.._variants .~ ((cats <-> p.cats <-> p.firstSeries) `onlyIfSelected` p.firstSeries)) ..
             (_firstMeasures.._variants .~ (depends p.cats vals))
 
+             
+
       bar = (r ^._barConfiguration) #
+            (_cats %~ autoSelect) ..
+            (_firstMeasures %~ autoSelect) ..
             (_cats.._variants .~ cats) ..
             (_firstSeries.._variants .~ ((cats <-> b.cats) `onlyIfSelected` b.cats)) ..
             (_secondSeries.._variants .~ ((cats <-> b.cats <-> b.firstSeries) `onlyIfSelected` b.firstSeries)) ..
             (_firstMeasures.._variants .~ (depends b.cats vals))
 
+
       line = (r ^._lineConfiguration) #
+             (_dims %~ autoSelect) ..
+             (_firstMeasures %~ autoSelect) ..
              (_dims.._variants .~ (times <> cats)) ..
              (_firstSeries.._variants .~ ((cats <-> l.dims) `onlyIfSelected` l.dims)) ..
              (_secondSeries.._variants .~ ((cats <-> l.dims <-> l.firstSeries) `onlyIfSelected` l.firstSeries)) ..
              (_firstMeasures.._variants .~ (depends l.dims vals)) ..
              (_secondMeasures.._variants .~ ((depends l.dims $(vals <-> l.firstMeasures)) `onlyIfSelected` l.firstMeasures))
+
       available = if null vals
                   then L.Nil
                   else if not $ null cats

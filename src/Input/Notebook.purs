@@ -78,8 +78,6 @@ data Input
   | ForceSave
 
 
-import Utils.Log
-
 updateState :: State -> Input -> State
 
 updateState state (WithState f) =

@@ -21,6 +21,7 @@ import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (fromString, Json(), JArray(), jsonEmptyObject, toString)
 import Data.Either
 import Control.Alt ((<|>))
+import Data.Selection
 
 data ChartType
   = Pie
@@ -63,57 +64,6 @@ str2chartType str = case str of
   "line" -> pure Line
   "bar" -> pure Bar
   _ -> Nothing
-
-
-
-
-type SelectionR a = 
-  { variants :: Array a
-  , selection :: Maybe a
-  }
-newtype Selection a = Selection (SelectionR a)
-
-
-_Selection :: forall a. LensP (Selection a) (SelectionR a)
-_Selection = lens (\(Selection obj) -> obj) (const Selection) 
-
-_variants :: forall a. LensP (Selection a) (Array a)
-_variants = _Selection <<< lens _.variants _{variants = _}
-
-_selR :: forall a. LensP (SelectionR a) (Maybe a)
-_selR = lens _.selection _{selection = _}
-
-_selection :: forall a. LensP (Selection a) (Maybe a)
-_selection = _Selection <<< _selR
-
-initialSelection :: forall a. Selection a
-initialSelection = Selection {variants: [], selection: Nothing}
-
-newSelection :: forall a. Array a -> Selection a
-newSelection as = Selection {variants: as, selection: Nothing}
-
-except :: forall a. (Eq a) => Selection a -> Selection a -> Selection a
-except sel sel' = sel # (_variants %~ (flip except' sel'))
-
-except' :: forall a. (Eq a) => Array a -> Selection a -> Array a
-except' lst sel = filter (\x -> Just x /= (sel ^._selection)) lst
-
-instance encodeJsonSelection :: (EncodeJson a) => EncodeJson (Selection a) where
-  encodeJson (Selection r) = "variants" := r.variants
-                             ~> "selection" := r.selection
-                             ~> jsonEmptyObject
-
-instance decodeJsonSelection :: (DecodeJson a) => DecodeJson (Selection a) where
-  decodeJson json = do
-    obj <- decodeJson json
-    r <- { variants: _
-         , selection: _
-         } <$>
-         (obj .? "variants") <*>
-         (obj .? "selection")
-    pure $ Selection r
-
-    
 
 type JSelection = Selection JCursor 
 

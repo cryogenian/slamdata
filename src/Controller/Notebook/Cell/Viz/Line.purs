@@ -5,6 +5,7 @@ import Data.Maybe (Maybe(..))
 import Controller.Notebook.Common (I(), update)
 import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.Viz
+import Data.Selection
 
 
 import ECharts.Axis

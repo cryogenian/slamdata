@@ -5,7 +5,7 @@ import Prelude
 import Controller.Notebook.Common (I())
 import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.Viz 
-
+import Data.Selection
 
 import ECharts.Axis
 import ECharts.Chart
@@ -96,7 +96,8 @@ mkSeries acc =
   mkRadius' count ix =
     let r = 85.0 / count
         step = 100.0 / count
-        x = 55.0 + ((ix `mod` count) + 0.5 - count/2.0) * step 
+        modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber count 
+        x = 55.0 + (modulus + 0.5 - count/2.0) * step 
         y = 50.0
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c
@@ -106,7 +107,8 @@ mkSeries acc =
     let l = toNumber rowLength
         r = 85.0 / l
         step = 100.0 / l
-        x = 55.0 + ((ix `mod` l) - l/2.0 + 0.5) * step 
+        modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber l 
+        x = 55.0 + (modulus - l/2.0 + 0.5) * step 
         y = 1.2 * floor (ix / l) * r + r
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c

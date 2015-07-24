@@ -7,6 +7,7 @@ import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import qualified Data.StrMap as M 
 import Optic.Core 
 import Optic.Fold ((^?))
+import Data.Selection
 import Optic.Extended (TraversalP())
 import Data.Array (range, zipWith, length, drop, take, (!!), null, (:))
 import Data.Argonaut.JCursor (JCursor())
@@ -121,22 +122,22 @@ pieConfiguration cell r visible =
   [ row
     [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
       [ categoryLabel
-      , (options cell r (_pieConfiguration.._cats))
+      , primaryOptions cell r (_pieConfiguration .. _cats)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , (options cell r (_pieConfiguration.._firstMeasures))
+      , primaryOptions cell r (_pieConfiguration .. _firstMeasures) 
       , aggSelect cell r (_pieConfiguration.._firstMeasures) (_pieConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_pieConfiguration.._firstSeries))
+      , secondaryOptions cell r (_pieConfiguration .. _firstSeries) 
       ]
     ]
   , row
     [ H.form [ A.classes [ B.colXs4, B.colXsOffset8, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_pieConfiguration.._secondSeries))
+      , secondaryOptions cell r (_pieConfiguration .. _secondSeries)
       ]
     ] 
   ]
@@ -166,14 +167,23 @@ defaultOption selected =
            , A.value "-1" ]
   [ H.text "Select axis source" ]
 
-options :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> HTML e
-options cell r _sel =
+options :: forall e. (Int -> Boolean) ->
+           (Int -> Boolean) -> 
+           Cell -> VizRec -> LensP VizRec JSelection -> HTML e
+options disableWhen defaultWhen cell r _sel =
   H.select [ A.classes [ B.formControl ]
            , E.onInput (\ix -> pure $ updateR (byIx ix vars))
-           , A.disabled (length vars < 1)
-           ] 
-  ((defaultOption selected):(zipWith (option selected) vars (range 0 (length vars))))
+           , A.disabled (disableWhen $ length vars)
+           ]
+
+  (defOption <> (zipWith (option selected) vars (range 0 $ length vars)))
   where
+  defOption :: Array (HTML e)
+  defOption =
+    if defaultWhen $ length vars
+    then [defaultOption selected]
+    else [ ]
+
   vars :: Array JCursor
   vars = r ^._sel.._variants
 
@@ -187,6 +197,12 @@ options cell r _sel =
   updateR cursor =
     updateViz cell (r # _sel.._selection .~ cursor)
 
+-- types don't check 0_o
+-- primaryOptions :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> HTML e
+primaryOptions = options (< 2) (> 1)
+-- secondaryOptions :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> HTML e
+secondaryOptions = options (< 1) (const true)
+
   
 barConfiguration :: forall e. Cell -> VizRec -> Boolean -> HTML e
 barConfiguration cell r visible = 
@@ -194,22 +210,22 @@ barConfiguration cell r visible =
   [ row
     [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
       [ categoryLabel
-      , (options cell r (_barConfiguration.._cats))
+      , (primaryOptions cell r (_barConfiguration.._cats))
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , (options cell r (_barConfiguration.._firstMeasures))
+      , (primaryOptions cell r (_barConfiguration.._firstMeasures))
       , aggSelect cell r (_barConfiguration.._firstMeasures) (_barConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_barConfiguration.._firstSeries))
+      , (secondaryOptions cell r (_barConfiguration.._firstSeries))
       ]
     ]
   , row
     [ H.form [ A.classes [ B.colXs4, B.colXsOffset8, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_barConfiguration.._secondSeries))
+      , (secondaryOptions cell r (_barConfiguration.._secondSeries))
       ]
     ] 
   ]
@@ -220,27 +236,27 @@ lineConfiguration cell r visible =
   [ row
     [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
       [ dimensionLabel
-      , (options cell r (_lineConfiguration.._dims))
+      , (primaryOptions cell r (_lineConfiguration.._dims))
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , (options cell r (_lineConfiguration.._firstMeasures))
+      , (primaryOptions cell r (_lineConfiguration.._firstMeasures))
       , aggSelect cell r (_lineConfiguration.._firstMeasures) (_lineConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_lineConfiguration.._firstSeries))
+      , (secondaryOptions cell r (_lineConfiguration.._firstSeries))
       ]
     ]
   , row
     [ H.form [ A.classes [ B.colXs4, B.colXsOffset4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , (options cell r (_lineConfiguration.._secondMeasures))
+      , (secondaryOptions cell r (_lineConfiguration.._secondMeasures))
       , aggSelect cell r (_lineConfiguration.._secondMeasures) (_lineConfiguration.._secondAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_lineConfiguration.._secondSeries))
+      , (secondaryOptions cell r (_lineConfiguration.._secondSeries))
       ] 
     ] 
   ]

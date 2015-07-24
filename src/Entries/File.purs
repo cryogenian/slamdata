@@ -9,7 +9,6 @@ import Driver.ZClipboard (initZClipboard)
 import EffectTypes (FileAppEff())
 import Halogen (runUIWith)
 import Utils (onLoad, mountUI)
-import Utils.Log
 
 main :: Eff (FileAppEff ()) Unit
 main = onLoad $ void $ do
