@@ -3,7 +3,8 @@ module View.Notebook.Cell.Search (
   searchOutput
   ) where
 
-import Control.Functor (($>))
+import Prelude
+import Data.Functor (($>))
 import Control.Plus (empty)
 import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Cell.Search (runSearch)
@@ -12,7 +13,7 @@ import Model.Notebook (_notebook)
 import Model.Notebook.Cell (Cell(), RunState(..), _FileInput, _JTableContent, _content, _Search, _cellId, _runState, _input)
 import Model.Notebook.Cell.Search (_buffer)
 import Model.Notebook.Domain (_activeCellId, Notebook())
-import Optic.Core ((^.), (.~), (..))
+import Optic.Core 
 import Optic.Extended (TraversalP())
 import View.Common (glyph)
 import View.Notebook.Cell.FileInput (fileInput)
@@ -62,6 +63,6 @@ searchEditor notebook cell =
 _lens :: TraversalP Cell String
 _lens = _content .. _Search .. _buffer
 
-searchOutput :: forall e. Cell -> [ HTML e ]
+searchOutput :: forall e. Cell -> Array (HTML e)
 searchOutput = renderJTableOutput (_content .. _JTableContent) runSearch
 

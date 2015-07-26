@@ -1,11 +1,13 @@
 module Driver.Notebook where
 
+import Prelude
 import Api.Fs (loadNotebook, saveNotebook)
 import Control.Monad (when, unless)
 import Control.Monad.Aff (Aff(), runAff, attempt)
 import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Exception (Error(), message)
-import Control.Monad.Eff.Ref (RefVal(), readRef, modifyRef, writeRef)
+import Control.Monad.Eff.Ref (Ref(), readRef, modifyRef, writeRef)
 import Control.Plus (empty)
 import Control.Timer (Timeout(), timeout, clearTimeout, interval)
 import Controller.Notebook (handleMenuSignal)
@@ -39,17 +41,18 @@ import Model.Notebook.Menu
 import Model.Notebook.Port
 import Model.Path (decodeURIPath, dropNotebookExt)
 import Model.Resource (Resource(), resourceName, resourceDir)
-import Optic.Core ((.~), (^.), (..), (?~), (%~), (<>~))
+import Optic.Core 
 import Routing (matches')
-import Utils (log, replaceLocation)
+import Utils (replaceLocation)
 import Data.Map (lookup)
 import qualified Data.Maybe.Unsafe as U
+
 
 tickDriver :: forall e. Driver Input (NotebookComponentEff e)
                      -> Eff (NotebookAppEff e) Unit
 tickDriver k = void $ interval 1000 $ now >>= k <<< WithState <<< (_tickDate .~) <<< Just
 
-driver :: forall e. RefVal State
+driver :: forall e. Ref State
                  -> Driver Input (NotebookComponentEff e)
                  -> Eff (NotebookAppEff e) Unit
 driver ref k =
@@ -117,13 +120,13 @@ driver ref k =
   filterFn dpMap cell =
     (maybe true (const false) $ lookup (cell ^._cellId) dpMap) && (cell ^._hasRun)
 
-handleShortcuts :: forall e. RefVal State
+handleShortcuts :: forall e. Ref State
                           -> Driver Input (NotebookComponentEff e)
                           -> Eff (NotebookAppEff e) Unit
 handleShortcuts ref k =
   document globalWindow >>= addKeyboardEventListener KeydownEvent (handler ref)
   where
-  handler :: RefVal State -> DOMEvent -> _
+  handler :: Ref State -> DOMEvent -> _
   handler ref e = void do
     meta <- (||) <$> ctrlKey e <*> metaKey e
     shift <- shiftKey e
@@ -144,8 +147,8 @@ handleShortcuts ref k =
         _ -> pure empty
       runEvent (\_ -> log "Error in handleShortcuts") k event
 
-notebookAutosave :: forall e. RefVal State
-                           -> RefVal Timeout
+notebookAutosave :: forall e. Ref State
+                           -> Ref Timeout
                            -> Input
                            -> Driver Input (NotebookComponentEff e)
                            -> Eff (NotebookAppEff e) Unit

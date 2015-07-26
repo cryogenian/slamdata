@@ -1,5 +1,6 @@
 module View.File.Search where
 
+import Prelude
 import Data.Inject1 (inj)
 import Controller.File.Search (handleSearchSubmit, handleSearchChange, handleSearchClear)
 import Data.Monoid (mempty)
@@ -11,7 +12,7 @@ import Model.File.Search
 import View.Common (glyph)
 import View.File.Common (HTML())
 import Data.Path.Pathy
-import Optic.Core ((..), (^.), (.~))
+import Optic.Core 
 import Optic.Refractor.Prism (_Just)
 
 import qualified Halogen.HTML as H

@@ -1,6 +1,8 @@
 module Model.Notebook.Cell.Viz where
 
+import Prelude
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Int (toNumber)
 import ECharts.Chart
 import ECharts.Options
 
@@ -8,7 +10,7 @@ import Data.Argonaut.JCursor (JCursor())
 import Data.Map (Map(), empty, keys)
 import Model.Notebook.ECharts (Semanthic(..), Axis(..), dependsOn)
 import Data.Argonaut.JCursor (JCursor())
-import Optic.Core (Lens(), lens, LensP(), (^.), (%~))
+import Optic.Core 
 import qualified Data.Set as S 
 import Data.Argonaut.Core (JArray())
 import Data.Array (findIndex, filter, head, sort, reverse, length)
@@ -19,6 +21,7 @@ import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (fromString, Json(), JArray(), jsonEmptyObject, toString)
 import Data.Either
 import Control.Alt ((<|>))
+import Data.Selection
 
 data ChartType
   = Pie
@@ -31,11 +34,10 @@ chartType2str Line = "Line"
 chartType2str Bar = "Bar"
 
 instance chartTypeEq :: Eq ChartType where
-  (==) Pie Pie = true
-  (==) Line Line = true
-  (==) Bar Bar = true
-  (==) _ _ = false
-  (/=) a b = not $ a == b
+  eq Pie Pie = true
+  eq Line Line = true
+  eq Bar Bar = true
+  eq _ _ = false
 
 instance chartTypeOrd :: Ord ChartType where
   compare Pie Pie = EQ
@@ -63,60 +65,9 @@ str2chartType str = case str of
   "bar" -> pure Bar
   _ -> Nothing
 
-
-
-
-type SelectionR a = 
-  { variants :: [a]
-  , selection :: Maybe a
-  }
-newtype Selection a = Selection (SelectionR a)
-
-
-_Selection :: forall a. LensP (Selection a) (SelectionR a)
-_Selection = lens (\(Selection obj) -> obj) (const Selection) 
-
-_variants :: forall a. LensP (Selection a) [a] 
-_variants = _Selection <<< lens _.variants _{variants = _}
-
-_selR :: forall a. LensP (SelectionR a) (Maybe a)
-_selR = lens _.selection _{selection = _}
-
-_selection :: forall a. LensP (Selection a) (Maybe a)
-_selection = _Selection <<< _selR
-
-initialSelection :: forall a. Selection a
-initialSelection = Selection {variants: [], selection: Nothing}
-
-newSelection :: forall a. [a] -> Selection a
-newSelection as = Selection {variants: as, selection: Nothing}
-
-except :: forall a. (Eq a) => Selection a -> Selection a -> Selection a
-except sel sel' = sel # (_variants %~ (flip except' sel'))
-
-except' :: forall a. (Eq a) => [a] -> Selection a -> [a]
-except' lst sel = filter (\x -> Just x /= (sel ^._selection)) lst
-
-instance encodeJsonSelection :: (EncodeJson a) => EncodeJson (Selection a) where
-  encodeJson (Selection r) = "variants" := r.variants
-                             ~> "selection" := r.selection
-                             ~> jsonEmptyObject
-
-instance decodeJsonSelection :: (DecodeJson a) => DecodeJson (Selection a) where
-  decodeJson json = do
-    obj <- decodeJson json
-    r <- { variants: _
-         , selection: _
-         } <$>
-         (obj .? "variants") <*>
-         (obj .? "selection")
-    pure $ Selection r
-
-    
-
 type JSelection = Selection JCursor 
 
-depends :: JSelection -> [JCursor] -> [JCursor]
+depends :: JSelection -> Array JCursor -> Array JCursor
 depends sel lst = maybe lst go (sel ^._selection)
   where
   go y = filter (dependsOn y) lst
@@ -130,15 +81,15 @@ data Aggregation
 
 
 instance eqAggregation :: Eq Aggregation where
-  (==) Maximum Maximum = true
-  (==) Minimum Minimum = true
-  (==) Average Average = true
-  (==) Sum Sum = true
-  (==) Product Product = true
-  (==) _ _ = false
-  (/=) a b = not $ a == b
+  eq Maximum Maximum = true
+  eq Minimum Minimum = true
+  eq Average Average = true
+  eq Sum Sum = true
+  eq Product Product = true
+  eq _ _ = false
 
-allAggregation :: [Aggregation]
+
+allAggregation :: Array Aggregation
 allAggregation = [ Maximum
                  , Minimum
                  , Average
@@ -161,18 +112,20 @@ str2aggregation "Σ" = pure Sum
 str2aggregation "Π" = pure Product
 str2aggregation _ = Nothing
 
-allAggregations :: [Aggregation]
+allAggregations :: Array Aggregation
 allAggregations = [Maximum, Minimum, Average, Sum, Product]
 
 aggregationDefault :: Aggregation
 aggregationDefault = Sum
 
-runAggregation :: Aggregation -> [Number] -> Number
-runAggregation Maximum nums = fromMaybe 0 $ head $ reverse (sort nums)
-runAggregation Minimum nums = fromMaybe 0 $ head (sort nums)
-runAggregation Average nums = (foldl (+) 0 nums) / (length nums)
-runAggregation Sum nums = foldl (+) 0 nums
-runAggregation Product nums = foldl (*) 1 nums
+runAggregation :: Aggregation -> Array Number -> Number
+runAggregation Maximum nums = fromMaybe zero $ head $ reverse (sort nums)
+runAggregation Minimum nums = fromMaybe zero $ head (sort nums)
+runAggregation Average nums = (foldl (+) zero nums) / (if length nums == 0
+                                                       then 1.0
+                                                       else toNumber $ length nums)
+runAggregation Sum nums = foldl (+) zero nums
+runAggregation Product nums = foldl (*) one nums
 
 instance encodeJsonAggregateion :: EncodeJson Aggregation where 
   encodeJson = fromString <<< aggregation2str
@@ -382,8 +335,8 @@ initialVizRec = VizRec
   , pieConfiguration: initialPieConfiguration
   , lineConfiguration: initialLineConfiguration
   , barConfiguration: initialBarConfiguration
-  , chartHeight: 400
-  , chartWidth: 600
+  , chartHeight: 400.0
+  , chartWidth: 600.0
   }
 
 instance encodeJsonVizRec :: EncodeJson VizRec where
@@ -421,8 +374,8 @@ instance decodeJsonVizRec :: DecodeJson VizRec where
          (obj .? "pie") <*>
          (obj .? "line") <*>
          (obj .? "bar") <*>
-         ((obj .? "height") <|> pure 400) <*>
-         ((obj .? "width") <|> pure 600)
+         ((obj .? "height") <|> pure 400.0) <*>
+         ((obj .? "width") <|> pure 600.0)
     pure $ VizRec r
     
 

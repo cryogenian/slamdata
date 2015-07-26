@@ -1,10 +1,11 @@
 module Model.File.Dialog.Download where
 
+import Prelude
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (rootDir)
 import Model.Resource (Resource(..), resourceName, root)
-import Optic.Core (LensP(), (^.), lens)
+import Optic.Core 
 import Optic.Extended (TraversalP())
 import Network.HTTP.MimeType (MimeType(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
@@ -15,7 +16,7 @@ data OutputType = CSV | JSON
 
 newtype DownloadDialogRec = DownloadDialogRec
   { source :: Either String Resource
-  , sources :: [Resource]
+  , sources :: (Array Resource)
   , showSourcesList :: Boolean
   , targetName :: Either String String
   , compress :: Boolean
@@ -41,7 +42,7 @@ _DownloadDialogRec = lens (\(DownloadDialogRec obj) -> obj) (const DownloadDialo
 _source :: LensP DownloadDialogRec (Either String Resource)
 _source = _DownloadDialogRec <<< lens _.source (_ { source = _ })
 
-_sources :: LensP DownloadDialogRec [Resource]
+_sources :: LensP DownloadDialogRec (Array Resource)
 _sources = _DownloadDialogRec <<< lens _.sources (_ { sources = _ })
 
 _showSourcesList :: LensP DownloadDialogRec Boolean
@@ -124,22 +125,21 @@ data MultiValueMode = ArrayWrapped | LineDelimited
 data PrecisionMode = Readable | Precise
 
 instance eqMultiValueMode :: Eq MultiValueMode where
-  (==) ArrayWrapped ArrayWrapped = true
-  (==) LineDelimited LineDelimited = true
-  (==) _ _ = false
-  (/=) x y = not (x == y)
+  eq ArrayWrapped ArrayWrapped = true
+  eq LineDelimited LineDelimited = true
+  eq _ _ = false
 
 instance eqPrecisionMode :: Eq PrecisionMode where
-  (==) Readable Readable = true
-  (==) Precise Precise = true
-  (==) _ _ = false
-  (/=) x y = not (x == y)
+  eq Readable Readable = true
+  eq Precise Precise = true
+  eq _ _ = false
 
-toHeaders :: DownloadDialogRec -> [RequestHeader]
+
+toHeaders :: DownloadDialogRec -> Array RequestHeader
 toHeaders rec = encHeader (rec ^. _compress) ++ [Accept $ MimeType $ mimeType (rec ^. _options)]
   where
 
-  encHeader :: Boolean -> [RequestHeader]
+  encHeader :: Boolean -> Array RequestHeader
   encHeader true = [RequestHeader "Accept-Encoding" "gzip"]
   encHeader false = []
 

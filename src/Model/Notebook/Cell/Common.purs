@@ -1,6 +1,6 @@
 module Model.Notebook.Cell.Common where
 
-import Optic.Core (Lens(), lens)
+import Optic.Core 
 
 _input :: forall a b r. Lens {input :: a | r} {input :: b | r} a b 
 _input = lens _.input _{input = _} 

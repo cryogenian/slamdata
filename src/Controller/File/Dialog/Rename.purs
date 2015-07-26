@@ -7,6 +7,7 @@ module Controller.File.Dialog.Rename
   , renameDirInput
   ) where
 
+import Prelude
 import Control.Apply ((*>))
 import Control.Monad (when)
 import Control.Monad.Aff (Aff(), attempt)
@@ -19,7 +20,7 @@ import Controller.File.Common (Event(), toInput)
 import Data.Array (elemIndex)
 import Data.Either (Either(..), either)
 import Data.Inject1 (Inject1, inj)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.Path.Pathy (rootDir, (</>), parseAbsDir, sandbox)
 import Data.String (indexOf)
 import Halogen.HTML.Events.Handler (EventHandler())
@@ -29,7 +30,7 @@ import Model.File (_dialog)
 import Model.File.Dialog (_RenameDialog)
 import Model.File.Dialog.Rename (RenameDialogRec(), _initial, _name, _siblings, _dir, _error, _showList)
 import Model.File.Item (Item())
-import Optic.Core ((..), (^.), (.~), (%~), (?~))
+import Optic.Core
 import Optic.Refractor.Prism (_Just)
 import Utils (reload, endsWith)
 
@@ -87,14 +88,14 @@ validate rec
   when (endsWith ("." ++ Config.notebookExtension) name) $
     throwError $ "Pleaase choose an alternative name, ." ++ Config.notebookExtension ++ " is a reserved extension"
 
-  when (indexOf "/" name /= -1) $
+  when (isJust $ indexOf "/" name) $
     throwError "Please enter a valid name for the file"
 
   let nameWithExt = if R.isNotebook (rec ^. _initial)
                     then name ++ "." ++ Config.notebookExtension
                     else name
 
-  when (elemIndex nameWithExt ((^. R._name) <$> (rec ^. _siblings)) /= -1) $
+  when (isJust $ elemIndex nameWithExt ((^. R._name) <$> (rec ^. _siblings))) $
     throwError "An item with this name already exists in the target folder"
 
 renameTarget :: RenameDialogRec -> R.Resource

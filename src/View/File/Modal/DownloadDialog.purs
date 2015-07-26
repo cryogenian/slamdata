@@ -1,9 +1,10 @@
 module View.File.Modal.DownloadDialog (downloadDialog) where
 
+import Prelude
 import Api.Common (reqHeadersToJSON)
-import Control.Functor (($>))
+import Data.Functor (($>))
 import Controller.File.Dialog.Download
-import Data.DOM.Simple.Encode (encodeURIComponent)
+import Utils (encodeURIComponent)
 import Data.Either (either, isLeft, isRight)
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isJust, isNothing, maybe, fromMaybe)
@@ -11,7 +12,7 @@ import Input.File (FileInput(..))
 import Model.File (_dialog)
 import Model.File.Dialog.Download
 import Model.Resource (Resource(), resourcePath, isHidden, isFile)
-import Optic.Core (LensP(), (..), (^.), (.~), set)
+import Optic.Core 
 import Optic.Refractor.Prism (_Left, _Right)
 import View.Common (closeButton, fadeWhen)
 import View.File.Common (HTML())
@@ -26,7 +27,7 @@ import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
-downloadDialog :: forall e. DownloadDialogRec -> [HTML e]
+downloadDialog :: forall e. DownloadDialogRec -> Array (HTML e)
 downloadDialog state =
   [ header $ h4 "Download"
   , body [ H.form [ A.class_ VC.dialogDownload

@@ -1,20 +1,20 @@
 module View.Notebook.Cell.JTableCell (renderJTableOutput) where
 
-import Control.Functor (($>))
+import Prelude
+import Data.Functor (($>))
 import Controller.Notebook.Cell.JTableContent
 import Controller.Notebook.Common (I())
 import Data.Array (elemIndex)
 import Data.Char (fromCharCode)
 import Data.Either (either, isLeft)
-import Data.Int (Int(), toNumber)
 import Data.Json.JTable (renderJTable, jTableOptsDefault, bootstrapStyle, alphaOrdering)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.String (fromChar)
 import Data.These (These(), these, theseRight)
 import Data.Void (absurd)
 import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.JTableContent (JTableContent(), _result, _page, _perPage, _values, _totalPages)
-import Optic.Core ((^.), (..))
+import Optic.Core 
 import Optic.Extended (TraversalP(), (^?))
 import Optic.Refractor.Prism (_Just)
 import View.Common (glyph)
@@ -28,7 +28,7 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
-renderJTableOutput :: forall e. TraversalP Cell JTableContent -> (Cell -> I e) -> Cell -> [HTML e]
+renderJTableOutput :: forall e. TraversalP Cell JTableContent -> (Cell -> I e) -> Cell -> Array (HTML e)
 renderJTableOutput lens run cell = fromMaybe [] $ do
   table <- cell ^? lens
   result <- table ^? _result .. _Just
@@ -37,7 +37,7 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
       page = fromMaybe one $ theseRight (table ^. _page)
       output = renderJTable (jTableOptsDefault { style = bootstrapStyle
                                                , columnOrdering = alphaOrdering}) json
-      pageSizeValue = either valueFromThese (show <<< toNumber) (table ^. _perPage)
+      pageSizeValue = either valueFromThese show (table ^. _perPage)
   return
     [ H.div [ A.class_ VC.scrollbox ]
             [ absurd <$> output ]
@@ -50,7 +50,7 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
     ]
   where
   valueFromThese :: These String Int -> String
-  valueFromThese = these id (show <<< toNumber) (\s _ -> s)
+  valueFromThese = these id show (\s _ -> s)
 
   prevButtons :: Boolean -> HTML e
   prevButtons enabled =
@@ -76,7 +76,7 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
                                   , E.onInput (pure <<< inputPage cell)
                                   ]
                                   []
-                        , H.text $ "of " ++ (show $ toNumber totalPages)
+                        , H.text $ "of " ++ (show totalPages)
                         ]
           ]
 
@@ -116,7 +116,7 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
       let sizeValues = show <$> [10, 25, 50, 100]
       in (option <$> sizeValues)
          ++ [ H.option [ A.disabled true ] [ H.text $ fromChar $ fromCharCode 8212 ] ]
-         ++ (if pageSizeValue `elemIndex` sizeValues == -1
+         ++ (if isJust $ elemIndex pageSizeValue sizeValues 
              then [ H.option [ A.selected true ]
                              [ H.text pageSizeValue ]
                   ]
@@ -125,6 +125,6 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
     option value = H.option [ A.selected (value == pageSizeValue) ]
                             [ H.text value ]
 
-  submittable :: [HTML e] -> HTML e
+  submittable :: Array (HTML e) -> HTML e
   submittable =
     H.form [ E.onSubmit (\_ -> E.preventDefault $> loadPage cell run) ]

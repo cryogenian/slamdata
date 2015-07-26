@@ -1,5 +1,6 @@
 module Controller.Notebook.Cell.Query where
 
+import Prelude
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
 import Controller.Notebook.Cell.JTableContent (queryToJTable, runJTable)
@@ -12,7 +13,7 @@ import Input.Notebook (Input(CellResult))
 import Model.Notebook.Cell (Cell(), _Query, _content, _input, _output, _cellId, outFile)
 import Model.Notebook.Port (_PortResource)
 import Model.Resource (Resource(), parent, root)
-import Optic.Core ((^.), (..))
+import Optic.Core
 import Optic.Fold ((^?))
 
 import qualified Data.Array.NonEmpty as NEL

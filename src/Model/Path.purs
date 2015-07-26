@@ -1,10 +1,11 @@
 module Model.Path where
 
+import Prelude
 import Control.Alt ((<|>))
 import Control.Bind ((=<<))
 import Data.Array ()
-import Data.Maybe (Maybe(..))
-import Data.DOM.Simple.Encode (encodeURIComponent, decodeURIComponent)
+import Data.Maybe (Maybe(..), maybe)
+import Utils (encodeURIComponent, decodeURIComponent)
 import Data.Either (Either(..))
 import Data.Path.Pathy
 import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, length)
@@ -33,28 +34,18 @@ changeDirExt :: (String -> String) -> DirName -> DirName
 changeDirExt f (DirName name) =
   DirName ((if ext == "" then name else n) <> "." <> f ext)
   where
-  idx = lastIndexOf "." name
-  n = case idx of
-    -1 -> name
-    _ -> take idx name
-  ext = case idx of
-    -1 -> ""
-    _ -> drop (idx + 1) name
+  mbIdx = lastIndexOf "." name
+  n = maybe name (\idx -> take idx name) mbIdx 
+  ext = maybe "" (\idx -> drop (idx + 1) name) mbIdx 
+
 
 dropDirExt :: DirName -> DirName
 dropDirExt (DirName d) =
-  DirName $ case idx of
-    -1 -> d
-    _ -> take idx d
-  where
-  idx = lastIndexOf "." d
+  DirName $ maybe d (\idx -> take idx d) $ lastIndexOf "." d
 
 takeDirExt :: DirName -> String
 takeDirExt (DirName d) =
-  case idx of
-    -1 -> ""
-    _ -> drop (idx + 1) d
-  where idx = lastIndexOf "." d
+  maybe "" (\idx -> drop (idx + 1) d) $ lastIndexOf "." d
 
 
 dropNotebookExt :: String -> String

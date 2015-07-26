@@ -1,9 +1,11 @@
 module Controller.Notebook.Cell.Viz.Bar where
 
+import Prelude
 import Data.Maybe (Maybe(..))
 import Controller.Notebook.Common (I())
 import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.Viz
+import Data.Selection
 
 
 import ECharts.Axis
@@ -23,8 +25,8 @@ import ECharts.Tooltip
 
 import Data.Maybe
 import Data.Maybe.Unsafe
-import Data.Tuple
-import Data.Array (filter, zipWith, replicate, length, (!!), reverse, nub, concat, catMaybes)
+import Data.Tuple (fst, snd, Tuple(..))
+import Data.Array (filter, zipWith, replicate, length, (!!), reverse, nub, concat, catMaybes, head, tail, (:))
 import Data.Map (lookup, Map(), alter, values, empty, keys, toList, fromList)
 import qualified Model.Notebook.ECharts as Me
 import Optic.Core
@@ -33,59 +35,63 @@ import Data.Argonaut.JCursor (JCursor())
 import Controller.Notebook.Cell.Viz.Key
 import Data.Bifunctor (lmap)
 import Data.String (split)
+import qualified Data.List as L
 
 simpleData = Value <<< Simple
 
-type Accum = Map Key [Number]
+type Accum = Map Key (Array Number)
 type AggregatedAccum = Map Key Number
 
 extractData :: VizRec -> _ -> Accum
 extractData r conf =
   extractData' cats sers1 sers2 vals empty
   where
-  cats :: [Maybe String]
+  cats :: Array (Maybe String)
   cats =
     (>>= Me.catFromSemanthic) <$>
     (maybe [] Me.runAxis ((conf ^._cats.._selection) >>= (flip lookup (r ^._all))))
 
 
-  vals :: [Maybe Number]
+  vals :: Array (Maybe Number)
   vals =
     (>>= Me.valFromSemanthic) <$> 
     (maybe [ ] Me.runAxis ((conf ^._firstMeasures.._selection) >>= (flip lookup (r ^._all))))
 
-  maxLen :: Number
+  maxLen :: Int
   maxLen = length vals
 
-  nothings :: forall a. [Maybe a]
+  nothings :: forall a. Array (Maybe a)
   nothings = replicate maxLen Nothing
 
   
-  sers1 :: [Maybe String]
+  sers1 :: Array (Maybe String)
   sers1 =
     (>>= Me.catFromSemanthic) <$>
     (maybe nothings Me.runAxis ((conf ^._firstSeries.._selection) >>= (flip lookup (r ^._all))))
 
-  sers2 :: [Maybe String]
+  sers2 :: Array (Maybe String)
   sers2 =
     (>>= Me.catFromSemanthic) <$>
     (maybe nothings Me.runAxis ((conf ^._secondSeries.._selection) >>= (flip lookup (r ^._all))))
 
 
-extractData' :: [Maybe String] -> [Maybe String] -> [Maybe String] ->
-                [Maybe Number] -> Accum -> Accum
-extractData' [] _ _ _ acc = acc
-extractData' _ [] _ _ acc = acc
-extractData' _ _ [] _ acc = acc
-extractData' _ _ _ [] acc = acc
-extractData' (mbc:cs) (mbs1:sers1) (mbs2:sers2) (mbv:vals) acc =
-  extractData' cs sers1 sers2 vals $ fromMaybe acc do
-    c <- mbc
-    let v = fromMaybe 0 mbv
-        key = mkKey c mbs1 mbs2 
-    pure (alter (alter' v) key acc)
+extractData' :: Array (Maybe String) -> Array (Maybe String) -> Array (Maybe String) ->
+                Array (Maybe Number) -> Accum -> Accum
+extractData' cats ser1 ser2 vs acc = fromMaybe acc do
+  c <- head cats >>= id
+  cs <- tail cats
+  mbs1 <- head ser1
+  sers1 <- tail ser1
+  mbs2 <- head ser2
+  sers2 <- tail ser2
+  mbv <- head vs
+  vals <- tail vs
+  let v = fromMaybe 0.0 mbv
+      key = mkKey c mbs1 mbs2
+  pure $ extractData' cs sers1 sers2 vals (alter (alter' v) key acc)
 
-alter' :: Number -> Maybe [Number] -> Maybe [Number]
+
+alter' :: Number -> Maybe (Array Number) -> Maybe (Array Number)
 alter' v vals =
   Just (v:(fromMaybe [] vals ))
 
@@ -99,7 +105,7 @@ extractClean r conf =
   aggregate (extractData r conf) conf
 
 
-mkSeries :: AggregatedAccum -> Tuple Axises [Series]
+mkSeries :: AggregatedAccum -> Tuple Axises (Array Series)
 mkSeries acc =
   Tuple xAxis series
   where
@@ -109,28 +115,28 @@ mkSeries acc =
                       , "data" = Just $ CommonAxisData <$> catVals
                       }
 
-  ks :: [Key]
-  ks = keys acc
+  ks :: Array Key
+  ks = L.fromList $ keys acc
 
-  catVals :: [String]
+  catVals :: Array String
   catVals = nub $ keyCategory <$> ks
 
-  nameMap :: [Tuple Key Number] -> Map String [Number]
+  nameMap :: Array (Tuple Key Number) -> Map String (Array Number)
   nameMap = named'' <<< filled <<< named'
 
-  named :: [Tuple Key Number] -> String -> Map String Number
+  named :: Array (Tuple Key Number) -> String -> Map String Number
   named lst cat =
-    fromList 
+    (fromList <<< L.toList) $ 
     ((\x -> lmap keyName x) <$> 
      (filter (\(Tuple k _) -> keyCategory k == cat) lst))
 
-  named' :: [Tuple Key Number] -> [Map String Number]
+  named' :: Array (Tuple Key Number) -> Array (Map String Number)
   named' lst = named lst <$> catVals
 
-  namedKeys :: [Map String Number] -> [String]
-  namedKeys ms = nub $ concat (keys <$> ms)
+  namedKeys :: Array (Map String Number) -> Array String
+  namedKeys ms = nub $ concat (L.fromList <<< keys <$> ms)
 
-  filled :: [Map String Number] -> [Map String Number]
+  filled :: Array (Map String Number) -> Array (Map String Number)
   filled ms =
     let ks = namedKeys ms in
     (\m -> foldl fill m ks) <$> ms
@@ -138,25 +144,26 @@ mkSeries acc =
   fill :: Map String Number -> String ->  Map String Number
   fill m key =
     alter (\k -> case k of
-              Nothing -> Just 0
+              Nothing -> Just 0.0
               a -> a) key m
 
-  named'' :: [Map String Number] -> Map String [Number] 
+  named'' :: Array (Map String Number) -> Map String (Array Number)
   named'' m =
-    reverse <$> (foldl foldFn empty (toList <$> m))
+    reverse <$> (foldl foldFn empty (L.fromList <<< toList <$> m))
 
-  foldFn :: Map String [Number] -> [Tuple String Number] -> Map String [Number]
+  foldFn :: Map String (Array Number) -> Array (Tuple String Number) ->
+            Map String (Array Number)
   foldFn m tpls =
     foldl (\m (Tuple k n) -> alter (alterNamed n) k m) m tpls
 
-  alterNamed :: Number -> Maybe [Number] -> Maybe [Number]
+  alterNamed :: Number -> Maybe (Array Number) -> Maybe (Array Number)
   alterNamed n ns =
     Just $ (n:(fromMaybe [] ns))
 
-  group :: Map String [Number]
-  group = nameMap $ toList acc 
+  group :: Map String (Array Number)
+  group = nameMap $ L.fromList $ toList acc 
 
-  serie :: Tuple String [Number] -> Series
+  serie :: Tuple String (Array Number) -> Series
   serie (Tuple name nums) = 
   BarSeries { common: universalSeriesDefault { name = if name == ""
                                                       then Nothing
@@ -170,13 +177,13 @@ mkSeries acc =
   stackFromName :: String -> String
   stackFromName str =
     case split ":" str of
-      x:_:_ -> x
+      [x, _, _] -> x
       _ -> ""
 
     
-  series :: [Series]
+  series :: Array Series
   series =
-    serie <$> (toList group)
+    serie <$> (L.fromList $ toList group)
 
 mkBar :: forall e. VizRec -> _ -> Option
 mkBar r conf =
@@ -191,18 +198,18 @@ mkBar r conf =
                            } 
 
   where
-  mkLegend :: [Series] -> Legend
+  mkLegend :: Array Series -> Legend
   mkLegend series =
     Legend legendDefault { "data" = Just $ legendItemDefault <$> extractNames series}
 
-  extractNames :: [Series] -> [String]
+  extractNames :: Array Series -> Array String
   extractNames ss = catMaybes (extractName <$> ss)
 
   extractName :: Series -> Maybe String
   extractName (BarSeries r) = r.common.name
   extractName _ = Nothing
     
-  tpls :: Tuple Axises [Series]
+  tpls :: Tuple Axises (Array Series)
   tpls = mkSeries extracted
 
   extracted :: AggregatedAccum

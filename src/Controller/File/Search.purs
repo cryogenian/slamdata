@@ -1,5 +1,6 @@
 module Controller.File.Search where
 
+import Prelude
 import Control.Monad.Aff (makeAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
@@ -14,7 +15,7 @@ import Input.File (FileInput(..))
 import Model.File (State(), _sort, _path, _search)
 import Model.File.Salt (newSalt)
 import Model.File.Search (_loading, _value, _timeout, _valid)
-import Optic.Core ((..), (.~), (^.), (%~), (?~))
+import Optic.Core 
 import Text.SlamSearch (mkQuery)
 import Utils (setLocation)
 

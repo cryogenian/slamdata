@@ -1,7 +1,9 @@
 module Model.Notebook.Search (queryToSQL, needFields) where
 
+import Prelude
 import Control.Apply (lift2)
-import Data.Either 
+import Data.Either
+import Data.List (fromList, List(..))
 import Data.Maybe
 import Data.Date (fromString)
 import Data.Semiring.Free
@@ -13,7 +15,7 @@ import Text.SlamSearch.Types
 import Global
 
 
-queryToSQL :: [String] -> SearchQuery -> String
+queryToSQL :: Array String -> SearchQuery -> String
 queryToSQL fields query =
   "SELECT" <>
   (if needDistinct whereClause then " DISTINCT " else " ") <>
@@ -23,12 +25,13 @@ queryToSQL fields query =
     (joinWith " OR " $
      pars <$> 
      joinWith " AND " <$>
-     (runFree $ (termToSQL fields) <$> query))
+     (fromList <<< (fromList <$>) $
+      (runFree $ (termToSQL fields) <$> query)))
 
 
 
 needDistinct :: String -> Boolean
-needDistinct input = -1 /= indexOf "[*]" input 
+needDistinct input = isJust $ indexOf "[*]" input 
 
 
 needFields :: SearchQuery -> Boolean
@@ -36,17 +39,19 @@ needFields query =
   check unit query needFields'
   where
   needFields' :: Unit -> Term -> Boolean
-  needFields' _ (Term {labels: []}) = true
+  needFields' _ (Term {labels: Nil}) = true
   needFields' _ _ = false
 
-termToSQL :: [String] -> Term -> String 
+termToSQL :: Array String -> Term -> String 
 termToSQL fields (Term {include: include, predicate: p, labels: ls}) =
   if not include 
-  then "NOT " <> (pars $ termToSQL fields $ Term {include: true, predicate: p, labels: ls})
-  else renderPredicate p $ labelsProjection fields ls
+  then "NOT " <> (pars $ termToSQL fields $ Term {include: true
+                                                 , predicate: p
+                                                 , labels: ls})
+  else renderPredicate p $ labelsProjection fields (fromList ls)
 
 
-renderPredicate :: Predicate -> [String] -> String
+renderPredicate :: Predicate -> Array String -> String
 renderPredicate p prj =
   joinWith " OR " (predicateToSQL p <$> prj)
 
@@ -157,13 +162,13 @@ valueToSQL (Text v) = v
 valueToSQL (Tag v) = v
 valueToSQL (Range v v') = "" 
 
-labelsProjection :: [String] -> [Label] -> [String]
+labelsProjection :: Array String -> Array Label -> Array String
 labelsProjection fields [] = replace firstDot "" <$> fields
 labelsProjection _ ls =
   replace firstDot "" <$>
   (foldl (lift2 (<>)) [""] (labelProjection <$> ls))
 
-labelProjection :: Label -> [String]
+labelProjection :: Label -> Array String
 labelProjection (Common "*") = ["{*}", "[*]"]
 labelProjection (Common "{*}") = ["{*}"]
 labelProjection (Common "[*]") = ["[*]"]

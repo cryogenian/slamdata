@@ -1,5 +1,6 @@
 module Controller.File.Dialog.Download where
 
+import Prelude
 import Control.Plus (empty)
 import Control.Monad.Eff.Class (liftEff)
 import Controller.File.Common (Event(), toInput)
@@ -7,7 +8,7 @@ import Data.Array (findIndex)
 import Data.DOM.Simple.Types (HTMLElement())
 import Data.DOM.Simple.Element (getAttribute)
 import Data.Either (Either(..), either, isLeft)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.String (indexOf)
 import Input.File (FileInput(..))
 import Model.File (State(), _dialog)
@@ -15,7 +16,7 @@ import Model.File.Dialog (_DownloadDialog)
 import Model.File.Dialog.Download
 import Model.Path (parseAnyPath)
 import Model.Resource (Resource(..), getPath, resourceName)
-import Optic.Core ((..), (^.), (.~), (?~), (%~))
+import Optic.Core 
 import Optic.Refractor.Prism (_Just)
 import Utils (newTab)
 
@@ -33,7 +34,8 @@ handleToggleList :: forall e. Event e
 handleToggleList = toInput' $ _showSourcesList %~ not
 
 handleTargetNameChange :: forall e. String -> Event e
-handleTargetNameChange s = toInput' $ _targetName .~ (if indexOf "/" s > -1 then Left else Right) s
+handleTargetNameChange s =
+  toInput' $ _targetName .~ (if isJust $ indexOf "/" s then Left else Right) s
 
 handleCompressToggle :: forall e. Event e
 handleCompressToggle = toInput' $ _compress %~ not
@@ -61,7 +63,7 @@ validate rec
   | isLeft (rec ^. _targetName) = rec # _error ?~ "Please enter a valid target filename"
   | otherwise = rec # _error .~ Nothing
 
-checkExists :: Resource -> [Resource] -> Boolean
+checkExists :: Resource -> Array Resource -> Boolean
 checkExists r rs =
   let path = getPath r
-  in findIndex (\r' -> getPath r' == path) rs /= -1
+  in isJust $ findIndex (\r' -> getPath r' == path) rs 

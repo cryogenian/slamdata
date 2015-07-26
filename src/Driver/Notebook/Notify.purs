@@ -1,20 +1,21 @@
 module Driver.Notebook.Notify where 
 
+import Prelude
 import qualified Config as Config 
 import Control.Apply ((*>))
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Ref (RefVal(), readRef, modifyRef, writeRef)
+import Control.Monad.Eff.Ref (Ref(), readRef, modifyRef, writeRef)
 import Control.Timer (Timeout(), timeout, clearTimeout)
 import Controller.Notebook.Cell (requestCellContent)
 import Controller.Notebook.Common (I())
-import Data.Array (filter, elemIndex, (!!), singleton)
+import Data.Array (filter, elemIndex, (!!), singleton, head)
 import Data.Either (Either(..))
-import Data.Foldable (traverse_, fold)
+import Data.Foldable (traverse_, fold, elem)
 import Data.Map (toList, empty, insert, lookup, Map(), delete)
 import Data.Maybe (maybe, Maybe(..), isJust)
 import Data.Maybe.Unsafe (fromJust)
-import Data.Monoid.All (All(..), runAll)
-import Data.Monoid.First (First(..), runFirst)
+import Data.Maybe.First (First(..), runFirst)
+import Data.Monoid.Conj (Conj(..), runConj)
 import Data.Tuple (fst, snd)
 import EffectTypes
 import Halogen (Driver())
@@ -22,14 +23,13 @@ import Input.Notebook (Input(..))
 import Model.Notebook (State(), _notebook, _requesting, _refreshing)
 import Model.Notebook.Cell (Cell(), _cellId, CellId(), _hasRun)
 import Model.Notebook.Domain
-import Optic.Core  ((^.), (%~), (..))
+import Optic.Core  
 import Optic.Fold ((^?))
-import Utils (elem)
 
 
 type NotifyKnot = Map CellId Timeout 
 
-notifyDriver :: forall e. RefVal State -> RefVal NotifyKnot -> Input ->
+notifyDriver :: forall e. Ref State -> Ref NotifyKnot -> Input ->
                 Driver Input (NotebookComponentEff e) -> 
                 Eff (NotebookAppEff e) Unit
 notifyDriver sKnot nKnot input driver =
@@ -50,13 +50,14 @@ notifyDriver sKnot nKnot input driver =
         (lookup cellId map)
     RefreshCell cell -> do 
       state <- readRef sKnot
-      case ancestors (cell ^. _cellId) (state ^. _notebook .. _dependencies) of
-        [] -> driver $ RequestCellContent cell
-        cid:_ ->
-          maybe (pure unit) (driver <<< RequestCellContent) $
-          state ^? _notebook .. cellById cid
+      let ancs = ancestors (cell ^. _cellId) (state ^. _notebook .. _dependencies)
+      maybe (driver $ RequestCellContent cell) (goHead state) $ head ancs 
     _ -> pure unit
   where
+  goHead :: _ -> CellId -> Eff _ Unit 
+  goHead state cid = 
+    maybe (pure unit) (driver <<< RequestCellContent) $ 
+    state ^? _notebook .. cellById cid 
   setTimeout :: State -> CellId -> Eff _ Unit 
   setTimeout state cellId = do
     t <- timeout Config.notifyTimeout do
@@ -74,7 +75,7 @@ notifyDriver sKnot nKnot input driver =
     driver $ WithState ((_requesting %~ filter (/= cellId))
                      .. (_refreshing %~ filter (/= cellId)))
     
-notify :: forall e. Notebook -> CellId -> [CellId] -> [CellId] ->
+notify :: forall e. Notebook -> CellId -> Array CellId -> Array CellId ->
           Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
 notify notebook cellId requestedIds refreshingIds driver = do
@@ -96,13 +97,13 @@ notify notebook cellId requestedIds refreshingIds driver = do
     else traverse_ request $ dependentCells cellId
 
   -- list of list of dependencies of requested cell from top to bottom
-  ancestors' :: [[CellId]]
+  ancestors' :: Array (Array CellId)
   ancestors' = flip ancestors (notebook ^._dependencies) <$>
                (requestedIds <> refreshingIds)
 
   -- if current cell is parent for all requested cells
   isParent :: Boolean
-  isParent = runAll $ fold (All <$> (elem cellId) <$> ancestors')
+  isParent = runConj $ fold (Conj <$> (elem cellId) <$> ancestors')
 
   -- if current cell is parent for all requested cells we get
   -- next cell in this hierarchy and return it 
@@ -110,17 +111,15 @@ notify notebook cellId requestedIds refreshingIds driver = do
   nextCell = do
     cid <- runFirst $ fold
            (First <$> ((\as -> do
-                           i <- case elemIndex cellId as of
-                             -1 -> Nothing
-                             i -> pure i
-                           as !! (i + 1)) <$> ancestors'))
+                           i <- elemIndex cellId as
+                           as !! (i + one)) <$> ancestors'))
 
     notebook ^? cellById cid 
 
-  dependentCells :: CellId -> [Cell]
+  dependentCells :: CellId -> Array Cell
   dependentCells cid = filter (\x -> elem (x ^._cellId) (dependencies cid) && (x ^. _hasRun))
                        (notebook ^. _cells)
 
-  dependencies :: CellId -> [CellId]
+  dependencies :: CellId -> Array CellId
   dependencies = flip descendants (notebook ^._dependencies)
 

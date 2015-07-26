@@ -5,6 +5,7 @@ module Controller.Notebook
   , handleNameInput
   ) where
 
+import Prelude
 import Api.Fs (move, children, delete, saveNotebook)
 import Config (notebookNameEditorId, notebookUrl, homeHash)
 import Control.Alt ((<|>))

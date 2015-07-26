@@ -1,8 +1,9 @@
-module View.Notebook (view) where
+module View.Notebook (notebookView) where
 
+import Prelude
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
-import Control.Functor (($>))
+import Data.Functor (($>))
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
@@ -12,7 +13,7 @@ import Data.Array (range, length, zipWith, replicate, sort, singleton)
 import Data.Bifunctor (bimap)
 import Data.Either (either)
 import Data.Inject1 (inj)
-import Data.Int (toNumber, fromNumber, Int())
+import Data.Int (toNumber, fromNumber)
 import Data.KeyCombo (printKeyComboWin, printKeyComboMac, printKeyComboLinux)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy
@@ -27,8 +28,7 @@ import Model.Notebook.Domain (_cells, _name, _path, notebookPath)
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Model.Path ((<./>), encodeURIPath)
 import Model.Resource (Resource(), resourcePath)
-import Number.Format (toFixed)
-import Optic.Core ((..), (^.), (.~), (%~))
+import Optic.Core 
 import Optic.Fold ((^?))
 import Optic.Index (ix)
 import View.Common
@@ -47,15 +47,15 @@ import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
 import qualified View.Modal.Common as Vm
 
-view :: forall e. State -> HTML e
-view state =
+notebookView :: forall e. State -> HTML e
+notebookView state =
   H.div [ A.classes classes, E.onClick (E.input_ CloseDropdowns) ]
   (navigation state <> [body state] <> [modal state])
   where classes = if not state.editable
                   then [ Vc.notebookViewHack ]
                   else [ ]
 
-navigation :: forall e. State -> [HTML e]
+navigation :: forall e. State -> Array (HTML e)
 navigation state =
   if (not state.loaded) || (not state.editable) 
   then [ ]
@@ -100,12 +100,12 @@ body state =
                    ]
 
 
-cells :: forall e. State -> [HTML e]
+cells :: forall e. State -> Array (HTML e)
 cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
                       $ (state ^. _notebook .. _cells) >>= cell state
               ]
 
-newCellMenu :: forall e. State -> [HTML e]
+newCellMenu :: forall e. State -> Array (HTML e)
 newCellMenu state =
   [ H.ul [ A.classes [ Vc.newCellMenu ] ] $ 
     [ H.li_ [ H.button [ A.classes [ B.btnLg, B.btnLink ]
@@ -122,7 +122,7 @@ newCellMenu state =
     ] <> listElements 
    ]
   where
-  listElements :: [HTML e]
+  listElements :: Array (HTML e)
   listElements =
     [ li "Query" QueryInsert B.glyphiconHdd
     , li "Markdown" MarkdownInsert B.glyphiconEdit
@@ -143,18 +143,18 @@ newCellMenu state =
     ]
 
 
-txt :: forall e. Int -> String -> [HTML e]
+txt :: forall e. Int -> String -> Array (HTML e)
 txt lvl text =
-  [ H.text $ (joinWith "" $ replicate (toNumber lvl) "--") <> " " <> text ]
+  [ H.text $ (joinWith "" $ replicate lvl "--") <> " " <> text ]
 
-li :: forall e. State -> Number ->  DropdownItem -> HTML e
+li :: forall e. State -> Int ->  DropdownItem -> HTML e
 li state i {visible: visible, name: name, children: children} =
   H.li [ E.onClick (\ev -> do E.stopPropagation
                               E.input_ (Dropdown i) ev)
        , A.classes $ [ B.dropdown ] <>
          (if visible then [ B.open ] else [ ]) ]
   [ H.a [ A.href "#"
-        , E.onClick (\_ -> E.preventDefault $> empty)] (txt (fromNumber 0) name)
+        , E.onClick (\_ -> E.preventDefault $> empty)] (txt 0 name)
   , H.ul [ A.classes [ B.dropdownMenu ] ]
     (menuItem state <$> children) ]
 

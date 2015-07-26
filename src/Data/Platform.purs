@@ -1,10 +1,12 @@
 module Data.Platform where
 
+import Prelude (Eq)
+
 data Platform = Mac | Win | Other
 
 instance eqPlatform :: Eq Platform where
-  (==) Mac Mac = true
-  (==) Win Win = true
-  (==) Other Other = true
-  (==) _ _ = false
-  (/=) x y = not (x == y)
+  eq Mac Mac = true
+  eq Win Win = true
+  eq Other Other = true
+  eq _ _ = false
+

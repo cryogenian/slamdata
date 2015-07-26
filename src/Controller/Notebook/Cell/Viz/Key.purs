@@ -1,5 +1,6 @@
 module Controller.Notebook.Cell.Viz.Key where
 
+import Prelude
 import Data.Tuple
 import Data.Maybe
 

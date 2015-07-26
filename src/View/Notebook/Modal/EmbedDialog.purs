@@ -1,11 +1,12 @@
 module View.Notebook.Modal.EmbedDialog (embedDialog) where
 
+import Prelude
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..))
 import Halogen.HTML.Renderer.String (renderHTMLToString)
 import Input.Notebook (Input(..))
 import Model.Notebook (_dialog)
-import Optic.Core ((.~))
+import Optic.Setter ((.~))
 import Utils.Halide (dataZeroClipboard, selectThis, width', height', frameBorder)
 import View.Modal.Common (header, body, footer, h4, nonSubmit)
 import View.Notebook.Common (HTML())
@@ -16,7 +17,7 @@ import qualified Halogen.HTML.Events as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
 
-embedDialog :: forall e. String -> [HTML e]
+embedDialog :: forall e. String -> Array (HTML e)
 embedDialog url =
   let code = renderHTMLToString $
     H.iframe [ A.src url

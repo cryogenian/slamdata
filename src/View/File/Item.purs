@@ -1,8 +1,9 @@
 module View.File.Item (items) where
 
+import Prelude
 import Controller.File.Common (Event())
 import Controller.File.Item
-import Css.Geometry
+import Css.Geometry (marginBottom)
 import Css.Size (px)
 import Css.String
 import Data.Array (range, length, zipWith)
@@ -13,7 +14,7 @@ import Model.File
 import Model.File.Item
 import Model.Resource (Resource(..), resourcePath, resourceName, isFile, isDatabase, isNotebook, hiddenTopLevel)
 import View.File.Common (HTML(), toolItem)
-import Optic.Core ((^.))
+import Optic.Core 
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -29,7 +30,7 @@ items state =
   in H.div [ A.classes [B.listGroup, Vc.results] ]
            $ zipWith (item state) (0 `range` length items) items
 
-item :: forall e. State -> Number -> Item -> HTML e
+item :: forall e. State -> Int -> Item -> HTML e
 item state ix item =
   case item of
     PhantomItem _ ->
@@ -72,7 +73,7 @@ item state ix item =
                                                                       else []
                           ]
                           [ H.ul [ A.classes ([B.listInline, B.pullRight])
-                                 , CSS.style (marginBottom $ px 0)
+                                 , CSS.style (marginBottom $ px 0.0)
                                  ]
                                  $ showToolbar item state
                           ]
@@ -91,7 +92,7 @@ iconClasses item = A.classes [B.glyphicon, Vc.itemIcon, iconClass $ itemResource
   iconClass (Directory _) = B.glyphiconFolderOpen
   iconClass (Database _) = B.glyphiconHdd
 
-showToolbar :: forall e. Item -> State -> [HTML e]
+showToolbar :: forall e. Item -> State -> Array (HTML e)
 showToolbar item state =
   let r = itemResource item
       conf = if isDatabase r

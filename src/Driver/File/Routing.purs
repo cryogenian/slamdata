@@ -3,6 +3,7 @@ module Driver.File.Routing
   , routing
   ) where
 
+import Prelude
 import Control.Alt ((<|>))
 import Data.Either (Either(..))
 import Model.File.Salt (Salt(..))

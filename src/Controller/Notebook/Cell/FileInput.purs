@@ -3,7 +3,7 @@ module Controller.Notebook.Cell.FileInput
   , selectFile
   , updateFile
   ) where
-
+import Prelude
 import Controller.Common (getFiles)
 import Controller.Notebook.Common (I())
 import Data.Array (sort, nub)
@@ -16,7 +16,7 @@ import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId, _input, _outp
 import Model.Notebook.Cell.FileInput (FileInput(), _files, _showFiles, _file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..))
 import Model.Resource (Resource())
-import Optic.Core ((^.), (.~), (%~), (..))
+import Optic.Core 
 import Optic.Extended (TraversalP(), (^?))
 
 toggleFileList :: forall e. Cell -> I e
@@ -29,7 +29,7 @@ populateFiles :: forall e. Cell -> I e
 populateFiles cell =
   getFiles (\newFiles -> pure $ UpdateCell (cell ^. _cellId) (_lens .. _files %~ updateFiles newFiles)) rootDir
   where
-  updateFiles :: [Resource] -> [Resource] -> [Resource]
+  updateFiles :: Array Resource -> Array Resource -> Array Resource
   updateFiles newFiles oldFiles = sort $ nub $ (oldFiles ++ newFiles)
 
 selectFile :: forall e. Cell -> (Port -> Cell -> Cell) -> Resource -> I e
@@ -42,14 +42,14 @@ selectFile cell setFn res =
                                           .. (setFn $ PortResource res)) <>
   (pure $ UpdatedOutput (cell ^. _cellId) (cell' ^. _output))
 
-
 updateFile :: forall e. Cell -> (Port -> Cell -> Cell) -> String -> I e
 updateFile cell setFn path =
   let file = fileFromString path
       port = portFromFile file
       cell' = setFn port cell
   in (pure $ UpdateCell (cell ^. _cellId) $ (_lens .. _file .~ file)
-                                         .. (setFn port)) <>
+                                         .. (setFn port))
+      <>
      (pure $ UpdatedOutput (cell ^. _cellId) (cell' ^. _output))
 
 

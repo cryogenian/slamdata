@@ -1,12 +1,14 @@
 module Model.Notebook.Cell.Markdown where
 
+import Prelude
 import Control.Alt ((<|>))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (Json(), jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Either (Either(..))
-import Optic.Core (LensP(), lens)
+import Data.List (List(..))
+import Optic.Core 
 import Text.Markdown.SlamDown (SlamDown(..), TextBoxType(..))
 import Text.Markdown.SlamDown.Html (SlamDownState(..), initSlamDownState, FormFieldValue(..))
 import qualified Data.StrMap as M
@@ -101,4 +103,4 @@ _state = _MarkdownRec <<< lens _.state _{state = _}
 
 -- TODO: re-look at this, we may be able to simplify things elsewhere if we use `initSlamDownState` properly
 emptySlamDownState :: SlamDownState
-emptySlamDownState = initSlamDownState (SlamDown [])
+emptySlamDownState = initSlamDownState (SlamDown Nil)

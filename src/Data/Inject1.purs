@@ -1,5 +1,6 @@
 module Data.Inject1 where
 
+import Prelude
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..))
 

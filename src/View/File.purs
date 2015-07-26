@@ -1,7 +1,8 @@
-module View.File (view) where
+module View.File (fileView) where
 
+import Prelude 
 import Controller.File.Common (browseURL)
-import Css.Geometry
+import Css.Geometry (marginLeft)
 import Css.Size
 import Css.String
 import Data.These (theseRight)
@@ -9,7 +10,7 @@ import Data.Tuple (Tuple(..))
 import Model.File
 import Model.File.Search (_value)
 import Model.File.Sort (Sort(..), notSort)
-import Optic.Core ((..), (^.))
+import Optic.Getter ((^.))
 import View.Common (glyph)
 import View.Common (navbar, icon, logo, content, row)
 import View.File.Breadcrumb (breadcrumbs)
@@ -31,8 +32,8 @@ import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Utils as U
 import qualified View.Css as Vc
 
-view :: forall e. State -> HTML e
-view state =
+fileView :: forall e. State -> HTML e
+fileView state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
                           [ icon B.glyphiconFolderOpen Config.homeHash
                           , logo
@@ -51,10 +52,10 @@ view state =
 sorting :: forall e. State -> HTML e
 sorting state =
   H.div [ A.classes [B.colXs4, Vc.toolbarSort] ]
-        [ H.a [ A.href (browseURL (theseRight $ state ^. _search .. _value) (notSort (state ^. _sort)) (state ^. _salt) (state ^. _path)) ]
+        [ H.a [ A.href (browseURL (theseRight $ state ^. _search <<< _value) (notSort (state ^. _sort)) (state ^. _salt) (state ^. _path)) ]
               [ H.text "Name"
               , H.i [ chevron (state ^. _sort)
-                    , CSS.style (marginLeft $ px 10)
+                    , CSS.style (marginLeft $ px 10.0)
                     ]
                     []
               ]

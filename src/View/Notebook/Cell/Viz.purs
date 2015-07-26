@@ -1,15 +1,18 @@
 module View.Notebook.Cell.Viz (vizChoices, vizOutput) where
 
+import Prelude
 import Control.Plus (empty)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 
 import qualified Data.StrMap as M 
-import Optic.Core ((^.), (..), LensP(), (.~))
+import Optic.Core 
 import Optic.Fold ((^?))
+import Data.Selection
 import Optic.Extended (TraversalP())
-import Data.Array (range, zipWith, length, drop, take, (!!), null)
+import Data.Array (range, zipWith, length, drop, take, (!!), null, (:))
 import Data.Argonaut.JCursor (JCursor())
-import qualified Data.Set as S 
+import qualified Data.Set as S
+import qualified Data.List as L
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -21,7 +24,7 @@ import qualified Halogen.Themes.Bootstrap3 as B
 import qualified Halogen.HTML.CSS as CSS
 
 import Css.Size
-import Css.Geometry
+import Css.Geometry (marginBottom, height, width, left, marginLeft)
 import Css.String
 import Css.Display
 
@@ -42,6 +45,7 @@ import Model.Notebook.Cell.Viz
 import Controller.Notebook.Cell.Viz
 import Utils (s2i)
 
+
 vizChoices :: forall e. Cell -> HTML e
 vizChoices cell =
   H.div_ 
@@ -51,21 +55,21 @@ vizChoices cell =
       "" -> correct cell
       str -> errored str
 
-correct :: forall e. Cell -> [HTML e]
+correct :: forall e. Cell -> Array (HTML e)
 correct cell =
   maybe [ ] go $ (cell ^? _content.._Visualize)
   where
-  go :: VizRec -> [HTML e]
+  go :: VizRec -> Array (HTML e)
   go r = 
     [H.div [ A.classes [ VC.vizCellEditor ] ] $
      (chartTypeSelector cell r) <>
      (chartConfiguration cell r)
     ]
 
-chartTypeSelector :: forall e. Cell -> VizRec -> [HTML e]
+chartTypeSelector :: forall e. Cell -> VizRec -> Array (HTML e)
 chartTypeSelector cell r =
   [H.div [ A.classes [ VC.vizChartTypeSelector ] ]
-   (img <$> S.toList  (r ^._availableChartTypes))
+   (img <$> (L.fromList $ S.toList  (r ^._availableChartTypes)))
   ] 
   where
   img :: ChartType -> HTML e
@@ -82,7 +86,7 @@ chartTypeSelector cell r =
   src Line = "img/line.svg"
   src Bar = "img/bar.svg"
 
-chartConfiguration :: forall e. Cell -> VizRec -> [HTML e]
+chartConfiguration :: forall e. Cell -> VizRec -> Array (HTML e)
 chartConfiguration cell r =
   [H.div [ A.classes [ VC.vizChartConfiguration ] ]
    [ pieConfiguration cell r (ct == Pie) 
@@ -91,7 +95,7 @@ chartConfiguration cell r =
    , row
      [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
        [ label "Height"
-       , H.input [ A.value (if 0 == (r ^._chartHeight)
+       , H.input [ A.value (if 0.0 == (r ^._chartHeight)
                             then ""
                             else show (r ^._chartHeight))
                  , A.classes [ B.formControl ]
@@ -100,8 +104,8 @@ chartConfiguration cell r =
        ]
      , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
        [ label "Width"
-       , H.input [ A.value (if 0 == (r ^._chartWidth)
-                            then ""
+       , H.input [ A.value (if 0.0 == (r ^._chartWidth)
+                            then "" 
                             else show (r ^._chartWidth))
                  , A.classes [ B.formControl ]
                  , E.onInput (\v -> pure $ setChartWidth cell v)
@@ -118,22 +122,22 @@ pieConfiguration cell r visible =
   [ row
     [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
       [ categoryLabel
-      , (options cell r (_pieConfiguration.._cats))
+      , primaryOptions cell r (_pieConfiguration .. _cats)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , (options cell r (_pieConfiguration.._firstMeasures))
+      , primaryOptions cell r (_pieConfiguration .. _firstMeasures) 
       , aggSelect cell r (_pieConfiguration.._firstMeasures) (_pieConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_pieConfiguration.._firstSeries))
+      , secondaryOptions cell r (_pieConfiguration .. _firstSeries) 
       ]
     ]
   , row
     [ H.form [ A.classes [ B.colXs4, B.colXsOffset8, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_pieConfiguration.._secondSeries))
+      , secondaryOptions cell r (_pieConfiguration .. _secondSeries)
       ]
     ] 
   ]
@@ -151,7 +155,7 @@ aggOpt sel a =
            , A.selected (sel == a)
            ] [ H.text (aggregation2str a) ]
 
-option :: forall e. Maybe JCursor -> JCursor -> Number -> HTML e
+option :: forall e. Maybe JCursor -> JCursor -> Int -> HTML e
 option selected cursor ix =
   H.option [ A.selected (Just cursor == selected) 
            , A.value (show ix) ]
@@ -163,26 +167,41 @@ defaultOption selected =
            , A.value "-1" ]
   [ H.text "Select axis source" ]
 
-options :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> HTML e
-options cell r _sel =
+options :: forall e. (Int -> Boolean) ->
+           (Int -> Boolean) -> 
+           Cell -> VizRec -> LensP VizRec JSelection -> HTML e
+options disableWhen defaultWhen cell r _sel =
   H.select [ A.classes [ B.formControl ]
            , E.onInput (\ix -> pure $ updateR (byIx ix vars))
-           , A.disabled (length vars < 1)
-           ] 
-  ((defaultOption selected):(zipWith (option selected) vars (range 0 (length vars))))
+           , A.disabled (disableWhen $ length vars)
+           ]
+
+  (defOption <> (zipWith (option selected) vars (range 0 $ length vars)))
   where
-  vars :: [JCursor]
+  defOption :: Array (HTML e)
+  defOption =
+    if defaultWhen $ length vars
+    then [defaultOption selected]
+    else [ ]
+
+  vars :: Array JCursor
   vars = r ^._sel.._variants
 
   selected :: Maybe JCursor
   selected = r ^._sel.._selection
 
-  byIx :: String -> [JCursor] -> Maybe JCursor
+  byIx :: String -> Array JCursor -> Maybe JCursor
   byIx ix xs = s2i ix >>= (xs !!)
 
   updateR :: Maybe JCursor -> I e
   updateR cursor =
     updateViz cell (r # _sel.._selection .~ cursor)
+
+-- types don't check 0_o
+-- primaryOptions :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> HTML e
+primaryOptions = options (< 2) (> 1)
+-- secondaryOptions :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> HTML e
+secondaryOptions = options (< 1) (const true)
 
   
 barConfiguration :: forall e. Cell -> VizRec -> Boolean -> HTML e
@@ -191,22 +210,22 @@ barConfiguration cell r visible =
   [ row
     [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
       [ categoryLabel
-      , (options cell r (_barConfiguration.._cats))
+      , (primaryOptions cell r (_barConfiguration.._cats))
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , (options cell r (_barConfiguration.._firstMeasures))
+      , (primaryOptions cell r (_barConfiguration.._firstMeasures))
       , aggSelect cell r (_barConfiguration.._firstMeasures) (_barConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_barConfiguration.._firstSeries))
+      , (secondaryOptions cell r (_barConfiguration.._firstSeries))
       ]
     ]
   , row
     [ H.form [ A.classes [ B.colXs4, B.colXsOffset8, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_barConfiguration.._secondSeries))
+      , (secondaryOptions cell r (_barConfiguration.._secondSeries))
       ]
     ] 
   ]
@@ -217,27 +236,27 @@ lineConfiguration cell r visible =
   [ row
     [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
       [ dimensionLabel
-      , (options cell r (_lineConfiguration.._dims))
+      , (primaryOptions cell r (_lineConfiguration.._dims))
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , (options cell r (_lineConfiguration.._firstMeasures))
+      , (primaryOptions cell r (_lineConfiguration.._firstMeasures))
       , aggSelect cell r (_lineConfiguration.._firstMeasures) (_lineConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_lineConfiguration.._firstSeries))
+      , (secondaryOptions cell r (_lineConfiguration.._firstSeries))
       ]
     ]
   , row
     [ H.form [ A.classes [ B.colXs4, B.colXsOffset4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , (options cell r (_lineConfiguration.._secondMeasures))
+      , (secondaryOptions cell r (_lineConfiguration.._secondMeasures))
       , aggSelect cell r (_lineConfiguration.._secondMeasures) (_lineConfiguration.._secondAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , (options cell r (_lineConfiguration.._secondSeries))
+      , (secondaryOptions cell r (_lineConfiguration.._secondSeries))
       ] 
     ] 
   ]
@@ -260,7 +279,7 @@ label str =
   [ H.text str ]
 
 
-loading :: forall e. [HTML e]
+loading :: forall e. Array (HTML e)
 loading =
   [H.div [ A.classes [ B.alert, B.alertInfo, VC.loadingMessage ]
          ]
@@ -270,27 +289,27 @@ loading =
   ] 
 
   
-errored :: forall e. String -> [HTML e]
+errored :: forall e. String -> Array (HTML e)
 errored message =
   [H.div [ A.classes [ B.alert, B.alertDanger ]
          , CSS.style do
-              marginBottom $ px 12
+              marginBottom $ px 12.0
          ]
    [ H.text message ]
   ]
   
 
-vizOutput :: forall e. Cell -> [ HTML e ]
+vizOutput :: forall e. Cell -> Array (HTML e)
 vizOutput state =
   case state ^. _err of
     "" -> [chart
            (show $ state ^._cellId)
-           (fromMaybe 0 (state ^? _viz.._chartHeight))
-           (fromMaybe 0 (state ^? _viz.._chartWidth))
+           (fromMaybe 0.0 (state ^? _viz.._chartHeight))
+           (fromMaybe 0.0 (state ^? _viz.._chartWidth))
           ]
     _ -> [ ]
 
-chart' :: forall e i. [A.Attr (I e)] -> String -> Number -> Number -> HTML e
+chart' :: forall e i. Array (A.Attr (I e)) -> String -> Number -> Number -> HTML e
 chart' attrs chartId h w =
   H.div (attrs <>
          [ dataEChartsId chartId
@@ -298,7 +317,7 @@ chart' attrs chartId h w =
          , CSS.style (do height $ px h
                          width $ px w
                          position relative
-                         left $ pct 50
+                         left $ pct 50.0
                          marginLeft $ px $ -0.5 * w
                      )
          ]) [ ]

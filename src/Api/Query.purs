@@ -1,5 +1,6 @@
 module Api.Query (query, port, sample, SQL(), fields, count, all, templated) where
 
+import Prelude
 import Api.Common (getResponse, succeeded)
 import Config (queryUrl, dataUrl)
 import Control.Apply (lift2)
@@ -12,10 +13,11 @@ import Data.Argonaut.Core (JArray(), Json(), JObject(), jsonEmptyObject, isArray
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Array (concat, nub, filter, head)
-import Data.DOM.Simple.Encode (encodeURIComponent)
+import Utils (encodeURIComponent)
 import Data.Either (Either(..), either)
 import Data.Either.Unsafe (fromRight)
 import Data.Foldable (foldl)
+import Data.List (uncons, fromList)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.String (split, replace)
 import Data.StrMap (StrMap(), keys, toList, empty, lookup)
@@ -26,7 +28,7 @@ import Model.Resource (Resource(), resourcePath, isFile, _name)
 import Network.HTTP.Affjax (Affjax(), AJAX(), get, affjax, defaultRequest)
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Optic.Core ((^.))
+import Optic.Core 
 import qualified Data.Int as I
 
 
@@ -42,28 +44,16 @@ query res sql =
   msg = "error in query"
   uri = mkURI res sql
 
-count :: forall e. Resource -> Aff (ajax :: AJAX | e) Number
+count :: forall e. Resource -> Aff (ajax :: AJAX | e) Int
 count res = do
   fromMaybe 0 <<< readTotal <$> query res sql
   where
   sql :: SQL
   sql = "SELECT COUNT(*) as total FROM {{path}}"
 
-  readTotal :: JArray -> Maybe Number
-  readTotal = toNumber <=< lookup "total" <=< toObject <=< head
+  readTotal :: JArray -> Maybe Int
+  readTotal = I.fromNumber <=< toNumber <=< lookup "total" <=< toObject <=< head
 
-foreign import unconsNative """
-  function unconsNative (empty) {
-    return function (next) {
-      return function (xs) {
-        return xs.length === 0 ? empty({}) : next(xs[0])(xs.slice(1));
-      };
-    };
-  }
-  """ :: forall a b. (Unit -> b) ->
-                     (a -> Array a -> b) ->
-                     Array a ->
-                     b
 
 port :: forall e. Resource -> Resource -> SQL ->
         StrMap VarMapValue ->
@@ -93,11 +83,8 @@ port res dest sql vars =
   pair :: Tuple String VarMapValue -> String
   pair (Tuple a b) = a <> "=" <> b
 
-  makeQueryVars { head = h, tail = t } =
+  makeQueryVars { head = h, tail = t } = 
     foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
-
-  uncons :: forall a. Array a -> Maybe { head :: a, tail :: Array a }
-  uncons = unconsNative (const Nothing) \x xs -> Just { head: x, tail: xs }
 
   content :: String -> Either String JObject
   content input = do
@@ -105,7 +92,7 @@ port res dest sql vars =
     swap $ json .? "error"
     pure json
 
-sample' :: forall e. Resource -> Maybe I.Int -> Maybe I.Int -> Aff (ajax :: AJAX |e) JArray
+sample' :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (ajax :: AJAX |e) JArray
 sample' res mbOffset mbLimit =
   if not $ isFile res
   then pure []
@@ -113,18 +100,18 @@ sample' res mbOffset mbLimit =
   where
   msg = "error getting resource sample"
   uri = dataUrl <> resourcePath res <>
-        (maybe "" (("?offset=" <>) <<< show <<< I.toNumber) mbOffset) <>
-        (maybe "" (("&limit=" <>) <<< show <<< I.toNumber) mbLimit)
+        (maybe "" (("?offset=" <>) <<< show) mbOffset) <>
+        (maybe "" (("&limit=" <>) <<< show ) mbLimit)
 
-sample :: forall e. Resource -> I.Int -> I.Int -> Aff (ajax :: AJAX | e) JArray
+sample :: forall e. Resource -> Int -> Int -> Aff (ajax :: AJAX | e) JArray
 sample res offset limit = sample' res (Just offset) (Just limit)
 
 all :: forall e. Resource -> Aff (ajax :: AJAX | e) JArray
 all res = sample' res Nothing Nothing
 
-fields :: forall e. Resource -> Aff (ajax :: AJAX | e) [String]
+fields :: forall e. Resource -> Aff (ajax :: AJAX | e) (Array String)
 fields res = do
-  jarr <- sample res (I.fromNumber 0) (I.fromNumber 100)
+  jarr <- sample res 0 100
   case jarr of
     [] -> throwError $ error "empty file"
     _ -> pure $ nub $ concat (getFields <$> jarr)
@@ -147,12 +134,12 @@ extractJArray =
   folder agg _ = agg
 
 
-getFields :: Json -> [String]
+getFields :: Json -> Array String
 getFields json =
   filter (/= "") $ nub $ getFields' [] json
 
 
-getFields' :: [String] -> Json -> [String]
+getFields' :: Array String -> Json -> Array String
 getFields' [] json = getFields' [""] json
 getFields' acc json =
   if isObject json
@@ -161,14 +148,14 @@ getFields' acc json =
        then maybe acc (goArr acc) $ toArray json
        else acc
 
-goArr :: [String] -> JArray -> [String]
+goArr :: Array String -> JArray -> Array String
 goArr acc arr =
   concat $ (getFields' ((<> "[*]") <$> acc) <$> arr)
 
-goObj :: [String] -> JObject -> [String]
-goObj acc obj = concat $ (goTuple acc <$> (toList obj))
+goObj :: Array String -> JObject -> Array String
+goObj acc obj = concat $ (goTuple acc <$> (fromList $ toList obj))
 
-goTuple :: [String] -> Tuple String Json -> [String]
+goTuple :: Array String -> Tuple String Json -> Array String
 goTuple acc (Tuple key json) = getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json
 
 -- temporary files are written to `value` field or even `value.value`

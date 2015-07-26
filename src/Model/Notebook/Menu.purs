@@ -1,8 +1,8 @@
 module Model.Notebook.Menu where
 
+import Prelude
 import Data.Either
 import Data.Maybe
-import Data.Int (Int(), fromNumber)
 import Data.Inject1 (inj)
 import Data.KeyCombo
 
@@ -45,10 +45,10 @@ type MenuElement =
 type DropdownItem =
   { name :: String
   , visible :: Boolean
-  , children :: [ MenuElement ]
+  , children :: Array MenuElement 
   }
 
-initialDropdowns :: [DropdownItem]
+initialDropdowns :: Array DropdownItem
 initialDropdowns =
   [ { visible: false
     , name: "Notebook"
@@ -56,15 +56,15 @@ initialDropdowns =
       [ { name: "Rename/Move"
         , message: Just $ inj RenameNotebook
         , shortcut: Just $ meta ++ shift ++ letter (U.charAt 0 "S")
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "Delete"
         , message: Just $ inj DeleteNotebook
         , shortcut: Nothing
-        , lvl: fromNumber 0}
+        , lvl:  0}
       , { name: "Publish"
         , message: Just $ inj PublishNotebook
         , shortcut: Just $ meta ++ letter (U.charAt 0 "P")
-        , lvl: fromNumber 0}
+        , lvl:  0}
       ]
     }
   , { visible: false
@@ -73,19 +73,19 @@ initialDropdowns =
       [ { name: "Query"
         , message: Just $ inj QueryInsert
         , shortcut: Just $ meta ++ letter (U.charAt 0 "1")
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "Markdown"
         , message: Just $ inj MarkdownInsert
         , shortcut: Just $ meta ++ letter (U.charAt 0 "2")
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "Explore"
         , message: Just $ inj ExploreInsert
         , shortcut: Just $ meta ++ letter (U.charAt 0 "3")
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "Search"
         , message: Just $ inj SearchInsert
         , shortcut: Just $ meta ++ letter (U.charAt 0 "4")
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
        ] }
   , { visible: false
     , name: "Cell"
@@ -93,11 +93,11 @@ initialDropdowns =
       [ { name: "Evaluate"
         , message: Just $ inj $ EvaluateCell
         , shortcut: Just $ meta ++ enter
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "Delete"
         , message: Just $ inj $ DeleteCell
         , shortcut: Nothing
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       ] }
   , { visible: false
     , name: "Help"
@@ -105,21 +105,21 @@ initialDropdowns =
       [ { name: "Tutorial"
         , message: Just $ inj $ TutorialHelp
         , shortcut: Nothing
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "SQL Tutorial"
         , message: Just $ inj $ SQLTutorialHelp
         , shortcut: Nothing
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "SQL Reference"
         , message: Just $ inj $ SQLReferenceHelp
         , shortcut: Nothing
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "Report bug"
         , message: Just $ inj $ ReportBugHelp
         , shortcut: Nothing
-        , lvl: fromNumber 0 }
+        , lvl:  0 }
       , { name: "Request support"
         , message: Just $ inj $ RequestSupportHelp
         , shortcut: Nothing
-        , lvl: fromNumber 0 }]}
+        , lvl:  0 }]}
   ]

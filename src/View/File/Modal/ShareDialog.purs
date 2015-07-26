@@ -1,10 +1,11 @@
 module View.File.Modal.ShareDialog (shareDialog) where
 
+import Prelude
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..))
 import Input.File (FileInput(..))
 import Model.File (_dialog)
-import Optic.Core ((.~))
+import Optic.Setter ((.~))
 import Utils.Halide (dataZeroClipboard, selectThis)
 import View.File.Common (HTML())
 import View.Modal.Common (header, body, footer, h4, nonSubmit)
@@ -14,7 +15,7 @@ import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.Themes.Bootstrap3 as B
 
-shareDialog :: forall e. String -> [HTML e]
+shareDialog :: forall e. String -> Array (HTML e)
 shareDialog url =
   [ header $ h4 "URL"
   , body [ H.form [ nonSubmit ]

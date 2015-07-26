@@ -5,8 +5,9 @@ module Driver.Notebook.ECharts (
   EChartsRec(),
   EContainer()) where
 
+import Prelude
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Ref (Ref(), RefVal(), readRef, newRef, modifyRef)
+import Control.Monad.Eff.Ref (REF(), Ref(), readRef, newRef, modifyRef)
 import Data.Tuple (Tuple(..))
 import Data.Maybe (maybe, Maybe(..))
 import Data.Foldable (for_)
@@ -15,7 +16,9 @@ import Data.DOM.Simple.Types (HTMLElement())
 import Data.DOM.Simple.NodeList
 import Data.DOM.Simple.Element
 import qualified Data.StrMap as M
-import Optic.Core (Lens(), lens, (%~))
+import Optic.Types (Lens())
+import Optic.Lens (lens)
+import Optic.Setter ((%~))
 
 import Halogen (Driver())
 import qualified ECharts.Chart as EC
@@ -31,17 +34,10 @@ type EChartsKey = String
 
 newtype EContainer = EContainer HTMLElement
 
-foreign import containerEq """
-function containerEq(a) {
-  return function(b) {
-    return a == b;
-  };
-}
-""" :: EContainer -> EContainer -> Boolean 
+foreign import containerEq :: EContainer -> EContainer -> Boolean 
 
 instance eqEContainer :: Eq EContainer where
-  (==) = containerEq
-  (/=) a b = not $ a == b
+  eq = containerEq
   
 
 type EChartsRec =
@@ -72,10 +68,10 @@ initKnot =
   , timeouts: M.empty
   } 
 
-ref :: forall e. Eff (ref :: Ref | e) (RefVal EChartsKnot) 
+ref :: forall e. Eff (ref :: REF | e) (Ref EChartsKnot) 
 ref = newRef initKnot
 
-echartsPostRender :: forall e. RefVal EChartsKnot -> Input ->
+echartsPostRender :: forall e. Ref EChartsKnot -> Input ->
                      HTMLElement -> Driver Input (NotebookComponentEff e) ->
                      Eff (NotebookAppEff e) Unit
 echartsPostRender knotRef input node driver = do
@@ -101,7 +97,7 @@ echartsPostRender knotRef input node driver = do
       EC.resize chart.chart
     modifyRef knotRef (\s -> s{timeouts = M.insert k t s.timeouts})
 
-init :: forall e. HTMLElement -> String -> RefVal EChartsKnot ->
+init :: forall e. HTMLElement -> String -> Ref EChartsKnot ->
         Eff (NotebookAppEff e) Unit
 init el key knotRef = do
   knot <- readRef knotRef 
@@ -116,7 +112,7 @@ set chart opts = void $ do
   EC.resize chart
   
 
-reinit :: forall e. HTMLElement -> String -> RefVal EChartsKnot -> EChartsRec ->
+reinit :: forall e. HTMLElement -> String -> Ref EChartsKnot -> EChartsRec ->
           Eff (NotebookAppEff e) Unit 
 reinit el key knotRef r = do
   knot <- readRef knotRef

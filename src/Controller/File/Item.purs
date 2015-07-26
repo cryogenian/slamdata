@@ -1,5 +1,6 @@
 module Controller.File.Item where
 
+import Prelude
 import Api.Fs (delete, children, mountInfo)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
@@ -26,7 +27,7 @@ import Model.File.Salt (Salt())
 import Model.File.Sort (Sort())
 import Model.Path (encodeURIPath)
 import Model.Resource (Resource(..), resourceName, resourceDir, getPath, root)
-import Optic.Core ((..), (?~), (.~), (++~), (%~))
+import Optic.Core
 import Optic.Extended (TraversalP())
 import Optic.Refractor.Prism (_Just)
 import Utils (locationString, setLocation)
@@ -46,7 +47,7 @@ handleMoveItem item = do
   let dialog = RenameDialog $ (initialRenameDialog res # _siblings .~ ss)
   showDialog dialog `andThen` \_ -> getDirectories (updateAndSort lens) rootDir
   where
-  lens :: TraversalP State [Resource]
+  lens :: TraversalP State (Array Resource)
   lens = _dialog .. _Just .. _RenameDialog .. _dirs
 
 handleShare :: forall e. Sort -> Salt -> Item -> Event e
@@ -93,11 +94,12 @@ handleDownloadItem item =
   showDialog (DownloadDialog $ initialDownloadDialog $ itemResource item)
     `andThen` \_ -> getChildren (const true) (updateAndSort lens) rootDir
   where
-  lens :: TraversalP State [Resource]
+  lens :: TraversalP State (Array Resource)
   lens = _dialog .. _Just .. _DownloadDialog .. _sources
 
 showDialog :: forall e. Dialog -> Event e
 showDialog = toInput <<< WithState <<< (_dialog ?~)
 
-updateAndSort :: forall a e. (Ord a) => TraversalP State [a] -> [a] -> Event e
+updateAndSort :: forall a e. (Ord a) =>
+                 TraversalP State (Array a) -> Array a -> Event e
 updateAndSort lens xs = toInput $ WithState $ (lens %~ sort) .. (lens ++~ xs)

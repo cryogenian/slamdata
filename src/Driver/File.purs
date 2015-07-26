@@ -2,6 +2,7 @@
 -- | Mostly consists of routing functions
 module Driver.File (outside) where
 
+import Prelude
 import Api.Fs (children, mountInfo)
 import Control.Monad.Aff (launchAff, cancel, attempt, Canceler(), Aff(), forkAff)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar(), AVAR())
@@ -34,7 +35,7 @@ import Model.File.Search (_loading, _value, _valid)
 import Model.File.Sort (Sort(Asc))
 import Model.Path (AnyPath(), DirPath(), hidePath)
 import Model.Resource (Resource(..), root, getPath)
-import Optic.Core ((..), (^.), (.~), (%~), (<>~))
+import Optic.Core
 import Optic.Refractor.Lens (_1, _2)
 import Routing (matchesAff)
 import Text.SlamSearch.Printer (strQuery)
@@ -81,12 +82,12 @@ handleRoute driver = launchAff $ do
                                             .. (_search .. _loading .~ true)
                                             .. (_search .. _value .~ maybe (This "") That queryParts.query)
                                             .. (_search .. _valid .~ true)
-          listPath driver query 0 var queryParts.path
+          listPath driver query zero var queryParts.path
           maybe (checkMount driver queryParts.path) (const $ pure unit) queryParts.query
         else
           liftEff $ driver $ inj $ WithState (_search .. _loading .~ false)
 
-initialAVar :: Tuple (Canceler _) (M.Map Number Number)
+initialAVar :: Tuple (Canceler _) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
 updateURL :: forall e. Maybe String -> Sort -> Maybe Salt -> DirPath -> Eff _ Unit
@@ -108,13 +109,13 @@ splitQuery q =
 
 listPath :: forall e. Driver Input (FileComponentEff e)
                    -> SearchQuery
-                   -> Number
-                   -> AVar (Tuple (Canceler _) (M.Map Number Number))
+                   -> Int
+                   -> AVar (Tuple (Canceler _) (M.Map Int Int))
                    -> DirPath
                    -> Aff _ Unit
 listPath driver query deep var dir = do
   modifyVar
-    (_2 %~ M.alter (maybe (Just 1) (\x -> Just (x + 1))) deep) var
+    (_2 %~ M.alter (maybe (pure one) (\x -> Just (x + one))) deep) var
 
   canceler <- forkAff do
     ei <- attempt $ children dir
@@ -127,15 +128,15 @@ listPath driver query deep var dir = do
         traverse_ (liftEff <<< driver <<< inj <<< ItemAdd) (Item <$> toAdd)
 
         if isSearchQuery query
-          then traverse_ (listPath driver query (deep + 1) var) next
+          then traverse_ (listPath driver query (deep + one) var) next
           else pure unit
 
     modifyVar
-      (_2 %~ M.update (\v -> if v > 1 then Just (v - 1)
+      (_2 %~ M.update (\v -> if v > one then Just (v - one)
                              else Nothing) deep) var
 
     Tuple c r <- takeVar var
-    if (foldl (+) 0 $ M.values r) == 0 then do
+    if (foldl (+) zero $ M.values r) == zero then do
       liftEff do
         driver $ inj $ WithState (_search .. _loading .~ false)
       putVar var initialAVar

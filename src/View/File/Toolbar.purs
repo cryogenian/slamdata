@@ -1,5 +1,6 @@
 module View.File.Toolbar (toolbar) where
 
+import Prelude
 import Controller.File
 import Controller.File.Item
 import Controller.File.Common (Event())
@@ -8,7 +9,7 @@ import Model.File
 import Model.File.Item (Item(..))
 import Model.Resource (Resource(..), root)
 import View.File.Common (HTML(), toolItem)
-import Optic.Core ((^.))
+import Optic.Getter ((^.))
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -25,7 +26,7 @@ toolbar state =
 
   where
 
-  configure :: [HTML e]
+  configure :: Array (HTML e)
   configure =
     if state ^. _isMount
     then [toolItem [] (Database (state ^. _path)) handleConfigure "configure mount" B.glyphiconWrench]

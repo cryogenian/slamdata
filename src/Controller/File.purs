@@ -1,5 +1,6 @@
 module Controller.File where
 
+import Prelude
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
 import Control.Monad.Aff (Aff(), attempt)
@@ -31,7 +32,7 @@ import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (MountDialogRec(), initialMountDialog)
 import Model.File.Item (Item(..), itemResource)
 import Network.HTTP.MimeType.Common (textCSV)
-import Optic.Core ((^.), (.~), (?~))
+import Optic.Core 
 import Utils (clearValue, setLocation)
 import Utils.Event (raiseEvent)
 

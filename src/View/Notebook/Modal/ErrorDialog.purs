@@ -1,9 +1,10 @@
 module View.Notebook.Modal.ErrorDialog where
 
+import Prelude
 import Data.Maybe (Maybe(..))
 import Input.Notebook
 import Model.Notebook
-import Optic.Core ((.~))
+import Optic.Setter ((.~))
 import View.Modal.Common
 import View.Notebook.Common (HTML())
 
@@ -13,7 +14,7 @@ import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 
-errorDialog :: forall e. String -> [HTML e]
+errorDialog :: forall e. String -> Array (HTML e)
 errorDialog message =
   [ header $ h4 "Error"
   , body [ H.div [ A.classes [B.alert, B.alertDanger] ]

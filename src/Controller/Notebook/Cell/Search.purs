@@ -3,6 +3,7 @@ module Controller.Notebook.Cell.Search (
   , viewSearch
   ) where
 
+import Prelude
 import Control.Plus (empty)
 import Control.Apply (lift2)
 import Control.Bind ((>=>))
@@ -11,7 +12,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (message)
 import Control.Monad.Aff (attempt)
 import Control.Monad.Aff.Class (liftAff)
-import Optic.Core ((^.), (.~), (..))
+import Optic.Core 
 import Optic.Fold ((^?))
 
 import Data.Maybe (fromMaybe, maybe, Maybe(..))
@@ -19,7 +20,6 @@ import Data.Either (either, Either())
 import Data.Either.Unsafe (fromRight)
 import Data.Tuple (Tuple(..), uncurry)
 import Data.StrMap (keys)
-import Data.Int (Int())
 import Data.Time (Milliseconds())
 import Data.Date (now, toEpochMilliseconds, nowEpochMilliseconds)
 import Data.String (toLower)

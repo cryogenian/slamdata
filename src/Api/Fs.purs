@@ -1,5 +1,6 @@
 module Api.Fs where
 
+import Prelude
 import Api.Common (succeeded, getResponse)
 import Control.Apply ((*>))
 import Control.Bind ((>=>))
@@ -9,7 +10,7 @@ import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Core (Json())
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
-import Data.Array (head, findIndex, filter, elemIndex)
+import Data.Array (head, tail, findIndex, filter, elemIndex, (:))
 import Data.Either (Either(..), either)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Index (prop)
@@ -28,7 +29,7 @@ import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.MimeType (MimeType())
 import Network.HTTP.MimeType.Common (applicationJSON)
-import Optic.Core ((..), (.~), (^.), (%~), mapped)
+import Optic.Core 
 
 import qualified Data.Maybe.Unsafe as U
 import qualified Data.String as S
@@ -36,9 +37,9 @@ import qualified Model.Notebook.Domain as N
 import qualified Model.Resource as R
 import Model.Notebook.Port (_PortResource)
 
-newtype Listing = Listing [R.Resource]
+newtype Listing = Listing (Array R.Resource)
 
-runListing :: Listing -> [R.Resource]
+runListing :: Listing -> Array R.Resource
 runListing (Listing rs) = rs
 
 instance listingIsForeign :: IsForeign Listing where
@@ -48,12 +49,12 @@ instance listingRespondable :: Respondable Listing where
   responseType = JSONResponse
   fromResponse = read
 
-children :: forall e. DirPath -> Aff (ajax :: AJAX | e) [R.Resource]
+children :: forall e. DirPath -> Aff (ajax :: AJAX | e) (Array R.Resource)
 children dir = do
   cs <- children' $ printPath dir
   pure $ (R._root .~ (either (const rootDir) id (Right dir))) <$> cs
 
-children' :: forall e. String -> Aff (ajax :: AJAX | e) [R.Resource]
+children' :: forall e. String -> Aff (ajax :: AJAX | e) (Array R.Resource)
 children' str = runListing <$> (getResponse msg $ listing str)
   where
   msg = "error getting resource children"
@@ -63,7 +64,7 @@ listing str = get (Config.metadataUrl <> str)
 
 makeFile :: forall e. AnyPath -> Maybe MimeType -> String -> Aff (ajax :: AJAX | e) Unit
 makeFile ap mime content =
-  getResponse msg $ go unit -- either err go isJson
+  getResponse msg $ go unit 
   where
   resource :: R.Resource
   resource = R.newFile # R._path .~ ap
@@ -104,12 +105,7 @@ loadNotebook res = do
 
 
 -- TODO: Not this. either add to Argonaut, or make a Respondable Json instance (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
-foreign import foreignToJson
-  """
-  function foreignToJson(x) {
-    return x;
-  }
-  """ :: Foreign -> Json
+foreign import foreignToJson :: Foreign -> Json
 
 -- | Saves (creating or updating) a notebook. If the notebook's `name` value is
 -- | a `This` value the name will be used as a basis for generating a new
@@ -160,17 +156,20 @@ getNewName parent name = do
   pure if exists' name items then getNewName' items 1 else name
   where
   getNewName' items i =
-    case S.split "." name of
-      [] -> ""
-      body:suffixes ->
-        let newName = S.joinWith "." $ (body ++ " " ++ show i):suffixes
-        in if exists' newName items then getNewName' items (i + 1) else newName
+    let arr = S.split "." name
+    in fromMaybe "" do
+      body <- head arr
+      suffixes <- tail arr
+      let newName = S.joinWith "." $ (body <> " " <> show i):suffixes
+      pure if exists' newName items
+           then getNewName' items (i + 1)
+           else newName 
 
 exists :: forall e. String -> DirPath -> Aff (ajax :: AJAX | e) Boolean
 exists name parent = exists' name <$> children' (printPath parent)
 
-exists' :: forall e. String -> [R.Resource] -> Boolean
-exists' name items = findIndex (\r -> r ^. R._name == name) items /= -1
+exists' :: forall e. String -> Array R.Resource -> Boolean
+exists' name items = isJust $ findIndex (\r -> r ^. R._name == name) items 
 
 forceDelete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit 
 forceDelete resource = 
@@ -259,10 +258,5 @@ saveMount res uri = do
      then pure unit
      else throwError (error result.response)
 
-foreign import stringify
-  """
-  function stringify(x) {
-    return JSON.stringify(x);
-  };
-  """ :: forall r. { | r } -> String
+foreign import stringify :: forall r. { | r } -> String
 

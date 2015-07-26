@@ -1,5 +1,6 @@
 module Controller.Notebook.Common where
 
+import Prelude
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
 import Data.Date (now, nowEpochMilliseconds, toEpochMilliseconds)
@@ -9,7 +10,7 @@ import EffectTypes (NotebookAppEff())
 import Halogen.HTML.Events.Monad (Event(), andThen)
 import Input.Notebook (Input(..))
 import Model.Notebook.Cell (Cell(), RunState(..), _RunningSince, _cellId, _runState)
-import Optic.Core ((^.), (.~), (..))
+import Optic.Core
 import Optic.Extended ((^?))
 
 type I e = Event (NotebookAppEff e) Input
