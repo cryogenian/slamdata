@@ -96,7 +96,7 @@ sample' :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (ajax :: AJAX |e)
 sample' res mbOffset mbLimit =
   if not $ isFile res
   then pure []
-  else (readValue <$>) <$> (extractJArray <$> (getResponse msg $ get uri))
+  else extractJArray <$> (getResponse msg $ get uri)
   where
   msg = "error getting resource sample"
   uri = dataUrl <> resourcePath res <>
@@ -157,15 +157,3 @@ goObj acc obj = concat $ (goTuple acc <$> (fromList $ toList obj))
 
 goTuple :: Array String -> Tuple String Json -> Array String
 goTuple acc (Tuple key json) = getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json
-
--- temporary files are written to `value` field or even `value.value`
-readValue :: Json -> Json
-readValue json = fromObject $ fromRight do
-  obj <- decodeJson json
-  if keys obj == ["value"]
-    then let value :: Either _ JObject
-             value = obj .? "value" in
-         if keys <$> value == pure ["value"]
-         then (.? "value") >=> (.? "value") $ obj
-         else value
-    else pure obj
