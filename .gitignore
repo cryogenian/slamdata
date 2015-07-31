@@ -4,9 +4,11 @@
 /dist/
 /output/
 /coverage/
+/test/node_modules
 public/js/*.js
 public/js/!ace*
 public/css/*.css
 public/css/!bootstrap*.css
 .psci_modules
 .psci
+phantomjsdriver.log

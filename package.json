@@ -9,6 +9,9 @@
     "Maxim Zimaliev <zimaliev@yandex.ru>",
     "Gary Burgess <gary@slamdata.com>"
   ],
+  "scripts": {
+    "test": "gulp test-make && node test/main.js"
+  },
   "license": "AGPL3",
   "bugs": {
     "url": "https://github.com/slamdata/slamdata/issues"
@@ -17,6 +20,8 @@
   "dependencies": {
     "browserify": "^11.0.0",
     "chalk": "^1.1.0",
+    "envs": "^0.1.6",
+    "es5-shim": "^4.1.10",
     "gulp": "^3.9.0",
     "gulp-less": "^3.0.3",
     "gulp-plumber": "^1.0.1",
@@ -24,12 +29,16 @@
     "gulp-run": "^1.6.8",
     "gulp-util": "^3.0.6",
     "gulp-watch": "^4.3.3",
+    "lodash": "^3.10.0",
     "minimatch": "^2.0.8",
     "purescript": "^0.7.1",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.1.0",
     "virtual-dom": "^2.0.1",
     "watchify": "^3.2.3",
-    "zeroclipboard": "^2.2.0"
+    "zeroclipboard": "^2.2.0",
+    "minimist": "^1.1.2",
+    "mongodb": "^2.0.39",
+    "selenium-webdriver": "^2.46.1"
   }
 }

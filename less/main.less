@@ -245,10 +245,22 @@ ol.breadcrumb {
         margin-top: 8px;
         margin-bottom: 0;
     }
-    button i {
-        padding-left: 10px;
-        font-size: 16px;
-        line-height: 40px;
+    button {
+        i {
+            padding-left: 10px;
+            font-size: 16px;
+            line-height: 40px;
+            position: relative;
+            overflow: hidden;
+            &.hidden-file-input {
+                input[type=file] {
+                    display:block;
+                    position:absolute;
+                    top:0;
+                    left:-9999px;
+                }
+            }
+        }
     }
 }
 

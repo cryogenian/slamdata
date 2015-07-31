@@ -46,19 +46,21 @@ toolbar state =
 
   folder :: HTML e
   folder = toolItem' handleCreateFolder "create folder" B.glyphiconFolderClose
-
+  
   file :: HTML e
   file = H.li_ [ H.button [ E.onClick (\ev -> pure $ handleUploadFile ev.target) ]
-                          [ H.i [ A.title "upload file"
-                                , A.classes [B.glyphicon, B.glyphiconFile]
-                                ]
-                                [ H.input [ A.class_ B.hidden
-                                          , A.type_ "file"
-                                          , E.onChange (\ev -> pure $ handleFileListChanged ev.target state)
-                                          ]
-                                          []
-                                ]
-                          ]
+                 [ H.i [ A.title "upload file"
+                       , A.classes [ B.glyphicon
+                                   , B.glyphiconFile
+                                   , Vc.hiddenFileInput
+                                   ]
+                       ]
+                   [ H.input [ A.type_ "file"
+                               , E.onChange (\ev -> pure $ handleFileListChanged ev.target state)
+                               ]
+                       []
+                     ]
+                 ]
                ]
 
   notebook :: HTML e
