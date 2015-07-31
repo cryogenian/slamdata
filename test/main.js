@@ -32,19 +32,22 @@ if (args.b) {
 var url = config.connectionString + config.database.name,
     restoreCmd = config.restoreCmd,
     slamengineArgs = ['-jar',
-                      config.slamengine.jar,
+                      path.resolve(config.slamengine.jar),
                       '-c',
-                      config.slamengine.config
+                      path.resolve(config.slamengine.config)
                      ],
     seleniumArgs = ['-jar',
-                    config.selenium.jar];
+                    path.resolve(config.selenium.jar)];
 
 
 function links(cb) {
-    fs.unlink(path.resolve("./test/node_modules"), function(err) {
-        fs.unlink(path.resolve("./output/node_modules"), function(err) {
-            fs.symlink(path.resolve("./output"), path.resolve("./output/node_modules"), function(err) {
-                fs.symlink(path.resolve("./output"), path.resolve("./test/node_modules"), function(err) {
+    var testNM = path.resolve("./test/node_modules"),
+        outputNM = path.resolve("./output/node_modules"),
+        output = path.resolve("./output");
+    fs.unlink(testNM, function(err) {
+        fs.unlink(outputNM, function(err) {
+            fs.symlink(output, outputNM, function(err) {
+                fs.symlink(output, testNM, function(err) {
                     cb();
                 });
             });
@@ -53,9 +56,8 @@ function links(cb) {
 }
 
 function main() {
-    var slamEngine, selenium, i, launched = {}, running = false;
+    var slamEngine, selenium, launched = {}, running = false;
     var clean = function(code) {
-        clearInterval(i);
         selenium.kill();
         log("selenium killed");
         slamEngine.kill();
@@ -93,43 +95,39 @@ function main() {
     try {
         log("symlinking");
         links(function() {
+            log("symlinks created");
             mongo.connect(url, function(err, db) {
                 db.dropDatabase(function() {
+                    log("database dropped");
                     selenium = childProcess.spawn('java', seleniumArgs, {}, function(err) {
-                        log(err, err.stack.split('\n'));
-                        clean(1);
+                        if (err) {
+                            log(err, err.stack.split('\n'));
+                            clean(1);
+                        }
                     });
-                    slamEngine = childProcess.spawn('java', slamengineArgs, {}, function(err) {                
-                        log(err, err.stack.split('\n'));
-                        clean(1);
+                    slamEngine = childProcess.spawn('java', slamengineArgs, {}, function(err) {
+                        if (err) {
+                            log(err, err.stack.split('\n'));
+                            clean(1);
+                        }
                     });
-                    
                     log("restoring test database");
                     childProcess.execSync(restoreCmd);
                     log("database restored");
-                    i = setInterval(function() {
-                        if (launched.engine && launched.selenium) {
-                            clearInterval(i);
-                            return;
-                        }
-                        
-                        var ps = childProcess.spawn('ps', ['aux'], {}, function(err) {
-                            log("Can't get ps");
-                        });
-                        ps.stdout.on('data', function(data) {
-                            var seleniumRgx = new RegExp(config.selenium.jar),
-                                engineRgx = new RegExp(config.slamengine.jar);
-                            if (seleniumRgx.test(data)) {
-                                log("Selenium launched");
-                                launched.selenium = true;
-                            }
-                            if (engineRgx.test(data)) {
-                                log("Slamengine launched");
-                                launched.engine = true;
-                            }
+                    selenium.stderr.on("data", function(data) {
+                        if (/Selenium Server is up and running/.test(data + '')) {
+                            log("selenium launched");
+                            launched.selenium = true;
                             run();
-                        });
-                    }, 1000);
+                        }
+                    });
+                    slamEngine.stdout.on('data', function(data) {
+                        if (/Embedded server listening at port 8080/.test(data + '')) {
+                            log("slamengine launched");
+                            launched.engine = true;
+                            run();
+                        }
+                    });
                 });
             });
         });
