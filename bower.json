@@ -46,13 +46,12 @@
     "purescript-globals": "~0.2.0",
     "purescript-affjax": "~0.4.0",
     "purescript-uri": "~0.1.0-rc.1",
-    "purescript-nonempty-arrays": "~0.3.0"
+    "purescript-nonempty-arrays": "~0.3.0",
+    "purescript-webdriver": "~0.1.0"
   },
   "resolutions": {
     "purescript-halogen": "30e8b2c7174a1eeda73f67cc42c739ca24a1e218",
     "purescript-lens": "^0.8.0"
   },
-  "devDependencies": {
-    "purescript-webdriver": "cryogenian/purescript-webdriver#8d6b18a32ddbd0de845c9804a78cb843862854d3"
-  }
+  "devDependencies": {}
 }

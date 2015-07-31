@@ -68,8 +68,6 @@ function bundleNotebook() {
 
 
 
-
-
 gulp.task('bundle-file', ['make'], bundleFile);
 
 gulp.task('bundle-notebook', ['make'], bundleNotebook);
@@ -99,6 +97,10 @@ gulp.task("watch-test", ['test-make'], function() {
           function() {
               gulp.start('test-make');
           });
+});
+
+gulp.task("run-tests", ['test-make'], function() {
+    require("./test/main.js");
 });
 
 gulp.task('bundle', ['bundle-file', 'bundle-notebook'], function() {

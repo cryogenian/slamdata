@@ -10,7 +10,7 @@
     "Gary Burgess <gary@slamdata.com>"
   ],
   "scripts": {
-    "test": "gulp test-make && node test/main.js"
+    "test": "npm install -g phantomjs && npm install && bower install && gulp test-make && node test/main.js -b phantomjs"
   },
   "license": "AGPL3",
   "bugs": {
