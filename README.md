@@ -15,7 +15,7 @@ See the [Use with SlamEngine](#use-with-slamengine) section for next steps.
 
 ## Building from source
 
-Building SlamData 2.1 requires [PureScript 0.6.9.5](https://github.com/purescript/purescript/releases/tag/v0.6.9.5) and Node.js v0.12.x.
+Building SlamData 2.1 requires [PureScript 0.7.1](https://github.com/purescript/purescript/releases/tag/v0.7.1) and Node.js v0.12.x.
 
 #### Prerequisites
 
@@ -37,15 +37,16 @@ Inside the `slamdata` repository directory:
 
 ```
 bower install
+npm install
 ```
 
 #### Build
 
 ```
-gulp build
+gulp make
 ```
 
-After `gulp build` finishes the `public` directory will contain the complete SlamData front-end app.
+After `gulp make` finishes the `public` directory will contain the complete SlamData front-end app.
 
 For working on SlamData, the task `gulp dev` can be run instead. This will run an incremental build with a watch process so any changes to the `.less` or `.purs` source files will trigger a rebuild.
 
