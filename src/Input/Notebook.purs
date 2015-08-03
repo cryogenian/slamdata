@@ -174,6 +174,7 @@ slamDownOutput cell =
     modifyVarMap m = foldl (\m (Tuple key val) -> SM.insert key val m) m tplLst
     tplLst = maybe L.Nil SM.toList ((fromFormValue <$>) <$> state)
     fromFormValue (SingleValue PlainText s) = quoteString s
+    fromFormValue (SingleValue Numeric s) = quoteStringNumeric s
     fromFormValue (SingleValue Date s) = "DATE '" ++ s ++ "'"
     fromFormValue (SingleValue Time s) = "TIME '" ++ s ++ "'"
     fromFormValue (SingleValue DateTime s) = "TIMESTAMP '" ++ processTimestamp s ++ "'"
@@ -181,8 +182,9 @@ slamDownOutput cell =
     state :: Maybe (SM.StrMap FormFieldValue)
     state = cell ^? _content.._Markdown..Ma._state.._SlamDownState
     processTimestamp s = s ++ ":00Z"
-    quoteString s | isSQLNum s = s
-                  | otherwise = "'" ++ Rx.replace rxQuot "''" s ++ "'"
+    quoteString s = "'" ++ Rx.replace rxQuot "''" s ++ "'"
+    quoteStringNumeric s | isSQLNum s = s
+                         | otherwise = quoteString s
     rxQuot = Rx.regex "'" Rx.noFlags { global = true }
     rxT = Rx.regex "T" Rx.noFlags
     isSQLNum s = isRight $ flip SP.runParser s $ do
@@ -191,6 +193,7 @@ slamDownOutput cell =
       SP.optional $ (SP.string "e" <|> SP.string "E")
                  *> (SP.string "-" <|> SP.string "+")
                  *> SP.many SP.anyDigit
+      SP.eof
 
 slamDownFields :: SlamDown -> Array (Tuple String FormField)
 slamDownFields = everything (const []) go
