@@ -191,6 +191,7 @@ slamDownOutput cell =
       SP.optional $ (SP.string "e" <|> SP.string "E")
                  *> (SP.string "-" <|> SP.string "+")
                  *> SP.many SP.anyDigit
+      SP.eof
 
 slamDownFields :: SlamDown -> Array (Tuple String FormField)
 slamDownFields = everything (const []) go
