@@ -1,0 +1,71 @@
+{
+    "connectionString": "mongodb://localhost:27017/",
+    "restoreCmd": "mongorestore -d testDb --drop test/dump/demo",
+    "selenium": {
+        "jar": "test/jars/selenium.jar",
+        "main": "Test.Selenium",
+        "browser": "firefox",
+        "waitTime": 6000
+    },
+    "slamdataUrl": "http://local.slamdata.com",
+    "slamengine": {
+        "jar": "test/jars/slamengine.jar",
+        "config": "test/slamengine-config.json"
+    },
+    "links": {
+        "output": "output",
+        "testNM": "test/node_modules",
+        "outputNM": "output/node_modules"
+    },
+    "database": {
+        "name": "testDb"
+    },
+    "locators": {
+        "navIcon": ".nav-icon",
+        "navLogo": ".nav-logo",
+        "search": ".search",
+        "content": ".content",
+        "breadcrumb": ".content .breadcrumb",
+        "toolbarMenu": ".content .toolbar-menu",
+        "toolbarSort": ".toolbar-sort",
+        "results": ".results",
+        "modal": ".modal",
+        "itemContent": ".item-content",
+        "itemToolbar": ".item-toolbar"
+    },
+    "item": {
+        "main": ".list-group-item",
+        "toolbar": ".item-toolbar"
+    },
+    "breadcrumbs": {
+        "main": ".content .breadcrumb",
+        "text": "li a" ,
+        "home": "Home"
+    },
+    "sort": {
+        "main": ".item-content span",
+        "button": ".toolbar-sort a"
+    },
+    "upload": {
+        "file": "./test/file.json",
+        "input": "button *[title='upload file'] input[type='file']",
+        "button": "button *[title='upload file']"
+    },
+    "move": {
+        "name": "file.json",
+        "other": "other",
+        "button": ".item-toolbar button",
+        "markMove": "*[title='move/rename']",
+        "markDelete": "*[title='remove']",
+        "nameField": ".modal.fade.in input[placeholder='New name']",
+        "submit": ".modal.fade.in button.btn.btn-primary"
+    },
+    "modal": ".modal.fade.in",
+    "toolbar": {
+        "button": "button",
+        "showHide": "*[title='show hidden files']",
+        "main": ".toolbar-menu",
+        "newFolder": "*[title='create folder']",
+        "newNotebook": "*[title='create notebook']"
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "server": {
+        "port": 8080
+    },
+    "mountings": {
+        "/": {
+            "mongodb": {
+                "connectionUri": "mongodb://localhost/"
+            }
+        }
+    }
+}

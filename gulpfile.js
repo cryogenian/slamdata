@@ -24,6 +24,14 @@ var foreigns = [
     "bower_components/purescript-*/src/**/*.js"
 ];
 
+var testSources = [
+    "test/src/**/*.purs"
+];
+
+var testForeigns = [
+    "test/src/**/*.js"
+];
+
 var fileBundler = watchify(browserify({
     entries: ['entries/file.js'],
     paths: ["output", "node_modules"],
@@ -74,6 +82,25 @@ gulp.task('watch-notebook', ['bundle-notebook'], function() {
     watch(sources.concat(foreigns), function() {
         gulp.start('bundle-notebook');
     });
+});
+
+gulp.task("test-make", function() {
+    return purescript.psc({
+        src: sources.concat(testSources),
+        ffi: foreigns.concat(testForeigns)
+    });
+});
+
+
+gulp.task("watch-test", ['test-make'], function() {
+    watch(sources.concat(testSources).concat(foreigns).concat(testForeigns),
+          function() {
+              gulp.start('test-make');
+          });
+});
+
+gulp.task("run-tests", ['test-make'], function() {
+    require("./test/main.js");
 });
 
 gulp.task('bundle', ['bundle-file', 'bundle-notebook'], function() {
