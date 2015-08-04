@@ -26,7 +26,7 @@ import Data.Tuple (Tuple(..))
 import Model.Notebook.Port (VarMapValue())
 import Model.Path (AnyPath())
 import Model.Resource (Resource(), resourcePath, isFile, _name)
-import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
+import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest, retry)
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Optic.Core 
@@ -45,7 +45,7 @@ query res sql =
   msg = "error in query"
   uri = mkURI res sql
 
-count :: forall e. Resource -> Aff (ajax :: AJAX | e) Int
+count :: forall e. Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) Int
 count res = do
   fromMaybe 0 <<< readTotal <$> query res sql
   where
@@ -58,7 +58,7 @@ count res = do
 
 port :: forall e. Resource -> Resource -> SQL ->
         StrMap VarMapValue ->
-        Aff (ajax :: AJAX | e) JObject
+        Aff (ajax :: AJAX, avar :: AVAR | e) JObject
 port res dest sql vars =
   if not (isFile dest)
   then pure empty
@@ -104,13 +104,13 @@ sample' res mbOffset mbLimit =
         (maybe "" (("?offset=" <>) <<< show) mbOffset) <>
         (maybe "" (("&limit=" <>) <<< show ) mbLimit)
 
-sample :: forall e. Resource -> Int -> Int -> Aff (ajax :: AJAX | e) JArray
+sample :: forall e. Resource -> Int -> Int -> Aff (ajax :: AJAX, avar :: AVAR | e) JArray
 sample res offset limit = sample' res (Just offset) (Just limit)
 
-all :: forall e. Resource -> Aff (ajax :: AJAX | e) JArray
+all :: forall e. Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) JArray
 all res = sample' res Nothing Nothing
 
-fields :: forall e. Resource -> Aff (ajax :: AJAX | e) (Array String)
+fields :: forall e. Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) (Array String)
 fields res = do
   jarr <- sample res 0 100
   case jarr of
