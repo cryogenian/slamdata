@@ -209,13 +209,35 @@ setSlamDownStatus cell =
         let fields = slamDownFields md
             updateState (SlamDownState s) = case initSlamDownState md of
               SlamDownState s' ->
-                let removedKeys = SM.keys s \\ SM.keys s'
-                    mergedSM = s `SM.union` s'
-                    prunedSM = foldl (\f k -> SM.delete k f) mergedSM removedKeys
-                in SlamDownState prunedSM
+                let prunedSM = foldl (flip SM.delete) s $ keysToPrune s s'
+                    mergedSM = prunedSM `SM.union` s'
+                in SlamDownState mergedSM
         in slamDownOutput (cell # _message .~ message fields
                                 # _content .. _Markdown .. Ma._state %~ updateState)
   in maybe cell (initial <<< parseMd) input'
+
+  where
+    formFieldValueType :: FormFieldValue -> Maybe TextBoxType
+    formFieldValueType (SingleValue ty _) = Just ty
+    formFieldValueType _ = Nothing
+
+    formFieldValueTypeChanged :: FormFieldValue -> FormFieldValue -> Boolean
+    formFieldValueTypeChanged old new = formFieldValueType old /= formFieldValueType new
+
+    -- | Returns the keys that are either not present in the new state, or have had their types changed.
+    keysToPrune :: SM.StrMap _ -> SM.StrMap _ -> Array _
+    keysToPrune oldState newState =
+      SM.foldMap
+        (\key oldVal ->
+          case SM.lookup key newState of
+            Nothing -> [key]
+            Just newVal ->
+              if formFieldValueTypeChanged oldVal newVal then
+                [key]
+              else
+                []
+        )
+        oldState
 
 runSlamDownEvent :: SlamDownEvent -> Cell -> Cell
 runSlamDownEvent event cell =
