@@ -1,7 +1,7 @@
 module Api.Fs where
 
 import Prelude
-import Api.Common (succeeded, getResponse, retryGet, retryDelete, retryPost, retryPut)
+import Api.Common (succeeded, getResponse, retryGet, retryDelete, retryPost, retryPut, slamjax)
 import Control.Apply ((*>))
 import Control.Bind ((>=>))
 import Control.Monad.Aff (Aff())
@@ -24,7 +24,7 @@ import Data.Tuple (Tuple(..))
 import Model.Path
 import Model.Notebook.Cell
 import Model.Notebook.Port
-import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest, retry)
+import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
@@ -83,7 +83,7 @@ makeFile ap mime content =
   isJson = maybe (Left "empty file") Right firstLine >>= jsonParser
 
   go :: _ -> Aff _ _
-  go _ = retry Nothing affjax $ defaultRequest
+  go _ = slamjax $ defaultRequest
     { method = PUT
     , headers = maybe [] (pure <<< ContentType) mime
     , content = Just content
@@ -226,7 +226,7 @@ move src tgt = do
   let url = if R.isDatabase src
             then Config.mountUrl
             else Config.dataUrl
-  result <- retry Nothing affjax $ defaultRequest
+  result <- slamjax $ defaultRequest
     { method = MOVE
     , headers = [RequestHeader "Destination" $ either printPath printPath tgt]
     , url = url <> R.resourcePath src
@@ -249,7 +249,7 @@ mountInfo res = do
 
 saveMount :: forall e. R.Resource -> String -> Aff (ajax :: AJAX, avar :: AVAR | e) Unit
 saveMount res uri = do
-  result <- retry Nothing affjax $ defaultRequest
+  result <- slamjax $ defaultRequest
     { method = PUT
     , headers = [ContentType applicationJSON]
     , content = Just $ stringify { mongodb: { connectionUri: uri } }

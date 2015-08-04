@@ -1,7 +1,7 @@
 module Api.Query (query, port, sample, SQL(), fields, count, all, templated) where
 
 import Prelude
-import Api.Common (getResponse, succeeded, retryGet)
+import Api.Common (getResponse, succeeded, retryGet, slamjax)
 import Config (queryUrl, dataUrl)
 import Control.Apply (lift2)
 import Control.Bind ((<=<), (>=>))
@@ -26,7 +26,7 @@ import Data.Tuple (Tuple(..))
 import Model.Notebook.Port (VarMapValue())
 import Model.Path (AnyPath())
 import Model.Resource (Resource(), resourcePath, isFile, _name)
-import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest, retry)
+import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Optic.Core 
@@ -63,7 +63,7 @@ port res dest sql vars =
   if not (isFile dest)
   then pure empty
   else do
-    result <- retry Nothing affjax $ defaultRequest
+    result <- slamjax $ defaultRequest
             { method = POST
             , headers = [RequestHeader "Destination" $ resourcePath dest]
             , url = queryUrl <> resourcePath res <> queryVars

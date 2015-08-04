@@ -27,17 +27,21 @@ succeeded (StatusCode int) =
   200 <= code && code < 300
   where code = int
 
+-- | A version of `affjax` with our retry policy.
+slamjax :: forall e a b. (Requestable a, Respondable b) => AffjaxRequest a -> Affjax (avar :: AVAR | e) b
+slamjax = retry Nothing affjax
+
 retryGet :: forall e a. (Respondable a) => URL -> Affjax (avar :: AVAR | e) a
-retryGet u = retry Nothing affjax $ defaultRequest { url = u }
+retryGet u = slamjax $ defaultRequest { url = u }
 
 retryDelete :: forall e a. (Respondable a) => URL -> Affjax (avar :: AVAR | e) a
-retryDelete u = retry Nothing affjax $ defaultRequest { url = u, method = DELETE }
+retryDelete u = slamjax $ defaultRequest { url = u, method = DELETE }
 
 retryPost :: forall e a b. (Requestable a, Respondable b) => URL -> a -> Affjax (avar :: AVAR | e) b
-retryPost u c = retry Nothing affjax $ defaultRequest { method = POST, url = u, content = Just c }
+retryPost u c = slamjax $ defaultRequest { method = POST, url = u, content = Just c }
 
 retryPut :: forall e a b. (Requestable a, Respondable b) => URL -> a -> Affjax (avar :: AVAR | e) b
-retryPut u c = retry Nothing affjax $ defaultRequest { method = PUT, url = u, content = Just c }
+retryPut u c = slamjax $ defaultRequest { method = PUT, url = u, content = Just c }
 
 getResponse :: forall a e. String -> Affjax e a -> Aff (ajax :: AJAX | e) a
 getResponse msg affjax = do
