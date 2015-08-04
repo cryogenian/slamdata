@@ -33,6 +33,7 @@ type NotebookComponentEff e = ( timer :: TIMER
                               , echartResize :: ECHARTS_RESIZE
                               , now :: Now
                               , ajax :: AJAX
+                              , avar :: AVAR
                               , zClipboard :: ZCLIPBOARD | e)
 
 type NotebookAppEff e = HalogenEffects (NotebookComponentEff e)
