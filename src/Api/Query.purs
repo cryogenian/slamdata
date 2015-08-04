@@ -1,11 +1,12 @@
 module Api.Query (query, port, sample, SQL(), fields, count, all, templated) where
 
 import Prelude
-import Api.Common (getResponse, succeeded)
+import Api.Common (getResponse, succeeded, retryGet)
 import Config (queryUrl, dataUrl)
 import Control.Apply (lift2)
 import Control.Bind ((<=<), (>=>))
 import Control.Monad.Aff (Aff())
+import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Combinators ((.?))
@@ -25,7 +26,7 @@ import Data.Tuple (Tuple(..))
 import Model.Notebook.Port (VarMapValue())
 import Model.Path (AnyPath())
 import Model.Resource (Resource(), resourcePath, isFile, _name)
-import Network.HTTP.Affjax (Affjax(), AJAX(), get, affjax, defaultRequest)
+import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Optic.Core 
@@ -35,11 +36,11 @@ import qualified Data.Int as I
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
 
-query :: forall e. Resource -> SQL -> Aff (ajax :: AJAX | e) JArray
+query :: forall e. Resource -> SQL -> Aff (ajax :: AJAX, avar :: AVAR | e) JArray
 query res sql =
   if not $ isFile res
   then pure []
-  else extractJArray <$> (getResponse msg $ get uri)
+  else extractJArray <$> (getResponse msg $ retryGet uri)
   where
   msg = "error in query"
   uri = mkURI res sql
@@ -62,7 +63,7 @@ port res dest sql vars =
   if not (isFile dest)
   then pure empty
   else do
-    result <- affjax $ defaultRequest
+    result <- retry Nothing affjax $ defaultRequest
             { method = POST
             , headers = [RequestHeader "Destination" $ resourcePath dest]
             , url = queryUrl <> resourcePath res <> queryVars
@@ -92,11 +93,11 @@ port res dest sql vars =
     swap $ json .? "error"
     pure json
 
-sample' :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (ajax :: AJAX |e) JArray
+sample' :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (ajax :: AJAX, avar :: AVAR | e) JArray
 sample' res mbOffset mbLimit =
   if not $ isFile res
   then pure []
-  else extractJArray <$> (getResponse msg $ get uri)
+  else extractJArray <$> (getResponse msg $ retryGet uri)
   where
   msg = "error getting resource sample"
   uri = dataUrl <> resourcePath res <>
