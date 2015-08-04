@@ -1,10 +1,11 @@
 module Api.Fs where
 
 import Prelude
-import Api.Common (succeeded, getResponse)
+import Api.Common (succeeded, getResponse, retryGet, retryDelete, retryPost, retryPut, slamjax)
 import Control.Apply ((*>))
 import Control.Bind ((>=>))
 import Control.Monad.Aff (Aff())
+import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Core (Json())
@@ -23,7 +24,7 @@ import Data.Tuple (Tuple(..))
 import Model.Path
 import Model.Notebook.Cell
 import Model.Notebook.Port
-import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, get, put_, delete_, defaultRequest)
+import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
@@ -49,22 +50,22 @@ instance listingRespondable :: Respondable Listing where
   responseType = JSONResponse
   fromResponse = read
 
-children :: forall e. DirPath -> Aff (ajax :: AJAX | e) (Array R.Resource)
+children :: forall e. DirPath -> Aff (ajax :: AJAX, avar :: AVAR | e) (Array R.Resource)
 children dir = do
   cs <- children' $ printPath dir
   pure $ (R._root .~ (either (const rootDir) id (Right dir))) <$> cs
 
-children' :: forall e. String -> Aff (ajax :: AJAX | e) (Array R.Resource)
+children' :: forall e. String -> Aff (ajax :: AJAX, avar :: AVAR | e) (Array R.Resource)
 children' str = runListing <$> (getResponse msg $ listing str)
   where
   msg = "error getting resource children"
 
-listing :: forall e. String -> Affjax e Listing
-listing str = get (Config.metadataUrl <> str)
+listing :: forall e. String -> Affjax (avar :: AVAR | e) Listing
+listing str = retryGet $ Config.metadataUrl <> str
 
-makeFile :: forall e. AnyPath -> Maybe MimeType -> String -> Aff (ajax :: AJAX | e) Unit
+makeFile :: forall e. AnyPath -> Maybe MimeType -> String -> Aff (ajax :: AJAX, avar :: AVAR | e) Unit
 makeFile ap mime content =
-  getResponse msg $ go unit 
+  getResponse msg $ go unit
   where
   resource :: R.Resource
   resource = R.newFile # R._path .~ ap
@@ -82,16 +83,16 @@ makeFile ap mime content =
   isJson = maybe (Left "empty file") Right firstLine >>= jsonParser
 
   go :: _ -> Aff _ _
-  go _ = affjax $ defaultRequest
+  go _ = slamjax $ defaultRequest
     { method = PUT
     , headers = maybe [] (pure <<< ContentType) mime
     , content = Just content
     , url = Config.dataUrl <> R.resourcePath resource
     }
 
-loadNotebook :: forall e. R.Resource -> Aff (ajax :: AJAX | e) N.Notebook
+loadNotebook :: forall e. R.Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) N.Notebook
 loadNotebook res = do
-  val <- getResponse "error loading notebook" $ get (Config.dataUrl <> R.resourcePath res <> "/index")
+  val <- getResponse "error loading notebook" $ retryGet (Config.dataUrl <> R.resourcePath res <> "/index")
   case decodeJson (foreignToJson val) of
     Left err -> throwError (error err)
     Right notebook ->
@@ -111,7 +112,7 @@ foreign import foreignToJson :: Foreign -> Json
 -- | a `This` value the name will be used as a basis for generating a new
 -- | notebook. If the `name` value is a `Both` value the notebook will be saved
 -- | and then moved. If the name is a `That` the notebook will be saved.
-saveNotebook :: forall e. N.Notebook -> Aff (ajax :: AJAX | e) N.Notebook
+saveNotebook :: forall e. N.Notebook -> Aff (ajax :: AJAX, avar :: AVAR | e) N.Notebook
 saveNotebook notebook = case notebook ^. N._name of
   That name -> save name notebook *> pure notebook
   This name -> do
@@ -137,20 +138,20 @@ saveNotebook notebook = case notebook ^. N._name of
       else pure notebook
   where
 
-  getNewName' :: String -> Aff (ajax :: AJAX | e) String
+  getNewName' :: String -> Aff (ajax :: AJAX, avar :: AVAR | e) String
   getNewName' name =
     let baseName = name ++ "." ++ Config.notebookExtension
     in getNewName (notebook ^. N._path) baseName
 
-  save :: String -> N.Notebook -> Aff (ajax :: AJAX | e) Unit
+  save :: String -> N.Notebook -> Aff (ajax :: AJAX, avar :: AVAR | e) Unit
   save name notebook =
     let notebookPath = (notebook ^. N._path) </> dir name <./> Config.notebookExtension </> file "index"
-    in getResponse "error while saving notebook" $ put_ (Config.dataUrl <> printPath notebookPath) notebook
+    in getResponse "error while saving notebook" $ retryPut (Config.dataUrl <> printPath notebookPath) notebook
 
 -- | Generates a new resource name based on a directory path and a name for the
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
-getNewName :: forall e. DirPath -> String -> Aff (ajax :: AJAX | e) String
+getNewName :: forall e. DirPath -> String -> Aff (ajax :: AJAX, avar :: AVAR | e) String
 getNewName parent name = do
   items <- children' (printPath parent)
   pure if exists' name items then getNewName' items 1 else name
@@ -163,40 +164,40 @@ getNewName parent name = do
       let newName = S.joinWith "." $ (body <> " " <> show i):suffixes
       pure if exists' newName items
            then getNewName' items (i + 1)
-           else newName 
+           else newName
 
-exists :: forall e. String -> DirPath -> Aff (ajax :: AJAX | e) Boolean
+exists :: forall e. String -> DirPath -> Aff (ajax :: AJAX, avar :: AVAR | e) Boolean
 exists name parent = exists' name <$> children' (printPath parent)
 
 exists' :: forall e. String -> Array R.Resource -> Boolean
-exists' name items = isJust $ findIndex (\r -> r ^. R._name == name) items 
+exists' name items = isJust $ findIndex (\r -> r ^. R._name == name) items
 
-forceDelete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) Unit 
-forceDelete resource = 
-  getResponse msg $ delete_ path
+forceDelete :: forall e. R.Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) Unit
+forceDelete resource =
+  getResponse msg $ retryDelete path
   where
   msg :: String
   msg = "can not delete"
 
   path = (if R.isDatabase resource then Config.mountUrl else Config.dataUrl)
          <> R.resourcePath resource
-         
-delete :: forall e. R.Resource -> Aff (ajax :: AJAX | e) (Maybe R.Resource)
+
+delete :: forall e. R.Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) (Maybe R.Resource)
 delete resource =
   if not (R.isDatabase resource || alreadyInTrash resource)
-  then 
+  then
     moveToTrash resource
   else do
     forceDelete resource
     pure Nothing
   where
-  msg :: String 
+  msg :: String
   msg = "can not delete"
 
   moveToTrash :: R.Resource -> Aff _ (Maybe R.Resource)
   moveToTrash res = do
     let d = (res ^. R._root) </> dir Config.trashFolder
-        path = (res # R._root .~ d) ^. R._path 
+        path = (res # R._root .~ d) ^. R._path
     name <- getNewName d (res ^. R._name)
     move res (path # R._nameAnyPath .~ name)
     pure (Just $ R.Directory d)
@@ -217,15 +218,15 @@ delete resource =
   go (Tuple d name) =
     case name of
       Right _ -> false
-      Left n -> if n == DirName Config.trashFolder then true else alreadyInTrash' d 
-    
-  
-move :: forall a e. R.Resource -> AnyPath -> Aff (ajax :: AJAX | e) AnyPath
+      Left n -> if n == DirName Config.trashFolder then true else alreadyInTrash' d
+
+
+move :: forall a e. R.Resource -> AnyPath -> Aff (ajax :: AJAX, avar :: AVAR | e) AnyPath
 move src tgt = do
   let url = if R.isDatabase src
             then Config.mountUrl
             else Config.dataUrl
-  result <- affjax $ defaultRequest
+  result <- slamjax $ defaultRequest
     { method = MOVE
     , headers = [RequestHeader "Destination" $ either printPath printPath tgt]
     , url = url <> R.resourcePath src
@@ -234,9 +235,9 @@ move src tgt = do
      then pure tgt
      else throwError (error result.response)
 
-mountInfo :: forall e. R.Resource -> Aff (ajax :: AJAX | e) String
+mountInfo :: forall e. R.Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) String
 mountInfo res = do
-  result <- get (Config.mountUrl <> R.resourcePath res)
+  result <- retryGet (Config.mountUrl <> R.resourcePath res)
   if succeeded result.status
      then case parse result.response of
        Left err -> throwError $ error (show err)
@@ -246,9 +247,9 @@ mountInfo res = do
   parse :: String -> F String
   parse = parseJSON >=> prop "mongodb" >=> readProp "connectionUri"
 
-saveMount :: forall e. R.Resource -> String -> Aff (ajax :: AJAX | e) Unit
+saveMount :: forall e. R.Resource -> String -> Aff (ajax :: AJAX, avar :: AVAR | e) Unit
 saveMount res uri = do
-  result <- affjax $ defaultRequest
+  result <- slamjax $ defaultRequest
     { method = PUT
     , headers = [ContentType applicationJSON]
     , content = Just $ stringify { mongodb: { connectionUri: uri } }
