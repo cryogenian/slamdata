@@ -17,8 +17,8 @@
   "dependencies": {
     "purescript-base": "~0.1.0",
     "purescript-halogen": "30e8b2c7174a1eeda73f67cc42c739ca24a1e218",
-    "purescript-markdown": "~1.7.1",
-    "purescript-markdown-halogen": "~0.2.0",
+    "purescript-markdown": "^1.8.0",
+    "purescript-markdown-halogen": "^0.3.0",
     "purescript-halogen-bootstrap": "~0.2.0",
     "purescript-search": "~0.3.0",
     "purescript-routing": "~0.1.0",
