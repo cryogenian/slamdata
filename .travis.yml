@@ -3,14 +3,12 @@ sudo: false
 node_js:
   - 0.10
 install:
-  - npm install bower gulp phantomjs -g
+  - npm install bower gulp -g
   - npm install
-  - bower install 
+  - bower install
 script:
-  - gulp less
-  - gulp bundle
-  - gulp test-make
-  - node test/main.js -b phantomjs
+  - gulp less bundle
+  - npm test
 before_deploy:
 - cp -r public slamdata
 - tar cjf slamdata.tar.bz2 slamdata

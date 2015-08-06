@@ -3,6 +3,7 @@ module Test.Selenium where
 import Prelude
 import DOM (DOM())
 import Control.Bind ((>=>))
+import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log, CONSOLE())
 import Control.Monad.Eff.Exception (error)
@@ -41,6 +42,13 @@ import qualified Config as SDCfg
 import Test.Selenium.Monad
 import Test.Selenium.Log
 
+foreign import data MODULE :: !
+
+foreign import makePublic :: forall a eff. String -> a -> Eff (module :: MODULE | eff) Unit
+
+main = do
+  makePublic "test" test
+
 home :: Check Unit
 home = do
   getConfig >>= goTo <<< _.slamdataUrl
@@ -55,12 +63,12 @@ checkElements = do
   traverseFn :: Tuple String String -> Check Unit
   traverseFn (Tuple key selector) = do
     driver <- getDriver
-    css selector >>= element >>= checkMsg key 
+    css selector >>= element >>= checkMsg key
 
-checkMsg :: String -> Maybe _ -> Check Unit 
-checkMsg msg Nothing = 
+checkMsg :: String -> Maybe _ -> Check Unit
+checkMsg msg Nothing =
   errorMsg $ msg <> " not found"
-checkMsg _ _ = pure unit 
+checkMsg _ _ = pure unit
 
 findItem :: String -> Check (Maybe Element)
 findItem name = do
@@ -83,7 +91,7 @@ findItem name = do
 toolbarButton :: String -> Check (Maybe Element)
 toolbarButton key = do
   config <- getConfig
-  css config.toolbar.main >>= element >>= maybe noToolbar \toolbar -> 
+  css config.toolbar.main >>= element >>= maybe noToolbar \toolbar ->
     checkLocator (locator key) >>= child toolbar
   where
   noToolbar = errorMsg "no toolbar"
@@ -94,7 +102,7 @@ toolbarButton key = do
       children el >>=
       traverse traverseFn >>=
       foldl foldFn Nothing >>>
-      maybe (throwError $ error "there is no button") pure 
+      maybe (throwError $ error "there is no button") pure
   traverseFn btn = do
     ch <- css key >>= child btn
     pure $ Tuple btn (isJust ch)
@@ -106,20 +114,20 @@ toolbarButton key = do
 findTestDb :: Check (Maybe Element)
 findTestDb = do
   config <- getConfig
-  findItem config.database.name 
+  findItem config.database.name
 
 findUploaded :: Check (Maybe Element)
 findUploaded = do
   config <- getConfig
   findItem config.move.name
-  
+
 
 checkMountedDatabase :: Check Unit
 checkMountedDatabase = do
   sectionMsg "CHECK TEST DATABASE IS MOUNTED"
-  home 
+  home
   mbTestDb <- findTestDb
-  maybe error success mbTestDb 
+  maybe error success mbTestDb
   where
   error = errorMsg "There is no test database"
   success _ = successMsg "test database found"
@@ -128,7 +136,7 @@ checkItemToolbar :: Check Unit
 checkItemToolbar = do
   sectionMsg "CHECK ITEM TOOLBAR"
   home
-  config <- getConfig 
+  config <- getConfig
   css config.item.main >>= element >>= maybe errParent goParent
   where
   errParent = errorMsg "there is no list-group-item"
@@ -161,7 +169,7 @@ checkItemToolbar = do
 checkURL :: Check Unit
 checkURL = do
   sectionMsg "CHECKING URL"
-  home 
+  home
   url <- getURL
   either errHash goHash $ matchHash routing $ dropHash url
   where
@@ -171,7 +179,7 @@ checkURL = do
     if searchPath search == Just "/"
       then successMsg "search path is correct"
       else errorMsg "incorrect search path"
-  goHash _ = 
+  goHash _ =
     errorMsg "need additional redirects"
 
 
@@ -233,8 +241,8 @@ breadcrumbs = do
              successMsg "breadcrumbs are updated"
              as <- anchors
              mbEl <- foldl foldMFn (pure Nothing) as
-             maybe errHome goHome mbEl 
-      
+             maybe errHome goHome mbEl
+
   where
   errHome = errorMsg "There is no Home breadcrumb: since you have already checked that it exists, there is probably error in test"
   goHome el = do
@@ -249,10 +257,10 @@ breadcrumbs = do
     where
     err = errorMsg "There is no breadcrumbs"
     go bs =
-      getConfig >>= \config -> css config.breadcrumbs.text >>= children bs 
+      getConfig >>= \config -> css config.breadcrumbs.text >>= children bs
 
   bTexts :: Check (List String)
-  bTexts = anchors >>= traverse innerHtml 
+  bTexts = anchors >>= traverse innerHtml
 
   foldMFn :: Check (Maybe Element) -> Element -> Check (Maybe Element)
   foldMFn cMe el = cMe >>= \me ->
@@ -282,10 +290,10 @@ sorting = do
   url <- getURL
   either errHash (goHash texts) $ matchHash routing $ dropHash url
   where
-  
+
   errHash _ = errorMsg "Incorrect hash"
   goHash texts (Salted sort search salt) = do
-    config <- getConfig 
+    config <- getConfig
     css config.sort.button >>= element >>=
       maybe errNoSortButton (goSortButton texts sort)
   goHash _ _ = errorMsg "need addtional redirects in sorting"
@@ -298,8 +306,8 @@ sorting = do
     if reverse nTexts == texts
       then successMsg "OK, sort works"
       else errorMsg "Sorting doesn't work"
-    
-    
+
+
 fileUpload :: Check Unit
 fileUpload = do
   sectionMsg "FILE UPLOAD"
@@ -328,9 +336,9 @@ fileUpload = do
     if S.isEmpty $ S.difference items oldItems
       then errorMsg "items has not changed after upload"
       else successMsg "new items added after upload"
-    
-    
-    
+
+
+
   inNotebook = do
     url <- getURL
     rgx <- nbRegex
@@ -341,7 +349,7 @@ fileUpload = do
     config <- getConfig
     pure $ R.regex ("notebook.html#/explore/" <>
                     config.database.name) R.noFlags
-    
+
 
 
 moveDelete :: Check Unit
@@ -370,7 +378,7 @@ moveDelete = do
     if vis
       then pure true
       else later 1000 modalShown
-           
+
   errNoInput = errorMsg "no rename field"
   goInput el = do
     config <- getConfig
@@ -389,7 +397,7 @@ moveDelete = do
     actions do
       leftClick button
     waitCheck (later 3000 $ pure false) 5000
-    findItem config.move.other >>= maybe errRename goRename 
+    findItem config.move.other >>= maybe errRename goRename
 
   errRename = errorMsg "not renamed"
   goRename el = do
@@ -428,7 +436,7 @@ moveDelete = do
     foldFn (Just el) _ = Just el
     foldFn Nothing (Tuple el Nothing) = Nothing
     foldFn Nothing (Tuple el (Just _)) = Just el
-    
+
 
 trashCheck :: Check Unit
 trashCheck = do
@@ -441,10 +449,10 @@ trashCheck = do
     config <- getConfig
     successMsg "Trash is hidden"
     toolbarButton config.toolbar.showHide >>= maybe errShowHide goShowHide
-    
+
   where
   isTrashVisible = findItem trashKey >>= maybe (pure false) visible
-  
+
   trashKey = R.replace (R.regex "\\." R.noFlags{global=true}) "\\." SDCfg.trashFolder
 
   errShowHide = errorMsg "No show/hide button"
@@ -515,7 +523,7 @@ createNotebook = do
     case e of
       Left _ -> errorMsg "no redirect to notebook"
       Right _ -> do
-        successMsg "ok, notebook created" 
+        successMsg "ok, notebook created"
         back
         loaded
         findItem SDCfg.newNotebookName >>= maybe errNoNotebook goNotebook
@@ -527,7 +535,7 @@ createNotebook = do
     if R.test (R.regex "notebook.html" R.noFlags) url
       then pure true
       else later 1000 notebookCheck
-    
+
 loaded :: Check Unit
 loaded = do
   driver <- getDriver
@@ -550,14 +558,14 @@ title = do
     then successMsg "Title contains version"
     else errorMsg "Title doesn't contain version"
 
-test :: Config -> A.Aff _ Unit  
-test config = 
+test :: Config -> A.Aff _ Unit
+test config =
   maybe error go $ str2browser config.selenium.browser
   where
   error = void $ AC.log $ red "Incorrect browser"
   go br = do
     AC.log $ yellow $ config.selenium.browser <> " setted as browser for tests\n\n"
-    driver <- build $ browser br 
+    driver <- build $ browser br
     res <- A.attempt $ flip runReaderT {config: config, driver: driver} do
       home
       checkMountedDatabase
@@ -574,10 +582,10 @@ test config =
       createNotebook
     case res of
       Left e -> do
-        quit driver 
-        throwError e
-      Right _ -> 
         quit driver
-  
-dropHash :: String -> String 
+        throwError e
+      Right _ ->
+        quit driver
+
+dropHash :: String -> String
 dropHash h = R.replace (R.regex "^[^#]*#" R.noFlags) "" h
