@@ -1,6 +1,7 @@
 module Controller.Common where
 
 import Prelude
+import Api.Common (RetryEffects())
 import Api.Fs (children)
 import Control.Monad.Aff (attempt)
 import Control.Monad.Aff.Class (liftAff)
@@ -14,7 +15,7 @@ import Model.Resource
 import Model.Path (DirPath())
 import Network.HTTP.Affjax (AJAX())
 
-getChildren :: forall i e. (Resource -> Boolean) -> (Array Resource -> Event (ajax :: AJAX | e) i) -> DirPath -> Event (ajax :: AJAX | e) i
+getChildren :: forall i e. (Resource -> Boolean) -> (Array Resource -> Event (RetryEffects (ajax :: AJAX | e)) i) -> DirPath -> Event (RetryEffects (ajax :: AJAX | e)) i
 getChildren pred f r = do
   ei <- liftAff $ attempt $ children r
   case ei of
@@ -24,8 +25,8 @@ getChildren pred f r = do
       f items' `andThen` \_ -> fold (getChildren pred f <$> parents)
     _ -> empty
 
-getDirectories :: forall i e. (Array Resource -> Event (ajax :: AJAX | e) i) -> DirPath -> Event (ajax :: AJAX | e) i
+getDirectories :: forall i e. (Array Resource -> Event (RetryEffects (ajax :: AJAX | e)) i) -> DirPath -> Event (RetryEffects (ajax :: AJAX | e)) i
 getDirectories = getChildren (\x -> isDirectory x || isDatabase x)
 
-getFiles :: forall i e. (Array Resource -> Event (ajax :: AJAX | e) i) -> DirPath -> Event (ajax :: AJAX | e) i
+getFiles :: forall i e. (Array Resource -> Event (RetryEffects (ajax :: AJAX | e)) i) -> DirPath -> Event (RetryEffects (ajax :: AJAX | e)) i
 getFiles = getChildren isFile
