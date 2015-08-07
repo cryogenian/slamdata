@@ -1,7 +1,7 @@
 module Api.Query (query, port, sample, SQL(), fields, count, all, templated) where
 
 import Prelude
-import Api.Common (getResponse, succeeded, retryGet, slamjax)
+import Api.Common (RetryEffects(), getResponse, succeeded, retryGet, slamjax)
 import Config (queryUrl, dataUrl)
 import Control.Apply (lift2)
 import Control.Bind ((<=<), (>=>))
@@ -29,14 +29,14 @@ import Model.Resource (Resource(), resourcePath, isFile, _name)
 import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Optic.Core 
+import Optic.Core
 import qualified Data.Int as I
 
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
 
-query :: forall e. Resource -> SQL -> Aff (ajax :: AJAX, avar :: AVAR | e) JArray
+query :: forall e. Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
 query res sql =
   if not $ isFile res
   then pure []
@@ -45,7 +45,7 @@ query res sql =
   msg = "error in query"
   uri = mkURI res sql
 
-count :: forall e. Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) Int
+count :: forall e. Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
 count res = do
   fromMaybe 0 <<< readTotal <$> query res sql
   where
@@ -58,7 +58,7 @@ count res = do
 
 port :: forall e. Resource -> Resource -> SQL ->
         StrMap VarMapValue ->
-        Aff (ajax :: AJAX, avar :: AVAR | e) JObject
+        Aff (RetryEffects (ajax :: AJAX | e)) JObject
 port res dest sql vars =
   if not (isFile dest)
   then pure empty
@@ -84,7 +84,7 @@ port res dest sql vars =
   pair :: Tuple String VarMapValue -> String
   pair (Tuple a b) = a <> "=" <> b
 
-  makeQueryVars { head = h, tail = t } = 
+  makeQueryVars { head = h, tail = t } =
     foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
 
   content :: String -> Either String JObject
@@ -93,7 +93,7 @@ port res dest sql vars =
     swap $ json .? "error"
     pure json
 
-sample' :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (ajax :: AJAX, avar :: AVAR | e) JArray
+sample' :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
 sample' res mbOffset mbLimit =
   if not $ isFile res
   then pure []
@@ -104,13 +104,13 @@ sample' res mbOffset mbLimit =
         (maybe "" (("?offset=" <>) <<< show) mbOffset) <>
         (maybe "" (("&limit=" <>) <<< show ) mbLimit)
 
-sample :: forall e. Resource -> Int -> Int -> Aff (ajax :: AJAX, avar :: AVAR | e) JArray
+sample :: forall e. Resource -> Int -> Int -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
 sample res offset limit = sample' res (Just offset) (Just limit)
 
-all :: forall e. Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) JArray
+all :: forall e. Resource -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
 all res = sample' res Nothing Nothing
 
-fields :: forall e. Resource -> Aff (ajax :: AJAX, avar :: AVAR | e) (Array String)
+fields :: forall e. Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Array String)
 fields res = do
   jarr <- sample res 0 100
   case jarr of
