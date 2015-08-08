@@ -2,6 +2,7 @@ module View.Common where
 
 import Prelude
 import Data.Char (fromCharCode)
+import Data.Maybe (Maybe(), maybe)
 import Data.String (fromChar)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -29,6 +30,10 @@ genericContainer wrapperClasses contentClasses nodes =
           nodes
         ]
   ]
+
+version :: forall i. Maybe String -> H.HTML i
+version ms = H.div [ A.class_ Vc.version ] [ H.text s ]
+  where s = maybe "" ("Version " ++) ms
 
 content :: forall i. Array (H.HTML i) -> H.HTML i
 content = H.div [ A.class_ Vc.content ]

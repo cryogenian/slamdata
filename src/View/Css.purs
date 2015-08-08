@@ -2,6 +2,9 @@ module View.Css where
 
 import Halogen.HTML.Attributes (className, ClassName())
 
+version :: ClassName
+version = className "version"
+
 selected :: ClassName
 selected = className "selected"
 

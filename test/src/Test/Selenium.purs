@@ -540,6 +540,7 @@ loaded = do
       then later 1000 $ checkEls
       else pure true
 
+-- TODO: Test the version in the nav bar
 title :: Check Unit
 title = do
   driver <- getDriver
