@@ -547,7 +547,7 @@ title = do
   config <- getConfig
   windowTitle <- lift $ getTitle driver
   if Str.contains config.version windowTitle
-    then successMsg "Title contains verison"
+    then successMsg "Title contains version"
     else errorMsg "Title doesn't contain version"
 
 test :: Config -> A.Aff _ Unit  
