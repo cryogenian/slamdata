@@ -67,5 +67,6 @@
         "main": ".toolbar-menu",
         "newFolder": "*[title='create folder']",
         "newNotebook": "*[title='create notebook']"
-    }
+    },
+    "version": "2.1.5"
 }

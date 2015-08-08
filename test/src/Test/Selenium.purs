@@ -467,6 +467,7 @@ trashCheck = do
   errNoDeleted = errorMsg "Can't find deleted item"
   goDeleted _ = successMsg "Deleted item found"
 
+
 createFolder :: Check Unit
 createFolder = do
   sectionMsg "NEW FOLDER CHECK"
@@ -539,6 +540,14 @@ loaded = do
       then later 1000 $ checkEls
       else pure true
 
+title :: Check Unit
+title = do
+  driver <- getDriver
+  config <- getConfig
+  windowTitle <- lift $ getTitle driver
+  if Str.contains config.version windowTitle
+    then successMsg "Title contains verison"
+    else errorMsg "Title doesn't contain version"
 
 test :: Config -> A.Aff _ Unit  
 test config = 
@@ -559,6 +568,7 @@ test config =
       fileUpload
       moveDelete
       trashCheck
+      title
       createFolder
       createNotebook
     case res of

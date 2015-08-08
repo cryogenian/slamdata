@@ -23,6 +23,9 @@ dataUrl = serviceBaseUrl <> "data/fs/"
 queryUrl :: String
 queryUrl = serviceBaseUrl <> "query/fs/"
 
+serverInfoUrl :: String
+serverInfoUrl = serviceBaseUrl <> "server/info"
+
 browserUrl :: String
 browserUrl = baseUrl <> "index.html"
 

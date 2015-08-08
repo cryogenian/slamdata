@@ -3,6 +3,7 @@ module Entries.Notebook where
 import Prelude
 import Ace.Types (ACE())
 import App.Notebook (app)
+import Control.Monad.Aff (launchAff)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Ref (modifyRef, newRef)
 import Control.Timer (timeout)
@@ -16,6 +17,7 @@ import Data.String (indexOf)
 import Data.Tuple (Tuple(..), snd)
 import Driver.ZClipboard (initZClipboard)
 import EffectTypes (NotebookAppEff())
+import Entries.Common (setSlamDataTitle)
 import Halogen (runUIWith)
 import Input.Notebook (Input(..), updateState)
 import Model.Notebook (_platform, initialState)
@@ -31,6 +33,7 @@ import qualified Driver.Notebook.Notify as N
 
 main :: Eff (NotebookAppEff (ace :: ACE)) Unit
 main = onLoad $ void $ do
+  launchAff setSlamDataTitle
   stateKnot <- newRef initialState
   aceKnot <- newRef M.empty
   t <- timeout 0 (pure unit)
