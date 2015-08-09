@@ -3,7 +3,9 @@ module Entries.Notebook where
 import Prelude
 import Ace.Types (ACE())
 import App.Notebook (app)
+import Control.Monad.Aff (launchAff)
 import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (modifyRef, newRef)
 import Control.Timer (timeout)
 import Data.DOM.Simple.Navigator (platform)
@@ -16,10 +18,11 @@ import Data.String (indexOf)
 import Data.Tuple (Tuple(..), snd)
 import Driver.ZClipboard (initZClipboard)
 import EffectTypes (NotebookAppEff())
+import Entries.Common (setSlamDataTitle, getVersion)
 import Halogen (runUIWith)
 import Input.Notebook (Input(..), updateState)
-import Model.Notebook (_platform, initialState)
-import Optic.Setter ((.~))
+import Model.Notebook (_platform, _version, initialState)
+import Optic.Core
 import Utils (onLoad, mountUI)
 
 import qualified Driver.Notebook.Ace as A
@@ -29,7 +32,7 @@ import qualified Driver.Notebook as D
 import qualified Driver.Notebook.Cell as DC
 import qualified Driver.Notebook.Notify as N
 
-main :: Eff (NotebookAppEff (ace :: ACE)) Unit
+main :: Eff _ Unit
 main = onLoad $ void $ do
   stateKnot <- newRef initialState
   aceKnot <- newRef M.empty
@@ -50,6 +53,10 @@ main = onLoad $ void $ do
   D.tickDriver driver
   D.driver stateKnot driver
   D.handleShortcuts stateKnot driver
+  launchAff do
+    version <- getVersion
+    liftEff $ setSlamDataTitle version
+    liftEff $ driver $ WithState (_version .~ version)
   where
   postRender sKnot aKnot eKnot autosaveTimer notifyKnot input node driver = do
     modifyRef sKnot (flip updateState input)

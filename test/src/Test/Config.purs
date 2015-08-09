@@ -38,4 +38,5 @@ type Config =
                , newFolder :: String
                , newNotebook :: String
                } 
+  , version :: String
   }

@@ -12,6 +12,7 @@ module Model.File
   , _salt
   , _isMount
   , _showHiddenFiles
+  , _version
   , isSearching
   ) where
 
@@ -42,6 +43,7 @@ type StateRec =
   , salt :: Salt
   , isMount :: Boolean
   , showHiddenFiles :: Boolean
+  , version :: Maybe String
   }
 
 initialState :: State
@@ -55,6 +57,7 @@ initialState = State
   , salt: Salt ""
   , isMount: false
   , showHiddenFiles: false
+  , version: Nothing
   }
 
 _State :: LensP State StateRec
@@ -86,6 +89,9 @@ _isMount = _State .. lens _.isMount _{isMount = _}
 
 _showHiddenFiles :: LensP State Boolean
 _showHiddenFiles = _State .. lens _.showHiddenFiles _{showHiddenFiles = _}
+
+_version :: LensP State (Maybe String)
+_version = _State .. lens _.version _{version = _}
 
 isSearching :: State -> Boolean
 isSearching state = isJust $ theseRight $ state ^. _search .. _value

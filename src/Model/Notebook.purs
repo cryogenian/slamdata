@@ -22,8 +22,9 @@ type State =
   , platform :: Platform
   , dialog :: Maybe Dialog
   , requesting :: Array CellId
-  , addingCell :: Boolean 
+  , addingCell :: Boolean
   , refreshing :: Array CellId
+  , version :: Maybe String
   }
 
 _dropdowns :: LensP State (Array DropdownItem)
@@ -57,11 +58,13 @@ _requesting :: LensP State (Array CellId)
 _requesting = lens _.requesting _{requesting = _}
 
 _addingCell :: LensP State Boolean
-_addingCell = lens _.addingCell _{addingCell = _} 
+_addingCell = lens _.addingCell _{addingCell = _}
 
 _refreshing :: LensP State (Array CellId)
 _refreshing = lens _.refreshing _{refreshing = _}
 
+_version :: LensP State (Maybe String)
+_version = lens _.version _{version = _}
 
 initialState :: State
 initialState =
@@ -77,4 +80,5 @@ initialState =
   , requesting: []
   , addingCell: false
   , refreshing: []
+  , version: Nothing
   }

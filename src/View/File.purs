@@ -5,14 +5,14 @@ import Controller.File.Common (browseURL)
 import Css.Geometry (marginLeft)
 import Css.Size
 import Css.String
+import Data.Maybe (maybe)
 import Data.These (theseRight)
 import Data.Tuple (Tuple(..))
 import Model.File
 import Model.File.Search (_value)
 import Model.File.Sort (Sort(..), notSort)
 import Optic.Getter ((^.))
-import View.Common (glyph)
-import View.Common (navbar, icon, logo, content, row)
+import View.Common (version, navbar, icon, logo, content, row)
 import View.File.Breadcrumb (breadcrumbs)
 import View.File.Common (HTML())
 import View.File.Item (items)
@@ -37,7 +37,8 @@ fileView state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
                           [ icon B.glyphiconFolderOpen Config.homeHash
                           , logo
-                          , search state ]
+                          , search state
+                          , version (state ^. _version) ]
                   ]
          , content [ H.div [ A.class_ B.clearfix ]
                            [ breadcrumbs state

@@ -57,12 +57,13 @@ notebookView state =
 
 navigation :: forall e. State -> Array (HTML e)
 navigation state =
-  if (not state.loaded) || (not state.editable) 
+  if (not state.loaded) || (not state.editable)
   then [ ]
   else [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
-                           [ icon B.glyphiconBook notebookHref
-                           , logo
-                           , name state ]
+                        [ icon B.glyphiconBook notebookHref
+                        , logo
+                        , name state
+                        , version state.version ]
                    , H.ul [ A.classes [Vc.headerMenu] ]
                           $ zipWith (li state) (range 0 (length state.dropdowns)) state.dropdowns
                    ]

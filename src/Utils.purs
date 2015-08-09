@@ -4,7 +4,7 @@ import Prelude
 
 import Control.Apply ((*>))
 import Control.Monad.Eff (Eff())
-import Data.DOM.Simple.Document (body)
+import Data.DOM.Simple.Document (body, setTitle)
 import Data.DOM.Simple.Element (appendChild)
 import Data.DOM.Simple.Events (addUIEventListener, UIEventType(..))
 import Data.DOM.Simple.Types (HTMLElement(), DOMEvent(), DOMLocation())
@@ -38,6 +38,8 @@ locationString = W.location W.globalWindow >>= locationParent
 setLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
 setLocation url = W.location W.globalWindow >>= W.setLocation url
 
+setDocumentTitle :: forall e. String -> Eff (dom :: DOM | e) Unit
+setDocumentTitle title = W.document W.globalWindow >>= setTitle title
 
 foreign import newTab :: forall e. String -> Eff (dom :: DOM | e) Unit 
 foreign import mailOpen :: forall e. String -> Eff (dom :: DOM | e) Unit
