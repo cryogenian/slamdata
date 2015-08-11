@@ -1,13 +1,15 @@
 {
-    "connectionString": "mongodb://localhost:27017/",
-    "restoreCmd": "mongorestore -d testDb --drop test/dump/demo",
+    "mongodb": {
+        "host": "localhost",
+        "port": 63174
+    },
+    "restoreCmd": "mongorestore -d testDb --port 63174 --drop ../../test/dump/demo",
     "selenium": {
         "jar": "test/jars/selenium.jar",
-        "main": "Test.Selenium",
         "browser": "firefox",
         "waitTime": 6000
     },
-    "slamdataUrl": "http://local.slamdata.com",
+    "slamdataUrl": "http://localhost:63175",
     "slamengine": {
         "jar": "test/jars/slamengine.jar",
         "config": "test/slamengine-config.json"

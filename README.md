@@ -43,10 +43,10 @@ npm install
 #### Build
 
 ```
-gulp make
+gulp less bundle
 ```
 
-After `gulp make` finishes the `public` directory will contain the complete SlamData front-end app.
+After `gulp` finishes the `public` directory will contain the complete SlamData front-end app.
 
 For working on SlamData, the task `gulp dev` can be run instead. This will run an incremental build with a watch process so any changes to the `.less` or `.purs` source files will trigger a rebuild.
 
