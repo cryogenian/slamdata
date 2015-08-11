@@ -15,7 +15,7 @@ import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Either (Either(..), either, isLeft)
-import Data.Foldable (traverse_, foldl, elem, find)
+import Data.Foldable (foldl, elem, find)
 import Data.Traversable (traverse)
 import Data.List (List(), reverse)
 import Text.Chalk
@@ -39,6 +39,7 @@ import qualified Data.Char as Ch
 import qualified Data.StrMap as SM
 import qualified Data.Set as S
 import qualified Config as SDCfg
+import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
 
@@ -53,22 +54,6 @@ home :: Check Unit
 home = do
   getConfig >>= goTo <<< _.slamdataUrl
   loaded
-
-checkElements :: Check Unit
-checkElements = do
-  config <- getConfig
-  traverse_ traverseFn $ SM.toList config.locators
-  successMsg "all elements here, page is loaded"
-  where
-  traverseFn :: Tuple String String -> Check Unit
-  traverseFn (Tuple key selector) = do
-    driver <- getDriver
-    css selector >>= element >>= checkMsg key
-
-checkMsg :: String -> Maybe _ -> Check Unit
-checkMsg msg Nothing =
-  errorMsg $ msg <> " not found"
-checkMsg _ _ = pure unit
 
 findItem :: String -> Check (Maybe Element)
 findItem name = do
@@ -449,22 +434,6 @@ moveDelete = do
     foldFn Nothing (Tuple el Nothing) = Nothing
     foldFn Nothing (Tuple el (Just _)) = Just el
 
-assertBoolean :: String -> Boolean -> Check Unit
-assertBoolean _ true = pure unit
-assertBoolean err false = errorMsg err
-
-getElementByCss :: String -> String -> Check Element
-getElementByCss cls errorMessage =
-  css cls
-    >>= element
-    >>= maybe (errorMsg errorMessage) pure
-
-getHashFromURL :: String -> Check Routes
-getHashFromURL =
-  dropHash
-    >>> matchHash routing
-    >>> either (const $ errorMsg "incorrect hash") pure
-
 trashCheck :: Check Unit
 trashCheck = do
   sectionMsg "TRASH CHECK"
@@ -576,18 +545,6 @@ createNotebook = do
       then pure true
       else later 1000 notebookCheck
 
-loaded :: Check Unit
-loaded = do
-  driver <- getDriver
-  config <- getConfig
-  waitCheck checkEls config.selenium.waitTime
-  where
-  checkEls = do
-    res <- attempt $ checkElements
-    if isLeft res
-      then later 1000 $ checkEls
-      else pure true
-
 -- TODO: Test the version in the nav bar
 title :: Check Unit
 title = do
@@ -627,5 +584,3 @@ test config =
       Right _ ->
         quit driver
 
-dropHash :: String -> String
-dropHash h = R.replace (R.regex "^[^#]*#" R.noFlags) "" h
