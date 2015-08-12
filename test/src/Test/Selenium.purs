@@ -117,6 +117,43 @@ checkMountedDatabase = do
   error = errorMsg "There is no test database"
   success _ = successMsg "test database found"
 
+checkConfigureMount :: Check Unit
+checkConfigureMount = do
+  sectionMsg "CHECK CONFIGURE MOUNT DIALOG"
+  home
+
+  button <- getConfigureMountButton
+  successMsg "got configure-mount button"
+  actions $ leftClick button
+
+  config <- getConfig
+  waitCheck modalShown config.selenium.waitTime
+  successMsg "configure-mount dialog shown"
+
+  -- make sure a no-op edit doesn't result in a validation error
+  usernameField <- getElementByCss config.configureMount.usernameField "no usernameField field"
+  actions do
+    leftClick usernameField
+    keyDown commandKey
+    sendKeys "a"
+    keyUp commandKey
+    sendKeys "hello"
+    keyDown commandKey
+    sendKeys "z"
+    keyUp commandKey
+
+  getElementByCss config.configureMount.saveButton "no save button"
+    >>= enabled
+    >>= assertBoolean "save button should be enabled"
+
+  where
+  getConfigureMountButton :: Check Element
+  getConfigureMountButton = do
+    config <- getConfig
+    toolbarButton config.toolbar.configureMount
+      >>= maybe (errorMsg "No configure mount button") pure
+
+
 getItemToolbar :: Check { listGroupItem :: Element, itemToolbar :: Element}
 getItemToolbar = do
   config <- getConfig
@@ -407,15 +444,6 @@ moveDelete = do
     waitCheck (checker $ visible icon) config.selenium.waitTime
     actions $ leftClick icon
 
-  -- | Is a modal dialog shown?
-  modalShown :: Check Boolean
-  modalShown = do
-    config <- getConfig
-    vis <- css config.modal >>= element >>= maybe (pure false) visible
-    if vis
-      then pure true
-      else later 1000 modalShown
-
   moveLoc :: Element -> Check Element
   moveLoc el = getConfig >>= \config -> buttonLoc config.move.markMove el
 
@@ -566,6 +594,7 @@ test config =
     res <- A.attempt $ flip runReaderT {config: config, driver: driver} do
       home
       checkMountedDatabase
+      checkConfigureMount
       checkItemToolbar
       checkURL
       goDown

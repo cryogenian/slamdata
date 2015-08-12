@@ -6,7 +6,8 @@ module Input.File.Mount
 import Prelude
 import Data.Array (filter, replicate, null)
 import Data.Char (fromCharCode)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
+import Data.Tuple (Tuple(..))
 import Data.Foldable (any)
 import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust, isNothing)
 import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
@@ -27,7 +28,7 @@ inputMount (ValueChanged fn) (MountDialog d) =
       hosts = (filter (not <<< isEmptyHost) d'.hosts)
       props = (filter (not <<< isEmptyProp) d'.props)
       connectionURI = mkURI d'.path d'.user d'.password hosts props
-      validation = validate d'.name hosts
+      validation = validate d' hosts
   in MountDialog d' { connectionURI = connectionURI
                     , hosts = if null hosts
                               then [initialMountHost, initialMountHost]
@@ -53,7 +54,7 @@ inputMount (UpdateConnectionURI uri) (MountDialog d) =
              }
       else
         let hosts = hostsFromURI uri'
-            validation = validate d.name hosts
+            validation = validate d hosts
         in d { connectionURI = printAbsoluteURI uri'
              , hosts = hosts ++ [initialMountHost]
              , path = pathFromURI uri'
@@ -88,7 +89,12 @@ nonEmpty s = Just s
 rxEmpty :: Rx.Regex
 rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
 
-validate :: String -> Array MountHostRec -> Maybe String
-validate "" _ = Just "Please enter a name for the mount"
-validate _ [] = Just "Please enter at least one host"
-validate _ _  = Nothing
+validate :: MountDialogRec -> Array MountHostRec -> Maybe String
+validate d hosts =
+  either Just (const Nothing) do
+    case Tuple d.new d.name of
+      Tuple true "" -> Left "Please enter a name for the mount"
+      _ -> Right unit
+    case hosts of
+      [] -> Left "Please enter at least one host"
+      _ -> Right unit

@@ -4,6 +4,7 @@ module Test.Selenium.Common
   , getHashFromURL
   , dropHash
   , loaded
+  , modalShown
   )
   where
 
@@ -70,3 +71,13 @@ loaded = do
     if isLeft res
       then later 1000 $ checkEls
       else pure true
+
+-- | Is a modal dialog shown?
+modalShown :: Check Boolean
+modalShown = do
+  config <- getConfig
+  vis <- css config.modal >>= element >>= maybe (pure false) visible
+  if vis
+    then pure true
+    else later 1000 modalShown
+
