@@ -5,7 +5,6 @@ import Data.Array (length, zipWith, replicate, zip)
 import Data.Char (fromCharCode)
 import Data.Either (either)
 import Data.Foldable (and, all)
-import Data.Int (fromNumber, toNumber)
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (rootDir, printPath)
@@ -123,7 +122,7 @@ hostsFromURI :: AbsoluteURI -> Array MountHostRec
 hostsFromURI (AbsoluteURI _ (HierarchicalPart (Just (Authority _ hs)) _) _) = go <$> hs
   where
   go :: Tuple Host (Maybe Port) -> MountHostRec
-  go (Tuple h p) = { host: getHost h, port: maybe "" (show <<< toNumber) p }
+  go (Tuple h p) = { host: getHost h, port: maybe "" show p }
   getHost :: Host -> String
   getHost (IPv6Address s) = s
   getHost (IPv4Address s) = s
