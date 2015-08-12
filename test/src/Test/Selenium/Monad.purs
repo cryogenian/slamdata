@@ -1,10 +1,10 @@
 module Test.Selenium.Monad where
 
 import Prelude
-import Data.Either 
-import Data.Maybe 
+import Data.Either
+import Data.Maybe
 import Data.List
-import DOM 
+import DOM
 import Test.Config (Config())
 import Selenium
 import Selenium.ActionSequence
@@ -12,20 +12,20 @@ import Selenium.Types
 import Control.Monad.Eff.Console (CONSOLE())
 import Control.Monad.Trans
 import Control.Monad.Reader.Trans
-import Control.Monad.Reader.Class 
+import Control.Monad.Reader.Class
 import qualified Control.Monad.Aff as A
 
 
 type Context =
   { config :: Config
-  , driver :: Driver 
+  , driver :: Driver
   }
 
 type Check a = ReaderT Context
                (A.Aff (console :: CONSOLE, selenium :: SELENIUM, dom :: DOM)) a
 
 
--- READER 
+-- READER
 getDriver :: Check Driver
 getDriver = _.driver <$> ask
 
@@ -35,8 +35,8 @@ getConfig = _.config <$> ask
 
 -- AFF
 apathize :: forall a. Check a -> Check Unit
-apathize check = ReaderT \r -> 
-  A.apathize $ runReaderT check r 
+apathize check = ReaderT \r ->
+  A.apathize $ runReaderT check r
 
 attempt :: forall a. Check a -> Check (Either _ a)
 attempt check = ReaderT \r ->
@@ -88,6 +88,9 @@ innerHtml  = lift <<< getInnerHtml
 visible :: Element -> Check Boolean
 visible = lift <<< isDisplayed
 
+enabled :: Element -> Check Boolean
+enabled = lift <<< isEnabled
+
 getCss :: Element -> String -> Check String
 getCss el key = lift $ getCssValue el key
 
@@ -115,7 +118,7 @@ back = do
 actions :: Sequence Unit -> Check Unit
 actions seq = do
   driver <- getDriver
-  lift $ sequence driver seq 
+  lift $ sequence driver seq
 
 checker :: Check Boolean -> Check Boolean
 checker check = do
@@ -123,6 +126,6 @@ checker check = do
   if res
     then pure true
     else later 1000 check
-  
+
 stop :: Check Unit
 stop = waitCheck (later 1000000 $ pure false) 1000000

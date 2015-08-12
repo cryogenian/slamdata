@@ -2,11 +2,11 @@ module Test.Config where
 
 import Data.StrMap
 
-type Config = 
+type Config =
   { selenium :: { browser :: String
                 , waitTime :: Int}
   , slamdataUrl :: String
-    
+
   , locators :: StrMap String
   , item :: { main :: String
             , toolbar :: String
@@ -31,12 +31,16 @@ type Config =
             , submit :: String
             , markDelete :: String
             }
+  , configureMount :: { usernameField :: String
+                      , saveButton :: String
+                      }
   , modal :: String
   , toolbar :: { main :: String
                , showHide :: String
                , button :: String
                , newFolder :: String
                , newNotebook :: String
-               } 
+               , configureMount :: String
+               }
   , version :: String
   }

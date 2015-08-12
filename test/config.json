@@ -62,13 +62,18 @@
         "nameField": ".modal.fade.in input[placeholder='New name']",
         "submit": ".modal.fade.in button.btn.btn-primary"
     },
+    "configureMount": {
+        "usernameField": ".modal.fade.in .mount-userinfo input:first-of-type",
+        "saveButton": ".modal.fade.in button.btn.btn-primary"
+    },
     "modal": ".modal.fade.in",
     "toolbar": {
         "button": "button",
         "showHide": "*[title='show hidden files']",
         "main": ".toolbar-menu",
         "newFolder": "*[title='create folder']",
-        "newNotebook": "*[title='create notebook']"
+        "newNotebook": "*[title='create notebook']",
+        "configureMount": "*[title='configure mount']"
     },
     "version": "2.1.5"
 }
