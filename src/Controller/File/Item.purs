@@ -2,8 +2,10 @@ module Controller.File.Item where
 
 import Prelude
 import Api.Fs (delete, children, mountInfo)
+import Control.Monad.Aff (attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (message)
 import Control.Plus (empty)
 import Controller.Common (getDirectories, getChildren)
 import Controller.File.Common (Event(), toInput, showError, browseURL)
@@ -29,7 +31,7 @@ import Model.Path (encodeURIPath)
 import Model.Resource (Resource(..), resourceName, resourceDir, getPath, root)
 import Optic.Core
 import Optic.Extended (TraversalP())
-import Optic.Refractor.Prism (_Just)
+import Optic.Refractor.Prism (_Just, _Left)
 import Utils (locationString, setLocation)
 
 handleDeleteItem :: forall e. Item -> Event e
@@ -76,9 +78,9 @@ handleConfigureItem item = handleConfigure $ itemResource item
 
 handleConfigure :: forall e. Resource -> Event e
 handleConfigure res@(Database _) = do
-  x <- liftAff $ mountInfo res
-  case runParseAbsoluteURI x of
-    Left err -> showError ("There was a problem reading the mount settings: " ++ show err)
+  info <- liftAff $ (_Left %~ message) <$> attempt (mountInfo res)
+  case info >>= runParseAbsoluteURI >>> (_Left %~ show) of
+    Left err -> showError ("There was a problem reading the mount settings: " ++ err)
     Right uri ->
       let rec = (mountDialogFromURI uri) { new = false
                                          , name = if res == root then "/" else resourceName res
