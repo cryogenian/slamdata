@@ -157,8 +157,8 @@ mountDatabase = do
 checkMountedDatabase :: Check Unit
 checkMountedDatabase = do
   sectionMsg "CHECK TEST DATABASE IS MOUNTED"
-  home
-  -- _ <- getTestDb
+  enterMount
+  _ <- getTestDb
   successMsg "test database found"
 
 checkConfigureMount :: Check Unit
