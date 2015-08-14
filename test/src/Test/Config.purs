@@ -6,6 +6,9 @@ type Config =
   { selenium :: { browser :: String
                 , waitTime :: Int}
   , slamdataUrl :: String
+  , mongodb :: { host :: String
+               , port :: Int
+               }
 
   , locators :: StrMap String
   , item :: { main :: String
@@ -31,7 +34,9 @@ type Config =
             , submit :: String
             , markDelete :: String
             }
-  , configureMount :: { usernameField :: String
+  , configureMount :: { nameField :: String
+                      , uriField :: String
+                      , usernameField :: String
                       , saveButton :: String
                       }
   , modal :: String
@@ -40,7 +45,9 @@ type Config =
                , button :: String
                , newFolder :: String
                , newNotebook :: String
+               , mountDatabase :: String
                , configureMount :: String
                }
+  , mount :: { name :: String }
   , version :: String
   }

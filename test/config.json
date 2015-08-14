@@ -31,9 +31,7 @@
         "toolbarMenu": ".content .toolbar-menu",
         "toolbarSort": ".toolbar-sort",
         "results": ".results",
-        "modal": ".modal",
-        "itemContent": ".item-content",
-        "itemToolbar": ".item-toolbar"
+        "modal": ".modal"
     },
     "item": {
         "main": ".list-group-item",
@@ -63,6 +61,8 @@
         "submit": ".modal.fade.in button.btn.btn-primary"
     },
     "configureMount": {
+        "nameField": ".modal.fade.in .mount-name input",
+        "uriField": ".modal.fade.in .mount-uri input",
         "usernameField": ".modal.fade.in .mount-userinfo input:first-of-type",
         "saveButton": ".modal.fade.in button.btn.btn-primary"
     },
@@ -73,7 +73,11 @@
         "main": ".toolbar-menu",
         "newFolder": "*[title='create folder']",
         "newNotebook": "*[title='create notebook']",
+        "mountDatabase": "*[title='mount database']",
         "configureMount": "*[title='configure mount']"
     },
-    "version": "2.1.5"
+    "mount": {
+      "name" : "test-mount"
+    },
+    "version": "2.1.6"
 }

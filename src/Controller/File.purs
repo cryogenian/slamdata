@@ -3,7 +3,7 @@ module Controller.File where
 import Prelude
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
-import Control.Monad.Aff (Aff(), attempt)
+import Control.Monad.Aff (Aff(), attempt, later')
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
@@ -22,6 +22,7 @@ import Data.Path.Pathy ((</>), file, dir)
 import Data.String (split)
 import Data.These (These(..))
 import EffectTypes (FileAppEff())
+import Entries.Common (getVersion)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..))
@@ -32,8 +33,8 @@ import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (MountDialogRec(), initialMountDialog)
 import Model.File.Item (Item(..), itemResource)
 import Network.HTTP.MimeType.Common (textCSV)
-import Optic.Core 
-import Utils (clearValue, setLocation)
+import Optic.Core
+import Utils (clearValue, setLocation, reload)
 import Utils.Event (raiseEvent)
 
 import qualified Api.Fs as API
@@ -113,7 +114,7 @@ handleHiddenFiles :: forall e a. Boolean -> Event e
 handleHiddenFiles b = toInput $ WithState (_showHiddenFiles .~ b)
 
 handleMountDatabase :: forall e. State -> Event e
-handleMountDatabase state = do
+handleMountDatabase state =
   toInput $ WithState (_dialog ?~ MountDialog initialMountDialog { parent = state ^. _path })
 
 saveMount :: forall e. MountDialogRec -> Event e
@@ -121,4 +122,11 @@ saveMount rec = do
   result <- liftAff $ attempt $ API.saveMount (R.Database $ rec.parent </> dir rec.name) rec.connectionURI
   case result of
     Left err -> showError ("There was a problem saving the mount: " ++ message err)
-    Right _ -> toInput $ WithState (_dialog .~ Nothing)
+    Right _ -> do
+      res <- toInput $ WithState (_dialog .~ Nothing)
+
+      -- wait for the server to shut itself down, and restart itself
+      _ <- liftAff $ later' 1000 getVersion
+
+      -- then reload the page to display the new mount
+      liftEff reload *> pure res

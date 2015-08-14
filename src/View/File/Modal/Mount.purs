@@ -61,7 +61,7 @@ mountDialog state =
 
 fldName :: forall e. M.MountDialogRec -> HTML e
 fldName state =
-  H.div [ A.class_ B.formGroup ]
+  H.div [ A.classes [B.formGroup, VC.mountName] ]
         [ label "Name" [ input state M._name [] ] ]
 
 fldConnectionURI :: forall e. M.MountDialogRec -> HTML e
