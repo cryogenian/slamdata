@@ -20,6 +20,14 @@ var log = function(str) {
 };
 config.upload.filePath = path.resolve(config.upload.file);
 
+function copyFile(from, to, kont) {
+  var readStream = fs.createReadStream(from);
+  var writeStream = fs.createWriteStream(to);
+
+  readStream.pipe(writeStream);
+  writeStream.on('close', kont);
+}
+
 // required for decodeURIComponent in Match.Route
 window = global;
 
@@ -29,11 +37,13 @@ if (args.b) {
 
 var VERBOSE = args.v;
 
+var slamengineConfigPath = path.resolve(config.slamengine.config)
+
 var url = "mongodb://" + config.mongodb.host + ":" + config.mongodb.port + "/" + config.database.name,
     restoreCmd = config.restoreCmd,
     slamengineArgs = [
         "-jar", path.resolve(config.slamengine.jar),
-        "-c", path.resolve(config.slamengine.config),
+        "-c", slamengineConfigPath,
         "-C", "."
     ],
     seleniumArgs = ["-jar", path.resolve(config.selenium.jar)],
@@ -83,6 +93,9 @@ log("Emptying test temp folder");
 rimraf.sync("tmp/test");
 fs.mkdirSync("tmp/test");
 
+// Back up the original configuration file
+copyFile(config.slamengine.config, "tmp/" + config.slamengine.config, function(){});
+
 process.chdir("tmp/test");
 
 log("Creating data folder for MongoDB");
@@ -90,6 +103,12 @@ fs.mkdirSync("data");
 
 log("Creating symlink for SlamEngine static files");
 fs.symlinkSync(path.resolve("../../public"), path.resolve("slamdata"), "junction");
+
+// restore the original config file
+function restoreConfig(kont) {
+  process.chdir(path.resolve("../../"));
+  copyFile(path.resolve("tmp/" + config.slamengine.config), slamengineConfigPath, kont)
+}
 
 Promise.all([startMongo(), startSlamEngine(), startSelenium()])
     .then(function () {
@@ -101,10 +120,14 @@ Promise.all([startMongo(), startSlamEngine(), startSelenium()])
         log("running tests\n\n");
         require("../tmp/js/test.js").test(config)(function() {
             db.close();
-            process.exit(0);
+            restoreConfig(function () {
+              process.exit(0);
+            });
         }, function(err) {
             log(err, err.stack.split("\n"));
-            process.exit(1);
+            restoreConfig(function () {
+              process.exit(1);
+            });
         });
     });
 

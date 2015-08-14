@@ -101,6 +101,9 @@ renameDialogForm = className "rename-dialog-form"
 mountURI :: ClassName
 mountURI = className "mount-uri"
 
+mountName :: ClassName
+mountName = className "mount-name"
+
 mountHostList :: ClassName
 mountHostList = className "mount-host-list"
 

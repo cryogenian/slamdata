@@ -5,6 +5,12 @@ module Test.Selenium.Common
   , dropHash
   , loaded
   , modalShown
+  , awaitUrlChanged
+
+  , sendSelectAll
+  , sendCopy
+  , sendPaste
+  , sendUndo
   )
   where
 
@@ -20,6 +26,8 @@ import Driver.File.Routing (Routes(..), routing)
 import Routing (matchHash)
 
 import Selenium
+import Selenium.ActionSequence
+import Selenium.Key
 import Selenium.Types
 
 import Test.Selenium.Log
@@ -80,4 +88,35 @@ modalShown = do
   if vis
     then pure true
     else later 1000 modalShown
+
+awaitUrlChanged :: String -> Check Unit
+awaitUrlChanged oldUrl = do
+  url <- getURL
+  if url == oldUrl
+    then later 1000 $ awaitUrlChanged oldUrl
+    else pure unit
+
+sendSelectAll :: Sequence Unit
+sendSelectAll = do
+  keyDown commandKey
+  sendKeys "a"
+  keyUp commandKey
+
+sendCopy :: Sequence Unit
+sendCopy = do
+  keyDown commandKey
+  sendKeys "c"
+  keyUp commandKey
+
+sendPaste :: Sequence Unit
+sendPaste = do
+  keyDown commandKey
+  sendKeys "v"
+  keyUp commandKey
+
+sendUndo :: Sequence Unit
+sendUndo = do
+  keyDown commandKey
+  sendKeys "z"
+  keyUp commandKey
 

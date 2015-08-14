@@ -2,6 +2,7 @@ module Test.Selenium where
 
 import Prelude
 import DOM (DOM())
+import Control.Apply ((*>))
 import Control.Bind ((>=>), (=<<))
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
@@ -101,26 +102,69 @@ findTestDb = do
   config <- getConfig
   findItem config.database.name
 
+getTestDb :: Check Element
+getTestDb = findTestDb >>= maybe (errorMsg "There is no test database") pure
+
 findUploaded :: Check (Maybe Element)
 findUploaded = do
   config <- getConfig
   findItem config.move.name
 
+mountDatabase :: Check Unit
+mountDatabase = do
+  sectionMsg "MOUNT TEST DATABASE"
+  home
+  mountButton <- getMountDatabaseButton
+  actions $ leftClick mountButton
+  config <- getConfig
+  waitCheck modalShown config.selenium.waitTime
+  uriField <- getElementByCss config.configureMount.uriField "no connection uri field"
+  nameField <- getElementByCss config.configureMount.nameField "no mount name field"
+  saveButton <- getElementByCss config.configureMount.saveButton "no save button"
+
+  let connectionUri = "mongodb://" ++ config.mongodb.host ++ ":" ++ show config.mongodb.port ++ "/"
+  actions $ do
+    -- a strange hack follows to get the uri onto the clipboard, since the uri
+    -- field cannot be edited except by pasting.
+    leftClick nameField
+    sendKeys connectionUri
+    sendSelectAll
+    sendCopy
+    sendSelectAll
+    sendKeys config.mount.name
+
+    leftClick uriField
+    sendPaste
+    leftClick saveButton
+
+  waitCheck mountShown config.selenium.waitTime
+
+  where
+  getMountDatabaseButton :: Check Element
+  getMountDatabaseButton = do
+    config <- getConfig
+    toolbarButton config.toolbar.mountDatabase
+      >>= maybe (errorMsg "No mount database button") pure
+
+  mountShown :: Check Boolean
+  mountShown = do
+    config <- getConfig
+    item <- findItem config.mount.name
+    case item of
+       Just _ -> pure true
+       Nothing -> later 1000 mountShown
 
 checkMountedDatabase :: Check Unit
 checkMountedDatabase = do
   sectionMsg "CHECK TEST DATABASE IS MOUNTED"
-  home
-  mbTestDb <- findTestDb
-  maybe error success mbTestDb
-  where
-  error = errorMsg "There is no test database"
-  success _ = successMsg "test database found"
+  enterMount
+  _ <- getTestDb
+  successMsg "test database found"
 
 checkConfigureMount :: Check Unit
 checkConfigureMount = do
   sectionMsg "CHECK CONFIGURE MOUNT DIALOG"
-  home
+  enterMount
 
   button <- getConfigureMountButton
   successMsg "got configure-mount button"
@@ -134,13 +178,9 @@ checkConfigureMount = do
   usernameField <- getElementByCss config.configureMount.usernameField "no usernameField field"
   actions do
     leftClick usernameField
-    keyDown commandKey
-    sendKeys "a"
-    keyUp commandKey
+    sendSelectAll
     sendKeys "hello"
-    keyDown commandKey
-    sendKeys "z"
-    keyUp commandKey
+    sendUndo
 
   getElementByCss config.configureMount.saveButton "no save button"
     >>= enabled
@@ -167,7 +207,7 @@ getItemToolbar = do
 checkItemToolbar :: Check Unit
 checkItemToolbar = do
   sectionMsg "CHECK ITEM TOOLBAR"
-  home
+  enterMount
   { listGroupItem : groupItem, itemToolbar : toolbar } <- getItemToolbar
   apathize do
     assertBoolean "toolbar should not be displayed" <<< not =<< visible toolbar
@@ -199,10 +239,21 @@ checkURL = do
     errorMsg "need additional redirects"
 
 
+enterMount :: Check Unit
+enterMount = do
+  home
+  url <- getURL
+  config <- getConfig
+  mountItem <- findItem config.mount.name >>= maybe (errorMsg "No mount item") pure
+  actions $ doubleClick leftButton mountItem
+  waitCheck (awaitUrlChanged url *> pure true) config.selenium.waitTime
+  loaded
+
 goDown :: Check Unit
 goDown = do
   sectionMsg "CHECKING GO DOWN"
-  home
+
+  enterMount
   url <- getURL
   testDb <- getTestDb
   oldHash <- either (const $ errorMsg "incorrect initial hash in goDown") pure $ matchHash routing (dropHash url)
@@ -210,12 +261,10 @@ goDown = do
 
   where
 
-  getTestDb = findTestDb >>= maybe (errorMsg "no test db") pure
-
   checkOldHash url el old@(Salted oldSort oldSearch oldSalt) = do
     actions $ doubleClick leftButton el
     config <- getConfig
-    waitCheck (changed url) config.selenium.waitTime
+    waitCheck (awaitUrlChanged url *> pure true) config.selenium.waitTime
     loaded
     getURL >>= getHashFromURL >>= checkHashes old
   checkOldHash _ _ _ = errorMsg "weird initial hash in goDown"
@@ -224,18 +273,11 @@ goDown = do
     config <- getConfig
     if (oldSalt == salt) &&
        (oldSort == sort) &&
-       ((searchPath search) == (Just $ "/" <> config.database.name <> "/"))
+       ((searchPath search) == (Just $ "/" <> config.mount.name <> "/" <> config.database.name <> "/"))
       then successMsg "correct hash after goDown"
       else errorMsg $ "incorrect hash after goDown " <> (fromMaybe "" $ searchPath search)
   checkHashes _ _ = do
     errorMsg "weird hash after goDown"
-
-  changed oldUrl = do
-    url <- getURL
-    if url == oldUrl
-      then changed oldUrl
-      else pure true
-
 
 checkBreadcrumbs :: Check Unit
 checkBreadcrumbs = do
@@ -328,6 +370,7 @@ fileUpload = do
   goDown
   config <- getConfig
 
+  successMsg "went down"
   uploadInput <- getElementByCss config.upload.input "There is no upload input"
   oldItems <- S.fromList <$> getItemTexts
   script """
@@ -354,6 +397,7 @@ fileUpload = do
   inNotebook = do
     url <- getURL
     rgx <- nbRegex
+    successMsg $ "URL: " ++ url
     if R.test rgx url
       then pure true
       else later 1000 inNotebook
@@ -361,6 +405,7 @@ fileUpload = do
   nbRegex = do
     config <- getConfig
     pure $ R.regex ("notebook.html#/explore/" <>
+                    config.mount.name <> "/" <>
                     config.database.name) R.noFlags
 
 
@@ -407,9 +452,7 @@ moveDelete = do
         config <- getConfig
         actions do
           leftClick nameField
-          keyDown commandKey
-          sendKeys "a"
-          keyUp commandKey
+          sendSelectAll
           sendKeys $ Str.fromChar $ Ch.fromCharCode 57367
           sendKeys config.move.other
 
@@ -533,10 +576,16 @@ createFolder = do
   checkHash :: Routes -> Check Unit
   checkHash (Salted sort search salt) = do
     config <- getConfig
-    let expectedPath = "/" <> config.database.name <> "/" <> SDCfg.newFolderName <> "/"
-    if (searchPath search) == (Just expectedPath)
+    let expectedPath = "/" <> config.mount.name <> "/" <> config.database.name <> "/" <> SDCfg.newFolderName <> "/"
+    let actualPath = searchPath search
+    if actualPath == (Just expectedPath)
       then successMsg "ok, hash correct"
-      else errorMsg "hash incorrect in created folder"
+      else errorMsg $
+        "hash incorrect in created folder; expected '"
+         <> expectedPath
+         <> "', but got '"
+         <> show actualPath
+         <> "'."
   checkHash _ = errorMsg "incorrect hash"
 
 
@@ -581,7 +630,7 @@ title = do
   windowTitle <- lift $ getTitle driver
   if Str.contains config.version windowTitle
     then successMsg "Title contains version"
-    else errorMsg "Title doesn't contain version"
+    else errorMsg $ "Title (" ++ windowTitle ++ ") doesn't contain version"
 
 test :: Config -> A.Aff _ Unit
 test config =
@@ -593,6 +642,7 @@ test config =
     driver <- build $ browser br
     res <- A.attempt $ flip runReaderT {config: config, driver: driver} do
       home
+      mountDatabase
       checkMountedDatabase
       checkConfigureMount
       checkItemToolbar

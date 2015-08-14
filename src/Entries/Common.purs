@@ -11,6 +11,8 @@ import DOM (DOM())
 import Network.HTTP.Affjax (AJAX(), get)
 import Utils (setDocumentTitle)
 
+import Api.Common (RetryEffects(..), retryGet)
+
 import qualified Data.DOM.Simple.Window as W
 
 setSlamDataTitle :: forall eff. Maybe String -> Eff (dom :: DOM | eff) Unit
@@ -18,7 +20,7 @@ setSlamDataTitle maybeVersion = do
   let version = maybe "" (" " ++) maybeVersion
   setDocumentTitle $ "SlamData" <> version
 
-getVersion :: forall eff. Aff (ajax :: AJAX | eff) (Maybe String)
+getVersion :: forall eff. Aff (RetryEffects (ajax :: AJAX | eff)) (Maybe String)
 getVersion = do
-  serverInfo <- get Config.serverInfoUrl
+  serverInfo <- retryGet Config.serverInfoUrl
   return $ either (const Nothing) Just (readProp "version" serverInfo.response)

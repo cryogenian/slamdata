@@ -24,15 +24,15 @@ import Data.These (These(..))
 import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Monad (andThen)
 import Input.File (Input(), FileInput(..))
-import Input.File.Item (ItemInput(..))
+import Input.File.Item (ItemInput(..), inputItem)
 import Model.Action (Action(Edit))
-import Model.File (State(), _dialog, _showHiddenFiles, _path, _sort, _salt)
+import Model.File (State(), _dialog, _showHiddenFiles, _path, _sort, _salt, _items, isSearching)
 import Model.File.Breadcrumb (Breadcrumb())
 import Model.File.Dialog (Dialog(..))
 import Model.File.Dialog.Mount (MountDialogRec(), initialMountDialog)
 import Model.File.Item (Item(..), itemResource)
 import Network.HTTP.MimeType.Common (textCSV)
-import Optic.Core 
+import Optic.Core
 import Utils (clearValue, setLocation)
 import Utils.Event (raiseEvent)
 
@@ -113,12 +113,17 @@ handleHiddenFiles :: forall e a. Boolean -> Event e
 handleHiddenFiles b = toInput $ WithState (_showHiddenFiles .~ b)
 
 handleMountDatabase :: forall e. State -> Event e
-handleMountDatabase state = do
+handleMountDatabase state =
   toInput $ WithState (_dialog ?~ MountDialog initialMountDialog { parent = state ^. _path })
 
 saveMount :: forall e. MountDialogRec -> Event e
 saveMount rec = do
-  result <- liftAff $ attempt $ API.saveMount (R.Database $ rec.parent </> dir rec.name) rec.connectionURI
+  let resource = R.Database $ rec.parent </> dir rec.name
+  result <- liftAff $ attempt $ API.saveMount resource rec.connectionURI
   case result of
     Left err -> showError ("There was a problem saving the mount: " ++ message err)
-    Right _ -> toInput $ WithState (_dialog .~ Nothing)
+    Right _ ->
+      toInput $ WithState $ (_dialog .~ Nothing) .. stateInputItem (ItemAdd $ Item resource)
+
+  where
+    stateInputItem it st = st # _items %~ inputItem (st ^. _sort) (isSearching st) it
