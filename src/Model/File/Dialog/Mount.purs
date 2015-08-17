@@ -13,7 +13,7 @@ import Data.Tuple (Tuple(..))
 import Data.URI (printAbsoluteURI)
 import Data.URI.Types
 import Model.Path
-import Optic.Core 
+import Optic.Core
 
 import qualified Data.String as S
 
@@ -28,7 +28,9 @@ type MountDialogRec =
   , password :: String
   , props :: (Array MountPropRec)
   , message :: Maybe String
+  , externalValidationError :: Maybe String
   , valid :: Boolean
+  , inProgress :: Boolean
   }
 
 type MountHostRec =
@@ -59,6 +61,15 @@ _user = lens _.user (_ { user = _ })
 _password :: LensP MountDialogRec String
 _password = lens _.password (_ { password = _ })
 
+_inProgress :: LensP MountDialogRec Boolean
+_inProgress = lens _.inProgress (_ { inProgress = _ })
+
+_message :: LensP MountDialogRec (Maybe String)
+_message = lens _.message (_ { message = _ })
+
+_externalValidationError :: LensP MountDialogRec (Maybe String)
+_externalValidationError = lens _.externalValidationError (_ { externalValidationError = _ })
+
 _props :: LensP MountDialogRec (Array MountPropRec)
 _props = lens _.props (_ { props = _ })
 
@@ -83,7 +94,9 @@ initialMountDialog =
   , password: ""
   , props: [initialMountProp]
   , message: Nothing
+  , externalValidationError: Nothing
   , valid: false
+  , inProgress: false
   }
 
 initialMountHost :: MountHostRec
@@ -146,7 +159,7 @@ passwordFromURI _ = ""
 setURIPassword :: String -> AbsoluteURI -> AbsoluteURI
 setURIPassword pass (AbsoluteURI s (HierarchicalPart (Just (Authority (Just ui) hs)) p) q) =
   let mbIx = S.indexOf ":" ui
-      user = maybe ui (\ix -> S.take ix ui) mbIx 
+      user = maybe ui (\ix -> S.take ix ui) mbIx
       pass' = if pass == "" then "" else ":" ++ pass
   in AbsoluteURI s (HierarchicalPart (Just (Authority (Just $ user ++ pass') hs)) p) q
 setURIPassword _ uri = uri

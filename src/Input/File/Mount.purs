@@ -64,7 +64,7 @@ inputMount (UpdateConnectionURI uri) (MountDialog d) =
              , message = validation
              , valid = isNothing validation
              }
-inputMount ClearMessage (MountDialog d) = MountDialog $ d { message = Nothing }
+inputMount ClearMessage (MountDialog d) = MountDialog $ d { message = Nothing, externalValidationError = Nothing }
 inputMount _ dialog = dialog
 
 mkURI :: String -> String -> String -> Array MountHostRec -> Array MountPropRec -> String
@@ -91,7 +91,7 @@ rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
 
 validate :: MountDialogRec -> Array MountHostRec -> Maybe String
 validate d hosts =
-  either Just (const Nothing) do
+  either Just (const $ Nothing) do
     case Tuple d.new d.name of
       Tuple true "" -> Left "Please enter a name for the mount"
       _ -> Right unit

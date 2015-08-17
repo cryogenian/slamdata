@@ -12,7 +12,7 @@ import Model.File.Search
 import View.Common (glyph)
 import View.File.Common (HTML())
 import Data.Path.Pathy
-import Optic.Core 
+import Optic.Core
 import Optic.Refractor.Prism (_Just)
 
 import qualified Halogen.HTML as H
