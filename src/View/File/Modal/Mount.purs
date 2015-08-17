@@ -3,6 +3,7 @@ module View.File.Modal.MountDialog (mountDialog) where
 import Prelude
 import Control.Apply ((*>))
 import Data.Functor (($>))
+import Control.Alt ((<|>))
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
@@ -51,13 +52,24 @@ mountDialog state =
                     , hosts state
                     , fldPath state
                     , props state
-                    , message state.message
+                    , message errorMessage
                     ]
          ]
-  , footer [ btnCancel
-           , btnMount state (if state.new then "Mount" else "Save changes") state.valid
+  , footer [ progressSpinner state
+           , btnCancel
+           , btnMount state (if state.new then "Mount" else "Save changes") (state.valid && not state.inProgress)
            ]
   ]
+
+  where
+    errorMessage = state.message <|> state.externalValidationError
+
+progressSpinner :: forall e. M.MountDialogRec -> HTML e
+progressSpinner state =
+  H.img [ A.src $ "img/spin.svg"
+        , A.class_ $ VC.mountProgressSpinner state.inProgress
+        ]
+        []
 
 fldName :: forall e. M.MountDialogRec -> HTML e
 fldName state =

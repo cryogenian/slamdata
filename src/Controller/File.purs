@@ -16,6 +16,10 @@ import Data.Array (head, last)
 import Data.DOM.Simple.Element (querySelector)
 import Data.DOM.Simple.Types (HTMLElement())
 import Data.Either (Either(..))
+
+import Data.Foreign (F(), parseJSON)
+import Data.Foreign.Class (readProp)
+
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy ((</>), file, dir)
@@ -25,14 +29,16 @@ import EffectTypes (FileAppEff())
 import Halogen.HTML.Events.Monad (andThen)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..), inputItem)
+import Input.File.Mount (MountInput(..), inputMount)
 import Model.Action (Action(Edit))
 import Model.File (State(), _dialog, _showHiddenFiles, _path, _sort, _salt, _items, isSearching)
 import Model.File.Breadcrumb (Breadcrumb())
 import Model.File.Dialog (Dialog(..))
-import Model.File.Dialog.Mount (MountDialogRec(), initialMountDialog)
+import Model.File.Dialog.Mount (MountDialogRec(), initialMountDialog, _inProgress, _externalValidationError)
 import Model.File.Item (Item(..), itemResource)
 import Network.HTTP.MimeType.Common (textCSV)
 import Optic.Core
+import Optic.Refractor.Prism (_Just)
 import Utils (clearValue, setLocation)
 import Utils.Event (raiseEvent)
 
@@ -119,11 +125,28 @@ handleMountDatabase state =
 saveMount :: forall e. MountDialogRec -> Event e
 saveMount rec = do
   let resource = R.Database $ rec.parent </> dir rec.name
-  result <- liftAff $ attempt $ API.saveMount resource rec.connectionURI
-  case result of
-    Left err -> showError ("There was a problem saving the mount: " ++ message err)
-    Right _ ->
-      toInput $ WithState $ (_dialog .~ Nothing) .. stateInputItem (ItemAdd $ Item resource)
+  toInput (WithState $ setInProgress true .. setErrorMessage Nothing) `andThen` \_ -> do
+    result <- liftAff $ attempt $ API.saveMount resource rec.connectionURI
+    toInput (WithState $ setInProgress false) `andThen` \_ -> do
+      case result of
+        Left err ->  do
+          let msg = "There was a problem saving the mount: " ++ extractErrorMessage (message err)
+          toInput $ WithState $ setErrorMessage $ Just msg
+        Right _ ->
+          toInput $ WithState $
+            (_dialog .~ Nothing)
+              .. stateInputItem (ItemAdd $ Item resource)
 
   where
+    setInProgress b = updateMountDialog $ _inProgress .~ b
+    setErrorMessage msg = updateMountDialog $ (_externalValidationError .~ msg)
+    updateMountDialog f = _dialog .. _Just %~ inputMount (ValueChanged f)
+
     stateInputItem it st = st # _items %~ inputItem (st ^. _sort) (isSearching st) it
+
+    extractErrorMessage :: String -> String
+    extractErrorMessage msg =
+      case parseJSON msg >>= readProp "error" of
+         Left _ -> msg
+         Right msg' -> msg'
+

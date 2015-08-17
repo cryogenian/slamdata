@@ -119,6 +119,10 @@ mountProps = className "mount-props"
 mountPropsScrollbox :: ClassName
 mountPropsScrollbox = className "mount-props-scrollbox"
 
+mountProgressSpinner :: Boolean -> ClassName
+mountProgressSpinner true = className "mount-progress-spinner"
+mountProgressSpinner false = className "mount-progress-spinner-hidden"
+
 notebookContent :: ClassName
 notebookContent = className "notebook-content"
 
