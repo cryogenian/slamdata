@@ -19,7 +19,6 @@
     "purescript-halogen": "30e8b2c7174a1eeda73f67cc42c739ca24a1e218",
     "purescript-markdown": "^1.8.0",
     "purescript-markdown-halogen": "^0.3.0",
-    "purescript-halogen-bootstrap": "~0.2.0",
     "purescript-search": "~0.3.0",
     "purescript-routing": "~0.1.0",
     "purescript-ace": "~0.5.0",
@@ -47,7 +46,8 @@
     "purescript-affjax": "^0.5.4",
     "purescript-uri": "~0.1.0-rc.1",
     "purescript-nonempty-arrays": "~0.3.0",
-    "purescript-webdriver": "^0.2.0"
+    "purescript-webdriver": "^0.2.0",
+    "purescript-halogen-bootstrap": "^0.3.0"
   },
   "resolutions": {
     "purescript-halogen": "30e8b2c7174a1eeda73f67cc42c739ca24a1e218",

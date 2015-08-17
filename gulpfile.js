@@ -5,7 +5,8 @@ var gulp = require("gulp"),
     less = require("gulp-less"),
     webpack = require("webpack-stream"),
     run = require("gulp-run"),
-    rimraf = require("rimraf");
+    rimraf = require("rimraf"),
+    fs = require("fs");
 
 var sources = [
   "src/**/*.purs",
@@ -62,6 +63,28 @@ gulp.task("bundle", [
   mkBundleTask("notebook", "Entries.Notebook")
 ]);
 
+
+var fastBundleTask = function(name, main) {
+    gulp.task("make-entry-" + name, ["make"], function(cb) {
+        var command = "require(\"" + main + "\").main();";
+        fs.writeFile("tmp/js/entries/" + name + ".js", command, cb);
+    });
+    gulp.task("fast-bundle-" + name, ["make-entry-" + name], function() {
+        gulp.src("tmp/js/entries/" + name + ".js")
+            .pipe(webpack({
+                output: { filename: name + ".js" },
+                resolve: { modulesDirectories: ["node_modules", "output"] }
+            }))
+            .pipe(gulp.dest("public/js"));
+    });
+    return "fast-bundle-" + name;
+};
+
+gulp.task("fast-bundle", [
+    fastBundleTask("file", "Entries.File"),
+    fastBundleTask("notebook", "Entries.Notebook")
+]);
+
 gulp.task("less", function() {
   return gulp.src(["less/main.less"])
     .pipe(less({ paths: ["less/**/*.less"] }))
@@ -89,9 +112,15 @@ var mkWatch = function(name, target, files) {
   });
 };
 
+
+
+
 var allSources = sources.concat(foreigns);
 mkWatch("watch-less", "less", ["less/**/*.less"]);
 mkWatch("watch-file", "bundle-file", allSources);
 mkWatch("watch-notebook", "bundle-notebook", allSources);
+mkWatch("watch-file-fast", "fast-bundle-file", allSources);
+mkWatch("watch-notebook-fast", "fast-bundle-notebook", allSources);
 
 gulp.task("default", ["watch-less", "watch-file", "watch-notebook"]);
+gulp.task("dev", ["watch-less", "watch-file-fast", "watch-notebook-fast"]);
