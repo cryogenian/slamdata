@@ -19,6 +19,9 @@ type Config =
                    , text :: String
                    , home :: String
                    }
+  , search :: { searchInput :: String
+              , searchButton :: String
+              }
   , database :: { name :: String }
   , sort :: { main :: String
             , button :: String}
@@ -35,6 +38,9 @@ type Config =
             , submit :: String
             , markDelete :: String
             }
+  , share :: { markShare :: String
+             , urlField :: String
+             }
   , configureMount :: { nameField :: String
                       , uriField :: String
                       , usernameField :: String

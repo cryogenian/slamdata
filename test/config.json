@@ -34,6 +34,10 @@
         "results": ".results",
         "modal": ".modal"
     },
+    "search": {
+      "searchInput" : ".search .search-input input",
+      "searchButton" : ".search .search-input button"
+    },
     "item": {
         "main": ".list-group-item",
         "toolbar": ".item-toolbar"
@@ -60,6 +64,10 @@
         "markDelete": "*[title='remove']",
         "nameField": ".modal.fade.in input[placeholder='New name']",
         "submit": ".modal.fade.in button.btn.btn-primary"
+    },
+    "share": {
+        "markShare": "*[title='share']",
+        "urlField": ".modal.fade.in input"
     },
     "configureMount": {
         "nameField": ".modal.fade.in .mount-name input",
