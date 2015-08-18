@@ -17,7 +17,7 @@ module Test.Selenium.Common
   where
 
 import Prelude
-import Data.Either (either, isLeft)
+import Data.Either (either, isRight)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (traverse_)
 import Data.Tuple (Tuple(..))
@@ -77,40 +77,31 @@ loaded elCheck = do
   config <- getConfig
   waitCheck checkEls config.selenium.waitTime
   where
-  checkEls = do
-    res <- attempt $ elCheck
-    if isLeft res
-      then later 1000 $ checkEls
-      else pure true
+    checkEls = checker $ isRight <$> attempt elCheck
 
 checkFileElements :: Check Unit
 checkFileElements = getConfig >>= _.locators >>> checkElements
 
 checkNotebookElements :: Check Unit
-checkNotebookElements = getConfig >>= _.notebookLocators >>> checkElements 
+checkNotebookElements = getConfig >>= _.notebookLocators >>> checkElements
 
 fileComponentLoaded :: Check Unit
 fileComponentLoaded = loaded checkFileElements
 
 notebookLoaded :: Check Unit
-notebookLoaded = loaded checkNotebookElements 
-
+notebookLoaded = loaded checkNotebookElements
 
 -- | Is a modal dialog shown?
 modalShown :: Check Boolean
 modalShown = do
   config <- getConfig
-  vis <- css config.modal >>= element >>= maybe (pure false) visible
-  if vis
-    then pure true
-    else later 1000 modalShown
+  checker $
+    css config.modal
+      >>= element
+      >>= maybe (pure false) visible
 
-awaitUrlChanged :: String -> Check Unit
-awaitUrlChanged oldUrl = do
-  url <- getURL
-  if url == oldUrl
-    then later 1000 $ awaitUrlChanged oldUrl
-    else pure unit
+awaitUrlChanged :: String -> Check Boolean
+awaitUrlChanged oldURL = checker $ (oldURL /=) <$> getURL
 
 sendSelectAll :: Sequence Unit
 sendSelectAll = case platform of

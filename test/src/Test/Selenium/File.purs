@@ -6,7 +6,6 @@ import Control.Apply ((*>))
 import Control.Bind ((>=>), (=<<))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
-import Data.Functor ((<$))
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
@@ -139,13 +138,9 @@ mountDatabase = do
       >>= maybe (errorMsg "No mount database button") pure
 
   mountShown :: Check Boolean
-  mountShown = do
+  mountShown = checker $ do
     config <- getConfig
-    item <- findItem config.mount.name
-    case item of
-       Just _ -> pure true
-       Nothing -> later 1000 mountShown
-
+    isJust <$> findItem config.mount.name
 
 unmountDatabase :: Check Unit
 unmountDatabase = do
@@ -396,7 +391,7 @@ fileUpload = do
   """
 
   keys config.upload.filePath uploadInput
-  waitCheck (true <$ awaitInNotebook) config.selenium.waitTime
+  waitCheck awaitInNotebook config.selenium.waitTime
   successMsg "Ok, explore notebook created"
   back
   fileComponentLoaded
@@ -419,7 +414,7 @@ shareFile = do
   urlValue <- attribute urlField "value"
   successMsg $ "Share url: " <> urlValue
   goTo urlValue
-  waitCheck (true <$ awaitInNotebook) config.selenium.waitTime
+  waitCheck awaitInNotebook config.selenium.waitTime
   successMsg "Ok, share link led to notebook"
 
   where
@@ -446,8 +441,8 @@ searchForUploadedFile = do
     sendKeys filename
   searchButton <- getElementByCss config.search.searchButton "no search button"
   actions $ leftClick searchButton
-  waitCheck (true <$ awaitUrlChanged url) config.selenium.waitTime
-  waitCheck (true <$ awaitItemShown filename) 5000
+  waitCheck (awaitUrlChanged url) config.selenium.waitTime
+  waitCheck (awaitItemShown filename) 5000
   matchingItems <- filter (contains filename) <$> getItemTexts
 
   if null matchingItems
@@ -458,21 +453,15 @@ searchForUploadedFile = do
     contains :: String -> String -> Boolean
     contains phrase = R.test (R.regex phrase R.noFlags)
 
-    awaitItemShown :: String -> Check Unit
-    awaitItemShown name = do
-      matchingItems <- filter (contains name) <$> getItemTexts
-      if null matchingItems
-         then later 1000 $ awaitItemShown name
-         else pure unit
+    awaitItemShown :: String -> Check Boolean
+    awaitItemShown name = checker $ not <<< null <<< filter (contains name) <$> getItemTexts
 
-awaitInNotebook :: Check Unit
-awaitInNotebook = do
+awaitInNotebook :: Check Boolean
+awaitInNotebook = checker $ do
   url <- getURL
   rgx <- nbRegex
   successMsg $ "URL: " ++ url
-  if R.test rgx url
-    then pure unit
-    else later 1000 awaitInNotebook
+  pure $ R.test rgx url
 
   where
     nbRegex = do
@@ -671,11 +660,7 @@ createNotebookAndThen andThen = do
       >>= maybe (errorMsg "No create notebook button") pure
 
   notebookCheck :: Check Boolean
-  notebookCheck = do
-    url <- getURL
-    if R.test (R.regex "notebook.html" R.noFlags) url
-      then pure true
-      else later 1000 notebookCheck
+  notebookCheck = checker $ R.test (R.regex "notebook.html" R.noFlags) <$> getURL
 
 createNotebook :: Check Unit
 createNotebook = do
