@@ -77,7 +77,7 @@ filterByTerm r
   in
   case labels of
     -- no labels -> check by both fields
-    Nil -> check' name || check' res
+    Nil -> check' name 
     -- we've already checked _path_ when had got it from backend
     Cons (S.Common "path") Nil -> true
     -- check _name_

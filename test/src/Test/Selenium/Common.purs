@@ -3,7 +3,8 @@ module Test.Selenium.Common
   , getElementByCss
   , getHashFromURL
   , dropHash
-  , loaded
+  , fileComponentLoaded
+  , notebookLoaded
   , modalShown
   , awaitUrlChanged
 
@@ -55,10 +56,10 @@ getHashFromURL =
 dropHash :: String -> String
 dropHash h = R.replace (R.regex "^[^#]*#" R.noFlags) "" h
 
-checkElements :: Check Unit
-checkElements = do
+checkElements :: SM.StrMap String -> Check Unit
+checkElements m = do
   config <- getConfig
-  traverse_ traverseFn $ SM.toList config.locators
+  traverse_ traverseFn $ SM.toList m
   successMsg "all elements here, page is loaded"
   where
   traverseFn :: Tuple String String -> Check Unit
@@ -70,17 +71,30 @@ checkElements = do
   checkMsg msg Nothing = errorMsg $ msg <> " not found"
   checkMsg _ _ = pure unit
 
-loaded :: Check Unit
-loaded = do
+loaded :: Check Unit -> Check Unit
+loaded elCheck = do
   driver <- getDriver
   config <- getConfig
   waitCheck checkEls config.selenium.waitTime
   where
   checkEls = do
-    res <- attempt $ checkElements
+    res <- attempt $ elCheck
     if isLeft res
       then later 1000 $ checkEls
       else pure true
+
+checkFileElements :: Check Unit
+checkFileElements = getConfig >>= _.locators >>> checkElements
+
+checkNotebookElements :: Check Unit
+checkNotebookElements = getConfig >>= _.notebookLocators >>> checkElements 
+
+fileComponentLoaded :: Check Unit
+fileComponentLoaded = loaded checkFileElements
+
+notebookLoaded :: Check Unit
+notebookLoaded = loaded checkNotebookElements 
+
 
 -- | Is a modal dialog shown?
 modalShown :: Check Boolean

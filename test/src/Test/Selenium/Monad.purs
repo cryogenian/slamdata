@@ -114,6 +114,9 @@ back = do
   driver <- getDriver
   lift $ navigateBack driver
 
+title :: Check String
+title = do
+  getDriver >>= getTitle >>> lift
 
 actions :: Sequence Unit -> Check Unit
 actions seq = do
@@ -128,4 +131,7 @@ checker check = do
     else later 1000 check
 
 stop :: Check Unit
-stop = waitCheck (later 1000000 $ pure false) 1000000
+stop = waitCheck (later top $ pure false) top
+
+reload :: Check Unit
+reload = getDriver >>= refresh >>> lift
