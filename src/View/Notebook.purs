@@ -61,9 +61,9 @@ navigation state =
   then [ ]
   else [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
                         [ icon B.glyphiconBook notebookHref
-                        , logo
+                        , logo (state ^. _version)
                         , name state
-                        , version state.version ]
+                        ]
                    , H.ul [ A.classes [Vc.headerMenu] ]
                           $ zipWith (li state) (range 0 (length state.dropdowns)) state.dropdowns
                    ]
