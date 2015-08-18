@@ -1,6 +1,7 @@
 module View.Common where
 
 import Prelude
+import Data.Array (singleton)
 import Data.Char (fromCharCode)
 import Data.Maybe (Maybe(), maybe)
 import Data.String (fromChar)
@@ -31,10 +32,6 @@ genericContainer wrapperClasses contentClasses nodes =
         ]
   ]
 
-version :: forall i. Maybe String -> H.HTML i
-version ms = H.div [ A.class_ Vc.version ] [ H.text s ]
-  where s = maybe "" ("Version " ++) ms
-
 content :: forall i. Array (H.HTML i) -> H.HTML i
 content = H.div [ A.class_ Vc.content ]
 
@@ -54,11 +51,14 @@ icon c href = H.div [ A.classes [Vc.navIcon] ]
                    [ glyph c ]
              ]
 
-logo :: forall i. H.HTML i
-logo = H.div [ A.class_ Vc.navLogo ]
-             [ H.a [ A.href Config.slamDataHome ]
-                   [ H.img [A.src "img/logo.svg"] [] ]
-             ]
+logo :: forall i. Maybe String -> H.HTML i
+logo mbVersion =
+  H.div [ A.class_ Vc.navLogo ]
+  [ H.a ([ A.href Config.slamDataHome ] <> title mbVersion)
+    [ H.img [A.src "img/logo.svg"] [] ]
+  ]
+  where
+  title = maybe [] (singleton <<< A.title <<< ("Version " <>)) 
 
 closeButton :: forall i. (ET.Event ET.MouseEvent -> E.EventHandler i) -> H.HTML i
 closeButton handler =
