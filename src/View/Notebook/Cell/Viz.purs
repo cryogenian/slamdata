@@ -284,11 +284,11 @@ loading =
   [H.div [ A.classes [ B.alert, B.alertInfo, VC.loadingMessage ]
          ]
    [ H.text "Loading"
-   , H.img [ A.src "/img/blue-spin.svg" ] [ ]
+   , H.img [ A.src "/img/blue-spin.gif" ] [ ]
    ]
-  ] 
+  ]
 
-  
+
 errored :: forall e. String -> Array (HTML e)
 errored message =
   [H.div [ A.classes [ B.alert, B.alertDanger ]

@@ -37,7 +37,7 @@ item state ix item =
       H.div [ A.classes [B.listGroupItem, Vc.phantom] ]
             [ H.div [ A.class_ B.row ]
                     [ H.div [ A.classes [B.colXs9, Vc.itemContent]]
-                            [ H.span_ [ H.img [ A.src "img/spin.svg" ] []
+                            [ H.span_ [ H.img [ A.src "img/spin.gif" ] []
                                       , H.text $ itemName item
                                       ]
                             ]

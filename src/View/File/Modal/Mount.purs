@@ -66,7 +66,7 @@ mountDialog state =
 
 progressSpinner :: forall e. M.MountDialogRec -> HTML e
 progressSpinner state =
-  H.img [ A.src $ "img/spin.svg"
+  H.img [ A.src $ "img/spin.gif"
         , A.class_ $ VC.mountProgressSpinner state.inProgress
         ]
         []
