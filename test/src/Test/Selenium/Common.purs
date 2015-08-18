@@ -11,6 +11,7 @@ module Test.Selenium.Common
   , sendCopy
   , sendPaste
   , sendUndo
+  , sendKeyCombo
   )
   where
 
@@ -30,6 +31,7 @@ import Selenium.ActionSequence
 import Selenium.Key
 import Selenium.Types
 
+import Test.Platform
 import Test.Selenium.Log
 import Test.Selenium.Monad
 
@@ -97,26 +99,27 @@ awaitUrlChanged oldUrl = do
     else pure unit
 
 sendSelectAll :: Sequence Unit
-sendSelectAll = do
-  keyDown commandKey
-  sendKeys "a"
-  keyUp commandKey
+sendSelectAll = case platform of
+  Mac -> sendKeyCombo [commandKey] "a"
+  _ -> sendKeyCombo [controlKey] "a"
 
 sendCopy :: Sequence Unit
-sendCopy = do
-  keyDown commandKey
-  sendKeys "c"
-  keyUp commandKey
+sendCopy = case platform of
+  Mac -> sendKeyCombo [commandKey] "c"
+  _ -> sendKeyCombo [controlKey] "c"
 
 sendPaste :: Sequence Unit
-sendPaste = do
-  keyDown commandKey
-  sendKeys "v"
-  keyUp commandKey
+sendPaste = case platform of
+  Mac -> sendKeyCombo [commandKey] "v"
+  _ -> sendKeyCombo [controlKey] "v"
 
 sendUndo :: Sequence Unit
-sendUndo = do
-  keyDown commandKey
-  sendKeys "z"
-  keyUp commandKey
+sendUndo = case platform of
+  Mac -> sendKeyCombo [commandKey] "z"
+  _ -> sendKeyCombo [controlKey] "z"
 
+sendKeyCombo :: Array ControlKey -> String -> Sequence Unit
+sendKeyCombo ctrlKeys str = do
+  traverse_ keyDown ctrlKeys
+  sendKeys str
+  traverse_ keyUp ctrlKeys
