@@ -94,6 +94,9 @@ enabled = lift <<< isEnabled
 getCss :: Element -> String -> Check String
 getCss el key = lift $ getCssValue el key
 
+attribute :: Element -> String -> Check String
+attribute el attr = lift $ getAttribute el attr
+
 clear :: Element -> Check Unit
 clear = lift <<< clearEl
 

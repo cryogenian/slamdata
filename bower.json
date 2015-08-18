@@ -46,7 +46,7 @@
     "purescript-affjax": "^0.5.4",
     "purescript-uri": "~0.1.0-rc.1",
     "purescript-nonempty-arrays": "~0.3.0",
-    "purescript-webdriver": "^0.2.0",
+    "purescript-webdriver": "^0.2.1",
     "purescript-halogen-bootstrap": "^0.3.0"
   },
   "resolutions": {

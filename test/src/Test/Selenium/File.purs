@@ -6,13 +6,14 @@ import Control.Apply ((*>))
 import Control.Bind ((>=>), (=<<))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
+import Data.Functor ((<$))
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Either (Either(..), either, isLeft)
 import Data.Foldable (foldl, elem, find)
 import Data.Traversable (traverse)
-import Data.List (List(), reverse)
+import Data.List (List(), reverse, filter, null)
 import Selenium.Types
 import Selenium.MouseButton
 import Selenium.ActionSequence
@@ -23,6 +24,7 @@ import Test.Config
 import Driver.File.Routing (Routes(..), routing)
 import Driver.File.Search (searchPath)
 import Routing (matchHash)
+import qualified Data.Array as Arr
 import qualified Data.String.Regex as R
 import qualified Data.String as Str
 import qualified Data.Char as Ch
@@ -89,10 +91,16 @@ findTestDb = do
 getTestDb :: Check Element
 getTestDb = findTestDb >>= maybe (errorMsg "There is no test database") pure
 
-findUploaded :: Check (Maybe Element)
-findUploaded = do
+findUploadedItem :: Check (Maybe Element)
+findUploadedItem = do
   config <- getConfig
   findItem config.move.name
+
+getUploadedItem :: Check Element
+getUploadedItem =
+  findUploadedItem
+    >>= maybe (errorMsg "File has not been uploaded") pure
+
 
 mountDatabase :: Check Unit
 mountDatabase = do
@@ -122,6 +130,7 @@ mountDatabase = do
     leftClick saveButton
 
   waitCheck mountShown config.selenium.waitTime
+
   where
   getMountDatabaseButton :: Check Element
   getMountDatabaseButton = do
@@ -136,6 +145,24 @@ mountDatabase = do
     case item of
        Just _ -> pure true
        Nothing -> later 1000 mountShown
+
+
+unmountDatabase :: Check Unit
+unmountDatabase = do
+  sectionMsg "UNMOUNT TEST DATABASE"
+  home
+  config <- getConfig
+  mountItem <-
+    findItem config.mount.name
+      >>= maybe (errorMsg "No mount item") pure
+
+  actions $ leftClick mountItem
+  itemGetDeleteIcon mountItem >>= itemClickToolbarIcon mountItem
+  waitCheck (later 3000 $ pure false) 5000
+  findItem config.mount.name
+    >>= maybe (pure unit) (const $ errorMsg "did not unmount")
+  successMsg "successfully unmounted"
+
 
 checkMountedDatabase :: Check Unit
 checkMountedDatabase = do
@@ -194,7 +221,7 @@ checkItemToolbar = do
   -- W/o this it will show toolbar
   actions $ mouseToLocation {x: 0.0, y: 0.0}
   { listGroupItem : groupItem, itemToolbar : toolbar } <- getItemToolbar
-  
+
   apathize do
     assertBoolean "toolbar should not be displayed" <<< not =<< visible toolbar
     successMsg "toolbar is hidden"
@@ -369,7 +396,7 @@ fileUpload = do
   """
 
   keys config.upload.filePath uploadInput
-  waitCheck inNotebook config.selenium.waitTime
+  waitCheck (true <$ awaitInNotebook) config.selenium.waitTime
   successMsg "Ok, explore notebook created"
   back
   fileComponentLoaded
@@ -379,21 +406,79 @@ fileUpload = do
     then errorMsg "items has not changed after upload"
     else successMsg "new items added after upload"
 
+shareFile :: Check Unit
+shareFile = do
+  sectionMsg "SHARE FILE"
+  goDown
+  config <- getConfig
+  uploadedItem <- getUploadedItem
+  itemGetShareIcon uploadedItem >>= itemClickToolbarIcon uploadedItem
+  waitCheck modalShown config.selenium.waitTime
+  successMsg "Share modal dialog appeared"
+  urlField <- getElementByCss config.share.urlField "there is no url field"
+  urlValue <- attribute urlField "value"
+  successMsg $ "Share url: " <> urlValue
+  goTo urlValue
+  waitCheck (true <$ awaitInNotebook) config.selenium.waitTime
+  successMsg "Ok, share link led to notebook"
+
   where
-  inNotebook = do
-    url <- getURL
-    rgx <- nbRegex
-    successMsg $ "URL: " ++ url
-    if R.test rgx url
-      then pure true
-      else later 1000 inNotebook
+    itemGetShareIcon :: Element -> Check Element
+    itemGetShareIcon item =
+      checkLocator shareLoc
+        >>= child item
+        >>= maybe (errorMsg "no share icon") pure
 
-  nbRegex = do
-    config <- getConfig
-    pure $ R.regex ("notebook.html#/explore/" <>
-                    config.mount.name <> "/" <>
-                    config.database.name) R.noFlags
+    shareLoc :: Element -> Check Element
+    shareLoc el = getConfig >>= \config -> buttonLoc config.share.markShare el
 
+
+searchForUploadedFile :: Check Unit
+searchForUploadedFile = do
+  sectionMsg "SEARCH"
+  home
+  config <- getConfig
+  searchInput <- getElementByCss config.search.searchInput "no search input field"
+  url <- getURL
+  let filename = fromMaybe config.upload.file $ Arr.last $ Str.split "/" config.upload.file
+  actions $ do
+    leftClick searchInput
+    sendKeys filename
+  searchButton <- getElementByCss config.search.searchButton "no search button"
+  actions $ leftClick searchButton
+  waitCheck (true <$ awaitUrlChanged url) config.selenium.waitTime
+  waitCheck (true <$ awaitItemShown filename) 5000
+  matchingItems <- filter (contains filename) <$> getItemTexts
+
+  if null matchingItems
+    then errorMsg "Failed searching for uploaded file"
+    else successMsg "Searched for and found uploaded file"
+
+  where
+    contains :: String -> String -> Boolean
+    contains phrase = R.test (R.regex phrase R.noFlags)
+
+    awaitItemShown :: String -> Check Unit
+    awaitItemShown name = do
+      matchingItems <- filter (contains name) <$> getItemTexts
+      if null matchingItems
+         then later 1000 $ awaitItemShown name
+         else pure unit
+
+awaitInNotebook :: Check Unit
+awaitInNotebook = do
+  url <- getURL
+  rgx <- nbRegex
+  successMsg $ "URL: " ++ url
+  if R.test rgx url
+    then pure unit
+    else later 1000 awaitInNotebook
+
+  where
+    nbRegex = do
+      config <- getConfig
+      let phrase = "notebook.html#/explore/" <> config.mount.name <> "/" <> config.database.name
+      pure $ R.regex phrase R.noFlags
 
 
 moveDelete :: Check Unit
@@ -407,11 +492,6 @@ moveDelete = do
 
   where
   errUploaded = errorMsg "File has not been uploaded"
-
-  getUploadedItem :: Check Element
-  getUploadedItem =
-    findUploaded
-      >>= maybe (errorMsg "File has not been uploade") pure
 
   -- | Move an item, and return the new/moved item
   checkMove :: Element -> Check Element
@@ -458,38 +538,39 @@ moveDelete = do
       >>= maybe (pure unit) (const $ errorMsg "not deleted")
     successMsg "successfully deleted"
 
-    where
-      itemGetDeleteIcon :: Element -> Check Element
-      itemGetDeleteIcon item =
-        checkLocator deleteLoc
-          >>= child item
-          >>= maybe (errorMsg "no delete icon") pure
-
-  -- | Activate the item's toolbar and click a button/icon in it
-  itemClickToolbarIcon :: Element -> Element -> Check Unit
-  itemClickToolbarIcon item icon = do
-    config <- getConfig
-    actions $ leftClick item
-    waitCheck (checker $ visible icon) config.selenium.waitTime
-    actions $ leftClick icon
-
   moveLoc :: Element -> Check Element
   moveLoc el = getConfig >>= \config -> buttonLoc config.move.markMove el
 
-  deleteLoc :: Element -> Check Element
-  deleteLoc el = getConfig >>= \config -> buttonLoc config.move.markDelete el
-
-  buttonLoc :: String -> Element -> Check Element
-  buttonLoc ty el = do
-    config <- getConfig
-    tpls <- css config.move.button >>= children el >>=
-      traverse (\el -> Tuple el <$> (css ty >>= child el))
-    maybe (throwError $ error $ "no such button " <> ty)
-      pure $ foldl foldFn Nothing tpls
-    where
+buttonLoc :: String -> Element -> Check Element
+buttonLoc ty el = do
+  config <- getConfig
+  tpls <- css config.move.button >>= children el >>=
+    traverse (\el -> Tuple el <$> (css ty >>= child el))
+  maybe (throwError $ error $ "no such button " <> ty)
+    pure $ foldl foldFn Nothing tpls
+  where
     foldFn (Just el) _ = Just el
     foldFn Nothing (Tuple el Nothing) = Nothing
     foldFn Nothing (Tuple el (Just _)) = Just el
+
+itemGetDeleteIcon :: Element -> Check Element
+itemGetDeleteIcon item =
+  checkLocator deleteLoc
+    >>= child item
+    >>= maybe (errorMsg "no delete icon") pure
+
+ where
+   deleteLoc :: Element -> Check Element
+   deleteLoc el = getConfig >>= \config -> buttonLoc config.move.markDelete el
+
+
+-- | Activate the item's toolbar and click a button/icon in it
+itemClickToolbarIcon :: Element -> Element -> Check Unit
+itemClickToolbarIcon item icon = do
+  config <- getConfig
+  actions $ leftClick item
+  waitCheck (checker $ visible icon) config.selenium.waitTime
+  actions $ leftClick icon
 
 trashCheck :: Check Unit
 trashCheck = do
@@ -599,7 +680,7 @@ createNotebookAndThen andThen = do
 createNotebook :: Check Unit
 createNotebook = do
   sectionMsg "NEW NOTEBOOK CHECK"
-  createNotebookAndThen do 
+  createNotebookAndThen do
     back
     fileComponentLoaded
     newNotebook <- getNewNotebook
@@ -626,6 +707,8 @@ test :: Check Unit
 test = do
   home
   mountDatabase
+  unmountDatabase
+  mountDatabase
   checkMountedDatabase
   checkConfigureMount
   checkItemToolbar
@@ -634,6 +717,8 @@ test = do
   checkBreadcrumbs
   sorting
   fileUpload
+  searchForUploadedFile
+  shareFile
   moveDelete
   trashCheck
   checkTitle
