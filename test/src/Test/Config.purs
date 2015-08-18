@@ -11,6 +11,7 @@ type Config =
                }
 
   , locators :: StrMap String
+  , notebookLocators :: StrMap String
   , item :: { main :: String
             , toolbar :: String
             }

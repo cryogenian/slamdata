@@ -3,5 +3,10 @@
     "port": 63175
   },
   "mountings": {
+    "/test-mount/": {
+      "mongodb": {
+        "connectionUri": "mongodb://localhost:63174/"
+      }
+    }
   }
 }

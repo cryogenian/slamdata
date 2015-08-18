@@ -10,6 +10,7 @@
         "waitTime": 6000
     },
     "slamdataUrl": "http://localhost:63175",
+
     "slamengine": {
         "jar": "test/jars/slamengine.jar",
         "config": "test/slamengine-config.json"
@@ -78,6 +79,26 @@
     },
     "mount": {
       "name" : "test-mount"
+    },
+    "notebookLocators": {
+        "page": ".notebook-page",
+        "modal": ".modal",
+        "nav": "nav",
+        "nav header": "nav .header",
+        "nav menu": "nav .header-menu",
+        "nav els": "nav .header-menu ul li a",
+        "nav icon": ".nav-icon",
+        "nav logo": ".nav-logo",
+        "notebook name": ".notebook-name",
+        "notebook name editor": ".notebook-name input#name-editor",
+        "notebook content": ".notebook-content",
+        "new cell menu": ".new-cell-menu",
+        "new cell plus": ".new-cell-menu button.btn-lg.btn-link[title='Insert new cell'",
+        "new cell query": ".new-cell-menu button[title='Query']",
+        "new cell markdown": ".new-cell-menu button[title='Markdown']",
+        "new cell explore": ".new-cell-menu button[title='Explore']",
+        "new cell search": ".new-cell-menu button[title='Search']",
+        "logo versioned": ".nav-logo a[title^=Version]"
     },
     "version": "2.1.6"
 }
