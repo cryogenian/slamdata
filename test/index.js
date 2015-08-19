@@ -37,7 +37,7 @@ if (args.b) {
 
 var VERBOSE = args.v;
 
-var slamengineConfigPath = path.resolve(config.slamengine.config)
+var slamengineConfigPath = path.resolve("tmp/" + config.slamengine.config)
 
 var url = "mongodb://" + config.mongodb.host + ":" + config.mongodb.port + "/" + config.database.name,
     restoreCmd = config.restoreCmd,
@@ -93,7 +93,7 @@ log("Emptying test temp folder");
 rimraf.sync("tmp/test");
 fs.mkdirSync("tmp/test");
 
-// Back up the original configuration file
+// Copy the configuration file for use by slamengine
 copyFile(config.slamengine.config, "tmp/" + config.slamengine.config, function(){});
 
 process.chdir("tmp/test");
@@ -103,12 +103,6 @@ fs.mkdirSync("data");
 
 log("Creating symlink for SlamEngine static files");
 fs.symlinkSync(path.resolve("../../public"), path.resolve("slamdata"), "junction");
-
-// restore the original config file
-function restoreConfig(kont) {
-  process.chdir(path.resolve("../../"));
-  copyFile(path.resolve("tmp/" + config.slamengine.config), slamengineConfigPath, kont)
-}
 
 Promise.all([startMongo(), startSlamEngine(), startSelenium()])
     .then(function () {
@@ -120,14 +114,10 @@ Promise.all([startMongo(), startSlamEngine(), startSelenium()])
         log("running tests\n\n");
         require("../tmp/js/test.js").test(config)(function() {
             db.close();
-            restoreConfig(function () {
-              process.exit(0);
-            });
+            process.exit(0);
         }, function(err) {
             log(err, err.stack.split("\n"));
-            restoreConfig(function () {
-              process.exit(1);
-            });
+            process.exit(1);
         });
     });
 
