@@ -93,7 +93,7 @@ log("Emptying test temp folder");
 rimraf.sync("tmp/test");
 fs.mkdirSync("tmp/test");
 
-// Back up the original configuration file
+// Copy the configuration file for use by slamengine
 copyFile(config.slamengine.config, "tmp/" + config.slamengine.config, function(){});
 
 process.chdir("tmp/test");
