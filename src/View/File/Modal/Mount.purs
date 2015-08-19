@@ -27,7 +27,7 @@ import Utils (select, clearValue)
 import Utils.Halide (selectThis, onPaste)
 import View.Common (glyph, closeButton)
 import View.File.Common (HTML())
-import View.Modal.Common (header, h4, body, footer)
+import View.Modal.Common (header, h4, body, footer, nonSubmit)
 
 import qualified Data.String.Regex as Rx
 import qualified Halogen.HTML as H
@@ -44,7 +44,7 @@ import qualified View.Css as VC
 mountDialog :: forall e. M.MountDialogRec -> Array (HTML e)
 mountDialog state =
   [ header $ h4 "Mount"
-  , body [ H.form [ A.class_ VC.dialogMount ]
+  , body [ H.form [ A.class_ VC.dialogMount, nonSubmit ]
                   $ (if state.new then [fldName state] else [])
                  ++ [ fldConnectionURI state
                     , selScheme state
