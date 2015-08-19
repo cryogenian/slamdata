@@ -45,7 +45,7 @@ searchEditor notebook cell =
     , H.img [ E.onClick (E.input_ $ updateBuffer "")
             , A.class_ Vc.searchClear
             , A.src (case cell ^. _runState of
-                        RunningSince _ -> "img/spin.svg"
+                        RunningSince _ -> "img/spin.gif"
                         _ -> "img/remove.svg")
             ] [ ]
     , H.span [ A.classes [ B.inputGroupBtn ] ]

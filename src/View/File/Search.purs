@@ -70,5 +70,5 @@ search state =
   where
 
   searchIcon :: Boolean -> String
-  searchIcon true = "img/spin.svg"
+  searchIcon true = "img/spin.gif"
   searchIcon false = "img/remove.svg"
