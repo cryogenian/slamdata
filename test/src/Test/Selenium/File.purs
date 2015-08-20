@@ -153,7 +153,7 @@ unmountDatabase = do
 
   actions $ leftClick mountItem
   itemGetDeleteIcon mountItem >>= itemClickToolbarIcon mountItem
-  waitCheck (later 3000 $ pure false) 5000
+  _ <- later 3000 $ pure unit
   findItem config.mount.name
     >>= maybe (pure unit) (const $ errorMsg "did not unmount")
   successMsg "successfully unmounted"
@@ -495,7 +495,7 @@ moveDelete = do
     getElementByCss config.move.submit "no submit button"
       >>= actions <<< leftClick
 
-    waitCheck (later 3000 $ pure false) 5000
+    _ <- later 3000 $ pure unit
     renamedItem <- findItem config.move.other >>= maybe (errorMsg "not renamed") pure
     successMsg "successfully renamed"
     pure renamedItem
@@ -522,7 +522,7 @@ moveDelete = do
   checkDelete item = do
     config <- getConfig
     itemGetDeleteIcon item >>= itemClickToolbarIcon item
-    waitCheck (later 3000 $ pure false) 5000
+    _ <- later 3000 $ pure unit
     findItem config.move.other
       >>= maybe (pure unit) (const $ errorMsg "not deleted")
     successMsg "successfully deleted"
@@ -608,7 +608,7 @@ createFolder = do
 
   newFolderButton <- getNewFolderButton
   actions $ leftClick newFolderButton
-  waitCheck (later 1000 $ pure true) config.selenium.waitTime
+  _ <- later 1000 $ pure unit
 
   folder <- getNewFolder
   actions $ doubleClick leftButton folder
