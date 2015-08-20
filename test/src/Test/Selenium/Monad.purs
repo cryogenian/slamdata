@@ -131,7 +131,7 @@ checker check = do
   res <- check
   if res
     then pure true
-    else later 1000 check
+    else later 1000 $ checker check
 
 stop :: Check Unit
 stop = waitCheck (later top $ pure false) top
