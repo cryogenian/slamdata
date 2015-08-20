@@ -168,20 +168,18 @@ badMountDatabase = do
   badMountConfig
     >>= mountDatabaseWithMountConfig
 
-  waitCheck (checker expectWarningMessage) 8000
+  warningBox <- getElementByCss config.configureMount.warningBox "no warning box"
+
+  -- wait for any old validation messages to disappear
+  waitCheck (checker $ not <$> visible warningBox) config.selenium.waitTime
+  -- wait for the server error to appear
+  waitCheck (checker $ visible warningBox) 8000
 
   cancelButton <- getElementByCss config.configureMount.cancelButton "no cancel button"
   actions $ leftClick cancelButton
   waitCheck modalDismissed config.selenium.waitTime
 
   where
-    expectWarningMessage :: Check Boolean
-    expectWarningMessage = do
-      config <- getConfig
-      getElementByCss config.configureMount.warningBox "no warning box"
-        >>= innerHtml
-        <#> R.test (R.regex "Invalid server and / or port specified" R.noFlags)
-
     badMountConfig :: Check MountConfigR
     badMountConfig = do
       mountConfig <- mountConfigFromConfig
