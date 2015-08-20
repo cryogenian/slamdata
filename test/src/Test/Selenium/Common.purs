@@ -6,6 +6,7 @@ module Test.Selenium.Common
   , fileComponentLoaded
   , notebookLoaded
   , modalShown
+  , modalDismissed
   , awaitUrlChanged
 
   , sendSelectAll
@@ -99,6 +100,14 @@ modalShown = do
     css config.modal
       >>= element
       >>= maybe (pure false) visible
+
+modalDismissed :: Check Boolean
+modalDismissed = do
+  config <- getConfig
+  checker $
+    css config.modal
+      >>= element
+      >>= maybe (pure true) (map not <<< visible)
 
 awaitUrlChanged :: String -> Check Boolean
 awaitUrlChanged oldURL = checker $ (oldURL /=) <$> getURL

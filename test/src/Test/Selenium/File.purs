@@ -100,10 +100,20 @@ getUploadedItem =
   findUploadedItem
     >>= maybe (errorMsg "File has not been uploaded") pure
 
+type MountConfigR =
+  { host :: String
+  , port :: Int
+  }
 
-mountDatabase :: Check Unit
-mountDatabase = do
-  sectionMsg "MOUNT TEST DATABASE"
+mountConfigFromConfig :: Check MountConfigR
+mountConfigFromConfig = do
+  config <- getConfig
+  pure { host : config.mongodb.host
+       , port : config.mongodb.port
+       }
+
+mountDatabaseWithMountConfig :: MountConfigR -> Check Unit
+mountDatabaseWithMountConfig mountConfig = do
   home
   mountButton <- getMountDatabaseButton
   actions $ leftClick mountButton
@@ -113,7 +123,7 @@ mountDatabase = do
   nameField <- getElementByCss config.configureMount.nameField "no mount name field"
   saveButton <- getElementByCss config.configureMount.saveButton "no save button"
 
-  let connectionUri = "mongodb://" ++ config.mongodb.host ++ ":" ++ show config.mongodb.port ++ "/"
+  let connectionUri = "mongodb://" ++ mountConfig.host ++ ":" ++ show mountConfig.port ++ "/" ++ config.database.name
   actions $ do
     -- a strange hack follows to get the uri onto the clipboard, since the uri
     -- field cannot be edited except by pasting.
@@ -128,8 +138,6 @@ mountDatabase = do
     sendPaste
     leftClick saveButton
 
-  waitCheck mountShown config.selenium.waitTime
-
   where
   getMountDatabaseButton :: Check Element
   getMountDatabaseButton = do
@@ -137,10 +145,45 @@ mountDatabase = do
     toolbarButton config.toolbar.mountDatabase
       >>= maybe (errorMsg "No mount database button") pure
 
-  mountShown :: Check Boolean
-  mountShown = checker $ do
-    config <- getConfig
-    isJust <$> findItem config.mount.name
+goodMountDatabase :: Check Unit
+goodMountDatabase = do
+  sectionMsg "MOUNT TEST DATABASE"
+  mountConfigFromConfig
+    >>= mountDatabaseWithMountConfig
+
+  config <- getConfig
+  waitCheck mountShown config.selenium.waitTime
+
+  where
+    mountShown :: Check Boolean
+    mountShown = checker $ do
+      config <- getConfig
+      isJust <$> findItem config.mount.name
+
+badMountDatabase :: Check Unit
+badMountDatabase = do
+  sectionMsg "BAD MOUNT TEST DATABASE"
+  config <- getConfig
+
+  badMountConfig
+    >>= mountDatabaseWithMountConfig
+
+  warningBox <- getElementByCss config.configureMount.warningBox "no warning box"
+
+  -- wait for any old validation messages to disappear
+  waitCheck (checker $ not <$> visible warningBox) config.selenium.waitTime
+  -- wait for the server error to appear
+  waitCheck (checker $ visible warningBox) 8000
+
+  cancelButton <- getElementByCss config.configureMount.cancelButton "no cancel button"
+  actions $ leftClick cancelButton
+  waitCheck modalDismissed config.selenium.waitTime
+
+  where
+    badMountConfig :: Check MountConfigR
+    badMountConfig = do
+      mountConfig <- mountConfigFromConfig
+      pure $ mountConfig { port = mountConfig.port - 1 }
 
 unmountDatabase :: Check Unit
 unmountDatabase = do
@@ -691,9 +734,10 @@ checkTitle = do
 test :: Check Unit
 test = do
   home
-  mountDatabase
+  badMountDatabase
+  goodMountDatabase
   unmountDatabase
-  mountDatabase
+  goodMountDatabase
   checkMountedDatabase
   checkConfigureMount
   checkItemToolbar

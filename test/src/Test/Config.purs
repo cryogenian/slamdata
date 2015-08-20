@@ -45,6 +45,8 @@ type Config =
                       , uriField :: String
                       , usernameField :: String
                       , saveButton :: String
+                      , cancelButton :: String
+                      , warningBox :: String
                       }
   , modal :: String
   , toolbar :: { main :: String

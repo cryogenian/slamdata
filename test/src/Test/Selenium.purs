@@ -27,7 +27,7 @@ foreign import makePublic :: forall a eff. String -> a -> Eff (module :: MODULE 
 
 main = do
   makePublic "test" test
-  
+
 test :: Config -> Aff _ Unit
 test config =
   maybe error go $ str2browser config.selenium.browser
@@ -43,4 +43,4 @@ test config =
     either throwError (const $ pure unit) res
 
 
-  
+

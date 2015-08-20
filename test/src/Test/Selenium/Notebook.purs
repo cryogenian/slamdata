@@ -16,12 +16,12 @@ import Utils.Log
 -- | We are in notebook after `setUp`. No need to test if notebook created
 -- | it's tested in `Test.Selenium.File`
 setUp :: Check Unit
-setUp = do 
+setUp = do
   home
-  mountDatabase
+  goodMountDatabase
   enterMount
   createNotebookAndThen $ pure unit
-  
+
 test :: Check Unit
 test = do
   setUp
