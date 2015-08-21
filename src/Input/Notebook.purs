@@ -25,13 +25,12 @@ import Model.Notebook.Cell
 import Model.Notebook.Cell.FileInput (_showFiles)
 import Model.Notebook.Domain (_cells, addCell, insertCell, _dependencies, Notebook(), trash, ancestors)
 import Model.Notebook.Port (Port(..), VarMapValue(), _PortResource, _VarMap)
-import Optic.Core 
+import Optic.Core
 import Optic.Fold ((^?))
 import Optic.Setter (mapped)
 import Text.Markdown.SlamDown (SlamDown(..), Block(..), Expr(..), Inline(..), FormField(..), TextBoxType(..), everything)
 import Text.Markdown.SlamDown.Html (FormFieldValue(..), SlamDownEvent(..), SlamDownState(..), applySlamDownEvent, initSlamDownState)
 import Text.Markdown.SlamDown.Parser (parseMd)
-
 
 import qualified Data.Array.NonEmpty as NEL
 import qualified Data.List as L
@@ -50,7 +49,7 @@ import Model.Path (FilePath(), AnyPath())
 data CellResultContent
   = AceContent String
   | JTableContent JTC.JTableContent
-  | MarkdownContent
+  | MarkdownContent SlamDown
 
 data Input
   = WithState (State -> State)
@@ -89,7 +88,7 @@ updateState state (UpdateCell cellId fn) =
 updateState state (Dropdown i) =
   let visSet = maybe true not (_.visible <$> state.dropdowns !! i) in
   state # _dropdowns %~
-  ((fromMaybe (state ^. _dropdowns)) <<< 
+  ((fromMaybe (state ^. _dropdowns)) <<<
    (modifyAt i _{visible = visSet}) <<<
    (_{visible = false} <$>))
 
@@ -138,7 +137,7 @@ updateState state (UpdatedOutput cid newInput) =
   changed cell = if not $ elem (cell ^. _cellId) depIds
                  then cell
                  else cell # _input .~ newInput
-  depIds = 
+  depIds =
     fst <$>
     L.filter (\x -> snd x == cid) (M.toList (state ^. _notebook .. _dependencies))
 
@@ -253,7 +252,9 @@ cellContent = either (setFailures <<< NEL.toArray) success
   success (JTableContent content) =
     setFailures [ ]
     <<< (_content.._JTableContent .~ content)
-  success MarkdownContent = setFailures [ ]
+  success (MarkdownContent content) =
+    setFailures [ ]
+    <<< (_content.._Markdown..Ma._evaluated ?~ content)
 
 onCell :: CellId -> (Cell -> Cell) -> Cell -> Cell
 onCell ci f c = if isCell ci c then f c else c
