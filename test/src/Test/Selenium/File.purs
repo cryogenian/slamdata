@@ -7,7 +7,7 @@ import Control.Bind ((>=>), (=<<))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
 import Data.Tuple (Tuple(..))
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
+import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust, isNothing)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Either (Either(..), either, isLeft)
 import Data.Foldable (foldl, elem, find)
@@ -198,9 +198,7 @@ unmountDatabase = do
 
   actions $ leftClick mountItem
   itemGetDeleteIcon mountItem >>= itemClickToolbarIcon mountItem
-  _ <- later 3000 $ pure unit
-  findItem config.mount.name
-    >>= maybe (pure unit) (const $ errorMsg "did not unmount")
+  waitCheck (checker $ isNothing <$> findItem config.mount.name) config.selenium.waitTime
   successMsg "successfully unmounted"
 
 
@@ -299,7 +297,7 @@ enterMount = do
   config <- getConfig
   mountItem <- findItem config.mount.name >>= maybe (errorMsg "No mount item") pure
   actions $ doubleClick leftButton mountItem
-  waitCheck (awaitUrlChanged url *> pure true) config.selenium.waitTime
+  waitCheck (awaitUrlChanged url) config.selenium.waitTime
   fileComponentLoaded
 
 goDown :: Check Unit
@@ -317,7 +315,7 @@ goDown = do
   checkOldHash url el old@(Salted oldSort oldSearch oldSalt) = do
     actions $ doubleClick leftButton el
     config <- getConfig
-    waitCheck (awaitUrlChanged url *> pure true) config.selenium.waitTime
+    waitCheck (awaitUrlChanged url) config.selenium.waitTime
     fileComponentLoaded
     getURL >>= getHashFromURL >>= checkHashes old
   checkOldHash _ _ _ = errorMsg "weird initial hash in goDown"
@@ -487,7 +485,7 @@ searchForUploadedFile = do
   searchButton <- getElementByCss config.search.searchButton "no search button"
   actions $ leftClick searchButton
   waitCheck (awaitUrlChanged url) config.selenium.waitTime
-  waitCheck (awaitItemShown filename) 5000
+  waitCheck (awaitItemShown filename) config.selenium.waitTime
   matchingItems <- filter (contains filename) <$> getItemTexts
 
   if null matchingItems
@@ -540,8 +538,7 @@ moveDelete = do
     getElementByCss config.move.submit "no submit button"
       >>= actions <<< leftClick
 
-    _ <- later 3000 $ pure unit
-    renamedItem <- findItem config.move.other >>= maybe (errorMsg "not renamed") pure
+    renamedItem <- waitUntilJust (findItem config.move.other) config.selenium.waitTime
     successMsg "successfully renamed"
     pure renamedItem
 
@@ -567,9 +564,7 @@ moveDelete = do
   checkDelete item = do
     config <- getConfig
     itemGetDeleteIcon item >>= itemClickToolbarIcon item
-    _ <- later 3000 $ pure unit
-    findItem config.move.other
-      >>= maybe (pure unit) (const $ errorMsg "not deleted")
+    waitCheck (checker $ isNothing <$> findItem config.move.other) config.selenium.waitTime
     successMsg "successfully deleted"
 
   moveLoc :: Element -> Check Element
@@ -615,8 +610,9 @@ trashCheck = do
 
   showHideButton <- getShowHideButton
   actions $ leftClick showHideButton
-  waitCheck (later 1000 $ pure true) 2000
-  assertBoolean "Trash should be shown" =<< isTrashVisible
+
+  config <- getConfig
+  waitCheck (checker isTrashVisible) config.selenium.waitTime
 
   trashItem <- fromJust <$> findItem trashKey
   actions $ doubleClick leftButton trashItem
@@ -653,9 +649,7 @@ createFolder = do
 
   newFolderButton <- getNewFolderButton
   actions $ leftClick newFolderButton
-  _ <- later 1000 $ pure unit
-
-  folder <- getNewFolder
+  folder <- waitUntilJust (findItem SDCfg.newFolderName) config.selenium.waitTime
   actions $ doubleClick leftButton folder
   fileComponentLoaded
 
