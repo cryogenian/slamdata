@@ -1,6 +1,8 @@
 module Test.Selenium.Monad where
 
 import Prelude
+import Control.Monad.Error.Class (throwError)
+import Control.Monad.Eff.Exception (error)
 import Data.Either
 import Data.Maybe
 import Data.List
@@ -45,6 +47,15 @@ attempt check = ReaderT \r ->
 later :: forall a. Int -> Check a -> Check a
 later time check = ReaderT \r ->
   A.later' time $ runReaderT check r
+
+retry :: forall a. Int -> Check a -> Check a
+retry n action = do
+  res <- attempt action
+  case res of
+    Left e -> if n > one
+              then retry (n - one) action
+              else lift $ throwError $ error "To many retries"
+    Right r -> pure r 
 
 -- SELENIUM
 goTo :: String -> Check Unit
@@ -135,6 +146,9 @@ checker check = do
 
 stop :: Check Unit
 stop = waitCheck (later top $ pure false) top
+
+waitTime :: Int -> Check Unit
+waitTime n = later n $ pure unit 
 
 reload :: Check Unit
 reload = getDriver >>= refresh >>> lift

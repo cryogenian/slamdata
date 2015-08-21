@@ -47,6 +47,7 @@ type Config =
   , configureMount :: { nameField :: String
                       , uriField :: String
                       , usernameField :: String
+                      , pathField :: String
                       , saveButton :: String
                       , cancelButton :: String
                       , warningBox :: String
@@ -61,5 +62,75 @@ type Config =
                , configureMount :: String
                }
   , mount :: { name :: String }
+  , newCellMenu :: { expandCollapse :: String
+                   , queryButton :: String
+                   , mdButton :: String
+                   , exploreButton :: String
+                   , searchButton :: String
+                   }
+  , cell :: { main :: String
+            , trash :: String
+            , hide :: String
+            , show :: String
+            , exploreEditor :: String
+            , refreshButton :: String
+            , playButton :: String
+            , embedButton :: String
+            , nextCellList :: String
+            , cellOutputLabel :: String
+            , cellOutputResult :: String
+            , failures :: String
+            , evalLine :: String
+            , showMessages :: String
+            , hideMessages :: String
+            , statusText :: String
+            , embedBox :: String
+            , nextCellQuery :: String
+            , nextCellSearch :: String
+            , nextCellViz :: String
+            , nextCellButton :: String
+            }
+  , explore :: { input :: String
+               , expand :: String
+               , list :: String
+               , listItem :: String
+               , notMounted :: String
+               , mounted :: String
+               , directory :: String
+               , smallZips :: String
+               , smallZipsName :: String
+               , olympics :: String
+               , olympicsName :: String
+               , pagination :: String
+               , pager :: String
+               , pageInput :: String
+               , row :: String
+               , smallZipsPageCount :: Int
+               , olympicsPageCount :: Int
+               , initialRowCount :: Int
+               , pageSizeInput :: String
+               , pageSizeSelect :: String
+               , table :: String
+               , option :: String
+               , optionNums :: Array String
+               , optionCustom :: String
+               , paginationStepForwardContent :: String
+               , paginationFastForwardContent :: String
+               , paginationStepBackwardContent :: String
+               , paginationFastBackwardContent :: String
+               , paginationButtons :: String
+               , firstPageContent :: String
+               , secondPageContent :: String
+               , lastPageContent :: String
+               , prenultPageContent :: String
+               , customPageContent :: String
+               , customPageNumber :: String
+               , smallZipsHead :: String
+               , olympicsHead :: String
+               , nestedHead :: String
+               , nestedHeadInversed :: String
+               , nested :: String
+               , jtableHead :: String
+               } 
   , version :: String
   }

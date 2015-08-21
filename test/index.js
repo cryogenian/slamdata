@@ -30,7 +30,6 @@ function copyFile(from, to, kont) {
 
 // required for decodeURIComponent in Match.Route
 window = global;
-
 if (args.b) {
     config.selenium.browser = args.b;
 }
@@ -85,9 +84,12 @@ var startProc = function (name, procName, args, stream, test) {
     };
 };
 
-var startMongo = startProc("MongoDB", "mongod", mongoArgs, "stdout", "waiting for connections on port");
-var startSlamEngine = startProc("SlamEngine", "java", slamengineArgs, "stdout", "Embedded server listening at port");
-var startSelenium = startProc("Selenium", "java", seleniumArgs, "stderr", "Selenium Server is up and running");
+var startMongo, startSlamEngine, startSelenium;
+
+startSlamEngine = startProc("SlamEngine", "java", slamengineArgs, "stdout", "Embedded server listening at port");
+
+startMongo = startProc("MongoDB", "mongod", mongoArgs, "stdout", "waiting for connections on port");
+startSelenium = startProc("Selenium", "java", seleniumArgs, "stderr", "Selenium Server is up and running");
 
 log("Emptying test temp folder");
 rimraf.sync("tmp/test");

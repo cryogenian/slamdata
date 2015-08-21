@@ -121,6 +121,7 @@ mountDatabaseWithMountConfig mountConfig = do
   waitCheck modalShown config.selenium.waitTime
   uriField <- getElementByCss config.configureMount.uriField "no connection uri field"
   nameField <- getElementByCss config.configureMount.nameField "no mount name field"
+  pathField <- getElementByCss config.configureMount.pathField "no path field"
   saveButton <- getElementByCss config.configureMount.saveButton "no save button"
 
   let connectionUri = "mongodb://" ++ mountConfig.host ++ ":" ++ show mountConfig.port ++ "/" ++ config.database.name
@@ -136,6 +137,7 @@ mountDatabaseWithMountConfig mountConfig = do
 
     leftClick uriField
     sendPaste
+
     leftClick saveButton
 
   where
@@ -551,7 +553,7 @@ moveDelete = do
         actions do
           leftClick nameField
           sendSelectAll
-          sendKeys $ Str.fromChar $ Ch.fromCharCode 57367
+          sendDelete
           sendKeys config.move.other
 
       -- | Get an item's "move/rename" icon

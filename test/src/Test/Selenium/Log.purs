@@ -1,7 +1,7 @@
 module Test.Selenium.Log where
 
 import Prelude
-import Text.Chalk (red, green, magenta)
+import Text.Chalk (red, green, magenta, yellow)
 import Control.Monad.Trans (lift) 
 import Control.Monad.Aff.Console (log) 
 import Control.Monad.Eff.Exception (error) 
@@ -18,3 +18,6 @@ errorMsg msg = do
 
 sectionMsg :: String -> Check Unit 
 sectionMsg msg = void $ lift $ log $ magenta $ "\n" <> msg
+
+warnMsg :: String -> Check Unit
+warnMsg msg = void $ lift $ log $ yellow msg
