@@ -9,6 +9,10 @@
         "browser": "firefox",
         "waitTime": 6000
     },
+    "sauceLabs": {
+        "enabled": false,
+        "platform": "OS X 10.10"
+    },
     "slamdataUrl": "http://localhost:63175",
 
     "slamengine": {
