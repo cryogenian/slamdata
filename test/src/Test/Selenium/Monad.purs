@@ -5,6 +5,7 @@ import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
 import Data.Either
 import Data.Maybe
+import Data.Maybe.Unsafe (fromJust)
 import Data.List
 import DOM
 import Test.Config (Config())
@@ -143,6 +144,13 @@ checker check = do
   if res
     then pure true
     else later 1000 $ checker check
+
+-- | This repeats its argument until it returns just; this is only sensible in
+-- | case the output of the passed check over time is monotonic.
+waitUntilJust :: forall a. Check (Maybe a) -> Int -> Check a
+waitUntilJust check time = do
+  waitCheck (checker $ isJust <$> check) time
+  fromJust <$> check
 
 stop :: Check Unit
 stop = waitCheck (later top $ pure false) top
