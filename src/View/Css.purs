@@ -116,6 +116,9 @@ mountHost = className "mount-host"
 mountProps :: ClassName
 mountProps = className "mount-props"
 
+mountPath :: ClassName
+mountPath = className "mount-path"
+
 mountPropsScrollbox :: ClassName
 mountPropsScrollbox = className "mount-props-scrollbox"
 

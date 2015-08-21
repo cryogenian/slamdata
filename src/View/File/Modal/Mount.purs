@@ -152,7 +152,7 @@ host state index enabled =
 
 fldPath :: forall e. M.MountDialogRec -> HTML e
 fldPath state =
-  H.div [ A.class_ B.formGroup ]
+  H.div [ A.classes [ B.formGroup, VC.mountPath ] ]
         [ label "Path" [ input state M._path [] ] ]
 
 userinfo state =

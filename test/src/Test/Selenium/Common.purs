@@ -13,7 +13,14 @@ module Test.Selenium.Common
   , sendCopy
   , sendPaste
   , sendUndo
+  , sendDelete
+  , sendEnter
   , sendKeyCombo
+  , contra
+  , checkNotExists
+  , parseToInt
+  , filterByContent
+  , filterByPairs
   )
   where
 
@@ -21,9 +28,13 @@ import Prelude
 import Data.Either (either, isRight)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (traverse_)
-import Data.Tuple (Tuple(..))
+import Data.Traversable (traverse)
+import Data.List (List(), filter)
+import Data.Tuple (Tuple(..), fst, snd)
 import qualified Data.String.Regex as R
 import qualified Data.StrMap as SM
+import qualified Data.String as Str
+import qualified Data.Char as Ch
 
 import Driver.File.Routing (Routes(..), routing)
 import Routing (matchHash)
@@ -36,6 +47,8 @@ import Selenium.Types
 import Test.Platform
 import Test.Selenium.Log
 import Test.Selenium.Monad
+
+import Utils (s2i)
 
 -- | Assert the truth of a boolean, providing an error message
 assertBoolean :: String -> Boolean -> Check Unit
@@ -127,6 +140,14 @@ sendPaste = case platform of
   Mac -> sendKeyCombo [commandKey] "v"
   _ -> sendKeyCombo [controlKey] "v"
 
+sendDelete :: Sequence Unit 
+sendDelete =
+  sendKeys $ Str.fromChar $ Ch.fromCharCode 57367
+
+sendEnter :: Sequence Unit
+sendEnter =
+  sendKeys $ Str.fromChar $ Ch.fromCharCode 13
+  
 sendUndo :: Sequence Unit
 sendUndo = case platform of
   Mac -> sendKeyCombo [commandKey] "z"
@@ -137,3 +158,28 @@ sendKeyCombo ctrlKeys str = do
   traverse_ keyDown ctrlKeys
   sendKeys str
   traverse_ keyUp ctrlKeys
+
+contra :: forall a. String -> Check a -> Check Unit
+contra msg check = do
+  eR <- attempt check
+  either (const $ pure unit) (const $ errorMsg msg) eR
+
+
+checkNotExists :: String -> String -> Check Unit
+checkNotExists msg str =
+  contra msg $ getElementByCss str ""
+
+parseToInt :: String -> Check Int
+parseToInt str =
+  maybe (errorMsg "can't parse string to int") pure $ s2i str
+
+
+filterByPairs :: List Element -> (Tuple Element String -> Boolean) ->
+                   Check (List (Tuple Element String))
+filterByPairs els filterFn = 
+  filter filterFn <$> traverse (\el -> Tuple el <$> innerHtml el) els
+
+ 
+filterByContent :: List Element -> (String -> Boolean) -> Check (List Element)
+filterByContent els filterFn =
+  (fst <$>) <$> (filterByPairs els (filterFn <<< snd))
