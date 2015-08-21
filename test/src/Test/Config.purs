@@ -5,6 +5,9 @@ import Data.StrMap
 type Config =
   { selenium :: { browser :: String
                 , waitTime :: Int}
+  , sauceLabs :: { enabled :: Boolean
+                 , platform :: String
+                 }
   , slamdataUrl :: String
   , mongodb :: { host :: String
                , port :: Int
