@@ -14,32 +14,26 @@ import Control.Monad.Aff (attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (message)
-import Control.Plus (empty)
+import Controller.Notebook.Cell.Markdown (runMarkdown)
 import Controller.Notebook.Cell.Explore (runExplore, viewExplore)
 import Controller.Notebook.Cell.Query (runQuery, viewQuery)
 import Controller.Notebook.Cell.Search (runSearch, viewSearch)
 import Controller.Notebook.Cell.Viz (runViz)
 import Controller.Notebook.Common (I(), update)
 import Data.Array (head)
-import Data.Date (now)
 import Data.Either (Either(..))
-import Halogen.HTML.Events.Monad (andThen)
-import Input.Notebook (CellResultContent(MarkdownContent), Input(..))
+import Input.Notebook (Input(..))
 import Model.Action
 import Model.Notebook (State(), _dialog, _notebook, _requesting)
 import Model.Notebook.Cell (Cell(), CellContent(..), _cellId, _runState, _content, RunState(..), _hasRun)
 import Model.Notebook.Domain (notebookURL, cellURL, Notebook(), ancestors, _dependencies, cellById)
 import Model.Notebook.Dialog
-import Optic.Core 
+import Optic.Core
 import Optic.Fold ((^?))
 import Utils (locationString, replaceLocation)
 
 import Data.Maybe (maybe)
 import qualified Data.Maybe.Unsafe as U
-
-runMarkdown :: forall eff. Cell -> I eff
-runMarkdown cell = result <$> liftEff now
-  where result d = CellResult (cell ^. _cellId) d $ Right MarkdownContent
 
 runCell :: forall eff. Cell -> I eff
 runCell cell = do
@@ -59,18 +53,15 @@ viewCell cell = do
     Markdown _ -> runMarkdown cell
     Query _ -> viewQuery cell
 
-
 handleRunClick :: forall e. Notebook -> Cell -> I e
 handleRunClick notebook cell | isRunning cell = stopCell notebook cell
                              | otherwise = requestCellContent notebook cell
 
 handleRefreshClick :: forall e. Cell -> I e
-handleRefreshClick  cell =
-  pure $ (RefreshCell cell) 
+handleRefreshClick cell = pure (RefreshCell cell)
 
 stopCell :: forall e. Notebook -> Cell -> I e
-stopCell notebook cell =
-  pure (StopCell (cell ^._cellId))
+stopCell notebook cell = pure (StopCell (cell ^._cellId))
 
 requestCellContent :: forall eff. Notebook -> Cell -> I eff
 requestCellContent notebook cell =

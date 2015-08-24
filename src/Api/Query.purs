@@ -1,4 +1,4 @@
-module Api.Query (query, port, sample, SQL(), fields, count, all, templated) where
+module Api.Query (query, query', port, sample, SQL(), fields, count, all, templated) where
 
 import Prelude
 import Api.Common (RetryEffects(), getResponse, succeeded, retryGet, slamjax)
@@ -11,10 +11,9 @@ import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (JArray(), Json(), JObject(), jsonEmptyObject, isArray, isObject, foldJson, toArray, toObject, toNumber, fromObject)
-import Data.Argonaut.Decode (decodeJson)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Array (concat, nub, filter, head)
-import Utils (encodeURIComponent)
 import Data.Either (Either(..), either)
 import Data.Either.Unsafe (fromRight)
 import Data.Foldable (foldl)
@@ -23,15 +22,16 @@ import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.String (split, replace)
 import Data.StrMap (StrMap(), keys, toList, empty, lookup)
 import Data.Tuple (Tuple(..))
+import Data.Bifunctor (lmap)
 import Model.Notebook.Port (VarMapValue())
 import Model.Path (AnyPath())
-import Model.Resource (Resource(), resourcePath, isFile, _name)
+import Model.Resource (Resource(..), resourcePath, isFile, _name)
 import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Optic.Core
+import Utils (encodeURIComponent)
 import qualified Data.Int as I
-
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
@@ -44,6 +44,15 @@ query res sql =
   where
   msg = "error in query"
   uri = mkURI res sql
+
+query' :: forall e. Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JArray)
+query' res@(File _) sql = do
+  result <- retryGet (mkURI res sql)
+  pure if succeeded result.status
+       then Right (extractJArray result.response)
+       else readError "error in query" result.response
+
+query' _ _ = pure $ Left "Query resource is not a file"
 
 count :: forall e. Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
 count res = do
@@ -72,26 +81,28 @@ port res dest sql vars =
 
     either (throwError <<< error) pure $ content result.response
   where
-  swap :: forall a b. Either a b -> Either b a
-  swap (Right a) = Left a
-  swap (Left a) = Right a
 
   -- TODO: This should be somewhere better.
   queryVars :: String
   queryVars = maybe "" makeQueryVars <<< uncons $ toList vars
 
-  -- TODO: Need to encode query component.
   pair :: Tuple String VarMapValue -> String
   pair (Tuple a b) = a <> "=" <> b
 
   makeQueryVars { head = h, tail = t } =
     foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
 
-  content :: String -> Either String JObject
-  content input = do
-    json <- jsonParser input >>= decodeJson
-    swap $ json .? "error"
-    pure json
+content :: forall a. (DecodeJson a) => String -> Either String a
+content input =
+  let json = jsonParser input >>= decodeJson
+  in case json of
+    Left err -> readError err input
+    Right json' -> pure json'
+
+readError :: forall a. String -> String -> Either String a
+readError msg input =
+  let responseError = jsonParser input >>= decodeJson >>= (.? "error")
+  in either (const $ Left msg) Left responseError
 
 sample' :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
 sample' res mbOffset mbLimit =
@@ -117,14 +128,12 @@ fields res = do
     [] -> throwError $ error "empty file"
     _ -> pure $ nub $ concat (getFields <$> jarr)
 
-
 mkURI :: Resource -> SQL -> String
 mkURI res sql =
   queryUrl <> resourcePath res <> "?q=" <> encodeURIComponent (templated res sql)
 
 templated :: Resource -> SQL -> SQL
 templated res = replace "{{path}}" ("\"" <> resourcePath res <> "\"")
-
 
 extractJArray :: String -> JArray
 extractJArray =
@@ -134,11 +143,9 @@ extractJArray =
   folder agg (Right j) = agg ++ [j]
   folder agg _ = agg
 
-
 getFields :: Json -> Array String
 getFields json =
   filter (/= "") $ nub $ getFields' [] json
-
 
 getFields' :: Array String -> Json -> Array String
 getFields' [] json = getFields' [""] json

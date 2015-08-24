@@ -122,5 +122,6 @@ mkWatch("watch-notebook", "bundle-notebook", allSources);
 mkWatch("watch-file-fast", "fast-bundle-file", allSources);
 mkWatch("watch-notebook-fast", "fast-bundle-notebook", allSources);
 
-gulp.task("default", ["watch-less", "watch-file", "watch-notebook"]);
+gulp.task("watch", ["watch-less", "watch-file", "watch-notebook"]);
 gulp.task("dev", ["watch-less", "watch-file-fast", "watch-notebook-fast"]);
+gulp.task("default", ["less", "bundle"]);
