@@ -76,3 +76,9 @@ resizeEChartsTimeout = 0
 
 trashFolder :: String
 trashFolder = ".trash"
+
+tickTick :: Int
+tickTick = 1000
+
+autosaveTick :: Int
+autosaveTick = 1000

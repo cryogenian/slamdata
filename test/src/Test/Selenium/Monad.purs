@@ -5,6 +5,7 @@ import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
 import Data.Either
 import Data.Maybe
+import Data.Foreign (Foreign())
 import Data.Maybe.Unsafe (fromJust)
 import Data.List
 import DOM
@@ -115,7 +116,7 @@ clear = lift <<< clearEl
 keys :: String -> Element -> Check Unit
 keys ks el = lift $ sendKeysEl ks el
 
-script :: String -> Check Unit
+script :: String -> Check Foreign
 script str = do
   driver <- getDriver
   lift $ executeStr driver str
@@ -143,7 +144,7 @@ checker check = do
   res <- check
   if res
     then pure true
-    else later 1000 $ checker check
+    else later 500 $ checker check
 
 -- | This repeats its argument until it returns just; this is only sensible in
 -- | case the output of the passed check over time is monotonic.

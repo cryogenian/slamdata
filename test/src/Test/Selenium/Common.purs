@@ -21,11 +21,19 @@ module Test.Selenium.Common
   , parseToInt
   , filterByContent
   , filterByPairs
+  , waiter'
+  , waiter
+  , waitExistentCss'
+  , waitExistentCss
+  , waitNotExistentCss'
+  , waitNotExistentCss
+  , await'
+  , await
   )
   where
 
 import Prelude
-import Data.Either (either, isRight)
+import Data.Either (either, isRight, Either(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (traverse_)
 import Data.Traversable (traverse)
@@ -55,11 +63,66 @@ assertBoolean :: String -> Boolean -> Check Unit
 assertBoolean _ true = pure unit
 assertBoolean err false = errorMsg err
 
+-- | Get element by css-selector or throw error
 getElementByCss :: String -> String -> Check Element
 getElementByCss cls errorMessage =
   css cls
     >>= element
     >>= maybe (errorMsg errorMessage) pure
+
+-- | Repeatedly tries to get element by css-selector (first argument)
+-- | for timeout (third argument) if have no success
+-- | throws error with message (second argument)
+waitExistentCss' :: String -> String -> Int -> Check Element
+waitExistentCss' css msg timeout =
+  waiter' (getElementByCss css msg) timeout
+
+-- | Same as `waitExistentCss'` but wait time is setted to `config.selenium.waitTime`
+waitExistentCss :: String -> String -> Check Element
+waitExistentCss css msg =
+  waiter (getElementByCss css msg)
+
+-- | Repeatedly tries to ensure that there is no element can be got by
+-- | css-selector (first argument) for timeout (third argument)
+-- | if have no success throws error with message (second argument)
+waitNotExistentCss' :: String -> String -> Int -> Check Unit
+waitNotExistentCss' css msg timeout =
+  waiter' (contra ("Element "<> css <> " exists") $ getElementByCss css msg) timeout
+
+-- | same as `waitNotExistentCss'`, wait time is setted to `config.selenium.waitTime`
+waitNotExistentCss :: String -> String -> Check Unit
+waitNotExistentCss css msg = 
+  waiter (contra ("Element "<> css <> " exists") $ getElementByCss css msg)
+
+-- | takes check and repeatedly tries to evaluate it for timeout of ms (second arg)
+-- | if check evaluates w/o error returns its value
+-- | else throws error
+waiter' :: forall a. Check a -> Int -> Check a
+waiter' getter timeout = do
+  waitCheck (checker (isRight <$> attempt getter)) timeout
+  getter
+
+-- | `waiter'` with timeout setted to `config.selenium.waitTime`
+waiter :: forall a. Check a -> Check a
+waiter getter = getConfig >>= _.selenium >>> _.waitTime >>> waiter' getter
+
+-- | Repeatedly tries to evaluate check (third arg) for timeout ms (first arg)
+-- | finishes when check evaluates to true.
+-- | If there is an error during check or it constantly returns `false`
+-- | throws error with message (second arg)
+await' :: Int -> String -> Check Boolean -> Check Unit
+await' timeout msg check = do
+  config <- getConfig
+  ei <- attempt $ waitCheck (checker $ check) config.selenium.waitTime
+  case ei of
+    Left _ -> errorMsg msg
+    Right _ -> pure unit
+    
+-- | Same as `await'` but max wait time is setted to `config.selenium.waitTime`
+await :: String -> Check Boolean -> Check Unit
+await msg check = do
+  config <- getConfig
+  await' config.selenium.waitTime msg check 
 
 getHashFromURL :: String -> Check Routes
 getHashFromURL =
@@ -159,6 +222,8 @@ sendKeyCombo ctrlKeys str = do
   sendKeys str
   traverse_ keyUp ctrlKeys
 
+-- | If `Check a` throws error returns `pure unit`
+-- | If `Check a` has success throws error with message from first argument
 contra :: forall a. String -> Check a -> Check Unit
 contra msg check = do
   eR <- attempt check
