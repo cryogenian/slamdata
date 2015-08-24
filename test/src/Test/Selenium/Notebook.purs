@@ -8,6 +8,8 @@ import Data.Either (Either(..), either, isRight)
 import Data.List (List(..), toList, fromList, length, catMaybes, replicateM, null, (!!), filter, takeWhile, head, reverse, zip)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Monoid.Disj (Disj(..), runDisj)
+import Data.Foreign
+import Data.Foreign.Class
 import Data.Monoid.Conj (Conj(..), runConj)
 import Data.Tuple (Tuple(..), snd, fst)
 import Data.Foldable (fold, for_)
@@ -29,10 +31,29 @@ import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import Utils.Halide (width', height', frameBorder)
 import Utils.Log
+import qualified Config as SDConfig
 
 ----------------------------------------------------------------------
 -- SETUPS / TEARDOWNS
 ----------------------------------------------------------------------
+
+spyXHR :: Check Unit
+spyXHR = void $ 
+  script """
+  window.ACTIVE_XHR_COUNT = 0;
+  var send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function() {
+    window.ACTIVE_XHR_COUNT++;
+    var m = this.onload;
+    this.onload = function() {
+      window.ACTIVE_XHR_COUNT--;
+      if (typeof m == 'function') {
+        m();
+      }
+    };
+    send.apply(this, arguments);
+  };
+  """
 
 -- | We are in notebook after `setUp`. No need to test if notebook created
 -- | it's tested in `Test.Selenium.File`
@@ -42,6 +63,13 @@ setUp = do
   goodMountDatabase
   enterMount
   createNotebookAndThen $ pure unit
+  spyXHR
+  pure unit
+
+reloadAndSpyXHR :: Check Unit
+reloadAndSpyXHR = do
+  reload 
+  spyXHR
 
 makeExploreCell :: Check Unit
 makeExploreCell = do
@@ -52,16 +80,16 @@ makeExploreCell = do
     else do
     trigger <- getNewCellMenuTrigger
     actions $ leftClick trigger
-    waitTime 500
-  exploreBtn <- getElementByCss config.newCellMenu.exploreButton "There is no explore button in new cell menu"
+  exploreBtn <- waitExistentCss config.newCellMenu.exploreButton
+                "There is no explore buttton in new cell menu"
   count <- length <$> getExploreCells
   actions $ leftClick exploreBtn
-  waitTime 500
-  newCount <- length <$> getExploreCells
-  if newCount /= count + 1
-    then errorMsg "Cell has not been added"
-    else do
-    successMsg "Ok, cell has been added"
+  await "Cell has not been added" $ cellAdded count
+  successMsg "Ok, cell has been added"
+  where 
+  cellAdded old = do
+    new <- length <$> getExploreCells
+    pure $ new == old + 1 
 
 deleteAllCells :: Check Unit
 deleteAllCells = do
@@ -75,8 +103,11 @@ deleteAllCells = do
     maybe (pure unit) go $ els !! i
   where
   go el = do
+    old <- length <$> getExploreCells
     actions $ leftClick el
-    waitTime 500
+    await "cell has not been deleted" do
+      new <- length <$> getExploreCells
+      pure $ new == old - 1
     deleteAllCells
 
 withExploreCell :: Check Unit -> Check Unit
@@ -94,13 +125,12 @@ withFileOpened file action = withExploreCell do
     leftClick input
     sendKeys file 
     leftClick play
-  waitCheck (checker waitFn) config.selenium.waitTime
-  action
-  where
-  waitFn = do
+  await "error during opening file" do
     statusText <- getStatusText >>= innerHtml
     embed <- attempt getEmbedButton
-    pure $ (statusText /= "" && isRight embed)
+    pure (statusText /= "" && isRight embed)
+  action
+
     
 withSmallZipsOpened :: Check Unit -> Check Unit
 withSmallZipsOpened action =
@@ -118,6 +148,14 @@ tableChanged :: String -> Check Boolean
 tableChanged old = do
   html <- getTable >>= innerHtml
   pure $ html /= old
+
+afterTableChanged :: forall a. Check a -> Check a
+afterTableChanged action = do
+  config <- getConfig
+  html <- getTable >>= innerHtml
+  res <- action
+  await "Table content has not been changed" $ tableChanged html
+  pure res
 
 afterTableReload :: String -> Check Unit 
 afterTableReload html = do
@@ -151,37 +189,33 @@ newCellMenuExpanded = do
     getElementByCss selector $ msg <> " not found in new cell menu"
     
               
-newCellMenuCheck :: Check Unit
-newCellMenuCheck = do
+checkNewCellMenu :: Check Unit
+checkNewCellMenu = do
   expand <- getNewCellMenuTrigger
   html <- innerHtml expand
   vis <- newCellMenuExpanded
   if vis
     then errorMsg "At least one of new cell menu button is visible"
-    else do
-    successMsg "Ok, initial new cell menu is collapsed"
-    actions $ leftClick expand
-    waitTime 500
+    else pure unit 
+  successMsg "Ok, initial new cell menu is collapsed"
+  actions $ leftClick expand
+  await "Expand/collapse button has not been changed" do 
     newHtml <- innerHtml expand
-    if newHtml == html
-      then errorMsg "Expand/collapse button has not been changed"
-      else do
-      newVis <- newCellMenuExpanded
-      if not newVis
-        then errorMsg "At least one of new cell menu is not visible after expanding"
-        else do
-        successMsg "Ok, expanded"
-        -- checking collapse
-        actions $ leftClick expand
-        waitTime 500
-        collapsedHtml <- innerHtml expand
-        if collapsedHtml /= html || collapsedHtml == newHtml
-          then errorMsg "Expand/collapse button has not returned to default state"
-          else do
-          collapsedVis <- newCellMenuExpanded
-          if collapsedVis
-            then errorMsg "At least one of new cell menu button is visible after collapse"
-            else successMsg "Ok, collapsed"
+    pure $ newHtml /= html
+  newVis <- newCellMenuExpanded
+  if not newVis
+    then errorMsg "At least one of new cell menu is not visible after expanding"
+    else pure unit 
+  successMsg "Ok, expanded"
+  -- checking collapse
+  actions $ leftClick expand
+  await "Expand/collapse butotn has not returned to default state" do
+    collapsedHtml <- innerHtml expand
+    pure $ collapsedHtml == html
+  collapsedVis <- newCellMenuExpanded
+  if collapsedVis
+    then errorMsg "At least one of new cell menu button is visible after collapse"
+    else successMsg "Ok, collapsed"
       
 
 
@@ -190,22 +224,20 @@ checkMakeExploreCell = do
   count <- length <$> getExploreCells
   if count /= 0
     then errorMsg "Notebook already has explore cells"
-    else do
-    toMake <- liftEff $ randomInt 1 20
-    replicateM toMake makeExploreCell
-    waitTime 500
+    else pure unit
+  toMake <- liftEff $ randomInt 1 20
+  replicateM toMake makeExploreCell
+  await "Not all explore cells was created" do
     newCount <- length <$> getExploreCells
-    if newCount /= toMake
-      then errorMsg "Not all explore cells was created"
-      else do
-      successMsg "Ok, all explore cells have been created"
-      waitTime 1500
-      reload
-      reloadCount <- length <$> getExploreCells
-      if reloadCount /= newCount
-        then errorMsg "Explore cells has not been saved"
-        else do
-        successMsg "Ok, explore cells have been saved"
+    pure $ newCount == toMake
+  successMsg "Ok, all explore cells have been created"
+  -- We need to be sure that autosave is triggered
+  waitTime (SDConfig.autosaveTick * 2)
+  reloadAndSpyXHR
+  await "Explore cells have not been saved" do
+    reloadCount <- length <$> getExploreCells
+    pure $ reloadCount == toMake
+  successMsg "Ok, explore cells have been saved"
 
 checkDeleting :: Check Unit
 checkDeleting = do
@@ -213,15 +245,16 @@ checkDeleting = do
   count <- length <$> getExploreCells
   if count > 0
     then errorMsg "There are cells after deleting"
-    else do
-    successMsg "Ok, deleted"
-    waitTime 1000
-    reload
-    reloadedCount <- length <$> getExploreCells
-    if reloadedCount > 0
-      then errorMsg "Deleting have no effect"
-      else do
-      successMsg "Ok, deleted in database"
+    else pure unit
+  successMsg "Ok, deleted"
+  -- We need to be sure that autosave is triggered
+  waitTime (SDConfig.autosaveTick * 2)
+  reloadAndSpyXHR
+  reloadedCount <- length <$> getExploreCells
+  if reloadedCount > 0
+    then errorMsg "Deleting have no effect"
+    else pure unit
+  successMsg "Ok, deleted in database"
 
 checkHideShow :: Check Unit
 checkHideShow = withExploreCell do
@@ -259,7 +292,6 @@ withFileList action =
       else do
       expander <- getElementByCss config.explore.expand "expand button not found"
       actions $ leftClick expander
-      waitTime 500
     action
 
 
@@ -269,49 +301,46 @@ checkFileList = withExploreCell do
   visible <- fileListVisible
   if visible
     then errorMsg "File list shouldn't be visible before expand button is clicked"
-    else do
-    successMsg "Ok, file list is hidden"
-    expander <- getElementByCss config.explore.expand "expand button not found"
-    actions $ leftClick expander
-    expandedVisible <- fileListVisible
-    if not expandedVisible
-      then errorMsg "File list should be visible after expand button is clicked"
-      else do
-      successMsg "Ok, file list is visible"
-      input <- getInput
-      actions do
-        leftClick input
-      waitTime 500
-      hiddenVisible <- fileListVisible
-      if hiddenVisible
-        then errorMsg "File list should be hidden after click"
-        else do
-        successMsg "Ok, file list is hidden"
+    else pure unit
+  successMsg "Ok, file list is hidden"
+  expander <- getElementByCss config.explore.expand "expand button not found"
+  actions $ leftClick expander
+  await "File list should be visible after expand button is clicked" fileListVisible
+  successMsg "Ok, file list is visible"
+  input <- getInput
+  actions $ leftClick input
+  await "File list should be hidden after click" (not <$> fileListVisible)
+  successMsg "Ok, file list is hidden"
+
 
 checkFileListSetInput :: Check Unit
 checkFileListSetInput = withFileList do
   config <- getConfig
-  item <- getElementByCss config.explore.listItem "No items in file list"
+  item <- waitExistentCss config.explore.listItem "No items in file list"
   html <- innerHtml item
   actions $ leftClick item
-  waitTime 500
-  input <- getInput
-  val <- attribute input "value"
-  if val /= html
-    then errorMsg "Incorrect value of input after select from dropdown"
-    else do
-    successMsg "Ok, correct item has been selected"
+  await "Incorrect value of input after select from dropdown" do
+    input <- getInput
+    val <- attribute input "value"
+    pure $ val == html
+  successMsg "Ok, correct item has been selected"
 
 checkHiddenItems :: Check Unit
-checkHiddenItems = withFileList do
+checkHiddenItems =  withFileList do
   config <- getConfig
-  waitTime 4000
+  await' (config.selenium.waitTime * 10)
+    "Too many xhr requests, they are not stopped"
+    xhrStopped
   items <- css config.explore.listItem >>= elements
   filtered <- filterByPairs items filterFn
   if null filtered
     then warnMsg "There is no hidden items, you probably run only notebook tests"
     else go items filtered
   where
+  xhrStopped = do
+    f <- script """ return window.ACTIVE_XHR_COUNT; """
+    pure $ either (const false) (== 0) $ readInt f
+    
   filterFn (Tuple el html) =
     R.test (R.regex "/\\." R.noFlags) html
 
@@ -375,23 +404,20 @@ checkEmptyInputBtn :: Element -> Check Unit
 checkEmptyInputBtn btn = do
   config <- getConfig
   actions $ leftClick btn
-  waitTime 100
-  failures <- getElementByCss config.cell.failures "There is no failures but should"
+  failures <- waitExistentCss config.cell.failures "There is no failures but should"
   html <- innerHtml failures 
   show <- getElementByCss config.cell.showMessages "There is no showMessages but should"
   actions $ leftClick show
-  waitTime 100
-  shownHtml <- innerHtml failures
-  if html == shownHtml
-    then errorMsg "There is no difference between hidden and shown failures"
-    else successMsg "Ok, shown failures is defferent with hidden"
-  hide <- getElementByCss config.cell.hideMessages "There is no hideMessages"
+  await "There is no difference between hidden and shown failures" do
+    shownHtml <- innerHtml failures
+    pure $ shownHtml /= html
+  successMsg "Ok, shown failures is defferent with hidden"
+  hide <- waitExistentCss config.cell.hideMessages "There is no hideMessages"
   actions $ leftClick hide
-  waitTime 100
-  hiddenHtml <- innerHtml failures
-  if hiddenHtml == html
-    then successMsg "Ok, hidden failures is equal with initial"
-    else errorMsg "Hidden failures are not equal with initial"
+  await "Hidden failures are not equal with initial" do 
+    hiddenHtml <- innerHtml failures
+    pure $ hiddenHtml == html
+  successMsg "Ok, hidden failures is equal with initial"
 
 checkEmptyInputErrors :: Check Unit
 checkEmptyInputErrors = do
@@ -420,8 +446,7 @@ checkFailure label keys = withExploreCell do
     leftClick input
     sendKeys keys
     leftClick play
-  waitTime 10000
-  getElementByCss config.cell.failures $ "There is no failures but should " <> label
+  waitExistentCss config.cell.failures $ "There is no failures but should " <> label
   successMsg $ "Ok, failures are shown " <> label
   checkNotExists ("There should not be results " <> label) config.cell.cellOutputResult
   checkNotExists ("There should not be output label " <> label) config.cell.cellOutputLabel
@@ -444,10 +469,10 @@ checkInexistentFileMounted = withExploreCell do
     leftClick input
     sendKeys config.explore.mounted
     leftClick play
-  waitTime 1000
-  checkNotExists "There should not be failures" config.cell.failures
-  getElementByCss config.cell.cellOutputLabel "There is no output label"
-  res <- getElementByCss config.cell.cellOutputResult "There is no output result"
+  waitNotExistentCss "There should not be failures" config.cell.failures
+
+  waitExistentCss config.cell.cellOutputLabel "There is no output label"
+  res <- waitExistentCss config.cell.cellOutputResult "There is no output result"
   mbTbl <- css "table" >>= child res
   table <- maybe (errorMsg "There is no table in result") pure mbTbl
   tableHtml <- innerHtml table
@@ -473,7 +498,7 @@ checkEmbedButton = withSmallZipsOpened do
     errorMsg $ "Embed value is not correct"
       <> "\nexpected: " <> expected
       <> "\nactual  : " <> value
-  reload 
+  reloadAndSpyXHR
   where
   getModal = do
     config <- getConfig 
@@ -809,7 +834,7 @@ test = do
   notebookLoaded
 
   sectionMsg "new cell menu check"
-  newCellMenuCheck
+  checkNewCellMenu
   
   sectionMsg "make explore cell check"
   checkMakeExploreCell

@@ -46,11 +46,12 @@ import Routing (matches')
 import Utils (replaceLocation)
 import Data.Map (lookup)
 import qualified Data.Maybe.Unsafe as U
+import qualified Config as Config
 
 
 tickDriver :: forall e. Driver Input (NotebookComponentEff e)
                      -> Eff (NotebookAppEff e) Unit
-tickDriver k = void $ interval 1000 $ now >>= k <<< WithState <<< (_tickDate .~) <<< Just
+tickDriver k = void $ interval Config.tickTick $ now >>= k <<< WithState <<< (_tickDate .~) <<< Just
 
 driver :: forall e. Ref State
                  -> Driver Input (NotebookComponentEff e)
@@ -159,7 +160,7 @@ notebookAutosave refState refTimer input k = do
       save = do
         t <- readRef refTimer
         clearTimeout t
-        t' <- timeout 1000 $ runAff' (saveNotebook notebook) \result -> do
+        t' <- timeout Config.autosaveTick $ runAff' (saveNotebook notebook) \result -> do
           case result of
             Left err -> k $ WithState (_error ?~ message err)
             Right nb -> do
