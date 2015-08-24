@@ -22,9 +22,9 @@ import Input.Notebook (Input(..))
 import Model.Notebook (State(), _notebook)
 import Model.Notebook.Cell (Cell(), _content, _Visualize, _cellId, CellId(), _runState, _input, _hasRun, newVisualizeContent, RunState(..))
 import Model.Notebook.Cell.Viz 
-import Model.Notebook.Domain
+import Model.Notebook.Domain hiding (_path, _name)
 import Model.Notebook.Port (_PortResource)
-import Model.Resource (Resource())
+import Model.Resource -- (Resource())
 import Optic.Core 
 import Optic.Fold ((^?))
 import Optic.Extended (TraversalP())
@@ -117,35 +117,29 @@ updateInserted cell =
 
 updateData :: forall e. Cell -> Resource -> I e
 updateData cell file = do
-  numItems <- liftAff $ count file
-  if numItems < 1
+  jarr <- liftAff $ sample file 0 20
+  if null jarr
     then errorEmptyInput
     else do
-    sample <- Me.analyzeJArray <$>
-              (liftAff $ sample file 0 20)
-
+    let sample = Me.analyzeJArray jarr
     all <- Me.analyzeJArray <$> (liftAff $ all file)
-
-    let vizRec = fromMaybe initialVizRec $ cell ^? _content.._Visualize
+    let vizRec = fromMaybe initialVizRec $ cell ^? _content .. _Visualize
         axes = keys all
     if L.null axes
       then updateOpts cell
-      else 
+      else
       let vRec = configure $ (vizRec # _all .~ all
                                      # _sample .~ sample
                              )
-          vRec' = vRec # _error .~ if S.isEmpty (vRec ^._availableChartTypes)
-                                   then "There is no availbale chart type for this data"
-                                   else ""
-
-
+          vRec' = vRec # _error .~ if S.isEmpty (vRec ^. _availableChartTypes)
+                                  then "There is no available chart type for this data"
+                                  else ""
       in (update cell ((_content .. _Visualize .~ vRec')
-                    .. (_hasRun .~ true))) <> 
-         (updateOpts (cell # _content.._Visualize .~ vRec'))
-
+                       .. (_hasRun .~ true))) <>
+         (updateOpts (cell # _content .. _Visualize .~ vRec'))
   where
   errored :: String -> I e
-  errored msg = update cell (_content.._Visualize.._error .~ msg) 
+  errored msg = update cell (_content.. _Visualize .. _error .~ msg) 
   
   errorEmptyInput :: I e
   errorEmptyInput = errored "Empty input"
