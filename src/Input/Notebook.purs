@@ -194,11 +194,11 @@ slamDownOutput cell =
                  *> SP.many SP.anyDigit
       SP.eof
 
-slamDownFields :: SlamDown -> Array (Tuple String FormField)
-slamDownFields = everything (const []) go
+slamDownFields :: SlamDown -> L.List (Tuple String FormField)
+slamDownFields = everything (const L.Nil) go
   where
-  go (FormField s _ ff) = [Tuple s ff]
-  go _ = []
+  go (FormField s _ ff) = L.singleton (Tuple s ff)
+  go _ = L.Nil
 
 setSlamDownStatus :: Cell -> Cell
 setSlamDownStatus cell =
@@ -208,7 +208,7 @@ setSlamDownStatus cell =
         let fields = slamDownFields md
             updateState (SlamDownState s) = case initSlamDownState md of
               SlamDownState s' ->
-                let prunedSM = foldl (flip SM.delete) s $ keysToPrune s s'
+                let prunedSM = foldl (flip SM.delete) s $ keysToPrune s $ SM.fromList fields
                     mergedSM = prunedSM `SM.union` s'
                 in SlamDownState mergedSM
         in slamDownOutput (cell # _message .~ message fields
@@ -216,26 +216,15 @@ setSlamDownStatus cell =
   in maybe cell (initial <<< parseMd) input'
 
   where
-    formFieldValueType :: FormFieldValue -> Maybe TextBoxType
-    formFieldValueType (SingleValue ty _) = Just ty
-    formFieldValueType _ = Nothing
-
-    formFieldValueTypeChanged :: FormFieldValue -> FormFieldValue -> Boolean
-    formFieldValueTypeChanged old new = formFieldValueType old /= formFieldValueType new
-
     -- | Returns the keys that are either not present in the new state, or have had their types changed.
-    keysToPrune :: SM.StrMap _ -> SM.StrMap _ -> Array _
+    keysToPrune :: SM.StrMap FormFieldValue -> SM.StrMap FormField -> Array _
     keysToPrune oldState newState =
       SM.foldMap
         (\key oldVal ->
-          case SM.lookup key newState of
-            Nothing -> [key]
-            Just newVal ->
-              if formFieldValueTypeChanged oldVal newVal then
-                [key]
-              else
-                []
-        )
+            case Tuple oldVal (SM.lookup key newState) of
+               Tuple (SingleValue tbt1 _) (Just (TextBox tbt2 _)) -> if tbt1 == tbt2 then [] else [key]
+               Tuple _ Nothing -> [key]
+               _ -> [])
         oldState
 
 runSlamDownEvent :: SlamDownEvent -> Cell -> Cell
