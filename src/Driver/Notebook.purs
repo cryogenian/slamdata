@@ -183,6 +183,7 @@ notebookAutosave refState refTimer input k = do
     UpdateCell _ _ | hasBeenSaved -> save
     CellResult _ _ _ | hasBeenSaved -> save
     TrashCell _ | hasBeenSaved -> save
+    CellSlamDownEvent _ _ | hasBeenSaved -> save
     _ -> pure unit
 
 
