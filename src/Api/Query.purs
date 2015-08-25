@@ -2,7 +2,7 @@ module Api.Query (query, query', port, sample, SQL(), fields, count, all, templa
 
 import Prelude
 import Api.Common (RetryEffects(), getResponse, succeeded, retryGet, slamjax)
-import Config (queryUrl, dataUrl)
+import Config.Paths (queryUrl, dataUrl)
 import Control.Apply (lift2)
 import Control.Bind ((<=<), (>=>))
 import Control.Monad.Aff (Aff())
@@ -19,13 +19,14 @@ import Data.Either.Unsafe (fromRight)
 import Data.Foldable (foldl)
 import Data.List (uncons, fromList)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Path.Pathy (rootDir, (</>), dir, file, printPath)
 import Data.String (split, replace)
 import Data.StrMap (StrMap(), keys, toList, empty, lookup)
 import Data.Tuple (Tuple(..))
 import Data.Bifunctor (lmap)
 import Model.Notebook.Port (VarMapValue())
-import Model.Path (AnyPath())
-import Model.Resource (Resource(..), resourcePath, isFile, _name)
+import Model.Path (FilePath(), rootify)
+import Model.Resource (Resource(..), resourcePath, isFile, _name, resourceDir, resourceName)
 import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
@@ -40,14 +41,14 @@ query :: forall e. Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) JArr
 query res sql =
   if not $ isFile res
   then pure []
-  else extractJArray <$> (getResponse msg $ retryGet uri)
+  else extractJArray <$> (getResponse msg $ retryGet uriPath)
   where
   msg = "error in query"
-  uri = mkURI res sql
+  uriPath = mkURI res sql
 
 query' :: forall e. Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JArray)
 query' res@(File _) sql = do
-  result <- retryGet (mkURI res sql)
+  result <- retryGet (mkURI' res sql)
   pure if succeeded result.status
        then Right (extractJArray result.response)
        else readError "error in query" result.response
@@ -75,7 +76,11 @@ port res dest sql vars =
     result <- slamjax $ defaultRequest
             { method = POST
             , headers = [RequestHeader "Destination" $ resourcePath dest]
-            , url = queryUrl <> resourcePath res <> queryVars
+            , url = printPath
+                    $ queryUrl
+                    </> rootify (resourceDir res)
+                    </> dir (resourceName res)
+                    </> file queryVars 
             , content = Just (templated res sql)
             }
 
@@ -111,9 +116,12 @@ sample' res mbOffset mbLimit =
   else extractJArray <$> (getResponse msg $ retryGet uri)
   where
   msg = "error getting resource sample"
-  uri = dataUrl <> resourcePath res <>
-        (maybe "" (("?offset=" <>) <<< show) mbOffset) <>
-        (maybe "" (("&limit=" <>) <<< show ) mbLimit)
+  uri = dataUrl
+        </> rootify (resourceDir res)
+        </> file ((resourceName res) <>
+                  (maybe "" (("?offset=" <>) <<< show) mbOffset) <>
+                  (maybe "" (("&limit=" <>) <<< show ) mbLimit))
+
 
 sample :: forall e. Resource -> Int -> Int -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
 sample res offset limit = sample' res (Just offset) (Just limit)
@@ -128,9 +136,18 @@ fields res = do
     [] -> throwError $ error "empty file"
     _ -> pure $ nub $ concat (getFields <$> jarr)
 
-mkURI :: Resource -> SQL -> String
+mkURI :: Resource -> SQL -> FilePath
 mkURI res sql =
-  queryUrl <> resourcePath res <> "?q=" <> encodeURIComponent (templated res sql)
+  queryUrl
+  </> file ("?q=" <> encodeURIComponent (templated res sql))
+ 
+mkURI' :: Resource -> SQL -> FilePath
+mkURI' res sql =
+  queryUrl
+  </> rootify (resourceDir res)
+  </> dir (resourceName res)
+  </> file ("?q=" <> encodeURIComponent (templated res sql))
+
 
 templated :: Resource -> SQL -> SQL
 templated res = replace "{{path}}" ("\"" <> resourcePath res <> "\"")

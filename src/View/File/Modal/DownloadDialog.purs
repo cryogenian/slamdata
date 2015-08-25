@@ -8,6 +8,7 @@ import Utils (encodeURIComponent)
 import Data.Either (either, isLeft, isRight)
 import Data.Inject1 (inj)
 import Data.Maybe (Maybe(..), isJust, isNothing, maybe, fromMaybe)
+import Data.Path.Pathy (printPath)
 import Input.File (FileInput(..))
 import Model.File (_dialog)
 import Model.File.Dialog.Download
@@ -18,6 +19,7 @@ import View.Common (closeButton, fadeWhen)
 import View.File.Common (HTML())
 import View.Modal.Common (header, body, footer, h4, nonSubmit)
 
+import qualified Config.Paths as Config
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
@@ -146,7 +148,7 @@ downloadDialog state =
   btnDownload :: forall e. HTML e
   btnDownload =
     let headers = encodeURIComponent $ show $ reqHeadersToJSON $ toHeaders state
-        url = Config.dataUrl ++ either (const "#") resourcePath (state ^. _source) ++ "?request-headers=" ++ headers
+        url = printPath Config.dataUrl ++ either (const "#") resourcePath (state ^. _source) ++ "?request-headers=" ++ headers
         disabled = isJust $ state ^. _error
     in H.a [ A.classes $ [B.btn, B.btnPrimary] ++ if disabled then [B.disabled] else []
            , A.disabled disabled

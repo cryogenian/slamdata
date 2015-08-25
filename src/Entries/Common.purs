@@ -5,6 +5,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff (Eff())
 import Data.Foreign.Class (readProp)
+import Data.Path.Pathy (rootDir, dir, file, (</>))
 import Data.Either (either)
 import Data.Maybe (Maybe(..), maybe)
 import DOM (DOM())
@@ -22,5 +23,5 @@ setSlamDataTitle maybeVersion = do
 
 getVersion :: forall eff. Aff (RetryEffects (ajax :: AJAX | eff)) (Maybe String)
 getVersion = do
-  serverInfo <- retryGet Config.serverInfoUrl
+  serverInfo <- retryGet Config.Paths.serverInfoUrl  
   return $ either (const Nothing) Just (readProp "version" serverInfo.response)

@@ -10,6 +10,8 @@ import Data.Argonaut.Combinators ((~>), (:=))
 import Data.Argonaut.Core (Json(), JAssoc(), jsonEmptyObject)
 import Data.Int (fromNumber, toNumber)
 import Data.Foldable (foldl)
+import Data.Path.Pathy
+import Model.Path (AnyPath())
 import Data.Maybe (Maybe(..))
 import Network.HTTP.Affjax.Request (Requestable)
 import Network.HTTP.Affjax.Response (Respondable)
@@ -34,17 +36,17 @@ type RetryEffects e = (avar :: AVAR, ref :: REF | e)
 slamjax :: forall e a b. (Requestable a, Respondable b) => AffjaxRequest a -> Affjax (RetryEffects e) b
 slamjax = retry defaultRetryPolicy affjax
 
-retryGet :: forall e a. (Respondable a) => URL -> Affjax (RetryEffects e) a
-retryGet u = slamjax $ defaultRequest { url = u }
+retryGet :: forall e a fd. (Respondable a) => Path Abs fd Sandboxed -> Affjax (RetryEffects e) a
+retryGet u = slamjax $ defaultRequest { url = printPath u }
 
-retryDelete :: forall e a. (Respondable a) => URL -> Affjax (RetryEffects e) a
-retryDelete u = slamjax $ defaultRequest { url = u, method = DELETE }
+retryDelete :: forall e a fd. (Respondable a) => Path Abs fd Sandboxed -> Affjax (RetryEffects e) a
+retryDelete u = slamjax $ defaultRequest { url = printPath u, method = DELETE }
 
-retryPost :: forall e a b. (Requestable a, Respondable b) => URL -> a -> Affjax (RetryEffects e) b
-retryPost u c = slamjax $ defaultRequest { method = POST, url = u, content = Just c }
+retryPost :: forall e a b fd. (Requestable a, Respondable b) => Path Abs fd Sandboxed -> a -> Affjax (RetryEffects e) b
+retryPost u c = slamjax $ defaultRequest { method = POST, url = printPath u, content = Just c }
 
-retryPut :: forall e a b. (Requestable a, Respondable b) => URL -> a -> Affjax (RetryEffects e) b
-retryPut u c = slamjax $ defaultRequest { method = PUT, url = u, content = Just c }
+retryPut :: forall e a b fd. (Requestable a, Respondable b) => Path Abs fd Sandboxed-> a -> Affjax (RetryEffects e) b
+retryPut u c = slamjax $ defaultRequest { method = PUT, url = printPath u, content = Just c }
 
 getResponse :: forall a e. String -> Affjax e a -> Aff (ajax :: AJAX | e) a
 getResponse msg affjax = do
