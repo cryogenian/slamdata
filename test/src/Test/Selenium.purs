@@ -18,6 +18,7 @@ import Data.Either (either)
 import Selenium
 import Selenium.Browser
 import Selenium.Builder
+import qualified Selenium.Remote as SR
 import Test.Config (Config())
 import Text.Chalk
 
@@ -39,11 +40,14 @@ test config =
   go br = do
     log $ yellow $ config.selenium.browser <> " set as browser for tests\n\n"
     msauceConfig <- liftEff $ SL.sauceLabsConfigFromConfig config
-    when (isJust msauceConfig) $
-      void $ log $ yellow $ "set up to run on Sauce Labs"
     driver <- build $ do
       browser br
       traverse_ SL.buildSauceLabs msauceConfig
+
+    when (isJust msauceConfig) $ do
+      void $ log $ yellow $ "set up to run on Sauce Labs"
+      liftEff $ SR.fileDetector >>= setFileDetector driver
+
     res <- attempt $ flip runReaderT {config: config, driver: driver} do
       File.test
       Notebook.test

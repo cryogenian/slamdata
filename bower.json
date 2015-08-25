@@ -40,7 +40,7 @@
     "purescript-nonempty-arrays": "~0.3.0",
     "purescript-parsing": "~0.5.1",
     "purescript-pathy": "~0.2.0",
-    "purescript-webdriver": "~0.3.0",
+    "purescript-webdriver": "^0.5.0",
     "purescript-enums": "~0.7.0",
     "purescript-prelude": "~0.1.2",
     "purescript-random": "~0.2.0",
