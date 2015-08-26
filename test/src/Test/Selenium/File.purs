@@ -513,62 +513,7 @@ awaitInNotebook = checker $ do
       pure $ R.regex phrase R.noFlags
 
 
-moveDelete :: Check Unit
-moveDelete = do
-  sectionMsg "MOVE DELETE"
-  goDown
 
-  getUploadedItem
-    >>= checkMove
-    >>= checkDelete
-
-  where
-  errUploaded = errorMsg "File has not been uploaded"
-
-  -- | Move an item, and return the new/moved item
-  checkMove :: Element -> Check Element
-  checkMove item = do
-    config <- getConfig
-    itemGetMoveIcon item >>= itemClickToolbarIcon item
-    waitCheck modalShown config.selenium.waitTime
-
-    getElementByCss config.move.nameField "no rename field"
-      >>= editNameField
-
-    getElementByCss config.move.submit "no submit button"
-      >>= actions <<< leftClick
-
-    renamedItem <- waitUntilJust (findItem config.move.other) config.selenium.waitTime
-    successMsg "successfully renamed"
-    pure renamedItem
-
-    where
-      -- | Type a new name into the "name" field
-      editNameField :: Element -> Check Unit
-      editNameField nameField = do
-        config <- getConfig
-        actions do
-          leftClick nameField
-          sendSelectAll
-          sendDelete
-          sendKeys config.move.other
-
-      -- | Get an item's "move/rename" icon
-      itemGetMoveIcon :: Element -> Check Element
-      itemGetMoveIcon item =
-        checkLocator moveLoc
-          >>= child item
-          >>= maybe (errorMsg "no move/rename icon") pure
-
-  checkDelete :: Element -> Check Unit
-  checkDelete item = do
-    config <- getConfig
-    itemGetDeleteIcon item >>= itemClickToolbarIcon item
-    waitCheck (checker $ isNothing <$> findItem config.move.other) config.selenium.waitTime
-    successMsg "successfully deleted"
-
-  moveLoc :: Element -> Check Element
-  moveLoc el = getConfig >>= \config -> buttonLoc config.move.markMove el
 
 buttonLoc :: String -> Element -> Check Element
 buttonLoc ty el = do
@@ -727,10 +672,75 @@ checkTitle = do
     then successMsg "Title contains version"
     else errorMsg $ "Title (" ++ windowTitle ++ ") doesn't contain version"
 
+
+moveDelete :: String -> Check Unit -> String -> String -> Check Unit
+moveDelete msg setUp src tgt = do
+  sectionMsg $ "check move/delete " <> msg
+  setUp
+  config <- getConfig
+  item <- findItem src
+          >>= maybe (errorMsg $ "there is no source " <> msg) pure
+  itemGetMoveIcon item >>= itemClickToolbarIcon item
+  waitCheck modalShown config.selenium.waitTime
+  getElementByCss config.move.nameField "no rename field"
+    >>= editNameField
+
+  getElementByCss config.move.submit "no submit button"
+    >>= actions <<< leftClick
+
+  renamed <- waitUntilJust (findItem tgt) config.selenium.waitTime
+  successMsg $ "ok, successfully renamed (" <> msg <> ")"
+  
+  itemGetDeleteIcon renamed >>= itemClickToolbarIcon renamed
+  waitCheck (checker $ isNothing <$> findItem tgt) config.selenium.waitTime
+  successMsg $ "ok, successfully deleted (" <> msg <> ")"
+  where
+  itemGetMoveIcon :: Element -> Check Element
+  itemGetMoveIcon item =
+    checkLocator moveLoc
+      >>= child item
+      >>= maybe (errorMsg "no move/rename icon") pure
+
+  moveLoc :: Element -> Check Element
+  moveLoc el = getConfig >>= \config -> buttonLoc config.move.markMove el
+  
+  editNameField :: Element -> Check Unit
+  editNameField nameField = do
+    config <- getConfig
+    actions do
+      leftClick nameField
+      sendSelectAll
+      sendDelete
+      sendKeys tgt
+
+moveDeleteDatabase :: Check Unit
+moveDeleteDatabase = do
+  config <- getConfig
+  moveDelete "database" home config.mount.name config.mount.otherName
+
+moveDeleteFolder :: Check Unit
+moveDeleteFolder = do
+  config <- getConfig
+  moveDelete "folder" goDown SDCfg.newFolderName config.move.other
+
+moveDeleteNotebook :: Check Unit
+moveDeleteNotebook = do
+  config <- getConfig
+  moveDelete "notebook" goDown SDCfg.newNotebookName config.move.other
+
+moveDeleteFile:: Check Unit
+moveDeleteFile = do
+  config <- getConfig
+  moveDelete "file" goDown config.move.name config.move.other
+
+
 test :: Check Unit
 test = do
   home
+  spyXHR
   badMountDatabase
+  goodMountDatabase
+  moveDeleteDatabase
   goodMountDatabase
   unmountDatabase
   goodMountDatabase
@@ -744,8 +754,10 @@ test = do
   fileUpload
   searchForUploadedFile
   shareFile
-  moveDelete
+  moveDeleteFile
   trashCheck
   checkTitle
   createFolder
+  moveDeleteFolder 
   createNotebook
+  moveDeleteNotebook

@@ -14,7 +14,7 @@
         "platform": "OS X 10.10"
     },
     "slamdataUrl": "http://localhost:63175",
-
+    "notebookUrl": "/slamdata/notebook.html",
     "slamengine": {
         "jar": "test/jars/slamengine.jar",
         "config": "test/slamengine-config.json"
@@ -94,7 +94,8 @@
         "configureMount": "*[title='configure mount']"
     },
     "mount": {
-      "name" : "test-mount"
+        "name" : "test-mount",
+        "otherName": "other-mount"
     },
     "notebookLocators": {
         "page": ".notebook-page",
@@ -144,9 +145,12 @@
         "showMessages": ".cell-controls button[title='Show messages']",
         "hideMessages": ".cell-controls button[title='Hide messages']",
         "statusText": ".status-text",
-        "embedBox": ".embed-box"
+        "embedBox": ".embed-box",
+        "exploreFlag": "<div class=\"cell-name\">Explore</div>",
+        "searchFlag": "<div class=\"cell-name\">Search</div>"
     },
     "explore": {
+        "notebookPath": "/Untitled+Notebook.slam/cells/0/view",
         "input": ".explore-cell-editor input",
         "expand": ".explore-cell-editor span.input-group-btn button",
         "list": ".file-list-group",

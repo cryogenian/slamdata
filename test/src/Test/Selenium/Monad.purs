@@ -20,12 +20,7 @@ import Control.Monad.Reader.Class
 import qualified Control.Monad.Aff as A
 
 
-type Context =
-  { config :: Config
-  , driver :: Driver
-  }
-
-type Check a = ReaderT Context
+type Check a = ReaderT { config :: Config, driver :: Driver }
                (A.Aff (console :: CONSOLE, selenium :: SELENIUM, dom :: DOM)) a
 
 

@@ -243,21 +243,23 @@ move src tgt = do
   result <- slamjax $ defaultRequest
     { method = MOVE
     , headers = [RequestHeader "Destination" $ either printPath printPath tgt]
-    , url = printPath
-            $ url
-            </> rootify (R.resourceDir src)
-            </> file (R.resourceName src)
+    , url = either
+            (printPath <<< (url </>) <<< rootifyFile)
+            (printPath <<< (url </>) <<< rootify)
+            $ R.getPath src
     }
   if succeeded result.status
      then pure tgt
      else throwError (error result.response)
 
+
 mountInfo :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) String
 mountInfo res = do
-  result <- retryGet
-            $ Config.mountUrl
-            </> (rootify $ R.resourceDir res)
-            </> (dir $ R.resourceName res)
+  let mountPath = (Config.mountUrl </> rootify (R.resourceDir res)) #
+                  if R.resourceName res == ""
+                  then id
+                  else \x -> x </> dir (R.resourceName res)
+  result <- retryGet mountPath
   if succeeded result.status
      then case parse result.response of
        Left err -> throwError $ error (show err)
