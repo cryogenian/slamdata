@@ -35,7 +35,7 @@
     "minimist": "^1.1.2",
     "mongodb": "^2.0.39",
     "phantomjs": "^1.9.17",
-    "purescript": "~0.7.2",
+    "purescript": "0.7.2",
     "rimraf": "^2.4.2",
     "selenium-webdriver": "^2.46.1",
     "webpack-stream": "^2.1.0"
