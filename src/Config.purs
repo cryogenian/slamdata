@@ -2,29 +2,9 @@ module Config where
 
 import Prelude ((<>))
 
+
 baseUrl :: String
 baseUrl = ""
-
-serviceBaseUrl :: String
-serviceBaseUrl = "/"
-
-uploadUrl :: String
-uploadUrl = serviceBaseUrl <> "upload"
-
-metadataUrl :: String
-metadataUrl = serviceBaseUrl <> "metadata/fs/"
-
-mountUrl :: String
-mountUrl = serviceBaseUrl <> "mount/fs/"
-
-dataUrl :: String
-dataUrl = serviceBaseUrl <> "data/fs/"
-
-queryUrl :: String
-queryUrl = serviceBaseUrl <> "query/fs/"
-
-serverInfoUrl :: String
-serverInfoUrl = serviceBaseUrl <> "server/info"
 
 browserUrl :: String
 browserUrl = baseUrl <> "index.html"

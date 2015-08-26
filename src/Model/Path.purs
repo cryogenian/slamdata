@@ -4,7 +4,7 @@ import Prelude
 import Control.Alt ((<|>))
 import Control.Bind ((=<<))
 import Data.Array ()
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Utils (encodeURIComponent, decodeURIComponent)
 import Data.Either (Either(..))
 import Data.Path.Pathy
@@ -19,6 +19,9 @@ type AnyPath = Either FilePath DirPath
 infixl 6 <./>
 (<./>) :: forall a s. Path a Dir s -> String -> Path a Dir s
 (<./>) p ext = renameDir (changeDirExt $ const ext) p
+
+rootify :: DirPath -> Path Rel Dir Sandboxed
+rootify p = fromMaybe (dir "/") $ relativeTo p rootDir
 
 -- | Setted by default to support cells without
 -- | `pathToNotebook` field. After first save `pathToNotebook` is

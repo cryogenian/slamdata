@@ -36,6 +36,8 @@ import qualified Data.String as S
 import qualified Model.Notebook.Domain as N
 import qualified Model.Resource as R
 import Model.Notebook.Port (_PortResource)
+import qualified Config as Config
+import qualified Config.Paths as Config
 
 newtype Listing = Listing (Array R.Resource)
 
@@ -51,24 +53,24 @@ instance listingRespondable :: Respondable Listing where
 
 children :: forall e. DirPath -> Aff (RetryEffects (ajax :: AJAX | e)) (Array R.Resource)
 children dir = do
-  cs <- children' $ printPath dir
+  cs <- children' dir
   pure $ (R._root .~ (either (const rootDir) id (Right dir))) <$> cs
 
-children' :: forall e. String -> Aff (RetryEffects (ajax :: AJAX | e)) (Array R.Resource)
-children' str = runListing <$> (getResponse msg $ listing str)
+children' :: forall e. DirPath -> Aff (RetryEffects (ajax :: AJAX | e)) (Array R.Resource)
+children' p = runListing <$> (getResponse msg $ listing p)
   where
   msg = "error getting resource children"
 
-listing :: forall e. String -> Affjax (RetryEffects e) Listing
-listing str = retryGet $ Config.metadataUrl <> str
+listing :: forall e. DirPath -> Affjax (RetryEffects e) Listing
+listing p = maybe
+              (throwError $ error "incorrect path")
+              (\p -> retryGet $ (Config.metadataUrl </> p))
+              $ relativeTo p rootDir
 
-makeFile :: forall e. AnyPath -> Maybe MimeType -> String -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
-makeFile ap mime content =
-  getResponse msg $ go unit
+makeFile :: forall e. FilePath -> Maybe MimeType -> String -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+makeFile path mime content = 
+  getResponse msg go
   where
-  resource :: R.Resource
-  resource = R.newFile # R._path .~ ap
-
   msg :: String
   msg = "error while creating file"
 
@@ -81,17 +83,25 @@ makeFile ap mime content =
   isJson :: Either _ _
   isJson = maybe (Left "empty file") Right firstLine >>= jsonParser
 
-  go :: _ -> Aff _ _
-  go _ = slamjax $ defaultRequest
+  go :: Aff _ _
+  go = slamjax $ defaultRequest
     { method = PUT
     , headers = maybe [] (pure <<< ContentType) mime
     , content = Just content
-    , url = Config.dataUrl <> R.resourcePath resource
+    , url = fromMaybe "" 
+            $ (\x -> printPath
+                     $ Config.dataUrl
+                     </> x)
+            <$> (relativeTo path rootDir)
     }
 
 loadNotebook :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) N.Notebook
 loadNotebook res = do
-  val <- getResponse "error loading notebook" $ retryGet (Config.dataUrl <> R.resourcePath res <> "/index")
+  val <- getResponse "error loading notebook" $ retryGet
+         $ Config.dataUrl
+         </> rootify (R.resourceDir res)
+         </> dir (R.resourceName res)
+         </> file "index"
   case decodeJson (foreignToJson val) of
     Left err -> throwError (error err)
     Right notebook ->
@@ -102,7 +112,6 @@ loadNotebook res = do
                   .. (N._name .~ That name)
                   .. (N.syncCellsOuts nPath)
                  )
-
 
 -- TODO: Not this. either add to Argonaut, or make a Respondable Json instance (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
 foreign import foreignToJson :: Foreign -> Json
@@ -127,8 +136,10 @@ saveNotebook notebook = case notebook ^. N._name of
     if newName /= oldName
       then do
       newName' <- getNewName' newName
-      let oldPath = (notebook ^. N._path) </> dir oldName <./> Config.notebookExtension
-          path = (notebook ^. N._path) </> dir newName' <./> Config.notebookExtension
+      let oldPath = (notebook ^. N._path)
+                    </> dir oldName <./> Config.notebookExtension
+          path = (notebook ^. N._path)
+                 </> dir newName' <./> Config.notebookExtension
           newPath = Right $ path
       move (R.Directory oldPath) newPath
       pure (notebook # (N._name .~ That (dropNotebookExt newName'))
@@ -144,15 +155,18 @@ saveNotebook notebook = case notebook ^. N._name of
 
   save :: String -> N.Notebook -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
   save name notebook =
-    let notebookPath = (notebook ^. N._path) </> dir name <./> Config.notebookExtension </> file "index"
-    in getResponse "error while saving notebook" $ retryPut (Config.dataUrl <> printPath notebookPath) notebook
+    let notebookPath = Config.dataUrl 
+                       </> rootify (notebook ^. N._path) 
+                       </> dir name <./> Config.notebookExtension 
+                       </> file "index"
+    in getResponse "error while saving notebook" $ retryPut notebookPath notebook
 
 -- | Generates a new resource name based on a directory path and a name for the
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
 getNewName :: forall e. DirPath -> String -> Aff (RetryEffects (ajax :: AJAX | e)) String
 getNewName parent name = do
-  items <- children' (printPath parent)
+  items <- children' parent
   pure if exists' name items then getNewName' items 1 else name
   where
   getNewName' items i =
@@ -166,7 +180,7 @@ getNewName parent name = do
            else newName
 
 exists :: forall e. String -> DirPath -> Aff (RetryEffects (ajax :: AJAX | e)) Boolean
-exists name parent = exists' name <$> children' (printPath parent)
+exists name parent = exists' name <$> children' parent
 
 exists' :: forall e. String -> Array R.Resource -> Boolean
 exists' name items = isJust $ findIndex (\r -> r ^. R._name == name) items
@@ -177,9 +191,10 @@ forceDelete resource =
   where
   msg :: String
   msg = "can not delete"
-
+  
   path = (if R.isDatabase resource then Config.mountUrl else Config.dataUrl)
-         <> R.resourcePath resource
+         </> rootify (R.resourceDir resource)
+         </> file (R.resourceName resource)
 
 delete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Maybe R.Resource)
 delete resource =
@@ -228,7 +243,10 @@ move src tgt = do
   result <- slamjax $ defaultRequest
     { method = MOVE
     , headers = [RequestHeader "Destination" $ either printPath printPath tgt]
-    , url = url <> R.resourcePath src
+    , url = printPath
+            $ url
+            </> rootify (R.resourceDir src)
+            </> file (R.resourceName src)
     }
   if succeeded result.status
      then pure tgt
@@ -236,7 +254,10 @@ move src tgt = do
 
 mountInfo :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) String
 mountInfo res = do
-  result <- retryGet (Config.mountUrl <> R.resourcePath res)
+  result <- retryGet
+            $ Config.mountUrl
+            </> (rootify $ R.resourceDir res)
+            </> (dir $ R.resourceName res)
   if succeeded result.status
      then case parse result.response of
        Left err -> throwError $ error (show err)
@@ -252,7 +273,10 @@ saveMount res uri = do
     { method = PUT
     , headers = [ContentType applicationJSON]
     , content = Just $ stringify { mongodb: { connectionUri: uri } }
-    , url = Config.mountUrl <> R.resourcePath res
+    , url = printPath
+            $ Config.mountUrl
+            </> rootify (R.resourceDir res)
+            </> dir (R.resourceName res)
     }
   if succeeded result.status
      then pure unit

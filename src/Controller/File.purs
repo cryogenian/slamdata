@@ -83,13 +83,16 @@ handleFileListChanged el state = do
       content <- liftAff $ readAsBinaryString f reader
 
       toInput (ItemAdd fileItem) `andThen` \_ -> do
-        f <- liftAff $ attempt $ API.makeFile (itemResource fileItem ^. R._path) mime content
+        f <- liftAff $ attempt $ API.makeFile fileName mime content
         case f of
           Left err ->
             -- TODO: compiler issue? using `showError` here doesn't typecheck
             toInput (WithState (_dialog ?~ (ErrorDialog $ "There was a problem uploading the file: " ++ message err)))
               `andThen` \_ -> toInput (ItemRemove fileItem)
-          Right _ -> liftEff (setLocation $ itemURL (state ^. _sort) (state ^. _salt) Edit fileItem) *> empty
+          Right _ ->
+            liftEff (setLocation $ itemURL (state ^. _sort) (state ^. _salt) Edit fileItem) *> empty
+      
+
 
 handleUploadFile :: forall e. HTMLElement -> Event e
 handleUploadFile el = do
@@ -109,7 +112,7 @@ handleCreateFolder state = do
       dirItem = PhantomItem $ R.Directory dirPath
       hiddenFile = dirPath </> file (Config.folderMark)
   (toInput (ItemAdd dirItem)) `andThen` \_ -> do
-    added <- liftAff $ attempt $ API.makeFile (inj hiddenFile) Nothing "{}"
+    added <- liftAff $ attempt $ API.makeFile hiddenFile Nothing "{}"
     toInput (ItemRemove dirItem) `andThen` \_ ->
       case added of
         Left err -> showError ("There was a problem creating the directory: " ++ message err)
