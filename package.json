@@ -27,6 +27,8 @@
     "bluebird": "^2.9.34",
     "chalk": "^1.1.0",
     "gulp": "^3.9.0",
+    "gulp-content-filter": "^0.0.0",
+    "gulp-header": "^1.7.1",
     "gulp-less": "^3.0.3",
     "gulp-purescript": "^0.6.0",
     "gulp-run": "^1.6.10",

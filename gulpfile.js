@@ -1,6 +1,8 @@
 "use strict";
 
 var gulp = require("gulp"),
+    header = require("gulp-header"),
+    contentFilter = require("gulp-content-filter"),
     purescript = require("gulp-purescript"),
     less = require("gulp-less"),
     webpack = require("webpack-stream"),
@@ -8,11 +10,16 @@ var gulp = require("gulp"),
     rimraf = require("rimraf"),
     fs = require("fs");
 
-var sources = [
+var slamDataSources = [
   "src/**/*.purs",
-  "bower_components/purescript-*/src/**/*.purs",
   "test/src/**/*.purs"
 ];
+
+var vendorSources = [
+  "bower_components/purescript-*/src/**/*.purs",
+];
+
+var sources = slamDataSources.concat(vendorSources);
 
 var foreigns = [
   "src/**/*.js",
@@ -31,6 +38,20 @@ gulp.task("make", function() {
     src: sources,
     ffi: foreigns
   });
+});
+
+gulp.task("add-headers", function () {
+  // read in the license header
+  var licenseHeader = "{-\n" + fs.readFileSync('LICENSE.header', 'utf8') + "-}\n\n";
+
+  // filter out files that already have a license header
+  var contentFilterParams = { include: /^(?!\{-\nCopyright)/ };
+
+  // prepend license header to all source files
+  return gulp.src(slamDataSources, {base: "./"})
+            .pipe(contentFilter(contentFilterParams))
+            .pipe(header(licenseHeader))
+            .pipe(gulp.dest("./"));
 });
 
 var bundleTasks = [];
@@ -124,4 +145,4 @@ mkWatch("watch-notebook-fast", "fast-bundle-notebook", allSources);
 
 gulp.task("watch", ["watch-less", "watch-file", "watch-notebook"]);
 gulp.task("dev", ["watch-less", "watch-file-fast", "watch-notebook-fast"]);
-gulp.task("default", ["less", "bundle"]);
+gulp.task("default", ["add-headers", "less", "bundle"]);
