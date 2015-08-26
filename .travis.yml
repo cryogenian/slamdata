@@ -3,12 +3,15 @@ sudo: false
 node_js:
   - 0.10
 install:
+  - mkdir $HOME/bin
+  - wget -O $HOME/purescript.tar.gz 'https://drive.google.com/uc?export=download&id=0BzXXSTC7MXL0Y0N5VEFGU2E1T0U'
+  - tar zxvf $HOME/purescript.tar.gz -C $HOME/bin purescript/psc{,i,-bundle,-docs,-publish} --strip-components=1
+  - chmod a+x $HOME/bin/psc{,i,-bundle,-docs,-publish}
   - npm install bower gulp -g
   - npm install
   - bower install
 script:
   - gulp less bundle
-  - npm test
 before_deploy:
 - cp -r public slamdata
 - tar cjf slamdata.tar.bz2 slamdata
