@@ -11,7 +11,7 @@ uploadUrl :: FilePath
 uploadUrl = serviceBaseUrl </> file "upload"
 
 metadataUrl :: DirPath
-metadataUrl = serviceBaseUrl </> dir "metadata" </> dir "fs"
+metadataUrl = serviceBaseUrl </> dir "metadata" </> dir "fs" 
 
 mountUrl :: DirPath
 mountUrl = serviceBaseUrl </> dir "mount" </> dir "fs"

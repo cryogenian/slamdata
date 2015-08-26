@@ -29,6 +29,7 @@ module Test.Selenium.Common
   , waitNotExistentCss
   , await'
   , await
+  , spyXHR
   )
   where
 
@@ -57,6 +58,32 @@ import Test.Selenium.Log
 import Test.Selenium.Monad
 
 import Utils (s2i)
+
+spyXHR :: Check Unit
+spyXHR = void $ 
+  script """
+  window.ACTIVE_XHR_COUNT = 0;
+  window.DOUBLE_SLASH_XHRS= [];
+  var send = XMLHttpRequest.prototype.send;
+  var open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function() {
+    if (/\/\//g.test(arguments[1])) {
+      window.DOUBLE_SLASH_XHRS.push(arguments[1]);
+    }
+    open.apply(this, arguments);
+  };
+  XMLHttpRequest.prototype.send = function() {
+    window.ACTIVE_XHR_COUNT++;
+    var m = this.onload;
+    this.onload = function() {
+      window.ACTIVE_XHR_COUNT--;
+      if (typeof m == 'function') {
+        m();
+      }
+    };
+    send.apply(this, arguments);
+  };
+  """
 
 -- | Assert the truth of a boolean, providing an error message
 assertBoolean :: String -> Boolean -> Check Unit

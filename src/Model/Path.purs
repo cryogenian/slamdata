@@ -23,6 +23,9 @@ infixl 6 <./>
 rootify :: DirPath -> Path Rel Dir Sandboxed
 rootify p = fromMaybe (dir "/") $ relativeTo p rootDir
 
+rootifyFile :: FilePath -> Path Rel File Sandboxed
+rootifyFile p = fromMaybe (file "") $ relativeTo p rootDir
+
 -- | Setted by default to support cells without
 -- | `pathToNotebook` field. After first save `pathToNotebook` is
 -- | setted to correct notebook path.

@@ -3,37 +3,77 @@ module Test.Selenium.Notebook.Getters where
 import Prelude
 import Data.Either (Either(..))
 import Data.Traversable (traverse)
-import Data.List (catMaybes, List(..))
+import Data.List (catMaybes, List(..), fromList, toList)
 import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..))
+import Data.Foldable (fold)
+import Data.Monoid.Disj (Disj(..), runDisj)
+import Data.Monoid.Conj (Conj(..), runConj)
 import Selenium.Types
 import Test.Selenium.Log
 import Test.Selenium.Monad
 import Test.Selenium.Common
 import qualified Data.String.Regex as R
 
+
+newCellMenuExpanded :: Check Boolean
+newCellMenuExpanded = do
+  config <- getConfig
+  btns <- traverse getEl $ toList [ Tuple config.newCellMenu.queryButton "query" 
+                                  , Tuple config.newCellMenu.mdButton "markdown" 
+                                  , Tuple config.newCellMenu.exploreButton "explore"
+                                  , Tuple config.newCellMenu.searchButton "search"
+                                  ]
+  viss <- traverse visible btns
+  let orVis = (runDisj <<< fold <<< (Disj <$>)) viss
+  if not orVis
+    then pure false
+    else
+    let andVis = (runConj <<< fold <<< (Conj <$>)) viss
+    in if andVis
+       then pure true
+       else errorMsg "Some of new cell buttons is visible and some is not"
+  where
+  getEl :: Tuple String String -> Check Element
+  getEl (Tuple selector msg) =
+    getElementByCss selector $ msg <> " not found in new cell menu"
+    
+
+
 getNewCellMenuTrigger :: Check Element
 getNewCellMenuTrigger = do
   config <- getConfig
-  getElementByCss config.newCellMenu.expandCollapse "expand collapse button not found"
+  getElementByCss config.newCellMenu.expandCollapse
+    "expand collapse button not found"
 
 
 getCells :: Check (List Element)
 getCells = getConfig >>= (_.cell >>> _.main >>> css) >>= elements
 
-getExploreCells :: Check (List Element)
-getExploreCells = do
+getCellsWithContent :: String -> Check (List Element)
+getCellsWithContent content = do
   cells <- getCells
   mbCells <- traverse traverseFn cells
-  pure $ catMaybes mbCells 
+  pure $ catMaybes mbCells
   where
   traverseFn el = do
     eHtml <- attempt $ innerHtml el
     pure $ case eHtml of
       Left _ -> Nothing
       Right html ->
-        if R.test (R.regex """<div class="cell-name">Explore</div>""" R.noFlags ) html
+        if R.test (R.regex content R.noFlags) html
         then Just el
         else Nothing
+
+getExploreCells :: Check (List Element)
+getExploreCells =
+  getConfig >>= _.cell >>> _.exploreFlag >>> getCellsWithContent
+
+getSearchCells :: Check (List Element)
+getSearchCells =
+  getConfig >>= _.cell >>> _.searchFlag >>> getCellsWithContent
+
+
 
 
 fileListVisible :: Check Boolean

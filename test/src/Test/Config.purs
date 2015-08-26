@@ -9,6 +9,7 @@ type Config =
                  , platform :: String
                  }
   , slamdataUrl :: String
+  , notebookUrl :: String 
   , mongodb :: { host :: String
                , port :: Int
                }
@@ -61,7 +62,9 @@ type Config =
                , mountDatabase :: String
                , configureMount :: String
                }
-  , mount :: { name :: String }
+  , mount :: { name :: String
+             , otherName :: String
+             }
   , newCellMenu :: { expandCollapse :: String
                    , queryButton :: String
                    , mdButton :: String
@@ -89,8 +92,11 @@ type Config =
             , nextCellSearch :: String
             , nextCellViz :: String
             , nextCellButton :: String
+            , exploreFlag :: String
+            , searchFlag :: String
             }
-  , explore :: { input :: String
+  , explore :: { notebookPath :: String
+               , input :: String
                , expand :: String
                , list :: String
                , listItem :: String
