@@ -32,7 +32,7 @@ import Optic.Core
 import Optic.Fold ((^?))
 
 import Data.Maybe (fromMaybe, maybe, Maybe(..))
-import Data.Either (either, Either())
+import Data.Either (either, Either(..))
 import Data.Either.Unsafe (fromRight)
 import Data.Tuple (Tuple(..), uncurry)
 import Data.StrMap (keys)
@@ -58,9 +58,10 @@ import Model.Notebook.Cell.Search (SearchRec(), _buffer, initialSearchRec)
 import Api.Fs (delete)
 import Api.Query (fields, port, sample, templated)
 
+import Utils.Log
 runSearch :: forall eff. Cell -> I eff
 runSearch cell =
-  either errorInParse go $ mkQuery $ toLower buffer
+  either (const errorInParse) go $ mkQuery $ toLower buffer
   where
   input :: Maybe Resource
   input = cell ^? _input .. _PortResource
@@ -73,26 +74,29 @@ runSearch cell =
 
   go :: _ -> I eff
   go q = do
-    fs <- maybe (pure $ pure []) (liftAff <<< attempt <<< fields) do
-      guard (needFields q)
-      input
-    flip (either errorInFields) fs \fs ->
-      let tmpl = queryToSQL fs q
-          sql :: Maybe String
-          sql = templated <$> input <*> (pure tmpl) in
-      maybe empty (\s -> update cell (_message .~ ("Generated SQL: " <> s))) sql
-      `andThen` \_ ->
-      (fromMaybe errorInPorts (queryToJTable cell tmpl <$> input <*> output))
-
-
-
-  errorInParse :: _ -> I eff
-  errorInParse _ =
+    case input of
+      Nothing -> errorInFields
+      Just inp -> do
+        efs <- liftAff $ attempt $ fields inp
+        case efs of
+          Left _ -> errorInFields
+          Right fs -> do
+            let tmpl = queryToSQL fs q
+                sql :: Maybe String
+                sql = templated <$> input <*> (pure tmpl)
+            case sql of
+              Nothing -> errorInParse
+              Just s ->
+                (update cell (_message .~ ("Generated SQL: " <> s)))
+                `andThen` \_ ->
+                (fromMaybe errorInPorts (queryToJTable cell tmpl <$> input <*> output))
+  errorInParse :: I eff
+  errorInParse =
     update cell (_failures .~ ["Incorrect query string"])
       `andThen` \_ -> finish cell
 
-  errorInFields :: _ -> I eff
-  errorInFields _ =
+  errorInFields :: I eff
+  errorInFields =
     update cell (_failures .~ ["selected file is empty"])
       `andThen` \_ -> finish cell
 

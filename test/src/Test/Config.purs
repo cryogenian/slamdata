@@ -18,6 +18,12 @@ module Test.Config where
 
 import Data.StrMap
 
+type SearchQueryConfig =
+  { query :: String
+  , pages :: Int
+  , rows :: Int
+  }
+
 type Config =
   { selenium :: { browser :: String
                 , waitTime :: Int}
@@ -92,10 +98,12 @@ type Config =
             , hide :: String
             , show :: String
             , exploreEditor :: String
+            , searchEditor :: String
             , refreshButton :: String
             , playButton :: String
             , embedButton :: String
             , nextCellList :: String
+            , nextCellSearch :: String
             , cellOutputLabel :: String
             , cellOutputResult :: String
             , failures :: String
@@ -104,12 +112,12 @@ type Config =
             , hideMessages :: String
             , statusText :: String
             , embedBox :: String
-            , nextCellQuery :: String
-            , nextCellSearch :: String
-            , nextCellViz :: String
+            , nextCellsForExplore :: StrMap String
+            , nextCellsForSearch :: StrMap String
             , nextCellButton :: String
             , exploreFlag :: String
             , searchFlag :: String
+            , mdFlag :: String
             }
   , explore :: { notebookPath :: String
                , input :: String
@@ -153,6 +161,14 @@ type Config =
                , nestedHeadInversed :: String
                , nested :: String
                , jtableHead :: String
-               } 
+               }
+  , searchCell :: { fileListInput :: String
+                  , searchInput :: String
+                  , searchButton :: String
+                  , searchClear :: String
+                  , allQuery :: String
+                  , incorrectQuery :: String
+              }
+  , searchQueries :: Array SearchQueryConfig
   , version :: String
   }

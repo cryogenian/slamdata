@@ -291,3 +291,5 @@ filterByPairs els filterFn =
 filterByContent :: List Element -> (String -> Boolean) -> Check (List Element)
 filterByContent els filterFn =
   (fst <$>) <$> (filterByPairs els (filterFn <<< snd))
+
+

@@ -130,14 +130,23 @@
         "hide": ".cell-controls button[title='Hide cell options']",
         "show": ".cell-controls button[title='Show cell options']",
         "exploreEditor": ".explore-cell-editor",
+        "searchEditor": ".explore-cell-editor",
         "refreshButton": ".refresh-button",
         "playButton": ".play-button",
         "embedButton": ".cell-controls button[title='Embed cell output']",
         "nextCellList": ".next-cell-list",
-        "nextCellQuery": ".next-cell-list button[title='Query this output']",
-        "nextCellSearch": ".next-cell-list button[title='Search this output']",
-        "nextCellViz": ".next-cell-list button[title='Visualize this output']",
+        "nextCellsForExplore": {
+            "query button": ".next-cell-list button[title='Query this output']",
+            "search button": ".next-cell-list button[title='Search this output']",
+            "viz button": ".next-cell-list button[title='Visualize this output']"
+        },
+        "nextCellsForSearch": {
+            "query button": ".next-cell-list button[title='Query this output']",
+            "search button": ".next-cell-list button[title='Search this output']",
+            "viz button": ".next-cell-list button[title='Visualize this output']"
+        },
         "nextCellButton": ".next-cell-list button",
+        "nextCellSearch": ".next-cell-list button[title='Search this output']",
         "cellOutputLabel": ".cell-output-label",
         "cellOutputResult": ".cell-output-result",
         "failures": ".cell-failures",
@@ -147,7 +156,16 @@
         "statusText": ".status-text",
         "embedBox": ".embed-box",
         "exploreFlag": "<div class=\"cell-name\">Explore</div>",
-        "searchFlag": "<div class=\"cell-name\">Search</div>"
+        "searchFlag": "<div class=\"cell-name\">Search</div>",
+        "mdFlag": "<div class=\"cell-name\">Markdown</div>"
+    },
+    "searchCell": {
+        "fileListInput": ".explore-cell-editor .file-list-field input:not(.search-cell-input)",
+        "searchInput": ".search-cell-input",
+        "searchButton": ".search-cell-button",
+        "searchClear": ".search-clear",
+        "allQuery": "~*",
+        "incorrectQuery": "::"
     },
     "explore": {
         "notebookPath": "/Untitled+Notebook.slam/cells/0/view",
@@ -193,5 +211,42 @@
         "nestedHead": "<tr><th colspan=\"9\">topArr</th><th colspan=\"9\">topObj</th></tr><tr><th rowspan=\"4\">a</th><th rowspan=\"4\">b</th><th colspan=\"3\" rowspan=\"4\">botArr</th><th colspan=\"3\">botObj</th><th rowspan=\"4\">c</th><th colspan=\"3\">midArr</th><th colspan=\"6\">midObj</th></tr><tr><th rowspan=\"3\">a</th><th rowspan=\"3\">b</th><th rowspan=\"3\">c</th><th rowspan=\"3\">a</th><th rowspan=\"3\">b</th><th rowspan=\"3\">c</th><th colspan=\"3\" rowspan=\"3\">botArr</th><th colspan=\"3\">botObj</th></tr><tr><th rowspan=\"2\">a</th><th rowspan=\"2\">b</th><th rowspan=\"2\">c</th></tr>",
         "nestedHeadInversed": "<tr><th colspan=\"9\">topArr</th><th colspan=\"9\">topObj</th></tr><tr><th rowspan=\"4\">a</th><th rowspan=\"4\">b</th><th rowspan=\"4\" colspan=\"3\">botArr</th><th colspan=\"3\">botObj</th><th rowspan=\"4\">c</th><th colspan=\"3\">midArr</th><th colspan=\"6\">midObj</th></tr><tr><th rowspan=\"3\">a</th><th rowspan=\"3\">b</th><th rowspan=\"3\">c</th><th rowspan=\"3\">a</th><th rowspan=\"3\">b</th><th rowspan=\"3\">c</th><th rowspan=\"3\" colspan=\"3\">botArr</th><th colspan=\"3\">botObj</th></tr><tr><th rowspan=\"2\">a</th><th rowspan=\"2\">b</th><th rowspan=\"2\">c</th></tr>"
     },
+    "searchQueries": [
+        {
+            "query": "salem",
+            "pages": 1,
+            "rows": 2
+        },
+        {
+            "query": "e",
+            "pages": 7,
+            "rows": 10
+        },
+        {
+            "query": "=122",
+            "pages": 1,
+            "rows": 1
+        },
+        {
+            "query": "city:>s",
+            "pages": 4,
+            "rows": 4
+        },
+        {
+            "query": "pop:!=3706",
+            "pages": 10,
+            "rows": 9
+        },
+        {
+            "query": "=456",
+            "pages": 1,
+            "rows": 1
+        },
+        {
+            "query": "pop:>10000 city:~b*",
+            "pages": 1,
+            "rows": 6
+        }
+    ],
     "version": "2.1.8"
 }
