@@ -4,14 +4,22 @@ node_js:
   - 0.12.4
 install:
   - mkdir $HOME/bin
+  - curl -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.6.tgz
+  - tar -zxvf mongodb-linux-x86_64-3.0.6.tgz
+  - mkdir -p $HOME/bin/mongodb
+  - cp -R -n mongodb-linux-x86_64-3.0.6/* $HOME/bin/mongodb
+  - export PATH=$HOME/bin/mongodb/bin:$PATH
   - wget -O $HOME/purescript.tar.gz 'https://drive.google.com/uc?export=download&id=0BzXXSTC7MXL0Y0N5VEFGU2E1T0U'
   - tar zxvf $HOME/purescript.tar.gz -C $HOME/bin purescript/psc{,i,-bundle,-docs,-publish} --strip-components=1
   - chmod a+x $HOME/bin/psc{,i,-bundle,-docs,-publish}
   - npm install bower gulp -g
   - npm install
   - bower install
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
 script:
-  - gulp less bundle
+  - gulp test
 before_deploy:
 - cp -r public slamdata
 - tar cjf slamdata.tar.bz2 slamdata
