@@ -11,7 +11,8 @@
     },
     "sauceLabs": {
         "enabled": false,
-        "platform": "OS X 10.10"
+        "platform": "OS X 10.10",
+        "maxDuration": 10800
     },
     "slamdataUrl": "http://localhost:63175",
     "notebookUrl": "/slamdata/notebook.html",

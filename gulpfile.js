@@ -127,6 +127,10 @@ gulp.task("test", ["bundle-test"], function() {
   return run("node test", { verbosity: 3 }).exec();
 });
 
+gulp.task("remote-test", ["bundle-test"], function() {
+  return run("node test --remote", { verbosity: 3 }).exec();
+});
+
 var mkWatch = function(name, target, files) {
   gulp.task(name, [target], function() {
     return gulp.watch(files, [target]);

@@ -231,23 +231,24 @@ checkRowsPerPageSelect = withSmallZipsOpened do
 
 checkRowsPerPageCustom :: Check Unit
 checkRowsPerPageCustom = withSmallZipsOpened do
-  config <- getConfig 
+  config <- getConfig
   setPageSizeOption config.explore.optionCustom
   waitCheck (checker check) config.selenium.waitTime
   input <- getPageSizeInput
   successMsg "Ok, input has been appeared"
   rnd <- liftEff $ randomInt 1 99
-  tableHtml <- getTable >>= innerHtml 
+  tableHtml <- getTable >>= innerHtml
+  let platform = platformFromConfig config
   actions do
     leftClick input
-    sendSelectAll
+    sendSelectAll platform
     sendDelete
     sendKeys (show rnd)
     sendEnter
   afterTableReload tableHtml
   checkRowCount' (\tc _ -> tc == rnd) rnd
   successMsg $ "Ok, random (" <> show rnd <> ") row per page works"
-  
+
   where
   check = do
     attempt getPageSizeInput >>= pure <<< either (const false) (const true)
@@ -262,51 +263,52 @@ checkPagination = withSmallZipsOpened do
   config <- getConfig
 
   enabledRecord <- getEnabledRecord
-  checkRecord enabledRecord initialER "initial" 
+  checkRecord enabledRecord initialER "initial"
   checkRowContent config.explore.firstPageContent "initial"
   initialHtml <- getTable >>= innerHtml
   actions $ leftClick sf
   afterTableReload initialHtml
-  
+
   secondPageRecord <- getEnabledRecord
   checkRecord secondPageRecord secondPageER "second page"
   checkRowContent config.explore.secondPageContent "second page"
   secondHtml <- getTable >>= innerHtml
   actions $ leftClick ff
   afterTableReload secondHtml
-  
+
   lastPageRecord <- getEnabledRecord
   checkRecord lastPageRecord lastPageER "last page"
   checkRowContent config.explore.lastPageContent "last page"
   lastHtml <- getTable >>= innerHtml
   actions $ leftClick sb
   afterTableReload lastHtml
-  
-  prenultPageRecord <- getEnabledRecord 
+
+  prenultPageRecord <- getEnabledRecord
   checkRecord prenultPageRecord prenultPageER "prenult page"
   checkRowContent config.explore.prenultPageContent "prenult page"
   prenultHtml <- getTable >>= innerHtml
   actions $ leftClick fb
   afterTableReload prenultHtml
-  
+
   firstPageRecord <- getEnabledRecord
   checkRecord firstPageRecord initialER "first page"
   checkRowContent config.explore.firstPageContent "first page"
   firstHtml <- getTable >>= innerHtml
+  let platform = platformFromConfig config
   actions do
     leftClick input
-    sendSelectAll
+    sendSelectAll platform
     sendKeys config.explore.customPageNumber
     sendEnter
   afterTableReload firstHtml
 
   customPageRecord <- getEnabledRecord
   let customMsg = "custom page (" <> config.explore.customPageNumber <> ")"
-  checkRecord customPageRecord (customPageER config.explore.customPageNumber) $ 
+  checkRecord customPageRecord (customPageER config.explore.customPageNumber) $
     customMsg
-  checkRowContent config.explore.customPageContent customMsg 
+  checkRowContent config.explore.customPageContent customMsg
 
-  successMsg "Ok, pagination is checked, content probe is correct" 
+  successMsg "Ok, pagination is checked, content probe is correct"
 
   where
   initialER = EnabledRecord {ff: true, sf: true, fb: false, sb: false, value: "1"}

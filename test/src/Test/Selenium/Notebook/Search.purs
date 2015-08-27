@@ -27,7 +27,7 @@ import Data.List (replicateM, length, (!!))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Selenium.Types
 import Selenium.ActionSequence (leftClick, sendKeys)
-import Test.Config (SearchQueryConfig())
+import Test.Config (SearchQueryConfig(), platformFromConfig)
 import Test.Selenium.Monad
 import Test.Selenium.Log
 import Test.Selenium.Common
@@ -244,9 +244,10 @@ checkQuery conf = withSmallZipsSearchedAll do
     else do
     afterTableChanged (getFastBackward >>= actions <<< leftClick)
 
+  let platform = platformFromConfig config
   afterTableChanged $ actions do
     leftClick ip
-    sendSelectAll
+    sendSelectAll platform
     sendDelete
     sendKeys conf.query 
     leftClick btn

@@ -25,7 +25,8 @@ module Test.Selenium.SauceLabs
 
 import Prelude
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Exception (EXCEPTION())
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (EXCEPTION(), catchException)
 import Data.Maybe (Maybe(..))
 import Selenium.Builder
 import Selenium.Types
@@ -42,6 +43,8 @@ type SauceLabsConfigR =
   { credentials :: SauceLabsCredentialsR
   , platform :: String
   , browserName :: String
+  , tunnelIdentifier :: String
+  , maxDuration :: Int
   }
 
 sauceLabsCredentialsFromEnv :: forall eff. Eff (env :: ENV, err :: EXCEPTION | eff) SauceLabsCredentialsR
@@ -56,10 +59,13 @@ sauceLabsConfigFromConfig :: forall eff. Config -> Eff (env :: ENV, err :: EXCEP
 sauceLabsConfigFromConfig config =
   if config.sauceLabs.enabled then do
     creds <- sauceLabsCredentialsFromEnv
+    travisJobNumber <- liftEff $ catchException (\_ -> pure "") $ getEnv "TRAVIS_JOB_NUMBER"
     pure $ Just
       { credentials : creds
       , platform : config.sauceLabs.platform
       , browserName : config.selenium.browser
+      , tunnelIdentifier : travisJobNumber
+      , maxDuration : config.sauceLabs.maxDuration
       }
   else
     pure Nothing
