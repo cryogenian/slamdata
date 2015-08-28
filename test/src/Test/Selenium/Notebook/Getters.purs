@@ -19,7 +19,7 @@ module Test.Selenium.Notebook.Getters where
 import Prelude
 import Data.Either (Either(..))
 import Data.Traversable (traverse)
-import Data.List (catMaybes, List(..), fromList, toList)
+import Data.List (catMaybes, List(..), fromList, toList, length)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Data.Foldable (fold)
@@ -29,6 +29,7 @@ import Selenium.Types
 import Test.Selenium.Log
 import Test.Selenium.Monad
 import Test.Selenium.Common
+import Test.Selenium.Types 
 import qualified Data.String.Regex as R
 
 
@@ -89,8 +90,15 @@ getSearchCells :: Check (List Element)
 getSearchCells =
   getConfig >>= _.cell >>> _.searchFlag >>> getCellsWithContent
 
+getMdCells :: Check (List Element)
+getMdCells =
+  getConfig >>= _.cell >>> _.mdFlag >>> getCellsWithContent
 
 
+waitNextCellSearch :: Check Element
+waitNextCellSearch = do
+  config <- getConfig
+  waitExistentCss config.cell.nextCellSearch "There is no next search cell button"
 
 fileListVisible :: Check Boolean
 fileListVisible = 
@@ -183,4 +191,66 @@ getJTableHeadContent =
   innerHtml
 
 
+getSearchInput :: Check Element
+getSearchInput =
+  getConfig >>= _.searchCell >>> _.searchInput >>>
+  flip getElementByCss "There is no search input"
 
+getSearchFileList :: Check Element
+getSearchFileList =
+  getConfig >>= _.searchCell >>> _.fileListInput >>>
+  flip getElementByCss "There is no file list in search cell"
+
+getSearchButton :: Check Element
+getSearchButton =
+  getConfig >>= _.searchCell >>> _.searchButton >>>
+  flip getElementByCss "There is no button to submit search"
+
+getSearchClear :: Check Element
+getSearchClear =
+  getConfig >>= _.searchCell >>> _.searchClear >>>
+  flip getElementByCss "There is no search clear button"
+
+waitOutputLabel :: Check Element
+waitOutputLabel = do
+  config <- getConfig
+  waitExistentCss config.cell.cellOutputLabel "There is no output label"
+
+getPager :: Check Element
+getPager = getConfig >>= _.explore >>> _.pager >>>
+           flip getElementByCss "There is no pager"
+
+getPageCount :: Check Int 
+getPageCount = do
+  getPager >>= innerHtml >>= extract
+  where
+  extract html =
+    let countStr = R.replace (R.regex "\\D+(\\d+)" R.noFlags) "$1" html
+    in parseToInt countStr
+  
+getRowCount :: Check RowCount 
+getRowCount = do
+  tc <- length <$> getTableRows
+  pc <- getPageSizeSelect >>= flip attribute "value" >>= parseToInt
+  pure {table: tc, pager: pc}
+
+
+getEnabledRecord :: Check EnabledRecord 
+getEnabledRecord = do
+    ff <- getFastForward
+    sf <- getStepForward
+    fb <- getFastBackward
+    sb <- getStepBackward
+    input <- getPaginationInput
+    successMsg "Ok, all nav buttons is present in pager"
+    r <- { ff: _
+         , sf: _
+         , fb: _
+         , sb: _
+         , value: _}
+         <$> enabled ff
+         <*> enabled sf
+         <*> enabled fb
+         <*> enabled sb
+         <*> attribute input "value"
+    pure $ EnabledRecord r

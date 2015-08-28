@@ -18,10 +18,11 @@ limitations under the License.
 module Test.Selenium.Notebook.Contexts where
 
 import Prelude
+import Control.Bind ((>=>))
 import Control.Monad.Eff.Random (randomInt)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Either (Either(..), either, isRight)
-import Data.List (length, null, (!!))
+import Data.List (List(..), length, null, (!!), catMaybes)
 import Data.Foreign (readArray, readString)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (foldl)
@@ -87,7 +88,10 @@ makeExploreCell :: Check Unit
 makeExploreCell = getConfig >>= _.newCellMenu >>> _.exploreButton >>> makeCell
 
 makeSearchCell :: Check Unit
-makeSearchCell = getConfig >>= _.newCellMenu >>> _.searchButton >>> makeCell 
+makeSearchCell = getConfig >>= _.newCellMenu >>> _.searchButton >>> makeCell
+
+makeMarkdownCell :: Check Unit
+makeMarkdownCell = getConfig >>= _.newCellMenu >>> _.mdButton >>> makeCell
 
 deleteAllCells :: Check Unit
 deleteAllCells = do
@@ -101,12 +105,36 @@ deleteAllCells = do
     maybe (pure unit) go $ els !! i
   where
   go el = do
+    config <- getConfig
     old <- length <$> getCells
     actions $ leftClick el
-    await "cell has not been deleted" do
-      new <- length <$> getCells
-      pure $ new == old - 1
-    deleteAllCells
+    els <- css config.cell.trash >>= elements
+    if null els
+      then pure unit
+      else do 
+      await "cell has not been deleted" do
+        new <- length <$> getCells
+        pure $ new == old - one
+      deleteAllCells
+
+deleteCells :: Check (List Element) -> Check Unit
+deleteCells cellsCheck = do
+  config <- getConfig
+  cells <- cellsCheck
+  els <- catMaybes <$> (traverse traverseFn cells)
+  case els of
+    Nil -> successMsg "Ok, cells deleted"
+    Cons el _ -> do
+      actions $ leftClick el
+      await "Cell has not been deleted (deleteCell)" do
+        count <- length <$> cellsCheck 
+        pure $ length cells == count + one
+      deleteCells cellsCheck
+  where 
+  traverseFn cell = do 
+    config <- getConfig 
+    css config.cell.trash >>= child cell 
+
 
 withCell :: Check Unit -> Context
 withCell make action = do
@@ -121,8 +149,14 @@ withSearchCell :: Context
 withSearchCell = withCell makeSearchCell
 
 
-withFileOpened :: Context -> String -> Context
-withFileOpened context file action = context do 
+cellHasRun :: Check Boolean
+cellHasRun = do
+  statusText <- getStatusText >>= innerHtml
+  embed <- attempt getEmbedButton
+  pure (statusText /= "" && isRight embed)
+  
+fileOpened :: String -> Context
+fileOpened file action = do
   config <- getConfig
   input <- getInput
   play <- getPlayButton
@@ -130,15 +164,44 @@ withFileOpened context file action = context do
     leftClick input
     sendKeys file 
     leftClick play
-  await "error during opening file" do
-    statusText <- getStatusText >>= innerHtml
-    embed <- attempt getEmbedButton
-    pure (statusText /= "" && isRight embed)
+  await "error during opening file" cellHasRun
   action
+  
+withFileOpened :: Context -> String -> Context
+withFileOpened context file action = context $ fileOpened file action
+
+
+
 
 withFileOpenedExplore :: String -> Context
 withFileOpenedExplore = withFileOpened withExploreCell
 
+
+fileSearched :: String -> String -> Context
+fileSearched file query action = do
+  config <- getConfig
+  fl <- getSearchFileList 
+  qu <- getSearchInput
+  play <- getPlayButton
+  actions do
+    leftClick fl
+    sendKeys file
+    leftClick qu
+    sendKeys query
+    leftClick play
+  await "error during search file" cellHasRun
+  action
+
+  
+withFileSearched :: String -> String -> Context
+withFileSearched file query action = withSearchCell $ fileSearched file query action
+                                     
+
+
+withSmallZipsSearchedAll :: Context
+withSmallZipsSearchedAll action = do
+  config <- getConfig
+  withFileSearched config.explore.smallZips config.searchCell.allQuery action
     
 withSmallZipsOpened :: Context
 withSmallZipsOpened action =

@@ -29,7 +29,7 @@ import Data.String.Regex (regex, noFlags, replace, Regex(), test)
 import Text.SlamSearch (mkQuery, check)
 import Text.SlamSearch.Types
 import Global
-
+import Utils (s2i, s2n)
 
 queryToSQL :: Array String -> SearchQuery -> String
 queryToSQL fields query =
@@ -41,7 +41,7 @@ queryToSQL fields query =
     (joinWith " OR " $
      pars <$> 
      joinWith " AND " <$>
-     (fromList <<< (fromList <$>) $
+     (fromList <<< (fromList <$>) $ 
       (runFree $ (termToSQL fields) <$> query)))
 
 
@@ -59,7 +59,7 @@ needFields query =
   needFields' _ _ = false
 
 termToSQL :: Array String -> Term -> String 
-termToSQL fields (Term {include: include, predicate: p, labels: ls}) =
+termToSQL fields (Term {include: include, predicate: p, labels: ls}) = 
   if not include 
   then "NOT " <> (pars $ termToSQL fields $ Term {include: true
                                                  , predicate: p
@@ -68,14 +68,15 @@ termToSQL fields (Term {include: include, predicate: p, labels: ls}) =
 
 
 renderPredicate :: Predicate -> Array String -> String
-renderPredicate p prj =
+renderPredicate p prj = 
   joinWith " OR " (predicateToSQL p <$> prj)
+
 
 
 predicateToSQL :: Predicate -> String -> String
 predicateToSQL (Contains (Range v v')) s = range v v' s 
 predicateToSQL (Contains (Text v)) s =
-  joinWith " OR " $
+  joinWith " OR " $ 
   ["LOWER(" <> s <> ")" <> " LIKE '%" <> v <> "%'"] <>
   (if needUnq v then render' v else [ ] ) <>
   (if not (needDateTime v) && needDate v then render date else [ ]) <>
@@ -101,7 +102,7 @@ predicateToSQL (Gte v) s = qUnQ s ">=" v
 predicateToSQL (Lt v) s = qUnQ s "<" v 
 predicateToSQL (Lte v) s = qUnQ s "<=" v 
 predicateToSQL (Ne v) s = qUnQ s "<>" v
-predicateToSQL (Like v) s = s <> " LIKE " <>  glob2like v
+predicateToSQL (Like v) s = "LOWER( " <> s <> ")" <> " LIKE " <>  glob2like v
 predicateToSQL _ _ = ""
 
 range :: String -> String -> String -> String
@@ -124,6 +125,8 @@ range v v' s =
   forR v v' =
     fold ["(", s, " >= ", v, " AND ", s, " <= ", v', ")"]
 
+import Utils.Log
+
 qUnQ :: String -> String -> Value -> String
 qUnQ s op v = pars $ 
   joinWith " OR " $ 
@@ -145,10 +148,12 @@ qUnQ s op v = pars $
   forV v = fold [s, " ", op, " ", v]
 
 needUnq :: String -> Boolean
-needUnq s = (not $ (show num /= s || isNaN num))
-            || s == "true"
-            || s == "false"
- where num = readFloat s 
+needUnq s = 
+     fromMaybe false ((show >>> (== s)) <$> s2i s)
+  || fromMaybe false ((show >>> (== s)) <$> s2n s)
+  || s == "true"
+  || s == "false"
+
 
 needDate :: String -> Boolean
 needDate = test dateRegex

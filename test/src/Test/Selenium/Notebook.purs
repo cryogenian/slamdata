@@ -21,9 +21,11 @@ import Test.Selenium.Monad (Check(), stop)
 import Test.Selenium.Notebook.Contexts (setUp)
 import qualified Test.Selenium.Notebook.Explore as Explore
 import qualified Test.Selenium.Notebook.Search as Search 
+import qualified Test.Selenium.Notebook.Common as Common
 
 test :: Check Unit
 test = do
   setUp
+  Common.test
   Explore.test
---  Search.test
+  Search.test
