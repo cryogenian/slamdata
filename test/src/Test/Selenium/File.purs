@@ -505,19 +505,20 @@ searchForUploadedFile = do
   searchButton <- getElementByCss config.search.searchButton "no search button"
   actions $ leftClick searchButton
   waitCheck (awaitUrlChanged url) config.selenium.waitTime
-  waitCheck (awaitItemShown filename) config.selenium.waitTime
-  matchingItems <- filter (contains filename) <$> getItemTexts
+  waitCheck (awaitItemWithPhrase filename) config.selenium.waitTime
+  successMsg "Searched for and found item"
 
-  if null matchingItems
-    then errorMsg "Failed searching for uploaded file"
-    else successMsg "Searched for and found uploaded file"
+awaitItemWithPhrase :: String -> Check Boolean
+awaitItemWithPhrase phrase = checker $ do
+  texts <- attempt getItemTexts
+  pure $ case texts of
+    Left _ -> false
+    Right texts -> not $ null $ filter (contains phrase) texts
 
   where
     contains :: String -> String -> Boolean
     contains phrase = R.test (R.regex phrase R.noFlags)
 
-    awaitItemShown :: String -> Check Boolean
-    awaitItemShown name = checker $ not <<< null <<< filter (contains name) <$> getItemTexts
 
 awaitInNotebook :: Check Boolean
 awaitInNotebook = checker $ do
@@ -710,7 +711,7 @@ moveDelete msg setUp src tgt = do
 
   renamed <- waitUntilJust (findItem tgt) config.selenium.waitTime
   successMsg $ "ok, successfully renamed (" <> msg <> ")"
-  
+
   itemGetDeleteIcon renamed >>= itemClickToolbarIcon renamed
   waitCheck (checker $ isNothing <$> findItem tgt) config.selenium.waitTime
   successMsg $ "ok, successfully deleted (" <> msg <> ")"
@@ -723,7 +724,7 @@ moveDelete msg setUp src tgt = do
 
   moveLoc :: Element -> Check Element
   moveLoc el = getConfig >>= \config -> buttonLoc config.move.markMove el
-  
+
   editNameField :: Element -> Check Unit
   editNameField nameField = do
     config <- getConfig
@@ -779,6 +780,6 @@ test = do
   trashCheck
   checkTitle
   createFolder
-  moveDeleteFolder 
+  moveDeleteFolder
   createNotebook
   moveDeleteNotebook
