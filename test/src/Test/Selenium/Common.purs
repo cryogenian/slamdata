@@ -32,6 +32,7 @@ module Test.Selenium.Common
   , sendDelete
   , sendEnter
   , sendKeyCombo
+  , robustSendKeys
   , contra
   , checkNotExists
   , parseToInt
@@ -50,6 +51,8 @@ module Test.Selenium.Common
   where
 
 import Prelude
+import Control.Monad.Trans (lift)
+import qualified Data.Array as Arr
 import Data.Either (either, isRight, Either(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (traverse_)
@@ -292,4 +295,17 @@ filterByContent :: List Element -> (String -> Boolean) -> Check (List Element)
 filterByContent els filterFn =
   (fst <$>) <$> (filterByPairs els (filterFn <<< snd))
 
+
+-- | This is a strange hack for sending one key at a time to an input field,
+-- | and re-acquire the field between each keystroke. This is useful if an input
+-- | field may be dynamically replaced while being edited.
+robustSendKeys :: String -> Check Element -> Check Unit
+robustSendKeys str acquireField =
+  Arr.foldM sendChar unit (Str.toCharArray str)
+
+  where
+    sendChar :: Unit -> Char -> Check Unit
+    sendChar _ c = do
+      field <- acquireField
+      lift $ sendKeysEl (Str.fromChar c) field
 
