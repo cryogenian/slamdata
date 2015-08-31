@@ -141,18 +141,20 @@ mountDatabaseWithMountConfig mountConfig = do
   saveButton <- getElementByCss config.configureMount.saveButton "no save button"
 
   let connectionUri = "mongodb://" ++ mountConfig.host ++ ":" ++ show mountConfig.port ++ "/" ++ config.database.name
+  let platform = platformFromConfig config
+
   actions $ do
     -- a strange hack follows to get the uri onto the clipboard, since the uri
     -- field cannot be edited except by pasting.
     leftClick nameField
     sendKeys connectionUri
-    sendSelectAll
-    sendCopy
-    sendSelectAll
+    sendSelectAll platform
+    sendCopy platform
+    sendSelectAll platform
     sendKeys config.mount.name
 
     leftClick uriField
-    sendPaste
+    sendPaste platform
 
     leftClick saveButton
 
@@ -240,11 +242,13 @@ checkConfigureMount = do
 
   -- make sure a no-op edit doesn't result in a validation error
   usernameField <- getElementByCss config.configureMount.usernameField "no usernameField field"
+
+  let platform = platformFromConfig config
   actions do
     leftClick usernameField
-    sendSelectAll
+    sendSelectAll platform
     sendKeys "hello"
-    sendUndo
+    sendUndo platform
 
   getElementByCss config.configureMount.saveButton "no save button"
     >>= enabled
@@ -723,9 +727,10 @@ moveDelete msg setUp src tgt = do
   editNameField :: Element -> Check Unit
   editNameField nameField = do
     config <- getConfig
+    let platform = platformFromConfig config
     actions do
       leftClick nameField
-      sendSelectAll
+      sendSelectAll platform
       sendDelete
       sendKeys tgt
 

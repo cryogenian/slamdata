@@ -34,6 +34,10 @@ if (args.b) {
     config.selenium.browser = args.b;
 }
 
+if (args.remote) {
+    config.sauceLabs.enabled = true
+}
+
 var VERBOSE = args.v;
 
 var slamengineConfigPath = path.resolve("tmp/" + config.slamengine.config)

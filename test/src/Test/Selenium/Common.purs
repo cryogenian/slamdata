@@ -231,31 +231,31 @@ modalDismissed = do
 awaitUrlChanged :: String -> Check Boolean
 awaitUrlChanged oldURL = checker $ (oldURL /=) <$> getURL
 
-sendSelectAll :: Sequence Unit
-sendSelectAll = case platform of
+sendSelectAll :: Platform -> Sequence Unit
+sendSelectAll p = case p of
   Mac -> sendKeyCombo [commandKey] "a"
   _ -> sendKeyCombo [controlKey] "a"
 
-sendCopy :: Sequence Unit
-sendCopy = case platform of
+sendCopy :: Platform -> Sequence Unit
+sendCopy p = case p of
   Mac -> sendKeyCombo [commandKey] "c"
   _ -> sendKeyCombo [controlKey] "c"
 
-sendPaste :: Sequence Unit
-sendPaste = case platform of
+sendPaste :: Platform -> Sequence Unit
+sendPaste p = case p of
   Mac -> sendKeyCombo [commandKey] "v"
   _ -> sendKeyCombo [controlKey] "v"
 
-sendDelete :: Sequence Unit 
+sendDelete :: Sequence Unit
 sendDelete =
   sendKeys $ Str.fromChar $ Ch.fromCharCode 57367
 
 sendEnter :: Sequence Unit
 sendEnter =
   sendKeys $ Str.fromChar $ Ch.fromCharCode 13
-  
-sendUndo :: Sequence Unit
-sendUndo = case platform of
+
+sendUndo :: Platform -> Sequence Unit
+sendUndo p = case p of
   Mac -> sendKeyCombo [commandKey] "z"
   _ -> sendKeyCombo [controlKey] "z"
 

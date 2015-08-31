@@ -14,9 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.Config where
+module Test.Config
+  ( Config(..)
+  , SearchQueryConfig(..)
+  , platformFromConfig
+  ) where
 
+import Prelude
+
+import Control.Alt ((<|>))
 import Data.StrMap
+import Data.Maybe (Maybe(..), fromMaybe)
+import qualified Data.String.Regex as R
+import qualified Test.Platform as P
 
 type SearchQueryConfig =
   { query :: String
@@ -29,9 +39,10 @@ type Config =
                 , waitTime :: Int}
   , sauceLabs :: { enabled :: Boolean
                  , platform :: String
+                 , maxDuration :: Int
                  }
   , slamdataUrl :: String
-  , notebookUrl :: String 
+  , notebookUrl :: String
   , mongodb :: { host :: String
                , port :: Int
                }
@@ -172,3 +183,24 @@ type Config =
   , searchQueries :: Array SearchQueryConfig
   , version :: String
   }
+
+parseSauceLabsPlatform :: String -> P.Platform
+parseSauceLabsPlatform str =
+  fromMaybe P.Unknown $
+    parseByPhrase "Windows" P.Win
+      <|> parseByPhrase "OS X" P.Mac
+      <|> parseByPhrase "Linux" P.Linux
+
+  where
+    parseByPhrase :: String -> P.Platform -> Maybe P.Platform
+    parseByPhrase phrase pform =
+      if R.test (R.regex phrase R.noFlags) str
+         then Just pform
+         else Nothing
+
+platformFromConfig :: Config -> P.Platform
+platformFromConfig config =
+  if config.sauceLabs.enabled
+     then parseSauceLabsPlatform config.sauceLabs.platform
+     else P.platform
+
