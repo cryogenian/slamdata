@@ -496,12 +496,9 @@ searchForUploadedFile = do
   sectionMsg "SEARCH"
   home
   config <- getConfig
-  searchInput <- getElementByCss config.search.searchInput "no search input field"
   url <- getURL
   let filename = fromMaybe config.upload.file $ Arr.last $ Str.split "/" config.upload.file
-  actions $ do
-    leftClick searchInput
-    sendKeys filename
+  robustSendKeys filename $ getElementByCss config.search.searchInput "no search input field"
   searchButton <- getElementByCss config.search.searchButton "no search button"
   actions $ leftClick searchButton
   waitCheck (awaitUrlChanged url) config.selenium.waitTime
