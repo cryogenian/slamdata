@@ -27,9 +27,11 @@ import Data.Tuple (Tuple(..), snd, fst)
 import Data.Foldable (fold, for_)
 import Data.Traversable (traverse)
 import Test.Config
-import Selenium.ActionSequence
+import Selenium.ActionSequence hiding (sequence)
 import Selenium.MouseButton
-import Selenium.Types 
+import Selenium.Types
+import Selenium.Monad
+import Selenium.Combinators (checker)
 import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
@@ -53,7 +55,7 @@ checkInitialExplore =
   withExploreCell $  C.checkInitial do
     config <- getConfig
     value <- getElementByCss config.explore.input "there is no input"
-             >>= flip attribute "value"
+             >>= flip getAttribute "value"
     if value /= ""
       then errorMsg "value of input should be empty"
       else successMsg "Ok, input value is empty"
@@ -79,7 +81,7 @@ checkFailure label keys = withExploreCell do
   config <- getConfig
   input <- getInput
   play <- getPlayButton
-  actions do
+  sequence do
     leftClick input
     sendKeys keys
     leftClick play
@@ -102,7 +104,7 @@ checkInexistentFileMounted = withExploreCell do
   config <- getConfig
   input <- getInput
   play <- getPlayButton
-  actions do
+  sequence do
     leftClick input
     sendKeys config.explore.mounted
     leftClick play
@@ -113,19 +115,19 @@ checkStatus :: Check Unit
 checkStatus = withSmallZipsOpened do
   config <- getConfig 
   refresh <- getRefreshButton
-  waitCheck (checker finished) config.selenium.waitTime
+  wait (checker finished) config.selenium.waitTime
   successMsg "Ok, correct status text"
-  actions do
+  sequence do
     leftClick refresh
-  waitCheck (checker finished) config.selenium.waitTime
+  wait (checker finished) config.selenium.waitTime
   successMsg "Ok, correct status text"
   where
   finished = do
-    v <- getStatusText >>= innerHtml
+    v <- getStatusText >>= getInnerHtml
     pure $ R.test (R.regex "Finished: took \\d+ms" R.noFlags) v
 
   waitFn p = do
-    statusText <- getStatusText >>= innerHtml
+    statusText <- getStatusText >>= getInnerHtml
     pure $ statusText /= p
 
 
@@ -134,12 +136,12 @@ checkOutputLabel = do
   config <- getConfig 
   withSmallZipsOpened do
     zipsLabel <- getElementByCss config.cell.cellOutputLabel "no output label"
-                 >>= innerHtml
+                 >>= getInnerHtml
     check zipsLabel config.explore.smallZipsName
     successMsg "Ok, smallZips label is checked"
   withOlympicsOpened do
     olympicLabel <- getElementByCss config.cell.cellOutputLabel "no output label"
-                 >>= innerHtml
+                 >>= getInnerHtml
     check olympicLabel config.explore.olympicsName
     successMsg "Ok, olympics label is checked"
   where
@@ -199,14 +201,14 @@ setPageSizeOption :: String -> Check Unit
 setPageSizeOption str = do
   select <- getPageSizeSelect
   option <- getOption str
-  actions do
+  sequence do
     leftClick select
     leftClick option
     sendEnter
   where 
   getOption str = do
     config <- getConfig 
-    options <- css config.explore.option >>= elements
+    options <- byCss config.explore.option >>= findElements
     filtered <- filterByContent options (\content -> content == str) 
     case filtered of
       Nil -> errorMsg $ "There is no option with value " <> str
@@ -220,7 +222,7 @@ checkRowsPerPageSelect = withSmallZipsOpened do
   where
   traverseFn numStr = do
     config <- getConfig
-    tableHtml <- getTable >>= innerHtml 
+    tableHtml <- getTable >>= getInnerHtml 
     setPageSizeOption numStr
     afterTableReload tableHtml
     count <- parseToInt numStr
@@ -233,13 +235,14 @@ checkRowsPerPageCustom :: Check Unit
 checkRowsPerPageCustom = withSmallZipsOpened do
   config <- getConfig
   setPageSizeOption config.explore.optionCustom
-  waitCheck (checker check) config.selenium.waitTime
+  wait (checker check) config.selenium.waitTime
   input <- getPageSizeInput
   successMsg "Ok, input has been appeared"
-  rnd <- liftEff $ randomInt 1 99
-  tableHtml <- getTable >>= innerHtml
+  rnd <- getRandom 10
+  
+  tableHtml <- getTable >>= getInnerHtml
   let platform = platformFromConfig config
-  actions do
+  sequence do
     leftClick input
     sendSelectAll platform
     sendDelete
@@ -250,6 +253,12 @@ checkRowsPerPageCustom = withSmallZipsOpened do
   successMsg $ "Ok, random (" <> show rnd <> ") row per page works"
 
   where
+  getRandom n = do
+    if n /= 10
+      then pure n
+      else do
+      m <- liftEff $ randomInt 1 99
+      getRandom m
   check = do
     attempt getPageSizeInput >>= pure <<< either (const false) (const true)
 
@@ -262,50 +271,43 @@ checkPagination = withSmallZipsOpened do
   input <- getPaginationInput
   config <- getConfig
 
-  enabledRecord <- getEnabledRecord
-  checkRecord enabledRecord initialER "initial"
+  checkRecord initialER "initial"
   checkRowContent config.explore.firstPageContent "initial"
-  initialHtml <- getTable >>= innerHtml
-  actions $ leftClick sf
+  initialHtml <- getTable >>= getInnerHtml
+  sequence $ leftClick sf
   afterTableReload initialHtml
 
-  secondPageRecord <- getEnabledRecord
-  checkRecord secondPageRecord secondPageER "second page"
+  checkRecord secondPageER "second page"
   checkRowContent config.explore.secondPageContent "second page"
-  secondHtml <- getTable >>= innerHtml
-  actions $ leftClick ff
+  secondHtml <- getTable >>= getInnerHtml
+  sequence $ leftClick ff
   afterTableReload secondHtml
 
-  lastPageRecord <- getEnabledRecord
-  checkRecord lastPageRecord lastPageER "last page"
+  checkRecord lastPageER "last page"
   checkRowContent config.explore.lastPageContent "last page"
-  lastHtml <- getTable >>= innerHtml
-  actions $ leftClick sb
+  lastHtml <- getTable >>= getInnerHtml
+  sequence $ leftClick sb
   afterTableReload lastHtml
 
-  prenultPageRecord <- getEnabledRecord
-  checkRecord prenultPageRecord prenultPageER "prenult page"
+  checkRecord prenultPageER "prenult page"
   checkRowContent config.explore.prenultPageContent "prenult page"
-  prenultHtml <- getTable >>= innerHtml
-  actions $ leftClick fb
+  prenultHtml <- getTable >>= getInnerHtml
+  sequence $ leftClick fb
   afterTableReload prenultHtml
 
-  firstPageRecord <- getEnabledRecord
-  checkRecord firstPageRecord initialER "first page"
+  checkRecord initialER "first page"
   checkRowContent config.explore.firstPageContent "first page"
-  firstHtml <- getTable >>= innerHtml
+  firstHtml <- getTable >>= getInnerHtml
   let platform = platformFromConfig config
-  actions do
+  sequence do
     leftClick input
     sendSelectAll platform
     sendKeys config.explore.customPageNumber
     sendEnter
   afterTableReload firstHtml
 
-  customPageRecord <- getEnabledRecord
   let customMsg = "custom page (" <> config.explore.customPageNumber <> ")"
-  checkRecord customPageRecord (customPageER config.explore.customPageNumber) $
-    customMsg
+  checkRecord (customPageER config.explore.customPageNumber) $ customMsg
   checkRowContent config.explore.customPageContent customMsg
 
   successMsg "Ok, pagination is checked, content probe is correct"
@@ -320,7 +322,7 @@ checkPagination = withSmallZipsOpened do
   
   checkRowContent sel msg = do
     config <- getConfig
-    correctRows <- css config.explore.row >>= elements >>=
+    correctRows <- byCss config.explore.row >>= findElements >>=
                    flip filterByContent (== sel)
     case length correctRows of
       0 -> errorMsg $ "There is no content that should be on first page (" <>
@@ -328,14 +330,18 @@ checkPagination = withSmallZipsOpened do
       1 -> successMsg $ "Ok, page content checked (" <> msg <> ")"
       _ -> errorMsg $ "There is row dublicates (" <> msg <> ")"
 
-  checkRecord actual expected msg = 
-    if actual == expected 
-    then successMsg $ "Ok, enabled records are equal (" <> msg <> ")"
-    else errorMsg $ "Incorrect pagination buttons are enabled:\n" <>
-         "case: " <> msg <> 
-         "\nexpected: " <> show expected <>
-         "\nactual: " <> show actual
-         
+  checkRecord expected msg = do
+    emsg <- errMsg 
+    await emsg do
+      eq expected <$> getEnabledRecord
+    successMsg $ "Ok, enabled records are equal (" <> msg <> ")"
+    where
+    errMsg = do
+      actual <- getEnabledRecord
+      pure $ "Incorrect pagination buttons are enabled:\n" 
+        <> "case: " <> msg 
+        <> "\nexpected: " <> show expected 
+        <> "\nactual: " <> show actual
   
 
 checkColumns :: Check Unit
@@ -366,6 +372,7 @@ checkColumns = do
 test :: Check Unit
 test = do
   config <- getConfig
+
   sectionMsg "make explore cell check"
   C.checkMakeCell getExploreCells makeExploreCell
   
@@ -399,16 +406,17 @@ test = do
   
   sectionMsg "check output label"
   checkOutputLabel
-  
+
   sectionMsg "check page count"
   checkPageCount
   
   sectionMsg "check inital row count"
   checkInitialRowCount
-  
+
   sectionMsg "check rows per page switching"
   checkRowsPerPageSwitching
-  
+
+
   sectionMsg "check forward/backward/set page"
   checkPagination 
 

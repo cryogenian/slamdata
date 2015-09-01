@@ -28,7 +28,9 @@ import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (Tuple(..))
 import Data.Either (isRight)
-import Selenium.ActionSequence
+import Selenium.ActionSequence hiding (sequence)
+import Selenium.Monad
+import Selenium.Combinators (checker)
 import Test.Selenium.Monad
 import Test.Selenium.Log
 import Test.Selenium.Common
@@ -72,13 +74,13 @@ checkInitial custom = do
   successMsg "Ok, there is eval line"
   status <- getStatusText
   successMsg "Ok, status text exists"
-  html <- innerHtml status
+  html <- getInnerHtml status
   if html /= ""
     then errorMsg "Status text should be empty"
     else successMsg "Ok, status text is empty"
   custom 
   value <- getElementByCss config.explore.input "there is no input"
-           >>= flip attribute "value"
+           >>= flip getAttribute "value"
   if value /= ""
     then errorMsg "value of input should be empty"
     else successMsg "Ok, input value is empty"
@@ -94,11 +96,11 @@ checkEmbedButton :: Check Unit
 checkEmbedButton = do
   config <- getConfig
   embed <- getEmbedButton
-  actions $ leftClick embed
-  waitCheck (checker $ isRight <$> attempt getModal) config.selenium.waitTime
+  sequence $ leftClick embed
+  wait (checker $ isRight <$> attempt getModal) config.selenium.waitTime
   modal <- getElementByCss config.modal "Modal should be visible"
   box <- getElementByCss config.cell.embedBox "Embed box hidden"
-  value <- attribute box "value"
+  value <- getAttribute box "value"
   expected <- expectedValue
   if expected == value
     then successMsg "Ok, embedding cell value is correct"
@@ -128,25 +130,25 @@ checkEmbedButton = do
 checkHideShow :: String -> Check Unit
 checkHideShow sel = do
   config <- getConfig
-  hide <- css config.cell.hide >>= element
-  show <- css config.cell.show >>= element
+  hide <- byCss config.cell.hide >>= findElement
+  show <- byCss config.cell.show >>= findElement
   case Tuple hide show of
     Tuple Nothing _ -> errorMsg "Incorrect hide/show state"
     Tuple _ (Just _) -> errorMsg "Incorrect hide/show state"
     Tuple (Just hider) _ -> do
       editor <- getElementByCss sel "cell editor not found"
-      actions $ leftClick hider
-      mbEditor <- css sel >>= element
+      sequence $ leftClick hider
+      mbEditor <- byCss sel >>= findElement
       case mbEditor of
         Just _ -> errorMsg "hide editor doesn't work"
         Nothing -> do
-          newHide <- css config.cell.hide >>= element
-          newShow <- css config.cell.show >>= element
+          newHide <- byCss config.cell.hide >>= findElement
+          newShow <- byCss config.cell.show >>= findElement
           case Tuple newHide newShow of
             Tuple (Just _) _ -> errorMsg "Incorrect hide/show state after hiding"
             Tuple _ Nothing -> errorMsg "Incorrect hide/show state after hiding"
             Tuple _ (Just shower) -> do
-              actions $ leftClick shower
+              sequence $ leftClick shower
               getElementByCss sel "cell editor not found"
               successMsg "Ok, hide/show button works"
 
@@ -187,15 +189,15 @@ checkMakeCell lstCheck mkCell = do
 checkNewCellMenu :: Check Unit
 checkNewCellMenu = do
   expand <- getNewCellMenuTrigger
-  html <- innerHtml expand
+  html <- getInnerHtml expand
   vis <- newCellMenuExpanded
   if vis
     then errorMsg "At least one of new cell menu button is visible"
     else pure unit 
   successMsg "Ok, initial new cell menu is collapsed"
-  actions $ leftClick expand
+  sequence $ leftClick expand
   await "Expand/collapse button has not been changed" do 
-    newHtml <- innerHtml expand
+    newHtml <- getInnerHtml expand
     pure $ newHtml /= html
   newVis <- newCellMenuExpanded
   if not newVis
@@ -203,9 +205,9 @@ checkNewCellMenu = do
     else pure unit 
   successMsg "Ok, expanded"
   -- checking collapse
-  actions $ leftClick expand
+  sequence $ leftClick expand
   await "Expand/collapse butotn has not returned to default state" do
-    collapsedHtml <- innerHtml expand
+    collapsedHtml <- getInnerHtml expand
     pure $ collapsedHtml == html
   collapsedVis <- newCellMenuExpanded
   if collapsedVis
@@ -217,19 +219,19 @@ checkIncorrect :: Check Element -> Check Unit
 checkIncorrect btnCheck = do
   btn <- btnCheck
   config <- getConfig
-  actions $ leftClick btn
+  sequence $ leftClick btn
   failures <- waitExistentCss config.cell.failures "There is no failures but should"
-  html <- innerHtml failures 
+  html <- getInnerHtml failures 
   show <- getElementByCss config.cell.showMessages "There is no showMessages but should"
-  actions $ leftClick show
+  sequence $ leftClick show
   await "There is no difference between hidden and shown failures" do
-    shownHtml <- innerHtml failures
+    shownHtml <- getInnerHtml failures
     pure $ shownHtml /= html
   successMsg "Ok, shown failures is defferent with hidden"
   hide <- waitExistentCss config.cell.hideMessages "There is no hideMessages"
-  actions $ leftClick hide
+  sequence $ leftClick hide
   await "Hidden failures are not equal with initial" do 
-    hiddenHtml <- innerHtml failures
+    hiddenHtml <- getInnerHtml failures
     pure $ hiddenHtml == html
   successMsg "Ok, hidden failures is equal with initial"
 
@@ -239,7 +241,7 @@ checkTableEmpty = do
   waitNotExistentCss "There should not be failures" config.cell.failures
   waitOutputLabel
   table <- waitExistentCss "table" "There is no table"
-  tableHtml <- innerHtml table
+  tableHtml <- getInnerHtml table
   if tableHtml == "<thead></thead><tbody></tbody>"
     then successMsg "Ok, table is empty"
     else errorMsg "Table should be empty"

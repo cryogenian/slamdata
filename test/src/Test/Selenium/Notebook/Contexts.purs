@@ -22,21 +22,22 @@ import Control.Bind ((>=>))
 import Control.Monad.Eff.Random (randomInt)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Either (Either(..), either, isRight)
-import Data.List (List(..), length, null, (!!), catMaybes)
+import Data.List (List(..), length, null, (!!), catMaybes, filter)
 import Data.Foreign (readArray, readString)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (foldl)
 import Data.Traversable (traverse)
 import Test.Config
-import Selenium.ActionSequence
+import Selenium.ActionSequence hiding (sequence)
 import Selenium.MouseButton
-import Selenium.Types 
+import Selenium.Types
+import Selenium.Monad
+import Selenium.Combinators (checker)
 import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
 import Test.Selenium.Notebook.Getters
 import Test.Selenium.File hiding (test)
-import qualified Data.Array as A
 import qualified Data.String.Regex as R
 import qualified Data.String as S
 import qualified Config as SDConfig
@@ -45,15 +46,15 @@ type Context = (Check Unit -> Check Unit)
 
 reloadAndSpyXHR :: Check Unit
 reloadAndSpyXHR = do
-  f <- script " return window.DOUBLE_SLASH_XHRS; "
-  arr <- either (const $ pure []) pure (readArray f >>= traverse readString)
-  if not A.null arr
+  stats <- filter filterFn <$> getXHRStats
+  if not $ null stats
     then errorMsg $ "double slash requests were detected\nURLS:"
-         <> foldl (\s a -> s <> "\n" <> a) "" arr
-    else pure unit
-  reload 
-  spyXHR
-
+         <> foldl (\s a -> s <> "\n" <> a.url) "" stats
+    else pure unit 
+  refresh
+  startSpying
+  where
+  filterFn {url: url} = R.test (R.regex "//" R.noFlags) url
 -- | We are in notebook after `setUp`. No need to test if notebook created
 -- | it's tested in `Test.Selenium.File`
 setUp :: Check Unit
@@ -62,7 +63,7 @@ setUp = void do
   goodMountDatabase
   enterMount
   createNotebookAndThen $ pure unit
-  spyXHR
+  startSpying
 
 makeCell :: String -> Check Unit
 makeCell sel = do
@@ -72,11 +73,11 @@ makeCell sel = do
     then pure unit
     else do
     trigger <- getNewCellMenuTrigger
-    actions $ leftClick trigger
+    sequence $ leftClick trigger
   exploreBtn <- waitExistentCss sel 
                 "There is no explore buttton in new cell menu"
   count <- length <$> getCells
-  actions $ leftClick exploreBtn
+  sequence $ leftClick exploreBtn
   await "Cell has not been added" $ cellAdded count
   successMsg "Ok, cell has been added"
   where 
@@ -96,7 +97,7 @@ makeMarkdownCell = getConfig >>= _.newCellMenu >>> _.mdButton >>> makeCell
 deleteAllCells :: Check Unit
 deleteAllCells = do
   config <- getConfig
-  els <- css config.cell.trash >>= elements
+  els <- byCss config.cell.trash >>= findElements
   if null els
     then pure unit
     else do
@@ -107,8 +108,8 @@ deleteAllCells = do
   go el = do
     config <- getConfig
     old <- length <$> getCells
-    actions $ leftClick el
-    els <- css config.cell.trash >>= elements
+    sequence $ leftClick el
+    els <- byCss config.cell.trash >>= findElements
     if null els
       then pure unit
       else do 
@@ -125,7 +126,7 @@ deleteCells cellsCheck = do
   case els of
     Nil -> successMsg "Ok, cells deleted"
     Cons el _ -> do
-      actions $ leftClick el
+      sequence $ leftClick el
       await "Cell has not been deleted (deleteCell)" do
         count <- length <$> cellsCheck 
         pure $ length cells == count + one
@@ -133,7 +134,7 @@ deleteCells cellsCheck = do
   where 
   traverseFn cell = do 
     config <- getConfig 
-    css config.cell.trash >>= child cell 
+    byCss config.cell.trash >>= findChild cell 
 
 
 withCell :: Check Unit -> Context
@@ -151,7 +152,7 @@ withSearchCell = withCell makeSearchCell
 
 cellHasRun :: Check Boolean
 cellHasRun = do
-  statusText <- getStatusText >>= innerHtml
+  statusText <- getStatusText >>= getInnerHtml
   embed <- attempt getEmbedButton
   pure (statusText /= "" && isRight embed)
   
@@ -160,7 +161,7 @@ fileOpened file action = do
   config <- getConfig
   input <- getInput
   play <- getPlayButton
-  actions do
+  sequence do
     leftClick input
     sendKeys file 
     leftClick play
@@ -183,7 +184,7 @@ fileSearched file query action = do
   fl <- getSearchFileList 
   qu <- getSearchInput
   play <- getPlayButton
-  actions do
+  sequence do
     leftClick fl
     sendKeys file
     leftClick qu
@@ -217,13 +218,13 @@ withNestedOpened action =
 
 tableChanged :: String -> Check Boolean
 tableChanged old = do
-  html <- getTable >>= innerHtml
+  html <- getTable >>= getInnerHtml
   pure $ html /= old
 
 afterTableChanged :: forall a. Check a -> Check a
 afterTableChanged action = do
   config <- getConfig
-  html <- getTable >>= innerHtml
+  html <- getTable >>= getInnerHtml
   res <- action
   await "Table content has not been changed" $ tableChanged html
   pure res
@@ -231,7 +232,7 @@ afterTableChanged action = do
 afterTableReload :: String -> Check Unit 
 afterTableReload html = do
   config <- getConfig
-  waitCheck (checker $ tableChanged html) (config.selenium.waitTime * 10)
+  wait (checker $ tableChanged html) (config.selenium.waitTime * 10)
 
 withFileList :: Context -> Context
 withFileList context action = context do
@@ -241,7 +242,7 @@ withFileList context action = context do
     then pure unit
     else do
     expander <- getElementByCss config.explore.expand "expand button not found"
-    actions $ leftClick expander
+    sequence $ leftClick expander
   action
 
 withFileListExplore :: Context
