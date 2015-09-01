@@ -111,7 +111,7 @@
         "notebook name editor": ".notebook-name input#name-editor",
         "notebook content": ".notebook-content",
         "new cell menu": ".new-cell-menu",
-        "new cell plus": ".new-cell-menu button.btn-lg.btn-link[title='Insert new cell'",
+        "new cell plus": ".new-cell-menu button.btn-lg.btn-link[title='Insert new cell']",
         "new cell query": ".new-cell-menu button[title='Query']",
         "new cell markdown": ".new-cell-menu button[title='Markdown']",
         "new cell explore": ".new-cell-menu button[title='Explore']",
@@ -119,7 +119,7 @@
         "logo versioned": ".nav-logo a[title^=Version]"
     },
     "newCellMenu": {
-        "expandCollapse": ".new-cell-menu button.btn-lg.btn-link[title='Insert new cell'",
+        "expandCollapse": ".new-cell-menu button.btn-lg.btn-link[title='Insert new cell']",
         "queryButton": ".new-cell-menu button[title='Query']",
         "mdButton": ".new-cell-menu button[title='Markdown']",
         "exploreButton": ".new-cell-menu button[title='Explore']",
