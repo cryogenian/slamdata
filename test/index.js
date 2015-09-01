@@ -100,7 +100,7 @@ rimraf.sync("tmp/test");
 fs.mkdirSync("tmp/test");
 
 // Copy the configuration file for use by slamengine
-copyFile(config.slamengine.config, "tmp/" + config.slamengine.config, function(){});
+copyFile(path.resolve(config.slamengine.config), slamengineConfigPath, function(){});
 
 process.chdir("tmp/test");
 
