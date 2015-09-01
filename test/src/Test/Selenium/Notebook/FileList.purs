@@ -19,13 +19,15 @@ module Test.Selenium.Notebook.FileList (test) where
 import Prelude
 
 import Data.Tuple (Tuple(..), fst, snd)
-import Data.List (null, takeWhile, head, zip)
+import Data.List (null, takeWhile, head, zip, filter)
 import Data.Either (either)
 import Data.Foreign (readInt)
 import Data.Traversable (traverse)
 import Data.Maybe (Maybe(..))
 
-import Selenium.ActionSequence
+import Selenium.ActionSequence hiding (sequence)
+import Selenium.Monad
+import Selenium.Types
 import Selenium.MouseButton
 import Test.Selenium.Monad
 import Test.Selenium.Common
@@ -44,11 +46,11 @@ checkFileList ctx = ctx do
     else pure unit
   successMsg "Ok, file list is hidden"
   expander <- getElementByCss config.explore.expand "expand button not found"
-  actions $ leftClick expander
+  sequence $ leftClick expander
   await "File list should be visible after expand button is clicked" fileListVisible
   successMsg "Ok, file list is visible"
   input <- getInput
-  actions $ leftClick input
+  sequence $ leftClick input
   await "File list should be hidden after click" (not <$> fileListVisible)
   successMsg "Ok, file list is hidden"
 
@@ -57,11 +59,11 @@ checkFileListSetInput :: Context -> Check Unit
 checkFileListSetInput ctx = withFileList ctx do
   config <- getConfig
   item <- waitExistentCss config.explore.listItem "No items in file list"
-  html <- innerHtml item
-  actions $ leftClick item
+  html <- getInnerHtml item
+  sequence $ leftClick item
   await "Incorrect value of input after select from dropdown" do
     input <- getInput
-    val <- attribute input "value"
+    val <- getAttribute input "value"
     pure $ val == html
   successMsg "Ok, correct item has been selected"
 
@@ -71,21 +73,21 @@ checkHiddenItems ctx = withFileList ctx do
   await' (config.selenium.waitTime * 10)
     "Too many xhr requests, they are not stopped"
     xhrStopped
-  items <- css config.explore.listItem >>= elements
+  items <- byCss config.explore.listItem >>= findElements
   filtered <- filterByPairs items filterFn
   if null filtered
     then warnMsg "There is no hidden items, you probably run only notebook tests"
     else go items filtered
   where
   xhrStopped = do
-    f <- script """ return window.ACTIVE_XHR_COUNT; """
-    pure $ either (const false) (== 0) $ readInt f
+    stats <- filter (\{state: state} -> state == Opened) <$> getXHRStats
+    pure $ null stats
     
   filterFn (Tuple el html) =
     R.test (R.regex "/\\." R.noFlags) html
 
   go items hiddenTpls = do
-    all <- traverse innerHtml items
+    all <- traverse getInnerHtml items
     let notHidden = snd <$> (takeWhile (not <<< filterFn) $ zip items all)
         hidden = snd <$> hiddenTpls
     if notHidden <> hidden /= all
@@ -96,8 +98,8 @@ checkHiddenItems ctx = withFileList ctx do
     case tplHiddenShown of
       Nothing -> errorMsg "impossible happened"
       Just (Tuple hid shw) -> do
-        hidColor <- getCss hid "color"
-        shwColor <- getCss shw "color"
+        hidColor <- getCssValue hid "color"
+        shwColor <- getCssValue shw "color"
         if hidColor == shwColor
           then errorMsg "hidden and not hidden items should have different colors in file list"
           else pure unit 

@@ -62,7 +62,7 @@ test config =
 
     when (isJust msauceConfig) $ do
       void $ log $ yellow $ "set up to run on Sauce Labs"
-      liftEff $ SR.fileDetector >>= setFileDetector driver
+      (liftEff SR.fileDetector) >>= setFileDetector driver
 
     res <- attempt $ flip runReaderT {config: config, driver: driver} do
       File.test

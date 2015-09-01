@@ -27,6 +27,8 @@ import Data.List (replicateM, length, (!!))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Selenium.Types
 import Selenium.ActionSequence (leftClick, sendKeys)
+import Selenium.Monad
+
 import Test.Config (SearchQueryConfig(), platformFromConfig)
 import Test.Selenium.Monad
 import Test.Selenium.Log
@@ -47,13 +49,13 @@ checkInitialSearch =
   withSearchCell $ C.checkInitial do
     config <- getConfig
     value <- getElementByCss config.searchCell.fileListInput "there is no file list"
-             >>= flip attribute "value"
+             >>= flip getAttribute "value"
     if value /= ""
       then errorMsg "file list should be empty"
       else pure unit
 
     search <- getElementByCss config.searchCell.searchInput "there is no search input"
-              >>= flip attribute "value"
+              >>= flip getAttribute "value"
     if value /= ""
       then errorMsg "search input should be empty"
       else pure unit
@@ -85,7 +87,7 @@ checkFileListEmpty btnCheck = do
   withSearchCell do
     config <- getConfig
     input <- getSearchInput
-    actions do
+    sequence do
       leftClick input
       sendKeys config.searchCell.allQuery
     C.checkIncorrect btnCheck
@@ -96,7 +98,7 @@ checkSearchEmpty btnCheck = do
   withSearchCell do
     config <- getConfig
     input <- getSearchFileList
-    actions do
+    sequence do
       leftClick input 
       sendKeys config.explore.smallZips
     C.checkIncorrect btnCheck
@@ -108,7 +110,7 @@ checkInexistentFileMounted btnCheck = do
     config <- getConfig
     fl <- getSearchFileList
     ip <- getSearchInput
-    actions do
+    sequence do
       leftClick fl
       sendKeys config.explore.mounted
       leftClick ip
@@ -121,7 +123,7 @@ checkInexistentFileNotMounted :: Check Element -> Check Unit
 checkInexistentFileNotMounted btnCheck  = withSearchCell do
   config <- getConfig
   input <- getSearchFileList
-  actions do
+  sequence do
     leftClick input
     sendKeys config.explore.notMounted
   C.checkIncorrect btnCheck
@@ -131,7 +133,7 @@ checkDirectoryFailure :: Check Element -> Check Unit
 checkDirectoryFailure btnCheck = withSearchCell do
   config <- getConfig
   input <- getSearchFileList
-  actions do
+  sequence do
     leftClick input
     sendKeys config.explore.notMounted
   C.checkIncorrect btnCheck
@@ -143,7 +145,7 @@ checkSearchIncorrect btnCheck = withSearchCell do
   config <- getConfig
   fl <- getSearchFileList
   ip <- getSearchInput
-  actions do
+  sequence do
     leftClick fl
     sendKeys config.explore.smallZips
     leftClick ip
@@ -157,17 +159,17 @@ checkSearchClear :: Check Unit
 checkSearchClear = withSearchCell do
   clear <- getSearchClear
   ip <- getSearchInput
-  actions do 
+  sequence do 
     leftClick ip
     sendKeys "foo bar baz"
   await "value of search input has not been setted" do
-    (== "foo bar baz") <$> attribute ip "value" 
+    (== "foo bar baz") <$> getAttribute ip "value" 
 
   successMsg "Ok, correct value in search input"
   
-  actions $ leftClick clear
+  sequence $ leftClick clear
   await "value of search input has not been cleared" do
-    (== "") <$> attribute ip "value"
+    (== "") <$> getAttribute ip "value"
 
   successMsg "Ok, value has been cleared"
   
@@ -178,21 +180,21 @@ checkSearchStop = withSearchCell do
   ip <- getSearchInput
   fl <- getSearchFileList
   play <- getPlayButton
-  startSrc <- attribute clear "src"
-  actions do
+  startSrc <- getAttribute clear "src"
+  sequence do
     leftClick fl
     sendKeys config.explore.smallZips
     leftClick ip
     sendKeys config.searchCell.allQuery
     leftClick play
   await "Src has not been changed" do
-    (== startSrc) <$> (attribute clear "src")
+    (== startSrc) <$> (getAttribute clear "src")
   successMsg "Ok, src of search-clear has changed"
-  actions do
+  sequence do
     leftClick clear
   await "Search stop doesn't work" do
-    src <- attribute clear "src"
-    val <- attribute ip "value"
+    src <- getAttribute clear "src"
+    val <- getAttribute ip "value"
     pure $ val == "" && src == startSrc
   successMsg "Ok, search stopped"
 
@@ -204,7 +206,7 @@ checkOutputLabel = do
   makeSearchCell
   deleteCells getMdCells
   fileSearched config.explore.smallZips config.searchCell.allQuery do 
-    label <- waitOutputLabel >>= innerHtml
+    label <- waitOutputLabel >>= getInnerHtml
     if extracted label /= ("out" <> show dummy)
       then errorMsg "Incorrect output"
       else successMsg "Ok, correct output"
@@ -217,12 +219,12 @@ checkOutputLabel = do
 checkNextSearchCell :: String -> Check Unit
 checkNextSearchCell expected = do
   config <- getConfig
-  waitNextCellSearch >>= actions <<< leftClick
+  waitNextCellSearch >>= sequence <<< leftClick
   await "Search cell has not been created" do
     ((== 2) <<< length) <$> getCells
-  vals <- css config.searchCell.fileListInput
-          >>= elements
-          >>= traverse (flip attribute "value")
+  vals <- byCss config.searchCell.fileListInput
+          >>= findElements
+          >>= traverse (flip getAttribute "value")
   if (vals !! 1) == (Just expected)
     then successMsg "Ok, correct next search cell value"
     else errorMsg $ "Incorrect next search cell value:"
@@ -242,10 +244,10 @@ checkQuery conf = withSmallZipsSearchedAll do
   if not fbEnabled
     then pure unit
     else do
-    afterTableChanged (getFastBackward >>= actions <<< leftClick)
+    afterTableChanged (getFastBackward >>= sequence <<< leftClick)
 
   let platform = platformFromConfig config
-  afterTableChanged $ actions do
+  afterTableChanged $ sequence do
     leftClick ip
     sendSelectAll platform
     sendDelete
@@ -256,7 +258,7 @@ checkQuery conf = withSmallZipsSearchedAll do
   if not ffEnabled
     then pure unit
     else do
-    afterTableChanged (getFastForward >>= actions <<< leftClick)
+    afterTableChanged (getFastForward >>= sequence <<< leftClick)
 
     
   {table: tableCount, pager: pagerCount} <- getRowCount

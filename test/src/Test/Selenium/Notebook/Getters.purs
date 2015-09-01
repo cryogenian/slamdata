@@ -31,6 +31,7 @@ import Test.Selenium.Monad
 import Test.Selenium.Common
 import Test.Selenium.Types 
 import qualified Data.String.Regex as R
+import Selenium.Monad
 
 
 newCellMenuExpanded :: Check Boolean
@@ -41,7 +42,7 @@ newCellMenuExpanded = do
                                   , Tuple config.newCellMenu.exploreButton "explore"
                                   , Tuple config.newCellMenu.searchButton "search"
                                   ]
-  viss <- traverse visible btns
+  viss <- traverse isDisplayed btns
   let orVis = (runDisj <<< fold <<< (Disj <$>)) viss
   if not orVis
     then pure false
@@ -49,7 +50,7 @@ newCellMenuExpanded = do
     let andVis = (runConj <<< fold <<< (Conj <$>)) viss
     in if andVis
        then pure true
-       else errorMsg "Some of new cell buttons is visible and some is not"
+       else errorMsg "Some of new cell buttons is isDisplayed and some is not"
   where
   getEl :: Tuple String String -> Check Element
   getEl (Tuple selector msg) =
@@ -65,7 +66,7 @@ getNewCellMenuTrigger = do
 
 
 getCells :: Check (List Element)
-getCells = getConfig >>= (_.cell >>> _.main >>> css) >>= elements
+getCells = getConfig >>= (_.cell >>> _.main >>> byCss) >>= findElements
 
 getCellsWithContent :: String -> Check (List Element)
 getCellsWithContent content = do
@@ -74,7 +75,7 @@ getCellsWithContent content = do
   pure $ catMaybes mbCells
   where
   traverseFn el = do
-    eHtml <- attempt $ innerHtml el
+    eHtml <- attempt $ getInnerHtml el
     pure $ case eHtml of
       Left _ -> Nothing
       Right html ->
@@ -102,9 +103,9 @@ waitNextCellSearch = do
 
 fileListVisible :: Check Boolean
 fileListVisible = 
-  getConfig >>=
-  (_.explore >>> _.list >>> flip getElementByCss "file list not found") >>= 
-  visible
+  getConfig
+    >>= (_.explore >>> _.list >>> flip getElementByCss "file list not found")
+    >>= isDisplayed
 
 getInput :: Check Element
 getInput =
@@ -143,7 +144,7 @@ getPageSizeInput =
 
 getTableRows :: Check (List Element)
 getTableRows =
-  getConfig >>= (_.explore >>> _.row >>> css) >>= elements 
+  getConfig >>= (_.explore >>> _.row >>> byCss) >>= findElements 
 
 getTable :: Check Element
 getTable =
@@ -169,7 +170,7 @@ getStepBackward =
 getPaginationButton :: String -> Check Element
 getPaginationButton content = do
   config <- getConfig
-  btns <- css config.explore.paginationButtons >>= elements
+  btns <- byCss config.explore.paginationButtons >>= findElements
   filtered <- filterByContent btns $ filterFn content
   case filtered of
     Nil -> errorMsg $ "There is no pagination button with content " <> content
@@ -188,7 +189,7 @@ getJTableHeadContent :: Check String
 getJTableHeadContent =
   getConfig >>= (_.explore >>> _.jtableHead >>>
                  flip getElementByCss "There is no JTable head") >>=
-  innerHtml
+  getInnerHtml
 
 
 getSearchInput :: Check Element
@@ -222,7 +223,7 @@ getPager = getConfig >>= _.explore >>> _.pager >>>
 
 getPageCount :: Check Int 
 getPageCount = do
-  getPager >>= innerHtml >>= extract
+  getPager >>= getInnerHtml >>= extract
   where
   extract html =
     let countStr = R.replace (R.regex "\\D+(\\d+)" R.noFlags) "$1" html
@@ -231,9 +232,10 @@ getPageCount = do
 getRowCount :: Check RowCount 
 getRowCount = do
   tc <- length <$> getTableRows
-  pc <- getPageSizeSelect >>= flip attribute "value" >>= parseToInt
+  pc <- getPageSizeSelect >>= flip getAttribute "value" >>= parseToInt
   pure {table: tc, pager: pc}
 
+import Utils.Log
 
 getEnabledRecord :: Check EnabledRecord 
 getEnabledRecord = do
@@ -242,15 +244,14 @@ getEnabledRecord = do
     fb <- getFastBackward
     sb <- getStepBackward
     input <- getPaginationInput
-    successMsg "Ok, all nav buttons is present in pager"
     r <- { ff: _
          , sf: _
          , fb: _
          , sb: _
          , value: _}
-         <$> enabled ff
-         <*> enabled sf
-         <*> enabled fb
-         <*> enabled sb
-         <*> attribute input "value"
+         <$> isEnabled ff
+         <*> isEnabled sf
+         <*> isEnabled fb
+         <*> isEnabled sb
+         <*> getAttribute input "value"
     pure $ EnabledRecord r

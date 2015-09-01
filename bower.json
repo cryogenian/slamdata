@@ -40,8 +40,6 @@
     "purescript-nonempty-arrays": "~0.3.0",
     "purescript-parsing": "~0.5.1",
     "purescript-pathy": "~0.2.0",
-    "purescript-webdriver": "^0.5.0",
-    "purescript-enums": "~0.7.0",
     "purescript-prelude": "~0.1.2",
     "purescript-random": "~0.2.0",
     "purescript-refractor": "paf31/purescript-refractor#841f0c1c74f86f509d31847ae9a808dbb435ee5b",
@@ -51,6 +49,7 @@
     "purescript-simple-dom": "6358414013eb3106d695e3e19488609f82d903e9",
     "purescript-these": "~0.3.0",
     "purescript-uri": "~0.1.0-rc.1",
+    "purescript-webdriver": "~0.6.0",
     "purescript-zclipboard": "~0.2.0"
   },
   "resolutions": {
