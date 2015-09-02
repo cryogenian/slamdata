@@ -36,7 +36,6 @@ import Test.Selenium.Notebook.Contexts
 import qualified Test.Selenium.Notebook.Common as C
 
 import Utils (s2i)
-import Utils.Log 
 
 checkNextVizCell :: Check Unit
 checkNextVizCell = do
@@ -45,17 +44,8 @@ checkNextVizCell = do
     ((eq 2) <<< length) <$> getCells
   successMsg "Ok, next cell viz works"
 
-
 checkSetHeightWidth :: Check Unit
 checkSetHeightWidth = withSmallZipsAllChart do
-  initialDims <- getDims 
-  assertBoolean 
-    "Incorrect initial width, please check echarts version"
-    (initialDims.aw == initialDims.cw * pure 2)
-  assertBoolean 
-    "Incorrect initial height, please check echarts version"
-    (initialDims.ah == initialDims.ch * pure 2)
-
   widthInput <- waitVizWidthInput
   heightInput <- waitVizHeightInput
 
@@ -76,19 +66,15 @@ checkSetHeightWidth = withSmallZipsAllChart do
   await "Dimensions has not been setted" do
     dims <- getDims
     pure
-      $  dims.aw == dims.cw * pure 2
-      && dims.cw == pure w
-      && dims.ah == dims.ch * pure 2
-      && dims.ch == pure h
+       $ dims.w == pure w
+      && dims.h == pure h
   successMsg "Ok, dimensions setted"
 
   where
   getDims = do
     canvas <- waitCanvas 
-    {aw: _, ah: _, cw: _, ch: _} 
-      <$> (s2i <$> getAttribute canvas "width")
-      <*> (s2i <$> getAttribute canvas "height")
-      <*> (s2i <$> getCssValue canvas "width")
+    { w: _, h: _ }
+      <$> (s2i <$> getCssValue canvas "width")
       <*> (s2i <$> getCssValue canvas "height")
   
 test :: Check Unit
