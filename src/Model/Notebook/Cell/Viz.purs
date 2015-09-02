@@ -336,8 +336,8 @@ newtype VizRec = VizRec
   , pieConfiguration :: PieConfiguration
   , lineConfiguration :: LineConfiguration
   , barConfiguration :: BarConfiguration
-  , chartHeight :: Number
-  , chartWidth :: Number
+  , chartHeight :: Int
+  , chartWidth :: Int
   }
 
 initialVizRec :: VizRec
@@ -351,8 +351,8 @@ initialVizRec = VizRec
   , pieConfiguration: initialPieConfiguration
   , lineConfiguration: initialLineConfiguration
   , barConfiguration: initialBarConfiguration
-  , chartHeight: 400.0
-  , chartWidth: 600.0
+  , chartHeight: 400
+  , chartWidth: 600
   }
 
 instance encodeJsonVizRec :: EncodeJson VizRec where
@@ -390,8 +390,8 @@ instance decodeJsonVizRec :: DecodeJson VizRec where
          (obj .? "pie") <*>
          (obj .? "line") <*>
          (obj .? "bar") <*>
-         ((obj .? "height") <|> pure 400.0) <*>
-         ((obj .? "width") <|> pure 600.0)
+         ((obj .? "height") <|> pure 400) <*>
+         ((obj .? "width") <|> pure 600)
     pure $ VizRec r
     
 
@@ -414,10 +414,10 @@ _all = _VizRec <<< lens _.all _{all = _}
 _chartType :: LensP VizRec ChartType
 _chartType = _VizRec <<< lens _.chartType _{chartType = _}
 
-_chartHeight :: LensP VizRec Number
+_chartHeight :: LensP VizRec Int
 _chartHeight = _VizRec <<< lens _.chartHeight _{chartHeight = _}
 
-_chartWidth :: LensP VizRec Number
+_chartWidth :: LensP VizRec Int
 _chartWidth = _VizRec <<< lens _.chartWidth _{chartWidth = _}
 
 _availableChartTypes :: LensP VizRec (S.Set ChartType)

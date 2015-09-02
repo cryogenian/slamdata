@@ -94,6 +94,9 @@ makeSearchCell = getConfig >>= _.newCellMenu >>> _.searchButton >>> makeCell
 makeMarkdownCell :: Check Unit
 makeMarkdownCell = getConfig >>= _.newCellMenu >>> _.mdButton >>> makeCell
 
+makeQueryCell :: Check Unit
+makeQueryCell = getConfig >>= _.newCellMenu >>> _.queryButton >>> makeCell
+
 deleteAllCells :: Check Unit
 deleteAllCells = do
   config <- getConfig
@@ -149,6 +152,10 @@ withExploreCell = withCell makeExploreCell
 withSearchCell :: Context
 withSearchCell = withCell makeSearchCell
 
+withQueryCell :: Context
+withQueryCell = withCell makeQueryCell 
+
+
 
 cellHasRun :: Check Boolean
 cellHasRun = do
@@ -167,11 +174,24 @@ fileOpened file action = do
     leftClick play
   await "error during opening file" cellHasRun
   action
+
+queryEvaluated :: String -> Context
+queryEvaluated queryStr action = do
+  config <- getConfig
+  play <- getPlayButton
+  input <- getAceInput
+  sequence do
+    leftClick input
+    traverse  sendKeysFn $ S.split "" queryStr
+    leftClick play
+  await "error during evaluating query" cellHasRun
+  action
+  where
+  sendKeysFn "-" = sendKeys "\xE027"
+  sendKeysFn a = sendKeys a
   
 withFileOpened :: Context -> String -> Context
 withFileOpened context file action = context $ fileOpened file action
-
-
 
 
 withFileOpenedExplore :: String -> Context
@@ -193,12 +213,11 @@ fileSearched file query action = do
   await "error during search file" cellHasRun
   action
 
+
   
 withFileSearched :: String -> String -> Context
 withFileSearched file query action = withSearchCell $ fileSearched file query action
                                      
-
-
 withSmallZipsSearchedAll :: Context
 withSmallZipsSearchedAll action = do
   config <- getConfig
@@ -208,6 +227,12 @@ withSmallZipsOpened :: Context
 withSmallZipsOpened action =
   getConfig >>= _.explore >>> _.smallZips >>> flip withFileOpenedExplore action
 
+
+withSmallZipsQueriedAll :: Context
+withSmallZipsQueriedAll action = withQueryCell do
+  config <- getConfig
+  queryEvaluated config.query.smallZipsAll action
+
 withOlympicsOpened :: Context
 withOlympicsOpened action =
   getConfig >>= _.explore >>> _.olympics >>> flip withFileOpenedExplore action
@@ -215,6 +240,21 @@ withOlympicsOpened action =
 withNestedOpened :: Context
 withNestedOpened action =
   getConfig >>= _.explore >>> _.nested >>> flip withFileOpenedExplore action
+
+
+
+withChart :: String -> Context
+withChart query action =
+  withQueryCell $ queryEvaluated query do
+    waitNextVizCell >>= sequence <<< leftClick
+    await "Viz cell has not been created" do
+      ((eq 2) <<< length) <$> getCells
+    action
+
+withSmallZipsAllChart :: Context
+withSmallZipsAllChart action =
+  getConfig >>= _.query >>> _.smallZipsAll >>> flip withChart action
+
 
 tableChanged :: String -> Check Boolean
 tableChanged old = do

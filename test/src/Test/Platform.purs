@@ -14,16 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.Platform (Platform(..), platform) where
+module Test.Platform (Platform(..), platform, parsePlatform) where
 
 data Platform = Mac | FreeBSD | Linux | SunOS | Win | Unknown
 
 foreign import _platform :: String
 
-platform = case _platform of
+parsePlatform :: String -> Platform
+parsePlatform p = case p of
  "darwin" -> Mac
  "freebsd" -> FreeBSD
  "linux" -> Linux
  "sunos" -> SunOS
  "win32" -> Win
  _ -> Unknown
+
+
+platform :: Platform
+platform = parsePlatform _platform

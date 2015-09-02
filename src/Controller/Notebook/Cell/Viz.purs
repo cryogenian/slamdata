@@ -71,7 +71,7 @@ setChartHeight cell height =
   case s2i' height of
     Nothing -> empty
     Just h ->
-      (update cell (_content.._Visualize.._chartHeight .~ toNumber h)) <>
+      (update cell (_content.._Visualize.._chartHeight .~ h)) <>
       (pure $ ResizeECharts (show $ cell ^. _cellId))
       
 s2i' :: String -> Maybe Int
@@ -83,7 +83,7 @@ setChartWidth cell width =
   case s2i' width of
     Nothing -> empty
     Just w ->
-      (update cell (_content .. _Visualize .. _chartWidth .~ toNumber w)) <>
+      (update cell (_content .. _Visualize .. _chartWidth .~ w)) <>
       (pure $ ResizeECharts (show $ cell ^. _cellId))
 
 

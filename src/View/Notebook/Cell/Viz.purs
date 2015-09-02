@@ -27,6 +27,7 @@ import Data.Selection
 import Optic.Extended (TraversalP())
 import Data.Array (range, zipWith, length, drop, take, (!!), null, (:))
 import Data.Argonaut.JCursor (JCursor())
+import Data.Int (toNumber)
 import qualified Data.Set as S
 import qualified Data.List as L
 
@@ -111,19 +112,19 @@ chartConfiguration cell r =
    , row
      [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
        [ label "Height"
-       , H.input [ A.value (if 0.0 == (r ^._chartHeight)
+       , H.input [ A.value (if zero == (r ^._chartHeight)
                             then ""
                             else show (r ^._chartHeight))
-                 , A.classes [ B.formControl ]
+                 , A.classes [ B.formControl, VC.chartConfigureHeight ]
                  , E.onInput (\v -> pure $ setChartHeight cell v)
                  ] [ ]
        ]
      , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
        [ label "Width"
-       , H.input [ A.value (if 0.0 == (r ^._chartWidth)
+       , H.input [ A.value (if zero == (r ^._chartWidth)
                             then "" 
                             else show (r ^._chartWidth))
-                 , A.classes [ B.formControl ]
+                 , A.classes [ B.formControl, VC.chartConfigureWidth ]
                  , E.onInput (\v -> pure $ setChartWidth cell v)
                  ] [ ]
        ]
@@ -320,25 +321,25 @@ vizOutput state =
   case state ^. _err of
     "" -> [chart
            (show $ state ^._cellId)
-           (fromMaybe 0.0 (state ^? _viz.._chartHeight))
-           (fromMaybe 0.0 (state ^? _viz.._chartWidth))
+           (fromMaybe zero (state ^? _viz.._chartHeight))
+           (fromMaybe zero (state ^? _viz.._chartWidth))
           ]
     _ -> [ ]
 
-chart' :: forall e i. Array (A.Attr (I e)) -> String -> Number -> Number -> HTML e
+chart' :: forall e i. Array (A.Attr (I e)) -> String -> Int -> Int -> HTML e
 chart' attrs chartId h w =
   H.div (attrs <>
          [ dataEChartsId chartId
          , A.key ("echarts-key" <> chartId)
-         , CSS.style (do height $ px h
-                         width $ px w
+         , CSS.style (do height $ px $ toNumber h
+                         width $ px $ toNumber w
                          position relative
                          left $ pct 50.0
-                         marginLeft $ px $ -0.5 * w
+                         marginLeft $ px $ -0.5 * (toNumber w)
                      )
          ]) [ ]
 
-chart :: forall e. String -> Number -> Number -> HTML e
+chart :: forall e. String -> Int -> Int -> HTML e
 chart = chart' []
 
 
