@@ -43,4 +43,4 @@ main = onLoad $ void $ do
     liftEff $ setSlamDataTitle version
     liftEff $ driver $ inj $ WithState (_version .~ version)
   where
-  postRender _ node _ = initZClipboard node 
+  postRender _ node _ = initZClipboard node

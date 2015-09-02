@@ -20,7 +20,7 @@ import Prelude
 
 import Controller.Notebook.Common (I())
 import Model.Notebook.Cell (Cell())
-import Model.Notebook.Cell.Viz 
+import Model.Notebook.Cell.Viz
 import Data.Selection
 
 import ECharts.Axis
@@ -28,7 +28,7 @@ import ECharts.Chart
 import ECharts.Common
 import ECharts.Coords
 import ECharts.Formatter
-import ECharts.Grid 
+import ECharts.Grid
 import ECharts.Item.Data
 import ECharts.Item.Value
 import ECharts.Legend
@@ -66,12 +66,12 @@ mkSeries acc =
   where
   rows :: Int -> Int -> Array PieSeriesRec -> Array Series
   rows count ix lst =
-    zipWith (donut count ix $ length lst) (range 0 $ length lst) lst 
+    zipWith (donut count ix $ length lst) (range 0 $ length lst) lst
 
   donut :: Int -> Int -> Int -> Int -> PieSeriesRec -> Series
   donut rowCount rowIx donutCount donutIx r  =
     case mkRadius rowCount rowIx of
-      Tuple maxR center -> 
+      Tuple maxR center ->
         PieSeries {
           common: universalSeriesDefault {
              itemStyle = Just $ ItemStyle {
@@ -99,11 +99,11 @@ mkSeries acc =
         record = {inner: Percent (step * (ix + 1.0))
                  , outer: Percent (step * (ix + 2.0))}
     in Just $ Rs record
-    
+
   mkRadius :: Int -> Int -> Tuple Number (Maybe Center)
   mkRadius count ix =
     let countNum = toNumber count
-        ixNum = toNumber ix 
+        ixNum = toNumber ix
     in if count <= rowLength
        then mkRadius' countNum ixNum
        else mkRadius'' countNum ixNum
@@ -112,8 +112,8 @@ mkSeries acc =
   mkRadius' count ix =
     let r = 85.0 / count
         step = 100.0 / count
-        modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber count 
-        x = 55.0 + (modulus + 0.5 - count/2.0) * step 
+        modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber count
+        x = 55.0 + (modulus + 0.5 - count/2.0) * step
         y = 50.0
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c
@@ -123,8 +123,8 @@ mkSeries acc =
     let l = toNumber rowLength
         r = 85.0 / l
         step = 100.0 / l
-        modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber l 
-        x = 55.0 + (modulus - l/2.0 + 0.5) * step 
+        modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber l
+        x = 55.0 + (modulus - l/2.0 + 0.5) * step
         y = 1.2 * floor (ix / l) * r + r
         c = Just $ Tuple (Percent x) (Percent y)
     in Tuple r c
@@ -134,7 +134,7 @@ mkSeries acc =
 
   named :: Array (Tuple Key Number) -> String -> Map String (Tuple String Number)
   named lst cat =
-    (fromList <<< L.toList) $ 
+    (fromList <<< L.toList) $
     ((bimap keyName (Tuple cat)) <$>
      (filter (\(Tuple k _) -> keyCategory k == cat) lst))
 
@@ -166,14 +166,14 @@ mkSeries acc =
   group :: Map String (Array (Tuple String Number))
   group = nameMap $ L.fromList $ toList acc
 
-  dat :: String -> Tuple String Number -> ItemData 
+  dat :: String -> Tuple String Number -> ItemData
   dat str (Tuple s n) = (Dat $ (dataDefault $ Simple n) {name = Just $ s <>
                                                                 (if str == ""
                                                                 then ""
                                                                 else ":" <> str)})
 
   serie :: Tuple String (Array (Tuple String Number)) ->
-           Tuple String PieSeriesRec 
+           Tuple String PieSeriesRec
   serie (Tuple k tpls) =
     Tuple k (pieSeriesDefault { "data" = Just $ (dat k) <$> tpls})
 
@@ -185,13 +185,13 @@ mkSeries acc =
     (snd <$>) <$>
     (groupBy (\a b -> (split ":" (fst a) !! 1) == (split ":" (fst b) !! 1)) series)
 
-  
+
 mkPie :: forall e. VizRec -> _ -> Option
 mkPie r conf =
   Option $ optionDefault { tooltip = Just $ Tooltip $
                                      tooltipDefault {trigger = Just TriggerItem}
                          , series = Just $ Just <$> series
-                         , legend = Just $ mkLegend series 
+                         , legend = Just $ mkLegend series
                          }
   where
   mkLegend :: Array Series -> Legend
@@ -210,8 +210,8 @@ mkPie r conf =
   extractOneDatum :: ItemData -> Maybe String
   extractOneDatum (Dat r) = r.name
   extractOneDatum _ = Nothing
-  
-    
+
+
   series = mkSeries extracted
-  extracted = extractClean r conf 
-  
+  extracted = extractClean r conf
+

@@ -72,11 +72,11 @@ checkSetHeightWidth = withSmallZipsAllChart do
 
   where
   getDims = do
-    canvas <- waitCanvas 
+    canvas <- waitCanvas
     { w: _, h: _ }
       <$> (s2i <$> getCssValue canvas "width")
       <*> (s2i <$> getCssValue canvas "height")
-  
+
 test :: Check Unit
 test = do
   config <- getConfig
@@ -97,7 +97,7 @@ test = do
 
   sectionMsg "check hide/show"
   withSmallZipsAllChart do
-    config <- getConfig 
+    config <- getConfig
     cell <- getCell 1
     C.checkHideShowCell cell config.cell.vizEditor
-  
+

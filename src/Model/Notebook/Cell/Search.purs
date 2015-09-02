@@ -29,7 +29,7 @@ import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson)
 import Model.Notebook.Cell.FileInput (FileInput(), initialFileInput)
 import Model.Notebook.Cell.JTableContent (JTableContent(), initialJTableContent)
-import Optic.Core 
+import Optic.Core
 
 import qualified Model.Notebook.Cell.Common as C
 

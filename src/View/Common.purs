@@ -74,7 +74,7 @@ logo mbVersion =
     [ H.img [A.src "img/logo.svg"] [] ]
   ]
   where
-  title = maybe [] (singleton <<< A.title <<< ("Version " <>)) 
+  title = maybe [] (singleton <<< A.title <<< ("Version " <>))
 
 closeButton :: forall i. (ET.Event ET.MouseEvent -> E.EventHandler i) -> H.HTML i
 closeButton handler =

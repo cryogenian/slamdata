@@ -99,7 +99,7 @@ checkSearchEmpty btnCheck = do
     config <- getConfig
     input <- getSearchFileList
     sequence do
-      leftClick input 
+      leftClick input
       sendKeys config.explore.smallZips
     C.checkIncorrect btnCheck
   successMsg "Ok, expected behaviour when search input is empty"
@@ -159,20 +159,20 @@ checkSearchClear :: Check Unit
 checkSearchClear = withSearchCell do
   clear <- getSearchClear
   ip <- getSearchInput
-  sequence do 
+  sequence do
     leftClick ip
     sendKeys "foo bar baz"
   await "value of search input has not been setted" do
-    (== "foo bar baz") <$> getAttribute ip "value" 
+    (== "foo bar baz") <$> getAttribute ip "value"
 
   successMsg "Ok, correct value in search input"
-  
+
   sequence $ leftClick clear
   await "value of search input has not been cleared" do
     (== "") <$> getAttribute ip "value"
 
   successMsg "Ok, value has been cleared"
-  
+
 checkSearchStop :: Check Unit
 checkSearchStop = withSearchCell do
   config <- getConfig
@@ -205,7 +205,7 @@ checkOutputLabel = do
   replicateM dummy makeMarkdownCell
   makeSearchCell
   deleteCells getMdCells
-  fileSearched config.explore.smallZips config.searchCell.allQuery do 
+  fileSearched config.explore.smallZips config.searchCell.allQuery do
     label <- waitOutputLabel >>= getInnerHtml
     if extracted label /= ("out" <> show dummy)
       then errorMsg "Incorrect output"
@@ -239,8 +239,8 @@ checkQuery conf = withSmallZipsSearchedAll do
   config <- getConfig
   ip <- getSearchInput
   btn <- getPlayButton
-  
-  fbEnabled <- (_.fb <<< runEnabledRecord) <$> getEnabledRecord 
+
+  fbEnabled <- (_.fb <<< runEnabledRecord) <$> getEnabledRecord
   if not fbEnabled
     then pure unit
     else do
@@ -251,16 +251,16 @@ checkQuery conf = withSmallZipsSearchedAll do
     leftClick ip
     sendSelectAll platform
     sendDelete
-    sendKeys conf.query 
+    sendKeys conf.query
     leftClick btn
-  
+
   ffEnabled <- (_.ff <<< runEnabledRecord) <$> getEnabledRecord
   if not ffEnabled
     then pure unit
     else do
     afterTableChanged (getFastForward >>= sequence <<< leftClick)
 
-    
+
   {table: tableCount, pager: pagerCount} <- getRowCount
   if tableCount == conf.rows
      && pagerCount == 10
@@ -270,15 +270,15 @@ checkQuery conf = withSmallZipsSearchedAll do
          <> "\nin pager: " <> show pagerCount
          <> "\nshould be in table: " <> show conf.rows
          <> "\nshould be in pager: 10"
-         
+
   count <- getPageCount
   if count == conf.pages
     then successMsg "Ok, correct page count"
     else errorMsg "Incorrect page count"
 
 checkQueries :: Check Unit
-checkQueries = 
-  getConfig >>= _.searchQueries >>> traverse_ checkQuery 
+checkQueries =
+  getConfig >>= _.searchQueries >>> traverse_ checkQuery
 
 
 
@@ -291,10 +291,10 @@ test = do
 
   sectionMsg "check make search cell"
   C.checkMakeCell getSearchCells makeSearchCell
-  
+
   sectionMsg "check deleting search cells"
   C.checkDeleting getSearchCells
-  
+
   sectionMsg "check file list in search cell"
   FL.test withSearchCell
 
@@ -305,7 +305,7 @@ test = do
   checkIncorrectInputs
 
   sectionMsg "check embed inputs"
-  withSmallZipsSearchedAll C.checkEmbedButton 
+  withSmallZipsSearchedAll C.checkEmbedButton
 
   sectionMsg "check value clear"
   checkSearchClear
@@ -314,14 +314,14 @@ test = do
   checkSearchStop
 
   sectionMsg "check output label"
-  checkOutputLabel 
+  checkOutputLabel
 
   sectionMsg "check next search cell (explore)"
-  withSmallZipsOpened $ checkNextSearchCell config.explore.smallZips 
+  withSmallZipsOpened $ checkNextSearchCell config.explore.smallZips
 
   sectionMsg "check next search cell (search)"
   withSmallZipsSearchedAll $ checkNextSearchCell
-    $  "/" <> config.mount.name 
+    $  "/" <> config.mount.name
     <> "/" <> config.database.name
     <> "/" <> Config.newNotebookName
     <> "." <> Config.notebookExtension

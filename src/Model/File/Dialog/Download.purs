@@ -21,7 +21,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (rootDir)
 import Model.Resource (Resource(..), resourceName, root)
-import Optic.Core 
+import Optic.Core
 import Optic.Extended (TraversalP())
 import Network.HTTP.MimeType (MimeType(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))

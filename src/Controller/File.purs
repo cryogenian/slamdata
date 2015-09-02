@@ -107,7 +107,7 @@ handleFileListChanged el state = do
               `andThen` \_ -> toInput (ItemRemove fileItem)
           Right _ ->
             liftEff (setLocation $ itemURL (state ^. _sort) (state ^. _salt) Edit fileItem) *> empty
-      
+
 
 
 handleUploadFile :: forall e. HTMLElement -> Event e

@@ -8,7 +8,8 @@ var gulp = require("gulp"),
     webpack = require("webpack-stream"),
     run = require("gulp-run"),
     rimraf = require("rimraf"),
-    fs = require("fs");
+    fs = require("fs"),
+    trimlines = require("gulp-trimlines");
 
 var slamDataSources = [
   "src/**/*.purs",
@@ -52,6 +53,13 @@ gulp.task("add-headers", function () {
             .pipe(contentFilter(contentFilterParams))
             .pipe(header(licenseHeader))
             .pipe(gulp.dest("./"));
+});
+
+gulp.task("trim-whitespace", function () {
+  var options = { leading: false };
+  return gulp.src(slamDataSources, {base: "./"})
+            .pipe(trimlines(options))
+            .pipe(gulp.dest("."));
 });
 
 var bundleTasks = [];
@@ -149,4 +157,4 @@ mkWatch("watch-notebook-fast", "fast-bundle-notebook", allSources);
 
 gulp.task("watch", ["watch-less", "watch-file", "watch-notebook"]);
 gulp.task("dev", ["watch-less", "watch-file-fast", "watch-notebook-fast"]);
-gulp.task("default", ["add-headers", "less", "bundle"]);
+gulp.task("default", ["add-headers", "trim-whitespace", "less", "bundle"]);

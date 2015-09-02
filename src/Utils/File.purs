@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils.File 
+module Utils.File
        ( fileListToArray
        , files
        , newReader
@@ -44,14 +44,14 @@ foreign import data FileList :: *
 foreign import data READ_FILE :: !
 
 foreign import fileListToArray :: FileList -> Array File
-foreign import name :: forall e. File -> Eff (file :: READ_FILE |e) String 
-foreign import newReaderEff :: forall e. Eff e FileReader 
+foreign import name :: forall e. File -> Eff (file :: READ_FILE |e) String
+foreign import newReaderEff :: forall e. Eff e FileReader
 foreign import readAsBinaryStringEff :: forall e. File -> FileReader ->
                                         Eff (file :: READ_FILE |e) Unit
-foreign import resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a) 
+foreign import resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a)
                              FileReader (Eff (file :: READ_FILE |e) (Maybe String))
 foreign import filesEff :: forall e. HTMLElement -> Eff (dom :: DOM |e) FileList
-foreign import onloadEff :: forall e e'. FileReader -> Eff e Unit -> 
+foreign import onloadEff :: forall e e'. FileReader -> Eff e Unit ->
                             Eff (file :: READ_FILE |e') Unit
 
 
@@ -61,11 +61,11 @@ newReader :: forall e. Aff e FileReader
 newReader = makeAff \_ k ->
   newReaderEff >>= \r -> k r
 
-resultEff :: forall e. FileReader -> Eff (file :: READ_FILE |e) (Maybe String) 
+resultEff :: forall e. FileReader -> Eff (file :: READ_FILE |e) (Maybe String)
 resultEff fr = runFn3 resultImpl Nothing Just fr
 
-files :: forall e. HTMLElement -> Aff (dom :: DOM |e) FileList 
-files node = makeAff \_ k -> do 
+files :: forall e. HTMLElement -> Aff (dom :: DOM |e) FileList
+files node = makeAff \_ k -> do
   fs <- filesEff node
   k fs
 
@@ -76,4 +76,4 @@ readAsBinaryString file reader = makeAff \er k -> do
     mbRes <- resultEff reader
     case mbRes of
       Nothing -> er $ error "files has not been read"
-      Just res -> k res 
+      Just res -> k res

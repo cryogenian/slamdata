@@ -21,7 +21,7 @@ import Data.Maybe (Maybe(..))
 import Model.File.Dialog.Download (DownloadDialogRec())
 import Model.File.Dialog.Mount (MountDialogRec())
 import Model.File.Dialog.Rename (RenameDialogRec())
-import Optic.Core 
+import Optic.Core
 
 data Dialog
   = RenameDialog RenameDialogRec

@@ -23,7 +23,7 @@ newtype EnabledRecord =
                 , sf :: Boolean
                 , fb :: Boolean
                 , sb :: Boolean
-                , value :: String 
+                , value :: String
                 }
 
 runEnabledRecord :: EnabledRecord -> { ff :: Boolean
@@ -40,7 +40,7 @@ instance eqEnabledRecord :: Eq EnabledRecord where
     r.sf == r'.sf &&
     r.fb == r'.fb &&
     r.sb == r'.sb &&
-    r.value == r'.value 
+    r.value == r'.value
 
 instance showEnabledRecord :: Show EnabledRecord where
   show (EnabledRecord r) =
@@ -48,8 +48,8 @@ instance showEnabledRecord :: Show EnabledRecord where
     ", sf = " <> show r.sf <>
     ", fb = " <> show r.fb <>
     ", sb = " <> show r.sb <>
-    ", value = " <> show r.value <> 
+    ", value = " <> show r.value <>
     "})"
 
-    
+
 type RowCount = {table :: Int, pager :: Int}

@@ -107,11 +107,11 @@ _activeCell :: TraversalP Notebook Cell
 _activeCell f s = cellById (s ^. _activeCellId) f s
 
 cellById :: CellId -> TraversalP Notebook Cell
-cellById cellId f s = 
+cellById cellId f s =
   case findIndex (\cell -> cell ^. _cellId == cellId) (s ^. _cells) of
     Nothing -> pure s
     Just i -> (_cells .. ix i) f s
-     
+
 
 instance encodeJsonNotebook :: EncodeJson Notebook where
   encodeJson (Notebook obj)
@@ -150,18 +150,18 @@ descendants cid ds = L.fromList (fst <$> (L.filter (\x -> snd x == cid) $ toList
 
 trash :: CellId -> Dependencies -> Dependencies
 trash cid ds =
-  let ds' = delete cid ds 
+  let ds' = delete cid ds
   in case descendants cid ds' of
     [] -> ds'
     xs -> foldl (\d x -> trash x d) ds' xs
 
-    
+
 
 addCell :: CellContent -> Notebook -> Tuple Notebook Cell
 addCell content oldNotebook = insertCell' Nothing content oldNotebook
 
 insertCell :: Cell -> CellContent -> Notebook -> Tuple Notebook Cell
-insertCell parent content oldNotebook = insertCell' (Just parent) content oldNotebook 
+insertCell parent content oldNotebook = insertCell' (Just parent) content oldNotebook
 
 insertCell' :: Maybe Cell -> CellContent -> Notebook -> Tuple Notebook Cell
 insertCell' mbParent content oldNotebook@(Notebook n) = Tuple new cell
@@ -176,7 +176,7 @@ insertCell' mbParent content oldNotebook@(Notebook n) = Tuple new cell
   input = case content of
     Explore _ -> maybe Closed PortResource (content ^? _FileInput .. _file .. _Right)
     _ -> maybe Closed (^. _output) mbParent
-  cell = newCell newId content 
+  cell = newCell newId content
          # (_input .~ input)
          ..(_pathToNotebook .~ (fromMaybe rootDir $ notebookPath oldNotebook))
          ..(_parent .~ ((^. _cellId) <$> mbParent))

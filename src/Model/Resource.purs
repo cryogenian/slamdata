@@ -65,7 +65,7 @@ import Data.Path.Pathy
 import Data.Tuple
 import Model.File.Sort (Sort(..))
 import Model.Path
-import Optic.Core 
+import Optic.Core
 import Optic.Refractor.Prism (_Right)
 import Optic.Types
 import Utils

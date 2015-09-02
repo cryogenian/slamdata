@@ -78,7 +78,7 @@ checkInitial custom = do
   if html /= ""
     then errorMsg "Status text should be empty"
     else successMsg "Ok, status text is empty"
-  custom 
+  custom
   value <- getElementByCss config.explore.input "there is no input"
            >>= flip getAttribute "value"
   if value /= ""
@@ -111,10 +111,10 @@ checkEmbedButton = do
   reloadAndSpyXHR
   where
   getModal = do
-    config <- getConfig 
+    config <- getConfig
     getElementByCss config.cell.embedBox "Embed box hidden"
   expectedValue = do
-    config <- getConfig 
+    config <- getConfig
     pure $ renderHTMLToString $
       H.iframe [ A.src $ url config
                , width' "100%"
@@ -154,7 +154,7 @@ checkHideShowGeneric find sel = do
               successMsg "Ok, hide/show button works"
 
 checkHideShow :: String -> Check Unit
-checkHideShow = checkHideShowGeneric findElement 
+checkHideShow = checkHideShowGeneric findElement
 
 checkHideShowCell :: Element -> String -> Check Unit
 checkHideShowCell cell = checkHideShowGeneric (findChild cell)
@@ -201,16 +201,16 @@ checkNewCellMenu = do
   vis <- newCellMenuExpanded
   if vis
     then errorMsg "At least one of new cell menu button is visible"
-    else pure unit 
+    else pure unit
   successMsg "Ok, initial new cell menu is collapsed"
   sequence $ leftClick expand
-  await "Expand/collapse button has not been changed" do 
+  await "Expand/collapse button has not been changed" do
     newHtml <- getInnerHtml expand
     pure $ newHtml /= html
   newVis <- newCellMenuExpanded
   if not newVis
     then errorMsg "At least one of new cell menu is not visible after expanding"
-    else pure unit 
+    else pure unit
   successMsg "Ok, expanded"
   -- checking collapse
   sequence $ leftClick expand
@@ -229,7 +229,7 @@ checkIncorrect btnCheck = do
   config <- getConfig
   sequence $ leftClick btn
   failures <- waitExistentCss config.cell.failures "There is no failures but should"
-  html <- getInnerHtml failures 
+  html <- getInnerHtml failures
   show <- getElementByCss config.cell.showMessages "There is no showMessages but should"
   sequence $ leftClick show
   await "There is no difference between hidden and shown failures" do
@@ -238,7 +238,7 @@ checkIncorrect btnCheck = do
   successMsg "Ok, shown failures is defferent with hidden"
   hide <- waitExistentCss config.cell.hideMessages "There is no hideMessages"
   sequence $ leftClick hide
-  await "Hidden failures are not equal with initial" do 
+  await "Hidden failures are not equal with initial" do
     hiddenHtml <- getInnerHtml failures
     pure $ hiddenHtml == html
   successMsg "Ok, hidden failures is equal with initial"

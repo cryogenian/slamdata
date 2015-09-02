@@ -32,7 +32,7 @@ import Model.File.Dialog (_DownloadDialog)
 import Model.File.Dialog.Download
 import Model.Path (parseAnyPath)
 import Model.Resource (Resource(..), getPath, resourceName)
-import Optic.Core 
+import Optic.Core
 import Optic.Refractor.Prism (_Just)
 import Utils (newTab)
 
@@ -82,4 +82,4 @@ validate rec
 checkExists :: Resource -> Array Resource -> Boolean
 checkExists r rs =
   let path = getPath r
-  in isJust $ findIndex (\r' -> getPath r' == path) rs 
+  in isJust $ findIndex (\r' -> getPath r' == path) rs

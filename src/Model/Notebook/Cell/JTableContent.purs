@@ -34,7 +34,7 @@ import Data.Argonaut.Encode (EncodeJson)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..))
 import Data.These (These(..), these)
-import Optic.Core 
+import Optic.Core
 
 -- | The current JTable pagination parameters and loaded JSON values if present.
 newtype JTableContent =
@@ -112,7 +112,7 @@ instance decodeResult :: DecodeJson Result where
          <$> obj .? "totalPages"
          <*> obj .? "values"
     pure $ Result r
-    
+
 
 -- | Lens for the Result newtype.
 _Result :: LensP Result _

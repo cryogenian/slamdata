@@ -29,7 +29,7 @@ import Model.Notebook (_notebook)
 import Model.Notebook.Cell (Cell(), RunState(..), _FileInput, _JTableContent, _content, _Search, _cellId, _runState, _input)
 import Model.Notebook.Cell.Search (_buffer)
 import Model.Notebook.Domain (_activeCellId, Notebook())
-import Optic.Core 
+import Optic.Core
 import Optic.Extended (TraversalP())
 import View.Common (glyph)
 import View.Notebook.Cell.FileInput (fileInput)

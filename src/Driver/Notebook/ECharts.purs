@@ -50,31 +50,31 @@ type EChartsKey = String
 
 newtype EContainer = EContainer HTMLElement
 
-foreign import containerEq :: EContainer -> EContainer -> Boolean 
+foreign import containerEq :: EContainer -> EContainer -> Boolean
 
 instance eqEContainer :: Eq EContainer where
   eq = containerEq
-  
+
 
 type EChartsRec =
   { chart :: EC.EChart
   , container :: EContainer
-  } 
+  }
 type EChartsKnot = { charts :: M.StrMap EChartsRec
                    , options :: M.StrMap EC.Option
                    , timeouts :: M.StrMap Timeout
                    }
 
-_charts :: forall a b r. Lens { charts :: a | r} { charts :: b | r} a b 
-_charts = lens _.charts _{charts = _} 
+_charts :: forall a b r. Lens { charts :: a | r} { charts :: b | r} a b
+_charts = lens _.charts _{charts = _}
 
-_options :: forall a b r. Lens { options :: a | r} { options :: b |r} a b 
-_options = lens _.options _{options = _} 
+_options :: forall a b r. Lens { options :: a | r} { options :: b |r} a b
+_options = lens _.options _{options = _}
 
-_chart :: forall a b r. Lens { chart :: a | r} { chart :: b |r} a b 
-_chart = lens _.chart _{chart = _} 
+_chart :: forall a b r. Lens { chart :: a | r} { chart :: b |r} a b
+_chart = lens _.chart _{chart = _}
 
-_container :: forall a b r. Lens { container :: a | r} { container :: b |r} a b 
+_container :: forall a b r. Lens { container :: a | r} { container :: b |r} a b
 _container = lens _.container _{container = _}
 
 initKnot :: EChartsKnot
@@ -82,9 +82,9 @@ initKnot =
   { charts: M.empty
   , options: M.empty
   , timeouts: M.empty
-  } 
+  }
 
-ref :: forall e. Eff (ref :: REF | e) (Ref EChartsKnot) 
+ref :: forall e. Eff (ref :: REF | e) (Ref EChartsKnot)
 ref = newRef initKnot
 
 echartsPostRender :: forall e. Ref EChartsKnot -> Input ->
@@ -116,23 +116,23 @@ echartsPostRender knotRef input node driver = do
 init :: forall e. HTMLElement -> String -> Ref EChartsKnot ->
         Eff (NotebookAppEff e) Unit
 init el key knotRef = do
-  knot <- readRef knotRef 
+  knot <- readRef knotRef
   chart <- EC.init Nothing el
   modifyRef knotRef (_charts %~ M.insert key { chart: chart
                                              , container: EContainer el })
   maybe (pure unit) (set chart) $ M.lookup key knot.options
 
-set :: forall e. EC.EChart -> EC.Option -> Eff (NotebookAppEff e) Unit 
+set :: forall e. EC.EChart -> EC.Option -> Eff (NotebookAppEff e) Unit
 set chart opts = void $ do
   EC.setOption opts true chart
   EC.resize chart
-  
+
 
 reinit :: forall e. HTMLElement -> String -> Ref EChartsKnot -> EChartsRec ->
-          Eff (NotebookAppEff e) Unit 
+          Eff (NotebookAppEff e) Unit
 reinit el key knotRef r = do
   knot <- readRef knotRef
-  if r.container == EContainer el 
+  if r.container == EContainer el
     then pure unit
     else do
     chart <- EC.init Nothing el

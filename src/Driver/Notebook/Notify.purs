@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Driver.Notebook.Notify where 
+module Driver.Notebook.Notify where
 
 import Prelude
-import qualified Config as Config 
+import qualified Config as Config
 import Control.Apply ((*>))
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Ref (Ref(), readRef, modifyRef, writeRef)
@@ -39,19 +39,19 @@ import Input.Notebook (Input(..))
 import Model.Notebook (State(), _notebook, _requesting, _refreshing)
 import Model.Notebook.Cell (Cell(), _cellId, CellId(), _hasRun)
 import Model.Notebook.Domain
-import Optic.Core  
+import Optic.Core
 import Optic.Fold ((^?))
 
 
-type NotifyKnot = Map CellId Timeout 
+type NotifyKnot = Map CellId Timeout
 
 notifyDriver :: forall e. Ref State -> Ref NotifyKnot -> Input ->
-                Driver Input (NotebookComponentEff e) -> 
+                Driver Input (NotebookComponentEff e) ->
                 Eff (NotebookAppEff e) Unit
 notifyDriver sKnot nKnot input driver =
   case input of
     -- We've got result from other cell, just notify children
-    CellResult cellId _ (Right _) -> do 
+    CellResult cellId _ (Right _) -> do
       state <- readRef sKnot
       go state cellId
     -- Markdown cell's updated, check timeout and notify children
@@ -64,33 +64,33 @@ notifyDriver sKnot nKnot input driver =
             clearTimeout t
             setTimeout state cellId)
         (lookup cellId map)
-    RefreshCell cell -> do 
+    RefreshCell cell -> do
       state <- readRef sKnot
       let ancs = ancestors (cell ^. _cellId) (state ^. _notebook .. _dependencies)
-      maybe (driver $ RequestCellContent cell) (goHead state) $ head ancs 
+      maybe (driver $ RequestCellContent cell) (goHead state) $ head ancs
     _ -> pure unit
   where
-  goHead :: _ -> CellId -> Eff _ Unit 
-  goHead state cid = 
-    maybe (pure unit) (driver <<< RequestCellContent) $ 
-    state ^? _notebook .. cellById cid 
-  setTimeout :: State -> CellId -> Eff _ Unit 
+  goHead :: _ -> CellId -> Eff _ Unit
+  goHead state cid =
+    maybe (pure unit) (driver <<< RequestCellContent) $
+    state ^? _notebook .. cellById cid
+  setTimeout :: State -> CellId -> Eff _ Unit
   setTimeout state cellId = do
     t <- timeout Config.notifyTimeout do
       go state cellId
       modifyRef nKnot (delete cellId)
     modifyRef nKnot (insert cellId t)
 
-  go :: State -> CellId -> Eff _ Unit 
+  go :: State -> CellId -> Eff _ Unit
   go state cellId = do
     notify (state ^. _notebook) cellId (state ^. _requesting) (state ^. _refreshing) driver
     cleanId cellId
 
-  cleanId :: CellId -> Eff _ Unit 
+  cleanId :: CellId -> Eff _ Unit
   cleanId cellId =
     driver $ WithState ((_requesting %~ filter (/= cellId))
                      .. (_refreshing %~ filter (/= cellId)))
-    
+
 notify :: forall e. Notebook -> CellId -> Array CellId -> Array CellId ->
           Driver Input (NotebookComponentEff e) ->
           Eff (NotebookAppEff e) Unit
@@ -106,10 +106,10 @@ notify notebook cellId requestedIds refreshingIds driver = do
   request :: Cell -> Eff _ Unit
   request = driver <<< RequestCellContent
 
-  requestForChildren :: Eff _ Unit 
+  requestForChildren :: Eff _ Unit
   requestForChildren =
     if elem cellId refreshingIds
-    then pure unit 
+    then pure unit
     else traverse_ request $ dependentCells cellId
 
   -- list of list of dependencies of requested cell from top to bottom
@@ -122,7 +122,7 @@ notify notebook cellId requestedIds refreshingIds driver = do
   isParent = runConj $ fold (Conj <$> (elem cellId) <$> ancestors')
 
   -- if current cell is parent for all requested cells we get
-  -- next cell in this hierarchy and return it 
+  -- next cell in this hierarchy and return it
   nextCell :: Maybe Cell
   nextCell = do
     cid <- runFirst $ fold
@@ -130,7 +130,7 @@ notify notebook cellId requestedIds refreshingIds driver = do
                            i <- elemIndex cellId as
                            as !! (i + one)) <$> ancestors'))
 
-    notebook ^? cellById cid 
+    notebook ^? cellById cid
 
   dependentCells :: CellId -> Array Cell
   dependentCells cid = filter (\x -> elem (x ^._cellId) (dependencies cid) && (x ^. _hasRun))

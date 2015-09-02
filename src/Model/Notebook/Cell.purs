@@ -30,8 +30,8 @@ import Global (readInt, isNaN)
 import Model.Notebook.Cell.FileInput
 import Model.Notebook.Cell.JTableContent
 import Model.Notebook.Port
-import Model.Resource 
-import Optic.Core 
+import Model.Resource
+import Optic.Core
 import Optic.Extended (TraversalP())
 import Data.Path.Pathy (rootDir, parseAbsDir, sandbox, (</>), printPath, file)
 import Model.Path (DirPath(), phantomNotebookPath)
@@ -80,7 +80,7 @@ newCell cellId content =
        , message: ""
        , hiddenEditor: false
        , runState: RunInitial
-       , embedHovered: false 
+       , embedHovered: false
        , hasRun: false
        , pathToNotebook: rootDir
        }
@@ -142,7 +142,7 @@ instance encodeJsonCell :: EncodeJson Cell where
     ~> "output" := cell.output
     ~> "content" := cell.content
     ~> "hasRun" := cell.hasRun
-    ~> "runState" := cell.runState 
+    ~> "runState" := cell.runState
     ~> jsonEmptyObject
 
 instance decodeJsonCell :: DecodeJson Cell where
@@ -153,7 +153,7 @@ instance decodeJsonCell :: DecodeJson Cell where
     parent <- obj .? "parent"
     input <- obj .? "input"
     output <- obj .? "output"
-    runState <- obj .? "runState" <|> pure RunInitial 
+    runState <- obj .? "runState" <|> pure RunInitial
     let hasRun = either (const false) id (obj .? "hasRun")
     pure (cell # (_parent .~ parent)
               .. (_input  .~ input)

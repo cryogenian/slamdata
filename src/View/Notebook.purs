@@ -44,7 +44,7 @@ import Model.Notebook.Domain (_cells, _name, _path, notebookPath)
 import Model.Notebook.Menu (DropdownItem(), MenuElement(), MenuInsertSignal(..))
 import Model.Path ((<./>), encodeURIPath)
 import Model.Resource (Resource(), resourcePath)
-import Optic.Core 
+import Optic.Core
 import Optic.Fold ((^?))
 import Optic.Index (ix)
 import View.Common
@@ -124,19 +124,19 @@ cells state = [ H.div [ A.classes [ Vc.notebookContent ] ]
 
 newCellMenu :: forall e. State -> Array (HTML e)
 newCellMenu state =
-  [ H.ul [ A.classes [ Vc.newCellMenu ] ] $ 
+  [ H.ul [ A.classes [ Vc.newCellMenu ] ] $
     [ H.li_ [ H.button [ A.classes [ B.btnLg, B.btnLink ]
                        , E.onClick (E.input_ $ WithState (_addingCell %~ not))
                        , A.title "Insert new cell"
-                       ] 
+                       ]
 
               [ glyph $ if state ^. _addingCell
                         then B.glyphiconMinus
                         else B.glyphiconPlus
               ]
-                
+
             ]
-    ] <> listElements 
+    ] <> listElements
    ]
   where
   listElements :: Array (HTML e)
@@ -147,7 +147,7 @@ newCellMenu state =
     , li "Search" SearchInsert B.glyphiconSearch
     ]
 
-   
+
   li :: String -> MenuInsertSignal -> A.ClassName -> HTML e
   li title inp cls =
     H.li_

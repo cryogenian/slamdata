@@ -68,7 +68,7 @@ dependsOn a b = a /= b &&
   dependsOn' _ JCursorTop = true
   dependsOn' (JField _ c) (JField _ c') = dependsOn' c c'
   dependsOn' (JIndex _ c) (JIndex _ c') = dependsOn' c c'
-  dependsOn' _ _ = false 
+  dependsOn' _ _ = false
 
 
 data Semanthic
@@ -76,7 +76,7 @@ data Semanthic
   | Percent Number
   | Money Number String
   | Bool Boolean
-  | Category String 
+  | Category String
   | Time String
 
 instance encodeJsonSemanthic :: EncodeJson Semanthic where
@@ -131,7 +131,7 @@ instance decodeJsonSemanthic :: DecodeJson Semanthic where
         pure $ Percent p
       _ -> Left "incorrect type of semanthic"
 
-    
+
 
 data Axis
   = ValAxis (Array (Maybe Semanthic))
@@ -163,7 +163,7 @@ instance decodeJsonAxis :: DecodeJson Axis where
       "time-axis" -> pure $ TimeAxis mbs
       _ -> Left "incorrect axis type"
 
-    
+
 
 isValAxis :: Axis -> Boolean
 isValAxis (ValAxis _) = true
@@ -218,8 +218,8 @@ isComplement (CatAxis _) (CatAxis _) = false
 isComplement (TimeAxis _) (TimeAxis _) = false
 isComplement _ _ = true
 
-catFromSemanthic :: Semanthic -> Maybe String 
-catFromSemanthic v = 
+catFromSemanthic :: Semanthic -> Maybe String
+catFromSemanthic v =
   case v of
     Value v -> pure $ show v
     Percent v -> pure $ show v <> "%"
@@ -252,15 +252,15 @@ checkPredicate p lst =
   then Just lst
   else Nothing
   where isPredicate = Conj <<< (maybe true p)
-        
+
 checkValues :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
 checkValues = checkPredicate isValue
 
 checkMoney :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
-checkMoney = checkPredicate isMoney 
+checkMoney = checkPredicate isMoney
 
 checkPercent :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
-checkPercent = checkPredicate isPercent 
+checkPercent = checkPredicate isPercent
 
 checkBool :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
 checkBool = checkPredicate isBool
@@ -333,7 +333,7 @@ analyzeMoney :: String -> Maybe Semanthic
 analyzeMoney str = do
   ms <- match rgx str
   s <- (ms !! 1)
-  n <- (s >>= s2n) 
+  n <- (s >>= s2n)
   curSymbol <- let fstSymbol = take 1 str
                in if fstSymbol == ""
                   then Nothing
@@ -349,11 +349,11 @@ analyzeDate :: String -> Maybe Semanthic
 analyzeDate str =
   if test rgx str
   then Just $ Time str
-  else Nothing 
+  else Nothing
   where
   rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
-  rgx = regex rgxStr noFlags 
-       
+  rgx = regex rgxStr noFlags
+
 toSemanthic :: Json -> Map JCursor Semanthic
 toSemanthic j = fromList' empty (rmap analyze <$> toPrims j)
   where
@@ -383,10 +383,10 @@ toSemanthic' arr =
 
 analyzeJArray :: JArray -> Map JCursor Axis
 analyzeJArray arr =
-  checkPairs $ 
-  fromList $ 
-  (rmap fromJust) <$> 
-  (L.filter (isJust <<< snd) $ 
+  checkPairs $
+  fromList $
+  (rmap fromJust) <$>
+  (L.filter (isJust <<< snd) $
     (toList (check <$> (toSemanthic' arr))))
 
 
@@ -397,11 +397,11 @@ getPossibleDependencies cursor m =
 
 checkPairs :: Map JCursor Axis -> Map JCursor Axis
 checkPairs m =
-  foldl check m ks 
+  foldl check m ks
   where
   ks = keys m
   check :: Map JCursor Axis -> JCursor -> Map JCursor Axis
-  check m cursor = 
+  check m cursor =
     if length (getPossibleDependencies cursor m) > 0
     then m
     else delete cursor m

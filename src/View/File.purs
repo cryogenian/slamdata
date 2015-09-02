@@ -16,7 +16,7 @@ limitations under the License.
 
 module View.File (fileView) where
 
-import Prelude 
+import Prelude
 import Controller.File.Common (browseURL)
 import Css.Geometry (marginLeft)
 import Css.Size

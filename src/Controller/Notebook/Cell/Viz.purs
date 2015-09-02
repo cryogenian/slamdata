@@ -16,7 +16,7 @@ limitations under the License.
 
 module Controller.Notebook.Cell.Viz where
 
-import Prelude 
+import Prelude
 import Api.Query (count, all, sample)
 import Control.Apply ((*>))
 import Control.Monad.Aff.Class (liftAff)
@@ -37,11 +37,11 @@ import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..))
 import Model.Notebook (State(), _notebook)
 import Model.Notebook.Cell (Cell(), _content, _Visualize, _cellId, CellId(), _runState, _input, _hasRun, newVisualizeContent, RunState(..))
-import Model.Notebook.Cell.Viz 
+import Model.Notebook.Cell.Viz
 import Model.Notebook.Domain hiding (_path, _name)
 import Model.Notebook.Port (_PortResource)
 import Model.Resource -- (Resource())
-import Optic.Core 
+import Optic.Core
 import Optic.Fold ((^?))
 import Optic.Extended (TraversalP())
 import Data.Argonaut.JCursor (JCursor())
@@ -73,7 +73,7 @@ setChartHeight cell height =
     Just h ->
       (update cell (_content.._Visualize.._chartHeight .~ h)) <>
       (pure $ ResizeECharts (show $ cell ^. _cellId))
-      
+
 s2i' :: String -> Maybe Int
 s2i' s = if s == "" then pure 0 else s2i s
 
@@ -100,7 +100,7 @@ insertViz :: forall e. State -> Cell -> I e
 insertViz state parent =
   case insertCell parent newVisualizeContent (state ^. _notebook) of
     Tuple note cell ->
-      (pure $ WithState (_notebook .~ note)) 
+      (pure $ WithState (_notebook .~ note))
       `andThen` \_ ->
       (updateInserted cell)
       `andThen` \_ ->
@@ -123,7 +123,7 @@ updateViz cell r =
 
 updateInserted :: forall e. Cell -> I e
 updateInserted cell =
-  maybe errorInPort (updateData cell) $ cell ^? _input .. _PortResource   
+  maybe errorInPort (updateData cell) $ cell ^? _input .. _PortResource
   where
   error :: String -> I e
   error msg = update cell (_content.._Visualize.._error .~ msg)
@@ -155,8 +155,8 @@ updateData cell file = do
          (updateOpts (cell # _content .. _Visualize .~ vRec'))
   where
   errored :: String -> I e
-  errored msg = update cell (_content.. _Visualize .. _error .~ msg) 
-  
+  errored msg = update cell (_content.. _Visualize .. _error .~ msg)
+
   errorEmptyInput :: I e
   errorEmptyInput = errored "Empty input"
 
@@ -166,7 +166,7 @@ configure r =
       cats = fst <$> (filter (snd >>> Me.isCatAxis) tpls)
       vals = fst <$> (filter (snd >>> Me.isValAxis) tpls)
       times = fst <$> (filter (snd >>> Me.isTimeAxis) tpls)
-      
+
       pie = (r ^._pieConfiguration) #
             (_cats %~ autoSelect) ..
             (_firstMeasures %~ autoSelect) ..
@@ -175,7 +175,7 @@ configure r =
             (_secondSeries.._variants .~ ((cats <-> p.cats <-> p.firstSeries) `onlyIfSelected` p.firstSeries)) ..
             (_firstMeasures.._variants .~ (depends p.cats vals))
 
-             
+
 
       bar = (r ^._barConfiguration) #
             (_cats %~ autoSelect) ..
@@ -203,8 +203,8 @@ configure r =
                             then L.Nil
                             else L.singleton Line
       error = if L.null available then "No available chart types, please, rerun cell" else ""
-      
-      
+
+
 
   in r # _pieConfiguration .~ pie
        # _barConfiguration .~ bar
@@ -227,10 +227,10 @@ updateOpts cell =
   where
   go r = do
     let opts = case r ^._chartType of
-          Pie -> mkPie r (r ^. _pieConfiguration) 
+          Pie -> mkPie r (r ^. _pieConfiguration)
           Line -> mkLine r (r ^. _lineConfiguration)
           Bar -> mkBar r (r ^. _barConfiguration)
-    if L.null $ keys (r ^._all) 
+    if L.null $ keys (r ^._all)
       then empty :: I e
       else
       (update cell (_content.._Visualize.._output .~ opts)) `andThen` \_ ->

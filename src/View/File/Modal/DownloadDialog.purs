@@ -29,7 +29,7 @@ import Input.File (FileInput(..))
 import Model.File (_dialog)
 import Model.File.Dialog.Download
 import Model.Resource (Resource(), resourcePath, isHidden, isFile)
-import Optic.Core 
+import Optic.Core
 import Optic.Refractor.Prism (_Left, _Right)
 import View.Common (closeButton, fadeWhen)
 import View.File.Common (HTML())

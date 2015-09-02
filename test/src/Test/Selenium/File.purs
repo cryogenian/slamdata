@@ -33,7 +33,7 @@ import Selenium.Types
 import Selenium.MouseButton
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Key
-import Selenium.Monad 
+import Selenium.Monad
 import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust)
 
 
@@ -256,7 +256,7 @@ checkConfigureMount = do
     sendUndo platform
 
   getElementByCss config.configureMount.saveButton "no save button"
-    >>= isEnabled 
+    >>= isEnabled
     >>= assertBoolean "save button should be enabled"
 
   where

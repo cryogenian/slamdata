@@ -16,7 +16,7 @@ limitations under the License.
 
 module Utils.Log where
 
-import Prelude 
+import Prelude
 
 spyF :: forall a m. (Applicative m) => a -> m Unit
 spyF a = let x = spy a in pure unit
