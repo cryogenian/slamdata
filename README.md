@@ -5,9 +5,9 @@
 
 **Issues for this project are kindly hosted by [Atlassian JIRA](https://slamdata.atlassian.net). Signup is open to anyone, so if you want to contribute, have bugs to report or features to suggest, [sign up for a JIRA account](https://slamdata.atlassian.net).**
 
-# slamdata
+# SlamData
 
-The web-based front-end for SlamData.
+Web-based visual analytics for NoSQL data, powered by Quasar.
 
 ## Pre-built releases
 
