@@ -177,6 +177,7 @@ goodMountDatabase = do
 
   config <- getConfig
   wait mountShown config.selenium.waitTime
+  waitTime 1000
 
   where
     mountShown :: Check Boolean
@@ -743,6 +744,7 @@ moveDeleteDatabase :: Check Unit
 moveDeleteDatabase = do
   config <- getConfig
   moveDelete "database" home config.mount.name config.mount.otherName
+  waitTime 1000
 
 moveDeleteFolder :: Check Unit
 moveDeleteFolder = do
