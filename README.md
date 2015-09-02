@@ -1,11 +1,12 @@
-# slamdata
-
-[![Join the chat at https://gitter.im/slamdata/slamdata](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/slamdata/slamdata?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
 [![Latest release](https://img.shields.io/github/release/slamdata/slamdata.svg)](https://github.com/slamdata/slamdata/releases)
 [![Travis build status](https://travis-ci.org/slamdata/slamdata.svg?branch=master)](https://travis-ci.org/slamdata/slamdata)
 [![Coverage Status](https://coveralls.io/repos/slamdata/slamdata/badge.svg)](https://coveralls.io/r/slamdata/slamdata)
 [![Stories in Ready](https://badge.waffle.io/slamdata/slamdata.png?label=ready&title=Ready)](https://waffle.io/slamdata/slamdata)
+[![Join the chat at https://gitter.im/slamdata/slamdata](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/slamdata/slamdata?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+**Issues for this project are kindly hosted by [Atlassian JIRA](https://slamdata.atlassian.net). Signup is open to anyone, so if you want to contribute, have bugs to report or features to suggest, [sign up for a JIRA account](https://slamdata.atlassian.net).**
+
+# slamdata
 
 The web-based front-end for SlamData.
 
