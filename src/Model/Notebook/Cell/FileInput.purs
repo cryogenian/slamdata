@@ -34,7 +34,7 @@ import Data.Maybe (Maybe(..))
 import Data.Path.Pathy ((</>), parseAbsFile, sandbox, rootDir)
 import Model.Resource (Resource(), resourcePath, newFile, _path)
 import Model.Notebook.Port (Port(PortInvalid, PortResource))
-import Optic.Core 
+import Optic.Core
 
 newtype FileInput =
   FileInput { showFiles :: Boolean

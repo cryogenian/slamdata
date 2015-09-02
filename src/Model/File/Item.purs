@@ -19,7 +19,7 @@ module Model.File.Item where
 import Prelude (Ordering())
 import Model.Resource (Resource(..), resourcePath, resourceName, sortResource)
 import Model.File.Sort (Sort())
-import Optic.Core 
+import Optic.Core
 
 data Item
   = Item Resource

@@ -82,7 +82,7 @@ checkHiddenItems ctx = withFileList ctx do
   xhrStopped = do
     stats <- filter (\{state: state} -> state == Opened) <$> getXHRStats
     pure $ null stats
-    
+
   filterFn (Tuple el html) =
     R.test (R.regex "/\\." R.noFlags) html
 
@@ -102,12 +102,12 @@ checkHiddenItems ctx = withFileList ctx do
         shwColor <- getCssValue shw "color"
         if hidColor == shwColor
           then errorMsg "hidden and not hidden items should have different colors in file list"
-          else pure unit 
+          else pure unit
     successMsg "Ok, hidden and not hidden items have different color"
     deleteAllCells
 
 
-test :: Context -> Check Unit 
+test :: Context -> Check Unit
 test context = context do
   sectionMsg "check file list hide/show"
   checkFileList context
@@ -118,4 +118,4 @@ test context = context do
   sectionMsg "check file list order"
   checkHiddenItems context
 
-  
+

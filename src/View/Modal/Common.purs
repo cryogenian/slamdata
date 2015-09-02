@@ -16,7 +16,7 @@ limitations under the License.
 
 module View.Modal.Common where
 
-import Prelude 
+import Prelude
 import Data.Functor (($>))
 import Control.Plus (empty)
 

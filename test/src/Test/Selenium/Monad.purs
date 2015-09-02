@@ -21,9 +21,9 @@ import Data.List
 import Test.Config (Config())
 import Control.Monad.Reader.Trans
 import Control.Monad.Reader.Class
-import Selenium.Monad 
+import Selenium.Monad
 
-type Check a = Selenium () (config :: Config) a 
+type Check a = Selenium () (config :: Config) a
 
 
 -- READER

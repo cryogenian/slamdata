@@ -26,8 +26,8 @@ import Data.Argonaut.JCursor (JCursor())
 import Data.Map (Map(), empty, keys)
 import Model.Notebook.ECharts (Semanthic(..), Axis(..), dependsOn)
 import Data.Argonaut.JCursor (JCursor())
-import Optic.Core 
-import qualified Data.Set as S 
+import Optic.Core
+import qualified Data.Set as S
 import Data.Argonaut.Core (JArray())
 import Data.Array (findIndex, filter, head, sort, reverse, length)
 import Data.Foldable (foldl)
@@ -58,7 +58,7 @@ instance chartTypeEq :: Eq ChartType where
 instance chartTypeOrd :: Ord ChartType where
   compare Pie Pie = EQ
   compare Line Line = EQ
-  compare Bar Bar = EQ 
+  compare Bar Bar = EQ
   compare Pie _ = LT
   compare _ Pie = GT
   compare Line _ = LT
@@ -71,7 +71,7 @@ instance encodeJsonChartType :: EncodeJson ChartType where
 
 instance decodeJson :: DecodeJson ChartType where
   decodeJson json = maybe (Left "incorrect chart type string") Right do
-    str <- toString json 
+    str <- toString json
     str2chartType str
 
 str2chartType :: String -> Maybe ChartType
@@ -81,7 +81,7 @@ str2chartType str = case str of
   "bar" -> pure Bar
   _ -> Nothing
 
-type JSelection = Selection JCursor 
+type JSelection = Selection JCursor
 
 depends :: JSelection -> Array JCursor -> Array JCursor
 depends sel lst = maybe lst go (sel ^._selection)
@@ -89,9 +89,9 @@ depends sel lst = maybe lst go (sel ^._selection)
   go y = filter (dependsOn y) lst
 
 data Aggregation
-  = Maximum 
-  | Minimum  
-  | Average 
+  = Maximum
+  | Minimum
+  | Average
   | Sum
   | Product
 
@@ -143,7 +143,7 @@ runAggregation Average nums = (foldl (+) zero nums) / (if length nums == 0
 runAggregation Sum nums = foldl (+) zero nums
 runAggregation Product nums = foldl (*) one nums
 
-instance encodeJsonAggregateion :: EncodeJson Aggregation where 
+instance encodeJsonAggregateion :: EncodeJson Aggregation where
   encodeJson = fromString <<< aggregation2str
 
 instance decodeJsonAggregation :: DecodeJson Aggregation where
@@ -155,7 +155,7 @@ instance decodeJsonAggregation :: DecodeJson Aggregation where
       "μ" -> pure Average
       "Σ" -> pure Sum
       "Π" -> pure Product
-      _ -> Nothing 
+      _ -> Nothing
 
 
 newtype PieConfiguration = PieConfiguration
@@ -241,7 +241,7 @@ instance decodeJsonLineConfiguration :: DecodeJson LineConfiguration where
          , secondAggregation: _} <$>
          (obj .? "dims") <*>
          (obj .? "firstMeasures") <*>
-         (obj .? "secondMeasures") <*> 
+         (obj .? "secondMeasures") <*>
          (obj .? "firstSeries") <*>
          (obj .? "secondSeries") <*>
          ((obj .? "firstAggregation") <|> pure Sum) <*>
@@ -257,7 +257,7 @@ newtype BarConfiguration = BarConfiguration
   }
 
 initialBarConfiguration :: BarConfiguration
-initialBarConfiguration = BarConfiguration 
+initialBarConfiguration = BarConfiguration
   { cats: initialSelection
   , firstMeasures: initialSelection
   , firstSeries: initialSelection
@@ -297,30 +297,30 @@ _LineConfiguraion = lens (\(LineConfiguration obj) -> obj) (const LineConfigurat
 
 _PieConfiguration :: LensP PieConfiguration _
 _PieConfiguration = lens (\(PieConfiguration obj) -> obj) (const PieConfiguration)
-  
-_cats :: forall a b r. Lens {cats::a|r} {cats::b|r} a b 
+
+_cats :: forall a b r. Lens {cats::a|r} {cats::b|r} a b
 _cats = lens _.cats _{cats = _}
 
 _dims :: forall a b r. Lens {dims::a|r} {dims::b|r} a b
-_dims = lens _.dims _{dims = _} 
+_dims = lens _.dims _{dims = _}
 
-_firstMeasures :: forall a b r. Lens {firstMeasures :: a |r} {firstMeasures :: b |r} a b 
+_firstMeasures :: forall a b r. Lens {firstMeasures :: a |r} {firstMeasures :: b |r} a b
 _firstMeasures = lens _.firstMeasures _{firstMeasures = _}
 
 _secondMeasures :: forall a b r. Lens {secondMeasures :: a |r} {secondMeasures :: b |r} a b
 _secondMeasures = lens _.secondMeasures _{secondMeasures = _}
 
-_firstSeries :: forall a b r. Lens {firstSeries :: a |r} {firstSeries :: b |r} a b 
-_firstSeries = lens _.firstSeries _{firstSeries = _} 
+_firstSeries :: forall a b r. Lens {firstSeries :: a |r} {firstSeries :: b |r} a b
+_firstSeries = lens _.firstSeries _{firstSeries = _}
 
-_secondSeries :: forall a b r. Lens {secondSeries :: a|r} {secondSeries :: b|r} a b 
+_secondSeries :: forall a b r. Lens {secondSeries :: a|r} {secondSeries :: b|r} a b
 _secondSeries = lens _.secondSeries _{secondSeries = _}
 
---_firstAggregation :: forall a b r. Lens {firstAggregation :: a |r} {firstAggregation :: b | r} a b 
-_firstAggregation = lens _.firstAggregation _{firstAggregation = _} 
+--_firstAggregation :: forall a b r. Lens {firstAggregation :: a |r} {firstAggregation :: b | r} a b
+_firstAggregation = lens _.firstAggregation _{firstAggregation = _}
 
 --_secondAggregation :: forall a b r. Lens {secondAggregation :: a } {secondAggregation :: b | r} a b
-_secondAggregation = lens _.secondAggregation _{secondAggregation = _} 
+_secondAggregation = lens _.secondAggregation _{secondAggregation = _}
 
 
 
@@ -393,22 +393,22 @@ instance decodeJsonVizRec :: DecodeJson VizRec where
          ((obj .? "height") <|> pure 400) <*>
          ((obj .? "width") <|> pure 600)
     pure $ VizRec r
-    
+
 
 
 _VizRec :: LensP VizRec _
 _VizRec = lens (\(VizRec o) -> o) (const VizRec)
 
 _output :: LensP VizRec Option
-_output = _VizRec <<< lens _.output _{output = _} 
+_output = _VizRec <<< lens _.output _{output = _}
 
-_error :: LensP VizRec String 
+_error :: LensP VizRec String
 _error = _VizRec <<< lens _.error _{error = _}
 
 _sample :: LensP VizRec (Map JCursor Axis)
 _sample = _VizRec <<< lens _.sample _{sample = _}
 
-_all :: LensP VizRec (Map JCursor Axis) 
+_all :: LensP VizRec (Map JCursor Axis)
 _all = _VizRec <<< lens _.all _{all = _}
 
 _chartType :: LensP VizRec ChartType
@@ -424,17 +424,17 @@ _availableChartTypes :: LensP VizRec (S.Set ChartType)
 _availableChartTypes = _VizRec <<< lens _.availableChartTypes _{availableChartTypes = _}
 
 
-_pieConfiguration :: LensP VizRec _ 
+_pieConfiguration :: LensP VizRec _
 _pieConfiguration = _VizRec <<<
                     (lens _.pieConfiguration _{pieConfiguration = _} ) <<<
                     _PieConfiguration
 
-_lineConfiguration :: LensP VizRec _ 
+_lineConfiguration :: LensP VizRec _
 _lineConfiguration = _VizRec <<<
                      (lens _.lineConfiguration _{lineConfiguration = _} ) <<<
                      _LineConfiguraion
 
-_barConfiguration :: LensP VizRec _ 
+_barConfiguration :: LensP VizRec _
 _barConfiguration = _VizRec <<<
                     (lens _.barConfiguration _{barConfiguration = _}) <<<
                     _BarConfiguration

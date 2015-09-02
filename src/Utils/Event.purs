@@ -24,7 +24,7 @@ import Data.DOM.Simple.Types (HTMLElement())
 foreign import raiseEventImpl :: forall e a.
                                  Fn2 String HTMLElement
                                  (Eff (dom :: DOM |e) HTMLElement)
-                                 
-                                 
+
+
 raiseEvent :: forall e a. String -> HTMLElement -> Eff (dom :: DOM |e) HTMLElement
-raiseEvent name el = runFn2 raiseEventImpl name el 
+raiseEvent name el = runFn2 raiseEventImpl name el

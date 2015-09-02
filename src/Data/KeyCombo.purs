@@ -27,7 +27,7 @@ module Data.KeyCombo
   , printKeyComboMac
   ) where
 
-import Prelude 
+import Prelude
 import Data.Array (nub, sort, snoc)
 import Data.Char (fromCharCode)
 import Data.Foldable (foldl)

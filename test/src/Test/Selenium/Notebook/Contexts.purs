@@ -50,7 +50,7 @@ reloadAndSpyXHR = do
   if not $ null stats
     then errorMsg $ "double slash requests were detected\nURLS:"
          <> foldl (\s a -> s <> "\n" <> a.url) "" stats
-    else pure unit 
+    else pure unit
   refresh
   startSpying
   where
@@ -67,20 +67,20 @@ setUp = void do
 
 makeCell :: String -> Check Unit
 makeCell sel = do
-  config <- getConfig 
+  config <- getConfig
   newCellMenu <- newCellMenuExpanded
   if newCellMenu
     then pure unit
     else do
     trigger <- getNewCellMenuTrigger
     sequence $ leftClick trigger
-  exploreBtn <- waitExistentCss sel 
+  exploreBtn <- waitExistentCss sel
                 "There is no explore buttton in new cell menu"
   count <- length <$> getCells
   sequence $ leftClick exploreBtn
   await "Cell has not been added" $ cellAdded count
   successMsg "Ok, cell has been added"
-  where 
+  where
   cellAdded old = do
     new <- length <$> getCells
     pure $ new == old + 1
@@ -115,7 +115,7 @@ deleteAllCells = do
     els <- byCss config.cell.trash >>= findElements
     if null els
       then pure unit
-      else do 
+      else do
       await "cell has not been deleted" do
         new <- length <$> getCells
         pure $ new == old - one
@@ -131,13 +131,13 @@ deleteCells cellsCheck = do
     Cons el _ -> do
       sequence $ leftClick el
       await "Cell has not been deleted (deleteCell)" do
-        count <- length <$> cellsCheck 
+        count <- length <$> cellsCheck
         pure $ length cells == count + one
       deleteCells cellsCheck
-  where 
-  traverseFn cell = do 
-    config <- getConfig 
-    byCss config.cell.trash >>= findChild cell 
+  where
+  traverseFn cell = do
+    config <- getConfig
+    byCss config.cell.trash >>= findChild cell
 
 
 withCell :: Check Unit -> Context
@@ -153,7 +153,7 @@ withSearchCell :: Context
 withSearchCell = withCell makeSearchCell
 
 withQueryCell :: Context
-withQueryCell = withCell makeQueryCell 
+withQueryCell = withCell makeQueryCell
 
 
 
@@ -162,7 +162,7 @@ cellHasRun = do
   statusText <- getStatusText >>= getInnerHtml
   embed <- attempt getEmbedButton
   pure (statusText /= "" && isRight embed)
-  
+
 fileOpened :: String -> Context
 fileOpened file action = do
   config <- getConfig
@@ -170,7 +170,7 @@ fileOpened file action = do
   play <- getPlayButton
   sequence do
     leftClick input
-    sendKeys file 
+    sendKeys file
     leftClick play
   await "error during opening file" cellHasRun
   action
@@ -189,7 +189,7 @@ queryEvaluated queryStr action = do
   where
   sendKeysFn "-" = sendKeys "\xE027"
   sendKeysFn a = sendKeys a
-  
+
 withFileOpened :: Context -> String -> Context
 withFileOpened context file action = context $ fileOpened file action
 
@@ -201,7 +201,7 @@ withFileOpenedExplore = withFileOpened withExploreCell
 fileSearched :: String -> String -> Context
 fileSearched file query action = do
   config <- getConfig
-  fl <- getSearchFileList 
+  fl <- getSearchFileList
   qu <- getSearchInput
   play <- getPlayButton
   sequence do
@@ -214,15 +214,15 @@ fileSearched file query action = do
   action
 
 
-  
+
 withFileSearched :: String -> String -> Context
 withFileSearched file query action = withSearchCell $ fileSearched file query action
-                                     
+
 withSmallZipsSearchedAll :: Context
 withSmallZipsSearchedAll action = do
   config <- getConfig
   withFileSearched config.explore.smallZips config.searchCell.allQuery action
-    
+
 withSmallZipsOpened :: Context
 withSmallZipsOpened action =
   getConfig >>= _.explore >>> _.smallZips >>> flip withFileOpenedExplore action
@@ -269,7 +269,7 @@ afterTableChanged action = do
   await "Table content has not been changed" $ tableChanged html
   pure res
 
-afterTableReload :: String -> Check Unit 
+afterTableReload :: String -> Check Unit
 afterTableReload html = do
   config <- getConfig
   wait (checker $ tableChanged html) (config.selenium.waitTime * 10)

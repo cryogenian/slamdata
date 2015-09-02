@@ -32,7 +32,7 @@ import qualified Data.String as Str
 import qualified Data.String.Regex as Rgx
 import qualified Data.Minimatch as MM
 import qualified Model.Resource as M
-import Optic.Core 
+import Optic.Core
 
 isSearchQuery :: S.SearchQuery -> Boolean
 isSearchQuery query =
@@ -50,7 +50,7 @@ check p prj =
     S.Contains (S.Text str) -> match $ "*" <> escapeGlob str <> "*"
     S.Gt (S.Text str) -> compare str == GT
     S.Gte (S.Text str) -> compare str == GT || compare str == EQ
-    S.Lt (S.Text str) -> compare str == LT 
+    S.Lt (S.Text str) -> compare str == LT
     S.Lte (S.Text str) -> compare str == LT || compare str == EQ
     S.Ne (S.Text str) -> compare str == LT || compare str == GT
     S.Eq (S.Text str) -> compare str == EQ
@@ -93,7 +93,7 @@ filterByTerm r
   in
   case labels of
     -- no labels -> check by both fields
-    Nil -> check' name 
+    Nil -> check' name
     -- we've already checked _path_ when had got it from backend
     Cons (S.Common "path") Nil -> true
     -- check _name_

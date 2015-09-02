@@ -22,7 +22,7 @@ import Data.Maybe (Maybe(..))
 import Model.File
 import Model.File.Breadcrumb (Breadcrumb())
 import View.File.Common (HTML())
-import Optic.Core 
+import Optic.Core
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A

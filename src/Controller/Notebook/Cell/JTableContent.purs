@@ -51,7 +51,7 @@ import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
 import Model.Notebook.Port (VarMapValue(), _VarMap, Port(..))
 import Model.Resource (Resource(), mkFile, isTempFile, _path)
-import Optic.Core 
+import Optic.Core
 import Optic.Extended (TraversalP(), (^?))
 import Utils (s2i)
 

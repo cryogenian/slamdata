@@ -29,7 +29,7 @@ import Selenium.Types
 import Test.Selenium.Log
 import Test.Selenium.Monad
 import Test.Selenium.Common
-import Test.Selenium.Types 
+import Test.Selenium.Types
 import qualified Data.String.Regex as R
 import Selenium.Monad
 
@@ -37,8 +37,8 @@ import Selenium.Monad
 newCellMenuExpanded :: Check Boolean
 newCellMenuExpanded = do
   config <- getConfig
-  btns <- traverse getEl $ toList [ Tuple config.newCellMenu.queryButton "query" 
-                                  , Tuple config.newCellMenu.mdButton "markdown" 
+  btns <- traverse getEl $ toList [ Tuple config.newCellMenu.queryButton "query"
+                                  , Tuple config.newCellMenu.mdButton "markdown"
                                   , Tuple config.newCellMenu.exploreButton "explore"
                                   , Tuple config.newCellMenu.searchButton "search"
                                   ]
@@ -55,7 +55,7 @@ newCellMenuExpanded = do
   getEl :: Tuple String String -> Check Element
   getEl (Tuple selector msg) =
     getElementByCss selector $ msg <> " not found in new cell menu"
-    
+
 
 
 getNewCellMenuTrigger :: Check Element
@@ -114,10 +114,10 @@ waitNextVizCell = do
 waitCanvas :: Check Element
 waitCanvas = do
   getConfig >>= _.viz >>> _.canvas >>>
-  flip waitExistentCss "There is no canvas" 
+  flip waitExistentCss "There is no canvas"
 
 fileListVisible :: Check Boolean
-fileListVisible = 
+fileListVisible =
   getConfig
     >>= (_.explore >>> _.list >>> flip getElementByCss "file list not found")
     >>= isDisplayed
@@ -174,7 +174,7 @@ getPageSizeInput =
 
 getTableRows :: Check (List Element)
 getTableRows =
-  getConfig >>= (_.explore >>> _.row >>> byCss) >>= findElements 
+  getConfig >>= (_.explore >>> _.row >>> byCss) >>= findElements
 
 getTable :: Check Element
 getTable =
@@ -182,15 +182,15 @@ getTable =
   flip getElementByCss "There is no result table"
 
 getFastForward :: Check Element
-getFastForward = 
+getFastForward =
   getConfig >>= _.explore >>> _.paginationFastForwardContent >>> getPaginationButton
 
 getStepForward :: Check Element
-getStepForward = 
+getStepForward =
   getConfig >>= _.explore >>> _.paginationStepForwardContent >>> getPaginationButton
 
 getFastBackward :: Check Element
-getFastBackward = 
+getFastBackward =
   getConfig >>= _.explore >>> _.paginationFastBackwardContent >>> getPaginationButton
 
 getStepBackward :: Check Element
@@ -251,15 +251,15 @@ getPager :: Check Element
 getPager = getConfig >>= _.explore >>> _.pager >>>
            flip getElementByCss "There is no pager"
 
-getPageCount :: Check Int 
+getPageCount :: Check Int
 getPageCount = do
   getPager >>= getInnerHtml >>= extract
   where
   extract html =
     let countStr = R.replace (R.regex "\\D+(\\d+)" R.noFlags) "$1" html
     in parseToInt countStr
-  
-getRowCount :: Check RowCount 
+
+getRowCount :: Check RowCount
 getRowCount = do
   tc <- length <$> getTableRows
   pc <- getPageSizeSelect >>= flip getAttribute "value" >>= parseToInt
@@ -267,7 +267,7 @@ getRowCount = do
 
 import Utils.Log
 
-getEnabledRecord :: Check EnabledRecord 
+getEnabledRecord :: Check EnabledRecord
 getEnabledRecord = do
     ff <- getFastForward
     sf <- getStepForward

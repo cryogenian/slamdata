@@ -28,7 +28,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (message)
 import Control.Monad.Aff (attempt)
 import Control.Monad.Aff.Class (liftAff)
-import Optic.Core 
+import Optic.Core
 import Optic.Fold ((^?))
 
 import Data.Maybe (fromMaybe, maybe, Maybe(..))
@@ -114,4 +114,4 @@ viewSearch cell =
   error =
     update cell (_failures .~ ["Incorrect type of input"])
       `andThen` \_ -> finish cell
-  
+

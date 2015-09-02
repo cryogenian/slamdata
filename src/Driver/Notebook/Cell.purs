@@ -33,10 +33,10 @@ driveEvent :: forall e. Driver Input (NotebookComponentEff e) -> I e -> Eff (Not
 driveEvent = runEvent (const $ return unit)
 
 driveCellContent :: forall eff. Input -> Driver Input (NotebookComponentEff eff) -> Eff (NotebookAppEff eff) Unit
-driveCellContent (RequestCellContent cell) driver = 
+driveCellContent (RequestCellContent cell) driver =
   case cell ^. _content of
     Explore _ -> runWith cell driver
-    Search _ -> runWith cell driver  
+    Search _ -> runWith cell driver
     Visualize _ -> runWith cell driver
     _ -> return unit
 driveCellContent (ReceiveCellContent cell) driver =
@@ -51,7 +51,7 @@ driveCellContent (ViewCellContent cell) driver =
     Explore _ -> view cell driver
     Visualize _ -> view cell driver
     Query _ -> view cell driver
-    _ -> pure unit 
+    _ -> pure unit
 
 driveCellContent _ _ = pure unit
 

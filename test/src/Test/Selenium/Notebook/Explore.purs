@@ -63,7 +63,7 @@ checkInitialExplore =
 checkEmptyInputErrors :: Check Unit
 checkEmptyInputErrors = do
   config <- getConfig
-  withExploreCell do 
+  withExploreCell do
     C.checkIncorrect getRefreshButton
   withExploreCell do
     C.checkIncorrect getPlayButton
@@ -98,7 +98,7 @@ checkDirectoryFailure =
 checkInexistentFileNotMounted :: Check Unit
 checkInexistentFileNotMounted =
   getConfig >>= _.explore >>> _.notMounted >>> checkFailure "(not mounted)"
-  
+
 checkInexistentFileMounted :: Check Unit
 checkInexistentFileMounted = withExploreCell do
   config <- getConfig
@@ -113,7 +113,7 @@ checkInexistentFileMounted = withExploreCell do
 
 checkStatus :: Check Unit
 checkStatus = withSmallZipsOpened do
-  config <- getConfig 
+  config <- getConfig
   refresh <- getRefreshButton
   wait (checker finished) config.selenium.waitTime
   successMsg "Ok, correct status text"
@@ -133,7 +133,7 @@ checkStatus = withSmallZipsOpened do
 
 checkOutputLabel :: Check Unit
 checkOutputLabel = do
-  config <- getConfig 
+  config <- getConfig
   withSmallZipsOpened do
     zipsLabel <- getElementByCss config.cell.cellOutputLabel "no output label"
                  >>= getInnerHtml
@@ -175,18 +175,18 @@ checkRowCount' :: (Int -> Int -> Boolean) -> Int -> Check Unit
 checkRowCount' assertFn expected = do
   {table: tableCount, pager: pagerCount} <- getRowCount
   if assertFn tableCount pagerCount
-    then successMsg "Ok, correct row count" 
+    then successMsg "Ok, correct row count"
     else errorMsg $ "Incorrect row count\n" <>
          "expected: " <> show expected <>
          "\nin table: " <> show tableCount <>
          "\nin pager: " <> show pagerCount
 
-  
+
 checkRowCount :: Int -> Check Unit
 checkRowCount expected =
   checkRowCount' (\tc pc -> tc == expected && pc == expected) expected
 
-         
+
 checkInitialRowCount :: Check Unit
 checkInitialRowCount = do
   config <- getConfig
@@ -195,7 +195,7 @@ checkInitialRowCount = do
 checkRowsPerPageSwitching :: Check Unit
 checkRowsPerPageSwitching = do
   checkRowsPerPageSelect
-  checkRowsPerPageCustom 
+  checkRowsPerPageCustom
 
 setPageSizeOption :: String -> Check Unit
 setPageSizeOption str = do
@@ -205,24 +205,24 @@ setPageSizeOption str = do
     leftClick select
     leftClick option
     sendEnter
-  where 
+  where
   getOption str = do
-    config <- getConfig 
+    config <- getConfig
     options <- byCss config.explore.option >>= findElements
-    filtered <- filterByContent options (\content -> content == str) 
+    filtered <- filterByContent options (\content -> content == str)
     case filtered of
       Nil -> errorMsg $ "There is no option with value " <> str
       Cons el _ -> pure el
 
 checkRowsPerPageSelect :: Check Unit
 checkRowsPerPageSelect = withSmallZipsOpened do
-  config <- getConfig 
+  config <- getConfig
   select <- getPageSizeSelect
   for_ (reverse $ toList config.explore.optionNums) traverseFn
   where
   traverseFn numStr = do
     config <- getConfig
-    tableHtml <- getTable >>= getInnerHtml 
+    tableHtml <- getTable >>= getInnerHtml
     setPageSizeOption numStr
     afterTableReload tableHtml
     count <- parseToInt numStr
@@ -239,7 +239,7 @@ checkRowsPerPageCustom = withSmallZipsOpened do
   input <- getPageSizeInput
   successMsg "Ok, input has been appeared"
   rnd <- getRandom 10
-  
+
   tableHtml <- getTable >>= getInnerHtml
   let platform = platformFromConfig config
   sequence do
@@ -319,7 +319,7 @@ checkPagination = withSmallZipsOpened do
   prenultPageER = EnabledRecord {ff: true, sf: true, fb: true, sb: true, value: "9"}
   customPageER num =
     EnabledRecord {ff: true, sf: true, fb: true, sb: true, value: num}
-  
+
   checkRowContent sel msg = do
     config <- getConfig
     correctRows <- byCss config.explore.row >>= findElements >>=
@@ -331,18 +331,18 @@ checkPagination = withSmallZipsOpened do
       _ -> errorMsg $ "There is row dublicates (" <> msg <> ")"
 
   checkRecord expected msg = do
-    emsg <- errMsg 
+    emsg <- errMsg
     await emsg do
       eq expected <$> getEnabledRecord
     successMsg $ "Ok, enabled records are equal (" <> msg <> ")"
     where
     errMsg = do
       actual <- getEnabledRecord
-      pure $ "Incorrect pagination buttons are enabled:\n" 
-        <> "case: " <> msg 
-        <> "\nexpected: " <> show expected 
+      pure $ "Incorrect pagination buttons are enabled:\n"
+        <> "case: " <> msg
+        <> "\nexpected: " <> show expected
         <> "\nactual: " <> show actual
-  
+
 
 checkColumns :: Check Unit
 checkColumns = do
@@ -360,9 +360,9 @@ checkColumns = do
   withNestedOpened do
     nestedColumns <- getJTableHeadContent
     if nestedColumns == config.explore.nestedHead ||
-       nestedColumns == config.explore.nestedHeadInversed 
+       nestedColumns == config.explore.nestedHeadInversed
       then successMsg "Ok, nested columns are correct"
-      else errorMsg $ "nested columns are incorrect" 
+      else errorMsg $ "nested columns are incorrect"
            <> "\nexpected: " <> config.explore.nestedHead
            <> "\nactual  : " <> nestedColumns
            <> "\nexpected attribute inversed: " <> config.explore.nestedHeadInversed
@@ -375,22 +375,22 @@ test = do
 
   sectionMsg "make explore cell check"
   C.checkMakeCell getExploreCells makeExploreCell
-  
+
   sectionMsg "check deleting explore cells"
   C.checkDeleting getExploreCells
-  
+
   sectionMsg "check show/hide explore editor"
   withExploreCell $ C.checkHideShow config.cell.exploreEditor
-  
+
   sectionMsg "File list in explore cell checking"
   FL.test withExploreCell
-  
+
   sectionMsg "check that embed button, next cell menu and result is not visible"
   checkInitialExplore
-  
+
   sectionMsg "check failures with empty input"
   checkEmptyInputErrors
-  
+
   sectionMsg "check incorrect inputs"
   checkIncorrectInputs
 
@@ -399,17 +399,17 @@ test = do
 
   sectionMsg "check status"
   checkStatus
-  
-  sectionMsg "check next cells"
-  withSmallZipsOpened $ C.checkNextCells config.cell.nextCellsForExplore 
 
-  
+  sectionMsg "check next cells"
+  withSmallZipsOpened $ C.checkNextCells config.cell.nextCellsForExplore
+
+
   sectionMsg "check output label"
   checkOutputLabel
 
   sectionMsg "check page count"
   checkPageCount
-  
+
   sectionMsg "check inital row count"
   checkInitialRowCount
 
@@ -418,7 +418,7 @@ test = do
 
 
   sectionMsg "check forward/backward/set page"
-  checkPagination 
+  checkPagination
 
   sectionMsg "check columns (most of this checks should be in jtable tests)"
-  checkColumns 
+  checkColumns

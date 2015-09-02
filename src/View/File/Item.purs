@@ -30,7 +30,7 @@ import Model.File
 import Model.File.Item
 import Model.Resource (Resource(..), resourcePath, resourceName, isFile, isDatabase, isNotebook, hiddenTopLevel)
 import View.File.Common (HTML(), toolItem)
-import Optic.Core 
+import Optic.Core
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A

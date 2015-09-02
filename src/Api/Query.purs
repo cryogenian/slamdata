@@ -96,7 +96,7 @@ port res dest sql vars =
                     $ queryUrl
                     </> rootify (resourceDir res)
                     </> dir (resourceName res)
-                    </> file queryVars 
+                    </> file queryVars
             , content = Just (templated res sql)
             }
 
@@ -156,7 +156,7 @@ mkURI :: Resource -> SQL -> FilePath
 mkURI res sql =
   queryUrl
   </> file ("?q=" <> encodeURIComponent (templated res sql))
- 
+
 mkURI' :: Resource -> SQL -> FilePath
 mkURI' res sql =
   queryUrl

@@ -32,6 +32,7 @@
     "gulp-less": "^3.0.3",
     "gulp-purescript": "^0.6.0",
     "gulp-run": "^1.6.10",
+    "gulp-trimlines": "^1.0.0",
     "minimist": "^1.1.2",
     "mongodb": "^2.0.39",
     "rimraf": "^2.4.2",

@@ -30,7 +30,7 @@ import Data.These (These(), these, theseRight)
 import Data.Void (absurd)
 import Model.Notebook.Cell (Cell())
 import Model.Notebook.Cell.JTableContent (JTableContent(), _result, _page, _perPage, _values, _totalPages)
-import Optic.Core 
+import Optic.Core
 import Optic.Extended (TraversalP(), (^?))
 import Optic.Refractor.Prism (_Just)
 import View.Common (glyph)
@@ -132,7 +132,7 @@ renderJTableOutput lens run cell = fromMaybe [] $ do
       let sizeValues = show <$> [10, 25, 50, 100]
       in (option <$> sizeValues)
          ++ [ H.option [ A.disabled true ] [ H.text $ fromChar $ fromCharCode 8212 ] ]
-         ++ (if isJust $ elemIndex pageSizeValue sizeValues 
+         ++ (if isJust $ elemIndex pageSizeValue sizeValues
              then [ H.option [ A.selected true ]
                              [ H.text pageSizeValue ]
                   ]

@@ -54,7 +54,7 @@ handleDeleteItem :: forall e. Item -> Event e
 handleDeleteItem (PhantomItem _) = empty
 handleDeleteItem item = do
   mbTrashFolder <- liftAff $ delete (itemResource item)
-  (toInput $ ItemRemove item) <> 
+  (toInput $ ItemRemove item) <>
   (maybe empty (toInput <<< ItemAdd <<< Item) mbTrashFolder)
 
 handleMoveItem :: forall e. Item -> Event e

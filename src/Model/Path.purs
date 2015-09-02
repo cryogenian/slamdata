@@ -57,8 +57,8 @@ changeDirExt f (DirName name) =
   DirName ((if ext == "" then name else n) <> "." <> f ext)
   where
   mbIdx = lastIndexOf "." name
-  n = maybe name (\idx -> take idx name) mbIdx 
-  ext = maybe "" (\idx -> drop (idx + 1) name) mbIdx 
+  n = maybe name (\idx -> take idx name) mbIdx
+  ext = maybe "" (\idx -> drop (idx + 1) name) mbIdx
 
 
 dropDirExt :: DirName -> DirName

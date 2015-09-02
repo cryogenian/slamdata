@@ -62,7 +62,7 @@ toolbar state =
 
   folder :: HTML e
   folder = toolItem' handleCreateFolder "create folder" B.glyphiconFolderClose
-  
+
   file :: HTML e
   file = H.li_ [ H.button [ E.onClick (\ev -> pure $ handleUploadFile ev.target) ]
                  [ H.i [ A.title "upload file"

@@ -61,7 +61,7 @@ type MenuElement =
 type DropdownItem =
   { name :: String
   , visible :: Boolean
-  , children :: Array MenuElement 
+  , children :: Array MenuElement
   }
 
 initialDropdowns :: Array DropdownItem

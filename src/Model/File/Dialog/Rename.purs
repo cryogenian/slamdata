@@ -21,7 +21,7 @@ import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (rootDir)
 import Model.Path (DirPath(), dropNotebookExt)
 import Model.Resource (Resource(..), resourceDir, resourceName, root, isNotebook)
-import Optic.Core 
+import Optic.Core
 
 newtype RenameDialogRec = RenameDialogRec
   { showList :: Boolean

@@ -57,7 +57,7 @@ import Model.Notebook.Menu
 import Model.Notebook.Port
 import Model.Path (decodeURIPath, dropNotebookExt)
 import Model.Resource (Resource(), resourceName, resourceDir)
-import Optic.Core 
+import Optic.Core
 import Routing (matches')
 import Utils (replaceLocation)
 import Data.Map (lookup)
@@ -120,13 +120,13 @@ driver ref k =
             update (_notebook .~ nb)
             if isEdit editable
               then
-              for_ (filter (filterFn (nb ^._dependencies)) 
+              for_ (filter (filterFn (nb ^._dependencies))
                     (nb ^._cells)) \cell -> do
                 update (_requesting <>~ [cell ^._cellId])
                 k $ RequestCellContent cell
-              else 
+              else
               for_ (filter (^._hasRun) (nb ^._cells)) (k <<< ViewCellContent)
-              
+
             for_ (nb ^. _cells) \cell -> do
               case Tuple (cell ^. _content) (cell ^._output) of
                 Tuple (Search _) Closed ->
@@ -182,7 +182,7 @@ notebookAutosave refState refTimer input k = do
             Right nb -> do
               let update = (_notebook %~ replacePendingPorts)
                        <<< (_notebook .. _name .~ (nb ^. _name))
-                           
+
               k $ WithState update
               -- This crime is to update the state so that when NotebookRoute is
               -- triggered in the router, the state will have the saved-name for

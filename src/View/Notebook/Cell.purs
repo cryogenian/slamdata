@@ -33,7 +33,7 @@ import Model.Notebook
 import Model.Notebook.Cell
 import Model.Notebook.Port (Port(..))
 import Model.Resource (resourceName)
-import Optic.Core 
+import Optic.Core
 import View.Common
 import View.Notebook.Cell.Ace (aceEditor)
 import View.Notebook.Cell.Explore (exploreEditor, exploreOutput)

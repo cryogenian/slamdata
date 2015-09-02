@@ -16,10 +16,10 @@ limitations under the License.
 
 module View.Notebook.Cell.Explore (exploreEditor, exploreOutput) where
 
-import Prelude 
+import Prelude
 import Controller.Notebook.Cell.Explore (runExplore)
 import Model.Notebook.Cell (Cell(), _FileInput, _JTableContent, _content, _input, _output)
-import Optic.Core 
+import Optic.Core
 import View.Notebook.Cell.FileInput (fileInput)
 import View.Notebook.Cell.JTableCell (renderJTableOutput)
 import View.Notebook.Common (HTML())

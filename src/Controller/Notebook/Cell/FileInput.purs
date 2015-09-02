@@ -32,7 +32,7 @@ import Model.Notebook.Cell (Cell(), _FileInput, _content, _cellId, _input, _outp
 import Model.Notebook.Cell.FileInput (FileInput(), _files, _showFiles, _file, fileFromString, portFromFile)
 import Model.Notebook.Port (Port(..))
 import Model.Resource (Resource())
-import Optic.Core 
+import Optic.Core
 import Optic.Extended (TraversalP(), (^?))
 
 toggleFileList :: forall e. Cell -> I e

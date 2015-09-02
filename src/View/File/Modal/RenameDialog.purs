@@ -26,7 +26,7 @@ import Input.File (FileInput(..))
 import Model.File (_dialog)
 import Model.File.Dialog.Rename (RenameDialogRec(), _showList, _name, _dir, _dirs, _error)
 import Model.Resource (Resource(), resourcePath, isHidden)
-import Optic.Core 
+import Optic.Core
 import View.Common (fadeWhen)
 import View.File.Common (HTML())
 import View.Modal.Common (header, h4, body, footer, nonSubmit)

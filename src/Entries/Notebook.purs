@@ -60,9 +60,9 @@ main = onLoad $ void $ do
   Tuple node driver <- runUIWith app post
   mountUI node
   platformName <- navigator globalWindow >>= platform
-  let p = if isJust $ indexOf "Win" platformName 
+  let p = if isJust $ indexOf "Win" platformName
           then Win
-          else if isJust $ indexOf "Mac" platformName 
+          else if isJust $ indexOf "Mac" platformName
                then Mac
                else Other
   driver $ WithState (_platform .~ p)

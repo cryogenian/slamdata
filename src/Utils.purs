@@ -35,20 +35,20 @@ import qualified Data.String.Regex as Rgx
 import qualified Data.DOM.Simple.Window as W
 
 
-onLoad :: forall e. Eff (dom :: DOM | e) Unit -> Eff (dom :: DOM |e) Unit 
-onLoad action = do 
-  addUIEventListener LoadEvent handler W.globalWindow 
+onLoad :: forall e. Eff (dom :: DOM | e) Unit -> Eff (dom :: DOM |e) Unit
+onLoad action = do
+  addUIEventListener LoadEvent handler W.globalWindow
   where
   handler :: DOMEvent -> _
   handler _ = action
 
 bodyHTMLElement :: forall e. Eff (dom :: DOM | e) HTMLElement
-bodyHTMLElement = W.document W.globalWindow >>= body 
+bodyHTMLElement = W.document W.globalWindow >>= body
 
 mountUI :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
 mountUI node = bodyHTMLElement >>= flip appendChild node
 
-locationString :: forall e. Eff (dom :: DOM | e) String 
+locationString :: forall e. Eff (dom :: DOM | e) String
 locationString = W.location W.globalWindow >>= locationParent
 
 setLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
@@ -57,7 +57,7 @@ setLocation url = W.location W.globalWindow >>= W.setLocation url
 setDocumentTitle :: forall e. String -> Eff (dom :: DOM | e) Unit
 setDocumentTitle title = W.document W.globalWindow >>= setTitle title
 
-foreign import newTab :: forall e. String -> Eff (dom :: DOM | e) Unit 
+foreign import newTab :: forall e. String -> Eff (dom :: DOM | e) Unit
 foreign import mailOpen :: forall e. String -> Eff (dom :: DOM | e) Unit
 foreign import reload :: forall e. Eff (dom :: DOM | e) Unit
 foreign import clearValue :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
@@ -72,7 +72,7 @@ endsWith needle haystack =
 s2i :: String -> Maybe Int
 s2i s =
   let n = readInt 10 s in
-  if isNaN n 
+  if isNaN n
   then Nothing
   else fromNumber n
 
@@ -83,6 +83,6 @@ s2n s =
   then Nothing
   else Just n
 
-       
+
 foreign import encodeURIComponent :: String -> String
-foreign import decodeURIComponent :: String -> String 
+foreign import decodeURIComponent :: String -> String

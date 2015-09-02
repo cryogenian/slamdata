@@ -39,5 +39,5 @@ setSlamDataTitle maybeVersion = do
 
 getVersion :: forall eff. Aff (RetryEffects (ajax :: AJAX | eff)) (Maybe String)
 getVersion = do
-  serverInfo <- retryGet Config.Paths.serverInfoUrl  
+  serverInfo <- retryGet Config.Paths.serverInfoUrl
   return $ either (const Nothing) Just (readProp "version" serverInfo.response)

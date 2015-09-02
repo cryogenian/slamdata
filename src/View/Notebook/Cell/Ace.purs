@@ -23,7 +23,7 @@ import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 
 import View.Common (fadeWhen, row)
-import qualified View.Css as VC 
+import qualified View.Css as VC
 import View.Notebook.Common (HTML(), dataCellId, dataCellType)
 import Model.Notebook.Cell (Cell(), CellContent(), _hiddenEditor, _cellId, _content, cellContentType)
 

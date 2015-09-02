@@ -84,7 +84,7 @@ listing p = maybe
               $ relativeTo p rootDir
 
 makeFile :: forall e. FilePath -> Maybe MimeType -> String -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
-makeFile path mime content = 
+makeFile path mime content =
   getResponse msg go
   where
   msg :: String
@@ -104,7 +104,7 @@ makeFile path mime content =
     { method = PUT
     , headers = maybe [] (pure <<< ContentType) mime
     , content = Just content
-    , url = fromMaybe "" 
+    , url = fromMaybe ""
             $ (\x -> printPath
                      $ Config.dataUrl
                      </> x)
@@ -171,9 +171,9 @@ saveNotebook notebook = case notebook ^. N._name of
 
   save :: String -> N.Notebook -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
   save name notebook =
-    let notebookPath = Config.dataUrl 
-                       </> rootify (notebook ^. N._path) 
-                       </> dir name <./> Config.notebookExtension 
+    let notebookPath = Config.dataUrl
+                       </> rootify (notebook ^. N._path)
+                       </> dir name <./> Config.notebookExtension
                        </> file "index"
     in getResponse "error while saving notebook" $ retryPut notebookPath notebook
 
@@ -207,7 +207,7 @@ forceDelete resource =
   where
   msg :: String
   msg = "can not delete"
-  
+
   path = (if R.isDatabase resource then Config.mountUrl else Config.dataUrl)
          </> rootify (R.resourceDir resource)
          </> file (R.resourceName resource)

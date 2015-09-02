@@ -44,7 +44,7 @@ import Model.File.Salt (Salt(..))
 import Model.File.Search (Search(), initialSearch, _value)
 import Model.File.Sort (Sort(..))
 import Model.Path (DirPath())
-import Optic.Core 
+import Optic.Core
 
 -- | Application state
 newtype State = State StateRec

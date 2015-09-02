@@ -31,7 +31,7 @@ keyMbSeries1 :: Key -> Maybe String
 keyMbSeries1 (Tuple _ mbT) = mbT >>= (pure <<< fst)
 
 keyMbSeries2 :: Key -> Maybe String
-keyMbSeries2 (Tuple _ mbT) = mbT >>= snd 
+keyMbSeries2 (Tuple _ mbT) = mbT >>= snd
 
 mkKey :: String -> Maybe String -> Maybe String -> Key
 mkKey cat f s =

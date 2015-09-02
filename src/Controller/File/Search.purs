@@ -31,7 +31,7 @@ import Input.File (FileInput(..))
 import Model.File (State(), _sort, _path, _search)
 import Model.File.Salt (newSalt)
 import Model.File.Search (_loading, _value, _timeout, _valid)
-import Optic.Core 
+import Optic.Core
 import Text.SlamSearch (mkQuery)
 import Utils (setLocation)
 

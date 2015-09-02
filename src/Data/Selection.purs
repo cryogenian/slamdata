@@ -32,7 +32,7 @@ newtype Selection a = Selection (SelectionR a)
 
 
 _Selection :: forall a. LensP (Selection a) (SelectionR a)
-_Selection = lens (\(Selection obj) -> obj) (const Selection) 
+_Selection = lens (\(Selection obj) -> obj) (const Selection)
 
 _variants :: forall a. LensP (Selection a) (Array a)
 _variants = _Selection <<< lens _.variants _{variants = _}
@@ -59,8 +59,8 @@ autoSelect :: forall a. (Eq a) => Selection a -> Selection a
 autoSelect initial@(Selection {variants: arr, selection: sel}) =
   if length arr == 1
   then Selection {variants: arr, selection: head arr}
-  else initial 
-  
+  else initial
+
 
 infix 9 <->
 (<->) = except'
@@ -80,4 +80,4 @@ instance decodeJsonSelection :: (DecodeJson a) => DecodeJson (Selection a) where
          (obj .? "selection")
     pure $ Selection r
 
-    
+

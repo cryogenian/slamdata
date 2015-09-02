@@ -20,8 +20,8 @@ import Prelude
 import Control.Plus (empty)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 
-import qualified Data.StrMap as M 
-import Optic.Core 
+import qualified Data.StrMap as M
+import Optic.Core
 import Optic.Fold ((^?))
 import Data.Selection
 import Optic.Extended (TraversalP())
@@ -52,7 +52,7 @@ import Model.Notebook.Cell (Cell(), _cellId, _content, _Visualize, _runState, Ru
 
 import Controller.Notebook.Common (I())
 import View.Common (row, row')
-import qualified View.Css as VC 
+import qualified View.Css as VC
 import View.Notebook.Common (HTML(), dataCellId, dataCellType, dataEChartsId)
 import Data.Foreign.Class ()
 import Utils.Halide (max, min, step)
@@ -65,7 +65,7 @@ import Utils (s2i)
 
 vizChoices :: forall e. Cell -> HTML e
 vizChoices cell =
-  H.div_ 
+  H.div_
   case cell ^. _runState of
     RunningSince _ -> loading
     _ -> case cell ^. _err of
@@ -77,7 +77,7 @@ correct cell =
   maybe [ ] go $ (cell ^? _content.._Visualize)
   where
   go :: VizRec -> Array (HTML e)
-  go r = 
+  go r =
     [H.div [ A.classes [ VC.vizCellEditor ] ] $
      (chartTypeSelector cell r) <>
      (chartConfiguration cell r)
@@ -87,7 +87,7 @@ chartTypeSelector :: forall e. Cell -> VizRec -> Array (HTML e)
 chartTypeSelector cell r =
   [H.div [ A.classes [ VC.vizChartTypeSelector ] ]
    (img <$> (L.fromList $ S.toList  (r ^._availableChartTypes)))
-  ] 
+  ]
   where
   img :: ChartType -> HTML e
   img ct =
@@ -106,8 +106,8 @@ chartTypeSelector cell r =
 chartConfiguration :: forall e. Cell -> VizRec -> Array (HTML e)
 chartConfiguration cell r =
   [H.div [ A.classes [ VC.vizChartConfiguration ] ]
-   [ pieConfiguration cell r (ct == Pie) 
-   , lineConfiguration cell r (ct == Line) 
+   [ pieConfiguration cell r (ct == Pie)
+   , lineConfiguration cell r (ct == Line)
    , barConfiguration cell r (ct == Bar)
    , row
      [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
@@ -122,14 +122,14 @@ chartConfiguration cell r =
      , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
        [ label "Width"
        , H.input [ A.value (if zero == (r ^._chartWidth)
-                            then "" 
+                            then ""
                             else show (r ^._chartWidth))
                  , A.classes [ B.formControl, VC.chartConfigureWidth ]
                  , E.onInput (\v -> pure $ setChartWidth cell v)
                  ] [ ]
        ]
      ]
-   ] 
+   ]
   ]
   where ct = r ^._chartType
 
@@ -143,12 +143,12 @@ pieConfiguration cell r visible =
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
       [ measureLabel
-      , primaryOptions cell r (_pieConfiguration .. _firstMeasures) 
+      , primaryOptions cell r (_pieConfiguration .. _firstMeasures)
       , aggSelect cell r (_pieConfiguration.._firstMeasures) (_pieConfiguration.._firstAggregation)
       ]
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
-      , secondaryOptions cell r (_pieConfiguration .. _firstSeries) 
+      , secondaryOptions cell r (_pieConfiguration .. _firstSeries)
       ]
     ]
   , row
@@ -156,7 +156,7 @@ pieConfiguration cell r visible =
       [ seriesLabel
       , secondaryOptions cell r (_pieConfiguration .. _secondSeries)
       ]
-    ] 
+    ]
   ]
 aggSelect :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> LensP VizRec Aggregation -> HTML e
 aggSelect cell r _blocker _agg =
@@ -165,7 +165,7 @@ aggSelect cell r _blocker _agg =
              A.disabled (null (r ^._blocker.._variants))
            ]
   (aggOpt (r ^._agg) <$> allAggregations)
-  
+
 aggOpt :: forall e. Aggregation -> Aggregation -> HTML e
 aggOpt sel a =
   H.option [ A.value (aggregation2str a)
@@ -174,7 +174,7 @@ aggOpt sel a =
 
 option :: forall e. Maybe JCursor -> JCursor -> Int -> HTML e
 option selected cursor ix =
-  H.option [ A.selected (Just cursor == selected) 
+  H.option [ A.selected (Just cursor == selected)
            , A.value (show ix) ]
   [ H.text (show cursor) ]
 
@@ -185,7 +185,7 @@ defaultOption selected =
   [ H.text "Select axis source" ]
 
 options :: forall e. (Int -> Boolean) ->
-           (Int -> Boolean) -> 
+           (Int -> Boolean) ->
            Cell -> VizRec -> LensP VizRec JSelection -> HTML e
 options disableWhen defaultWhen cell r _sel =
   H.select [ A.classes [ B.formControl ]
@@ -220,9 +220,9 @@ primaryOptions = options (< 2) (> 1)
 -- secondaryOptions :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> HTML e
 secondaryOptions = options (< 1) (const true)
 
-  
+
 barConfiguration :: forall e. Cell -> VizRec -> Boolean -> HTML e
-barConfiguration cell r visible = 
+barConfiguration cell r visible =
   H.div [ A.classes (if visible then [] else [B.hide]) ]
   [ row
     [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
@@ -244,9 +244,9 @@ barConfiguration cell r visible =
       [ seriesLabel
       , (secondaryOptions cell r (_barConfiguration.._secondSeries))
       ]
-    ] 
+    ]
   ]
- 
+
 lineConfiguration :: forall e. Cell -> VizRec -> Boolean -> HTML e
 lineConfiguration cell r visible =
   H.div [ A.classes (if visible then [] else [B.hide]) ]
@@ -274,8 +274,8 @@ lineConfiguration cell r visible =
     , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
       [ seriesLabel
       , (secondaryOptions cell r (_lineConfiguration.._secondSeries))
-      ] 
-    ] 
+      ]
+    ]
   ]
 
 seriesLabel :: forall e. HTML e
@@ -314,7 +314,7 @@ errored message =
          ]
    [ H.text message ]
   ]
-  
+
 
 vizOutput :: forall e. Cell -> Array (HTML e)
 vizOutput state =
@@ -344,7 +344,7 @@ chart = chart' []
 
 
 _viz :: TraversalP Cell VizRec
-_viz = _content .. _Visualize 
+_viz = _content .. _Visualize
 
 _err :: TraversalP Cell String
 _err = _viz .. _error

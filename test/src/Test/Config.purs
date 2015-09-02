@@ -190,7 +190,7 @@ type Config =
   , viz :: { heightInput :: String
            , widthInput :: String
            , canvas :: String
-           } 
+           }
   , version :: String
   }
 

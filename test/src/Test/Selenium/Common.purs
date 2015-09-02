@@ -61,12 +61,12 @@ import Routing (matchHash)
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Key
 import Selenium.Types
-import Selenium.Monad 
-import qualified Selenium.Combinators as Sc 
+import Selenium.Monad
+import qualified Selenium.Combinators as Sc
 
 import Test.Platform
 import Test.Selenium.Log
-import Test.Selenium.Monad 
+import Test.Selenium.Monad
 
 import Utils (s2i)
 
@@ -83,12 +83,12 @@ assertBoolean err false = errorMsg err
 getElementByCss :: String -> String -> Check Element
 getElementByCss cls errorMessage =
   (attempt $ Sc.getElementByCss cls)
-    >>= either (const $ errorMsg errorMessage) pure 
+    >>= either (const $ errorMsg errorMessage) pure
 
 checkNotExists :: String -> String -> Check Unit
 checkNotExists css msg =
   (attempt $ Sc.checkNotExistsByCss css)
-    >>= either (const $ errorMsg msg) pure 
+    >>= either (const $ errorMsg msg) pure
 
 -- | Same as `waitExistentCss'` but wait time is setted to `config.selenium.waitTime`
 waitExistentCss :: String -> String -> Check Element
@@ -104,12 +104,12 @@ await' :: Int -> String -> Check Boolean -> Check Unit
 await' timeout msg check = do
   attempt (Sc.await timeout check)
     >>= either (const $ errorMsg msg) (const $ pure unit)
-    
+
 -- | Same as `await'` but max wait time is setted to `config.selenium.waitTime`
 await :: String -> Check Boolean -> Check Unit
 await msg check = do
   config <- getConfig
-  await' config.selenium.waitTime msg check 
+  await' config.selenium.waitTime msg check
 
 getHashFromURL :: String -> Check Routes
 getHashFromURL =
@@ -213,10 +213,10 @@ parseToInt str =
 
 filterByPairs :: List Element -> (Tuple Element String -> Boolean) ->
                    Check (List (Tuple Element String))
-filterByPairs els filterFn = 
+filterByPairs els filterFn =
   filter filterFn <$> traverse (\el -> Tuple el <$> getInnerHtml el) els
 
- 
+
 filterByContent :: List Element -> (String -> Boolean) -> Check (List Element)
 filterByContent els filterFn =
   (fst <$>) <$> (filterByPairs els (filterFn <<< snd))
@@ -224,5 +224,5 @@ filterByContent els filterFn =
 waitTime :: Int -> Check Unit
 waitTime t = do
   warnMsg "waitTime is used"
-  later t $ pure unit 
+  later t $ pure unit
 

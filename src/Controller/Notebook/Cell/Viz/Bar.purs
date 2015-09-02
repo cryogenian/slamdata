@@ -29,7 +29,7 @@ import ECharts.Chart
 import ECharts.Common
 import ECharts.Coords
 import ECharts.Formatter
-import ECharts.Grid 
+import ECharts.Grid
 import ECharts.Item.Data
 import ECharts.Item.Value
 import ECharts.Legend
@@ -70,7 +70,7 @@ extractData r conf =
 
   vals :: Array (Maybe Number)
   vals =
-    (>>= Me.valFromSemanthic) <$> 
+    (>>= Me.valFromSemanthic) <$>
     (maybe [ ] Me.runAxis ((conf ^._firstMeasures.._selection) >>= (flip lookup (r ^._all))))
 
   maxLen :: Int
@@ -79,7 +79,7 @@ extractData r conf =
   nothings :: forall a. Array (Maybe a)
   nothings = replicate maxLen Nothing
 
-  
+
   sers1 :: Array (Maybe String)
   sers1 =
     (>>= Me.catFromSemanthic) <$>
@@ -111,7 +111,7 @@ alter' :: Number -> Maybe (Array Number) -> Maybe (Array Number)
 alter' v vals =
   Just (v:(fromMaybe [] vals ))
 
-aggregate :: Accum -> _ -> AggregatedAccum 
+aggregate :: Accum -> _ -> AggregatedAccum
 aggregate acc conf =
   agg <$> acc
   where agg = runAggregation (conf ^._firstAggregation)
@@ -142,8 +142,8 @@ mkSeries acc =
 
   named :: Array (Tuple Key Number) -> String -> Map String Number
   named lst cat =
-    (fromList <<< L.toList) $ 
-    ((\x -> lmap keyName x) <$> 
+    (fromList <<< L.toList) $
+    ((\x -> lmap keyName x) <$>
      (filter (\(Tuple k _) -> keyCategory k == cat) lst))
 
   named' :: Array (Tuple Key Number) -> Array (Map String Number)
@@ -177,10 +177,10 @@ mkSeries acc =
     Just $ (n:(fromMaybe [] ns))
 
   group :: Map String (Array Number)
-  group = nameMap $ L.fromList $ toList acc 
+  group = nameMap $ L.fromList $ toList acc
 
   serie :: Tuple String (Array Number) -> Series
-  serie (Tuple name nums) = 
+  serie (Tuple name nums) =
   BarSeries { common: universalSeriesDefault { name = if name == ""
                                                       then Nothing
                                                       else Just name
@@ -196,7 +196,7 @@ mkSeries acc =
       [x, _, _] -> x
       _ -> ""
 
-    
+
   series :: Array Series
   series =
     serie <$> (L.fromList $ toList group)
@@ -210,8 +210,8 @@ mkBar r conf =
                            , yAxis = Just yAxis
                            , tooltip = Just $ Tooltip $
                                        tooltipDefault {trigger = Just TriggerAxis}
-                           , legend = Just $ mkLegend series 
-                           } 
+                           , legend = Just $ mkLegend series
+                           }
 
   where
   mkLegend :: Array Series -> Legend
@@ -224,12 +224,12 @@ mkBar r conf =
   extractName :: Series -> Maybe String
   extractName (BarSeries r) = r.common.name
   extractName _ = Nothing
-    
+
   tpls :: Tuple Axises (Array Series)
   tpls = mkSeries extracted
 
   extracted :: AggregatedAccum
-  extracted = extractClean r conf 
-    
+  extracted = extractClean r conf
+
   yAxis :: Axises
   yAxis = OneAxis $ Axis axisDefault { "type" = Just ValueAxis }

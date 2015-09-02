@@ -29,7 +29,7 @@ import ECharts.Chart
 import ECharts.Common
 import ECharts.Coords
 import ECharts.Formatter
-import ECharts.Grid 
+import ECharts.Grid
 import ECharts.Item.Data
 import ECharts.Item.Value
 import ECharts.Legend
@@ -68,7 +68,7 @@ extractData r conf =
 
   vals1 :: Array (Maybe Number)
   vals1 =
-    (>>= Me.valFromSemanthic) <$> 
+    (>>= Me.valFromSemanthic) <$>
     (maybe [ ] Me.runAxis ((conf ^._firstMeasures.._selection) >>= (flip lookup (r ^._all))))
 
   vals2 :: Array (Maybe Number)
@@ -82,7 +82,7 @@ extractData r conf =
 
   nothings :: forall a. Array (Maybe a)
   nothings = replicate maxLen Nothing
-  
+
   sers1 :: Array (Maybe String)
   sers1 =
     (>>= Me.catFromSemanthic) <$>
@@ -92,13 +92,13 @@ extractData r conf =
   sers2 =
     (>>= Me.catFromSemanthic) <$>
     (maybe nothings Me.runAxis ((conf ^._secondSeries.._selection) >>= (flip lookup (r ^._all))))
-  
+
 extractData' :: Array (Maybe String) -> Array (Maybe String) -> Array (Maybe String) ->
                 Array (Maybe Number) -> Array (Maybe Number) -> Accum -> Accum
 extractData' mbds mbss1 mbss2 mbvs1 mbvs2 acc = fromMaybe acc do
-  d <- head mbds >>= id 
-  ds <- tail mbds 
-  mbs1 <- head mbss1 
+  d <- head mbds >>= id
+  ds <- tail mbds
+  mbs1 <- head mbss1
   sers1 <- tail mbss1
   mbs2 <- head mbss2
   sers2 <- tail mbss2
@@ -148,16 +148,16 @@ mkSeries needTwoAxis ty acc =
   series =
     case group of
       Tuple firsts seconds ->
-        L.fromList $ 
+        L.fromList $
         (firstSerie <$> toList firsts) <>
         (if needTwoAxis
          then secondSerie <$> toList seconds
          else L.Nil)
-  
+
   catVals :: Array String
   catVals = nub $ keyCategory <$> ks
 
-  xAxis = OneAxis $ Axis 
+  xAxis = OneAxis $ Axis
           axisDefault { "type" = Just ty
                       , "data" = Just $ CommonAxisData <$> catVals
                       }
@@ -194,8 +194,8 @@ mkSeries needTwoAxis ty acc =
 
   named :: Array (Tuple Key Number) -> String -> Map String Number
   named lst cat =
-    (fromList <<< L.toList) $ 
-    ((\x -> lmap keyName x) <$> 
+    (fromList <<< L.toList) $
+    ((\x -> lmap keyName x) <$>
      (filter (\(Tuple k _) -> keyCategory k == cat) lst))
 
   named' :: Array (Tuple Key Number) -> Array (Map String Number)
@@ -215,7 +215,7 @@ mkSeries needTwoAxis ty acc =
               Nothing -> Just 0.0
               a -> a) key m
 
-  named'' :: Array (Map String Number) -> Map String (Array Number) 
+  named'' :: Array (Map String Number) -> Map String (Array Number)
   named'' m =
     reverse <$> (foldl foldFn empty (L.fromList <<< toList <$> m))
 
@@ -241,7 +241,7 @@ mkLine r conf =
                            , yAxis = Just yAxis
                            , tooltip = Just $ Tooltip $
                                        tooltipDefault {trigger = Just TriggerItem}
-                           , legend = Just $ mkLegend series 
+                           , legend = Just $ mkLegend series
                            }
   where
 
@@ -260,7 +260,7 @@ mkLine r conf =
   xAxisType = getXAxisType r conf
 
   extracted :: AggregatedAccum
-  extracted = extractClean r conf 
+  extracted = extractClean r conf
 
   tpls :: Tuple Axises (Array Series)
   tpls = mkSeries (needTwoAxises r conf) xAxisType extracted
