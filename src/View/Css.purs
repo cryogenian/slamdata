@@ -282,3 +282,9 @@ refreshButton = className "refresh-button"
 
 hiddenFileInput :: ClassName
 hiddenFileInput = className "hidden-file-input"
+
+chartConfigureHeight :: ClassName
+chartConfigureHeight = className "chart-configure-height"
+
+chartConfigureWidth :: ClassName
+chartConfigureWidth = className "chart-configure-width"

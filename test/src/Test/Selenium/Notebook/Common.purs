@@ -126,24 +126,25 @@ checkEmbedButton = do
     config.database.name <> config.explore.notebookPath
 
 
-
-checkHideShow :: String -> Check Unit
-checkHideShow sel = do
+checkHideShowGeneric :: (Locator -> Check (Maybe Element)) ->
+                        String ->
+                        Check Unit
+checkHideShowGeneric find sel = do
   config <- getConfig
-  hide <- byCss config.cell.hide >>= findElement
-  show <- byCss config.cell.show >>= findElement
+  hide <- byCss config.cell.hide >>= find
+  show <- byCss config.cell.show >>= find
   case Tuple hide show of
     Tuple Nothing _ -> errorMsg "Incorrect hide/show state"
     Tuple _ (Just _) -> errorMsg "Incorrect hide/show state"
     Tuple (Just hider) _ -> do
       editor <- getElementByCss sel "cell editor not found"
       sequence $ leftClick hider
-      mbEditor <- byCss sel >>= findElement
+      mbEditor <- byCss sel >>= find
       case mbEditor of
         Just _ -> errorMsg "hide editor doesn't work"
         Nothing -> do
-          newHide <- byCss config.cell.hide >>= findElement
-          newShow <- byCss config.cell.show >>= findElement
+          newHide <- byCss config.cell.hide >>= find
+          newShow <- byCss config.cell.show >>= find
           case Tuple newHide newShow of
             Tuple (Just _) _ -> errorMsg "Incorrect hide/show state after hiding"
             Tuple _ Nothing -> errorMsg "Incorrect hide/show state after hiding"
@@ -151,6 +152,13 @@ checkHideShow sel = do
               sequence $ leftClick shower
               getElementByCss sel "cell editor not found"
               successMsg "Ok, hide/show button works"
+
+checkHideShow :: String -> Check Unit
+checkHideShow = checkHideShowGeneric findElement 
+
+checkHideShowCell :: Element -> String -> Check Unit
+checkHideShowCell cell = checkHideShowGeneric (findChild cell)
+
 
 checkDeleting :: Check (List Element) -> Check Unit
 checkDeleting lstCheck = do

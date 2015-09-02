@@ -19,8 +19,8 @@ module Test.Selenium.Notebook.Getters where
 import Prelude
 import Data.Either (Either(..))
 import Data.Traversable (traverse)
-import Data.List (catMaybes, List(..), fromList, toList, length)
-import Data.Maybe (Maybe(..))
+import Data.List (catMaybes, List(..), fromList, toList, length, (!!))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (Tuple(..))
 import Data.Foldable (fold)
 import Data.Monoid.Disj (Disj(..), runDisj)
@@ -68,6 +68,11 @@ getNewCellMenuTrigger = do
 getCells :: Check (List Element)
 getCells = getConfig >>= (_.cell >>> _.main >>> byCss) >>= findElements
 
+getCell :: Int -> Check Element
+getCell n = do
+  cells <- getCells
+  maybe (errorMsg $ "there is no cell#" <> show n) pure $ cells !! n
+
 getCellsWithContent :: String -> Check (List Element)
 getCellsWithContent content = do
   cells <- getCells
@@ -101,16 +106,41 @@ waitNextCellSearch = do
   config <- getConfig
   waitExistentCss config.cell.nextCellSearch "There is no next search cell button"
 
+waitNextVizCell :: Check Element
+waitNextVizCell = do
+  config <- getConfig
+  waitExistentCss config.cell.nextCellViz "There is no next viz cell button"
+
+waitCanvas :: Check Element
+waitCanvas = do
+  getConfig >>= _.viz >>> _.canvas >>>
+  flip waitExistentCss "There is no canvas" 
+
 fileListVisible :: Check Boolean
 fileListVisible = 
   getConfig
     >>= (_.explore >>> _.list >>> flip getElementByCss "file list not found")
     >>= isDisplayed
 
+waitVizHeightInput :: Check Element
+waitVizHeightInput =
+  getConfig >>= _.viz >>> _.heightInput >>>
+  flip waitExistentCss "There is no viz height input"
+
+waitVizWidthInput :: Check Element
+waitVizWidthInput =
+  getConfig >>= _.viz >>> _.widthInput >>>
+  flip waitExistentCss "There is no viz width input"
+
 getInput :: Check Element
 getInput =
   getConfig >>= _.explore >>> _.input >>>
   flip getElementByCss "there is no input in file list"
+
+getAceInput :: Check Element
+getAceInput =
+  getConfig >>= _.ace >>> _.textInput >>>
+  flip getElementByCss "there is no ace input"
 
 getPlayButton :: Check Element
 getPlayButton =

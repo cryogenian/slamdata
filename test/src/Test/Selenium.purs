@@ -37,6 +37,7 @@ import Selenium.Builder
 import qualified Selenium.Remote as SR
 import Test.Config (Config())
 import Text.Chalk
+import Test.Platform
 
 import qualified Test.Selenium.SauceLabs as SL
 import qualified Test.Selenium.File as File
@@ -64,11 +65,11 @@ test config =
       void $ log $ yellow $ "set up to run on Sauce Labs"
       (liftEff SR.fileDetector) >>= setFileDetector driver
 
-    res <- attempt $ flip runReaderT {config: config, driver: driver} do
+    res <- attempt $ flip runReaderT { config: config
+                                     , driver: driver} do
       File.test
       Notebook.test
     quit driver
     either throwError (const $ pure unit) res
-
 
 

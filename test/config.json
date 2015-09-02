@@ -3,7 +3,7 @@
         "host": "localhost",
         "port": 63174
     },
-    "restoreCmd": "mongorestore -d testDb --port 63174 --drop ../../test/dump/demo",
+    "restoreCmd": "mongorestore --host 127.0.0.1 -d testDb --port 63174 --drop ../../test/dump/demo",
     "selenium": {
         "jar": "test/jars/selenium.jar",
         "browser": "firefox",
@@ -132,6 +132,7 @@
         "show": ".cell-controls button[title='Show cell options']",
         "exploreEditor": ".explore-cell-editor",
         "searchEditor": ".explore-cell-editor",
+        "vizEditor": ".ace_content",
         "refreshButton": ".refresh-button",
         "playButton": ".play-button",
         "embedButton": ".cell-controls button[title='Embed cell output']",
@@ -148,6 +149,7 @@
         },
         "nextCellButton": ".next-cell-list button",
         "nextCellSearch": ".next-cell-list button[title='Search this output']",
+        "nextCellViz": ".next-cell-list button[title='Visualize this output']",
         "cellOutputLabel": ".cell-output-label",
         "cellOutputResult": ".cell-output-result",
         "failures": ".cell-failures",
@@ -249,5 +251,16 @@
             "rows": 6
         }
     ],
+    "ace": {
+        "textInput": ".ace_content"
+    },
+    "query": {
+        "smallZipsAll": "select * from \"/test-mount/testDb/smallZips\" where true"
+    },
+    "viz": {
+        "heightInput": "input.chart-configure-height",
+        "widthInput": "input.chart-configure-width",
+        "canvas": "canvas"
+    },
     "version": "2.1.9"
 }

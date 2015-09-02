@@ -110,11 +110,13 @@ type Config =
             , show :: String
             , exploreEditor :: String
             , searchEditor :: String
+            , vizEditor :: String
             , refreshButton :: String
             , playButton :: String
             , embedButton :: String
             , nextCellList :: String
             , nextCellSearch :: String
+            , nextCellViz :: String
             , cellOutputLabel :: String
             , cellOutputResult :: String
             , failures :: String
@@ -181,6 +183,14 @@ type Config =
                   , incorrectQuery :: String
               }
   , searchQueries :: Array SearchQueryConfig
+  , ace :: { textInput :: String
+           }
+  , query :: { smallZipsAll :: String
+             }
+  , viz :: { heightInput :: String
+           , widthInput :: String
+           , canvas :: String
+           } 
   , version :: String
   }
 
