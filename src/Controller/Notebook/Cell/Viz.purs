@@ -24,7 +24,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.MonadPlus (guard)
 import Control.Plus (empty)
 import Data.Argonaut.Core (JArray())
-import Data.Array (range, zipWith, concat, replicate, length, filter, (!!), null)
+import Data.Array (range, zipWith, concat, replicate, filter, (!!), null, length)
 import Data.Foldable (fold, foldl)
 import Data.Function (on)
 import Data.Int (toNumber)
@@ -40,7 +40,7 @@ import Model.Notebook.Cell (Cell(), _content, _Visualize, _cellId, CellId(), _ru
 import Model.Notebook.Cell.Viz
 import Model.Notebook.Domain hiding (_path, _name)
 import Model.Notebook.Port (_PortResource)
-import Model.Resource -- (Resource())
+import Model.Resource
 import Optic.Core
 import Optic.Fold ((^?))
 import Optic.Extended (TraversalP())
@@ -138,27 +138,34 @@ updateData cell file = do
     then errorEmptyInput
     else do
     let sample = Me.analyzeJArray jarr
-    all <- Me.analyzeJArray <$> (liftAff $ all file)
-    let vizRec = fromMaybe initialVizRec $ cell ^? _content .. _Visualize
-        axes = keys all
-    if L.null axes
-      then updateOpts cell
-      else
-      let vRec = configure $ (vizRec # _all .~ all
-                                     # _sample .~ sample
-                             )
-          vRec' = vRec # _error .~ if S.isEmpty (vRec ^. _availableChartTypes)
-                                  then "There is no available chart type for this data"
-                                  else ""
-      in (update cell ((_content .. _Visualize .~ vRec')
-                       .. (_hasRun .~ true))) <>
-         (updateOpts (cell # _content .. _Visualize .~ vRec'))
+    records <- liftAff $ all file
+    if length records > 10000
+      then errorTooLarge
+      else do
+      let all = Me.analyzeJArray records
+          vizRec = fromMaybe initialVizRec $ cell ^? _content .. _Visualize
+          axes = keys all
+      if L.null axes
+        then updateOpts cell
+        else
+        let vRec = configure $ (vizRec # _all .~ all
+                                # _sample .~ sample
+                               )
+            vRec' = vRec # _error .~ if S.isEmpty (vRec ^. _availableChartTypes)
+                                     then "There is no available chart type for this data"
+                                     else ""
+        in (update cell ((_content .. _Visualize .~ vRec')
+                         .. (_hasRun .~ true))) <>
+           (updateOpts (cell # _content .. _Visualize .~ vRec'))
   where
   errored :: String -> I e
   errored msg = update cell (_content.. _Visualize .. _error .~ msg)
 
   errorEmptyInput :: I e
   errorEmptyInput = errored "Empty input"
+
+  errorTooLarge :: I e
+  errorTooLarge = errored "Maximum record count available for visualization -- 10000, please consider to use 'limit' or 'group by' in your request"
 
 configure :: VizRec -> VizRec
 configure r =

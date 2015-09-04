@@ -62,50 +62,55 @@ extractData :: VizRec -> _ -> Accum
 extractData r conf =
   extractData' cats sers1 sers2 vals empty
   where
-  cats :: Array (Maybe String)
+  cats :: L.List (Maybe String)
   cats =
-    (>>= Me.catFromSemanthic) <$>
-    (maybe [] Me.runAxis ((conf ^._cats.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.catFromSemanthic)
+    $ maybe L.Nil Me.runAxis
+    $ (conf ^._cats.._selection)
+    >>= (flip lookup (r ^._all))
 
 
-  vals :: Array (Maybe Number)
+  vals :: L.List (Maybe Number)
   vals =
-    (>>= Me.valFromSemanthic) <$>
-    (maybe [ ] Me.runAxis ((conf ^._firstMeasures.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.valFromSemanthic)
+    $ maybe L.Nil Me.runAxis
+    $ (conf ^._firstMeasures.._selection)
+    >>= flip lookup (r ^._all)
 
   maxLen :: Int
-  maxLen = length vals
+  maxLen = L.length vals
 
-  nothings :: forall a. Array (Maybe a)
-  nothings = replicate maxLen Nothing
+  nothings :: forall a. L.List (Maybe a)
+  nothings = L.replicate maxLen Nothing
 
-
-  sers1 :: Array (Maybe String)
+  sers1 :: L.List (Maybe String)
   sers1 =
-    (>>= Me.catFromSemanthic) <$>
-    (maybe nothings Me.runAxis ((conf ^._firstSeries.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.catFromSemanthic)
+    $ maybe nothings Me.runAxis
+    $ (conf ^._firstSeries.._selection)
+    >>= flip lookup (r ^. _all)
 
-  sers2 :: Array (Maybe String)
+
+  sers2 :: L.List (Maybe String)
   sers2 =
-    (>>= Me.catFromSemanthic) <$>
-    (maybe nothings Me.runAxis ((conf ^._secondSeries.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.catFromSemanthic)
+    $ maybe nothings Me.runAxis
+    $ (conf ^._secondSeries.._selection)
+    >>= flip lookup (r ^. _all)
 
 
-extractData' :: Array (Maybe String) -> Array (Maybe String) -> Array (Maybe String) ->
-                Array (Maybe Number) -> Accum -> Accum
-extractData' cats ser1 ser2 vs acc = fromMaybe acc do
-  c <- head cats >>= id
-  cs <- tail cats
-  mbs1 <- head ser1
-  sers1 <- tail ser1
-  mbs2 <- head ser2
-  sers2 <- tail ser2
-  mbv <- head vs
-  vals <- tail vs
-  let v = fromMaybe 0.0 mbv
-      key = mkKey c mbs1 mbs2
-  pure $ extractData' cs sers1 sers2 vals (alter (alter' v) key acc)
-
+extractData' :: L.List (Maybe String) -> L.List (Maybe String) ->
+                L.List (Maybe String) -> L.List (Maybe Number) -> Accum -> Accum
+extractData' L.Nil _ _ _ acc = acc
+extractData' _ L.Nil _ _ acc = acc
+extractData' _ _ L.Nil _ acc = acc
+extractData' _ _ _ L.Nil acc = acc
+extractData' (L.Cons Nothing _) _ _ _ acc = acc
+extractData' (L.Cons (Just c) cs) (L.Cons mbs1 sers1)
+  (L.Cons mbs2 sers2) (L.Cons mbv vals) acc =
+  let key = mkKey c mbs1 mbs2
+      v = fromMaybe 0.0 mbv
+  in extractData' cs sers1 sers2 vals (alter (alter' v) key acc)
 
 alter' :: Number -> Maybe (Array Number) -> Maybe (Array Number)
 alter' v vals =

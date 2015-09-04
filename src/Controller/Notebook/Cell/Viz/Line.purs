@@ -61,55 +61,63 @@ extractData :: VizRec -> _ -> Accum
 extractData r conf =
   extractData' dims sers1 sers2 vals1 vals2 empty
   where
-  dims :: Array (Maybe String)
+  dims :: L.List (Maybe String)
   dims =
-    (>>= Me.catFromSemanthic) <$>
-    (maybe [ ] Me.runAxis ((conf ^._dims.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.catFromSemanthic)
+    $ maybe L.Nil Me.runAxis
+    $ (conf ^._dims.._selection)
+    >>= flip lookup (r ^. _all)
 
-  vals1 :: Array (Maybe Number)
+  vals1 :: L.List (Maybe Number)
   vals1 =
-    (>>= Me.valFromSemanthic) <$>
-    (maybe [ ] Me.runAxis ((conf ^._firstMeasures.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.valFromSemanthic)
+    $ maybe L.Nil Me.runAxis
+    $ (conf ^._firstMeasures.._selection)
+    >>= flip lookup (r ^. _all)
 
-  vals2 :: Array (Maybe Number)
+  vals2 :: L.List (Maybe Number)
   vals2 =
-    (>>= Me.valFromSemanthic) <$>
-    (maybe nothings Me.runAxis ((conf ^._secondMeasures.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.valFromSemanthic)
+    $ maybe nothings Me.runAxis
+    $ (conf ^._secondMeasures.._selection)
+    >>= flip lookup (r ^. _all)
 
   maxLen :: Int
   maxLen =
-    fromMaybe zero $ head $ reverse (sort [length vals1, length dims])
+    fromMaybe zero $ head $ reverse (sort [L.length vals1, L.length dims])
 
-  nothings :: forall a. Array (Maybe a)
-  nothings = replicate maxLen Nothing
+  nothings :: forall a. L.List (Maybe a)
+  nothings = L.replicate maxLen Nothing
 
-  sers1 :: Array (Maybe String)
+  sers1 :: L.List (Maybe String)
   sers1 =
-    (>>= Me.catFromSemanthic) <$>
-    (maybe nothings Me.runAxis ((conf ^._firstSeries.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.catFromSemanthic)
+    $ maybe nothings Me.runAxis
+    $ (conf ^._firstSeries.._selection)
+    >>= flip lookup (r ^. _all)
 
-  sers2 :: Array (Maybe String)
+  sers2 :: L.List (Maybe String)
   sers2 =
-    (>>= Me.catFromSemanthic) <$>
-    (maybe nothings Me.runAxis ((conf ^._secondSeries.._selection) >>= (flip lookup (r ^._all))))
+    map (flip bind Me.catFromSemanthic)
+    $ maybe nothings Me.runAxis
+    $ (conf ^._secondSeries.._selection)
+    >>= flip lookup (r ^. _all)
 
-extractData' :: Array (Maybe String) -> Array (Maybe String) -> Array (Maybe String) ->
-                Array (Maybe Number) -> Array (Maybe Number) -> Accum -> Accum
-extractData' mbds mbss1 mbss2 mbvs1 mbvs2 acc = fromMaybe acc do
-  d <- head mbds >>= id
-  ds <- tail mbds
-  mbs1 <- head mbss1
-  sers1 <- tail mbss1
-  mbs2 <- head mbss2
-  sers2 <- tail mbss2
-  mbv1 <- head mbvs1
-  vals1 <- tail mbvs1
-  mbv2 <- head mbvs2
-  vals2 <- tail mbvs2
-  let v1 = fromMaybe 0.0 mbv1
-      v2 = fromMaybe 0.0 mbv2
+extractData' :: L.List (Maybe String) -> L.List (Maybe String) ->
+                L.List (Maybe String) -> L.List (Maybe Number) ->
+                L.List (Maybe Number) -> Accum -> Accum
+extractData' L.Nil _ _ _ _ acc = acc
+extractData' (L.Cons Nothing _) _ _ _ _ acc = acc
+extractData' _ L.Nil _ _ _ acc = acc
+extractData' _ _ L.Nil _ _ acc = acc
+extractData' _ _ _ L.Nil _ acc = acc
+extractData' _ _ _ _ L.Nil acc = acc
+extractData' (L.Cons (Just d) ds) (L.Cons mbs1 sers1) (L.Cons mbs2 sers2)
+  (L.Cons mbv1 vals1) (L.Cons mbv2 vals2) acc =
+  let v1 = fromMaybe zero mbv1
+      v2 = fromMaybe zero mbv2
       key = mkKey d mbs1 mbs2
-  pure $ extractData' ds sers1 sers2 vals1 vals2  $ (alter (alter' $ Tuple v1 v2) key acc)
+  in extractData' ds sers1 sers2 vals1 vals2 $ alter (alter' $ Tuple v1 v2) key acc
 
 
 alter' :: Tuple Number Number -> Maybe (Tuple (Array Number) (Array Number)) ->

@@ -54,7 +54,7 @@ newCellMenuExpanded = do
   where
   getEl :: Tuple String String -> Check Element
   getEl (Tuple selector msg) =
-    getElementByCss selector $ msg <> " not found in new cell menu"
+    waitExistentCss selector $ msg <> " not found in new cell menu"
 
 
 

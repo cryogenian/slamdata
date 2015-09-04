@@ -288,3 +288,41 @@ chartConfigureHeight = className "chart-configure-height"
 
 chartConfigureWidth :: ClassName
 chartConfigureWidth = className "chart-configure-width"
+
+
+chartCategory :: ClassName
+chartCategory = className "chart-category"
+
+chartMeasureOne :: ClassName
+chartMeasureOne = className "chart-measure-one"
+
+chartMeasureTwo :: ClassName
+chartMeasureTwo = className "chart-measure-two"
+
+chartDimension :: ClassName
+chartDimension = className "chart-dimension"
+
+chartSeriesOne :: ClassName
+chartSeriesOne = className "chart-series-one"
+
+chartSeriesTwo :: ClassName
+chartSeriesTwo = className "chart-series-two"
+
+pieChartIcon :: ClassName
+pieChartIcon = className "pie-chart-icon"
+
+barChartIcon :: ClassName
+barChartIcon = className "bar-chart-icon"
+
+lineChartIcon :: ClassName
+lineChartIcon = className "line-chart-icon"
+
+
+pieEditor :: ClassName
+pieEditor = className "pie-editor"
+
+barEditor :: ClassName
+barEditor = className "bar-editor"
+
+lineEditor :: ClassName
+lineEditor = className "line-editor"

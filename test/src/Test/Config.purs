@@ -17,6 +17,7 @@ limitations under the License.
 module Test.Config
   ( Config(..)
   , SearchQueryConfig(..)
+  , ChartOptions(..)
   , platformFromConfig
   ) where
 
@@ -25,14 +26,38 @@ import Prelude
 import Control.Alt ((<|>))
 import Data.StrMap
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Function (on)
 import qualified Data.String.Regex as R
 import qualified Test.Platform as P
+import qualified Data.Array as A
 
 type SearchQueryConfig =
   { query :: String
   , pages :: Int
   , rows :: Int
   }
+
+
+newtype ChartOptions = ChartOptions
+  { measureOne :: Array String
+  , measureTwo :: Array String
+  , category :: Array String
+  , dimension :: Array String
+  , seriesOne :: Array String
+  , seriesTwo :: Array String
+  }
+
+
+instance eqChartOptions :: Eq ChartOptions where
+  eq (ChartOptions a) (ChartOptions b) =
+    eqq a.measureOne b.measureOne
+    && eqq a.measureTwo b.measureTwo
+    && eqq a.category b.category
+    && eqq a.dimension b.dimension
+    && eqq a.seriesOne b.seriesOne
+    && eqq a.seriesTwo b.seriesTwo
+    where
+    eqq = on eq A.sort
 
 type Config =
   { selenium :: { browser :: String
@@ -186,11 +211,32 @@ type Config =
   , ace :: { textInput :: String
            }
   , query :: { smallZipsAll :: String
+             , flatVizAll :: String
+             , flatVizMeasures :: String
              }
   , viz :: { heightInput :: String
            , widthInput :: String
            , canvas :: String
+           , category :: String
+           , measureOne :: String
+           , measureTwo :: String
+           , seriesOne :: String
+           , seriesTwo :: String
+           , dimension :: String
+           , aggregation :: String
+           , barIcon :: String
+           , lineIcon :: String
+           , pieIcon :: String
+           , pieEditor :: String
+           , lineEditor :: String
+           , barEditor :: String
+           , alert :: String
            }
+  , vizOptions :: { flatVizAll :: { pie :: ChartOptions
+                                  , line :: ChartOptions
+                                  , bar :: ChartOptions
+                                  }
+                  }
   , version :: String
   }
 
