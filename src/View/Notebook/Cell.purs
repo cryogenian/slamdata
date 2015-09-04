@@ -22,6 +22,7 @@ import Controller.Notebook.Cell
 import Controller.Notebook.Cell.Viz (insertViz)
 import Css.Display
 import Data.Array (length, null, catMaybes)
+import Data.BrowserFeatures (BrowserFeatures())
 import Data.Date (Date(), toEpochMilliseconds)
 import Data.String (indexOf)
 import Data.Function (on)
@@ -107,7 +108,7 @@ controls cell =
 
 output :: forall e. State -> Cell -> Maybe (HTML e)
 output notebook cell =
-  let out = renderOutput cell
+  let out = renderOutput (notebook ^. _browserFeatures) cell
   in if null out
      then Nothing
      else Just $ H.div [ A.classes [B.row, VC.cellOutput] ]
@@ -282,13 +283,13 @@ editor state cell = case cell ^. _content of
   Visualize _ -> vizChoices cell
   _ -> aceEditor cell
 
-renderOutput :: forall e. Cell -> Array (HTML e)
-renderOutput cell =
+renderOutput :: forall e. BrowserFeatures -> Cell -> Array (HTML e)
+renderOutput bf cell =
   if not (null $ cell ^. _failures)
   then []
   else case cell ^. _content of
     Explore _ -> exploreOutput cell
-    Markdown mr -> markdownOutput mr cell
+    Markdown mr -> markdownOutput bf mr cell
     Search _ -> searchOutput cell
     Visualize _ -> vizOutput cell
     Query _ -> queryOutput cell

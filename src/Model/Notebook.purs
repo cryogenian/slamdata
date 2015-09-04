@@ -16,6 +16,7 @@ limitations under the License.
 
 module Model.Notebook where
 
+import Data.BrowserFeatures (BrowserFeatures())
 import Data.Date (Date())
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy
@@ -41,6 +42,7 @@ type State =
   , addingCell :: Boolean
   , refreshing :: Array CellId
   , version :: Maybe String
+  , browserFeatures :: BrowserFeatures
   }
 
 _dropdowns :: LensP State (Array DropdownItem)
@@ -82,8 +84,11 @@ _refreshing = lens _.refreshing _{refreshing = _}
 _version :: LensP State (Maybe String)
 _version = lens _.version _{version = _}
 
-initialState :: State
-initialState =
+_browserFeatures :: LensP State BrowserFeatures
+_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
+
+initialState :: BrowserFeatures -> State
+initialState bf =
   { dropdowns: initialDropdowns
   , loaded: false
   , error: Nothing
@@ -97,4 +102,5 @@ initialState =
   , addingCell: false
   , refreshing: []
   , version: Nothing
+  , browserFeatures: bf
   }

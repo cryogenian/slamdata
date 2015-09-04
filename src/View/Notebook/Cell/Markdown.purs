@@ -19,15 +19,15 @@ module View.Notebook.Cell.Markdown (markdownOutput) where
 import Prelude
 import Data.Array (null)
 import Data.Maybe (maybe)
+import Data.BrowserFeatures (BrowserFeatures())
 import EffectTypes (NotebookAppEff())
 import Input.Notebook (Input(..))
 import Model.Notebook.Cell (Cell(), _cellId)
 import Model.Notebook.Cell.Markdown (MarkdownRec(), _input, _state, _evaluated)
 import Optic.Getter ((^.))
-import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen)
+import Text.Markdown.SlamDown.Html (SlamDownEvent(), renderHalogen, defaultBrowserFeatures)
 import View.Notebook.Common (HTML())
 import View.Common (fadeWhen)
-import View.Notebook.Common (HTML())
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
@@ -36,9 +36,9 @@ import qualified View.Css as VC
 
 type SlamDownHTML e = H.HTML (E.Event (NotebookAppEff e) SlamDownEvent)
 
-markdownOutput :: forall e. MarkdownRec -> Cell -> Array (HTML e)
-markdownOutput mr cell =
-  maybe [] (optionalHTML <<< renderHalogen ("slamdata-frm-" ++ show (cell ^. _cellId)) (mr ^. _state)) (mr ^. _evaluated)
+markdownOutput :: forall e. BrowserFeatures -> MarkdownRec -> Cell -> Array (HTML e)
+markdownOutput bf mr cell =
+  maybe [] (optionalHTML <<< renderHalogen bf ("slamdata-frm-" ++ show (cell ^. _cellId)) (mr ^. _state)) (mr ^. _evaluated)
   where
   optionalHTML :: Array (SlamDownHTML e) -> Array (HTML e)
   optionalHTML md =

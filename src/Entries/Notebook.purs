@@ -47,17 +47,19 @@ import qualified Data.Map as M
 import qualified Driver.Notebook as D
 import qualified Driver.Notebook.Cell as DC
 import qualified Driver.Notebook.Notify as N
+import qualified DOM.BrowserFeatures.Detectors as BFD
 
 main :: Eff _ Unit
 main = onLoad $ void $ do
-  stateKnot <- newRef initialState
+  browserFeatures <- BFD.detectBrowserFeatures
+  stateKnot <- newRef (initialState browserFeatures)
   aceKnot <- newRef M.empty
   t <- timeout 0 (pure unit)
   autosaveTimer <- newRef t
   echartsKnot <- EC.ref
   notifyKnot <- newRef M.empty
   let post = postRender stateKnot aceKnot echartsKnot autosaveTimer notifyKnot
-  Tuple node driver <- runUIWith app post
+  Tuple node driver <- runUIWith (app browserFeatures) post
   mountUI node
   platformName <- navigator globalWindow >>= platform
   let p = if isJust $ indexOf "Win" platformName
