@@ -255,12 +255,92 @@
         "textInput": ".ace_content"
     },
     "query": {
-        "smallZipsAll": "select * from \"/test-mount/testDb/smallZips\" where true"
+        "smallZipsAll": "select * from \"/test-mount/testDb/smallZips\" where true",
+        "flatVizAll": "select * from \"/test-mount/testDb/flatViz\" where true",
+        "flatVizMeasures": "select measureOne, measureTwo from \"test-mount/testDb/flatViz\" where true"
     },
     "viz": {
         "heightInput": "input.chart-configure-height",
         "widthInput": "input.chart-configure-width",
-        "canvas": "canvas"
+        "canvas": "canvas",
+        "category": ".chart-category select",
+        "measureOne": ".chart-measure-one select",
+        "measureTwo": ".chart-measure-two selct",
+        "seriesOne": ".chart-series-one select",
+        "seriesTwo": ".chart-series-two select",
+        "dimension": ".chart-dimension select",
+        "aggregation": "select.aggregation",
+        "barIcon": ".bar-chart-icon",
+        "lineIcon": ".line-chart-icon",
+        "pieIcon": ".pie-chart-icon",
+        "pieEditor": ".pie-editor",
+        "lineEditor": ".line-editor",
+        "barEditor": ".bar-editor",
+        "alert": ".alert.alert-danger"
+    },
+    "vizOptions": {
+        "flatVizAll": {
+            "pie": {
+                "measureOne": [
+                    "Select axis source",
+                    ".measureOne",
+                    ".measureTwo",
+                    ".measureThree",
+                    ".measureFour"
+                ] ,
+                "measureTwo": [ ],
+                "category": [
+                    "Select axis source",
+                    ".seriesOne",
+                    ".seriesTwo",
+                    ".seriesThree",
+                    ".seriesFour"
+                ],
+                "dimension": [ ],
+                "seriesOne": ["Select axis source"],
+                "seriesTwo": ["Select axis source" ] 
+            },
+            "line": {
+                "measureOne": [
+                    "Select axis source",
+                    ".measureOne",
+                    ".measureTwo",
+                    ".measureThree",
+                    ".measureFour"
+                ],
+                "measureTwo": [ ] ,
+                "category": [ ],
+                "dimension": [
+                    "Select axis source",
+                    ".seriesOne",
+                    ".seriesTwo",
+                    ".seriesThree",
+                    ".seriesFour"
+                ],
+                "seriesOne": ["Select axis source"],
+                "seriesTwo": ["Select axis source" ] 
+            },
+            "bar":  {
+                "measureOne": [
+                    "Select axis source",
+                    ".measureOne",
+                    ".measureTwo",
+                    ".measureThree",
+                    ".measureFour"
+                ] ,
+                "measureTwo": [ ],
+                "category": [
+                    "Select axis source",
+                    ".seriesOne",
+                    ".seriesTwo",
+                    ".seriesThree",
+                    ".seriesFour"
+                ],
+                "dimension": [ ],
+                "seriesOne": ["Select axis source"],
+                "seriesTwo": ["Select axis source" ] 
+            }
+        }
     },
     "version": "2.1.9"
 }

@@ -39,11 +39,12 @@ import Prelude
 import Control.Alt ((<|>))
 import Data.Argonaut.Core (Json(), JArray(), toNumber, toString)
 import Data.Argonaut.JCursor (JCursor(..), JsonPrim(), toPrims, runJsonPrim, insideOut)
-import Data.Array (filter, concat, nubBy, singleton, sortBy, head, reverse, length, tail, (!!), (:))
+import Data.Array (filter, concat, nubBy, singleton, sortBy, head, reverse, length, tail, (!!), (:), nub)
 import Data.Bifunctor (rmap)
-import Data.Foldable (for_, traverse_, foldl, fold)
+import Data.Foldable (for_, traverse_, foldl, fold, Foldable)
+import Data.Traversable (traverse, sequence)
 import Data.Function (on)
-import Data.Map (fromList, Map(), toList, empty, alter, insert, keys, lookup, delete)
+import Data.Map (fromList, Map(), toList, empty, alter, insert, keys, lookup, delete, update)
 import Data.Maybe (Maybe(..), maybe, isJust, isNothing, fromMaybe)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Monoid.Conj (Conj(..), runConj)
@@ -56,6 +57,7 @@ import Data.Argonaut.Encode (EncodeJson)
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (fromString, jsonEmptyObject, JArray(), Json())
 import Data.Either
+import Data.Unfoldable (Unfoldable)
 import Utils (s2n)
 import qualified Data.List as L
 
@@ -134,9 +136,9 @@ instance decodeJsonSemanthic :: DecodeJson Semanthic where
 
 
 data Axis
-  = ValAxis (Array (Maybe Semanthic))
-  | CatAxis (Array (Maybe Semanthic))
-  | TimeAxis (Array (Maybe Semanthic))
+  = ValAxis (L.List (Maybe Semanthic))
+  | CatAxis (L.List (Maybe Semanthic))
+  | TimeAxis (L.List (Maybe Semanthic))
 
 
 instance encodeJsonAxis :: EncodeJson Axis where
@@ -177,7 +179,7 @@ isTimeAxis :: Axis -> Boolean
 isTimeAxis (TimeAxis _) = true
 isTimeAxis _ = false
 
-runAxis :: Axis -> Array (Maybe Semanthic)
+runAxis :: Axis -> L.List (Maybe Semanthic)
 runAxis (ValAxis a) = a
 runAxis (CatAxis a) = a
 runAxis (TimeAxis a) = a
@@ -236,39 +238,40 @@ valFromSemanthic v =
     _ -> Nothing
 
 
-check :: Array (Maybe Semanthic) -> Maybe Axis
+check :: L.List (Maybe Semanthic) -> Maybe Axis
 check lst =
-  (ValAxis <$> checkValues lst) <|>
-  (ValAxis <$> checkMoney lst) <|>
-  (ValAxis <$> checkPercent lst) <|>
-  (ValAxis <$> checkBool lst) <|>
-  (TimeAxis <$> checkTime lst) <|>
-  (CatAxis <$> checkCategory lst)
+  ((ValAxis  ) <$> checkValues lst)   <|>
+  ((ValAxis  ) <$> checkMoney lst)    <|>
+  ((ValAxis  ) <$> checkPercent lst)  <|>
+  ((ValAxis  ) <$> checkBool lst)     <|>
+  ((TimeAxis ) <$> checkTime lst)     <|>
+  ((CatAxis  ) <$> checkCategory lst)
 
-checkPredicate :: (Semanthic -> Boolean) -> Array (Maybe Semanthic) ->
-                  Maybe (Array (Maybe Semanthic))
-checkPredicate p lst =
-  if runConj (fold (isPredicate <$> lst))
-  then Just lst
-  else Nothing
-  where isPredicate = Conj <<< (maybe true p)
+checkPredicate :: (Semanthic -> Boolean) -> L.List (Maybe Semanthic) ->
+                  Maybe (L.List (Maybe Semanthic))
+checkPredicate p lst = go true lst
+  where
+  go false L.Nil = Nothing
+  go true L.Nil = Just lst
+  go acc (L.Cons Nothing lst) = go acc lst
+  go acc (L.Cons (Just c) lst) = go (acc && p c) lst
 
-checkValues :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
+checkValues :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
 checkValues = checkPredicate isValue
 
-checkMoney :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
+checkMoney :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
 checkMoney = checkPredicate isMoney
 
-checkPercent :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
+checkPercent :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
 checkPercent = checkPredicate isPercent
 
-checkBool :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
+checkBool :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
 checkBool = checkPredicate isBool
 
-checkTime :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
+checkTime :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
 checkTime = checkPredicate isTime
 
-checkCategory :: Array (Maybe Semanthic) -> Maybe (Array (Maybe Semanthic))
+checkCategory :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
 checkCategory = checkPredicate isCategory
 
 instance semanthicShow :: Show Semanthic where
@@ -355,44 +358,42 @@ analyzeDate str =
   rgx = regex rgxStr noFlags
 
 toSemanthic :: Json -> Map JCursor Semanthic
-toSemanthic j = fromList' empty (rmap analyze <$> toPrims j)
-  where
-  fromList' acc L.Nil = acc
-  fromList' acc (L.Cons (Tuple _ Nothing) lst) = fromList' acc lst
-  fromList' acc (L.Cons (Tuple k (Just el)) lst) = fromList' (insert k el acc) lst
+toSemanthic j = fromList $ L.catMaybes ((traverse analyze) <$> toPrims j)
 
-toSemanthic' :: JArray -> Map JCursor (Array (Maybe Semanthic))
+
+import Utils.Log
+toSemanthic' :: JArray -> Map JCursor (L.List (Maybe Semanthic))
 toSemanthic' arr =
-  reverse <$> (mergeMaps empty (toSemanthic <$> arr))
+  step initial mapLst
   where
-  mergeMaps :: Map JCursor (Array (Maybe Semanthic)) ->
-               Array (Map JCursor Semanthic) ->
-               Map JCursor (Array (Maybe Semanthic))
-  mergeMaps acc arr = fromMaybe acc do
-    m <- head arr
-    lst <- tail arr
-    let alter' a k = alter (mergeFn k) k a
-        mergeFn :: JCursor -> Maybe (Array (Maybe Semanthic)) ->
-                   Maybe (Array (Maybe Semanthic))
-        mergeFn k Nothing = Just [lookup k m]
-        mergeFn k (Just l) = Just $ (lookup k m):l
-        newMap = foldl alter' acc $ keys m
-    pure $ mergeMaps newMap lst
+  mapArr = map toSemanthic $ reverse arr
+  mapLst = L.toList mapArr
+  ks = L.toList $ nub $ concat $ map (L.fromList <<< keys) mapArr
+  initial = fromList $ map (flip Tuple L.Nil) ks
 
+  step acc L.Nil = acc
+  step acc (L.Cons m lst) =
+    step (insertOne acc m ks) lst
 
+  insertOne acc m L.Nil = acc
+  insertOne acc m (L.Cons k ks) =
+    insertOne (update (pure <<< L.Cons (lookup k m)) k acc) m ks
 
 analyzeJArray :: JArray -> Map JCursor Axis
 analyzeJArray arr =
-  checkPairs $
-  fromList $
-  (rmap fromJust) <$>
-  (L.filter (isJust <<< snd) $
-    (toList (check <$> (toSemanthic' arr))))
+  checkPairs
+  $ fromList
+  $ L.catMaybes
+  $ map sequence
+  $ toList
+  $ map check
+  $ toSemanthic' arr
 
 
-getPossibleDependencies :: JCursor -> Map JCursor Axis -> Array JCursor
+
+getPossibleDependencies :: JCursor -> Map JCursor Axis -> L.List JCursor
 getPossibleDependencies cursor m =
-  filter (dependsOn cursor) $ L.fromList $ keys m
+  L.filter (dependsOn cursor) $ keys m
 
 
 checkPairs :: Map JCursor Axis -> Map JCursor Axis
@@ -402,6 +403,6 @@ checkPairs m =
   ks = keys m
   check :: Map JCursor Axis -> JCursor -> Map JCursor Axis
   check m cursor =
-    if length (getPossibleDependencies cursor m) > 0
-    then m
-    else delete cursor m
+    case getPossibleDependencies cursor m of
+      L.Nil -> delete cursor m
+      _ -> m

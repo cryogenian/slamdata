@@ -74,8 +74,8 @@ makeCell sel = do
     else do
     trigger <- getNewCellMenuTrigger
     sequence $ leftClick trigger
-  exploreBtn <- waitExistentCss sel
-                "There is no explore buttton in new cell menu"
+  exploreBtn <- waitExistentCss sel $
+                "There is no  " <> sel <> " buttton in new cell menu"
   count <- length <$> getCells
   sequence $ leftClick exploreBtn
   await "Cell has not been added" $ cellAdded count
@@ -255,6 +255,14 @@ withSmallZipsAllChart :: Context
 withSmallZipsAllChart action =
   getConfig >>= _.query >>> _.smallZipsAll >>> flip withChart action
 
+
+withFlatVizChart :: Context
+withFlatVizChart action =
+  getConfig >>= _.query >>> _.flatVizAll >>> flip withChart action
+
+withFlatVizMeasures :: Context
+withFlatVizMeasures action =
+  getConfig >>= _.query >>> _.flatVizMeasures >>> flip withChart action
 
 tableChanged :: String -> Check Boolean
 tableChanged old = do

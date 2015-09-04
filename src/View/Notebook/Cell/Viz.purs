@@ -92,9 +92,11 @@ chartTypeSelector cell r =
   img :: ChartType -> HTML e
   img ct =
     H.img [ A.src (src ct)
-          , A.classes (if (r ^._chartType) == ct
-                       then [B.active]
-                       else [])
+          , A.classes ( [ cls ct ]
+                        <> (if (r ^._chartType) == ct
+                            then [B.active]
+                            else [])
+                      )
           , E.onClick (\_ -> pure $ selectChartType cell ct)
           ]
     [ ]
@@ -102,6 +104,11 @@ chartTypeSelector cell r =
   src Pie = "img/pie.svg"
   src Line = "img/line.svg"
   src Bar = "img/bar.svg"
+
+  cls :: ChartType -> A.ClassName
+  cls Pie = VC.pieChartIcon
+  cls Line = VC.lineChartIcon
+  cls Bar = VC.barChartIcon
 
 chartConfiguration :: forall e. Cell -> VizRec -> Array (HTML e)
 chartConfiguration cell r =
@@ -135,24 +142,34 @@ chartConfiguration cell r =
 
 pieConfiguration :: forall e. Cell -> VizRec -> Boolean ->  HTML e
 pieConfiguration cell r visible =
-  H.div [ A.classes (if visible then [] else [B.hide]) ]
+  H.div [ A.classes $ [VC.pieEditor] <> (if visible then [] else [B.hide]) ]
   [ row
-    [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
+    [ H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.chartCategory] ]
       [ categoryLabel
       , primaryOptions cell r (_pieConfiguration .. _cats)
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
+    , H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.withAggregation
+                         , VC.chartMeasureOne] ]
       [ measureLabel
       , primaryOptions cell r (_pieConfiguration .. _firstMeasures)
       , aggSelect cell r (_pieConfiguration.._firstMeasures) (_pieConfiguration.._firstAggregation)
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+    , H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.chartSeriesOne] ]
       [ seriesLabel
       , secondaryOptions cell r (_pieConfiguration .. _firstSeries)
       ]
     ]
   , row
-    [ H.form [ A.classes [ B.colXs4, B.colXsOffset8, VC.chartConfigureForm ] ]
+    [ H.form [ A.classes [ B.colXs4
+                         , B.colXsOffset8
+                         , VC.chartConfigureForm
+                         , VC.chartSeriesTwo] ]
       [ seriesLabel
       , secondaryOptions cell r (_pieConfiguration .. _secondSeries)
       ]
@@ -223,24 +240,32 @@ secondaryOptions = options (< 1) (const true)
 
 barConfiguration :: forall e. Cell -> VizRec -> Boolean -> HTML e
 barConfiguration cell r visible =
-  H.div [ A.classes (if visible then [] else [B.hide]) ]
+  H.div [ A.classes $ [VC.barEditor] <> (if visible then [] else [B.hide]) ]
   [ row
-    [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
+    [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.chartCategory] ]
       [ categoryLabel
       , (primaryOptions cell r (_barConfiguration.._cats))
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
+    , H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.withAggregation
+                         , VC.chartMeasureOne] ]
       [ measureLabel
       , (primaryOptions cell r (_barConfiguration.._firstMeasures))
       , aggSelect cell r (_barConfiguration.._firstMeasures) (_barConfiguration.._firstAggregation)
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+    , H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.chartSeriesOne] ]
       [ seriesLabel
       , (secondaryOptions cell r (_barConfiguration.._firstSeries))
       ]
     ]
   , row
-    [ H.form [ A.classes [ B.colXs4, B.colXsOffset8, VC.chartConfigureForm ] ]
+    [ H.form [ A.classes [ B.colXs4
+                         , B.colXsOffset8
+                         , VC.chartConfigureForm
+                         , VC.chartSeriesTwo] ]
       [ seriesLabel
       , (secondaryOptions cell r (_barConfiguration.._secondSeries))
       ]
@@ -249,29 +274,42 @@ barConfiguration cell r visible =
 
 lineConfiguration :: forall e. Cell -> VizRec -> Boolean -> HTML e
 lineConfiguration cell r visible =
-  H.div [ A.classes (if visible then [] else [B.hide]) ]
+  H.div [ A.classes $ [VC.lineEditor] <> (if visible then [] else [B.hide]) ]
   [ row
-    [ H.form [ A.classes [ B.colXs4, VC.chartConfigureForm] ]
+    [ H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.chartDimension] ]
       [ dimensionLabel
       , (primaryOptions cell r (_lineConfiguration.._dims))
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm, VC.withAggregation ] ]
+    , H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.withAggregation
+                         , VC.chartMeasureOne] ]
       [ measureLabel
       , (primaryOptions cell r (_lineConfiguration.._firstMeasures))
       , aggSelect cell r (_lineConfiguration.._firstMeasures) (_lineConfiguration.._firstAggregation)
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+    , H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.chartSeriesOne] ]
       [ seriesLabel
       , (secondaryOptions cell r (_lineConfiguration.._firstSeries))
       ]
     ]
   , row
-    [ H.form [ A.classes [ B.colXs4, B.colXsOffset4, VC.chartConfigureForm, VC.withAggregation ] ]
+    [ H.form [ A.classes [ B.colXs4
+                         , B.colXsOffset4
+                         , VC.chartConfigureForm
+                         , VC.withAggregation
+                         , VC.chartMeasureTwo] ]
       [ measureLabel
       , (secondaryOptions cell r (_lineConfiguration.._secondMeasures))
       , aggSelect cell r (_lineConfiguration.._secondMeasures) (_lineConfiguration.._secondAggregation)
       ]
-    , H.form [ A.classes [ B.colXs4, VC.chartConfigureForm ] ]
+    , H.form [ A.classes [ B.colXs4
+                         , VC.chartConfigureForm
+                         , VC.chartSeriesTwo] ]
       [ seriesLabel
       , (secondaryOptions cell r (_lineConfiguration.._secondSeries))
       ]

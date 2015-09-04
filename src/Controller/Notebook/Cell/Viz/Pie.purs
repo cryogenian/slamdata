@@ -186,6 +186,7 @@ mkSeries acc =
     (groupBy (\a b -> (split ":" (fst a) !! 1) == (split ":" (fst b) !! 1)) series)
 
 
+
 mkPie :: forall e. VizRec -> _ -> Option
 mkPie r conf =
   Option $ optionDefault { tooltip = Just $ Tooltip $

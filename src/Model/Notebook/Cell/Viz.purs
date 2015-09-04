@@ -355,6 +355,8 @@ initialVizRec = VizRec
   , chartWidth: 600
   }
 
+runVizRec (VizRec r) = r
+
 instance encodeJsonVizRec :: EncodeJson VizRec where
   encodeJson (VizRec r) = "sample" := r.sample
                           ~> "error" := r.error
