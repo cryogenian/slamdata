@@ -19,7 +19,10 @@ module Data.Selection where
 import Prelude
 import Data.Maybe (Maybe(..))
 import Data.Array (filter, length, head)
-import Data.Argonaut
+import Data.Argonaut.Core
+import Data.Argonaut.Encode
+import Data.Argonaut.Decode
+import Data.Argonaut.Combinators
 import Optic.Core
 
 

@@ -110,7 +110,7 @@ runViz :: forall e. Cell -> I e
 runViz cell =
   (updateInserted cell)
   `andThen` \_ ->
-  (update cell (_runState .~ RunFinished (Milliseconds 0)))
+  (update cell (_runState .~ RunFinished zero))
 
 
 updateViz :: forall e. Cell -> VizRec -> I e
