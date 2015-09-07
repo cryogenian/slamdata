@@ -34,6 +34,7 @@ import Model.Notebook.Cell
 import Model.Notebook.Port (Port(..))
 import Model.Resource (resourceName)
 import Optic.Core
+import Data.Int (fromNumber)
 import View.Common
 import View.Notebook.Cell.Ace (aceEditor)
 import View.Notebook.Cell.Explore (exploreEditor, exploreOutput)
@@ -253,10 +254,13 @@ statusText :: Maybe Date -> RunState -> String
 statusText _ RunInitial = ""
 statusText d (RunningSince d') =
   maybe "" (\s -> "Running for " <> s <> "s") $ ((flip secondsText d') <$> d)
-statusText _ (RunFinished (Milliseconds ms)) = "Finished: took " <> show ms <> "ms."
+statusText _ (RunFinished (Milliseconds ms)) =
+  "Finished: took "
+  <> (maybe "0" show $ fromNumber $ Math.floor ms)
+  <> "ms."
 
 secondsText :: Date -> Date -> String
-secondsText a b = show <<< max 0 <<<
+secondsText a b = maybe "0" show <<< fromNumber <<< Math.floor <<< max zero <<<
                   unSeconds $ on (-) (toSeconds <<< toEpochMilliseconds) a b
   where
   max :: forall a. (Ord a) => a -> a -> a
