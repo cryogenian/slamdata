@@ -23,6 +23,7 @@ import qualified Test.Selenium.Notebook.Explore as Explore
 import qualified Test.Selenium.Notebook.Search as Search
 import qualified Test.Selenium.Notebook.Common as Common
 import qualified Test.Selenium.Notebook.Viz as Viz
+import qualified Test.Selenium.Notebook.Markdown as Markdown
 
 test :: Check Unit
 test = do
@@ -31,3 +32,4 @@ test = do
   Explore.test
   Search.test
   Viz.test
+  Markdown.test
