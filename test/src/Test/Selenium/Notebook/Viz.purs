@@ -277,9 +277,6 @@ test = do
   sectionMsg "check next viz cell (query)"
   withSmallZipsQueriedAll $ checkNextVizCell
 
-  sectionMsg "check next viz cell (query)"
-  withSmallZipsQueriedAll $ checkNextVizCell
-
   sectionMsg "check set height/width"
   checkSetHeightWidth
 
