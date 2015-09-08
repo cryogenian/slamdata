@@ -17,6 +17,7 @@ limitations under the License.
 module App.Notebook where
 
 import Prelude
+import Data.BrowserFeatures (BrowserFeatures())
 import Halogen.Component (Component())
 import Halogen.Signal (stateful)
 import Model.Notebook (initialState)
@@ -25,5 +26,5 @@ import View.Notebook (notebookView)
 import Halogen.HTML.Events.Monad (Event())
 import EffectTypes (NotebookAppEff())
 
-app :: forall e. Component (Event (NotebookAppEff e)) Input Input
-app = notebookView <$> stateful initialState updateState
+app :: forall e. BrowserFeatures -> Component (Event (NotebookAppEff e)) Input Input
+app bf = notebookView <$> stateful (initialState bf) updateState

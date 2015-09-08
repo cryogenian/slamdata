@@ -20,6 +20,7 @@ import Prelude
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
 import Data.Functor (($>))
+import Data.BrowserFeatures (BrowserFeatures())
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
