@@ -143,7 +143,7 @@ updateState state (StopCell cellId) =
   state # _notebook.._cells..mapped %~ onCell cellId (setRunState RunInitial)
 
 updateState state (CellSlamDownEvent cellId event) =
-  state # _notebook.._cells..mapped %~ onCell cellId (slamDownOutput <<< runSlamDownEvent event)
+  state # _notebook.._cells..mapped %~ onCell cellId (cellUpdateVarMap <<< runSlamDownEvent event)
         # _notebook.._cells %~ syncParents
         # _requesting <>~ [cellId]
 
@@ -182,26 +182,38 @@ syncParents cells = updateCell <$> cells
         m = M.fromList <<< L.toList $ pair <$> cells
         pair cell = Tuple (cell ^. _cellId) cell
 
-slamDownOutput :: Cell -> Cell
-slamDownOutput cell =
-  cell # _output .. _VarMap  %~ modifyVarMap
+
+-- | Renders the cell's `SlamDownState` into a string map of `VarMapValue`s and
+-- | appends it to the cell's output `VarMap`.
+cellUpdateVarMap :: Cell -> Cell
+cellUpdateVarMap cell =
+  cell # _output .. _VarMap  %~ SM.union (renderFormFieldValue <$> slamDownState)
   where
-    modifyVarMap m = foldl (\m (Tuple key val) -> SM.insert key val m) m tplLst
-    tplLst = maybe L.Nil SM.toList ((fromFormValue <$>) <$> state)
-    fromFormValue (SingleValue PlainText s) = quoteString s
-    fromFormValue (SingleValue Numeric s) = quoteStringNumeric s
-    fromFormValue (SingleValue Date s) = "DATE '" ++ s ++ "'"
-    fromFormValue (SingleValue Time s) = "TIME '" ++ s ++ "'"
-    fromFormValue (SingleValue DateTime s) = "TIMESTAMP '" ++ processTimestamp s ++ "'"
-    fromFormValue (MultipleValues s) = "[" <> intercalate ", " (quoteString <$> S.toList s) <> "]" -- TODO: is this anything like we want for multi-values?
-    state :: Maybe (SM.StrMap FormFieldValue)
-    state = cell ^? _content.._Markdown..Ma._state.._SlamDownState
-    processTimestamp s = s ++ ":00Z"
+    slamDownState :: SM.StrMap FormFieldValue
+    slamDownState = cell ^? _content .. _Markdown .. Ma._state .. _SlamDownState # fromMaybe SM.empty
+
+    renderFormFieldValue :: FormFieldValue -> VarMapValue
+    renderFormFieldValue formFieldValue =
+      case formFieldValue of
+        SingleValue ty s ->
+          case ty of
+            PlainText -> quoteString s
+            Numeric | isSQLNum s -> s
+                    | otherwise -> quoteString s
+            Date -> "DATE '" ++ s ++ "'"
+            Time -> "TIME '" ++ s ++ "'"
+            DateTime -> "TIMESTAMP '" ++ s ++ ":00Z'"
+        MultipleValues s ->
+          "[" <> intercalate ", " (quoteString <$> S.toList s) <> "]"
+          -- TODO: is this anything like we want for multi-values?
+
+    quoteString :: String -> String
     quoteString s = "'" ++ Rx.replace rxQuot "''" s ++ "'"
-    quoteStringNumeric s | isSQLNum s = s
-                         | otherwise = quoteString s
-    rxQuot = Rx.regex "'" Rx.noFlags { global = true }
-    rxT = Rx.regex "T" Rx.noFlags
+      where
+        rxQuot :: Rx.Regex
+        rxQuot = Rx.regex "'" Rx.noFlags { global = true }
+
+    isSQLNum :: String -> Boolean
     isSQLNum s = isRight $ flip SP.runParser s $ do
       SP.many1 SP.anyDigit
       SP.optional $ SP.string "." *> SP.many SP.anyDigit
@@ -227,8 +239,8 @@ setSlamDownStatus cell =
                 let prunedSM = foldl (flip SM.delete) s $ keysToPrune s $ SM.fromList fields
                     mergedSM = prunedSM `SM.union` s'
                 in SlamDownState mergedSM
-        in slamDownOutput (cell # _message .~ message fields
-                                # _content .. _Markdown .. Ma._state %~ updateState)
+        in cellUpdateVarMap (cell # _message .~ message fields
+                                  # _content .. _Markdown .. Ma._state %~ updateState)
   in maybe cell (initial <<< parseMd) input'
 
   where
