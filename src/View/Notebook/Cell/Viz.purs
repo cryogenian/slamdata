@@ -178,7 +178,7 @@ pieConfiguration cell r visible =
 aggSelect :: forall e. Cell -> VizRec -> LensP VizRec JSelection -> LensP VizRec Aggregation -> HTML e
 aggSelect cell r _blocker _agg =
   H.select [ A.classes [ B.formControl, VC.aggregation, B.btnPrimary ]
-           , E.onInput (\s -> pure $ maybe empty (selectAgg cell _agg) $ str2aggregation s),
+           , E.onValueChanged (\s -> pure $ maybe empty (selectAgg cell _agg) $ str2aggregation s),
              A.disabled (null (r ^._blocker.._variants))
            ]
   (aggOpt (r ^._agg) <$> allAggregations)
@@ -201,12 +201,14 @@ defaultOption selected =
            , A.value "-1" ]
   [ H.text "Select axis source" ]
 
+import Utils.Log 
+
 options :: forall e. (Int -> Boolean) ->
            (Int -> Boolean) ->
            Cell -> VizRec -> LensP VizRec JSelection -> HTML e
 options disableWhen defaultWhen cell r _sel =
   H.select [ A.classes [ B.formControl ]
-           , E.onInput (\ix -> pure $ updateR (byIx ix vars))
+           , E.onValueChanged (\ix -> pure $ updateR (byIx ix vars))
            , A.disabled (disableWhen $ length vars)
            ]
 
