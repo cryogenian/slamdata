@@ -13,11 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -}
-
+-- TODO: this module should be splitted or renamed, but I'm not sure
+-- what's correct way to do it
 module Test.Config
   ( Config(..)
   , SearchQueryConfig(..)
   , ChartOptions(..)
+  , ChartSwitchers(..)
+  , ChartEditors(..)
   , platformFromConfig
   ) where
 
@@ -27,6 +30,7 @@ import Control.Alt ((<|>))
 import Data.StrMap
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Function (on)
+import Selenium.Types
 import qualified Data.String.Regex as R
 import qualified Test.Platform as P
 import qualified Data.Array as A
@@ -232,7 +236,8 @@ type Config =
            , barEditor :: String
            , alert :: String
            }
-  , vizOptions :: { flatVizAll :: { pie :: ChartOptions
+  , vizOptions :: { clearSelection :: String
+                  , flatVizAll :: { pie :: ChartOptions
                                   , line :: ChartOptions
                                   , bar :: ChartOptions
                                   }
@@ -259,4 +264,17 @@ platformFromConfig config =
   if config.sauceLabs.enabled
      then parseSauceLabsPlatform config.sauceLabs.platform
      else P.platform
+
+
+type ChartSwitchers =
+  { bar :: Element
+  , line :: Element
+  , pie :: Element
+  }
+
+type ChartEditors =
+  { pie :: Maybe Element
+  , line :: Maybe Element
+  , bar :: Maybe Element
+  }
 

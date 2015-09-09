@@ -20,7 +20,8 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Traversable (traverse)
 import Data.List (catMaybes, List(..), fromList, toList, length, (!!))
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, isNothing, isJust)
+import Data.Maybe.Unsafe (fromJust)
 import Data.Tuple (Tuple(..))
 import Data.Foldable (fold)
 import Data.Monoid.Disj (Disj(..), runDisj)
@@ -30,6 +31,7 @@ import Test.Selenium.Log
 import Test.Selenium.Monad
 import Test.Selenium.Common
 import Test.Selenium.Types
+import Test.Config
 import qualified Data.String.Regex as R
 import Selenium.Monad
 
@@ -292,3 +294,145 @@ getEnabledRecord = do
          <*> isEnabled sb
          <*> getAttribute input "value"
     pure $ EnabledRecord r
+
+
+-- VIZ
+
+getChartEditors :: Check ChartEditors
+getChartEditors = do
+  config <- getConfig
+
+  pie <- waitExistentCss config.viz.pieEditor "There is no pie editor"
+  line <- waitExistentCss config.viz.lineEditor "There is no line editor"
+  bar <- waitExistentCss  config.viz.barEditor "There is no bar editor"
+
+  pieDisplayed <- isDisplayed pie
+  barDisplayed <- isDisplayed bar
+  lineDisplayed <- isDisplayed line
+
+
+  pure { pie: if pieDisplayed then pure pie else Nothing
+       , line: if lineDisplayed then pure line else Nothing
+       , bar: if barDisplayed then pure bar else Nothing
+       }
+
+
+editor :: ChartEditors -> Element
+editor es =
+  fromJust
+  $ if barShown es
+    then es.bar
+    else if pieShown es
+         then es.pie
+         else es.line
+
+barShown :: ChartEditors -> Boolean
+barShown es =
+  isJust es.bar && isNothing es.line && isNothing es.pie
+
+lineShown :: ChartEditors -> Boolean
+lineShown es =
+  isNothing es.bar && isJust es.line && isNothing es.pie
+
+pieShown :: ChartEditors -> Boolean
+pieShown es =
+  isNothing es.bar && isNothing es.line && isJust es.pie
+
+
+
+getPieTypeIcon :: Check Element
+getPieTypeIcon = do
+  getConfig >>= _.viz >>> _.pieIcon
+    >>> flip waitExistentCss "There is no pie type switcher"
+
+getLineTypeIcon :: Check Element
+getLineTypeIcon = do
+  getConfig >>= _.viz >>> _.lineIcon
+    >>> flip waitExistentCss "There is no line type switcher"
+
+getBarTypeIcon :: Check Element
+getBarTypeIcon = do
+  getConfig >>= _.viz >>> _.barIcon
+    >>> flip waitExistentCss "There is no bar type switcher"
+
+
+
+getOptions :: Maybe Element -> Check (List Element)
+getOptions el = maybe (pure Nil) (\p -> byCss "option" >>= findChildren p) $ el
+
+
+getChartSwitchers :: Check ChartSwitchers
+getChartSwitchers = do
+  {bar: _, line: _, pie: _}
+  <$> getBarTypeIcon
+  <*> getLineTypeIcon
+  <*> getPieTypeIcon
+
+
+getChartOptions :: Element -> Check ChartOptions
+getChartOptions el = do
+  config <- getConfig
+  p <- { measureOne: _
+       , measureTwo: _
+       , category: _
+       , dimension: _
+       , seriesOne: _
+       , seriesTwo: _
+       }
+    <$> optionTxts config.viz.measureOne
+    <*> optionTxts config.viz.measureTwo
+    <*> optionTxts config.viz.category
+    <*> optionTxts config.viz.dimension
+    <*> optionTxts config.viz.seriesOne
+    <*> optionTxts config.viz.seriesTwo
+  pure $ ChartOptions p
+  where
+  optionTxts sel =
+    map fromList
+    $ byCss sel
+    >>= findChild el
+    >>= getOptions
+    >>= traverse getInnerHtml
+
+
+getCurrentChartOptions :: Check ChartOptions
+getCurrentChartOptions =
+  map editor getChartEditors >>= getChartOptions
+
+
+getCurrentEditorChild :: String -> Check Element
+getCurrentEditorChild sel = do
+  edit <- map editor getChartEditors
+  byCss sel >>= childExact edit
+
+
+getCategoryInput :: Check Element
+getCategoryInput =
+  getConfig >>= _.viz >>> _.category
+  >>> getCurrentEditorChild
+
+getMeasureOneInput :: Check Element
+getMeasureOneInput =
+  getConfig >>= _.viz >>> _.measureOne
+  >>> getCurrentEditorChild
+
+getMeasureTwoInput :: Check Element
+getMeasureTwoInput =
+  getConfig >>= _.viz >>> _.measureTwo
+  >>> getCurrentEditorChild
+
+getDimensionInput :: Check Element
+getDimensionInput =
+  getConfig >>= _.viz >>> _.dimension
+  >>> getCurrentEditorChild
+
+getSeriesOneInput :: Check Element
+getSeriesOneInput =
+  getConfig >>= _.viz >>> _.seriesOne
+  >>> getCurrentEditorChild
+
+getSeriesTwoInput :: Check Element
+getSeriesTwoInput =
+  getConfig >>= _.viz >>> _.seriesTwo
+  >>> getCurrentEditorChild
+

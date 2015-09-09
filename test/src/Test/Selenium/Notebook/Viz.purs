@@ -20,10 +20,14 @@ import Prelude
 
 import Control.Monad.Eff.Random (randomInt)
 import Control.Monad.Eff.Class (liftEff)
-import Data.List (length, List(..), fromList)
-import Data.Maybe (isJust, isNothing, Maybe(..), maybe)
+import Data.List (length, List(..), fromList, filter, null, (!!))
+import Data.Maybe (isJust, isNothing, Maybe(..), maybe, fromMaybe)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Traversable (traverse)
+import Data.Monoid (mempty)
+import Data.Function (on)
+
+import qualified Data.Set as S
 
 import Selenium.Types
 import Selenium.Monad
@@ -39,12 +43,14 @@ import Test.Selenium.Notebook.Contexts
 import qualified Test.Selenium.Notebook.Common as C
 
 import Utils (s2i)
+import Utils.Log
+import Utils.Random
 
 checkNextVizCell :: Check Unit
 checkNextVizCell = do
   waitNextVizCell >>= sequence <<< leftClick
-  await "Viz cell has not been created" do
-    ((eq 2) <<< length) <$> getCells
+  await "Viz cell has not been created"
+    $ map (eq 2 <<< length) getCells
   successMsg "Ok, next cell viz works"
 
 checkSetHeightWidth :: Check Unit
@@ -80,102 +86,25 @@ checkSetHeightWidth = withSmallZipsAllChart do
       <$> (s2i <$> getCssValue canvas "width")
       <*> (s2i <$> getCssValue canvas "height")
 
-type ChartEditors =
-  { pie :: Maybe Element
-  , line :: Maybe Element
-  , bar :: Maybe Element
-  }
-
-barShown :: ChartEditors -> Boolean
-barShown es =
-  isJust es.bar && isNothing es.line && isNothing es.pie
-
-lineShown :: ChartEditors -> Boolean
-lineShown es =
-  isNothing es.bar && isJust es.line && isNothing es.pie
-
-pieShown :: ChartEditors -> Boolean
-pieShown es =
-  isNothing es.bar && isNothing es.line && isJust es.pie
-
-editor :: ChartEditors -> Element
-editor es =
-  fromJust
-  $ if barShown es
-    then es.bar
-    else if pieShown es
-         then es.pie
-         else es.line
-
-import Utils.Log
-
-getChartEditors :: Check ChartEditors
-getChartEditors = do
-  config <- getConfig
-
-  pie <- waitExistentCss config.viz.pieEditor "There is no pie editor"
-  line <- waitExistentCss config.viz.lineEditor "There is no line editor"
-  bar <- waitExistentCss  config.viz.barEditor "There is no bar editor"
-
-  pieDisplayed <- isDisplayed pie
-  barDisplayed <- isDisplayed bar
-  lineDisplayed <- isDisplayed line
-
-
-  pure { pie: if pieDisplayed then pure pie else Nothing
-       , line: if lineDisplayed then pure line else Nothing
-       , bar: if barDisplayed then pure bar else Nothing
-       }
-
-getPieTypeIcon :: Check Element
-getPieTypeIcon = do
-  getConfig >>= _.viz >>> _.pieIcon
-    >>> flip waitExistentCss "There is no pie type switcher"
-
-getLineTypeIcon :: Check Element
-getLineTypeIcon = do
-  getConfig >>= _.viz >>> _.lineIcon
-    >>> flip waitExistentCss "There is no line type switcher"
-
-getBarTypeIcon :: Check Element
-getBarTypeIcon = do
-  getConfig >>= _.viz >>> _.barIcon
-    >>> flip waitExistentCss "There is no bar type switcher"
-
-getOptions :: Maybe Element -> Check (List Element)
-getOptions el = maybe (pure Nil) (\p -> byCss "option" >>= findChildren p) $ el
-
-type ChartSwitchers =
-  { bar :: Element
-  , line :: Element
-  , pie :: Element
-  }
-
-getChartSwitchers :: Check ChartSwitchers
-getChartSwitchers = do
-  {bar: _, line: _, pie: _}
-  <$> getBarTypeIcon
-  <*> getLineTypeIcon
-  <*> getPieTypeIcon
 
 
 switchToPie :: Check Unit
 switchToPie = do
   getChartSwitchers >>= sequence <<< leftClick <<< _.pie
-  await "Pie switch doesn't work" do
-    pieShown <$> getChartEditors
+  await "Pie switch doesn't work"
+    $ map pieShown getChartEditors
 
 switchToLine :: Check Unit
 switchToLine = do
  getChartSwitchers >>= sequence <<< leftClick <<< _.line
- await "Line switch doesn't work" do
-    lineShown <$> getChartEditors
+ await "Line switch doesn't work"
+   $ map lineShown getChartEditors
 
 switchToBar :: Check Unit
 switchToBar = do
  getChartSwitchers >>= sequence <<< leftClick <<< _.bar
- await "Bar switch doesn't work" do
-    barShown <$> getChartEditors
+ await "Bar switch doesn't work"
+   $ map barShown getChartEditors
 
 checkSwitchers :: Check Unit
 checkSwitchers = withFlatVizChart do
@@ -208,50 +137,23 @@ checkAlert = withFlatVizMeasures do
   waitExistentCss config.viz.alert "There is no alert but should"
   successMsg "ok, alert found"
 
-getChartOptions :: Element -> Check ChartOptions
-getChartOptions el = do
-  config <- getConfig
-  p <- { measureOne: _
-       , measureTwo: _
-       , category: _
-       , dimension: _
-       , seriesOne: _
-       , seriesTwo: _
-       }
-    <$> optionTxts config.viz.measureOne
-    <*> optionTxts config.viz.measureTwo
-    <*> optionTxts config.viz.category
-    <*> optionTxts config.viz.dimension
-    <*> optionTxts config.viz.seriesOne
-    <*> optionTxts config.viz.seriesTwo
-  pure $ ChartOptions p
-  where
-  optionTxts sel =
-    map fromList
-      $ byCss sel
-    >>= findChild el
-    >>= getOptions
-    >>= traverse getInnerHtml
-
 checkOptions :: Check Unit
 checkOptions = withFlatVizChart do
   config <- getConfig
   switchToPie
-  await "incorrect pie options" do
-    eq config.vizOptions.flatVizAll.pie
-      <$> ((editor <$> getChartEditors) >>= getChartOptions)
+  await "incorrect pie options"
+    $ map (eq config.vizOptions.flatVizAll.pie) getCurrentChartOptions
   successMsg "Ok, pie chart options are correct"
 
   switchToLine
-  await "incorrect line options" do
-    eq config.vizOptions.flatVizAll.line
-      <$> ((editor <$> getChartEditors) >>= getChartOptions)
+  await "incorrect line options"
+    $ map (eq config.vizOptions.flatVizAll.line) getCurrentChartOptions
   successMsg "Ok, line chart options are correct"
 
   switchToBar
-  await "incorrect bar options" do
-    eq config.vizOptions.flatVizAll.bar
-      <$> ((editor <$> getChartEditors) >>= getChartOptions)
+  await "incorrect bar options"
+    $ map (eq config.vizOptions.flatVizAll.bar) getCurrentChartOptions
+
   successMsg "Ok, bar chart options are correct"
 
 -- Don't know how to name it better.
@@ -261,8 +163,136 @@ checkOptions = withFlatVizChart do
 -- dimension -> series1 -> series2
 -- are filtered
 checkOptionUniqueness :: Check Unit
-checkOptionUniqueness = do
-  pure unit
+checkOptionUniqueness = withFlatVizChart do
+  config <- getConfig
+
+  sectionMsg "check pie uniqueness"
+  switchToPie
+  await "incorrect pie options"
+    $ map (eq config.vizOptions.flatVizAll.pie) getCurrentChartOptions
+  checkCategoryUniqueness getCategoryInput getSeriesOneInput getSeriesTwoInput
+
+  sectionMsg "check bar uniqueness"
+  switchToBar
+  await "incorrect bar options"
+    $ map (eq config.vizOptions.flatVizAll.bar) getCurrentChartOptions
+
+  checkCategoryUniqueness getCategoryInput getSeriesOneInput getSeriesTwoInput
+
+  sectionMsg "check line uniqueness"
+  switchToLine
+  await "incorrec line options"
+    $ map (eq config.vizOptions.flatVizAll.line) getCurrentChartOptions
+
+  checkCategoryUniqueness getDimensionInput getSeriesOneInput getSeriesTwoInput
+  checkMeasureUniqueness
+
+checkMeasureUniqueness :: Check Unit
+checkMeasureUniqueness = do
+  config <- getConfig
+  mOne <- getMeasureOneInput
+  mTwo <- getMeasureTwoInput
+
+  toSelectOne <- filterAndGetValue mOne mTwo "measures"
+  toSelectTwo <- getRandomOption mTwo
+
+  fillSelect mTwo toSelectTwo
+  fillSelect mOne toSelectTwo
+  await "Options has not been dropped"
+    $ map (/= toSelectTwo) $ getSelectValue mTwo
+
+  fillSelect mTwo toSelectTwo
+  fillSelect mOne config.vizOptions.clearSelection
+  await "Option should be disabled"
+    $ map not $ isEnabled mTwo
+  successMsg "Ok, measure uniqueness"
+
+checkCategoryUniqueness :: Check Element -> Check Element -> Check Element -> Check Unit
+checkCategoryUniqueness catM serOneM serTwoM = do
+  config <- getConfig
+  cat <- catM
+  seriesOne <- serOneM
+  seriesTwo <- serTwoM
+
+  toSelectCat <- filterAndGetValue cat seriesOne "category"
+  toSelectSerOne <- filterAndGetValue seriesOne seriesTwo "series one"
+
+  toSelectSerTwo <- getRandomOption seriesTwo
+  fillSelect seriesTwo toSelectSerTwo
+  fillSelect seriesOne toSelectSerTwo
+  await "Options has not been dropped (one -> two)"
+    $ map (/= toSelectSerTwo) $ getSelectValue seriesTwo
+  successMsg "Ok, select value dropped"
+
+  fillSelect cat toSelectSerTwo
+  await "Options has not been dropped (root -> one)"
+    $ map (/= toSelectSerOne) $ getSelectValue seriesOne
+  successMsg "Ok, dependent selects values are dropped"
+
+  fillSelect cat toSelectCat
+  fillSelect seriesOne toSelectSerOne
+  fillSelect seriesTwo toSelectSerTwo
+  fillSelect cat toSelectSerTwo
+  await "Optoins has not been dropped (root -> two)"
+    $ map (/= toSelectSerTwo) $ getSelectValue seriesTwo
+
+  fillSelect cat toSelectCat
+  fillSelect seriesOne toSelectSerOne
+  fillSelect seriesTwo toSelectSerTwo
+  fillSelect seriesOne config.vizOptions.clearSelection
+  await "Select should be disabled (series two)"
+    $ map not $ isEnabled seriesTwo
+
+  fillSelect seriesOne toSelectSerOne
+  fillSelect seriesTwo toSelectSerTwo
+  fillSelect cat config.vizOptions.clearSelection
+  await "Select should be disabled (series one, series two)" do
+    one <- isEnabled seriesOne
+    two <- isEnabled seriesTwo
+    pure $ not one && not two
+  successMsg "Ok, dependent selects are disabled"
+
+  successMsg "OK, category uniqueness"
+
+filterAndGetValue :: Element -> Element -> String -> Check String
+filterAndGetValue parent child msg = do
+  toSelect <- getRandomOption parent
+  fillSelect parent toSelect
+  await ("Options are not filtered (" <> msg <> ")") do
+    parentOptions <- optionTxts parent
+    childOptions <- optionTxts child
+    pure $ on eq S.fromList parentOptions (Cons toSelect childOptions)
+  successMsg $ "Ok, select filtering works (" <> msg <> ")"
+  pure toSelect
+
+getSelectValue :: Element -> Check String
+getSelectValue el = do
+  options <- optionTxts el
+  val <- getAttribute el "value"
+  pure $ fromMaybe mempty $ s2i val >>= (options !!)
+
+getRandomOption :: Element -> Check String
+getRandomOption el = do
+  config <- getConfig
+  await "there is no options"
+    $ map ((> 2) <<< length) $ getOptions $ pure el
+  getOptions (pure el)
+    >>= traverse getInnerHtml
+    >>= randomInM <<< filter (not <<< eq config.vizOptions.clearSelection)
+    >>= \x -> if x == mempty
+              then errorMsg "empty option list"
+              else pure x
+fillSelect :: Element -> String -> Check Unit
+fillSelect el txt = 
+  sequence do
+    leftClick el
+    sendKeys txt
+    sendEnter
+
+optionTxts :: Element -> Check (List String)
+optionTxts el = getOptions (pure el) >>= traverse getInnerHtml
+
+
 
 test :: Check Unit
 test = do
@@ -298,4 +328,3 @@ test = do
 
   sectionMsg "check option filters"
   checkOptionUniqueness
-

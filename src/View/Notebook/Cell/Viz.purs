@@ -201,8 +201,6 @@ defaultOption selected =
            , A.value "-1" ]
   [ H.text "Select axis source" ]
 
-import Utils.Log 
-
 options :: forall e. (Int -> Boolean) ->
            (Int -> Boolean) ->
            Cell -> VizRec -> LensP VizRec JSelection -> HTML e

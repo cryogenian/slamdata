@@ -264,8 +264,8 @@
         "widthInput": "input.chart-configure-width",
         "canvas": "canvas",
         "category": ".chart-category select",
-        "measureOne": ".chart-measure-one select",
-        "measureTwo": ".chart-measure-two selct",
+        "measureOne": ".chart-measure-one select:nth-of-type(1)",
+        "measureTwo": ".chart-measure-two select:nth-of-type(1)",
         "seriesOne": ".chart-series-one select",
         "seriesTwo": ".chart-series-two select",
         "dimension": ".chart-dimension select",
@@ -279,6 +279,7 @@
         "alert": ".alert.alert-danger"
     },
     "vizOptions": {
+        "clearSelection": "Select axis source",
         "flatVizAll": {
             "pie": {
                 "measureOne": [
@@ -308,7 +309,7 @@
                     ".measureThree",
                     ".measureFour"
                 ],
-                "measureTwo": [ ] ,
+                "measureTwo": ["Select axis source"] ,
                 "category": [ ],
                 "dimension": [
                     "Select axis source",
