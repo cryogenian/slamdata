@@ -34,7 +34,7 @@ import Selenium.Monad
 import Selenium.ActionSequence hiding (sequence)
 
 import Test.Config
-import Test.Platform
+import Test.Selenium.ActionSequence (selectAll, sendDelete, sendEnter)
 import Test.Selenium.Monad
 import Test.Selenium.Log
 import Test.Selenium.Common
@@ -61,14 +61,16 @@ checkSetHeightWidth = withSmallZipsAllChart do
   w <- liftEff $ randomInt 100 400
   h <- liftEff $ randomInt 100 400
 
+  modifierKey <- getModifierKey
+
   sequence do
     leftClick widthInput
-    sendSelectAll platform
+    selectAll modifierKey
     sendDelete
     sendKeys $ show w
 
     leftClick heightInput
-    sendSelectAll platform
+    selectAll modifierKey
     sendDelete
     sendKeys $ show h
 

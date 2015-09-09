@@ -37,7 +37,6 @@ import Selenium.Builder
 import qualified Selenium.Remote as SR
 import Test.Config (Config())
 import Text.Chalk
-import Test.Platform
 
 import qualified Test.Selenium.SauceLabs as SL
 import qualified Test.Selenium.File as File

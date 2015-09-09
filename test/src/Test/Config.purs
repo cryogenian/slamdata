@@ -21,7 +21,6 @@ module Test.Config
   , ChartOptions(..)
   , ChartSwitchers(..)
   , ChartEditors(..)
-  , platformFromConfig
   ) where
 
 import Prelude
@@ -32,7 +31,6 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Function (on)
 import Selenium.Types
 import qualified Data.String.Regex as R
-import qualified Test.Platform as P
 import qualified Data.Array as A
 
 type SearchQueryConfig =
@@ -152,7 +150,7 @@ type Config =
             , evalLine :: String
             , showMessages :: String
             , hideMessages :: String
-            , statusText :: String
+            , status :: String
             , embedBox :: String
             , nextCellsForExplore :: StrMap String
             , nextCellsForSearch :: StrMap String
@@ -236,6 +234,12 @@ type Config =
            , barEditor :: String
            , alert :: String
            }
+  , markdown :: { fieldValue :: String
+                , fieldName :: String
+                , altFieldValue :: String
+                , altFieldName :: String
+                , visibleMdFieldSelector :: String
+                }
   , vizOptions :: { clearSelection :: String
                   , flatVizAll :: { pie :: ChartOptions
                                   , line :: ChartOptions
@@ -244,27 +248,6 @@ type Config =
                   }
   , version :: String
   }
-
-parseSauceLabsPlatform :: String -> P.Platform
-parseSauceLabsPlatform str =
-  fromMaybe P.Unknown $
-    parseByPhrase "Windows" P.Win
-      <|> parseByPhrase "OS X" P.Mac
-      <|> parseByPhrase "Linux" P.Linux
-
-  where
-    parseByPhrase :: String -> P.Platform -> Maybe P.Platform
-    parseByPhrase phrase pform =
-      if R.test (R.regex phrase R.noFlags) str
-         then Just pform
-         else Nothing
-
-platformFromConfig :: Config -> P.Platform
-platformFromConfig config =
-  if config.sauceLabs.enabled
-     then parseSauceLabsPlatform config.sauceLabs.platform
-     else P.platform
-
 
 type ChartSwitchers =
   { bar :: Element
@@ -277,4 +260,3 @@ type ChartEditors =
   , line :: Maybe Element
   , bar :: Maybe Element
   }
-

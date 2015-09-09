@@ -161,9 +161,9 @@ getRefreshButton =
   getConfig >>= _.cell >>> _.refreshButton >>>
   flip getElementByCss "there is no refresh button"
 
-getStatusText :: Check Element
-getStatusText =
-  getConfig >>= _.cell >>> _.statusText >>>
+getStatus :: Check Element
+getStatus =
+  getConfig >>= _.cell >>> _.status >>>
   flip getElementByCss "there is no status text"
 
 getEmbedButton :: Check Element

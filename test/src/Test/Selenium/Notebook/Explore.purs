@@ -32,6 +32,7 @@ import Selenium.MouseButton
 import Selenium.Types
 import Selenium.Monad
 import Selenium.Combinators (checker)
+import Test.Selenium.ActionSequence (selectAll, sendDelete, sendEnter)
 import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
@@ -123,11 +124,11 @@ checkStatus = withSmallZipsOpened do
   successMsg "Ok, correct status text"
   where
   finished = do
-    v <- getStatusText >>= getInnerHtml
+    v <- getStatus >>= getInnerHtml
     pure $ R.test (R.regex "Finished: took \\d+ms" R.noFlags) v
 
   waitFn p = do
-    statusText <- getStatusText >>= getInnerHtml
+    statusText <- getStatus >>= getInnerHtml
     pure $ statusText /= p
 
 
@@ -241,10 +242,10 @@ checkRowsPerPageCustom = withSmallZipsOpened do
   rnd <- getRandom 10
 
   tableHtml <- getTable >>= getInnerHtml
-  let platform = platformFromConfig config
+  modifierKey <- getModifierKey
   sequence do
     leftClick input
-    sendSelectAll platform
+    selectAll modifierKey
     sendDelete
     sendKeys (show rnd)
     sendEnter
@@ -298,10 +299,10 @@ checkPagination = withSmallZipsOpened do
   checkRecord initialER "first page"
   checkRowContent config.explore.firstPageContent "first page"
   firstHtml <- getTable >>= getInnerHtml
-  let platform = platformFromConfig config
+  modifierKey <- getModifierKey
   sequence do
     leftClick input
-    sendSelectAll platform
+    selectAll modifierKey
     sendKeys config.explore.customPageNumber
     sendEnter
   afterTableReload firstHtml
