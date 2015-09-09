@@ -137,6 +137,13 @@ getInput =
   getConfig >>= _.explore >>> _.input >>>
   flip getElementByCss "there is no input in file list"
 
+waitTextField :: String -> Check Element
+waitTextField name =
+  waitExistentCss selector errorMessage
+    where
+    errorMessage = "There is no text field named \"" ++ name ++ "\""
+    selector = "[type='text'][name='" ++ name ++ "']"
+
 getAceInput :: Check Element
 getAceInput =
   getConfig >>= _.ace >>> _.textInput >>>

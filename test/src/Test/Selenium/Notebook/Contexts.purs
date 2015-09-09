@@ -155,7 +155,8 @@ withSearchCell = withCell makeSearchCell
 withQueryCell :: Context
 withQueryCell = withCell makeQueryCell
 
-
+withMarkdownCell :: Context
+withMarkdownCell = withCell makeMarkdownCell
 
 cellHasRun :: Check Boolean
 cellHasRun = do
