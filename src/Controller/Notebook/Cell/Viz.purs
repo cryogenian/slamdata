@@ -28,8 +28,9 @@ import Data.Array (range, zipWith, concat, replicate, filter, (!!), null, length
 import Data.Foldable (fold, foldl)
 import Data.Function (on)
 import Data.Int (toNumber)
-import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust)
+import Data.Maybe (Maybe(..), fromMaybe, maybe, isJust, isNothing)
 import Data.Maybe.Unsafe (fromJust)
+import Data.Monoid.Disj (runDisj, Disj(..))
 import Data.Time (Milliseconds(..))
 import Data.Tuple (Tuple(..), fst, snd)
 
@@ -178,8 +179,8 @@ configure r =
             (_cats %~ autoSelect) ..
             (_firstMeasures %~ autoSelect) ..
             (_cats.._variants .~ cats) ..
-            (_firstSeries.._variants .~ ((cats <-> p.cats) `onlyIfSelected` p.cats)) ..
-            (_secondSeries.._variants .~ ((cats <-> p.cats <-> p.firstSeries) `onlyIfSelected` p.firstSeries)) ..
+            (_firstSeries.._variants .~ (ifSelected [p.cats] (cats <-> p.cats))) ..
+            (_secondSeries.._variants .~ (ifSelected [p.cats, p.firstSeries] (cats <-> p.cats <-> p.firstSeries))) ..
             (_firstMeasures.._variants .~ (depends p.cats vals))
 
 
@@ -188,8 +189,8 @@ configure r =
             (_cats %~ autoSelect) ..
             (_firstMeasures %~ autoSelect) ..
             (_cats.._variants .~ cats) ..
-            (_firstSeries.._variants .~ ((cats <-> b.cats) `onlyIfSelected` b.cats)) ..
-            (_secondSeries.._variants .~ ((cats <-> b.cats <-> b.firstSeries) `onlyIfSelected` b.firstSeries)) ..
+            (_firstSeries.._variants .~ (ifSelected [b.cats] (cats <-> b.cats))) ..
+            (_secondSeries.._variants .~ (ifSelected [b.cats, b.firstSeries] (cats <-> b.cats <-> b.firstSeries))) ..
             (_firstMeasures.._variants .~ (depends b.cats vals))
 
 
@@ -197,10 +198,10 @@ configure r =
              (_dims %~ autoSelect) ..
              (_firstMeasures %~ autoSelect) ..
              (_dims.._variants .~ (times <> cats)) ..
-             (_firstSeries.._variants .~ ((cats <-> l.dims) `onlyIfSelected` l.dims)) ..
-             (_secondSeries.._variants .~ ((cats <-> l.dims <-> l.firstSeries) `onlyIfSelected` l.firstSeries)) ..
+             (_firstSeries.._variants .~ (ifSelected [l.dims] (cats <-> l.dims))) ..
+             (_secondSeries.._variants .~ (ifSelected [l.dims, l.firstSeries] (cats <-> l.dims <-> l.firstSeries))) ..
              (_firstMeasures.._variants .~ (depends l.dims vals)) ..
-             (_secondMeasures.._variants .~ ((depends l.dims $(vals <-> l.firstMeasures)) `onlyIfSelected` l.firstMeasures))
+             (_secondMeasures.._variants .~ (ifSelected [l.firstMeasures] (depends l.dims (vals <-> l.firstMeasures))))
 
       available = if null vals
                   then L.Nil
@@ -222,8 +223,10 @@ configure r =
     b = r ^._barConfiguration
     l = r ^._lineConfiguration
 
-    onlyIfSelected :: forall a. Array a -> Selection a -> Array a
-    onlyIfSelected lst sel = maybe [] (const lst) (sel ^._selection)
+    ifSelected :: forall a. Array (Selection a) -> Array a -> Array a
+    ifSelected sels lst = if runDisj $ fold $ map (Disj <<< isNothing <<< (^._selection)) sels
+                          then [ ]
+                          else lst
 
 updateOpts :: forall e. Cell -> I e
 updateOpts cell =
