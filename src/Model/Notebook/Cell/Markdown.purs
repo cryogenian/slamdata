@@ -48,6 +48,7 @@ encodeTextBox PlainText = encodeJson "plainText"
 encodeTextBox Date = encodeJson "date"
 encodeTextBox Time = encodeJson "time"
 encodeTextBox DateTime = encodeJson "dateTime"
+encodeTextBox Numeric = encodeJson "numeric"
 
 decodeTextBox :: Json -> Either String TextBoxType
 decodeTextBox j = do
@@ -57,6 +58,7 @@ decodeTextBox j = do
     "date" -> pure Date
     "time" -> pure Time
     "dateTime" -> pure DateTime
+    "numeric" -> pure Numeric
     _ -> Left "incorrect textbox type"
 
 instance encodeEncFormField :: EncodeJson EncFormField where

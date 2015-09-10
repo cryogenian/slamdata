@@ -206,7 +206,7 @@ mkPie r conf =
 
   extractName :: Series -> Array (Maybe String)
   extractName (PieSeries r) = extractOneDatum <$> (fromMaybe [] r.pieSeries."data")
-  extractname _ = []
+  extractName _ = []
 
   extractOneDatum :: ItemData -> Maybe String
   extractOneDatum (Dat r) = r.name

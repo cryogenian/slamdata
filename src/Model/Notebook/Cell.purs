@@ -245,7 +245,6 @@ instance encodeJsonCellContent :: EncodeJson CellContent where
       Query rec -> encodeJson rec
       Markdown rec -> encodeJson rec
       Visualize rec -> encodeJson rec
-      _ -> jsonEmptyObject
 
 instance decodeJsonExploreRec :: DecodeJson CellContent where
   decodeJson json = do
