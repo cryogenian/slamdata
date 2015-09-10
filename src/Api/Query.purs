@@ -25,6 +25,7 @@ import Control.Monad.Aff (Aff())
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
+import Control.MonadPlus (guard)
 import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (JArray(), Json(), JObject(), jsonEmptyObject, isArray, isObject, foldJson, toArray, toObject, toNumber, fromObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
@@ -85,11 +86,9 @@ count res = do
 port :: forall e. Resource -> Resource -> SQL ->
         StrMap VarMapValue ->
         Aff (RetryEffects (ajax :: AJAX | e)) JObject
-port res dest sql vars =
-  if not (isFile dest)
-  then pure empty
-  else do
-    result <- slamjax $ defaultRequest
+port res dest sql vars = do
+  guard $ isFile dest
+  result <- slamjax $ defaultRequest
             { method = POST
             , headers = [RequestHeader "Destination" $ resourcePath dest]
             , url = printPath
@@ -100,9 +99,20 @@ port res dest sql vars =
             , content = Just (templated res sql)
             }
 
-    either (throwError <<< error) pure $ content result.response
+  if not $ succeeded result.status
+    then throwError $ error $ readErr result.response
+    else
+    -- We expect result message to be valid json.
+    either (throwError <<< error) pure
+    $ jsonParser result.response >>= decodeJson
   where
-
+  readErr :: String -> String
+  readErr input =
+    case jsonParser input >>= decodeJson >>= (.? "error") of
+      -- All response is error text
+      Left _ -> input
+      -- Error is hided in json message, return only `error` field
+      Right err -> err
   -- TODO: This should be somewhere better.
   queryVars :: String
   queryVars = maybe "" makeQueryVars <<< uncons $ toList vars
@@ -112,13 +122,6 @@ port res dest sql vars =
 
   makeQueryVars { head = h, tail = t } =
     foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
-
-content :: forall a. (DecodeJson a) => String -> Either String a
-content input =
-  let json = jsonParser input >>= decodeJson
-  in case json of
-    Left err -> readError err input
-    Right json' -> pure json'
 
 readError :: forall a. String -> String -> Either String a
 readError msg input =

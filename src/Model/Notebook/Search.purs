@@ -125,8 +125,6 @@ range v v' s =
   forR v v' =
     fold ["(", s, " >= ", v, " AND ", s, " <= ", v', ")"]
 
-import Utils.Log
-
 qUnQ :: String -> String -> Value -> String
 qUnQ s op v = pars $
   joinWith " OR " $

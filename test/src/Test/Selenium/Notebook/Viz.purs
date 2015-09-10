@@ -285,7 +285,7 @@ getRandomOption el = do
               then errorMsg "empty option list"
               else pure x
 fillSelect :: Element -> String -> Check Unit
-fillSelect el txt = 
+fillSelect el txt =
   sequence do
     leftClick el
     sendKeys txt

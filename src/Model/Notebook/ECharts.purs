@@ -361,7 +361,6 @@ toSemanthic :: Json -> Map JCursor Semanthic
 toSemanthic j = fromList $ L.catMaybes ((traverse analyze) <$> toPrims j)
 
 
-import Utils.Log
 toSemanthic' :: JArray -> Map JCursor (L.List (Maybe Semanthic))
 toSemanthic' arr =
   step initial mapLst

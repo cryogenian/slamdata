@@ -28,7 +28,7 @@ randomIn fa =
                           else Tuple p $ Just b
 
 
--- | same as `randomIn` but returns `mempty` instead of `Nothing` 
+-- | same as `randomIn` but returns `mempty` instead of `Nothing`
 randomInM :: forall a m f e.
                 (Foldable f, Monad m, MonadEff (random :: RANDOM|e) m, Monoid a) =>
                 f a -> m a
