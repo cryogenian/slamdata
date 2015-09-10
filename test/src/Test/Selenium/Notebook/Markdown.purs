@@ -22,63 +22,116 @@ import Control.Apply ((*>))
 import Control.Monad.Eff.Random (randomInt)
 import Control.Monad.Eff.Class (liftEff)
 import Data.List (length, List(..), fromList)
-import Data.String (split)
+import qualified Data.String.Regex (Regex(), test, regex, noFlags) as R
 import Data.Maybe (isJust, isNothing, Maybe(..), maybe)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Traversable (traverse)
 
-import Selenium.Types (Element())
-import Selenium.Monad (sequence, getAttribute, clearEl)
+import Selenium.Types (Element(), ControlKey())
+import Selenium.Monad (sequence, getText, getAttribute, clearEl)
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Key (shiftKey)
+import Selenium.MouseButton (leftButton)
 
 import Test.Config
-import Test.Platform
-import Test.Selenium.Monad (Check())
+import Test.Selenium.ActionSequence (selectAll)
+import Test.Selenium.Monad (Check(), getConfig, getModifierKey)
 import Test.Selenium.Log (sectionMsg, successMsg, errorMsg)
-import Test.Selenium.Common (await, waitTime)
-import Test.Selenium.Notebook.Getters (getPlayButton, waitTextField)
-import Test.Selenium.Notebook.Contexts (Context(), deleteAllCells, withMarkdownCell, makeQueryCell)
+import Test.Selenium.Common (await, waitTime, waitExistentCss)
+import Test.Selenium.Notebook.Getters (getPlayButton, waitTextField, getStatus)
+import Test.Selenium.Notebook.Contexts (Context(), deleteAllCells, insertMdCell)
 import qualified Test.Selenium.Notebook.Common as C
 
 import Utils (s2i)
 
--- We to use a Sequence instead of a String as sendKey "(" doesn't show up in the
+-- We use a Sequence instead of a String as sendKey "(" doesn't show up in the
 -- markdown cell.
-provideAndPlayMarkdown :: Sequence Unit -> Check Unit
-provideAndPlayMarkdown markdownSequence = do
-  playMarkdownButton <- getPlayButton
-  sequence do
-    markdownSequence
-    leftClick playMarkdownButton
+provideMd :: Sequence Unit -> Check Unit
+provideMd mdSequence = focusMdField *> sequence mdSequence
 
-checkValue :: String -> String -> Element -> Check Unit
-checkValue expected error element =
+focusMdField :: Check Unit
+focusMdField = do
+  config <- getConfig
+  let visibleMdFieldSelector = config.markdown.visibleMdFieldSelector
+  visibleMdField <- waitExistentCss visibleMdFieldSelector "Error: Couldn't find markdown field."
+  sequence do
+    mouseDown leftButton visibleMdField
+    mouseUp leftButton visibleMdField
+
+mdForTextField :: String -> Sequence Unit
+mdForTextField name = sendKeys $ name ++ " = _____"
+
+mdForTextFieldWithPlaceholder :: String -> String -> Sequence Unit
+mdForTextFieldWithPlaceholder placeholder name = do
+  sendKeys $ name ++ " = _____"
+  keyDown shiftKey
+  sendKeys "9"
+  keyUp shiftKey
+  sendKeys placeholder
+  keyDown shiftKey
+  sendKeys "0"
+  keyUp shiftKey
+
+changeMd :: Sequence Unit -> Check Unit
+changeMd mdSequence = do
+  focusMdField
+  modifierKey <- getModifierKey
+  sequence $ selectAll modifierKey *> mdSequence
+
+playMd :: Check Unit
+playMd = getPlayButton >>= sequence <<< leftClick
+
+expectElValue :: String -> String -> Element -> Check Unit
+expectElValue error expected element =
   await error $ (eq expected) <$> getAttribute element "value"
 
-createTextField :: String -> Check Unit
-createTextField name = withMarkdownCell do
-  provideAndPlayMarkdown $ sendKeys $ name ++ " = _____"
-  waitTextField name >>= checkValue "" "Text field wasn't empty"
+expectElTextMatches :: String -> R.Regex -> Element -> Check Unit
+expectElTextMatches error expected element =
+  await error $ (R.test expected) <$> getText element
 
-createTextFieldWithPlaceholder :: String -> String -> Check Unit
-createTextFieldWithPlaceholder name placeholder = withMarkdownCell do
-  provideAndPlayMarkdown do
-    sendKeys $ name ++ " = _____"
-    keyDown shiftKey
-    sendKeys "9"
-    keyUp shiftKey
-    sendKeys placeholder
-    keyDown shiftKey
-    sendKeys "0"
-  waitTextField name >>= checkValue placeholder "Text field didn't contain placeholder"
+expectTextFieldValue :: String -> String -> String -> Check Unit
+expectTextFieldValue error expected name =
+  waitTextField name >>= expectElValue error expected
+
+expectFinishedStatus :: String -> Check Unit
+expectFinishedStatus error =
+  getStatus >>= expectElTextMatches error (R.regex "Finished: took ([0-9]*)ms." R.noFlags)
 
 test :: Check Unit
 test = do
-  sectionMsg "Markdown cell: Create text field"
-  createTextField "sport"
-  successMsg "Ok, text field created"
+  config <- getConfig
+  let fieldValue = config.markdown.fieldValue
+  let fieldName = config.markdown.fieldName
+  let altFieldValue = config.markdown.altFieldValue
+  let altFieldName = config.markdown.altFieldName
 
-  sectionMsg "Markdown cell: Create text field with placeholder"
-  createTextFieldWithPlaceholder "sport" "Bobsleigh"
-  successMsg "Ok, text field with placeholder created"
+  sectionMsg "Markdown cell: Provide and play markdown" *> do
+    deleteAllCells
+
+    insertMdCell
+    provideMd $ mdForTextField fieldName
+    playMd
+    expectFinishedStatus "Error: Creating text field didn't finish."
+    expectTextFieldValue "Error: Text field wasn't empty." "" fieldName
+    deleteAllCells
+
+    insertMdCell
+    provideMd $ mdForTextFieldWithPlaceholder fieldValue fieldName
+    playMd
+    expectFinishedStatus "Error: Creating text field with placeholder didn't finish."
+    expectTextFieldValue "Error: Text field didn't contain placeholder." fieldValue fieldName
+    deleteAllCells
+
+    successMsg "Ok, succesfully provided and played markdown."
+
+  sectionMsg "Markdown cell: Change and play markdown" *> do
+    deleteAllCells
+
+    insertMdCell
+    provideMd $ mdForTextField fieldName
+    playMd
+    changeMd $ mdForTextFieldWithPlaceholder altFieldValue altFieldName
+    playMd
+    expectTextFieldValue "Error: Playing changed markdown didn't work." altFieldValue altFieldName
+
+    successMsg "Ok, successfully changed and played markdown."

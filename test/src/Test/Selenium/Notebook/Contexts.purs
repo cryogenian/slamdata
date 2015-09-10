@@ -79,7 +79,6 @@ makeCell sel = do
   count <- length <$> getCells
   sequence $ leftClick exploreBtn
   await "Cell has not been added" $ cellAdded count
-  successMsg "Ok, cell has been added"
   where
   cellAdded old = do
     new <- length <$> getCells
@@ -91,8 +90,8 @@ makeExploreCell = getConfig >>= _.newCellMenu >>> _.exploreButton >>> makeCell
 makeSearchCell :: Check Unit
 makeSearchCell = getConfig >>= _.newCellMenu >>> _.searchButton >>> makeCell
 
-makeMarkdownCell :: Check Unit
-makeMarkdownCell = getConfig >>= _.newCellMenu >>> _.mdButton >>> makeCell
+insertMdCell :: Check Unit
+insertMdCell = getConfig >>= _.newCellMenu >>> _.mdButton >>> makeCell
 
 makeQueryCell :: Check Unit
 makeQueryCell = getConfig >>= _.newCellMenu >>> _.queryButton >>> makeCell
@@ -155,12 +154,9 @@ withSearchCell = withCell makeSearchCell
 withQueryCell :: Context
 withQueryCell = withCell makeQueryCell
 
-withMarkdownCell :: Context
-withMarkdownCell = withCell makeMarkdownCell
-
 cellHasRun :: Check Boolean
 cellHasRun = do
-  statusText <- getStatusText >>= getInnerHtml
+  statusText <- getStatus >>= getInnerHtml
   embed <- attempt getEmbedButton
   pure (statusText /= "" && isRight embed)
 

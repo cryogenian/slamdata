@@ -156,7 +156,7 @@
         "evalLine": ".cell-eval-line",
         "showMessages": ".cell-controls button[title='Show messages']",
         "hideMessages": ".cell-controls button[title='Hide messages']",
-        "statusText": ".status-text",
+        "status": ".status-text",
         "embedBox": ".embed-box",
         "exploreFlag": "<div class=\"cell-name\">Explore</div>",
         "searchFlag": "<div class=\"cell-name\">Search</div>",
@@ -258,6 +258,13 @@
         "smallZipsAll": "select * from \"/test-mount/testDb/smallZips\" where true",
         "flatVizAll": "select * from \"/test-mount/testDb/flatViz\" where true",
         "flatVizMeasures": "select measureOne, measureTwo from \"test-mount/testDb/flatViz\" where true"
+    },
+    "markdown": {
+        "fieldValue": "Bobsleigh",
+        "fieldName": "sport",
+        "altFieldValue": "AUT",
+        "altFieldName": "country",
+        "visibleMdFieldSelector": ".ace_scroller"
     },
     "viz": {
         "heightInput": "input.chart-configure-height",

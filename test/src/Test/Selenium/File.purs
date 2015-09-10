@@ -49,6 +49,7 @@ import qualified Data.Char as Ch
 import qualified Data.StrMap as SM
 import qualified Data.Set as S
 import qualified Config as SDCfg
+import Test.Selenium.ActionSequence (selectAll, copy, paste, undo, sendDelete)
 import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
@@ -145,20 +146,20 @@ mountDatabaseWithMountConfig mountConfig = do
   saveButton <- getElementByCss config.configureMount.saveButton "no save button"
 
   let connectionUri = "mongodb://" ++ mountConfig.host ++ ":" ++ show mountConfig.port ++ "/" ++ config.database.name
-  let platform = platformFromConfig config
+  modifierKey <- getModifierKey
 
   sequence $ do
     -- a strange hack follows to get the uri onto the clipboard, since the uri
     -- field cannot be edited except by pasting.
     leftClick nameField
     sendKeys connectionUri
-    sendSelectAll platform
-    sendCopy platform
-    sendSelectAll platform
+    selectAll modifierKey
+    copy modifierKey
+    selectAll modifierKey
     sendKeys config.mount.name
 
     leftClick uriField
-    sendPaste platform
+    paste modifierKey
 
     leftClick saveButton
 
@@ -248,12 +249,12 @@ checkConfigureMount = do
   -- make sure a no-op edit doesn't result in a validation error
   usernameField <- getElementByCss config.configureMount.usernameField "no usernameField field"
 
-  let platform = platformFromConfig config
+  modifierKey <- getModifierKey
   sequence do
     leftClick usernameField
-    sendSelectAll platform
+    selectAll modifierKey
     sendKeys "hello"
-    sendUndo platform
+    undo modifierKey
 
   getElementByCss config.configureMount.saveButton "no save button"
     >>= isEnabled
@@ -733,10 +734,10 @@ moveDelete msg setUp src tgt = do
   editNameField :: Element -> Check Unit
   editNameField nameField = do
     config <- getConfig
-    let platform = platformFromConfig config
+    modifierKey <- getModifierKey
     sequence do
       leftClick nameField
-      sendSelectAll platform
+      selectAll modifierKey
       sendDelete
       sendKeys tgt
 

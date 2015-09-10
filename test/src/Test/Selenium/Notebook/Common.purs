@@ -72,7 +72,7 @@ checkInitial custom = do
   successMsg "Ok, there is no failures"
   getElementByCss config.cell.evalLine "There is no eval line, but should"
   successMsg "Ok, there is eval line"
-  status <- getStatusText
+  status <- getStatus
   successMsg "Ok, status text exists"
   html <- getInnerHtml status
   if html /= ""

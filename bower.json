@@ -51,7 +51,7 @@
     "purescript-simple-dom": "6358414013eb3106d695e3e19488609f82d903e9",
     "purescript-these": "~0.3.0",
     "purescript-uri": "~0.1.0-rc.1",
-    "purescript-webdriver": "~0.6.0",
+    "purescript-webdriver": "git://github.com/beckyconning/purescript-webdriver.git#9763581c1ec845453229132611d2f374e7cd6de6",
     "purescript-zclipboard": "~0.2.0"
   },
   "resolutions": {
@@ -65,6 +65,11 @@
     "purescript-lens": "^0.8.0",
     "purescript-parsing": "~0.5.1",
     "purescript-datetime": "~0.9.0",
-    "purescript-sets": "^0.5.0"
+    "purescript-sets": "^0.5.0",
+    "purescript-webdriver": "9763581c1ec845453229132611d2f374e7cd6de6"
+  },
+  "devDependencies": {
+    "purescript-platform": "d26f356940661f1d1f4790f95f1ca934f55622e7",
+    "purescript-webdriver": "~0.6.1"
   }
 }

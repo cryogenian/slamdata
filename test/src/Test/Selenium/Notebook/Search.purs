@@ -29,7 +29,8 @@ import Selenium.Types
 import Selenium.ActionSequence (leftClick, sendKeys)
 import Selenium.Monad
 
-import Test.Config (SearchQueryConfig(), platformFromConfig)
+import Test.Config (SearchQueryConfig())
+import Test.Selenium.ActionSequence (selectAll, sendDelete)
 import Test.Selenium.Monad
 import Test.Selenium.Log
 import Test.Selenium.Common
@@ -202,7 +203,7 @@ checkOutputLabel :: Check Unit
 checkOutputLabel = do
   config <- getConfig
   dummy <- liftEff $ randomInt 0 20
-  replicateM dummy makeMarkdownCell
+  replicateM dummy insertMdCell
   makeSearchCell
   deleteCells getMdCells
   fileSearched config.explore.smallZips config.searchCell.allQuery do
@@ -246,10 +247,10 @@ checkQuery conf = withSmallZipsSearchedAll do
     else do
     afterTableChanged (getFastBackward >>= sequence <<< leftClick)
 
-  let platform = platformFromConfig config
+  modifierKey <- getModifierKey
   afterTableChanged $ sequence do
     leftClick ip
-    sendSelectAll platform
+    selectAll modifierKey
     sendDelete
     sendKeys conf.query
     leftClick btn

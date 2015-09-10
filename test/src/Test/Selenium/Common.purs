@@ -23,13 +23,6 @@ module Test.Selenium.Common
   , notebookLoaded
   , modalShown
   , modalDismissed
-  , sendSelectAll
-  , sendCopy
-  , sendPaste
-  , sendUndo
-  , sendDelete
-  , sendEnter
-  , sendKeyCombo
   , parseToInt
   , filterByContent
   , filterByPairs
@@ -44,6 +37,7 @@ module Test.Selenium.Common
   where
 
 import Prelude
+import Control.Apply ((*>))
 import Data.Either (either, isRight, Either(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (traverse_)
@@ -64,7 +58,6 @@ import Selenium.Types
 import Selenium.Monad
 import qualified Selenium.Combinators as Sc
 
-import Test.Platform
 import Test.Selenium.Log
 import Test.Selenium.Monad
 
@@ -124,7 +117,6 @@ checkElements :: SM.StrMap String -> Check Unit
 checkElements m = do
   config <- getConfig
   traverse_ traverseFn $ SM.toList m
-  successMsg "all elements here, page is loaded"
   where
   traverseFn :: Tuple String String -> Check Unit
   traverseFn (Tuple key selector) = do
@@ -171,40 +163,6 @@ modalDismissed = do
     byCss config.modal
       >>= findElement
       >>= maybe (pure true) (map not <<< isDisplayed)
-
-sendSelectAll :: Platform -> Sequence Unit
-sendSelectAll p = case p of
-  Mac -> sendKeyCombo [commandKey] "a"
-  _ -> sendKeyCombo [controlKey] "a"
-
-sendCopy :: Platform -> Sequence Unit
-sendCopy p = case p of
-  Mac -> sendKeyCombo [commandKey] "c"
-  _ -> sendKeyCombo [controlKey] "c"
-
-sendPaste :: Platform -> Sequence Unit
-sendPaste p = case p of
-  Mac -> sendKeyCombo [commandKey] "v"
-  _ -> sendKeyCombo [controlKey] "v"
-
-sendDelete :: Sequence Unit
-sendDelete =
-  sendKeys $ Str.fromChar $ Ch.fromCharCode 57367
-
-sendEnter :: Sequence Unit
-sendEnter =
-  sendKeys $ Str.fromChar $ Ch.fromCharCode 13
-
-sendUndo :: Platform -> Sequence Unit
-sendUndo p = case p of
-  Mac -> sendKeyCombo [commandKey] "z"
-  _ -> sendKeyCombo [controlKey] "z"
-
-sendKeyCombo :: Array ControlKey -> String -> Sequence Unit
-sendKeyCombo ctrlKeys str = do
-  traverse_ keyDown ctrlKeys
-  sendKeys str
-  traverse_ keyUp ctrlKeys
 
 parseToInt :: String -> Check Int
 parseToInt str =

@@ -17,17 +17,28 @@ limitations under the License.
 module Test.Selenium.Monad where
 
 import Prelude
-import Data.List
-import Test.Config (Config())
-import Control.Monad.Reader.Trans
 import Control.Monad.Reader.Class
+import Control.Monad.Reader.Trans
+import Control.Monad.Trans (lift)
+import Control.Monad.Eff.Class (liftEff)
+import Data.List
+import Data.String (contains)
+import Platform (getPlatform, platformInfo, PLATFORM())
 import Selenium.Monad
+import Selenium.Types (ControlKey())
+import Selenium.Key (metaKey, controlKey)
+import Test.Config (Config())
 
-type Check a = Selenium () (config :: Config) a
-
+type Check a = Selenium (platform :: PLATFORM) (config :: Config) a
 
 -- READER
 getConfig :: Check Config
 getConfig = _.config <$> ask
 
+getModifierKey :: Check ControlKey
+getModifierKey = lift $ liftEff $ getPlatform >>= pluckFamily >>> modifierKey >>> return
+  where
+  pluckFamily = platformInfo >>> _.os >>> _.family
+  modifierKey "Darwin" = metaKey
+  modifierKey _ = controlKey
 
