@@ -58,7 +58,6 @@ import Model.Notebook.Cell.Search (SearchRec(), _buffer, initialSearchRec)
 import Api.Fs (delete)
 import Api.Query (fields, port, sample, templated)
 
-import Utils.Log
 runSearch :: forall eff. Cell -> I eff
 runSearch cell =
   either (const errorInParse) go $ mkQuery $ toLower buffer
