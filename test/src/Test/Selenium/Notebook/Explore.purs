@@ -45,7 +45,6 @@ import qualified Data.String.Regex as R
 import qualified Data.String as S
 
 
-import Utils.Log
 import qualified Config as SDConfig
 import qualified Test.Selenium.Notebook.FileList as FL
 import qualified Test.Selenium.Notebook.Common as C

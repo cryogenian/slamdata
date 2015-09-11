@@ -257,7 +257,8 @@
     "query": {
         "smallZipsAll": "select * from \"/test-mount/testDb/smallZips\" where true",
         "flatVizAll": "select * from \"/test-mount/testDb/flatViz\" where true",
-        "flatVizMeasures": "select measureOne, measureTwo from \"test-mount/testDb/flatViz\" where true"
+        "flatVizMeasures": "select measureOne, measureTwo from \"test-mount/testDb/flatViz\" where true",
+        "flatVizOneOption": "select seriesOne, measureOne from \"/test-mount/testDb/flatViz\" where true"
     },
     "markdown": {
         "fieldValue": "Bobsleigh",
@@ -266,7 +267,7 @@
         "altFieldName": "country",
         "visibleMdFieldSelector": ".ace_scroller"
     },
-    "viz": {
+    "vizSelectors": {
         "heightInput": "input.chart-configure-height",
         "widthInput": "input.chart-configure-width",
         "canvas": "canvas",
@@ -347,6 +348,32 @@
                 "dimension": [ ],
                 "seriesOne": ["Select axis source"],
                 "seriesTwo": ["Select axis source" ] 
+            }
+        },
+        "flatVizOneOption": {
+            "pie": {
+                "measureOne": [".measureOne"],
+                "measureTwo": [ ],
+                "category": [".seriesOne"],
+                "seriesOne": ["Select axis source"],
+                "seriesTwo": ["Select axis source"],
+                "dimension": []
+            },
+            "bar": {
+                "measureOne": [".measureOne"],
+                "measureTwo": [],
+                "category": [".seriesOne"],
+                "seriesOne": ["Select axis source"],
+                "seriesTwo": ["Select axis source"],
+                "dimension": []
+            },
+            "line": {
+                "measureOne": [".measureOne"],
+                "measureTwo": ["Select axis source"],
+                "dimension": [".seriesOne"],
+                "category": [],
+                "seriesOne": ["Select axis source"],
+                "seriesTwo": ["Select axis source"]
             }
         }
     },

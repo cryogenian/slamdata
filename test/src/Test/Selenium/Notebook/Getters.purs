@@ -35,7 +35,6 @@ import Test.Config
 import qualified Data.String.Regex as R
 import Selenium.Monad
 
-
 newCellMenuExpanded :: Check Boolean
 newCellMenuExpanded = do
   config <- getConfig
@@ -115,7 +114,7 @@ waitNextVizCell = do
 
 waitCanvas :: Check Element
 waitCanvas = do
-  getConfig >>= _.viz >>> _.canvas >>>
+  getConfig >>= _.vizSelectors >>> _.canvas >>>
   flip waitExistentCss "There is no canvas"
 
 fileListVisible :: Check Boolean
@@ -126,12 +125,12 @@ fileListVisible =
 
 waitVizHeightInput :: Check Element
 waitVizHeightInput =
-  getConfig >>= _.viz >>> _.heightInput >>>
+  getConfig >>= _.vizSelectors >>> _.heightInput >>>
   flip waitExistentCss "There is no viz height input"
 
 waitVizWidthInput :: Check Element
 waitVizWidthInput =
-  getConfig >>= _.viz >>> _.widthInput >>>
+  getConfig >>= _.vizSelectors >>> _.widthInput >>>
   flip waitExistentCss "There is no viz width input"
 
 getInput :: Check Element
@@ -274,8 +273,6 @@ getRowCount = do
   pc <- getPageSizeSelect >>= flip getAttribute "value" >>= parseToInt
   pure {table: tc, pager: pc}
 
-import Utils.Log
-
 getEnabledRecord :: Check EnabledRecord
 getEnabledRecord = do
     ff <- getFastForward
@@ -302,9 +299,9 @@ getChartEditors :: Check ChartEditors
 getChartEditors = do
   config <- getConfig
 
-  pie <- waitExistentCss config.viz.pieEditor "There is no pie editor"
-  line <- waitExistentCss config.viz.lineEditor "There is no line editor"
-  bar <- waitExistentCss  config.viz.barEditor "There is no bar editor"
+  pie <- waitExistentCss config.vizSelectors.pieEditor "There is no pie editor"
+  line <- waitExistentCss config.vizSelectors.lineEditor "There is no line editor"
+  bar <- waitExistentCss  config.vizSelectors.barEditor "There is no bar editor"
 
   pieDisplayed <- isDisplayed pie
   barDisplayed <- isDisplayed bar
@@ -342,17 +339,17 @@ pieShown es =
 
 getPieTypeIcon :: Check Element
 getPieTypeIcon = do
-  getConfig >>= _.viz >>> _.pieIcon
+  getConfig >>= _.vizSelectors >>> _.pieIcon
     >>> flip waitExistentCss "There is no pie type switcher"
 
 getLineTypeIcon :: Check Element
 getLineTypeIcon = do
-  getConfig >>= _.viz >>> _.lineIcon
+  getConfig >>= _.vizSelectors >>> _.lineIcon
     >>> flip waitExistentCss "There is no line type switcher"
 
 getBarTypeIcon :: Check Element
 getBarTypeIcon = do
-  getConfig >>= _.viz >>> _.barIcon
+  getConfig >>= _.vizSelectors >>> _.barIcon
     >>> flip waitExistentCss "There is no bar type switcher"
 
 
@@ -379,12 +376,12 @@ getChartOptions el = do
        , seriesOne: _
        , seriesTwo: _
        }
-    <$> optionTxts config.viz.measureOne
-    <*> optionTxts config.viz.measureTwo
-    <*> optionTxts config.viz.category
-    <*> optionTxts config.viz.dimension
-    <*> optionTxts config.viz.seriesOne
-    <*> optionTxts config.viz.seriesTwo
+    <$> optionTxts config.vizSelectors.measureOne
+    <*> optionTxts config.vizSelectors.measureTwo
+    <*> optionTxts config.vizSelectors.category
+    <*> optionTxts config.vizSelectors.dimension
+    <*> optionTxts config.vizSelectors.seriesOne
+    <*> optionTxts config.vizSelectors.seriesTwo
   pure $ ChartOptions p
   where
   optionTxts sel =
@@ -396,43 +393,43 @@ getChartOptions el = do
 
 
 getCurrentChartOptions :: Check ChartOptions
-getCurrentChartOptions =
+getCurrentChartOptions = waiter $
   map editor getChartEditors >>= getChartOptions
 
 
 getCurrentEditorChild :: String -> Check Element
-getCurrentEditorChild sel = do
+getCurrentEditorChild sel = waiter do
   edit <- map editor getChartEditors
   byCss sel >>= childExact edit
 
 
 getCategoryInput :: Check Element
 getCategoryInput =
-  getConfig >>= _.viz >>> _.category
+  getConfig >>= _.vizSelectors >>> _.category
   >>> getCurrentEditorChild
 
 getMeasureOneInput :: Check Element
 getMeasureOneInput =
-  getConfig >>= _.viz >>> _.measureOne
+  getConfig >>= _.vizSelectors >>> _.measureOne
   >>> getCurrentEditorChild
 
 getMeasureTwoInput :: Check Element
 getMeasureTwoInput =
-  getConfig >>= _.viz >>> _.measureTwo
+  getConfig >>= _.vizSelectors >>> _.measureTwo
   >>> getCurrentEditorChild
 
 getDimensionInput :: Check Element
 getDimensionInput =
-  getConfig >>= _.viz >>> _.dimension
+  getConfig >>= _.vizSelectors >>> _.dimension
   >>> getCurrentEditorChild
 
 getSeriesOneInput :: Check Element
 getSeriesOneInput =
-  getConfig >>= _.viz >>> _.seriesOne
+  getConfig >>= _.vizSelectors >>> _.seriesOne
   >>> getCurrentEditorChild
 
 getSeriesTwoInput :: Check Element
 getSeriesTwoInput =
-  getConfig >>= _.viz >>> _.seriesTwo
+  getConfig >>= _.vizSelectors >>> _.seriesTwo
   >>> getCurrentEditorChild
 

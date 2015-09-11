@@ -215,25 +215,26 @@ type Config =
   , query :: { smallZipsAll :: String
              , flatVizAll :: String
              , flatVizMeasures :: String
+             , flatVizOneOption :: String
              }
-  , viz :: { heightInput :: String
-           , widthInput :: String
-           , canvas :: String
-           , category :: String
-           , measureOne :: String
-           , measureTwo :: String
-           , seriesOne :: String
-           , seriesTwo :: String
-           , dimension :: String
-           , aggregation :: String
-           , barIcon :: String
-           , lineIcon :: String
-           , pieIcon :: String
-           , pieEditor :: String
-           , lineEditor :: String
-           , barEditor :: String
-           , alert :: String
-           }
+  , vizSelectors :: { heightInput :: String
+                    , widthInput :: String
+                    , canvas :: String
+                    , category :: String
+                    , measureOne :: String
+                    , measureTwo :: String
+                    , seriesOne :: String
+                    , seriesTwo :: String
+                    , dimension :: String
+                    , aggregation :: String
+                    , barIcon :: String
+                    , lineIcon :: String
+                    , pieIcon :: String
+                    , pieEditor :: String
+                    , lineEditor :: String
+                    , barEditor :: String
+                    , alert :: String
+                    }
   , markdown :: { fieldValue :: String
                 , fieldName :: String
                 , altFieldValue :: String
@@ -245,6 +246,10 @@ type Config =
                                   , line :: ChartOptions
                                   , bar :: ChartOptions
                                   }
+                  , flatVizOneOption :: { pie :: ChartOptions
+                                        , line :: ChartOptions
+                                        , bar :: ChartOptions
+                                        }
                   }
   , version :: String
   }
