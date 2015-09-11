@@ -6,7 +6,7 @@
     "Gary Burgess <gary@slamdata.com>"
   ],
   "description": "The web-based front-end for SlamData.",
-  "license": "AGPL3",
+  "license": "Apache-2.0",
   "ignore": [
     "**/.*",
     "node_modules",

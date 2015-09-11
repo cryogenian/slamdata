@@ -307,7 +307,7 @@
                 ],
                 "dimension": [ ],
                 "seriesOne": ["Select axis source"],
-                "seriesTwo": ["Select axis source" ] 
+                "seriesTwo": ["Select axis source" ]
             },
             "line": {
                 "measureOne": [
@@ -327,7 +327,7 @@
                     ".seriesFour"
                 ],
                 "seriesOne": ["Select axis source"],
-                "seriesTwo": ["Select axis source" ] 
+                "seriesTwo": ["Select axis source" ]
             },
             "bar":  {
                 "measureOne": [
@@ -347,7 +347,7 @@
                 ],
                 "dimension": [ ],
                 "seriesOne": ["Select axis source"],
-                "seriesTwo": ["Select axis source" ] 
+                "seriesTwo": ["Select axis source" ]
             }
         },
         "flatVizOneOption": {
@@ -377,5 +377,5 @@
             }
         }
     },
-    "version": "2.1.9"
+    "version": "2.1.11"
 }
