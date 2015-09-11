@@ -36,8 +36,6 @@ import Selenium.Key
 import Selenium.Monad
 import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust)
 
-
-import Utils.Log
 import Test.Config
 import Driver.File.Routing (Routes(..), routing)
 import Driver.File.Search (searchPath)

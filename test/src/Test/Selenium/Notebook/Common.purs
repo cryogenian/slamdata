@@ -44,8 +44,6 @@ import Halogen.HTML.Renderer.String (renderHTMLToString)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
 
-import Utils.Log
-
 checkNextCells :: SM.StrMap String -> Check Unit
 checkNextCells m = do
   traverse_ traverseFn $ SM.toList m

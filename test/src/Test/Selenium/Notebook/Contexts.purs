@@ -261,6 +261,10 @@ withFlatVizMeasures :: Context
 withFlatVizMeasures action =
   getConfig >>= _.query >>> _.flatVizMeasures >>> flip withChart action
 
+withFlatVizOneOption :: Context
+withFlatVizOneOption action =
+  getConfig >>= _.query >>> _.flatVizOneOption >>> flip withChart action
+
 tableChanged :: String -> Check Boolean
 tableChanged old = do
   html <- getTable >>= getInnerHtml

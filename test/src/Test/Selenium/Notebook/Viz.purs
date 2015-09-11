@@ -24,9 +24,9 @@ import Data.List (length, List(..), fromList, filter, null, (!!))
 import Data.Maybe (isJust, isNothing, Maybe(..), maybe, fromMaybe)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Traversable (traverse)
+import Data.Foldable (foldl)
 import Data.Monoid (mempty)
 import Data.Function (on)
-
 import qualified Data.Set as S
 
 import Selenium.Types
@@ -41,9 +41,9 @@ import Test.Selenium.Common
 import Test.Selenium.Notebook.Getters
 import Test.Selenium.Notebook.Contexts
 import qualified Test.Selenium.Notebook.Common as C
+import qualified Config as SDConfig
 
 import Utils (s2i)
-import Utils.Log
 import Utils.Random
 
 checkNextVizCell :: Check Unit
@@ -136,7 +136,7 @@ checkSwitchers = withFlatVizChart do
 checkAlert :: Check Unit
 checkAlert = withFlatVizMeasures do
   config <- getConfig
-  waitExistentCss config.viz.alert "There is no alert but should"
+  waitExistentCss config.vizSelectors.alert "There is no alert but should"
   successMsg "ok, alert found"
 
 checkOptions :: Check Unit
@@ -269,9 +269,15 @@ filterAndGetValue parent child msg = do
 
 getSelectValue :: Element -> Check String
 getSelectValue el = do
-  options <- optionTxts el
   val <- getAttribute el "value"
-  pure $ fromMaybe mempty $ s2i val >>= (options !!)
+  getOptions (pure el) >>= foldl (foldFn val) (pure mempty)
+  where
+  foldFn :: String -> Check String -> Element -> Check String
+  foldFn selectedVal mStr el = do
+    val <- getAttribute el "value"
+    if val == selectedVal
+      then getInnerHtml el
+      else mStr
 
 getRandomOption :: Element -> Check String
 getRandomOption el = do
@@ -294,7 +300,140 @@ fillSelect el txt =
 optionTxts :: Element -> Check (List String)
 optionTxts el = getOptions (pure el) >>= traverse getInnerHtml
 
+checkOptionAutoSelect :: Check Unit
+checkOptionAutoSelect = do
+  config <- getConfig
+  withFlatVizOneOption do
+    switchToPie
+    waitPieOrBarFullyDisabled "bar"
+    pOpts <- getCurrentChartOptions
+    assertBoolean "Error: incorrect pie options"
+      $ pOpts == config.vizOptions.flatVizOneOption.pie
 
+    switchToBar
+    waitPieOrBarFullyDisabled "pie"
+    bOpts <- getCurrentChartOptions
+    assertBoolean "Error: incorrect bar options"
+      $ bOpts == config.vizOptions.flatVizOneOption.bar
+
+    switchToLine
+    waitForDisabled "line"
+      $ [ getSeriesOneInput
+        , getSeriesTwoInput
+        , getDimensionInput
+        , getMeasureOneInput
+        , getMeasureTwoInput
+        ]
+    lOpts <- getCurrentChartOptions
+    assertBoolean "Error: incorrect line options"
+      $ lOpts == config.vizOptions.flatVizOneOption.line
+  successMsg "Ok, options are correct when there is one series and one measure"
+  where
+  waitForDisabled msg getters =
+    await ("Error: Incorrect states of selects, they must be disabled (" <> msg <> ")")
+    $ foldl (\b x -> conj <$> b <*> (map not $ x >>= isEnabled)) (pure true)
+    $ getters
+  waitPieOrBarFullyDisabled msg =
+    waitForDisabled msg
+    $ [ getSeriesOneInput
+      , getSeriesTwoInput
+      , getMeasureOneInput
+      , getCategoryInput
+      ]
+
+checkOptionSave :: Check Unit
+checkOptionSave = do
+  checkOptionSaveBarOrPie switchToBar "bar"
+  checkOptionSaveBarOrPie switchToPie "pie"
+  checkOptionSaveLine
+
+checkOptionSaveLine :: Check Unit
+checkOptionSaveLine = withFlatVizChart do
+  switchToLine
+  dimension <- getDimensionInput
+  measureOne <- getMeasureOneInput
+  measureTwo <- getMeasureTwoInput
+  seriesOne <- getSeriesOneInput
+  seriesTwo <- getSeriesTwoInput
+
+  valueDimension <- filterAndGetValue dimension seriesOne "dimension"
+  valueSeriesOne <- filterAndGetValue seriesOne seriesTwo "series"
+  valueSeriesTwo <- getRandomOption seriesTwo
+  fillSelect seriesTwo valueSeriesTwo
+  valueMeasureOne <- filterAndGetValue measureOne measureTwo "measure"
+  valueMeasureTwo <- getRandomOption measureTwo
+  fillSelect measureTwo valueMeasureTwo
+
+  let assertion = do
+        d <- assertSelected getDimensionInput valueDimension
+        m1 <- assertSelected getMeasureOneInput valueMeasureOne
+        m2 <- assertSelected getMeasureTwoInput valueMeasureTwo
+        s1 <- assertSelected getSeriesOneInput valueSeriesOne
+        s2 <- assertSelected getSeriesTwoInput valueSeriesTwo
+        pure $ d && m1 && m2 && s1 && s2
+
+  switchToPie
+  switchToLine
+  await "Error: line options have not been saved" assertion
+
+  switchToBar
+  switchToLine
+  await "Error: line options have not been saved" assertion
+
+  reloadAndSpyXHR
+  waitTime $ SDConfig.autosaveTick * 2
+  getChartEditors
+  await "Error: line options saved but not permanently" assertion
+  successMsg "Ok, line options saved"
+
+
+
+assertSelected :: Check Element -> String -> Check Boolean
+assertSelected getSelect value =
+  map (eq value) $ getSelect >>= getSelectValue
+
+checkOptionSaveBarOrPie :: Check Unit -> String -> Check Unit
+checkOptionSaveBarOrPie switcher msg = withFlatVizChart do
+  switcher
+  category <- getCategoryInput
+  measure <- getMeasureOneInput
+  seriesOne <- getSeriesOneInput
+  seriesTwo <- getSeriesTwoInput
+
+  valueCategory <- filterAndGetValue category seriesOne "category"
+  valueSeriesOne <- filterAndGetValue seriesOne seriesTwo "series"
+  valueSeriesTwo <- getRandomOption seriesTwo
+  valueMeasure <- getRandomOption measure
+
+  fillSelect seriesTwo valueSeriesTwo
+  fillSelect measure valueMeasure
+
+  let assertion = do
+        c <- assertSelected getCategoryInput valueCategory
+        m <- assertSelected getMeasureOneInput valueMeasure
+        s1 <- assertSelected getSeriesOneInput valueSeriesOne
+        s2 <- assertSelected getSeriesTwoInput valueSeriesTwo
+        pure $ c && m && s1 && s2
+
+  switchToBar
+  switcher
+  await ("Error: Hasn't been saved (" <> msg <> ")") assertion
+
+  switchToLine
+  switcher
+  await ("Error: Hasn't been saved (" <> msg <> ")") assertion
+
+  switchToPie
+  switcher
+  await ("Error: Hasn't been saved (" <> msg <> ")") assertion
+
+  successMsg $ "Ok, chart options have been saved (" <> msg <> ")"
+
+  waitTime $ SDConfig.autosaveTick * 2
+  reloadAndSpyXHR
+  getChartEditors
+  await "Error: saved, but not permanently" assertion
+  successMsg $ "Ok, chart options have been saved permanently (" <> msg <> ")"
 
 test :: Check Unit
 test = do
@@ -318,7 +457,6 @@ test = do
     cell <- getCell 1
     C.checkHideShowCell cell config.cell.vizEditor
 
-
   sectionMsg "check switchers"
   checkSwitchers
 
@@ -330,3 +468,9 @@ test = do
 
   sectionMsg "check option filters"
   checkOptionUniqueness
+
+  sectionMsg "check option auto select"
+  checkOptionAutoSelect
+
+  sectionMsg "check option save"
+  checkOptionSave
