@@ -34,7 +34,7 @@ import Selenium.ActionSequence hiding (sequence)
 import Selenium.MouseButton
 import Selenium.Types
 import Selenium.Monad
-import Selenium.Combinators (checker)
+import Selenium.Combinators (checker, tryToFind)
 import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
@@ -88,8 +88,7 @@ makeCell sel = do
     else do
     trigger <- getNewCellMenuTrigger
     sequence $ leftClick trigger
-  exploreBtn <- waitExistentCss sel $
-                "There is no  " <> sel <> " buttton in new cell menu"
+  exploreBtn <- tryToFind $ byCss sel
   count <- length <$> getCells
   sequence $ leftClick exploreBtn
   await "Cell has not been added" $ cellAdded count
@@ -178,7 +177,7 @@ fileOpened :: String -> Context
 fileOpened file action = do
   config <- getConfig
   input <- getInput
-  play <- getPlayButton
+  play <- findPlayButton
   sequence do
     leftClick input
     sendKeys file
@@ -189,7 +188,7 @@ fileOpened file action = do
 queryEvaluated :: String -> Context
 queryEvaluated queryStr action = do
   config <- getConfig
-  play <- getPlayButton
+  play <- findPlayButton
   input <- getAceInput
   sequence do
     leftClick input
@@ -211,7 +210,7 @@ fileSearched file query action = do
   config <- getConfig
   fl <- getSearchFileList
   qu <- getSearchInput
-  play <- getPlayButton
+  play <- findPlayButton
   sequence do
     leftClick fl
     sendKeys file

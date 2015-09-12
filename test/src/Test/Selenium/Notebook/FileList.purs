@@ -29,6 +29,7 @@ import Selenium.ActionSequence hiding (sequence)
 import Selenium.Monad
 import Selenium.Types
 import Selenium.MouseButton
+import Selenium.Combinators (tryToFind)
 import Test.Selenium.Monad
 import Test.Selenium.Common
 import Test.Selenium.Log
@@ -58,7 +59,7 @@ checkFileList ctx = ctx do
 checkFileListSetInput :: Context -> Check Unit
 checkFileListSetInput ctx = withFileList ctx do
   config <- getConfig
-  item <- waitExistentCss config.explore.listItem "No items in file list"
+  item <- tryToFind $ byCss config.explore.listItem
   html <- getInnerHtml item
   sequence $ leftClick item
   await "Incorrect value of input after select from dropdown" do

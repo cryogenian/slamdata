@@ -47,6 +47,7 @@ import View.Notebook.Common
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
+import qualified Utils.Halide as A
 import qualified Halogen.HTML.CSS as CSS
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Forms as E
@@ -150,6 +151,7 @@ statusBar notebook hasOutput cell =
     else [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
            $ [ H.button [ A.classes [B.btn, B.btnPrimary, buttonClass]
                         , E.onClick \_ -> pure $ handleRunClick (notebook ^._notebook) cell
+                        , A.ariaLabel buttonAriaLabel
                         ]
                [ glyph buttonGlyph ]
              , H.div [ A.classes [ VC.statusText ] ]
@@ -168,6 +170,9 @@ statusBar notebook hasOutput cell =
 
   buttonGlyph :: A.ClassName
   buttonGlyph = if isRunning cell then B.glyphiconStop else B.glyphiconPlay
+
+  buttonAriaLabel :: String
+  buttonAriaLabel = if isRunning cell then "Stop" else "Play"
 
   messages :: Array (HTML e)
   messages = message cell

@@ -31,7 +31,7 @@ import Selenium.ActionSequence hiding (sequence)
 import Selenium.MouseButton
 import Selenium.Types
 import Selenium.Monad
-import Selenium.Combinators (checker)
+import Selenium.Combinators (checker, tryToFind)
 import Test.Selenium.ActionSequence (selectAll, sendDelete, sendEnter)
 import Test.Selenium.Common
 import Test.Selenium.Monad
@@ -66,7 +66,7 @@ checkEmptyInputErrors = do
   withExploreCell do
     C.checkIncorrect getRefreshButton
   withExploreCell do
-    C.checkIncorrect getPlayButton
+    C.checkIncorrect findPlayButton
 
 
 checkIncorrectInputs :: Check Unit
@@ -80,12 +80,12 @@ checkFailure :: String -> String -> Check Unit
 checkFailure label keys = withExploreCell do
   config <- getConfig
   input <- getInput
-  play <- getPlayButton
+  play <- findPlayButton
   sequence do
     leftClick input
     sendKeys keys
     leftClick play
-  waitExistentCss config.cell.failures $ "There is no failures but should " <> label
+  tryToFind $ byCss config.cell.failures
   successMsg $ "Ok, failures are shown " <> label
   checkNotExists ("There should not be results " <> label) config.cell.cellOutputResult
   checkNotExists ("There should not be output label " <> label) config.cell.cellOutputLabel
@@ -103,7 +103,7 @@ checkInexistentFileMounted :: Check Unit
 checkInexistentFileMounted = withExploreCell do
   config <- getConfig
   input <- getInput
-  play <- getPlayButton
+  play <- findPlayButton
   sequence do
     leftClick input
     sendKeys config.explore.mounted

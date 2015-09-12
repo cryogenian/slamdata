@@ -137,7 +137,7 @@ checkSwitchers = withFlatVizChart do
 checkAlert :: Check Unit
 checkAlert = withFlatVizMeasures do
   config <- getConfig
-  waitExistentCss config.vizSelectors.alert "There is no alert but should"
+  tryRepeatedlyTo $ byCss config.vizSelectors.alert >>= findExact
   successMsg "ok, alert found"
 
 checkOptions :: Check Unit
@@ -480,7 +480,7 @@ checkRunRefreshEmbed = withFlatVizChart do
 
   saveInitialScreenshot
 
-  getPlayButton >>= sequence <<< leftClick
+  findPlayButton >>= sequence <<< leftClick
 
 
   await "Error: chart has not been rendered (pie)"

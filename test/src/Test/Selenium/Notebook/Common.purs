@@ -30,7 +30,7 @@ import Data.Tuple (Tuple(..))
 import Data.Either (isRight)
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Monad
-import Selenium.Combinators (checker)
+import Selenium.Combinators (checker, tryToFind)
 import Test.Selenium.Monad
 import Test.Selenium.Log
 import Test.Selenium.Common
@@ -50,7 +50,7 @@ checkNextCells m = do
   successMsg "Ok, all next cells are found"
   where
   traverseFn (Tuple msg sel) = void do
-    waitExistentCss sel $ msg <> " is not present"
+    tryToFind $ byCss sel
 
 
 checkInitial :: Check Unit -> Check Unit
@@ -82,7 +82,7 @@ checkInitial custom = do
   if value /= ""
     then errorMsg "value of input should be empty"
     else successMsg "Ok, input value is empty"
-  getPlayButton
+  findPlayButton
   successMsg "Ok, there is play button"
   getRefreshButton
   successMsg "Ok, there is refresh button"
@@ -107,7 +107,7 @@ checkEmbedButton = do
       <> "\nexpected: " <> expected
       <> "\nactual  : " <> value
   sequence $ leftClick modal
-  waiter $ checkNotExists "Error: modal should be hidden" config.modal
+  tryRepeatedlyTo $ checkNotExists "Error: modal should be hidden" config.modal
   where
   getModal = do
     config <- getConfig
@@ -227,15 +227,15 @@ checkIncorrect btnCheck = do
   btn <- btnCheck
   config <- getConfig
   sequence $ leftClick btn
-  failures <- waitExistentCss config.cell.failures "There is no failures but should"
+  failures <- tryToFind $ byCss config.cell.failures
   html <- getInnerHtml failures
-  show <- getElementByCss config.cell.showMessages "There is no showMessages but should"
+  show <- tryToFind $ byCss config.cell.showMessages
   sequence $ leftClick show
   await "There is no difference between hidden and shown failures" do
     shownHtml <- getInnerHtml failures
     pure $ shownHtml /= html
   successMsg "Ok, shown failures is defferent with hidden"
-  hide <- waitExistentCss config.cell.hideMessages "There is no hideMessages"
+  hide <- tryToFind $ byCss config.cell.hideMessages
   sequence $ leftClick hide
   await "Hidden failures are not equal with initial" do
     hiddenHtml <- getInnerHtml failures
@@ -245,9 +245,9 @@ checkIncorrect btnCheck = do
 checkTableEmpty :: Check Unit
 checkTableEmpty = do
   config <- getConfig
-  waitNotExistentCss "There should not be failures" config.cell.failures
+  tryRepeatedlyTo $ byCss config.cell.failures >>= loseElement
   waitOutputLabel
-  table <- waitExistentCss "table" "There is no table"
+  table <- tryToFind $ byCss "table"
   tableHtml <- getInnerHtml table
   if tableHtml == "<thead></thead><tbody></tbody>"
     then successMsg "Ok, table is empty"

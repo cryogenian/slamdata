@@ -26,10 +26,7 @@ module Test.Selenium.Common
   , parseToInt
   , filterByContent
   , filterByPairs
-  , waiter
-  , waitExistentCss
   , checkNotExists
-  , waitNotExistentCss
   , await'
   , await
   , waitTime
@@ -74,10 +71,6 @@ import Node.FS.Aff (readFile, writeFile)
 import Utils (s2i)
 
 
--- | `waiter'` with timeout setted to `config.selenium.waitTime`
-waiter :: forall a. Check a -> Check a
-waiter getter = getConfig >>= _.selenium >>> _.waitTime >>> Sc.waiter getter
-
 -- | Assert the truth of a boolean, providing an error message
 assertBoolean :: String -> Boolean -> Check Unit
 assertBoolean _ true = pure unit
@@ -93,16 +86,6 @@ checkNotExists :: String -> String -> Check Unit
 checkNotExists css msg =
   (attempt $ Sc.checkNotExistsByCss css)
     >>= either (const $ errorMsg msg) pure
-
--- | Same as `waitExistentCss'` but wait time is setted to `config.selenium.waitTime`
-waitExistentCss :: String -> String -> Check Element
-waitExistentCss css msg = do
-  waiter (getElementByCss css msg)
-
--- | same as `waitNotExistentCss'`, wait time is setted to `config.selenium.waitTime`
-waitNotExistentCss :: String -> String -> Check Unit
-waitNotExistentCss  msg css =
-  waiter (checkNotExists css msg)
 
 await' :: Int -> String -> Check Boolean -> Check Unit
 await' timeout msg check = do
