@@ -90,7 +90,7 @@ var startProc = function (name, procName, args, stream, test) {
 
 var startMongo, startSlamEngine, startSelenium;
 
-startSlamEngine = startProc("SlamEngine", "java", slamengineArgs, "stdout", "Embedded server listening at port");
+startSlamEngine = startProc("SlamEngine", "java", slamengineArgs, "stdout", "Server started listening on port");
 
 startMongo = startProc("MongoDB", "mongod", mongoArgs, "stdout", "waiting for connections on port");
 startSelenium = startProc("Selenium", "java", seleniumArgs, "stderr", "Selenium Server is up and running");
