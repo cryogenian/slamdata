@@ -27,12 +27,12 @@ import Data.Argonaut.Core (Json())
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Array (head, tail, findIndex, filter, elemIndex, (:))
+import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Index (prop)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Maybe
-import Data.Bifunctor (bimap)
 import Data.Path.Pathy
 import Data.These (These(..), theseLeft, theseRight)
 import Data.Tuple (Tuple(..))
@@ -202,15 +202,25 @@ exists' :: forall e. String -> Array R.Resource -> Boolean
 exists' name items = isJust $ findIndex (\r -> r ^. R._name == name) items
 
 forceDelete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
-forceDelete resource =
-  getResponse msg $ retryDelete path
-  where
-  msg :: String
-  msg = "can not delete"
+forceDelete =
+  getResponse "cannot delete"
+    <<< either retryDelete retryDelete
+    <<< pathFromResource
 
-  path = (if R.isDatabase resource then Config.mountUrl else Config.dataUrl)
-         </> rootify (R.resourceDir resource)
-         </> file (R.resourceName resource)
+  where
+  pathFromResource :: R.Resource -> AnyPath
+  pathFromResource r = transplant (rootForResource r) (R.getPath r)
+
+  transplant :: DirPath -> AnyPath -> AnyPath
+  transplant newRoot = bimap (\p -> newRoot </> rootifyFile p) (\p -> newRoot </> rootify p)
+
+  rootForResource :: R.Resource -> DirPath
+  rootForResource r =
+    if R.isDatabase r then
+      Config.mountUrl
+    else
+      Config.dataUrl
+
 
 delete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Maybe R.Resource)
 delete resource =
@@ -222,7 +232,7 @@ delete resource =
     pure Nothing
   where
   msg :: String
-  msg = "can not delete"
+  msg = "cannot delete"
 
   moveToTrash :: R.Resource -> Aff _ (Maybe R.Resource)
   moveToTrash res = do

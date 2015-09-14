@@ -78,6 +78,14 @@ data Resource
   | Directory DirPath
   | Database DirPath
 
+instance showResource :: Show Resource where
+  show r =
+    case r of
+      File fp -> "File " ++ show fp
+      Notebook dp -> "Notebook " ++ show dp
+      Directory dp -> "Directory " ++ show dp
+      Database dp -> "Database " ++ show dp
+
 _tempFile :: LensP Resource Resource
 _tempFile = lens id \r s -> case r of
   File p ->
