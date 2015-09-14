@@ -16,9 +16,9 @@
     },
     "slamdataUrl": "http://localhost:63175",
     "notebookUrl": "/slamdata/notebook.html",
-    "slamengine": {
-        "jar": "test/jars/slamengine.jar",
-        "config": "test/slamengine-config.json"
+    "quasar": {
+        "jar": "test/jars/quasar.jar",
+        "config": "test/quasar-config.json"
     },
     "links": {
         "output": "output",

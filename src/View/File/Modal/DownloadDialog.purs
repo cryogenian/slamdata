@@ -194,7 +194,7 @@ optionsCSV opts =
                      ]
           ]
 
-  -- TODO: this is unused currently, awaiting a feature in slamengine
+  -- TODO: this is unused currently, awaiting a feature in Quasar
   arrays :: HTML e
   arrays =
     let sepVal = separateValue $ opts ^. _arrays

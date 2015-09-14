@@ -40,13 +40,13 @@ if (args.remote) {
 
 var VERBOSE = args.v;
 
-var slamengineConfigPath = path.resolve("tmp/" + config.slamengine.config)
+var quasarConfigPath = path.resolve("tmp/" + config.quasar.config)
 
 var url = "mongodb://" + config.mongodb.host + ":" + config.mongodb.port + "/" + config.database.name,
     restoreCmd = config.restoreCmd,
-    slamengineArgs = [
-        "-jar", path.resolve(config.slamengine.jar),
-        "-c", slamengineConfigPath,
+    quasarArgs = [
+        "-jar", path.resolve(config.quasar.jar),
+        "-c", quasarConfigPath,
         "-C", "."
     ],
     seleniumArgs = ["-jar", path.resolve(config.selenium.jar)],
@@ -88,9 +88,9 @@ var startProc = function (name, procName, args, stream, test) {
     };
 };
 
-var startMongo, startSlamEngine, startSelenium;
+var startMongo, startQuasar, startSelenium;
 
-startSlamEngine = startProc("SlamEngine", "java", slamengineArgs, "stdout", "Server started listening on port");
+startQuasar = startProc("Quasar", "java", quasarArgs, "stdout", "Server started listening on port");
 
 startMongo = startProc("MongoDB", "mongod", mongoArgs, "stdout", "waiting for connections on port");
 startSelenium = startProc("Selenium", "java", seleniumArgs, "stderr", "Selenium Server is up and running");
@@ -99,18 +99,18 @@ log("Emptying test temp folder");
 rimraf.sync("tmp/test");
 fs.mkdirSync("tmp/test");
 
-// Copy the configuration file for use by slamengine
-copyFile(path.resolve(config.slamengine.config), slamengineConfigPath, function(){});
+// Copy the configuration file for use by quasar
+copyFile(path.resolve(config.quasar.config), quasarConfigPath, function(){});
 
 process.chdir("tmp/test");
 
 log("Creating data folder for MongoDB");
 fs.mkdirSync("data");
 
-log("Creating symlink for SlamEngine static files");
+log("Creating symlink for SlamData static files");
 fs.symlinkSync(path.resolve("../../public"), path.resolve("slamdata"), "junction");
 
-Promise.all([startMongo(), startSlamEngine(), startSelenium()])
+Promise.all([startMongo(), startQuasar(), startSelenium()])
     .then(function () {
         log("restoring test database");
         childProcess.execSync(restoreCmd, { stdio: ["pipe", "ignore", "pipe"] });

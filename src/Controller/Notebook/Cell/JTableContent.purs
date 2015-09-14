@@ -145,8 +145,8 @@ queryToJTable cell sql inp out = do
     out' <- j .? "out"
     planPhases <- last <$> j .? "phases"
     let plan = maybe "" (\p -> either (const "") id $ p .? "detail") planPhases
-    path <- maybe (Left "Invalid file from SlamEngine") Right $ parseAbsFile out'
-    realOut <- maybe (Left "Could not sandbox SlamEngine file") Right $ sandbox rootDir path
+    path <- maybe (Left "Invalid file from Quasar") Right $ parseAbsFile out'
+    realOut <- maybe (Left "Could not sandbox Quasar file") Right $ sandbox rootDir path
     pure { realOut: realOut, plan: plan }
   where
   go { realOut: realOut, plan: plan } =

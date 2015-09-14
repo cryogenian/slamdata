@@ -13,7 +13,7 @@ Web-based visual analytics for NoSQL data, powered by Quasar.
 
 The [GitHub releases page](https://github.com/slamdata/slamdata/releases) for the project contains pre-built archives.
 
-See the [Use with SlamEngine](#use-with-slamengine) section for next steps.
+See the [Use with Quasar](#use-with-quasar) section for next steps.
 
 ## Building from source
 
@@ -52,12 +52,12 @@ After `gulp` finishes the `public` directory will contain the complete SlamData 
 
 For working on SlamData, the default `gulp` task can be run instead. This will run an incremental build with a watch process so any changes to the `.less`, `.purs`, or `.js` source files will trigger a rebuild.
 
-## Use with SlamEngine
+## Use with Quasar
 
-SlamEngine can host the SlamData front-end app on the same port as the API. To do this, use the `--content-path` command-line argument when starting the engine:
+Quasar can host the SlamData front-end app on the same port as the API. To do this, use the `--content-path` command-line argument when starting the engine:
 
 ```
-java -jar [<path to slamengine jar>] --content-path [<path to slamdata app>]
+java -jar [<path to quasar jar>] --content-path [<path to slamdata app>]
 ```
 
 Where `[<path to slamdata app>]` is the location of the source-built `public` folder, or the extracted contents of a pre-built archive.
