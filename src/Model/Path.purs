@@ -91,3 +91,4 @@ hidePath path input =
   trim $
   replace ("+path:\"" <> path <> "\"") "" $
   replace ("+path:" <> path) "" input
+
