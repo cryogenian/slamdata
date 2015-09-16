@@ -19,6 +19,8 @@
   },
   "homepage": "https://github.com/slamdata/slamdata",
   "dependencies": {
+    "easyimage": "^2.1.0",
+    "image-diff": "^1.2.0",
     "minimatch": "^2.0.8",
     "virtual-dom": "^2.0.1",
     "zeroclipboard": "^2.2.0"

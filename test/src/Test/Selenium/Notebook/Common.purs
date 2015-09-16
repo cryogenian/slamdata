@@ -106,7 +106,8 @@ checkEmbedButton = do
     errorMsg $ "Embed value is not correct"
       <> "\nexpected: " <> expected
       <> "\nactual  : " <> value
-  reloadAndSpyXHR
+  sequence $ leftClick modal
+  waiter $ checkNotExists "Error: modal should be hidden" config.modal
   where
   getModal = do
     config <- getConfig

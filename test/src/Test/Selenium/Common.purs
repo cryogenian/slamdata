@@ -33,11 +33,18 @@ module Test.Selenium.Common
   , await'
   , await
   , waitTime
+  , saveInitialScreenshot
+  , saveActualScreenshot
+  , screenshotsEqual
+  , elementScreenshot
+  , actualElementScreenshot
+  , initialElementScreenshot
   )
   where
 
 import Prelude
 import Control.Apply ((*>))
+import Control.Monad.Trans (lift)
 import Data.Either (either, isRight, Either(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (traverse_)
@@ -48,6 +55,7 @@ import qualified Data.String.Regex as R
 import qualified Data.StrMap as SM
 import qualified Data.String as Str
 import qualified Data.Char as Ch
+import Graphics.EasyImage (cropInPlace)
 
 import Driver.File.Routing (Routes(..), routing)
 import Routing (matchHash)
@@ -61,7 +69,10 @@ import qualified Selenium.Combinators as Sc
 import Test.Selenium.Log
 import Test.Selenium.Monad
 
+import Node.FS.Aff (readFile, writeFile)
+
 import Utils (s2i)
+
 
 -- | `waiter'` with timeout setted to `config.selenium.waitTime`
 waiter :: forall a. Check a -> Check a
@@ -85,7 +96,7 @@ checkNotExists css msg =
 
 -- | Same as `waitExistentCss'` but wait time is setted to `config.selenium.waitTime`
 waitExistentCss :: String -> String -> Check Element
-waitExistentCss css msg =
+waitExistentCss css msg = do
   waiter (getElementByCss css msg)
 
 -- | same as `waitNotExistentCss'`, wait time is setted to `config.selenium.waitTime`
@@ -184,3 +195,41 @@ waitTime t = do
   warnMsg "waitTime is used"
   later t $ pure unit
 
+saveInitialScreenshot :: Check Unit
+saveInitialScreenshot =
+  getConfig >>= _.screenshot >>> _.initial >>> saveScreenshot
+
+saveActualScreenshot :: Check Unit
+saveActualScreenshot =
+  getConfig >>= _.screenshot >>> _.actual >>> saveScreenshot
+
+screenshotsEqual :: String -> Check Boolean
+screenshotsEqual expected = do
+  config <- getConfig
+  if config.collectingScreenshots
+    then do
+    lift $ readFile config.tmpFileForScreenshots >>= writeFile expected
+    pure true
+    else
+    diff { expected: expected
+         , actual: config.screenshot.actual
+         , diff: Nothing
+         , shadow: false
+         }
+
+
+elementScreenshot :: Element -> String -> Check Unit
+elementScreenshot el fileName = do
+  size <- getSize el
+  location <- getLocation el
+  saveScreenshot fileName
+  lift $ cropInPlace size.width size.height location.x location.y fileName
+
+
+actualElementScreenshot :: Element -> Check Unit
+actualElementScreenshot el =
+  getConfig >>= _.screenshot >>> _.actual >>> elementScreenshot el
+
+initialElementScreenshot :: Element -> Check Unit
+initialElementScreenshot el =
+  getConfig >>= _.screenshot >>> _.initial >>> elementScreenshot el

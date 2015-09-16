@@ -24,6 +24,7 @@ import qualified Test.Selenium.Notebook.Search as Search
 import qualified Test.Selenium.Notebook.Common as Common
 import qualified Test.Selenium.Notebook.Viz as Viz
 import qualified Test.Selenium.Notebook.Markdown as Markdown
+import qualified Test.Selenium.Notebook.Complex as Complex
 
 test :: Check Unit
 test = do
@@ -33,3 +34,4 @@ test = do
   Search.test
   Viz.test
   Markdown.test
+  Complex.test

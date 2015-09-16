@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.Selenium.Notebook.Viz (test) where
+module Test.Selenium.Notebook.Viz (test, actualCanvasScreenshot) where
 
 import Prelude
 
@@ -24,7 +24,8 @@ import Data.List (length, List(..), fromList, filter, null, (!!))
 import Data.Maybe (isJust, isNothing, Maybe(..), maybe, fromMaybe)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Traversable (traverse)
-import Data.Foldable (foldl)
+import Data.Tuple (Tuple(..))
+import Data.Foldable (foldl, traverse_)
 import Data.Monoid (mempty)
 import Data.Function (on)
 import qualified Data.Set as S
@@ -93,25 +94,25 @@ checkSetHeightWidth = withSmallZipsAllChart do
 switchToPie :: Check Unit
 switchToPie = do
   getChartSwitchers >>= sequence <<< leftClick <<< _.pie
-  await "Pie switch doesn't work"
-    $ map pieShown getChartEditors
+  await "Pie switch doesn't work" pieShown
+
 
 switchToLine :: Check Unit
 switchToLine = do
  getChartSwitchers >>= sequence <<< leftClick <<< _.line
- await "Line switch doesn't work"
-   $ map lineShown getChartEditors
+ await "Line switch doesn't work" lineShown
+
 
 switchToBar :: Check Unit
 switchToBar = do
  getChartSwitchers >>= sequence <<< leftClick <<< _.bar
- await "Bar switch doesn't work"
-   $ map barShown getChartEditors
+ await "Bar switch doesn't work" barShown
+
 
 checkSwitchers :: Check Unit
 checkSwitchers = withFlatVizChart do
-  editors  <- getChartEditors
-  if pieShown editors
+  pieDisplayed <- pieShown
+  if pieDisplayed
     then successMsg "Ok, initial chart type -- pie"
     else errorMsg "Incorrect initial chart type"
 
@@ -297,6 +298,11 @@ fillSelect el txt =
     sendKeys txt
     sendEnter
 
+fillSelectRandom :: Element -> Check Unit
+fillSelectRandom el = do
+  opt <- getRandomOption el
+  fillSelect el opt
+
 optionTxts :: Element -> Check (List String)
 optionTxts el = getOptions (pure el) >>= traverse getInnerHtml
 
@@ -380,9 +386,10 @@ checkOptionSaveLine = withFlatVizChart do
   switchToLine
   await "Error: line options have not been saved" assertion
 
-  reloadAndSpyXHR
   waitTime $ SDConfig.autosaveTick * 2
-  getChartEditors
+  reloadAndSpyXHR
+
+  switchToLine
   await "Error: line options saved but not permanently" assertion
   successMsg "Ok, line options saved"
 
@@ -431,9 +438,230 @@ checkOptionSaveBarOrPie switcher msg = withFlatVizChart do
 
   waitTime $ SDConfig.autosaveTick * 2
   reloadAndSpyXHR
-  getChartEditors
+
+  switcher
+  getCurrentEditor
   await "Error: saved, but not permanently" assertion
   successMsg $ "Ok, chart options have been saved permanently (" <> msg <> ")"
+
+checkTrashingVizCell :: Check Unit
+checkTrashingVizCell = withFlatVizChart do
+  config <- getConfig
+  vizCell <- getCell 1
+  byCss config.cell.trash
+    >>= childExact vizCell
+    >>= sequence <<< leftClick
+
+  checkThatOneCellRemaining
+  waitTime $ SDConfig.autosaveTick * 2
+  reloadAndSpyXHR
+  checkThatOneCellRemaining
+  successMsg "Ok, trash button works"
+  where
+  checkThatOneCellRemaining =
+    await "Error: cell has not been deleted" do
+      map (eq one <<< length) getCells
+
+checkRunRefreshEmbed :: Check Unit
+checkRunRefreshEmbed = withFlatVizChart do
+  switchToPie
+  category <- getCategoryInput
+  measure <- getMeasureOneInput
+  seriesOne <- getSeriesOneInput
+  seriesTwo <- getSeriesTwoInput
+
+  valueCategory <- filterAndGetValue category seriesOne "category"
+  valueSeriesOne <- filterAndGetValue seriesOne seriesTwo "series"
+  valueSeriesTwo <- getRandomOption seriesTwo
+  valueMeasure <- getRandomOption measure
+
+  fillSelect seriesTwo valueSeriesTwo
+  fillSelect measure valueMeasure
+
+  saveInitialScreenshot
+
+  getPlayButton >>= sequence <<< leftClick
+
+
+  await "Error: chart has not been rendered (pie)"
+    $ checkScreenshotsDiffer
+  C.checkEmbedButton
+
+  saveInitialScreenshot
+  switchToBar
+
+  categoryBar <- getCategoryInput
+  measureBar <- getMeasureOneInput
+  valueCategoryBar <- getRandomOption categoryBar
+  valueMeasureBar <- getRandomOption measureBar
+  fillSelect categoryBar valueCategoryBar
+  fillSelect measureBar valueMeasureBar
+
+  await "Error: chart has not been rendered (bar)"
+    $ checkScreenshotsDiffer
+  C.checkEmbedButton
+
+  switchToLine
+
+  saveInitialScreenshot
+  dimension <- getDimensionInput
+  measureLine <- getMeasureOneInput
+  valueDimension <- getRandomOption categoryBar
+  valueMeasureLine <- getRandomOption measureBar
+  fillSelect dimension valueDimension
+  fillSelect measureLine valueMeasureLine
+
+  await "Error: chart has not been rendered (line)"
+    $ checkScreenshotsDiffer
+  C.checkEmbedButton
+
+  successMsg "Ok, embed/run works"
+
+checkScreenshotsDiffer :: Check Boolean
+checkScreenshotsDiffer = do
+  config <- getConfig
+  if config.collectingScreenshots
+    then pure true
+    else do
+    config <- getConfig
+    saveActualScreenshot
+    map not $ screenshotsEqual config.screenshot.initial
+
+checkElementScreensDiffer :: Check Element -> Check Boolean
+checkElementScreensDiffer checkEl = do
+  config <- getConfig
+  checkEl >>= actualElementScreenshot
+  map not $ screenshotsEqual config.screenshot.initial
+
+checkAggregation :: Check Unit
+checkAggregation = withFlatVizOneOption do
+  aggConfig <- map (_.screenshot >>> _.aggregation) getConfig
+
+  switchToLine
+  traverse_ (checkOneAggregation aggConfig.line "line") tpls
+
+  switchToBar
+  traverse_ (checkOneAggregation aggConfig.bar "bar") tpls
+
+  switchToPie
+  traverse_ (checkOneAggregation aggConfig.pie "pie") tpls
+  successMsg "Ok, aggregation works"
+  where
+  tpls :: Array (Tuple (Check Unit) String)
+  tpls = [ Tuple setProductAggregation "product"
+         , Tuple setSumAggregation "sum"
+         , Tuple setMinAggregation "min"
+         , Tuple setMaxAggregation "max"
+         , Tuple setAverageAggregation "average"
+         ]
+
+  checkOneAggregation :: String -> String -> Tuple (Check Unit) String -> Check Unit
+  checkOneAggregation pathToExpected chartMark (Tuple setAgg aggMark) = do
+    setAgg
+    await ("Error: aggregation (" <> chartMark <> " - " <> aggMark <> ")") do
+      actualCanvasScreenshot
+      screenshotsEqual $ pathToExpected <> aggMark <> ".png"
+
+setAggregation :: String -> Check Unit
+setAggregation val = do
+  sel <- getAggregationSelect
+  option <- getAggregationOption sel val
+  sequence do
+    leftClick sel
+    leftClick option
+    sendEnter
+
+setSumAggregation :: Check Unit
+setSumAggregation =
+  getConfig >>= _.vizAggregation >>> _.sum >>> setAggregation
+
+setProductAggregation :: Check Unit
+setProductAggregation =
+  getConfig >>= _.vizAggregation >>> _.product >>> setAggregation
+
+setMinAggregation :: Check Unit
+setMinAggregation =
+  getConfig >>= _.vizAggregation >>> _.min >>> setAggregation
+
+setMaxAggregation :: Check Unit
+setMaxAggregation =
+  getConfig >>= _.vizAggregation >>> _.max >>> setAggregation
+
+setAverageAggregation :: Check Unit
+setAverageAggregation =
+  getConfig >>= _.vizAggregation >>> _.average >>> setAggregation
+
+
+checkCharts :: Check Unit
+checkCharts = withFlatVizChart do
+  config <- map (_.screenshot >>> _.charts) getConfig
+  toSet <- map (_.vizOptions >>> _.set) getConfig
+  switchToPie
+  barOrPie "pie" config.pie
+
+  switchToBar
+  barOrPie "bar" config.bar
+
+  switchToLine
+  dimension <- getDimensionInput
+  measureOne <- getMeasureOneInput
+  measureTwo <- getMeasureTwoInput
+  seriesOne <- getSeriesOneInput
+  seriesTwo <- getSeriesTwoInput
+  fillSelect dimension toSet.dimension
+  fillSelect measureOne toSet.measureOne
+  await "Error: incorrect chart (line - category)" do
+    actualCanvasScreenshot
+    screenshotsEqual $ config.line <> "category.png"
+  fillSelect measureTwo toSet.measureTwo
+  await "Error: incorrect chart (line - measure)" do
+    actualCanvasScreenshot
+    screenshotsEqual $ config.line <> "measure.png"
+  fillSelect seriesOne toSet.seriesOne
+  await "Error: incorrect chart (line - series1)" do
+    actualCanvasScreenshot
+    screenshotsEqual $ config.line <> "series1.png"
+  fillSelect seriesTwo toSet.seriesTwo
+  await "Error: incorrect chart (line - series2)" do
+    actualCanvasScreenshot
+    screenshotsEqual $ config.line <> "series2.png"
+
+  successMsg "Ok, charts are correct"
+  where
+  barOrPie :: String -> String -> Check Unit
+  barOrPie label basePath = do
+    toSet <- map (_.vizOptions >>> _.set) getConfig
+    category <- getCategoryInput
+    measure <- getMeasureOneInput
+    seriesOne <- getSeriesOneInput
+    seriesTwo <- getSeriesTwoInput
+
+    fillSelect category toSet.category
+    fillSelect measure toSet.measureOne
+    await ("Error: incorrect chart (" <> label <> ") - category)") do
+      actualCanvasScreenshot
+      screenshotsEqual $ basePath <> "category.png"
+
+    fillSelect seriesOne toSet.seriesOne
+    await ("Error: incorrect chart (" <> label <> ") - series1)") do
+      actualCanvasScreenshot
+      screenshotsEqual $ basePath <> "series1.png"
+
+    fillSelect seriesTwo toSet.seriesTwo
+    await ("Error: incorrect chart (" <> label <> ") - series2)") do
+      actualCanvasScreenshot
+      screenshotsEqual $ basePath <> "series2.png"
+
+actualCanvasScreenshot :: Check Unit
+actualCanvasScreenshot = do
+  config <- getConfig
+  if config.collectingScreenshots
+    then do
+    waitTime 5000
+    waitCanvas >>= flip elementScreenshot config.tmpFileForScreenshots
+    else
+    waitCanvas >>= actualElementScreenshot
+
 
 test :: Check Unit
 test = do
@@ -474,3 +702,15 @@ test = do
 
   sectionMsg "check option save"
   checkOptionSave
+
+  sectionMsg "trash viz cell"
+  checkTrashingVizCell
+
+  sectionMsg "run/refresh/embed"
+  checkRunRefreshEmbed
+
+  sectionMsg "aggregation"
+  checkAggregation
+
+  sectionMsg "check charts"
+  checkCharts

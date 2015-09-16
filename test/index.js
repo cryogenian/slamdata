@@ -98,6 +98,7 @@ startSelenium = startProc("Selenium", "java", seleniumArgs, "stderr", "Selenium 
 log("Emptying test temp folder");
 rimraf.sync("tmp/test");
 fs.mkdirSync("tmp/test");
+fs.mkdirSync("tmp/test/image");
 
 // Copy the configuration file for use by quasar
 copyFile(path.resolve(config.quasar.config), quasarConfigPath, function(){});

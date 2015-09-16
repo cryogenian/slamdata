@@ -21,15 +21,19 @@ module Test.Selenium.ActionSequence
   , undo
   , sendDelete
   , sendEnter
+  , shifted
+  , keys
   ) where
 
 import Prelude
 
 import Data.Char (fromCharCode)
 import Data.Foldable (traverse_)
-import Data.String (fromChar)
+import Data.String (fromChar, split)
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Types (ControlKey())
+import Selenium.Key (shiftKey)
+
 
 selectAll :: ControlKey -> Sequence Unit
 selectAll modifierKey = sendKeyCombo [modifierKey] "a"
@@ -43,6 +47,12 @@ paste modifierKey = sendKeyCombo [modifierKey] "v"
 undo :: ControlKey -> Sequence Unit
 undo modifierKey = sendKeyCombo [modifierKey] "z"
 
+shifted :: String -> Sequence Unit
+shifted str = do
+  keyDown shiftKey
+  sendKeys str
+  keyUp shiftKey
+
 sendDelete :: Sequence Unit
 sendDelete = sendKeys $ fromChar $ fromCharCode 57367
 
@@ -55,3 +65,14 @@ sendKeyCombo ctrlKeys str = do
   sendKeys str
   traverse_ keyUp ctrlKeys
 
+-- Send keys one by one and replace if they can't be processed
+-- by selenium driver
+keys :: String -> Sequence Unit
+keys str = traverse_ sendKey $ split "" str
+  where
+  sendKey :: String -> Sequence Unit
+  sendKey "(" = shifted "9"
+  sendKey ")" = shifted "0"
+  sendKey "#" = shifted "3"
+  sendKey "-" = sendKeys "\xE027"
+  sendKey a = sendKeys a

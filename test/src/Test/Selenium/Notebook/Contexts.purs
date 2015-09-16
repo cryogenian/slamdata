@@ -21,12 +21,14 @@ import Prelude
 import Control.Bind ((>=>))
 import Control.Monad.Eff.Random (randomInt)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Aff.Class (liftAff)
 import Data.Either (Either(..), either, isRight)
 import Data.List (List(..), length, null, (!!), catMaybes, filter)
 import Data.Foreign (readArray, readString)
 import Data.Maybe (Maybe(..), maybe)
-import Data.Foldable (foldl)
+import Data.Foldable (foldl, traverse_)
 import Data.Traversable (traverse)
+import Node.FS.Aff (mkdir)
 import Test.Config
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.MouseButton
@@ -37,6 +39,7 @@ import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
 import Test.Selenium.Notebook.Getters
+import Test.Selenium.ActionSequence (keys)
 import Test.Selenium.File hiding (test)
 import qualified Data.String.Regex as R
 import qualified Data.String as S
@@ -59,11 +62,22 @@ reloadAndSpyXHR = do
 -- | it's tested in `Test.Selenium.File`
 setUp :: Check Unit
 setUp = void do
+  createTestDirs
   home
   goodMountDatabase
   enterMount
   createNotebookAndThen $ pure unit
   startSpying
+
+import Utils.Log
+
+createTestDirs :: Check Unit
+createTestDirs = do
+  config <- getConfig
+  if not config.collectingScreenshots
+    then pure unit
+    else
+    traverse_ (apathize <<< liftAff <<< mkdir) config.screenshot.dirs
 
 makeCell :: String -> Check Unit
 makeCell sel = do
@@ -179,13 +193,10 @@ queryEvaluated queryStr action = do
   input <- getAceInput
   sequence do
     leftClick input
-    traverse  sendKeysFn $ S.split "" queryStr
+    keys queryStr
     leftClick play
   await "error during evaluating query" cellHasRun
   action
-  where
-  sendKeysFn "-" = sendKeys "\xE027"
-  sendKeysFn a = sendKeys a
 
 withFileOpened :: Context -> String -> Context
 withFileOpened context file action = context $ fileOpened file action

@@ -20,17 +20,19 @@
     "purescript-argonaut-codecs": "~0.3.0",
     "purescript-argonaut-core": "~0.2.0",
     "purescript-argonaut-traversals": "~0.2.0",
-    "purescript-base": "~0.1.0",
+    "purescript-base": "^0.2.0",
     "purescript-browserfeatures": "^0.2.2",
     "purescript-control": "~0.3.0",
-    "purescript-datetime": "~0.6.0",
+    "purescript-datetime": "^0.9.0",
     "purescript-dom": "~0.1.2",
+
     "purescript-echarts": "cryogenian/purescript-echarts#07-fix",
     "purescript-enums": "~0.7.0",
     "purescript-foreign": "~0.5.0",
     "purescript-globals": "~0.2.0",
     "purescript-halogen": "30e8b2c7174a1eeda73f67cc42c739ca24a1e218",
     "purescript-halogen-bootstrap": "^0.3.0",
+    "purescript-imagediff": "~0.1.0",
     "purescript-index": "~0.4.0",
     "purescript-jtable": "~0.6.0",
     "purescript-lazy": "~0.4.0",
@@ -51,7 +53,6 @@
     "purescript-simple-dom": "6358414013eb3106d695e3e19488609f82d903e9",
     "purescript-these": "~0.3.0",
     "purescript-uri": "~0.1.0-rc.1",
-    "purescript-webdriver": "git://github.com/beckyconning/purescript-webdriver.git#9763581c1ec845453229132611d2f374e7cd6de6",
     "purescript-zclipboard": "~0.2.0"
   },
   "resolutions": {
@@ -59,17 +60,21 @@
     "purescript-strings": "^0.7.0",
     "purescript-maps": "^0.5.0",
     "purescript-argonaut-codecs": "~0.3.0",
-    "purescript-foreign": "~0.5.0",
+    "purescript-foreign": "^0.7.0",
     "purescript-dom": "~0.1.2",
     "purescript-enums": "^0.7.0",
     "purescript-lens": "^0.8.0",
     "purescript-parsing": "~0.5.1",
     "purescript-datetime": "~0.9.0",
     "purescript-sets": "^0.5.0",
-    "purescript-webdriver": "9763581c1ec845453229132611d2f374e7cd6de6"
+    "purescript-base": "^0.2.0",
+    "purescript-transformers": "^0.6.1",
+    "purescript-aff": "^0.11.3"
   },
   "devDependencies": {
-    "purescript-platform": "d26f356940661f1d1f4790f95f1ca934f55622e7",
-    "purescript-webdriver": "~0.6.1"
+    "purescript-node-fs-aff": "~0.1.2",
+    "purescript-platform": "^0.3.0",
+    "purescript-webdriver": "~0.8.0",
+    "purescript-easyimage": "~0.1.0"
   }
 }
