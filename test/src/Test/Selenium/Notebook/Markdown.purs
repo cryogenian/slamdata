@@ -34,7 +34,7 @@ import Selenium.Key (shiftKey)
 import Selenium.MouseButton (leftButton)
 
 import Test.Config
-import Test.Selenium.ActionSequence (selectAll)
+import Test.Selenium.ActionSequence (selectAll, keys)
 import Test.Selenium.Monad (Check(), getConfig, getModifierKey)
 import Test.Selenium.Log (sectionMsg, successMsg, errorMsg)
 import Test.Selenium.Common (await, waitTime, waitExistentCss)
@@ -59,18 +59,12 @@ focusMdField = do
     mouseUp leftButton visibleMdField
 
 mdForTextField :: String -> Sequence Unit
-mdForTextField name = sendKeys $ name ++ " = _____"
+mdForTextField name = keys $ name ++ " = _____"
 
 mdForTextFieldWithPlaceholder :: String -> String -> Sequence Unit
-mdForTextFieldWithPlaceholder placeholder name = do
-  sendKeys $ name ++ " = _____"
-  keyDown shiftKey
-  sendKeys "9"
-  keyUp shiftKey
-  sendKeys placeholder
-  keyDown shiftKey
-  sendKeys "0"
-  keyUp shiftKey
+mdForTextFieldWithPlaceholder placeholder name =
+  keys $ name ++ " = _____(" <> placeholder <> ")"
+
 
 changeMd :: Sequence Unit -> Check Unit
 changeMd mdSequence = do
@@ -135,3 +129,4 @@ test = do
     expectTextFieldValue "Error: Playing changed markdown didn't work." altFieldValue altFieldName
 
     successMsg "Ok, successfully changed and played markdown."
+    deleteAllCells

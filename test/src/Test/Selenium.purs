@@ -31,9 +31,10 @@ import Control.Monad.Trans
 import Data.Foldable (traverse_)
 import Data.Maybe (maybe, isJust)
 import Data.Either (either)
-import Selenium
+import Selenium (setFileDetector, quit)
 import Selenium.Browser
 import Selenium.Builder
+import Selenium.Monad (setWindowSize)
 import qualified Selenium.Remote as SR
 import Test.Config (Config())
 import Text.Chalk
@@ -66,9 +67,8 @@ test config =
 
     res <- attempt $ flip runReaderT { config: config
                                      , driver: driver} do
+      setWindowSize { height: 1280, width: 1024 }
       File.test
       Notebook.test
     quit driver
     either throwError (const $ pure unit) res
-
-

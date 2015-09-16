@@ -112,6 +112,16 @@ waitNextVizCell = do
   config <- getConfig
   waitExistentCss config.cell.nextCellViz "There is no next viz cell button"
 
+waitNextQueryCellFor :: Element -> Check Element
+waitNextQueryCellFor cell = waiter do
+  config <- getConfig
+  byCss config.cell.nextCellQuery >>= childExact cell
+
+waitNextVizCellFor :: Element -> Check Element
+waitNextVizCellFor cell = waiter do
+  config <- getConfig
+  byCss config.cell.nextCellViz >>= childExact cell
+
 waitCanvas :: Check Element
 waitCanvas = do
   getConfig >>= _.vizSelectors >>> _.canvas >>>
@@ -150,10 +160,24 @@ getAceInput =
   getConfig >>= _.ace >>> _.textInput >>>
   flip getElementByCss "there is no ace input"
 
+getAceFor :: Element -> Check Element
+getAceFor cell =
+  waiter
+  $ getConfig
+  >>= _.ace >>> _.textInput >>> byCss
+  >>= childExact cell
+
 getPlayButton :: Check Element
 getPlayButton =
   getConfig >>= _.cell >>> _.playButton >>>
   flip getElementByCss "there is no play button"
+
+getPlayButtonFor :: Element -> Check Element
+getPlayButtonFor cell =
+  waiter
+  $ getConfig
+  >>= _.cell >>> _.playButton >>> byCss
+  >>= childExact cell
 
 getRefreshButton :: Check Element
 getRefreshButton =
@@ -294,48 +318,42 @@ getEnabledRecord = do
 
 
 -- VIZ
-
-getChartEditors :: Check ChartEditors
-getChartEditors = do
+getPieEditor :: Check Element
+getPieEditor = do
   config <- getConfig
+  waitExistentCss config.vizSelectors.pieEditor "There is no pie editor"
 
-  pie <- waitExistentCss config.vizSelectors.pieEditor "There is no pie editor"
-  line <- waitExistentCss config.vizSelectors.lineEditor "There is no line editor"
-  bar <- waitExistentCss  config.vizSelectors.barEditor "There is no bar editor"
+getLineEditor :: Check Element
+getLineEditor = do
+  config <- getConfig
+  waitExistentCss config.vizSelectors.lineEditor "There is no line editor"
 
-  pieDisplayed <- isDisplayed pie
-  barDisplayed <- isDisplayed bar
-  lineDisplayed <- isDisplayed line
+getBarEditor :: Check Element
+getBarEditor = do
+  config <- getConfig
+  waitExistentCss  config.vizSelectors.barEditor "There is no bar editor"
 
+getCurrentEditor :: Check Element
+getCurrentEditor = do
+  pieDisplayed <- getPieEditor >>= isDisplayed
+  barDisplayed <- getBarEditor >>= isDisplayed
+  lineDisplayed <- getLineEditor >>= isDisplayed
+  if pieDisplayed
+    then getPieEditor
+    else if barDisplayed
+         then getBarEditor
+         else if lineDisplayed
+              then getLineEditor
+              else errorMsg "Error: Incorrect state of viz editor"
 
-  pure { pie: if pieDisplayed then pure pie else Nothing
-       , line: if lineDisplayed then pure line else Nothing
-       , bar: if barDisplayed then pure bar else Nothing
-       }
+barShown :: Check Boolean
+barShown = getBarEditor >>= isDisplayed
 
+lineShown :: Check Boolean
+lineShown = getLineEditor >>= isDisplayed
 
-editor :: ChartEditors -> Element
-editor es =
-  fromJust
-  $ if barShown es
-    then es.bar
-    else if pieShown es
-         then es.pie
-         else es.line
-
-barShown :: ChartEditors -> Boolean
-barShown es =
-  isJust es.bar && isNothing es.line && isNothing es.pie
-
-lineShown :: ChartEditors -> Boolean
-lineShown es =
-  isNothing es.bar && isJust es.line && isNothing es.pie
-
-pieShown :: ChartEditors -> Boolean
-pieShown es =
-  isNothing es.bar && isNothing es.line && isJust es.pie
-
-
+pieShown :: Check Boolean
+pieShown = getPieEditor >>= isDisplayed
 
 getPieTypeIcon :: Check Element
 getPieTypeIcon = do
@@ -394,12 +412,12 @@ getChartOptions el = do
 
 getCurrentChartOptions :: Check ChartOptions
 getCurrentChartOptions = waiter $
-  map editor getChartEditors >>= getChartOptions
+  getCurrentEditor >>= getChartOptions
 
 
 getCurrentEditorChild :: String -> Check Element
 getCurrentEditorChild sel = waiter do
-  edit <- map editor getChartEditors
+  edit <- getCurrentEditor
   byCss sel >>= childExact edit
 
 
@@ -433,3 +451,13 @@ getSeriesTwoInput =
   getConfig >>= _.vizSelectors >>> _.seriesTwo
   >>> getCurrentEditorChild
 
+
+getAggregationSelect :: Check Element
+getAggregationSelect =
+  getConfig >>= _.vizSelectors >>> _.aggregation
+  >>> getCurrentEditorChild
+
+getAggregationOption :: Element -> String -> Check Element
+getAggregationOption select value =
+  byCss ("option[value=\"" <> value <> "\"]")
+  >>= childExact select

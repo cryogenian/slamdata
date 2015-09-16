@@ -150,6 +150,7 @@
         "nextCellButton": ".next-cell-list button",
         "nextCellSearch": ".next-cell-list button[title='Search this output']",
         "nextCellViz": ".next-cell-list button[title='Visualize this output']",
+        "nextCellQuery": ".next-cell-list button[title='Query using fields']",
         "cellOutputLabel": ".cell-output-label",
         "cellOutputResult": ".cell-output-result",
         "failures": ".cell-failures",
@@ -258,7 +259,8 @@
         "smallZipsAll": "select * from \"/test-mount/testDb/smallZips\" where true",
         "flatVizAll": "select * from \"/test-mount/testDb/flatViz\" where true",
         "flatVizMeasures": "select measureOne, measureTwo from \"test-mount/testDb/flatViz\" where true",
-        "flatVizOneOption": "select seriesOne, measureOne from \"/test-mount/testDb/flatViz\" where true"
+        "flatVizOneOption": "select seriesOne, measureOne from \"/test-mount/testDb/flatViz\" where true",
+        "parameterized": "select measureOne, seriesOne from \"/test-mount/testDb/flatViz\" where measureOne < :max"
     },
     "markdown": {
         "fieldValue": "Bobsleigh",
@@ -286,8 +288,23 @@
         "barEditor": ".bar-editor",
         "alert": ".alert.alert-danger"
     },
+    "vizAggregation": {
+        "sum": "Σ",
+        "product": "Π",
+        "max": "⋀",
+        "min": "⋁",
+        "average": "μ"
+    },
     "vizOptions": {
         "clearSelection": "Select axis source",
+        "set": {
+            "category": ".seriesOne",
+            "seriesOne": ".seriesTwo",
+            "seriesTwo": ".seriesThree",
+            "measureOne": ".measureOne",
+            "measureTwo": ".measureTwo",
+            "dimension": ".seriesOne"
+        },
         "flatVizAll": {
             "pie": {
                 "measureOne": [
@@ -377,5 +394,39 @@
             }
         }
     },
+    "screenshot": {
+        "dirs": [
+            "../../test/image",
+            "../../test/image/aggregation",
+            "../../test/image/aggregation/line",
+            "../../test/image/aggregation/bar",
+            "../../test/image/aggregation/pie",
+            "../../test/image/charts",
+            "../../test/image/charts/line",
+            "../../test/image/charts/bar",
+            "../../test/image/charts/pie",
+            "../../test/image/propagation"
+        ],
+        "initial": "image/initial.png",
+        "actual": "image/actual.png",
+        "aggregation": {
+            "line": "../../test/image/aggregation/line/",
+            "bar": "../../test/image/aggregation/bar/",
+            "pie": "../../test/image/aggregation/pie/"
+        },
+        "charts": {
+            "line": "../../test/image/charts/line/",
+            "bar": "../../test/image/charts/bar/",
+            "pie": "../../test/image/charts/pie/"
+        },
+        "complex": "../../test/image/propagation/"
+
+    },
+    "complex": {
+        "inputSelector": "input[name=max]",
+        "values": ["10", "5", "30"]
+    },
+    "collectingScreenshots": false,
+    "tmpFileForScreenshots": "image/tmp.png",
     "version": "2.1.11"
 }

@@ -144,6 +144,7 @@ type Config =
             , nextCellList :: String
             , nextCellSearch :: String
             , nextCellViz :: String
+            , nextCellQuery :: String
             , cellOutputLabel :: String
             , cellOutputResult :: String
             , failures :: String
@@ -216,6 +217,7 @@ type Config =
              , flatVizAll :: String
              , flatVizMeasures :: String
              , flatVizOneOption :: String
+             , parameterized :: String
              }
   , vizSelectors :: { heightInput :: String
                     , widthInput :: String
@@ -241,7 +243,20 @@ type Config =
                 , altFieldName :: String
                 , visibleMdFieldSelector :: String
                 }
+  , vizAggregation :: { sum :: String
+                      , product :: String
+                      , average :: String
+                      , max :: String
+                      , min :: String
+                      }
   , vizOptions :: { clearSelection :: String
+                  , set :: { category :: String
+                           , dimension :: String
+                           , seriesOne :: String
+                           , seriesTwo :: String
+                           , measureOne :: String
+                           , measureTwo :: String
+                           }
                   , flatVizAll :: { pie :: ChartOptions
                                   , line :: ChartOptions
                                   , bar :: ChartOptions
@@ -251,7 +266,26 @@ type Config =
                                         , bar :: ChartOptions
                                         }
                   }
+  , screenshot :: { dirs :: Array String
+                  , initial :: String
+                  , actual :: String
+                  , aggregation :: { bar :: String
+                                   , line :: String
+                                   , pie :: String
+                                   }
+                  , charts :: { bar :: String
+                              , line :: String
+                              , pie :: String
+                              }
+                  , complex :: String
+
+                  }
+  , complex :: { inputSelector :: String
+               , values :: Array String
+               }
   , version :: String
+  , collectingScreenshots :: Boolean
+  , tmpFileForScreenshots :: String
   }
 
 type ChartSwitchers =

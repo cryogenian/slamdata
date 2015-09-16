@@ -104,4 +104,3 @@ runMarkdown cell = do
     if A.length items > 500
       then pure $ toList (A.take 500 items ++ ["<500 item limit reached>"])
       else pure $ toList items
-

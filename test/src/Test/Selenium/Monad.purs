@@ -17,28 +17,42 @@ limitations under the License.
 module Test.Selenium.Monad where
 
 import Prelude
+import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Reader.Class
 import Control.Monad.Reader.Trans
-import Control.Monad.Trans (lift)
-import Control.Monad.Eff.Class (liftEff)
-import Data.List
-import Data.String (contains)
-import Platform (getPlatform, platformInfo, PLATFORM())
-import Selenium.Monad
+import Control.Monad.Eff.Exception (error)
+import Control.Monad.Error.Class (throwError)
+import Data.Maybe (maybe)
+import Platform (getPlatform, PLATFORM(), runOs, runPlatform)
+import Selenium.Monad (Selenium())
 import Selenium.Types (ControlKey())
 import Selenium.Key (metaKey, controlKey)
 import Test.Config (Config())
+import qualified Graphics.ImageDiff as GI
+import qualified Graphics.EasyImage as GE
+import Node.FS (FS())
 
-type Check a = Selenium (platform :: PLATFORM) (config :: Config) a
+type Check a = Selenium ( platform :: PLATFORM
+                        , imageDiff :: GI.IMAGE_MAGICK
+                        , easyImage :: GE.EASY_IMAGE
+                        , fs :: FS) (config :: Config) a
 
--- READER
 getConfig :: Check Config
 getConfig = _.config <$> ask
 
 getModifierKey :: Check ControlKey
-getModifierKey = lift $ liftEff $ getPlatform >>= pluckFamily >>> modifierKey >>> return
+getModifierKey = do
+  platform <- getPlatform
+  maybe err (pure <<< modifierKey)
+    $ platform
+    >>= runPlatform
+    >>> _.os
+    >>> runOs
+    >>> _.family
   where
-  pluckFamily = platformInfo >>> _.os >>> _.family
+  err = throwError $ error "incorrect platform"
   modifierKey "Darwin" = metaKey
   modifierKey _ = controlKey
 
+diff :: _ -> Check Boolean
+diff = liftAff <<< GI.diff

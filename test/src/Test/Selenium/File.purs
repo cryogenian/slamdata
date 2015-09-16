@@ -281,7 +281,7 @@ checkItemToolbar = do
   sectionMsg "CHECK ITEM TOOLBAR"
   enterMount
   -- W/o this it will show toolbar
-  sequence $ mouseToLocation {x: 0.0, y: 0.0}
+  sequence $ mouseToLocation {x: zero, y: zero}
   { listGroupItem : groupItem, itemToolbar : toolbar } <- getItemToolbar
 
   apathize do
