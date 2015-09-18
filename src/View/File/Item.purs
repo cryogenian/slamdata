@@ -42,19 +42,19 @@ import qualified View.Css as Vc
 
 items :: forall e. State -> HTML e
 items state =
-  let items = state ^. _items
+  let xs = state ^. _items
   in H.div [ A.classes [B.listGroup, Vc.results] ]
-           $ zipWith (item state) (0 `range` length items) items
+           $ zipWith (item state) (0 `range` length xs) xs
 
 item :: forall e. State -> Int -> Item -> HTML e
-item state ix item =
-  case item of
+item state ix it =
+  case it of
     PhantomItem _ ->
       H.div [ A.classes [B.listGroupItem, Vc.phantom] ]
             [ H.div [ A.class_ B.row ]
                     [ H.div [ A.classes [B.colXs9, Vc.itemContent]]
                             [ H.span_ [ H.img [ A.src "img/spin.gif" ] []
-                                      , H.text $ itemName item
+                                      , H.text $ itemName it
                                       ]
                             ]
                     ]
@@ -68,19 +68,19 @@ item state ix item =
                        (if selected
                         then [B.listGroupItemInfo]
                         else []) ++
-                       (if hiddenTopLevel (itemResource item)
+                       (if hiddenTopLevel (itemResource it)
                         then if (state ^. _showHiddenFiles)
                              then [Vc.itemHidden]
                              else [B.hidden]
                         else []))
           , E.onClick (E.input_ $ inj $ ItemSelect ix)
-          , E.onDoubleClick (\_ -> pure $ openItem item (state ^. _sort) (state ^. _salt))
+          , E.onDoubleClick (\_ -> pure $ openItem it (state ^. _sort) (state ^. _salt))
           ]
           [ H.div [ A.class_ B.row ]
                   [ H.div [ A.classes [B.colXs9, Vc.itemContent] ]
-                          [ H.a [ A.href $ itemURL (state ^. _sort) (state ^. _salt) Edit item ]
-                                [ H.span_ [ H.i [ iconClasses item ] []
-                                          , H.text $ itemName item
+                          [ H.a [ A.href $ itemURL (state ^. _sort) (state ^. _salt) Edit it ]
+                                [ H.span_ [ H.i [ iconClasses it ] []
+                                          , H.text $ itemName it
                                           ]
                                 ]
                           ]
@@ -91,7 +91,7 @@ item state ix item =
                           [ H.ul [ A.classes ([B.listInline, B.pullRight])
                                  , CSS.style (marginBottom $ px 0.0)
                                  ]
-                                 $ showToolbar item state
+                                 $ showToolbar it state
                           ]
                   ]
           ]
@@ -100,7 +100,7 @@ item state ix item =
            | otherwise = resourceName <<< itemResource
 
 iconClasses :: forall i. Item -> A.Attr i
-iconClasses item = A.classes [B.glyphicon, Vc.itemIcon, iconClass $ itemResource item]
+iconClasses it = A.classes [B.glyphicon, Vc.itemIcon, iconClass $ itemResource it]
   where
   iconClass :: Resource -> A.ClassName
   iconClass (File _) = B.glyphiconFile
@@ -109,8 +109,8 @@ iconClasses item = A.classes [B.glyphicon, Vc.itemIcon, iconClass $ itemResource
   iconClass (Database _) = B.glyphiconHdd
 
 showToolbar :: forall e. Item -> State -> Array (HTML e)
-showToolbar item state =
-  let r = itemResource item
+showToolbar it state =
+  let r = itemResource it
       conf = if isDatabase r
              then [toolItem' handleConfigureItem "configure" B.glyphiconWrench]
              else []
@@ -122,4 +122,4 @@ showToolbar item state =
                   else []
   where
   toolItem' :: forall e. (Item -> Event e) -> String -> A.ClassName -> HTML e
-  toolItem' f = toolItem [] item f
+  toolItem' f = toolItem [] it f

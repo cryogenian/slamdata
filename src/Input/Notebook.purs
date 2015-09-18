@@ -234,13 +234,13 @@ setSlamDownStatus cell =
       message = ("Exported fields: " <>) <<< intercalate ", " <<< (fst <$>)
       initial md =
         let fields = slamDownFields md
-            updateState (SlamDownState s) = case initSlamDownState md of
+            updateSlamDownState (SlamDownState s) = case initSlamDownState md of
               SlamDownState s' ->
                 let prunedSM = foldl (flip SM.delete) s $ keysToPrune s $ SM.fromList fields
                     mergedSM = prunedSM `SM.union` s'
                 in SlamDownState mergedSM
         in cellUpdateVarMap (cell # _message .~ message fields
-                                  # _content .. _Markdown .. Ma._state %~ updateState)
+                                  # _content .. _Markdown .. Ma._state %~ updateSlamDownState)
   in maybe cell (initial <<< parseMd) input'
 
   where

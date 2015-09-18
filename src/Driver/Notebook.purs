@@ -81,11 +81,11 @@ driver ref k =
         let newNotebook = emptyNotebook # _path .~ resourceDir res
             newCell = Explore (initialExploreRec # _input .. _file .~ Right res)
         case addCell newCell newNotebook of
-          Tuple notebook cell -> do
+          Tuple nb cell -> do
             update $ (_editable .~ true)
                   .. (_loaded .~ true)
                   .. (_error .~ Nothing)
-                  .. (_notebook .~ notebook)
+                  .. (_notebook .~ nb)
             runEvent (runError "runExplore") k $ run cell `andThen` \_ -> runExplore cell
 
   where

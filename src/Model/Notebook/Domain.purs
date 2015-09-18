@@ -182,7 +182,7 @@ insertCell' mbParent content oldNotebook@(Notebook n) = Tuple new cell
          ..(_parent .~ ((^. _cellId) <$> mbParent))
          # setPort
   setPort :: Cell -> Cell
-  setPort cell = cell # _output .~ (cellOut cell oldNotebook)
+  setPort c = c # _output .~ (cellOut c oldNotebook)
 
 cellOut :: Cell -> Notebook -> Port
 cellOut cell n = case cell ^._content of

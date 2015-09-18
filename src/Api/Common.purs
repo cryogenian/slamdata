@@ -72,9 +72,8 @@ getWithPolicy policy u = do
   nocache <- liftEff $ nowEpochMilliseconds
   let url = printPath u
       symbol = if S.contains "?" url then "&" else "?"
-  slamjax defaultRequest { url = url ++ symbol ++ "nocache=" ++ pretty nocache }
+  retry policy affjax defaultRequest { url = url ++ symbol ++ "nocache=" ++ pretty nocache }
   where
-  slamjax = retry policy affjax
   pretty (Milliseconds ms) =
     let s = show ms
     in fromMaybe s (S.stripSuffix ".0" s)

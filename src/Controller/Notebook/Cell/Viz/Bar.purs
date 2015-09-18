@@ -136,11 +136,11 @@ mkSeries acc =
                       , "data" = Just $ CommonAxisData <$> catVals
                       }
 
-  ks :: Array Key
-  ks = L.fromList $ keys acc
+  keysArray :: Array Key
+  keysArray = L.fromList $ keys acc
 
   catVals :: Array String
-  catVals = nub $ keyCategory <$> ks
+  catVals = nub $ keyCategory <$> keysArray
 
   nameMap :: Array (Tuple Key Number) -> Map String (Array Number)
   nameMap = named'' <<< filled <<< named'

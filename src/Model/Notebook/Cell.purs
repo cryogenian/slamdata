@@ -195,22 +195,22 @@ _Explore = prism' Explore $ \s -> case s of
 
 _Search :: PrismP CellContent Sr.SearchRec
 _Search = prism' Search $ \s -> case s of
-  Search s -> Just s
+  Search s' -> Just s'
   _ -> Nothing
 
 _Query :: PrismP CellContent Qu.QueryRec
 _Query = prism' Query $ \s -> case s of
-  Query s -> Just s
+  Query s' -> Just s'
   _ -> Nothing
 
 _Visualize :: PrismP CellContent Vz.VizRec
 _Visualize = prism' Visualize $ \s -> case s of
-  Visualize s -> Just s
+  Visualize s' -> Just s'
   _ -> Nothing
 
 _Markdown :: PrismP CellContent Ma.MarkdownRec
 _Markdown = prism' Markdown $ \s -> case s of
-  Markdown s -> Just s
+  Markdown s' -> Just s'
   _ -> Nothing
 
 _FileInput :: TraversalP CellContent FileInput

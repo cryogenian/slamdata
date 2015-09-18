@@ -149,8 +149,8 @@ mkSeries :: Boolean -> AxisType -> AggregatedAccum -> Tuple Axises (Array Series
 mkSeries needTwoAxis ty acc =
   Tuple xAxis series
   where
-  ks :: Array Key
-  ks = L.fromList $ keys acc
+  keysArray :: Array Key
+  keysArray = L.fromList $ keys acc
 
   series :: Array Series
   series =
@@ -163,7 +163,7 @@ mkSeries needTwoAxis ty acc =
          else L.Nil)
 
   catVals :: Array String
-  catVals = nub $ keyCategory <$> ks
+  catVals = nub $ keyCategory <$> keysArray
 
   xAxis = OneAxis $ Axis
           axisDefault { "type" = Just ty
