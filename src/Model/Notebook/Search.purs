@@ -93,8 +93,6 @@ predicateToSQL (Contains (Text v)) s =
   render' v = [ "LOWER(" <> s <> ") = " <> v]
   render v = [s <> " = " <> v ]
 
-
-
 predicateToSQL (Contains (Tag v)) s = predicateToSQL (Contains (Text v)) (s <> "[*]")
 predicateToSQL (Eq v) s = qUnQ s "=" v
 predicateToSQL (Gt v) s = qUnQ s ">" v
@@ -103,7 +101,6 @@ predicateToSQL (Lt v) s = qUnQ s "<" v
 predicateToSQL (Lte v) s = qUnQ s "<=" v
 predicateToSQL (Ne v) s = qUnQ s "<>" v
 predicateToSQL (Like v) s = "LOWER( " <> s <> ")" <> " LIKE " <>  glob2like v
-predicateToSQL _ _ = ""
 
 range :: String -> String -> String -> String
 range v v' s =

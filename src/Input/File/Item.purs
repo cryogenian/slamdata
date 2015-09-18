@@ -45,6 +45,9 @@ inputItem sort searching input items = case input of
   ItemSelect ix ->
     modify toggleItem items ix
 
+  Resort ->
+    resort sort searching items
+
 toggleItem :: Boolean -> Item -> Item
 toggleItem true (Item r) = SelectedItem r
 toggleItem false (SelectedItem r) = Item r

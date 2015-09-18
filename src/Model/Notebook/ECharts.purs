@@ -230,6 +230,7 @@ catFromSemanthic v =
     Money v m -> pure $ show v <> m
     Category s -> pure s
     Time t -> pure t
+    Bool b -> pure $ show b
 
 valFromSemanthic :: Semanthic -> Maybe Number
 valFromSemanthic v =
@@ -239,8 +240,9 @@ valFromSemanthic v =
     Percent v -> pure v
     _ -> Nothing
 
-check :: L.List (Maybe Semanthic) -> Maybe Axis
-check lst =
+
+checkSemanthics :: L.List (Maybe Semanthic) -> Maybe Axis
+checkSemanthics lst =
   (ValAxis  <$> checkValues lst)   <|>
   (ValAxis  <$> checkMoney lst)    <|>
   (ValAxis  <$> checkPercent lst)  <|>
@@ -305,11 +307,17 @@ instance semanthicShow :: Show Semanthic where
 
 instance semanthicEq :: Eq Semanthic where
   eq (Value v) (Value v') = v == v'
+  eq (Value v) _ = false
   eq (Percent p) (Percent p') = p == p'
+  eq (Percent _) _ = false
   eq (Money m c) (Money m' c') = m == m' && c == c'
+  eq (Money _ _) _ = false
   eq (Time t) (Time t') = t == t'
+  eq (Time _) _ = false
   eq (Category c) (Category c') = c == c'
-  eq _ _ = false
+  eq (Category _) _ = false
+  eq (Bool b) (Bool b') = b == b'
+  eq (Bool _) _ = false
 
 instance semanthicOrd :: Ord Semanthic where
   compare (Time t) (Time t') = compare t t'
@@ -326,6 +334,9 @@ instance semanthicOrd :: Ord Semanthic where
   compare (Value v) (Value v') = compare v v'
   compare (Value _) _ = LT
   compare (Category c) (Category c') = compare c c'
+  compare (Category _) _ = LT
+  compare (Bool b) (Bool b') = compare b b'
+  compare (Bool _) _ = LT
 
 
 analyze :: JsonPrim -> Maybe Semanthic
@@ -405,8 +416,8 @@ toSemanthic' arr =
     step (insertOne acc m ks) lst
 
   insertOne acc m L.Nil = acc
-  insertOne acc m (L.Cons k ks) =
-    insertOne (update (pure <<< L.Cons (lookup k m)) k acc) m ks
+  insertOne acc m (L.Cons k ks') =
+    insertOne (update (pure <<< L.Cons (lookup k m)) k acc) m ks'
 
 analyzeJArray :: JArray -> Map JCursor Axis
 analyzeJArray arr =
@@ -417,8 +428,8 @@ analyzeJArray arr =
   # maybe arr transpose
   -- Produce map from JCursor to List of values (Maybe Semanthic) for every Json
   # toSemanthic'
-  -- Check if values of that map can be converted to axises (if can it will be Just)
-  # map check
+  -- Check if values of that map can be converted to axes (if can it will be Just)
+  # map checkSemanthics
   -- Make list of Tuple JCursor (Maybe Axis)
   # toList
   -- lift Maybe to Tuple from Axis
@@ -462,9 +473,8 @@ getPossibleDependencies cursor m =
 
 checkPairs :: Map JCursor Axis -> Map JCursor Axis
 checkPairs m =
-  foldl check m ks
+  foldl check m $ keys m
   where
-  ks = keys m
   check :: Map JCursor Axis -> JCursor -> Map JCursor Axis
   check m cursor =
     case getPossibleDependencies cursor m of

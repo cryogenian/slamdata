@@ -307,6 +307,7 @@ instance decodeJsonResource :: DecodeJson Resource where
       "notebook" -> parseDirPath "notebook" Notebook path
       "directory" -> parseDirPath "directory" Directory path
       "mount" -> parseDirPath "mount" Database path
+      _ -> Left "Unrecognized resource type"
     where
     parseDirPath :: String -> (DirPath -> Resource) -> String -> Either String Resource
     parseDirPath ty ctor s = maybe (Left $ "Invalid " ++ ty ++ " path") (Right <<< ctor) $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsDir s)
