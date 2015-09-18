@@ -93,19 +93,19 @@ checkSetHeightWidth = withSmallZipsAllChart do
 
 switchToPie :: Check Unit
 switchToPie = do
-  getChartSwitchers >>= sequence <<< leftClick <<< _.pie
+  tryRepeatedlyTo $ getChartSwitchers >>= sequence <<< leftClick <<< _.pie
   await "Pie switch doesn't work" pieShown
 
 
 switchToLine :: Check Unit
 switchToLine = do
- getChartSwitchers >>= sequence <<< leftClick <<< _.line
+ tryRepeatedlyTo $ getChartSwitchers >>= sequence <<< leftClick <<< _.line
  await "Line switch doesn't work" lineShown
 
 
 switchToBar :: Check Unit
 switchToBar = do
- getChartSwitchers >>= sequence <<< leftClick <<< _.bar
+ tryRepeatedlyTo $ getChartSwitchers >>= sequence <<< leftClick <<< _.bar
  await "Bar switch doesn't work" barShown
 
 
@@ -700,8 +700,8 @@ test = do
   sectionMsg "check option auto select"
   checkOptionAutoSelect
 
-  --sectionMsg "check option save"
-  --checkOptionSave
+  sectionMsg "check option save"
+  checkOptionSave
 
   sectionMsg "trash viz cell"
   checkTrashingVizCell
