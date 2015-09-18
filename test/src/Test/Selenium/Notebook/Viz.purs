@@ -93,19 +93,19 @@ checkSetHeightWidth = withSmallZipsAllChart do
 
 switchToPie :: Check Unit
 switchToPie = do
-  getChartSwitchers >>= sequence <<< leftClick <<< _.pie
+  tryRepeatedlyTo $ getChartSwitchers >>= sequence <<< leftClick <<< _.pie
   await "Pie switch doesn't work" pieShown
 
 
 switchToLine :: Check Unit
 switchToLine = do
- getChartSwitchers >>= sequence <<< leftClick <<< _.line
+ tryRepeatedlyTo $ getChartSwitchers >>= sequence <<< leftClick <<< _.line
  await "Line switch doesn't work" lineShown
 
 
 switchToBar :: Check Unit
 switchToBar = do
- getChartSwitchers >>= sequence <<< leftClick <<< _.bar
+ tryRepeatedlyTo $ getChartSwitchers >>= sequence <<< leftClick <<< _.bar
  await "Bar switch doesn't work" barShown
 
 
@@ -137,7 +137,7 @@ checkSwitchers = withFlatVizChart do
 checkAlert :: Check Unit
 checkAlert = withFlatVizMeasures do
   config <- getConfig
-  waitExistentCss config.vizSelectors.alert "There is no alert but should"
+  tryRepeatedlyTo $ byCss config.vizSelectors.alert >>= findExact
   successMsg "ok, alert found"
 
 checkOptions :: Check Unit
@@ -480,7 +480,7 @@ checkRunRefreshEmbed = withFlatVizChart do
 
   saveInitialScreenshot
 
-  getPlayButton >>= sequence <<< leftClick
+  findPlayButton >>= sequence <<< leftClick
 
 
   await "Error: chart has not been rendered (pie)"

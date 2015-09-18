@@ -15,7 +15,8 @@ limitations under the License.
 -}
 
 module Utils.Halide
-       ( onPaste
+       ( ariaLabel
+       , onPaste
        , width'
        , height'
        , frameBorder
@@ -63,6 +64,9 @@ max = A.attr (A.attributeName "max") <<< show
 
 min :: forall i. Number -> A.Attr i
 min = A.attr (A.attributeName "min") <<< show
+
+ariaLabel :: forall i. String -> A.Attr i
+ariaLabel = A.attr (A.attributeName "aria-label")
 
 selectThis :: forall e o i. ET.Event o -> E.EventHandler (E.Event (dom :: DOM | e) i)
 selectThis ev = pure $ liftEff (select ev.target) *> empty

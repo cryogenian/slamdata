@@ -55,7 +55,7 @@ newCellMenuExpanded = do
   where
   getEl :: Tuple String String -> Check Element
   getEl (Tuple selector msg) =
-    waitExistentCss selector $ msg <> " not found in new cell menu"
+    tryRepeatedlyTo $ byCss selector >>= findExact
 
 
 
@@ -105,27 +105,27 @@ getMdCells =
 waitNextCellSearch :: Check Element
 waitNextCellSearch = do
   config <- getConfig
-  waitExistentCss config.cell.nextCellSearch "There is no next search cell button"
+  tryRepeatedlyTo $ byCss config.cell.nextCellSearch >>= findExact
 
 waitNextVizCell :: Check Element
 waitNextVizCell = do
   config <- getConfig
-  waitExistentCss config.cell.nextCellViz "There is no next viz cell button"
+  tryRepeatedlyTo $ byCss config.cell.nextCellViz >>= findExact
 
 waitNextQueryCellFor :: Element -> Check Element
-waitNextQueryCellFor cell = waiter do
+waitNextQueryCellFor cell = tryRepeatedlyTo do
   config <- getConfig
   byCss config.cell.nextCellQuery >>= childExact cell
 
 waitNextVizCellFor :: Element -> Check Element
-waitNextVizCellFor cell = waiter do
+waitNextVizCellFor cell = tryRepeatedlyTo do
   config <- getConfig
   byCss config.cell.nextCellViz >>= childExact cell
 
 waitCanvas :: Check Element
 waitCanvas = do
-  getConfig >>= _.vizSelectors >>> _.canvas >>>
-  flip waitExistentCss "There is no canvas"
+  config <- getConfig
+  tryRepeatedlyTo $ byCss config.vizSelectors.canvas >>= findExact
 
 fileListVisible :: Check Boolean
 fileListVisible =
@@ -134,47 +134,38 @@ fileListVisible =
     >>= isDisplayed
 
 waitVizHeightInput :: Check Element
-waitVizHeightInput =
-  getConfig >>= _.vizSelectors >>> _.heightInput >>>
-  flip waitExistentCss "There is no viz height input"
+waitVizHeightInput = do
+  config <- getConfig
+  tryRepeatedlyTo $ byCss config.vizSelectors.heightInput >>= findExact
 
 waitVizWidthInput :: Check Element
-waitVizWidthInput =
-  getConfig >>= _.vizSelectors >>> _.widthInput >>>
-  flip waitExistentCss "There is no viz width input"
+waitVizWidthInput = do
+  config <- getConfig
+  tryRepeatedlyTo $ byCss config.vizSelectors.widthInput >>= findExact
 
 getInput :: Check Element
-getInput =
-  getConfig >>= _.explore >>> _.input >>>
-  flip getElementByCss "there is no input in file list"
-
-waitTextField :: String -> Check Element
-waitTextField name =
-  waitExistentCss selector errorMessage
-    where
-    errorMessage = "There is no text field named \"" ++ name ++ "\""
-    selector = "[type='text'][name='" ++ name ++ "']"
+getInput = do
+  config <- getConfig
+  tryRepeatedlyTo $ byCss config.explore.input >>= findExact
 
 getAceInput :: Check Element
-getAceInput =
-  getConfig >>= _.ace >>> _.textInput >>>
-  flip getElementByCss "there is no ace input"
+getAceInput = do
+  config <- getConfig
+  tryRepeatedlyTo $ byCss config.ace.textInput >>= findExact
 
 getAceFor :: Element -> Check Element
 getAceFor cell =
-  waiter
+  tryRepeatedlyTo
   $ getConfig
   >>= _.ace >>> _.textInput >>> byCss
   >>= childExact cell
 
-getPlayButton :: Check Element
-getPlayButton =
-  getConfig >>= _.cell >>> _.playButton >>>
-  flip getElementByCss "there is no play button"
+findPlayButton :: Check Element
+findPlayButton = tryRepeatedlyTo $ byCss "button[aria-label=\"Play\"]" >>= findExact
 
 getPlayButtonFor :: Element -> Check Element
 getPlayButtonFor cell =
-  waiter
+  tryRepeatedlyTo
   $ getConfig
   >>= _.cell >>> _.playButton >>> byCss
   >>= childExact cell
@@ -277,7 +268,7 @@ getSearchClear =
 waitOutputLabel :: Check Element
 waitOutputLabel = do
   config <- getConfig
-  waitExistentCss config.cell.cellOutputLabel "There is no output label"
+  tryRepeatedlyTo $ byCss config.cell.cellOutputLabel >>= findExact
 
 getPager :: Check Element
 getPager = getConfig >>= _.explore >>> _.pager >>>
@@ -321,17 +312,17 @@ getEnabledRecord = do
 getPieEditor :: Check Element
 getPieEditor = do
   config <- getConfig
-  waitExistentCss config.vizSelectors.pieEditor "There is no pie editor"
+  tryRepeatedlyTo $ byCss config.vizSelectors.pieEditor >>= findExact
 
 getLineEditor :: Check Element
 getLineEditor = do
   config <- getConfig
-  waitExistentCss config.vizSelectors.lineEditor "There is no line editor"
+  tryRepeatedlyTo $ byCss config.vizSelectors.lineEditor >>= findExact
 
 getBarEditor :: Check Element
 getBarEditor = do
   config <- getConfig
-  waitExistentCss  config.vizSelectors.barEditor "There is no bar editor"
+  tryRepeatedlyTo $ byCss config.vizSelectors.barEditor >>= findExact
 
 getCurrentEditor :: Check Element
 getCurrentEditor = do
@@ -357,19 +348,18 @@ pieShown = getPieEditor >>= isDisplayed
 
 getPieTypeIcon :: Check Element
 getPieTypeIcon = do
-  getConfig >>= _.vizSelectors >>> _.pieIcon
-    >>> flip waitExistentCss "There is no pie type switcher"
+  config <- getConfig
+  tryRepeatedlyTo $ byCss config.vizSelectors.pieIcon >>= findExact
 
 getLineTypeIcon :: Check Element
 getLineTypeIcon = do
-  getConfig >>= _.vizSelectors >>> _.lineIcon
-    >>> flip waitExistentCss "There is no line type switcher"
+  config <- getConfig
+  tryRepeatedlyTo $ byCss config.vizSelectors.lineIcon >>= findExact
 
 getBarTypeIcon :: Check Element
 getBarTypeIcon = do
-  getConfig >>= _.vizSelectors >>> _.barIcon
-    >>> flip waitExistentCss "There is no bar type switcher"
-
+  config <- getConfig
+  tryRepeatedlyTo $ byCss config.vizSelectors.barIcon >>= findExact
 
 
 getOptions :: Maybe Element -> Check (List Element)
@@ -411,12 +401,12 @@ getChartOptions el = do
 
 
 getCurrentChartOptions :: Check ChartOptions
-getCurrentChartOptions = waiter $
+getCurrentChartOptions = tryRepeatedlyTo $
   getCurrentEditor >>= getChartOptions
 
 
 getCurrentEditorChild :: String -> Check Element
-getCurrentEditorChild sel = waiter do
+getCurrentEditorChild sel = tryRepeatedlyTo do
   edit <- getCurrentEditor
   byCss sel >>= childExact edit
 

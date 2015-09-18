@@ -68,7 +68,7 @@ checkInitialSearch =
 
 checkIncorrectInputs :: Check Unit
 checkIncorrectInputs = do
-  for_ [getPlayButton, getRefreshButton, getSearchButton] \btnCheck -> do
+  for_ [findPlayButton, getRefreshButton, getSearchButton] \btnCheck -> do
     checkBothEmpty btnCheck
     checkFileListEmpty btnCheck
     checkSearchEmpty btnCheck
@@ -180,7 +180,7 @@ checkSearchStop = withSearchCell do
   clear <- getSearchClear
   ip <- getSearchInput
   fl <- getSearchFileList
-  play <- getPlayButton
+  play <- findPlayButton
   startSrc <- getAttribute clear "src"
   sequence do
     leftClick fl
@@ -239,7 +239,7 @@ checkQuery conf = withSmallZipsSearchedAll do
   sectionMsg conf.query
   config <- getConfig
   ip <- getSearchInput
-  btn <- getPlayButton
+  btn <- findPlayButton
 
   fbEnabled <- (_.fb <<< runEnabledRecord) <$> getEnabledRecord
   if not fbEnabled

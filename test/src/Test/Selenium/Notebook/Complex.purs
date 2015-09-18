@@ -11,6 +11,7 @@ import Data.Either (Either(..))
 import Selenium.Types
 import Selenium.Monad
 import Selenium.ActionSequence hiding (sequence)
+import Selenium.Combinators (tryToFind)
 
 import Test.Config
 import Test.Selenium.ActionSequence
@@ -80,9 +81,7 @@ checkMarkdownViz = do
   checkOneInput val = do
     config <- getConfig
     modifierKey <- getModifierKey
-    input <- waitExistentCss config.complex.inputSelector
-             "there is no markdown result"
-
+    input <- tryToFind $ byCss config.complex.inputSelector
     sequence do
       leftClick input
       selectAll modifierKey

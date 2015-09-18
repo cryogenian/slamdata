@@ -66,6 +66,7 @@ test config =
       (liftEff SR.fileDetector) >>= setFileDetector driver
 
     res <- attempt $ flip runReaderT { config: config
+                                     , defaultTimeout: config.selenium.waitTime
                                      , driver: driver} do
       setWindowSize { height: 1280, width: 1024 }
       File.test
