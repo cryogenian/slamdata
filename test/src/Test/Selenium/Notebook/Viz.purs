@@ -700,8 +700,8 @@ test = do
   sectionMsg "check option auto select"
   checkOptionAutoSelect
 
-  sectionMsg "check option save"
-  checkOptionSave
+  --sectionMsg "check option save"
+  --checkOptionSave
 
   sectionMsg "trash viz cell"
   checkTrashingVizCell
