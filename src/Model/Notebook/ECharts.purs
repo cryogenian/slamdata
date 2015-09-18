@@ -37,9 +37,10 @@ module Model.Notebook.ECharts (
 
 import Prelude
 import Control.Alt ((<|>))
+import Control.MonadPlus (guard)
 import Data.Argonaut.Core (Json(), JArray(), toNumber, toString)
 import Data.Argonaut.JCursor (JCursor(..), JsonPrim(), toPrims, runJsonPrim, insideOut)
-import Data.Array (filter, concat, nubBy, singleton, sortBy, head, reverse, length, tail, (!!), (:), nub)
+import Data.Array (filter, concat, nubBy, singleton, sortBy, head, reverse, length, tail, (!!), (:), nub, elemIndex)
 import Data.Bifunctor (rmap)
 import Data.Foldable (for_, traverse_, foldl, fold, Foldable)
 import Data.Traversable (traverse, sequence)
@@ -53,13 +54,14 @@ import Data.String.Regex (noFlags, regex, match, test)
 import Data.Tuple (Tuple(..), fst, snd)
 import Global (readFloat, isNaN)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
-import Data.Argonaut.Encode (EncodeJson)
+import Data.Argonaut.Encode (EncodeJson, encodeJson)
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (fromString, jsonEmptyObject, JArray(), Json())
 import Data.Either
 import Data.Unfoldable (Unfoldable)
-import Utils (s2n)
+import Utils (s2n, s2i)
 import qualified Data.List as L
+import qualified Data.StrMap as Sm
 
 dependsOn :: JCursor -> JCursor -> Boolean
 dependsOn a b = a /= b &&
@@ -237,24 +239,43 @@ valFromSemanthic v =
     Percent v -> pure v
     _ -> Nothing
 
-
 check :: L.List (Maybe Semanthic) -> Maybe Axis
 check lst =
-  ((ValAxis  ) <$> checkValues lst)   <|>
-  ((ValAxis  ) <$> checkMoney lst)    <|>
-  ((ValAxis  ) <$> checkPercent lst)  <|>
-  ((ValAxis  ) <$> checkBool lst)     <|>
-  ((TimeAxis ) <$> checkTime lst)     <|>
-  ((CatAxis  ) <$> checkCategory lst)
+  (ValAxis  <$> checkValues lst)   <|>
+  (ValAxis  <$> checkMoney lst)    <|>
+  (ValAxis  <$> checkPercent lst)  <|>
+  (ValAxis  <$> checkBool lst)     <|>
+  (TimeAxis <$> checkTime lst)     <|>
+  (CatAxis  <$> checkCategory lst)
 
 checkPredicate :: (Semanthic -> Boolean) -> L.List (Maybe Semanthic) ->
                   Maybe (L.List (Maybe Semanthic))
-checkPredicate p lst = go true lst
+checkPredicate p lst =
+  go 0 0 lst L.Nil
   where
-  go false L.Nil = Nothing
-  go true L.Nil = Just lst
-  go acc (L.Cons Nothing lst) = go acc lst
-  go acc (L.Cons (Just c) lst) = go (acc && p c) lst
+  -- traversed. If there is more correct value then incorrect return
+  -- list with filtered values. else nothing.
+  go correct incorrect L.Nil acc
+    | correct > incorrect = Just $ L.reverse acc
+    | otherwise = Nothing
+  -- There is no value. Just put it to acc don't touch counters
+  go correct incorrect (L.Cons Nothing lst) acc =
+    go correct incorrect lst (L.Cons Nothing acc)
+  -- There is a value
+  go correct incorrect (L.Cons (Just c) lst) acc
+    -- It means nothing. Put Nothing to accum and don't touch counters
+    | isJust $ elemIndex c nothings = go correct incorrect lst (L.Cons Nothing acc)
+    -- It's correct. Increase correct counter, put value to accum
+    | p c = go (correct + one) incorrect lst (L.Cons (Just c) acc)
+    -- It's incorrect. Increase incorrect counter, put nothing to accum
+    | otherwise = go correct (incorrect + one) lst (L.Cons Nothing acc)
+
+  nothings :: Array Semanthic
+  nothings = map Category [ "undefined"
+                          , "null"
+                          , "NA"
+                          , "N/A"
+                          ]
 
 checkValues :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
 checkValues = checkPredicate isValue
@@ -317,9 +338,18 @@ analyze p = runJsonPrim p
 analyzeString :: String -> Maybe Semanthic
 analyzeString str =
   (analyzeDate str) <|>
+  (analyzeNumber str) <|>
   (analyzeMoney str) <|>
   (analyzePercent str) <|>
   (Just $ Category str)
+
+analyzeNumber :: String -> Maybe Semanthic
+analyzeNumber s = do
+  num <- s2n s
+  i <- s2i s
+  guard $ show num == s || show i == s
+  pure $ Value num
+
 
 analyzePercent :: String -> Maybe Semanthic
 analyzePercent input = do
@@ -380,15 +410,50 @@ toSemanthic' arr =
 
 analyzeJArray :: JArray -> Map JCursor Axis
 analyzeJArray arr =
-  checkPairs
-  $ fromList
-  $ L.catMaybes
-  $ map sequence
-  $ toList
-  $ map check
-  $ toSemanthic' arr
+  -- If array has exactly one element return it
+  do guard $ length arr == 1
+     arr !! 0
+  -- If element returned transpose it else take initial array
+  # maybe arr transpose
+  -- Produce map from JCursor to List of values (Maybe Semanthic) for every Json
+  # toSemanthic'
+  -- Check if values of that map can be converted to axises (if can it will be Just)
+  # map check
+  -- Make list of Tuple JCursor (Maybe Axis)
+  # toList
+  -- lift Maybe to Tuple from Axis
+  # map sequence
+  -- Drop Nothings
+  # L.catMaybes
+  -- Create new Map
+  # fromList
+  -- Drop records those keys have no relations to other keys
+  # checkPairs
 
 
+  where
+  transpose :: Json -> JArray
+  transpose =
+    -- decoding Json it should be a JObject to success
+    decodeJson
+    -- mapping Either
+    -- convert StrMap to list of Tuples
+    >>> map (Sm.toList
+             -- mapping list
+             -- make pair of Tuples from this one. One for key. One for value
+             >>> map (tpl2sm
+                      -- make StrMap from that pair {key: a, value: b}
+                      >>> Sm.fromList
+                      -- encode it to json
+                      >>> encodeJson))
+    -- if decoding to StrMap has no success return empty JArray it will
+    -- not produce any Axises. Else convert List of JObjects to Array
+    >>> either (const []) L.fromList
+
+  tpl2sm :: Tuple String Json -> L.List (Tuple String Json)
+  tpl2sm (Tuple key val) = L.Cons (Tuple "key" $ encodeJson key)
+                           $ L.Cons (Tuple "value" val)
+                           $ L.Nil
 
 getPossibleDependencies :: JCursor -> Map JCursor Axis -> L.List JCursor
 getPossibleDependencies cursor m =
