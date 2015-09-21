@@ -77,6 +77,8 @@
     "configureMount": {
         "nameField": ".modal.fade.in .mount-name input",
         "uriField": ".modal.fade.in .mount-uri input",
+        "hostField": ".modal.fade.in .mount-host:first-of-type label:first-of-type input",
+        "portField": ".modal.fade.in .mount-host:first-of-type label:last-of-type input",
         "usernameField": ".modal.fade.in .mount-userinfo input:first-of-type",
         "saveButton": ".modal.fade.in button.btn.btn-primary",
         "cancelButton": ".modal.fade.in button.btn:first-of-type",

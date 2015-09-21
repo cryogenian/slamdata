@@ -463,7 +463,7 @@ checkTrashingVizCell = withFlatVizChart do
       map (eq one <<< length) getCells
 
 checkRunRefreshEmbed :: Check Unit
-checkRunRefreshEmbed = withFlatVizChart do
+checkRunRefreshEmbed = onlyFirefox $ withFlatVizChart do
   switchToPie
   category <- getCategoryInput
   measure <- getMeasureOneInput
@@ -534,7 +534,7 @@ checkElementScreensDiffer checkEl = do
   map not $ screenshotsEqual config.screenshot.initial
 
 checkAggregation :: Check Unit
-checkAggregation = withFlatVizOneOption do
+checkAggregation = onlyFirefox $ withFlatVizOneOption do
   aggConfig <- map (_.screenshot >>> _.aggregation) getConfig
 
   switchToLine
@@ -593,7 +593,7 @@ setAverageAggregation =
 
 
 checkCharts :: Check Unit
-checkCharts = withFlatVizChart do
+checkCharts = onlyFirefox $ withFlatVizChart do
   config <- map (_.screenshot >>> _.charts) getConfig
   toSet <- map (_.vizOptions >>> _.set) getConfig
   switchToPie

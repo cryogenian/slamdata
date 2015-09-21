@@ -107,6 +107,8 @@ type Config =
              }
   , configureMount :: { nameField :: String
                       , uriField :: String
+                      , hostField :: String
+                      , portField :: String
                       , usernameField :: String
                       , pathField :: String
                       , saveButton :: String

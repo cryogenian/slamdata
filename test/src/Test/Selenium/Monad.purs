@@ -22,7 +22,7 @@ import Control.Monad.Reader.Class
 import Control.Monad.Reader.Trans
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
-import Data.Maybe (maybe)
+import Data.Maybe (maybe, fromMaybe)
 import Platform (getPlatform, PLATFORM(), runOs, runPlatform)
 import Selenium.Monad (Selenium())
 import Selenium.Types (ControlKey())
@@ -40,17 +40,20 @@ type Check a = Selenium ( platform :: PLATFORM
 getConfig :: Check Config
 getConfig = _.config <$> ask
 
-getModifierKey :: Check ControlKey
-getModifierKey = do
+getPlatformString :: Check String
+getPlatformString = do
   platform <- getPlatform
-  maybe err (pure <<< modifierKey)
+  pure $ fromMaybe ""
     $ platform
     >>= runPlatform
     >>> _.os
     >>> runOs
     >>> _.family
+
+
+getModifierKey :: Check ControlKey
+getModifierKey = map modifierKey getPlatformString
   where
-  err = throwError $ error "incorrect platform"
   modifierKey "Darwin" = metaKey
   modifierKey _ = controlKey
 

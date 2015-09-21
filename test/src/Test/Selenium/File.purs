@@ -47,7 +47,7 @@ import qualified Data.Char as Ch
 import qualified Data.StrMap as SM
 import qualified Data.Set as S
 import qualified Config as SDCfg
-import Test.Selenium.ActionSequence (keys, selectAll, copy, paste, undo, sendDelete)
+import Test.Selenium.ActionSequence
 import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
@@ -134,34 +134,98 @@ mountConfigFromConfig = do
 mountDatabaseWithMountConfig :: MountConfigR -> Check Unit
 mountDatabaseWithMountConfig mountConfig = do
   home
-  mountButton <- getMountDatabaseButton
-  sequence $ leftClick mountButton
-  config <- getConfig
-  wait modalShown config.selenium.waitTime
-  uriField <- getElementByCss config.configureMount.uriField "no connection uri field"
-  nameField <- getElementByCss config.configureMount.nameField "no mount name field"
-  pathField <- getElementByCss config.configureMount.pathField "no path field"
-  saveButton <- getElementByCss config.configureMount.saveButton "no save button"
-
-  let connectionUri = "mongodb://" ++ mountConfig.host ++ ":" ++ show mountConfig.port ++ "/" ++ config.database.name
-  modifierKey <- getModifierKey
-
-  sequence $ do
-    -- a strange hack follows to get the uri onto the clipboard, since the uri
-    -- field cannot be edited except by pasting.
-    leftClick nameField
-    sendKeys connectionUri
-    selectAll modifierKey
-    copy modifierKey
-    selectAll modifierKey
-    sendKeys config.mount.name
-
-    leftClick uriField
-    paste modifierKey
-
-    leftClick saveButton
+  getMountDatabaseButton >>= sequence <<< leftClick
+  await "Error: modal is not shown" modalShown
+  mac <- isMac
+  chrome <- isChrome
+  if mac && chrome
+    then fieldByField
+    else copyPaste
 
   where
+  connectionUri :: Config -> String
+  connectionUri config =
+    "mongodb://"
+    ++ mountConfig.host
+    ++ ":"
+    ++ show mountConfig.port
+    ++ "/"
+    ++ config.database.name
+
+  fieldByField :: Check Unit
+  fieldByField = do
+    warnMsg $ "This test doesn't check correctness of copy/paste.\n"
+      <> "It's known bug of selenium/chrome/mac combination that modifier keys\n"
+      <> "doesn't work"
+    config <- getConfig
+    nameField <- getNameField
+    portField <- getPortField
+    hostField <- getHostField
+    pathField <- getPathField
+    saveButton <- getSaveButton
+    sequence do
+      leftClick nameField
+      keys config.mount.name
+      leftClick portField
+      keys $ show mountConfig.port
+      leftClick hostField
+      keys mountConfig.host
+      leftClick pathField
+      keys config.database.name
+
+      leftClick saveButton
+
+
+  copyPaste :: Check Unit
+  copyPaste = do
+    config <- getConfig
+    uriField <- getUriField
+    nameField <- getNameField
+    saveButton <- getSaveButton
+    modifierKey <- getModifierKey
+    sequence do
+      leftClick nameField
+      keys $ connectionUri config
+      selectAll modifierKey
+      copy modifierKey
+      selectAll modifierKey
+      keys config.mount.name
+
+      leftClick uriField
+      paste modifierKey
+
+      leftClick saveButton
+
+  getSaveButton :: Check Element
+  getSaveButton = do
+    config <- getConfig
+    tryRepeatedlyTo $ byCss config.configureMount.saveButton >>= findExact
+
+  getUriField :: Check Element
+  getUriField = do
+    config <- getConfig
+    tryRepeatedlyTo $ byCss config.configureMount.uriField >>= findExact
+
+  getNameField :: Check Element
+  getNameField = do
+    config <- getConfig
+    tryRepeatedlyTo $ byCss config.configureMount.nameField >>= findExact
+
+  getPathField :: Check Element
+  getPathField = do
+    config <- getConfig
+    tryRepeatedlyTo $ byCss config.configureMount.pathField >>= findExact
+
+  getPortField :: Check Element
+  getPortField = do
+    config <- getConfig
+    tryRepeatedlyTo $ byCss config.configureMount.portField >>= findExact
+
+  getHostField :: Check Element
+  getHostField = do
+    config <- getConfig
+    tryRepeatedlyTo $ byCss config.configureMount.hostField >>= findExact
+
   getMountDatabaseButton :: Check Element
   getMountDatabaseButton = do
     config <- getConfig
@@ -250,8 +314,8 @@ checkConfigureMount = do
   modifierKey <- getModifierKey
   sequence do
     leftClick usernameField
-    selectAll modifierKey
-    sendKeys "hello"
+    sendBackspaces 100
+    keys "hello"
     undo modifierKey
 
   getElementByCss config.configureMount.saveButton "no save button"
@@ -506,8 +570,9 @@ searchForUploadedFile = do
   sequence $ do
     leftClick searchInput
     keys filename
-    leftClick searchButton
 
+  searchButton <- getElementByCss config.search.searchButton "no search button"
+  sequence $ leftClick searchButton
   wait (awaitUrlChanged url) config.selenium.waitTime
   wait (awaitItemWithPhrase filename) config.selenium.waitTime
   successMsg "Searched for and found item"
@@ -735,9 +800,8 @@ moveDelete msg setUp src tgt = do
     modifierKey <- getModifierKey
     sequence do
       leftClick nameField
-      selectAll modifierKey
-      sendDelete
-      sendKeys tgt
+      sendBackspaces 100
+      keys tgt
 
 moveDeleteDatabase :: Check Unit
 moveDeleteDatabase = do

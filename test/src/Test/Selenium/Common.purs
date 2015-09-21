@@ -36,6 +36,9 @@ module Test.Selenium.Common
   , elementScreenshot
   , actualElementScreenshot
   , initialElementScreenshot
+  , isChrome
+  , isFirefox
+  , isMac
   )
   where
 
@@ -216,3 +219,16 @@ actualElementScreenshot el =
 initialElementScreenshot :: Element -> Check Unit
 initialElementScreenshot el =
   getConfig >>= _.screenshot >>> _.initial >>> elementScreenshot el
+
+isBrowser :: String -> Check Boolean
+isBrowser br =
+  map (\x -> Str.toLower x.selenium.browser == br) getConfig
+
+isChrome :: Check Boolean
+isChrome = isBrowser "chrome"
+
+isFirefox :: Check Boolean
+isFirefox = isBrowser "firefox"
+
+isMac :: Check Boolean
+isMac = map (eq "Darwin") getPlatformString
