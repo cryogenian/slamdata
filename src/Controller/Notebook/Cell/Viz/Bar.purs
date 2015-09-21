@@ -64,7 +64,7 @@ extractData r conf =
   where
   cats :: L.List (Maybe String)
   cats =
-    map (flip bind Me.catFromSemanthic)
+    map (flip bind Me.catFromSemantics)
     $ maybe L.Nil Me.runAxis
     $ (conf ^._cats.._selection)
     >>= (flip lookup (r ^._all))
@@ -72,7 +72,7 @@ extractData r conf =
 
   vals :: L.List (Maybe Number)
   vals =
-    map (flip bind Me.valFromSemanthic)
+    map (flip bind Me.valFromSemantics)
     $ maybe L.Nil Me.runAxis
     $ (conf ^._firstMeasures.._selection)
     >>= flip lookup (r ^._all)
@@ -85,7 +85,7 @@ extractData r conf =
 
   sers1 :: L.List (Maybe String)
   sers1 =
-    map (flip bind Me.catFromSemanthic)
+    map (flip bind Me.catFromSemantics)
     $ maybe nothings Me.runAxis
     $ (conf ^._firstSeries.._selection)
     >>= flip lookup (r ^. _all)
@@ -93,7 +93,7 @@ extractData r conf =
 
   sers2 :: L.List (Maybe String)
   sers2 =
-    map (flip bind Me.catFromSemanthic)
+    map (flip bind Me.catFromSemantics)
     $ maybe nothings Me.runAxis
     $ (conf ^._secondSeries.._selection)
     >>= flip lookup (r ^. _all)
