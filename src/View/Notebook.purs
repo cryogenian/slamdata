@@ -32,7 +32,7 @@ import Data.Either (either)
 import Data.Inject1 (inj)
 import Data.Int (toNumber, fromNumber)
 import Data.KeyCombo (printKeyComboWin, printKeyComboMac, printKeyComboLinux)
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Path.Pathy
 import Data.Platform (Platform(..))
 import Data.String (joinWith)
@@ -74,7 +74,7 @@ notebookView state =
 
 navigation :: forall e. State -> Array (HTML e)
 navigation state =
-  if (not state.loaded) || (not state.editable)
+  if (not state.loaded) || (not state.editable) || (isJust state.error)
   then [ ]
   else [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
                         [ icon B.glyphiconBook notebookHref

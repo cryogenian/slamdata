@@ -47,7 +47,7 @@ import qualified Data.Char as Ch
 import qualified Data.StrMap as SM
 import qualified Data.Set as S
 import qualified Config as SDCfg
-import Test.Selenium.ActionSequence (selectAll, copy, paste, undo, sendDelete)
+import Test.Selenium.ActionSequence (keys, selectAll, copy, paste, undo, sendDelete)
 import Test.Selenium.Common
 import Test.Selenium.Monad
 import Test.Selenium.Log
@@ -494,7 +494,6 @@ shareFile = do
     shareLoc :: Element -> Check Element
     shareLoc el = getConfig >>= \config -> buttonLoc config.share.markShare el
 
-
 searchForUploadedFile :: Check Unit
 searchForUploadedFile = do
   sectionMsg "SEARCH"
@@ -503,11 +502,12 @@ searchForUploadedFile = do
   searchInput <- getElementByCss config.search.searchInput "no search input field"
   url <- getCurrentUrl
   let filename = fromMaybe config.upload.file $ Arr.last $ Str.split "/" config.upload.file
+  searchButton <- getElementByCss config.search.searchButton "no search button"
   sequence $ do
     leftClick searchInput
-    sendKeys filename
-  searchButton <- getElementByCss config.search.searchButton "no search button"
-  sequence $ leftClick searchButton
+    keys filename
+    leftClick searchButton
+
   wait (awaitUrlChanged url) config.selenium.waitTime
   wait (awaitItemWithPhrase filename) config.selenium.waitTime
   successMsg "Searched for and found item"

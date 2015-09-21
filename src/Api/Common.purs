@@ -18,7 +18,7 @@ module Api.Common where
 
 import Prelude
 import Control.Alt ((<|>))
-import Control.Monad.Aff (Aff())
+import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error)
@@ -27,13 +27,14 @@ import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Combinators ((~>), (:=))
 import Data.Argonaut.Core (Json(), JAssoc(), jsonEmptyObject)
 import Data.Date (nowEpochMilliseconds)
+import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Int (fromNumber, toNumber)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Path.Pathy
 import Data.Time (Milliseconds(..))
 import Model.Path (AnyPath())
-import Network.HTTP.Affjax (Affjax(), AJAX(), URL(), AffjaxRequest(), defaultRequest, affjax, retry, defaultRetryPolicy)
+import Network.HTTP.Affjax (Affjax(), AJAX(), URL(), AffjaxRequest(), RetryPolicy(), defaultRequest, affjax, retry, defaultRetryPolicy)
 import Network.HTTP.Affjax.Request (Requestable)
 import Network.HTTP.Affjax.Response (Respondable)
 import Network.HTTP.Method (Method(..))
@@ -57,12 +58,23 @@ slamjax :: forall e a b. (Requestable a, Respondable b) => AffjaxRequest a -> Af
 slamjax = retry defaultRetryPolicy affjax
 
 retryGet :: forall e a fd. (Respondable a) => Path Abs fd Sandboxed -> Affjax (RetryEffects e) a
-retryGet u = do
+retryGet =
+  getWithPolicy { shouldRetryWithStatusCode: not <<< succeeded
+                , delayCurve: const 1000
+                , timeout: Just 30000
+                }
+getOnce :: forall e a fd. (Respondable a) => Path Abs fd Sandboxed -> Affjax (RetryEffects e) a
+getOnce = getWithPolicy defaultRetryPolicy
+
+
+getWithPolicy :: forall e a fd. (Respondable a) => RetryPolicy -> Path Abs fd Sandboxed -> Affjax (RetryEffects e) a
+getWithPolicy policy u = do
   nocache <- liftEff $ nowEpochMilliseconds
   let url = printPath u
       symbol = if S.contains "?" url then "&" else "?"
-  slamjax $ defaultRequest { url = url ++ symbol ++ "nocache=" ++ pretty nocache }
+  slamjax defaultRequest { url = url ++ symbol ++ "nocache=" ++ pretty nocache }
   where
+  slamjax = retry policy affjax
   pretty (Milliseconds ms) =
     let s = show ms
     in fromMaybe s (S.stripSuffix ".0" s)
@@ -78,10 +90,13 @@ retryPut u c = slamjax $ defaultRequest { method = PUT, url = printPath u, conte
 
 getResponse :: forall a e. String -> Affjax e a -> Aff (ajax :: AJAX | e) a
 getResponse msg affjax = do
-  res <- affjax
-  if not $ succeeded res.status
-    then throwError $ error msg
-    else pure res.response
+  res <- attempt affjax
+  case res of
+    Left e -> throwError $ error msg
+    Right r -> do
+      if not $ succeeded r.status
+        then throwError $ error msg
+        else pure r.response
 
 reqHeadersToJSON :: Array RequestHeader -> Json
 reqHeadersToJSON = foldl go jsonEmptyObject
