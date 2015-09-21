@@ -26,7 +26,7 @@ import qualified Config as SDCfg
 import qualified Data.String as S
 
 checkMarkdownViz :: Check Unit
-checkMarkdownViz = do
+checkMarkdownViz = onlyFirefox do
   setUp
   checkInput
   goToViewMode

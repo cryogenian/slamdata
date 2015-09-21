@@ -69,7 +69,14 @@ setUp = void do
   createNotebookAndThen $ pure unit
   startSpying
 
-import Utils.Log
+
+onlyFirefox :: Context
+onlyFirefox action = do
+  isF <- isFirefox
+  if isF
+    then action
+    else warnMsg "This test runs only in FireFox"
+
 
 createTestDirs :: Check Unit
 createTestDirs = do

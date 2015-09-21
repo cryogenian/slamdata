@@ -23,13 +23,15 @@ module Test.Selenium.ActionSequence
   , sendEnter
   , shifted
   , keys
+  , sendBackspaces
   ) where
 
 import Prelude
 
 import Data.Char (fromCharCode)
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, fold)
 import Data.String (fromChar, split)
+import Data.Array (replicate)
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Types (ControlKey())
 import Selenium.Key (shiftKey)
@@ -54,7 +56,10 @@ shifted str = do
   keyUp shiftKey
 
 sendDelete :: Sequence Unit
-sendDelete = sendKeys $ fromChar $ fromCharCode 57367
+sendDelete = sendKeys "\xE017"
+
+sendBackspaces :: Int -> Sequence Unit
+sendBackspaces n = traverse_ sendKeys $ replicate n "\xE003"
 
 sendEnter :: Sequence Unit
 sendEnter = sendKeys $ fromChar $ fromCharCode 13
