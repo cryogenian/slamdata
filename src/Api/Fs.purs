@@ -17,7 +17,7 @@ limitations under the License.
 module Api.Fs where
 
 import Prelude
-import Api.Common (RetryEffects(), succeeded, getResponse, retryGet, retryDelete, retryPost, retryPut, slamjax)
+import Api.Common (RetryEffects(), succeeded, getResponse, retryGet, retryDelete, retryPost, retryPut, slamjax, getOnce)
 import Control.Apply ((*>))
 import Control.Bind ((>=>))
 import Control.Monad.Aff (Aff())
@@ -285,7 +285,7 @@ mountInfo res = do
                   if R.resourceName res == ""
                   then id
                   else \x -> x </> dir (R.resourceName res)
-  result <- retryGet mountPath
+  result <- getOnce mountPath
   if succeeded result.status
      then case parse result.response of
        Left err -> throwError $ error (show err)
@@ -311,4 +311,3 @@ saveMount res uri = do
      else throwError (error result.response)
 
 foreign import stringify :: forall r. { | r } -> String
-
