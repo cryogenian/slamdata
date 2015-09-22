@@ -47,7 +47,8 @@ var url = "mongodb://" + config.mongodb.host + ":" + config.mongodb.port + "/" +
     quasarArgs = [
         "-jar", path.resolve(config.quasar.jar),
         "-c", quasarConfigPath,
-        "-C", "."
+        "-C", "./slamdata",
+        "-L", "/slamdata"
     ],
     seleniumArgs = ["-jar", path.resolve(config.selenium.jar)],
     mongoArgs = ["--port", config.mongodb.port, "--dbpath", "data"];
