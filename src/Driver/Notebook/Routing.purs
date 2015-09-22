@@ -51,15 +51,15 @@ routing = ExploreRoute <$> (oneSlash *> lit "explore" *> (fileFromParts <$> list
   partsAndName = Tuple <$> (oneSlash *> (list notName)) <*> name
 
   notebookFromParts :: Tuple (List String) String -> Resource
-  notebookFromParts (Tuple ps name) =
-    Notebook $ foldl (</>) rootDir (dir <$> ps) </> dir name
+  notebookFromParts (Tuple ps nm) =
+    Notebook $ foldl (</>) rootDir (dir <$> ps) </> dir nm
 
   fileFromParts :: List String -> Resource
-  fileFromParts (Cons name Nil) = newFile # _filePath .~ rootDir </> file name
+  fileFromParts (Cons nm Nil) = newFile # _filePath .~ rootDir </> file nm
   fileFromParts ps =
-    let name = fromJust $ last ps
+    let nm = fromJust $ last ps
         ps' = fromJust $ init ps
-    in newFile # _filePath .~ foldl (</>) rootDir (dir <$> ps') </> file name
+    in newFile # _filePath .~ foldl (</>) rootDir (dir <$> ps') </> file nm
 
   notebook :: Match Resource
   notebook = notebookFromParts <$> partsAndName

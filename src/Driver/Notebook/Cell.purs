@@ -52,8 +52,6 @@ driveCellContent (ViewCellContent cell) driver =
     Visualize _ -> view cell driver
     Query _ -> view cell driver
     Markdown _ -> view cell driver
-    _ -> pure unit
-
 driveCellContent _ _ = pure unit
 
 runWith :: forall eff. Cell -> Driver Input (NotebookComponentEff eff) -> Eff (NotebookAppEff eff) Unit

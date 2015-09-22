@@ -73,7 +73,7 @@
   "devDependencies": {
     "purescript-node-fs-aff": "~0.1.2",
     "purescript-platform": "^0.3.0",
-    "purescript-webdriver": "~0.11.1",
+    "purescript-webdriver": "^0.11.2",
     "purescript-easyimage": "~0.1.0"
   }
 }

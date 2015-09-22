@@ -79,10 +79,10 @@ navigation state =
   else [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
                         [ icon B.glyphiconBook notebookHref
                         , logo (state ^. _version)
-                        , name state
+                        , notebookName state
                         ]
                    , H.ul [ A.classes [Vc.headerMenu] ]
-                          $ zipWith (li state) (range 0 (length state.dropdowns)) state.dropdowns
+                          $ zipWith (dropdownListItem state) (range 0 (length state.dropdowns)) state.dropdowns
                    ]
           ]
   where
@@ -142,15 +142,15 @@ newCellMenu state =
   where
   listElements :: Array (HTML e)
   listElements =
-    [ li "Query" QueryInsert B.glyphiconHdd
-    , li "Markdown" MarkdownInsert B.glyphiconEdit
-    , li "Explore" ExploreInsert B.glyphiconEyeOpen
-    , li "Search" SearchInsert B.glyphiconSearch
+    [ insertMenuItem "Query" QueryInsert B.glyphiconHdd
+    , insertMenuItem "Markdown" MarkdownInsert B.glyphiconEdit
+    , insertMenuItem "Explore" ExploreInsert B.glyphiconEyeOpen
+    , insertMenuItem "Search" SearchInsert B.glyphiconSearch
     ]
 
 
-  li :: String -> MenuInsertSignal -> A.ClassName -> HTML e
-  li title inp cls =
+  insertMenuItem :: String -> MenuInsertSignal -> A.ClassName -> HTML e
+  insertMenuItem title inp cls =
     H.li_
     [ H.button [ A.title title
                , E.onClick (\_ -> pure <<< handleMenuSignal state <<< inj $ inp)
@@ -165,8 +165,8 @@ txt :: forall e. Int -> String -> Array (HTML e)
 txt lvl text =
   [ H.text $ (joinWith "" $ replicate lvl "--") <> " " <> text ]
 
-li :: forall e. State -> Int ->  DropdownItem -> HTML e
-li state i {visible: visible, name: name, children: children} =
+dropdownListItem :: forall e. State -> Int ->  DropdownItem -> HTML e
+dropdownListItem state i {visible: visible, name: name, children: children} =
   H.li [ E.onClick (\ev -> do E.stopPropagation
                               E.input_ (Dropdown i) ev)
        , A.classes $ [ B.dropdown ] <>
@@ -194,8 +194,8 @@ menuItem state {name: name, message: mbMessage, lvl: lvl, shortcut: shortcut} =
                 | state ^. _platform == Mac = printKeyComboMac
                 | otherwise = printKeyComboLinux
 
-name :: forall e. State -> HTML e
-name state =
+notebookName :: forall e. State -> HTML e
+notebookName state =
   H.div [ A.classes [Vc.notebookName] ]
         [ H.input [ A.id_ Config.notebookNameEditorId
                   , E.onInput (pure <<< handleNameInput)

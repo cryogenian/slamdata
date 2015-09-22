@@ -58,82 +58,82 @@ import qualified Model.Notebook.Cell.Query as Qu
 import qualified View.Css as VC
 
 cell :: forall e. State -> Cell -> Array (HTML e)
-cell notebook cell =
-  let outputContent = output notebook cell
+cell notebook c =
+  let outputContent = output notebook c
   in [ H.div ([ A.classes $ [ B.containerFluid, VC.notebookCell, B.clearfix] ++
-                            if cell ^. _hiddenEditor
+                            if c ^. _hiddenEditor
                             then [VC.collapsed]
                             else [] ] <>
                             maybe [ ] viewingStyle (notebook ^. _viewingCell))
-             $ catMaybes [ if not (notebook ^. _editable) then Nothing else Just $ header cell
-                         , if hidden then Nothing else Just $ editor notebook cell
-                         , Just $ statusBar notebook (isJust outputContent) cell
+             $ catMaybes [ if not (notebook ^. _editable) then Nothing else Just $ header c
+                         , if hidden then Nothing else Just $ editor notebook c
+                         , Just $ statusBar notebook (isJust outputContent) c
                          , outputContent
                          ]
      ]
   where
-  hidden = (cell ^. _hiddenEditor) || (not (notebook ^. _editable))
+  hidden = (c ^. _hiddenEditor) || (not (notebook ^. _editable))
 
   viewingStyle cellId =
-    if cellId == cell ^. _cellId
+    if cellId == c ^. _cellId
     then [ ]
     else [ CSS.style (display displayNone) ]
 
 header :: forall e. Cell -> HTML e
-header cell =
-  let info = cellInfo cell
+header c =
+  let info = cellInfo c
   in H.div [ A.classes [VC.cellHeader, B.clearfix] ]
            [ H.div [ A.class_ VC.cellIcon ]
                    [ glyph info.glyph ]
            , H.div [ A.class_ VC.cellName ]
                    [ H.text info.name ]
-           , controls cell
+           , controls c
            ]
 
 controls :: forall e. Cell -> HTML e
-controls cell =
+controls c =
   H.div [ A.classes [B.pullRight, VC.cellControls] ]
-        [ H.button [ A.title if cell ^. _hiddenEditor
+        [ H.button [ A.title if c ^. _hiddenEditor
                              then "Show cell options"
                              else "Hide cell options"
-                   , E.onClick $ E.input_ $ UpdateCell (cell ^. _cellId) (_hiddenEditor %~ not) ]
-                   [ glyph if cell ^. _hiddenEditor
+                   , E.onClick $ E.input_ $ UpdateCell (c ^. _cellId) (_hiddenEditor %~ not) ]
+                   [ glyph if c ^. _hiddenEditor
                            then B.glyphiconEyeOpen
                            else B.glyphiconEyeClose
                    ]
         , H.button [ A.title "Delete cell"
-                   , E.onClick $ E.input_ $ TrashCell $ cell ^. _cellId ]
+                   , E.onClick $ E.input_ $ TrashCell $ c ^. _cellId ]
                    [ glyph B.glyphiconTrash ]
         , glyph B.glyphiconChevronLeft
         ]
 
 output :: forall e. State -> Cell -> Maybe (HTML e)
-output notebook cell =
-  let out = renderOutput (notebook ^. _browserFeatures) cell
+output notebook c =
+  let out = renderOutput (notebook ^. _browserFeatures) c
   in if null out
      then Nothing
      else Just $ H.div [ A.classes [B.row, VC.cellOutput] ]
                        [ H.div [ A.class_ VC.cellOutputLabel ]
-                               $ cellOutputBar notebook cell
+                               $ cellOutputBar notebook c
                        , H.div [ A.class_ VC.cellOutputResult ]
                                out
                        ]
 
 cellOutputBar :: forall e. State -> Cell -> Array (HTML e)
-cellOutputBar notebook cell =
-  case cell ^. _output of
+cellOutputBar notebook c =
+  case c ^. _output of
     PortResource res ->
       [ H.text $ resourceName res ++ " := "
       , H.ul [ A.classes [VC.nextCellList] ]
-             [ li "Query this output" (E.input_ $ InsertCell cell $ newQueryContent res) B.glyphiconHdd
-             , li "Search this output" (E.input_ $ InsertCell cell $ newSearchContent res) B.glyphiconSearch
-             , li "Visualize this output" (\_ -> pure $ insertViz notebook cell) B.glyphiconPicture
+             [ li "Query this output" (E.input_ $ InsertCell c $ newQueryContent res) B.glyphiconHdd
+             , li "Search this output" (E.input_ $ InsertCell c $ newSearchContent res) B.glyphiconSearch
+             , li "Visualize this output" (\_ -> pure $ insertViz notebook c) B.glyphiconPicture
              ]
       ]
 
     VarMap _ ->
       [ H.ul [ A.classes [VC.nextCellList] ]
-             [ li "Query using fields" (E.input_ $ InsertCell cell $ Query Qu.initialQueryRec) B.glyphiconHdd
+             [ li "Query using fields" (E.input_ $ InsertCell c $ Query Qu.initialQueryRec) B.glyphiconHdd
              ]
       ]
 
@@ -144,18 +144,18 @@ cellOutputBar notebook cell =
     H.li_ [ H.button [A.title title, E.onClick handler] [glyph c] ]
 
 statusBar :: forall e. State -> Boolean -> Cell -> HTML e
-statusBar notebook hasOutput cell =
-  row' (fadeWhen (cell ^. _hiddenEditor))
-  $ if (cell ^. _hiddenEditor)
+statusBar notebook hasOutput c =
+  row' (fadeWhen (c ^. _hiddenEditor))
+  $ if (c ^. _hiddenEditor)
     then []
     else [ H.div [ A.classes [VC.cellEvalLine, B.clearfix] ]
            $ [ H.button [ A.classes [B.btn, B.btnPrimary, buttonClass]
-                        , E.onClick \_ -> pure $ handleRunClick (notebook ^._notebook) cell
+                        , E.onClick \_ -> pure $ handleRunClick (notebook ^._notebook) c
                         , A.ariaLabel buttonAriaLabel
                         ]
                [ glyph buttonGlyph ]
              , H.div [ A.classes [ VC.statusText ] ]
-               [ H.text $ statusText notebook.tickDate (cell ^. _runState) ]
+               [ H.text $ statusText notebook.tickDate (c ^. _runState) ]
              , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
                $ catMaybes [ refreshButton
                            , toggleMessageButton
@@ -166,26 +166,26 @@ statusBar notebook hasOutput cell =
          ]
   where
   buttonClass :: A.ClassName
-  buttonClass = if isRunning cell then VC.stopButton else VC.playButton
+  buttonClass = if isRunning c then VC.stopButton else VC.playButton
 
   buttonGlyph :: A.ClassName
-  buttonGlyph = if isRunning cell then B.glyphiconStop else B.glyphiconPlay
+  buttonGlyph = if isRunning c then B.glyphiconStop else B.glyphiconPlay
 
   buttonAriaLabel :: String
-  buttonAriaLabel = if isRunning cell then "Stop" else "Play"
+  buttonAriaLabel = if isRunning c then "Stop" else "Play"
 
   messages :: Array (HTML e)
-  messages = message cell
+  messages = message c
 
   toggleMessageButton :: Maybe (HTML e)
   toggleMessageButton =
     if null messages
     then Nothing
-    else Just $ H.button [ A.title if cell ^._expandedStatus
+    else Just $ H.button [ A.title if c ^._expandedStatus
                                    then "Hide messages"
                                    else "Show messages"
-                         , E.onClick (\_ -> E.preventDefault $> pure (UpdateCell (cell ^._cellId) (_expandedStatus %~ not))) ]
-         [ glyph if cell ^._expandedStatus
+                         , E.onClick (\_ -> E.preventDefault $> pure (UpdateCell (c ^._cellId) (_expandedStatus %~ not))) ]
+         [ glyph if c ^._expandedStatus
                  then B.glyphiconEyeClose
                  else B.glyphiconEyeOpen ]
 
@@ -194,11 +194,11 @@ statusBar notebook hasOutput cell =
     if not hasOutput
     then Nothing
     else Just $ H.button [ A.title "Embed cell output"
-                         , E.onClick (\_ -> pure $ handleEmbedClick notebook cell)
-                         , E.onMouseEnter $ E.input_ (UpdateCell (cell ^. _cellId) (_embedHovered .~ true))
-                         , E.onMouseLeave $ E.input_ (UpdateCell (cell ^. _cellId) (_embedHovered .~ false))
+                         , E.onClick (\_ -> pure $ handleEmbedClick notebook c)
+                         , E.onMouseEnter $ E.input_ (UpdateCell (c ^. _cellId) (_embedHovered .~ true))
+                         , E.onMouseLeave $ E.input_ (UpdateCell (c ^. _cellId) (_embedHovered .~ false))
                          ]
-         [ H.img [ A.src if (cell ^. _embedHovered)
+         [ H.img [ A.src if (c ^. _embedHovered)
                          then "img/code-icon-blue.svg"
                          else "img/code-icon.svg"
                  , A.width 16.0 ] [] ]
@@ -207,52 +207,52 @@ statusBar notebook hasOutput cell =
   refreshButton =
     Just $ H.button [ A.title "Refresh cell content"
                     , A.classes [VC.refreshButton]
-                    , E.onClick (\_ -> pure $ handleRefreshClick cell)
+                    , E.onClick (\_ -> pure $ handleRefreshClick c)
                     ]
     [ glyph B.glyphiconRefresh ]
 
 message :: forall e. Cell -> Array (HTML e)
-message cell =
-  let collapsed = if cell ^._expandedStatus then [] else [VC.collapsed]
-  in if null (cell ^._failures)
-     then if (cell ^._message) /= ""
+message c =
+  let collapsed = if c ^._expandedStatus then [] else [VC.collapsed]
+  in if null (c ^._failures)
+     then if (c ^._message) /= ""
           then [ H.div [ A.classes $ [VC.cellMessages] ++ collapsed ]
-                       $ if cell ^._expandedStatus
+                       $ if c ^._expandedStatus
                          then [ H.div_ []
-                              , messageText cell
+                              , messageText c
                               ]
                          else []
                ]
           else [ ]
      else [ H.div [ A.classes $ [VC.cellFailures] ++ collapsed ]
-                              $ failureText cell
+                              $ failureText c
           ]
 
 details :: forall e. Cell -> Array (HTML e)
-details cell = commonMessage "" [H.div_ [H.text (cell^._message)]] cell
+details c = commonMessage "" [H.div_ [H.text (c^._message)]] c
 
 messageText :: forall e. Cell -> HTML e
-messageText cell =
+messageText c =
   if isJust $ indexOf "\n" m
   then H.pre_ [H.text m]
   else H.div_ [H.text m]
-  where m = cell ^._message
+  where m = c ^._message
 
 failureText :: forall e. Cell -> Array (HTML e)
-failureText cell =
+failureText c =
   commonMessage
   (show (length fs) <> " error(s) during evaluation. ")
   ((\f -> if isJust $ indexOf "\n" f
           then H.pre_ [H.text f]
           else H.div_ [H.text f]) <$> fs)
-  cell
-  where fs = cell ^._failures
+  c
+  where fs = c ^._failures
 
 commonMessage :: forall e. String -> Array (HTML e) -> Cell -> Array (HTML e)
-commonMessage intro children cell =
+commonMessage intro children c =
   [ H.div_ [ H.text intro ]
   ] <>
-  if (cell ^._expandedStatus)
+  if (c ^._expandedStatus)
   then children
   else [ ]
 
@@ -274,7 +274,7 @@ secondsText a b = maybe "0" show <<< fromNumber <<< Math.floor <<< max zero <<<
   unSeconds (Seconds n) = n
 
 cellInfo :: Cell -> { name :: String, glyph :: A.ClassName }
-cellInfo cell = case cell ^. _content of
+cellInfo c = case c ^. _content of
   Explore _ -> { name: "Explore", glyph: B.glyphiconEyeOpen }
   Markdown _ -> { name: "Markdown", glyph: B.glyphiconEdit }
   Search _ -> { name: "Search", glyph: B.glyphiconSearch }
@@ -282,19 +282,19 @@ cellInfo cell = case cell ^. _content of
   Query _ -> { name: "Query", glyph: B.glyphiconHdd }
 
 editor :: forall e. State -> Cell -> HTML e
-editor state cell = case cell ^. _content of
-  Explore rec -> exploreEditor cell
-  Search _ -> searchEditor (state ^._notebook) cell
-  Visualize _ -> vizChoices cell
-  _ -> aceEditor cell
+editor state c = case c ^. _content of
+  Explore rec -> exploreEditor c
+  Search _ -> searchEditor (state ^._notebook) c
+  Visualize _ -> vizChoices c
+  _ -> aceEditor c
 
 renderOutput :: forall e. BrowserFeatures -> Cell -> Array (HTML e)
-renderOutput bf cell =
-  if not (null $ cell ^. _failures)
+renderOutput bf c =
+  if not (null $ c ^. _failures)
   then []
-  else case cell ^. _content of
-    Explore _ -> exploreOutput cell
-    Markdown mr -> markdownOutput bf mr cell
-    Search _ -> searchOutput cell
-    Visualize _ -> vizOutput cell
-    Query _ -> queryOutput cell
+  else case c ^. _content of
+    Explore _ -> exploreOutput c
+    Markdown mr -> markdownOutput bf mr c
+    Search _ -> searchOutput c
+    Visualize _ -> vizOutput c
+    Query _ -> queryOutput c

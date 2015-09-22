@@ -24,7 +24,7 @@ import ECharts.Options
 
 import Data.Argonaut.JCursor (JCursor())
 import Data.Map (Map(), empty, keys)
-import Model.Notebook.ECharts (Semanthic(..), Axis(..), dependsOn)
+import Model.Notebook.ECharts (Semantics(..), Axis(..), dependsOn)
 import Data.Argonaut.JCursor (JCursor())
 import Optic.Core
 import qualified Data.Set as S

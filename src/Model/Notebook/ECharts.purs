@@ -14,25 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.Notebook.ECharts (
-  analyzeJArray,
-  getPossibleDependencies,
-  dependsOn,
-  isComplement,
-  Axis(..),
-  Semanthic(..),
-  isValue,
-  isPercent,
-  isMoney,
-  isBool,
-  isTime,
-  isCategory,
-  isValAxis,
-  isCatAxis,
-  isTimeAxis,
-  runAxis,
-  catFromSemanthic,
-  valFromSemanthic
+module Model.Notebook.ECharts
+  ( analyzeJArray
+  , getPossibleDependencies
+  , dependsOn
+  , isComplement
+  , Axis(..)
+  , Semantics(..)
+  , isValue
+  , isPercent
+  , isMoney
+  , isBool
+  , isTime
+  , isCategory
+  , isValAxis
+  , isCatAxis
+  , isTimeAxis
+  , runAxis
+  , catFromSemantics
+  , valFromSemantics
   ) where
 
 import Prelude
@@ -75,7 +75,7 @@ dependsOn a b = a /= b &&
   dependsOn' _ _ = false
 
 
-data Semanthic
+data Semantics
   = Value Number
   | Percent Number
   | Money Number String
@@ -83,7 +83,7 @@ data Semanthic
   | Category String
   | Time String
 
-instance encodeJsonSemanthic :: EncodeJson Semanthic where
+instance encodeJsonSemantics :: EncodeJson Semantics where
   encodeJson (Value n) = "type" := "value"
                          ~> "value" := n
                          ~> jsonEmptyObject
@@ -109,7 +109,7 @@ instance encodeJsonSemanthic :: EncodeJson Semanthic where
                         ~> "value" := t
                         ~> jsonEmptyObject
 
-instance decodeJsonSemanthic :: DecodeJson Semanthic where
+instance decodeJsonSemantics :: DecodeJson Semantics where
   decodeJson json = do
     obj <- decodeJson json
     ty <- obj .? "type"
@@ -138,9 +138,9 @@ instance decodeJsonSemanthic :: DecodeJson Semanthic where
 
 
 data Axis
-  = ValAxis (L.List (Maybe Semanthic))
-  | CatAxis (L.List (Maybe Semanthic))
-  | TimeAxis (L.List (Maybe Semanthic))
+  = ValAxis (L.List (Maybe Semantics))
+  | CatAxis (L.List (Maybe Semantics))
+  | TimeAxis (L.List (Maybe Semantics))
 
 
 instance encodeJsonAxis :: EncodeJson Axis where
@@ -181,7 +181,7 @@ isTimeAxis :: Axis -> Boolean
 isTimeAxis (TimeAxis _) = true
 isTimeAxis _ = false
 
-runAxis :: Axis -> L.List (Maybe Semanthic)
+runAxis :: Axis -> L.List (Maybe Semantics)
 runAxis (ValAxis a) = a
 runAxis (CatAxis a) = a
 runAxis (TimeAxis a) = a
@@ -193,27 +193,27 @@ instance axisShow :: Show Axis where
   show (CatAxis vs) = "(CatAxis " <> show vs <> ")"
   show (TimeAxis vs) = "(TimeAxis " <> show vs <> ")"
 
-isValue :: Semanthic -> Boolean
+isValue :: Semantics -> Boolean
 isValue (Value _) = true
 isValue _ = false
 
-isPercent :: Semanthic -> Boolean
+isPercent :: Semantics -> Boolean
 isPercent (Percent _) = true
 isPercent _ = false
 
-isMoney :: Semanthic -> Boolean
+isMoney :: Semantics -> Boolean
 isMoney (Money _ _) = true
 isMoney _ = false
 
-isBool :: Semanthic -> Boolean
+isBool :: Semantics -> Boolean
 isBool (Bool _) = true
 isBool _ = false
 
-isCategory :: Semanthic -> Boolean
+isCategory :: Semantics -> Boolean
 isCategory (Category _) = true
 isCategory _ = false
 
-isTime :: Semanthic -> Boolean
+isTime :: Semantics -> Boolean
 isTime (Time _) = true
 isTime _ = false
 
@@ -222,25 +222,27 @@ isComplement (CatAxis _) (CatAxis _) = false
 isComplement (TimeAxis _) (TimeAxis _) = false
 isComplement _ _ = true
 
-catFromSemanthic :: Semanthic -> Maybe String
-catFromSemanthic v =
+catFromSemantics :: Semantics -> Maybe String
+catFromSemantics v =
   case v of
     Value v -> pure $ show v
     Percent v -> pure $ show v <> "%"
     Money v m -> pure $ show v <> m
     Category s -> pure s
     Time t -> pure t
+    Bool b -> pure $ show b
 
-valFromSemanthic :: Semanthic -> Maybe Number
-valFromSemanthic v =
+valFromSemantics :: Semantics -> Maybe Number
+valFromSemantics v =
   case v of
     Value v -> pure v
     Money v _ -> pure v
     Percent v -> pure v
     _ -> Nothing
 
-check :: L.List (Maybe Semanthic) -> Maybe Axis
-check lst =
+
+checkSemantics :: L.List (Maybe Semantics) -> Maybe Axis
+checkSemantics lst =
   (ValAxis  <$> checkValues lst)   <|>
   (ValAxis  <$> checkMoney lst)    <|>
   (ValAxis  <$> checkPercent lst)  <|>
@@ -248,8 +250,8 @@ check lst =
   (TimeAxis <$> checkTime lst)     <|>
   (CatAxis  <$> checkCategory lst)
 
-checkPredicate :: (Semanthic -> Boolean) -> L.List (Maybe Semanthic) ->
-                  Maybe (L.List (Maybe Semanthic))
+checkPredicate :: (Semantics -> Boolean) -> L.List (Maybe Semantics) ->
+                  Maybe (L.List (Maybe Semantics))
 checkPredicate p lst =
   go 0 0 lst L.Nil
   where
@@ -270,32 +272,32 @@ checkPredicate p lst =
     -- It's incorrect. Increase incorrect counter, put nothing to accum
     | otherwise = go correct (incorrect + one) lst (L.Cons Nothing acc)
 
-  nothings :: Array Semanthic
+  nothings :: Array Semantics
   nothings = map Category [ "undefined"
                           , "null"
                           , "NA"
                           , "N/A"
                           ]
 
-checkValues :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
+checkValues :: L.List (Maybe Semantics) -> Maybe (L.List (Maybe Semantics))
 checkValues = checkPredicate isValue
 
-checkMoney :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
+checkMoney :: L.List (Maybe Semantics) -> Maybe (L.List (Maybe Semantics))
 checkMoney = checkPredicate isMoney
 
-checkPercent :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
+checkPercent :: L.List (Maybe Semantics) -> Maybe (L.List (Maybe Semantics))
 checkPercent = checkPredicate isPercent
 
-checkBool :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
+checkBool :: L.List (Maybe Semantics) -> Maybe (L.List (Maybe Semantics))
 checkBool = checkPredicate isBool
 
-checkTime :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
+checkTime :: L.List (Maybe Semantics) -> Maybe (L.List (Maybe Semantics))
 checkTime = checkPredicate isTime
 
-checkCategory :: L.List (Maybe Semanthic) -> Maybe (L.List (Maybe Semanthic))
+checkCategory :: L.List (Maybe Semantics) -> Maybe (L.List (Maybe Semantics))
 checkCategory = checkPredicate isCategory
 
-instance semanthicShow :: Show Semanthic where
+instance semanthicShow :: Show Semantics where
   show (Value v) = "(Value " <> show v <> ")"
   show (Percent p) = "(Percent " <> show p <> ")"
   show (Money n s) = "(Money " <> show n <> s <> ")"
@@ -303,15 +305,21 @@ instance semanthicShow :: Show Semanthic where
   show (Category s) = "(Category " <> s <> ")"
   show (Time t) = "(Time " <> t <> ")"
 
-instance semanthicEq :: Eq Semanthic where
+instance semanthicEq :: Eq Semantics where
   eq (Value v) (Value v') = v == v'
+  eq (Value v) _ = false
   eq (Percent p) (Percent p') = p == p'
+  eq (Percent _) _ = false
   eq (Money m c) (Money m' c') = m == m' && c == c'
+  eq (Money _ _) _ = false
   eq (Time t) (Time t') = t == t'
+  eq (Time _) _ = false
   eq (Category c) (Category c') = c == c'
-  eq _ _ = false
+  eq (Category _) _ = false
+  eq (Bool b) (Bool b') = b == b'
+  eq (Bool _) _ = false
 
-instance semanthicOrd :: Ord Semanthic where
+instance semanthicOrd :: Ord Semantics where
   compare (Time t) (Time t') = compare t t'
   compare (Time _) _ = LT
   compare (Money v a) (Money v' a') =
@@ -326,16 +334,19 @@ instance semanthicOrd :: Ord Semanthic where
   compare (Value v) (Value v') = compare v v'
   compare (Value _) _ = LT
   compare (Category c) (Category c') = compare c c'
+  compare (Category _) _ = LT
+  compare (Bool b) (Bool b') = compare b b'
+  compare (Bool _) _ = LT
 
 
-analyze :: JsonPrim -> Maybe Semanthic
+analyze :: JsonPrim -> Maybe Semantics
 analyze p = runJsonPrim p
             (const Nothing)
             (Just <<< Bool)
             (Just <<< Value)
             analyzeString
 
-analyzeString :: String -> Maybe Semanthic
+analyzeString :: String -> Maybe Semantics
 analyzeString str =
   (analyzeDate str) <|>
   (analyzeNumber str) <|>
@@ -343,7 +354,7 @@ analyzeString str =
   (analyzePercent str) <|>
   (Just $ Category str)
 
-analyzeNumber :: String -> Maybe Semanthic
+analyzeNumber :: String -> Maybe Semantics
 analyzeNumber s = do
   num <- s2n s
   i <- s2i s
@@ -351,7 +362,7 @@ analyzeNumber s = do
   pure $ Value num
 
 
-analyzePercent :: String -> Maybe Semanthic
+analyzePercent :: String -> Maybe Semantics
 analyzePercent input = do
   ms <- match rgx input
   s <- (ms !! 1)
@@ -362,7 +373,7 @@ analyzePercent input = do
 curSymbols :: String
 curSymbols = """[\$\u20A0-\u20CF\u00A2\u00A3\u00A4\u00A5\u058F\u060B\u09F2\u09F3\u09FB\u0AF1\u0BF9\u0E3F\u17DB\uA838\uFDFC\uFE69\uFF04\uFFE0\uFFE1\uFFE5\uFFE6]"""
 
-analyzeMoney :: String -> Maybe Semanthic
+analyzeMoney :: String -> Maybe Semantics
 analyzeMoney str = do
   ms <- match rgx str
   s <- (ms !! 1)
@@ -378,7 +389,7 @@ analyzeMoney str = do
   rgxStr = "^" <> curSymbols <> """?(([0-9]{1,3},([0-9]{3},)*[0-9]{3}|[0-9]+)(.[0-9][0-9])?)$"""
 
 
-analyzeDate :: String -> Maybe Semanthic
+analyzeDate :: String -> Maybe Semantics
 analyzeDate str =
   if test rgx str
   then Just $ Time str
@@ -387,15 +398,15 @@ analyzeDate str =
   rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
   rgx = regex rgxStr noFlags
 
-toSemanthic :: Json -> Map JCursor Semanthic
-toSemanthic j = fromList $ L.catMaybes ((traverse analyze) <$> toPrims j)
+toSemantics :: Json -> Map JCursor Semantics
+toSemantics j = fromList $ L.catMaybes ((traverse analyze) <$> toPrims j)
 
 
-toSemanthic' :: JArray -> Map JCursor (L.List (Maybe Semanthic))
-toSemanthic' arr =
+toSemantics' :: JArray -> Map JCursor (L.List (Maybe Semantics))
+toSemantics' arr =
   step initial mapLst
   where
-  mapArr = map toSemanthic $ reverse arr
+  mapArr = map toSemantics $ reverse arr
   mapLst = L.toList mapArr
   ks = L.toList $ nub $ concat $ map (L.fromList <<< keys) mapArr
   initial = fromList $ map (flip Tuple L.Nil) ks
@@ -405,8 +416,8 @@ toSemanthic' arr =
     step (insertOne acc m ks) lst
 
   insertOne acc m L.Nil = acc
-  insertOne acc m (L.Cons k ks) =
-    insertOne (update (pure <<< L.Cons (lookup k m)) k acc) m ks
+  insertOne acc m (L.Cons k ks') =
+    insertOne (update (pure <<< L.Cons (lookup k m)) k acc) m ks'
 
 analyzeJArray :: JArray -> Map JCursor Axis
 analyzeJArray arr =
@@ -415,10 +426,10 @@ analyzeJArray arr =
      arr !! 0
   -- If element returned transpose it else take initial array
   # maybe arr transpose
-  -- Produce map from JCursor to List of values (Maybe Semanthic) for every Json
-  # toSemanthic'
-  -- Check if values of that map can be converted to axises (if can it will be Just)
-  # map check
+  -- Produce map from JCursor to List of values (Maybe Semantics) for every Json
+  # toSemantics'
+  -- Check if values of that map can be converted to axes (if can it will be Just)
+  # map checkSemantics
   -- Make list of Tuple JCursor (Maybe Axis)
   # toList
   -- lift Maybe to Tuple from Axis
@@ -462,9 +473,8 @@ getPossibleDependencies cursor m =
 
 checkPairs :: Map JCursor Axis -> Map JCursor Axis
 checkPairs m =
-  foldl check m ks
+  foldl check m $ keys m
   where
-  ks = keys m
   check :: Map JCursor Axis -> JCursor -> Map JCursor Axis
   check m cursor =
     case getPossibleDependencies cursor m of
