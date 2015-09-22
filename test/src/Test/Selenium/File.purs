@@ -149,8 +149,6 @@ mountDatabaseWithMountConfig mountConfig = do
     ++ mountConfig.host
     ++ ":"
     ++ show mountConfig.port
-    ++ "/"
-    ++ config.database.name
 
   fieldByField :: Check Unit
   fieldByField = do
