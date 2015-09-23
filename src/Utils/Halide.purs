@@ -16,6 +16,7 @@ limitations under the License.
 
 module Utils.Halide
        ( ariaLabel
+       , ariaHidden
        , onPaste
        , width'
        , height'
@@ -67,6 +68,9 @@ min = A.attr (A.attributeName "min") <<< show
 
 ariaLabel :: forall i. String -> A.Attr i
 ariaLabel = A.attr (A.attributeName "aria-label")
+
+ariaHidden :: forall i. A.Attr i
+ariaHidden = A.attr (A.attributeName "aria-hidden") "true"
 
 selectThis :: forall e o i. ET.Event o -> E.EventHandler (E.Event (dom :: DOM | e) i)
 selectThis ev = pure $ liftEff (select ev.target) *> empty

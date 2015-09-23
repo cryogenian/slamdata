@@ -24,8 +24,8 @@ import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Data.Maybe (maybe, fromMaybe)
 import Platform (getPlatform, PLATFORM(), runOs, runPlatform)
-import Selenium.Monad (Selenium())
-import Selenium.Types (ControlKey())
+import Selenium.Monad (Selenium(), byCss, byXPath)
+import Selenium.Types (ControlKey(), Locator())
 import Selenium.Key (metaKey, controlKey)
 import Test.Config (Config())
 import qualified Graphics.ImageDiff as GI
@@ -59,3 +59,12 @@ getModifierKey = map modifierKey getPlatformString
 
 diff :: _ -> Check Boolean
 diff = liftAff <<< GI.diff
+
+byAriaLabel :: String -> Check Locator
+byAriaLabel label = byCss $ "*[aria-label='" ++ label ++ "']"
+
+byExactText :: String -> Check Locator
+byExactText exactText = byXPath $ "//*[text()='" ++ exactText ++ "']"
+
+byText :: String -> Check Locator
+byText text = byXPath $ "//*[contains(., '" ++ text ++ "')]"

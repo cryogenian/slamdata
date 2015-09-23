@@ -29,6 +29,7 @@ import Optic.Getter ((^.))
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
+import qualified Utils.Halide as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as Vc
@@ -45,33 +46,34 @@ toolbar state =
   configure :: Array (HTML e)
   configure =
     if state ^. _isMount
-    then [toolItem [] (Database (state ^. _path)) handleConfigure "configure mount" B.glyphiconWrench]
+    then [toolItem [] (Database (state ^. _path)) handleConfigure "Configure mount" B.glyphiconWrench]
     else []
 
   showHide :: HTML e
   showHide =
     if state ^. _showHiddenFiles
-    then toolItem [] false handleHiddenFiles "hide hidden files" B.glyphiconEyeClose
-    else toolItem [] true handleHiddenFiles "show hidden files" B.glyphiconEyeOpen
+    then toolItem [] false handleHiddenFiles "Hide hidden files" B.glyphiconEyeClose
+    else toolItem [] true handleHiddenFiles "Show hidden files" B.glyphiconEyeOpen
 
   download :: HTML e
-  download = toolItem [] (Item root) handleDownloadItem "download" B.glyphiconDownloadAlt
+  download = toolItem [] (Item root) handleDownloadItem "Download" B.glyphiconDownloadAlt
 
   mount :: HTML e
-  mount = toolItem' handleMountDatabase "mount database" B.glyphiconHdd
+  mount = toolItem' handleMountDatabase "Mount database" B.glyphiconHdd
 
   folder :: HTML e
-  folder = toolItem' handleCreateFolder "create folder" B.glyphiconFolderClose
+  folder = toolItem' handleCreateFolder "Create folder" B.glyphiconFolderClose
 
   file :: HTML e
   file = H.li_ [ H.button [ E.onClick (\ev -> pure $ handleUploadFile ev.target) ]
-                 [ H.i [ A.title "upload file"
+                 [ H.i [ A.title "Upload file"
+                       , A.ariaLabel "Upload file"
                        , A.classes [ B.glyphicon
                                    , B.glyphiconFile
                                    , Vc.hiddenFileInput
                                    ]
                        ]
-                   [ H.input [ A.type_ "file"
+                   [ H.input [ A.type_ "File"
                                , E.onChange (\ev -> pure $ handleFileListChanged ev.target state)
                                ]
                        []
@@ -80,7 +82,7 @@ toolbar state =
                ]
 
   notebook :: HTML e
-  notebook = toolItem' handleCreateNotebook "create notebook" B.glyphiconBook
+  notebook = toolItem' handleCreateNotebook "Create notebook" B.glyphiconBook
 
   toolItem' :: (State -> Event e) -> String -> A.ClassName -> HTML e
   toolItem' f = toolItem [] state f

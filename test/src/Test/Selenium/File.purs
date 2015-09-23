@@ -34,7 +34,7 @@ import Selenium.MouseButton
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Key
 import Selenium.Monad
-import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust)
+import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust, tryToFind)
 
 import Test.Config
 import Driver.File.Routing (Routes(..), routing)
@@ -77,29 +77,6 @@ findItem name = do
     if R.test (R.regex name R.noFlags) html
     then Just el
     else Nothing
-
-toolbarButton :: String -> Check (Maybe Element)
-toolbarButton key = do
-  config <- getConfig
-  toolbar <- getElementByCss config.toolbar.main "no toolbar"
-  locator (locatorFn key) >>= findChild toolbar
-
-  where
-  locatorFn :: String -> Element -> Check Element
-  locatorFn key el = do
-    config <- getConfig
-    byCss config.toolbar.button >>=
-      findChildren el >>=
-      traverse traverseFn >>=
-      foldl foldFn Nothing >>>
-      maybe (throwError $ error "there is no button") pure
-  traverseFn btn = do
-    ch <- byCss key >>= findChild btn
-    pure $ Tuple btn (isJust ch)
-  foldFn :: Maybe Element -> Tuple Element Boolean -> Maybe Element
-  foldFn Nothing (Tuple btn true) = Just btn
-  foldFn a _ = a
-
 
 findTestDb :: Check (Maybe Element)
 findTestDb = do
@@ -227,8 +204,7 @@ mountDatabaseWithMountConfig mountConfig = do
   getMountDatabaseButton :: Check Element
   getMountDatabaseButton = do
     config <- getConfig
-    toolbarButton config.toolbar.mountDatabase
-      >>= maybe (errorMsg "No mount database button") pure
+    tryToFind $ byAriaLabel config.toolbar.mountDatabase
 
 goodMountDatabase :: Check Unit
 goodMountDatabase = do
@@ -324,9 +300,7 @@ checkConfigureMount = do
   getConfigureMountButton :: Check Element
   getConfigureMountButton = do
     config <- getConfig
-    toolbarButton config.toolbar.configureMount
-      >>= maybe (errorMsg "No configure mount button") pure
-
+    tryToFind $ byAriaLabel config.toolbar.configureMount
 
 getItemToolbar :: Check { listGroupItem :: Element, itemToolbar :: Element}
 getItemToolbar = do
@@ -545,16 +519,11 @@ shareFile = do
   get urlValue
   wait awaitInNotebook config.selenium.waitTime
   successMsg "Ok, share link led to notebook"
-
-  where
+    where
     itemGetShareIcon :: Element -> Check Element
-    itemGetShareIcon item =
-      locator shareLoc
-        >>= findChild item
-        >>= maybe (errorMsg "no share icon") pure
-
-    shareLoc :: Element -> Check Element
-    shareLoc el = getConfig >>= \config -> buttonLoc config.share.markShare el
+    itemGetShareIcon item = do
+      config <- getConfig
+      byAriaLabel config.share.markShare >>= childExact item
 
 searchForUploadedFile :: Check Unit
 searchForUploadedFile = do
@@ -601,30 +570,10 @@ awaitInNotebook = checker $ do
       pure $ R.regex phrase R.noFlags
 
 
-
-
-buttonLoc :: String -> Element -> Check Element
-buttonLoc ty el = do
-  config <- getConfig
-  tpls <- byCss config.move.button >>= findChildren el >>=
-    traverse (\el -> Tuple el <$> (byCss ty >>= findChild el))
-  maybe (throwError $ error $ "no such button " <> ty)
-    pure $ foldl foldFn Nothing tpls
-  where
-    foldFn (Just el) _ = Just el
-    foldFn Nothing (Tuple el Nothing) = Nothing
-    foldFn Nothing (Tuple el (Just _)) = Just el
-
 itemGetDeleteIcon :: Element -> Check Element
-itemGetDeleteIcon item =
-  locator deleteLoc
-    >>= findChild item
-    >>= maybe (errorMsg "no delete icon") pure
-
- where
-   deleteLoc :: Element -> Check Element
-   deleteLoc el = getConfig >>= \config -> buttonLoc config.move.markDelete el
-
+itemGetDeleteIcon item = do
+  config <- getConfig
+  byAriaLabel config.move.markDelete >>= childExact item
 
 -- | Activate the item's toolbar and click a button/icon in it
 itemClickToolbarIcon :: Element -> Element -> Check Unit
@@ -665,8 +614,7 @@ trashCheck = do
   getShowHideButton :: Check Element
   getShowHideButton = do
     config <- getConfig
-    toolbarButton config.toolbar.showHide
-      >>= maybe (errorMsg "No show/hide button") pure
+    tryToFind $ byAriaLabel config.toolbar.showHide
 
   findDeletedItem :: Check Element
   findDeletedItem = do
@@ -693,8 +641,7 @@ createFolder = do
   getNewFolderButton :: Check Element
   getNewFolderButton = do
     config <- getConfig
-    toolbarButton config.toolbar.newFolder
-      >>= maybe (errorMsg "No create folder button") pure
+    tryToFind $ byAriaLabel config.toolbar.newFolder
 
   getNewFolder :: Check Element
   getNewFolder =
@@ -728,8 +675,7 @@ createNotebookAndThen andThen = do
   getNewNotebookButton :: Check Element
   getNewNotebookButton = do
     config <- getConfig
-    toolbarButton config.toolbar.newNotebook
-      >>= maybe (errorMsg "No create notebook button") pure
+    tryToFind $ byAriaLabel config.toolbar.newNotebook
 
   notebookCheck :: Check Boolean
   notebookCheck = checker $ R.test (R.regex "notebook.html" R.noFlags) <$> getCurrentUrl
@@ -784,13 +730,9 @@ moveDelete msg setUp src tgt = do
   successMsg $ "ok, successfully deleted (" <> msg <> ")"
   where
   itemGetMoveIcon :: Element -> Check Element
-  itemGetMoveIcon item =
-    locator moveLoc
-      >>= findChild item
-      >>= maybe (errorMsg "no move/rename icon") pure
-
-  moveLoc :: Element -> Check Element
-  moveLoc el = getConfig >>= \config -> buttonLoc config.move.markMove el
+  itemGetMoveIcon item = do
+    config <- getConfig
+    byAriaLabel config.move.markMove >>= childExact item
 
   editNameField :: Element -> Check Unit
   editNameField nameField = do

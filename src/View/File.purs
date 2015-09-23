@@ -51,7 +51,7 @@ import qualified View.Css as Vc
 fileView :: forall e. State -> HTML e
 fileView state =
   H.div_ [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
-                          [ icon B.glyphiconFolderOpen Config.homeHash
+                          [ icon B.glyphiconFolderOpen Config.homeHash "File"
                           , logo (state ^. _version)
                           , search state
                           ]

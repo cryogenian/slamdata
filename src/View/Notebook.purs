@@ -77,7 +77,7 @@ navigation state =
   if (not state.loaded) || (not state.editable) || (isJust state.error)
   then [ ]
   else [ navbar [ H.div [ A.classes [Vc.header, B.clearfix] ]
-                        [ icon B.glyphiconBook notebookHref
+                        [ icon B.glyphiconBook notebookHref "Notebook"
                         , logo (state ^. _version)
                         , notebookName state
                         ]
