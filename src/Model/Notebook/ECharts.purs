@@ -277,6 +277,7 @@ checkPredicate p lst =
                           , "null"
                           , "NA"
                           , "N/A"
+                          , ""
                           ]
 
 checkValues :: L.List (Maybe Semantics) -> Maybe (L.List (Maybe Semantics))
