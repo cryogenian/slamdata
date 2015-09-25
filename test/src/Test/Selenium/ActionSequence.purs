@@ -76,6 +76,7 @@ keys :: String -> Sequence Unit
 keys str = traverse_ sendKey $ split "" str
   where
   sendKey :: String -> Sequence Unit
+  sendKey "!" = shifted "1"
   sendKey "(" = shifted "9"
   sendKey ")" = shifted "0"
   sendKey "#" = shifted "3"

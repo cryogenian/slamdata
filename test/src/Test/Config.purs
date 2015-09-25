@@ -239,12 +239,7 @@ type Config =
                     , barEditor :: String
                     , alert :: String
                     }
-  , markdown :: { fieldValue :: String
-                , fieldName :: String
-                , altFieldValue :: String
-                , altFieldName :: String
-                , visibleMdFieldSelector :: String
-                }
+  , markdown :: { focusEditorCssSelector :: String }
   , vizAggregation :: { sum :: String
                       , product :: String
                       , average :: String

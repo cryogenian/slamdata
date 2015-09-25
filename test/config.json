@@ -265,11 +265,7 @@
         "parameterized": "select measureOne, seriesOne from \"/test-mount/testDb/flatViz\" where measureOne < :max"
     },
     "markdown": {
-        "fieldValue": "Bobsleigh",
-        "fieldName": "sport",
-        "altFieldValue": "AUT",
-        "altFieldName": "country",
-        "visibleMdFieldSelector": ".ace_scroller"
+        "focusEditorCssSelector": ".ace_editor"
     },
     "vizSelectors": {
         "heightInput": "input.chart-configure-height",
