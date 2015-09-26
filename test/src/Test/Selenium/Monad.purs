@@ -17,20 +17,26 @@ limitations under the License.
 module Test.Selenium.Monad where
 
 import Prelude
+
 import Control.Monad.Aff.Class (liftAff)
-import Control.Monad.Reader.Class
-import Control.Monad.Reader.Trans
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
+import Control.Monad.Reader.Class
+import Control.Monad.Reader.Trans
+import Data.List (length)
 import Data.Maybe (maybe, fromMaybe)
+import Node.FS (FS())
 import Platform (getPlatform, PLATFORM(), runOs, runPlatform)
-import Selenium.Monad (Selenium())
-import Selenium.Types (ControlKey())
+import Selenium (showLocator)
 import Selenium.Key (metaKey, controlKey)
+import Selenium.Monad (Selenium(), byCss, byXPath, findElements)
+import Selenium.Types (ControlKey(), Locator(), Element())
 import Test.Config (Config())
+
+import qualified Data.List.Unsafe (head) as U
 import qualified Graphics.ImageDiff as GI
 import qualified Graphics.EasyImage as GE
-import Node.FS (FS())
+
 
 type Check a = Selenium ( platform :: PLATFORM
                         , imageDiff :: GI.IMAGE_MAGICK
@@ -50,6 +56,13 @@ getPlatformString = do
     >>> runOs
     >>> _.family
 
+findSingle :: Locator -> Check Element
+findSingle locator = do
+  elements <- findElements locator
+  case length elements of
+    1 -> return $ U.head elements
+    0 -> throwError $ error $ "Couldn't find an element with the locator: " ++ showLocator locator
+    _ -> throwError $ error $ "Found more than one element with the locator: " ++ showLocator locator
 
 getModifierKey :: Check ControlKey
 getModifierKey = map modifierKey getPlatformString
@@ -59,3 +72,12 @@ getModifierKey = map modifierKey getPlatformString
 
 diff :: _ -> Check Boolean
 diff = liftAff <<< GI.diff
+
+byAriaLabel :: String -> Check Locator
+byAriaLabel label = byCss $ "*[aria-label='" ++ label ++ "']"
+
+byExactText :: String -> Check Locator
+byExactText exactText = byXPath $ "//*[text()='" ++ exactText ++ "']"
+
+byText :: String -> Check Locator
+byText text = byXPath $ "//*[contains(., '" ++ text ++ "')]"

@@ -34,6 +34,7 @@ import Optic.Core
 
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
+import qualified Utils.Halide (ariaLabel) as A
 import qualified Halogen.HTML.CSS as CSS
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Monad as E
@@ -114,11 +115,11 @@ showToolbar it state =
       conf = if isDatabase r
              then [toolItem' handleConfigureItem "configure" B.glyphiconWrench]
              else []
-  in conf <> [ toolItem' handleMoveItem "move/rename" B.glyphiconMove
-             , toolItem' handleDownloadItem "download" B.glyphiconDownloadAlt
-             , toolItem' handleDeleteItem "remove" B.glyphiconTrash
+  in conf <> [ toolItem' handleMoveItem "Move / rename" B.glyphiconMove
+             , toolItem' handleDownloadItem "Download" B.glyphiconDownloadAlt
+             , toolItem' handleDeleteItem "Remove" B.glyphiconTrash
              ] ++ if isFile r || isNotebook r
-                  then [toolItem' (handleShare (state ^. _sort) (state ^. _salt)) "share" B.glyphiconShare]
+                  then [toolItem' (handleShare (state ^. _sort) (state ^. _salt)) "Share" B.glyphiconShare]
                   else []
   where
   toolItem' :: forall e. (Item -> Event e) -> String -> A.ClassName -> HTML e

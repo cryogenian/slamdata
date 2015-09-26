@@ -19,13 +19,15 @@ module Test.Selenium.Notebook.Markdown (test) where
 import Prelude
 
 import Control.Apply ((*>))
+import Control.Alt ((<|>))
+import Control.Bind ((=<<))
+import Data.Array ((..), (:))
 import Data.String (joinWith)
 import Data.String.Regex (regex, noFlags)
-import Data.Traversable (traverse)
-import Data.Foldable (traverse_)
+import Data.List (List(..), fromList)
 
-import Selenium.Types (Element())
-import Selenium.Monad (sequence, getAttribute, getText, findExact, childExact, byXPath, byId, byCss, tryRepeatedlyTo)
+import Selenium.Types (Element(), Locator())
+import Selenium.Monad (sequence, getAttribute, getText, findExact, childExact, byXPath, byId, byCss, tryRepeatedlyTo, findElements, navigateTo)
 import Selenium.ActionSequence (Sequence(), sendKeys, mouseDown, mouseUp, leftClick)
 import Selenium.Key (shiftKey)
 import Selenium.MouseButton (leftButton)
@@ -34,12 +36,15 @@ import Selenium.Combinators (tryToFind)
 import Test.Config
 import Test.Selenium.ActionSequence (selectAll, keys)
 import Test.Selenium.Expect (expectEq, expectMatch)
-import Test.Selenium.Monad (Check(), getConfig, getModifierKey)
-import Test.Selenium.Log (sectionMsg, successMsg, errorMsg)
+import Test.Selenium.Monad (Check(), getConfig, getModifierKey, byAriaLabel, byText, byExactText, findSingle)
+import Test.Selenium.Log (sectionMsg, successMsg, warnMsg)
 import Test.Selenium.Notebook.Getters (findPlayButton)
 import Test.Selenium.Notebook.Contexts (deleteAllCells, insertMdCell)
 
 import Utils (s2i)
+
+import qualified Data.Traversable (traverse, sequence) as T
+import qualified Data.Foldable (sequence_) as F
 
 provideMd :: String -> Check Unit
 provideMd md = focusMdField *> sequence (keys $ md ++ " ")
@@ -47,9 +52,7 @@ provideMd md = focusMdField *> sequence (keys $ md ++ " ")
 focusMdField :: Check Unit
 focusMdField = do
   config <- getConfig
-  -- ".ace-editor" can be considered an HTML tag name like "ace-editor". The "user" is asked
-  -- to "focus the ace editor".
-  visibleMdField <- tryToFind $ byCss ".ace_editor"
+  visibleMdField <- tryToFind $ byCss config.markdown.focusEditorCssSelector
   sequence do
     mouseDown leftButton visibleMdField
     mouseUp leftButton visibleMdField
@@ -65,23 +68,23 @@ playMd = findPlayButton >>= sequence <<< leftClick
 
 expectFinishedMessage :: Check Unit
 expectFinishedMessage = do
-  element <- tryToFind $ byXPath "//*[contains(., 'Finished')]"
+  element <- tryToFind $ byText "Finished"
   message <- getText element
   expectMatch (regex "Finished: took ([0-9]*)ms." noFlags) message
 
-findElementIdByLabelText text = tryToFind (byXPath labelXPath) >>= findElementIdByLabel
-  where
-  labelXPath = "//label[text()='" ++ text ++ "']"
-  findElementIdByLabel labelElement = tryRepeatedlyTo $ getAttribute labelElement "for"
+findElementIdByLabelText text =
+  tryRepeatedlyTo $ byExactText text >>= findSingle >>= findElementIdByLabel
+    where
+    findElementIdByLabel labelElement = tryRepeatedlyTo $ getAttribute labelElement "for"
 
 expectDropdownWithLabelOptionsAndValue :: String -> Array String -> String -> Check Unit
 expectDropdownWithLabelOptionsAndValue expectedLabel expectedOptions expectedValue = do
   selectId <- findElementIdByLabelText expectedLabel
   select <- tryToFind $ byId selectId
-  getAttribute select "value">>= expectEq expectedValue
-  void $ traverse (findOption select) expectedOptions
+  getAttribute select "value" >>= expectEq expectedValue
+  void $ T.traverse (findOption select) expectedOptions
     where
-    optionXPath text = "//option[text()='" ++ text ++ "']"
+    optionXPath text = "//option[text()=\"" ++ text ++ "\"]"
     findOption select text = byXPath (optionXPath text) >>= childExact select
 
 expectInputWithLabelTypeAndValue :: String -> String -> String -> Check Unit
@@ -94,35 +97,36 @@ expectInputWithLabelTypeAndValue expectedLabel expectedInputType expectedValue =
   expectEq expectedInputType inputType
 
 expectLabel :: String -> Check Unit
-expectLabel expected = void $ tryToFind $ byXPath labelXPath
+expectLabel expected = void $ tryRepeatedlyTo $ byXPath labelXPath >>= findSingle
   where
-  labelXPath = "//label[text()='" ++ expected ++ "']"
+  labelXPath = "//label[text()=\"" ++ expected ++ "\"]"
 
 expectInputWithLabelTypeAndChecked :: String -> String -> Boolean -> Check Unit
 expectInputWithLabelTypeAndChecked expectedLabel expectedType expectedChecked = do
   id <- findElementIdByLabelText expectedLabel
   void $ tryToFind $ byCss (inputSelector id expectedChecked)
     where
-    baseSelector id = "input#" ++ id ++ "[type='" ++ expectedType ++ "']"
+    baseSelector id = "input#" ++ id ++ "[type=\"" ++ expectedType ++ "\"]"
     inputSelector id true = baseSelector id ++ ":checked"
     inputSelector id false = baseSelector id ++ ":not(:checked)"
 
-provideMdForFormWithAllInputTypes = traverse provideMd [ "dicipline = __"
-                                                       , "sport = __ (Bobsleigh)"
-                                                       , "age = #__"
-                                                       , "year = #__ (2002)"
-                                                       , "startDate = __ - __ - __"
-                                                       , "finishDate = __ - __ - __ (2002-06-06)"
-                                                       , "startTime = __ : __"
-                                                       , "finishTime = __ : __ (20:39)"
-                                                       , "event = {1000m, 1500m, 3000m} (1500m)"
-                                                       , "gender = []M []W []X"
-                                                       , "color = [x]Red []Green [x]Blue"
-                                                       , "type = (x)Gold ()Silver ()Bronze"
-                                                       ]
+provideMdForFormWithAllInputTypes =
+    T.traverse provideMd [ "discipline = __"
+                         , "sport = __ (Bobsleigh)"
+                         , "age = #__"
+                         , "year = #__ (2002)"
+                         , "startDate = __ - __ - __"
+                         , "finishDate = __ - __ - __ (2002-06-06)"
+                         , "startTime = __ : __"
+                         , "finishTime = __ : __ (20:39)"
+                         , "event = {1000m, 1500m, 3000m} (1500m)"
+                         , "gender = []M []W []X"
+                         , "color = [x]Red []Green [x]Blue"
+                         , "type = (x)Gold ()Silver ()Bronze"
+                         ]
 
 expectToBePresentedWithFormWithAllInputTypes = do
-  expectInputWithLabelTypeAndValue "dicipline" "text" ""
+  expectInputWithLabelTypeAndValue "discipline" "text" ""
   expectInputWithLabelTypeAndValue "sport" "text" "Bobsleigh"
 
   expectInputWithLabelTypeAndValue "age" "number" ""
@@ -151,9 +155,51 @@ expectToBePresentedWithFormWithAllInputTypes = do
   expectInputWithLabelTypeAndChecked "Silver" "radio" false
   expectInputWithLabelTypeAndChecked "Bronze" "radio" false
 
+provideMdForFormWithEvaluatedContent =
+    T.traverse provideMd [ "discipline = __ (!`SELECT discipline FROM \"/test-mount/testDb/olympics\" LIMIT 1`)"
+                         , "year = #__ (!`SELECT year FROM \"/test-mount/testDb/olympics\" LIMIT 1`)"
+                         , "city = {!`SELECT DISTINCT city FROM \"/test-mount/testDb/olympics\"`} (!`SELECT city FROM \"/test-mount/testDb/olympics\" LIMIT 1`)"
+                         , "type = (!`SELECT DISTINCT type FROM \"/test-mount/testDb/olympics\" LIMIT 1`) !`SELECT DISTINCT type FROM \"/test-mount/testDb/olympics\" OFFSET 1`"
+                         , "gender = [!`SELECT gender FROM \"/test-mount/testDb/olympics\" LIMIT 1`] !`SELECT DISTINCT gender FROM \"/test-mount/testDb/olympics\"`"
+                         ]
+
+expectToBePresentedWithFormWithEvaluatedContent = do
+  expectInputWithLabelTypeAndValue "discipline" "text" "Figure skating"
+
+  expectInputWithLabelTypeAndValue "year" "number" "1924"
+
+  expectDropdownWithLabelOptionsAndValue "city" [ "Turin"
+                                                , "Lake Placid"
+                                                , "Salt Lake City"
+                                                , "Nagano"
+                                                , "Squaw Valley"
+                                                , "Lillehammer"
+                                                , "Albertville"
+                                                , "Sarajevo"
+                                                , "Grenoble"
+                                                , "Sapporo"
+                                                , "Innsbruck"
+                                                , "Calgary"
+                                                , "Cortina d'Ampezzo"
+                                                , "Chamonix"
+                                                , "Garmisch-Partenkirchen"
+                                                , "St. Moritz"
+                                                , "Oslo"
+                                                ] "Chamonix"
+
+  expectLabel "gender"
+  expectInputWithLabelTypeAndChecked "X" "checkbox" false
+  expectInputWithLabelTypeAndChecked "W" "checkbox" true
+  expectInputWithLabelTypeAndChecked "M" "checkbox" false
+
+  expectLabel "type"
+  expectInputWithLabelTypeAndChecked "Gold" "radio" false
+  expectInputWithLabelTypeAndChecked "Silver" "radio" true
+  expectInputWithLabelTypeAndChecked "Bronze" "radio" false
+
 test :: Check Unit
 test = do
-  sectionMsg "Markdown cell: Provide and play markdown" *> do
+  sectionMsg "Markdown: Provide and play markdown" *> do
     deleteAllCells
 
     insertMdCell
@@ -162,22 +208,32 @@ test = do
 
     expectToBePresentedWithFormWithAllInputTypes
     expectFinishedMessage
-
     successMsg "Ok, succesfully provided and played markdown."
 
     deleteAllCells
 
-  sectionMsg "Markdown cell: Change and play markdown" *> do
+  sectionMsg "Markdown: Change and play markdown" *> do
     deleteAllCells
 
     insertMdCell
-    provideMd "dicipline = __"
+    provideMd "discipline = __"
     playMd
     changeMd "sport = __ (Bobsleigh)"
     playMd
 
     expectInputWithLabelTypeAndValue "sport" "text" "Bobsleigh"
-
     successMsg "Ok, successfully changed and played markdown."
+
+    deleteAllCells
+
+  sectionMsg "Markdown: Provide and play markdown with evaluated content" *> do
+    deleteAllCells
+
+    insertMdCell
+    provideMdForFormWithEvaluatedContent
+    playMd
+
+    expectToBePresentedWithFormWithEvaluatedContent
+    successMsg "Ok, successfully provided and played markdown with evaluated content"
 
     deleteAllCells

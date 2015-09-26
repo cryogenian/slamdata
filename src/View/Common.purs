@@ -23,6 +23,7 @@ import Data.Maybe (Maybe(), maybe)
 import Data.String (fromChar)
 import qualified Halogen.HTML as H
 import qualified Halogen.HTML.Attributes as A
+import qualified Utils.Halide as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Types as ET
@@ -56,21 +57,20 @@ contentFluid = genericContainer
                [ B.containerFluid ]
                [ ]
 
-
 glyph :: forall i. A.ClassName -> H.HTML i
-glyph g = H.i [ A.classes [B.glyphicon, g] ] []
+glyph g = H.i [ A.classes [B.glyphicon, g ], A.ariaHidden ] []
 
 
-icon :: forall i. A.ClassName -> String -> H.HTML i
-icon c href = H.div [ A.classes [Vc.navIcon] ]
-             [ H.a [ A.href href ]
-                   [ glyph c ]
-             ]
+icon :: forall i. A.ClassName -> String -> String -> H.HTML i
+icon c href label = H.div [ A.classes [Vc.navIcon], A.ariaLabel label ]
+                          [ H.a [ A.href href ]
+                                [ glyph c ]
+                          ]
 
 logo :: forall i. Maybe String -> H.HTML i
 logo mbVersion =
   H.div [ A.class_ Vc.navLogo ]
-  [ H.a ([ A.href Config.slamDataHome ] <> title mbVersion)
+  [ H.a ([ A.href Config.slamDataHome, A.ariaLabel "SlamData" ] <> title mbVersion)
     [ H.img [A.src "img/logo.svg"] [] ]
   ]
   where

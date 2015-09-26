@@ -58,20 +58,20 @@
     },
     "upload": {
         "file": "./test/file.json",
-        "input": "button *[title='upload file'] input[type='file']",
-        "button": "button *[title='upload file']"
+        "input": "[title='Upload file'] input[type='file']",
+        "button": "[title='Upload file']"
     },
     "move": {
         "name": "file.json",
         "other": "other",
         "button": ".item-toolbar button",
-        "markMove": "*[title='move/rename']",
-        "markDelete": "*[title='remove']",
+        "markMove": "Move / rename",
+        "markDelete": "Remove",
         "nameField": ".modal.fade.in input[placeholder='New name']",
         "submit": ".modal.fade.in button.btn.btn-primary"
     },
     "share": {
-        "markShare": "*[title='share']",
+        "markShare": "Share",
         "urlField": ".modal.fade.in input"
     },
     "configureMount": {
@@ -89,12 +89,12 @@
     "modal": ".modal.fade.in",
     "toolbar": {
         "button": "button",
-        "showHide": "*[title='show hidden files']",
+        "showHide": "Show hidden files",
         "main": ".toolbar-menu",
-        "newFolder": "*[title='create folder']",
-        "newNotebook": "*[title='create notebook']",
-        "mountDatabase": "*[title='mount database']",
-        "configureMount": "*[title='configure mount']"
+        "newFolder": "Create folder",
+        "newNotebook": "Create notebook",
+        "mountDatabase": "Mount database",
+        "configureMount": "Configure mount"
     },
     "mount": {
         "name" : "test-mount",
@@ -265,11 +265,7 @@
         "parameterized": "select measureOne, seriesOne from \"/test-mount/testDb/flatViz\" where measureOne < :max"
     },
     "markdown": {
-        "fieldValue": "Bobsleigh",
-        "fieldName": "sport",
-        "altFieldValue": "AUT",
-        "altFieldName": "country",
-        "visibleMdFieldSelector": ".ace_scroller"
+        "focusEditorCssSelector": ".ace_editor"
     },
     "vizSelectors": {
         "heightInput": "input.chart-configure-height",
