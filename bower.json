@@ -51,6 +51,7 @@
     "purescript-sets": "~0.4.0",
     "purescript-simple-dom": "6358414013eb3106d695e3e19488609f82d903e9",
     "purescript-these": "~0.3.0",
+    "purescript-unfoldable": "0.4.0",
     "purescript-uri": "~0.1.0-rc.1",
     "purescript-zclipboard": "~0.2.0"
   },
