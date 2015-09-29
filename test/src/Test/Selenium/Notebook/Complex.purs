@@ -5,8 +5,9 @@ import Prelude
 import Data.List (length)
 import Data.Traversable (traverse)
 import Data.Array (last)
-import Data.Maybe (maybe)
+import Data.Maybe (maybe, Maybe(..))
 import Data.Either (Either(..))
+import Control.MonadPlus (guard)
 
 import Selenium.Types
 import Selenium.Monad
@@ -18,6 +19,7 @@ import Test.Selenium.ActionSequence
 import Test.Selenium.Monad
 import Test.Selenium.Log
 import Test.Selenium.Common
+import Test.Selenium.Expect
 import Test.Selenium.Notebook.Getters
 import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Viz (actualCanvasScreenshot)
@@ -37,15 +39,10 @@ checkMarkdownViz = onlyFirefox do
     waitTime $ SDCfg.autosaveTick * 5
     map (S.replace "edit" "view") getCurrentUrl >>= get
     waitCanvas
-    await "Error: has not been reloaded" do
-      input <- attempt $ getElementByCss config.complex.inputSelector
-               "there is no markdown result"
-      case input of
-        Left _ -> pure false
-        Right i -> do
-          val <- getAttribute i "value"
-          pure $ maybe false (eq val) $ last config.complex.values
-
+    tryRepeatedlyTo do
+      input <- tryToFind $ byCss config.complex.inputSelector
+      value <- getAttribute input "value"
+      expectEq (Just value) $ last config.complex.values
 
   setUp = do
     config <- getConfig
@@ -75,7 +72,7 @@ checkMarkdownViz = onlyFirefox do
 
   checkInput = do
     config <- getConfig
-    traverse checkOneInput config.complex.values
+    traverse (tryRepeatedlyTo <<< checkOneInput) config.complex.values
     successMsg "Ok, value propagated"
 
   checkOneInput val = do
