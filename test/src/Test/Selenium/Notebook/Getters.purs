@@ -17,23 +17,28 @@ limitations under the License.
 module Test.Selenium.Notebook.Getters where
 
 import Prelude
+
+import Control.Alt ((<|>))
 import Data.Either (Either(..))
-import Data.Traversable (traverse)
+import Data.Foldable (fold)
 import Data.List (catMaybes, List(..), fromList, toList, length, (!!))
 import Data.Maybe (Maybe(..), maybe, isNothing, isJust)
 import Data.Maybe.Unsafe (fromJust)
-import Data.Tuple (Tuple(..))
-import Data.Foldable (fold)
-import Data.Monoid.Disj (Disj(..), runDisj)
 import Data.Monoid.Conj (Conj(..), runConj)
+import Data.Monoid.Disj (Disj(..), runDisj)
+import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..))
+import Selenium (showLocator)
+import Selenium.Monad
 import Selenium.Types
+import Test.Config
+import Test.Selenium.Common
 import Test.Selenium.Log
 import Test.Selenium.Monad
-import Test.Selenium.Common
 import Test.Selenium.Types
-import Test.Config
+import Test.Selenium.Finders (findSingleGracefully)
+
 import qualified Data.String.Regex as R
-import Selenium.Monad
 
 newCellMenuExpanded :: Check Boolean
 newCellMenuExpanded = do
@@ -143,10 +148,13 @@ waitVizWidthInput = do
   config <- getConfig
   tryRepeatedlyTo $ byCss config.vizSelectors.widthInput >>= findExact
 
-getInput :: Check Element
-getInput = do
+inputLocator :: Check Locator
+inputLocator = do
   config <- getConfig
-  tryRepeatedlyTo $ byCss config.explore.input >>= findExact
+  tryRepeatedlyTo $ byCss config.explore.input
+
+getInput :: Check Element
+getInput = inputLocator >>= findSingleGracefully
 
 getAceInput :: Check Element
 getAceInput = do
@@ -185,10 +193,8 @@ getEmbedButton =
   getConfig >>= _.cell >>> _.embedButton >>>
   flip getElementByCss "there is no embed button"
 
-getPageSizeSelect :: Check Element
-getPageSizeSelect =
-  getConfig >>= _.explore >>> _.pageSizeSelect >>>
-  flip getElementByCss "There is no page size select"
+pageSizeSelectLocator :: Check Locator
+pageSizeSelectLocator = getConfig >>= _.explore >>> _.pageSizeSelect >>> byCss
 
 getPageSizeInput :: Check Element
 getPageSizeInput =
@@ -233,10 +239,12 @@ getPaginationButton content = do
   filterFn content html =
     R.test (R.regex content R.noFlags) html
 
+paginationInputLocator :: Check Locator
+paginationInputLocator =
+  getConfig >>= _.explore >>> _.pageInput >>> byCss
+
 getPaginationInput :: Check Element
-getPaginationInput =
-  getConfig >>= _.explore >>> _.pageInput >>>
-  flip getElementByCss "there is no pagination input"
+getPaginationInput = paginationInputLocator >>= findSingle
 
 getJTableHeadContent :: Check String
 getJTableHeadContent =
@@ -274,6 +282,9 @@ getPager :: Check Element
 getPager = getConfig >>= _.explore >>> _.pager >>>
            flip getElementByCss "There is no pager"
 
+getPageSizeSelect :: Check Element
+getPageSizeSelect = pageSizeSelectLocator >>= findSingle
+
 getPageCount :: Check Int
 getPageCount = do
   getPager >>= getInnerHtml >>= extract
@@ -285,8 +296,12 @@ getPageCount = do
 getRowCount :: Check RowCount
 getRowCount = do
   tc <- length <$> getTableRows
-  pc <- getPageSizeSelect >>= flip getAttribute "value" >>= parseToInt
+  loc <- pageSizeSelectLocator
+  pc <- findSingle loc >>= flip getAttribute attr
+                       >>= maybe (attrFail loc attr) parseToInt
   pure {table: tc, pager: pc}
+    where
+    attr = "value"
 
 getEnabledRecord :: Check EnabledRecord
 getEnabledRecord = do
@@ -294,7 +309,8 @@ getEnabledRecord = do
     sf <- getStepForward
     fb <- getFastBackward
     sb <- getStepBackward
-    input <- getPaginationInput
+    inputLocator <- paginationInputLocator
+    input <- findSingle inputLocator
     r <- { ff: _
          , sf: _
          , fb: _
@@ -304,9 +320,10 @@ getEnabledRecord = do
          <*> isEnabled sf
          <*> isEnabled fb
          <*> isEnabled sb
-         <*> getAttribute input "value"
+         <*> (getAttribute input attr >>= maybe (attrFail inputLocator attr) pure)
     pure $ EnabledRecord r
-
+      where
+      attr = "value"
 
 -- VIZ
 getPieEditor :: Check Element

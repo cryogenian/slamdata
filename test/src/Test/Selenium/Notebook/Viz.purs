@@ -273,7 +273,7 @@ getSelectValue el = do
   val <- getAttribute el "value"
   getOptions (pure el) >>= foldl (foldFn val) (pure mempty)
   where
-  foldFn :: String -> Check String -> Element -> Check String
+  foldFn :: Maybe String -> Check String -> Element -> Check String
   foldFn selectedVal mStr el = do
     val <- getAttribute el "value"
     if val == selectedVal

@@ -20,6 +20,7 @@ module Test.Selenium.Notebook.Search
 
 import Prelude
 import Control.Monad.Eff.Random (randomInt)
+import Control.Bind (join)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Foldable (for_, traverse_)
 import Data.Traversable (traverse)
@@ -37,6 +38,7 @@ import Test.Selenium.Common
 import Test.Selenium.Types
 import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Getters
+import Test.Selenium.Notebook.Markdown.Interactions (insertMdCell)
 
 import qualified Data.String as S
 import qualified Data.String.Regex as R
@@ -51,13 +53,13 @@ checkInitialSearch =
     config <- getConfig
     value <- getElementByCss config.searchCell.fileListInput "there is no file list"
              >>= flip getAttribute "value"
-    if value /= ""
+    if value /= Just ""
       then errorMsg "file list should be empty"
       else pure unit
 
     search <- getElementByCss config.searchCell.searchInput "there is no search input"
               >>= flip getAttribute "value"
-    if value /= ""
+    if value /= Just ""
       then errorMsg "search input should be empty"
       else pure unit
     successMsg "Ok, initial values are empty"
@@ -164,13 +166,13 @@ checkSearchClear = withSearchCell do
     leftClick ip
     sendKeys "foo bar baz"
   await "value of search input has not been setted" do
-    (== "foo bar baz") <$> getAttribute ip "value"
+    (== (Just "foo bar baz")) <$> getAttribute ip "value"
 
   successMsg "Ok, correct value in search input"
 
   sequence $ leftClick clear
   await "value of search input has not been cleared" do
-    (== "") <$> getAttribute ip "value"
+    (== (Just "")) <$> getAttribute ip "value"
 
   successMsg "Ok, value has been cleared"
 
@@ -196,7 +198,7 @@ checkSearchStop = withSearchCell do
   await "Search stop doesn't work" do
     src <- getAttribute clear "src"
     val <- getAttribute ip "value"
-    pure $ val == "" && src == startSrc
+    pure $ val == Just "" && src == startSrc
   successMsg "Ok, search stopped"
 
 checkOutputLabel :: Check Unit
@@ -226,11 +228,12 @@ checkNextSearchCell expected = do
   vals <- byCss config.searchCell.fileListInput
           >>= findElements
           >>= traverse (flip getAttribute "value")
-  if (vals !! 1) == (Just expected)
+  let val = join (vals !! 1)
+  if val == Just expected
     then successMsg "Ok, correct next search cell value"
     else errorMsg $ "Incorrect next search cell value:"
          <> "\nexpected: " <> expected
-         <> "\nactual  : " <> fromMaybe "" (vals !! 1)
+         <> "\nactual  : " <> fromMaybe "" val
   deleteAllCells
 
 
