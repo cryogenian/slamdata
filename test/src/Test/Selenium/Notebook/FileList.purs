@@ -18,23 +18,24 @@ module Test.Selenium.Notebook.FileList (test) where
 
 import Prelude
 
-import Data.Tuple (Tuple(..), fst, snd)
-import Data.List (null, takeWhile, head, zip, filter)
 import Data.Either (either)
 import Data.Foreign (readInt)
+import Data.List (null, takeWhile, head, zip, filter)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Traversable (traverse)
-import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..), fst, snd)
 
 import Selenium.ActionSequence hiding (sequence)
-import Selenium.Monad
-import Selenium.Types
-import Selenium.MouseButton
 import Selenium.Combinators (tryToFind)
-import Test.Selenium.Monad
+import Selenium.Monad
+import Selenium.MouseButton
+import Selenium.Types
 import Test.Selenium.Common
 import Test.Selenium.Log
-import Test.Selenium.Notebook.Getters
+import Test.Selenium.Monad
 import Test.Selenium.Notebook.Contexts
+import Test.Selenium.Notebook.Getters
+import Test.Selenium.Finders (findSingleGracefully)
 
 import qualified Data.String.Regex as R
 
@@ -63,10 +64,13 @@ checkFileListSetInput ctx = withFileList ctx do
   html <- getInnerHtml item
   sequence $ leftClick item
   await "Incorrect value of input after select from dropdown" do
-    input <- getInput
-    val <- getAttribute input "value"
+    loc <- inputLocator
+    element <- findSingleGracefully loc
+    val <- getAttribute element attr >>= maybe (attrFail loc attr) pure
     pure $ val == html
   successMsg "Ok, correct item has been selected"
+    where
+    attr = "value"
 
 checkHiddenItems :: Context -> Check Unit
 checkHiddenItems ctx = withFileList ctx do

@@ -110,9 +110,6 @@ makeExploreCell = getConfig >>= _.newCellMenu >>> _.exploreButton >>> makeCell
 makeSearchCell :: Check Unit
 makeSearchCell = getConfig >>= _.newCellMenu >>> _.searchButton >>> makeCell
 
-insertMdCell :: Check Unit
-insertMdCell = getConfig >>= _.newCellMenu >>> _.mdButton >>> makeCell
-
 makeQueryCell :: Check Unit
 makeQueryCell = getConfig >>= _.newCellMenu >>> _.queryButton >>> makeCell
 

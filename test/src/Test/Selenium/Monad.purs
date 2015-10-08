@@ -23,13 +23,13 @@ import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Class
 import Control.Monad.Reader.Trans
-import Data.List (length)
-import Data.Maybe (maybe, fromMaybe)
+import Data.List (List(), length, uncons, (:))
+import Data.Maybe (maybe, fromMaybe, Maybe(..))
 import Node.FS (FS())
 import Platform (getPlatform, PLATFORM(), runOs, runPlatform)
 import Selenium (showLocator)
 import Selenium.Key (metaKey, controlKey)
-import Selenium.Monad (Selenium(), byCss, byXPath, findElements)
+import Selenium.Monad (Selenium(), byCss, byXPath, findElements, getAttribute)
 import Selenium.Types (ControlKey(), Locator(), Element())
 import Test.Config (Config())
 
@@ -38,10 +38,10 @@ import qualified Graphics.ImageDiff as GI
 import qualified Graphics.EasyImage as GE
 
 
-type Check a = Selenium ( platform :: PLATFORM
-                        , imageDiff :: GI.IMAGE_MAGICK
-                        , easyImage :: GE.EASY_IMAGE
-                        , fs :: FS) (config :: Config) a
+type Check = Selenium ( platform :: PLATFORM
+                      , imageDiff :: GI.IMAGE_MAGICK
+                      , easyImage :: GE.EASY_IMAGE
+                      , fs :: FS) (config :: Config)
 
 getConfig :: Check Config
 getConfig = _.config <$> ask
@@ -59,10 +59,22 @@ getPlatformString = do
 findSingle :: Locator -> Check Element
 findSingle locator = do
   elements <- findElements locator
-  case length elements of
-    1 -> return $ U.head elements
-    0 -> throwError $ error $ "Couldn't find an element with the locator: " ++ showLocator locator
-    _ -> throwError $ error $ "Found more than one element with the locator: " ++ showLocator locator
+  case uncons elements of
+    Nothing ->
+      throwError $ error $ "Couldn't find an element with the locator: " ++ showLocator locator
+    Just o -> case length o.tail of
+      0 -> pure $ o.head
+      _ ->
+        throwError $ error $ "Found more than one element with the locator: " ++ showLocator locator
+
+findAtLeast :: Int -> Locator -> Check (List Element)
+findAtLeast n locator = do
+  elements <- findElements locator
+  if length elements >= n
+    then pure $ elements
+    else throwError $ error $ "Couldn't find at least " ++ show n
+                                                        ++ " elements with the locator: "
+                                                        ++ showLocator locator
 
 getModifierKey :: Check ControlKey
 getModifierKey = map modifierKey getPlatformString

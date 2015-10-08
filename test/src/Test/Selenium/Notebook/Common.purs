@@ -36,6 +36,7 @@ import Test.Selenium.Log
 import Test.Selenium.Common
 import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Getters
+import Test.Selenium.Expect (expect, toEq)
 import Selenium.Types
 import qualified Config as SDConfig
 import qualified Data.StrMap as SM
@@ -79,9 +80,7 @@ checkInitial custom = do
   custom
   value <- getElementByCss config.explore.input "there is no input"
            >>= flip getAttribute "value"
-  if value /= ""
-    then errorMsg "value of input should be empty"
-    else successMsg "Ok, input value is empty"
+  expect value toEq $ Just ""
   findPlayButton
   successMsg "Ok, there is play button"
   getRefreshButton
@@ -100,12 +99,7 @@ checkEmbedButton = do
   box <- getElementByCss config.cell.embedBox "Embed box hidden"
   value <- getAttribute box "value"
   expected <- expectedValue
-  if expected == value
-    then successMsg "Ok, embedding cell value is correct"
-    else do
-    errorMsg $ "Embed value is not correct"
-      <> "\nexpected: " <> expected
-      <> "\nactual  : " <> value
+  expect value toEq $ Just expected
   sequence $ leftClick modal
   tryRepeatedlyTo $ checkNotExists "Error: modal should be hidden" config.modal
   where

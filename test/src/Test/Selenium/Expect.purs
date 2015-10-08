@@ -2,26 +2,36 @@ module Test.Selenium.Expect where
 
 import Prelude
 
+import Data.Const (Const(..))
 import Control.Monad.Eff.Exception (error, Error())
 import Control.Monad.Error.Class (MonadError, throwError, catchError)
 import Selenium.Monad (Selenium())
 import Data.String (contains)
 import Data.String.Regex (Regex(), test)
+import Global (readInt)
 
-expect :: forall a b o e. (Show a, Show b) => (a -> b -> Boolean) -> String -> a -> b -> Selenium o e Unit
-expect expectation description expected actual | expectation expected actual = return unit
-expect expectation description expected actual = throwError $ error $ msg
+type Expectation a b = { f :: a -> b -> Boolean, s :: String }
+
+expect :: forall a b o e. (Show a, Show b) => a -> Expectation a b -> b -> Selenium o e Unit
+expect expected expectation actual | expectation.f expected actual = return unit
+expect expected expectation actual = throwError $ error $ msg
   where
-  msg = "Expected " ++ show actual ++ " to " ++ description ++ " " ++ show expected ++ "."
+  msg = "Expected " ++ show actual ++ " to " ++ expectation.s ++ " " ++ show expected ++ "."
 
-expectEq :: forall a o e. (Eq a, Show a) => a -> a -> Selenium o e Unit
-expectEq = expect (==) "equal"
+toEq :: forall a. (Eq a) => Expectation a a
+toEq = { f: (==), s: "equal" }
 
-expectNotEq :: forall a o e. (Eq a, Show a) => a -> a -> Selenium o e Unit
-expectNotEq = expect (/=) "not equal"
+toNotEq :: forall a. (Eq a) => Expectation a a
+toNotEq = { f: (/=), s: "not equal" }
 
-expectMatch :: forall a o e. Regex -> String -> Selenium o e Unit
-expectMatch = expect test "match regular expression"
+toBeGreaterThan :: Expectation String Number
+toBeGreaterThan = { f: (\s n -> (readInt 10 s) > n), s : "be greater than" }
 
-expectContains :: forall a o e. String -> String -> Selenium o e Unit
-expectContains = expect contains "contain"
+toBeLessThan :: Expectation String Number
+toBeLessThan = { f: (\s n -> (readInt 10 s) > n), s: "be less than" }
+
+toMatch :: Expectation String Regex
+toMatch = { f: flip test, s: "match regular expression" }
+
+toContain :: Expectation String String
+toContain = { f: contains, s: "contain" }

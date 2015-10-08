@@ -513,13 +513,14 @@ shareFile = do
   itemGetShareIcon uploadedItem >>= itemClickToolbarIcon uploadedItem
   wait modalShown config.selenium.waitTime
   successMsg "Share modal dialog appeared"
-  urlField <- getElementByCss config.share.urlField "there is no url field"
-  urlValue <- getAttribute urlField "value"
-  successMsg $ "Share url: " <> urlValue
+  urlFieldLocator <- byCss config.share.urlField
+  urlField <- findSingle urlFieldLocator
+  urlValue <- getAttribute urlField attr >>= maybe (attrFail urlFieldLocator attr) pure
   get urlValue
   wait awaitInNotebook config.selenium.waitTime
   successMsg "Ok, share link led to notebook"
     where
+    attr = "value"
     itemGetShareIcon :: Element -> Check Element
     itemGetShareIcon item = do
       config <- getConfig

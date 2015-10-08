@@ -39,11 +39,14 @@ module Test.Selenium.Common
   , isChrome
   , isFirefox
   , isMac
+  , attrFail
   )
   where
 
 import Prelude
 import Control.Apply ((*>))
+import Control.Monad.Eff.Exception (error)
+import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans (lift)
 import Data.Either (either, isRight, Either(..))
 import Data.Maybe (Maybe(..), maybe)
@@ -64,6 +67,7 @@ import Selenium.ActionSequence hiding (sequence)
 import Selenium.Key
 import Selenium.Types
 import Selenium.Monad
+import Selenium (showLocator)
 import qualified Selenium.Combinators as Sc
 
 import Test.Selenium.Log
@@ -232,3 +236,10 @@ isFirefox = isBrowser "firefox"
 
 isMac :: Check Boolean
 isMac = map (eq "Darwin") getPlatformString
+
+attrFail :: forall a. Locator -> String -> Check a
+attrFail loc attr = throwError $
+  error $ "Couldn't find non null " ++ show attr
+                                    ++ " attribute for element located by "
+                                    ++ showLocator loc
+                                    ++ "."

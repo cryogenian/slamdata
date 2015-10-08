@@ -141,7 +141,7 @@ cellOutputBar notebook c =
   where
   li :: String -> _ -> A.ClassName -> HTML e
   li title handler c =
-    H.li_ [ H.button [A.title title, E.onClick handler] [glyph c] ]
+    H.li_ [ H.button [A.title title, A.ariaLabel title, E.onClick handler] [glyph c] ]
 
 statusBar :: forall e. State -> Boolean -> Cell -> HTML e
 statusBar notebook hasOutput c =
