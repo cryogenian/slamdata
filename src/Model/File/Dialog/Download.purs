@@ -27,6 +27,7 @@ import Network.HTTP.MimeType (MimeType(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
 import qualified Data.String.Regex as Rx
+import qualified Data.String as Str
 
 data OutputType = CSV | JSON
 
@@ -150,28 +151,35 @@ instance eqPrecisionMode :: Eq PrecisionMode where
   eq Precise Precise = true
   eq _ _ = false
 
-
 toHeaders :: DownloadDialogRec -> Array RequestHeader
-toHeaders rec = encHeader (rec ^. _compress) ++ [Accept $ MimeType $ mimeType (rec ^. _options)]
+toHeaders r =
+  encHeader (r ^. _compress) ++ [Accept $ MimeType $ mimeType (r ^. _options)]
   where
-
   encHeader :: Boolean -> Array RequestHeader
   encHeader true = [RequestHeader "Accept-Encoding" "gzip"]
   encHeader false = []
 
   mimeType :: Either CSVOptions JSONOptions -> String
   mimeType (Left (CSVOptions opts)) =
-    "text/csv;columnDelimiter=" ++ esc opts.colDelimiter
-         ++ "&rowDelimiter=" ++ esc opts.rowDelimiter
-         ++ "&quoteChar=" ++ esc opts.quoteChar
-         ++ "&escapeChar=" ++ esc opts.escapeChar
+    "text/csv"
+    ++ ";columnDelimiter=" ++ esc opts.colDelimiter
+    ++ (if opts.rowDelimiter == "\\n"
+        then ""
+        else ";rowDelimiter=" ++ esc opts.rowDelimiter)
+    ++ ";quoteChar=" ++ esc opts.quoteChar
+    ++ ";escapeChar=" ++ esc opts.escapeChar
   mimeType (Right (JSONOptions opts)) =
     let suffix = if opts.precision == Precise then ";mode=precise" else ""
         subtype = if opts.multivalues == ArrayWrapped then "json" else "ldjson"
     in "application/" ++ subtype ++ suffix
 
   esc :: String -> String
-  esc s = "\"" ++ Rx.replace (grx "\"") "\\\"" s ++ "\""
+  esc s =
+    (\a -> "\"" <> a <> "\"")
+    $ Rx.replace (grx "\"") "\\\""
+    $ Str.replace "\\t" "\t"
+    $ Str.replace "\\r" "\r"
+    s
     where
     grx :: String -> Rx.Regex
     grx pat = Rx.regex pat Rx.noFlags { global = true }
