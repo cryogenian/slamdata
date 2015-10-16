@@ -22,19 +22,25 @@ import Control.Apply ((*>))
 import Control.Bind ((>=>), (=<<))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
+import Control.Monad.Trans (lift)
+import Data.Argonaut.Parser (jsonParser)
+import Data.Argonaut.Core (toArray)
+import Data.Argonaut.JCursor (toPrims)
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust, isNothing)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Either (Either(..), either, isLeft)
 import Data.Foldable (foldl, elem, find)
 import Data.Traversable (traverse)
-import Data.List (List(), reverse, filter, null)
+import Data.List (List(), reverse, filter, null, fromList, (!!))
 import Selenium.Types
 import Selenium.MouseButton
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Key
 import Selenium.Monad
 import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust, tryToFind)
+import Node.FS.Aff
+import Node.Encoding (Encoding(UTF8))
 
 import Test.Config
 import Driver.File.Routing (Routes(..), routing)
@@ -765,6 +771,157 @@ moveDeleteFile = do
   config <- getConfig
   moveDelete "file" goDown config.move.name config.move.other
 
+import Utils.Log
+
+downloadResource :: Check Unit
+downloadResource = do
+  sectionMsg "Download resource, smoke tests"
+  enterMount
+  goDown
+  config <- getConfig
+  tryRepeatedlyTo do
+    btn <- getToolbarDownloadButton
+    sequence $ leftClick btn
+  await "modal hasn't appeared" modalShown
+  successMsg "Ok, global download dialog shown"
+  cancelDownload
+  successMsg "Ok, global download dialog hidden"
+  tryRepeatedlyTo do
+    item <- getDownloadItem
+    sequence $ hover item
+    getItemDownloadButton item >>= sequence <<< leftClick
+  await "modal hasn't appeared" modalShown
+  successMsg "Ok, item download dialog shown"
+  tryRepeatedlyTo do
+    val <- getSourceInput >>= flip getAttribute "value"
+    assertBoolean "Error, value should be equal to resource path"
+      $ Just "/test-mount/testDb/smallZips" == val
+  successMsg "Ok, correct source value"
+  proceedDownload
+  content <- readDownloaded
+  checkCSV "\n" "," content >>= assertBoolean "Error: incorrect csv file"
+  successMsg "Ok, csv is correct"
+  rmDownloaded
+  tryRepeatedlyTo do
+    rowDInput <- getRowDelimiterInput
+    colDInput <- getColDelimiterInput
+    sequence do
+      leftClick rowDInput
+      sendBackspaces 10
+      keys "*"
+      leftClick colDInput
+      sendBackspaces 10
+      keys ";"
+    proceedDownload
+  semicolonContent <- readDownloaded
+  checkCSV "*" ";" semicolonContent
+    >>= assertBoolean "Error: incorrect csv file (after delimiters change)"
+  successMsg "Ok, delimiters set correctly"
+  rmDownloaded
+  tryRepeatedlyTo $ getJsonTab >>= sequence <<< leftClick
+  proceedDownload
+  warnMsg "Note, application/json can't be autodownloaded"
+  mainHandle <- getWindowHandle
+
+  tryRepeatedlyTo do
+    handles <- getAllWindowHandles
+    -- This is benigh. We use newTab to download file.
+    switchTo $ fromJust $ handles !! 1
+  jsonContent <- tryRepeatedlyTo $ byCss "pre" >>= findExact >>= getText
+  checkJson jsonContent >>= assertBoolean "Error: incorrect json"
+  closeWindow
+  switchTo mainHandle
+  successMsg "Ok, correct json file"
+  getMutliLineRadio >>= sequence <<< leftClick
+  proceedDownload
+  jsonMLContent <- readDownloaded
+  checkMultiLineJson jsonMLContent
+    >>= assertBoolean "Error: incorrect multiline json"
+  successMsg "Ok, multiline json file"
+  rmDownloaded
+  where
+  getToolbarDownloadButton = do
+    config <- getConfig
+    tryToFind $ byAriaLabel config.toolbar.download
+
+  cancelDownload = do
+    config <- getConfig
+    btn <- tryToFind $ byAriaLabel config.download.cancel
+    sequence $ leftClick btn
+    await "modal hasn't disappeared" modalDismissed
+
+  proceedDownload = do
+    config <- getConfig
+    btn <- tryToFind $ byAriaLabel config.download.proceed
+    sequence $ leftClick btn
+
+  getDownloadItem = do
+    config <- getConfig
+    findItem config.download.item
+      >>= maybe (throwError $ error "Error: there is no item to download") pure
+  getItemDownloadButton item = do
+    config <- getConfig
+    tryRepeatedlyTo $ byAriaLabel config.toolbar.download >>= childExact item
+
+  getSourceInput = do
+    config <- getConfig
+    byCss config.download.sourceInputSelector >>= findExact
+
+  getTargetInput = do
+    config <- getConfig
+    byCss config.download.targetInputSelector >>= findExact
+
+  getRowDelimiterInput = do
+    config <- getConfig
+    byXPath config.download.rowDelimiterInputSelector >>= findExact
+
+  getColDelimiterInput = do
+    config <- getConfig
+    byXPath config.download.colDelimiterInputSelector >>= findExact
+
+  getJsonTab = do
+    config <- getConfig
+    byXPath config.download.jsonTabSelector >>= findExact
+
+  getMutliLineRadio = do
+    config <- getConfig
+    byXPath config.download.multiLineJsonRadioSelector >>= findExact
+
+  readDownloaded = do
+    config <- getConfig
+    await "File has not been downloaded" do
+      files <- lift $ readdir config.download.folder
+      pure $ isJust $ Arr.elemIndex config.download.item files
+    lift $ readTextFile UTF8 $ config.download.folder <> "/" <> config.download.item
+
+  checkCSV rowSep colSep content = do
+    config <- map _.download getConfig
+    let lines = Arr.filter (not <<< eq "") $ Str.split rowSep content
+        cells = Arr.filter (not <<< eq "") $ lines >>= Str.split colSep
+    -- one for headers
+    pure $ (Arr.length lines) == (config.rowCount + one)
+      && (Arr.length cells) == (config.rowCount + one) * config.colCount
+
+  rmDownloaded = do
+    config <- getConfig
+    lift $ unlink $ config.download.folder <> "/" <> config.download.item
+
+  checkJson content = do
+    config <- map _.download getConfig
+    pure $ either (const false) id do
+      json <- jsonParser content
+      arr <- maybe (Left "it's not an array") Right $ toArray json
+      let tplList = arr >>= toPrims >>> fromList
+      pure $ Arr.length arr == config.rowCount
+        &&  Arr.length tplList == config.rowCount * config.colCount
+
+  checkMultiLineJson content = do
+    config <- map _.download getConfig
+    let arr = Arr.filter (not <<< eq "") $ Str.split "\n" content
+        tplList = (either (const []) id $ traverse jsonParser arr)
+                >>= toPrims >>> fromList
+    pure $ Arr.length arr == config.rowCount
+      && Arr.length tplList == config.rowCount * config.colCount
 
 test :: Check Unit
 test = do
@@ -793,3 +950,4 @@ test = do
   moveDeleteFolder
   createNotebook
   moveDeleteNotebook
+  downloadResource

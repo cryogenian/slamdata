@@ -70,6 +70,19 @@
         "nameField": ".modal.fade.in input[placeholder='New name']",
         "submit": ".modal.fade.in button.btn.btn-primary"
     },
+    "download": {
+        "item": "smallZips",
+        "proceed": "Proceed download",
+        "cancel": "Cancel download",
+        "sourceInputSelector": ".download-source input",
+        "targetInputSelector": ".downlaod-target input",
+        "rowCount": 100,
+        "colCount": 5,
+        "rowDelimiterInputSelector": "//*[text()='Row delimiter']/following-sibling::input",
+        "colDelimiterInputSelector": "//*[text()='Column delimiter']/following-sibling::input",
+        "jsonTabSelector": "//*[text()='JSON']",
+        "multiLineJsonRadioSelector": "//*[text()='Separate values by newlines']/input"
+    },
     "share": {
         "markShare": "Share",
         "urlField": ".modal.fade.in input"
@@ -94,7 +107,8 @@
         "newFolder": "Create folder",
         "newNotebook": "Create notebook",
         "mountDatabase": "Mount database",
-        "configureMount": "Configure mount"
+        "configureMount": "Configure mount",
+        "download": "Download"
     },
     "mount": {
         "name" : "test-mount",

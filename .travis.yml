@@ -19,7 +19,8 @@ before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
 script:
-  - gulp test
+  - gulp bundle-test
+  - node test
 before_deploy:
 - cp -r public slamdata
 - tar cjf slamdata.tar.bz2 slamdata

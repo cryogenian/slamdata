@@ -25,6 +25,7 @@ module Test.Selenium.ActionSequence
   , keys
   , sendBackspaces
   , focus
+  , close
   ) where
 
 import Prelude
@@ -49,6 +50,9 @@ paste modifierKey = sendKeyCombo [modifierKey] "v"
 
 undo :: ControlKey -> Sequence Unit
 undo modifierKey = sendKeyCombo [modifierKey] "z"
+
+close :: ControlKey -> Sequence Unit
+close modifierKey = sendKeyCombo [modifierKey] "w"
 
 shifted :: String -> Sequence Unit
 shifted str = do

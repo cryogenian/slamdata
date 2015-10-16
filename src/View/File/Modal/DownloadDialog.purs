@@ -44,6 +44,7 @@ import qualified Halogen.HTML.Events.Handler as E
 import qualified Halogen.HTML.Events.Monad as E
 import qualified Halogen.Themes.Bootstrap3 as B
 import qualified View.Css as VC
+import Utils.Halide (ariaLabel)
 
 downloadDialog :: forall e. DownloadDialogRec -> Array (HTML e)
 downloadDialog state =
@@ -70,7 +71,7 @@ downloadDialog state =
     let value = either id resourcePath $ state ^. _source
     in H.div [ A.classes [B.formGroup, VC.downloadSource, B.clearfix] ]
              [ H.label_ [ H.span_ [ H.text "Source" ]
-                        , H.input [ A.classes [B.formControl]
+                        , H.input [ A.classes [ B.formControl ]
                                   , E.onInput (pure <<< handleSourceInput)
                                   , A.value value
                                   ]
@@ -158,6 +159,7 @@ downloadDialog state =
   btnCancel =
     H.button [ A.classes [B.btn]
              , E.onClick (E.input_ $ inj $ WithState (_dialog .~ Nothing))
+             , ariaLabel "Cancel download"
              ]
              [ H.text "Cancel" ]
 
@@ -170,6 +172,7 @@ downloadDialog state =
            , A.disabled disabled
            , A.href url
            , E.onClick (\ev -> E.preventDefault $> handleDownloadClick ev.target)
+           , ariaLabel "Proceed download"
            ]
            [ H.text "Download" ]
 

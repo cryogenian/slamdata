@@ -35,12 +35,13 @@ if (args.b) {
 }
 
 if (args.remote) {
-    config.sauceLabs.enabled = true
+    config.sauceLabs.enabled = true;
 }
 
 var VERBOSE = args.v;
 
-var quasarConfigPath = path.resolve("tmp/" + config.quasar.config)
+var quasarConfigPath = path.resolve("tmp/" + config.quasar.config);
+
 
 var url = "mongodb://" + config.mongodb.host + ":" + config.mongodb.port + "/" + config.database.name,
     restoreCmd = config.restoreCmd,
@@ -100,6 +101,8 @@ log("Emptying test temp folder");
 rimraf.sync("tmp/test");
 fs.mkdirSync("tmp/test");
 fs.mkdirSync("tmp/test/image");
+fs.mkdirSync("tmp/test/downloads");
+config.download.folder = path.resolve("tmp/test/downloads/");
 
 // Copy the configuration file for use by quasar
 copyFile(path.resolve(config.quasar.config), quasarConfigPath, function(){});

@@ -29,7 +29,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (EXCEPTION(), catchException)
 import Data.Maybe (Maybe(..))
 import Selenium.Builder
-import Selenium.Types
+import Selenium.Capabilities
 
 import Test.Config (Config())
 import Test.Env (ENV(), getEnv)
@@ -77,4 +77,3 @@ buildSauceLabs :: SauceLabsConfigR -> Build Unit
 buildSauceLabs config = do
   usingServer "http://ondemand.saucelabs.com:80/wd/hub"
   withCapabilities $ sauceCapabilities config
-
