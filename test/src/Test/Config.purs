@@ -102,6 +102,19 @@ type Config =
             , submit :: String
             , markDelete :: String
             }
+  , download :: { item :: String
+                , proceed :: String
+                , cancel :: String
+                , sourceInputSelector :: String
+                , targetInputSelector :: String
+                , folder :: String
+                , rowCount :: Int
+                , colCount :: Int
+                , rowDelimiterInputSelector :: String
+                , colDelimiterInputSelector :: String
+                , jsonTabSelector :: String
+                , multiLineJsonRadioSelector :: String
+                }
   , share :: { markShare :: String
              , urlField :: String
              }
@@ -123,6 +136,7 @@ type Config =
                , newNotebook :: String
                , mountDatabase :: String
                , configureMount :: String
+               , download :: String
                }
   , mount :: { name :: String
              , otherName :: String

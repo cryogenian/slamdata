@@ -40,6 +40,7 @@
     "purescript-markdown": "garyb/purescript-markdown#021749b26d4a6683514d39110779938b7ff8df7e",
     "purescript-markdown-halogen": "^0.5.0",
     "purescript-minimatch": "~0.2.0",
+    "purescript-node-fs-aff": "~0.1.2",
     "purescript-nonempty": "~0.1.1",
     "purescript-nonempty-arrays": "~0.3.0",
     "purescript-parsing": "~0.5.1",
@@ -75,9 +76,9 @@
     "purescript-free": "^0.9.0"
   },
   "devDependencies": {
-    "purescript-node-fs-aff": "~0.1.2",
+    "purescript-node-fs-aff": "^0.1.2",
     "purescript-platform": "^0.3.0",
-    "purescript-webdriver": "~0.13.0",
-    "purescript-easyimage": "~0.1.0"
+    "purescript-webdriver": "^0.14.0",
+    "purescript-easyimage": "^0.1.0"
   }
 }

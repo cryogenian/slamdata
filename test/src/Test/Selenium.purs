@@ -30,10 +30,13 @@ import Control.Monad.Reader.Class
 import Control.Monad.Trans
 import Data.Foldable (traverse_)
 import Data.Maybe (maybe, isJust)
+import Data.Monoid (mempty)
 import Data.Either (either)
 import Selenium (setFileDetector, quit)
 import Selenium.Browser
 import Selenium.Builder
+import Selenium.Capabilities
+import Selenium.FFProfile
 import Selenium.Monad (setWindowSize)
 import qualified Selenium.Remote as SR
 import Test.Config (Config())
@@ -46,6 +49,20 @@ import qualified Test.Selenium.Notebook as Notebook
 foreign import data MODULE :: !
 foreign import makePublic :: forall a eff. String -> a -> Eff (module :: MODULE | eff) Unit
 
+makeDownloadCapabilities :: Browser -> String -> Aff _ Capabilities
+makeDownloadCapabilities FireFox path = buildFFProfile do
+  setIntPreference "browser.download.folderList" 2
+  setBoolPreference "browser.download.manager.showWhenStarting" false
+  setBoolPreference "browser.download.manager.focusWhenStartin" false
+  setBoolPreference "browser.download.useDownloadDir" true
+  setStringPreference "browser.download.dir" path
+  setBoolPreference "browser.download.manager.closeWhenDone" true
+  setBoolPreference "browser.download.manager.showAlertOnComplete" false
+  setBoolPreference "browser.download.manager.useWindow" false
+  setStringPreference "browser.helperApps.neverAsk.saveToDisk" "text/csv, application/ldjson"
+
+makeDownloadCapabilities _ _ = mempty
+
 main = do
   makePublic "test" test
 
@@ -57,9 +74,12 @@ test config =
   go br = do
     log $ yellow $ config.selenium.browser <> " set as browser for tests\n\n"
     msauceConfig <- liftEff $ SL.sauceLabsConfigFromConfig config
+    downloadCapabilities <- makeDownloadCapabilities br config.download.folder
     driver <- build $ do
       browser br
       traverse_ SL.buildSauceLabs msauceConfig
+      withCapabilities downloadCapabilities
+
 
     when (isJust msauceConfig) $ do
       void $ log $ yellow $ "set up to run on Sauce Labs"

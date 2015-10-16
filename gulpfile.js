@@ -9,16 +9,32 @@ var gulp = require("gulp"),
     run = require("gulp-run"),
     rimraf = require("rimraf"),
     fs = require("fs"),
-    trimlines = require("gulp-trimlines");
+    trimlines = require("gulp-trimlines"),
+    sequence = require("run-sequence");
 
 var slamDataSources = [
-  "src/**/*.purs",
-  "test/src/**/*.purs"
+    "src/**/*.purs",
 ];
 
 var vendorSources = [
-  "bower_components/purescript-*/src/**/*.purs",
+    "bower_components/purescript-*/src/**/*.purs",
 ];
+
+var testSources = [
+    "test/src/**/*.purs",
+    "bower_components/purescript-*/src/**/*.purs",
+    "src/Utils.purs",
+    "src/Utils/*.purs",
+    "src/Driver/File/Routing.purs",
+    "src/Driver/File/Search.purs",
+    "src/Model/File/Salt.purs",
+    "src/Model/File/Sort.purs",
+    "src/Model/Resource.purs",
+    "src/Model/Path.purs",
+    "src/Config.purs",
+    "src/Data/Inject1.purs"
+];
+
 
 var sources = slamDataSources.concat(vendorSources);
 
@@ -39,6 +55,13 @@ gulp.task("make", function() {
     src: sources,
     ffi: foreigns
   });
+});
+
+gulp.task("test-make", function() {
+    return purescript.psc({
+        src: testSources,
+        ffi: foreigns
+    });
 });
 
 gulp.task("add-headers", function () {
@@ -122,21 +145,16 @@ gulp.task("less", function() {
 
 // We don't use `mkBundleTask` here as there's no need to `webpack` - this
 // bundle as it's going to be running in node anyway
-gulp.task("bundle-test", ["bundle", "less"], function() {
-  return purescript.pscBundle({
-    src: "output/**/*.js",
-    output: "tmp/js/test.js",
-    module: "Test.Selenium",
-    main: "Test.Selenium"
-  });
-});
+gulp.task("bundle-test", function() {
+    sequence("less", "bundle", "test-make", function() {
+        return purescript.pscBundle({
+            src: "output/**/*.js",
+            output: "tmp/js/test.js",
+            module: "Test.Selenium",
+            main: "Test.Selenium"
+        });
+    });
 
-gulp.task("test", ["bundle-test"], function() {
-  return run("node test", { verbosity: 3 }).exec();
-});
-
-gulp.task("remote-test", ["bundle-test"], function() {
-  return run("node test --remote", { verbosity: 3 }).exec();
 });
 
 var mkWatch = function(name, target, files) {
