@@ -1,8 +1,17 @@
-language: node_js
-sudo: false
-node_js:
-  - 0.12.4
+language: java
+sudo: required
+dist: trusty
+jdk:
+  - oraclejdk8
 install:
+  - sudo apt-get update
+  - sudo apt-get install -y nodejs
+  - sudo apt-get install -y npm
+
+  - sudo apt-get install imagemagick
+  - convert -version
+
+  - java -version
   - mkdir $HOME/bin
   - curl -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.6.tgz
   - tar -zxvf mongodb-linux-x86_64-3.0.6.tgz
