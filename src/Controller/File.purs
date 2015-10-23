@@ -59,6 +59,7 @@ import Utils (clearValue, setLocation)
 import Utils.Event (raiseEvent)
 
 import qualified Api.Fs as API
+import qualified Api.Common as API
 import qualified Model.Notebook.Domain as N
 import qualified Model.Resource as R
 import qualified Utils.File as Uf
@@ -93,7 +94,7 @@ handleFileListChanged el state = do
           fileName = path </> file name
           fileItem = PhantomItem $ R.File $ path </> file name
           ext = last (split "." name)
-          mime = if ext == Just "csv" then Just textCSV else Nothing
+          mime = if ext == Just "csv" then textCSV else API.ldJSON
 
       reader <- liftEff newReader
       content <- liftAff $ readAsBinaryString f reader
@@ -128,7 +129,7 @@ handleCreateFolder state = do
       dirItem = PhantomItem $ R.Directory dirPath
       hiddenFile = dirPath </> file (Config.folderMark)
   (toInput (ItemAdd dirItem)) `andThen` \_ -> do
-    added <- liftAff $ attempt $ API.makeFile hiddenFile Nothing "{}"
+    added <- liftAff $ attempt $ API.makeFile hiddenFile API.ldJSON "{}"
     toInput (ItemRemove dirItem) `andThen` \_ ->
       case added of
         Left err -> showError ("There was a problem creating the directory: " ++ message err)

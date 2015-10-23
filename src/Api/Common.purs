@@ -81,11 +81,8 @@ getWithPolicy policy u = do
 retryDelete :: forall e a fd. (Respondable a) => Path Abs fd Sandboxed -> Affjax (RetryEffects e) a
 retryDelete u = slamjax $ defaultRequest { url = printPath u, method = DELETE }
 
-retryPost :: forall e a b fd. (Requestable a, Respondable b) => Path Abs fd Sandboxed -> a -> Affjax (RetryEffects e) b
-retryPost u c = slamjax $ defaultRequest { method = POST, url = printPath u, content = Just c }
-
-retryPut :: forall e a b fd. (Requestable a, Respondable b) => Path Abs fd Sandboxed-> a -> Affjax (RetryEffects e) b
-retryPut u c = slamjax $ defaultRequest { method = PUT, url = printPath u, content = Just c }
+retryPut :: forall e a b fd. (Requestable a, Respondable b) => Path Abs fd Sandboxed -> a -> MimeType -> Affjax (RetryEffects e) b
+retryPut u c mime = slamjax $ defaultRequest { method = PUT, url = printPath u, content = Just c, headers = [ContentType mime] }
 
 getResponse :: forall a e. String -> Affjax e a -> Aff (ajax :: AJAX | e) a
 getResponse msg affjax = do
@@ -103,3 +100,6 @@ reqHeadersToJSON = foldl go jsonEmptyObject
   go obj (Accept mime) = "Accept" := mimeTypeToString mime ~> obj
   go obj (ContentType mime) = "Content-Type" := mimeTypeToString mime ~> obj
   go obj (RequestHeader k v) = k := v ~> obj
+
+ldJSON :: MimeType
+ldJSON = MimeType "application/ldjson"

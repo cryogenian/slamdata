@@ -17,7 +17,7 @@ limitations under the License.
 module Api.Fs where
 
 import Prelude
-import Api.Common (RetryEffects(), succeeded, getResponse, retryGet, retryDelete, retryPost, retryPut, slamjax, getOnce)
+import Api.Common (RetryEffects(), succeeded, getResponse, retryGet, retryDelete, retryPut, slamjax, getOnce, ldJSON)
 import Control.Apply ((*>))
 import Control.Bind ((>=>))
 import Control.Monad.Aff (Aff())
@@ -83,7 +83,7 @@ listing p = maybe
               (\p -> retryGet $ (Config.metadataUrl </> p))
               $ relativeTo p rootDir
 
-makeFile :: forall e. FilePath -> Maybe MimeType -> String -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+makeFile :: forall e. FilePath -> MimeType -> String -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
 makeFile path mime content =
   getResponse msg go
   where
@@ -102,7 +102,7 @@ makeFile path mime content =
   go :: Aff _ _
   go = slamjax $ defaultRequest
     { method = PUT
-    , headers = maybe [] (pure <<< ContentType) mime
+    , headers = [ContentType mime]
     , content = Just content
     , url = fromMaybe ""
             $ (\x -> printPath
@@ -175,7 +175,7 @@ saveNotebook notebook = case notebook ^. N._name of
                        </> rootify (notebook ^. N._path)
                        </> dir name <./> Config.notebookExtension
                        </> file "index"
-    in getResponse "error while saving notebook" $ retryPut notebookPath notebook
+    in getResponse "error while saving notebook" $ retryPut notebookPath notebook ldJSON
 
 -- | Generates a new resource name based on a directory path and a name for the
 -- | resource. If the name already exists in the path a number is appended to
