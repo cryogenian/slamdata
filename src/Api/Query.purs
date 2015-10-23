@@ -17,7 +17,7 @@ limitations under the License.
 module Api.Query (query, query', port, sample, SQL(), fields, count, all, templated) where
 
 import Prelude
-import Api.Common (RetryEffects(), getResponse, succeeded, retryGet, slamjax)
+import Api.Common (RetryEffects(), getResponse, succeeded, retryGet, slamjax, ldJSON)
 import Config.Paths (queryUrl, dataUrl)
 import Control.Apply (lift2)
 import Control.Bind ((<=<), (>=>))
@@ -90,7 +90,9 @@ port res dest sql vars = do
   guard $ isFile dest
   result <- slamjax $ defaultRequest
             { method = POST
-            , headers = [RequestHeader "Destination" $ resourcePath dest]
+            , headers = [ RequestHeader "Destination" $ resourcePath dest
+                        , ContentType ldJSON
+                        ]
             , url = printPath
                     $ queryUrl
                     </> rootify (resourceDir res)
