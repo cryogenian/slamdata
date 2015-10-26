@@ -128,7 +128,8 @@ type Config =
                       , cancelButton :: String
                       , warningBox :: String
                       }
-  , modal :: String
+  , modalShown :: String
+  , modalDismissed :: String
   , toolbar :: { main :: String
                , showHide :: String
                , button :: String

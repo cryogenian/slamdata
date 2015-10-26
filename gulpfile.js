@@ -157,6 +157,15 @@ gulp.task("bundle-test", function() {
 
 });
 
+gulp.task("bundle-test-only", ["test-make"], function() {
+    return purescript.pscBundle({
+        src: "output/**/*.js",
+        output: "tmp/js/test.js",
+        module: "Test.Selenium",
+        main: "Test.Selenium"
+    });
+});
+
 var mkWatch = function(name, target, files) {
   gulp.task(name, [target], function() {
     return gulp.watch(files, [target]);

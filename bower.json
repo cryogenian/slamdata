@@ -79,6 +79,7 @@
     "purescript-node-fs-aff": "^0.1.2",
     "purescript-platform": "^0.3.0",
     "purescript-webdriver": "^0.14.0",
-    "purescript-easyimage": "^0.1.0"
+    "purescript-easyimage": "^0.1.0",
+    "purescript-chalky": "^0.2.0"
   }
 }

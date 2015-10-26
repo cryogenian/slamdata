@@ -21,8 +21,8 @@ module Test.Selenium.Common
   , dropHash
   , fileComponentLoaded
   , notebookLoaded
-  , modalShown
-  , modalDismissed
+  , waitModalShown
+  , waitModalDismissed
   , parseToInt
   , filterByContent
   , filterByPairs
@@ -149,21 +149,18 @@ notebookLoaded :: Check Unit
 notebookLoaded = loaded checkNotebookElements
 
 -- | Is a modal dialog shown?
-modalShown :: Check Boolean
-modalShown = do
+waitModalShown :: Check Unit
+waitModalShown = void do
   config <- getConfig
-  Sc.checker $
-    byCss config.modal
-      >>= findElement
-      >>= maybe (pure false) isDisplayed
+  tryRepeatedlyTo
+    $ byCss config.modalShown >>= findExact >>= isDisplayed
 
-modalDismissed :: Check Boolean
-modalDismissed = do
+waitModalDismissed :: Check Unit
+waitModalDismissed = void do
   config <- getConfig
-  Sc.checker $
-    byCss config.modal
-      >>= findElement
-      >>= maybe (pure true) (map not <<< isDisplayed)
+  tryRepeatedlyTo
+    $ byCss config.modalDismissed >>= findExact >>= map not <<< isDisplayed
+
 
 parseToInt :: String -> Check Int
 parseToInt str =

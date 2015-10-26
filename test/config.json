@@ -99,7 +99,8 @@
         "pathField": ".modal.fade.in .mount-path input",
         "saveButton": ".modal.fade.in button.btn.btn-primary"
     },
-    "modal": ".modal.fade.in",
+    "modalShown": ".modal.fade.in",
+    "modalDismissed": ".modal.fade:not(.in)",
     "toolbar": {
         "button": "button",
         "showHide": "Show hidden files",
