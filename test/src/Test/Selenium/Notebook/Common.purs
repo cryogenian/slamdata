@@ -95,13 +95,13 @@ checkEmbedButton = do
   embed <- getEmbedButton
   sequence $ leftClick embed
   wait (checker $ isRight <$> attempt getModal) config.selenium.waitTime
-  modal <- getElementByCss config.modal "Modal should be visible"
+  modal <- getElementByCss config.modalShown "Modal should be visible"
   box <- getElementByCss config.cell.embedBox "Embed box hidden"
   value <- getAttribute box "value"
   expected <- expectedValue
   expect value toEq $ Just expected
   sequence $ leftClick modal
-  tryRepeatedlyTo $ checkNotExists "Error: modal should be hidden" config.modal
+  tryRepeatedlyTo $ checkNotExists "Error: modal should be hidden" config.modalShown
   where
   getModal = do
     config <- getConfig

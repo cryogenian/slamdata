@@ -14,9 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Text.Chalk where
+module FileSystem.Dialog.Mount.Query where
 
-foreign import green :: String -> String
-foreign import red :: String -> String
-foreign import magenta :: String -> String
-foreign import yellow :: String -> String
+import DOM.HTML.Types (HTMLElement())
+import Data.Maybe (Maybe())
+import FileSystem.Dialog.Mount.State
+import Model.Resource as R
+
+data Query a
+  = ClearValue HTMLElement a
+  | SelectElement HTMLElement a
+  | UpdateConnectionURI String a
+  | Dismiss a
+  | Save a
+  | ModifyState (State -> State) a
+  | GetSaved (Maybe R.Resource -> a)

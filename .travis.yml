@@ -24,11 +24,20 @@ install:
   - npm install bower gulp -g
   - npm install
   - bower install
+  - cd wip
+  - npm install
+  - bower install
+  - cd ..
 before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
 script:
-  - gulp bundle-test
+  - gulp less
+  - gulp bundle-notebook
+  - gulp bundle-test-only
+  - cd wip
+  - gulp
+  - cd ..
   - node test
 before_deploy:
 - cp -r public slamdata

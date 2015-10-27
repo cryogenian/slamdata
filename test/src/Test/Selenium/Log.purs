@@ -17,7 +17,7 @@ limitations under the License.
 module Test.Selenium.Log where
 
 import Prelude
-import Text.Chalk (red, green, magenta, yellow)
+import Text.Chalky (red, green, magenta, yellow)
 import Control.Monad.Trans (lift)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff.Exception (error)
