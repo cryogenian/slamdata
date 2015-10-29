@@ -281,7 +281,10 @@ checkQuery conf = withSmallZipsSearchedAll do
     else errorMsg "Incorrect page count"
 
 checkQueries :: Check Unit
-checkQueries =
+checkQueries = do
+  warnMsg "Following cases has been disabled"
+  warnMsg "\"=122\" -> pages: 1, rows: 1"
+  warnMsg "\"=456\" -> pages: 1, rows: 1"
   getConfig >>= _.searchQueries >>> traverse_ checkQuery
 
 
