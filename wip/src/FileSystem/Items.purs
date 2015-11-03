@@ -44,8 +44,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Halogen.Util (appendToBody)
 import Model.Item as Item
 import Model.Resource (Resource(..), resourcePath)
-import Optic.Core ((.~), (%~), (^.), (<>~))
-import Optic.Core (lens, (..), LensP())
+import Data.Lens ((.~), (%~), (^.), (<>~), lens, LensP())
 import Render.CssClasses as Rc
 
 type StateRec =
@@ -66,13 +65,13 @@ _State :: LensP State StateRec
 _State = lens (\(State r) -> r) (const State)
 
 _items :: LensP State (Array Item.Item)
-_items = _State .. lens _.items _{items = _}
+_items = _State <<< lens _.items _{items = _}
 
 _isSearching :: LensP State Boolean
-_isSearching = _State .. lens _.isSearching _{isSearching = _}
+_isSearching = _State <<< lens _.isSearching _{isSearching = _}
 
 _isHidden :: LensP State Boolean
-_isHidden = _State .. lens _.isHidden _{isHidden = _}
+_isHidden = _State <<< lens _.isHidden _{isHidden = _}
 
 data Query a
   = Reset a

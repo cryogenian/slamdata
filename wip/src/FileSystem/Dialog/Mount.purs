@@ -47,7 +47,7 @@ import FileSystem.Dialog.Mount.Render
 import Halogen.Component (Component(), Eval(), component, query)
 import Halogen.Query (action, liftEff', get, modify, liftAff', gets)
 import Model.Resource as R
-import Optic.Core ((^.), (.~), LensP(), lens, (?~))
+import Data.Lens ((^.), (.~), LensP(), lens, (?~))
 import Quasar.Aff as API
 import Utils.Path
 import Utils.URI (toURI)

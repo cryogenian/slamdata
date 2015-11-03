@@ -19,6 +19,7 @@ module FileSystem.Routing
        , routing
        , routeSignal
        ) where
+
 import Prelude
 
 import Control.Alt ((<|>))
@@ -59,8 +60,7 @@ import Model.Resource (Resource(..), getPath)
 import Model.Common (browseURL)
 import Model.Salt (Salt(..), newSalt, runSalt)
 import Model.Sort (Sort(..), string2sort, sort2string)
-import Optic.Core ((%~), (<>~), (..), (.~), (?~))
-import Optic.Refractor.Lens (_1, _2)
+import Data.Lens ((%~), (<>~), (.~), (?~), _1, _2)
 import Quasar.Aff (mountInfo, children)
 import Routing (matchesAff)
 import Routing.Match (Match(), eitherMatch)

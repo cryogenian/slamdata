@@ -14,17 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Optic.Index where
+module Utils.Bind where
 
 import Prelude
-import Data.Array ((!!), updateAt)
-import Data.Maybe (maybe, fromMaybe)
 
-type TraversalP s a = forall f. (Applicative f) => (a -> f a) -> s -> f s
+semigroupBind :: forall a. (Semigroup a) => a -> (Unit -> a) -> a
+semigroupBind x f = x <> f unit
 
-ix :: forall a. Int -> TraversalP (Array a) a
-ix n a2fa as =
-  (maybe
-   (pure as)
-   (\a -> (\a' -> fromMaybe as (updateAt n a' as)) <$> a2fa a)
-   (as !! n))

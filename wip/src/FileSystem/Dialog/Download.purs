@@ -15,10 +15,10 @@ limitations under the License.
 -}
 
 module FileSystem.Dialog.Download
-       ( module FileSystem.Dialog.Download.State
-       , module FileSystem.Dialog.Download.Query
-       , comp
-       ) where
+  ( comp
+  , module FileSystem.Dialog.Download.State
+  , module FileSystem.Dialog.Download.Query
+  ) where
 
 import Prelude
 
@@ -35,8 +35,7 @@ import Halogen.Component
 import Halogen.Query (action, modify, liftEff')
 import Halogen.Themes.Bootstrap3 as B
 import Model.Resource (Resource(..), resourceName)
-import Optic.Core ((^.), LensP(), (.~), (?~), (..), (%~), (<>~), set, lens)
-import Optic.Refractor.Prism (_Left, _Right)
+import Data.Lens ((^.), LensP(), (.~), (?~), (%~), (<>~), set, lens, _Left, _Right)
 import Render.CssClasses as Rc
 import Utils.Path (parseAnyPath)
 
@@ -56,10 +55,9 @@ eval (ToggleList next) = do
   modify validate
   pure next
 eval (SourceClicked r next) = do
-  modify (  (_showSourcesList .~ false)
-          ..(_targetName .~ (Right $ resourceName r))
-          ..(_source .~ Right r)
-         )
+  modify $ (_showSourcesList .~ false)
+       <<< (_targetName .~ (Right $ resourceName r))
+       <<< (_source .~ Right r)
   modify validate
   pure next
 eval (TargetTyped s next) = do
@@ -78,11 +76,11 @@ eval (SetOutput ty next) = do
   modify validate
   pure next
 eval (ModifyCSVOpts fn next) = do
-  modify (_options .. _Left %~ fn)
+  modify (_options <<< _Left %~ fn)
   modify validate
   pure next
 eval (ModifyJSONOpts fn next) = do
-  modify (_options .. _Right %~ fn)
+  modify (_options <<< _Right %~ fn)
   modify validate
   pure next
 eval (NewTab url next) = do

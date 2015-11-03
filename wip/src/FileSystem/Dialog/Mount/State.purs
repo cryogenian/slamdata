@@ -30,7 +30,7 @@ import Data.Tuple (Tuple(..))
 import Data.URI (printAbsoluteURI)
 import Data.URI.Types as Uri
 import Model.Resource as R
-import Optic.Core (LensP(), lens)
+import Data.Lens (LensP(), lens)
 import Utils.Path (DirPath())
 
 type State =

@@ -27,7 +27,7 @@ import Data.String.Regex as Rx
 import Model.Resource (Resource(..), isFile, resourceName, root, getPath)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.MimeType (MimeType(..))
-import Optic.Core (LensP(), lens, (^.), (?~), (.~))
+import Data.Lens (LensP(), lens, (^.), (?~), (.~))
 import Utils.Path (encodeURIPath)
 
 data OutputType = CSV | JSON

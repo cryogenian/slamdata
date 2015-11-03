@@ -45,9 +45,7 @@ import Halogen.HTML.Properties as P
 import Halogen.Query (action, modify, liftEff', liftAff', get, HalogenF())
 import Halogen.Themes.Bootstrap3 as B
 import Model.Resource as R
-import Optic.Core ((^.), (..), (%~), (.~), (?~), (..), (<>~))
-import Optic.Core (lens, LensP())
-import Optic.Refractor.Prism (_Just)
+import Data.Lens ((^.), (%~), (.~), (?~), (<>~), lens, LensP(), _Just)
 import Quasar.Aff as API
 import Render.Common
 import Render.CssClasses as Rc
@@ -82,25 +80,25 @@ _State :: LensP State StateRec
 _State = lens (\(State obj) -> obj) (const State)
 
 _showList :: LensP State Boolean
-_showList = _State .. lens _.showList (_ { showList = _ })
+_showList = _State <<< lens _.showList (_ { showList = _ })
 
 _initial :: LensP State R.Resource
-_initial = _State .. lens _.initial (_ { initial = _ })
+_initial = _State <<< lens _.initial (_ { initial = _ })
 
 _name :: LensP State String
-_name = _State .. lens _.name (_ { name = _ })
+_name = _State <<< lens _.name (_ { name = _ })
 
 _dirs :: LensP State (Array R.Resource)
-_dirs = _State .. lens _.dirs (_ { dirs = _ })
+_dirs = _State <<< lens _.dirs (_ { dirs = _ })
 
 _dir :: LensP State DirPath
-_dir = _State .. lens _.dir (_ { dir = _ })
+_dir = _State <<< lens _.dir (_ { dir = _ })
 
 _siblings :: LensP State (Array R.Resource)
-_siblings = _State .. lens _.siblings (_ { siblings = _ })
+_siblings = _State <<< lens _.siblings (_ { siblings = _ })
 
 _error :: LensP State (Maybe String)
-_error = _State .. lens _.error (_ { error = _ })
+_error = _State <<< lens _.error (_ { error = _ })
 
 renameSlam :: State -> R.Resource
 renameSlam r =
@@ -110,7 +108,7 @@ renameSlam r =
                     then name <> "." <> Config.notebookExtension
                     else name
   in initial # (R._name .~ nameWithExt)
-             ..(R._root .~ (r ^. _dir))
+           <<< (R._root .~ (r ^. _dir))
 
 validate :: State -> State
 validate r
@@ -281,7 +279,6 @@ dirItemClicked res =
     Left _ -> pure unit
     Right dir -> do
       siblings <- liftAff' $ API.children dir
-      modify (  (_dir .~ dir)
-              ..(_showList .~ false)
-              ..(_siblings .~ siblings)
-             )
+      modify $ (_dir .~ dir)
+           <<< (_showList .~ false)
+           <<< (_siblings .~ siblings)

@@ -14,30 +14,27 @@
   ],
   "dependencies": {
     "purescript-affjax": "^0.8.0",
-    "purescript-argonaut": "^0.9.0",
     "purescript-css": "^0.4.0",
     "purescript-datetime": "^0.9.0",
     "purescript-generics": "^0.6.1",
-    "purescript-lens": "^0.9.0",
     "purescript-minimatch": "^0.2.0",
-    "purescript-optic": "jonsterling/purescript-optic#ready/10",
     "purescript-pathy": "^0.3.0",
     "purescript-routing": "^0.2.0",
     "purescript-search": "^0.4.0",
     "purescript-these": "^0.3.0",
     "purescript-uri": "^0.2.0",
     "purescript-zclipboard": "^0.3.0",
-    "purescript-halogen": "^0.5.2",
-    "purescript-halogen-bootstrap": "^0.4.0"
+    "purescript-halogen": "^0.5.6",
+    "purescript-halogen-bootstrap": "^0.4.0",
+    "purescript-profunctor-lenses": "~0.3.3",
+    "purescript-markdown-halogen": "~0.7.0",
+    "purescript-argonaut-traversals": "~0.4.0",
+    "purescript-ace": "~0.8.0"
   },
   "devDependencies": {
     "purescript-debug": "~0.1.2"
   },
   "resolutions": {
-    "purescript-generics": "^0.6.1",
-    "purescript-transformers": "^0.8.1",
-    "purescript-lens": "^0.9.0",
-    "purescript-argonaut-codecs": "^0.3.0",
-    "purescript-optic": "ready/10"
+    "purescript-generics": "^0.6.1"
   }
 }

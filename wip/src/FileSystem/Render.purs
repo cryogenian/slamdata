@@ -37,7 +37,7 @@ import Halogen.HTML.Properties as P
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 import Model.Sort (Sort(..))
-import Optic.Core ((^.))
+import Data.Lens ((^.))
 import Render.CssClasses as Rc
 
 

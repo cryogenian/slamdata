@@ -77,7 +77,7 @@ import Network.HTTP.MimeType (MimeType(..), mimeTypeToString)
 import Network.HTTP.MimeType.Common (applicationJSON)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
-import Optic.Core ((.~), (^.))
+import Data.Lens ((.~), (^.))
 
 newtype Listing = Listing (Array R.Resource)
 
