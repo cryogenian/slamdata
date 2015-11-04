@@ -14,7 +14,7 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
-import Render.Common (fadeWhen, glyph, row')
+import Render.Common (fadeWhen, glyph, row, row')
 import Render.CssClasses as CSS
 
 import Notebook.Cell.Component.Def (Def(), CellPart())
@@ -36,9 +36,9 @@ container def cs editor results =
     [ P.classes $ join [containerClasses, collapsedClass] ]
     $ catMaybes
         [ if cs.isNotebookEditable then Just $ header def cs else Nothing
-        , editor
+        , row <<< pure <$> editor
         , Just $ statusBar cs.hasResults cs
-        , if cs.hasResults then Just results else Nothing
+        , Just (row [results])
         ]
   where
 

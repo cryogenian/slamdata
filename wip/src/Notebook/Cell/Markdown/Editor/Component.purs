@@ -7,13 +7,24 @@ module Notebook.Cell.Markdown.Editor.Component
 import Prelude
 
 import Data.Functor.Coproduct (Coproduct())
+import Data.Maybe (Maybe(..), fromMaybe)
 
 import Halogen
+import Halogen.HTML.CSS.Indexed as P
 import Halogen.HTML.Indexed as H
+import Halogen.HTML.Properties.Indexed as P
+
+import Css.Size (px)
+import Css.Geometry (height)
+
+import Ace.Halogen.Component (AceQuery(..), AceState(), aceConstructor)
+import Text.Markdown.SlamDown.Parser (parseMd)
+
+import Render.CssClasses as CSS
 
 import Notebook.Common (Slam())
-import Notebook.Cell.Common.EditorQuery
-import Notebook.Cell.Markdown.Editor.TempAce (AceQuery(), AceState(), aceComponent, initAceState)
+import Notebook.Cell.Port (Port(..))
+import Notebook.Cell.Common.EditorQuery (CellEditorQuery(..))
 
 type MarkdownEditorQueryP = Coproduct CellEditorQuery (ChildF Unit AceQuery)
 type MarkdownEditorStateP = InstalledState Unit AceState CellEditorQuery AceQuery Slam Unit
@@ -22,7 +33,12 @@ markdownEditorComponent :: Component MarkdownEditorStateP MarkdownEditorQueryP S
 markdownEditorComponent = parentComponent render eval
 
 render :: Unit -> ParentHTML AceState CellEditorQuery AceQuery Slam Unit
-render = const $ H.slot unit \_ -> { component: aceComponent, initialState: initAceState }
+render _ =
+  H.div
+    [ P.class_ CSS.aceContainer, P.style (height (px 160.0)) ]
+    [ H.Slot (aceConstructor unit Nothing) ]
 
 eval :: Natural CellEditorQuery (ParentDSL Unit AceState CellEditorQuery AceQuery Slam Unit)
-eval (RunInnerCell input k) = pure (k input)
+eval (RunInnerCell _ k) = do
+  content <- fromMaybe "" <$> query unit (request GetText)
+  pure $ k $ SlamDown (parseMd content)

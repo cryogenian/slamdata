@@ -12,3 +12,4 @@ public/css/!bootstrap*.css
 .psci_modules
 .psci
 phantomjsdriver.log
+*.sublime-*
