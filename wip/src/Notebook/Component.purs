@@ -1,5 +1,6 @@
 module Notebook.Component
   ( notebookComponent
+  , NotebookQueryP()
   , module Notebook.Component.Query
   , module Notebook.Component.State
   ) where
@@ -31,6 +32,9 @@ import Notebook.CellSlot (CellSlot(..), CellId())
 import Notebook.Common (Slam())
 import Notebook.Component.Query
 import Notebook.Component.State
+
+
+import Debug.Trace
 
 type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
 type NotebookStateP = InstalledState NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
@@ -88,6 +92,10 @@ eval :: Natural NotebookQuery NotebookDSL
 eval (AddCell cellType next) = modify (\st -> addCell st cellType Nothing) $> next
 eval (RunActiveCell next) = (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (\st -> st { isAddingCell = not st.isAddingCell }) $> next
+eval (SetState newState next) = modify (const $ newState) $> next
+eval (GetState continue) = map continue get
+eval (Save next) = save $> next
+
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF slot q) = coproduct (peekCell slot) (const (pure unit)) q
@@ -103,6 +111,9 @@ peekCell (CellSlot cellId) q = case q of
   ShareCell _ -> pure unit -- TODO: open share modal
   _ ->
     pure unit
+
+save :: NotebookDSL Unit
+save = get >>= traceAnyA
 
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
