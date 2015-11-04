@@ -47,6 +47,7 @@ type NotebookState =
   , name :: These String String
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
+  , viewingCell :: Maybe CellId
   }
 
 initialNotebook :: BrowserFeatures -> NotebookState
@@ -60,6 +61,7 @@ initialNotebook browserFeatures =
   , name: This Config.newNotebookName
   , isAddingCell: false
   , browserFeatures: browserFeatures
+  , viewingCell: Nothing
   }
 
 type CellDef =
