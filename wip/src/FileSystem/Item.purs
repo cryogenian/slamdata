@@ -50,7 +50,7 @@ import Model.Item (Item(..), itemResource)
 import Model.Resource  (Resource(..), resourceName, resourcePath, isDatabase, isFile, isNotebook, hiddenTopLevel, root, sortResource)
 import Model.Salt (Salt(..))
 import Model.Sort (Sort(..))
-import Optic.Core (LensP(), (..), (^.), lens, (%~), (.~), (?~))
+import Data.Lens (LensP(), (^.), lens, (%~), (.~), (?~))
 import Quasar.Aff as API
 import Render.CssClasses as Rc
 import Utils.Path (DirPath(), encodeURIPath)
@@ -76,16 +76,16 @@ _State :: LensP State StateRec
 _State = lens (\(State obj) -> obj) (const State)
 
 _item :: LensP State Item
-_item = _State .. lens _.item _{item = _}
+_item = _State <<< lens _.item _{item = _}
 
 _isSearching :: LensP State Boolean
-_isSearching = _State .. lens _.isSearching _{isSearching = _}
+_isSearching = _State <<< lens _.isSearching _{isSearching = _}
 
 _isHidden :: LensP State Boolean
-_isHidden = _State .. lens _.isHidden _{isHidden = _}
+_isHidden = _State <<< lens _.isHidden _{isHidden = _}
 
 _mbURI :: LensP State (Maybe String)
-_mbURI = _State .. lens _.mbURI _{mbURI = _}
+_mbURI = _State <<< lens _.mbURI _{mbURI = _}
 
 data Query a
   = Toggle a

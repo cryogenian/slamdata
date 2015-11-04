@@ -39,8 +39,8 @@ import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
-import Optic.Index (ix, TraversalP())
-import Optic.Core ((^.), (.~), LensP(), lens, (?~))
+import Data.Lens ((^.), (.~), LensP(), lens, (?~), TraversalP())
+import Data.Lens.Index (ix)
 import Render.Common (fadeWhen, closeButton)
 import Render.CssClasses as Rc
 

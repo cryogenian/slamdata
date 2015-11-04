@@ -86,8 +86,7 @@ import Data.Path.Pathy
    renameDir)
 import Data.Tuple (Tuple(..), fst, snd)
 import Model.Sort (Sort(..))
-import Optic.Core ((..), lens, prism')
-import Optic.Types (LensP(), PrismP())
+import Data.Lens (lens, prism', LensP(), PrismP())
 import Prelude
 import Utils.Path (DirPath(), FilePath(), AnyPath(), (<./>), takeDirExt)
 
@@ -284,13 +283,13 @@ _nameAnyPath :: LensP AnyPath String
 _nameAnyPath = lens getNameStr (\p x -> renameAny (const x) p)
 
 _name :: LensP Resource String
-_name = _path ..  _nameAnyPath
+_name = _path <<< _nameAnyPath
 
 _rootAnyPath :: LensP AnyPath DirPath
 _rootAnyPath = lens getDir setDir
 
 _root :: LensP Resource DirPath
-_root = _path .. _rootAnyPath
+_root = _path <<< _rootAnyPath
 
 
 -- INSTANCES

@@ -228,9 +228,6 @@ message c =
                               $ failureText c
           ]
 
-details :: forall e. Cell -> Array (HTML e)
-details c = commonMessage "" [H.div_ [H.text (c^._message)]] c
-
 messageText :: forall e. Cell -> HTML e
 messageText c =
   if isJust $ indexOf "\n" m

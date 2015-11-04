@@ -78,7 +78,7 @@ import Model.Resource as R
 import Model.Salt (Salt(..), newSalt)
 import Model.Sort (Sort(..), notSort)
 import Network.HTTP.MimeType.Common (textCSV)
-import Optic.Core ((^.), LensP(), lens, (..), (.~))
+import Data.Lens ((^.), LensP(), lens, (.~))
 import Quasar.Aff as API
 import Render.Common
 import Render.CssClasses as Rc

@@ -92,6 +92,7 @@ var mkBundleTask = function (name, main) {
 
 gulp.task("bundle", [
   mkBundleTask("filesystem", "Entry.FileSystem"),
+  mkBundleTask("notebook", "Entry.Notebook"),
 ]);
 
 var mkWatch = function(name, target, files) {
@@ -99,7 +100,6 @@ var mkWatch = function(name, target, files) {
     return gulp.watch(files, [target]);
   });
 };
-
 
 var allSources = sources.concat(foreigns);
 mkWatch("watch-file", "bundle-file", allSources);

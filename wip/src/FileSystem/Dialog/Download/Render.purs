@@ -39,7 +39,7 @@ import Halogen.HTML.Properties as P
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 import Model.Resource (Resource(..), isFile, resourcePath, isHidden)
-import Optic.Core ((^.), LensP(), (.~), (?~), (..), (%~), (<>~), set, lens)
+import Data.Lens ((^.), LensP(), (.~), (?~), (%~), (<>~), set, lens)
 import Render.Common (closeButton, fadeWhen)
 import Render.CssClasses as Rc
 import Quasar.Aff (reqHeadersToJSON)

@@ -44,7 +44,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Model.Common (browseURL)
 import Model.Salt (newSalt, Salt())
 import Model.Sort (Sort())
-import Optic.Core (lens, LensP(), (^.), (..), (.~), (..), (%~))
+import Data.Lens (lens, LensP(), (^.), (.~), (%~))
 import Render.Common
 import Render.CssClasses as Rc
 import Text.SlamSearch (mkQuery)
@@ -80,28 +80,28 @@ _State :: LensP State SearchRec
 _State  = lens (\(State obj) -> obj) (const State)
 
 _valid :: LensP State Boolean
-_valid = _State .. lens _.valid _{valid = _}
+_valid = _State <<< lens _.valid _{valid = _}
 
 _focused :: LensP State Boolean
-_focused = _State .. lens _.focused _{focused = _}
+_focused = _State <<< lens _.focused _{focused = _}
 
 _value :: LensP State (These String String)
-_value = _State .. lens _.value _{value = _}
+_value = _State <<< lens _.value _{value = _}
 
 _loading :: LensP State Boolean
-_loading = _State .. lens _.loading _{loading = _}
+_loading = _State <<< lens _.loading _{loading = _}
 
 _timeout :: LensP State (Canceler FileSystemEffects)
-_timeout = _State .. lens _.timeout _{timeout = _}
+_timeout = _State <<< lens _.timeout _{timeout = _}
 
 _path :: LensP State DirPath
-_path = _State .. lens _.path _{path = _}
+_path = _State <<< lens _.path _{path = _}
 
 _sort :: LensP State Sort
-_sort = _State .. lens _.sort _{sort = _}
+_sort = _State <<< lens _.sort _{sort = _}
 
 _salt :: LensP State Salt
-_salt = _State .. lens _.salt _{salt = _}
+_salt = _State <<< lens _.salt _{salt = _}
 
 data Query a
   = Focus Boolean a
