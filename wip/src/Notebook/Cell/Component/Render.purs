@@ -42,7 +42,7 @@ container def cs editor results =
         ]
   where
 
-  containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
+  containerClasses = [B.containerFluid, CSS.cell, B.clearfix]
   collapsedClass = if cs.showEditor then [CSS.collapsed] else []
 
 header :: forall se fe sr fr. Def se fe sr fr -> CellState -> CellHTML
@@ -174,4 +174,3 @@ failureText cs =
   <> if not cs.showMessages
      then []
      else messageText <$> cs.failures
-

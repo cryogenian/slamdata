@@ -72,8 +72,8 @@ navLogo = className "nav-logo"
 search :: ClassName
 search = className "search"
 
-notebookName :: ClassName
-notebookName = className "notebook-name"
+dashboardName :: ClassName
+dashboardName = className "dashboard-name"
 
 content :: ClassName
 content = className "content"
@@ -102,8 +102,8 @@ fileListField = className "file-list-field"
 fileListGroup :: ClassName
 fileListGroup = className "file-list-group"
 
-notebookNav :: ClassName
-notebookNav = className "notebook-nav"
+dashboardNav :: ClassName
+dashboardNav = className "dashboard-nav"
 
 dialogDownload :: ClassName
 dialogDownload = className "dialog-download"
@@ -142,14 +142,14 @@ mountProgressSpinner :: Boolean -> ClassName
 mountProgressSpinner true = className "mount-progress-spinner"
 mountProgressSpinner false = className "mount-progress-spinner-hidden"
 
-notebookContent :: ClassName
-notebookContent = className "notebook-content"
+dashboardContent :: ClassName
+dashboardContent = className "dashboard-content"
 
-notebookViewHack :: ClassName
-notebookViewHack = className "notebook-view-hack"
+dashboardViewHack :: ClassName
+dashboardViewHack = className "dashboard-view-hack"
 
-notebookCell :: ClassName
-notebookCell = className "notebook-cell"
+cell :: ClassName
+cell = className "dashboard-cell"
 
 cellHeader :: ClassName
 cellHeader = className "cell-header"

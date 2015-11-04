@@ -26,7 +26,7 @@ browserUrl :: String
 browserUrl = baseUrl <> "index.html"
 
 notebookUrl :: String
-notebookUrl = baseUrl <> "notebook.html"
+notebookUrl = baseUrl <> "dashboard.html"
 
 searchTimeout :: Int
 searchTimeout = 500

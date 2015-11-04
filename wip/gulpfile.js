@@ -92,7 +92,7 @@ var mkBundleTask = function (name, main) {
 
 gulp.task("bundle", [
   mkBundleTask("filesystem", "Entry.FileSystem"),
-  mkBundleTask("notebook", "Entry.Notebook"),
+  mkBundleTask("dashboard", "Entry.Dashboard"),
 ]);
 
 var mkWatch = function(name, target, files) {

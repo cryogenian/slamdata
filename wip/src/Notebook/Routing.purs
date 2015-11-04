@@ -10,6 +10,7 @@ import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Class (liftEff)
+import Data.Maybe (Maybe(..))
 import Model.Action (Action(..), string2action)
 import Model.Resource (Resource(..))
 import Routing.Match (Match(), list, eitherMatch)
@@ -95,7 +96,7 @@ routing
 routeSignal :: Driver NotebookQueryP NotebookRawEffects -> Aff NotebookEffects Unit
 routeSignal driver = do
   Tuple oldRoute newRoute <- matchesAff' decodeURIPath routing
-  browserFeatures <- liftEff detectBrowserFeatures
+
   case newRoute of
     CellRoute res cellId editable -> notebook res editable $ Just cellId
     NotebookRoute res editable -> notebook res editable Nothing
@@ -103,4 +104,5 @@ routeSignal driver = do
   where
   notebook :: Resource -> Action -> Maybe CellId -> Aff NotebookEffects Unit
   notebook res editable viewing = do
+    browserFeatures <- liftEff detectBrowserFeatures
     driver $ left $ action $ SetState $ initialNotebook browserFeatures
