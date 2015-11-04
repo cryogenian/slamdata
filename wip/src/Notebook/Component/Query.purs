@@ -11,3 +11,4 @@ data NotebookQuery a
   | ToggleAddCellMenu a
   | SetState NotebookState a
   | Save a
+  | GetState (NotebookState -> a)

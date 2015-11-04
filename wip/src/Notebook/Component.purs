@@ -93,7 +93,7 @@ eval (AddCell cellType next) = modify (\st -> addCell st cellType Nothing) $> ne
 eval (RunActiveCell next) = (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (\st -> st { isAddingCell = not st.isAddingCell }) $> next
 eval (SetState newState next) = modify (const $ newState) $> next
--- TODO
+eval (GetState continue) = map continue get
 eval (Save next) = save $> next
 
 

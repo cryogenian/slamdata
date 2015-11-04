@@ -9,6 +9,7 @@ import Config (notebookExtension)
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Monad.Aff (Aff())
+import Control.Monad.Eff.Class (liftEff)
 import Model.Action (Action(..), string2action)
 import Model.Resource (Resource(..))
 import Routing.Match (Match(), list, eitherMatch)
@@ -19,13 +20,16 @@ import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.Tuple (Tuple(..))
 import Data.String.Regex (noFlags, regex, test, Regex())
 import Data.Either (Either(..))
+import Data.Functor.Coproduct (left)
 import Notebook.Cell.CellId (CellId(), string2cellId)
 import Halogen.Driver (Driver())
-import Notebook.Component (NotebookQueryP())
+import Notebook.Component (NotebookQueryP(), NotebookQuery(..), initialNotebook)
 import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 import Utils.Path (decodeURIPath)
 import Debug.Trace (traceAnyA)
+import Halogen (action, liftEff', liftH)
 import Routing (matchesAff')
+import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 data Routes
   = CellRoute Resource CellId Action
@@ -91,6 +95,12 @@ routing
 routeSignal :: Driver NotebookQueryP NotebookRawEffects -> Aff NotebookEffects Unit
 routeSignal driver = do
   Tuple oldRoute newRoute <- matchesAff' decodeURIPath routing
-  traceAnyA oldRoute
-  traceAnyA newRoute
-  pure unit
+  browserFeatures <- liftEff detectBrowserFeatures
+  case newRoute of
+    CellRoute res cellId editable -> notebook res editable $ Just cellId
+    NotebookRoute res editable -> notebook res editable Nothing
+    ExploreRoute res -> pure unit
+  where
+  notebook :: Resource -> Action -> Maybe CellId -> Aff NotebookEffects Unit
+  notebook res editable viewing = do
+    driver $ left $ action $ SetState $ initialNotebook browserFeatures
