@@ -26,7 +26,7 @@ import Render.CssClasses as CSS
 
 import Notebook.Cell.CellType (CellType(..))
 import Notebook.Cell.Component (CellQuery(..), CellQueryP(), CellStateP())
-import Notebook.Cell.Port (Port())
+import Notebook.Cell.Port (Port(..))
 import Notebook.CellSlot (CellSlot(..), CellId())
 import Notebook.Common (Slam())
 import Notebook.Component.Query
@@ -107,8 +107,9 @@ peekCell (CellSlot cellId) q = case q of
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
   st <- get
-  let value = getCurrentValue st =<< findParent st cellId
-  maybe (pure unit) (updateCell cellId) value
+  case findParent st cellId of
+    Nothing -> updateCell cellId Closed
+    Just parent -> maybe (pure unit) (updateCell cellId) $ getCurrentValue st parent
 
 updateCell :: CellId -> Port -> NotebookDSL Unit
 updateCell cellId value = do

@@ -90,6 +90,7 @@ makeCellComponent def = parentComponent render eval
     case result of
       Nothing -> halt
       Just result' -> do
+        modify (_ { hasResults = true })
         query ResultsPart $ right $ right $ action (UpdateResults result')
         pure (k result')
   eval (RefreshCell next) = pure next
