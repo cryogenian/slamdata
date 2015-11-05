@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "slamdata-wip",
   "homepage": "https://github.com/cryogenian/slamdata",
   "authors": [
@@ -15,7 +16,7 @@
   "dependencies": {
     "purescript-ace-halogen": "^0.1.0",
     "purescript-affjax": "^0.8.0",
-    "purescript-argonaut-traversals": "^0.4.0",
+    "purescript-argonaut": "^0.10.0",
     "purescript-css": "^0.4.0",
     "purescript-datetime": "^0.9.0",
     "purescript-generics": "^0.6.1",
@@ -34,8 +35,5 @@
   },
   "devDependencies": {
     "purescript-debug": "^0.1.2"
-  },
-  "resolutions": {
-    "purescript-generics": "^0.6.1"
   }
 }
