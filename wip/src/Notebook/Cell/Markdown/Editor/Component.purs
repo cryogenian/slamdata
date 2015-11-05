@@ -23,7 +23,7 @@ import Text.Markdown.SlamDown.Parser (parseMd)
 import Render.CssClasses as CSS
 
 import Notebook.Common (Slam())
-import Notebook.Cell.Port (Port(..))
+import Notebook.Cell.ResultsValue (ResultsValue(..))
 import Notebook.Cell.Common.EditorQuery (CellEditorQuery(..))
 
 type MarkdownEditorQueryP = Coproduct CellEditorQuery (ChildF Unit AceQuery)
@@ -39,6 +39,11 @@ render _ =
     [ H.Slot (aceConstructor unit Nothing) ]
 
 eval :: Natural CellEditorQuery (ParentDSL Unit AceState CellEditorQuery AceQuery Slam Unit)
-eval (RunInnerCell _ k) = do
+eval (EvalCell _ k) = do
   content <- fromMaybe "" <$> query unit (request GetText)
-  pure $ k $ SlamDown (parseMd content)
+  -- TODO: output should be the VarMap
+  pure $ k
+    { output: Nothing
+    , result: Just $ SlamDown (parseMd content)
+    , messages: []
+    }
