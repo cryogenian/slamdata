@@ -33,10 +33,9 @@ import FileSystem.Items as Items
 import FileSystem.Query
 import FileSystem.Search as Search
 import FileSystem.State
-import Halogen.Component
+import Halogen
 import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot)
-import Halogen.Query
-  (liftH, action, request, get, liftEff', modify, gets, HalogenF(), liftAff')
+import Halogen.Query (action)
 import Utils.Path (DirPath())
 
 type ChildState =

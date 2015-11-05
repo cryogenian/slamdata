@@ -45,7 +45,7 @@ import Data.String as S
 import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
 import FileSystem.Breadcrumbs as Breadcrumbs
 import FileSystem.Install
-import FileSystem.Common (Slam(), forceRerender', liftAff'', liftEff'')
+import FileSystem.Common (Slam(), liftAff'', liftEff'')
 import FileSystem.Dialog as Dialog
 import FileSystem.Dialog.Download as Download
 import FileSystem.Dialog.Mount as Mount
@@ -57,13 +57,12 @@ import FileSystem.Render
 import FileSystem.Search as Search
 import FileSystem.State
 import FileSystem.Query
-import Halogen.Component
+import Halogen hiding (Action())
 import Halogen.Component.ChildPath
-  (ChildPath(), cpL, cpR, (:>), injSlot, prjSlot, prjQuery, injQuery)
-import Halogen.Component.Utils (applyCF)
+  (ChildPath(), injSlot, prjSlot, prjQuery, injQuery)
+import Halogen.Component.Utils (applyCF, forceRerender')
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
-import Halogen.HTML.Core (HTML(), ClassName())
 import Halogen.HTML.Elements as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E

@@ -16,7 +16,19 @@ limitations under the License.
 
 module Halogen.Component.Utils where
 
+import Prelude
+
+import Control.Monad.Free (Free())
+import Halogen
 import Halogen.Component (ChildF(..))
 
 applyCF :: forall a b c i. (a -> b i -> c) -> ChildF a b i -> c
 applyCF fn (ChildF a b) = fn a b
+
+forceRerender :: forall s f g. (Applicative g) => Free (HalogenF s f g) Unit
+forceRerender = liftH $ pure unit
+
+forceRerender' ::
+  forall s s' f f' g p. (Applicative g) =>
+  Free (HalogenF s f (QueryF s s' f f' g p)) Unit
+forceRerender' = liftH $ liftH $ pure unit
