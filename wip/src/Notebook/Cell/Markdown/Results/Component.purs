@@ -6,15 +6,20 @@ module Notebook.Cell.Markdown.Results.Component
 
 import Prelude
 
+import Control.Bind ((=<<))
+
 import Data.Functor.Coproduct (Coproduct())
+import Data.Lens (preview)
+import Data.Maybe (maybe)
 
 import Halogen
 import Halogen.HTML.Indexed as H
 
-import Notebook.Common (Slam())
-import Notebook.Cell.Common.ResultsQuery
-import Notebook.Cell.Port (Port(..))
 import Text.Markdown.SlamDown.Html
+
+import Notebook.Cell.Common.ResultsQuery
+import Notebook.Cell.ResultsValue (_SlamDown)
+import Notebook.Common (Slam())
 
 type MarkdownResultsQueryP = Coproduct CellResultsQuery (ChildF Unit SlamDownQuery)
 type MarkdownResultsStateP = InstalledState SlamDownConfig SlamDownState CellResultsQuery SlamDownQuery Slam Unit
@@ -26,8 +31,6 @@ render :: SlamDownConfig -> ParentHTML SlamDownState CellResultsQuery SlamDownQu
 render config = H.slot unit \_ -> { component: slamDownComponent config, initialState: emptySlamDownState }
 
 eval :: Natural CellResultsQuery (ParentDSL SlamDownConfig SlamDownState CellResultsQuery SlamDownQuery Slam Unit)
-eval (UpdateResults input next) = case input of
-  SlamDown sd -> do
-    query unit $ action $ SetDocument sd
-    pure next
-  _ -> pure next
+eval (UpdateResults value next) = do
+  maybe (pure unit) (void <<< query unit <<< action <<< SetDocument) $ preview _SlamDown =<< value
+  pure next

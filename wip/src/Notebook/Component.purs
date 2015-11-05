@@ -7,7 +7,7 @@ module Notebook.Component
 
 import Prelude
 
-import Control.Bind ((=<<))
+import Control.Bind ((=<<), join)
 
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
@@ -125,7 +125,7 @@ runCell cellId = do
 updateCell :: CellId -> Port -> NotebookDSL Unit
 updateCell cellId value = do
   result <- query (CellSlot cellId) $ left $ request (UpdateCell value)
-  maybe (pure unit) (runCellDescendants cellId) result
+  maybe (pure unit) (runCellDescendants cellId) $ join result
 
 runCellDescendants :: CellId -> Port -> NotebookDSL Unit
 runCellDescendants cellId value = do
