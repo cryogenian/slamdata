@@ -14,6 +14,7 @@ import Prelude
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (PrismP())
 import Data.Lens.Prism.Coproduct (_Left, _Right)
+import Data.Maybe (Maybe())
 
 import Notebook.Cell.CellType (CellType())
 import Notebook.Cell.Common.EditorQuery (CellEditorQuery())
@@ -44,7 +45,7 @@ import Notebook.Cell.Viz.Component.Query (VizQuery())
 -- |   share/embed message appropriate for the cell.
 data CellQuery a
   = RunCell a
-  | UpdateCell Port (Port -> a)
+  | UpdateCell Port (Maybe Port -> a)
   | RefreshCell a
   | TrashCell a
   | CreateChildCell CellType a

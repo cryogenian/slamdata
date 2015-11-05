@@ -14,7 +14,7 @@ import Control.Monad.Free (Free(), liftF)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
 import Data.Lens (PrismP(), review, preview, clonePrism)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -86,13 +86,13 @@ makeCellComponent def = parentComponent render eval
   eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam CellPart)
   eval (RunCell next) = pure next
   eval (UpdateCell input k) = do
-    result <- query EditorPart $ right $ left $ request (RunInnerCell input)
+    result <- query EditorPart $ right $ left $ request (EvalCell input)
     case result of
       Nothing -> halt
       Just result' -> do
-        modify (_ { hasResults = true })
-        query ResultsPart $ right $ right $ action (UpdateResults result')
-        pure (k result')
+        modify (_ { hasResults = isJust result'.result })
+        query ResultsPart $ right $ right $ action (UpdateResults result'.result)
+        pure (k result'.output)
   eval (RefreshCell next) = pure next
   eval (TrashCell next) = pure next
   eval (CreateChildCell _ next) = pure next
