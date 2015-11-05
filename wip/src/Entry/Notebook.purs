@@ -27,6 +27,7 @@ import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 import Halogen (runUI, installedState)
 import Halogen.Util (appendToBody)
 
+import Notebook.AccessType (AccessType(..))
 import Notebook.Component (notebookComponent, initialNotebook)
 import Notebook.Effects (NotebookEffects())
 
@@ -34,5 +35,5 @@ main :: Eff NotebookEffects Unit
 main = do
   browserFeatures <- detectBrowserFeatures
   runAff throwException (const (pure unit)) $ do
-    app <- runUI notebookComponent $ installedState (initialNotebook browserFeatures)
+    app <- runUI notebookComponent $ installedState (initialNotebook Editable browserFeatures)
     appendToBody app.node

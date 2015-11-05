@@ -1,6 +1,8 @@
 module Notebook.Cell.Component.State
   ( CellState(..)
-  , initCellState
+  , CellStateP()
+  , initEditorCellState
+  , initResultsCellState
   , isRunning
   , AnyCellState()
   , _ExploreState
@@ -16,42 +18,65 @@ import Data.Either (Either())
 import Data.Lens.Prism (PrismP())
 import Data.Lens.Prism.Either (_Left, _Right)
 import Data.Maybe (Maybe(..))
+import Data.Visibility (Visibility(..))
 
+import Halogen
+
+import Notebook.AccessType (AccessType())
+import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.State
-import Notebook.Cell.Markdown.Component.State
+import Notebook.Cell.Markdown.State
 import Notebook.Cell.Query.State
 import Notebook.Cell.Search.State
 import Notebook.Cell.Viz.State
+import Notebook.Common (Slam())
 
--- | The common state value for a notebook cell.
+-- | The common state value for notebook cells.
 -- |
--- | - `isNotebookEditable` tracks whether the cell is in an editable notebook
--- |   or not (TODO: good way to track this/pass it down)
--- | - `isInvisible` is used to state that the cell should not be rendered at
--- |   all, used when embedding a single cell in another page (TODO: good way to track this/pass it down, also, yuck)
--- | - `showEditor` tracks whether the editor part of the cell has been shown or
--- |   hidden.
--- | - `showMessages` tracks whether the status messages have been shown or
--- |   hidden.
+-- | - `accessType` tracks whether the cell is in an editable or read-only
+-- |   notebook. In the case of read-only notebooks editor cells are hidden.
+-- | - `visibility` is used to specify whether the cell should be rendered at
+-- |   all - used when embedding a single cell in another page.
+-- | - `isCollapsed` tracks whether the cell is expanded or collapsed. In the
+-- |   case of editor cells this shows/hides the whole editor, in the case of
+-- |   results cells this shows/hides the evaluation messages.
+-- | - `messages` is the list of error and informational messages generated
+-- |   during evaluation. `Left` values are errors, `Right` values are
+-- |   informational.
+-- | - `messageVisibility` determines whether the messages should be shown or
+-- |   not.
+-- | - `hasResults` tracks whether the cell has been evaluated successfully and
+-- |   produced a result.
 type CellState =
-  { isNotebookEditable :: Boolean
-  , isInvisible :: Boolean
-  , showEditor :: Boolean
-  , showMessages :: Boolean
-  , failures :: Array String
-  , message :: Maybe String
+  { accessType :: AccessType
+  , visibility :: Visibility
+  , isCollapsed :: Boolean
+  , messages :: Array (Either String String)
+  , messageVisibility :: Visibility
   , hasResults :: Boolean
   }
 
--- | Creates a `CellState` value for a given inner state value.
-initCellState :: CellState
-initCellState =
-  { isNotebookEditable: true
-  , isInvisible: false
-  , showEditor: true
-  , showMessages: false
-  , failures: []
-  , message: Nothing
+type CellStateP = InstalledState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
+
+-- | Creates an initial `CellState` value for an editor cell.
+initEditorCellState :: AccessType -> Visibility -> CellState
+initEditorCellState accessType visibility =
+  { accessType: accessType
+  , visibility: visibility
+  , isCollapsed: false
+  , messages: []
+  , messageVisibility: Invisible
+  , hasResults: false
+  }
+
+-- | Creates an initial `CellState` value for a results cell.
+initResultsCellState :: AccessType -> Visibility -> CellState
+initResultsCellState accessType visibility =
+  { accessType: accessType
+  , visibility: visibility
+  , isCollapsed: true
+  , messages: []
+  , messageVisibility: Invisible
   , hasResults: false
   }
 
