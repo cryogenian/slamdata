@@ -244,11 +244,6 @@
             "rows": 10
         },
         {
-            "query": "=122",
-            "pages": 1,
-            "rows": 1
-        },
-        {
             "query": "city:>s",
             "pages": 4,
             "rows": 4
@@ -259,14 +254,9 @@
             "rows": 9
         },
         {
-            "query": "=456",
-            "pages": 1,
-            "rows": 1
-        },
-        {
             "query": "pop:>10000 city:~b*",
             "pages": 1,
-            "rows": 6
+            "rows": 1
         }
     ],
     "ace": {
@@ -275,7 +265,7 @@
     "query": {
         "smallZipsAll": "select * from \"/test-mount/testDb/smallZips\" where true",
         "flatVizAll": "select * from \"/test-mount/testDb/flatViz\" where true",
-        "flatVizMeasures": "select measureOne, measureTwo from \"test-mount/testDb/flatViz\" where true",
+        "flatVizMeasures": "select measureOne, measureTwo from \"/test-mount/testDb/flatViz\" where true",
         "flatVizOneOption": "select seriesOne, measureOne from \"/test-mount/testDb/flatViz\" where true",
         "parameterized": "select measureOne, seriesOne from \"/test-mount/testDb/flatViz\" where measureOne < :max"
     },
@@ -441,5 +431,5 @@
     },
     "collectingScreenshots": false,
     "tmpFileForScreenshots": "image/tmp.png",
-    "version": "2.2.0"
+    "version": "2.2.2"
 }

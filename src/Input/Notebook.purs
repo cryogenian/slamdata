@@ -132,6 +132,7 @@ updateState state (CellResult cellId date content) =
       f cell = fromState (cell ^. _runState) cell # (_hasRun .~ true)
 
   in state # _notebook.._cells..mapped %~ onCell cellId f
+           # _notebook.._cells %~ syncParents
 
 updateState state (ReceiveCellContent cell) =
   state # _notebook.._cells..mapped %~ onCell (cell ^. _cellId) (const $ setSlamDownStatus cell)
