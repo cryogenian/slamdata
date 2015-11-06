@@ -1,7 +1,6 @@
 module Notebook.Cell.Component
-  ( makeCellComponent
-  , CellQueryP()
-  , CellStateP()
+  ( makeEditorCellComponent
+  , makeResultsCellComponent
   , module Notebook.Cell.Component.Def
   , module Notebook.Cell.Component.Query
   , module Notebook.Cell.Component.State
@@ -9,100 +8,116 @@ module Notebook.Cell.Component
 
 import Prelude
 
-import Control.Monad.Free (Free(), liftF)
+import Control.Bind ((=<<), join)
+import Control.Monad.Free (liftF)
 
 import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
+import Data.Functor.Coproduct (coproduct, left, right)
 import Data.Lens (PrismP(), review, preview, clonePrism)
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Visibility (Visibility(..), toggleVisibility)
 
 import Halogen
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.Themes.Bootstrap3 as B
 
+import Render.Common (row, row')
 import Render.CssClasses as CSS
 
+import Notebook.AccessType (AccessType(..))
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component.Def
 import Notebook.Cell.Component.Query
-import Notebook.Cell.Component.Render
+import Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import Notebook.Cell.Component.State
-import Notebook.Cell.Common.EditorQuery (CellEditorQuery(..))
-import Notebook.Cell.Common.ResultsQuery (CellResultsQuery(..))
 import Notebook.Common (Slam())
 
-type CellQueryP = Coproduct CellQuery (ChildF CellPart InnerCellQuery)
-type CellStateP = InstalledState CellState AnyCellState CellQuery InnerCellQuery Slam CellPart
-
-makeCellComponent
-  :: forall se fe sr fr
-   . Def se fe sr fr
+-- | Constructs a cell component for an editor-style cell.
+makeEditorCellComponent
+  :: forall s f
+   . EditorDef s f
   -> Component CellStateP CellQueryP Slam
-makeCellComponent def = parentComponent render eval
+makeEditorCellComponent def = makeCellComponentPart def render
+  where
+  render :: Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML
+  render component initialState cs =
+    if cs.visibility == Invisible || cs.accessType == ReadOnly
+    then H.text ""
+    else
+      H.div
+        [ P.classes $ join [containerClasses, collapsedClass] ]
+        [ header def cs
+        , row [ H.slot unit \_ -> { component: component, initialState: initialState } ]
+        , statusBar cs.hasResults cs
+        ]
+    where
+    collapsedClass = if cs.isCollapsed then [CSS.collapsed] else []
+
+-- | Constructs a cell component for an results-style cell.
+makeResultsCellComponent
+  :: forall s f
+   . ResultsDef s f
+  -> Component CellStateP CellQueryP Slam
+makeResultsCellComponent def = makeCellComponentPart def render
+  where
+  render :: Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML
+  render component initialState cs =
+    if cs.visibility == Invisible
+    then H.text ""
+    else
+      H.div
+        [ P.classes containerClasses ]
+        [ row' [CSS.cellOutput]
+            [ H.div
+                [ P.class_ CSS.cellOutputLabel ]
+                []
+            , H.div
+                [ P.class_ CSS.cellOutputResult ]
+                [ H.slot unit \_ -> { component: component, initialState: initialState } ]
+            ]
+        ]
+
+containerClasses :: Array (H.ClassName)
+containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
+
+-- | Constructs a cell component from a record with the necessary properties and
+-- | a render function.
+makeCellComponentPart
+  :: forall s f r
+   . Object (CellProps s f r)
+  -> (Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML)
+  -> Component CellStateP CellQueryP Slam
+makeCellComponentPart def render =
+  parentComponent (render component initialState) eval
   where
 
-  _StateE :: PrismP AnyCellState se
-  _StateE = clonePrism def._StateE
+  _State :: PrismP AnyCellState s
+  _State = clonePrism def._State
 
-  _StateR :: PrismP AnyCellState sr
-  _StateR = clonePrism def._StateR
+  _Query :: forall a. PrismP (AnyCellQuery a) (f a)
+  _Query = clonePrism def._Query
 
-  _QueryE :: forall a. PrismP (AnyCellQuery a) (fe a)
-  _QueryE = clonePrism def._QueryE
+  component :: Component AnyCellState InnerCellQuery Slam
+  component = transform
+    (review _State)
+    (preview _State)
+    (coproduct right (left <<< review _Query))
+    (coproduct (map right <<< preview _Query) (Just <<< left))
+    def.component
 
-  _QueryR :: forall a. PrismP (AnyCellQuery a) (fr a)
-  _QueryR = clonePrism def._QueryR
+  initialState :: AnyCellState
+  initialState = review _State def.initialState
 
-  editor' :: Component AnyCellState InnerCellQuery Slam
-  editor' = transform
-    (review _StateE)
-    (preview _StateE)
-    (coproduct (right <<< left) (left <<< review _QueryE))
-    (coproduct (map right <<< preview _QueryE) (coproduct (Just <<< left) (const Nothing)))
-    def.editor
-
-  results' :: Component AnyCellState InnerCellQuery Slam
-  results' = transform
-    (review _StateR)
-    (preview _StateR)
-    (coproduct (right <<< right) (left <<< review _QueryR))
-    (coproduct (map right <<< preview _QueryR) (coproduct (const Nothing) (Just <<< left)))
-    def.results
-
-  render :: CellState -> ParentHTML AnyCellState CellQuery InnerCellQuery Slam CellPart
-  render cs
-    | cs.isInvisible = H.text ""
-    | otherwise =
-        let editorPart =
-              if not (cs.showEditor && cs.isNotebookEditable)
-              then Nothing
-              else Just $
-                H.div
-                  [ P.class_ CSS.vizCellEditor ]
-                  [ H.slot EditorPart \_ -> { component: editor', initialState: review _StateE def.editorState } ]
-            resultsPart =
-              H.slot ResultsPart \_ -> { component: results', initialState: review _StateR def.resultsState }
-        in container def cs editorPart resultsPart
-
-  eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam CellPart)
+  eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit)
   eval (RunCell next) = pure next
-  eval (UpdateCell input k) = do
-    result <- query EditorPart $ right $ left $ request (EvalCell input)
-    case result of
-      Nothing -> halt
-      Just result' -> do
-        modify (_ { hasResults = isJust result'.result })
-        query ResultsPart $ right $ right $ action (UpdateResults result'.result)
-        pure (k result'.output)
+  eval (UpdateCell input k) =
+    maybe (liftF HaltHF) (pure <<< k <<< _.output) =<< query unit (right (request (EvalCell input)))
   eval (RefreshCell next) = pure next
   eval (TrashCell next) = pure next
   eval (CreateChildCell _ next) = pure next
-  eval (ToggleEditor next) =
-    modify (\st -> st { showEditor = not st.showEditor }) $> next
+  eval (ToggleCollapsed next) =
+    modify (\st -> st { isCollapsed = not st.isCollapsed }) $> next
   eval (ToggleMessages next) =
-    modify (\st -> st { showMessages = not st.showMessages }) $> next
+    modify (\st -> st { messageVisibility = toggleVisibility st.messageVisibility }) $> next
   eval (ShareCell next) = pure next
-
--- | Halt value used to raise errors when evaluating a query of the wrong value
--- | or when the component has a bad state value.
-halt :: forall s f g a. Free (HalogenF s f g) a
-halt = liftF HaltHF
