@@ -1,8 +1,6 @@
-module Notebook.Cell.Component.Render (container) where
+module Notebook.Cell.Component.Render (CellHTML(), header, statusBar) where
 
 import Prelude
-
-import Control.Bind (join)
 
 import Data.Array (catMaybes, null, length)
 import Data.Maybe (Maybe(..), isJust)
@@ -14,38 +12,16 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
-import Render.Common (fadeWhen, glyph, row, row')
+import Render.Common (fadeWhen, glyph, row')
 import Render.CssClasses as CSS
 
-import Notebook.Cell.Component.Def (Def(), CellPart())
 import Notebook.Cell.Component.Query (CellQuery(..), InnerCellQuery())
 import Notebook.Cell.Component.State (CellState(), AnyCellState(), isRunning)
 import Notebook.Common (Slam())
 
-type CellHTML = ParentHTML AnyCellState CellQuery InnerCellQuery Slam CellPart
+type CellHTML = ParentHTML AnyCellState CellQuery InnerCellQuery Slam Unit
 
-container
-  :: forall se fe sr fr
-   . Def se fe sr fr
-  -> CellState
-  -> Maybe CellHTML
-  -> CellHTML
-  -> CellHTML
-container def cs editor results =
-  H.div
-    [ P.classes $ join [containerClasses, collapsedClass] ]
-    $ catMaybes
-        [ if cs.isNotebookEditable then Just $ header def cs else Nothing
-        , row <<< pure <$> editor
-        , Just $ statusBar cs.hasResults cs
-        , Just (row [results])
-        ]
-  where
-
-  containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
-  collapsedClass = if cs.showEditor then [CSS.collapsed] else []
-
-header :: forall se fe sr fr. Def se fe sr fr -> CellState -> CellHTML
+header :: forall r. { name :: String, glyph :: H.ClassName | r } -> CellState -> CellHTML
 header def cs =
   H.div
     [ P.classes [CSS.cellHeader, B.clearfix] ]
@@ -63,10 +39,10 @@ controls cs =
   H.div
     [ P.classes [B.pullRight, CSS.cellControls] ]
     [ H.button
-        [ P.title if cs.showEditor then "Hide cell options" else "Show cell options"
-        , E.onClick (E.input_ ToggleEditor)
+        [ P.title if cs.isCollapsed then "Show cell options" else "Hide cell options"
+        , E.onClick (E.input_ ToggleCollapsed)
         ]
-        [ glyph if cs.showEditor then B.glyphiconEyeClose else B.glyphiconEyeOpen ]
+        [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
     , H.button
         [ P.title "Delete cell"
         , E.onClick (E.input_ TrashCell)
@@ -77,31 +53,27 @@ controls cs =
 
 statusBar :: Boolean -> CellState -> CellHTML
 statusBar hasResults cs =
-  row' (fadeWhen $ not cs.showEditor)
-  $ if (not cs.showEditor)
-    then []
-    else pure $
-      H.div
-        [ P.classes [CSS.cellEvalLine, B.clearfix] ]
-        $ [ H.button
-              [ P.classes [B.btn, B.btnPrimary, buttonClass]
-              , E.onClick (E.input_ RunCell)
-              -- , P.ariaLabel buttonAriaLabel
-              ]
-              [ glyph buttonGlyph ]
-          , H.div
-              [ P.class_ CSS.statusText ]
-              [ H.text "" ] -- $ statusText notebook.tickDate (c ^. _runState) ]
-          , H.div
-              [ P.classes [B.pullRight, CSS.cellControls] ]
-              $ catMaybes
-                  [ Just refreshButton
-                  , toggleMessageButton cs
-                  , if hasResults then Just linkButton else Nothing
-                  , Just $ glyph B.glyphiconChevronLeft
-                  ]
+  H.div
+    [ P.classes [CSS.cellEvalLine, B.clearfix, B.row] ]
+    $ [ H.button
+          [ P.classes [B.btn, B.btnPrimary, buttonClass]
+          , E.onClick (E.input_ RunCell)
+          -- , P.ariaLabel buttonAriaLabel
           ]
-       <> messages cs
+          [ glyph buttonGlyph ]
+      , H.div
+          [ P.class_ CSS.statusText ]
+          [ H.text "" ] -- $ statusText notebook.tickDate (c ^. _runState) ]
+      , H.div
+          [ P.classes [B.pullRight, CSS.cellControls] ]
+          $ catMaybes
+              [ Just refreshButton
+              , toggleMessageButton cs
+              , if hasResults then Just linkButton else Nothing
+              , Just $ glyph B.glyphiconChevronLeft
+              ]
+      ]
+     <> messages cs
   where
   buttonClass :: H.ClassName
   buttonClass = if isRunning cs then CSS.stopButton else CSS.playButton
@@ -123,14 +95,14 @@ refreshButton =
 
 toggleMessageButton :: CellState -> Maybe (CellHTML)
 toggleMessageButton cs =
-  case cs.message of
-    Nothing -> Nothing
-    Just msg -> Just $
+  case cs.messages of
+    [] -> Nothing
+    _ -> Just $
       H.button
-        [ P.title if cs.showMessages then "Hide messages" else "Show messages"
+        [ P.title if cs.isCollapsed then "Show messages" else "Hide messages"
         , E.onClick (E.input_ ToggleMessages)
         ]
-        [ glyph if cs.showMessages then B.glyphiconEyeClose else B.glyphiconEyeOpen ]
+        [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
 
 linkButton :: CellHTML
 linkButton =
@@ -147,31 +119,42 @@ linkButton =
     ]
 
 messages :: CellState -> Array (CellHTML)
-messages cs =
-  let collapsed = if cs.showMessages then [] else [CSS.collapsed]
-  in if null cs.failures
-     then case cs.message of
-      Nothing -> []
-      Just message' ->
-        [ H.div
-            [ P.classes $ [CSS.cellMessages] ++ collapsed ]
-            if cs.showMessages then [ H.div_ [], messageText message' ] else []
-        ]
-     else
-      [ H.div
-          [ P.classes $ [CSS.cellFailures] ++ collapsed ]
-          $ failureText cs
-      ]
+messages cs = []
+  -- let numErrors = length (isLeft `filter` cs.messages)
+--   if null cs.messages
+--   then []
+--   else
+--     [ H.div
+--         [ P.classes $ [CSS.cellMessages] ++ if cs.isCollapsed then [CSS.collapsed] else [] ]
+--         if cs.isCollapsed
+--         then []
+--         else [ H.div_ [] ] ++ message `map` cs.messages
 
-messageText :: String -> CellHTML
-messageText m =
-  let tag = if isJust $ indexOf "\n" m then H.pre_ else H.div_
-  in tag [H.text m]
+-- message :: Either String String -> CellHTML
+-- message (Left msg) = failureText msg
+-- message (Right msg) = messageText msg
+--     ]
+--   let collapsed =
+--   in
+--      then case cs.message of
+--       Nothing -> []
+--       Just message' ->
 
-failureText :: CellState -> Array (CellHTML)
-failureText cs =
-  [ H.div_ [H.text $ show (length cs.failures) <> " error(s) during evaluation. "] ]
-  <> if not cs.showMessages
-     then []
-     else messageText <$> cs.failures
+--      else
+--       [ H.div
+--           [ P.classes $ [CSS.cellFailures] ++ collapsed ]
+--           $ failureText cs
+--       ]
+
+-- messageText :: String -> CellHTML
+-- messageText m =
+--   let tag = if isJust $ indexOf "\n" m then H.pre_ else H.div_
+--   in tag [H.text m]
+
+-- failureText :: CellState -> Array (CellHTML)
+-- failureText cs =
+--   [ H.div_ [H.text $ show (length cs.failures) <> " error(s) during evaluation. "] ]
+--   <> if not cs.showMessages
+--      then []
+--      else messageText <$> cs.failures
 

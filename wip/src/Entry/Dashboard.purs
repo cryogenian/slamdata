@@ -25,7 +25,7 @@ import Control.Monad.Eff.Exception (throwException)
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Halogen (runUI, installedState)
-import Halogen.Util (appendToBody)
+import Halogen.Util (appendToBody, onLoad)
 
 import Dashboard.Component (comp, initialState, toNotebook)
 import Dashboard.Routing (routeSignal)
@@ -40,8 +40,7 @@ main = do
   browserFeatures <- detectBrowserFeatures
   runAff throwException (const (pure unit)) $ do
     app <- runUI comp $ installedState initialState
-    appendToBody app.node
-    traceAnyA browserFeatures
+    onLoad (appendToBody app.node)
     forkAff $ app.driver $ toNotebook $ SetBrowserFeatures browserFeatures
     forkAff $ routeSignal app.driver
     forkAff $ autoSaveSignal app.driver

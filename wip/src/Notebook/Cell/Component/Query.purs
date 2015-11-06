@@ -1,5 +1,6 @@
 module Notebook.Cell.Component.Query
   ( CellQuery(..)
+  , CellQueryP()
   , AnyCellQuery()
   , InnerCellQuery()
   , _ExploreQuery
@@ -16,13 +17,14 @@ import Data.Lens (PrismP())
 import Data.Lens.Prism.Coproduct (_Left, _Right)
 import Data.Maybe (Maybe())
 
+import Halogen (ChildF())
+
 import Notebook.Cell.CellType (CellType())
-import Notebook.Cell.Common.EditorQuery (CellEditorQuery())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Cell.Explore.Component.Query (ExploreQuery())
-import Notebook.Cell.Markdown.Component.Query (MarkdownQuery())
+import Notebook.Cell.Markdown.Query (MarkdownQuery())
 import Notebook.Cell.Port
 import Notebook.Cell.Query.Component.Query (QueryQuery())
-import Notebook.Cell.Common.ResultsQuery (CellResultsQuery())
 import Notebook.Cell.Search.Component.Query (SearchQuery())
 import Notebook.Cell.Viz.Component.Query (VizQuery())
 
@@ -45,16 +47,18 @@ import Notebook.Cell.Viz.Component.Query (VizQuery())
 -- |   share/embed message appropriate for the cell.
 data CellQuery a
   = RunCell a
-  | UpdateCell Port (Maybe Port -> a)
+  | UpdateCell (Maybe Port) (Maybe Port -> a)
   | RefreshCell a
   | TrashCell a
   | CreateChildCell CellType a
-  | ToggleEditor a
+  | ToggleCollapsed a
   | ToggleMessages a
   | ShareCell a
 
+type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
+
 type AnyCellQuery = Coproduct ExploreQuery (Coproduct MarkdownQuery (Coproduct QueryQuery (Coproduct SearchQuery VizQuery)))
-type InnerCellQuery = Coproduct AnyCellQuery (Coproduct CellEditorQuery CellResultsQuery)
+type InnerCellQuery = Coproduct AnyCellQuery CellEvalQuery
 
 _ExploreQuery :: forall a. PrismP (AnyCellQuery a) (ExploreQuery a)
 _ExploreQuery = _Left

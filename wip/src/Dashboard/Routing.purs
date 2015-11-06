@@ -10,29 +10,29 @@ import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Class (liftEff)
-import Data.Maybe (Maybe(..))
-import Model.Action (Action(..), string2action)
-import Model.Resource (Resource(..))
-import Routing.Match (Match(), list, eitherMatch)
-import Routing.Match.Class (lit, str)
-import Data.Foldable (foldl)
-import Data.List (List(..))
-import Data.Path.Pathy ((</>), rootDir, dir, file)
-import Data.Tuple (Tuple(..))
-import Data.String.Regex (noFlags, regex, test, Regex())
-import Data.Either (Either(..))
-import Data.Lens ((.~))
-import Data.Functor.Coproduct (left)
-import Notebook.Cell.CellId (CellId(), string2cellId)
-import Halogen.Driver (Driver())
-import Notebook.Component (NotebookQuery(..), initialNotebook, _browserFeatures)
-import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
+import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 import Dashboard.Component (QueryP(), toDashboard, toNotebook)
-import Utils.Path (decodeURIPath)
+import Data.Either (Either(..))
+import Data.Foldable (foldl)
+import Data.Functor.Coproduct (left)
+import Data.Lens ((.~))
+import Data.List (List(..))
+import Data.Maybe (Maybe(..))
+import Data.Path.Pathy ((</>), rootDir, dir, file)
+import Data.String.Regex (noFlags, regex, test, Regex())
+import Data.Tuple (Tuple(..))
 import Debug.Trace (traceAnyA)
 import Halogen (action, liftEff', liftH)
+import Halogen.Driver (Driver())
+import Model.Action (Action(..), string2action)
+import Model.Resource (Resource(..))
+import Notebook.Cell.CellId (CellId(), string2cellId)
+import Notebook.Component (NotebookQuery(..), initialNotebook, _browserFeatures)
+import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 import Routing (matchesAff')
-import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
+import Routing.Match (Match(), list, eitherMatch)
+import Routing.Match.Class (lit, str)
+import Utils.Path (decodeURIPath)
 
 data Routes
   = CellRoute Resource CellId Action
@@ -98,6 +98,10 @@ routing
 routeSignal :: Driver QueryP NotebookRawEffects -> Aff NotebookEffects Unit
 routeSignal driver = do
   Tuple oldRoute newRoute <- matchesAff' decodeURIPath routing
+  traceAnyA "OLD"
+  traceAnyA oldRoute
+  traceAnyA "NEW"
+  traceAnyA newRoute
   case newRoute of
     CellRoute res cellId editable -> notebook res editable $ Just cellId
     NotebookRoute res editable -> notebook res editable Nothing

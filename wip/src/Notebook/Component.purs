@@ -119,10 +119,10 @@ runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
   st <- get
   case findParent st cellId of
-    Nothing -> updateCell cellId Closed
-    Just parent -> maybe (pure unit) (updateCell cellId) $ getCurrentValue st parent
+    Nothing -> updateCell cellId Nothing
+    Just parent -> maybe (pure unit) (updateCell cellId <<< Just) $ getCurrentValue st parent
 
-updateCell :: CellId -> Port -> NotebookDSL Unit
+updateCell :: CellId -> Maybe Port -> NotebookDSL Unit
 updateCell cellId value = do
   result <- query (CellSlot cellId) $ left $ request (UpdateCell value)
   maybe (pure unit) (runCellDescendants cellId) $ join result
@@ -130,4 +130,4 @@ updateCell cellId value = do
 runCellDescendants :: CellId -> Port -> NotebookDSL Unit
 runCellDescendants cellId value = do
   children <- findChildren <$> get <*> pure cellId
-  traverse_ (flip updateCell value) children
+  traverse_ (flip updateCell (Just value)) children

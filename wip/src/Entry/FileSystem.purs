@@ -32,7 +32,7 @@ import FileSystem.Routing (routeSignal)
 import Halogen.Component (installedState)
 import Halogen.Driver (runUI)
 import Halogen.Query (action)
-import Halogen.Util (appendToBody)
+import Halogen.Util (appendToBody, onLoad)
 import Quasar.Aff (getVersion)
 
 setSlamDataTitle :: forall e. Maybe String -> Aff (dom :: DOM|e) Unit
@@ -42,7 +42,7 @@ setSlamDataTitle mbVersion = do
 main :: Eff FileSystemEffects Unit
 main = runAff throwException (const (pure unit)) do
   halogen <- runUI comp (installedState initialState)
-  appendToBody halogen.node
+  onLoad (appendToBody halogen.node)
   forkAff do
     version <- getVersion
     setSlamDataTitle version

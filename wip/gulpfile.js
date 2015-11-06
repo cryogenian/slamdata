@@ -106,4 +106,5 @@ mkWatch("watch-file", "bundle-file", allSources);
 mkWatch("watch-notebook", "bundle-notebook", allSources);
 mkWatch("watch-notebook-fast", "fast-bundle-notebook", allSources);
 
-gulp.task("default", ["add-headers", "trim-whitespace", "bundle"]);
+// gulp.task("default", ["add-headers", "trim-whitespace", "bundle"]);
+gulp.task("default", ["bundle"]);

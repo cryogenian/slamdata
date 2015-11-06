@@ -7,18 +7,21 @@ import Data.Foldable (foldMap)
 import Data.Lens (LensP(), lens)
 import Data.List (List(), snoc, filter)
 import Data.Map as M
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
 import Data.Set as S
 import Data.These (These(..))
 import Data.Tuple (Tuple(..), fst)
+import Data.Visibility (Visibility(..))
 
 import Halogen
 
-import Notebook.Cell.CellId (CellId(..))
+import Notebook.AccessType (AccessType(..))
+import Notebook.Cell.CellId (CellId(..), runCellId)
 import Notebook.Cell.CellType (CellType(..))
 import Notebook.Cell.Component
-import Notebook.Cell.Markdown.Component (markdownComponent)
+import Notebook.Cell.Markdown.Editor.Component (markdownEditorComponent)
+import Notebook.Cell.Markdown.Results.Component (markdownResultsComponent)
 import Notebook.Cell.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
@@ -40,6 +43,7 @@ import Notebook.Common (Slam())
 -- |   the new name.
 type NotebookState =
   { fresh :: Int
+  , accessType :: AccessType
   , cells :: List CellDef
   , dependencies :: M.Map CellId CellId
   , values :: M.Map CellId Port
@@ -53,6 +57,7 @@ type NotebookState =
 initialNotebook :: NotebookState
 initialNotebook =
   { fresh: 0
+  , accessType: ReadOnly
   , cells: mempty
   , dependencies: M.empty
   , values: M.empty
@@ -65,6 +70,9 @@ initialNotebook =
 
 _fresh :: LensP NotebookState Int
 _fresh = lens _.fresh _{fresh = _}
+
+_accessType :: LensP NotebookState AccessType
+_accessType = lens _.accessType _{accessType = _}
 
 _cells :: LensP NotebookState (List CellDef)
 _cells = lens _.cells _{cells = _}
@@ -102,16 +110,25 @@ type CellDef =
 -- | parent cell ID.
 addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
 addCell cellType parent st =
-  let newId = CellId st.fresh
-      ctor = case cellType of
-        Markdown -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
-        _ -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
+  let editorId = CellId st.fresh
+      resultsId = CellId $ st.fresh + 1
+      editor = case cellType of
+        -- Markdown -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
+        _ -> { component: markdownEditorComponent
+             , initialState: installedState (initEditorCellState st.accessType Visible)
+             }
+      results = case cellType of
+        -- Markdown -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
+        _ -> { component: markdownResultsComponent { formName: "cell-" ++ (show $ runCellId resultsId), browserFeatures: st.browserFeatures }
+             , initialState: installedState (initResultsCellState st.accessType Visible)
+             }
+      dependencies = M.insert resultsId editorId st.dependencies
   in st
-    { fresh = st.fresh + 1
-    , cells = st.cells `snoc` { id: newId, ctor: SlotConstructor (CellSlot newId) \_ -> ctor }
-    , dependencies = case parent of
-        Nothing -> st.dependencies
-        Just parentId -> M.insert newId parentId st.dependencies
+    { fresh = st.fresh + 2
+    , cells = st.cells
+        `snoc` { id: editorId, ctor: SlotConstructor (CellSlot editorId) \_ -> editor }
+        `snoc` { id: resultsId, ctor: SlotConstructor (CellSlot resultsId) \_ -> results }
+    , dependencies = maybe dependencies (flip (M.insert editorId) dependencies) parent
     }
 
 -- | Removes a set of cells from the notebook. Any cells that depend on a cell
