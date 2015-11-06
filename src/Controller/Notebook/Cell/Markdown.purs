@@ -53,12 +53,14 @@ type QM eff = StateT Int (Aff (NotebookAppEff eff))
 
 runMarkdown :: forall eff. Cell -> I eff
 runMarkdown cell = do
-  let input = cell ^? _content .. _Markdown .. _input
-  e <- liftAff $ attempt $ flip evalStateT 0 $ maybe (pure $ SlamDown mempty) (eval evalFuncs <<< parseMd) input
+  e <- liftAff $ attempt $ flip evalStateT 0
+       $ maybe (pure $ SlamDown mempty) (eval evalFuncs <<< parseMd) input
   d <- liftEff now
   pure $ CellResult (cell ^. _cellId) d $ bimap handleErr MarkdownContent e
 
   where
+  input = cell ^? _content .. _Markdown .. _input
+
 
   handleErr :: Error -> NEL.NonEmpty FailureMessage
   handleErr err = NEL.singleton ("An error occurred in a embedded query: " ++ message err)

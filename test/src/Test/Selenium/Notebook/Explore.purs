@@ -99,16 +99,8 @@ checkInexistentFileNotMounted =
   getConfig >>= _.explore >>> _.notMounted >>> checkFailure "(not mounted)"
 
 checkInexistentFileMounted :: Check Unit
-checkInexistentFileMounted = withExploreCell do
-  config <- getConfig
-  input <- getInput
-  play <- findPlayButton
-  sequence do
-    leftClick input
-    sendKeys config.explore.mounted
-    leftClick play
-  C.checkTableEmpty
-  successMsg "Ok, expected behaviour when file list contains incorrect mounted file"
+checkInexistentFileMounted =
+  getConfig >>= _.explore >>> _.mounted >>> checkFailure "(mounted)"
 
 checkStatus :: Check Unit
 checkStatus = withSmallZipsOpened do
