@@ -94,4 +94,3 @@ routing = ExploreRoute <$> (oneSlash *> lit "explore" *> (fileFromParts <$> list
 
   checkExtension :: String -> Boolean
   checkExtension = test extensionRegex
-
