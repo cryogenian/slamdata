@@ -25,7 +25,7 @@ import Control.Monad.Eff.Exception (throwException)
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Halogen (runUI, installedState)
-import Halogen.Util (appendToBody)
+import Halogen.Util (appendToBody, onLoad)
 
 import Notebook.AccessType (AccessType(..))
 import Notebook.Component (notebookComponent, initialNotebook)
@@ -36,4 +36,4 @@ main = do
   browserFeatures <- detectBrowserFeatures
   runAff throwException (const (pure unit)) $ do
     app <- runUI notebookComponent $ installedState (initialNotebook Editable browserFeatures)
-    appendToBody app.node
+    onLoad (appendToBody app.node)
