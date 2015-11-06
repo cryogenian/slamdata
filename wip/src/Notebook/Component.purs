@@ -1,5 +1,24 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module Notebook.Component
   ( notebookComponent
+  , initialState
+  , NotebookQueryP()
+  , NotebookStateP()
   , module Notebook.Component.Query
   , module Notebook.Component.State
   ) where
@@ -8,9 +27,11 @@ import Prelude
 
 import Control.Bind ((=<<), join)
 
+import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
+import Data.Lens ((%~), (.~))
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
@@ -37,6 +58,9 @@ type NotebookStateP = InstalledState NotebookState CellStateP NotebookQuery Cell
 
 type NotebookHTML = ParentHTML CellStateP NotebookQuery CellQueryP Slam CellSlot
 type NotebookDSL = ParentDSL NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
+
+initialState :: BrowserFeatures -> NotebookStateP
+initialState fs = installedState $ initialNotebook fs
 
 notebookComponent :: Component NotebookStateP NotebookQueryP Slam
 notebookComponent = parentComponent' render eval peek
@@ -85,9 +109,11 @@ newCellMenu state =
 
 
 eval :: Natural NotebookQuery NotebookDSL
-eval (AddCell cellType next) = modify (\st -> addCell st cellType Nothing) $> next
-eval (RunActiveCell next) = (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
-eval (ToggleAddCellMenu next) = modify (\st -> st { isAddingCell = not st.isAddingCell }) $> next
+eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
+eval (RunActiveCell next) =
+  (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
+eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
+eval (SetBrowserFeatures fs next) = modify (_browserFeatures .~ fs) $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF slot q) = coproduct (peekCell slot) (const (pure unit)) q
@@ -98,8 +124,8 @@ peekCell (CellSlot cellId) q = case q of
   RefreshCell _ -> runCell <<< flip findRoot cellId =<< get
   TrashCell _ -> do
     descendants <- findDescendants <$> get <*> pure cellId
-    modify (flip removeCells $ S.insert cellId descendants)
-  CreateChildCell cellType _ -> modify $ \st -> addCell st cellType (Just cellId)
+    modify (removeCells $ S.insert cellId descendants)
+  CreateChildCell cellType _ -> modify $ addCell cellType (Just cellId)
   ShareCell _ -> pure unit -- TODO: open share modal
   _ ->
     pure unit

@@ -243,7 +243,7 @@ eval (SetVersion version next) = do
   pure next
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> Algebra Unit
-peek (ChildF p q) = do
+peek (ChildF p q) =
   fromMaybe (pure unit)
   $   (itemsPeek <$> prjSlot cpItems p <*> prjQuery cpItems q)
   <|> (searchPeek <$> prjSlot cpSearch p <*> prjQuery cpSearch q)

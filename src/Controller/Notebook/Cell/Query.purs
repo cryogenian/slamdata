@@ -40,7 +40,9 @@ runQuery cell = case queryToJTable cell input <$> path <*> (pure $ outFile cell)
   Just x -> x
   Nothing -> do
     now' <- liftEff now
-    return $ inj $ CellResult (cell ^. _cellId) now' (Left $ NEL.singleton "Cannot run query with no output resource")
+    return $ inj
+      $ CellResult (cell ^. _cellId)
+      now' (Left $ NEL.singleton "Cannot run query with no output resource")
 
   where
   output :: Maybe Resource
