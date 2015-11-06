@@ -1,9 +1,26 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module Notebook.Component.State where
 
 import Prelude
 
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (foldMap)
+import Data.Lens (LensP(), lens)
 import Data.List (List(), snoc, filter)
 import Data.Map as M
 import Data.Maybe (Maybe(..), maybe)
@@ -15,7 +32,7 @@ import Data.Visibility (Visibility(..))
 
 import Halogen
 
-import Notebook.AccessType (AccessType())
+import Notebook.AccessType (AccessType(..))
 import Notebook.Cell.CellId (CellId(..), runCellId)
 import Notebook.Cell.CellType (CellType(..))
 import Notebook.Cell.Component
@@ -53,10 +70,10 @@ type NotebookState =
   , browserFeatures :: BrowserFeatures
   }
 
-initialNotebook :: AccessType -> BrowserFeatures -> NotebookState
-initialNotebook accessType browserFeatures =
+initialNotebook :: BrowserFeatures -> NotebookState
+initialNotebook fs =
   { fresh: 0
-  , accessType: accessType
+  , accessType: ReadOnly
   , cells: mempty
   , dependencies: M.empty
   , values: M.empty
@@ -64,8 +81,39 @@ initialNotebook accessType browserFeatures =
   , editable: true
   , name: This Config.newNotebookName
   , isAddingCell: false
-  , browserFeatures: browserFeatures
+  , browserFeatures: fs
   }
+
+_fresh :: LensP NotebookState Int
+_fresh = lens _.fresh _{fresh = _}
+
+_accessType :: LensP NotebookState AccessType
+_accessType = lens _.accessType _{accessType = _}
+
+_cells :: LensP NotebookState (List CellDef)
+_cells = lens _.cells _{cells = _}
+
+_dependencies :: LensP NotebookState (M.Map CellId CellId)
+_dependencies = lens _.dependencies _{dependencies = _}
+
+_values :: LensP NotebookState (M.Map CellId Port)
+_values = lens _.values _{values = _}
+
+_activeCellId :: LensP NotebookState (Maybe CellId)
+_activeCellId = lens _.activeCellId _{activeCellId = _}
+
+_editable :: LensP NotebookState Boolean
+_editable = lens _.editable _{editable = _}
+
+_name :: LensP NotebookState (These String String)
+_name = lens _.name _{name = _}
+
+_isAddingCell :: LensP NotebookState Boolean
+_isAddingCell = lens _.isAddingCell _{isAddingCell = _}
+
+_browserFeatures :: LensP NotebookState BrowserFeatures
+_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
+
 
 type CellDef =
   { id :: CellId
@@ -76,8 +124,8 @@ type CellDef =
 -- |
 -- | Takes the current notebook state, the type of cell to add, and an optional
 -- | parent cell ID.
-addCell :: NotebookState -> CellType -> Maybe CellId -> NotebookState
-addCell st cellType parent =
+addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
+addCell cellType parent st =
   let editorId = CellId st.fresh
       resultsId = CellId $ st.fresh + 1
       editor = case cellType of
@@ -103,8 +151,8 @@ addCell st cellType parent =
 -- | in the set of provided cells will also be removed.
 -- |
 -- | Takes the current notebook state and a set of IDs for the cells to remove.
-removeCells :: NotebookState -> S.Set CellId -> NotebookState
-removeCells st cellIds = st
+removeCells :: S.Set CellId -> NotebookState -> NotebookState
+removeCells cellIds st = st
     { cells = filter f st.cells
     , dependencies = M.fromList $ filter g $ M.toList st.dependencies
     }

@@ -77,7 +77,7 @@ predicateToSQL :: Predicate -> String -> String
 predicateToSQL (Contains (Range v v')) s = range v v' s
 predicateToSQL (Contains (Text v)) s =
   joinWith " OR " $
-  ["LOWER(" <> s <> ")" <> " LIKE '%" <> v <> "%'"] <>
+  [s <> " ~* '" <> escapeRegex v <> "'"] <>
   (if needUnq v then render' v else [ ] ) <>
   (if not (needDateTime v) && needDate v then render date else [ ]) <>
   (if needTime v then render time  else [] ) <>
@@ -92,7 +92,6 @@ predicateToSQL (Contains (Text v)) s =
   i = intervaled quoted
   render' v = [ "LOWER(" <> s <> ") = " <> v]
   render v = [s <> " = " <> v ]
-
 predicateToSQL (Contains (Tag v)) s = predicateToSQL (Contains (Text v)) (s <> "[*]")
 predicateToSQL (Eq v) s = qUnQ s "=" v
 predicateToSQL (Gt v) s = qUnQ s ">" v
@@ -100,7 +99,28 @@ predicateToSQL (Gte v) s = qUnQ s ">=" v
 predicateToSQL (Lt v) s = qUnQ s "<" v
 predicateToSQL (Lte v) s = qUnQ s "<=" v
 predicateToSQL (Ne v) s = qUnQ s "<>" v
-predicateToSQL (Like v) s = "LOWER( " <> s <> ")" <> " LIKE " <>  glob2like v
+predicateToSQL (Like v) s = s <> " ~* '" <> globToRegex v <> "'"
+
+
+escapeRegex :: String -> String
+escapeRegex = replace regexEscapeRegex "\\$&"
+  where
+  regexEscapeRegex =
+    regex "[\\-\\[\\]\\/\\{\\}\\(\\)\\*\\+\\?\\.\\\\\\^\\$\\|]" noFlags{global=true}
+
+globToRegex :: String -> String
+globToRegex x =
+  (\x -> "^" <> x <> "$")
+  $ replace askRegex "."
+  $ replace starRegex ".*"
+  $ replace globEscapeRegex "\\$&" x
+  where
+  globEscapeRegex =
+    regex "[\\-\\[\\]\\/\\{\\}\\(\\)\\+\\.\\\\\\^\\$\\|]" noFlags{global=true}
+  starRegex =
+    regex "\\*" noFlags{global=true}
+  askRegex =
+    regex "\\?" noFlags{global=true}
 
 range :: String -> String -> String -> String
 range v v' s =
@@ -191,13 +211,6 @@ labelProjection (Common "[*]") = ["[*]"]
 labelProjection (Common l) = [".\"" <> l <> "\""]
 labelProjection (Meta l) = labelProjection (Common l)
 
-glob2like :: String -> String
-glob2like input =
-  quote (replace starRgx "%" $ replace questionRgx "_" $ input)
-  where flags = noFlags{global = true}
-        questionRgx = regex "\\?" flags
-        starRgx = regex "\\*" flags
-
 firstDot :: Regex
 firstDot = regex "^\\." noFlags
 
@@ -218,4 +231,3 @@ datetimed s = "TIMESTAMP " <> s
 
 intervaled :: String -> String
 intervaled s = "INTERVAL " <> s
-
