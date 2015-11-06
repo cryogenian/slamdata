@@ -1,5 +1,8 @@
 module Notebook.Component
   ( notebookComponent
+  , initialState
+  , NotebookQueryP()
+  , NotebookStateP()
   , module Notebook.Component.Query
   , module Notebook.Component.State
   ) where
@@ -11,6 +14,7 @@ import Control.Bind ((=<<), join)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
+import Data.Lens ((%~), (.~))
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
@@ -37,6 +41,9 @@ type NotebookStateP = InstalledState NotebookState CellStateP NotebookQuery Cell
 
 type NotebookHTML = ParentHTML CellStateP NotebookQuery CellQueryP Slam CellSlot
 type NotebookDSL = ParentDSL NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
+
+initialState :: NotebookStateP
+initialState = installedState initialNotebook
 
 notebookComponent :: Component NotebookStateP NotebookQueryP Slam
 notebookComponent = parentComponent' render eval peek
@@ -85,9 +92,13 @@ newCellMenu state =
 
 
 eval :: Natural NotebookQuery NotebookDSL
-eval (AddCell cellType next) = modify (\st -> addCell st cellType Nothing) $> next
-eval (RunActiveCell next) = (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
-eval (ToggleAddCellMenu next) = modify (\st -> st { isAddingCell = not st.isAddingCell }) $> next
+eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
+eval (RunActiveCell next) =
+  (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
+eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
+eval (SetBrowserFeatures fs next) = modify (_browserFeatures .~ fs) $> next
+eval (SetState st next) = modify (const st) $> next
+eval (GetState continue) = map continue get
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF slot q) = coproduct (peekCell slot) (const (pure unit)) q
@@ -98,8 +109,8 @@ peekCell (CellSlot cellId) q = case q of
   RefreshCell _ -> runCell <<< flip findRoot cellId =<< get
   TrashCell _ -> do
     descendants <- findDescendants <$> get <*> pure cellId
-    modify (flip removeCells $ S.insert cellId descendants)
-  CreateChildCell cellType _ -> modify $ \st -> addCell st cellType (Just cellId)
+    modify (removeCells $ S.insert cellId descendants)
+  CreateChildCell cellType _ -> modify $ addCell cellType (Just cellId)
   ShareCell _ -> pure unit -- TODO: open share modal
   _ ->
     pure unit

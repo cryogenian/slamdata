@@ -4,6 +4,7 @@ import Prelude
 
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (foldMap)
+import Data.Lens (LensP(), lens)
 import Data.List (List(), snoc, filter)
 import Data.Map as M
 import Data.Maybe (Maybe(..))
@@ -49,8 +50,8 @@ type NotebookState =
   , browserFeatures :: BrowserFeatures
   }
 
-initialNotebook :: BrowserFeatures -> NotebookState
-initialNotebook browserFeatures =
+initialNotebook :: NotebookState
+initialNotebook =
   { fresh: 0
   , cells: mempty
   , dependencies: M.empty
@@ -59,8 +60,36 @@ initialNotebook browserFeatures =
   , editable: true
   , name: This Config.newNotebookName
   , isAddingCell: false
-  , browserFeatures: browserFeatures
+  , browserFeatures: {inputTypeSupported: const false}
   }
+
+_fresh :: LensP NotebookState Int
+_fresh = lens _.fresh _{fresh = _}
+
+_cells :: LensP NotebookState (List CellDef)
+_cells = lens _.cells _{cells = _}
+
+_dependencies :: LensP NotebookState (M.Map CellId CellId)
+_dependencies = lens _.dependencies _{dependencies = _}
+
+_values :: LensP NotebookState (M.Map CellId Port)
+_values = lens _.values _{values = _}
+
+_activeCellId :: LensP NotebookState (Maybe CellId)
+_activeCellId = lens _.activeCellId _{activeCellId = _}
+
+_editable :: LensP NotebookState Boolean
+_editable = lens _.editable _{editable = _}
+
+_name :: LensP NotebookState (These String String)
+_name = lens _.name _{name = _}
+
+_isAddingCell :: LensP NotebookState Boolean
+_isAddingCell = lens _.isAddingCell _{isAddingCell = _}
+
+_browserFeatures :: LensP NotebookState BrowserFeatures
+_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
+
 
 type CellDef =
   { id :: CellId
@@ -71,8 +100,8 @@ type CellDef =
 -- |
 -- | Takes the current notebook state, the type of cell to add, and an optional
 -- | parent cell ID.
-addCell :: NotebookState -> CellType -> Maybe CellId -> NotebookState
-addCell st cellType parent =
+addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
+addCell cellType parent st =
   let newId = CellId st.fresh
       ctor = case cellType of
         Markdown -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
@@ -89,8 +118,8 @@ addCell st cellType parent =
 -- | in the set of provided cells will also be removed.
 -- |
 -- | Takes the current notebook state and a set of IDs for the cells to remove.
-removeCells :: NotebookState -> S.Set CellId -> NotebookState
-removeCells st cellIds = st
+removeCells :: S.Set CellId -> NotebookState -> NotebookState
+removeCells cellIds st = st
     { cells = filter f st.cells
     , dependencies = M.fromList $ filter g $ M.toList st.dependencies
     }

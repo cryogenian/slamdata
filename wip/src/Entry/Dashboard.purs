@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Entry.Notebook where
+module Entry.Dashboard where
 
 import Prelude
 
-import Control.Monad.Aff (runAff)
+import Control.Monad.Aff (runAff, forkAff)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Exception (throwException)
 
@@ -27,13 +27,21 @@ import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 import Halogen (runUI, installedState)
 import Halogen.Util (appendToBody)
 
---import Notebook.Component (notebookComponent, initialNotebook)
---import Notebook.Effects (NotebookEffects())
+import Dashboard.Component (comp, initialState, toNotebook)
+import Dashboard.Routing (routeSignal)
+import Dashboard.Autosave (autoSaveSignal)
+import Notebook.Component (NotebookQuery(..))
+import Notebook.Effects (NotebookEffects())
 
-main :: Eff _ Unit
+import Debug.Trace
+
+main :: Eff NotebookEffects Unit
 main = do
-  pure unit
---  browserFeatures <- detectBrowserFeatures
---  runAff throwException (const (pure unit)) $ do
---    app <- runUI notebookComponent $ installedState initialNotebook
---    appendToBody app.node
+  browserFeatures <- detectBrowserFeatures
+  runAff throwException (const (pure unit)) $ do
+    app <- runUI comp $ installedState initialState
+    appendToBody app.node
+    traceAnyA browserFeatures
+    forkAff $ app.driver $ toNotebook $ SetBrowserFeatures browserFeatures
+    forkAff $ routeSignal app.driver
+    forkAff $ autoSaveSignal app.driver
