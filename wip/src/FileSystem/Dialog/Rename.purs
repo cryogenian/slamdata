@@ -24,28 +24,28 @@ import Control.Monad.Eff.Exception (message)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Free (Free())
 import Control.UI.Browser (reload)
+
 import Data.Array (elemIndex, singleton, sort)
 import Data.Either (Either(..), either)
 import Data.Functor (($>))
+import Data.Lens ((^.), (%~), (.~), (?~), (<>~), lens, LensP())
 import Data.Maybe (Maybe(..), isNothing, isJust, maybe)
 import Data.Monoid (mempty)
 import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
 import Data.String as S
 import Data.Void (Void())
-import FileSystem.Common (Slam())
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import Halogen.Component
+
+import Halogen
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
-import Halogen.HTML.Core (HTML())
-import Halogen.HTML.Elements as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
 import Halogen.HTML.Properties as P
-import Halogen.Query (action, modify, liftEff', liftAff', get, HalogenF())
 import Halogen.Themes.Bootstrap3 as B
+
+import FileSystem.Common (Slam())
+import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Model.Resource as R
-import Data.Lens ((^.), (%~), (.~), (?~), (<>~), lens, LensP(), _Just)
 import Quasar.Aff as API
 import Render.Common
 import Render.CssClasses as Rc
@@ -181,7 +181,7 @@ render dialog =
     ]
   ]
   where
-  nameInput :: HTML Void (Query Unit)
+  nameInput :: HTML Void Query
   nameInput =
     formGroup [ H.input [ P.classes [ B.formControl ]
                         , P.value (dialog ^. _name)
@@ -190,7 +190,7 @@ render dialog =
                         ]
               ]
 
-  dirDropdownField :: HTML Void (Query Unit)
+  dirDropdownField :: HTML Void Query
   dirDropdownField =
     H.div [ P.classes [ B.inputGroup ] ]
     [ H.input [ P.classes [ B.formControl ]
@@ -207,19 +207,19 @@ render dialog =
         [ H.span [ P.classes [ B.caret ] ] [ ] ]
       ]
     ]
-  dirDropdownList :: HTML Void (Query Unit)
+  dirDropdownList :: HTML Void Query
   dirDropdownList =
     H.ul [ P.classes $ [ B.listGroup, Rc.fileListGroup ]
            <> fadeWhen (not $ dialog ^. _showList) ]
     $ renameItem <$> dialog ^. _dirs
 
-  errorMessage :: HTML Void (Query Unit)
+  errorMessage :: HTML Void Query
   errorMessage =
     H.div [ P.classes $ [ B.alert, B.alertDanger ]
             <> fadeWhen (isNothing (dialog ^. _error)) ]
     $ maybe [ ] (pure <<< H.text) (dialog ^. _error)
 
-  renameItem :: R.Resource -> HTML Void (Query Unit)
+  renameItem :: R.Resource -> HTML Void Query
   renameItem res =
     H.button [ P.classes ([ B.listGroupItem ]
                           <> (if R.isHidden res

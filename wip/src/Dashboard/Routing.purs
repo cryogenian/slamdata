@@ -15,35 +15,35 @@ limitations under the License.
 -}
 
 module Dashboard.Routing
-       ( routing
-       , routeSignal
-       , Routes(..)
-       ) where
+  ( routing
+  , routeSignal
+  , Routes(..)
+  ) where
+
 import Prelude
 
-import Config (notebookExtension)
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Class (liftEff)
-import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
-import Dashboard.Component (QueryP(), toDashboard, toNotebook)
+
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
-import Data.Functor.Coproduct (left)
-import Data.Lens ((.~))
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.String.Regex (noFlags, regex, test, Regex())
 import Data.Tuple (Tuple(..))
-import Debug.Trace (traceAnyA)
-import Halogen (action, liftEff', liftH)
-import Halogen.Driver (Driver())
+
+import Halogen (Driver())
+
+import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
+
+import Config (notebookExtension)
+import Dashboard.Component (QueryP())
 import Model.Action (Action(..), string2action)
 import Model.Resource (Resource(..))
 import Notebook.Cell.CellId (CellId(), string2cellId)
-import Notebook.Component (NotebookQuery(..), initialNotebook)
 import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 import Routing (matchesAff')
 import Routing.Match (Match(), list, eitherMatch)
@@ -114,10 +114,6 @@ routing
 routeSignal :: Driver QueryP NotebookRawEffects -> Aff NotebookEffects Unit
 routeSignal driver = do
   Tuple oldRoute newRoute <- matchesAff' decodeURIPath routing
-  traceAnyA "OLD"
-  traceAnyA oldRoute
-  traceAnyA "NEW"
-  traceAnyA newRoute
   case newRoute of
     CellRoute res cellId editable -> notebook res editable $ Just cellId
     NotebookRoute res editable -> notebook res editable Nothing

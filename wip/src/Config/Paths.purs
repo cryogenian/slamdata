@@ -16,7 +16,6 @@ limitations under the License.
 
 module Config.Paths where
 
-import Config
 import Utils.Path
 import Data.Path.Pathy
 

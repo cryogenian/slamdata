@@ -18,25 +18,25 @@ module FileSystem.Install where
 
 import Prelude
 
-import Control.Monad.Eff (Eff())
 import Control.Monad.Free (Free())
+
 import Data.Either (Either())
 import Data.Function (on)
 import Data.Functor.Coproduct (Coproduct(), left, right)
 import Data.Generic (Generic, gEq, gCompare)
 import Data.Path.Pathy (printPath)
+
+import Halogen.Component
+import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot)
+import Halogen.Query (HalogenF(), action)
+
 import FileSystem.Breadcrumbs as Breadcrumbs
 import FileSystem.Common (Slam())
 import FileSystem.Dialog as Dialog
-import FileSystem.Effects
 import FileSystem.Items as Items
 import FileSystem.Query
 import FileSystem.Search as Search
 import FileSystem.State
-import Halogen.Component
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot)
-import Halogen.Query
-  (liftH, action, request, get, liftEff', modify, gets, HalogenF(), liftAff')
 import Utils.Path (DirPath())
 
 type ChildState =

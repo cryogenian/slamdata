@@ -21,30 +21,22 @@ module FileSystem.Items where
 
 import Prelude
 
-import Data.Array ((!!), zipWith, range, length, cons, sortBy, filter, nub)
+import Data.Array (zipWith, range, length, cons, sortBy, filter, nub)
 import Data.Foldable (for_)
-import Data.Function (on)
 import Data.Functor.Coproduct (Coproduct())
-import Data.Generic (Generic, gEq, gCompare)
-import Data.Maybe (maybe, Maybe(..))
+import Data.Generic (Generic)
+import Data.Lens ((.~), (%~), (^.), (<>~), lens, LensP())
+import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
+
+import Halogen
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
+import Halogen.Themes.Bootstrap3 as B
+
 import FileSystem.Common (Slam())
 import FileSystem.Item as Item
-import Halogen
-import Halogen.Component (RenderParent(), EvalParent(), Component(), parentComponent', ParentHTML())
-import Halogen.HTML as H
-import Halogen.HTML.CSS as CSS
-import Halogen.HTML.Elements as H
-import Halogen.HTML.Events as E
-import Halogen.HTML.Events.Forms as E
-import Halogen.HTML.Events.Handler as E
-import Halogen.HTML.Properties as P
-import Halogen.Query (liftH)
-import Halogen.Themes.Bootstrap3 as B
-import Halogen.Util (appendToBody)
 import Model.Item as Item
-import Model.Resource (Resource(..), resourcePath)
-import Data.Lens ((.~), (%~), (^.), (<>~), lens, LensP())
 import Render.CssClasses as Rc
 
 type StateRec =

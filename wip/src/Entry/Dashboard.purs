@@ -27,13 +27,10 @@ import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 import Halogen (runUI, installedState)
 import Halogen.Util (appendToBody, onLoad)
 
-import Dashboard.Component (comp, initialState, toNotebook)
+import Dashboard.Component (comp, initialState)
 import Dashboard.Routing (routeSignal)
 import Dashboard.Autosave (autoSaveSignal)
-import Notebook.Component (NotebookQuery(..))
 import Notebook.Effects (NotebookEffects())
-
-import Debug.Trace
 
 main :: Eff NotebookEffects Unit
 main = do

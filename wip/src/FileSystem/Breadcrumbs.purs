@@ -19,32 +19,27 @@ module FileSystem.Breadcrumbs where
 import Prelude
 
 import Data.Foldable (foldl)
-import Data.Function (on)
 import Data.Identity (Identity(..))
 import Data.List (List(..), reverse)
 import Data.Maybe (maybe, Maybe(..))
-import Data.Path.Pathy (rootDir, printPath, runDirName, dirName, parentDir)
-import FileSystem.Common (Slam())
-import Halogen.Component
+import Data.Path.Pathy (rootDir, runDirName, dirName, parentDir)
+
+import Halogen
 import Halogen.HTML as H
-import Halogen.HTML.Elements as H
-import Halogen.HTML.Events as E
-import Halogen.HTML.Events.Forms as E
-import Halogen.HTML.Events.Handler as E
 import Halogen.HTML.Properties as P
-import Halogen.Query (liftEff', modify)
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.HTML.Core (HTML(), ClassName())
+
+import FileSystem.Common (Slam())
 import Model.Common (browseURL)
-import Model.Salt (Salt(), runSalt)
-import Model.Sort (sort2string, Sort())
+import Model.Salt (Salt())
+import Model.Sort (Sort())
 import Utils.Path (DirPath())
 
-newtype State =
-  State { breadcrumbs :: List Breadcrumb
-        , sort :: Sort
-        , salt :: Salt
-        }
+type State =
+  { breadcrumbs :: List Breadcrumb
+  , sort :: Sort
+  , salt :: Salt
+  }
 
 type Breadcrumb =
   { name :: String
@@ -59,10 +54,10 @@ rootBreadcrumb =
 
 mkBreadcrumbs :: DirPath -> Sort -> Salt -> State
 mkBreadcrumbs path sort salt =
-  State { breadcrumbs: reverse $ go Nil path
-        , sort: sort
-        , salt: salt
-        }
+  { breadcrumbs: reverse $ go Nil path
+  , sort: sort
+  , salt: salt
+  }
   where
   go :: List Breadcrumb -> DirPath -> List Breadcrumb
   go result p =
@@ -79,18 +74,16 @@ comp :: Component State Query Slam
 comp = component render eval
 
 render :: State -> ComponentHTML Query
-render (State r) =
+render r =
   H.ol [ P.classes [ B.breadcrumb, B.colXs7 ] ]
-  $ foldl (\views model -> view r model <> views) [ ] r.breadcrumbs
+  $ foldl (\views model -> view model <> views) [ ] r.breadcrumbs
   where
-  view :: _ -> Breadcrumb -> Array (HTML _ _)
-  view r b =
-    [ H.li_ [ H.a [ P.href (browseURL Nothing
-                            r.sort
-                            r.salt
-                            b.link) ]
-              [ H.text b.name ]
-            ]
+  view b =
+    [ H.li_
+        [ H.a
+            [ P.href (browseURL Nothing r.sort r.salt b.link) ]
+            [ H.text b.name ]
+        ]
     ]
 
 eval :: Eval Query State Query Slam

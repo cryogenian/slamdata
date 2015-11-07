@@ -31,7 +31,6 @@ import Prelude
 
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (foldMap)
-import Data.Lens (LensP(), lens)
 import Data.List (List(), snoc, filter)
 import Data.Map as M
 import Data.Maybe (Maybe(..), maybe)

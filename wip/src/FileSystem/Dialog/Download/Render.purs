@@ -18,31 +18,30 @@ module FileSystem.Dialog.Download.Render (render) where
 
 import Prelude
 
-import Config.Paths as Config
 import Control.UI.Browser (encodeURIComponent)
-import Data.Either (Either(), either, isLeft, isRight)
+
+import Data.Either (either, isLeft, isRight)
 import Data.Functor (($>))
+import Data.Lens (LensP(), (^.), (.~))
 import Data.Maybe (isNothing, maybe, isJust)
-import Data.Path.Pathy (rootDir, printPath)
-import Data.Void (Void())
-import FileSystem.Dialog.Download.Query
-import FileSystem.Dialog.Download.State
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import Halogen.Component (ComponentHTML())
+import Data.Path.Pathy (printPath)
+
+import Halogen
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
-import Halogen.HTML.Core (HTML())
-import Halogen.HTML.Elements as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
 import Halogen.HTML.Properties as P
-import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
+
+import Config.Paths as Config
+import FileSystem.Dialog.Download.Query
+import FileSystem.Dialog.Download.State
+import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Model.Resource (Resource(..), isFile, resourcePath, isHidden)
-import Data.Lens ((^.), LensP(), (.~), (?~), (%~), (<>~), set, lens)
-import Render.Common (closeButton, fadeWhen)
-import Render.CssClasses as Rc
 import Quasar.Aff (reqHeadersToJSON)
+import Render.Common (fadeWhen)
+import Render.CssClasses as Rc
 
 
 render :: State -> ComponentHTML Query

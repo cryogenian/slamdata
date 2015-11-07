@@ -15,41 +15,42 @@ limitations under the License.
 -}
 
 module Dashboard.Component
-       ( comp
-       , toNotebook
-       , toDashboard
-       , QueryP()
-       , StateP()
-       , ChildState()
-       , ChildSlot()
-       , ChildQuery()
-       , DialogSlot()
-       , NotebookSlot()
-       , NavbarSlot()
-       , module Dashboard.Component.State
-       , module Dashboard.Component.Query
-       ) where
+  ( comp
+  , toNotebook
+  , toDashboard
+  , QueryP()
+  , StateP()
+  , ChildState()
+  , ChildSlot()
+  , ChildQuery()
+  , DialogSlot()
+  , NotebookSlot()
+  , NavbarSlot()
+  , module Dashboard.Component.State
+  , module Dashboard.Component.Query
+  ) where
 
 import Prelude
 
 import Control.Alt ((<|>))
-import Data.Maybe (fromMaybe)
-import Data.Functor.Coproduct
-import Data.Maybe (Maybe())
-import Dashboard.Navbar.Component as Navbar
-import Dashboard.Dialog.Component as Dialog
-import Notebook.Component as Notebook
-import Halogen
-import Data.Lens ((^.))
+
 import Data.Either (Either())
-import Notebook.Common (Slam())
-import Render.CssClasses as Rc
-import Halogen.HTML.Properties as P
+import Data.Functor.Coproduct
+import Data.Lens ((^.))
+import Data.Maybe (fromMaybe)
+
+import Halogen
+import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot, prjSlot, prjQuery)
 import Halogen.HTML as H
-import Halogen.Component.ChildPath
-  (ChildPath(), cpL, cpR, (:>), injSlot, prjSlot, prjQuery, injQuery)
+import Halogen.HTML.Properties as P
+
 import Dashboard.Component.Query
 import Dashboard.Component.State
+import Dashboard.Dialog.Component as Dialog
+import Dashboard.Navbar.Component as Navbar
+import Notebook.Common (Slam())
+import Notebook.Component as Notebook
+import Render.CssClasses as Rc
 
 type DialogSlot = Unit
 type NotebookSlot = Unit

@@ -18,29 +18,29 @@ module FileSystem.Dialog.Mount.Render (render) where
 
 import Prelude
 
-import Data.Array ((..), length, singleton)
-import Data.URI (printAbsoluteURI, runParseAbsoluteURI)
-import Data.Functor (($>))
 import Control.Alt ((<|>))
-import Data.Either (Either(..), either)
-import FileSystem.Dialog.Mount.Query
-import FileSystem.Dialog.Mount.State
-import Halogen.Query (action)
-import Halogen.Component (ComponentHTML())
-import Halogen.CustomProps as Cp
-import Data.Maybe (Maybe(..), isNothing, isJust, maybe)
-import Data.String.Regex as Rx
+
+import Data.Array ((..), length, singleton)
+import Data.Either (either)
 import Data.Foldable (all)
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import Data.Functor (($>))
+import Data.Lens ((^.), (.~), TraversalP())
+import Data.Lens.Index (ix)
+import Data.Maybe (Maybe(..), isNothing, maybe)
+import Data.String.Regex as Rx
+import Data.URI (printAbsoluteURI, runParseAbsoluteURI)
+
+import Halogen
+import Halogen.CustomProps as Cp
 import Halogen.HTML as H
-import Halogen.HTML.Core (HTML(), Prop())
-import Halogen.HTML.Elements as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
-import Data.Lens ((^.), (.~), LensP(), lens, (?~), TraversalP())
-import Data.Lens.Index (ix)
+
+import FileSystem.Dialog.Mount.Query
+import FileSystem.Dialog.Mount.State
+import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Render.Common (fadeWhen, closeButton)
 import Render.CssClasses as Rc
 
@@ -70,37 +70,41 @@ render state =
 
 progressSpinner :: State -> ComponentHTML Query
 progressSpinner state =
-  H.img [ P.src "img/spin.gif"
-        , P.class_ $ Rc.mountProgressSpinner state.inProgress
-        ]
+  H.img
+    [ P.src "img/spin.gif"
+    , P.class_ $ Rc.mountProgressSpinner state.inProgress
+    ]
 
 fldName :: State -> ComponentHTML Query
 fldName state =
-  H.div [ P.classes [B.formGroup, Rc.mountName] ]
-  [ label "Name" [ input state _name [] ] ]
+  H.div
+    [ P.classes [B.formGroup, Rc.mountName] ]
+    [ label "Name" [ input state _name [] ] ]
 
 fldConnectionURI :: State -> ComponentHTML Query
 fldConnectionURI state =
-  H.div [ P.classes [B.formGroup, Rc.mountURI] ]
-  [ label "URI"
-    [ H.input [ P.class_ B.formControl
-              , P.placeholder "Paste connection URI here"
-              , P.value (hidePassword state.connectionURI)
-              , Cp.mbKeyDown clearText
-              , Cp.mbKeyPress handleKeyInput
--- In Chrome, this is used to prevent multiple values being pasted in the
--- field - once pasted, the value is selected so that the new value replaces
--- it.
-              , Cp.onPaste (E.input (_.target >>> SelectElement))
-              , E.onValueInput (E.input UpdateConnectionURI)
-              ]
+  H.div
+    [ P.classes [B.formGroup, Rc.mountURI] ]
+    [ label "URI"
+        [ H.input
+            [ P.class_ B.formControl
+            , P.placeholder "Paste connection URI here"
+            , P.value (hidePassword state.connectionURI)
+            , Cp.mbKeyDown clearText
+            , Cp.mbKeyPress handleKeyInput
+            -- In Chrome, this is used to prevent multiple values being pasted in the
+            -- field - once pasted, the value is selected so that the new value replaces
+            -- it.
+            , Cp.onPaste (E.input (_.target >>> SelectElement))
+            , E.onValueInput (E.input UpdateConnectionURI)
+            ]
+        ]
     ]
-  ]
 
   where
 
   -- Delete the entire connection URI contents when backspace or delete is used.
-  clearText :: _ -> E.EventHandler (Maybe (Query Unit))
+  clearText :: E.Event E.KeyboardEvent -> E.EventHandler (Maybe (Query Unit))
   clearText e =
     if (e.keyCode == 8.0 || e.keyCode == 46.0)
     then E.preventDefault $> Just (action $ ClearValue e.target)
@@ -108,7 +112,7 @@ fldConnectionURI state =
 
   -- Ignore key inputs aside from Ctrl+V or Meta+V. When any other keypress is
   -- detected select the current contents instead.
-  handleKeyInput :: _ -> E.EventHandler (Maybe (Query Unit))
+  handleKeyInput :: E.Event E.KeyboardEvent -> E.EventHandler (Maybe (Query Unit))
   handleKeyInput e =
     if (e.ctrlKey || e.metaKey) && e.charCode == 118.0
     then pure Nothing
@@ -249,14 +253,18 @@ label text inner = H.label_ $ [ H.span_ [ H.text text ] ] ++ inner
 -- | A basic text input field that uses a lens to read from and update the
 -- | state.
 input :: forall p. State -> TraversalP State String
-                  -> Array (Prop (Query Unit)) -> HTML p (Query Unit)
+                  -> Array (Prop Query) -> HTML p Query
 input state lens = input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
 
 -- | A basic text input field that uses a lens to read from and update the
 -- | state, and allows for the input value to be modified.
-input' :: forall p e. (String -> String)
-                   -> State -> TraversalP State String
-                   -> Array (Prop (Query Unit)) -> HTML p (Query Unit)
+input'
+  :: forall p
+   . (String -> String)
+  -> State
+  -> TraversalP State String
+  -> Array (Prop Query)
+  -> HTML p Query
 input' f state lens attrs =
   H.input ([ P.class_ B.formControl
            , E.onValueInput (E.input \val -> ModifyState (lens .~ f val))

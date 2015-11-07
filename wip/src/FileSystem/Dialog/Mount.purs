@@ -15,43 +15,37 @@ limitations under the License.
 -}
 
 module FileSystem.Dialog.Mount
-       ( comp
-       , module FileSystem.Dialog.Mount.Query
-       , module FileSystem.Dialog.Mount.State
-       ) where
+  ( comp
+  , module FileSystem.Dialog.Mount.Query
+  , module FileSystem.Dialog.Mount.State
+  ) where
 
 import Prelude
 
-import Control.Alt ((<|>))
 import Control.Monad.Aff (attempt)
 import Control.Monad.Eff.Exception (message, Error())
-import Control.Monad.Free (liftF)
 import Control.UI.Browser (clearValue, select)
-import Data.Array (length, replicate, singleton, null, filter)
+
+import Data.Array (null, filter)
 import Data.Either (either, Either(..))
 import Data.Foldable (any)
 import Data.Foreign (parseJSON)
 import Data.Foreign.Class (readProp)
-import Data.Functor (($>))
-import Data.Functor.Coproduct (left, right)
-import Data.Int (toNumber)
-import Data.Maybe (Maybe(..), maybe, isNothing, isJust)
-import Data.Path.Pathy (rootDir, printPath, (</>), dir)
+import Data.Lens ((^.), (.~), (?~))
+import Data.Maybe (Maybe(..), isNothing, isJust)
+import Data.Path.Pathy ((</>), dir)
 import Data.String.Regex as Rx
-import Data.Tuple (Tuple(..))
 import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
+
+import Halogen
+
 import FileSystem.Common (Slam())
-import FileSystem.Dialog.Mount.State
 import FileSystem.Dialog.Mount.Query
 import FileSystem.Dialog.Mount.Render
-import Halogen.Component (Component(), Eval(), component, query)
-import Halogen.Query (action, liftEff', get, modify, liftAff', gets)
+import FileSystem.Dialog.Mount.State
 import Model.Resource as R
-import Data.Lens ((^.), (.~), LensP(), lens, (?~))
 import Quasar.Aff as API
-import Utils.Path
 import Utils.URI (toURI)
-
 
 comp :: Component State Query Slam
 comp = component render eval
@@ -110,10 +104,10 @@ eval (Save next) = do
             <> extractErrorMessage (message err)
 
   extractErrorMessage :: String -> String
-  extractErrorMessage msg =
-    case parseJSON msg >>= readProp "error" of
-      Left _ -> msg
-      Right msg' -> msg'
+  extractErrorMessage msg' =
+    case parseJSON msg' >>= readProp "error" of
+      Left _ -> msg'
+      Right msg'' -> msg''
 eval (ModifyState fn next) = do
   modify composed
   pure next
@@ -132,14 +126,14 @@ eval (ModifyState fn next) = do
     props = filter (not <<< isEmptyProp) d'.props
     connectionURI = mkURI d'.path d'.user d'.password hosts props
     validation = validate (fn d) hosts
-    mkURI path user password hosts props =
+    mkURI path user password hosts' props' =
       if any isValidHost hosts
       then toURI { path: nonEmpty path
                  , credentials: { user: _, password: _ }
                    <$> nonEmpty user
                    <*> nonEmpty password
-                 , hosts: (\h -> h {port = nonEmpty h.port}) <$> hosts
-                 , props: props
+                 , hosts: (\h -> h {port = nonEmpty h.port}) <$> hosts'
+                 , props: props'
                  }
       else ""
     isValidHost {host: host} = isJust $ nonEmpty host

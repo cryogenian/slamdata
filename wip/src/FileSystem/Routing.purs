@@ -15,60 +15,57 @@ limitations under the License.
 -}
 
 module FileSystem.Routing
-       ( Routes(..)
-       , routing
-       , routeSignal
-       ) where
+ ( Routes(..)
+ , routing
+ , routeSignal
+ ) where
 
 import Prelude
 
 import Control.Alt ((<|>))
-import Control.Monad.Aff
-  (Aff(), Canceler(), cancel, forkAff, launchAff, attempt, runAff, later')
-import Control.Monad.Aff.AVar
-  (makeVar', takeVar, putVar, modifyVar, AVar(), makeVar)
+import Control.Monad.Aff (Aff(), Canceler(), cancel, forkAff, attempt)
+import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar())
 import Control.Monad.Eff.Class (MonadEff, liftEff)
 import Control.Monad.Eff.Exception (error, message, Error())
-import Control.Monad.Trans (lift)
 import Control.MonadPlus (guard)
-import Control.UI.Browser (replaceLocation, encodeURIComponent)
+import Control.UI.Browser (replaceLocation)
+
 import Data.Array (filter, mapMaybe)
 import Data.Either (Either(..), either)
-import Data.Foldable (foldl, traverse_, for_)
+import Data.Foldable (foldl, traverse_)
 import Data.Functor (($>))
-import Data.Functor.Coproduct (left, right)
+import Data.Functor.Coproduct (left)
+import Data.Lens ((%~), (<>~), _1, _2)
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (mempty)
-import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir, printPath)
+import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 import Data.These (These(..))
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), snd, uncurry)
+import Data.Tuple (Tuple(..), uncurry)
+
+import Halogen.Driver (Driver())
+import Halogen.Query (action)
+
+import Text.SlamSearch (mkQuery)
+import Text.SlamSearch.Printer (strQuery)
+import Text.SlamSearch.Types (SearchQuery())
+
 import FileSystem
 import FileSystem.Dialog as Dialog
 import FileSystem.Effects
-import FileSystem.Item as Item
 import FileSystem.Items as Items
 import FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import FileSystem.Search as Search
-import Halogen.Component (ChildF(..))
-import Halogen.Component.ChildPath (injSlot)
-import Halogen.Driver (Driver())
-import Halogen.Query (action)
+import Model.Common (browseURL)
 import Model.Item (Item(..))
 import Model.Resource (Resource(..), getPath)
-import Model.Common (browseURL)
-import Model.Salt (Salt(..), newSalt, runSalt)
-import Model.Sort (Sort(..), string2sort, sort2string)
-import Data.Lens ((%~), (<>~), (.~), (?~), _1, _2)
+import Model.Salt (Salt(..), newSalt)
+import Model.Sort (Sort(..), string2sort)
 import Quasar.Aff (mountInfo, children)
 import Routing (matchesAff)
 import Routing.Match (Match(), eitherMatch)
 import Routing.Match.Class (param)
-import Text.SlamSearch (mkQuery)
-import Text.SlamSearch.Printer (strQuery)
-import Text.SlamSearch.Types (SearchQuery())
-import Utils.Path (AnyPath(), DirPath(), hidePath, renderPath)
+import Utils.Path (DirPath(), hidePath, renderPath)
 
 data Routes
   = Salted Sort SearchQuery Salt

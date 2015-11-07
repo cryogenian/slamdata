@@ -20,31 +20,29 @@ import Prelude
 
 import Control.Monad.Aff (Canceler(), Aff(), cancel, forkAff, later')
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (error, message)
+import Control.Monad.Eff.Exception (error)
 import Control.MonadPlus (guard)
 import Control.UI.Browser (setLocation)
+
 import Data.Either (Either(..))
-import Data.Generic (Generic, gEq, gCompare)
+import Data.Lens (lens, LensP(), (^.), (.~), (%~))
 import Data.Maybe (Maybe(..), isJust)
 import Data.Monoid (mempty)
 import Data.Path.Pathy (printPath, rootDir)
 import Data.These (theseLeft, thisOrBoth, theseRight, these, These(..))
-import FileSystem.Common (Slam())
-import FileSystem.Effects (FileSystemEffects())
-import Halogen.Component (Eval(), component, Component(), ComponentHTML())
+
+import Halogen (Component(), Eval(), ComponentHTML(), component, modify, get, liftAff')
 import Halogen.HTML as H
-import Halogen.HTML.Core (HTML(), ClassName())
-import Halogen.HTML.Elements as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
-import Halogen.HTML.Events.Handler as E
 import Halogen.HTML.Properties as P
-import Halogen.Query (liftEff', modify, get, liftAff')
 import Halogen.Themes.Bootstrap3 as B
+
+import FileSystem.Common (Slam())
+import FileSystem.Effects (FileSystemEffects())
 import Model.Common (browseURL)
 import Model.Salt (newSalt, Salt())
 import Model.Sort (Sort())
-import Data.Lens (lens, LensP(), (^.), (.~), (%~))
 import Render.Common
 import Render.CssClasses as Rc
 import Text.SlamSearch (mkQuery)
@@ -155,7 +153,7 @@ render state =
     ]
   ]
   where
-  searchClasses :: Array ClassName
+  searchClasses :: Array H.ClassName
   searchClasses =
     [ B.inputGroup, Rc.searchInput] <> do
       guard (not $ state ^. _valid)

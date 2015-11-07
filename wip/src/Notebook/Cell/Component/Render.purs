@@ -22,9 +22,8 @@ module Notebook.Cell.Component.Render
 
 import Prelude
 
-import Data.Array (catMaybes, null, length)
-import Data.Maybe (Maybe(..), isJust)
-import Data.String (indexOf)
+import Data.Array (catMaybes)
+import Data.Maybe (Maybe(..))
 
 import Halogen (ParentHTML())
 import Halogen.HTML.Events.Indexed as E
@@ -32,7 +31,7 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
-import Render.Common (fadeWhen, glyph, row')
+import Render.Common (glyph)
 import Render.CssClasses as CSS
 
 import Notebook.Cell.Component.Query (CellQuery(..), InnerCellQuery())
