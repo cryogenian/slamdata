@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Editor.Component.Query (MarkdownEvalQueryP()) where
+module Notebook.Cell.Markdown.Editor.Component.Query (MarkdownEditorQueryP()) where
 
 import Prelude
 
 import Data.Functor.Coproduct (Coproduct())
 
-import Halogen
+import Halogen (ChildF())
 
 import Ace.Halogen.Component (AceQuery())
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 
-type MarkdownEvalQueryP = Coproduct CellEvalQuery (ChildF Unit AceQuery)
+type MarkdownEditorQueryP = Coproduct CellEvalQuery (ChildF Unit AceQuery)

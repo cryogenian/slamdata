@@ -39,7 +39,7 @@ import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQ
 
 import Render.CssClasses as CSS
 
-import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, _MarkdownState, _MarkdownQuery)
+import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Markdown.Results.Component.Query
 import Notebook.Cell.Markdown.Results.Component.State
@@ -51,7 +51,7 @@ markdownResultsComponent config = makeResultsCellComponent
   { component: parentComponent render eval
   , initialState: installedState config
   , _State: _MarkdownState <<< E._Right
-  , _Query: _MarkdownQuery <<< C._Right <<< C._Right
+  , _Query: makeQueryPrism (_MarkdownQuery <<< C._Right)
   }
 
 render :: SlamDownConfig -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery Slam Unit

@@ -33,7 +33,6 @@ import Prelude
 import Data.Either (Either())
 import Data.Lens.Prism (PrismP())
 import Data.Lens.Prism.Either (_Left, _Right)
-import Data.Maybe (Maybe(..))
 import Data.Visibility (Visibility(..))
 
 import Halogen

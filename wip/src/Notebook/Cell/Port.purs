@@ -14,7 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Port (Port(..), _SlamDown) where
+module Notebook.Cell.Port
+  ( Port(..)
+  , _SlamDown
+  , _VarMap
+  ) where
 
 import Data.Lens (PrismP(), prism')
 import Data.Maybe (Maybe(..))
@@ -28,6 +32,11 @@ data Port
   | VarMap (StrMap FormFieldValue)
 
 _SlamDown :: PrismP Port SlamDown
-_SlamDown = prism' SlamDown \v -> case v of
-  SlamDown sd -> Just sd
+_SlamDown = prism' SlamDown \p -> case p of
+  SlamDown x -> Just x
+  _ -> Nothing
+
+_VarMap :: PrismP Port (StrMap FormFieldValue)
+_VarMap = prism' VarMap \p -> case p of
+  VarMap x -> Just x
   _ -> Nothing

@@ -14,7 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Component.Render (CellHTML(), header, statusBar) where
+module Notebook.Cell.Component.Render
+  ( CellHTML()
+  , header
+  , statusBar
+  ) where
 
 import Prelude
 

@@ -20,7 +20,7 @@ import Prelude
 
 import Data.Functor.Coproduct (Coproduct())
 
-import Halogen
+import Halogen (ChildF())
 
 import Text.Markdown.SlamDown.Html (SlamDownQuery())
 
