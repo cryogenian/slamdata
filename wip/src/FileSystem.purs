@@ -38,7 +38,8 @@ import Data.Either (Either(..), either)
 import Data.Foldable (traverse_)
 import Data.Functor.Coproduct (left, right)
 import Data.Inject (prj)
-import Data.Lens ((^.), (.~))
+import Data.Lens ((^.), (.~), preview)
+import Data.Lens.Prism.Coproduct (_Left, _Right)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Path.Pathy (rootDir, (</>), dir, file)
 import Data.String as S
@@ -267,8 +268,8 @@ mountPeek _ _ = pure unit
 itemsPeek :: forall a. ItemsSlot -> Items.QueryP a -> Algebra Unit
 itemsPeek s q =
   fromMaybe (pure unit)
-  $   (itemsPeek' s <$> prj q)
-  <|> (applyCF itemPeek <$> prj q)
+  $   (itemsPeek' s <$> preview _Left q)
+  <|> (applyCF itemPeek <$> preview _Right q)
 
 itemsPeek' :: forall a. ItemsSlot -> Items.Query a -> Algebra Unit
 itemsPeek' _ (Items.Add _ _) = resort

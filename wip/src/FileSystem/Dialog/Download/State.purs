@@ -21,14 +21,14 @@ import Prelude
 import Data.Array (findIndex)
 import Data.Either (Either(..), isLeft)
 import Data.Either.Unsafe as U
-import Data.Maybe (Maybe(..), fromMaybe, isJust)
+import Data.Lens (LensP(), lens, (^.), (?~), (.~))
+import Data.Maybe (Maybe(..), isJust)
 import Data.String as Str
 import Data.String.Regex as Rx
-import Model.Resource (Resource(..), isFile, resourceName, root, getPath)
-import Network.HTTP.RequestHeader (RequestHeader(..))
+
+import Model.Resource (Resource(..), resourceName, root, getPath)
 import Network.HTTP.MimeType (MimeType(..))
-import Data.Lens (LensP(), lens, (^.), (?~), (.~))
-import Utils.Path (encodeURIPath)
+import Network.HTTP.RequestHeader (RequestHeader(..))
 
 data OutputType = CSV | JSON
 
@@ -167,7 +167,7 @@ initialState res =
          , error: Nothing
          }
 
-_State :: LensP State _
+_State :: LensP State StateRec
 _State = lens (\(State obj) -> obj) (const State)
 
 _source :: LensP State (Either String Resource)
