@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.CellType (CellType(..)) where
+module Notebook.Cell.CellType (CellType(..), cellName, cellGlyph) where
+
+import Halogen.HTML (ClassName())
+import Halogen.Themes.Bootstrap3 as B
 
 data CellType
   = Explore
@@ -22,3 +25,17 @@ data CellType
   | Query
   | Search
   | Viz
+
+cellName :: CellType -> String
+cellName Explore = "Explore"
+cellName Markdown = "Markdown"
+cellName Query = "Query"
+cellName Search = "Search"
+cellName Viz = "Visualize"
+
+cellGlyph :: CellType -> ClassName
+cellGlyph Explore = B.glyphiconEyeOpen
+cellGlyph Markdown = B.glyphiconEdit
+cellGlyph Query = B.glyphiconHdd
+cellGlyph Search = B.glyphiconSearch
+cellGlyph Viz = B.glyphiconPicture

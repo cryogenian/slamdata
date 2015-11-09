@@ -14,7 +14,7 @@
     "tests"
   ],
   "dependencies": {
-    "purescript-ace-halogen": "^0.1.0",
+    "purescript-ace-halogen": "^0.2.0",
     "purescript-affjax": "^0.8.0",
     "purescript-argonaut": "^0.10.0",
     "purescript-css": "^0.4.0",
