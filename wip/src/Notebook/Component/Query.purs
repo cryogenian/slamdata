@@ -16,9 +16,16 @@ limitations under the License.
 
 module Notebook.Component.Query (NotebookQuery(..)) where
 
+import Data.Maybe (Maybe())
 import Notebook.Cell.CellType (CellType())
+import Model.Resource (Resource())
 
+
+-- | GetNameToSave returns name if it hasn't been saved.
+-- | If there is no need to saving notebook name returns `Nothing`
 data NotebookQuery a
   = AddCell CellType a
   | RunActiveCell a
   | ToggleAddCellMenu a
+  | LoadResource Resource a
+  | GetNameToSave (Maybe String -> a)

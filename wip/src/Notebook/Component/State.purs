@@ -31,6 +31,7 @@ import Prelude
 
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (foldMap)
+import Data.Lens (LensP(), lens)
 import Data.List (List(), snoc, filter)
 import Data.Map as M
 import Data.Maybe (Maybe(..), maybe)
@@ -78,7 +79,41 @@ type NotebookState =
   , name :: These String String
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
+  , viewingCell :: Maybe CellId
   }
+
+_fresh :: LensP NotebookState Int
+_fresh = lens _.fresh _{fresh = _}
+
+_accessType :: LensP NotebookState AccessType
+_accessType = lens _.accessType _{accessType = _}
+
+_cells :: LensP NotebookState (List CellDef)
+_cells = lens _.cells _{cells = _}
+
+_dependencies :: LensP NotebookState (M.Map CellId CellId)
+_dependencies = lens _.dependencies _{dependencies = _}
+
+_values :: LensP NotebookState (M.Map CellId Port)
+_values = lens _.values _{values = _}
+
+_activeCellId :: LensP NotebookState (Maybe CellId)
+_activeCellId = lens _.activeCellId _{activeCellId = _}
+
+_editable :: LensP NotebookState Boolean
+_editable = lens _.editable _{editable = _}
+
+_name :: LensP NotebookState (These String String)
+_name = lens _.name _{name = _}
+
+_isAddingCell :: LensP NotebookState Boolean
+_isAddingCell = lens _.isAddingCell _{isAddingCell = _}
+
+_browserFeatures :: LensP NotebookState BrowserFeatures
+_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
+
+_viewingCell :: LensP NotebookState (Maybe CellId)
+_viewingCell = lens _.viewingCell _{viewingCell = _}
 
 type CellDef =
   { id :: CellId
@@ -97,6 +132,7 @@ initialNotebook fs =
   , name: This Config.newNotebookName
   , isAddingCell: false
   , browserFeatures: fs
+  , viewingCell: Nothing
   }
 
 -- | Adds a new cell to the notebook.

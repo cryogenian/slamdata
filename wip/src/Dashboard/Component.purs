@@ -17,7 +17,9 @@ limitations under the License.
 module Dashboard.Component
   ( comp
   , toNotebook
+  , fromNotebook
   , toDashboard
+  , fromDashboard
   , QueryP()
   , StateP()
   , ChildState()
@@ -35,9 +37,10 @@ import Prelude
 import Control.Alt ((<|>))
 
 import Data.Either (Either())
-import Data.Functor.Coproduct
-import Data.Lens ((^.))
-import Data.Maybe (fromMaybe)
+import Data.Functor (($>))
+import Data.Functor.Coproduct (Coproduct(), left, right)
+import Data.Lens ((^.), (.~))
+import Data.Maybe (Maybe(), fromMaybe)
 
 import Halogen
 import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot, prjSlot, prjQuery)
@@ -89,9 +92,11 @@ cpNavbar :: ChildPath
 cpNavbar = cpR :> cpR
 
 toDashboard :: (Unit -> Query Unit) -> QueryP Unit
-toDashboard =
-  left
-  <<< action
+toDashboard = left <<< action
+
+fromDashboard
+  :: forall a. (forall i. (a -> i) -> Query i) -> QueryP a
+fromDashboard r = left $ request r
 
 
 toNotebook :: (Unit -> Notebook.NotebookQuery Unit) -> QueryP Unit
@@ -101,6 +106,17 @@ toNotebook =
   <<< left
   <<< left
   <<< action
+
+fromNotebook
+  :: forall a. (forall i. (a -> i) -> Notebook.NotebookQuery i) -> QueryP a
+fromNotebook r =
+  right
+  $ ChildF (injSlot cpNotebook unit)
+  $ right
+  $ left
+  $ left
+  $ request r
+
 
 
 type QueryP =
@@ -139,6 +155,9 @@ render state =
 
 eval :: Natural Query DashboardDSL
 eval (Save next) = pure next
+eval (GetPath continue) = map continue $ gets _.path
+eval (SetEditable bool next) = modify (_editable .~ bool) $> next
+eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> DashboardDSL Unit
 peek (ChildF p q) =

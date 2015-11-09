@@ -16,5 +16,13 @@ limitations under the License.
 
 module Dashboard.Component.Query where
 
+import Data.Maybe (Maybe())
+import Utils.Path (DirPath())
+import Notebook.Cell.CellId (CellId())
+
+
 data Query a
   = Save a
+  | GetPath (DirPath -> a)
+  | SetEditable Boolean a
+  | SetViewingCell (Maybe CellId) a

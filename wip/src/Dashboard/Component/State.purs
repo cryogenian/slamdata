@@ -19,32 +19,41 @@ module Dashboard.Component.State where
 import Prelude
 
 import Data.Lens (LensP(), lens)
+import Data.Maybe (Maybe(..))
 import Data.BrowserFeatures (BrowserFeatures())
+import Utils.Path (DirPath())
+import Data.Path.Pathy (rootDir)
+import Notebook.Cell.CellId (CellId())
 
-type StateRec =
+type State =
   { editable :: Boolean
   , browserFeatures :: BrowserFeatures
   , loaded :: Boolean
+  , path :: DirPath
+  , viewingCell :: Maybe CellId
   }
-
-newtype State = State StateRec
 
 initialState :: BrowserFeatures -> State
 initialState fs =
-  State { editable: true
-        , browserFeatures: fs
-        , loaded: false
-        }
+  { editable: true
+  , browserFeatures: fs
+  , loaded: false
+  , path: rootDir
+  , viewingCell: Nothing
+  }
 
-
-_State :: LensP State StateRec
-_State = lens (\(State obj) -> obj) (const State)
 
 _editable :: LensP State Boolean
-_editable = _State <<< lens _.editable _{editable = _}
+_editable = lens _.editable _{editable = _}
 
 _browserFeatures :: LensP State BrowserFeatures
-_browserFeatures = _State <<< lens _.browserFeatures _{browserFeatures = _}
+_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
 _loaded :: LensP State Boolean
-_loaded = _State <<< lens _.loaded _{loaded = _}
+_loaded = lens _.loaded _{loaded = _}
+
+_path :: LensP State DirPath
+_path = lens _.path _{path = _}
+
+_viewingCell :: LensP State (Maybe CellId)
+_viewingCell = lens _.viewingCell _{viewingCell = _}
