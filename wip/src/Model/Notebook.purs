@@ -19,11 +19,14 @@ module Model.Notebook where
 import Prelude
 
 import Control.Alt ((<|>))
+import Data.Argonaut
+  ( Json(), (:=), (~>), (.?), DecodeJson, EncodeJson
+  , decodeJson, printJson, encodeJson)
 import Data.Either (Either(Left))
-import Data.Argonaut (Json(), (:=), (~>), (.?), DecodeJson, EncodeJson, decodeJson)
 import Data.Map (Map(), empty)
 import Model.CellId
 import Model.CellType
+import Network.HTTP.Affjax.Request (Requestable, toRequest)
 
 
 -- | `cellType` and `cellId` characterize what is this cell and where is it
@@ -73,18 +76,13 @@ instance encodeJsonNotebookModel :: EncodeJson Notebook where
     =  "cells" := r.cells
     ~> "dependencies" := r.dependencies
 
--- | We use this little hack in `FileSystem` to make new notebook
--- | w/o any knoledge about this model or `Notebook` app.
 instance decodeJsonNotebookModel :: DecodeJson Notebook where
-  decodeJson json =
-    (do obj <- decodeJson json
-        nbType <- obj .? "type"
-        if nbType == "new"
-          then pure emptyNotebook
-          else Left "this notebook is not new")
-    <|>
-    (do obj <- decodeJson json
-        r <- { cells: _, dependencies: _ }
-             <$> (obj .? "cells")
-             <*> (obj .? "dependencies")
-        pure $ Notebook r)
+  decodeJson json = do
+    obj <- decodeJson json
+    r <- { cells: _, dependencies: _ }
+         <$> (obj .? "cells")
+         <*> (obj .? "dependencies")
+    pure $ Notebook r
+
+instance requestableNotebook :: Requestable Notebook where
+  toRequest notebook = toRequest (printJson (encodeJson notebook) :: String)
