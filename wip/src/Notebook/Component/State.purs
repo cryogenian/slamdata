@@ -44,10 +44,11 @@ import Halogen
 
 import Notebook.AccessType (AccessType(..))
 import Notebook.Cell.Ace.Component (aceComponent)
-import Notebook.Cell.CellId (CellId(..), runCellId)
+import Notebook.Cell.CellId (CellId(..))
 import Notebook.Cell.CellType (CellType(..))
 import Notebook.Cell.Component
 import Notebook.Cell.Markdown.Component (markdownComponent)
+import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.Cell.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
@@ -88,7 +89,7 @@ type CellDef =
 initialNotebook :: BrowserFeatures -> NotebookState
 initialNotebook fs =
   { fresh: 0
-  , accessType: ReadOnly
+  , accessType: Editable
   , cells: mempty
   , dependencies: M.empty
   , values: M.empty
@@ -108,13 +109,11 @@ addCell cellType parent st =
   let editorId = CellId st.fresh
       resultsId = CellId $ st.fresh + 1
       editor = case cellType of
-        -- Markdown -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
-        _ -> { component: aceComponent
+        _ -> { component: aceComponent Markdown markdownEval "ace/mode/markdown"
              , initialState: installedState (initEditorCellState st.accessType Visible)
              }
       results = case cellType of
-        -- Markdown -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
-        _ -> { component: markdownComponent { formName: "cell-" ++ (show $ runCellId resultsId), browserFeatures: st.browserFeatures }
+        _ -> { component: markdownComponent resultsId st.browserFeatures
              , initialState: installedState (initResultsCellState st.accessType Visible)
              }
       dependencies = M.insert resultsId editorId st.dependencies

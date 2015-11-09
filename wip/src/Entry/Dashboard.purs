@@ -27,6 +27,8 @@ import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 import Halogen (runUI, installedState)
 import Halogen.Util (appendToBody, onLoad)
 
+import Ace.Config as AceConfig
+
 import Dashboard.Component (comp, initialState)
 import Dashboard.Routing (routeSignal)
 import Dashboard.Autosave (autoSaveSignal)
@@ -34,6 +36,7 @@ import Notebook.Effects (NotebookEffects())
 
 main :: Eff NotebookEffects Unit
 main = do
+  AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
   browserFeatures <- detectBrowserFeatures
   runAff throwException (const (pure unit)) $ do
     app <- runUI comp $ installedState $ initialState browserFeatures

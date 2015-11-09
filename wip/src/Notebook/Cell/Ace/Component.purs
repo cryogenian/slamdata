@@ -22,51 +22,56 @@ module Notebook.Cell.Ace.Component
 
 import Prelude
 
+import Control.Monad.Eff.Class (liftEff)
+
 import Data.Maybe (Maybe(..), fromMaybe)
 
 import Halogen
-import Halogen.HTML.CSS.Indexed as P
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
-import Halogen.Themes.Bootstrap3 as B
 
-import Css.Size (px)
-import Css.Geometry (height)
-
+import Ace.Types (Editor())
+import Ace.Editor as Editor
+import Ace.EditSession as Session
 import Ace.Halogen.Component (AceQuery(..), AceState(), aceConstructor)
-import Text.Markdown.SlamDown.Parser (parseMd)
 
 import Render.CssClasses as CSS
 
-import Notebook.Cell.Component.State
-import Notebook.Cell.Component.Query
 import Notebook.Cell.Ace.Component.Query
 import Notebook.Cell.Ace.Component.State
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
-import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism)
-import Notebook.Cell.Port (Port(..))
+import Notebook.Cell.CellType (CellType(..), cellName, cellGlyph)
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
+import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism, _AceState, _AceQuery)
 import Notebook.Common (Slam())
 
-aceComponent :: Component CellStateP CellQueryP Slam
-aceComponent = makeEditorCellComponent
-  { name: "Markdown"
-  , glyph: B.glyphiconEdit
+aceComponent :: CellType -> (String -> CellEvalResult) -> String -> Component CellStateP CellQueryP Slam
+aceComponent cellType run mode = makeEditorCellComponent
+  { name: cellName cellType
+  , glyph: cellGlyph cellType
   , component: parentComponent render eval
   , initialState: installedState unit
   , _State: _AceState
   , _Query: makeQueryPrism _AceQuery
   }
 
-render :: Unit -> ParentHTML AceState CellEvalQuery AceQuery Slam Unit
-render _ =
-  H.div
-    [ P.class_ CSS.aceContainer, P.style (height (px 160.0)) ]
-    [ H.Slot (aceConstructor unit Nothing) ]
+  where
 
-eval :: Natural CellEvalQuery (ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit)
-eval (EvalCell _ k) = do
-  content <- fromMaybe "" <$> query unit (request GetText)
-  pure $ k
-    { output: Just $ SlamDown (parseMd content)
-    , messages: []
-    }
+  render :: Unit -> ParentHTML AceState CellEvalQuery AceQuery Slam Unit
+  render _ =
+    H.div
+      [ P.classes [CSS.cellInput, CSS.aceContainer] ]
+      [ H.Slot (aceConstructor aceSetup unit Nothing) ]
+
+  aceSetup :: Editor -> Slam Unit
+  aceSetup editor = liftEff do
+    Editor.setMinLines 4 editor
+    Editor.setMaxLines 10000 editor
+    Editor.setAutoScrollEditorIntoView true editor
+    Editor.setTheme "ace/theme/chrome" editor
+    session <- Editor.getSession editor
+    Session.setMode mode session
+
+  eval :: Natural CellEvalQuery (ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit)
+  eval (EvalCell _ k) = do
+    content <- fromMaybe "" <$> query unit (request GetText)
+    pure $ k (run content)

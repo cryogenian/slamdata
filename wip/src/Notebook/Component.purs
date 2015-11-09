@@ -44,7 +44,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
-import Notebook.Cell.CellType (CellType(..))
+import Notebook.Cell.CellType (CellType(..), cellName, cellGlyph)
 import Notebook.Cell.Component (CellQuery(..), CellQueryP(), CellStateP())
 import Notebook.Cell.Port (Port(..))
 import Notebook.CellSlot (CellSlot(..), CellId())
@@ -89,23 +89,22 @@ newCellMenu state =
                 else B.glyphiconPlus
             ]
         ]
-    , insertMenuItem "Query" Query B.glyphiconHdd
-    , insertMenuItem "Markdown" Markdown B.glyphiconEdit
-    , insertMenuItem "Explore" Explore B.glyphiconEyeOpen
-    , insertMenuItem "Search" Search B.glyphiconSearch
+    , insertMenuItem Query
+    , insertMenuItem Markdown
+    , insertMenuItem Explore
+    , insertMenuItem Search
     ]
   where
-  insertMenuItem :: String -> CellType -> H.ClassName -> NotebookHTML
-  insertMenuItem title cellType cls =
+  insertMenuItem :: CellType -> NotebookHTML
+  insertMenuItem cellType =
     H.li_
       [ H.button
-          [ P.title title
+          [ P.title (cellName cellType)
           , E.onClick $ E.input_ (AddCell cellType)
           , P.classes (fadeWhen $ not (state.isAddingCell))
           ]
-          [ glyph cls ]
+          [ glyph (cellGlyph cellType) ]
       ]
-
 
 eval :: Natural NotebookQuery NotebookDSL
 eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next

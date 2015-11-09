@@ -24,6 +24,7 @@ import Prelude
 
 import Control.Bind ((=<<))
 
+import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..))
 import Data.Lens (preview)
 import Data.Maybe (Maybe(..))
@@ -37,6 +38,7 @@ import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQ
 
 import Render.CssClasses as CSS
 
+import Notebook.Cell.CellId (CellId(), runCellId)
 import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Markdown.Component.Query
@@ -44,13 +46,19 @@ import Notebook.Cell.Markdown.Component.State
 import Notebook.Cell.Port (Port(..), _SlamDown)
 import Notebook.Common (Slam())
 
-markdownComponent :: SlamDownConfig -> Component CellStateP CellQueryP Slam
-markdownComponent config = makeResultsCellComponent
+markdownComponent :: CellId -> BrowserFeatures -> Component CellStateP CellQueryP Slam
+markdownComponent cellId browserFeatures = makeResultsCellComponent
   { component: parentComponent render eval
   , initialState: installedState config
   , _State: _MarkdownState
   , _Query: makeQueryPrism _MarkdownQuery
   }
+  where
+  config :: SlamDownConfig
+  config =
+    { formName: "cell-" ++ show (runCellId cellId)
+    , browserFeatures: browserFeatures
+    }
 
 render :: SlamDownConfig -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery Slam Unit
 render config =
