@@ -14,12 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.State (MarkdownState()) where
+module Notebook.Cell.Ace.Component.Query (AceQueryP()) where
 
-import Data.Either (Either())
+import Prelude
 
-import Notebook.Cell.Markdown.Editor.Component.State (MarkdownEditorStateP())
-import Notebook.Cell.Markdown.Results.Component.State (MarkdownResultsStateP())
+import Data.Functor.Coproduct (Coproduct())
 
-type MarkdownState = Either MarkdownEditorStateP MarkdownResultsStateP
+import Halogen (ChildF())
 
+import Ace.Halogen.Component (AceQuery())
+
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+
+type AceQueryP = Coproduct CellEvalQuery (ChildF Unit AceQuery)
