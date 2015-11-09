@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Editor.Component.State (MarkdownEditorStateP()) where
+module Notebook.Cell.Ace.Component.State (AceStateP()) where
 
 import Prelude
 
@@ -25,4 +25,4 @@ import Ace.Halogen.Component (AceQuery(), AceState())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Common (Slam())
 
-type MarkdownEditorStateP = InstalledState Unit AceState CellEvalQuery AceQuery Slam Unit
+type AceStateP = InstalledState Unit AceState CellEvalQuery AceQuery Slam Unit

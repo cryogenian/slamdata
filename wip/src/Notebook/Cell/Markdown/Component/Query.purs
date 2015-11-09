@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Results.Component.Query (MarkdownResultsQueryP()) where
+module Notebook.Cell.Markdown.Component.Query (MarkdownQueryP()) where
 
 import Prelude
 
@@ -26,4 +26,4 @@ import Text.Markdown.SlamDown.Html (SlamDownQuery())
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 
-type MarkdownResultsQueryP = Coproduct CellEvalQuery (ChildF Unit SlamDownQuery)
+type MarkdownQueryP = Coproduct CellEvalQuery (ChildF Unit SlamDownQuery)

@@ -14,11 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Query (MarkdownQuery()) where
+module Notebook.Cell.Markdown.Component.State (MarkdownStateP()) where
 
-import Data.Functor.Coproduct (Coproduct())
+import Prelude
 
-import Notebook.Cell.Markdown.Editor.Component.Query (MarkdownEditorQueryP())
-import Notebook.Cell.Markdown.Results.Component.Query (MarkdownResultsQueryP())
+import Halogen (InstalledState())
 
-type MarkdownQuery = Coproduct MarkdownEditorQueryP MarkdownResultsQueryP
+import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQuery())
+
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import Notebook.Common (Slam())
+
+type MarkdownStateP = InstalledState SlamDownConfig SlamDownState CellEvalQuery SlamDownQuery Slam Unit

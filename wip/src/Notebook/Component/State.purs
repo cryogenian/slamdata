@@ -43,11 +43,11 @@ import Data.Visibility (Visibility(..))
 import Halogen
 
 import Notebook.AccessType (AccessType(..))
+import Notebook.Cell.Ace.Component (aceComponent)
 import Notebook.Cell.CellId (CellId(..), runCellId)
 import Notebook.Cell.CellType (CellType(..))
 import Notebook.Cell.Component
-import Notebook.Cell.Markdown.Editor.Component (markdownEditorComponent)
-import Notebook.Cell.Markdown.Results.Component (markdownResultsComponent)
+import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
@@ -109,12 +109,12 @@ addCell cellType parent st =
       resultsId = CellId $ st.fresh + 1
       editor = case cellType of
         -- Markdown -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
-        _ -> { component: markdownEditorComponent
+        _ -> { component: aceComponent
              , initialState: installedState (initEditorCellState st.accessType Visible)
              }
       results = case cellType of
         -- Markdown -> { component: markdownComponent newId st.browserFeatures, initialState: installedState initCellState }
-        _ -> { component: markdownResultsComponent { formName: "cell-" ++ (show $ runCellId resultsId), browserFeatures: st.browserFeatures }
+        _ -> { component: markdownComponent { formName: "cell-" ++ (show $ runCellId resultsId), browserFeatures: st.browserFeatures }
              , initialState: installedState (initResultsCellState st.accessType Visible)
              }
       dependencies = M.insert resultsId editorId st.dependencies
