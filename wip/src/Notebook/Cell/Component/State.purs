@@ -21,6 +21,7 @@ module Notebook.Cell.Component.State
   , initResultsCellState
   , isRunning
   , AnyCellState()
+  , _AceState
   , _ExploreState
   , _MarkdownState
   , _QueryState
@@ -31,16 +32,17 @@ module Notebook.Cell.Component.State
 import Prelude
 
 import Data.Either (Either())
-import Data.Lens.Prism (PrismP())
-import Data.Lens.Prism.Either (_Left, _Right)
+import Data.Lens.Prism (PrismP(), prism')
+import Data.Maybe (Maybe(..))
 import Data.Visibility (Visibility(..))
 
-import Halogen
+import Halogen (InstalledState())
 
 import Notebook.AccessType (AccessType())
+import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.State
-import Notebook.Cell.Markdown.State
+import Notebook.Cell.Markdown.Component.State
 import Notebook.Cell.Query.State
 import Notebook.Cell.Search.State
 import Notebook.Cell.Viz.State
@@ -98,19 +100,40 @@ initResultsCellState accessType visibility =
 isRunning :: CellState -> Boolean
 isRunning _ = false
 
-type AnyCellState = Either ExploreState (Either MarkdownState (Either QueryState (Either SearchState VizState)))
+data AnyCellState
+  = AceState AceStateP
+  | ExploreState ExploreState
+  | MarkdownState MarkdownStateP
+  | QueryState QueryState
+  | SearchState SearchState
+  | VizState VizState
+
+_AceState :: PrismP AnyCellState AceStateP
+_AceState = prism' AceState \s -> case s of
+  AceState s' -> Just s'
+  _ -> Nothing
 
 _ExploreState :: PrismP AnyCellState ExploreState
-_ExploreState = _Left
+_ExploreState = prism' ExploreState \s -> case s of
+  ExploreState s' -> Just s'
+  _ -> Nothing
 
-_MarkdownState :: PrismP AnyCellState MarkdownState
-_MarkdownState = _Right <<< _Left
+_MarkdownState :: PrismP AnyCellState MarkdownStateP
+_MarkdownState = prism' MarkdownState \s -> case s of
+  MarkdownState s' -> Just s'
+  _ -> Nothing
 
 _QueryState :: PrismP AnyCellState QueryState
-_QueryState = _Right <<< _Right <<< _Left
+_QueryState = prism' QueryState \s -> case s of
+  QueryState s' -> Just s'
+  _ -> Nothing
 
 _SearchState :: PrismP AnyCellState SearchState
-_SearchState = _Right <<< _Right <<< _Right <<< _Left
+_SearchState = prism' SearchState \s -> case s of
+  SearchState s' -> Just s'
+  _ -> Nothing
 
 _VizState :: PrismP AnyCellState VizState
-_VizState = _Right <<< _Right <<< _Right <<< _Right
+_VizState = prism' VizState \s -> case s of
+  VizState s' -> Just s'
+  _ -> Nothing

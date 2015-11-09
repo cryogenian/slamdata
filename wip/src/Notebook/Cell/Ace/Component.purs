@@ -14,16 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Editor.Component
-  ( markdownEditorComponent
-  , module Notebook.Cell.Markdown.Editor.Component.Query
-  , module Notebook.Cell.Markdown.Editor.Component.State
+module Notebook.Cell.Ace.Component
+  ( aceComponent
+  , module Notebook.Cell.Ace.Component.Query
+  , module Notebook.Cell.Ace.Component.State
   ) where
 
 import Prelude
 
-import Data.Lens.Prism.Coproduct as C
-import Data.Lens.Prism.Either as E
 import Data.Maybe (Maybe(..), fromMaybe)
 
 import Halogen
@@ -40,21 +38,23 @@ import Text.Markdown.SlamDown.Parser (parseMd)
 
 import Render.CssClasses as CSS
 
+import Notebook.Cell.Component.State
+import Notebook.Cell.Component.Query
+import Notebook.Cell.Ace.Component.Query
+import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
-import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
-import Notebook.Cell.Markdown.Editor.Component.Query
-import Notebook.Cell.Markdown.Editor.Component.State
+import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism)
 import Notebook.Cell.Port (Port(..))
 import Notebook.Common (Slam())
 
-markdownEditorComponent :: Component CellStateP CellQueryP Slam
-markdownEditorComponent = makeEditorCellComponent
+aceComponent :: Component CellStateP CellQueryP Slam
+aceComponent = makeEditorCellComponent
   { name: "Markdown"
   , glyph: B.glyphiconEdit
   , component: parentComponent render eval
   , initialState: installedState unit
-  , _State: _MarkdownState <<< E._Left
-  , _Query: makeQueryPrism (_MarkdownQuery <<< C._Left)
+  , _State: _AceState
+  , _Query: makeQueryPrism _AceQuery
   }
 
 render :: Unit -> ParentHTML AceState CellEvalQuery AceQuery Slam Unit

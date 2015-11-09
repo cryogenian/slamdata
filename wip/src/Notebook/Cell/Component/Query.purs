@@ -17,8 +17,9 @@ limitations under the License.
 module Notebook.Cell.Component.Query
   ( CellQuery(..)
   , CellQueryP()
-  , AnyCellQuery()
   , InnerCellQuery()
+  , AnyCellQuery()
+  , _AceQuery
   , _ExploreQuery
   , _MarkdownQuery
   , _QueryQuery
@@ -29,16 +30,16 @@ module Notebook.Cell.Component.Query
 import Prelude
 
 import Data.Functor.Coproduct (Coproduct())
-import Data.Lens (PrismP())
-import Data.Lens.Prism.Coproduct (_Left, _Right)
-import Data.Maybe (Maybe())
+import Data.Lens (PrismP(), prism')
+import Data.Maybe (Maybe(..))
 
 import Halogen (ChildF())
 
 import Model.CellType (CellType())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import Notebook.Cell.Ace.Component.Query (AceQueryP())
 import Notebook.Cell.Explore.Component.Query (ExploreQuery())
-import Notebook.Cell.Markdown.Query (MarkdownQuery())
+import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
 import Notebook.Cell.Port (Port())
 import Notebook.Cell.Query.Component.Query (QueryQuery())
 import Notebook.Cell.Search.Component.Query (SearchQuery())
@@ -59,6 +60,8 @@ import Notebook.Cell.Viz.Component.Query (VizQuery())
 -- |   the current cell.
 -- | - `ToggleEditor` is used to toggle the visibility of the editor
 -- |   part of the cell.
+-- | - `ToggleEditor` is used to toggle the visibility of the status/error
+-- |   messages generated while evaluating the cell.
 -- | - `ShareCell` is captured by the notebook and should raise a dialog with a
 -- |   share/embed message appropriate for the cell.
 data CellQuery a
@@ -73,20 +76,42 @@ data CellQuery a
 
 type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
 
-type AnyCellQuery = Coproduct ExploreQuery (Coproduct MarkdownQuery (Coproduct QueryQuery (Coproduct SearchQuery VizQuery)))
 type InnerCellQuery = Coproduct CellEvalQuery AnyCellQuery
 
-_ExploreQuery :: forall a. PrismP (AnyCellQuery a) (ExploreQuery a)
-_ExploreQuery = _Left
+data AnyCellQuery a
+  = AceQuery (AceQueryP a)
+  | ExploreQuery (ExploreQuery a)
+  | MarkdownQuery (MarkdownQueryP a)
+  | QueryQuery (QueryQuery a)
+  | SearchQuery (SearchQuery a)
+  | VizQuery (VizQuery a)
 
-_MarkdownQuery :: forall a. PrismP (AnyCellQuery a) (MarkdownQuery a)
-_MarkdownQuery = _Right <<< _Left
+_AceQuery :: forall a. PrismP (AnyCellQuery a) (AceQueryP a)
+_AceQuery = prism' AceQuery \q -> case q of
+  AceQuery q' -> Just q'
+  _ -> Nothing
+
+_ExploreQuery :: forall a. PrismP (AnyCellQuery a) (ExploreQuery a)
+_ExploreQuery = prism' ExploreQuery \q -> case q of
+  ExploreQuery q' -> Just q'
+  _ -> Nothing
+
+_MarkdownQuery :: forall a. PrismP (AnyCellQuery a) (MarkdownQueryP a)
+_MarkdownQuery = prism' MarkdownQuery \q -> case q of
+  MarkdownQuery q' -> Just q'
+  _ -> Nothing
 
 _QueryQuery :: forall a. PrismP (AnyCellQuery a) (QueryQuery a)
-_QueryQuery = _Right <<< _Right <<< _Left
+_QueryQuery = prism' QueryQuery \q -> case q of
+  QueryQuery q' -> Just q'
+  _ -> Nothing
 
 _SearchQuery :: forall a. PrismP (AnyCellQuery a) (SearchQuery a)
-_SearchQuery = _Right <<< _Right <<< _Right <<< _Left
+_SearchQuery = prism' SearchQuery \q -> case q of
+  SearchQuery q' -> Just q'
+  _ -> Nothing
 
 _VizQuery :: forall a. PrismP (AnyCellQuery a) (VizQuery a)
-_VizQuery = _Right <<< _Right <<< _Right <<< _Right
+_VizQuery = prism' VizQuery \q -> case q of
+  VizQuery q' -> Just q'
+  _ -> Nothing

@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Results.Component
-  ( markdownResultsComponent
-  , module Notebook.Cell.Markdown.Results.Component.Query
-  , module Notebook.Cell.Markdown.Results.Component.State
+module Notebook.Cell.Markdown.Component
+  ( markdownComponent
+  , module Notebook.Cell.Markdown.Component.Query
+  , module Notebook.Cell.Markdown.Component.State
   ) where
 
 import Prelude
@@ -26,8 +26,6 @@ import Control.Bind ((=<<))
 
 import Data.Either (Either(..))
 import Data.Lens (preview)
-import Data.Lens.Prism.Coproduct as C
-import Data.Lens.Prism.Either as E
 import Data.Maybe (Maybe(..))
 import Data.StrMap as SM
 
@@ -41,17 +39,17 @@ import Render.CssClasses as CSS
 
 import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
-import Notebook.Cell.Markdown.Results.Component.Query
-import Notebook.Cell.Markdown.Results.Component.State
+import Notebook.Cell.Markdown.Component.Query
+import Notebook.Cell.Markdown.Component.State
 import Notebook.Cell.Port (Port(..), _SlamDown)
 import Notebook.Common (Slam())
 
-markdownResultsComponent :: SlamDownConfig -> Component CellStateP CellQueryP Slam
-markdownResultsComponent config = makeResultsCellComponent
+markdownComponent :: SlamDownConfig -> Component CellStateP CellQueryP Slam
+markdownComponent config = makeResultsCellComponent
   { component: parentComponent render eval
   , initialState: installedState config
-  , _State: _MarkdownState <<< E._Right
-  , _Query: makeQueryPrism (_MarkdownQuery <<< C._Right)
+  , _State: _MarkdownState
+  , _Query: makeQueryPrism _MarkdownQuery
   }
 
 render :: SlamDownConfig -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery Slam Unit
