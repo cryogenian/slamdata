@@ -20,13 +20,13 @@ import Prelude
 
 import Data.Functor (($>))
 import Data.Maybe (Maybe(..))
+
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
-import Halogen.HTML.Core as H
-import Halogen.HTML.Elements as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
+
 import Render.Common (classedDiv)
 
 modalDialog :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)

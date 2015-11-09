@@ -22,15 +22,15 @@ module FileSystem.Routing.Search
 import Prelude
 
 import Data.Foldable (foldMap)
-import Data.List (List(..), singleton)
+import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Maybe.First (First(..), runFirst)
 import Data.Minimatch as MM
 import Data.String as Str
 import Data.String.Regex as Rgx
+
 import Model.Resource as M
 import Text.SlamSearch as S
-import Text.SlamSearch.Printer as S
 import Text.SlamSearch.Types as S
 
 isSearchQuery :: S.SearchQuery -> Boolean

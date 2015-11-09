@@ -21,7 +21,6 @@ import Prelude
 import Notebook.Common (Slam())
 import Halogen
 import Halogen.HTML as H
-import Halogen.HTML.Elements as H
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties as P
 
