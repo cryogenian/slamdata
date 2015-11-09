@@ -157,7 +157,11 @@ eval :: Natural Query DashboardDSL
 eval (Save next) = pure next
 eval (GetPath continue) = map continue $ gets _.path
 eval (SetEditable bool next) = modify (_editable .~ bool) $> next
-eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
+eval (SetViewingCell mbcid next) = do
+  modify (_viewingCell .~ mbcid)
+  query' cpNotebook unit
+    $ left $ action $ Notebook.SetViewingCell mbcid
+  pure next
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> DashboardDSL Unit
 peek (ChildF p q) =

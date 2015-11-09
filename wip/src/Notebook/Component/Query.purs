@@ -19,7 +19,7 @@ module Notebook.Component.Query (NotebookQuery(..)) where
 import Data.Maybe (Maybe())
 import Notebook.Cell.CellType (CellType())
 import Model.Resource (Resource())
-
+import Notebook.Cell.CellId (CellId())
 
 -- | GetNameToSave returns name if it hasn't been saved.
 -- | If there is no need to saving notebook name returns `Nothing`
@@ -29,3 +29,4 @@ data NotebookQuery a
   | ToggleAddCellMenu a
   | LoadResource Resource a
   | GetNameToSave (Maybe String -> a)
+  | SetViewingCell (Maybe CellId) a

@@ -25,6 +25,17 @@ module Notebook.Component.State
   , findChildren
   , findDescendants
   , getCurrentValue
+  , _fresh
+  , _accessType
+  , _cells
+  , _dependencies
+  , _values
+  , _activeCellId
+  , _editable
+  , _name
+  , _isAddingCell
+  , _browserFeatures
+  , _viewingCell
   ) where
 
 import Prelude
@@ -106,14 +117,14 @@ _editable = lens _.editable _{editable = _}
 _name :: LensP NotebookState (These String String)
 _name = lens _.name _{name = _}
 
-_isAddingCell :: LensP NotebookState Boolean
-_isAddingCell = lens _.isAddingCell _{isAddingCell = _}
-
 _browserFeatures :: LensP NotebookState BrowserFeatures
 _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
 _viewingCell :: LensP NotebookState (Maybe CellId)
 _viewingCell = lens _.viewingCell _{viewingCell = _}
+
+_isAddingCell :: LensP NotebookState Boolean
+_isAddingCell = lens _.isAddingCell _{isAddingCell = _}
 
 type CellDef =
   { id :: CellId
