@@ -19,27 +19,26 @@ module FileSystem.Render where
 import Prelude
 
 import Control.MonadPlus (guard)
-import Css.Geometry (marginLeft)
-import Css.Size
-import Css.String
+
 import Data.Functor (($>))
-import FileSystem.Query
-import FileSystem.State
+import Data.Lens ((^.))
+
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
-import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Core (HTML(), ClassName())
-import Halogen.HTML.Elements as H
+import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events as E
-import Halogen.HTML.Events.Forms as E
-import Halogen.HTML.Events.Handler as E
 import Halogen.HTML.Properties as P
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
-import Model.Sort (Sort(..))
-import Data.Lens ((^.))
-import Render.CssClasses as Rc
 
+import Css.Geometry (marginLeft)
+import Css.Size
+
+import FileSystem.Query
+import FileSystem.State
+import Model.Sort (Sort(..))
+import Render.CssClasses as Rc
 
 sorting :: forall a. State -> HTML a (Query Unit)
 sorting state =

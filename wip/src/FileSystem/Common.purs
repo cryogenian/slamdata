@@ -18,19 +18,14 @@ module FileSystem.Common where
 
 import Prelude
 
-import Config as Config
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff (Eff())
 import Control.Monad.Free (Free())
-import Control.UI.Browser (encodeURIComponent)
-import Data.Maybe (fromMaybe, Maybe())
-import Data.Path.Pathy (printPath)
-import FileSystem.Effects
+
 import Halogen.Component (QueryF())
 import Halogen.Query (liftH, HalogenF(), liftEff', liftAff')
-import Model.Salt (Salt(), runSalt)
-import Model.Sort (Sort(), sort2string)
-import Utils.Path (DirPath())
+
+import FileSystem.Effects
 
 -- | Target of Halogen DSL compilation
 type Slam = Aff FileSystemEffects

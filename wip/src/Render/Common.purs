@@ -17,19 +17,21 @@ limitations under the License.
 module Render.Common where
 
 import Prelude
+
 import Data.Array (singleton)
 import Data.Char (fromCharCode)
-import Data.Maybe (Maybe(), fromMaybe, maybe)
+import Data.Maybe (Maybe(), maybe)
 import Data.String (fromChar)
+
+import Halogen.HTML as H
 import Halogen.HTML.Core (HTML(), ClassName())
-import qualified Config as Config
-import qualified Halogen.HTML.Properties as P
-import qualified Halogen.HTML.Events as E
-import qualified Halogen.HTML as H
-import qualified Halogen.HTML.Elements as H
-import qualified Halogen.Themes.Bootstrap3 as B
-import qualified Halogen.HTML.Events.Types as ET
-import qualified Render.CssClasses as Rc
+import Halogen.HTML.Events as E
+import Halogen.HTML.Events.Types as ET
+import Halogen.HTML.Properties as P
+import Halogen.Themes.Bootstrap3 as B
+
+import Config as Config
+import Render.CssClasses as Rc
 
 navbar :: forall p f. Array (HTML p f) -> HTML p f
 navbar = H.nav [ P.class_ B.clearfix ]
