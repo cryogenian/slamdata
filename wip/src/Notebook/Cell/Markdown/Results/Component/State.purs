@@ -18,9 +18,7 @@ module Notebook.Cell.Markdown.Results.Component.State (MarkdownResultsStateP()) 
 
 import Prelude
 
-import Data.Functor.Coproduct (Coproduct())
-
-import Halogen
+import Halogen (InstalledState())
 
 import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQuery())
 

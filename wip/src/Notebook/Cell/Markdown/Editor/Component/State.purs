@@ -18,7 +18,7 @@ module Notebook.Cell.Markdown.Editor.Component.State (MarkdownEditorStateP()) wh
 
 import Prelude
 
-import Halogen
+import Halogen (InstalledState())
 
 import Ace.Halogen.Component (AceQuery(), AceState())
 

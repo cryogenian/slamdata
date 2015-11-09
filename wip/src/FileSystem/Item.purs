@@ -20,40 +20,32 @@ import Prelude
 
 import Control.Monad.Aff (attempt)
 import Control.MonadPlus (guard)
-import Css.Geometry (marginBottom)
-import Css.Size (px)
-import Css.String
+
 import Data.Array (singleton)
 import Data.Either (Either(..))
 import Data.Functor (($>))
-import Data.Generic (Generic, gEq, gCompare)
+import Data.Lens (LensP(), (^.), lens, (%~), (.~), (?~))
 import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
-import Data.Path.Pathy (printPath)
-import FileSystem.Common (Slam())
-import FileSystem.Effects (FileSystemEffects())
+
 import Halogen.Component (Component(), Eval(), ComponentHTML(), component)
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
-import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Core (HTML(), ClassName(), Prop())
-import Halogen.HTML.Elements as H
+import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events as E
-import Halogen.HTML.Events.Forms as E
-import Halogen.HTML.Events.Handler as E
 import Halogen.HTML.Properties as P
 import Halogen.Query (action, modify, gets, liftAff')
 import Halogen.Themes.Bootstrap3 as B
-import Model.Action (Action(Edit), printAction)
-import Model.Common (browseURL)
+
+import Css.Geometry (marginBottom)
+import Css.Size (px)
+
+import FileSystem.Common (Slam())
 import Model.Item (Item(..), itemResource)
-import Model.Resource  (Resource(..), resourceName, resourcePath, isDatabase, isFile, isNotebook, hiddenTopLevel, root, sortResource)
-import Model.Salt (Salt(..))
-import Model.Sort (Sort(..))
-import Data.Lens (LensP(), (^.), lens, (%~), (.~), (?~))
+import Model.Resource  (Resource(..), resourceName, resourcePath, isDatabase, isFile, isNotebook, hiddenTopLevel, root)
 import Quasar.Aff as API
 import Render.CssClasses as Rc
-import Utils.Path (DirPath(), encodeURIPath)
 
 type StateRec =
   { item :: Item

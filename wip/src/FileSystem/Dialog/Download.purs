@@ -23,26 +23,24 @@ module FileSystem.Dialog.Download
 import Prelude
 
 import Control.UI.Browser (newTab)
-import Data.Array (findIndex, sort)
+
+import Data.Array (sort)
 import Data.Either (Either(..), either)
-import Data.Maybe (Maybe(..), isJust, isNothing, maybe)
+import Data.Lens ((.~), (%~), (<>~), _Left, _Right)
+import Data.Maybe (isJust, maybe)
 import Data.String as Str
+
+import Halogen
+
 import FileSystem.Common (Slam())
-import FileSystem.Dialog.Download.State
 import FileSystem.Dialog.Download.Query
 import FileSystem.Dialog.Download.Render
-import Halogen.Component
-import Halogen.Query (action, modify, liftEff')
-import Halogen.Themes.Bootstrap3 as B
+import FileSystem.Dialog.Download.State
 import Model.Resource (Resource(..), resourceName)
-import Data.Lens ((^.), LensP(), (.~), (?~), (%~), (<>~), set, lens, _Left, _Right)
-import Render.CssClasses as Rc
 import Utils.Path (parseAnyPath)
-
 
 comp :: Component State Query Slam
 comp = component render eval
-
 
 eval :: Eval Query State Query Slam
 eval (SourceTyped s next) = do
@@ -88,7 +86,6 @@ eval (NewTab url next) = do
   pure next
 eval (Dismiss next) =
   pure next
-
 eval (SetSources srcs next) = do
   modify (_sources .~ srcs)
   modify (_sources %~ sort)

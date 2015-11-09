@@ -41,7 +41,7 @@ import Text.Markdown.SlamDown.Parser (parseMd)
 import Render.CssClasses as CSS
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
-import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, _MarkdownState, _MarkdownQuery)
+import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Markdown.Editor.Component.Query
 import Notebook.Cell.Markdown.Editor.Component.State
 import Notebook.Cell.Port (Port(..))
@@ -54,7 +54,7 @@ markdownEditorComponent = makeEditorCellComponent
   , component: parentComponent render eval
   , initialState: installedState unit
   , _State: _MarkdownState <<< E._Left
-  , _Query: _MarkdownQuery <<< C._Left <<< C._Right
+  , _Query: makeQueryPrism (_MarkdownQuery <<< C._Left)
   }
 
 render :: Unit -> ParentHTML AceState CellEvalQuery AceQuery Slam Unit

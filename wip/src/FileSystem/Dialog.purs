@@ -20,35 +20,30 @@ import Prelude
 
 import Control.Alt ((<|>))
 import Control.Bind (join)
-import Control.Monad.Free (Free())
+
 import Data.Array (singleton)
 import Data.Either (Either(..))
 import Data.Function (on)
 import Data.Functor.Coproduct (Coproduct(..))
 import Data.Maybe (Maybe(..), isNothing, maybe, fromMaybe, isJust)
 import Data.Path.Pathy (printPath)
+
+import Halogen.Component
+import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), prjQuery, prjSlot)
+import Halogen.HTML as H
+import Halogen.HTML.Events as E
+import Halogen.HTML.Properties as P
+import Halogen.Query (request, modify)
+import Halogen.Themes.Bootstrap3 as B
+
 import FileSystem.Common (Slam())
 import FileSystem.Dialog.Download as Download
 import FileSystem.Dialog.Error as Error
 import FileSystem.Dialog.Mount as Mount
 import FileSystem.Dialog.Rename as Rename
 import FileSystem.Dialog.Share as Share
-import Halogen.Component
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), prjQuery, prjSlot)
-import Halogen.HTML as H
-import Halogen.HTML.CSS as CSS
-import Halogen.HTML.CSS as CSS
-import Halogen.HTML.Elements as H
-import Halogen.HTML.Events as E
-import Halogen.HTML.Events.Forms as E
-import Halogen.HTML.Events.Handler as E
-import Halogen.HTML.Properties as P
-import Halogen.Query
-  (liftH, action, request, get, liftEff', modify, gets, HalogenF(), liftH)
-import Halogen.Themes.Bootstrap3 as B
 import Model.Resource (Resource())
 import Render.Common (fadeWhen)
-import Render.CssClasses as Rc
 import Utils.Path (DirPath())
 
 

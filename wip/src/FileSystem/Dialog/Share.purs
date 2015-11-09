@@ -20,19 +20,20 @@ import Prelude
 
 import Control.UI.Browser (select)
 import Control.UI.ZClipboard as Z
-import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
+
 import Data.Generic (Generic, gEq, gCompare)
-import FileSystem.Common (Slam())
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import Halogen.Component
+
+import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
+
+import Halogen
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
-import Halogen.HTML.Core as H
-import Halogen.HTML.Elements as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
-import Halogen.Query (liftEff', action, liftAff')
 import Halogen.Themes.Bootstrap3 as B
+
+import FileSystem.Common (Slam())
+import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Utils.DOM (waitLoaded)
 
 newtype State = State String

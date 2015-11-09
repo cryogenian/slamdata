@@ -15,17 +15,18 @@ limitations under the License.
 -}
 
 module Notebook.Cell.CellId
-       ( CellId(..)
-       , string2cellId
-       , runCellId
-       ) where
+  ( CellId(..)
+  , string2cellId
+  , runCellId
+  ) where
 
 import Prelude
-import Data.Either (Either(..))
-import Data.Maybe (maybe)
-import Utils (stringToInt)
 
+import Data.Either (Either(..))
 import Data.Generic (Generic, gEq, gCompare)
+import Data.Maybe (maybe)
+
+import Utils (stringToInt)
 
 -- | The slot address value for cells and identifier within the notebook graph.
 newtype CellId = CellId Int

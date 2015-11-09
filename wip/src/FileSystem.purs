@@ -25,65 +25,58 @@ import Prelude
 
 import Control.Alt ((<|>))
 import Control.Bind (join)
-import Control.Monad.Aff (Aff(), attempt)
-import Control.Monad.Eff (Eff())
+import Control.Monad.Aff (attempt)
 import Control.Monad.Eff.Class (liftEff, MonadEff)
 import Control.Monad.Eff.Exception (error, message)
 import Control.Monad.Error.Class (throwError)
-import Control.UI.Browser
-  (replaceLocation, setLocation, locationString, select, newTab, clearValue, reload)
+import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-import Data.Array (sort, head, last, mapMaybe, filter)
+
+import Data.Array (head, last, mapMaybe, filter)
 import Data.Either (Either(..), either)
 import Data.Foldable (traverse_)
-import Data.Functor.Coproduct (Coproduct(), left, right)
+import Data.Functor.Coproduct (left, right)
 import Data.Inject (prj)
+import Data.Lens ((^.), (.~))
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Path.Pathy (rootDir, printPath, (</>), dir, file)
+import Data.Path.Pathy (rootDir, (</>), dir, file)
 import Data.String as S
-import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
+import Data.URI (runParseAbsoluteURI)
+
+import Halogen.Component
+import Halogen.Component.ChildPath (injSlot, prjSlot, prjQuery, injQuery)
+import Halogen.Component.Utils (applyCF)
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
+import Halogen.Query (action, request, get, modify, gets)
+import Halogen.Themes.Bootstrap3 as B
+
 import FileSystem.Breadcrumbs as Breadcrumbs
-import FileSystem.Install
 import FileSystem.Common (Slam(), forceRerender', liftAff'', liftEff'')
 import FileSystem.Dialog as Dialog
 import FileSystem.Dialog.Download as Download
 import FileSystem.Dialog.Mount as Mount
 import FileSystem.Dialog.Rename as Rename
-import FileSystem.Effects
+import FileSystem.Install
 import FileSystem.Item as Item
 import FileSystem.Items as Items
+import FileSystem.Query
 import FileSystem.Render
 import FileSystem.Search as Search
 import FileSystem.State
-import FileSystem.Query
-import Halogen.Component
-import Halogen.Component.ChildPath
-  (ChildPath(), cpL, cpR, (:>), injSlot, prjSlot, prjQuery, injQuery)
-import Halogen.Component.Utils (applyCF)
-import Halogen.CustomProps as Cp
-import Halogen.HTML as H
-import Halogen.HTML.Core (HTML(), ClassName())
-import Halogen.HTML.Elements as H
-import Halogen.HTML.Events as E
-import Halogen.HTML.Events.Forms as E
-import Halogen.HTML.Events.Handler as E
-import Halogen.HTML.Properties as P
-import Halogen.Query (action, request, get, modify, gets)
-import Halogen.Themes.Bootstrap3 as B
 import Model.Action (Action(..))
 import Model.Common (browseURL)
-import Model.Item (Item(..), itemResource, itemURL, sortItem, openItem, sortItem)
+import Model.Item (Item(..), itemResource, itemURL, openItem, sortItem)
 import Model.Resource as R
-import Model.Salt (Salt(..), newSalt)
-import Model.Sort (Sort(..), notSort)
+import Model.Salt (newSalt)
+import Model.Sort (notSort)
 import Network.HTTP.MimeType.Common (textCSV)
-import Data.Lens ((^.), LensP(), lens, (.~))
 import Quasar.Aff as API
 import Render.Common
 import Render.CssClasses as Rc
 import Utils.DOM as D
-import Utils.Path (DirPath(), encodeURIPath)
+import Utils.Path (DirPath())
 
 comp :: Component StateP QueryP Slam
 comp = parentComponent' render eval peek

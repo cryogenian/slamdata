@@ -28,9 +28,9 @@ import Control.Bind ((=<<), join)
 import Control.Monad.Free (liftF)
 
 import Data.Functor (($>))
-import Data.Functor.Coproduct (coproduct, left, right)
+import Data.Functor.Coproduct (left)
 import Data.Lens (PrismP(), review, preview, clonePrism)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (maybe)
 import Data.Visibility (Visibility(..), toggleVisibility)
 
 import Halogen
@@ -52,7 +52,7 @@ import Notebook.Common (Slam())
 -- | Constructs a cell component for an editor-style cell.
 makeEditorCellComponent
   :: forall s f
-   . EditorDef s f
+   . EditorCellDef s f
   -> Component CellStateP CellQueryP Slam
 makeEditorCellComponent def = makeCellComponentPart def render
   where
@@ -73,7 +73,7 @@ makeEditorCellComponent def = makeCellComponentPart def render
 -- | Constructs a cell component for an results-style cell.
 makeResultsCellComponent
   :: forall s f
-   . ResultsDef s f
+   . ResultsCellDef s f
   -> Component CellStateP CellQueryP Slam
 makeResultsCellComponent def = makeCellComponentPart def render
   where
@@ -101,7 +101,7 @@ containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
 -- | a render function.
 makeCellComponentPart
   :: forall s f r
-   . Object (CellProps s f r)
+   . Object (CellDefProps s f r)
   -> (Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML)
   -> Component CellStateP CellQueryP Slam
 makeCellComponentPart def render =
@@ -111,16 +111,11 @@ makeCellComponentPart def render =
   _State :: PrismP AnyCellState s
   _State = clonePrism def._State
 
-  _Query :: forall a. PrismP (AnyCellQuery a) (f a)
+  _Query :: forall a. PrismP (InnerCellQuery a) (f a)
   _Query = clonePrism def._Query
 
   component :: Component AnyCellState InnerCellQuery Slam
-  component = transform
-    (review _State)
-    (preview _State)
-    (coproduct right (left <<< review _Query))
-    (coproduct (map right <<< preview _Query) (Just <<< left))
-    def.component
+  component = transform (review _State) (preview _State) (review _Query) (preview _Query) def.component
 
   initialState :: AnyCellState
   initialState = review _State def.initialState
@@ -128,7 +123,7 @@ makeCellComponentPart def render =
   eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit)
   eval (RunCell next) = pure next
   eval (UpdateCell input k) =
-    maybe (liftF HaltHF) (pure <<< k <<< _.output) =<< query unit (right (request (EvalCell input)))
+    maybe (liftF HaltHF) (pure <<< k <<< _.output) =<< query unit (left (request (EvalCell input)))
   eval (RefreshCell next) = pure next
   eval (TrashCell next) = pure next
   eval (CreateChildCell _ next) = pure next

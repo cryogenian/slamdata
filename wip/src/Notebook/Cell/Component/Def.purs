@@ -15,16 +15,18 @@ limitations under the License.
 -}
 
 module Notebook.Cell.Component.Def
-  ( EditorDef()
-  , ResultsDef()
-  , CellProps()
+  ( EditorCellDef()
+  , ResultsCellDef()
+  , CellDefProps()
+  , makeQueryPrism
+  , makeQueryPrism'
   ) where
 
 import Prelude
 
-import Data.Functor.Coproduct (Coproduct())
-import Data.Generic (Generic, gEq, gCompare)
-import Data.Lens (APrismP())
+import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
+import Data.Maybe (Maybe(..))
+import Data.Lens (APrismP(), PrismP(), prism', review, preview)
 
 import Halogen (Component())
 import Halogen.HTML.Indexed as H
@@ -34,18 +36,58 @@ import Notebook.Cell.Component.Query (AnyCellQuery())
 import Notebook.Cell.Component.State (AnyCellState())
 import Notebook.Common (Slam())
 
-type CellProps s f r =
-  ( component :: Component s (Coproduct CellEvalQuery f) Slam
+-- | The type for the definition of an editor cell component.
+type EditorCellDef s f =
+  { name :: String
+  , glyph :: H.ClassName
+  | CellDefProps s f ()
+  }
+
+-- | The type for the definition of an results component.
+type ResultsCellDef s f = Object (CellDefProps s f ())
+
+-- | The properties required by both types of cell definition.
+type CellDefProps s f r =
+  ( component :: Component s f Slam
   , initialState :: s
   , _State :: APrismP AnyCellState s
-  , _Query :: forall a. APrismP (AnyCellQuery a) (f a)
+  , _Query :: forall a. APrismP (Coproduct CellEvalQuery AnyCellQuery a) (f a)
   | r
   )
 
-type EditorDef s f =
-  { name :: String
-  , glyph :: H.ClassName
-  | CellProps s f ()
-  }
+-- | Makes a prism for `_Query` for cell components with a query algebra of the
+-- | form `Coproduct CellEvalQuery f`.
+-- |
+-- | This applies to two types of cell components:
+-- |
+-- | 1. Parent components where the parent uses `CellEvalQuery` directly, in
+-- |    which case `f` will be some `ChildF`.
+-- | 2. Self contained components with an enriched query algebra, where `f`
+-- |    will be the component's own internal algebra.
+makeQueryPrism
+  :: forall a f
+   . PrismP (AnyCellQuery a) (Coproduct CellEvalQuery f a)
+  -> PrismP (Coproduct CellEvalQuery AnyCellQuery a) (Coproduct CellEvalQuery f a)
+makeQueryPrism base = prism' to fro
+  where
+  to :: Coproduct CellEvalQuery f a -> Coproduct CellEvalQuery AnyCellQuery a
+  to = coproduct left (right <<< review base <<< right)
+  fro :: Coproduct CellEvalQuery AnyCellQuery a -> Maybe (Coproduct CellEvalQuery f a)
+  fro = coproduct (Just <<< left) (preview base)
 
-type ResultsDef s f = Object (CellProps s f ())
+-- | Makes a prism for `_Query` for cell components with a query algebra of the
+-- | form `Coproduct (Coproduct CellEvalQuery f) g`.
+-- |
+-- | This will occurs when a cell component is a parent component and also has
+-- | an enriched query algebra, where `f` is the component's internal query
+-- | algebra and `g` will be some `ChildF`.
+makeQueryPrism'
+  :: forall a f g
+   . PrismP (AnyCellQuery a) (Coproduct (Coproduct CellEvalQuery f) g a)
+  -> PrismP (Coproduct CellEvalQuery AnyCellQuery a) (Coproduct (Coproduct CellEvalQuery f) g a)
+makeQueryPrism' base = prism' to fro
+  where
+  to :: Coproduct (Coproduct CellEvalQuery f) g a -> Coproduct CellEvalQuery AnyCellQuery a
+  to = coproduct (coproduct left (right <<< review base <<< left <<< right)) (right <<< review base <<< right)
+  fro :: Coproduct CellEvalQuery AnyCellQuery a -> Maybe (Coproduct (Coproduct CellEvalQuery f) g a)
+  fro = coproduct (Just <<< left <<< left) (preview base)

@@ -31,7 +31,6 @@ import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
-import Data.Lens ((%~), (.~))
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
@@ -112,8 +111,7 @@ eval :: Natural NotebookQuery NotebookDSL
 eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
 eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
-eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
-eval (SetBrowserFeatures fs next) = modify (_browserFeatures .~ fs) $> next
+eval (ToggleAddCellMenu next) = modify (\st -> st { isAddingCell = not st.isAddingCell }) $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF slot q) = coproduct (peekCell slot) (const (pure unit)) q

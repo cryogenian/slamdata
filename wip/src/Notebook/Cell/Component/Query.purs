@@ -39,7 +39,7 @@ import Notebook.Cell.CellType (CellType())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Cell.Explore.Component.Query (ExploreQuery())
 import Notebook.Cell.Markdown.Query (MarkdownQuery())
-import Notebook.Cell.Port
+import Notebook.Cell.Port (Port())
 import Notebook.Cell.Query.Component.Query (QueryQuery())
 import Notebook.Cell.Search.Component.Query (SearchQuery())
 import Notebook.Cell.Viz.Component.Query (VizQuery())
@@ -74,7 +74,7 @@ data CellQuery a
 type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
 
 type AnyCellQuery = Coproduct ExploreQuery (Coproduct MarkdownQuery (Coproduct QueryQuery (Coproduct SearchQuery VizQuery)))
-type InnerCellQuery = Coproduct AnyCellQuery CellEvalQuery
+type InnerCellQuery = Coproduct CellEvalQuery AnyCellQuery
 
 _ExploreQuery :: forall a. PrismP (AnyCellQuery a) (ExploreQuery a)
 _ExploreQuery = _Left

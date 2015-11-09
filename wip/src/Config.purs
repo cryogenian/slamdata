@@ -18,7 +18,6 @@ module Config where
 
 import Prelude ((<>))
 
-
 baseUrl :: String
 baseUrl = ""
 

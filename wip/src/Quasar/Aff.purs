@@ -18,9 +18,6 @@ module Quasar.Aff where
 
 import Prelude
 
-import Config as Config
-import Config.Paths as Config
-import Control.Apply ((*>))
 import Control.Bind ((>=>))
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.AVar (AVAR())
@@ -28,48 +25,29 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Error.Class (throwError)
+
 import Data.Argonaut.Combinators ((~>), (:=))
-import Data.Argonaut.Core (Json(), JAssoc(), jsonEmptyObject)
+import Data.Argonaut.Core (Json(), jsonEmptyObject)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Array (head, tail, (:), findIndex)
 import Data.Bifunctor (bimap)
-import Data.Date (nowEpochMilliseconds, now, Now())
+import Data.Date (nowEpochMilliseconds, Now())
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl)
-import Data.Foreign (F(), Foreign(), parseJSON)
+import Data.Foreign (F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
+import Data.Lens ((.~), (^.))
 import Data.Maybe (Maybe(..), isJust, fromMaybe, maybe)
-import Data.Path.Pathy
-  (Path(),
-   Abs(),
-   Sandboxed(),
-   rootDir,
-   relativeTo,
-   (</>),
-   printPath,
-   dir,
-   file,
-   peel,
-   DirName(..),
-   FileName(..))
-import Utils.Path
-  (DirPath(),
-   FilePath(),
-   AnyPath(),
-   rootify,
-   rootifyFile,
-   (<./>),
-   dropNotebookExt,
-   encodeURIPath)
-import Model.Resource as R
+import Data.Path.Pathy (Path(), Abs(), Sandboxed(), rootDir, relativeTo, (</>), printPath, dir, file, peel, DirName(..), FileName(..))
 import Data.String as S
-import Data.These (These(..))
 import Data.Time (Milliseconds(..))
 import Data.Tuple (Tuple(..))
-import Network.HTTP.Affjax
-  (Affjax(), AJAX(), URL(), AffjaxRequest(), RetryPolicy(), defaultRequest, affjax, retry, defaultRetryPolicy)
-import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
+
+import Config as Config
+import Config.Paths as Config
+import Model.Resource as R
+import Network.HTTP.Affjax (Affjax(), AJAX(), AffjaxRequest(), AffjaxResponse(), RetryPolicy(), defaultRequest, affjax, retry, defaultRetryPolicy)
 import Network.HTTP.Affjax.Request (Requestable)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
 import Network.HTTP.Method (Method(..))
@@ -77,7 +55,7 @@ import Network.HTTP.MimeType (MimeType(..), mimeTypeToString)
 import Network.HTTP.MimeType.Common (applicationJSON)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
-import Data.Lens ((.~), (^.))
+import Utils.Path (DirPath(), FilePath(), AnyPath(), rootify, rootifyFile, (<./>), encodeURIPath)
 
 newtype Listing = Listing (Array R.Resource)
 
@@ -118,16 +96,13 @@ makeFile path mime content =
   msg :: String
   msg = "error while creating file"
 
-  err :: _ -> Aff _ _
-  err _ = throwError $ error "file has incorrect format"
-
   firstLine :: Maybe String
   firstLine = head $ S.split "\n" content
 
-  isJson :: Either _ _
+  isJson :: Either String Json
   isJson = maybe (Left "empty file") Right firstLine >>= jsonParser
 
-  go :: Aff _ _
+  go :: Aff (RetryEffects (ajax :: AJAX | e)) (AffjaxResponse Unit)
   go = slamjax $ defaultRequest
    { method = PUT
    , headers = [ ContentType mime ]
@@ -278,7 +253,7 @@ makeNotebook path = do
                       </> file "index"
   notebookDummy = """{"type": "new"}"""
 
-move :: forall a e. R.Resource -> AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) AnyPath
+move :: forall e. R.Resource -> AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) AnyPath
 move src tgt = do
   let url = if R.isDatabase src
             then Config.mountUrl
@@ -326,7 +301,7 @@ delete resource =
   msg :: String
   msg = "cannot delete"
 
-  moveToTrash :: R.Resource -> Aff _ (Maybe R.Resource)
+  moveToTrash :: R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Maybe R.Resource)
   moveToTrash res = do
     let d = (res ^. R._root) </> dir Config.trashFolder
         path = (res # R._root .~ d) ^. R._path

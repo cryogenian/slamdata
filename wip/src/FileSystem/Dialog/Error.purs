@@ -19,15 +19,15 @@ module FileSystem.Dialog.Error where
 import Prelude
 
 import Data.Generic (Generic, gEq, gCompare)
-import FileSystem.Common (Slam())
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import Halogen.Component
+
+import Halogen
 import Halogen.HTML as H
-import Halogen.HTML.Core as H
-import Halogen.HTML.Elements as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
+
+import FileSystem.Common (Slam())
+import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 
 newtype State = State String
 
