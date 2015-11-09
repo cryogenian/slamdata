@@ -18,12 +18,12 @@ module Dashboard.Component.State where
 
 import Prelude
 
+import Data.BrowserFeatures (BrowserFeatures())
 import Data.Lens (LensP(), lens)
 import Data.Maybe (Maybe(..))
-import Data.BrowserFeatures (BrowserFeatures())
-import Utils.Path (DirPath())
 import Data.Path.Pathy (rootDir)
-import Notebook.Cell.CellId (CellId())
+import Model.CellId (CellId())
+import Utils.Path (DirPath())
 
 type State =
   { editable :: Boolean

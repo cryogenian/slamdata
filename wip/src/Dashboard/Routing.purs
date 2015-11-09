@@ -47,7 +47,7 @@ import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, fromD
 import Model.Action (Action(..), string2action, isEdit)
 import Model.Resource (Resource(..), resourceName, resourceDir)
 import Notebook.Component as Notebook
-import Notebook.Cell.CellId (CellId(), string2cellId)
+import Model.CellId (CellId(), string2cellId)
 import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 import Routing (matchesAff')
 import Routing.Match (Match(), list, eitherMatch)

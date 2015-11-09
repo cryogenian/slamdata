@@ -55,8 +55,8 @@ import Data.Visibility (Visibility(..))
 import Halogen
 
 import Notebook.AccessType (AccessType(..))
-import Notebook.Cell.CellId (CellId(..), runCellId)
-import Notebook.Cell.CellType (CellType(..))
+import Model.CellId (CellId(..), runCellId)
+import Model.CellType (CellType(..))
 import Notebook.Cell.Component
 import Notebook.Cell.Markdown.Editor.Component (markdownEditorComponent)
 import Notebook.Cell.Markdown.Results.Component (markdownResultsComponent)

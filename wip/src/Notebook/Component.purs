@@ -46,10 +46,11 @@ import Halogen.Themes.Bootstrap3 as B
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
-import Notebook.Cell.CellType (CellType(..))
+import Model.CellType (CellType(..))
+import Model.CellId (CellId())
 import Notebook.Cell.Component (CellQuery(..), CellQueryP(), CellStateP())
 import Notebook.Cell.Port (Port(..))
-import Notebook.CellSlot (CellSlot(..), CellId())
+import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 import Notebook.Component.Query
 import Notebook.Component.State

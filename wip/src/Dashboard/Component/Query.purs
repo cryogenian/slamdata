@@ -18,7 +18,7 @@ module Dashboard.Component.Query where
 
 import Data.Maybe (Maybe())
 import Utils.Path (DirPath())
-import Notebook.Cell.CellId (CellId())
+import Model.CellId (CellId())
 
 
 data Query a
