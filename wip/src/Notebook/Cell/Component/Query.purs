@@ -35,7 +35,7 @@ import Data.Maybe (Maybe(..))
 
 import Halogen (ChildF())
 
-import Notebook.Cell.CellType (CellType())
+import Model.CellType (CellType())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Cell.Ace.Component.Query (AceQueryP())
 import Notebook.Cell.Explore.Component.Query (ExploreQuery())

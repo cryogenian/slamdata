@@ -66,7 +66,7 @@ import FileSystem.Query
 import FileSystem.Render
 import FileSystem.Search as Search
 import FileSystem.State
-import Model.Action (Action(..))
+import Model.AccessType (AccessType(..))
 import Model.Common (browseURL)
 import Model.Item (Item(..), itemResource, itemURL, openItem, sortItem)
 import Model.Resource as R
@@ -224,7 +224,7 @@ eval (FileListChanged el next) = do
           pure unit
         Right _ ->
           liftEff'' $ setLocation
-          $ itemURL (state ^. _sort) (state ^. _salt) Edit fileItem
+          $ itemURL (state ^. _sort) (state ^. _salt) Editable fileItem
 
   pure next
 eval (Download next) = do
@@ -327,7 +327,7 @@ itemPeek _ (Item.Share _) = do
       loc <- liftEff'' locationString
       state <- get
       let url = loc <> "/"
-                <> itemURL (state ^. _sort) (state ^. _salt) View item
+                <> itemURL (state ^. _sort) (state ^. _salt) ReadOnly item
       query' cpDialog DialogSlot $ left $ action
         $ Dialog.Show (Dialog.Share url)
 itemPeek _ (Item.Download _) = do

@@ -24,36 +24,40 @@ import Prelude
 
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
+import Control.Monad (when)
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
+import Data.Functor.Coproduct (left)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.String.Regex (noFlags, regex, test, Regex())
+import Data.These (theseLeft)
 import Data.Tuple (Tuple(..))
 
-import Halogen (Driver())
+import Halogen (Driver(), request)
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Config (notebookExtension)
-import Dashboard.Component (QueryP())
-import Model.Action (Action(..), string2action)
-import Model.Resource (Resource(..))
-import Notebook.Cell.CellId (CellId(), string2cellId)
+import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, fromDashboard, toDashboard)
+import Model.AccessType (AccessType(..), parseAccessType, isEditable)
+import Model.Resource (Resource(..), resourceName, resourceDir)
+import Notebook.Component as Notebook
+import Model.CellId (CellId(), string2cellId)
 import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 import Routing (matchesAff')
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
-import Utils.Path (decodeURIPath)
+import Utils.Path (decodeURIPath, dropNotebookExt)
 
 data Routes
-  = CellRoute Resource CellId Action
+  = CellRoute Resource CellId AccessType
   | ExploreRoute Resource
-  | NotebookRoute Resource Action
+  | NotebookRoute Resource AccessType
 
 routing :: Match Routes
 routing
@@ -105,8 +109,8 @@ routing
   checkExtension :: String -> Boolean
   checkExtension = test extensionRegex
 
-  action :: Match Action
-  action = (eitherMatch $ map string2action str) <|> pure View
+  action :: Match AccessType
+  action = (eitherMatch $ map parseAccessType str) <|> pure ReadOnly
 
   cellId :: Match CellId
   cellId = eitherMatch $ map string2cellId str
@@ -119,7 +123,19 @@ routeSignal driver = do
     NotebookRoute res editable -> notebook res editable Nothing
     ExploreRoute res -> pure unit
   where
-  notebook :: Resource -> Action -> Maybe CellId -> Aff NotebookEffects Unit
-  notebook res editable viewing = do
-    browserFeatures <- liftEff detectBrowserFeatures
+  notebook :: Resource -> AccessType -> Maybe CellId -> Aff NotebookEffects Unit
+  notebook res accessType viewing = do
+    let name = dropNotebookExt (resourceName res)
+        path = resourceDir res
+    currentPath <- driver $ fromDashboard GetPath
+    currentName <- driver $ fromNotebook Notebook.GetNameToSave
+    let pathChanged = currentPath == path
+        nameChanged = currentName == pure name
+    when (pathChanged || nameChanged) do
+      fs <- liftEff detectBrowserFeatures
+      driver $ toNotebook $ Notebook.LoadResource fs res
+      driver $ toDashboard $ SetEditable $ isEditable accessType
+      driver $ toDashboard $ SetViewingCell viewing
+      driver $ toNotebook $ Notebook.SetAccessType accessType
+      driver $ toNotebook $ Notebook.SetName name
     pure unit

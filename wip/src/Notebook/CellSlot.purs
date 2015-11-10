@@ -16,14 +16,13 @@ limitations under the License.
 
 module Notebook.CellSlot
   ( CellSlot(..)
-  , module Notebook.Cell.CellId
   ) where
 
 import Prelude
 
 import Data.Generic (Generic, gEq, gCompare)
 
-import Notebook.Cell.CellId (CellId())
+import Model.CellId (CellId())
 
 newtype CellSlot = CellSlot CellId
 

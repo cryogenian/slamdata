@@ -38,7 +38,7 @@ import Data.Visibility (Visibility(..))
 
 import Halogen (InstalledState())
 
-import Notebook.AccessType (AccessType())
+import Model.AccessType (AccessType())
 import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.State

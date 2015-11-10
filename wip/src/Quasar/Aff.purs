@@ -18,6 +18,8 @@ module Quasar.Aff where
 
 import Prelude
 
+import Config as Config
+import Config.Paths as Config
 import Control.Bind ((>=>))
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.AVar (AVAR())
@@ -25,29 +27,29 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Error.Class (throwError)
-
-import Data.Argonaut.Combinators ((~>), (:=))
-import Data.Argonaut.Core (Json(), jsonEmptyObject)
-import Data.Argonaut.Parser (jsonParser)
+import Data.Argonaut
+  ( Json(), jsonEmptyObject, jsonParser, decodeJson, (~>), (:=))
 import Data.Array (head, tail, (:), findIndex)
 import Data.Bifunctor (bimap)
 import Data.Date (nowEpochMilliseconds, Now())
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl)
-import Data.Foreign (F(), parseJSON)
+import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
 import Data.Lens ((.~), (^.))
 import Data.Maybe (Maybe(..), isJust, fromMaybe, maybe)
-import Data.Path.Pathy (Path(), Abs(), Sandboxed(), rootDir, relativeTo, (</>), printPath, dir, file, peel, DirName(..), FileName(..))
+import Data.Path.Pathy
+  ( Path(), Abs(), Sandboxed(), rootDir, relativeTo, (</>)
+  , printPath, dir, file, peel, DirName(..), FileName(..))
 import Data.String as S
 import Data.Time (Milliseconds(..))
 import Data.Tuple (Tuple(..))
-
-import Config as Config
-import Config.Paths as Config
 import Model.Resource as R
-import Network.HTTP.Affjax (Affjax(), AJAX(), AffjaxRequest(), AffjaxResponse(), RetryPolicy(), defaultRequest, affjax, retry, defaultRetryPolicy)
+import Model.Notebook as N
+import Network.HTTP.Affjax
+  ( Affjax(), AJAX(), AffjaxRequest(), AffjaxResponse(), RetryPolicy()
+  , defaultRequest, affjax, retry, defaultRetryPolicy)
 import Network.HTTP.Affjax.Request (Requestable)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
 import Network.HTTP.Method (Method(..))
@@ -55,7 +57,9 @@ import Network.HTTP.MimeType (MimeType(..), mimeTypeToString)
 import Network.HTTP.MimeType.Common (applicationJSON)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
-import Utils.Path (DirPath(), FilePath(), AnyPath(), rootify, rootifyFile, (<./>), encodeURIPath)
+import Unsafe.Coerce (unsafeCoerce)
+import Utils.Path
+  (DirPath(), FilePath(), AnyPath(), rootify, rootifyFile, (<./>), encodeURIPath)
 
 newtype Listing = Listing (Array R.Resource)
 
@@ -239,7 +243,7 @@ exists' name items = isJust $ findIndex (\r -> r ^. R._name == name) items
 makeNotebook :: forall e. DirPath -> Aff (RetryEffects (ajax :: AJAX |e)) String
 makeNotebook path = do
   name <- getNewName path (Config.newNotebookName <> "." <> Config.notebookExtension)
-  result <- retryPut (notebookPath name) notebookDummy ldJSON
+  result <- retryPut (notebookPath name) N.emptyNotebook ldJSON
   if succeeded result.status
     then pure $ Config.notebookUrl
          <> "#" <> (encodeURIPath $ printPath (path </> file name))
@@ -251,7 +255,6 @@ makeNotebook path = do
                       </> dir name
                       <./> Config.notebookExtension
                       </> file "index"
-  notebookDummy = """{"type": "new"}"""
 
 move :: forall e. R.Resource -> AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) AnyPath
 move src tgt = do
@@ -359,3 +362,20 @@ getVersion = do
 
 ldJSON :: MimeType
 ldJSON = MimeType "application/ldjson"
+
+loadNotebook
+  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) N.Notebook
+loadNotebook res = do
+  val <- getResponse "error loading notebook" $ retryGet
+         $ Config.dataUrl
+         </> rootify (R.resourceDir res)
+         </> dir (R.resourceName res)
+         </> file "index"
+  case decodeJson (foreignToJson val) of
+    Left err -> throwError $ error err
+    Right nb -> pure nb
+  where
+-- TODO: Not this. either add to Argonaut, or make a Respondable Json instance
+-- (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
+  foreignToJson :: Foreign -> Json
+  foreignToJson = unsafeCoerce

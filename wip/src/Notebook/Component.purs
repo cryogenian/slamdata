@@ -26,31 +26,38 @@ module Notebook.Component
 import Prelude
 
 import Control.Bind ((=<<), join)
-
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
+import Data.Lens ((.~), (%~))
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
-
+import Data.These (These(..), theseLeft)
 import Halogen
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
+import Model.CellId (CellId())
+import Model.CellType (CellType(..), cellName, cellGlyph)
+import Model.Notebook as M
+import Model.Resource (Resource())
+
 
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
-import Notebook.Cell.CellType (CellType(..), cellName, cellGlyph)
 import Notebook.Cell.Component (CellQuery(..), CellQueryP(), CellStateP())
 import Notebook.Cell.Port (Port(..))
-import Notebook.CellSlot (CellSlot(..), CellId())
+import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 import Notebook.Component.Query
 import Notebook.Component.State
+import Quasar.Aff (loadNotebook)
+import Render.Common (glyph, fadeWhen)
+import Render.CssClasses as CSS
 
 type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
 type NotebookStateP = InstalledState NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
@@ -110,7 +117,15 @@ eval :: Natural NotebookQuery NotebookDSL
 eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
 eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
-eval (ToggleAddCellMenu next) = modify (\st -> st { isAddingCell = not st.isAddingCell }) $> next
+eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
+eval (LoadResource fs res next) = do
+  model <- liftH $ liftAff' $ loadNotebook res
+  modify $ const $ fromModel fs model
+  pure next
+eval (SetName name next) = modify (_name .~ That name) $> next
+eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
+eval (GetNameToSave continue) = map continue $ gets $ _.name >>> theseLeft
+eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF slot q) = coproduct (peekCell slot) (const (pure unit)) q
