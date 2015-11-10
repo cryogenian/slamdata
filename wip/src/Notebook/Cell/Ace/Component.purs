@@ -72,6 +72,7 @@ aceComponent cellType run mode = makeEditorCellComponent
     Session.setMode mode session
 
   eval :: Natural CellEvalQuery (ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit)
+  eval (NotifyRunCell next) = pure next
   eval (EvalCell _ k) = do
     content <- fromMaybe "" <$> query unit (request GetText)
     result <- liftH $ liftAff' $ run content

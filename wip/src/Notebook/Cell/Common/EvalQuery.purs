@@ -26,6 +26,7 @@ import Notebook.Cell.Port (Port())
 
 data CellEvalQuery a
   = EvalCell (Maybe Port) (CellEvalResult -> a)
+  | NotifyRunCell a
 
 -- | The result value produced when evaluating a cell.
 -- |

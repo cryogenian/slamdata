@@ -30,7 +30,7 @@ import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
-import Data.Lens ((.~), (%~))
+import Data.Lens ((.~), (%~), preview)
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
@@ -49,7 +49,8 @@ import Model.Resource (Resource())
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
-import Notebook.Cell.Component (CellQuery(..), CellQueryP(), CellStateP())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
+import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery)
 import Notebook.Cell.Port (Port(..))
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
@@ -128,10 +129,10 @@ eval (GetNameToSave continue) = map continue $ gets $ _.name >>> theseLeft
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
-peek (ChildF slot q) = coproduct (peekCell slot) (const (pure unit)) q
+peek (ChildF (CellSlot cellId) q) = coproduct (peekCell cellId) (peekCellInner cellId) q
 
-peekCell :: forall a. CellSlot -> CellQuery a -> NotebookDSL Unit
-peekCell (CellSlot cellId) q = case q of
+peekCell :: forall a. CellId -> CellQuery a -> NotebookDSL Unit
+peekCell cellId q = case q of
   RunCell _ -> runCell cellId
   RefreshCell _ -> runCell <<< flip findRoot cellId =<< get
   TrashCell _ -> do
@@ -140,6 +141,12 @@ peekCell (CellSlot cellId) q = case q of
   CreateChildCell cellType _ -> modify $ addCell cellType (Just cellId)
   ShareCell _ -> pure unit
   _ -> pure unit
+
+peekCellInner :: forall a. CellId -> ChildF Unit InnerCellQuery a -> NotebookDSL Unit
+peekCellInner cellId (ChildF _ q) =
+  case preview _CellEvalQuery q of
+    Just (NotifyRunCell _) -> runCell cellId
+    _ -> pure unit
 
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do

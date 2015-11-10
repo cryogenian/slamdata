@@ -67,6 +67,7 @@ render config =
     [ H.slot unit \_ -> { component: slamDownComponent config, initialState: emptySlamDownState } ]
 
 eval :: Natural CellEvalQuery (ParentDSL SlamDownConfig SlamDownState CellEvalQuery SlamDownQuery Slam Unit)
+eval (NotifyRunCell next) = pure next
 eval (EvalCell value k) = do
   case preview _SlamDown =<< value of
     Just slamdown -> do
