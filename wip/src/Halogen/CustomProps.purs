@@ -16,11 +16,12 @@ limitations under the License.
 
 module Halogen.CustomProps where
 
-import Halogen.HTML.Core
-import Data.Maybe (Maybe(..))
+import Prelude
+
 import Data.ExistsR
 import Data.Functor (($>))
-
+import Data.Maybe (Maybe(..))
+import Halogen.HTML.Core
 import Halogen.HTML.Events (onSubmit, EventProp())
 import Halogen.HTML.Events.Handler (EventHandler(), preventDefault)
 import Halogen.HTML.Events.Types (Event(), KeyboardEvent(), MouseEvent())
@@ -28,7 +29,7 @@ import Halogen.HTML.Events.Types (Event(), KeyboardEvent(), MouseEvent())
 type MbEventProp e i = (Event e -> EventHandler (Maybe i)) -> Prop i
 
 
-attr :: forall value i. Maybe Namespace -> AttrName -> String -> Prop i
+attr :: forall i. Maybe Namespace -> AttrName -> String -> Prop i
 attr = Attr
 
 readonly :: forall i. Prop i
@@ -57,3 +58,6 @@ onPaste = handler (eventName "paste")
 
 ariaLabel :: forall i. String -> Prop i
 ariaLabel label = Attr Nothing (attrName "aria-label") label
+
+frameBorder :: forall i. Int -> Prop i
+frameBorder = Attr Nothing (attrName "frameBorder") <<< show

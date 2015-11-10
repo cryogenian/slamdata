@@ -44,7 +44,7 @@ import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Config (notebookExtension)
 import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, fromDashboard, toDashboard)
-import Model.AccessType (AccessType(..), parseAccessType, isEditable)
+import Model.AccessType (AccessType(..), parseAccessType)
 import Model.Resource (Resource(..), resourceName, resourceDir)
 import Notebook.Component as Notebook
 import Model.CellId (CellId(), string2cellId)
@@ -134,8 +134,7 @@ routeSignal driver = do
     when (pathChanged || nameChanged) do
       fs <- liftEff detectBrowserFeatures
       driver $ toNotebook $ Notebook.LoadResource fs res
-      driver $ toDashboard $ SetEditable $ isEditable accessType
-      driver $ toDashboard $ SetViewingCell viewing
-      driver $ toNotebook $ Notebook.SetAccessType accessType
+      driver $ toDashboard $ SetAccessType accessType
       driver $ toNotebook $ Notebook.SetName name
+      driver $ toDashboard $ SetViewingCell viewing
     pure unit

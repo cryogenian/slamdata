@@ -32,7 +32,6 @@ import Control.Monad.Error.Class (throwError)
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
-
 import Data.Array (head, last, mapMaybe, filter)
 import Data.Either (Either(..), either)
 import Data.Foldable (traverse_)
@@ -44,21 +43,12 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Path.Pathy (rootDir, (</>), dir, file)
 import Data.String as S
 import Data.URI (runParseAbsoluteURI)
-
-import Halogen.Component
-import Halogen.Component.ChildPath (injSlot, prjSlot, prjQuery, injQuery)
-import Halogen.Component.Utils (applyCF)
-import Halogen.HTML as H
-import Halogen.HTML.Properties as P
-import Halogen.Query (action, request, get, modify, gets)
-import Halogen.Themes.Bootstrap3 as B
-
+import Dialog.Download as Download
+import Dialog.Mount as Mount
+import Dialog.Rename as Rename
 import FileSystem.Breadcrumbs as Breadcrumbs
 import FileSystem.Common (Slam(), forceRerender', liftAff'', liftEff'')
 import FileSystem.Dialog as Dialog
-import FileSystem.Dialog.Download as Download
-import FileSystem.Dialog.Mount as Mount
-import FileSystem.Dialog.Rename as Rename
 import FileSystem.Install
 import FileSystem.Item as Item
 import FileSystem.Items as Items
@@ -66,6 +56,13 @@ import FileSystem.Query
 import FileSystem.Render
 import FileSystem.Search as Search
 import FileSystem.State
+import Halogen.Component
+import Halogen.Component.ChildPath (injSlot, prjSlot, prjQuery, injQuery)
+import Halogen.Component.Utils (applyCF)
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
+import Halogen.Query (action, request, get, modify, gets)
+import Halogen.Themes.Bootstrap3 as B
 import Model.AccessType (AccessType(..))
 import Model.Common (browseURL)
 import Model.Item (Item(..), itemResource, itemURL, openItem, sortItem)

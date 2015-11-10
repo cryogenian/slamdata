@@ -138,9 +138,8 @@ peekCell (CellSlot cellId) q = case q of
     descendants <- findDescendants <$> get <*> pure cellId
     modify (removeCells $ S.insert cellId descendants)
   CreateChildCell cellType _ -> modify $ addCell cellType (Just cellId)
-  ShareCell _ -> pure unit -- TODO: open share modal
-  _ ->
-    pure unit
+  ShareCell _ -> pure unit
+  _ -> pure unit
 
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do

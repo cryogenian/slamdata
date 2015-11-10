@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Download
+module Dialog.Download
   ( comp
-  , module FileSystem.Dialog.Download.State
-  , module FileSystem.Dialog.Download.Query
+  , module Dialog.Download.State
+  , module Dialog.Download.Query
   ) where
 
 import Prelude
@@ -32,17 +32,17 @@ import Data.String as Str
 
 import Halogen
 
-import FileSystem.Common (Slam())
-import FileSystem.Dialog.Download.Query
-import FileSystem.Dialog.Download.Render
-import FileSystem.Dialog.Download.State
+import Dialog.Common (Slam())
+import Dialog.Download.Query
+import Dialog.Download.Render
+import Dialog.Download.State
 import Model.Resource (Resource(..), resourceName)
 import Utils.Path (parseAnyPath)
 
-comp :: Component State Query Slam
+comp :: forall e. Component State Query (Slam e)
 comp = component render eval
 
-eval :: Eval Query State Query Slam
+eval :: forall e. Eval Query State Query (Slam e)
 eval (SourceTyped s next) = do
   modify (_source .~ maybe (Left s) (Right <<< either File Directory)
           (parseAnyPath s))

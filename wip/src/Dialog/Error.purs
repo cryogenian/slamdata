@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Error where
+module Dialog.Error where
 
 import Prelude
 
@@ -26,20 +26,14 @@ import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
 
-import FileSystem.Common (Slam())
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import Dialog.Common (Slam())
+import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 
 newtype State = State String
 
 newtype Query a = Dismiss a
 
-newtype Slot = Slot String
-
-derive instance genericErrorDialogSlot :: Generic Slot
-instance eqErrorDialogSlot :: Eq Slot where eq = gEq
-instance ordErrorDialogSlot :: Ord Slot where compare = gCompare
-
-comp :: Component State Query Slam
+comp :: forall e. Component State Query (Slam e)
 comp = component render eval
 
 render :: State -> ComponentHTML Query
@@ -57,5 +51,5 @@ render (State message) =
     ]
   ]
 
-eval :: Eval Query State Query Slam
+eval :: forall e. Eval Query State Query (Slam e)
 eval (Dismiss next) = pure next

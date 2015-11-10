@@ -14,18 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Mount.Query where
+module Dialog.Download.Query where
 
-import DOM.HTML.Types (HTMLElement())
-import Data.Maybe (Maybe())
-import FileSystem.Dialog.Mount.State
-import Model.Resource as R
+import Dialog.Download.State
+import Model.Resource (Resource())
 
 data Query a
-  = ClearValue HTMLElement a
-  | SelectElement HTMLElement a
-  | UpdateConnectionURI String a
+  = SourceTyped String a
+  | ToggleList a
+  | SourceClicked Resource a
+  | TargetTyped String a
+  | ToggleCompress a
+  | SetOutput OutputType a
   | Dismiss a
-  | Save a
-  | ModifyState (State -> State) a
-  | GetSaved (Maybe R.Resource -> a)
+  | NewTab String a
+  | ModifyCSVOpts (CSVOptions -> CSVOptions) a
+  | ModifyJSONOpts (JSONOptions -> JSONOptions) a
+  | AddSources (Array Resource) a
+  | SetSources (Array Resource) a

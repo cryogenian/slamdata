@@ -35,22 +35,21 @@ module Dashboard.Component
 import Prelude
 
 import Control.Alt ((<|>))
-
+import Dashboard.Component.Query
+import Dashboard.Component.State
+import Dashboard.Dialog.Component as Dialog
+import Dashboard.Navbar.Component as Navbar
 import Data.Either (Either())
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), left, right)
 import Data.Lens ((^.), (.~))
 import Data.Maybe (Maybe(), fromMaybe)
-
 import Halogen
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot, prjSlot, prjQuery)
+import Halogen.Component.ChildPath
+  (ChildPath(), cpL, cpR, (:>), injSlot, prjSlot, prjQuery)
 import Halogen.HTML as H
 import Halogen.HTML.Properties as P
-
-import Dashboard.Component.Query
-import Dashboard.Component.State
-import Dashboard.Dialog.Component as Dialog
-import Dashboard.Navbar.Component as Navbar
+import Model.AccessType (isReadOnly)
 import Notebook.Common (Slam())
 import Notebook.Component as Notebook
 import Render.CssClasses as Rc
@@ -144,19 +143,23 @@ render state =
           }
   , H.slot' cpDialog unit
     \_ -> { component: Dialog.comp
-          , initialState: Dialog.initialState
+          , initialState: installedState (Dialog.initialState)
           }
   ]
 
   where
-  classes = if not (state ^. _editable)
+  classes = if isReadOnly (state ^. _accessType)
             then [ Rc.notebookViewHack ]
             else [ ]
 
 eval :: Natural Query DashboardDSL
 eval (Save next) = pure next
 eval (GetPath continue) = map continue $ gets _.path
-eval (SetEditable bool next) = modify (_editable .~ bool) $> next
+eval (SetAccessType aType next) = do
+  modify (_accessType .~ aType)
+  query' cpNotebook unit
+    $ left $ action $ Notebook.SetAccessType aType
+  pure next
 eval (SetViewingCell mbcid next) = do
   modify (_viewingCell .~ mbcid)
   query' cpNotebook unit

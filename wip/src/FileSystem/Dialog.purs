@@ -37,11 +37,11 @@ import Halogen.Query (request, modify)
 import Halogen.Themes.Bootstrap3 as B
 
 import FileSystem.Common (Slam())
-import FileSystem.Dialog.Download as Download
-import FileSystem.Dialog.Error as Error
-import FileSystem.Dialog.Mount as Mount
-import FileSystem.Dialog.Rename as Rename
-import FileSystem.Dialog.Share as Share
+import Dialog.Download as Download
+import Dialog.Error as Error
+import Dialog.Mount as Mount
+import Dialog.Rename as Rename
+import Dialog.Share as Share
 import Model.Resource (Resource())
 import Render.Common (fadeWhen)
 import Utils.Path (DirPath())

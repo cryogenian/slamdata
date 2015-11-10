@@ -14,21 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Download.Query where
+module Dialog.Common where
 
-import FileSystem.Dialog.Download.State
-import Model.Resource (Resource())
+import Control.Monad.Aff (Aff())
+import Halogen (HalogenEffects())
 
-data Query a
-  = SourceTyped String a
-  | ToggleList a
-  | SourceClicked Resource a
-  | TargetTyped String a
-  | ToggleCompress a
-  | SetOutput OutputType a
-  | Dismiss a
-  | NewTab String a
-  | ModifyCSVOpts (CSVOptions -> CSVOptions) a
-  | ModifyJSONOpts (JSONOptions -> JSONOptions) a
-  | AddSources (Array Resource) a
-  | SetSources (Array Resource) a
+type Slam e = Aff (HalogenEffects e)
