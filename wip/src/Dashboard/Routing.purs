@@ -30,15 +30,13 @@ import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
-import Data.Functor.Coproduct (left)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.String.Regex (noFlags, regex, test, Regex())
-import Data.These (theseLeft)
 import Data.Tuple (Tuple(..))
 
-import Halogen (Driver(), request)
+import Halogen (Driver())
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 

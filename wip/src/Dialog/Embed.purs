@@ -22,7 +22,6 @@ import Control.Monad.Aff (Aff())
 import Control.UI.Browser (select)
 import Control.UI.ZClipboard as Z
 import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
-import Data.Generic (Generic, gEq, gCompare)
 import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Halogen
 import Halogen.CustomProps as Cp

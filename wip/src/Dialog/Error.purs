@@ -18,8 +18,6 @@ module Dialog.Error where
 
 import Prelude
 
-import Data.Generic (Generic, gEq, gCompare)
-
 import Halogen
 import Halogen.HTML as H
 import Halogen.HTML.Events as E

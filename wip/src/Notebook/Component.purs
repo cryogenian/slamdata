@@ -43,8 +43,6 @@ import Halogen.Themes.Bootstrap3 as B
 import Model.AccessType (isEditable)
 import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph)
-import Model.Notebook as M
-import Model.Resource (Resource())
 
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS

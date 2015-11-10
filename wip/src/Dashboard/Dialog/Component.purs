@@ -26,7 +26,7 @@ import Data.Maybe (Maybe(..), maybe, fromMaybe, isNothing)
 import Dialog.Embed as Embed
 import Dialog.Error as Error
 import Halogen
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), prjQuery, prjSlot)
+import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, prjQuery, prjSlot)
 import Halogen.HTML as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P

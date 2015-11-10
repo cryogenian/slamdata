@@ -40,10 +40,9 @@ import Dashboard.Component.State
 import Dashboard.Dialog.Component as Dialog
 import Dashboard.Navbar.Component as Navbar
 import Data.Either (Either())
-import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), left, right)
 import Data.Lens ((^.), (.~))
-import Data.Maybe (Maybe(), fromMaybe)
+import Data.Maybe (fromMaybe)
 import Halogen
 import Halogen.Component.ChildPath
   (ChildPath(), cpL, cpR, (:>), injSlot, prjSlot, prjQuery)
