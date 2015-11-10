@@ -23,7 +23,9 @@ import Data.Argonaut
   ( Json(), (:=), (~>), (.?), DecodeJson, EncodeJson
   , decodeJson, printJson, encodeJson)
 import Data.Either (Either(Left))
+import Data.Lens (LensP(), lens)
 import Data.Map (Map(), empty)
+import Data.Maybe (Maybe())
 import Model.CellId
 import Model.CellType
 import Network.HTTP.Affjax.Request (Requestable, toRequest)
@@ -36,13 +38,33 @@ import Network.HTTP.Affjax.Request (Requestable, toRequest)
 -- | simpler. I.e. it can hold markdown texts or viz options
 -- | `cache` is needed to make response faster, i.e. it can hold options used
 -- | by echarts or subset of data for `explore` cell
-newtype Cell =
-  Cell { state :: Json
-       , cache :: Json
-       , cellType :: CellType
-       , cellId :: CellId
-       , hasRun :: Boolean
-       }
+type CellRec =
+   { state :: Json
+   , cache :: Maybe Json
+   , cellType :: CellType
+   , cellId :: CellId
+   , hasRun :: Boolean
+   }
+newtype Cell = Cell CellRec
+
+_Cell :: LensP Cell CellRec
+_Cell = lens (\(Cell r) -> r) (const Cell)
+
+_state :: LensP Cell Json
+_state = _Cell <<< lens _.state _{state = _}
+
+_cache :: LensP Cell (Maybe Json)
+_cache = _Cell <<< lens _.cache _{cache = _}
+
+_cellType :: LensP Cell CellType
+_cellType = _Cell <<< lens _.cellType _{cellType = _}
+
+_cellId :: LensP Cell CellId
+_cellId = _Cell <<< lens _.cellId _{cellId = _}
+
+_hasRun :: LensP Cell Boolean
+_hasRun = _Cell <<< lens _.hasRun _{hasRun = _}
+
 
 instance encodeJsonCellModel :: EncodeJson Cell where
   encodeJson (Cell r)
@@ -63,10 +85,21 @@ instance decodeJsonCellModel :: DecodeJson Cell where
          <*> (obj .? "state")
     pure $ Cell r
 
-newtype Notebook =
-  Notebook { cells :: Array Cell
-           , dependencies :: Map CellId CellId
-           }
+type NotebookRec =
+  { cells :: Array Cell
+  , dependencies :: Map CellId CellId
+  }
+
+newtype Notebook = Notebook NotebookRec
+
+_Notebook :: LensP Notebook NotebookRec
+_Notebook = lens (\(Notebook r) -> r) (const Notebook)
+
+_cells :: LensP Notebook (Array Cell)
+_cells = _Notebook <<< lens _.cells _{cells = _}
+
+_dependencies :: LensP Notebook (Map CellId CellId)
+_dependencies = _Notebook <<< lens _.dependencies _{dependencies = _}
 
 emptyNotebook :: Notebook
 emptyNotebook = Notebook { cells: [ ], dependencies: empty }

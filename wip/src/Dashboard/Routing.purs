@@ -132,7 +132,8 @@ routeSignal driver = do
     let pathChanged = currentPath == path
         nameChanged = currentName == pure name
     when (pathChanged || nameChanged) do
-      driver $ toNotebook $ Notebook.LoadResource res
+      fs <- liftEff detectBrowserFeatures
+      driver $ toNotebook $ Notebook.LoadResource fs res
       driver $ toDashboard $ SetEditable $ isEdit editable
       driver $ toDashboard $ SetViewingCell viewing
     pure unit

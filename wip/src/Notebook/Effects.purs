@@ -17,6 +17,9 @@ limitations under the License.
 module Notebook.Effects where
 
 import Ace.Types (ACE())
+import Control.Monad.Eff.Ref (REF())
+import DOM (DOM())
+import Data.Date (Now())
 import Halogen (HalogenEffects())
 import Network.HTTP.Affjax (AJAX())
 
@@ -25,4 +28,6 @@ type NotebookEffects = HalogenEffects NotebookRawEffects
 type NotebookRawEffects =
   ( ajax :: AJAX
   , ace :: ACE
+  , now :: Now
+  , ref :: REF
   )

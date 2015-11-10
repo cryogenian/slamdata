@@ -25,6 +25,7 @@ module Notebook.Component.State
   , findChildren
   , findDescendants
   , getCurrentValue
+  , fromModel
   , _fresh
   , _accessType
   , _cells
@@ -40,12 +41,14 @@ module Notebook.Component.State
 
 import Prelude
 
+import Data.Argonaut (Json())
+import Data.Array (sortBy, head, reverse)
 import Data.BrowserFeatures (BrowserFeatures())
-import Data.Foldable (foldMap)
-import Data.Lens (LensP(), lens)
-import Data.List (List(), snoc, filter)
+import Data.Foldable (foldMap, foldl)
+import Data.Lens (LensP(), lens, (^.))
+import Data.List (List(..), snoc, filter, catMaybes)
 import Data.Map as M
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Monoid (mempty)
 import Data.Set as S
 import Data.These (These(..))
@@ -63,6 +66,8 @@ import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
+import Model.Notebook as M
+
 
 -- | The notebook state.
 -- |
@@ -233,3 +238,50 @@ findDescendants st cellId =
 -- | If the cell has not been evaluated the result will be `Nothing`.
 getCurrentValue :: NotebookState -> CellId -> Maybe Port
 getCurrentValue st cellId = M.lookup cellId st.values
+
+fromModel :: BrowserFeatures -> M.Notebook -> NotebookState
+fromModel fs model =
+  { fresh: fresh
+  , accessType: ReadOnly
+  , cells: cells
+  , dependencies: model ^. M._dependencies
+  , values: values
+  , activeCellId: Nothing
+  , editable: true
+  , name: This Config.newNotebookName
+  , isAddingCell: false
+  , browserFeatures: fs
+  , viewingCell: Nothing
+  }
+  where
+  fresh :: Int
+  fresh =
+    fromMaybe zero
+    $ head
+    $ sortBy (\a b -> compare b a)
+    $ map (runCellId <<< (^. M._cellId)) (model ^. M._cells)
+
+  values :: M.Map CellId Port
+  values =
+    M.fromList
+    $ catMaybes
+    $ foldl (\acc cell -> Cons (valueFromModel  cell) acc) Nil
+    $ reverse (model ^. M._cells)
+
+  valueFromModel :: M.Cell -> Maybe (Tuple CellId Port)
+  valueFromModel cell =
+    map (Tuple (cell ^. M._cellId))
+    $ constructPort (cell ^. M._cellType) (cell ^. M._cache) (cell ^. M._state)
+
+  constructPort :: CellType -> Maybe Json -> Json -> Maybe Port
+  constructPort _ _ _ = Nothing
+
+  cells :: List CellDef
+  cells =
+    foldl (\acc cell -> Cons (cellDefFromModel cell) acc) Nil
+    $ reverse (model ^. M._cells)
+
+  cellDefFromModel :: M.Cell -> CellDef
+  cellDefFromModel model = unsafeCoerce unit
+
+import Unsafe.Coerce

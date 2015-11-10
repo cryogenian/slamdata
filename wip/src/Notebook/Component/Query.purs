@@ -16,6 +16,7 @@ limitations under the License.
 
 module Notebook.Component.Query (NotebookQuery(..)) where
 
+import Data.BrowserFeatures (BrowserFeatures())
 import Data.Maybe (Maybe())
 import Model.CellId (CellId())
 import Model.CellType (CellType())
@@ -27,6 +28,6 @@ data NotebookQuery a
   = AddCell CellType a
   | RunActiveCell a
   | ToggleAddCellMenu a
-  | LoadResource Resource a
+  | LoadResource BrowserFeatures Resource a
   | GetNameToSave (Maybe String -> a)
   | SetViewingCell (Maybe CellId) a

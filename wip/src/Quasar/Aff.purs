@@ -363,7 +363,6 @@ getVersion = do
 ldJSON :: MimeType
 ldJSON = MimeType "application/ldjson"
 
-
 loadNotebook
   :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) N.Notebook
 loadNotebook res = do
@@ -376,6 +375,7 @@ loadNotebook res = do
     Left err -> throwError $ error err
     Right nb -> pure nb
   where
--- TODO: Not this. either add to Argonaut, or make a Respondable Json instance (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
+-- TODO: Not this. either add to Argonaut, or make a Respondable Json instance
+-- (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
   foreignToJson :: Foreign -> Json
   foreignToJson = unsafeCoerce
