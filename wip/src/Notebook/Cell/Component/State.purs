@@ -43,7 +43,7 @@ import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.State
 import Notebook.Cell.Markdown.Component.State
-import Notebook.Cell.Query.State
+import Notebook.Cell.Query.Component.State
 import Notebook.Cell.Search.State
 import Notebook.Cell.Viz.State
 import Notebook.Common (Slam())
