@@ -19,7 +19,6 @@ module Notebook.Effects where
 import Ace.Types (ACE())
 import Control.Monad.Eff.Ref (REF())
 import Control.UI.ZClipboard (ZCLIPBOARD())
-import DOM (DOM())
 import Data.Date (Now())
 import Halogen (HalogenEffects())
 import Network.HTTP.Affjax (AJAX())

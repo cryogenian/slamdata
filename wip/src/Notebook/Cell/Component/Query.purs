@@ -18,6 +18,8 @@ module Notebook.Cell.Component.Query
   ( CellQuery(..)
   , CellQueryP()
   , InnerCellQuery()
+  , _CellEvalQuery
+  , _AnyCellQuery
   , AnyCellQuery()
   , _AceQuery
   , _ExploreQuery
@@ -25,18 +27,20 @@ module Notebook.Cell.Component.Query
   , _QueryQuery
   , _SearchQuery
   , _VizQuery
+  , module Notebook.Cell.Common.EvalQuery
   ) where
 
 import Prelude
 
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (PrismP(), prism')
+import Data.Lens.Prism.Coproduct (_Left, _Right)
 import Data.Maybe (Maybe(..))
 
 import Halogen (ChildF())
 
 import Model.CellType (CellType())
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Ace.Component.Query (AceQueryP())
 import Notebook.Cell.Explore.Component.Query (ExploreQuery())
 import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
@@ -77,6 +81,12 @@ data CellQuery a
 type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
 
 type InnerCellQuery = Coproduct CellEvalQuery AnyCellQuery
+
+_CellEvalQuery :: forall a. PrismP (InnerCellQuery a) (CellEvalQuery a)
+_CellEvalQuery = _Left
+
+_AnyCellQuery :: forall a. PrismP (InnerCellQuery a) (AnyCellQuery a)
+_AnyCellQuery = _Right
 
 data AnyCellQuery a
   = AceQuery (AceQueryP a)

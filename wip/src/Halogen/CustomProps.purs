@@ -22,7 +22,7 @@ import Data.ExistsR
 import Data.Functor (($>))
 import Data.Maybe (Maybe(..))
 import Halogen.HTML.Core
-import Halogen.HTML.Events (onSubmit, EventProp())
+import Halogen.HTML.Events (EventProp())
 import Halogen.HTML.Events.Handler (EventHandler(), preventDefault)
 import Halogen.HTML.Events.Types (Event(), KeyboardEvent(), MouseEvent())
 
