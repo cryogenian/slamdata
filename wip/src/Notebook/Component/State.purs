@@ -25,15 +25,30 @@ module Notebook.Component.State
   , findChildren
   , findDescendants
   , getCurrentValue
+  , fromModel
+  , _fresh
+  , _accessType
+  , _cells
+  , _dependencies
+  , _values
+  , _activeCellId
+  , _editable
+  , _name
+  , _isAddingCell
+  , _browserFeatures
+  , _viewingCell
   ) where
 
 import Prelude
 
+import Data.Argonaut (Json())
+import Data.Array (sortBy, head, reverse)
 import Data.BrowserFeatures (BrowserFeatures())
-import Data.Foldable (foldMap)
-import Data.List (List(), snoc, filter)
+import Data.Foldable (foldMap, foldl)
+import Data.Lens (LensP(), lens, (^.))
+import Data.List (List(..), snoc, filter, catMaybes)
 import Data.Map as M
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Monoid (mempty)
 import Data.Set as S
 import Data.These (These(..))
@@ -42,16 +57,18 @@ import Data.Visibility (Visibility(..))
 
 import Halogen
 
-import Notebook.AccessType (AccessType(..))
+import Model.AccessType (AccessType(..))
+import Model.CellId (CellId(..), runCellId)
+import Model.CellType (CellType(..))
 import Notebook.Cell.Ace.Component (aceComponent)
-import Notebook.Cell.CellId (CellId(..))
-import Notebook.Cell.CellType (CellType(..))
 import Notebook.Cell.Component
 import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.Cell.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
+import Model.Notebook as M
+
 
 -- | The notebook state.
 -- |
@@ -79,7 +96,41 @@ type NotebookState =
   , name :: These String String
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
+  , viewingCell :: Maybe CellId
   }
+
+_fresh :: LensP NotebookState Int
+_fresh = lens _.fresh _{fresh = _}
+
+_accessType :: LensP NotebookState AccessType
+_accessType = lens _.accessType _{accessType = _}
+
+_cells :: LensP NotebookState (List CellDef)
+_cells = lens _.cells _{cells = _}
+
+_dependencies :: LensP NotebookState (M.Map CellId CellId)
+_dependencies = lens _.dependencies _{dependencies = _}
+
+_values :: LensP NotebookState (M.Map CellId Port)
+_values = lens _.values _{values = _}
+
+_activeCellId :: LensP NotebookState (Maybe CellId)
+_activeCellId = lens _.activeCellId _{activeCellId = _}
+
+_editable :: LensP NotebookState Boolean
+_editable = lens _.editable _{editable = _}
+
+_name :: LensP NotebookState (These String String)
+_name = lens _.name _{name = _}
+
+_browserFeatures :: LensP NotebookState BrowserFeatures
+_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
+
+_viewingCell :: LensP NotebookState (Maybe CellId)
+_viewingCell = lens _.viewingCell _{viewingCell = _}
+
+_isAddingCell :: LensP NotebookState Boolean
+_isAddingCell = lens _.isAddingCell _{isAddingCell = _}
 
 type CellDef =
   { id :: CellId
@@ -98,6 +149,7 @@ initialNotebook fs =
   , name: This Config.newNotebookName
   , isAddingCell: false
   , browserFeatures: fs
+  , viewingCell: Nothing
   }
 
 -- | Adds a new cell to the notebook.
@@ -185,3 +237,55 @@ findDescendants st cellId =
 -- | If the cell has not been evaluated the result will be `Nothing`.
 getCurrentValue :: NotebookState -> CellId -> Maybe Port
 getCurrentValue st cellId = M.lookup cellId st.values
+
+fromModel :: BrowserFeatures -> M.Notebook -> NotebookState
+fromModel fs model =
+  { fresh: fresh
+  , accessType: ReadOnly
+  , cells: cells
+  , dependencies: model ^. M._dependencies
+  , values: values
+  , activeCellId: Nothing
+  , editable: true
+  , name: This Config.newNotebookName
+  , isAddingCell: false
+  , browserFeatures: fs
+  , viewingCell: Nothing
+  }
+  where
+  -- Take greatest cellId and add one to it
+  fresh :: Int
+  fresh =
+    fromMaybe zero
+    $ head
+    $ sortBy (\a b -> compare b a)
+    $ map (runCellId <<< (^. M._cellId)) (model ^. M._cells)
+
+  values :: M.Map CellId Port
+  values =
+    M.fromList
+    $ catMaybes
+    $ foldl (\acc cell -> Cons (valueFromModel  cell) acc) Nil
+    $ reverse (model ^. M._cells)
+
+  valueFromModel :: M.Cell -> Maybe (Tuple CellId Port)
+  valueFromModel cell =
+    map (Tuple (cell ^. M._cellId))
+    $ constructPort (cell ^. M._cellType) (cell ^. M._cache) (cell ^. M._state)
+
+  -- It has no idea about components, halogen etc. Probably should live in
+  -- `Model.Port`
+  constructPort :: CellType -> Maybe Json -> Json -> Maybe Port
+  constructPort _ _ _ = Nothing
+
+  cells :: List CellDef
+  cells =
+    foldl (\acc cell -> Cons (cellDefFromModel cell) acc) Nil
+    $ reverse (model ^. M._cells)
+
+  -- Have no idea how to implement this function. Is constructing `InstalledState`
+  -- directly from `Model.Notebook.Cell.state/cache` right way to do this?
+  cellDefFromModel :: M.Cell -> CellDef
+  cellDefFromModel model = unsafeCoerce unit
+
+import Unsafe.Coerce

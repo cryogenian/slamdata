@@ -38,7 +38,7 @@ import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQ
 
 import Render.CssClasses as CSS
 
-import Notebook.Cell.CellId (CellId(), runCellId)
+import Model.CellId (CellId(), runCellId)
 import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Markdown.Component.Query

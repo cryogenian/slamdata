@@ -23,7 +23,7 @@ import Control.UI.Browser (setLocation)
 import DOM (DOM())
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (printPath)
-import Model.Action (Action(..), printAction)
+import Model.AccessType (AccessType(..), printAccessType)
 import Model.Common (browseURL)
 import Model.Resource (Resource(..), resourcePath, resourceName, sortResource)
 import Model.Salt (Salt(..))
@@ -40,12 +40,12 @@ itemResource (Item r) = r
 itemResource (SelectedItem r) = r
 itemResource (PhantomItem r) = r
 
-itemURL :: Sort -> Salt -> Action -> Item -> String
+itemURL :: Sort -> Salt -> AccessType -> Item -> String
 itemURL sort salt act item = case itemResource item of
   File path ->
     Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
   Notebook path ->
-    Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAction act
+    Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAccessType act
   Directory path ->
     browseURL Nothing sort salt path
   Database path ->
@@ -55,7 +55,7 @@ itemURL sort salt act item = case itemResource item of
 openItem :: forall e. Item -> Sort -> Salt -> Eff (dom :: DOM|e) Unit
 openItem (PhantomItem _) _ _ = pure unit
 openItem item sort salt =
-  setLocation $ itemURL sort salt Edit item
+  setLocation $ itemURL sort salt Editable item
 
 
 sortItem :: Boolean -> Sort -> Item -> Item -> Ordering

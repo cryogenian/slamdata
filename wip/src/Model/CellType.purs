@@ -14,8 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.CellType (CellType(..), cellName, cellGlyph) where
+module Model.CellType
+  ( CellType(..)
+  , cellName
+  , cellGlyph
+  ) where
 
+import Prelude
+
+import Data.Argonaut (EncodeJson, DecodeJson, encodeJson, decodeJson)
+import Data.Either (Either(Left))
 import Halogen.HTML (ClassName())
 import Halogen.Themes.Bootstrap3 as B
 
@@ -25,6 +33,24 @@ data CellType
   | Query
   | Search
   | Viz
+
+instance encodeJsonCellType :: EncodeJson CellType where
+  encodeJson Explore = encodeJson "explore"
+  encodeJson Markdown = encodeJson "markdown"
+  encodeJson Query = encodeJson "query"
+  encodeJson Search = encodeJson "search"
+  encodeJson Viz = encodeJson "viz"
+
+instance decodeJsonCellType :: DecodeJson CellType where
+  decodeJson json = do
+    str <- decodeJson json
+    case str of
+      "explore" -> pure Explore
+      "markdown" -> pure Markdown
+      "query" -> pure Query
+      "search" -> pure Search
+      "viz" -> pure Viz
+      _ -> Left "incorrect cell type"
 
 cellName :: CellType -> String
 cellName Explore = "Explore"
