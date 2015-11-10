@@ -14,6 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Query.Component.State (QueryState()) where
+module Notebook.Cell.Query.Eval where
 
-type QueryState = {}
+import Prelude
+
+import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
+
+import Notebook.Cell.Common.EvalQuery (CellEvalResult())
+import Notebook.Cell.Port (Port(..))
+import Notebook.Common (Slam())
+
+queryEval :: String -> Slam CellEvalResult
+queryEval s = pure
+  { messages: [Left "The query cell has not been implemented yet"]
+  , output: Nothing
+  }

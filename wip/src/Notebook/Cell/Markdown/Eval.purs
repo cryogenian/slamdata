@@ -24,9 +24,10 @@ import Text.Markdown.SlamDown.Parser (parseMd)
 
 import Notebook.Cell.Common.EvalQuery (CellEvalResult())
 import Notebook.Cell.Port (Port(..))
+import Notebook.Common (Slam())
 
-markdownEval :: String -> CellEvalResult
-markdownEval s =
+markdownEval :: String -> Slam CellEvalResult
+markdownEval s = pure
   { messages: []
   , output: Just $ SlamDown (parseMd s)
   }

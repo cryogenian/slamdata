@@ -44,7 +44,7 @@ import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism, _AceState, _AceQuery)
 import Notebook.Common (Slam())
 
-aceComponent :: CellType -> (String -> CellEvalResult) -> String -> Component CellStateP CellQueryP Slam
+aceComponent :: CellType -> (String -> Slam CellEvalResult) -> String -> Component CellStateP CellQueryP Slam
 aceComponent cellType run mode = makeEditorCellComponent
   { name: cellName cellType
   , glyph: cellGlyph cellType
@@ -74,4 +74,5 @@ aceComponent cellType run mode = makeEditorCellComponent
   eval :: Natural CellEvalQuery (ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit)
   eval (EvalCell _ k) = do
     content <- fromMaybe "" <$> query unit (request GetText)
-    pure $ k (run content)
+    result <- liftH $ liftAff' $ run content
+    pure $ k result

@@ -17,6 +17,7 @@ limitations under the License.
 module Notebook.Component.State
   ( NotebookState()
   , CellDef()
+  , CellConstructor()
   , initialNotebook
   , addCell
   , removeCells
@@ -132,9 +133,11 @@ _viewingCell = lens _.viewingCell _{viewingCell = _}
 _isAddingCell :: LensP NotebookState Boolean
 _isAddingCell = lens _.isAddingCell _{isAddingCell = _}
 
+type CellConstructor = SlotConstructor CellStateP CellQueryP Slam CellSlot
+
 type CellDef =
   { id :: CellId
-  , ctor :: SlotConstructor CellStateP CellQueryP Slam CellSlot
+  , ctor :: CellConstructor
   }
 
 initialNotebook :: BrowserFeatures -> NotebookState
@@ -160,22 +163,29 @@ addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
 addCell cellType parent st =
   let editorId = CellId st.fresh
       resultsId = CellId $ st.fresh + 1
-      editor = case cellType of
-        _ -> { component: aceComponent Markdown markdownEval "ace/mode/markdown"
-             , initialState: installedState (initEditorCellState st.accessType Visible)
-             }
-      results = case cellType of
-        _ -> { component: markdownComponent resultsId st.browserFeatures
-             , initialState: installedState (initResultsCellState st.accessType Visible)
-             }
+      initEditorState = installedState (initEditorCellState st.accessType Visible)
+      initResultsState = installedState (initResultsCellState st.accessType Visible)
       dependencies = M.insert resultsId editorId st.dependencies
   in st
     { fresh = st.fresh + 2
     , cells = st.cells
-        `snoc` { id: editorId, ctor: SlotConstructor (CellSlot editorId) \_ -> editor }
-        `snoc` { id: resultsId, ctor: SlotConstructor (CellSlot resultsId) \_ -> results }
+        `snoc` { id: editorId, ctor: ctor editorId (editor cellType) initEditorState }
+        `snoc` { id: resultsId, ctor: ctor resultsId (results cellType resultsId) initResultsState }
     , dependencies = maybe dependencies (flip (M.insert editorId) dependencies) parent
     }
+  where
+
+  editor :: CellType -> CellComponent
+  editor Query = aceComponent Query markdownEval "ace/mode/sql"
+  editor _ = aceComponent Markdown markdownEval "ace/mode/markdown"
+
+  results :: CellType -> CellId -> CellComponent
+  results _ cellId = markdownComponent cellId st.browserFeatures
+
+  ctor :: CellId -> CellComponent -> CellStateP -> CellConstructor
+  ctor cellId comp state =
+    SlotConstructor (CellSlot cellId) \_ ->
+      { component: comp, initialState: state }
 
 -- | Removes a set of cells from the notebook. Any cells that depend on a cell
 -- | in the set of provided cells will also be removed.

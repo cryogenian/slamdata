@@ -15,7 +15,8 @@ limitations under the License.
 -}
 
 module Notebook.Cell.Component
-  ( makeEditorCellComponent
+  ( CellComponent()
+  , makeEditorCellComponent
   , makeResultsCellComponent
   , module Notebook.Cell.Component.Def
   , module Notebook.Cell.Component.Query
@@ -49,11 +50,14 @@ import Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import Notebook.Cell.Component.State
 import Notebook.Common (Slam())
 
+-- | Type synonym for the full type of a cell component.
+type CellComponent = Component CellStateP CellQueryP Slam
+
 -- | Constructs a cell component for an editor-style cell.
 makeEditorCellComponent
   :: forall s f
    . EditorCellDef s f
-  -> Component CellStateP CellQueryP Slam
+  -> CellComponent
 makeEditorCellComponent def = makeCellComponentPart def render
   where
   render :: Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML
@@ -74,7 +78,7 @@ makeEditorCellComponent def = makeCellComponentPart def render
 makeResultsCellComponent
   :: forall s f
    . ResultsCellDef s f
-  -> Component CellStateP CellQueryP Slam
+  -> CellComponent
 makeResultsCellComponent def = makeCellComponentPart def render
   where
   render :: Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML
@@ -103,7 +107,7 @@ makeCellComponentPart
   :: forall s f r
    . Object (CellDefProps s f r)
   -> (Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML)
-  -> Component CellStateP CellQueryP Slam
+  -> CellComponent
 makeCellComponentPart def render =
   parentComponent (render component initialState) eval
   where
