@@ -21,6 +21,7 @@ import Data.Maybe (Maybe())
 import Model.CellId (CellId())
 import Model.CellType (CellType())
 import Model.Resource (Resource())
+import Model.AccessType (AccessType())
 
 -- | GetNameToSave returns name if it hasn't been saved.
 -- | If there is no need to saving notebook name returns `Nothing`
@@ -31,3 +32,5 @@ data NotebookQuery a
   | LoadResource BrowserFeatures Resource a
   | GetNameToSave (Maybe String -> a)
   | SetViewingCell (Maybe CellId) a
+  | SetName String a
+  | SetAccessType AccessType a

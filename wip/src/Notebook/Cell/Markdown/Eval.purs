@@ -14,30 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.Action where
+module Notebook.Cell.Markdown.Eval where
 
 import Prelude
-import Data.Either (Either(..))
 
-data Action = View | Edit
+import Data.Maybe (Maybe(..))
 
-string2action :: String -> Either String Action
-string2action "view" = Right View
-string2action "edit" = Right Edit
-string2action _ = Left "incorrect action string"
+import Text.Markdown.SlamDown.Parser (parseMd)
 
-printAction :: Action -> String
-printAction View = "view"
-printAction Edit = "edit"
+import Notebook.Cell.Common.EvalQuery (CellEvalResult())
+import Notebook.Cell.Port (Port(..))
 
-isView :: Action -> Boolean
-isView View = true
-isView _ = false
-
-isEdit :: Action -> Boolean
-isEdit = not <<< isView
-
-instance resumeEq :: Eq Action where
-  eq View View = true
-  eq Edit Edit = true
-  eq _ _ = false
+markdownEval :: String -> CellEvalResult
+markdownEval s =
+  { messages: []
+  , output: Just $ SlamDown (parseMd s)
+  }

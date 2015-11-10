@@ -14,13 +14,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.AccessType (AccessType(..)) where
+module Model.AccessType
+  ( AccessType(..)
+  , parseAccessType
+  , printAccessType
+  , isEditable
+  , isReadOnly
+  ) where
 
 import Prelude
 
 import Data.Generic (Generic, gEq, gCompare)
+import Data.Either (Either(..))
 
 data AccessType = Editable | ReadOnly
+
+-- | Used in route parsing
+parseAccessType :: String -> Either String AccessType
+parseAccessType "view" = Right ReadOnly
+parseAccessType "edit" = Right Editable
+parseAccessType _ = Left "incorrect accessType string"
+
+-- | Used in route construction
+printAccessType :: AccessType -> String
+printAccessType Editable = "edit"
+printAccessType ReadOnly = "view"
+
+isEditable :: AccessType -> Boolean
+isEditable Editable = true
+isEditable _ = false
+
+isReadOnly :: AccessType -> Boolean
+isReadOnly ReadOnly = true
+isReadOnly _ = false
+
 
 derive instance genericAccessType :: Generic AccessType
 instance eqAccessType :: Eq AccessType where eq = gEq

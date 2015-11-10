@@ -41,7 +41,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Render.Common (row, row')
 import Render.CssClasses as CSS
 
-import Notebook.AccessType (AccessType(..))
+import Model.AccessType (AccessType(..))
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component.Def
 import Notebook.Cell.Component.Query

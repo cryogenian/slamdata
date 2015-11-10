@@ -44,7 +44,7 @@ import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Config (notebookExtension)
 import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, fromDashboard, toDashboard)
-import Model.Action (Action(..), string2action, isEdit)
+import Model.AccessType (AccessType(..), parseAccessType, isEditable)
 import Model.Resource (Resource(..), resourceName, resourceDir)
 import Notebook.Component as Notebook
 import Model.CellId (CellId(), string2cellId)
@@ -55,9 +55,9 @@ import Routing.Match.Class (lit, str)
 import Utils.Path (decodeURIPath, dropNotebookExt)
 
 data Routes
-  = CellRoute Resource CellId Action
+  = CellRoute Resource CellId AccessType
   | ExploreRoute Resource
-  | NotebookRoute Resource Action
+  | NotebookRoute Resource AccessType
 
 routing :: Match Routes
 routing
@@ -109,8 +109,8 @@ routing
   checkExtension :: String -> Boolean
   checkExtension = test extensionRegex
 
-  action :: Match Action
-  action = (eitherMatch $ map string2action str) <|> pure View
+  action :: Match AccessType
+  action = (eitherMatch $ map parseAccessType str) <|> pure ReadOnly
 
   cellId :: Match CellId
   cellId = eitherMatch $ map string2cellId str
@@ -123,8 +123,8 @@ routeSignal driver = do
     NotebookRoute res editable -> notebook res editable Nothing
     ExploreRoute res -> pure unit
   where
-  notebook :: Resource -> Action -> Maybe CellId -> Aff NotebookEffects Unit
-  notebook res editable viewing = do
+  notebook :: Resource -> AccessType -> Maybe CellId -> Aff NotebookEffects Unit
+  notebook res accessType viewing = do
     let name = dropNotebookExt (resourceName res)
         path = resourceDir res
     currentPath <- driver $ fromDashboard GetPath
@@ -134,6 +134,7 @@ routeSignal driver = do
     when (pathChanged || nameChanged) do
       fs <- liftEff detectBrowserFeatures
       driver $ toNotebook $ Notebook.LoadResource fs res
-      driver $ toDashboard $ SetEditable $ isEdit editable
+      driver $ toDashboard $ SetEditable $ isEditable accessType
       driver $ toDashboard $ SetViewingCell viewing
+      driver $ toNotebook $ Notebook.SetAccessType accessType
     pure unit
