@@ -22,11 +22,12 @@ import Data.BrowserFeatures (BrowserFeatures())
 import Data.Lens (LensP(), lens)
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (rootDir)
+import Model.AccessType (AccessType(..))
 import Model.CellId (CellId())
 import Utils.Path (DirPath())
 
 type State =
-  { editable :: Boolean
+  { accessType :: AccessType
   , browserFeatures :: BrowserFeatures
   , loaded :: Boolean
   , path :: DirPath
@@ -35,16 +36,15 @@ type State =
 
 initialState :: BrowserFeatures -> State
 initialState fs =
-  { editable: true
+  { accessType: Editable
   , browserFeatures: fs
   , loaded: false
   , path: rootDir
   , viewingCell: Nothing
   }
 
-
-_editable :: LensP State Boolean
-_editable = lens _.editable _{editable = _}
+_accessType :: LensP State AccessType
+_accessType = lens _.accessType _{accessType = _}
 
 _browserFeatures :: LensP State BrowserFeatures
 _browserFeatures = lens _.browserFeatures _{browserFeatures = _}

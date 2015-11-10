@@ -14,18 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Rename where
+module Dialog.Rename where
 
 import Prelude
 
 import Control.Monad (when)
-import Control.Monad.Aff (attempt)
+import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Eff.Exception (message)
+import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Free (Free())
 import Control.UI.Browser (reload)
-
 import Data.Array (elemIndex, singleton, sort)
+import Data.Date (Now())
 import Data.Either (Either(..), either)
 import Data.Functor (($>))
 import Data.Lens ((^.), (%~), (.~), (?~), (<>~), lens, LensP())
@@ -34,7 +35,7 @@ import Data.Monoid (mempty)
 import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
 import Data.String as S
 import Data.Void (Void())
-
+import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Halogen
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
@@ -42,14 +43,17 @@ import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
-
-import FileSystem.Common (Slam())
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Model.Resource as R
+import Network.HTTP.Affjax (AJAX())
 import Quasar.Aff as API
 import Render.Common
 import Render.CssClasses as Rc
 import Utils.Path (DirPath(), dropNotebookExt)
+
+type Slam e = Aff (HalogenEffects ( ajax :: AJAX
+                                  , now :: Now
+                                  , ref :: REF
+                                  | e ) )
 
 type StateRec =
   { showList :: Boolean
@@ -132,14 +136,6 @@ validate r
     when (isJust $ elemIndex nameWithExt (map (^. R._name) (r ^. _siblings)))
       $ throwError "An item with this name already exists in the target folder"
 
-newtype Slot = Slot R.Resource
-
-instance eqRenameDialogSlot :: Eq Slot where
-  eq (Slot r) (Slot r') = r == r'
-
-instance ordRenameDialogSlot :: Ord Slot where
-  compare (Slot r) (Slot r') = compare r r'
-
 data Query a
   = Dismiss a
   | SetShowList Boolean a
@@ -151,7 +147,7 @@ data Query a
   | SetSiblings (Array R.Resource) a
   | AddSiblings (Array R.Resource) a
 
-comp :: Component State Query Slam
+comp :: forall e. Component State Query (Slam e)
 comp = component render eval
 
 render :: State -> ComponentHTML Query
@@ -229,7 +225,7 @@ render dialog =
              ]
     [ H.text (R.resourcePath res) ]
 
-eval :: Eval Query State Query Slam
+eval :: forall e. Eval Query State Query (Slam e)
 eval (Dismiss next) = pure next
 eval (SetShowList bool next) = do
   modify (_showList .~ bool)
@@ -273,7 +269,7 @@ eval (AddSiblings ss next) = do
   modify (_siblings %~ sort)
   pure next
 
-dirItemClicked :: R.Resource -> Free (HalogenF State Query Slam) Unit
+dirItemClicked :: forall e. R.Resource -> Free (HalogenF State Query (Slam e)) Unit
 dirItemClicked res =
   case R.getPath res of
     Left _ -> pure unit

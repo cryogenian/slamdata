@@ -14,28 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Share where
+module Dialog.Embed where
 
 import Prelude
 
+import Control.Monad.Aff (Aff())
 import Control.UI.Browser (select)
 import Control.UI.ZClipboard as Z
-
-import Data.Generic (Generic, gEq, gCompare)
-
 import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
-
+import Data.Generic (Generic, gEq, gCompare)
+import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Halogen
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
+import Halogen.HTML.Renderer.String (renderHTML)
 import Halogen.Themes.Bootstrap3 as B
-
-import FileSystem.Common (Slam())
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import Render.CssClasses as Rc
 import Utils.DOM (waitLoaded)
 
+type Slam e = Aff (HalogenEffects (zClipboard :: Z.ZCLIPBOARD |e))
 newtype State = State String
 
 data Query a
@@ -43,28 +42,22 @@ data Query a
   | InitZClipboard String HTMLElement a
   | Dismiss a
 
-newtype Slot = Slot String
-
-derive instance genericShareDialogSlot :: Generic Slot
-instance eqShareDialogSlot :: Eq Slot where eq = gEq
-instance ordShareDialogSlot :: Ord Slot where compare = gCompare
-
-comp :: Component State Query Slam
+comp :: forall e. Component State Query (Slam e)
 comp = component render eval
 
 render :: State -> ComponentHTML Query
 render (State url) =
   modalDialog
-  [ modalHeader "URL"
+  [ modalHeader "Embed cell"
   , modalBody
     $ H.form [ Cp.nonSubmit ]
     [ H.div [ P.classes [ B.formGroup ]
             , E.onClick (\ev -> pure $ SelectElement ev.target unit)
             ]
-      [ H.input [ P.classes [ B.formControl ]
-                , P.value url
-                , Cp.readonly
-                ]
+      [ H.textarea [ P.classes [ B.formControl, Rc.embedBox ]
+                   , Cp.readonly
+                   , P.value code
+                   ]
       ]
     ]
   , modalFooter
@@ -76,8 +69,15 @@ render (State url) =
       [ H.text "Copy" ]
     ]
   ]
+  where
+  code :: String
+  code = renderHTML $ H.iframe [ P.src url
+                               , P.width $ P.Percent 100.0
+                               , P.height $ P.Percent 100.0
+                               , Cp.frameBorder 0
+                               ]
 
-eval :: Eval Query State Query Slam
+eval :: forall e. Eval Query State Query (Slam e)
 eval (Dismiss next) = pure next
 eval (InitZClipboard url htmlEl next) = do
   let el = htmlElementToElement htmlEl

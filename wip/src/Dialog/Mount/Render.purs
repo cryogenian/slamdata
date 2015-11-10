@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Mount.Render (render) where
+module Dialog.Mount.Render (render) where
 
 import Prelude
 
@@ -38,9 +38,9 @@ import Halogen.HTML.Events.Forms as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
 
-import FileSystem.Dialog.Mount.Query
-import FileSystem.Dialog.Mount.State
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import Dialog.Mount.Query
+import Dialog.Mount.State
+import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Render.Common (fadeWhen, closeButton)
 import Render.CssClasses as Rc
 

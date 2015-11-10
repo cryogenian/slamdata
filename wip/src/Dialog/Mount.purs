@@ -14,19 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Mount
+module Dialog.Mount
   ( comp
-  , module FileSystem.Dialog.Mount.Query
-  , module FileSystem.Dialog.Mount.State
+  , module Dialog.Mount.Query
+  , module Dialog.Mount.State
   ) where
 
 import Prelude
 
-import Control.Monad.Aff (attempt)
+import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Eff.Exception (message, Error())
+import Control.Monad.Eff.Ref (REF())
 import Control.UI.Browser (clearValue, select)
-
 import Data.Array (null, filter)
+import Data.Date (Now())
 import Data.Either (either, Either(..))
 import Data.Foldable (any)
 import Data.Foreign (parseJSON)
@@ -36,21 +37,24 @@ import Data.Maybe (Maybe(..), isNothing, isJust)
 import Data.Path.Pathy ((</>), dir)
 import Data.String.Regex as Rx
 import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
-
+import Dialog.Mount.Query
+import Dialog.Mount.Render
+import Dialog.Mount.State
 import Halogen
-
-import FileSystem.Common (Slam())
-import FileSystem.Dialog.Mount.Query
-import FileSystem.Dialog.Mount.Render
-import FileSystem.Dialog.Mount.State
 import Model.Resource as R
+import Network.HTTP.Affjax (AJAX())
 import Quasar.Aff as API
 import Utils.URI (toURI)
 
-comp :: Component State Query Slam
+type Slam e = Aff (HalogenEffects ( ajax :: AJAX
+                                  , now :: Now
+                                  , ref :: REF
+                                  | e) )
+
+comp :: forall e. Component State Query (Slam e)
 comp = component render eval
 
-eval :: Eval Query State Query Slam
+eval :: forall e. Eval Query State Query (Slam e)
 eval (ClearValue el next) = do
   liftEff' $ clearValue el
   pure next

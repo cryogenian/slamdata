@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Download.Render (render) where
+module Dialog.Download.Render (render) where
 
 import Prelude
 
@@ -35,9 +35,9 @@ import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
 
 import Config.Paths as Config
-import FileSystem.Dialog.Download.Query
-import FileSystem.Dialog.Download.State
-import FileSystem.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import Dialog.Download.Query
+import Dialog.Download.State
+import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Model.Resource (Resource(..), isFile, resourcePath, isHidden)
 import Quasar.Aff (reqHeadersToJSON)
 import Render.Common (fadeWhen)

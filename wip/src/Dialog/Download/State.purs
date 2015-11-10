@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Dialog.Download.State where
+module Dialog.Download.State where
 
 import Prelude
 
