@@ -40,11 +40,11 @@ import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
+import Model.AccessType (isEditable)
 import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph)
 import Model.Notebook as M
 import Model.Resource (Resource())
-
 
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
@@ -75,7 +75,7 @@ render :: NotebookState -> NotebookHTML
 render state =
   H.div_
     $ fromList (map renderCell state.cells)
-   <> if state.editable then [newCellMenu state] else []
+   <> if isEditable state.accessType then [newCellMenu state] else []
 
 renderCell :: CellDef -> NotebookHTML
 renderCell def = H.Slot def.ctor
