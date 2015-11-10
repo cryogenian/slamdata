@@ -33,7 +33,6 @@ module Notebook.Component.State
   , _dependencies
   , _values
   , _activeCellId
-  , _editable
   , _name
   , _isAddingCell
   , _browserFeatures
@@ -93,7 +92,6 @@ type NotebookState =
   , dependencies :: M.Map CellId CellId
   , values :: M.Map CellId Port
   , activeCellId :: Maybe CellId
-  , editable :: Boolean
   , name :: These String String
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
@@ -117,9 +115,6 @@ _values = lens _.values _{values = _}
 
 _activeCellId :: LensP NotebookState (Maybe CellId)
 _activeCellId = lens _.activeCellId _{activeCellId = _}
-
-_editable :: LensP NotebookState Boolean
-_editable = lens _.editable _{editable = _}
 
 _name :: LensP NotebookState (These String String)
 _name = lens _.name _{name = _}
@@ -148,7 +143,6 @@ initialNotebook fs =
   , dependencies: M.empty
   , values: M.empty
   , activeCellId: Nothing
-  , editable: true
   , name: This Config.newNotebookName
   , isAddingCell: false
   , browserFeatures: fs
@@ -256,7 +250,6 @@ fromModel fs model =
   , dependencies: model ^. M._dependencies
   , values: values
   , activeCellId: Nothing
-  , editable: true
   , name: This Config.newNotebookName
   , isAddingCell: false
   , browserFeatures: fs
