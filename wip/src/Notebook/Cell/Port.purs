@@ -18,11 +18,14 @@ module Notebook.Cell.Port
   ( Port(..)
   , _SlamDown
   , _VarMap
+  , _Resource
   ) where
 
 import Data.Lens (PrismP(), prism')
 import Data.Maybe (Maybe(..))
 import Data.StrMap (StrMap())
+
+import Model.Resource as R
 
 import Text.Markdown.SlamDown (SlamDown())
 import Text.Markdown.SlamDown.Html (FormFieldValue())
@@ -30,6 +33,7 @@ import Text.Markdown.SlamDown.Html (FormFieldValue())
 data Port
   = SlamDown SlamDown
   | VarMap (StrMap FormFieldValue)
+  | Resource R.Resource
 
 _SlamDown :: PrismP Port SlamDown
 _SlamDown = prism' SlamDown \p -> case p of
@@ -40,3 +44,9 @@ _VarMap :: PrismP Port (StrMap FormFieldValue)
 _VarMap = prism' VarMap \p -> case p of
   VarMap x -> Just x
   _ -> Nothing
+
+_Resource :: PrismP Port R.Resource
+_Resource = prism' Resource \p -> case p of
+  Resource r -> Just r
+  _ -> Nothing
+
