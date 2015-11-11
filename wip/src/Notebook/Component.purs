@@ -119,6 +119,7 @@ eval (RunActiveCell next) =
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
 eval (LoadResource fs res next) = do
   model <- liftH $ liftAff' $ loadNotebook res
+  -- TODO: we need to set the path somehow
   modify $ const $ fromModel fs model
   pure next
 eval (SetName name next) = modify (_name .~ That name) $> next
