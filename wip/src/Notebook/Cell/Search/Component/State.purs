@@ -14,6 +14,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Search.State (SearchState()) where
+module Notebook.Cell.Search.Component.State
+  ( SearchState()
+  , initialSearchState
+  , SearchStateP()
+  ) where
 
-type SearchState = {}
+import Prelude
+import Data.Functor.Coproduct
+
+import Halogen
+
+import Notebook.Cell.Common.EvalQuery as NC
+import Notebook.Cell.Search.Component.Query as SQ
+import Notebook.Common (Slam())
+import Notebook.FileInput.Component as FI
+
+type SearchState =
+  { searchString :: String
+  , running :: Boolean
+  }
+
+initialSearchState :: SearchState
+initialSearchState =
+  { searchString: ""
+  , running: false
+  }
+
+type SearchStateP =
+  InstalledState
+    SearchState
+    FI.State
+    (Coproduct
+      NC.CellEvalQuery
+      SQ.SearchQuery)
+    FI.Query
+    Slam
+    Unit

@@ -126,7 +126,8 @@ makeCellComponentPart def render =
 
   eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit)
   eval (RunCell next) = pure next
-  eval (UpdateCell input k) =
+  eval (UpdateCell input k) = do
+    state <- get
     maybe (liftF HaltHF) (pure <<< k <<< _.output) =<< query unit (left (request (EvalCell input)))
   eval (RefreshCell next) = pure next
   eval (TrashCell next) = pure next

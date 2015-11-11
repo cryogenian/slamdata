@@ -42,11 +42,11 @@ import Halogen (ChildF())
 import Model.CellType (CellType())
 import Model.Port (Port())
 import Notebook.Cell.Ace.Component.Query (AceQueryP())
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
 import Notebook.Cell.Explore.Component.Query (ExploreQuery())
 import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
 import Notebook.Cell.Query.Component.Query (QueryQuery())
-import Notebook.Cell.Search.Component.Query (SearchQuery())
+import Notebook.Cell.Search.Component.Query (SearchQueryP())
 import Notebook.Cell.Viz.Component.Query (VizQuery())
 
 -- | The common query algebra for a notebook cell.
@@ -70,7 +70,7 @@ import Notebook.Cell.Viz.Component.Query (VizQuery())
 -- |   share/embed message appropriate for the cell.
 data CellQuery a
   = RunCell a
-  | UpdateCell (Maybe Port) (Maybe Port -> a)
+  | UpdateCell CellEvalInput (Maybe Port -> a)
   | RefreshCell a
   | TrashCell a
   | CreateChildCell CellType a
@@ -93,7 +93,7 @@ data AnyCellQuery a
   | ExploreQuery (ExploreQuery a)
   | MarkdownQuery (MarkdownQueryP a)
   | QueryQuery (QueryQuery a)
-  | SearchQuery (SearchQuery a)
+  | SearchQuery (SearchQueryP a)
   | VizQuery (VizQuery a)
 
 _AceQuery :: forall a. PrismP (AnyCellQuery a) (AceQueryP a)
@@ -116,7 +116,7 @@ _QueryQuery = prism' QueryQuery \q -> case q of
   QueryQuery q' -> Just q'
   _ -> Nothing
 
-_SearchQuery :: forall a. PrismP (AnyCellQuery a) (SearchQuery a)
+_SearchQuery :: forall a. PrismP (AnyCellQuery a) (SearchQueryP a)
 _SearchQuery = prism' SearchQuery \q -> case q of
   SearchQuery q' -> Just q'
   _ -> Nothing

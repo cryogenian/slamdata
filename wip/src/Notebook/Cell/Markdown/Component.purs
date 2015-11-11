@@ -69,7 +69,7 @@ render config =
 eval :: Natural CellEvalQuery (ParentDSL SlamDownConfig SlamDownState CellEvalQuery SlamDownQuery Slam Unit)
 eval (NotifyRunCell next) = pure next
 eval (EvalCell value k) = do
-  case preview _SlamDown =<< value of
+  case preview _SlamDown =<< value.inputPort of
     Just slamdown -> do
       query unit $ action (SetDocument slamdown)
       pure $ k

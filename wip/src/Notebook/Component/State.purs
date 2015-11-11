@@ -68,6 +68,7 @@ import Notebook.Cell.Ace.Component (aceComponent)
 import Notebook.Cell.Component
 import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Markdown.Eval (markdownEval)
+import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 
@@ -172,15 +173,16 @@ addCell cellType parent st =
   in st
     { fresh = st.fresh + 2
     , cells = st.cells
-        `snoc` { id: editorId, ctor: ctor editorId (editor cellType) initEditorState }
+        `snoc` { id: editorId, ctor: ctor editorId (editor cellType editorId) initEditorState }
         `snoc` { id: resultsId, ctor: ctor resultsId (results cellType resultsId) initResultsState }
     , dependencies = maybe dependencies (flip (M.insert editorId) dependencies) parent
     }
   where
 
-  editor :: CellType -> CellComponent
-  editor Query = aceComponent Query markdownEval "ace/mode/sql"
-  editor _ = aceComponent Markdown markdownEval "ace/mode/markdown"
+  editor :: CellType -> CellId -> CellComponent
+  editor Query _ = aceComponent Query markdownEval "ace/mode/sql"
+  editor Search cellId = searchComponent cellId
+  editor _ _ = aceComponent Markdown markdownEval "ace/mode/markdown"
 
   results :: CellType -> CellId -> CellComponent
   results _ cellId = markdownComponent cellId st.browserFeatures

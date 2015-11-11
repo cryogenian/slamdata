@@ -16,7 +16,8 @@ limitations under the License.
 
 module Model.CellId
   ( CellId(..)
-  , string2cellId
+  , stringToCellId
+  , cellIdToString
   , runCellId
   ) where
 
@@ -35,9 +36,11 @@ newtype CellId = CellId Int
 runCellId :: CellId -> Int
 runCellId (CellId i) = i
 
-string2cellId :: String -> Either String CellId
-string2cellId str = maybe (Left "incorrect cell id") (Right <<< CellId)
-                    $ stringToInt str
+stringToCellId :: String -> Either String CellId
+stringToCellId = maybe (Left "incorrect cell id") (Right <<< CellId) <<< stringToInt
+
+cellIdToString :: CellId -> String
+cellIdToString = show <<< runCellId
 
 derive instance genericCellId :: Generic CellId
 instance eqCellId :: Eq CellId where eq = gEq
