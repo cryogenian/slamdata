@@ -35,6 +35,7 @@ import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (PrismP(), prism')
 import Data.Lens.Prism.Coproduct (_Left, _Right)
 import Data.Maybe (Maybe(..))
+import Data.Time (Milliseconds())
 
 import Halogen (ChildF())
 
@@ -75,6 +76,7 @@ data CellQuery a
   | ToggleCollapsed a
   | ToggleMessages a
   | ShareCell a
+  | Tick Milliseconds a
 
 type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
 

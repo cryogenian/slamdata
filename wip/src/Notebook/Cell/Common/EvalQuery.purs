@@ -45,6 +45,13 @@ type CellEvalInput =
   , cellId :: CellId
   }
 
+-- | The query algebra shared by the inner parts of a cell component.
+-- |
+-- | - `EvalCell` is a command sent from the notebook that runs the cell. An
+-- |   optional input value (the output from another cell) is provided, and a
+-- |   continuation for the evaluation result to be returned to.
+-- | - `NotifyRunCell` allows the cell to notify the notebook that it should be
+-- |   run - the cell cannot run itself directly.
 data CellEvalQuery a
   = EvalCell CellEvalInput (CellEvalResult -> a)
   | NotifyRunCell a
