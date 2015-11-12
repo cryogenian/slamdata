@@ -326,9 +326,10 @@ instance resourceIsForeign :: IsForeign Resource where
     pure $ setName template name
 
 instance encodeJsonResource :: EncodeJson Resource where
-  encodeJson res = "type" := resourceTag res
-                ~> "path" := resourcePath res
-                ~> jsonEmptyObject
+  encodeJson res =
+       "type" := resourceTag res
+    ~> "path" := resourcePath res
+    ~> jsonEmptyObject
 
 instance decodeJsonResource :: DecodeJson Resource where
   decodeJson json = do

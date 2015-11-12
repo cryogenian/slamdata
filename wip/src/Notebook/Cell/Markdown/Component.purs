@@ -39,11 +39,11 @@ import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQ
 import Render.CssClasses as CSS
 
 import Model.CellId (CellId(), runCellId)
-import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
+import Model.Port (Port(..), _SlamDown)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
+import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Markdown.Component.Query
 import Notebook.Cell.Markdown.Component.State
-import Notebook.Cell.Port (Port(..), _SlamDown)
 import Notebook.Common (Slam())
 
 markdownComponent :: CellId -> BrowserFeatures -> Component CellStateP CellQueryP Slam

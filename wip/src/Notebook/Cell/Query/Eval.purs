@@ -22,7 +22,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 
 import Notebook.Cell.Common.EvalQuery (CellEvalResult())
-import Notebook.Cell.Port (Port(..))
+import Model.Port (Port(..))
 import Notebook.Common (Slam())
 
 queryEval :: String -> Slam CellEvalResult

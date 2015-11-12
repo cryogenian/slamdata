@@ -21,8 +21,7 @@ module Notebook.Cell.Common.EvalQuery
 
 import Data.Either (Either())
 import Data.Maybe (Maybe())
-
-import Notebook.Cell.Port (Port())
+import Model.Port (Port())
 
 data CellEvalQuery a
   = EvalCell (Maybe Port) (CellEvalResult -> a)
