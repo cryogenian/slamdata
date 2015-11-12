@@ -20,20 +20,26 @@ import Prelude
 
 import Config as Config
 import Config.Paths as Config
+
 import Control.Bind ((>=>))
-import Control.Monad.Aff (Aff(), attempt)
+import Control.Coroutine as CR
+import Control.Coroutine.Aff as ACR
+import Control.Monad.Aff (Aff(), attempt, runAff)
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (error)
+import Control.Monad.Eff.Class (liftEff, MonadEff)
+import Control.Monad.Eff.Exception (EXCEPTION(), error, throwException)
+import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Error.Class (throwError)
+
 import Data.Argonaut
   ( Json(), jsonEmptyObject, jsonParser, decodeJson, (~>), (:=))
-import Data.Array (head, tail, (:), findIndex)
+import Data.Array (head, tail, (:), findIndex, filter, mapMaybe)
 import Data.Bifunctor (bimap)
 import Data.Date (nowEpochMilliseconds, Now())
 import Data.Either (Either(..), either)
-import Data.Foldable (foldl)
+import Data.Foldable (foldl, traverse_)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
@@ -45,8 +51,10 @@ import Data.Path.Pathy
 import Data.String as S
 import Data.Time (Milliseconds(..))
 import Data.Tuple (Tuple(..))
+
 import Model.Resource as R
 import Model.Notebook as N
+
 import Network.HTTP.Affjax
   ( Affjax(), AJAX(), AffjaxRequest(), AffjaxResponse(), RetryPolicy()
   , defaultRequest, affjax, retry, defaultRetryPolicy)
@@ -57,9 +65,12 @@ import Network.HTTP.MimeType (MimeType(..), mimeTypeToString)
 import Network.HTTP.MimeType.Common (applicationJSON)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
+
 import Unsafe.Coerce (unsafeCoerce)
+
 import Utils.Path
   (DirPath(), FilePath(), AnyPath(), rootify, rootifyFile, (<./>), encodeURIPath)
+
 
 newtype Listing = Listing (Array R.Resource)
 
@@ -379,3 +390,29 @@ loadNotebook res = do
 -- (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
   foreignToJson :: Foreign -> Json
   foreignToJson = unsafeCoerce
+
+-- | Produces a stream of the transitive children of a path
+transitiveChildrenProducer
+  :: forall e
+   . (R.Resource -> Boolean)
+  -> DirPath
+  -> CR.Producer
+      (Array R.Resource)
+      (Aff (RetryEffects (ajax :: AJAX, err :: EXCEPTION | e)))
+      Unit
+transitiveChildrenProducer pred start = do
+  ACR.produce \emit -> do
+    runAff throwException (const (pure unit)) $ do
+      let
+        go start = do
+          ei <- attempt $ children start
+          case ei of
+            Right items -> do
+              let filteredItems = filter pred items
+              liftEff $ emit (Left filteredItems)
+              let parents = mapMaybe (either (const Nothing) Just <<< R.getPath) items
+              traverse_ go parents
+            Left _ ->
+              liftEff $ emit (Right unit)
+      go start
+
