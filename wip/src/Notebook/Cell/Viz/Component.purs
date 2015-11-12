@@ -14,20 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Eval where
+module Notebook.Cell.Viz.Component
+  ( vizComponent
+  ) where
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
-
-import Text.Markdown.SlamDown.Parser (parseMd)
-
-import Model.Port (Port(..))
-import Notebook.Cell.Common.EvalQuery (CellEvalResult())
-import Notebook.Common (Slam())
-
-markdownEval :: String -> Slam CellEvalResult
-markdownEval s = pure
-  { messages: []
-  , output: Just $ SlamDown (parseMd s)
+import Model.CellType (CellType(Viz), cellName, cellGlyph)
+{-
+vizComponent :: CellId -> Component CellStateP CellQueryP Slam
+vizComponent cellId = makeEditorCellComponent
+  { name: cellName Viz
+  , glyph: cellGlyph Viz
+  , component: parentComponent render eval
+  , initialState: initialState
+  , _State: _VizState
+  , _Query: makeQueryPrism _VizQuery
   }
+-}
+vizComponent = unit

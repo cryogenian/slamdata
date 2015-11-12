@@ -60,14 +60,14 @@ import Halogen
 import Model.AccessType (AccessType(..))
 import Model.CellId (CellId(..), runCellId)
 import Model.CellType (CellType(..))
+import Model.Notebook as M
+import Model.Port (Port())
 import Notebook.Cell.Ace.Component (aceComponent)
 import Notebook.Cell.Component
 import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Markdown.Eval (markdownEval)
-import Notebook.Cell.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
-import Model.Notebook as M
 
 
 -- | The notebook state.

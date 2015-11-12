@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Port
+module Model.Port
   ( Port(..)
   , _SlamDown
   , _VarMap
@@ -49,4 +49,3 @@ _Resource :: PrismP Port R.Resource
 _Resource = prism' Resource \p -> case p of
   Resource r -> Just r
   _ -> Nothing
-
