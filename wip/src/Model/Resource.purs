@@ -45,6 +45,7 @@ module Model.Resource
   , resourceTag
   , root
   , sortResource
+  , fileResourceFromString
   ) where
 
 import Config
@@ -86,7 +87,7 @@ import Data.Path.Pathy
    renameDir)
 import Data.Tuple (Tuple(..), fst, snd)
 import Model.Sort (Sort(..))
-import Data.Lens (lens, prism', LensP(), PrismP())
+import Data.Lens (lens, prism', LensP(), PrismP(), (.~))
 import Prelude
 import Utils.Path (DirPath(), FilePath(), AnyPath(), (<./>), takeDirExt)
 
@@ -349,5 +350,13 @@ instance decodeJsonResource :: DecodeJson Resource where
     parseDirPath :: String -> (DirPath -> Resource) -> String
                     -> Either String Resource
     parseDirPath ty ctor s =
-      maybe (Left $ "Invalid " ++ ty ++ " path") (Right <<< ctor)
-      $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsDir s)
+      maybe (Left $ "Invalid " ++ ty ++ " path") (Right <<< ctor) $
+        (rootDir </>) <$> (sandbox rootDir =<< parseAbsDir s)
+
+fileResourceFromString
+  :: String
+  -> Either String Resource
+fileResourceFromString path =
+  case (rootDir </>) <$> (parseAbsFile path >>= sandbox rootDir) of
+    Just path' -> Right $ newFile # _path .~ Left path'
+    Nothing -> Left path
