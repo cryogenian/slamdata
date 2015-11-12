@@ -27,6 +27,7 @@ module Notebook.Component.State
   , findDescendants
   , getCurrentValue
   , fromModel
+  , notebookPath
   , _fresh
   , _accessType
   , _cells
@@ -37,6 +38,7 @@ module Notebook.Component.State
   , _isAddingCell
   , _browserFeatures
   , _viewingCell
+  , _path
   ) where
 
 import Prelude
@@ -51,7 +53,7 @@ import Data.Map as M
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Monoid (mempty)
 import Data.Set as S
-import Data.These (These(..))
+import Data.These (These(..), theseRight)
 import Data.Tuple (Tuple(..), fst)
 import Data.Visibility (Visibility(..))
 
@@ -69,6 +71,8 @@ import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 
+import Utils.Path as P
+import Data.Path.Pathy as P
 
 -- | The notebook state.
 -- |
@@ -93,6 +97,7 @@ type NotebookState =
   , values :: M.Map CellId Port
   , activeCellId :: Maybe CellId
   , name :: These String String
+  , path :: P.DirPath
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
   , viewingCell :: Maybe CellId
@@ -118,6 +123,9 @@ _activeCellId = lens _.activeCellId _{activeCellId = _}
 
 _name :: LensP NotebookState (These String String)
 _name = lens _.name _{name = _}
+
+_path :: LensP NotebookState P.DirPath
+_path = lens _.path _{path = _}
 
 _browserFeatures :: LensP NotebookState BrowserFeatures
 _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
@@ -147,6 +155,7 @@ initialNotebook fs =
   , isAddingCell: false
   , browserFeatures: fs
   , viewingCell: Nothing
+  , path: P.rootDir
   }
 
 -- | Adds a new cell to the notebook.
@@ -254,6 +263,7 @@ fromModel fs model =
   , isAddingCell: false
   , browserFeatures: fs
   , viewingCell: Nothing
+  , path: P.rootDir
   }
   where
   -- Take greatest cellId and add one to it
@@ -290,5 +300,12 @@ fromModel fs model =
   -- directly from `Model.Notebook.Cell.state/cache` right way to do this?
   cellDefFromModel :: M.Cell -> CellDef
   cellDefFromModel model = unsafeCoerce unit
+
+notebookPath :: NotebookState -> Maybe P.DirPath
+notebookPath state =
+  theseRight state.name <#> \name ->
+    state.path
+      P.</> P.dir name
+      P.<./> Config.notebookExtension
 
 import Unsafe.Coerce
