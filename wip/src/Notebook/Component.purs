@@ -43,6 +43,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Model.AccessType (isEditable)
 import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph)
+import Model.Resource as R
 
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
@@ -119,8 +120,7 @@ eval (RunActiveCell next) =
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
 eval (LoadResource fs res next) = do
   model <- liftH $ liftAff' $ loadNotebook res
-  -- TODO: we need to set the path somehow
-  modify $ const $ fromModel fs model
+  modify $ const $ fromModel fs model # _path .~ R.resourceDir res
   pure next
 eval (SetName name next) = modify (_name .~ That name) $> next
 eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
