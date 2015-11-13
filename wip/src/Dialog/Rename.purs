@@ -25,7 +25,7 @@ import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Free (Free())
 import Control.UI.Browser (reload)
-import Data.Array (elemIndex, singleton, sort)
+import Data.Array (elemIndex, singleton, sort, nub)
 import Data.Date (Now())
 import Data.Either (Either(..), either)
 import Data.Functor (($>))
@@ -145,7 +145,8 @@ data Query a
   | DirTyped String a
   | DirClicked R.Resource a
   | SetSiblings (Array R.Resource) a
-  | AddSiblings (Array R.Resource) a
+  | AddDirs (Array R.Resource) a
+  | Init a
 
 comp :: forall e. Component State Query (Slam e)
 comp = component render eval
@@ -157,6 +158,7 @@ render dialog =
   , modalBody
     $ H.form [ P.classes [ Rc.renameDialogForm ]
              , Cp.nonSubmit
+             , P.initializer (\_ -> action Init)
              , E.onClick (\_ -> E.stopPropagation $> action (SetShowList false))
              ]
     [ nameInput
@@ -262,11 +264,13 @@ eval (DirClicked res next) = do
   pure next
 eval (SetSiblings ss next) = do
   modify (_siblings .~ ss)
-  modify (_siblings %~ sort)
   pure next
-eval (AddSiblings ss next) = do
-  modify (_siblings <>~ ss)
-  modify (_siblings %~ sort)
+eval (AddDirs ds next) = do
+  modify (_dirs %~ append ds >>> nub >>> sort)
+  pure next
+eval (Init next) = do
+  state <- get
+  dirItemClicked $ R.parent $ state ^. _initial
   pure next
 
 dirItemClicked :: forall e. R.Resource -> Free (HalogenF State Query (Slam e)) Unit

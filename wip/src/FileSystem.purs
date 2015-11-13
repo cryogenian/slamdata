@@ -302,8 +302,7 @@ itemPeek _ (Item.Move _) = do
       flip getDirectories rootDir \x ->
         void $ query' cpDialog DialogSlot $ right
         $ ChildF (injSlot Dialog.cpRename (itemResource it))
-        $ injQuery Dialog.cpRename (action $ Rename.AddSiblings x)
-
+        $ injQuery Dialog.cpRename (action $ Rename.AddDirs x)
 
 itemPeek _ (Item.Remove _) = do
   mbit <- query' cpItems ItemsSlot $ right $ ChildF slot $ request Item.GetItem
@@ -389,6 +388,7 @@ getChildren :: (R.Resource -> Boolean)
                -> (Array R.Resource -> Algebra Unit)
                -> DirPath -> Algebra Unit
 getChildren pred cont start = do
+  forceRerender'
   ei <- liftAff'' $ attempt $ API.children start
   case ei of
     Right items -> do
