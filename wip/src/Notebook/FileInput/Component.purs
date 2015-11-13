@@ -68,9 +68,9 @@ eval :: forall e. Natural Query (ComponentDSL State Query (Aff (Effects e)))
 eval q =
   case q of
     ToggleFileList next -> do
-      showFiles <- get <#> _.showFiles
-      modify (_ { showFiles = not showFiles })
-      when (not showFiles) $
+      shouldShowFiles <- get <#> _.showFiles >>> not
+      modify (_ { showFiles = shouldShowFiles })
+      when shouldShowFiles $
         subscribe $
           API.transitiveChildrenProducer P.rootDir
             # SCR.producerToStallingProducer
