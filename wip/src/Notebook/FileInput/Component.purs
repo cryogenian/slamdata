@@ -7,10 +7,11 @@ module Notebook.FileInput.Component
 
 import Prelude
 
-import Control.Coroutine.Stalling as SCR
+import Control.Coroutine as CR
 import Control.Monad (when)
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Exception (EXCEPTION())
+import Control.Monad.Free.Trans as FT
 
 import Data.Functor
 import Data.Array as A
@@ -52,7 +53,6 @@ data Query a
   = ToggleFileList a
   | SelectFile R.Resource a
   | UpdateFile String a
-  | AppendFiles (Array R.Resource) a
 
 type Effects e =
   API.RetryEffects
@@ -64,21 +64,28 @@ type Effects e =
 fileInputComponent :: forall e. Component State Query (Aff (Effects e))
 fileInputComponent = component render eval
 
+appendFiles :: Array R.Resource -> State -> State
+appendFiles files state =
+  state
+    { files = A.sort $ A.nub $ state.files <> files
+    }
+
 eval :: forall e. Natural Query (ComponentDSL State Query (Aff (Effects e)))
 eval q =
   case q of
     ToggleFileList next -> do
       shouldShowFiles <- get <#> _.showFiles >>> not
       modify (_ { showFiles = shouldShowFiles })
-      when shouldShowFiles $
-        subscribe $
-          API.transitiveChildrenProducer P.rootDir
-            # SCR.producerToStallingProducer
-            # SCR.mapStallingProducer (action <<< AppendFiles <<< A.filter R.isFile)
-      pure next
-    AppendFiles fs next -> do
-      modify \state ->
-        state { files = A.sort $ A.nub $ state.files <> fs }
+      when shouldShowFiles $ do
+        let
+          fileProducer =
+            FT.hoistFreeT liftH $
+              API.transitiveChildrenProducer P.rootDir
+          fileConsumer =
+            CR.consumer \fs -> do
+              modify $ appendFiles fs
+              pure M.Nothing
+        CR.runProcess (fileProducer CR.$$ fileConsumer)
       pure next
     SelectFile r next -> do
       modify \state ->
@@ -139,3 +146,4 @@ renderItem r =
     ]
     [ H.text $ R.resourcePath r
     ]
+
