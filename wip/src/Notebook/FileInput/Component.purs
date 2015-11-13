@@ -38,7 +38,6 @@ type State =
   , selectedFile :: M.Maybe R.Resource
   , currentFilePath :: String
   , showFiles :: Boolean
-  , hasToggledFileList :: Boolean
   }
 
 initialState :: State
@@ -47,7 +46,6 @@ initialState =
   , selectedFile: M.Nothing
   , currentFilePath: ""
   , showFiles: false
-  , hasToggledFileList: false
   }
 
 data Query a
@@ -70,9 +68,9 @@ eval :: forall e. Natural Query (ComponentDSL State Query (Aff (Effects e)))
 eval q =
   case q of
     ToggleFileList next -> do
-      isFirstTime <- not <<< _.hasToggledFileList <$> get
-      modify (_ { showFiles = false, hasToggledFileList = true })
-      when isFirstTime $
+      showFiles <- get <#> _.showFiles
+      modify (_ { showFiles = not showFiles })
+      when (not showFiles) $
         subscribe $
           API.transitiveChildrenProducer P.rootDir
             # SCR.producerToStallingProducer
