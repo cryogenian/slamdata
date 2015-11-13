@@ -6,11 +6,18 @@ module Notebook.FileInput.Component
   ) where
 
 import Prelude
+
+import Control.Coroutine.Stalling as SCR
+import Control.Monad (when)
+import Control.Monad.Aff (Aff())
+import Control.Monad.Eff.Exception (EXCEPTION())
+
 import Data.Functor
 import Data.Array as A
 import Data.Maybe as M
 import Data.Either as E
 import Data.NaturalTransformation
+import Data.Path.Pathy as P
 
 import Halogen
 import Halogen.HTML.CSS.Indexed as HP
@@ -18,9 +25,11 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Events.Handler as HEH
-
 import Halogen.Themes.Bootstrap3 as B
+
+import Network.HTTP.Affjax (AJAX())
 import Render.CssClasses as CSS
+import Quasar.Aff as API
 
 import Model.Resource as R
 
@@ -29,6 +38,7 @@ type State =
   , selectedFile :: M.Maybe R.Resource
   , currentFilePath :: String
   , showFiles :: Boolean
+  , hasToggledFileList :: Boolean
   }
 
 initialState :: State
@@ -37,21 +47,40 @@ initialState =
   , selectedFile: M.Nothing
   , currentFilePath: ""
   , showFiles: false
+  , hasToggledFileList: false
   }
 
 data Query a
   = ToggleFileList a
   | SelectFile R.Resource a
   | UpdateFile String a
+  | AppendFiles (Array R.Resource) a
 
-fileInputComponent :: forall g. Component State Query g
+type Effects e =
+  API.RetryEffects
+    ( ajax :: AJAX
+    , err :: EXCEPTION
+    | e
+    )
+
+fileInputComponent :: forall e. Component State Query (Aff (Effects e))
 fileInputComponent = component render eval
 
-eval :: forall g. Natural Query (ComponentDSL State Query g)
+eval :: forall e. Natural Query (ComponentDSL State Query (Aff (Effects e)))
 eval q =
   case q of
     ToggleFileList next -> do
-      modify (_ { showFiles = false })
+      isFirstTime <- not <<< _.hasToggledFileList <$> get
+      modify (_ { showFiles = false, hasToggledFileList = true })
+      when isFirstTime $
+        subscribe $
+          API.transitiveChildrenProducer R.isFile P.rootDir
+            # SCR.producerToStallingProducer
+            # SCR.mapStallingProducer (action <<< AppendFiles)
+      pure next
+    AppendFiles fs next -> do
+      modify \state ->
+        state { files = A.sort $ A.nub $ state.files <> fs }
       pure next
     SelectFile r next -> do
       modify \state ->
@@ -67,7 +96,6 @@ eval q =
         E.Left str -> pure unit
         E.Right res -> modify (_ { selectedFile = M.Just res })
       pure next
-
 
 render :: State -> ComponentHTML Query
 render st =
