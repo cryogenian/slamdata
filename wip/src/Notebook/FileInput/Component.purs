@@ -74,9 +74,9 @@ eval q =
       modify (_ { showFiles = false, hasToggledFileList = true })
       when isFirstTime $
         subscribe $
-          API.transitiveChildrenProducer R.isFile P.rootDir
+          API.transitiveChildrenProducer P.rootDir
             # SCR.producerToStallingProducer
-            # SCR.mapStallingProducer (action <<< AppendFiles)
+            # SCR.mapStallingProducer (action <<< AppendFiles <<< A.filter R.isFile)
       pure next
     AppendFiles fs next -> do
       modify \state ->

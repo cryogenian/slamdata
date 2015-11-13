@@ -394,13 +394,12 @@ loadNotebook res = do
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
   :: forall e
-   . (R.Resource -> Boolean)
-  -> DirPath
+   . DirPath
   -> CR.Producer
       (Array R.Resource)
       (Aff (RetryEffects (ajax :: AJAX, err :: EXCEPTION | e)))
       Unit
-transitiveChildrenProducer pred start = do
+transitiveChildrenProducer dirPath = do
   ACR.produce \emit -> do
     runAff throwException (const (pure unit)) $ do
       let
@@ -408,11 +407,10 @@ transitiveChildrenProducer pred start = do
           ei <- attempt $ children start
           case ei of
             Right items -> do
-              let filteredItems = filter pred items
-              liftEff $ emit (Left filteredItems)
+              liftEff $ emit (Left items)
               let parents = mapMaybe (either (const Nothing) Just <<< R.getPath) items
               traverse_ go parents
             Left _ ->
               liftEff $ emit (Right unit)
-      go start
+      go dirPath
 
