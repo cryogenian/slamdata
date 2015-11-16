@@ -317,12 +317,5 @@ barChartIcon = className "bar-chart-icon"
 lineChartIcon :: ClassName
 lineChartIcon = className "line-chart-icon"
 
-
-pieEditor :: ClassName
-pieEditor = className "pie-editor"
-
-barEditor :: ClassName
-barEditor = className "bar-editor"
-
-lineEditor :: ClassName
-lineEditor = className "line-editor"
+chartEditor :: ClassName
+chartEditor = className "chart-editor"

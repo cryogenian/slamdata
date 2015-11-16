@@ -26,6 +26,7 @@ import Data.Generic (Generic, gEq, gCompare)
 import Data.Either (Either(..))
 import Data.Foldable (Foldable, foldl, sum, product)
 import Data.Tuple (Tuple(..))
+import Model.Select (OptionVal)
 
 data Aggregation
   = Maximum
@@ -82,3 +83,6 @@ instance encodeJsonAggregation :: EncodeJson Aggregation where
   encodeJson = fromString <<< printAggregation
 instance decodeJsonAggregation :: DecodeJson Aggregation where
   decodeJson = decodeJson >=> parseAggregation
+
+instance optionValAggregation :: OptionVal Aggregation where
+  stringVal = printAggregation

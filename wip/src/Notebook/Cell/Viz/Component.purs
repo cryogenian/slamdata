@@ -14,22 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Viz.Component
-  ( vizComponent
-  ) where
+module Notebook.Cell.Viz.Component where
 
 import Prelude
 
 import Model.CellType (CellType(Viz), cellName, cellGlyph)
+import Notebook.Cell.Viz.State
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 {-
 vizComponent :: CellId -> Component CellStateP CellQueryP Slam
 vizComponent cellId = makeEditorCellComponent
   { name: cellName Viz
   , glyph: cellGlyph Viz
-  , component: parentComponent render eval
+  , component: parentComponent' render eval peek
   , initialState: initialState
   , _State: _VizState
   , _Query: makeQueryPrism _VizQuery
   }
+
+
 -}
-vizComponent = unit
