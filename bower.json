@@ -73,7 +73,8 @@
     "purescript-halogen": "pre-component",
     "purescript-markdown": "021749b26d4a6683514d39110779938b7ff8df7e",
     "purescript-strongcheck": "^0.13.0",
-    "purescript-free": "^0.9.0"
+    "purescript-free": "^0.9.0",
+    "purescript-machines": "^0.8.0"
   },
   "devDependencies": {
     "purescript-node-fs-aff": "^0.1.2",
