@@ -21,10 +21,16 @@ module Model.Select where
 import Prelude
 
 import Data.Argonaut
-  (DecodeJson, EncodeJson, decodeJson, jsonEmptyObject, (.?), (~>), (:=))
-import Data.Array (filter, length, head)
-import Data.Lens (LensP(), lens, (%~), (^.))
-import Data.Maybe (Maybe(..))
+  (DecodeJson, EncodeJson, JCursor(), decodeJson, jsonEmptyObject, (.?), (~>), (:=))
+import Data.Array (filter, length, head, (!!))
+import Data.Lens (LensP(), lens, (%~), (^.), (?~))
+import Data.Maybe (Maybe(..), maybe)
+
+class (Eq a) <= OptionVal a where
+  stringVal :: a -> String
+
+instance optionValJCursor :: OptionVal JCursor where
+  stringVal = show
 
 -- | `options` for available variants
 -- | `value` for selected item
@@ -52,11 +58,32 @@ newSelect as = Select { options: as, value: Nothing }
 
 -- | Take first select and remove all from its options second select's value
 except :: forall a. (Eq a) => Select a -> Select a -> Select a
-except minuent subtrahend = minuent # (_options %~ except' subtrahend)
+except (Select r) subtrahend@(Select rr) =
+  Select { options: except' subtrahend r.options
+         , value: value
+         }
+  where
+  value :: Maybe a
+  value = if r.value == rr.value
+          then Nothing
+          else r.value
 
 -- | Filter array to exclude value of `Select`
 except' :: forall a. (Eq a) => Select a -> Array a -> Array a
 except' sel arr = filter (\x -> Just x /= (sel ^. _value)) arr
+
+filterSelect :: forall a. (Eq a) => Select a -> a -> Select a
+filterSelect (Select r) val =
+  Select { options: filter (/= val) r.options
+         , value: if Just val == r.value then Nothing else r.value
+         }
+-- This function returns `Select` without provided value if it is
+-- `Just a` or `emptySelect` if second argument is `Nothing`
+-- This is useful in case we want to make two connected selects
+-- where dependent select is disabled when main has no value.
+filterSelect' :: forall a. (Eq a) => Select a -> Maybe a -> Select a
+filterSelect' sel val =
+  maybe emptySelect (filterSelect sel) val
 
 -- | If there is only one option (opt) set value to be `Just opt`
 autoSelect :: forall a. (Eq a) => Select a -> Select a
@@ -64,6 +91,9 @@ autoSelect (Select {options: opts, value: val}) =
   if length opts == 1
   then Select {options: opts, value: head opts}
   else Select {options: opts, value: val}
+
+trySelect :: forall a. (Eq a) => Int -> Select a -> Select a
+trySelect i sel = maybe sel (\v -> sel # _value ?~ v) (sel ^. _options !! i)
 
 infix 9 <->
 -- | Flipped version of `except'` useful for filtering model fields by
@@ -78,6 +108,10 @@ infix 9 <->
 (<->) :: forall a. (Eq a) => Array a -> Select a -> Array a
 (<->) = flip except'
 
+instance eqSelect :: (Eq a) => Eq (Select a) where
+  eq (Select r) (Select rr) =
+       r.value == rr.value
+    && r.options == rr.options
 
 instance encodeJsonSelect :: (EncodeJson a) => EncodeJson (Select a) where
   encodeJson (Select r) =
