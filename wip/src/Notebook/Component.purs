@@ -48,7 +48,7 @@ import Model.Resource as R
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery)
 import Model.Port (Port(..))
 import Notebook.CellSlot (CellSlot(..))
@@ -151,15 +151,29 @@ runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
   st <- get
   case findParent st cellId of
-    Nothing -> updateCell cellId Nothing
-    Just parent -> maybe (pure unit) (updateCell cellId <<< Just) $ getCurrentValue st parent
+    Nothing ->
+      updateCell cellId
+        { notebookPath: notebookPath st
+        , inputPort: Nothing
+        }
+    Just parent ->
+      case getCurrentValue st parent of
+        Just inputPort ->
+          updateCell cellId
+            { inputPort: Just inputPort
+            , notebookPath: notebookPath st
+            }
+        Nothing -> pure unit
 
-updateCell :: CellId -> Maybe Port -> NotebookDSL Unit
-updateCell cellId value = do
-  result <- query (CellSlot cellId) $ left $ request (UpdateCell value)
+updateCell :: CellId -> CellEvalInput -> NotebookDSL Unit
+updateCell cellId input = do
+  result <- query (CellSlot cellId) $ left $ request (UpdateCell input)
   maybe (pure unit) (runCellDescendants cellId) $ join result
 
 runCellDescendants :: CellId -> Port -> NotebookDSL Unit
 runCellDescendants cellId value = do
-  children <- findChildren <$> get <*> pure cellId
-  traverse_ (flip updateCell (Just value)) children
+  st <- get
+  let
+    children = findChildren st cellId
+    cellEvalInput = { notebookPath: notebookPath st, inputPort: Just value }
+  traverse_ (flip updateCell cellEvalInput) children

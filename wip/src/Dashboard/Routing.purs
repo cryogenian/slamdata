@@ -45,7 +45,7 @@ import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, fromD
 import Model.AccessType (AccessType(..), parseAccessType)
 import Model.Resource (Resource(..), resourceName, resourceDir)
 import Notebook.Component as Notebook
-import Model.CellId (CellId(), string2cellId)
+import Model.CellId (CellId(), stringToCellId)
 import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 import Routing (matchesAff')
 import Routing.Match (Match(), list, eitherMatch)
@@ -111,7 +111,7 @@ routing
   action = (eitherMatch $ map parseAccessType str) <|> pure ReadOnly
 
   cellId :: Match CellId
-  cellId = eitherMatch $ map string2cellId str
+  cellId = eitherMatch $ map stringToCellId str
 
 routeSignal :: Driver QueryP NotebookRawEffects -> Aff NotebookEffects Unit
 routeSignal driver = do

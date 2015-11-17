@@ -17,14 +17,21 @@ limitations under the License.
 module Notebook.Cell.Common.EvalQuery
   ( CellEvalQuery(..)
   , CellEvalResult()
+  , CellEvalInput()
   ) where
 
 import Data.Either (Either())
 import Data.Maybe (Maybe())
 import Model.Port (Port())
+import Utils.Path (DirPath())
+
+type CellEvalInput =
+  { notebookPath :: Maybe DirPath
+  , inputPort :: Maybe Port
+  }
 
 data CellEvalQuery a
-  = EvalCell (Maybe Port) (CellEvalResult -> a)
+  = EvalCell CellEvalInput (CellEvalResult -> a)
   | NotifyRunCell a
 
 -- | The result value produced when evaluating a cell.

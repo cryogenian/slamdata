@@ -14,14 +14,36 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Quasar.Aff where
+module Quasar.Aff
+  ( makeNotebook
+  , loadNotebook
+  , children
+  , mountInfo
+  , move
+  , reqHeadersToJSON
+  , saveMount
+  , delete
+  , getNewName
+  , makeFile
+  , ldJSON
+  , getVersion
+
+  , port
+  , fields
+  , templated
+  , forceDelete
+
+  , transitiveChildrenProducer
+
+  , RetryEffects()
+  ) where
 
 import Prelude
 
 import Config as Config
 import Config.Paths as Config
 
-import Control.Bind ((>=>))
+import Control.Bind ((>=>), (<=<))
 import Control.Coroutine as CR
 import Control.Coroutine.Aff as ACR
 import Control.Monad.Aff (Aff(), attempt, runAff)
@@ -32,10 +54,11 @@ import Control.Monad.Eff.Exception (EXCEPTION(), error, throwException)
 import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Error.Class (throwError)
-
-import Data.Argonaut
-  ( Json(), jsonEmptyObject, jsonParser, decodeJson, (~>), (:=))
-import Data.Array (head, tail, (:), findIndex, filter, mapMaybe)
+import Control.MonadPlus (guard)
+import Control.UI.Browser (encodeURIComponent)
+import Data.Argonaut (Json(), jsonEmptyObject, jsonParser, decodeJson, (~>), (:=), (.?))
+import Data.Argonaut as JS
+import Data.Array (head, tail, (:), findIndex, concat, filter, nub, mapMaybe)
 import Data.Bifunctor (bimap)
 import Data.Date (nowEpochMilliseconds, Now())
 import Data.Either (Either(..), either)
@@ -44,10 +67,13 @@ import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
 import Data.Lens ((.~), (^.))
+import Data.List as L
 import Data.Maybe (Maybe(..), isJust, fromMaybe, maybe)
+import Data.StrMap as SM
 import Data.Path.Pathy
   ( Path(), Abs(), Sandboxed(), rootDir, relativeTo, (</>)
-  , printPath, dir, file, peel, DirName(..), FileName(..))
+  , printPath, dir, file, peel, DirName(..), FileName(..)
+  )
 import Data.String as S
 import Data.Time (Milliseconds(..))
 import Data.Tuple (Tuple(..))
@@ -103,8 +129,12 @@ listing p = maybe (throwError $ error "incorrect path")
 
 
 
-makeFile :: forall e. FilePath -> MimeType -> String
-            -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+makeFile
+  :: forall e
+   . FilePath
+   -> MimeType
+   -> String
+   -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
 makeFile path mime content =
   getResponse msg go
   where
@@ -414,3 +444,168 @@ transitiveChildrenProducer dirPath = do
               liftEff $ emit (Right unit)
       go dirPath
 
+
+
+
+
+-- | This is template string where actual path is encoded like {{path}}
+type SQL = String
+
+query :: forall e. R.Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
+query res sql =
+  if not $ R.isFile res
+  then pure []
+  else extractJArray <$> (getResponse msg $ retryGet uriPath)
+  where
+  msg = "error in query"
+  uriPath = mkURI res sql
+
+query' :: forall e. R.Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JS.JArray)
+query' res@(R.File _) sql = do
+  result <- retryGet (mkURI' res sql)
+  pure if succeeded result.status
+       then Right (extractJArray result.response)
+       else readError "error in query" result.response
+
+query' _ _ = pure $ Left "Query resource is not a file"
+
+count :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
+count res = do
+  fromMaybe 0 <<< readTotal <$> query res sql
+  where
+  sql :: SQL
+  sql = "SELECT COUNT(*) as total FROM {{path}}"
+
+  readTotal :: JS.JArray -> Maybe Int
+  readTotal =
+    Data.Int.fromNumber
+      <=< JS.toNumber
+      <=< SM.lookup "total"
+      <=< JS.toObject
+      <=< head
+
+
+port
+  :: forall e
+   . R.Resource
+  -> R.Resource
+  -> SQL
+  -> SM.StrMap String
+  -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JObject
+port res dest sql vars = do
+  guard $ R.isFile dest
+  result <-
+    slamjax $ defaultRequest
+      { method = POST
+      , headers = [ RequestHeader "Destination" $ R.resourcePath dest
+                  , ContentType ldJSON
+                  ]
+      , url = printPath
+              $ Config.queryUrl
+              </> rootify (R.resourceDir res)
+              </> dir (R.resourceName res)
+              </> file queryVars
+      , content = Just (templated res sql)
+      }
+
+  if not $ succeeded result.status
+    then throwError $ error $ readErr result.response
+    else
+    -- We expect result message to be valid json.
+    either (throwError <<< error) pure
+    $ jsonParser result.response >>= decodeJson
+  where
+  readErr :: String -> String
+  readErr input =
+    case jsonParser input >>= decodeJson >>= (.? "error") of
+      -- All response is error text
+      Left _ -> input
+      -- Error is hided in json message, return only `error` field
+      Right err -> err
+  -- TODO: This should be somewhere better.
+  queryVars :: String
+  queryVars = maybe "" makeQueryVars <<< L.uncons $ SM.toList vars
+
+  pair :: Tuple String String -> String
+  pair (Tuple a b) = a <> "=" <> b
+
+  makeQueryVars { head = h, tail = t } =
+    foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
+
+readError :: forall a. String -> String -> Either String a
+readError msg input =
+  let responseError = jsonParser input >>= decodeJson >>= (.? "error")
+  in either (const $ Left msg) Left responseError
+
+sample' :: forall e. R.Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
+sample' res mbOffset mbLimit =
+  if not $ R.isFile res
+  then pure []
+  else extractJArray <$> (getResponse msg $ retryGet uri)
+  where
+  msg = "error getting resource sample"
+  uri = Config.dataUrl
+        </> rootify (R.resourceDir res)
+        </> file ((R.resourceName res) <>
+                  (maybe "" (("?offset=" <>) <<< show) mbOffset) <>
+                  (maybe "" (("&limit=" <>) <<< show ) mbLimit))
+
+
+sample :: forall e. R.Resource -> Int -> Int -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
+sample res offset limit = sample' res (Just offset) (Just limit)
+
+all :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
+all res = sample' res Nothing Nothing
+
+fields :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Array String)
+fields res = do
+  jarr <- sample res 0 100
+  case jarr of
+    [] -> throwError $ error "empty file"
+    _ -> pure $ nub $ concat (getFields <$> jarr)
+
+mkURI :: R.Resource -> SQL -> FilePath
+mkURI res sql =
+  Config.queryUrl
+  </> file ("?q=" <> encodeURIComponent (templated res sql))
+
+mkURI' :: R.Resource -> SQL -> FilePath
+mkURI' res sql =
+  Config.queryUrl
+  </> rootify (R.resourceDir res)
+  </> dir (R.resourceName res)
+  </> file ("?q=" <> encodeURIComponent (templated res sql))
+
+
+templated :: R.Resource -> SQL -> SQL
+templated res = S.replace "{{path}}" ("\"" <> R.resourcePath res <> "\"")
+
+extractJArray :: String -> JS.JArray
+extractJArray =
+  foldl folder [] <<< map jsonParser <<< S.split "\n"
+  where
+  folder :: JS.JArray -> Either String Json -> JS.JArray
+  folder agg (Right j) = agg ++ [j]
+  folder agg _ = agg
+
+getFields :: Json -> Array String
+getFields json = filter (/= "") $ nub $ getFields' [] json
+
+getFields' :: Array String -> Json -> Array String
+getFields' [] json = getFields' [""] json
+getFields' acc json =
+  if JS.isObject json
+  then maybe acc (goObj acc) $ JS.toObject json
+  else if JS.isArray json
+       then maybe acc (goArr acc) $ JS.toArray json
+       else acc
+
+  where
+  goArr :: Array String -> JS.JArray -> Array String
+  goArr acc = concat <<< map (getFields' $ (<> "[*]") <$> acc)
+
+  goObj :: Array String -> JS.JObject -> Array String
+  goObj acc = concat <<< map (goTuple acc) <<< L.fromList <<< SM.toList
+
+  goTuple :: Array String -> Tuple String Json -> Array String
+  goTuple acc (Tuple key json) = getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json

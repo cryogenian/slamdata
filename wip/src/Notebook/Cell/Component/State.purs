@@ -44,7 +44,7 @@ import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.State
 import Notebook.Cell.Markdown.Component.State
 import Notebook.Cell.Query.Component.State
-import Notebook.Cell.Search.State
+import Notebook.Cell.Search.Component.State
 import Notebook.Cell.Viz.State
 import Notebook.Common (Slam())
 
@@ -105,7 +105,7 @@ data AnyCellState
   | ExploreState ExploreState
   | MarkdownState MarkdownStateP
   | QueryState QueryState
-  | SearchState SearchState
+  | SearchState SearchStateP
   | VizState VizState
 
 _AceState :: PrismP AnyCellState AceStateP
@@ -128,7 +128,7 @@ _QueryState = prism' QueryState \s -> case s of
   QueryState s' -> Just s'
   _ -> Nothing
 
-_SearchState :: PrismP AnyCellState SearchState
+_SearchState :: PrismP AnyCellState SearchStateP
 _SearchState = prism' SearchState \s -> case s of
   SearchState s' -> Just s'
   _ -> Nothing

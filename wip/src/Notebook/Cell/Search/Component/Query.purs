@@ -14,6 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Search.Component.Query (SearchQuery()) where
+module Notebook.Cell.Search.Component.Query
+  ( SearchQuery(..)
+  , SearchQueryP()
+  ) where
+
+import Prelude
+import Data.Functor.Coproduct
+import Halogen
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import Notebook.FileInput.Component as FI
 
 data SearchQuery a
+  = UpdateSearch String a
+
+type SearchQueryP =
+  Coproduct
+    (Coproduct
+      CellEvalQuery
+      SearchQuery)
+    (ChildF Unit FI.Query)
