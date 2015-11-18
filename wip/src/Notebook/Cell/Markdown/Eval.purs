@@ -23,11 +23,11 @@ import Data.Maybe (Maybe(..))
 import Text.Markdown.SlamDown.Parser (parseMd)
 
 import Model.Port (Port(..))
-import Notebook.Cell.Common.EvalQuery (CellEvalResult())
+import Notebook.Cell.Common.EvalQuery (CellEvalResult(), CellEvalInput())
 import Notebook.Common (Slam())
 
-markdownEval :: String -> Slam CellEvalResult
-markdownEval s = pure
+markdownEval :: CellEvalInput -> String -> Slam CellEvalResult
+markdownEval _ s = pure
   { messages: []
   , output: Just $ SlamDown (parseMd s)
   }

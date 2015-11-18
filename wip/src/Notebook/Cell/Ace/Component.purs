@@ -16,6 +16,7 @@ limitations under the License.
 
 module Notebook.Cell.Ace.Component
   ( aceComponent
+  , AceEvaluator()
   , module Notebook.Cell.Ace.Component.Query
   , module Notebook.Cell.Ace.Component.State
   ) where
@@ -40,11 +41,13 @@ import Render.CssClasses as CSS
 import Model.CellType (CellType(..), cellName, cellGlyph)
 import Notebook.Cell.Ace.Component.Query
 import Notebook.Cell.Ace.Component.State
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult(), CellEvalInput())
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism, _AceState, _AceQuery)
 import Notebook.Common (Slam())
 
-aceComponent :: CellType -> (String -> Slam CellEvalResult) -> String -> Component CellStateP CellQueryP Slam
+type AceEvaluator = CellEvalInput -> String -> Slam CellEvalResult
+
+aceComponent :: CellType -> AceEvaluator -> String -> Component CellStateP CellQueryP Slam
 aceComponent cellType run mode = makeEditorCellComponent
   { name: cellName cellType
   , glyph: cellGlyph cellType
@@ -73,7 +76,7 @@ aceComponent cellType run mode = makeEditorCellComponent
 
   eval :: Natural CellEvalQuery (ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit)
   eval (NotifyRunCell next) = pure next
-  eval (EvalCell _ k) = do
+  eval (EvalCell info k) = do
     content <- fromMaybe "" <$> query unit (request GetText)
-    result <- liftH $ liftAff' $ run content
+    result <- liftH $ liftAff' $ run info content
     pure $ k result

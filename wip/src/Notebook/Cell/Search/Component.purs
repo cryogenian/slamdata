@@ -30,9 +30,7 @@ import Control.Monad.Eff.Exception as Exn
 
 import Control.Monad.Trans as MT
 import Control.Monad.Error.Class as EC
-import Control.Monad.Except.Trans as ET
 import Control.Monad.Writer.Class as WC
-import Control.Monad.Writer.Trans as WT
 
 import Data.Argonaut.Combinators ((.?))
 import Data.Array as Arr
@@ -82,7 +80,7 @@ searchComponent cellId =
   NC.makeEditorCellComponent
     { name: CT.cellName CT.Search
     , glyph: CT.cellGlyph CT.Search
-    , component: parentComponent render (eval cellId)
+    , component: parentComponent render eval
     , initialState: installedState initialSearchState
     , _State: NC._SearchState
     , _Query: NC.makeQueryPrism' NC._SearchQuery
@@ -124,35 +122,37 @@ runWith m = do
   modify (_ { running = false })
   pure x
 
-eval :: CID.CellId -> Natural Query (ParentDSL SearchState FI.State Query FI.Query Slam Unit)
-eval cellId = coproduct cellEval searchEval
+eval :: Natural Query (ParentDSL SearchState FI.State Query FI.Query Slam Unit)
+eval = coproduct cellEval searchEval
   where
     cellEval :: Natural NC.CellEvalQuery (ParentDSL SearchState FI.State Query FI.Query Slam Unit)
     cellEval q =
       case q of
         NC.EvalCell info k -> runWith do
-          k <$> runMT do
+          k <$> NC.runCellEvalT do
             inputResource <-
               query unit (request FI.GetSelectedFile) <#> (>>= id)
-                # liftMT
+                # MT.lift
                 >>= maybe (EC.throwError "No file selected") pure
             query <-
               get <#> _.searchString >>> S.toLower >>> SS.mkQuery
-                # liftMT
+                # MT.lift
                 >>= either (\_ -> EC.throwError "Incorrect query string") pure
+
             notebookPath <- maybe (EC.throwError "Missing notebook path") pure info.notebookPath
-            fields <- liftMT <<< liftH <<< liftAff' $ Quasar.fields inputResource
+            fields <- MT.lift <<< liftH <<< liftAff' $ Quasar.fields inputResource
 
             let
               template = Search.queryToSQL fields query
               sql = Quasar.templated inputResource template
 
-              tempOutputResource = R.File $ notebookPath </> Path.file ("out" <> CID.cellIdToString cellId)
+              tempOutputResource = R.File $ notebookPath </> Path.file ("out" <> CID.cellIdToString info.cellId)
 
             WC.tell ["Generated SQL: " <> sql]
+
             { plan: plan, outputResource: outputResource } <-
-              executeQuery template SM.empty inputResource tempOutputResource
-                # Aff.liftAff >>> liftH >>> liftH >>> liftMT
+              Quasar.executeQuery template SM.empty inputResource tempOutputResource
+                # Aff.liftAff >>> liftH >>> liftH >>> MT.lift
                 >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
             WC.tell ["Plan: " <> plan]
@@ -168,43 +168,3 @@ eval cellId = coproduct cellEval searchEval
         UpdateSearch str next -> do
           modify (_ { searchString = str })
           pure next
-
-type MT m = WT.WriterT (Array String) (ET.ExceptT String m)
-
-liftMT :: forall m. (Monad m) => Natural m (MT m)
-liftMT = MT.lift <<< MT.lift
-
-runMT
-  :: forall m a
-   . (Functor m)
-  => MT m a
-  -> m { messages :: Array (Either String String)
-       , output :: Maybe a
-       }
-runMT m = do
-  ET.runExceptT (WT.runWriterT m) <#>
-    either
-      (\err -> { output: Nothing, messages: [Left err] })
-      (\(TPL.Tuple a ms) -> { output: Just a, messages: Right <$> ms })
-
-executeQuery
-  :: String
-  -> SM.StrMap String
-  -> R.Resource
-  -> R.Resource
-  -> Slam (Either String { outputResource :: R.Resource, plan :: String})
-executeQuery sql varMap inputResource outputResource = do
-  when (R.isTempFile outputResource) $
-    Quasar.forceDelete outputResource
-
-  jobj <- Aff.attempt $ Quasar.port inputResource outputResource sql varMap
-  pure $ do
-    j <- lmap Exn.message jobj
-    out' <- j .? "out"
-    planPhases <- Arr.last <$> j .? "phases"
-    path <- maybe (Left "Invalid file from Quasar") Right $ Path.parseAbsFile out'
-    realOut <- maybe (Left "Could not sandbox Quasar file") Right $ Path.sandbox Path.rootDir path
-    pure
-      { outputResource: R.mkFile $ Left $ Path.rootDir </> realOut
-      , plan: maybe "" (\p -> either (const "") id $ p .? "detail") planPhases
-      }

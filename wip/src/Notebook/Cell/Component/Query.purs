@@ -24,7 +24,6 @@ module Notebook.Cell.Component.Query
   , _AceQuery
   , _ExploreQuery
   , _MarkdownQuery
-  , _QueryQuery
   , _SearchQuery
   , _VizQuery
   , module Notebook.Cell.Common.EvalQuery
@@ -45,7 +44,6 @@ import Notebook.Cell.Ace.Component.Query (AceQueryP())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
 import Notebook.Cell.Explore.Component.Query (ExploreQuery())
 import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
-import Notebook.Cell.Query.Component.Query (QueryQuery())
 import Notebook.Cell.Search.Component.Query (SearchQueryP())
 import Notebook.Cell.Viz.Component.Query (VizQuery())
 
@@ -92,7 +90,6 @@ data AnyCellQuery a
   = AceQuery (AceQueryP a)
   | ExploreQuery (ExploreQuery a)
   | MarkdownQuery (MarkdownQueryP a)
-  | QueryQuery (QueryQuery a)
   | SearchQuery (SearchQueryP a)
   | VizQuery (VizQuery a)
 
@@ -109,11 +106,6 @@ _ExploreQuery = prism' ExploreQuery \q -> case q of
 _MarkdownQuery :: forall a. PrismP (AnyCellQuery a) (MarkdownQueryP a)
 _MarkdownQuery = prism' MarkdownQuery \q -> case q of
   MarkdownQuery q' -> Just q'
-  _ -> Nothing
-
-_QueryQuery :: forall a. PrismP (AnyCellQuery a) (QueryQuery a)
-_QueryQuery = prism' QueryQuery \q -> case q of
-  QueryQuery q' -> Just q'
   _ -> Nothing
 
 _SearchQuery :: forall a. PrismP (AnyCellQuery a) (SearchQueryP a)
