@@ -184,7 +184,7 @@
         "searchInput": ".search-cell-input",
         "searchButton": ".search-cell-button",
         "searchClear": ".search-clear",
-        "allQuery": "~*",
+        "allQuery": "*",
         "incorrectQuery": "::"
     },
     "explore": {
