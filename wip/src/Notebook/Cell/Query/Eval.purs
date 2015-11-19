@@ -14,19 +14,90 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Query.Eval where
+module Notebook.Cell.Query.Eval
+  ( queryEval
+  ) where
 
 import Prelude
+import Control.Alt ((<|>))
+import Control.Apply ((*>))
+import Control.Monad.Error.Class as EC
+import Control.Monad.Trans as MT
+import Control.Monad.Writer.Class as WC
 
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
+import Data.Either as E
+import Data.Foldable as F
+import Data.Lens ((^?))
+import Data.Lens as L
+import Data.Maybe as M
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
+import Data.Set as Set
+import Data.String.Regex as Rx
+import Data.StrMap as SM
 
-import Notebook.Cell.Common.EvalQuery (CellEvalResult())
-import Model.Port (Port(..))
+import Model.CellId as CID
+import Model.Resource as R
+import Model.Port as Port
+import Notebook.Cell.Common.EvalQuery as CEQ
 import Notebook.Common (Slam())
 
-queryEval :: String -> Slam CellEvalResult
-queryEval s = pure
-  { messages: [Left "The query cell has not been implemented yet"]
-  , output: Nothing
-  }
+import Text.Markdown.SlamDown as SD
+import Text.Markdown.SlamDown.Html as SD
+import Text.Parsing.StringParser as SP
+import Text.Parsing.StringParser.Combinators as SP
+import Text.Parsing.StringParser.String as SP
+
+import Quasar.Aff as Quasar
+
+queryEval :: CEQ.CellEvalInput -> String -> Slam CEQ.CellEvalResult
+queryEval info sql =
+  CEQ.runCellEvalT $ do
+    notebookPath <- info.notebookPath # M.maybe (EC.throwError "Missing notebook path") pure
+    let
+      varMap = info.inputPort >>= L.preview Port._VarMap # M.fromMaybe SM.empty
+      tempOutputResource = R.File $ notebookPath </> P.file ("out" <> CID.cellIdToString info.cellId)
+      inputResource = R.parent tempOutputResource
+
+    { plan: plan, outputResource: outputResource } <-
+      Quasar.executeQuery sql (renderFormFieldValue <$> varMap) inputResource tempOutputResource
+        # MT.lift
+        >>= E.either EC.throwError pure
+
+    WC.tell ["Plan: " <> plan]
+
+    pure $ Port.Resource outputResource
+
+renderFormFieldValue :: SD.FormFieldValue -> String
+renderFormFieldValue formFieldValue =
+  case formFieldValue of
+    SD.SingleValue ty s ->
+      case ty of
+        SD.PlainText -> quoteString s
+        SD.Numeric
+          | isSQLNum s -> s
+          | otherwise -> quoteString s
+        SD.Date -> "DATE '" ++ s ++ "'"
+        SD.Time -> "TIME '" ++ s ++ "'"
+        SD.DateTime -> "TIMESTAMP '" ++ s ++ ":00Z'"
+    SD.MultipleValues s ->
+      "(" <> F.intercalate ", " (quoteString <$> Set.toList s) <> ")"
+      -- TODO: is this anything like we want for multi-values?
+
+  where
+    quoteString :: String -> String
+    quoteString s = "'" ++ Rx.replace rxQuot "''" s ++ "'"
+      where
+        rxQuot :: Rx.Regex
+        rxQuot = Rx.regex "'" Rx.noFlags { global = true }
+
+    isSQLNum :: String -> Boolean
+    isSQLNum s =
+      E.isRight $ flip SP.runParser s do
+        SP.many1 SP.anyDigit
+        SP.optional $ SP.string "." *> SP.many SP.anyDigit
+        SP.optional $
+          (SP.string "e" <|> SP.string "E")
+            *> (SP.string "-" <|> SP.string "+")
+            *> SP.many SP.anyDigit
+        SP.eof

@@ -155,6 +155,7 @@ runCell cellId = do
       updateCell cellId
         { notebookPath: notebookPath st
         , inputPort: Nothing
+        , cellId: cellId
         }
     Just parent ->
       case getCurrentValue st parent of
@@ -162,6 +163,7 @@ runCell cellId = do
           updateCell cellId
             { inputPort: Just inputPort
             , notebookPath: notebookPath st
+            , cellId: cellId
             }
         Nothing -> pure unit
 
@@ -175,5 +177,9 @@ runCellDescendants cellId value = do
   st <- get
   let
     children = findChildren st cellId
-    cellEvalInput = { notebookPath: notebookPath st, inputPort: Just value }
+    cellEvalInput =
+      { notebookPath: notebookPath st
+      , inputPort: Just value
+      , cellId: cellId
+      }
   traverse_ (flip updateCell cellEvalInput) children

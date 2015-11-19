@@ -24,7 +24,6 @@ module Notebook.Cell.Component.State
   , _AceState
   , _ExploreState
   , _MarkdownState
-  , _QueryState
   , _SearchState
   , _VizState
   ) where
@@ -43,7 +42,6 @@ import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.State
 import Notebook.Cell.Markdown.Component.State
-import Notebook.Cell.Query.Component.State
 import Notebook.Cell.Search.Component.State
 import Notebook.Cell.Viz.State
 import Notebook.Common (Slam())
@@ -104,7 +102,6 @@ data AnyCellState
   = AceState AceStateP
   | ExploreState ExploreState
   | MarkdownState MarkdownStateP
-  | QueryState QueryState
   | SearchState SearchStateP
   | VizState VizState
 
@@ -121,11 +118,6 @@ _ExploreState = prism' ExploreState \s -> case s of
 _MarkdownState :: PrismP AnyCellState MarkdownStateP
 _MarkdownState = prism' MarkdownState \s -> case s of
   MarkdownState s' -> Just s'
-  _ -> Nothing
-
-_QueryState :: PrismP AnyCellState QueryState
-_QueryState = prism' QueryState \s -> case s of
-  QueryState s' -> Just s'
   _ -> Nothing
 
 _SearchState :: PrismP AnyCellState SearchStateP

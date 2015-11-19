@@ -69,6 +69,7 @@ import Notebook.Cell.Component
 import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.Cell.Search.Component (searchComponent)
+import Notebook.Cell.Query.Eval (queryEval)
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 
@@ -180,7 +181,7 @@ addCell cellType parent st =
   where
 
   editor :: CellType -> CellId -> CellComponent
-  editor Query _ = aceComponent Query markdownEval "ace/mode/sql"
+  editor Query _ = aceComponent Query queryEval "ace/mode/sql"
   editor Search cellId = searchComponent cellId
   editor _ _ = aceComponent Markdown markdownEval "ace/mode/markdown"
 
