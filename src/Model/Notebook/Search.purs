@@ -71,13 +71,11 @@ renderPredicate :: Predicate -> Array String -> String
 renderPredicate p prj =
   joinWith " OR " (predicateToSQL p <$> prj)
 
-
-
 predicateToSQL :: Predicate -> String -> String
 predicateToSQL (Contains (Range v v')) s = range v v' s
 predicateToSQL (Contains (Text v)) s =
   joinWith " OR " $
-  [s <> " ~* '" <> escapeRegex v <> "'"] <>
+  [s <> " ~* '" <> (globToRegex $ containsToGlob v) <> "'"] <>
   (if needUnq v then render' v else [ ] ) <>
   (if not (needDateTime v) && needDate v then render date else [ ]) <>
   (if needTime v then render time  else [] ) <>
@@ -85,6 +83,16 @@ predicateToSQL (Contains (Text v)) s =
   (if needInterval v then render i else [] )
 
   where
+  containsToGlob :: String -> String
+  containsToGlob v =
+    if hasSpecialChars v
+    then v
+    else "*" <> v <> "*"
+
+  hasSpecialChars :: String -> Boolean
+  hasSpecialChars v =
+    isJust (indexOf "*" v) || isJust (indexOf "?" v)
+
   quoted = quote v
   date = dated quoted
   time = timed quoted
@@ -99,14 +107,7 @@ predicateToSQL (Gte v) s = qUnQ s ">=" v
 predicateToSQL (Lt v) s = qUnQ s "<" v
 predicateToSQL (Lte v) s = qUnQ s "<=" v
 predicateToSQL (Ne v) s = qUnQ s "<>" v
-predicateToSQL (Like v) s = s <> " ~* '" <> globToRegex v <> "'"
-
-
-escapeRegex :: String -> String
-escapeRegex = replace regexEscapeRegex "\\$&"
-  where
-  regexEscapeRegex =
-    regex "[\\-\\[\\]\\/\\{\\}\\(\\)\\*\\+\\?\\.\\\\\\^\\$\\|]" noFlags{global=true}
+predicateToSQL (Like v) s = s <> " ~* '" <> v <> "'"
 
 globToRegex :: String -> String
 globToRegex x =
