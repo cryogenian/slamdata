@@ -22,7 +22,6 @@ module Notebook.Cell.Search.Component
 
 import Prelude
 
-import Control.Bind ((=<<))
 import Control.Monad (when)
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.Class as Aff
@@ -38,9 +37,7 @@ import Data.Argonaut.Combinators ((.?))
 import Data.Array as Arr
 import Data.Functor.Coproduct
 import Data.Bifunctor (lmap)
-import Data.Lens as L
-import Data.Lens.Prism.Coproduct as C
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Either (Either(..), either)
 import Data.String as S
 import Data.StrMap as SM
@@ -49,7 +46,6 @@ import Data.Path.Pathy as Path
 import Data.Tuple as TPL
 
 import Halogen
-import Halogen.HTML.CSS.Indexed as P
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.HTML.Events.Indexed as HE
@@ -117,7 +113,7 @@ render state =
         ]
     ]
 
-runWith :: forall f g. Natural (ComponentDSL SearchState f g) (ComponentDSL SearchState f g)
+runWith :: forall s' f f' g p. Natural (ParentDSL SearchState s' f f' g p) (ParentDSL SearchState s' f f' g p)
 runWith m = do
   modify (_ { running = true })
   x <- m

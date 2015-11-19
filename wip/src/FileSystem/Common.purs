@@ -22,8 +22,7 @@ import Control.Monad.Aff (Aff())
 import Control.Monad.Eff (Eff())
 import Control.Monad.Free (Free())
 
-import Halogen.Component (QueryF())
-import Halogen.Query (liftH, HalogenF(), liftEff', liftAff')
+import Halogen
 
 import FileSystem.Effects
 
@@ -33,17 +32,11 @@ type Slam = Aff FileSystemEffects
 forceRerender :: forall s f g. (Applicative g) => Free (HalogenF s f g) Unit
 forceRerender = liftH $ pure unit
 
-forceRerender' ::
-  forall s s' f f' g p. (Applicative g) =>
-  Free (HalogenF s f (QueryF s s' f f' g p)) Unit
+forceRerender' :: forall s s' f f' g p. (Applicative g) => ParentDSL s s' f f' g p Unit
 forceRerender' = liftH $ liftH $ pure unit
 
-liftEff'' ::
-  forall a s s' f f' p.
-  Eff FileSystemEffects a -> Free (HalogenF s f (QueryF s s' f f' Slam p)) a
+liftEff'' :: forall a s s' f f' p. Natural (Eff FileSystemEffects) (ParentDSL s s' f f' Slam p)
 liftEff'' = liftH <<< liftEff'
 
-liftAff'' ::
-  forall a s s' f f' p.
-  Slam a -> Free (HalogenF s f (QueryF s s' f f' Slam p)) a
+liftAff'' :: forall a s s' f f' p. Natural (Aff FileSystemEffects) (ParentDSL s s' f f' Slam p)
 liftAff'' = liftH <<< liftAff'
