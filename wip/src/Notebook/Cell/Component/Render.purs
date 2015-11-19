@@ -133,7 +133,7 @@ linkButton =
         [ P.src "img/code-icon.svg"
           -- TODO: not this! ew
           -- if (c ^. _embedHovered) then "img/code-icon-blue.svg" else "img/code-icon.svg"
-        , P.width (P.Pixels 16.0)
+        , P.width (P.Pixels 16)
         ]
     ]
 

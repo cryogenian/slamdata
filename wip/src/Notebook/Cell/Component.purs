@@ -37,6 +37,7 @@ import Data.Visibility (Visibility(..), toggleVisibility)
 import Halogen
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.Themes.Bootstrap3 as B
 
 import Render.Common (row, row')

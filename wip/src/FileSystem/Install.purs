@@ -18,17 +18,14 @@ module FileSystem.Install where
 
 import Prelude
 
-import Control.Monad.Free (Free())
-
 import Data.Either (Either())
 import Data.Function (on)
 import Data.Functor.Coproduct (Coproduct(), left, right)
 import Data.Generic (Generic, gEq, gCompare)
 import Data.Path.Pathy (printPath)
 
-import Halogen.Component
+import Halogen
 import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot)
-import Halogen.Query (HalogenF(), action)
 
 import FileSystem.Breadcrumbs as Breadcrumbs
 import FileSystem.Common (Slam())
@@ -126,6 +123,4 @@ toDialog =
 
 type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
-type Algebra =
-  Free (HalogenF State Query
-        (QueryF State ChildState Query ChildQuery Slam ChildSlot))
+type Algebra = ParentDSL State ChildState Query ChildQuery Slam ChildSlot
