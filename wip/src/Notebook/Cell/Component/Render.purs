@@ -23,8 +23,6 @@ module Notebook.Cell.Component.Render
 import Prelude
 
 import Data.Array (catMaybes, null)
-import Data.Date (Date(), toEpochMilliseconds)
-import Data.Function (on)
 import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
@@ -93,7 +91,7 @@ statusBar hasResults cs =
           $ catMaybes
               [ Just refreshButton
               , toggleMessageButton cs
-              , Just linkButton -- if hasResults then Just linkButton else Nothing
+              , if hasResults then Just linkButton else Nothing
               , Just $ glyph B.glyphiconChevronLeft
               ]
       ]

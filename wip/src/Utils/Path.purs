@@ -17,19 +17,22 @@ limitations under the License.
 module Utils.Path where
 
 import Prelude
+
 import Control.Alt ((<|>))
 import Control.Bind ((=<<))
 import Control.UI.Browser (encodeURIComponent, decodeURIComponent)
+
 import Data.Array (intersect, null, (:))
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Char as Ch
 import Data.Either (Either(..), either)
+import Data.Maybe (Maybe(), maybe, fromMaybe)
 import Data.Path.Pathy
-import Data.String ( split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
-import Config (notebookExtension)
+import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
+import Data.String.Regex as Rgx
+
 import Text.SlamSearch.Parser.Tokens (keyChars)
 
-import qualified Data.Char as Ch
-import qualified Data.String.Regex as Rgx
+import Config (notebookExtension)
 
 type FilePath = AbsFile Sandboxed
 type DirPath = AbsDir Sandboxed

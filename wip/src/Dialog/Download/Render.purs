@@ -38,7 +38,7 @@ import Config.Paths as Config
 import Dialog.Download.Query
 import Dialog.Download.State
 import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import Model.Resource (Resource(..), isFile, resourcePath, isHidden)
+import Model.Resource (Resource(), isFile, resourcePath, isHidden)
 import Quasar.Aff (reqHeadersToJSON)
 import Render.Common (fadeWhen)
 import Render.CssClasses as Rc

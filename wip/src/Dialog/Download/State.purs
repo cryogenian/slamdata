@@ -26,7 +26,7 @@ import Data.Maybe (Maybe(..), isJust)
 import Data.String as Str
 import Data.String.Regex as Rx
 
-import Model.Resource (Resource(..), resourceName, root, getPath)
+import Model.Resource (Resource(), resourceName, root, getPath)
 import Network.HTTP.MimeType (MimeType(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 

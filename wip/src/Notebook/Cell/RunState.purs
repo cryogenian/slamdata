@@ -1,6 +1,5 @@
 module Notebook.Cell.RunState (RunState(..), isRunning) where
 
-import Data.Date (Date())
 import Data.Time (Milliseconds())
 
 data RunState

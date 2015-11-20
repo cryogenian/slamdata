@@ -50,7 +50,7 @@ import Render.CssClasses as CSS
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery)
-import Model.Port (Port(..))
+import Model.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 import Notebook.Component.Query

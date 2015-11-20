@@ -37,7 +37,7 @@ import Data.Either (Either(..))
 import Data.Function (on)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (left)
-import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (?~), (^.))
+import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Visibility (Visibility(..), toggleVisibility)
 
@@ -142,7 +142,6 @@ makeCellComponentPart def render =
     liftH <<< liftAff' =<< gets (^. _tickStopper)
     tickStopper <- startInterval
     modify (_tickStopper .~ tickStopper)
-    liftH $ liftAff' $ Control.Monad.Aff.later' 2700 $ pure unit :: Slam Unit
     result <- query unit (left (request (EvalCell input)))
     liftH $ liftAff' tickStopper
     modify (_runState %~ finishRun)

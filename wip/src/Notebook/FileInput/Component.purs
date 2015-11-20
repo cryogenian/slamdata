@@ -37,7 +37,6 @@ import Data.NaturalTransformation
 import Data.Path.Pathy as P
 
 import Halogen
-import Halogen.HTML.CSS.Indexed as HP
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Events.Indexed as HE

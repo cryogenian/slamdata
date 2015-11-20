@@ -26,7 +26,6 @@ import Data.Path.Pathy (printPath)
 
 import Halogen
 import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot)
-import Halogen.Query (HalogenFP(), ParentEventSource(), action)
 
 import FileSystem.Breadcrumbs as Breadcrumbs
 import FileSystem.Common (Slam())

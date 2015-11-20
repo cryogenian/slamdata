@@ -15,16 +15,16 @@ limitations under the License.
 -}
 
 module Utils.URI
-       ( URIParams()
-       , CredentialParams()
-       , HostParams()
-       , PropParams()
-       , toURI
-       ) where
+ ( URIParams()
+ , CredentialParams()
+ , HostParams()
+ , PropParams()
+ , toURI
+ ) where
 
 import Prelude
 import Data.Array (null)
-import Data.Maybe (Maybe(..), isJust, maybe, fromMaybe)
+import Data.Maybe (Maybe(), isJust, maybe)
 import qualified Data.String as S
 import qualified Data.String.Regex as Rx
 

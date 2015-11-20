@@ -23,7 +23,7 @@ import Data.Argonaut
 import Data.Array (filter)
 import Data.Maybe (maybe)
 import Data.Lens ((^.))
-import Model.Select (Select(..), _value)
+import Model.Select (Select(), _value)
 import Model.ChartAxis (dependsOn)
 import Data.Lens (LensP(), lens)
 

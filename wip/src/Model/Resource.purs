@@ -49,42 +49,24 @@ module Model.Resource
   ) where
 
 import Config
-  (newFileName,
-   newDatabaseName,
-   newNotebookName,
-   newFolderName,
-   notebookExtension)
+  ( newFileName, newDatabaseName, newNotebookName, newFolderName
+  , notebookExtension
+  )
 import Control.Bind ((=<<))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson)
-import Data.Bifunctor (bimap, rmap)
+import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Foreign (ForeignError(TypeMismatch))
-import Data.Foreign.Class (readProp, read, IsForeign)
+import Data.Foreign.Class (readProp, IsForeign)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Path.Pathy
-  (Path(),
-   DirName(..),
-   FileName(..),
-   Abs(),
-   Sandboxed(),
-   dirName,
-   fileName,
-   peel,
-   (</>),
-   rootDir,
-   printPath,
-   rootDir,
-   currentDir,
-   file,
-   dir,
-   sandbox,
-   parseAbsFile,
-   parseAbsDir,
-   renameFile,
-   renameDir)
+  ( Path(), DirName(..), FileName(..), Abs(), Sandboxed(), dirName, peel, (</>)
+  , rootDir, printPath, rootDir, currentDir, file, dir, sandbox, parseAbsFile
+  , parseAbsDir, renameFile, renameDir
+  )
 import Data.Tuple (Tuple(..), fst, snd)
 import Model.Sort (Sort(..))
 import Data.Lens (lens, prism', LensP(), PrismP(), (.~))

@@ -20,14 +20,17 @@ import Prelude
 
 import Control.Monad.Eff (Eff())
 import Control.UI.Browser (setLocation)
-import DOM (DOM())
+
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (printPath)
+
+import DOM (DOM())
+
 import Model.AccessType (AccessType(..), printAccessType)
 import Model.Common (browseURL)
 import Model.Resource (Resource(..), resourcePath, resourceName, sortResource)
-import Model.Salt (Salt(..))
-import Model.Sort (Sort(..))
+import Model.Salt (Salt())
+import Model.Sort (Sort())
 import Utils.Path (encodeURIPath)
 
 data Item

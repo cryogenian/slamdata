@@ -22,26 +22,19 @@ module Notebook.Cell.Search.Component
 
 import Prelude
 
-import Control.Monad (when)
-import Control.Monad.Aff as Aff
 import Control.Monad.Aff.Class as Aff
-import Control.Monad.Eff.Exception as Exn
 
 import Control.Monad.Trans as MT
 import Control.Monad.Error.Class as EC
 import Control.Monad.Writer.Class as WC
 
-import Data.Argonaut.Combinators ((.?))
-import Data.Array as Arr
 import Data.Functor.Coproduct
-import Data.Bifunctor (lmap)
-import Data.Maybe (Maybe(..), maybe)
-import Data.Either (Either(..), either)
+import Data.Maybe (maybe)
+import Data.Either (either)
 import Data.String as S
 import Data.StrMap as SM
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Path
-import Data.Tuple as TPL
 
 import Halogen
 import Halogen.HTML.Indexed as H

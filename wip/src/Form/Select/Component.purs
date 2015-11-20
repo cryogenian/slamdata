@@ -3,19 +3,20 @@ module Form.Select.Component where
 import Prelude
 
 import Control.Monad.Aff (Aff())
+
 import Data.Array (length, range, zipWith, singleton)
 import Data.Functor (($>))
-import Model.Select
-import Halogen
-import Halogen.HTML.CSS.Indexed as P
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
-import Halogen.HTML.Events.Indexed as E
-import Halogen.Themes.Bootstrap3 as B
-import Data.Lens (LensP(), lens, (^.))
+import Data.Lens ((^.))
 import Data.Maybe (Maybe(Nothing))
 import Data.Maybe.Unsafe (fromJust)
-import Render.CssClasses as Rc
+
+import Halogen
+import Halogen.HTML.Events.Indexed as E
+import Halogen.HTML.Indexed as H
+import Halogen.HTML.Properties.Indexed as P
+import Halogen.Themes.Bootstrap3 as B
+
+import Model.Select
 import Utils (stringToInt)
 
 
