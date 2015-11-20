@@ -22,6 +22,7 @@ import Control.UI.ZClipboard (ZCLIPBOARD())
 import Data.Date (Now())
 import Halogen (HalogenEffects())
 import Network.HTTP.Affjax (AJAX())
+import DOM.Timer (Timer())
 
 type NotebookEffects = HalogenEffects NotebookRawEffects
 
@@ -31,4 +32,5 @@ type NotebookRawEffects =
   , now :: Now
   , ref :: REF
   , zClipboard :: ZCLIPBOARD
+  , timer :: Timer
   )

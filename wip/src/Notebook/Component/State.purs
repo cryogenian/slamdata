@@ -65,7 +65,7 @@ import Model.CellType (CellType(..))
 import Model.Notebook as M
 import Model.Port (Port())
 import Notebook.Cell.Ace.Component (aceComponent)
-import Notebook.Cell.Component
+import Notebook.Cell.Component (CellComponent(), CellStateP(), CellQueryP(), initEditorCellState, initResultsCellState)
 import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.Cell.Search.Component (searchComponent)

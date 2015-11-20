@@ -25,23 +25,31 @@ module Notebook.Cell.Component
 
 import Prelude
 
-import Control.Bind ((=<<), join)
+import Control.Bind (join, (=<<))
+import Control.Coroutine.Aff (produce)
+import Control.Coroutine.Stalling (producerToStallingProducer)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Free (liftF)
 
+import Data.Date as Date
+import Data.Either (Either(..))
+import Data.Function (on)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (left)
-import Data.Lens (PrismP(), review, preview, clonePrism)
-import Data.Maybe (maybe)
+import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (?~), (^.))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Visibility (Visibility(..), toggleVisibility)
 
 import Halogen
+import Halogen.Query.EventSource (EventSource(..))
+import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.Themes.Bootstrap3 as B
 
-import Render.Common (row, row')
-import Render.CssClasses as CSS
+import DOM.Timer (interval, clearInterval)
 
 import Model.AccessType (AccessType(..))
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
@@ -49,7 +57,10 @@ import Notebook.Cell.Component.Def
 import Notebook.Cell.Component.Query
 import Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import Notebook.Cell.Component.State
+import Notebook.Cell.RunState (RunState(..))
 import Notebook.Common (Slam())
+import Render.Common (row, row')
+import Render.CssClasses as CSS
 
 -- | Type synonym for the full type of a cell component.
 type CellComponent = Component CellStateP CellQueryP Slam
@@ -128,13 +139,46 @@ makeCellComponentPart def render =
   eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit)
   eval (RunCell next) = pure next
   eval (UpdateCell input k) = do
-    state <- get
-    maybe (liftF HaltHF) (pure <<< k <<< _.output) =<< query unit (left (request (EvalCell input)))
+    liftH <<< liftAff' =<< gets (^. _tickStopper)
+    tickStopper <- startInterval
+    modify (_tickStopper .~ tickStopper)
+    liftH $ liftAff' $ Control.Monad.Aff.later' 2700 $ pure unit :: Slam Unit
+    result <- query unit (left (request (EvalCell input)))
+    liftH $ liftAff' tickStopper
+    modify (_runState %~ finishRun)
+    maybe (liftF HaltHF) (pure <<< k <<< _.output) result
   eval (RefreshCell next) = pure next
   eval (TrashCell next) = pure next
   eval (CreateChildCell _ next) = pure next
   eval (ToggleCollapsed next) =
-    modify (\st -> st { isCollapsed = not st.isCollapsed }) $> next
+    modify (_isCollapsed %~ not) $> next
   eval (ToggleMessages next) =
-    modify (\st -> st { messageVisibility = toggleVisibility st.messageVisibility }) $> next
+    modify (_messageVisibility %~ toggleVisibility) $> next
   eval (ShareCell next) = pure next
+  eval (Tick elapsed next) =
+    modify (_runState .~ RunElapsed elapsed) $> next
+
+-- | Starts a timer running on an interval that passes Tick queries back to the
+-- | component, allowing the runState to be updated with a timer.
+-- |
+-- | The returned value is an action that will stop the timer running when
+-- | processed.
+startInterval :: ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit (Slam Unit)
+startInterval = do
+  ref <- liftH $ liftEff' $ newRef Nothing
+  start <- liftH $ liftEff' Date.now
+  modify (_runState .~ RunElapsed zero)
+
+  subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do
+    i <- interval 1000 $ emit <<< Left <<< action <<< Tick =<< liftEff do
+      now <- Date.now
+      pure $ on (-) Date.toEpochMilliseconds now start
+    writeRef ref (Just i)
+
+  pure $ maybe (pure unit) (liftEff <<< clearInterval) =<< liftEff (readRef ref)
+
+-- | Update the `RunState` from its current value to `RunFinished`.
+finishRun :: RunState -> RunState
+finishRun RunInitial = RunElapsed zero
+finishRun (RunElapsed ms) = RunFinished ms
+finishRun (RunFinished ms) = RunFinished ms

@@ -22,20 +22,25 @@ module Notebook.Cell.Component.Render
 
 import Prelude
 
-import Data.Array (catMaybes)
-import Data.Maybe (Maybe(..))
+import Data.Array (catMaybes, null)
+import Data.Date (Date(), toEpochMilliseconds)
+import Data.Function (on)
+import Data.Int (fromNumber)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
 
 import Halogen (ParentHTML())
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events as E
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
 
 import Render.Common (glyph)
 import Render.CssClasses as CSS
 
+import Notebook.Cell.RunState (RunState(..), isRunning)
 import Notebook.Cell.Component.Query (CellQuery(..), InnerCellQuery())
-import Notebook.Cell.Component.State (CellState(), AnyCellState(), isRunning)
+import Notebook.Cell.Component.State (CellState(), AnyCellState())
 import Notebook.Common (Slam())
 
 type CellHTML = ParentHTML AnyCellState CellQuery InnerCellQuery Slam Unit
@@ -75,33 +80,44 @@ statusBar hasResults cs =
   H.div
     [ P.classes [CSS.cellEvalLine, B.clearfix, B.row] ]
     $ [ H.button
-          [ P.classes [B.btn, B.btnPrimary, buttonClass]
+          [ P.classes [B.btn, B.btnPrimary, button.className]
           , E.onClick (E.input_ RunCell)
-          -- , P.ariaLabel buttonAriaLabel
+          -- , P.ariaLabel button.label
           ]
-          [ glyph buttonGlyph ]
+          [ glyph button.glyph ]
       , H.div
           [ P.class_ CSS.statusText ]
-          [ H.text "" ] -- $ statusText notebook.tickDate (c ^. _runState) ]
+          [ H.text $ runStatusMessage cs.runState ]
       , H.div
           [ P.classes [B.pullRight, CSS.cellControls] ]
           $ catMaybes
               [ Just refreshButton
               , toggleMessageButton cs
-              , if hasResults then Just linkButton else Nothing
+              , Just linkButton -- if hasResults then Just linkButton else Nothing
               , Just $ glyph B.glyphiconChevronLeft
               ]
       ]
      <> messages cs
   where
-  buttonClass :: H.ClassName
-  buttonClass = if isRunning cs then CSS.stopButton else CSS.playButton
 
-  buttonGlyph :: H.ClassName
-  buttonGlyph = if isRunning cs then B.glyphiconStop else B.glyphiconPlay
+  button =
+    if isRunning cs.runState
+    then { className: CSS.stopButton, glyph: B.glyphiconStop, label: "Stop" }
+    else { className: CSS.playButton, glyph: B.glyphiconPlay, label: "Play" }
 
-  buttonAriaLabel :: String
-  buttonAriaLabel = if isRunning cs then "Stop" else "Play"
+runStatusMessage :: RunState -> String
+runStatusMessage RunInitial = ""
+runStatusMessage (RunElapsed t) =
+  "Running for " <> printSeconds t <> "..."
+runStatusMessage (RunFinished t) =
+  "Finished: took " <> printMilliseconds t <> "."
+
+printSeconds :: Milliseconds -> String
+printSeconds t = case toSeconds t of
+  Seconds s -> maybe "0" show (fromNumber (Math.floor s)) ++ "s"
+
+printMilliseconds :: Milliseconds -> String
+printMilliseconds (Milliseconds ms) = maybe "0" show (fromNumber (Math.floor ms)) ++ "ms"
 
 refreshButton :: CellHTML
 refreshButton =
@@ -114,14 +130,14 @@ refreshButton =
 
 toggleMessageButton :: CellState -> Maybe (CellHTML)
 toggleMessageButton cs =
-  case cs.messages of
-    [] -> Nothing
-    _ -> Just $
-      H.button
-        [ P.title if cs.isCollapsed then "Show messages" else "Hide messages"
-        , E.onClick (E.input_ ToggleMessages)
-        ]
-        [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
+  if null cs.messages
+  then Nothing
+  else Just $
+    H.button
+      [ P.title if cs.isCollapsed then "Show messages" else "Hide messages"
+      , E.onClick (E.input_ ToggleMessages)
+      ]
+      [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
 
 linkButton :: CellHTML
 linkButton =

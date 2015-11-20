@@ -19,7 +19,14 @@ module Notebook.Cell.Component.State
   , CellStateP()
   , initEditorCellState
   , initResultsCellState
-  , isRunning
+  , _accessType
+  , _visibility
+  , _runState
+  , _tickStopper
+  , _isCollapsed
+  , _messages
+  , _messageVisibility
+  , _hasResults
   , AnyCellState()
   , _AceState
   , _ExploreState
@@ -30,19 +37,22 @@ module Notebook.Cell.Component.State
 
 import Prelude
 
+import Data.Date (Date())
 import Data.Either (Either())
-import Data.Lens.Prism (PrismP(), prism')
+import Data.Lens (LensP(), lens, PrismP(), prism')
 import Data.Maybe (Maybe(..))
 import Data.Visibility (Visibility(..))
 
 import Halogen (InstalledState())
 
 import Model.AccessType (AccessType())
+
 import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.State
 import Notebook.Cell.Markdown.Component.State
 import Notebook.Cell.Search.Component.State
+import Notebook.Cell.RunState (RunState(..))
 import Notebook.Cell.Viz.State
 import Notebook.Common (Slam())
 
@@ -52,6 +62,8 @@ import Notebook.Common (Slam())
 -- |   notebook. In the case of read-only notebooks editor cells are hidden.
 -- | - `visibility` is used to specify whether the cell should be rendered at
 -- |   all - used when embedding a single cell in another page.
+-- | - `runState` tracks whether the cell has run yet, is running, or has
+-- |   completed running.
 -- | - `isCollapsed` tracks whether the cell is expanded or collapsed. In the
 -- |   case of editor cells this shows/hides the whole editor, in the case of
 -- |   results cells this shows/hides the evaluation messages.
@@ -65,6 +77,8 @@ import Notebook.Common (Slam())
 type CellState =
   { accessType :: AccessType
   , visibility :: Visibility
+  , runState :: RunState
+  , tickStopper :: Slam Unit
   , isCollapsed :: Boolean
   , messages :: Array (Either String String)
   , messageVisibility :: Visibility
@@ -78,6 +92,8 @@ initEditorCellState :: AccessType -> Visibility -> CellState
 initEditorCellState accessType visibility =
   { accessType: accessType
   , visibility: visibility
+  , runState: RunInitial
+  , tickStopper: pure unit
   , isCollapsed: false
   , messages: []
   , messageVisibility: Invisible
@@ -89,14 +105,37 @@ initResultsCellState :: AccessType -> Visibility -> CellState
 initResultsCellState accessType visibility =
   { accessType: accessType
   , visibility: visibility
+  , runState: RunInitial
+  , tickStopper: pure unit
   , isCollapsed: true
   , messages: []
   , messageVisibility: Invisible
   , hasResults: false
   }
 
-isRunning :: CellState -> Boolean
-isRunning _ = false
+_accessType :: LensP CellState AccessType
+_accessType = lens _.accessType (_ { accessType = _ })
+
+_visibility :: LensP CellState Visibility
+_visibility = lens _.visibility (_ { visibility = _ })
+
+_runState :: LensP CellState RunState
+_runState = lens _.runState (_ { runState = _ })
+
+_tickStopper :: LensP CellState (Slam Unit)
+_tickStopper = lens _.tickStopper (_ { tickStopper = _ })
+
+_isCollapsed :: LensP CellState Boolean
+_isCollapsed = lens _.isCollapsed (_ { isCollapsed = _ })
+
+_messages :: LensP CellState (Array (Either String String))
+_messages = lens _.messages (_ { messages = _ })
+
+_messageVisibility :: LensP CellState Visibility
+_messageVisibility = lens _.messageVisibility (_ { messageVisibility = _ })
+
+_hasResults :: LensP CellState Boolean
+_hasResults = lens _.hasResults (_ { hasResults = _ })
 
 data AnyCellState
   = AceState AceStateP
