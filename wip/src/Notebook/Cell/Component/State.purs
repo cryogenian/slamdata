@@ -37,7 +37,6 @@ module Notebook.Cell.Component.State
 
 import Prelude
 
-import Data.Date (Date())
 import Data.Either (Either())
 import Data.Lens (LensP(), lens, PrismP(), prism')
 import Data.Maybe (Maybe(..))

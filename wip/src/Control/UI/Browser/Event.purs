@@ -14,17 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Control.UI.Browser.Event where
+module Control.UI.Browser.Event (raiseEvent) where
+
+import Control.Monad.Eff (Eff())
+
+import Data.Function (Fn2(), runFn2)
 
 import DOM (DOM())
-import Data.Function(Fn2(), runFn2)
-import Control.Monad.Eff (Eff())
 import DOM.HTML.Types (HTMLElement())
 
-foreign import raiseEventImpl :: forall e a.
-                                 Fn2 String HTMLElement
-                                 (Eff (dom :: DOM |e) HTMLElement)
+foreign import raiseEventImpl
+  :: forall eff
+   . Fn2 String HTMLElement (Eff (dom :: DOM | eff) HTMLElement)
 
-
-raiseEvent :: forall e a. String -> HTMLElement -> Eff (dom :: DOM |e) HTMLElement
+raiseEvent
+  :: forall eff
+   . String
+  -> HTMLElement
+  -> Eff (dom :: DOM | eff) HTMLElement
 raiseEvent name el = runFn2 raiseEventImpl name el

@@ -20,17 +20,18 @@ module Model.Notebook.Search
   ) where
 
 import Prelude
+
 import Control.Apply (lift2)
-import Data.Either
+
+import Data.Foldable
 import Data.List (fromList, List(..))
 import Data.Maybe
 import Data.Semiring.Free
-import Data.Foldable
 import Data.String (joinWith, indexOf)
 import Data.String.Regex as RX
+
 import Text.SlamSearch as SS
 import Text.SlamSearch.Types as SS
-import Global
 
 queryToSQL
   :: Array String

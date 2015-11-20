@@ -38,7 +38,7 @@ import Ace.Halogen.Component (AceQuery(..), AceState(), aceConstructor)
 
 import Render.CssClasses as CSS
 
-import Model.CellType (CellType(..), cellName, cellGlyph)
+import Model.CellType (CellType(), cellName, cellGlyph)
 import Notebook.Cell.Ace.Component.Query
 import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult(), CellEvalInput())

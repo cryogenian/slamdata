@@ -30,7 +30,7 @@ import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
-import Data.List (List(..))
+import Data.List (List())
 import Data.Maybe (Maybe(..))
 import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.String.Regex (noFlags, regex, test, Regex())

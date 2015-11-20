@@ -20,10 +20,10 @@ import Prelude
 
 import Config as Config
 import Control.UI.Browser (encodeURIComponent)
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(), fromMaybe)
 import Data.Path.Pathy (printPath)
-import Model.Salt (Salt(..), runSalt)
-import Model.Sort (Sort(..), sort2string)
+import Model.Salt (Salt(), runSalt)
+import Model.Sort (Sort(), sort2string)
 import Utils.Path (DirPath())
 
 browseURL :: Maybe String -> Sort -> Salt -> DirPath -> String

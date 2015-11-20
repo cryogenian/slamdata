@@ -18,18 +18,17 @@ module Model.Notebook where
 
 import Prelude
 
-import Control.Alt ((<|>))
 import Data.Argonaut
   ( Json(), (:=), (~>), (.?), DecodeJson, EncodeJson
   , decodeJson, printJson, encodeJson)
-import Data.Either (Either(Left))
 import Data.Lens (LensP(), lens)
 import Data.Map (Map(), empty)
 import Data.Maybe (Maybe())
-import Model.CellId
-import Model.CellType
+
 import Network.HTTP.Affjax.Request (Requestable, toRequest)
 
+import Model.CellId
+import Model.CellType
 
 -- | `cellType` and `cellId` characterize what is this cell and where is it
 -- | `hasRun` is flag for routing process, if it's `hasRun` we probably should

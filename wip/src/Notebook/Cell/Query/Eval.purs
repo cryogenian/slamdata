@@ -27,7 +27,6 @@ import Control.Monad.Writer.Class as WC
 
 import Data.Either as E
 import Data.Foldable as F
-import Data.Lens ((^?))
 import Data.Lens as L
 import Data.Maybe as M
 import Data.Path.Pathy ((</>))

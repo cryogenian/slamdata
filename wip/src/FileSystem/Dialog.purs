@@ -22,9 +22,9 @@ import Control.Alt ((<|>))
 import Control.Bind (join)
 
 import Data.Array (singleton)
-import Data.Either (Either(..))
+import Data.Either (Either())
 import Data.Function (on)
-import Data.Functor.Coproduct (Coproduct(..))
+import Data.Functor.Coproduct (Coproduct())
 import Data.Maybe (Maybe(..), isNothing, maybe, fromMaybe, isJust)
 import Data.Path.Pathy (printPath)
 

@@ -23,7 +23,7 @@ import Prelude
 import Data.Argonaut
   (DecodeJson, EncodeJson, JCursor(), decodeJson, jsonEmptyObject, (.?), (~>), (:=))
 import Data.Array (filter, length, head, (!!))
-import Data.Lens (LensP(), lens, (%~), (^.), (?~))
+import Data.Lens (LensP(), lens, (^.), (?~))
 import Data.Maybe (Maybe(..), maybe)
 
 class (Eq a) <= OptionVal a where

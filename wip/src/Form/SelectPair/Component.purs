@@ -3,21 +3,22 @@ module Form.SelectPair.Component where
 import Prelude
 
 import Control.Monad.Aff (Aff())
-import Form.Select.Component(Query(..), select)
+
 import Data.Array (null)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens, (^.), (.~), (%~), view)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe())
 import Data.Maybe.Unsafe (fromJust)
-import Model.Select
+import Form.Select.Component (Query(..), select)
+
 import Halogen
-import Halogen.HTML.CSS.Indexed as P
+import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
-import Halogen.HTML.Events.Indexed as E
 import Halogen.Themes.Bootstrap3 as B
-import Render.CssClasses as Rc
+
+import Model.Select
 import Utils (stringToInt)
 
 type Slam e = Aff (HalogenEffects e)
