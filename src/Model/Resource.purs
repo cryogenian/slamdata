@@ -59,6 +59,7 @@ import Data.Either
 import Data.Either.Unsafe (fromRight)
 import Data.Foreign (ForeignError(TypeMismatch))
 import Data.Foreign.Class (readProp, read, IsForeign)
+import Data.Foreign.NullOrUndefined
 import Data.Inject1
 import Data.Maybe
 import Data.Path.Pathy
@@ -72,6 +73,7 @@ import Utils
 
 import qualified Data.String as S
 
+-- TODO: should we have a constructor for views?
 data Resource
   = File FilePath
   | Notebook DirPath
@@ -122,9 +124,15 @@ isDatabase _ = false
 resourceTag :: Resource -> String
 resourceTag r = case r of
   File _ -> "file"
-  Database _ -> "mount"
+  Database _ -> "directory"
   Notebook _ -> "notebook"
   Directory _ -> "directory"
+
+-- | TODO: we don't currently know when a file is really a view; should we?
+resourceMountTypeTag :: Resource -> Maybe String
+resourceMountTypeTag r = case r of
+  Database _ -> Just "mongodb"
+  _ -> Nothing
 
 getPath :: Resource -> AnyPath
 getPath r = case r of
@@ -282,31 +290,43 @@ instance resourceIsForeign :: IsForeign Resource where
   read f = do
     name <- readProp "name" f
     ty <- readProp "type" f
+    mountType <- runNullOrUndefined <$> readProp "mount" f
     template <- case ty of
-      "mount" -> pure newDatabase
-      "directory" -> pure $ if endsWith notebookExtension name
-                            then newNotebook
-                            else newDirectory
+      "directory" ->
+        case mountType of
+          Just "mongodb" -> pure newDatabase
+          _ ->
+            pure $
+              if endsWith notebookExtension name
+                then newNotebook
+                else newDirectory
       "file" -> pure newFile
       _ -> Left $ TypeMismatch "resource" "string"
     pure $ setName template name
 
 instance encodeJsonResource :: EncodeJson Resource where
-  encodeJson res = "type" := resourceTag res
-                ~> "path" := resourcePath res
-                ~> jsonEmptyObject
+  encodeJson res =
+    "type" := resourceTag res
+    ~> "path" := resourcePath res
+    ~> maybe
+        jsonEmptyObject
+        (\t -> "mount" := t ~> jsonEmptyObject)
+        (resourceMountTypeTag res)
 
 instance decodeJsonResource :: DecodeJson Resource where
   decodeJson json = do
     obj <- decodeJson json
     resType <- obj .? "type"
     path <- obj .? "path"
+    let mountType = Data.StrMap.lookup "mount" obj >>= decodeJson >>> either (const Nothing) pure
     case resType of
       -- type inference bug prevents use of a generic `parsePath` which accepts `parseAbsFile` or `parseAbsDir` as an argument
       "file" -> maybe (Left $ "Invalid file path") (Right <<< File) $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile path)
       "notebook" -> parseDirPath "notebook" Notebook path
-      "directory" -> parseDirPath "directory" Directory path
-      "mount" -> parseDirPath "mount" Database path
+      "directory" ->
+        case mountType of
+          Just "mongodb" -> parseDirPath "mount" Database path
+          _ -> parseDirPath "directory" Directory path
       _ -> Left "Unrecognized resource type"
     where
     parseDirPath :: String -> (DirPath -> Resource) -> String -> Either String Resource
