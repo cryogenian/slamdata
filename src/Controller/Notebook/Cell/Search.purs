@@ -56,7 +56,7 @@ import Model.Notebook.Search (needFields, queryToSQL)
 import Model.Notebook.Cell (Cell(), RunState(..), _RunningSince, _runState,  _cellId, _content, _Search, _failures, _input, _output, _message)
 import Model.Notebook.Cell.Search (SearchRec(), _buffer, initialSearchRec)
 import Api.Fs (delete)
-import Api.Query (fields, port, sample, templated)
+import Api.Query (fields, sample, templated)
 
 runSearch :: forall eff. Cell -> I eff
 runSearch cell =

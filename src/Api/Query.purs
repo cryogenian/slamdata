@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Api.Query (query, query', port, sample, SQL(), fields, count, all, templated) where
+module Api.Query (query, query', portView, portQuery, sample, SQL(), fields, count, all, templated) where
 
 import Prelude
 import Api.Common (RetryEffects(), getResponse, succeeded, retryGet, slamjax, ldJSON)
+import Api.Fs (saveViewMount)
 import Config.Paths (queryUrl, dataUrl)
 import Control.Apply (lift2)
 import Control.Bind ((<=<), (>=>))
@@ -37,12 +38,12 @@ import Data.Foldable (foldl)
 import Data.List (uncons, fromList)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Path.Pathy (rootDir, (</>), dir, file, printPath)
-import Data.String (split, replace)
+import Data.String (split, joinWith, replace)
 import Data.StrMap (StrMap(), keys, toList, empty, lookup)
 import Data.Tuple (Tuple(..))
 import Data.Bifunctor (lmap)
 import Model.Notebook.Port (VarMapValue())
-import Model.Path (FilePath(), rootify)
+import Model.Path (FilePath(), rootify, encodeURIPath)
 import Model.Resource (Resource(..), resourcePath, isFile, _name, resourceDir, resourceName)
 import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Method (Method(..))
@@ -82,31 +83,25 @@ count res = do
   readTotal :: JArray -> Maybe Int
   readTotal = I.fromNumber <=< toNumber <=< lookup "total" <=< toObject <=< head
 
-
-port :: forall e. Resource -> Resource -> SQL ->
-        StrMap VarMapValue ->
-        Aff (RetryEffects (ajax :: AJAX | e)) JObject
-port res dest sql vars = do
+portQuery :: forall e. Resource -> Resource -> SQL -> StrMap VarMapValue -> Aff (RetryEffects (ajax :: AJAX | e)) JObject
+portQuery res dest sql vars = do
   guard $ isFile dest
   result <- slamjax $ defaultRequest
-            { method = POST
-            , headers = [ RequestHeader "Destination" $ resourcePath dest
-                        , ContentType ldJSON
-                        ]
-            , url = printPath
-                    $ queryUrl
-                    </> rootify (resourceDir res)
-                    </> dir (resourceName res)
-                    </> file queryVars
-            , content = Just (templated res sql)
-            }
+    { method = POST
+    , headers =
+        [ RequestHeader "Destination" $ resourcePath dest
+        , ContentType ldJSON
+        ]
+    , url = printPath $ queryUrl </> rootify (resourceDir res) </> dir (resourceName res) </> file queryVars
+    , content = Just (templated res sql)
+    }
 
   if not $ succeeded result.status
     then throwError $ error $ readErr result.response
     else
-    -- We expect result message to be valid json.
-    either (throwError <<< error) pure
-    $ jsonParser result.response >>= decodeJson
+      -- We expect result message to be valid json.
+      either (throwError <<< error) pure $
+        jsonParser result.response >>= decodeJson
   where
   readErr :: String -> String
   readErr input =
@@ -124,6 +119,12 @@ port res dest sql vars = do
 
   makeQueryVars { head = h, tail = t } =
     foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
+
+portView :: forall e. Resource -> Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+portView res dest sql = do
+  guard $ isFile dest
+  let uri = "sql2:///?q=" <> encodeURIPath (templated res sql)
+  saveViewMount dest uri
 
 readError :: forall a. String -> String -> Either String a
 readError msg input =
