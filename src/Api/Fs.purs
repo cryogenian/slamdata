@@ -26,6 +26,7 @@ import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 
+import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (Json())
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
@@ -327,5 +328,29 @@ saveMount res uri = do
   if succeeded result.status
      then pure unit
      else throwError (error result.response)
+
+saveViewMount :: forall e. R.Resource -> String -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+saveViewMount dest uri = do
+  result <- slamjax $ defaultRequest
+    { method = PUT
+    , headers = [ContentType applicationJSON]
+    , content = Just $ stringify { view: { connectionUri: uri } }
+    , url = printPath
+            $ Config.mountUrl
+            </> rootify (R.resourceDir dest)
+            </> file (R.resourceName dest)
+    }
+  if succeeded result.status
+     then pure unit
+     else throwError (error (readErr result.response))
+
+  where
+  readErr :: String -> String
+  readErr input =
+    case jsonParser input >>= decodeJson >>= (.? "error") of
+      -- All response is error text
+      Left _ -> input
+      -- Error is hided in json message, return only `error` field
+      Right err -> err
 
 foreign import stringify :: forall r. { | r } -> String

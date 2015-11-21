@@ -76,6 +76,7 @@ import qualified Data.String as S
 -- TODO: should we have a constructor for views?
 data Resource
   = File FilePath
+  | ViewMount FilePath
   | Notebook DirPath
   | Directory DirPath
   | Database DirPath
@@ -84,6 +85,7 @@ instance showResource :: Show Resource where
   show r =
     case r of
       File fp -> "File " ++ show fp
+      ViewMount fp -> "ViewMount " ++ show fp
       Notebook dp -> "Notebook " ++ show dp
       Directory dp -> "Directory " ++ show dp
       Database dp -> "Database " ++ show dp
@@ -113,6 +115,10 @@ isFile :: Resource -> Boolean
 isFile (File _) = true
 isFile _ = false
 
+isViewMount :: Resource -> Boolean
+isViewMount (ViewMount _) = true
+isViewMount _ = false
+
 isDirectory :: Resource -> Boolean
 isDirectory (Directory _) = true
 isDirectory _ = false
@@ -128,15 +134,16 @@ resourceTag r = case r of
   Notebook _ -> "notebook"
   Directory _ -> "directory"
 
--- | TODO: we don't currently know when a file is really a view; should we?
 resourceMountTypeTag :: Resource -> Maybe String
 resourceMountTypeTag r = case r of
   Database _ -> Just "mongodb"
+  ViewMount _ -> Just "view"
   _ -> Nothing
 
 getPath :: Resource -> AnyPath
 getPath r = case r of
   File p -> inj p
+  ViewMount p -> inj p
   Notebook p -> inj p
   Directory p -> inj p
   Database p -> inj p
@@ -220,6 +227,9 @@ newDirectory = Directory $ rootDir </> dir newFolderName
 newDatabase :: Resource
 newDatabase = Database $ rootDir </> dir newDatabaseName
 
+newViewMount :: Resource
+newViewMount = ViewMount $ rootDir </> file newViewName
+
 mkNotebook :: AnyPath -> Resource
 mkNotebook ap =
   either go (Notebook <<< (<./> notebookExtension)) ap
@@ -237,6 +247,14 @@ mkFile ap = either File go ap
   go p = maybe newFile id do
     Tuple pp dirOrFile <- peel p
     pure $ File (pp </> file (nameOfFileOrDir dirOrFile))
+
+mkViewMount :: AnyPath -> Resource
+mkViewMount ap = either ViewMount go ap
+  where
+  go :: DirPath -> Resource
+  go p = maybe newViewMount id do
+    Tuple pp dirOrFile <- peel p
+    pure $ ViewMount (pp </> file (nameOfFileOrDir dirOrFile))
 
 mkDirectory :: AnyPath -> Resource
 mkDirectory ap = either go Directory ap
@@ -257,6 +275,7 @@ mkDatabase ap = either go Database ap
 setPath :: Resource -> AnyPath -> Resource
 setPath (Notebook _) p = mkNotebook p
 setPath (File _) p = mkFile p
+setPath (ViewMount _) p = mkViewMount p
 setPath (Database _) p = mkDatabase p
 setPath (Directory _) p = mkDirectory p
 
@@ -300,7 +319,10 @@ instance resourceIsForeign :: IsForeign Resource where
               if endsWith notebookExtension name
                 then newNotebook
                 else newDirectory
-      "file" -> pure newFile
+      "file" ->
+        case mountType of
+          Just "view" -> pure newViewMount
+          _ -> pure newFile
       _ -> Left $ TypeMismatch "resource" "string"
     pure $ setName template name
 
@@ -321,7 +343,13 @@ instance decodeJsonResource :: DecodeJson Resource where
     let mountType = Data.StrMap.lookup "mount" obj >>= decodeJson >>> either (const Nothing) pure
     case resType of
       -- type inference bug prevents use of a generic `parsePath` which accepts `parseAbsFile` or `parseAbsDir` as an argument
-      "file" -> maybe (Left $ "Invalid file path") (Right <<< File) $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile path)
+      "file" ->
+        let
+          constr =
+            case mountType of
+              Just "view" -> ViewMount
+              _ -> File
+        in maybe (Left $ "Invalid file path") (Right <<< constr) $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile path)
       "notebook" -> parseDirPath "notebook" Notebook path
       "directory" ->
         case mountType of

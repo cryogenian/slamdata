@@ -27,7 +27,7 @@ module Controller.Notebook.Cell.JTableContent
 
 import Prelude
 import Api.Fs (forceDelete)
-import Api.Query (port, sample, count)
+import Api.Query (portView, portQuery, sample, count)
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
@@ -38,7 +38,8 @@ import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (Json(), JObject(), fromArray)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Array (head, last)
-import Data.Bifunctor (lmap)
+import Data.Bifunctor (lmap, rmap)
+import Data.Functor (($>))
 import Data.Date (now)
 import Data.Either (Either(..), either)
 import Data.Foreign.Class (readJSON)
@@ -50,7 +51,7 @@ import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
 import Model.Notebook.Port (VarMapValue(), _VarMap, Port(..))
-import Model.Resource (Resource(), mkFile, isTempFile, _path)
+import Model.Resource (Resource(..), mkFile, isTempFile, _path)
 import Optic.Core
 import Optic.Extended (TraversalP(), (^?))
 import Utils (s2i)
@@ -134,20 +135,43 @@ runJTable file cell = do
                               }
                             }
 
--- TODO: Remove String from being our error type.
+-- | Executes a cell's query on Quasar; if the cell's VarMap is empty, then
+-- | it will be done using the view mounts API.
+-- |
+-- | TODO: Remove String from being our error type.
 queryToJTable :: forall e. Cell -> String -> Resource -> Resource -> I e
 queryToJTable cell sql inp out = do
   jobj <- liftAff do
-    if isTempFile out then forceDelete out else pure unit
-    attempt (port inp out sql varMap)
+    -- TODO: forceDelete doesn't work on views, but we have no way of knowing whether
+    -- the file is a view or not at this time. So, for now, we have to just try it.
+    void $ attempt $
+      if isTempFile out
+         then forceDelete out
+         else pure unit
+
+    attempt $
+      if SM.isEmpty varMap
+         then portView inp out sql $> Nothing
+         else portQuery inp out sql varMap <#> Just
+
   either errorInQuery go do
-    j <- lmap message jobj
-    out' <- j .? "out"
-    planPhases <- last <$> j .? "phases"
-    let plan = maybe "" (\p -> either (const "") id $ p .? "detail") planPhases
-    path <- maybe (Left "Invalid file from Quasar") Right $ parseAbsFile out'
-    realOut <- maybe (Left "Could not sandbox Quasar file") Right $ sandbox rootDir path
-    pure { realOut: realOut, plan: plan }
+    mj <- lmap message jobj
+    case mj of
+      Nothing -> do
+        path <-
+          case out of
+            File p -> pure p
+            ViewMount p -> pure p
+            _ -> Left "Expected out as file or view mount"
+        realOut <- maybe (Left "Could not sandbox Quasar file") Right $ sandbox rootDir path
+        pure { realOut: realOut, plan: "" }
+      Just j -> do
+        out' <- j .? "out"
+        planPhases <- last <$> j .? "phases"
+        let plan = maybe "" (\p -> either (const "") id $ p .? "detail") planPhases
+        path <- maybe (Left "Invalid file from Quasar") Right $ parseAbsFile out'
+        realOut <- maybe (Left "Could not sandbox Quasar file") Right $ sandbox rootDir path
+        pure { realOut: realOut, plan: plan }
   where
   go { realOut: realOut, plan: plan } =
     let file = mkFile (Left $ rootDir </> realOut) in
