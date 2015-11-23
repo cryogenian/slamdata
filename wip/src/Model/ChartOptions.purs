@@ -1,4 +1,4 @@
-module Model.ChartOptions where
+module Model.ChartOptions (buildOptions) where
 
 import Prelude
 
@@ -13,11 +13,10 @@ import Model.ChartOptions.Pie (buildPie)
 import Model.ChartOptions.Bar (buildBar)
 import Model.ChartOptions.Line (buildLine)
 
-buildOptionsPort :: ChartType -> JArray -> ChartConfiguration -> Port
-buildOptionsPort ty jarr conf =
-  ChartOptions $ buildOptions ty (analyzeJArray jarr) conf
+buildOptions :: ChartType -> JArray -> ChartConfiguration -> Option
+buildOptions ty jarr conf = buildOptions_ ty (analyzeJArray jarr) conf
 
-buildOptions :: ChartType -> M.Map JCursor Axis -> ChartConfiguration -> Option
-buildOptions Pie mp conf = buildPie mp conf
-buildOptions Bar mp conf = buildBar mp conf
-buildOptions Line mp conf = buildLine mp conf
+buildOptions_ :: ChartType -> M.Map JCursor Axis -> ChartConfiguration -> Option
+buildOptions_ Pie mp conf = buildPie mp conf
+buildOptions_ Bar mp conf = buildBar mp conf
+buildOptions_ Line mp conf = buildLine mp conf

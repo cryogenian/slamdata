@@ -319,3 +319,6 @@ lineChartIcon = className "line-chart-icon"
 
 chartEditor :: ClassName
 chartEditor = className "chart-editor"
+
+chartOutput :: ClassName
+chartOutput = className "chart-output"

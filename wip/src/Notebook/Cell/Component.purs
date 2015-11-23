@@ -58,7 +58,7 @@ import Notebook.Cell.Component.Query
 import Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import Notebook.Cell.Component.State
 import Notebook.Cell.RunState (RunState(..))
-import Notebook.Common (Slam())
+import Notebook.Common (Slam(), liftAff'', liftEff'')
 import Render.Common (row, row')
 import Render.CssClasses as CSS
 
@@ -139,11 +139,11 @@ makeCellComponentPart def render =
   eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit)
   eval (RunCell next) = pure next
   eval (UpdateCell input k) = do
-    liftH <<< liftAff' =<< gets (^. _tickStopper)
+    liftAff'' =<< gets (^. _tickStopper)
     tickStopper <- startInterval
     modify (_tickStopper .~ tickStopper)
     result <- query unit (left (request (EvalCell input)))
-    liftH $ liftAff' tickStopper
+    liftAff'' tickStopper
     modify (_runState %~ finishRun)
     maybe (liftF HaltHF) (pure <<< k <<< _.output) result
   eval (RefreshCell next) = pure next
@@ -164,8 +164,8 @@ makeCellComponentPart def render =
 -- | processed.
 startInterval :: ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit (Slam Unit)
 startInterval = do
-  ref <- liftH $ liftEff' $ newRef Nothing
-  start <- liftH $ liftEff' Date.now
+  ref <- liftEff'' $ newRef Nothing
+  start <- liftEff'' Date.now
   modify (_runState .~ RunElapsed zero)
 
   subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do

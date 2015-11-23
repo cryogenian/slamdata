@@ -46,7 +46,8 @@ import Notebook.Cell.Markdown.Component.Query
 import Notebook.Cell.Markdown.Component.State
 import Notebook.Common (Slam())
 
-markdownComponent :: CellId -> BrowserFeatures -> Component CellStateP CellQueryP Slam
+markdownComponent
+  :: CellId -> BrowserFeatures -> Component CellStateP CellQueryP Slam
 markdownComponent cellId browserFeatures = makeResultsCellComponent
   { component: parentComponent render eval
   , initialState: installedState config
@@ -60,13 +61,16 @@ markdownComponent cellId browserFeatures = makeResultsCellComponent
     , browserFeatures: browserFeatures
     }
 
-render :: SlamDownConfig -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery Slam Unit
+render
+  :: SlamDownConfig -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery Slam Unit
 render config =
   H.div
     [ P.class_ CSS.markdownOutput ]
     [ H.slot unit \_ -> { component: slamDownComponent config, initialState: emptySlamDownState } ]
 
-eval :: Natural CellEvalQuery (ParentDSL SlamDownConfig SlamDownState CellEvalQuery SlamDownQuery Slam Unit)
+eval
+  :: Natural CellEvalQuery
+     (ParentDSL SlamDownConfig SlamDownState CellEvalQuery SlamDownQuery Slam Unit)
 eval (NotifyRunCell next) = pure next
 eval (EvalCell value k) = do
   case preview _SlamDown =<< value.inputPort of

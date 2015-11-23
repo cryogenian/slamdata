@@ -22,22 +22,18 @@ import Control.MonadPlus (guard)
 import Control.Plus (empty)
 import Css.Geometry (marginBottom)
 import Css.Size (px)
-import Data.Argonaut (JArray(), JCursor())
+import Data.Argonaut (JCursor())
 import Data.Array (snoc, length, singleton, null, cons)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, right, left)
-import Data.Lens ((.~), preview)
-import Data.List as L
+import Data.Lens ((.~))
 import Data.Map as M
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Tuple (Tuple(..))
-import ECharts.Options as Ec
 import Halogen
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), prjQuery, prjSlot)
-import Halogen.Component.Utils (applyCF)
 import Halogen.CustomProps.Indexed as Cp
 import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Events.Indexed as E
@@ -45,20 +41,17 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 import Model.Aggregation (aggregationSelect)
-import Model.CellId (CellId(..))
 import Model.CellType (CellType(Viz), cellName, cellGlyph)
 import Model.ChartAxis (analyzeJArray, Axis())
 import Model.ChartAxis as Ax
 import Model.ChartConfiguration (ChartConfiguration(..), depends)
-import Model.ChartOptions (buildOptionsPort)
+import Model.ChartOptions (buildOptions)
 import Model.ChartType (ChartType(..))
 import Model.Port as P
 import Model.Resource as R
 import Model.Select (autoSelect, newSelect, (<->), ifSelected)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
-import Notebook.Cell.Component.Query
-import Notebook.Cell.Component.State
 import Notebook.Cell.Viz.Component.Query
 import Notebook.Cell.Viz.Component.State
 import Notebook.Cell.Viz.Form.Component (formComponent)
@@ -86,8 +79,8 @@ initialState =
   , loading: true
   }
 
-vizComponent :: CellId -> Component CellStateP CellQueryP Slam
-vizComponent cellId = makeEditorCellComponent
+vizComponent :: Component CellStateP CellQueryP Slam
+vizComponent = makeEditorCellComponent
   { name: cellName Viz
   , glyph: cellGlyph Viz
   , component: parentComponent render eval
@@ -156,14 +149,14 @@ renderChartTypeSelector state =
 renderChartConfiguration :: VizState -> VizHTML
 renderChartConfiguration state =
   H.div [ P.classes [ Rc.vizChartConfiguration ] ]
-  [ renderForm Pie
-  , renderForm Line
-  , renderForm Bar
+  [ renderTab Pie
+  , renderTab Line
+  , renderTab Bar
   , renderDimensions state
   ]
   where
-  renderForm :: ChartType -> VizHTML
-  renderForm ty =
+  renderTab :: ChartType -> VizHTML
+  renderTab ty =
     showIf (state.chartType == ty)
     [ H.slot ty \_ -> { component: formComponent
                       , initialState: installedState Form.initialState
@@ -252,7 +245,11 @@ cellEval (EvalCell info continue) = do
                 Nothing -> emptyResponse
                 Just conf' ->
                   modify (_loading .~ false)
-                  $> { output: Just $ buildOptionsPort state.chartType records conf'
+                  $> { output: Just $ P.ChartOptions $
+                              { options: buildOptions state.chartType records conf'
+                              , width: state.width
+                              , height: state.height
+                              }
                      , messages: [] }
             emptyResponse
     _ -> emptyResponse
