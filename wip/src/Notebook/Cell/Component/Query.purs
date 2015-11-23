@@ -46,7 +46,7 @@ import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
 import Notebook.Cell.Explore.Component.Query (ExploreQuery())
 import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
 import Notebook.Cell.Search.Component.Query (SearchQueryP())
-import Notebook.Cell.Viz.Component.Query (VizQuery())
+import Notebook.Cell.Viz.Component.Query (VizQueryP())
 
 -- | The common query algebra for a notebook cell.
 -- |
@@ -93,7 +93,7 @@ data AnyCellQuery a
   | ExploreQuery (ExploreQuery a)
   | MarkdownQuery (MarkdownQueryP a)
   | SearchQuery (SearchQueryP a)
-  | VizQuery (VizQuery a)
+  | VizQuery (VizQueryP a)
 
 _AceQuery :: forall a. PrismP (AnyCellQuery a) (AceQueryP a)
 _AceQuery = prism' AceQuery \q -> case q of
@@ -115,7 +115,7 @@ _SearchQuery = prism' SearchQuery \q -> case q of
   SearchQuery q' -> Just q'
   _ -> Nothing
 
-_VizQuery :: forall a. PrismP (AnyCellQuery a) (VizQuery a)
+_VizQuery :: forall a. PrismP (AnyCellQuery a) (VizQueryP a)
 _VizQuery = prism' VizQuery \q -> case q of
   VizQuery q' -> Just q'
   _ -> Nothing

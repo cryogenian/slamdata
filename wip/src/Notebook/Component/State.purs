@@ -70,6 +70,7 @@ import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Query.Eval (queryEval)
+import Notebook.Cell.Viz.Component (vizComponent)
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 
@@ -174,9 +175,12 @@ addCell cellType parent st =
   in st
     { fresh = st.fresh + 2
     , cells = st.cells
-        `snoc` { id: editorId, ctor: ctor editorId (editor cellType editorId) initEditorState }
-        `snoc` { id: resultsId, ctor: ctor resultsId (results cellType resultsId) initResultsState }
-    , dependencies = maybe dependencies (flip (M.insert editorId) dependencies) parent
+        `snoc` { id: editorId
+               , ctor: ctor editorId (editor cellType editorId) initEditorState }
+        `snoc` { id: resultsId
+               , ctor: ctor resultsId (results cellType resultsId) initResultsState }
+    , dependencies =
+          maybe dependencies (flip (M.insert editorId) dependencies) parent
     }
   where
 

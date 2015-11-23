@@ -23,13 +23,11 @@ import Data.Function (Fn2(), runFn2)
 import DOM (DOM())
 import DOM.HTML.Types (HTMLElement())
 
+
 foreign import raiseEventImpl
   :: forall eff
    . Fn2 String HTMLElement (Eff (dom :: DOM | eff) HTMLElement)
 
-raiseEvent
-  :: forall eff
-   . String
-  -> HTMLElement
-  -> Eff (dom :: DOM | eff) HTMLElement
+
+raiseEvent :: forall e. String -> HTMLElement -> Eff (dom :: DOM |e) HTMLElement
 raiseEvent name el = runFn2 raiseEventImpl name el

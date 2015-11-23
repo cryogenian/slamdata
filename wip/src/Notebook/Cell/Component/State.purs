@@ -51,8 +51,8 @@ import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.State
 import Notebook.Cell.Markdown.Component.State
 import Notebook.Cell.Search.Component.State
+import Notebook.Cell.Viz.Component.State
 import Notebook.Cell.RunState (RunState(..))
-import Notebook.Cell.Viz.State
 import Notebook.Common (Slam())
 
 -- | The common state value for notebook cells.
@@ -141,7 +141,7 @@ data AnyCellState
   | ExploreState ExploreState
   | MarkdownState MarkdownStateP
   | SearchState SearchStateP
-  | VizState VizState
+  | VizState VizStateP
 
 _AceState :: PrismP AnyCellState AceStateP
 _AceState = prism' AceState \s -> case s of
@@ -163,7 +163,7 @@ _SearchState = prism' SearchState \s -> case s of
   SearchState s' -> Just s'
   _ -> Nothing
 
-_VizState :: PrismP AnyCellState VizState
+_VizState :: PrismP AnyCellState VizStateP
 _VizState = prism' VizState \s -> case s of
   VizState s' -> Just s'
   _ -> Nothing

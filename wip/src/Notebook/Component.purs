@@ -33,6 +33,7 @@ import Data.Functor.Coproduct (Coproduct(), coproduct, left)
 import Data.Lens ((.~), (%~), preview)
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
+import Data.Map as M
 import Data.Set as S
 import Data.These (These(..), theseLeft)
 import Halogen
@@ -42,7 +43,7 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 import Model.AccessType (isEditable)
 import Model.CellId (CellId())
-import Model.CellType (CellType(..), cellName, cellGlyph)
+import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Resource as R
 
 import Render.Common (glyph, fadeWhen)
@@ -120,7 +121,8 @@ eval (RunActiveCell next) =
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
 eval (LoadResource fs res next) = do
   model <- liftH $ liftAff' $ loadNotebook res
-  modify $ const $ fromModel fs model # _path .~ R.resourceDir res
+  modify $ const $ fromModel fs model
+  modify (_path .~ R.resourceDir res)
   pure next
 eval (SetName name next) = modify (_name .~ That name) $> next
 eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
@@ -137,7 +139,16 @@ peekCell cellId q = case q of
   TrashCell _ -> do
     descendants <- findDescendants <$> get <*> pure cellId
     modify (removeCells $ S.insert cellId descendants)
-  CreateChildCell cellType _ -> modify $ addCell cellType (Just cellId)
+  CreateChildCell cellType _ -> do
+    modify (addCell cellType (Just cellId))
+    if autorun cellType
+      then do
+      vals <- gets _.values
+      updateCell (cellId + one ) { notebookPath: Nothing
+                                 , inputPort: M.lookup cellId vals
+                                 , cellId: cellId + one
+                                 }
+      else pure unit
   ShareCell _ -> pure unit
   _ -> pure unit
 

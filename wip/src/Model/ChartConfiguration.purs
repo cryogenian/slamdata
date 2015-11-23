@@ -21,11 +21,11 @@ import Prelude
 import Data.Argonaut
   (JCursor(), EncodeJson, DecodeJson, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Array (filter)
+import Data.Lens (LensP(), lens, (^.))
 import Data.Maybe (maybe)
-import Data.Lens ((^.))
-import Model.Select (Select(), _value)
+import Model.Aggregation (Aggregation())
 import Model.ChartAxis (dependsOn)
-import Data.Lens (LensP(), lens)
+import Model.Select (Select(), _value)
 
 type JSelect = Select JCursor
 
@@ -39,6 +39,7 @@ type ChartConfigurationR =
  { series :: Array JSelect
  , dimensions :: Array JSelect
  , measures :: Array JSelect
+ , aggregations :: Array (Select Aggregation)
  }
 
 newtype ChartConfiguration = ChartConfiguration ChartConfigurationR
@@ -55,17 +56,22 @@ _dimensions = _ChartConfiguration <<< lens _.dimensions _{dimensions = _}
 _measures :: LensP ChartConfiguration (Array JSelect)
 _measures = _ChartConfiguration <<< lens _.measures _{measures = _}
 
+_aggregations :: LensP ChartConfiguration (Array (Select Aggregation))
+_aggregations = _ChartConfiguration <<< lens _.aggregations _{aggregations = _}
+
 instance encodeJsonChartConfiguration :: EncodeJson ChartConfiguration where
   encodeJson (ChartConfiguration r) =
        "series" := r.series
     ~> "dimensions" := r.dimensions
     ~> "measures" := r.measures
+    ~> "aggregations" := r.aggregations
     ~> jsonEmptyObject
 instance decodeJsonChartConfiguration :: DecodeJson ChartConfiguration where
   decodeJson json = do
     obj <- decodeJson json
-    r <- { series: _, dimensions: _, measures: _ }
+    r <- { series: _, dimensions: _, measures: _, aggregations: _}
          <$> (obj .? "series")
          <*> (obj .? "dimensions")
          <*> (obj .? "measures")
+         <*> (obj .? "aggregations")
     pure $ ChartConfiguration r

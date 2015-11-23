@@ -50,3 +50,9 @@ instance decodeJsonCellId :: DecodeJson CellId where
   decodeJson json = map CellId $ decodeJson json
 instance encodeJsonCellId :: EncodeJson CellId where
   encodeJson (CellId i) = encodeJson i
+
+instance semiringCellId :: Semiring CellId where
+  zero = CellId zero
+  one = CellId one
+  add (CellId a) (CellId b) = CellId $ a + b
+  mul (CellId a) (CellId b) = CellId $ a * b

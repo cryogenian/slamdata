@@ -19,7 +19,6 @@ import Halogen.Themes.Bootstrap3 as B
 import Model.Select
 import Utils (stringToInt)
 
-
 data Query s a
   = Choose Int a
   | SetSelect (Select s) a

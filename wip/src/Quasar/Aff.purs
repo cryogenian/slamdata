@@ -33,7 +33,8 @@ module Quasar.Aff
   , templated
   , forceDelete
   , executeQuery
-
+  , all
+  , sample
   , transitiveChildrenProducer
 
   , RetryEffects()
