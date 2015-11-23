@@ -63,9 +63,9 @@ import Data.Foreign (ForeignError(TypeMismatch))
 import Data.Foreign.Class (readProp, IsForeign)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Path.Pathy
-  ( Path(), DirName(..), FileName(..), Abs(), Sandboxed(), dirName, peel, (</>)
-  , rootDir, printPath, rootDir, currentDir, file, dir, sandbox, parseAbsFile
-  , parseAbsDir, renameFile, renameDir
+  ( Path(), DirName(..), FileName(..), Abs(), Sandboxed(), Unsandboxed()
+  , dirName, peel, (</>), rootDir, printPath, currentDir, file, dir
+  , sandbox, parseAbsFile, parseAbsDir, renameFile, renameDir
   )
 import Data.Tuple (Tuple(..), fst, snd)
 import Model.Sort (Sort(..))
@@ -320,20 +320,23 @@ instance decodeJsonResource :: DecodeJson Resource where
     resType <- obj .? "type"
     path <- obj .? "path"
     case resType of
-      -- type inference bug prevents use of a generic `parsePath` which accepts
-      -- `parseAbsFile` or `parseAbsDir` as an argument
-      "file" -> maybe (Left $ "Invalid file path") (Right <<< File)
-                $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile path)
-      "notebook" -> parseDirPath "notebook" Notebook path
-      "directory" -> parseDirPath "directory" Directory path
-      "mount" -> parseDirPath "mount" Database path
-      _ -> Left "Unrecognized resource type"
+      "file" -> parsePath "file" File parseAbsFile path
+      "notebook" -> parsePath "notebook" Notebook parseAbsDir path
+      "directory" -> parsePath "directory" Directory parseAbsDir path
+      "mount" -> parsePath "mount" Database parseAbsDir path
     where
-    parseDirPath :: String -> (DirPath -> Resource) -> String
-                    -> Either String Resource
-    parseDirPath ty ctor s =
-      maybe (Left $ "Invalid " ++ ty ++ " path") (Right <<< ctor) $
-        (rootDir </>) <$> (sandbox rootDir =<< parseAbsDir s)
+    parsePath
+      :: forall a b
+       . String
+      -> (Path Abs a Sandboxed -> Resource)
+      -> (String -> Maybe (Path Abs a Unsandboxed))
+      -> String
+      -> Either String Resource
+    parsePath ty ctor parse s =
+      maybe
+        (Left $ "Invalid " ++ ty ++ " path")
+        (Right <<< ctor) $
+          (rootDir </>) <$> (sandbox rootDir =<< parse s)
 
 fileResourceFromString
   :: String
