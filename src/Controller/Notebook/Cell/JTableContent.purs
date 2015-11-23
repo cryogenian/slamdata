@@ -149,8 +149,10 @@ queryToJTable cell sql inp out = do
          then forceDelete out
          else pure unit
 
+    -- If result-caching is enabled, use the query API rather than the views API
+    let shouldCacheResults = cell ^? _content .. _shouldCacheResults # fromMaybe false
     attempt $
-      if SM.isEmpty varMap
+      if SM.isEmpty varMap && not shouldCacheResults
          then portView inp out sql $> Nothing
          else portQuery inp out sql varMap <#> Just
 
