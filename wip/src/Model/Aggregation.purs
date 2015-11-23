@@ -25,8 +25,9 @@ import Data.Bifunctor (bimap)
 import Data.Generic (Generic, gEq, gCompare)
 import Data.Either (Either(..))
 import Data.Foldable (Foldable, foldl, sum, product)
+import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
-import Model.Select (OptionVal)
+import Model.Select (OptionVal, Select(..))
 
 data Aggregation
   = Maximum
@@ -73,6 +74,13 @@ runAggregation Average nums =
   normalize (Tuple count sum) = sum / count
 runAggregation Sum nums = sum nums
 runAggregation Product nums = product nums
+
+aggregationSelect :: Select Aggregation
+aggregationSelect =
+  Select { value: Just Sum
+         , options: allAggregations
+         }
+
 
 
 derive instance genericAggregation :: Generic Aggregation

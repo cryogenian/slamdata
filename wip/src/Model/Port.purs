@@ -24,6 +24,7 @@ module Model.Port
 import Data.Lens (PrismP(), prism')
 import Data.Maybe (Maybe(..))
 import Data.StrMap (StrMap())
+import ECharts.Options as Ec
 
 import Model.Resource as R
 
@@ -34,6 +35,7 @@ data Port
   = SlamDown SlamDown
   | VarMap (StrMap FormFieldValue)
   | Resource R.Resource
+  | ChartOptions Ec.Option
 
 _SlamDown :: PrismP Port SlamDown
 _SlamDown = prism' SlamDown \p -> case p of
@@ -48,4 +50,9 @@ _VarMap = prism' VarMap \p -> case p of
 _Resource :: PrismP Port R.Resource
 _Resource = prism' Resource \p -> case p of
   Resource r -> Just r
+  _ -> Nothing
+
+_ChartOptions :: PrismP Port Ec.Option
+_ChartOptions = prism' ChartOptions \p -> case p of
+  ChartOptions o -> Just o
   _ -> Nothing

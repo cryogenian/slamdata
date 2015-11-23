@@ -32,11 +32,14 @@ type Slam = Aff FileSystemEffects
 forceRerender :: forall s f g. (Applicative g) => Free (HalogenF s f g) Unit
 forceRerender = liftH $ pure unit
 
-forceRerender' :: forall s s' f f' g p. (Applicative g) => ParentDSL s s' f f' g p Unit
+forceRerender'
+  :: forall s s' f f' g p. (Applicative g) => ParentDSL s s' f f' g p Unit
 forceRerender' = liftH $ liftH $ pure unit
 
-liftEff'' :: forall s s' f f' p. Natural (Eff FileSystemEffects) (ParentDSL s s' f f' Slam p)
+liftEff''
+  :: forall s s' f f' p. Natural (Eff FileSystemEffects) (ParentDSL s s' f f' Slam p)
 liftEff'' = liftH <<< liftEff'
 
-liftAff'' :: forall s s' f f' p. Natural (Aff FileSystemEffects) (ParentDSL s s' f f' Slam p)
+liftAff''
+  :: forall s s' f f' p. Natural (Aff FileSystemEffects) (ParentDSL s s' f f' Slam p)
 liftAff'' = liftH <<< liftAff'

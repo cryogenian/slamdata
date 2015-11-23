@@ -20,11 +20,16 @@ module Model.Select where
 
 import Prelude
 
+import Control.Apply ((*>))
+import Control.MonadPlus (MonadPlus, guard)
 import Data.Argonaut
   (DecodeJson, EncodeJson, JCursor(), decodeJson, jsonEmptyObject, (.?), (~>), (:=))
 import Data.Array (filter, length, head, (!!))
-import Data.Lens (LensP(), lens, (^.), (?~))
-import Data.Maybe (Maybe(..), maybe)
+import Data.Foldable (Foldable, foldMap)
+import Data.Lens (LensP(), lens, view, (^.), (?~))
+import Data.Maybe (Maybe(..), maybe, isJust)
+import Data.Monoid.Conj (Conj(..), runConj)
+
 
 class (Eq a) <= OptionVal a where
   stringVal :: a -> String
@@ -95,7 +100,6 @@ autoSelect (Select {options: opts, value: val}) =
 trySelect :: forall a. (Eq a) => Int -> Select a -> Select a
 trySelect i sel = maybe sel (\v -> sel # _value ?~ v) (sel ^. _options !! i)
 
-infix 9 <->
 -- | Flipped version of `except'` useful for filtering model fields by
 -- | view values i.e.
 -- | ```purescript
@@ -105,8 +109,15 @@ infix 9 <->
 -- | updateState :: ViewModel -> State -> State
 -- | updateState vm st = st { users = st.users <-> vm.userSelect }
 -- | ```
+infixl 2 <->
 (<->) :: forall a. (Eq a) => Array a -> Select a -> Array a
 (<->) = flip except'
+
+ifSelected
+  :: forall f m a. (Foldable f, MonadPlus m)
+  => f (Select a) -> m a -> m a
+ifSelected sels arr =
+  guard (runConj $ foldMap (Conj <<< isJust <<< view _value) sels) *> arr
 
 instance eqSelect :: (Eq a) => Eq (Select a) where
   eq (Select r) (Select rr) =

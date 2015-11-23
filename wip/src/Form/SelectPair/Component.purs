@@ -4,7 +4,7 @@ import Prelude
 
 import Control.Monad.Aff (Aff())
 
-import Data.Array (null)
+import Data.Array (null, zipWith, range, length)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens, (^.), (.~), (%~), view)
@@ -82,12 +82,14 @@ render config state = H.div_
   where
   options
     :: Select a -> Array (ParentHTML (Select b) (Query a) (Query b) (Slam e) Unit)
-  options select = map (option (select ^. _value)) (select ^. _options)
+  options select = zipWith (option (select ^. _value))
+                   (select ^. _options)
+                   (range 0 $ length $ select ^. _options)
 
   option
-    :: Maybe a -> a -> ParentHTML (Select b) (Query a) (Query b) (Slam e) Unit
-  option mbVal opt =
-    H.option [ P.value (stringVal opt)
+    :: Maybe a -> a -> Int -> ParentHTML (Select b) (Query a) (Query b) (Slam e) Unit
+  option mbVal opt ix =
+    H.option [ P.value (show ix)
              , P.selected (mbVal == pure opt)
              ]
     [ H.text $ stringVal opt ]

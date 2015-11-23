@@ -18,7 +18,10 @@ module Halogen.CustomProps where
 
 import Prelude
 
+import Data.Either (either)
 import Data.ExistsR
+import Data.Foreign (toForeign)
+import Data.Foreign.Class (IsForeign, readProp)
 import Data.Functor (($>))
 import Data.Maybe (Maybe(..))
 import Halogen.HTML.Core
@@ -53,6 +56,9 @@ mbKeyDown = mbHandler (eventName "keydown")
 mbClick :: forall i. MbEventProp MouseEvent i
 mbClick = mbHandler (eventName "click")
 
+mbInput :: forall i. MbEventProp () i
+mbInput = mbHandler (eventName "input")
+
 onPaste :: forall e i. EventProp e i
 onPaste = handler (eventName "paste")
 
@@ -61,3 +67,21 @@ ariaLabel label = Attr Nothing (attrName "aria-label") label
 
 frameBorder :: forall i. Int -> Prop i
 frameBorder = Attr Nothing (attrName "frameBorder") <<< show
+
+addForeignMbHandler
+  :: forall i value
+   . (IsForeign value)
+  => String -> String -> (value -> EventHandler (Maybe i)) -> Prop i
+addForeignMbHandler key prop handler =
+  handler'
+  (eventName key)
+  (either (const $ pure Nothing) handler <<< readProp prop <<< toForeign <<< _.target)
+
+mbValueChange :: forall i. (String -> EventHandler (Maybe i)) -> Prop i
+mbValueChange = addForeignMbHandler "change" "value"
+
+mbValueInput :: forall i. (String -> EventHandler (Maybe i)) -> Prop i
+mbValueInput = addForeignMbHandler "input" "value"
+
+mbChecked :: forall i. (Boolean -> EventHandler (Maybe i)) -> Prop i
+mbChecked = addForeignMbHandler "change" "checked"

@@ -14,6 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Viz.Component.Query (VizQuery()) where
+module Notebook.Cell.Viz.Component.Query
+  ( VizQuery(..)
+  , VizQueryP()
+  ) where
+
+import Data.Functor.Coproduct (Coproduct())
+import Halogen
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import Notebook.Cell.Viz.Form.Component as Form
+import Data.Set (Set())
+import Model.ChartType (ChartType())
 
 data VizQuery a
+  = SetHeight Int a
+  | SetWidth Int a
+  | SetAvailableChartTypes (Set ChartType) a
+  | SetChartType ChartType a
+
+type VizQueryP =
+  Coproduct
+  (Coproduct CellEvalQuery VizQuery)
+  (ChildF ChartType Form.QueryP)

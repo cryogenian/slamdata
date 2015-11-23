@@ -18,6 +18,7 @@ module Model.CellType
   ( CellType(..)
   , cellName
   , cellGlyph
+  , autorun
   ) where
 
 import Prelude
@@ -33,6 +34,10 @@ data CellType
   | Query
   | Search
   | Viz
+
+autorun :: CellType -> Boolean
+autorun Viz = true
+autorun _ = false
 
 instance encodeJsonCellType :: EncodeJson CellType where
   encodeJson Explore = encodeJson "explore"
