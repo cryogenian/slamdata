@@ -26,32 +26,31 @@ module Notebook.Component
 import Prelude
 
 import Control.Bind ((=<<), join)
+
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
 import Data.Lens ((.~), (%~), preview)
 import Data.List (fromList)
-import Data.Maybe (Maybe(..), maybe)
 import Data.Map as M
+import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
 import Data.These (These(..), theseLeft)
+
 import Halogen
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
+
 import Model.AccessType (isEditable)
 import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
+import Model.Port (Port())
 import Model.Resource as R
-
-import Render.Common (glyph, fadeWhen)
-import Render.CssClasses as CSS
-
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery)
-import Model.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 import Notebook.Component.Query

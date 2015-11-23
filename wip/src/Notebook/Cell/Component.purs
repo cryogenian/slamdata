@@ -42,10 +42,9 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Visibility (Visibility(..), toggleVisibility)
 
 import Halogen
-import Halogen.Query.EventSource (EventSource(..))
-import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.Themes.Bootstrap3 as B
 

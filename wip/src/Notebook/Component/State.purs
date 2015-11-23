@@ -66,10 +66,11 @@ import Model.Notebook as M
 import Model.Port (Port())
 import Notebook.Cell.Ace.Component (aceComponent)
 import Notebook.Cell.Component (CellComponent(), CellStateP(), CellQueryP(), initEditorCellState, initResultsCellState)
+import Notebook.Cell.Explore.Component (exploreComponent)
 import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Markdown.Eval (markdownEval)
-import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Query.Eval (queryEval)
+import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Viz.Component (vizComponent)
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
@@ -187,6 +188,7 @@ addCell cellType parent st =
   editor :: CellType -> CellId -> CellComponent
   editor Query _ = aceComponent Query queryEval "ace/mode/sql"
   editor Search cellId = searchComponent cellId
+  editor Explore _ = exploreComponent
   editor _ _ = aceComponent Markdown markdownEval "ace/mode/markdown"
 
   results :: CellType -> CellId -> CellComponent
