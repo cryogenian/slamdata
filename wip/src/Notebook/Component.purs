@@ -26,34 +26,33 @@ module Notebook.Component
 import Prelude
 
 import Control.Bind ((=<<), join)
+
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
 import Data.Lens ((.~), (%~), preview)
 import Data.List (fromList)
-import Data.Maybe (Maybe(..), maybe)
 import Data.Map as M
+import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
 import Data.These (These(..), theseLeft)
+
 import Halogen
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
+
 import Model.AccessType (isEditable)
 import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
+import Model.Port (Port())
 import Model.Resource as R
-
-import Render.Common (glyph, fadeWhen)
-import Render.CssClasses as CSS
-
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery)
-import Model.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
-import Notebook.Common (Slam())
+import Notebook.Common (Slam(), forceRerender')
 import Notebook.Component.Query
 import Notebook.Component.State
 import Quasar.Aff (loadNotebook)
@@ -115,7 +114,19 @@ newCellMenu state =
       ]
 
 eval :: Natural NotebookQuery NotebookDSL
-eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
+eval (AddCell cellType next) = do
+  let p = map (P.Resource <<< Rs.File <<< (Pt.rootDir Pt.</>))
+          $ Pt.parseAbsFile "/demo/demo/flatViz" >>= Pt.sandbox Pt.rootDir
+  modify (addCell cellType Nothing)
+  forceRerender'
+  traceAnyA p
+  updateCell zero { notebookPath: Nothing
+                  , inputPort: p
+                  , cellId: one
+                  }
+  traceAnyA "FOO"
+  pure next
+
 eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
@@ -158,17 +169,27 @@ peekCellInner cellId (ChildF _ q) =
     Just (NotifyRunCell _) -> runCell cellId
     _ -> pure unit
 
+import Model.Port as P
+import Data.Path.Pathy as Pt
+import Model.Resource as Rs
+import Debug.Trace
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
   st <- get
+  traceAnyA $ findParent st cellId
   case findParent st cellId of
-    Nothing ->
+    Nothing -> do
+
+      let p = map (P.Resource <<< Rs.File <<< (Pt.rootDir Pt.</>))
+              $ Pt.parseAbsFile "/demo/demo/flatViz" >>= Pt.sandbox Pt.rootDir
+      traceAnyA p
       updateCell cellId
         { notebookPath: notebookPath st
-        , inputPort: Nothing
+        , inputPort: p
         , cellId: cellId
         }
-    Just parent ->
+    Just parent -> do
+      traceAnyA "Just"
       case getCurrentValue st parent of
         Just inputPort ->
           updateCell cellId
@@ -180,6 +201,7 @@ runCell cellId = do
 
 updateCell :: CellId -> CellEvalInput -> NotebookDSL Unit
 updateCell cellId input = do
+  traceAnyA input
   result <- query (CellSlot cellId) $ left $ request (UpdateCell input)
   maybe (pure unit) (runCellDescendants cellId) $ join result
 

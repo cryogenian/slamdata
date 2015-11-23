@@ -66,10 +66,11 @@ import Model.Notebook as M
 import Model.Port (Port())
 import Notebook.Cell.Ace.Component (aceComponent)
 import Notebook.Cell.Component (CellComponent(), CellStateP(), CellQueryP(), initEditorCellState, initResultsCellState)
+import Notebook.Cell.Explore.Component (exploreComponent)
 import Notebook.Cell.Markdown.Component (markdownComponent)
 import Notebook.Cell.Markdown.Eval (markdownEval)
-import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Query.Eval (queryEval)
+import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Viz.Component (vizComponent)
 import Notebook.Cell.Chart.Component (chartComponent)
 import Notebook.CellSlot (CellSlot(..))
@@ -186,14 +187,17 @@ addCell cellType parent st =
   where
 
   editor :: CellType -> CellId -> CellComponent
-  editor Query _ = aceComponent Query queryEval "ace/mode/sql"
-  editor Search cellId = searchComponent cellId
-  editor Viz _ = vizComponent
-  editor _ _ = aceComponent Markdown markdownEval "ace/mode/markdown"
+--  editor Query _ = aceComponent Query queryEval "ace/mode/sql"
+--  editor Search cellId = searchComponent cellId
+--  editor Viz _ = vizComponent
+--  editor Explore _ = exploreComponent
+--  editor _ _ = aceComponent Markdown markdownEval "ace/mode/markdown"
+  editor _ _ = vizComponent
 
   results :: CellType -> CellId -> CellComponent
-  results Viz _ = chartComponent
-  results _ cellId = markdownComponent cellId st.browserFeatures
+  results _ _ = chartComponent
+--  results Viz _ = chartComponent
+--  results _ cellId = markdownComponent cellId st.browserFeatures
 
   ctor :: CellId -> CellComponent -> CellStateP -> CellConstructor
   ctor cellId comp state =

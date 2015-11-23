@@ -49,8 +49,9 @@ import Model.AccessType (AccessType())
 
 import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.Component.Query
-import Notebook.Cell.Explore.State
+import Notebook.Cell.Explore.Component.State
 import Notebook.Cell.Markdown.Component.State
+import Notebook.Cell.RunState (RunState(..))
 import Notebook.Cell.Search.Component.State
 import Notebook.Cell.Viz.Component.State
 import Notebook.Cell.RunState (RunState(..))
@@ -140,7 +141,7 @@ _hasResults = lens _.hasResults (_ { hasResults = _ })
 
 data AnyCellState
   = AceState AceStateP
-  | ExploreState ExploreState
+  | ExploreState ExploreStateP
   | MarkdownState MarkdownStateP
   | SearchState SearchStateP
   | VizState VizStateP
@@ -151,7 +152,7 @@ _AceState = prism' AceState \s -> case s of
   AceState s' -> Just s'
   _ -> Nothing
 
-_ExploreState :: PrismP AnyCellState ExploreState
+_ExploreState :: PrismP AnyCellState ExploreStateP
 _ExploreState = prism' ExploreState \s -> case s of
   ExploreState s' -> Just s'
   _ -> Nothing

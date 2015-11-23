@@ -91,8 +91,8 @@ vizComponent = makeEditorCellComponent
 
 render :: VizState -> VizHTML
 render state
-  | state.loading = renderLoading
-  | Set.isEmpty state.availableChartTypes = renderEmpty
+--  | state.loading = renderLoading
+--  | Set.isEmpty state.availableChartTypes = renderEmpty
   | otherwise = renderForm state
 
 renderLoading :: VizHTML
@@ -117,6 +117,7 @@ renderEmpty =
 
 renderForm :: VizState -> VizHTML
 renderForm state =
+  traceAny state \_ ->
   H.div [ P.classes [ Rc.vizCellEditor ] ]
   [ renderChartTypeSelector state
   , renderChartConfiguration state
@@ -213,18 +214,33 @@ vizEval (SetAvailableChartTypes ts next) =
   modify (_availableChartTypes .~ ts) $> next
 
 
+import Debug.Trace
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
   -- TODO: CellEvalT
-  modify (_loading .~ true)
+--  modify (_loading .~ true)
+  traceAnyA "!!!"
+  forceRerender'
   map continue case info.inputPort of
     Just (P.Resource r) -> do
+      traceAnyA "TROLOLO"
       state <- get
+      traceAnyA state
+      traceAnyA "@"
+      -- Form configuration hasn't been set in autorun
       mbConf <- query state.chartType $ left $ request Form.GetConfiguration
+      traceAnyA "#"
+      forceRerender'
+      traceAnyA mbConf
+      traceAnyA "$"
       case mbConf of
-        Nothing -> emptyResponse
+        Nothing -> do
+          traceAnyA "EMpty"
+          emptyResponse
         Just conf -> do
+          traceAnyA "Just conf"
           jarr <- liftAff'' $ Api.sample r 0 20
+          traceAnyA jarr
           if null jarr
             then do
             modify $ _availableChartTypes .~ Set.empty

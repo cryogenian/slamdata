@@ -335,11 +335,20 @@ eval (SetConfiguration c@(ChartConfiguration conf) next) = do
         newL = length new
     in (if oldL > newL then oldL else newL) - one
 
+
 eval (GetConfiguration continue) = do
   (ChartConfiguration conf) <- get
+  traceAnyA "FOO"
+  get >>= traceAnyA
+  forceRerender'
   dims <- getDimensions
   series <- getSeries
   measures <- getMeasures
+  traceAnyA "get configuration"
+  traceAnyA dims
+  traceAnyA series
+  traceAnyA measures
+  traceAnyA "got configuration"
   r <- { dimensions: _, series: _, measures: _, aggregations: _}
        <$> getDimensions
        <*> getSeries
@@ -350,7 +359,7 @@ eval (GetConfiguration continue) = do
   getDimensions :: FormDSL (Array JSelect)
   getDimensions = do
     (ChartConfiguration conf) <- get
-    traverse getDimension (range 0 $ length conf.dimensions - 1)
+    traverse getDimension (range' 0 $ length conf.dimensions - 1)
 
   getDimension :: Int -> FormDSL JSelect
   getDimension i =
@@ -359,7 +368,7 @@ eval (GetConfiguration continue) = do
   getSeries :: FormDSL (Array JSelect)
   getSeries = do
     (ChartConfiguration conf) <- get
-    traverse getSerie (range 0 $ length conf.series - 1)
+    traverse getSerie (range' 0 $ length conf.series - 1)
 
   getSerie :: Int -> FormDSL JSelect
   getSerie i =
@@ -368,7 +377,7 @@ eval (GetConfiguration continue) = do
   getMeasures :: FormDSL (Array JSelect)
   getMeasures = do
     (ChartConfiguration conf) <- get
-    traverse getMeasure (range 0 $ length conf.measures - 1)
+    traverse getMeasure (range' 0 $ length conf.measures - 1)
 
   getMeasure :: Int -> FormDSL JSelect
   getMeasure i =
@@ -377,11 +386,20 @@ eval (GetConfiguration continue) = do
   getAggregations :: FormDSL (Array (Select Aggregation))
   getAggregations = do
     (ChartConfiguration conf) <- get
-    traverse getAggregation (range 0 $ length conf.measures - 1)
+    traverse getAggregation (range' 0 $ length conf.measures - 1)
 
   getAggregation :: Int -> FormDSL (Select Aggregation)
   getAggregation i =
     map fromJust $ query' cpMeasure i $ left $ request S.GetSelect
+
+  range' :: Int -> Int -> Array Int
+  range' start end =
+    if end > start
+    then range start end
+    else []
+
+import Debug.Trace
+import Notebook.Common (forceRerender')
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> FormDSL Unit
 peek (ChildF slot query) =

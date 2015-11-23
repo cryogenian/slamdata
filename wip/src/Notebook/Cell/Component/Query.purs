@@ -44,7 +44,7 @@ import Model.CellType (CellType())
 import Model.Port (Port())
 import Notebook.Cell.Ace.Component.Query (AceQueryP())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
-import Notebook.Cell.Explore.Component.Query (ExploreQuery())
+import Notebook.Cell.Explore.Component.Query (ExploreQueryP())
 import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
 import Notebook.Cell.Search.Component.Query (SearchQueryP())
 import Notebook.Cell.Viz.Component.Query (VizQueryP())
@@ -92,7 +92,7 @@ _AnyCellQuery = _Right
 
 data AnyCellQuery a
   = AceQuery (AceQueryP a)
-  | ExploreQuery (ExploreQuery a)
+  | ExploreQuery (ExploreQueryP a)
   | MarkdownQuery (MarkdownQueryP a)
   | SearchQuery (SearchQueryP a)
   | VizQuery (VizQueryP a)
@@ -103,7 +103,7 @@ _AceQuery = prism' AceQuery \q -> case q of
   AceQuery q' -> Just q'
   _ -> Nothing
 
-_ExploreQuery :: forall a. PrismP (AnyCellQuery a) (ExploreQuery a)
+_ExploreQuery :: forall a. PrismP (AnyCellQuery a) (ExploreQueryP a)
 _ExploreQuery = prism' ExploreQuery \q -> case q of
   ExploreQuery q' -> Just q'
   _ -> Nothing
