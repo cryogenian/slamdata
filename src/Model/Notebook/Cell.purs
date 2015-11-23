@@ -233,6 +233,13 @@ _AceContent f s = case s of
   Markdown _ -> (_Markdown .. Ma._input) f s
   _ -> _const f s
 
+_shouldCacheResults :: TraversalP CellContent Boolean
+_shouldCacheResults f s =
+  case s of
+    Search _ -> (_Search .. Sr._shouldCacheResults) f s
+    Query _ -> (_Query .. Qu._shouldCacheResults) f s
+    _ -> _const f s
+
 _const :: forall a b. TraversalP a b
 _const _ s = pure s
 
