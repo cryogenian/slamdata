@@ -28,7 +28,6 @@ module Quasar.Aff
   , ldJSON
   , getVersion
 
-  , port
   , fields
   , templated
   , forceDelete
@@ -477,14 +476,14 @@ count res = do
       <=< Arr.head
 
 
-port
+portQuery
   :: forall e
    . R.Resource
   -> R.Resource
   -> SQL
   -> SM.StrMap String
   -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JObject
-port res dest sql vars = do
+portQuery res dest sql vars = do
   guard $ R.isFile dest
   result <-
     slamjax $ defaultRequest
@@ -615,7 +614,7 @@ executeQuery sql varMap inputResource outputResource = do
   when (R.isTempFile outputResource) $
     forceDelete outputResource
 
-  jobj <- attempt $ port inputResource outputResource sql varMap
+  jobj <- attempt $ portQuery inputResource outputResource sql varMap
   pure $ do
     j <- lmap Exn.message jobj
     out' <- j .? "out"
