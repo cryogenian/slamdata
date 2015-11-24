@@ -456,7 +456,7 @@ query' res@(R.File _) sql = do
   result <- retryGet (mkURI' res sql)
   pure if succeeded result.status
        then Right (extractJArray result.response)
-       else readError "error in query" result.response
+       else Left $ readError "error in query" result.response
 
 query' _ _ = pure $ Left "Query resource is not a file"
 
@@ -475,6 +475,30 @@ count res = do
       <=< JS.toObject
       <=< Arr.head
 
+
+portView
+  :: forall e
+   . R.Resource
+  -> R.Resource
+  -> SQL
+  -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+portView res dest sql = do
+  guard $ R.isFile dest
+  let uri = "sql2:///?q=" <> PU.encodeURIPath (templated res sql)
+  result <-
+    slamjax $ defaultRequest
+      { method = PUT
+      , headers = [ ContentType applicationJSON ]
+      , content = Just $ stringify { view: { connectionUri: uri } }
+      , url =
+          P.printPath $
+            Config.mountUrl
+              </> PU.rootify (R.resourceDir dest)
+              </> P.file (R.resourceName dest)
+      }
+  if succeeded result.status
+     then pure unit
+     else throwError $ Exn.error $ readError result.response result.response
 
 portQuery
   :: forall e
@@ -502,19 +526,12 @@ portQuery res dest sql vars = do
       }
 
   if not $ succeeded result.status
-    then throwError $ Exn.error $ readErr result.response
+    then throwError $ Exn.error $ readError result.response result.response
     else
     -- We expect result message to be valid json.
     either (throwError <<< Exn.error) pure $
       JS.jsonParser result.response >>= JS.decodeJson
   where
-  readErr :: String -> String
-  readErr input =
-    case JS.jsonParser input >>= JS.decodeJson >>= (.? "error") of
-      -- All response is error text
-      Left _ -> input
-      -- Error is hided in json message, return only `error` field
-      Right err -> err
   -- TODO: This should be somewhere better.
   queryVars :: String
   queryVars = maybe "" makeQueryVars <<< L.uncons $ SM.toList vars
@@ -525,10 +542,10 @@ portQuery res dest sql vars = do
   makeQueryVars { head = h, tail = t } =
     foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
 
-readError :: forall a. String -> String -> Either String a
+readError :: String -> String -> String
 readError msg input =
   let responseError = JS.jsonParser input >>= JS.decodeJson >>= (.? "error")
-  in either (const $ Left msg) Left responseError
+  in either (const msg) id responseError
 
 sample' :: forall e. R.Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
 sample' res mbOffset mbLimit =
