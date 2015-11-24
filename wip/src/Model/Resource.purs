@@ -27,6 +27,7 @@ module Model.Resource
   , isDatabase
   , isDirectory
   , isFile
+  , isViewMount
   , isHidden
   , isNotebook
   , isTempFile
@@ -37,21 +38,20 @@ module Model.Resource
   , newDatabase
   , newDirectory
   , newFile
+  , newViewMount
   , newNotebook
   , parent
   , resourceDir
   , resourceName
   , resourcePath
   , resourceTag
+  , resourceMountTypeTag
   , root
   , sortResource
   , fileResourceFromString
   ) where
 
-import Config
-  ( newFileName, newDatabaseName, newNotebookName, newFolderName
-  , notebookExtension
-  )
+import Config as Config
 import Control.Bind ((=<<))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
@@ -59,27 +59,29 @@ import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
-import Data.Foreign (ForeignError(TypeMismatch))
-import Data.Foreign.Class (readProp, IsForeign)
+import Data.Foreign as F
+import Data.Foreign.Class as F
+import Data.Foreign.NullOrUndefined as F
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Path.Pathy
-  ( Path(), DirName(..), FileName(..), Abs(), Sandboxed(), Unsandboxed()
-  , dirName, peel, (</>), rootDir, printPath, currentDir, file, dir
-  , sandbox, parseAbsFile, parseAbsDir, renameFile, renameDir
-  )
+
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
+import Utils.Path ((<./>))
+import Utils.Path as PU
+
 import Data.Tuple (Tuple(..), fst, snd)
 import Model.Sort (Sort(..))
 import Data.Lens (lens, prism', LensP(), PrismP(), (.~))
 import Prelude
-import Utils.Path (DirPath(), FilePath(), AnyPath(), (<./>), takeDirExt)
 
 import qualified Data.String as S
 
 data Resource
-  = File FilePath
-  | Notebook DirPath
-  | Directory DirPath
-  | Database DirPath
+  = File PU.FilePath
+  | ViewMount PU.FilePath
+  | Notebook PU.DirPath
+  | Directory PU.DirPath
+  | Database PU.DirPath
 
 -- PREDICATES
 isNotebook :: Resource -> Boolean
@@ -98,13 +100,17 @@ isDatabase :: Resource -> Boolean
 isDatabase (Database _) = true
 isDatabase _ = false
 
+isViewMount :: Resource -> Boolean
+isViewMount (ViewMount _) = true
+isViewMount _ = false
+
 isHidden :: Resource -> Boolean
 isHidden r =
   either isHidden' isHidden' (getPath r)
   where
-  isHidden' :: forall a b s. Path a b s -> Boolean
+  isHidden' :: forall a b s. P.Path a b s -> Boolean
   isHidden' p = fromMaybe false do
-    Tuple p' name <- peel p
+    Tuple p' name <- P.peel p
     if "." == S.take 1 (nameOfFileOrDir name)
       then pure true
       else pure $ isHidden' p'
@@ -114,58 +120,69 @@ hiddenTopLevel r = "." == S.take 1 (resourceName r)
 
 isTempFile :: Resource -> Boolean
 isTempFile r =
-  (takeDirExt <$> (dirName (resourceDir r))) == Just notebookExtension
+  (PU.takeDirExt <$> P.dirName (resourceDir r)) == Just Config.notebookExtension
 
 -- EMPTY
 newNotebook :: Resource
-newNotebook = Notebook $ rootDir </> dir newNotebookName <./> notebookExtension
+newNotebook = Notebook $ P.rootDir </> P.dir Config.newNotebookName <./> Config.notebookExtension
 
 newFile :: Resource
-newFile = File $ rootDir </> file newFileName
+newFile = File $ P.rootDir </> P.file Config.newFileName
 
 newDirectory :: Resource
-newDirectory = Directory $ rootDir </> dir newFolderName
+newDirectory = Directory $ P.rootDir </> P.dir Config.newFolderName
 
 newDatabase :: Resource
-newDatabase = Database $ rootDir </> dir newDatabaseName
+newDatabase = Database $ P.rootDir </> P.dir Config.newDatabaseName
+
+newViewMount :: Resource
+newViewMount = Database $ P.rootDir </> P.dir Config.newViewMountName
 
 -- CONSTRUCTORS
 root :: Resource
-root = Directory rootDir
+root = Directory P.rootDir
 
-mkNotebook :: AnyPath -> Resource
+mkNotebook :: PU.AnyPath -> Resource
 mkNotebook ap =
-  either go (Notebook <<< (<./> notebookExtension)) ap
+  either go (Notebook <<< (<./> Config.notebookExtension)) ap
   where
-  go :: FilePath -> Resource
+  go :: PU.FilePath -> Resource
   go p = maybe newNotebook id do
-    Tuple pp dirOrFile <- peel p
+    Tuple pp dirOrFile <- P.peel p
     pure $ Notebook $
-      (pp </> dir (nameOfFileOrDir dirOrFile) <./> notebookExtension)
+      (pp </> P.dir (nameOfFileOrDir dirOrFile) <./> Config.notebookExtension)
 
-mkFile :: AnyPath -> Resource
+mkFile :: PU.AnyPath -> Resource
 mkFile ap = either File go ap
   where
-  go :: DirPath -> Resource
+  go :: PU.DirPath -> Resource
   go p = maybe newFile id do
-    Tuple pp dirOrFile <- peel p
-    pure $ File (pp </> file (nameOfFileOrDir dirOrFile))
+    Tuple pp dirOrFile <- P.peel p
+    pure $ File (pp </> P.file (nameOfFileOrDir dirOrFile))
 
-mkDirectory :: AnyPath -> Resource
+mkViewMount :: PU.AnyPath -> Resource
+mkViewMount ap = either ViewMount go ap
+  where
+  go :: PU.DirPath -> Resource
+  go p = maybe newViewMount id do
+    Tuple pp dirOrFile <- P.peel p
+    pure $ ViewMount (pp </> P.file (nameOfFileOrDir dirOrFile))
+
+mkDirectory :: PU.AnyPath -> Resource
 mkDirectory ap = either go Directory ap
   where
-  go :: FilePath -> Resource
+  go :: PU.FilePath -> Resource
   go p = maybe newDirectory id do
-    Tuple pp dirOrFile <- peel p
-    pure $ Directory (pp </> dir (nameOfFileOrDir dirOrFile))
+    Tuple pp dirOrFile <- P.peel p
+    pure $ Directory (pp </> P.dir (nameOfFileOrDir dirOrFile))
 
-mkDatabase :: AnyPath -> Resource
+mkDatabase :: PU.AnyPath -> Resource
 mkDatabase ap = either go Database ap
   where
-  go :: FilePath -> Resource
+  go :: PU.FilePath -> Resource
   go p = maybe newDatabase id do
-    Tuple pp dirOrFile <- peel p
-    pure $ Database (pp </> dir (nameOfFileOrDir dirOrFile))
+    Tuple pp dirOrFile <- P.peel p
+    pure $ Database (pp </> P.dir (nameOfFileOrDir dirOrFile))
 
 -- This is not real parent because it can't determine
 -- is it a directory or mount
@@ -176,57 +193,66 @@ parent = Directory <<< resourceDir
 resourceTag :: Resource -> String
 resourceTag r = case r of
   File _ -> "file"
-  Database _ -> "mount"
+  ViewMount _ -> "file"
+  Database _ -> "directory"
   Notebook _ -> "notebook"
   Directory _ -> "directory"
+
+resourceMountTypeTag :: Resource -> Maybe String
+resourceMountTypeTag r = case r of
+  ViewMount _ -> Just "view"
+  Database _ -> Just "mongodb"
+  _ -> Nothing
 
 resourceName :: Resource -> String
 resourceName = getPath >>> getNameStr
 
-resourceDir :: Resource -> DirPath
+resourceDir :: Resource -> PU.DirPath
 resourceDir = getPath >>> getDir
 
 resourcePath :: Resource -> String
-resourcePath r = either printPath printPath $ getPath r
+resourcePath r = either P.printPath P.printPath $ getPath r
 
-getPath :: Resource -> AnyPath
+getPath :: Resource -> PU.AnyPath
 getPath r = case r of
   File p -> Left p
+  ViewMount p -> Left p
   Notebook p -> Right p
   Directory p -> Right p
   Database p -> Right p
 
-getNameStr :: AnyPath -> String
+getNameStr :: PU.AnyPath -> String
 getNameStr ap = either getNameStr' getNameStr' ap
   where
-  getNameStr' :: forall b a s. Path a b s -> String
-  getNameStr' p = maybe "" (snd >>> nameOfFileOrDir) $ peel p
+  getNameStr' :: forall b a s. P.Path a b s -> String
+  getNameStr' p = maybe "" (snd >>> nameOfFileOrDir) $ P.peel p
 
-getDir :: AnyPath -> DirPath
+getDir :: PU.AnyPath -> PU.DirPath
 getDir ap = either getDir' getDir' ap
   where
-  getDir' :: forall b. Path Abs b Sandboxed -> DirPath
-  getDir' p = maybe rootDir fst $ peel p
+  getDir' :: forall b. P.Path P.Abs b P.Sandboxed -> PU.DirPath
+  getDir' = maybe P.rootDir fst <<< P.peel
 
 -- SETTERS
-setDir :: AnyPath -> DirPath -> AnyPath
+setDir :: PU.AnyPath -> PU.DirPath -> PU.AnyPath
 setDir ap d = bimap (setFile' d) (setDir' d) ap
   where
-  setDir' :: DirPath -> DirPath -> DirPath
+  setDir' :: PU.DirPath -> PU.DirPath -> PU.DirPath
   setDir' d p =
     d </>
-    (maybe currentDir (snd >>> nameOfFileOrDir >>> dir) $ peel p)
+    (maybe P.currentDir (snd >>> nameOfFileOrDir >>> P.dir) $ P.peel p)
 
-  setFile' :: DirPath -> FilePath -> FilePath
+  setFile' :: PU.DirPath -> PU.FilePath -> PU.FilePath
   setFile' d p =
     d </>
-    (maybe (file "") (snd >>> nameOfFileOrDir >>> file) $ peel p)
+    (maybe (P.file "") (snd >>> nameOfFileOrDir >>> P.file) $ P.peel p)
 
-setPath :: Resource -> AnyPath -> Resource
+setPath :: Resource -> PU.AnyPath -> Resource
 setPath (Notebook _) p = mkNotebook p
 setPath (File _) p = mkFile p
 setPath (Database _) p = mkDatabase p
 setPath (Directory _) p = mkDirectory p
+setPath (ViewMount _) p = mkViewMount p
 
 setName :: Resource -> String -> Resource
 setName r name =
@@ -234,16 +260,16 @@ setName r name =
 
 -- MODIFIERS (PRIVATE)
 
-renameAny :: (String -> String) -> AnyPath -> AnyPath
-renameAny fn ap = bimap (renameFile $ liftFile fn) (renameDir $ liftDir fn) ap
+renameAny :: (String -> String) -> PU.AnyPath -> PU.AnyPath
+renameAny fn ap = bimap (P.renameFile $ liftFile fn) (P.renameDir $ liftDir fn) ap
   where
-  liftFile fn (FileName a) = FileName $ fn a
-  liftDir fn (DirName a) = DirName $ fn a
+  liftFile fn (P.FileName a) = P.FileName $ fn a
+  liftDir fn (P.DirName a) = P.DirName $ fn a
 
 
-nameOfFileOrDir :: Either DirName FileName -> String
-nameOfFileOrDir (Left (DirName name)) = name
-nameOfFileOrDir (Right (FileName name)) = name
+nameOfFileOrDir :: Either P.DirName P.FileName -> String
+nameOfFileOrDir (Left (P.DirName name)) = name
+nameOfFileOrDir (Right (P.FileName name)) = name
 
 -- TRAVERSALS
 _tempFile :: LensP Resource Resource
@@ -254,24 +280,24 @@ _tempFile = lens id \r s -> case r of
     else r
   _ -> r
 
-_filePath :: PrismP Resource FilePath
+_filePath :: PrismP Resource PU.FilePath
 _filePath = prism' File $ \s -> case s of
   File fp -> Just fp
   _ -> Nothing
 
-_path :: LensP Resource AnyPath
+_path :: LensP Resource PU.AnyPath
 _path = lens getPath setPath
 
-_nameAnyPath :: LensP AnyPath String
+_nameAnyPath :: LensP PU.AnyPath String
 _nameAnyPath = lens getNameStr (\p x -> renameAny (const x) p)
 
 _name :: LensP Resource String
 _name = _path <<< _nameAnyPath
 
-_rootAnyPath :: LensP AnyPath DirPath
+_rootAnyPath :: LensP PU.AnyPath PU.DirPath
 _rootAnyPath = lens getDir setDir
 
-_root :: LensP Resource DirPath
+_root :: LensP Resource PU.DirPath
 _root = _path <<< _rootAnyPath
 
 
@@ -289,23 +315,29 @@ instance eqResource :: Eq Resource where
   eq (Notebook p) (Notebook p') = p == p'
   eq (Directory p) (Directory p') = p == p'
   eq (Database p) (Database p') = p == p'
+  eq (ViewMount p) (ViewMount p') = p == p'
   eq _ _ = false
 
 
 instance resourceOrd :: Ord Resource where
   compare = sortResource resourcePath Asc
 
-instance resourceIsForeign :: IsForeign Resource where
+instance resourceIsForeign :: F.IsForeign Resource where
   read f = do
-    name <- readProp "name" f
-    ty <- readProp "type" f
-    template <- case ty of
-      "mount" -> pure newDatabase
-      "directory" -> pure
-                     $ maybe newDirectory (const newNotebook)
-                     $ S.stripSuffix notebookExtension name
-      "file" -> pure newFile
-      _ -> Left $ TypeMismatch "resource" "string"
+    name <- F.readProp "name" f
+    ty <- F.readProp "type" f
+    mountType <- F.readProp "mount" f <#> F.runNullOrUndefined
+    template <-
+      case ty of
+        "directory" ->
+          case mountType of
+            Just "mongodb" -> pure newDatabase
+            _ -> pure $ maybe newDirectory (const newNotebook) $ S.stripSuffix Config.notebookExtension name
+        "file" ->
+          case mountType of
+            Just "view" -> pure newViewMount
+            _ -> pure newFile
+        _ -> Left $ F.TypeMismatch "resource" "string"
     pure $ setName template name
 
 instance encodeJsonResource :: EncodeJson Resource where
@@ -319,29 +351,40 @@ instance decodeJsonResource :: DecodeJson Resource where
     obj <- decodeJson json
     resType <- obj .? "type"
     path <- obj .? "path"
+    let mountType = Data.StrMap.lookup "mount" obj >>= decodeJson >>> either (const Nothing) pure
     case resType of
-      "file" -> parsePath "file" File parseAbsFile path
-      "notebook" -> parsePath "notebook" Notebook parseAbsDir path
-      "directory" -> parsePath "directory" Directory parseAbsDir path
-      "mount" -> parsePath "mount" Database parseAbsDir path
+      "file" ->
+        let
+          constr =
+            case mountType of
+              Just "view" -> ViewMount
+              _ -> File
+        in
+          parsePath "file" constr P.parseAbsFile path
+      "notebook" -> parsePath "notebook" Notebook P.parseAbsDir path
+      "directory" ->
+        case mountType of
+          Just "mongodb" -> parsePath "mount" Database P.parseAbsDir path
+          _ -> parsePath "directory" Directory P.parseAbsDir path
+      _ -> Left "Unrecognized resource type"
     where
     parsePath
-      :: forall a b
+      :: forall a
        . String
-      -> (Path Abs a Sandboxed -> Resource)
-      -> (String -> Maybe (Path Abs a Unsandboxed))
+      -> (P.Path P.Abs a P.Sandboxed -> Resource)
+      -> (String -> Maybe (P.Path P.Abs a P.Unsandboxed))
       -> String
       -> Either String Resource
     parsePath ty ctor parse s =
       maybe
         (Left $ "Invalid " ++ ty ++ " path")
         (Right <<< ctor) $
-          (rootDir </>) <$> (sandbox rootDir =<< parse s)
+          (P.rootDir </>) <$> (P.sandbox P.rootDir =<< parse s)
 
 fileResourceFromString
   :: String
   -> Either String Resource
 fileResourceFromString path =
-  case (rootDir </>) <$> (parseAbsFile path >>= sandbox rootDir) of
+  case (P.rootDir </>) <$> (P.parseAbsFile path >>= P.sandbox P.rootDir) of
     Just path' -> Right $ newFile # _path .~ Left path'
     Nothing -> Left path

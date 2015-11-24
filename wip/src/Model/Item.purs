@@ -47,6 +47,8 @@ itemURL :: Sort -> Salt -> AccessType -> Item -> String
 itemURL sort salt act item = case itemResource item of
   File path ->
     Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
+  ViewMount path ->
+    Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
   Notebook path ->
     Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAccessType act
   Directory path ->

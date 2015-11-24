@@ -202,6 +202,7 @@ iconClasses it = P.classes [ B.glyphicon, Rc.itemIcon, iconClass $ itemResource 
   iconClass (Notebook _) = B.glyphiconBook
   iconClass (Directory _) = B.glyphiconFolderOpen
   iconClass (Database _) = B.glyphiconHdd
+  iconClass (ViewMount _) = B.glyphiconFile
 
 
 showToolbar :: forall p. Item -> Array (HTML p (Query Unit))
