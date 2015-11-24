@@ -50,7 +50,7 @@ import Global (isNaN, readInt)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
-import Model.Notebook.Port (VarMapValue(), _VarMap, Port(..))
+import Model.Notebook.Port (VarMapValue(), _VarMap, _PortResource, Port(..))
 import Model.Resource (Resource(..), mkFile, isTempFile, _path)
 import Optic.Core
 import Optic.Extended (TraversalP(), (^?))
@@ -115,11 +115,12 @@ runJTable file cell = do
   let perPage = fromMaybe Config.defaultPageSize (currentPageSize cell)
       pageNumber = fromMaybe one (currentPage cell)
       pageIndex = pageNumber - one
+      output = taggedOutFile "count" cell
   results <- liftAff $ attempt $ do
-    numItems <- Quasar.countWithQuery file -- TODO: support views
+    numItems <- Quasar.countWithView file output
     let numPages = Math.ceil (I.toNumber numItems / I.toNumber perPage)
         pageIndex' = fromMaybe 0 $ I.fromNumber $ Math.max 0.0 $ Math.min (I.toNumber pageIndex) (numPages - 1.0)
-    json <- Quasar.sample file (Just $ pageIndex' * perPage) (Just perPage) -- TODO: support views
+    json <- Quasar.sample file (Just $ pageIndex' * perPage) (Just perPage)
     return { numItems: numItems, pageNumber: pageIndex' + one, json: json }
   now' <- liftEff now
   return $ case results of

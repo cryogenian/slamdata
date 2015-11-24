@@ -299,5 +299,9 @@ instance decodeRunState :: DecodeJson RunState where
     ) <|>
     ( RunFinished <$> (Milliseconds <$> decodeJson json))
 
+taggedOutFile :: String -> Cell -> Resource
+taggedOutFile tag cell = mkFile $ Left $ (cell ^._pathToNotebook) </> file ("out" <> show (cell ^._cellId) <> tag)
+
 outFile :: Cell -> Resource
-outFile cell = mkFile $ Left $ (cell ^._pathToNotebook) </> file ("out" <> show (cell ^._cellId))
+outFile = taggedOutFile ""
+

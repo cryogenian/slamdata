@@ -21,6 +21,7 @@ module Api.Query
   , sample
   , fields
   , countWithQuery
+  , countWithView
 
   , SQL()
   , templated
@@ -97,6 +98,15 @@ countWithQuery res =
 
   readTotal :: JArray -> Maybe Int
   readTotal = I.fromNumber <=< toNumber <=< lookup "total" <=< toObject <=< head
+
+countWithView :: forall e. Resource -> Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
+countWithView res dest = do
+  portView res dest "SELECT COUNT(*) as total FROM {{path}}"
+  fromMaybe 0 <<< readTotal <$> sample dest Nothing Nothing
+
+ where
+ readTotal :: JArray -> Maybe Int
+ readTotal = I.fromNumber <=< toNumber <=< lookup "total" <=< toObject <=< head
 
 portQuery :: forall e. Resource -> Resource -> SQL -> StrMap VarMapValue -> Aff (RetryEffects (ajax :: AJAX | e)) JObject
 portQuery res dest sql vars = do
