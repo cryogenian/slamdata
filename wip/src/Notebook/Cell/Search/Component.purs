@@ -28,13 +28,12 @@ import Control.Monad.Trans as MT
 import Control.Monad.Error.Class as EC
 import Control.Monad.Writer.Class as WC
 
-import Data.Functor.Coproduct
-import Data.Maybe (maybe)
 import Data.Either (either)
-import Data.String as S
+import Data.Foldable as F
+import Data.Functor.Coproduct
+import Data.Maybe as M
 import Data.StrMap as SM
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as Path
+import Data.String as S
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -49,7 +48,6 @@ import Model.CellType as CT
 import Model.CellId as CID
 import Model.Notebook.Search as Search
 import Model.Port as Port
-import Model.Resource as R
 
 import Notebook.Cell.Common.EvalQuery as NC
 import Notebook.Cell.Component as NC
@@ -122,29 +120,28 @@ eval = coproduct cellEval searchEval
             inputResource <-
               query unit (request FI.GetSelectedFile) <#> (>>= id)
                 # MT.lift
-                >>= maybe (EC.throwError "No file selected") pure
+                >>= M.maybe (EC.throwError "No file selected") pure
             query <-
               get <#> _.searchString >>> S.toLower >>> SS.mkQuery
                 # MT.lift
                 >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
-            notebookPath <- maybe (EC.throwError "Missing notebook path") pure info.notebookPath
             fields <- MT.lift <<< liftH <<< liftAff' $ Quasar.fields inputResource
 
             let
               template = Search.queryToSQL fields query
               sql = Quasar.templated inputResource template
-
-              tempOutputResource = R.File $ notebookPath </> Path.file ("out" <> CID.cellIdToString info.cellId)
+              tempOutputResource = NC.temporaryOutputResource info
 
             WC.tell ["Generated SQL: " <> sql]
 
             { plan: plan, outputResource: outputResource } <-
-              Quasar.executeQuery template SM.empty inputResource tempOutputResource
+              Quasar.executeQuery template (M.fromMaybe false info.cachingEnabled) SM.empty inputResource tempOutputResource
                 # Aff.liftAff >>> liftH >>> liftH >>> MT.lift
                 >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
-            WC.tell ["Plan: " <> plan]
+            F.for_ plan \p ->
+              WC.tell ["Plan: " <> p]
 
             pure $ Port.Resource outputResource
 

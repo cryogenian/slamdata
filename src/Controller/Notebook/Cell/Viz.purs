@@ -17,7 +17,7 @@ limitations under the License.
 module Controller.Notebook.Cell.Viz where
 
 import Prelude
-import Api.Query (count, all, sample)
+import qualified Api.Query as Quasar
 import Control.Apply ((*>))
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
@@ -134,12 +134,12 @@ updateInserted cell =
 
 updateData :: forall e. Cell -> Resource -> I e
 updateData cell file = do
-  jarr <- liftAff $ sample file 0 20
+  jarr <- liftAff $ Quasar.sample file (Just 0) (Just 20)
   if null jarr
     then errorEmptyInput
     else do
     let sample = Me.analyzeJArray jarr
-    records <- liftAff $ all file
+    records <- liftAff $ Quasar.sample file Nothing Nothing
     if length records > 10000
       then errorTooLarge
       else do

@@ -28,7 +28,6 @@ module Quasar.Aff
   , ldJSON
   , getVersion
 
-  , port
   , fields
   , templated
   , forceDelete
@@ -69,6 +68,8 @@ import Data.Foldable (foldl, traverse_)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
+import Data.Foreign.NullOrUndefined (runNullOrUndefined)
+import Data.Functor (($>))
 import Data.Lens ((.~), (^.))
 import Data.List as L
 import Data.Maybe (Maybe(..), isJust, fromMaybe, maybe)
@@ -106,7 +107,11 @@ runListing :: Listing -> Array R.Resource
 runListing (Listing rs) = rs
 
 instance listingIsForeign :: IsForeign Listing where
-  read f = Listing <$> readProp "children" f
+  read f =
+    readProp "children" f
+      <#> runNullOrUndefined
+      >>> fromMaybe []
+      >>> Listing
 
 instance listingRespondable :: Respondable Listing where
   responseType = JSONResponse
@@ -124,10 +129,15 @@ children' dir = runListing <$> (getResponse msg $ listing dir)
 
 listing :: forall e. PU.DirPath -> Affjax (RetryEffects e) Listing
 listing p =
-  maybe
-    (throwError $ Exn.error "incorrect path")
-    (retryGet <<< (Config.metadataUrl </>))
-    (P.relativeTo p P.rootDir)
+  case P.relativeTo p P.rootDir of
+    Nothing -> throwError $ Exn.error "incorrect path"
+    Just p ->
+      getWithPolicy
+        { shouldRetryWithStatusCode: \c -> not (succeeded c || c == notFoundStatus)
+        , delayCurve: const 1000
+        , timeout: Just 10000
+        }
+        (Config.metadataUrl </> p)
 
 makeFile
   :: forall e
@@ -158,6 +168,9 @@ makeFile path mime content =
 
 successStatus :: StatusCode
 successStatus = StatusCode 200
+
+notFoundStatus :: StatusCode
+notFoundStatus = StatusCode 404
 
 succeeded :: StatusCode -> Boolean
 succeeded (StatusCode int) =
@@ -254,7 +267,7 @@ mountInfo res = do
 
 getNewName :: forall e. PU.DirPath -> String -> Aff (RetryEffects (ajax :: AJAX |e)) String
 getNewName parent name = do
-  items <- children' parent
+  items <- attempt (children' parent) <#> either (const []) id
   pure if exists' name items then getNewName' items 1 else name
   where
   getNewName' items i =
@@ -294,7 +307,7 @@ makeNotebook path = do
 
 move :: forall e. R.Resource -> PU.AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) PU.AnyPath
 move src tgt = do
-  let url = if R.isDatabase src
+  let url = if R.isDatabase src || R.isViewMount src
             then Config.mountUrl
             else Config.dataUrl
   result <- slamjax $ defaultRequest
@@ -326,7 +339,7 @@ foreign import stringify :: forall r. {|r} -> String
 
 delete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) (Maybe R.Resource)
 delete resource =
-  if not (R.isDatabase resource || alreadyInTrash resource)
+  if not (R.isDatabase resource || alreadyInTrash resource || R.isViewMount resource)
   then
     moveToTrash resource
   else do
@@ -385,7 +398,7 @@ forceDelete =
 
   rootForResource :: R.Resource -> PU.DirPath
   rootForResource r =
-    if R.isDatabase r
+    if R.isDatabase r || R.isViewMount r
     then Config.mountUrl
     else Config.dataUrl
 
@@ -457,7 +470,7 @@ query' res@(R.File _) sql = do
   result <- retryGet (mkURI' res sql)
   pure if succeeded result.status
        then Right (extractJArray result.response)
-       else readError "error in query" result.response
+       else Left $ readError "error in query" result.response
 
 query' _ _ = pure $ Left "Query resource is not a file"
 
@@ -477,14 +490,38 @@ count res = do
       <=< Arr.head
 
 
-port
+portView
+  :: forall e
+   . R.Resource
+  -> R.Resource
+  -> SQL
+  -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+portView res dest sql = do
+  guard $ R.isFile dest
+  let uri = "sql2:///?q=" <> PU.encodeURIPath (templated res sql)
+  result <-
+    slamjax $ defaultRequest
+      { method = PUT
+      , headers = [ ContentType applicationJSON ]
+      , content = Just $ stringify { view: { connectionUri: uri } }
+      , url =
+          P.printPath $
+            Config.mountUrl
+              </> PU.rootify (R.resourceDir dest)
+              </> P.file (R.resourceName dest)
+      }
+  if succeeded result.status
+     then pure unit
+     else throwError $ Exn.error $ readError result.response result.response
+
+portQuery
   :: forall e
    . R.Resource
   -> R.Resource
   -> SQL
   -> SM.StrMap String
   -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JObject
-port res dest sql vars = do
+portQuery res dest sql vars = do
   guard $ R.isFile dest
   result <-
     slamjax $ defaultRequest
@@ -503,19 +540,12 @@ port res dest sql vars = do
       }
 
   if not $ succeeded result.status
-    then throwError $ Exn.error $ readErr result.response
+    then throwError $ Exn.error $ readError result.response result.response
     else
     -- We expect result message to be valid json.
     either (throwError <<< Exn.error) pure $
       JS.jsonParser result.response >>= JS.decodeJson
   where
-  readErr :: String -> String
-  readErr input =
-    case JS.jsonParser input >>= JS.decodeJson >>= (.? "error") of
-      -- All response is error text
-      Left _ -> input
-      -- Error is hided in json message, return only `error` field
-      Right err -> err
   -- TODO: This should be somewhere better.
   queryVars :: String
   queryVars = maybe "" makeQueryVars <<< L.uncons $ SM.toList vars
@@ -526,10 +556,10 @@ port res dest sql vars = do
   makeQueryVars { head = h, tail = t } =
     foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
 
-readError :: forall a. String -> String -> Either String a
+readError :: String -> String -> String
 readError msg input =
   let responseError = JS.jsonParser input >>= JS.decodeJson >>= (.? "error")
-  in either (const $ Left msg) Left responseError
+  in either (const msg) id responseError
 
 sample' :: forall e. R.Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
 sample' res mbOffset mbLimit =
@@ -607,22 +637,48 @@ getFields' acc json =
 executeQuery
   :: forall e
    . String
+  -> Boolean
   -> SM.StrMap String
   -> R.Resource
   -> R.Resource
-  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String { outputResource :: R.Resource, plan :: String })
-executeQuery sql varMap inputResource outputResource = do
+  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String { outputResource :: R.Resource, plan :: Maybe String })
+executeQuery sql cachingEnabled varMap inputResource outputResource = do
   when (R.isTempFile outputResource) $
-    forceDelete outputResource
+    void $ attempt $ forceDelete outputResource
 
-  jobj <- attempt $ port inputResource outputResource sql varMap
+  ejobj <- do
+    -- Pending SD-1143, the view mounts API doesn't yet support variables
+    let shouldUseViews = not cachingEnabled && SM.isEmpty varMap
+    attempt $
+      if shouldUseViews
+         then portView inputResource outputResource sql $> Nothing
+         else portQuery inputResource outputResource sql varMap <#> Just
+
   pure $ do
-    j <- lmap Exn.message jobj
-    out' <- j .? "out"
-    planPhases <- Arr.last <$> j .? "phases"
-    path <- maybe (Left "Invalid file from Quasar") Right $ P.parseAbsFile out'
-    realOut <- maybe (Left "Could not sandbox Quasar file") Right $ P.sandbox P.rootDir path
+    mjobj <- lmap Exn.message ejobj
+    info <-
+      case mjobj of
+        Nothing -> do
+          path <- R.getPath outputResource # either pure \_ -> Left "Expected output resource as file or view mount"
+          sandboxedPath <- P.sandbox P.rootDir path # maybe (Left "Could not sandbox output resource") pure
+          pure
+            { sandboxedPath
+            , plan: Nothing
+            }
+        Just jobj -> do
+          planPhases <- Arr.last <$> jobj .? "phases"
+          sandboxedPath <- do
+            pathString <- jobj .? "out"
+            path <- P.parseAbsFile pathString # maybe (Left "Invalid file from Quasar") pure
+            P.sandbox P.rootDir path # maybe (Left "Could not sandbox Quasar file") pure
+          pure
+            { sandboxedPath
+            , plan: planPhases >>= (.? "detail") >>> either (const Nothing) Just
+            }
     pure
-      { outputResource: R.mkFile $ Left $ P.rootDir </> realOut
-      , plan: maybe "" (\p -> either (const "") id $ p .? "detail") planPhases
+      { outputResource: R.mkFile $ Left $ P.rootDir </> info.sandboxedPath
+      , plan: info.plan
       }
+
+hole :: forall a. a
+hole = Unsafe.Coerce.unsafeCoerce "hole"

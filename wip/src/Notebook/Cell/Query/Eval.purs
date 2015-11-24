@@ -29,13 +29,10 @@ import Data.Either as E
 import Data.Foldable as F
 import Data.Lens as L
 import Data.Maybe as M
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as P
 import Data.Set as Set
 import Data.String.Regex as Rx
 import Data.StrMap as SM
 
-import Model.CellId as CID
 import Model.Resource as R
 import Model.Port as Port
 import Notebook.Cell.Common.EvalQuery as CEQ
@@ -52,18 +49,18 @@ import Quasar.Aff as Quasar
 queryEval :: CEQ.CellEvalInput -> String -> Slam CEQ.CellEvalResult
 queryEval info sql =
   CEQ.runCellEvalT $ do
-    notebookPath <- info.notebookPath # M.maybe (EC.throwError "Missing notebook path") pure
     let
       varMap = info.inputPort >>= L.preview Port._VarMap # M.fromMaybe SM.empty
-      tempOutputResource = R.File $ notebookPath </> P.file ("out" <> CID.cellIdToString info.cellId)
-      inputResource = R.parent tempOutputResource
+      tempOutputResource = CEQ.temporaryOutputResource info
+      inputResource = R.parent tempOutputResource -- TODO: make sure that this is actually still correct
 
     { plan: plan, outputResource: outputResource } <-
-      Quasar.executeQuery sql (renderFormFieldValue <$> varMap) inputResource tempOutputResource
+      Quasar.executeQuery sql (M.fromMaybe false info.cachingEnabled) (renderFormFieldValue <$> varMap) inputResource tempOutputResource
         # MT.lift
         >>= E.either EC.throwError pure
 
-    WC.tell ["Plan: " <> plan]
+    F.for_ plan \p ->
+      WC.tell ["Plan: " <> p]
 
     pure $ Port.Resource outputResource
 

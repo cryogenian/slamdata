@@ -49,7 +49,7 @@ import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Port (Port())
 import Model.Resource as R
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component
   (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
 import Notebook.CellSlot (CellSlot(..))

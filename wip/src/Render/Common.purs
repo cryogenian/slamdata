@@ -60,6 +60,9 @@ contentFluid = genericContainer [ B.containerFluid ] [ ]
 glyph :: forall p f. ClassName -> HTML p f
 glyph g = H.i [ P.classes [ B.glyphicon, g ] ] [ ]
 
+glyphInactive :: forall p f. ClassName -> HTML p f
+glyphInactive g = H.i [ P.classes [B.glyphicon, Rc.glyphiconInactive, g ] ] []
+
 icon :: forall p f. ClassName -> String -> HTML p f
 icon c href = H.div [ P.classes [ Rc.navIcon ] ]
               [ H.a [ P.href href ]
