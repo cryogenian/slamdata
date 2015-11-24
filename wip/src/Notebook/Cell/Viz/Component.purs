@@ -79,6 +79,7 @@ initialState =
   , availableChartTypes: Set.empty
   , loading: true
   , sample: M.empty
+  , records: []
   }
 
 vizComponent :: Component CellStateP CellQueryP Slam
@@ -220,7 +221,7 @@ vizEval (SetAvailableChartTypes ts next) =
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
   -- TODO: CellEvalT
---  modify (_loading .~ true)
+  modify (_loading .~ true)
   forceRerender'
   map continue case info.inputPort of
     Just (P.Resource r) -> do
@@ -232,40 +233,26 @@ cellEval (EvalCell info continue) = do
       forceRerender'
       case mbConf of
         Nothing -> do
+          modify (_loading .~ false)
           emptyResponse
         Just conf -> do
-          jarr <- liftAff'' $ Api.sample r 0 20
-          emptyResponse
-{-
-          if null jarr
+          records <- liftAff'' $ Api.all r
+          if length records > 10000
             then do
-            modify $ _availableChartTypes .~ Set.empty
-            emptyResponse
+            modify (_availableChartTypes .~ Set.empty)
+            pure { output: Nothing
+                 , messages: singleton errorTooMuch
+                 }
             else do
-            records <- liftAff'' $ Api.all r
-            if length records > 10000
-              then do
-              modify (_availableChartTypes .~ Set.empty)
-              pure { output: Nothing
-                   , messages: singleton $ errorTooMuch
-                   }
-              else do
-              forceRerender'
-              mbConf' <- query state.chartType $ left
-                         $ request Form.GetConfiguration
-              case mbConf' of
-                Nothing -> emptyResponse
-                Just conf' ->
-                  modify (_loading .~ false)
-                  $> { output: Just $ P.ChartOptions $
-                              { options: buildOptions state.chartType records conf'
-                              , width: state.width
-                              , height: state.height
-                              }
-                     , messages: [] }
-            emptyResponse
--}
-    _ -> emptyResponse
+            modify (_loading .~ false)
+            modify (_records .~ records)
+            mbPort <- responsePort
+            pure { output: mbPort
+                 , messages: []
+                 }
+    _ -> do
+      modify (_loading .~ false)
+      emptyResponse
   where
   emptyResponse :: VizDSL CellEvalResult
   emptyResponse = modify (_loading .~ false) $> { output: Nothing, messages: [] }
@@ -275,6 +262,23 @@ cellEval (EvalCell info continue) = do
                  $  "Maximum record count available for visualization -- 10000, "
                  <> "please consider to use 'limit' or 'group by' in your request"
 cellEval (NotifyRunCell next) = pure next
+
+responsePort :: VizDSL (Maybe P.Port)
+responsePort = do
+  records <- gets _.records
+  state <- get
+  mbConf <- query state.chartType $ left
+             $ request Form.GetConfiguration
+  case mbConf of
+    Nothing -> pure Nothing
+    Just conf ->
+        pure
+      $ pure
+      $ P.ChartOptions
+      $ { options: buildOptions state.chartType records conf
+        , width: state.width
+        , height: state.height
+        }
 
 updateForms :: R.Resource -> VizDSL Unit
 updateForms file = do

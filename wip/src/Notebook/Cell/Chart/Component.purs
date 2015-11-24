@@ -5,18 +5,25 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Lens (preview)
 import Data.Maybe (Maybe(..))
+import Data.Int (toNumber)
 
 import Halogen
 import Halogen.ECharts as He
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.CSS.Indexed as CSS
+
+import Css.Size
+import Css.Geometry (marginBottom, height, width, left, marginLeft)
+import Css.String
+import Css.Display
 
 import Render.CssClasses as Rc
 import Notebook.Cell.Component as Cc
 import Notebook.Cell.Common.EvalQuery as Ec
 import Notebook.Cell.Chart.Component.State
 import Model.Port (_ChartOptions)
-import Notebook.Common (Slam())
+import Notebook.Common (Slam(), forceRerender')
 
 import Unsafe.Coerce
 
@@ -35,7 +42,14 @@ chartComponent = Cc.makeResultsCellComponent
 
 render :: ChartState -> ChartHTML
 render state =
-  H.div [ P.classes [ Rc.chartOutput ] ]
+  H.div [ P.classes [ Rc.chartOutput ]
+        , CSS.style do
+             height $ px $ toNumber state.height
+             width $ px $ toNumber state.width
+             position relative
+             left $ pct 50.0
+             marginLeft $ px $ -0.5 * (toNumber state.width)
+        ]
   [ H.slot unit \_ -> { component: He.echarts
                       , initialState: He.initialEChartsState 600 400
                       }
@@ -47,6 +61,7 @@ eval (Ec.EvalCell value continue) =
   case value.inputPort >>= preview _ChartOptions of
     Just options -> do
       state <- get
+      modify (const { width: options.width, height: options.height })
       if state.width /= options.width
         then void $ query unit $ action $ He.SetWidth options.width
         else pure unit

@@ -23,12 +23,13 @@ module Notebook.Cell.Viz.Component.State
   , _availableChartTypes
   , _loading
   , _sample
+  , _records
   ) where
 
 import Prelude
 
 import Halogen (InstalledState())
-import Data.Argonaut (JCursor())
+import Data.Argonaut (JCursor(), JArray())
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens)
 import Data.Map as M
@@ -48,6 +49,7 @@ type VizState =
   , availableChartTypes :: Set.Set ChartType
   , sample :: M.Map JCursor Axis
   , loading :: Boolean
+  , records :: JArray
   }
 
 _width :: forall a r. LensP {width :: a |r} a
@@ -67,6 +69,9 @@ _loading = lens _.loading _{loading = _}
 
 _sample :: forall a r. LensP {sample :: a | r} a
 _sample = lens _.sample _{sample = _}
+
+_records :: forall a r. LensP {records :: a | r} a
+_records = lens _.records _{records = _}
 
 type VizStateP =
   InstalledState VizState Form.StateP
