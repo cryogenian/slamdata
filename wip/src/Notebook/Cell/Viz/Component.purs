@@ -23,14 +23,14 @@ import Control.Plus (empty)
 import Css.Geometry (marginBottom)
 import Css.Size (px)
 import Data.Argonaut (JCursor())
-import Data.Array (snoc, length, singleton, null, cons)
+import Data.Array (snoc, length, singleton, null, cons, index)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, right, left)
-import Data.Lens ((.~))
+import Data.Lens ((.~), view)
 import Data.Map as M
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import Halogen
@@ -49,7 +49,7 @@ import Model.ChartOptions (buildOptions)
 import Model.ChartType (ChartType(..))
 import Model.Port as P
 import Model.Resource as R
-import Model.Select (autoSelect, newSelect, (<->), ifSelected)
+import Model.Select (autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import Notebook.Cell.Viz.Component.Query
@@ -77,13 +77,14 @@ initialState =
   , chartType: Pie
   , availableChartTypes: Set.empty
   , loading: true
+  , sample: M.empty
   }
 
 vizComponent :: Component CellStateP CellQueryP Slam
 vizComponent = makeEditorCellComponent
   { name: cellName Viz
   , glyph: cellGlyph Viz
-  , component: parentComponent render eval
+  , component: parentComponent' render eval peek
   , initialState: installedState initialState
   , _State: _VizState
   , _Query: makeQueryPrism' _VizQuery
@@ -117,7 +118,6 @@ renderEmpty =
 
 renderForm :: VizState -> VizHTML
 renderForm state =
-  traceAny state \_ ->
   H.div [ P.classes [ Rc.vizCellEditor ] ]
   [ renderChartTypeSelector state
   , renderChartConfiguration state
@@ -130,11 +130,11 @@ renderChartTypeSelector state =
   where
   foldFn :: ChartType -> Array VizHTML -> ChartType -> Array VizHTML
   foldFn selected accum current =
-    snoc accum $ H.img [ P.src $ src current
-                       , P.classes $ [ cls state.chartType ]
-                         <> (guard (selected == current) $> B.active)
-                       , E.onClick (E.input_ (right <<< SetChartType current))
-                       ]
+    flip cons accum $   H.img [ P.src $ src current
+                              , P.classes $ [ cls state.chartType ]
+                                <> (guard (selected == current) $> B.active)
+                              , E.onClick (E.input_ (right <<< SetChartType current))
+                              ]
 
   src :: ChartType -> String
   src Pie = "img/pie.svg"
@@ -173,7 +173,8 @@ renderDimensions state =
   row
   [ H.form [ P.classes [ B.colXs4, Rc.chartConfigureForm ] ]
     [ label "Height"
-    , H.input [ P.value $ showIfNeqZero state.height
+    , H.input [ P.classes [ B.formControl, Rc.chartConfigureHeight ]
+              , P.value $ showIfNeqZero state.height
               , Cp.mbValueInput (pure
                                  <<< map (right <<< flip SetHeight unit)
                                  <<< stringToInt')
@@ -182,7 +183,8 @@ renderDimensions state =
     ]
   , H.form [ P.classes [ B.colXs4, Rc.chartConfigureForm ] ]
     [ label "Width"
-    , H.input [ P.value $ showIfNeqZero state.width
+    , H.input [ P.classes [ B.formControl, Rc.chartConfigureWidth ]
+              , P.value $ showIfNeqZero state.width
               , Cp.mbValueInput (pure
                                  <<< map (right <<< flip SetWidth unit)
                                  <<< stringToInt')
@@ -214,33 +216,26 @@ vizEval (SetAvailableChartTypes ts next) =
   modify (_availableChartTypes .~ ts) $> next
 
 
-import Debug.Trace
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
   -- TODO: CellEvalT
 --  modify (_loading .~ true)
-  traceAnyA "!!!"
   forceRerender'
   map continue case info.inputPort of
     Just (P.Resource r) -> do
-      traceAnyA "TROLOLO"
+      updateForms r
       state <- get
-      traceAnyA state
-      traceAnyA "@"
-      -- Form configuration hasn't been set in autorun
+      -- Form configuration hasn't been set in autorun -->
+      -- fromMaybe
       mbConf <- query state.chartType $ left $ request Form.GetConfiguration
-      traceAnyA "#"
       forceRerender'
-      traceAnyA mbConf
-      traceAnyA "$"
       case mbConf of
         Nothing -> do
-          traceAnyA "EMpty"
           emptyResponse
         Just conf -> do
-          traceAnyA "Just conf"
           jarr <- liftAff'' $ Api.sample r 0 20
-          traceAnyA jarr
+          emptyResponse
+{-          traceAnyA jarr
           if null jarr
             then do
             modify $ _availableChartTypes .~ Set.empty
@@ -268,6 +263,7 @@ cellEval (EvalCell info continue) = do
                               }
                      , messages: [] }
             emptyResponse
+-}
     _ -> emptyResponse
   where
   emptyResponse :: VizDSL CellEvalResult
@@ -286,27 +282,39 @@ updateForms file = do
     then
     -- Here I want to send notification, with error and disable play button
     modify $ _availableChartTypes .~ Set.empty
-    else
-    let sample = analyzeJArray jarr
-    in configure sample
+    else do
+    modify (_sample .~ analyzeJArray jarr)
+    configure
 
 type AxisAccum =
  { category :: Array JCursor
  , value :: Array JCursor,
    time :: Array JCursor
  }
-configure :: M.Map JCursor Axis -> VizDSL Unit
-configure sample = void do
-  query Pie $ left $ action $ Form.SetConfiguration pieBarConfiguration
+import Unsafe.Coerce
+import Debug.Trace
+configure :: VizDSL Unit
+configure = void do
+  axises <- getAxises
+  pieConf <- map (fromMaybe Form.initialState) $ query Pie $ left
+             (request Form.GetConfiguration)
+  query Pie $ left $ action
+    $ Form.SetConfiguration $ pieBarConfiguration axises pieConf
   forceRerender'
-  query Line $ left $ action $ Form.SetConfiguration lineConfiguration
+  lineConf <- map (fromMaybe Form.initialState) $ query Line $ left
+              (request Form.GetConfiguration)
+  query Line $ left $ action
+    $ Form.SetConfiguration $ lineConfiguration axises lineConf
   forceRerender'
-  query Bar $ left $ action $ Form.SetConfiguration pieBarConfiguration
+  barConf <- map (fromMaybe Form.initialState) $ query Bar $ left
+             (request Form.GetConfiguration)
+  query Bar $ left $ action
+    $ Form.SetConfiguration $ pieBarConfiguration axises barConf
   forceRerender'
-  modify (_availableChartTypes .~ available)
+  modify (_availableChartTypes .~ available axises)
   where
-  available :: Set.Set ChartType
-  available =
+  available :: AxisAccum -> Set.Set ChartType
+  available axises =
     foldMap Set.singleton
     $ if null axises.value
       then []
@@ -316,9 +324,10 @@ configure sample = void do
                 then []
                 else [Line]
 
-  axises :: AxisAccum
-  axises =
-    foldl axisFolder {category: [], value: [], time: [] } $ M.toList sample
+  getAxises :: VizDSL AxisAccum
+  getAxises = do
+    sample <- gets _.sample
+    pure $ foldl axisFolder {category: [], value: [], time: [] } $ M.toList sample
 
   axisFolder :: AxisAccum -> Tuple JCursor Axis -> AxisAccum
   axisFolder accum (Tuple cursor axis)
@@ -327,26 +336,32 @@ configure sample = void do
     | Ax.isTimeAxis axis = accum {time = cons cursor accum.time }
     | otherwise = accum
 
-  pieBarConfiguration :: ChartConfiguration
-  pieBarConfiguration =
+  pieBarConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
+  pieBarConfiguration axises (ChartConfiguration current) =
     let categories =
-          autoSelect $ newSelect $ axises.category
+          traceR $
+          (maybe id trySelect' $ index current.series 0 >>= view _value)
+          $ autoSelect $ newSelect $ axises.category
         measures =
-          autoSelect $ newSelect $ depends categories axises.value
+          (maybe id trySelect' $ index current.measures 0 >>= view _value)
+          $ autoSelect $ newSelect $ depends categories axises.value
         firstSeries =
-          newSelect $ ifSelected [categories] $ axises.category <-> categories
+          (maybe id trySelect' $ index current.series 1 >>= view _value)
+          $ newSelect $ ifSelected [categories] $ axises.category <-> categories
         secondSeries =
-          newSelect $ ifSelected [categories, firstSeries]
+          (maybe id trySelect' $ index current.series 2 >>= view _value)
+          $ newSelect $ ifSelected [categories, firstSeries]
           $ axises.category <-> categories <-> firstSeries
-        aggregations =
-          newSelect
-    in ChartConfiguration { series: [categories, firstSeries, secondSeries]
+        aggregation =
+          (maybe id trySelect' $ index current.aggregations 0 >>= view _value)
+          $ aggregationSelect
+    in ChartConfiguration { series: traceR [categories, firstSeries, secondSeries]
                           , dimensions: []
                           , measures: [measures]
-                          , aggregations: [aggregationSelect]}
+                          , aggregations: [aggregation]}
 
-  lineConfiguration :: ChartConfiguration
-  lineConfiguration =
+  lineConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
+  lineConfiguration axises (ChartConfiguration current) =
     let dimensions =
           autoSelect $ newSelect
           -- This is redundant, I've put it here to notify
@@ -365,3 +380,15 @@ configure sample = void do
                           , dimensions: [dimensions]
                           , measures: [firstMeasures, secondMeasures]
                           , aggregations: [aggregationSelect, aggregationSelect]}
+
+import Debug.Trace
+
+traceR :: forall a. a -> a
+traceR a = traceAny a \_ -> a
+
+peek :: forall a. ChildF ChartType Form.QueryP a -> VizDSL Unit
+peek (ChildF chartType q) = do
+  traceAnyA chartType
+  traceAnyA q
+  configure
+  traceAnyA "!!!'"

@@ -22,13 +22,16 @@ module Notebook.Cell.Viz.Component.State
   , _chartType
   , _availableChartTypes
   , _loading
+  , _sample
   ) where
 
 import Prelude
 
 import Halogen (InstalledState())
+import Data.Argonaut (JCursor())
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens)
+import Data.Map as M
 import Data.Set as Set
 import Model.ChartConfiguration (ChartConfiguration())
 import Model.ChartType (ChartType(..))
@@ -36,12 +39,14 @@ import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Cell.Viz.Form.Component as Form
 import Notebook.Cell.Viz.Component.Query (VizQuery())
 import Notebook.Common (Slam())
+import Model.ChartAxis (Axis())
 
 type VizState =
   { width :: Int
   , height :: Int
   , chartType :: ChartType
   , availableChartTypes :: Set.Set ChartType
+  , sample :: M.Map JCursor Axis
   , loading :: Boolean
   }
 
@@ -59,6 +64,9 @@ _availableChartTypes = lens _.availableChartTypes _{availableChartTypes = _}
 
 _loading :: forall a r. LensP {loading :: a | r} a
 _loading = lens _.loading _{loading = _}
+
+_sample :: forall a r. LensP {sample :: a | r} a
+_sample = lens _.sample _{sample = _}
 
 type VizStateP =
   InstalledState VizState Form.StateP

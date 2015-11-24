@@ -24,7 +24,7 @@ import Control.Apply ((*>))
 import Control.MonadPlus (MonadPlus, guard)
 import Data.Argonaut
   (DecodeJson, EncodeJson, JCursor(), decodeJson, jsonEmptyObject, (.?), (~>), (:=))
-import Data.Array (filter, length, head, (!!))
+import Data.Array (filter, length, head, (!!), elemIndex)
 import Data.Foldable (Foldable, foldMap)
 import Data.Lens (LensP(), lens, view, (^.), (?~))
 import Data.Maybe (Maybe(..), maybe, isJust)
@@ -100,6 +100,10 @@ autoSelect (Select {options: opts, value: val}) =
 trySelect :: forall a. (Eq a) => Int -> Select a -> Select a
 trySelect i sel = maybe sel (\v -> sel # _value ?~ v) (sel ^. _options !! i)
 
+trySelect' :: forall a. (Eq a) => a -> Select a -> Select a
+trySelect' a sel =
+  maybe sel (\_ -> sel # _value ?~ a) $ elemIndex a $ sel ^. _options
+
 -- | Flipped version of `except'` useful for filtering model fields by
 -- | view values i.e.
 -- | ```purescript
@@ -112,6 +116,8 @@ trySelect i sel = maybe sel (\v -> sel # _value ?~ v) (sel ^. _options !! i)
 infixl 2 <->
 (<->) :: forall a. (Eq a) => Array a -> Select a -> Array a
 (<->) = flip except'
+
+import Debug.Trace
 
 ifSelected
   :: forall f m a. (Foldable f, MonadPlus m)

@@ -7,7 +7,7 @@ import Control.Monad.Aff (Aff())
 import Data.Array (length, range, zipWith, singleton)
 import Data.Functor (($>))
 import Data.Lens ((^.))
-import Data.Maybe (Maybe(Nothing))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Maybe.Unsafe (fromJust)
 
 import Halogen
@@ -35,7 +35,7 @@ type SelectConfig r =
 
 primarySelect
   :: forall a e. (OptionVal a) => Component (Select a) (Query a) (Slam e)
-primarySelect = select { disableWhen: (< 2), defaultWhen: (> 1) }
+primarySelect = select { disableWhen: (const false), defaultWhen: (> 1) }
 
 secondarySelect
   :: forall a e. (OptionVal a) => Component (Select a) (Query a) (Slam e)

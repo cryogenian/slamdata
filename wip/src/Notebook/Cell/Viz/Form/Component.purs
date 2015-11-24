@@ -52,7 +52,7 @@ import Model.Aggregation (Aggregation(..), allAggregations)
 import Model.ChartConfiguration
 import Model.Select (OptionVal, Select(..), autoSelect, except, filterSelect')
 import Notebook.Cell.Viz.Form.Component.Render (gridClasses, GridClasses())
-import Notebook.Common (Slam())
+import Notebook.Common (Slam(), forceRerender')
 import Notebook.Effects (NotebookRawEffects())
 import Render.Common (row)
 import Render.CssClasses as Rc
@@ -137,7 +137,7 @@ render (ChartConfiguration conf) =
     $  row
     $  maybe [] (renderCategory clss.first 0) (conf.series !! 0)
     <> maybe [] (renderMeasure clss.second 0) (conf.measures !! 0)
-    <> maybe [] (renderSeries clss.third 0) (conf.series !! 1)
+    <> maybe [] (renderSeries clss.third 1) (conf.series !! 1)
     where
     clss :: GridClasses
     clss = gridClasses (conf.series !! 0) (conf.measures !! 0) (conf.series !! 1)
@@ -147,7 +147,7 @@ render (ChartConfiguration conf) =
   renderRowsWithoutDimension measureIx seriesIx acc =
     maybe acc
     (renderRowsWithoutDimension (measureIx + one) (seriesIx + one)
-     <<< flip cons acc)
+     <<< snoc acc)
     $ renderOneRowWithoutDimension
         measureIx (conf.measures !! measureIx)
         seriesIx (conf.series !! seriesIx)
@@ -158,13 +158,13 @@ render (ChartConfiguration conf) =
   renderOneRowWithoutDimension measureIx mbMeasure seriesIx mbSeries =
        pure
     $  row
-    $  maybe [] (renderMeasure [ B.colXs4, B.colXsOffset4 ] measureIx) mbMeasure
-    <> maybe [] (renderSeries [ B.colXs4 ] seriesIx) mbSeries
+    $  maybe [] (renderMeasure [ B.colXs4 ] measureIx) mbMeasure
+    <> maybe [] (renderSeries [ B.colXs4, B.colXsOffset8 ] seriesIx) mbSeries
 
   renderRows
     :: Int -> Array FormHTML -> Array FormHTML
   renderRows ix acc =
-    maybe acc (renderRows (ix + one) <<< flip cons acc)
+    maybe acc (renderRows (ix + one) <<< snoc acc)
     $ renderOneRow ix
     (conf.dimensions !! ix) (conf.series !! ix) (conf.measures !! ix)
 
@@ -238,12 +238,12 @@ render (ChartConfiguration conf) =
       then { disableWhen: (< 2)
            , defaultWhen: (> 1)
            , mainState: sel
-           , classes: []
+           , classes: [Rc.aggregation, B.btnPrimary]
            }
       else { disableWhen: (< 1)
            , defaultWhen: (const true)
            , mainState: sel
-           , classes: []
+           , classes: [Rc.aggregation, B.btnPrimary]
            }
 
 
@@ -274,9 +274,14 @@ render (ChartConfiguration conf) =
   seriesLabel :: FormHTML
   seriesLabel = label "Series"
 
+import Debug.Trace
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   (ChartConfiguration r) <- get
+  traceAnyA "**************"
+  traceAnyA r.series
+  traceAnyA conf.series
+  traceAnyA "**************\n"
   synchronizeDimensions r.dimensions conf.dimensions
   synchronizeSeries r.series conf.series
   synchronizeMeasures r.measures conf.measures
@@ -298,7 +303,7 @@ eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   syncByIndex prism old new i =
     if isJust $ old !! i
     then maybe (pure unit) (void <<< query' prism i <<< action <<< S.SetSelect)
-         $ new !! i
+         $ (new !! i)
     else pure unit
 
   synchronizeMeasures :: Array JSelect -> Array JSelect -> FormDSL Unit
@@ -333,22 +338,16 @@ eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   getLastIndex old new =
     let oldL = length old
         newL = length new
-    in (if oldL > newL then oldL else newL) - one
+        ind = (if oldL > newL then oldL else newL) - one
+    in if ind > zero then ind else zero
 
 
 eval (GetConfiguration continue) = do
   (ChartConfiguration conf) <- get
-  traceAnyA "FOO"
-  get >>= traceAnyA
   forceRerender'
   dims <- getDimensions
   series <- getSeries
   measures <- getMeasures
-  traceAnyA "get configuration"
-  traceAnyA dims
-  traceAnyA series
-  traceAnyA measures
-  traceAnyA "got configuration"
   r <- { dimensions: _, series: _, measures: _, aggregations: _}
        <$> getDimensions
        <*> getSeries
@@ -398,16 +397,12 @@ eval (GetConfiguration continue) = do
     then range start end
     else []
 
-import Debug.Trace
-import Notebook.Common (forceRerender')
-
 peek :: forall a. ChildF ChildSlot ChildQuery a -> FormDSL Unit
-peek (ChildF slot query) =
+peek (ChildF slot query) = do
   fromMaybe (pure unit)
-  $   (dimensionPeek <$> prjSlot cpDimension slot <*> prjQuery cpDimension query)
-  <|> (seriesPeek <$> prjSlot cpSeries slot <*> prjQuery cpSeries query)
-  <|> (measurePeek <$> prjSlot cpMeasure slot <*> prjQuery cpMeasure query)
-
+    $   (dimensionPeek <$> prjSlot cpDimension slot <*> prjQuery cpDimension query)
+    <|> (seriesPeek <$> prjSlot cpSeries slot <*> prjQuery cpSeries query)
+    <|> (measurePeek <$> prjSlot cpMeasure slot <*> prjQuery cpMeasure query)
 -- 1. All `fromJust` are safe here, because it's used only with index
 --    of child that sent message.
 -- 2. Filtering is incorrect. In fact we must take current state of

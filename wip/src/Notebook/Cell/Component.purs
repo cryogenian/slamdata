@@ -79,6 +79,7 @@ makeEditorCellComponent def = makeCellComponentPart def render
       H.div
         [ P.classes $ join [containerClasses, collapsedClass] ]
         [ header def cs
+          -- Do we really need `row` here? Won't `H.div_` work?
         , row [ H.slot unit \_ -> { component: component, initialState: initialState } ]
         , statusBar cs.hasResults cs
         ]

@@ -547,11 +547,15 @@ form.chart-configure-form {
         display: inline-block;
     }
     &.with-aggregation {
-        .form-control {
-            width: ~"calc(100% - 115px)";
-            &.aggregation {
-                width: 40px;
-                font-weight: bold;
+        div {
+            width: ~"calc(100% - 75px)";
+            display: inline-block;
+            .form-control {
+                width: ~"calc(100% - 40px)";
+                &.aggregation {
+                    width: 40px;
+                    font-weight: bold;
+                }
             }
         }
     }
@@ -569,6 +573,8 @@ div.loading-message.alert.alert-info {
 
 div.viz-cell-editor {
     min-height: 160px;
+    padding-left: 15px;
+    padding-right: 15px;
     div.loading-message.alert.alert-info {
         height: 160px;
     }
