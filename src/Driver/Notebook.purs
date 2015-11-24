@@ -178,7 +178,7 @@ notebookAutosave refState refTimer input k = do
         clearTimeout t
         t' <- timeout Config.autosaveTick $ runAff' (saveNotebook notebook) \result -> do
           case result of
-            Left err -> k $ WithState (_error ?~ message err)
+            Left err -> k $ WithState id
             Right nb -> do
               let update = (_notebook %~ replacePendingPorts)
                        <<< (_notebook .. _name .~ (nb ^. _name))
