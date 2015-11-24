@@ -14,7 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Api.Query (query, query', portView, portQuery, sample, SQL(), fields, count, all, templated) where
+module Api.Query
+  ( query
+  , portView
+  , portQuery
+  , sample
+  , fields
+  , countWithQuery
+
+  , SQL()
+  , templated
+  ) where
 
 import Prelude
 import Api.Common (RetryEffects(), getResponse, succeeded, retryGet, slamjax, ldJSON)
@@ -55,30 +65,35 @@ import qualified Data.Int as I
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
 
-query :: forall e. Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
-query res sql =
-  if not $ isFile res
-  then pure []
-  else extractJArray <$> (getResponse msg $ retryGet uriPath)
-  where
-  msg = "error in query"
-  uriPath = mkURI res sql
-
-query' :: forall e. Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JArray)
-query' res@(File _) sql = do
-  result <- retryGet (mkURI' res sql)
-  pure if succeeded result.status
+query :: forall e. Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JArray)
+query res@(File _) sql = do
+  result <- retryGet (mkURI res sql)
+  pure
+    if succeeded result.status
        then Right (extractJArray result.response)
        else readError "error in query" result.response
+  where
+  mkURI :: Resource -> SQL -> FilePath
+  mkURI res sql =
+    queryUrl
+    </> rootify (resourceDir res)
+    </> dir (resourceName res)
+    </> file ("?q=" <> encodeURIComponent (templated res sql))
 
-query' _ _ = pure $ Left "Query resource is not a file"
+query _ _ = pure $ Left "Query resource is not a file"
 
-count :: forall e. Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
-count res = do
-  fromMaybe 0 <<< readTotal <$> query res sql
+countWithQuery :: forall e. Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
+countWithQuery res =
+  if not $ isFile res
+    then pure 0
+    else fromMaybe 0 <<< readTotal <<< extractJArray <$> getResponse msg (retryGet uriPath)
+
   where
   sql :: SQL
   sql = "SELECT COUNT(*) as total FROM {{path}}"
+
+  msg = "error in query"
+  uriPath = queryUrl </> file ("?q=" <> encodeURIComponent (templated res sql))
 
   readTotal :: JArray -> Maybe Int
   readTotal = I.fromNumber <=< toNumber <=< lookup "total" <=< toObject <=< head
@@ -131,8 +146,8 @@ readError msg input =
   let responseError = jsonParser input >>= decodeJson >>= (.? "error")
   in either (const $ Left msg) Left responseError
 
-sample' :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
-sample' res mbOffset mbLimit =
+sample :: forall e. Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
+sample res mbOffset mbLimit =
   if not $ isFile res
   then pure []
   else extractJArray <$> (getResponse msg $ retryGet uri)
@@ -144,32 +159,12 @@ sample' res mbOffset mbLimit =
                   (maybe "" (("?offset=" <>) <<< show) mbOffset) <>
                   (maybe "" (("&limit=" <>) <<< show ) mbLimit))
 
-
-sample :: forall e. Resource -> Int -> Int -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
-sample res offset limit = sample' res (Just offset) (Just limit)
-
-all :: forall e. Resource -> Aff (RetryEffects (ajax :: AJAX | e)) JArray
-all res = sample' res Nothing Nothing
-
 fields :: forall e. Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Array String)
 fields res = do
-  jarr <- sample res 0 100
+  jarr <- sample res (Just 0) (Just 100)
   case jarr of
     [] -> throwError $ error "empty file"
     _ -> pure $ nub $ concat (getFields <$> jarr)
-
-mkURI :: Resource -> SQL -> FilePath
-mkURI res sql =
-  queryUrl
-  </> file ("?q=" <> encodeURIComponent (templated res sql))
-
-mkURI' :: Resource -> SQL -> FilePath
-mkURI' res sql =
-  queryUrl
-  </> rootify (resourceDir res)
-  </> dir (resourceName res)
-  </> file ("?q=" <> encodeURIComponent (templated res sql))
-
 
 templated :: Resource -> SQL -> SQL
 templated res = replace "{{path}}" ("\"" <> resourcePath res <> "\"")
