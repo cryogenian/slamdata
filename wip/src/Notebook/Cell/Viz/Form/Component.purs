@@ -121,7 +121,7 @@ cpMeasure = cpR :> cpR
 
 
 formComponent :: Component StateP QueryP Slam
-formComponent = parentComponent' render eval peek
+formComponent = parentComponent render eval
 
 render
   :: ChartConfiguration -> ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -213,7 +213,7 @@ render (ChartConfiguration conf) =
                                    ]
              ]
       [ seriesLabel
-      , H.slot' cpSeries ix \_ -> { component: childSelect ix
+      , H.slot' cpSeries ix \_ -> { component: S.secondarySelect
                                   , initialState: sel
                                   }
       ]
@@ -252,13 +252,6 @@ render (ChartConfiguration conf) =
                              , value: Just Sum
                              }
 
-  childSelect
-    :: forall a. (OptionVal a) => Int -> Component (Select a) (S.Query a) Slam
-  childSelect i =
-    if i == 0
-    then S.primarySelect
-    else S.secondarySelect
-
   label :: String -> FormHTML
   label str = H.label [ P.classes [ B.controlLabel ] ] [ H.text str ]
 
@@ -274,19 +267,15 @@ render (ChartConfiguration conf) =
   seriesLabel :: FormHTML
   seriesLabel = label "Series"
 
-import Debug.Trace
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   (ChartConfiguration r) <- get
-  traceAnyA "**************"
-  traceAnyA r.series
-  traceAnyA conf.series
-  traceAnyA "**************\n"
+  modify $ const c
+  forceRerender'
   synchronizeDimensions r.dimensions conf.dimensions
   synchronizeSeries r.series conf.series
   synchronizeMeasures r.measures conf.measures
   synchronizeAggregations r.aggregations conf.aggregations
-  modify (const c)
   pure next
   where
   synchronizeDimensions :: Array JSelect -> Array JSelect -> FormDSL Unit
@@ -393,90 +382,6 @@ eval (GetConfiguration continue) = do
 
   range' :: Int -> Int -> Array Int
   range' start end =
-    if end > start
+    if end >= start
     then range start end
     else []
-
-peek :: forall a. ChildF ChildSlot ChildQuery a -> FormDSL Unit
-peek (ChildF slot query) = do
-  fromMaybe (pure unit)
-    $   (dimensionPeek <$> prjSlot cpDimension slot <*> prjQuery cpDimension query)
-    <|> (seriesPeek <$> prjSlot cpSeries slot <*> prjQuery cpSeries query)
-    <|> (measurePeek <$> prjSlot cpMeasure slot <*> prjQuery cpMeasure query)
--- 1. All `fromJust` are safe here, because it's used only with index
---    of child that sent message.
--- 2. Filtering is incorrect. In fact we must take current state of
---    children and update it. (This component state have no meaning except
---    setting initial state of subcomponents)
-dimensionPeek :: forall a. DimensionSlot -> DimensionQuery a -> FormDSL Unit
-dimensionPeek i (S.Choose _ _) = do
-  (ChartConfiguration conf) <- get
-  dims <- getDimensionVals
-  measures <- getMeasureVals
-  traverse_ (traverseFn dims measures) $ enumerate conf.measures
-  where
-  traverseFn
-    :: Array (Maybe JCursor) -> Array (Maybe JCursor)
-    -> Tuple Int JSelect -> FormDSL Unit
-  traverseFn dims measures (Tuple i sel) =
-    let filtered = foldl filterSelect' sel $ take i measures <> dims
-    in when (filtered /= sel) $ void
-       $ query' cpMeasure i $ right $ ChildF unit $ action $ S.SetSelect filtered
-dimensionPeek _ _ = pure unit
-
-seriesPeek :: forall a. SeriesSlot -> SeriesQuery a -> FormDSL Unit
-seriesPeek i (S.Choose _ _) = do
-  (ChartConfiguration conf) <- get
-  vals <- getSerieVals
-  traverse_ (traverseFn vals) $ enumerate conf.series
-  where
-  traverseFn :: Array (Maybe JCursor) -> Tuple Int JSelect -> FormDSL Unit
-  traverseFn vals (Tuple i sel) =
-    let filtered = foldl filterSelect' sel $ take i vals
-    in when (filtered /= sel) $ void
-       $ query' cpSeries i $ action $ S.SetSelect filtered
-seriesPeek _ _ = pure unit
-
-measurePeek :: forall a. MeasureSlot -> MeasureQuery a -> FormDSL Unit
-measurePeek s q =
-  fromMaybe (pure unit)
-  $   (measureAggregationPeek s <$> preview _Left q)
-  -- we need index of that measure select to filter
-  <|> (applyCF (measureSelectPeek s) <$> preview _Right q)
-
-measureAggregationPeek :: forall a. MeasureSlot -> MeasureAggQuery a -> FormDSL Unit
-measureAggregationPeek _ _ = pure unit
-
-measureSelectPeek
-  :: forall a. MeasureSlot -> Unit -> MeasureSelQuery a -> FormDSL Unit
-measureSelectPeek i _ (S.Choose _ _) = do
-  (ChartConfiguration conf) <- get
-  vals <- getMeasureVals
-  traverse_ (traverseFn vals) $ enumerate conf.measures
-  where
-  traverseFn :: Array (Maybe JCursor) -> Tuple Int JSelect -> FormDSL Unit
-  traverseFn vals (Tuple i sel) =
-    let filtered = foldl filterSelect' sel $ take i vals
-    in when (filtered /= sel) $ void
-       $ query' cpMeasure i $ right $ ChildF unit $ action $ S.SetSelect sel
-measureSelectPeek _ _ _ = pure unit
-
-
-getMeasureVals :: FormDSL (Array (Maybe JCursor))
-getMeasureVals = do
-  (ChartConfiguration conf) <- get
-  for (range 0 $ length conf.measures - 1) \measureIx ->
-    map join $ query' cpMeasure measureIx
-    $ right $ ChildF unit $ request S.GetValue
-
-getSerieVals :: FormDSL (Array (Maybe JCursor))
-getSerieVals = do
-  (ChartConfiguration conf) <- get
-  for (range 0 $ length conf.series - 1) \seriesIx ->
-    map join $ query' cpSeries seriesIx $ request S.GetValue
-
-getDimensionVals :: FormDSL (Array (Maybe JCursor))
-getDimensionVals = do
-  (ChartConfiguration conf) <- get
-  for (range 0 $ length conf.dimensions - 1) \dimensionIx ->
-    map join $ query' cpDimension dimensionIx $ request S.GetValue

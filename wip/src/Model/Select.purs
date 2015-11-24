@@ -26,7 +26,7 @@ import Data.Argonaut
   (DecodeJson, EncodeJson, JCursor(), decodeJson, jsonEmptyObject, (.?), (~>), (:=))
 import Data.Array (filter, length, head, (!!), elemIndex)
 import Data.Foldable (Foldable, foldMap)
-import Data.Lens (LensP(), lens, view, (^.), (?~))
+import Data.Lens (LensP(), lens, view, (^.), (?~), (.~))
 import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.Monoid.Conj (Conj(..), runConj)
 
@@ -98,7 +98,8 @@ autoSelect (Select {options: opts, value: val}) =
   else Select {options: opts, value: val}
 
 trySelect :: forall a. (Eq a) => Int -> Select a -> Select a
-trySelect i sel = maybe sel (\v -> sel # _value ?~ v) (sel ^. _options !! i)
+trySelect i sel =
+  maybe (sel # _value .~ Nothing) (\v -> sel # _value ?~ v) (sel ^. _options !! i)
 
 trySelect' :: forall a. (Eq a) => a -> Select a -> Select a
 trySelect' a sel =
@@ -116,8 +117,6 @@ trySelect' a sel =
 infixl 2 <->
 (<->) :: forall a. (Eq a) => Array a -> Select a -> Array a
 (<->) = flip except'
-
-import Debug.Trace
 
 ifSelected
   :: forall f m a. (Foldable f, MonadPlus m)

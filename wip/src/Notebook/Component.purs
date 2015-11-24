@@ -119,12 +119,10 @@ eval (AddCell cellType next) = do
           $ Pt.parseAbsFile "/demo/demo/flatViz" >>= Pt.sandbox Pt.rootDir
   modify (addCell cellType Nothing)
   forceRerender'
-  traceAnyA p
   updateCell zero { notebookPath: Nothing
                   , inputPort: p
                   , cellId: one
                   }
-  traceAnyA "FOO"
   pure next
 
 eval (RunActiveCell next) =
@@ -176,20 +174,17 @@ import Debug.Trace
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
   st <- get
-  traceAnyA $ findParent st cellId
   case findParent st cellId of
     Nothing -> do
 
       let p = map (P.Resource <<< Rs.File <<< (Pt.rootDir Pt.</>))
               $ Pt.parseAbsFile "/demo/demo/flatViz" >>= Pt.sandbox Pt.rootDir
-      traceAnyA p
       updateCell cellId
         { notebookPath: notebookPath st
         , inputPort: p
         , cellId: cellId
         }
     Just parent -> do
-      traceAnyA "Just"
       case getCurrentValue st parent of
         Just inputPort ->
           updateCell cellId
@@ -201,7 +196,6 @@ runCell cellId = do
 
 updateCell :: CellId -> CellEvalInput -> NotebookDSL Unit
 updateCell cellId input = do
-  traceAnyA input
   result <- query (CellSlot cellId) $ left $ request (UpdateCell input)
   maybe (pure unit) (runCellDescendants cellId) $ join result
 

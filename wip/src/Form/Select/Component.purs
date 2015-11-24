@@ -6,7 +6,7 @@ import Control.Monad.Aff (Aff())
 
 import Data.Array (length, range, zipWith, singleton)
 import Data.Functor (($>))
-import Data.Lens ((^.))
+import Data.Lens ((^.), (.~))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Maybe.Unsafe (fromJust)
 

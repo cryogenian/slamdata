@@ -49,7 +49,8 @@ import Model.ChartOptions (buildOptions)
 import Model.ChartType (ChartType(..))
 import Model.Port as P
 import Model.Resource as R
-import Model.Select (autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
+import Model.Select
+  (Select(), autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import Notebook.Cell.Viz.Component.Query
@@ -235,7 +236,7 @@ cellEval (EvalCell info continue) = do
         Just conf -> do
           jarr <- liftAff'' $ Api.sample r 0 20
           emptyResponse
-{-          traceAnyA jarr
+{-
           if null jarr
             then do
             modify $ _availableChartTypes .~ Set.empty
@@ -291,8 +292,7 @@ type AxisAccum =
  , value :: Array JCursor,
    time :: Array JCursor
  }
-import Unsafe.Coerce
-import Debug.Trace
+
 configure :: VizDSL Unit
 configure = void do
   axises <- getAxises
@@ -336,26 +336,30 @@ configure = void do
     | Ax.isTimeAxis axis = accum {time = cons cursor accum.time }
     | otherwise = accum
 
+
+  setPreviousValueFrom
+    :: forall a. (Eq a) => Maybe (Select a) -> Select a -> Select a
+  setPreviousValueFrom mbSel target  =
+    (maybe id trySelect' $ mbSel >>= view _value) $ target
+
   pieBarConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
   pieBarConfiguration axises (ChartConfiguration current) =
     let categories =
-          traceR $
-          (maybe id trySelect' $ index current.series 0 >>= view _value)
+          setPreviousValueFrom (index current.series 0)
           $ autoSelect $ newSelect $ axises.category
         measures =
-          (maybe id trySelect' $ index current.measures 0 >>= view _value)
+          setPreviousValueFrom (index current.measures 0)
           $ autoSelect $ newSelect $ depends categories axises.value
         firstSeries =
-          (maybe id trySelect' $ index current.series 1 >>= view _value)
+          setPreviousValueFrom (index current.series 1)
           $ newSelect $ ifSelected [categories] $ axises.category <-> categories
         secondSeries =
-          (maybe id trySelect' $ index current.series 2 >>= view _value)
+          setPreviousValueFrom (index current.series 2)
           $ newSelect $ ifSelected [categories, firstSeries]
           $ axises.category <-> categories <-> firstSeries
         aggregation =
-          (maybe id trySelect' $ index current.aggregations 0 >>= view _value)
-          $ aggregationSelect
-    in ChartConfiguration { series: traceR [categories, firstSeries, secondSeries]
+          setPreviousValueFrom (index current.aggregations 0) aggregationSelect
+    in ChartConfiguration { series: [categories, firstSeries, secondSeries]
                           , dimensions: []
                           , measures: [measures]
                           , aggregations: [aggregation]}
@@ -363,18 +367,26 @@ configure = void do
   lineConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
   lineConfiguration axises (ChartConfiguration current) =
     let dimensions =
-          autoSelect $ newSelect
+          setPreviousValueFrom (index current.dimensions 0)
+          $ autoSelect $ newSelect
           -- This is redundant, I've put it here to notify
           -- that this behaviour differs from pieBar and can be changed.
           $ (axises.category <> axises.time <> axises.value)
         firstMeasures =
-          autoSelect $ newSelect $ depends dimensions axises.value
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ depends dimensions
+          $ axises.value <-> dimensions
         secondMeasures =
-          newSelect $ depends dimensions $ axises.value <-> firstMeasures
+          setPreviousValueFrom (index current.measures 1)
+          $ newSelect $ ifSelected [firstMeasures]
+          $ depends dimensions
+          $ axises.value <-> firstMeasures <-> dimensions
         firstSeries =
-          newSelect $ ifSelected [dimensions] $ axises.category <-> dimensions
+          setPreviousValueFrom (index current.series 0)
+          $ newSelect $ ifSelected [dimensions] $ axises.category <-> dimensions
         secondSeries =
-          newSelect $ ifSelected [dimensions, firstSeries]
+          setPreviousValueFrom (index current.series 1)
+          $ newSelect $ ifSelected [dimensions, firstSeries]
           $ axises.category <-> dimensions <-> firstSeries
     in ChartConfiguration { series: [firstSeries, secondSeries]
                           , dimensions: [dimensions]
@@ -382,13 +394,8 @@ configure = void do
                           , aggregations: [aggregationSelect, aggregationSelect]}
 
 import Debug.Trace
-
 traceR :: forall a. a -> a
 traceR a = traceAny a \_ -> a
 
 peek :: forall a. ChildF ChartType Form.QueryP a -> VizDSL Unit
-peek (ChildF chartType q) = do
-  traceAnyA chartType
-  traceAnyA q
-  configure
-  traceAnyA "!!!'"
+peek (ChildF chartType q) = configure
