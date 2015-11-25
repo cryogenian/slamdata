@@ -115,9 +115,8 @@ runJTable file cell = do
   let perPage = fromMaybe Config.defaultPageSize (currentPageSize cell)
       pageNumber = fromMaybe one (currentPage cell)
       pageIndex = pageNumber - one
-      output = taggedOutFile "count" cell
   results <- liftAff $ attempt $ do
-    numItems <- Quasar.countWithView file output
+    numItems <- Quasar.countWithQuery file
     let numPages = Math.ceil (I.toNumber numItems / I.toNumber perPage)
         pageIndex' = fromMaybe 0 $ I.fromNumber $ Math.max 0.0 $ Math.min (I.toNumber pageIndex) (numPages - 1.0)
     json <- Quasar.sample file (Just $ pageIndex' * perPage) (Just perPage)
