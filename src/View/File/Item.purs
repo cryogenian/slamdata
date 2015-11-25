@@ -28,7 +28,7 @@ import Input.File.Item (ItemInput(..))
 import Model.Action (Action(..))
 import Model.File
 import Model.File.Item
-import Model.Resource (Resource(..), resourcePath, resourceName, isFile, isDatabase, isNotebook, hiddenTopLevel)
+import Model.Resource (Resource(..), resourcePath, resourceName, isFile, isDatabase, isNotebook, isViewMount, hiddenTopLevel)
 import View.File.Common (HTML(), toolItem)
 import Optic.Core
 
@@ -119,7 +119,7 @@ showToolbar it state =
   in conf <> [ toolItem' handleMoveItem "Move / rename" B.glyphiconMove
              , toolItem' handleDownloadItem "Download" B.glyphiconDownloadAlt
              , toolItem' handleDeleteItem "Remove" B.glyphiconTrash
-             ] ++ if isFile r || isNotebook r
+             ] ++ if isFile r || isNotebook r || isViewMount r
                   then [toolItem' (handleShare (state ^. _sort) (state ^. _salt)) "Share" B.glyphiconShare]
                   else []
   where
