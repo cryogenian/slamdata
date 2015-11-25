@@ -105,6 +105,7 @@ iconClasses it = A.classes [B.glyphicon, Vc.itemIcon, iconClass $ itemResource i
   where
   iconClass :: Resource -> A.ClassName
   iconClass (File _) = B.glyphiconFile
+  iconClass (ViewMount _) = B.glyphiconFile
   iconClass (Notebook _) = B.glyphiconBook
   iconClass (Directory _) = B.glyphiconFolderOpen
   iconClass (Database _) = B.glyphiconHdd
