@@ -31,7 +31,7 @@ import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
-import Data.Lens ((.~), (%~), preview)
+import Data.Lens ((.~), (%~))
 import Data.List (fromList)
 import Data.Map as M
 import Data.Maybe (Maybe(..), maybe)
@@ -45,20 +45,20 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
 import Model.AccessType (isEditable)
-import Model.CellId (CellId(..))
+import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Port (Port())
 import Model.Resource as R
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
-import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery, AnyCellQuery(..))
+import Notebook.Cell.Component
+  (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
 import Notebook.CellSlot (CellSlot(..))
-import Notebook.Common (Slam(), forceRerender')
+import Notebook.Common (Slam())
 import Notebook.Component.Query
 import Notebook.Component.State
 import Quasar.Aff (loadNotebook)
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
-import Notebook.Cell.Viz.Component.Query (VizQuery(SetChartType))
 
 type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
 type NotebookStateP =
@@ -117,18 +117,7 @@ newCellMenu state =
       ]
 
 eval :: Natural NotebookQuery NotebookDSL
-eval (AddCell cellType next) = do
-  let p = map (P.Resource <<< Rs.File <<< (Pt.rootDir Pt.</>))
-          $ Pt.parseAbsFile "/demo/demo/flatViz" >>= Pt.sandbox Pt.rootDir
-  cellId <- gets _.fresh
-  modify (addCell cellType Nothing)
-  forceRerender'
-  updateCell ((CellId cellId)) { notebookPath: Nothing
-                  , inputPort: p
-                  , cellId: one
-                  }
-  pure next
-
+eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
 eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
@@ -178,23 +167,17 @@ peekAnyCell cellId (VizQuery q) =
   coproduct (const $ pure unit) (const $ runCell cellId) q
 peekAnyCell _ _ = pure unit
 
-import Debug.Trace
-import Model.Port as P
-import Data.Path.Pathy as Pt
-import Model.Resource as Rs
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
   st <- get
   case findParent st cellId of
-    Nothing -> do
-      let p = map (P.Resource <<< Rs.File <<< (Pt.rootDir Pt.</>))
-              $ Pt.parseAbsFile "/demo/demo/flatViz" >>= Pt.sandbox Pt.rootDir
+    Nothing ->
       updateCell cellId
         { notebookPath: notebookPath st
-        , inputPort: p
+        , inputPort: Nothing
         , cellId: cellId
         }
-    Just parent -> do
+    Just parent ->
       case getCurrentValue st parent of
         Just inputPort ->
           updateCell cellId

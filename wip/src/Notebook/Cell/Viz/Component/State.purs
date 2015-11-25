@@ -35,8 +35,7 @@ import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens)
 import Data.Map as M
 import Data.Set as Set
-import Model.ChartConfiguration (ChartConfiguration())
-import Model.ChartType (ChartType(..))
+import Model.ChartType (ChartType())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Cell.Viz.Form.Component as Form
 import Notebook.Cell.Viz.Component.Query (VizQuery())

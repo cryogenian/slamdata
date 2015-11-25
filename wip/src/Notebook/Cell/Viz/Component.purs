@@ -18,18 +18,15 @@ module Notebook.Cell.Viz.Component where
 
 import Prelude
 
-import Control.Bind (join)
 import Control.Monad (when)
 import Control.MonadPlus (guard)
 import Control.Monad.Trans (lift)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Writer.Class (tell)
 import Control.Plus (empty)
 import Css.Geometry (marginBottom)
 import Css.Size (px)
 import Data.Argonaut (JCursor())
-import Data.Array (snoc, length, singleton, null, cons, index)
-import Data.Either (Either(..))
+import Data.Array (length, null, cons, index)
 import Data.Foldable (foldl)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, right, left)
@@ -57,13 +54,13 @@ import Model.Resource as R
 import Model.Select
   (Select(), autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
 import Notebook.Cell.Common.EvalQuery
-  (CellEvalQuery(..), CellEvalResult(), CellEvalT(), runCellEvalT)
+  (CellEvalQuery(..), CellEvalT(), runCellEvalT)
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import Notebook.Cell.Viz.Component.Query
 import Notebook.Cell.Viz.Component.State
 import Notebook.Cell.Viz.Form.Component (formComponent)
 import Notebook.Cell.Viz.Form.Component as Form
-import Notebook.Common (Slam(), forceRerender', liftAff'', liftEff'')
+import Notebook.Common (Slam(), liftAff'')
 import Quasar.Aff as Api
 import Render.Common (row)
 import Render.CssClasses as Rc
@@ -100,37 +97,49 @@ vizComponent = makeEditorCellComponent
   }
 
 render :: VizState -> VizHTML
-render state
---  | state.loading = renderLoading
---  | Set.isEmpty state.availableChartTypes = renderEmpty
-  | otherwise = renderForm state
+render state =
+  H.div_ $
+  [ renderLoading $ not state.loading
+  , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
+  , renderForm state
+  ]
 
-renderLoading :: VizHTML
-renderLoading =
-  H.div [ P.classes [ B.alert
-                    , B.alertInfo
-                    , Rc.loadingMessage
-                    ]
+renderLoading :: Boolean -> VizHTML
+renderLoading hidden =
+  H.div [ P.classes $ [ B.alert
+                      , B.alertInfo
+                      , Rc.loadingMessage
+                      ]
+                     <> (guard hidden $> B.hide)
         ]
   [ H.text "Loading"
   , H.img [ P.src "/img/blue-spin.gif" ]
   ]
 
-renderEmpty :: VizHTML
-renderEmpty =
-  H.div [ P.classes [ B.alert
-                    , B.alertDanger
-                    ]
+renderEmpty :: Boolean -> VizHTML
+renderEmpty hidden =
+  H.div [ P.classes $ [ B.alert
+                      , B.alertDanger
+                      ]
+                     <> (guard hidden $> B.hide)
         , CSS.style $ marginBottom $ px 12.0
         ]
   [ H.text "There is no available chart for this dataset" ]
 
 renderForm :: VizState -> VizHTML
 renderForm state =
-  H.div [ P.classes [ Rc.vizCellEditor ] ]
+  H.div [ P.classes $ [ Rc.vizCellEditor ]
+                    <> (guard hidden $> B.hide)
+        ]
   [ renderChartTypeSelector state
   , renderChartConfiguration state
   ]
+  where
+  hidden :: Boolean
+  hidden =
+       Set.isEmpty state.availableChartTypes
+    || state.loading
+
 
 renderChartTypeSelector :: VizState -> VizHTML
 renderChartTypeSelector state =
@@ -224,8 +233,6 @@ vizEval (SetChartType ct next) =
 vizEval (SetAvailableChartTypes ts next) =
   modify (_availableChartTypes .~ ts) $> next
 
-import Debug.Trace
-
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
   needToUpdate <- gets _.needToUpdate
@@ -244,10 +251,8 @@ cellEval (EvalCell info continue) = do
   where
   withLoading action = do
     modify $ _loading .~ true
-    forceRerender'
     a <- action
     modify $ _loading .~ false
-    forceRerender'
     modify $ _needToUpdate .~ true
     pure a
 cellEval (NotifyRunCell next) = pure next
@@ -286,13 +291,10 @@ configure = void do
   axises <- getAxises
   pieConf <- getOrInitial Pie
   setConfFor Pie $ pieBarConfiguration axises pieConf
-  forceRerender'
   lineConf <- getOrInitial Line
   setConfFor Line $ lineConfiguration axises lineConf
-  forceRerender'
   barConf <- getOrInitial Bar
   setConfFor Bar $ pieBarConfiguration axises barConf
-  forceRerender'
   modify (_availableChartTypes .~ available axises)
   where
   getOrInitial :: ChartType -> VizDSL ChartConfiguration

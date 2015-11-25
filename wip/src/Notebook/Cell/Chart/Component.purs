@@ -1,31 +1,42 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module Notebook.Cell.Chart.Component where
 
 import Prelude
 
+import Css.Display
+import Css.Geometry (height, width, left, marginLeft)
+import Css.Size
 import Data.Either (Either(..))
+import Data.Int (toNumber)
 import Data.Lens (preview)
 import Data.Maybe (Maybe(..))
-import Data.Int (toNumber)
-
 import Halogen
 import Halogen.ECharts as He
+import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
-import Halogen.HTML.CSS.Indexed as CSS
-
-import Css.Size
-import Css.Geometry (marginBottom, height, width, left, marginLeft)
-import Css.String
-import Css.Display
-
-import Render.CssClasses as Rc
-import Notebook.Cell.Component as Cc
-import Notebook.Cell.Common.EvalQuery as Ec
-import Notebook.Cell.Chart.Component.State
 import Model.Port (_ChartOptions)
-import Notebook.Common (Slam(), forceRerender')
+import Notebook.Cell.Chart.Component.State
+import Notebook.Cell.Common.EvalQuery as Ec
+import Notebook.Cell.Component as Cc
+import Notebook.Common (Slam())
+import Render.CssClasses as Rc
 
-import Unsafe.Coerce
 
 type ChartHTML =
   ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit

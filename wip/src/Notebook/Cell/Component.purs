@@ -36,7 +36,7 @@ import Data.Date as Date
 import Data.Either (Either(..))
 import Data.Function (on)
 import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct(), coproduct, left)
+import Data.Functor.Coproduct (left)
 import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Visibility (Visibility(..), toggleVisibility)

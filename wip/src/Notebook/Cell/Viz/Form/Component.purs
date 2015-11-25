@@ -1,3 +1,19 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module Notebook.Cell.Viz.Form.Component
   ( formComponent
   , initialState
@@ -21,42 +37,29 @@ module Notebook.Cell.Viz.Form.Component
 
 import Prelude
 
-import Control.Bind (join)
-import Control.Monad (when)
-import Control.Alt ((<|>))
 import Data.Argonaut (JCursor())
-import Data.Array (cons, (!!), null, singleton, range, take, snoc, length, zip)
+import Data.Array ((!!), null, singleton, range, snoc, length)
 import Data.Either (Either())
-import Data.Foldable (for_, traverse_, foldl)
-import Data.Traversable (for, traverse)
-import Data.Tuple.Nested (uncurry3)
-import Data.Tuple (Tuple(..))
-import Data.Functor (($>))
+import Data.Foldable (traverse_)
 import Data.Functor.Coproduct (Coproduct(), right, left)
-import Data.Identity (Identity(..))
-import Data.Lens (preview)
-import Data.Lens.Index (ix)
-import Data.Lens.Prism.Coproduct (_Left, _Right)
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
+import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
+import Data.Traversable (traverse)
 import Form.Select.Component as S
 import Form.SelectPair.Component as P
 import Halogen
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), prjQuery, prjSlot)
-import Halogen.Component.Utils (applyCF)
-import Halogen.HTML.Events.Indexed as E
+import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 import Model.Aggregation (Aggregation(..), allAggregations)
 import Model.ChartConfiguration
-import Model.Select (OptionVal, Select(..), autoSelect, except, filterSelect')
+import Model.Select (OptionVal, Select(..))
 import Notebook.Cell.Viz.Form.Component.Render (gridClasses, GridClasses())
 import Notebook.Common (Slam(), forceRerender')
 import Notebook.Effects (NotebookRawEffects())
 import Render.Common (row)
 import Render.CssClasses as Rc
-import Utils.Array (enumerate)
 
 data Query a
   = SetConfiguration ChartConfiguration a
@@ -68,8 +71,6 @@ data Query a
 -- | ```
 -- | TODO: try this approach
 type State = ChartConfiguration
-
-import Model.Select (emptySelect)
 
 initialState :: State
 initialState =
