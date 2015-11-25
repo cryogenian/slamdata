@@ -28,7 +28,6 @@ import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..))
 import Data.Lens (preview)
 import Data.Maybe (Maybe(..))
-import Data.StrMap as SM
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -40,7 +39,7 @@ import Render.CssClasses as CSS
 
 import Model.CellId (CellId(), runCellId)
 import Model.Port (Port(..), _SlamDown)
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Markdown.Component.Query
 import Notebook.Cell.Markdown.Component.State
@@ -64,20 +63,26 @@ render :: SlamDownConfig -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery
 render config =
   H.div
     [ P.class_ CSS.markdownOutput ]
-    [ H.slot unit \_ -> { component: slamDownComponent config, initialState: emptySlamDownState } ]
+    [ H.slot unit \_ ->
+        { component: slamDownComponent config
+        , initialState: emptySlamDownState
+        }
+    ]
 
 eval :: Natural CellEvalQuery (ParentDSL SlamDownConfig SlamDownState CellEvalQuery SlamDownQuery Slam Unit)
 eval (NotifyRunCell next) = pure next
-eval (EvalCell value k) = do
+eval (EvalCell value k) =
   case preview _SlamDown =<< value.inputPort of
     Just slamdown -> do
       query unit $ action (SetDocument slamdown)
-      pure $ k
-        { output: Just $ VarMap SM.empty -- TODO: use real varmap
-        , messages: [] -- TODO: describe output fields
-        }
-    Nothing ->
-      pure $ k
-        { output: Nothing
-        , messages: [Left "Expected SlamDown input"]
-        }
+      state <- query unit $ request GetFormState
+      pure $ k case state of
+        Nothing -> error "GetFormState query returned Nothing"
+        Just st -> { output: Just (VarMap st), messages: [] }
+    Nothing -> pure $ k (error "expected SlamDown input")
+
+error :: String -> CellEvalResult
+error msg =
+  { output: Nothing
+  , messages: [Left $ "An internal error occurred: " ++ msg]
+  }

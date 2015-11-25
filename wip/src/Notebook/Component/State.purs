@@ -26,6 +26,7 @@ module Notebook.Component.State
   , findChildren
   , findDescendants
   , getCurrentValue
+  , setCurrentValue
   , fromModel
   , notebookPath
   , _fresh
@@ -81,18 +82,19 @@ import Data.Path.Pathy as P
 -- | The notebook state.
 -- |
 -- | - `fresh` is a counter used to generate `CellId` values.
+-- | - `accessType` determines whether the notebook is editable.
 -- | - `cells` is the list of cells currently in the notebook.
 -- | - `dependencies` is a map of the edges in the dependency tree, where each
 -- |   `key/value` pair represents a `child/parent` relation.
 -- | - `values` is a cache of the most values that were returned when a cell
 -- |   was run.
 -- | - `activeCellId` is the `CellId` for the currently focused cell.
--- | - `editable` determines whether the notebook is being edited or displayed
--- |   in read-only mode.
 -- | - `name` is the current notebook name. When the value is `This` is has yet
 -- |   to be saved. When the value is `That` it has been saved. When the value
 -- |   is `Both` a new name has been entered but it has not yet been saved with
 -- |   the new name.
+-- | - `path` is the path to the notebook in the filesystem
+-- | - `isAddingCell` toggles the display of the new cell menu.
 type NotebookState =
   { fresh :: Int
   , accessType :: AccessType
@@ -148,7 +150,7 @@ type CellDef =
   }
 
 initialNotebook :: BrowserFeatures -> NotebookState
-initialNotebook fs =
+initialNotebook browserFeatures =
   { fresh: 0
   , accessType: Editable
   , cells: mempty
@@ -157,7 +159,7 @@ initialNotebook fs =
   , activeCellId: Nothing
   , name: This Config.newNotebookName
   , isAddingCell: false
-  , browserFeatures: fs
+  , browserFeatures
   , viewingCell: Nothing
   , path: P.rootDir
   }
@@ -169,19 +171,18 @@ initialNotebook fs =
 addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
 addCell cellType parent st =
   let editorId = CellId st.fresh
-      resultsId = CellId $ st.fresh + 1
+      resultsId = editorId + one
       initEditorState = installedState (initEditorCellState st.accessType Visible)
       initResultsState = installedState (initResultsCellState st.accessType Visible)
       dependencies = M.insert resultsId editorId st.dependencies
   in st
     { fresh = st.fresh + 2
     , cells = st.cells
-        `snoc` { id: editorId
-               , ctor: ctor editorId (editor cellType editorId) initEditorState }
-        `snoc` { id: resultsId
-               , ctor: ctor resultsId (results cellType resultsId) initResultsState }
+        `snoc` mkCellDef editor editorId initEditorState
+        `snoc` mkCellDef results resultsId initResultsState
     , dependencies =
           maybe dependencies (flip (M.insert editorId) dependencies) parent
+    , isAddingCell = false
     }
   where
 
@@ -194,10 +195,12 @@ addCell cellType parent st =
   results :: CellType -> CellId -> CellComponent
   results _ cellId = markdownComponent cellId st.browserFeatures
 
-  ctor :: CellId -> CellComponent -> CellStateP -> CellConstructor
-  ctor cellId comp state =
-    SlotConstructor (CellSlot cellId) \_ ->
-      { component: comp, initialState: state }
+  mkCellDef :: (CellType -> CellId -> CellComponent) -> CellId -> CellStateP -> CellDef
+  mkCellDef mkComp cellId initialState =
+    let component = mkComp cellType cellId
+    in { id: cellId
+       , ctor: SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
+       }
 
 -- | Removes a set of cells from the notebook. Any cells that depend on a cell
 -- | in the set of provided cells will also be removed.
@@ -210,7 +213,7 @@ removeCells cellIds st = st
     }
   where
   cellIds' :: S.Set CellId
-  cellIds' = cellIds <> foldMap (findDescendants st) cellIds
+  cellIds' = cellIds <> foldMap (flip findDescendants st) cellIds
   f :: CellDef -> Boolean
   f = not <<< flip S.member cellIds' <<< _.id
   g :: Tuple CellId CellId -> Boolean
@@ -221,25 +224,26 @@ removeCells cellIds st = st
 -- |
 -- | Takes the current notebook state and the ID of the cell to start searching
 -- | from.
-findRoot :: NotebookState -> CellId -> CellId
-findRoot st cellId = case findParent st cellId of
+findRoot :: CellId -> NotebookState -> CellId
+findRoot cellId st = case findParent cellId st of
   Nothing -> cellId
-  Just parentId -> findRoot st parentId
+  Just parentId -> findRoot parentId st
 
 -- | Finds the parent of a cell. If the cell is a root it has no parent, and
 -- | the result will be `Nothing`.
 -- |
 -- | Takes the current notebook state and the ID of the cell to find the
 -- | parent of.
-findParent :: NotebookState -> CellId -> Maybe CellId
-findParent st cellId = M.lookup cellId st.dependencies
+findParent :: CellId -> NotebookState -> Maybe CellId
+findParent cellId st = M.lookup cellId st.dependencies
 
 -- | Finds the immediate dependencies of a cell.
 -- |
 -- | Takes the current notebook state and the ID of the cell to find the
 -- | children of.
-findChildren :: NotebookState -> CellId -> S.Set CellId
-findChildren st parentId = S.fromList $ map fst $ filter f $ M.toList st.dependencies
+findChildren :: CellId -> NotebookState -> S.Set CellId
+findChildren parentId st =
+  S.fromList $ map fst $ filter f $ M.toList st.dependencies
   where
   f :: Tuple CellId CellId -> Boolean
   f (Tuple _ cellId) = cellId == parentId
@@ -249,19 +253,25 @@ findChildren st parentId = S.fromList $ map fst $ filter f $ M.toList st.depende
 -- |
 -- | Takes the current notebook state and the ID of the cell to find the
 -- | descendants of.
-findDescendants :: NotebookState -> CellId -> S.Set CellId
-findDescendants st cellId =
-  let children = findChildren st cellId
-  in children <> foldMap (findDescendants st) children
+findDescendants :: CellId -> NotebookState -> S.Set CellId
+findDescendants cellId st =
+  let children = findChildren cellId st
+  in children <> foldMap (flip findDescendants st) children
 
 -- | Gets the current value stored for the result of a cell's evaluation.
 -- |
--- | If the cell has not been evaluated the result will be `Nothing`.
-getCurrentValue :: NotebookState -> CellId -> Maybe Port
-getCurrentValue st cellId = M.lookup cellId st.values
+-- | If the cell has not been evaluated or the cell provides no output the
+-- | result will be `Nothing`.
+getCurrentValue :: CellId -> NotebookState -> Maybe Port
+getCurrentValue cellId st = M.lookup cellId st.values
+
+-- | Sets the current value stored for the result of a cell's evaluation.
+setCurrentValue :: CellId -> Maybe Port -> NotebookState -> NotebookState
+setCurrentValue cellId value st =
+  st { values = M.alter (const value) cellId st.values }
 
 fromModel :: BrowserFeatures -> M.Notebook -> NotebookState
-fromModel fs model =
+fromModel browserFeatures model =
   { fresh: fresh
   , accessType: ReadOnly
   , cells: cells
@@ -270,7 +280,7 @@ fromModel fs model =
   , activeCellId: Nothing
   , name: This Config.newNotebookName
   , isAddingCell: false
-  , browserFeatures: fs
+  , browserFeatures
   , viewingCell: Nothing
   , path: P.rootDir
   }

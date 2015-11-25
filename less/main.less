@@ -55,6 +55,32 @@ body {
     }
 }
 
+.notebook-cell {
+    .cell-controls {
+        button {
+            i {
+                top: 2px;
+            }
+            span.share-button {
+                background: no-repeat url(../img/code-icon.svg) center;
+                background-size: 16px;
+                width: 16px;
+                height: 14px;
+                display: inline-block;
+                position: relative;
+                top: 4px;
+                opacity: 0.7;
+            }
+            &:hover {
+                span.share-button {
+                    background-image: url(../img/code-icon-blue.svg);
+                    opacity: 1;
+                }
+            }
+        }
+    }
+}
+
 .content {
     max-width: 750px;
     margin: auto;
@@ -487,7 +513,7 @@ ol.breadcrumb {
 
 .explore-cell-editor {
     margin: 0 -15px;
-    border-left: 61px solid #ddd;
+    border-left: 76px solid #ddd;
     padding: 10px;
     button {
         width: 40px;

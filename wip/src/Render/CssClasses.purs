@@ -280,6 +280,9 @@ downloadJSONOptions = className "download-json-options"
 refreshButton :: ClassName
 refreshButton = className "refresh-button"
 
+shareButton :: ClassName
+shareButton = className "share-button"
+
 hiddenFileInput :: ClassName
 hiddenFileInput = className "hidden-file-input"
 

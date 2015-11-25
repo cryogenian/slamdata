@@ -36,6 +36,7 @@ module Quasar.Aff
   , all
   , sample
   , transitiveChildrenProducer
+  , query'
 
   , RetryEffects()
   ) where
