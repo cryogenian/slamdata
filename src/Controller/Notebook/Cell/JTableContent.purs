@@ -26,8 +26,8 @@ module Controller.Notebook.Cell.JTableContent
   ) where
 
 import Prelude
-import Api.Fs (forceDelete)
-import Api.Query (portView, portQuery, sample, count)
+import qualified Api.Fs as Quasar
+import qualified Api.Query as Quasar
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
@@ -50,7 +50,7 @@ import Global (isNaN, readInt)
 import Halogen.HTML.Events.Monad (andThen)
 import Input.Notebook (Input(..), CellResultContent(..))
 import Model.Notebook.Cell
-import Model.Notebook.Port (VarMapValue(), _VarMap, Port(..))
+import Model.Notebook.Port (VarMapValue(), _VarMap, _PortResource, Port(..))
 import Model.Resource (Resource(..), mkFile, isTempFile, _path)
 import Optic.Core
 import Optic.Extended (TraversalP(), (^?))
@@ -115,11 +115,12 @@ runJTable file cell = do
   let perPage = fromMaybe Config.defaultPageSize (currentPageSize cell)
       pageNumber = fromMaybe one (currentPage cell)
       pageIndex = pageNumber - one
+      output = taggedOutFile "count" cell
   results <- liftAff $ attempt $ do
-    numItems <- count file
+    numItems <- Quasar.countWithView file output
     let numPages = Math.ceil (I.toNumber numItems / I.toNumber perPage)
         pageIndex' = fromMaybe 0 $ I.fromNumber $ Math.max 0.0 $ Math.min (I.toNumber pageIndex) (numPages - 1.0)
-    json <- sample file (pageIndex' * perPage) perPage
+    json <- Quasar.sample file (Just $ pageIndex' * perPage) (Just perPage)
     return { numItems: numItems, pageNumber: pageIndex' + one, json: json }
   now' <- liftEff now
   return $ case results of
@@ -146,15 +147,15 @@ queryToJTable cell sql inp out = do
     -- the file is a view or not at this time. So, for now, we have to just try it.
     void $ attempt $
       if isTempFile out
-         then forceDelete out
+         then Quasar.forceDelete out
          else pure unit
 
     -- If result-caching is enabled, use the query API rather than the views API
     let shouldCacheResults = cell ^? _content .. _shouldCacheResults # fromMaybe false
     attempt $
       if SM.isEmpty varMap && not shouldCacheResults
-         then portView inp out sql $> Nothing
-         else portQuery inp out sql varMap <#> Just
+         then Quasar.portView inp out sql $> Nothing
+         else Quasar.portQuery inp out sql varMap <#> Just
 
   either errorInQuery go do
     mj <- lmap message jobj

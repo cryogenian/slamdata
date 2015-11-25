@@ -133,6 +133,7 @@ resourceTag r = case r of
   Database _ -> "directory"
   Notebook _ -> "notebook"
   Directory _ -> "directory"
+  ViewMount _ -> "file"
 
 resourceMountTypeTag :: Resource -> Maybe String
 resourceMountTypeTag r = case r of
@@ -303,6 +304,7 @@ instance resourceEq :: Eq Resource where
   eq (Notebook p) (Notebook p') = p == p'
   eq (Directory p) (Directory p') = p == p'
   eq (Database p) (Database p') = p == p'
+  eq (ViewMount p) (ViewMount p') = p == p'
   eq _ _ = false
 
 instance resourceIsForeign :: IsForeign Resource where
