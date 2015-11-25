@@ -20,6 +20,7 @@ import Math (floor)
 import Model.ChartAxis as Ax
 import Model.ChartConfiguration (ChartConfiguration())
 import Model.ChartOptions.Common
+import Utils.Array (enumerate)
 
 buildPie :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Option
 buildPie axises conf =

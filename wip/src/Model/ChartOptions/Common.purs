@@ -5,9 +5,14 @@ import Prelude
 import Control.Bind ((>=>), join)
 import Data.Argonaut (JCursor())
 import Data.Array (catMaybes, cons, (!!))
+import Data.Array as A
+import Data.Bifunctor (lmap)
+import Data.Foldable (foldl)
 import Data.Lens (view)
 import Data.List (List(..), replicate, length)
+import Data.List as L
 import Data.Maybe (fromMaybe, maybe, Maybe(..))
+import Data.Map (Map())
 import Data.Map as M
 import Model.ChartConfiguration (ChartConfiguration(..), JSelect())
 import Model.ChartSemantics (Semantics(), printSemantics, semanticsToNumber)
@@ -115,3 +120,40 @@ pieBarRawData (Cons (Just category) cs) (Cons mbFirstSerie fss)
 
 aggregate :: Aggregation -> LabeledPoints -> PieBarData
 aggregate agg acc = map (runAggregation agg) acc
+
+
+-- Having array of pairs Key -> Number and array of categories (String)
+-- 1. drop any pair theat has no category from second argument
+-- 2. group by category
+-- 3. apply first argument to groupped maps
+-- 4. make final map from category to array of values
+commonNameMap
+  :: (Array (Map String Number) -> Array (Map String Number)) -> Array String
+  -> Array (Tuple Key Number) -> Map String (Array Number)
+commonNameMap fn catVals = mapByCategories <<< fn <<< groupByCategories
+  where
+  groupByCategories :: Array (Tuple Key Number) -> Array (Map String Number)
+  groupByCategories arr = map (markAndFilterCategory arr) catVals
+
+  markAndFilterCategory
+    :: Array (Tuple Key Number) -> String -> Map String Number
+  markAndFilterCategory arr cat =
+      M.fromList
+    $ L.toList
+    $ map (lmap keyName)
+    $ A.filter (\(Tuple k _) -> keyCategory k == cat)
+    $ arr
+
+  mapByCategories
+    :: Array (Map String Number) -> Map String (Array Number)
+  mapByCategories arr =
+    map A.reverse $ foldl foldFn M.empty (L.fromList <<< M.toList <$> arr)
+
+  foldFn
+    :: Map String (Array Number)
+    -> Array (Tuple String Number)
+    -> Map String (Array Number)
+  foldFn m tpls = foldl (\m (Tuple k n) -> M.alter (alterNamed n) k m) m tpls
+
+  alterNamed :: Number -> Maybe (Array Number) -> Maybe (Array Number)
+  alterNamed n ns = Just $ A.cons n $ fromMaybe [] ns

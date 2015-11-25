@@ -90,33 +90,7 @@ mkSeries pbData = Tuple xAxis series
   group = nameMap $ L.fromList $ M.toList pbData
 
   nameMap :: Array (Tuple Key Number) -> Map String (Array Number)
-  nameMap = mapByCategories <<< fillEmpties <<< groupByCategories
-
-  groupByCategories :: Array (Tuple Key Number) -> Array (Map String Number)
-  groupByCategories arr = map (markAndFilterCategory arr) catVals
-
-  markAndFilterCategory
-    :: Array (Tuple Key Number) -> String -> Map String Number
-  markAndFilterCategory arr cat =
-      M.fromList
-    $ L.toList
-    $ map (lmap keyName)
-    $ A.filter (\(Tuple k _) -> keyCategory k == cat)
-    $ arr
-
-  mapByCategories
-    :: Array (Map String Number) -> Map String (Array Number)
-  mapByCategories arr =
-    map A.reverse $ foldl foldFn M.empty (L.fromList <<< M.toList <$> arr)
-
-  foldFn
-    :: Map String (Array Number)
-    -> Array (Tuple String Number)
-    -> Map String (Array Number)
-  foldFn m tpls = foldl (\m (Tuple k n) -> M.alter (alterNamed n) k m) m tpls
-
-  alterNamed :: Number -> Maybe (Array Number) -> Maybe (Array Number)
-  alterNamed n ns = Just $ A.cons n $ fromMaybe [] ns
+  nameMap = commonNameMap fillEmpties catVals
 
   arrKeys :: Array (Map String Number) -> Array String
   arrKeys ms = A.nub $ A.concat (L.fromList <<< M.keys <$> ms)
