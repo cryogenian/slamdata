@@ -20,7 +20,7 @@ module Notebook.Cell.Component.Query
   , InnerCellQuery()
   , _CellEvalQuery
   , _AnyCellQuery
-  , AnyCellQuery()
+  , AnyCellQuery(..)
   , _AceQuery
   , _ExploreQuery
   , _MarkdownQuery

@@ -24,6 +24,7 @@ module Notebook.Cell.Viz.Component.State
   , _loading
   , _sample
   , _records
+  , _needToUpdate
   ) where
 
 import Prelude
@@ -50,6 +51,7 @@ type VizState =
   , sample :: M.Map JCursor Axis
   , loading :: Boolean
   , records :: JArray
+  , needToUpdate :: Boolean
   }
 
 _width :: forall a r. LensP {width :: a |r} a
@@ -72,6 +74,9 @@ _sample = lens _.sample _{sample = _}
 
 _records :: forall a r. LensP {records :: a | r} a
 _records = lens _.records _{records = _}
+
+_needToUpdate :: forall a r. LensP {needToUpdate :: a | r} a
+_needToUpdate = lens _.needToUpdate _{needToUpdate = _}
 
 type VizStateP =
   InstalledState VizState Form.StateP

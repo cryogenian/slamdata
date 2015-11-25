@@ -45,12 +45,12 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
 import Model.AccessType (isEditable)
-import Model.CellId (CellId())
+import Model.CellId (CellId(..))
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Port (Port())
 import Model.Resource as R
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
-import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery)
+import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery, AnyCellQuery(..))
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam(), forceRerender')
 import Notebook.Component.Query
@@ -58,12 +58,15 @@ import Notebook.Component.State
 import Quasar.Aff (loadNotebook)
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
+import Notebook.Cell.Viz.Component.Query (VizQuery(SetChartType))
 
 type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
-type NotebookStateP = InstalledState NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
+type NotebookStateP =
+  InstalledState NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
 
 type NotebookHTML = ParentHTML CellStateP NotebookQuery CellQueryP Slam CellSlot
-type NotebookDSL = ParentDSL NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
+type NotebookDSL =
+  ParentDSL NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
 
 initialState :: BrowserFeatures -> NotebookStateP
 initialState fs = installedState $ initialNotebook fs
@@ -117,9 +120,10 @@ eval :: Natural NotebookQuery NotebookDSL
 eval (AddCell cellType next) = do
   let p = map (P.Resource <<< Rs.File <<< (Pt.rootDir Pt.</>))
           $ Pt.parseAbsFile "/demo/demo/flatViz" >>= Pt.sandbox Pt.rootDir
+  cellId <- gets _.fresh
   modify (addCell cellType Nothing)
   forceRerender'
-  updateCell zero { notebookPath: Nothing
+  updateCell ((CellId cellId)) { notebookPath: Nothing
                   , inputPort: p
                   , cellId: one
                   }
@@ -163,20 +167,26 @@ peekCell cellId q = case q of
 
 peekCellInner :: forall a. CellId -> ChildF Unit InnerCellQuery a -> NotebookDSL Unit
 peekCellInner cellId (ChildF _ q) =
-  case preview _CellEvalQuery q of
-    Just (NotifyRunCell _) -> runCell cellId
-    _ -> pure unit
+  coproduct (peekEvalCell cellId) (peekAnyCell cellId) q
 
+peekEvalCell :: forall a. CellId -> CellEvalQuery a -> NotebookDSL Unit
+peekEvalCell cellId (NotifyRunCell _) = runCell cellId
+peekEvalCell _ _ = pure unit
+
+peekAnyCell :: forall a. CellId -> AnyCellQuery a -> NotebookDSL Unit
+peekAnyCell cellId (VizQuery q) =
+  coproduct (const $ pure unit) (const $ runCell cellId) q
+peekAnyCell _ _ = pure unit
+
+import Debug.Trace
 import Model.Port as P
 import Data.Path.Pathy as Pt
 import Model.Resource as Rs
-import Debug.Trace
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
   st <- get
   case findParent st cellId of
     Nothing -> do
-
       let p = map (P.Resource <<< Rs.File <<< (Pt.rootDir Pt.</>))
               $ Pt.parseAbsFile "/demo/demo/flatViz" >>= Pt.sandbox Pt.rootDir
       updateCell cellId

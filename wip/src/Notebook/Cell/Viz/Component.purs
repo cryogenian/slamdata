@@ -18,7 +18,12 @@ module Notebook.Cell.Viz.Component where
 
 import Prelude
 
+import Control.Bind (join)
+import Control.Monad (when)
 import Control.MonadPlus (guard)
+import Control.Monad.Trans (lift)
+import Control.Monad.Error.Class (throwError)
+import Control.Monad.Writer.Class (tell)
 import Control.Plus (empty)
 import Css.Geometry (marginBottom)
 import Css.Size (px)
@@ -28,7 +33,7 @@ import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, right, left)
-import Data.Lens ((.~), view)
+import Data.Lens ((.~), view, preview)
 import Data.Map as M
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Set as Set
@@ -51,13 +56,14 @@ import Model.Port as P
 import Model.Resource as R
 import Model.Select
   (Select(), autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
+import Notebook.Cell.Common.EvalQuery
+  (CellEvalQuery(..), CellEvalResult(), CellEvalT(), runCellEvalT)
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import Notebook.Cell.Viz.Component.Query
 import Notebook.Cell.Viz.Component.State
 import Notebook.Cell.Viz.Form.Component (formComponent)
 import Notebook.Cell.Viz.Form.Component as Form
-import Notebook.Common (Slam(), forceRerender', liftAff'')
+import Notebook.Common (Slam(), forceRerender', liftAff'', liftEff'')
 import Quasar.Aff as Api
 import Render.Common (row)
 import Render.CssClasses as Rc
@@ -80,6 +86,7 @@ initialState =
   , loading: true
   , sample: M.empty
   , records: []
+  , needToUpdate: true
   }
 
 vizComponent :: Component CellStateP CellQueryP Slam
@@ -217,75 +224,52 @@ vizEval (SetChartType ct next) =
 vizEval (SetAvailableChartTypes ts next) =
   modify (_availableChartTypes .~ ts) $> next
 
+import Debug.Trace
 
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
-  -- TODO: CellEvalT
-  modify (_loading .~ true)
-  forceRerender'
-  map continue case info.inputPort of
-    Just (P.Resource r) -> do
-      updateForms r
-      state <- get
-      -- Form configuration hasn't been set in autorun -->
-      -- fromMaybe
-      mbConf <- query state.chartType $ left $ request Form.GetConfiguration
-      forceRerender'
-      case mbConf of
-        Nothing -> do
-          modify (_loading .~ false)
-          emptyResponse
-        Just conf -> do
-          records <- liftAff'' $ Api.all r
-          if length records > 10000
-            then do
-            modify (_availableChartTypes .~ Set.empty)
-            pure { output: Nothing
-                 , messages: singleton errorTooMuch
-                 }
-            else do
-            modify (_loading .~ false)
-            modify (_records .~ records)
-            mbPort <- responsePort
-            pure { output: mbPort
-                 , messages: []
-                 }
-    _ -> do
-      modify (_loading .~ false)
-      emptyResponse
+  needToUpdate <- gets _.needToUpdate
+  map continue $ withLoading $ runCellEvalT do
+    when needToUpdate do
+      r <- maybe (throwError "Incorrect port in visual builder cell") pure
+           $ info.inputPort >>= preview P._Resource
+      lift $ updateForms r
+      records <- lift $ liftAff'' $ Api.all r
+      when (length records > 10000)
+        $ throwError
+        $  "Maximum record count available for visualization -- 10000, "
+        <> "please consider to use 'limit' or 'group by' in your request"
+      lift $ modify $ _records .~ records
+    responsePort
   where
-  emptyResponse :: VizDSL CellEvalResult
-  emptyResponse = modify (_loading .~ false) $> { output: Nothing, messages: [] }
-
-  errorTooMuch :: Either String String
-  errorTooMuch = Left
-                 $  "Maximum record count available for visualization -- 10000, "
-                 <> "please consider to use 'limit' or 'group by' in your request"
+  withLoading action = do
+    modify $ _loading .~ true
+    forceRerender'
+    a <- action
+    modify $ _loading .~ false
+    forceRerender'
+    modify $ _needToUpdate .~ true
+    pure a
 cellEval (NotifyRunCell next) = pure next
 
-responsePort :: VizDSL (Maybe P.Port)
+responsePort :: CellEvalT VizDSL P.Port
 responsePort = do
-  records <- gets _.records
-  state <- get
-  mbConf <- query state.chartType $ left
-             $ request Form.GetConfiguration
-  case mbConf of
-    Nothing -> pure Nothing
-    Just conf ->
-        pure
-      $ pure
-      $ P.ChartOptions
-      $ { options: buildOptions state.chartType records conf
-        , width: state.width
-        , height: state.height
-        }
+  state <- lift $ get
+  mbConf <- lift $ query state.chartType $ left $ request Form.GetConfiguration
+  conf <- maybe (throwError "Form state has not been set in responsePort")
+          pure mbConf
+  pure
+    $ P.ChartOptions
+    { options: buildOptions state.chartType state.records conf
+    , width: state.width
+    , height: state.height
+    }
 
 updateForms :: R.Resource -> VizDSL Unit
 updateForms file = do
   jarr <- liftAff'' $ Api.sample file 0 20
   if null jarr
     then
-    -- Here I want to send notification, with error and disable play button
     modify $ _availableChartTypes .~ Set.empty
     else do
     modify (_sample .~ analyzeJArray jarr)
@@ -300,23 +284,26 @@ type AxisAccum =
 configure :: VizDSL Unit
 configure = void do
   axises <- getAxises
-  pieConf <- map (fromMaybe Form.initialState) $ query Pie $ left
-             (request Form.GetConfiguration)
-  query Pie $ left $ action
-    $ Form.SetConfiguration $ pieBarConfiguration axises pieConf
+  pieConf <- getOrInitial Pie
+  setConfFor Pie $ pieBarConfiguration axises pieConf
   forceRerender'
-  lineConf <- map (fromMaybe Form.initialState) $ query Line $ left
-              (request Form.GetConfiguration)
-  query Line $ left $ action
-    $ Form.SetConfiguration $ lineConfiguration axises lineConf
+  lineConf <- getOrInitial Line
+  setConfFor Line $ lineConfiguration axises lineConf
   forceRerender'
-  barConf <- map (fromMaybe Form.initialState) $ query Bar $ left
-             (request Form.GetConfiguration)
-  query Bar $ left $ action
-    $ Form.SetConfiguration $ pieBarConfiguration axises barConf
+  barConf <- getOrInitial Bar
+  setConfFor Bar $ pieBarConfiguration axises barConf
   forceRerender'
   modify (_availableChartTypes .~ available axises)
   where
+  getOrInitial :: ChartType -> VizDSL ChartConfiguration
+  getOrInitial ty =
+    map (fromMaybe Form.initialState)
+    $ query ty $ left (request Form.GetConfiguration)
+
+  setConfFor :: ChartType -> ChartConfiguration -> VizDSL Unit
+  setConfFor ty conf =
+    void $ query ty $ left $ action $ Form.SetConfiguration conf
+
   available :: AxisAccum -> Set.Set ChartType
   available axises =
     foldMap Set.singleton
@@ -397,9 +384,7 @@ configure = void do
                           , measures: [firstMeasures, secondMeasures]
                           , aggregations: [aggregationSelect, aggregationSelect]}
 
-import Debug.Trace
-traceR :: forall a. a -> a
-traceR a = traceAny a \_ -> a
-
 peek :: forall a. ChildF ChartType Form.QueryP a -> VizDSL Unit
-peek (ChildF chartType q) = configure
+peek (ChildF chartType q) = do
+  modify $ _needToUpdate .~ false
+  configure

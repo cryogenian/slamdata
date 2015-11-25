@@ -36,7 +36,7 @@ import Data.Date as Date
 import Data.Either (Either(..))
 import Data.Function (on)
 import Data.Functor (($>))
-import Data.Functor.Coproduct (left)
+import Data.Functor.Coproduct (Coproduct(), coproduct, left)
 import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Visibility (Visibility(..), toggleVisibility)
@@ -63,7 +63,7 @@ import Render.CssClasses as CSS
 
 -- | Type synonym for the full type of a cell component.
 type CellComponent = Component CellStateP CellQueryP Slam
-
+type CellDSL = ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit
 -- | Constructs a cell component for an editor-style cell.
 makeEditorCellComponent
   :: forall s f
@@ -136,7 +136,7 @@ makeCellComponentPart def render =
   initialState :: AnyCellState
   initialState = review _State def.initialState
 
-  eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit)
+  eval :: Natural CellQuery CellDSL
   eval (RunCell next) = pure next
   eval (UpdateCell input k) = do
     liftAff'' =<< gets (^. _tickStopper)
@@ -162,7 +162,7 @@ makeCellComponentPart def render =
 -- |
 -- | The returned value is an action that will stop the timer running when
 -- | processed.
-startInterval :: ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit (Slam Unit)
+startInterval :: CellDSL (Slam Unit)
 startInterval = do
   ref <- liftEff'' $ newRef Nothing
   start <- liftEff'' Date.now

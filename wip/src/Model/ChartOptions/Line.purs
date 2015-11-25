@@ -103,7 +103,6 @@ lineRawData
 aggregatePairs :: Aggregation -> Aggregation -> LabeledPointPairs -> LineData
 aggregatePairs fAgg sAgg = map $ bimap (runAggregation fAgg) (runAggregation sAgg)
 
-
 buildLine :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Option
 buildLine axises conf = case axisSeriesPair of
   Tuple xAxis series ->
@@ -122,7 +121,7 @@ buildLine axises conf = case axisSeriesPair of
   tooltip = Tooltip $ tooltipDefault { trigger = Just TriggerItem }
 
   extractNames :: Array Series -> Array String
-  extractNames ss = A.catMaybes $ map extractName ss
+  extractNames ss = A.nub $A.catMaybes $ map extractName ss
 
   extractName :: Series -> Maybe String
   extractName (LineSeries r) = r.common.name
