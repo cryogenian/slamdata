@@ -30,6 +30,7 @@ module Model.Resource
   , isHidden
   , isNotebook
   , isTempFile
+  , isViewMount
   , mkDatabase
   , mkDirectory
   , mkFile

@@ -235,15 +235,13 @@ forceDelete =
 
   rootForResource :: R.Resource -> DirPath
   rootForResource r =
-    if R.isDatabase r then
-      Config.mountUrl
-    else
-      Config.dataUrl
-
+    if R.isDatabase r || R.isViewMount r
+    then Config.mountUrl
+    else Config.dataUrl
 
 delete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Maybe R.Resource)
 delete resource =
-  if not (R.isDatabase resource || alreadyInTrash resource)
+  if not (R.isDatabase resource || R.isViewMount resource || alreadyInTrash resource)
   then
     moveToTrash resource
   else do
@@ -279,10 +277,9 @@ delete resource =
       Right _ -> false
       Left n -> if n == DirName Config.trashFolder then true else alreadyInTrash' d
 
-
 move :: forall a e. R.Resource -> AnyPath -> Aff (RetryEffects (ajax :: AJAX | e)) AnyPath
 move src tgt = do
-  let url = if R.isDatabase src
+  let url = if R.isDatabase src || R.isViewMount src
             then Config.mountUrl
             else Config.dataUrl
   result <- slamjax $ defaultRequest
