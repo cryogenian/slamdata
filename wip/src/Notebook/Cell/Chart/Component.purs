@@ -18,6 +18,7 @@ module Notebook.Cell.Chart.Component where
 
 import Prelude
 
+import Control.Monad (when)
 import Css.Display
 import Css.Geometry (height, width, left, marginLeft)
 import Css.Size
@@ -73,12 +74,10 @@ eval (Ec.EvalCell value continue) =
     Just options -> do
       state <- get
       modify (const { width: options.width, height: options.height })
-      if state.width /= options.width
-        then void $ query unit $ action $ He.SetWidth options.width
-        else pure unit
-      if state.height /= options.height
-        then void $ query unit $ action $ He.SetHeight options.height
-        else pure unit
+      when (state.width /= options.width)
+        $ void $ query unit $ action $ He.SetWidth options.width
+      when (state.height /= options.height)
+        $ void $ query unit $ action $ He.SetHeight options.height
       query unit $ action $ He.Set options.options
       query unit $ action He.Resize
       pure $ continue { output: Nothing, messages: [] }
