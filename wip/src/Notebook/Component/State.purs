@@ -73,6 +73,7 @@ import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.Cell.Query.Eval (queryEval)
 import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Viz.Component (vizComponent)
+import Notebook.Cell.Chart.Component (chartComponent)
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 
@@ -189,10 +190,12 @@ addCell cellType parent st =
   editor :: CellType -> CellId -> CellComponent
   editor Query _ = aceComponent Query queryEval "ace/mode/sql"
   editor Search cellId = searchComponent cellId
+  editor Viz _ = vizComponent
   editor Explore _ = exploreComponent
   editor _ _ = aceComponent Markdown markdownEval "ace/mode/markdown"
 
   results :: CellType -> CellId -> CellComponent
+  results Viz _ = chartComponent
   results _ cellId = markdownComponent cellId st.browserFeatures
 
   mkCellDef :: (CellType -> CellId -> CellComponent) -> CellId -> CellStateP -> CellDef

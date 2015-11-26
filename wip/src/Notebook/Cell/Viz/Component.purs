@@ -18,26 +18,24 @@ module Notebook.Cell.Viz.Component where
 
 import Prelude
 
+import Control.Monad (when)
 import Control.MonadPlus (guard)
+import Control.Monad.Trans (lift)
+import Control.Monad.Error.Class (throwError)
 import Control.Plus (empty)
 import Css.Geometry (marginBottom)
 import Css.Size (px)
-import Data.Argonaut (JArray(), JCursor())
-import Data.Array (snoc, length, singleton, null, cons)
-import Data.Either (Either(..))
+import Data.Argonaut (JCursor())
+import Data.Array (length, null, cons, index)
 import Data.Foldable (foldl)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, right, left)
-import Data.Lens ((.~), preview)
-import Data.List as L
+import Data.Lens ((.~), view, preview)
 import Data.Map as M
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Set as Set
 import Data.Tuple (Tuple(..))
-import ECharts.Options as Ec
 import Halogen
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), prjQuery, prjSlot)
-import Halogen.Component.Utils (applyCF)
 import Halogen.CustomProps.Indexed as Cp
 import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Events.Indexed as E
@@ -45,25 +43,24 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 import Model.Aggregation (aggregationSelect)
-import Model.CellId (CellId(..))
 import Model.CellType (CellType(Viz), cellName, cellGlyph)
 import Model.ChartAxis (analyzeJArray, Axis())
 import Model.ChartAxis as Ax
 import Model.ChartConfiguration (ChartConfiguration(..), depends)
-import Model.ChartOptions (buildOptionsPort)
+import Model.ChartOptions (buildOptions)
 import Model.ChartType (ChartType(..))
 import Model.Port as P
 import Model.Resource as R
-import Model.Select (autoSelect, newSelect, (<->), ifSelected)
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
+import Model.Select
+  (Select(), autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
+import Notebook.Cell.Common.EvalQuery
+  (CellEvalQuery(..), CellEvalT(), runCellEvalT)
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
-import Notebook.Cell.Component.Query
-import Notebook.Cell.Component.State
 import Notebook.Cell.Viz.Component.Query
 import Notebook.Cell.Viz.Component.State
 import Notebook.Cell.Viz.Form.Component (formComponent)
 import Notebook.Cell.Viz.Form.Component as Form
-import Notebook.Common (Slam(), forceRerender', liftAff'')
+import Notebook.Common (Slam(), liftAff'')
 import Quasar.Aff as Api
 import Render.Common (row)
 import Render.CssClasses as Rc
@@ -84,50 +81,65 @@ initialState =
   , chartType: Pie
   , availableChartTypes: Set.empty
   , loading: true
+  , sample: M.empty
+  , records: []
+  , needToUpdate: true
   }
 
-vizComponent :: CellId -> Component CellStateP CellQueryP Slam
-vizComponent cellId = makeEditorCellComponent
+vizComponent :: Component CellStateP CellQueryP Slam
+vizComponent = makeEditorCellComponent
   { name: cellName Viz
   , glyph: cellGlyph Viz
-  , component: parentComponent render eval
+  , component: parentComponent' render eval peek
   , initialState: installedState initialState
   , _State: _VizState
   , _Query: makeQueryPrism' _VizQuery
   }
 
 render :: VizState -> VizHTML
-render state
-  | state.loading = renderLoading
-  | Set.isEmpty state.availableChartTypes = renderEmpty
-  | otherwise = renderForm state
+render state =
+  H.div_ $
+  [ renderLoading $ not state.loading
+  , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
+  , renderForm state
+  ]
 
-renderLoading :: VizHTML
-renderLoading =
-  H.div [ P.classes [ B.alert
-                    , B.alertInfo
-                    , Rc.loadingMessage
-                    ]
+renderLoading :: Boolean -> VizHTML
+renderLoading hidden =
+  H.div [ P.classes $ [ B.alert
+                      , B.alertInfo
+                      , Rc.loadingMessage
+                      ]
+                     <> (guard hidden $> B.hide)
         ]
   [ H.text "Loading"
   , H.img [ P.src "/img/blue-spin.gif" ]
   ]
 
-renderEmpty :: VizHTML
-renderEmpty =
-  H.div [ P.classes [ B.alert
-                    , B.alertDanger
-                    ]
+renderEmpty :: Boolean -> VizHTML
+renderEmpty hidden =
+  H.div [ P.classes $ [ B.alert
+                      , B.alertDanger
+                      ]
+                     <> (guard hidden $> B.hide)
         , CSS.style $ marginBottom $ px 12.0
         ]
   [ H.text "There is no available chart for this dataset" ]
 
 renderForm :: VizState -> VizHTML
 renderForm state =
-  H.div [ P.classes [ Rc.vizCellEditor ] ]
+  H.div [ P.classes $ [ Rc.vizCellEditor ]
+                    <> (guard hidden $> B.hide)
+        ]
   [ renderChartTypeSelector state
   , renderChartConfiguration state
   ]
+  where
+  hidden :: Boolean
+  hidden =
+       Set.isEmpty state.availableChartTypes
+    || state.loading
+
 
 renderChartTypeSelector :: VizState -> VizHTML
 renderChartTypeSelector state =
@@ -136,11 +148,11 @@ renderChartTypeSelector state =
   where
   foldFn :: ChartType -> Array VizHTML -> ChartType -> Array VizHTML
   foldFn selected accum current =
-    snoc accum $ H.img [ P.src $ src current
-                       , P.classes $ [ cls state.chartType ]
-                         <> (guard (selected == current) $> B.active)
-                       , E.onClick (E.input_ (right <<< SetChartType current))
-                       ]
+    flip cons accum $   H.img [ P.src $ src current
+                              , P.classes $ [ cls state.chartType ]
+                                <> (guard (selected == current) $> B.active)
+                              , E.onClick (E.input_ (right <<< SetChartType current))
+                              ]
 
   src :: ChartType -> String
   src Pie = "img/pie.svg"
@@ -156,14 +168,14 @@ renderChartTypeSelector state =
 renderChartConfiguration :: VizState -> VizHTML
 renderChartConfiguration state =
   H.div [ P.classes [ Rc.vizChartConfiguration ] ]
-  [ renderForm Pie
-  , renderForm Line
-  , renderForm Bar
+  [ renderTab Pie
+  , renderTab Line
+  , renderTab Bar
   , renderDimensions state
   ]
   where
-  renderForm :: ChartType -> VizHTML
-  renderForm ty =
+  renderTab :: ChartType -> VizHTML
+  renderTab ty =
     showIf (state.chartType == ty)
     [ H.slot ty \_ -> { component: formComponent
                       , initialState: installedState Form.initialState
@@ -179,7 +191,8 @@ renderDimensions state =
   row
   [ H.form [ P.classes [ B.colXs4, Rc.chartConfigureForm ] ]
     [ label "Height"
-    , H.input [ P.value $ showIfNeqZero state.height
+    , H.input [ P.classes [ B.formControl, Rc.chartConfigureHeight ]
+              , P.value $ showIfNeqZero state.height
               , Cp.mbValueInput (pure
                                  <<< map (right <<< flip SetHeight unit)
                                  <<< stringToInt')
@@ -188,7 +201,8 @@ renderDimensions state =
     ]
   , H.form [ P.classes [ B.colXs4, Rc.chartConfigureForm ] ]
     [ label "Width"
-    , H.input [ P.value $ showIfNeqZero state.width
+    , H.input [ P.classes [ B.formControl, Rc.chartConfigureWidth ]
+              , P.value $ showIfNeqZero state.width
               , Cp.mbValueInput (pure
                                  <<< map (right <<< flip SetWidth unit)
                                  <<< stringToInt')
@@ -219,81 +233,81 @@ vizEval (SetChartType ct next) =
 vizEval (SetAvailableChartTypes ts next) =
   modify (_availableChartTypes .~ ts) $> next
 
-
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
-  -- TODO: CellEvalT
-  modify (_loading .~ true)
-  map continue case info.inputPort of
-    Just (P.Resource r) -> do
-      state <- get
-      mbConf <- query state.chartType $ left $ request Form.GetConfiguration
-      case mbConf of
-        Nothing -> emptyResponse
-        Just conf -> do
-          jarr <- liftAff'' $ Api.sample r 0 20
-          if null jarr
-            then do
-            modify $ _availableChartTypes .~ Set.empty
-            emptyResponse
-            else do
-            records <- liftAff'' $ Api.all r
-            if length records > 10000
-              then do
-              modify (_availableChartTypes .~ Set.empty)
-              pure { output: Nothing
-                   , messages: singleton $ errorTooMuch
-                   }
-              else do
-              forceRerender'
-              mbConf' <- query state.chartType $ left
-                         $ request Form.GetConfiguration
-              case mbConf' of
-                Nothing -> emptyResponse
-                Just conf' ->
-                  modify (_loading .~ false)
-                  $> { output: Just $ buildOptionsPort state.chartType records conf'
-                     , messages: [] }
-            emptyResponse
-    _ -> emptyResponse
+  needToUpdate <- gets _.needToUpdate
+  map continue $ withLoading $ runCellEvalT do
+    when needToUpdate do
+      r <- maybe (throwError "Incorrect port in visual builder cell") pure
+           $ info.inputPort >>= preview P._Resource
+      lift $ updateForms r
+      records <- lift $ liftAff'' $ Api.all r
+      when (length records > 10000)
+        $ throwError
+        $  "Maximum record count available for visualization -- 10000, "
+        <> "please consider using 'limit' or 'group by' in your request"
+      lift $ modify $ _records .~ records
+    responsePort
   where
-  emptyResponse :: VizDSL CellEvalResult
-  emptyResponse = modify (_loading .~ false) $> { output: Nothing, messages: [] }
-
-  errorTooMuch :: Either String String
-  errorTooMuch = Left
-                 $  "Maximum record count available for visualization -- 10000, "
-                 <> "please consider to use 'limit' or 'group by' in your request"
+  withLoading action = do
+    modify $ _loading .~ true
+    a <- action
+    modify $ _loading .~ false
+    modify $ _needToUpdate .~ true
+    pure a
 cellEval (NotifyRunCell next) = pure next
+
+responsePort :: CellEvalT VizDSL P.Port
+responsePort = do
+  state <- lift $ get
+  mbConf <- lift $ query state.chartType $ left $ request Form.GetConfiguration
+  conf <- maybe (throwError "Form state has not been set in responsePort")
+          pure mbConf
+  pure
+    $ P.ChartOptions
+    { options: buildOptions state.chartType state.records conf
+    , width: state.width
+    , height: state.height
+    }
 
 updateForms :: R.Resource -> VizDSL Unit
 updateForms file = do
   jarr <- liftAff'' $ Api.sample file 0 20
   if null jarr
     then
-    -- Here I want to send notification, with error and disable play button
     modify $ _availableChartTypes .~ Set.empty
-    else
-    let sample = analyzeJArray jarr
-    in configure sample
+    else do
+    modify (_sample .~ analyzeJArray jarr)
+    configure
 
 type AxisAccum =
  { category :: Array JCursor
  , value :: Array JCursor,
    time :: Array JCursor
  }
-configure :: M.Map JCursor Axis -> VizDSL Unit
-configure sample = void do
-  query Pie $ left $ action $ Form.SetConfiguration pieBarConfiguration
-  forceRerender'
-  query Line $ left $ action $ Form.SetConfiguration lineConfiguration
-  forceRerender'
-  query Bar $ left $ action $ Form.SetConfiguration pieBarConfiguration
-  forceRerender'
-  modify (_availableChartTypes .~ available)
+
+configure :: VizDSL Unit
+configure = void do
+  axises <- getAxises
+  pieConf <- getOrInitial Pie
+  setConfFor Pie $ pieBarConfiguration axises pieConf
+  lineConf <- getOrInitial Line
+  setConfFor Line $ lineConfiguration axises lineConf
+  barConf <- getOrInitial Bar
+  setConfFor Bar $ pieBarConfiguration axises barConf
+  modify (_availableChartTypes .~ available axises)
   where
-  available :: Set.Set ChartType
-  available =
+  getOrInitial :: ChartType -> VizDSL ChartConfiguration
+  getOrInitial ty =
+    map (fromMaybe Form.initialState)
+    $ query ty $ left (request Form.GetConfiguration)
+
+  setConfFor :: ChartType -> ChartConfiguration -> VizDSL Unit
+  setConfFor ty conf =
+    void $ query ty $ left $ action $ Form.SetConfiguration conf
+
+  available :: AxisAccum -> Set.Set ChartType
+  available axises =
     foldMap Set.singleton
     $ if null axises.value
       then []
@@ -303,9 +317,10 @@ configure sample = void do
                 then []
                 else [Line]
 
-  axises :: AxisAccum
-  axises =
-    foldl axisFolder {category: [], value: [], time: [] } $ M.toList sample
+  getAxises :: VizDSL AxisAccum
+  getAxises = do
+    sample <- gets _.sample
+    pure $ foldl axisFolder {category: [], value: [], time: [] } $ M.toList sample
 
   axisFolder :: AxisAccum -> Tuple JCursor Axis -> AxisAccum
   axisFolder accum (Tuple cursor axis)
@@ -314,41 +329,64 @@ configure sample = void do
     | Ax.isTimeAxis axis = accum {time = cons cursor accum.time }
     | otherwise = accum
 
-  pieBarConfiguration :: ChartConfiguration
-  pieBarConfiguration =
+
+  setPreviousValueFrom
+    :: forall a. (Eq a) => Maybe (Select a) -> Select a -> Select a
+  setPreviousValueFrom mbSel target  =
+    (maybe id trySelect' $ mbSel >>= view _value) $ target
+
+  pieBarConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
+  pieBarConfiguration axises (ChartConfiguration current) =
     let categories =
-          autoSelect $ newSelect $ axises.category
+          setPreviousValueFrom (index current.series 0)
+          $ autoSelect $ newSelect $ axises.category
         measures =
-          autoSelect $ newSelect $ depends categories axises.value
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ depends categories axises.value
         firstSeries =
-          newSelect $ ifSelected [categories] $ axises.category <-> categories
+          setPreviousValueFrom (index current.series 1)
+          $ newSelect $ ifSelected [categories] $ axises.category <-> categories
         secondSeries =
-          newSelect $ ifSelected [categories, firstSeries]
+          setPreviousValueFrom (index current.series 2)
+          $ newSelect $ ifSelected [categories, firstSeries]
           $ axises.category <-> categories <-> firstSeries
-        aggregations =
-          newSelect
+        aggregation =
+          setPreviousValueFrom (index current.aggregations 0) aggregationSelect
     in ChartConfiguration { series: [categories, firstSeries, secondSeries]
                           , dimensions: []
                           , measures: [measures]
-                          , aggregations: [aggregationSelect]}
+                          , aggregations: [aggregation]}
 
-  lineConfiguration :: ChartConfiguration
-  lineConfiguration =
+  lineConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
+  lineConfiguration axises (ChartConfiguration current) =
     let dimensions =
-          autoSelect $ newSelect
+          setPreviousValueFrom (index current.dimensions 0)
+          $ autoSelect $ newSelect
           -- This is redundant, I've put it here to notify
           -- that this behaviour differs from pieBar and can be changed.
           $ (axises.category <> axises.time <> axises.value)
         firstMeasures =
-          autoSelect $ newSelect $ depends dimensions axises.value
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ depends dimensions
+          $ axises.value <-> dimensions
         secondMeasures =
-          newSelect $ depends dimensions $ axises.value <-> firstMeasures
+          setPreviousValueFrom (index current.measures 1)
+          $ newSelect $ ifSelected [firstMeasures]
+          $ depends dimensions
+          $ axises.value <-> firstMeasures <-> dimensions
         firstSeries =
-          newSelect $ ifSelected [dimensions] $ axises.category <-> dimensions
+          setPreviousValueFrom (index current.series 0)
+          $ newSelect $ ifSelected [dimensions] $ axises.category <-> dimensions
         secondSeries =
-          newSelect $ ifSelected [dimensions, firstSeries]
+          setPreviousValueFrom (index current.series 1)
+          $ newSelect $ ifSelected [dimensions, firstSeries]
           $ axises.category <-> dimensions <-> firstSeries
     in ChartConfiguration { series: [firstSeries, secondSeries]
                           , dimensions: [dimensions]
                           , measures: [firstMeasures, secondMeasures]
                           , aggregations: [aggregationSelect, aggregationSelect]}
+
+peek :: forall a. ChildF ChartType Form.QueryP a -> VizDSL Unit
+peek (ChildF chartType q) = do
+  modify $ _needToUpdate .~ false
+  configure

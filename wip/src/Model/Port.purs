@@ -16,9 +16,11 @@ limitations under the License.
 
 module Model.Port
   ( Port(..)
+  , ChartPort()
   , _SlamDown
   , _VarMap
   , _Resource
+  , _ChartOptions
   ) where
 
 import Data.Lens (PrismP(), prism')
@@ -31,11 +33,13 @@ import Model.Resource as R
 import Text.Markdown.SlamDown (SlamDown())
 import Text.Markdown.SlamDown.Html (FormFieldValue())
 
+type ChartPort = { options :: Ec.Option, width :: Int, height :: Int }
+
 data Port
   = SlamDown SlamDown
   | VarMap (StrMap FormFieldValue)
   | Resource R.Resource
-  | ChartOptions Ec.Option
+  | ChartOptions ChartPort
 
 _SlamDown :: PrismP Port SlamDown
 _SlamDown = prism' SlamDown \p -> case p of
@@ -52,7 +56,7 @@ _Resource = prism' Resource \p -> case p of
   Resource r -> Just r
   _ -> Nothing
 
-_ChartOptions :: PrismP Port Ec.Option
+_ChartOptions :: PrismP Port ChartPort
 _ChartOptions = prism' ChartOptions \p -> case p of
   ChartOptions o -> Just o
   _ -> Nothing

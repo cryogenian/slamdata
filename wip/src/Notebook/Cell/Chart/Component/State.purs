@@ -14,11 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils.Array where
+module Notebook.Cell.Chart.Component.State where
 
-import Prelude (($))
-import Data.Array (range, length, zip)
-import Data.Tuple (Tuple())
+import Prelude (Unit())
+import Halogen (InstalledState())
+import Halogen.ECharts (EChartsState(), EChartsQuery())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import Notebook.Common (Slam())
 
-enumerate :: forall a. Array a -> Array (Tuple Int a)
-enumerate arr = zip (range 0 $ length arr) arr
+type ChartState =
+  { width :: Int
+  , height :: Int
+  }
+type ChartStateP =
+  InstalledState ChartState EChartsState CellEvalQuery EChartsQuery Slam Unit
+
+initialState :: ChartState
+initialState =
+  { width: 600
+  , height: 400
+  }
