@@ -40,7 +40,7 @@ import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (JArray(), Json(), JObject(), jsonEmptyObject, isArray, isObject, foldJson, toArray, toObject, toNumber, fromObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Parser (jsonParser)
-import Data.Array (concat, nub, filter, head)
+import Data.Array (concat, nub, filter, head, range, length)
 import Data.Either (Either(..), either)
 import Data.Either.Unsafe (fromRight)
 import Data.Foldable (foldl)
@@ -191,10 +191,14 @@ getFields' acc json =
 
 goArr :: Array String -> JArray -> Array String
 goArr acc arr =
-  concat $ (getFields' ((<> "[*]") <$> acc) <$> arr)
+  concat $ getFields' (lift2 append acc $ mkArrIxs arr) <$> arr
+  where
+  mkArrIxs :: JArray -> Array String
+  mkArrIxs jarr = map (show >>> \x -> "[" <> x <> "]") $ range 0 $ length jarr - 1
 
 goObj :: Array String -> JObject -> Array String
 goObj acc obj = concat $ (goTuple acc <$> (fromList $ toList obj))
 
 goTuple :: Array String -> Tuple String Json -> Array String
-goTuple acc (Tuple key json) = getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json
+goTuple acc (Tuple key json) =
+  getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json
