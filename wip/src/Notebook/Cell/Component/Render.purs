@@ -143,13 +143,7 @@ linkButton =
     [ P.title "Embed cell output"
     , E.onClick (E.input_ ShareCell)
     ]
-    [ H.img
-        [ P.src "img/code-icon.svg"
-          -- TODO: not this! ew
-          -- if (c ^. _embedHovered) then "img/code-icon-blue.svg" else "img/code-icon.svg"
-        , P.width (P.Pixels 16)
-        ]
-    ]
+    [ H.span [ P.class_ CSS.shareButton ] [] ]
 
 messages :: CellState -> Array (CellHTML)
 messages cs = []

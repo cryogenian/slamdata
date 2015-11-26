@@ -26,6 +26,7 @@ module Notebook.Component
 import Prelude
 
 import Control.Bind ((=<<), join)
+import Control.Monad (when)
 
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
@@ -33,7 +34,6 @@ import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
 import Data.Lens ((.~), (%~), preview)
 import Data.List (fromList)
-import Data.Map as M
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
 import Data.These (These(..), theseLeft)
@@ -49,7 +49,7 @@ import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Port (Port())
 import Model.Resource as R
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery)
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
@@ -74,11 +74,8 @@ notebookComponent = parentComponent' render eval peek
 render :: NotebookState -> NotebookHTML
 render state =
   H.div_
-    $ fromList (map renderCell state.cells)
+    $ fromList (map (H.Slot <<< _.ctor) state.cells)
    <> if isEditable state.accessType then [newCellMenu state] else []
-
-renderCell :: CellDef -> NotebookHTML
-renderCell def = H.Slot def.ctor
 
 newCellMenu :: NotebookState -> NotebookHTML
 newCellMenu state =
@@ -131,65 +128,55 @@ eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF (CellSlot cellId) q) = coproduct (peekCell cellId) (peekCellInner cellId) q
 
+-- | Peek on the cell component to observe actions from the cell control
+-- | buttons.
 peekCell :: forall a. CellId -> CellQuery a -> NotebookDSL Unit
 peekCell cellId q = case q of
   RunCell _ -> runCell cellId
-  RefreshCell _ -> runCell <<< flip findRoot cellId =<< get
+  RefreshCell _ -> runCell <<< findRoot cellId =<< get
   TrashCell _ -> do
-    descendants <- findDescendants <$> get <*> pure cellId
+    descendants <- gets (findDescendants cellId)
     modify (removeCells $ S.insert cellId descendants)
   CreateChildCell cellType _ -> do
     modify (addCell cellType (Just cellId))
-    if autorun cellType
-      then do
-      vals <- gets _.values
-      updateCell (cellId + one ) { notebookPath: Nothing
-                                 , inputPort: M.lookup cellId vals
-                                 , cellId: cellId + one
-                                 }
-      else pure unit
+    when (autorun cellType) do
+      input <- gets (getCurrentValue cellId)
+      updateCell input (cellId + one)
   ShareCell _ -> pure unit
   _ -> pure unit
 
+-- | Peek on the inner cell components to observe `NotifyRunCell`, which is
+-- | raised by actions within a cell that should cause the cell to run.
 peekCellInner :: forall a. CellId -> ChildF Unit InnerCellQuery a -> NotebookDSL Unit
 peekCellInner cellId (ChildF _ q) =
   case preview _CellEvalQuery q of
     Just (NotifyRunCell _) -> runCell cellId
     _ -> pure unit
 
+-- | Runs the cell with the specified ID and then runs any cells that depend on
+-- | the cell's output with the new result.
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
   st <- get
-  case findParent st cellId of
-    Nothing ->
-      updateCell cellId
-        { notebookPath: notebookPath st
-        , inputPort: Nothing
-        , cellId: cellId
-        }
+  case findParent cellId st of
+    Nothing -> updateCell Nothing cellId
     Just parent ->
-      case getCurrentValue st parent of
-        Just inputPort ->
-          updateCell cellId
-            { inputPort: Just inputPort
-            , notebookPath: notebookPath st
-            , cellId: cellId
-            }
+      case getCurrentValue parent st of
+        Just inputPort -> updateCell (Just inputPort) cellId
         Nothing -> pure unit
 
-updateCell :: CellId -> CellEvalInput -> NotebookDSL Unit
-updateCell cellId input = do
-  result <- query (CellSlot cellId) $ left $ request (UpdateCell input)
-  maybe (pure unit) (runCellDescendants cellId) $ join result
-
-runCellDescendants :: CellId -> Port -> NotebookDSL Unit
-runCellDescendants cellId value = do
-  st <- get
-  let
-    children = findChildren st cellId
-    cellEvalInput =
-      { notebookPath: notebookPath st
-      , inputPort: Just value
-      , cellId: cellId
-      }
-  traverse_ (flip updateCell cellEvalInput) children
+-- | Updates the evaluated value for a cell by running it with the specified
+-- | input and then runs any cells that depend on the cell's output with the
+-- | new result.
+updateCell :: Maybe Port -> CellId -> NotebookDSL Unit
+updateCell inputPort cellId = do
+  path <- gets notebookPath
+  let input = { notebookPath: path, inputPort, cellId }
+  result <- join <$> (query (CellSlot cellId) $ left $ request (UpdateCell input))
+  modify (setCurrentValue cellId result)
+  maybe (pure unit) (runCellDescendants cellId) result
+  where
+  runCellDescendants :: CellId -> Port -> NotebookDSL Unit
+  runCellDescendants parentId value = do
+    children <- gets (findChildren parentId)
+    traverse_ (updateCell (Just value)) children

@@ -7,7 +7,8 @@ var gulp = require("gulp"),
     webpack = require("webpack-stream"),
     rimraf = require("rimraf"),
     fs = require("fs"),
-    trimlines = require("gulp-trimlines");
+    trimlines = require("gulp-trimlines"),
+    less = require("gulp-less");
 
 var slamDataSources = [
   "src/**/*.purs",
@@ -106,5 +107,12 @@ mkWatch("watch-file", "bundle-file", allSources);
 mkWatch("watch-notebook", "bundle-notebook", allSources);
 mkWatch("watch-notebook-fast", "fast-bundle-notebook", allSources);
 
-// gulp.task("default", ["add-headers", "trim-whitespace", "bundle"]);
-gulp.task("default", ["bundle"]);
+gulp.task("less", function() {
+  return gulp.src(["../less/main.less"])
+    .pipe(less({ paths: ["../less/**/*.less"] }))
+    .pipe(gulp.dest("../public/css"));
+});
+mkWatch("watch-less", "less", ["../less/**/*.less"]);
+
+// gulp.task("default", ["add-headers", "trim-whitespace", "less", "bundle"]);
+gulp.task("default", ["less", "bundle"]);
