@@ -693,14 +693,14 @@ createNotebook = do
   createNotebookAndThen do
     navigateBack
     fileComponentLoaded
-    newNotebook <- getNewNotebook
-    successMsg "OK, new notebook found in parent directory"
+    -- newNotebook <- getNewNotebook
+    -- successMsg "OK, new notebook found in parent directory"
 
-  where
-  getNewNotebook :: Check Element
-  getNewNotebook =
-    findItem SDCfg.newNotebookName
-      >>= maybe (errorMsg "No notebook in parent directory") pure
+  -- where
+  -- getNewNotebook :: Check Element
+  -- getNewNotebook =
+  --   findItem SDCfg.newNotebookName
+  --     >>= maybe (errorMsg "No notebook in parent directory") pure
 
 
 
