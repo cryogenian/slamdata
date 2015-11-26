@@ -31,7 +31,7 @@ import Controller.File.Item (itemURL)
 import Data.Array (head, last)
 import Data.DOM.Simple.Element (querySelector)
 import Data.DOM.Simple.Types (HTMLElement())
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 
 import Data.Foreign (F(), parseJSON)
 import Data.Foreign.Class (readProp)
@@ -66,12 +66,12 @@ import qualified Utils.File as Uf
 
 handleCreateNotebook :: forall e. State -> Event e
 handleCreateNotebook state = do
-  f <- liftAff $ attempt $ API.saveNotebook (N.emptyNotebook # N._path .~ (state ^. _path))
-  case f of
-    Left err -> showError ("There was a problem creating the notebook: " ++ message err)
-    Right notebook -> case N.notebookURL notebook Edit of
-      Just url -> liftEff (setLocation url) *> empty
-      Nothing -> empty
+  let notebook = N.emptyNotebook # N._path .~ (state ^. _path)
+  f <- liftAff $ attempt $ API.saveNotebook notebook
+  let notebook' = either (const (notebook # N._name .~ That Config.newNotebookName)) id f
+  case N.notebookURL notebook' Edit of
+    Just url -> liftEff (setLocation url) *> empty
+    Nothing -> empty
 
 handleFileListChanged :: forall e. HTMLElement -> State -> Event e
 handleFileListChanged el state = do
