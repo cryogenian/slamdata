@@ -46,7 +46,7 @@ import Halogen.HTML.Events.Monad (andThen)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..), inputItem)
 import Input.File.Mount (MountInput(..), inputMount)
-import Model.Action (Action(Edit))
+import Model.Action (Action(..))
 import Model.File (State(), _dialog, _showHiddenFiles, _path, _sort, _salt, _items, isSearching)
 import Model.File.Breadcrumb (Breadcrumb())
 import Model.File.Dialog (Dialog(..))
@@ -65,11 +65,11 @@ import qualified Model.Resource as R
 import qualified Utils.File as Uf
 
 handleCreateNotebook :: forall e. State -> Event e
-handleCreateNotebook state = do
-  let notebook = N.emptyNotebook # N._path .~ (state ^. _path)
-  f <- liftAff $ attempt $ API.saveNotebook notebook
-  let notebook' = either (const (notebook # N._name .~ That Config.newNotebookName)) id f
-  case N.notebookURL notebook' Edit of
+handleCreateNotebook state =
+  let notebook = N.emptyNotebook
+        # (N._path .~ (state ^. _path))
+        # (N._name .~ That Config.newNotebookName)
+  in case N.notebookURL notebook New of
     Just url -> liftEff (setLocation url) *> empty
     Nothing -> empty
 
