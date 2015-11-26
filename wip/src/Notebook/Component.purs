@@ -32,7 +32,7 @@ import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
-import Data.Lens ((.~), (%~), preview)
+import Data.Lens ((.~), (%~))
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
@@ -49,8 +49,9 @@ import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Port (Port())
 import Model.Resource as R
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
-import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), _CellEvalQuery)
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
+import Notebook.Cell.Component
+  (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 import Notebook.Component.Query
@@ -60,10 +61,12 @@ import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
 type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
-type NotebookStateP = InstalledState NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
+type NotebookStateP =
+  InstalledState NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
 
 type NotebookHTML = ParentHTML CellStateP NotebookQuery CellQueryP Slam CellSlot
-type NotebookDSL = ParentDSL NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
+type NotebookDSL =
+  ParentDSL NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
 
 initialState :: BrowserFeatures -> NotebookStateP
 initialState fs = installedState $ initialNotebook fs
@@ -149,9 +152,16 @@ peekCell cellId q = case q of
 -- | raised by actions within a cell that should cause the cell to run.
 peekCellInner :: forall a. CellId -> ChildF Unit InnerCellQuery a -> NotebookDSL Unit
 peekCellInner cellId (ChildF _ q) =
-  case preview _CellEvalQuery q of
-    Just (NotifyRunCell _) -> runCell cellId
-    _ -> pure unit
+  coproduct (peekEvalCell cellId) (peekAnyCell cellId) q
+
+peekEvalCell :: forall a. CellId -> CellEvalQuery a -> NotebookDSL Unit
+peekEvalCell cellId (NotifyRunCell _) = runCell cellId
+peekEvalCell _ _ = pure unit
+
+peekAnyCell :: forall a. CellId -> AnyCellQuery a -> NotebookDSL Unit
+peekAnyCell cellId (VizQuery q) =
+  coproduct (const $ pure unit) (const $ runCell cellId) q
+peekAnyCell _ _ = pure unit
 
 -- | Runs the cell with the specified ID and then runs any cells that depend on
 -- | the cell's output with the new result.

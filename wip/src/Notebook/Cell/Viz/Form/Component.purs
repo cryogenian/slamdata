@@ -1,3 +1,19 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module Notebook.Cell.Viz.Form.Component
   ( formComponent
   , initialState
@@ -21,42 +37,29 @@ module Notebook.Cell.Viz.Form.Component
 
 import Prelude
 
-import Control.Bind (join)
-import Control.Monad (when)
-import Control.Alt ((<|>))
 import Data.Argonaut (JCursor())
-import Data.Array (cons, (!!), null, singleton, range, take, snoc, length, zip)
+import Data.Array ((!!), null, singleton, range, snoc, length)
 import Data.Either (Either())
-import Data.Foldable (for_, traverse_, foldl)
-import Data.Traversable (for, traverse)
-import Data.Tuple.Nested (uncurry3)
-import Data.Tuple (Tuple(..))
-import Data.Functor (($>))
+import Data.Foldable (traverse_)
 import Data.Functor.Coproduct (Coproduct(), right, left)
-import Data.Identity (Identity(..))
-import Data.Lens (preview)
-import Data.Lens.Index (ix)
-import Data.Lens.Prism.Coproduct (_Left, _Right)
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
+import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
+import Data.Traversable (traverse)
 import Form.Select.Component as S
 import Form.SelectPair.Component as P
 import Halogen
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), prjQuery, prjSlot)
-import Halogen.Component.Utils (applyCF)
-import Halogen.HTML.Events.Indexed as E
+import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 import Model.Aggregation (Aggregation(..), allAggregations)
 import Model.ChartConfiguration
-import Model.Select (OptionVal, Select(..), autoSelect, except, filterSelect')
+import Model.Select (OptionVal, Select(..))
 import Notebook.Cell.Viz.Form.Component.Render (gridClasses, GridClasses())
-import Notebook.Common (Slam())
+import Notebook.Common (Slam(), forceRerender')
 import Notebook.Effects (NotebookRawEffects())
 import Render.Common (row)
 import Render.CssClasses as Rc
-import Utils.Array (enumerate)
 
 data Query a
   = SetConfiguration ChartConfiguration a
@@ -68,8 +71,6 @@ data Query a
 -- | ```
 -- | TODO: try this approach
 type State = ChartConfiguration
-
-import Model.Select (emptySelect)
 
 initialState :: State
 initialState =
@@ -121,7 +122,7 @@ cpMeasure = cpR :> cpR
 
 
 formComponent :: Component StateP QueryP Slam
-formComponent = parentComponent' render eval peek
+formComponent = parentComponent render eval
 
 render
   :: ChartConfiguration -> ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -137,7 +138,7 @@ render (ChartConfiguration conf) =
     $  row
     $  maybe [] (renderCategory clss.first 0) (conf.series !! 0)
     <> maybe [] (renderMeasure clss.second 0) (conf.measures !! 0)
-    <> maybe [] (renderSeries clss.third 0) (conf.series !! 1)
+    <> maybe [] (renderSeries clss.third 1) (conf.series !! 1)
     where
     clss :: GridClasses
     clss = gridClasses (conf.series !! 0) (conf.measures !! 0) (conf.series !! 1)
@@ -147,7 +148,7 @@ render (ChartConfiguration conf) =
   renderRowsWithoutDimension measureIx seriesIx acc =
     maybe acc
     (renderRowsWithoutDimension (measureIx + one) (seriesIx + one)
-     <<< flip cons acc)
+     <<< snoc acc)
     $ renderOneRowWithoutDimension
         measureIx (conf.measures !! measureIx)
         seriesIx (conf.series !! seriesIx)
@@ -158,13 +159,13 @@ render (ChartConfiguration conf) =
   renderOneRowWithoutDimension measureIx mbMeasure seriesIx mbSeries =
        pure
     $  row
-    $  maybe [] (renderMeasure [ B.colXs4, B.colXsOffset4 ] measureIx) mbMeasure
-    <> maybe [] (renderSeries [ B.colXs4 ] seriesIx) mbSeries
+    $  maybe [] (renderMeasure [ B.colXs4 ] measureIx) mbMeasure
+    <> maybe [] (renderSeries [ B.colXs4, B.colXsOffset8 ] seriesIx) mbSeries
 
   renderRows
     :: Int -> Array FormHTML -> Array FormHTML
   renderRows ix acc =
-    maybe acc (renderRows (ix + one) <<< flip cons acc)
+    maybe acc (renderRows (ix + one) <<< snoc acc)
     $ renderOneRow ix
     (conf.dimensions !! ix) (conf.series !! ix) (conf.measures !! ix)
 
@@ -213,7 +214,7 @@ render (ChartConfiguration conf) =
                                    ]
              ]
       [ seriesLabel
-      , H.slot' cpSeries ix \_ -> { component: childSelect ix
+      , H.slot' cpSeries ix \_ -> { component: S.secondarySelect
                                   , initialState: sel
                                   }
       ]
@@ -238,12 +239,12 @@ render (ChartConfiguration conf) =
       then { disableWhen: (< 2)
            , defaultWhen: (> 1)
            , mainState: sel
-           , classes: []
+           , classes: [Rc.aggregation, B.btnPrimary]
            }
       else { disableWhen: (< 1)
            , defaultWhen: (const true)
            , mainState: sel
-           , classes: []
+           , classes: [Rc.aggregation, B.btnPrimary]
            }
 
 
@@ -251,13 +252,6 @@ render (ChartConfiguration conf) =
   aggregationSelect = Select { options: allAggregations
                              , value: Just Sum
                              }
-
-  childSelect
-    :: forall a. (OptionVal a) => Int -> Component (Select a) (S.Query a) Slam
-  childSelect i =
-    if i == 0
-    then S.primarySelect
-    else S.secondarySelect
 
   label :: String -> FormHTML
   label str = H.label [ P.classes [ B.controlLabel ] ] [ H.text str ]
@@ -277,11 +271,12 @@ render (ChartConfiguration conf) =
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   (ChartConfiguration r) <- get
+  modify $ const c
+  forceRerender'
   synchronizeDimensions r.dimensions conf.dimensions
   synchronizeSeries r.series conf.series
   synchronizeMeasures r.measures conf.measures
   synchronizeAggregations r.aggregations conf.aggregations
-  modify (const c)
   pure next
   where
   synchronizeDimensions :: Array JSelect -> Array JSelect -> FormDSL Unit
@@ -298,7 +293,7 @@ eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   syncByIndex prism old new i =
     if isJust $ old !! i
     then maybe (pure unit) (void <<< query' prism i <<< action <<< S.SetSelect)
-         $ new !! i
+         $ (new !! i)
     else pure unit
 
   synchronizeMeasures :: Array JSelect -> Array JSelect -> FormDSL Unit
@@ -333,10 +328,13 @@ eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   getLastIndex old new =
     let oldL = length old
         newL = length new
-    in (if oldL > newL then oldL else newL) - one
+        ind = (if oldL > newL then oldL else newL) - one
+    in if ind > zero then ind else zero
+
 
 eval (GetConfiguration continue) = do
   (ChartConfiguration conf) <- get
+  forceRerender'
   dims <- getDimensions
   series <- getSeries
   measures <- getMeasures
@@ -350,7 +348,7 @@ eval (GetConfiguration continue) = do
   getDimensions :: FormDSL (Array JSelect)
   getDimensions = do
     (ChartConfiguration conf) <- get
-    traverse getDimension (range 0 $ length conf.dimensions - 1)
+    traverse getDimension (range' 0 $ length conf.dimensions - 1)
 
   getDimension :: Int -> FormDSL JSelect
   getDimension i =
@@ -359,7 +357,7 @@ eval (GetConfiguration continue) = do
   getSeries :: FormDSL (Array JSelect)
   getSeries = do
     (ChartConfiguration conf) <- get
-    traverse getSerie (range 0 $ length conf.series - 1)
+    traverse getSerie (range' 0 $ length conf.series - 1)
 
   getSerie :: Int -> FormDSL JSelect
   getSerie i =
@@ -368,7 +366,7 @@ eval (GetConfiguration continue) = do
   getMeasures :: FormDSL (Array JSelect)
   getMeasures = do
     (ChartConfiguration conf) <- get
-    traverse getMeasure (range 0 $ length conf.measures - 1)
+    traverse getMeasure (range' 0 $ length conf.measures - 1)
 
   getMeasure :: Int -> FormDSL JSelect
   getMeasure i =
@@ -377,93 +375,14 @@ eval (GetConfiguration continue) = do
   getAggregations :: FormDSL (Array (Select Aggregation))
   getAggregations = do
     (ChartConfiguration conf) <- get
-    traverse getAggregation (range 0 $ length conf.measures - 1)
+    traverse getAggregation (range' 0 $ length conf.measures - 1)
 
   getAggregation :: Int -> FormDSL (Select Aggregation)
   getAggregation i =
     map fromJust $ query' cpMeasure i $ left $ request S.GetSelect
 
-peek :: forall a. ChildF ChildSlot ChildQuery a -> FormDSL Unit
-peek (ChildF slot query) =
-  fromMaybe (pure unit)
-  $   (dimensionPeek <$> prjSlot cpDimension slot <*> prjQuery cpDimension query)
-  <|> (seriesPeek <$> prjSlot cpSeries slot <*> prjQuery cpSeries query)
-  <|> (measurePeek <$> prjSlot cpMeasure slot <*> prjQuery cpMeasure query)
-
--- 1. All `fromJust` are safe here, because it's used only with index
---    of child that sent message.
--- 2. Filtering is incorrect. In fact we must take current state of
---    children and update it. (This component state have no meaning except
---    setting initial state of subcomponents)
-dimensionPeek :: forall a. DimensionSlot -> DimensionQuery a -> FormDSL Unit
-dimensionPeek i (S.Choose _ _) = do
-  (ChartConfiguration conf) <- get
-  dims <- getDimensionVals
-  measures <- getMeasureVals
-  traverse_ (traverseFn dims measures) $ enumerate conf.measures
-  where
-  traverseFn
-    :: Array (Maybe JCursor) -> Array (Maybe JCursor)
-    -> Tuple Int JSelect -> FormDSL Unit
-  traverseFn dims measures (Tuple i sel) =
-    let filtered = foldl filterSelect' sel $ take i measures <> dims
-    in when (filtered /= sel) $ void
-       $ query' cpMeasure i $ right $ ChildF unit $ action $ S.SetSelect filtered
-dimensionPeek _ _ = pure unit
-
-seriesPeek :: forall a. SeriesSlot -> SeriesQuery a -> FormDSL Unit
-seriesPeek i (S.Choose _ _) = do
-  (ChartConfiguration conf) <- get
-  vals <- getSerieVals
-  traverse_ (traverseFn vals) $ enumerate conf.series
-  where
-  traverseFn :: Array (Maybe JCursor) -> Tuple Int JSelect -> FormDSL Unit
-  traverseFn vals (Tuple i sel) =
-    let filtered = foldl filterSelect' sel $ take i vals
-    in when (filtered /= sel) $ void
-       $ query' cpSeries i $ action $ S.SetSelect filtered
-seriesPeek _ _ = pure unit
-
-measurePeek :: forall a. MeasureSlot -> MeasureQuery a -> FormDSL Unit
-measurePeek s q =
-  fromMaybe (pure unit)
-  $   (measureAggregationPeek s <$> preview _Left q)
-  -- we need index of that measure select to filter
-  <|> (applyCF (measureSelectPeek s) <$> preview _Right q)
-
-measureAggregationPeek :: forall a. MeasureSlot -> MeasureAggQuery a -> FormDSL Unit
-measureAggregationPeek _ _ = pure unit
-
-measureSelectPeek
-  :: forall a. MeasureSlot -> Unit -> MeasureSelQuery a -> FormDSL Unit
-measureSelectPeek i _ (S.Choose _ _) = do
-  (ChartConfiguration conf) <- get
-  vals <- getMeasureVals
-  traverse_ (traverseFn vals) $ enumerate conf.measures
-  where
-  traverseFn :: Array (Maybe JCursor) -> Tuple Int JSelect -> FormDSL Unit
-  traverseFn vals (Tuple i sel) =
-    let filtered = foldl filterSelect' sel $ take i vals
-    in when (filtered /= sel) $ void
-       $ query' cpMeasure i $ right $ ChildF unit $ action $ S.SetSelect sel
-measureSelectPeek _ _ _ = pure unit
-
-
-getMeasureVals :: FormDSL (Array (Maybe JCursor))
-getMeasureVals = do
-  (ChartConfiguration conf) <- get
-  for (range 0 $ length conf.measures - 1) \measureIx ->
-    map join $ query' cpMeasure measureIx
-    $ right $ ChildF unit $ request S.GetValue
-
-getSerieVals :: FormDSL (Array (Maybe JCursor))
-getSerieVals = do
-  (ChartConfiguration conf) <- get
-  for (range 0 $ length conf.series - 1) \seriesIx ->
-    map join $ query' cpSeries seriesIx $ request S.GetValue
-
-getDimensionVals :: FormDSL (Array (Maybe JCursor))
-getDimensionVals = do
-  (ChartConfiguration conf) <- get
-  for (range 0 $ length conf.dimensions - 1) \dimensionIx ->
-    map join $ query' cpDimension dimensionIx $ request S.GetValue
+  range' :: Int -> Int -> Array Int
+  range' start end =
+    if end >= start
+    then range start end
+    else []

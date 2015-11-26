@@ -57,13 +57,13 @@ import Notebook.Cell.Component.Query
 import Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import Notebook.Cell.Component.State
 import Notebook.Cell.RunState (RunState(..))
-import Notebook.Common (Slam())
+import Notebook.Common (Slam(), liftAff'', liftEff'')
 import Render.Common (row, row')
 import Render.CssClasses as CSS
 
 -- | Type synonym for the full type of a cell component.
 type CellComponent = Component CellStateP CellQueryP Slam
-
+type CellDSL = ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit
 -- | Constructs a cell component for an editor-style cell.
 makeEditorCellComponent
   :: forall s f
@@ -79,6 +79,7 @@ makeEditorCellComponent def = makeCellComponentPart def render
       H.div
         [ P.classes $ join [containerClasses, collapsedClass] ]
         [ header def cs
+          -- Do we really need `row` here? Won't `H.div_` work?
         , row [ H.slot unit \_ -> { component: component, initialState: initialState } ]
         , statusBar cs.hasResults cs
         ]
@@ -135,14 +136,14 @@ makeCellComponentPart def render =
   initialState :: AnyCellState
   initialState = review _State def.initialState
 
-  eval :: Natural CellQuery (ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit)
+  eval :: Natural CellQuery CellDSL
   eval (RunCell next) = pure next
   eval (UpdateCell input k) = do
-    liftH <<< liftAff' =<< gets (^. _tickStopper)
+    liftAff'' =<< gets (^. _tickStopper)
     tickStopper <- startInterval
     modify (_tickStopper .~ tickStopper)
     result <- query unit (left (request (EvalCell input)))
-    liftH $ liftAff' tickStopper
+    liftAff'' tickStopper
     modify (_runState %~ finishRun)
     maybe (liftF HaltHF) (pure <<< k <<< _.output) result
   eval (RefreshCell next) = pure next
@@ -161,10 +162,10 @@ makeCellComponentPart def render =
 -- |
 -- | The returned value is an action that will stop the timer running when
 -- | processed.
-startInterval :: ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit (Slam Unit)
+startInterval :: CellDSL (Slam Unit)
 startInterval = do
-  ref <- liftH $ liftEff' $ newRef Nothing
-  start <- liftH $ liftEff' Date.now
+  ref <- liftEff'' $ newRef Nothing
+  start <- liftEff'' Date.now
   modify (_runState .~ RunElapsed zero)
 
   subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do

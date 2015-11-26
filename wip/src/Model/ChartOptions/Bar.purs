@@ -1,16 +1,31 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module Model.ChartOptions.Bar where
 
 import Prelude
 
 import Data.Argonaut (JCursor())
 import Data.Array as A
-import Data.Bifunctor (lmap)
 import Data.Foldable (foldl)
 import Data.List as L
 import Data.Map (Map())
 import Data.Map as M
 import Data.Maybe (Maybe(..))
-import Data.Maybe (fromMaybe, maybe)
+import Data.Maybe (maybe)
 import Data.String (split)
 import Data.Tuple (Tuple(..))
 import ECharts
@@ -90,33 +105,7 @@ mkSeries pbData = Tuple xAxis series
   group = nameMap $ L.fromList $ M.toList pbData
 
   nameMap :: Array (Tuple Key Number) -> Map String (Array Number)
-  nameMap = mapByCategories <<< fillEmpties <<< groupByCategories
-
-  groupByCategories :: Array (Tuple Key Number) -> Array (Map String Number)
-  groupByCategories arr = map (markAndFilterCategory arr) catVals
-
-  markAndFilterCategory
-    :: Array (Tuple Key Number) -> String -> Map String Number
-  markAndFilterCategory arr cat =
-      M.fromList
-    $ L.toList
-    $ map (lmap keyName)
-    $ A.filter (\(Tuple k _) -> keyCategory k == cat)
-    $ arr
-
-  mapByCategories
-    :: Array (Map String Number) -> Map String (Array Number)
-  mapByCategories arr =
-    map A.reverse $ foldl foldFn M.empty (L.fromList <<< M.toList <$> arr)
-
-  foldFn
-    :: Map String (Array Number)
-    -> Array (Tuple String Number)
-    -> Map String (Array Number)
-  foldFn m tpls = foldl (\m (Tuple k n) -> M.alter (alterNamed n) k m) m tpls
-
-  alterNamed :: Number -> Maybe (Array Number) -> Maybe (Array Number)
-  alterNamed n ns = Just $ A.cons n $ fromMaybe [] ns
+  nameMap = commonNameMap fillEmpties catVals
 
   arrKeys :: Array (Map String Number) -> Array String
   arrKeys ms = A.nub $ A.concat (L.fromList <<< M.keys <$> ms)

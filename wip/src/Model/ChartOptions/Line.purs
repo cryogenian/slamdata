@@ -1,3 +1,19 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module Model.ChartOptions.Line where
 
 import Prelude
@@ -6,7 +22,7 @@ import Control.Bind (join)
 import Data.Argonaut (JCursor())
 import Data.Array ((!!), cons)
 import Data.Array as A
-import Data.Bifunctor (bimap, lmap)
+import Data.Bifunctor (bimap)
 import Data.Foldable (foldl)
 import Data.List (List(..), replicate, length)
 import Data.List as L
@@ -16,6 +32,7 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Tuple (Tuple(..))
 import Model.Aggregation (Aggregation(..), runAggregation)
 import Model.ChartOptions.Common
+
 import Model.ChartConfiguration (ChartConfiguration(..))
 import Data.Lens (view)
 import Model.Select (_value)
@@ -103,7 +120,6 @@ lineRawData
 aggregatePairs :: Aggregation -> Aggregation -> LabeledPointPairs -> LineData
 aggregatePairs fAgg sAgg = map $ bimap (runAggregation fAgg) (runAggregation sAgg)
 
-
 buildLine :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Option
 buildLine axises conf = case axisSeriesPair of
   Tuple xAxis series ->
@@ -122,7 +138,7 @@ buildLine axises conf = case axisSeriesPair of
   tooltip = Tooltip $ tooltipDefault { trigger = Just TriggerItem }
 
   extractNames :: Array Series -> Array String
-  extractNames ss = A.catMaybes $ map extractName ss
+  extractNames ss = A.nub $A.catMaybes $ map extractName ss
 
   extractName :: Series -> Maybe String
   extractName (LineSeries r) = r.common.name
@@ -194,33 +210,7 @@ mkSeries needTwoAxis ty lData = Tuple xAxis series
     (Tuple [] []) src
 
   nameMap :: Array (Tuple Key Number) -> Map String (Array Number)
-  nameMap = mapByCategories <<< fillEmpties <<< groupByCategories
-
-  groupByCategories :: Array (Tuple Key Number) -> Array (Map String Number)
-  groupByCategories arr = map (markAndFilterCategory arr) catVals
-
-  markAndFilterCategory
-    :: Array (Tuple Key Number) -> String -> Map String Number
-  markAndFilterCategory arr cat =
-      M.fromList
-    $ L.toList
-    $ map (lmap keyName)
-    $ A.filter (\(Tuple k _) -> keyCategory k == cat)
-    $ arr
-
-  mapByCategories
-    :: Array (Map String Number) -> Map String (Array Number)
-  mapByCategories arr =
-    map A.reverse $ foldl foldFn M.empty (L.fromList <<< M.toList <$> arr)
-
-  foldFn
-    :: Map String (Array Number)
-    -> Array (Tuple String Number)
-    -> Map String (Array Number)
-  foldFn m tpls = foldl (\m (Tuple k n) -> M.alter (alterNamed n) k m) m tpls
-
-  alterNamed :: Number -> Maybe (Array Number) -> Maybe (Array Number)
-  alterNamed n ns = Just $ A.cons n $ fromMaybe [] ns
+  nameMap = commonNameMap fillEmpties catVals
 
   arrKeys :: Array (Map String Number) -> Array String
   arrKeys ms = A.nub $ A.concat (L.fromList <<< M.keys <$> ms)

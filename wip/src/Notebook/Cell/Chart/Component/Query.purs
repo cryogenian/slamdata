@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils.Array where
+module Notebook.Cell.Chart.Component.Query where
 
-import Prelude (($))
-import Data.Array (range, length, zip)
-import Data.Tuple (Tuple())
+import Prelude (Unit())
+import Data.Functor.Coproduct (Coproduct())
+import Halogen (ChildF())
+import Halogen.ECharts (EChartsQuery())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 
-enumerate :: forall a. Array a -> Array (Tuple Int a)
-enumerate arr = zip (range 0 $ length arr) arr
+type ChartQueryP = Coproduct CellEvalQuery (ChildF Unit EChartsQuery)

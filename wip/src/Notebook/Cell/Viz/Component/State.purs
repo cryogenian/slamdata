@@ -22,27 +22,35 @@ module Notebook.Cell.Viz.Component.State
   , _chartType
   , _availableChartTypes
   , _loading
+  , _sample
+  , _records
+  , _needToUpdate
   ) where
 
 import Prelude
 
 import Halogen (InstalledState())
+import Data.Argonaut (JCursor(), JArray())
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens)
+import Data.Map as M
 import Data.Set as Set
-import Model.ChartConfiguration (ChartConfiguration())
-import Model.ChartType (ChartType(..))
+import Model.ChartType (ChartType())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Cell.Viz.Form.Component as Form
 import Notebook.Cell.Viz.Component.Query (VizQuery())
 import Notebook.Common (Slam())
+import Model.ChartAxis (Axis())
 
 type VizState =
   { width :: Int
   , height :: Int
   , chartType :: ChartType
   , availableChartTypes :: Set.Set ChartType
+  , sample :: M.Map JCursor Axis
   , loading :: Boolean
+  , records :: JArray
+  , needToUpdate :: Boolean
   }
 
 _width :: forall a r. LensP {width :: a |r} a
@@ -59,6 +67,15 @@ _availableChartTypes = lens _.availableChartTypes _{availableChartTypes = _}
 
 _loading :: forall a r. LensP {loading :: a | r} a
 _loading = lens _.loading _{loading = _}
+
+_sample :: forall a r. LensP {sample :: a | r} a
+_sample = lens _.sample _{sample = _}
+
+_records :: forall a r. LensP {records :: a | r} a
+_records = lens _.records _{records = _}
+
+_needToUpdate :: forall a r. LensP {needToUpdate :: a | r} a
+_needToUpdate = lens _.needToUpdate _{needToUpdate = _}
 
 type VizStateP =
   InstalledState VizState Form.StateP

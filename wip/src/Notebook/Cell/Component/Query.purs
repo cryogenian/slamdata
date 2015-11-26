@@ -20,12 +20,13 @@ module Notebook.Cell.Component.Query
   , InnerCellQuery()
   , _CellEvalQuery
   , _AnyCellQuery
-  , AnyCellQuery()
+  , AnyCellQuery(..)
   , _AceQuery
   , _ExploreQuery
   , _MarkdownQuery
   , _SearchQuery
   , _VizQuery
+  , _ChartQuery
   , module Notebook.Cell.Common.EvalQuery
   ) where
 
@@ -47,6 +48,7 @@ import Notebook.Cell.Explore.Component.Query (ExploreQueryP())
 import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
 import Notebook.Cell.Search.Component.Query (SearchQueryP())
 import Notebook.Cell.Viz.Component.Query (VizQueryP())
+import Notebook.Cell.Chart.Component.Query (ChartQueryP())
 
 -- | The common query algebra for a notebook cell.
 -- |
@@ -94,6 +96,7 @@ data AnyCellQuery a
   | MarkdownQuery (MarkdownQueryP a)
   | SearchQuery (SearchQueryP a)
   | VizQuery (VizQueryP a)
+  | ChartQuery (ChartQueryP a)
 
 _AceQuery :: forall a. PrismP (AnyCellQuery a) (AceQueryP a)
 _AceQuery = prism' AceQuery \q -> case q of
@@ -118,4 +121,9 @@ _SearchQuery = prism' SearchQuery \q -> case q of
 _VizQuery :: forall a. PrismP (AnyCellQuery a) (VizQueryP a)
 _VizQuery = prism' VizQuery \q -> case q of
   VizQuery q' -> Just q'
+  _ -> Nothing
+
+_ChartQuery :: forall a. PrismP (AnyCellQuery a) (ChartQueryP a)
+_ChartQuery = prism' ChartQuery \q -> case q of
+  ChartQuery q' -> Just q'
   _ -> Nothing

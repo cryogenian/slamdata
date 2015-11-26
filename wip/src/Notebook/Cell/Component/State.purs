@@ -33,6 +33,7 @@ module Notebook.Cell.Component.State
   , _MarkdownState
   , _SearchState
   , _VizState
+  , _ChartState
   ) where
 
 import Prelude
@@ -53,6 +54,8 @@ import Notebook.Cell.Markdown.Component.State
 import Notebook.Cell.RunState (RunState(..))
 import Notebook.Cell.Search.Component.State
 import Notebook.Cell.Viz.Component.State
+import Notebook.Cell.RunState (RunState(..))
+import Notebook.Cell.Chart.Component.State
 import Notebook.Common (Slam())
 
 -- | The common state value for notebook cells.
@@ -142,6 +145,7 @@ data AnyCellState
   | MarkdownState MarkdownStateP
   | SearchState SearchStateP
   | VizState VizStateP
+  | ChartState ChartStateP
 
 _AceState :: PrismP AnyCellState AceStateP
 _AceState = prism' AceState \s -> case s of
@@ -166,4 +170,9 @@ _SearchState = prism' SearchState \s -> case s of
 _VizState :: PrismP AnyCellState VizStateP
 _VizState = prism' VizState \s -> case s of
   VizState s' -> Just s'
+  _ -> Nothing
+
+_ChartState :: PrismP AnyCellState ChartStateP
+_ChartState = prism' ChartState \s -> case s of
+  ChartState s' -> Just s'
   _ -> Nothing
