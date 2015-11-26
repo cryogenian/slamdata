@@ -33,7 +33,7 @@ import Model.Notebook.Port
 import Model.Resource
 import Optic.Core
 import Optic.Extended (TraversalP())
-import Data.Path.Pathy (rootDir, parseAbsDir, sandbox, (</>), printPath, file)
+import Data.Path.Pathy (rootDir, parseAbsDir, sandbox, (</>), printPath, file, dir)
 import Model.Path (DirPath(), phantomNotebookPath)
 import Utils (s2i)
 
@@ -300,4 +300,7 @@ instance decodeRunState :: DecodeJson RunState where
     ( RunFinished <$> (Milliseconds <$> decodeJson json))
 
 outFile :: Cell -> Resource
-outFile cell = mkFile $ Left $ (cell ^._pathToNotebook) </> file ("out" <> show (cell ^._cellId))
+outFile cell =
+  if cell ^._pathToNotebook == rootDir
+  then mkFile $ Left $ rootDir </> dir ".tmp" </> file ("out" <> show (cell ^._cellId))
+  else mkFile $ Left $ (cell ^._pathToNotebook) </> file ("out" <> show (cell ^._cellId))
