@@ -18,6 +18,8 @@ module Model.Notebook.Search (queryToSQL, needFields) where
 
 import Prelude
 import Control.Apply (lift2)
+import Control.Bind (join)
+import Data.Array (filter, catMaybes, head, concat, nub)
 import Data.Either
 import Data.List (fromList, List(..))
 import Data.Maybe
@@ -25,7 +27,7 @@ import Data.Date (fromString)
 import Data.Semiring.Free
 import Data.Foldable
 import Data.String (joinWith, indexOf)
-import Data.String.Regex (regex, noFlags, replace, Regex(), test)
+import Data.String.Regex (regex, noFlags, replace, Regex(), test, match)
 import Text.SlamSearch (mkQuery, check)
 import Text.SlamSearch.Types
 import Global
@@ -33,22 +35,43 @@ import Utils (s2i, s2n)
 
 queryToSQL :: Array String -> SearchQuery -> String
 queryToSQL fields query =
-  "SELECT" <>
-  (if needDistinct whereClause then " DISTINCT " else " ") <>
-  "* from {{path}} where " <> whereClause
+     "SELECT"
+  <> (if needDistinct whereClause then " DISTINCT " else " ")
+  <> topFields
+  <> " from {{path}} where " <> whereOrFalse
   where
+  topFields :: String
+  topFields =
+    joinWith ", "
+    $ nub
+    $ map (replace firstDot "")
+    $ catMaybes
+    $ map join
+    $ map head
+    $ catMaybes
+    $ map (match topFieldRegex)
+    $ fields
+
+  topFieldRegex :: Regex
+  topFieldRegex = regex "^\\.[^\\.\\[]+|^\\[.+\\]/" noFlags
+
+  whereOrFalse :: String
+  whereOrFalse = if whereClause == "()" then "FALSE" else whereClause
+
+  whereClause :: String
   whereClause =
-    (joinWith " OR " $
-     pars <$>
-     joinWith " AND " <$>
-     (fromList <<< (fromList <$>) $
-      (runFree $ (termToSQL fields) <$> query)))
+      joinWith " OR "
+    $ map oneWhereInput
+    $ fromList
+    $ runFree
+    $ map (termToSQL fields) query
 
-
+  oneWhereInput :: List String -> String
+  oneWhereInput s = pars $ joinWith " AND " $ fromList s
 
 needDistinct :: String -> Boolean
-needDistinct input = isJust $ indexOf "[*]" input
-
+needDistinct input =
+  (isJust $ indexOf "{*}" input) || (isJust $ indexOf "[*]" input)
 
 needFields :: SearchQuery -> Boolean
 needFields query =
@@ -200,17 +223,37 @@ valueToSQL (Tag v) = v
 valueToSQL (Range v v') = ""
 
 labelsProjection :: Array String -> Array Label -> Array String
-labelsProjection fields [] = replace firstDot "" <$> fields
-labelsProjection _ ls =
-  replace firstDot "" <$>
-  (foldl (lift2 (<>)) [""] (labelProjection <$> ls))
+labelsProjection fields ls =
+  nub
+  $ replace arrFieldRgx "[*]"
+  <$> replace firstDot ""
+  <$> filter (test $ labelsRegex ls) fields
+  where
+  arrFieldRgx :: Regex
+  arrFieldRgx = regex "\\[\\d+\\]" noFlags{global = true}
 
-labelProjection :: Label -> Array String
-labelProjection (Common "*") = ["{*}", "[*]"]
-labelProjection (Common "{*}") = ["{*}"]
-labelProjection (Common "[*]") = ["[*]"]
-labelProjection (Common l) = [".\"" <> l <> "\""]
-labelProjection (Meta l) = labelProjection (Common l)
+labelsRegex :: Array Label -> Regex
+labelsRegex [] = regex ".*" noFlags
+labelsRegex ls = regex ("^" <> (foldMap mapFn ls) <> "$") noFlags
+  where
+  mapFn :: Label -> String
+  mapFn (Meta l) = mapFn (Common l)
+  mapFn (Common "{*}") = "(\\.[^\\.]+)"
+  mapFn (Common "[*]") = "(\\[\\d+\\])"
+  mapFn (Common "*") = "(\\.[^\\.]+|\\[\\d+\\])"
+  mapFn (Common l)
+    | test (regex "\\[\\d+\\]" noFlags) l =
+        replace openSquare "\\["
+      $ replace closeSquare "\\]"
+      $ l
+    | otherwise = "(\\.\"" <> l <> "\"|\\." <> l <> ")"
+
+  openSquare :: Regex
+  openSquare = regex "\\[" noFlags
+
+  closeSquare :: Regex
+  closeSquare = regex "\\]" noFlags
+
 
 firstDot :: Regex
 firstDot = regex "^\\." noFlags
