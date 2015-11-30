@@ -173,8 +173,12 @@ addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
 addCell cellType parent st =
   let editorId = CellId st.fresh
       resultsId = editorId + one
-      initEditorState = installedState (initEditorCellState st.accessType Visible)
-      initResultsState = installedState (initResultsCellState st.accessType Visible)
+      initEditorState =
+        installedState $
+          (initEditorCellState st.accessType Visible)
+            { cachingEnabled = defaultCachingEnabled cellType
+            }
+      initResultsState = installedState $ initResultsCellState st.accessType Visible
       dependencies = M.insert resultsId editorId st.dependencies
   in st
     { fresh = st.fresh + 2
@@ -186,6 +190,11 @@ addCell cellType parent st =
     , isAddingCell = false
     }
   where
+
+  defaultCachingEnabled :: CellType -> Maybe Boolean
+  defaultCachingEnabled Query = Just false
+  defaultCachingEnabled Search = Just false
+  defaultCachingEnabled _ = Nothing
 
   editor :: CellType -> CellId -> CellComponent
   editor Query _ = aceComponent Query queryEval "ace/mode/sql"
