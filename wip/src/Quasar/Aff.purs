@@ -623,14 +623,16 @@ getFields' acc json =
 executeQuery
   :: forall e
    . String
+  -> Boolean
   -> SM.StrMap String
   -> R.Resource
   -> R.Resource
   -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String { outputResource :: R.Resource, plan :: Maybe String })
-executeQuery sql varMap inputResource outputResource = do
+executeQuery sql cachingEnabled varMap inputResource outputResource = do
   when (R.isTempFile outputResource) $
     void $ attempt $ forceDelete outputResource
 
+  -- TODO: when caching is disabled and varMap is empty, use `viewPort`
   jobj <- attempt $ portQuery inputResource outputResource sql varMap
   pure $ do
     j <- lmap Exn.message jobj

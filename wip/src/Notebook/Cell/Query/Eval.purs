@@ -52,10 +52,11 @@ queryEval info sql =
     let
       varMap = info.inputPort >>= L.preview Port._VarMap # M.fromMaybe SM.empty
       tempOutputResource = CEQ.temporaryOutputResource info
-      inputResource = R.parent tempOutputResource
+      inputResource = R.parent tempOutputResource -- TODO: make sure that this is actually still correct
+      cachingEnabled = false
 
     { plan: plan, outputResource: outputResource } <-
-      Quasar.executeQuery sql (renderFormFieldValue <$> varMap) inputResource tempOutputResource
+      Quasar.executeQuery sql cachingEnabled (renderFormFieldValue <$> varMap) inputResource tempOutputResource
         # MT.lift
         >>= E.either EC.throwError pure
 

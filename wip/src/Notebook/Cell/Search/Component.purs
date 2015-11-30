@@ -132,11 +132,12 @@ eval = coproduct cellEval searchEval
               template = Search.queryToSQL fields query
               sql = Quasar.templated inputResource template
               tempOutputResource = NC.temporaryOutputResource info
+              cachingEnabled = false
 
             WC.tell ["Generated SQL: " <> sql]
 
             { plan: plan, outputResource: outputResource } <-
-              Quasar.executeQuery template SM.empty inputResource tempOutputResource
+              Quasar.executeQuery template cachingEnabled SM.empty inputResource tempOutputResource
                 # Aff.liftAff >>> liftH >>> liftH >>> MT.lift
                 >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
