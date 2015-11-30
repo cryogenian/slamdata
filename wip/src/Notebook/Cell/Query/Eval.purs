@@ -29,13 +29,10 @@ import Data.Either as E
 import Data.Foldable as F
 import Data.Lens as L
 import Data.Maybe as M
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as P
 import Data.Set as Set
 import Data.String.Regex as Rx
 import Data.StrMap as SM
 
-import Model.CellId as CID
 import Model.Resource as R
 import Model.Port as Port
 import Notebook.Cell.Common.EvalQuery as CEQ
@@ -52,10 +49,9 @@ import Quasar.Aff as Quasar
 queryEval :: CEQ.CellEvalInput -> String -> Slam CEQ.CellEvalResult
 queryEval info sql =
   CEQ.runCellEvalT $ do
-    notebookPath <- info.notebookPath # M.maybe (EC.throwError "Missing notebook path") pure
     let
       varMap = info.inputPort >>= L.preview Port._VarMap # M.fromMaybe SM.empty
-      tempOutputResource = R.File $ notebookPath </> P.file ("out" <> CID.cellIdToString info.cellId)
+      tempOutputResource = CEQ.temporaryOutputResource info
       inputResource = R.parent tempOutputResource
 
     { plan: plan, outputResource: outputResource } <-

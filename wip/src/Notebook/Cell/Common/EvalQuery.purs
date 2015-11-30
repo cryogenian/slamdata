@@ -21,6 +21,7 @@ module Notebook.Cell.Common.EvalQuery
   , CellEvalInput()
   , CellEvalT()
   , runCellEvalT
+  , temporaryOutputResource
   ) where
 
 import Prelude
@@ -34,9 +35,12 @@ import Control.Monad.Trans as MT
 import Data.Either as E
 import Data.Maybe as M
 import Data.Tuple as TPL
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
 
 import Model.Port (Port())
-import Model.CellId (CellId())
+import Model.CellId (CellId(), cellIdToString)
+import Model.Resource as R
 import Utils.Path (DirPath())
 
 type CellEvalInput =
@@ -44,6 +48,24 @@ type CellEvalInput =
   , inputPort :: M.Maybe Port
   , cellId :: CellId
   }
+
+temporaryOutputResource
+  :: CellEvalInput
+  -> R.Resource
+temporaryOutputResource info =
+  R.mkFile $ E.Left $ outputDirectory </> outputFile
+  where
+    outputDirectory =
+      filterMaybe (== P.rootDir) info.notebookPath #
+        M.fromMaybe (P.rootDir </> P.dir ".tmp")
+
+    outputFile =
+      P.file $ "out" <> cellIdToString info.cellId
+
+    filterMaybe :: forall a. (a -> Boolean) -> M.Maybe a -> M.Maybe a
+    filterMaybe p m =
+      m >>= \x ->
+        if p x then M.Nothing else pure x
 
 -- | The query algebra shared by the inner parts of a cell component.
 -- |

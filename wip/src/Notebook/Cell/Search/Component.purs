@@ -33,8 +33,6 @@ import Data.Maybe (maybe)
 import Data.Either (either)
 import Data.String as S
 import Data.StrMap as SM
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as Path
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -49,7 +47,6 @@ import Model.CellType as CT
 import Model.CellId as CID
 import Model.Notebook.Search as Search
 import Model.Port as Port
-import Model.Resource as R
 
 import Notebook.Cell.Common.EvalQuery as NC
 import Notebook.Cell.Component as NC
@@ -128,14 +125,12 @@ eval = coproduct cellEval searchEval
                 # MT.lift
                 >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
-            notebookPath <- maybe (EC.throwError "Missing notebook path") pure info.notebookPath
             fields <- MT.lift <<< liftH <<< liftAff' $ Quasar.fields inputResource
 
             let
               template = Search.queryToSQL fields query
               sql = Quasar.templated inputResource template
-
-              tempOutputResource = R.File $ notebookPath </> Path.file ("out" <> CID.cellIdToString info.cellId)
+              tempOutputResource = NC.temporaryOutputResource info
 
             WC.tell ["Generated SQL: " <> sql]
 
