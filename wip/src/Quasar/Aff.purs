@@ -629,7 +629,7 @@ executeQuery
   -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String { outputResource :: R.Resource, plan :: Maybe String })
 executeQuery sql varMap inputResource outputResource = do
   when (R.isTempFile outputResource) $
-    forceDelete outputResource
+    void $ attempt $ forceDelete outputResource
 
   jobj <- attempt $ portQuery inputResource outputResource sql varMap
   pure $ do
