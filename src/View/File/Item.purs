@@ -28,7 +28,7 @@ import Input.File.Item (ItemInput(..))
 import Model.Action (Action(..))
 import Model.File
 import Model.File.Item
-import Model.Resource (Resource(..), resourcePath, resourceName, isFile, isDatabase, isNotebook, hiddenTopLevel)
+import Model.Resource (Resource(..), resourcePath, resourceName, isFile, isDatabase, isNotebook, isViewMount, hiddenTopLevel)
 import View.File.Common (HTML(), toolItem)
 import Optic.Core
 
@@ -105,6 +105,7 @@ iconClasses it = A.classes [B.glyphicon, Vc.itemIcon, iconClass $ itemResource i
   where
   iconClass :: Resource -> A.ClassName
   iconClass (File _) = B.glyphiconFile
+  iconClass (ViewMount _) = B.glyphiconFile
   iconClass (Notebook _) = B.glyphiconBook
   iconClass (Directory _) = B.glyphiconFolderOpen
   iconClass (Database _) = B.glyphiconHdd
@@ -118,7 +119,7 @@ showToolbar it state =
   in conf <> [ toolItem' handleMoveItem "Move / rename" B.glyphiconMove
              , toolItem' handleDownloadItem "Download" B.glyphiconDownloadAlt
              , toolItem' handleDeleteItem "Remove" B.glyphiconTrash
-             ] ++ if isFile r || isNotebook r
+             ] ++ if isFile r || isNotebook r || isViewMount r
                   then [toolItem' (handleShare (state ^. _sort) (state ^. _salt)) "Share" B.glyphiconShare]
                   else []
   where

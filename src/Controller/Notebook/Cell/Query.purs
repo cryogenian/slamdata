@@ -17,6 +17,7 @@ limitations under the License.
 module Controller.Notebook.Cell.Query where
 
 import Prelude
+import Control.Alt ((<|>))
 import Control.Monad.Eff.Class (liftEff)
 import Control.Plus (empty)
 import Controller.Notebook.Cell.JTableContent (queryToJTable, runJTable)
@@ -36,23 +37,16 @@ import qualified Data.Array.NonEmpty as NEL
 import qualified Model.Notebook.Cell.Query as Qu
 
 runQuery :: forall e. Cell -> I e
-runQuery cell = case queryToJTable cell input <$> path <*> (pure $ outFile cell) of
-  Just x -> x
-  Nothing -> do
-    now' <- liftEff now
-    return $ inj
-      $ CellResult (cell ^. _cellId)
-      now' (Left $ NEL.singleton "Cannot run query with no output resource")
-
+runQuery cell = queryToJTable cell sql path (outFile cell)
   where
-  output :: Maybe Resource
-  output = cell ^? _output .. _PortResource
+  output :: Resource
+  output = fromMaybe (outFile cell) $ cell ^? _output .. _PortResource
 
-  path :: Maybe Resource
-  path = parent <$> output
+  path :: Resource
+  path = parent output
 
-  input :: String
-  input = cell ^. _content .. _Query .. Qu._input
+  sql :: String
+  sql = cell ^. _content .. _Query .. Qu._input
 
 
 viewQuery :: forall e. Cell -> I e

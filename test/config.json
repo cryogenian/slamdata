@@ -185,7 +185,7 @@
         "searchInput": ".search-cell-input",
         "searchButton": ".search-cell-button",
         "searchClear": ".search-clear",
-        "allQuery": "~*",
+        "allQuery": "*",
         "incorrectQuery": "::"
     },
     "explore": {
@@ -254,7 +254,7 @@
             "rows": 9
         },
         {
-            "query": "pop:>10000 city:~b*",
+            "query": "pop:>10000 city:~\"^b.*\"",
             "pages": 1,
             "rows": 1
         }
@@ -431,5 +431,5 @@
     },
     "collectingScreenshots": false,
     "tmpFileForScreenshots": "image/tmp.png",
-    "version": "2.2.2"
+    "version": "2.3.1"
 }
