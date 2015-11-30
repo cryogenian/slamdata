@@ -59,7 +59,8 @@ queryEval info sql =
         # MT.lift
         >>= E.either EC.throwError pure
 
-    WC.tell ["Plan: " <> plan]
+    F.for_ plan \p ->
+      WC.tell ["Plan: " <> p]
 
     pure $ Port.Resource outputResource
 

@@ -28,11 +28,12 @@ import Control.Monad.Trans as MT
 import Control.Monad.Error.Class as EC
 import Control.Monad.Writer.Class as WC
 
+import Data.Either (either)
+import Data.Foldable as F
 import Data.Functor.Coproduct
 import Data.Maybe (maybe)
-import Data.Either (either)
-import Data.String as S
 import Data.StrMap as SM
+import Data.String as S
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -139,7 +140,8 @@ eval = coproduct cellEval searchEval
                 # Aff.liftAff >>> liftH >>> liftH >>> MT.lift
                 >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
-            WC.tell ["Plan: " <> plan]
+            F.for_ plan \p ->
+              WC.tell ["Plan: " <> p]
 
             pure $ Port.Resource outputResource
 

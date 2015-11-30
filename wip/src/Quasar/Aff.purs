@@ -626,7 +626,7 @@ executeQuery
   -> SM.StrMap String
   -> R.Resource
   -> R.Resource
-  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String { outputResource :: R.Resource, plan :: String })
+  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String { outputResource :: R.Resource, plan :: Maybe String })
 executeQuery sql varMap inputResource outputResource = do
   when (R.isTempFile outputResource) $
     forceDelete outputResource
@@ -640,5 +640,5 @@ executeQuery sql varMap inputResource outputResource = do
     realOut <- maybe (Left "Could not sandbox Quasar file") Right $ P.sandbox P.rootDir path
     pure
       { outputResource: R.mkFile $ Left $ P.rootDir </> realOut
-      , plan: maybe "" (\p -> either (const "") id $ p .? "detail") planPhases
+      , plan: planPhases >>= (.? "detail") >>> either (const Nothing) Just
       }
