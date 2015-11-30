@@ -17,7 +17,7 @@ limitations under the License.
 module Controller.Notebook.Cell.Markdown (runMarkdown) where
 
 import Prelude
-import Api.Query (query')
+import qualified Api.Query as Quasar
 import Control.Bind ((<=<), (=<<))
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Class (liftAff)
@@ -72,7 +72,7 @@ runMarkdown cell = do
   runQuery code = do
     n <- get :: _ Int
     modify (+ 1)
-    result <- liftAff $ query' (tmpFile n) code
+    result <- liftAff $ Quasar.query (tmpFile n) code
     either (throwError <<< error) pure result
 
   evalFuncs = { code: evalCode, block: evalBlock

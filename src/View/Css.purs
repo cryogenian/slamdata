@@ -205,6 +205,9 @@ cellEvalLine = className "cell-eval-line"
 exploreCellEditor :: ClassName
 exploreCellEditor = className "explore-cell-editor"
 
+glyphiconInactive :: ClassName
+glyphiconInactive = className "glyphicon-inactive"
+
 pagination :: ClassName
 pagination = className "pagination"
 

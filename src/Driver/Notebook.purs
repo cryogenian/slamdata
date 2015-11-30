@@ -47,7 +47,7 @@ import EffectTypes (NotebookComponentEff(), NotebookAppEff())
 import Halogen (Driver())
 import Halogen.HTML.Events.Monad (runEvent, andThen)
 import Input.Notebook (Input(..))
-import Model.Action (Action(Edit), isEdit)
+import Model.Action (Action(New, Edit), isEdit)
 import Model.Notebook
 import Model.Notebook.Cell (Cell(), CellId(), CellContent(..), _cellId, _hasRun, _content, _output, _parent)
 import Model.Notebook.Cell.Explore (initialExploreRec, _input)
@@ -76,6 +76,12 @@ driver ref k =
   matches' decodeURIPath routing \old new -> do
     case new of
       CellRoute res cellId editable -> notebook res editable $ Just cellId
+      NotebookRoute res New -> do
+        let newNotebook = emptyNotebook # _path .~ resourceDir res
+        update $ (_editable .~ true)
+              .. (_loaded .~ true)
+              .. (_error .~ Nothing)
+              .. (_notebook .~ newNotebook)
       NotebookRoute res editable -> notebook res editable Nothing
       ExploreRoute res -> do
         let newNotebook = emptyNotebook # _path .~ resourceDir res
@@ -178,7 +184,7 @@ notebookAutosave refState refTimer input k = do
         clearTimeout t
         t' <- timeout Config.autosaveTick $ runAff' (saveNotebook notebook) \result -> do
           case result of
-            Left err -> k $ WithState (_error ?~ message err)
+            Left err -> k $ WithState id
             Right nb -> do
               let update = (_notebook %~ replacePendingPorts)
                        <<< (_notebook .. _name .~ (nb ^. _name))

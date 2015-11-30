@@ -35,6 +35,7 @@ import Model.Notebook.Cell
 import Model.Notebook.Port (Port(..))
 import Model.Resource (resourceName)
 import Optic.Core
+import Optic.Extended ((^?))
 import Data.Int (fromNumber)
 import View.Common
 import View.Notebook.Cell.Ace (aceEditor)
@@ -158,6 +159,7 @@ statusBar notebook hasOutput c =
                [ H.text $ statusText notebook.tickDate (c ^. _runState) ]
              , H.div [ A.classes [ B.pullRight, VC.cellControls ] ]
                $ catMaybes [ refreshButton
+                           , toggleCachingButton
                            , toggleMessageButton
                            , linkButton
                            , Just $ glyph B.glyphiconChevronLeft
@@ -188,6 +190,16 @@ statusBar notebook hasOutput c =
          [ glyph if c ^._expandedStatus
                  then B.glyphiconEyeClose
                  else B.glyphiconEyeOpen ]
+
+  toggleCachingButton :: Maybe (HTML e)
+  toggleCachingButton =
+    (c ^? _content .._shouldCacheResults) <#> \cachingEnabled ->
+      H.button
+        [ A.title if cachingEnabled then "Disable Caching" else "Enable Caching"
+        , E.onClick (\_ -> E.preventDefault $> pure (UpdateCell (c ^._cellId) (_content .. _shouldCacheResults %~ not)))
+        ]
+        [ B.glyphiconPushpin # if cachingEnabled then glyph else glyphInactive
+        ]
 
   linkButton :: Maybe (HTML e)
   linkButton =

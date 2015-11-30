@@ -17,34 +17,45 @@ limitations under the License.
 module Api.Fs where
 
 import Prelude
-import Api.Common (RetryEffects(), succeeded, getResponse, retryGet, retryDelete, retryPut, slamjax, getOnce, ldJSON)
+
+import Api.Common (RetryEffects(), succeeded, notFoundStatus, getWithPolicy, getResponse, retryGet, retryDelete, retryPut, slamjax, getOnce, ldJSON)
+
 import Control.Apply ((*>))
 import Control.Bind ((>=>))
-import Control.Monad.Aff (Aff())
+import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
+
+import Data.Argonaut.Combinators ((.?))
 import Data.Argonaut.Core (Json())
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Parser (jsonParser)
+
 import Data.Array (head, tail, findIndex, filter, elemIndex, (:))
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
+
 import Data.Foreign (Foreign(), F(), parseJSON)
-import Data.Foreign.Index (prop)
 import Data.Foreign.Class (readProp, read, IsForeign)
+import Data.Foreign.Index (prop)
+import Data.Foreign.NullOrUndefined
+
 import Data.Maybe
 import Data.Path.Pathy
 import Data.These (These(..), theseLeft, theseRight)
 import Data.Tuple (Tuple(..))
+
 import Model.Path
 import Model.Notebook.Cell
 import Model.Notebook.Port
+
 import Network.HTTP.Affjax (Affjax(), AJAX(), affjax, defaultRequest)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.MimeType (MimeType())
 import Network.HTTP.MimeType.Common (applicationJSON)
+
 import Optic.Core
 
 import qualified Data.Maybe.Unsafe as U
@@ -61,7 +72,9 @@ runListing :: Listing -> Array R.Resource
 runListing (Listing rs) = rs
 
 instance listingIsForeign :: IsForeign Listing where
-  read f = Listing <$> readProp "children" f
+  read f = do
+    children <- runNullOrUndefined <$> readProp "children" f
+    pure $ Listing $ fromMaybe [] children
 
 instance listingRespondable :: Respondable Listing where
   responseType = JSONResponse
@@ -78,10 +91,16 @@ children' p = runListing <$> (getResponse msg $ listing p)
   msg = "error getting resource children"
 
 listing :: forall e. DirPath -> Affjax (RetryEffects e) Listing
-listing p = maybe
-              (throwError $ error "incorrect path")
-              (\p -> retryGet $ (Config.metadataUrl </> p))
-              $ relativeTo p rootDir
+listing p =
+  case relativeTo p rootDir of
+    Nothing -> throwError $ error "incorrect path"
+    Just p ->
+      getWithPolicy
+        { shouldRetryWithStatusCode: \c -> not (succeeded c || c == notFoundStatus)
+        , delayCurve: const 1000
+        , timeout: Just 10000
+        }
+        (Config.metadataUrl </> p)
 
 makeFile :: forall e. FilePath -> MimeType -> String -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
 makeFile path mime content =
@@ -182,7 +201,7 @@ saveNotebook notebook = case notebook ^. N._name of
 -- | the end of the name.
 getNewName :: forall e. DirPath -> String -> Aff (RetryEffects (ajax :: AJAX | e)) String
 getNewName parent name = do
-  items <- children' parent
+  items <- attempt (children' parent) <#> either (const []) id
   pure if exists' name items then getNewName' items 1 else name
   where
   getNewName' items i =
@@ -216,15 +235,13 @@ forceDelete =
 
   rootForResource :: R.Resource -> DirPath
   rootForResource r =
-    if R.isDatabase r then
-      Config.mountUrl
-    else
-      Config.dataUrl
-
+    if R.isDatabase r || R.isViewMount r
+    then Config.mountUrl
+    else Config.dataUrl
 
 delete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Maybe R.Resource)
 delete resource =
-  if not (R.isDatabase resource || alreadyInTrash resource)
+  if not (R.isDatabase resource || R.isViewMount resource || alreadyInTrash resource)
   then
     moveToTrash resource
   else do
@@ -260,10 +277,9 @@ delete resource =
       Right _ -> false
       Left n -> if n == DirName Config.trashFolder then true else alreadyInTrash' d
 
-
 move :: forall a e. R.Resource -> AnyPath -> Aff (RetryEffects (ajax :: AJAX | e)) AnyPath
 move src tgt = do
-  let url = if R.isDatabase src
+  let url = if R.isDatabase src || R.isViewMount src
             then Config.mountUrl
             else Config.dataUrl
   result <- slamjax $ defaultRequest
@@ -309,5 +325,29 @@ saveMount res uri = do
   if succeeded result.status
      then pure unit
      else throwError (error result.response)
+
+saveViewMount :: forall e. R.Resource -> String -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+saveViewMount dest uri = do
+  result <- slamjax $ defaultRequest
+    { method = PUT
+    , headers = [ContentType applicationJSON]
+    , content = Just $ stringify { view: { connectionUri: uri } }
+    , url = printPath
+            $ Config.mountUrl
+            </> rootify (R.resourceDir dest)
+            </> file (R.resourceName dest)
+    }
+  if succeeded result.status
+     then pure unit
+     else throwError (error (readErr result.response))
+
+  where
+  readErr :: String -> String
+  readErr input =
+    case jsonParser input >>= decodeJson >>= (.? "error") of
+      -- All response is error text
+      Left _ -> input
+      -- Error is hided in json message, return only `error` field
+      Right err -> err
 
 foreign import stringify :: forall r. { | r } -> String

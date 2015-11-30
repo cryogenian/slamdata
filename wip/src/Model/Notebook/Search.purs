@@ -16,21 +16,21 @@ limitations under the License.
 
 module Model.Notebook.Search
   ( queryToSQL
-  , needFields
   ) where
 
 import Prelude
 
-import Control.Apply (lift2)
+import Control.Bind (join)
 
+import Data.Array (filter, catMaybes, head, nub)
 import Data.Foldable
-import Data.List (fromList, List(..))
+import Data.List (fromList, List())
 import Data.Maybe
 import Data.Semiring.Free
 import Data.String (joinWith, indexOf)
 import Data.String.Regex as RX
 
-import Text.SlamSearch as SS
+--import Text.SlamSearch as SS
 import Text.SlamSearch.Types as SS
 
 queryToSQL
@@ -38,26 +38,43 @@ queryToSQL
   -> SS.SearchQuery
   -> String
 queryToSQL fields query =
-  "SELECT"
-    <> (if needDistinct whereClause then " DISTINCT " else " ")
-    <> "* from {{path}} where "
-    <> whereClause
+     "SELECT"
+  <> (if needDistinct whereClause then " DISTINCT " else " ")
+  <> topFields
+  <> " from {{path}} where " <> whereOrFalse
   where
+    topFields :: String
+    topFields =
+        joinWith ", "
+      $ nub
+      $ map (RX.replace firstDot "")
+      $ catMaybes
+      $ map join
+      $ map head
+      $ catMaybes
+      $ map (RX.match topFieldRegex)
+      $ fields
+
+    topFieldRegex :: RX.Regex
+    topFieldRegex = RX.regex "^\\.[^\\.\\[]+|^\\[.+\\]/" RX.noFlags
+
+    whereOrFalse :: String
+    whereOrFalse = if whereClause == "()" then "FALSE" else whereClause
+
+    whereClause :: String
     whereClause =
-      joinWith " OR " $
-        pars <$> joinWith " AND " <$> (fromList <<< (fromList <$>) $
-          runFree $ (termToSQL fields) <$> query)
+        joinWith " OR "
+      $ map oneWhereInput
+      $ fromList
+      $ runFree
+      $ map (termToSQL fields) query
+
+    oneWhereInput :: List String -> String
+    oneWhereInput s = pars $ joinWith " AND " $ fromList s
 
 needDistinct :: String -> Boolean
-needDistinct input = isJust $ indexOf "[*]" input
-
-needFields :: SS.SearchQuery -> Boolean
-needFields query =
-  SS.check unit query needFields'
-  where
-    needFields' :: Unit -> SS.Term -> Boolean
-    needFields' _ (SS.Term {labels: Nil}) = true
-    needFields' _ _ = false
+needDistinct input =
+  (isJust $ indexOf "{*}" input) || (isJust $ indexOf "[*]" input)
 
 termToSQL
   :: Array String
@@ -72,7 +89,6 @@ termToSQL fields (SS.Term {include: include, predicate: p, labels: ls}) =
     renderPredicate p prj =
       joinWith " OR " (predicateToSQL p <$> prj)
 
-
 predicateToSQL
   :: SS.Predicate
   -> String
@@ -80,7 +96,7 @@ predicateToSQL
 predicateToSQL (SS.Contains (SS.Range v v')) s = range v v' s
 predicateToSQL (SS.Contains (SS.Text v)) s =
   joinWith " OR " $
-    [s <> " ~* '" <> escapeRegex v <> "'"]
+    [s <> " ~* '" <> (globToRegex $ containsToGlob v) <> "'"]
     <> (if needUnq v then render' v else [])
     <> (if not (needDateTime v) && needDate v then render date else [ ])
     <> (if needTime v then render time  else [])
@@ -88,6 +104,16 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
     <> (if needInterval v then render i else [])
 
   where
+    containsToGlob :: String -> String
+    containsToGlob v =
+      if hasSpecialChars v
+      then v
+      else "*" <> v <> "*"
+
+    hasSpecialChars :: String -> Boolean
+    hasSpecialChars v =
+      isJust (indexOf "*" v) || isJust (indexOf "?" v)
+
     quoted = quote v
     date = dated quoted
     time = timed quoted
@@ -104,14 +130,6 @@ predicateToSQL (SS.Lt v) s = qUnQ s "<" v
 predicateToSQL (SS.Lte v) s = qUnQ s "<=" v
 predicateToSQL (SS.Ne v) s = qUnQ s "<>" v
 predicateToSQL (SS.Like v) s = s <> " ~* '" <> globToRegex v <> "'"
-
-escapeRegex :: String -> String
-escapeRegex = RX.replace regexEscapeRegex "\\$&"
-  where
-    regexEscapeRegex =
-      RX.regex
-        "[\\-\\[\\]\\/\\{\\}\\(\\)\\*\\+\\?\\.\\\\\\^\\$\\|]"
-        RX.noFlags { global = true }
 
 
 globToRegex :: String -> String
@@ -219,7 +237,6 @@ needInterval = RX.test intervalRegex
         "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
         RX.noFlags
 
-
 valueToSQL :: SS.Value -> String
 valueToSQL v =
   case v of
@@ -227,21 +244,37 @@ valueToSQL v =
     SS.Tag v -> v
     SS.Range v v' -> ""
 
-labelsProjection
-  :: Array String
-  -> Array SS.Label
-  -> Array String
-labelsProjection fields [] = RX.replace firstDot "" <$> fields
-labelsProjection _ ls = RX.replace firstDot "" <$> foldl (lift2 (<>)) [""] (labelProjection <$> ls)
+labelsProjection :: Array String -> Array SS.Label -> Array String
+labelsProjection fields ls =
+  nub
+  $ RX.replace arrFieldRgx "[*]"
+  <$> RX.replace firstDot ""
+  <$> filter (RX.test $ labelsRegex ls) fields
+  where
+    arrFieldRgx :: RX.Regex
+    arrFieldRgx = RX.regex "\\[\\d+\\]" RX.noFlags{global = true}
 
-labelProjection :: SS.Label -> Array String
-labelProjection l =
-  case l of
-    SS.Common "*" -> ["{*}", "[*]"]
-    SS.Common "{*}" -> ["{*}"]
-    SS.Common "[*]" -> ["[*]"]
-    SS.Common l -> [".\"" <> l <> "\""]
-    SS.Meta l -> labelProjection $ SS.Common l
+labelsRegex :: Array SS.Label -> RX.Regex
+labelsRegex [] = RX.regex ".*" RX.noFlags
+labelsRegex ls = RX.regex ("^" <> (foldMap mapFn ls) <> "$") RX.noFlags
+  where
+    mapFn :: SS.Label -> String
+    mapFn (SS.Meta l) = mapFn (SS.Common l)
+    mapFn (SS.Common "{*}") = "(\\.[^\\.]+)"
+    mapFn (SS.Common "[*]") = "(\\[\\d+\\])"
+    mapFn (SS.Common "*") = "(\\.[^\\.]+|\\[\\d+\\])"
+    mapFn (SS.Common l)
+      | RX.test (RX.regex "\\[\\d+\\]" RX.noFlags) l =
+          RX.replace openSquare "\\["
+        $ RX.replace closeSquare "\\]"
+        $ l
+      | otherwise = "(\\.\"" <> l <> "\"|\\." <> l <> ")"
+
+    openSquare :: RX.Regex
+    openSquare = RX.regex "\\[" RX.noFlags
+
+    closeSquare :: RX.Regex
+    closeSquare = RX.regex "\\]" RX.noFlags
 
 firstDot :: RX.Regex
 firstDot = RX.regex "^\\." RX.noFlags
@@ -263,4 +296,3 @@ datetimed s = "TIMESTAMP " <> s
 
 intervaled :: String -> String
 intervaled s = "INTERVAL " <> s
-
