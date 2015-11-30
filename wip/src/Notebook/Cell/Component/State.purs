@@ -27,6 +27,7 @@ module Notebook.Cell.Component.State
   , _messages
   , _messageVisibility
   , _hasResults
+  , _cachingEnabled
   , AnyCellState()
   , _AceState
   , _ExploreState
@@ -39,7 +40,8 @@ module Notebook.Cell.Component.State
 import Prelude
 
 import Data.Either (Either())
-import Data.Lens (LensP(), lens, PrismP(), prism')
+import Data.Lens (LensP(), lens, PrismP(), TraversalP(), prism', wander)
+
 import Data.Maybe (Maybe(..))
 import Data.Visibility (Visibility(..))
 
@@ -85,6 +87,7 @@ type CellState =
   , messages :: Array (Either String String)
   , messageVisibility :: Visibility
   , hasResults :: Boolean
+  , cachingEnabled :: Maybe Boolean -- Nothing if the option isn't available
   }
 
 type CellStateP = InstalledState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
@@ -100,6 +103,7 @@ initEditorCellState accessType visibility =
   , messages: []
   , messageVisibility: Invisible
   , hasResults: false
+  , cachingEnabled: Nothing
   }
 
 -- | Creates an initial `CellState` value for a results cell.
@@ -113,6 +117,7 @@ initResultsCellState accessType visibility =
   , messages: []
   , messageVisibility: Invisible
   , hasResults: false
+  , cachingEnabled: Nothing
   }
 
 _accessType :: LensP CellState AccessType
@@ -138,6 +143,13 @@ _messageVisibility = lens _.messageVisibility (_ { messageVisibility = _ })
 
 _hasResults :: LensP CellState Boolean
 _hasResults = lens _.hasResults (_ { hasResults = _ })
+
+_cachingEnabled :: TraversalP CellState Boolean
+_cachingEnabled =
+  wander \f s ->
+    case s.cachingEnabled of
+      Nothing -> pure s
+      Just b -> f b <#> \b' -> s { cachingEnabled = Just b' }
 
 data AnyCellState
   = AceState AceStateP
