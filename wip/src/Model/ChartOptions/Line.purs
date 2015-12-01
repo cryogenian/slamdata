@@ -24,7 +24,6 @@ import Data.Array ((!!), cons)
 import Data.Array as A
 import Data.Bifunctor (bimap)
 import Data.Foldable (foldl)
-import Data.Int (toNumber)
 import Data.List (List(..), replicate, length)
 import Data.List as L
 import Data.Map (Map())
@@ -126,14 +125,8 @@ buildLine
 buildLine axises angle size conf = case axisSeriesPair of
   Tuple xAxis series ->
     Option optionDefault { series = Just $ map Just series
-                         , xAxis = Just $ OneAxis $ Axis xAxis
-                           { axisLabel = Just $ AxisLabel axisLabelDefault
-                             { rotate = Just $ toNumber angle
-                             , textStyle = Just $ TextStyle textStyleDefault
-                               { fontSize = Just $ toNumber size
-                               }
-                             }
-                           }
+                         , xAxis = Just $ OneAxis $ Axis
+                                   $ mixAxisLabelAngleAndFontSize angle size xAxis
                          , yAxis = Just yAxis
                          , tooltip = Just tooltip
                          , legend = Just $ mkLegend series

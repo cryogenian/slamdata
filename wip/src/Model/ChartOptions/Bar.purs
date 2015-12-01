@@ -21,7 +21,6 @@ import Prelude
 import Data.Argonaut (JCursor())
 import Data.Array as A
 import Data.Foldable (foldl)
-import Data.Int (toNumber)
 import Data.List as L
 import Data.Map (Map())
 import Data.Map as M
@@ -41,14 +40,8 @@ buildBar
 buildBar axises angle size conf = case axisSeriesPair of
   Tuple xAxisR series ->
     Option optionDefault { series = Just $ map Just series
-                         , xAxis = Just $ OneAxis $ Axis xAxisR
-                           { axisLabel = Just $ AxisLabel axisLabelDefault
-                             { rotate = Just $ toNumber angle
-                             , textStyle = Just $ TextStyle textStyleDefault
-                               { fontSize = Just $ toNumber size
-                               }
-                             }
-                           }
+                         , xAxis = Just $ OneAxis $ Axis
+                                   $ mixAxisLabelAngleAndFontSize angle size xAxisR
                          , yAxis = Just yAxis
                          , tooltip = Just tooltip
                          , legend = Just $ mkLegend series

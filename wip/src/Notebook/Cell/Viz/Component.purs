@@ -254,12 +254,9 @@ vizEval q = do
     SetAxisFontSize size next ->
       modify (_axisLabelFontSize .~ size) *> configure $> next
 
-import Debug.Trace
-
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
   needToUpdate <- gets _.needToUpdate
-  traceAnyA needToUpdate
   map continue $ withLoading $ runCellEvalT do
     when needToUpdate do
       r <- maybe (throwError "Incorrect port in visual builder cell") pure
@@ -271,7 +268,7 @@ cellEval (EvalCell info continue) = do
         $  "Maximum record count available for visualization -- 10000, "
         <> "please consider using 'limit' or 'group by' in your request"
       lift $ modify $ _records .~ records
-    responsePort >>= traceAnyM
+    responsePort
   where
   withLoading action = do
     modify $ _loading .~ true
