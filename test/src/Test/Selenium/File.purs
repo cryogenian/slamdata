@@ -118,7 +118,7 @@ mountDatabaseWithMountConfig :: MountConfigR -> Check Unit
 mountDatabaseWithMountConfig mountConfig = do
   home
   getMountDatabaseButton >>= sequence <<< leftClick
-  waitModalShown
+  await "Error: modal is not shown" modalShown
   mac <- isMac
   chrome <- isChrome
   if mac && chrome
@@ -134,7 +134,7 @@ mountDatabaseWithMountConfig mountConfig = do
     ++ show mountConfig.port
 
   fieldByField :: Check Unit
-  fieldByField = tryRepeatedlyTo do
+  fieldByField = do
     warnMsg $ "This test doesn't check correctness of copy/paste.\n"
       <> "It's known bug of selenium/chrome/mac combination that modifier keys\n"
       <> "doesn't work"
@@ -153,10 +153,12 @@ mountDatabaseWithMountConfig mountConfig = do
       keys mountConfig.host
       leftClick pathField
       keys config.database.name
+
       leftClick saveButton
 
+
   copyPaste :: Check Unit
-  copyPaste = tryRepeatedlyTo do
+  copyPaste = do
     config <- getConfig
     uriField <- getUriField
     nameField <- getNameField
@@ -230,18 +232,21 @@ badMountDatabase :: Check Unit
 badMountDatabase = do
   sectionMsg "BAD MOUNT TEST DATABASE"
   config <- getConfig
+
   badMountConfig
     >>= mountDatabaseWithMountConfig
+
   warningBox <- getElementByCss config.configureMount.warningBox "no warning box"
+
   -- wait for any old validation messages to disappear
   wait (checker $ not <$> isDisplayed warningBox) config.selenium.waitTime
   -- wait for the server error to appear
   wait (checker $ isDisplayed warningBox) 8000
 
-  tryRepeatedlyTo
-    $ getElementByCss config.configureMount.cancelButton "no cancel button"
-    >>= sequence <<< leftClick
-  waitModalDismissed
+  cancelButton <- getElementByCss config.configureMount.cancelButton "no cancel button"
+  sequence $ leftClick cancelButton
+  wait modalDismissed config.selenium.waitTime
+
   where
     badMountConfig :: Check MountConfigR
     badMountConfig = do
@@ -280,7 +285,7 @@ checkConfigureMount = do
   sequence $ leftClick button
 
   config <- getConfig
-  waitModalShown
+  wait modalShown config.selenium.waitTime
   successMsg "configure-mount dialog shown"
 
   -- make sure a no-op edit doesn't result in a validation error
@@ -512,7 +517,7 @@ shareFile = do
   config <- getConfig
   uploadedItem <- getUploadedItem
   itemGetShareIcon uploadedItem >>= itemClickToolbarIcon uploadedItem
-  waitModalShown
+  wait modalShown config.selenium.waitTime
   successMsg "Share modal dialog appeared"
   urlFieldLocator <- byCss config.share.urlField
   urlField <- findSingle urlFieldLocator
@@ -717,13 +722,11 @@ moveDelete msg setUp src tgt = do
   item <- findItem src
           >>= maybe (errorMsg $ "there is no source " <> msg) pure
   itemGetMoveIcon item >>= itemClickToolbarIcon item
-  waitModalShown
-  tryRepeatedlyTo
-    $ getElementByCss config.move.nameField "no rename field"
+  wait modalShown config.selenium.waitTime
+  getElementByCss config.move.nameField "no rename field"
     >>= editNameField
 
-  tryRepeatedlyTo
-    $ getElementByCss config.move.submit "no submit button"
+  getElementByCss config.move.submit "no submit button"
     >>= sequence <<< leftClick
 
   renamed <- waitUntilJust (findItem tgt) config.selenium.waitTime
@@ -768,7 +771,7 @@ moveDeleteFile = do
   config <- getConfig
   moveDelete "file" goDown config.move.name config.move.other
 
-
+import Utils.Log
 
 downloadResource :: Check Unit
 downloadResource = do
@@ -779,7 +782,7 @@ downloadResource = do
   tryRepeatedlyTo do
     btn <- getToolbarDownloadButton
     sequence $ leftClick btn
-  waitModalShown
+  await "modal hasn't appeared" modalShown
   successMsg "Ok, global download dialog shown"
   cancelDownload
   successMsg "Ok, global download dialog hidden"
@@ -787,7 +790,7 @@ downloadResource = do
     item <- getDownloadItem
     sequence $ hover item
     getItemDownloadButton item >>= sequence <<< leftClick
-  waitModalShown
+  await "modal hasn't appeared" modalShown
   successMsg "Ok, item download dialog shown"
   tryRepeatedlyTo do
     val <- getSourceInput >>= flip getAttribute "value"
@@ -845,7 +848,7 @@ downloadResource = do
     config <- getConfig
     btn <- tryToFind $ byAriaLabel config.download.cancel
     sequence $ leftClick btn
-    waitModalDismissed
+    await "modal hasn't disappeared" modalDismissed
 
   proceedDownload = do
     config <- getConfig
@@ -884,16 +887,12 @@ downloadResource = do
     config <- getConfig
     byXPath config.download.multiLineJsonRadioSelector >>= findExact
 
-  readDownloaded = tryRepeatedlyTo do
+  readDownloaded = do
     config <- getConfig
     await "File has not been downloaded" do
       files <- lift $ readdir config.download.folder
       pure $ isJust $ Arr.elemIndex config.download.item files
-    res <- lift $ readTextFile UTF8
-           $ config.download.folder <> "/" <> config.download.item
-    if res == ""
-      then throwError $ error "empty file content"
-      else pure res
+    lift $ readTextFile UTF8 $ config.download.folder <> "/" <> config.download.item
 
   checkCSV rowSep colSep content = do
     config <- map _.download getConfig
@@ -906,10 +905,6 @@ downloadResource = do
   rmDownloaded = do
     config <- getConfig
     lift $ unlink $ config.download.folder <> "/" <> config.download.item
-    files <- lift $ readdir config.download.folder
-    if isJust $ Arr.elemIndex config.download.item files
-      then rmDownloaded
-      else pure unit
 
   checkJson content = do
     config <- map _.download getConfig
@@ -953,6 +948,6 @@ test = do
   checkTitle
   createFolder
   moveDeleteFolder
-  createNotebook
-  moveDeleteNotebook
+  -- createNotebook
+  -- moveDeleteNotebook
   downloadResource
