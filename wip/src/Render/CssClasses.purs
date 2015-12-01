@@ -325,3 +325,9 @@ chartEditor = className "chart-editor"
 
 chartOutput :: ClassName
 chartOutput = className "chart-output"
+
+axisLabelParam :: ClassName
+axisLabelParam = className "axis-label-param"
+
+chartSizeParam :: ClassName
+chartSizeParam = className "chart-size-param"

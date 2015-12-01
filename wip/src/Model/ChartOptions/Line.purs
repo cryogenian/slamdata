@@ -120,14 +120,19 @@ lineRawData
 aggregatePairs :: Aggregation -> Aggregation -> LabeledPointPairs -> LineData
 aggregatePairs fAgg sAgg = map $ bimap (runAggregation fAgg) (runAggregation sAgg)
 
-buildLine :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Option
-buildLine axises conf = case axisSeriesPair of
+buildLine
+  :: M.Map JCursor Ax.Axis -> Int -> Int -> ChartConfiguration -> Option
+buildLine axises angle size conf = case axisSeriesPair of
   Tuple xAxis series ->
     Option optionDefault { series = Just $ map Just series
-                         , xAxis = Just xAxis
+                         , xAxis = Just $ OneAxis $ Axis
+                                   $ mixAxisLabelAngleAndFontSize angle size xAxis
                          , yAxis = Just yAxis
                          , tooltip = Just tooltip
                          , legend = Just $ mkLegend series
+                         , grid = Just $ Grid gridDefault
+                           { y2 = Just $ Percent 15.0
+                           }
                          }
   where
   mkLegend :: Array Series -> Legend
@@ -144,8 +149,8 @@ buildLine axises conf = case axisSeriesPair of
   extractName (LineSeries r) = r.common.name
   extractName _ = Nothing
 
-  xAxisType :: AxisType
-  xAxisType = getXAxisType axises conf
+  xAxisConfig :: Tuple AxisType (Maybe Interval)
+  xAxisConfig = getXAxisConfig axises conf
 
   extracted :: LineData
   extracted = lineData $ buildChartAxises axises conf
@@ -157,29 +162,36 @@ buildLine axises conf = case axisSeriesPair of
     else OneAxis yAxis'
 
   yAxis' :: Axis
-  yAxis' = Axis axisDefault { "type" = Just ValueAxis}
+  yAxis' = Axis axisDefault { "type" = Just ValueAxis }
 
-  axisSeriesPair :: Tuple Axises (Array Series)
-  axisSeriesPair = mkSeries (needTwoAxises axises conf) xAxisType extracted
+  axisSeriesPair :: Tuple AxisRec (Array Series)
+  axisSeriesPair = mkSeries (needTwoAxises axises conf) xAxisConfig extracted
 
 needTwoAxises :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Boolean
 needTwoAxises axises (ChartConfiguration conf) =
   isJust $ (conf.measures !! 1) >>= view _value >>= flip M.lookup axises
 
-
-getXAxisType :: M.Map JCursor Ax.Axis -> ChartConfiguration -> AxisType
-getXAxisType axises (ChartConfiguration conf) =
+getXAxisConfig
+  :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Tuple AxisType (Maybe Interval)
+getXAxisConfig axises (ChartConfiguration conf) =
   case (conf.dimensions !! 0) >>= view _value >>= flip M.lookup axises of
-    Just (Ax.TimeAxis _) -> TimeAxis
-    _ -> CategoryAxis
+    Just (Ax.TimeAxis _) -> Tuple TimeAxis $ Just $ Custom zero
+    Just (Ax.ValAxis _) -> Tuple ValueAxis Nothing
+    _ -> Tuple CategoryAxis $ Just $ Custom zero
 
-mkSeries :: Boolean -> AxisType -> LineData -> Tuple Axises (Array Series)
-mkSeries needTwoAxis ty lData = Tuple xAxis series
+mkSeries
+  :: Boolean
+  -> Tuple AxisType (Maybe Interval)
+  -> LineData
+  -> Tuple AxisRec (Array Series)
+mkSeries needTwoAxis (Tuple ty interval_) lData = Tuple xAxis series
   where
-  xAxis :: Axises
-  xAxis =
-    OneAxis $ Axis $ axisDefault { "type" = Just ty
+  xAxis :: AxisRec
+  xAxis = axisDefault { "type" = Just ty
                                  , "data" = Just $ map CommonAxisData catVals
+                                 , axisTick = Just $ AxisTick axisTickDefault
+                                   { interval = interval_
+                                   }
                                  }
 
   catVals :: Array String

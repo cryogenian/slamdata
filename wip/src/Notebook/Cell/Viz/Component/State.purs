@@ -25,6 +25,8 @@ module Notebook.Cell.Viz.Component.State
   , _sample
   , _records
   , _needToUpdate
+  , _axisLabelAngle
+  , _axisLabelFontSize
   ) where
 
 import Prelude
@@ -51,6 +53,8 @@ type VizState =
   , loading :: Boolean
   , records :: JArray
   , needToUpdate :: Boolean
+  , axisLabelFontSize :: Int
+  , axisLabelAngle :: Int
   }
 
 _width :: forall a r. LensP {width :: a |r} a
@@ -76,6 +80,12 @@ _records = lens _.records _{records = _}
 
 _needToUpdate :: forall a r. LensP {needToUpdate :: a | r} a
 _needToUpdate = lens _.needToUpdate _{needToUpdate = _}
+
+_axisLabelFontSize :: forall a r. LensP {axisLabelFontSize :: a | r} a
+_axisLabelFontSize = lens _.axisLabelFontSize _{axisLabelFontSize = _}
+
+_axisLabelAngle :: forall a r. LensP {axisLabelAngle :: a | r} a
+_axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
 
 type VizStateP =
   InstalledState VizState Form.StateP

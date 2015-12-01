@@ -186,7 +186,7 @@ render (ChartConfiguration conf) =
   renderDimension clss ix sel =
     [ H.form [ P.classes $ clss <> [ Rc.chartConfigureForm, Rc.chartDimension ] ]
       [ dimensionLabel
-      , H.slot' cpDimension ix \_ -> { component: S.primarySelect
+      , H.slot' cpDimension ix \_ -> { component: S.primarySelect (pure "Dimension")
                                      , initialState: sel
                                      }
       ]
@@ -215,6 +215,7 @@ render (ChartConfiguration conf) =
              ]
       [ seriesLabel
       , H.slot' cpSeries ix \_ -> { component: S.secondarySelect
+                                    $ renderLabel ix "Series"
                                   , initialState: sel
                                   }
       ]
@@ -227,7 +228,7 @@ render (ChartConfiguration conf) =
                                    ]
              ]
       [ categoryLabel
-      , H.slot' cpSeries ix \_ -> { component: S.primarySelect
+      , H.slot' cpSeries ix \_ -> { component: S.primarySelect $ pure "Category"
                                   , initialState: sel
                                   }
       ]
@@ -239,11 +240,13 @@ render (ChartConfiguration conf) =
       then { disableWhen: (< 2)
            , defaultWhen: (> 1)
            , mainState: sel
+           , ariaLabel: renderLabel i "Measure"
            , classes: [Rc.aggregation, B.btnPrimary]
            }
       else { disableWhen: (< 1)
            , defaultWhen: (const true)
            , mainState: sel
+           , ariaLabel: renderLabel i "Measure"
            , classes: [Rc.aggregation, B.btnPrimary]
            }
 
@@ -267,6 +270,12 @@ render (ChartConfiguration conf) =
 
   seriesLabel :: FormHTML
   seriesLabel = label "Series"
+
+  renderLabel :: Int -> String -> Maybe String
+  renderLabel 0 str = pure $ "First " <> str
+  renderLabel 1 str = pure $ "Second " <> str
+  renderLabel 2 str = pure $ "Third " <> str
+  renderLabel n str = pure $ show n <> "th " <> str
 
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (SetConfiguration c@(ChartConfiguration conf) next) = do

@@ -18,6 +18,7 @@ module Notebook.Cell.Viz.Component where
 
 import Prelude
 
+import Control.Apply ((*>))
 import Control.Monad (when)
 import Control.MonadPlus (guard)
 import Control.Monad.Trans (lift)
@@ -46,9 +47,9 @@ import Model.Aggregation (aggregationSelect)
 import Model.CellType (CellType(Viz), cellName, cellGlyph)
 import Model.ChartAxis (analyzeJArray, Axis())
 import Model.ChartAxis as Ax
-import Model.ChartConfiguration (ChartConfiguration(..), depends)
+import Model.ChartConfiguration (ChartConfiguration(..), depends, dependsOnArr)
 import Model.ChartOptions (buildOptions)
-import Model.ChartType (ChartType(..))
+import Model.ChartType (ChartType(..), isPie)
 import Model.Port as P
 import Model.Resource as R
 import Model.Select
@@ -84,6 +85,8 @@ initialState =
   , sample: M.empty
   , records: []
   , needToUpdate: true
+  , axisLabelFontSize: 12
+  , axisLabelAngle: 30
   }
 
 vizComponent :: Component CellStateP CellQueryP Slam
@@ -189,27 +192,38 @@ renderChartConfiguration state =
 renderDimensions :: VizState -> VizHTML
 renderDimensions state =
   row
-  [ H.form [ P.classes [ B.colXs4, Rc.chartConfigureForm ] ]
-    [ label "Height"
-    , H.input [ P.classes [ B.formControl, Rc.chartConfigureHeight ]
-              , P.value $ showIfNeqZero state.height
-              , Cp.mbValueInput (pure
-                                 <<< map (right <<< flip SetHeight unit)
-                                 <<< stringToInt')
-              ]
-
-    ]
-  , H.form [ P.classes [ B.colXs4, Rc.chartConfigureForm ] ]
-    [ label "Width"
-    , H.input [ P.classes [ B.formControl, Rc.chartConfigureWidth ]
-              , P.value $ showIfNeqZero state.width
-              , Cp.mbValueInput (pure
-                                 <<< map (right <<< flip SetWidth unit)
-                                 <<< stringToInt')
-              ]
-    ]
+  [ chartInput Rc.chartSizeParam "Height"
+      (_.height >>> showIfNeqZero) SetHeight false
+  , chartInput Rc.chartSizeParam "Width"
+      (_.width >>> showIfNeqZero) SetWidth false
+  , chartInput Rc.axisLabelParam "Axis label angle"
+      (_.axisLabelAngle >>> show) RotateAxisLabel (isPie state.chartType)
+  , chartInput Rc.axisLabelParam "Axis font size"
+      (_.axisLabelFontSize >>> show) SetAxisFontSize (isPie state.chartType)
   ]
   where
+  chartInput
+    :: H.ClassName
+    -> String
+    -> (VizState -> String)
+    -> (Int -> Unit -> VizQuery Unit)
+    -> Boolean -> VizHTML
+  chartInput cls labelText valueFromState queryCtor isHidden =
+    H.form [ P.classes $ [ B.colXs3, cls ]
+                      <> (guard isHidden $> B.hide)
+           , Cp.nonSubmit
+           ]
+    [ label labelText
+    , H.input [ P.classes [ B.formControl ]
+              , P.value $ valueFromState state
+              , Cp.ariaLabel labelText
+              , Cp.mbValueInput (pure
+                                 <<< map (right <<< flip queryCtor unit)
+                                 <<< stringToInt'
+                                )
+              ]
+    ]
+
   label :: String -> VizHTML
   label str = H.label [ P.classes [ B.controlLabel ] ] [ H.text str ]
 
@@ -224,14 +238,21 @@ eval :: Natural Query VizDSL
 eval = coproduct cellEval vizEval
 
 vizEval :: Natural VizQuery VizDSL
-vizEval (SetHeight h next) =
-  modify (_height .~ h) $> next
-vizEval (SetWidth w next) =
-  modify (_width .~ w) $> next
-vizEval (SetChartType ct next) =
-  modify (_chartType .~ ct) $> next
-vizEval (SetAvailableChartTypes ts next) =
-  modify (_availableChartTypes .~ ts) $> next
+vizEval q = do
+  modify $ _needToUpdate .~ false
+  case q of
+    SetHeight h next ->
+      modify (_height .~ h) *> configure $> next
+    SetWidth w next ->
+      modify (_width .~ w) *> configure $> next
+    SetChartType ct next ->
+      modify (_chartType .~ ct) *> configure $> next
+    SetAvailableChartTypes ts next ->
+      modify (_availableChartTypes .~ ts) *> configure $> next
+    RotateAxisLabel angle next ->
+      modify (_axisLabelAngle .~ angle) *> configure $> next
+    SetAxisFontSize size next ->
+      modify (_axisLabelFontSize .~ size) *> configure $> next
 
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
@@ -265,7 +286,7 @@ responsePort = do
           pure mbConf
   pure
     $ P.ChartOptions
-    { options: buildOptions state.chartType state.records conf
+    { options: buildOptions state conf
     , width: state.width
     , height: state.height
     }
@@ -361,7 +382,7 @@ configure = void do
   lineConfiguration axises (ChartConfiguration current) =
     let dimensions =
           setPreviousValueFrom (index current.dimensions 0)
-          $ autoSelect $ newSelect
+          $ autoSelect $ newSelect $ dependsOnArr axises.value
           -- This is redundant, I've put it here to notify
           -- that this behaviour differs from pieBar and can be changed.
           $ (axises.category <> axises.time <> axises.value)

@@ -160,7 +160,7 @@ peekEvalCell _ _ = pure unit
 
 peekAnyCell :: forall a. CellId -> AnyCellQuery a -> NotebookDSL Unit
 peekAnyCell cellId (VizQuery q) =
-  coproduct (const $ pure unit) (const $ runCell cellId) q
+  coproduct (const $ runCell cellId) (const $ runCell cellId) q
 peekAnyCell _ _ = pure unit
 
 -- | Runs the cell with the specified ID and then runs any cells that depend on

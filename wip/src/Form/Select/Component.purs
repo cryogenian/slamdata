@@ -23,7 +23,7 @@ import Control.Monad.Aff (Aff())
 import Data.Array (length, range, zipWith, singleton)
 import Data.Functor (($>))
 import Data.Lens ((^.))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Maybe.Unsafe (fromJust)
 
 import Halogen
@@ -31,6 +31,7 @@ import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.CustomProps.Indexed as Cp
 
 import Model.Select
 import Utils (stringToInt)
@@ -46,16 +47,23 @@ type Slam e = Aff (HalogenEffects e)
 type SelectConfig r =
   { disableWhen :: Int -> Boolean
   , defaultWhen :: Int -> Boolean
+  , ariaLabel :: Maybe String
   | r
   }
 
 primarySelect
-  :: forall a e. (OptionVal a) => Component (Select a) (Query a) (Slam e)
-primarySelect = select { disableWhen: (< 2), defaultWhen: (> 1) }
+  :: forall a e
+   . (OptionVal a)
+  => Maybe String -> Component (Select a) (Query a) (Slam e)
+primarySelect mbLabel =
+  select { disableWhen: (< 2), defaultWhen: (> 1), ariaLabel: mbLabel }
 
 secondarySelect
-  :: forall a e. (OptionVal a) => Component (Select a) (Query a) (Slam e)
-secondarySelect = select { disableWhen: (< 1), defaultWhen: (const true) }
+  :: forall a e
+   . (OptionVal a)
+  => Maybe String -> Component (Select a) (Query a) (Slam e)
+secondarySelect mbLabel =
+  select { disableWhen: (< 1), defaultWhen: (const true), ariaLabel: mbLabel }
 
 select
   :: forall a e r
@@ -69,11 +77,12 @@ render
    . (OptionVal a)
   => SelectConfig r -> Select a -> ComponentHTML (Query a)
 render config state =
-  H.select [ P.classes [ B.formControl ]
-             -- `fromJust` is safe here because we know that value are `show`n ints
-           , E.onValueChange (E.input (Choose <<< fromJust <<< stringToInt))
-           , P.disabled $ config.disableWhen len
-           ]
+  H.select ([ P.classes [ B.formControl ]
+              -- `fromJust` is safe here because we know that value are `show`n ints
+            , E.onValueChange (E.input (Choose <<< fromJust <<< stringToInt))
+            , P.disabled $ config.disableWhen len
+            ]
+           <> maybe [] (singleton <<< Cp.ariaLabel) config.ariaLabel)
   (defOption <> (zipWith (option selected) opts (range 0 len)))
   where
   len :: Int

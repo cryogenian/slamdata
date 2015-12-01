@@ -24,6 +24,18 @@ import Data.Either (Either(..))
 
 data ChartType = Pie | Line | Bar
 
+isPie :: ChartType -> Boolean
+isPie Pie = true
+isPie _ = false
+
+isLine :: ChartType -> Boolean
+isLine Line = true
+isLine _ = false
+
+isBar :: ChartType -> Boolean
+isBar Bar = true
+isBar _ = false
+
 parseChartType :: String -> Either String ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
