@@ -68,6 +68,7 @@ import Data.Foldable (foldl, traverse_)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
+import Data.Foreign.NullOrUndefined (runNullOrUndefined)
 import Data.Functor (($>))
 import Data.Lens ((.~), (^.))
 import Data.List as L
@@ -106,7 +107,11 @@ runListing :: Listing -> Array R.Resource
 runListing (Listing rs) = rs
 
 instance listingIsForeign :: IsForeign Listing where
-  read f = Listing <$> readProp "children" f
+  read f =
+    readProp "children" f
+      <#> runNullOrUndefined
+      >>> fromMaybe []
+      >>> Listing
 
 instance listingRespondable :: Respondable Listing where
   responseType = JSONResponse
@@ -124,10 +129,15 @@ children' dir = runListing <$> (getResponse msg $ listing dir)
 
 listing :: forall e. PU.DirPath -> Affjax (RetryEffects e) Listing
 listing p =
-  maybe
-    (throwError $ Exn.error "incorrect path")
-    (retryGet <<< (Config.metadataUrl </>))
-    (P.relativeTo p P.rootDir)
+  case P.relativeTo p P.rootDir of
+    Nothing -> throwError $ Exn.error "incorrect path"
+    Just p ->
+      getWithPolicy
+        { shouldRetryWithStatusCode: \c -> not (succeeded c || c == notFoundStatus)
+        , delayCurve: const 1000
+        , timeout: Just 10000
+        }
+        (Config.metadataUrl </> p)
 
 makeFile
   :: forall e
@@ -158,6 +168,9 @@ makeFile path mime content =
 
 successStatus :: StatusCode
 successStatus = StatusCode 200
+
+notFoundStatus :: StatusCode
+notFoundStatus = StatusCode 404
 
 succeeded :: StatusCode -> Boolean
 succeeded (StatusCode int) =
@@ -254,7 +267,7 @@ mountInfo res = do
 
 getNewName :: forall e. PU.DirPath -> String -> Aff (RetryEffects (ajax :: AJAX |e)) String
 getNewName parent name = do
-  items <- children' parent
+  items <- attempt (children' parent) <#> either (const []) id
   pure if exists' name items then getNewName' items 1 else name
   where
   getNewName' items i =
