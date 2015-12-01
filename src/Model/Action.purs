@@ -19,26 +19,34 @@ module Model.Action where
 import Prelude
 import Data.Either (Either(..))
 
-data Action = View | Edit
+data Action = View | Edit | New
 
 string2action :: String -> Either String Action
 string2action "view" = Right View
 string2action "edit" = Right Edit
+string2action "new" = Right New
 string2action _ = Left "incorrect action string"
 
 printAction :: Action -> String
 printAction View = "view"
 printAction Edit = "edit"
+printAction New = "new"
 
 isView :: Action -> Boolean
 isView View = true
 isView _ = false
 
 isEdit :: Action -> Boolean
-isEdit = not <<< isView
+isEdit Edit = true
+isEdit _ = false
+
+isNew :: Action -> Boolean
+isNew New = true
+isNew _ = false
 
 instance resumeEq :: Eq Action where
   eq View View = true
   eq Edit Edit = true
+  eq New New = true
   eq _ _ = false
 

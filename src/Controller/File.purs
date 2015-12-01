@@ -31,7 +31,7 @@ import Controller.File.Item (itemURL)
 import Data.Array (head, last)
 import Data.DOM.Simple.Element (querySelector)
 import Data.DOM.Simple.Types (HTMLElement())
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 
 import Data.Foreign (F(), parseJSON)
 import Data.Foreign.Class (readProp)
@@ -46,7 +46,7 @@ import Halogen.HTML.Events.Monad (andThen)
 import Input.File (Input(), FileInput(..))
 import Input.File.Item (ItemInput(..), inputItem)
 import Input.File.Mount (MountInput(..), inputMount)
-import Model.Action (Action(Edit))
+import Model.Action (Action(..))
 import Model.File (State(), _dialog, _showHiddenFiles, _path, _sort, _salt, _items, isSearching)
 import Model.File.Breadcrumb (Breadcrumb())
 import Model.File.Dialog (Dialog(..))
@@ -65,13 +65,13 @@ import qualified Model.Resource as R
 import qualified Utils.File as Uf
 
 handleCreateNotebook :: forall e. State -> Event e
-handleCreateNotebook state = do
-  f <- liftAff $ attempt $ API.saveNotebook (N.emptyNotebook # N._path .~ (state ^. _path))
-  case f of
-    Left err -> showError ("There was a problem creating the notebook: " ++ message err)
-    Right notebook -> case N.notebookURL notebook Edit of
-      Just url -> liftEff (setLocation url) *> empty
-      Nothing -> empty
+handleCreateNotebook state =
+  let notebook = N.emptyNotebook
+        # (N._path .~ (state ^. _path))
+        # (N._name .~ That Config.newNotebookName)
+  in case N.notebookURL notebook New of
+    Just url -> liftEff (setLocation url) *> empty
+    Nothing -> empty
 
 handleFileListChanged :: forall e. HTMLElement -> State -> Event e
 handleFileListChanged el state = do

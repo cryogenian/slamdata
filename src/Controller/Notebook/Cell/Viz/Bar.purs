@@ -131,10 +131,16 @@ mkSeries acc =
   Tuple xAxis series
   where
   xAxis :: Axises
-  xAxis = OneAxis $ Axis
-          axisDefault { "type" = Just CategoryAxis
-                      , "data" = Just $ CommonAxisData <$> catVals
-                      }
+  xAxis = OneAxis $ Axis axisDefault
+          { "type" = Just CategoryAxis
+          , "data" = Just $ CommonAxisData <$> catVals
+          , axisLabel = Just $ AxisLabel axisLabelDefault
+            { rotate = Just 30.0
+            }
+          , axisTick = Just $ AxisTick axisTickDefault
+            { interval = Just $ Custom zero
+            }
+          }
 
   keysArray :: Array Key
   keysArray = L.fromList $ keys acc
@@ -186,14 +192,15 @@ mkSeries acc =
 
   serie :: Tuple String (Array Number) -> Series
   serie (Tuple name nums) =
-  BarSeries { common: universalSeriesDefault { name = if name == ""
-                                                      then Nothing
-                                                      else Just name
-                                             }
-
-            , barSeries: barSeriesDefault { "data" = Just $ simpleData <$> (nums)
-                                          , stack = Just $ "total" <> stackFromName name
-                                          }
+  BarSeries { common: universalSeriesDefault
+                      { name = if name == ""
+                               then Nothing
+                               else Just name
+                      }
+            , barSeries: barSeriesDefault
+                         { "data" = Just $ simpleData <$> (nums)
+                         , stack = Just $ "total" <> stackFromName name
+                         }
             }
   stackFromName :: String -> String
   stackFromName str =
@@ -213,9 +220,13 @@ mkBar r conf =
       Option optionDefault { series = Just $ Just <$> series
                            , xAxis = Just xAxis
                            , yAxis = Just yAxis
-                           , tooltip = Just $ Tooltip $
-                                       tooltipDefault {trigger = Just TriggerAxis}
+                           , tooltip = Just $ Tooltip $ tooltipDefault
+                             { trigger = Just TriggerAxis
+                             }
                            , legend = Just $ mkLegend series
+                           , grid = Just $ Grid gridDefault
+                             { y2 = Just $ Percent 15.0
+                             }
                            }
 
   where

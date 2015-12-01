@@ -532,20 +532,16 @@ ol.breadcrumb {
         width: 200px;
     }
 }
-.chart-configuration(@label-width) {
-    padding-bottom: 10px;
-    label.control-label {
-        width: @label-width;
-    }
-    select.form-control, input.form-control {
-        width: calc(~"100% - " @label-width);
-        display: inline-block;
-    }
-}
-
 
 form.chart-configure-form {
-    .chart-configuration(@label-width: 75px);
+    padding-bottom: 10px;
+    label.control-label {
+        width: 75px;
+    }
+    select.form-control, input.form-control {
+        width: ~"calc(100% - 75px)";
+        display: inline-block;
+    }
     &.with-aggregation {
         .form-control {
             width: ~"calc(100% - 115px)";
@@ -555,12 +551,6 @@ form.chart-configure-form {
             }
         }
     }
-}
-form.chart-size-param {
-    .chart-configuration(75px);
-}
-form.axis-label-param {
-    .chart-configuration(120px);
 }
 
 div.loading-message.alert.alert-info {

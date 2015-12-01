@@ -53,20 +53,20 @@ import Model.Path (AnyPath())
 import Model.Resource (newFile, _path, Resource())
 import Model.Notebook.Port (_PortResource)
 import Model.Notebook.Search (needFields, queryToSQL)
-import Model.Notebook.Cell (Cell(), RunState(..), _RunningSince, _runState,  _cellId, _content, _Search, _failures, _input, _output, _message)
+import Model.Notebook.Cell (Cell(), RunState(..), _RunningSince, _runState,  _cellId, _content, _Search, _failures, _input, _output, _message, outFile)
 import Model.Notebook.Cell.Search (SearchRec(), _buffer, initialSearchRec)
 import Api.Fs (delete)
-import Api.Query (fields, port, sample, templated)
+import Api.Query (fields, sample, templated)
 
 runSearch :: forall eff. Cell -> I eff
 runSearch cell =
-  either (const errorInParse) go $ mkQuery $ toLower buffer
+  either (const errorInParse) go $ mkQuery buffer
   where
   input :: Maybe Resource
   input = cell ^? _input .. _PortResource
 
-  output :: Maybe Resource
-  output = cell ^? _output .. _PortResource
+  output :: Resource
+  output = fromMaybe (outFile cell) $ cell ^? _output .. _PortResource
 
   buffer :: String
   buffer = cell ^. _content .. _Search .. _buffer
@@ -88,7 +88,8 @@ runSearch cell =
               Just s ->
                 (update cell (_message .~ ("Generated SQL: " <> s)))
                 `andThen` \_ ->
-                (fromMaybe errorInPorts (queryToJTable cell tmpl <$> input <*> output))
+                (fromMaybe errorInPorts (queryToJTable cell tmpl <$> input <*> pure output))
+
   errorInParse :: I eff
   errorInParse =
     update cell (_failures .~ ["Incorrect query string"])
@@ -101,7 +102,7 @@ runSearch cell =
 
   errorInPorts :: I eff
   errorInPorts =
-    update cell (_failures .~ ["Incorrect type of input or output"])
+    update cell (_failures .~ ["Incorrect type of input"])
       `andThen` \_ -> finish cell
 
 
@@ -113,4 +114,3 @@ viewSearch cell =
   error =
     update cell (_failures .~ ["Incorrect type of input"])
       `andThen` \_ -> finish cell
-

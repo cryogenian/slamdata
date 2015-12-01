@@ -19,9 +19,11 @@ module Model.Notebook.Cell.Query
   , initialQueryRec
   , _input
   , _table
+  , _shouldCacheResults
   ) where
 
 import Prelude
+import Control.Alt ((<|>))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
@@ -34,12 +36,14 @@ import qualified Model.Notebook.Cell.Common as C
 newtype QueryRec =
   QueryRec { input :: String
            , table :: JTableContent
+           , shouldCacheResults :: Boolean
            }
 
 initialQueryRec :: QueryRec
 initialQueryRec =
   QueryRec { input: ""
            , table: initialJTableContent
+           , shouldCacheResults: false
            }
 
 _QueryRec :: LensP QueryRec _
@@ -51,16 +55,21 @@ _input = _QueryRec <<< C._input
 _table :: LensP QueryRec JTableContent
 _table = _QueryRec <<< C._table
 
+_shouldCacheResults :: LensP QueryRec Boolean
+_shouldCacheResults = _QueryRec <<< C._shouldCacheResults
+
 instance encodeJsonQueryRec :: EncodeJson QueryRec where
   encodeJson (QueryRec rec)
     =  "input" := rec.input
     ~> "table" := rec.table
+    ~> "shouldCacheResults" := rec.shouldCacheResults
     ~> jsonEmptyObject
 
 instance decodeJsonQueryRec :: DecodeJson QueryRec where
   decodeJson json = do
     obj <- decodeJson json
-    rec <- { input: _, table: _ }
+    rec <- { input: _, table: _, shouldCacheResults: _ }
         <$> obj .? "input"
         <*> obj .? "table"
+        <*> (obj .? "shouldCacheResults" <|> pure true) -- for compatibility!
     return $ QueryRec rec

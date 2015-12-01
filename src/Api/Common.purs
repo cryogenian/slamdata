@@ -46,6 +46,9 @@ import qualified Data.String as S
 successStatus :: StatusCode
 successStatus = StatusCode 200
 
+notFoundStatus :: StatusCode
+notFoundStatus = StatusCode 404
+
 succeeded :: StatusCode -> Boolean
 succeeded (StatusCode int) =
   200 <= code && code < 300
@@ -63,6 +66,7 @@ retryGet =
                 , delayCurve: const 1000
                 , timeout: Just 30000
                 }
+
 getOnce :: forall e a fd. (Respondable a) => Path Abs fd Sandboxed -> Affjax (RetryEffects e) a
 getOnce = getWithPolicy defaultRetryPolicy
 
