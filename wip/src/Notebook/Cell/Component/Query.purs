@@ -63,10 +63,11 @@ import Notebook.Cell.Chart.Component.Query (ChartQueryP())
 -- |   any dependencies.
 -- | - `CreateChildCell` is captured by the notebook and used to add a child of
 -- |   the current cell.
--- | - `ToggleEditor` is used to toggle the visibility of the editor
+-- | - `ToggleCollapsed` is used to toggle the visibility of the editor
 -- |   part of the cell.
--- | - `ToggleEditor` is used to toggle the visibility of the status/error
+-- | - `ToggleMessages` is used to toggle the visibility of the status/error
 -- |   messages generated while evaluating the cell.
+-- | - `ToggleCaching` is used to toggle the use of the views & query APIs.
 -- | - `ShareCell` is captured by the notebook and should raise a dialog with a
 -- |   share/embed message appropriate for the cell.
 data CellQuery a
@@ -77,6 +78,7 @@ data CellQuery a
   | CreateChildCell CellType a
   | ToggleCollapsed a
   | ToggleMessages a
+  | ToggleCaching a
   | ShareCell a
   | Tick Milliseconds a
 

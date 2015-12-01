@@ -155,6 +155,8 @@ makeCellComponentPart def render =
     modify (_isCollapsed %~ not) $> next
   eval (ToggleMessages next) =
     modify (_messageVisibility %~ toggleVisibility) $> next
+  eval (ToggleCaching next) =
+    modify (_cachingEnabled %~ not) $> next
   eval (ShareCell next) = pure next
   eval (Tick elapsed next) =
     modify (_runState .~ RunElapsed elapsed) $> next
