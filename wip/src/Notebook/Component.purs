@@ -114,18 +114,7 @@ newCellMenu state =
       ]
 
 eval :: Natural NotebookQuery NotebookDSL
-eval (AddCell cellType next) = do
-  cid <- gets _.fresh
-  modify (addCell cellType Nothing)
-  liftH $ liftH $ pure unit
-  let input = map P.Resource
-              $ map R.File
-              $ map (rootDir </>)
-              $ parseAbsFile "/demo/demo/smallZips"
-              >>= sandbox rootDir
-  updateCell input (CellId cid)
-  pure next
---    $> next
+eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
 eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
@@ -141,10 +130,7 @@ eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF (CellSlot cellId) q) = coproduct (peekCell cellId) (peekCellInner cellId) q
-import Debug.Trace
-import Model.Port as P
-import Data.Path.Pathy (parseAbsFile, rootDir, sandbox, (</>))
-import Model.CellId (CellId(..))
+
 -- | Peek on the cell component to observe actions from the cell control
 -- | buttons.
 peekCell :: forall a. CellId -> CellQuery a -> NotebookDSL Unit
@@ -174,7 +160,7 @@ peekEvalCell _ _ = pure unit
 
 peekAnyCell :: forall a. CellId -> AnyCellQuery a -> NotebookDSL Unit
 peekAnyCell cellId (VizQuery q) =
-  coproduct (const $ traceAny "RUNNING" \_ -> runCell cellId) (const $ runCell cellId) q
+  coproduct (const $ runCell cellId) (const $ runCell cellId) q
 peekAnyCell _ _ = pure unit
 
 -- | Runs the cell with the specified ID and then runs any cells that depend on

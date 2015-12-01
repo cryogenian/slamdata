@@ -33,8 +33,6 @@ import Model.ChartAxis as Ax
 import Model.ChartConfiguration (ChartConfiguration())
 import Model.ChartOptions.Common
 
-import Debug.Trace
-
 buildBar
   :: M.Map JCursor Ax.Axis -> Int -> Int -> ChartConfiguration -> Option
 buildBar axises angle size conf = case axisSeriesPair of

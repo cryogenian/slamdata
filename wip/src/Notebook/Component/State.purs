@@ -188,17 +188,15 @@ addCell cellType parent st =
   where
 
   editor :: CellType -> CellId -> CellComponent
---  editor Query _ = aceComponent Query queryEval "ace/mode/sql"
---  editor Search cellId = searchComponent cellId
---  editor Viz _ = vizComponent
---  editor Explore _ = exploreComponent
---  editor _ _ = aceComponent Markdown markdownEval "ace/mode/markdown"
-  editor _ _ = vizComponent
+  editor Query _ = aceComponent Query queryEval "ace/mode/sql"
+  editor Search cellId = searchComponent cellId
+  editor Viz _ = vizComponent
+  editor Explore _ = exploreComponent
+  editor _ _ = aceComponent Markdown markdownEval "ace/mode/markdown"
 
   results :: CellType -> CellId -> CellComponent
---  results Viz _ = chartComponent
---  results _ cellId = markdownComponent cellId st.browserFeatures
-  results _ _ = chartComponent
+  results Viz _ = chartComponent
+  results _ cellId = markdownComponent cellId st.browserFeatures
 
   mkCellDef :: (CellType -> CellId -> CellComponent) -> CellId -> CellStateP -> CellDef
   mkCellDef mkComp cellId initialState =
