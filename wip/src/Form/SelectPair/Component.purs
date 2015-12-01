@@ -64,6 +64,7 @@ type QueryP a b = Coproduct (Query a) (ChildF Unit (Query b))
 type PairConfig a r =
   { disableWhen :: Int -> Boolean
   , defaultWhen :: Int -> Boolean
+  , ariaLabel :: Maybe String
   , mainState :: Select a
   , classes :: Array H.ClassName
   | r

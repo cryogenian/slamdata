@@ -216,6 +216,7 @@ renderDimensions state =
     [ label labelText
     , H.input [ P.classes [ B.formControl ]
               , P.value $ valueFromState state
+              , Cp.ariaLabel labelText
               , Cp.mbValueInput (pure
                                  <<< map (right <<< flip queryCtor unit)
                                  <<< stringToInt'
