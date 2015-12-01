@@ -68,6 +68,7 @@ import Data.Foldable (foldl, traverse_)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
+import Data.Functor (($>))
 import Data.Lens ((.~), (^.))
 import Data.List as L
 import Data.Maybe (Maybe(..), isJust, fromMaybe, maybe)
@@ -632,15 +633,39 @@ executeQuery sql cachingEnabled varMap inputResource outputResource = do
   when (R.isTempFile outputResource) $
     void $ attempt $ forceDelete outputResource
 
-  -- TODO: when caching is disabled and varMap is empty, use `viewPort`
-  jobj <- attempt $ portQuery inputResource outputResource sql varMap
+  ejobj <- do
+    -- Pending SD-1143, the view mounts API doesn't yet support variables
+    let shouldUseViews = not cachingEnabled && SM.isEmpty varMap
+    attempt $
+      if shouldUseViews
+         then portView inputResource outputResource sql $> Nothing
+         else portQuery inputResource outputResource sql varMap <#> Just
+
   pure $ do
-    j <- lmap Exn.message jobj
-    out' <- j .? "out"
-    planPhases <- Arr.last <$> j .? "phases"
-    path <- maybe (Left "Invalid file from Quasar") Right $ P.parseAbsFile out'
-    realOut <- maybe (Left "Could not sandbox Quasar file") Right $ P.sandbox P.rootDir path
+    mjobj <- lmap Exn.message ejobj
+    info <-
+      case mjobj of
+        Nothing -> do
+          path <- R.getPath outputResource # either pure \_ -> Left "Expected output resource as file or view mount"
+          sandboxedPath <- P.sandbox P.rootDir path # maybe (Left "Could not sandbox output resource") pure
+          pure
+            { sandboxedPath
+            , plan: Nothing
+            }
+        Just jobj -> do
+          planPhases <- Arr.last <$> jobj .? "phases"
+          sandboxedPath <- do
+            pathString <- jobj .? "out"
+            path <- P.parseAbsFile pathString # maybe (Left "Invalid file from Quasar") pure
+            P.sandbox P.rootDir path # maybe (Left "Could not sandbox Quasar file") pure
+          pure
+            { sandboxedPath
+            , plan: planPhases >>= (.? "detail") >>> either (const Nothing) Just
+            }
     pure
-      { outputResource: R.mkFile $ Left $ P.rootDir </> realOut
-      , plan: planPhases >>= (.? "detail") >>> either (const Nothing) Just
+      { outputResource: R.mkFile $ Left $ P.rootDir </> info.sandboxedPath
+      , plan: info.plan
       }
+
+hole :: forall a. a
+hole = Unsafe.Coerce.unsafeCoerce "hole"
