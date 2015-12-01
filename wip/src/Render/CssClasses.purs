@@ -326,6 +326,10 @@ chartEditor = className "chart-editor"
 chartOutput :: ClassName
 chartOutput = className "chart-output"
 
+glyphiconInactive :: ClassName
+glyphiconInactive = className "glyphicon-inactive"
+
+
 axisLabelParam :: ClassName
 axisLabelParam = className "axis-label-param"
 

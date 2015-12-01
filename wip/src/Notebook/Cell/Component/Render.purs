@@ -24,6 +24,7 @@ import Prelude
 
 import Data.Array (catMaybes, null)
 import Data.Int (fromNumber)
+import Data.Lens ((^?))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
 
@@ -33,12 +34,12 @@ import Halogen.HTML as H
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
 
-import Render.Common (glyph)
+import Render.Common (glyph, glyphInactive)
 import Render.CssClasses as CSS
 
 import Notebook.Cell.RunState (RunState(..), isRunning)
 import Notebook.Cell.Component.Query (CellQuery(..), InnerCellQuery())
-import Notebook.Cell.Component.State (CellState(), AnyCellState())
+import Notebook.Cell.Component.State (CellState(), AnyCellState(), _cachingEnabled)
 import Notebook.Common (Slam())
 
 type CellHTML = ParentHTML AnyCellState CellQuery InnerCellQuery Slam Unit
@@ -90,6 +91,7 @@ statusBar hasResults cs =
           [ P.classes [B.pullRight, CSS.cellControls] ]
           $ catMaybes
               [ Just refreshButton
+              , toggleCachingButton cs
               , toggleMessageButton cs
               , if hasResults then Just linkButton else Nothing
               , Just $ glyph B.glyphiconChevronLeft
@@ -126,7 +128,7 @@ refreshButton =
     ]
     [ glyph B.glyphiconRefresh ]
 
-toggleMessageButton :: CellState -> Maybe (CellHTML)
+toggleMessageButton :: CellState -> Maybe CellHTML
 toggleMessageButton cs =
   if null cs.messages
   then Nothing
@@ -136,6 +138,16 @@ toggleMessageButton cs =
       , E.onClick (E.input_ ToggleMessages)
       ]
       [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
+
+toggleCachingButton :: CellState -> Maybe CellHTML
+toggleCachingButton cs =
+  (cs ^? _cachingEnabled) <#> \cachingEnabled ->
+    H.button
+      [ P.title if cachingEnabled then "Disable Caching" else "Enable Caching"
+      , E.onClick (E.input_ ToggleCaching)
+      ]
+      [ B.glyphiconPushpin # if cachingEnabled then glyph else glyphInactive
+      ]
 
 linkButton :: CellHTML
 linkButton =
