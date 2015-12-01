@@ -55,32 +55,6 @@ body {
     }
 }
 
-.notebook-cell {
-    .cell-controls {
-        button {
-            i {
-                top: 2px;
-            }
-            span.share-button {
-                background: no-repeat url(../img/code-icon.svg) center;
-                background-size: 16px;
-                width: 16px;
-                height: 14px;
-                display: inline-block;
-                position: relative;
-                top: 4px;
-                opacity: 0.7;
-            }
-            &:hover {
-                span.share-button {
-                    background-image: url(../img/code-icon-blue.svg);
-                    opacity: 1;
-                }
-            }
-        }
-    }
-}
-
 .content {
     max-width: 750px;
     margin: auto;
@@ -137,9 +111,6 @@ button:focus {
 
 .item-content {
     padding-left: 5px;
-    a {
-        cursor: pointer;
-    }
 }
 .item-hidden {
     font-style: italic;
@@ -270,7 +241,6 @@ ol.breadcrumb {
 .toolbar-sort {
     padding-top: 14px;
     padding-bottom: 10px;
-    cursor: pointer;
 }
 .toolbar-menu {
     padding-right: 0;
@@ -513,7 +483,7 @@ ol.breadcrumb {
 
 .explore-cell-editor {
     margin: 0 -15px;
-    border-left: 76px solid #ddd;
+    border-left: 61px solid #ddd;
     padding: 10px;
     button {
         width: 40px;
@@ -577,15 +547,11 @@ ol.breadcrumb {
 form.chart-configure-form {
     .chart-configuration(@label-width: 75px);
     &.with-aggregation {
-        div {
-            width: ~"calc(100% - 75px)";
-            display: inline-block;
-            .form-control {
-                width: ~"calc(100% - 40px)";
-                &.aggregation {
-                    width: 40px;
-                    font-weight: bold;
-                }
+        .form-control {
+            width: ~"calc(100% - 115px)";
+            &.aggregation {
+                width: 40px;
+                font-weight: bold;
             }
         }
     }
@@ -609,8 +575,6 @@ div.loading-message.alert.alert-info {
 
 div.viz-cell-editor {
     min-height: 160px;
-    padding-left: 15px;
-    padding-right: 15px;
     div.loading-message.alert.alert-info {
         height: 160px;
     }
@@ -638,6 +602,10 @@ div.viz-cell-editor {
         margin-left: 60px;
         padding-top: 10px;
     }
+}
+
+.glyphicon-inactive {
+  color: gray;
 }
 
 @import "bootstrap-overloads";
