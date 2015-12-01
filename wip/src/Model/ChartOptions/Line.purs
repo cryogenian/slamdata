@@ -156,8 +156,8 @@ buildLine axises angle size conf = case axisSeriesPair of
   extractName (LineSeries r) = r.common.name
   extractName _ = Nothing
 
-  xAxisType :: Tuple AxisType (Maybe Interval)
-  xAxisType = getXAxisType axises conf
+  xAxisConfig :: Tuple AxisType (Maybe Interval)
+  xAxisConfig = getXAxisConfig axises conf
 
   extracted :: LineData
   extracted = lineData $ buildChartAxises axises conf
@@ -172,16 +172,15 @@ buildLine axises angle size conf = case axisSeriesPair of
   yAxis' = Axis axisDefault { "type" = Just ValueAxis }
 
   axisSeriesPair :: Tuple AxisRec (Array Series)
-  axisSeriesPair = mkSeries (needTwoAxises axises conf) xAxisType extracted
+  axisSeriesPair = mkSeries (needTwoAxises axises conf) xAxisConfig extracted
 
 needTwoAxises :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Boolean
 needTwoAxises axises (ChartConfiguration conf) =
   isJust $ (conf.measures !! 1) >>= view _value >>= flip M.lookup axises
 
-
-getXAxisType
+getXAxisConfig
   :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Tuple AxisType (Maybe Interval)
-getXAxisType axises (ChartConfiguration conf) =
+getXAxisConfig axises (ChartConfiguration conf) =
   case (conf.dimensions !! 0) >>= view _value >>= flip M.lookup axises of
     Just (Ax.TimeAxis _) -> Tuple TimeAxis $ Just $ Custom zero
     Just (Ax.ValAxis _) -> Tuple ValueAxis Nothing
