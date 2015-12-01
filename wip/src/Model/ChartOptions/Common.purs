@@ -24,12 +24,14 @@ import Data.Array (catMaybes, cons, (!!))
 import Data.Array as A
 import Data.Bifunctor (lmap)
 import Data.Foldable (foldl)
+import Data.Int (toNumber)
 import Data.Lens (view)
 import Data.List (List(..), replicate, length)
 import Data.List as L
 import Data.Maybe (fromMaybe, maybe, Maybe(..))
 import Data.Map (Map())
 import Data.Map as M
+import ECharts
 import Model.ChartConfiguration (ChartConfiguration(..), JSelect())
 import Model.ChartSemantics (Semantics(), printSemantics, semanticsToNumber)
 import Model.Aggregation (Aggregation(..), runAggregation)
@@ -173,3 +175,13 @@ commonNameMap fn catVals = mapByCategories <<< fn <<< groupByCategories
 
   alterNamed :: Number -> Maybe (Array Number) -> Maybe (Array Number)
   alterNamed n ns = Just $ A.cons n $ fromMaybe [] ns
+
+mixAxisLabelAngleAndFontSize :: Int -> Int -> AxisRec -> AxisRec
+mixAxisLabelAngleAndFontSize angle size r =
+  r { axisLabel = Just $ AxisLabel axisLabelDefault
+      { rotate = Just $ toNumber angle
+      , textStyle = Just $ TextStyle textStyleDefault
+        { fontSize = Just $ toNumber size
+        }
+      }
+    }

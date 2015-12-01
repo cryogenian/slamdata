@@ -35,3 +35,9 @@ mbValueInput
   :: forall i r
    . (String -> EventHandler (Maybe i)) -> IProp (value :: I, onInput :: I | r) i
 mbValueInput = unsafeCoerce Cp.mbValueInput
+
+nonSubmit :: forall i r . IProp (onSubmit :: I | r) i
+nonSubmit = unsafeCoerce Cp.nonSubmit
+
+ariaLabel :: forall i r. String -> IProp (|r) i
+ariaLabel = unsafeCoerce Cp.ariaLabel

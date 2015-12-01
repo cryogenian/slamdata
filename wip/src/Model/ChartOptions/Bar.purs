@@ -33,14 +33,19 @@ import Model.ChartAxis as Ax
 import Model.ChartConfiguration (ChartConfiguration())
 import Model.ChartOptions.Common
 
-buildBar :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Option
-buildBar axises conf = case axisSeriesPair of
-  Tuple xAxis series ->
+buildBar
+  :: M.Map JCursor Ax.Axis -> Int -> Int -> ChartConfiguration -> Option
+buildBar axises angle size conf = case axisSeriesPair of
+  Tuple xAxisR series ->
     Option optionDefault { series = Just $ map Just series
-                         , xAxis = Just xAxis
+                         , xAxis = Just $ OneAxis $ Axis
+                                   $ mixAxisLabelAngleAndFontSize angle size xAxisR
                          , yAxis = Just yAxis
                          , tooltip = Just tooltip
                          , legend = Just $ mkLegend series
+                         , grid = Just $ Grid gridDefault
+                           { y2 = Just $ Percent 15.0
+                           }
                          }
   where
   tooltip :: Tooltip
@@ -57,7 +62,7 @@ buildBar axises conf = case axisSeriesPair of
   extractName (BarSeries r) = r.common.name
   extractName _ = Nothing
 
-  axisSeriesPair :: Tuple Axises (Array Series)
+  axisSeriesPair :: Tuple AxisRec (Array Series)
   axisSeriesPair = mkSeries extracted
 
   extracted :: PieBarData
@@ -66,13 +71,15 @@ buildBar axises conf = case axisSeriesPair of
   yAxis :: Axises
   yAxis = OneAxis $ Axis $ axisDefault { "type" = Just ValueAxis }
 
-mkSeries :: PieBarData -> Tuple Axises (Array Series)
+mkSeries :: PieBarData -> Tuple AxisRec (Array Series)
 mkSeries pbData = Tuple xAxis series
   where
-  xAxis :: Axises
-  xAxis = OneAxis $ Axis
-          axisDefault { "type" = Just CategoryAxis
+  xAxis :: AxisRec
+  xAxis = axisDefault { "type" = Just CategoryAxis
                       , "data" = Just $ map CommonAxisData catVals
+                      , axisTick = Just $ AxisTick axisTickDefault
+                        { interval = Just $ Custom zero
+                        }
                       }
 
   keysArray :: Array Key

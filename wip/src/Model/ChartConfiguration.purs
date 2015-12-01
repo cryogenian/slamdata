@@ -20,9 +20,11 @@ import Prelude
 
 import Data.Argonaut
   (JCursor(), EncodeJson, DecodeJson, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Array (filter)
+import Data.Array (filter, cons)
+import Data.Foldable (any)
 import Data.Lens (LensP(), lens, (^.))
 import Data.Maybe (maybe)
+import Data.Monoid (mempty)
 import Model.Aggregation (Aggregation())
 import Model.ChartAxis (dependsOn)
 import Model.Select (Select(), _value)
@@ -34,6 +36,9 @@ depends sel lst = maybe lst go (sel ^. _value)
   where
   go y = filter (dependsOn y) lst
 
+dependsOnArr :: Array JCursor -> Array JCursor -> Array JCursor
+dependsOnArr dependency arr =
+  filter (flip any dependency <<< dependsOn) arr
 
 type ChartConfigurationR =
  { series :: Array JSelect
