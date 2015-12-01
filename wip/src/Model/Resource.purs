@@ -342,9 +342,12 @@ instance resourceIsForeign :: F.IsForeign Resource where
 
 instance encodeJsonResource :: EncodeJson Resource where
   encodeJson res =
-       "type" := resourceTag res
+    "type" := resourceTag res
     ~> "path" := resourcePath res
-    ~> jsonEmptyObject
+    ~> maybe
+        jsonEmptyObject
+        (\t -> "mount" := t ~> jsonEmptyObject)
+        (resourceMountTypeTag res)
 
 instance decodeJsonResource :: DecodeJson Resource where
   decodeJson json = do
