@@ -43,7 +43,7 @@ import Css.Size (px)
 
 import FileSystem.Common (Slam())
 import Model.Item (Item(..), itemResource)
-import Model.Resource  (Resource(..), resourceName, resourcePath, isDatabase, isFile, isNotebook, hiddenTopLevel, root)
+import Model.Resource  (Resource(..), resourceName, resourcePath, isDatabase, isFile, isNotebook, isViewMount, hiddenTopLevel, root)
 import Quasar.Aff as API
 import Render.CssClasses as Rc
 
@@ -223,7 +223,7 @@ showToolbar it =
            ]
 
   share :: Array (HTML p (Query Unit))
-  share = if isFile r || isNotebook r
+  share = if isFile r || isNotebook r || isViewMount r
           then singleton $ toolItem Share "Share" B.glyphiconShare
           else mempty
 

@@ -294,7 +294,7 @@ makeNotebook path = do
 
 move :: forall e. R.Resource -> PU.AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) PU.AnyPath
 move src tgt = do
-  let url = if R.isDatabase src
+  let url = if R.isDatabase src || R.isViewMount src
             then Config.mountUrl
             else Config.dataUrl
   result <- slamjax $ defaultRequest
@@ -326,7 +326,7 @@ foreign import stringify :: forall r. {|r} -> String
 
 delete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) (Maybe R.Resource)
 delete resource =
-  if not (R.isDatabase resource || alreadyInTrash resource)
+  if not (R.isDatabase resource || alreadyInTrash resource || R.isViewMount resource)
   then
     moveToTrash resource
   else do
@@ -385,7 +385,7 @@ forceDelete =
 
   rootForResource :: R.Resource -> PU.DirPath
   rootForResource r =
-    if R.isDatabase r
+    if R.isDatabase r || R.isViewMount r
     then Config.mountUrl
     else Config.dataUrl
 
