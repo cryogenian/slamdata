@@ -31,6 +31,8 @@ data VizQuery a
   | SetWidth Int a
   | SetAvailableChartTypes (Set ChartType) a
   | SetChartType ChartType a
+  | RotateAxisLabel Int a
+  | SetAxisFontSize Int a
 
 type VizQueryP =
   Coproduct

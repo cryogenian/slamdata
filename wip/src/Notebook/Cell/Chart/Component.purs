@@ -67,11 +67,14 @@ render state =
                       }
   ]
 
+
+import Debug.Trace
 eval :: Natural Ec.CellEvalQuery ChartDSL
 eval (Ec.NotifyRunCell next) = pure next
 eval (Ec.EvalCell value continue) =
   case value.inputPort >>= preview _ChartOptions of
     Just options -> do
+      traceAnyA options
       state <- get
       modify (const { width: options.width, height: options.height })
       when (state.width /= options.width)
