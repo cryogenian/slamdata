@@ -18,10 +18,13 @@ module Notebook.Cell.Common.EvalQuery
   ( CellEvalQuery(..)
   , CellEvalResult()
   , CellEvalResultP()
+  , CellEvalInputP()
+  , CellEvalInputPre()
   , CellEvalInput()
   , CellEvalT()
   , runCellEvalT
   , temporaryOutputResource
+  , prepareCellEvalInput
   ) where
 
 import Prelude
@@ -43,14 +46,33 @@ import Model.CellId (CellId(), cellIdToString)
 import Model.Resource as R
 import Utils.Path (DirPath())
 
-type CellEvalInput =
+type CellEvalInputP r =
   { notebookPath :: M.Maybe DirPath
   , inputPort :: M.Maybe Port
   , cellId :: CellId
+  | r
+  }
+
+type CellEvalInputPre = CellEvalInputP ()
+type CellEvalInput =
+  CellEvalInputP
+    ( cachingEnabled :: M.Maybe Boolean
+    )
+
+prepareCellEvalInput
+  :: M.Maybe Boolean
+  -> CellEvalInputPre
+  -> CellEvalInput
+prepareCellEvalInput cachingEnabled { notebookPath, inputPort, cellId } =
+  { notebookPath
+  , inputPort
+  , cellId
+  , cachingEnabled
   }
 
 temporaryOutputResource
-  :: CellEvalInput
+  :: forall r
+   . CellEvalInputP r
   -> R.Resource
 temporaryOutputResource info =
   R.mkFile $ E.Left $ outputDirectory </> outputFile

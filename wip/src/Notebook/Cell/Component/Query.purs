@@ -43,7 +43,7 @@ import Halogen (ChildF())
 import Model.CellType (CellType())
 import Model.Port (Port())
 import Notebook.Cell.Ace.Component.Query (AceQueryP())
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInput())
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInputPre())
 import Notebook.Cell.Explore.Component.Query (ExploreQueryP())
 import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
 import Notebook.Cell.Search.Component.Query (SearchQueryP())
@@ -71,7 +71,7 @@ import Notebook.Cell.Chart.Component.Query (ChartQueryP())
 -- |   share/embed message appropriate for the cell.
 data CellQuery a
   = RunCell a
-  | UpdateCell CellEvalInput (Maybe Port -> a)
+  | UpdateCell CellEvalInputPre (Maybe Port -> a)
   | RefreshCell a
   | TrashCell a
   | CreateChildCell CellType a

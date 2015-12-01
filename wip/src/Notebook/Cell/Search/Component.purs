@@ -31,7 +31,7 @@ import Control.Monad.Writer.Class as WC
 import Data.Either (either)
 import Data.Foldable as F
 import Data.Functor.Coproduct
-import Data.Maybe (maybe)
+import Data.Maybe as M
 import Data.StrMap as SM
 import Data.String as S
 
@@ -120,7 +120,7 @@ eval = coproduct cellEval searchEval
             inputResource <-
               query unit (request FI.GetSelectedFile) <#> (>>= id)
                 # MT.lift
-                >>= maybe (EC.throwError "No file selected") pure
+                >>= M.maybe (EC.throwError "No file selected") pure
             query <-
               get <#> _.searchString >>> S.toLower >>> SS.mkQuery
                 # MT.lift
@@ -132,12 +132,11 @@ eval = coproduct cellEval searchEval
               template = Search.queryToSQL fields query
               sql = Quasar.templated inputResource template
               tempOutputResource = NC.temporaryOutputResource info
-              cachingEnabled = false
 
             WC.tell ["Generated SQL: " <> sql]
 
             { plan: plan, outputResource: outputResource } <-
-              Quasar.executeQuery template cachingEnabled SM.empty inputResource tempOutputResource
+              Quasar.executeQuery template (M.fromMaybe false info.cachingEnabled) SM.empty inputResource tempOutputResource
                 # Aff.liftAff >>> liftH >>> liftH >>> MT.lift
                 >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 

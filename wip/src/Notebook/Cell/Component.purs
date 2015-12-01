@@ -51,7 +51,7 @@ import Halogen.Themes.Bootstrap3 as B
 import DOM.Timer (interval, clearInterval)
 
 import Model.AccessType (AccessType(..))
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), prepareCellEvalInput)
 import Notebook.Cell.Component.Def
 import Notebook.Cell.Component.Query
 import Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
@@ -142,7 +142,9 @@ makeCellComponentPart def render =
     liftAff'' =<< gets (^. _tickStopper)
     tickStopper <- startInterval
     modify (_tickStopper .~ tickStopper)
-    result <- query unit (left (request (EvalCell input)))
+    cachingEnabled <- gets _.cachingEnabled
+    let input' = prepareCellEvalInput cachingEnabled input
+    result <- query unit (left (request (EvalCell input')))
     liftAff'' tickStopper
     modify (_runState %~ finishRun)
     maybe (liftF HaltHF) (pure <<< k <<< _.output) result
