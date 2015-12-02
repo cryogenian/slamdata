@@ -28,12 +28,12 @@
     "purescript-pathy": "^0.3.0",
     "purescript-profunctor-lenses": "^0.3.3",
     "purescript-routing": "^0.2.0",
-    "purescript-search": "^0.5.0",
     "purescript-these": "^0.3.0",
     "purescript-timers": "~1.0.0",
     "purescript-uri": "^0.2.0",
     "purescript-zclipboard": "^0.3.0",
-    "purescript-halogen-echarts": "~0.1.0"
+    "purescript-halogen-echarts": "~0.1.0",
+    "purescript-search": "~0.6.0"
   },
   "devDependencies": {
     "purescript-debug": "^0.1.2"

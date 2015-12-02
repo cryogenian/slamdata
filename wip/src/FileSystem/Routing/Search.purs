@@ -57,13 +57,10 @@ check p prj =
     -- `Like` predicate works exactly like `Contains` if we
     -- replace `% -> *` and `_ -> ?`
     S.Like s -> match $ like2glob s
-    S.Contains (S.Range str str') ->
+    S.Range val val' ->
       let c = flip check prj in
-      (c (S.Gte (S.Text str)) && c (S.Lte (S.Text str'))) ||
-      (c (S.Lte (S.Text str)) && c (S.Gte (S.Text str')))
-    -- filters only when it means something. S.Eq S.Range - meaningless
-    -- searching by tag in this context has no meaning too
-    _ -> true
+      (c (S.Gte val) && c (S.Lte val')) ||
+      (c (S.Lte val) && c (S.Gte val'))
   where escapeGlob str = Str.replace "*" "\\*" $ Str.replace "?" "\\?" str
         percentRgx = Rgx.regex "%" flags
         underscoreRgx = Rgx.regex "_" flags
