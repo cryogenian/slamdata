@@ -30,6 +30,7 @@ gulp.task("clean", function () {
     [
         "output",
         "tmp",
+        "../public/js/filesystem.js",
         "../public/js/file.js",
         "../public/js/notebook.js",
         "../public/css/main.css"
