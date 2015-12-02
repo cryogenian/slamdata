@@ -551,7 +551,7 @@ portQuery res dest sql vars = do
   queryVars = maybe "" makeQueryVars <<< L.uncons $ SM.toList vars
 
   pair :: Tuple String String -> String
-  pair (Tuple a b) = a <> "=" <> b
+  pair (Tuple a b) = "var." <> a <> "=" <> b
 
   makeQueryVars { head = h, tail = t } =
     foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
