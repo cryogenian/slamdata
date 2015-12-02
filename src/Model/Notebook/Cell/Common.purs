@@ -23,3 +23,6 @@ _input = lens _.input _{input = _}
 
 _table :: forall a b r. Lens {table :: a | r} {table :: b | r} a b
 _table = lens _.table _{table = _}
+
+_shouldCacheResults :: forall a b r. Lens {shouldCacheResults :: a | r} {shouldCacheResults :: b | r} a b
+_shouldCacheResults = lens _.shouldCacheResults _{shouldCacheResults = _}

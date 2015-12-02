@@ -165,19 +165,26 @@ mkSeries needTwoAxis ty acc =
   catVals :: Array String
   catVals = nub $ keyCategory <$> keysArray
 
-  xAxis = OneAxis $ Axis
-          axisDefault { "type" = Just ty
-                      , "data" = Just $ CommonAxisData <$> catVals
-                      }
+  xAxis = OneAxis $ Axis axisDefault
+          { "type" = Just ty
+          , "data" = Just $ CommonAxisData <$> catVals
+          , axisLabel = Just $ AxisLabel axisLabelDefault
+            { rotate = Just 30.0
+            }
+          , axisTick = Just $ AxisTick axisTickDefault
+            { interval = Just $ Custom zero
+            }
+          }
 
   serie :: Number -> Tuple String (Array Number) -> Series
   serie ix (Tuple name nums) =
     LineSeries { common: if name == ""
                          then universalSeriesDefault
                          else universalSeriesDefault { "name" = Just name }
-               , lineSeries: lineSeriesDefault { "data" = Just $ simpleData <$> (nums)
-                                               , yAxisIndex = Just ix
-                                               }
+               , lineSeries: lineSeriesDefault
+                 { "data" = Just $ simpleData <$> (nums)
+                 , yAxisIndex = Just ix
+                 }
                }
   firstSerie :: Tuple String (Array Number) -> Series
   firstSerie = serie 0.0
@@ -247,12 +254,15 @@ mkLine r conf =
       Option optionDefault { series = Just $ Just <$> series
                            , xAxis = Just xAxis
                            , yAxis = Just yAxis
-                           , tooltip = Just $ Tooltip $
-                                       tooltipDefault {trigger = Just TriggerItem}
+                           , tooltip = Just $ Tooltip $ tooltipDefault
+                             { trigger = Just TriggerItem
+                             }
                            , legend = Just $ mkLegend series
+                           , grid = Just $ Grid gridDefault
+                             { y2 = Just $ Percent 15.0
+                             }
                            }
   where
-
   mkLegend :: (Array Series) -> Legend
   mkLegend series =
     Legend legendDefault { "data" = Just $ legendItemDefault <$> extractNames series}

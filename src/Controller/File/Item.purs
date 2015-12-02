@@ -81,6 +81,7 @@ itemURL sort salt act item = case itemResource item of
   Notebook path -> Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAction act
   Directory path -> browseURL Nothing sort salt path
   Database path -> browseURL Nothing sort salt path
+  ViewMount path -> Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
 
 openItem :: forall e. Item -> Sort -> Salt -> Event e
 openItem (PhantomItem _) _ _ = empty

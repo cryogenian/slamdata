@@ -20,9 +20,11 @@ module Model.Notebook.Cell.Search
   , _input
   , _table
   , _buffer
+  , _shouldCacheResults
   ) where
 
 import Prelude
+import Control.Alt ((<|>))
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
@@ -37,6 +39,7 @@ newtype SearchRec =
   SearchRec { input :: FileInput
             , table :: JTableContent
             , buffer :: String
+            , shouldCacheResults :: Boolean
             }
 
 initialSearchRec :: SearchRec
@@ -44,6 +47,7 @@ initialSearchRec =
   SearchRec { input: initialFileInput
             , table: initialJTableContent
             , buffer: ""
+            , shouldCacheResults: false
             }
 
 _SearchRec :: LensP SearchRec _
@@ -58,18 +62,23 @@ _table = _SearchRec <<< C._table
 _buffer :: LensP SearchRec String
 _buffer = _SearchRec <<< lens _.buffer _{buffer = _}
 
+_shouldCacheResults :: LensP SearchRec Boolean
+_shouldCacheResults = _SearchRec <<< C._shouldCacheResults
+
 instance encodeJsonQueryRec :: EncodeJson SearchRec where
   encodeJson (SearchRec rec)
     =  "input" := rec.input
     ~> "table" := rec.table
     ~> "buffer" := rec.buffer
+    ~> "shouldCacheResults" := rec.shouldCacheResults
     ~> jsonEmptyObject
 
 instance decodeJsonQueryRec :: DecodeJson SearchRec where
   decodeJson json = do
     obj <- decodeJson json
-    rec <- { input: _, table: _, buffer: _ }
+    rec <- { input: _, table: _, buffer: _, shouldCacheResults: _ }
         <$> obj .? "input"
         <*> obj .? "table"
         <*> obj .? "buffer"
+        <*> (obj .? "shouldCacheResults" <|> pure true) -- for compatibility!
     return $ SearchRec rec

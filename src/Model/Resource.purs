@@ -30,6 +30,7 @@ module Model.Resource
   , isHidden
   , isNotebook
   , isTempFile
+  , isViewMount
   , mkDatabase
   , mkDirectory
   , mkFile
@@ -59,6 +60,7 @@ import Data.Either
 import Data.Either.Unsafe (fromRight)
 import Data.Foreign (ForeignError(TypeMismatch))
 import Data.Foreign.Class (readProp, read, IsForeign)
+import Data.Foreign.NullOrUndefined
 import Data.Inject1
 import Data.Maybe
 import Data.Path.Pathy
@@ -72,8 +74,10 @@ import Utils
 
 import qualified Data.String as S
 
+-- TODO: should we have a constructor for views?
 data Resource
   = File FilePath
+  | ViewMount FilePath
   | Notebook DirPath
   | Directory DirPath
   | Database DirPath
@@ -82,6 +86,7 @@ instance showResource :: Show Resource where
   show r =
     case r of
       File fp -> "File " ++ show fp
+      ViewMount fp -> "ViewMount " ++ show fp
       Notebook dp -> "Notebook " ++ show dp
       Directory dp -> "Directory " ++ show dp
       Database dp -> "Database " ++ show dp
@@ -111,6 +116,10 @@ isFile :: Resource -> Boolean
 isFile (File _) = true
 isFile _ = false
 
+isViewMount :: Resource -> Boolean
+isViewMount (ViewMount _) = true
+isViewMount _ = false
+
 isDirectory :: Resource -> Boolean
 isDirectory (Directory _) = true
 isDirectory _ = false
@@ -122,13 +131,21 @@ isDatabase _ = false
 resourceTag :: Resource -> String
 resourceTag r = case r of
   File _ -> "file"
-  Database _ -> "mount"
+  Database _ -> "directory"
   Notebook _ -> "notebook"
   Directory _ -> "directory"
+  ViewMount _ -> "file"
+
+resourceMountTypeTag :: Resource -> Maybe String
+resourceMountTypeTag r = case r of
+  Database _ -> Just "mongodb"
+  ViewMount _ -> Just "view"
+  _ -> Nothing
 
 getPath :: Resource -> AnyPath
 getPath r = case r of
   File p -> inj p
+  ViewMount p -> inj p
   Notebook p -> inj p
   Directory p -> inj p
   Database p -> inj p
@@ -212,6 +229,9 @@ newDirectory = Directory $ rootDir </> dir newFolderName
 newDatabase :: Resource
 newDatabase = Database $ rootDir </> dir newDatabaseName
 
+newViewMount :: Resource
+newViewMount = ViewMount $ rootDir </> file newViewName
+
 mkNotebook :: AnyPath -> Resource
 mkNotebook ap =
   either go (Notebook <<< (<./> notebookExtension)) ap
@@ -229,6 +249,14 @@ mkFile ap = either File go ap
   go p = maybe newFile id do
     Tuple pp dirOrFile <- peel p
     pure $ File (pp </> file (nameOfFileOrDir dirOrFile))
+
+mkViewMount :: AnyPath -> Resource
+mkViewMount ap = either ViewMount go ap
+  where
+  go :: DirPath -> Resource
+  go p = maybe newViewMount id do
+    Tuple pp dirOrFile <- peel p
+    pure $ ViewMount (pp </> file (nameOfFileOrDir dirOrFile))
 
 mkDirectory :: AnyPath -> Resource
 mkDirectory ap = either go Directory ap
@@ -249,6 +277,7 @@ mkDatabase ap = either go Database ap
 setPath :: Resource -> AnyPath -> Resource
 setPath (Notebook _) p = mkNotebook p
 setPath (File _) p = mkFile p
+setPath (ViewMount _) p = mkViewMount p
 setPath (Database _) p = mkDatabase p
 setPath (Directory _) p = mkDirectory p
 
@@ -276,37 +305,59 @@ instance resourceEq :: Eq Resource where
   eq (Notebook p) (Notebook p') = p == p'
   eq (Directory p) (Directory p') = p == p'
   eq (Database p) (Database p') = p == p'
+  eq (ViewMount p) (ViewMount p') = p == p'
   eq _ _ = false
 
 instance resourceIsForeign :: IsForeign Resource where
   read f = do
     name <- readProp "name" f
     ty <- readProp "type" f
+    mountType <- runNullOrUndefined <$> readProp "mount" f
     template <- case ty of
-      "mount" -> pure newDatabase
-      "directory" -> pure $ if endsWith notebookExtension name
-                            then newNotebook
-                            else newDirectory
-      "file" -> pure newFile
+      "directory" ->
+        case mountType of
+          Just "mongodb" -> pure newDatabase
+          _ ->
+            pure $
+              if endsWith notebookExtension name
+                then newNotebook
+                else newDirectory
+      "file" ->
+        case mountType of
+          Just "view" -> pure newViewMount
+          _ -> pure newFile
       _ -> Left $ TypeMismatch "resource" "string"
     pure $ setName template name
 
 instance encodeJsonResource :: EncodeJson Resource where
-  encodeJson res = "type" := resourceTag res
-                ~> "path" := resourcePath res
-                ~> jsonEmptyObject
+  encodeJson res =
+    "type" := resourceTag res
+    ~> "path" := resourcePath res
+    ~> maybe
+        jsonEmptyObject
+        (\t -> "mount" := t ~> jsonEmptyObject)
+        (resourceMountTypeTag res)
 
 instance decodeJsonResource :: DecodeJson Resource where
   decodeJson json = do
     obj <- decodeJson json
     resType <- obj .? "type"
     path <- obj .? "path"
+    let mountType = Data.StrMap.lookup "mount" obj >>= decodeJson >>> either (const Nothing) pure
     case resType of
       -- type inference bug prevents use of a generic `parsePath` which accepts `parseAbsFile` or `parseAbsDir` as an argument
-      "file" -> maybe (Left $ "Invalid file path") (Right <<< File) $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile path)
+      "file" ->
+        let
+          constr =
+            case mountType of
+              Just "view" -> ViewMount
+              _ -> File
+        in maybe (Left $ "Invalid file path") (Right <<< constr) $ (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile path)
       "notebook" -> parseDirPath "notebook" Notebook path
-      "directory" -> parseDirPath "directory" Directory path
-      "mount" -> parseDirPath "mount" Database path
+      "directory" ->
+        case mountType of
+          Just "mongodb" -> parseDirPath "mount" Database path
+          _ -> parseDirPath "directory" Directory path
       _ -> Left "Unrecognized resource type"
     where
     parseDirPath :: String -> (DirPath -> Resource) -> String -> Either String Resource
