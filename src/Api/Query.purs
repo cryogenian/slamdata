@@ -98,7 +98,7 @@ countWithQuery res =
   readTotal = I.fromNumber <=< toNumber <=< lookup "total" <=< toObject <=< head
 
 portQuery :: forall e. Resource -> Resource -> SQL -> StrMap VarMapValue -> Aff (RetryEffects (ajax :: AJAX | e)) JObject
-portQuery res dest sql vars = do
+portQuery res dest sql varMap = do
   guard $ isFile dest
   result <- slamjax $ defaultRequest
     { method = POST
@@ -106,7 +106,7 @@ portQuery res dest sql vars = do
         [ RequestHeader "Destination" $ resourcePath dest
         , ContentType ldJSON
         ]
-    , url = printPath $ queryUrl </> rootify (resourceDir res) </> dir (resourceName res) </> file queryVars
+    , url = printPath $ queryUrl </> rootify (resourceDir res) </> dir (resourceName res) </> file queryString
     , content = Just (templated res sql)
     }
 
@@ -117,6 +117,9 @@ portQuery res dest sql vars = do
       either (throwError <<< error) pure $
         jsonParser result.response >>= decodeJson
   where
+  queryString :: String
+  queryString = maybe "" ("?" <>) $ renderQueryString varMap
+
   readErr :: String -> String
   readErr input =
     case jsonParser input >>= decodeJson >>= (.? "error") of
@@ -124,21 +127,22 @@ portQuery res dest sql vars = do
       Left _ -> input
       -- Error is hided in json message, return only `error` field
       Right err -> err
-  -- TODO: This should be somewhere better.
-  queryVars :: String
-  queryVars = maybe "" makeQueryVars <<< uncons $ toList vars
 
-  pair :: Tuple String VarMapValue -> String
-  pair (Tuple a b) = "var." <> a <> "=" <> b
 
-  makeQueryVars { head = h, tail = t } =
-    foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
-
-portView :: forall e. Resource -> Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
-portView res dest sql = do
+portView :: forall e. Resource -> Resource -> SQL -> StrMap VarMapValue -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+portView res dest sql varMap = do
   guard $ isFile dest
-  let uri = "sql2:///?q=" <> encodeURIPath (templated res sql)
+  let uri = "sql2:///?q=" <> encodeURIPath (templated res sql) <> maybe "" ("&" <>) (renderQueryString varMap)
   saveViewMount dest uri
+
+renderQueryString :: StrMap VarMapValue -> Maybe String
+renderQueryString = map go <<< uncons <<< toList
+  where
+  pair :: Tuple String VarMapValue -> String
+  pair (Tuple a b) = "var." <> a <> "=" <> encodeURIComponent b
+
+  go { head = h, tail = t } =
+    foldl (\a v -> a <> "&" <> pair v) (pair h) t
 
 readError :: forall a. String -> String -> Either String a
 readError msg input =

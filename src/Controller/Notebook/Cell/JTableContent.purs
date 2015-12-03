@@ -152,9 +152,9 @@ queryToJTable cell sql inp out = do
     -- If result-caching is enabled, use the query API rather than the views API
     let shouldCacheResults = cell ^? _content .. _shouldCacheResults # fromMaybe false
     attempt $
-      if SM.isEmpty varMap && not shouldCacheResults
-         then Quasar.portView inp out sql $> Nothing
-         else Quasar.portQuery inp out sql varMap <#> Just
+      if shouldCacheResults
+         then Quasar.portQuery inp out sql varMap <#> Just
+         else Quasar.portView inp out sql varMap $> Nothing
 
   either errorInQuery go do
     mj <- lmap message jobj
