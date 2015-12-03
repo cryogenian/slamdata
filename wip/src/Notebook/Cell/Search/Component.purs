@@ -122,7 +122,7 @@ eval = coproduct cellEval searchEval
                 # MT.lift
                 >>= M.maybe (EC.throwError "No file selected") pure
             query <-
-              get <#> _.searchString >>> S.toLower >>> SS.mkQuery
+              get <#> _.searchString >>> SS.mkQuery
                 # MT.lift
                 >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
