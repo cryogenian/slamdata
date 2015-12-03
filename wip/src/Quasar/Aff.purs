@@ -45,6 +45,7 @@ import Prelude
 import Config as Config
 import Config.Paths as Config
 
+import Control.Apply (lift2)
 import Control.Bind ((>=>), (<=<))
 import Control.Coroutine as CR
 import Control.Coroutine.Aff as ACR
@@ -626,13 +627,19 @@ getFields' acc json =
 
   where
   goArr :: Array String -> JS.JArray -> Array String
-  goArr acc = Arr.concat <<< map (getFields' $ (<> "[*]") <$> acc)
+  goArr acc arr =
+    Arr.concat $ getFields' (lift2 append acc $ mkArrIxs arr) <$> arr
+    where
+    mkArrIxs :: JS.JArray -> Array String
+    mkArrIxs jarr =
+      map (show >>> \x -> "[" <> x <> "]") $ Arr.range 0 $ Arr.length jarr - 1
 
   goObj :: Array String -> JS.JObject -> Array String
   goObj acc = Arr.concat <<< map (goTuple acc) <<< L.fromList <<< SM.toList
 
   goTuple :: Array String -> Tuple String JS.Json -> Array String
-  goTuple acc (Tuple key json) = getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json
+  goTuple acc (Tuple key json) =
+    getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json
 
 executeQuery
   :: forall e

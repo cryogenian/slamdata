@@ -92,7 +92,6 @@ predicateToSQL
   :: SS.Predicate
   -> String
   -> String
-predicateToSQL (SS.Contains (SS.Range v v')) s = range v v' s
 predicateToSQL (SS.Contains (SS.Text v)) s =
   joinWith " OR " $
     [s <> " ~* '" <> (globToRegex $ containsToGlob v) <> "'"]
@@ -121,15 +120,40 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
     render' v = [ "LOWER(" <> s <> ") = " <> v]
     render v = [s <> " = " <> v ]
 
-predicateToSQL (SS.Contains (SS.Tag v)) s = predicateToSQL (SS.Contains (SS.Text v)) (s <> "[*]")
+predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =
+  joinWith " OR " $
+    [ forR' quoted quoted' ]
+    <> (if needUnq v && needUnq v' then [ forR v v' ] else [ ])
+    <> (if needDate v && needDate v' then [ forR date date' ] else [ ])
+
+  where
+    quoted = quote v
+    quoted' = quote v'
+
+    date = dated quoted
+    date' = dated quoted'
+
+    forR' :: String -> String -> String
+    forR' v v' =
+      fold ["(LOWER(", s, ") >=", v, " AND LOWER(", s, ") <= ", v', ")"]
+
+    forR :: String -> String -> String
+    forR v v' =
+      fold ["(", s, " >= ", v, " AND ", s, " <= ", v', ")"]
+
+predicateToSQL (SS.Range (SS.Tag val) val') s =
+  predicateToSQL (SS.Range (SS.Text val) val') s
+predicateToSQL (SS.Range val (SS.Tag val')) s =
+  predicateToSQL (SS.Range val (SS.Text val')) s
+predicateToSQL (SS.Contains (SS.Tag v)) s =
+  predicateToSQL (SS.Contains (SS.Text v)) s
 predicateToSQL (SS.Eq v) s = qUnQ s "=" v
 predicateToSQL (SS.Gt v) s = qUnQ s ">" v
 predicateToSQL (SS.Gte v) s = qUnQ s ">=" v
 predicateToSQL (SS.Lt v) s = qUnQ s "<" v
 predicateToSQL (SS.Lte v) s = qUnQ s "<=" v
 predicateToSQL (SS.Ne v) s = qUnQ s "<>" v
-predicateToSQL (SS.Like v) s = s <> " ~* '" <> globToRegex v <> "'"
-
+predicateToSQL (SS.Like v) s = s <> " ~* '" <> v <> "'"
 
 globToRegex :: String -> String
 globToRegex =
@@ -145,30 +169,6 @@ globToRegex =
 
     starRegex = RX.regex "\\*" RX.noFlags { global = true }
     askRegex = RX.regex "\\?" RX.noFlags { global = true }
-
-range
-  :: String
-  -> String
-  -> String
-  -> String
-range v v' s =
-  joinWith " OR " $
-    [ forR' quoted quoted' ]
-    <> (if needUnq v && needUnq v' then [ forR v v' ] else [ ])
-    <> (if needDate v && needDate v' then [ forR date date' ] else [ ])
-  where
-    quoted = quote v
-    quoted' = quote v'
-
-    date = dated quoted
-    date' = dated quoted'
-
-    forR' :: String -> String -> String
-    forR' v v' =
-      fold ["(LOWER(", s, ") >=", v, " AND LOWER(", s, ") <= ", v', ")"]
-    forR :: String -> String -> String
-    forR v v' =
-      fold ["(", s, " >= ", v, " AND ", s, " <= ", v', ")"]
 
 qUnQ
   :: String
@@ -241,7 +241,6 @@ valueToSQL v =
   case v of
     SS.Text v -> v
     SS.Tag v -> v
-    SS.Range v v' -> ""
 
 labelsProjection :: Array String -> Array SS.Label -> Array String
 labelsProjection fields ls =
@@ -255,25 +254,26 @@ labelsProjection fields ls =
 
 labelsRegex :: Array SS.Label -> RX.Regex
 labelsRegex [] = RX.regex ".*" RX.noFlags
-labelsRegex ls = RX.regex ("^" <> (foldMap mapFn ls) <> "$") RX.noFlags
+labelsRegex ls =
+  RX.regex ("^" <> (foldMap mapFn ls) <> "$") RX.noFlags{ignoreCase = true}
   where
-    mapFn :: SS.Label -> String
-    mapFn (SS.Meta l) = mapFn (SS.Common l)
-    mapFn (SS.Common "{*}") = "(\\.[^\\.]+)"
-    mapFn (SS.Common "[*]") = "(\\[\\d+\\])"
-    mapFn (SS.Common "*") = "(\\.[^\\.]+|\\[\\d+\\])"
-    mapFn (SS.Common l)
-      | RX.test (RX.regex "\\[\\d+\\]" RX.noFlags) l =
-          RX.replace openSquare "\\["
-        $ RX.replace closeSquare "\\]"
-        $ l
-      | otherwise = "(\\.\"" <> l <> "\"|\\." <> l <> ")"
+  mapFn :: SS.Label -> String
+  mapFn (SS.Meta l) = mapFn (SS.Common l)
+  mapFn (SS.Common "{*}") = "(\\.[^\\.]+)"
+  mapFn (SS.Common "[*]") = "(\\[\\d+\\])"
+  mapFn (SS.Common "*") = "(\\.[^\\.]+|\\[\\d+\\])"
+  mapFn (SS.Common l)
+    | RX.test (RX.regex "\\[\\d+\\]" RX.noFlags) l =
+        RX.replace openSquare "\\["
+      $ RX.replace closeSquare "\\]"
+      $ l
+    | otherwise = "(\\.\"" <> l <> "\"|\\." <> l <> ")"
 
-    openSquare :: RX.Regex
-    openSquare = RX.regex "\\[" RX.noFlags
+  openSquare :: RX.Regex
+  openSquare = RX.regex "\\[" RX.noFlags
 
-    closeSquare :: RX.Regex
-    closeSquare = RX.regex "\\]" RX.noFlags
+  closeSquare :: RX.Regex
+  closeSquare = RX.regex "\\]" RX.noFlags
 
 firstDot :: RX.Regex
 firstDot = RX.regex "^\\." RX.noFlags
