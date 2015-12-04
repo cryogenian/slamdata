@@ -33,7 +33,6 @@ import Data.Foldable as F
 import Data.Functor.Coproduct
 import Data.Maybe as M
 import Data.StrMap as SM
-import Data.String as S
 
 import Halogen
 import Halogen.HTML.Indexed as H

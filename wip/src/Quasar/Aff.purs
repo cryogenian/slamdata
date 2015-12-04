@@ -496,15 +496,18 @@ portView
    . R.Resource
   -> R.Resource
   -> SQL
+  -> SM.StrMap String
   -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
-portView res dest sql = do
+portView res dest sql varMap = do
   guard $ R.isFile dest
-  let uri = "sql2:///?q=" <> PU.encodeURIPath (templated res sql)
+  let
+    queryParams = maybe "" ("&" <>) $ renderQueryString varMap
+    connectionUri = "sql2:///?q=" <> PU.encodeURIPath (templated res sql) <> queryParams
   result <-
     slamjax $ defaultRequest
       { method = PUT
       , headers = [ ContentType applicationJSON ]
-      , content = Just $ stringify { view: { connectionUri: uri } }
+      , content = Just $ stringify { view: { connectionUri: connectionUri } }
       , url =
           P.printPath $
             Config.mountUrl
@@ -547,15 +550,18 @@ portQuery res dest sql vars = do
     either (throwError <<< Exn.error) pure $
       JS.jsonParser result.response >>= JS.decodeJson
   where
-  -- TODO: This should be somewhere better.
   queryVars :: String
-  queryVars = maybe "" makeQueryVars <<< L.uncons $ SM.toList vars
+  queryVars = maybe "" ("?" <>) $ renderQueryString vars
 
+renderQueryString :: SM.StrMap String -> Maybe String
+renderQueryString = map go <<< L.uncons <<< SM.toList
+  where
   pair :: Tuple String String -> String
-  pair (Tuple a b) = "var." <> a <> "=" <> b
+  pair (Tuple a b) = "var." <> a <> "=" <> encodeURIComponent b
 
-  makeQueryVars { head = h, tail = t } =
-    foldl (\a v -> a <> "&" <> pair v) ("?" <> pair h) t
+  go { head = h, tail = t } =
+    foldl (\a v -> a <> "&" <> pair v) (pair h) t
+
 
 readError :: String -> String -> String
 readError msg input =
@@ -654,12 +660,10 @@ executeQuery sql cachingEnabled varMap inputResource outputResource = do
     void $ attempt $ forceDelete outputResource
 
   ejobj <- do
-    -- Pending SD-1143, the view mounts API doesn't yet support variables
-    let shouldUseViews = not cachingEnabled && SM.isEmpty varMap
     attempt $
-      if shouldUseViews
-         then portView inputResource outputResource sql $> Nothing
-         else portQuery inputResource outputResource sql varMap <#> Just
+      if cachingEnabled
+         then portQuery inputResource outputResource sql varMap <#> Just
+         else portView inputResource outputResource sql varMap $> Nothing
 
   pure $ do
     mjobj <- lmap Exn.message ejobj
