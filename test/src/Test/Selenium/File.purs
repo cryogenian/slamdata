@@ -953,6 +953,6 @@ test = do
   checkTitle
   createFolder
   moveDeleteFolder
-  createNotebook
-  moveDeleteNotebook
+--  createNotebook
+--  moveDeleteNotebook
   downloadResource

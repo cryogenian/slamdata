@@ -31,7 +31,7 @@ import Control.Monad (when)
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct(), coproduct, left)
+import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
 import Data.Lens ((.~), (%~))
 import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
@@ -53,9 +53,10 @@ import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component
   (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
 import Notebook.CellSlot (CellSlot(..))
-import Notebook.Common (Slam())
+import Notebook.Common (Slam(), forceRerender')
 import Notebook.Component.Query
 import Notebook.Component.State
+import Notebook.FileInput.Component as Fi
 import Quasar.Aff (loadNotebook)
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
@@ -122,6 +123,18 @@ eval (LoadResource fs res next) = do
   model <- liftH $ liftAff' $ loadNotebook res
   modify $ const $ fromModel fs model
   modify (_path .~ R.resourceDir res)
+  pure next
+eval (ExploreFile fs res next) = do
+  modify (_path .~ R.resourceDir res)
+  modify (_browserFeatures .~ fs)
+  modify (addCell Explore Nothing)
+  forceRerender'
+  query (CellSlot zero) $ right
+    $ ChildF unit $ right $ ExploreQuery
+    $ right $ ChildF unit
+    $ action $ Fi.SelectFile res
+  forceRerender'
+  runCell zero
   pure next
 eval (SetName name next) = modify (_name .~ That name) $> next
 eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next

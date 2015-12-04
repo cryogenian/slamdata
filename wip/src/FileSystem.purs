@@ -64,7 +64,7 @@ import Halogen.HTML.Properties as P
 import Halogen.Query (action, request, get, modify, gets)
 import Halogen.Themes.Bootstrap3 as B
 import Model.AccessType (AccessType(..))
-import Model.Common (browseURL)
+import Model.Common (browseURL, mkNotebookURL)
 import Model.Item (Item(..), itemResource, itemURL, openItem, sortItem)
 import Model.Resource as R
 import Model.Salt (newSalt)
@@ -174,13 +174,10 @@ eval (MakeFolder next) = do
 
 eval (MakeNotebook next) = do
   path <- gets (^. _path)
-  f <- liftAff'' $ attempt $ API.makeNotebook path
-  case f of
-    Left err ->
-      void $ query' cpDialog DialogSlot $ left $ action
-      $ Dialog.Show (Dialog.Error $ "There was a problem creating the notebook: "
-                     <> message err)
-    Right url -> liftEff'' (setLocation url)
+  name <- liftAff'' $ API.getNewName
+          path (Config.newNotebookName <> "." <> Config.notebookExtension)
+  let uri = mkNotebookURL name path New
+  liftEff'' (setLocation uri)
   pure next
 
 eval (UploadFile el next) = do

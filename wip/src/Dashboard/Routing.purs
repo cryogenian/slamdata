@@ -50,7 +50,7 @@ import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 import Routing (matchesAff')
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
-import Utils.Path (decodeURIPath, dropNotebookExt)
+import Utils.Path (decodeURIPath, dropNotebookExt, DirPath())
 
 data Routes
   = CellRoute Resource CellId AccessType
@@ -70,12 +70,20 @@ routing
   explored :: Match Resource
   explored = map fileFromParts fileParts
 
-  fileFromParts :: Tuple (List String) String -> Resource
-  fileFromParts (Tuple ps nm) =
-    File $ foldl (</>) rootDir (map dir ps) </> file nm
+  fileFromParts :: List String -> Resource
+  fileFromParts parts = File $ dirAndFile.directory </> file dirAndFile.file
+    where
+    dirAndFile :: { directory :: DirPath, file :: String }
+    dirAndFile = foldl foldFn { directory: rootDir, file: "" } parts
 
-  fileParts :: Match (Tuple (List String) String)
-  fileParts = Tuple <$> (oneSlash *> list str) <*> str
+    foldFn
+      :: { directory :: DirPath, file :: String } -> String
+      -> { directory :: DirPath, file :: String }
+    foldFn acc str = { directory: acc.directory </> dir str
+                     , file: str
+                     }
+  fileParts :: Match (List String)
+  fileParts = list str
 
   notebook :: Match Resource
   notebook = notebookFromParts <$> partsAndName
@@ -119,8 +127,13 @@ routeSignal driver = do
   case newRoute of
     CellRoute res cellId editable -> notebook res editable $ Just cellId
     NotebookRoute res editable -> notebook res editable Nothing
-    ExploreRoute res -> pure unit
+    ExploreRoute res -> explore res
   where
+  explore :: Resource -> Aff NotebookEffects Unit
+  explore res = do
+    fs <- liftEff detectBrowserFeatures
+    driver $ toNotebook $ Notebook.ExploreFile fs res
+
   notebook :: Resource -> AccessType -> Maybe CellId -> Aff NotebookEffects Unit
   notebook res accessType viewing = do
     let name = dropNotebookExt (resourceName res)

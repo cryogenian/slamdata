@@ -21,10 +21,11 @@ import Prelude
 import Config as Config
 import Control.UI.Browser (encodeURIComponent)
 import Data.Maybe (Maybe(), fromMaybe)
-import Data.Path.Pathy (printPath)
+import Data.Path.Pathy (printPath, dir, (</>))
+import Model.AccessType (AccessType(), printAccessType)
 import Model.Salt (Salt(), runSalt)
 import Model.Sort (Sort(), sort2string)
-import Utils.Path (DirPath())
+import Utils.Path (DirPath(), encodeURIPath, (<./>))
 
 browseURL :: Maybe String -> Sort -> Salt -> DirPath -> String
 browseURL search sort salt path =
@@ -44,3 +45,15 @@ browseURL search sort salt path =
       <> "path:\""
       <> printPath path
       <> "\""
+
+-- Currently the only place where modules from `Model.Notebook` are used
+-- is `Controller.File`. I think that it would be better if url will be constructed
+-- from things that are already in `FileSystem` (In fact that using of
+-- `notebookURL` is redundant, because (state ^. _path) is `DirPath`
+-- `theseRight $ That Config.newNotebookName` ≣ `Just Config.newNotebookName`
+mkNotebookURL :: String -> DirPath -> AccessType -> String
+mkNotebookURL name path access =
+  Config.notebookUrl
+  <> "#"
+  <> encodeURIPath (printPath $ path </> dir name <./> Config.notebookExtension)
+  <> printAccessType access
