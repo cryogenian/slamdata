@@ -6,6 +6,7 @@
 /coverage/
 /test/node_modules
 /test/jars/quasar.jar
+jars
 public/js/*.js
 public/js/!ace*
 public/css/*.css

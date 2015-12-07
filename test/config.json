@@ -17,7 +17,7 @@
     "slamdataUrl": "http://localhost:63175",
     "notebookUrl": "/slamdata/notebook.html",
     "quasar": {
-        "jar": "test/jars/quasar.jar",
+        "jar": "jars/quasar.jar",
         "config": "test/quasar-config.json"
     },
     "links": {

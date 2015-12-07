@@ -11,6 +11,7 @@
     "Jonathan Sterling <jon@slamdata.com>"
   ],
   "scripts": {
+    "postinstall": "node script/get-quasar.js",
     "test": "gulp bundle-test && node test -b phantomjs"
   },
   "license": "Apache-2.0",
