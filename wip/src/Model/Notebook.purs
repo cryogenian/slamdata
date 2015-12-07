@@ -24,6 +24,8 @@ import Data.Argonaut
 import Data.Lens (LensP(), lens)
 import Data.Map (Map(), empty)
 import Data.Maybe (Maybe())
+import Utils.Path as Pu
+import Model.AccessType (printAccessType)
 
 import Network.HTTP.Affjax.Request (Requestable, toRequest)
 

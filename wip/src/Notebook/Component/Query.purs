@@ -34,3 +34,4 @@ data NotebookQuery a
   | SetViewingCell (Maybe CellId) a
   | SetName String a
   | SetAccessType AccessType a
+  | ExploreFile BrowserFeatures Resource a
