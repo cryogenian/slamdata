@@ -32,6 +32,7 @@ script:
   - node test
 before_deploy:
 - cp -r public slamdata
+- cp jars/quasar.jar slamdata/quasar.jar
 - tar cjf slamdata.tar.bz2 slamdata
 deploy:
   provider: releases
