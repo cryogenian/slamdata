@@ -36,6 +36,7 @@ module Quasar.Aff
   , sample
   , transitiveChildrenProducer
   , query'
+  , count
 
   , RetryEffects()
   ) where
@@ -690,6 +691,3 @@ executeQuery sql cachingEnabled varMap inputResource outputResource = do
       { outputResource: R.mkFile $ Left $ P.rootDir </> info.sandboxedPath
       , plan: info.plan
       }
-
-hole :: forall a. a
-hole = Unsafe.Coerce.unsafeCoerce "hole"

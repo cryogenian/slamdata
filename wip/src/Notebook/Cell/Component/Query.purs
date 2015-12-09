@@ -25,6 +25,7 @@ module Notebook.Cell.Component.Query
   , _ExploreQuery
   , _MarkdownQuery
   , _SearchQuery
+  , _JTableQuery
   , _VizQuery
   , _ChartQuery
   , module Notebook.Cell.Common.EvalQuery
@@ -43,12 +44,13 @@ import Halogen (ChildF())
 import Model.CellType (CellType())
 import Model.Port (Port())
 import Notebook.Cell.Ace.Component.Query (AceQueryP())
+import Notebook.Cell.Chart.Component.Query (ChartQueryP())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInputPre())
 import Notebook.Cell.Explore.Component.Query (ExploreQueryP())
+import Notebook.Cell.JTable.Component.Query (JTableQueryP())
 import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
 import Notebook.Cell.Search.Component.Query (SearchQueryP())
 import Notebook.Cell.Viz.Component.Query (VizQueryP())
-import Notebook.Cell.Chart.Component.Query (ChartQueryP())
 
 -- | The common query algebra for a notebook cell.
 -- |
@@ -97,6 +99,7 @@ data AnyCellQuery a
   | ExploreQuery (ExploreQueryP a)
   | MarkdownQuery (MarkdownQueryP a)
   | SearchQuery (SearchQueryP a)
+  | JTableQuery (JTableQueryP a)
   | VizQuery (VizQueryP a)
   | ChartQuery (ChartQueryP a)
 
@@ -118,6 +121,11 @@ _MarkdownQuery = prism' MarkdownQuery \q -> case q of
 _SearchQuery :: forall a. PrismP (AnyCellQuery a) (SearchQueryP a)
 _SearchQuery = prism' SearchQuery \q -> case q of
   SearchQuery q' -> Just q'
+  _ -> Nothing
+
+_JTableQuery :: forall a. PrismP (AnyCellQuery a) (JTableQueryP a)
+_JTableQuery = prism' JTableQuery \q -> case q of
+  JTableQuery q' -> Just q'
   _ -> Nothing
 
 _VizQuery :: forall a. PrismP (AnyCellQuery a) (VizQueryP a)

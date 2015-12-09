@@ -44,22 +44,25 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
+import Render.Common (glyph, fadeWhen)
+import Render.CssClasses as CSS
+
 import Model.AccessType (isEditable)
 import Model.CellId (CellId())
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Port (Port())
 import Model.Resource as R
+
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
-import Notebook.Cell.Component
-  (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
+import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
+import Notebook.Cell.JTable.Component as JTC
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam(), forceRerender')
 import Notebook.Component.Query
 import Notebook.Component.State
 import Notebook.FileInput.Component as Fi
-import Quasar.Aff (loadNotebook)
-import Render.Common (glyph, fadeWhen)
-import Render.CssClasses as CSS
+
+import Quasar.Aff as Quasar
 
 type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
 type NotebookStateP =
@@ -120,7 +123,7 @@ eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
 eval (LoadResource fs res next) = do
-  model <- liftH $ liftAff' $ loadNotebook res
+  model <- liftH $ liftAff' $ Quasar.loadNotebook res
   modify $ const $ fromModel fs model
   modify (_path .~ R.resourceDir res)
   pure next
@@ -165,16 +168,16 @@ peekCell cellId q = case q of
 -- | raised by actions within a cell that should cause the cell to run.
 peekCellInner :: forall a. CellId -> ChildF Unit InnerCellQuery a -> NotebookDSL Unit
 peekCellInner cellId (ChildF _ q) =
-  coproduct (peekEvalCell cellId) (peekAnyCell cellId) q
+  coproduct (peekEvalCell cellId) (\q' -> if queryShouldRun q' then runCell cellId else pure unit) q
 
 peekEvalCell :: forall a. CellId -> CellEvalQuery a -> NotebookDSL Unit
 peekEvalCell cellId (NotifyRunCell _) = runCell cellId
 peekEvalCell _ _ = pure unit
 
-peekAnyCell :: forall a. CellId -> AnyCellQuery a -> NotebookDSL Unit
-peekAnyCell cellId (VizQuery q) =
-  coproduct (const $ runCell cellId) (const $ runCell cellId) q
-peekAnyCell _ _ = pure unit
+queryShouldRun :: forall a. AnyCellQuery a -> Boolean
+queryShouldRun (VizQuery q) = true
+queryShouldRun (JTableQuery q) = JTC.queryShouldRun q
+queryShouldRun _ = false
 
 -- | Runs the cell with the specified ID and then runs any cells that depend on
 -- | the cell's output with the new result.

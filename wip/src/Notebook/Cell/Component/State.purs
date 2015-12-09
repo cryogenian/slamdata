@@ -33,6 +33,7 @@ module Notebook.Cell.Component.State
   , _ExploreState
   , _MarkdownState
   , _SearchState
+  , _JTableState
   , _VizState
   , _ChartState
   ) where
@@ -50,14 +51,14 @@ import Halogen (InstalledState())
 import Model.AccessType (AccessType())
 
 import Notebook.Cell.Ace.Component.State
+import Notebook.Cell.Chart.Component.State
 import Notebook.Cell.Component.Query
 import Notebook.Cell.Explore.Component.State
+import Notebook.Cell.JTable.Component.State
 import Notebook.Cell.Markdown.Component.State
 import Notebook.Cell.RunState (RunState(..))
 import Notebook.Cell.Search.Component.State
 import Notebook.Cell.Viz.Component.State
-import Notebook.Cell.RunState (RunState(..))
-import Notebook.Cell.Chart.Component.State
 import Notebook.Common (Slam())
 
 -- | The common state value for notebook cells.
@@ -156,6 +157,7 @@ data AnyCellState
   | ExploreState ExploreStateP
   | MarkdownState MarkdownStateP
   | SearchState SearchStateP
+  | JTableState JTableState
   | VizState VizStateP
   | ChartState ChartStateP
 
@@ -177,6 +179,11 @@ _MarkdownState = prism' MarkdownState \s -> case s of
 _SearchState :: PrismP AnyCellState SearchStateP
 _SearchState = prism' SearchState \s -> case s of
   SearchState s' -> Just s'
+  _ -> Nothing
+
+_JTableState :: PrismP AnyCellState JTableState
+_JTableState = prism' JTableState \s -> case s of
+  JTableState s' -> Just s'
   _ -> Nothing
 
 _VizState :: PrismP AnyCellState VizStateP
