@@ -1,6 +1,7 @@
 {
   "name": "slamdata",
   "description": "The web-based front-end for SlamData.",
+  "version": "v2.3.3",
   "repository": {
     "type": "git",
     "url": "https://github.com/slamdata/slamdata"
