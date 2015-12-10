@@ -29,9 +29,10 @@ import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either (Either(..))
-import Data.Foldable (foldl)
-import Data.List (List())
+import Data.Foldable (foldl, foldr)
+import Data.List (List(), init, last)
 import Data.Maybe (Maybe(..))
+import Data.Maybe.Unsafe as U
 import Data.Path.Pathy ((</>), rootDir, dir, file)
 import Data.String.Regex (noFlags, regex, test, Regex())
 import Data.Tuple (Tuple(..))
@@ -40,17 +41,20 @@ import Halogen (Driver())
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
-import Config (notebookExtension)
-import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, fromDashboard, toDashboard)
 import Model.AccessType (AccessType(..), parseAccessType)
-import Model.Resource (Resource(..), resourceName, resourceDir)
-import Notebook.Component as Notebook
 import Model.CellId (CellId(), stringToCellId)
-import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
+import Model.Resource (Resource(..), resourceName, resourceDir)
+
 import Routing (matchesAff')
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
-import Utils.Path (decodeURIPath, dropNotebookExt, DirPath())
+
+import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, fromDashboard, toDashboard)
+
+import Notebook.Component as Notebook
+import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
+
+import Utils.Path (decodeURIPath, dropNotebookExt)
 
 data Routes
   = CellRoute Resource CellId AccessType
@@ -68,22 +72,17 @@ routing
   oneSlash = lit ""
 
   explored :: Match Resource
-  explored = map fileFromParts fileParts
+  explored = eitherMatch $ mkResource <$> list str
 
-  fileFromParts :: List String -> Resource
-  fileFromParts parts = File $ dirAndFile.directory </> file dirAndFile.file
-    where
-    dirAndFile :: { directory :: DirPath, file :: String }
-    dirAndFile = foldl foldFn { directory: rootDir, file: "" } parts
-
-    foldFn
-      :: { directory :: DirPath, file :: String } -> String
-      -> { directory :: DirPath, file :: String }
-    foldFn acc str = { directory: acc.directory </> dir str
-                     , file: str
-                     }
-  fileParts :: Match (List String)
-  fileParts = list str
+  mkResource :: List String -> Either String Resource
+  mkResource parts =
+    case last parts of
+      Just filename | filename /= "" ->
+        let dirParts = U.fromJust (init parts)
+            filePart = file filename
+            path = foldr (\part acc -> dir part </> acc) filePart dirParts
+        in Right $ File $ rootDir </> path
+      _ -> Left "Expected non-empty explore path"
 
   notebook :: Match Resource
   notebook = notebookFromParts <$> partsAndName
@@ -110,7 +109,7 @@ routing
                  | otherwise = Right input
 
   extensionRegex :: Regex
-  extensionRegex = regex ("\\." <> notebookExtension <> "$") noFlags
+  extensionRegex = regex ("\\." <> Config.notebookExtension <> "$") noFlags
 
   checkExtension :: String -> Boolean
   checkExtension = test extensionRegex
