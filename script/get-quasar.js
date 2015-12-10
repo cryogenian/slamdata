@@ -49,9 +49,7 @@ function fetchReleaseAsset(options, destFile, k) {
 
     https.get(assetLocation, function (assetResponse) {
       assetResponse.pipe(destFile);
-      destFile.on("finish", function () {
-        destFile.close(k)
-      });
+      destFile.on("finish", k);
     });
   });
 };
@@ -100,7 +98,9 @@ function main() {
     }
 
     downloadQuasar(quasar[quasarDistribution], githubAuthToken, quasarDest, function () {
-      console.log("Downloaded " + quasarDistribution);
+      quasarDest.close(function () {
+        console.log("Downloaded " + quasarDistribution);
+      });
     });
   }
 }
