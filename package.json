@@ -1,6 +1,7 @@
 {
   "name": "slamdata",
   "description": "The web-based front-end for SlamData.",
+  "version": "v2.3.3",
   "repository": {
     "type": "git",
     "url": "https://github.com/slamdata/slamdata"
@@ -11,6 +12,7 @@
     "Jonathan Sterling <jon@slamdata.com>"
   ],
   "scripts": {
+    "postinstall": "node script/get-quasar.js",
     "test": "gulp bundle-test && node test -b phantomjs"
   },
   "license": "Apache-2.0",
