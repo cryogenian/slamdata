@@ -44,7 +44,6 @@ import Render.CssClasses as CSS
 import Render.Common as RC
 
 import Model.CellType as CT
-import Model.CellId as CID
 import Model.Notebook.Search as Search
 import Model.Port as Port
 
@@ -61,8 +60,8 @@ import Quasar.Aff as Quasar
 
 type Query = Coproduct NC.CellEvalQuery SearchQuery
 
-searchComponent :: CID.CellId -> Component NC.CellStateP NC.CellQueryP Slam
-searchComponent cellId =
+searchComponent :: Component NC.CellStateP NC.CellQueryP Slam
+searchComponent =
   NC.makeEditorCellComponent
     { name: CT.cellName CT.Search
     , glyph: CT.cellGlyph CT.Search

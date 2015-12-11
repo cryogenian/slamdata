@@ -203,7 +203,7 @@ addCell cellType parent st =
   editor :: CellType -> CellId -> CellComponent
   editor Markdown _ = aceComponent Markdown markdownEval "ace/mode/markdown"
   editor Explore _ = exploreComponent
-  editor Search cellId = searchComponent cellId
+  editor Search _ = searchComponent
   editor Query _ = aceComponent Query queryEval "ace/mode/sql"
   editor Viz _ = vizComponent
 
