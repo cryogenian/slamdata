@@ -28,6 +28,8 @@ module Notebook.Cell.Component.State
   , _messageVisibility
   , _hasResults
   , _cachingEnabled
+  , _input
+  , _output
   , AnyCellState()
   , _AceState
   , _ExploreState
@@ -49,16 +51,17 @@ import Data.Visibility (Visibility(..))
 import Halogen (InstalledState())
 
 import Model.AccessType (AccessType())
+import Model.Port (Port())
 
-import Notebook.Cell.Ace.Component.State
-import Notebook.Cell.Chart.Component.State
-import Notebook.Cell.Component.Query
-import Notebook.Cell.Explore.Component.State
-import Notebook.Cell.JTable.Component.State
-import Notebook.Cell.Markdown.Component.State
+import Notebook.Cell.Ace.Component.State (AceStateP())
+import Notebook.Cell.Chart.Component.State (ChartStateP())
+import Notebook.Cell.Component.Query (CellQuery(), InnerCellQuery())
+import Notebook.Cell.Explore.Component.State (ExploreStateP())
+import Notebook.Cell.JTable.Component.State (JTableState())
+import Notebook.Cell.Markdown.Component.State (MarkdownStateP())
 import Notebook.Cell.RunState (RunState(..))
-import Notebook.Cell.Search.Component.State
-import Notebook.Cell.Viz.Component.State
+import Notebook.Cell.Search.Component.State (SearchStateP())
+import Notebook.Cell.Viz.Component.State (VizStateP())
 import Notebook.Common (Slam())
 
 -- | The common state value for notebook cells.
@@ -89,6 +92,8 @@ type CellState =
   , messageVisibility :: Visibility
   , hasResults :: Boolean
   , cachingEnabled :: Maybe Boolean -- Nothing if the option isn't available
+  , input :: Maybe Port
+  , output :: Maybe Port
   }
 
 type CellStateP = InstalledState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
@@ -105,6 +110,8 @@ initEditorCellState accessType visibility =
   , messageVisibility: Invisible
   , hasResults: false
   , cachingEnabled: Nothing
+  , input: Nothing
+  , output: Nothing
   }
 
 -- | Creates an initial `CellState` value for a results cell.
@@ -119,6 +126,8 @@ initResultsCellState accessType visibility =
   , messageVisibility: Invisible
   , hasResults: false
   , cachingEnabled: Nothing
+  , input: Nothing
+  , output: Nothing
   }
 
 _accessType :: LensP CellState AccessType
@@ -151,6 +160,16 @@ _cachingEnabled =
     case s.cachingEnabled of
       Nothing -> pure s
       Just b -> f b <#> \b' -> s { cachingEnabled = Just b' }
+
+-- | The last input value passed into the cell when requesting evaluation.
+_input :: LensP CellState (Maybe Port)
+_input = lens _.input (_ { input = _ })
+
+-- | The last output value computed for the cell. This may not be up to date
+-- | with the exact state of the cell, but is the most recent result from when
+-- | the cell was evaluated.
+_output :: LensP CellState (Maybe Port)
+_output = lens _.output (_ { output = _ })
 
 data AnyCellState
   = AceState AceStateP

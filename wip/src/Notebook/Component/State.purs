@@ -20,20 +20,18 @@ module Notebook.Component.State
   , CellConstructor()
   , initialNotebook
   , addCell
+  , addCell'
   , removeCells
   , findRoot
   , findParent
   , findChildren
   , findDescendants
-  , getCurrentValue
-  , setCurrentValue
   , fromModel
   , notebookPath
   , _fresh
   , _accessType
   , _cells
   , _dependencies
-  , _values
   , _activeCellId
   , _name
   , _isAddingCell
@@ -89,7 +87,6 @@ type NotebookState =
   , accessType :: AccessType
   , cells :: List CellDef
   , dependencies :: M.Map CellId CellId
-  , values :: M.Map CellId Port
   , activeCellId :: Maybe CellId
   , name :: These String String
   , path :: P.DirPath
@@ -105,7 +102,6 @@ initialNotebook browserFeatures =
   , accessType: Editable
   , cells: mempty
   , dependencies: M.empty
-  , values: M.empty
   , activeCellId: Nothing
   , name: This Config.newNotebookName
   , isAddingCell: false
@@ -130,10 +126,6 @@ _cells = lens _.cells _{cells = _}
 -- | represents a child/parent relation.
 _dependencies :: LensP NotebookState (M.Map CellId CellId)
 _dependencies = lens _.dependencies _{dependencies = _}
-
--- | A cache of the most values that were returned when a cell was run.
-_values :: LensP NotebookState (M.Map CellId Port)
-_values = lens _.values _{values = _}
 
 -- | The `CellId` for the currently focused cell.
 _activeCellId :: LensP NotebookState (Maybe CellId)
@@ -174,7 +166,14 @@ type CellDef = { id :: CellId, ctor :: CellConstructor }
 -- | Takes the current notebook state, the type of cell to add, and an optional
 -- | parent cell ID.
 addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
-addCell cellType parent st =
+addCell cellType parent st = fst $ addCell' cellType parent st
+
+-- | Adds a new cell to the notebook.
+-- |
+-- | Takes the current notebook state, the type of cell to add, and an optional
+-- | parent cell ID and returns the modified notebook state and the new cell ID.
+addCell' :: CellType -> Maybe CellId -> NotebookState -> Tuple NotebookState CellId
+addCell' cellType parent st =
   let editorId = CellId st.fresh
       resultsId = editorId + one
       initEditorState =
@@ -184,15 +183,17 @@ addCell cellType parent st =
             }
       initResultsState = installedState $ initResultsCellState st.accessType Visible
       dependencies = M.insert resultsId editorId st.dependencies
-  in st
-    { fresh = st.fresh + 2
-    , cells = st.cells
-        `snoc` mkCellDef editor editorId initEditorState
-        `snoc` mkCellDef results resultsId initResultsState
-    , dependencies =
-          maybe dependencies (flip (M.insert editorId) dependencies) parent
-    , isAddingCell = false
-    }
+  in Tuple
+    st
+      { fresh = st.fresh + 2
+      , cells = st.cells
+          `snoc` mkCellDef editor editorId initEditorState
+          `snoc` mkCellDef results resultsId initResultsState
+      , dependencies =
+            maybe dependencies (flip (M.insert editorId) dependencies) parent
+      , isAddingCell = false
+      }
+    editorId
   where
 
   defaultCachingEnabled :: CellType -> Maybe Boolean
@@ -276,31 +277,12 @@ findDescendants cellId st =
   let children = findChildren cellId st
   in children <> foldMap (flip findDescendants st) children
 
--- | Gets the current value stored for the result of a cell's evaluation.
--- |
--- | If the cell has not been evaluated or the cell provides no output the
--- | result will be `Nothing`.
--- |
--- | Takes the ID of the cell to find the value for and the current
--- | notebook state.
-getCurrentValue :: CellId -> NotebookState -> Maybe Port
-getCurrentValue cellId st = M.lookup cellId st.values
-
--- | Sets the current value stored for the result of a cell's evaluation.
--- |
--- | Takes the ID of the cell to set the value for, the value to set, and the
--- | current notebook state.
-setCurrentValue :: CellId -> Maybe Port -> NotebookState -> NotebookState
-setCurrentValue cellId value st =
-  st { values = M.alter (const value) cellId st.values }
-
 fromModel :: BrowserFeatures -> M.Notebook -> NotebookState
 fromModel browserFeatures model =
   { fresh: fresh
   , accessType: ReadOnly
   , cells: cells
   , dependencies: model ^. M._dependencies
-  , values: values
   , activeCellId: Nothing
   , name: This Config.newNotebookName
   , isAddingCell: false

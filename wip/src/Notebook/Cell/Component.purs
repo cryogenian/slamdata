@@ -39,18 +39,27 @@ import Data.Functor (($>))
 import Data.Functor.Coproduct (left)
 import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
 import Data.Maybe (Maybe(..), maybe)
+import Data.Path.Pathy as Path
 import Data.Visibility (Visibility(..), toggleVisibility)
 
 import Halogen
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Indexed as E
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.Themes.Bootstrap3 as B
 
 import DOM.Timer (interval, clearInterval)
 
+import Render.Common (row, row', glyph)
+import Render.CssClasses as CSS
+
 import Model.AccessType (AccessType(..))
+import Model.CellType (CellType(..), cellGlyph, cellName)
+import Model.Port (Port(..), _Resource)
+import Model.Resource (_filePath)
+
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), prepareCellEvalInput)
 import Notebook.Cell.Component.Def
 import Notebook.Cell.Component.Query
@@ -58,8 +67,6 @@ import Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import Notebook.Cell.Component.State
 import Notebook.Cell.RunState (RunState(..))
 import Notebook.Common (Slam(), liftAff'', liftEff'')
-import Render.Common (row, row')
-import Render.CssClasses as CSS
 
 -- | Type synonym for the full type of a cell component.
 type CellComponent = Component CellStateP CellQueryP Slam
@@ -103,12 +110,39 @@ makeResultsCellComponent def = makeCellComponentPart def render
         [ row' [CSS.cellOutput]
             [ H.div
                 [ P.class_ CSS.cellOutputLabel ]
-                []
+                [ H.text (resLabel cs.input)
+                , H.ul [ P.class_ CSS.nextCellList ] (nextCellButtons cs.output)
+                ]
             , H.div
                 [ P.class_ CSS.cellOutputResult ]
                 [ H.slot unit \_ -> { component: component, initialState: initialState } ]
             ]
         ]
+
+  resLabel :: Maybe Port -> String
+  resLabel p = maybe "" (\p -> Path.runFileName (Path.fileName p) ++ " :=") $ preview (_Resource <<< _filePath) =<< p
+
+  nextCellButtons :: Maybe Port -> Array (CellHTML)
+  nextCellButtons Nothing = []
+  nextCellButtons (Just p) = case p of
+    VarMap _ ->
+      [ nextCellButton Query ]
+    Resource _ ->
+      [ nextCellButton Query
+      , nextCellButton Search
+      , nextCellButton Viz
+      ]
+    _ -> []
+
+  nextCellButton :: CellType -> CellHTML
+  nextCellButton cellType =
+    H.li_
+      [ H.button
+          [ P.title (cellName cellType)
+          , E.onClick $ E.input_ (CreateChildCell cellType)
+          ]
+          [ glyph (cellGlyph cellType) ]
+      ]
 
 containerClasses :: Array (H.ClassName)
 containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
@@ -144,9 +178,12 @@ makeCellComponentPart def render =
     modify (_tickStopper .~ tickStopper)
     cachingEnabled <- gets _.cachingEnabled
     let input' = prepareCellEvalInput cachingEnabled input
+    modify (_input .~ input'.inputPort)
     result <- query unit (left (request (EvalCell input')))
     liftAff'' tickStopper
-    modify (_runState %~ finishRun)
+    modify
+      $ (_runState %~ finishRun)
+      <<< (_output .~ (_.output =<< result))
     maybe (liftF HaltHF) (pure <<< k <<< _.output) result
   eval (RefreshCell next) = pure next
   eval (TrashCell next) = pure next
@@ -160,6 +197,7 @@ makeCellComponentPart def render =
   eval (ShareCell next) = pure next
   eval (Tick elapsed next) =
     modify (_runState .~ RunElapsed elapsed) $> next
+  eval (GetOutput k) = k <$> gets (_.output)
 
 -- | Starts a timer running on an interval that passes Tick queries back to the
 -- | component, allowing the runState to be updated with a timer.
