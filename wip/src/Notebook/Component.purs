@@ -48,7 +48,7 @@ import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
 import Model.AccessType (isEditable)
-import Model.CellId (CellId())
+import Model.CellId (CellId(), cellIdToString)
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Port (Port())
 import Model.Resource as R
@@ -81,8 +81,13 @@ notebookComponent = parentComponent' render eval peek
 render :: NotebookState -> NotebookHTML
 render state =
   H.div_
-    $ fromList (map (H.Slot <<< _.ctor) state.cells)
+    $ fromList (map renderCell state.cells)
    <> if isEditable state.accessType then [newCellMenu state] else []
+  where
+  renderCell cellDef =
+    H.div
+      [ P.key ("cell" <> cellIdToString cellDef.id) ]
+      [ H.Slot cellDef.ctor ]
 
 newCellMenu :: NotebookState -> NotebookHTML
 newCellMenu state =
