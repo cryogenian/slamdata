@@ -3,12 +3,10 @@ sudo: required
 dist: trusty
 jdk:
   - oraclejdk8
-node_js:
-  - 5.2.0
+before_install:
+  - nvm use 4.1.0
 install:
   - sudo apt-get update
-  - sudo apt-get install -y nodejs
-  - sudo apt-get install -y npm
   - sudo apt-get install imagemagick
   - convert -version
   - java -version
