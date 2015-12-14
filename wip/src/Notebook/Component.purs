@@ -188,15 +188,18 @@ queryShouldRun _ = false
 -- | the cell's output with the new result.
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
-  value <- query (CellSlot cellId) $ left (request GetOutput)
-  case value of
+  mbParentId <- gets (findParent cellId)
+  case mbParentId of
     -- if there's no parent there's no input port value to pass through
     Nothing -> updateCell Nothing cellId
-    -- if there's a parent but no output the parent cell hasn't been evaluated
-    -- yet, so we can't run this cell either
-    Just Nothing -> pure unit
-    -- if there's a parent and an output, pass it on as this cell's input
-    Just p -> updateCell p cellId
+    Just parentId -> do
+      value <- map join $ query (CellSlot parentId) $ left (request GetOutput)
+      case value of
+        -- if there's a parent but no output the parent cell hasn't been evaluated
+        -- yet, so we can't run this cell either
+        Nothing -> pure unit
+        -- if there's a parent and an output, pass it on as this cell's input
+        Just p -> updateCell (Just p) cellId
 
 -- | Updates the evaluated value for a cell by running it with the specified
 -- | input and then runs any cells that depend on the cell's output with the
