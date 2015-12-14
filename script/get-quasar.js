@@ -63,7 +63,7 @@ function downloadQuasar(quasarOptions, token, destFile, k) {
         return asset.name.indexOf("web") === 0
       });
 
-    var asset = info.assets[0];
+    var asset = assets[0];
     if (asset == undefined) {
       throw "No JAR asset found";
     }
