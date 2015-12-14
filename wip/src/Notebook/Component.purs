@@ -37,6 +37,7 @@ import Data.List (fromList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
 import Data.These (These(..), theseLeft)
+import Data.Tuple (Tuple(..))
 
 import Halogen
 import Halogen.HTML.Events.Indexed as E
@@ -129,13 +130,13 @@ eval (RunActiveCell next) =
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
 eval (LoadResource fs res next) = do
   model <- liftH $ liftAff' $ Quasar.loadNotebook res
-  modify $ const $ fromModel fs model
-  modify (_path .~ R.resourceDir res)
+  modify $ const (fromModel fs model # _path .~ R.resourceDir res)
   pure next
 eval (ExploreFile fs res next) = do
-  modify (_path .~ R.resourceDir res)
-  modify (_browserFeatures .~ fs)
-  modify (addCell Explore Nothing)
+  modify
+    $ (_path .~ R.resourceDir res)
+    <<< (_browserFeatures .~ fs)
+    <<< (addCell Explore Nothing)
   forceRerender'
   query (CellSlot zero) $ right
     $ ChildF unit $ right $ ExploreQuery
@@ -160,12 +161,11 @@ peekCell cellId q = case q of
   RefreshCell _ -> runCell <<< findRoot cellId =<< get
   TrashCell _ -> do
     descendants <- gets (findDescendants cellId)
-    modify (removeCells $ S.insert cellId descendants)
+    modify $ removeCells (S.insert cellId descendants)
   CreateChildCell cellType _ -> do
-    modify (addCell cellType (Just cellId))
-    when (autorun cellType) do
-      input <- gets (getCurrentValue cellId)
-      updateCell input (cellId + one)
+    Tuple st newCellId <- gets $ addCell' cellType (Just cellId)
+    modify (const st)
+    when (autorun cellType) $ runCell newCellId
   ShareCell _ -> pure unit
   _ -> pure unit
 
@@ -188,13 +188,15 @@ queryShouldRun _ = false
 -- | the cell's output with the new result.
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
-  st <- get
-  case findParent cellId st of
+  value <- query (CellSlot cellId) $ left (request GetOutput)
+  case value of
+    -- if there's no parent there's no input port value to pass through
     Nothing -> updateCell Nothing cellId
-    Just parent ->
-      case getCurrentValue parent st of
-        Just inputPort -> updateCell (Just inputPort) cellId
-        Nothing -> pure unit
+    -- if there's a parent but no output the parent cell hasn't been evaluated
+    -- yet, so we can't run this cell either
+    Just Nothing -> pure unit
+    -- if there's a parent and an output, pass it on as this cell's input
+    Just p -> updateCell p cellId
 
 -- | Updates the evaluated value for a cell by running it with the specified
 -- | input and then runs any cells that depend on the cell's output with the
@@ -204,7 +206,6 @@ updateCell inputPort cellId = do
   path <- gets notebookPath
   let input = { notebookPath: path, inputPort, cellId }
   result <- join <$> (query (CellSlot cellId) $ left $ request (UpdateCell input))
-  modify (setCurrentValue cellId result)
   maybe (pure unit) (runCellDescendants cellId) result
   where
   runCellDescendants :: CellId -> Port -> NotebookDSL Unit

@@ -83,6 +83,7 @@ data CellQuery a
   | ToggleCaching a
   | ShareCell a
   | Tick Milliseconds a
+  | GetOutput (Maybe Port -> a)
 
 type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
 

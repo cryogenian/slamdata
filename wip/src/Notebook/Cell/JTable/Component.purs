@@ -29,7 +29,7 @@ import Data.Argonaut.Core as JSON
 import Data.Either (Either(..))
 import Data.Functor (($>))
 import Data.Functor.Coproduct (coproduct)
-import Data.Lens ((.~), (?~), (^?), _Just, preview)
+import Data.Lens ((.~), (?~), preview)
 import Data.Maybe (Maybe(..), maybe)
 import Data.These (These(..))
 import Data.Int as Int
@@ -70,19 +70,14 @@ evalCell (EvalCell value k) =
     Just resource -> do
       size <- liftAff' (Quasar.count resource)
       modify (_input ?~ { resource, size })
-      st <- get
-      let p = pendingPageInfo st
-      case st ^? _input <<< _Just <<< _resource of
-        Nothing -> pure unit
-        Just file -> do
-          result <- liftAff' $ Quasar.sample file ((p.page - 1) * p.pageSize) p.pageSize
-          modify
-            $ (_json ?~ JSON.fromArray result)
-            <<< (_page .~ That p.page)
-            <<< (_pageSize .~ That p.pageSize)
-            <<< (_isEnteringPageSize .~ false)
-          pure unit
-      pure $ k { output: Nothing, messages: [] }
+      p <- gets pendingPageInfo
+      result <- liftAff' $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
+      modify
+        $ (_json ?~ JSON.fromArray result)
+        <<< (_page .~ That p.page)
+        <<< (_pageSize .~ That p.pageSize)
+        <<< (_isEnteringPageSize .~ false)
+      pure $ k { output: value.inputPort, messages: [] }
     Nothing -> pure $ k (error "expected a Resource input")
   where
   error :: String -> CellEvalResult
