@@ -98,7 +98,8 @@ startMongo = startProc("MongoDB", "mongod", mongoArgs, "stdout", "waiting for co
 startSelenium = startProc("Selenium", "java", seleniumArgs, "stderr", "Selenium Server is up and running");
 
 log("Emptying test temp folder");
-rimraf.sync("tmp/test");
+fs.mkdirSync("tmp");
+try { rimraf.sync("tmp/test"); } finally { }
 fs.mkdirSync("tmp/test");
 fs.mkdirSync("tmp/test/image");
 fs.mkdirSync("tmp/test/downloads");
