@@ -31,7 +31,8 @@ script:
   - gulp bundle-test
   - node test
 before_deploy:
-- cp -r public slamdata
+- mkdir slamdata
+- cp -r public slamdata/
 - cp jars/quasar.jar slamdata/quasar.jar
 - tar cjf slamdata.tar.bz2 slamdata
 deploy:
