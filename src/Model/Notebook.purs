@@ -16,91 +16,107 @@ limitations under the License.
 
 module Model.Notebook where
 
-import Data.BrowserFeatures (BrowserFeatures())
-import Data.Date (Date())
-import Data.Maybe (Maybe(..))
-import Data.Path.Pathy
-import Data.Platform (Platform(..))
-import Model.Notebook.Cell (CellId())
-import Model.Notebook.Dialog
-import Model.Notebook.Domain (Notebook(), emptyNotebook)
-import Model.Notebook.Menu (DropdownItem(), initialDropdowns)
-import Model.Path
-import Optic.Core
+import Prelude
 
-type State =
-  { dropdowns :: Array DropdownItem
-  , loaded :: Boolean
-  , error :: Maybe String
-  , editable :: Boolean
-  , notebook :: Notebook
-  , viewingCell :: Maybe CellId
-  , tickDate :: Maybe Date
-  , platform :: Platform
-  , dialog :: Maybe Dialog
-  , requesting :: Array CellId
-  , addingCell :: Boolean
-  , refreshing :: Array CellId
-  , version :: Maybe String
-  , browserFeatures :: BrowserFeatures
+import Data.Argonaut
+  ( Json(), (:=), (~>), (.?), DecodeJson, EncodeJson
+  , decodeJson, printJson, encodeJson)
+import Data.Lens (LensP(), lens)
+import Data.Map (Map(), empty)
+import Data.Maybe (Maybe())
+import Utils.Path as Pu
+import Model.AccessType (printAccessType)
+
+import Network.HTTP.Affjax.Request (Requestable, toRequest)
+
+import Model.CellId
+import Model.CellType
+
+-- | `cellType` and `cellId` characterize what is this cell and where is it
+-- | `hasRun` is flag for routing process, if it's `hasRun` we probably should
+-- | rerun it after loading
+-- | `state` is cell state, it's already encoded to `Json` to keep `Cell` type a bit
+-- | simpler. I.e. it can hold markdown texts or viz options
+-- | `cache` is needed to make response faster, i.e. it can hold options used
+-- | by echarts or subset of data for `explore` cell
+type CellRec =
+   { state :: Json
+   , cache :: Maybe Json
+   , cellType :: CellType
+   , cellId :: CellId
+   , hasRun :: Boolean
+   }
+newtype Cell = Cell CellRec
+
+_Cell :: LensP Cell CellRec
+_Cell = lens (\(Cell r) -> r) (const Cell)
+
+_state :: LensP Cell Json
+_state = _Cell <<< lens _.state _{state = _}
+
+_cache :: LensP Cell (Maybe Json)
+_cache = _Cell <<< lens _.cache _{cache = _}
+
+_cellType :: LensP Cell CellType
+_cellType = _Cell <<< lens _.cellType _{cellType = _}
+
+_cellId :: LensP Cell CellId
+_cellId = _Cell <<< lens _.cellId _{cellId = _}
+
+_hasRun :: LensP Cell Boolean
+_hasRun = _Cell <<< lens _.hasRun _{hasRun = _}
+
+
+instance encodeJsonCellModel :: EncodeJson Cell where
+  encodeJson (Cell r)
+    =  "cellId" := r.cellId
+    ~> "cellType" := r.cellType
+    ~> "hasRun" := r.hasRun
+    ~> "cache" := r.cache
+    ~> "state" := r.state
+
+instance decodeJsonCellModel :: DecodeJson Cell where
+  decodeJson json = do
+    obj <- decodeJson json
+    r <- {cellId: _, cellType: _, hasRun: _, cache: _, state: _}
+         <$> (obj .? "cellId")
+         <*> (obj .? "cellType")
+         <*> (obj .? "hasRun")
+         <*> (obj .? "cache")
+         <*> (obj .? "state")
+    pure $ Cell r
+
+type NotebookRec =
+  { cells :: Array Cell
+  , dependencies :: Map CellId CellId
   }
 
-_dropdowns :: LensP State (Array DropdownItem)
-_dropdowns = lens _.dropdowns _{dropdowns = _}
+newtype Notebook = Notebook NotebookRec
 
-_loaded :: LensP State Boolean
-_loaded = lens _.loaded _{loaded = _}
+_Notebook :: LensP Notebook NotebookRec
+_Notebook = lens (\(Notebook r) -> r) (const Notebook)
 
-_error :: LensP State (Maybe String)
-_error = lens _.error _{error = _}
+_cells :: LensP Notebook (Array Cell)
+_cells = _Notebook <<< lens _.cells _{cells = _}
 
-_editable :: LensP State Boolean
-_editable = lens _.editable _{editable = _}
+_dependencies :: LensP Notebook (Map CellId CellId)
+_dependencies = _Notebook <<< lens _.dependencies _{dependencies = _}
 
-_viewingCell :: LensP State (Maybe CellId)
-_viewingCell = lens _.viewingCell _{viewingCell = _}
+emptyNotebook :: Notebook
+emptyNotebook = Notebook { cells: [ ], dependencies: empty }
 
-_notebook :: LensP State Notebook
-_notebook = lens _.notebook _{notebook = _}
+instance encodeJsonNotebookModel :: EncodeJson Notebook where
+  encodeJson (Notebook r)
+    =  "cells" := r.cells
+    ~> "dependencies" := r.dependencies
 
-_tickDate :: LensP State (Maybe Date)
-_tickDate = lens _.tickDate _{tickDate = _}
+instance decodeJsonNotebookModel :: DecodeJson Notebook where
+  decodeJson json = do
+    obj <- decodeJson json
+    r <- { cells: _, dependencies: _ }
+         <$> (obj .? "cells")
+         <*> (obj .? "dependencies")
+    pure $ Notebook r
 
-_platform :: LensP State Platform
-_platform = lens _.platform _{platform = _}
-
-_dialog :: LensP State (Maybe Dialog)
-_dialog = lens _.dialog _{dialog = _}
-
-_requesting :: LensP State (Array CellId)
-_requesting = lens _.requesting _{requesting = _}
-
-_addingCell :: LensP State Boolean
-_addingCell = lens _.addingCell _{addingCell = _}
-
-_refreshing :: LensP State (Array CellId)
-_refreshing = lens _.refreshing _{refreshing = _}
-
-_version :: LensP State (Maybe String)
-_version = lens _.version _{version = _}
-
-_browserFeatures :: LensP State BrowserFeatures
-_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
-
-initialState :: BrowserFeatures -> State
-initialState bf =
-  { dropdowns: initialDropdowns
-  , loaded: false
-  , error: Nothing
-  , editable: true
-  , notebook: emptyNotebook
-  , viewingCell: Nothing
-  , tickDate: Nothing
-  , platform: Other
-  , dialog: Nothing
-  , requesting: []
-  , addingCell: false
-  , refreshing: []
-  , version: Nothing
-  , browserFeatures: bf
-  }
+instance requestableNotebook :: Requestable Notebook where
+  toRequest notebook = toRequest (printJson (encodeJson notebook) :: String)

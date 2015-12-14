@@ -24,7 +24,7 @@ import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (error)
+import Control.Monad.Eff.Exception (EXCEPTION(), error)
 import Control.Monad.Reader.Trans
 import Control.Monad.Reader.Class
 import Control.Monad.Trans
@@ -32,6 +32,7 @@ import Data.Foldable (traverse_)
 import Data.Maybe (maybe, isJust)
 import Data.Monoid (mempty)
 import Data.Either (either)
+import Node.FS (FS())
 import Selenium (setFileDetector, quit)
 import Selenium.Browser
 import Selenium.Builder
@@ -65,6 +66,7 @@ makeDownloadCapabilities _ _ = mempty
 
 main = do
   makePublic "test" test
+
 
 test :: Config -> Aff _ Unit
 test config =

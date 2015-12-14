@@ -60,7 +60,7 @@ import qualified Data.String as Str
 import qualified Data.Char as Ch
 import Graphics.EasyImage (cropInPlace)
 
-import Driver.File.Routing (Routes(..), routing)
+import FileSystem.Routing (Routes(..), routing)
 import Routing (matchHash)
 
 import Selenium.ActionSequence hiding (sequence)
@@ -75,7 +75,7 @@ import Test.Selenium.Monad
 
 import Node.FS.Aff (readFile, writeFile)
 
-import Utils (s2i)
+import Utils (stringToInt)
 
 
 -- | Assert the truth of a boolean, providing an error message
@@ -164,7 +164,7 @@ waitModalDismissed = void do
 
 parseToInt :: String -> Check Int
 parseToInt str =
-  maybe (errorMsg "can't parse string to int") pure $ s2i str
+  maybe (errorMsg "can't parse string to int") pure $ stringToInt str
 
 
 filterByPairs :: List Element -> (Tuple Element String -> Boolean) ->
