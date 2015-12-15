@@ -44,7 +44,7 @@ import Test.Selenium.Notebook.Contexts
 import qualified Test.Selenium.Notebook.Common as C
 import qualified Config as SDConfig
 
-import Utils (s2i)
+import Utils (stringToInt)
 import Utils.Random
 
 checkNextVizCell :: Check Unit
@@ -86,8 +86,8 @@ checkSetHeightWidth = withSmallZipsAllChart do
   getDims = do
     canvas <- waitCanvas
     { w: _, h: _ }
-      <$> (s2i <$> getCssValue canvas "width")
-      <*> (s2i <$> getCssValue canvas "height")
+      <$> (stringToInt <$> getCssValue canvas "width")
+      <*> (stringToInt <$> getCssValue canvas "height")
 
 
 

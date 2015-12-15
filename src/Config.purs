@@ -18,7 +18,6 @@ module Config where
 
 import Prelude ((<>))
 
-
 baseUrl :: String
 baseUrl = ""
 
@@ -55,8 +54,8 @@ newFileName = "Untitled File"
 newDatabaseName :: String
 newDatabaseName = "Untitled Database"
 
-newViewName :: String
-newViewName = "Untitled View"
+newViewMountName :: String
+newViewMountName = "Untitled View"
 
 homeHash :: String
 homeHash = "index.html#?sort=asc&q=path%3A%2F&salt="

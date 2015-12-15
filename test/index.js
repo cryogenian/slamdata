@@ -97,11 +97,15 @@ startQuasar = startProc("Quasar", "java", quasarArgs, "stdout", "Server started 
 startMongo = startProc("MongoDB", "mongod", mongoArgs, "stdout", "waiting for connections on port");
 startSelenium = startProc("Selenium", "java", seleniumArgs, "stderr", "Selenium Server is up and running");
 
+function cleanMkDir(path) {
+    try { rimraf.sync(path); } finally { }
+    fs.mkdirSync(path);
+}
+
 log("Emptying test temp folder");
-rimraf.sync("tmp/test");
-fs.mkdirSync("tmp/test");
-fs.mkdirSync("tmp/test/image");
-fs.mkdirSync("tmp/test/downloads");
+cleanMkDir("tmp/test");
+cleanMkDir("tmp/test/image");
+cleanMkDir("tmp/test/downloads");
 config.download.folder = path.resolve("tmp/test/downloads/");
 
 // Copy the configuration file for use by quasar
