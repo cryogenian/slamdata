@@ -27,7 +27,7 @@ import Test.Selenium.Scenario (scenario)
 import Test.Selenium.Notebook.Markdown.Interactions
 import Test.Selenium.Notebook.Markdown.Expectations
 
-import Utils (s2i)
+import Utils (stringToInt)
 
 import qualified Data.Traversable (traverse, sequence) as T
 import qualified Data.Foldable (sequence_, traverse_) as F

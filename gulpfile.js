@@ -4,39 +4,26 @@ var gulp = require("gulp"),
     header = require("gulp-header"),
     contentFilter = require("gulp-content-filter"),
     purescript = require("gulp-purescript"),
-    less = require("gulp-less"),
     webpack = require("webpack-stream"),
-    run = require("gulp-run"),
     rimraf = require("rimraf"),
     fs = require("fs"),
     trimlines = require("gulp-trimlines"),
+    less = require("gulp-less"),
     sequence = require("run-sequence");
 
 var slamDataSources = [
-    "src/**/*.purs",
+  "src/**/*.purs",
 ];
 
 var vendorSources = [
-    "bower_components/purescript-*/src/**/*.purs",
+  "bower_components/purescript-*/src/**/*.purs",
 ];
-
-var testSources = [
-    "test/src/**/*.purs",
-    "bower_components/purescript-*/src/**/*.purs",
-    "src/Utils.purs",
-    "src/Utils/*.purs",
-    "src/Driver/File/Routing.purs",
-    "src/Driver/File/Search.purs",
-    "src/Model/File/Salt.purs",
-    "src/Model/File/Sort.purs",
-    "src/Model/Resource.purs",
-    "src/Model/Path.purs",
-    "src/Config.purs",
-    "src/Data/Inject1.purs"
-];
-
 
 var sources = slamDataSources.concat(vendorSources);
+
+var testSources = [
+    "test/src/**/*.purs"
+].concat(sources);
 
 var foreigns = [
   "src/**/*.js",
@@ -45,9 +32,16 @@ var foreigns = [
 ];
 
 gulp.task("clean", function () {
-  ["output", "tmp", "public/js/file.js", "public/js/notebook.js", "public/css/main.css"].forEach(function (path) {
-    rimraf.sync(path);
-  });
+    [
+        "output",
+        "tmp",
+        "public/js/file.js",
+        "public/js/filesystem.js",
+        "public/js/notebook.js",
+        "public/css/main.css"
+    ].forEach(function (path) {
+        rimraf.sync(path);
+    });
 });
 
 gulp.task("make", function() {
@@ -111,42 +105,12 @@ var mkBundleTask = function (name, main) {
 };
 
 gulp.task("bundle", [
-  mkBundleTask("file", "Entries.File"),
-  mkBundleTask("notebook", "Entries.Notebook")
+  mkBundleTask("filesystem", "Entry.FileSystem"),
+  mkBundleTask("notebook", "Entry.Dashboard"),
 ]);
 
-
-var fastBundleTask = function(name, main) {
-    gulp.task("make-entry-" + name, ["make"], function(cb) {
-        var command = "require(\"" + main + "\").main();";
-        fs.writeFile("tmp/js/entries/" + name + ".js", command, cb);
-    });
-    gulp.task("fast-bundle-" + name, ["make-entry-" + name], function() {
-        gulp.src("tmp/js/entries/" + name + ".js")
-            .pipe(webpack({
-                output: { filename: name + ".js" },
-                resolve: { modulesDirectories: ["node_modules", "output"] }
-            }))
-            .pipe(gulp.dest("public/js"));
-    });
-    return "fast-bundle-" + name;
-};
-
-gulp.task("fast-bundle", [
-    fastBundleTask("file", "Entries.File"),
-    fastBundleTask("notebook", "Entries.Notebook")
-]);
-
-gulp.task("less", function() {
-  return gulp.src(["less/main.less"])
-    .pipe(less({ paths: ["less/**/*.less"] }))
-    .pipe(gulp.dest("public/css"));
-});
-
-// We don't use `mkBundleTask` here as there's no need to `webpack` - this
-// bundle as it's going to be running in node anyway
-gulp.task("bundle-test", function() {
-    sequence("less", "bundle", "test-make", function() {
+gulp.task("bundle-test", ["bundle"], function() {
+    sequence("less", "test-make", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
             output: "tmp/js/test.js",
@@ -157,14 +121,6 @@ gulp.task("bundle-test", function() {
 
 });
 
-gulp.task("bundle-test-only", ["test-make"], function() {
-    return purescript.pscBundle({
-        src: "output/**/*.js",
-        output: "tmp/js/test.js",
-        module: "Test.Selenium",
-        main: "Test.Selenium"
-    });
-});
 
 var mkWatch = function(name, target, files) {
   gulp.task(name, [target], function() {
@@ -172,16 +128,16 @@ var mkWatch = function(name, target, files) {
   });
 };
 
-
-
-
 var allSources = sources.concat(foreigns);
-mkWatch("watch-less", "less", ["less/**/*.less"]);
 mkWatch("watch-file", "bundle-file", allSources);
 mkWatch("watch-notebook", "bundle-notebook", allSources);
-mkWatch("watch-file-fast", "fast-bundle-file", allSources);
-mkWatch("watch-notebook-fast", "fast-bundle-notebook", allSources);
 
-gulp.task("watch", ["watch-less", "watch-file", "watch-notebook"]);
-gulp.task("dev", ["watch-less", "watch-file-fast", "watch-notebook-fast"]);
-gulp.task("default", ["add-headers", "trim-whitespace", "less", "bundle"]);
+gulp.task("less", function() {
+  return gulp.src(["less/main.less"])
+    .pipe(less({ paths: ["less/**/*.less"] }))
+    .pipe(gulp.dest("public/css"));
+});
+mkWatch("watch-less", "less", ["less/**/*.less"]);
+
+// gulp.task("default", ["add-headers", "trim-whitespace", "less", "bundle"]);
+gulp.task("default", ["less", "bundle"]);

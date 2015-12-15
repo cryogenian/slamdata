@@ -43,8 +43,8 @@ import Node.FS.Aff
 import Node.Encoding (Encoding(UTF8))
 
 import Test.Config
-import Driver.File.Routing (Routes(..), routing)
-import Driver.File.Search (searchPath)
+import FileSystem.Routing (Routes(..), routing)
+import FileSystem.Routing.Search (searchPath)
 import Routing (matchHash)
 import qualified Data.Array as Arr
 import qualified Data.String.Regex as R

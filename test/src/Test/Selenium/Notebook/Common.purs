@@ -40,10 +40,10 @@ import Test.Selenium.Expect (expect, toEq)
 import Selenium.Types
 import qualified Config as SDConfig
 import qualified Data.StrMap as SM
-import Utils.Halide (width', height', frameBorder)
-import Halogen.HTML.Renderer.String (renderHTMLToString)
+import Halogen.CustomProps as Cp
+import Halogen.HTML.Renderer.String (renderHTML)
 import qualified Halogen.HTML as H
-import qualified Halogen.HTML.Attributes as A
+import qualified Halogen.HTML.Properties as P
 
 checkNextCells :: SM.StrMap String -> Check Unit
 checkNextCells m = do
@@ -108,12 +108,12 @@ checkEmbedButton = do
     getElementByCss config.cell.embedBox "Embed box hidden"
   expectedValue = do
     config <- getConfig
-    pure $ renderHTMLToString $
-      H.iframe [ A.src $ url config
-               , width' "100%"
-               , height' "100%"
-               , frameBorder 0
-               ] [ ]
+    pure $ renderHTML $
+      H.iframe [ P.src $ url config
+               , P.width $ P.Percent 100.0
+               , P.height $ P.Percent 100.0
+               , Cp.frameBorder 0
+               ]
   url config =
     config.slamdataUrl <> config.notebookUrl <> "#/" <> config.mount.name <> "/" <>
     config.database.name <> config.explore.notebookPath

@@ -26,7 +26,7 @@ import Data.List (List(..), fromList, toList, length, catMaybes, null, (!!), hea
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd, fst)
-import Driver.File.Routing (Routes(..), routing)
+import FileSystem.Routing (Routes(..), routing)
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Combinators (checker, tryToFind)
 import Selenium.Monad

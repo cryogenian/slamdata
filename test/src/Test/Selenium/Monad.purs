@@ -20,18 +20,22 @@ import Prelude
 
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Exception (error)
+import Control.Monad.Eff.Random (RANDOM())
+import Control.Monad.Eff.Exception (EXCEPTION())
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Class
 import Control.Monad.Reader.Trans
 import Data.List (List(), length, uncons, (:))
 import Data.Maybe (maybe, fromMaybe, Maybe(..))
 import Node.FS (FS())
+import Node.Buffer (BUFFER())
 import Platform (getPlatform, PLATFORM(), runOs, runPlatform)
 import Selenium (showLocator)
 import Selenium.Key (metaKey, controlKey)
 import Selenium.Monad (Selenium(), byCss, byXPath, findElements, getAttribute)
 import Selenium.Types (ControlKey(), Locator(), Element())
 import Test.Config (Config())
+import Test.Env (ENV())
 
 import qualified Data.List.Unsafe (head) as U
 import qualified Graphics.ImageDiff as GI
@@ -41,6 +45,10 @@ import qualified Graphics.EasyImage as GE
 type Check = Selenium ( platform :: PLATFORM
                       , imageDiff :: GI.IMAGE_MAGICK
                       , easyImage :: GE.EASY_IMAGE
+                      , buffer :: BUFFER
+                      , random :: RANDOM
+                      , env :: ENV
+                      , err :: EXCEPTION
                       , fs :: FS) (config :: Config)
 
 getConfig :: Check Config
