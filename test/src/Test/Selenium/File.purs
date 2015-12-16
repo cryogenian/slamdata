@@ -698,13 +698,10 @@ createNotebook = do
 
 checkTitle :: Check Unit
 checkTitle = do
-  driver <- getDriver
-  config <- getConfig
   windowTitle <- getTitle
-  if Str.contains config.version windowTitle
+  if Str.contains Config.Version.slamDataVersion windowTitle
     then successMsg "Title contains version"
     else errorMsg $ "Title (" ++ windowTitle ++ ") doesn't contain version"
-
 
 moveDelete :: String -> Check Unit -> String -> String -> Check Unit
 moveDelete msg setUp src tgt = do
