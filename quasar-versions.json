@@ -1,0 +1,11 @@
+{ "quasar":
+    { "owner": "quasar-analytics"
+    , "repo": "quasar"
+    , "tag": "v2.3.3-web"
+    }
+, "quasar-advanced":
+    { "owner": "slamdata"
+    , "repo": "quasar-advanced"
+    , "tag": "build-master-43"
+    }
+}
