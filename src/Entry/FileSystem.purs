@@ -24,7 +24,6 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throwException)
 import Control.UI.Browser (setTitle)
 import Data.Functor.Coproduct (left)
-import Data.Maybe (Maybe(), maybe)
 import DOM (DOM())
 import FileSystem (comp, initialState, Query(..))
 import FileSystem.Effects (FileSystemEffects())
@@ -33,18 +32,17 @@ import Halogen.Component (installedState)
 import Halogen.Driver (runUI)
 import Halogen.Query (action)
 import Halogen.Util (appendToBody, onLoad)
-import Quasar.Aff (getVersion)
 
-setSlamDataTitle :: forall e. Maybe String -> Aff (dom :: DOM|e) Unit
-setSlamDataTitle mbVersion = do
-  liftEff $ setTitle $ "SlamData" <> maybe "" (" " <>) mbVersion
+setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
+setSlamDataTitle version =
+  liftEff $ setTitle $ "SlamData " <> version
 
 main :: Eff FileSystemEffects Unit
 main = runAff throwException (const (pure unit)) do
   halogen <- runUI comp (installedState initialState)
   onLoad (appendToBody halogen.node)
   forkAff do
-    version <- getVersion
+    let version = Config.Version.slamDataVersion
     setSlamDataTitle version
     halogen.driver (left $ action $ SetVersion version)
   forkAff $ routeSignal halogen.driver

@@ -96,7 +96,13 @@ var mkBundleTask = function (name, main) {
     return gulp.src("tmp/js/" + name + ".js")
       .pipe(webpack({
         resolve: { modulesDirectories: ["node_modules"] },
-        output: { filename: name + ".js" }
+        output: { filename: name + ".js" },
+        module: {
+          loaders: [{
+              include: /\.json$/,
+              loaders: ["json-loader"]
+          }]
+        }
       }))
       .pipe(gulp.dest("public/js"));
   });
