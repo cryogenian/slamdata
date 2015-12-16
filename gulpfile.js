@@ -109,13 +109,15 @@ gulp.task("bundle", [
   mkBundleTask("notebook", "Entry.Dashboard"),
 ]);
 
-gulp.task("bundle-test", ["bundle"], function() {
+gulp.task("bundle-test",
+          ["bundle"],
+           function() {
     sequence("less", "test-make", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
-            output: "tmp/js/test.js",
-            module: "Test.Selenium",
-            main: "Test.Selenium"
+            output: "test/index.js",
+            module: "Test.Main",
+            main: "Test.Main"
         });
     });
 
