@@ -1,0 +1,98 @@
+.sd-menu > ul {
+  background: #262626;
+  border-top: 1px solid white;
+  left: 0;
+  list-style-type: none;
+  margin: 0;
+  padding: 0 1rem;
+  position: fixed;
+  top: 70px;
+  width: 100%;
+  z-index: 100;
+}
+
+.sd-menu a {
+  border: 0;
+  cursor: default;
+  display: block;
+  font-size: 0.9rem;
+  line-height: 0.9rem;
+  margin: 0;
+  outline-width: 1px;
+  outline-offset: 1px;
+  outline-color: transparent;
+  padding: 0.9rem 0.9rem;
+  text-decoration: none;
+  text-align: left;
+}
+
+.sd-menu > ul > li a {
+  color: rgb(210,210,210);
+}
+
+.sd-menu > ul > li a:hover {
+  color: white;
+}
+
+.sd-menu > ul > li a:not(:only-child) {
+  color: white;
+}
+
+.sd-menu > ul > li {
+  display: inline-block;
+  padding: 0;
+  position: relative;
+}
+
+.sd-menu > ul > li > ul {
+  left: 0;
+  list-style-type: none;
+  padding: 0;
+  position: absolute;
+  top: 100%;
+}
+
+.sd-menu > ul > li > ul > li {
+  position: relative;
+  width: 100%;
+}
+
+.sd-menu > ul > li > ul > li > a {
+	display: -ms-flex;
+	display: -webkit-flex;
+	display: flex;
+  -moz-box-shadow: 1px 2px 5px 0px rgba(0,0,0,0.05);
+  -webkit-box-shadow: 1px 2px 5px 0px rgba(0,0,0,0.05);
+  background: white;
+  border-color: rgba(210,210,210,1);
+  border-style: solid;
+  border-width: 0 1px 0 1px;
+  box-shadow: 1px 2px 5px 0px rgba(0,0,0,0.05);
+  color: #3F3F3F;
+  min-width: 100%;
+  padding: 0.5rem 1.125rem;
+  white-space: nowrap;
+}
+
+.sd-menu > ul > li > ul > li > a > span {
+  width: 50%;
+}
+
+.sd-menu > ul > li > ul > li > a > span:nth-child(2) {
+  color: #909090;
+  margin-left: 1.5rem;
+  text-align: right;
+  width: 50%;
+}
+
+.sd-menu > ul > li > ul > li:last-child > a {
+  border-radius: 0 0 0.25rem 0.25rem;
+  border-width: 0 1px 1px 1px;
+  padding-bottom: 0.6rem;
+}
+
+.sd-menu > ul > li > ul > li > a:hover {
+  background-color: rgba(240,240,240,1);
+  color: black;
+}
+

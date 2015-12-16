@@ -39,7 +39,8 @@ main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
   browserFeatures <- detectBrowserFeatures
   runAff throwException (const (pure unit)) $ do
-    app <- runUI comp $ installedState $ initialState browserFeatures
+    app <- runUI comp $ installedState $ initialState { browserFeatures: browserFeatures }
     onLoad (appendToBody app.node)
     forkAff $ routeSignal app.driver
     forkAff $ autoSaveSignal app.driver
+

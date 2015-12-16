@@ -24,8 +24,12 @@
   font-style: italic;
 }
 
-html {height: 100%;}
+html {
+  height: 100%;
+  font-size: 12pt;
+}
 body {
+    padding: 0;
     font-family: Ubuntu, Arial, Helvetica, sans-serif;
     height: 100%;
     > div {
@@ -646,6 +650,8 @@ div.viz-cell-editor {
 
 @import "bootstrap-overloads";
 @import "nav";
+@import "menu";
+@import "notebook";
 @import "markdown-output";
 @import "dialog/mount";
 @import "dialog/rename";
