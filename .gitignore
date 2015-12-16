@@ -8,9 +8,10 @@
 /test/jars/quasar.jar
 jars
 public/js/*.js
-public/js/!ace*
+!public/js/ace*
+!public/js/echarts-all.js
 public/css/*.css
-public/css/!bootstrap*.css
+!public/css/bootstrap*.css
 .psci_modules
 .psci
 phantomjsdriver.log
