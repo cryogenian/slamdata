@@ -55,7 +55,7 @@ import Control.Monad.Aff (Aff(), attempt, runAff)
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Class (liftEff, MonadEff)
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref (REF())
+import Control.Monad.Eff.Ref (REF(), newRef, modifyRef, writeRef, readRef)
 import Control.Monad.Error.Class (throwError)
 import Control.MonadPlus (guard)
 import Control.UI.Browser (encodeURIComponent)
@@ -66,7 +66,7 @@ import Data.Array as Arr
 import Data.Bifunctor (bimap, lmap)
 import Data.Date as Date
 import Data.Either (Either(..), either)
-import Data.Foldable (foldl, traverse_)
+import Data.Foldable (foldl, for_)
 import Data.Foreign (Foreign(), F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
@@ -75,6 +75,7 @@ import Data.Functor (($>))
 import Data.Lens ((.~), (^.))
 import Data.List as L
 import Data.Maybe (Maybe(..), isJust, fromMaybe, maybe)
+import Data.Set as Set
 import Data.StrMap as SM
 import Data.Path.Pathy as P
 import Data.Path.Pathy ((</>))
@@ -440,20 +441,23 @@ transitiveChildrenProducer
       Unit
 transitiveChildrenProducer dirPath = do
   ACR.produce \emit -> do
-    runAff Exn.throwException (const (pure unit)) $ do
-      let
-        go start = do
-          ei <- attempt $ children start
-          case ei of
-            Right items -> do
-              liftEff $ emit (Left items)
-              let parents = Arr.mapMaybe (either (const Nothing) Just <<< R.getPath) items
-              traverse_ go parents
-            Left _ ->
-              liftEff $ emit (Right unit)
-      go dirPath
-
-
+    activeRequests <- newRef $ Set.singleton $ P.printPath dirPath
+    runAff Exn.throwException (const (pure unit)) $ go emit activeRequests dirPath
+  where
+  go emit activeRequests start = do
+    let strPath = P.printPath start
+    eitherChildren <- attempt $ children start
+    liftEff $ modifyRef activeRequests $ Set.delete strPath
+    for_ eitherChildren \items -> do
+      liftEff $ emit $ Left items
+      let parents = Arr.mapMaybe (either (const Nothing) Just <<< R.getPath) items
+      for_ parents $ \p ->
+        liftEff $ modifyRef activeRequests $ Set.insert $ P.printPath p
+      for_ parents $ go emit activeRequests
+    remainingRequests <- liftEff $ readRef activeRequests
+    if Set.isEmpty remainingRequests
+      then liftEff $ emit $ Right unit
+      else pure unit
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String

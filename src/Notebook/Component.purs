@@ -165,6 +165,7 @@ peekCell cellId q = case q of
   CreateChildCell cellType _ -> do
     Tuple st newCellId <- gets $ addCell' cellType (Just cellId)
     modify (const st)
+    forceRerender'
     when (autorun cellType) $ runCell newCellId
   ShareCell _ -> pure unit
   _ -> pure unit
