@@ -22,6 +22,7 @@ import Optic.Core
 import Control.Monad.Aff (launchAff)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
+import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Input.File (FileInput(..))
 import Model.File (_version)
@@ -39,7 +40,7 @@ main = onLoad $ void $ do
   mountUI node
   outside driver
   launchAff do
-    version <- getVersion
+    let version = Just $ Config.Version.slamDataVersion
     liftEff $ setSlamDataTitle version
     liftEff $ driver $ inj $ WithState (_version .~ version)
   where

@@ -18,6 +18,7 @@ module Test.Selenium.File where
 
 import Prelude
 import DOM (DOM())
+import Config.Version (slamDataVersion)
 import Control.Apply ((*>))
 import Control.Bind ((>=>), (=<<))
 import Control.Monad.Error.Class (throwError)
@@ -706,10 +707,8 @@ createNotebook = do
 
 checkTitle :: Check Unit
 checkTitle = do
-  driver <- getDriver
-  config <- getConfig
   windowTitle <- getTitle
-  if Str.contains config.version windowTitle
+  if Str.contains slamDataVersion windowTitle
     then successMsg "Title contains version"
     else errorMsg $ "Title (" ++ windowTitle ++ ") doesn't contain version"
 
