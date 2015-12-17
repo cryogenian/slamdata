@@ -45,5 +45,18 @@ exports.setTitle = function(t) {
     };
 };
 
-exports.encodeURIComponent = window.encodeURIComponent;
-exports.decodeURIComponent = window.decodeURIComponent;
+exports.encodeURIComponent = function(str) {
+    if (typeof window !== "undefined") {
+        return window.encodeURIComponent(str);
+    } else {
+        return global.encodeURIComponent(str);
+    }
+};
+
+exports.decodeURIComponent = function(str) {
+    if (typeof window !== "undefined") {
+        return window.decodeURIComponent(str);
+    } else {
+        return global.decodeURIComponent(str);
+    }
+};

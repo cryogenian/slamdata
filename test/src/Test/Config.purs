@@ -62,8 +62,11 @@ instance eqChartOptions :: Eq ChartOptions where
     eqq = on eq A.sort
 
 type Config =
-  { selenium :: { browser :: String
-                , waitTime :: Int}
+  { restoreCmd :: String
+  , selenium :: { browser :: String
+                , waitTime :: Int
+                , jar :: String
+                }
   , sauceLabs :: { enabled :: Boolean
                  , platform :: String
                  , maxDuration :: Int
@@ -73,7 +76,9 @@ type Config =
   , mongodb :: { host :: String
                , port :: Int
                }
-
+  , quasar :: { jar :: String
+              , config :: String
+              }
   , locators :: StrMap String
   , notebookLocators :: StrMap String
   , item :: { main :: String

@@ -44,7 +44,10 @@
     "purescript-imagediff": "^0.2.0",
     "purescript-chalky": "^0.2.0",
     "purescript-node-fs-aff": "^0.2.1",
-    "purescript-platform": "^0.4.0"
+    "purescript-platform": "^0.4.0",
+    "purescript-node-mongodb": "b71e25abe950e950dc7e0cf46454cd57dd0a2402",
+    "purescript-node-streams": "~0.3.0",
+    "purescript-node-process": "~0.1.1"
   },
   "resolutions": {
     "purescript-argonaut-codecs": "^0.5.0"

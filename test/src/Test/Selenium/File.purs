@@ -475,13 +475,10 @@ sorting = do
       else errorMsg "Sorting doesn't work"
   checkHash _ _ = errorMsg "need additional redirects in sorting"
 
-
 fileUpload :: Check Unit
 fileUpload = do
   sectionMsg "FILE UPLOAD"
-  goDown
   config <- getConfig
-
   successMsg "went down"
   uploadInput <- getElementByCss config.upload.input "There is no upload input"
   oldItems <- S.fromList <$> getItemTexts
@@ -493,7 +490,6 @@ fileUpload = do
     }
   }
   """
-
   sendKeysEl config.upload.filePath uploadInput
   wait awaitInNotebook config.selenium.waitTime
   successMsg "Ok, explore notebook created"
@@ -534,7 +530,8 @@ searchForUploadedFile = do
   config <- getConfig
   searchInput <- getElementByCss config.search.searchInput "no search input field"
   url <- getCurrentUrl
-  let filename = fromMaybe config.upload.file $ Arr.last $ Str.split "/" config.upload.file
+  let filename = fromMaybe config.upload.filePath
+                 $ Arr.last $ Str.split "/" config.upload.filePath
   searchButton <- getElementByCss config.search.searchButton "no search button"
   sequence $ do
     leftClick searchInput
@@ -905,7 +902,8 @@ downloadResource = do
 
   rmDownloaded = do
     config <- getConfig
-    lift $ unlink $ config.download.folder <> "/" <> config.download.item
+    lift $ unlink $ config.download.folder
+      <> "/" <> config.download.item
     files <- lift $ readdir config.download.folder
     if isJust $ Arr.elemIndex config.download.item files
       then rmDownloaded
