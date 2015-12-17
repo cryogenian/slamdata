@@ -294,7 +294,6 @@ type Config =
   , complex :: { inputSelector :: String
                , values :: Array String
                }
-  , version :: String
   , collectingScreenshots :: Boolean
   , tmpFileForScreenshots :: String
   }
