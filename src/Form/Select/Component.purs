@@ -41,6 +41,7 @@ data Query s a
   | SetSelect (Select s) a
   | GetValue (Maybe s -> a)
   | GetSelect (Select s -> a)
+  | ToggleOpened a
 
 type Slam e = Aff (HalogenEffects e)
 
@@ -119,3 +120,4 @@ eval (Choose i next) = modify (trySelect i) $> next
 eval (SetSelect s next) = modify (const s) $> next
 eval (GetValue continue) = map continue $ gets (^. _value)
 eval (GetSelect continue) = map continue get
+eval (ToggleOpened next) = pure next

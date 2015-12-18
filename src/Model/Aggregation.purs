@@ -47,18 +47,18 @@ defaultAggregation :: Aggregation
 defaultAggregation = Sum
 
 printAggregation :: Aggregation -> String
-printAggregation Maximum = "∧"
-printAggregation Minimum = "∨"
-printAggregation Average = "μ"
-printAggregation Sum = "Σ"
-printAggregation Product = "Π"
+printAggregation Maximum = "Maximum"
+printAggregation Minimum = "Minimum"
+printAggregation Average = "Average"
+printAggregation Sum = "Sum"
+printAggregation Product = "Product"
 
 parseAggregation :: String -> Either String Aggregation
-parseAggregation "∧" = pure Maximum
-parseAggregation "∨" = pure Minimum
-parseAggregation "μ" = pure Average
-parseAggregation "Σ" = pure Sum
-parseAggregation "Π" = pure Product
+parseAggregation "Maximum" = pure Maximum
+parseAggregation "Minimum" = pure Minimum
+parseAggregation "Average" = pure Average
+parseAggregation "Sum" = pure Sum
+parseAggregation "Product" = pure Product
 parseAggregation _ = Left "Incorrect aggregation string"
 
 runAggregation

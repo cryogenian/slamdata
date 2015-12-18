@@ -20,12 +20,13 @@ import Prelude
 
 import Control.Monad.Aff (Aff())
 
-import Data.Array (null, zipWith, range, length)
+import Data.Array (null, zipWith, range, length, singleton)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens, (^.), (.~), (%~), view)
-import Data.Maybe (Maybe())
+import Data.Maybe (Maybe(), maybe, fromMaybe)
 import Data.Maybe.Unsafe (fromJust)
+import Data.Tuple (Tuple(..))
 import Form.Select.Component (Query(..), select)
 
 import Halogen
@@ -34,20 +35,24 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
+import Render.CssClasses as Rc
 import Model.Select
 import Utils (stringToInt)
+import Utils.Array (enumerate)
 
 type Slam e = Aff (HalogenEffects e)
 
 type State a =
   { model :: Select a
   , disabled :: Boolean
+  , opened :: Boolean
   }
 
 initialState :: forall a. Select a -> State a
 initialState sel =
   { model: sel
   , disabled: false
+  , opened: false
   }
 
 _model :: forall a r. LensP {model :: a | r} a
@@ -55,6 +60,9 @@ _model = lens _.model _{model = _}
 
 _disabled :: forall a r. LensP {disabled :: a | r} a
 _disabled = lens _.disabled _{disabled = _}
+
+_opened :: forall a r. LensP {opened :: a | r} a
+_opened = lens _.opened _{opened = _}
 
 type StateP a b e =
   InstalledState (State a) (Select b) (Query a) (Query b) (Slam e) Unit
@@ -88,37 +96,45 @@ render config state = H.div_
                       , initialState: config.mainState
                       }
 
-
-  , H.select [ P.classes ([ B.formControl ] <> config.classes)
-               -- `fromJust` is safe here because we know that value are `show`n ints
-             , E.onValueChange (E.input (Choose <<< fromJust <<< stringToInt))
+  , H.button [ P.classes ([ B.formControl ] <> config.classes <> clsValOrEmpty )
              , P.disabled state.disabled
-             ]
-    (options state.model)
+             , E.onClick (E.input_ ToggleOpened)
+             ] [ ]
+  , H.ul [ P.classes $ [ B.listGroup
+                       , B.fade
+                       , Rc.fileListGroup
+                       , Rc.aggregation ]
+                     <> if state.opened then [ B.in_ ] else [ ]
+         ]
+    $ map option $ enumerate $ view _options state.model
   ]
   where
-  options
-    :: Select a -> Array (ParentHTML (Select b) (Query a) (Query b) (Slam e) Unit)
-  options select = zipWith (option (select ^. _value))
-                   (select ^. _options)
-                   (range 0 $ length $ select ^. _options)
+  clsValOrEmpty :: Array H.ClassName
+  clsValOrEmpty =
+    map H.className $ maybe [] singleton $ map stringVal $ view _value state.model
 
   option
-    :: Maybe a -> a -> Int -> ParentHTML (Select b) (Query a) (Query b) (Slam e) Unit
-  option mbVal opt ix =
-    H.option [ P.value (show ix)
-             , P.selected (mbVal == pure opt)
+    :: Tuple Int a
+    -> ParentHTML (Select b) (Query a) (Query b) (Slam e) Unit
+  option (Tuple i val) =
+    H.button [ P.classes [ B.listGroupItem ]
+             , E.onClick (E.input_ (Choose i))
              ]
-    [ H.text $ stringVal opt ]
+    [ H.text $ stringVal val ]
 
 eval
   :: forall a b e
    . (Eq a, Eq b)
   => EvalParent (Query a) (State a) (Select b) (Query a) (Query b) (Slam e) Unit
-eval (Choose i next) = modify (_model %~ trySelect i) $> next
+eval (Choose i next) = do
+  modify (_opened .~ false)
+  modify (_model %~ trySelect i)
+  pure next
 eval (SetSelect sel next) = modify (_model .~ sel) $> next
 eval (GetValue continue) = map continue $ gets $ view $ _model <<< _value
 eval (GetSelect continue) = map continue $ gets $ view _model
+eval (ToggleOpened next) = modify (_opened %~ not) $> next
+
 
 peek
   :: forall a b e
