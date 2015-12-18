@@ -3,8 +3,9 @@ module Test.Main where
 import Prelude
 
 import Control.Monad (when)
-import Control.Monad.Aff (Aff(), runAff, launchAff, apathize, attempt)
-import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, AVAR())
+import Control.Monad.Aff
+  (Aff(), forkAff, runAff, launchAff, apathize, attempt, later', cancel)
+import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, killVar, AVAR())
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
@@ -72,6 +73,8 @@ startProc
 startProc name command args streamGetter check = do
   a <- makeVar
   started <- liftEff $ newRef false
+  cancelKill <- forkAff $ later' 10000
+                $ killVar a $ error $ name <> " has not been started"
   pr <- spawn command args \err -> do
     case err of
       Just e -> throwException e
@@ -87,6 +90,7 @@ startProc name command args streamGetter check = do
       launchAff $ putVar a pr
 
   result <- takeVar a
+  cancel cancelKill $ error "Ok"
   log $ name <> " launched"
   pure result
 

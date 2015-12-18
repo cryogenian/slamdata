@@ -9,7 +9,8 @@ var gulp = require("gulp"),
     fs = require("fs"),
     trimlines = require("gulp-trimlines"),
     less = require("gulp-less"),
-    sequence = require("run-sequence");
+    sequence = require("run-sequence"),
+    path = require("path");
 
 var slamDataSources = [
   "src/**/*.purs",
@@ -86,19 +87,27 @@ var mkBundleTask = function (name, main) {
   gulp.task("prebundle-" + name, ["make"], function() {
     return purescript.pscBundle({
       src: "output/**/*.js",
-      output: "tmp/js/" + name + ".js",
+      output: "tmp/" + name + ".js",
       module: main,
       main: main
     });
   });
 
   gulp.task("bundle-" + name, ["prebundle-" + name], function () {
-    return gulp.src("tmp/js/" + name + ".js")
-      .pipe(webpack({
-        resolve: { modulesDirectories: ["node_modules"] },
-        output: { filename: name + ".js" }
-      }))
-      .pipe(gulp.dest("public/js"));
+    return gulp.src("tmp/" + name + ".js")
+          .pipe(webpack({
+              resolve: {
+                  modulesDirectories: ["node_modules"]
+
+              },
+              output: { filename: name + ".js" },
+              module: {
+                  loaders: [{
+                      include: /\.json$/,
+                      loaders: ["json-loader"]
+                  }]
+              }
+          })).pipe(gulp.dest("public/js"));
   });
 
   return "bundle-" + name;

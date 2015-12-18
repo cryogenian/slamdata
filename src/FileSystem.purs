@@ -227,7 +227,7 @@ eval (Download next) = do
   pure next
 
 eval (SetVersion version next) = do
-  modify (_version .~ version)
+  modify (_version .~ Just version)
   pure next
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> Algebra Unit

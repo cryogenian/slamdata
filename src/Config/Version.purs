@@ -14,26 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module FileSystem.Query where
+module Config.Version
+  ( slamDataVersion
+  ) where
 
-import DOM.HTML.Types (HTMLElement())
-import Model.Salt (Salt())
-import Model.Sort (Sort())
-import Utils.Path (DirPath())
-
-data Query a
-  = Resort a
-  | SetPath DirPath a
-  | SetSort Sort a
-  | SetSalt Salt a
-  | SetIsMount Boolean a
-  | Configure a
-  | ShowHiddenFiles a
-  | HideHiddenFiles a
-  | Download a
-  | MakeMount a
-  | MakeFolder a
-  | MakeNotebook a
-  | UploadFile HTMLElement a
-  | FileListChanged HTMLElement a
-  | SetVersion String a
+foreign import slamDataVersion :: String

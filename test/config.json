@@ -431,6 +431,5 @@
         "values": ["10", "5", "30"]
     },
     "collectingScreenshots": false,
-    "tmpFileForScreenshots": "image/tmp.png",
-    "version": "2.3.3"
+    "tmpFileForScreenshots": "image/tmp.png"
 }
