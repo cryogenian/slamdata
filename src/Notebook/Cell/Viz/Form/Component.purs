@@ -52,6 +52,7 @@ import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.CustomProps.Indexed as Cp
 import Model.Aggregation (Aggregation(..), allAggregations)
 import Model.ChartConfiguration
 import Model.Select (OptionVal, Select(..))
@@ -184,7 +185,8 @@ render (ChartConfiguration conf) =
 
   renderDimension :: Array H.ClassName -> Int -> JSelect -> Array FormHTML
   renderDimension clss ix sel =
-    [ H.form [ P.classes $ clss <> [ Rc.chartConfigureForm, Rc.chartDimension ] ]
+    [ H.form [ Cp.nonSubmit
+             , P.classes $ clss <> [ Rc.chartConfigureForm, Rc.chartDimension ] ]
       [ dimensionLabel
       , H.slot' cpDimension ix \_ -> { component: S.primarySelect (pure "Dimension")
                                      , initialState: sel
@@ -194,7 +196,8 @@ render (ChartConfiguration conf) =
 
   renderMeasure :: Array H.ClassName -> Int -> JSelect -> Array FormHTML
   renderMeasure clss ix sel =
-    [ H.form [ P.classes $ clss <> [ Rc.chartConfigureForm
+    [ H.form [ Cp.nonSubmit
+             , P.classes $ clss <> [ Rc.chartConfigureForm
                                    , Rc.chartMeasureOne
                                    , Rc.withAggregation
                                    ]
@@ -209,7 +212,8 @@ render (ChartConfiguration conf) =
 
   renderSeries :: Array H.ClassName -> Int -> JSelect -> Array FormHTML
   renderSeries clss ix sel =
-    [ H.form [ P.classes $ clss <> [ Rc.chartConfigureForm
+    [ H.form [ Cp.nonSubmit
+             , P.classes $ clss <> [ Rc.chartConfigureForm
                                    , Rc.chartSeriesOne
                                    ]
              ]
@@ -223,7 +227,8 @@ render (ChartConfiguration conf) =
 
   renderCategory :: Array H.ClassName -> Int -> JSelect -> Array FormHTML
   renderCategory clss ix sel =
-    [ H.form [ P.classes $ clss <> [ Rc.chartConfigureForm
+    [ H.form [ Cp.nonSubmit
+             , P.classes $ clss <> [ Rc.chartConfigureForm
                                    , Rc.chartCategory
                                    ]
              ]
