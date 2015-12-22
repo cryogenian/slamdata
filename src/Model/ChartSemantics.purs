@@ -112,8 +112,18 @@ checkPredicate p lst = pureST do
   corrects <- newSTRef 0
   incorrects <- newSTRef 0
   filtered <- newSTRef Nil
+  -- `traverse_` uses `foldr`. `List`s `foldr` isn't tail recursive.
+  -- To make it tail recursive we probably should reimplement `foldr` like
+  -- `foldr f init lst = reverse $ foldl (flip f) init $ reverse lst`
+  -- and this make our optimization absolutely useless because of two
+  -- `reverse`s. And this is worse then converting list to array before `traverse_`
+  -- ```
+  --  let arr :: Array _
+  --      arr = L.fromList lst
+  --  in traverse_ (checkPredicateTraverseFn p corrects incorrects filtered) arr
+  -- ```
   foldl
-    (\_ a -> checkPredicateTraverseFn p corrects incorrects filtered a)
+    (\b a -> checkPredicateTraverseFn p corrects incorrects filtered a *> b)
     (pure unit) lst
   c <- readSTRef corrects
   ic <- readSTRef incorrects
