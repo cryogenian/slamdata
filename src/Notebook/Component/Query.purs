@@ -35,3 +35,4 @@ data NotebookQuery a
   | SetName String a
   | SetAccessType AccessType a
   | ExploreFile BrowserFeatures Resource a
+  | Publish a

@@ -20,10 +20,18 @@ import Data.Maybe (Maybe())
 import Utils.Path (DirPath())
 import Model.AccessType (AccessType())
 import Model.CellId (CellId())
+import Dashboard.Menu.Component.Query as Menu
+import Notebook.Effects (NotebookEffects())
+import DOM.Event.EventTarget (EventListener())
 
 
 data Query a
-  = Save a
+  = ActivateKeyboardShortcuts a
+  | DeactivateKeyboardShortcuts a
+  | EvaluateMenuValue Menu.Value a
+  | AddKeyboardListener (EventListener NotebookEffects) a
+  | Save a
   | GetPath (DirPath -> a)
   | SetAccessType AccessType a
   | SetViewingCell (Maybe CellId) a
+  | DismissAll a

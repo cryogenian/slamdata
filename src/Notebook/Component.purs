@@ -38,6 +38,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Set as S
 import Data.These (These(..), theseLeft)
 import Data.Tuple (Tuple(..))
+import Control.UI.Browser (newTab)
 
 import Halogen
 import Halogen.HTML.Events.Indexed as E
@@ -53,6 +54,8 @@ import Model.CellId (CellId(), cellIdToString)
 import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
 import Model.Port (Port())
 import Model.Resource as R
+import Model.Common (mkNotebookURL)
+import Model.AccessType (AccessType(..))
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
@@ -144,6 +147,11 @@ eval (ExploreFile fs res next) = do
     $ action $ Fi.SelectFile res
   forceRerender'
   runCell zero
+  pure next
+eval (Publish next) = do
+  state <- get
+  let publish name = newTab $ mkNotebookURL name state.path ReadOnly
+  liftH $ liftEff' $ maybe (pure unit) publish $ theseLeft state.name
   pure next
 eval (SetName name next) = modify (_name .~ That name) $> next
 eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next

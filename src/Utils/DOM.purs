@@ -17,14 +17,19 @@ limitations under the License.
 module Utils.DOM where
 
 import Prelude
-import Control.Monad.Eff (Eff())
 import Control.Monad.Aff (Aff())
+import Control.Monad.Eff (Eff())
+import Control.Bind ((=<<))
+import DOM (DOM())
+import DOM.HTML (window)
+import DOM.HTML.Types (HTMLElement(), htmlElementToElement, htmlDocumentToDocument)
+import DOM.HTML.Window (document, navigator)
+import DOM.HTML.Navigator (platform)
+import DOM.Node.ParentNode as P
+import DOM.Node.Types (elementToParentNode, Element(), documentToEventTarget)
 import Data.Maybe (Maybe())
 import Data.Nullable (toMaybe)
-import DOM (DOM())
-import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
-import DOM.Node.Types (elementToParentNode, Element())
-import DOM.Node.ParentNode as P
+import Data.String (take)
 import Unsafe.Coerce (unsafeCoerce)
 
 elementToHTMLElement :: Element -> HTMLElement
@@ -35,6 +40,11 @@ querySelector :: forall e. String -> HTMLElement ->
 querySelector str htmlEl =
   map (toMaybe >>> map elementToHTMLElement)
   $ P.querySelector str $ elementToParentNode $ htmlElementToElement htmlEl
+
+documentTarget :: _
+documentTarget = htmlDocumentToEventTarget <$> (document =<< window)
+  where
+  htmlDocumentToEventTarget = documentToEventTarget <<< htmlDocumentToDocument
 
 foreign import waitLoaded :: forall e. Aff (dom :: DOM |e) Unit
 foreign import onLoad :: forall e. Eff e Unit -> Eff e Unit

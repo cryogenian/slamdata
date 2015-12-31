@@ -7,9 +7,10 @@
 /test/node_modules
 /test/index.js
 public/js/*.js
-public/js/!ace*
+!public/js/ace*
+!public/js/keyboard*
 public/css/*.css
-public/css/!bootstrap*.css
+!public/css/bootstrap*.css
 .psci_modules
 .psci
 phantomjsdriver.log
