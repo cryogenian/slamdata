@@ -18,9 +18,6 @@
   font-size: 0.9rem;
   line-height: 0.9rem;
   margin: 0;
-  outline-width: 1px;
-  outline-offset: 1px;
-  outline-color: transparent;
   padding: 0.9rem 0.9rem;
   text-decoration: none;
   text-align: left;
@@ -39,7 +36,8 @@
 }
 
 .sd-menu > ul > li {
-  display: inline-block;
+  display: block;
+  float: left;
   padding: 0;
   position: relative;
 }
@@ -50,6 +48,7 @@
   padding: 0;
   position: absolute;
   top: 100%;
+  float: left;
 }
 
 .sd-menu > ul > li > ul > li {
