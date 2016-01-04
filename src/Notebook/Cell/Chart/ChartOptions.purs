@@ -14,19 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.ChartOptions (buildOptions) where
+module Notebook.Cell.Chart.ChartOptions (buildOptions) where
 
 import Prelude
 
 import Data.Argonaut (JArray(), JCursor())
 import Data.Map as M
 import ECharts (Option())
-import Model.ChartAxis (analyzeJArray, Axis())
-import Model.ChartConfiguration (ChartConfiguration())
-import Model.ChartType (ChartType(..))
-import Model.ChartOptions.Pie (buildPie)
-import Model.ChartOptions.Bar (buildBar)
-import Model.ChartOptions.Line (buildLine)
+import Notebook.Cell.Chart.Axis (analyzeJArray, Axis())
+import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration())
+import Notebook.Cell.Chart.ChartType (ChartType(..))
+import Notebook.Cell.Chart.ChartOptions.Pie (buildPie)
+import Notebook.Cell.Chart.ChartOptions.Bar (buildBar)
+import Notebook.Cell.Chart.ChartOptions.Line (buildLine)
 
 type BuildOptions o =
   { chartType :: ChartType

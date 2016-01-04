@@ -41,16 +41,19 @@ import Data.Time (Milliseconds())
 
 import Halogen (ChildF())
 
-import Model.CellType (CellType())
-import Model.Port (Port())
-import Notebook.Cell.Ace.Component.Query (AceQueryP())
-import Notebook.Cell.Chart.Component.Query (ChartQueryP())
+import Notebook.Cell.Port (Port())
+
+import Notebook.Cell.Ace.Component.Query as Ace
+import Notebook.Cell.CellId (CellId())
+import Notebook.Cell.CellType (CellType())
+import Notebook.Cell.Chart.Component.Query as Chart
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInputPre())
-import Notebook.Cell.Explore.Component.Query (ExploreQueryP())
-import Notebook.Cell.JTable.Component.Query (JTableQueryP())
-import Notebook.Cell.Markdown.Component.Query (MarkdownQueryP())
-import Notebook.Cell.Search.Component.Query (SearchQueryP())
-import Notebook.Cell.Viz.Component.Query (VizQueryP())
+import Notebook.Cell.Explore.Component.Query as Explore
+import Notebook.Cell.JTable.Component.Query as JTable
+import Notebook.Cell.Markdown.Component.Query as Markdown
+import Notebook.Cell.Model as Cell
+import Notebook.Cell.Search.Component.Query as Search
+import Notebook.Cell.Viz.Component.Query as Viz
 
 -- | The common query algebra for a notebook cell.
 -- |
@@ -84,6 +87,8 @@ data CellQuery a
   | ShareCell a
   | Tick Milliseconds a
   | GetOutput (Maybe Port -> a)
+  | SaveCell CellId CellType (Cell.Model -> a)
+  | LoadCell Cell.Model a
 
 type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
 
@@ -96,45 +101,45 @@ _AnyCellQuery :: forall a. PrismP (InnerCellQuery a) (AnyCellQuery a)
 _AnyCellQuery = _Right
 
 data AnyCellQuery a
-  = AceQuery (AceQueryP a)
-  | ExploreQuery (ExploreQueryP a)
-  | MarkdownQuery (MarkdownQueryP a)
-  | SearchQuery (SearchQueryP a)
-  | JTableQuery (JTableQueryP a)
-  | VizQuery (VizQueryP a)
-  | ChartQuery (ChartQueryP a)
+  = AceQuery (Ace.QueryP a)
+  | ExploreQuery (Explore.QueryP a)
+  | MarkdownQuery (Markdown.QueryP a)
+  | SearchQuery (Search.QueryP a)
+  | JTableQuery (JTable.QueryP a)
+  | VizQuery (Viz.QueryP a)
+  | ChartQuery (Chart.QueryP a)
 
-_AceQuery :: forall a. PrismP (AnyCellQuery a) (AceQueryP a)
+_AceQuery :: forall a. PrismP (AnyCellQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery \q -> case q of
   AceQuery q' -> Just q'
   _ -> Nothing
 
-_ExploreQuery :: forall a. PrismP (AnyCellQuery a) (ExploreQueryP a)
+_ExploreQuery :: forall a. PrismP (AnyCellQuery a) (Explore.QueryP a)
 _ExploreQuery = prism' ExploreQuery \q -> case q of
   ExploreQuery q' -> Just q'
   _ -> Nothing
 
-_MarkdownQuery :: forall a. PrismP (AnyCellQuery a) (MarkdownQueryP a)
+_MarkdownQuery :: forall a. PrismP (AnyCellQuery a) (Markdown.QueryP a)
 _MarkdownQuery = prism' MarkdownQuery \q -> case q of
   MarkdownQuery q' -> Just q'
   _ -> Nothing
 
-_SearchQuery :: forall a. PrismP (AnyCellQuery a) (SearchQueryP a)
+_SearchQuery :: forall a. PrismP (AnyCellQuery a) (Search.QueryP a)
 _SearchQuery = prism' SearchQuery \q -> case q of
   SearchQuery q' -> Just q'
   _ -> Nothing
 
-_JTableQuery :: forall a. PrismP (AnyCellQuery a) (JTableQueryP a)
+_JTableQuery :: forall a. PrismP (AnyCellQuery a) (JTable.QueryP a)
 _JTableQuery = prism' JTableQuery \q -> case q of
   JTableQuery q' -> Just q'
   _ -> Nothing
 
-_VizQuery :: forall a. PrismP (AnyCellQuery a) (VizQueryP a)
+_VizQuery :: forall a. PrismP (AnyCellQuery a) (Viz.QueryP a)
 _VizQuery = prism' VizQuery \q -> case q of
   VizQuery q' -> Just q'
   _ -> Nothing
 
-_ChartQuery :: forall a. PrismP (AnyCellQuery a) (ChartQueryP a)
+_ChartQuery :: forall a. PrismP (AnyCellQuery a) (Chart.QueryP a)
 _ChartQuery = prism' ChartQuery \q -> case q of
   ChartQuery q' -> Just q'
   _ -> Nothing

@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Explore.Component.Query
-  ( ExploreQuery(..)
-  , ExploreQueryP()
-  ) where
+module Notebook.Cell.Explore.Component.Query where
 
 import Prelude
 
@@ -28,6 +25,6 @@ import Halogen (ChildF())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.FileInput.Component as FI
 
-data ExploreQuery a = UpdateExplore String a
+data Query a = UpdateExplore String a
 
-type ExploreQueryP = Coproduct CellEvalQuery (ChildF Unit FI.Query)
+type QueryP = Coproduct CellEvalQuery (ChildF Unit FI.Query)

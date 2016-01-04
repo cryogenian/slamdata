@@ -21,29 +21,33 @@ module Test.Selenium.Notebook.Common where
 
 import Prelude
 
+import Config as SDConfig
 import Control.Monad.Eff.Random (randomInt)
-import Control.Monad.Eff.Class (liftEff)
-import Data.List (List(), length, replicateM)
-import Data.Foldable (traverse_)
-import Data.Maybe (Maybe(..), maybe)
-import Data.Tuple (Tuple(..))
+
 import Data.Either (isRight)
+import Data.Foldable (traverse_)
+import Data.Functor.Eff (liftEff)
+import Data.List (List(), length, replicateM)
+import Data.Maybe (Maybe(..), maybe)
+import Data.StrMap as SM
+import Data.Tuple (Tuple(..))
+
+import Halogen.CustomProps as Cp
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
+import Halogen.HTML.Renderer.String (renderHTML)
+
 import Selenium.ActionSequence hiding (sequence)
-import Selenium.Monad
 import Selenium.Combinators (checker, tryToFind)
-import Test.Selenium.Monad
-import Test.Selenium.Log
+import Selenium.Monad
+import Selenium.Types
+
 import Test.Selenium.Common
+import Test.Selenium.Expect (expect, toEq)
+import Test.Selenium.Log
+import Test.Selenium.Monad
 import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Getters
-import Test.Selenium.Expect (expect, toEq)
-import Selenium.Types
-import qualified Config as SDConfig
-import qualified Data.StrMap as SM
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Renderer.String (renderHTML)
-import qualified Halogen.HTML as H
-import qualified Halogen.HTML.Properties as P
 
 checkNextCells :: SM.StrMap String -> Check Unit
 checkNextCells m = do

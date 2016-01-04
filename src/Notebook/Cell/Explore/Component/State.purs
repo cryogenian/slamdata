@@ -14,11 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Explore.Component.State
-  ( ExploreState()
-  , initialExploreState
-  , ExploreStateP()
-  ) where
+module Notebook.Cell.Explore.Component.State where
 
 import Prelude
 
@@ -28,9 +24,9 @@ import Notebook.Cell.Common.EvalQuery as NC
 import Notebook.Common (Slam())
 import Notebook.FileInput.Component as FI
 
-type ExploreState = Unit
+type State = Unit
 
-initialExploreState :: ExploreState
-initialExploreState = unit
+initialState :: State
+initialState = unit
 
-type ExploreStateP = InstalledState ExploreState FI.State NC.CellEvalQuery FI.Query Slam Unit
+type StateP = InstalledState State FI.State NC.CellEvalQuery FI.Query Slam Unit

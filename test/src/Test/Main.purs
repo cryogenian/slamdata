@@ -3,25 +3,25 @@ module Test.Main where
 import Prelude
 
 import Control.Monad (when)
-import Control.Monad.Aff
-  (Aff(), forkAff, runAff, launchAff, apathize, attempt, later', cancel)
+import Control.Monad.Aff (Aff(), forkAff, runAff, launchAff, apathize, attempt, later', cancel)
 import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, killVar, AVAR())
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception
-  (Error(), EXCEPTION(), throwException, error, message)
 import Control.Monad.Eff.Console as Ec
+import Control.Monad.Eff.Exception (Error(), EXCEPTION(), throwException, error, message)
 import Control.Monad.Eff.Ref (newRef, writeRef, modifyRef, readRef)
 import Control.Monad.Error.Class (throwError)
+
 import Data.Array as Arr
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
+import Data.Functor.Eff (liftEff)
 import Data.Maybe (Maybe(..))
 import Data.String as Str
+
 import Database.Mongo.Mongo (connect, close)
-import Node.ChildProcess
-  (ChildProcess(), makeSpawnOption, stdout, stderr, spawn, kill, execSync)
+
+import Node.ChildProcess (ChildProcess(), makeSpawnOption, stdout, stderr, spawn, kill, execSync)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS())
 import Node.FS.Aff (unlink, mkdir)
@@ -29,11 +29,11 @@ import Node.Path (resolve)
 import Node.Process as Process
 import Node.Rimraf (rimraf)
 import Node.Stream (Readable(), Duplex(), pipe, onDataString, onClose)
+
 import Test.Config (Config())
 import Test.Effects (TestEffects())
 import Test.Selenium as Selenium
 import Text.Chalky
-
 
 foreign import getConfig :: forall e. Eff (fs :: FS|e) Config
 foreign import createReadStream

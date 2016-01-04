@@ -35,14 +35,15 @@ import Control.Monad.Writer.Class as WC
 import Control.Monad.Writer.Trans as WT
 import Control.Monad.Trans as MT
 
+import Data.Argonaut.Core (Json())
 import Data.Either as E
 import Data.Maybe as M
 import Data.Tuple as TPL
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 
-import Model.Port (Port())
-import Model.CellId (CellId(), cellIdToString)
+import Notebook.Cell.Port (Port())
+import Notebook.Cell.CellId (CellId(), cellIdToString)
 import Model.Resource as R
 import Utils.Path (DirPath())
 
@@ -99,6 +100,8 @@ temporaryOutputResource info =
 data CellEvalQuery a
   = EvalCell CellEvalInput (CellEvalResult -> a)
   | NotifyRunCell a
+  | Save (Json -> a)
+  | Load Json a
 
 -- | The result value produced when evaluating a cell.
 -- |

@@ -27,7 +27,9 @@ import Control.Bind ((=<<))
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..))
 import Data.Lens (preview)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Monoid (mempty)
+import Data.StrMap as SM
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -37,19 +39,22 @@ import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQ
 
 import Render.CssClasses as CSS
 
-import Model.CellId (CellId(), runCellId)
-import Model.Port (Port(..), _SlamDown)
+import Notebook.Cell.CellId (CellId(), runCellId)
+import Notebook.Cell.Port (Port(..), _SlamDown)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Markdown.Component.Query
 import Notebook.Cell.Markdown.Component.State
+import Notebook.Cell.Markdown.Model
 import Notebook.Common (Slam())
 
 markdownComponent
-  :: CellId -> BrowserFeatures -> Component CellStateP CellQueryP Slam
+  :: CellId
+  -> BrowserFeatures
+  -> Component CellStateP CellQueryP Slam
 markdownComponent cellId browserFeatures = makeResultsCellComponent
-  { component: parentComponent render eval
-  , initialState: installedState config
+  { component: parentComponent (render config) eval
+  , initialState: installedState initialState
   , _State: _MarkdownState
   , _Query: makeQueryPrism _MarkdownQuery
   }
@@ -57,12 +62,15 @@ markdownComponent cellId browserFeatures = makeResultsCellComponent
   config :: SlamDownConfig
   config =
     { formName: "cell-" ++ show (runCellId cellId)
-    , browserFeatures: browserFeatures
+    , browserFeatures
     }
 
 render
-  :: SlamDownConfig -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery Slam Unit
-render config =
+  :: forall a
+   . SlamDownConfig
+  -> a
+  -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery Slam Unit
+render config _ =
   H.div
     [ P.class_ CSS.markdownOutput ]
     [ H.slot unit \_ ->
@@ -72,18 +80,33 @@ render config =
     ]
 
 eval
-  :: Natural CellEvalQuery
-     (ParentDSL SlamDownConfig SlamDownState CellEvalQuery SlamDownQuery Slam Unit)
+  :: Natural
+     CellEvalQuery
+     (ParentDSL State SlamDownState CellEvalQuery SlamDownQuery Slam Unit)
 eval (NotifyRunCell next) = pure next
 eval (EvalCell value k) =
   case preview _SlamDown =<< value.inputPort of
-    Just slamdown -> do
-      query unit $ action (SetDocument slamdown)
+    Just input -> do
+      set $ Just input
+      query unit $ action (SetDocument input)
       state <- query unit $ request GetFormState
       pure $ k case state of
         Nothing -> error "GetFormState query returned Nothing"
         Just st -> { output: Just (VarMap st), messages: [] }
     Nothing -> pure $ k (error "expected SlamDown input")
+eval (Save k) = do
+  input <- fromMaybe mempty <$> get
+  state <- fromMaybe SM.empty <$> query unit (request GetFormState)
+  pure $ k (encode { input, state })
+eval (Load json next) = do
+  case decode json of
+    Right { input, state } ->
+      void $ do
+        set $ Just input
+        query unit $ action (SetDocument input)
+        query unit $ action (PopulateForm state)
+    _ -> pure unit
+  pure next
 
 error :: String -> CellEvalResult
 error msg =

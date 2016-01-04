@@ -24,6 +24,7 @@ import Control.Bind (join)
 import Data.Array (singleton)
 import Data.Either (Either())
 import Data.Function (on)
+import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct())
 import Data.Maybe (Maybe(..), isNothing, maybe, fromMaybe, isJust)
 import Data.Path.Pathy (printPath)
@@ -33,7 +34,7 @@ import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), prjQuery, prjSl
 import Halogen.HTML as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
-import Halogen.Query (request, modify)
+import Halogen.Query (request, set)
 import Halogen.Themes.Bootstrap3 as B
 
 import FileSystem.Common (Slam())
@@ -163,12 +164,8 @@ render state =
 
 
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
-eval (Dismiss next) = do
-  modify (const Nothing)
-  pure next
-eval (Show d next) = do
-  modify (const $ Just d)
-  pure next
+eval (Dismiss next) = set Nothing $> next
+eval (Show d next) = set (Just d) $> next
 
 -- | Children can only close dialog. Other peeking in `FileSystem`
 peek :: forall a. ChildF ChildSlot ChildQuery a -> Algebra Unit
@@ -181,25 +178,25 @@ peek (ChildF slot query) =
   <|> (downloadPeek <$> prjQuery cpDownload query <*> prjSlot cpDownload slot)
 
 errorPeek :: forall a. Error.Query a -> ErrorSlot -> Algebra Unit
-errorPeek (Error.Dismiss _) _ = modify (const Nothing)
+errorPeek (Error.Dismiss _) _ = set Nothing
 
 sharePeek :: forall a. Share.Query a -> ShareSlot -> Algebra Unit
-sharePeek (Share.Dismiss _) _ = modify (const Nothing)
+sharePeek (Share.Dismiss _) _ = set Nothing
 sharePeek _ _ = pure unit
 
 renamePeek :: forall a. Rename.Query a -> RenameSlot -> Algebra Unit
-renamePeek (Rename.Dismiss _) _ = modify (const Nothing)
+renamePeek (Rename.Dismiss _) _ = set Nothing
 renamePeek _ _ = pure unit
 
 mountPeek :: forall a. Mount.Query a -> MountSlot -> Algebra Unit
-mountPeek (Mount.Dismiss _) _ = modify (const Nothing)
+mountPeek (Mount.Dismiss _) _ = set Nothing
 mountPeek (Mount.Save _) slot = do
   saved <- query' cpMount slot (request Mount.GetSaved)
   if isJust $ join $ saved
-    then modify (const Nothing)
+    then set Nothing
     else pure unit
 mountPeek _ _ = pure unit
 
 downloadPeek :: forall a. Download.Query a -> DownloadSlot -> Algebra Unit
-downloadPeek (Download.Dismiss _) _ = modify (const Nothing)
+downloadPeek (Download.Dismiss _) _ = set Nothing
 downloadPeek _ _ = pure unit

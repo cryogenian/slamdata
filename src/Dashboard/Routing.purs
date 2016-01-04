@@ -26,70 +26,70 @@ import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Monad (when)
 import Control.Monad.Aff (Aff())
-import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either (Either(..))
 import Data.Foldable (foldl, foldr)
+import Data.Functor.Eff (liftEff)
 import Data.List (List(), init, last)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Unsafe as U
-import Data.Path.Pathy ((</>), rootDir, dir, file)
+import Data.Path.Pathy ((</>), rootDir, dir, file, dir')
 import Data.String.Regex (noFlags, regex, test, Regex())
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), snd)
 
 import Halogen (Driver())
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Model.AccessType (AccessType(..), parseAccessType)
-import Model.CellId (CellId(), stringToCellId)
-import Model.Resource (Resource(..), resourceName, resourceDir)
+import Model.Notebook.Action (Action(..), parseAction, toAccessType)
+
+import Notebook.Cell.CellId (CellId(), stringToCellId)
+import Notebook.Component as Notebook
+import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 
 import Routing (matchesAff')
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
 
-import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, fromDashboard, toDashboard)
+import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, toDashboard)
 
-import Notebook.Component as Notebook
-import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
-
-import Utils.Path (decodeURIPath, dropNotebookExt)
+import Utils.Path (DirPath(), FilePath(), decodeURIPath)
 
 data Routes
-  = CellRoute Resource CellId AccessType
-  | ExploreRoute Resource
-  | NotebookRoute Resource AccessType
+  = CellRoute DirPath CellId AccessType
+  | ExploreRoute FilePath
+  | NotebookRoute DirPath Action
 
 routing :: Match Routes
 routing
   =   ExploreRoute <$> (oneSlash *> lit "explore" *> explored)
-  <|> CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> action
+  <|> CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> accessType
   <|> NotebookRoute <$> notebook <*> action
 
   where
   oneSlash :: Match Unit
   oneSlash = lit ""
 
-  explored :: Match Resource
+  explored :: Match FilePath
   explored = eitherMatch $ mkResource <$> list str
 
-  mkResource :: List String -> Either String Resource
+  mkResource :: List String -> Either String FilePath
   mkResource parts =
     case last parts of
       Just filename | filename /= "" ->
         let dirParts = U.fromJust (init parts)
             filePart = file filename
             path = foldr (\part acc -> dir part </> acc) filePart dirParts
-        in Right $ File $ rootDir </> path
+        in Right $ rootDir </> path
       _ -> Left "Expected non-empty explore path"
 
-  notebook :: Match Resource
+  notebook :: Match DirPath
   notebook = notebookFromParts <$> partsAndName
 
-  notebookFromParts :: Tuple (List String) String -> Resource
+  notebookFromParts :: Tuple (List String) String -> DirPath
   notebookFromParts (Tuple ps nm) =
-    Notebook $ foldl (</>) rootDir (map dir ps) </> dir nm
+    foldl (</>) rootDir (map dir ps) </> dir nm
 
   partsAndName :: Match (Tuple (List String) String)
   partsAndName = Tuple <$> (oneSlash *> (list notName)) <*> name
@@ -101,12 +101,14 @@ routing
   notName = eitherMatch $ map pathPart str
 
   notebookName :: String -> Either String String
-  notebookName input | checkExtension input = Right input
-                     | otherwise = Left input
+  notebookName input
+    | checkExtension input = Right input
+    | otherwise = Left input
 
   pathPart :: String -> Either String String
-  pathPart input | input == "" || checkExtension input = Left "incorrect path part"
-                 | otherwise = Right input
+  pathPart input
+    | input == "" || checkExtension input = Left "incorrect path part"
+    | otherwise = Right input
 
   extensionRegex :: Regex
   extensionRegex = regex ("\\." <> Config.notebookExtension <> "$") noFlags
@@ -114,37 +116,39 @@ routing
   checkExtension :: String -> Boolean
   checkExtension = test extensionRegex
 
-  action :: Match AccessType
-  action = (eitherMatch $ map parseAccessType str) <|> pure ReadOnly
+  action :: Match Action
+  action = (eitherMatch $ map parseAction str) <|> pure (Load ReadOnly)
+
+  accessType :: Match AccessType
+  accessType = (eitherMatch $ map parseAccessType str) <|> pure ReadOnly
 
   cellId :: Match CellId
   cellId = eitherMatch $ map stringToCellId str
 
 routeSignal :: Driver QueryP NotebookRawEffects -> Aff NotebookEffects Unit
 routeSignal driver = do
-  Tuple oldRoute newRoute <- matchesAff' decodeURIPath routing
-  case newRoute of
-    CellRoute res cellId editable -> notebook res editable $ Just cellId
-    NotebookRoute res editable -> notebook res editable Nothing
+  route <- snd <$> matchesAff' decodeURIPath routing
+  case route of
+    CellRoute res cellId accessType -> notebook res (Load accessType) $ Just cellId
+    NotebookRoute res action -> notebook res action Nothing
     ExploreRoute res -> explore res
-  where
-  explore :: Resource -> Aff NotebookEffects Unit
-  explore res = do
-    fs <- liftEff detectBrowserFeatures
-    driver $ toNotebook $ Notebook.ExploreFile fs res
 
-  notebook :: Resource -> AccessType -> Maybe CellId -> Aff NotebookEffects Unit
-  notebook res accessType viewing = do
-    let name = dropNotebookExt (resourceName res)
-        path = resourceDir res
-    currentPath <- driver $ fromDashboard GetPath
+  where
+
+  explore :: FilePath -> Aff NotebookEffects Unit
+  explore path = do
+    fs <- liftEff detectBrowserFeatures
+    driver $ toNotebook $ Notebook.ExploreFile fs path
+
+  notebook :: DirPath -> Action -> Maybe CellId -> Aff NotebookEffects Unit
+  notebook path action viewing = do
+    currentPath <- driver $ fromNotebook Notebook.GetPath
     currentName <- driver $ fromNotebook Notebook.GetNameToSave
-    let pathChanged = currentPath == path
-        nameChanged = currentName == pure name
-    when (pathChanged || nameChanged) do
+    let current = (</>) <$> currentPath <*> (dir' <$> currentName)
+    when (current /= Just path) do
       fs <- liftEff detectBrowserFeatures
-      driver $ toNotebook $ Notebook.LoadResource fs res
-      driver $ toDashboard $ SetAccessType accessType
-      driver $ toNotebook $ Notebook.SetName name
+      if (action == New)
+        then driver $ toNotebook $ Notebook.Reset fs path
+        else driver $ toNotebook $ Notebook.LoadNotebook fs path
+      driver $ toDashboard $ SetAccessType $ toAccessType action
       driver $ toDashboard $ SetViewingCell viewing
-    pure unit

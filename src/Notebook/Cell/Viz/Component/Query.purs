@@ -14,19 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Viz.Component.Query
-  ( VizQuery(..)
-  , VizQueryP()
-  ) where
+module Notebook.Cell.Viz.Component.Query where
 
 import Data.Functor.Coproduct (Coproduct())
-import Halogen
+import Data.Set (Set())
+
+import Halogen (ChildF())
+
+import Notebook.Cell.Chart.ChartType (ChartType())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Cell.Viz.Form.Component as Form
-import Data.Set (Set())
-import Model.ChartType (ChartType())
 
-data VizQuery a
+data Query a
   = SetHeight Int a
   | SetWidth Int a
   | SetAvailableChartTypes (Set ChartType) a
@@ -34,7 +33,6 @@ data VizQuery a
   | RotateAxisLabel Int a
   | SetAxisFontSize Int a
 
-type VizQueryP =
-  Coproduct
-  (Coproduct CellEvalQuery VizQuery)
-  (ChildF ChartType Form.QueryP)
+type QueryC = Coproduct CellEvalQuery Query
+
+type QueryP = Coproduct QueryC (ChildF ChartType Form.QueryP)

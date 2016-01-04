@@ -27,18 +27,28 @@ import Prelude
 
 import Control.Bind ((=<<), join)
 import Control.Monad (when)
+import Control.UI.Browser (newTab, replaceLocation)
 
+import Data.Argonaut (Json())
+import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures())
+import Data.Either (Either(..), either)
 import Data.Foldable (traverse_)
+import Data.Traversable (for)
 import Data.Functor (($>))
+import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
-import Data.Lens ((.~), (%~))
-import Data.List (fromList)
+import Data.Functor.Eff (liftEff)
+import Data.Lens ((.~), (%~), (?~ ))
+import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as Pathy
 import Data.Set as S
-import Data.These (These(..), theseLeft)
-import Data.Tuple (Tuple(..))
-import Control.UI.Browser (newTab)
+import Data.String as Str
+import Data.These (These(..), theseRight)
+import Data.Traversable (for)
+import Data.Tuple (Tuple(..), fst, snd)
 
 import Halogen
 import Halogen.HTML.Events.Indexed as E
@@ -49,13 +59,13 @@ import Halogen.Themes.Bootstrap3 as B
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
-import Model.AccessType (isEditable)
-import Model.CellId (CellId(), cellIdToString)
-import Model.CellType (CellType(..), cellName, cellGlyph, autorun)
-import Model.Port (Port())
-import Model.Resource as R
+import Model.Notebook.Action as NA
+import Model.AccessType (AccessType(..), isEditable)
 import Model.Common (mkNotebookURL)
-import Model.AccessType (AccessType(..))
+import Model.Resource as R
+import Notebook.Cell.CellId (CellId(), cellIdToString)
+import Notebook.Cell.CellType (CellType(..), AceMode(..), cellName, cellGlyph, autorun)
+import Notebook.Cell.Port (Port())
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
@@ -65,8 +75,12 @@ import Notebook.Common (Slam(), forceRerender')
 import Notebook.Component.Query
 import Notebook.Component.State
 import Notebook.FileInput.Component as Fi
+import Notebook.Model as Model
+
+import Ace.Halogen.Component as Ace
 
 import Quasar.Aff as Quasar
+import Utils.Path (DirPath())
 
 type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
 type NotebookStateP =
@@ -85,7 +99,7 @@ notebookComponent = parentComponent' render eval peek
 render :: NotebookState -> NotebookHTML
 render state =
   H.div_
-    $ fromList (map renderCell state.cells)
+    $ List.fromList (map renderCell state.cells)
    <> if isEditable state.accessType then [newCellMenu state] else []
   where
   renderCell cellDef =
@@ -109,8 +123,8 @@ newCellMenu state =
                 else B.glyphiconPlus
             ]
         ]
-    , insertMenuItem Query
-    , insertMenuItem Markdown
+    , insertMenuItem (Ace SQLMode)
+    , insertMenuItem (Ace MarkdownMode)
     , insertMenuItem Explore
     , insertMenuItem Search
     ]
@@ -131,32 +145,68 @@ eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
 eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
-eval (LoadResource fs res next) = do
-  model <- liftH $ liftAff' $ Quasar.loadNotebook res
-  modify $ const (fromModel fs model # _path .~ R.resourceDir res)
-  pure next
+eval (LoadNotebook fs dir next) = do
+  json <- liftAff $ Quasar.load $ dir </> Pathy.file "index"
+  case Model.decode =<< json of
+    Left err ->
+      -- TODO: error handling/reporting
+      -- Do we want to track the failure of any cell decoding too?
+      -- Does the whole notebook load to fail if a cell fails?
+      pure next
+    Right model ->
+      let peeledPath = Pathy.peel dir
+          path = fst <$> peeledPath
+          name = either Just (const Nothing) <<< snd =<< peeledPath
+      in case fromModel fs path name model of
+        Tuple cells st -> do
+          set st
+          forceRerender'
+          ranCells <- catMaybes <$> for cells \cell -> do
+            query (CellSlot cell.cellId) $ left $ action $ LoadCell cell
+            pure if cell.hasRun then Just cell.cellId else Nothing
+          -- We only need to run the root node in each subgraph, as doing so
+          -- will result in all child nodes being run also as the outputs
+          -- propagate down each subgraph.
+          traverse_ runCell $ nub $ flip findRoot st <$> ranCells
+          pure next
 eval (ExploreFile fs res next) = do
   modify
-    $ (_path .~ R.resourceDir res)
+    $ (_path .~ Pathy.parentDir res)
     <<< (_browserFeatures .~ fs)
     <<< (addCell Explore Nothing)
   forceRerender'
   query (CellSlot zero) $ right
     $ ChildF unit $ right $ ExploreQuery
     $ right $ ChildF unit
-    $ action $ Fi.SelectFile res
+    $ action $ Fi.SelectFile $ R.File res
   forceRerender'
   runCell zero
   pure next
 eval (Publish next) = do
   state <- get
-  let publish name = newTab $ mkNotebookURL name state.path ReadOnly
-  liftH $ liftEff' $ maybe (pure unit) publish $ theseLeft state.name
+  case state.path of
+    Nothing -> pure next
+    Just path -> do
+      let publish name = newTab $ mkNotebookURL name path (NA.Load ReadOnly)
+      -- liftEff $ maybe (pure unit) publish $ theseLeft state.name
+      pure next
+eval (Reset fs dir next) = do
+  let nb = initialNotebook fs
+      peeledPath = Pathy.peel dir
+      path = fst <$> peeledPath
+      name = maybe nb.name This (either Just (const Nothing) <<< snd =<< peeledPath)
+  set $ nb { path = path, name = name }
   pure next
 eval (SetName name next) = modify (_name .~ That name) $> next
 eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
-eval (GetNameToSave continue) = map continue $ gets $ _.name >>> theseLeft
+eval (GetPath k) = k <$> gets _.path
+eval (GetNameToSave k) = do
+  name <- gets _.name
+  case theseRight name of
+    Nothing -> pure $ k Nothing
+    Just newName -> pure $ k $ Just $ Pathy.DirName $ newName ++ "." ++ Config.notebookExtension
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
+eval (SaveNotebook next) = saveNotebook unit $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF (CellSlot cellId) q) = coproduct (peekCell cellId) (peekCellInner cellId) q
@@ -172,7 +222,7 @@ peekCell cellId q = case q of
     modify $ removeCells (S.insert cellId descendants)
   CreateChildCell cellType _ -> do
     Tuple st newCellId <- gets $ addCell' cellType (Just cellId)
-    modify (const st)
+    set st
     forceRerender'
     when (autorun cellType) $ runCell newCellId
   ShareCell _ -> pure unit
@@ -182,16 +232,35 @@ peekCell cellId q = case q of
 -- | raised by actions within a cell that should cause the cell to run.
 peekCellInner :: forall a. CellId -> ChildF Unit InnerCellQuery a -> NotebookDSL Unit
 peekCellInner cellId (ChildF _ q) =
-  coproduct (peekEvalCell cellId) (\q' -> if queryShouldRun q' then runCell cellId else pure unit) q
+  coproduct (peekEvalCell cellId) (peekAnyCell cellId) q
 
 peekEvalCell :: forall a. CellId -> CellEvalQuery a -> NotebookDSL Unit
 peekEvalCell cellId (NotifyRunCell _) = runCell cellId
 peekEvalCell _ _ = pure unit
 
+peekAnyCell :: forall a. CellId -> AnyCellQuery a -> NotebookDSL Unit
+peekAnyCell cellId q = do
+  when (queryShouldRun q) $ runCell cellId
+  when (queryShouldSave q) $ triggerSave unit
+  pure unit
+
 queryShouldRun :: forall a. AnyCellQuery a -> Boolean
 queryShouldRun (VizQuery q) = true
 queryShouldRun (JTableQuery q) = JTC.queryShouldRun q
 queryShouldRun _ = false
+
+queryShouldSave  :: forall a. AnyCellQuery a -> Boolean
+queryShouldSave (AceQuery q) = coproduct evalQueryShouldSave aceQueryShouldSave q
+queryShouldSave _ = true
+
+evalQueryShouldSave :: forall a. CellEvalQuery a -> Boolean
+evalQueryShouldSave _ = true
+
+aceQueryShouldSave :: forall p a. ChildF p Ace.AceQuery a -> Boolean
+aceQueryShouldSave (ChildF _ q) =
+  case q of
+    Ace.TextChanged _ -> true
+    _ -> false
 
 -- | Runs the cell with the specified ID and then runs any cells that depend on
 -- | the cell's output with the new result.
@@ -209,6 +278,7 @@ runCell cellId = do
         Nothing -> pure unit
         -- if there's a parent and an output, pass it on as this cell's input
         Just p -> updateCell (Just p) cellId
+  triggerSave unit
 
 -- | Updates the evaluated value for a cell by running it with the specified
 -- | input and then runs any cells that depend on the cell's output with the
@@ -224,3 +294,68 @@ updateCell inputPort cellId = do
   runCellDescendants parentId value = do
     children <- gets (findChildren parentId)
     traverse_ (updateCell (Just value)) children
+
+triggerSave :: Unit -> NotebookDSL Unit
+triggerSave _ = do
+  trigger <- gets _.saveTrigger >>= \st -> case st of
+    Just trigger -> pure trigger
+    Nothing -> do
+      trigger <- Utils.Debounced.debouncedEventSource liftEff subscribe' (Data.Time.Milliseconds 500.0)
+      modify (_saveTrigger ?~ trigger)
+      pure trigger
+  liftH $ liftH $ trigger $ action $ SaveNotebook
+
+-- | Saves the notebook as JSON, using the current values present in the state.
+saveNotebook :: Unit -> NotebookDSL Unit
+saveNotebook _ = get >>= \st -> case st.path of
+  Nothing -> pure unit
+  Just path -> do
+
+    cells <- catMaybes <$> for (List.fromList st.cells) \cell ->
+      query (CellSlot cell.id) $ left $ request (SaveCell cell.id cell.ty)
+
+    let json = Model.encode { cells, dependencies: st.dependencies }
+
+    savedName <- case st.name of
+      This name -> save path name json
+      That name -> do
+        newName <- getNewName' path name
+        save path newName json
+      Both oldName newName -> do
+        save path oldName json
+        if newName == dropExt oldName
+          then pure oldName
+          else rename path oldName newName
+
+    modify (_name .~ This savedName)
+    liftEff $ replaceLocation $ mkNotebookURL (dropExt savedName) path (NA.Load Editable)
+
+  where
+
+  dropExt :: Pathy.DirName -> String
+  dropExt dirName =
+    let name = Pathy.runDirName dirName
+    in Str.take (Str.length name - Str.length Config.notebookExtension - 1) name
+
+  -- Finds a new name for a notebook in the specified parent directory, using
+  -- a name value as a basis to start with.
+  getNewName' :: DirPath -> String -> NotebookDSL Pathy.DirName
+  getNewName' dir name =
+    let baseName = name ++ "." ++ Config.notebookExtension
+    in liftAff $ Pathy.DirName <$> Quasar.getNewName dir baseName
+
+  -- Saves a notebook and returns the name it was saved as.
+  save :: DirPath -> Pathy.DirName -> Json -> NotebookDSL Pathy.DirName
+  save dir name json = do
+    let notebookPath = dir </> Pathy.dir' name </> Pathy.file "index"
+    liftAff $ Quasar.save notebookPath json
+    pure name
+
+  -- Renames a notebook and returns the new name it was changed to.
+  rename :: DirPath -> Pathy.DirName -> String -> NotebookDSL Pathy.DirName
+  rename dir oldName newName = do
+    newName' <- getNewName' dir newName
+    let oldPath = dir </> Pathy.dir' oldName
+        newPath = dir </> Pathy.dir' newName'
+    liftAff $ Quasar.move (R.Directory oldPath) (Right newPath)
+    pure newName'

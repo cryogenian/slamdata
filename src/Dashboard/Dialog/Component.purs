@@ -88,8 +88,8 @@ render state =
                               }
 
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
-eval (Dismiss next) = modify (const Nothing) $> next
-eval (Show d next) = modify (const $ pure d) $> next
+eval (Dismiss next) = set Nothing $> next
+eval (Show d next) = set (Just d) $> next
 
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> Algebra Unit
@@ -99,8 +99,8 @@ peek (ChildF slot query) =
   <|> (embedPeek <$> prjSlot cpEmbed slot <*> prjQuery cpEmbed query)
 
 errorPeek :: forall a. ErrorSlot -> Error.Query a -> Algebra Unit
-errorPeek _ (Error.Dismiss _) = modify (const Nothing)
+errorPeek _ (Error.Dismiss _) = set Nothing
 
 embedPeek :: forall a. EmbedSlot -> Embed.Query a -> Algebra Unit
-embedPeek _ (Embed.Dismiss _) = modify (const Nothing)
+embedPeek _ (Embed.Dismiss _) = set Nothing
 embedPeek _ _ = pure unit

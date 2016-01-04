@@ -17,13 +17,13 @@ limitations under the License.
 module Dashboard.Component.Query where
 
 import Data.Maybe (Maybe())
-import Utils.Path (DirPath())
-import Model.AccessType (AccessType())
-import Model.CellId (CellId())
-import Dashboard.Menu.Component.Query as Menu
-import Notebook.Effects (NotebookEffects())
+
 import DOM.Event.EventTarget (EventListener())
 
+import Dashboard.Menu.Component.Query as Menu
+import Model.AccessType (AccessType())
+import Notebook.Cell.CellId (CellId())
+import Notebook.Effects (NotebookEffects())
 
 data Query a
   = ActivateKeyboardShortcuts a
@@ -31,7 +31,6 @@ data Query a
   | EvaluateMenuValue Menu.Value a
   | AddKeyboardListener (EventListener NotebookEffects) a
   | Save a
-  | GetPath (DirPath -> a)
   | SetAccessType AccessType a
   | SetViewingCell (Maybe CellId) a
   | DismissAll a

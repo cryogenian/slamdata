@@ -20,13 +20,6 @@ import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..))
 import Global (readFloat, isNaN, readInt)
 
-stringToInt :: String -> Maybe Int
-stringToInt s =
-  let n = readInt 10 s in
-  if isNaN n
-  then Nothing
-  else fromNumber n
-
 stringToNumber :: String -> Maybe Number
 stringToNumber s =
   let n = readFloat s in

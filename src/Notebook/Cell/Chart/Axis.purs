@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.ChartAxis where
+module Notebook.Cell.Chart.Axis where
 
 import Prelude
 
@@ -31,7 +31,7 @@ import Data.Map as M
 import Data.StrMap as Sm
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
-import Model.ChartSemantics
+import Notebook.Cell.Chart.Semantics
 
 data Axis
   = ValAxis (List (Maybe Semantics))

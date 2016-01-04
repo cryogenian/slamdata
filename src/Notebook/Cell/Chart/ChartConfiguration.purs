@@ -14,19 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.ChartConfiguration where
+module Notebook.Cell.Chart.ChartConfiguration where
 
 import Prelude
 
 import Data.Argonaut
   (JCursor(), EncodeJson, DecodeJson, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Array (filter, cons)
+import Data.Array (filter)
 import Data.Foldable (any)
 import Data.Lens (LensP(), lens, (^.))
 import Data.Maybe (maybe)
-import Data.Monoid (mempty)
-import Model.Aggregation (Aggregation())
-import Model.ChartAxis (dependsOn)
+import Notebook.Cell.Chart.Aggregation (Aggregation())
+import Notebook.Cell.Chart.Axis (dependsOn)
 import Model.Select (Select(), _value)
 
 type JSelect = Select JCursor

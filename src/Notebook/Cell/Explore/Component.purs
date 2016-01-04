@@ -22,10 +22,13 @@ module Notebook.Cell.Explore.Component
 
 import Prelude
 
+import Control.Bind (join)
 import Control.Monad.Trans as MT
 import Control.Monad.Error.Class as EC
 
-import Data.Maybe (maybe)
+import Data.Argonaut (encodeJson, decodeJson)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Either (either)
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -33,8 +36,8 @@ import Halogen.HTML.Properties.Indexed as P
 
 import Render.CssClasses as CSS
 
-import Model.CellType as CT
-import Model.Port as Port
+import Notebook.Cell.CellType as CT
+import Notebook.Cell.Port as Port
 
 import Notebook.Cell.Common.EvalQuery as NC
 import Notebook.Cell.Component as NC
@@ -49,18 +52,18 @@ exploreComponent =
     { name: CT.cellName CT.Explore
     , glyph: CT.cellGlyph CT.Explore
     , component: parentComponent render eval
-    , initialState: installedState initialExploreState
+    , initialState: installedState initialState
     , _State: NC._ExploreState
     , _Query: NC.makeQueryPrism NC._ExploreQuery
     }
 
-render :: ExploreState -> ParentHTML FI.State NC.CellEvalQuery FI.Query Slam Unit
+render :: State -> ParentHTML FI.State NC.CellEvalQuery FI.Query Slam Unit
 render state =
   H.div
     [ P.class_ CSS.exploreCellEditor ]
     [ H.slot unit \_ -> { component: FI.fileInputComponent, initialState: FI.initialState } ]
 
-eval :: Natural NC.CellEvalQuery (ParentDSL ExploreState FI.State NC.CellEvalQuery FI.Query Slam Unit)
+eval :: Natural NC.CellEvalQuery (ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
 eval (NC.NotifyRunCell next) = pure next
 eval (NC.EvalCell info k) =
   k <$> NC.runCellEvalT do
@@ -69,3 +72,10 @@ eval (NC.EvalCell info k) =
         # MT.lift
         >>= maybe (EC.throwError "No file selected") pure
     pure $ Port.Resource resource
+eval (NC.Save k) = do
+  file <- query unit (request FI.GetSelectedFile)
+  pure $ k $ encodeJson (join file)
+eval (NC.Load json next) = do
+  let file = either (const Nothing) id $ decodeJson json
+  maybe (pure unit) (\file' -> void $ query unit $ action (FI.SelectFile file')) file
+  pure next

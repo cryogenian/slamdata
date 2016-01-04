@@ -26,16 +26,18 @@ import Prelude
 import Control.Alt ((<|>))
 import Control.Bind (join)
 import Control.Monad.Aff (attempt)
-import Control.Monad.Eff.Class (liftEff, MonadEff)
 import Control.Monad.Eff.Exception (error, message)
 import Control.Monad.Error.Class (throwError)
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
+
 import Data.Array (head, last, mapMaybe, filter)
 import Data.Either (Either(..), either)
 import Data.Foldable (traverse_)
+import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (left, right)
+import Data.Functor.Eff (liftEff)
 import Data.Inject (prj)
 import Data.Lens ((^.), (.~), preview)
 import Data.Lens.Prism.Coproduct (_Left, _Right)
@@ -43,11 +45,21 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Path.Pathy (rootDir, (</>), dir, file)
 import Data.String as S
 import Data.URI (runParseAbsoluteURI)
+
+import Halogen.Component
+import Halogen.Component.ChildPath (injSlot, prjSlot, prjQuery, injQuery)
+import Halogen.Component.Utils (applyCF)
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
+import Halogen.Query (action, request, get, modify, gets)
+import Halogen.Themes.Bootstrap3 as B
+
 import Dialog.Download as Download
 import Dialog.Mount as Mount
 import Dialog.Rename as Rename
+
 import FileSystem.Breadcrumbs as Breadcrumbs
-import FileSystem.Common (Slam(), forceRerender', liftAff'', liftEff'')
+import FileSystem.Common (Slam(), forceRerender')
 import FileSystem.Dialog as Dialog
 import FileSystem.Install
 import FileSystem.Item as Item
@@ -56,19 +68,14 @@ import FileSystem.Query
 import FileSystem.Render
 import FileSystem.Search as Search
 import FileSystem.State
-import Halogen.Component
-import Halogen.Component.ChildPath (injSlot, prjSlot, prjQuery, injQuery)
-import Halogen.Component.Utils (applyCF)
-import Halogen.HTML as H
-import Halogen.HTML.Properties as P
-import Halogen.Query (action, request, get, modify, gets)
-import Halogen.Themes.Bootstrap3 as B
-import Model.AccessType (AccessType(..))
+
+import Model.Notebook.Action (Action(..), AccessType(..))
 import Model.Common (browseURL, mkNotebookURL)
 import Model.Item (Item(..), itemResource, itemURL, openItem, sortItem)
 import Model.Resource as R
 import Model.Salt (newSalt)
 import Model.Sort (notSort)
+
 import Network.HTTP.MimeType.Common (textCSV)
 import Quasar.Aff as API
 import Render.Common
@@ -115,7 +122,7 @@ eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (Resort next) = do
   searchValue <- query' cpSearch SearchSlot (request Search.GetValue)
   state <- get
-  liftEff'' $ setLocation $ browseURL (searchValue >>= id)
+  liftEff $ setLocation $ browseURL (searchValue >>= id)
     (notSort (state ^. _sort)) (state ^. _salt) (state ^. _path)
   pure next
 eval (SetPath path next) = do
@@ -142,7 +149,7 @@ eval (HideHiddenFiles next) = do
 eval (Configure next) = do
   state <- get
   let res = R.Database $ state ^. _path
-  eiURI <- liftAff'' $ attempt (API.mountInfo res)
+  eiURI <- liftAff $ attempt (API.mountInfo res)
   configure (either (const Nothing) Just eiURI) res
   pure next
 eval (MakeMount next) = do
@@ -153,13 +160,13 @@ eval (MakeMount next) = do
 eval (MakeFolder next) = do
   state <- get
   let path = state ^. _path
-  dirName <- liftAff'' $ API.getNewName path Config.newFolderName
+  dirName <- liftAff $ API.getNewName path Config.newFolderName
   let dirPath = path </> dir dirName
       dirRes = R.Directory dirPath
       dirItem = PhantomItem dirRes
       hiddenFile = dirPath </> file (Config.folderMark)
   query' cpItems ItemsSlot $ left $ action $ Items.Add dirItem
-  added <- liftAff'' do
+  added <- liftAff do
     attempt $ API.makeFile hiddenFile API.ldJSON "{}"
   query' cpItems ItemsSlot $ left $ action
     $ Items.Filter (/= dirItem)
@@ -174,32 +181,32 @@ eval (MakeFolder next) = do
 
 eval (MakeNotebook next) = do
   path <- gets (^. _path)
-  name <- liftAff'' $ API.getNewName
+  name <- liftAff $ API.getNewName
           path (Config.newNotebookName <> "." <> Config.notebookExtension)
   let uri = mkNotebookURL name path New
-  liftEff'' (setLocation uri)
+  liftEff (setLocation uri)
   pure next
 
 eval (UploadFile el next) = do
-  mbInput <- liftEff'' $ D.querySelector "input" el
+  mbInput <- liftEff $ D.querySelector "input" el
   case mbInput of
     Nothing -> pure unit
-    Just input -> void $ liftEff'' $ Be.raiseEvent "click" input
+    Just input -> void $ liftEff $ Be.raiseEvent "click" input
   pure next
 
 eval (FileListChanged el next) = do
-  fileArr <- map Cf.fileListToArray $ (liftAff'' $ Cf.files el)
-  liftEff'' $ clearValue el
+  fileArr <- map Cf.fileListToArray $ (liftAff $ Cf.files el)
+  liftEff $ clearValue el
   case head fileArr of
     Nothing ->
       let err :: Slam Unit
           err = throwError $ error "empty filelist"
-      in liftAff'' err
+      in liftAff err
     Just f -> do
       state <- get
       let path = state ^. _path
-      name <- liftAff'' $ liftEff (Cf.name f)
-              >>= API.getNewName (state ^. _path)
+      name <- liftAff $ liftEff (Cf.name f)
+                >>= API.getNewName (state ^. _path)
 
       let fileName = path </> file name
           fileItem = PhantomItem $ R.File fileName
@@ -207,18 +214,18 @@ eval (FileListChanged el next) = do
           mime = if ext == Just "csv"
                  then textCSV
                  else API.ldJSON
-      reader <- liftEff'' Cf.newReaderEff
-      content <- liftAff'' $ Cf.readAsBinaryString f reader
+      reader <- liftEff Cf.newReaderEff
+      content <- liftAff $ Cf.readAsBinaryString f reader
       query' cpItems ItemsSlot $ left $ action $ Items.Add fileItem
-      f <- liftAff'' $ attempt $ API.makeFile fileName mime content
+      f <- liftAff $ attempt $ API.makeFile fileName mime content
       case f of
         Left err -> do
           query' cpItems ItemsSlot $ left $ action
             $ Items.Filter (not <<< eq (R.File fileName) <<< itemResource)
           pure unit
         Right _ ->
-          liftEff'' $ setLocation
-          $ itemURL (state ^. _sort) (state ^. _salt) Editable fileItem
+          liftEff $ setLocation
+            $ itemURL (state ^. _sort) (state ^. _salt) Editable fileItem
 
   pure next
 eval (Download next) = do
@@ -277,7 +284,7 @@ itemPeek slot (Item.Open _) = do
     Nothing -> pure unit
     Just it -> do
       state <- get
-      liftEff'' $ openItem it (state ^. _sort) (state ^. _salt)
+      liftEff $ openItem it (state ^. _sort) (state ^. _salt)
 itemPeek slot (Item.Configure _) = do
   mbit <- query' cpItems ItemsSlot $ right $ ChildF slot $ request Item.GetItem
   case mbit of
@@ -307,7 +314,7 @@ itemPeek _ (Item.Remove _) = do
     Nothing -> pure unit
     Just item -> void do
       let r = itemResource item
-      mbTrashFolder <- liftAff'' $ API.delete r
+      mbTrashFolder <- liftAff $ API.delete r
       query' cpItems ItemsSlot $ left $ action
         $ Items.Filter (not <<< eq r <<< itemResource)
       maybe (pure unit) (\x -> void $ query' cpItems ItemsSlot $ left $ action
@@ -317,7 +324,7 @@ itemPeek _ (Item.Share _) = do
   case mbit of
     Nothing -> pure unit
     Just item -> void do
-      loc <- liftEff'' locationString
+      loc <- liftEff locationString
       state <- get
       let url = loc <> "/"
                 <> itemURL (state ^. _sort) (state ^. _salt) ReadOnly item
@@ -332,9 +339,9 @@ itemPeek _ _ = pure unit
 
 searchPeek :: forall a. SearchSlot -> Search.Query a -> Algebra Unit
 searchPeek _ (Search.Clear _) = do
-  salt <- liftEff'' newSalt
+  salt <- liftEff newSalt
   (State state) <- get
-  liftEff'' $ setLocation
+  liftEff $ setLocation
     $ browseURL Nothing state.sort salt state.path
 searchPeek _ _ = pure unit
 
@@ -386,7 +393,7 @@ getChildren :: (R.Resource -> Boolean)
                -> DirPath -> Algebra Unit
 getChildren pred cont start = do
   forceRerender'
-  ei <- liftAff'' $ attempt $ API.children start
+  ei <- liftAff $ attempt $ API.children start
   case ei of
     Right items -> do
       let items' = filter pred items

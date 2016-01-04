@@ -19,30 +19,33 @@ module Notebook.Cell.Chart.Component where
 import Prelude
 
 import Control.Monad (when)
-import Css.Display
-import Css.Geometry (height, width, left, marginLeft)
-import Css.Size
+
+import Data.Argonaut (jsonEmptyObject)
 import Data.Either (Either(..))
 import Data.Int (toNumber)
 import Data.Lens (preview)
 import Data.Maybe (Maybe(..))
+
 import Halogen
 import Halogen.ECharts as He
 import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
-import Model.Port (_ChartOptions)
+
+import Css.Display
+import Css.Geometry (height, width, left, marginLeft)
+import Css.Size
+
+import Notebook.Cell.Port (_ChartOptions)
+import Render.CssClasses as Rc
+
 import Notebook.Cell.Chart.Component.State
 import Notebook.Cell.Common.EvalQuery as Ec
 import Notebook.Cell.Component as Cc
 import Notebook.Common (Slam())
-import Render.CssClasses as Rc
 
-
-type ChartHTML =
-  ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
-type ChartDSL =
-  ParentDSL ChartState He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
+type ChartHTML = ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
+type ChartDSL = ParentDSL State He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
 
 chartComponent :: Component Cc.CellStateP Cc.CellQueryP Slam
 chartComponent = Cc.makeResultsCellComponent
@@ -52,7 +55,7 @@ chartComponent = Cc.makeResultsCellComponent
   , _Query: Cc.makeQueryPrism Cc._ChartQuery
   }
 
-render :: ChartState -> ChartHTML
+render :: State -> ChartHTML
 render state =
   H.div [ P.classes [ Rc.chartOutput ]
         , CSS.style do
@@ -73,7 +76,7 @@ eval (Ec.EvalCell value continue) =
   case value.inputPort >>= preview _ChartOptions of
     Just options -> do
       state <- get
-      modify (const { width: options.width, height: options.height })
+      set { width: options.width, height: options.height }
       when (state.width /= options.width)
         $ void $ query unit $ action $ He.SetWidth options.width
       when (state.height /= options.height)
@@ -86,3 +89,9 @@ eval (Ec.EvalCell value continue) =
         { output: Nothing
         , messages: [Left "Expected ChartOptions input"]
         }
+
+-- No state needs loading/saving for the chart cell, as it is fully populated
+-- by its input, and will be restored by the parent `Viz` cell running when
+-- the notebook is restored
+eval (Ec.Save k) = pure (k jsonEmptyObject)
+eval (Ec.Load _ next) = pure next

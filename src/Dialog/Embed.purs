@@ -21,8 +21,10 @@ import Prelude
 import Control.Monad.Aff (Aff())
 import Control.UI.Browser (select)
 import Control.UI.ZClipboard as Z
-import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
-import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
+
 import Halogen
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
@@ -30,6 +32,10 @@ import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
 import Halogen.HTML.Renderer.String (renderHTML)
 import Halogen.Themes.Bootstrap3 as B
+
+import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
+
+import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Render.CssClasses as Rc
 import Utils.DOM (waitLoaded)
 
@@ -80,9 +86,9 @@ eval :: forall e. Eval Query State Query (Slam e)
 eval (Dismiss next) = pure next
 eval (InitZClipboard url htmlEl next) = do
   let el = htmlElementToElement htmlEl
-  liftAff' waitLoaded
-  liftEff' $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
+  liftAff waitLoaded
+  liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
   pure next
 eval (SelectElement el next) = do
-  liftEff' $ select el
+  liftEff $ select el
   pure next

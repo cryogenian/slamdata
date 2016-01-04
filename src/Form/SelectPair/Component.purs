@@ -20,12 +20,11 @@ import Prelude
 
 import Control.Monad.Aff (Aff())
 
-import Data.Array (null, zipWith, range, length, singleton)
+import Data.Array (null, singleton)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens, (^.), (.~), (%~), view)
-import Data.Maybe (Maybe(), maybe, fromMaybe)
-import Data.Maybe.Unsafe (fromJust)
+import Data.Maybe (Maybe(), maybe)
 import Data.Tuple (Tuple(..))
 import Form.Select.Component (Query(..), select)
 
@@ -37,7 +36,6 @@ import Halogen.Themes.Bootstrap3 as B
 
 import Render.CssClasses as Rc
 import Model.Select
-import Utils (stringToInt)
 import Utils.Array (enumerate)
 
 type Slam e = Aff (HalogenEffects e)

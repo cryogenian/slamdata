@@ -14,37 +14,36 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.Selenium.Notebook.Search
-       (test)
-       where
+module Test.Selenium.Notebook.Search (test) where
 
 import Prelude
-import Control.Monad.Eff.Random (randomInt)
+
 import Control.Bind (join)
-import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Random (randomInt)
+
 import Data.Foldable (for_, traverse_)
-import Data.Traversable (traverse)
+import Data.Functor.Eff (liftEff)
 import Data.List (replicateM, length, (!!))
 import Data.Maybe (Maybe(..), fromMaybe)
-import Selenium.Types
+import Data.String as S
+import Data.String.Regex as R
+import Data.Traversable (traverse)
+
 import Selenium.ActionSequence (leftClick, sendKeys)
 import Selenium.Monad
+import Selenium.Types
 
 import Test.Config (SearchQueryConfig())
 import Test.Selenium.ActionSequence (selectAll, sendDelete)
-import Test.Selenium.Monad
-import Test.Selenium.Log
 import Test.Selenium.Common
-import Test.Selenium.Types
+import Test.Selenium.Log
+import Test.Selenium.Monad
+import Test.Selenium.Notebook.Common as C
 import Test.Selenium.Notebook.Contexts
+import Test.Selenium.Notebook.FileList as FL
 import Test.Selenium.Notebook.Getters
 import Test.Selenium.Notebook.Markdown.Interactions (insertMdCell)
-
-import qualified Data.String as S
-import qualified Data.String.Regex as R
-import qualified Config as SDConfig
-import qualified Test.Selenium.Notebook.Common as C
-import qualified Test.Selenium.Notebook.FileList as FL
+import Test.Selenium.Types
 
 
 checkInitialSearch :: Check Unit

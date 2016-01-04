@@ -26,6 +26,7 @@ import Control.UI.Browser (newTab)
 
 import Data.Array (sort)
 import Data.Either (Either(..), either)
+import Data.Functor.Eff (liftEff)
 import Data.Lens ((.~), (%~), (<>~), _Left, _Right)
 import Data.Maybe (isJust, maybe)
 import Data.String as Str
@@ -82,7 +83,7 @@ eval (ModifyJSONOpts fn next) = do
   modify validate
   pure next
 eval (NewTab url next) = do
-  liftEff' $ newTab url
+  liftEff $ newTab url
   pure next
 eval (Dismiss next) =
   pure next

@@ -30,8 +30,8 @@ import Data.StrMap
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Function (on)
 import Selenium.Types
-import qualified Data.String.Regex as R
-import qualified Data.Array as A
+import Data.String.Regex as R
+import Data.Array as A
 
 type SearchQueryConfig =
   { query :: String

@@ -20,18 +20,22 @@ import Prelude
 
 import Control.Monad.Aff (runAff, forkAff, Aff())
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throwException)
 import Control.UI.Browser (setTitle)
+
 import Data.Functor.Coproduct (left)
-import DOM (DOM())
-import FileSystem (comp, initialState, Query(..))
-import FileSystem.Effects (FileSystemEffects())
-import FileSystem.Routing (routeSignal)
+import Data.Functor.Eff (liftEff)
+
 import Halogen.Component (installedState)
 import Halogen.Driver (runUI)
 import Halogen.Query (action)
 import Halogen.Util (appendToBody, onLoad)
+
+import DOM (DOM())
+
+import FileSystem (comp, initialState, Query(..))
+import FileSystem.Effects (FileSystemEffects())
+import FileSystem.Routing (routeSignal)
 
 setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
 setSlamDataTitle version =

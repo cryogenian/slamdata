@@ -24,6 +24,7 @@ before_script:
   - "sh -e /etc/init.d/xvfb start"
 script:
   - gulp bundle-test
+  - gulp property-tests
   - node test
 before_deploy:
 - cp -r public slamdata

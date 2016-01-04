@@ -22,4 +22,4 @@ import Halogen (ChildF())
 import Halogen.ECharts (EChartsQuery())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 
-type ChartQueryP = Coproduct CellEvalQuery (ChildF Unit EChartsQuery)
+type QueryP = Coproduct CellEvalQuery (ChildF Unit EChartsQuery)

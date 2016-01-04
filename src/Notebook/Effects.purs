@@ -17,24 +17,15 @@ limitations under the License.
 module Notebook.Effects where
 
 import Ace.Types (ACE())
-import Control.Monad.Aff.AVar (AVAR())
-import Control.Monad.Eff.Exception (EXCEPTION())
 import Control.Monad.Eff.Random (RANDOM())
 import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Eff.Ref (REF())
 import Control.UI.ZClipboard (ZCLIPBOARD())
-import DOM (DOM())
 import Data.Date (Now())
-import ECharts.Effects ( ECHARTS_INIT()
-                       , ECHARTS_OPTION_SET()
-                       , ECHARTS_DISPOSE()
-                       , ECHARTS_RESIZE()
-                       , ECHARTS_REFRESH()
-                       , ECHARTS_CLEAR()
-                       )
+import DOM.Timer (Timer())
+import ECharts.Effects (ECHARTS_INIT(), ECHARTS_OPTION_SET(), ECHARTS_DISPOSE(), ECHARTS_RESIZE(), ECHARTS_REFRESH(), ECHARTS_CLEAR())
 import Halogen (HalogenEffects())
 import Network.HTTP.Affjax (AJAX())
-import DOM.Timer (Timer())
 
 type NotebookEffects = HalogenEffects NotebookRawEffects
 

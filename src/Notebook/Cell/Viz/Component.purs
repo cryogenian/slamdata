@@ -20,22 +20,25 @@ import Prelude
 
 import Control.Apply ((*>))
 import Control.Monad (when)
-import Control.MonadPlus (guard)
-import Control.Monad.Trans (lift)
 import Control.Monad.Error.Class (throwError)
+import Control.Monad.Trans (lift)
+import Control.MonadPlus (guard)
 import Control.Plus (empty)
-import Css.Geometry (marginBottom)
-import Css.Size (px)
+
 import Data.Argonaut (JCursor())
 import Data.Array (length, null, cons, index)
+import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct(), coproduct, right, left)
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Coproduct (coproduct, right, left)
+import Data.Int as Int
 import Data.Lens ((.~), view, preview)
 import Data.Map as M
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Set as Set
 import Data.Tuple (Tuple(..))
+
 import Halogen
 import Halogen.CustomProps.Indexed as Cp
 import Halogen.HTML.CSS.Indexed as CSS
@@ -44,51 +47,39 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Model.Aggregation (aggregationSelect)
-import Model.CellType (CellType(Viz), cellName, cellGlyph)
-import Model.ChartAxis (analyzeJArray, Axis())
-import Model.ChartAxis as Ax
-import Model.ChartConfiguration (ChartConfiguration(..), depends, dependsOnArr)
-import Model.ChartOptions (buildOptions)
-import Model.ChartType (ChartType(..), isPie)
-import Model.Port as P
+
+import Css.Geometry (marginBottom)
+import Css.Size (px)
+
+import Render.Common (row)
+import Render.CssClasses as Rc
+
+import Notebook.Cell.Chart.Aggregation (aggregationSelect)
+import Notebook.Cell.Port as P
 import Model.Resource as R
-import Model.Select
-  (Select(), autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
-import Notebook.Cell.Common.EvalQuery
-  (CellEvalQuery(..), CellEvalT(), runCellEvalT)
+import Model.Select (Select(), autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
+
+import Notebook.Cell.CellType (CellType(Viz), cellName, cellGlyph)
+import Notebook.Cell.Chart.Axis (analyzeJArray, Axis())
+import Notebook.Cell.Chart.Axis as Ax
+import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(..), depends, dependsOnArr)
+import Notebook.Cell.Chart.ChartOptions (buildOptions)
+import Notebook.Cell.Chart.ChartType (ChartType(..), isPie)
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT)
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import Notebook.Cell.Viz.Component.Query
 import Notebook.Cell.Viz.Component.State
 import Notebook.Cell.Viz.Form.Component (formComponent)
 import Notebook.Cell.Viz.Form.Component as Form
-import Notebook.Common (Slam(), liftAff'')
+import Notebook.Cell.Viz.Model as Model
+import Notebook.Common (Slam())
+
 import Quasar.Aff as Api
-import Render.Common (row)
-import Render.CssClasses as Rc
-import Utils (stringToInt)
 
-
-type Query = Coproduct CellEvalQuery VizQuery
-
-type VizHTML = ParentHTML Form.StateP Query Form.QueryP Slam ChartType
-type VizDSL = ParentDSL VizState Form.StateP Query Form.QueryP Slam ChartType
+type VizHTML = ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
+type VizDSL = ParentDSL State Form.StateP QueryC Form.QueryP Slam ChartType
 
 import Data.Foldable (foldMap)
-
-initialState :: VizState
-initialState =
-  { width: 600
-  , height: 400
-  , chartType: Pie
-  , availableChartTypes: Set.empty
-  , loading: true
-  , sample: M.empty
-  , records: []
-  , needToUpdate: true
-  , axisLabelFontSize: 12
-  , axisLabelAngle: 30
-  }
 
 vizComponent :: Component CellStateP CellQueryP Slam
 vizComponent = makeEditorCellComponent
@@ -100,7 +91,7 @@ vizComponent = makeEditorCellComponent
   , _Query: makeQueryPrism' _VizQuery
   }
 
-render :: VizState -> VizHTML
+render :: State -> VizHTML
 render state =
   H.div_ $
   [ renderLoading $ not state.loading
@@ -130,7 +121,7 @@ renderEmpty hidden =
         ]
   [ H.text "There is no available chart for this dataset" ]
 
-renderForm :: VizState -> VizHTML
+renderForm :: State -> VizHTML
 renderForm state =
   H.div [ P.classes $ [ Rc.vizCellEditor ]
                     <> (guard hidden $> B.hide)
@@ -145,7 +136,7 @@ renderForm state =
     || state.loading
 
 
-renderChartTypeSelector :: VizState -> VizHTML
+renderChartTypeSelector :: State -> VizHTML
 renderChartTypeSelector state =
   H.div [ P.classes [ Rc.vizChartTypeSelector ] ]
   $ foldl (foldFn state.chartType) empty state.availableChartTypes
@@ -169,7 +160,7 @@ renderChartTypeSelector state =
   cls Bar = Rc.barChartIcon
 
 
-renderChartConfiguration :: VizState -> VizHTML
+renderChartConfiguration :: State -> VizHTML
 renderChartConfiguration state =
   H.div [ P.classes [ Rc.vizChartConfiguration ] ]
   [ renderTab Pie
@@ -190,7 +181,7 @@ renderChartConfiguration state =
   showIf ok content = H.div [ P.classes $ (guard (not ok) $> B.hide) ] content
 
 
-renderDimensions :: VizState -> VizHTML
+renderDimensions :: State -> VizHTML
 renderDimensions state =
   row
   [ chartInput Rc.chartSizeParam "Height"
@@ -206,8 +197,8 @@ renderDimensions state =
   chartInput
     :: H.ClassName
     -> String
-    -> (VizState -> String)
-    -> (Int -> Unit -> VizQuery Unit)
+    -> (State -> String)
+    -> (Int -> Unit -> Query Unit)
     -> Boolean -> VizHTML
   chartInput cls labelText valueFromState queryCtor isHidden =
     H.form [ P.classes $ [ B.colXs3, cls ]
@@ -220,7 +211,7 @@ renderDimensions state =
               , ARIA.label labelText
               , Cp.mbValueInput (pure
                                  <<< map (right <<< flip queryCtor unit)
-                                 <<< stringToInt'
+                                 <<< stringToInt
                                 )
               ]
     ]
@@ -231,14 +222,14 @@ renderDimensions state =
   showIfNeqZero :: forall a. (Eq a, Show a, Semiring a) => a -> String
   showIfNeqZero a = if zero == a then "" else show a
 
-  stringToInt' :: String -> Maybe Int
-  stringToInt' s = if s == "" then Just 0 else stringToInt s
+  stringToInt :: String -> Maybe Int
+  stringToInt s = if s == "" then Just 0 else Int.fromString s
 
 -- Note: need to put running to state
-eval :: Natural Query VizDSL
+eval :: Natural QueryC VizDSL
 eval = coproduct cellEval vizEval
 
-vizEval :: Natural VizQuery VizDSL
+vizEval :: Natural Query VizDSL
 vizEval q = do
   modify $ _needToUpdate .~ false
   case q of
@@ -263,7 +254,7 @@ cellEval (EvalCell info continue) = do
       r <- maybe (throwError "Incorrect port in visual builder cell") pure
            $ info.inputPort >>= preview P._Resource
       lift $ updateForms r
-      records <- lift $ liftAff'' $ Api.all r
+      records <- lift $ liftAff $ Api.all r
       when (length records > 10000)
         $ throwError
         $  "Maximum record count available for visualization -- 10000, "
@@ -278,6 +269,21 @@ cellEval (EvalCell info continue) = do
     modify $ _needToUpdate .~ true
     pure a
 cellEval (NotifyRunCell next) = pure next
+cellEval (Save k) = do
+  st <- get
+  pure $ k $ Model.encode
+    { width: st.width
+    , height: st.height
+    , chartType: st.chartType
+    , axisLabelFontSize: st.axisLabelFontSize
+    , axisLabelAngle: st.axisLabelAngle
+    }
+cellEval (Load json next) =
+  case Model.decode json of
+    Left err -> pure next
+    Right model -> do
+      set (fromModel model)
+      pure next
 
 responsePort :: CellEvalT VizDSL P.Port
 responsePort = do
@@ -294,7 +300,7 @@ responsePort = do
 
 updateForms :: R.Resource -> VizDSL Unit
 updateForms file = do
-  jarr <- liftAff'' $ Api.sample file 0 20
+  jarr <- liftAff $ Api.sample file 0 20
   if null jarr
     then
     modify $ _availableChartTypes .~ Set.empty

@@ -22,15 +22,16 @@ module Notebook.Cell.Search.Component
 
 import Prelude
 
-import Control.Monad.Aff.Class as Aff
-
-import Control.Monad.Trans as MT
+import Control.Bind (join)
 import Control.Monad.Error.Class as EC
+import Control.Monad.Trans as MT
 import Control.Monad.Writer.Class as WC
 
-import Data.Either (either)
+import Data.Either (Either(..), either)
 import Data.Foldable as F
+import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct
+import Data.Lens ((.~))
 import Data.Maybe as M
 import Data.StrMap as SM
 
@@ -43,22 +44,21 @@ import Halogen.Themes.Bootstrap3 as B
 import Render.CssClasses as CSS
 import Render.Common as RC
 
-import Model.CellType as CT
-import Model.Notebook.Search as Search
-import Model.Port as Port
+import Notebook.Cell.CellType as CT
+import Notebook.Model.Search as Search
+import Notebook.Cell.Port as Port
 
 import Notebook.Cell.Common.EvalQuery as NC
 import Notebook.Cell.Component as NC
 import Notebook.Cell.Search.Component.Query
 import Notebook.Cell.Search.Component.State
-import Notebook.FileInput.Component as FI
+import Notebook.Cell.Search.Model as Model
 import Notebook.Common (Slam())
+import Notebook.FileInput.Component as FI
 
 import Text.SlamSearch as SS
 
 import Quasar.Aff as Quasar
-
-type Query = Coproduct NC.CellEvalQuery SearchQuery
 
 searchComponent :: Component NC.CellStateP NC.CellQueryP Slam
 searchComponent =
@@ -66,12 +66,12 @@ searchComponent =
     { name: CT.cellName CT.Search
     , glyph: CT.cellGlyph CT.Search
     , component: parentComponent render eval
-    , initialState: installedState initialSearchState
+    , initialState: installedState initialState
     , _State: NC._SearchState
     , _Query: NC.makeQueryPrism' NC._SearchQuery
     }
 
-render :: SearchState -> ParentHTML FI.State Query FI.Query Slam Unit
+render :: State -> ParentHTML FI.State Query FI.Query Slam Unit
 render state =
   H.div
     [ P.class_ CSS.exploreCellEditor ]
@@ -100,55 +100,68 @@ render state =
         ]
     ]
 
-runWith :: forall s' f f' g p. Natural (ParentDSL SearchState s' f f' g p) (ParentDSL SearchState s' f f' g p)
+runWith :: forall s' f f' g p. Natural (ParentDSL State s' f f' g p) (ParentDSL State s' f f' g p)
 runWith m = do
-  modify (_ { running = true })
+  modify (_running .~ true)
   x <- m
-  modify (_ { running = false })
+  modify (_running .~ false)
   pure x
 
-eval :: Natural Query (ParentDSL SearchState FI.State Query FI.Query Slam Unit)
+eval :: Natural Query (ParentDSL State FI.State Query FI.Query Slam Unit)
 eval = coproduct cellEval searchEval
-  where
-    cellEval :: Natural NC.CellEvalQuery (ParentDSL SearchState FI.State Query FI.Query Slam Unit)
-    cellEval q =
-      case q of
-        NC.EvalCell info k -> runWith do
-          k <$> NC.runCellEvalT do
-            inputResource <-
-              query unit (request FI.GetSelectedFile) <#> (>>= id)
-                # MT.lift
-                >>= M.maybe (EC.throwError "No file selected") pure
-            query <-
-              get <#> _.searchString >>> SS.mkQuery
-                # MT.lift
-                >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
-            fields <- MT.lift <<< liftH <<< liftAff' $ Quasar.fields inputResource
+cellEval :: Natural NC.CellEvalQuery (ParentDSL State FI.State Query FI.Query Slam Unit)
+cellEval q =
+  case q of
+    NC.EvalCell info k -> runWith do
+      k <$> NC.runCellEvalT do
+        inputResource <-
+          query unit (request FI.GetSelectedFile) <#> (>>= id)
+            # MT.lift
+            >>= M.maybe (EC.throwError "No file selected") pure
+        query <-
+          get <#> _.searchString >>> SS.mkQuery
+            # MT.lift
+            >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
-            let
-              template = Search.queryToSQL fields query
-              sql = Quasar.templated inputResource template
-              tempOutputResource = NC.temporaryOutputResource info
+        fields <- MT.lift <<< liftAff $ Quasar.fields inputResource
 
-            WC.tell ["Generated SQL: " <> sql]
+        let
+          template = Search.queryToSQL fields query
+          sql = Quasar.templated inputResource template
+          tempOutputResource = NC.temporaryOutputResource info
 
-            { plan: plan, outputResource: outputResource } <-
-              Quasar.executeQuery template (M.fromMaybe false info.cachingEnabled) SM.empty inputResource tempOutputResource
-                # Aff.liftAff >>> liftH >>> liftH >>> MT.lift
-                >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
+        WC.tell ["Generated SQL: " <> sql]
 
-            F.for_ plan \p ->
-              WC.tell ["Plan: " <> p]
+        { plan: plan, outputResource: outputResource } <-
+          Quasar.executeQuery template (M.fromMaybe false info.cachingEnabled) SM.empty inputResource tempOutputResource
+            # liftAff >>> MT.lift
+            >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
-            pure $ Port.Resource outputResource
+        F.for_ plan \p ->
+          WC.tell ["Plan: " <> p]
 
-        NC.NotifyRunCell next ->
-          pure next
+        pure $ Port.Resource outputResource
 
-    searchEval :: Natural SearchQuery (ParentDSL SearchState FI.State Query FI.Query Slam Unit)
-    searchEval q =
-      case q of
-        UpdateSearch str next -> do
-          modify (_ { searchString = str })
-          pure next
+    NC.NotifyRunCell next ->
+      pure next
+
+    NC.Save k -> do
+      file <- query unit (request FI.GetSelectedFile)
+      input <- gets _.searchString
+      pure $ k (Model.encode { file: join file, input })
+
+    NC.Load json next -> do
+      case Model.decode json of
+        Left _ -> pure unit
+        Right { file, input } -> do
+          M.maybe (pure unit) (void <<< query unit <<< action <<< FI.SelectFile) file
+          modify (_searchString .~ input)
+      pure next
+
+searchEval :: Natural SearchQuery (ParentDSL State FI.State Query FI.Query Slam Unit)
+searchEval q =
+  case q of
+    UpdateSearch str next -> do
+      modify (_searchString .~ str)
+      pure next

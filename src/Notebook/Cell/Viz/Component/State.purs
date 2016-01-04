@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 module Notebook.Cell.Viz.Component.State
-  ( VizState()
-  , VizStateP()
+  ( State()
+  , initialState
   , _width
   , _height
   , _chartType
@@ -27,24 +27,29 @@ module Notebook.Cell.Viz.Component.State
   , _needToUpdate
   , _axisLabelAngle
   , _axisLabelFontSize
+  , StateP()
+  , fromModel
   ) where
 
 import Prelude
 
-import Halogen (InstalledState())
 import Data.Argonaut (JCursor(), JArray())
 import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens)
 import Data.Map as M
 import Data.Set as Set
-import Model.ChartType (ChartType())
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import Notebook.Cell.Viz.Form.Component as Form
-import Notebook.Cell.Viz.Component.Query (VizQuery())
-import Notebook.Common (Slam())
-import Model.ChartAxis (Axis())
 
-type VizState =
+import Halogen (InstalledState())
+
+import Notebook.Cell.Chart.Axis (Axis())
+import Notebook.Cell.Chart.ChartType (ChartType(..))
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import Notebook.Cell.Viz.Component.Query (Query())
+import Notebook.Cell.Viz.Form.Component as Form
+import Notebook.Cell.Viz.Model (Model())
+import Notebook.Common (Slam())
+
+type State =
   { width :: Int
   , height :: Int
   , chartType :: ChartType
@@ -55,6 +60,20 @@ type VizState =
   , needToUpdate :: Boolean
   , axisLabelFontSize :: Int
   , axisLabelAngle :: Int
+  }
+
+initialState :: State
+initialState =
+  { width: 600
+  , height: 400
+  , chartType: Pie
+  , availableChartTypes: Set.empty
+  , loading: true
+  , sample: M.empty
+  , records: []
+  , needToUpdate: true
+  , axisLabelFontSize: 12
+  , axisLabelAngle: 30
   }
 
 _width :: forall a r. LensP {width :: a |r} a
@@ -87,7 +106,20 @@ _axisLabelFontSize = lens _.axisLabelFontSize _{axisLabelFontSize = _}
 _axisLabelAngle :: forall a r. LensP {axisLabelAngle :: a | r} a
 _axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
 
-type VizStateP =
-  InstalledState VizState Form.StateP
-  (Coproduct CellEvalQuery VizQuery) Form.QueryP
-  Slam ChartType
+type StateP =
+  InstalledState
+    State
+    Form.StateP
+    (Coproduct CellEvalQuery Query)
+    Form.QueryP
+    Slam ChartType
+
+fromModel :: Model -> State
+fromModel m =
+  initialState
+    { width = m.width
+    , height = m.height
+    , chartType = m.chartType
+    , axisLabelFontSize = m.axisLabelFontSize
+    , axisLabelAngle = m.axisLabelAngle
+    }

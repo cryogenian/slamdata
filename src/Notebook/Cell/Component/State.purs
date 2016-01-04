@@ -50,18 +50,18 @@ import Data.Visibility (Visibility(..))
 
 import Halogen (InstalledState())
 
-import Model.AccessType (AccessType())
-import Model.Port (Port())
+import Model.AccessType (AccessType(..))
+import Notebook.Cell.Port (Port())
 
-import Notebook.Cell.Ace.Component.State (AceStateP())
-import Notebook.Cell.Chart.Component.State (ChartStateP())
+import Notebook.Cell.Ace.Component.State as Ace
+import Notebook.Cell.Chart.Component.State as Chart
 import Notebook.Cell.Component.Query (CellQuery(), InnerCellQuery())
-import Notebook.Cell.Explore.Component.State (ExploreStateP())
-import Notebook.Cell.JTable.Component.State (JTableState())
-import Notebook.Cell.Markdown.Component.State (MarkdownStateP())
+import Notebook.Cell.Explore.Component.State as Explore
+import Notebook.Cell.JTable.Component.State as JTable
+import Notebook.Cell.Markdown.Component.State as Markdown
 import Notebook.Cell.RunState (RunState(..))
-import Notebook.Cell.Search.Component.State (SearchStateP())
-import Notebook.Cell.Viz.Component.State (VizStateP())
+import Notebook.Cell.Search.Component.State as Search
+import Notebook.Cell.Viz.Component.State as Viz
 import Notebook.Common (Slam())
 
 -- | The common state value for notebook cells.
@@ -99,10 +99,10 @@ type CellState =
 type CellStateP = InstalledState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
 
 -- | Creates an initial `CellState` value for an editor cell.
-initEditorCellState :: AccessType -> Visibility -> CellState
-initEditorCellState accessType visibility =
-  { accessType: accessType
-  , visibility: visibility
+initEditorCellState :: CellState
+initEditorCellState =
+  { accessType: Editable
+  , visibility: Visible
   , runState: RunInitial
   , tickStopper: pure unit
   , isCollapsed: false
@@ -115,10 +115,10 @@ initEditorCellState accessType visibility =
   }
 
 -- | Creates an initial `CellState` value for a results cell.
-initResultsCellState :: AccessType -> Visibility -> CellState
-initResultsCellState accessType visibility =
-  { accessType: accessType
-  , visibility: visibility
+initResultsCellState :: CellState
+initResultsCellState =
+  { accessType: Editable
+  , visibility: Visible
   , runState: RunInitial
   , tickStopper: pure unit
   , isCollapsed: true
@@ -172,45 +172,45 @@ _output :: LensP CellState (Maybe Port)
 _output = lens _.output (_ { output = _ })
 
 data AnyCellState
-  = AceState AceStateP
-  | ExploreState ExploreStateP
-  | MarkdownState MarkdownStateP
-  | SearchState SearchStateP
-  | JTableState JTableState
-  | VizState VizStateP
-  | ChartState ChartStateP
+  = AceState Ace.StateP
+  | ExploreState Explore.StateP
+  | MarkdownState Markdown.StateP
+  | SearchState Search.StateP
+  | JTableState JTable.State
+  | VizState Viz.StateP
+  | ChartState Chart.StateP
 
-_AceState :: PrismP AnyCellState AceStateP
+_AceState :: PrismP AnyCellState Ace.StateP
 _AceState = prism' AceState \s -> case s of
   AceState s' -> Just s'
   _ -> Nothing
 
-_ExploreState :: PrismP AnyCellState ExploreStateP
+_ExploreState :: PrismP AnyCellState Explore.StateP
 _ExploreState = prism' ExploreState \s -> case s of
   ExploreState s' -> Just s'
   _ -> Nothing
 
-_MarkdownState :: PrismP AnyCellState MarkdownStateP
+_MarkdownState :: PrismP AnyCellState Markdown.StateP
 _MarkdownState = prism' MarkdownState \s -> case s of
   MarkdownState s' -> Just s'
   _ -> Nothing
 
-_SearchState :: PrismP AnyCellState SearchStateP
+_SearchState :: PrismP AnyCellState Search.StateP
 _SearchState = prism' SearchState \s -> case s of
   SearchState s' -> Just s'
   _ -> Nothing
 
-_JTableState :: PrismP AnyCellState JTableState
+_JTableState :: PrismP AnyCellState JTable.State
 _JTableState = prism' JTableState \s -> case s of
   JTableState s' -> Just s'
   _ -> Nothing
 
-_VizState :: PrismP AnyCellState VizStateP
+_VizState :: PrismP AnyCellState Viz.StateP
 _VizState = prism' VizState \s -> case s of
   VizState s' -> Just s'
   _ -> Nothing
 
-_ChartState :: PrismP AnyCellState ChartStateP
+_ChartState :: PrismP AnyCellState Chart.StateP
 _ChartState = prism' ChartState \s -> case s of
   ChartState s' -> Just s'
   _ -> Nothing

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.ChartOptions.Line where
+module Notebook.Cell.Chart.ChartOptions.Line where
 
 import Prelude
 
@@ -30,15 +30,15 @@ import Data.Map (Map())
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Tuple (Tuple(..))
-import Model.Aggregation (Aggregation(..), runAggregation)
-import Model.ChartOptions.Common
+import Notebook.Cell.Chart.Aggregation (Aggregation(..), runAggregation)
+import Notebook.Cell.Chart.ChartOptions.Common
 
-import Model.ChartConfiguration (ChartConfiguration(..))
+import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(..))
 import Data.Lens (view)
 import Model.Select (_value)
-import Model.ChartAxis as Ax
+import Notebook.Cell.Chart.Axis as Ax
 import ECharts
-import Model.ChartOptions.Common
+import Notebook.Cell.Chart.ChartOptions.Common
 
 type LabeledPointPairs = M.Map Key (Tuple (Array Number) (Array Number))
 type LineData = M.Map Key (Tuple Number Number)

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.ChartOptions.Bar where
+module Notebook.Cell.Chart.ChartOptions.Bar where
 
 import Prelude
 
@@ -29,9 +29,9 @@ import Data.Maybe (maybe)
 import Data.String (split)
 import Data.Tuple (Tuple(..))
 import ECharts
-import Model.ChartAxis as Ax
-import Model.ChartConfiguration (ChartConfiguration())
-import Model.ChartOptions.Common
+import Notebook.Cell.Chart.Axis as Ax
+import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration())
+import Notebook.Cell.Chart.ChartOptions.Common
 
 buildBar
   :: M.Map JCursor Ax.Axis -> Int -> Int -> ChartConfiguration -> Option

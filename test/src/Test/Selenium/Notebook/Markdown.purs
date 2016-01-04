@@ -27,10 +27,8 @@ import Test.Selenium.Scenario (scenario)
 import Test.Selenium.Notebook.Markdown.Interactions
 import Test.Selenium.Notebook.Markdown.Expectations
 
-import Utils (stringToInt)
-
-import qualified Data.Traversable (traverse, sequence) as T
-import qualified Data.Foldable (sequence_, traverse_) as F
+import Data.Traversable (traverse, sequence) as T
+import Data.Foldable (sequence_, traverse_) as F
 
 mdScenario :: String -> Array String -> Check Unit -> Check Unit
 mdScenario = scenario "Markdown" deleteAllCells deleteAllCells

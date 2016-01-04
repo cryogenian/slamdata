@@ -22,6 +22,7 @@ import Control.Monad.Aff (Aff())
 
 import Data.Array (length, range, zipWith, singleton)
 import Data.Functor (($>))
+import Data.Int as Int
 import Data.Lens ((^.))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Maybe.Unsafe (fromJust)
@@ -32,10 +33,8 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.CustomProps.Indexed as Cp
 
 import Model.Select
-import Utils (stringToInt)
 
 data Query s a
   = Choose Int a
@@ -81,7 +80,7 @@ render
 render config state =
   H.select ([ P.classes [ B.formControl ]
               -- `fromJust` is safe here because we know that value are `show`n ints
-            , E.onValueChange (E.input (Choose <<< fromJust <<< stringToInt))
+            , E.onValueChange (E.input (Choose <<< fromJust <<< Int.fromString))
             , P.disabled $ config.disableWhen len
             ]
            <> maybe [] (singleton <<< ARIA.label) config.ariaLabel)
@@ -118,7 +117,7 @@ render config state =
 
 eval :: forall a e. (Eq a) => Eval (Query a) (Select a) (Query a) (Slam e)
 eval (Choose i next) = modify (trySelect i) $> next
-eval (SetSelect s next) = modify (const s) $> next
+eval (SetSelect s next) = set s $> next
 eval (GetValue continue) = map continue $ gets (^. _value)
 eval (GetSelect continue) = map continue get
 eval (ToggleOpened next) = pure next

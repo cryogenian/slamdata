@@ -14,31 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.ChartSemantics where
+module Notebook.Cell.Chart.Semantics where
 
 import Prelude
 
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
+import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff())
 import Control.Monad.ST (STRef(), ST(), newSTRef, modifySTRef, readSTRef, pureST)
 import Control.MonadPlus (guard)
-import Data.Argonaut
-  ( runJsonPrim, toPrims, JsonPrim(), Json(), JArray(), JCursor()
-  , DecodeJson, EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>))
+
+import Data.Argonaut (runJsonPrim, toPrims, JsonPrim(), Json(), JArray(), JCursor(), DecodeJson, EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>))
 import Data.Array as A
-import Data.Array.ST
 import Data.Either (Either(..))
 import Data.Foldable (foldl, foldMap)
-import Data.List (List(..), reverse, catMaybes, toList)
+import Data.Int as Int
+import Data.List (List(..), catMaybes)
 import Data.List as L
 import Data.Map (Map(), keys, update, lookup, fromList)
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..))
 import Data.String (take)
 import Data.String.Regex (Regex(), noFlags, regex, match, test)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Utils (stringToNumber, stringToInt)
+
+import Utils (stringToNumber)
 
 data Semantics
   = Value Number
@@ -165,7 +166,7 @@ isUsedAsNothing (Category "N/A") = true
 isUsedAsNothing (Category "") = true
 isUsedAsNothing _ = false
 
-instance semanthicShow :: Show Semantics where
+instance showSemantics :: Show Semantics where
   show (Value v) = "(Value " <> show v <> ")"
   show (Percent p) = "(Percent " <> show p <> ")"
   show (Money n s) = "(Money " <> show n <> s <> ")"
@@ -173,7 +174,7 @@ instance semanthicShow :: Show Semantics where
   show (Category s) = "(Category " <> s <> ")"
   show (Time t) = "(Time " <> t <> ")"
 
-instance semanthicEq :: Eq Semantics where
+instance eqSemantics :: Eq Semantics where
   eq (Value v) (Value v') = v == v'
   eq (Value v) _ = false
   eq (Percent p) (Percent p') = p == p'
@@ -187,15 +188,13 @@ instance semanthicEq :: Eq Semantics where
   eq (Bool b) (Bool b') = b == b'
   eq (Bool _) _ = false
 
-instance semanthicOrd :: Ord Semantics where
+instance ordSemantics :: Ord Semantics where
   compare (Time t) (Time t') = compare t t'
   compare (Time _) _ = LT
   compare (Money v a) (Money v' a') =
-    if curComp == EQ
-    then compare v v'
-    else curComp
-    where
-    curComp = compare a a'
+    case compare a a' of
+      EQ -> compare v v'
+      c -> c
   compare (Money _ _) _ = LT
   compare (Percent v) (Percent v') = compare v v'
   compare (Percent _) _ = LT
@@ -225,7 +224,7 @@ analyzeString str =
 analyzeNumber :: String -> Maybe Semantics
 analyzeNumber s = do
   num <- stringToNumber s
-  int <- stringToInt s
+  int <- Int.fromString s
   guard $ show num == s || show int == s
   pure $ Value num
 
@@ -313,44 +312,40 @@ checkTime = checkPredicate isTime
 checkCategory :: List (Maybe Semantics) -> Maybe (List (Maybe Semantics))
 checkCategory = checkPredicate isCategory
 
-
 instance encodeJsonSemantics :: EncodeJson Semantics where
-  encodeJson (Value n) =
-    "type" := "value" ~> "value" := n ~> jsonEmptyObject
-  encodeJson (Percent p) =
-    "type" := "percent" ~> "value" := p ~> jsonEmptyObject
-  encodeJson (Money n v) =
-    "type" := "money" ~> "currency" := v ~> "value" := n ~> jsonEmptyObject
-  encodeJson (Bool b) =
-    "type" := "bool" ~> "value" := b ~> jsonEmptyObject
-  encodeJson (Category c) =
-    "type" := "category" ~> "value" := c ~> jsonEmptyObject
-  encodeJson (Time t) =
-    "type" := "time" ~> "value" := t ~> jsonEmptyObject
+  encodeJson (Value n)
+     = "type" := "value"
+    ~> "value" := n
+    ~> jsonEmptyObject
+  encodeJson (Percent p)
+     = "type" := "percent"
+     ~> "value" := p
+     ~> jsonEmptyObject
+  encodeJson (Money n v)
+     = "type" := "money"
+     ~> "currency" := v
+     ~> "value" := n ~> jsonEmptyObject
+  encodeJson (Bool b)
+     = "type" := "bool"
+     ~> "value" := b
+     ~> jsonEmptyObject
+  encodeJson (Category c)
+     = "type" := "category"
+     ~> "value" := c
+     ~> jsonEmptyObject
+  encodeJson (Time t)
+     = "type" := "time"
+     ~> "value" := t
+     ~> jsonEmptyObject
 
 instance decodeJsonSemantics :: DecodeJson Semantics where
-  decodeJson json = do
-    obj <- decodeJson json
+  decodeJson = decodeJson >=> \obj -> do
     ty <- obj .? "type"
-    decode' ty obj
-    where
-    decode' "money" obj = do
-      curr <- obj .? "currency"
-      m <- obj .? "value"
-      pure $ Money m curr
-    decode' "time" obj = do
-      t <- obj .? "value"
-      pure $ Time t
-    decode' "bool" obj = do
-      b <- obj .? "value"
-      pure $ Bool b
-    decode' "category" obj = do
-      c <- obj .? "value"
-      pure $ Category c
-    decode' "value" obj = do
-      v <- obj .? "value"
-      pure $ Value v
-    decode' "percent" obj = do
-      p <- obj .? "value"
-      pure $ Percent p
-    decode' _ _ = Left "incorrect type of semantics"
+    case ty of
+      "money" -> Money <$> obj .? "value" <*> obj .? "currency"
+      "time" -> Time <$> obj .? "value"
+      "bool" -> Bool <$> obj .? "value"
+      "category" -> Category <$> obj .? "value"
+      "value" -> Value <$> obj .? "value"
+      "percent" -> Percent <$> obj .? "value"
+      _ -> Left "incorrect type value for Semantics"

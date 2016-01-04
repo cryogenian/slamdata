@@ -24,19 +24,19 @@ import Control.MonadPlus (guard)
 import Data.Array (singleton)
 import Data.Either (Either(..))
 import Data.Functor (($>))
+import Data.Functor.Aff (liftAff)
 import Data.Lens (LensP(), (^.), lens, (%~), (.~), (?~))
 import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
 
 import Halogen.Component (Component(), Eval(), ComponentHTML(), component)
-import Halogen.CustomProps as Cp
 import Halogen.HTML as H
 import Halogen.HTML.Core (HTML(), ClassName(), Prop())
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
 import Halogen.HTML.Properties.ARIA as ARIA
-import Halogen.Query (action, modify, gets, liftAff')
+import Halogen.Query (action, modify, gets)
 import Halogen.Themes.Bootstrap3 as B
 
 import Css.Geometry (marginBottom)
@@ -128,7 +128,7 @@ eval (Deselect next) = do
 eval (Open next) = pure next
 eval (Configure next) = do
   res <- gets ((^. _item) >>> itemResource)
-  eURI <- liftAff' $ attempt $ API.mountInfo res
+  eURI <- liftAff $ attempt $ API.mountInfo res
   case eURI of
     Left _ -> modify (_mbURI .~ Nothing)
     Right uri -> modify (_mbURI ?~ uri)

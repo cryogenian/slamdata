@@ -47,6 +47,7 @@ import Data.Either (Either(), either)
 import Data.Either (Either(..))
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
+import Data.Functor.Eff (liftEff)
 import Data.Generic (Generic, gEq, gCompare)
 import Data.Shortcut (print)
 import Data.Lens ((^.), (.~), (%~))
@@ -180,7 +181,7 @@ render state =
 activateKeyboardShortcuts :: DashboardDSL Unit
 activateKeyboardShortcuts = do
   initialShortcuts <- gets _.notebookShortcuts
-  platform <- liftH $ liftEff' shortcutPlatform
+  platform <- liftEff shortcutPlatform
 
   let labelShortcut shortcut = shortcut { label = Just $ print platform shortcut.shortcut }
   let shortcuts = map labelShortcut initialShortcuts
@@ -200,7 +201,7 @@ activateKeyboardShortcuts = do
 
 deactivateKeyboardShortcuts :: DashboardDSL Unit
 deactivateKeyboardShortcuts = do
-  let remove lstnr = liftH $ liftEff' $ documentTarget >>= removeEventListener keydown lstnr false
+  let remove lstnr = liftEff $ documentTarget >>= removeEventListener keydown lstnr false
   gets _.keyboardListeners >>= traverse remove
   modify (_keyboardListeners .~ [])
 
@@ -210,7 +211,6 @@ eval (DeactivateKeyboardShortcuts next) = deactivateKeyboardShortcuts $> next
 eval (EvaluateMenuValue value next) = dismissAll *> evaluateMenuValue value $> next
 eval (AddKeyboardListener listener next) = modify (_keyboardListeners %~ cons listener) $> next
 eval (Save next) = pure next
-eval (GetPath continue) = map continue $ gets _.path
 eval (SetAccessType aType next) = do
   modify (_accessType .~ aType)
   query' cpNotebook unit
@@ -255,5 +255,5 @@ queryNotebook :: Notebook.NotebookQuery Unit -> DashboardDSL Unit
 queryNotebook q = query' cpNotebook unit (left q) *> pure unit
 
 presentHelp :: Menu.HelpURI -> DashboardDSL Unit
-presentHelp (Menu.HelpURI uri) = liftH $ liftEff' $ newTab uri
+presentHelp (Menu.HelpURI uri) = liftEff $ newTab uri
 

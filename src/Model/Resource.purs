@@ -74,7 +74,7 @@ import Model.Sort (Sort(..))
 import Data.Lens (lens, prism', LensP(), PrismP(), (.~))
 import Prelude
 
-import qualified Data.String as S
+import Data.String as S
 
 data Resource
   = File PU.FilePath

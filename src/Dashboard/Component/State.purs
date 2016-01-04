@@ -18,21 +18,21 @@ module Dashboard.Component.State where
 
 import Prelude
 
-import DOM.Event.EventTarget (EventListener())
-import Dashboard.Menu.Component.Query (Value(), notebookQueryToValue)
 import Data.BrowserFeatures (BrowserFeatures())
-import Data.Shortcut as Shortcut
 import Data.Lens (LensP(), lens)
 import Data.Maybe (Maybe(..))
-import Data.Path.Pathy (rootDir)
+import Data.Shortcut as Shortcut
 import Data.StrMap (StrMap(), fromFoldable)
 import Data.Tuple (Tuple(..))
+
+import DOM.Event.EventTarget (EventListener())
+
+import Dashboard.Menu.Component.Query (Value(), notebookQueryToValue)
 import Model.AccessType (AccessType(..))
-import Model.CellId (CellId())
-import Model.CellType (CellType(..))
+import Notebook.Cell.CellId (CellId())
+import Notebook.Cell.CellType (CellType(..), AceMode(..))
 import Notebook.Component as Notebook
 import Notebook.Effects (NotebookEffects())
-import Utils.Path (DirPath())
 
 type NotebookShortcut = { shortcut :: Shortcut.Shortcut, value :: Value, label :: Maybe String }
 
@@ -42,7 +42,6 @@ type State =
   , notebookShortcuts :: StrMap NotebookShortcut
   , keyboardListeners :: Array (EventListener NotebookEffects)
   , loaded :: Boolean
-  , path :: DirPath
   , viewingCell :: Maybe CellId
   , version :: Maybe String
   }
@@ -59,13 +58,13 @@ notebookShortcuts =
     , Tuple
         "InsertQuery"
         { shortcut: Shortcut.altModOne
-        , value: notebookQueryToValue $ (Notebook.AddCell Query) unit
+        , value: notebookQueryToValue $ (Notebook.AddCell (Ace SQLMode)) unit
         , label: Nothing
         }
     , Tuple
         "InsertMarkdown"
         { shortcut: Shortcut.altModTwo
-        , value: notebookQueryToValue $ (Notebook.AddCell Markdown) unit
+        , value: notebookQueryToValue $ (Notebook.AddCell (Ace MarkdownMode)) unit
         , label: Nothing
         }
     , Tuple
@@ -95,7 +94,6 @@ initialState rec =
   , notebookShortcuts: notebookShortcuts
   , keyboardListeners: []
   , loaded: false
-  , path: rootDir
   , viewingCell: Nothing
   , version: Nothing
   }
@@ -114,9 +112,6 @@ _keyboardListeners = lens _.keyboardListeners _{keyboardListeners = _}
 
 _loaded :: LensP State Boolean
 _loaded = lens _.loaded _{loaded = _}
-
-_path :: LensP State DirPath
-_path = lens _.path _{path = _}
 
 _viewingCell :: LensP State (Maybe CellId)
 _viewingCell = lens _.viewingCell _{viewingCell = _}

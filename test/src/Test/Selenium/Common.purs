@@ -44,38 +44,40 @@ module Test.Selenium.Common
   where
 
 import Prelude
+
 import Control.Apply ((*>))
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans (lift)
+
+import Data.Char as Ch
 import Data.Either (either, isRight, Either(..))
-import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (traverse_)
-import Data.Traversable (traverse)
+import Data.Int as Int
 import Data.List (List(), filter)
+import Data.Maybe (Maybe(..), maybe)
+import Data.String as Str
+import Data.String.Regex as R
+import Data.StrMap as SM
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
-import qualified Data.String.Regex as R
-import qualified Data.StrMap as SM
-import qualified Data.String as Str
-import qualified Data.Char as Ch
+
 import Graphics.EasyImage (cropInPlace)
 
 import FileSystem.Routing (Routes(..), routing)
 import Routing (matchHash)
 
-import Selenium.ActionSequence hiding (sequence)
-import Selenium.Key
-import Selenium.Types
-import Selenium.Monad
 import Selenium (showLocator)
-import qualified Selenium.Combinators as Sc
+import Selenium.ActionSequence hiding (sequence)
+import Selenium.Combinators as Sc
+import Selenium.Key
+import Selenium.Monad
+import Selenium.Types
 
 import Test.Selenium.Log
 import Test.Selenium.Monad
 
 import Node.FS.Aff (readFile, writeFile)
-
-import Utils (stringToInt)
 
 
 -- | Assert the truth of a boolean, providing an error message
@@ -164,7 +166,7 @@ waitModalDismissed = void do
 
 parseToInt :: String -> Check Int
 parseToInt str =
-  maybe (errorMsg "can't parse string to int") pure $ stringToInt str
+  maybe (errorMsg "can't parse string to int") pure $ Int.fromString str
 
 
 filterByPairs :: List Element -> (Tuple Element String -> Boolean) ->

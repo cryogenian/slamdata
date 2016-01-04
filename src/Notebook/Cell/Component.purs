@@ -28,17 +28,19 @@ import Prelude
 import Control.Bind (join, (=<<))
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
-import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Free (liftF)
 
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
+import Data.Argonaut (jsonNull)
 import Data.Date as Date
 import Data.Either (Either(..))
 import Data.Function (on)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (left)
 import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Path.Pathy as Path
 import Data.Visibility (Visibility(..), toggleVisibility)
 
@@ -56,8 +58,8 @@ import Render.Common (row, row', glyph)
 import Render.CssClasses as CSS
 
 import Model.AccessType (AccessType(..))
-import Model.CellType (CellType(..), cellGlyph, cellName)
-import Model.Port (Port(..), _Resource)
+import Notebook.Cell.CellType (CellType(..), AceMode(..), cellGlyph, cellName)
+import Notebook.Cell.Port (Port(..), _Resource)
 import Model.Resource (_filePath)
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), prepareCellEvalInput)
@@ -66,7 +68,7 @@ import Notebook.Cell.Component.Query
 import Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import Notebook.Cell.Component.State
 import Notebook.Cell.RunState (RunState(..))
-import Notebook.Common (Slam(), liftAff'', liftEff'')
+import Notebook.Common (Slam())
 
 -- | Type synonym for the full type of a cell component.
 type CellComponent = Component CellStateP CellQueryP Slam
@@ -126,9 +128,9 @@ makeResultsCellComponent def = makeCellComponentPart def render
   nextCellButtons Nothing = []
   nextCellButtons (Just p) = case p of
     VarMap _ ->
-      [ nextCellButton Query ]
+      [ nextCellButton (Ace SQLMode) ]
     Resource _ ->
-      [ nextCellButton Query
+      [ nextCellButton (Ace SQLMode)
       , nextCellButton Search
       , nextCellButton Viz
       ]
@@ -173,14 +175,15 @@ makeCellComponentPart def render =
   eval :: Natural CellQuery CellDSL
   eval (RunCell next) = pure next
   eval (UpdateCell input k) = do
-    liftAff'' =<< gets (^. _tickStopper)
+    liftAff =<< gets (^. _tickStopper)
     tickStopper <- startInterval
     modify (_tickStopper .~ tickStopper)
     cachingEnabled <- gets _.cachingEnabled
     let input' = prepareCellEvalInput cachingEnabled input
     modify (_input .~ input'.inputPort)
     result <- query unit (left (request (EvalCell input')))
-    liftAff'' tickStopper
+    maybe (pure unit) (\{ output } -> modify (_hasResults .~ isJust output)) result
+    liftAff tickStopper
     modify
       $ (_runState %~ finishRun)
       <<< (_output .~ (_.output =<< result))
@@ -198,6 +201,12 @@ makeCellComponentPart def render =
   eval (Tick elapsed next) =
     modify (_runState .~ RunElapsed elapsed) $> next
   eval (GetOutput k) = k <$> gets (_.output)
+  eval (SaveCell cellId cellType k) = do
+    hasRun <- gets _.hasResults
+    json <- query unit (left (request Save))
+    pure (k { cellId, cellType, hasRun, state: fromMaybe jsonNull json })
+  eval (LoadCell model next) =
+    query unit (left (action (Load model.state))) $> next
 
 -- | Starts a timer running on an interval that passes Tick queries back to the
 -- | component, allowing the runState to be updated with a timer.
@@ -206,8 +215,8 @@ makeCellComponentPart def render =
 -- | processed.
 startInterval :: CellDSL (Slam Unit)
 startInterval = do
-  ref <- liftEff'' $ newRef Nothing
-  start <- liftEff'' Date.now
+  ref <- liftEff (newRef Nothing)
+  start <- liftEff Date.now
   modify (_runState .~ RunElapsed zero)
 
   subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do

@@ -17,39 +17,32 @@ limitations under the License.
 module Test.Selenium.Notebook.Explore (test) where
 
 import Prelude
-import Control.Apply ((*>))
-import Control.Monad.Eff.Class (liftEff)
+
 import Control.Monad.Eff.Random (randomInt)
-import Data.Either (Either(..), either)
-import Data.Foldable (fold, for_)
-import Data.List (List(..), fromList, toList, length, catMaybes, null, (!!), head, reverse)
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), snd, fst)
-import FileSystem.Routing (Routes(..), routing)
+
+import Data.Either (either)
+import Data.Foldable (for_)
+import Data.Functor.Eff (liftEff)
+import Data.List (List(..), toList, length, reverse)
+import Data.Maybe (Maybe(..))
+import Data.String as S
+import Data.String.Regex as R
+
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Combinators (checker, tryToFind)
 import Selenium.Monad
-import Selenium.MouseButton
-import Selenium.Types
-import Test.Config
+
 import Test.Selenium.ActionSequence (selectAll, sendDelete, sendEnter)
 import Test.Selenium.Common
 import Test.Selenium.Expect (expect, toEq)
 import Test.Selenium.File hiding (test)
 import Test.Selenium.Log
 import Test.Selenium.Monad
+import Test.Selenium.Notebook.Common as C
 import Test.Selenium.Notebook.Contexts
+import Test.Selenium.Notebook.FileList as FL
 import Test.Selenium.Notebook.Getters
 import Test.Selenium.Types
-import qualified Data.String as S
-import qualified Data.String.Regex as R
-
-
-import qualified Config as SDConfig
-import qualified Test.Selenium.Notebook.FileList as FL
-import qualified Test.Selenium.Notebook.Common as C
-
 
 checkInitialExplore :: Check Unit
 checkInitialExplore =
