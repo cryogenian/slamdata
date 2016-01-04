@@ -21,16 +21,14 @@ import Prelude
 import Control.Bind ((=<<), (>=>))
 import Control.Monad.Error.Class (throwError)
 
-import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, printJson, encodeJson, jsonEmptyObject)
+import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Either (Either(..))
-import Data.Lens (LensP(), lens)
 import Data.Map (Map(), empty)
 import Data.Traversable (traverse)
 
 import Notebook.Cell.CellId (CellId())
 
 import Notebook.Cell.Model as Cell
-import Network.HTTP.Affjax.Request (Requestable, toRequest)
 
 type Notebook =
   { cells :: Array Cell.Model

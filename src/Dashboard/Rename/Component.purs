@@ -24,7 +24,6 @@ import DOM.HTML.Types (HTMLElement())
 import Halogen
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Events.Indexed as E
 import Render.CssClasses as Rc
 import Utils.DOM (focus, blur)

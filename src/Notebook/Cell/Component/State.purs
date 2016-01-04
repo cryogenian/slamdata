@@ -38,6 +38,8 @@ module Notebook.Cell.Component.State
   , _JTableState
   , _VizState
   , _ChartState
+  , _APIState
+  , _APIResultsState
   ) where
 
 import Prelude
@@ -62,6 +64,8 @@ import Notebook.Cell.Markdown.Component.State as Markdown
 import Notebook.Cell.RunState (RunState(..))
 import Notebook.Cell.Search.Component.State as Search
 import Notebook.Cell.Viz.Component.State as Viz
+import Notebook.Cell.API.Component.State as API
+import Notebook.Cell.APIResults.Component.State as APIResults
 import Notebook.Common (Slam())
 
 -- | The common state value for notebook cells.
@@ -179,6 +183,8 @@ data AnyCellState
   | JTableState JTable.State
   | VizState Viz.StateP
   | ChartState Chart.StateP
+  | APIState API.StateP
+  | APIResultsState APIResults.State
 
 _AceState :: PrismP AnyCellState Ace.StateP
 _AceState = prism' AceState \s -> case s of
@@ -213,4 +219,14 @@ _VizState = prism' VizState \s -> case s of
 _ChartState :: PrismP AnyCellState Chart.StateP
 _ChartState = prism' ChartState \s -> case s of
   ChartState s' -> Just s'
+  _ -> Nothing
+
+_APIState :: PrismP AnyCellState API.StateP
+_APIState = prism' APIState \s -> case s of
+  APIState s' -> Just s'
+  _ -> Nothing
+
+_APIResultsState :: PrismP AnyCellState APIResults.State
+_APIResultsState = prism' APIResultsState \s -> case s of
+  APIResultsState s' -> Just s'
   _ -> Nothing

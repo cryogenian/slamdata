@@ -1,17 +1,5 @@
 // module Control.UI.Browser
 
-exports.replaceLocation = function(url) {
-    return function() {
-        window.location.replace(url);
-    };
-};
-
-exports.setLocation = function(url) {
-    return function() {
-        window.location.assign(url);
-    };
-};
-
 exports.locationString = function() {
     var path = window.location.pathname.split("/");
     path.pop();
@@ -27,10 +15,6 @@ exports.newTab = function(url) {
     return function() {
         window.open(url, "_blank");
     };
-};
-
-exports.reload = function() {
-    document.location.reload();
 };
 
 exports.clearValue = function(el) {

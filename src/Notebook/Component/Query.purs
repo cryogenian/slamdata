@@ -14,34 +14,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Component.Query (NotebookQuery(..)) where
+module Notebook.Component.Query
+  ( NotebookQuery(..)
+  ) where
 
-import Data.BrowserFeatures (BrowserFeatures())
-import Data.Maybe (Maybe())
-import Data.These (These())
-import Data.Path.Pathy (DirName())
+import Data.BrowserFeatures as BF
+import Data.Maybe as M
+import Data.Path.Pathy as P
 
-import Model.AccessType (AccessType())
+import Model.AccessType as AT
+import Notebook.Cell.CellId as CID
+import Notebook.Cell.CellType as CT
+import Notebook.Cell.Port.VarMap as Port
 
-import Notebook.Cell.CellId (CellId())
-import Notebook.Cell.CellType (CellType())
-
-import Utils.Path (FilePath(), DirPath())
+import Utils.Path as UP
 
 -- | GetNameToSave returns name if it hasn't been saved.
 -- | If there is no need to saving notebook name returns `Nothing`
 data NotebookQuery a
-  = AddCell CellType a
+  = AddCell CT.CellType a
   | RunActiveCell a
   | RunPendingCells a
   | ToggleAddCellMenu a
-  | GetNameToSave (Maybe DirName -> a)
-  | GetPath (Maybe DirPath -> a)
-  | SetViewingCell (Maybe CellId) a
+  | GetNameToSave (M.Maybe P.DirName -> a)
+  | GetPath (M.Maybe UP.DirPath -> a)
+  | SetViewingCell (M.Maybe CID.CellId) a
   | SetName String a
-  | SetAccessType AccessType a
-  | ExploreFile BrowserFeatures FilePath a
+  | SetAccessType AT.AccessType a
+  | ExploreFile BF.BrowserFeatures UP.FilePath a
   | Publish a
-  | LoadNotebook BrowserFeatures DirPath a
+  | LoadNotebook BF.BrowserFeatures UP.DirPath a
   | SaveNotebook a
-  | Reset BrowserFeatures DirPath a
+  | Reset BF.BrowserFeatures UP.DirPath a
+  | GetGlobalVarMap (Port.VarMap -> a)
+  | SetGlobalVarMap Port.VarMap a

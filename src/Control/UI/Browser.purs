@@ -14,20 +14,53 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Control.UI.Browser where
+module Control.UI.Browser
+  ( locationObject
+  , replaceLocation
+  , decodeURIComponent
+  , encodeURIComponent
+  , setLocation
+  , locationString
+  , select
+  , newTab
+  , clearValue
+  , reload
+  , setTitle
+  ) where
 
 import Prelude
 import Control.Monad.Eff (Eff())
 import DOM (DOM())
-import DOM.HTML.Types (HTMLElement())
+import DOM.HTML.Types (HTMLElement(), Location())
+import DOM.HTML (window)
+import DOM.HTML.Location as Location
+import DOM.HTML.Window as Window
 
-foreign import replaceLocation :: forall e. String -> Eff (dom :: DOM |e) Unit
+locationObject :: forall e. Eff (dom :: DOM | e) Location
+locationObject =
+  window
+    >>= Window.location
+
+replaceLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
+replaceLocation str =
+  locationObject
+    >>= Location.replace str
+
+setLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
+setLocation str =
+  locationObject
+    >>= Location.assign str
+
+reload :: forall e. Eff (dom :: DOM | e) Unit
+reload =
+  locationObject
+    >>= Location.reload
+
+foreign import locationString :: forall e. Eff (dom :: DOM | e) String
+foreign import select :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
+foreign import newTab :: forall e. String -> Eff (dom :: DOM | e) Unit
+foreign import clearValue :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
+foreign import setTitle :: forall e. String -> Eff (dom :: DOM | e) Unit
+
 foreign import decodeURIComponent :: String -> String
 foreign import encodeURIComponent :: String -> String
-foreign import setLocation :: forall e. String -> Eff (dom :: DOM |e) Unit
-foreign import locationString :: forall e. Eff (dom :: DOM |e) String
-foreign import select :: forall e. HTMLElement -> Eff (dom :: DOM |e) Unit
-foreign import newTab :: forall e. String -> Eff (dom :: DOM |e) Unit
-foreign import clearValue :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
-foreign import reload :: forall e. Eff (dom :: DOM|e) Unit
-foreign import setTitle :: forall e. String -> Eff (dom :: DOM|e) Unit

@@ -54,7 +54,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import DOM.Timer (interval, clearInterval)
 
-import Render.Common (row, row', glyph, fadeWhen)
+import Render.Common (row', glyph, fadeWhen)
 import Render.CssClasses as CSS
 
 import Model.AccessType (AccessType(..))

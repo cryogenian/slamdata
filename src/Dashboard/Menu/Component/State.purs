@@ -66,6 +66,10 @@ make shortcuts = HalogenMenu.makeMenu
           , shortcutLabel: StrMap.lookup "InsertSearch" shortcuts >>= _.label
           , value: StrMap.lookup "InsertSearch" shortcuts >>= _.value >>> pure
           }
+        , { label: "API"
+          , shortcutLabel: StrMap.lookup "InsertAPI" shortcuts >>= _.label
+          , value: StrMap.lookup "InsertAPI" shortcuts >>= _.value >>> pure
+          }
         ]
     }
   , { label: "Cell"

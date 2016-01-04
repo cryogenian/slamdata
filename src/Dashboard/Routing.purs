@@ -27,134 +27,150 @@ import Control.Apply ((*>))
 import Control.Monad (when)
 import Control.Monad.Aff (Aff())
 
-import Data.Either (Either(..))
-import Data.Foldable (foldl, foldr)
-import Data.Functor.Eff (liftEff)
-import Data.List (List(), init, last)
-import Data.Maybe (Maybe(..))
-import Data.Maybe.Unsafe as U
-import Data.Path.Pathy ((</>), rootDir, dir, file, DirName(..))
-import Data.String.Regex (noFlags, regex, test, Regex())
-import Data.Tuple (Tuple(..), snd)
-
-import Halogen (Driver())
+import Data.Either as E
+import Data.Foldable as F
+import Data.Functor.Eff as Eff
+import Data.List as L
+import Data.Maybe as M
+import Data.Maybe.Unsafe as MU
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
+import Data.String.Regex as R
+import Data.Map as Map
+import Data.StrMap as SM
+import Data.Tuple (Tuple(..))
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
+
+import Routing.Match (Match())
+import Routing.Match as Match
+import Routing.Match.Class as Match
+
+import Text.Parsing.Parser as P
+import Utils.Path as UP
 
 import Model.AccessType (AccessType(..), parseAccessType)
 import Model.Notebook.Action (Action(..), parseAction, toAccessType)
 
-import Notebook.Cell.CellId (CellId(), stringToCellId)
+import Notebook.Cell.CellId as CID
+import Notebook.Cell.Port.VarMap as Port
 import Notebook.Component as Notebook
 import Notebook.Effects (NotebookRawEffects(), NotebookEffects())
 
-import Routing (matchesAff')
-import Routing.Match (Match(), list, eitherMatch)
-import Routing.Match.Class (lit, str)
-
-import Dashboard.Component
-  (QueryP(), Query(..), toNotebook, fromNotebook, toDashboard, toRename)
+import Dashboard.Component as Dashboard
 import Dashboard.Rename.Component as Rename
-import Utils.Path
-  (DirPath(), FilePath(), decodeURIPath, dropNotebookExt, getNameStr, getDir)
 
 data Routes
-  = CellRoute DirPath CellId AccessType
-  | ExploreRoute FilePath
-  | NotebookRoute DirPath Action
+  = CellRoute UP.DirPath CID.CellId AccessType Port.VarMap
+  | ExploreRoute UP.FilePath
+  | NotebookRoute UP.DirPath Action Port.VarMap
 
 routing :: Match Routes
 routing
-  =   ExploreRoute <$> (oneSlash *> lit "explore" *> explored)
-  <|> CellRoute <$> notebook <*> (lit "cells" *> cellId) <*> accessType
-  <|> NotebookRoute <$> notebook <*> action
+  =   ExploreRoute <$> (oneSlash *> Match.lit "explore" *> explored)
+  <|> CellRoute <$> notebook <*> (Match.lit "cells" *> cellId) <*> accessType <*> optionalVarMap
+  <|> NotebookRoute <$> notebook <*> action <*> optionalVarMap
 
   where
+  optionalVarMap :: Match Port.VarMap
+  optionalVarMap = varMap <|> pure SM.empty
+
+  varMap :: Match Port.VarMap
+  varMap = Match.params <#> Map.toList >>> F.foldl go SM.empty
+    where
+      go m (Tuple k str) =
+        case P.runParser str Port.parseVarMapValue of
+          E.Left err -> m
+          E.Right v -> SM.insert k v m
+
   oneSlash :: Match Unit
-  oneSlash = lit ""
+  oneSlash = Match.lit ""
 
-  explored :: Match FilePath
-  explored = eitherMatch $ mkResource <$> list str
+  explored :: Match UP.FilePath
+  explored = Match.eitherMatch $ mkResource <$> Match.list Match.str
 
-  mkResource :: List String -> Either String FilePath
+  mkResource :: L.List String -> E.Either String UP.FilePath
   mkResource parts =
-    case last parts of
-      Just filename | filename /= "" ->
-        let dirParts = U.fromJust (init parts)
-            filePart = file filename
-            path = foldr (\part acc -> dir part </> acc) filePart dirParts
-        in Right $ rootDir </> path
-      _ -> Left "Expected non-empty explore path"
+    case L.last parts of
+      M.Just filename | filename /= "" ->
+        let dirParts = MU.fromJust (L.init parts)
+            filePart = P.file filename
+            path = F.foldr (\part acc -> P.dir part </> acc) filePart dirParts
+        in E.Right $ P.rootDir </> path
+      _ -> E.Left "Expected non-empty explore path"
 
-  notebook :: Match DirPath
+  notebook :: Match UP.DirPath
   notebook = notebookFromParts <$> partsAndName
 
-  notebookFromParts :: Tuple (List String) String -> DirPath
+  notebookFromParts :: Tuple (L.List String) String -> UP.DirPath
   notebookFromParts (Tuple ps nm) =
-    foldl (</>) rootDir (map dir ps) </> dir nm
+    F.foldl (</>) P.rootDir (map P.dir ps) </> P.dir nm
 
-  partsAndName :: Match (Tuple (List String) String)
-  partsAndName = Tuple <$> (oneSlash *> (list notName)) <*> name
+  partsAndName :: Match (Tuple (L.List String) String)
+  partsAndName = Tuple <$> (oneSlash *> Match.list notName) <*> name
 
   name :: Match String
-  name = eitherMatch $ map notebookName str
+  name = Match.eitherMatch $ map notebookName Match.str
 
   notName :: Match String
-  notName = eitherMatch $ map pathPart str
+  notName = Match.eitherMatch $ map pathPart Match.str
 
-  notebookName :: String -> Either String String
+  notebookName :: String -> E.Either String String
   notebookName input
-    | checkExtension input = Right input
-    | otherwise = Left input
+    | checkExtension input = E.Right input
+    | otherwise = E.Left input
 
-  pathPart :: String -> Either String String
+  pathPart :: String -> E.Either String String
   pathPart input
-    | input == "" || checkExtension input = Left "incorrect path part"
-    | otherwise = Right input
+    | input == "" || checkExtension input = E.Left "incorrect path part"
+    | otherwise = E.Right input
 
-  extensionRegex :: Regex
-  extensionRegex = regex ("\\." <> Config.notebookExtension <> "$") noFlags
+  extensionRegex :: R.Regex
+  extensionRegex = R.regex ("\\." <> Config.notebookExtension <> "$") R.noFlags
 
   checkExtension :: String -> Boolean
-  checkExtension = test extensionRegex
+  checkExtension = R.test extensionRegex
 
   action :: Match Action
-  action = (eitherMatch $ map parseAction str) <|> pure (Load ReadOnly)
+  action = (Match.eitherMatch $ map parseAction Match.str) <|> pure (Load ReadOnly)
 
   accessType :: Match AccessType
-  accessType = (eitherMatch $ map parseAccessType str) <|> pure ReadOnly
+  accessType = (Match.eitherMatch $ map parseAccessType Match.str) <|> pure ReadOnly
 
-  cellId :: Match CellId
-  cellId = eitherMatch $ map stringToCellId str
+  cellId :: Match CID.CellId
+  cellId = Match.eitherMatch $ map CID.stringToCellId Match.str
 
-routeSignal :: Driver QueryP NotebookRawEffects -> Aff NotebookEffects Unit
+routeSignal :: Halogen.Driver Dashboard.QueryP NotebookRawEffects -> Aff NotebookEffects Unit
 routeSignal driver = do
-  route <- snd <$> matchesAff' decodeURIPath routing
+  Tuple _ route <- Routing.matchesAff' UP.decodeURIPath routing
   case route of
-    CellRoute res cellId accessType -> notebook res (Load accessType) $ Just cellId
-    NotebookRoute res action -> notebook res action Nothing
+    CellRoute res cellId accessType varMap -> notebook res (Load accessType) (M.Just cellId) varMap
+    NotebookRoute res action varMap -> notebook res action M.Nothing varMap
     ExploreRoute res -> explore res
 
   where
 
-  explore :: FilePath -> Aff NotebookEffects Unit
+  explore :: UP.FilePath -> Aff NotebookEffects Unit
   explore path = do
-    fs <- liftEff detectBrowserFeatures
-    driver $ toNotebook $ Notebook.ExploreFile fs path
+    fs <- Eff.liftEff detectBrowserFeatures
+    driver $ Dashboard.toNotebook $ Notebook.ExploreFile fs path
 
-  notebook :: DirPath -> Action -> Maybe CellId -> Aff NotebookEffects Unit
-  notebook path action viewing = do
-    let name = getNameStr $ Right path
-        directory = getDir $ Right path
-    currentPath <- driver $ fromNotebook Notebook.GetPath
-    currentName <- driver $ fromNotebook Notebook.GetNameToSave
+  notebook :: UP.DirPath -> Action -> M.Maybe CID.CellId -> Port.VarMap -> Aff NotebookEffects Unit
+  notebook path action viewing varMap = do
+    let name = UP.getNameStr $ E.Right path
+        directory = UP.getDir $ E.Right path
+    currentPath <- driver $ Dashboard.fromNotebook Notebook.GetPath
+    currentName <- driver $ Dashboard.fromNotebook Notebook.GetNameToSave
+    currentVarMap <- driver $ Dashboard.fromNotebook Notebook.GetGlobalVarMap
     let pathChanged = currentPath /= pure directory
-        nameChanged = currentName /= (pure $ DirName name)
+        nameChanged = currentName /= pure (P.DirName name)
+        varMapChanged = currentVarMap /= varMap
     when (pathChanged || nameChanged) do
-      features <- liftEff detectBrowserFeatures
-      driver $ toRename $ Rename.SetText $ dropNotebookExt name
-      if (action == New)
-        then driver $ toNotebook $ Notebook.Reset features path
-        else driver $ toNotebook $ Notebook.LoadNotebook features path
-      driver $ toDashboard $ SetAccessType $ toAccessType action
-      driver $ toDashboard $ SetViewingCell viewing
+      features <- Eff.liftEff detectBrowserFeatures
+      driver $ Dashboard.toRename $ Rename.SetText $ UP.dropNotebookExt name
+      driver $ Dashboard.toNotebook $ Notebook.SetGlobalVarMap varMap
+      if action == New
+        then driver $ Dashboard.toNotebook $ Notebook.Reset features path
+        else driver $ Dashboard.toNotebook $ Notebook.LoadNotebook features path
+      driver $ Dashboard.toDashboard $ Dashboard.SetAccessType $ toAccessType action
+      driver $ Dashboard.toDashboard $ Dashboard.SetViewingCell viewing

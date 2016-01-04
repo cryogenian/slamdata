@@ -43,14 +43,16 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 
 import Notebook.Cell.Port (Port())
-import Notebook.Cell.CellId (CellId(), cellIdToString)
+import Notebook.Cell.Port.VarMap as Port
+import Notebook.Cell.CellId as CID
 import Model.Resource as R
 import Utils.Path (DirPath())
 
 type CellEvalInputP r =
   { notebookPath :: M.Maybe DirPath
   , inputPort :: M.Maybe Port
-  , cellId :: CellId
+  , cellId :: CID.CellId
+  , globalVarMap :: Port.VarMap
   | r
   }
 
@@ -64,11 +66,12 @@ prepareCellEvalInput
   :: M.Maybe Boolean
   -> CellEvalInputPre
   -> CellEvalInput
-prepareCellEvalInput cachingEnabled { notebookPath, inputPort, cellId } =
+prepareCellEvalInput cachingEnabled { notebookPath, inputPort, cellId, globalVarMap } =
   { notebookPath
   , inputPort
   , cellId
   , cachingEnabled
+  , globalVarMap
   }
 
 temporaryOutputResource
@@ -83,7 +86,7 @@ temporaryOutputResource info =
         M.fromMaybe (P.rootDir </> P.dir ".tmp")
 
     outputFile =
-      P.file $ "out" <> cellIdToString info.cellId
+      P.file $ "out" <> CID.cellIdToString info.cellId
 
     filterMaybe :: forall a. (a -> Boolean) -> M.Maybe a -> M.Maybe a
     filterMaybe p m =
