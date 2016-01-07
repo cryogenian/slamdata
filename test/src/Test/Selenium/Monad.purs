@@ -21,6 +21,7 @@ import Prelude
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Class
+import Control.Alt (alt)
 
 import Data.Functor.Aff (liftAff)
 import Data.List (List(), length, uncons)
@@ -53,26 +54,6 @@ getPlatformString = do
     >>> runOs
     >>> _.family
 
-findSingle :: Locator -> Check Element
-findSingle locator = do
-  elements <- findElements locator
-  case uncons elements of
-    Nothing ->
-      throwError $ error $ "Couldn't find an element with the locator: " ++ showLocator locator
-    Just o -> case length o.tail of
-      0 -> pure $ o.head
-      _ ->
-        throwError $ error $ "Found more than one element with the locator: " ++ showLocator locator
-
-findAtLeast :: Int -> Locator -> Check (List Element)
-findAtLeast n locator = do
-  elements <- findElements locator
-  if length elements >= n
-    then pure $ elements
-    else throwError $ error $ "Couldn't find at least " ++ show n
-                                                        ++ " elements with the locator: "
-                                                        ++ showLocator locator
-
 getModifierKey :: Check ControlKey
 getModifierKey = map modifierKey getPlatformString
   where
@@ -90,3 +71,7 @@ byExactText exactText = byXPath $ "//*[text()='" ++ exactText ++ "']"
 
 byText :: String -> Check Locator
 byText text = byXPath $ "//*[contains(., '" ++ text ++ "')]"
+
+notMindingIfItsNotPossible :: Check Unit -> Check Unit
+notMindingIfItsNotPossible = flip alt (pure unit)
+

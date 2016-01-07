@@ -7,7 +7,7 @@
     "selenium": {
         "jar": "test/jars/selenium.jar",
         "browser": "firefox",
-        "waitTime": 60000
+        "waitTime": 15000
     },
     "sauceLabs": {
         "enabled": false,
@@ -177,17 +177,14 @@
         "showMessages": ".cell-controls button[title='Show messages']",
         "hideMessages": ".cell-controls button[title='Hide messages']",
         "status": ".status-text",
-        "embedBox": ".embed-box",
-        "exploreFlag": "<div class=\"cell-name\">Explore</div>",
-        "searchFlag": "<div class=\"cell-name\">Search</div>",
-        "mdFlag": "<div class=\"cell-name\">Markdown</div>"
+        "embedBox": ".embed-box"
     },
     "searchCell": {
         "fileListInput": ".explore-cell-editor .file-list-field input:not(.search-cell-input)",
         "searchInput": ".search-cell-input",
         "searchButton": ".search-cell-button",
         "searchClear": ".search-clear",
-        "allQuery": "~*",
+        "allQuery": "*",
         "incorrectQuery": "::"
     },
     "explore": {
@@ -256,7 +253,7 @@
             "rows": 9
         },
         {
-            "query": "pop:>10000 city:~b*",
+            "query": "pop:>10000 city:~\"^b.*\"",
             "pages": 1,
             "rows": 1
         }

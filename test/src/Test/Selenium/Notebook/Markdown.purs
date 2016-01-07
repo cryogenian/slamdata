@@ -17,26 +17,24 @@ limitations under the License.
 module Test.Selenium.Notebook.Markdown (test) where
 
 import Prelude
-
-import Test.Selenium.Log (successMsg)
-import Test.Selenium.Notebook.Contexts (deleteAllCells)
-import Test.Selenium.Monad (Check())
+import Selenium.Monad (attempt)
+import Control.Apply ((*>))
 import Test.Selenium.Expectations (expectInputWithLabelTypeAndValue)
+import Test.Selenium.Log (successMsg)
+import Test.Selenium.Common (waitTime)
+import Test.Selenium.Monad (Check())
+import Test.Selenium.Notebook.Finders (loseCellTitles)
+import Test.Selenium.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder, insertMdCellUsingNextActionMenu, insertQueryAfterMd, provideMd, changeMd, playMd, playMdQuery)
+import Test.Selenium.Notebook.Markdown.Expectations
+import Test.Selenium.Notebook.Markdown.Interactions
 import Test.Selenium.Scenario (scenario)
 
-import Test.Selenium.Notebook.Markdown.Interactions
-import Test.Selenium.Notebook.Markdown.Expectations
-
 mdScenario :: String -> Array String -> Check Unit -> Check Unit
-mdScenario = scenario "Markdown" deleteAllCells deleteAllCells
-
-filterQueryIssues :: Array String
-filterQueryIssues =
-  [ "https://slamdata.atlassian.net/browse/SD-1046"
-  , "https://slamdata.atlassian.net/browse/SD-1045"
-  , "https://slamdata.atlassian.net/browse/SD-1044"
-  , "https://slamdata.atlassian.net/browse/SD-1047"
-  ]
+mdScenario =
+  scenario
+    "Markdown"
+    (createNotebookInTestFolder "Markdown")
+    (deleteFileInTestFolder "Markdown.slam")
 
 evalDefaultValueIssues :: Array String
 evalDefaultValueIssues = ["https://slamdata.atlassian.net/browse/SD-1048"]
@@ -44,7 +42,7 @@ evalDefaultValueIssues = ["https://slamdata.atlassian.net/browse/SD-1048"]
 test :: Check Unit
 test = do
   mdScenario "Provide and play markdown" [] do
-    insertMdCell
+    insertMdCellUsingNextActionMenu
     provideMdForFormWithAllInputTypes
     playMd
 
@@ -53,7 +51,7 @@ test = do
     successMsg "Ok, succesfully provided and played markdown."
 
   mdScenario "Change and play markdown" [] do
-    insertMdCell
+    insertMdCellUsingNextActionMenu
     provideMd "discipline = __"
     playMd
     changeMd "sport = __ (Bobsleigh)"
@@ -63,19 +61,19 @@ test = do
     successMsg "Ok, successfully changed and played markdown."
 
   mdScenario "Provide and play markdown with evaluated content" [] do
-    insertMdCell
+    insertMdCellUsingNextActionMenu
     provideMdForFormWithEvaluatedContent
     playMd
 
     expectToBePresentedWithFormWithEvaluatedContent
     successMsg "Ok, successfully provided and played markdown with evaluated content"
 
-  mdScenario "Filter query resuts with default field values" (filterQueryIssues <> evalDefaultValueIssues) do
-    insertMdCell
+  mdScenario "Filter query results with default field values" evalDefaultValueIssues do
+    insertMdCellUsingNextActionMenu
     provideMdForFormWithEvaluatedContent
     playMd
 
-    createMdQueryCell
+    insertQueryAfterMd
     provideMdQueryWhichFiltersUsingFormValues
     playMdQuery
 
@@ -83,12 +81,12 @@ test = do
 
     successMsg "Ok, Filtered query resuts with fields"
 
-  mdScenario "Filter query resuts by changing field values" filterQueryIssues do
-    insertMdCell
+  mdScenario "Filter query resuts by changing field values" [] do
+    insertMdCellUsingNextActionMenu
     provideMdForFormWithEvaluatedContent
     playMd
 
-    createMdQueryCell
+    insertQueryAfterMd
     provideMdQueryWhichFiltersUsingFormValues
     playMdQuery
 
@@ -97,3 +95,4 @@ test = do
     expectMdQueryResultsToBeFilteredByChangedFormValues
 
     successMsg "Ok, Filtered query results by changing field values"
+

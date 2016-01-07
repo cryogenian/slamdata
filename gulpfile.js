@@ -33,6 +33,12 @@ var foreigns = [
   "test/src/**/*.js"
 ];
 
+gulp.task('remove-css-fixed-positions', function(){
+  gulp.src(['public/css/main.css'])
+    .pipe(replace('fixed', 'absolute'))
+    .pipe(gulp.dest('public/css'));
+});
+
 gulp.task("clean", function () {
     [
         "output",
@@ -164,7 +170,7 @@ gulp.task("bundle", [
 gulp.task("bundle-test",
           ["bundle"],
            function() {
-    sequence("less", "make", function() {
+    sequence("less", "remove-css-fixed-positions", "make", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
             output: "test/index.js",

@@ -22,6 +22,7 @@ import Test.Selenium.Notebook.Contexts (setUp)
 import Test.Selenium.Notebook.Explore as Explore
 import Test.Selenium.Notebook.Search as Search
 import Test.Selenium.Notebook.Common as Common
+import Test.Selenium.Common
 import Test.Selenium.Notebook.Viz as Viz
 import Test.Selenium.Notebook.Markdown as Markdown
 import Test.Selenium.Notebook.Complex as Complex
@@ -29,9 +30,9 @@ import Test.Selenium.Notebook.Complex as Complex
 test :: Check Unit
 test = do
   setUp
-  Common.test
+  --Common.test
   Explore.test
-  Search.test
-  Viz.test
+  --Search.test
+  --Viz.test
   Markdown.test
-  Complex.test
+  --Complex.test

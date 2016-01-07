@@ -24,7 +24,6 @@ module Test.Selenium.ActionSequence
   , shifted
   , keys
   , sendBackspaces
-  , focus
   , close
   ) where
 
@@ -34,7 +33,7 @@ import Data.Char (fromCharCode)
 import Data.Foldable (traverse_)
 import Data.String (fromChar, split)
 import Data.Array (replicate)
-import Selenium.ActionSequence hiding (sequence)
+import Selenium.ActionSequence (Sequence(), sendKeys, mouseDown, keyDown, keyUp, mouseUp)
 import Selenium.Types (ControlKey(), Element())
 import Selenium.Key (shiftKey)
 import Selenium.MouseButton (leftButton)
@@ -74,11 +73,6 @@ sendKeyCombo ctrlKeys str = do
   traverse_ keyDown ctrlKeys
   sendKeys str
   traverse_ keyUp ctrlKeys
-
-focus :: Element -> Sequence Unit
-focus element = do
-  mouseDown leftButton element
-  mouseUp leftButton element
 
 -- Send keys one by one and replace if they can't be processed
 -- by selenium driver

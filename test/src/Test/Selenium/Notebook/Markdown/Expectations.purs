@@ -7,11 +7,14 @@ import Data.String.Regex (regex, noFlags)
 import Data.Int (toNumber)
 import Selenium.Combinators (tryToFind)
 import Selenium.Monad (byXPath, getText)
-import Test.Selenium.Monad (Check(), findAtLeast)
+import Test.Selenium.Monad (Check())
+import Test.Selenium.Finders (findByXPath)
+import Test.XPath as XPath
 import Test.Selenium.Expectations (expectLabel, expectInputWithLabelTypeAndChecked, expectInputWithLabelTypeAndValue, expectDropdownWithLabelOptionsAndValue)
+import Test.Selenium.Notebook.Expectations (expectFinishedMessage)
 import Test.Selenium.Notebook.Markdown.Finders (findMdQueryColumnCellsTextByHeading)
 
-import Data.Foldable (traverse_) as F
+import Data.Foldable (traverse_)
 
 expectMdQueryResultsToBeFilteredByDefaultFormValues :: Check Unit
 expectMdQueryResultsToBeFilteredByDefaultFormValues = do
@@ -23,13 +26,13 @@ expectMdQueryResultsToBeFilteredByDefaultFormValues = do
   expectMdQueryColumn "type" toNotEq "Gold"
 
 expectMdQueryRows :: Int -> Check Unit
-expectMdQueryRows i = void $ locator >>= findAtLeast i
+expectMdQueryRows = void <<< findByXPath <<< XPath.index (XPath.anywhere xPath)
   where
-  locator = byXPath "//*[text()='Markdown']/following::*[text()='Query']/following::tbody/tr"
+  xPath = "*[text()='Markdown']/following::*[text()='Query']/following::tbody/tr"
 
 expectMdQueryResultsToBeFilteredByChangedFormValues :: Check Unit
 expectMdQueryResultsToBeFilteredByChangedFormValues = do
-  expectMdQueryRows 10
+  expectMdQueryRows 8
   expectMdQueryColumn "discipline" toEq "Luge"
   expectMdQueryColumn "year" toBeGreaterThan $ toNumber 1950
   expectMdQueryColumn "country" toEq "GDR"
@@ -37,17 +40,15 @@ expectMdQueryResultsToBeFilteredByChangedFormValues = do
   expectMdQueryColumn "type" toNotEq "Gold"
 
 expectMdQueryColumn :: forall a. (Show a) => String -> Expectation String a -> a -> Check Unit
-expectMdQueryColumn heading expectation expected = do
-  cellTexts <- findMdQueryColumnCellsTextByHeading heading
-  F.traverse_ (\cellText -> expect cellText expectation expected) cellTexts
+expectMdQueryColumn heading expectation expected =
+  findMdQueryColumnCellsTextByHeading heading >>= traverse_ expectCellText
+  where
+  expectCellText cellText = expect cellText expectation expected
 
 expectMdFinishedMessage :: Check Unit
-expectMdFinishedMessage = do
-  element <- tryToFind $ byXPath xPath
-  message <- getText element
-  expect message toMatch (regex "Finished: took ([0-9]*)ms." noFlags)
-    where
-    xPath = "//*[text()='Markdown']/following::*[contains(text(), 'Finished')]"
+expectMdFinishedMessage = expectFinishedMessage xPath
+ where
+ xPath = "//*[text()='Markdown']/following::*[contains(text(), 'Finished')]"
 
 expectToBePresentedWithFormWithAllInputTypes :: Check Unit
 expectToBePresentedWithFormWithAllInputTypes = do

@@ -26,83 +26,17 @@ import Data.Monoid.Conj (Conj(..), runConj)
 import Data.Monoid.Disj (Disj(..), runDisj)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
+import Data.String (joinWith)
 import Selenium.Monad
 import Selenium.Types
 import Test.Config
 import Test.Selenium.Common
 import Test.Selenium.Log
-import Test.Selenium.Monad
+import Test.Selenium.Monad (Check(), getConfig)
 import Test.Selenium.Types
-import Test.Selenium.Finders (findSingleGracefully)
+import Test.Selenium.Finders (findSingle)
 
 import Data.String.Regex as R
-
-newCellMenuExpanded :: Check Boolean
-newCellMenuExpanded = do
-  config <- getConfig
-  btns <- traverse getEl $ toList [ Tuple config.newCellMenu.queryButton "query"
-                                  , Tuple config.newCellMenu.mdButton "markdown"
-                                  , Tuple config.newCellMenu.exploreButton "explore"
-                                  , Tuple config.newCellMenu.searchButton "search"
-                                  ]
-  viss <- traverse isDisplayed btns
-  let orVis = (runDisj <<< fold <<< (Disj <$>)) viss
-  if not orVis
-    then pure false
-    else
-    let andVis = (runConj <<< fold <<< (Conj <$>)) viss
-    in if andVis
-       then pure true
-       else errorMsg "Some of new cell buttons is isDisplayed and some is not"
-  where
-  getEl :: Tuple String String -> Check Element
-  getEl (Tuple selector msg) =
-    tryRepeatedlyTo $ byCss selector >>= findExact
-
-
-
-getNewCellMenuTrigger :: Check Element
-getNewCellMenuTrigger = do
-  config <- getConfig
-  getElementByCss config.newCellMenu.expandCollapse
-    "expand collapse button not found"
-
-
-getCells :: Check (List Element)
-getCells = getConfig >>= (_.cell >>> _.main >>> byCss) >>= findElements
-
-getCell :: Int -> Check Element
-getCell n = do
-  cells <- getCells
-  maybe (errorMsg $ "there is no cell#" <> show n) pure $ cells !! n
-
-getCellsWithContent :: String -> Check (List Element)
-getCellsWithContent content = do
-  cells <- getCells
-  mbCells <- traverse traverseFn cells
-  pure $ catMaybes mbCells
-  where
-  traverseFn el = do
-    eHtml <- attempt $ getInnerHtml el
-    pure $ case eHtml of
-      Left _ -> Nothing
-      Right html ->
-        if R.test (R.regex content R.noFlags) html
-        then Just el
-        else Nothing
-
-getExploreCells :: Check (List Element)
-getExploreCells =
-  getConfig >>= _.cell >>> _.exploreFlag >>> getCellsWithContent
-
-getSearchCells :: Check (List Element)
-getSearchCells =
-  getConfig >>= _.cell >>> _.searchFlag >>> getCellsWithContent
-
-getMdCells :: Check (List Element)
-getMdCells =
-  getConfig >>= _.cell >>> _.mdFlag >>> getCellsWithContent
-
 
 waitNextCellSearch :: Check Element
 waitNextCellSearch = do
@@ -151,7 +85,7 @@ getInputLocator = do
   tryRepeatedlyTo $ byCss config.explore.input
 
 getInput :: Check Element
-getInput = getInputLocator >>= findSingleGracefully
+getInput = getInputLocator >>= findSingle
 
 getAceInput :: Check Element
 getAceInput = do
