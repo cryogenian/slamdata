@@ -56,9 +56,10 @@ import Data.Visibility (Visibility(..), toggleVisibility)
 import DOM.Timer (interval, clearInterval)
 
 import Halogen
-import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Indexed as E
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.Themes.Bootstrap3 as B
@@ -74,7 +75,7 @@ import SlamData.Notebook.Cell.Component.State
 import SlamData.Notebook.Cell.Port (Port(..), _Resource)
 import SlamData.Notebook.Cell.RunState (RunState(..))
 import SlamData.Effects (Slam())
-import SlamData.Render.Common (row', glyph, fadeWhen)
+import SlamData.Render.Common (row', glyph)
 import SlamData.Render.CSS as CSS
 
 -- | Type synonym for the full type of a cell component.
@@ -141,10 +142,12 @@ cellSourceRender def collapseWhen afterContent component initialState cs =
   shown =
     H.div [ P.classes $ join [ containerClasses, collapsedClass ] ]
     $ [ header def cs
-      , row' (fadeWhen shouldCollapse)
+      , H.div
+        [ P.classes [ B.row ], hideIfCollapsed ]
         [ H.slot unit \_ -> { component: component, initialState: initialState } ]
       ]
       <> afterContent cs
+  hideIfCollapsed = if cs.isCollapsed then ARIA.hidden "true" else ARIA.hidden "false"
 
 -- | Constructs a cell component for an results-style cell.
 makeResultsCellComponent
@@ -201,7 +204,8 @@ makeResultsCellComponent def = makeCellComponentPart def render
   nextCellButton cellType =
     H.li_
       [ H.button
-          [ P.title (cellName cellType)
+          [ P.title $ "Insert " ++ (cellName cellType) ++ " cell after this cell"
+          , ARIA.label $ "Insert " ++ (cellName cellType) ++ " cell after this cell"
           , E.onClick $ E.input_ (CreateChildCell cellType)
           ]
           [ glyph (cellGlyph cellType) ]

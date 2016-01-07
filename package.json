@@ -9,7 +9,8 @@
   "contributors": [
     "Maxim Zimaliev <zimaliev@yandex.ru>",
     "Gary Burgess <gary@slamdata.com>",
-    "Jonathan Sterling <jon@slamdata.com>"
+    "Jonathan Sterling <jon@slamdata.com>",
+    "Becky Conning <becky@slamdata.com>"
   ],
   "scripts": {
     "postinstall": "node script/get-quasar.js",
@@ -32,6 +33,7 @@
     "gulp-purescript": "^0.8.0",
     "gulp-replace": "^0.5.4",
     "gulp-run": "^1.6.12",
+    "gulp-replace": "^0.5.4",
     "gulp-trimlines": "^1.0.0",
     "minimist": "^1.2.0",
     "mongodb": "^2.1.1",
@@ -45,7 +47,7 @@
   "dependencies": {
     "easyimage": "^2.1.0",
     "fs": "^0.0.2",
-    "image-diff": "^1.3.0",
+    "image-diff": "^1.5.0",
     "json-loader": "^0.5.4",
     "jsrsasign": "^5.0.5",
     "minimatch": "^3.0.0",
