@@ -21,7 +21,7 @@
     "purescript-css": "^0.4.0",
     "purescript-datetime": "^0.9.0",
     "purescript-generics": "^0.7.0",
-    "purescript-halogen": "^0.5.8",
+    "purescript-halogen": "^0.5.10",
     "purescript-halogen-bootstrap": "^0.4.0",
     "purescript-halogen-css": "^0.1.1",
     "purescript-halogen-echarts": "^0.1.0",

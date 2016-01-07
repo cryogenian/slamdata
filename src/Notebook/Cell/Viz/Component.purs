@@ -42,6 +42,7 @@ import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Model.Aggregation (aggregationSelect)
 import Model.CellType (CellType(Viz), cellName, cellGlyph)
@@ -216,7 +217,7 @@ renderDimensions state =
     [ label labelText
     , H.input [ P.classes [ B.formControl ]
               , P.value $ valueFromState state
-              , Cp.ariaLabel labelText
+              , ARIA.label labelText
               , Cp.mbValueInput (pure
                                  <<< map (right <<< flip queryCtor unit)
                                  <<< stringToInt'

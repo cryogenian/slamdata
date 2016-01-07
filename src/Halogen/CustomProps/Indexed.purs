@@ -39,5 +39,3 @@ mbValueInput = unsafeCoerce Cp.mbValueInput
 nonSubmit :: forall i r . IProp (onSubmit :: I | r) i
 nonSubmit = unsafeCoerce Cp.nonSubmit
 
-ariaLabel :: forall i r. String -> IProp (|r) i
-ariaLabel = unsafeCoerce Cp.ariaLabel

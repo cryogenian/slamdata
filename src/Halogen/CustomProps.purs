@@ -62,9 +62,6 @@ mbInput = mbHandler (eventName "input")
 onPaste :: forall e i. EventProp e i
 onPaste = handler (eventName "paste")
 
-ariaLabel :: forall i. String -> Prop i
-ariaLabel label = Attr Nothing (attrName "aria-label") label
-
 frameBorder :: forall i. Int -> Prop i
 frameBorder = Attr Nothing (attrName "frameBorder") <<< show
 
