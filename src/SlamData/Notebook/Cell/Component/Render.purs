@@ -49,7 +49,9 @@ type CellHTML = ParentHTML AnyCellState CellQuery InnerCellQuery Slam Unit
 header :: forall r. { name :: String, glyph :: H.ClassName | r } -> CellState -> CellHTML
 header def cs =
   H.div
-    [ P.classes [CSS.cellHeader, B.clearfix] ]
+    [ P.classes [CSS.cellHeader, B.clearfix]
+    , ARIA.label $ def.name ++ " cell"
+    ]
     [ H.div
         [ P.class_ CSS.cellIcon ]
         [ glyph def.glyph ]

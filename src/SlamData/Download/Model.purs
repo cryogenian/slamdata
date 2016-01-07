@@ -209,11 +209,16 @@ toHeaders'
      , options :: Either CSVOptions JSONOptions|r}
   -> Array RequestHeader
 toHeaders' r =
-  encHeader r.compress <> [ Accept $ MimeType $ mimeType r.options]
+  encHeaderArray r.compress ++ [ acceptHeader ]
   where
-  encHeader :: Boolean -> Array RequestHeader
-  encHeader true = [ RequestHeader "Accept-Encoding" "gzip" ]
-  encHeader _ = [ ]
+  acceptHeader :: RequestHeader
+  acceptHeader = Accept $ MimeType $ mimeType r.options ++ attachmentDisposition
+
+  encHeaderArray :: Boolean -> Array RequestHeader
+  encHeaderArray true = [ RequestHeader "Accept-Encoding" "gzip" ]
+  encHeaderArray _ = [ ]
+
+  attachmentDisposition = ";disposition=attachment" 
 
   mimeType :: Either CSVOptions JSONOptions -> String
   mimeType (Left (CSVOptions opts)) =

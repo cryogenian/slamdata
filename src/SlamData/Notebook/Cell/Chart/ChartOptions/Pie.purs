@@ -44,7 +44,8 @@ buildPie :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Option
 buildPie axises conf =
   Option $ optionDefault { tooltip = tooltip
                          , series = Just $ map Just series
-                         , legend = Just $ legend
+                         , legend = Just legend
+                         , color = Just colors
                          }
   where
   tooltip :: Maybe Tooltip
