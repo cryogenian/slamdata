@@ -86,12 +86,13 @@ icon' c title href = H.div [ P.classes [ Rc.navIcon ] ]
 logo :: forall p f. Maybe String -> HTML p f
 logo mbVersion =
   H.div [ P.class_ Rc.navLogo ]
-  [ H.a ( [ P.href Config.slamDataHome ] <> title mbVersion <> label mbVersion)
+  [ H.a
+    [ P.href Config.slamDataHome
+    , ARIA.label "Browse root folder"
+    , P.title "Browse root folder"
+    ]
     [ H.img [ P.src "img/logo.svg" ] ]
   ]
-  where
-  title = maybe [ ] (singleton <<< P.title <<< (append "Version "))
-  label = maybe [ ] (singleton <<< ARIA.label <<< (append "SlamData Version "))
 
 closeButton :: forall p f. (ET.Event ET.MouseEvent -> E.EventHandler f) -> HTML p f
 closeButton handler =

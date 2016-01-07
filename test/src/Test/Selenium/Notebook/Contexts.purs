@@ -22,6 +22,7 @@ import Prelude
 import Control.Monad.Eff.Random (randomInt)
 
 import Data.Either (isRight)
+import Control.Apply ((*>))
 import Data.Foldable (foldl, traverse_)
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Eff (liftEff)
@@ -59,17 +60,9 @@ reloadAndSpyXHR = do
   startSpying
   where
   filterFn {url: url} = R.test (R.regex "//" R.noFlags) url
--- | We are in notebook after `setUp`. No need to test if notebook created
--- | it's tested in `Test.Selenium.File`
-setUp :: Check Unit
-setUp = void do
-  createTestDirs
-  home
-  goodMountDatabase
-  enterMount
-  createNotebookAndThen $ pure unit
-  startSpying
 
+setUp :: Check Unit
+setUp = void $ createTestDirs *> home *> goodMountDatabase
 
 onlyFirefox :: Context
 onlyFirefox action = do
@@ -87,90 +80,28 @@ createTestDirs = do
     else
     traverse_ (apathize <<< liftAff <<< mkdir) config.screenshot.dirs
 
-makeCell :: String -> Check Unit
-makeCell sel = do
-  config <- getConfig
-  newCellMenu <- newCellMenuExpanded
-  if newCellMenu
-    then pure unit
-    else do
-    trigger <- getNewCellMenuTrigger
-    sequence $ leftClick trigger
-  exploreBtn <- tryToFind $ byCss sel
-  count <- length <$> getCells
-  sequence $ leftClick exploreBtn
-  await "Cell has not been added" $ cellAdded count
-  where
-  cellAdded old = do
-    new <- length <$> getCells
-    pure $ new == old + 1
+--  config <- getConfig
+--  els <- byCss config.cell.trash >>= findElements
+--  if null els
+--    then pure unit
+--    else do
+--    -- to check not only top
+--    i <- liftEff $ randomInt 0 (length els - 1)
+--    maybe (pure unit) go $ els !! i
+--  where
+--  go el = do
+--    config <- getConfig
+--    old <- length <$> getCellTitles
+--    sequence $ leftClick el
+--    els <- byCss config.cell.trash >>= findElements
+--    if null els
+--      then pure unit
+--      else do
+--      await "cell has not been deleted" do
+--        new <- length <$> getCellTitles
+--        pure $ new == old - one
+--      deleteAllCells
 
-makeExploreCell :: Check Unit
-makeExploreCell = getConfig >>= _.newCellMenu >>> _.exploreButton >>> makeCell
-
-makeSearchCell :: Check Unit
-makeSearchCell = getConfig >>= _.newCellMenu >>> _.searchButton >>> makeCell
-
-makeQueryCell :: Check Unit
-makeQueryCell = getConfig >>= _.newCellMenu >>> _.queryButton >>> makeCell
-
-deleteAllCells :: Check Unit
-deleteAllCells = do
-  config <- getConfig
-  els <- byCss config.cell.trash >>= findElements
-  if null els
-    then pure unit
-    else do
-    -- to check not only top
-    i <- liftEff $ randomInt 0 (length els - 1)
-    maybe (pure unit) go $ els !! i
-  where
-  go el = do
-    config <- getConfig
-    old <- length <$> getCells
-    sequence $ leftClick el
-    els <- byCss config.cell.trash >>= findElements
-    if null els
-      then pure unit
-      else do
-      await "cell has not been deleted" do
-        new <- length <$> getCells
-        pure $ new == old - one
-      deleteAllCells
-
-deleteCells :: Check (List Element) -> Check Unit
-deleteCells cellsCheck = do
-  config <- getConfig
-  cells <- cellsCheck
-  els <- catMaybes <$> (traverse traverseFn cells)
-  case els of
-    Nil -> successMsg "Ok, cells deleted"
-    Cons el _ -> do
-      sequence $ leftClick el
-      await "Cell has not been deleted (deleteCell)" do
-        count <- length <$> cellsCheck
-        pure $ length cells == count + one
-      deleteCells cellsCheck
-  where
-  traverseFn cell = do
-    config <- getConfig
-    byCss config.cell.trash >>= findChild cell
-
-
-withCell :: Check Unit -> Context
-withCell make action = do
-  make
-  action
-  deleteAllCells
-
-withExploreCell :: Context
-withExploreCell = withCell makeExploreCell
-
-withSearchCell :: Context
-withSearchCell = withCell makeSearchCell
-
-withQueryCell :: Context
-withQueryCell = withCell makeQueryCell
 
 cellHasRun :: Check Boolean
 cellHasRun = do
@@ -202,14 +133,6 @@ queryEvaluated queryStr action = do
   await "error during evaluating query" cellHasRun
   action
 
-withFileOpened :: Context -> String -> Context
-withFileOpened context file action = context $ fileOpened file action
-
-
-withFileOpenedExplore :: String -> Context
-withFileOpenedExplore = withFileOpened withExploreCell
-
-
 fileSearched :: String -> String -> Context
 fileSearched file query action = do
   config <- getConfig
@@ -225,60 +148,13 @@ fileSearched file query action = do
   await "error during search file" cellHasRun
   action
 
-
-
-withFileSearched :: String -> String -> Context
-withFileSearched file query action = withSearchCell $ fileSearched file query action
-
-withSmallZipsSearchedAll :: Context
-withSmallZipsSearchedAll action = do
-  config <- getConfig
-  withFileSearched config.explore.smallZips config.searchCell.allQuery action
-
-withSmallZipsOpened :: Context
-withSmallZipsOpened action =
-  getConfig >>= _.explore >>> _.smallZips >>> flip withFileOpenedExplore action
-
-
-withSmallZipsQueriedAll :: Context
-withSmallZipsQueriedAll action = withQueryCell do
-  config <- getConfig
-  queryEvaluated config.query.smallZipsAll action
-
-withOlympicsOpened :: Context
-withOlympicsOpened action =
-  getConfig >>= _.explore >>> _.olympics >>> flip withFileOpenedExplore action
-
-withNestedOpened :: Context
-withNestedOpened action =
-  getConfig >>= _.explore >>> _.nested >>> flip withFileOpenedExplore action
-
-
-
-withChart :: String -> Context
-withChart query action =
-  withQueryCell $ queryEvaluated query do
-    waitNextVizCell >>= sequence <<< leftClick
-    await "Viz cell has not been created" do
-      ((eq 2) <<< length) <$> getCells
-    action
-
-withSmallZipsAllChart :: Context
-withSmallZipsAllChart action =
-  getConfig >>= _.query >>> _.smallZipsAll >>> flip withChart action
-
-
-withFlatVizChart :: Context
-withFlatVizChart action =
-  getConfig >>= _.query >>> _.flatVizAll >>> flip withChart action
-
-withFlatVizMeasures :: Context
-withFlatVizMeasures action =
-  getConfig >>= _.query >>> _.flatVizMeasures >>> flip withChart action
-
-withFlatVizOneOption :: Context
-withFlatVizOneOption action =
-  getConfig >>= _.query >>> _.flatVizOneOption >>> flip withChart action
+--withChart :: String -> Context
+--withChart query action =
+--  withQueryCell $ queryEvaluated query do
+--    waitNextVizCell >>= sequence <<< leftClick
+--    await "Viz cell has not been created" do
+--      ((eq 2) <<< length) <$> getCellTitles
+--    action
 
 tableChanged :: String -> Check Boolean
 tableChanged old = do
@@ -298,16 +174,3 @@ afterTableReload html = do
   config <- getConfig
   wait (checker $ tableChanged html) (config.selenium.waitTime * 10)
 
-withFileList :: Context -> Context
-withFileList context action = context do
-  config <- getConfig
-  visible <- fileListVisible
-  if visible
-    then pure unit
-    else do
-    expander <- getElementByCss config.explore.expand "expand button not found"
-    sequence $ leftClick expander
-  action
-
-withFileListExplore :: Context
-withFileListExplore = withFileList withExploreCell

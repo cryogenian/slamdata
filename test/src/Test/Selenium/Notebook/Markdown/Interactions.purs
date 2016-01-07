@@ -4,33 +4,13 @@ import Prelude
 
 import Control.Apply ((*>))
 import Test.Selenium.Monad (Check(), getConfig, getModifierKey)
-import Test.Selenium.ActionSequence (selectAll, keys, focus)
-import Test.Selenium.Notebook.Contexts (makeCell)
+import Test.Selenium.ActionSequence (selectAll, keys)
 import Test.Selenium.Interactions (changeFieldValue, uncheckBox, checkBox, pushRadioButton, selectFromDropdown)
-import Selenium.ActionSequence (leftClick)
+import Test.Selenium.Notebook.Interactions (provideMd, provideMdQuery)
 import Test.Selenium.Notebook.Markdown.Finders (findMdField, findMdQueryField, findMdPlayButton, findMdQueryPlayButton, findCreateMdQueryCellButton)
 import Selenium.Monad (sequence)
-
 import Data.Traversable (traverse) as T
 import Data.Foldable (traverse_) as F
-
-provideMd :: String -> Check Unit
-provideMd md = focusMdField *> sequence (keys $ md ++ " ")
-
-focusMdField :: Check Unit
-focusMdField = findMdField >>= focus >>> sequence
-
-changeMd :: String -> Check Unit
-changeMd md = do
-  focusMdField
-  modifierKey <- getModifierKey
-  sequence $ selectAll modifierKey *> keys md
-
-playMd :: Check Unit
-playMd = findMdPlayButton >>= sequence <<< leftClick
-
-playMdQuery :: Check Unit
-playMdQuery = findMdQueryPlayButton >>= sequence <<< leftClick
 
 provideMdForFormWithAllInputTypes :: Check (Array Unit)
 provideMdForFormWithAllInputTypes =
@@ -49,7 +29,6 @@ provideMdForFormWithAllInputTypes =
     , "type = (x)Gold ()Silver ()Bronze"
     ]
 
-
 provideMdForFormWithEvaluatedContent :: Check (Array Unit)
 provideMdForFormWithEvaluatedContent =
     T.traverse provideMd
@@ -59,15 +38,6 @@ provideMdForFormWithEvaluatedContent =
       , "type = (!`SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1`) !`SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1`"
       , "gender = [!`SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1`] !`SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` `"
       ]
-
-createMdQueryCell :: Check Unit
-createMdQueryCell = findCreateMdQueryCellButton >>= leftClick >>> sequence
-
-focusMdQueryField :: Check Unit
-focusMdQueryField = findMdQueryField >>= focus >>> sequence
-
-provideMdQuery :: String -> Check Unit
-provideMdQuery query = focusMdQueryField *> (sequence $ keys $ query ++ " ")
 
 provideMdQueryWhichFiltersUsingFormValues :: Check Unit
 provideMdQueryWhichFiltersUsingFormValues = F.traverse_ provideMdQuery
@@ -89,5 +59,3 @@ changeAllFieldsInMdFormWithEvaluatedContent = do
   pushRadioButton "Gold"
   selectFromDropdown "country" "GDR"
 
-insertMdCell :: Check Unit
-insertMdCell = getConfig >>= _.newCellMenu >>> _.mdButton >>> makeCell

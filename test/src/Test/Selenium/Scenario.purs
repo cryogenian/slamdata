@@ -38,7 +38,7 @@ scenario epic before after title knownIssues actions = sectionMsg title' *> befo
   fail = errorMsg "Ok despite known issues, if these issues are resolved please remove them"
 
   actions' :: Check Unit
-  actions' | knownIssues == [] = actions
+  actions' | knownIssues == [] = actions *> after
   actions' = do
     e <- attempt actions
     case e of

@@ -43,8 +43,7 @@ import Text.Chalky
 import Test.Effects (TestEffects())
 
 import Test.Selenium.SauceLabs as SL
-import Test.Selenium.File as File
-
+import Test.Selenium.Notebook as Notebook
 
 makeDownloadCapabilities :: Browser -> String -> Aff TestEffects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do
@@ -84,7 +83,7 @@ test config =
                                      , defaultTimeout: config.selenium.waitTime
                                      , driver: driver} do
       setWindowSize { height: 1280, width: 1024 }
-      File.test
+      --File.test
       Notebook.test
     quit driver
     either throwError (const $ pure unit) res

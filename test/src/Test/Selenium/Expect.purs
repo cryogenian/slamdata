@@ -34,3 +34,4 @@ toMatch = { f: flip test, s: "match regular expression" }
 
 toContain :: Expectation String String
 toContain = { f: contains, s: "contain" }
+

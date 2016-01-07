@@ -173,7 +173,7 @@ filterByContent els filterFn =
 
 waitTime :: Int -> Check Unit
 waitTime t = do
-  warnMsg "waitTime is used"
+  warnMsg $ "Warning: Tests manually waited for " ++ show t ++ " milliseconds."
   later t $ pure unit
 
 saveInitialScreenshot :: Check Unit
@@ -229,8 +229,10 @@ isMac :: Check Boolean
 isMac = map (eq "Darwin") getPlatformString
 
 attrFail :: forall a. Locator -> String -> Check a
-attrFail loc attr = throwError $
-  error $ "Couldn't find non null " ++ show attr
-                                    ++ " attribute for element located by "
-                                    ++ showLocator loc
-                                    ++ "."
+attrFail loc attr =
+  throwError $ error $ "Couldn't find non null "
+    ++ show attr
+    ++ " attribute for element located by "
+    ++ showLocator loc
+    ++ "."
+
