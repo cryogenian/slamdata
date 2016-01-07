@@ -65,11 +65,14 @@ glyph g = H.i [ P.classes [ B.glyphicon, g ] ] [ ]
 glyphInactive :: forall p f. ClassName -> HTML p f
 glyphInactive g = H.i [ P.classes [B.glyphicon, Rc.glyphiconInactive, g ] ] []
 
-icon :: forall p f. ClassName -> String -> HTML p f
-icon c href = H.div [ P.classes [ Rc.navIcon ] ]
-              [ H.a [ P.href href ]
-                [ glyph c ]
-              ]
+icon :: forall p f. ClassName -> String -> String -> HTML p f
+icon c href label =
+  H.div
+    [ P.classes [ Rc.navIcon ], P.title label, ARIA.label label ]
+    [ H.a
+        [ P.href href ]
+        [ glyph c ]
+    ]
 
 icon' :: forall p f. ClassName -> String -> String -> HTML p f
 icon' c title href = H.div [ P.classes [ Rc.navIcon ] ]
@@ -83,11 +86,12 @@ icon' c title href = H.div [ P.classes [ Rc.navIcon ] ]
 logo :: forall p f. Maybe String -> HTML p f
 logo mbVersion =
   H.div [ P.class_ Rc.navLogo ]
-  [ H.a ( [ P.href Config.slamDataHome ] <> title mbVersion )
+  [ H.a ( [ P.href Config.slamDataHome ] <> title mbVersion <> label mbVersion)
     [ H.img [ P.src "img/logo.svg" ] ]
   ]
   where
   title = maybe [ ] (singleton <<< P.title <<< (append "Version "))
+  label = maybe [ ] (singleton <<< ARIA.label <<< (append "SlamData Version "))
 
 closeButton :: forall p f. (ET.Event ET.MouseEvent -> E.EventHandler f) -> HTML p f
 closeButton handler =
