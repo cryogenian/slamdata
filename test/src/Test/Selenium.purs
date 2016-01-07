@@ -85,7 +85,6 @@ test config =
                                      , driver: driver} do
       setWindowSize { height: 1280, width: 1024 }
       File.test
--- ATTENTION, this test won't pass until we update notebook to new halogen
---      Notebook.test
+      Notebook.test
     quit driver
     either throwError (const $ pure unit) res
