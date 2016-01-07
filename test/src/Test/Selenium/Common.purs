@@ -136,14 +136,11 @@ loaded elCheck = do
 checkFileElements :: Check Unit
 checkFileElements = getConfig >>= _.locators >>> checkElements
 
-checkNotebookElements :: Check Unit
-checkNotebookElements = getConfig >>= _.notebookLocators >>> checkElements
-
 fileComponentLoaded :: Check Unit
 fileComponentLoaded = loaded checkFileElements
 
 notebookLoaded :: Check Unit
-notebookLoaded = loaded checkNotebookElements
+notebookLoaded = loaded (pure unit)
 
 -- | Is a modal dialog shown?
 waitModalShown :: Check Unit
