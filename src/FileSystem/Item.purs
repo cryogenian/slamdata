@@ -35,6 +35,7 @@ import Halogen.HTML.Core (HTML(), ClassName(), Prop())
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action, modify, gets, liftAff')
 import Halogen.Themes.Bootstrap3 as B
 
@@ -229,7 +230,7 @@ showToolbar it =
 
   toolItem func label cls =
     H.li_ [ H.button [ E.onClick (\_ -> pure $ action func)
-                     , Cp.ariaLabel label
+                     , ARIA.label label
                      , P.title label
                      ]
             [ H.i [ P.title label

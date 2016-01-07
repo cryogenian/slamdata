@@ -30,6 +30,7 @@ import Halogen
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps.Indexed as Cp
 
@@ -83,7 +84,7 @@ render config state =
             , E.onValueChange (E.input (Choose <<< fromJust <<< stringToInt))
             , P.disabled $ config.disableWhen len
             ]
-           <> maybe [] (singleton <<< Cp.ariaLabel) config.ariaLabel)
+           <> maybe [] (singleton <<< ARIA.label) config.ariaLabel)
   (defOption <> (zipWith (option selected) opts (range 0 len)))
   where
   len :: Int

@@ -32,6 +32,7 @@ import Halogen (ParentHTML())
 import Halogen.HTML.Events as E
 import Halogen.HTML as H
 import Halogen.HTML.Properties as P
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import Render.Common (glyph, glyphInactive)
@@ -62,17 +63,21 @@ controls cs =
   H.div
     [ P.classes [B.pullRight, CSS.cellControls] ]
     [ H.button
-        [ P.title if cs.isCollapsed then "Show cell options" else "Hide cell options"
+        [ P.title cellOptionsLabel
+        , ARIA.label cellOptionsLabel
         , E.onClick (E.input_ ToggleCollapsed)
         ]
         [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
     , H.button
         [ P.title "Delete cell"
+        , ARIA.label "Delete cell"
         , E.onClick (E.input_ TrashCell)
         ]
         [ glyph B.glyphiconTrash ]
     , glyph B.glyphiconChevronLeft
     ]
+  where
+  cellOptionsLabel = if cs.isCollapsed then "Show cell options" else "Hide cell options"
 
 statusBar :: Boolean -> CellState -> CellHTML
 statusBar hasResults cs =
@@ -81,7 +86,8 @@ statusBar hasResults cs =
     $ [ H.button
           [ P.classes [B.btn, B.btnPrimary, button.className]
           , E.onClick (E.input_ RunCell)
-          -- , P.ariaLabel button.label
+          , P.title button.label
+          , ARIA.label button.label
           ]
           [ glyph button.glyph ]
       , H.div
@@ -123,6 +129,7 @@ refreshButton :: CellHTML
 refreshButton =
   H.button
     [ P.title "Refresh cell content"
+    , ARIA.label "Refresh cell content"
     , P.classes [CSS.refreshButton]
     , E.onClick (E.input_ RefreshCell)
     ]
@@ -134,25 +141,32 @@ toggleMessageButton cs =
   then Nothing
   else Just $
     H.button
-      [ P.title if cs.isCollapsed then "Show messages" else "Hide messages"
+      [ P.title label
+      , ARIA.label label
       , E.onClick (E.input_ ToggleMessages)
       ]
       [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
+  where
+  label = if cs.isCollapsed then "Show messages" else "Hide messages"
 
 toggleCachingButton :: CellState -> Maybe CellHTML
 toggleCachingButton cs =
   (cs ^? _cachingEnabled) <#> \cachingEnabled ->
     H.button
-      [ P.title if cachingEnabled then "Disable Caching" else "Enable Caching"
+      [ P.title $ label cachingEnabled
+      , ARIA.label $ label cachingEnabled
       , E.onClick (E.input_ ToggleCaching)
       ]
       [ B.glyphiconPushpin # if cachingEnabled then glyph else glyphInactive
       ]
+  where
+  label cachingEnabled = if cachingEnabled then "Disable Caching" else "Enable Caching"
 
 linkButton :: CellHTML
 linkButton =
   H.button
     [ P.title "Embed cell output"
+    , ARIA.label "Embed cell output"
     , E.onClick (E.input_ ShareCell)
     ]
     [ H.span [ P.class_ CSS.shareButton ] [] ]

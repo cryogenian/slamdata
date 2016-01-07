@@ -32,6 +32,7 @@ import Halogen.HTML as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
 import Halogen.HTML.Properties as P
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import Config.Paths as Config
@@ -170,7 +171,7 @@ btnCancel :: State -> ComponentHTML Query
 btnCancel state =
   H.button [ P.classes [ B.btn ]
            , E.onClick (E.input_ Dismiss)
-           , Cp.ariaLabel "Cancel download"
+           , ARIA.label "Cancel download"
            , P.title "Cancel download"
            ]
   [ H.text "Cancel" ]
@@ -192,7 +193,7 @@ btnDownload state =
          , E.onClick (\_ -> E.preventDefault $>
                             action (NewTab url)
                      )
-         , Cp.ariaLabel "Proceed download"
+         , ARIA.label "Proceed download"
          , P.title "Proceed download"
          ]
      [ H.text "Download" ]
@@ -258,3 +259,4 @@ optionsJSON opts =
                      , H.text label
                      ]
           ]
+

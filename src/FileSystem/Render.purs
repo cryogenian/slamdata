@@ -23,11 +23,11 @@ import Control.MonadPlus (guard)
 import Data.Functor (($>))
 import Data.Lens ((^.))
 
-import Halogen.CustomProps as Cp
 import Halogen.HTML as H
 import Halogen.HTML.Core (HTML(), ClassName())
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events as E
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.Properties as P
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
@@ -91,7 +91,7 @@ toolbar state =
   file =
     H.li_ [ H.button [ E.onClick (\ev -> pure $ action (UploadFile ev.target))]
             [ H.i [ P.title "Upload file"
-                  , Cp.ariaLabel "Upload file"
+                  , ARIA.label "Upload file"
                   , P.classes [ B.glyphicon
                               , B.glyphiconFile
                               , Rc.hiddenFileInput
@@ -111,7 +111,7 @@ toolbar state =
 toolItem :: forall p f. (Unit -> f Unit)
             -> String -> ClassName -> HTML p (f Unit)
 toolItem func title icon =
-  H.li_ [ H.button [ Cp.ariaLabel title
+  H.li_ [ H.button [ ARIA.label title
                    , P.title title
                    , E.onClick (\_ -> pure $ func unit)
                    ]
