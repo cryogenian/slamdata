@@ -37,10 +37,11 @@ import Notebook.Effects (NotebookEffects())
 main :: Eff NotebookEffects Unit
 main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
+  AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
+  AceConfig.set AceConfig.themePath (Config.baseUrl ++ "js/ace")
   browserFeatures <- detectBrowserFeatures
   runAff throwException (const (pure unit)) $ do
     app <- runUI comp $ installedState $ initialState { browserFeatures: browserFeatures }
     onLoad (appendToBody app.node)
     forkAff $ routeSignal app.driver
     forkAff $ autoSaveSignal app.driver
-
