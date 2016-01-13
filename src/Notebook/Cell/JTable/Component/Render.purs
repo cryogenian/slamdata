@@ -29,7 +29,6 @@ import Data.Int as Int
 import Data.Json.JTable as JT
 import Data.Maybe (Maybe(..), isNothing, fromMaybe)
 import Data.String (fromChar)
-import Data.Tuple (Tuple(..))
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -45,6 +44,20 @@ import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.JTable.Component.Query
 import Notebook.Cell.JTable.Component.State
 
+-- | A value that holds all possible states for an inputtable value: the current
+-- | actual value, and a possible pending user-entered or selected value.
+type InputValue a =
+  { current :: a
+  , pending :: Maybe (Either String a)
+  }
+
+-- | Converts an `InputValue` into a string for use as a HTML form field value.
+fromInputValue :: forall a. (Show a) => InputValue a -> String
+fromInputValue { current, pending } =
+  case pending of
+    Nothing -> show current
+    Just pending' -> either id show pending'
+
 render :: State -> ComponentHTML QueryP
 render { result: Nothing } = H.div_ []
 render st@{ result: Just result } =
@@ -54,9 +67,9 @@ render st@{ result: Just result } =
     , H.div
         [ P.class_ CSS.pagination ]
         [ prevButtons (p.page <= 1)
-        , pageField (Tuple st.page p.page) p.totalPages
+        , pageField { current: p.page, pending: st.page } p.totalPages
         , nextButtons (p.page >= p.totalPages)
-        , pageSizeControls st.isEnteringPageSize (Tuple st.pageSize p.pageSize)
+        , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
         ]
     ]
 
@@ -84,7 +97,7 @@ prevButtons enabled =
         [ glyph B.glyphiconStepBackward ]
     ]
 
-pageField :: Tuple (Maybe (Either String Int)) Int -> Int -> ComponentHTML QueryP
+pageField :: InputValue Int -> Int -> ComponentHTML QueryP
 pageField pageValue totalPages =
   H.div
     [ P.classes [CSS.pageInput] ]
@@ -92,7 +105,7 @@ pageField pageValue totalPages =
         [ H.text "Page"
         , H.input
             [ P.classes [B.formControl, B.inputSm]
-            , P.value (toValue pageValue)
+            , P.value (fromInputValue pageValue)
             , E.onValueInput (E.input (\x -> right <<< SetCustomPage x))
             ]
         , H.text $ "of " ++ (show totalPages)
@@ -122,7 +135,7 @@ nextButtons enabled =
         [ glyph B.glyphiconFastForward ]
     ]
 
-pageSizeControls :: Boolean -> Tuple (Maybe (Either String Int)) Int -> ComponentHTML QueryP
+pageSizeControls :: Boolean -> InputValue Int -> ComponentHTML QueryP
 pageSizeControls showCustom pageSize =
   H.div
     [ P.classes [CSS.pageSize] ]
@@ -131,7 +144,7 @@ pageSizeControls showCustom pageSize =
         ++ [ if showCustom
              then H.input
                 [ P.classes [B.formControl, B.inputSm]
-                , P.value (toValue pageSize)
+                , P.value (fromInputValue pageSize)
                 , E.onValueInput (E.input (\v -> right <<< SetCustomPageSize v))
                 ]
              else H.select
@@ -148,7 +161,7 @@ pageSizeControls showCustom pageSize =
     ]
   where
 
-  sizeNum = fromMaybe 10 $ Int.fromString (toValue pageSize)
+  sizeNum = fromMaybe 10 $ Int.fromString (fromInputValue pageSize)
 
   sizeValues = [10, 25, 50, 100]
 
@@ -173,9 +186,3 @@ pageSizeControls showCustom pageSize =
     if isNothing (A.elemIndex sizeNum sizeValues)
     then [ H.option [P.selected true] [H.text (show sizeNum)] ]
     else []
-
-toValue :: Tuple (Maybe (Either String Int)) Int -> String
-toValue (Tuple custom actual) =
-  case custom of
-    Nothing -> show actual
-    Just custom' -> either id show custom'
