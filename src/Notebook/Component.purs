@@ -46,7 +46,7 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
 import Data.String as Str
-import Data.These (These(..), theseRight)
+import Data.These (These(..), theseRight, theseLeft)
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..), fst, snd)
 
@@ -188,7 +188,7 @@ eval (Publish next) = do
     Nothing -> pure next
     Just path -> do
       let publish name = newTab $ mkNotebookURL name path (NA.Load ReadOnly)
-      -- liftEff $ maybe (pure unit) publish $ theseLeft state.name
+      liftEff $ maybe (pure unit) (publish <<< nameFromDirName) $ theseLeft state.name
       pure next
 eval (Reset fs dir next) = do
   let nb = initialNotebook fs
@@ -323,19 +323,14 @@ saveNotebook _ = get >>= \st -> case st.path of
         save path newName json
       Both oldName newName -> do
         save path oldName json
-        if newName == dropExt oldName
+        if newName == nameFromDirName oldName
           then pure oldName
           else rename path oldName newName
 
     modify (_name .~ This savedName)
-    liftEff $ replaceLocation $ mkNotebookURL (dropExt savedName) path (NA.Load Editable)
+    liftEff $ replaceLocation $ mkNotebookURL (nameFromDirName savedName) path (NA.Load Editable)
 
   where
-
-  dropExt :: Pathy.DirName -> String
-  dropExt dirName =
-    let name = Pathy.runDirName dirName
-    in Str.take (Str.length name - Str.length Config.notebookExtension - 1) name
 
   -- Finds a new name for a notebook in the specified parent directory, using
   -- a name value as a basis to start with.
@@ -359,3 +354,11 @@ saveNotebook _ = get >>= \st -> case st.path of
         newPath = dir </> Pathy.dir' newName'
     liftAff $ Quasar.move (R.Directory oldPath) (Right newPath)
     pure newName'
+
+-- | Takes a `DirName` for a saved notebook and returns the name part without
+-- | the `.slam` extension.
+nameFromDirName :: Pathy.DirName -> String
+nameFromDirName dirName =
+  let name = Pathy.runDirName dirName
+  in Str.take (Str.length name - Str.length Config.notebookExtension - 1) name
+
