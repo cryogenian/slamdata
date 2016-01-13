@@ -15,39 +15,38 @@ limitations under the License.
 -}
 
 module Notebook.Cell.Search.Component.State
-  ( SearchState()
-  , initialSearchState
-  , SearchStateP()
+  ( State()
+  , initialState
+  , _searchString
+  , _running
+  , StateP()
   ) where
 
 import Prelude
-import Data.Functor.Coproduct
 
-import Halogen
+import Data.Lens (LensP(), lens)
 
-import Notebook.Cell.Common.EvalQuery as NC
+import Halogen (InstalledState())
+
 import Notebook.Cell.Search.Component.Query as SQ
 import Notebook.Common (Slam())
 import Notebook.FileInput.Component as FI
 
-type SearchState =
+type State =
   { searchString :: String
   , running :: Boolean
   }
 
-initialSearchState :: SearchState
-initialSearchState =
+initialState :: State
+initialState =
   { searchString: ""
   , running: false
   }
 
-type SearchStateP =
-  InstalledState
-    SearchState
-    FI.State
-    (Coproduct
-      NC.CellEvalQuery
-      SQ.SearchQuery)
-    FI.Query
-    Slam
-    Unit
+_searchString :: LensP State String
+_searchString = lens _.searchString (_ { searchString = _ })
+
+_running :: LensP State Boolean
+_running = lens _.running (_ { running = _ })
+
+type StateP = InstalledState State FI.State SQ.Query FI.Query Slam Unit

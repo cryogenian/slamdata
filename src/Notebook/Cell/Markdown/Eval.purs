@@ -20,7 +20,6 @@ import Prelude
 
 import Control.Bind ((<=<))
 import Control.Monad.Aff (attempt)
-import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.State.Trans (StateT(), evalStateT, get, modify)
@@ -29,6 +28,7 @@ import Data.Argonaut.Core (Json())
 import Data.Argonaut.Core as JSON
 import Data.Array as A
 import Data.Either (Either(..), either)
+import Data.Functor.Aff (liftAff)
 import Data.List (List(), fromList, toList, head)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (mempty)
@@ -39,8 +39,8 @@ import Data.StrMap as SM
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Parser as SD
 
-import Model.CellId (CellId(), cellIdToString)
-import Model.Port (Port(..))
+import Notebook.Cell.CellId (CellId(), cellIdToString)
+import Notebook.Cell.Port (Port(..))
 import Model.Resource (Resource(..))
 
 import Notebook.Cell.Common.EvalQuery (CellEvalResult(), CellEvalInput())

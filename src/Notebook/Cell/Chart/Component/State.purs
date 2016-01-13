@@ -22,14 +22,15 @@ import Halogen.ECharts (EChartsState(), EChartsQuery())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Common (Slam())
 
-type ChartState =
+type State =
   { width :: Int
   , height :: Int
   }
-type ChartStateP =
-  InstalledState ChartState EChartsState CellEvalQuery EChartsQuery Slam Unit
 
-initialState :: ChartState
+type StateP =
+  InstalledState State EChartsState CellEvalQuery EChartsQuery Slam Unit
+
+initialState :: State
 initialState =
   { width: 600
   , height: 400

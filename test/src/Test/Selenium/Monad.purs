@@ -18,24 +18,28 @@ module Test.Selenium.Monad where
 
 import Prelude
 
-import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Class
 import Control.Monad.Reader.Trans
+
+import Data.Functor.Aff (liftAff)
 import Data.List (List(), length, uncons, (:))
+import Data.List.Unsafe (head) as U
 import Data.Maybe (maybe, fromMaybe, Maybe(..))
+
+import Graphics.EasyImage as GE
+import Graphics.ImageDiff as GI
+
 import Platform (getPlatform, runOs, runPlatform)
+
 import Selenium (showLocator)
 import Selenium.Key (metaKey, controlKey)
 import Selenium.Monad (Selenium(), byCss, byXPath, findElements, getAttribute)
 import Selenium.Types (ControlKey(), Locator(), Element())
+
 import Test.Config (Config())
 import Test.Effects (SeleniumEffects())
-
-import qualified Data.List.Unsafe (head) as U
-import qualified Graphics.ImageDiff as GI
-import qualified Graphics.EasyImage as GE
 
 type Check = Selenium SeleniumEffects (config :: Config)
 

@@ -26,23 +26,29 @@ import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Eff.Exception (message, Error())
 import Control.Monad.Eff.Ref (REF())
 import Control.UI.Browser (clearValue, select)
+
 import Data.Array (null, filter)
 import Data.Date (Now())
 import Data.Either (either, Either(..))
 import Data.Foldable (any)
 import Data.Foreign (parseJSON)
 import Data.Foreign.Class (readProp)
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
 import Data.Lens ((^.), (.~), (?~))
 import Data.Maybe (Maybe(..), isNothing, isJust)
 import Data.Path.Pathy ((</>), dir)
 import Data.String.Regex as Rx
 import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
+
+import Halogen
+
+import Network.HTTP.Affjax (AJAX())
+
 import Dialog.Mount.Query
 import Dialog.Mount.Render
 import Dialog.Mount.State
-import Halogen
 import Model.Resource as R
-import Network.HTTP.Affjax (AJAX())
 import Quasar.Aff as API
 import Utils.URI (toURI)
 
@@ -56,15 +62,15 @@ comp = component render eval
 
 eval :: forall e. Eval Query State Query (Slam e)
 eval (ClearValue el next) = do
-  liftEff' $ clearValue el
+  liftEff $ clearValue el
   pure next
 eval (SelectElement el next) = do
-  liftEff' $ select el
+  liftEff $ select el
   pure next
 eval (UpdateConnectionURI uri next) = do
   state <- get
   case uri of
-    "" -> modify (const $ initialState state.parent)
+    "" -> set (initialState state.parent)
     _ -> modify fn
   pure next
   where
@@ -95,7 +101,7 @@ eval (Save next) = do
   let resource = R.Database $ state.parent </> dir state.name
   modify (_inProgress .~ true)
   modify (_externalValidationError .~ Nothing)
-  result <- liftAff' $ attempt $ API.saveMount resource state.connectionURI
+  result <- liftAff $ attempt $ API.saveMount resource state.connectionURI
   case result of
     Left err -> do
       modify (_externalValidationError ?~ msg err)

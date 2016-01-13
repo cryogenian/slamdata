@@ -37,7 +37,7 @@ import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Getters
 import Test.Selenium.Finders (findSingleGracefully)
 
-import qualified Data.String.Regex as R
+import Data.String.Regex as R
 
 checkFileList :: Context -> Check Unit
 checkFileList ctx = ctx do

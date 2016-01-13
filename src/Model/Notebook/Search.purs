@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.Notebook.Search
+module Notebook.Model.Search
   ( queryToSQL
   ) where
 
@@ -24,6 +24,7 @@ import Control.Bind (join)
 
 import Data.Array (filter, catMaybes, head, nub)
 import Data.Foldable
+import Data.Int as Int
 import Data.List (fromList, List())
 import Data.Maybe
 import Data.Semiring.Free
@@ -196,7 +197,7 @@ qUnQ s op v = pars $
 
 needUnq :: String -> Boolean
 needUnq s =
-  fromMaybe false ((show >>> (== s)) <$> Utils.stringToInt s)
+  fromMaybe false ((show >>> (== s)) <$> Int.fromString s)
   || fromMaybe false ((show >>> (== s)) <$> Utils.stringToNumber s)
   || s == "true"
   || s == "false"

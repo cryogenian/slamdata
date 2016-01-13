@@ -38,36 +38,39 @@ module Notebook.Component.State
   , _browserFeatures
   , _viewingCell
   , _path
+  , _saveTrigger
   ) where
 
 import Prelude
 
-import Data.Argonaut (Json())
-import Data.Array (sortBy, head, reverse)
+import Data.Array as A
+import Data.Array.Unsafe as U
 import Data.BrowserFeatures (BrowserFeatures())
-import Data.Foldable (foldMap, foldl)
-import Data.Lens (LensP(), lens, (^.))
-import Data.List (List(..), snoc, filter, catMaybes)
+import Data.Foldable (foldMap, foldr, maximum)
+import Data.Lens (LensP(), lens)
+import Data.List as L
+import Data.List (List(..))
 import Data.Map as M
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
+import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as S
-import Data.These (These(..), theseRight)
+import Data.These (These(..), theseLeft)
 import Data.Tuple (Tuple(..), fst)
-import Data.Visibility (Visibility(..))
 
 import Halogen
 
 import Model.AccessType (AccessType(..))
-import Model.CellId (CellId(..), runCellId)
-import Model.CellType (CellType(..))
-import Model.Notebook as M
-import Model.Port (Port())
+import Notebook.Cell.CellId (CellId(..), runCellId)
+import Notebook.Cell.CellType (CellType(..), AceMode(..), linkedCellType)
+import Notebook.Model as M
+import Notebook.Cell.Model as Cell
 
-import Notebook.Cell.Ace.Component (aceComponent)
+import Notebook.Component.Query (NotebookQuery())
+import Notebook.Cell.Ace.Component (AceEvaluator(), aceComponent)
 import Notebook.Cell.Chart.Component (chartComponent)
-import Notebook.Cell.Component (CellComponent(), CellStateP(), CellQueryP(), initEditorCellState, initResultsCellState)
+import Notebook.Cell.Component (CellComponent(), CellState(), CellStateP(), CellQueryP(), initEditorCellState, initResultsCellState)
 import Notebook.Cell.Explore.Component (exploreComponent)
 import Notebook.Cell.JTable.Component (jtableComponent)
 import Notebook.Cell.Markdown.Component (markdownComponent)
@@ -88,11 +91,12 @@ type NotebookState =
   , cells :: List CellDef
   , dependencies :: M.Map CellId CellId
   , activeCellId :: Maybe CellId
-  , name :: These String String
-  , path :: P.DirPath
+  , name :: These P.DirName String
+  , path :: Maybe P.DirPath
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
   , viewingCell :: Maybe CellId
+  , saveTrigger :: Maybe (NotebookQuery Unit -> Slam Unit)
   }
 
 -- | Constructs a default `NotebookState` value.
@@ -103,11 +107,12 @@ initialNotebook browserFeatures =
   , cells: mempty
   , dependencies: M.empty
   , activeCellId: Nothing
-  , name: This Config.newNotebookName
+  , name: That Config.newNotebookName
   , isAddingCell: false
   , browserFeatures
   , viewingCell: Nothing
-  , path: P.rootDir
+  , path: Nothing
+  , saveTrigger: Nothing
   }
 
 -- | A counter used to generate `CellId` values.
@@ -134,11 +139,11 @@ _activeCellId = lens _.activeCellId _{activeCellId = _}
 -- | The current notebook name. When the value is `This` is has yet to be saved.
 -- | When the value is `That` it has been saved. When the value is `Both` a new
 -- | name has been entered but it has not yet been saved with the new name.
-_name :: LensP NotebookState (These String String)
+_name :: LensP NotebookState (These P.DirName String)
 _name = lens _.name _{name = _}
 
 -- | The path to the notebook in the filesystem
-_path :: LensP NotebookState P.DirPath
+_path :: LensP NotebookState (Maybe P.DirPath)
 _path = lens _.path _{path = _}
 
 -- | Toggles the display of the new cell menu.
@@ -155,18 +160,21 @@ _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 _viewingCell :: LensP NotebookState (Maybe CellId)
 _viewingCell = lens _.viewingCell _{viewingCell = _}
 
+_saveTrigger :: LensP NotebookState (Maybe (NotebookQuery Unit -> Slam Unit))
+_saveTrigger = lens _.saveTrigger _{saveTrigger = _}
+
 -- | The specific `SlotConstructor` type for cells in the notebook.
 type CellConstructor = SlotConstructor CellStateP CellQueryP Slam CellSlot
 
 -- | A record used to represent cell definitions in the notebook.
-type CellDef = { id :: CellId, ctor :: CellConstructor }
+type CellDef = { id :: CellId, ty :: CellType, ctor :: CellConstructor }
 
 -- | Adds a new cell to the notebook.
 -- |
 -- | Takes the current notebook state, the type of cell to add, and an optional
 -- | parent cell ID.
 addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
-addCell cellType parent st = fst $ addCell' cellType parent st
+addCell cellType parent st = fst $ addCellChain cellType (maybe [] pure parent) st
 
 -- | Adds a new cell to the notebook.
 -- |
@@ -174,51 +182,55 @@ addCell cellType parent st = fst $ addCell' cellType parent st
 -- | parent cell ID and returns the modified notebook state and the new cell ID.
 addCell' :: CellType -> Maybe CellId -> NotebookState -> Tuple NotebookState CellId
 addCell' cellType parent st =
-  let editorId = CellId st.fresh
-      resultsId = editorId + one
-      initEditorState =
-        installedState $
-          (initEditorCellState st.accessType Visible)
-            { cachingEnabled = defaultCachingEnabled cellType
-            }
-      initResultsState = installedState $ initResultsCellState st.accessType Visible
-      dependencies = M.insert resultsId editorId st.dependencies
-  in Tuple
-    st
-      { fresh = st.fresh + 2
-      , cells = st.cells
-          `snoc` mkCellDef editor editorId initEditorState
-          `snoc` mkCellDef results resultsId initResultsState
-      , dependencies =
-            maybe dependencies (flip (M.insert editorId) dependencies) parent
-      , isAddingCell = false
-      }
-    editorId
+  U.head <$> addCellChain cellType (maybe [] pure parent) st
+
+addCellChain :: CellType -> Array CellId -> NotebookState -> Tuple NotebookState (Array CellId)
+addCellChain cellType parents st =
+  let cellId = CellId st.fresh
+      parent = A.last parents
+      parents' = parents `A.snoc` cellId
+      newState = st
+        { fresh = st.fresh + 1
+        , cells = st.cells `L.snoc` mkCellDef cellType cellId
+        , dependencies = maybe st.dependencies (flip (M.insert cellId) st.dependencies) parent
+        , isAddingCell = false
+        }
+  in case linkedCellType cellType of
+      Nothing -> Tuple newState parents'
+      Just nextCellType -> addCellChain nextCellType parents' newState
   where
 
-  defaultCachingEnabled :: CellType -> Maybe Boolean
-  defaultCachingEnabled Query = Just false
-  defaultCachingEnabled Search = Just false
-  defaultCachingEnabled _ = Nothing
-
-  editor :: CellType -> CellId -> CellComponent
-  editor Markdown _ = aceComponent Markdown markdownEval "ace/mode/markdown"
-  editor Explore _ = exploreComponent
-  editor Search _ = searchComponent
-  editor Query _ = aceComponent Query queryEval "ace/mode/sql"
-  editor Viz _ = vizComponent
-
-  results :: CellType -> CellId -> CellComponent
-  results Markdown cellId = markdownComponent cellId st.browserFeatures
-  results Viz _ = chartComponent
-  results _ _ = jtableComponent
-
-  mkCellDef :: (CellType -> CellId -> CellComponent) -> CellId -> CellStateP -> CellDef
-  mkCellDef mkComp cellId initialState =
-    let component = mkComp cellType cellId
+  mkCellDef :: CellType -> CellId -> CellDef
+  mkCellDef cellType cellId =
+    let component = cellTypeComponent cellType cellId st.browserFeatures
+        initialState = installedState (cellTypeInitialState cellType) { accessType = st.accessType }
     in { id: cellId
+       , ty: cellType
        , ctor: SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
        }
+
+cellTypeComponent :: CellType -> CellId -> BrowserFeatures -> CellComponent
+cellTypeComponent (Ace at) _ _ = aceComponent at (aceEvalMode at)
+cellTypeComponent Explore _ _ = exploreComponent
+cellTypeComponent Search _ _ = searchComponent
+cellTypeComponent Viz _ _ = vizComponent
+cellTypeComponent Chart _ _ = chartComponent
+cellTypeComponent Markdown cellId bf = markdownComponent cellId bf
+cellTypeComponent JTable _ _ = jtableComponent
+
+cellTypeInitialState :: CellType -> CellState
+cellTypeInitialState (Ace SQLMode) = initEditorCellState { cachingEnabled = Just false }
+cellTypeInitialState (Ace _) = initEditorCellState
+cellTypeInitialState Explore = initEditorCellState
+cellTypeInitialState Search = initEditorCellState { cachingEnabled = Just false }
+cellTypeInitialState Viz = initEditorCellState
+cellTypeInitialState Chart = initResultsCellState
+cellTypeInitialState Markdown = initResultsCellState
+cellTypeInitialState JTable = initResultsCellState
+
+aceEvalMode :: AceMode -> AceEvaluator
+aceEvalMode MarkdownMode = markdownEval
+aceEvalMode SQLMode = queryEval
 
 -- | Removes a set of cells from the notebook. Any cells that depend on a cell
 -- | in the set of provided cells will also be removed.
@@ -227,8 +239,8 @@ addCell' cellType parent st =
 -- | state.
 removeCells :: S.Set CellId -> NotebookState -> NotebookState
 removeCells cellIds st = st
-    { cells = filter f st.cells
-    , dependencies = M.fromList $ filter g $ M.toList st.dependencies
+    { cells = L.filter f st.cells
+    , dependencies = M.fromList $ L.filter g $ M.toList st.dependencies
     }
   where
   cellIds' :: S.Set CellId
@@ -262,7 +274,7 @@ findParent cellId st = M.lookup cellId st.dependencies
 -- | state.
 findChildren :: CellId -> NotebookState -> S.Set CellId
 findChildren parentId st =
-  S.fromList $ map fst $ filter f $ M.toList st.dependencies
+  S.fromList $ map fst $ L.filter f $ M.toList st.dependencies
   where
   f :: Tuple CellId CellId -> Boolean
   f (Tuple _ cellId) = cellId == parentId
@@ -277,60 +289,42 @@ findDescendants cellId st =
   let children = findChildren cellId st
   in children <> foldMap (flip findDescendants st) children
 
-fromModel :: BrowserFeatures -> M.Notebook -> NotebookState
-fromModel browserFeatures model =
-  { fresh: fresh
-  , accessType: ReadOnly
-  , cells: cells
-  , dependencies: model ^. M._dependencies
-  , activeCellId: Nothing
-  , name: This Config.newNotebookName
-  , isAddingCell: false
-  , browserFeatures
-  , viewingCell: Nothing
-  , path: P.rootDir
-  }
-  where
-  -- Take greatest cellId and add one to it
-  fresh :: Int
-  fresh =
-    fromMaybe zero
-    $ head
-    $ sortBy (\a b -> compare b a)
-    $ map (runCellId <<< (^. M._cellId)) (model ^. M._cells)
-
-  values :: M.Map CellId Port
-  values =
-    M.fromList
-    $ catMaybes
-    $ foldl (\acc cell -> Cons (valueFromModel  cell) acc) Nil
-    $ reverse (model ^. M._cells)
-
-  valueFromModel :: M.Cell -> Maybe (Tuple CellId Port)
-  valueFromModel cell =
-    map (Tuple (cell ^. M._cellId))
-    $ constructPort (cell ^. M._cellType) (cell ^. M._cache) (cell ^. M._state)
-
-  -- It has no idea about components, halogen etc. Probably should live in
-  -- `Model.Port`
-  constructPort :: CellType -> Maybe Json -> Json -> Maybe Port
-  constructPort _ _ _ = Nothing
-
-  cells :: List CellDef
-  cells =
-    foldl (\acc cell -> Cons (cellDefFromModel cell) acc) Nil
-    $ reverse (model ^. M._cells)
-
-  -- Have no idea how to implement this function. Is constructing `InstalledState`
-  -- directly from `Model.Notebook.Cell.state/cache` right way to do this?
-  cellDefFromModel :: M.Cell -> CellDef
-  cellDefFromModel model = unsafeCoerce unit
-
+-- | Finds the current notebook path, if the notebook has been saved.
 notebookPath :: NotebookState -> Maybe P.DirPath
-notebookPath state =
-  theseRight state.name <#> \name ->
-    state.path
-      P.</> P.dir name
-      P.<./> Config.notebookExtension
+notebookPath state = do
+  path <- state.path
+  name <- theseLeft state.name
+  pure $ path </> P.dir' name
 
-import Unsafe.Coerce
+-- | Reconstructs a notebook state from a notebook model.
+fromModel
+  :: BrowserFeatures
+  -> Maybe P.DirPath
+  -> Maybe P.DirName
+  -> M.Notebook
+  -> Tuple (Array Cell.Model) NotebookState
+fromModel browserFeatures path name { cells, dependencies } =
+  Tuple
+    cells
+    ({ fresh: maybe 0 runCellId $ (map (+ one) <<< maximum) $ map _.cellId cells
+    , accessType: ReadOnly
+    , cells: foldr (Cons <<< cellDefFromModel) Nil cells
+    , dependencies
+    , activeCellId: Nothing
+    , name: maybe (That Config.newNotebookName) This name
+    , isAddingCell: false
+    , browserFeatures
+    , viewingCell: Nothing
+    , path
+    , saveTrigger: Nothing
+    } :: NotebookState)
+  where
+  cellDefFromModel :: Cell.Model -> CellDef
+  cellDefFromModel { cellId, cellType } =
+    let component = cellTypeComponent cellType cellId browserFeatures
+        initialState = installedState (cellTypeInitialState cellType)
+    in { id: cellId
+       , ty: cellType
+       , ctor: SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
+       }
+

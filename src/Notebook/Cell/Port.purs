@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.Port
+module Notebook.Cell.Port
   ( Port(..)
   , ChartPort()
   , _SlamDown

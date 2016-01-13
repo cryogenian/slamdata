@@ -4,19 +4,14 @@ import Prelude
 
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
-import Control.MonadPlus (guard)
 import Data.Array (last)
-import Data.Either (Either(..))
 import Data.List (length)
-import Data.Maybe (Maybe(..), maybe)
 import Data.Traversable (traverse)
 
-import Selenium.Types
 import Selenium.Monad
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Combinators (tryToFind)
 
-import Test.Config
 import Test.Selenium.ActionSequence
 import Test.Selenium.Monad
 import Test.Selenium.Log
@@ -27,8 +22,8 @@ import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Viz (actualCanvasScreenshot)
 import Test.Selenium.Notebook.Markdown.Interactions (insertMdCell)
 
-import qualified Config as SDCfg
-import qualified Data.String as S
+import Config as SDCfg
+import Data.String as S
 
 checkMarkdownViz :: Check Unit
 checkMarkdownViz = onlyFirefox do

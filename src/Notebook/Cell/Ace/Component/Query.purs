@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Ace.Component.Query (AceQueryP()) where
+module Notebook.Cell.Ace.Component.Query (QueryP()) where
 
 import Prelude
 
@@ -26,4 +26,4 @@ import Ace.Halogen.Component (AceQuery())
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 
-type AceQueryP = Coproduct CellEvalQuery (ChildF Unit AceQuery)
+type QueryP = Coproduct CellEvalQuery (ChildF Unit AceQuery)

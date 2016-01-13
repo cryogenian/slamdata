@@ -10,7 +10,7 @@ var gulp = require("gulp"),
     trimlines = require("gulp-trimlines"),
     less = require("gulp-less"),
     sequence = require("run-sequence"),
-    path = require("path");
+    run = require("gulp-run");
 
 var slamDataSources = [
   "src/**/*.purs",
@@ -129,9 +129,22 @@ gulp.task("bundle-test",
             main: "Test.Main"
         });
     });
-
 });
 
+gulp.task("bundle-property-tests", ["test-make"], function() {
+    return purescript.pscBundle({
+      src: "output/**/*.js",
+      output: "tmp/js/property-tests.js",
+      module: "Test.Property",
+      main: "Test.Property"
+    });
+});
+
+gulp.task("property-tests", ["bundle-property-tests"], function () {
+  run("node tmp/js/property-tests.js", { verbosity: 3 })
+    .exec()
+    .pipe(gulp.dest("output"));
+});
 
 var mkWatch = function(name, target, files) {
   gulp.task(name, [target], function() {
@@ -151,4 +164,4 @@ gulp.task("less", function() {
 mkWatch("watch-less", "less", ["less/**/*.less"]);
 
 // gulp.task("default", ["add-headers", "trim-whitespace", "less", "bundle"]);
-gulp.task("default", ["less", "bundle"]);
+gulp.task("default", ["less", "property-tests", "bundle"]);

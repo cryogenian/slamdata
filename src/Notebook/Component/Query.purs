@@ -18,10 +18,15 @@ module Notebook.Component.Query (NotebookQuery(..)) where
 
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Maybe (Maybe())
-import Model.CellId (CellId())
-import Model.CellType (CellType())
-import Model.Resource (Resource())
+import Data.These (These())
+import Data.Path.Pathy (DirName())
+
 import Model.AccessType (AccessType())
+
+import Notebook.Cell.CellId (CellId())
+import Notebook.Cell.CellType (CellType())
+
+import Utils.Path (FilePath(), DirPath())
 
 -- | GetNameToSave returns name if it hasn't been saved.
 -- | If there is no need to saving notebook name returns `Nothing`
@@ -29,10 +34,13 @@ data NotebookQuery a
   = AddCell CellType a
   | RunActiveCell a
   | ToggleAddCellMenu a
-  | LoadResource BrowserFeatures Resource a
-  | GetNameToSave (Maybe String -> a)
+  | GetNameToSave (Maybe DirName -> a)
+  | GetPath (Maybe DirPath -> a)
   | SetViewingCell (Maybe CellId) a
   | SetName String a
   | SetAccessType AccessType a
-  | ExploreFile BrowserFeatures Resource a
+  | ExploreFile BrowserFeatures FilePath a
   | Publish a
+  | LoadNotebook BrowserFeatures DirPath a
+  | SaveNotebook a
+  | Reset BrowserFeatures DirPath a

@@ -25,17 +25,20 @@ import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Free (Free())
 import Control.UI.Browser (reload)
+
 import Data.Array (elemIndex, singleton, sort, nub)
 import Data.Date (Now())
 import Data.Either (Either(..), either)
 import Data.Functor (($>))
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
 import Data.Lens ((^.), (%~), (.~), (?~), lens, LensP())
 import Data.Maybe (Maybe(..), isNothing, isJust, maybe)
 import Data.Monoid (mempty)
 import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
 import Data.String as S
 import Data.Void (Void())
-import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+
 import Halogen
 import Halogen.CustomProps as Cp
 import Halogen.HTML as H
@@ -43,8 +46,11 @@ import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
-import Model.Resource as R
+
 import Network.HTTP.Affjax (AJAX())
+
+import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import Model.Resource as R
 import Quasar.Aff as API
 import Render.Common
 import Render.CssClasses as Rc
@@ -241,13 +247,13 @@ eval (Submit next) = do
   state <- get
   let src = state ^. _initial
       tgt = R.getPath $ renameSlam state
-  result <- liftAff' $ attempt (API.move src tgt)
+  result <- liftAff $ attempt (API.move src tgt)
   case result of
     Left e ->
       modify (_error ?~ message e)
     Right _ -> do
       modify (_error .~ Nothing)
-      liftEff' reload
+      liftEff reload
   pure next
 eval (NameTyped str next) = do
   modify (_name .~ str)
@@ -278,7 +284,7 @@ dirItemClicked res =
   case R.getPath res of
     Left _ -> pure unit
     Right dir -> do
-      siblings <- liftAff' $ API.children dir
+      siblings <- liftAff $ API.children dir
       modify $ (_dir .~ dir)
            <<< (_showList .~ false)
            <<< (_siblings .~ siblings)

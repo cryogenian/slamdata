@@ -34,7 +34,7 @@ import Data.String.Regex as Rx
 import Data.StrMap as SM
 
 import Model.Resource as R
-import Model.Port as Port
+import Notebook.Cell.Port as Port
 import Notebook.Cell.Common.EvalQuery as CEQ
 import Notebook.Common (Slam())
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.ChartOptions.Pie where
+module Notebook.Cell.Chart.ChartOptions.Pie where
 
 import Prelude
 
@@ -33,9 +33,9 @@ import Data.String (split)
 import Data.Tuple (Tuple(..), snd, fst)
 import ECharts
 import Math (floor)
-import Model.ChartAxis as Ax
-import Model.ChartConfiguration (ChartConfiguration())
-import Model.ChartOptions.Common
+import Notebook.Cell.Chart.Axis as Ax
+import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration())
+import Notebook.Cell.Chart.ChartOptions.Common
 
 buildPie :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Option
 buildPie axises conf =

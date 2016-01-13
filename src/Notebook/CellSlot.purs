@@ -22,7 +22,7 @@ import Prelude
 
 import Data.Generic (Generic, gEq, gCompare)
 
-import Model.CellId (CellId())
+import Notebook.Cell.CellId (CellId())
 
 newtype CellSlot = CellSlot CellId
 

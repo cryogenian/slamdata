@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.Aggregation where
+module Notebook.Cell.Chart.Aggregation where
 
 import Prelude
 

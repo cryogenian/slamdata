@@ -46,13 +46,13 @@ import Test.Config
 import FileSystem.Routing (Routes(..), routing)
 import FileSystem.Routing.Search (searchPath)
 import Routing (matchHash)
-import qualified Data.Array as Arr
-import qualified Data.String.Regex as R
-import qualified Data.String as Str
-import qualified Data.Char as Ch
-import qualified Data.StrMap as SM
-import qualified Data.Set as S
-import qualified Config as SDCfg
+import Data.Array as Arr
+import Data.String.Regex as R
+import Data.String as Str
+import Data.Char as Ch
+import Data.StrMap as SM
+import Data.Set as S
+import Config as SDCfg
 import Test.Selenium.ActionSequence
 import Test.Selenium.Common
 import Test.Selenium.Monad

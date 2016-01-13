@@ -25,8 +25,8 @@ module Utils.URI
 import Prelude
 import Data.Array (null)
 import Data.Maybe (Maybe(), isJust, maybe)
-import qualified Data.String as S
-import qualified Data.String.Regex as Rx
+import Data.String as S
+import Data.String.Regex as Rx
 
 
 type URIParams =

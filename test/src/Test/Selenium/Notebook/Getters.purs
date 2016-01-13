@@ -38,7 +38,7 @@ import Test.Selenium.Monad
 import Test.Selenium.Types
 import Test.Selenium.Finders (findSingleGracefully)
 
-import qualified Data.String.Regex as R
+import Data.String.Regex as R
 
 newCellMenuExpanded :: Check Boolean
 newCellMenuExpanded = do

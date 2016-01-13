@@ -19,19 +19,20 @@ module FileSystem.Search where
 import Prelude
 
 import Control.Monad.Aff (Canceler(), Aff(), cancel, forkAff, later')
-import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error)
 import Control.MonadPlus (guard)
 import Control.UI.Browser (setLocation)
 
 import Data.Either (Either(..))
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
 import Data.Lens (lens, LensP(), (^.), (.~), (%~))
 import Data.Maybe (Maybe(..), isJust)
 import Data.Monoid (mempty)
 import Data.Path.Pathy (printPath, rootDir)
 import Data.These (theseLeft, thisOrBoth, theseRight, these, These(..))
 
-import Halogen (Component(), Eval(), ComponentHTML(), component, modify, get, liftAff')
+import Halogen (Component(), Eval(), ComponentHTML(), component, modify, get)
 import Halogen.HTML as H
 import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Forms as E
@@ -174,8 +175,8 @@ eval (Clear next) = do
 eval (Typed str next) = do
   state <- get
   let c = state ^. _timeout
-  liftAff' $ cancel c (error "timeout")
-  c' <- liftAff' $ forkAff
+  liftAff $ cancel c (error "timeout")
+  c' <- liftAff $ forkAff
         $ later' Config.searchTimeout $ submit
         $ (state # _value %~ (thisOrBoth str <<< theseRight))
   modify $ _value %~ (thisOrBoth str <<< theseRight)
@@ -183,7 +184,7 @@ eval (Typed str next) = do
   pure next
 eval (Submit next) = do
   state <- get
-  mbFn <- liftAff' $ submit state
+  mbFn <- liftAff $ submit state
   case mbFn of
     Nothing -> pure unit
     Just fn -> modify fn

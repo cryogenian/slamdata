@@ -9,8 +9,8 @@ import Selenium.Monad (byXPath, tryRepeatedlyTo, getText, findElements)
 import Selenium.Combinators (tryToFind)
 import Selenium.Types (Element())
 
-import qualified Data.Traversable (traverse, sequence) as T
-import qualified Data.Foldable (sequence_, traverse_) as F
+import Data.Traversable (traverse, sequence) as T
+import Data.Foldable (sequence_, traverse_) as F
 
 findMdField :: Check Element
 findMdField = tryToFind $ byXPath xPath

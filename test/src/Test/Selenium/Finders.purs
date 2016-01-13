@@ -15,7 +15,7 @@ import Test.Selenium.Common (attrFail)
 import Test.Selenium.Log (warnMsg)
 import Test.Selenium.Monad (Check(), findAtLeast, findSingle)
 
-import qualified Data.Traversable (traverse) as T
+import Data.Traversable (traverse) as T
 
 findElementIndexByText :: String -> Locator -> Check Int
 findElementIndexByText text locator = do

@@ -23,8 +23,10 @@ module Notebook.Cell.Ace.Component
 
 import Prelude
 
-import Control.Monad.Eff.Class (liftEff)
-
+import Data.Argonaut (encodeJson, decodeJson)
+import Data.Either (either)
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
 import Data.Maybe (Maybe(..), fromMaybe)
 
 import Halogen
@@ -38,7 +40,7 @@ import Ace.Halogen.Component (AceQuery(..), AceState(), aceConstructor)
 
 import Render.CssClasses as CSS
 
-import Model.CellType (CellType(), cellName, cellGlyph)
+import Notebook.Cell.CellType (AceMode(), aceMode, aceCellName, aceCellGlyph)
 
 import Notebook.Cell.Ace.Component.Query
 import Notebook.Cell.Ace.Component.State
@@ -48,10 +50,10 @@ import Notebook.Common (Slam())
 
 type AceEvaluator = CellEvalInput -> String -> Slam CellEvalResult
 
-aceComponent :: CellType -> AceEvaluator -> String -> Component CellStateP CellQueryP Slam
-aceComponent cellType run mode = makeEditorCellComponent
-  { name: cellName cellType
-  , glyph: cellGlyph cellType
+aceComponent :: AceMode -> AceEvaluator -> Component CellStateP CellQueryP Slam
+aceComponent cellType run = makeEditorCellComponent
+  { name: aceCellName cellType
+  , glyph: aceCellGlyph cellType
   , component: parentComponent render eval
   , initialState: installedState unit
   , _State: _AceState
@@ -64,7 +66,7 @@ aceComponent cellType run mode = makeEditorCellComponent
   render _ =
     H.div
       [ P.classes [CSS.cellInput, CSS.aceContainer] ]
-      [ H.Slot (aceConstructor aceSetup unit Nothing) ]
+      [ H.Slot (aceConstructor unit aceSetup Nothing) ]
 
   aceSetup :: Editor -> Slam Unit
   aceSetup editor = liftEff do
@@ -73,11 +75,18 @@ aceComponent cellType run mode = makeEditorCellComponent
     Editor.setAutoScrollEditorIntoView true editor
     Editor.setTheme "ace/theme/chrome" editor
     session <- Editor.getSession editor
-    Session.setMode mode session
+    Session.setMode (aceMode cellType) session
 
   eval :: Natural CellEvalQuery (ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit)
   eval (NotifyRunCell next) = pure next
   eval (EvalCell info k) = do
     content <- fromMaybe "" <$> query unit (request GetText)
-    result <- liftH $ liftAff' $ run info content
+    result <- liftAff $ run info content
     pure $ k result
+  eval (Save k) = do
+    content <- fromMaybe "" <$> query unit (request GetText)
+    pure $ k (encodeJson content)
+  eval (Load json next) = do
+    let text = fromMaybe "" $ either (const Nothing) id $ decodeJson json
+    query unit $ action (SetText text)
+    pure next

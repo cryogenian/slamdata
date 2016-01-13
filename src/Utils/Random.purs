@@ -17,18 +17,19 @@ limitations under the License.
 module Utils.Random where
 
 import Prelude
-import Control.Monad.Eff.Class (liftEff, MonadEff)
+
 import Control.Monad.Eff.Random (random, RANDOM())
+
+import Data.Foldable (Foldable, foldl)
+import Data.Functor.Eff (FunctorEff, liftEff)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (Monoid, mempty)
 import Data.Tuple (Tuple(..), snd)
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Foldable (Foldable, foldl)
-
 
 -- | Getting random element from any `Foldable` in any `MonadEff`
 -- | Returns `Nothing` if foldable is empty
 randomIn :: forall a m f e.
-            (Foldable f, Monad m, MonadEff (random :: RANDOM|e) m) =>
+            (Foldable f, Monad m, FunctorEff (random :: RANDOM|e) m) =>
             f a -> m (Maybe a)
 randomIn fa =
   map snd $ foldl foldFn (pure $ Tuple zero Nothing) fa
@@ -46,6 +47,6 @@ randomIn fa =
 
 -- | same as `randomIn` but returns `mempty` instead of `Nothing`
 randomInM :: forall a m f e.
-                (Foldable f, Monad m, MonadEff (random :: RANDOM|e) m, Monoid a) =>
+                (Foldable f, Monad m, FunctorEff (random :: RANDOM|e) m, Monoid a) =>
                 f a -> m a
 randomInM fa = fromMaybe mempty <$> randomIn fa

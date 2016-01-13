@@ -18,32 +18,36 @@ limitations under the License.
 module Test.Selenium.Notebook.Contexts where
 
 import Prelude
+
 import Control.Bind ((>=>))
 import Control.Monad.Eff.Random (randomInt)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Aff.Class (liftAff)
+
 import Data.Either (Either(..), either, isRight)
-import Data.List (List(..), length, null, (!!), catMaybes, filter)
-import Data.Foreign (readArray, readString)
-import Data.Maybe (Maybe(..), maybe)
 import Data.Foldable (foldl, traverse_)
+import Data.Foreign (readArray, readString)
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
+import Data.List (List(..), length, null, (!!), catMaybes, filter)
+import Data.Maybe (Maybe(..), maybe)
+import Data.String as S
+import Data.String.Regex as R
 import Data.Traversable (traverse)
+
 import Node.FS.Aff (mkdir)
-import Test.Config
+
 import Selenium.ActionSequence hiding (sequence)
+import Selenium.Combinators (checker, tryToFind)
+import Selenium.Monad
 import Selenium.MouseButton
 import Selenium.Types
-import Selenium.Monad
-import Selenium.Combinators (checker, tryToFind)
-import Test.Selenium.Common
-import Test.Selenium.Monad
-import Test.Selenium.Log
-import Test.Selenium.Notebook.Getters
+
+import Test.Config
 import Test.Selenium.ActionSequence (keys)
+import Test.Selenium.Common
 import Test.Selenium.File hiding (test)
-import qualified Data.String.Regex as R
-import qualified Data.String as S
-import qualified Config as SDConfig
+import Test.Selenium.Log
+import Test.Selenium.Monad
+import Test.Selenium.Notebook.Getters
 
 type Context = (Check Unit -> Check Unit)
 

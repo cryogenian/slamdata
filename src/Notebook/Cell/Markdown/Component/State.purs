@@ -14,15 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Component.State (MarkdownStateP()) where
+module Notebook.Cell.Markdown.Component.State where
 
 import Prelude
 
+import Data.Maybe (Maybe(..))
+
 import Halogen (InstalledState())
 
-import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQuery())
+import Text.Markdown.SlamDown (SlamDown())
+import Text.Markdown.SlamDown.Html (SlamDownState(), SlamDownQuery())
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Common (Slam())
 
-type MarkdownStateP = InstalledState SlamDownConfig SlamDownState CellEvalQuery SlamDownQuery Slam Unit
+type State = Maybe SlamDown
+
+initialState :: State
+initialState = Nothing
+
+type StateP = InstalledState State SlamDownState CellEvalQuery SlamDownQuery Slam Unit

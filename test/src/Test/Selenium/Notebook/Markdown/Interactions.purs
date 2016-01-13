@@ -11,8 +11,8 @@ import Selenium.ActionSequence (leftClick)
 import Test.Selenium.Notebook.Markdown.Finders (findMdField, findMdQueryField, findMdPlayButton, findMdQueryPlayButton, findCreateMdQueryCellButton)
 import Selenium.Monad (sequence)
 
-import qualified Data.Traversable (traverse) as T
-import qualified Data.Foldable (traverse_) as F
+import Data.Traversable (traverse) as T
+import Data.Foldable (traverse_) as F
 
 provideMd :: String -> Check Unit
 provideMd md = focusMdField *> sequence (keys $ md ++ " ")

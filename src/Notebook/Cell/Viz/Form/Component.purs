@@ -53,8 +53,8 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps.Indexed as Cp
-import Model.Aggregation (Aggregation(..), allAggregations)
-import Model.ChartConfiguration
+import Notebook.Cell.Chart.Aggregation (Aggregation(..), allAggregations)
+import Notebook.Cell.Chart.ChartConfiguration
 import Model.Select (OptionVal, Select(..))
 import Notebook.Cell.Viz.Form.Component.Render (gridClasses, GridClasses())
 import Notebook.Common (Slam(), forceRerender')
@@ -285,7 +285,7 @@ render (ChartConfiguration conf) =
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   (ChartConfiguration r) <- get
-  modify $ const c
+  set c
   forceRerender'
   synchronizeDimensions r.dimensions conf.dimensions
   synchronizeSeries r.series conf.series
@@ -299,11 +299,22 @@ eval (SetConfiguration c@(ChartConfiguration conf) next) = do
   synchronizeSeries :: Array JSelect -> Array JSelect -> FormDSL Unit
   synchronizeSeries = synchronize cpSeries
 
-  synchronize :: _ -> Array JSelect -> Array JSelect -> FormDSL Unit
+  synchronize
+    :: forall s
+     . ChildPath s ChildState (S.Query JCursor) ChildQuery Int ChildSlot
+    -> Array JSelect
+    -> Array JSelect
+    -> FormDSL Unit
   synchronize prism old new =
     traverse_ (syncByIndex prism old new) $ range 0 $ getLastIndex old new
 
-  syncByIndex :: _ -> Array JSelect -> Array JSelect -> Int -> FormDSL Unit
+  syncByIndex
+    :: forall s
+     . ChildPath s ChildState (S.Query JCursor) ChildQuery Int ChildSlot
+    -> Array JSelect
+    -> Array JSelect
+    -> Int
+    -> FormDSL Unit
   syncByIndex prism old new i =
     if isJust $ old !! i
     then maybe (pure unit) (void <<< query' prism i <<< action <<< S.SetSelect)

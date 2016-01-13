@@ -14,11 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.ChartType where
+module Notebook.Cell.Chart.ChartType where
 
 import Prelude
 
-import Data.Argonaut (EncodeJson, DecodeJson, decodeJson, fromString)
+import Data.Argonaut (fromString)
+import Data.Argonaut.Encode (EncodeJson)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Generic (Generic, gEq, gCompare)
 import Data.Either (Either(..))
 
@@ -52,6 +54,7 @@ instance eqChartType :: Eq ChartType where eq = gEq
 instance ordChartType :: Ord ChartType where compare = gCompare
 
 instance encodeJsonChartType :: EncodeJson ChartType where
-  encodeJson cT = fromString $ printChartType cT
+  encodeJson = fromString <<< printChartType
+
 instance decodeJsonChartType :: DecodeJson ChartType where
   decodeJson json = decodeJson json >>= parseChartType

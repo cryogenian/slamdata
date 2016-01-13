@@ -15,9 +15,7 @@ limitations under the License.
 -}
 
 module Quasar.Aff
-  ( makeNotebook
-  , loadNotebook
-  , children
+  ( children
   , mountInfo
   , move
   , reqHeadersToJSON
@@ -38,6 +36,8 @@ module Quasar.Aff
   , query'
   , count
 
+  , save
+  , load
   , RetryEffects()
   ) where
 
@@ -47,16 +47,15 @@ import Config as Config
 import Config.Paths as Config
 
 import Control.Apply (lift2)
-import Control.Bind ((>=>), (<=<))
+import Control.Bind ((>=>), (<=<), (=<<))
 import Control.Coroutine as CR
 import Control.Coroutine.Aff as ACR
 import Control.Monad (when)
 import Control.Monad.Aff (Aff(), attempt, runAff)
 import Control.Monad.Aff.AVar (AVAR())
-import Control.Monad.Eff.Class (liftEff, MonadEff)
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref (REF(), newRef, modifyRef, writeRef, readRef)
-import Control.Monad.Error.Class (throwError)
+import Control.Monad.Eff.Ref (REF(), newRef, modifyRef, readRef)
+import Control.Monad.Error.Class (MonadError, throwError)
 import Control.MonadPlus (guard)
 import Control.UI.Browser (encodeURIComponent)
 
@@ -67,24 +66,24 @@ import Data.Bifunctor (bimap, lmap)
 import Data.Date as Date
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl, for_)
-import Data.Foreign (Foreign(), F(), parseJSON)
+import Data.Foreign (F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
 import Data.Foreign.NullOrUndefined (runNullOrUndefined)
 import Data.Functor (($>))
+import Data.Functor.Eff (liftEff)
 import Data.Lens ((.~), (^.))
 import Data.List as L
 import Data.Maybe (Maybe(..), isJust, fromMaybe, maybe)
-import Data.Set as Set
-import Data.StrMap as SM
-import Data.Path.Pathy as P
 import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
+import Data.Set as Set
 import Data.String as S
+import Data.StrMap as SM
 import Data.Time (Milliseconds(..))
 import Data.Tuple (Tuple(..))
 
 import Model.Resource as R
-import Model.Notebook as N
 
 import Network.HTTP.Affjax
   ( Affjax(), AJAX(), AffjaxRequest(), AffjaxResponse(), RetryPolicy()
@@ -98,11 +97,7 @@ import Network.HTTP.MimeType.Common (applicationJSON)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
 
-import Unsafe.Coerce (unsafeCoerce)
-
 import Utils.Path as PU
-import Utils.Path ((<./>))
-
 
 newtype Listing = Listing (Array R.Resource)
 
@@ -117,7 +112,7 @@ instance listingIsForeign :: IsForeign Listing where
       >>> Listing
 
 instance listingRespondable :: Respondable Listing where
-  responseType = JSONResponse
+  responseType = Tuple Nothing JSONResponse
   fromResponse = read
 
 children :: forall e. PU.DirPath -> Aff (RetryEffects (ajax :: AJAX | e)) (Array R.Resource)
@@ -141,6 +136,7 @@ listing p =
         , timeout: Just 10000
         }
         (Config.metadataUrl </> p)
+        applicationJSON
 
 makeFile
   :: forall e
@@ -186,7 +182,7 @@ type RetryEffects e = (avar :: AVAR, ref :: REF, now :: Date.Now | e)
 slamjax :: forall e a b. (Requestable a, Respondable b) => AffjaxRequest a -> Affjax (RetryEffects e) b
 slamjax = retry defaultRetryPolicy affjax
 
-retryGet :: forall e a fd. (Respondable a) => P.Path P.Abs fd P.Sandboxed -> Affjax (RetryEffects e) a
+retryGet :: forall e a fd. (Respondable a) => P.Path P.Abs fd P.Sandboxed -> MimeType -> Affjax (RetryEffects e) a
 retryGet =
   getWithPolicy
     { shouldRetryWithStatusCode: not <<< succeeded
@@ -194,14 +190,14 @@ retryGet =
     , timeout: Just 30000
     }
 
-getOnce :: forall e a fd. (Respondable a) => P.Path P.Abs fd P.Sandboxed -> Affjax (RetryEffects e) a
+getOnce :: forall e a fd. (Respondable a) => P.Path P.Abs fd P.Sandboxed -> MimeType -> Affjax (RetryEffects e) a
 getOnce = getWithPolicy defaultRetryPolicy
 
 
-getWithPolicy :: forall e a fd. (Respondable a) => RetryPolicy -> P.Path P.Abs fd P.Sandboxed -> Affjax (RetryEffects e) a
-getWithPolicy policy u = do
+getWithPolicy :: forall e a fd. (Respondable a) => RetryPolicy -> P.Path P.Abs fd P.Sandboxed -> MimeType -> Affjax (RetryEffects e) a
+getWithPolicy policy u mime = do
   nocache <- liftEff $ Date.nowEpochMilliseconds
-  retry policy affjax defaultRequest { url = url' nocache }
+  retry policy affjax defaultRequest { url = url' nocache, headers = [Accept mime] }
   where
   url' nocache = url ++ symbol ++ "nocache=" ++ pretty nocache
   url = P.printPath u
@@ -247,7 +243,7 @@ reqHeadersToJSON = foldl go JS.jsonEmptyObject
 
 mountInfo :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) String
 mountInfo res = do
-  result <- getOnce mountPath
+  result <- getOnce mountPath applicationJSON
   if succeeded result.status
      then case parse result.response of
        Left err ->
@@ -267,7 +263,9 @@ mountInfo res = do
   parse :: String -> F String
   parse = parseJSON >=> prop "mongodb" >=> readProp "connectionUri"
 
-
+-- | Generates a new resource name based on a directory path and a name for the
+-- | resource. If the name already exists in the path a number is appended to
+-- | the end of the name.
 getNewName :: forall e. PU.DirPath -> String -> Aff (RetryEffects (ajax :: AJAX |e)) String
 getNewName parent name = do
   items <- attempt (children' parent) <#> either (const []) id
@@ -285,28 +283,6 @@ getNewName parent name = do
 
 exists' :: String -> Array R.Resource -> Boolean
 exists' name items = isJust $ Arr.findIndex (\r -> r ^. R._name == name) items
-
-
--- Make dummy file in notebook specific folder.
--- It must be interpreted as empty notebook by notebook
--- component. Similar approach used in opening of data files, this
--- will help us decouple file and notebook subapps.
-makeNotebook :: forall e. PU.DirPath -> Aff (RetryEffects (ajax :: AJAX |e)) String
-makeNotebook path = do
-  name <- getNewName path (Config.newNotebookName <> "." <> Config.notebookExtension)
-  result <- retryPut (notebookPath name) N.emptyNotebook ldJSON
-  if succeeded result.status
-    then pure $ Config.notebookUrl
-         <> "#" <> (PU.encodeURIPath $ P.printPath (path </> P.file name))
-         <> "/edit"
-    else throwError (Exn.error result.response)
-  where
-  notebookPath name =
-    Config.dataUrl
-      </> PU.rootify path
-      </> P.dir name
-      <./> Config.notebookExtension
-      </> P.file "index"
 
 move :: forall e. R.Resource -> PU.AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) PU.AnyPath
 move src tgt = do
@@ -407,29 +383,11 @@ forceDelete =
 
 getVersion :: forall e. Aff (RetryEffects (ajax :: AJAX |e)) (Maybe String)
 getVersion = do
-  serverInfo <- retryGet Config.Paths.serverInfoUrl
+  serverInfo <- retryGet Config.Paths.serverInfoUrl applicationJSON
   return $ either (const Nothing) Just (readProp "version" serverInfo.response)
 
 ldJSON :: MimeType
 ldJSON = MimeType "application/ldjson"
-
-loadNotebook :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) N.Notebook
-loadNotebook res = do
-  val <-
-    getResponse "error loading notebook" $ retryGet $
-      Config.dataUrl
-        </> PU.rootify (R.resourceDir res)
-        </> P.dir (R.resourceName res)
-        </> P.file "index"
-  case JS.decodeJson (foreignToJson val) of
-    Left err -> throwError $ Exn.error err
-    Right nb -> pure nb
-
-  where
--- TODO: Not this. either add to Argonaut, or make a Respondable Json instance
--- (requires "argonaut core" - https://github.com/slamdata/purescript-affjax/issues/16#issuecomment-93565447)
-  foreignToJson :: Foreign -> JS.Json
-  foreignToJson = unsafeCoerce
 
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
@@ -466,16 +424,16 @@ query :: forall e. R.Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) JS
 query res sql =
   if not $ R.isFile res
   then pure []
-  else extractJArray <$> (getResponse msg $ retryGet uriPath)
+  else extractJArray =<< getResponse msg (retryGet uriPath applicationJSON)
   where
   msg = "error in query"
   uriPath = mkURI res sql
 
 query' :: forall e. R.Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JS.JArray)
 query' res@(R.File _) sql = do
-  result <- retryGet (mkURI' res sql)
+  result <- retryGet (mkURI' res sql) applicationJSON
   pure if succeeded result.status
-       then Right (extractJArray result.response)
+       then JS.decodeJson <=< JS.jsonParser $ result.response
        else Left $ readError "error in query" result.response
 
 query' _ _ = pure $ Left "Query resource is not a file"
@@ -577,7 +535,7 @@ sample' :: forall e. R.Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (
 sample' res mbOffset mbLimit =
   if not $ R.isFile res
   then pure []
-  else extractJArray <$> (getResponse msg $ retryGet uri)
+  else extractJArray =<< getResponse msg (retryGet uri applicationJSON)
   where
   msg = "error getting resource sample"
   uri =
@@ -612,17 +570,11 @@ mkURI' res sql =
   </> P.dir (R.resourceName res)
   </> P.file ("?q=" <> encodeURIComponent (templated res sql))
 
-
 templated :: R.Resource -> SQL -> SQL
 templated res = S.replace "{{path}}" ("\"" <> R.resourcePath res <> "\"")
 
-extractJArray :: String -> JS.JArray
-extractJArray =
-  foldl folder [] <<< map JS.jsonParser <<< S.split "\n"
-  where
-  folder :: JS.JArray -> Either String JS.Json -> JS.JArray
-  folder agg (Right j) = agg ++ [j]
-  folder agg _ = agg
+extractJArray :: forall m. (MonadError Exn.Error m) => JS.Json -> m JS.JArray
+extractJArray = either (throwError <<< Exn.error) pure <<< JS.decodeJson
 
 getFields :: JS.Json -> Array String
 getFields json = Arr.filter (/= "") $ Arr.nub $ getFields' [] json
@@ -695,3 +647,28 @@ executeQuery sql cachingEnabled varMap inputResource outputResource = do
       { outputResource: R.mkFile $ Left $ P.rootDir </> info.sandboxedPath
       , plan: info.plan
       }
+
+-- | Saves a JSON value to a file.
+-- |
+-- | Even though the path is expected to be absolute it should not include the
+-- | `/data/fs` part of the path for the API.
+save
+  :: forall e
+   . PU.FilePath
+  -> JS.Json
+  -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
+save path json =
+  let apiPath = Config.Paths.dataUrl </> PU.rootifyFile path
+  in getResponse "error while saving file" (retryPut apiPath json ldJSON)
+
+-- | Loads a JSON value from a file.
+-- |
+-- | Even though the path is expected to be absolute it should not include the
+-- | `/data/fs` part of the path for the API.
+load
+  :: forall e
+   . PU.FilePath
+  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JS.Json)
+load path =
+  let apiPath = Config.Paths.dataUrl </> PU.rootifyFile path
+  in lmap Exn.message <$> attempt (getResponse "error loading notebook" (retryGet apiPath ldJSON))

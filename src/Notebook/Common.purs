@@ -16,30 +16,24 @@ limitations under the License.
 
 module Notebook.Common where
 
-import Prelude
+import Prelude (Applicative, pure, Unit(), unit)
 
 import Control.Monad.Aff (Aff())
-import Control.Monad.Eff (Eff())
-import Control.Monad.Free (Free())
-import Notebook.Effects (NotebookEffects())
-import Halogen
 
+import Halogen (ComponentDSL(), ParentDSL(), liftH)
+
+import Notebook.Effects (NotebookEffects())
 
 type Slam = Aff NotebookEffects
 
-
 forceRerender
-  :: forall s f g. (Applicative g) => Free (HalogenF s f g) Unit
-forceRerender = liftH $ pure unit
+  :: forall s f g
+   . (Applicative g)
+  => ComponentDSL s f g Unit
+forceRerender = liftH (pure unit)
 
 forceRerender'
-  :: forall s s' f f' g p. (Applicative g) => ParentDSL s s' f f' g p Unit
-forceRerender' = liftH $ liftH $ pure unit
-
-liftEff''
-  :: forall s s' f f' p. Natural (Eff NotebookEffects) (ParentDSL s s' f f' Slam p)
-liftEff'' = liftH <<< liftEff'
-
-liftAff''
-  :: forall s s' f f' p. Natural (Aff NotebookEffects) (ParentDSL s s' f f' Slam p)
-liftAff'' = liftH <<< liftAff'
+  :: forall s s' f f' g p
+   . (Applicative g)
+  => ParentDSL s s' f f' g p Unit
+forceRerender' = liftH (liftH (pure unit))

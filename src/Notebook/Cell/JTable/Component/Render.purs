@@ -18,8 +18,7 @@ module Notebook.Cell.JTable.Component.Render (render) where
 
 import Prelude
 
-import Control.Alt ((<|>))
-import Control.Bind ((=<<), join)
+import Control.Bind (join)
 
 import Data.Array as A
 import Data.Char (fromCharCode)
@@ -30,7 +29,6 @@ import Data.Int as Int
 import Data.Json.JTable as JT
 import Data.Maybe (Maybe(..), isNothing, fromMaybe)
 import Data.String (fromChar)
-import Data.These (These(), theseLeft, theseRight)
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -46,18 +44,32 @@ import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.JTable.Component.Query
 import Notebook.Cell.JTable.Component.State
 
-render :: JTableState -> ComponentHTML JTableQueryP
-render { json: Nothing } = H.div_ []
-render st@{ json: Just json } =
+-- | A value that holds all possible states for an inputtable value: the current
+-- | actual value, and a possible pending user-entered or selected value.
+type InputValue a =
+  { current :: a
+  , pending :: Maybe (Either String a)
+  }
+
+-- | Converts an `InputValue` into a string for use as a HTML form field value.
+fromInputValue :: forall a. (Show a) => InputValue a -> String
+fromInputValue { current, pending } =
+  case pending of
+    Nothing -> show current
+    Just pending' -> either id show pending'
+
+render :: State -> ComponentHTML QueryP
+render { result: Nothing } = H.div_ []
+render st@{ result: Just result } =
   let p = currentPageInfo st
   in H.div_
-    [ right <$> JT.renderJTable jTableOpts json
+    [ right <$> JT.renderJTable jTableOpts result.json
     , H.div
         [ P.class_ CSS.pagination ]
         [ prevButtons (p.page <= 1)
-        , pageField st.page p.totalPages
+        , pageField { current: p.page, pending: st.page } p.totalPages
         , nextButtons (p.page >= p.totalPages)
-        , pageSizeControls st.isEnteringPageSize st.pageSize
+        , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
         ]
     ]
 
@@ -67,7 +79,7 @@ jTableOpts = JT.jTableOptsDefault
   , columnOrdering = JT.alphaOrdering
   }
 
-prevButtons :: Boolean -> ComponentHTML JTableQueryP
+prevButtons :: Boolean -> ComponentHTML QueryP
 prevButtons enabled =
   H.div
     [ P.classes [B.btnGroup] ]
@@ -85,7 +97,7 @@ prevButtons enabled =
         [ glyph B.glyphiconStepBackward ]
     ]
 
-pageField :: These (Either String Int) Int -> Int -> ComponentHTML JTableQueryP
+pageField :: InputValue Int -> Int -> ComponentHTML QueryP
 pageField pageValue totalPages =
   H.div
     [ P.classes [CSS.pageInput] ]
@@ -93,19 +105,19 @@ pageField pageValue totalPages =
         [ H.text "Page"
         , H.input
             [ P.classes [B.formControl, B.inputSm]
-            , P.value $ fromMaybe "1" (theseToValue pageValue)
+            , P.value (fromInputValue pageValue)
             , E.onValueInput (E.input (\x -> right <<< SetCustomPage x))
             ]
         , H.text $ "of " ++ (show totalPages)
         ]
     ]
 
-submittable :: Array (ComponentHTML JTableQueryP) -> ComponentHTML JTableQueryP
+submittable :: Array (ComponentHTML QueryP) -> ComponentHTML QueryP
 submittable =
   H.form
     [ E.onSubmit (\_ -> E.preventDefault $> action (left <<< NotifyRunCell)) ]
 
-nextButtons :: Boolean -> ComponentHTML JTableQueryP
+nextButtons :: Boolean -> ComponentHTML QueryP
 nextButtons enabled =
   H.div
     [ P.classes [B.btnGroup] ]
@@ -123,7 +135,7 @@ nextButtons enabled =
         [ glyph B.glyphiconFastForward ]
     ]
 
-pageSizeControls :: Boolean -> These (Either String Int) Int -> ComponentHTML JTableQueryP
+pageSizeControls :: Boolean -> InputValue Int -> ComponentHTML QueryP
 pageSizeControls showCustom pageSize =
   H.div
     [ P.classes [CSS.pageSize] ]
@@ -132,7 +144,7 @@ pageSizeControls showCustom pageSize =
         ++ [ if showCustom
              then H.input
                 [ P.classes [B.formControl, B.inputSm]
-                , P.value $ fromMaybe "10" (theseToValue pageSize)
+                , P.value (fromInputValue pageSize)
                 , E.onValueInput (E.input (\v -> right <<< SetCustomPageSize v))
                 ]
              else H.select
@@ -149,7 +161,7 @@ pageSizeControls showCustom pageSize =
     ]
   where
 
-  sizeNum = fromMaybe 10 (Int.fromString =<< theseToValue pageSize)
+  sizeNum = fromMaybe 10 $ Int.fromString (fromInputValue pageSize)
 
   sizeValues = [10, 25, 50, 100]
 
@@ -174,9 +186,3 @@ pageSizeControls showCustom pageSize =
     if isNothing (A.elemIndex sizeNum sizeValues)
     then [ H.option [P.selected true] [H.text (show sizeNum)] ]
     else []
-
-theseToValue :: These (Either String Int) Int -> Maybe String
-theseToValue x =
-  let customValue = either id show <$> theseLeft x
-      actualValue = show <$> theseRight x
-  in customValue <|> actualValue

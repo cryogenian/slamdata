@@ -22,7 +22,7 @@ import Data.Functor.Coproduct (Coproduct())
 
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 
-data JTableQuery a
+data Query a
   = StepPage PageStep a
   | ChangePageSize String a
   | SetCustomPage String a
@@ -35,4 +35,4 @@ data PageStep
   | Next
   | Last
 
-type JTableQueryP = Coproduct CellEvalQuery JTableQuery
+type QueryP = Coproduct CellEvalQuery Query

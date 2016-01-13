@@ -22,12 +22,14 @@ import Control.Monad (when)
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Reader.Trans
+
+import Data.Either (either)
 import Data.Foldable (traverse_)
+import Data.Functor.Eff (liftEff)
 import Data.Maybe (maybe, isJust)
 import Data.Monoid (mempty)
-import Data.Either (either)
+
 import Selenium (setFileDetector, quit)
 import Selenium.Browser
 import Selenium.Builder
@@ -35,13 +37,14 @@ import Selenium.Capabilities
 import Selenium.FFProfile
 import Selenium.Monad (setWindowSize)
 import Selenium.Remote as SR
+
 import Test.Config (Config())
 import Text.Chalky
 import Test.Effects (TestEffects())
 
-import qualified Test.Selenium.SauceLabs as SL
-import qualified Test.Selenium.File as File
-import qualified Test.Selenium.Notebook as Notebook
+import Test.Selenium.SauceLabs as SL
+import Test.Selenium.File as File
+import Test.Selenium.Notebook as Notebook
 
 makeDownloadCapabilities :: Browser -> String -> Aff TestEffects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do

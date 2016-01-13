@@ -11,7 +11,7 @@ import Test.Selenium.Monad (Check(), findAtLeast)
 import Test.Selenium.Expectations (expectLabel, expectInputWithLabelTypeAndChecked, expectInputWithLabelTypeAndValue, expectDropdownWithLabelOptionsAndValue)
 import Test.Selenium.Notebook.Markdown.Finders (findMdQueryColumnCellsTextByHeading)
 
-import qualified Data.Foldable (traverse_) as F
+import Data.Foldable (traverse_) as F
 
 expectMdQueryResultsToBeFilteredByDefaultFormValues :: Check Unit
 expectMdQueryResultsToBeFilteredByDefaultFormValues = do

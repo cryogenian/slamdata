@@ -16,21 +16,18 @@ limitations under the License.
 
 module Notebook.Cell.Search.Component.Query
   ( SearchQuery(..)
-  , SearchQueryP()
+  , Query()
+  , QueryP()
   ) where
 
-import Prelude
-import Data.Functor.Coproduct
-import Halogen
+import Prelude (Unit())
+import Data.Functor.Coproduct (Coproduct())
+import Halogen (ChildF())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.FileInput.Component as FI
 
-data SearchQuery a
-  = UpdateSearch String a
+data SearchQuery a = UpdateSearch String a
 
-type SearchQueryP =
-  Coproduct
-    (Coproduct
-      CellEvalQuery
-      SearchQuery)
-    (ChildF Unit FI.Query)
+type Query = Coproduct CellEvalQuery SearchQuery
+
+type QueryP = Coproduct Query (ChildF Unit FI.Query)

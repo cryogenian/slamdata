@@ -45,7 +45,7 @@ foreign import data READ_FILE :: !
 
 foreign import fileListToArray :: FileList -> Array File
 foreign import name :: forall e. File -> Eff (file :: READ_FILE |e) String
-foreign import newReaderEff :: forall e. Eff e FileReader
+foreign import newReaderEff :: forall e. Eff (dom :: DOM |e) FileReader
 foreign import readAsBinaryStringEff :: forall e. File -> FileReader ->
                                         Eff (file :: READ_FILE |e) Unit
 foreign import resultImpl :: forall e a. Fn3 (Maybe a) (a -> Maybe a)
@@ -57,7 +57,7 @@ foreign import onloadEff :: forall e e'. FileReader -> Eff e Unit ->
 
 
 
-newReader :: forall e. Aff e FileReader
+newReader :: forall e. Aff (dom :: DOM |e) FileReader
 newReader = makeAff \_ k ->
   newReaderEff >>= \r -> k r
 
