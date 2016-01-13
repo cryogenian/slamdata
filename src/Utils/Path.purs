@@ -27,8 +27,10 @@ import Data.Char as Ch
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(), maybe, fromMaybe)
 import Data.Path.Pathy
-import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
+import Data.String
+  (split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
 import Data.String.Regex as Rgx
+import Data.Tuple (snd, fst)
 
 import Text.SlamSearch.Parser.Tokens (keyChars)
 
@@ -111,3 +113,19 @@ renderPath ap =
   renderFile path =
     printPath $ canonicalize $
     maybe (rootDir </> file "") (rootDir </>) (sandbox rootDir path)
+
+getNameStr :: AnyPath -> String
+getNameStr ap = either getNameStr' getNameStr' ap
+  where
+  getNameStr' :: forall b a s. Path a b s -> String
+  getNameStr' p = maybe "" (snd >>> nameOfFileOrDir) $ peel p
+
+nameOfFileOrDir :: Either DirName FileName -> String
+nameOfFileOrDir (Left (DirName name)) = name
+nameOfFileOrDir (Right (FileName name)) = name
+
+getDir :: AnyPath -> DirPath
+getDir ap = either getDir' getDir' ap
+  where
+  getDir' :: forall b. Path Abs b Sandboxed -> DirPath
+  getDir' = maybe rootDir fst <<< peel

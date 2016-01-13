@@ -20,12 +20,15 @@ module Dashboard.Component
   , fromNotebook
   , toDashboard
   , fromDashboard
+  , toRename
+  , fromRename
   , QueryP()
   , StateP()
   , ChildState()
   , ChildSlot()
   , ChildQuery()
   , DialogSlot()
+  , RenameSlot()
   , MenuSlot()
   , NotebookSlot()
   , module Dashboard.Component.State
@@ -70,6 +73,7 @@ import Dashboard.Component.State
 import Dashboard.Dialog.Component as Dialog
 import Dashboard.Menu.Component.State as Menu
 import Dashboard.Menu.Component.Query as Menu
+import Dashboard.Rename.Component as Rename
 import Model.AccessType (isReadOnly)
 import Notebook.Common (Slam())
 import Notebook.Component as Notebook
@@ -79,24 +83,62 @@ import Utils.DOM (documentTarget)
 
 type DialogSlot = Unit
 type NotebookSlot = Unit
+type RenameSlot = Unit
 data MenuSlot = MenuSlot
 
 derive instance genericMenuSlot :: Generic MenuSlot
 instance eqMenuSlot :: Eq MenuSlot where eq = gEq
 instance ordMenuSlot :: Ord MenuSlot where compare = gCompare
 
-type ChildSlot = Either MenuSlot (Either DialogSlot NotebookSlot)
-type ChildQuery = Coproduct Menu.QueryP (Coproduct Dialog.QueryP Notebook.NotebookQueryP)
-type ChildState g = Either (Menu.StateP g) (Either Dialog.StateP Notebook.NotebookStateP)
+type ChildSlot =
+  Either RenameSlot
+  (Either MenuSlot
+   (Either DialogSlot
+    NotebookSlot))
 
-cpDialog :: forall g. ChildPath Dialog.StateP (ChildState g) Dialog.QueryP ChildQuery DialogSlot ChildSlot
-cpDialog = cpR :> cpL
+type ChildQuery =
+  Coproduct Rename.Query
+  (Coproduct Menu.QueryP
+   (Coproduct Dialog.QueryP
+    Notebook.NotebookQueryP))
 
-cpNotebook :: forall g. ChildPath Notebook.NotebookStateP (ChildState g) Notebook.NotebookQueryP ChildQuery NotebookSlot ChildSlot
-cpNotebook = cpR :> cpR
+type ChildState g =
+  Either Rename.State
+  (Either (Menu.StateP g)
+   (Either Dialog.StateP
+    Notebook.NotebookStateP))
 
-cpMenu :: forall g. ChildPath (Menu.StateP g) (ChildState g) Menu.QueryP ChildQuery MenuSlot ChildSlot
-cpMenu = cpL
+cpRename
+  :: forall g
+   . ChildPath
+       Rename.State (ChildState g)
+       Rename.Query ChildQuery
+       RenameSlot ChildSlot
+cpRename = cpL
+
+cpDialog
+  :: forall g
+   . ChildPath
+       Dialog.StateP (ChildState g)
+       Dialog.QueryP ChildQuery
+       DialogSlot ChildSlot
+cpDialog = cpR :> cpR :> cpL
+
+cpNotebook
+  :: forall g
+   . ChildPath
+       Notebook.NotebookStateP (ChildState g)
+       Notebook.NotebookQueryP ChildQuery
+       NotebookSlot ChildSlot
+cpNotebook = cpR :> cpR :> cpR
+
+cpMenu
+  :: forall g
+   . ChildPath
+       (Menu.StateP g) (ChildState g)
+       Menu.QueryP ChildQuery
+       MenuSlot ChildSlot
+cpMenu = cpR :> cpL
 
 toDashboard :: (Unit -> Query Unit) -> QueryP Unit
 toDashboard = left <<< action
@@ -107,7 +149,9 @@ fromDashboard r = left $ request r
 
 toNotebook :: (Unit -> Notebook.NotebookQuery Unit) -> QueryP Unit
 toNotebook =
-  right <<< ChildF (injSlot cpNotebook unit)
+      right
+  <<< ChildF (injSlot cpNotebook unit)
+  <<< right
   <<< right
   <<< right
   <<< left
@@ -116,10 +160,26 @@ toNotebook =
 fromNotebook
   :: forall a. (forall i. (a -> i) -> Notebook.NotebookQuery i) -> QueryP a
 fromNotebook r =
-  right
+    right
   $ ChildF (injSlot cpNotebook unit)
   $ right
   $ right
+  $ right
+  $ left
+  $ request r
+
+toRename :: (Unit -> Rename.Query Unit) -> QueryP Unit
+toRename =
+      right
+  <<< ChildF (injSlot cpRename unit)
+  <<< left
+  <<< action
+
+fromRename
+  :: forall a. (forall i. (a -> i) -> Rename.Query i) -> QueryP a
+fromRename r =
+    right
+  $ ChildF (injSlot cpRename unit)
   $ left
   $ request r
 
@@ -174,6 +234,10 @@ render state =
               [ P.classes [ Rc.header, B.clearfix ] ]
               [ icon B.glyphiconBook ""
               , logo version
+              , H.slot' cpRename unit \_ ->
+                  { component: Rename.comp
+                  , initialState: Rename.initialState
+                  }
               ]
           ]
       ]
@@ -182,10 +246,9 @@ activateKeyboardShortcuts :: DashboardDSL Unit
 activateKeyboardShortcuts = do
   initialShortcuts <- gets _.notebookShortcuts
   platform <- liftEff shortcutPlatform
-
-  let labelShortcut shortcut = shortcut { label = Just $ print platform shortcut.shortcut }
-  let shortcuts = map labelShortcut initialShortcuts
-
+  let labelShortcut shortcut =
+        shortcut { label = Just $ print platform shortcut.shortcut }
+      shortcuts = map labelShortcut initialShortcuts
   modify (_notebookShortcuts .~ shortcuts)
 
   query' cpMenu MenuSlot $ left $ action $ HalogenMenu.SetMenu $ Menu.make shortcuts
@@ -193,23 +256,29 @@ activateKeyboardShortcuts = do
   subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do
     target <- documentTarget
     let evaluateMenuValue = emit <<< Left <<< action <<< EvaluateMenuValue
-    let addKeyboardListeners = emit <<< Left <<< action <<< AddKeyboardListener
-    let activate shrtct = onShortcut platform target (evaluateMenuValue shrtct.value) shrtct.shortcut
+        addKeyboardListeners = emit <<< Left <<< action <<< AddKeyboardListener
+        activate shrtct =
+          onShortcut platform target (evaluateMenuValue shrtct.value) shrtct.shortcut
     listeners <- traverse activate shortcuts
     traverse addKeyboardListeners listeners
     pure unit
 
 deactivateKeyboardShortcuts :: DashboardDSL Unit
 deactivateKeyboardShortcuts = do
-  let remove lstnr = liftEff $ documentTarget >>= removeEventListener keydown lstnr false
+  let remove lstnr = liftEff $ documentTarget
+                     >>= removeEventListener keydown lstnr false
   gets _.keyboardListeners >>= traverse remove
   modify (_keyboardListeners .~ [])
 
 eval :: Natural Query DashboardDSL
-eval (ActivateKeyboardShortcuts next) = activateKeyboardShortcuts $> next
-eval (DeactivateKeyboardShortcuts next) = deactivateKeyboardShortcuts $> next
-eval (EvaluateMenuValue value next) = dismissAll *> evaluateMenuValue value $> next
-eval (AddKeyboardListener listener next) = modify (_keyboardListeners %~ cons listener) $> next
+eval (ActivateKeyboardShortcuts next) =
+  activateKeyboardShortcuts $> next
+eval (DeactivateKeyboardShortcuts next) =
+  deactivateKeyboardShortcuts $> next
+eval (EvaluateMenuValue value next) =
+  dismissAll *> evaluateMenuValue value $> next
+eval (AddKeyboardListener listener next) =
+  modify (_keyboardListeners %~ cons listener) $> next
 eval (Save next) = pure next
 eval (SetAccessType aType next) = do
   modify (_accessType .~ aType)
@@ -224,10 +293,15 @@ eval (SetViewingCell mbcid next) = do
 eval (DismissAll next) = dismissAll *> pure next
 
 dismissAll :: DashboardDSL Unit
-dismissAll = query' cpMenu MenuSlot (left $ action HalogenMenu.DismissSubmenu) $> unit
+dismissAll =
+  query' cpMenu MenuSlot (left $ action HalogenMenu.DismissSubmenu) $> unit
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> DashboardDSL Unit
-peek (ChildF p q) = coproduct menuPeek (coproduct dialogParentPeek notebookPeek) q
+peek (ChildF p q) =
+  coproduct renamePeek
+  (coproduct menuPeek
+   (coproduct dialogParentPeek
+    notebookPeek)) q
 
 dialogParentPeek :: forall a. Dialog.QueryP a -> DashboardDSL Unit
 dialogParentPeek = coproduct dialogPeek (const (pure unit))
@@ -242,11 +316,25 @@ notebookPeek q = pure unit
 menuPeek :: forall a. Menu.QueryP a -> DashboardDSL Unit
 menuPeek = coproduct (const (pure unit)) submenuPeek
 
-evaluateMenuValue :: Menu.Value -> DashboardDSL Unit
-evaluateMenuValue = either presentHelp (coproduct queryDialog queryNotebook)
+renamePeek :: forall a. Rename.Query a -> DashboardDSL Unit
+renamePeek (Rename.Submit next) =
+  void $ query' cpNotebook unit $ left $ action Notebook.SaveNotebook
+renamePeek (Rename.SetText name next) =
+  void $ query' cpNotebook unit $ left $ action $ Notebook.SetName name
+renamePeek _ = pure unit
 
-submenuPeek :: forall a. (ChildF HalogenMenu.SubmenuSlotAddress (HalogenMenu.SubmenuQuery (Maybe Menu.Value))) a -> DashboardDSL Unit
-submenuPeek (ChildF _ (HalogenMenu.SelectSubmenuItem v _)) = maybe (pure unit) evaluateMenuValue v
+evaluateMenuValue :: Menu.Value -> DashboardDSL Unit
+evaluateMenuValue =
+  either presentHelp
+  (coproduct queryRename (coproduct queryDialog queryNotebook))
+
+submenuPeek
+  :: forall a
+   . (ChildF HalogenMenu.SubmenuSlotAddress
+      (HalogenMenu.SubmenuQuery (Maybe Menu.Value))) a
+  -> DashboardDSL Unit
+submenuPeek (ChildF _ (HalogenMenu.SelectSubmenuItem v _)) =
+  maybe (pure unit) evaluateMenuValue v
 
 queryDialog :: Dialog.Query Unit -> DashboardDSL Unit
 queryDialog q = query' cpDialog unit (left q) *> pure unit
@@ -254,6 +342,8 @@ queryDialog q = query' cpDialog unit (left q) *> pure unit
 queryNotebook :: Notebook.NotebookQuery Unit -> DashboardDSL Unit
 queryNotebook q = query' cpNotebook unit (left q) *> pure unit
 
+queryRename :: Rename.Query Unit -> DashboardDSL Unit
+queryRename q = query' cpRename unit q *> pure unit
+
 presentHelp :: Menu.HelpURI -> DashboardDSL Unit
 presentHelp (Menu.HelpURI uri) = liftEff $ newTab uri
-

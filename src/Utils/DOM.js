@@ -11,3 +11,15 @@ exports.onLoad = function(action) {
         });
     };
 };
+
+exports.blur = function(el) {
+    return function() {
+        return el.blur();
+    };
+};
+
+exports.focus = function(el) {
+    return function() {
+        return el.focus();
+    };
+};

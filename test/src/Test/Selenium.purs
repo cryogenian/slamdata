@@ -45,6 +45,7 @@ import Test.Effects (TestEffects())
 import Test.Selenium.SauceLabs as SL
 import Test.Selenium.File as File
 
+
 makeDownloadCapabilities :: Browser -> String -> Aff TestEffects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do
   setIntPreference "browser.download.folderList" 2
