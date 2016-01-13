@@ -48,3 +48,5 @@ documentTarget = htmlDocumentToEventTarget <$> (document =<< window)
 
 foreign import waitLoaded :: forall e. Aff (dom :: DOM |e) Unit
 foreign import onLoad :: forall e. Eff e Unit -> Eff e Unit
+foreign import blur :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
+foreign import focus :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit

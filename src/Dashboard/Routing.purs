@@ -33,7 +33,7 @@ import Data.Functor.Eff (liftEff)
 import Data.List (List(), init, last)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Unsafe as U
-import Data.Path.Pathy ((</>), rootDir, dir, file, dir')
+import Data.Path.Pathy ((</>), rootDir, dir, file, DirName(..))
 import Data.String.Regex (noFlags, regex, test, Regex())
 import Data.Tuple (Tuple(..), snd)
 
@@ -52,9 +52,11 @@ import Routing (matchesAff')
 import Routing.Match (Match(), list, eitherMatch)
 import Routing.Match.Class (lit, str)
 
-import Dashboard.Component (QueryP(), Query(..), toNotebook, fromNotebook, toDashboard)
-
-import Utils.Path (DirPath(), FilePath(), decodeURIPath)
+import Dashboard.Component
+  (QueryP(), Query(..), toNotebook, fromNotebook, toDashboard, toRename)
+import Dashboard.Rename.Component as Rename
+import Utils.Path
+  (DirPath(), FilePath(), decodeURIPath, dropNotebookExt, getNameStr, getDir)
 
 data Routes
   = CellRoute DirPath CellId AccessType
@@ -142,13 +144,17 @@ routeSignal driver = do
 
   notebook :: DirPath -> Action -> Maybe CellId -> Aff NotebookEffects Unit
   notebook path action viewing = do
+    let name = getNameStr $ Right path
+        directory = getDir $ Right path
     currentPath <- driver $ fromNotebook Notebook.GetPath
     currentName <- driver $ fromNotebook Notebook.GetNameToSave
-    let current = (</>) <$> currentPath <*> (dir' <$> currentName)
-    when (current /= Just path) do
-      fs <- liftEff detectBrowserFeatures
-      if (action == New)
-        then driver $ toNotebook $ Notebook.Reset fs path
-        else driver $ toNotebook $ Notebook.LoadNotebook fs path
+    let pathChanged = currentPath /= pure directory
+        nameChanged = currentName /= (pure $ DirName name)
+    when (pathChanged || nameChanged) do
+      features <- liftEff detectBrowserFeatures
+      driver $ toRename $ Rename.SetText $ dropNotebookExt name
       driver $ toDashboard $ SetAccessType $ toAccessType action
       driver $ toDashboard $ SetViewingCell viewing
+      if (action == New)
+        then driver $ toNotebook $ Notebook.Reset features path
+        else driver $ toNotebook $ Notebook.LoadNotebook features path

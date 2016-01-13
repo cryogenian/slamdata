@@ -29,11 +29,13 @@ import Control.Bind ((=<<), join)
 import Control.Monad (when)
 import Control.UI.Browser (newTab, replaceLocation)
 
+import Control.UI.Browser (newTab, replaceLocation)
+
 import Data.Argonaut (Json())
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..), either)
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, for_)
 import Data.Traversable (for)
 import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
@@ -202,14 +204,15 @@ eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
 eval (GetPath k) = k <$> gets _.path
 eval (GetNameToSave k) = do
   name <- gets _.name
-  case theseRight name of
-    Nothing -> pure $ k Nothing
-    Just newName -> pure $ k $ Just $ Pathy.DirName $ newName ++ "." ++ Config.notebookExtension
+  pure $ k
+    $ map (\x -> Pathy.DirName $ x ++ "." ++ Config.notebookExtension)
+    $ theseRight name
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook unit $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
-peek (ChildF (CellSlot cellId) q) = coproduct (peekCell cellId) (peekCellInner cellId) q
+peek (ChildF (CellSlot cellId) q) =
+  coproduct (peekCell cellId) (peekCellInner cellId) q
 
 -- | Peek on the cell component to observe actions from the cell control
 -- | buttons.
@@ -310,7 +313,6 @@ saveNotebook :: Unit -> NotebookDSL Unit
 saveNotebook _ = get >>= \st -> case st.path of
   Nothing -> pure unit
   Just path -> do
-
     cells <- catMaybes <$> for (List.fromList st.cells) \cell ->
       query (CellSlot cell.id) $ left $ request (SaveCell cell.id cell.ty)
 
@@ -361,4 +363,3 @@ nameFromDirName :: Pathy.DirName -> String
 nameFromDirName dirName =
   let name = Pathy.runDirName dirName
   in Str.take (Str.length name - Str.length Config.notebookExtension - 1) name
-
