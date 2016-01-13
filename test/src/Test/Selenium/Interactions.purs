@@ -9,8 +9,7 @@ import Test.Selenium.Finders (findElementIdByLabelText, findElementByLabelText)
 import Test.Selenium.Locators (checkableLocator)
 import Selenium.Types (Element())
 import Selenium.Monad (sequence)
-import Selenium.MouseButton (leftButton)
-import Selenium.ActionSequence (mouseDown, mouseUp, leftClick)
+import Selenium.ActionSequence (leftClick)
 import Control.Apply ((*>))
 
 provideCheckboxValue :: String -> Boolean -> Check Unit

@@ -19,17 +19,14 @@ module Test.Selenium.Notebook.Contexts where
 
 import Prelude
 
-import Control.Bind ((>=>))
 import Control.Monad.Eff.Random (randomInt)
 
-import Data.Either (Either(..), either, isRight)
+import Data.Either (isRight)
 import Data.Foldable (foldl, traverse_)
-import Data.Foreign (readArray, readString)
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Eff (liftEff)
 import Data.List (List(..), length, null, (!!), catMaybes, filter)
-import Data.Maybe (Maybe(..), maybe)
-import Data.String as S
+import Data.Maybe (maybe)
 import Data.String.Regex as R
 import Data.Traversable (traverse)
 
@@ -38,10 +35,8 @@ import Node.FS.Aff (mkdir)
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Combinators (checker, tryToFind)
 import Selenium.Monad
-import Selenium.MouseButton
 import Selenium.Types
 
-import Test.Config
 import Test.Selenium.ActionSequence (keys)
 import Test.Selenium.Common
 import Test.Selenium.File hiding (test)

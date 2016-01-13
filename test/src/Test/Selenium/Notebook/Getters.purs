@@ -18,17 +18,14 @@ module Test.Selenium.Notebook.Getters where
 
 import Prelude
 
-import Control.Alt ((<|>))
 import Data.Either (Either(..))
 import Data.Foldable (fold)
 import Data.List (catMaybes, List(..), fromList, toList, length, (!!))
-import Data.Maybe (Maybe(..), maybe, isNothing, isJust)
-import Data.Maybe.Unsafe (fromJust)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid.Conj (Conj(..), runConj)
 import Data.Monoid.Disj (Disj(..), runDisj)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Selenium (showLocator)
 import Selenium.Monad
 import Selenium.Types
 import Test.Config
@@ -148,13 +145,13 @@ waitVizWidthInput = do
   config <- getConfig
   tryRepeatedlyTo $ byCss config.vizSelectors.widthInput >>= findExact
 
-inputLocator :: Check Locator
-inputLocator = do
+getInputLocator :: Check Locator
+getInputLocator = do
   config <- getConfig
   tryRepeatedlyTo $ byCss config.explore.input
 
 getInput :: Check Element
-getInput = inputLocator >>= findSingleGracefully
+getInput = getInputLocator >>= findSingleGracefully
 
 getAceInput :: Check Element
 getAceInput = do
@@ -239,12 +236,12 @@ getPaginationButton content = do
   filterFn content html =
     R.test (R.regex content R.noFlags) html
 
-paginationInputLocator :: Check Locator
-paginationInputLocator =
+getPaginationInputLocator :: Check Locator
+getPaginationInputLocator =
   getConfig >>= _.explore >>> _.pageInput >>> byCss
 
 getPaginationInput :: Check Element
-getPaginationInput = paginationInputLocator >>= findSingle
+getPaginationInput = getPaginationInputLocator >>= findSingle
 
 getJTableHeadContent :: Check String
 getJTableHeadContent =
@@ -305,25 +302,25 @@ getRowCount = do
 
 getEnabledRecord :: Check EnabledRecord
 getEnabledRecord = do
-    ff <- getFastForward
-    sf <- getStepForward
-    fb <- getFastBackward
-    sb <- getStepBackward
-    inputLocator <- paginationInputLocator
-    input <- findSingle inputLocator
-    r <- { ff: _
-         , sf: _
-         , fb: _
-         , sb: _
-         , value: _}
-         <$> isEnabled ff
-         <*> isEnabled sf
-         <*> isEnabled fb
-         <*> isEnabled sb
-         <*> (getAttribute input attr >>= maybe (attrFail inputLocator attr) pure)
-    pure $ EnabledRecord r
-      where
-      attr = "value"
+  ff <- getFastForward
+  sf <- getStepForward
+  fb <- getFastBackward
+  sb <- getStepBackward
+  inputLocator <- getPaginationInputLocator
+  input <- findSingle inputLocator
+  r <- { ff: _
+       , sf: _
+       , fb: _
+       , sb: _
+       , value: _}
+       <$> isEnabled ff
+       <*> isEnabled sf
+       <*> isEnabled fb
+       <*> isEnabled sb
+       <*> (getAttribute input attr >>= maybe (attrFail inputLocator attr) pure)
+  pure $ EnabledRecord r
+    where
+    attr = "value"
 
 -- VIZ
 getPieEditor :: Check Element

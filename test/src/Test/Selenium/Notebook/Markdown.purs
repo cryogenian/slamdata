@@ -27,18 +27,18 @@ import Test.Selenium.Scenario (scenario)
 import Test.Selenium.Notebook.Markdown.Interactions
 import Test.Selenium.Notebook.Markdown.Expectations
 
-import Data.Traversable (traverse, sequence) as T
-import Data.Foldable (sequence_, traverse_) as F
-
 mdScenario :: String -> Array String -> Check Unit -> Check Unit
 mdScenario = scenario "Markdown" deleteAllCells deleteAllCells
 
-filterQueryIssues = [ "https://slamdata.atlassian.net/browse/SD-1046"
-                    , "https://slamdata.atlassian.net/browse/SD-1045"
-                    , "https://slamdata.atlassian.net/browse/SD-1044"
-                    , "https://slamdata.atlassian.net/browse/SD-1047"
-                    ]
+filterQueryIssues :: Array String
+filterQueryIssues =
+  [ "https://slamdata.atlassian.net/browse/SD-1046"
+  , "https://slamdata.atlassian.net/browse/SD-1045"
+  , "https://slamdata.atlassian.net/browse/SD-1044"
+  , "https://slamdata.atlassian.net/browse/SD-1047"
+  ]
 
+evalDefaultValueIssues :: Array String
 evalDefaultValueIssues = ["https://slamdata.atlassian.net/browse/SD-1048"]
 
 test :: Check Unit

@@ -28,7 +28,7 @@ import Data.Either (isRight)
 import Data.Foldable (traverse_)
 import Data.Functor.Eff (liftEff)
 import Data.List (List(), length, replicateM)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.StrMap as SM
 import Data.Tuple (Tuple(..))
 

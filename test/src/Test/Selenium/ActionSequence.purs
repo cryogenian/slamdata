@@ -31,7 +31,7 @@ module Test.Selenium.ActionSequence
 import Prelude
 
 import Data.Char (fromCharCode)
-import Data.Foldable (traverse_, fold)
+import Data.Foldable (traverse_)
 import Data.String (fromChar, split)
 import Data.Array (replicate)
 import Selenium.ActionSequence hiding (sequence)
