@@ -17,9 +17,7 @@ limitations under the License.
 module Test.Selenium.File where
 
 import Prelude
-import DOM (DOM())
-import Control.Apply ((*>))
-import Control.Bind ((>=>), (=<<))
+import Control.Bind ((=<<))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Trans (lift)
@@ -29,14 +27,13 @@ import Data.Argonaut.JCursor (toPrims)
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust, isNothing)
 import Data.Maybe.Unsafe (fromJust)
-import Data.Either (Either(..), either, isLeft)
-import Data.Foldable (foldl, elem, find)
+import Data.Either (Either(..), either)
+import Data.Foldable (foldl, elem)
 import Data.Traversable (traverse)
 import Data.List (List(), reverse, filter, null, fromList, (!!))
 import Selenium.Types
 import Selenium.MouseButton
 import Selenium.ActionSequence hiding (sequence)
-import Selenium.Key
 import Selenium.Monad
 import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust, tryToFind)
 import Node.FS.Aff
@@ -49,8 +46,6 @@ import Routing (matchHash)
 import Data.Array as Arr
 import Data.String.Regex as R
 import Data.String as Str
-import Data.Char as Ch
-import Data.StrMap as SM
 import Data.Set as S
 import Config as SDCfg
 import Test.Selenium.ActionSequence

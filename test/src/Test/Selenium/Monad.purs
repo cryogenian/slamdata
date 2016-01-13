@@ -21,21 +21,18 @@ import Prelude
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Class
-import Control.Monad.Reader.Trans
 
 import Data.Functor.Aff (liftAff)
-import Data.List (List(), length, uncons, (:))
-import Data.List.Unsafe (head) as U
-import Data.Maybe (maybe, fromMaybe, Maybe(..))
+import Data.List (List(), length, uncons)
+import Data.Maybe (fromMaybe, Maybe(..))
 
-import Graphics.EasyImage as GE
 import Graphics.ImageDiff as GI
 
 import Platform (getPlatform, runOs, runPlatform)
 
 import Selenium (showLocator)
 import Selenium.Key (metaKey, controlKey)
-import Selenium.Monad (Selenium(), byCss, byXPath, findElements, getAttribute)
+import Selenium.Monad (Selenium(), byCss, byXPath, findElements)
 import Selenium.Types (ControlKey(), Locator(), Element())
 
 import Test.Config (Config())
@@ -82,7 +79,7 @@ getModifierKey = map modifierKey getPlatformString
   modifierKey "Darwin" = metaKey
   modifierKey _ = controlKey
 
-diff :: _ -> Check Boolean
+diff :: { shadow :: Boolean, diff :: Maybe String, expected :: String, actual :: String } -> Check Boolean
 diff = liftAff <<< GI.diff
 
 byAriaLabel :: String -> Check Locator

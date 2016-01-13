@@ -45,13 +45,11 @@ module Test.Selenium.Common
 
 import Prelude
 
-import Control.Apply ((*>))
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans (lift)
 
-import Data.Char as Ch
-import Data.Either (either, isRight, Either(..))
+import Data.Either (either, isRight)
 import Data.Foldable (traverse_)
 import Data.Int as Int
 import Data.List (List(), filter)
@@ -64,13 +62,12 @@ import Data.Tuple (Tuple(..), fst, snd)
 
 import Graphics.EasyImage (cropInPlace)
 
-import FileSystem.Routing (Routes(..), routing)
+import FileSystem.Routing (Routes(), routing)
 import Routing (matchHash)
 
 import Selenium (showLocator)
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Combinators as Sc
-import Selenium.Key
 import Selenium.Monad
 import Selenium.Types
 
@@ -126,7 +123,7 @@ checkElements m = do
     driver <- getDriver
     byCss selector >>= findElement >>= checkMsg key
 
-  checkMsg :: String -> Maybe _ -> Check Unit
+  checkMsg :: String -> Maybe Element -> Check Unit
   checkMsg msg Nothing = errorMsg $ msg <> " not found"
   checkMsg _ _ = pure unit
 

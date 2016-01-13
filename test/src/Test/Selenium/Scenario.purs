@@ -2,13 +2,11 @@ module Test.Selenium.Scenario where
 
 import Prelude
 
-import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Monad.Eff.Exception (message)
-import Data.Array ((:))
 import Data.Either (Either(..))
 import Data.String (joinWith)
-import Test.Selenium.Log (sectionMsg, successMsg, warnMsg, errorMsg)
+import Test.Selenium.Log (sectionMsg, warnMsg, errorMsg)
 import Test.Selenium.Monad (Check())
 import Selenium.Monad (attempt)
 
