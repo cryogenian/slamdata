@@ -153,8 +153,8 @@ routeSignal driver = do
     when (pathChanged || nameChanged) do
       features <- liftEff detectBrowserFeatures
       driver $ toRename $ Rename.SetText $ dropNotebookExt name
-      driver $ toDashboard $ SetAccessType $ toAccessType action
-      driver $ toDashboard $ SetViewingCell viewing
       if (action == New)
         then driver $ toNotebook $ Notebook.Reset features path
         else driver $ toNotebook $ Notebook.LoadNotebook features path
+      driver $ toDashboard $ SetAccessType $ toAccessType action
+      driver $ toDashboard $ SetViewingCell viewing
