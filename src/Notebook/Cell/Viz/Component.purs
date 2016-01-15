@@ -341,7 +341,7 @@ configure = void do
       then []
       else if not $ null axises.category
            then [Pie, Bar, Line]
-           else if null axises.time
+           else if (null axises.time) && (length axises.value < 2)
                 then []
                 else [Line]
 
@@ -365,19 +365,20 @@ configure = void do
 
   pieBarConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
   pieBarConfiguration axises (ChartConfiguration current) =
-    let categories =
+    let allAxises = axises.category <> axises.time <> axises.value
+        categories =
           setPreviousValueFrom (index current.series 0)
-          $ autoSelect $ newSelect $ axises.category
+          $ autoSelect $ newSelect allAxises
         measures =
           setPreviousValueFrom (index current.measures 0)
           $ autoSelect $ newSelect $ depends categories axises.value
         firstSeries =
           setPreviousValueFrom (index current.series 1)
-          $ newSelect $ ifSelected [categories] $ axises.category <-> categories
+          $ newSelect $ ifSelected [categories] $ allAxises <-> categories
         secondSeries =
           setPreviousValueFrom (index current.series 2)
           $ newSelect $ ifSelected [categories, firstSeries]
-          $ axises.category <-> categories <-> firstSeries
+          $ allAxises <-> categories <-> firstSeries
         aggregation =
           setPreviousValueFrom (index current.aggregations 0) aggregationSelect
     in ChartConfiguration { series: [categories, firstSeries, secondSeries]
@@ -387,12 +388,13 @@ configure = void do
 
   lineConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
   lineConfiguration axises (ChartConfiguration current) =
-    let dimensions =
+    let allAxises = (axises.category <> axises.time <> axises.value)
+        dimensions =
           setPreviousValueFrom (index current.dimensions 0)
           $ autoSelect $ newSelect $ dependsOnArr axises.value
           -- This is redundant, I've put it here to notify
           -- that this behaviour differs from pieBar and can be changed.
-          $ (axises.category <> axises.time <> axises.value)
+          $ allAxises
         firstMeasures =
           setPreviousValueFrom (index current.measures 0)
           $ autoSelect $ newSelect $ depends dimensions
@@ -404,11 +406,11 @@ configure = void do
           $ axises.value <-> firstMeasures <-> dimensions
         firstSeries =
           setPreviousValueFrom (index current.series 0)
-          $ newSelect $ ifSelected [dimensions] $ axises.category <-> dimensions
+          $ newSelect $ ifSelected [dimensions] $ allAxises <-> dimensions
         secondSeries =
           setPreviousValueFrom (index current.series 1)
           $ newSelect $ ifSelected [dimensions, firstSeries]
-          $ axises.category <-> dimensions <-> firstSeries
+          $ allAxises <-> dimensions <-> firstSeries
     in ChartConfiguration { series: [firstSeries, secondSeries]
                           , dimensions: [dimensions]
                           , measures: [firstMeasures, secondMeasures]
