@@ -38,39 +38,24 @@ import DOM.Timer (Timer(), timeout, clearTimeout)
 
 import Halogen.Query.EventSource (EventSource(..))
 
-type DebounceEffects eff = (ref :: REF | eff)
-
--- | Sets up a debounced `Aff` action.
--- |
--- | The milliseconds value is the time to wait before triggering an action. The
--- | result is a function that when passed an `Aff` action will cancel any
--- | previously-passed pending action for which the delay has not yet elapsed,
--- | and then start the delay for the newly provided action.
-debouncedAff
-  :: forall eff a
-   . Milliseconds
-  -> Aff (DebounceEffects eff) (Aff (DebounceEffects eff) a -> Aff (DebounceEffects eff) Unit)
-debouncedAff (Milliseconds ms) = do
-  ref <- liftEff (newRef Nothing)
-  pure \act -> do
-    maybe (pure false) (`cancel` (error "interrupted")) <$> liftEff (readRef ref)
-    canceller <- forkAff $ later' (Int.floor ms) act
-    liftEff $ writeRef ref (Just canceller)
+type DebounceEffects eff = (ref :: REF, avar :: AVAR, timer :: Timer | eff)
 
 -- | Sets up and subscribes to an `EventSource` that will emit values after a
 -- | delay.
 -- |
--- | The milliseconds is the time to wait before emitting an input value.
--- | The first returned function expects a function to subscribe to the event
--- | source.
--- | The second returned function will trigger values from the
+-- | - The milliseconds value is the time to wait before emitting a value in
+-- |   response to an input.
+-- | - The first returned function expects a function to subscribe to the event
+-- |   source.
+-- | - The second returned function will enqueue an new emission, interrupting
+-- |   any existing pending emission.
 debouncedEventSource
   :: forall f g eff
    . (Monad g)
-  => Natural (Eff (ref :: REF, avar :: AVAR, timer :: Timer | eff)) g
-  -> (EventSource f (Aff (ref :: REF, avar :: AVAR, timer :: Timer | eff)) -> g Unit)
+  => Natural (Eff (DebounceEffects eff)) g
+  -> (EventSource f (Aff (DebounceEffects eff)) -> g Unit)
   -> Milliseconds
-  -> g (f Unit -> Aff (ref :: REF, avar :: AVAR, timer :: Timer | eff) Unit)
+  -> g (f Unit -> Aff (DebounceEffects eff) Unit)
 debouncedEventSource lift subscribe (Milliseconds ms) = do
   timeoutRef <- lift (newRef Nothing)
   emitRef <- lift (newRef Nothing)

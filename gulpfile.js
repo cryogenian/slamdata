@@ -47,16 +47,9 @@ gulp.task("clean", function () {
 
 gulp.task("make", function() {
   return purescript.psc({
-    src: sources,
+    src: testSources,
     ffi: foreigns
   });
-});
-
-gulp.task("test-make", function() {
-    return purescript.psc({
-        src: testSources,
-        ffi: foreigns
-    });
 });
 
 gulp.task("add-headers", function () {
@@ -121,7 +114,7 @@ gulp.task("bundle", [
 gulp.task("bundle-test",
           ["bundle"],
            function() {
-    sequence("less", "test-make", function() {
+    sequence("less", "make", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
             output: "test/index.js",
@@ -131,7 +124,7 @@ gulp.task("bundle-test",
     });
 });
 
-gulp.task("bundle-property-tests", ["test-make"], function() {
+gulp.task("bundle-property-tests", ["make"], function() {
     return purescript.pscBundle({
       src: "output/**/*.js",
       output: "tmp/js/property-tests.js",
@@ -164,4 +157,4 @@ gulp.task("less", function() {
 mkWatch("watch-less", "less", ["less/**/*.less"]);
 
 // gulp.task("default", ["add-headers", "trim-whitespace", "less", "bundle"]);
-gulp.task("default", ["less", "property-tests", "bundle"]);
+gulp.task("default", ["less", "make", "property-tests", "bundle"]);

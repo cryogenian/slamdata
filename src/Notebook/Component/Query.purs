@@ -33,6 +33,7 @@ import Utils.Path (FilePath(), DirPath())
 data NotebookQuery a
   = AddCell CellType a
   | RunActiveCell a
+  | RunPendingCells a
   | ToggleAddCellMenu a
   | GetNameToSave (Maybe DirName -> a)
   | GetPath (Maybe DirPath -> a)

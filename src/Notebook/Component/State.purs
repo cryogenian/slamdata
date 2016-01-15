@@ -18,16 +18,8 @@ module Notebook.Component.State
   ( NotebookState()
   , CellDef()
   , CellConstructor()
+  , DebounceTrigger()
   , initialNotebook
-  , addCell
-  , addCell'
-  , removeCells
-  , findRoot
-  , findParent
-  , findChildren
-  , findDescendants
-  , fromModel
-  , notebookPath
   , _fresh
   , _accessType
   , _cells
@@ -39,6 +31,17 @@ module Notebook.Component.State
   , _viewingCell
   , _path
   , _saveTrigger
+  , _runTrigger
+  , addCell
+  , addCell'
+  , removeCells
+  , findRoot
+  , findParent
+  , findChildren
+  , findDescendants
+  , addPendingCell
+  , fromModel
+  , notebookPath
   ) where
 
 import Prelude
@@ -46,10 +49,10 @@ import Prelude
 import Data.Array as A
 import Data.Array.Unsafe as U
 import Data.BrowserFeatures (BrowserFeatures())
-import Data.Foldable (foldMap, foldr, maximum)
+import Data.Foldable (foldMap, foldr, maximum, any)
 import Data.Lens (LensP(), lens)
-import Data.List as L
 import Data.List (List(..))
+import Data.List as L
 import Data.Map as M
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
@@ -96,8 +99,19 @@ type NotebookState =
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
   , viewingCell :: Maybe CellId
-  , saveTrigger :: Maybe (NotebookQuery Unit -> Slam Unit)
+  , saveTrigger :: Maybe DebounceTrigger
+  , runTrigger :: Maybe DebounceTrigger
+  , pendingCells :: S.Set CellId
   }
+
+-- | A record used to represent cell definitions in the notebook.
+type CellDef = { id :: CellId, ty :: CellType, ctor :: CellConstructor }
+
+-- | The specific `SlotConstructor` type for cells in the notebook.
+type CellConstructor = SlotConstructor CellStateP CellQueryP Slam CellSlot
+
+-- | The type of functions used to trigger a debounced query.
+type DebounceTrigger = NotebookQuery Unit -> Slam Unit
 
 -- | Constructs a default `NotebookState` value.
 initialNotebook :: BrowserFeatures -> NotebookState
@@ -113,6 +127,8 @@ initialNotebook browserFeatures =
   , viewingCell: Nothing
   , path: Nothing
   , saveTrigger: Nothing
+  , runTrigger: Nothing
+  , pendingCells: S.empty
   }
 
 -- | A counter used to generate `CellId` values.
@@ -160,14 +176,13 @@ _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 _viewingCell :: LensP NotebookState (Maybe CellId)
 _viewingCell = lens _.viewingCell _{viewingCell = _}
 
-_saveTrigger :: LensP NotebookState (Maybe (NotebookQuery Unit -> Slam Unit))
+-- | The debounced trigger for notebook save actions.
+_saveTrigger :: LensP NotebookState (Maybe DebounceTrigger)
 _saveTrigger = lens _.saveTrigger _{saveTrigger = _}
 
--- | The specific `SlotConstructor` type for cells in the notebook.
-type CellConstructor = SlotConstructor CellStateP CellQueryP Slam CellSlot
-
--- | A record used to represent cell definitions in the notebook.
-type CellDef = { id :: CellId, ty :: CellType, ctor :: CellConstructor }
+-- | The debounced trigger for running all cells that are pending.
+_runTrigger :: LensP NotebookState (Maybe DebounceTrigger)
+_runTrigger = lens _.runTrigger _{runTrigger = _}
 
 -- | Adds a new cell to the notebook.
 -- |
@@ -241,6 +256,7 @@ removeCells :: S.Set CellId -> NotebookState -> NotebookState
 removeCells cellIds st = st
     { cells = L.filter f st.cells
     , dependencies = M.fromList $ L.filter g $ M.toList st.dependencies
+    , pendingCells = S.difference st.pendingCells cellIds
     }
   where
   cellIds' :: S.Set CellId
@@ -289,6 +305,26 @@ findDescendants cellId st =
   let children = findChildren cellId st
   in children <> foldMap (flip findDescendants st) children
 
+-- | Adds a cell to the set of cells that are enqueued to run.
+-- |
+-- | If the cell is a descendant of an cell that has already been enqueued this
+-- | will have no effect, as in this case the cell is already pending by
+-- | implication: all cells under the queued ancestor will be evaluated as
+-- | changes propagate through the subgraph.
+-- |
+-- | If the cell is an ancestor of cells that have already been enqueued they
+-- | will be removed when this cell is added, for the same reasoning as above.
+addPendingCell :: CellId -> NotebookState -> NotebookState
+addPendingCell cellId st@{ pendingCells } =
+  if cellId `S.member` pendingCells || any isAncestor pendingCells
+  then st
+  else st { pendingCells = S.insert cellId (removeDescendants pendingCells) }
+  where
+  isAncestor :: CellId -> Boolean
+  isAncestor otherId = cellId `S.member` findDescendants otherId st
+  removeDescendants :: S.Set CellId -> S.Set CellId
+  removeDescendants = flip S.difference (findDescendants cellId st)
+
 -- | Finds the current notebook path, if the notebook has been saved.
 notebookPath :: NotebookState -> Maybe P.DirPath
 notebookPath state = do
@@ -317,6 +353,8 @@ fromModel browserFeatures path name { cells, dependencies } =
     , viewingCell: Nothing
     , path
     , saveTrigger: Nothing
+    , runTrigger: Nothing
+    , pendingCells: S.empty
     } :: NotebookState)
   where
   cellDefFromModel :: Cell.Model -> CellDef
