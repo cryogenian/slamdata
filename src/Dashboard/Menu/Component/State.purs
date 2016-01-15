@@ -19,12 +19,11 @@ module Dashboard.Menu.Component.State where
 import Prelude
 
 import Data.Maybe (Maybe(..))
-import Halogen.Menu.Component as HalogenMenu
-import Halogen.Menu.Component.State as HalogenMenu
 import Data.StrMap as StrMap
 
-import Notebook.Cell.CellType (CellType(..))
-import Notebook.Component as Notebook
+import Halogen.Menu.Component as HalogenMenu
+import Halogen.Menu.Component.State as HalogenMenu
+
 import Dashboard.Component.State (NotebookShortcut())
 import Dashboard.Menu.Component.Query
 import Dashboard.Rename.Component as Rename
