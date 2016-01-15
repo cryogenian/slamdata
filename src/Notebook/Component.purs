@@ -35,13 +35,12 @@ import Data.Argonaut (Json())
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..), either)
-import Data.Foldable (traverse_, for_)
-import Data.Traversable (for)
+import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
 import Data.Functor.Eff (liftEff)
-import Data.Lens ((.~), (%~), (?~ ))
+import Data.Lens (LensP(), view, (.~), (%~), (?~))
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Path.Pathy ((</>))
@@ -49,6 +48,7 @@ import Data.Path.Pathy as Pathy
 import Data.Set as S
 import Data.String as Str
 import Data.These (These(..), theseRight, theseLeft)
+import Data.Time (Milliseconds(..))
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..), fst, snd)
 
@@ -61,17 +61,18 @@ import Halogen.Themes.Bootstrap3 as B
 import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
-import Model.Notebook.Action as NA
 import Model.AccessType (AccessType(..), isEditable)
 import Model.Common (mkNotebookURL)
+import Model.Notebook.Action as NA
 import Model.Resource as R
+
 import Notebook.Cell.CellId (CellId(), cellIdToString)
 import Notebook.Cell.CellType (CellType(..), AceMode(..), cellName, cellGlyph, autorun)
-import Notebook.Cell.Port (Port())
-
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
 import Notebook.Cell.JTable.Component as JTC
+import Notebook.Cell.Markdown.Component as MDC
+import Notebook.Cell.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam(), forceRerender')
 import Notebook.Component.Query
@@ -82,6 +83,7 @@ import Notebook.Model as Model
 import Ace.Halogen.Component as Ace
 
 import Quasar.Aff as Quasar
+import Utils.Debounced (debouncedEventSource)
 import Utils.Path (DirPath())
 
 type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
@@ -209,6 +211,7 @@ eval (GetNameToSave k) = do
     $ theseRight name
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook unit $> next
+eval (RunPendingCells next) = runPendingCells unit $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF (CellSlot cellId) q) =
@@ -250,6 +253,7 @@ peekAnyCell cellId q = do
 queryShouldRun :: forall a. AnyCellQuery a -> Boolean
 queryShouldRun (VizQuery q) = true
 queryShouldRun (JTableQuery q) = JTC.queryShouldRun q
+queryShouldRun (MarkdownQuery q) = MDC.queryShouldRun q
 queryShouldRun _ = false
 
 queryShouldSave  :: forall a. AnyCellQuery a -> Boolean
@@ -265,23 +269,33 @@ aceQueryShouldSave (ChildF _ q) =
     Ace.TextChanged _ -> true
     _ -> false
 
--- | Runs the cell with the specified ID and then runs any cells that depend on
--- | the cell's output with the new result.
+-- | Runs all cell that are present in the set of pending cells.
+runPendingCells :: Unit -> NotebookDSL Unit
+runPendingCells _ = traverse_ runCell' =<< gets _.pendingCells
+  where
+  runCell' :: CellId -> NotebookDSL Unit
+  runCell' cellId = do
+    mbParentId <- gets (findParent cellId)
+    case mbParentId of
+      -- if there's no parent there's no input port value to pass through
+      Nothing -> updateCell Nothing cellId
+      Just parentId -> do
+        value <- map join $ query (CellSlot parentId) $ left (request GetOutput)
+        case value of
+          -- if there's a parent but no output the parent cell hasn't been evaluated
+          -- yet, so we can't run this cell either
+          Nothing -> pure unit
+          -- if there's a parent and an output, pass it on as this cell's input
+          Just p -> updateCell (Just p) cellId
+    triggerSave unit
+
+-- | Enqueues the cell with the specified ID in the set of cells that are
+-- | pending to run and enqueues a debounced query to trigger the cells to
+-- | actually run.
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
-  mbParentId <- gets (findParent cellId)
-  case mbParentId of
-    -- if there's no parent there's no input port value to pass through
-    Nothing -> updateCell Nothing cellId
-    Just parentId -> do
-      value <- map join $ query (CellSlot parentId) $ left (request GetOutput)
-      case value of
-        -- if there's a parent but no output the parent cell hasn't been evaluated
-        -- yet, so we can't run this cell either
-        Nothing -> pure unit
-        -- if there's a parent and an output, pass it on as this cell's input
-        Just p -> updateCell (Just p) cellId
-  triggerSave unit
+  modify (addPendingCell cellId)
+  _runTrigger `fireDebouncedQuery` RunPendingCells
 
 -- | Updates the evaluated value for a cell by running it with the specified
 -- | input and then runs any cells that depend on the cell's output with the
@@ -298,15 +312,26 @@ updateCell inputPort cellId = do
     children <- gets (findChildren parentId)
     traverse_ (updateCell (Just value)) children
 
+-- | Triggers the query for autosave. This does not immediate perform the save
+-- | action, but instead enqueues a debounced query to trigger the actual save.
 triggerSave :: Unit -> NotebookDSL Unit
-triggerSave _ = do
-  trigger <- gets _.saveTrigger >>= \st -> case st of
-    Just trigger -> pure trigger
+triggerSave _ = _saveTrigger `fireDebouncedQuery` SaveNotebook
+
+-- | Fires the specified debouced query trigger with the passed query. This
+-- | function also handles constructing the initial trigger if it has not yet
+-- | been created.
+fireDebouncedQuery
+  :: LensP NotebookState (Maybe DebounceTrigger)
+  -> Action NotebookQuery
+  -> NotebookDSL Unit
+fireDebouncedQuery lens act = do
+  t <- gets (view lens) >>= \mbt -> case mbt of
+    Just t' -> pure t'
     Nothing -> do
-      trigger <- Utils.Debounced.debouncedEventSource liftEff subscribe' (Data.Time.Milliseconds 500.0)
-      modify (_saveTrigger ?~ trigger)
-      pure trigger
-  liftH $ liftH $ trigger $ action $ SaveNotebook
+      t' <- debouncedEventSource liftEff subscribe' (Milliseconds 500.0)
+      modify (lens ?~ t')
+      pure t'
+  liftH $ liftH $ t $ action $ act
 
 -- | Saves the notebook as JSON, using the current values present in the state.
 saveNotebook :: Unit -> NotebookDSL Unit

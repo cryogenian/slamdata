@@ -16,6 +16,7 @@ limitations under the License.
 
 module Notebook.Cell.Markdown.Component
   ( markdownComponent
+  , queryShouldRun
   , module Notebook.Cell.Markdown.Component.Query
   , module Notebook.Cell.Markdown.Component.State
   ) where
@@ -26,6 +27,7 @@ import Control.Bind ((=<<))
 
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..))
+import Data.Functor.Coproduct (coproduct)
 import Data.Lens (preview)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (mempty)
@@ -64,6 +66,13 @@ markdownComponent cellId browserFeatures = makeResultsCellComponent
     { formName: "cell-" ++ show (runCellId cellId)
     , browserFeatures
     }
+
+queryShouldRun :: forall a. QueryP a -> Boolean
+queryShouldRun = coproduct (const false) (\(ChildF _ q) -> pred q)
+  where
+  pred (TextChanged _ _ _ _) = true
+  pred (CheckBoxChanged _ _ _ _) = true
+  pred _ = false
 
 render
   :: forall a
