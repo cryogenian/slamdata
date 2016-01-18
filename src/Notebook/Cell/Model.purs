@@ -21,8 +21,6 @@ import Prelude ((<$>), (<*>))
 import Control.Bind ((>=>))
 
 import Data.Argonaut (Json(), (:=), (~>), (.?), DecodeJson, EncodeJson, decodeJson, jsonEmptyObject)
-import Data.Lens (LensP(), lens)
-import Data.Maybe (Maybe())
 import Data.Either (Either())
 
 import Notebook.Cell.CellId (CellId())

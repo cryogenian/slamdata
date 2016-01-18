@@ -31,6 +31,7 @@ module Notebook.Component.State
   , _viewingCell
   , _path
   , _saveTrigger
+  , _globalVarMap
   , _runTrigger
   , addCell
   , addCell'
@@ -59,6 +60,7 @@ import Data.Monoid (mempty)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as S
+import Data.StrMap as SM
 import Data.These (These(..), theseLeft)
 import Data.Tuple (Tuple(..), fst)
 
@@ -67,8 +69,9 @@ import Halogen
 import Model.AccessType (AccessType(..))
 import Notebook.Cell.CellId (CellId(..), runCellId)
 import Notebook.Cell.CellType (CellType(..), AceMode(..), linkedCellType)
-import Notebook.Model as M
+import Notebook.Cell.Port.VarMap as Port
 import Notebook.Cell.Model as Cell
+import Notebook.Model as M
 
 import Notebook.Component.Query (NotebookQuery())
 import Notebook.Cell.Ace.Component (AceEvaluator(), aceComponent)
@@ -81,6 +84,8 @@ import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.Cell.Query.Eval (queryEval)
 import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Viz.Component (vizComponent)
+import Notebook.Cell.API.Component (apiComponent)
+import Notebook.Cell.APIResults.Component (apiResultsComponent)
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam())
 
@@ -99,9 +104,10 @@ type NotebookState =
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
   , viewingCell :: Maybe CellId
-  , saveTrigger :: Maybe DebounceTrigger
+  , saveTrigger :: Maybe (NotebookQuery Unit -> Slam Unit)
   , runTrigger :: Maybe DebounceTrigger
   , pendingCells :: S.Set CellId
+  , globalVarMap :: Port.VarMap
   }
 
 -- | A record used to represent cell definitions in the notebook.
@@ -127,6 +133,7 @@ initialNotebook browserFeatures =
   , viewingCell: Nothing
   , path: Nothing
   , saveTrigger: Nothing
+  , globalVarMap: SM.empty
   , runTrigger: Nothing
   , pendingCells: S.empty
   }
@@ -180,6 +187,9 @@ _viewingCell = lens _.viewingCell _{viewingCell = _}
 _saveTrigger :: LensP NotebookState (Maybe DebounceTrigger)
 _saveTrigger = lens _.saveTrigger _{saveTrigger = _}
 
+_globalVarMap :: LensP NotebookState Port.VarMap
+_globalVarMap = lens _.globalVarMap _{globalVarMap = _}
+
 -- | The debounced trigger for running all cells that are pending.
 _runTrigger :: LensP NotebookState (Maybe DebounceTrigger)
 _runTrigger = lens _.runTrigger _{runTrigger = _}
@@ -232,6 +242,8 @@ cellTypeComponent Viz _ _ = vizComponent
 cellTypeComponent Chart _ _ = chartComponent
 cellTypeComponent Markdown cellId bf = markdownComponent cellId bf
 cellTypeComponent JTable _ _ = jtableComponent
+cellTypeComponent API _ _ = apiComponent
+cellTypeComponent APIResults _ _ = apiResultsComponent
 
 cellTypeInitialState :: CellType -> CellState
 cellTypeInitialState (Ace SQLMode) = initEditorCellState { cachingEnabled = Just false }
@@ -242,6 +254,8 @@ cellTypeInitialState Viz = initEditorCellState
 cellTypeInitialState Chart = initResultsCellState
 cellTypeInitialState Markdown = initResultsCellState
 cellTypeInitialState JTable = initResultsCellState
+cellTypeInitialState API = initEditorCellState
+cellTypeInitialState APIResults = initResultsCellState
 
 aceEvalMode :: AceMode -> AceEvaluator
 aceEvalMode MarkdownMode = markdownEval
@@ -353,6 +367,7 @@ fromModel browserFeatures path name { cells, dependencies } =
     , viewingCell: Nothing
     , path
     , saveTrigger: Nothing
+    , globalVarMap: SM.empty
     , runTrigger: Nothing
     , pendingCells: S.empty
     } :: NotebookState)

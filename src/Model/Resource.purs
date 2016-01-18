@@ -69,7 +69,7 @@ import Data.Path.Pathy as P
 import Utils.Path ((<./>))
 import Utils.Path as PU
 
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), snd)
 import Model.Sort (Sort(..))
 import Data.Lens (lens, prism', LensP(), PrismP(), (.~))
 import Prelude

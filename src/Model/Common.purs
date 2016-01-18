@@ -14,48 +14,75 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Model.Common where
+module Model.Common
+  ( browseURL
+  , mkNotebookHash
+  , mkNotebookURL
+  ) where
 
 import Prelude
 
-import Control.UI.Browser (encodeURIComponent)
+import Control.UI.Browser as Browser
 
-import Data.Maybe (Maybe(), fromMaybe)
-import Data.Path.Pathy (printPath, dir, (</>))
+import Data.Foldable as F
+import Data.Maybe as M
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as P
+import Data.StrMap as SM
 
-import Model.Notebook.Action (Action(), printAction)
-import Model.Salt (Salt(), runSalt)
-import Model.Sort (Sort(), sort2string)
+import Model.Notebook.Action as Action
+import Notebook.Cell.Port.VarMap as Port
+import Model.Salt as Salt
+import Model.Sort as Sort
 
-import Utils.Path (DirPath(), encodeURIPath, (<./>))
+import Utils.Path ((<./>))
+import Utils.Path as UP
 
-browseURL :: Maybe String -> Sort -> Salt -> DirPath -> String
+browseURL :: M.Maybe String -> Sort.Sort -> Salt.Salt -> UP.DirPath -> String
 browseURL search sort salt path =
   Config.browserUrl
-  <> "#?q=" <> q
-  <> "&sort=" <> sort2string sort
-  <> "&salt=" <> runSalt salt
+    <> "#?q=" <> q
+    <> "&sort=" <> Sort.sort2string sort
+    <> "&salt=" <> Salt.runSalt salt
+
   where
   search' =
-    (\s -> if s == ""
-           then s
-           else s <> " ")
-    $ fromMaybe "" search
+    M.fromMaybe "" search # \s ->
+      if s == "" then s else s <> " "
 
-  q = encodeURIComponent
-      $ search'
-      <> "path:\""
-      <> printPath path
-      <> "\""
+  q =
+    Browser.encodeURIComponent $
+      search'
+        <> "path:\""
+        <> P.printPath path
+        <> "\""
+
+mkNotebookHash :: String -> UP.DirPath -> Action.Action -> Port.VarMap -> String
+mkNotebookHash name path action varMap =
+  "#"
+    <> UP.encodeURIPath (P.printPath $ path </> P.dir name <./> Config.notebookExtension)
+    <> Action.printAction action
+    <> renderVarMap varMap
+
+  where
+  renderVarMap varMap =
+    if SM.isEmpty varMap
+       then ""
+       else "/?" <> F.intercalate "&" (varMapComponents varMap)
+
+  varMapComponents =
+    SM.foldMap $ \key val ->
+      [ key
+          <> "="
+          <> Browser.encodeURIComponent (Port.renderVarMapValue val)
+      ]
 
 -- Currently the only place where modules from `Notebook.Model` are used
 -- is `Controller.File`. I think that it would be better if url will be constructed
 -- from things that are already in `FileSystem` (In fact that using of
 -- `notebookURL` is redundant, because (state ^. _path) is `DirPath`
 -- `theseRight $ That Config.newNotebookName` ≣ `Just Config.newNotebookName`
-mkNotebookURL :: String -> DirPath -> Action -> String
+mkNotebookURL :: String -> UP.DirPath -> Action.Action -> String
 mkNotebookURL name path action =
   Config.notebookUrl
-  <> "#"
-  <> encodeURIPath (printPath $ path </> dir name <./> Config.notebookExtension)
-  <> printAction action
+    <> mkNotebookHash name path action SM.empty

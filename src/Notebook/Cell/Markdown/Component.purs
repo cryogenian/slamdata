@@ -37,12 +37,13 @@ import Halogen
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 
-import Text.Markdown.SlamDown.Html (SlamDownConfig(), SlamDownState(), SlamDownQuery(..), slamDownComponent, emptySlamDownState)
+import Text.Markdown.SlamDown.Html as MD
+import Text.Markdown.SlamDown.SQL2 as MD
 
 import Render.CssClasses as CSS
 
 import Notebook.Cell.CellId (CellId(), runCellId)
-import Notebook.Cell.Port (Port(..), _SlamDown)
+import Notebook.Cell.Port as Port
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import Notebook.Cell.Markdown.Component.Query
@@ -61,7 +62,7 @@ markdownComponent cellId browserFeatures = makeResultsCellComponent
   , _Query: makeQueryPrism _MarkdownQuery
   }
   where
-  config :: SlamDownConfig
+  config :: MD.SlamDownConfig
   config =
     { formName: "cell-" ++ show (runCellId cellId)
     , browserFeatures
@@ -70,50 +71,56 @@ markdownComponent cellId browserFeatures = makeResultsCellComponent
 queryShouldRun :: forall a. QueryP a -> Boolean
 queryShouldRun = coproduct (const false) (\(ChildF _ q) -> pred q)
   where
-  pred (TextChanged _ _ _ _) = true
-  pred (CheckBoxChanged _ _ _ _) = true
+  pred (MD.TextChanged _ _ _ _) = true
+  pred (MD.CheckBoxChanged _ _ _ _) = true
   pred _ = false
 
 render
   :: forall a
-   . SlamDownConfig
+   . MD.SlamDownConfig
   -> a
-  -> ParentHTML SlamDownState CellEvalQuery SlamDownQuery Slam Unit
+  -> ParentHTML MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit
 render config _ =
   H.div
     [ P.class_ CSS.markdownOutput ]
     [ H.slot unit \_ ->
-        { component: slamDownComponent config
-        , initialState: emptySlamDownState
+        { component: MD.slamDownComponent config
+        , initialState: MD.emptySlamDownState
         }
     ]
+
+formStateToVarMap
+  :: MD.SlamDownFormState
+  -> Port.VarMap
+formStateToVarMap =
+  map $ MD.formFieldValueToLiteral >>> Port.Literal
 
 eval
   :: Natural
      CellEvalQuery
-     (ParentDSL State SlamDownState CellEvalQuery SlamDownQuery Slam Unit)
+     (ParentDSL State MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit)
 eval (NotifyRunCell next) = pure next
 eval (EvalCell value k) =
-  case preview _SlamDown =<< value.inputPort of
+  case preview Port._SlamDown =<< value.inputPort of
     Just input -> do
       set $ Just input
-      query unit $ action (SetDocument input)
-      state <- query unit $ request GetFormState
+      query unit $ action (MD.SetDocument input)
+      state <- query unit $ request MD.GetFormState
       pure $ k case state of
         Nothing -> error "GetFormState query returned Nothing"
-        Just st -> { output: Just (VarMap st), messages: [] }
+        Just st -> { output: Just (Port.VarMap $ formStateToVarMap st), messages: [] }
     Nothing -> pure $ k (error "expected SlamDown input")
 eval (Save k) = do
   input <- fromMaybe mempty <$> get
-  state <- fromMaybe SM.empty <$> query unit (request GetFormState)
+  state <- fromMaybe SM.empty <$> query unit (request MD.GetFormState)
   pure $ k (encode { input, state })
 eval (Load json next) = do
   case decode json of
     Right { input, state } ->
       void $ do
         set $ Just input
-        query unit $ action (SetDocument input)
-        query unit $ action (PopulateForm state)
+        query unit $ action (MD.SetDocument input)
+        query unit $ action (MD.PopulateForm state)
     _ -> pure unit
   pure next
 

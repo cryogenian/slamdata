@@ -27,15 +27,14 @@ import Prelude
 
 import Control.Bind ((=<<), join)
 import Control.Monad (when)
-import Control.UI.Browser (newTab, replaceLocation)
-
-import Control.UI.Browser (newTab, replaceLocation)
+import Control.UI.Browser (newTab, locationObject)
 
 import Data.Argonaut (Json())
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..), either)
 import Data.Foldable (traverse_)
+import Data.Traversable (for)
 import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
@@ -52,6 +51,8 @@ import Data.Time (Milliseconds(..))
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..), fst, snd)
 
+import DOM.HTML.Location as Location
+
 import Halogen
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
@@ -62,7 +63,7 @@ import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
 import Model.AccessType (AccessType(..), isEditable)
-import Model.Common (mkNotebookURL)
+import Model.Common (mkNotebookHash, mkNotebookURL)
 import Model.Notebook.Action as NA
 import Model.Resource as R
 
@@ -72,6 +73,7 @@ import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
 import Notebook.Cell.JTable.Component as JTC
 import Notebook.Cell.Markdown.Component as MDC
+import Notebook.Cell.API.Component as APIC
 import Notebook.Cell.Port (Port())
 import Notebook.CellSlot (CellSlot(..))
 import Notebook.Common (Slam(), forceRerender')
@@ -131,6 +133,7 @@ newCellMenu state =
     , insertMenuItem (Ace MarkdownMode)
     , insertMenuItem Explore
     , insertMenuItem Search
+    , insertMenuItem API
     ]
   where
   insertMenuItem :: CellType -> NotebookHTML
@@ -212,6 +215,8 @@ eval (GetNameToSave k) = do
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook unit $> next
 eval (RunPendingCells next) = runPendingCells unit $> next
+eval (GetGlobalVarMap k) = k <$> gets _.globalVarMap
+eval (SetGlobalVarMap m next) = modify (_globalVarMap .~ m) $> next
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF (CellSlot cellId) q) =
@@ -254,6 +259,7 @@ queryShouldRun :: forall a. AnyCellQuery a -> Boolean
 queryShouldRun (VizQuery q) = true
 queryShouldRun (JTableQuery q) = JTC.queryShouldRun q
 queryShouldRun (MarkdownQuery q) = MDC.queryShouldRun q
+queryShouldRun (APIQuery q) = APIC.queryShouldRun q
 queryShouldRun _ = false
 
 queryShouldSave  :: forall a. AnyCellQuery a -> Boolean
@@ -303,7 +309,8 @@ runCell cellId = do
 updateCell :: Maybe Port -> CellId -> NotebookDSL Unit
 updateCell inputPort cellId = do
   path <- gets notebookPath
-  let input = { notebookPath: path, inputPort, cellId }
+  globalVarMap <- gets _.globalVarMap
+  let input = { notebookPath: path, inputPort, cellId, globalVarMap }
   result <- join <$> (query (CellSlot cellId) $ left $ request (UpdateCell input))
   maybe (pure unit) (runCellDescendants cellId) result
   where
@@ -355,7 +362,9 @@ saveNotebook _ = get >>= \st -> case st.path of
           else rename path oldName newName
 
     modify (_name .~ This savedName)
-    liftEff $ replaceLocation $ mkNotebookURL (nameFromDirName savedName) path (NA.Load Editable)
+
+    let notebookHash = mkNotebookHash (nameFromDirName savedName) path (NA.Load Editable) st.globalVarMap
+    liftEff $ locationObject >>= Location.setHash notebookHash
 
   where
 

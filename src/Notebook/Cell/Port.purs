@@ -17,6 +17,7 @@ limitations under the License.
 module Notebook.Cell.Port
   ( Port(..)
   , ChartPort()
+  , module Notebook.Cell.Port.VarMap
   , _SlamDown
   , _VarMap
   , _Resource
@@ -25,19 +26,18 @@ module Notebook.Cell.Port
 
 import Data.Lens (PrismP(), prism')
 import Data.Maybe (Maybe(..))
-import Data.StrMap (StrMap())
 import ECharts.Options as Ec
 
 import Model.Resource as R
+import Notebook.Cell.Port.VarMap
 
 import Text.Markdown.SlamDown (SlamDown())
-import Text.Markdown.SlamDown.Html (FormFieldValue())
 
 type ChartPort = { options :: Ec.Option, width :: Int, height :: Int }
 
 data Port
   = SlamDown SlamDown
-  | VarMap (StrMap FormFieldValue)
+  | VarMap VarMap
   | Resource R.Resource
   | ChartOptions ChartPort
 
@@ -46,7 +46,7 @@ _SlamDown = prism' SlamDown \p -> case p of
   SlamDown x -> Just x
   _ -> Nothing
 
-_VarMap :: PrismP Port (StrMap FormFieldValue)
+_VarMap :: PrismP Port VarMap
 _VarMap = prism' VarMap \p -> case p of
   VarMap x -> Just x
   _ -> Nothing

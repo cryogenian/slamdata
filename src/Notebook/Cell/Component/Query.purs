@@ -28,6 +28,8 @@ module Notebook.Cell.Component.Query
   , _JTableQuery
   , _VizQuery
   , _ChartQuery
+  , _APIQuery
+  , _APIResultsQuery
   , module Notebook.Cell.Common.EvalQuery
   ) where
 
@@ -54,6 +56,8 @@ import Notebook.Cell.Markdown.Component.Query as Markdown
 import Notebook.Cell.Model as Cell
 import Notebook.Cell.Search.Component.Query as Search
 import Notebook.Cell.Viz.Component.Query as Viz
+import Notebook.Cell.API.Component.Query as API
+import Notebook.Cell.APIResults.Component.Query as APIResults
 
 -- | The common query algebra for a notebook cell.
 -- |
@@ -108,6 +112,8 @@ data AnyCellQuery a
   | JTableQuery (JTable.QueryP a)
   | VizQuery (Viz.QueryP a)
   | ChartQuery (Chart.QueryP a)
+  | APIQuery (API.QueryP a)
+  | APIResultsQuery (APIResults.QueryP a)
 
 _AceQuery :: forall a. PrismP (AnyCellQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery \q -> case q of
@@ -142,4 +148,14 @@ _VizQuery = prism' VizQuery \q -> case q of
 _ChartQuery :: forall a. PrismP (AnyCellQuery a) (Chart.QueryP a)
 _ChartQuery = prism' ChartQuery \q -> case q of
   ChartQuery q' -> Just q'
+  _ -> Nothing
+
+_APIQuery :: forall a. PrismP (AnyCellQuery a) (API.QueryP a)
+_APIQuery = prism' APIQuery \q -> case q of
+  APIQuery q' -> Just q'
+  _ -> Nothing
+
+_APIResultsQuery :: forall a. PrismP (AnyCellQuery a) (APIResults.QueryP a)
+_APIResultsQuery = prism' APIResultsQuery \q -> case q of
+  APIResultsQuery q' -> Just q'
   _ -> Nothing

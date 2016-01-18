@@ -29,7 +29,6 @@ import Data.Int as Int
 import Data.Json.JTable as JT
 import Data.Maybe (Maybe(..), isNothing, fromMaybe)
 import Data.String (fromChar)
-import Data.Tuple (Tuple(..))
 
 import Halogen
 import Halogen.HTML.Indexed as H
