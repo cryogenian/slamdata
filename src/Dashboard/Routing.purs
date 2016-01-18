@@ -168,9 +168,9 @@ routeSignal driver = do
     when (pathChanged || nameChanged) do
       features <- Eff.liftEff detectBrowserFeatures
       driver $ Dashboard.toRename $ Rename.SetText $ UP.dropNotebookExt name
-      driver $ Dashboard.toNotebook $ Notebook.SetGlobalVarMap varMap
       if action == New
         then driver $ Dashboard.toNotebook $ Notebook.Reset features path
         else driver $ Dashboard.toNotebook $ Notebook.LoadNotebook features path
       driver $ Dashboard.toDashboard $ Dashboard.SetAccessType $ toAccessType action
       driver $ Dashboard.toDashboard $ Dashboard.SetViewingCell viewing
+      driver $ Dashboard.toNotebook $ Notebook.SetGlobalVarMap varMap
