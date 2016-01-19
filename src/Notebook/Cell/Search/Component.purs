@@ -29,9 +29,10 @@ import Control.Monad.Writer.Class as WC
 
 import Data.Either (Either(..), either)
 import Data.Foldable as F
+import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct
-import Data.Lens ((.~))
+import Data.Lens ((.~), preview)
 import Data.Maybe as M
 import Data.StrMap as SM
 
@@ -142,6 +143,11 @@ cellEval q =
           WC.tell ["Plan: " <> p]
 
         pure $ Port.Resource outputResource
+
+    NC.SetupCell input next -> do
+      case preview Port._Resource input of
+        M.Just res -> query unit (action (FI.SelectFile res)) $> next
+        M.Nothing -> pure next
 
     NC.NotifyRunCell next ->
       pure next

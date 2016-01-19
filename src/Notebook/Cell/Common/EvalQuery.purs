@@ -98,10 +98,16 @@ temporaryOutputResource info =
 -- | - `EvalCell` is a command sent from the notebook that runs the cell. An
 -- |   optional input value (the output from another cell) is provided, and a
 -- |   continuation for the evaluation result to be returned to.
+-- | - `SetupCell` is will be called when the cell is being added as a linked
+-- |   cell from another, passing through the current input port value so the
+-- |   current cell can set its state based on that. Used to pull a VarMap
+-- |   through for autocomplete purposes, or for the search cell to be able to
+-- |   auto-select the parent cell's result set as the resource, etc.
 -- | - `NotifyRunCell` allows the cell to notify the notebook that it should be
 -- |   run - the cell cannot run itself directly.
 data CellEvalQuery a
   = EvalCell CellEvalInput (CellEvalResult -> a)
+  | SetupCell Port a
   | NotifyRunCell a
   | Save (Json -> a)
   | Load Json a

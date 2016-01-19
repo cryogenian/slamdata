@@ -89,7 +89,7 @@ eval (Ec.EvalCell value continue) =
         { output: Nothing
         , messages: [Left "Expected ChartOptions input"]
         }
-
+eval (Ec.SetupCell _ next) = pure next
 -- No state needs loading/saving for the chart cell, as it is fully populated
 -- by its input, and will be restored by the parent `Viz` cell running when
 -- the notebook is restored

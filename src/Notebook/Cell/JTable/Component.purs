@@ -88,6 +88,7 @@ evalCell (EvalCell value k) =
     { output: Nothing
     , messages: [Left $ "An internal error occurred: " ++ msg]
     }
+evalCell (SetupCell _ next) = pure next
 evalCell (Save k) =
   pure <<< k =<< gets (Model.encode <<< toModel)
 evalCell (Load json next) = do

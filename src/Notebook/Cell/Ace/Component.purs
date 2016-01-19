@@ -83,6 +83,7 @@ aceComponent cellType run = makeEditorCellComponent
     content <- fromMaybe "" <$> query unit (request GetText)
     result <- liftAff $ run info content
     pure $ k result
+  eval (SetupCell _ next) = pure next
   eval (Save k) = do
     content <- fromMaybe "" <$> query unit (request GetText)
     pure $ k (encodeJson content)

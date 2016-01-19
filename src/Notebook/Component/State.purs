@@ -213,7 +213,10 @@ addCell cellType parent st = fst $ addCellChain cellType (maybe [] pure parent) 
 -- | parent cell ID and returns the modified notebook state and the new cell ID.
 addCell' :: CellType -> Maybe CellId -> NotebookState -> Tuple NotebookState CellId
 addCell' cellType parent st =
-  U.head <$> addCellChain cellType (maybe [] pure parent) st
+  extractNewId <$> addCellChain cellType (maybe [] pure parent) st
+  where
+  extractNewId :: forall a. Array a -> a
+  extractNewId = flip U.unsafeIndex (maybe 0 (const 1) parent)
 
 addCellChain :: CellType -> Array CellId -> NotebookState -> Tuple NotebookState (Array CellId)
 addCellChain cellType parents st =
@@ -362,7 +365,7 @@ fromModel
 fromModel browserFeatures path name { cells, dependencies } =
   Tuple
     cells
-    ({ fresh: maybe 0 runCellId $ (map (+ one) <<< maximum) $ map _.cellId cells
+    ({ fresh: maybe 0 (+ 1) $ maximum $ map (runCellId <<< _.cellId) cells
     , accessType: ReadOnly
     , cells: foldr (Cons <<< cellDefFromModel) Nil cells
     , dependencies

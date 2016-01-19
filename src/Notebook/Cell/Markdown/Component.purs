@@ -110,6 +110,7 @@ eval (EvalCell value k) =
         Nothing -> error "GetFormState query returned Nothing"
         Just st -> { output: Just (Port.VarMap $ formStateToVarMap st), messages: [] }
     Nothing -> pure $ k (error "expected SlamDown input")
+eval (SetupCell _ next) = pure next
 eval (Save k) = do
   input <- fromMaybe mempty <$> get
   state <- fromMaybe SM.empty <$> query unit (request MD.GetFormState)

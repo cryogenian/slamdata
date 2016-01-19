@@ -92,6 +92,8 @@ evalCell q =
             MT.lift $ modify (_ { varMap = varMap })
             pure $ Port.VarMap varMap
           M.Nothing -> EC.throwError "expected VarMap input"
+    NC.SetupCell _ next ->
+      pure next
     NC.NotifyRunCell next ->
       pure next
     NC.Save k ->
