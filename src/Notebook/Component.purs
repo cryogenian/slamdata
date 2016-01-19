@@ -277,7 +277,10 @@ aceQueryShouldSave (ChildF _ q) =
 
 -- | Runs all cell that are present in the set of pending cells.
 runPendingCells :: Unit -> NotebookDSL Unit
-runPendingCells _ = traverse_ runCell' =<< gets _.pendingCells
+runPendingCells _ = do
+  cells <- gets _.pendingCells
+  modify (_pendingCells .~ S.empty)
+  traverse_ runCell' cells
   where
   runCell' :: CellId -> NotebookDSL Unit
   runCell' cellId = do
