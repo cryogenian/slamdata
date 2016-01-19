@@ -31,8 +31,9 @@ module Notebook.Component.State
   , _viewingCell
   , _path
   , _saveTrigger
-  , _globalVarMap
   , _runTrigger
+  , _globalVarMap
+  , _pendingCells
   , addCell
   , addCell'
   , removeCells
@@ -187,12 +188,17 @@ _viewingCell = lens _.viewingCell _{viewingCell = _}
 _saveTrigger :: LensP NotebookState (Maybe DebounceTrigger)
 _saveTrigger = lens _.saveTrigger _{saveTrigger = _}
 
-_globalVarMap :: LensP NotebookState Port.VarMap
-_globalVarMap = lens _.globalVarMap _{globalVarMap = _}
-
 -- | The debounced trigger for running all cells that are pending.
 _runTrigger :: LensP NotebookState (Maybe DebounceTrigger)
 _runTrigger = lens _.runTrigger _{runTrigger = _}
+
+-- | The global `VarMap`, passed through to the notebook via the URL.
+_globalVarMap :: LensP NotebookState Port.VarMap
+_globalVarMap = lens _.globalVarMap _{globalVarMap = _}
+
+-- | The cells that have been enqueued to run.
+_pendingCells :: LensP NotebookState (S.Set CellId)
+_pendingCells = lens _.pendingCells _{pendingCells = _}
 
 -- | Adds a new cell to the notebook.
 -- |
