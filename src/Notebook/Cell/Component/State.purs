@@ -227,6 +227,7 @@ _ChartState = prism' ChartState \s -> case s of
 _DownloadState :: PrismP AnyCellState Download.State
 _DownloadState = prism' DownloadState \s -> case s of
   DownloadState s' -> Just s'
+  _ -> Nothing
 
 _APIState :: PrismP AnyCellState API.StateP
 _APIState = prism' APIState \s -> case s of
