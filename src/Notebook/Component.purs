@@ -108,10 +108,19 @@ render state =
     $ List.fromList (map renderCell state.cells)
    <> if isEditable state.accessType then [newCellMenu state] else []
   where
+
   renderCell cellDef =
     H.div
-      [ P.key ("cell" <> cellIdToString cellDef.id) ]
+      ([ P.key ("cell" <> cellIdToString cellDef.id)
+       ]  <> maybe [] viewingStyle state.viewingCell)
       [ H.Slot cellDef.ctor ]
+
+    where
+    viewingStyle cid =
+      if cellDef.id == cid || cellIsLinkedCellOf { childId: cellDef.id, parentId: cid } state
+         then []
+         else [ P.class_ CSS.invisible ]
+
 
 newCellMenu :: NotebookState -> NotebookHTML
 newCellMenu state =

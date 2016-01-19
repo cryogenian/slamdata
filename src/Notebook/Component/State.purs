@@ -42,6 +42,7 @@ module Notebook.Component.State
   , findChildren
   , findDescendants
   , addPendingCell
+  , cellIsLinkedCellOf
   , fromModel
   , notebookPath
   ) where
@@ -51,7 +52,7 @@ import Prelude
 import Data.Array as A
 import Data.Array.Unsafe as U
 import Data.BrowserFeatures (BrowserFeatures())
-import Data.Foldable (foldMap, foldr, maximum, any)
+import Data.Foldable (foldMap, foldr, foldl, maximum, any)
 import Data.Lens (LensP(), lens)
 import Data.List (List(..))
 import Data.List as L
@@ -100,6 +101,7 @@ type NotebookState =
   , accessType :: AccessType
   , cells :: List CellDef
   , dependencies :: M.Map CellId CellId
+  , cellTypes :: M.Map CellId CellType
   , activeCellId :: Maybe CellId
   , name :: These P.DirName String
   , path :: Maybe P.DirPath
@@ -127,6 +129,7 @@ initialNotebook browserFeatures =
   { fresh: 0
   , accessType: Editable
   , cells: mempty
+  , cellTypes: M.empty
   , dependencies: M.empty
   , activeCellId: Nothing
   , name: That Config.newNotebookName
@@ -228,6 +231,7 @@ addCellChain cellType parents st =
       newState = st
         { fresh = st.fresh + 1
         , cells = st.cells `L.snoc` mkCellDef cellType cellId
+        , cellTypes = M.insert cellId cellType st.cellTypes
         , dependencies =
             maybe st.dependencies (flip (M.insert cellId) st.dependencies) parent
         , isAddingCell = false
@@ -293,14 +297,17 @@ aceSetupMode SQLMode = querySetup
 removeCells :: S.Set CellId -> NotebookState -> NotebookState
 removeCells cellIds st = st
     { cells = L.filter f st.cells
+    , cellTypes = foldl (flip M.delete) st.cellTypes cellIds'
     , dependencies = M.fromList $ L.filter g $ M.toList st.dependencies
     , pendingCells = S.difference st.pendingCells cellIds
     }
   where
   cellIds' :: S.Set CellId
   cellIds' = cellIds <> foldMap (flip findDescendants st) cellIds
+
   f :: CellDef -> Boolean
   f = not <<< flip S.member cellIds' <<< _.id
+
   g :: Tuple CellId CellId -> Boolean
   g (Tuple kId vId) = not $ S.member kId cellIds' || S.member vId cellIds'
 
@@ -343,6 +350,27 @@ findDescendants cellId st =
   let children = findChildren cellId st
   in children <> foldMap (flip findDescendants st) children
 
+-- | Determine's the `CellType` of a cell; returns `Just` if the cell is
+-- | in the notebook, and `Nothing` if it is not.
+getCellType :: CellId -> NotebookState -> Maybe CellType
+getCellType cellId st = M.lookup cellId st.cellTypes
+
+-- | Given two cell IDs, determine whether the latter is the linked results
+-- | cell of the former.
+cellIsLinkedCellOf
+  :: { childId :: CellId, parentId :: CellId }
+  -> NotebookState
+  -> Boolean
+cellIsLinkedCellOf { childId, parentId } st =
+  findParent childId st == Just parentId &&
+    case getCellType parentId st of
+      Nothing -> false
+      Just pty ->
+        case getCellType childId st of
+          Nothing -> false
+          Just cty -> linkedCellType pty == Just cty
+
+
 -- | Adds a cell to the set of cells that are enqueued to run.
 -- |
 -- | If the cell is a descendant of an cell that has already been enqueued this
@@ -383,6 +411,7 @@ fromModel browserFeatures path name { cells, dependencies } =
     ({ fresh: maybe 0 (+ 1) $ maximum $ map (runCellId <<< _.cellId) cells
     , accessType: ReadOnly
     , cells: foldr (Cons <<< cellDefFromModel) Nil cells
+    , cellTypes: foldl (flip \{cellId, cellType} -> M.insert cellId cellType) M.empty cells
     , dependencies
     , activeCellId: Nothing
     , name: maybe (That Config.newNotebookName) This name
