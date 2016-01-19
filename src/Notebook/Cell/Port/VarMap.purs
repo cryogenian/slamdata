@@ -42,6 +42,9 @@ instance eqVarMapValue :: Eq VarMapValue where
   eq (QueryExpr q) (QueryExpr q') = q == q'
   eq _ _ = false
 
+instance showVarMapValue :: Show VarMapValue where
+  show = renderVarMapValue
+
 renderVarMapValue
   :: VarMapValue
   -> String

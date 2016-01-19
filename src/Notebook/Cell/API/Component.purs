@@ -25,7 +25,6 @@ import Control.Bind ((=<<))
 import Control.Monad.Error.Class as EC
 import Control.Monad.Trans as MT
 import Data.Functor.Coproduct
-import Data.Either as E
 import Data.Foldable as F
 import Data.List as L
 import Data.Maybe as M
@@ -46,11 +45,6 @@ import Notebook.Cell.API.Model as Model
 
 import Notebook.FormBuilder.Component as FB
 import Notebook.FormBuilder.Item.Component as Item
-import Notebook.FormBuilder.Item.Model as Item
-
-import Data.SQL2.Literal as SQL2
-
-import Text.Parsing.Parser as P
 
 type APIHTML = ParentHTML (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam Unit
 type APIDSL = ParentDSL State (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam Unit
@@ -86,27 +80,7 @@ compileVarMap fields globalVarMap =
       flip \{ name, fieldType, defaultValue } ->
         M.maybe id (SM.insert name) $
           SM.lookup name globalVarMap
-            <|> (defaultValueToVarMapValue fieldType name =<< defaultValue)
-
-    defaultValueToVarMapValue
-      :: Item.FieldType
-      -> String
-      -> String
-      -> M.Maybe Port.VarMapValue
-    defaultValueToVarMapValue ty name str =
-      case ty of
-        Item.StringFieldType -> M.Just $ Port.Literal $ SQL2.string str
-        Item.DateTimeFieldType -> M.Just $ Port.Literal $ SQL2.dateTime str
-        Item.DateFieldType -> M.Just $ Port.Literal $ SQL2.date str
-        Item.TimeFieldType -> M.Just $ Port.Literal $ SQL2.time str
-        Item.IntervalFieldType -> M.Just $ Port.Literal $ SQL2.interval str
-        Item.ObjectIdFieldType -> M.Just $ Port.Literal $ SQL2.objectId str
-        Item.QueryFieldType -> M.Just $ Port.QueryExpr $ str
-        _ | str == "" -> M.Nothing
-        _ ->
-          P.runParser str SQL2.parseLiteral
-            # E.either (\_ -> M.Nothing) (Port.Literal >>> M.Just)
-
+            <|> (Item.defaultValueToVarMapValue fieldType =<< defaultValue)
 
 eval :: Natural NC.CellEvalQuery APIDSL
 eval q =

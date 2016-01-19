@@ -25,6 +25,8 @@ module Notebook.FormBuilder.Item.Model
   , EqModel(..)
   , runEqModel
   , module Notebook.FormBuilder.Item.FieldType
+  , defaultValueToVarMapValue
+  , emptyValueOfFieldType
   ) where
 
 import Prelude
@@ -34,7 +36,11 @@ import Data.Argonaut as J
 import Data.Either as E
 import Data.Lens
 import Data.Maybe as M
+import Data.SQL2.Literal as SQL2
+import Data.StrMap as SM
+import Notebook.Cell.Port.VarMap as Port
 import Notebook.FormBuilder.Item.FieldType
+import Text.Parsing.Parser as P
 
 type Model =
   { name :: String
@@ -91,3 +97,39 @@ decode =
       <$> obj .? "name"
       <*> obj .? "fieldType"
       <*> obj .? "defaultValue"
+
+emptyValueOfFieldType
+  :: FieldType
+  -> Port.VarMapValue
+emptyValueOfFieldType tau =
+  case tau of
+    StringFieldType -> Port.Literal $ SQL2.string ""
+    BooleanFieldType -> Port.Literal $ SQL2.boolean true
+    NumericFieldType -> Port.Literal $ SQL2.decimal 0.0
+    DateTimeFieldType -> Port.Literal $ SQL2.dateTime ""
+    DateFieldType -> Port.Literal $ SQL2.date ""
+    TimeFieldType -> Port.Literal $ SQL2.time ""
+    IntervalFieldType -> Port.Literal $ SQL2.interval ""
+    ObjectIdFieldType -> Port.Literal $ SQL2.objectId ""
+    OrderedSetFieldType -> Port.Literal $ SQL2.orderedSet []
+    ArrayFieldType -> Port.Literal $ SQL2.array []
+    ObjectFieldType -> Port.Literal $ SQL2.object SM.empty
+    QueryFieldType -> Port.QueryExpr ""
+
+defaultValueToVarMapValue
+  :: FieldType
+  -> String
+  -> M.Maybe Port.VarMapValue
+defaultValueToVarMapValue ty str =
+  case ty of
+    StringFieldType -> M.Just $ Port.Literal $ SQL2.string str
+    DateTimeFieldType -> M.Just $ Port.Literal $ SQL2.dateTime str
+    DateFieldType -> M.Just $ Port.Literal $ SQL2.date str
+    TimeFieldType -> M.Just $ Port.Literal $ SQL2.time str
+    IntervalFieldType -> M.Just $ Port.Literal $ SQL2.interval str
+    ObjectIdFieldType -> M.Just $ Port.Literal $ SQL2.objectId str
+    QueryFieldType -> M.Just $ Port.QueryExpr $ str
+    _ | str == "" -> M.Nothing
+    _ ->
+      P.runParser str SQL2.parseLiteral
+        # E.either (\_ -> M.Nothing) (Port.Literal >>> M.Just)

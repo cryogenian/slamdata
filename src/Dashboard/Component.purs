@@ -38,25 +38,33 @@ module Dashboard.Component
 import Prelude
 
 import Control.Apply ((*>))
+import Control.Bind ((>=>), (=<<))
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Shortcut (onShortcut)
 import Control.Monad.Eff.Shortcut.Platform (shortcutPlatform)
-import Control.UI.Browser (newTab)
+import Control.Monad.Except.Trans as ET
+import Control.Monad.Error.Class as EC
+import Control.Monad.Trans as MT
+import Control.UI.Browser (newTab, locationString)
+
 import DOM.Event.EventTarget (removeEventListener)
 import DOM.Event.EventTypes (keydown)
+
 import Data.Array (cons)
-import Data.Either (Either(), either)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
+import Data.Foldable as F
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
 import Data.Functor.Eff (liftEff)
 import Data.Generic (Generic, gEq, gCompare)
 import Data.Shortcut (print)
 import Data.Lens ((^.), (.~), (%~))
-import Data.Maybe (Maybe(..), maybe)
-import Data.StrMap as StrMap
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.StrMap as SM
 import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..), uncurry)
+
 import Halogen
 import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot)
 import Halogen.HTML.Core (className)
@@ -74,9 +82,20 @@ import Dashboard.Dialog.Component as Dialog
 import Dashboard.Menu.Component.State as Menu
 import Dashboard.Menu.Component.Query as Menu
 import Dashboard.Rename.Component as Rename
+
 import Model.AccessType (isReadOnly)
+import Model.Common (mkNotebookCellURL)
+import Model.Notebook.Action as NA
+
 import Notebook.Common (Slam())
 import Notebook.Component as Notebook
+import Notebook.CellSlot as Notebook
+import Notebook.Cell.CellId as CID
+import Notebook.Cell.Component.Query as CQ
+import Notebook.Cell.CellType as CT
+import Notebook.FormBuilder.Component as FB
+import Notebook.FormBuilder.Item.Model as FBI
+
 import Render.CssClasses as Rc
 import Render.Common (icon, logo)
 import Utils.DOM (documentTarget)
@@ -204,7 +223,7 @@ render state =
         [ P.classes $ [ className "sd-menu" ] <> visibilityClasses ]
         [ H.slot' cpMenu MenuSlot \_ ->
           { component: HalogenMenu.menuComponent
-          , initialState: installedState $ Menu.make StrMap.empty
+          , initialState: installedState $ Menu.make SM.empty
           }
         ]
     , H.div
@@ -263,7 +282,7 @@ activateKeyboardShortcuts = do
       shortcuts = map labelShortcut initialShortcuts
   modify (_notebookShortcuts .~ shortcuts)
 
-  query' cpMenu MenuSlot $ left $ action $ HalogenMenu.SetMenu $ Menu.make shortcuts
+  queryMenu $ action $ HalogenMenu.SetMenu $ Menu.make shortcuts
 
   subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do
     target <- documentTarget
@@ -294,26 +313,31 @@ eval (AddKeyboardListener listener next) =
 eval (Save next) = pure next
 eval (SetAccessType aType next) = do
   modify (_accessType .~ aType)
-  query' cpNotebook unit
-    $ left $ action $ Notebook.SetAccessType aType
+  queryNotebook $ action $ Notebook.SetAccessType aType
   pure next
+eval (GetAccessType k) = k <$> gets _.accessType
 eval (SetViewingCell mbcid next) = do
   modify (_viewingCell .~ mbcid)
-  query' cpNotebook unit
-    $ left $ action $ Notebook.SetViewingCell mbcid
+  queryNotebook $ action $ Notebook.SetViewingCell mbcid
   pure next
+eval (GetViewingCell k) = k <$> gets _.viewingCell
 eval (DismissAll next) = dismissAll *> pure next
 
 dismissAll :: DashboardDSL Unit
 dismissAll =
-  query' cpMenu MenuSlot (left $ action HalogenMenu.DismissSubmenu) $> unit
+  queryMenu $
+    action HalogenMenu.DismissSubmenu
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> DashboardDSL Unit
 peek (ChildF p q) =
-  coproduct renamePeek
-  (coproduct menuPeek
-   (coproduct dialogParentPeek
-    notebookPeek)) q
+  coproduct
+    renamePeek
+    (coproduct
+      menuPeek
+      (coproduct
+        dialogParentPeek
+        notebookPeek))
+    q
 
 dialogParentPeek :: forall a. Dialog.QueryP a -> DashboardDSL Unit
 dialogParentPeek = coproduct dialogPeek (const (pure unit))
@@ -323,22 +347,106 @@ dialogPeek (Dialog.Dismiss _) = activateKeyboardShortcuts
 dialogPeek (Dialog.Show _ _) = deactivateKeyboardShortcuts
 
 notebookPeek :: forall a. Notebook.QueryP a -> DashboardDSL Unit
-notebookPeek q = pure unit
+notebookPeek =
+  coproduct
+    (const (pure unit))
+    \(ChildF (Notebook.CellSlot cid) q) ->
+      coproduct
+        (cellPeek cid)
+        (const (pure unit))
+        q
+
+cellPeek :: forall a. CID.CellId -> CQ.CellQuery a -> DashboardDSL Unit
+cellPeek cid q =
+  case q of
+    CQ.ShareCell _ -> do
+      root <- liftEff locationString
+      showDialog <<< either Dialog.Error (uncurry Dialog.Embed) =<< ET.runExceptT do
+        liftNotebookQuery $ action Notebook.SaveNotebook
+        path <-
+          liftNotebookQuery (request Notebook.GetNotebookPath)
+            >>= maybe (EC.throwError "Could not determine notebook path") pure
+        varMap <-
+          liftNotebookQuery (request (Notebook.FindCellParent cid))
+            >>= maybe (pure SM.empty) hereditaryVarMapDefaults
+        pure $
+          Tuple
+            (root <> "/" <> mkNotebookCellURL path cid NA.ReadOnly SM.empty)
+            varMap
+    _ ->
+      pure unit
+
+  where
+    hereditaryVarMapDefaults cid = do
+      pid <- liftNotebookQuery (request (Notebook.FindCellParent cid))
+      SM.union
+        <$> varMapDefaults cid
+        <*> (traverse hereditaryVarMapDefaults pid <#> fromMaybe SM.empty)
+
+    varMapDefaults cid = do
+      tau <-
+        liftNotebookQuery (request (Notebook.GetCellType cid))
+          >>= maybe (EC.throwError "Could not determine cell type") pure
+      case tau of
+        CT.API -> do
+          let
+            defaultVarMapValue { defaultValue, fieldType } =
+              case FBI.defaultValueToVarMapValue fieldType =<< defaultValue of
+                Just val -> val
+                Nothing -> FBI.emptyValueOfFieldType fieldType
+
+            alg =
+              SM.insert
+                <$> _.name
+                <*> defaultVarMapValue
+
+          liftFormBuilderQuery cid (request FB.GetItems)
+            <#> F.foldl (flip alg) SM.empty
+        _ ->
+          pure SM.empty
+
+    liftFormBuilderQuery :: CID.CellId -> Natural FB.Query (ET.ExceptT String DashboardDSL)
+    liftFormBuilderQuery cid =
+      liftCellQuery cid
+        <<< CQ.APIQuery
+        <<< right
+        <<< ChildF unit
+        <<< left
+
+    liftCellQuery :: CID.CellId -> Natural CQ.AnyCellQuery (ET.ExceptT String DashboardDSL)
+    liftCellQuery cid =
+      queryCell cid >>> MT.lift
+        >=> maybe (EC.throwError "Error querying cell") pure
+
+    liftNotebookQuery :: Natural Notebook.Query (ET.ExceptT String DashboardDSL)
+    liftNotebookQuery =
+      queryNotebook >>> MT.lift
+        >=> maybe (EC.throwError "Error querying notebook") pure
+
+    showDialog =
+      queryDialog
+        <<< action
+        <<< Dialog.Show
 
 menuPeek :: forall a. Menu.QueryP a -> DashboardDSL Unit
 menuPeek = coproduct (const (pure unit)) submenuPeek
 
 renamePeek :: forall a. Rename.Query a -> DashboardDSL Unit
 renamePeek (Rename.Submit next) =
-  void $ query' cpNotebook unit $ left $ action Notebook.SaveNotebook
+  void $ queryNotebook $ action Notebook.SaveNotebook
 renamePeek (Rename.SetText name next) =
-  void $ query' cpNotebook unit $ left $ action $ Notebook.SetName name
+  void $ queryNotebook $ action $ Notebook.SetName name
 renamePeek _ = pure unit
 
 evaluateMenuValue :: Menu.Value -> DashboardDSL Unit
 evaluateMenuValue =
-  either presentHelp
-  (coproduct queryRename (coproduct queryDialog queryNotebook))
+  either
+    presentHelp
+    (coproduct
+      queryRename
+      (coproduct
+        queryDialog
+        (queryNotebook >>> void)))
 
 submenuPeek
   :: forall a
@@ -351,11 +459,23 @@ submenuPeek (ChildF _ (HalogenMenu.SelectSubmenuItem v _)) =
 queryDialog :: Dialog.Query Unit -> DashboardDSL Unit
 queryDialog q = query' cpDialog unit (left q) *> pure unit
 
-queryNotebook :: Notebook.Query Unit -> DashboardDSL Unit
-queryNotebook q = query' cpNotebook unit (left q) *> pure unit
+queryNotebook :: forall a. Notebook.Query a -> DashboardDSL (Maybe a)
+queryNotebook = query' cpNotebook unit <<< left
+
+queryCell :: forall a. CID.CellId -> CQ.AnyCellQuery a -> DashboardDSL (Maybe a)
+queryCell cid =
+  query' cpNotebook unit
+    <<< right
+    <<< ChildF (Notebook.CellSlot cid)
+    <<< right
+    <<< ChildF unit
+    <<< right
 
 queryRename :: Rename.Query Unit -> DashboardDSL Unit
 queryRename q = query' cpRename unit q *> pure unit
+
+queryMenu :: HalogenMenu.MenuQuery (Maybe Menu.Value) Unit -> DashboardDSL Unit
+queryMenu q = query' cpMenu MenuSlot (left q) *> pure unit
 
 presentHelp :: Menu.HelpURI -> DashboardDSL Unit
 presentHelp (Menu.HelpURI uri) = liftEff $ newTab uri

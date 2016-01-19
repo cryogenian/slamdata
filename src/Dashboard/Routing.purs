@@ -158,19 +158,20 @@ routeSignal driver = do
   notebook :: UP.DirPath -> Action -> M.Maybe CID.CellId -> Port.VarMap -> Aff NotebookEffects Unit
   notebook path action viewing varMap = do
     let name = UP.getNameStr $ E.Right path
-        directory = UP.getDir $ E.Right path
-    currentPath <- driver $ Dashboard.fromNotebook Notebook.GetPath
-    currentName <- driver $ Dashboard.fromNotebook Notebook.GetNameToSave
+        accessType = toAccessType action
+    currentPath <- driver $ Dashboard.fromNotebook Notebook.GetNotebookPath
     currentVarMap <- driver $ Dashboard.fromNotebook Notebook.GetGlobalVarMap
-    let pathChanged = currentPath /= pure directory
-        nameChanged = currentName /= pure (P.DirName name)
-        varMapChanged = currentVarMap /= varMap
-    when (pathChanged || nameChanged) do
+    currentViewing <- driver $ Dashboard.fromDashboard Dashboard.GetViewingCell
+    currentAccessType <- driver $ Dashboard.fromDashboard Dashboard.GetAccessType
+
+    when (currentPath /= pure path) do
       features <- Eff.liftEff detectBrowserFeatures
       driver $ Dashboard.toRename $ Rename.SetText $ UP.dropNotebookExt name
       if action == New
         then driver $ Dashboard.toNotebook $ Notebook.Reset features path
         else driver $ Dashboard.toNotebook $ Notebook.LoadNotebook features path
-      driver $ Dashboard.toDashboard $ Dashboard.SetAccessType $ toAccessType action
-      driver $ Dashboard.toDashboard $ Dashboard.SetViewingCell viewing
-      driver $ Dashboard.toNotebook $ Notebook.SetGlobalVarMap varMap
+
+    driver $ Dashboard.toDashboard $ Dashboard.SetViewingCell viewing
+    driver $ Dashboard.toDashboard $ Dashboard.SetAccessType accessType
+    driver $ Dashboard.toNotebook $ Notebook.SetGlobalVarMap varMap
+

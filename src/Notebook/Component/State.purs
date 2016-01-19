@@ -44,6 +44,7 @@ module Notebook.Component.State
   , findChildren
   , findDescendants
   , addPendingCell
+  , getCellType
   , cellIsLinkedCellOf
   , fromModel
   , notebookPath

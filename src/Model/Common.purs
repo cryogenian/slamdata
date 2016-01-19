@@ -28,7 +28,6 @@ import Control.UI.Browser as Browser
 
 import Data.Foldable as F
 import Data.Maybe as M
-import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.StrMap as SM
 
@@ -39,7 +38,6 @@ import Notebook.Cell.CellId as CID
 import Model.Salt as Salt
 import Model.Sort as Sort
 
-import Utils.Path ((<./>))
 import Utils.Path as UP
 
 browseURL :: M.Maybe String -> Sort.Sort -> Salt.Salt -> UP.DirPath -> String
@@ -80,27 +78,25 @@ renderVarMapQueryString varMap =
         ]
 
 mkNotebookHash
-  :: String        -- notebook name
-  -> UP.DirPath    -- notebook path
+  :: UP.DirPath    -- notebook path
   -> NA.Action     -- notebook action
   -> Port.VarMap   -- global `VarMap`
   -> String
-mkNotebookHash name path action varMap =
+mkNotebookHash path action varMap =
   "#"
-    <> UP.encodeURIPath (P.printPath $ path </> P.dir name <./> Config.notebookExtension)
+    <> UP.encodeURIPath (P.printPath path)
     <> NA.printAction action
     <> M.maybe "" ("/" <>)  (renderVarMapQueryString varMap)
 
 mkNotebookCellHash
-  :: String        -- notebook name
-  -> UP.DirPath    -- notebook path
+  :: UP.DirPath    -- notebook path
   -> CID.CellId    -- cell identifier
   -> AT.AccessType -- access type
   -> Port.VarMap   -- global `VarMap`
   -> String
-mkNotebookCellHash name path cid accessType varMap =
+mkNotebookCellHash path cid accessType varMap =
   "#"
-    <> UP.encodeURIPath (P.printPath $ path </> P.dir name <./> Config.notebookExtension)
+    <> UP.encodeURIPath (P.printPath path)
     <> "cells/"
     <> CID.cellIdToString cid
     <> "/"
@@ -108,15 +104,14 @@ mkNotebookCellHash name path cid accessType varMap =
     <> M.maybe "" ("/" <>)  (renderVarMapQueryString varMap)
 
 mkNotebookCellURL
-  :: String        -- notebook name
-  -> UP.DirPath    -- notebook path
+  :: UP.DirPath    -- notebook path
   -> CID.CellId    -- cell identifier
   -> AT.AccessType -- access type
   -> Port.VarMap   -- global `VarMap`
   -> String
-mkNotebookCellURL name path cid accessType varMap =
+mkNotebookCellURL path cid accessType varMap =
   Config.notebookUrl
-    <> mkNotebookCellHash name path cid accessType varMap
+    <> mkNotebookCellHash path cid accessType varMap
 
 -- Currently the only place where modules from `Notebook.Model` are used
 -- is `Controller.File`. I think that it would be better if url will be constructed
@@ -124,10 +119,9 @@ mkNotebookCellURL name path cid accessType varMap =
 -- `notebookURL` is redundant, because (state ^. _path) is `DirPath`
 -- `theseRight $ That Config.newNotebookName` ≣ `Just Config.newNotebookName`
 mkNotebookURL
-  :: String        -- notebook name
-  -> UP.DirPath    -- notebook path
+  :: UP.DirPath    -- notebook path
   -> NA.Action     -- notebook action
   -> String
-mkNotebookURL name path action =
+mkNotebookURL path action =
   Config.notebookUrl
-    <> mkNotebookHash name path action SM.empty
+    <> mkNotebookHash path action SM.empty

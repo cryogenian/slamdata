@@ -40,7 +40,7 @@ import Data.Eq1
 import Data.Foldable as F
 import Data.Functor.Mu
 import Data.StrMap as SM
-import Data.String as S
+import Data.String.Regex as Rx
 
 data LiteralF a
   = Null
@@ -138,19 +138,29 @@ renderLiteralF rec d =
     braces str =
       "{" <> str <> "}"
 
+    replaceAll
+      :: String
+      -> String
+      -> String
+      -> String
+    replaceAll i =
+      Rx.replace $
+        Rx.regex i $
+          Rx.noFlags { global = true }
+
     -- | Surround text in double quotes, escaping internal double quotes.
     doubleQuote
       :: String
       -> String
     doubleQuote str =
-      "\"" <> S.replace "\"" "\"\"" str <> "\""
+      "\"" <> replaceAll "\"" "\"\"" str <> "\""
 
     -- | Surround text in single quotes, escaping internal quotes.
     singleQuote
       :: String
       -> String
     singleQuote str =
-      "'" <> S.replace "'" "''" str <> "'"
+      "'" <> replaceAll "'" "''" str <> "'"
 
     commaSep
       :: forall f

@@ -47,7 +47,7 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
 import Data.String as Str
-import Data.These (These(..), theseRight, theseLeft)
+import Data.These (These(..), theseRight)
 import Data.Time (Milliseconds(..))
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..), fst, snd)
@@ -228,14 +228,10 @@ eval (ExploreFile fs res next) = do
   forceRerender'
   runCell zero
   pure next
-eval (Publish next) = do
-  state <- get
-  case state.path of
-    Nothing -> pure next
-    Just path -> do
-      let publish name = newTab $ mkNotebookURL name path (NA.Load ReadOnly)
-      liftEff $ maybe (pure unit) (publish <<< nameFromDirName) $ theseLeft state.name
-      pure next
+eval (Publish next) =
+  gets notebookPath >>= \mpath -> do
+    for_ mpath $ liftEff <<< newTab <<< flip mkNotebookURL (NA.Load ReadOnly)
+    pure next
 eval (Reset fs dir next) = do
   let nb = initialNotebook fs
       peeledPath = Pathy.peel dir
@@ -245,17 +241,14 @@ eval (Reset fs dir next) = do
   pure next
 eval (SetName name next) = modify (_name .~ That name) $> next
 eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
-eval (GetPath k) = k <$> gets _.path
-eval (GetNameToSave k) = do
-  name <- gets _.name
-  pure $ k
-    $ map (\x -> Pathy.DirName $ x ++ "." ++ Config.notebookExtension)
-    $ theseRight name
+eval (GetNotebookPath k) = k <$> gets notebookPath
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook unit $> next
 eval (RunPendingCells next) = runPendingCells unit $> next
 eval (GetGlobalVarMap k) = k <$> gets _.globalVarMap
 eval (SetGlobalVarMap m next) = modify (_globalVarMap .~ m) $> next
+eval (FindCellParent cid k) = k <$> gets (findParent cid)
+eval (GetCellType cid k) = k <$> gets (getCellType cid)
 
 peek :: forall a. ChildF CellSlot CellQueryP a -> NotebookDSL Unit
 peek (ChildF (CellSlot cellId) q) =
@@ -416,12 +409,18 @@ saveNotebook _ = do
 
     modify (_name .~ This savedName)
 
-    let
-      notebookHash =
-        case st.viewingCell of
-          Nothing -> mkNotebookHash (nameFromDirName savedName) path (NA.Load st.accessType) st.globalVarMap
-          Just cid -> mkNotebookCellHash (nameFromDirName savedName) path cid st.accessType st.globalVarMap
-    liftEff $ locationObject >>= Location.setHash notebookHash
+    -- We need to get the modified version of the notebook state. TODO: is
+    -- there a cleaner way to do this?
+    mpath <- gets notebookPath
+    case mpath of
+      Nothing -> pure unit
+      Just path' -> do
+        let
+          notebookHash =
+            case st.viewingCell of
+              Nothing -> mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
+              Just cid -> mkNotebookCellHash path' cid st.accessType st.globalVarMap
+        liftEff $ locationObject >>= Location.setHash notebookHash
 
   where
 
