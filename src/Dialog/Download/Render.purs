@@ -22,7 +22,7 @@ import Control.UI.Browser (encodeURIComponent)
 
 import Data.Either (either, isLeft, isRight)
 import Data.Functor (($>))
-import Data.Lens (LensP(), (^.), (.~))
+import Data.Lens ((^.), (.~))
 import Data.Maybe (isNothing, maybe, isJust)
 import Data.Path.Pathy (printPath)
 

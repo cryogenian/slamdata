@@ -5,11 +5,9 @@ import Prelude
 import Data.Argonaut
   (EncodeJson, DecodeJson, encodeJson, decodeJson, (:=), (~>), (.?), jsonEmptyObject)
 
-import Data.Array (findIndex)
-import Data.Either (Either(..), isLeft)
-import Data.Either.Unsafe as U
-import Data.Lens (LensP(), lens, (^.), (?~), (.~))
-import Data.Maybe (Maybe(..), isJust)
+import Data.Either (Either(..))
+import Data.Lens (LensP(), lens)
+import Data.Maybe (Maybe(..))
 import Data.String as Str
 import Data.String.Regex as Rx
 

@@ -156,6 +156,7 @@ _ChartQuery = prism' ChartQuery \q -> case q of
 _DownloadQuery :: forall a. PrismP (AnyCellQuery a) (Download.QueryP a)
 _DownloadQuery = prism' DownloadQuery \q -> case q of
   DownloadQuery q' -> Just q'
+  _ -> Nothing
 
 _APIQuery :: forall a. PrismP (AnyCellQuery a) (API.QueryP a)
 _APIQuery = prism' APIQuery \q -> case q of
