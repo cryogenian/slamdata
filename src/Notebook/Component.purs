@@ -33,7 +33,7 @@ import Data.Argonaut (Json())
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..), either)
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, for_)
 import Data.Traversable (for)
 import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
@@ -63,7 +63,7 @@ import Render.Common (glyph, fadeWhen)
 import Render.CssClasses as CSS
 
 import Model.AccessType (AccessType(..), isEditable)
-import Model.Common (mkNotebookHash, mkNotebookURL)
+import Model.Common (mkNotebookHash, mkNotebookCellHash, mkNotebookURL)
 import Model.Notebook.Action as NA
 import Model.Resource as R
 
@@ -351,9 +351,9 @@ fireDebouncedQuery lens act = do
 
 -- | Saves the notebook as JSON, using the current values present in the state.
 saveNotebook :: Unit -> NotebookDSL Unit
-saveNotebook _ = get >>= \st -> case st.path of
-  Nothing -> pure unit
-  Just path -> do
+saveNotebook _ = do
+  st <- get
+  for_ st.path \path -> do
     cells <- catMaybes <$> for (List.fromList st.cells) \cell ->
       query (CellSlot cell.id) $ left $ request (SaveCell cell.id cell.ty)
 
@@ -372,7 +372,11 @@ saveNotebook _ = get >>= \st -> case st.path of
 
     modify (_name .~ This savedName)
 
-    let notebookHash = mkNotebookHash (nameFromDirName savedName) path (NA.Load Editable) st.globalVarMap
+    let
+      notebookHash =
+        case st.viewingCell of
+          Nothing -> mkNotebookHash (nameFromDirName savedName) path (NA.Load st.accessType) st.globalVarMap
+          Just cid -> mkNotebookCellHash (nameFromDirName savedName) path cid st.accessType st.globalVarMap
     liftEff $ locationObject >>= Location.setHash notebookHash
 
   where
