@@ -268,6 +268,7 @@ cellEval (EvalCell info continue) = do
     modify $ _loading .~ false
     modify $ _needToUpdate .~ true
     pure a
+cellEval (SetupCell _ next) = pure next
 cellEval (NotifyRunCell next) = pure next
 cellEval (Save k) = do
   st <- get

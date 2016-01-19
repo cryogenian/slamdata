@@ -72,6 +72,7 @@ eval (NC.EvalCell info k) =
         # MT.lift
         >>= maybe (EC.throwError "No file selected") pure
     pure $ Port.Resource resource
+eval (NC.SetupCell _ next) = pure next
 eval (NC.Save k) = do
   file <- query unit (request FI.GetSelectedFile)
   pure $ k $ encodeJson (join file)

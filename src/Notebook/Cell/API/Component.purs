@@ -118,6 +118,8 @@ eval q =
             # MT.lift
             >>= M.maybe (EC.throwError "Error querying FormBuilder") pure
         pure $ Port.VarMap $ compileVarMap fields info.globalVarMap
+    NC.SetupCell _ next ->
+      pure next
     NC.NotifyRunCell next ->
       pure next
     NC.Save k ->
