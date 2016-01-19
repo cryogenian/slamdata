@@ -18,6 +18,8 @@ module Model.Common
   ( browseURL
   , mkNotebookHash
   , mkNotebookURL
+  , mkNotebookCellHash
+  , mkNotebookCellURL
   ) where
 
 import Prelude
@@ -30,8 +32,10 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.StrMap as SM
 
-import Model.Notebook.Action as Action
+import Model.AccessType as AT
+import Model.Notebook.Action as NA
 import Notebook.Cell.Port.VarMap as Port
+import Notebook.Cell.CellId as CID
 import Model.Salt as Salt
 import Model.Sort as Sort
 
@@ -57,32 +61,73 @@ browseURL search sort salt path =
         <> P.printPath path
         <> "\""
 
-mkNotebookHash :: String -> UP.DirPath -> Action.Action -> Port.VarMap -> String
+-- TODO: it would be nice if `purescript-routing` had a way to render a route
+-- from a matcher, so that we could do away with the following brittle functions.
+
+renderVarMapQueryString
+  :: Port.VarMap -- global `VarMap`
+  -> M.Maybe String
+renderVarMapQueryString varMap =
+  if SM.isEmpty varMap
+     then M.Nothing
+     else M.Just $ "?" <> F.intercalate "&" (varMapComponents varMap)
+  where
+    varMapComponents =
+      SM.foldMap $ \key val ->
+        [ key
+            <> "="
+            <> Browser.encodeURIComponent (Port.renderVarMapValue val)
+        ]
+
+mkNotebookHash
+  :: String        -- notebook name
+  -> UP.DirPath    -- notebook path
+  -> NA.Action     -- notebook action
+  -> Port.VarMap   -- global `VarMap`
+  -> String
 mkNotebookHash name path action varMap =
   "#"
     <> UP.encodeURIPath (P.printPath $ path </> P.dir name <./> Config.notebookExtension)
-    <> Action.printAction action
-    <> renderVarMap varMap
+    <> NA.printAction action
+    <> M.maybe "" ("/" <>)  (renderVarMapQueryString varMap)
 
-  where
-  renderVarMap varMap =
-    if SM.isEmpty varMap
-       then ""
-       else "/?" <> F.intercalate "&" (varMapComponents varMap)
+mkNotebookCellHash
+  :: String        -- notebook name
+  -> UP.DirPath    -- notebook path
+  -> CID.CellId    -- cell identifier
+  -> AT.AccessType -- access type
+  -> Port.VarMap   -- global `VarMap`
+  -> String
+mkNotebookCellHash name path cid accessType varMap =
+  "#"
+    <> UP.encodeURIPath (P.printPath $ path </> P.dir name <./> Config.notebookExtension)
+    <> "cells/"
+    <> CID.cellIdToString cid
+    <> "/"
+    <> AT.printAccessType accessType
+    <> M.maybe "" ("/" <>)  (renderVarMapQueryString varMap)
 
-  varMapComponents =
-    SM.foldMap $ \key val ->
-      [ key
-          <> "="
-          <> Browser.encodeURIComponent (Port.renderVarMapValue val)
-      ]
+mkNotebookCellURL
+  :: String        -- notebook name
+  -> UP.DirPath    -- notebook path
+  -> CID.CellId    -- cell identifier
+  -> AT.AccessType -- access type
+  -> Port.VarMap   -- global `VarMap`
+  -> String
+mkNotebookCellURL name path cid accessType varMap =
+  Config.notebookUrl
+    <> mkNotebookCellHash name path cid accessType varMap
 
 -- Currently the only place where modules from `Notebook.Model` are used
 -- is `Controller.File`. I think that it would be better if url will be constructed
 -- from things that are already in `FileSystem` (In fact that using of
 -- `notebookURL` is redundant, because (state ^. _path) is `DirPath`
 -- `theseRight $ That Config.newNotebookName` ≣ `Just Config.newNotebookName`
-mkNotebookURL :: String -> UP.DirPath -> Action.Action -> String
+mkNotebookURL
+  :: String        -- notebook name
+  -> UP.DirPath    -- notebook path
+  -> NA.Action     -- notebook action
+  -> String
 mkNotebookURL name path action =
   Config.notebookUrl
     <> mkNotebookHash name path action SM.empty
