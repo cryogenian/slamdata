@@ -38,6 +38,7 @@ module Notebook.Cell.Component.State
   , _JTableState
   , _VizState
   , _ChartState
+  , _DownloadState
   , _APIState
   , _APIResultsState
   ) where
@@ -64,6 +65,7 @@ import Notebook.Cell.Markdown.Component.State as Markdown
 import Notebook.Cell.RunState (RunState(..))
 import Notebook.Cell.Search.Component.State as Search
 import Notebook.Cell.Viz.Component.State as Viz
+import Notebook.Cell.Download.Component.State as Download
 import Notebook.Cell.API.Component.State as API
 import Notebook.Cell.APIResults.Component.State as APIResults
 import Notebook.Common (Slam())
@@ -183,6 +185,7 @@ data AnyCellState
   | JTableState JTable.State
   | VizState Viz.StateP
   | ChartState Chart.StateP
+  | DownloadState Download.State
   | APIState API.StateP
   | APIResultsState APIResults.State
 
@@ -220,6 +223,10 @@ _ChartState :: PrismP AnyCellState Chart.StateP
 _ChartState = prism' ChartState \s -> case s of
   ChartState s' -> Just s'
   _ -> Nothing
+
+_DownloadState :: PrismP AnyCellState Download.State
+_DownloadState = prism' DownloadState \s -> case s of
+  DownloadState s' -> Just s'
 
 _APIState :: PrismP AnyCellState API.StateP
 _APIState = prism' APIState \s -> case s of

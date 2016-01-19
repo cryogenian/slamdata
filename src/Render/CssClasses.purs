@@ -335,3 +335,12 @@ axisLabelParam = className "axis-label-param"
 
 chartSizeParam :: ClassName
 chartSizeParam = className "chart-size-param"
+
+downloadCellEditor :: ClassName
+downloadCellEditor = className "download-cell-editor"
+
+downloadTypeSelector :: ClassName
+downloadTypeSelector = className "download-type-selector"
+
+downloadConfiguration :: ClassName
+downloadConfiguration = className "download-configuration"

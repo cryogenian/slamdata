@@ -17,6 +17,7 @@ limitations under the License.
 module Dialog.Download.Query where
 
 import Dialog.Download.State
+import Model.Download
 import Model.Resource (Resource())
 
 data Query a

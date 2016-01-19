@@ -44,6 +44,7 @@ data CellType
   | Chart
   | Markdown
   | JTable
+  | Download
   | API
   | APIResults
 
@@ -55,6 +56,7 @@ instance eqCellType :: Eq CellType where
   eq Chart Chart = true
   eq Markdown Markdown = true
   eq JTable JTable = true
+  eq Download Download = true
   eq API API = true
   eq APIResults APIResults = true
   eq _ _ = false
@@ -90,6 +92,7 @@ instance encodeJsonCellType :: EncodeJson CellType where
   encodeJson Chart = encodeJson "chart"
   encodeJson Markdown = encodeJson "markdown"
   encodeJson JTable = encodeJson "jtable"
+  encodeJson Download = encodeJson "download"
   encodeJson API = encodeJson "api"
   encodeJson APIResults = encodeJson "api-results"
 
@@ -105,6 +108,7 @@ instance decodeJsonCellType :: DecodeJson CellType where
       "chart" -> pure Chart
       "markdown" -> pure Markdown
       "jtable" -> pure JTable
+      "download" -> pure Download
       "api" -> pure API
       "api-results" -> pure APIResults
       name -> throwError $ "unknown cell type '" ++ name ++ "'"
@@ -114,6 +118,7 @@ cellName (Ace at) = aceCellName at
 cellName Explore = "Explore"
 cellName Search = "Search"
 cellName Viz = "Visualize"
+cellName Download = "Download"
 cellName API = "API"
 cellName APIResults = "API Results"
 cellName _ = ""
@@ -123,6 +128,7 @@ cellGlyph (Ace at) = aceCellGlyph at
 cellGlyph Explore = B.glyphiconEyeOpen
 cellGlyph Search = B.glyphiconSearch
 cellGlyph Viz = B.glyphiconPicture
+cellGlyph Download = B.glyphiconDownloadAlt
 cellGlyph API = B.glyphiconShare -- TODO?
 cellGlyph APIResults = B.glyphiconShare -- TODO?
 cellGlyph _ = B.glyphiconStop

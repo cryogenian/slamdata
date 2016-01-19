@@ -85,6 +85,7 @@ import Notebook.Cell.Markdown.Eval (markdownEval)
 import Notebook.Cell.Query.Eval (queryEval)
 import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Viz.Component (vizComponent)
+import Notebook.Cell.Download.Component (downloadComponent)
 import Notebook.Cell.API.Component (apiComponent)
 import Notebook.Cell.APIResults.Component (apiResultsComponent)
 import Notebook.CellSlot (CellSlot(..))
@@ -218,7 +219,8 @@ addCell' cellType parent st =
   extractNewId :: forall a. Array a -> a
   extractNewId = flip U.unsafeIndex (maybe 0 (const 1) parent)
 
-addCellChain :: CellType -> Array CellId -> NotebookState -> Tuple NotebookState (Array CellId)
+addCellChain
+  :: CellType -> Array CellId -> NotebookState -> Tuple NotebookState (Array CellId)
 addCellChain cellType parents st =
   let cellId = CellId st.fresh
       parent = A.last parents
@@ -226,7 +228,8 @@ addCellChain cellType parents st =
       newState = st
         { fresh = st.fresh + 1
         , cells = st.cells `L.snoc` mkCellDef cellType cellId
-        , dependencies = maybe st.dependencies (flip (M.insert cellId) st.dependencies) parent
+        , dependencies =
+            maybe st.dependencies (flip (M.insert cellId) st.dependencies) parent
         , isAddingCell = false
         }
   in case linkedCellType cellType of
@@ -237,7 +240,9 @@ addCellChain cellType parents st =
   mkCellDef :: CellType -> CellId -> CellDef
   mkCellDef cellType cellId =
     let component = cellTypeComponent cellType cellId st.browserFeatures
-        initialState = installedState (cellTypeInitialState cellType) { accessType = st.accessType }
+        initialState =
+          installedState (cellTypeInitialState cellType)
+            { accessType = st.accessType }
     in { id: cellId
        , ty: cellType
        , ctor: SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
@@ -251,11 +256,13 @@ cellTypeComponent Viz _ _ = vizComponent
 cellTypeComponent Chart _ _ = chartComponent
 cellTypeComponent Markdown cellId bf = markdownComponent cellId bf
 cellTypeComponent JTable _ _ = jtableComponent
+cellTypeComponent Download _ _ = downloadComponent
 cellTypeComponent API _ _ = apiComponent
 cellTypeComponent APIResults _ _ = apiResultsComponent
 
 cellTypeInitialState :: CellType -> CellState
-cellTypeInitialState (Ace SQLMode) = initEditorCellState { cachingEnabled = Just false }
+cellTypeInitialState (Ace SQLMode) =
+  initEditorCellState { cachingEnabled = Just false }
 cellTypeInitialState (Ace _) = initEditorCellState
 cellTypeInitialState Explore = initEditorCellState
 cellTypeInitialState Search = initEditorCellState { cachingEnabled = Just false }
@@ -263,6 +270,7 @@ cellTypeInitialState Viz = initEditorCellState
 cellTypeInitialState Chart = initResultsCellState
 cellTypeInitialState Markdown = initResultsCellState
 cellTypeInitialState JTable = initResultsCellState
+cellTypeInitialState Download = initEditorCellState
 cellTypeInitialState API = initEditorCellState
 cellTypeInitialState APIResults = initResultsCellState
 
@@ -389,4 +397,3 @@ fromModel browserFeatures path name { cells, dependencies } =
        , ty: cellType
        , ctor: SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
        }
-

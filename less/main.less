@@ -648,14 +648,14 @@ div.loading-message.alert.alert-info {
     font-weight: 28px;
 }
 
-div.viz-cell-editor {
+div.viz-cell-editor, div.download-cell-editor {
     min-height: 160px;
     padding-left: 15px;
     padding-right: 15px;
     div.loading-message.alert.alert-info {
         height: 160px;
     }
-    .viz-chart-type-selector {
+    .viz-chart-type-selector, .download-type-selector {
         position: absolute;
         left: 0;
         width: 60px;
@@ -675,7 +675,10 @@ div.viz-cell-editor {
             }
         }
     }
-    .viz-chart-configuration {
+    .download-type-selector img {
+        padding: 4px;
+    }
+    .viz-chart-configuration, .download-configuration {
         margin-left: 60px;
         padding-top: 10px;
     }

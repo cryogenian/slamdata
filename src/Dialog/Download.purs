@@ -38,6 +38,7 @@ import Dialog.Download.Query
 import Dialog.Download.Render
 import Dialog.Download.State
 import Model.Resource (Resource(..), resourceName)
+import Model.Download as D
 import Utils.Path (parseAnyPath)
 
 comp :: forall e. Component State Query (Slam e)
@@ -69,8 +70,8 @@ eval (ToggleCompress next) = do
   pure next
 eval (SetOutput ty next) = do
   modify (_options %~ case ty of
-             CSV -> Left <<< either id (const initialCSVOptions)
-             JSON -> Right <<< either (const initialJSONOptions) id
+             D.CSV -> Left <<< either id (const D.initialCSVOptions)
+             D.JSON -> Right <<< either (const D.initialJSONOptions) id
          )
   modify validate
   pure next

@@ -18,6 +18,7 @@ module Notebook.Cell.Component
   ( CellComponent()
   , makeEditorCellComponent
   , makeResultsCellComponent
+  , makeSingularCellComponent
   , module Notebook.Cell.Component.Def
   , module Notebook.Cell.Component.Query
   , module Notebook.Cell.Component.State
@@ -73,6 +74,7 @@ import Notebook.Common (Slam())
 -- | Type synonym for the full type of a cell component.
 type CellComponent = Component CellStateP CellQueryP Slam
 type CellDSL = ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit
+
 -- | Constructs a cell component for an editor-style cell.
 makeEditorCellComponent
   :: forall s f
@@ -80,21 +82,62 @@ makeEditorCellComponent
   -> CellComponent
 makeEditorCellComponent def = makeCellComponentPart def render
   where
-  render :: Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML
-  render component initialState cs =
-    if cs.visibility == Invisible || cs.accessType == ReadOnly
-    then H.text ""
-    else
-      H.div
-        [ P.classes $ join [containerClasses, collapsedClass] ]
-        [ header def cs
-          -- Do we really need `row` here? Won't `H.div_` work?
-        , row' (fadeWhen cs.isCollapsed)
-          [ H.slot unit \_ -> { component: component, initialState: initialState } ]
-        , statusBar cs.hasResults cs
-        ]
-    where
-    collapsedClass = if cs.isCollapsed then [CSS.collapsed] else []
+  render
+    :: Component AnyCellState InnerCellQuery Slam
+    -> AnyCellState
+    -> CellState
+    -> CellHTML
+  render =
+    cellSourceRender
+      def
+      (\x -> x.visibility == Invisible || x.accessType == ReadOnly)
+      (\x -> [statusBar x.hasResults x])
+
+-- | Sometimes we don't need editor or results and whole cell can be expressed
+-- | as one cell part
+makeSingularCellComponent
+  :: forall s f
+   . EditorCellDef s f
+  -> CellComponent
+makeSingularCellComponent def = makeCellComponentPart def render
+  where
+  render
+    :: Component AnyCellState InnerCellQuery Slam
+    -> AnyCellState
+    -> CellState
+    -> CellHTML
+  render =
+    cellSourceRender
+      def
+      (\x -> x.visibility == Invisible)
+      (const [])
+
+cellSourceRender
+  :: forall s f
+   . EditorCellDef s f
+  -> (CellState -> Boolean)
+  -> (CellState -> Array CellHTML)
+  -> Component AnyCellState InnerCellQuery Slam
+  -> AnyCellState
+  -> CellState
+  -> CellHTML
+cellSourceRender def hided afterContent component initialState cs =
+  if hided cs
+  then H.text ""
+  else shown
+  where
+  collapsedClass = if cs.isCollapsed then [CSS.collapsed] else []
+  shown :: CellHTML
+  shown =
+    H.div [ P.classes $ join [ containerClasses, collapsedClass ] ]
+    $ [ header def cs
+      , row' (fadeWhen cs.isCollapsed)
+        [ H.slot unit \_ -> { component: component, initialState: initialState } ]
+      ]
+      <> afterContent cs
+
+
+
 
 -- | Constructs a cell component for an results-style cell.
 makeResultsCellComponent
@@ -103,7 +146,11 @@ makeResultsCellComponent
   -> CellComponent
 makeResultsCellComponent def = makeCellComponentPart def render
   where
-  render :: Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML
+  render
+    :: Component AnyCellState InnerCellQuery Slam
+    -> AnyCellState
+    -> CellState
+    -> CellHTML
   render component initialState cs =
     if cs.visibility == Invisible
     then H.text ""
@@ -118,12 +165,17 @@ makeResultsCellComponent def = makeCellComponentPart def render
                 ]
             , H.div
                 [ P.class_ CSS.cellOutputResult ]
-                [ H.slot unit \_ -> { component: component, initialState: initialState } ]
+                [ H.slot unit \_ -> { component: component
+                                    , initialState: initialState
+                                    }
+                ]
             ]
         ]
 
   resLabel :: Maybe Port -> String
-  resLabel p = maybe "" (\p -> Path.runFileName (Path.fileName p) ++ " :=") $ preview (_Resource <<< _filePath) =<< p
+  resLabel p =
+    maybe "" (\p -> Path.runFileName (Path.fileName p) ++ " :=")
+    $ preview (_Resource <<< _filePath) =<< p
 
   nextCellButtons :: Maybe Port -> Array (CellHTML)
   nextCellButtons Nothing = []
@@ -134,6 +186,7 @@ makeResultsCellComponent def = makeCellComponentPart def render
       [ nextCellButton (Ace SQLMode)
       , nextCellButton Search
       , nextCellButton Viz
+      , nextCellButton Download
       ]
     _ -> []
 
@@ -155,7 +208,8 @@ containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
 makeCellComponentPart
   :: forall s f r
    . Object (CellDefProps s f r)
-  -> (Component AnyCellState InnerCellQuery Slam -> AnyCellState -> CellState -> CellHTML)
+  -> (Component AnyCellState InnerCellQuery Slam
+      -> AnyCellState -> CellState -> CellHTML)
   -> CellComponent
 makeCellComponentPart def render =
   parentComponent (render component initialState) eval
@@ -168,7 +222,11 @@ makeCellComponentPart def render =
   _Query = clonePrism def._Query
 
   component :: Component AnyCellState InnerCellQuery Slam
-  component = transform (review _State) (preview _State) (review _Query) (preview _Query) def.component
+  component =
+    transform
+    (review _State) (preview _State)
+    (review _Query) (preview _Query)
+    def.component
 
   initialState :: AnyCellState
   initialState = review _State def.initialState
