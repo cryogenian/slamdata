@@ -28,6 +28,7 @@ module Notebook.Cell.Component.Query
   , _JTableQuery
   , _VizQuery
   , _ChartQuery
+  , _DownloadQuery
   , _APIQuery
   , _APIResultsQuery
   , module Notebook.Cell.Common.EvalQuery
@@ -52,6 +53,7 @@ import Notebook.Cell.Chart.Component.Query as Chart
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInputPre())
 import Notebook.Cell.Explore.Component.Query as Explore
 import Notebook.Cell.JTable.Component.Query as JTable
+import Notebook.Cell.Download.Component.Query as Download
 import Notebook.Cell.Markdown.Component.Query as Markdown
 import Notebook.Cell.Model as Cell
 import Notebook.Cell.Search.Component.Query as Search
@@ -112,6 +114,7 @@ data AnyCellQuery a
   | JTableQuery (JTable.QueryP a)
   | VizQuery (Viz.QueryP a)
   | ChartQuery (Chart.QueryP a)
+  | DownloadQuery (Download.QueryP a)
   | APIQuery (API.QueryP a)
   | APIResultsQuery (APIResults.QueryP a)
 
@@ -149,6 +152,10 @@ _ChartQuery :: forall a. PrismP (AnyCellQuery a) (Chart.QueryP a)
 _ChartQuery = prism' ChartQuery \q -> case q of
   ChartQuery q' -> Just q'
   _ -> Nothing
+
+_DownloadQuery :: forall a. PrismP (AnyCellQuery a) (Download.QueryP a)
+_DownloadQuery = prism' DownloadQuery \q -> case q of
+  DownloadQuery q' -> Just q'
 
 _APIQuery :: forall a. PrismP (AnyCellQuery a) (API.QueryP a)
 _APIQuery = prism' APIQuery \q -> case q of

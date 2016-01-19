@@ -40,10 +40,11 @@ import Dialog.Download.Query
 import Dialog.Download.State
 import Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import Model.Resource (Resource(), isFile, resourcePath, isHidden)
+import Model.Download as D
 import Quasar.Aff (reqHeadersToJSON)
 import Render.Common (fadeWhen)
 import Render.CssClasses as Rc
-
+import Render.Download as Rd
 
 render :: State -> ComponentHTML Query
 render state =
@@ -146,12 +147,12 @@ options state =
   in H.div [ P.classes [ B.formGroup ] ]
      [ H.ul [ P.classes [ B.nav, B.navTabs ] ]
        [ H.li (if isLeft opts then active else [ ])
-         [ H.a [ E.onClick (E.input_ $ SetOutput CSV)
+         [ H.a [ E.onClick (E.input_ $ SetOutput D.CSV)
                ]
            [ H.text "CSV" ]
          ]
        , H.li (if isRight opts then active else [ ])
-         [ H.a [ E.onClick (E.input_ $ SetOutput JSON)
+         [ H.a [ E.onClick (E.input_ $ SetOutput D.JSON)
                ]
            [ H.text "JSON" ]
          ]
@@ -200,63 +201,8 @@ btnDownload state =
 
 
 
-optionsCSV :: CSVOptions -> ComponentHTML Query
-optionsCSV opts =
-  H.div_ [ H.ul [ P.classes [ Rc.downloadCSVDelimiters, B.clearfix ] ]
-           [ field _rowDelimiter "Row delimiter"
-           , field _colDelimiter "Column delimiter"
-           , field _quoteChar "Quote character"
-           , field _escapeChar "Quote escape"
-           ]
-         ]
-  where
-  field :: LensP CSVOptions String -> String -> ComponentHTML Query
-  field lens label =
-    H.li_ [ H.label_ [ H.span_ [ H.text label ]
-                     , H.input [ P.classes [ B.formControl ]
-                               , P.value (opts ^. lens)
-                               , E.onValueInput (\v -> pure $ action
-                                                       (ModifyCSVOpts (lens .~ v))
-                                                )
-                               ]
-                     ]
-          ]
-    -- Here was `arrays` local function see old code
+optionsCSV :: D.CSVOptions -> ComponentHTML Query
+optionsCSV = Rd.optionsCSV (\lens v -> ModifyCSVOpts (lens .~ v))
 
-optionsJSON :: JSONOptions -> ComponentHTML Query
-optionsJSON opts =
-  H.div [ P.classes [ Rc.downloadJSONOptions ] ]
-  [ multivalues, precision ]
-  where
-  precision :: ComponentHTML Query
-  precision =
-    H.div [ P.classes [ B.clearfix ] ]
-    [ H.label_ [ H.text "Precision" ]
-    , H.ul_ [ radio "precision" _precision Readable "Readable"
-            , radio "precision" _precision Precise "Encode all types"
-            ]
-    ]
-
-  multivalues :: ComponentHTML Query
-  multivalues =
-    H.div [ P.classes [ B.clearfix ] ]
-    [ H.label_ [ H.text "Multiple values" ]
-    , H.ul [ P.classes [ B.clearfix ] ]
-      [ radio "multivalues" _multivalues ArrayWrapped "Wrap values in arrays"
-      , radio "multivalues" _multivalues LineDelimited "Separate values by newlines"
-      ]
-    ]
-  radio :: forall a. (Eq a) => String -> LensP JSONOptions a -> a
-           -> String -> ComponentHTML Query
-  radio grp lens value label =
-    H.li_ [ H.label_ [ H.input [ P.type_ "radio"
-                               , P.name grp
-                               , P.checked (opts ^. lens == value)
-                               , E.onValueChange (E.input_
-                                                  (ModifyJSONOpts (lens .~ value))
-                                                 )
-                               ]
-                     , H.text label
-                     ]
-          ]
-
+optionsJSON :: D.JSONOptions -> ComponentHTML Query
+optionsJSON = Rd.optionsJSON (\lens v -> ModifyJSONOpts (lens .~ v))
