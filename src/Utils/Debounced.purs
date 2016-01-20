@@ -21,10 +21,9 @@ import Prelude
 import Control.Bind ((=<<))
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
-import Control.Monad.Aff (Aff(), forkAff, later', cancel)
+import Control.Monad.Aff (Aff())
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Exception (error)
 import Control.Monad.Eff.Ref (REF(), newRef, readRef, writeRef)
 
 import Data.Either (Either(..))

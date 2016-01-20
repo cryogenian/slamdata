@@ -222,7 +222,7 @@ render state =
   where
   classes = if isReadOnly (state ^. _accessType)
             then [ Rc.notebookViewHack ]
-            else [ ]
+            else [ Rc.dashboard ]
 
   renderHeader :: Maybe String -> DashboardHTML
   renderHeader version =

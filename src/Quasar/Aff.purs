@@ -54,8 +54,8 @@ import Control.Monad (when)
 import Control.Monad.Aff (Aff(), attempt, runAff)
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref (REF(), newRef, modifyRef, readRef)
 import Control.Monad.Error.Class (MonadError, throwError)
+import Control.Monad.Eff.Ref (REF(), newRef, readRef, modifyRef)
 import Control.MonadPlus (guard)
 import Control.UI.Browser (encodeURIComponent)
 
@@ -83,6 +83,8 @@ import Data.StrMap as SM
 import Data.Time (Milliseconds(..))
 import Data.Tuple (Tuple(..))
 
+import DOM (DOM())
+
 import Model.Resource as R
 
 import Network.HTTP.Affjax
@@ -98,6 +100,7 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
 
 import Utils.Path as PU
+import Utils.Completions (memoizeCompletionStrs)
 
 newtype Listing = Listing (Array R.Resource)
 
@@ -106,21 +109,30 @@ runListing (Listing rs) = rs
 
 instance listingIsForeign :: IsForeign Listing where
   read f =
-    readProp "children" f
-      <#> runNullOrUndefined
-      >>> fromMaybe []
-      >>> Listing
+    read f
+      >>= readProp "children"
+      >>= pure
+        <<< Listing
+        <<< fromMaybe []
+        <<< runNullOrUndefined
 
 instance listingRespondable :: Respondable Listing where
-  responseType = Tuple Nothing JSONResponse
+  responseType = Tuple (Just applicationJSON) JSONResponse
   fromResponse = read
 
-children :: forall e. PU.DirPath -> Aff (RetryEffects (ajax :: AJAX | e)) (Array R.Resource)
+children
+  :: forall e
+   . PU.DirPath
+  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM | e)) (Array R.Resource)
 children dir = do
   cs <- children' dir
-  pure $ (R._root .~ dir) <$> cs
+  let result = (R._root .~ dir) <$> cs
+  memoizeCompletionStrs dir result
+  pure result
 
-children' :: forall e. PU.DirPath -> Aff (RetryEffects (ajax :: AJAX | e)) (Array R.Resource)
+children'
+  :: forall e
+   . PU.DirPath -> Aff (RetryEffects (ajax :: AJAX | e)) (Array R.Resource)
 children' dir = runListing <$> (getResponse msg $ listing dir)
   where
   msg = "Error: can not get children of resource"
@@ -179,10 +191,18 @@ succeeded (StatusCode int) =
 type RetryEffects e = (avar :: AVAR, ref :: REF, now :: Date.Now | e)
 
 -- | A version of `affjax` with our retry policy.
-slamjax :: forall e a b. (Requestable a, Respondable b) => AffjaxRequest a -> Affjax (RetryEffects e) b
+slamjax
+  :: forall e a b
+   . (Requestable a, Respondable b)
+  => AffjaxRequest a -> Affjax (RetryEffects e) b
 slamjax = retry defaultRetryPolicy affjax
 
-retryGet :: forall e a fd. (Respondable a) => P.Path P.Abs fd P.Sandboxed -> MimeType -> Affjax (RetryEffects e) a
+retryGet
+  :: forall e a fd
+   . (Respondable a)
+  => P.Path P.Abs fd P.Sandboxed
+  -> MimeType
+  -> Affjax (RetryEffects e) a
 retryGet =
   getWithPolicy
     { shouldRetryWithStatusCode: not <<< succeeded
@@ -190,11 +210,22 @@ retryGet =
     , timeout: Just 30000
     }
 
-getOnce :: forall e a fd. (Respondable a) => P.Path P.Abs fd P.Sandboxed -> MimeType -> Affjax (RetryEffects e) a
+getOnce
+  :: forall e a fd
+   . (Respondable a)
+  => P.Path P.Abs fd P.Sandboxed
+  -> MimeType
+  -> Affjax (RetryEffects e) a
 getOnce = getWithPolicy defaultRetryPolicy
 
 
-getWithPolicy :: forall e a fd. (Respondable a) => RetryPolicy -> P.Path P.Abs fd P.Sandboxed -> MimeType -> Affjax (RetryEffects e) a
+getWithPolicy
+  :: forall e a fd
+   . (Respondable a)
+  => RetryPolicy
+  -> P.Path P.Abs fd P.Sandboxed
+  -> MimeType
+  -> Affjax (RetryEffects e) a
 getWithPolicy policy u mime = do
   nocache <- liftEff $ Date.nowEpochMilliseconds
   retry policy affjax defaultRequest { url = url' nocache, headers = [Accept mime] }
@@ -206,15 +237,24 @@ getWithPolicy policy u mime = do
     let s = show ms
     in fromMaybe s (S.stripSuffix ".0" s)
 
-retryDelete :: forall e a fd. (Respondable a) => P.Path P.Abs fd P.Sandboxed -> Affjax (RetryEffects e) a
+retryDelete
+  :: forall e a fd
+   . (Respondable a)
+  => P.Path P.Abs fd P.Sandboxed -> Affjax (RetryEffects e) a
 retryDelete u =
   slamjax $ defaultRequest { url = P.printPath u, method = DELETE }
 
-retryPost :: forall e a b fd. (Requestable a, Respondable b) => P.Path P.Abs fd P.Sandboxed -> a -> Affjax (RetryEffects e) b
+retryPost
+  :: forall e a b fd
+   . (Requestable a, Respondable b)
+  => P.Path P.Abs fd P.Sandboxed -> a -> Affjax (RetryEffects e) b
 retryPost u c =
   slamjax $ defaultRequest { method = POST, url = P.printPath u, content = Just c }
 
-retryPut :: forall e a b fd. (Requestable a, Respondable b) => P.Path P.Abs fd P.Sandboxed -> a -> MimeType -> Affjax (RetryEffects e) b
+retryPut
+  :: forall e a b fd
+   . (Requestable a, Respondable b)
+  => P.Path P.Abs fd P.Sandboxed -> a -> MimeType -> Affjax (RetryEffects e) b
 retryPut u c mime =
   slamjax $ defaultRequest
     { method = PUT
@@ -266,7 +306,8 @@ mountInfo res = do
 -- | Generates a new resource name based on a directory path and a name for the
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
-getNewName :: forall e. PU.DirPath -> String -> Aff (RetryEffects (ajax :: AJAX |e)) String
+getNewName
+  :: forall e. PU.DirPath -> String -> Aff (RetryEffects (ajax :: AJAX |e)) String
 getNewName parent name = do
   items <- attempt (children' parent) <#> either (const []) id
   pure if exists' name items then getNewName' items 1 else name
@@ -284,7 +325,10 @@ getNewName parent name = do
 exists' :: String -> Array R.Resource -> Boolean
 exists' name items = isJust $ Arr.findIndex (\r -> r ^. R._name == name) items
 
-move :: forall e. R.Resource -> PU.AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) PU.AnyPath
+
+move
+  :: forall e
+   . R.Resource -> PU.AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) PU.AnyPath
 move src tgt = do
   let url = if R.isDatabase src || R.isViewMount src
             then Config.mountUrl
@@ -302,13 +346,17 @@ move src tgt = do
     then pure tgt
     else throwError (Exn.error result.response)
 
-saveMount :: forall e. R.Resource -> String -> Aff (RetryEffects (ajax :: AJAX |e)) Unit
+saveMount
+  :: forall e. R.Resource -> String -> Aff (RetryEffects (ajax :: AJAX |e)) Unit
 saveMount res uri = do
   result <- slamjax $ defaultRequest
     { method = PUT
     , headers = [ ContentType applicationJSON ]
     , content = Just $ stringify { mongodb: {connectionUri: uri } }
-    , url = P.printPath $ Config.mountUrl </> PU.rootify (R.resourceDir res) </> P.dir (R.resourceName res)
+    , url = P.printPath
+            $ Config.mountUrl
+            </> PU.rootify (R.resourceDir res)
+            </> P.dir (R.resourceName res)
     }
   if succeeded result.status
     then pure unit
@@ -316,7 +364,8 @@ saveMount res uri = do
 
 foreign import stringify :: forall r. {|r} -> String
 
-delete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) (Maybe R.Resource)
+delete
+  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) (Maybe R.Resource)
 delete resource =
   if not (R.isDatabase resource || alreadyInTrash resource || R.isViewMount resource)
   then
@@ -329,7 +378,8 @@ delete resource =
   msg :: String
   msg = "cannot delete"
 
-  moveToTrash :: R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Maybe R.Resource)
+  moveToTrash
+    :: R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Maybe R.Resource)
   moveToTrash res = do
     let d = (res ^. R._root) </> P.dir Config.trashFolder
         path = (res # R._root .~ d) ^. R._path
@@ -389,13 +439,14 @@ getVersion = do
 ldJSON :: MimeType
 ldJSON = MimeType "application/ldjson"
 
+
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
   :: forall e
    . PU.DirPath
   -> CR.Producer
       (Array R.Resource)
-      (Aff (RetryEffects (ajax :: AJAX, err :: Exn.EXCEPTION | e)))
+      (Aff (RetryEffects (ajax :: AJAX, err :: Exn.EXCEPTION, dom :: DOM | e)))
       Unit
 transitiveChildrenProducer dirPath = do
   ACR.produce \emit -> do
@@ -420,7 +471,8 @@ transitiveChildrenProducer dirPath = do
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
 
-query :: forall e. R.Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
+query
+  :: forall e. R.Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
 query res sql =
   if not $ R.isFile res
   then pure []
@@ -429,7 +481,10 @@ query res sql =
   msg = "error in query"
   uriPath = mkURI res sql
 
-query' :: forall e. R.Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JS.JArray)
+query'
+  :: forall e
+   . R.Resource -> SQL
+  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JS.JArray)
 query' res@(R.File _) sql = do
   result <- retryGet (mkURI' res sql) applicationJSON
   pure if succeeded result.status
@@ -465,7 +520,9 @@ portView res dest sql varMap = do
   guard $ R.isFile dest
   let
     queryParams = maybe "" ("&" <>) $ renderQueryString varMap
-    connectionUri = "sql2:///?q=" <> PU.encodeURIPath (templated res sql) <> queryParams
+    connectionUri = "sql2:///?q="
+                    <> PU.encodeURIPath (templated res sql)
+                    <> queryParams
   result <-
     slamjax $ defaultRequest
       { method = PUT
@@ -531,7 +588,10 @@ readError msg input =
   let responseError = JS.jsonParser input >>= JS.decodeJson >>= (.? "error")
   in either (const msg) id responseError
 
-sample' :: forall e. R.Resource -> Maybe Int -> Maybe Int -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
+sample'
+  :: forall e
+   . R.Resource -> Maybe Int -> Maybe Int
+   -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
 sample' res mbOffset mbLimit =
   if not $ R.isFile res
   then pure []
@@ -547,13 +607,16 @@ sample' res mbOffset mbLimit =
                <> (maybe "" (("&limit=" <>) <<< show ) mbLimit))
 
 
-sample :: forall e. R.Resource -> Int -> Int -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
+sample
+  :: forall e
+   . R.Resource -> Int -> Int -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
 sample res offset limit = sample' res (Just offset) (Just limit)
 
 all :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
 all res = sample' res Nothing Nothing
 
-fields :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Array String)
+fields
+  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Array String)
 fields res = do
   jarr <- sample res 0 100
   case jarr of
@@ -561,7 +624,8 @@ fields res = do
     _ -> pure $ Arr.nub $ Arr.concat (getFields <$> jarr)
 
 mkURI :: R.Resource -> SQL -> PU.FilePath
-mkURI res sql = Config.queryUrl </> P.file ("?q=" <> encodeURIComponent (templated res sql))
+mkURI res sql =
+  Config.queryUrl </> P.file ("?q=" <> encodeURIComponent (templated res sql))
 
 mkURI' :: R.Resource -> SQL -> PU.FilePath
 mkURI' res sql =
@@ -627,8 +691,10 @@ executeQuery sql cachingEnabled varMap inputResource outputResource = do
     info <-
       case mjobj of
         Nothing -> do
-          path <- R.getPath outputResource # either pure \_ -> Left "Expected output resource as file or view mount"
-          sandboxedPath <- P.sandbox P.rootDir path # maybe (Left "Could not sandbox output resource") pure
+          path <- R.getPath outputResource # either pure \_ ->
+            Left "Expected output resource as file or view mount"
+          sandboxedPath <- P.sandbox P.rootDir path
+                           # maybe (Left "Could not sandbox output resource") pure
           pure
             { sandboxedPath
             , plan: Nothing
@@ -637,8 +703,10 @@ executeQuery sql cachingEnabled varMap inputResource outputResource = do
           planPhases <- Arr.last <$> jobj .? "phases"
           sandboxedPath <- do
             pathString <- jobj .? "out"
-            path <- P.parseAbsFile pathString # maybe (Left "Invalid file from Quasar") pure
-            P.sandbox P.rootDir path # maybe (Left "Could not sandbox Quasar file") pure
+            path <- P.parseAbsFile pathString
+                    # maybe (Left "Invalid file from Quasar") pure
+            P.sandbox P.rootDir path
+              # maybe (Left "Could not sandbox Quasar file") pure
           pure
             { sandboxedPath
             , plan: planPhases >>= (.? "detail") >>> either (const Nothing) Just

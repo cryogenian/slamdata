@@ -88,7 +88,8 @@ comp = parentComponent' render eval peek
 
 render :: RenderParent State ChildState Query ChildQuery Slam ChildSlot
 render state@(State r) =
-  H.div_ [ navbar
+  H.div [P.classes [ Rc.filesystem ] ]
+         [ navbar
            [  H.div [ P.classes [ Rc.header, B.clearfix ] ]
               [ icon B.glyphiconFolderOpen Config.homeHash
               , logo (state ^. _version)

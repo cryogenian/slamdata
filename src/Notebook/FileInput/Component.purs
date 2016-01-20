@@ -47,6 +47,8 @@ import Network.HTTP.Affjax (AJAX())
 import Render.CssClasses as CSS
 import Quasar.Aff as API
 
+import DOM (DOM())
+
 import Model.Resource as R
 
 type State =
@@ -74,6 +76,7 @@ type Effects e =
   API.RetryEffects
     ( ajax :: AJAX
     , err :: EXCEPTION
+    , dom :: DOM
     | e
     )
 

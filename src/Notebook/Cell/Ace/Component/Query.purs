@@ -19,11 +19,8 @@ module Notebook.Cell.Ace.Component.Query (QueryP()) where
 import Prelude
 
 import Data.Functor.Coproduct (Coproduct())
-
 import Halogen (ChildF())
-
-import Ace.Halogen.Component (AceQuery())
-
+import Ace.Halogen.Component  as Ace
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 
-type QueryP = Coproduct CellEvalQuery (ChildF Unit AceQuery)
+type QueryP = Coproduct CellEvalQuery (ChildF Unit Ace.AceQuery)
