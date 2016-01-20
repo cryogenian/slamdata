@@ -18,6 +18,12 @@ module Render.CssClasses where
 
 import Halogen.HTML.Core (className, ClassName())
 
+filesystem :: ClassName
+filesystem = className "filesystem"
+
+dashboard :: ClassName
+dashboard = className "dashboard"
+
 version :: ClassName
 version = className "version"
 

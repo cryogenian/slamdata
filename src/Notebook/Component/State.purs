@@ -75,14 +75,14 @@ import Notebook.Cell.Model as Cell
 import Notebook.Model as M
 
 import Notebook.Component.Query (NotebookQuery())
-import Notebook.Cell.Ace.Component (AceEvaluator(), aceComponent)
+import Notebook.Cell.Ace.Component (AceEvaluator(), AceSetup(), aceComponent)
 import Notebook.Cell.Chart.Component (chartComponent)
 import Notebook.Cell.Component (CellComponent(), CellState(), CellStateP(), CellQueryP(), initEditorCellState, initResultsCellState)
 import Notebook.Cell.Explore.Component (exploreComponent)
 import Notebook.Cell.JTable.Component (jtableComponent)
 import Notebook.Cell.Markdown.Component (markdownComponent)
-import Notebook.Cell.Markdown.Eval (markdownEval)
-import Notebook.Cell.Query.Eval (queryEval)
+import Notebook.Cell.Markdown.Eval (markdownEval, markdownSetup)
+import Notebook.Cell.Query.Eval (queryEval, querySetup)
 import Notebook.Cell.Search.Component (searchComponent)
 import Notebook.Cell.Viz.Component (vizComponent)
 import Notebook.Cell.Download.Component (downloadComponent)
@@ -249,7 +249,10 @@ addCellChain cellType parents st =
        }
 
 cellTypeComponent :: CellType -> CellId -> BrowserFeatures -> CellComponent
-cellTypeComponent (Ace at) _ _ = aceComponent at (aceEvalMode at)
+cellTypeComponent (Ace mode) _ _ =
+  let evaluator = aceEvalMode mode
+      setup = aceSetupMode mode
+  in aceComponent { mode, evaluator, setup }
 cellTypeComponent Explore _ _ = exploreComponent
 cellTypeComponent Search _ _ = searchComponent
 cellTypeComponent Viz _ _ = vizComponent
@@ -277,6 +280,10 @@ cellTypeInitialState APIResults = initResultsCellState
 aceEvalMode :: AceMode -> AceEvaluator
 aceEvalMode MarkdownMode = markdownEval
 aceEvalMode SQLMode = queryEval
+
+aceSetupMode :: AceMode -> AceSetup
+aceSetupMode MarkdownMode = markdownSetup
+aceSetupMode SQLMode = querySetup
 
 -- | Removes a set of cells from the notebook. Any cells that depend on a cell
 -- | in the set of provided cells will also be removed.

@@ -25,12 +25,10 @@ module Test.Config
 
 import Prelude
 
-import Control.Alt ((<|>))
 import Data.StrMap
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe())
 import Data.Function (on)
 import Selenium.Types
-import Data.String.Regex as R
 import Data.Array as A
 
 type SearchQueryConfig =

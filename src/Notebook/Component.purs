@@ -269,17 +269,20 @@ queryShouldRun (APIQuery q) = APIC.queryShouldRun q
 queryShouldRun _ = false
 
 queryShouldSave  :: forall a. AnyCellQuery a -> Boolean
-queryShouldSave (AceQuery q) = coproduct evalQueryShouldSave aceQueryShouldSave q
+queryShouldSave (AceQuery q) =
+  coproduct evalQueryShouldSave aceQueryShouldSave q
 queryShouldSave _ = true
 
 evalQueryShouldSave :: forall a. CellEvalQuery a -> Boolean
 evalQueryShouldSave _ = true
 
-aceQueryShouldSave :: forall p a. ChildF p Ace.AceQuery a -> Boolean
+aceQueryShouldSave
+  :: forall p a. ChildF p Ace.AceQuery a -> Boolean
 aceQueryShouldSave (ChildF _ q) =
   case q of
     Ace.TextChanged _ -> true
     _ -> false
+
 
 -- | Runs all cell that are present in the set of pending cells.
 runPendingCells :: Unit -> NotebookDSL Unit

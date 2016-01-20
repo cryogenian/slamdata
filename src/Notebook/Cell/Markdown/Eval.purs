@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Notebook.Cell.Markdown.Eval (markdownEval) where
+module Notebook.Cell.Markdown.Eval (markdownEval, markdownSetup) where
 
 import Prelude
 
@@ -23,7 +23,6 @@ import Control.Monad.Aff (attempt)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.State.Trans (StateT(), evalStateT, get, modify)
-
 import Data.Argonaut.Core (Json())
 import Data.Argonaut.Core as JSON
 import Data.Array as A
@@ -35,23 +34,25 @@ import Data.Monoid (mempty)
 import Data.Path.Pathy ((</>), file)
 import Data.String as Str
 import Data.StrMap as SM
-
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Parser as SD
 
 import Notebook.Cell.CellId (CellId(), cellIdToString)
 import Notebook.Cell.Port (Port(..))
+import Notebook.Cell.Ace.Component (AceDSL())
 import Model.Resource (Resource(..))
 
 import Notebook.Cell.Common.EvalQuery (CellEvalResult(), CellEvalInput())
 import Notebook.Common (Slam())
+import Notebook.Cell.Ace.Component (AceDSL())
 
 import Quasar.Aff as Quasar
 
 import Utils.Path (DirPath())
 
-markdownEval :: CellEvalInput -> String -> Slam CellEvalResult
-markdownEval { cellId, notebookPath } s = do
+
+markdownEval :: CellEvalInput -> String -> AceDSL CellEvalResult
+markdownEval { cellId, notebookPath } s = liftAff do
   result <- attempt $ evalEmbeddedQueries notebookPath cellId (SD.parseMd s)
   pure case result of
     Left err ->
@@ -62,6 +63,10 @@ markdownEval { cellId, notebookPath } s = do
       { messages: [ Right $ "Exported fields: " ++ Str.joinWith ", " (findFields doc) ]
       , output: Just (SlamDown doc)
       }
+
+markdownSetup :: Port -> AceDSL Unit
+markdownSetup _ = pure unit
+
 
 findFields :: SD.SlamDown -> Array String
 findFields = SD.everything (const mempty) extractField

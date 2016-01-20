@@ -32,6 +32,7 @@ import Data.String
 import Data.String.Regex as Rgx
 import Data.Tuple (snd, fst)
 
+
 import Text.SlamSearch.Parser.Tokens (keyChars)
 
 import Config (notebookExtension)

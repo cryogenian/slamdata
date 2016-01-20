@@ -18,10 +18,8 @@ module Notebook.Cell.Ace.Component.State (StateP()) where
 
 import Prelude
 
-import Halogen (InstalledState())
-
 import Ace.Halogen.Component (AceQuery(), AceState())
-
+import Halogen (InstalledState())
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import Notebook.Common (Slam())
 
