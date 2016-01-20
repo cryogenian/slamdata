@@ -246,6 +246,7 @@ makeCellComponentPart def render =
     modify
       $ (_runState %~ finishRun)
       <<< (_output .~ (_.output =<< result))
+      <<< (_messages .~ (maybe [] _.messages result))
     maybe (liftF HaltHF) (pure <<< k <<< _.output) result
   eval (RefreshCell next) = pure next
   eval (TrashCell next) = pure next
