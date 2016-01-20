@@ -102,6 +102,9 @@ itemContent = className "item-content"
 itemHidden :: ClassName
 itemHidden = className "item-hidden"
 
+invisible :: ClassName
+invisible = className "sd-invisible"
+
 fileListField :: ClassName
 fileListField = className "file-list-field"
 

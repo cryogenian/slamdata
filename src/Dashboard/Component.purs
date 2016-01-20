@@ -197,17 +197,18 @@ render state =
     [ P.classes classes
     , E.onClick (E.input_ DismissAll)
     ]
-    [ H.nav_
+    [ H.nav
+        [ P.classes visibilityClasses ]
         [ renderHeader (state ^. _version) ]
     , H.div
-        [ P.classes [ className "sd-menu" ] ]
+        [ P.classes $ [ className "sd-menu" ] <> visibilityClasses ]
         [ H.slot' cpMenu MenuSlot \_ ->
           { component: HalogenMenu.menuComponent
           , initialState: installedState $ Menu.make StrMap.empty
           }
         ]
     , H.div
-        [ P.classes [ className "sd-notebook" ] ]
+        [ P.classes [ notebookClass ] ]
         [  H.slot' cpNotebook unit \_ ->
           { component: Notebook.notebookComponent
           , initialState: Notebook.initialState (state ^. _browserFeatures)
@@ -220,9 +221,20 @@ render state =
     ]
 
   where
-  classes = if isReadOnly (state ^. _accessType)
-            then [ Rc.notebookViewHack ]
-            else [ Rc.dashboard ]
+  classes =
+    if isReadOnly (state ^. _accessType)
+       then [ Rc.notebookViewHack ]
+       else [ Rc.dashboard ]
+
+  notebookClass =
+    case state ^. _viewingCell of
+      Just _ -> className "sd-notebook-viewing-cell"
+      Nothing -> className "sd-notebook"
+
+  visibilityClasses =
+    case state ^. _viewingCell of
+      Just _ -> [ Rc.invisible ]
+      Nothing -> []
 
   renderHeader :: Maybe String -> DashboardHTML
   renderHeader version =
