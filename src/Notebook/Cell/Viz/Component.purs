@@ -48,8 +48,8 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import Css.Geometry (marginBottom)
-import Css.Size (px)
+import CSS.Geometry (marginBottom)
+import CSS.Size (px)
 
 import Render.Common (row)
 import Render.CssClasses as Rc

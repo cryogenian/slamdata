@@ -39,8 +39,8 @@ import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action, modify, gets)
 import Halogen.Themes.Bootstrap3 as B
 
-import Css.Geometry (marginBottom)
-import Css.Size (px)
+import CSS.Geometry (marginBottom)
+import CSS.Size (px)
 
 import FileSystem.Common (Slam())
 import Model.Item (Item(..), itemResource)

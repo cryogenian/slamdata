@@ -32,9 +32,9 @@ import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 
-import Css.Display
-import Css.Geometry (height, width, left, marginLeft)
-import Css.Size
+import CSS.Display
+import CSS.Geometry (height, width, left, marginLeft)
+import CSS.Size
 
 import Notebook.Cell.Port (_ChartOptions)
 import Render.CssClasses as Rc

@@ -2,7 +2,6 @@ module Node.ChildProcess where
 
 import Prelude
 
-import Control.Monad.Aff (Aff())
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Exception (Error())
 
