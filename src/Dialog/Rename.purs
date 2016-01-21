@@ -160,7 +160,7 @@ comp = component render eval
 render :: State -> ComponentHTML Query
 render dialog =
   modalDialog
-  [ modalHeader "Download"
+  [ modalHeader "Move/rename"
   , modalBody
     $ H.form [ P.classes [ Rc.renameDialogForm ]
              , Cp.nonSubmit

@@ -46,6 +46,7 @@ import Prelude
 import Config as Config
 import Config.Paths as Config
 
+import Control.Alt ((<|>))
 import Control.Apply (lift2)
 import Control.Bind ((>=>), (<=<), (=<<))
 import Control.Coroutine as CR
@@ -333,7 +334,7 @@ move src tgt = do
   let url = if R.isDatabase src || R.isViewMount src
             then Config.mountUrl
             else Config.dataUrl
-  result <- slamjax $ defaultRequest
+  result <- affjax $ defaultRequest
     { method = MOVE
     , headers = [RequestHeader "Destination" $ either P.printPath P.printPath tgt]
     , url =
@@ -368,11 +369,8 @@ delete
   :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) (Maybe R.Resource)
 delete resource =
   if not (R.isDatabase resource || alreadyInTrash resource || R.isViewMount resource)
-  then
-    moveToTrash resource
-  else do
-    forceDelete resource
-    pure Nothing
+  then (moveToTrash resource) <|> (forceDelete resource $> Nothing)
+  else forceDelete resource $> Nothing
 
   where
   msg :: String
