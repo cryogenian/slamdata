@@ -425,24 +425,35 @@ ol.breadcrumb {
     .cell-failures, .cell-messages {
         padding-left: 10px;
         line-height: 30px;
+        margin-left: 61px;
         > div:first-child {
             margin-left: 4px;
             display: inline-block;
         }
-        > div:nth-child(2), > pre {
-            background: #fff;
-            padding: 8px 0 8px 10px;
+        > pre {
+            background: none;
+            clear: left;
+            line-height: 30px;
+            padding: 0 10px;
+            margin: 0;
             margin-left: -10px;
+            margin-top: -1px;
             border: 0;
-            border-left: 61px solid #ddd;
+            border-top: 1px dashed #ddd;
+            border-radius: 0;
+            font-size: 85%
         }
         &.collapsed {
             border: none;
         }
+        background: #eee;
+        border-bottom: 1px solid #ddd;
     }
 
     .cell-failures {
-        background: #FAA;
+        background: #faa;
+        > pre { border-top: 1px dashed #ff7878; }
+        border-bottom: 1px solid #ff7878;
     }
 
     button.play-button, button.stop-button {

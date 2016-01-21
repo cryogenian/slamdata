@@ -22,11 +22,13 @@ module Notebook.Cell.Component.Render
 
 import Prelude
 
-import Data.Array (catMaybes, null)
+import Data.Array as A
+import Data.Either (either, isLeft)
 import Data.Int (fromNumber)
 import Data.Lens ((^?))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
+import Data.Visibility (Visibility(..))
 
 import Halogen (ParentHTML())
 import Halogen.HTML.Events as E
@@ -95,15 +97,15 @@ statusBar hasResults cs =
           [ H.text $ runStatusMessage cs.runState ]
       , H.div
           [ P.classes [B.pullRight, CSS.cellControls] ]
-          $ catMaybes
-              [ Just refreshButton
+          $ A.catMaybes
+              [ toggleMessageButton cs
               , toggleCachingButton cs
-              , toggleMessageButton cs
+              , if hasResults then Just refreshButton else Nothing
               , if hasResults then Just linkButton else Nothing
               , Just $ glyph B.glyphiconChevronLeft
               ]
       ]
-     <> messages cs
+     <> statusMessages cs
   where
 
   button =
@@ -136,8 +138,8 @@ refreshButton =
     [ glyph B.glyphiconRefresh ]
 
 toggleMessageButton :: CellState -> Maybe CellHTML
-toggleMessageButton cs =
-  if null cs.messages
+toggleMessageButton { messages, messageVisibility } =
+  if A.null messages
   then Nothing
   else Just $
     H.button
@@ -145,9 +147,10 @@ toggleMessageButton cs =
       , ARIA.label label
       , E.onClick (E.input_ ToggleMessages)
       ]
-      [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
+      [ glyph if isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
   where
-  label = if cs.isCollapsed then "Show messages" else "Hide messages"
+  label = if isCollapsed then "Show messages" else "Hide messages"
+  isCollapsed = messageVisibility == Invisible
 
 toggleCachingButton :: CellState -> Maybe CellHTML
 toggleCachingButton cs =
@@ -171,43 +174,32 @@ linkButton =
     ]
     [ H.span [ P.class_ CSS.shareButton ] [] ]
 
-messages :: CellState -> Array (CellHTML)
-messages cs = []
-  -- let numErrors = length (isLeft `filter` cs.messages)
---   if null cs.messages
---   then []
---   else
---     [ H.div
---         [ P.classes $ [CSS.cellMessages] ++ if cs.isCollapsed then [CSS.collapsed] else [] ]
---         if cs.isCollapsed
---         then []
---         else [ H.div_ [] ] ++ message `map` cs.messages
+statusMessages :: CellState -> Array (CellHTML)
+statusMessages { messages, messageVisibility }
+  | A.null messages = []
+  | otherwise =
+      [ H.div
+          [ P.classes classes ]
+           $ [ H.div_ failureMessage ]
+          ++ if isCollapsed
+             then []
+             else map (either message message) messages'
+      ]
+  where
+  isCollapsed = messageVisibility == Invisible
+  errorMessages = let es = A.filter isLeft messages in es
+  hasErrors = not (A.null errorMessages)
+  messages' = if hasErrors then errorMessages else messages
+  classes =
+    let cls = if hasErrors then CSS.cellFailures else CSS.cellMessages
+    in if isCollapsed then [cls, CSS.collapsed] else [cls]
+  failureMessage =
+    if hasErrors
+    then
+      let numErrors = A.length errorMessages
+          s = if numErrors == 1 then "" else "s"
+      in [H.text $ show numErrors <> " error" <> s <> " during evaluation. "]
+    else []
 
--- message :: Either String String -> CellHTML
--- message (Left msg) = failureText msg
--- message (Right msg) = messageText msg
---     ]
---   let collapsed =
---   in
---      then case cs.message of
---       Nothing -> []
---       Just message' ->
-
---      else
---       [ H.div
---           [ P.classes $ [CSS.cellFailures] ++ collapsed ]
---           $ failureText cs
---       ]
-
--- messageText :: String -> CellHTML
--- messageText m =
---   let tag = if isJust $ indexOf "\n" m then H.pre_ else H.div_
---   in tag [H.text m]
-
--- failureText :: CellState -> Array (CellHTML)
--- failureText cs =
---   [ H.div_ [H.text $ show (length cs.failures) <> " error(s) during evaluation. "] ]
---   <> if not cs.showMessages
---      then []
---      else messageText <$> cs.failures
-
+message :: String -> CellHTML
+message = H.pre_ <<< pure <<< H.text
