@@ -246,9 +246,11 @@ peekCell cellId q = case q of
     forceRerender'
     input <- map join $ query (CellSlot cellId) $ left (request GetOutput)
     case input of
-      Just input' ->
+      Just input' -> do
+        path <- gets notebookPath
+        let setupInfo = { notebookPath: path, inputPort: input' }
         void $ query (CellSlot newCellId)
-          $ right $ ChildF unit $ left $ action (SetupCell input')
+             $ right $ ChildF unit $ left $ action (SetupCell setupInfo)
       Nothing -> pure unit
     when (autorun cellType) $ runCell newCellId
   ShareCell _ -> pure unit

@@ -135,8 +135,8 @@ cellEval (Ec.EvalCell info continue) = do
 cellEval (Ec.NotifyRunCell next) = pure next
 cellEval (Ec.Save k) = map (k <<< encode) get
 cellEval (Ec.Load json next) = for_ (decode json) set $> next
-cellEval (Ec.SetupCell input next) = do
-  for_ (preview P._Resource input) \res ->
+cellEval (Ec.SetupCell { inputPort } next) = do
+  for_ (preview P._Resource inputPort) \res ->
     modify $ _source .~ res
   pure next
 
