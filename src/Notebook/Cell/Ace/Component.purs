@@ -44,11 +44,10 @@ import Notebook.Cell.Ace.Component.Query
 import Notebook.Cell.Ace.Component.State
 import Notebook.Cell.CellType (AceMode(), aceMode, aceCellName, aceCellGlyph)
 import Notebook.Cell.Common.EvalQuery
-  (CellEvalQuery(..), CellEvalResult(), CellEvalInput())
+  (CellEvalQuery(..), CellEvalResult(), CellEvalInput(), CellSetupInfo())
 import Notebook.Cell.Component
   ( CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism
   , _AceState, _AceQuery)
-import Notebook.Cell.Port as P
 import Notebook.Common (Slam())
 import Render.CssClasses as CSS
 
@@ -59,7 +58,7 @@ type AceHTML =
 type AceEvaluator =
   CellEvalInput -> String -> AceDSL CellEvalResult
 type AceSetup =
-  P.Port -> AceDSL Unit
+  CellSetupInfo -> AceDSL Unit
 
 type AceConfig =
   { mode :: AceMode
@@ -105,7 +104,7 @@ aceComponent {mode, evaluator, setup} = makeEditorCellComponent
     content <- fromMaybe "" <$> query unit (request GetText)
     result <- evaluator info content
     pure $ k result
-  eval (SetupCell port next) = setup port $> next
+  eval (SetupCell input next) = setup input $> next
   eval (Save k) = do
     content <- fromMaybe "" <$> query unit (request GetText)
     pure $ k (encodeJson content)

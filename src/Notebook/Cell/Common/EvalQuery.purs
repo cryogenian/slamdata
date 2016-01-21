@@ -21,6 +21,7 @@ module Notebook.Cell.Common.EvalQuery
   , CellEvalInputP()
   , CellEvalInputPre()
   , CellEvalInput()
+  , CellSetupInfo()
   , CellEvalT()
   , runCellEvalT
   , temporaryOutputResource
@@ -61,6 +62,11 @@ type CellEvalInput =
   CellEvalInputP
     ( cachingEnabled :: M.Maybe Boolean
     )
+
+type CellSetupInfo =
+  { notebookPath :: M.Maybe DirPath
+  , inputPort :: Port
+  }
 
 prepareCellEvalInput
   :: M.Maybe Boolean
@@ -107,7 +113,7 @@ temporaryOutputResource info =
 -- |   run - the cell cannot run itself directly.
 data CellEvalQuery a
   = EvalCell CellEvalInput (CellEvalResult -> a)
-  | SetupCell Port a
+  | SetupCell CellSetupInfo a
   | NotifyRunCell a
   | Save (Json -> a)
   | Load Json a

@@ -21,25 +21,31 @@ module Notebook.Cell.Query.Eval
 
 import Prelude
 
-import Ace.Halogen.Component as Ace
-import Ace.Types (Completion())
+import Control.Bind ((=<<))
 import Control.Monad.Error.Class as EC
 import Control.Monad.Trans as MT
 import Control.Monad.Writer.Class as WC
+
 import Data.Either as E
 import Data.Foldable as F
 import Data.Functor.Aff (liftAff)
 import Data.Lens as L
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe as M
-import Data.Maybe (Maybe(..))
+import Data.Path.Pathy as Path
 import Data.StrMap as SM
+
 import Halogen (query, action)
+
 import Model.Resource as R
 import Notebook.Cell.Ace.Component (AceDSL())
 import Notebook.Cell.Common.EvalQuery as CEQ
 import Notebook.Cell.Port as Port
 import Quasar.Aff as Quasar
 import Utils.Completions (mkCompletion, pathCompletions)
+
+import Ace.Halogen.Component as Ace
+import Ace.Types (Completion())
 
 
 queryEval :: CEQ.CellEvalInput -> String -> AceDSL CEQ.CellEvalResult
@@ -66,9 +72,19 @@ queryEval info sql = do
   tempOutputResource = CEQ.temporaryOutputResource info
   inputResource = R.parent tempOutputResource -- TODO: make sure that this is actually still correct
 
-querySetup :: Port.Port -> AceDSL Unit
-querySetup (Port.VarMap varMap) = addCompletions varMap
-querySetup _ = pure unit
+querySetup :: CEQ.CellSetupInfo -> AceDSL Unit
+querySetup { inputPort, notebookPath } =
+  case inputPort of
+    Port.VarMap varMap -> addCompletions varMap
+    Port.Resource res -> fromMaybe (pure unit) $ do
+      nbPath <- notebookPath
+      resParent <- Path.parentDir =<< L.preview R._filePath res
+      let path = if nbPath == resParent
+                 then R.resourceName res
+                 else R.resourcePath res
+      pure $ void $ query unit $
+        action $ Ace.SetText ("SELECT * FROM \"" <> path <> "\"")
+    _ -> pure unit
 
 addCompletions :: forall a. SM.StrMap a -> AceDSL Unit
 addCompletions vm =

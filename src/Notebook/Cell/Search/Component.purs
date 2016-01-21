@@ -144,8 +144,8 @@ cellEval q =
 
         pure $ Port.Resource outputResource
 
-    NC.SetupCell input next -> do
-      case preview Port._Resource input of
+    NC.SetupCell { inputPort } next -> do
+      case preview Port._Resource inputPort of
         M.Just res -> query unit (action (FI.SelectFile res)) $> next
         M.Nothing -> pure next
 

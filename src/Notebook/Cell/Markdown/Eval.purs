@@ -42,14 +42,13 @@ import Notebook.Cell.Port (Port(..))
 import Notebook.Cell.Ace.Component (AceDSL())
 import Model.Resource (Resource(..))
 
-import Notebook.Cell.Common.EvalQuery (CellEvalResult(), CellEvalInput())
+import Notebook.Cell.Common.EvalQuery (CellEvalResult(), CellEvalInput(), CellSetupInfo())
 import Notebook.Common (Slam())
 import Notebook.Cell.Ace.Component (AceDSL())
 
 import Quasar.Aff as Quasar
 
 import Utils.Path (DirPath())
-
 
 markdownEval :: CellEvalInput -> String -> AceDSL CellEvalResult
 markdownEval { cellId, notebookPath } s = liftAff do
@@ -64,9 +63,8 @@ markdownEval { cellId, notebookPath } s = liftAff do
       , output: Just (SlamDown doc)
       }
 
-markdownSetup :: Port -> AceDSL Unit
+markdownSetup :: CellSetupInfo -> AceDSL Unit
 markdownSetup _ = pure unit
-
 
 findFields :: SD.SlamDown -> Array String
 findFields = SD.everything (const mempty) extractField
