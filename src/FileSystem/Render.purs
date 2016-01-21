@@ -32,8 +32,8 @@ import Halogen.HTML.Properties as P
 import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
-import Css.Geometry (marginLeft)
-import Css.Size
+import CSS.Geometry (marginLeft)
+import CSS.Size
 
 import FileSystem.Query
 import FileSystem.State

@@ -2,9 +2,8 @@ module Test.Selenium.Expect where
 
 import Prelude
 
-import Data.Const (Const(..))
-import Control.Monad.Eff.Exception (error, Error())
-import Control.Monad.Error.Class (MonadError, throwError, catchError)
+import Control.Monad.Eff.Exception (error)
+import Control.Monad.Error.Class (MonadError, throwError)
 import Selenium.Monad (Selenium())
 import Data.String (contains)
 import Data.String.Regex (Regex(), test)

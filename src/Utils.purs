@@ -16,9 +16,8 @@ limitations under the License.
 
 module Utils where
 
-import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..))
-import Global (readFloat, isNaN, readInt)
+import Global (readFloat, isNaN)
 
 stringToNumber :: String -> Maybe Number
 stringToNumber s =

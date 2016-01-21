@@ -24,8 +24,8 @@ module Notebook.FormBuilder.Item.FieldType
 import Prelude
 import Control.Bind ((>=>))
 import Data.Argonaut as J
-import Data.Argonaut.Encode as J -- imported to work around psc <0.8 reexport bug
-import Data.Argonaut.Decode as J -- imported to work around psc <0.8 reexport bug
+import Data.Argonaut.Encode as JE -- imported to work around psc <0.8 reexport bug
+import Data.Argonaut.Decode as JD -- imported to work around psc <0.8 reexport bug
 import Data.Either as E
 import Data.Generic as G
 import Data.Lens as Lens
@@ -112,7 +112,7 @@ fieldTypeToInputType ty =
     ObjectFieldType -> HP.InputText
     QueryFieldType -> HP.InputText
 
-instance encodeJsonFieldType :: J.EncodeJson FieldType where
+instance encodeJsonFieldType :: JE.EncodeJson FieldType where
   encodeJson ty =
     J.fromString $
       case ty of
@@ -129,7 +129,7 @@ instance encodeJsonFieldType :: J.EncodeJson FieldType where
         ObjectFieldType -> "object"
         QueryFieldType -> "query"
 
-instance decodeJsonFieldType :: J.DecodeJson FieldType where
+instance decodeJsonFieldType :: JD.DecodeJson FieldType where
   decodeJson =
     J.decodeJson >=> proj
     where
