@@ -23,13 +23,14 @@ module Test.Property.Notebook.Cell.Viz.Model
 import Prelude
 
 import Data.Either (Either(..))
-import Data.Foldable (mconcat)
+import Data.Foldable (fold)
 
 import Notebook.Cell.Viz.Model as M
 
 import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
 
 import Test.Property.Notebook.Cell.Chart.ChartType (runArbChartType)
+import Test.Property.Notebook.Cell.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)
 
 newtype ArbModel = ArbModel M.Model
 
@@ -41,19 +42,21 @@ instance arbitraryArbModel :: Arbitrary ArbModel where
     width <- arbitrary
     height <- arbitrary
     chartType <- runArbChartType <$> arbitrary
+    chartConfig <- runArbChartConfiguration <$> arbitrary
     axisLabelFontSize <- arbitrary
     axisLabelAngle <- arbitrary
-    pure $ ArbModel { width, height, chartType, axisLabelFontSize, axisLabelAngle }
+    pure $ ArbModel { width, height, chartType, chartConfig, axisLabelFontSize, axisLabelAngle }
 
 check :: QC Unit
 check = quickCheck $ runArbModel >>> \model ->
   case M.decode (M.encode model) of
     Left err -> Failed $ "Decode failed: " ++ err
     Right model' ->
-      mconcat
+      fold
        [ model.width == model'.width <?> "width mismatch"
        , model.height == model'.height <?> "height mismatch"
        , model.chartType == model'.chartType <?> "chartType mismatch"
+       , checkChartConfigEquality model.chartConfig model'.chartConfig
        , model.axisLabelFontSize == model'.axisLabelFontSize <?> "axisLabelFontSize mismatch"
        , model.axisLabelAngle == model'.axisLabelAngle <?> "axisLabelAngle mismatch"
        ]

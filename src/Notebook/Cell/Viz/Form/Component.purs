@@ -66,20 +66,15 @@ data Query a
   = SetConfiguration ChartConfiguration a
   | GetConfiguration (ChartConfiguration -> a)
 
--- | In fact `State` could be something like this
--- | ```purescript
--- | type State = {dimensions :: Int, measures :: Int, series :: Int}
--- | ```
--- | TODO: try this approach
 type State = ChartConfiguration
 
 initialState :: State
 initialState =
-  ChartConfiguration { dimensions: []
-                     , series: []
-                     , measures: []
-                     , aggregations: []
-                     }
+  { dimensions: []
+  , series: []
+  , measures: []
+  , aggregations: []
+  }
 
 type DimensionSlot = Int
 type SeriesSlot = Int
@@ -126,8 +121,9 @@ formComponent :: Component StateP QueryP Slam
 formComponent = parentComponent render eval
 
 render
-  :: ChartConfiguration -> ParentHTML ChildState Query ChildQuery Slam ChildSlot
-render (ChartConfiguration conf) =
+  :: ChartConfiguration
+  -> ParentHTML ChildState Query ChildQuery Slam ChildSlot
+render conf =
   H.div [ P.classes [ Rc.chartEditor ] ]
   $ if null conf.dimensions
     then renderRowsWithoutDimension 1 2 (renderCategoryRow)
@@ -283,9 +279,9 @@ render (ChartConfiguration conf) =
   renderLabel n str = pure $ show n <> "th " <> str
 
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
-eval (SetConfiguration c@(ChartConfiguration conf) next) = do
-  (ChartConfiguration r) <- get
-  set c
+eval (SetConfiguration conf next) = do
+  r <- get
+  set conf
   forceRerender'
   synchronizeDimensions r.dimensions conf.dimensions
   synchronizeSeries r.series conf.series
@@ -358,7 +354,7 @@ eval (SetConfiguration c@(ChartConfiguration conf) next) = do
 
 
 eval (GetConfiguration continue) = do
-  (ChartConfiguration conf) <- get
+  conf <- get
   forceRerender'
   dims <- getDimensions
   series <- getSeries
@@ -368,11 +364,11 @@ eval (GetConfiguration continue) = do
        <*> getSeries
        <*> getMeasures
        <*> getAggregations
-  pure $ continue $ ChartConfiguration r
+  pure $ continue r
   where
   getDimensions :: FormDSL (Array JSelect)
   getDimensions = do
-    (ChartConfiguration conf) <- get
+    conf <- get
     traverse getDimension (range' 0 $ length conf.dimensions - 1)
 
   getDimension :: Int -> FormDSL JSelect
@@ -381,7 +377,7 @@ eval (GetConfiguration continue) = do
 
   getSeries :: FormDSL (Array JSelect)
   getSeries = do
-    (ChartConfiguration conf) <- get
+    conf <- get
     traverse getSerie (range' 0 $ length conf.series - 1)
 
   getSerie :: Int -> FormDSL JSelect
@@ -390,7 +386,7 @@ eval (GetConfiguration continue) = do
 
   getMeasures :: FormDSL (Array JSelect)
   getMeasures = do
-    (ChartConfiguration conf) <- get
+    conf <- get
     traverse getMeasure (range' 0 $ length conf.measures - 1)
 
   getMeasure :: Int -> FormDSL JSelect
@@ -399,7 +395,7 @@ eval (GetConfiguration continue) = do
 
   getAggregations :: FormDSL (Array (Select Aggregation))
   getAggregations = do
-    (ChartConfiguration conf) <- get
+    conf <- get
     traverse getAggregation (range' 0 $ length conf.measures - 1)
 
   getAggregation :: Int -> FormDSL (Select Aggregation)

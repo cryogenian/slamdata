@@ -20,7 +20,9 @@ import Prelude
 
 import Control.Bind ((>=>))
 
-import Data.Argonaut (EncodeJson, DecodeJson, decodeJson, fromString)
+import Data.Argonaut (fromString)
+import Data.Argonaut.Decode (DecodeJson, decodeJson)
+import Data.Argonaut.Encode (EncodeJson)
 import Data.Bifunctor (bimap)
 import Data.Generic (Generic, gEq, gCompare)
 import Data.Either (Either(..))

@@ -18,15 +18,18 @@ module Notebook.Cell.Chart.ChartConfiguration where
 
 import Prelude
 
-import Data.Argonaut
-  (JCursor(), EncodeJson, DecodeJson, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Control.Bind ((>=>))
+
+import Data.Argonaut (Json(), JCursor(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Array (filter)
 import Data.Foldable (any)
 import Data.Lens (LensP(), lens, (^.))
 import Data.Maybe (maybe)
+import Data.Either (Either())
+
+import Model.Select (Select(), _value)
 import Notebook.Cell.Chart.Aggregation (Aggregation())
 import Notebook.Cell.Chart.Axis (dependsOn)
-import Model.Select (Select(), _value)
 
 type JSelect = Select JCursor
 
@@ -39,43 +42,25 @@ dependsOnArr :: Array JCursor -> Array JCursor -> Array JCursor
 dependsOnArr dependency arr =
   filter (flip any dependency <<< dependsOn) arr
 
-type ChartConfigurationR =
+type ChartConfiguration =
  { series :: Array JSelect
  , dimensions :: Array JSelect
  , measures :: Array JSelect
  , aggregations :: Array (Select Aggregation)
  }
 
-newtype ChartConfiguration = ChartConfiguration ChartConfigurationR
+encode :: ChartConfiguration -> Json
+encode r
+   = "series" := r.series
+  ~> "dimensions" := r.dimensions
+  ~> "measures" := r.measures
+  ~> "aggregations" := r.aggregations
+  ~> jsonEmptyObject
 
-_ChartConfiguration :: LensP ChartConfiguration ChartConfigurationR
-_ChartConfiguration = lens (\(ChartConfiguration r) -> r) (const ChartConfiguration)
-
-_series :: LensP ChartConfiguration (Array JSelect)
-_series = _ChartConfiguration <<< lens _.series _{series = _}
-
-_dimensions :: LensP ChartConfiguration (Array JSelect)
-_dimensions = _ChartConfiguration <<< lens _.dimensions _{dimensions = _}
-
-_measures :: LensP ChartConfiguration (Array JSelect)
-_measures = _ChartConfiguration <<< lens _.measures _{measures = _}
-
-_aggregations :: LensP ChartConfiguration (Array (Select Aggregation))
-_aggregations = _ChartConfiguration <<< lens _.aggregations _{aggregations = _}
-
-instance encodeJsonChartConfiguration :: EncodeJson ChartConfiguration where
-  encodeJson (ChartConfiguration r) =
-       "series" := r.series
-    ~> "dimensions" := r.dimensions
-    ~> "measures" := r.measures
-    ~> "aggregations" := r.aggregations
-    ~> jsonEmptyObject
-instance decodeJsonChartConfiguration :: DecodeJson ChartConfiguration where
-  decodeJson json = do
-    obj <- decodeJson json
-    r <- { series: _, dimensions: _, measures: _, aggregations: _}
-         <$> (obj .? "series")
-         <*> (obj .? "dimensions")
-         <*> (obj .? "measures")
-         <*> (obj .? "aggregations")
-    pure $ ChartConfiguration r
+decode :: Json -> Either String ChartConfiguration
+decode = decodeJson >=> \obj -> do
+  { series: _, dimensions: _, measures: _, aggregations: _}
+    <$> obj .? "series"
+    <*> obj .? "dimensions"
+    <*> obj .? "measures"
+    <*> obj .? "aggregations"
