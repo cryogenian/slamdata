@@ -62,7 +62,7 @@ import Model.Select (Select(), autoSelect, newSelect, (<->), ifSelected, trySele
 import Notebook.Cell.CellType (CellType(Viz), cellName, cellGlyph)
 import Notebook.Cell.Chart.Axis (analyzeJArray, Axis())
 import Notebook.Cell.Chart.Axis as Ax
-import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(..), depends, dependsOnArr)
+import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(), depends, dependsOnArr)
 import Notebook.Cell.Chart.ChartOptions (buildOptions)
 import Notebook.Cell.Chart.ChartType (ChartType(..), isPie)
 import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT)
@@ -272,10 +272,12 @@ cellEval (SetupCell _ next) = pure next
 cellEval (NotifyRunCell next) = pure next
 cellEval (Save k) = do
   st <- get
+  config <- query st.chartType $ left $ request Form.GetConfiguration
   pure $ k $ Model.encode
     { width: st.width
     , height: st.height
     , chartType: st.chartType
+    , chartConfig: fromMaybe Form.initialState config
     , axisLabelFontSize: st.axisLabelFontSize
     , axisLabelAngle: st.axisLabelAngle
     }
@@ -283,7 +285,9 @@ cellEval (Load json next) =
   case Model.decode json of
     Left err -> pure next
     Right model -> do
-      set (fromModel model)
+      let st = fromModel model
+      set st
+      query st.chartType $ left $ action $ Form.SetConfiguration model.chartConfig
       pure next
 
 responsePort :: CellEvalT VizDSL P.Port
@@ -365,7 +369,7 @@ configure = void do
     (maybe id trySelect' $ mbSel >>= view _value) $ target
 
   pieBarConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
-  pieBarConfiguration axises (ChartConfiguration current) =
+  pieBarConfiguration axises current =
     let allAxises = axises.category <> axises.time <> axises.value
         categories =
           setPreviousValueFrom (index current.series 0)
@@ -382,13 +386,14 @@ configure = void do
           $ allAxises <-> categories <-> firstSeries
         aggregation =
           setPreviousValueFrom (index current.aggregations 0) aggregationSelect
-    in ChartConfiguration { series: [categories, firstSeries, secondSeries]
-                          , dimensions: []
-                          , measures: [measures]
-                          , aggregations: [aggregation]}
+    in { series: [categories, firstSeries, secondSeries]
+       , dimensions: []
+       , measures: [measures]
+       , aggregations: [aggregation]
+       }
 
   lineConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
-  lineConfiguration axises (ChartConfiguration current) =
+  lineConfiguration axises current =
     let allAxises = (axises.category <> axises.time <> axises.value)
         dimensions =
           setPreviousValueFrom (index current.dimensions 0)
@@ -412,10 +417,11 @@ configure = void do
           setPreviousValueFrom (index current.series 1)
           $ newSelect $ ifSelected [dimensions, firstSeries]
           $ allAxises <-> dimensions <-> firstSeries
-    in ChartConfiguration { series: [firstSeries, secondSeries]
-                          , dimensions: [dimensions]
-                          , measures: [firstMeasures, secondMeasures]
-                          , aggregations: [aggregationSelect, aggregationSelect]}
+    in { series: [firstSeries, secondSeries]
+       , dimensions: [dimensions]
+       , measures: [firstMeasures, secondMeasures]
+       , aggregations: [aggregationSelect, aggregationSelect]
+       }
 
 peek :: forall a. ChildF ChartType Form.QueryP a -> VizDSL Unit
 peek (ChildF chartType q) = do

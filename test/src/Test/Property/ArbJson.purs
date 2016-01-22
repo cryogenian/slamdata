@@ -17,6 +17,8 @@ limitations under the License.
 module Test.Property.ArbJson
   ( ArbJson()
   , runArbJson
+  , ArbJCursor()
+  , runArbJCursor
   ) where
 
 import Prelude
@@ -64,3 +66,16 @@ genObject genJson = do
   extendObj obj k = do
     val <- genJson
     pure $ k := val ~> obj
+
+newtype ArbJCursor = ArbJCursor JCursor
+
+runArbJCursor :: ArbJCursor -> JCursor
+runArbJCursor (ArbJCursor j) = j
+
+instance arbJCursor :: Arbitrary ArbJCursor where
+  arbitrary = do
+    i <- chooseInt 0.0 2.0
+    r <- if i == 0 then pure JCursorTop
+         else if i == 1 then JField <$> arbitrary <*> (runArbJCursor <$> arbitrary)
+              else JIndex <$> arbitrary <*> (runArbJCursor <$> arbitrary)
+    pure $ ArbJCursor r

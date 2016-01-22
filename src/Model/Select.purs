@@ -129,6 +129,10 @@ instance eqSelect :: (Eq a) => Eq (Select a) where
        r.value == rr.value
     && r.options == rr.options
 
+instance functorSelect :: Functor Select where
+  map f (Select { value, options }) =
+    Select { value: f <$> value, options: f <$> options }
+
 instance encodeJsonSelect :: (EncodeJson a) => EncodeJson (Select a) where
   encodeJson (Select r) =
     "options" := r.options ~> "value" := r.value ~> jsonEmptyObject

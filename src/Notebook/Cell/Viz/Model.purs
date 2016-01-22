@@ -18,17 +18,19 @@ module Notebook.Cell.Viz.Model where
 
 import Prelude
 
-import Control.Bind ((>=>))
+import Control.Bind ((=<<), (>=>))
 
 import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Either (Either())
 
 import Notebook.Cell.Chart.ChartType (ChartType())
+import Notebook.Cell.Chart.ChartConfiguration as CC
 
 type Model =
   { width :: Int
   , height :: Int
   , chartType :: ChartType
+  , chartConfig :: CC.ChartConfiguration
   , axisLabelFontSize :: Int
   , axisLabelAngle :: Int
   }
@@ -38,15 +40,17 @@ encode m
    = "width" := m.width
   ~> "height" := m.height
   ~> "chartType" := m.chartType
+  ~> "chartConfig" := CC.encode m.chartConfig
   ~> "axisLabelFontSize" := m.axisLabelFontSize
   ~> "axisLabelAngle" := m.axisLabelAngle
   ~> jsonEmptyObject
 
 decode :: Json -> Either String Model
-decode = decodeJson >=> \obj ->
-  { width: _, height: _, chartType: _, axisLabelFontSize: _, axisLabelAngle: _ }
-    <$> obj .? "width"
-    <*> obj .? "height"
-    <*> obj .? "chartType"
-    <*> obj .? "axisLabelFontSize"
-    <*> obj .? "axisLabelAngle"
+decode = decodeJson >=> \obj -> do
+  width <- obj .? "width"
+  height <- obj .? "height"
+  chartType <- obj .? "chartType"
+  chartConfig <- CC.decode =<< obj .? "chartConfig"
+  axisLabelFontSize <- obj .? "axisLabelFontSize"
+  axisLabelAngle <- obj .? "axisLabelAngle"
+  pure { width, height, chartType, chartConfig, axisLabelFontSize, axisLabelAngle }

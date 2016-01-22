@@ -33,7 +33,7 @@ import Data.Tuple (Tuple(..))
 import Notebook.Cell.Chart.Aggregation (Aggregation(..), runAggregation)
 import Notebook.Cell.Chart.ChartOptions.Common
 
-import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(..))
+import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration())
 import Data.Lens (view)
 import Model.Select (_value)
 import Notebook.Cell.Chart.Axis as Ax
@@ -168,12 +168,14 @@ buildLine axises angle size conf = case axisSeriesPair of
   axisSeriesPair = mkSeries (needTwoAxises axises conf) xAxisConfig extracted
 
 needTwoAxises :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Boolean
-needTwoAxises axises (ChartConfiguration conf) =
+needTwoAxises axises conf =
   isJust $ (conf.measures !! 1) >>= view _value >>= flip M.lookup axises
 
 getXAxisConfig
-  :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Tuple AxisType (Maybe Interval)
-getXAxisConfig axises (ChartConfiguration conf) =
+  :: M.Map JCursor Ax.Axis
+  -> ChartConfiguration
+  -> Tuple AxisType (Maybe Interval)
+getXAxisConfig axises conf =
   case (conf.dimensions !! 0) >>= view _value >>= flip M.lookup axises of
     Just (Ax.TimeAxis _) -> Tuple TimeAxis $ Just $ Custom zero
     Just (Ax.ValAxis _) -> Tuple ValueAxis Nothing

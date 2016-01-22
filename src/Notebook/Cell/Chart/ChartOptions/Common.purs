@@ -32,7 +32,7 @@ import Data.Maybe (fromMaybe, maybe, Maybe(..))
 import Data.Map (Map())
 import Data.Map as M
 import ECharts
-import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(..), JSelect())
+import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(), JSelect())
 import Notebook.Cell.Chart.Semantics (Semantics(), printSemantics, semanticsToNumber)
 import Notebook.Cell.Chart.Aggregation (Aggregation(..), runAggregation)
 import Model.Select (_value)
@@ -47,7 +47,7 @@ type ChartAxises =
   }
 
 buildChartAxises :: M.Map JCursor Ax.Axis -> ChartConfiguration -> ChartAxises
-buildChartAxises axisMap (ChartConfiguration conf) =
+buildChartAxises axisMap conf =
   { dimensions: dimensions
   , series: series
   , measures: measures

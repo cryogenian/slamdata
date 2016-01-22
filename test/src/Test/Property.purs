@@ -29,6 +29,9 @@ main = do
   log "Check Model.Resource..."
   Test.Property.Model.Resource.check
 
+  log "Check Model.Select..."
+  Test.Property.Model.Select.check
+
   log "Check Notebook.Cell.CellId..."
   Test.Property.Notebook.Cell.CellId.check
 
@@ -37,6 +40,12 @@ main = do
 
   log "Check Notebook.Cell.Model..."
   Test.Property.Notebook.Cell.Model.check
+
+  log "Check Notebook.Cell.Chart.Aggregation..."
+  Test.Property.Notebook.Cell.Chart.Aggregation.check
+
+  log "Check Notebook.Cell.Chart.ChartConfiguration..."
+  Test.Property.Notebook.Cell.Chart.ChartConfiguration.check
 
   log "Check Notebook.Cell.Chart.ChartType..."
   Test.Property.Notebook.Cell.Chart.ChartType.check
@@ -49,6 +58,9 @@ main = do
 
   log "Check Notebook.Cell.Search.Model..."
   Test.Property.Notebook.Cell.Search.Model.check
+
+  log "Check Notebook.Cell.Viz.Model..."
+  Test.Property.Notebook.Cell.Viz.Model.check
 
   log "Check Notebook.FormBuilder.Item.Model..."
   Test.Property.Notebook.FormBuilder.Item.Model.check
