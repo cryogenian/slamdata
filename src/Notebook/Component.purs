@@ -116,7 +116,11 @@ render state =
           -- otherwise the various nested components won't initialise correctly
         , renderCells false
         ]
-    Ready -> renderCells true
+    Ready ->
+      -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
+      H.div_
+        [ renderCells true
+        ]
     Error err ->
       H.div
         [ P.classes [ B.alert, B.alertDanger ] ]
