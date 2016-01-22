@@ -17,8 +17,8 @@ limitations under the License.
 module Notebook.Component
   ( notebookComponent
   , initialState
-  , NotebookQueryP()
-  , NotebookStateP()
+  , QueryP()
+  , StateP()
   , module Notebook.Component.Query
   , module Notebook.Component.State
   ) where
@@ -27,6 +27,7 @@ import Prelude
 
 import Control.Bind ((=<<), join)
 import Control.Monad (when)
+import Control.Monad.Aff.Console (log)
 import Control.UI.Browser (newTab, locationObject)
 
 import Data.Argonaut (Json())
@@ -88,41 +89,65 @@ import Quasar.Aff as Quasar
 import Utils.Debounced (debouncedEventSource)
 import Utils.Path (DirPath())
 
-type NotebookQueryP = Coproduct NotebookQuery (ChildF CellSlot CellQueryP)
-type NotebookStateP =
-  InstalledState NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
+type QueryP = Coproduct Query (ChildF CellSlot CellQueryP)
+type StateP =
+  InstalledState State CellStateP Query CellQueryP Slam CellSlot
 
-type NotebookHTML = ParentHTML CellStateP NotebookQuery CellQueryP Slam CellSlot
+type NotebookHTML = ParentHTML CellStateP Query CellQueryP Slam CellSlot
 type NotebookDSL =
-  ParentDSL NotebookState CellStateP NotebookQuery CellQueryP Slam CellSlot
+  ParentDSL State CellStateP Query CellQueryP Slam CellSlot
 
-initialState :: BrowserFeatures -> NotebookStateP
+initialState :: BrowserFeatures -> StateP
 initialState fs = installedState $ initialNotebook fs
 
-notebookComponent :: Component NotebookStateP NotebookQueryP Slam
+notebookComponent :: Component StateP QueryP Slam
 notebookComponent = parentComponent' render eval peek
 
-render :: NotebookState -> NotebookHTML
+render :: State -> NotebookHTML
 render state =
-  H.div_
-    $ List.fromList (map renderCell state.cells)
-   <> if isEditable state.accessType then [newCellMenu state] else []
+  case state.stateMode of
+    Loading ->
+      H.div
+        [ P.classes [ B.alert, B.alertInfo ] ]
+        [ H.h1
+          [ P.class_ B.textCenter ]
+          [ H.text "Loading..." ]
+          -- We need to render the cells but have them invisible during loading
+          -- otherwise the various nested components won't initialise correctly
+        , renderCells false
+        ]
+    Ready -> renderCells true
+    Error err ->
+      H.div
+        [ P.classes [ B.alert, B.alertDanger ] ]
+        [ H.h1
+            [ P.class_ B.textCenter ]
+            [ H.text err ]
+        ]
+
   where
+
+  renderCells visible =
+    -- The key here helps out virtual-dom: the entire subtree will be moved
+    -- when the loading message disappears, rather than being reconstructed in
+    -- the parent element
+    H.div ([P.key "notebook-cells"] <> if visible then [] else [P.class_ CSS.invisible])
+      $ List.fromList (map renderCell state.cells)
+     <> if isEditable state.accessType then [newCellMenu state] else []
 
   renderCell cellDef =
     H.div
       ([ P.key ("cell" <> cellIdToString cellDef.id)
-       ]  <> maybe [] viewingStyle state.viewingCell)
+       ] <> maybe [] (viewingStyle cellDef) state.viewingCell)
       [ H.Slot cellDef.ctor ]
 
-    where
-    viewingStyle cid =
-      if cellDef.id == cid || cellIsLinkedCellOf { childId: cellDef.id, parentId: cid } state
-         then []
-         else [ P.class_ CSS.invisible ]
+  viewingStyle cellDef cid =
+    if cellDef.id == cid || cellIsLinkedCellOf { childId: cellDef.id, parentId: cid } state
+      then []
+      else [ P.class_ CSS.invisible ]
 
 
-newCellMenu :: NotebookState -> NotebookHTML
+newCellMenu :: State -> NotebookHTML
 newCellMenu state =
   H.ul
     [ P.class_ CSS.newCellMenu ]
@@ -156,18 +181,18 @@ newCellMenu state =
           [ glyph (cellGlyph cellType) ]
       ]
 
-eval :: Natural NotebookQuery NotebookDSL
+eval :: Natural Query NotebookDSL
 eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
 eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
 eval (LoadNotebook fs dir next) = do
+  modify (_stateMode .~ Loading)
   json <- liftAff $ Quasar.load $ dir </> Pathy.file "index"
   case Model.decode =<< json of
-    Left err ->
-      -- TODO: error handling/reporting
-      -- Do we want to track the failure of any cell decoding too?
-      -- Does the whole notebook load to fail if a cell fails?
+    Left err -> do
+      liftAff $ log err
+      modify (_stateMode .~ Error "There was a problem decoding the saved notebook")
       pure next
     Right model ->
       let peeledPath = Pathy.peel dir
@@ -184,6 +209,7 @@ eval (LoadNotebook fs dir next) = do
           -- will result in all child nodes being run also as the outputs
           -- propagate down each subgraph.
           traverse_ runCell $ nub $ flip findRoot st <$> ranCells
+          modify (_stateMode .~ Ready)
           pure next
 eval (ExploreFile fs res next) = do
   modify
@@ -351,8 +377,8 @@ triggerSave _ = _saveTrigger `fireDebouncedQuery` SaveNotebook
 -- | function also handles constructing the initial trigger if it has not yet
 -- | been created.
 fireDebouncedQuery
-  :: LensP NotebookState (Maybe DebounceTrigger)
-  -> Action NotebookQuery
+  :: LensP State (Maybe DebounceTrigger)
+  -> Action Query
   -> NotebookDSL Unit
 fireDebouncedQuery lens act = do
   t <- gets (view lens) >>= \mbt -> case mbt of

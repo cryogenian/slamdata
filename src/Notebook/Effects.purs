@@ -17,6 +17,7 @@ limitations under the License.
 module Notebook.Effects where
 
 import Ace.Types (ACE())
+import Control.Monad.Eff.Console (CONSOLE())
 import Control.Monad.Eff.Random (RANDOM())
 import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Eff.Ref (REF())
@@ -43,4 +44,5 @@ type NotebookRawEffects =
   , random :: RANDOM
   , ref :: REF
   , timer :: Timer
+  , console :: CONSOLE
   )
