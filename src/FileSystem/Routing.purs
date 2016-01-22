@@ -23,6 +23,8 @@ module FileSystem.Routing
 import Prelude
 
 import Control.Alt ((<|>))
+import Control.Apply ((*>))
+import Control.Monad (when)
 import Control.Monad.Aff (Aff(), Canceler(), cancel, forkAff, attempt)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar())
 import Control.Monad.Eff.Exception (error, message, Error())
@@ -102,10 +104,11 @@ routeSignal driver = do
   uncurry (redirects driver avar) routeTpl
 
 
-redirects :: Driver QueryP FileSystemRawEffects
-          -> AVar (Tuple (Canceler FileSystemEffects) (M.Map Int Int))
-          -> Maybe Routes -> Routes
-          -> Aff FileSystemEffects Unit
+redirects
+  :: Driver QueryP FileSystemRawEffects
+  -> AVar (Tuple (Canceler FileSystemEffects) (M.Map Int Int))
+  -> Maybe Routes -> Routes
+  -> Aff FileSystemEffects Unit
 redirects _ _ _ Index = updateURL Nothing Asc Nothing rootDir
 redirects _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
 redirects _ _ _ (SortAndQ sort query) =
@@ -143,18 +146,23 @@ redirects driver var mbOld (Salted sort query salt) = do
 
 
 
-checkMount :: DirPath -> Driver QueryP FileSystemRawEffects
-              -> Aff FileSystemEffects Unit
+checkMount
+  :: DirPath
+  -> Driver QueryP FileSystemRawEffects
+  -> Aff FileSystemEffects Unit
 checkMount path driver = do
   result <- attempt $ mountInfo (Database path)
   case result of
     Left _ -> pure unit
     Right _ -> driver $ left $ action $ SetIsMount true
 
-listPath :: SearchQuery -> Int
-            -> AVar (Tuple (Canceler FileSystemEffects) (M.Map Int Int))
-            -> DirPath -> Driver QueryP FileSystemRawEffects
-            -> Aff FileSystemEffects Unit
+listPath
+  :: SearchQuery
+  -> Int
+  -> AVar (Tuple (Canceler FileSystemEffects) (M.Map Int Int))
+  -> DirPath
+  -> Driver QueryP FileSystemRawEffects
+  -> Aff FileSystemEffects Unit
 listPath query deep var dir driver = do
   modifyVar (_2 %~ M.alter (maybe one (add one >>> pure))  deep) var
   canceler <- forkAff goDeeper
@@ -173,7 +181,8 @@ listPath query deep var dir driver = do
 
   sendError :: Error -> Aff FileSystemEffects Unit
   sendError err =
-    driver $ toDialog $ Dialog.Show
+    when ((not $ isSearchQuery query) || deep == zero)
+    $ driver $ toDialog $ Dialog.Show
     $ Dialog.Error ("There is a problem listing current directory: "
                    <> message err)
 
@@ -185,10 +194,8 @@ listPath query deep var dir driver = do
 
     driver $ toItems $ Items.Adds toAdd
     traverse_ (\n -> listPath query (deep + one) var n driver)
-      $ if isSearchQuery query
-        then do
-          next
-        else [ ]
+      (guard (isSearchQuery query) *> next)
+
 
 updateURL :: Maybe String -> Sort -> Maybe Salt -> DirPath
              -> Aff FileSystemEffects Unit
