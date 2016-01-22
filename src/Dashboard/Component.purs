@@ -100,13 +100,13 @@ type ChildQuery =
   Coproduct Rename.Query
   (Coproduct Menu.QueryP
    (Coproduct Dialog.QueryP
-    Notebook.NotebookQueryP))
+    Notebook.QueryP))
 
 type ChildState g =
   Either Rename.State
   (Either (Menu.StateP g)
    (Either Dialog.StateP
-    Notebook.NotebookStateP))
+    Notebook.StateP))
 
 cpRename
   :: forall g
@@ -127,8 +127,8 @@ cpDialog = cpR :> cpR :> cpL
 cpNotebook
   :: forall g
    . ChildPath
-       Notebook.NotebookStateP (ChildState g)
-       Notebook.NotebookQueryP ChildQuery
+       Notebook.StateP (ChildState g)
+       Notebook.QueryP ChildQuery
        NotebookSlot ChildSlot
 cpNotebook = cpR :> cpR :> cpR
 
@@ -147,7 +147,7 @@ fromDashboard
   :: forall a. (forall i. (a -> i) -> Query i) -> QueryP a
 fromDashboard r = left $ request r
 
-toNotebook :: (Unit -> Notebook.NotebookQuery Unit) -> QueryP Unit
+toNotebook :: (Unit -> Notebook.Query Unit) -> QueryP Unit
 toNotebook =
       right
   <<< ChildF (injSlot cpNotebook unit)
@@ -158,7 +158,7 @@ toNotebook =
   <<< action
 
 fromNotebook
-  :: forall a. (forall i. (a -> i) -> Notebook.NotebookQuery i) -> QueryP a
+  :: forall a. (forall i. (a -> i) -> Notebook.Query i) -> QueryP a
 fromNotebook r =
     right
   $ ChildF (injSlot cpNotebook unit)
@@ -322,7 +322,7 @@ dialogPeek :: forall a. Dialog.Query a -> DashboardDSL Unit
 dialogPeek (Dialog.Dismiss _) = activateKeyboardShortcuts
 dialogPeek (Dialog.Show _ _) = deactivateKeyboardShortcuts
 
-notebookPeek :: forall a. Notebook.NotebookQueryP a -> DashboardDSL Unit
+notebookPeek :: forall a. Notebook.QueryP a -> DashboardDSL Unit
 notebookPeek q = pure unit
 
 menuPeek :: forall a. Menu.QueryP a -> DashboardDSL Unit
@@ -351,7 +351,7 @@ submenuPeek (ChildF _ (HalogenMenu.SelectSubmenuItem v _)) =
 queryDialog :: Dialog.Query Unit -> DashboardDSL Unit
 queryDialog q = query' cpDialog unit (left q) *> pure unit
 
-queryNotebook :: Notebook.NotebookQuery Unit -> DashboardDSL Unit
+queryNotebook :: Notebook.Query Unit -> DashboardDSL Unit
 queryNotebook q = query' cpNotebook unit (left q) *> pure unit
 
 queryRename :: Rename.Query Unit -> DashboardDSL Unit

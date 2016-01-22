@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module Notebook.Component.Query
-  ( NotebookQuery(..)
+  ( Query(..)
   ) where
 
 import Data.BrowserFeatures as BF
@@ -31,7 +31,7 @@ import Utils.Path as UP
 
 -- | GetNameToSave returns name if it hasn't been saved.
 -- | If there is no need to saving notebook name returns `Nothing`
-data NotebookQuery a
+data Query a
   = AddCell CT.CellType a
   | RunActiveCell a
   | RunPendingCells a

@@ -15,7 +15,8 @@ limitations under the License.
 -}
 
 module Notebook.Component.State
-  ( NotebookState()
+  ( State()
+  , StateMode(..)
   , CellDef()
   , CellConstructor()
   , DebounceTrigger()
@@ -34,6 +35,7 @@ module Notebook.Component.State
   , _runTrigger
   , _globalVarMap
   , _pendingCells
+  , _stateMode
   , addCell
   , addCell'
   , removeCells
@@ -75,7 +77,7 @@ import Notebook.Cell.Port.VarMap as Port
 import Notebook.Cell.Model as Cell
 import Notebook.Model as M
 
-import Notebook.Component.Query (NotebookQuery())
+import Notebook.Component.Query (Query())
 import Notebook.Cell.Ace.Component (AceEvaluator(), AceSetup(), aceComponent)
 import Notebook.Cell.Chart.Component (chartComponent)
 import Notebook.Cell.Component (CellComponent(), CellState(), CellStateP(), CellQueryP(), initEditorCellState, initResultsCellState)
@@ -94,9 +96,14 @@ import Notebook.Common (Slam())
 
 import Utils.Path as P
 
+data StateMode
+  = Loading
+  | Ready
+  | Error String
+
 -- | The notebook state. See the corresponding lenses for descriptions of
 -- | the fields.
-type NotebookState =
+type State =
   { fresh :: Int
   , accessType :: AccessType
   , cells :: List CellDef
@@ -108,10 +115,11 @@ type NotebookState =
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
   , viewingCell :: Maybe CellId
-  , saveTrigger :: Maybe (NotebookQuery Unit -> Slam Unit)
+  , saveTrigger :: Maybe (Query Unit -> Slam Unit)
   , runTrigger :: Maybe DebounceTrigger
   , pendingCells :: S.Set CellId
   , globalVarMap :: Port.VarMap
+  , stateMode :: StateMode
   }
 
 -- | A record used to represent cell definitions in the notebook.
@@ -121,10 +129,10 @@ type CellDef = { id :: CellId, ty :: CellType, ctor :: CellConstructor }
 type CellConstructor = SlotConstructor CellStateP CellQueryP Slam CellSlot
 
 -- | The type of functions used to trigger a debounced query.
-type DebounceTrigger = NotebookQuery Unit -> Slam Unit
+type DebounceTrigger = Query Unit -> Slam Unit
 
--- | Constructs a default `NotebookState` value.
-initialNotebook :: BrowserFeatures -> NotebookState
+-- | Constructs a default `State` value.
+initialNotebook :: BrowserFeatures -> State
 initialNotebook browserFeatures =
   { fresh: 0
   , accessType: Editable
@@ -141,81 +149,87 @@ initialNotebook browserFeatures =
   , globalVarMap: SM.empty
   , runTrigger: Nothing
   , pendingCells: S.empty
+  , stateMode: Ready
   }
 
 -- | A counter used to generate `CellId` values.
-_fresh :: LensP NotebookState Int
+_fresh :: LensP State Int
 _fresh = lens _.fresh _{fresh = _}
 
 -- | Determines whether the notebook is editable.
-_accessType :: LensP NotebookState AccessType
+_accessType :: LensP State AccessType
 _accessType = lens _.accessType _{accessType = _}
 
 -- | The list of cells currently in the notebook.
-_cells :: LensP NotebookState (List CellDef)
+_cells :: LensP State (List CellDef)
 _cells = lens _.cells _{cells = _}
 
 -- | A map of the edges in the dependency tree, where each key/value pair
 -- | represents a child/parent relation.
-_dependencies :: LensP NotebookState (M.Map CellId CellId)
+_dependencies :: LensP State (M.Map CellId CellId)
 _dependencies = lens _.dependencies _{dependencies = _}
 
 -- | The `CellId` for the currently focused cell.
-_activeCellId :: LensP NotebookState (Maybe CellId)
+_activeCellId :: LensP State (Maybe CellId)
 _activeCellId = lens _.activeCellId _{activeCellId = _}
 
 -- | The current notebook name. When the value is `This` is has yet to be saved.
 -- | When the value is `That` it has been saved. When the value is `Both` a new
 -- | name has been entered but it has not yet been saved with the new name.
-_name :: LensP NotebookState (These P.DirName String)
+_name :: LensP State (These P.DirName String)
 _name = lens _.name _{name = _}
 
 -- | The path to the notebook in the filesystem
-_path :: LensP NotebookState (Maybe P.DirPath)
+_path :: LensP State (Maybe P.DirPath)
 _path = lens _.path _{path = _}
 
 -- | Toggles the display of the new cell menu.
-_isAddingCell :: LensP NotebookState Boolean
+_isAddingCell :: LensP State Boolean
 _isAddingCell = lens _.isAddingCell _{isAddingCell = _}
 
 -- | The available browser features - passed through to markdown results cells
 -- | as they need this information to render the output HTML.
-_browserFeatures :: LensP NotebookState BrowserFeatures
+_browserFeatures :: LensP State BrowserFeatures
 _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
 -- | The currently focused cell when viewing an individual cell within a
 -- | notebook.
-_viewingCell :: LensP NotebookState (Maybe CellId)
+_viewingCell :: LensP State (Maybe CellId)
 _viewingCell = lens _.viewingCell _{viewingCell = _}
 
 -- | The debounced trigger for notebook save actions.
-_saveTrigger :: LensP NotebookState (Maybe DebounceTrigger)
+_saveTrigger :: LensP State (Maybe DebounceTrigger)
 _saveTrigger = lens _.saveTrigger _{saveTrigger = _}
 
 -- | The debounced trigger for running all cells that are pending.
-_runTrigger :: LensP NotebookState (Maybe DebounceTrigger)
+_runTrigger :: LensP State (Maybe DebounceTrigger)
 _runTrigger = lens _.runTrigger _{runTrigger = _}
 
 -- | The global `VarMap`, passed through to the notebook via the URL.
-_globalVarMap :: LensP NotebookState Port.VarMap
+_globalVarMap :: LensP State Port.VarMap
 _globalVarMap = lens _.globalVarMap _{globalVarMap = _}
 
 -- | The cells that have been enqueued to run.
-_pendingCells :: LensP NotebookState (S.Set CellId)
+_pendingCells :: LensP State (S.Set CellId)
 _pendingCells = lens _.pendingCells _{pendingCells = _}
+
+-- | The "state mode" used to track whether the notebook is ready, loading, or
+-- | if an error has occurred while loading.
+_stateMode :: LensP State StateMode
+_stateMode = lens _.stateMode _{stateMode = _}
 
 -- | Adds a new cell to the notebook.
 -- |
 -- | Takes the current notebook state, the type of cell to add, and an optional
 -- | parent cell ID.
-addCell :: CellType -> Maybe CellId -> NotebookState -> NotebookState
+addCell :: CellType -> Maybe CellId -> State -> State
 addCell cellType parent st = fst $ addCellChain cellType (maybe [] pure parent) st
 
 -- | Adds a new cell to the notebook.
 -- |
 -- | Takes the current notebook state, the type of cell to add, and an optional
 -- | parent cell ID and returns the modified notebook state and the new cell ID.
-addCell' :: CellType -> Maybe CellId -> NotebookState -> Tuple NotebookState CellId
+addCell' :: CellType -> Maybe CellId -> State -> Tuple State CellId
 addCell' cellType parent st =
   extractNewId <$> addCellChain cellType (maybe [] pure parent) st
   where
@@ -223,7 +237,7 @@ addCell' cellType parent st =
   extractNewId = flip U.unsafeIndex (maybe 0 (const 1) parent)
 
 addCellChain
-  :: CellType -> Array CellId -> NotebookState -> Tuple NotebookState (Array CellId)
+  :: CellType -> Array CellId -> State -> Tuple State (Array CellId)
 addCellChain cellType parents st =
   let cellId = CellId st.fresh
       parent = A.last parents
@@ -294,7 +308,7 @@ aceSetupMode SQLMode = querySetup
 -- |
 -- | Takes the set of IDs for the cells to remove and the current notebook
 -- | state.
-removeCells :: S.Set CellId -> NotebookState -> NotebookState
+removeCells :: S.Set CellId -> State -> State
 removeCells cellIds st = st
     { cells = L.filter f st.cells
     , cellTypes = foldl (flip M.delete) st.cellTypes cellIds'
@@ -316,7 +330,7 @@ removeCells cellIds st = st
 -- |
 -- | Takes the ID of the cell to start searching from and the current notebook
 -- | state.
-findRoot :: CellId -> NotebookState -> CellId
+findRoot :: CellId -> State -> CellId
 findRoot cellId st = case findParent cellId st of
   Nothing -> cellId
   Just parentId -> findRoot parentId st
@@ -326,14 +340,14 @@ findRoot cellId st = case findParent cellId st of
 -- |
 -- | Takes the ID of the cell to find the parent of and the current notebook
 -- | state.
-findParent :: CellId -> NotebookState -> Maybe CellId
+findParent :: CellId -> State -> Maybe CellId
 findParent cellId st = M.lookup cellId st.dependencies
 
 -- | Finds the immediate dependencies of a cell.
 -- |
 -- | Takes the ID of the cell to find the children of and the current notebook
 -- | state.
-findChildren :: CellId -> NotebookState -> S.Set CellId
+findChildren :: CellId -> State -> S.Set CellId
 findChildren parentId st =
   S.fromList $ map fst $ L.filter f $ M.toList st.dependencies
   where
@@ -345,21 +359,21 @@ findChildren parentId st =
 -- |
 -- | Takes the ID of the cell to find the descendants of and the current
 -- | notebook state.
-findDescendants :: CellId -> NotebookState -> S.Set CellId
+findDescendants :: CellId -> State -> S.Set CellId
 findDescendants cellId st =
   let children = findChildren cellId st
   in children <> foldMap (flip findDescendants st) children
 
 -- | Determine's the `CellType` of a cell; returns `Just` if the cell is
 -- | in the notebook, and `Nothing` if it is not.
-getCellType :: CellId -> NotebookState -> Maybe CellType
+getCellType :: CellId -> State -> Maybe CellType
 getCellType cellId st = M.lookup cellId st.cellTypes
 
 -- | Given two cell IDs, determine whether the latter is the linked results
 -- | cell of the former.
 cellIsLinkedCellOf
   :: { childId :: CellId, parentId :: CellId }
-  -> NotebookState
+  -> State
   -> Boolean
 cellIsLinkedCellOf { childId, parentId } st =
   findParent childId st == Just parentId &&
@@ -380,7 +394,7 @@ cellIsLinkedCellOf { childId, parentId } st =
 -- |
 -- | If the cell is an ancestor of cells that have already been enqueued they
 -- | will be removed when this cell is added, for the same reasoning as above.
-addPendingCell :: CellId -> NotebookState -> NotebookState
+addPendingCell :: CellId -> State -> State
 addPendingCell cellId st@{ pendingCells } =
   if cellId `S.member` pendingCells || any isAncestor pendingCells
   then st
@@ -392,7 +406,7 @@ addPendingCell cellId st@{ pendingCells } =
   removeDescendants = flip S.difference (findDescendants cellId st)
 
 -- | Finds the current notebook path, if the notebook has been saved.
-notebookPath :: NotebookState -> Maybe P.DirPath
+notebookPath :: State -> Maybe P.DirPath
 notebookPath state = do
   path <- state.path
   name <- theseLeft state.name
@@ -404,7 +418,7 @@ fromModel
   -> Maybe P.DirPath
   -> Maybe P.DirName
   -> M.Notebook
-  -> Tuple (Array Cell.Model) NotebookState
+  -> Tuple (Array Cell.Model) State
 fromModel browserFeatures path name { cells, dependencies } =
   Tuple
     cells
@@ -423,7 +437,8 @@ fromModel browserFeatures path name { cells, dependencies } =
     , globalVarMap: SM.empty
     , runTrigger: Nothing
     , pendingCells: S.empty
-    } :: NotebookState)
+    , stateMode: Loading
+    } :: State)
   where
   cellDefFromModel :: Cell.Model -> CellDef
   cellDefFromModel { cellId, cellType } =

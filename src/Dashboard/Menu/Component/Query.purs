@@ -29,7 +29,7 @@ import Dashboard.Rename.Component as Rename
 import Notebook.Component as Notebook
 
 type FromMenuQuery =
-  Coproduct Rename.Query (Coproduct Dialog.Query Notebook.NotebookQuery)
+  Coproduct Rename.Query (Coproduct Dialog.Query Notebook.Query)
 
 newtype HelpURI = HelpURI String
 
@@ -43,7 +43,7 @@ helpURIToValue = Left
 dialogQueryToValue :: Dialog.Query Unit -> Value
 dialogQueryToValue = left >>> right >>> Right
 
-notebookQueryToValue :: Notebook.NotebookQuery Unit -> Value
+notebookQueryToValue :: Notebook.Query Unit -> Value
 notebookQueryToValue = right >>> right >>> Right
 
 renameQueryToValue :: Rename.Query Unit -> Value
