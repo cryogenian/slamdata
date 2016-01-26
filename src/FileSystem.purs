@@ -182,10 +182,10 @@ eval (MakeFolder next) = do
 
 eval (MakeNotebook next) = do
   path <- gets (^. _path)
-  name <- liftAff $ API.getNewName
-          path (Config.newNotebookName <> "." <> Config.notebookExtension)
-  let uri = mkNotebookURL name path New
-  liftEff (setLocation uri)
+  let newNotebookName = Config.newNotebookName <> "." <> Config.notebookExtension
+  name <- liftAff $ API.getNewName path newNotebookName
+  let uri = mkNotebookURL (path </> dir name) New
+  liftEff $ setLocation uri
   pure next
 
 eval (UploadFile el next) = do

@@ -32,5 +32,7 @@ data Query a
   | AddKeyboardListener (EventListener NotebookEffects) a
   | Save a
   | SetAccessType AccessType a
+  | GetAccessType (AccessType -> a)
   | SetViewingCell (Maybe CellId) a
+  | GetViewingCell (Maybe CellId -> a)
   | DismissAll a

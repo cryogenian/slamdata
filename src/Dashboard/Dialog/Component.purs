@@ -32,11 +32,12 @@ import Halogen.HTML.Events as E
 import Halogen.HTML.Properties as P
 import Halogen.Themes.Bootstrap3 as B
 import Notebook.Common (Slam())
+import Notebook.Cell.Port.VarMap as Port
 import Render.Common (fadeWhen)
 
 data Dialog
   = Error String
-  | Embed String
+  | Embed String Port.VarMap
 
 type State = Maybe Dialog
 initialState :: State
@@ -52,17 +53,21 @@ type ErrorSlot = String
 type EmbedSlot = String
 type ChildSlot = Either ErrorSlot EmbedSlot
 
-cpError :: ChildPath
-           Error.State ChildState
-           Error.Query ChildQuery
-           ErrorSlot ChildSlot
-cpError = cpL
+cpError
+  :: ChildPath
+       Error.State ChildState
+       Error.Query ChildQuery
+       ErrorSlot ChildSlot
+cpError =
+  cpL
 
-cpEmbed :: ChildPath
-           Embed.State ChildState
-           Embed.Query ChildQuery
-           EmbedSlot ChildSlot
-cpEmbed = cpR
+cpEmbed
+  :: ChildPath
+       Embed.State ChildState
+       Embed.Query ChildQuery
+       EmbedSlot ChildSlot
+cpEmbed =
+  cpR
 
 type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
@@ -73,19 +78,24 @@ comp = parentComponent' render eval peek
 
 render :: RenderParent State ChildState Query ChildQuery Slam ChildSlot
 render state =
-  H.div [ P.classes ([B.modal] <> fadeWhen (isNothing state))
-        , E.onClick (E.input_ Dismiss)
-        ]
-  $ maybe [ ] (pure <<< dialog) state
+  H.div
+    [ P.classes ([B.modal] <> fadeWhen (isNothing state))
+    , E.onClick (E.input_ Dismiss)
+    ]
+    (maybe [] (pure <<< dialog) state)
   where
+
   dialog (Error str) =
-    H.slot' cpError str \_ -> { component: Error.comp
-                              , initialState: Error.State str
-                              }
-  dialog (Embed str) =
-    H.slot' cpEmbed str \_ -> { component: Embed.comp
-                              , initialState: Embed.State str
-                              }
+    H.slot' cpError str \_ ->
+      { component: Error.comp
+      , initialState: Error.State str
+      }
+
+  dialog (Embed str varMap) =
+    H.slot' cpEmbed str \_ ->
+      { component: Embed.comp
+      , initialState: Embed.State str varMap
+      }
 
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (Dismiss next) = set Nothing $> next

@@ -29,15 +29,14 @@ import Notebook.Cell.Port.VarMap as Port
 
 import Utils.Path as UP
 
--- | GetNameToSave returns name if it hasn't been saved.
--- | If there is no need to saving notebook name returns `Nothing`
+-- | `GetNotebookPath` returns the notebook's path, constructed using
+-- | `notebookPath`.
 data Query a
   = AddCell CT.CellType a
   | RunActiveCell a
   | RunPendingCells a
   | ToggleAddCellMenu a
-  | GetNameToSave (M.Maybe P.DirName -> a)
-  | GetPath (M.Maybe UP.DirPath -> a)
+  | GetNotebookPath (M.Maybe UP.DirPath -> a)
   | SetViewingCell (M.Maybe CID.CellId) a
   | SetName String a
   | SetAccessType AT.AccessType a
@@ -48,3 +47,5 @@ data Query a
   | Reset BF.BrowserFeatures UP.DirPath a
   | GetGlobalVarMap (Port.VarMap -> a)
   | SetGlobalVarMap Port.VarMap a
+  | FindCellParent CID.CellId (M.Maybe CID.CellId -> a)
+  | GetCellType CID.CellId (M.Maybe CT.CellType -> a)
