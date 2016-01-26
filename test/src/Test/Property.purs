@@ -22,7 +22,6 @@ import Control.Monad.Eff.Console (log)
 
 main :: QC Unit
 main = do
-
   log "Check Data.SQL2.Literal..."
   Test.Property.SQL2.Literal.check
 
@@ -71,3 +70,11 @@ main = do
   log "Check Notebook.Model..."
   Test.Property.Notebook.Model.check
 
+  log "Check Model.Download..."
+  Test.Property.Model.Download.check
+
+  log "Check Notebook.Cell.Download.Component.State..."
+  Test.Property.Notebook.Cell.Download.Component.State.check
+
+  log "Check Notebook.Cell.Ace.Model..."
+  Test.Property.Notebook.Cell.Ace.Model.check

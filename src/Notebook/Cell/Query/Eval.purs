@@ -21,21 +21,23 @@ module Notebook.Cell.Query.Eval
 
 import Prelude
 
-import Control.Bind ((=<<))
 import Control.Monad.Error.Class as EC
+import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans as MT
 import Control.Monad.Writer.Class as WC
 
 import Data.Either as E
 import Data.Foldable as F
 import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
 import Data.Lens as L
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.Maybe as M
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
+import Data.String as Str
 
-import Halogen (query, action)
+import Halogen (query, action, request)
 
 import Model.Resource as R
 import Notebook.Cell.Ace.Component (AceDSL())
@@ -46,7 +48,7 @@ import Utils.Completions (mkCompletion, pathCompletions)
 
 import Ace.Halogen.Component as Ace
 import Ace.Types (Completion())
-
+import Utils.Ace (readOnly)
 
 queryEval :: CEQ.CellEvalInput -> String -> AceDSL CEQ.CellEvalResult
 queryEval info sql = do
@@ -72,18 +74,31 @@ queryEval info sql = do
   tempOutputResource = CEQ.temporaryOutputResource info
   inputResource = R.parent tempOutputResource -- TODO: make sure that this is actually still correct
 
+
 querySetup :: CEQ.CellSetupInfo -> AceDSL Unit
 querySetup { inputPort, notebookPath } =
   case inputPort of
     Port.VarMap varMap -> addCompletions varMap
-    Port.Resource res -> fromMaybe (pure unit) $ do
-      nbPath <- notebookPath
-      resParent <- Path.parentDir =<< L.preview R._filePath res
+    Port.Resource res -> void $ runMaybeT do
+      resParent <- MaybeT $ pure $ L.preview R._filePath res >>= Path.parentDir
+      nbPath <- MaybeT $ pure notebookPath
       let path = if nbPath == resParent
                  then R.resourceName res
                  else R.resourcePath res
-      pure $ void $ query unit $
-        action $ Ace.SetText ("SELECT * FROM \"" <> path <> "\"")
+      editor <- (MaybeT $ query unit $ request Ace.GetEditor) >>= (MaybeT <<< pure)
+      MaybeT $ query unit
+        $ action $ Ace.SetText ("SELECT  *  FROM \"" <> path <> "\" ")
+      MT.lift $ liftEff do
+        readOnly editor { startRow: 0
+                        , startColumn: 0
+                        , endRow: 0
+                        , endColumn: 7
+                        }
+        readOnly editor { startRow: 0
+                        , startColumn: 10
+                        , endRow: 0
+                        , endColumn: 19 + Str.length path
+                        }
     _ -> pure unit
 
 addCompletions :: forall a. SM.StrMap a -> AceDSL Unit
