@@ -38,6 +38,7 @@ module Quasar.Aff
 
   , save
   , load
+  , resourceExists
   , RetryEffects()
   ) where
 
@@ -65,7 +66,7 @@ import Data.Argonaut as JS
 import Data.Array as Arr
 import Data.Bifunctor (bimap, lmap)
 import Data.Date as Date
-import Data.Either (Either(..), either)
+import Data.Either (Either(..), either, isRight)
 import Data.Foldable (foldl, for_)
 import Data.Foreign (F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
@@ -211,14 +212,29 @@ retryGet =
     , timeout: Just 30000
     }
 
+mkRequest
+  :: forall e fd
+   . P.Path P.Abs fd P.Sandboxed
+  -> MimeType
+  -> Aff (RetryEffects e) (AffjaxRequest Unit)
+mkRequest u mime = do
+  nocache <- liftEff $ Date.nowEpochMilliseconds
+  pure $ defaultRequest { url = url' nocache
+                        , headers = [ Accept mime ]
+                        }
+  where
+  url' nocache = url <> symbol <> "nocache=" <> pretty nocache
+  symbol = if S.contains "?" url then "&" else "?"
+  pretty (Milliseconds ms) = let s = show ms in fromMaybe s (S.stripSuffix ".0" s)
+  url = P.printPath u
+
 getOnce
   :: forall e a fd
    . (Respondable a)
   => P.Path P.Abs fd P.Sandboxed
   -> MimeType
   -> Affjax (RetryEffects e) a
-getOnce = getWithPolicy defaultRetryPolicy
-
+getOnce u mime = mkRequest u mime >>= affjax
 
 getWithPolicy
   :: forall e a fd
@@ -227,16 +243,7 @@ getWithPolicy
   -> P.Path P.Abs fd P.Sandboxed
   -> MimeType
   -> Affjax (RetryEffects e) a
-getWithPolicy policy u mime = do
-  nocache <- liftEff $ Date.nowEpochMilliseconds
-  retry policy affjax defaultRequest { url = url' nocache, headers = [Accept mime] }
-  where
-  url' nocache = url ++ symbol ++ "nocache=" ++ pretty nocache
-  url = P.printPath u
-  symbol = if S.contains "?" url then "&" else "?"
-  pretty (Milliseconds ms) =
-    let s = show ms
-    in fromMaybe s (S.stripSuffix ".0" s)
+getWithPolicy policy u mime = mkRequest u mime >>= retry policy affjax
 
 retryDelete
   :: forall e a fd
@@ -474,7 +481,7 @@ query
 query res sql =
   if not $ R.isFile res
   then pure []
-  else extractJArray =<< getResponse msg (retryGet uriPath applicationJSON)
+  else extractJArray =<< getResponse msg (getOnce uriPath applicationJSON)
   where
   msg = "error in query"
   uriPath = mkURI res sql
@@ -493,19 +500,31 @@ query' _ _ = pure $ Left "Query resource is not a file"
 
 count :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
 count res = do
-  fromMaybe 0 <<< readTotal <$> query res sql
+  result <- getOnce uriPath applicationJSON
+  when (not $ succeeded result.status) raiseError
+  -- See SD-1331. If user requests `count` for incorrect sql-mount
+  -- it returns "[" --> throwError is used to mark non-existent and
+  -- incorrect resources here.
+  maybe raiseError pure $
+    (JS.jsonParser result.response # either (const Nothing) Just)
+    >>= JS.toArray
+    >>= Arr.head
+    >>= JS.toObject
+    >>= SM.lookup "total"
+    >>= JS.toNumber
+    >>= Data.Int.fromNumber
   where
+  raiseError :: forall a. Aff (RetryEffects (ajax :: AJAX |e)) a
+  raiseError = throwError $ Exn.error "count query returned incorrect json"
+
+  uriPath :: P.Path P.Abs P.File P.Sandboxed
+  uriPath = mkURI res sql
+
   sql :: SQL
   sql = "SELECT COUNT(*) as total FROM {{path}}"
 
-  readTotal :: JS.JArray -> Maybe Int
-  readTotal =
-    Data.Int.fromNumber
-      <=< JS.toNumber
-      <=< SM.lookup "total"
-      <=< JS.toObject
-      <=< Arr.head
-
+resourceExists :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX|e)) Boolean
+resourceExists res = map isRight $ attempt $ count res
 
 portView
   :: forall e
@@ -673,7 +692,8 @@ executeQuery
   -> SM.StrMap String
   -> R.Resource
   -> R.Resource
-  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String { outputResource :: R.Resource, plan :: Maybe String })
+  -> Aff (RetryEffects (ajax :: AJAX | e))
+      (Either String { outputResource :: R.Resource, plan :: Maybe String })
 executeQuery sql cachingEnabled varMap inputResource outputResource = do
   when (R.isTempFile outputResource) $
     void $ attempt $ forceDelete outputResource

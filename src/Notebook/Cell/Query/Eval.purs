@@ -21,6 +21,7 @@ module Notebook.Cell.Query.Eval
 
 import Prelude
 
+import Control.Monad (when)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans as MT
@@ -56,9 +57,15 @@ queryEval info sql = do
   liftAff $ CEQ.runCellEvalT $ do
     { plan: plan, outputResource: outputResource } <-
       Quasar.executeQuery sql
-        (M.fromMaybe false info.cachingEnabled) varMap inputResource tempOutputResource
+        (M.fromMaybe false info.cachingEnabled)
+        varMap
+        inputResource
+        tempOutputResource
         # MT.lift
         >>= E.either EC.throwError pure
+
+    (MT.lift $ Quasar.resourceExists outputResource)
+      >>= \x -> when (not x) $ EC.throwError "Requested collection doesn't exist"
 
     F.for_ plan \p ->
       WC.tell ["Plan: " <> p]
@@ -72,7 +79,7 @@ queryEval info sql = do
     # M.maybe SM.empty (map Port.renderVarMapValue)
 
   tempOutputResource = CEQ.temporaryOutputResource info
-  inputResource = R.parent tempOutputResource -- TODO: make sure that this is actually still correct
+  inputResource = R.parent tempOutputResource
 
 
 querySetup :: CEQ.CellSetupInfo -> AceDSL Unit

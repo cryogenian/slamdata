@@ -23,6 +23,7 @@ module Notebook.Cell.Search.Component
 import Prelude
 
 import Control.Bind (join)
+import Control.Monad (when)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Trans as MT
 import Control.Monad.Writer.Class as WC
@@ -44,6 +45,8 @@ import Halogen.Themes.Bootstrap3 as B
 
 import Render.CssClasses as CSS
 import Render.Common as RC
+
+import Model.Resource as R
 
 import Notebook.Cell.CellType as CT
 import Notebook.Model.Search as Search
@@ -125,6 +128,10 @@ cellEval q =
             # MT.lift
             >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
+        (MT.lift $ liftAff $ Quasar.resourceExists inputResource)
+          >>= \x -> when (not x) $ EC.throwError $ "Input resource "
+            <> R.resourcePath inputResource
+            <> " doesn't exist"
         fields <- MT.lift <<< liftAff $ Quasar.fields inputResource
 
         let
@@ -141,6 +148,10 @@ cellEval q =
 
         F.for_ plan \p ->
           WC.tell ["Plan: " <> p]
+
+        (MT.lift $ liftAff $ Quasar.resourceExists outputResource)
+          >>= \x -> when (not x)
+                    $ EC.throwError "Error making search temporary resource"
 
         pure $ Port.Resource outputResource
 

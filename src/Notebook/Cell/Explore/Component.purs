@@ -23,10 +23,12 @@ module Notebook.Cell.Explore.Component
 import Prelude
 
 import Control.Bind (join)
+import Control.Monad (when)
 import Control.Monad.Trans as MT
 import Control.Monad.Error.Class as EC
 
 import Data.Argonaut (encodeJson, decodeJson)
+import Data.Functor.Aff (liftAff)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Either (either)
 
@@ -35,6 +37,8 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 
 import Render.CssClasses as CSS
+
+import Model.Resource as R
 
 import Notebook.Cell.CellType as CT
 import Notebook.Cell.Port as Port
@@ -45,6 +49,8 @@ import Notebook.Cell.Explore.Component.Query
 import Notebook.Cell.Explore.Component.State
 import Notebook.FileInput.Component as FI
 import Notebook.Common (Slam())
+
+import Quasar.Aff as Quasar
 
 exploreComponent :: Component NC.CellStateP NC.CellQueryP Slam
 exploreComponent =
@@ -71,6 +77,10 @@ eval (NC.EvalCell info k) =
       query unit (request FI.GetSelectedFile) <#> (>>= id)
         # MT.lift
         >>= maybe (EC.throwError "No file selected") pure
+    (MT.lift $ liftAff $ Quasar.resourceExists resource)
+      >>= \x -> when (not x) $ EC.throwError
+                $ "File " <> R.resourcePath resource <> " doesn't exist"
+
     pure $ Port.Resource resource
 eval (NC.SetupCell _ next) = pure next
 eval (NC.Save k) = do
