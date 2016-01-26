@@ -29,19 +29,21 @@ import Prelude
 import Ace.EditSession as Session
 import Ace.Editor as Editor
 import Ace.Halogen.Component
-  ( AceQuery(SetText, GetText), AceState(), Autocomplete(..)
+  ( AceQuery(SetText, GetText, GetEditor), AceState(), Autocomplete(..)
   , aceConstructor)
 import Ace.Types (Editor())
-import Data.Argonaut (encodeJson, decodeJson)
+import Control.Bind (join)
 import Data.Either (either)
+import Data.Foldable as F
 import Data.Functor (($>))
 import Data.Functor.Eff (liftEff)
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Halogen
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Notebook.Cell.Ace.Component.Query
 import Notebook.Cell.Ace.Component.State
+import Notebook.Cell.Ace.Model as Model
 import Notebook.Cell.CellType (AceMode(), aceMode, aceCellName, aceCellGlyph)
 import Notebook.Cell.Common.EvalQuery
   (CellEvalQuery(..), CellEvalResult(), CellEvalInput(), CellSetupInfo())
@@ -50,6 +52,7 @@ import Notebook.Cell.Component
   , _AceState, _AceQuery)
 import Notebook.Common (Slam())
 import Render.CssClasses as CSS
+import Utils.Ace (getRangeRecs, readOnly)
 
 type AceDSL =
   ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit
@@ -107,8 +110,16 @@ aceComponent {mode, evaluator, setup} = makeEditorCellComponent
   eval (SetupCell input next) = setup input $> next
   eval (Save k) = do
     content <- fromMaybe "" <$> query unit (request GetText)
-    pure $ k (encodeJson content)
+    mbEditor <- query unit (request GetEditor)
+    rrs <- liftEff $ maybe (pure []) getRangeRecs $ join mbEditor
+    pure $ k $ Model.encode { text: content, ranges: rrs }
   eval (Load json next) = do
-    let text = fromMaybe "" $ either (const Nothing) id $ decodeJson json
+    let model = either (const Model.emptyModel) id $ Model.decode json
+        text = model.text
+        ranges = model.ranges
     query unit $ action (SetText text)
+    mbEditor <- query unit $ request GetEditor
+    liftEff $ F.for_ (join mbEditor) \editor -> do
+      F.traverse_ (readOnly editor) ranges
+      Editor.navigateFileEnd editor
     pure next

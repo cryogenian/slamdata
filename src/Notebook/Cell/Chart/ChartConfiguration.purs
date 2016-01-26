@@ -23,7 +23,7 @@ import Control.Bind ((>=>))
 import Data.Argonaut (Json(), JCursor(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Array (filter)
 import Data.Foldable (any)
-import Data.Lens (LensP(), lens, (^.))
+import Data.Lens ((^.))
 import Data.Maybe (maybe)
 import Data.Either (Either())
 

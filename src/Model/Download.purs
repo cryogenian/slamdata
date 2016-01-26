@@ -1,3 +1,19 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module Model.Download where
 
 import Prelude
@@ -22,6 +38,14 @@ type CSVOptionsRec =
   , arrays :: ArrayMode
   }
 newtype CSVOptions = CSVOptions CSVOptionsRec
+
+instance eqCSVOptions :: Eq CSVOptions where
+  eq (CSVOptions opts) (CSVOptions opts') =
+    opts.colDelimiter == opts'.colDelimiter
+    && opts.rowDelimiter == opts'.rowDelimiter
+    && opts.quoteChar == opts'.quoteChar
+    && opts.escapeChar == opts'.escapeChar
+    && opts.arrays == opts'.arrays
 
 instance encodeJsonCSVOptions :: EncodeJson CSVOptions where
   encodeJson (CSVOptions r) =
@@ -81,6 +105,10 @@ type JSONOptionsRec =
   }
 newtype JSONOptions = JSONOptions JSONOptionsRec
 
+instance eqJsonOptions :: Eq JSONOptions where
+  eq (JSONOptions opts) (JSONOptions opts') =
+    opts.multivalues == opts'.multivalues && opts.precision == opts'.precision
+
 instance encodeJsonJSONOptions :: EncodeJson JSONOptions where
   encodeJson (JSONOptions r) =
        "multivalues" := r.multivalues
@@ -111,6 +139,11 @@ _precision :: LensP JSONOptions PrecisionMode
 _precision = _JSONOptions <<< lens _.precision (_ { precision = _ })
 
 data ArrayMode = Flatten | Separate String
+
+instance eqArrayMode :: Eq ArrayMode where
+  eq Flatten Flatten = true
+  eq (Separate s) (Separate s') = s == s'
+  eq _ _ = false
 
 instance encodeJsonArrayMode :: EncodeJson ArrayMode where
   encodeJson Flatten =
