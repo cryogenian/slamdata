@@ -20,7 +20,6 @@ module Notebook.Component.Query
 
 import Data.BrowserFeatures as BF
 import Data.Maybe as M
-import Data.Path.Pathy as P
 
 import Model.AccessType as AT
 import Notebook.Cell.CellId as CID

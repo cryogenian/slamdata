@@ -47,7 +47,7 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
 import Data.String as Str
-import Data.These (These(..), theseRight)
+import Data.These (These(..))
 import Data.Time (Milliseconds(..))
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..), fst, snd)
@@ -263,6 +263,7 @@ peekCell cellId q = case q of
   TrashCell _ -> do
     descendants <- gets (findDescendants cellId)
     modify $ removeCells (S.insert cellId descendants)
+    triggerSave unit
   CreateChildCell cellType _ -> do
     Tuple st newCellId <- gets $ addCell' cellType (Just cellId)
     set st
