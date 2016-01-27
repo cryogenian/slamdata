@@ -49,7 +49,7 @@
     "purescript-refractor": "paf31/purescript-refractor#841f0c1c74f86f509d31847ae9a808dbb435ee5b",
     "purescript-routing": "~0.1.0",
     "purescript-search": "~0.3.0",
-    "purescript-sets": "~0.4.0",
+    "purescript-sets": "0.5.3",
     "purescript-simple-dom": "6358414013eb3106d695e3e19488609f82d903e9",
     "purescript-these": "~0.3.0",
     "purescript-unfoldable": "0.4.0",
@@ -66,7 +66,6 @@
     "purescript-lens": "^0.8.0",
     "purescript-parsing": "~0.5.1",
     "purescript-datetime": "~0.9.0",
-    "purescript-sets": "^0.5.0",
     "purescript-base": "^0.2.0",
     "purescript-transformers": "^0.6.1",
     "purescript-aff": "^0.11.3",
@@ -74,7 +73,8 @@
     "purescript-markdown": "021749b26d4a6683514d39110779938b7ff8df7e",
     "purescript-strongcheck": "^0.13.0",
     "purescript-free": "^0.9.0",
-    "purescript-machines": "^0.8.0"
+    "purescript-machines": "^0.8.0",
+    "purescript-sets": "0.5.3"
   },
   "devDependencies": {
     "purescript-node-fs-aff": "^0.1.2",
