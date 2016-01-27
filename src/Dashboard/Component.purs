@@ -59,7 +59,7 @@ import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
 import Data.Functor.Eff (liftEff)
 import Data.Generic (Generic, gEq, gCompare)
 import Data.Shortcut (print)
-import Data.Lens ((^.), (.~), (%~))
+import Data.Lens ((^.), (.~), (%~), (?~))
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.StrMap as SM
 import Data.Traversable (traverse)
@@ -97,7 +97,7 @@ import Notebook.FormBuilder.Component as FB
 import Notebook.FormBuilder.Item.Model as FBI
 
 import Render.CssClasses as Rc
-import Render.Common (icon, logo)
+import Render.Common (logo, icon')
 import Utils.DOM (documentTarget)
 
 type DialogSlot = Unit
@@ -218,7 +218,7 @@ render state =
     ]
     [ H.nav
         [ P.classes visibilityClasses ]
-        [ renderHeader (state ^. _version) ]
+        [ renderHeader state ]
     , H.div
         [ P.classes $ [ className "sd-menu" ] <> visibilityClasses ]
         [ H.slot' cpMenu MenuSlot \_ ->
@@ -255,16 +255,17 @@ render state =
       Just _ -> [ Rc.invisible ]
       Nothing -> []
 
-  renderHeader :: Maybe String -> DashboardHTML
-  renderHeader version =
+  renderHeader :: State -> DashboardHTML
+  renderHeader state =
     H.div
       [ P.initializer \_ -> action ActivateKeyboardShortcuts ]
       [ H.div
           [ P.classes [ B.clearfix ] ]
           [ H.div
               [ P.classes [ Rc.header, B.clearfix ] ]
-              [ icon B.glyphiconBook ""
-              , logo version
+              [ icon' B.glyphiconChevronLeft "Back to parent folder"
+                $ fromMaybe "" (state ^. _parentHref)
+              , logo (state ^. _version)
               , H.slot' cpRename unit \_ ->
                   { component: Rename.comp
                   , initialState: Rename.initialState
@@ -322,6 +323,7 @@ eval (SetViewingCell mbcid next) = do
   pure next
 eval (GetViewingCell k) = k <$> gets _.viewingCell
 eval (DismissAll next) = dismissAll *> pure next
+eval (SetParentHref href next) = modify (_parentHref ?~ href) $> next
 
 dismissAll :: DashboardDSL Unit
 dismissAll =

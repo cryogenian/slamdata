@@ -34,7 +34,8 @@ import Notebook.Cell.CellType (CellType(..), AceMode(..))
 import Notebook.Component as Notebook
 import Notebook.Effects (NotebookEffects())
 
-type NotebookShortcut = { shortcut :: Shortcut.Shortcut, value :: Value, label :: Maybe String }
+type NotebookShortcut =
+  { shortcut :: Shortcut.Shortcut, value :: Value, label :: Maybe String }
 
 type State =
   { accessType :: AccessType
@@ -44,6 +45,7 @@ type State =
   , loaded :: Boolean
   , viewingCell :: Maybe CellId
   , version :: Maybe String
+  , parentHref :: Maybe String
   }
 
 notebookShortcuts :: StrMap NotebookShortcut
@@ -94,14 +96,15 @@ notebookShortcuts =
     ]
 
 initialState :: { browserFeatures :: BrowserFeatures } -> State
-initialState rec =
+initialState r =
   { accessType: Editable
-  , browserFeatures: rec.browserFeatures
+  , browserFeatures: r.browserFeatures
   , notebookShortcuts: notebookShortcuts
   , keyboardListeners: []
   , loaded: false
   , viewingCell: Nothing
   , version: Nothing
+  , parentHref: Nothing
   }
 
 _accessType :: LensP State AccessType
@@ -124,3 +127,6 @@ _viewingCell = lens _.viewingCell _{viewingCell = _}
 
 _version :: LensP State (Maybe String)
 _version = lens _.version _{version = _}
+
+_parentHref :: LensP State (Maybe String)
+_parentHref = lens _.parentHref _{parentHref = _}

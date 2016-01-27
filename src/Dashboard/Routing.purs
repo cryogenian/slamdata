@@ -50,6 +50,7 @@ import Text.Parsing.Parser as P
 import Utils.Path as UP
 
 import Model.AccessType (AccessType(..), parseAccessType)
+import Model.Common (parentURL)
 import Model.Notebook.Action (Action(..), parseAction, toAccessType)
 
 import Notebook.Cell.CellId as CID
@@ -155,7 +156,12 @@ routeSignal driver = do
     fs <- Eff.liftEff detectBrowserFeatures
     driver $ Dashboard.toNotebook $ Notebook.ExploreFile fs path
 
-  notebook :: UP.DirPath -> Action -> M.Maybe CID.CellId -> Port.VarMap -> Aff NotebookEffects Unit
+  notebook
+    :: UP.DirPath
+    -> Action
+    -> M.Maybe CID.CellId
+    -> Port.VarMap
+    -> Aff NotebookEffects Unit
   notebook path action viewing varMap = do
     let name = UP.getNameStr $ E.Right path
         accessType = toAccessType action
@@ -174,4 +180,4 @@ routeSignal driver = do
     driver $ Dashboard.toDashboard $ Dashboard.SetViewingCell viewing
     driver $ Dashboard.toDashboard $ Dashboard.SetAccessType accessType
     driver $ Dashboard.toNotebook $ Notebook.SetGlobalVarMap varMap
-
+    driver $ Dashboard.toDashboard $ Dashboard.SetParentHref $ parentURL path
