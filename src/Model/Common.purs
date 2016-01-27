@@ -16,6 +16,7 @@ limitations under the License.
 
 module Model.Common
   ( browseURL
+  , parentURL
   , mkNotebookHash
   , mkNotebookURL
   , mkNotebookCellHash
@@ -30,15 +31,22 @@ import Data.Foldable as F
 import Data.Maybe as M
 import Data.Path.Pathy as P
 import Data.StrMap as SM
+import Data.Either as E
 
 import Model.AccessType as AT
 import Model.Notebook.Action as NA
 import Notebook.Cell.Port.VarMap as Port
 import Notebook.Cell.CellId as CID
+import Model.Resource as Resource
 import Model.Salt as Salt
 import Model.Sort as Sort
 
+
 import Utils.Path as UP
+
+parentURL :: UP.DirPath -> String
+parentURL childPath =
+  browseURL M.Nothing Sort.Asc (Salt.Salt "") $ UP.getDir $ E.Right childPath
 
 browseURL :: M.Maybe String -> Sort.Sort -> Salt.Salt -> UP.DirPath -> String
 browseURL search sort salt path =

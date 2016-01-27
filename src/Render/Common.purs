@@ -24,6 +24,7 @@ import Data.Maybe (Maybe(), maybe)
 import Data.String (fromChar)
 
 import Halogen.HTML as H
+import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.HTML.Core (HTML(), ClassName())
 import Halogen.HTML.Events as E
 import Halogen.HTML.Events.Types as ET
@@ -68,6 +69,15 @@ icon c href = H.div [ P.classes [ Rc.navIcon ] ]
               [ H.a [ P.href href ]
                 [ glyph c ]
               ]
+
+icon' :: forall p f. ClassName -> String -> String -> HTML p f
+icon' c title href = H.div [ P.classes [ Rc.navIcon ] ]
+                     [ H.a [ P.href href
+                           , P.title title
+                           , ARIA.label title
+                           ]
+                       [ glyph c ]
+                     ]
 
 logo :: forall p f. Maybe String -> HTML p f
 logo mbVersion =

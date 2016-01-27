@@ -35,4 +35,5 @@ data Query a
   | GetAccessType (AccessType -> a)
   | SetViewingCell (Maybe CellId) a
   | GetViewingCell (Maybe CellId -> a)
+  | SetParentHref String a
   | DismissAll a
