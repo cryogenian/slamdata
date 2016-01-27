@@ -26,7 +26,7 @@ module Notebook.Component
 import Prelude
 
 import Control.Bind ((=<<), join)
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Control.Monad.Aff.Console (log)
 import Control.UI.Browser (newTab, locationObject)
 
@@ -42,7 +42,7 @@ import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
 import Data.Functor.Eff (liftEff)
 import Data.Lens (LensP(), view, (.~), (%~), (?~))
 import Data.List as List
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, isNothing)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
@@ -389,41 +389,47 @@ fireDebouncedQuery lens act = do
 
 -- | Saves the notebook as JSON, using the current values present in the state.
 saveNotebook :: Unit -> NotebookDSL Unit
-saveNotebook _ = do
-  st <- get
-  for_ st.path \path -> do
-    cells <- catMaybes <$> for (List.fromList st.cells) \cell ->
-      query (CellSlot cell.id) $ left $ request (SaveCell cell.id cell.ty)
+saveNotebook _ = get >>= \st ->
+  unless (isUnsaved st && isExploreNotebook st) do
+    for_ st.path \path -> do
+      cells <- catMaybes <$> for (List.fromList st.cells) \cell ->
+        query (CellSlot cell.id) $ left $ request (SaveCell cell.id cell.ty)
 
-    let json = Model.encode { cells, dependencies: st.dependencies }
+      let json = Model.encode { cells, dependencies: st.dependencies }
 
-    savedName <- case st.name of
-      This name -> save path name json
-      That name -> do
-        newName <- getNewName' path name
-        save path newName json
-      Both oldName newName -> do
-        save path oldName json
-        if newName == nameFromDirName oldName
-          then pure oldName
-          else rename path oldName newName
+      savedName <- case st.name of
+        This name -> save path name json
+        That name -> do
+          newName <- getNewName' path name
+          save path newName json
+        Both oldName newName -> do
+          save path oldName json
+          if newName == nameFromDirName oldName
+            then pure oldName
+            else rename path oldName newName
 
-    modify (_name .~ This savedName)
+      modify (_name .~ This savedName)
 
-    -- We need to get the modified version of the notebook state. TODO: is
-    -- there a cleaner way to do this?
-    mpath <- gets notebookPath
-    case mpath of
-      Nothing -> pure unit
-      Just path' -> do
-        let
-          notebookHash =
-            case st.viewingCell of
-              Nothing -> mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
-              Just cid -> mkNotebookCellHash path' cid st.accessType st.globalVarMap
-        liftEff $ locationObject >>= Location.setHash notebookHash
+      -- We need to get the modified version of the notebook state.
+      mpath <- gets notebookPath
+      case mpath of
+        Nothing -> pure unit
+        Just path' -> do
+          let
+            notebookHash =
+              case st.viewingCell of
+                Nothing -> mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
+                Just cid -> mkNotebookCellHash path' cid st.accessType st.globalVarMap
+          liftEff $ locationObject >>= Location.setHash notebookHash
 
   where
+
+  isUnsaved :: State -> Boolean
+  isUnsaved = isNothing <<< notebookPath
+
+  isExploreNotebook :: State -> Boolean
+  isExploreNotebook { cells } =
+    List.toUnfoldable (map _.ty cells) == [Explore, JTable]
 
   -- Finds a new name for a notebook in the specified parent directory, using
   -- a name value as a basis to start with.
