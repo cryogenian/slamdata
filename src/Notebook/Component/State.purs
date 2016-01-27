@@ -45,6 +45,7 @@ module Notebook.Component.State
   , findDescendants
   , addPendingCell
   , getCellType
+  , cellsOfType
   , cellIsLinkedCellOf
   , fromModel
   , notebookPath
@@ -369,6 +370,13 @@ findDescendants cellId st =
 -- | in the notebook, and `Nothing` if it is not.
 getCellType :: CellId -> State -> Maybe CellType
 getCellType cellId st = M.lookup cellId st.cellTypes
+
+cellsOfType :: CellType -> State -> List CellId
+cellsOfType cellType =
+  _.cellTypes >>> M.toList >>> L.mapMaybe \(Tuple cid ty) ->
+    if ty == cellType
+       then Just cid
+       else Nothing
 
 -- | Given two cell IDs, determine whether the latter is the linked results
 -- | cell of the former.

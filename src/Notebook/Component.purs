@@ -246,7 +246,12 @@ eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook unit $> next
 eval (RunPendingCells next) = runPendingCells unit $> next
 eval (GetGlobalVarMap k) = k <$> gets _.globalVarMap
-eval (SetGlobalVarMap m next) = modify (_globalVarMap .~ m) $> next
+eval (SetGlobalVarMap m next) = do
+  st <- get
+  when (m /= st.globalVarMap) do
+    modify (_globalVarMap .~ m)
+    traverse_ runCell $ cellsOfType API st
+  pure next
 eval (FindCellParent cid k) = k <$> gets (findParent cid)
 eval (GetCellType cid k) = k <$> gets (getCellType cid)
 
