@@ -223,12 +223,15 @@ eval (FileListChanged el next) = do
         Left err -> do
           query' cpItems ItemsSlot $ left $ action
             $ Items.Filter (not <<< eq (R.File fileName) <<< itemResource)
+          query' cpDialog DialogSlot $ left $ action
+            $ Dialog.Show (Dialog.Error $ message err)
           pure unit
         Right _ ->
           liftEff $ setLocation
             $ itemURL (state ^. _sort) (state ^. _salt) Editable fileItem
 
   pure next
+
 eval (Download next) = do
   state <- get
   download (R.Directory (state ^. _path))
