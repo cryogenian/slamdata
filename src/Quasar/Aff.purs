@@ -67,7 +67,7 @@ import Data.Array as Arr
 import Data.Bifunctor (bimap, lmap)
 import Data.Date as Date
 import Data.Either (Either(..), either, isRight)
-import Data.Foldable (foldl, for_)
+import Data.Foldable (foldl, for_, traverse_)
 import Data.Foreign (F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
@@ -336,11 +336,14 @@ exists' name items = isJust $ Arr.findIndex (\r -> r ^. R._name == name) items
 
 move
   :: forall e
-   . R.Resource -> PU.AnyPath -> Aff (RetryEffects (ajax :: AJAX |e)) PU.AnyPath
+   . R.Resource
+  -> PU.AnyPath
+  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) PU.AnyPath
 move src tgt = do
   let url = if R.isDatabase src || R.isViewMount src
             then Config.mountUrl
             else Config.dataUrl
+  cleanViewMounts src
   result <- affjax $ defaultRequest
     { method = MOVE
     , headers = [RequestHeader "Destination" $ either P.printPath P.printPath tgt]
@@ -373,7 +376,9 @@ saveMount res uri = do
 foreign import stringify :: forall r. {|r} -> String
 
 delete
-  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) (Maybe R.Resource)
+  :: forall e
+   . R.Resource
+  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) (Maybe R.Resource)
 delete resource =
   if not (R.isDatabase resource || alreadyInTrash resource || R.isViewMount resource)
   then (moveToTrash resource) <|> (forceDelete resource $> Nothing)
@@ -384,7 +389,8 @@ delete resource =
   msg = "cannot delete"
 
   moveToTrash
-    :: R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Maybe R.Resource)
+    :: R.Resource
+    -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM | e)) (Maybe R.Resource)
   moveToTrash res = do
     let d = (res ^. R._root) </> P.dir Config.trashFolder
         path = (res # R._root .~ d) ^. R._path
@@ -414,11 +420,13 @@ delete resource =
         else alreadyInTrash' d
 
 
-forceDelete :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX |e)) Unit
-forceDelete =
+forceDelete
+  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) Unit
+forceDelete res = do
+  cleanViewMounts res
   getResponse "cannot delete"
-  <<< either retryDelete retryDelete
-  <<< pathFromResource
+    $  either retryDelete retryDelete
+    $  pathFromResource res
 
   where
   pathFromResource :: R.Resource -> PU.AnyPath
@@ -435,6 +443,11 @@ forceDelete =
     if R.isDatabase r || R.isViewMount r
     then Config.mountUrl
     else Config.dataUrl
+
+cleanViewMounts
+  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM|e)) Unit
+cleanViewMounts res = for_ (R.getPath res) \dirPath ->
+  children dirPath >>= Arr.filter R.isViewMount >>> traverse_ forceDelete
 
 getVersion :: forall e. Aff (RetryEffects (ajax :: AJAX |e)) (Maybe String)
 getVersion = do
@@ -692,7 +705,7 @@ executeQuery
   -> SM.StrMap String
   -> R.Resource
   -> R.Resource
-  -> Aff (RetryEffects (ajax :: AJAX | e))
+  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM | e))
       (Either String { outputResource :: R.Resource, plan :: Maybe String })
 executeQuery sql cachingEnabled varMap inputResource outputResource = do
   when (R.isTempFile outputResource) $
