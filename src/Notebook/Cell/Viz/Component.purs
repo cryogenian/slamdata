@@ -249,8 +249,8 @@ vizEval q = do
 cellEval :: Natural CellEvalQuery VizDSL
 cellEval (EvalCell info continue) = do
   needToUpdate <- gets _.needToUpdate
-  map continue $ withLoading $ runCellEvalT do
-    when needToUpdate do
+  map continue $ runCellEvalT do
+    when needToUpdate $ withLoading do
       r <- maybe (throwError "Incorrect port in visual builder cell") pure
            $ info.inputPort >>= preview P._Resource
       lift $ updateForms r
@@ -260,13 +260,13 @@ cellEval (EvalCell info continue) = do
         $  "Maximum record count available for visualization -- 10000, "
         <> "please consider using 'limit' or 'group by' in your request"
       lift $ modify $ _records .~ records
+    lift $ modify $ _needToUpdate .~ true
     responsePort
   where
   withLoading action = do
-    modify $ _loading .~ true
+    lift $ modify $ _loading .~ true
     a <- action
-    modify $ _loading .~ false
-    modify $ _needToUpdate .~ true
+    lift $ modify $ _loading .~ false
     pure a
 cellEval (SetupCell _ next) = pure next
 cellEval (NotifyRunCell next) = pure next
