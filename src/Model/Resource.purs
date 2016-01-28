@@ -136,7 +136,7 @@ newDatabase :: Resource
 newDatabase = Database $ P.rootDir </> P.dir Config.newDatabaseName
 
 newViewMount :: Resource
-newViewMount = Database $ P.rootDir </> P.dir Config.newViewMountName
+newViewMount = ViewMount $ P.rootDir </> P.file Config.newViewMountName
 
 -- CONSTRUCTORS
 root :: Resource
