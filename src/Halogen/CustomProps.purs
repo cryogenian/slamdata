@@ -56,6 +56,9 @@ mbKeyDown = mbHandler (eventName "keydown")
 mbClick :: forall i. MbEventProp MouseEvent i
 mbClick = mbHandler (eventName "click")
 
+mbDoubleClick :: forall i. MbEventProp MouseEvent i
+mbDoubleClick = mbHandler (eventName "dblclick")
+
 mbInput :: forall i. MbEventProp () i
 mbInput = mbHandler (eventName "input")
 

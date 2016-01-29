@@ -22,7 +22,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import Data.Maybe (Maybe())
 import Halogen.HTML.Events.Handler (EventHandler())
-import Halogen.HTML.Events.Types (Event())
+import Halogen.HTML.Events.Types (Event(), MouseEvent())
 import Halogen.HTML.Properties.Indexed (IProp(), I())
 import Halogen.CustomProps as Cp
 
@@ -39,3 +39,5 @@ mbValueInput = unsafeCoerce Cp.mbValueInput
 nonSubmit :: forall i r . IProp (onSubmit :: I | r) i
 nonSubmit = unsafeCoerce Cp.nonSubmit
 
+mbDoubleClick :: forall r i. MbIEventProp (onDoubleClick :: I|r) MouseEvent i
+mbDoubleClick = unsafeCoerce Cp.mbDoubleClick

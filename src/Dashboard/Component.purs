@@ -407,7 +407,8 @@ cellPeek cid q =
         _ ->
           pure SM.empty
 
-    liftFormBuilderQuery :: CID.CellId -> Natural FB.Query (ET.ExceptT String DashboardDSL)
+    liftFormBuilderQuery
+      :: CID.CellId -> Natural FB.Query (ET.ExceptT String DashboardDSL)
     liftFormBuilderQuery cid =
       liftCellQuery cid
         <<< CQ.APIQuery
@@ -415,7 +416,8 @@ cellPeek cid q =
         <<< ChildF unit
         <<< left
 
-    liftCellQuery :: CID.CellId -> Natural CQ.AnyCellQuery (ET.ExceptT String DashboardDSL)
+    liftCellQuery
+      :: CID.CellId -> Natural CQ.AnyCellQuery (ET.ExceptT String DashboardDSL)
     liftCellQuery cid =
       queryCell cid >>> MT.lift
         >=> maybe (EC.throwError "Error querying cell") pure
