@@ -145,7 +145,8 @@ routeSignal :: Halogen.Driver Dashboard.QueryP NotebookRawEffects -> Aff Noteboo
 routeSignal driver = do
   Tuple _ route <- Routing.matchesAff' UP.decodeURIPath routing
   case route of
-    CellRoute res cellId accessType varMap -> notebook res (Load accessType) (M.Just cellId) varMap
+    CellRoute res cellId accessType varMap ->
+      notebook res (Load accessType) (M.Just cellId) varMap
     NotebookRoute res action varMap -> notebook res action M.Nothing varMap
     ExploreRoute res -> explore res
 
@@ -155,6 +156,9 @@ routeSignal driver = do
   explore path = do
     fs <- Eff.liftEff detectBrowserFeatures
     driver $ Dashboard.toNotebook $ Notebook.ExploreFile fs path
+    driver $ Dashboard.toDashboard $ Dashboard.SetParentHref
+      $ parentURL $ E.Left path
+    driver $ Dashboard.toRename $ Rename.SetText $ Config.newNotebookName
 
   notebook
     :: UP.DirPath
@@ -172,12 +176,13 @@ routeSignal driver = do
 
     when (currentPath /= pure path) do
       features <- Eff.liftEff detectBrowserFeatures
-      driver $ Dashboard.toRename $ Rename.SetText $ UP.dropNotebookExt name
       if action == New
         then driver $ Dashboard.toNotebook $ Notebook.Reset features path
         else driver $ Dashboard.toNotebook $ Notebook.LoadNotebook features path
 
+    driver $ Dashboard.toRename $ Rename.SetText $ UP.dropNotebookExt name
     driver $ Dashboard.toDashboard $ Dashboard.SetViewingCell viewing
     driver $ Dashboard.toDashboard $ Dashboard.SetAccessType accessType
     driver $ Dashboard.toNotebook $ Notebook.SetGlobalVarMap varMap
-    driver $ Dashboard.toDashboard $ Dashboard.SetParentHref $ parentURL path
+    driver $ Dashboard.toDashboard $ Dashboard.SetParentHref
+      $ parentURL $ E.Right path

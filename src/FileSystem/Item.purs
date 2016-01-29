@@ -38,6 +38,7 @@ import Halogen.HTML.Properties as P
 import Halogen.HTML.Properties.ARIA as ARIA
 import Halogen.Query (action, modify, gets)
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.CustomProps as Cp
 
 import CSS.Geometry (marginBottom)
 import CSS.Size (px)
@@ -230,6 +231,7 @@ showToolbar it =
 
   toolItem func label cls =
     H.li_ [ H.button [ E.onClick (\_ -> pure $ action func)
+                     , Cp.mbDoubleClick (\_ -> E.stopPropagation $> Nothing)
                      , ARIA.label label
                      , P.title label
                      ]

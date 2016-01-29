@@ -47,7 +47,7 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
 import Data.String as Str
-import Data.These (These(..))
+import Data.These (These(..), theseRight)
 import Data.Time (Milliseconds(..))
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..), fst, snd)
@@ -216,9 +216,9 @@ eval (LoadNotebook fs dir next) = do
           modify (_stateMode .~ Ready)
           pure next
 eval (ExploreFile fs res next) = do
+  set $ initialNotebook fs
   modify
     $ (_path .~ Pathy.parentDir res)
-    <<< (_browserFeatures .~ fs)
     <<< (addCell Explore Nothing)
   forceRerender'
   query (CellSlot zero) $ right
@@ -239,7 +239,12 @@ eval (Reset fs dir next) = do
       name = maybe nb.name This (either Just (const Nothing) <<< snd =<< peeledPath)
   set $ nb { path = path, name = name }
   pure next
-eval (SetName name next) = modify (_name .~ That name) $> next
+eval (SetName name next) =
+  modify (_name %~ \n -> case n of
+             That _ -> That name
+             Both d _ -> Both d name
+             This d -> Both d name
+         ) $> next
 eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
 eval (GetNotebookPath k) = k <$> gets notebookPath
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
@@ -394,8 +399,8 @@ fireDebouncedQuery lens act = do
 
 -- | Saves the notebook as JSON, using the current values present in the state.
 saveNotebook :: Unit -> NotebookDSL Unit
-saveNotebook _ = get >>= \st ->
-  unless (isUnsaved st && isExploreNotebook st) do
+saveNotebook _ = get >>= \st -> do
+  unless (isUnsaved st && isNewExploreNotebook st) do
     for_ st.path \path -> do
       cells <- catMaybes <$> for (List.fromList st.cells) \cell ->
         query (CellSlot cell.id) $ left $ request (SaveCell cell.id cell.ty)
@@ -416,25 +421,25 @@ saveNotebook _ = get >>= \st ->
       modify (_name .~ This savedName)
 
       -- We need to get the modified version of the notebook state.
-      mpath <- gets notebookPath
-      case mpath of
-        Nothing -> pure unit
-        Just path' -> do
-          let
-            notebookHash =
+      gets notebookPath >>= traverse_ \path' ->
+        let notebookHash =
               case st.viewingCell of
-                Nothing -> mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
-                Just cid -> mkNotebookCellHash path' cid st.accessType st.globalVarMap
-          liftEff $ locationObject >>= Location.setHash notebookHash
+                Nothing ->
+                  mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
+                Just cid ->
+                  mkNotebookCellHash path' cid st.accessType st.globalVarMap
+        in liftEff $ locationObject >>= Location.setHash notebookHash
 
   where
 
   isUnsaved :: State -> Boolean
   isUnsaved = isNothing <<< notebookPath
 
-  isExploreNotebook :: State -> Boolean
-  isExploreNotebook { cells } =
-    List.toUnfoldable (map _.ty cells) == [Explore, JTable]
+  isNewExploreNotebook :: State -> Boolean
+  isNewExploreNotebook { name, cells } =
+    (List.toUnfoldable (map _.ty cells) == [Explore, JTable])
+    -- We should save if name is changed from "Untitled Notebook" here.
+    && theseRight name == Just Config.newNotebookName
 
   -- Finds a new name for a notebook in the specified parent directory, using
   -- a name value as a basis to start with.
