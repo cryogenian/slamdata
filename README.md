@@ -17,14 +17,14 @@ See the [Use with Quasar](#use-with-quasar) section for next steps.
 
 ## Building from source
 
-Building SlamData 2.1 requires [PureScript 0.7.1](https://github.com/purescript/purescript/releases/tag/v0.7.1) and Node.js v0.12.x.
+Building SlamData requires [PureScript 0.7.6.1](https://github.com/purescript/purescript/releases/tag/v0.7.6.1) or newer and Node.js v0.12.x or newer.
 
 #### Prerequisites
 
-This can be skipped if [Bower](http://bower.io/) and [Gulp.js](http://gulpjs.com/) are already installed globally.
+This can be skipped if [Bower](http://bower.io/) is already installed globally.
 
 ```
-npm install bower gulp -g
+npm install bower -g
 ```
 
 #### Checkout
@@ -45,12 +45,10 @@ npm install
 #### Build
 
 ```
-gulp less bundle
+npm run build
 ```
 
-After `gulp` finishes the `public` directory will contain the complete SlamData front-end app.
-
-For working on SlamData, the default `gulp` task can be run instead. This will run an incremental build with a watch process so any changes to the `.less`, `.purs`, or `.js` source files will trigger a rebuild.
+After this task finishes the `public` directory will contain the complete SlamData front-end app.
 
 ## Use with Quasar
 
