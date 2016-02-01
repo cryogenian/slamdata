@@ -31,7 +31,6 @@ import Ace.Config as AceConfig
 
 import Dashboard.Component (comp, initialState)
 import Dashboard.Routing (routeSignal)
-import Dashboard.Autosave (autoSaveSignal)
 import Notebook.Effects (NotebookEffects())
 
 main :: Eff NotebookEffects Unit
@@ -44,4 +43,3 @@ main = do
     app <- runUI comp $ installedState $ initialState { browserFeatures: browserFeatures }
     onLoad (appendToBody app.node)
     forkAff $ routeSignal app.driver
-    forkAff $ autoSaveSignal app.driver

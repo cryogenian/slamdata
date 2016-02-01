@@ -186,7 +186,10 @@ newCellMenu state =
       ]
 
 eval :: Natural Query NotebookDSL
-eval (AddCell cellType next) = modify (addCell cellType Nothing) $> next
+eval (AddCell cellType next) = do
+  modify (addCell cellType Nothing)
+  triggerSave unit
+  pure next
 eval (RunActiveCell next) =
   (maybe (pure unit) runCell =<< gets (_.activeCellId)) $> next
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
@@ -287,6 +290,7 @@ peekCell cellId q = case q of
              $ right $ ChildF unit $ left $ action (SetupCell setupInfo)
       Nothing -> pure unit
     when (autorun cellType) $ runCell newCellId
+    triggerSave unit
   ShareCell _ -> pure unit
   _ -> pure unit
 
