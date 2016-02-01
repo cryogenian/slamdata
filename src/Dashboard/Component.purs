@@ -311,7 +311,6 @@ eval (EvaluateMenuValue value next) =
   dismissAll *> evaluateMenuValue value $> next
 eval (AddKeyboardListener listener next) =
   modify (_keyboardListeners %~ cons listener) $> next
-eval (Save next) = pure next
 eval (SetAccessType aType next) = do
   modify (_accessType .~ aType)
   queryNotebook $ action $ Notebook.SetAccessType aType

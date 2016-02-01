@@ -30,7 +30,6 @@ data Query a
   | DeactivateKeyboardShortcuts a
   | EvaluateMenuValue Menu.Value a
   | AddKeyboardListener (EventListener NotebookEffects) a
-  | Save a
   | SetAccessType AccessType a
   | GetAccessType (AccessType -> a)
   | SetViewingCell (Maybe CellId) a
