@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "postinstall": "node script/get-quasar.js",
+    "build": "gulp less bundle",
     "test": "gulp bundle-test && node test -b phantomjs"
   },
   "license": "Apache-2.0",
