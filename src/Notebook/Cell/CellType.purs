@@ -129,8 +129,8 @@ cellGlyph Explore = B.glyphiconEyeOpen
 cellGlyph Search = B.glyphiconSearch
 cellGlyph Viz = B.glyphiconPicture
 cellGlyph Download = B.glyphiconDownloadAlt
-cellGlyph API = B.glyphiconShare -- TODO?
-cellGlyph APIResults = B.glyphiconShare -- TODO?
+cellGlyph API = B.glyphiconOpenFile
+cellGlyph APIResults = B.glyphiconOpenFile
 cellGlyph _ = B.glyphiconStop
 
 aceCellName :: AceMode -> String
@@ -139,7 +139,7 @@ aceCellName SQLMode = "Query"
 
 aceCellGlyph :: AceMode -> ClassName
 aceCellGlyph MarkdownMode = B.glyphiconEdit
-aceCellGlyph SQLMode = B.glyphiconHdd
+aceCellGlyph SQLMode = B.glyphiconQuestionSign
 
 aceMode :: AceMode -> String
 aceMode MarkdownMode = "ace/mode/markdown"
