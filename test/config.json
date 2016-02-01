@@ -3,7 +3,7 @@
         "host": "localhost",
         "port": 63174
     },
-    "restoreCmd": "mongorestore --host 127.0.0.1 -d testDb --port 63174 --drop ../../test/dump/demo",
+    "restoreCmd": "mongorestore --host 127.0.0.1 -d testDb --port 63174 --drop test/dump/demo",
     "selenium": {
         "jar": "test/jars/selenium.jar",
         "browser": "firefox",
@@ -53,11 +53,11 @@
         "home": "Home"
     },
     "sort": {
-        "main": ".item-content span",
+        "main": ".list-group-item:not(.hidden) .item-content span",
         "button": ".toolbar-sort a"
     },
     "upload": {
-        "file": "./test/file.json",
+        "filePath": "./test/file.json",
         "input": "[title='Upload file'] input[type='file']",
         "button": "[title='Upload file']"
     },
@@ -76,6 +76,7 @@
         "cancel": "Cancel download",
         "sourceInputSelector": ".download-source input",
         "targetInputSelector": ".downlaod-target input",
+        "folder": "tmp/test/downloads",
         "rowCount": 100,
         "colCount": 5,
         "rowDelimiterInputSelector": "//*[text()='Row delimiter']/following-sibling::input",
@@ -99,7 +100,8 @@
         "pathField": ".modal.fade.in .mount-path input",
         "saveButton": ".modal.fade.in button.btn.btn-primary"
     },
-    "modal": ".modal.fade.in",
+    "modalShown": ".modal.fade.in",
+    "modalDismissed": ".modal.fade:not(.in)",
     "toolbar": {
         "button": "button",
         "showHide": "Show hidden files",
@@ -184,7 +186,7 @@
         "searchInput": ".search-cell-input",
         "searchButton": ".search-cell-button",
         "searchClear": ".search-clear",
-        "allQuery": "*",
+        "allQuery": "~*",
         "incorrectQuery": "::"
     },
     "explore": {
@@ -253,7 +255,7 @@
             "rows": 9
         },
         {
-            "query": "pop:>10000 city:~\"^b.*\"",
+            "query": "pop:>10000 city:~b*",
             "pages": 1,
             "rows": 1
         }

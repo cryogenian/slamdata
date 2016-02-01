@@ -19,32 +19,31 @@ module Test.Selenium.Notebook.Viz (test, actualCanvasScreenshot) where
 import Prelude
 
 import Control.Monad.Eff.Random (randomInt)
-import Control.Monad.Eff.Class (liftEff)
-import Data.List (length, List(..), fromList, filter, null, (!!))
-import Data.Maybe (isJust, isNothing, Maybe(..), maybe, fromMaybe)
-import Data.Maybe.Unsafe (fromJust)
+
+import Data.Foldable (foldl, traverse_)
+import Data.Function (on)
+import Data.Functor.Eff (liftEff)
+import Data.Int as Int
+import Data.List (length, List(..), filter)
+import Data.Maybe (Maybe())
+import Data.Monoid (mempty)
+import Data.Set as S
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Data.Foldable (foldl, traverse_)
-import Data.Monoid (mempty)
-import Data.Function (on)
-import qualified Data.Set as S
 
-import Selenium.Types
-import Selenium.Monad
 import Selenium.ActionSequence hiding (sequence)
+import Selenium.Monad
+import Selenium.Types
 
-import Test.Config
 import Test.Selenium.ActionSequence (selectAll, sendDelete, sendEnter)
-import Test.Selenium.Monad
-import Test.Selenium.Log
 import Test.Selenium.Common
-import Test.Selenium.Notebook.Getters
+import Test.Selenium.Log
+import Test.Selenium.Monad
+import Test.Selenium.Notebook.Common as C
 import Test.Selenium.Notebook.Contexts
-import qualified Test.Selenium.Notebook.Common as C
-import qualified Config as SDConfig
+import Test.Selenium.Notebook.Getters
+import Config as SDConfig
 
-import Utils (s2i)
 import Utils.Random
 
 checkNextVizCell :: Check Unit
@@ -86,8 +85,8 @@ checkSetHeightWidth = withSmallZipsAllChart do
   getDims = do
     canvas <- waitCanvas
     { w: _, h: _ }
-      <$> (s2i <$> getCssValue canvas "width")
-      <*> (s2i <$> getCssValue canvas "height")
+      <$> (Int.fromString <$> getCssValue canvas "width")
+      <*> (Int.fromString <$> getCssValue canvas "height")
 
 
 

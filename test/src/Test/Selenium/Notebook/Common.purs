@@ -21,29 +21,33 @@ module Test.Selenium.Notebook.Common where
 
 import Prelude
 
+import Config as SDConfig
 import Control.Monad.Eff.Random (randomInt)
-import Control.Monad.Eff.Class (liftEff)
-import Data.List (List(), length, replicateM)
-import Data.Foldable (traverse_)
-import Data.Maybe (Maybe(..), maybe)
-import Data.Tuple (Tuple(..))
+
 import Data.Either (isRight)
+import Data.Foldable (traverse_)
+import Data.Functor.Eff (liftEff)
+import Data.List (List(), length, replicateM)
+import Data.Maybe (Maybe(..))
+import Data.StrMap as SM
+import Data.Tuple (Tuple(..))
+
+import Halogen.CustomProps as Cp
+import Halogen.HTML as H
+import Halogen.HTML.Properties as P
+import Halogen.HTML.Renderer.String (renderHTML)
+
 import Selenium.ActionSequence hiding (sequence)
-import Selenium.Monad
 import Selenium.Combinators (checker, tryToFind)
-import Test.Selenium.Monad
-import Test.Selenium.Log
+import Selenium.Monad
+import Selenium.Types
+
 import Test.Selenium.Common
+import Test.Selenium.Expect (expect, toEq)
+import Test.Selenium.Log
+import Test.Selenium.Monad
 import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Getters
-import Test.Selenium.Expect (expect, toEq)
-import Selenium.Types
-import qualified Config as SDConfig
-import qualified Data.StrMap as SM
-import Utils.Halide (width', height', frameBorder)
-import Halogen.HTML.Renderer.String (renderHTMLToString)
-import qualified Halogen.HTML as H
-import qualified Halogen.HTML.Attributes as A
 
 checkNextCells :: SM.StrMap String -> Check Unit
 checkNextCells m = do
@@ -95,25 +99,25 @@ checkEmbedButton = do
   embed <- getEmbedButton
   sequence $ leftClick embed
   wait (checker $ isRight <$> attempt getModal) config.selenium.waitTime
-  modal <- getElementByCss config.modal "Modal should be visible"
+  modal <- getElementByCss config.modalShown "Modal should be visible"
   box <- getElementByCss config.cell.embedBox "Embed box hidden"
   value <- getAttribute box "value"
   expected <- expectedValue
   expect value toEq $ Just expected
   sequence $ leftClick modal
-  tryRepeatedlyTo $ checkNotExists "Error: modal should be hidden" config.modal
+  tryRepeatedlyTo $ checkNotExists "Error: modal should be hidden" config.modalShown
   where
   getModal = do
     config <- getConfig
     getElementByCss config.cell.embedBox "Embed box hidden"
   expectedValue = do
     config <- getConfig
-    pure $ renderHTMLToString $
-      H.iframe [ A.src $ url config
-               , width' "100%"
-               , height' "100%"
-               , frameBorder 0
-               ] [ ]
+    pure $ renderHTML $
+      H.iframe [ P.src $ url config
+               , P.width $ P.Percent 100.0
+               , P.height $ P.Percent 100.0
+               , Cp.frameBorder 0
+               ]
   url config =
     config.slamdataUrl <> config.notebookUrl <> "#/" <> config.mount.name <> "/" <>
     config.database.name <> config.explore.notebookPath

@@ -11,7 +11,7 @@ import Test.Selenium.Monad (Check(), findAtLeast)
 import Test.Selenium.Expectations (expectLabel, expectInputWithLabelTypeAndChecked, expectInputWithLabelTypeAndValue, expectDropdownWithLabelOptionsAndValue)
 import Test.Selenium.Notebook.Markdown.Finders (findMdQueryColumnCellsTextByHeading)
 
-import qualified Data.Foldable (traverse_) as F
+import Data.Foldable (traverse_) as F
 
 expectMdQueryResultsToBeFilteredByDefaultFormValues :: Check Unit
 expectMdQueryResultsToBeFilteredByDefaultFormValues = do
@@ -49,6 +49,7 @@ expectMdFinishedMessage = do
     where
     xPath = "//*[text()='Markdown']/following::*[contains(text(), 'Finished')]"
 
+expectToBePresentedWithFormWithAllInputTypes :: Check Unit
 expectToBePresentedWithFormWithAllInputTypes = do
   expectInputWithLabelTypeAndValue "discipline" "text" ""
   expectInputWithLabelTypeAndValue "sport" "text" "Bobsleigh"
@@ -79,57 +80,59 @@ expectToBePresentedWithFormWithAllInputTypes = do
   expectInputWithLabelTypeAndChecked "Silver" "radio" false
   expectInputWithLabelTypeAndChecked "Bronze" "radio" false
 
+expectToBePresentedWithFormWithEvaluatedContent :: Check Unit
 expectToBePresentedWithFormWithEvaluatedContent = do
   expectInputWithLabelTypeAndValue "discipline" "text" "Figure skating"
 
   expectInputWithLabelTypeAndValue "year" "text" "1924"
 
-  expectDropdownWithLabelOptionsAndValue "country" [ "LAT"
-                                                   , "CZE"
-                                                   , "UKR"
-                                                   , "SLO"
-                                                   , "RUS"
-                                                   , "SVK"
-                                                   , "KAZ"
-                                                   , "AUS"
-                                                   , "LUX"
-                                                   , "UZB"
-                                                   , "EUN"
-                                                   , "DEN"
-                                                   , "CHN"
-                                                   , "ROU"
-                                                   , "GDR"
-                                                   , "PRK"
-                                                   , "CRO"
-                                                   , "URS"
-                                                   , "BLR"
-                                                   , "BUL"
-                                                   , "POL"
-                                                   , "EUA"
-                                                   , "KOR"
-                                                   , "NED"
-                                                   , "ITA"
-                                                   , "FRG"
-                                                   , "EST"
-                                                   , "SWE"
-                                                   , "GBR"
-                                                   , "TCH"
-                                                   , "BEL"
-                                                   , "FIN"
-                                                   , "USA"
-                                                   , "YUG"
-                                                   , "SUI"
-                                                   , "LIE"
-                                                   , "CAN"
-                                                   , "JPN"
-                                                   , "HUN"
-                                                   , "GER"
-                                                   , "NOR"
-                                                   , "NZL"
-                                                   , "FRA"
-                                                   , "AUT"
-                                                   , "ESP"
-                                                   ] "AUT"
+  expectDropdownWithLabelOptionsAndValue "country"
+    [ "LAT"
+    , "CZE"
+    , "UKR"
+    , "SLO"
+    , "RUS"
+    , "SVK"
+    , "KAZ"
+    , "AUS"
+    , "LUX"
+    , "UZB"
+    , "EUN"
+    , "DEN"
+    , "CHN"
+    , "ROU"
+    , "GDR"
+    , "PRK"
+    , "CRO"
+    , "URS"
+    , "BLR"
+    , "BUL"
+    , "POL"
+    , "EUA"
+    , "KOR"
+    , "NED"
+    , "ITA"
+    , "FRG"
+    , "EST"
+    , "SWE"
+    , "GBR"
+    , "TCH"
+    , "BEL"
+    , "FIN"
+    , "USA"
+    , "YUG"
+    , "SUI"
+    , "LIE"
+    , "CAN"
+    , "JPN"
+    , "HUN"
+    , "GER"
+    , "NOR"
+    , "NZL"
+    , "FRA"
+    , "AUT"
+    , "ESP"
+    ] "AUT"
 
   expectLabel "gender"
   expectInputWithLabelTypeAndChecked "X" "checkbox" false

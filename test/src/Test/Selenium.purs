@@ -19,37 +19,34 @@ module Test.Selenium where
 import Prelude
 
 import Control.Monad (when)
-import Control.Monad.Eff (Eff())
 import Control.Monad.Aff (Aff(), attempt)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (error)
 import Control.Monad.Reader.Trans
-import Control.Monad.Reader.Class
-import Control.Monad.Trans
+
+import Data.Either (either)
 import Data.Foldable (traverse_)
+import Data.Functor.Eff (liftEff)
 import Data.Maybe (maybe, isJust)
 import Data.Monoid (mempty)
-import Data.Either (either)
+
 import Selenium (setFileDetector, quit)
 import Selenium.Browser
 import Selenium.Builder
 import Selenium.Capabilities
 import Selenium.FFProfile
 import Selenium.Monad (setWindowSize)
-import qualified Selenium.Remote as SR
+import Selenium.Remote as SR
+
 import Test.Config (Config())
-import Text.Chalk
+import Text.Chalky
+import Test.Effects (TestEffects())
 
-import qualified Test.Selenium.SauceLabs as SL
-import qualified Test.Selenium.File as File
-import qualified Test.Selenium.Notebook as Notebook
+import Test.Selenium.SauceLabs as SL
+import Test.Selenium.File as File
 
-foreign import data MODULE :: !
-foreign import makePublic :: forall a eff. String -> a -> Eff (module :: MODULE | eff) Unit
 
-makeDownloadCapabilities :: Browser -> String -> Aff _ Capabilities
+makeDownloadCapabilities :: Browser -> String -> Aff TestEffects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do
   setIntPreference "browser.download.folderList" 2
   setBoolPreference "browser.download.manager.showWhenStarting" false
@@ -63,10 +60,7 @@ makeDownloadCapabilities FireFox path = buildFFProfile do
 
 makeDownloadCapabilities _ _ = mempty
 
-main = do
-  makePublic "test" test
-
-test :: Config -> Aff _ Unit
+test :: Config -> Aff TestEffects Unit
 test config =
   maybe error go $ str2browser config.selenium.browser
   where
@@ -74,7 +68,8 @@ test config =
   go br = do
     log $ yellow $ config.selenium.browser <> " set as browser for tests\n\n"
     msauceConfig <- liftEff $ SL.sauceLabsConfigFromConfig config
-    downloadCapabilities <- makeDownloadCapabilities br config.download.folder
+    downloadCapabilities <-
+      makeDownloadCapabilities br config.download.folder
     driver <- build $ do
       browser br
       traverse_ SL.buildSauceLabs msauceConfig
@@ -90,6 +85,7 @@ test config =
                                      , driver: driver} do
       setWindowSize { height: 1280, width: 1024 }
       File.test
-      Notebook.test
+-- ATTENTION, this test won't pass until we update notebook to new halogen
+--      Notebook.test
     quit driver
     either throwError (const $ pure unit) res

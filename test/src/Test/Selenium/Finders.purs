@@ -9,13 +9,13 @@ import Control.Monad.Error.Class (throwError)
 import Data.List (elemIndex)
 import Data.Maybe (Maybe(..), maybe)
 import Selenium (showLocator)
-import Selenium.Monad (getAttribute, getText, byXPath, byId, tryRepeatedlyTo, findElements, findExact)
+import Selenium.Monad (getAttribute, getText, byXPath, byId, tryRepeatedlyTo, findExact)
 import Selenium.Types (Element(), Locator())
 import Test.Selenium.Common (attrFail)
 import Test.Selenium.Log (warnMsg)
 import Test.Selenium.Monad (Check(), findAtLeast, findSingle)
 
-import qualified Data.Traversable (traverse) as T
+import Data.Traversable (traverse) as T
 
 findElementIndexByText :: String -> Locator -> Check Int
 findElementIndexByText text locator = do

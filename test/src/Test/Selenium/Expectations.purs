@@ -10,7 +10,7 @@ import Test.Selenium.Finders (findElementIdByLabelText)
 import Test.Selenium.Expect (expect, toEq)
 import Test.Selenium.Locators (checkableLocator)
 
-import qualified Data.Traversable (traverse) as T
+import Data.Traversable (traverse) as T
 
 expectDropdownWithLabelOptionsAndValue :: String -> Array String -> String -> Check Unit
 expectDropdownWithLabelOptionsAndValue expectedLabel expectedOptions expectedValue = do

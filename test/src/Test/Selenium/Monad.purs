@@ -18,30 +18,27 @@ module Test.Selenium.Monad where
 
 import Prelude
 
-import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Class
-import Control.Monad.Reader.Trans
-import Data.List (List(), length, uncons, (:))
-import Data.Maybe (maybe, fromMaybe, Maybe(..))
-import Node.FS (FS())
-import Platform (getPlatform, PLATFORM(), runOs, runPlatform)
+
+import Data.Functor.Aff (liftAff)
+import Data.List (List(), length, uncons)
+import Data.Maybe (fromMaybe, Maybe(..))
+
+import Graphics.ImageDiff as GI
+
+import Platform (getPlatform, runOs, runPlatform)
+
 import Selenium (showLocator)
 import Selenium.Key (metaKey, controlKey)
-import Selenium.Monad (Selenium(), byCss, byXPath, findElements, getAttribute)
+import Selenium.Monad (Selenium(), byCss, byXPath, findElements)
 import Selenium.Types (ControlKey(), Locator(), Element())
+
 import Test.Config (Config())
+import Test.Effects (SeleniumEffects())
 
-import qualified Data.List.Unsafe (head) as U
-import qualified Graphics.ImageDiff as GI
-import qualified Graphics.EasyImage as GE
-
-
-type Check = Selenium ( platform :: PLATFORM
-                      , imageDiff :: GI.IMAGE_MAGICK
-                      , easyImage :: GE.EASY_IMAGE
-                      , fs :: FS) (config :: Config)
+type Check = Selenium SeleniumEffects (config :: Config)
 
 getConfig :: Check Config
 getConfig = _.config <$> ask
@@ -82,7 +79,7 @@ getModifierKey = map modifierKey getPlatformString
   modifierKey "Darwin" = metaKey
   modifierKey _ = controlKey
 
-diff :: _ -> Check Boolean
+diff :: { shadow :: Boolean, diff :: Maybe String, expected :: String, actual :: String } -> Check Boolean
 diff = liftAff <<< GI.diff
 
 byAriaLabel :: String -> Check Locator

@@ -21,8 +21,8 @@ module Test.Selenium.Common
   , dropHash
   , fileComponentLoaded
   , notebookLoaded
-  , modalShown
-  , modalDismissed
+  , waitModalShown
+  , waitModalDismissed
   , parseToInt
   , filterByContent
   , filterByPairs
@@ -44,38 +44,37 @@ module Test.Selenium.Common
   where
 
 import Prelude
-import Control.Apply ((*>))
+
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans (lift)
-import Data.Either (either, isRight, Either(..))
-import Data.Maybe (Maybe(..), maybe)
+
+import Data.Either (either, isRight)
 import Data.Foldable (traverse_)
-import Data.Traversable (traverse)
+import Data.Int as Int
 import Data.List (List(), filter)
+import Data.Maybe (Maybe(..), maybe)
+import Data.String as Str
+import Data.String.Regex as R
+import Data.StrMap as SM
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
-import qualified Data.String.Regex as R
-import qualified Data.StrMap as SM
-import qualified Data.String as Str
-import qualified Data.Char as Ch
+
 import Graphics.EasyImage (cropInPlace)
 
-import Driver.File.Routing (Routes(..), routing)
+import FileSystem.Routing (Routes(), routing)
 import Routing (matchHash)
 
-import Selenium.ActionSequence hiding (sequence)
-import Selenium.Key
-import Selenium.Types
-import Selenium.Monad
 import Selenium (showLocator)
-import qualified Selenium.Combinators as Sc
+import Selenium.ActionSequence hiding (sequence)
+import Selenium.Combinators as Sc
+import Selenium.Monad
+import Selenium.Types
 
 import Test.Selenium.Log
 import Test.Selenium.Monad
 
 import Node.FS.Aff (readFile, writeFile)
-
-import Utils (s2i)
 
 
 -- | Assert the truth of a boolean, providing an error message
@@ -124,7 +123,7 @@ checkElements m = do
     driver <- getDriver
     byCss selector >>= findElement >>= checkMsg key
 
-  checkMsg :: String -> Maybe _ -> Check Unit
+  checkMsg :: String -> Maybe Element -> Check Unit
   checkMsg msg Nothing = errorMsg $ msg <> " not found"
   checkMsg _ _ = pure unit
 
@@ -149,25 +148,22 @@ notebookLoaded :: Check Unit
 notebookLoaded = loaded checkNotebookElements
 
 -- | Is a modal dialog shown?
-modalShown :: Check Boolean
-modalShown = do
+waitModalShown :: Check Unit
+waitModalShown = void do
   config <- getConfig
-  Sc.checker $
-    byCss config.modal
-      >>= findElement
-      >>= maybe (pure false) isDisplayed
+  tryRepeatedlyTo
+    $ byCss config.modalShown >>= findExact >>= isDisplayed
 
-modalDismissed :: Check Boolean
-modalDismissed = do
+waitModalDismissed :: Check Unit
+waitModalDismissed = void do
   config <- getConfig
-  Sc.checker $
-    byCss config.modal
-      >>= findElement
-      >>= maybe (pure true) (map not <<< isDisplayed)
+  tryRepeatedlyTo
+    $ byCss config.modalDismissed >>= findExact >>= map not <<< isDisplayed
+
 
 parseToInt :: String -> Check Int
 parseToInt str =
-  maybe (errorMsg "can't parse string to int") pure $ s2i str
+  maybe (errorMsg "can't parse string to int") pure $ Int.fromString str
 
 
 filterByPairs :: List Element -> (Tuple Element String -> Boolean) ->

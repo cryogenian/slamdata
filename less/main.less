@@ -24,11 +24,15 @@
   font-style: italic;
 }
 
-html {height: 100%;}
+html {
+  height: 100%;
+  font-size: 12pt;
+}
 body {
+    padding: 0;
     font-family: Ubuntu, Arial, Helvetica, sans-serif;
     height: 100%;
-    > div {
+    div.filesystem, div.dashboard {
         min-height: 100%;
     }
 }
@@ -50,6 +54,32 @@ body {
         button {
             &.refresh-button {
                 display: inline-block;
+            }
+        }
+    }
+}
+
+.notebook-cell {
+    .cell-controls {
+        button {
+            i {
+                top: 2px;
+            }
+            span.share-button {
+                background: no-repeat url(../img/code-icon.svg) center;
+                background-size: 16px;
+                width: 16px;
+                height: 14px;
+                display: inline-block;
+                position: relative;
+                top: 4px;
+                opacity: 0.7;
+            }
+            &:hover {
+                span.share-button {
+                    background-image: url(../img/code-icon-blue.svg);
+                    opacity: 1;
+                }
             }
         }
     }
@@ -111,6 +141,9 @@ button:focus {
 
 .item-content {
     padding-left: 5px;
+    a {
+        cursor: pointer;
+    }
 }
 .item-hidden {
     font-style: italic;
@@ -241,6 +274,7 @@ ol.breadcrumb {
 .toolbar-sort {
     padding-top: 14px;
     padding-bottom: 10px;
+    cursor: pointer;
 }
 .toolbar-menu {
     padding-right: 0;
@@ -391,24 +425,35 @@ ol.breadcrumb {
     .cell-failures, .cell-messages {
         padding-left: 10px;
         line-height: 30px;
+        margin-left: 61px;
         > div:first-child {
             margin-left: 4px;
             display: inline-block;
         }
-        > div:nth-child(2), > pre {
-            background: #fff;
-            padding: 8px 0 8px 10px;
+        > pre {
+            background: none;
+            clear: left;
+            line-height: 30px;
+            padding: 0 10px;
+            margin: 0;
             margin-left: -10px;
+            margin-top: -1px;
             border: 0;
-            border-left: 61px solid #ddd;
+            border-top: 1px dashed #ddd;
+            border-radius: 0;
+            font-size: 85%
         }
         &.collapsed {
             border: none;
         }
+        background: #eee;
+        border-bottom: 1px solid #ddd;
     }
 
     .cell-failures {
-        background: #FAA;
+        background: #faa;
+        > pre { border-top: 1px dashed #ff7878; }
+        border-bottom: 1px solid #ff7878;
     }
 
     button.play-button, button.stop-button {
@@ -477,13 +522,17 @@ ol.breadcrumb {
     }
 }
 
+.sd-invisible {
+  display: none;
+}
+
 .ace-container, .ace_editor {
     height: 100%;
 }
 
 .explore-cell-editor {
     margin: 0 -15px;
-    border-left: 61px solid #ddd;
+    border-left: 76px solid #ddd;
     padding: 10px;
     button {
         width: 40px;
@@ -532,25 +581,76 @@ ol.breadcrumb {
         width: 200px;
     }
 }
-
-form.chart-configure-form {
+.chart-configuration(@label-width) {
     padding-bottom: 10px;
     label.control-label {
-        width: 75px;
+        width: @label-width;
     }
     select.form-control, input.form-control {
-        width: ~"calc(100% - 75px)";
+        width: calc(~"100% - " @label-width);
         display: inline-block;
     }
+}
+
+button.aggregation {
+    border-radius: 0;
+    display: inline-block;
+    color: transparent;
+    position: relative;
+    top: 5px;
+    background-size: 60% 60%;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 35px;
+    &.Sum {
+
+        background-image: url("../img/aggregation-sum.svg");
+    }
+    &.Product {
+
+        background-image: url("../img/aggregation-product.svg");
+    }
+    &.Maximum {
+
+        background-image: url("../img/aggregation-maximum.svg");
+    }
+    &.Minimum {
+
+        background-image: url("../img/aggregation-minimum.svg");
+    }
+    &.Average {
+        background-size: 54% 54%;
+        background-image: url("../img/aggregation-average.svg");
+    }
+}
+
+.file-list-group.aggregation {
+    border-top: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    width: ~"calc(100% - 105px)";
+}
+
+form.chart-configure-form {
+    .chart-configuration(@label-width: 75px);
     &.with-aggregation {
-        .form-control {
-            width: ~"calc(100% - 115px)";
-            &.aggregation {
-                width: 40px;
-                font-weight: bold;
+        div {
+            width: ~"calc(100% - 75px)";
+            display: inline-block;
+            .form-control {
+                width: ~"calc(100% - 40px)";
+                &.aggregation {
+                    width: 40px;
+                    font-weight: bold;
+                }
             }
         }
     }
+}
+form.chart-size-param {
+    .chart-configuration(75px);
+}
+form.axis-label-param {
+    .chart-configuration(120px);
 }
 
 div.loading-message.alert.alert-info {
@@ -563,12 +663,14 @@ div.loading-message.alert.alert-info {
     font-weight: 28px;
 }
 
-div.viz-cell-editor {
+div.viz-cell-editor, div.download-cell-editor {
     min-height: 160px;
+    padding-left: 15px;
+    padding-right: 15px;
     div.loading-message.alert.alert-info {
         height: 160px;
     }
-    .viz-chart-type-selector {
+    .viz-chart-type-selector, .download-type-selector {
         position: absolute;
         left: 0;
         width: 60px;
@@ -588,7 +690,10 @@ div.viz-cell-editor {
             }
         }
     }
-    .viz-chart-configuration {
+    .download-type-selector img {
+        padding: 4px;
+    }
+    .viz-chart-configuration, .download-configuration {
         margin-left: 60px;
         padding-top: 10px;
     }
@@ -598,10 +703,19 @@ div.viz-cell-editor {
   color: gray;
 }
 
+.readonly-highlight {
+    background-color: blue;
+    opacity: 0.2;
+    position: absolute;
+}
+
 @import "bootstrap-overloads";
 @import "nav";
+@import "menu";
+@import "notebook";
 @import "markdown-output";
 @import "dialog/mount";
 @import "dialog/rename";
 @import "dialog/embed";
 @import "dialog/download";
+@import "form-builder";

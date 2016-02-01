@@ -25,13 +25,11 @@ module Test.Config
 
 import Prelude
 
-import Control.Alt ((<|>))
 import Data.StrMap
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe())
 import Data.Function (on)
 import Selenium.Types
-import qualified Data.String.Regex as R
-import qualified Data.Array as A
+import Data.Array as A
 
 type SearchQueryConfig =
   { query :: String
@@ -62,8 +60,11 @@ instance eqChartOptions :: Eq ChartOptions where
     eqq = on eq A.sort
 
 type Config =
-  { selenium :: { browser :: String
-                , waitTime :: Int}
+  { restoreCmd :: String
+  , selenium :: { browser :: String
+                , waitTime :: Int
+                , jar :: String
+                }
   , sauceLabs :: { enabled :: Boolean
                  , platform :: String
                  , maxDuration :: Int
@@ -73,7 +74,9 @@ type Config =
   , mongodb :: { host :: String
                , port :: Int
                }
-
+  , quasar :: { jar :: String
+              , config :: String
+              }
   , locators :: StrMap String
   , notebookLocators :: StrMap String
   , item :: { main :: String
@@ -128,7 +131,8 @@ type Config =
                       , cancelButton :: String
                       , warningBox :: String
                       }
-  , modal :: String
+  , modalShown :: String
+  , modalDismissed :: String
   , toolbar :: { main :: String
                , showHide :: String
                , button :: String

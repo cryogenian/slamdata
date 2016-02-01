@@ -5,13 +5,13 @@
 /output/
 /coverage/
 /test/node_modules
-/test/jars/quasar.jar
-jars
+/test/index.js
 public/js/*.js
 !public/js/ace*
-!public/js/echarts-all.js
+!public/js/keyboard*
 public/css/*.css
 !public/css/bootstrap*.css
 .psci_modules
 .psci
+.*
 phantomjsdriver.log

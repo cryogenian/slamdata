@@ -17,10 +17,7 @@ limitations under the License.
 module Test.Selenium.File where
 
 import Prelude
-import DOM (DOM())
-import Config.Version (slamDataVersion)
-import Control.Apply ((*>))
-import Control.Bind ((>=>), (=<<))
+import Control.Bind ((=<<))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Trans (lift)
@@ -30,30 +27,27 @@ import Data.Argonaut.JCursor (toPrims)
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust, isNothing)
 import Data.Maybe.Unsafe (fromJust)
-import Data.Either (Either(..), either, isLeft)
-import Data.Foldable (foldl, elem, find)
+import Data.Either (Either(..), either)
+import Data.Foldable (foldl, elem)
 import Data.Traversable (traverse)
 import Data.List (List(), reverse, filter, null, fromList, (!!))
 import Selenium.Types
 import Selenium.MouseButton
 import Selenium.ActionSequence hiding (sequence)
-import Selenium.Key
 import Selenium.Monad
 import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust, tryToFind)
 import Node.FS.Aff
 import Node.Encoding (Encoding(UTF8))
 
 import Test.Config
-import Driver.File.Routing (Routes(..), routing)
-import Driver.File.Search (searchPath)
+import FileSystem.Routing (Routes(..), routing)
+import FileSystem.Routing.Search (searchPath)
 import Routing (matchHash)
-import qualified Data.Array as Arr
-import qualified Data.String.Regex as R
-import qualified Data.String as Str
-import qualified Data.Char as Ch
-import qualified Data.StrMap as SM
-import qualified Data.Set as S
-import qualified Config as SDCfg
+import Data.Array as Arr
+import Data.String.Regex as R
+import Data.String as Str
+import Data.Set as S
+import Config as SDCfg
 import Test.Selenium.ActionSequence
 import Test.Selenium.Common
 import Test.Selenium.Monad
@@ -119,7 +113,7 @@ mountDatabaseWithMountConfig :: MountConfigR -> Check Unit
 mountDatabaseWithMountConfig mountConfig = do
   home
   getMountDatabaseButton >>= sequence <<< leftClick
-  await "Error: modal is not shown" modalShown
+  waitModalShown
   mac <- isMac
   chrome <- isChrome
   if mac && chrome
@@ -135,7 +129,7 @@ mountDatabaseWithMountConfig mountConfig = do
     ++ show mountConfig.port
 
   fieldByField :: Check Unit
-  fieldByField = do
+  fieldByField = tryRepeatedlyTo do
     warnMsg $ "This test doesn't check correctness of copy/paste.\n"
       <> "It's known bug of selenium/chrome/mac combination that modifier keys\n"
       <> "doesn't work"
@@ -154,12 +148,10 @@ mountDatabaseWithMountConfig mountConfig = do
       keys mountConfig.host
       leftClick pathField
       keys config.database.name
-
       leftClick saveButton
 
-
   copyPaste :: Check Unit
-  copyPaste = do
+  copyPaste = tryRepeatedlyTo do
     config <- getConfig
     uriField <- getUriField
     nameField <- getNameField
@@ -233,21 +225,18 @@ badMountDatabase :: Check Unit
 badMountDatabase = do
   sectionMsg "BAD MOUNT TEST DATABASE"
   config <- getConfig
-
   badMountConfig
     >>= mountDatabaseWithMountConfig
-
   warningBox <- getElementByCss config.configureMount.warningBox "no warning box"
-
   -- wait for any old validation messages to disappear
   wait (checker $ not <$> isDisplayed warningBox) config.selenium.waitTime
   -- wait for the server error to appear
   wait (checker $ isDisplayed warningBox) 8000
 
-  cancelButton <- getElementByCss config.configureMount.cancelButton "no cancel button"
-  sequence $ leftClick cancelButton
-  wait modalDismissed config.selenium.waitTime
-
+  tryRepeatedlyTo
+    $ getElementByCss config.configureMount.cancelButton "no cancel button"
+    >>= sequence <<< leftClick
+  waitModalDismissed
   where
     badMountConfig :: Check MountConfigR
     badMountConfig = do
@@ -286,7 +275,7 @@ checkConfigureMount = do
   sequence $ leftClick button
 
   config <- getConfig
-  wait modalShown config.selenium.waitTime
+  waitModalShown
   successMsg "configure-mount dialog shown"
 
   -- make sure a no-op edit doesn't result in a validation error
@@ -481,13 +470,10 @@ sorting = do
       else errorMsg "Sorting doesn't work"
   checkHash _ _ = errorMsg "need additional redirects in sorting"
 
-
 fileUpload :: Check Unit
 fileUpload = do
   sectionMsg "FILE UPLOAD"
-  goDown
   config <- getConfig
-
   successMsg "went down"
   uploadInput <- getElementByCss config.upload.input "There is no upload input"
   oldItems <- S.fromList <$> getItemTexts
@@ -499,7 +485,6 @@ fileUpload = do
     }
   }
   """
-
   sendKeysEl config.upload.filePath uploadInput
   wait awaitInNotebook config.selenium.waitTime
   successMsg "Ok, explore notebook created"
@@ -518,7 +503,7 @@ shareFile = do
   config <- getConfig
   uploadedItem <- getUploadedItem
   itemGetShareIcon uploadedItem >>= itemClickToolbarIcon uploadedItem
-  wait modalShown config.selenium.waitTime
+  waitModalShown
   successMsg "Share modal dialog appeared"
   urlFieldLocator <- byCss config.share.urlField
   urlField <- findSingle urlFieldLocator
@@ -540,7 +525,8 @@ searchForUploadedFile = do
   config <- getConfig
   searchInput <- getElementByCss config.search.searchInput "no search input field"
   url <- getCurrentUrl
-  let filename = fromMaybe config.upload.file $ Arr.last $ Str.split "/" config.upload.file
+  let filename = fromMaybe config.upload.filePath
+                 $ Arr.last $ Str.split "/" config.upload.filePath
   searchButton <- getElementByCss config.search.searchButton "no search button"
   sequence $ do
     leftClick searchInput
@@ -708,10 +694,9 @@ createNotebook = do
 checkTitle :: Check Unit
 checkTitle = do
   windowTitle <- getTitle
-  if Str.contains slamDataVersion windowTitle
+  if Str.contains Config.Version.slamDataVersion windowTitle
     then successMsg "Title contains version"
     else errorMsg $ "Title (" ++ windowTitle ++ ") doesn't contain version"
-
 
 moveDelete :: String -> Check Unit -> String -> String -> Check Unit
 moveDelete msg setUp src tgt = do
@@ -721,11 +706,13 @@ moveDelete msg setUp src tgt = do
   item <- findItem src
           >>= maybe (errorMsg $ "there is no source " <> msg) pure
   itemGetMoveIcon item >>= itemClickToolbarIcon item
-  wait modalShown config.selenium.waitTime
-  getElementByCss config.move.nameField "no rename field"
+  waitModalShown
+  tryRepeatedlyTo
+    $ getElementByCss config.move.nameField "no rename field"
     >>= editNameField
 
-  getElementByCss config.move.submit "no submit button"
+  tryRepeatedlyTo
+    $ getElementByCss config.move.submit "no submit button"
     >>= sequence <<< leftClick
 
   renamed <- waitUntilJust (findItem tgt) config.selenium.waitTime
@@ -770,7 +757,7 @@ moveDeleteFile = do
   config <- getConfig
   moveDelete "file" goDown config.move.name config.move.other
 
-import Utils.Log
+
 
 downloadResource :: Check Unit
 downloadResource = do
@@ -781,7 +768,7 @@ downloadResource = do
   tryRepeatedlyTo do
     btn <- getToolbarDownloadButton
     sequence $ leftClick btn
-  await "modal hasn't appeared" modalShown
+  waitModalShown
   successMsg "Ok, global download dialog shown"
   cancelDownload
   successMsg "Ok, global download dialog hidden"
@@ -789,7 +776,7 @@ downloadResource = do
     item <- getDownloadItem
     sequence $ hover item
     getItemDownloadButton item >>= sequence <<< leftClick
-  await "modal hasn't appeared" modalShown
+  waitModalShown
   successMsg "Ok, item download dialog shown"
   tryRepeatedlyTo do
     val <- getSourceInput >>= flip getAttribute "value"
@@ -847,7 +834,7 @@ downloadResource = do
     config <- getConfig
     btn <- tryToFind $ byAriaLabel config.download.cancel
     sequence $ leftClick btn
-    await "modal hasn't disappeared" modalDismissed
+    waitModalDismissed
 
   proceedDownload = do
     config <- getConfig
@@ -886,12 +873,16 @@ downloadResource = do
     config <- getConfig
     byXPath config.download.multiLineJsonRadioSelector >>= findExact
 
-  readDownloaded = do
+  readDownloaded = tryRepeatedlyTo do
     config <- getConfig
     await "File has not been downloaded" do
       files <- lift $ readdir config.download.folder
       pure $ isJust $ Arr.elemIndex config.download.item files
-    lift $ readTextFile UTF8 $ config.download.folder <> "/" <> config.download.item
+    res <- lift $ readTextFile UTF8
+           $ config.download.folder <> "/" <> config.download.item
+    if res == ""
+      then throwError $ error "empty file content"
+      else pure res
 
   checkCSV rowSep colSep content = do
     config <- map _.download getConfig
@@ -903,7 +894,12 @@ downloadResource = do
 
   rmDownloaded = do
     config <- getConfig
-    lift $ unlink $ config.download.folder <> "/" <> config.download.item
+    lift $ unlink $ config.download.folder
+      <> "/" <> config.download.item
+    files <- lift $ readdir config.download.folder
+    if isJust $ Arr.elemIndex config.download.item files
+      then rmDownloaded
+      else pure unit
 
   checkJson content = do
     config <- map _.download getConfig
@@ -947,6 +943,6 @@ test = do
   checkTitle
   createFolder
   moveDeleteFolder
-  -- createNotebook
-  -- moveDeleteNotebook
+--  createNotebook
+--  moveDeleteNotebook
   downloadResource

@@ -3,14 +3,12 @@ sudo: required
 dist: trusty
 jdk:
   - oraclejdk8
+before_install:
+  - nvm install 4.1.0
+  - nvm use 4.1.0
 install:
-  - sudo apt-get update
-  - sudo apt-get install -y nodejs
-  - sudo apt-get install -y npm
-
   - sudo apt-get install imagemagick
   - convert -version
-
   - java -version
   - mkdir $HOME/bin
   - curl -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.6.tgz
@@ -18,9 +16,6 @@ install:
   - mkdir -p $HOME/bin/mongodb
   - cp -R -n mongodb-linux-x86_64-3.0.6/* $HOME/bin/mongodb
   - export PATH=$HOME/bin/mongodb/bin:$PATH
-  - wget -O $HOME/purescript.tar.gz 'https://drive.google.com/uc?export=download&id=0BzXXSTC7MXL0Y0N5VEFGU2E1T0U'
-  - tar zxvf $HOME/purescript.tar.gz -C $HOME/bin purescript/psc{,i,-bundle,-docs,-publish} --strip-components=1
-  - chmod a+x $HOME/bin/psc{,i,-bundle,-docs,-publish}
   - npm install bower gulp -g
   - npm install
   - bower install
@@ -29,11 +24,10 @@ before_script:
   - "sh -e /etc/init.d/xvfb start"
 script:
   - gulp bundle-test
+  - gulp property-tests
   - node test
 before_deploy:
-- mkdir slamdata
-- cp -r public slamdata/
-- cp jars/quasar.jar slamdata/quasar.jar
+- cp -r public slamdata
 - tar cjf slamdata.tar.bz2 slamdata
 deploy:
   provider: releases
