@@ -38,10 +38,6 @@ make shortcuts = HalogenMenu.makeMenu
           , shortcutLabel: Nothing
           , value: Just $ renameQueryToValue $ Rename.Focus unit
           }
-        , { label: "Delete"
-          , shortcutLabel: Nothing
-          , value: Nothing
-          }
         , { label: "Publish"
           , shortcutLabel: StrMap.lookup "NotebookPublish" shortcuts >>= _.label
           , value: StrMap.lookup "NotebookPublish" shortcuts >>= _.value >>> pure
@@ -69,18 +65,6 @@ make shortcuts = HalogenMenu.makeMenu
         , { label: "API"
           , shortcutLabel: StrMap.lookup "InsertAPI" shortcuts >>= _.label
           , value: StrMap.lookup "InsertAPI" shortcuts >>= _.value >>> pure
-          }
-        ]
-    }
-  , { label: "Cell"
-    , submenu:
-        [ { label: "Evaluate"
-          , shortcutLabel: StrMap.lookup "CellEvaluate" shortcuts >>= _.label
-          , value: StrMap.lookup "CellEvaluate" shortcuts >>= _.value >>> pure
-          }
-        , { label: "Delete"
-          , shortcutLabel: Nothing
-          , value: Nothing
           }
         ]
     }
