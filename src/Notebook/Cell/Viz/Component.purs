@@ -290,6 +290,7 @@ cellEval (Load json next) =
       query st.chartType $ left $ action $ Form.SetConfiguration model.chartConfig
       pure next
 cellEval (AddCanceler _ next) = pure next
+cellEval (Cancel next) = pure next
 
 responsePort :: CellEvalT VizDSL P.Port
 responsePort = do

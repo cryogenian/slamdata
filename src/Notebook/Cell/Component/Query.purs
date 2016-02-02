@@ -83,6 +83,7 @@ import Notebook.Cell.APIResults.Component.Query as APIResults
 -- |   share/embed message appropriate for the cell.
 data CellQuery a
   = RunCell a
+  | StopCell a
   | UpdateCell CellEvalInputPre (Maybe Port -> a)
   | RefreshCell a
   | TrashCell a

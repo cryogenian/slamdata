@@ -28,7 +28,6 @@ import Control.Monad.Trans as MT
 import Control.Monad.Error.Class as EC
 
 import Data.Argonaut (encodeJson, decodeJson)
-import Data.Functor.Aff (liftAff)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Either (either)
 
@@ -69,6 +68,8 @@ render state =
     [ P.class_ CSS.exploreCellEditor ]
     [ H.slot unit \_ -> { component: FI.fileInputComponent, initialState: FI.initialState } ]
 
+import Utils.Aff
+import Control.Monad.Aff (later')
 eval :: Natural NC.CellEvalQuery (ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
 eval (NC.NotifyRunCell next) = pure next
 eval (NC.EvalCell info k) =
@@ -77,7 +78,7 @@ eval (NC.EvalCell info k) =
       query unit (request FI.GetSelectedFile) <#> (>>= id)
         # MT.lift
         >>= maybe (EC.throwError "No file selected") pure
-    (MT.lift $ liftAff $ Quasar.resourceExists resource)
+    (MT.lift $ liftWithCanceler $ later' 10000 $ Quasar.resourceExists resource)
       >>= \x -> when (not x) $ EC.throwError
                 $ "File " <> R.resourcePath resource <> " doesn't exist"
 
