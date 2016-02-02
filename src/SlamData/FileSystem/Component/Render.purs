@@ -77,7 +77,7 @@ toolbar state =
     else toolItem ShowHiddenFiles "Show hidden files" B.glyphiconEyeOpen
 
   download :: HTML p (Query Unit)
-  download = toolItem Download "Download" B.glyphiconDownloadAlt
+  download = toolItem Download "Download" B.glyphiconCloudDownload
 
   mount :: HTML p (Query Unit)
   mount = toolItem MakeMount "Mount database" B.glyphiconHdd
@@ -91,7 +91,7 @@ toolbar state =
             [ H.i [ P.title "Upload file"
                   , ARIA.label "Upload file"
                   , P.classes [ B.glyphicon
-                              , B.glyphiconFile
+                              , B.glyphiconCloudUpload
                               , Rc.hiddenFileInput
                               ]
                   ]

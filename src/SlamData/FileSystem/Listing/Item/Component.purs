@@ -220,7 +220,7 @@ showToolbar it =
          else mempty
 
   common = [ toolItem Move "Move / rename" B.glyphiconMove
-           , toolItem Download "Download" B.glyphiconDownloadAlt
+           , toolItem Download "Download" B.glyphiconCloudDownload
            , toolItem Remove "Remove" B.glyphiconTrash
            ]
 
