@@ -107,8 +107,8 @@ var mkBundleTask = function (name, main) {
 };
 
 gulp.task("bundle", [
-  mkBundleTask("filesystem", "Entry.FileSystem"),
-  mkBundleTask("notebook", "Entry.Dashboard"),
+  mkBundleTask("filesystem", "SlamData.FileSystem"),
+  mkBundleTask("notebook", "SlamData.Notebook"),
 ]);
 
 gulp.task("bundle-test",

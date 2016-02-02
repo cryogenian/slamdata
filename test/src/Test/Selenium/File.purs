@@ -40,14 +40,15 @@ import Node.FS.Aff
 import Node.Encoding (Encoding(UTF8))
 
 import Test.Config
-import FileSystem.Routing (Routes(..), routing)
-import FileSystem.Routing.Search (searchPath)
+import SlamData.FileSystem.Routing (Routes(..), routing)
+import SlamData.FileSystem.Routing.Search (searchPath)
 import Routing (matchHash)
 import Data.Array as Arr
 import Data.String.Regex as R
 import Data.String as Str
 import Data.Set as S
-import Config as SDCfg
+import SlamData.Config as SDCfg
+import SlamData.Config.Version as Version
 import Test.Selenium.ActionSequence
 import Test.Selenium.Common
 import Test.Selenium.Monad
@@ -694,7 +695,7 @@ createNotebook = do
 checkTitle :: Check Unit
 checkTitle = do
   windowTitle <- getTitle
-  if Str.contains Config.Version.slamDataVersion windowTitle
+  if Str.contains Version.slamDataVersion windowTitle
     then successMsg "Title contains version"
     else errorMsg $ "Title (" ++ windowTitle ++ ") doesn't contain version"
 

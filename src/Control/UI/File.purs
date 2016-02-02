@@ -29,12 +29,15 @@ module Control.UI.File
        ) where
 
 import Prelude
+
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Aff (Aff(), makeAff)
-import DOM (DOM())
+
 import Data.Function (Fn3(), runFn3)
 import Data.Maybe (Maybe(..))
+
+import DOM (DOM())
 import DOM.HTML.Types (HTMLElement())
 
 

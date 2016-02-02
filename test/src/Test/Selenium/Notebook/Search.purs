@@ -45,6 +45,8 @@ import Test.Selenium.Notebook.Getters
 import Test.Selenium.Notebook.Markdown.Interactions (insertMdCell)
 import Test.Selenium.Types
 
+import SlamData.Config as Config
+
 
 checkInitialSearch :: Check Unit
 checkInitialSearch =

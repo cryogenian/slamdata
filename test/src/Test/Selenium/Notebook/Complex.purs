@@ -22,7 +22,7 @@ import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Viz (actualCanvasScreenshot)
 import Test.Selenium.Notebook.Markdown.Interactions (insertMdCell)
 
-import Config as SDCfg
+import SlamData.Config as SDCfg
 import Data.String as S
 
 checkMarkdownViz :: Check Unit
