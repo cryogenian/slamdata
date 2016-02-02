@@ -87,12 +87,6 @@ notebookShortcuts =
         , value: notebookQueryToValue $ (Notebook.AddCell API) unit
         , label: Nothing
         }
-    , Tuple
-        "CellEvaluate"
-        { shortcut: Shortcut.modEnter
-        , value: notebookQueryToValue $ (Notebook.RunActiveCell) unit
-        , label: Nothing
-        }
     ]
 
 initialState :: { browserFeatures :: BrowserFeatures } -> State
