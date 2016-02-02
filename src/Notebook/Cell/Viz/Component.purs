@@ -30,7 +30,6 @@ import Data.Array (length, null, cons, index)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (coproduct, right, left)
 import Data.Int as Int
 import Data.Lens ((.~), view, preview)
@@ -65,7 +64,7 @@ import Notebook.Cell.Chart.Axis as Ax
 import Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(), depends, dependsOnArr)
 import Notebook.Cell.Chart.ChartOptions (buildOptions)
 import Notebook.Cell.Chart.ChartType (ChartType(..), isPie)
-import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT)
+import Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT, liftWithCanceler')
 import Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import Notebook.Cell.Viz.Component.Query
 import Notebook.Cell.Viz.Component.State
@@ -254,7 +253,8 @@ cellEval (EvalCell info continue) = do
       r <- maybe (throwError "Incorrect port in visual builder cell") pure
            $ info.inputPort >>= preview P._Resource
       lift $ updateForms r
-      records <- lift $ liftAff $ Api.all r
+      let records = []
+--      records <- lift $ liftWithCanceler' $ Api.all r
       when (length records > 10000)
         $ throwError
         $  "Maximum record count available for visualization -- 10000, "
@@ -307,7 +307,8 @@ responsePort = do
 
 updateForms :: R.Resource -> VizDSL Unit
 updateForms file = do
-  jarr <- liftAff $ Api.sample file 0 20
+--  let jarr = []
+  jarr <- liftWithCanceler' $ Api.sample file 0 20
   if null jarr
     then
     modify $ _availableChartTypes .~ Set.empty

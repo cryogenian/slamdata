@@ -237,25 +237,17 @@ makeCellComponentPart def render =
   initialState = review _State def.initialState
 
   eval :: Natural CellQuery CellDSL
-  eval (RunCell next) = do
-    Debug.Trace.traceAnyA "start"
-    pure next
-  eval (StopCell next) = do
-    Debug.Trace.traceAnyA "stop"
-    stopRun $> next
+  eval (RunCell next) = pure next
+  eval (StopCell next) = stopRun $> next
   eval (UpdateCell input k) = do
-    Debug.Trace.traceAnyA "update"
     liftAff =<< gets (^. _tickStopper)
-    Debug.Trace.traceAnyA "stopped"
     tickStopper <- startInterval
-    Debug.Trace.traceAnyA "started"
     modify (_tickStopper .~ tickStopper)
     cachingEnabled <- gets _.cachingEnabled
     let input' = prepareCellEvalInput cachingEnabled input
     modify (_input .~ input'.inputPort)
     result <- query unit (left (request (EvalCell input')))
     F.for_ result \{ output } -> modify (_hasResults .~ isJust output)
---    maybe (pure unit) (\{ output } -> modify (_hasResults .~ isJust output)) result
     liftAff tickStopper
     modify
       $ (_runState %~ finishRun)
@@ -286,9 +278,7 @@ makeCellComponentPart def render =
   peek (ChildF _ q) = coproduct cellEvalPeek (const $ pure unit) q
 
   cellEvalPeek :: forall a. CellEvalQuery a -> CellDSL Unit
-  cellEvalPeek (AddCanceler canceler _) = do
-    modify $ _cancelers .~ canceler
-    Debug.Trace.traceAnyA "Added canceler"
+  cellEvalPeek (AddCanceler canceler _) = modify $ _cancelers .~ canceler
   cellEvalPeek (Cancel _) = stopRun
   cellEvalPeek (SetupCell _ _) = modify $ _cancelers .~ mempty
   cellEvalPeek (EvalCell _ _) = modify $ _cancelers .~ mempty
@@ -299,10 +289,8 @@ makeCellComponentPart def render =
     cs <- gets _.cancelers
     ts <- gets _.tickStopper
     liftAff ts
-    Debug.Trace.traceAnyA cs
+    liftAff $ cancel cs (Exn.error "Canceled")
     modify $ _runState .~ RunInitial
-    liftAff $ cancel cs (Exn.error "Canceled") >>= Debug.Trace.traceAnyA
-
 
 -- | Starts a timer running on an interval that passes Tick queries back to the
 -- | component, allowing the runState to be updated with a timer.

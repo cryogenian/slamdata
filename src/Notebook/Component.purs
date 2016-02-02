@@ -252,9 +252,7 @@ eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
 eval (GetNotebookPath k) = k <$> gets notebookPath
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook unit $> next
-eval (RunPendingCells next) = do
-  Debug.Trace.traceAnyA "run pending cells"
-  runPendingCells unit $> next
+eval (RunPendingCells next) = runPendingCells unit $> next
 eval (GetGlobalVarMap k) = k <$> gets _.globalVarMap
 eval (SetGlobalVarMap m next) = do
   st <- get
@@ -273,9 +271,7 @@ peek (ChildF (CellSlot cellId) q) =
 -- | buttons.
 peekCell :: forall a. CellId -> CellQuery a -> NotebookDSL Unit
 peekCell cellId q = case q of
-  RunCell _ -> do
-    Debug.Trace.traceAnyA "run cell"
-    runCell cellId
+  RunCell _ -> runCell cellId
   RefreshCell _ -> runCell <<< findRoot cellId =<< get
   TrashCell _ -> do
     descendants <- gets (findDescendants cellId)
@@ -298,8 +294,9 @@ peekCell cellId q = case q of
   ShareCell _ -> pure unit
   StopCell _ -> do
     modify $ _runTrigger .~ Nothing
-    Debug.Trace.traceAnyA "stopping in notebook"
-    (gets _.pendingCells) >>= traverse_ Debug.Trace.traceAnyA
+    gets _.pendingCells >>= traverse_ Debug.Trace.traceAnyA
+    modify $ _pendingCells %~ S.delete cellId
+    runPendingCells unit
   _ -> pure unit
 
 -- | Peek on the inner cell components to observe `NotifyRunCell`, which is
@@ -344,10 +341,7 @@ aceQueryShouldSave (ChildF _ q) =
 -- | Runs all cell that are present in the set of pending cells.
 runPendingCells :: Unit -> NotebookDSL Unit
 runPendingCells _ = do
-  Debug.Trace.traceAnyA "run pending cells inner"
   cells <- gets _.pendingCells
-  for_ cells Debug.Trace.traceAnyA
-  modify (_pendingCells .~ S.empty)
   traverse_ runCell' cells
   where
   runCell' :: CellId -> NotebookDSL Unit
@@ -364,6 +358,7 @@ runPendingCells _ = do
           Nothing -> pure unit
           -- if there's a parent and an output, pass it on as this cell's input
           Just p -> updateCell (Just p) cellId
+    modify $ _pendingCells %~ S.delete cellId
     triggerSave unit
 
 -- | Enqueues the cell with the specified ID in the set of cells that are
@@ -371,11 +366,8 @@ runPendingCells _ = do
 -- | actually run.
 runCell :: CellId -> NotebookDSL Unit
 runCell cellId = do
-  Debug.Trace.traceAnyA "run cell inner"
   modify (addPendingCell cellId)
-  Debug.Trace.traceAnyA "adding to pending cells"
   _runTrigger `fireDebouncedQuery` RunPendingCells
-  Debug.Trace.traceAnyA "added to pending cells"
 
 -- | Updates the evaluated value for a cell by running it with the specified
 -- | input and then runs any cells that depend on the cell's output with the
@@ -407,13 +399,10 @@ fireDebouncedQuery
   -> NotebookDSL Unit
 fireDebouncedQuery lens act = do
   t <- gets (view lens) >>= \mbt -> case mbt of
-    Just t' -> do
-      Debug.Trace.traceAnyA "!!!"
-      pure t'
+    Just t' -> pure t'
     Nothing -> do
       t' <- debouncedEventSource liftEff subscribe' (Milliseconds 500.0)
       modify (lens ?~ t')
-      Debug.Trace.traceAnyA "???"
       pure t'
   liftH $ liftH $ t $ action $ act
 

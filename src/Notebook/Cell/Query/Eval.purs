@@ -50,13 +50,10 @@ import Utils.Completions (mkCompletion, pathCompletions)
 import Ace.Halogen.Component as Ace
 import Ace.Types (Completion())
 import Utils.Ace (readOnly)
-import Utils.Aff
-import Halogen (subscribe')
 
 queryEval :: CEQ.CellEvalInput -> String -> AceDSL CEQ.CellEvalResult
 queryEval info sql = do
   addCompletions varMap
-  subscribe' $ eS $ CEQ.NotifyRunCell
   liftAff $ CEQ.runCellEvalT $ do
     { plan: plan, outputResource: outputResource } <-
       Quasar.executeQuery sql
