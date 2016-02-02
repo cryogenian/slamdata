@@ -107,13 +107,13 @@ mbKeyDown :: forall r i. MbIEventProp (onKeyDown :: I|r) KeyboardEvent i
 mbKeyDown = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp KeyboardEvent i
-  unrefined = mbHandler (eventName "keypress")
+  unrefined = mbHandler (eventName "keydown")
 
 mbKeyPress :: forall r i. MbIEventProp (onKeyPress :: I|r) KeyboardEvent i
 mbKeyPress = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp KeyboardEvent i
-  unrefined = mbHandler (eventName "keydown")
+  unrefined = mbHandler (eventName "keypress")
 
 -- Non-standard
 
