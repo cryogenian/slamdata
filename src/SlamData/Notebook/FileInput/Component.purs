@@ -30,6 +30,7 @@ import Control.Monad.Eff.Exception (EXCEPTION())
 import Control.Monad.Free.Trans as FT
 
 import Data.Functor
+import Data.Bifunctor (lmap)
 import Data.Array as A
 import Data.Maybe as M
 import Data.Either as E
@@ -54,7 +55,7 @@ import SlamData.Render.CSS as CSS
 
 type State =
   { files :: Array R.Resource
-  , selectedFile :: M.Maybe R.Resource
+  , selectedFile :: E.Either String R.Resource
   , currentFilePath :: String
   , showFiles :: Boolean
   }
@@ -62,7 +63,7 @@ type State =
 initialState :: State
 initialState =
   { files: []
-  , selectedFile: M.Nothing
+  , selectedFile: E.Left "No file selected"
   , currentFilePath: ""
   , showFiles: false
   }
@@ -70,7 +71,7 @@ initialState =
 data Query a
   = ToggleFileList a
   | SelectFile R.Resource a
-  | GetSelectedFile (M.Maybe R.Resource -> a)
+  | GetSelectedFile (E.Either String R.Resource -> a)
   | UpdateFile String a
 
 type Effects e =
@@ -110,18 +111,24 @@ eval q =
     SelectFile r next -> do
       modify \state ->
         state
-          { selectedFile = M.Just r
+          { selectedFile = pure r
           , currentFilePath = R.resourcePath r
           , showFiles = false
           }
       pure next
     GetSelectedFile k ->
       k <$> gets _.selectedFile
+    UpdateFile "" next -> do
+      modify $ _{ selectedFile = E.Left "No file selected"
+                , currentFilePath = ""
+                }
+      pure next
     UpdateFile path next -> do
-      modify (_ { currentFilePath = path })
-      case R.fileResourceFromString path of
-        E.Left str -> pure unit
-        E.Right res -> modify (_ { selectedFile = M.Just res })
+      modify $ _{ selectedFile =
+                     lmap (\x -> "\"" <> x <> "\" is incorrect path for file")
+                     $ R.fileResourceFromString path
+                , currentFilePath = path
+                }
       pure next
 
 render :: State -> ComponentHTML Query
