@@ -31,9 +31,12 @@ import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Free (liftF)
+import Control.Monad.Aff (cancel)
+import Control.Monad.Eff.Exception as Exn
 
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Eff (liftEff)
+import Data.Functor.Coproduct (coproduct)
 import Data.Argonaut (jsonNull)
 import Data.Date as Date
 import Data.Either (Either(..))
@@ -42,6 +45,7 @@ import Data.Functor (($>))
 import Data.Functor.Coproduct (left)
 import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
+import Data.Monoid (mempty)
 import Data.Path.Pathy as Path
 import Data.Visibility (Visibility(..), toggleVisibility)
 
@@ -212,7 +216,7 @@ makeCellComponentPart
       -> AnyCellState -> CellState -> CellHTML)
   -> CellComponent
 makeCellComponentPart def render =
-  parentComponent (render component initialState) eval
+  parentComponent' (render component initialState) eval peek
   where
 
   _State :: PrismP AnyCellState s
@@ -267,6 +271,19 @@ makeCellComponentPart def render =
     pure (k { cellId, cellType, hasRun, state: fromMaybe jsonNull json })
   eval (LoadCell model next) =
     query unit (left (action (Load model.state))) $> next
+
+  peek :: forall a. ChildF Unit InnerCellQuery a -> CellDSL Unit
+  peek (ChildF _ q) = coproduct cellEvalPeek (const $ pure unit) q
+
+  cellEvalPeek :: forall a. CellEvalQuery a -> CellDSL Unit
+  cellEvalPeek (AddCanceler canceler _) = modify $ _cancelers .~ canceler
+  cellEvalPeek (Cancel _) = do
+    cs <- gets _.cancelers
+    liftAff $ cancel cs $ Exn.error "Canceled"
+    pure unit
+  cellEvalPeek (SetupCell _ _) = modify $ _cancelers .~ mempty
+  cellEvalPeek (EvalCell _ _) = modify $ _cancelers .~ mempty
+  cellEvalPeek _ = pure unit
 
 -- | Starts a timer running on an interval that passes Tick queries back to the
 -- | component, allowing the runState to be updated with a timer.

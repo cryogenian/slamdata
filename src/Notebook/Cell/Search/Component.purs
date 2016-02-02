@@ -175,7 +175,8 @@ cellEval q =
           M.maybe (pure unit) (void <<< query unit <<< action <<< FI.SelectFile) file
           modify (_searchString .~ input)
       pure next
-
+    NC.AddCanceler _ next -> pure next
+    NC.Cancel next -> pure next
 searchEval :: Natural SearchQuery (ParentDSL State FI.State Query FI.Query Slam Unit)
 searchEval q =
   case q of

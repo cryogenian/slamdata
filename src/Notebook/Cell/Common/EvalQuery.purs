@@ -30,6 +30,7 @@ module Notebook.Cell.Common.EvalQuery
 
 import Prelude
 
+import Control.Monad.Aff (Canceler())
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 import Control.Monad.Writer.Class as WC
@@ -46,6 +47,7 @@ import Data.Path.Pathy as P
 import Notebook.Cell.Port (Port())
 import Notebook.Cell.Port.VarMap as Port
 import Notebook.Cell.CellId as CID
+import Notebook.Effects (NotebookEffects())
 import Model.Resource as R
 import Utils.Path (DirPath())
 
@@ -115,6 +117,8 @@ data CellEvalQuery a
   = EvalCell CellEvalInput (CellEvalResult -> a)
   | SetupCell CellSetupInfo a
   | NotifyRunCell a
+  | AddCanceler (Canceler NotebookEffects) a
+  | Cancel a
   | Save (Json -> a)
   | Load Json a
 

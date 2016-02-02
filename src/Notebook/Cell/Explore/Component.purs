@@ -90,3 +90,5 @@ eval (NC.Load json next) = do
   let file = either (const Nothing) id $ decodeJson json
   maybe (pure unit) (\file' -> void $ query unit $ action (FI.SelectFile file')) file
   pure next
+eval (NC.AddCanceler _ next) = pure next
+eval (NC.Cancel next) = pure next
