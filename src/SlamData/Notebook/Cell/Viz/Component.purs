@@ -61,7 +61,7 @@ import SlamData.Notebook.Cell.Chart.Axis as Ax
 import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(), depends, dependsOnArr)
 import SlamData.Notebook.Cell.Chart.ChartOptions (buildOptions)
 import SlamData.Notebook.Cell.Chart.ChartType (ChartType(..), isPie)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT, liftWithCanceler')
 import SlamData.Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import SlamData.Notebook.Cell.Port as P
 import SlamData.Notebook.Cell.Viz.Component.Query

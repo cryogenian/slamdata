@@ -49,13 +49,14 @@ import Data.Functor.Coproduct (Coproduct(), left)
 import Data.Maybe as M
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
-
+import Data.Functor.Aff (liftAff)
 import Data.Tuple as TPL
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.Port (Port())
 import SlamData.Notebook.Cell.Port.VarMap as Port
+import SlamData.Notebook.Effects (Slam(), NotebookEffects())
 
 import Utils.Path (DirPath())
 

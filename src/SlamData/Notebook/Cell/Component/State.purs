@@ -70,7 +70,7 @@ import SlamData.Notebook.Cell.Port (Port())
 import SlamData.Notebook.Cell.RunState (RunState(..))
 import SlamData.Notebook.Cell.Search.Component.State as Search
 import SlamData.Notebook.Cell.Viz.Component.State as Viz
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Notebook.Effects (Slam(), NotebookEffects())
 
 
 -- | The common state value for notebook cells.
