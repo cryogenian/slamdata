@@ -17,64 +17,64 @@ limitations under the License.
 module Test.Property where
 
 import Prelude
-import Test.StrongCheck (QC())
 import Control.Monad.Eff.Console (log)
+import Test.StrongCheck (QC())
 
 main :: QC Unit
 main = do
   log "Check Data.SQL2.Literal..."
-  Test.Property.SQL2.Literal.check
+  Test.Property.Data.SQL2.Literal.check
 
-  log "Check Model.Resource..."
-  Test.Property.Model.Resource.check
+  log "Check SlamData.FileSystem.Resource..."
+  Test.Property.SlamData.FileSystem.Resource.check
 
-  log "Check Model.Select..."
-  Test.Property.Model.Select.check
+  log "Check SlamData.Form.Select..."
+  Test.Property.SlamData.Form.Select.check
 
-  log "Check Notebook.Cell.CellId..."
-  Test.Property.Notebook.Cell.CellId.check
+  log "Check SlamData.Notebook.Cell.CellId..."
+  Test.Property.SlamData.Notebook.Cell.CellId.check
 
-  log "Check Notebook.Cell.CellType..."
-  Test.Property.Notebook.Cell.CellType.check
+  log "Check SlamData.Notebook.Cell.CellType..."
+  Test.Property.SlamData.Notebook.Cell.CellType.check
 
-  log "Check Notebook.Cell.Model..."
-  Test.Property.Notebook.Cell.Model.check
+  log "Check SlamData.Notebook.Cell.Model..."
+  Test.Property.SlamData.Notebook.Cell.Model.check
 
-  log "Check Notebook.Cell.Chart.Aggregation..."
-  Test.Property.Notebook.Cell.Chart.Aggregation.check
+  log "Check SlamData.Notebook.Cell.Chart.Aggregation..."
+  Test.Property.SlamData.Notebook.Cell.Chart.Aggregation.check
 
-  log "Check Notebook.Cell.Chart.ChartConfiguration..."
-  Test.Property.Notebook.Cell.Chart.ChartConfiguration.check
+  log "Check SlamData.Notebook.Cell.Chart.ChartConfiguration..."
+  Test.Property.SlamData.Notebook.Cell.Chart.ChartConfiguration.check
 
-  log "Check Notebook.Cell.Chart.ChartType..."
-  Test.Property.Notebook.Cell.Chart.ChartType.check
+  log "Check SlamData.Notebook.Cell.Chart.ChartType..."
+  Test.Property.SlamData.Notebook.Cell.Chart.ChartType.check
 
-  log "Check Notebook.Cell.JTable.Model..."
-  Test.Property.Notebook.Cell.JTable.Model.check
+  log "Check SlamData.Notebook.Cell.JTable.Model..."
+  Test.Property.SlamData.Notebook.Cell.JTable.Model.check
 
-  log "Check Notebook.Cell.Markdown.Model..."
-  Test.Property.Notebook.Cell.Markdown.Model.check
+  log "Check SlamData.Notebook.Cell.Markdown.Model..."
+  Test.Property.SlamData.Notebook.Cell.Markdown.Model.check
 
-  log "Check Notebook.Cell.Search.Model..."
-  Test.Property.Notebook.Cell.Search.Model.check
+  log "Check SlamData.Notebook.Cell.Search.Model..."
+  Test.Property.SlamData.Notebook.Cell.Search.Model.check
 
-  log "Check Notebook.Cell.Viz.Model..."
-  Test.Property.Notebook.Cell.Viz.Model.check
+  log "Check SlamData.Notebook.Cell.Viz.Model..."
+  Test.Property.SlamData.Notebook.Cell.Viz.Model.check
 
-  log "Check Notebook.FormBuilder.Item.Model..."
-  Test.Property.Notebook.FormBuilder.Item.Model.check
+  log "Check SlamData.Notebook.FormBuilder.Item.Model..."
+  Test.Property.SlamData.Notebook.FormBuilder.Item.Model.check
 
-  log "Check Notebook.FormBuilder.Model..."
-  Test.Property.Notebook.FormBuilder.Model.check
+  log "Check SlamData.Notebook.FormBuilder.Model..."
+  Test.Property.SlamData.Notebook.FormBuilder.Model.check
 
-  log "Check Notebook.Model..."
-  Test.Property.Notebook.Model.check
+  log "Check SlamData.Notebook.Model..."
+  Test.Property.SlamData.Notebook.Model.check
 
-  log "Check Model.Download..."
-  Test.Property.Model.Download.check
+  log "Check SlamData.Download.Model..."
+  Test.Property.SlamData.Download.Model.check
 
-  log "Check Notebook.Cell.Download.Component.State..."
-  Test.Property.Notebook.Cell.Download.Component.State.check
+  log "Check SlamData.Notebook.Cell.Download.Component.State..."
+  Test.Property.SlamData.Notebook.Cell.Download.Component.State.check
 
-  log "Check Notebook.Cell.Ace.Model..."
-  Test.Property.Notebook.Cell.Ace.Model.check
+  log "Check SlamData.Notebook.Cell.Ace.Model..."
+  Test.Property.SlamData.Notebook.Cell.Ace.Model.check

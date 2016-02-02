@@ -35,7 +35,7 @@ import Data.Tuple (snd, fst)
 
 import Text.SlamSearch.Parser.Tokens (keyChars)
 
-import Config (notebookExtension)
+import SlamData.Config as Config
 
 type FilePath = AbsFile Sandboxed
 type DirPath = AbsDir Sandboxed
@@ -55,7 +55,7 @@ rootifyFile p = fromMaybe (file "") $ relativeTo p rootDir
 -- | `pathToNotebook` field. After first save `pathToNotebook` is
 -- | setted to correct notebook path.
 phantomNotebookPath :: DirPath
-phantomNotebookPath = rootDir </> dir "phantom" <./> notebookExtension
+phantomNotebookPath = rootDir </> dir "phantom" <./> Config.notebookExtension
 
 parseAnyPath :: String -> Maybe AnyPath
 parseAnyPath s = Left <<< (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile s)

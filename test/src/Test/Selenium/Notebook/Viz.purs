@@ -42,7 +42,7 @@ import Test.Selenium.Monad
 import Test.Selenium.Notebook.Common as C
 import Test.Selenium.Notebook.Contexts
 import Test.Selenium.Notebook.Getters
-import Config as SDConfig
+import SlamData.Config as SDConfig
 
 import Utils.Random
 

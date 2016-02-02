@@ -29,7 +29,9 @@ module Control.UI.Browser
   ) where
 
 import Prelude
+
 import Control.Monad.Eff (Eff())
+
 import DOM (DOM())
 import DOM.HTML.Types (HTMLElement(), Location())
 import DOM.HTML (window)

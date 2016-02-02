@@ -14,59 +14,42 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Halogen.CustomProps where
+module Halogen.CustomProps
+  ( MbIEventProp()
+  , InputProp()
+  , mbInput
+  , mbValueInput
+  , nonSubmit
+  , mbClick
+  , mbDoubleClick
+  , mbKeyDown
+  , mbKeyPress
+  , onPaste
+  , frameBorder
+  ) where
 
 import Prelude
 
 import Data.Either (either)
-import Data.ExistsR
+import Data.ExistsR (mkExistsR)
 import Data.Foreign (toForeign)
 import Data.Foreign.Class (IsForeign, readProp)
 import Data.Functor (($>))
 import Data.Maybe (Maybe(..))
+
 import Halogen.HTML.Core
-import Halogen.HTML.Events (EventProp())
 import Halogen.HTML.Events.Handler (EventHandler(), preventDefault)
-import Halogen.HTML.Events.Types (Event(), KeyboardEvent(), MouseEvent())
+import Halogen.HTML.Events.Indexed (IEventProp())
+import Halogen.HTML.Events (EventProp())
+import Halogen.HTML.Events.Types (Event(), MouseEvent(), KeyboardEvent())
+import Halogen.HTML.Properties.Indexed (IProp(), I(), GlobalProperties(), InteractiveEvents())
+
+import Unsafe.Coerce (unsafeCoerce)
 
 type MbEventProp e i = (Event e -> EventHandler (Maybe i)) -> Prop i
 
-
-attr :: forall i. Maybe Namespace -> AttrName -> String -> Prop i
-attr = Attr
-
-readonly :: forall i. Prop i
-readonly = Attr Nothing (attrName "readonly") "true"
-
-dataZClipboard :: forall i. String -> Prop i
-dataZClipboard = Attr Nothing (attrName "data-zclipboard")
-
 mbHandler :: forall fields i. EventName fields -> MbEventProp fields i
 mbHandler name k = Handler (mkExistsR (HandlerF name k))
-
-nonSubmit :: forall i. Prop i
-nonSubmit = mbHandler (eventName "submit") (\_ -> preventDefault $> Nothing)
-
-mbKeyPress :: forall i. MbEventProp KeyboardEvent i
-mbKeyPress = mbHandler (eventName "keypress")
-
-mbKeyDown :: forall i. MbEventProp KeyboardEvent i
-mbKeyDown = mbHandler (eventName "keydown")
-
-mbClick :: forall i. MbEventProp MouseEvent i
-mbClick = mbHandler (eventName "click")
-
-mbDoubleClick :: forall i. MbEventProp MouseEvent i
-mbDoubleClick = mbHandler (eventName "dblclick")
-
-mbInput :: forall i. MbEventProp () i
-mbInput = mbHandler (eventName "input")
-
-onPaste :: forall e i. EventProp e i
-onPaste = handler (eventName "paste")
-
-frameBorder :: forall i. Int -> Prop i
-frameBorder = Attr Nothing (attrName "frameBorder") <<< show
 
 addForeignMbHandler
   :: forall i value
@@ -77,11 +60,71 @@ addForeignMbHandler key prop handler =
   (eventName key)
   (either (const $ pure Nothing) handler <<< readProp prop <<< toForeign <<< _.target)
 
-mbValueChange :: forall i. (String -> EventHandler (Maybe i)) -> Prop i
-mbValueChange = addForeignMbHandler "change" "value"
+type MbIEventProp r e i = (Event e -> EventHandler (Maybe i)) -> IProp r i
 
-mbValueInput :: forall i. (String -> EventHandler (Maybe i)) -> Prop i
-mbValueInput = addForeignMbHandler "input" "value"
+-- Forms
 
-mbChecked :: forall i. (Boolean -> EventHandler (Maybe i)) -> Prop i
-mbChecked = addForeignMbHandler "change" "checked"
+type InputProp f = IProp (InteractiveEvents (GlobalProperties (accept :: I, autocomplete :: I, autofocus :: I, checked :: I, disabled :: I, form :: I, formaction :: I, formenctype :: I, formmethod :: I, formnovalidate :: I, formtarget :: I, height :: I, list :: I, max :: I, min :: I, multiple :: I, onAbort :: I, onChange :: I, onError :: I, onInput :: I, onInvalid :: I, onLoad :: I, onSearch :: I, onSelect :: I, pattern :: I, placeholder :: I, readonly :: I, required :: I, size :: I, src :: I, step :: I, inputType :: I, value :: I, width :: I))) (f Unit)
+
+mbInput :: forall r i. MbIEventProp (onInput :: I | r) () i
+mbInput = unsafeCoerce unrefined
+  where
+  unrefined :: MbEventProp () i
+  unrefined = mbHandler (eventName "input")
+
+mbValueInput
+  :: forall i r
+   . (String -> EventHandler (Maybe i))
+  -> IProp (value :: I, onInput :: I | r) i
+mbValueInput = unsafeCoerce unrefined
+  where
+  unrefined :: (String -> EventHandler (Maybe i)) -> Prop i
+  unrefined = addForeignMbHandler "input" "value"
+
+nonSubmit :: forall i r . IProp (onSubmit :: I | r) i
+nonSubmit = unsafeCoerce unrefined
+  where
+  unrefined :: Prop i
+  unrefined = mbHandler (eventName "submit") (\_ -> preventDefault $> Nothing)
+
+-- Mouse events
+
+mbClick :: forall r i. MbIEventProp (onClick :: I|r) MouseEvent i
+mbClick = unsafeCoerce unrefined
+  where
+  unrefined :: MbEventProp MouseEvent i
+  unrefined = mbHandler (eventName "click")
+
+mbDoubleClick :: forall r i. MbIEventProp (onDoubleClick :: I|r) MouseEvent i
+mbDoubleClick = unsafeCoerce unrefined
+  where
+  unrefined :: MbEventProp MouseEvent i
+  unrefined = mbHandler (eventName "dblclick")
+
+-- Keyboard events
+
+mbKeyDown :: forall r i. MbIEventProp (onKeyDown :: I|r) KeyboardEvent i
+mbKeyDown = unsafeCoerce unrefined
+  where
+  unrefined :: MbEventProp KeyboardEvent i
+  unrefined = mbHandler (eventName "keypress")
+
+mbKeyPress :: forall r i. MbIEventProp (onKeyPress :: I|r) KeyboardEvent i
+mbKeyPress = unsafeCoerce unrefined
+  where
+  unrefined :: MbEventProp KeyboardEvent i
+  unrefined = mbHandler (eventName "keydown")
+
+-- Non-standard
+
+onPaste :: forall r i. IEventProp r () i
+onPaste = unsafeCoerce unrefined
+  where
+  unrefined :: EventProp () i
+  unrefined = handler (eventName "paste")
+
+frameBorder :: forall r i. Int -> IProp r i
+frameBorder = unsafeCoerce unrefined
+  where
+  unrefined :: Int -> Prop i
+  unrefined = Attr Nothing (attrName "frameBorder") <<< show

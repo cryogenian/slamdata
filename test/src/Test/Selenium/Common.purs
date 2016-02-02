@@ -62,7 +62,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 
 import Graphics.EasyImage (cropInPlace)
 
-import FileSystem.Routing (Routes(), routing)
+import SlamData.FileSystem.Routing (Routes(), routing)
 import Routing (matchHash)
 
 import Selenium (showLocator)
