@@ -117,9 +117,10 @@ cellEval q =
     NC.EvalCell info k -> runWith do
       k <$> NC.runCellEvalT do
         inputResource <-
-          query unit (request FI.GetSelectedFile) <#> (>>= id)
-            # MT.lift
-            >>= M.maybe (EC.throwError "No file selected") pure
+          query unit (request FI.GetSelectedFile)
+          <#> (join <<< M.maybe (Left "There is no file input subcomponent") Right)
+          # MT.lift
+          >>= either EC.throwError pure
         query <-
           get <#> _.searchString >>> SS.mkQuery
             # MT.lift
@@ -163,8 +164,10 @@ cellEval q =
     NC.Save k -> do
       file <- query unit (request FI.GetSelectedFile)
       input <- gets _.searchString
-      pure $ k (Model.encode { file: join file, input })
-
+      pure $ k $ Model.encode { input, file: case file of
+                                  M.Just (Right res) -> M.Just res
+                                  _ -> M.Nothing
+                              }
     NC.Load json next -> do
       case Model.decode json of
         Left _ -> pure unit
