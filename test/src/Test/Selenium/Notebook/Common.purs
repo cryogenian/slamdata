@@ -21,7 +21,7 @@ module Test.Selenium.Notebook.Common where
 
 import Prelude
 
-import Config as SDConfig
+import SlamData.Config as SDConfig
 import Control.Monad.Eff.Random (randomInt)
 
 import Data.Either (isRight)
@@ -33,8 +33,8 @@ import Data.StrMap as SM
 import Data.Tuple (Tuple(..))
 
 import Halogen.CustomProps as Cp
-import Halogen.HTML as H
-import Halogen.HTML.Properties as P
+import Halogen.HTML.Indexed as H
+import Halogen.HTML.Properties.Indexed as P
 import Halogen.HTML.Renderer.String (renderHTML)
 
 import Selenium.ActionSequence hiding (sequence)

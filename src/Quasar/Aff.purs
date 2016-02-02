@@ -44,9 +44,6 @@ module Quasar.Aff
 
 import Prelude
 
-import Config as Config
-import Config.Paths as Config
-
 import Control.Alt ((<|>))
 import Control.Apply (lift2)
 import Control.Bind ((>=>), (<=<), (=<<))
@@ -56,8 +53,8 @@ import Control.Monad (when)
 import Control.Monad.Aff (Aff(), attempt, runAff)
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class (MonadError, throwError)
 import Control.Monad.Eff.Ref (REF(), newRef, readRef, modifyRef)
+import Control.Monad.Error.Class (MonadError, throwError)
 import Control.MonadPlus (guard)
 import Control.UI.Browser (encodeURIComponent)
 
@@ -87,12 +84,7 @@ import Data.Tuple (Tuple(..))
 
 import DOM (DOM())
 
-import Model.Resource as R
-
-import Network.HTTP.Affjax
-  ( Affjax(), AJAX(), AffjaxRequest(), AffjaxResponse(), RetryPolicy()
-  , defaultRequest, affjax, retry, defaultRetryPolicy
-  )
+import Network.HTTP.Affjax (Affjax(), AJAX(), AffjaxRequest(), AffjaxResponse(), RetryPolicy(), defaultRequest, affjax, retry, defaultRetryPolicy)
 import Network.HTTP.Affjax.Request (Requestable)
 import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
 import Network.HTTP.Method (Method(..))
@@ -101,8 +93,15 @@ import Network.HTTP.MimeType.Common (applicationJSON)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
 
-import Utils.Path as PU
+import Quasar.Paths as Paths
+
+-- TODO: split out a core Quasar module that only deals with the API, and
+-- doesn't know about SlamData specific things.
+import SlamData.Config as Config
+import SlamData.FileSystem.Resource as R
+
 import Utils.Completions (memoizeCompletionStrs)
+import Utils.Path as PU
 
 newtype Listing = Listing (Array R.Resource)
 
@@ -149,7 +148,7 @@ listing p =
         , delayCurve: const 1000
         , timeout: Just 10000
         }
-        (Config.metadataUrl </> p)
+        (Paths.metadataUrl </> p)
         applicationJSON
 
 makeFile
@@ -175,7 +174,7 @@ makeFile path mime content =
    { method = PUT
    , headers = [ ContentType mime ]
    , content = Just content
-   , url = fromMaybe "" $ (P.printPath <<< (Config.dataUrl </>)) <$> P.relativeTo path P.rootDir
+   , url = fromMaybe "" $ (P.printPath <<< (Paths.dataUrl </>)) <$> P.relativeTo path P.rootDir
    }
 
 
@@ -303,7 +302,7 @@ mountInfo res = do
   where
   mountPath :: P.Path P.Abs P.Dir P.Sandboxed
   mountPath =
-    (Config.mountUrl </> PU.rootify (R.resourceDir res)) #
+    (Paths.mountUrl </> PU.rootify (R.resourceDir res)) #
       if R.resourceName res == ""
         then id
         else (</> (P.dir (R.resourceName res)))
@@ -341,8 +340,8 @@ move
   -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) PU.AnyPath
 move src tgt = do
   let url = if R.isDatabase src || R.isViewMount src
-            then Config.mountUrl
-            else Config.dataUrl
+            then Paths.mountUrl
+            else Paths.dataUrl
   cleanViewMounts src
   result <- affjax $ defaultRequest
     { method = MOVE
@@ -365,7 +364,7 @@ saveMount res uri = do
     , headers = [ ContentType applicationJSON ]
     , content = Just $ stringify { mongodb: {connectionUri: uri } }
     , url = P.printPath
-            $ Config.mountUrl
+            $ Paths.mountUrl
             </> PU.rootify (R.resourceDir res)
             </> P.dir (R.resourceName res)
     }
@@ -441,8 +440,8 @@ forceDelete res = do
   rootForResource :: R.Resource -> PU.DirPath
   rootForResource r =
     if R.isDatabase r || R.isViewMount r
-    then Config.mountUrl
-    else Config.dataUrl
+    then Paths.mountUrl
+    else Paths.dataUrl
 
 cleanViewMounts
   :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM|e)) Unit
@@ -451,7 +450,7 @@ cleanViewMounts res = for_ (R.getPath res) \dirPath ->
 
 getVersion :: forall e. Aff (RetryEffects (ajax :: AJAX |e)) (Maybe String)
 getVersion = do
-  serverInfo <- retryGet Config.Paths.serverInfoUrl applicationJSON
+  serverInfo <- retryGet Paths.serverInfoUrl applicationJSON
   return $ either (const Nothing) Just (readProp "version" serverInfo.response)
 
 ldJSON :: MimeType
@@ -560,7 +559,7 @@ portView res dest sql varMap = do
       , content = Just $ stringify { view: { connectionUri: connectionUri } }
       , url =
           P.printPath $
-            Config.mountUrl
+            Paths.mountUrl
               </> PU.rootify (R.resourceDir dest)
               </> P.file (R.resourceName dest)
       }
@@ -586,7 +585,7 @@ portQuery res dest sql vars = do
           ]
       , url =
           P.printPath $
-            Config.queryUrl
+            Paths.queryUrl
               </> PU.rootify (R.resourceDir res)
               </> P.dir (R.resourceName res)
               </> P.file queryVars
@@ -629,7 +628,7 @@ sample' res mbOffset mbLimit =
   where
   msg = "error getting resource sample"
   uri =
-    Config.dataUrl
+    Paths.dataUrl
       </> PU.rootify (R.resourceDir res)
       </> P.file
             (R.resourceName res
@@ -655,11 +654,11 @@ fields res = do
 
 mkURI :: R.Resource -> SQL -> PU.FilePath
 mkURI res sql =
-  Config.queryUrl </> P.file ("?q=" <> encodeURIComponent (templated res sql))
+  Paths.queryUrl </> P.file ("?q=" <> encodeURIComponent (templated res sql))
 
 mkURI' :: R.Resource -> SQL -> PU.FilePath
 mkURI' res sql =
-  Config.queryUrl
+  Paths.queryUrl
   </> PU.rootify (R.resourceDir res)
   </> P.dir (R.resourceName res)
   </> P.file ("?q=" <> encodeURIComponent (templated res sql))
@@ -757,7 +756,7 @@ save
   -> JS.Json
   -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
 save path json =
-  let apiPath = Config.Paths.dataUrl </> PU.rootifyFile path
+  let apiPath = Paths.dataUrl </> PU.rootifyFile path
   in getResponse "error while saving file" (retryPut apiPath json ldJSON)
 
 -- | Loads a JSON value from a file.
@@ -769,5 +768,5 @@ load
    . PU.FilePath
   -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JS.Json)
 load path =
-  let apiPath = Config.Paths.dataUrl </> PU.rootifyFile path
+  let apiPath = Paths.dataUrl </> PU.rootifyFile path
   in lmap Exn.message <$> attempt (getResponse "error loading notebook" (retryGet apiPath ldJSON))

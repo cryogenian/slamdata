@@ -28,7 +28,7 @@ import Data.Tuple (Tuple(..))
 import Data.Path.Pathy as P
 import Data.String as S
 import DOM (DOM())
-import Model.Resource as R
+import SlamData.FileSystem.Resource as R
 import Utils.LocalStorage (getLocalStorage, setLocalStorage)
 import Utils.Path as PU
 
