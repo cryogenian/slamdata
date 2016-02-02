@@ -26,10 +26,17 @@ module SlamData.Notebook.Cell.Common.EvalQuery
   , runCellEvalT
   , temporaryOutputResource
   , prepareCellEvalInput
+  , liftWithCanceler
+  , liftWithCanceler'
   ) where
 
 import Prelude
 
+import Control.Coroutine.Aff (produce)
+import Control.Coroutine.Stalling as SCR
+
+import Control.Monad.Aff (Canceler(), forkAff)
+import Control.Monad.Aff.AVar (makeVar, putVar, takeVar)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 import Control.Monad.Trans as MT
@@ -38,9 +45,11 @@ import Control.Monad.Writer.Trans as WT
 
 import Data.Argonaut.Core (Json())
 import Data.Either as E
+import Data.Functor.Coproduct (Coproduct(), left)
 import Data.Maybe as M
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
+
 import Data.Tuple as TPL
 
 import SlamData.FileSystem.Resource as R
@@ -49,6 +58,9 @@ import SlamData.Notebook.Cell.Port (Port())
 import SlamData.Notebook.Cell.Port.VarMap as Port
 
 import Utils.Path (DirPath())
+
+import Halogen (ParentDSL(), subscribe')
+import Halogen.Query.EventSource (EventSource(..))
 
 type CellEvalInputP r =
   { notebookPath :: M.Maybe DirPath
@@ -116,6 +128,8 @@ data CellEvalQuery a
   = EvalCell CellEvalInput (CellEvalResult -> a)
   | SetupCell CellSetupInfo a
   | NotifyRunCell a
+  | AddCanceler (Canceler NotebookEffects) a
+  | Cancel a
   | Save (Json -> a)
   | Load Json a
 
@@ -175,3 +189,42 @@ runCellEvalT (CellEvalT m) =
     { output: E.either (const M.Nothing) M.Just r
     , messages: E.either (E.Left >>> pure) (const []) r <> map E.Right ms
     }
+
+
+liftWithCanceler
+  :: forall a state slot innerQuery innerState
+   . Slam a
+  -> ParentDSL state innerState CellEvalQuery innerQuery Slam slot a
+liftWithCanceler aff = do
+  v <- liftAff makeVar
+  canceler <- liftAff $ forkAff do
+    res <- aff
+    putVar v res
+  subscribe'
+    $ EventSource
+    $ SCR.producerToStallingProducer
+    $ produce \emit -> do
+      emit $ E.Left $ AddCanceler canceler unit
+      emit $ E.Right unit
+  liftAff $ takeVar v
+
+
+liftWithCanceler'
+  :: forall a state innerState innerQuery query slot
+   . Slam a
+  -> ParentDSL
+       state innerState
+       (Coproduct CellEvalQuery query) innerQuery
+       Slam slot a
+liftWithCanceler' aff = do
+  v <- liftAff makeVar
+  canceler <- liftAff $ forkAff do
+    res <- aff
+    putVar v res
+  subscribe'
+    $ EventSource
+    $ SCR.producerToStallingProducer
+    $ produce \emit -> do
+      emit $ E.Left $ left $ AddCanceler canceler unit
+      emit $ E.Right unit
+  liftAff $ takeVar v

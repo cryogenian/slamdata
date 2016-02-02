@@ -98,3 +98,5 @@ evalCell q =
       pure $ k J.jsonEmptyObject
     NC.Load json next ->
       pure next
+    NC.AddCanceler _ next -> pure next
+    NC.Cancel next -> pure next

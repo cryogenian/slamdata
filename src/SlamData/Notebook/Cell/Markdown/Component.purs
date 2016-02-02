@@ -123,6 +123,8 @@ eval (Load json next) = do
         query unit $ action (MD.PopulateForm state)
     _ -> pure unit
   pure next
+eval (AddCanceler _ next) = pure next
+eval (Cancel next) = pure next
 
 error :: String -> CellEvalResult
 error msg =

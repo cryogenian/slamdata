@@ -23,13 +23,14 @@ module SlamData.Notebook.Cell.Explore.Component
 import Prelude
 
 import Control.Bind (join)
-import Control.Monad (when)
+
+import Control.Monad (unless)
+import Control.Monad.Trans as MT
 import Control.Monad.Error.Class as EC
 import Control.Monad.Trans as MT
 
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (either)
-import Data.Functor.Aff (liftAff)
 import Data.Maybe (Maybe(..), maybe)
 
 import Halogen
@@ -74,8 +75,8 @@ eval (NC.EvalCell info k) =
       query unit (request FI.GetSelectedFile) <#> (>>= id)
         # MT.lift
         >>= maybe (EC.throwError "No file selected") pure
-    (MT.lift $ liftAff $ Quasar.resourceExists resource)
-      >>= \x -> when (not x) $ EC.throwError
+    (MT.lift $ NC.liftWithCanceler $ Quasar.resourceExists resource)
+      >>= \x -> unless x $ EC.throwError
                 $ "File " <> R.resourcePath resource <> " doesn't exist"
 
     pure $ Port.Resource resource
@@ -87,3 +88,5 @@ eval (NC.Load json next) = do
   let file = either (const Nothing) id $ decodeJson json
   maybe (pure unit) (\file' -> void $ query unit $ action (FI.SelectFile file')) file
   pure next
+eval (NC.AddCanceler _ next) = pure next
+eval (NC.Cancel next) = pure next

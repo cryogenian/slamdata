@@ -106,6 +106,8 @@ eval q =
       F.for_ (Model.decode json) \{items} ->
         query unit $ action (FB.SetItems (L.toList items) >>> left)
       pure next
+    NC.AddCanceler _ next -> pure next
+    NC.Cancel next -> pure next
 
 getChildF :: forall i f. Natural (ChildF i f) f
 getChildF (ChildF _ q) =

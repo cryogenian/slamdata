@@ -94,3 +94,5 @@ eval (Ec.SetupCell _ next) = pure next
 -- the notebook is restored
 eval (Ec.Save k) = pure (k jsonEmptyObject)
 eval (Ec.Load _ next) = pure next
+eval (Ec.AddCanceler _ next) = pure next
+eval (Ec.Cancel next) = pure next

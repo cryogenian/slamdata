@@ -286,6 +286,11 @@ peekCell cellId q = case q of
     when (autorun cellType) $ runCell newCellId
     triggerSave unit
   ShareCell _ -> pure unit
+  StopCell _ -> do
+    modify $ _runTrigger .~ Nothing
+    gets _.pendingCells >>= traverse_ Debug.Trace.traceAnyA
+    modify $ _pendingCells %~ S.delete cellId
+    runPendingCells unit
   _ -> pure unit
 
 -- | Peek on the inner cell components to observe `NotifyRunCell`, which is
@@ -331,7 +336,6 @@ aceQueryShouldSave (ChildF _ q) =
 runPendingCells :: Unit -> NotebookDSL Unit
 runPendingCells _ = do
   cells <- gets _.pendingCells
-  modify (_pendingCells .~ S.empty)
   traverse_ runCell' cells
   where
   runCell' :: CellId -> NotebookDSL Unit
@@ -348,6 +352,7 @@ runPendingCells _ = do
           Nothing -> pure unit
           -- if there's a parent and an output, pass it on as this cell's input
           Just p -> updateCell (Just p) cellId
+    modify $ _pendingCells %~ S.delete cellId
     triggerSave unit
 
 -- | Enqueues the cell with the specified ID in the set of cells that are

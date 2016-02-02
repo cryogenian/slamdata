@@ -119,3 +119,5 @@ aceComponent {mode, evaluator, setup} = makeEditorCellComponent
       F.traverse_ (readOnly editor) ranges
       Editor.navigateFileEnd editor
     pure next
+  eval (AddCanceler _ next) = pure next
+  eval (Cancel next) = pure next

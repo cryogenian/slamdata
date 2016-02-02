@@ -82,6 +82,7 @@ import SlamData.Notebook.Cell.Viz.Component.Query as Viz
 -- |   share/embed message appropriate for the cell.
 data CellQuery a
   = RunCell a
+  | StopCell a
   | UpdateCell CellEvalInputPre (Maybe Port -> a)
   | RefreshCell a
   | TrashCell a
