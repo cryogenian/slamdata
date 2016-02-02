@@ -68,7 +68,6 @@ render state =
     [ P.class_ CSS.exploreCellEditor ]
     [ H.slot unit \_ -> { component: FI.fileInputComponent, initialState: FI.initialState } ]
 
-import Control.Monad.Aff (later')
 eval :: Natural NC.CellEvalQuery (ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
 eval (NC.NotifyRunCell next) = pure next
 eval (NC.EvalCell info k) =
@@ -77,7 +76,7 @@ eval (NC.EvalCell info k) =
       query unit (request FI.GetSelectedFile) <#> (>>= id)
         # MT.lift
         >>= maybe (EC.throwError "No file selected") pure
-    (MT.lift $ NC.liftWithCanceler $ later' 10000 $ Quasar.resourceExists resource)
+    (MT.lift $ NC.liftWithCanceler $ Quasar.resourceExists resource)
       >>= \x -> unless x $ EC.throwError
                 $ "File " <> R.resourcePath resource <> " doesn't exist"
 
