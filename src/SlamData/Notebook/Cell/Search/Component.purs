@@ -114,6 +114,8 @@ eval = coproduct cellEval searchEval
 cellEval :: Natural NC.CellEvalQuery (ParentDSL State FI.State Query FI.Query Slam Unit)
 cellEval q =
   case q of
+    NC.EvalCell { inputPort: M.Just Port.Blocked } k -> do
+      pure $ k { output: M.Nothing, messages: [] }
     NC.EvalCell info k -> runWith do
       k <$> NC.runCellEvalT do
         inputResource <-

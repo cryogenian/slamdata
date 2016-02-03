@@ -45,6 +45,7 @@ data Port
   | VarMap VarMap
   | ChartOptions ChartPort
   | TaggedResource {tag :: Maybe String, resource :: R.Resource }
+  | Blocked
 
 _SlamDown :: PrismP Port SlamDown
 _SlamDown = prism' SlamDown \p -> case p of
@@ -71,3 +72,8 @@ _Resource :: TraversalP Port R.Resource
 _Resource = wander \f s -> case s of
   TaggedResource o -> (TaggedResource <<< o{resource = _}) <$> f o.resource
   _ -> pure s
+
+_Blocked :: PrismP Port Unit
+_Blocked = prism' (const Blocked) \p -> case p of
+  Blocked -> Just unit
+  _ -> Nothing

@@ -55,27 +55,31 @@ import Utils.Ace (readOnly)
 import Utils.Completions (mkCompletion, pathCompletions)
 
 queryEval :: CEQ.CellEvalInput -> String -> AceDSL CEQ.CellEvalResult
-queryEval info sql = do
-  addCompletions varMap
-  liftAff $ CEQ.runCellEvalT $ do
-    { plan: plan, outputResource: outputResource } <-
-      Quasar.executeQuery
-        sql
-        (M.fromMaybe false info.cachingEnabled)
-        varMap
-        inputResource
-        tempOutputResource
-      # Auth.authed
-      # MT.lift
-      >>= E.either EC.throwError pure
+queryEval info sql =
+  case info.inputPort of
+    Just Port.Blocked ->
+      pure { output: Nothing, messages: [] }
+    _ -> do
+      addCompletions varMap
+      liftAff $ CEQ.runCellEvalT $ do
+        { plan: plan, outputResource: outputResource } <-
+          Quasar.executeQuery
+            sql
+            (M.fromMaybe false info.cachingEnabled)
+            varMap
+            inputResource
+            tempOutputResource
+          # Auth.authed
+          # MT.lift
+          >>= E.either EC.throwError pure
 
-    (MT.lift $ Auth.authed $ Quasar.resourceExists outputResource)
-      >>= \x -> unless x $ EC.throwError "Requested collection doesn't exist"
+        (MT.lift $ Auth.authed $ Quasar.resourceExists outputResource)
+          >>= \x -> unless x $ EC.throwError "Requested collection doesn't exist"
 
-    F.for_ plan \p ->
-      WC.tell ["Plan: " <> p]
+        F.for_ plan \p ->
+          WC.tell ["Plan: " <> p]
 
-    pure $ Port.TaggedResource {resource: outputResource, tag: pure sql}
+        pure $ Port.TaggedResource {resource: outputResource, tag: pure sql}
   where
   varMap :: SM.StrMap String
   varMap =
