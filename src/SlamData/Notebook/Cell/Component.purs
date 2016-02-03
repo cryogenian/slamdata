@@ -31,10 +31,16 @@ import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Free (liftF)
+import Control.Monad.Aff (cancel)
+import Control.Monad.Eff.Exception as Exn
 
+import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
+import Data.Functor.Coproduct (coproduct)
 import Data.Argonaut (jsonNull)
 import Data.Date as Date
 import Data.Either (Either(..))
+import Data.Foldable as F
 import Data.Function (on)
 import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
@@ -42,6 +48,7 @@ import Data.Functor.Coproduct (left)
 import Data.Functor.Eff (liftEff)
 import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
+import Data.Monoid (mempty)
 import Data.Path.Pathy as Path
 import Data.Visibility (Visibility(..), toggleVisibility)
 
@@ -210,7 +217,7 @@ makeCellComponentPart
       -> AnyCellState -> CellState -> CellHTML)
   -> CellComponent
 makeCellComponentPart def render =
-  parentComponent (render component initialState) eval
+  parentComponent' (render component initialState) eval peek
   where
 
   _State :: PrismP AnyCellState s
@@ -231,6 +238,7 @@ makeCellComponentPart def render =
 
   eval :: Natural CellQuery CellDSL
   eval (RunCell next) = pure next
+  eval (StopCell next) = stopRun $> next
   eval (UpdateCell input k) = do
     liftAff =<< gets (^. _tickStopper)
     tickStopper <- startInterval
@@ -239,7 +247,7 @@ makeCellComponentPart def render =
     let input' = prepareCellEvalInput cachingEnabled input
     modify (_input .~ input'.inputPort)
     result <- query unit (left (request (EvalCell input')))
-    maybe (pure unit) (\{ output } -> modify (_hasResults .~ isJust output)) result
+    F.for_ result \{ output } -> modify (_hasResults .~ isJust output)
     liftAff tickStopper
     modify
       $ (_runState %~ finishRun)
@@ -265,6 +273,23 @@ makeCellComponentPart def render =
     pure (k { cellId, cellType, hasRun, state: fromMaybe jsonNull json })
   eval (LoadCell model next) =
     query unit (left (action (Load model.state))) $> next
+
+  peek :: forall a. ChildF Unit InnerCellQuery a -> CellDSL Unit
+  peek (ChildF _ q) = coproduct cellEvalPeek (const $ pure unit) q
+
+  cellEvalPeek :: forall a. CellEvalQuery a -> CellDSL Unit
+  cellEvalPeek (SetCanceler canceler _) = modify $ _canceler .~ canceler
+  cellEvalPeek (SetupCell _ _) = modify $ _canceler .~ mempty
+  cellEvalPeek (EvalCell _ _) = modify $ _canceler .~ mempty
+  cellEvalPeek _ = pure unit
+
+  stopRun :: CellDSL Unit
+  stopRun = do
+    cs <- gets _.canceler
+    ts <- gets _.tickStopper
+    liftAff ts
+    liftAff $ cancel cs (Exn.error "Canceled")
+    modify $ _runState .~ RunInitial
 
 -- | Starts a timer running on an interval that passes Tick queries back to the
 -- | component, allowing the runState to be updated with a timer.

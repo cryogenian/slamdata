@@ -29,7 +29,6 @@ import Control.Monad.Trans as MT
 
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..), either)
-import Data.Functor.Aff (liftAff)
 import Data.Maybe (Maybe(..), maybe)
 
 import Halogen
@@ -75,7 +74,7 @@ eval (NC.EvalCell info k) =
         <#> (join <<< maybe (Left "There is no file input subcomponent") Right)
         # MT.lift
         >>= either EC.throwError pure
-    (MT.lift $ liftAff $ Quasar.resourceExists resource)
+    (MT.lift $ NC.liftWithCanceler $ Quasar.resourceExists resource)
       >>= \x -> unless x $ EC.throwError
                 $ "File " <> R.resourcePath resource <> " doesn't exist"
 
@@ -90,3 +89,4 @@ eval (NC.Load json next) = do
   let file = either (const Nothing) id $ decodeJson json
   maybe (pure unit) (\file' -> void $ query unit $ action (FI.SelectFile file')) file
   pure next
+eval (NC.SetCanceler _ next) = pure next

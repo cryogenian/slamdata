@@ -157,6 +157,7 @@ cellEval (Ec.SetupCell { inputPort } next) = do
   for_ (preview P._Resource inputPort) \res ->
     modify $ _source .~ res
   pure next
+cellEval (Ec.SetCanceler _ next) = pure next
 
 downloadEval :: Natural Query DownloadDSL
 downloadEval (SetOutput ty next) = do

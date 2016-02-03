@@ -30,7 +30,6 @@ import Data.Array (length, null, cons, index)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (coproduct, right, left)
 import Data.Int as Int
 import Data.Lens ((.~), view, preview)
@@ -62,7 +61,7 @@ import SlamData.Notebook.Cell.Chart.Axis as Ax
 import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(), depends, dependsOnArr)
 import SlamData.Notebook.Cell.Chart.ChartOptions (buildOptions)
 import SlamData.Notebook.Cell.Chart.ChartType (ChartType(..), isPie)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT, liftWithCanceler')
 import SlamData.Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import SlamData.Notebook.Cell.Port as P
 import SlamData.Notebook.Cell.Viz.Component.Query
@@ -252,7 +251,7 @@ cellEval (EvalCell info continue) = do
       r <- maybe (throwError "Incorrect port in visual builder cell") pure
            $ info.inputPort >>= preview P._Resource
       lift $ updateForms r
-      records <- lift $ liftAff $ Api.all r
+      records <- lift $ liftWithCanceler' $ Api.all r
       when (length records > 10000)
         $ throwError
         $  "Maximum record count available for visualization -- 10000, "
@@ -287,6 +286,7 @@ cellEval (Load json next) =
       set st
       query st.chartType $ left $ action $ Form.SetConfiguration model.chartConfig
       pure next
+cellEval (SetCanceler _ next) = pure next
 
 responsePort :: CellEvalT VizDSL P.Port
 responsePort = do
@@ -303,7 +303,7 @@ responsePort = do
 
 updateForms :: R.Resource -> VizDSL Unit
 updateForms file = do
-  jarr <- liftAff $ Api.sample file 0 20
+  jarr <- liftWithCanceler' $ Api.sample file 0 20
   if null jarr
     then
     modify $ _availableChartTypes .~ Set.empty

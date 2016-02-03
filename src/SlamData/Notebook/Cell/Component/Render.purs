@@ -86,7 +86,9 @@ statusBar hasResults cs =
     [ P.classes [CSS.cellEvalLine, B.clearfix, B.row] ]
     $ [ H.button
           [ P.classes [B.btn, B.btnPrimary, button.className]
-          , E.onClick (E.input_ RunCell)
+          , E.onClick (E.input_ $ if isRunning cs.runState
+                                  then StopCell
+                                  else RunCell)
           , P.title button.label
           , ARIA.label button.label
           ]

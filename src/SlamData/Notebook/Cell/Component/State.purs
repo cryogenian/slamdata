@@ -30,6 +30,7 @@ module SlamData.Notebook.Cell.Component.State
   , _cachingEnabled
   , _input
   , _output
+  , _canceler
   , AnyCellState()
   , _AceState
   , _ExploreState
@@ -45,8 +46,11 @@ module SlamData.Notebook.Cell.Component.State
 
 import Prelude
 
+import Control.Monad.Aff (Canceler())
+
 import Data.Either (Either())
 import Data.Lens (LensP(), lens, PrismP(), TraversalP(), prism', wander)
+import Data.Monoid (mempty)
 import Data.Maybe (Maybe(..))
 import Data.Visibility (Visibility(..))
 
@@ -66,7 +70,7 @@ import SlamData.Notebook.Cell.Port (Port())
 import SlamData.Notebook.Cell.RunState (RunState(..))
 import SlamData.Notebook.Cell.Search.Component.State as Search
 import SlamData.Notebook.Cell.Viz.Component.State as Viz
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Notebook.Effects (Slam(), NotebookEffects())
 
 -- | The common state value for notebook cells.
 -- |
@@ -98,6 +102,7 @@ type CellState =
   , cachingEnabled :: Maybe Boolean -- Nothing if the option isn't available
   , input :: Maybe Port
   , output :: Maybe Port
+  , canceler :: Canceler NotebookEffects
   }
 
 type CellStateP = InstalledState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
@@ -116,6 +121,7 @@ initEditorCellState =
   , cachingEnabled: Nothing
   , input: Nothing
   , output: Nothing
+  , canceler: mempty
   }
 
 -- | Creates an initial `CellState` value for a results cell.
@@ -132,6 +138,7 @@ initResultsCellState =
   , cachingEnabled: Nothing
   , input: Nothing
   , output: Nothing
+  , canceler: mempty
   }
 
 _accessType :: LensP CellState AccessType
@@ -174,6 +181,9 @@ _input = lens _.input (_ { input = _ })
 -- | the cell was evaluated.
 _output :: LensP CellState (Maybe Port)
 _output = lens _.output (_ { output = _ })
+
+_canceler :: LensP CellState (Canceler NotebookEffects)
+_canceler = lens _.canceler _{canceler = _}
 
 data AnyCellState
   = AceState Ace.StateP
