@@ -31,7 +31,6 @@ import Control.Monad.Writer.Class as WC
 import Data.Either (Either(..), either)
 import Data.Foldable as F
 import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct
 import Data.Lens ((.~), preview)
 import Data.Maybe as M
@@ -126,11 +125,11 @@ cellEval q =
             # MT.lift
             >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
-        (MT.lift $ liftAff $ Quasar.resourceExists inputResource)
+        (MT.lift $ NC.liftWithCanceler' $ Quasar.resourceExists inputResource)
           >>= \x -> when (not x) $ EC.throwError $ "Input resource "
             <> R.resourcePath inputResource
             <> " doesn't exist"
-        fields <- MT.lift <<< liftAff $ Quasar.fields inputResource
+        fields <- MT.lift <<< NC.liftWithCanceler' $ Quasar.fields inputResource
 
         let
           template = Search.queryToSQL fields query
@@ -141,13 +140,13 @@ cellEval q =
 
         { plan: plan, outputResource: outputResource } <-
           Quasar.executeQuery template (M.fromMaybe false info.cachingEnabled) SM.empty inputResource tempOutputResource
-            # liftAff >>> MT.lift
+            # NC.liftWithCanceler' >>> MT.lift
             >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
         F.for_ plan \p ->
           WC.tell ["Plan: " <> p]
 
-        (MT.lift $ liftAff $ Quasar.resourceExists outputResource)
+        (MT.lift $ NC.liftWithCanceler' $ Quasar.resourceExists outputResource)
           >>= \x -> when (not x)
                     $ EC.throwError "Error making search temporary resource"
 
@@ -175,6 +174,7 @@ cellEval q =
           M.maybe (pure unit) (void <<< query unit <<< action <<< FI.SelectFile) file
           modify (_searchString .~ input)
       pure next
+    NC.SetCanceler _ next -> pure next
 
 searchEval :: Natural SearchQuery (ParentDSL State FI.State Query FI.Query Slam Unit)
 searchEval q =
