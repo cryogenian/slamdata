@@ -332,12 +332,13 @@ getNewName parent name = do
 exists' :: String -> Array R.Resource -> Boolean
 exists' name items = isJust $ Arr.findIndex (\r -> r ^. R._name == name) items
 
-
+-- | Will return `Just` in case the resource was successfully moved, and
+-- | `Nothing` in case no resource existed at the requested source path.
 move
   :: forall e
    . R.Resource
   -> PU.AnyPath
-  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) PU.AnyPath
+  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) (Maybe PU.AnyPath)
 move src tgt = do
   let url = if R.isDatabase src || R.isViewMount src
             then Paths.mountUrl
@@ -353,8 +354,10 @@ move src tgt = do
           (R.getPath src)
     }
   if succeeded result.status
-    then pure tgt
-    else throwError (Exn.error result.response)
+    then pure $ Just tgt
+    else if result.status == notFoundStatus
+      then pure Nothing
+      else throwError (Exn.error result.response)
 
 saveMount
   :: forall e. R.Resource -> String -> Aff (RetryEffects (ajax :: AJAX |e)) Unit
