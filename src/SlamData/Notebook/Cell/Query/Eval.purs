@@ -21,7 +21,7 @@ module SlamData.Notebook.Cell.Query.Eval
 
 import Prelude
 
-import Control.Monad (when)
+import Control.Monad (unless)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans as MT
@@ -67,12 +67,12 @@ queryEval info sql = do
         >>= E.either EC.throwError pure
 
     (MT.lift $ Quasar.resourceExists outputResource)
-      >>= \x -> when (not x) $ EC.throwError "Requested collection doesn't exist"
+      >>= \x -> unless x $ EC.throwError "Requested collection doesn't exist"
 
     F.for_ plan \p ->
       WC.tell ["Plan: " <> p]
 
-    pure $ Port.Resource outputResource
+    pure $ Port.TaggedResource {resource: outputResource, tag: pure sql}
   where
   varMap :: SM.StrMap String
   varMap =
@@ -88,12 +88,12 @@ querySetup :: CEQ.CellSetupInfo -> AceDSL Unit
 querySetup { inputPort, notebookPath } =
   case inputPort of
     Port.VarMap varMap -> addCompletions varMap
-    Port.Resource res -> void $ runMaybeT do
-      resParent <- MaybeT $ pure $ L.preview R._filePath res >>= Path.parentDir
+    Port.TaggedResource {resource}  -> void $ runMaybeT do
+      resParent <- MaybeT $ pure $ L.preview R._filePath resource >>= Path.parentDir
       nbPath <- MaybeT $ pure notebookPath
       let path = if nbPath == resParent
-                 then R.resourceName res
-                 else R.resourcePath res
+                 then R.resourceName resource
+                 else R.resourcePath resource
       editor <- (MaybeT $ query unit $ request Ace.GetEditor) >>= (MaybeT <<< pure)
       MaybeT $ query unit
         $ action $ Ace.SetText ("SELECT  *  FROM \"" <> path <> "\" ")

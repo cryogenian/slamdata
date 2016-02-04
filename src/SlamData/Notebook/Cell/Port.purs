@@ -22,9 +22,13 @@ module SlamData.Notebook.Cell.Port
   , _VarMap
   , _Resource
   , _ChartOptions
+  , _ResourceTag
+  , _Resource
   ) where
 
-import Data.Lens (PrismP(), prism')
+import Prelude
+
+import Data.Lens (PrismP(), prism', TraversalP(), wander)
 import Data.Maybe (Maybe(..))
 
 import ECharts.Options as Ec
@@ -39,8 +43,8 @@ type ChartPort = { options :: Ec.Option, width :: Int, height :: Int }
 data Port
   = SlamDown SlamDown
   | VarMap VarMap
-  | Resource R.Resource
   | ChartOptions ChartPort
+  | TaggedResource {tag :: Maybe String, resource :: R.Resource }
 
 _SlamDown :: PrismP Port SlamDown
 _SlamDown = prism' SlamDown \p -> case p of
@@ -52,12 +56,18 @@ _VarMap = prism' VarMap \p -> case p of
   VarMap x -> Just x
   _ -> Nothing
 
-_Resource :: PrismP Port R.Resource
-_Resource = prism' Resource \p -> case p of
-  Resource r -> Just r
-  _ -> Nothing
-
 _ChartOptions :: PrismP Port ChartPort
 _ChartOptions = prism' ChartOptions \p -> case p of
   ChartOptions o -> Just o
   _ -> Nothing
+
+_ResourceTag :: TraversalP Port String
+_ResourceTag = wander \f s -> case s of
+  TaggedResource o@{tag = Just tag} ->
+    (TaggedResource <<< o{tag = _} <<< Just) <$> f tag
+  _ -> pure s
+
+_Resource :: TraversalP Port R.Resource
+_Resource = wander \f s -> case s of
+  TaggedResource o -> (TaggedResource <<< o{resource = _}) <$> f o.resource
+  _ -> pure s

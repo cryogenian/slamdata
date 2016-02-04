@@ -78,7 +78,7 @@ eval (NC.EvalCell info k) =
       >>= \x -> unless x $ EC.throwError
                 $ "File " <> R.resourcePath resource <> " doesn't exist"
 
-    pure $ Port.Resource resource
+    pure $ Port.TaggedResource {resource, tag: Nothing}
 eval (NC.SetupCell _ next) = pure next
 eval (NC.Save k) = do
   file <- query unit (request FI.GetSelectedFile)
