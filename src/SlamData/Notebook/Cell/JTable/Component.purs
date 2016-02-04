@@ -24,6 +24,7 @@ module SlamData.Notebook.Cell.JTable.Component
 import Prelude
 
 import Control.Bind ((=<<))
+import Control.Monad (when)
 
 import Data.Argonaut.Core as JSON
 import Data.Either (Either(..), either)
@@ -44,7 +45,7 @@ import SlamData.Notebook.Cell.JTable.Component.Query
 import SlamData.Notebook.Cell.JTable.Component.Render (render)
 import SlamData.Notebook.Cell.JTable.Component.State
 import SlamData.Notebook.Cell.JTable.Model as Model
-import SlamData.Notebook.Cell.Port (_Resource)
+import SlamData.Notebook.Cell.Port (_Resource, _ResourceTag)
 import SlamData.Notebook.Effects (Slam())
 
 jtableComponent :: Component CellStateP CellQueryP Slam
@@ -69,9 +70,15 @@ evalCell (EvalCell value k) =
   case preview _Resource =<< value.inputPort of
     Just resource -> do
       size <- liftAff (Quasar.count resource)
-      modify (_input ?~ { resource, size })
+      oldInput <- gets _.input
+      let tag = preview _ResourceTag =<< value.inputPort
+      when    (((oldInput <#> _.resource) /= pure resource)
+            || ((oldInput >>= _.tag) /= tag))
+        $ set initialState
+      modify $ _input ?~ { resource, size, tag }
       p <- gets pendingPageInfo
-      items <- liftAff $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
+      items <-
+        liftAff $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
       modify
         $ (_isEnteringPageSize .~ false)
         <<< (_result ?~

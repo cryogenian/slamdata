@@ -187,7 +187,7 @@ makeResultsCellComponent def = makeCellComponentPart def render
   nextCellButtons (Just p) = case p of
     VarMap _ ->
       [ nextCellButton (Ace SQLMode) ]
-    Resource _ ->
+    TaggedResource _ ->
       [ nextCellButton (Ace SQLMode)
       , nextCellButton Search
       , nextCellButton Viz

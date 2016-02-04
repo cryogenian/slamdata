@@ -150,7 +150,7 @@ cellEval q =
           >>= \x -> when (not x)
                     $ EC.throwError "Error making search temporary resource"
 
-        pure $ Port.Resource outputResource
+        pure $ Port.TaggedResource { resource: outputResource, tag: pure sql }
 
     NC.SetupCell { inputPort } next -> do
       case preview Port._Resource inputPort of

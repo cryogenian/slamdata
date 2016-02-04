@@ -91,6 +91,7 @@ _isEnteringPageSize = lens _.isEnteringPageSize (_ { isEnteringPageSize = _ })
 -- | The cell input state.
 type Input =
   { resource :: Resource
+  , tag :: Maybe String
   , size :: Int
   }
 
@@ -101,6 +102,11 @@ _resource = lens _.resource (_ { resource = _ })
 -- | The total size of the resource's result set.
 _size :: LensP Input Int
 _size = lens _.size (_ { size = _ })
+
+-- | This is used to determine if query producing temporary resource has
+-- | been changed. It holds sql query.
+_tag :: LensP Input (Maybe String)
+_tag = lens _.tag _{tag = _}
 
 -- | A record with information about the current page number, page size, and
 -- | total number of pages.
@@ -174,11 +180,6 @@ setPageSize size = _pageSize ?~ Left size
 
 toModel :: State -> Model
 toModel st = { input: Nothing, result: Nothing }
--- toModel =
---   { input: st.input
---   , page: view _These st.page
---   , pageSize: view _These st.pageSize
---   }
 
 fromModel :: Model -> State
 fromModel _ = initialState
