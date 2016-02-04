@@ -143,11 +143,7 @@ listing p =
   case P.relativeTo p P.rootDir of
     Nothing -> throwError $ Exn.error "incorrect path"
     Just p ->
-      getWithPolicy
-        { shouldRetryWithStatusCode: \c -> not (succeeded c || c == notFoundStatus)
-        , delayCurve: const 1000
-        , timeout: Just 10000
-        }
+      retryGet
         (Paths.metadataUrl </> p)
         applicationJSON
 
@@ -195,8 +191,12 @@ type RetryEffects e = (avar :: AVAR, ref :: REF, now :: Date.Now | e)
 slamjax
   :: forall e a b
    . (Requestable a, Respondable b)
-  => AffjaxRequest a -> Affjax (RetryEffects e) b
-slamjax = retry defaultRetryPolicy affjax
+  => AffjaxRequest a
+  -> Affjax (RetryEffects e) b
+slamjax =
+  retry
+    defaultRetryPolicy
+    affjax
 
 retryGet
   :: forall e a fd
@@ -205,11 +205,11 @@ retryGet
   -> MimeType
   -> Affjax (RetryEffects e) a
 retryGet =
-  getWithPolicy
-    { shouldRetryWithStatusCode: not <<< succeeded
-    , delayCurve: const 1000
-    , timeout: Just 30000
-    }
+  getWithPolicy $
+    defaultRetryPolicy
+      { delayCurve = const 1000
+      , timeout = Just 30000
+      }
 
 mkRequest
   :: forall e fd
@@ -218,9 +218,11 @@ mkRequest
   -> Aff (RetryEffects e) (AffjaxRequest Unit)
 mkRequest u mime = do
   nocache <- liftEff $ Date.nowEpochMilliseconds
-  pure $ defaultRequest { url = url' nocache
-                        , headers = [ Accept mime ]
-                        }
+  pure $
+    defaultRequest
+      { url = url' nocache
+      , headers = [ Accept mime ]
+      }
   where
   url' nocache = url <> symbol <> "nocache=" <> pretty nocache
   symbol = if S.contains "?" url then "&" else "?"
@@ -233,7 +235,9 @@ getOnce
   => P.Path P.Abs fd P.Sandboxed
   -> MimeType
   -> Affjax (RetryEffects e) a
-getOnce u mime = mkRequest u mime >>= affjax
+getOnce u mime =
+  mkRequest u mime
+    >>= affjax
 
 getWithPolicy
   :: forall e a fd
@@ -242,21 +246,31 @@ getWithPolicy
   -> P.Path P.Abs fd P.Sandboxed
   -> MimeType
   -> Affjax (RetryEffects e) a
-getWithPolicy policy u mime = mkRequest u mime >>= retry policy affjax
+getWithPolicy policy u mime =
+  mkRequest u mime
+    >>= retry policy affjax
 
 retryDelete
   :: forall e a fd
    . (Respondable a)
-  => P.Path P.Abs fd P.Sandboxed -> Affjax (RetryEffects e) a
-retryDelete u =
-  slamjax $ defaultRequest { url = P.printPath u, method = DELETE }
+  => P.Path P.Abs fd P.Sandboxed
+  -> Affjax (RetryEffects e) a
+retryDelete u = do
+  slamjax $ defaultRequest
+    { url = P.printPath u
+    , method = DELETE
+    }
 
 retryPost
   :: forall e a b fd
    . (Requestable a, Respondable b)
   => P.Path P.Abs fd P.Sandboxed -> a -> Affjax (RetryEffects e) b
 retryPost u c =
-  slamjax $ defaultRequest { method = POST, url = P.printPath u, content = Just c }
+  slamjax $ defaultRequest
+    { method = POST
+    , url = P.printPath u
+    , content = Just c
+    }
 
 retryPut
   :: forall e a b fd
@@ -360,7 +374,10 @@ move src tgt = do
       else throwError (Exn.error result.response)
 
 saveMount
-  :: forall e. R.Resource -> String -> Aff (RetryEffects (ajax :: AJAX |e)) Unit
+  :: forall e
+   . R.Resource
+  -> String
+  -> Aff (RetryEffects (ajax :: AJAX |e)) Unit
 saveMount res uri = do
   result <- slamjax $ defaultRequest
     { method = PUT
