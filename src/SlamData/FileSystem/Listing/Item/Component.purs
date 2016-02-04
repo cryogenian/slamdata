@@ -28,7 +28,6 @@ import Data.Lens (LensP(), lens, (%~), (.~))
 import Data.Maybe (Maybe(..))
 
 import Halogen
-import Halogen.CustomProps as Cp
 import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Events.Handler as E
 import Halogen.HTML.Events.Indexed as E
@@ -76,6 +75,8 @@ _mbURI = lens _.mbURI _{mbURI = _}
 
 data Query a
   = Toggle a
+  | PresentActions a
+  | HideActions a
   | Deselect a
   | Open a
   | Configure a
@@ -93,8 +94,9 @@ comp = component render eval
 
 render :: State -> ComponentHTML Query
 render state = case state.item of
-  SelectedItem _ -> itemView state true
-  Item _ -> itemView state false
+  SelectedItem _ -> itemView state true true
+  ActionsPresentedItem _ -> itemView state false true
+  Item _ -> itemView state false false
   PhantomItem _ ->
     H.div
       [ P.classes [ B.listGroupItem, Rc.phantom ] ]
@@ -113,12 +115,21 @@ eval :: Eval Query State Query Slam
 eval (Toggle next) = modify (_item %~ toggle) $> next
   where
   toggle (Item r) = SelectedItem r
+  toggle (ActionsPresentedItem r) = SelectedItem r
   toggle (SelectedItem r) = Item r
   toggle it = it
 eval (Deselect next) = modify (_item %~ deselect) $> next
   where
   deselect (SelectedItem r) = Item r
   deselect it = it
+eval (PresentActions next) = modify (_item %~ presentActions) $> next
+  where
+  presentActions (Item r) = ActionsPresentedItem r
+  presentActions it = it
+eval (HideActions next) = modify (_item %~ hideActions) $> next
+  where
+  hideActions (ActionsPresentedItem r) = Item r
+  hideActions it = it
 eval (Open next) = pure next
 eval (Configure next) = do
   res <- gets (_.item >>> itemResource)
@@ -149,31 +160,28 @@ presentItem state item = (isHidden && presentHiddenItem state) || not isHidden
   where
   isHidden = itemIsHidden item
 
-itemView :: forall p. State -> Boolean -> HTML p Query
-itemView state@{ item } selected | not (presentItem state item) = H.text ""
-itemView state@{ item } selected | otherwise =
-  H.a
+itemView :: forall p. State -> Boolean -> Boolean -> HTML p Query
+itemView state@{ item } selected presentActions | not (presentItem state item) = H.text ""
+itemView state@{ item } selected presentActions | otherwise =
+  H.div
     [ P.classes itemClasses
     , E.onClick (E.input_ Toggle)
-    , E.onDoubleClick (E.input_ Open)
+    , E.onMouseEnter (E.input_ PresentActions)
+    , E.onMouseLeave (E.input_ HideActions)
     , ARIA.label label
-    , P.title label
     ]
     [ H.div
         [ P.class_ B.row ]
         [ H.div [ P.classes [ B.colXs9, Rc.itemContent ] ]
             [ H.a
-                [ E.onClick $ const (E.preventDefault $> action Open)
-                ]
-                [ H.span_
-                    [ H.i [ iconClasses item ] []
-                    , H.text $ itemName state
-                    ]
+                [ E.onClick (\_ -> E.preventDefault $> action Open) ]
+                [ H.i [ iconClasses item ] []
+                , H.text $ itemName state
                 ]
             ]
         , H.div
             [ P.classes $ [ B.colXs3, Rc.itemToolbar ] <> (guard selected $> Rc.selected) ]
-            [ itemActions selected item ]
+            [ itemActions presentActions item ]
         ]
     ]
   where
@@ -184,8 +192,8 @@ itemView state@{ item } selected | otherwise =
     <> (if itemIsHidden item && presentHiddenItem state then [ Rc.itemHidden ] else [ ])
 
   label :: String
-  label | selected = "Hide actions for " ++ itemName state
-  label | otherwise  = "Access actions for " ++ itemName state
+  label | selected = "Select " ++ itemName state
+  label | otherwise  = "Deselect " ++ itemName state
 
 iconClasses :: forall r i. Item -> P.IProp (class :: P.I | r) i
 iconClasses item = P.classes
@@ -233,9 +241,9 @@ itemActions presentActions item | otherwise =
     H.li_
       [ H.button
           [ E.onClick (E.input_ act)
-          , Cp.mbDoubleClick $ const (E.stopPropagation $> Nothing)
           , P.title label
           , ARIA.label label
+          , P.class_ Rc.fileAction
           ]
-          [ H.i [ P.title label, P.classes [ B.glyphicon, cls ] ] [] ]
+          [ H.i [ P.classes [ B.glyphicon, cls ] ] [] ]
       ]
