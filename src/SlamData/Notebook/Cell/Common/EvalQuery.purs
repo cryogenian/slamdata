@@ -95,11 +95,13 @@ prepareCellEvalInput cachingEnabled { notebookPath, inputPort, cellId, globalVar
   }
 
 temporaryOutputResource
-  :: forall r
-   . CellEvalInputP r
+  :: CellEvalInput
   -> R.Resource
 temporaryOutputResource info =
-  R.mkFile $ E.Left $ outputDirectory </> outputFile
+  (outputDirectory </> outputFile)
+    # if M.fromMaybe false info.cachingEnabled
+      then R.File
+      else R.ViewMount
   where
     outputDirectory =
       filterMaybe (== P.rootDir) info.notebookPath #
