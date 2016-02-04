@@ -138,33 +138,42 @@ itemName { isSearching, item } =
   let toName = if isSearching then resourcePath else resourceName
   in toName $ itemResource item
 
+itemIsHidden :: Item -> Boolean
+itemIsHidden = hiddenTopLevel <<< itemResource
+
+presentHiddenItem :: State -> Boolean
+presentHiddenItem = not <<< _.isHidden
+
+presentItem :: State -> Item -> Boolean
+presentItem state item = (isHidden && presentHiddenItem state) || not isHidden
+  where
+  isHidden = itemIsHidden item
+
 itemView :: forall p. State -> Boolean -> HTML p Query
-itemView state@{ item } selected =
-  H.div
+itemView state@{ item } selected | not (presentItem state item) = H.text ""
+itemView state@{ item } selected | otherwise =
+  H.a
     [ P.classes itemClasses
     , E.onClick (E.input_ Toggle)
     , E.onDoubleClick (E.input_ Open)
+    , ARIA.label label
+    , P.title label
     ]
     [ H.div
         [ P.class_ B.row ]
         [ H.div [ P.classes [ B.colXs9, Rc.itemContent ] ]
-            [ H.a [ E.onClick $ const (E.preventDefault $> action Open) ]
+            [ H.a
+                [ E.onClick $ const (E.preventDefault $> action Open)
+                ]
                 [ H.span_
                     [ H.i [ iconClasses item ] []
                     , H.text $ itemName state
                     ]
                 ]
             ]
-        , H.a
-            [ P.classes
-                 $ [ B.colXs3, Rc.itemToolbar, Rc.selected ]
-            ]
-            [ H.ul
-                [ P.classes [ B.listInline, B.pullRight ]
-                , CSS.style $ marginBottom (px zero)
-                ]
-                $ toolbar item
-            ]
+        , H.div
+            [ P.classes $ [ B.colXs3, Rc.itemToolbar ] <> (guard selected $> Rc.selected) ]
+            [ itemActions selected item ]
         ]
     ]
   where
@@ -172,11 +181,11 @@ itemView state@{ item } selected =
   itemClasses =
     [ B.listGroupItem ]
     <> (guard selected $> B.listGroupItemInfo)
-    <> (if hiddenTopLevel (itemResource item)
-        then if state.isHidden
-             then [ B.hidden ]
-             else [ Rc.itemHidden ]
-        else [ ])
+    <> (if itemIsHidden item && presentHiddenItem state then [ Rc.itemHidden ] else [ ])
+
+  label :: String
+  label | selected = "Hide actions for " ++ itemName state
+  label | otherwise  = "Access actions for " ++ itemName state
 
 iconClasses :: forall r i. Item -> P.IProp (class :: P.I | r) i
 iconClasses item = P.classes
@@ -192,29 +201,35 @@ iconClasses item = P.classes
   iconClass (Database _) = B.glyphiconHdd
   iconClass (ViewMount _) = B.glyphiconFile
 
-toolbar :: forall p. Item -> Array (HTML p Query)
-toolbar it = conf <> common <> share
+itemActions :: forall p. Boolean -> Item -> HTML p Query
+itemActions presentActions item | not presentActions = H.text ""
+itemActions presentActions item | otherwise =
+  H.ul
+    [ P.classes [ B.listInline, B.pullRight ]
+    , CSS.style $ marginBottom (px zero)
+    ]
+    (conf <> common <> share)
   where
   r :: Resource
-  r = itemResource it
+  r = itemResource item
 
   conf :: Array (HTML p Query)
   conf = guard (isDatabase r) $>
-    toolItem Configure "Configure" B.glyphiconWrench
+    itemAction Configure "Configure" B.glyphiconWrench
 
   common :: Array (HTML p Query)
   common =
-    [ toolItem Move "Move / rename" B.glyphiconMove
-    , toolItem Download "Download" B.glyphiconCloudDownload
-    , toolItem Remove "Remove" B.glyphiconTrash
+    [ itemAction Move "Move / rename" B.glyphiconMove
+    , itemAction Download "Download" B.glyphiconCloudDownload
+    , itemAction Remove "Remove" B.glyphiconTrash
     ]
 
   share :: Array (HTML p Query)
   share = guard (isFile r || isNotebook r || isViewMount r) $>
-    toolItem Share "Share" B.glyphiconShare
+    itemAction Share "Share" B.glyphiconShare
 
-  toolItem :: Action Query -> String -> H.ClassName -> HTML p Query
-  toolItem act label cls =
+  itemAction :: Action Query -> String -> H.ClassName -> HTML p Query
+  itemAction act label cls =
     H.li_
       [ H.button
           [ E.onClick (E.input_ act)
