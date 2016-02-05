@@ -353,3 +353,8 @@ downloadTypeSelector = className "download-type-selector"
 
 downloadConfiguration :: ClassName
 downloadConfiguration = className "download-configuration"
+
+
+fileAction :: ClassName
+fileAction = className "file-action"
+
