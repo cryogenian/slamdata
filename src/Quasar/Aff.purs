@@ -509,7 +509,10 @@ transitiveChildrenProducer dirPath = do
 type SQL = String
 
 query
-  :: forall e. R.Resource -> SQL -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
+  :: forall e
+   . R.Resource
+  -> SQL
+  -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
 query res sql =
   if not $ R.isFile res
   then pure []
@@ -531,23 +534,19 @@ query' res@(R.File _) sql = do
 query' _ _ = pure $ Left "Query resource is not a file"
 
 count :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
-count res = do
-  result <- getOnce uriPath applicationJSON
-  when (not $ succeeded result.status) raiseError
-  -- See SD-1331. If user requests `count` for incorrect sql-mount
-  -- it returns "[" --> throwError is used to mark non-existent and
-  -- incorrect resources here.
-  maybe raiseError pure $
-    (JS.jsonParser result.response # either (const Nothing) Just)
-    >>= JS.toArray
-    >>= Arr.head
-    >>= JS.toObject
-    >>= SM.lookup "total"
-    >>= JS.toNumber
-    >>= Data.Int.fromNumber
+count res =
+  query res sql
+    <#> readTotal
+    >>> fromMaybe 0
   where
-  raiseError :: forall a. Aff (RetryEffects (ajax :: AJAX |e)) a
-  raiseError = throwError $ Exn.error "count query returned incorrect json"
+  readTotal :: JS.JArray -> Maybe Int
+  readTotal =
+    Data.Int.fromNumber
+      <=< JS.toNumber
+      <=< SM.lookup "total"
+      <=< JS.toObject
+      <=< Arr.head
+
 
   uriPath :: P.Path P.Abs P.File P.Sandboxed
   uriPath = mkURI res sql
