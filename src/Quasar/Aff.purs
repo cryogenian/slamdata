@@ -566,7 +566,7 @@ portView
   -> SM.StrMap String
   -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
 portView res dest sql varMap = do
-  guard $ R.isFile dest
+  guard $ R.isViewMount dest
   let
     queryParams = maybe "" ("&" <>) $ renderQueryString varMap
     connectionUri = "sql2:///?q="
@@ -727,15 +727,14 @@ executeQuery
   -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM | e))
       (Either String { outputResource :: R.Resource, plan :: Maybe String })
 executeQuery sql cachingEnabled varMap inputResource outputResource = do
-  when (R.isTempFile outputResource) $
-    void $ attempt $ forceDelete outputResource
+  when (R.isTempFile outputResource)
+    $ void $ attempt $ forceDelete outputResource
 
   ejobj <- do
     attempt $
       if cachingEnabled
          then portQuery inputResource outputResource sql varMap <#> Just
          else portView inputResource outputResource sql varMap $> Nothing
-
   pure $ do
     mjobj <- lmap Exn.message ejobj
     info <-
