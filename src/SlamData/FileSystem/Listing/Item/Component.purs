@@ -192,8 +192,8 @@ itemView state@{ item } selected presentActions | otherwise =
     <> (if itemIsHidden item && presentHiddenItem state then [ Rc.itemHidden ] else [ ])
 
   label :: String
-  label | selected = "Select " ++ itemName state
-  label | otherwise  = "Deselect " ++ itemName state
+  label | selected  = "Deselect " ++ itemName state
+  label | otherwise = "Select " ++ itemName state
 
 iconClasses :: forall r i. Item -> P.IProp (class :: P.I | r) i
 iconClasses item = P.classes
