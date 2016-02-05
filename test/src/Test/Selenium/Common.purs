@@ -120,7 +120,6 @@ checkElements m = do
   where
   traverseFn :: Tuple String String -> Check Unit
   traverseFn (Tuple key selector) = do
-    driver <- getDriver
     byCss selector >>= findElement >>= checkMsg key
 
   checkMsg :: String -> Maybe Element -> Check Unit
@@ -129,7 +128,6 @@ checkElements m = do
 
 loaded :: Check Unit -> Check Unit
 loaded elCheck = do
-  driver <- getDriver
   config <- getConfig
   wait checkEls config.selenium.waitTime
   where
