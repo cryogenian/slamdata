@@ -236,7 +236,7 @@ findByXPathAndValue xPath value =
 
 findFirstSelectedOption :: String -> Check (Maybe Element)
 findFirstSelectedOption selectXPath =
-  (traverse findOptionByValue) =<< getSelectValue
+  traverse findOptionByValue =<< getSelectValue
   where
   getValue = flip getAttribute "selectedIndex"
   getSelectValue = getValue =<< findByXPath selectXPath

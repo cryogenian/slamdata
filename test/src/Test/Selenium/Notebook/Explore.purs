@@ -39,7 +39,7 @@ import Test.Selenium.Log (successMsg, errorMsg)
 import Test.Selenium.ActionSequence (selectAll, sendDelete, sendEnter)
 import Test.Selenium.Expect (expect, toEq)
 import Test.Selenium.File hiding (test)
-import Test.Selenium.Notebook.Finders (loseInsertQueryAfterThis, loseInsertSearchAfterThis, loseInsertVisualizeAfterThis, loseInsertDownloadAfterThis, loseEmbedCellOutput, loseEmbedCellOutputTitle, loseEmbedCellOutputSnippet, findSelectFileInputWithValue, findInitialFileListInOrder, loseInitialFileList, findIndexedExploreCellTitle, findAllExploreCellTitles, loseCellTitles, loseExploreCellTitles, findHideQueryCellOptions, loseExploreInput, findExploreInput, findNoFileSelectedMessage, findExploreErrorMessage, findFileDoesNotExistMessage)
+import Test.Selenium.Notebook.Finders (loseInsertQueryAfterThis, loseInsertSearchAfterThis, loseInsertVisualizeAfterThis, loseInsertDownloadAfterThis, loseEmbedCellOutput, loseEmbedCellOutputTitle, loseEmbedCellOutputSnippet, findInitialFileListInOrder, loseInitialFileList, findIndexedExploreCellTitle, findAllExploreCellTitles, loseCellTitles, loseExploreCellTitles, findHideQueryCellOptions, loseExploreInput, findExploreInput, findNoFileSelectedMessage, findExploreErrorMessage, findFileDoesNotExistMessage)
 import Test.Selenium.Notebook.Interactions (embedCellOutput, selectFileFromInitialFileList, showFileList, hideFileList, insertExploreCellUsingNextActionMenu, showExploreCellOptions, hideExploreCellOptions, insertRandomNumberOfExploreCells, deleteAllCells, deleteAnyCells, reopenCurrentNotebook, createNotebookInTestFolder, deleteFileInTestFolder, playExplore, showExploreMessages, provideExploreFile)
 import Test.Selenium.Notebook.Data (fileFromInitialFileList)
 import Test.Selenium.Notebook.Expectations (expectExploreFinishedMessage)
@@ -148,17 +148,17 @@ test = do
   --  findFileDoesNotExistMessage "/test-mount/asd90u2n"
   --  successMsg "Ok, was presented with error message after exploring non-existant file"
 
-  exploreScenario "Explore a file" ["Test pending"] do
-    insertExploreCellUsingNextActionMenu
-    provideExploreFile "/test-mount/testDb/smallZips"
-    playExplore
-    expectExploreFinishedMessage
-    findByXPath $ anyWithExactText "smallZips :="
-    findByXPath $ nodeWithExactText "thead/tr/th" "city"
-    findByXPath $ nodeWithExactText "thead/tr/th" "loc"
-    findByXPath $ nodeWithExactText "thead/tr/th" "pop"
-    findByXPath $ nodeWithExactText "thead/tr/th" "state"
-    errorMsg "Test pending"
+  --exploreScenario "Explore a file" ["Test pending"] do
+  --  insertExploreCellUsingNextActionMenu
+  --  provideExploreFile "/test-mount/testDb/smallZips"
+  --  playExplore
+  --  expectExploreFinishedMessage
+  --  findByXPath $ anyWithExactText "smallZips :="
+  --  findByXPath $ nodeWithExactText "thead/tr/th" "city"
+  --  findByXPath $ nodeWithExactText "thead/tr/th" "loc"
+  --  findByXPath $ nodeWithExactText "thead/tr/th" "pop"
+  --  findByXPath $ nodeWithExactText "thead/tr/th" "state"
+  --  errorMsg "Test pending"
 
   --sectionMsg "check output"
   --sectionMsg "check page count"

@@ -21,7 +21,7 @@ import Data.Traversable (traverse)
 import Control.Bind ((<=<))
 import Prelude
 import Selenium.Monad (loseElement, findElements, findExact, byXPath, tryRepeatedlyTo, getText)
-import Test.Selenium.Finders (findInputWithPlaceholderAndValue, findByXPathAndProperty, findByXPath, findFirstByXPath, findAllByXPath, findAnyByXPath, loseByXPath)
+import Test.Selenium.Finders (findByXPathAndProperty, findByXPath, findFirstByXPath, findAllByXPath, findAnyByXPath, loseByXPath)
 import Selenium.Types (Element())
 import Test.Selenium.XPaths as XPaths
 import Test.XPath as XPath
@@ -188,8 +188,8 @@ findUntitledNotebookNameInput :: Check Element
 findUntitledNotebookNameInput =
   findByXPathAndProperty (XPath.anywhere "input") "value" "Untitled Notebook"
 
-findSelectFileInputWithValue :: String -> Check Element
-findSelectFileInputWithValue = findInputWithPlaceholderAndValue "Select a file"
+--findSelectFileInputWithValue :: String -> Check Element
+--findSelectFileInputWithValue = findInputWithPlaceholderAndValue "Select a file"
 
 findMdField :: Check Element
 findMdField = findByXPath $ XPath.anywhere xPath
