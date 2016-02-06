@@ -70,7 +70,7 @@ home = do
 findOpenItem :: String -> Check Element
 findOpenItem name = tryRepeatedlyTo $ findExact =<< byXPath xPath
   where
-  xPath = "//*[text()='" ++ name ++ "']"
+  xPath = "//a[text()='" ++ name ++ "']"
 
 loseItem :: String -> Check Unit
 loseItem name = tryRepeatedlyTo $ loseElement =<< byXPath xPath
@@ -521,7 +521,7 @@ shareFile = do
     itemGetShareIcon :: Element -> Check Element
     itemGetShareIcon item = do
       config <- getConfig
-      byAriaLabel config.share.markShare >>= childExact item
+      tryRepeatedlyTo $ byAriaLabel config.share.markShare >>= childExact item
 
 searchForUploadedFile :: Check Unit
 searchForUploadedFile = do
@@ -613,14 +613,10 @@ createFolder :: Check Unit
 createFolder = do
   sectionMsg "NEW FOLDER CHECK"
   goDown
-  config <- getConfig
-
-  newFolderButton <- getNewFolderButton
-  sequence $ leftClick newFolderButton
+  loseItem SDCfg.newFolderName
+  click' =<< getNewFolderButton
   click' =<< findOpenItem SDCfg.newFolderName
-  fileComponentLoaded
-
-  getCurrentUrl >>= getHashFromURL >>= checkHash
+  tryRepeatedlyTo $ getCurrentUrl >>= getHashFromURL >>= checkHash
 
   where
 
@@ -629,9 +625,6 @@ createFolder = do
     config <- getConfig
     tryToFind $ byAriaLabel config.toolbar.newFolder
 
-  getNewFolder :: Check Element
-  getNewFolder = findItem SDCfg.newFolderName
-
   checkHash :: Routes -> Check Unit
   checkHash (Salted sort search salt) = do
     config <- getConfig
@@ -639,7 +632,7 @@ createFolder = do
     let actualPath = searchPath search
     if actualPath == (Just expectedPath)
       then successMsg "ok, hash correct"
-      else errorMsg $
+      else throwError $ error $
         "hash incorrect in created folder; expected '"
          <> expectedPath
          <> "', but got '"
@@ -776,15 +769,12 @@ downloadResource = do
   successMsg "Ok, csv is correct"
   rmDownloaded
   tryRepeatedlyTo do
-    rowDInput <- getRowDelimiterInput
-    colDInput <- getColDelimiterInput
-    sequence do
-      leftClick rowDInput
-      sendBackspaces 10
-      keys "*"
-      leftClick colDInput
-      sendBackspaces 10
-      keys ";"
+    click' =<< getRowDelimiterInput
+    sequence $ sendBackspaces 10
+    sequence $ keys "*"
+    click' =<< getColDelimiterInput
+    sequence $ sendBackspaces 10
+    sequence $ keys ";"
     proceedDownload
   semicolonContent <- readDownloaded
   checkCSV "*" ";" semicolonContent
