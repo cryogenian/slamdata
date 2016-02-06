@@ -3,7 +3,7 @@ module Test.Selenium.Notebook.Markdown.Finders where
 import Prelude
 
 import Test.Selenium.Monad (Check(), byAriaLabel)
-import Test.Selenium.Finders (findByXPath, findAllByXPath, findAnyByXPath, findFollowingTableColumnCellsByIndex, findFollowingTableColumnCellsByHeading)
+import Test.Selenium.Finders (findByXPath, findAllByXPath, findAnyByXPath)
 import Data.List (List(), length)
 import Selenium.Monad (byXPath, tryRepeatedlyTo, getText, findElements)
 import Selenium.Combinators (tryToFind)
@@ -37,9 +37,9 @@ findMdQueryField = findByXPath $ XPath.anywhere xPath
   where
   xPath = XPaths.mdQueryCellTitleXPath `XPath.following` XPaths.aceEditorXPath
 
-findMdQueryColumnCellsByHeading :: String -> Check (List Element)
-findMdQueryColumnCellsByHeading = findFollowingTableColumnCellsByHeading XPaths.mdQueryCellTitleXPath
-
-findMdQueryColumnCellsTextByHeading :: String -> Check (List String)
-findMdQueryColumnCellsTextByHeading s = findMdQueryColumnCellsByHeading s >>= T.traverse getText
+--findMdQueryColumnCellsByHeading :: String -> Check (List Element)
+--findMdQueryColumnCellsByHeading = findFollowingTableColumnCellsByHeading XPaths.mdQueryCellTitleXPath
+--
+--findMdQueryColumnCellsTextByHeading :: String -> Check (List String)
+--findMdQueryColumnCellsTextByHeading s = findMdQueryColumnCellsByHeading s >>= T.traverse getText
 

@@ -5,7 +5,7 @@ import Prelude
 import Control.Apply ((*>))
 import Test.Selenium.Monad (Check(), getConfig, getModifierKey)
 import Test.Selenium.ActionSequence (selectAll, keys)
-import Test.Selenium.Interactions (changeFieldValue, uncheckBox, checkBox, pushRadioButton, selectFromDropdown)
+--import Test.Selenium.Interactions (changeFieldValue, uncheckBox, checkBox, pushRadioButton, selectFromDropdown)
 import Test.Selenium.Notebook.Interactions (provideMd, provideMdQuery)
 import Test.Selenium.Notebook.Markdown.Finders (findMdField, findMdQueryField, findMdPlayButton, findMdQueryPlayButton, findCreateMdQueryCellButton)
 import Selenium.Monad (sequence)
@@ -49,13 +49,13 @@ provideMdQueryWhichFiltersUsingFormValues = F.traverse_ provideMdQuery
   , "AND country = :country"
   ]
 
-changeAllFieldsInMdFormWithEvaluatedContent :: Check Unit
-changeAllFieldsInMdFormWithEvaluatedContent = do
-  changeFieldValue "discipline" "Luge"
-  changeFieldValue "year" "1950"
-  uncheckBox "W"
-  checkBox "X"
-  checkBox "M"
-  pushRadioButton "Gold"
-  selectFromDropdown "country" "GDR"
+--changeAllFieldsInMdFormWithEvaluatedContent :: Check Unit
+--changeAllFieldsInMdFormWithEvaluatedContent = do
+--  changeFieldValue "discipline" "Luge"
+--  changeFieldValue "year" "1950"
+--  uncheckBox "W"
+--  checkBox "X"
+--  checkBox "M"
+--  pushRadioButton "Gold"
+--  selectFromDropdown "country" "GDR"
 
