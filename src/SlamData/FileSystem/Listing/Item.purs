@@ -39,11 +39,13 @@ import Utils.Path (encodeURIPath)
 data Item
   = Item Resource
   | SelectedItem Resource
+  | ActionsPresentedItem Resource
   | PhantomItem Resource
 
 itemResource :: Item -> Resource
 itemResource (Item r) = r
 itemResource (SelectedItem r) = r
+itemResource (ActionsPresentedItem r) = r
 itemResource (PhantomItem r) = r
 
 itemURL :: Sort -> Salt -> AccessType -> Item -> String
@@ -76,6 +78,7 @@ sortItem isSearching sort a b =
 instance eqItem :: Eq Item where
   eq (Item r) (Item r') = r == r'
   eq (SelectedItem r) (SelectedItem r') = r == r'
+  eq (ActionsPresentedItem r) (ActionsPresentedItem r') = r == r'
   eq (PhantomItem r) (PhantomItem r') = r == r'
   eq _ _ = false
 
@@ -86,4 +89,7 @@ instance ordItem :: Ord Item where
   compare (PhantomItem r) (PhantomItem r') = compare r r'
   compare (PhantomItem _) _ = LT
   compare _ (PhantomItem _) = GT
+  compare (ActionsPresentedItem r) (ActionsPresentedItem r') = compare r r'
+  compare _ (ActionsPresentedItem _) = EQ
+  compare (ActionsPresentedItem _) _ = EQ
   compare (Item r) (Item r') = compare r r'

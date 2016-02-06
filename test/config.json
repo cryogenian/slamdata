@@ -53,7 +53,7 @@
         "home": "Home"
     },
     "sort": {
-        "main": ".list-group-item:not(.hidden) .item-content span",
+        "main": ".list-group-item:not(.hidden) .item-content a",
         "button": ".toolbar-sort a"
     },
     "upload": {

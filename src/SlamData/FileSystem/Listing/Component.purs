@@ -20,58 +20,59 @@ import Prelude
 
 import Data.Array (zipWith, range, length, cons, sortBy, filter, nub)
 import Data.Foldable (for_)
+import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct())
 import Data.Generic (Generic)
-import Data.Lens ((.~), (%~), (^.), (<>~), lens, LensP())
+import Data.Lens ((.~), (%~), (<>~), lens, LensP())
 import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
 
-import Halogen
+import Halogen hiding (HTML())
+import Halogen.Component.Utils (forceRerender')
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.FileSystem.Effects (Slam())
-import SlamData.FileSystem.Listing.Item as Item
+import SlamData.FileSystem.Listing.Item (Item())
 import SlamData.FileSystem.Listing.Item.Component as Item
 import SlamData.Render.CSS as Rc
 
-type StateRec =
-  { items :: Array Item.Item
+type State =
+  { items :: Array Item
   , isSearching :: Boolean
   , isHidden :: Boolean
   }
-newtype State = State StateRec
 
 initialState :: State
 initialState =
-  State { items: [ ]
-        , isSearching: false
-        , isHidden: true
-        }
+  { items: [ ]
+  , isSearching: false
+  , isHidden: true
+  }
 
-_State :: LensP State StateRec
-_State = lens (\(State r) -> r) (const State)
-
-_items :: LensP State (Array Item.Item)
-_items = _State <<< lens _.items _{items = _}
+_items :: LensP State (Array Item)
+_items = lens _.items _{items = _}
 
 _isSearching :: LensP State Boolean
-_isSearching = _State <<< lens _.isSearching _{isSearching = _}
+_isSearching = lens _.isSearching _{isSearching = _}
 
 _isHidden :: LensP State Boolean
-_isHidden = _State <<< lens _.isHidden _{isHidden = _}
+_isHidden = lens _.isHidden _{isHidden = _}
+
+zipItems :: forall a. (Int -> Item -> a) -> Array Item -> Array a
+zipItems f items = zipWith f (0 `range` length items) items
 
 data Query a
   = Reset a
-  | Add Item.Item a
-  | Adds (Array Item.Item) a
-  | SortBy (Item.Item -> Item.Item -> Ordering) a
+  | Add Item a
+  | Adds (Array Item) a
+  | SortBy (Item -> Item -> Ordering) a
   | SetIsSearching Boolean a
-  | Filter (Item.Item -> Boolean) a
+  | Filter (Item -> Boolean) a
   | SetIsHidden Boolean a
 
-data ItemSlot = ItemSlot Int Item.Item
+data ItemSlot = ItemSlot Int Item
 
 instance eqItemSlot :: Eq ItemSlot where
   eq (ItemSlot ix it) (ItemSlot ix' it') =
@@ -79,74 +80,63 @@ instance eqItemSlot :: Eq ItemSlot where
 
 instance ordItemSlot :: Ord ItemSlot where
   compare (ItemSlot ix it) (ItemSlot ix' it') =
-    case compare ix ix' of
-      LT -> LT
-      GT -> GT
-      EQ -> compare it it'
+    compare ix ix' <> compare it it'
 
-type StateP =
-  InstalledState State Item.State Query Item.Query Slam ItemSlot
+type StateP = InstalledState State Item.State Query Item.Query Slam ItemSlot
 type QueryP = Coproduct Query (ChildF ItemSlot Item.Query)
 
+type HTML = ParentHTML Item.State Query Item.Query Slam ItemSlot
+type DSL = ParentDSL State Item.State Query Item.Query Slam ItemSlot
 
 comp :: Component StateP QueryP Slam
 comp = parentComponent' render eval peek
 
-render :: RenderParent State Item.State Query Item.Query Slam ItemSlot
-render state@(State{items = items}) =
-  H.div [ P.classes [ B.listGroup, Rc.results ] ]
-  $ zipWith (install state) (0 `range` length items) items
+render :: State -> HTML
+render state@{ items } =
+  H.div
+    [ P.classes [ B.listGroup, Rc.results ] ]
+    $ zipItems (install state) items
 
-eval :: EvalParent Query State Item.State Query Item.Query Slam ItemSlot
-eval (Reset next) = do
-  modify (_items .~ mempty)
-  pure next
-eval (Add item next) = do
-  modify (_items %~ nub <<< cons item)
-  pure next
+eval :: Natural Query DSL
+eval (Reset next) = modify (_items .~ mempty) $> next
+eval (Add item next) = modify (_items %~ nub <<< cons item) $> next
 eval (Adds items next) = do
   modify (_items <>~ items)
   modify (_items %~ nub)
   pure next
-eval (SortBy sortFn next) = do
-  modify (_items %~ sortBy sortFn)
-  pure next
+eval (SortBy sortFn next) = modify (_items %~ sortBy sortFn) $> next
 eval (SetIsSearching bool next) = do
   modify (_isSearching .~ bool)
-  items <- gets (^. _items)
-  for_ (zipWith ItemSlot (0 `range` length items) items) \slot ->
+  items <- gets _.items
+  for_ (zipItems ItemSlot items) \slot ->
     query slot $ action $ Item.SetIsSearching bool
   pure next
-eval (Filter filterFn next) = do
-  modify (_items %~ filter filterFn)
-  pure next
+eval (Filter filterFn next) = modify (_items %~ filter filterFn) $> next
 eval (SetIsHidden bool next) = do
   modify (_isHidden .~ bool)
-  items <- gets (^. _items)
-  for_ (zipWith ItemSlot (0 `range` length items) items) \slot ->
+  items <- gets _.items
+  for_ (zipItems ItemSlot items) \slot ->
     query slot $ action $ Item.SetIsHidden bool
-  liftH $ pure unit
+  forceRerender'
   pure next
 
-peek :: Peek (ChildF ItemSlot Item.Query)
-        State Item.State Query Item.Query Slam ItemSlot
+peek :: forall x. ChildF ItemSlot Item.Query x -> DSL Unit
 peek (ChildF p (Item.Toggle _)) = void do
-  items <- gets (^. _items)
-  for_ (zipWith ItemSlot (0 `range` length items) items) \slot ->
+  items <- gets _.items
+  for_ (zipItems ItemSlot items) \slot ->
     if slot == p
     then pure $ pure unit
-    else query slot $ action $ Item.Deselect
+    else query slot $ action Item.Deselect
 peek _ = pure unit
 
-
-install ::
-  State -> Int -> Item.Item -> ParentHTML Item.State Query Item.Query Slam ItemSlot
-install (State s) ix item =
-  H.slot (ItemSlot ix item)
-  \_ -> { component: Item.comp
-        , initialState: Item.State { isSearching: s.isSearching
-                                   , isHidden: s.isHidden
-                                   , item: item
-                                   , mbURI: Nothing
-                                   }
+install :: State -> Int -> Item -> HTML
+install { isSearching, isHidden } ix item =
+  H.slot (ItemSlot ix item) \_ ->
+    { component: Item.comp
+    , initialState:
+        { isSearching: isSearching
+        , isHidden: isHidden
+        , item: item
+        , mbURI: Nothing
         }
+    }

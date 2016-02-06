@@ -18,6 +18,7 @@ module Test.Selenium.File where
 
 import Prelude
 import Control.Bind ((=<<))
+import Control.Alt ((<|>))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Trans (lift)
@@ -30,12 +31,13 @@ import Data.Maybe.Unsafe (fromJust)
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl, elem)
 import Data.Traversable (traverse)
-import Data.List (List(), reverse, filter, null, fromList, (!!))
+import Data.List (List(), length, reverse, filter, null, fromList, (!!))
 import Selenium.Types
 import Selenium.MouseButton
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Monad
 import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust, tryToFind)
+import Selenium (showLocator)
 import Node.FS.Aff
 import Node.Encoding (Encoding(UTF8))
 
@@ -57,46 +59,51 @@ import Test.Selenium.Log
 
 foreign import data MODULE :: !
 
+click' :: Element -> Check Unit
+click' = sequence <<< leftClick
+
 home :: Check Unit
 home = do
   getConfig >>= get <<< _.slamdataUrl
   fileComponentLoaded
 
-findItem :: String -> Check (Maybe Element)
-findItem name = do
-  config <- getConfig
-  els <- byCss config.item.main >>= findElements
-  tpls <- traverse traverseFn els
-  pure $ foldl foldFn Nothing tpls
+findOpenItem :: String -> Check Element
+findOpenItem name = tryRepeatedlyTo $ findExact =<< byXPath xPath
   where
-  traverseFn el = do
-    eHtml <- attempt $ getInnerHtml el
-    pure $ Tuple el $ case eHtml of
-      Left _ -> ""
-      Right html -> html
-  foldFn (Just el) _ = Just el
-  foldFn Nothing (Tuple el html) =
-    if R.test (R.regex name R.noFlags) html
-    then Just el
-    else Nothing
+  xPath = "//a[text()='" ++ name ++ "']"
 
-findTestDb :: Check (Maybe Element)
+loseItem :: String -> Check Unit
+loseItem name = tryRepeatedlyTo $ loseElement =<< byXPath xPath
+  where
+  xPath = "//*[text()='" ++ name ++ "']"
+
+findItem :: String -> Check Element
+findItem name =
+  tryRepeatedlyTo $ findExact =<< byXPath (selectXPath `xPathOr` deselectXPath)
+  where
+  selectXPath = "//*[@aria-label='Select " ++ name ++ "']"
+  deselectXPath = "//*[@aria-label='Deselect " ++ name ++ "']"
+  xPathOr x y = x ++ "|" ++ y
+
+selectFile :: String -> Check Unit
+selectFile filename = click' =<< findSingle =<< byCss (selectFileCss filename)
+  where
+  selectFileCss filename = "*[aria-label='Select " ++ filename ++ "']"
+
+findTestDb :: Check Element
 findTestDb = do
   config <- getConfig
   findItem config.database.name
 
-getTestDb :: Check Element
-getTestDb = findTestDb >>= maybe (errorMsg "There is no test database") pure
+findOpenTestDb :: Check Element
+findOpenTestDb = do
+  config <- getConfig
+  findOpenItem config.database.name
 
-findUploadedItem :: Check (Maybe Element)
+findUploadedItem :: Check Element
 findUploadedItem = do
   config <- getConfig
   findItem config.move.name
-
-getUploadedItem :: Check Element
-getUploadedItem =
-  findUploadedItem
-    >>= maybe (errorMsg "File has not been uploaded") pure
 
 type MountConfigR =
   { host :: String
@@ -213,14 +220,13 @@ goodMountDatabase = do
     >>= mountDatabaseWithMountConfig
 
   config <- getConfig
-  wait mountShown config.selenium.waitTime
-  waitTime 1000
+  tryRepeatedlyTo expectMountShown
 
   where
-    mountShown :: Check Boolean
-    mountShown = checker $ do
-      config <- getConfig
-      isJust <$> findItem config.mount.name
+  expectMountShown :: Check Unit
+  expectMountShown = do
+    config <- getConfig
+    void $ findItem config.mount.name
 
 badMountDatabase :: Check Unit
 badMountDatabase = do
@@ -249,13 +255,9 @@ unmountDatabase = do
   sectionMsg "UNMOUNT TEST DATABASE"
   home
   config <- getConfig
-  mountItem <-
-    findItem config.mount.name
-      >>= maybe (errorMsg "No mount item") pure
-
-  sequence $ leftClick mountItem
-  itemGetDeleteIcon mountItem >>= itemClickToolbarIcon mountItem
-  wait (checker $ isNothing <$> findItem config.mount.name) config.selenium.waitTime
+  click' =<< findItem config.mount.name
+  click' =<< itemGetDeleteIcon =<< findItem config.mount.name
+  loseItem config.mount.name
   successMsg "successfully unmounted"
 
 
@@ -263,7 +265,7 @@ checkMountedDatabase :: Check Unit
 checkMountedDatabase = do
   sectionMsg "CHECK TEST DATABASE IS MOUNTED"
   enterMount
-  _ <- getTestDb
+  void $ findTestDb
   successMsg "test database found"
 
 checkConfigureMount :: Check Unit
@@ -327,8 +329,8 @@ checkItemToolbar = do
     style <- getCssValue groupItem "background-color"
     sequence $ leftClick groupItem
     newStyle <- getCssValue groupItem "background-color"
-    assertBoolean "background-color should have been changed after click" $ newStyle /= style
-    successMsg "background-color has been changed after click"
+    assertBoolean "background-color should have been changed after click'" $ newStyle /= style
+    successMsg "background-color has been changed after click'"
 
 checkURL :: Check Unit
 checkURL = do
@@ -352,8 +354,7 @@ enterMount = do
   home
   url <- getCurrentUrl
   config <- getConfig
-  mountItem <- findItem config.mount.name >>= maybe (errorMsg "No mount item") pure
-  sequence $ doubleClick leftButton mountItem
+  click' =<< findOpenItem config.mount.name
   wait (awaitUrlChanged url) config.selenium.waitTime
   fileComponentLoaded
 
@@ -363,19 +364,17 @@ goDown = do
 
   enterMount
   url <- getCurrentUrl
-  testDb <- getTestDb
   oldHash <- either (const $ errorMsg "incorrect initial hash in goDown") pure $ matchHash routing (dropHash url)
-  checkOldHash url testDb oldHash
+  checkOldHash url oldHash
 
   where
-
-  checkOldHash url el old@(Salted oldSort oldSearch oldSalt) = do
-    sequence $ doubleClick leftButton el
+  checkOldHash url old@(Salted oldSort oldSearch oldSalt) = do
+    click' =<< findOpenTestDb
     config <- getConfig
     wait (awaitUrlChanged url) config.selenium.waitTime
     fileComponentLoaded
     getCurrentUrl >>= getHashFromURL >>= checkHashes old
-  checkOldHash _ _ _ = errorMsg "weird initial hash in goDown"
+  checkOldHash _ _ = errorMsg "weird initial hash in goDown"
 
   checkHashes (Salted oldSort oldSearch oldSalt) (Salted sort search salt) = do
     config <- getConfig
@@ -406,7 +405,7 @@ checkBreadcrumbs = do
   sequence $ leftClick homeBreadcrumb
   fileComponentLoaded
   checkURL
-  successMsg "Ok, went home after click on root breadcrumb"
+  successMsg "Ok, went home after click' on root breadcrumb"
 
   where
   getHomeBreadcrumb :: Check Element
@@ -446,7 +445,11 @@ checkBreadcrumbs = do
 getItemTexts :: Check (List String)
 getItemTexts = do
     config <- getConfig
-    els <- byCss config.sort.main >>= findElements
+    locator <- byCss config.sort.main
+    els <- findElements locator
+    if length els == 0
+       then throwError $ error $ "No elements found using locator " ++ showLocator locator
+       else pure unit
     (extractText <$>) <$> traverse getInnerHtml els
   where
   extractText =
@@ -463,7 +466,7 @@ sorting = do
   checkHash texts (Salted sort search salt) = do
     config <- getConfig
     sortButton <- getElementByCss config.sort.button "there is no sort button"
-    sequence $ click leftButton sortButton
+    click' sortButton
     fileComponentLoaded
     nTexts <- getItemTexts
     if reverse nTexts == texts
@@ -476,7 +479,6 @@ fileUpload = do
   sectionMsg "FILE UPLOAD"
   config <- getConfig
   successMsg "went down"
-  uploadInput <- getElementByCss config.upload.input "There is no upload input"
   oldItems <- S.fromList <$> getItemTexts
   script """
   var els = document.getElementsByTagName('i');
@@ -486,24 +488,26 @@ fileUpload = do
     }
   }
   """
+  uploadInput <- getElementByCss config.upload.input "There is no upload input"
   sendKeysEl config.upload.filePath uploadInput
   wait awaitInNotebook config.selenium.waitTime
   successMsg "Ok, explore notebook created"
   navigateBack
   fileComponentLoaded
 
-  items <- S.fromList <$> getItemTexts
-  if S.isEmpty $ S.difference items oldItems
-    then errorMsg "items has not changed after upload"
-    else successMsg "new items added after upload"
+  tryRepeatedlyTo do
+    items <- S.fromList <$> getItemTexts
+    if S.isEmpty $ S.difference items oldItems
+      then errorMsg "items has not changed after upload"
+      else successMsg "new items added after upload"
 
 shareFile :: Check Unit
 shareFile = do
   sectionMsg "SHARE FILE"
   goDown
   config <- getConfig
-  uploadedItem <- getUploadedItem
-  itemGetShareIcon uploadedItem >>= itemClickToolbarIcon uploadedItem
+  selectFile config.move.name
+  click' =<< itemGetShareIcon =<< findUploadedItem
   waitModalShown
   successMsg "Share modal dialog appeared"
   urlFieldLocator <- byCss config.share.urlField
@@ -517,7 +521,7 @@ shareFile = do
     itemGetShareIcon :: Element -> Check Element
     itemGetShareIcon item = do
       config <- getConfig
-      byAriaLabel config.share.markShare >>= childExact item
+      tryRepeatedlyTo $ byAriaLabel config.share.markShare >>= childExact item
 
 searchForUploadedFile :: Check Unit
 searchForUploadedFile = do
@@ -568,9 +572,9 @@ awaitInNotebook = checker $ do
 itemGetDeleteIcon :: Element -> Check Element
 itemGetDeleteIcon item = do
   config <- getConfig
-  byAriaLabel config.move.markDelete >>= childExact item
+  tryRepeatedlyTo $ byAriaLabel config.move.markDelete >>= childExact item
 
--- | Activate the item's toolbar and click a button/icon in it
+-- | Activate the item's toolbar and click' a button/icon in it
 itemClickToolbarIcon :: Element -> Element -> Check Unit
 itemClickToolbarIcon item icon = do
   config <- getConfig
@@ -582,54 +586,37 @@ trashCheck :: Check Unit
 trashCheck = do
   sectionMsg "TRASH CHECK"
   goDown
-  assertBoolean "Trash must not be shown" <<< not =<< isTrashVisible
+  expectTrashFileToBeHidden
   successMsg "Trash is hidden"
-
-  showHideButton <- getShowHideButton
-  sequence $ leftClick showHideButton
-
-  config <- getConfig
-  wait (checker isTrashVisible) config.selenium.waitTime
-
-  trashItem <- fromJust <$> findItem trashKey
-  sequence $ doubleClick leftButton trashItem
+  click' =<< getShowHideButton
+  expectTrashFileToBePresented
+  click' =<< findOpenItem SDCfg.trashFolder
   fileComponentLoaded
   deletedItem <- findDeletedItem
   successMsg "Deleted item found"
 
   where
-  isTrashVisible :: Check Boolean
-  isTrashVisible =
-    findItem trashKey
-      >>= maybe (pure false) isDisplayed
-
-  trashKey :: String
-  trashKey = R.replace (R.regex "\\." R.noFlags{global=true}) "\\." SDCfg.trashFolder
+  expectTrashFileToBeHidden = loseItem SDCfg.trashFolder
+  expectTrashFileToBePresented = void $ findItem SDCfg.trashFolder
 
   getShowHideButton :: Check Element
   getShowHideButton = do
     config <- getConfig
-    tryToFind $ byAriaLabel config.toolbar.showHide
+    tryRepeatedlyTo $ findExact =<< byAriaLabel config.toolbar.showHide
 
   findDeletedItem :: Check Element
   findDeletedItem = do
     config <- getConfig
     findItem config.move.other
-      >>= maybe (errorMsg "Can't find deleted item") pure
 
 createFolder :: Check Unit
 createFolder = do
   sectionMsg "NEW FOLDER CHECK"
   goDown
-  config <- getConfig
-
-  newFolderButton <- getNewFolderButton
-  sequence $ leftClick newFolderButton
-  folder <- waitUntilJust (findItem SDCfg.newFolderName) config.selenium.waitTime
-  sequence $ doubleClick leftButton folder
-  fileComponentLoaded
-
-  getCurrentUrl >>= getHashFromURL >>= checkHash
+  loseItem SDCfg.newFolderName
+  click' =<< getNewFolderButton
+  click' =<< findOpenItem SDCfg.newFolderName
+  tryRepeatedlyTo $ getCurrentUrl >>= getHashFromURL >>= checkHash
 
   where
 
@@ -638,11 +625,6 @@ createFolder = do
     config <- getConfig
     tryToFind $ byAriaLabel config.toolbar.newFolder
 
-  getNewFolder :: Check Element
-  getNewFolder =
-    findItem SDCfg.newFolderName
-      >>= maybe (errorMsg "new folder has not been created") pure
-
   checkHash :: Routes -> Check Unit
   checkHash (Salted sort search salt) = do
     config <- getConfig
@@ -650,7 +632,7 @@ createFolder = do
     let actualPath = searchPath search
     if actualPath == (Just expectedPath)
       then successMsg "ok, hash correct"
-      else errorMsg $
+      else throwError $ error $
         "hash incorrect in created folder; expected '"
          <> expectedPath
          <> "', but got '"
@@ -686,9 +668,7 @@ createNotebook = do
 
   where
   getNewNotebook :: Check Element
-  getNewNotebook =
-    findItem SDCfg.newNotebookName
-      >>= maybe (errorMsg "No notebook in parent directory") pure
+  getNewNotebook = findItem SDCfg.newNotebookName
 
 
 
@@ -704,9 +684,8 @@ moveDelete msg setUp src tgt = do
   sectionMsg $ "check move/delete " <> msg
   setUp
   config <- getConfig
-  item <- findItem src
-          >>= maybe (errorMsg $ "there is no source " <> msg) pure
-  itemGetMoveIcon item >>= itemClickToolbarIcon item
+  selectFile src
+  click' =<< (itemGetMoveIcon =<< findItem src )
   waitModalShown
   tryRepeatedlyTo
     $ getElementByCss config.move.nameField "no rename field"
@@ -716,17 +695,18 @@ moveDelete msg setUp src tgt = do
     $ getElementByCss config.move.submit "no submit button"
     >>= sequence <<< leftClick
 
-  renamed <- waitUntilJust (findItem tgt) config.selenium.waitTime
+  findItem tgt
   successMsg $ "ok, successfully renamed (" <> msg <> ")"
 
-  itemGetDeleteIcon renamed >>= itemClickToolbarIcon renamed
-  wait (checker $ isNothing <$> findItem tgt) config.selenium.waitTime
+  selectFile tgt
+  click' =<< (itemGetDeleteIcon =<< findItem tgt)
+  tryRepeatedlyTo $ loseItem tgt
   successMsg $ "ok, successfully deleted (" <> msg <> ")"
   where
   itemGetMoveIcon :: Element -> Check Element
   itemGetMoveIcon item = do
     config <- getConfig
-    byAriaLabel config.move.markMove >>= childExact item
+    tryRepeatedlyTo $ byAriaLabel config.move.markMove >>= childExact item
 
   editNameField :: Element -> Check Unit
   editNameField nameField = do
@@ -741,7 +721,6 @@ moveDeleteDatabase :: Check Unit
 moveDeleteDatabase = do
   config <- getConfig
   moveDelete "database" home config.mount.name config.mount.otherName
-  waitTime 1000
 
 moveDeleteFolder :: Check Unit
 moveDeleteFolder = do
@@ -790,15 +769,12 @@ downloadResource = do
   successMsg "Ok, csv is correct"
   rmDownloaded
   tryRepeatedlyTo do
-    rowDInput <- getRowDelimiterInput
-    colDInput <- getColDelimiterInput
-    sequence do
-      leftClick rowDInput
-      sendBackspaces 10
-      keys "*"
-      leftClick colDInput
-      sendBackspaces 10
-      keys ";"
+    click' =<< getRowDelimiterInput
+    sequence $ sendBackspaces 10
+    sequence $ keys "*"
+    click' =<< getColDelimiterInput
+    sequence $ sendBackspaces 10
+    sequence $ keys ";"
     proceedDownload
   semicolonContent <- readDownloaded
   checkCSV "*" ";" semicolonContent
@@ -845,7 +821,6 @@ downloadResource = do
   getDownloadItem = do
     config <- getConfig
     findItem config.download.item
-      >>= maybe (throwError $ error "Error: there is no item to download") pure
   getItemDownloadButton item = do
     config <- getConfig
     tryRepeatedlyTo $ byAriaLabel config.toolbar.download >>= childExact item

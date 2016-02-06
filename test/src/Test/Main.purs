@@ -125,8 +125,8 @@ mongoConnectionString config =
 cleanMkDir :: String -> Aff TestEffects Unit
 cleanMkDir path = do
   let p = resolve [path] ""
-  apathize $ rimraf p
-  apathize $ mkdir p
+  rimraf p
+  mkdir p
 
 main :: Eff TestEffects Unit
 main = do
@@ -184,3 +184,4 @@ main = do
     Ec.log $ red $ message e
     traverse_ (Ec.log <<< red) $ Str.split "\n" $ stack e
     Process.exit 1
+
