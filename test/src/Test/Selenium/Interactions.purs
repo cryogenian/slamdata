@@ -1,79 +1,77 @@
 module Test.Selenium.Interactions where
+  ( click
+  , hover
+  , check
+  , uncheck
+  , pushRadioButton
+  , provideFieldValue
+  , selectFromDropdown
+  ) where
 
 import Prelude
 
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
+import Selenium.ActionSequence as Sequence
 import Selenium.Monad (sequence, clickEl, later, tryRepeatedlyTo, isDisplayed, getInnerHtml)
+import Selenium.MouseButton (leftButton)
 import Selenium.Types (ControlKey(), Element())
 import Test.Selenium.ActionSequence as SlamSequence
-import Selenium.ActionSequence as Sequence
-import Selenium.MouseButton (leftButton)
 import Test.Selenium.Common (waitTime)
+import Test.Selenium.Finders (findByXPath, findAllByXPath)
 import Test.Selenium.Locators (checkableLocator)
-import Test.Selenium.Monad (Check(), getModifierKey)
-import Test.Selenium.Finders (findSingle)
 import Test.Selenium.Log (errorMsg, warnMsg)
+import Test.Selenium.Monad (Check(), getModifierKey)
+import Test.Utils (ifTrue, ifFalse, orIfItFails, passover)
 
---provideCheckboxValue :: String -> Boolean -> Check Unit
---provideCheckboxValue labelText value =
---  tryRepeatedlyTo $ void find <|> (findOpposite >>= toggle)
---  where
---  find' :: Boolean -> Check Element
---  find' checked =
---    findElementIdByLabelText labelText
---      >>= checkableLocator "checkbox" checked
---      >>= findSingle
---  find = find' value
---  findOpposite = find' $ not value
---  toggle :: Element -> Check Unit
---  toggle element = click element
+-- XPath dependent interactions
+check' :: (Maybe String) -> String -> Check Unit
+check' checked xPath = tryRepeatedlyTo $ clickElement =<< findAnyByXPathAndProperty "checked" xPath checked
 
---checkBox :: String -> Check Unit
---checkBox = flip provideCheckboxValue true
---
---uncheckBox :: String -> Check Unit
---uncheckBox = flip provideCheckboxValue false
+check :: String -> Check Unit
+check xPath = check' Nothing
 
---pushRadioButton :: String -> Check Unit
---pushRadioButton labelText = tryRepeatedlyTo $ findByLabelText labelText >>= click
+uncheck :: String -> Check Unit
+uncheck = check' (Just "true")
 
---provideFieldValue :: String -> String -> Check Unit
---provideFieldValue labelText value = tryRepeatedlyTo do
---  field <- findByLabelText labelText
---  click field
---  typeString value
+pushRadioButton :: String -> Check Unit
+pushRadioButton xPath = check' Nothing
 
---selectFromDropdown :: String -> String -> Check Unit
---selectFromDropdown labelText value = tryRepeatedlyTo $ do
---  dropdown <- findByLabelText labelText
---  click dropdown
---  typeString value
---  pressEnter
+provideFieldValue :: String -> String -> Check Unit
+provideFieldValue xPath value =
+  tryRepeatedlyTo $ (click =<< findByXPath xPath) *> selectAll *> typeString value
 
---changeFieldValue :: String -> String -> Check Unit
---changeFieldValue labelText value = tryRepeatedlyTo $ do
---  field <- findByLabelText labelText
---  modifierKey <- getModifierKey
---  click field
---  selectAll modifierKey
---  typeString value
+selectFromDropdown :: String -> String -> Check Unit
+selectFromDropdown xPath text =
+  tryRepeatedlyTo $ click xPath *> typeString text *> pressEnter
 
+click :: String -> Check Unit
+click = tryRepeatedlyTo <<< clickElement <=< findByXPath
+
+clickAll :: String -> Check Unit
+clickAll = tryRepeatedlyTo <<< traverse clickElement <=< findAllByXPath
+
+hover :: String -> Check Unit
+hover = tryRepeatedlyTo <<< clickElement <=< findByXPath
+
+-- Independent interactions
 typeString :: String -> Check Unit
 typeString string = tryRepeatedlyTo $ sequence $ SlamSequence.keys string
 
 pressEnter :: Check Unit
 pressEnter = tryRepeatedlyTo $ sequence $ SlamSequence.sendEnter
 
-selectAll :: ControlKey -> Check Unit
-selectAll modifierKey = tryRepeatedlyTo $ sequence $ SlamSequence.selectAll modifierKey
+selectAll :: Check Unit
+selectAll = tryRepeatedlyTo $ sequence $ (SlamSequence.selectAll =<< getModifierKey)
 
-click :: Element -> Check Unit
-click element = tryRepeatedlyTo do
-  sequence $ Sequence.mouseDown leftButton element
-  sequence $ Sequence.mouseUp leftButton element
+-- Element dependent interactions
+clickElement :: Element -> Check Unit
+clickElement element =
+  tryRepeatedlyTo
+    $ sequence $ Sequence.mouseDown leftButton element
+    *> sequence $ Sequence.mouseUp leftButton element
 
-hover :: Element -> Check Unit
-hover = tryRepeatedlyTo <<< sequence <<< Sequence.hover
+hoverElement :: Element -> Check Unit
+hoverElement = tryRepeatedlyTo <<< sequence <<< Sequence.hover
 
