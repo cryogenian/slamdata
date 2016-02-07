@@ -1,7 +1,5 @@
 module Test.XPath where
 
--- These are simple string based functions rather than parser combinators or typesafe construtors.
-
 import Prelude
 import Data.String (take)
 import Data.Foldable (Foldable, intercalate)
@@ -15,9 +13,11 @@ following x y = x ++ followingString ++ y
 inOrder :: forall m. (Foldable m) => m String -> String
 inOrder = intercalate followingString
 
--- In general usage anywhere is applied before index.
 index :: String -> Int -> String
-index xPath indexInt = "(" ++ xPath ++ ")[" ++ show indexInt ++ "]"
+index xPath = indexString xPath <<< show
+
+indexString :: String -> String -> String
+indexString xPath index = "(" ++ xPath ++ ")[" ++ index ++ "]"
 
 nodeWithExactText :: String -> String -> String
 nodeWithExactText name text = name ++ "[text()='" ++ text ++ "']"
@@ -50,13 +50,29 @@ anyWithAriaLabel :: String -> String
 anyWithAriaLabel = nodeWithAriaLabel any
 
 inputWithExactPlaceholder :: String -> String
-inputWithExactPlaceholder placeholder = "input[@placeholder='" ++ placeholder ++ "']"
+inputWithExactPlaceholder = nodeWithExactAttribute "placeholder" "input"
 
 inputWithPlaceholder :: String -> String
-inputWithPlaceholder placeholder = "input[contains(@placeholder, '" ++ placeholder ++ "')]"
+inputWithPlaceholder = nodeWithAttribute "placeholder" "input"
 
--- In general use only apply this just before using the XPath. This makes XPaths more composable.
--- E.g. findAllByXPath $ anywhere xPath
+withLabel :: String -> String -> String
+withLabel xPath labelXPath = xPath ++ "[@id=(" ++ labelXPath ++ "/@for)]"
+
+tdWithThText :: String -> String -> String
+tdWithThText tableXPath thText = indexString unindexedTdXPath thIndex
+  where
+  thXPath = tableXPath ++ "/thead/tr/th[text()='" ++ thText ++ "']"
+  precedingThXPath = thXPath `precedingSibling` "th"
+  thIndex = "(count(" ++ precedingThXPath ++ ") + 1)"
+  unindexedTdXPath = tableXPath ++ "/tbody/tr/td"
+
+parent :: String -> String
+parent xPath = xPath ++ "/.."
+
+thisOrItsParents :: forall a m. (Alt m) => (String -> m a) -> String -> m a
+thisOrItsParents f =
+  later 0 <<< orIfItFails f (orIfItFails (thisOrItsParents f <=< parent) f)
+
 anywhere :: String -> String
 anywhere xPath = if anywhered then xPath else "//" ++ xPath
   where
