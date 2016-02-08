@@ -80,6 +80,7 @@ data Query a
   | Deselect a
   | Open a
   | Configure a
+  | ConfigureView a
   | Move a
   | Download a
   | Remove a
@@ -139,6 +140,7 @@ eval (Move next) = pure next
 eval (Download next) = pure next
 eval (Remove next) = pure next
 eval (Share next) = pure next
+eval (ConfigureView next) = pure next
 eval (GetItem continue) = continue <$> gets _.item
 eval (SetIsSearching bool next) = modify (_isSearching .~ bool) $> next
 eval (SetIsHidden bool next) = modify (_isHidden .~ bool) $> next
@@ -216,10 +218,15 @@ itemActions presentActions item | otherwise =
     [ P.classes [ B.listInline, B.pullRight ]
     , CSS.style $ marginBottom (px zero)
     ]
-    (conf <> common <> share)
+    (viewConf <> conf <> common <> share)
   where
   r :: Resource
   r = itemResource item
+
+  viewConf :: Array (HTML p Query)
+  viewConf =
+    guard (isViewMount r) $>
+      itemAction ConfigureView "Configure view mount" B.glyphiconWrench
 
   conf :: Array (HTML p Query)
   conf = guard (isDatabase r) $>

@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.FileSystem.Effects where
 
+import Ace.Types (ACE())
 import Control.Monad.Aff (Aff())
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Console (CONSOLE())
@@ -31,23 +32,27 @@ import Network.HTTP.Affjax (AJAX())
 
 type Slam = Aff FileSystemEffects
 
-type FileSystemEffects = ( dom :: DOM
-                         , random :: RANDOM
-                         , avar :: AVAR
-                         , ajax :: AJAX
-                         , ref :: REF
-                         , console :: CONSOLE
-                         , zClipboard :: ZCLIPBOARD
-                         , err :: EXCEPTION
-                         , file :: READ_FILE
-                         , now :: Now
-                         )
+type FileSystemEffects =
+  ( dom :: DOM
+  , random :: RANDOM
+  , avar :: AVAR
+  , ajax :: AJAX
+  , ref :: REF
+  , console :: CONSOLE
+  , zClipboard :: ZCLIPBOARD
+  , err :: EXCEPTION
+  , file :: READ_FILE
+  , now :: Now
+  , ace :: ACE
+  )
 
-type FileSystemRawEffects = ( random :: RANDOM
-                            , ajax :: AJAX
-                            , ref :: REF
-                            , console :: CONSOLE
-                            , zClipboard :: ZCLIPBOARD
-                            , file :: READ_FILE
-                            , now :: Now
-                            )
+type FileSystemRawEffects =
+  ( random :: RANDOM
+  , ajax :: AJAX
+  , ref :: REF
+  , console :: CONSOLE
+  , zClipboard :: ZCLIPBOARD
+  , file :: READ_FILE
+  , now :: Now
+  , ace :: ACE
+  )

@@ -36,7 +36,7 @@ import Data.Array (head, last, mapMaybe, filter)
 import Data.Either (Either(..), either)
 import Data.Foldable (traverse_)
 import Data.Functor.Aff (liftAff)
-import Data.Functor.Coproduct (left, right)
+import Data.Functor.Coproduct (left, right, coproduct)
 import Data.Functor.Eff (liftEff)
 import Data.Inject (prj)
 import Data.Lens ((^.), (.~), preview)
@@ -67,6 +67,7 @@ import SlamData.FileSystem.Component.State
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
+import SlamData.FileSystem.Dialog.SQLMount.Component as SQLMount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Effects (Slam())
 import SlamData.FileSystem.Listing.Component as Items
@@ -159,6 +160,11 @@ eval (MakeMount next) = do
   state <- get
   query' cpDialog DialogSlot $ left $ action
     $ Dialog.Show (Dialog.Mount (state ^. _path))
+  pure next
+eval (MakeSQLView next) = do
+  state <- get
+  query' cpDialog DialogSlot $ left $ action
+    $ Dialog.Show (Dialog.SQLMount (state ^. _path))
   pure next
 eval (MakeFolder next) = do
   state <- get
@@ -260,6 +266,14 @@ dialogChildrenPeek ::
 dialogChildrenPeek p q =
   fromMaybe (pure unit)
   $   (mountPeek <$> prjSlot Dialog.cpMount p <*> prjQuery Dialog.cpMount q)
+  <|> (sqlMountPeek <$> prjSlot Dialog.cpSQLMount p <*> prjQuery Dialog.cpSQLMount q)
+
+sqlMountPeek :: forall a. Dialog.SQLMountSlot -> SQLMount.QueryP a -> Algebra Unit
+sqlMountPeek slot q = coproduct sqlMountPeekExact (const $ pure unit) q
+  where
+  sqlMountPeekExact (SQLMount.Success res _) = do
+    void $ query' cpItems ItemsSlot $ left $ action $ Items.Add $ Item res
+  sqlMountPeekExact _ = pure unit
 
 mountPeek :: forall a. Dialog.MountSlot -> Mount.Query a -> Algebra Unit
 mountPeek slot (Mount.Save _) = do
@@ -300,6 +314,31 @@ itemPeek slot (Item.Configure _) = do
       mbURI <- map join
                $ query' cpItems ItemsSlot $ right $ ChildF slot $ request Item.GetURI
       configure mbURI (itemResource item)
+
+itemPeek slot (Item.ConfigureView _) = do
+  mbit <- query' cpItems ItemsSlot $ right $ ChildF slot $ request Item.GetItem
+  case mbit of
+    Nothing -> pure unit
+    Just (PhantomItem _) -> pure unit
+    Just item -> do
+      (State state) <- get
+      viewInfo <- liftAff $ API.viewInfo $ itemResource item
+      query' cpDialog DialogSlot $ left $ action
+        $ Dialog.Show (Dialog.SQLMount state.path)
+      forceRerender'
+      querySQLMount state $ SQLMount.Reload viewInfo
+      querySQLMount state
+        $ SQLMount.UpdateName $ R.resourceName $ itemResource item
+  where
+  querySQLMount state q =
+    void
+    $ query' cpDialog DialogSlot
+    $ right
+    $ ChildF (injSlot Dialog.cpSQLMount (Dialog.SQLMountSlot state.path))
+    $ injQuery Dialog.cpSQLMount
+    $ left
+    $ action q
+
 
 itemPeek _ (Item.Move _) = do
   mbit <- query' cpItems ItemsSlot $ right $ ChildF slot $ request Item.GetItem

@@ -39,3 +39,4 @@ data Query a
   | UploadFile HTMLElement a
   | FileListChanged HTMLElement a
   | SetVersion String a
+  | MakeSQLView a
