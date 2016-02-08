@@ -27,7 +27,7 @@ import SlamData.FileSystem.Routing.Salt (Salt(..))
 
 import Utils.Path (DirPath())
 
-type StateRec =
+type State =
   { path :: DirPath
   , salt :: Salt
   , sort :: Sort
@@ -36,35 +36,30 @@ type StateRec =
   , showHiddenFiles :: Boolean
   }
 
-newtype State = State StateRec
-
-_State :: LensP State StateRec
-_State  = lens (\(State obj) -> obj) (const State)
-
 _version :: LensP State (Maybe String)
-_version = _State <<< lens _.version _{version = _}
+_version = lens _.version _{version = _}
 
 _sort :: LensP State Sort
-_sort = _State <<< lens _.sort _{sort = _}
+_sort = lens _.sort _{sort = _}
 
 _salt :: LensP State Salt
-_salt = _State <<< lens _.salt _{salt = _}
+_salt = lens _.salt _{salt = _}
 
 _path :: LensP State DirPath
-_path = _State <<< lens _.path _{path = _}
+_path = lens _.path _{path = _}
 
 _isMount :: LensP State Boolean
-_isMount = _State <<< lens _.isMount _{isMount = _}
+_isMount = lens _.isMount _{isMount = _}
 
 _showHiddenFiles :: LensP State Boolean
-_showHiddenFiles = _State <<< lens _.showHiddenFiles _{showHiddenFiles = _}
+_showHiddenFiles = lens _.showHiddenFiles _{showHiddenFiles = _}
 
 initialState :: State
 initialState =
-  State { path: rootDir
-        , salt: Salt ""
-        , sort: Asc
-        , version: Nothing
-        , isMount: false
-        , showHiddenFiles: false
-        }
+  { path: rootDir
+  , salt: Salt ""
+  , sort: Asc
+  , version: Nothing
+  , isMount: false
+  , showHiddenFiles: false
+  }

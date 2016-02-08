@@ -28,6 +28,7 @@ import Data.Maybe (Maybe(), isJust, maybe)
 import Data.String as S
 import Data.String.Regex as Rx
 
+-- TODO: is there a reason to use this instead of `purescript-uri`'s pretty printing?
 
 type URIParams =
   { path :: Maybe String

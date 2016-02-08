@@ -14,29 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Component.Query where
+module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery where
 
-import DOM.HTML.Types (HTMLElement())
+import Prelude
 
-import SlamData.FileSystem.Listing.Sort (Sort())
-import SlamData.FileSystem.Routing.Salt (Salt())
+import Control.Monad.Eff.Exception (Error())
+
+import Data.Either (Either())
+import Data.Maybe (Maybe())
+
+import SlamData.FileSystem.Resource (Mount())
 
 import Utils.Path (DirPath())
 
-data Query a
-  = Resort a
-  | SetPath DirPath a
-  | SetSort Sort a
-  | SetSalt Salt a
-  | SetIsMount Boolean a
-  | Configure a
-  | ShowHiddenFiles a
-  | HideHiddenFiles a
-  | Download a
-  | MakeMount a
-  | MakeFolder a
-  | MakeNotebook a
-  | UploadFile HTMLElement a
-  | FileListChanged HTMLElement a
-  | SetVersion String a
-  | DismissSignInSubmenu a
+data SettingsQuery s a
+  = ModifyState (s -> s) a
+  | Validate (Maybe String -> a)
+  | Submit DirPath String (Either Error Mount -> a)

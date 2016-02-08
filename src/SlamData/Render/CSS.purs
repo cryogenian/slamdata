@@ -123,8 +123,11 @@ dialogMount = className "dialog-mount"
 renameDialogForm :: ClassName
 renameDialogForm = className "rename-dialog-form"
 
-mountURI :: ClassName
-mountURI = className "mount-uri"
+mountSection :: ClassName
+mountSection = className "mount-section"
+
+mountMongoDB :: ClassName
+mountMongoDB = className "mount-mongodb"
 
 mountName :: ClassName
 mountName = className "mount-name"
