@@ -90,8 +90,7 @@ querySetup { inputPort, notebookPath } =
     Port.VarMap varMap -> addCompletions varMap
     Port.TaggedResource {resource}  -> void $ runMaybeT do
       resParent <- MaybeT $ pure $ L.preview R._filePath resource >>= Path.parentDir
-      nbPath <- MaybeT $ pure notebookPath
-      let path = if nbPath == resParent
+      let path = if notebookPath == pure resParent
                  then R.resourceName resource
                  else R.resourcePath resource
       editor <- (MaybeT $ query unit $ request Ace.GetEditor) >>= (MaybeT <<< pure)

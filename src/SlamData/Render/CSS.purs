@@ -354,7 +354,14 @@ downloadTypeSelector = className "download-type-selector"
 downloadConfiguration :: ClassName
 downloadConfiguration = className "download-configuration"
 
+sqlMountVarPair :: ClassName
+sqlMountVarPair = className "sql-mount-var-pair"
+
+sqlMountForm :: ClassName
+sqlMountForm = className "sql-mount-form"
+
+sqlMountAddVarPairButton :: ClassName
+sqlMountAddVarPairButton = className "sql-mount-add-var-pair-button"
 
 fileAction :: ClassName
 fileAction = className "file-action"
-

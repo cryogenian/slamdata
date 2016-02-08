@@ -18,6 +18,8 @@ module SlamData.FileSystem (main) where
 
 import Prelude
 
+import Ace.Config as AceConfig
+
 import Control.Apply ((*>))
 import Control.Monad (when)
 import Control.Monad.Aff (Aff(), Canceler(), cancel, runAff, forkAff, attempt)
@@ -53,6 +55,7 @@ import Quasar.Aff (mountInfo, children)
 
 import Routing (matchesAff)
 
+import SlamData.Config as Config
 import SlamData.Config.Version as Version
 import SlamData.FileSystem.Component
 import SlamData.FileSystem.Dialog.Component as Dialog
@@ -72,14 +75,18 @@ import Text.SlamSearch.Types (SearchQuery())
 import Utils.Path (DirPath(), hidePath, renderPath)
 
 main :: Eff FileSystemEffects Unit
-main = runAff throwException (const (pure unit)) do
-  halogen <- runUI comp (installedState initialState)
-  onLoad (appendToBody halogen.node)
-  forkAff do
-    let version = Version.slamDataVersion
-    setSlamDataTitle version
-    halogen.driver (left $ action $ SetVersion version)
-  forkAff $ routeSignal halogen.driver
+main = do
+  AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
+  AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
+  AceConfig.set AceConfig.themePath (Config.baseUrl ++ "js/ace")
+  runAff throwException (const (pure unit)) do
+    halogen <- runUI comp (installedState initialState)
+    onLoad (appendToBody halogen.node)
+    forkAff do
+      let version = Version.slamDataVersion
+      setSlamDataTitle version
+      halogen.driver (left $ action $ SetVersion version)
+    forkAff $ routeSignal halogen.driver
 
 setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
 setSlamDataTitle version =

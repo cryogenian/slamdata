@@ -709,6 +709,39 @@ div.viz-cell-editor, div.download-cell-editor {
     position: absolute;
 }
 
+.sql-mount-var-pair {
+    margin-top: 4px;
+    &:last-of-type {
+        margin-bottom: 6px;
+    }
+    button {
+        position: relative;
+        left: ~"calc(100% - 40px)";
+    }
+    input {
+        width: ~"calc(100% - 60px)";
+        display: inline-block;
+        margin-left: 10px;
+    }
+}
+.sql-mount-add-var-pair-button {
+    position: relative;
+    left: ~"calc(100% - 40px)"
+}
+.sql-mount-form {
+    .ace_editor {
+        border: #ccc 1px solid;
+        margin-top: 6px;
+        margin-bottom: 4px;
+    }
+    > label {
+        margin-top: 14px;
+        display: block;
+        font-weight: normal;
+        font-size: 16px;
+    }
+}
+
 @import "bootstrap-overloads";
 @import "nav";
 @import "menu";

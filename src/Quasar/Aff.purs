@@ -17,6 +17,7 @@ limitations under the License.
 module Quasar.Aff
   ( children
   , mountInfo
+  , viewInfo
   , move
   , reqHeadersToJSON
   , saveMount
@@ -39,6 +40,7 @@ module Quasar.Aff
   , save
   , load
   , resourceExists
+  , portView
   , RetryEffects()
   ) where
 
@@ -49,7 +51,7 @@ import Control.Apply (lift2)
 import Control.Bind ((>=>), (<=<), (=<<))
 import Control.Coroutine as CR
 import Control.Coroutine.Aff as ACR
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Control.Monad.Aff (Aff(), attempt, runAff)
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Exception as Exn
@@ -81,6 +83,8 @@ import Data.String as S
 import Data.StrMap as SM
 import Data.Time (Milliseconds(..))
 import Data.Tuple (Tuple(..))
+import Data.URI (runParseAbsoluteURI)
+import Data.URI.Types (AbsoluteURI(..), Query(..), URIScheme(..))
 
 import DOM (DOM())
 
@@ -323,6 +327,52 @@ mountInfo res = do
 
   parse :: String -> F String
   parse = parseJSON >=> prop "mongodb" >=> readProp "connectionUri"
+
+viewInfo
+  :: forall e
+   . R.Resource
+  -> Aff (RetryEffects (ajax :: AJAX|e)) { sql :: String, vars :: SM.StrMap String }
+viewInfo (R.ViewMount mountPath) = do
+  result <- getOnce (Paths.mountUrl </> PU.rootifyFile mountPath) applicationJSON
+  if succeeded result.status
+    then case parse result.response of
+      Left err -> throwError $ Exn.error err
+      Right res -> pure res
+    else throwError $ Exn.error result.response
+  where
+  runQuery :: Query -> SM.StrMap (Maybe String)
+  runQuery (Query q) = q
+
+  parse :: String -> Either String { sql :: String, vars :: SM.StrMap String }
+  parse connURI = do
+    connStr <-
+      lmap show
+      $ parseJSON connURI
+      >>= prop "view"
+      >>= readProp "connectionUri"
+    (AbsoluteURI mbScheme _ mbQuery) <- lmap show $ runParseAbsoluteURI connStr
+    scheme <- maybe (throwError "There is no scheme") pure mbScheme
+    unless (scheme == URIScheme "sql2") $ throwError "Incorrect scheme"
+
+    let queryMap = maybe SM.empty runQuery mbQuery
+    sql <-
+      maybe (throwError "There is no 'q' in queryMap") pure
+      $ SM.lookup "q" queryMap
+      >>= id
+      >>> map PU.decodeURIPath
+      >>= S.stripPrefix "("
+      >>= S.stripSuffix ")"
+    let vars = SM.fold foldFn SM.empty $ SM.delete "q" queryMap
+    pure { vars, sql }
+    where
+    foldFn :: SM.StrMap String -> String -> Maybe String -> SM.StrMap String
+    foldFn acc key mbVal = fromMaybe acc do
+      k <- S.stripPrefix "var." key
+      val <- mbVal
+      pure $ SM.insert k val acc
+viewInfo _ = throwError $ Exn.error "Incorrect resource in viewInfo"
+
+
 
 -- | Generates a new resource name based on a directory path and a name for the
 -- | resource. If the name already exists in the path a number is appended to
