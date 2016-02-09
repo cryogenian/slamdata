@@ -10,7 +10,8 @@ var gulp = require("gulp"),
     trimlines = require("gulp-trimlines"),
     less = require("gulp-less"),
     sequence = require("run-sequence"),
-    run = require("gulp-run");
+    run = require("gulp-run"),
+    replace = require("gulp-replace");
 
 var slamDataSources = [
   "src/**/*.purs",
@@ -52,7 +53,7 @@ gulp.task("make", function() {
   });
 });
 
-gulp.task("add-headers", function () {
+gulp.task("add-headers", ["replace-headers"], function () {
   // read in the license header
   var licenseHeader = "{-\n" + fs.readFileSync('LICENSE.header', 'utf8') + "-}\n\n";
 
@@ -64,6 +65,53 @@ gulp.task("add-headers", function () {
             .pipe(contentFilter(contentFilterParams))
             .pipe(header(licenseHeader))
             .pipe(gulp.dest("./"));
+});
+/**
+* To switch license file
+* + Copy old license file to `headers` folder
+* + Run `gulp add-headers`
+* + Remove `headers` folder
+**/
+gulp.task("replace-headers", function() {
+    var licenseHeader =
+            "{-\n" + fs.readFileSync('LICENSE.header', 'utf8') + "-}";
+
+    return (function() {
+        // Extract old header files
+        try {
+            return fs.readdirSync("./headers").filter(function(name) {
+                return /.*\.header/.test(name);
+            });
+        } catch (e) {
+            // don't warn here, it's ok if `headers` folder is empty or doesn't exist
+            return [];
+        }
+    }()).map(function(name) {
+        // Read their content
+        var file = "./headers/" + name;
+        var fileContent;
+        try {
+            fileContent = "{-\n" + fs.readFileSync(file, "utf8") + "-}";
+        } catch (e) {
+            // warn here, we don't know maybe we must read this file but it has
+            // incorrect permissions
+            console.warn(e.message);
+            fileContent = undefined;
+        }
+        return fileContent;
+    }).filter(function(content) {
+        // Filter empty files and files with incorrect permissions
+        return typeof content !== "undefined";
+    }).reduce(function(acc, content) {
+        // Foldl gulp task
+        return function() {
+            return acc().pipe(replace(content, licenseHeader));
+        };
+    }, function() {
+        // Initial gulp task
+        return gulp.src(slamDataSources, {base: "./"});
+        // run gulp task
+    })().pipe(gulp.dest("./"));
 });
 
 gulp.task("trim-whitespace", function () {
