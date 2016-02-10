@@ -57,6 +57,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Network.HTTP.MimeType.Common (textCSV)
 
 import Quasar.Aff as API
+import Quasar.Auth as Auth
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
@@ -91,36 +92,37 @@ comp = parentComponent' render eval peek
 
 render :: RenderParent State ChildState Query ChildQuery Slam ChildSlot
 render state@(State r) =
-  H.div [P.classes [ Rc.filesystem ] ]
-         [ navbar
-           [  H.div [ P.classes [ Rc.header, B.clearfix ] ]
-              [ icon B.glyphiconFolderOpen Config.homeHash
-              , logo (state ^. _version)
-              , H.slot' cpSearch SearchSlot
-                \_ -> { component: Search.comp
-                      , initialState: Search.initialState r.sort  r.salt
-                      }
-              ]
-           ]
-         , content
-           [ H.div [ P.class_ B.clearfix ]
-             [ H.slot' cpBreadcrumbs (BreadcrumbsSlot r.path)
-               \_ -> { component: Breadcrumbs.comp
-                     , initialState: Breadcrumbs.mkBreadcrumbs r.path r.sort r.salt
-                     }
-             , toolbar state
-             ]
-           , row [ sorting state ]
-           , H.slot' cpItems ItemsSlot
-             \_ -> { component: Items.comp
-                   , initialState: installedState $ Items.initialState
-                   }
-           ]
-         , H.slot' cpDialog DialogSlot
-           \_ -> { component: Dialog.comp
-                 , initialState: installedState $ Dialog.initialState
+  H.div
+    [P.classes [ Rc.filesystem ] ]
+    [ navbar
+      [  H.div [ P.classes [ Rc.header, B.clearfix ] ]
+         [ icon B.glyphiconFolderOpen Config.homeHash
+         , logo (state ^. _version)
+         , H.slot' cpSearch SearchSlot
+           \_ -> { component: Search.comp
+                 , initialState: Search.initialState r.sort  r.salt
                  }
          ]
+      ]
+    , content
+      [ H.div [ P.class_ B.clearfix ]
+        [ H.slot' cpBreadcrumbs (BreadcrumbsSlot r.path)
+          \_ -> { component: Breadcrumbs.comp
+                , initialState: Breadcrumbs.mkBreadcrumbs r.path r.sort r.salt
+                }
+        , toolbar state
+        ]
+      , row [ sorting state ]
+      , H.slot' cpItems ItemsSlot
+        \_ -> { component: Items.comp
+              , initialState: installedState $ Items.initialState
+              }
+      ]
+    , H.slot' cpDialog DialogSlot
+      \_ -> { component: Dialog.comp
+            , initialState: installedState $ Dialog.initialState
+            }
+    ]
 
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (Resort next) = do
@@ -153,7 +155,7 @@ eval (HideHiddenFiles next) = do
 eval (Configure next) = do
   state <- get
   let res = R.Database $ state ^. _path
-  eiURI <- liftAff $ attempt (API.mountInfo res)
+  eiURI <- liftAff $ attempt $ Auth.authed $ API.mountInfo res
   configure (either (const Nothing) Just eiURI) res
   pure next
 eval (MakeMount next) = do
@@ -169,14 +171,14 @@ eval (MakeSQLView next) = do
 eval (MakeFolder next) = do
   state <- get
   let path = state ^. _path
-  dirName <- liftAff $ API.getNewName path Config.newFolderName
+  dirName <- liftAff $ Auth.authed $ API.getNewName path Config.newFolderName
   let dirPath = path </> dir dirName
       dirRes = R.Directory dirPath
       dirItem = PhantomItem dirRes
       hiddenFile = dirPath </> file (Config.folderMark)
   query' cpItems ItemsSlot $ left $ action $ Items.Add dirItem
   added <- liftAff do
-    attempt $ API.makeFile hiddenFile API.ldJSON "{}"
+    attempt $ Auth.authed $ API.makeFile hiddenFile API.ldJSON "{}"
   query' cpItems ItemsSlot $ left $ action
     $ Items.Filter (/= dirItem)
   case added of
@@ -191,7 +193,7 @@ eval (MakeFolder next) = do
 eval (MakeNotebook next) = do
   path <- gets (^. _path)
   let newNotebookName = Config.newNotebookName <> "." <> Config.notebookExtension
-  name <- liftAff $ API.getNewName path newNotebookName
+  name <- liftAff $ Auth.authed $ API.getNewName path newNotebookName
   let uri = mkNotebookURL (path </> dir name) New
   liftEff $ setLocation uri
   pure next
@@ -215,7 +217,7 @@ eval (FileListChanged el next) = do
       state <- get
       let path = state ^. _path
       name <- liftAff $ liftEff (Cf.name f)
-                >>= API.getNewName (state ^. _path)
+                >>= Auth.authed <<< API.getNewName (state ^. _path)
 
       let fileName = path </> file name
           fileItem = PhantomItem $ R.File fileName
@@ -226,7 +228,7 @@ eval (FileListChanged el next) = do
       reader <- liftEff Cf.newReaderEff
       content <- liftAff $ Cf.readAsBinaryString f reader
       query' cpItems ItemsSlot $ left $ action $ Items.Add fileItem
-      f <- liftAff $ attempt $ API.makeFile fileName mime content
+      f <- liftAff $ attempt $ Auth.authed $ API.makeFile fileName mime content
       case f of
         Left err -> do
           query' cpItems ItemsSlot $ left $ action
@@ -322,7 +324,7 @@ itemPeek slot (Item.ConfigureView _) = do
     Just (PhantomItem _) -> pure unit
     Just item -> do
       (State state) <- get
-      viewInfo <- liftAff $ API.viewInfo $ itemResource item
+      viewInfo <- liftAff $ Auth.authed $ API.viewInfo $ itemResource item
       query' cpDialog DialogSlot $ left $ action
         $ Dialog.Show (Dialog.SQLMount state.path)
       forceRerender'
@@ -359,7 +361,7 @@ itemPeek _ (Item.Remove _) = do
     Nothing -> pure unit
     Just item -> void do
       let r = itemResource item
-      mbTrashFolder <- liftAff $ API.delete r
+      mbTrashFolder <- liftAff $ Auth.authed $ API.delete r
       query' cpItems ItemsSlot $ left $ action
         $ Items.Filter (not <<< eq r <<< itemResource)
       maybe (pure unit) (\x -> void $ query' cpItems ItemsSlot $ left $ action
@@ -433,12 +435,14 @@ download res = do
     rootDir
   pure unit
 
-getChildren :: (R.Resource -> Boolean)
-               -> (Array R.Resource -> Algebra Unit)
-               -> DirPath -> Algebra Unit
+getChildren
+  :: (R.Resource -> Boolean)
+  -> (Array R.Resource -> Algebra Unit)
+  -> DirPath
+  -> Algebra Unit
 getChildren pred cont start = do
   forceRerender'
-  ei <- liftAff $ attempt $ API.children start
+  ei <- liftAff $ attempt $ Auth.authed $ API.children start
   case ei of
     Right items -> do
       let items' = filter pred items

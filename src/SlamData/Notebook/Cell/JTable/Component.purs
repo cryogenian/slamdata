@@ -38,6 +38,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Halogen
 
 import Quasar.Aff as Quasar
+import Quasar.Auth as Auth
 
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import SlamData.Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _JTableState, _JTableQuery)
@@ -69,7 +70,7 @@ evalCell (NotifyRunCell next) = pure next
 evalCell (EvalCell value k) =
   case preview _Resource =<< value.inputPort of
     Just resource -> do
-      size <- liftAff (Quasar.count resource)
+      size <- liftAff $ Auth.authed $ Quasar.count resource
       oldInput <- gets _.input
       let tag = preview _ResourceTag =<< value.inputPort
       when    (((oldInput <#> _.resource) /= pure resource)
@@ -77,8 +78,7 @@ evalCell (EvalCell value k) =
         $ set initialState
       modify $ _input ?~ { resource, size, tag }
       p <- gets pendingPageInfo
-      items <-
-        liftAff $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
+      items <- liftAff $ Auth.authed $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
       modify
         $ (_isEnteringPageSize .~ false)
         <<< (_result ?~

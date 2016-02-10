@@ -43,6 +43,7 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as Quasar
+import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellType as CT
@@ -125,11 +126,11 @@ cellEval q =
             # MT.lift
             >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
-        (MT.lift $ NC.liftWithCanceler' $ Quasar.resourceExists inputResource)
+        (MT.lift $ NC.liftWithCanceler' $ Auth.authed $ Quasar.resourceExists inputResource)
           >>= \x -> when (not x) $ EC.throwError $ "Input resource "
             <> R.resourcePath inputResource
             <> " doesn't exist"
-        fields <- MT.lift <<< NC.liftWithCanceler' $ Quasar.fields inputResource
+        fields <- MT.lift <<< NC.liftWithCanceler' $ Auth.authed $ Quasar.fields inputResource
 
         let
           template = Search.queryToSQL fields query
@@ -140,13 +141,14 @@ cellEval q =
 
         { plan: plan, outputResource: outputResource } <-
           Quasar.executeQuery template (M.fromMaybe false info.cachingEnabled) SM.empty inputResource tempOutputResource
+            # Auth.authed
             # NC.liftWithCanceler' >>> MT.lift
             >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
         F.for_ plan \p ->
           WC.tell ["Plan: " <> p]
 
-        (MT.lift $ NC.liftWithCanceler' $ Quasar.resourceExists outputResource)
+        (MT.lift $ NC.liftWithCanceler' $ Auth.authed $ Quasar.resourceExists outputResource)
           >>= \x -> when (not x)
                     $ EC.throwError "Error making search temporary resource"
 

@@ -52,7 +52,8 @@ import Halogen.Driver (runUI)
 import Halogen.Query (action)
 import Halogen.Util (appendToBody, onLoad)
 
-import Quasar.Aff (mountInfo, children)
+import Quasar.Aff as Quasar
+import Quasar.Auth as Auth
 
 import Routing (matchesAff)
 
@@ -149,7 +150,7 @@ checkMount
   -> Driver QueryP FileSystemRawEffects
   -> Aff FileSystemEffects Unit
 checkMount path driver = do
-  result <- attempt $ mountInfo (Database path)
+  result <- attempt $ Auth.authed $ Quasar.mountInfo $ Database path
   case result of
     Left _ -> pure unit
     Right _ -> driver $ left $ action $ SetIsMount true
@@ -167,7 +168,7 @@ listPath query deep var dir driver = do
   modifyVar (_1 <>~ canceler) var
   where
   goDeeper = do
-    (attempt $ children dir) >>= either sendError getChildren
+    (attempt $ Auth.authed $ Quasar.children dir) >>= either sendError getChildren
     modifyVar (_2 %~ M.update (\v -> guard (v > one) $> (v - one)) deep) var
     Tuple c r <- takeVar var
     if (foldl (+) zero $ M.values r) == zero

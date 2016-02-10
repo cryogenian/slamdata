@@ -36,6 +36,7 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 
 import Quasar.Aff as Quasar
+import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellType as CT
@@ -74,7 +75,7 @@ eval (NC.EvalCell info k) =
         <#> (join <<< maybe (Left "There is no file input subcomponent") Right)
         # MT.lift
         >>= either EC.throwError pure
-    (MT.lift $ NC.liftWithCanceler $ Quasar.resourceExists resource)
+    (MT.lift $ NC.liftWithCanceler $ Auth.authed $ Quasar.resourceExists resource)
       >>= \x -> unless x $ EC.throwError
                 $ "File " <> R.resourcePath resource <> " doesn't exist"
 
