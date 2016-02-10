@@ -39,7 +39,7 @@ import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (left, right, coproduct)
 import Data.Functor.Eff (liftEff)
 import Data.Inject (prj)
-import Data.Lens ((^.), (.~), preview)
+import Data.Lens ((^.), (.~), (<>~), preview)
 import Data.Lens.Prism.Coproduct (_Left, _Right)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Path.Pathy (rootDir, (</>), dir, file)
@@ -59,6 +59,7 @@ import Network.HTTP.MimeType.Common (textCSV)
 import Quasar.Aff as API
 
 import SlamData.Config as Config
+import SlamData.StylesContainer.Component as Styles
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.Install
 import SlamData.FileSystem.Component.Query
@@ -104,9 +105,10 @@ render state@(State r) =
            ]
          , content
            [ H.div [ P.class_ B.clearfix ]
-             [ H.slot' cpBreadcrumbs (BreadcrumbsSlot r.path)
+             [ H.slot' cpBreadcrumbs (BreadcrumbsSlot r.path r.stylesheets)
                \_ -> { component: Breadcrumbs.comp
-                     , initialState: Breadcrumbs.mkBreadcrumbs r.path r.sort r.salt
+                     , initialState:
+                         Breadcrumbs.mkBreadcrumbs r.path r.sort r.salt r.stylesheets
                      }
              , toolbar state
              ]
@@ -120,6 +122,10 @@ render state@(State r) =
            \_ -> { component: Dialog.comp
                  , initialState: installedState $ Dialog.initialState
                  }
+         , H.slot' cpStyles StylesSlot
+           \_ -> { component: Styles.comp
+                 , initialState: Styles.initialState
+                 }
          ]
 
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
@@ -127,7 +133,10 @@ eval (Resort next) = do
   searchValue <- query' cpSearch SearchSlot (request Search.GetValue)
   state <- get
   liftEff $ setLocation $ browseURL (searchValue >>= id)
-    (notSort (state ^. _sort)) (state ^. _salt) (state ^. _path)
+    (notSort (state ^. _sort))
+    (state ^. _salt)
+    (state ^. _path)
+    (state ^. _stylesheets)
   pure next
 eval (SetPath path next) = do
   modify (_path .~ path)
@@ -236,13 +245,23 @@ eval (FileListChanged el next) = do
           pure unit
         Right _ ->
           liftEff $ setLocation
-            $ itemURL (state ^. _sort) (state ^. _salt) Editable fileItem
+            $ itemURL
+                (state ^. _sort)
+                (state ^. _salt)
+                Editable
+                (state ^. _stylesheets)
+                fileItem
 
   pure next
 
 eval (Download next) = do
   state <- get
   download (R.Directory (state ^. _path))
+  pure next
+eval (SetStyleSheets ss next) = do
+  modify (_stylesheets .~ ss)
+  query' cpSearch SearchSlot $ action $ Search.SetStylesheets ss
+  query' cpStyles StylesSlot $ action $ Styles.SetStylesheets ss
   pure next
 
 eval (SetVersion version next) = do
@@ -304,7 +323,7 @@ itemPeek slot (Item.Open _) = do
     Nothing -> pure unit
     Just it -> do
       state <- get
-      liftEff $ openItem it (state ^. _sort) (state ^. _salt)
+      liftEff $ openItem it (state ^. _sort) (state ^. _salt) (state ^. _stylesheets)
 itemPeek slot (Item.Configure _) = do
   mbit <- query' cpItems ItemsSlot $ right $ ChildF slot $ request Item.GetItem
   case mbit of
@@ -371,8 +390,16 @@ itemPeek _ (Item.Share _) = do
     Just item -> void do
       loc <- liftEff locationString
       state <- get
-      let url = loc <> "/"
-                <> itemURL (state ^. _sort) (state ^. _salt) ReadOnly item
+      let
+        url =
+          loc
+          <> "/"
+          <> itemURL
+              (state ^. _sort)
+              (state ^. _salt)
+              ReadOnly
+              (state ^. _stylesheets)
+              item
       query' cpDialog DialogSlot $ left $ action
         $ Dialog.Show (Dialog.Share url)
 itemPeek _ (Item.Download _) = do
@@ -387,7 +414,7 @@ searchPeek _ (Search.Clear _) = do
   salt <- liftEff newSalt
   (State state) <- get
   liftEff $ setLocation
-    $ browseURL Nothing state.sort salt state.path
+    $ browseURL Nothing state.sort salt state.path state.stylesheets
 searchPeek _ _ = pure unit
 
 resort :: Algebra Unit

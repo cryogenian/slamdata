@@ -24,6 +24,7 @@ import Data.Path.Pathy (rootDir)
 
 import SlamData.FileSystem.Listing.Sort (Sort(..))
 import SlamData.FileSystem.Routing.Salt (Salt(..))
+import SlamData.StylesContainer.Model (StyleURL(..))
 
 import Utils.Path (DirPath())
 
@@ -34,6 +35,7 @@ type StateRec =
   , version :: Maybe String
   , isMount :: Boolean
   , showHiddenFiles :: Boolean
+  , stylesheets :: Array StyleURL
   }
 
 newtype State = State StateRec
@@ -59,6 +61,9 @@ _isMount = _State <<< lens _.isMount _{isMount = _}
 _showHiddenFiles :: LensP State Boolean
 _showHiddenFiles = _State <<< lens _.showHiddenFiles _{showHiddenFiles = _}
 
+_stylesheets :: LensP State (Array StyleURL)
+_stylesheets = _State <<< lens _.stylesheets _{stylesheets = _}
+
 initialState :: State
 initialState =
   State { path: rootDir
@@ -67,4 +72,5 @@ initialState =
         , version: Nothing
         , isMount: false
         , showHiddenFiles: false
+        , stylesheets: [ ]
         }

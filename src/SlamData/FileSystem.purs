@@ -69,6 +69,8 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt(), newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.StylesContainer.Component as Styles
+import SlamData.StylesContainer.Model as Styles
 
 import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery())
@@ -101,25 +103,30 @@ routeSignal :: Driver QueryP FileSystemRawEffects
 routeSignal driver = do
   avar <- makeVar' initialAVar
   routeTpl <- matchesAff routing
-  pure unit
+  Debug.Trace.traceAnyA routeTpl
   uncurry (redirects driver avar) routeTpl
 
 
 redirects
   :: Driver QueryP FileSystemRawEffects
   -> AVar (Tuple (Canceler FileSystemEffects) (M.Map Int Int))
-  -> Maybe Routes -> Routes
+  -> Maybe (Tuple Routes (Array Styles.StyleURL))
+  -> Tuple Routes (Array Styles.StyleURL)
   -> Aff FileSystemEffects Unit
-redirects _ _ _ Index = updateURL Nothing Asc Nothing rootDir
-redirects _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
-redirects _ _ _ (SortAndQ sort query) =
+redirects _ _ _ (Tuple Index ss) = updateURL Nothing Asc Nothing rootDir ss
+redirects _ _ _ (Tuple (Sort sort) ss) = updateURL Nothing sort Nothing rootDir ss
+redirects _ _ _ (Tuple (SortAndQ sort query) ss) =
   let queryParts = splitQuery query
-  in updateURL queryParts.query sort Nothing queryParts.path
-redirects driver var mbOld (Salted sort query salt) = do
+  in updateURL queryParts.query sort Nothing queryParts.path ss
+redirects driver var mbOld (Tuple (Salted sort query salt) styles) = do
   Tuple canceler _ <- takeVar var
   cancel canceler $ error "cancel search"
   putVar var initialAVar
+  Debug.Trace.traceAnyA styles
   driver $ toItems $ Items.SetIsSearching $ isSearchQuery query
+
+  driver $ toFs $ SetStyleSheets
+    $ (map Styles.StyleURL SlamData.Config.defaultStyleSheets) <> styles
   if isNewPage
     then do
     driver $ toItems Items.Reset
@@ -140,7 +147,7 @@ redirects driver var mbOld (Salted sort query salt) = do
   isNewPage = fromMaybe true do
     old <- mbOld
     Tuple oldQuery oldSalt <- case old of
-      Salted _ oldQuery oldSalt -> pure $ Tuple oldQuery oldSalt
+      Tuple (Salted _ oldQuery oldSalt) _ -> pure $ Tuple oldQuery oldSalt
       _ -> Nothing
     pure $ oldQuery /= query || oldSalt == salt
 
@@ -195,11 +202,16 @@ listPath query deep var dir driver = do
       (guard (isSearchQuery query) *> next)
 
 
-updateURL :: Maybe String -> Sort -> Maybe Salt -> DirPath
-             -> Aff FileSystemEffects Unit
-updateURL query sort salt path = liftEff do
+updateURL
+  :: Maybe String
+  -> Sort
+  -> Maybe Salt
+  -> DirPath
+  -> Array Styles.StyleURL
+  -> Aff FileSystemEffects Unit
+updateURL query sort salt path stylesheets = liftEff do
   salt' <- maybe newSalt pure salt
-  replaceLocation $ browseURL query sort salt' path
+  replaceLocation $ browseURL query sort salt' path stylesheets
 
 
 splitQuery :: SearchQuery -> { path :: DirPath, query :: Maybe String }

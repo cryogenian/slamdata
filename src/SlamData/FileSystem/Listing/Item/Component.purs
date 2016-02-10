@@ -170,6 +170,7 @@ itemView state@{ item } selected presentActions | otherwise =
     , E.onClick (E.input_ Toggle)
     , E.onMouseEnter (E.input_ PresentActions)
     , E.onMouseLeave (E.input_ HideActions)
+    , E.onDoubleClick (\_ -> E.preventDefault $> action Open)
     , ARIA.label label
     ]
     [ H.div
@@ -182,7 +183,9 @@ itemView state@{ item } selected presentActions | otherwise =
                 ]
             ]
         , H.div
-            [ P.classes $ [ B.colXs3, Rc.itemToolbar ] <> (guard selected $> Rc.selected) ]
+            [ P.classes
+              $ [ B.colXs3, Rc.itemToolbar ]
+              <> (guard selected $> Rc.selected) ]
             [ itemActions presentActions item ]
         ]
     ]

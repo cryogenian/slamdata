@@ -80,3 +80,10 @@ tickTick = 1000
 
 autosaveTick :: Int
 autosaveTick = 1000
+
+defaultStyleSheets :: Array String
+defaultStyleSheets =
+  [
+    "css/bootstrap.min.css"
+  , "css/main.css"
+  ]

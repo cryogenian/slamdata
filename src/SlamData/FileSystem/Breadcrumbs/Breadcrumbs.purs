@@ -33,6 +33,7 @@ import SlamData.FileSystem.Effects (Slam())
 import SlamData.FileSystem.Listing.Sort (Sort())
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt())
+import SlamData.StylesContainer.Model (StyleURL())
 
 import Utils.Path (DirPath())
 
@@ -40,6 +41,7 @@ type State =
   { breadcrumbs :: List Breadcrumb
   , sort :: Sort
   , salt :: Salt
+  , stylesheets :: Array StyleURL
   }
 
 type Breadcrumb =
@@ -53,11 +55,13 @@ rootBreadcrumb =
   , link: rootDir
   }
 
-mkBreadcrumbs :: DirPath -> Sort -> Salt -> State
-mkBreadcrumbs path sort salt =
+mkBreadcrumbs
+  :: DirPath -> Sort -> Salt -> Array StyleURL -> State
+mkBreadcrumbs path sort salt ss =
   { breadcrumbs: reverse $ go Nil path
   , sort: sort
   , salt: salt
+  , stylesheets: ss
   }
   where
   go :: List Breadcrumb -> DirPath -> List Breadcrumb
@@ -82,7 +86,7 @@ render r =
   view b =
     [ H.li_
         [ H.a
-            [ P.href (browseURL Nothing r.sort r.salt b.link) ]
+            [ P.href (browseURL Nothing r.sort r.salt b.link r.stylesheets) ]
             [ H.text b.name ]
         ]
     ]

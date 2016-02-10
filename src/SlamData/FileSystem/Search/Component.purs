@@ -24,6 +24,7 @@ import Control.MonadPlus (guard)
 import Control.UI.Browser (setLocation)
 
 import Data.Either (Either(..))
+import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Eff (liftEff)
 import Data.Lens (lens, LensP(), (^.), (.~), (%~))
@@ -39,6 +40,7 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
+import SlamData.StylesContainer.Model (StyleURL())
 import SlamData.FileSystem.Effects (FileSystemEffects())
 import SlamData.FileSystem.Effects (Slam())
 import SlamData.FileSystem.Listing.Sort (Sort())
@@ -63,6 +65,7 @@ type SearchRec =
   , path :: DirPath
   , sort :: Sort
   , salt :: Salt
+  , stylesheets :: Array StyleURL
   }
 
 initialState :: Sort -> Salt -> State
@@ -75,6 +78,7 @@ initialState sort salt =
          , path: rootDir
          , sort: sort
          , salt: salt
+         , stylesheets: [ ]
          }
 
 _State :: LensP State SearchRec
@@ -104,6 +108,9 @@ _sort = _State <<< lens _.sort _{sort = _}
 _salt :: LensP State Salt
 _salt = _State <<< lens _.salt _{salt = _}
 
+_stylesheets :: LensP State (Array StyleURL)
+_stylesheets = _State <<< lens _.stylesheets _{stylesheets = _}
+
 data Query a
   = Focus Boolean a
   | Typed String a
@@ -114,6 +121,7 @@ data Query a
   | SetValue (These String String) a
   | SetValid Boolean a
   | IsSearching (Boolean -> a)
+  | SetStylesheets (Array StyleURL) a
 
 
 comp :: Component State Query Slam
@@ -168,12 +176,8 @@ render state =
                else "img/remove.svg"
 
 eval :: Eval Query State Query Slam
-eval (Focus bool next) = do
-  modify (_focused .~ bool)
-  pure next
-eval (Clear next) = do
-  -- for peeking in parent
-  pure next
+eval (Focus bool next) = modify (_focused .~ bool) $> next
+eval (Clear next) = pure next
 eval (Typed str next) = do
   state <- get
   let c = state ^. _timeout
@@ -194,18 +198,13 @@ eval (Submit next) = do
 eval (GetValue continue) = do
   state <- get
   pure $ continue $ theseRight (state ^. _value)
-eval (SetLoading bool next) = do
-  modify (_loading .~ bool)
-  pure next
-eval (SetValue tv next) = do
-  modify (_value .~ tv)
-  pure next
-eval (SetValid bool next) = do
-  modify (_valid .~ bool)
-  pure next
+eval (SetLoading bool next) = modify (_loading .~ bool) $> next
+eval (SetValue tv next) = modify (_value .~ tv) $> next
+eval (SetValid bool next) = modify (_valid .~ bool) $> next
 eval (IsSearching continue) = do
   state <- get
   pure $ continue $ isJust $ theseRight $ state ^. _value
+eval (SetStylesheets ss next) = modify (_stylesheets .~ ss) $> next
 
 submit :: State -> Aff FileSystemEffects (Maybe (State -> State))
 submit state = do
@@ -215,6 +214,11 @@ submit state = do
       Left _ | q /= "" -> pure $ pure (_valid .~ false)
       _ -> do
         liftEff $ setLocation
-          $ browseURL (Just q) (state ^. _sort) salt (state ^. _path)
+          $ browseURL
+              (Just q)
+              (state ^. _sort)
+              salt
+              (state ^. _path)
+              (state ^. _stylesheets)
         pure Nothing
     _ -> pure  Nothing

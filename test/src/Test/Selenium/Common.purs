@@ -104,7 +104,7 @@ await msg check = do
   config <- getConfig
   await' config.selenium.waitTime msg check
 
-getHashFromURL :: String -> Check Routes
+getHashFromURL :: String -> Check (Tuple Routes _)
 getHashFromURL =
   dropHash
     >>> matchHash routing

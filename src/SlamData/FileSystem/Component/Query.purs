@@ -20,6 +20,7 @@ import DOM.HTML.Types (HTMLElement())
 
 import SlamData.FileSystem.Listing.Sort (Sort())
 import SlamData.FileSystem.Routing.Salt (Salt())
+import SlamData.StylesContainer.Model (StyleURL())
 
 import Utils.Path (DirPath())
 
@@ -40,3 +41,4 @@ data Query a
   | FileListChanged HTMLElement a
   | SetVersion String a
   | MakeSQLView a
+  | SetStyleSheets (Array StyleURL) a

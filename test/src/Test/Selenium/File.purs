@@ -25,7 +25,7 @@ import Control.Monad.Trans (lift)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Argonaut.Core (toArray)
 import Data.Argonaut.JCursor (toPrims)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst)
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust, isNothing)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Either (Either(..), either)
@@ -336,7 +336,7 @@ checkURL :: Check Unit
 checkURL = do
   sectionMsg "CHECKING URL"
   home
-  getCurrentUrl >>= getHashFromURL >>= checkHash
+  getCurrentUrl >>= getHashFromURL >>= fst >>> checkHash
 
   where
   checkHash :: Routes -> Check Unit
@@ -368,7 +368,7 @@ goDown = do
   checkOldHash url oldHash
 
   where
-  checkOldHash url old@(Salted oldSort oldSearch oldSalt) = do
+  checkOldHash url old@(Tuple (Salted oldSort oldSearch oldSalt) styles) = do
     click' =<< findOpenTestDb
     config <- getConfig
     wait (awaitUrlChanged url) config.selenium.waitTime
@@ -376,13 +376,19 @@ goDown = do
     getCurrentUrl >>= getHashFromURL >>= checkHashes old
   checkOldHash _ _ = errorMsg "weird initial hash in goDown"
 
-  checkHashes (Salted oldSort oldSearch oldSalt) (Salted sort search salt) = do
-    config <- getConfig
-    if (oldSalt == salt) &&
-       (oldSort == sort) &&
-       ((searchPath search) == (Just $ "/" <> config.mount.name <> "/" <> config.database.name <> "/"))
-      then successMsg "correct hash after goDown"
-      else errorMsg $ "incorrect hash after goDown " <> (fromMaybe "" $ searchPath search)
+  checkHashes
+    (Tuple (Salted oldSort oldSearch oldSalt) ss)
+    (Tuple (Salted sort search salt) ss')
+    | ss == ss' = do
+      config <- getConfig
+      if (oldSalt == salt) &&
+         (oldSort == sort) &&
+         ((searchPath search)
+          == (Just $ "/" <> config.mount.name <> "/" <> config.database.name <> "/"))
+        then successMsg "correct hash after goDown"
+        else errorMsg
+             $ "incorrect hash after goDown "
+             <> (fromMaybe "" $ searchPath search)
   checkHashes _ _ = do
     errorMsg "weird hash after goDown"
 
@@ -460,7 +466,7 @@ sorting = do
   sectionMsg "SORTING CHECK"
   goDown
   texts <- getItemTexts
-  getCurrentUrl >>= getHashFromURL >>= checkHash texts
+  getCurrentUrl >>= getHashFromURL >>= fst >>> checkHash texts
   where
   checkHash :: List String -> Routes -> Check Unit
   checkHash texts (Salted sort search salt) = do
@@ -616,7 +622,7 @@ createFolder = do
   loseItem SDCfg.newFolderName
   click' =<< getNewFolderButton
   click' =<< findOpenItem SDCfg.newFolderName
-  tryRepeatedlyTo $ getCurrentUrl >>= getHashFromURL >>= checkHash
+  tryRepeatedlyTo $ getCurrentUrl >>= getHashFromURL >>= fst >>> checkHash
 
   where
 

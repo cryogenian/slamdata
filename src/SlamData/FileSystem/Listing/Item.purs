@@ -32,6 +32,7 @@ import SlamData.FileSystem.Resource (Resource(..), resourcePath, resourceName, s
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt())
 import SlamData.Notebook.AccessType (AccessType(..), printAccessType)
+import SlamData.StylesContainer.Model (StyleURL())
 
 import Utils.Path (encodeURIPath)
 
@@ -48,24 +49,37 @@ itemResource (SelectedItem r) = r
 itemResource (ActionsPresentedItem r) = r
 itemResource (PhantomItem r) = r
 
-itemURL :: Sort -> Salt -> AccessType -> Item -> String
-itemURL sort salt act item = case itemResource item of
+itemURL
+  :: Sort -> Salt -> AccessType -> Array StyleURL -> Item -> String
+itemURL sort salt act arr item = case itemResource item of
   File path ->
-    Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
+    Config.notebookUrl
+    ++ "#/explore"
+    ++ encodeURIPath (printPath path)
   ViewMount path ->
-    Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
+    Config.notebookUrl
+    ++ "#/explore"
+    ++ encodeURIPath (printPath path)
   Notebook path ->
-    Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAccessType act
+    Config.notebookUrl
+    ++ "#"
+    ++ encodeURIPath (printPath path)
+    ++ printAccessType act
   Directory path ->
-    browseURL Nothing sort salt path
+    browseURL Nothing sort salt path arr
   Database path ->
-    browseURL Nothing sort salt path
+    browseURL Nothing sort salt path arr
 
-
-openItem :: forall e. Item -> Sort -> Salt -> Eff (dom :: DOM|e) Unit
-openItem (PhantomItem _) _ _ = pure unit
-openItem item sort salt =
-  setLocation $ itemURL sort salt Editable item
+openItem
+  :: forall e
+   . Item
+  -> Sort
+  -> Salt
+  -> Array StyleURL
+  -> Eff (dom :: DOM|e) Unit
+openItem (PhantomItem _) _ _ _ = pure unit
+openItem item sort salt arr =
+  setLocation $ itemURL sort salt Editable arr item
 
 
 sortItem :: Boolean -> Sort -> Item -> Item -> Ordering

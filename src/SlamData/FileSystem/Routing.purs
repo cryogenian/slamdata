@@ -26,16 +26,21 @@ import Prelude
 import Control.Alt ((<|>))
 import Control.UI.Browser as Browser
 
+import Data.Array (null)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Map as M
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Path.Pathy as P
+import Data.Tuple (Tuple(..))
 
 import Routing.Match (Match(), eitherMatch)
-import Routing.Match.Class (param)
+import Routing.Match.Class (param, params)
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Listing.Sort (Sort(..), string2sort, sort2string)
 import SlamData.FileSystem.Routing.Salt (Salt(..), runSalt)
+import SlamData.StylesContainer.Model
+  (extractStyleURLs, StyleURL(), printStyleURLs, styleQueryParamName)
 
 import Text.SlamSearch (mkQuery)
 import Text.SlamSearch.Types (SearchQuery())
@@ -48,13 +53,27 @@ data Routes
   | Sort Sort
   | Index
 
-routing :: Match Routes
-routing = salted <|> bothRoute <|> oneRoute <|> index
+routing :: Match (Tuple Routes (Array StyleURL))
+routing =
+  Tuple
+  <$> (
+    salted
+    <|>
+    bothRoute
+    <|> oneRoute
+    <|> index)
+  <*> (
+    styles
+    <|>
+    pure [ ])
   where
+  styles = extractStyleURLs <$> params
+
   salted = Salted <$> sort <*> query <*> salt
   bothRoute = SortAndQ <$> sort <*> query
   oneRoute = Sort <$> sort
   index = pure Index
+
   sort = eitherMatch (string2sort <$> param "sort")
   query = eitherMatch (mkQuery <$> param "q")
   salt = eitherMatch (getSalt <$> param "salt")
@@ -65,13 +84,21 @@ getSalt input =
   then Right $ Salt input
   else Left "incorrect salt"
 
-browseURL :: Maybe String -> Sort -> Salt -> UP.DirPath -> String
-browseURL search sort salt path =
+browseURL
+  :: Maybe String
+  -> Sort
+  -> Salt
+  -> UP.DirPath
+  -> Array StyleURL
+  -> String
+browseURL search sort salt path styleUrls =
   Config.browserUrl
     <> "#?q=" <> q
     <> "&sort=" <> sort2string sort
     <> "&salt=" <> runSalt salt
-
+    <> (if null styleUrls
+        then ""
+        else "&" <> styleQueryParamName <> "=" <> printStyleURLs styleUrls)
   where
   search' =
     fromMaybe "" search # \s ->
@@ -84,6 +111,6 @@ browseURL search sort salt path =
         <> P.printPath path
         <> "\""
 
-parentURL :: UP.AnyPath -> String
-parentURL childPath =
-  browseURL Nothing Asc (Salt "") $ UP.getDir childPath
+parentURL :: UP.AnyPath -> Array StyleURL -> String
+parentURL childPath arr =
+  browseURL Nothing Asc (Salt "") (UP.getDir childPath) arr

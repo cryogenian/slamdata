@@ -34,21 +34,29 @@ import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Effects (Slam())
 import SlamData.FileSystem.Listing.Component as Items
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.StylesContainer.Component as Styles
+import SlamData.StylesContainer.Model (StyleURL())
 
 import Utils.Path (DirPath())
 
 type ChildState =
-  Either Items.StateP
-  (Either Search.State
-   (Either Breadcrumbs.State
-    Dialog.StateP))
+  Either Styles.State
+  (Either Items.StateP
+   (Either Search.State
+    (Either Breadcrumbs.State
+     Dialog.StateP)))
 
 type ChildQuery =
-  Coproduct Items.QueryP
-  (Coproduct Search.Query
-   (Coproduct Breadcrumbs.Query
-    Dialog.QueryP))
+  Coproduct Styles.Query
+  (Coproduct Items.QueryP
+   (Coproduct Search.Query
+    (Coproduct Breadcrumbs.Query
+     Dialog.QueryP)))
 
+data StylesSlot = StylesSlot
+derive instance genericeStylesSlot :: Generic StylesSlot
+instance eqStylesSlot :: Eq StylesSlot where eq = gEq
+instance ordStylesSlot :: Ord StylesSlot where compare = gCompare
 
 data ItemsSlot = ItemsSlot
 derive instance genericItemsSlot :: Generic ItemsSlot
@@ -61,13 +69,18 @@ derive instance genericSearchSlot :: Generic SearchSlot
 instance eqSearchSlot :: Eq SearchSlot where eq = gEq
 instance ordSearcSlot :: Ord SearchSlot where compare = gCompare
 
-
-newtype BreadcrumbsSlot = BreadcrumbsSlot DirPath
+data BreadcrumbsSlot = BreadcrumbsSlot DirPath (Array StyleURL)
 
 instance eqBreadcrumbsSlot :: Eq BreadcrumbsSlot where
-  eq (BreadcrumbsSlot p) (BreadcrumbsSlot p') = (on eq printPath) p p'
+  eq (BreadcrumbsSlot p e) (BreadcrumbsSlot p' e') =
+    ((on eq printPath) p p')
+    &&
+    e == e'
 instance ordBreadcrumbsSlot :: Ord BreadcrumbsSlot where
-  compare (BreadcrumbsSlot p) (BreadcrumbsSlot p') = (on compare printPath) p p'
+  compare (BreadcrumbsSlot p e) (BreadcrumbsSlot p' e') =
+    ((on compare printPath) p p')
+    <>
+    compare e e'
 
 data DialogSlot = DialogSlot
 derive instance genericDialogSlot :: Generic DialogSlot
@@ -75,52 +88,80 @@ instance eqDialogSlot :: Eq DialogSlot where eq = gEq
 instance ordDialogSLot :: Ord DialogSlot where compare = gCompare
 
 type ChildSlot =
-  Either ItemsSlot
-  (Either SearchSlot
-   (Either BreadcrumbsSlot
-    DialogSlot))
+  Either StylesSlot
+  (Either ItemsSlot
+   (Either SearchSlot
+    (Either BreadcrumbsSlot
+     DialogSlot)))
 
 cpDialog :: ChildPath
             Dialog.StateP ChildState
             Dialog.QueryP ChildQuery
             DialogSlot ChildSlot
-cpDialog = cpR :> cpR :> cpR
+cpDialog = cpR :> cpR :> cpR :> cpR
 
 cpBreadcrumbs :: ChildPath
                  Breadcrumbs.State ChildState
                  Breadcrumbs.Query ChildQuery
                  BreadcrumbsSlot ChildSlot
-cpBreadcrumbs = cpR :> cpR :> cpL
+cpBreadcrumbs = cpR :> cpR :> cpR :> cpL
 
 cpSearch :: ChildPath
             Search.State ChildState
             Search.Query ChildQuery
             SearchSlot ChildSlot
-cpSearch = cpR :> cpL
+cpSearch = cpR :> cpR :> cpL
 
 cpItems :: ChildPath
            Items.StateP ChildState
            Items.QueryP ChildQuery
            ItemsSlot ChildSlot
-cpItems = cpL
+cpItems = cpR :> cpL
+
+cpStyles :: ChildPath
+            Styles.State ChildState
+            Styles.Query ChildQuery
+            StylesSlot ChildSlot
+cpStyles = cpL
 
 toFs :: (Unit -> Query Unit) -> QueryP Unit
 toFs = left <<< action
 
 toItems :: (Unit -> Items.Query Unit) -> QueryP Unit
 toItems =
-  right <<< ChildF (injSlot cpItems ItemsSlot)
-  <<< left <<< left <<< action
+  right
+  <<< ChildF (injSlot cpItems ItemsSlot)
+  <<< right
+  <<< left
+  <<< left
+  <<< action
 
 toSearch :: (Unit -> Search.Query Unit) -> QueryP Unit
 toSearch =
-  right <<< ChildF (injSlot cpSearch SearchSlot)
-  <<< right <<< left <<< action
+  right
+  <<< ChildF (injSlot cpSearch SearchSlot)
+  <<< right
+  <<< right
+  <<< left
+  <<< action
 
 toDialog :: (Unit -> Dialog.Query Unit) -> QueryP Unit
 toDialog =
-  right <<< ChildF (injSlot cpDialog DialogSlot)
-  <<< right <<< right <<< right <<< left <<< action
+  right
+  <<< ChildF (injSlot cpDialog DialogSlot)
+  <<< right
+  <<< right
+  <<< right
+  <<< right
+  <<< left
+  <<< action
+
+toStyles :: (Unit -> Styles.Query Unit) -> QueryP Unit
+toStyles =
+  right
+  <<< ChildF (injSlot cpStyles StylesSlot)
+  <<< left
+  <<< action
 
 type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)

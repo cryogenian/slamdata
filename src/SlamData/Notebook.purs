@@ -79,7 +79,8 @@ routeSignal driver = do
     fs <- liftEff detectBrowserFeatures
     driver $ Draftboard.toNotebook $ Notebook.ExploreFile fs path
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
-      $ parentURL $ Left path
+    -- TODO: change [] to actual stylesheets
+      $ parentURL (Left path) [ ]
     driver $ Draftboard.toRename $ Rename.SetText $ Config.newNotebookName
 
   notebook
@@ -107,4 +108,5 @@ routeSignal driver = do
     driver $ Draftboard.toDraftboard $ Draftboard.SetAccessType accessType
     driver $ Draftboard.toNotebook $ Notebook.SetGlobalVarMap varMap
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
-      $ parentURL $ Right path
+    -- TODO: change [ ] to actual array of stylesheets
+      $ parentURL (Right path) [ ]
