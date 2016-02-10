@@ -204,5 +204,5 @@ gulp.task("less", function() {
 });
 mkWatch("watch-less", "less", ["less/**/*.less"]);
 
-// gulp.task("default", ["add-headers", "trim-whitespace", "less", "bundle"]);
-gulp.task("default", ["less", "make", "property-tests", "bundle"]);
+gulp.task("full", ["add-headers", "trim-whitespace", "less", "bundle"]);
+gulp.task("default", ["less", "bundle"]);
