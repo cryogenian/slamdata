@@ -18,25 +18,22 @@ module Test.Selenium.File where
 
 import Prelude
 import Control.Bind ((=<<))
-import Control.Alt ((<|>))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Trans (lift)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Argonaut.Core (toArray)
 import Data.Argonaut.JCursor (toPrims)
-import Data.Tuple (Tuple(..))
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust, isNothing)
+import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl, elem)
 import Data.Traversable (traverse)
 import Data.List (List(), length, reverse, filter, null, fromList, (!!))
 import Selenium.Types
-import Selenium.MouseButton
 import Selenium.ActionSequence hiding (sequence)
 import Selenium.Monad
-import Selenium.Combinators (checker, awaitUrlChanged, waitUntilJust, tryToFind)
+import Selenium.Combinators (checker, awaitUrlChanged, tryToFind)
 import Selenium (showLocator)
 import Node.FS.Aff
 import Node.Encoding (Encoding(UTF8))
