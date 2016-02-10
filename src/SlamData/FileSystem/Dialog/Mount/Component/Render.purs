@@ -90,7 +90,7 @@ fldConnectionURI state =
         [ H.input
             [ P.class_ B.formControl
             , P.placeholder "Paste connection URI here"
-            , P.value (hidePassword state.connectionURI)
+            , P.value (hidePassword' state.connectionURI)
             , Cp.mbKeyDown clearText
             , Cp.mbKeyPress handleKeyInput
             -- In Chrome, this is used to prevent multiple values being pasted in the
@@ -119,11 +119,12 @@ fldConnectionURI state =
     then pure Nothing
     else E.preventDefault $> Just (action $ SelectElement e.target)
 
-  hidePassword :: String -> String
-  hidePassword s = either (const s) go $ runParseAbsoluteURI s
+  hidePassword' :: String -> String
+  hidePassword' s = either (const s) go $ runParseAbsoluteURI s
     where
-    go uri = printAbsoluteURI
-             $ setURIPassword (hidePassword (passwordFromURI uri)) uri
+    go uri =
+      printAbsoluteURI
+        $ setURIPassword (hidePassword (passwordFromURI uri)) uri
 
 
 selScheme :: State -> ComponentHTML Query
