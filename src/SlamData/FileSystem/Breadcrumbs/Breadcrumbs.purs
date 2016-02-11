@@ -19,7 +19,7 @@ module SlamData.FileSystem.Breadcrumbs.Component where
 import Prelude
 
 import Data.Foldable (foldl)
-import Data.Identity (Identity(..))
+import Data.Functor.Eff (liftEff)
 import Data.List (List(..), reverse)
 import Data.Maybe (maybe, Maybe(..))
 import Data.Path.Pathy (rootDir, runDirName, dirName, parentDir)
@@ -36,10 +36,13 @@ import SlamData.FileSystem.Routing.Salt (Salt())
 
 import Utils.Path (DirPath())
 
+import Quasar.Auth.Route as Ar
+
 type State =
   { breadcrumbs :: List Breadcrumb
   , sort :: Sort
   , salt :: Salt
+  , token :: Maybe String
   }
 
 type Breadcrumb =
@@ -58,6 +61,7 @@ mkBreadcrumbs path sort salt =
   { breadcrumbs: reverse $ go Nil path
   , sort: sort
   , salt: salt
+  , token: Nothing
   }
   where
   go :: List Breadcrumb -> DirPath -> List Breadcrumb
@@ -69,23 +73,36 @@ mkBreadcrumbs path sort salt =
       Just dir -> go result' dir
       Nothing -> Cons rootBreadcrumb result
 
-type Query = Identity
+data Query a = Init a
 
 comp :: Component State Query Slam
 comp = component render eval
 
 render :: State -> ComponentHTML Query
 render r =
-  H.ol [ P.classes [ B.breadcrumb, B.colXs7 ] ]
+  H.ol
+    [
+      P.classes [ B.breadcrumb, B.colXs7 ]
+    , P.initializer (\_ -> action Init)
+    ]
   $ foldl (\views model -> view model <> views) [ ] r.breadcrumbs
   where
   view b =
     [ H.li_
         [ H.a
-            [ P.href (browseURL Nothing r.sort r.salt b.link) ]
+            [
+              P.href $ href b
+            ]
             [ H.text b.name ]
         ]
     ]
+  href b =
+    Ar.insertPermissionsToken r.token
+    $ browseURL Nothing r.sort r.salt b.link
+
 
 eval :: Eval Query State Query Slam
-eval (Identity next) = pure next
+eval (Init next) = do
+  mbToken <- liftEff $ Ar.permissionsToken
+  modify (\s -> s{token = mbToken})
+  pure next

@@ -63,6 +63,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
+import Quasar.Auth.Route as Ar
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
@@ -228,7 +229,18 @@ eval (ExploreFile fs res next) = do
   pure next
 eval (Publish next) =
   gets notebookPath >>= \mpath -> do
-    for_ mpath $ liftEff <<< newTab <<< flip mkNotebookURL (NA.Load ReadOnly)
+    mbToken <- liftEff Ar.permissionsToken
+    for_ mpath \path -> liftEff
+      let
+        url = mkNotebookURL path (NA.Load ReadOnly)
+        url' =
+          maybe url (\tk ->
+                      Ar.insertIntoString
+                        SlamData.Config.permissionsTokenField
+                        tk
+                        url) mbToken
+      in
+       newTab url'
     pure next
 eval (Reset fs dir next) = do
   let nb = initialNotebook fs
@@ -431,7 +443,7 @@ saveNotebook _ = get >>= \st -> do
                   mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
                 Just cid ->
                   mkNotebookCellHash path' cid st.accessType st.globalVarMap
-        in liftEff $ locationObject >>= Location.setHash notebookHash
+        in liftEff $ Ar.setHashPreservingToken notebookHash
 
   where
 

@@ -35,6 +35,8 @@ import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 import Halogen (Driver(), runUI, installedState)
 import Halogen.Util (appendToBody, onLoad)
 
+import Quasar.Auth.Route as Ar
+
 import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Notebook.Action (Action(..), toAccessType)
@@ -77,9 +79,10 @@ routeSignal driver = do
   explore :: UP.FilePath -> Aff NotebookEffects Unit
   explore path = do
     fs <- liftEff detectBrowserFeatures
+    mbToken <- liftEff Ar.permissionsToken
     driver $ Draftboard.toNotebook $ Notebook.ExploreFile fs path
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
-      $ parentURL $ Left path
+      $ Ar.insertPermissionsToken mbToken $ parentURL $ Left path
     driver $ Draftboard.toRename $ Rename.SetText $ Config.newNotebookName
 
   notebook
@@ -106,5 +109,6 @@ routeSignal driver = do
     driver $ Draftboard.toDraftboard $ Draftboard.SetViewingCell viewing
     driver $ Draftboard.toDraftboard $ Draftboard.SetAccessType accessType
     driver $ Draftboard.toNotebook $ Notebook.SetGlobalVarMap varMap
+    mbToken <- liftEff Ar.permissionsToken
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
-      $ parentURL $ Right path
+      $ Ar.insertPermissionsToken mbToken $ parentURL $ Right path

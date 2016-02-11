@@ -22,11 +22,11 @@ module Control.UI.Browser
   , setLocation
   , getLocation
   , getHash
+  , setHash
+  , modifyHash
   , locationString
   , modifyLocation
-  , modifyLocationM
   , alterLocation
-  , alterLocationM
   , select
   , newTab
   , clearValue
@@ -84,26 +84,20 @@ alterLocation fn = do
   old <- getLocation
   replaceLocation $ fn old
 
--- | Same as `modifyLocation` but mutating function is effectful
-modifyLocationM
-  :: forall e. (String -> Eff (dom :: DOM|e) String) -> Eff (dom :: DOM|e) Unit
-modifyLocationM fnM = do
-  getLocation
-    >>= fnM
-    >>= setLocation
-
--- | Same as `alterLocation` but mutating function is effectful
-alterLocationM
-  :: forall e. (String -> Eff (dom :: DOM|e) String) -> Eff (dom :: DOM|e) Unit
-alterLocationM fnM =
-  getLocation
-    >>= fnM
-    >>= replaceLocation
-
 reload :: forall e. Eff (dom :: DOM | e) Unit
 reload =
   locationObject
     >>= Location.reload
+
+setHash :: forall e. String -> Eff (dom :: DOM |e) Unit
+setHash s =
+  locationObject
+    >>= Location.setHash s
+
+modifyHash :: forall e. (String -> String) -> Eff (dom :: DOM |e) Unit
+modifyHash f =
+  getHash >>= f >>> setHash
+
 
 foreign import locationString :: forall e. Eff (dom :: DOM | e) String
 foreign import select :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit

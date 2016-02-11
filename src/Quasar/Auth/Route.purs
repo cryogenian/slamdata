@@ -5,7 +5,7 @@ import Prelude
 import Control.Bind (join)
 import Control.Monad.Eff (Eff())
 import Control.UI.Browser
-  (alterLocation, modifyLocation, decodeURIComponent, encodeURIComponent, getHash)
+  (alterLocation, modifyLocation, decodeURIComponent, encodeURIComponent, getHash, modifyHash)
 
 import Data.Array as Arr
 import Data.Maybe as M
@@ -21,6 +21,12 @@ import DOM (DOM())
 import Routing.Types (RoutePart(..))
 import Routing.Parser (parse)
 import Utils.Path
+
+insertPermissionsToken :: M.Maybe String -> String -> String
+insertPermissionsToken mbToken hash =
+  M.maybe hash
+    (\t -> insertIntoString SlamData.Config.permissionsTokenField t hash)
+    mbToken
 
 insertIntoString :: String -> String -> String -> String
 insertIntoString key val hash =
@@ -82,7 +88,6 @@ permissionsToken =
 preserveToken :: String -> String -> M.Maybe String
 preserveToken old new = do
   token <- extractToken old
-  Debug.Trace.traceAnyA token
   pure $ insertIntoString SlamData.Config.permissionsTokenField token new
 
 setPreservingToken
@@ -94,3 +99,9 @@ replacePreservingToken
   :: forall e. String -> Eff (dom :: DOM |e) Unit
 replacePreservingToken str =
   alterLocation (\old -> M.fromMaybe str $ (onHash $ preserveToken old) str )
+
+
+setHashPreservingToken
+  :: forall e. String -> Eff (dom :: DOM|e) Unit
+setHashPreservingToken s =
+  modifyHash (\old -> M.fromMaybe s $ preserveToken old s)
