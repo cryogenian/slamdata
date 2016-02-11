@@ -31,6 +31,7 @@ import Control.Monad.Eff.Shortcut.Platform (shortcutPlatform)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 import Control.Monad.Trans as MT
+import Control.MonadPlus (guard)
 import Control.UI.Browser (newTab, locationString)
 
 import Data.Array (cons)
@@ -40,7 +41,7 @@ import Data.Functor (($>))
 import Data.Functor.Coproduct (coproduct, left, right)
 import Data.Functor.Eff (liftEff)
 import Data.Lens ((^.), (.~), (%~), (?~))
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Shortcut (print)
 import Data.StrMap as SM
 import Data.Traversable (traverse)
@@ -119,20 +120,26 @@ render state =
     ]
 
   where
+  shouldHideTopMenu =
+       isJust (state ^. _viewingCell)
+    || isReadOnly (state ^. _accessType)
+
+  shouldHideEditors =
+    isReadOnly (state ^. _accessType)
+
   classes =
-    if isReadOnly (state ^. _accessType)
+    if shouldHideEditors
        then [ Rc.notebookViewHack ]
        else [ Rc.dashboard ]
 
   notebookClass =
-    case state ^. _viewingCell of
-      Just _ -> className "sd-notebook-viewing-cell"
-      Nothing -> className "sd-notebook"
+    if shouldHideTopMenu
+      then className "sd-notebook-hidden-top-menu"
+      else className "sd-notebook"
 
   visibilityClasses =
-    case state ^. _viewingCell of
-      Just _ -> [ Rc.invisible ]
-      Nothing -> []
+    guard shouldHideTopMenu
+      $> Rc.invisible
 
   renderHeader :: State -> DraftboardHTML
   renderHeader state =
