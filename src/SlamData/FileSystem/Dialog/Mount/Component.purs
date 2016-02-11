@@ -46,6 +46,7 @@ import Halogen
 import Network.HTTP.Affjax (AJAX())
 
 import Quasar.Aff as API
+import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Dialog.Mount.Component.Query
 import SlamData.FileSystem.Dialog.Mount.Component.Render
@@ -103,7 +104,7 @@ eval (Save next) = do
   let resource = R.Database $ state.parent </> dir state.name
   modify (_inProgress .~ true)
   modify (_externalValidationError .~ Nothing)
-  result <- liftAff $ attempt $ API.saveMount resource state.connectionURI
+  result <- liftAff $ attempt $ Auth.authed $ API.saveMount resource state.connectionURI
   case result of
     Left err -> do
       modify (_externalValidationError ?~ msg err)

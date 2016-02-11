@@ -40,6 +40,7 @@ import CSS.Geometry (marginBottom)
 import CSS.Size (px)
 
 import Quasar.Aff as API
+import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Effects (Slam())
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
@@ -134,7 +135,7 @@ eval (HideActions next) = modify (_item %~ hideActions) $> next
 eval (Open next) = pure next
 eval (Configure next) = do
   res <- gets (_.item >>> itemResource)
-  uri <- liftAff $ attempt $ API.mountInfo res
+  uri <- liftAff $ attempt $ Auth.authed $ API.mountInfo res
   modify (_mbURI .~ either (const Nothing) Just uri) $> next
 eval (Move next) = pure next
 eval (Download next) = pure next

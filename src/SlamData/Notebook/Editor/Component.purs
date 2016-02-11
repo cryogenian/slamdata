@@ -62,6 +62,7 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as Quasar
+import Quasar.Auth as Auth
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
@@ -189,7 +190,7 @@ eval (RunActiveCell next) =
 eval (ToggleAddCellMenu next) = modify (_isAddingCell %~ not) $> next
 eval (LoadNotebook fs dir next) = do
   modify (_stateMode .~ Loading)
-  json <- liftAff $ Quasar.load $ dir </> Pathy.file "index"
+  json <- liftAff $ Auth.authed $ Quasar.load $ dir </> Pathy.file "index"
   case Model.decode =<< json of
     Left err -> do
       liftAff $ log err
@@ -448,13 +449,13 @@ saveNotebook _ = get >>= \st -> do
   getNewName' :: DirPath -> String -> NotebookDSL Pathy.DirName
   getNewName' dir name =
     let baseName = name ++ "." ++ Config.notebookExtension
-    in liftAff $ Pathy.DirName <$> Quasar.getNewName dir baseName
+    in liftAff $ Pathy.DirName <$> Auth.authed (Quasar.getNewName dir baseName)
 
   -- Saves a notebook and returns the name it was saved as.
   save :: DirPath -> Pathy.DirName -> Json -> NotebookDSL Pathy.DirName
   save dir name json = do
     let notebookPath = dir </> Pathy.dir' name </> Pathy.file "index"
-    liftAff $ Quasar.save notebookPath json
+    liftAff $ Auth.authed $ Quasar.save notebookPath json
     pure name
 
   -- Renames a notebook and returns the new name it was changed to.
@@ -463,7 +464,7 @@ saveNotebook _ = get >>= \st -> do
     newName' <- getNewName' dir newName
     let oldPath = dir </> Pathy.dir' oldName
         newPath = dir </> Pathy.dir' newName'
-    liftAff $ Quasar.move (R.Directory oldPath) (Right newPath)
+    liftAff $ Auth.authed $ Quasar.move (R.Directory oldPath) (Right newPath)
     pure newName'
 
 -- | Takes a `DirName` for a saved notebook and returns the name part without

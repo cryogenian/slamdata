@@ -47,6 +47,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Network.HTTP.Affjax (AJAX())
 
 import Quasar.Aff as API
+import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Render.CSS as CSS
@@ -95,10 +96,11 @@ eval q =
       shouldShowFiles <- get <#> _.showFiles >>> not
       modify (_ { showFiles = shouldShowFiles })
       when shouldShowFiles $ do
+        idToken <- liftEff' Auth.retrieveIdToken
         let
           fileProducer =
             FT.hoistFreeT liftH $
-              API.transitiveChildrenProducer P.rootDir
+              API.transitiveChildrenProducer P.rootDir idToken
           fileConsumer =
             CR.consumer \fs -> do
               modify $ appendFiles fs

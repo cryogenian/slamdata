@@ -50,6 +50,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Network.HTTP.Affjax (AJAX())
 
 import Quasar.Aff as API
+import Quasar.Auth as Auth
 
 import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
@@ -59,10 +60,13 @@ import SlamData.Render.CSS as Rc
 
 import Utils.Path (DirPath(), dropNotebookExt)
 
-type Slam e = Aff (HalogenEffects ( ajax :: AJAX
-                                  , now :: Now
-                                  , ref :: REF
-                                  | e ) )
+type Slam e =
+  Aff
+    (HalogenEffects
+      ( ajax :: AJAX
+      , now :: Now
+      , ref :: REF
+      | e ))
 
 type StateRec =
   { showList :: Boolean
@@ -250,7 +254,7 @@ eval (Submit next) = do
   state <- get
   let src = state ^. _initial
       tgt = R.getPath $ renameSlam state
-  result <- liftAff $ attempt (API.move src tgt)
+  result <- liftAff $ attempt $ Auth.authed $ API.move src tgt
   case result of
     Left e ->
       modify (_error ?~ message e)
@@ -287,7 +291,7 @@ dirItemClicked res =
   case R.getPath res of
     Left _ -> pure unit
     Right dir -> do
-      siblings <- liftAff $ API.children dir
+      siblings <- liftAff $ Auth.authed $ API.children dir
       modify $ (_dir .~ dir)
            <<< (_showList .~ false)
            <<< (_siblings .~ siblings)

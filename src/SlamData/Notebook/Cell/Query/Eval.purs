@@ -44,6 +44,7 @@ import Ace.Types (Completion())
 import Halogen (query, action, request)
 
 import Quasar.Aff as Quasar
+import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.Ace.Component (AceDSL())
@@ -58,15 +59,17 @@ queryEval info sql = do
   addCompletions varMap
   liftAff $ CEQ.runCellEvalT $ do
     { plan: plan, outputResource: outputResource } <-
-      Quasar.executeQuery sql
+      Quasar.executeQuery
+        sql
         (M.fromMaybe false info.cachingEnabled)
         varMap
         inputResource
         tempOutputResource
-        # MT.lift
-        >>= E.either EC.throwError pure
+      # Auth.authed
+      # MT.lift
+      >>= E.either EC.throwError pure
 
-    (MT.lift $ Quasar.resourceExists outputResource)
+    (MT.lift $ Auth.authed $ Quasar.resourceExists outputResource)
       >>= \x -> unless x $ EC.throwError "Requested collection doesn't exist"
 
     F.for_ plan \p ->
