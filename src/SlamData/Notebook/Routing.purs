@@ -74,6 +74,8 @@ routing
   varMap :: Match Port.VarMap
   varMap = Match.params <#> Map.toList >>> F.foldl go SM.empty
     where
+      go m (Tuple k _)
+        | k == SlamData.Config.permissionsTokenField = m
       go m (Tuple k str) =
         case P.runParser str Port.parseVarMapValue of
           E.Left err -> m

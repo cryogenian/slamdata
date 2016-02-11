@@ -37,8 +37,6 @@ import Data.Either as E
 import Data.NaturalTransformation
 import Data.Path.Pathy as P
 
-import DOM (DOM())
-
 import Halogen
 import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
@@ -78,7 +76,6 @@ type Effects e =
   API.RetryEffects
     ( ajax :: AJAX
     , err :: EXCEPTION
-    , dom :: DOM
     | e
     )
 
