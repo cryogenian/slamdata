@@ -51,6 +51,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as Api
+import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Form.Select (Select(), autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
@@ -251,7 +252,7 @@ cellEval (EvalCell info continue) = do
       r <- maybe (throwError "Incorrect port in visual builder cell") pure
            $ info.inputPort >>= preview P._Resource
       lift $ updateForms r
-      records <- lift $ liftWithCanceler' $ Api.all r
+      records <- lift $ liftWithCanceler' $ Auth.authed $ Api.all r
       when (length records > 10000)
         $ throwError
         $  "Maximum record count available for visualization -- 10000, "
@@ -303,7 +304,7 @@ responsePort = do
 
 updateForms :: R.Resource -> VizDSL Unit
 updateForms file = do
-  jarr <- liftWithCanceler' $ Api.sample file 0 20
+  jarr <- liftWithCanceler' $ Auth.authed $ Api.sample file 0 20
   if null jarr
     then
     modify $ _availableChartTypes .~ Set.empty

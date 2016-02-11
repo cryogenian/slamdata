@@ -37,6 +37,7 @@ import Data.String as Str
 import Data.StrMap as SM
 
 import Quasar.Aff as Quasar
+import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource (Resource(..))
 import SlamData.Notebook.Cell.Ace.Component (AceDSL())
@@ -127,5 +128,5 @@ evalEmbeddedQueries dir cellId =
       n <- get :: EvalM Int
       modify (+ 1)
       let tempFile = File $ dir' </> file ("tmp" <> cellIdToString cellId <> "-" <> show n)
-      result <- liftAff $ Quasar.query' tempFile code
+      result <- liftAff $ Auth.authed $ Quasar.query' tempFile code
       either (throwError <<< error) pure result

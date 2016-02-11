@@ -52,11 +52,12 @@ import Control.Bind ((>=>), (<=<), (=<<))
 import Control.Coroutine as CR
 import Control.Coroutine.Aff as ACR
 import Control.Monad (when, unless)
-import Control.Monad.Aff (Aff(), attempt, runAff)
-import Control.Monad.Aff.AVar (AVAR())
+import Control.Monad.Aff (Aff())
+import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref (REF(), newRef, readRef, modifyRef)
-import Control.Monad.Error.Class (MonadError, throwError)
+import Control.Monad.Eff.Ref as Ref
+import Control.Monad.Error.Class as Err
 import Control.MonadPlus (guard)
 import Control.UI.Browser (encodeURIComponent)
 
@@ -65,32 +66,34 @@ import Data.Argonaut as JS
 import Data.Array as Arr
 import Data.Bifunctor (bimap, lmap)
 import Data.Date as Date
-import Data.Either (Either(..), either, isRight)
-import Data.Foldable (foldl, for_, traverse_)
+import Data.Either as E
+import Data.Foldable as F
+
 import Data.Foreign (F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
 import Data.Foreign.NullOrUndefined (runNullOrUndefined)
+
 import Data.Functor (($>))
 import Data.Functor.Eff (liftEff)
 import Data.Lens ((.~), (^.))
 import Data.List as L
-import Data.Maybe (Maybe(..), isJust, fromMaybe, maybe)
+import Data.Maybe as M
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as Set
 import Data.String as S
 import Data.StrMap as SM
-import Data.Time (Milliseconds(..))
+import Data.Time as Time
 import Data.Tuple (Tuple(..))
-import Data.URI (runParseAbsoluteURI)
-import Data.URI.Types (AbsoluteURI(..), Query(..), URIScheme(..))
+import Data.URI as URI
+import Data.URI.Types as URI
 
 import DOM (DOM())
 
-import Network.HTTP.Affjax (Affjax(), AJAX(), AffjaxRequest(), AffjaxResponse(), RetryPolicy(), defaultRequest, affjax, retry, defaultRetryPolicy)
-import Network.HTTP.Affjax.Request (Requestable)
-import Network.HTTP.Affjax.Response (Respondable, ResponseType(JSONResponse))
+import Network.HTTP.Affjax as AX
+import Network.HTTP.Affjax.Request as AX
+import Network.HTTP.Affjax.Response as AX
 import Network.HTTP.Method (Method(..))
 import Network.HTTP.MimeType (MimeType(..), mimeTypeToString)
 import Network.HTTP.MimeType.Common (applicationJSON)
@@ -98,6 +101,7 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
 
 import Quasar.Paths as Paths
+import Quasar.Auth as Auth
 
 -- TODO: split out a core Quasar module that only deals with the API, and
 -- doesn't know about SlamData specific things.
@@ -118,64 +122,65 @@ instance listingIsForeign :: IsForeign Listing where
       >>= readProp "children"
       >>= pure
         <<< Listing
-        <<< fromMaybe []
+        <<< M.fromMaybe []
         <<< runNullOrUndefined
 
-instance listingRespondable :: Respondable Listing where
-  responseType = Tuple (Just applicationJSON) JSONResponse
+instance listingRespondable :: AX.Respondable Listing where
+  responseType = Tuple (M.Just applicationJSON) AX.JSONResponse
   fromResponse = read
 
 children
   :: forall e
    . PU.DirPath
-  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM | e)) (Array R.Resource)
-children dir = do
-  cs <- children' dir
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM | e)) (Array R.Resource)
+children dir idToken = do
+  cs <- children' dir idToken
   let result = (R._root .~ dir) <$> cs
   memoizeCompletionStrs dir result
   pure result
 
 children'
   :: forall e
-   . PU.DirPath -> Aff (RetryEffects (ajax :: AJAX | e)) (Array R.Resource)
-children' dir = runListing <$> (getResponse msg $ listing dir)
+   . PU.DirPath
+   -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (Array R.Resource)
+children' dir idToken =
+  listing dir idToken
+    # getResponse msg
+    <#> runListing
   where
   msg = "Error: can not get children of resource"
 
-listing :: forall e. PU.DirPath -> Affjax (RetryEffects e) Listing
-listing p =
+listing
+  :: forall e
+   . PU.DirPath
+  -> M.Maybe Auth.IdToken
+  -> AX.Affjax (RetryEffects e) Listing
+listing p idToken =
   case P.relativeTo p P.rootDir of
-    Nothing -> throwError $ Exn.error "incorrect path"
-    Just p ->
+    M.Nothing -> Err.throwError $ Exn.error "incorrect path"
+    M.Just p ->
       retryGet
         (Paths.metadataUrl </> p)
         applicationJSON
+        idToken
 
 makeFile
   :: forall e
    . PU.FilePath
-   -> MimeType
-   -> String
-   -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
-makeFile path mime content =
-  getResponse msg go
-  where
-  msg :: String
-  msg = "error while creating file"
-
-  firstLine :: Maybe String
-  firstLine = Arr.head $ S.split "\n" content
-
-  isJson :: Either String JS.Json
-  isJson = maybe (Left "empty file") Right firstLine >>= JS.jsonParser
-
-  go :: Aff (RetryEffects (ajax :: AJAX | e)) (AffjaxResponse Unit)
-  go = slamjax $ defaultRequest
-   { method = PUT
-   , headers = [ ContentType mime ]
-   , content = Just content
-   , url = fromMaybe "" $ (P.printPath <<< (Paths.dataUrl </>)) <$> P.relativeTo path P.rootDir
-   }
+  -> MimeType
+  -> String
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) Unit
+makeFile path mime content idToken =
+  getResponse "error while creating file" $
+    slamjax $ AX.defaultRequest
+      { method = PUT
+      , headers = [ ContentType mime ] <> M.maybe [] (\x -> [Auth.authHeader x]) idToken
+      , content = M.Just content
+      , url = M.fromMaybe "" $ (P.printPath <<< (Paths.dataUrl </>)) <$> P.relativeTo path P.rootDir
+      }
 
 
 successStatus :: StatusCode
@@ -189,133 +194,151 @@ succeeded (StatusCode int) =
   200 <= code && code < 300
   where code = int
 
-type RetryEffects e = (avar :: AVAR, ref :: REF, now :: Date.Now | e)
+type RetryEffects e = (avar :: AVar.AVAR, ref :: Ref.REF, now :: Date.Now | e)
 
 -- | A version of `affjax` with our retry policy.
 slamjax
   :: forall e a b
-   . (Requestable a, Respondable b)
-  => AffjaxRequest a
-  -> Affjax (RetryEffects e) b
+   . (AX.Requestable a, AX.Respondable b)
+  => AX.AffjaxRequest a
+  -> AX.Affjax (RetryEffects e) b
 slamjax =
-  retry
-    defaultRetryPolicy
-    affjax
+  AX.retry
+    AX.defaultRetryPolicy
+    AX.affjax
 
 retryGet
   :: forall e a fd
-   . (Respondable a)
+   . (AX.Respondable a)
   => P.Path P.Abs fd P.Sandboxed
   -> MimeType
-  -> Affjax (RetryEffects e) a
+  -> M.Maybe Auth.IdToken
+  -> AX.Affjax (RetryEffects e) a
 retryGet =
   getWithPolicy $
-    defaultRetryPolicy
+    AX.defaultRetryPolicy
       { delayCurve = const 1000
-      , timeout = Just 30000
+      , timeout = M.Just 30000
       }
 
 mkRequest
   :: forall e fd
    . P.Path P.Abs fd P.Sandboxed
   -> MimeType
-  -> Aff (RetryEffects e) (AffjaxRequest Unit)
-mkRequest u mime = do
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects e) (AX.AffjaxRequest Unit)
+mkRequest u mime idToken = do
   nocache <- liftEff $ Date.nowEpochMilliseconds
   pure $
-    defaultRequest
+    AX.defaultRequest
       { url = url' nocache
-      , headers = [ Accept mime ]
+      , headers = [ Accept mime ] <> M.maybe [] (\t -> [ Auth.authHeader t ]) idToken
       }
   where
   url' nocache = url <> symbol <> "nocache=" <> pretty nocache
   symbol = if S.contains "?" url then "&" else "?"
-  pretty (Milliseconds ms) = let s = show ms in fromMaybe s (S.stripSuffix ".0" s)
+  pretty (Time.Milliseconds ms) = let s = show ms in M.fromMaybe s (S.stripSuffix ".0" s)
   url = P.printPath u
 
 getOnce
   :: forall e a fd
-   . (Respondable a)
+   . (AX.Respondable a)
   => P.Path P.Abs fd P.Sandboxed
   -> MimeType
-  -> Affjax (RetryEffects e) a
-getOnce u mime =
-  mkRequest u mime
-    >>= affjax
+  -> M.Maybe Auth.IdToken
+  -> AX.Affjax (RetryEffects e) a
+getOnce u mime idToken =
+  mkRequest u mime idToken
+    >>= AX.affjax
 
 getWithPolicy
   :: forall e a fd
-   . (Respondable a)
-  => RetryPolicy
+   . (AX.Respondable a)
+  => AX.RetryPolicy
   -> P.Path P.Abs fd P.Sandboxed
   -> MimeType
-  -> Affjax (RetryEffects e) a
-getWithPolicy policy u mime =
-  mkRequest u mime
-    >>= retry policy affjax
+  -> M.Maybe Auth.IdToken
+  -> AX.Affjax (RetryEffects e) a
+getWithPolicy policy u mime idToken =
+  mkRequest u mime idToken
+    >>= AX.retry policy AX.affjax
 
 retryDelete
   :: forall e a fd
-   . (Respondable a)
+   . (AX.Respondable a)
   => P.Path P.Abs fd P.Sandboxed
-  -> Affjax (RetryEffects e) a
-retryDelete u = do
-  slamjax $ defaultRequest
+  -> M.Maybe Auth.IdToken
+  -> AX.Affjax (RetryEffects e) a
+retryDelete u idToken = do
+  slamjax $ AX.defaultRequest
     { url = P.printPath u
     , method = DELETE
+    , headers = M.maybe [] (\t -> [Auth.authHeader t]) idToken
     }
 
 retryPost
   :: forall e a b fd
-   . (Requestable a, Respondable b)
-  => P.Path P.Abs fd P.Sandboxed -> a -> Affjax (RetryEffects e) b
-retryPost u c =
-  slamjax $ defaultRequest
+   . (AX.Requestable a, AX.Respondable b)
+  => P.Path P.Abs fd P.Sandboxed
+  -> a
+  -> M.Maybe Auth.IdToken
+  -> AX.Affjax (RetryEffects e) b
+retryPost u c idToken =
+  slamjax $ AX.defaultRequest
     { method = POST
     , url = P.printPath u
-    , content = Just c
+    , content = M.Just c
+    , headers = M.maybe [] (\t -> [Auth.authHeader t]) idToken
     }
 
 retryPut
   :: forall e a b fd
-   . (Requestable a, Respondable b)
-  => P.Path P.Abs fd P.Sandboxed -> a -> MimeType -> Affjax (RetryEffects e) b
-retryPut u c mime =
-  slamjax $ defaultRequest
+   . (AX.Requestable a, AX.Respondable b)
+  => P.Path P.Abs fd P.Sandboxed
+  -> a
+  -> MimeType
+  -> M.Maybe Auth.IdToken
+  -> AX.Affjax (RetryEffects e) b
+retryPut u c mime idToken =
+  slamjax $ AX.defaultRequest
     { method = PUT
     , url = P.printPath u
-    , content = Just c
-    , headers = [ContentType mime]
+    , content = M.Just c
+    , headers = [ContentType mime] <> M.maybe [] (\t -> [Auth.authHeader t]) idToken
     }
 
-getResponse :: forall a e. String -> Affjax e a -> Aff (ajax :: AJAX | e) a
-getResponse msg affjax = do
-  res <- attempt affjax
+getResponse :: forall a e. String -> AX.Affjax e a -> Aff (ajax :: AX.AJAX | e) a
+getResponse msg m = do
+  res <- Aff.attempt m
   case res of
-    Left e -> throwError $ Exn.error msg
-    Right r -> do
+    E.Left e -> Err.throwError $ Exn.error msg
+    E.Right r -> do
       if not $ succeeded r.status
-        then throwError $ Exn.error msg
+        then Err.throwError $ Exn.error msg
         else pure r.response
 
 reqHeadersToJSON :: Array RequestHeader -> JS.Json
-reqHeadersToJSON = foldl go JS.jsonEmptyObject
+reqHeadersToJSON = F.foldl go JS.jsonEmptyObject
   where
   go obj (Accept mime) = "Accept" := mimeTypeToString mime ~> obj
   go obj (ContentType mime) = "Content-Type" := mimeTypeToString mime ~> obj
   go obj (RequestHeader k v) = k := v ~> obj
 
 
-mountInfo :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) String
-mountInfo res = do
-  result <- getOnce mountPath applicationJSON
+mountInfo
+  :: forall e
+   . R.Resource
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) String
+mountInfo res idToken = do
+  result <- getOnce mountPath applicationJSON idToken
   if succeeded result.status
      then case parse result.response of
-       Left err ->
-         throwError $ Exn.error (show err)
-       Right uri ->
+       E.Left err ->
+         Err.throwError $ Exn.error (show err)
+       E.Right uri ->
          pure uri
-     else throwError (Exn.error result.response)
+     else Err.throwError (Exn.error result.response)
 
   where
   mountPath :: P.Path P.Abs P.Dir P.Sandboxed
@@ -331,46 +354,47 @@ mountInfo res = do
 viewInfo
   :: forall e
    . R.Resource
-  -> Aff (RetryEffects (ajax :: AJAX|e)) { sql :: String, vars :: SM.StrMap String }
-viewInfo (R.ViewMount mountPath) = do
-  result <- getOnce (Paths.mountUrl </> PU.rootifyFile mountPath) applicationJSON
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX|e)) { sql :: String, vars :: SM.StrMap String }
+viewInfo (R.ViewMount mountPath) idToken = do
+  result <- getOnce (Paths.mountUrl </> PU.rootifyFile mountPath) applicationJSON idToken
   if succeeded result.status
     then case parse result.response of
-      Left err -> throwError $ Exn.error err
-      Right res -> pure res
-    else throwError $ Exn.error result.response
+      E.Left err -> Err.throwError $ Exn.error err
+      E.Right res -> pure res
+    else Err.throwError $ Exn.error result.response
   where
-  runQuery :: Query -> SM.StrMap (Maybe String)
-  runQuery (Query q) = q
+  runQuery :: URI.Query -> SM.StrMap (M.Maybe String)
+  runQuery (URI.Query q) = q
 
-  parse :: String -> Either String { sql :: String, vars :: SM.StrMap String }
+  parse :: String -> E.Either String { sql :: String, vars :: SM.StrMap String }
   parse connURI = do
     connStr <-
       lmap show
       $ parseJSON connURI
       >>= prop "view"
       >>= readProp "connectionUri"
-    (AbsoluteURI mbScheme _ mbQuery) <- lmap show $ runParseAbsoluteURI connStr
-    scheme <- maybe (throwError "There is no scheme") pure mbScheme
-    unless (scheme == URIScheme "sql2") $ throwError "Incorrect scheme"
+    URI.AbsoluteURI mbScheme _ mbQuery <- lmap show $ URI.runParseAbsoluteURI connStr
+    scheme <- M.maybe (Err.throwError "There is no scheme") pure mbScheme
+    unless (scheme == URI.URIScheme "sql2") $ Err.throwError "Incorrect scheme"
 
-    let queryMap = maybe SM.empty runQuery mbQuery
+    let queryMap = M.maybe SM.empty runQuery mbQuery
     sql <-
-      maybe (throwError "There is no 'q' in queryMap") pure
-      $ SM.lookup "q" queryMap
-      >>= id
-      >>> map PU.decodeURIPath
-      >>= S.stripPrefix "("
-      >>= S.stripSuffix ")"
+      M.maybe (Err.throwError "There is no 'q' in queryMap") pure
+        $ SM.lookup "q" queryMap
+        >>= id
+        >>> map PU.decodeURIPath
+        >>= S.stripPrefix "("
+        >>= S.stripSuffix ")"
     let vars = SM.fold foldFn SM.empty $ SM.delete "q" queryMap
     pure { vars, sql }
     where
-    foldFn :: SM.StrMap String -> String -> Maybe String -> SM.StrMap String
-    foldFn acc key mbVal = fromMaybe acc do
+    foldFn :: SM.StrMap String -> String -> M.Maybe String -> SM.StrMap String
+    foldFn acc key mbVal = M.fromMaybe acc do
       k <- S.stripPrefix "var." key
       val <- mbVal
       pure $ SM.insert k val acc
-viewInfo _ = throwError $ Exn.error "Incorrect resource in viewInfo"
+viewInfo _ _ = Err.throwError $ Exn.error "Incorrect resource in viewInfo"
 
 
 
@@ -378,14 +402,18 @@ viewInfo _ = throwError $ Exn.error "Incorrect resource in viewInfo"
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
 getNewName
-  :: forall e. PU.DirPath -> String -> Aff (RetryEffects (ajax :: AJAX |e)) String
-getNewName parent name = do
-  items <- attempt (children' parent) <#> either (const []) id
+  :: forall e
+   . PU.DirPath
+  -> String
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX |e)) String
+getNewName parent name idToken = do
+  items <- Aff.attempt (children' parent idToken) <#> E.either (const []) id
   pure if exists' name items then getNewName' items 1 else name
   where
   getNewName' items i =
     let arr = S.split "." name
-    in fromMaybe "" do
+    in M.fromMaybe "" do
       body <- Arr.head arr
       suffixes <- Arr.tail arr
       let newName = S.joinWith "." $ Arr.cons (body <> " " <> show i) suffixes
@@ -394,7 +422,7 @@ getNewName parent name = do
            else newName
 
 exists' :: String -> Array R.Resource -> Boolean
-exists' name items = isJust $ Arr.findIndex (\r -> r ^. R._name == name) items
+exists' name items = M.isJust $ Arr.findIndex (\r -> r ^. R._name == name) items
 
 -- | Will return `Just` in case the resource was successfully moved, and
 -- | `Nothing` in case no resource existed at the requested source path.
@@ -402,37 +430,39 @@ move
   :: forall e
    . R.Resource
   -> PU.AnyPath
-  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) (Maybe PU.AnyPath)
-move src tgt = do
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM |e)) (M.Maybe PU.AnyPath)
+move src tgt idToken = do
   let url = if R.isDatabase src || R.isViewMount src
             then Paths.mountUrl
             else Paths.dataUrl
-  cleanViewMounts src
-  result <- affjax $ defaultRequest
+  cleanViewMounts src idToken
+  result <- AX.affjax $ AX.defaultRequest
     { method = MOVE
-    , headers = [RequestHeader "Destination" $ either P.printPath P.printPath tgt]
+    , headers = [RequestHeader "Destination" $ E.either P.printPath P.printPath tgt] <> M.maybe [] (\t -> [Auth.authHeader t]) idToken
     , url =
-        either
+        E.either
           (P.printPath <<< (url </>) <<< PU.rootifyFile)
           (P.printPath <<< (url </>) <<< PU.rootify)
           (R.getPath src)
     }
   if succeeded result.status
-    then pure $ Just tgt
+    then pure $ M.Just tgt
     else if result.status == notFoundStatus
-      then pure Nothing
-      else throwError (Exn.error result.response)
+      then pure M.Nothing
+      else Err.throwError (Exn.error result.response)
 
 saveMount
   :: forall e
    . R.Resource
   -> String
-  -> Aff (RetryEffects (ajax :: AJAX |e)) Unit
-saveMount res uri = do
-  result <- slamjax $ defaultRequest
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX |e)) Unit
+saveMount res uri idToken = do
+  result <- slamjax $ AX.defaultRequest
     { method = PUT
-    , headers = [ ContentType applicationJSON ]
-    , content = Just $ stringify { mongodb: {connectionUri: uri } }
+    , headers = [ ContentType applicationJSON ] <> M.maybe [] (\t -> [ Auth.authHeader t ]) idToken
+    , content = M.Just $ stringify { mongodb: {connectionUri: uri } }
     , url = P.printPath
             $ Paths.mountUrl
             </> PU.rootify (R.resourceDir res)
@@ -440,18 +470,19 @@ saveMount res uri = do
     }
   if succeeded result.status
     then pure unit
-    else throwError (Exn.error result.response)
+    else Err.throwError (Exn.error result.response)
 
 foreign import stringify :: forall r. {|r} -> String
 
 delete
   :: forall e
    . R.Resource
-  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) (Maybe R.Resource)
-delete resource =
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM |e)) (M.Maybe R.Resource)
+delete resource idToken =
   if not (R.isDatabase resource || alreadyInTrash resource || R.isViewMount resource)
-  then (moveToTrash resource) <|> (forceDelete resource $> Nothing)
-  else forceDelete resource $> Nothing
+  then (moveToTrash resource) <|> (forceDelete resource idToken $> M.Nothing)
+  else forceDelete resource idToken $> M.Nothing
 
   where
   msg :: String
@@ -459,43 +490,47 @@ delete resource =
 
   moveToTrash
     :: R.Resource
-    -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM | e)) (Maybe R.Resource)
+    -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM | e)) (M.Maybe R.Resource)
   moveToTrash res = do
     let d = (res ^. R._root) </> P.dir Config.trashFolder
         path = (res # R._root .~ d) ^. R._path
-    name <- getNewName d (res ^. R._name)
-    move res (path # R._nameAnyPath .~ name)
-    pure (Just $ R.Directory d)
+    name <- getNewName d (res ^. R._name) idToken
+    move res (path # R._nameAnyPath .~ name) idToken
+    pure $ M.Just $ R.Directory d
 
   alreadyInTrash :: R.Resource -> Boolean
   alreadyInTrash res =
     case res ^. R._path of
-      Left _ -> alreadyInTrash' (res ^. R._root)
-      Right path -> alreadyInTrash' path
+      E.Left _ -> alreadyInTrash' (res ^. R._root)
+      E.Right path -> alreadyInTrash' path
 
   alreadyInTrash' :: PU.DirPath -> Boolean
   alreadyInTrash' d =
     if d == P.rootDir
     then false
-    else maybe false go $ P.peel d
+    else M.maybe false go $ P.peel d
 
-  go :: Tuple PU.DirPath (Either P.DirName P.FileName) -> Boolean
-  go (Tuple d name) =
-    case name of
-      Right _ -> false
-      Left n ->
-        if n == P.DirName Config.trashFolder
-        then true
-        else alreadyInTrash' d
+    where
+    go :: Tuple PU.DirPath (E.Either P.DirName P.FileName) -> Boolean
+    go (Tuple d name) =
+      case name of
+        E.Right _ -> false
+        E.Left n ->
+          if n == P.DirName Config.trashFolder
+          then true
+          else alreadyInTrash' d
 
 
 forceDelete
-  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM |e)) Unit
-forceDelete res = do
-  cleanViewMounts res
+  :: forall e
+   . R.Resource
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM |e)) Unit
+forceDelete res idToken = do
+  cleanViewMounts res idToken
   getResponse "cannot delete"
-    $  either retryDelete retryDelete
-    $  pathFromResource res
+    $ flip (E.either retryDelete retryDelete) idToken
+    $ pathFromResource res
 
   where
   pathFromResource :: R.Resource -> PU.AnyPath
@@ -514,14 +549,23 @@ forceDelete res = do
     else Paths.dataUrl
 
 cleanViewMounts
-  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM|e)) Unit
-cleanViewMounts res = for_ (R.getPath res) \dirPath ->
-  children dirPath >>= Arr.filter R.isViewMount >>> traverse_ forceDelete
+  :: forall e
+   . R.Resource
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM|e)) Unit
+cleanViewMounts res idToken =
+  F.for_ (R.getPath res) \dirPath ->
+    children dirPath idToken
+      >>= Arr.filter R.isViewMount
+      >>> F.traverse_ (flip forceDelete idToken)
 
-getVersion :: forall e. Aff (RetryEffects (ajax :: AJAX |e)) (Maybe String)
-getVersion = do
-  serverInfo <- retryGet Paths.serverInfoUrl applicationJSON
-  return $ either (const Nothing) Just (readProp "version" serverInfo.response)
+getVersion
+  :: forall e
+   . M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX |e)) (M.Maybe String)
+getVersion idToken = do
+  serverInfo <- retryGet Paths.serverInfoUrl applicationJSON idToken
+  return $ E.either (const M.Nothing) M.Just (readProp "version" serverInfo.response)
 
 ldJSON :: MimeType
 ldJSON = MimeType "application/ldjson"
@@ -531,28 +575,29 @@ ldJSON = MimeType "application/ldjson"
 transitiveChildrenProducer
   :: forall e
    . PU.DirPath
+  -> M.Maybe Auth.IdToken
   -> CR.Producer
       (Array R.Resource)
-      (Aff (RetryEffects (ajax :: AJAX, err :: Exn.EXCEPTION, dom :: DOM | e)))
+      (Aff (RetryEffects (ajax :: AX.AJAX, err :: Exn.EXCEPTION, dom :: DOM | e)))
       Unit
-transitiveChildrenProducer dirPath = do
+transitiveChildrenProducer dirPath idToken = do
   ACR.produce \emit -> do
-    activeRequests <- newRef $ Set.singleton $ P.printPath dirPath
-    runAff Exn.throwException (const (pure unit)) $ go emit activeRequests dirPath
+    activeRequests <- Ref.newRef $ Set.singleton $ P.printPath dirPath
+    Aff.runAff Exn.throwException (const (pure unit)) $ go emit activeRequests dirPath
   where
   go emit activeRequests start = do
     let strPath = P.printPath start
-    eitherChildren <- attempt $ children start
-    liftEff $ modifyRef activeRequests $ Set.delete strPath
-    for_ eitherChildren \items -> do
-      liftEff $ emit $ Left items
-      let parents = Arr.mapMaybe (either (const Nothing) Just <<< R.getPath) items
-      for_ parents $ \p ->
-        liftEff $ modifyRef activeRequests $ Set.insert $ P.printPath p
-      for_ parents $ go emit activeRequests
-    remainingRequests <- liftEff $ readRef activeRequests
+    eitherChildren <- Aff.attempt $ children start idToken
+    liftEff $ Ref.modifyRef activeRequests $ Set.delete strPath
+    F.for_ eitherChildren \items -> do
+      liftEff $ emit $ E.Left items
+      let parents = Arr.mapMaybe (E.either (const M.Nothing) M.Just <<< R.getPath) items
+      F.for_ parents $ \p ->
+        liftEff $ Ref.modifyRef activeRequests $ Set.insert $ P.printPath p
+      F.for_ parents $ go emit activeRequests
+    remainingRequests <- liftEff $ Ref.readRef activeRequests
     if Set.isEmpty remainingRequests
-      then liftEff $ emit $ Right unit
+      then liftEff $ emit $ E.Right unit
       else pure unit
 
 -- | This is template string where actual path is encoded like {{path}}
@@ -562,34 +607,41 @@ query
   :: forall e
    . R.Resource
   -> SQL
-  -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
-query res sql =
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
+query res sql idToken =
   if not $ R.isFile res
   then pure []
-  else extractJArray =<< getResponse msg (getOnce uriPath applicationJSON)
+  else extractJArray =<< getResponse msg (getOnce uriPath applicationJSON idToken)
   where
   msg = "error in query"
   uriPath = mkURI res sql
 
 query'
   :: forall e
-   . R.Resource -> SQL
-  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JS.JArray)
-query' res@(R.File _) sql = do
-  result <- retryGet (mkURI' res sql) applicationJSON
+   . R.Resource
+  -> SQL
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (E.Either String JS.JArray)
+query' res@(R.File _) sql idToken = do
+  result <- retryGet (mkURI' res sql) applicationJSON idToken
   pure if succeeded result.status
        then JS.decodeJson <=< JS.jsonParser $ result.response
-       else Left $ readError "error in query" result.response
+       else E.Left $ readError "error in query" result.response
 
-query' _ _ = pure $ Left "Query resource is not a file"
+query' _ _ _ = pure $ E.Left "Query resource is not a file"
 
-count :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) Int
-count res =
-  query res sql
+count
+  :: forall e
+   . R.Resource
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) Int
+count res idToken =
+  query res sql idToken
     <#> readTotal
-    >>> fromMaybe 0
+    >>> M.fromMaybe 0
   where
-  readTotal :: JS.JArray -> Maybe Int
+  readTotal :: JS.JArray -> M.Maybe Int
   readTotal =
     Data.Int.fromNumber
       <=< JS.toNumber
@@ -604,8 +656,13 @@ count res =
   sql :: SQL
   sql = "SELECT COUNT(*) as total FROM {{path}}"
 
-resourceExists :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX|e)) Boolean
-resourceExists res = map isRight $ attempt $ count res
+resourceExists
+  :: forall e
+   . R.Resource
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX|e)) Boolean
+resourceExists res =
+  map E.isRight <<< Aff.attempt <<< count res
 
 portView
   :: forall e
@@ -613,19 +670,20 @@ portView
   -> R.Resource
   -> SQL
   -> SM.StrMap String
-  -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
-portView res dest sql varMap = do
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) Unit
+portView res dest sql varMap idToken = do
   guard $ R.isViewMount dest
   let
-    queryParams = maybe "" ("&" <>) $ renderQueryString varMap
+    queryParams = M.maybe "" ("&" <>) $ renderQueryString varMap
     connectionUri = "sql2:///?q="
                     <> PU.encodeURIPath (templated res sql)
                     <> queryParams
   result <-
-    slamjax $ defaultRequest
+    slamjax $ AX.defaultRequest
       { method = PUT
-      , headers = [ ContentType applicationJSON ]
-      , content = Just $ stringify { view: { connectionUri: connectionUri } }
+      , headers = [ ContentType applicationJSON ] <> M.maybe [] (\t -> [Auth.authHeader t]) idToken
+      , content = M.Just $ stringify { view: { connectionUri: connectionUri } }
       , url =
           P.printPath $
             Paths.mountUrl
@@ -634,7 +692,7 @@ portView res dest sql varMap = do
       }
   if succeeded result.status
      then pure unit
-     else throwError $ Exn.error $ readError result.response result.response
+     else Err.throwError $ Exn.error $ readError result.response result.response
 
 portQuery
   :: forall e
@@ -642,58 +700,62 @@ portQuery
   -> R.Resource
   -> SQL
   -> SM.StrMap String
-  -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JObject
-portQuery res dest sql vars = do
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JObject
+portQuery res dest sql vars idToken = do
   guard $ R.isFile dest
   result <-
-    slamjax $ defaultRequest
+    slamjax $ AX.defaultRequest
       { method = POST
       , headers =
           [ RequestHeader "Destination" $ R.resourcePath dest
           , ContentType ldJSON
-          ]
+          ] <> M.maybe [] (\t -> [Auth.authHeader t]) idToken
       , url =
           P.printPath $
             Paths.queryUrl
               </> PU.rootify (R.resourceDir res)
               </> P.dir (R.resourceName res)
               </> P.file queryVars
-      , content = Just (templated res sql)
+      , content = M.Just (templated res sql)
       }
 
   if not $ succeeded result.status
-    then throwError $ Exn.error $ readError result.response result.response
+    then Err.throwError $ Exn.error $ readError result.response result.response
     else
     -- We expect result message to be valid json.
-    either (throwError <<< Exn.error) pure $
+    E.either (Err.throwError <<< Exn.error) pure $
       JS.jsonParser result.response >>= JS.decodeJson
   where
   queryVars :: String
-  queryVars = maybe "" ("?" <>) $ renderQueryString vars
+  queryVars = M.maybe "" ("?" <>) $ renderQueryString vars
 
-renderQueryString :: SM.StrMap String -> Maybe String
+renderQueryString :: SM.StrMap String -> M.Maybe String
 renderQueryString = map go <<< L.uncons <<< SM.toList
   where
   pair :: Tuple String String -> String
   pair (Tuple a b) = "var." <> a <> "=" <> encodeURIComponent b
 
   go { head = h, tail = t } =
-    foldl (\a v -> a <> "&" <> pair v) (pair h) t
+    F.foldl (\a v -> a <> "&" <> pair v) (pair h) t
 
 
 readError :: String -> String -> String
 readError msg input =
   let responseError = JS.jsonParser input >>= JS.decodeJson >>= (.? "error")
-  in either (const msg) id responseError
+  in E.either (const msg) id responseError
 
 sample'
   :: forall e
-   . R.Resource -> Maybe Int -> Maybe Int
-   -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
-sample' res mbOffset mbLimit =
+   . R.Resource
+  -> M.Maybe Int
+  -> M.Maybe Int
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
+sample' res mbOffset mbLimit idToken =
   if not $ R.isFile res
   then pure []
-  else extractJArray =<< getResponse msg (retryGet uri applicationJSON)
+  else extractJArray =<< getResponse msg (retryGet uri applicationJSON idToken)
   where
   msg = "error getting resource sample"
   uri =
@@ -701,24 +763,37 @@ sample' res mbOffset mbLimit =
       </> PU.rootify (R.resourceDir res)
       </> P.file
             (R.resourceName res
-               <> (maybe "" (("?offset=" <>) <<< show) mbOffset)
-               <> (maybe "" (("&limit=" <>) <<< show ) mbLimit))
+               <> (M.maybe "" (("?offset=" <>) <<< show) mbOffset)
+               <> (M.maybe "" (("&limit=" <>) <<< show ) mbLimit))
 
 
 sample
   :: forall e
-   . R.Resource -> Int -> Int -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
-sample res offset limit = sample' res (Just offset) (Just limit)
+   . R.Resource
+  -> Int
+  -> Int
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
+sample res offset limit =
+  sample' res (M.Just offset) (M.Just limit)
 
-all :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) JS.JArray
-all res = sample' res Nothing Nothing
+all
+  :: forall e
+   . R.Resource
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
+all res =
+  sample' res M.Nothing M.Nothing
 
 fields
-  :: forall e. R.Resource -> Aff (RetryEffects (ajax :: AJAX | e)) (Array String)
-fields res = do
-  jarr <- sample res 0 100
+  :: forall e
+   . R.Resource
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (Array String)
+fields res idToken = do
+  jarr <- sample res 0 100 idToken
   case jarr of
-    [] -> throwError $ Exn.error "empty file"
+    [] -> Err.throwError $ Exn.error "empty file"
     _ -> pure $ Arr.nub $ Arr.concat (getFields <$> jarr)
 
 mkURI :: R.Resource -> SQL -> PU.FilePath
@@ -735,8 +810,8 @@ mkURI' res sql =
 templated :: R.Resource -> SQL -> SQL
 templated res = S.replace "{{path}}" ("\"" <> R.resourcePath res <> "\"")
 
-extractJArray :: forall m. (MonadError Exn.Error m) => JS.Json -> m JS.JArray
-extractJArray = either (throwError <<< Exn.error) pure <<< JS.decodeJson
+extractJArray :: forall m. (Err.MonadError Exn.Error m) => JS.Json -> m JS.JArray
+extractJArray = E.either (Err.throwError <<< Exn.error) pure <<< JS.decodeJson
 
 getFields :: JS.Json -> Array String
 getFields json = Arr.filter (/= "") $ Arr.nub $ getFields' [] json
@@ -745,9 +820,9 @@ getFields' :: Array String -> JS.Json -> Array String
 getFields' [] json = getFields' [""] json
 getFields' acc json =
   if JS.isObject json
-  then maybe acc (goObj acc) $ JS.toObject json
+  then M.maybe acc (goObj acc) $ JS.toObject json
   else if JS.isArray json
-       then maybe acc (goArr acc) $ JS.toArray json
+       then M.maybe acc (goArr acc) $ JS.toArray json
        else acc
 
   where
@@ -773,44 +848,46 @@ executeQuery
   -> SM.StrMap String
   -> R.Resource
   -> R.Resource
-  -> Aff (RetryEffects (ajax :: AJAX, dom :: DOM | e))
-      (Either String { outputResource :: R.Resource, plan :: Maybe String })
-executeQuery sql cachingEnabled varMap inputResource outputResource = do
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM | e))
+      (E.Either String { outputResource :: R.Resource, plan :: M.Maybe String })
+executeQuery sql cachingEnabled varMap inputResource outputResource idToken = do
   when (R.isTempFile outputResource)
-    $ void $ attempt $ forceDelete outputResource
+    $ void $ Aff.attempt $ forceDelete outputResource idToken
 
   ejobj <- do
-    attempt $
+    Aff.attempt $
       if cachingEnabled
-         then portQuery inputResource outputResource sql varMap <#> Just
-         else portView inputResource outputResource sql varMap $> Nothing
+         then portQuery inputResource outputResource sql varMap idToken <#> M.Just
+         else portView inputResource outputResource sql varMap idToken $> M.Nothing
   pure $ do
     mjobj <- lmap Exn.message ejobj
     info <-
       case mjobj of
-        Nothing -> do
-          path <- R.getPath outputResource # either pure \_ ->
-            Left "Expected output resource as file or view mount"
-          sandboxedPath <- P.sandbox P.rootDir path
-                           # maybe (Left "Could not sandbox output resource") pure
+        M.Nothing -> do
+          path <- R.getPath outputResource # E.either pure \_ ->
+            E.Left "Expected output resource as file or view mount"
+          sandboxedPath <-
+            P.sandbox P.rootDir path
+              # M.maybe (E.Left "Could not sandbox output resource") pure
           pure
             { sandboxedPath
-            , plan: Nothing
+            , plan: M.Nothing
             }
-        Just jobj -> do
+        M.Just jobj -> do
           planPhases <- Arr.last <$> jobj .? "phases"
           sandboxedPath <- do
             pathString <- jobj .? "out"
             path <- P.parseAbsFile pathString
-                    # maybe (Left "Invalid file from Quasar") pure
+                    # M.maybe (E.Left "Invalid file from Quasar") pure
             P.sandbox P.rootDir path
-              # maybe (Left "Could not sandbox Quasar file") pure
+              # M.maybe (E.Left "Could not sandbox Quasar file") pure
           pure
             { sandboxedPath
-            , plan: planPhases >>= (.? "detail") >>> either (const Nothing) Just
+            , plan: planPhases >>= (.? "detail") >>> E.either (const M.Nothing) M.Just
             }
     pure
-      { outputResource: R.mkFile $ Left $ P.rootDir </> info.sandboxedPath
+      { outputResource: R.mkFile $ E.Left $ P.rootDir </> info.sandboxedPath
       , plan: info.plan
       }
 
@@ -822,10 +899,11 @@ save
   :: forall e
    . PU.FilePath
   -> JS.Json
-  -> Aff (RetryEffects (ajax :: AJAX | e)) Unit
-save path json =
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) Unit
+save path json idToken =
   let apiPath = Paths.dataUrl </> PU.rootifyFile path
-  in getResponse "error while saving file" (retryPut apiPath json ldJSON)
+  in getResponse "error while saving file" (retryPut apiPath json ldJSON idToken)
 
 -- | Loads a JSON value from a file.
 -- |
@@ -834,7 +912,8 @@ save path json =
 load
   :: forall e
    . PU.FilePath
-  -> Aff (RetryEffects (ajax :: AJAX | e)) (Either String JS.Json)
-load path =
+  -> M.Maybe Auth.IdToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (E.Either String JS.Json)
+load path idToken =
   let apiPath = Paths.dataUrl </> PU.rootifyFile path
-  in lmap Exn.message <$> attempt (getResponse "error loading notebook" (retryGet apiPath ldJSON))
+  in lmap Exn.message <$> Aff.attempt (getResponse "error loading notebook" (retryGet apiPath ldJSON idToken))

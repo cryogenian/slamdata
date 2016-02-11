@@ -31,6 +31,7 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Themes.Bootstrap3 as B
 import Quasar.Aff as Api
+import Quasar.Auth as Auth
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Effects (Slam())
 import SlamData.FileSystem.Resource as R
@@ -120,16 +121,11 @@ eval (Submit next) = do
   name <-
     if state.nameFreezed
     then pure state.name
-    else liftAff $ Api.getNewName state.path state.name
+    else liftAff $ Auth.authed $ Api.getNewName state.path state.name
   let
     src = R.Directory state.path
     tgt = R.ViewMount $ state.path Pt.</> Pt.file name
-  eiResult <- liftAff $ attempt
-    $ Api.portView
-       src
-       tgt
-       content
-       (Sm.fromFoldable state.vars)
+  eiResult <- liftAff $ attempt $ Auth.authed $ Api.portView src tgt content (Sm.fromFoldable state.vars)
   modify $ _inProgress .~ false
   modify $ _name .~ name
   case eiResult of
