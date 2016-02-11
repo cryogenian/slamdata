@@ -33,6 +33,7 @@
     "purescript-markdown": "^1.12.2",
     "purescript-markdown-halogen": "^0.8.5",
     "purescript-minimatch": "^0.2.0",
+    "purescript-oidc-crypt-utils": "^1.0.0",
     "purescript-pathy": "^0.3.0",
     "purescript-profunctor-lenses": "^0.3.3",
     "purescript-routing": "^0.3.0",

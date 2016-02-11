@@ -41,6 +41,9 @@ module Quasar.Aff
   , load
   , resourceExists
   , portView
+
+  , retrieveAuthProviders
+
   , RetryEffects()
   ) where
 
@@ -103,6 +106,7 @@ import Network.HTTP.StatusCode (StatusCode(..))
 import Quasar.Paths as Paths
 import Quasar.Auth as Auth
 import Quasar.Auth.Permission as Perm
+import Quasar.Auth.Provider as Auth
 
 -- TODO: split out a core Quasar module that only deals with the API, and
 -- doesn't know about SlamData specific things.
@@ -996,3 +1000,15 @@ load
 load path idToken perms =
   let apiPath = Paths.dataUrl </> PU.rootifyFile path
   in lmap Exn.message <$> Aff.attempt (getResponse "error loading notebook" (retryGet apiPath ldJSON idToken perms))
+
+-- | Returns `Nothing` in case the authorization service is not available, and `Just` in case
+-- | Quasar responded with a valid array of OIDC providers.
+retrieveAuthProviders :: forall e. Aff (RetryEffects (ajax :: AX.AJAX | e)) (M.Maybe (Array Auth.Provider))
+retrieveAuthProviders = do
+  res <- getOnce Paths.oidcProvidersUrl applicationJSON M.Nothing []
+  if res.status == notFoundStatus
+    then pure M.Nothing
+    else do
+      case JS.decodeJson res.response of
+        E.Left parseErr -> Err.throwError $ Exn.error parseErr
+        E.Right val -> pure $ M.Just val

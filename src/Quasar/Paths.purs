@@ -21,6 +21,9 @@ import Data.Path.Pathy (AbsDir(), AbsFile(), Sandboxed(), file, dir, rootDir, (<
 serviceBaseUrl :: AbsDir Sandboxed
 serviceBaseUrl = rootDir
 
+oidcProvidersUrl :: AbsDir Sandboxed
+oidcProvidersUrl = serviceBaseUrl </> dir "security" </> dir "oidc" </> dir "providers"
+
 uploadUrl :: AbsFile Sandboxed
 uploadUrl = serviceBaseUrl </> file "upload"
 

@@ -1,8 +1,8 @@
 module Quasar.Auth
-  ( IdToken()
-  , authHeader
+  ( authHeader
   , authed
   , retrieveIdToken
+  , module OIDCCryptUtils.Types
   ) where
 
 import Prelude
@@ -13,9 +13,7 @@ import Data.Maybe as M
 import DOM (DOM())
 import Network.HTTP.RequestHeader
 import Quasar.Auth.Permission as P
-
-
-newtype IdToken = IdToken String
+import OIDCCryptUtils.Types (IdToken(..))
 
 authHeader
   :: IdToken
