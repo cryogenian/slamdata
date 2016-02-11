@@ -40,6 +40,7 @@ gulp.task("clean", function () {
         "public/js/file.js",
         "public/js/filesystem.js",
         "public/js/notebook.js",
+        "public/js/auth_redirect.js",
         "public/css/main.css"
     ].forEach(function (path) {
         rimraf.sync(path);
@@ -157,6 +158,7 @@ var mkBundleTask = function (name, main) {
 gulp.task("bundle", [
   mkBundleTask("filesystem", "SlamData.FileSystem"),
   mkBundleTask("notebook", "SlamData.Notebook"),
+  mkBundleTask("auth_redirect", "SlamData.AuthRedirect"),
 ]);
 
 gulp.task("bundle-test",
@@ -196,6 +198,7 @@ var mkWatch = function(name, target, files) {
 var allSources = sources.concat(foreigns);
 mkWatch("watch-file", "bundle-file", allSources);
 mkWatch("watch-notebook", "bundle-notebook", allSources);
+mkWatch("watch-auth_redirect", "bundle-auth_redirect", allSources);
 
 gulp.task("less", function() {
   return gulp.src(["less/main.less"])
