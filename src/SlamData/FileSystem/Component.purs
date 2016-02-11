@@ -58,6 +58,7 @@ import Network.HTTP.MimeType.Common (textCSV)
 
 import Quasar.Aff as API
 import Quasar.Auth as Auth
+import Quasar.Auth.Route (setPreservingToken)
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
@@ -128,7 +129,7 @@ eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (Resort next) = do
   searchValue <- query' cpSearch SearchSlot (request Search.GetValue)
   state <- get
-  liftEff $ setLocation $ browseURL (searchValue >>= id)
+  liftEff $ setPreservingToken $ browseURL (searchValue >>= id)
     (notSort (state ^. _sort)) (state ^. _salt) (state ^. _path)
   pure next
 eval (SetPath path next) = do
@@ -195,7 +196,7 @@ eval (MakeNotebook next) = do
   let newNotebookName = Config.newNotebookName <> "." <> Config.notebookExtension
   name <- liftAff $ Auth.authed $ API.getNewName path newNotebookName
   let uri = mkNotebookURL (path </> dir name) New
-  liftEff $ setLocation uri
+  liftEff $ setPreservingToken uri
   pure next
 
 eval (UploadFile el next) = do
@@ -237,7 +238,7 @@ eval (FileListChanged el next) = do
             $ Dialog.Show (Dialog.Error $ message err)
           pure unit
         Right _ ->
-          liftEff $ setLocation
+          liftEff $ setPreservingToken
             $ itemURL (state ^. _sort) (state ^. _salt) Editable fileItem
 
   pure next
@@ -388,7 +389,7 @@ searchPeek :: forall a. SearchSlot -> Search.Query a -> Algebra Unit
 searchPeek _ (Search.Clear _) = do
   salt <- liftEff newSalt
   (State state) <- get
-  liftEff $ setLocation
+  liftEff $ setPreservingToken
     $ browseURL Nothing state.sort salt state.path
 searchPeek _ _ = pure unit
 

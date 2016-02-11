@@ -54,6 +54,7 @@ import Halogen.Util (appendToBody, onLoad)
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
+import Quasar.Auth.Route (replacePreservingToken)
 
 import Routing (matchesAff)
 
@@ -200,7 +201,7 @@ updateURL :: Maybe String -> Sort -> Maybe Salt -> DirPath
              -> Aff FileSystemEffects Unit
 updateURL query sort salt path = liftEff do
   salt' <- maybe newSalt pure salt
-  replaceLocation $ browseURL query sort salt' path
+  replacePreservingToken $ browseURL query sort salt' path
 
 
 splitQuery :: SearchQuery -> { path :: DirPath, query :: Maybe String }

@@ -26,6 +26,8 @@ import Data.Path.Pathy (printPath)
 
 import DOM (DOM())
 
+import Quasar.Auth.Route (setPreservingToken)
+
 import SlamData.Config as Config
 import SlamData.FileSystem.Listing.Sort (Sort())
 import SlamData.FileSystem.Resource (Resource(..), resourcePath, resourceName, sortResource)
@@ -65,7 +67,7 @@ itemURL sort salt act item = case itemResource item of
 openItem :: forall e. Item -> Sort -> Salt -> Eff (dom :: DOM|e) Unit
 openItem (PhantomItem _) _ _ = pure unit
 openItem item sort salt =
-  setLocation $ itemURL sort salt Editable item
+  setPreservingToken $ itemURL sort salt Editable item
 
 
 sortItem :: Boolean -> Sort -> Item -> Item -> Ordering

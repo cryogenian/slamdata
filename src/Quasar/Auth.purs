@@ -13,6 +13,8 @@ import Data.Maybe as M
 import DOM (DOM())
 import Network.HTTP.RequestHeader
 
+import Quasar.Auth.Route as R
+
 newtype IdToken = IdToken String
 
 authHeader
@@ -24,10 +26,9 @@ authHeader (IdToken tok) =
     ("Bearer " <> tok)
 
 
--- | TODO!!
 retrieveIdToken :: forall e. Eff (dom :: DOM | e) (M.Maybe IdToken)
 retrieveIdToken =
-  pure M.Nothing
+  map (map IdToken) R.permissionsToken
 
 authed
   :: forall a e
