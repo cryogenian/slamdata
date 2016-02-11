@@ -53,7 +53,7 @@ locationObject =
     >>= Window.location
 
 replaceLocation :: forall e. String -> Eff (dom :: DOM | e) Unit
-replaceLocation str = do
+replaceLocation str =
   locationObject
     >>= Location.replace str
 
