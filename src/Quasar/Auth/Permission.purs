@@ -30,7 +30,7 @@ permissionsHeader ps = do
   guard (not $ Arr.null ps)
   pure
     $ RequestHeader "X-Extra-Permissions"
-    $ Str.joinWith ";"
+    $ Str.joinWith ","
     $ map runPermission ps
 
 retrievePermissions
@@ -56,5 +56,5 @@ retrievePermissions =
   permissionTokens :: String -> Array String
   permissionTokens s =
     M.fromMaybe []
-      $ Str.split ";"
+      $ Str.split ","
       <$> extractPermissionsString s
