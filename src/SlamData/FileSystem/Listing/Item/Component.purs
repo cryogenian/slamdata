@@ -171,6 +171,7 @@ itemView state@{ item } selected presentActions | otherwise =
     , E.onClick (E.input_ Toggle)
     , E.onMouseEnter (E.input_ PresentActions)
     , E.onMouseLeave (E.input_ HideActions)
+    , E.onDoubleClick (E.input_ Open)
     , ARIA.label label
     ]
     [ H.div

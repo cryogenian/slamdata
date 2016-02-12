@@ -12,6 +12,8 @@ import Control.Monad.Aff (Aff())
 import Data.Maybe as M
 import DOM (DOM())
 import Network.HTTP.RequestHeader
+import Quasar.Auth.Permission as P
+
 
 newtype IdToken = IdToken String
 
@@ -31,8 +33,9 @@ retrieveIdToken =
 
 authed
   :: forall a e
-   . (M.Maybe IdToken -> Aff (dom :: DOM | e) a)
+   . (M.Maybe IdToken -> Array P.Permission -> Aff (dom :: DOM | e) a)
   -> Aff (dom :: DOM | e) a
-authed f =
-  liftEff retrieveIdToken
-    >>= f
+authed f = do
+  idToken <- liftEff retrieveIdToken
+  perms <- liftEff P.retrievePermissions
+  f idToken perms
