@@ -50,6 +50,7 @@ import Network.HTTP.Affjax (AJAX())
 
 import Quasar.Aff as API
 import Quasar.Auth as Auth
+import Quasar.Auth.Permission as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Render.CSS as CSS
@@ -100,10 +101,11 @@ eval q =
       modify (_ { showFiles = shouldShowFiles })
       when shouldShowFiles $ do
         idToken <- liftEff' Auth.retrieveIdToken
+        perms <- liftEff' Auth.retrievePermissions
         let
           fileProducer =
             FT.hoistFreeT liftH $
-              API.transitiveChildrenProducer P.rootDir idToken
+              API.transitiveChildrenProducer P.rootDir idToken perms
           fileConsumer =
             CR.consumer \fs -> do
               modify $ appendFiles fs
