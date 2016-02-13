@@ -44,5 +44,5 @@ getLocalStorage
    . (DecodeJson a, MonadEff (dom :: DOM|e) g) => String -> g (Either String a)
 getLocalStorage key =
   liftEff
-  $ maybe (Left $ "There is no value in key " <> key) (jsonParser >=> decodeJson)
+  $ maybe (Left $ "There is no value for key " <> key) (jsonParser >=> decodeJson)
   <$> runFn3 getLocalStorageImpl Nothing Just key
