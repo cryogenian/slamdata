@@ -101,7 +101,7 @@ renderLiteralF rec d =
     Boolean b -> if b then "true" else "false"
     Integer i -> show i
     Decimal a -> show a
-    String str -> singleQuote str
+    String str -> stringLiteral str
     DateTime str -> tagged "TIMESTAMP" str
     Time str -> tagged "TIME" str
     Date str -> tagged "DATE" str
@@ -122,9 +122,7 @@ renderLiteralF rec d =
       -> String
       -> String
     tagged tag str =
-      tag
-        <> " "
-        <> singleQuote str
+      tag <> parens (stringLiteral str)
 
     squares
       :: String
@@ -149,18 +147,11 @@ renderLiteralF rec d =
           Rx.noFlags { global = true }
 
     -- | Surround text in double quotes, escaping internal double quotes.
-    doubleQuote
+    stringLiteral
       :: String
       -> String
-    doubleQuote str =
-      "\"" <> replaceAll "\"" "\"\"" str <> "\""
-
-    -- | Surround text in single quotes, escaping internal quotes.
-    singleQuote
-      :: String
-      -> String
-    singleQuote str =
-      "'" <> replaceAll "'" "''" str <> "'"
+    stringLiteral str =
+      "\"" <> replaceAll "\"" "\\\"" str <> "\""
 
     commaSep
       :: forall f
@@ -177,7 +168,7 @@ renderLiteralF rec d =
     renderMap =
       F.intercalate ", " <<<
         SM.foldMap \k v ->
-          [ doubleQuote k <> ": " <> rec v ]
+          [ stringLiteral k <> ": " <> rec v ]
 
 instance showLiteralF :: (Show a) => Show (LiteralF a) where
   show = renderLiteralF show

@@ -24,7 +24,7 @@ import Prelude
 import Control.Alt ((<|>))
 import Control.Apply ((*>), (<*))
 import Control.Lazy as Lazy
-import Data.Functor ((<$))
+import Data.Functor ((<$), ($>))
 
 import Data.Array as A
 import Data.Foldable as F
@@ -82,25 +82,27 @@ commaSep =
       *> PS.string ","
       <* PS.skipSpaces
 
-singleQuotedLiteral
+stringLiteral
   :: forall m
    . (Monad m)
   => P.ParserT String m String
-singleQuotedLiteral =
-  tick *> PC.manyTill PS.anyChar (tick *> PC.notFollowedBy tick)
-    <#> L.fromList >>> S.fromCharArray >>> S.replace "''" "'"
-  where
-    tick = PS.string "'"
+stringLiteral =
+  PC.between quote quote (A.many stringChar)
+    <#> S.fromCharArray
 
-doubleQuotedLiteral
-  :: forall m
-   . (Monad m)
-  => P.ParserT String m String
-doubleQuotedLiteral =
-  quote *> PC.manyTill PS.anyChar (quote *> PC.notFollowedBy quote)
-    <#> L.fromList >>> S.fromCharArray >>> S.replace "\"\"" "\""
   where
     quote = PS.string "\""
+
+    stringChar =
+      PC.try stringEscape
+        <|> stringLetter
+
+    stringLetter =
+      PS.satisfy \c ->
+        c /= '"'
+
+    stringEscape =
+      PS.string "\\\"" $> '"'
 
 taggedLiteral
   :: forall m
@@ -110,8 +112,7 @@ taggedLiteral
 taggedLiteral tag =
   PC.try $
     PS.string tag
-      *> PS.skipSpaces
-      *> singleQuotedLiteral
+      *> parens stringLiteral
 
 anyString
   :: forall m
@@ -243,7 +244,7 @@ parseLiteralF rec =
     , Boolean <$> parseBoolean
     , Decimal <$> parseDecimal
     , Integer <$> parseInt
-    , String <$> singleQuotedLiteral
+    , String <$> stringLiteral
     , DateTime <$> taggedLiteral "TIMESTAMP"
     , Time <$> taggedLiteral "TIME"
     , Date <$> taggedLiteral "DATE"
@@ -264,7 +265,7 @@ parseLiteralF rec =
     parseAssignment :: P.ParserT String m (T.Tuple String a)
     parseAssignment =
       T.Tuple
-        <$> doubleQuotedLiteral <* parseColon
+        <$> stringLiteral <* parseColon
         <*> rec
 
 -- | A closed parser of SQL^2 constant expressions

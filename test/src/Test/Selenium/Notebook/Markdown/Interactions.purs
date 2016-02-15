@@ -53,11 +53,11 @@ provideMdForFormWithAllInputTypes =
 provideMdForFormWithEvaluatedContent :: Check (Array Unit)
 provideMdForFormWithEvaluatedContent =
     T.traverse provideMd
-      [ "discipline = __ (!`SELECT discipline FROM \"/test-mount/testDb/olympics\" LIMIT 1`)"
-      , "year = __ (!`SELECT year FROM \"/test-mount/testDb/olympics\" LIMIT 1`)"
-      , "country = {!`SELECT DISTINCT country FROM \"/test-mount/testDb/olympics\"`} (!`SELECT country FROM \"/test-mount/testDb/olympics\" LIMIT 1`)"
-      , "type = (!`SELECT DISTINCT type FROM \"/test-mount/testDb/olympics\" LIMIT 1`) !`SELECT DISTINCT type FROM \"/test-mount/testDb/olympics\" OFFSET 1`"
-      , "gender = [!`SELECT gender FROM \"/test-mount/testDb/olympics\" LIMIT 1`] !`SELECT DISTINCT gender FROM \"/test-mount/testDb/olympics\"`"
+      [ "discipline = __ (!`SELECT discipline FROM `/test-mount/testDb/olympics` LIMIT 1`)"
+      , "year = __ (!`SELECT year FROM `/test-mount/testDb/olympics` LIMIT 1`)"
+      , "country = {!`SELECT DISTINCT country FROM `/test-mount/testDb/olympics``} (!`SELECT country FROM `/test-mount/testDb/olympics` LIMIT 1`)"
+      , "type = (!`SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1`) !`SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1`"
+      , "gender = [!`SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1`] !`SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` `"
       ]
 
 createMdQueryCell :: Check Unit
@@ -71,7 +71,7 @@ provideMdQuery query = focusMdQueryField *> (sequence $ keys $ query ++ " ")
 
 provideMdQueryWhichFiltersUsingFormValues :: Check Unit
 provideMdQueryWhichFiltersUsingFormValues = F.traverse_ provideMdQuery
-  [ "SELECT * FROM \"/test-mount/testDb/olympics\""
+  [ "SELECT * FROM `/test-mount/testDb/olympics`"
   , "WHERE discipline = :discipline"
   , "AND type != :type"
   , "AND gender IN :gender"
