@@ -59,3 +59,45 @@ java -jar [<path to quasar jar>] --content-path [<path to slamdata app>]
 ```
 
 Where `[<path to slamdata app>]` is the location of the source-built `public` folder, or the extracted contents of a pre-built archive.
+
+## Custom styling
+
+Users can add custom styles to notebooks by adding a query parameter to the URI.
+For example, to add a stylesheet located in `css/foo.css` to
+```
+http://slamdata.instance.com/notebook.html#/db/Folder/Notebook.slam/view
+```
+one should modify the route to
+```
+http://slamdata.instance.com/notebook.html?cssStyleSheets=css/foo.css#/db/Folder/Notebook.slam/view
+```
+The values of `cssStyleSheets` are decoded and then split by `,`, so to add two stylesheets one could use
+
++ `cssStyleSheets=css/foo.css,http%3A%2F%2Ffoo.com%2Fstyles.css`
++ `cssStyleSheets=css%2Ffoo.css,http%3A%2F%2Ffoo.com%2Fstyles.css`
++ `cssStyleSheets=css%2Ffoo.css%2Chttp%3A%2F%2Ffoo.com%2Fstyles.css`
+
+These URIs are checked and, if they are valid, corresponding `link` elements are added to the `head`
+
+Here it would be
+
+```html
+<link type="text/css" rel="stylesheet" href="css/foo.css">
+<link type="text/css" rel="stylesheet" href="http://foo.com/style.css"
+```
+## Additional permissions
+
+Working with Quasar Advanced, the user can add permission tokens to the URI, which will be sent with every ajax request.
+
+For example to add permission tokens `ABCD` and `1234` to
+```
+http://slamdata.instance.com/notebook.html#/db/Folder/Notebook.slam/view
+```
+one should modify the route to
+```
+http://slamdata.instance.com/notebook.html?permissionsToken=ABCD,1234#/db/Folder/Notebook.slam/view
+```
+
+These tokens then will be added to `X-Extra-Permissions` header.
+
+The value of `permissionsToken` can be url-encoded: `ABCD,1234` is equal with `ABCD%2C1234`.
