@@ -14,26 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Cell.Chart.Component.State where
+module SlamData.SignIn.Component.State where
 
-import Prelude (Unit())
-
-import Halogen (InstalledState())
-import Halogen.ECharts (EChartsState(), EChartsQuery())
-
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Effects (Slam())
+import Prelude
 
 type State =
-  { width :: Int
-  , height :: Int
+  {
+    loggedIn :: Boolean
+  , hidden :: Boolean
   }
-
-type StateP =
-  InstalledState State EChartsState CellEvalQuery EChartsQuery Slam Unit
 
 initialState :: State
 initialState =
-  { width: 600
-  , height: 400
+  {
+    loggedIn: false
+  , hidden: false
   }

@@ -40,7 +40,7 @@ import SlamData.Notebook.Cell.Chart.Component.State
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
 import SlamData.Notebook.Cell.Component as Cc
 import SlamData.Notebook.Cell.Port (_ChartOptions)
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.CSS as Rc
 
 type ChartHTML = ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit

@@ -45,7 +45,7 @@ import SlamData.Notebook.Cell.Markdown.Component.State
 import SlamData.Notebook.Cell.Markdown.Interpret as MD
 import SlamData.Notebook.Cell.Markdown.Model
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.CSS as CSS
 
 import Text.Markdown.SlamDown.Html as MD

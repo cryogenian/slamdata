@@ -95,7 +95,7 @@ import SlamData.Notebook.Cell.Viz.Component (vizComponent)
 import SlamData.Notebook.Editor.Component.CellSlot (CellSlot(..))
 import SlamData.Notebook.Editor.Component.Query (Query())
 import SlamData.Notebook.Editor.Model as M
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 import Utils.Path as P
 

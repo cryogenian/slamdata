@@ -30,7 +30,7 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 
 import SlamData.Config as Config
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.CSS as Rc
 
 import Utils.DOM (focus, blur)

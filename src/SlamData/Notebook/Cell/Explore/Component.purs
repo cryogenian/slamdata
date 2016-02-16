@@ -45,7 +45,7 @@ import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Explore.Component.Query
 import SlamData.Notebook.Cell.Explore.Component.State
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Notebook.FileInput.Component as FI
 import SlamData.Render.CSS as CSS
 

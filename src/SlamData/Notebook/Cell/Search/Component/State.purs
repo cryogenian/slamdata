@@ -29,7 +29,7 @@ import Data.Lens (LensP(), lens)
 import Halogen (InstalledState())
 
 import SlamData.Notebook.Cell.Search.Component.Query as SQ
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Notebook.FileInput.Component as FI
 
 type State =

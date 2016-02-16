@@ -34,7 +34,7 @@ import Halogen.HTML.Indexed as H
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import SlamData.Notebook.Cell.Component.Query (AnyCellQuery())
 import SlamData.Notebook.Cell.Component.State (AnyCellState())
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 -- | The type for the definition of an editor cell component.
 type EditorCellDef s f =

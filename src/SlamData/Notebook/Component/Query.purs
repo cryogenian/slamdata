@@ -30,7 +30,7 @@ import SlamData.Notebook.AccessType (AccessType())
 import SlamData.Notebook.Cell.CellId (CellId())
 import SlamData.Notebook.Component.ChildSlot
 import SlamData.Notebook.Editor.Component.Query as Notebook
-import SlamData.Notebook.Effects (NotebookEffects())
+import SlamData.Effects (SlamDataEffects())
 import SlamData.Notebook.Menu.Component.Query as Menu
 import SlamData.Notebook.Rename.Component as Rename
 
@@ -38,7 +38,7 @@ data Query a
   = ActivateKeyboardShortcuts a
   | DeactivateKeyboardShortcuts a
   | EvaluateMenuValue Menu.Value a
-  | AddKeyboardListener (EventListener NotebookEffects) a
+  | AddKeyboardListener (EventListener SlamDataEffects) a
   | SetAccessType AccessType a
   | GetAccessType (AccessType -> a)
   | SetViewingCell (Maybe CellId) a
@@ -62,6 +62,7 @@ toNotebook =
   <<< right
   <<< right
   <<< right
+  <<< right
   <<< left
   <<< action
 
@@ -70,6 +71,7 @@ fromNotebook
 fromNotebook r =
     right
   $ ChildF (injSlot cpNotebook unit)
+  $ right
   $ right
   $ right
   $ right

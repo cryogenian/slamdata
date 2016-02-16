@@ -51,7 +51,7 @@ import SlamData.Notebook.Cell.Component as Cc
 import SlamData.Notebook.Cell.Download.Component.Query
 import SlamData.Notebook.Cell.Download.Component.State
 import SlamData.Notebook.Cell.Port as P
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 

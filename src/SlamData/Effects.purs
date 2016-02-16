@@ -14,45 +14,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Effects where
+module SlamData.Effects where
 
 import Ace.Types (ACE())
 import Control.Monad.Aff (Aff())
-import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff.Console (CONSOLE())
-import Control.Monad.Eff.Exception (EXCEPTION())
 import Control.Monad.Eff.Exception (EXCEPTION())
 import Control.Monad.Eff.Random (RANDOM())
 import Control.Monad.Eff.Ref (REF())
 import Control.UI.File (READ_FILE())
 import Control.UI.ZClipboard (ZCLIPBOARD())
+import DOM.Timer (Timer())
 import Data.Date (Now())
-import DOM (DOM())
+import ECharts.Effects (ECHARTS_INIT(), ECHARTS_OPTION_SET(), ECHARTS_DISPOSE(), ECHARTS_RESIZE(), ECHARTS_REFRESH(), ECHARTS_CLEAR())
+import Halogen (HalogenEffects())
 import Network.HTTP.Affjax (AJAX())
 
-type Slam = Aff FileSystemEffects
+type Slam = Aff SlamDataEffects
 
-type FileSystemEffects =
-  ( dom :: DOM
+type SlamDataEffects = HalogenEffects SlamDataRawEffects
+
+type SlamDataRawEffects =
+  ( ajax :: AJAX
   , random :: RANDOM
-  , avar :: AVAR
-  , ajax :: AJAX
-  , ref :: REF
+  , ace :: ACE
   , console :: CONSOLE
-  , zClipboard :: ZCLIPBOARD
-  , err :: EXCEPTION
+  , echartClear :: ECHARTS_CLEAR
+  , echartDispose :: ECHARTS_DISPOSE
+  , echartInit :: ECHARTS_INIT
+  , echartRefresh :: ECHARTS_REFRESH
+  , echartResize :: ECHARTS_RESIZE
+  , echartSetOption :: ECHARTS_OPTION_SET
   , file :: READ_FILE
   , now :: Now
-  , ace :: ACE
-  )
-
-type FileSystemRawEffects =
-  ( random :: RANDOM
-  , ajax :: AJAX
   , ref :: REF
-  , console :: CONSOLE
+  , timer :: Timer
   , zClipboard :: ZCLIPBOARD
-  , file :: READ_FILE
-  , now :: Now
-  , ace :: ACE
   )

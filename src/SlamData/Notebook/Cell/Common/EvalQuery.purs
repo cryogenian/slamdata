@@ -56,7 +56,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.Port (Port())
 import SlamData.Notebook.Cell.Port.VarMap as Port
-import SlamData.Notebook.Effects (Slam(), NotebookEffects())
+import SlamData.Effects (Slam(), SlamDataEffects())
 
 import Utils.Path (DirPath())
 
@@ -131,7 +131,7 @@ data CellEvalQuery a
   = EvalCell CellEvalInput (CellEvalResult -> a)
   | SetupCell CellSetupInfo a
   | NotifyRunCell a
-  | SetCanceler (Canceler NotebookEffects) a
+  | SetCanceler (Canceler SlamDataEffects) a
   | Save (Json -> a)
   | Load Json a
 

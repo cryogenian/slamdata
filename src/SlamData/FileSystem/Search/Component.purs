@@ -39,8 +39,8 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
-import SlamData.FileSystem.Effects (FileSystemEffects())
-import SlamData.FileSystem.Effects (Slam())
+import SlamData.Effects (SlamDataEffects())
+import SlamData.Effects (Slam())
 import SlamData.FileSystem.Listing.Sort (Sort())
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt, Salt())
@@ -59,7 +59,7 @@ type SearchRec =
     -- `These` to differentiate path and search path
   , value :: These String String
   , loading :: Boolean
-  , timeout :: Canceler FileSystemEffects
+  , timeout :: Canceler SlamDataEffects
   , path :: DirPath
   , sort :: Sort
   , salt :: Salt
@@ -92,7 +92,7 @@ _value = _State <<< lens _.value _{value = _}
 _loading :: LensP State Boolean
 _loading = _State <<< lens _.loading _{loading = _}
 
-_timeout :: LensP State (Canceler FileSystemEffects)
+_timeout :: LensP State (Canceler SlamDataEffects)
 _timeout = _State <<< lens _.timeout _{timeout = _}
 
 _path :: LensP State DirPath
@@ -207,7 +207,7 @@ eval (IsSearching continue) = do
   state <- get
   pure $ continue $ isJust $ theseRight $ state ^. _value
 
-submit :: State -> Aff FileSystemEffects (Maybe (State -> State))
+submit :: State -> Aff SlamDataEffects (Maybe (State -> State))
 submit state = do
   salt <- liftEff newSalt
   case theseLeft (state ^. _value) of

@@ -70,7 +70,7 @@ import SlamData.Notebook.Cell.Viz.Component.State
 import SlamData.Notebook.Cell.Viz.Form.Component (formComponent)
 import SlamData.Notebook.Cell.Viz.Form.Component as Form
 import SlamData.Notebook.Cell.Viz.Model as Model
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 

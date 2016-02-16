@@ -6,6 +6,10 @@ module Quasar.Auth
   , retrieveKeyString
   , retrieveNonce
   , retrieveClientID
+  , storeKeyString
+  , storeNonce
+  , storeClientId
+  , clearIdToken
   , module OIDCCryptUtils.Types
   ) where
 
@@ -19,7 +23,7 @@ import DOM (DOM())
 import Network.HTTP.RequestHeader
 import Utils.LocalStorage as LS
 import Quasar.Auth.Permission as P
-import OIDCCryptUtils.Types (IdToken(..), KeyString(..), UnhashedNonce(..), ClientID(..))
+import OIDCCryptUtils.Types
 
 authHeader
   :: IdToken
@@ -66,6 +70,29 @@ storeIdToken (IdToken idToken) =
   LS.setLocalStorage
     idTokenLocalStorageKey
     idToken
+
+storeKeyString :: forall e. KeyString -> Eff (dom :: DOM |e) Unit
+storeKeyString (KeyString ks) =
+  LS.setLocalStorage
+    keyStringLocalStorageKey
+    ks
+
+storeNonce :: forall e. UnhashedNonce -> Eff (dom :: DOM |e) Unit
+storeNonce (UnhashedNonce n) =
+  LS.setLocalStorage
+    nonceLocalStorageKey
+    n
+
+storeClientId :: forall e. ClientID -> Eff (dom :: DOM |e) Unit
+storeClientId (ClientID cid) =
+  LS.setLocalStorage
+    clientIDLocalStorageKey
+    cid
+
+
+clearIdToken :: forall e. Eff (dom :: DOM |e) Unit
+clearIdToken =
+  LS.removeLocalStorage idTokenLocalStorageKey
 
 authed
   :: forall a e

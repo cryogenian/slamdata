@@ -17,3 +17,10 @@ exports.getLocalStorageImpl = function(Nothing, Just, key) {
         }
     };
 };
+
+exports.removeLocalStorageImpl = function(key) {
+    return function() {
+        window.localStorage.removeItem(key);
+        return {};
+    };
+};

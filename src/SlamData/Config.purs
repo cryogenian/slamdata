@@ -80,3 +80,6 @@ tickTick = 1000
 
 autosaveTick :: Int
 autosaveTick = 1000
+
+redirectURIString :: String
+redirectURIString = "/auth_redirect.html"

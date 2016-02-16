@@ -40,7 +40,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Notebook.Cell.Component.Query (CellQuery(..), InnerCellQuery())
 import SlamData.Notebook.Cell.Component.State (CellState(), AnyCellState(), _cachingEnabled)
 import SlamData.Notebook.Cell.RunState (RunState(..), isRunning)
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.Common (glyph, glyphInactive)
 import SlamData.Render.CSS as CSS
 

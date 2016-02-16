@@ -1003,12 +1003,14 @@ load path idToken perms =
 
 -- | Returns `Nothing` in case the authorization service is not available, and `Just` in case
 -- | Quasar responded with a valid array of OIDC providers.
-retrieveAuthProviders :: forall e. Aff (RetryEffects (ajax :: AX.AJAX | e)) (M.Maybe (Array Auth.Provider))
+retrieveAuthProviders
+  :: forall e
+   . Aff (RetryEffects (ajax :: AX.AJAX | e)) (M.Maybe (Array Auth.Provider))
 retrieveAuthProviders = do
   res <- getOnce Paths.oidcProvidersUrl applicationJSON M.Nothing []
   if res.status == notFoundStatus
     then pure M.Nothing
     else do
-      case JS.decodeJson res.response of
-        E.Left parseErr -> Err.throwError $ Exn.error parseErr
-        E.Right val -> pure $ M.Just val
+    case JS.decodeJson res.response of
+      E.Left parseErr -> Err.throwError $ Exn.error parseErr
+      E.Right val -> pure $ M.Just val

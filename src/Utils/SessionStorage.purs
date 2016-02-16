@@ -6,8 +6,9 @@ module Utils.SessionStorage
 import Prelude
 import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Class (liftEff, MonadEff)
+
 import Data.Argonaut
+import Data.Functor.Eff (liftEff, FunctorEff)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Function
@@ -32,7 +33,7 @@ foreign import
 
 setSessionStorage
   :: forall a e g
-   . (EncodeJson a, MonadEff (dom :: DOM | e) g)
+   . (EncodeJson a, FunctorEff (dom :: DOM | e) g)
   => String
   -> a
   -> g Unit
@@ -41,7 +42,7 @@ setSessionStorage key =
 
 getSessionStorage
   :: forall a e g
-   . (DecodeJson a, MonadEff (dom :: DOM | e) g)
+   . (DecodeJson a, FunctorEff (dom :: DOM | e) g)
   => String
   -> g (Either String a)
 getSessionStorage key =

@@ -42,7 +42,7 @@ import SlamData.Notebook.Cell.CellType as CT
 import SlamData.Notebook.Cell.Common.EvalQuery as NC
 import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Notebook.FormBuilder.Component as FB
 import SlamData.Notebook.FormBuilder.Item.Component as Item
 
