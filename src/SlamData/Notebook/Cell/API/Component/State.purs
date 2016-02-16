@@ -25,7 +25,7 @@ import Prelude
 import Halogen
 
 import SlamData.Notebook.Cell.Common.EvalQuery as NC
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Notebook.FormBuilder.Component as FB
 
 type State = {}

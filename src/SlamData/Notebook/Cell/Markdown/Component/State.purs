@@ -26,7 +26,7 @@ import Text.Markdown.SlamDown (SlamDown())
 import Text.Markdown.SlamDown.Html (SlamDownState(), SlamDownQuery())
 
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 type State = Maybe SlamDown
 

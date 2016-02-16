@@ -61,7 +61,7 @@ import SlamData.Config as Config
 import SlamData.Config.Version as Version
 import SlamData.FileSystem.Component
 import SlamData.FileSystem.Dialog.Component as Dialog
-import SlamData.FileSystem.Effects
+import SlamData.Effects
 import SlamData.FileSystem.Listing.Component as Items
 import SlamData.FileSystem.Listing.Item (Item(..))
 import SlamData.FileSystem.Listing.Sort (Sort(..))
@@ -76,7 +76,7 @@ import Text.SlamSearch.Types (SearchQuery())
 
 import Utils.Path (DirPath(), hidePath, renderPath)
 
-main :: Eff FileSystemEffects Unit
+main :: Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
   AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
@@ -94,11 +94,11 @@ setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
 setSlamDataTitle version =
   liftEff $ setTitle $ "SlamData " <> version
 
-initialAVar :: Tuple (Canceler FileSystemEffects) (M.Map Int Int)
+initialAVar :: Tuple (Canceler SlamDataEffects) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
-routeSignal :: Driver QueryP FileSystemRawEffects
-               -> Aff FileSystemEffects Unit
+routeSignal :: Driver QueryP SlamDataRawEffects
+               -> Aff SlamDataEffects Unit
 routeSignal driver = do
   avar <- makeVar' initialAVar
   routeTpl <- matchesAff routing
@@ -107,10 +107,10 @@ routeSignal driver = do
 
 
 redirects
-  :: Driver QueryP FileSystemRawEffects
-  -> AVar (Tuple (Canceler FileSystemEffects) (M.Map Int Int))
+  :: Driver QueryP SlamDataRawEffects
+  -> AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   -> Maybe Routes -> Routes
-  -> Aff FileSystemEffects Unit
+  -> Aff SlamDataEffects Unit
 redirects _ _ _ Index = updateURL Nothing Asc Nothing rootDir
 redirects _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
 redirects _ _ _ (SortAndQ sort query) =
@@ -147,8 +147,8 @@ redirects driver var mbOld (Salted sort query salt) = do
 
 checkMount
   :: DirPath
-  -> Driver QueryP FileSystemRawEffects
-  -> Aff FileSystemEffects Unit
+  -> Driver QueryP SlamDataRawEffects
+  -> Aff SlamDataEffects Unit
 checkMount path driver = do
   result <- attempt $ Auth.authed $ Quasar.mountInfo $ Database path
   case result of
@@ -158,10 +158,10 @@ checkMount path driver = do
 listPath
   :: SearchQuery
   -> Int
-  -> AVar (Tuple (Canceler FileSystemEffects) (M.Map Int Int))
+  -> AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   -> DirPath
-  -> Driver QueryP FileSystemRawEffects
-  -> Aff FileSystemEffects Unit
+  -> Driver QueryP SlamDataRawEffects
+  -> Aff SlamDataEffects Unit
 listPath query deep var dir driver = do
   modifyVar (_2 %~ M.alter (maybe one (add one >>> pure))  deep) var
   canceler <- forkAff goDeeper
@@ -178,7 +178,7 @@ listPath query deep var dir driver = do
       else
       putVar var (Tuple c r)
 
-  sendError :: Error -> Aff FileSystemEffects Unit
+  sendError :: Error -> Aff SlamDataEffects Unit
   sendError err =
     when ((not $ isSearchQuery query) || deep == zero)
     $ driver $ toDialog $ Dialog.Show
@@ -186,7 +186,7 @@ listPath query deep var dir driver = do
                    <> message err)
 
 
-  getChildren :: Array Resource -> Aff FileSystemEffects Unit
+  getChildren :: Array Resource -> Aff SlamDataEffects Unit
   getChildren ress = do
     let next = mapMaybe (either (const Nothing) Just <<< getPath) ress
         toAdd = map Item $ filter (filterByQuery query) ress
@@ -197,7 +197,7 @@ listPath query deep var dir driver = do
 
 
 updateURL :: Maybe String -> Sort -> Maybe Salt -> DirPath
-             -> Aff FileSystemEffects Unit
+             -> Aff SlamDataEffects Unit
 updateURL query sort salt path = liftEff do
   salt' <- maybe newSalt pure salt
   replaceLocation $ browseURL query sort salt' path

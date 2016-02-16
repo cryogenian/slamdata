@@ -42,13 +42,13 @@ import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.Port as Port
 import SlamData.Notebook.Component as Draftboard
 import SlamData.Notebook.Editor.Component as Notebook
-import SlamData.Notebook.Effects (NotebookRawEffects(), NotebookEffects())
+import SlamData.Effects (SlamDataRawEffects(), SlamDataEffects())
 import SlamData.Notebook.Rename.Component as Rename
 import SlamData.Notebook.Routing (Routes(..), routing)
 
 import Utils.Path as UP
 
-main :: Eff NotebookEffects Unit
+main :: Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
   AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
@@ -62,8 +62,8 @@ main = do
     forkAff (routeSignal app.driver)
 
 routeSignal
-  :: Driver Draftboard.QueryP NotebookRawEffects
-  -> Aff NotebookEffects Unit
+  :: Driver Draftboard.QueryP SlamDataRawEffects
+  -> Aff SlamDataEffects Unit
 routeSignal driver = do
   Tuple _ route <- Routing.matchesAff' UP.decodeURIPath routing
   case route of
@@ -74,7 +74,7 @@ routeSignal driver = do
 
   where
 
-  explore :: UP.FilePath -> Aff NotebookEffects Unit
+  explore :: UP.FilePath -> Aff SlamDataEffects Unit
   explore path = do
     fs <- liftEff detectBrowserFeatures
     driver $ Draftboard.toNotebook $ Notebook.ExploreFile fs path
@@ -87,7 +87,7 @@ routeSignal driver = do
     -> Action
     -> Maybe CID.CellId
     -> Port.VarMap
-    -> Aff NotebookEffects Unit
+    -> Aff SlamDataEffects Unit
   notebook path action viewing varMap = do
     let name = UP.getNameStr $ Right path
         accessType = toAccessType action

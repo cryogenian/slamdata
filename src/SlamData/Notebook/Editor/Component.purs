@@ -80,7 +80,7 @@ import SlamData.Notebook.Editor.Component.CellSlot (CellSlot(..))
 import SlamData.Notebook.Editor.Component.Query
 import SlamData.Notebook.Editor.Component.State
 import SlamData.Notebook.Editor.Model as Model
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Notebook.FileInput.Component as Fi
 import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCellHash, mkNotebookURL)
 import SlamData.Render.Common (glyph, fadeWhen)

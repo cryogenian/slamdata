@@ -31,7 +31,7 @@ import SlamData.Notebook.AccessType (AccessType(..))
 import SlamData.Notebook.Cell.CellId (CellId())
 import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..))
 import SlamData.Notebook.Editor.Component.Query as Notebook
-import SlamData.Notebook.Effects (NotebookEffects())
+import SlamData.Effects (SlamDataEffects())
 import SlamData.Notebook.Menu.Component.Query (Value(), notebookQueryToValue)
 
 type NotebookShortcut =
@@ -41,7 +41,7 @@ type State =
   { accessType :: AccessType
   , browserFeatures :: BrowserFeatures
   , notebookShortcuts :: StrMap NotebookShortcut
-  , keyboardListeners :: Array (EventListener NotebookEffects)
+  , keyboardListeners :: Array (EventListener SlamDataEffects)
   , loaded :: Boolean
   , viewingCell :: Maybe CellId
   , version :: Maybe String
@@ -110,7 +110,7 @@ _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 _notebookShortcuts :: LensP State (StrMap NotebookShortcut)
 _notebookShortcuts = lens _.notebookShortcuts _{notebookShortcuts = _}
 
-_keyboardListeners :: LensP State (Array (EventListener NotebookEffects))
+_keyboardListeners :: LensP State (Array (EventListener SlamDataEffects))
 _keyboardListeners = lens _.keyboardListeners _{keyboardListeners = _}
 
 _loaded :: LensP State Boolean

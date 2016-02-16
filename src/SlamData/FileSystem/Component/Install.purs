@@ -31,24 +31,28 @@ import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.Query
 import SlamData.FileSystem.Component.State
 import SlamData.FileSystem.Dialog.Component as Dialog
-import SlamData.FileSystem.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.FileSystem.Listing.Component as Items
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.SignIn.Component as SignIn
 
 import Utils.Path (DirPath())
 
 type ChildState =
   Either Items.StateP
-  (Either Search.State
-   (Either Breadcrumbs.State
-    Dialog.StateP))
+  (Either SignIn.StateP
+    (Either Search.State
+     (Either Breadcrumbs.State
+      Dialog.StateP)))
 
 type ChildQuery =
   Coproduct Items.QueryP
-  (Coproduct Search.Query
-   (Coproduct Breadcrumbs.Query
-    Dialog.QueryP))
+  (Coproduct SignIn.QueryP
+    (Coproduct Search.Query
+     (Coproduct Breadcrumbs.Query
+      Dialog.QueryP)))
 
+type SignInSlot = Unit
 
 data ItemsSlot = ItemsSlot
 derive instance genericItemsSlot :: Generic ItemsSlot
@@ -76,27 +80,34 @@ instance ordDialogSLot :: Ord DialogSlot where compare = gCompare
 
 type ChildSlot =
   Either ItemsSlot
-  (Either SearchSlot
-   (Either BreadcrumbsSlot
-    DialogSlot))
+  (Either SignInSlot
+    (Either SearchSlot
+     (Either BreadcrumbsSlot
+      DialogSlot)))
 
 cpDialog :: ChildPath
             Dialog.StateP ChildState
             Dialog.QueryP ChildQuery
             DialogSlot ChildSlot
-cpDialog = cpR :> cpR :> cpR
+cpDialog = cpR :> cpR :> cpR :> cpR
+
+cpSignIn :: ChildPath
+            SignIn.StateP ChildState
+            SignIn.QueryP ChildQuery
+            SignInSlot ChildSlot
+cpSignIn = cpR :> cpL
 
 cpBreadcrumbs :: ChildPath
                  Breadcrumbs.State ChildState
                  Breadcrumbs.Query ChildQuery
                  BreadcrumbsSlot ChildSlot
-cpBreadcrumbs = cpR :> cpR :> cpL
+cpBreadcrumbs = cpR :> cpR :> cpR :> cpL
 
 cpSearch :: ChildPath
             Search.State ChildState
             Search.Query ChildQuery
             SearchSlot ChildSlot
-cpSearch = cpR :> cpL
+cpSearch = cpR :> cpR :> cpL
 
 cpItems :: ChildPath
            Items.StateP ChildState
@@ -115,12 +126,12 @@ toItems =
 toSearch :: (Unit -> Search.Query Unit) -> QueryP Unit
 toSearch =
   right <<< ChildF (injSlot cpSearch SearchSlot)
-  <<< right <<< left <<< action
+  <<< right <<< right <<< left <<< action
 
 toDialog :: (Unit -> Dialog.Query Unit) -> QueryP Unit
 toDialog =
   right <<< ChildF (injSlot cpDialog DialogSlot)
-  <<< right <<< right <<< right <<< left <<< action
+  <<< right <<< right <<< right <<< right <<< left <<< action
 
 type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)

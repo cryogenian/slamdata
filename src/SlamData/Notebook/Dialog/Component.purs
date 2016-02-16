@@ -35,7 +35,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Notebook.Cell.Port.VarMap as Port
 import SlamData.Notebook.Dialog.Embed.Component as Embed
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.Common (fadeWhen)
 
 data Dialog

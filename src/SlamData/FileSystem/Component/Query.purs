@@ -40,3 +40,4 @@ data Query a
   | FileListChanged HTMLElement a
   | SetVersion String a
   | MakeSQLView a
+  | DismissSignInSubmenu a

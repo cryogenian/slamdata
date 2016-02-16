@@ -21,6 +21,6 @@ import Prelude
 import Ace.Halogen.Component (AceQuery(), AceState())
 import Halogen (InstalledState())
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 type StateP = InstalledState Unit AceState CellEvalQuery AceQuery Slam Unit

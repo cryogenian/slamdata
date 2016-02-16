@@ -72,7 +72,7 @@ import SlamData.Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import SlamData.Notebook.Cell.Component.State
 import SlamData.Notebook.Cell.Port (Port(..), _Resource)
 import SlamData.Notebook.Cell.RunState (RunState(..))
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.Common (row', glyph, fadeWhen)
 import SlamData.Render.CSS as CSS
 

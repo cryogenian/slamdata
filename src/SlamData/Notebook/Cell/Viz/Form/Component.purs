@@ -60,8 +60,8 @@ import SlamData.Form.SelectPair.Component as P
 import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation(..), allAggregations)
 import SlamData.Notebook.Cell.Chart.ChartConfiguration
 import SlamData.Notebook.Cell.Viz.Form.Component.Render (gridClasses, GridClasses())
-import SlamData.Notebook.Effects (NotebookRawEffects())
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (SlamDataRawEffects())
+import SlamData.Effects (Slam())
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 
@@ -93,7 +93,7 @@ type ChildQuery = Coproduct DimensionQuery (Coproduct SeriesQuery MeasureQuery)
 
 type DimensionState = Select JCursor
 type SeriesState = Select JCursor
-type MeasureState = P.StateP Aggregation JCursor NotebookRawEffects
+type MeasureState = P.StateP Aggregation JCursor SlamDataRawEffects
 type ChildState = Either DimensionState (Either SeriesState MeasureState)
 
 type FormHTML = ParentHTML ChildState Query ChildQuery Slam ChildSlot

@@ -33,7 +33,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Quasar.Aff as Api
 import Quasar.Auth as Auth
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.FileSystem.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.FileSystem.Resource as R
 import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (fadeWhen)

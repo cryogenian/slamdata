@@ -30,10 +30,12 @@ import SlamData.Notebook.Editor.Component.State as Notebook
 import SlamData.Notebook.Menu.Component.Query as Menu
 import SlamData.Notebook.Menu.Component.State as Menu
 import SlamData.Notebook.Rename.Component as Rename
+import SlamData.SignIn.Component as SignIn
 
 type DialogSlot = Unit
 type NotebookSlot = Unit
 type RenameSlot = Unit
+type SignInSlot = Unit
 data MenuSlot = MenuSlot
 
 derive instance genericMenuSlot :: Generic MenuSlot
@@ -42,21 +44,24 @@ instance ordMenuSlot :: Ord MenuSlot where compare = gCompare
 
 type ChildSlot =
   Either RenameSlot
-  (Either MenuSlot
-   (Either DialogSlot
-    NotebookSlot))
+  (Either SignInSlot
+    (Either MenuSlot
+     (Either DialogSlot
+      NotebookSlot)))
 
 type ChildQuery =
   Coproduct Rename.Query
-  (Coproduct Menu.QueryP
-   (Coproduct Dialog.QueryP
-    Notebook.QueryP))
+  (Coproduct SignIn.QueryP
+    (Coproduct Menu.QueryP
+     (Coproduct Dialog.QueryP
+      Notebook.QueryP)))
 
 type ChildState g =
   Either Rename.State
-  (Either (Menu.StateP g)
-   (Either Dialog.StateP
-    Notebook.StateP))
+  (Either SignIn.StateP
+    (Either (Menu.StateP g)
+     (Either Dialog.StateP
+      Notebook.StateP)))
 
 cpRename
   :: forall g
@@ -66,13 +71,21 @@ cpRename
        RenameSlot ChildSlot
 cpRename = cpL
 
+cpSignIn
+  :: forall g
+   . ChildPath
+       SignIn.StateP (ChildState g)
+       SignIn.QueryP ChildQuery
+       SignInSlot ChildSlot
+cpSignIn = cpR :> cpL
+
 cpDialog
   :: forall g
    . ChildPath
        Dialog.StateP (ChildState g)
        Dialog.QueryP ChildQuery
        DialogSlot ChildSlot
-cpDialog = cpR :> cpR :> cpL
+cpDialog = cpR :> cpR :> cpR :> cpL
 
 cpNotebook
   :: forall g
@@ -80,7 +93,7 @@ cpNotebook
        Notebook.StateP (ChildState g)
        Notebook.QueryP ChildQuery
        NotebookSlot ChildSlot
-cpNotebook = cpR :> cpR :> cpR
+cpNotebook = cpR :> cpR :> cpR :> cpR
 
 cpMenu
   :: forall g
@@ -88,5 +101,5 @@ cpMenu
        (Menu.StateP g) (ChildState g)
        Menu.QueryP ChildQuery
        MenuSlot ChildSlot
-cpMenu = cpR :> cpL
+cpMenu = cpR :> cpR :> cpL
 

@@ -70,7 +70,7 @@ import SlamData.Notebook.Cell.Port (Port())
 import SlamData.Notebook.Cell.RunState (RunState(..))
 import SlamData.Notebook.Cell.Search.Component.State as Search
 import SlamData.Notebook.Cell.Viz.Component.State as Viz
-import SlamData.Notebook.Effects (Slam(), NotebookEffects())
+import SlamData.Effects (Slam(), SlamDataEffects())
 
 -- | The common state value for notebook cells.
 -- |
@@ -102,7 +102,7 @@ type CellState =
   , cachingEnabled :: Maybe Boolean -- Nothing if the option isn't available
   , input :: Maybe Port
   , output :: Maybe Port
-  , canceler :: Canceler NotebookEffects
+  , canceler :: Canceler SlamDataEffects
   }
 
 type CellStateP = InstalledState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
@@ -182,7 +182,7 @@ _input = lens _.input (_ { input = _ })
 _output :: LensP CellState (Maybe Port)
 _output = lens _.output (_ { output = _ })
 
-_canceler :: LensP CellState (Canceler NotebookEffects)
+_canceler :: LensP CellState (Canceler SlamDataEffects)
 _canceler = lens _.canceler _{canceler = _}
 
 data AnyCellState

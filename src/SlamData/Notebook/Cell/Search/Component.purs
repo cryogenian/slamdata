@@ -54,7 +54,7 @@ import SlamData.Notebook.Cell.Search.Component.Query
 import SlamData.Notebook.Cell.Search.Component.State
 import SlamData.Notebook.Cell.Search.Interpret as Search
 import SlamData.Notebook.Cell.Search.Model as Model
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Notebook.FileInput.Component as FI
 import SlamData.Render.Common as RC
 import SlamData.Render.CSS as CSS

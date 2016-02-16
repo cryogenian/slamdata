@@ -42,7 +42,8 @@
     "purescript-timers": "^1.0.0",
     "purescript-tuples": "^0.4.0",
     "purescript-uri": "^0.2.0",
-    "purescript-zclipboard": "^0.3.0"
+    "purescript-zclipboard": "^0.3.0",
+    "purescript-void": "^0.3.0"
   },
   "devDependencies": {
     "purescript-chalky": "^0.2.0",

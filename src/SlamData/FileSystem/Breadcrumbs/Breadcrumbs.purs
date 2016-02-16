@@ -29,7 +29,7 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.FileSystem.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.FileSystem.Listing.Sort (Sort())
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt())

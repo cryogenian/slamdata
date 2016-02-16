@@ -43,7 +43,7 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Dialog.SQLMount.Component as SQLMount
-import SlamData.FileSystem.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.FileSystem.Resource (Resource())
 import SlamData.Render.Common (fadeWhen)
 import Utils.Path (DirPath(), DirPath())

@@ -26,6 +26,8 @@ module Control.UI.Browser
   , clearValue
   , reload
   , setTitle
+  , hostAndProtocol
+  , getHref
   ) where
 
 import Prelude
@@ -57,6 +59,16 @@ reload :: forall e. Eff (dom :: DOM | e) Unit
 reload =
   locationObject
     >>= Location.reload
+
+hostAndProtocol :: forall e. Eff (dom :: DOM |e) String
+hostAndProtocol = do
+  loc <- locationObject
+  protocol <- Location.protocol loc
+  host <- Location.host loc
+  pure $ protocol <> "//" <> host
+
+getHref :: forall e. Eff (dom :: DOM|e) String
+getHref = locationObject >>= Location.href
 
 foreign import locationString :: forall e. Eff (dom :: DOM | e) String
 foreign import select :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit

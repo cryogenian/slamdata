@@ -47,7 +47,7 @@ import SlamData.Notebook.Cell.JTable.Component.Render (render)
 import SlamData.Notebook.Cell.JTable.Component.State
 import SlamData.Notebook.Cell.JTable.Model as Model
 import SlamData.Notebook.Cell.Port (_Resource, _ResourceTag)
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 jtableComponent :: Component CellStateP CellQueryP Slam
 jtableComponent = makeResultsCellComponent

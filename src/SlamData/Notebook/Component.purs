@@ -71,12 +71,13 @@ import SlamData.Notebook.Component.State
 import SlamData.Notebook.Dialog.Component as Dialog
 import SlamData.Notebook.Editor.Component as Notebook
 import SlamData.Notebook.Editor.Component.CellSlot as Notebook
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Notebook.FormBuilder.Component as FB
 import SlamData.Notebook.FormBuilder.Item.Model as FBI
 import SlamData.Notebook.Menu.Component.Query as Menu
 import SlamData.Notebook.Menu.Component.State as Menu
 import SlamData.Notebook.Rename.Component as Rename
+import SlamData.SignIn.Component as SignIn
 import SlamData.Notebook.Routing (mkNotebookCellURL)
 import SlamData.Render.Common (logo, icon')
 import SlamData.Render.CSS as Rc
@@ -99,13 +100,6 @@ render state =
     [ H.nav
         [ P.classes visibilityClasses ]
         [ renderHeader state ]
-    , H.div
-        [ P.classes $ [ className "sd-menu" ] <> visibilityClasses ]
-        [ H.slot' cpMenu MenuSlot \_ ->
-          { component: HalogenMenu.menuComponent
-          , initialState: installedState $ Menu.make SM.empty
-          }
-        ]
     , H.div
         [ P.classes [ notebookClass ] ]
         [  H.slot' cpNotebook unit \_ ->
@@ -156,6 +150,17 @@ render state =
                   { component: Rename.comp
                   , initialState: Rename.initialState
                   }
+              , H.slot' cpSignIn unit \_ ->
+                  { component: SignIn.comp
+                  , initialState: installedState SignIn.initialState
+                  }
+              , H.div
+                  [ P.classes $ [ className "sd-menu" ] <> visibilityClasses ]
+                  [ H.slot' cpMenu MenuSlot \_ ->
+                    { component: HalogenMenu.menuComponent
+                    , initialState: installedState $ Menu.make SM.empty
+                    }
+                  ]
               ]
           ]
       ]
@@ -211,20 +216,25 @@ eval (DismissAll next) = dismissAll *> pure next
 eval (SetParentHref href next) = modify (_parentHref ?~ href) $> next
 
 dismissAll :: DraftboardDSL Unit
-dismissAll =
-  queryMenu $
-    action HalogenMenu.DismissSubmenu
+dismissAll = do
+  queryMenu $ action HalogenMenu.DismissSubmenu
+  querySignIn $ action SignIn.DismissSubmenu
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> DraftboardDSL Unit
 peek (ChildF p q) =
   coproduct
     renamePeek
     (coproduct
-      menuPeek
+      signInParentPeek
       (coproduct
-        dialogParentPeek
-        notebookPeek))
+        menuPeek
+        (coproduct
+          dialogParentPeek
+          notebookPeek)))
     q
+
+signInParentPeek :: forall a. SignIn.QueryP a -> DraftboardDSL Unit
+signInParentPeek = coproduct (const (pure unit)) (const (pure unit))
 
 dialogParentPeek :: forall a. Dialog.QueryP a -> DraftboardDSL Unit
 dialogParentPeek = coproduct dialogPeek (const (pure unit))
@@ -363,8 +373,14 @@ queryCell cid =
 queryRename :: Rename.Query Unit -> DraftboardDSL Unit
 queryRename q = query' cpRename unit q *> pure unit
 
+querySignIn :: forall a. SignIn.Query a -> DraftboardDSL Unit
+querySignIn q = query' cpSignIn unit (left q) *> pure unit
+
 queryMenu :: HalogenMenu.MenuQuery (Maybe Menu.Value) Unit -> DraftboardDSL Unit
 queryMenu q = query' cpMenu MenuSlot (left q) *> pure unit
+
+--querySignInMenu :: HalogenMenu.MenuQuery (Maybe Menu.Value) Unit -> DraftboardDSL Unit
+--querySignInMenu q = query' cpSignIn MenuSlot (left q) *> pure unit
 
 presentHelp :: Menu.HelpURI -> DraftboardDSL Unit
 presentHelp (Menu.HelpURI uri) = liftEff $ newTab uri

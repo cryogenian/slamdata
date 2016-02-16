@@ -39,7 +39,7 @@ import SlamData.Notebook.Cell.APIResults.Component.State
 import SlamData.Notebook.Cell.Common.EvalQuery as NC
 import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 type APIResultsDSL = ComponentDSL State QueryP Slam
 

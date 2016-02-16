@@ -42,7 +42,7 @@ import CSS.Size (px)
 import Quasar.Aff as API
 import Quasar.Auth as Auth
 
-import SlamData.FileSystem.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
 import SlamData.FileSystem.Resource (Resource(..), resourceName, resourcePath, isDatabase, isFile, isNotebook, isViewMount, hiddenTopLevel, root)
 import SlamData.Render.CSS as Rc

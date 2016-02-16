@@ -19,25 +19,47 @@ module Quasar.Paths where
 import Data.Path.Pathy (AbsDir(), AbsFile(), Sandboxed(), file, dir, rootDir, (</>))
 
 serviceBaseUrl :: AbsDir Sandboxed
-serviceBaseUrl = rootDir
+serviceBaseUrl =
+  rootDir
 
-oidcProvidersUrl :: AbsDir Sandboxed
-oidcProvidersUrl = serviceBaseUrl </> dir "security" </> dir "oidc" </> dir "providers"
+oidcProvidersUrl :: AbsFile Sandboxed
+oidcProvidersUrl =
+  serviceBaseUrl
+  </> dir "security"
+  </> dir "oidc"
+  </> file "providers"
 
 uploadUrl :: AbsFile Sandboxed
-uploadUrl = serviceBaseUrl </> file "upload"
+uploadUrl =
+  serviceBaseUrl
+  </> file "upload"
 
 metadataUrl :: AbsDir Sandboxed
-metadataUrl = serviceBaseUrl </> dir "metadata" </> dir "fs"
+metadataUrl =
+  serviceBaseUrl
+  </> dir "metadata"
+  </> dir "fs"
 
 mountUrl :: AbsDir Sandboxed
-mountUrl = serviceBaseUrl </> dir "mount" </> dir "fs"
+mountUrl =
+  serviceBaseUrl
+  </> dir "mount"
+  </> dir "fs"
 
 dataUrl :: AbsDir Sandboxed
-dataUrl = serviceBaseUrl </> dir "data" </> dir "fs"
+dataUrl =
+  serviceBaseUrl
+  </> dir "data"
+  </> dir "fs"
 
 queryUrl :: AbsDir Sandboxed
-queryUrl = serviceBaseUrl </> dir "query" </> dir "fs"
+queryUrl =
+  serviceBaseUrl
+  </> dir "query"
+  </> dir "fs"
 
 serverInfoUrl :: AbsFile Sandboxed
-serverInfoUrl = serviceBaseUrl </> dir "server" </> file "info"
+serverInfoUrl =
+  serviceBaseUrl
+  </> dir "server"
+  </> file "info"

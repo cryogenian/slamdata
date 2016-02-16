@@ -1,62 +1,57 @@
-.sd-menu > ul {
-  background: #262626;
-  border-top: 1px solid white;
-  left: 0;
+.sd-sign-in > ul {
   list-style-type: none;
-  margin: 0;
-  padding: 0 1rem;
-  position: fixed;
-  top: 70px;
-  width: 100%;
-  z-index: 700;
+  display: inline-block;
+  float: right;
+  margin-right: 27px;
+  position: relative;
+  z-index: 800;
 }
 
-.sd-menu a {
-  border: 0;
+.sd-sign-in a {
+  display: inline-block;
   cursor: default;
-  display: block;
   font-size: 0.9rem;
   line-height: 0.9rem;
-  margin: 0;
-  padding: 0.9rem 0.9rem;
+  font-size: 1rem;
   text-decoration: none;
-  text-align: left;
 }
 
-.sd-menu > ul > li a {
+.sd-sign-in > ul > li a {
   color: rgb(210,210,210);
 }
 
-.sd-menu > ul > li a:hover {
+.sd-sign-in > ul > li a:hover {
   color: white;
 }
 
-.sd-menu > ul > li a:not(:only-child) {
+.sd-sign-in > ul > li a:not(:only-child) {
   color: white;
+
 }
 
-.sd-menu > ul > li {
+.sd-sign-in > ul > li {
   display: block;
   float: left;
   padding: 0;
   position: relative;
 }
 
-.sd-menu > ul > li > ul {
-  left: 0;
+.sd-sign-in > ul > li > ul {
+  right: -1.125rem;
   list-style-type: none;
   padding: 0;
   position: absolute;
   top: 100%;
+  z-index: 800;
   float: left;
 }
 
-.sd-menu > ul > li > ul > li {
+.sd-sign-in > ul > li > ul > li {
   position: relative;
   width: 100%;
 }
 
-.sd-menu > ul > li > ul > li > a {
+.sd-sign-in > ul > li > ul > li > a {
         display: -ms-flex;
         display: -webkit-flex;
         display: flex;
@@ -69,28 +64,35 @@
   box-shadow: 1px 2px 5px 0px rgba(0,0,0,0.05);
   color: #3F3F3F;
   min-width: 100%;
-  padding: 0.5rem 1.125rem;
+  padding: 0.9rem 1.125rem;
   white-space: nowrap;
-}
-
-.sd-menu > ul > li > ul > li > a > span {
-  width: 50%;
-}
-
-.sd-menu > ul > li > ul > li > a > span:nth-child(2) {
-  color: #909090;
-  margin-left: 1.5rem;
   text-align: right;
-  width: 50%;
 }
 
-.sd-menu > ul > li > ul > li:last-child > a {
+.sd-sign-in > ul > li > ul > li > a > span {
+  width: 100%;
+  text-align: right;
+}
+
+.sd-sign-in > ul > li > ul > li:last-child > a {
   border-radius: 0 0 0.25rem 0.25rem;
   border-width: 0 1px 1px 1px;
-  padding-bottom: 0.6rem;
+  padding-bottom: 1rem;
 }
 
-.sd-menu > ul > li > ul > li > a:hover {
+.sd-sign-in > ul > li > ul > li > a:hover {
   background-color: rgba(240,240,240,1);
   color: black;
+}
+
+.dashboard .sd-sign-in a {
+  border: 0;
+  cursor: default;
+  display: block;
+  font-size: 0.9rem;
+  line-height: 0.9rem;
+  margin: 0;
+  padding: 0.9rem 0.9rem;
+  text-decoration: none;
+  text-align: left;
 }

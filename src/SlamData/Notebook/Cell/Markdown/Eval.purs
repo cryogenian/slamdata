@@ -45,7 +45,7 @@ import SlamData.Notebook.Cell.Ace.Component (AceDSL())
 import SlamData.Notebook.Cell.CellId (CellId(), cellIdToString)
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalResult(), CellEvalInput(), CellSetupInfo())
 import SlamData.Notebook.Cell.Port (Port(..))
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Parser as SD

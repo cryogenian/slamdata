@@ -20,8 +20,7 @@ import OIDCCryptUtils.Types as OIDC
 type RedirectHashPayload =
   { idToken :: OIDC.IdToken
   , authUser :: String
-  , hd :: String
-  , sessionState :: OIDC.BoundStateJWS
+  , state :: OIDC.BoundStateJWS
   , prompt :: String
   }
 
@@ -39,7 +38,7 @@ parametersParser =
 
 -- | Parse the payload from the URI hash. Example:
 -- |
--- |     #id_token=foo&authuser=0&hd=slamdata.com&session_state=bar&prompt=consent
+-- |     #id_token=foo&authuser=0&hd=slamdata.com&state=bar&prompt=consent
 -- |
 uriHashParser :: P.Parser RedirectHashPayload
 uriHashParser = do
@@ -49,15 +48,13 @@ uriHashParser = do
   let lookup key = SM.lookup key params # M.maybe (P.fail $ "missing " <> key) pure
   idToken <- lookup "id_token" <#> OIDC.IdToken
   authUser <- lookup "authuser"
-  hd <- lookup "hd"
-  sessionState <- lookup "session_state" <#> OIDC.BoundStateJWS
+  state <- lookup "state" <#> OIDC.BoundStateJWS
   prompt <- lookup "prompt"
 
   pure
     { idToken
     , authUser
-    , hd
-    , sessionState
+    , state
     , prompt
     }
 

@@ -37,7 +37,7 @@ import SlamData.Download.Model as D
 import SlamData.FileSystem.Dialog.Download.Component.Query
 import SlamData.FileSystem.Dialog.Download.Component.Render
 import SlamData.FileSystem.Dialog.Download.Component.State
-import SlamData.FileSystem.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.FileSystem.Resource (Resource(..), resourceName)
 
 import Utils.Path (parseAnyPath)

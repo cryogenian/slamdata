@@ -49,7 +49,7 @@ import SlamData.Notebook.Cell.Ace.Model as Model
 import SlamData.Notebook.Cell.CellType (AceMode(), aceMode, aceCellName, aceCellGlyph)
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult(), CellEvalInput(), CellSetupInfo())
 import SlamData.Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism, _AceState, _AceQuery)
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 import SlamData.Render.CSS as CSS
 
 import Utils.Ace (getRangeRecs, readOnly)

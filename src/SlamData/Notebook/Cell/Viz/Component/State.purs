@@ -47,7 +47,7 @@ import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import SlamData.Notebook.Cell.Viz.Component.Query (Query())
 import SlamData.Notebook.Cell.Viz.Form.Component as Form
 import SlamData.Notebook.Cell.Viz.Model (Model())
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 type State =
   { width :: Int

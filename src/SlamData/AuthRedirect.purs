@@ -88,31 +88,45 @@ verifyRedirect st issuer jwk = do
   OIDC.verifyIdToken st.payload.idToken issuer st.clientID st.unhashedNonce jwk
     # MT.lift
     >>= guard
+  -- If the IdToken has been verified,
+  -- then we may proceed to extract the redirect URL.
 
-  -- If the IdToken has been verified, then we may proceed to extract the redirect URL.
-  OIDC.unbindState st.payload.sessionState st.keyString
+  OIDC.unbindState st.payload.state st.keyString
     <#> OIDC.runStateString
     >>> RedirectURL
       # pure
       # MBT.MaybeT
 
+
+
 main :: Eff RedirectEffects Unit
 main = do
-  Aff.runAff Exn.throwException (\_ -> pure unit) do
+  -- We're getting token too fast. It isn't valid until next second (I think)
+  Aff.runAff Exn.throwException (\_ -> pure unit)  do
     state <- liftEff retrieveRedirectState
-
     -- First, retrieve the provider that matches our stored ClientID.
     Auth.Provider provider <- do
       providers <-
-        Quasar.retrieveAuthProviders >>=
-          M.maybe (liftEff $ Exn.throw "Failed to retrieve auth providers from Quasar") pure
-      F.find (\(Auth.Provider pr) -> pr.clientID == state.clientID) providers #
-        M.maybe (liftEff $ Exn.throw $ "Could not find provider matching client ID '" <> OIDC.runClientID state.clientID <> "'") pure
+        Quasar.retrieveAuthProviders
+          >>= M.maybe
+                (liftEff
+                 $ Exn.throw "Failed to retrieve auth providers from Quasar")
+                pure
 
-    let openIDConfiguration = Auth.getOpenIDConfiguration provider.openIDConfiguration
+      F.find (\(Auth.Provider pr) -> pr.clientID == state.clientID) providers
+        # M.maybe
+            (liftEff
+             $ Exn.throw
+             $ "Could not find provider matching client ID '"
+             <> OIDC.runClientID state.clientID <> "'")
+            pure
+
+    let openIDConfiguration =
+          Auth.getOpenIDConfiguration provider.openIDConfiguration
 
     liftEff do
-      -- Try to verify the IdToken against each of the provider's jwks, stopping at the first success.
+      -- Try to verify the IdToken against each of the provider's jwks,
+      -- stopping at the first success.
       RedirectURL redirectURL <-
         openIDConfiguration.jwks
           <#> verifyRedirect state openIDConfiguration.issuer
@@ -120,8 +134,8 @@ main = do
             # MBT.runMaybeT
           >>= M.maybe (Exn.throw "Failed to verify redirect") pure
 
-      Auth.storeIdToken state.payload.idToken
 
+      Auth.storeIdToken state.payload.idToken
       DOM.window
         >>= Win.location
         >>= Loc.setHref redirectURL

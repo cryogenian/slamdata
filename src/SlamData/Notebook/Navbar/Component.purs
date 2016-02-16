@@ -23,7 +23,7 @@ import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Notebook.Effects (Slam())
+import SlamData.Effects (Slam())
 
 newtype StateP = StateP Int
 data QueryP a = QueryP a

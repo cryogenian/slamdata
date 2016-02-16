@@ -24,6 +24,7 @@ module SlamData.FileSystem.Component
 import Prelude
 
 import Control.Alt ((<|>))
+import Control.Apply ((*>))
 import Control.Bind (join)
 import Control.Monad.Aff (attempt)
 import Control.Monad.Eff.Exception (error, message)
@@ -49,6 +50,7 @@ import Data.URI (runParseAbsoluteURI)
 import Halogen.Component
 import Halogen.Component.ChildPath (injSlot, prjSlot, prjQuery, injQuery)
 import Halogen.Component.Utils (applyCF, forceRerender')
+import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Query (action, request, get, modify, gets)
@@ -70,7 +72,8 @@ import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.SQLMount.Component as SQLMount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
-import SlamData.FileSystem.Effects (Slam())
+import SlamData.Effects (Slam())
+import SlamData.SignIn.Component as SignIn
 import SlamData.FileSystem.Listing.Component as Items
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource, itemURL, openItem, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
@@ -93,7 +96,9 @@ comp = parentComponent' render eval peek
 render :: RenderParent State ChildState Query ChildQuery Slam ChildSlot
 render state@(State r) =
   H.div
-    [P.classes [ Rc.filesystem ] ]
+    [ P.classes [ Rc.filesystem ]
+    , E.onClick (E.input_ DismissSignInSubmenu)
+    ]
     [ navbar
       [  H.div [ P.classes [ Rc.header, B.clearfix ] ]
          [ icon B.glyphiconFolderOpen Config.homeHash
@@ -102,6 +107,10 @@ render state@(State r) =
            \_ -> { component: Search.comp
                  , initialState: Search.initialState r.sort  r.salt
                  }
+         , H.slot' cpSignIn unit \_ ->
+             { component: SignIn.comp
+             , initialState: installedState SignIn.initialState
+             }
          ]
       ]
     , content
@@ -250,6 +259,14 @@ eval (Download next) = do
 eval (SetVersion version next) = do
   modify (_version .~ Just version)
   pure next
+
+eval (DismissSignInSubmenu next) = dismissSignInSubmenu *> pure next
+
+dismissSignInSubmenu :: Algebra Unit
+dismissSignInSubmenu = querySignIn $ action SignIn.DismissSubmenu
+  where
+  querySignIn :: forall a. SignIn.Query a -> Algebra Unit
+  querySignIn q = query' cpSignIn unit (left q) *> pure unit
 
 peek :: forall a. ChildF ChildSlot ChildQuery a -> Algebra Unit
 peek (ChildF p q) =
