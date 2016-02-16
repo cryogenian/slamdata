@@ -45,6 +45,8 @@ import SlamData.Notebook.Editor.Component as Notebook
 import SlamData.Effects (SlamDataRawEffects(), SlamDataEffects())
 import SlamData.Notebook.Rename.Component as Rename
 import SlamData.Notebook.Routing (Routes(..), routing)
+import SlamData.Notebook.StyleLoader as StyleLoader
+
 
 import Utils.Path as UP
 
@@ -58,7 +60,10 @@ main = do
     app <- runUI Draftboard.comp
       $ installedState
       $ Draftboard.initialState { browserFeatures: browserFeatures }
-    onLoad (appendToBody app.node)
+    onLoad do
+      appendToBody app.node
+      StyleLoader.loadStyles
+
     forkAff (routeSignal app.driver)
 
 routeSignal
