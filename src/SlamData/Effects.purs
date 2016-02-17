@@ -19,7 +19,6 @@ module SlamData.Effects where
 import Ace.Types (ACE())
 import Control.Monad.Aff (Aff())
 import Control.Monad.Eff.Console (CONSOLE())
-import Control.Monad.Eff.Exception (EXCEPTION())
 import Control.Monad.Eff.Random (RANDOM())
 import Control.Monad.Eff.Ref (REF())
 import Control.UI.File (READ_FILE())
