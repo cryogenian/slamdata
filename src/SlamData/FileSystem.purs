@@ -76,19 +76,24 @@ import Text.SlamSearch.Types (SearchQuery())
 
 import Utils.Path (DirPath(), hidePath, renderPath)
 
+import SlamData.Dialog.Share.Permissions  as P
+
 main :: Eff SlamDataEffects Unit
 main = do
-  AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
-  AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
-  AceConfig.set AceConfig.themePath (Config.baseUrl ++ "js/ace")
+--  AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
+--  AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
+--  AceConfig.set AceConfig.themePath (Config.baseUrl ++ "js/ace")
+--  runAff throwException (const (pure unit)) do
+--    halogen <- runUI comp (installedState initialState)
+--    onLoad (appendToBody halogen.node)
+--    forkAff do
+--      let version = Version.slamDataVersion
+--      setSlamDataTitle version
+--      halogen.driver (left $ action $ SetVersion version)
+--    forkAff $ routeSignal halogen.driver
   runAff throwException (const (pure unit)) do
-    halogen <- runUI comp (installedState initialState)
+    halogen <- runUI P.comp P.initialState
     onLoad (appendToBody halogen.node)
-    forkAff do
-      let version = Version.slamDataVersion
-      setSlamDataTitle version
-      halogen.driver (left $ action $ SetVersion version)
-    forkAff $ routeSignal halogen.driver
 
 setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
 setSlamDataTitle version =

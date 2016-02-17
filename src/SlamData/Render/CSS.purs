@@ -365,3 +365,6 @@ sqlMountAddVarPairButton = className "sql-mount-add-var-pair-button"
 
 fileAction :: ClassName
 fileAction = className "file-action"
+
+permissionsCheckboxes :: ClassName
+permissionsCheckboxes = className "permissions-checkboxes"
