@@ -871,7 +871,7 @@ fields res idToken perms = do
   jarr <- sample res 0 100 idToken perms
   case jarr of
     [] -> Err.throwError $ Exn.error "empty file"
-    _ -> pure $ Arr.nub $ Arr.concat (getFields <$> jarr)
+    _ -> pure $ Arr.nub $ getFields =<< jarr
 
 mkURI :: R.Resource -> SQL -> PU.FilePath
 mkURI res sql =
@@ -885,38 +885,43 @@ mkURI' res sql =
   </> P.file ("?q=" <> encodeURIComponent (templated res sql))
 
 templated :: R.Resource -> SQL -> SQL
-templated res = S.replace "{{path}}" ("\"" <> R.resourcePath res <> "\"")
+templated res = S.replace "{{path}}" ("`" <> R.resourcePath res <> "`")
 
 extractJArray :: forall m. (Err.MonadError Exn.Error m) => JS.Json -> m JS.JArray
 extractJArray = E.either (Err.throwError <<< Exn.error) pure <<< JS.decodeJson
 
+-- The output of this function is mysterious, but luckily is used in just one place.
+--
+-- TODO: Rather than accumulating a an array of formatted strings, this should be refactored
+-- to return an array of *arrays* of unformatted strings, which can then be formatted by the
+-- client (e.g. to intercalate with dots and add backticks).
 getFields :: JS.Json -> Array String
-getFields json = Arr.filter (/= "") $ Arr.nub $ getFields' [] json
-
-getFields' :: Array String -> JS.Json -> Array String
-getFields' [] json = getFields' [""] json
-getFields' acc json =
-  if JS.isObject json
-  then M.maybe acc (goObj acc) $ JS.toObject json
-  else if JS.isArray json
-       then M.maybe acc (goArr acc) $ JS.toArray json
-       else acc
-
+getFields = Arr.filter (/= "") <<< Arr.nub <<< go []
   where
-  goArr :: Array String -> JS.JArray -> Array String
-  goArr acc arr =
-    Arr.concat $ getFields' (lift2 append acc $ mkArrIxs arr) <$> arr
+  go :: Array String -> JS.Json -> Array String
+  go [] json = go [""] json
+  go acc json =
+    if JS.isObject json
+    then M.maybe acc (goObj acc) $ JS.toObject json
+    else if JS.isArray json
+         then M.maybe acc (goArr acc) $ JS.toArray json
+         else acc
+
     where
-    mkArrIxs :: JS.JArray -> Array String
-    mkArrIxs jarr =
-      map (show >>> \x -> "[" <> x <> "]") $ Arr.range 0 $ Arr.length jarr - 1
+    goArr :: Array String -> JS.JArray -> Array String
+    goArr acc arr =
+      Arr.concat $ go (lift2 append acc $ mkArrIxs arr) <$> arr
+      where
+      mkArrIxs :: JS.JArray -> Array String
+      mkArrIxs jarr =
+        map (show >>> \x -> "[" <> x <> "]") $ Arr.range 0 $ Arr.length jarr - 1
 
-  goObj :: Array String -> JS.JObject -> Array String
-  goObj acc = Arr.concat <<< map (goTuple acc) <<< L.fromList <<< SM.toList
+    goObj :: Array String -> JS.JObject -> Array String
+    goObj acc = Arr.concat <<< map (goTuple acc) <<< L.fromList <<< SM.toList
 
-  goTuple :: Array String -> Tuple String JS.Json -> Array String
-  goTuple acc (Tuple key json) =
-    getFields' ((\x -> x <> ".\"" <> key <> "\"") <$> acc) json
+    goTuple :: Array String -> Tuple String JS.Json -> Array String
+    goTuple acc (Tuple key json) =
+      go ((\x -> x <> ".`" <> key <> "`") <$> acc) json
 
 executeQuery
   :: forall e

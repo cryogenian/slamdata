@@ -97,19 +97,20 @@ querySetup { inputPort, notebookPath } =
                  then R.resourceName resource
                  else R.resourcePath resource
       editor <- (MaybeT $ query unit $ request Ace.GetEditor) >>= (MaybeT <<< pure)
-      MaybeT $ query unit
-        $ action $ Ace.SetText ("SELECT  *  FROM \"" <> path <> "\" ")
+      MaybeT $ query unit $ action $ Ace.SetText ("SELECT  *  FROM `" <> path <> "` ")
       MT.lift $ liftEff do
-        readOnly editor { startRow: 0
-                        , startColumn: 0
-                        , endRow: 0
-                        , endColumn: 7
-                        }
-        readOnly editor { startRow: 0
-                        , startColumn: 10
-                        , endRow: 0
-                        , endColumn: 19 + Str.length path
-                        }
+        readOnly editor
+          { startRow: 0
+          , startColumn: 0
+          , endRow: 0
+          , endColumn: 7
+          }
+        readOnly editor
+          { startRow: 0
+          , startColumn: 10
+          , endRow: 0
+          , endColumn: 19 + Str.length path
+          }
     _ -> pure unit
 
 addCompletions :: forall a. SM.StrMap a -> AceDSL Unit

@@ -31,7 +31,13 @@ import Data.Semiring.Free
 import Data.String (joinWith, indexOf)
 import Data.String.Regex as RX
 
+import Data.SQL2.Literal as SQL2
+
 import Text.SlamSearch.Types as SS
+
+-- TODO: We need to really obliterate this module and replace these regular
+-- expressions and ad hoc renderers with something that targets a SQL^2 A(S/B)T,
+-- which is then serialized separately. Blocked by SD-1391.
 
 queryToSQL
   :: Array String
@@ -96,7 +102,7 @@ predicateToSQL
 predicateToSQL (SS.Contains (SS.Text v)) s =
   joinWith " OR " $
     [s <> " ~* '" <> (globToRegex $ containsToGlob v) <> "'"]
-    <> (if needUnq v then render' v else [])
+    <> (if needUnq v then renderLowercased v else [])
     <> (if not (needDateTime v) && needDate v then render date else [ ])
     <> (if needTime v then render time  else [])
     <> (if needDateTime v then render ts else [])
@@ -113,26 +119,23 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
     hasSpecialChars v =
       isJust (indexOf "*" v) || isJust (indexOf "?" v)
 
-    quoted = quote v
-    date = dated quoted
-    time = timed quoted
-    ts = datetimed quoted
-    i = intervaled quoted
-    render' v = [ "LOWER(" <> s <> ") = " <> v]
+    date = SQL2.renderLiteral $ SQL2.date v
+    time = SQL2.renderLiteral $ SQL2.time v
+    ts = SQL2.renderLiteral $ SQL2.dateTime v
+    i = SQL2.renderLiteral $ SQL2.interval v
+
+    renderLowercased v = [ "LOWER(" <> s <> ") = " <> v]
     render v = [s <> " = " <> v ]
 
 predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =
   joinWith " OR " $
-    [ forR' quoted quoted' ]
+    [ forR' (quote v) (quote v') ]
     <> (if needUnq v && needUnq v' then [ forR v v' ] else [ ])
     <> (if needDate v && needDate v' then [ forR date date' ] else [ ])
 
   where
-    quoted = quote v
-    quoted' = quote v'
-
-    date = dated quoted
-    date' = dated quoted'
+    date = SQL2.renderLiteral $ SQL2.date v
+    date' = SQL2.renderLiteral $ SQL2.date v'
 
     forR' :: String -> String -> String
     forR' v v' =
@@ -148,12 +151,12 @@ predicateToSQL (SS.Range val (SS.Tag val')) s =
   predicateToSQL (SS.Range val (SS.Text val')) s
 predicateToSQL (SS.Contains (SS.Tag v)) s =
   predicateToSQL (SS.Contains (SS.Text v)) s
-predicateToSQL (SS.Eq v) s = qUnQ s "=" v
-predicateToSQL (SS.Gt v) s = qUnQ s ">" v
-predicateToSQL (SS.Gte v) s = qUnQ s ">=" v
-predicateToSQL (SS.Lt v) s = qUnQ s "<" v
-predicateToSQL (SS.Lte v) s = qUnQ s "<=" v
-predicateToSQL (SS.Ne v) s = qUnQ s "<>" v
+predicateToSQL (SS.Eq v) s = renderBinRel s "=" v
+predicateToSQL (SS.Gt v) s = renderBinRel s ">" v
+predicateToSQL (SS.Gte v) s = renderBinRel s ">=" v
+predicateToSQL (SS.Lt v) s = renderBinRel s "<" v
+predicateToSQL (SS.Lte v) s = renderBinRel s "<=" v
+predicateToSQL (SS.Ne v) s = renderBinRel s "<>" v
 predicateToSQL (SS.Like v) s = s <> " ~* '" <> v <> "'"
 
 globToRegex :: String -> String
@@ -171,14 +174,14 @@ globToRegex =
     starRegex = RX.regex "\\*" RX.noFlags { global = true }
     askRegex = RX.regex "\\?" RX.noFlags { global = true }
 
-qUnQ
+renderBinRel
   :: String
   -> String
   -> SS.Value
   -> String
-qUnQ s op v = pars $
+renderBinRel s op v = pars $
   joinWith " OR " $
-    [ forV' quoted ]
+    [ forV' (quote unquoted) ]
     <> (if needUnq unquoted then [ forV unquoted ] else [])
     <> (if not (needDateTime unquoted) && needDate unquoted then [ forV date ] else [])
     <> (if needTime unquoted then [ forV time ] else [])
@@ -186,15 +189,15 @@ qUnQ s op v = pars $
     <> (if needInterval unquoted then [ forV i ] else [])
   where
     unquoted = valueToSQL v
-    quoted = quote unquoted
-    date = dated quoted
-    time = timed quoted
-    ts = datetimed quoted
-    i = intervaled quoted
+    date = SQL2.renderLiteral $ SQL2.date unquoted
+    time = SQL2.renderLiteral $ SQL2.time unquoted
+    ts = SQL2.renderLiteral $ SQL2.dateTime unquoted
+    i = SQL2.renderLiteral $ SQL2.interval unquoted
 
     forV' v = fold ["LOWER(", s, ") ", op, " ", v]
     forV v = fold [s, " ", op, " ", v]
 
+-- | Whether the string should be rendered without quotes
 needUnq :: String -> Boolean
 needUnq s =
   fromMaybe false ((show >>> (== s)) <$> Int.fromString s)
@@ -268,7 +271,7 @@ labelsRegex ls =
         RX.replace openSquare "\\["
       $ RX.replace closeSquare "\\]"
       $ l
-    | otherwise = "(\\.\"" <> l <> "\"|\\." <> l <> ")"
+    | otherwise = "(\\.`" <> l <> "`|\\." <> l <> ")"
 
   openSquare :: RX.Regex
   openSquare = RX.regex "\\[" RX.noFlags
@@ -280,19 +283,7 @@ firstDot :: RX.Regex
 firstDot = RX.regex "^\\." RX.noFlags
 
 quote :: String -> String
-quote s = "'" <> s <> "'"
+quote s = SQL2.renderLiteral $ SQL2.string s
 
 pars :: String -> String
 pars s = "(" <> s <> ")"
-
-dated :: String -> String
-dated s = "DATE " <> s
-
-timed :: String -> String
-timed s = "TIME " <> s
-
-datetimed :: String -> String
-datetimed s = "TIMESTAMP " <> s
-
-intervaled :: String -> String
-intervaled s = "INTERVAL " <> s
