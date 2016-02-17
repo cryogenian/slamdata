@@ -16,122 +16,110 @@ limitations under the License.
 
 module SlamData.FileSystem.Component.Install where
 
-import Prelude
+import Prelude (Unit(), unit, (<<<))
 
-import Data.Either (Either())
-import Data.Function (on)
+import Data.Either.Nested (Either5())
 import Data.Functor.Coproduct (Coproduct(), left, right)
-import Data.Generic (Generic, gEq, gCompare)
-import Data.Path.Pathy (printPath)
+import Data.Functor.Coproduct.Nested (Coproduct5())
 
-import Halogen
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot)
+import Halogen (ChildF(..), InstalledState(), ParentDSL(), Action(), action)
+import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot, injQuery)
 
-import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
-import SlamData.FileSystem.Component.Query
-import SlamData.FileSystem.Component.State
-import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.Effects (Slam())
-import SlamData.FileSystem.Listing.Component as Items
+import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
+import SlamData.FileSystem.Component.Query (Query())
+import SlamData.FileSystem.Component.State (State())
+import SlamData.FileSystem.Dialog.Component as Dialog
+import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.SignIn.Component as SignIn
 
-import Utils.Path (DirPath())
-
 type ChildState =
-  Either Items.StateP
-  (Either SignIn.StateP
-    (Either Search.State
-     (Either Breadcrumbs.State
-      Dialog.StateP)))
+  Either5
+    Listing.StateP
+    Search.State
+    Breadcrumbs.State
+    Dialog.StateP
+    SignIn.StateP
 
 type ChildQuery =
-  Coproduct Items.QueryP
-  (Coproduct SignIn.QueryP
-    (Coproduct Search.Query
-     (Coproduct Breadcrumbs.Query
-      Dialog.QueryP)))
+  Coproduct5
+    Listing.QueryP
+    Search.Query
+    Breadcrumbs.Query
+    Dialog.QueryP
+    SignIn.QueryP
 
-type SignInSlot = Unit
+type ChildSlot = Either5 Unit Unit Unit Unit Unit
 
-data ItemsSlot = ItemsSlot
-derive instance genericItemsSlot :: Generic ItemsSlot
-instance eqItemsSlot :: Eq ItemsSlot where eq = gEq
-instance ordItemsSlot :: Ord ItemsSlot where compare = gCompare
+cpListing
+  :: ChildPath
+       Listing.StateP ChildState
+       Listing.QueryP ChildQuery
+       Unit ChildSlot
+cpListing = cpL :> cpL :> cpL :> cpL
 
+cpSearch
+  :: ChildPath
+       Search.State ChildState
+       Search.Query ChildQuery
+       Unit ChildSlot
+cpSearch = cpL :> cpL :> cpL :> cpR
 
-data SearchSlot = SearchSlot
-derive instance genericSearchSlot :: Generic SearchSlot
-instance eqSearchSlot :: Eq SearchSlot where eq = gEq
-instance ordSearcSlot :: Ord SearchSlot where compare = gCompare
+cpBreadcrumbs
+  :: ChildPath
+       Breadcrumbs.State ChildState
+       Breadcrumbs.Query ChildQuery
+       Unit ChildSlot
+cpBreadcrumbs = cpL :> cpL :> cpR
 
+cpDialog
+  :: ChildPath
+       Dialog.StateP ChildState
+       Dialog.QueryP ChildQuery
+       Unit ChildSlot
+cpDialog = cpL :> cpR
 
-newtype BreadcrumbsSlot = BreadcrumbsSlot DirPath
+cpSignIn
+  :: ChildPath
+       SignIn.StateP ChildState
+       SignIn.QueryP ChildQuery
+       Unit ChildSlot
+cpSignIn = cpR
 
-instance eqBreadcrumbsSlot :: Eq BreadcrumbsSlot where
-  eq (BreadcrumbsSlot p) (BreadcrumbsSlot p') = (on eq printPath) p p'
-instance ordBreadcrumbsSlot :: Ord BreadcrumbsSlot where
-  compare (BreadcrumbsSlot p) (BreadcrumbsSlot p') = (on compare printPath) p p'
-
-data DialogSlot = DialogSlot
-derive instance genericDialogSlot :: Generic DialogSlot
-instance eqDialogSlot :: Eq DialogSlot where eq = gEq
-instance ordDialogSLot :: Ord DialogSlot where compare = gCompare
-
-type ChildSlot =
-  Either ItemsSlot
-  (Either SignInSlot
-    (Either SearchSlot
-     (Either BreadcrumbsSlot
-      DialogSlot)))
-
-cpDialog :: ChildPath
-            Dialog.StateP ChildState
-            Dialog.QueryP ChildQuery
-            DialogSlot ChildSlot
-cpDialog = cpR :> cpR :> cpR :> cpR
-
-cpSignIn :: ChildPath
-            SignIn.StateP ChildState
-            SignIn.QueryP ChildQuery
-            SignInSlot ChildSlot
-cpSignIn = cpR :> cpL
-
-cpBreadcrumbs :: ChildPath
-                 Breadcrumbs.State ChildState
-                 Breadcrumbs.Query ChildQuery
-                 BreadcrumbsSlot ChildSlot
-cpBreadcrumbs = cpR :> cpR :> cpR :> cpL
-
-cpSearch :: ChildPath
-            Search.State ChildState
-            Search.Query ChildQuery
-            SearchSlot ChildSlot
-cpSearch = cpR :> cpR :> cpL
-
-cpItems :: ChildPath
-           Items.StateP ChildState
-           Items.QueryP ChildQuery
-           ItemsSlot ChildSlot
-cpItems = cpL
-
-toFs :: (Unit -> Query Unit) -> QueryP Unit
+toFs :: Action Query -> QueryP Unit
 toFs = left <<< action
 
-toItems :: (Unit -> Items.Query Unit) -> QueryP Unit
-toItems =
-  right <<< ChildF (injSlot cpItems ItemsSlot)
-  <<< left <<< left <<< action
+toListing :: Action Listing.Query -> QueryP Unit
+toListing =
+  right
+    <<< ChildF (injSlot cpListing unit)
+    <<< injQuery cpListing
+    <<< left
+    <<< action
 
-toSearch :: (Unit -> Search.Query Unit) -> QueryP Unit
+toSearch :: Action Search.Query -> QueryP Unit
 toSearch =
-  right <<< ChildF (injSlot cpSearch SearchSlot)
-  <<< right <<< right <<< left <<< action
+  right
+    <<< ChildF (injSlot cpSearch unit)
+    <<< injQuery cpSearch
+    <<< action
 
-toDialog :: (Unit -> Dialog.Query Unit) -> QueryP Unit
+toDialog :: Action Dialog.Query -> QueryP Unit
 toDialog =
-  right <<< ChildF (injSlot cpDialog DialogSlot)
-  <<< right <<< right <<< right <<< right <<< left <<< action
+  right
+    <<< ChildF (injSlot cpDialog unit)
+    <<< injQuery cpDialog
+    <<< left
+    <<< action
+
+toSignIn :: Action SignIn.Query -> QueryP Unit
+toSignIn =
+  right
+    <<< ChildF (injSlot cpSignIn unit)
+    <<< injQuery cpSignIn
+    <<< left
+    <<< action
 
 type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)

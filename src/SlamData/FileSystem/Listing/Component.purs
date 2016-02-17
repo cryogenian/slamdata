@@ -24,7 +24,6 @@ import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct())
 import Data.Generic (Generic)
 import Data.Lens ((.~), (%~), (<>~), lens, LensP())
-import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
 
 import Halogen hiding (HTML())
@@ -137,6 +136,5 @@ install { isSearching, isHidden } ix item =
         { isSearching: isSearching
         , isHidden: isHidden
         , item: item
-        , mbURI: Nothing
         }
     }

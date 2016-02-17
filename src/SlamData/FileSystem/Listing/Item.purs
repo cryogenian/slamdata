@@ -28,7 +28,7 @@ import DOM (DOM())
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Listing.Sort (Sort())
-import SlamData.FileSystem.Resource (Resource(..), resourcePath, resourceName, sortResource)
+import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourcePath, resourceName, sortResource)
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt())
 import SlamData.Notebook.AccessType (AccessType(..), printAccessType)
@@ -48,24 +48,22 @@ itemResource (SelectedItem r) = r
 itemResource (ActionsPresentedItem r) = r
 itemResource (PhantomItem r) = r
 
-itemURL :: Sort -> Salt -> AccessType -> Item -> String
-itemURL sort salt act item = case itemResource item of
+itemURL :: Sort -> Salt -> AccessType -> Resource -> String
+itemURL sort salt act res = case res of
   File path ->
     Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
-  ViewMount path ->
+  Mount (View path) ->
     Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
   Notebook path ->
     Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAccessType act
   Directory path ->
     browseURL Nothing sort salt path
-  Database path ->
+  Mount (Database path) ->
     browseURL Nothing sort salt path
 
 
-openItem :: forall e. Item -> Sort -> Salt -> Eff (dom :: DOM|e) Unit
-openItem (PhantomItem _) _ _ = pure unit
-openItem item sort salt =
-  setLocation $ itemURL sort salt Editable item
+openItem :: forall e. Resource -> Sort -> Salt -> Eff (dom :: DOM|e) Unit
+openItem res sort salt = setLocation (itemURL sort salt Editable res)
 
 
 sortItem :: Boolean -> Sort -> Item -> Item -> Ordering

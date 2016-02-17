@@ -16,148 +16,218 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Component
   ( comp
+  , QueryP()
+  , StateP()
+  , ChildState()
+  , ChildQuery()
+  , ChildSlot()
   , module SlamData.FileSystem.Dialog.Mount.Component.Query
   , module SlamData.FileSystem.Dialog.Mount.Component.State
   ) where
 
 import Prelude
 
-import Control.Monad.Aff (Aff(), attempt)
-import Control.Monad.Eff.Exception (message, Error())
-import Control.Monad.Eff.Ref (REF())
-import Control.UI.Browser (clearValue, select)
+import Control.Apply ((*>))
+import Control.Bind (join, (=<<))
+import Control.Monad (when)
+import Control.Monad.Eff.Exception (Error(), message)
+import Control.Monad.Error.Class (throwError)
+import Control.Monad.Except.Trans (ExceptT(), runExceptT)
+import Control.Monad.Trans (lift)
+import Control.MonadPlus (guard)
 
-import Data.Array (null, filter)
-import Data.Date (Now())
-import Data.Either (either, Either(..))
-import Data.Foldable (any)
-import Data.Foreign (parseJSON)
-import Data.Foreign.Class (readProp)
+import Data.Argonaut (jsonParser, decodeJson, (.?))
+import Data.Either (Either(..), either)
+import Data.Functor (($>))
+import Data.Functor.Coproduct (Coproduct(), coproduct, left)
 import Data.Functor.Aff (liftAff)
-import Data.Functor.Eff (liftEff)
-import Data.Lens ((^.), (.~), (?~))
-import Data.Maybe (Maybe(..), isNothing, isJust)
-import Data.Path.Pathy ((</>), dir)
-import Data.String.Regex as Rx
-import Data.URI (runParseAbsoluteURI, printAbsoluteURI)
+import Data.Lens (set, (.~), (?~))
+import Data.Maybe (Maybe(..), maybe)
 
-import Halogen
+import Ace.Halogen.Component (AceQuery(..))
 
-import Network.HTTP.Affjax (AJAX())
+import Halogen hiding (HTML(), set)
+import Halogen.Component.ChildPath (ChildPath(), cpL, cpR)
+import Halogen.CustomProps as CP
+import Halogen.HTML.Events.Indexed as E
+import Halogen.HTML.Indexed as H
+import Halogen.HTML.Properties.Indexed as P
+import Halogen.Themes.Bootstrap3 as B
+import Halogen.Component.Utils (forceRerender')
 
-import Quasar.Aff as API
+import Quasar.Aff as Api
 import Quasar.Auth as Auth
 
+import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import SlamData.Effects (Slam())
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
 import SlamData.FileSystem.Dialog.Mount.Component.Query
-import SlamData.FileSystem.Dialog.Mount.Component.Render
 import SlamData.FileSystem.Dialog.Mount.Component.State
-import SlamData.FileSystem.Resource as R
+import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
+import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..), schemes, schemeToString, schemeFromString)
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
+import SlamData.Render.CSS as Rc
 
-import Utils.URI (toURI)
+type ChildState = Either SQL2.StateP MongoDB.State
+type ChildQuery = Coproduct SQL2.QueryP MongoDB.Query
+type ChildSlot = Either Unit Unit
 
-type Slam e = Aff (HalogenEffects ( ajax :: AJAX
-                                  , now :: Now
-                                  , ref :: REF
-                                  | e) )
+cpSQL :: ChildPath SQL2.StateP ChildState SQL2.QueryP ChildQuery Unit ChildSlot
+cpSQL = cpL
 
-comp :: forall e. Component State Query (Slam e)
-comp = component render eval
+cpMongoDB :: ChildPath MongoDB.State ChildState MongoDB.Query ChildQuery Unit ChildSlot
+cpMongoDB = cpR
 
-eval :: forall e. Eval Query State Query (Slam e)
-eval (ClearValue el next) = do
-  liftEff $ clearValue el
+type DSL = ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type HTML = ParentHTML ChildState Query ChildQuery Slam ChildSlot
+
+type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
+type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
+
+comp :: Component StateP QueryP Slam
+comp = parentComponent' render eval (peek <<< runChildF)
+
+render :: State -> HTML
+render state@{ new } =
+  modalDialog
+    [ modalHeader "Mount"
+    , modalBody $
+        H.form
+          [ CP.nonSubmit, P.class_ Rc.dialogMount ]
+          $ (guard new $> fldName state)
+          <> (guard new $> selScheme state)
+          <> maybe [] (pure <<< settings) state.settings
+          <> maybe [] (pure <<< errorMessage) state.message
+    , modalFooter
+        [ progressSpinner state
+        , btnCancel
+        , btnMount state
+        ]
+    ]
+  where
+  settings :: MountSettings -> HTML
+  settings ss = case ss of
+    Left initialState ->
+      H.slot' cpMongoDB unit \_ ->
+        { component: MongoDB.comp, initialState }
+    Right initialState ->
+      H.slot' cpSQL unit \_ ->
+        { component: SQL2.comp, initialState: installedState initialState }
+
+fldName :: State -> HTML
+fldName state =
+  H.div
+    [ P.classes [B.formGroup, Rc.mountName] ]
+    [ H.label_
+        [ H.span_ [ H.text "Name" ]
+        , H.input
+            [ P.class_ B.formControl
+            , E.onValueInput $ E.input (ModifyState <<< set _name)
+            , P.value (state.name)
+            ]
+        ]
+    ]
+
+selScheme :: State -> HTML
+selScheme state =
+  H.div
+    [ P.class_ B.formGroup ]
+    [ H.label_
+        [ H.span_ [ H.text "Mount type" ]
+        , H.select
+            [ P.class_ B.formControl
+            , E.onValueChange (E.input SelectScheme <<< schemeFromString)
+            ]
+            $ [ H.option_ [] ] ++ schemeOptions
+        ]
+    ]
+  where
+  schemeOptions = map (\s -> H.option_ [ H.text (schemeToString s) ]) schemes
+
+errorMessage :: String -> HTML
+errorMessage msg =
+  H.div
+    [ P.classes [ B.alert, B.alertDanger ] ]
+    [ H.text msg ]
+
+btnCancel :: HTML
+btnCancel =
+  H.button
+    [ P.classes [B.btn]
+    , E.onClick (E.input_ Dismiss)
+    ]
+    [ H.text "Cancel" ]
+
+btnMount :: State -> HTML
+btnMount state@{ new, saving } =
+  H.button
+    [ P.classes [B.btn, B.btnPrimary]
+    , P.enabled (not saving && canSave state)
+    , E.onClick (E.input_ NotifySave)
+    ]
+    [ H.text text ]
+  where
+  text = if new then "Mount" else "Save changes"
+
+progressSpinner :: State -> HTML
+progressSpinner { saving } =
+  H.img [ P.src "img/spin.gif", P.class_ (Rc.mountProgressSpinner saving) ]
+
+eval :: Natural Query DSL
+eval (ModifyState f next) = modify f *> validateInput $> next
+eval (SelectScheme newScheme next) = do
+  currentScheme <- map scheme <$> gets _.settings
+  when (currentScheme /= newScheme) do
+    modify (_settings .~ map initialSettings newScheme)
+    forceRerender'
+    validateInput
   pure next
-eval (SelectElement el next) = do
-  liftEff $ select el
-  pure next
-eval (UpdateConnectionURI uri next) = do
+eval (Dismiss next) = pure next
+eval (NotifySave next) = pure next
+eval (Save k) = do
+  { parent, name, new } <- get
+  modify (_saving .~ true)
+  newName <- liftAff
+    if new then Auth.authed (Api.getNewName parent name) else pure name
+  result <- querySettings (request (SQ.Submit parent newName))
+  mount <- case result of
+    Just (Right m) -> pure (Just m)
+    Just (Left err) -> modify (_message ?~ formatError err) $> Nothing
+    Nothing -> pure Nothing
+  modify (_saving .~ false)
+  pure $ k mount
+
+peek :: forall x. ChildQuery x -> DSL Unit
+peek = coproduct (coproduct peekSQ (peekAce <<< runChildF)) peekSQ
+  where
+  peekSQ :: forall s. SQ.SettingsQuery s x -> DSL Unit
+  peekSQ (SQ.ModifyState _ _ ) = validateInput
+  peekSQ _ = pure unit
+  peekAce :: AceQuery x -> DSL Unit
+  peekAce (TextChanged _) = validateInput
+  peekAce _ = pure unit
+
+validateInput :: DSL Unit
+validateInput = do
   state <- get
-  case uri of
-    "" -> set (initialState state.parent)
-    _ -> modify fn
-  pure next
+  message <- runExceptT do
+    liftMaybe (validate state)
+    liftMaybe <<< join =<< lift (querySettings (request SQ.Validate))
+  modify (_message .~ either Just (const Nothing) message)
   where
-  fn state = either (const $ incorrectRecord state) (correctRecord state)
-             $ runParseAbsoluteURI uri
-  incorrectRecord state =
-    state { connectionURI = uri
-          , message = pure "Pasted value does not appear to be a valid connection URI"
-          , valid = false
-          }
-  correctRecord state uri' =
-    let hosts = hostsFromURI uri'
-        validation = validate state hosts
-    in state { connectionURI = printAbsoluteURI uri'
-             , hosts = hosts <> [ initialMountHost ]
-             , path = pathFromURI uri'
-             , user = userFromURI uri'
-             , password = passwordFromURI uri'
-             , props = propsFromURI uri' <> [ initialMountProp ]
-             , message = validation
-             , valid = isNothing validation
-             }
+  liftMaybe :: Maybe String -> ExceptT String DSL Unit
+  liftMaybe = maybe (pure unit) throwError
 
-eval (Dismiss next) = do
-  pure next
-eval (Save next) = do
-  state <- get
-  let resource = R.Database $ state.parent </> dir state.name
-  modify (_inProgress .~ true)
-  modify (_externalValidationError .~ Nothing)
-  result <- liftAff $ attempt $ Auth.authed $ API.saveMount resource state.connectionURI
-  case result of
-    Left err -> do
-      modify (_externalValidationError ?~ msg err)
-    Right _ ->
-      modify (_saved ?~ resource)
-  pure next
+formatError :: Error -> String
+formatError err =
+  "There was a problem saving the mount: " <> extract (message err)
   where
-  msg :: Error -> String
-  msg err = "There was a problem saving the mount: "
-            <> extractErrorMessage (message err)
+  extract msg =
+    either (const msg) id (jsonParser msg >>= decodeJson >>= (.? "error"))
 
-  extractErrorMessage :: String -> String
-  extractErrorMessage msg' =
-    case parseJSON msg' >>= readProp "error" of
-      Left _ -> msg'
-      Right msg'' -> msg''
-eval (ModifyState fn next) = do
-  modify composed
-  pure next
-  where
-  composed d = d' { connectionURI = connectionURI
-                  , hosts = if null hosts
-                            then [ initialMountHost, initialMountHost ]
-                            else hosts <> [ initialMountHost ]
-                  , props = props <> [ initialMountProp ]
-                  , message = validation
-                  , valid = isNothing validation
-                  }
-    where
-    d' = fn d
-    hosts = filter (not <<< isEmptyHost) d'.hosts
-    props = filter (not <<< isEmptyProp) d'.props
-    connectionURI = mkURI d'.path d'.user d'.password hosts props
-    validation = validate (fn d) hosts
-    mkURI path user password hosts' props' =
-      if any isValidHost hosts
-      then toURI { path: nonEmpty path
-                 , credentials: { user: _, password: _ }
-                   <$> nonEmpty user
-                   <*> nonEmpty password
-                 , hosts: (\h -> h {port = nonEmpty h.port}) <$> hosts'
-                 , props: props'
-                 }
-      else ""
-    isValidHost {host: host} = isJust $ nonEmpty host
-
-    nonEmpty :: String -> Maybe String
-    nonEmpty s | Rx.test rxEmpty s = Nothing
-    nonEmpty s = Just s
-
-    rxEmpty :: Rx.Regex
-    rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
-
-eval (GetSaved continue) = do
-  res <- gets (^. _saved)
-  pure $ continue res
+querySettings :: forall a. (forall s. SQ.SettingsQuery s a) -> DSL (Maybe a)
+querySettings q = (map scheme <$> gets _.settings) >>= \s ->
+  case s of
+    Just MongoDB -> query' cpMongoDB unit q
+    Just SQL2 -> query' cpSQL unit (left q)
+    _ -> pure Nothing

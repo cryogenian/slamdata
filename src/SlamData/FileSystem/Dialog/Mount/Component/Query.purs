@@ -18,16 +18,13 @@ module SlamData.FileSystem.Dialog.Mount.Component.Query where
 
 import Data.Maybe (Maybe())
 
-import DOM.HTML.Types (HTMLElement())
-
-import SlamData.FileSystem.Dialog.Mount.Component.State
-import SlamData.FileSystem.Resource as R
+import SlamData.FileSystem.Dialog.Mount.Component.State (State())
+import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme())
+import SlamData.FileSystem.Resource (Mount())
 
 data Query a
-  = ClearValue HTMLElement a
-  | SelectElement HTMLElement a
-  | UpdateConnectionURI String a
+  = ModifyState (State -> State) a
+  | SelectScheme (Maybe Scheme) a
   | Dismiss a
-  | Save a
-  | ModifyState (State -> State) a
-  | GetSaved (Maybe R.Resource -> a)
+  | NotifySave a
+  | Save (Maybe Mount -> a)

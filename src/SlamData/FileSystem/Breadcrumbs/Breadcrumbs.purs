@@ -19,7 +19,6 @@ module SlamData.FileSystem.Breadcrumbs.Component where
 import Prelude
 
 import Data.Foldable (foldl)
-import Data.Identity (Identity(..))
 import Data.List (List(..), reverse)
 import Data.Maybe (maybe, Maybe(..))
 import Data.Path.Pathy (rootDir, runDirName, dirName, parentDir)
@@ -69,7 +68,7 @@ mkBreadcrumbs path sort salt =
       Just dir -> go result' dir
       Nothing -> Cons rootBreadcrumb result
 
-type Query = Identity
+data Query a = Update DirPath Sort Salt a
 
 comp :: Component State Query Slam
 comp = component render eval
@@ -88,4 +87,6 @@ render r =
     ]
 
 eval :: Eval Query State Query Slam
-eval (Identity next) = pure next
+eval (Update path sort salt next) = do
+  set $ mkBreadcrumbs path sort salt
+  pure next

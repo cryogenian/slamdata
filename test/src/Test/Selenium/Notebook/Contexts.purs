@@ -40,6 +40,8 @@ import Selenium.Types
 import Test.Selenium.ActionSequence (keys)
 import Test.Selenium.Common
 import Test.Selenium.File hiding (test)
+import Test.Selenium.File.Common
+import Test.Selenium.File.Mount.Database
 import Test.Selenium.Log
 import Test.Selenium.Monad
 import Test.Selenium.Notebook.Getters

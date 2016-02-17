@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.FileSystem.Resource
   ( Resource(..)
+  , Mount(..)
   , _filePath
   , _name
   , _nameAnyPath
@@ -24,9 +25,10 @@ module SlamData.FileSystem.Resource
   , _tempFile
   , getPath
   , hiddenTopLevel
-  , isDatabase
   , isDirectory
   , isFile
+  , isMount
+  , isDatabaseMount
   , isViewMount
   , isHidden
   , isNotebook
@@ -45,7 +47,8 @@ module SlamData.FileSystem.Resource
   , resourceName
   , resourcePath
   , resourceTag
-  , resourceMountTypeTag
+  , resourceMount
+  , mountTypeTag
   , root
   , sortResource
   , fileResourceFromString
@@ -79,10 +82,13 @@ import Utils.Path as PU
 
 data Resource
   = File PU.FilePath
-  | ViewMount PU.FilePath
   | Notebook PU.DirPath
   | Directory PU.DirPath
-  | Database PU.DirPath
+  | Mount Mount
+
+data Mount
+  = Database PU.DirPath
+  | View PU.FilePath
 
 -- PREDICATES
 isNotebook :: Resource -> Boolean
@@ -97,12 +103,16 @@ isDirectory :: Resource -> Boolean
 isDirectory (Directory _) = true
 isDirectory _ = false
 
-isDatabase :: Resource -> Boolean
-isDatabase (Database _) = true
-isDatabase _ = false
+isMount :: Resource -> Boolean
+isMount (Mount _) = true
+isMount _ = false
+
+isDatabaseMount :: Resource -> Boolean
+isDatabaseMount (Mount (Database _)) = true
+isDatabaseMount _ = false
 
 isViewMount :: Resource -> Boolean
-isViewMount (ViewMount _) = true
+isViewMount (Mount (View _)) = true
 isViewMount _ = false
 
 isHidden :: Resource -> Boolean
@@ -134,10 +144,10 @@ newDirectory :: Resource
 newDirectory = Directory $ P.rootDir </> P.dir Config.newFolderName
 
 newDatabase :: Resource
-newDatabase = Database $ P.rootDir </> P.dir Config.newDatabaseName
+newDatabase = Mount $ Database $ P.rootDir </> P.dir Config.newDatabaseName
 
 newViewMount :: Resource
-newViewMount = ViewMount $ P.rootDir </> P.file Config.newViewMountName
+newViewMount = Mount $ View $ P.rootDir </> P.file Config.newViewMountName
 
 -- CONSTRUCTORS
 root :: Resource
@@ -162,12 +172,12 @@ mkFile ap = either File go ap
     pure $ File (pp </> P.file (PU.nameOfFileOrDir dirOrFile))
 
 mkViewMount :: PU.AnyPath -> Resource
-mkViewMount ap = either ViewMount go ap
+mkViewMount ap = either (Mount <<< View) go ap
   where
   go :: PU.DirPath -> Resource
   go p = maybe newViewMount id do
     Tuple pp dirOrFile <- P.peel p
-    pure $ ViewMount (pp </> P.file (PU.nameOfFileOrDir dirOrFile))
+    pure $ Mount $ View (pp </> P.file (PU.nameOfFileOrDir dirOrFile))
 
 mkDirectory :: PU.AnyPath -> Resource
 mkDirectory ap = either go Directory ap
@@ -178,12 +188,12 @@ mkDirectory ap = either go Directory ap
     pure $ Directory (pp </> P.dir (PU.nameOfFileOrDir dirOrFile))
 
 mkDatabase :: PU.AnyPath -> Resource
-mkDatabase ap = either go Database ap
+mkDatabase ap = either go (Mount <<< Database) ap
   where
   go :: PU.FilePath -> Resource
   go p = maybe newDatabase id do
     Tuple pp dirOrFile <- P.peel p
-    pure $ Database (pp </> P.dir (PU.nameOfFileOrDir dirOrFile))
+    pure $ Mount $ Database (pp </> P.dir (PU.nameOfFileOrDir dirOrFile))
 
 -- This is not real parent because it can't determine
 -- is it a directory or mount
@@ -194,16 +204,20 @@ parent = Directory <<< resourceDir
 resourceTag :: Resource -> String
 resourceTag r = case r of
   File _ -> "file"
-  ViewMount _ -> "file"
-  Database _ -> "directory"
   Notebook _ -> "notebook"
   Directory _ -> "directory"
+  Mount (View _) -> "file"
+  Mount (Database _) -> "directory"
 
-resourceMountTypeTag :: Resource -> Maybe String
-resourceMountTypeTag r = case r of
-  ViewMount _ -> Just "view"
-  Database _ -> Just "mongodb"
+resourceMount :: Resource -> Maybe Mount
+resourceMount r = case r of
+  Mount m -> Just m
   _ -> Nothing
+
+mountTypeTag :: Mount -> String
+mountTypeTag r = case r of
+  View _ -> "view"
+  Database _ -> "mongodb"
 
 resourceName :: Resource -> String
 resourceName = getPath >>> PU.getNameStr
@@ -217,12 +231,10 @@ resourcePath r = either P.printPath P.printPath $ getPath r
 getPath :: Resource -> PU.AnyPath
 getPath r = case r of
   File p -> Left p
-  ViewMount p -> Left p
   Notebook p -> Right p
   Directory p -> Right p
-  Database p -> Right p
-
-
+  Mount (View p) -> Left p
+  Mount (Database p) -> Right p
 
 
 -- SETTERS
@@ -242,9 +254,9 @@ setDir ap d = bimap (setFile' d) (setDir' d) ap
 setPath :: Resource -> PU.AnyPath -> Resource
 setPath (Notebook _) p = mkNotebook p
 setPath (File _) p = mkFile p
-setPath (Database _) p = mkDatabase p
 setPath (Directory _) p = mkDirectory p
-setPath (ViewMount _) p = mkViewMount p
+setPath (Mount (Database _)) p = mkDatabase p
+setPath (Mount (View _)) p = mkViewMount p
 
 setName :: Resource -> String -> Resource
 setName r name =
@@ -302,10 +314,13 @@ instance eqResource :: Eq Resource where
   eq (File p) (File p') = p == p'
   eq (Notebook p) (Notebook p') = p == p'
   eq (Directory p) (Directory p') = p == p'
-  eq (Database p) (Database p') = p == p'
-  eq (ViewMount p) (ViewMount p') = p == p'
+  eq (Mount m) (Mount m') = m == m'
   eq _ _ = false
 
+instance eqMount :: Eq Mount where
+  eq (Database p) (Database p') = p == p'
+  eq (View p) (View p') = p == p'
+  eq _ _ = false
 
 instance resourceOrd :: Ord Resource where
   compare = sortResource resourcePath Asc
@@ -336,7 +351,7 @@ instance encodeJsonResource :: EncodeJson Resource where
     ~> maybe
         jsonEmptyObject
         (\t -> "mount" := t ~> jsonEmptyObject)
-        (resourceMountTypeTag res)
+        (mountTypeTag <$> resourceMount res)
 
 instance decodeJsonResource :: DecodeJson Resource where
   decodeJson json = do
@@ -349,14 +364,14 @@ instance decodeJsonResource :: DecodeJson Resource where
         let
           constr =
             case mountType of
-              Just "view" -> ViewMount
+              Just "view" -> Mount <<< View
               _ -> File
         in
           parsePath "file" constr P.parseAbsFile path
       "notebook" -> parsePath "notebook" Notebook P.parseAbsDir path
       "directory" ->
         case mountType of
-          Just "mongodb" -> parsePath "mount" Database P.parseAbsDir path
+          Just "mongodb" -> parsePath "mount" (Mount <<< Database) P.parseAbsDir path
           _ -> parsePath "directory" Directory P.parseAbsDir path
       _ -> Left "Unrecognized resource type"
     where
