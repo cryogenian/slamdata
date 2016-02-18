@@ -20,14 +20,10 @@ import Prelude
 
 import Control.Bind ((=<<))
 
-import Data.String.Regex as R
-
 import Selenium.ActionSequence hiding (sequence)
-import Selenium.Combinators (checker, awaitUrlChanged, tryToFind)
 import Selenium.Monad
 import Selenium.Types
 
-import Test.Config
 import Test.Selenium.ActionSequence
 import Test.Selenium.Common
 import Test.Selenium.Log
