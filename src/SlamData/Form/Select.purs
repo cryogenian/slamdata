@@ -146,3 +146,7 @@ instance decodeJsonSelect :: (DecodeJson a) => DecodeJson (Select a) where
          <$> (obj .? "options")
          <*> (obj .? "value")
     pure $ Select r
+
+instance showSelect :: (Show a) => Show (Select a) where
+  show (Select s) =
+    "(Select {options = " <> show s.options <> ", value = " <> show s.value <> "})"
