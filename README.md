@@ -83,7 +83,7 @@ Here it would be
 
 ```html
 <link type="text/css" rel="stylesheet" href="css/foo.css">
-<link type="text/css" rel="stylesheet" href="http://foo.com/style.css"
+<link type="text/css" rel="stylesheet" href="http://foo.com/style.css">
 ```
 ## Additional permissions
 
