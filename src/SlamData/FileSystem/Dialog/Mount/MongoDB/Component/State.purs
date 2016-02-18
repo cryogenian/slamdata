@@ -124,7 +124,8 @@ hostsFromURI _ = []
 
 pathFromURI :: Uri.AbsoluteURI -> String
 pathFromURI (Uri.AbsoluteURI _ (Uri.HierarchicalPart _ (Just p)) _) =
-  either printPath printPath p
+  let s = either printPath printPath p
+  in if S.take 1 s == "/" then S.drop 1 s else s
 pathFromURI _ = ""
 
 userFromURI :: Uri.AbsoluteURI -> String
