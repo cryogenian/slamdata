@@ -31,6 +31,8 @@ type State =
   , element :: M.Maybe Ht.HTMLElement
   , position :: Number
   , key :: M.Maybe String
+  , items :: Array String
+  , displayedItems :: Array String
   }
 
 _visualState :: forall a r. LensP {visualState :: a|r} a
@@ -48,12 +50,20 @@ _position = lens _.position _{position = _}
 _key :: forall a r. LensP {key :: a|r} a
 _key = lens _.key _{key = _}
 
+_items :: forall a r. LensP {items :: a|r} a
+_items = lens _.items _{items = _}
+
+_displayedItems :: forall a r. LensP {displayedItems :: a|r} a
+_displayedItems = lens _.displayedItems _{displayedItems = _}
+
 isDragged :: State -> Boolean
 isDragged {visualState = Dragging _ } = true
 isDragged _ = false
 
 updateStyles
   :: State -> State
+updateStyles st@{visualState = Staying, position} =
+  st { styles = marginLeft $ px position }
 updateStyles st@{visualState = Dragging startedAt, position} =
   st { styles = marginLeft $ px $ position - startedAt }
 updateStyles st@{visualState = Animating from to, position, key = M.Just key} =
@@ -82,4 +92,6 @@ initialState =
   , element: M.Nothing
   , position: zero
   , key: M.Nothing
+  , items: ["foo", "bar", "baz"]
+  , displayedItems: []
   }

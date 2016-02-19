@@ -44,3 +44,11 @@ exports.decodeURIComponent = function(str) {
         return global.decodeURIComponent(str);
     }
 };
+
+exports.getScreen = function() {
+    var ws = window.screen;
+    return {
+        width: ws.width,
+        height: ws.height
+    };
+};

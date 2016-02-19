@@ -28,6 +28,8 @@ module Control.UI.Browser
   , setTitle
   , hostAndProtocol
   , getHref
+  , Screen()
+  , getScreen
   ) where
 
 import Prelude
@@ -78,3 +80,12 @@ foreign import setTitle :: forall e. String -> Eff (dom :: DOM | e) Unit
 
 foreign import decodeURIComponent :: String -> String
 foreign import encodeURIComponent :: String -> String
+
+
+type Screen =
+  {
+    width :: Int
+  , height :: Int
+  }
+
+foreign import getScreen :: forall e. Eff (dom :: DOM|e) Screen

@@ -6,12 +6,12 @@ module SlamData.Dialog.Share.RotarySelector.Component
 
 import Prelude
 
-
 import Control.Monad (when)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Random (random, RANDOM())
 import Control.Monad.Trans (lift)
 import Control.Monad.Maybe.Trans as Mt
+import Control.UI.Browser as Br
 
 import Data.Array as Arr
 import Data.Functor (($>))
@@ -60,6 +60,7 @@ import SlamData.Dialog.Share.RotarySelector.Component.Query
 
 import Utils.Random (genKey, randomString)
 import Utils.DOM (getComputedStyle, getClientRects)
+import Utils.Array (repeat, shift)
 
 type RotarySelectorDSL = ComponentDSL State Query Slam
 
@@ -88,18 +89,7 @@ render state =
   where
   content :: Array (ComponentHTML Query)
   content =
-    [
-      H.div_ [ H.text "FOO" ]
-    , H.div_ [ H.text "BAR" ]
-    , H.div_ [ H.text "BAZ" ]
-    , H.div_ [ H.text "BAR" ]
-    , H.div_ [ H.text "BAZ" ]
-    , H.div_ [ H.text "BAR" ]
-    , H.div_ [ H.text "BAZ" ]
-    , H.div_ [ H.text "BAR" ]
-    , H.div_ [ H.text "BAZ" ]
-    , H.div_ [ H.text "BAR" ]
-    ]
+    map (H.div_ <<< Arr.singleton <<< H.text) state.displayedItems
 
   stls :: Array (ComponentHTML Query)
   stls =
@@ -133,10 +123,26 @@ getElementOffset =
     hd <- Mt.MaybeT $ pure $ Arr.head rlst
     pure hd.left
 
+setDisplayedItems :: Array String -> RotarySelectorDSL Unit
+setDisplayedItems arr = do
+  screenWidth <- liftEff $ Br.getScreen <#> _.width
+  let
+    displayedItems =
+      if Arr.null arr
+      then [ ]
+      else
+        flip repeat arr
+        $ Int.ceil
+        $ (Int.toNumber screenWidth / 200.0 * 2.0)
+        / (Int.toNumber (Arr.length arr))
+  modify (_displayedItems .~ displayedItems)
+
 eval :: Natural Query RotarySelectorDSL
 eval (Init el next) = do
+  state <- get
   modify (_element ?~ el)
   genKey >>= pure >>> L.set _key >>> modify
+  setDisplayedItems state.items
   docTarget <-
     liftEff
     $ window
@@ -180,9 +186,7 @@ eval (StopDragging next) = do
     let
       diff = position - startedAt
       pos =
-        M.fromMaybe 0
-        $ Int.fromNumber
-        $ Math.floor
+        Int.floor
         $ (if diff > 0.0
            then 100.0
            else -100.0) + diff
@@ -196,6 +200,14 @@ eval (ChangePosition pos next) = do
     modify updateStyles
   pure next
 eval (Animated next) = do
+  state <- get
   modify $ _visualState .~ Staying
-  getCurrentX >>= L.set _position >>> modify
+  curX <- getCurrentX
+  modify $ _position .~ curX
+  let
+    items = shift (-1 * (Int.floor (curX / 200.0))) state.items
+  setDisplayedItems items
+  modify $ _items .~ items
+  modify $ _position .~ zero
+  modify updateStyles
   pure next
