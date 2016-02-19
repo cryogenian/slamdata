@@ -27,6 +27,7 @@ import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
 import DOM.Node.Types (elementToParentNode, Element(), documentToEventTarget)
 import Data.Maybe (Maybe())
+import Data.StrMap as Sm
 import Data.Nullable (toMaybe)
 import Prelude
 import Unsafe.Coerce (unsafeCoerce)
@@ -49,3 +50,8 @@ foreign import waitLoaded :: forall e. Aff (dom :: DOM |e) Unit
 foreign import onLoad :: forall e. Eff e Unit -> Eff e Unit
 foreign import blur :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
 foreign import focus :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
+
+foreign import getComputedStyle
+  :: forall e
+   . HTMLElement
+  -> Eff (dom :: DOM|e) (Sm.StrMap String)

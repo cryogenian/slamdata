@@ -23,3 +23,9 @@ exports.focus = function(el) {
         return el.focus();
     };
 };
+
+exports.getComputedStyle = function(el) {
+    return function() {
+        return getComputedStyle(el);
+    };
+};

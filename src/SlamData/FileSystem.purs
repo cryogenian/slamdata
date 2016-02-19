@@ -76,7 +76,7 @@ import Text.SlamSearch.Types (SearchQuery())
 
 import Utils.Path (DirPath(), hidePath, renderPath)
 
-import SlamData.Dialog.Share.RotarySelector  as P
+import SlamData.Dialog.Share.RotarySelector.Component  as P
 
 main :: Eff SlamDataEffects Unit
 main = do
