@@ -139,6 +139,7 @@ eval (Init el next) = do
 eval (StartDragging startedAt next) = do
   mL <- getCurrentX
   modify $ _visualState .~ (Dragging $ startedAt - mL)
+  modify $ _position .~ (startedAt - mL)
   modify updateStyles
   pure next
 eval (StopDragging next) = do

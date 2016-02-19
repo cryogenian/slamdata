@@ -48,6 +48,10 @@ _position = lens _.position _{position = _}
 _key :: forall a r. LensP {key :: a|r} a
 _key = lens _.key _{key = _}
 
+isDragged :: State -> Boolean
+isDragged {visualState = Dragging _} = true
+isDragged _ = false
+
 updateStyles
   :: State -> State
 updateStyles st@{visualState = Dragging startedAt, position} =
@@ -68,12 +72,7 @@ updateStyles st@{visualState = Animating from to, position, key = M.Just key} =
       (iterationCount one)
       normalAnimationDirection
       forwards
-
 updateStyles s = s
-
-isDragged :: State -> Boolean
-isDragged {visualState = Dragging _} = true
-isDragged _ = false
 
 initialState :: State
 initialState =
