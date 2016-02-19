@@ -124,7 +124,7 @@ fldPath :: State -> ComponentHTML Query
 fldPath state =
   H.div
     [ P.class_ Rc.mountPath ]
-    [ label "Path" [ input state _path [] ] ]
+    [ label "Database" [ input state _path [] ] ]
 
 -- | A labelled section within the form.
 label :: forall i p. String -> Array (HTML p i) -> HTML p i
