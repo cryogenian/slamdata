@@ -1,4 +1,4 @@
-// module SlamData.Dialog.Share.RotarySelector
+// module SlamData.Dialog.Share.RotarySelector.Component
 exports.getComputedStyle = function(el) {
     return function() {
         return getComputedStyle(el);

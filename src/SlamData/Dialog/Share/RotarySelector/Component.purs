@@ -1,7 +1,8 @@
-module SlamData.Dialog.Share.RotarySelector where
+module SlamData.Dialog.Share.RotarySelector.Component where
 
 import Prelude
 
+import Control.Bind (ifM)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Random (random, RANDOM())
 
@@ -75,6 +76,8 @@ type State a =
   , element :: M.Maybe Ht.HTMLElement
   , styles :: CSS
   , key :: M.Maybe String
+  , animated :: Boolean
+  , animationEndStyles :: CSS
   }
 
 initialState :: forall a. State a
@@ -87,6 +90,8 @@ initialState =
   , element: M.Nothing
   , styles: pure unit
   , key: M.Nothing
+  , animated: false
+  , animationEndStyles: pure unit
   }
 
 _initialPosition :: forall a r. LensP {initialPosition :: a |r} a
@@ -109,6 +114,12 @@ _styles = lens _.styles _{styles = _}
 
 _key :: forall a r. LensP {key :: a|r} a
 _key = lens _.key _{key = _}
+
+_animated :: forall a r. LensP {animated :: a |r} a
+_animated = lens _.animated _{animated = _}
+
+_animationEndStyles :: forall a r. LensP {animationEndStyles :: a |r} a
+_animationEndStyles = lens _.animationEndStyles _{animationEndStyles = _}
 
 data Query a
   = Init Ht.HTMLElement a
@@ -153,13 +164,7 @@ render state =
 
   mkStylesheet k =
     (selector k) ? do
-      marginLeft
-        $ px
-        $ add (M.fromMaybe zero (state.lastPosition <#> _.x))
-        $ M.fromMaybe zero
-        $ sub
-        (state.currentPosition <#> _.x)
-        (state.initialPosition <#> _.x)
+
       state.styles
 
   selector k =
@@ -196,40 +201,50 @@ eval (StartDragging pos next) = do
   pure next
 eval (StopDragging pos next) = do
   state <- get
-  let
-    lp =
-      M.fromMaybe {x: 0.0, y: 0.0} state.lastPosition
-    diff =
-      M.fromMaybe {x: 0.0, y: 0.0}
-      $ {x: _, y: _}
-      <$> ((state.currentPosition <#> _.x) - (state.initialPosition <#> _.x))
-      <*> ((state.currentPosition <#> _.y) - (state.initialPosition <#> _.y))
-    new =
-      { x: lp.x + diff.x, y: lp.y + diff.y }
-  modify (_initialPosition .~ M.Nothing)
-  modify (_lastPosition ?~ new)
-  kfsKey <- liftEff randomString
-  let
-    from = do
-      marginLeft
+  if state.animated
+    then do
+    modify $ _animated .~ false
+    modify $ _styles .~ state.animationEndStyles
+    modify $ _animationEndStyles .~ pure unit
+    modify $ _currentPosition .~ M.Nothing
+    modify $ _lastPosition .~ M.Nothing
+    else do
+    let
+      lp =
+        M.fromMaybe {x: 0.0, y: 0.0} state.lastPosition
+      diff =
+        M.fromMaybe {x: 0.0, y: 0.0}
+        $ {x: _, y: _}
+        <$> ((state.currentPosition <#> _.x) - (state.initialPosition <#> _.x))
+        <*> ((state.currentPosition <#> _.y) - (state.initialPosition <#> _.y))
+      new =
+        { x: lp.x + diff.x, y: lp.y + diff.y }
+    modify (_initialPosition .~ M.Nothing)
+    modify (_lastPosition ?~ new)
+    kfsKey <- liftEff randomString
+    let
+      aes = marginLeft $ px zero
+      from = do
+        marginLeft
         $ px
         $ add (M.fromMaybe zero (state.lastPosition <#> _.x))
         $ M.fromMaybe zero
         $ sub
         (state.currentPosition <#> _.x)
         (state.initialPosition <#> _.x)
-    animationStyles = do
-      keyframesFromTo kfsKey from
-        $ marginLeft $ px zero
-      animation
-        (fromString kfsKey)
-        (sec 1.0)
-        easeOut
-        (sec zero)
-        (iterationCount one)
-        normalAnimationDirection
-        forwards
-  modify (_styles .~ animationStyles)
+      animationStyles = do
+        keyframesFromTo kfsKey from aes
+        animation
+          (fromString kfsKey)
+          (sec 1.0)
+          easeOut
+          (sec zero)
+          (iterationCount one)
+          normalAnimationDirection
+          forwards
+    modify (_animated .~ true)
+    modify (_animationEndStyles .~ aes)
+    modify (_styles .~ animationStyles)
   pure next
 eval (Init el next) = do
   modify (_element ?~ el)
@@ -263,7 +278,21 @@ eval (Init el next) = do
   subscribe $ eventSource attachTransitionend handleTransitionend
   pure next
 
-eval (DragCoords pos next) = modify (_currentPosition ?~ pos) $> next
+eval (DragCoords pos next) = do
+  state <- get
+  let
+    styles =
+      marginLeft
+      $ px
+      $ add (M.fromMaybe zero (state.lastPosition <#> _.x))
+      $ M.fromMaybe zero
+      $ sub
+      (state.currentPosition <#> _.x)
+      (state.initialPosition <#> _.x)
+  modify (_currentPosition ?~ pos)
+  modify (_styles .~ styles)
+  pure next
+
 eval (SetStyles css next) = modify (_styles .~ css) $> next
 eval (Transionend next) = do
   gets _.element >>= F.traverse_ \el -> do
