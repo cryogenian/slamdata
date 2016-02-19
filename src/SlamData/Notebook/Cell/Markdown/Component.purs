@@ -23,12 +23,9 @@ module SlamData.Notebook.Cell.Markdown.Component
 
 import Prelude
 
-import Control.Bind ((=<<))
-
 import Data.BrowserFeatures (BrowserFeatures())
 import Data.Either (Either(..))
 import Data.Functor.Coproduct (coproduct)
-import Data.Lens (preview)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (mempty)
 import Data.StrMap as SM
@@ -100,15 +97,15 @@ eval
      (ParentDSL State MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit)
 eval (NotifyRunCell next) = pure next
 eval (EvalCell value k) =
-  case preview Port._SlamDown =<< value.inputPort of
-    Just input -> do
+  case value.inputPort of
+    Just (Port.SlamDown input) -> do
       set $ Just input
       query unit $ action (MD.SetDocument input)
       state <- query unit $ request MD.GetFormState
       pure $ k case state of
         Nothing -> error "GetFormState query returned Nothing"
         Just st -> { output: Just (Port.VarMap $ formStateToVarMap st), messages: [] }
-    Nothing -> pure $ k (error "expected SlamDown input")
+    _ -> pure $ k (error "expected SlamDown input")
 eval (SetupCell _ next) = pure next
 eval (Save k) = do
   input <- fromMaybe mempty <$> get

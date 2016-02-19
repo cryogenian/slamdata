@@ -35,6 +35,7 @@ import Data.Int as Int
 import Data.Lens ((.~), view, preview)
 import Data.Map as M
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Monoid (mempty)
 import Data.Set as Set
 import Data.Tuple (Tuple(..))
 
@@ -245,21 +246,30 @@ vizEval q = do
       modify (_axisLabelFontSize .~ size) *> configure $> next
 
 cellEval :: Natural CellEvalQuery VizDSL
-cellEval (EvalCell info continue) = do
-  needToUpdate <- gets _.needToUpdate
-  map continue $ runCellEvalT do
-    when needToUpdate $ withLoading do
-      r <- maybe (throwError "Incorrect port in visual builder cell") pure
-           $ info.inputPort >>= preview P._Resource
-      lift $ updateForms r
-      records <- lift $ liftWithCanceler' $ Auth.authed $ Api.all r
-      when (length records > 10000)
-        $ throwError
-        $  "Maximum record count available for visualization -- 10000, "
-        <> "please consider using 'limit' or 'group by' in your request"
-      lift $ modify $ _records .~ records
-    lift $ modify $ _needToUpdate .~ true
-    responsePort
+cellEval (EvalCell info continue) =
+  case info.inputPort of
+    Just P.Blocked -> do
+      modify
+        $ (_needToUpdate .~ true)
+        <<< (_sample .~ mempty)
+        <<< (_records .~ mempty)
+        <<< (_availableChartTypes .~ mempty)
+      pure $ continue { output: Nothing, messages: [] }
+    _ -> do
+      needToUpdate <- gets _.needToUpdate
+      map continue $ runCellEvalT do
+        when needToUpdate $ withLoading do
+          r <- maybe (throwError "Incorrect port in visual builder cell") pure
+               $ info.inputPort >>= preview P._Resource
+          lift $ updateForms r
+          records <- lift $ liftWithCanceler' $ Auth.authed $ Api.all r
+          when (length records > 10000)
+            $ throwError
+            $  "Maximum record count available for visualization -- 10000, "
+            <> "please consider using 'limit' or 'group by' in your request"
+          lift $ modify $ _records .~ records
+        lift $ modify $ _needToUpdate .~ true
+        responsePort
   where
   withLoading action = do
     lift $ modify $ _loading .~ true

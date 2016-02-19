@@ -32,7 +32,7 @@ import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (coproduct)
 import Data.Int as Int
-import Data.Lens ((.~), (?~), preview)
+import Data.Lens ((.~), (?~))
 import Data.Maybe (Maybe(..), maybe)
 
 import Halogen
@@ -40,14 +40,14 @@ import Halogen
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
 
+import SlamData.Effects (Slam())
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
 import SlamData.Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _JTableState, _JTableQuery)
 import SlamData.Notebook.Cell.JTable.Component.Query
 import SlamData.Notebook.Cell.JTable.Component.Render (render)
 import SlamData.Notebook.Cell.JTable.Component.State
 import SlamData.Notebook.Cell.JTable.Model as Model
-import SlamData.Notebook.Cell.Port (_Resource, _ResourceTag)
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Port (Port(..))
 
 jtableComponent :: Component CellStateP CellQueryP Slam
 jtableComponent = makeResultsCellComponent
@@ -68,11 +68,10 @@ queryShouldRun = coproduct (const false) pred
 evalCell :: Natural CellEvalQuery (ComponentDSL State QueryP Slam)
 evalCell (NotifyRunCell next) = pure next
 evalCell (EvalCell value k) =
-  case preview _Resource =<< value.inputPort of
-    Just resource -> do
-      size <- liftAff $ Auth.authed $ Quasar.count resource
+  case value.inputPort of
+    Just (TaggedResource { tag, resource }) -> do
+      size <- liftAff $ Auth.authed (Quasar.count resource)
       oldInput <- gets _.input
-      let tag = preview _ResourceTag =<< value.inputPort
       when    (((oldInput <#> _.resource) /= pure resource)
             || ((oldInput >>= _.tag) /= tag))
         $ set initialState
@@ -86,9 +85,14 @@ evalCell (EvalCell value k) =
               , page: p.page
               , pageSize: p.pageSize
               })
-      pure $ k { output: value.inputPort, messages: [] }
-    Nothing -> pure $ k (error "expected a Resource input")
+      pure $ k (result value.inputPort)
+    Just Blocked -> do
+      set initialState
+      pure $ k (result Nothing)
+    _ -> pure $ k (error "expected a Resource input")
   where
+  result :: Maybe Port -> CellEvalResult
+  result = { output: _, messages: [] }
   error :: String -> CellEvalResult
   error msg =
     { output: Nothing
