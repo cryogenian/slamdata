@@ -49,7 +49,7 @@ _key :: forall a r. LensP {key :: a|r} a
 _key = lens _.key _{key = _}
 
 isDragged :: State -> Boolean
-isDragged {visualState = Dragging _} = true
+isDragged {visualState = Dragging _ } = true
 isDragged _ = false
 
 updateStyles
@@ -66,7 +66,7 @@ updateStyles st@{visualState = Animating from to, position, key = M.Just key} =
     keyframesFromTo key fromStyle toStyle
     animation
       (fromString key)
-      (sec 1.0)
+      (sec $ Math.abs $ (to - from) / 200.0)
       easeOut
       (sec zero)
       (iterationCount one)

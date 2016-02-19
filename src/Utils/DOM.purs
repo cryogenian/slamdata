@@ -55,3 +55,18 @@ foreign import getComputedStyle
   :: forall e
    . HTMLElement
   -> Eff (dom :: DOM|e) (Sm.StrMap String)
+
+type ClientRect =
+  {
+    bottom :: Number
+  , top :: Number
+  , left :: Number
+  , right :: Number
+  , height :: Number
+  , width :: Number
+  }
+
+foreign import getClientRects
+  :: forall e
+   . HTMLElement
+  -> Eff (dom :: DOM|e) (Array ClientRect)

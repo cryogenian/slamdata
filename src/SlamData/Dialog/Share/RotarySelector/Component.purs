@@ -36,7 +36,7 @@ import CSS.Render as Cr
 import CSS.Selector (Selector(..), Predicate(AttrVal), Path(..), Refinement(..))
 
 import Halogen hiding (Prop())
-import Halogen.HTML.Core (Prop(..), attrName)
+import Halogen.HTML.Core (Prop(..), attrName, className)
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Events.Handler as E
@@ -59,7 +59,7 @@ import SlamData.Dialog.Share.RotarySelector.Component.State
 import SlamData.Dialog.Share.RotarySelector.Component.Query
 
 import Utils.Random (genKey, randomString)
-import Utils.DOM (getComputedStyle)
+import Utils.DOM (getComputedStyle, getClientRects)
 
 type RotarySelectorDSL = ComponentDSL State Query Slam
 
@@ -74,16 +74,33 @@ comp = component render eval
 
 render :: State -> ComponentHTML Query
 render state =
-  H.div
-    ([
-       E.onMouseDown (\evt -> E.preventDefault
-                              $> (action $ StartDragging evt.clientX))
-     , P.initializer (\el -> action $ Init el)
+  H.div [ P.classes [ className "rotary-selector" ] ]
+    [ H.div
+      ([
+         E.onMouseDown (\evt -> E.preventDefault
+                                 $> (action $ StartDragging evt.clientX))
+       , P.initializer (\el -> action $ Init el)
+       ]
+       <> F.foldMap (dataRotaryKey >>> Arr.singleton) state.key
+      )
+      ( stls <> content )
     ]
-     <> F.foldMap (dataRotaryKey >>> Arr.singleton) state.key
-    )
-    ( stls <> [ H.p_ [ H.text "drag me" ] ])
   where
+  content :: Array (ComponentHTML Query)
+  content =
+    [
+      H.div_ [ H.text "FOO" ]
+    , H.div_ [ H.text "BAR" ]
+    , H.div_ [ H.text "BAZ" ]
+    , H.div_ [ H.text "BAR" ]
+    , H.div_ [ H.text "BAZ" ]
+    , H.div_ [ H.text "BAR" ]
+    , H.div_ [ H.text "BAZ" ]
+    , H.div_ [ H.text "BAR" ]
+    , H.div_ [ H.text "BAZ" ]
+    , H.div_ [ H.text "BAR" ]
+    ]
+
   stls :: Array (ComponentHTML Query)
   stls =
     F.foldMap (Arr.singleton <<< CSS.stylesheet <<< mkStylesheet) state.key
@@ -96,7 +113,8 @@ render state =
   selector k =
     Selector (Refinement [ AttrVal "data-rotarykey" k ]) Star
 
-getCurrentX :: RotarySelectorDSL Number
+getCurrentX
+  :: RotarySelectorDSL Number
 getCurrentX =
   M.fromMaybe zero <$> Mt.runMaybeT do
     el <- Mt.MaybeT $ gets _.element
@@ -105,6 +123,15 @@ getCurrentX =
       $ pure
       $ Sm.lookup "marginLeft" st
       <#> Global.readFloat
+
+getElementOffset
+  :: RotarySelectorDSL Number
+getElementOffset =
+  M.fromMaybe zero <$> Mt.runMaybeT do
+    el <- Mt.MaybeT $ gets _.element
+    rlst <- liftEff $ getClientRects el
+    hd <- Mt.MaybeT $ pure $ Arr.head rlst
+    pure hd.left
 
 eval :: Natural Query RotarySelectorDSL
 eval (Init el next) = do
@@ -115,6 +142,7 @@ eval (Init el next) = do
     $ window
     >>= Win.document
     <#> Ht.htmlDocumentToEventTarget
+  offset <- getElementOffset
   let
     evntify :: forall a. a -> { clientX :: Number, clientY :: Number }
     evntify = Unsafe.Coerce.unsafeCoerce
@@ -128,7 +156,7 @@ eval (Init el next) = do
     handleMouseUp e =
       pure $ action $ StopDragging
     handleMouseMove e =
-      pure $ action $ ChangePosition $ (evntify e).clientX
+      pure $ action $ ChangePosition (evntify e).clientX
     handleAnimated e =
       pure $ action $ Animated
 
@@ -138,14 +166,28 @@ eval (Init el next) = do
   pure next
 eval (StartDragging startedAt next) = do
   mL <- getCurrentX
+  offset <- getElementOffset
   modify $ _visualState .~ (Dragging $ startedAt - mL)
-  modify $ _position .~ (startedAt - mL)
+  modify $ _position .~ startedAt
   modify updateStyles
   pure next
 eval (StopDragging next) = do
-  mL <- getCurrentX
-  modify $ _visualState .~ Animating mL zero
-  modify updateStyles
+  dragged <- gets isDragged
+  when dragged do
+    mL <- getCurrentX
+    Dragging startedAt <- gets _.visualState
+    position <- gets _.position
+    let
+      diff = position - startedAt
+      pos =
+        M.fromMaybe 0
+        $ Int.fromNumber
+        $ Math.floor
+        $ (if diff > 0.0
+           then 100.0
+           else -100.0) + diff
+    modify $ _visualState .~ (Animating mL ((Int.toNumber (pos / 200) * 200.0)))
+    modify updateStyles
   pure next
 eval (ChangePosition pos next) = do
   dragged <- gets isDragged
