@@ -22,7 +22,7 @@ import SlamData.Effects (Slam())
 data VisualState
   = Staying
   | Dragging Number
-  | AnimatedTo Number
+  | Animating Number Number
 
 type State =
   {
@@ -48,9 +48,27 @@ _position = lens _.position _{position = _}
 _key :: forall a r. LensP {key :: a|r} a
 _key = lens _.key _{key = _}
 
-updateStyles :: State -> State
+updateStyles
+  :: State -> State
 updateStyles st@{visualState = Dragging startedAt, position} =
   st { styles = marginLeft $ px $ position - startedAt }
+updateStyles st@{visualState = Animating from to, position, key = M.Just key} =
+  st { styles = styles }
+  where
+  styles = do
+    let
+      fromStyle = marginLeft $ px from
+      toStyle = marginLeft $ px to
+    keyframesFromTo key fromStyle toStyle
+    animation
+      (fromString key)
+      (sec 1.0)
+      easeOut
+      (sec zero)
+      (iterationCount one)
+      normalAnimationDirection
+      forwards
+
 updateStyles s = s
 
 isDragged :: State -> Boolean

@@ -17,6 +17,7 @@ import Data.Array as Arr
 import Data.Functor (($>))
 import Data.Functor.Eff (liftEff)
 import Data.Lens (LensP(), lens, (%~), (.~), (?~))
+import Data.Lens as  L
 import Data.Maybe as M
 import Data.NonEmpty ((:|))
 import Data.Foldable as F
@@ -79,32 +80,36 @@ render state =
                               $> (action $ StartDragging evt.clientX))
      , P.initializer (\el -> action $ Init el)
     ]
-     <> M.maybe [] (dataRotaryKey >>> Arr.singleton) state.key
+     <> F.foldMap (dataRotaryKey >>> Arr.singleton) state.key
     )
     ( stls <> [ H.p_ [ H.text "drag me" ] ])
   where
   stls :: Array (ComponentHTML Query)
   stls =
-    case state.key of
-      M.Nothing ->
-        []
-      M.Just k ->
-        [
-          CSS.stylesheet (mkStylesheet k)
-        ]
+    F.foldMap (Arr.singleton <<< CSS.stylesheet <<< mkStylesheet) state.key
 
+  mkStylesheet :: String -> CSS
   mkStylesheet k =
     (selector k) ? state.styles
 
+  selector :: String -> Selector
   selector k =
     Selector (Refinement [ AttrVal "data-rotarykey" k ]) Star
 
+getCurrentX :: RotarySelectorDSL Number
+getCurrentX =
+  M.fromMaybe zero <$> Mt.runMaybeT do
+    el <- Mt.MaybeT $ gets _.element
+    st <- liftEff $ getComputedStyle el
+    Mt.MaybeT
+      $ pure
+      $ Sm.lookup "marginLeft" st
+      <#> Global.readFloat
 
 eval :: Natural Query RotarySelectorDSL
 eval (Init el next) = do
   modify (_element ?~ el)
-  k <- genKey
-  modify (_key ?~ k)
+  genKey >>= pure >>> L.set _key >>> modify
   docTarget <-
     liftEff
     $ window
@@ -117,91 +122,37 @@ eval (Init el next) = do
       Etr.addEventListener Etp.mouseup (Etr.eventListener f) false docTarget
     attachMouseMove f =
       Etr.addEventListener Etp.mousemove (Etr.eventListener f) false docTarget
---    attachTransitionend f =
---      Etr.addEventListener Etp.animationend (Etr.eventListener f) false
---      $ Ht.htmlElementToEventTarget el
+    attachAnimated f =
+      Etr.addEventListener Etp.animationend (Etr.eventListener f) false
+      $ Ht.htmlElementToEventTarget el
     handleMouseUp e =
-      pure $ action $ StopDragging -- $ (evntify e).clientX
+      pure $ action $ StopDragging
     handleMouseMove e =
       pure $ action $ ChangePosition $ (evntify e).clientX
---    handleTransitionend e = do
---      pure $ action $ Transionend
+    handleAnimated e =
+      pure $ action $ Animated
 
   subscribe $ eventSource attachMouseUp handleMouseUp
   subscribe $ eventSource attachMouseMove handleMouseMove
---  subscribe $ eventSource attachTransitionend handleTransitionend
+  subscribe $ eventSource attachAnimated handleAnimated
   pure next
 eval (StartDragging startedAt next) = do
-  mL <- M.fromMaybe zero <$> Mt.runMaybeT do
-    el <- Mt.MaybeT $ gets _.element
-    st <- liftEff $ getComputedStyle el
-    Mt.MaybeT
-      $ pure
-      $ Sm.lookup "marginLeft" st
-      <#> Global.readFloat
+  mL <- getCurrentX
   modify $ _visualState .~ (Dragging $ startedAt - mL)
+  modify updateStyles
   pure next
 eval (StopDragging next) = do
-  modify $ _visualState .~ Staying
-{-
-    kfsKey <- liftEff randomString
-    let
-      aes = marginLeft $ px zero
-      from = do
-        marginLeft
-        $ px
-        $ add (M.fromMaybe zero (state.lastPosition <#> _.x))
-        $ M.fromMaybe zero
-        $ sub
-        (state.currentPosition <#> _.x)
-        (state.initialPosition <#> _.x)
-      animationStyles = do
-        keyframesFromTo kfsKey from aes
-        animation
-          (fromString kfsKey)
-          (sec 1.0)
-          easeOut
-          (sec zero)
-          (iterationCount one)
-          normalAnimationDirection
-          forwards
-    modify (_animated .~ true)
-    modify (_animationEndStyles .~ aes)
-    modify (_styles .~ animationStyles)
--}
+  mL <- getCurrentX
+  modify $ _visualState .~ Animating mL zero
+  modify updateStyles
   pure next
-
-
 eval (ChangePosition pos next) = do
   dragged <- gets isDragged
   when dragged do
     modify (_position .~ pos)
     modify updateStyles
-{-  state <- get
-  let
-    styles =
-      marginLeft
-      $ px
-      $ add (M.fromMaybe zero (state.lastPosition <#> _.x))
-      $ M.fromMaybe zero
-      $ sub
-      (state.currentPosition <#> _.x)
-      (state.initialPosition <#> _.x)
-  modify (_currentPosition ?~ pos)
-  modify (_styles .~ styles)
--}
   pure next
 eval (Animated next) = do
-  {-
-  gets _.element >>= F.traverse_ \el -> do
-    styles <- liftEff $ getComputedStyle el
-    let
-      pos =
-        {
-          x: M.fromMaybe zero $ Global.readFloat <$> Sm.lookup "marginLeft" styles
-        , y: M.fromMaybe zero $ Global.readFloat <$> Sm.lookup "marginTop" styles
-        }
-    modify $ _lastPosition ?~ pos
-  modify $ _styles .~ (pure unit)
--}
+  modify $ _visualState .~ Staying
+  getCurrentX >>= L.set _position >>> modify
   pure next
