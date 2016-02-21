@@ -4,7 +4,7 @@ module SlamData.Dialog.Share.RotarySelector.Component
   , module SlamData.Dialog.Share.RotarySelector.Component.Query
   ) where
 
-import Prelude
+import Prelude hiding (top)
 
 import Control.Monad (when)
 import Control.Monad.Eff (Eff())
@@ -25,18 +25,25 @@ import Data.StrMap as Sm
 import Data.Int as Int
 import Data.String.Regex as Rgx
 
-import CSS.Geometry (height, width, left, marginLeft)
-import CSS.Size (px)
-import CSS.Stylesheet (CSS(), keyframesFromTo, (?))
+import CSS.Geometry (height, width, left, marginLeft, padding, top)
+import CSS.Size (px, pct)
+import CSS.Stylesheet (CSS(), keyframesFromTo, (?), key)
 import CSS.Animation (animation, iterationCount, normalAnimationDirection, forwards)
 import CSS.Time (sec)
 import CSS.Transition (easeOut)
 import CSS.String (fromString)
 import CSS.Render as Cr
-import CSS.Selector (Selector(..), Predicate(AttrVal), Path(..), Refinement(..))
+import CSS.Selector
+  (Selector(..), Predicate(AttrVal), Path(..), Refinement(..), (**), (##))
+import CSS.Display (position, relative)
+import CSS.Border (border, solid)
+import CSS.Color (black)
+import CSS.Overflow (overflow, hidden)
+import CSS.Display (display, inlineBlock)
+import CSS.TextAlign (textAlign, center)
 
 import Halogen hiding (Prop())
-import Halogen.HTML.Core (Prop(..), attrName, className)
+import Halogen.HTML.Core (Prop(..), attrName, className, ClassName())
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Events.Handler as E
@@ -44,7 +51,6 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Properties.Indexed (IProp())
-
 
 import DOM (DOM())
 import DOM.HTML (window)
@@ -64,44 +70,72 @@ import Utils.Array (repeat, shift)
 
 type RotarySelectorDSL = ComponentDSL State Query Slam
 
+wrapperClass :: ClassName
+wrapperClass = className "rotary-selector-wrapper"
+
+draggedClass :: ClassName
+draggedClass = className "rotary-selector-dragged"
+
+itemClass :: ClassName
+itemClass = className "rotary-selector-item"
+
 dataRotaryKey :: forall i r. String -> IProp r i
 dataRotaryKey = Unsafe.Coerce.unsafeCoerce nonIndexed
   where
   nonIndexed :: String -> Prop i
   nonIndexed = Attr M.Nothing (attrName "data-rotarykey")
 
-comp :: forall a. Component State Query Slam
+
+comp :: Component State Query Slam
 comp = component render eval
 
 render :: State -> ComponentHTML Query
 render state =
-  H.div [ P.classes [ className "rotary-selector" ] ]
-    [ H.div
-      ([
-         E.onMouseDown (\evt -> E.preventDefault
-                                 $> (action $ StartDragging evt.clientX))
-       , P.initializer (\el -> action $ Init el)
-       ]
-       <> F.foldMap (dataRotaryKey >>> Arr.singleton) state.key
-      )
-      ( stls <> content )
+  H.div wrapperAttrs
+    [ H.div [ E.onMouseDown (\evt -> E.preventDefault
+                                       $> (action $ StartDragging evt.clientX))
+            , P.initializer (\el -> action $ Init el)
+            ]
+      ( stls <> content)
     ]
+
+
   where
+  wrapperAttrs =
+    [ P.classes [ wrapperClass ] ]
+    <> F.foldMap (dataRotaryKey >>> Arr.singleton) state.key
+
   content :: Array (ComponentHTML Query)
   content =
-    map (H.div_ <<< Arr.singleton <<< H.text) state.displayedItems
+    map itemRender state.displayedItems
+
+  itemRender :: String -> ComponentHTML Query
+  itemRender s =
+    H.div [ P.classes [ itemClass ] ] [ H.text s ]
 
   stls :: Array (ComponentHTML Query)
   stls =
     F.foldMap (Arr.singleton <<< CSS.stylesheet <<< mkStylesheet) state.key
 
   mkStylesheet :: String -> CSS
-  mkStylesheet k =
-    (selector k) ? state.styles
+  mkStylesheet k = do
+    state.constStyles
+    (draggedSelector k) ? state.styles
 
-  selector :: String -> Selector
-  selector k =
-    Selector (Refinement [ AttrVal "data-rotarykey" k ]) Star
+wrapperSelector :: String -> Selector
+wrapperSelector k =
+  (fromString ".rotary-selector-wrapper")
+  ## (Refinement [ AttrVal "data-rotarykey" k ])
+
+draggedSelector :: String -> Selector
+draggedSelector k =
+  (wrapperSelector k)
+  ** (fromString ".rotary-selector-dragged")
+
+itemSelector :: String -> Selector
+itemSelector k =
+  (draggedSelector k)
+  ** (fromString ".rotary-selector-item")
 
 getCurrentX
   :: RotarySelectorDSL Number
@@ -126,22 +160,21 @@ getElementOffset =
 setDisplayedItems :: Array String -> RotarySelectorDSL Unit
 setDisplayedItems arr = do
   screenWidth <- liftEff $ Br.getScreen <#> _.width
-  let
-    displayedItems =
-      if Arr.null arr
-      then [ ]
-      else
-        flip repeat arr
-        $ Int.ceil
-        $ (Int.toNumber screenWidth / 200.0 * 2.0)
-        / (Int.toNumber (Arr.length arr))
-  modify (_displayedItems .~ displayedItems)
+  modify $ _displayedItems .~
+    if Arr.null arr
+    then [ ]
+    else
+      flip repeat arr
+      $ Int.ceil
+      $ (Int.toNumber screenWidth / 200.0 * 2.0)
+      / (Int.toNumber (Arr.length arr))
 
 eval :: Natural Query RotarySelectorDSL
 eval (Init el next) = do
+  modify $ _element ?~ el
+  key <- genKey
+  modify $ _key ?~ key
   state <- get
-  modify (_element ?~ el)
-  genKey >>= pure >>> L.set _key >>> modify
   setDisplayedItems state.items
   docTarget <-
     liftEff
@@ -165,10 +198,31 @@ eval (Init el next) = do
       pure $ action $ ChangePosition (evntify e).clientX
     handleAnimated e =
       pure $ action $ Animated
-
   subscribe $ eventSource attachMouseUp handleMouseUp
   subscribe $ eventSource attachMouseMove handleMouseMove
   subscribe $ eventSource attachAnimated handleAnimated
+
+  modify $ _constStyles .~ do
+    (wrapperSelector key) ? do
+      width $ px 400.0
+      height $ px 50.0
+      marginLeft $ px (-200.0)
+      border solid (px 1.0) black
+      overflow hidden
+      position relative
+      left $ pct 50.0
+      top $ px 30.0
+      padding (px 10.0) (px zero) (px 10.0) (px zero)
+    (draggedSelector key) ? do
+      position relative
+      left $ px (-1700.0)
+      marginLeft $ px 0.0
+      width $ px 3000.0
+    (itemSelector key) ? do
+      width $ px 200.0
+      display inlineBlock
+      textAlign center
+
   pure next
 eval (StartDragging startedAt next) = do
   mL <- getCurrentX
@@ -195,6 +249,7 @@ eval (StopDragging next) = do
   pure next
 eval (ChangePosition pos next) = do
   dragged <- gets isDragged
+  Debug.Trace.traceAnyA pos
   when dragged do
     modify (_position .~ pos)
     modify updateStyles

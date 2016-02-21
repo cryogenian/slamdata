@@ -33,6 +33,7 @@ type State =
   , key :: M.Maybe String
   , items :: Array String
   , displayedItems :: Array String
+  , constStyles :: CSS
   }
 
 _visualState :: forall a r. LensP {visualState :: a|r} a
@@ -55,6 +56,9 @@ _items = lens _.items _{items = _}
 
 _displayedItems :: forall a r. LensP {displayedItems :: a|r} a
 _displayedItems = lens _.displayedItems _{displayedItems = _}
+
+_constStyles :: forall a r. LensP {constStyles :: a|r} a
+_constStyles = lens _.constStyles _{constStyles = _}
 
 isDragged :: State -> Boolean
 isDragged {visualState = Dragging _ } = true
@@ -94,4 +98,5 @@ initialState =
   , key: M.Nothing
   , items: ["foo", "bar", "baz"]
   , displayedItems: []
+  , constStyles: pure unit
   }
