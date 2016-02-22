@@ -4,6 +4,8 @@ import Prelude
 
 import Data.Maybe as M
 import Data.Lens (LensP(), lens)
+import Data.ExistsR as Er
+import Data.NonEmpty (NonEmpty(), (:|))
 
 import DOM.HTML.Types as Ht
 
@@ -31,8 +33,8 @@ type State =
   , element :: M.Maybe Ht.HTMLElement
   , position :: Number
   , key :: M.Maybe String
-  , items :: Array String
-  , displayedItems :: Array String
+  , items :: NonEmpty Array String
+  , displayedItems :: NonEmpty Array String
   , constStyles :: CSS
   }
 
@@ -88,15 +90,15 @@ updateStyles st@{visualState = Animating from to, position, key = M.Just key} =
       forwards
 updateStyles s = s
 
-initialState :: State
-initialState =
+initialState :: NonEmpty Array String -> State
+initialState items =
   {
     visualState: Staying
   , styles: pure unit
   , element: M.Nothing
   , position: zero
   , key: M.Nothing
-  , items: ["foo", "bar", "baz"]
-  , displayedItems: []
+  , items: items
+  , displayedItems: items
   , constStyles: pure unit
   }

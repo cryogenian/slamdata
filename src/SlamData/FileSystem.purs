@@ -78,6 +78,8 @@ import Utils.Path (DirPath(), hidePath, renderPath)
 
 import SlamData.Dialog.Share.RotarySelector.Component  as P
 
+import Data.NonEmpty ((:|))
+
 main :: Eff SlamDataEffects Unit
 main = do
 --  AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
@@ -92,7 +94,7 @@ main = do
 --      halogen.driver (left $ action $ SetVersion version)
 --    forkAff $ routeSignal halogen.driver
   runAff throwException (const (pure unit)) do
-    halogen <- runUI P.comp P.initialState
+    halogen <- runUI P.comp $ P.initialState $ "foo" :| ["bar", "baz"]
     onLoad (appendToBody halogen.node)
 
 setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit

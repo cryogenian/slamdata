@@ -12,8 +12,11 @@ import Control.Monad.Eff.Random (random, RANDOM())
 import Control.Monad.Trans (lift)
 import Control.Monad.Maybe.Trans as Mt
 import Control.UI.Browser as Br
+import Control.Coroutine.Aff (produce)
+import Control.Coroutine.Stalling as SCR
 
 import Data.Array as Arr
+import Data.Either as E
 import Data.Functor (($>))
 import Data.Functor.Eff (liftEff)
 import Data.Lens (LensP(), lens, (%~), (.~), (?~))
@@ -24,6 +27,7 @@ import Data.Foldable as F
 import Data.StrMap as Sm
 import Data.Int as Int
 import Data.String.Regex as Rgx
+import Data.NonEmpty as Ne
 
 import CSS.Geometry (height, width, left, marginLeft, padding, top)
 import CSS.Size (px, pct)
@@ -51,6 +55,7 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Properties.Indexed (IProp())
+import Halogen.Query.EventSource (EventSource(..))
 
 import DOM (DOM())
 import DOM.HTML (window)
@@ -67,6 +72,7 @@ import SlamData.Dialog.Share.RotarySelector.Component.Query
 import Utils.Random (genKey, randomString)
 import Utils.DOM (getComputedStyle, getClientRects)
 import Utils.Array (repeat, shift)
+import Utils.NonEmpty (liftNonEmpty)
 
 type RotarySelectorDSL = ComponentDSL State Query Slam
 
@@ -98,8 +104,6 @@ render state =
             ]
       ( stls <> content)
     ]
-
-
   where
   wrapperAttrs =
     [ P.classes [ wrapperClass ] ]
@@ -107,7 +111,7 @@ render state =
 
   content :: Array (ComponentHTML Query)
   content =
-    map itemRender state.displayedItems
+    Ne.oneOf $ map itemRender state.displayedItems
 
   itemRender :: String -> ComponentHTML Query
   itemRender s =
@@ -121,6 +125,8 @@ render state =
   mkStylesheet k = do
     state.constStyles
     (draggedSelector k) ? state.styles
+
+
 
 wrapperSelector :: String -> Selector
 wrapperSelector k =
@@ -157,17 +163,16 @@ getElementOffset =
     hd <- Mt.MaybeT $ pure $ Arr.head rlst
     pure hd.left
 
-setDisplayedItems :: Array String -> RotarySelectorDSL Unit
+setDisplayedItems :: Ne.NonEmpty Array String -> RotarySelectorDSL Unit
 setDisplayedItems arr = do
   screenWidth <- liftEff $ Br.getScreen <#> _.width
-  modify $ _displayedItems .~
-    if Arr.null arr
-    then [ ]
-    else
-      flip repeat arr
-      $ Int.ceil
+  let
+    times =
+      Int.ceil
       $ (Int.toNumber screenWidth / 200.0 * 2.0)
-      / (Int.toNumber (Arr.length arr))
+      / (Int.toNumber (Arr.length $ Ne.oneOf arr))
+  modify $ _displayedItems .~ liftNonEmpty (repeat times) arr
+
 
 eval :: Natural Query RotarySelectorDSL
 eval (Init el next) = do
@@ -249,7 +254,6 @@ eval (StopDragging next) = do
   pure next
 eval (ChangePosition pos next) = do
   dragged <- gets isDragged
-  Debug.Trace.traceAnyA pos
   when dragged do
     modify (_position .~ pos)
     modify updateStyles
@@ -260,9 +264,15 @@ eval (Animated next) = do
   curX <- getCurrentX
   modify $ _position .~ curX
   let
-    items = shift (-1 * (Int.floor (curX / 200.0))) state.items
+    items = liftNonEmpty (shift (-1 * (Int.floor (curX / 200.0)))) state.items
   setDisplayedItems items
   modify $ _items .~ items
   modify $ _position .~ zero
   modify updateStyles
+  subscribe
+    $ EventSource
+    $ SCR.producerToStallingProducer
+    $ produce \emit -> do
+      emit $ E.Left $ action $ Selected $ Ne.head items
+      emit $ E.Right unit
   pure next
