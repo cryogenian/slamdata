@@ -93,8 +93,16 @@ main = do
 --      setSlamDataTitle version
 --      halogen.driver (left $ action $ SetVersion version)
 --    forkAff $ routeSignal halogen.driver
+  let
+    comp = P.rotarySelectorComponent
+             { itemRender: Nothing
+             , itemWidth: 200.0
+             , visibleItemCount: Just 3
+             }
   runAff throwException (const (pure unit)) do
-    halogen <- runUI P.comp $ P.initialState $ "foo" :| ["bar", "baz"]
+    halogen <-
+      runUI comp.component
+      $ P.initialState $ "foo" :| ["bar", "baz"]
     onLoad (appendToBody halogen.node)
 
 setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit

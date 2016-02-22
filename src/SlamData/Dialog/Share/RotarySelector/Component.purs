@@ -1,5 +1,5 @@
 module SlamData.Dialog.Share.RotarySelector.Component
-  ( comp
+  ( rotarySelectorComponent
   , module SlamData.Dialog.Share.RotarySelector.Component.State
   , module SlamData.Dialog.Share.RotarySelector.Component.Query
   ) where
@@ -91,16 +91,29 @@ dataRotaryKey = Unsafe.Coerce.unsafeCoerce nonIndexed
   nonIndexed :: String -> Prop i
   nonIndexed = Attr M.Nothing (attrName "data-rotarykey")
 
+draggableScreens :: Int
+draggableScreens = 3
 
-comp :: Component State Query Slam
-comp = component render eval
+type RotarySelectorConfig =
+  {
+    itemRender :: M.Maybe (String -> ComponentHTML Query)
+  , itemWidth :: Number
+  , visibleItemCount :: M.Maybe Int
+  }
 
-render :: State -> ComponentHTML Query
-render state =
+rotarySelectorComponent
+  :: RotarySelectorConfig
+  -> { component :: Component State Query Slam }
+rotarySelectorComponent cfg =
+  { component: component (render cfg) (eval cfg) }
+
+render :: RotarySelectorConfig -> State -> ComponentHTML Query
+render cfg state =
   H.div wrapperAttrs
     [ H.div [ E.onMouseDown (\evt -> E.preventDefault
                                        $> (action $ StartDragging evt.clientX))
             , P.initializer (\el -> action $ Init el)
+            , P.classes [ draggedClass ]
             ]
       ( stls <> content)
     ]
@@ -115,7 +128,9 @@ render state =
 
   itemRender :: String -> ComponentHTML Query
   itemRender s =
-    H.div [ P.classes [ itemClass ] ] [ H.text s ]
+    H.div [ P.classes [ itemClass ] ] $ pure $ case cfg.itemRender of
+      M.Just fn -> fn s
+      M.Nothing -> H.text s
 
   stls :: Array (ComponentHTML Query)
   stls =
@@ -125,8 +140,6 @@ render state =
   mkStylesheet k = do
     state.constStyles
     (draggedSelector k) ? state.styles
-
-
 
 wrapperSelector :: String -> Selector
 wrapperSelector k =
@@ -163,24 +176,25 @@ getElementOffset =
     hd <- Mt.MaybeT $ pure $ Arr.head rlst
     pure hd.left
 
-setDisplayedItems :: Ne.NonEmpty Array String -> RotarySelectorDSL Unit
-setDisplayedItems arr = do
+setDisplayedItems
+  :: RotarySelectorConfig -> Ne.NonEmpty Array String -> RotarySelectorDSL Unit
+setDisplayedItems cfg arr = do
   screenWidth <- liftEff $ Br.getScreen <#> _.width
   let
-    times =
-      Int.ceil
-      $ (Int.toNumber screenWidth / 200.0 * 2.0)
-      / (Int.toNumber (Arr.length $ Ne.oneOf arr))
-  modify $ _displayedItems .~ liftNonEmpty (repeat times) arr
+    iwidth = Int.floor cfg.itemWidth
+    ilen = Arr.length $ Ne.oneOf arr
+    itemsOnScreen = screenWidth / iwidth + one
+    repeats = draggableScreens * itemsOnScreen / ilen
+  modify $ _displayedItems .~ liftNonEmpty (repeat repeats) arr
 
 
-eval :: Natural Query RotarySelectorDSL
-eval (Init el next) = do
+eval :: RotarySelectorConfig -> Natural Query RotarySelectorDSL
+eval cfg (Init el next) = do
   modify $ _element ?~ el
   key <- genKey
   modify $ _key ?~ key
   state <- get
-  setDisplayedItems state.items
+  setDisplayedItems cfg state.items
   docTarget <-
     liftEff
     $ window
@@ -207,11 +221,14 @@ eval (Init el next) = do
   subscribe $ eventSource attachMouseMove handleMouseMove
   subscribe $ eventSource attachAnimated handleAnimated
 
+
+  screenWidth <- liftEff $ Br.getScreen <#> _.width
   modify $ _constStyles .~ do
+    let visibleCount = M.fromMaybe 2 cfg.visibleItemCount
     (wrapperSelector key) ? do
-      width $ px 400.0
+      width $ px $ Int.toNumber visibleCount * cfg.itemWidth
       height $ px 50.0
-      marginLeft $ px (-200.0)
+      marginLeft $ px (-1.0 * Int.toNumber visibleCount * cfg.itemWidth * 0.5)
       border solid (px 1.0) black
       overflow hidden
       position relative
@@ -219,53 +236,69 @@ eval (Init el next) = do
       top $ px 30.0
       padding (px 10.0) (px zero) (px 10.0) (px zero)
     (draggedSelector key) ? do
+      let
+        iwidth = Int.floor cfg.itemWidth
+        ilen = Arr.length $ Ne.oneOf state.items
+        itemsOnScreen = screenWidth / iwidth + one
+        draggedWidth =
+          cfg.itemWidth * Int.toNumber (itemsOnScreen * draggableScreens)
+        itemsOnLeftSideCount =
+          draggableScreens * (itemsOnScreen / 2 / ilen)
+        halfWidth =
+          cfg.itemWidth * Int.toNumber (ilen * itemsOnLeftSideCount)
+        leftPosition =
+          (Int.toNumber visibleCount - one) / 2.0 * cfg.itemWidth - halfWidth
       position relative
-      left $ px (-1700.0)
+      left $ px leftPosition
       marginLeft $ px 0.0
-      width $ px 3000.0
+      width $ px $ draggedWidth
     (itemSelector key) ? do
-      width $ px 200.0
+      width $ px cfg.itemWidth
       display inlineBlock
       textAlign center
 
   pure next
-eval (StartDragging startedAt next) = do
+eval cfg (StartDragging startedAt next) = do
   mL <- getCurrentX
   offset <- getElementOffset
   modify $ _visualState .~ (Dragging $ startedAt - mL)
   modify $ _position .~ startedAt
   modify updateStyles
   pure next
-eval (StopDragging next) = do
+eval cfg (StopDragging next) = do
+  visualState <- gets _.visualState
+  case visualState of
+    Dragging startedAt -> do
+      mL <- getCurrentX
+      position <- gets _.position
+      let
+        diff = position - startedAt
+        pos =
+          Int.floor
+          $ ((if diff > 0.0 then 1.0 else -1.0) * cfg.itemWidth * 0.5)
+          + diff
+        finalMargin =
+          Int.toNumber (pos / Int.floor cfg.itemWidth)  * cfg.itemWidth
+
+      modify $ _visualState .~ Animating mL finalMargin
+      modify updateStyles
+    _ -> pure unit
+  pure next
+eval cfg (ChangePosition pos next) = do
   dragged <- gets isDragged
   when dragged do
-    mL <- getCurrentX
-    Dragging startedAt <- gets _.visualState
-    position <- gets _.position
-    let
-      diff = position - startedAt
-      pos =
-        Int.floor
-        $ (if diff > 0.0
-           then 100.0
-           else -100.0) + diff
-    modify $ _visualState .~ (Animating mL ((Int.toNumber (pos / 200) * 200.0)))
+    modify $ _position .~ pos
     modify updateStyles
   pure next
-eval (ChangePosition pos next) = do
-  dragged <- gets isDragged
-  when dragged do
-    modify (_position .~ pos)
-    modify updateStyles
-  pure next
-eval (Animated next) = do
+eval cfg (Animated next) = do
   state <- get
   modify $ _visualState .~ Staying
   curX <- getCurrentX
   modify $ _position .~ curX
   let
-    items = liftNonEmpty (shift (-1 * (Int.floor (curX / 200.0)))) state.items
-  setDisplayedItems items
+    items =
+      liftNonEmpty (shift (-1 * (Int.floor (curX / cfg.itemWidth)))) state.items
+  setDisplayedItems cfg items
   modify $ _items .~ items
   modify $ _position .~ zero
   modify updateStyles
