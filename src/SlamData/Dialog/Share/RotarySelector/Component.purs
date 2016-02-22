@@ -1,5 +1,6 @@
 module SlamData.Dialog.Share.RotarySelector.Component
-  ( rotarySelectorComponent
+  ( comp
+  , rotarySelector
   , module SlamData.Dialog.Share.RotarySelector.Component.State
   , module SlamData.Dialog.Share.RotarySelector.Component.Query
   ) where
@@ -28,6 +29,7 @@ import Data.StrMap as Sm
 import Data.Int as Int
 import Data.String.Regex as Rgx
 import Data.NonEmpty as Ne
+import Data.ExistsR as Er
 
 import CSS.Geometry (height, width, left, marginLeft, padding, top)
 import CSS.Size (px, pct)
@@ -94,21 +96,50 @@ dataRotaryKey = Unsafe.Coerce.unsafeCoerce nonIndexed
 draggableScreens :: Int
 draggableScreens = 3
 
-type RotarySelectorConfig =
+type RotarySelectorConfig r =
   {
-    itemRender :: M.Maybe (String -> ComponentHTML Query)
+    itemRender :: M.Maybe (Option r -> ComponentHTML Query)
   , itemWidth :: Number
   , visibleItemCount :: M.Maybe Int
+  , items :: Ne.NonEmpty Array (Option r)
   }
 
-rotarySelectorComponent
-  :: RotarySelectorConfig
-  -> { component :: Component State Query Slam }
-rotarySelectorComponent cfg =
-  { component: component (render cfg) (eval cfg) }
+comp
+  :: forall r
+   . RotarySelectorConfig r
+  -> { component :: Component State Query Slam
+     , unpack :: OptionR -> Option r
+     }
+comp cfg =
+  { component: component (render cfg unpack) (eval cfg)
+  , unpack: Unsafe.Coerce.unsafeCoerce
+  }
+  where
+  unpack :: OptionR -> Option r
+  unpack = Unsafe.Coerce.unsafeCoerce
 
-render :: RotarySelectorConfig -> State -> ComponentHTML Query
-render cfg state =
+rotarySelector
+  :: forall r p e
+   . p
+  -> RotarySelectorConfig r
+  -> Array (Option r)
+  -> SlotConstructor State Query Slam p
+rotarySelector p cfg items =
+  SlotConstructor p \_ ->
+    let
+      rComp = comp cfg
+    in
+     { component: rComp.component
+     , initialState: initialState cfg.items
+     }
+
+render
+  :: forall r
+   . RotarySelectorConfig r
+  -> (OptionR -> Option r)
+  -> State
+  -> ComponentHTML Query
+render cfg unpack state =
   H.div wrapperAttrs
     [ H.div [ E.onMouseDown (\evt -> E.preventDefault
                                        $> (action $ StartDragging evt.clientX))
@@ -126,11 +157,13 @@ render cfg state =
   content =
     Ne.oneOf $ map itemRender state.displayedItems
 
-  itemRender :: String -> ComponentHTML Query
+  itemRender :: OptionR -> ComponentHTML Query
   itemRender s =
-    H.div [ P.classes [ itemClass ] ] $ pure $ case cfg.itemRender of
-      M.Just fn -> fn s
-      M.Nothing -> H.text s
+    H.div [ P.classes [ itemClass ] ]
+      $ pure
+      $ case cfg.itemRender of
+        M.Just fn -> fn $ unpack s
+        M.Nothing -> Er.runExistsR (runOption >>> _.label >>> H.text) s
 
   stls :: Array (ComponentHTML Query)
   stls =
@@ -177,7 +210,10 @@ getElementOffset =
     pure hd.left
 
 setDisplayedItems
-  :: RotarySelectorConfig -> Ne.NonEmpty Array String -> RotarySelectorDSL Unit
+  :: forall r
+   . RotarySelectorConfig r
+  -> Ne.NonEmpty Array OptionR
+  -> RotarySelectorDSL Unit
 setDisplayedItems cfg arr = do
   screenWidth <- liftEff $ Br.getScreen <#> _.width
   let
@@ -188,7 +224,10 @@ setDisplayedItems cfg arr = do
   modify $ _displayedItems .~ liftNonEmpty (repeat repeats) arr
 
 
-eval :: RotarySelectorConfig -> Natural Query RotarySelectorDSL
+eval
+  :: forall r
+   . RotarySelectorConfig r
+  -> Natural Query RotarySelectorDSL
 eval cfg (Init el next) = do
   modify $ _element ?~ el
   key <- genKey
@@ -309,3 +348,6 @@ eval cfg (Animated next) = do
       emit $ E.Left $ action $ Selected $ Ne.head items
       emit $ E.Right unit
   pure next
+eval cfg (GetSelected continue) = do
+  state <- get
+  pure $ continue $ Ne.head state.items

@@ -23,7 +23,7 @@ import Ace.Config as AceConfig
 
 import Control.Apply ((*>))
 import Control.Monad (when)
-import Control.Monad.Aff (Aff(), Canceler(), cancel, runAff, forkAff, attempt)
+import Control.Monad.Aff (Aff(), Canceler(), cancel, runAff, forkAff, attempt, later')
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar())
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Exception (error, message, Error(), throwException)
@@ -49,7 +49,7 @@ import DOM (DOM())
 import Halogen.Component (installedState)
 import Halogen.Driver (Driver())
 import Halogen.Driver (runUI)
-import Halogen.Query (action)
+import Halogen.Query (action, request)
 import Halogen.Util (appendToBody, onLoad)
 
 import Quasar.Aff as Quasar
@@ -94,16 +94,26 @@ main = do
 --      halogen.driver (left $ action $ SetVersion version)
 --    forkAff $ routeSignal halogen.driver
   let
-    comp = P.rotarySelectorComponent
+    comp = P.comp
              { itemRender: Nothing
              , itemWidth: 200.0
-             , visibleItemCount: Just 3
+             , visibleItemCount: Just 2
+             , items: map (P.Option <<< {label: _, trololo: 12}) $ "foo" :| [ "bar", "baz" ]
              }
   runAff throwException (const (pure unit)) do
     halogen <-
       runUI comp.component
-      $ P.initialState $ "foo" :| ["bar", "baz"]
+      $ P.initialState $ map (P.Option <<< {label: _, trololo: 12}) $ "foo" :| ["bar", "baz"]
+    let
+      work =
+        later' 1000 do
+          mb <- halogen.driver (request P.GetSelected)
+          Debug.Trace.traceAnyA $ (comp.unpack mb) # P.runOption # _.trololo
+          work
+    forkAff work
+
     onLoad (appendToBody halogen.node)
+
 
 setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
 setSlamDataTitle version =

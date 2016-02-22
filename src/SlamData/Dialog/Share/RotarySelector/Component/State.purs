@@ -26,6 +26,12 @@ data VisualState
   | Dragging Number
   | Animating Number Number
 
+newtype Option r = Option {label :: String |r}
+runOption :: forall r. Option r -> {label :: String|r}
+runOption (Option r) = r
+
+type OptionR = Er.ExistsR Option
+
 type State =
   {
     visualState :: VisualState
@@ -33,8 +39,8 @@ type State =
   , element :: M.Maybe Ht.HTMLElement
   , position :: Number
   , key :: M.Maybe String
-  , items :: NonEmpty Array String
-  , displayedItems :: NonEmpty Array String
+  , items :: NonEmpty Array OptionR
+  , displayedItems :: NonEmpty Array OptionR
   , constStyles :: CSS
   }
 
@@ -90,7 +96,7 @@ updateStyles st@{visualState = Animating from to, position, key = M.Just key} =
       forwards
 updateStyles s = s
 
-initialState :: NonEmpty Array String -> State
+initialState :: forall r. NonEmpty Array (Option r) -> State
 initialState items =
   {
     visualState: Staying
@@ -98,7 +104,10 @@ initialState items =
   , element: M.Nothing
   , position: zero
   , key: M.Nothing
-  , items: items
-  , displayedItems: items
+  , items: existArr items
+  , displayedItems: existArr items
   , constStyles: pure unit
   }
+  where
+  existArr :: forall r f. (Functor f) => f (Option r) -> f OptionR
+  existArr = Unsafe.Coerce.unsafeCoerce
