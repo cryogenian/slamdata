@@ -100,7 +100,7 @@ type RotarySelectorConfig r =
   {
     itemRender :: M.Maybe (Option r -> ComponentHTML Query)
   , itemWidth :: Number
-  , visibleItemCount :: M.Maybe Int
+  , visibleItemCount :: M.Maybe Number
   , items :: Ne.NonEmpty Array (Option r)
   }
 
@@ -263,11 +263,11 @@ eval cfg (Init el next) = do
 
   screenWidth <- liftEff $ Br.getScreen <#> _.width
   modify $ _constStyles .~ do
-    let visibleCount = M.fromMaybe 2 cfg.visibleItemCount
+    let visibleCount = M.fromMaybe 2.0 cfg.visibleItemCount
     (wrapperSelector key) ? do
-      width $ px $ Int.toNumber visibleCount * cfg.itemWidth
+      width $ px $ visibleCount * cfg.itemWidth
       height $ px 50.0
-      marginLeft $ px (-1.0 * Int.toNumber visibleCount * cfg.itemWidth * 0.5)
+      marginLeft $ px (-1.0 * visibleCount * cfg.itemWidth * 0.5)
       border solid (px 1.0) black
       overflow hidden
       position relative
@@ -286,7 +286,7 @@ eval cfg (Init el next) = do
         halfWidth =
           cfg.itemWidth * Int.toNumber (ilen * itemsOnLeftSideCount)
         leftPosition =
-          (Int.toNumber visibleCount - one) / 2.0 * cfg.itemWidth - halfWidth
+          (visibleCount - one) / 2.0 * cfg.itemWidth - halfWidth
       position relative
       left $ px leftPosition
       marginLeft $ px 0.0

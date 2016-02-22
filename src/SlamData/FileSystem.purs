@@ -97,7 +97,7 @@ main = do
     comp = P.comp
              { itemRender: Nothing
              , itemWidth: 200.0
-             , visibleItemCount: Just 2
+             , visibleItemCount: Just 2.3
              , items: map (P.Option <<< {label: _, trololo: 12}) $ "foo" :| [ "bar", "baz" ]
              }
   runAff throwException (const (pure unit)) do
