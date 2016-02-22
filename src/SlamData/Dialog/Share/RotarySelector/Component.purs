@@ -123,15 +123,18 @@ rotarySelector
    . p
   -> RotarySelectorConfig r
   -> Array (Option r)
-  -> SlotConstructor State Query Slam p
-rotarySelector p cfg items =
-  SlotConstructor p \_ ->
-    let
-      rComp = comp cfg
-    in
-     { component: rComp.component
-     , initialState: initialState cfg.items
+  -> { slot :: SlotConstructor State Query Slam p
+     , unpack :: OptionR -> Option r
      }
+rotarySelector p cfg items =
+  { slot: SlotConstructor p \_ ->
+      { component: rComp.component
+      , initialState: initialState cfg.items
+      }
+  , unpack: rComp.unpack
+  }
+  where
+  rComp = comp cfg
 
 render
   :: forall r
