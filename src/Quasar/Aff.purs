@@ -714,8 +714,27 @@ resourceExists
   -> M.Maybe Auth.IdToken
   -> Array Perm.Permission
   -> Aff (RetryEffects (ajax :: AX.AJAX|e)) Boolean
-resourceExists res idToken perms =
-  map E.isRight $ Aff.attempt $ count res idToken perms
+resourceExists res idToken perms = do
+  result <- existsReq
+  if result.status == successStatus
+    then pure true
+    else
+      if result.status == notFoundStatus
+      then pure false
+      else
+        Err.throwError $
+          Exn.error $
+            "Unexpected status code " ++ show result.status
+  where
+  existsReq :: Aff (RetryEffects (ajax :: AX.AJAX|e)) (AX.AffjaxResponse Unit)
+  existsReq =
+    getOnce
+      (Paths.metadataUrl
+        </> PU.rootify (R.resourceDir res)
+        </> P.file (R.resourceName res))
+      applicationJSON
+      idToken
+      perms
 
 portView
   :: forall e
