@@ -286,6 +286,8 @@ peekCell cellId q = case q of
       Nothing -> pure unit
     when (autorun cellType) $ runCell newCellId
     triggerSave unit
+  ToggleCaching _ ->
+    triggerSave unit
   ShareCell _ -> pure unit
   StopCell _ -> do
     modify $ _runTrigger .~ Nothing

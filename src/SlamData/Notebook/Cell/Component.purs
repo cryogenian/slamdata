@@ -268,11 +268,20 @@ makeCellComponentPart def render =
     modify (_runState .~ RunElapsed elapsed) $> next
   eval (GetOutput k) = k <$> gets (_.output)
   eval (SaveCell cellId cellType k) = do
-    hasRun <- gets _.hasResults
+    { hasResults, cachingEnabled } <- get
     json <- query unit (left (request Save))
-    pure (k { cellId, cellType, hasRun, state: fromMaybe jsonNull json })
-  eval (LoadCell model next) =
-    query unit (left (action (Load model.state))) $> next
+    pure <<< k $
+      { cellId
+      , cellType
+      , cachingEnabled
+      , hasRun: hasResults
+      , state: fromMaybe jsonNull json
+      }
+  eval (LoadCell model next) = do
+    F.for_ model.cachingEnabled \b ->
+      modify (_cachingEnabled .~ b)
+    query unit (left (action (Load model.state)))
+    pure next
 
   peek :: forall a. ChildF Unit InnerCellQuery a -> CellDSL Unit
   peek (ChildF _ q) = coproduct cellEvalPeek (const $ pure unit) q
