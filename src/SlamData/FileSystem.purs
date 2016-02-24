@@ -59,13 +59,13 @@ import Routing (matchesAff)
 
 import SlamData.Config as Config
 import SlamData.Config.Version as Version
+import SlamData.Effects
 import SlamData.FileSystem.Component
 import SlamData.FileSystem.Dialog.Component as Dialog
-import SlamData.Effects
-import SlamData.FileSystem.Listing.Component as Items
+import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..))
 import SlamData.FileSystem.Listing.Sort (Sort(..))
-import SlamData.FileSystem.Resource (Resource(..), getPath)
+import SlamData.FileSystem.Resource (Resource(), getPath)
 import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt(), newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
@@ -145,10 +145,10 @@ redirects driver var mbOld (Salted sort query salt) = do
   Tuple canceler _ <- takeVar var
   cancel canceler $ error "cancel search"
   putVar var initialAVar
-  driver $ toItems $ Items.SetIsSearching $ isSearchQuery query
+  driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
   if isNewPage
     then do
-    driver $ toItems Items.Reset
+    driver $ toListing Listing.Reset
     driver $ toFs $ SetPath queryParts.path
     driver $ toFs $ SetSort sort
     driver $ toFs $ SetSalt salt
@@ -175,7 +175,7 @@ checkMount
   -> Driver QueryP SlamDataRawEffects
   -> Aff SlamDataEffects Unit
 checkMount path driver = do
-  result <- attempt $ Auth.authed $ Quasar.mountInfo $ Database path
+  result <- attempt $ Auth.authed $ Quasar.mountInfo path
   case result of
     Left _ -> pure unit
     Right _ -> driver $ left $ action $ SetIsMount true
@@ -216,7 +216,7 @@ listPath query deep var dir driver = do
     let next = mapMaybe (either (const Nothing) Just <<< getPath) ress
         toAdd = map Item $ filter (filterByQuery query) ress
 
-    driver $ toItems $ Items.Adds toAdd
+    driver $ toListing $ Listing.Adds toAdd
     traverse_ (\n -> listPath query (deep + one) var n driver)
       (guard (isSearchQuery query) *> next)
 

@@ -24,7 +24,7 @@ instance arbitraryArbState :: Arbitrary ArbState where
     r <- { compress: _, options: _, source: _ }
          <$> arbitrary
          <*> (map (bimap runArbCSVOptions runArbJSONOptions) arbitrary)
-         <*> (map runArbResource arbitrary)
+         <*> (map (map runArbResource) arbitrary)
     pure $ ArbState r
 
 check :: QC Unit

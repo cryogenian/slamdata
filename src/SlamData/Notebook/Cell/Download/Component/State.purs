@@ -19,25 +19,27 @@ module SlamData.Notebook.Cell.Download.Component.State where
 import Prelude
 
 import Control.Bind ((>=>))
+
 import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Either
+import Data.Either (Either(..))
 import Data.Lens (LensP(), lens)
-import SlamData.FileSystem.Resource (Resource(), root)
+import Data.Maybe (Maybe(..))
+
 import SlamData.Download.Model as D
+import SlamData.FileSystem.Resource (Resource())
 
 type State =
   { compress :: Boolean
   , options :: Either D.CSVOptions D.JSONOptions
-  , source :: Resource
+  , source :: Maybe Resource
   }
 
 initialState :: State
 initialState =
   { compress: false
   , options: Left D.initialCSVOptions
-  , source: root
+  , source: Nothing
   }
-
 
 _compress :: forall a r. LensP {compress :: a|r} a
 _compress = lens _.compress _{compress = _}

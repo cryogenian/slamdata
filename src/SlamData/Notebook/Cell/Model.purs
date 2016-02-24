@@ -16,15 +16,18 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Model where
 
-import Prelude ((<$>), (<*>))
+import Prelude ((<$>), (<*>), pure)
 
+import Control.Alt ((<|>))
 import Control.Bind ((>=>))
+import Data.Maybe as M
 
-import Data.Argonaut (Json(), (:=), (~>), (.?), DecodeJson, EncodeJson, decodeJson, jsonEmptyObject)
-import Data.Either (Either())
+import Data.Argonaut ((:=), (~>), (.?))
+import Data.Argonaut as J
+import Data.Either as E
 
-import SlamData.Notebook.Cell.CellId (CellId())
-import SlamData.Notebook.Cell.CellType (CellType())
+import SlamData.Notebook.Cell.CellId as CID
+import SlamData.Notebook.Cell.CellType as CT
 
 -- | `cellType` and `cellId` characterize what is this cell and where is it
 -- | `hasRun` is flag for routing process, if it's `hasRun` we probably should
@@ -32,24 +35,28 @@ import SlamData.Notebook.Cell.CellType (CellType())
 -- | `state` is cell state, it's already encoded to `Json` to keep `Cell` type a bit
 -- | simpler. I.e. it can hold markdown texts or viz options
 type Model =
-  { cellId :: CellId
-  , cellType :: CellType
-  , state :: Json
+  { cellId :: CID.CellId
+  , cellType :: CT.CellType
+  , state :: J.Json
   , hasRun :: Boolean
+  , cachingEnabled :: M.Maybe Boolean
   }
 
-encode :: Model -> Json
+encode :: Model -> J.Json
 encode cell
    = "cellId" := cell.cellId
   ~> "cellType" := cell.cellType
   ~> "state" := cell.state
   ~> "hasRun" := cell.hasRun
-  ~> jsonEmptyObject
+  ~> "cachingEnabled" := cell.cachingEnabled
+  ~> J.jsonEmptyObject
 
-decode :: Json -> Either String Model
-decode = decodeJson >=> \obj ->
-  { cellId: _, cellType: _, hasRun: _, state: _ }
-    <$> obj .? "cellId"
-    <*> obj .? "cellType"
-    <*> obj .? "hasRun"
-    <*> obj .? "state"
+decode :: J.Json -> E.Either String Model
+decode =
+  J.decodeJson >=> \obj ->
+    { cellId: _, cellType: _, hasRun: _, state: _, cachingEnabled: _ }
+      <$> obj .? "cellId"
+      <*> obj .? "cellType"
+      <*> obj .? "hasRun"
+      <*> obj .? "state"
+      <*> (obj .? "cachingEnabled" <|> pure M.Nothing)

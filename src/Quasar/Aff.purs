@@ -368,7 +368,7 @@ reqHeadersToJSON = F.foldl go JS.jsonEmptyObject
 
 mountInfo
   :: forall e
-   . R.Resource
+   . PU.DirPath
   -> M.Maybe Auth.IdToken
   -> Array Perm.Permission
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) String
@@ -376,30 +376,24 @@ mountInfo res idToken perms = do
   result <- getOnce mountPath applicationJSON idToken perms
   if succeeded result.status
      then case parse result.response of
-       E.Left err ->
-         Err.throwError $ Exn.error (show err)
-       E.Right uri ->
-         pure uri
+       E.Left err -> Err.throwError $ Exn.error (show err)
+       E.Right uri -> pure uri
      else Err.throwError (Exn.error result.response)
 
   where
   mountPath :: P.Path P.Abs P.Dir P.Sandboxed
-  mountPath =
-    (Paths.mountUrl </> PU.rootify (R.resourceDir res)) #
-      if R.resourceName res == ""
-        then id
-        else (</> (P.dir (R.resourceName res)))
+  mountPath = Paths.mountUrl </> PU.rootify res
 
   parse :: String -> F String
   parse = parseJSON >=> prop "mongodb" >=> readProp "connectionUri"
 
 viewInfo
   :: forall e
-   . R.Resource
+   . PU.FilePath
   -> M.Maybe Auth.IdToken
   -> Array Perm.Permission
-  -> Aff (RetryEffects (ajax :: AX.AJAX|e)) { sql :: String, vars :: SM.StrMap String }
-viewInfo (R.ViewMount mountPath) idToken perms = do
+  -> Aff (RetryEffects (ajax :: AX.AJAX|e)) { query :: String, vars :: SM.StrMap String }
+viewInfo mountPath idToken perms = do
   result <-
     getOnce (Paths.mountUrl </> PU.rootifyFile mountPath)
       applicationJSON idToken perms
@@ -412,7 +406,7 @@ viewInfo (R.ViewMount mountPath) idToken perms = do
   runQuery :: URI.Query -> SM.StrMap (M.Maybe String)
   runQuery (URI.Query q) = q
 
-  parse :: String -> E.Either String { sql :: String, vars :: SM.StrMap String }
+  parse :: String -> E.Either String { query :: String, vars :: SM.StrMap String }
   parse connURI = do
     connStr <-
       lmap show
@@ -432,15 +426,13 @@ viewInfo (R.ViewMount mountPath) idToken perms = do
         >>= S.stripPrefix "("
         >>= S.stripSuffix ")"
     let vars = SM.fold foldFn SM.empty $ SM.delete "q" queryMap
-    pure { vars, sql }
+    pure { query: sql, vars }
     where
     foldFn :: SM.StrMap String -> String -> M.Maybe String -> SM.StrMap String
     foldFn acc key mbVal = M.fromMaybe acc do
       k <- S.stripPrefix "var." key
       val <- mbVal
       pure $ SM.insert k val acc
-viewInfo _ _ _ = Err.throwError $ Exn.error "Incorrect resource in viewInfo"
-
 
 
 -- | Generates a new resource name based on a directory path and a name for the
@@ -480,7 +472,7 @@ move
   -> Array Perm.Permission
   -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM |e)) (M.Maybe PU.AnyPath)
 move src tgt idToken perms = do
-  let url = if R.isDatabase src || R.isViewMount src
+  let url = if R.isMount src
             then Paths.mountUrl
             else Paths.dataUrl
   cleanViewMounts src idToken perms
@@ -505,12 +497,12 @@ move src tgt idToken perms = do
 
 saveMount
   :: forall e
-   . R.Resource
+   . PU.DirPath
   -> String
   -> M.Maybe Auth.IdToken
   -> Array Perm.Permission
   -> Aff (RetryEffects (ajax :: AX.AJAX |e)) Unit
-saveMount res uri idToken perms = do
+saveMount path uri idToken perms = do
   result <-
     slamjax
     $ insertAuthHeaders idToken perms
@@ -518,10 +510,7 @@ saveMount res uri idToken perms = do
       { method = PUT
       , headers = [ ContentType applicationJSON ]
       , content = M.Just $ stringify { mongodb: {connectionUri: uri } }
-      , url = P.printPath
-              $ Paths.mountUrl
-              </> PU.rootify (R.resourceDir res)
-              </> P.dir (R.resourceName res)
+      , url = P.printPath $ Paths.mountUrl </> PU.rootify path
       }
   if succeeded result.status
     then pure unit
@@ -536,7 +525,7 @@ delete
   -> Array Perm.Permission
   -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM |e)) (M.Maybe R.Resource)
 delete resource idToken perms =
-  if not (R.isDatabase resource || alreadyInTrash resource || R.isViewMount resource)
+  if not (R.isMount resource || alreadyInTrash resource)
   then (moveToTrash resource) <|> (forceDelete resource idToken perms $> M.Nothing)
   else forceDelete resource idToken perms $> M.Nothing
 
@@ -602,10 +591,7 @@ forceDelete res idToken perms = do
       (\p -> newRoot </> PU.rootify p)
 
   rootForResource :: R.Resource -> PU.DirPath
-  rootForResource r =
-    if R.isDatabase r || R.isViewMount r
-    then Paths.mountUrl
-    else Paths.dataUrl
+  rootForResource r = if R.isMount r then Paths.mountUrl else Paths.dataUrl
 
 cleanViewMounts
   :: forall e
@@ -728,8 +714,27 @@ resourceExists
   -> M.Maybe Auth.IdToken
   -> Array Perm.Permission
   -> Aff (RetryEffects (ajax :: AX.AJAX|e)) Boolean
-resourceExists res idToken perms =
-  map E.isRight $ Aff.attempt $ count res idToken perms
+resourceExists res idToken perms = do
+  result <- existsReq
+  if result.status == successStatus
+    then pure true
+    else
+      if result.status == notFoundStatus
+      then pure false
+      else
+        Err.throwError $
+          Exn.error $
+            "Unexpected status code " ++ show result.status
+  where
+  existsReq :: Aff (RetryEffects (ajax :: AX.AJAX|e)) (AX.AffjaxResponse Unit)
+  existsReq =
+    getOnce
+      (Paths.metadataUrl
+        </> PU.rootify (R.resourceDir res)
+        </> P.file (R.resourceName res))
+      applicationJSON
+      idToken
+      perms
 
 portView
   :: forall e

@@ -45,7 +45,8 @@ instance arbitraryArbCell :: Arbitrary ArbCell where
     cellType <- runArbCellType <$> arbitrary
     state <- runArbJson <$> arbitrary
     hasRun <- arbitrary
-    pure $ ArbCell { cellId, cellType, state, hasRun }
+    cachingEnabled <- arbitrary
+    pure $ ArbCell { cellId, cellType, state, hasRun, cachingEnabled }
 
 check :: QC Unit
 check = quickCheck $ runArbCell >>> \model ->
@@ -60,4 +61,5 @@ checkCellEquality model model' =
    , model.cellType == model'.cellType <?> "cellType mismatch"
    , model.state == model'.state <?> "state mismatch"
    , model.hasRun == model'.hasRun <?> "hasRun mismatch"
+   , model.cachingEnabled == model'.cachingEnabled <?> "cachingEnabled mismatch"
    ]

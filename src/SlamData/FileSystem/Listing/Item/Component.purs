@@ -18,14 +18,10 @@ module SlamData.FileSystem.Listing.Item.Component where
 
 import Prelude
 
-import Control.Monad.Aff (attempt)
 import Control.MonadPlus (guard)
 
-import Data.Either (either)
 import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
 import Data.Lens (LensP(), lens, (%~), (.~))
-import Data.Maybe (Maybe(..))
 
 import Halogen
 import Halogen.HTML.CSS.Indexed as CSS
@@ -39,19 +35,15 @@ import Halogen.Themes.Bootstrap3 as B
 import CSS.Geometry (marginBottom)
 import CSS.Size (px)
 
-import Quasar.Aff as API
-import Quasar.Auth as Auth
-
 import SlamData.Effects (Slam())
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
-import SlamData.FileSystem.Resource (Resource(..), resourceName, resourcePath, isDatabase, isFile, isNotebook, isViewMount, hiddenTopLevel, root)
+import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isNotebook, isViewMount, hiddenTopLevel, root)
 import SlamData.Render.CSS as Rc
 
 type State =
   { item :: Item
   , isSearching :: Boolean
   , isHidden :: Boolean
-  , mbURI :: Maybe String
   }
 
 initialState :: State
@@ -59,7 +51,6 @@ initialState =
   { item: PhantomItem root
   , isSearching: false
   , isHidden: false
-  , mbURI: Nothing
   }
 
 _item :: LensP State Item
@@ -71,25 +62,19 @@ _isSearching = lens _.isSearching _{isSearching = _}
 _isHidden :: LensP State Boolean
 _isHidden = lens _.isHidden _{isHidden = _}
 
-_mbURI :: LensP State (Maybe String)
-_mbURI = lens _.mbURI _{mbURI = _}
-
 data Query a
   = Toggle a
   | PresentActions a
   | HideActions a
   | Deselect a
-  | Open a
-  | Configure a
-  | ConfigureView a
-  | Move a
-  | Download a
-  | Remove a
-  | Share a
-  | GetItem (Item -> a)
+  | Open Resource a
+  | Configure Resource a
+  | Move Resource a
+  | Download Resource a
+  | Remove Resource a
+  | Share Resource a
   | SetIsSearching Boolean a
   | SetIsHidden Boolean a
-  | GetURI (Maybe String -> a)
 
 comp :: Component State Query Slam
 comp = component render eval
@@ -132,20 +117,14 @@ eval (HideActions next) = modify (_item %~ hideActions) $> next
   where
   hideActions (ActionsPresentedItem r) = Item r
   hideActions it = it
-eval (Open next) = pure next
-eval (Configure next) = do
-  res <- gets (_.item >>> itemResource)
-  uri <- liftAff $ attempt $ Auth.authed $ API.mountInfo res
-  modify (_mbURI .~ either (const Nothing) Just uri) $> next
-eval (Move next) = pure next
-eval (Download next) = pure next
-eval (Remove next) = pure next
-eval (Share next) = pure next
-eval (ConfigureView next) = pure next
-eval (GetItem continue) = continue <$> gets _.item
+eval (Open _ next) = pure next
+eval (Configure _ next) = pure next
+eval (Move _ next) = pure next
+eval (Download _ next) = pure next
+eval (Remove _ next) = pure next
+eval (Share _ next) = pure next
 eval (SetIsSearching bool next) = modify (_isSearching .~ bool) $> next
 eval (SetIsHidden bool next) = modify (_isHidden .~ bool) $> next
-eval (GetURI continue) = continue <$> gets _.mbURI
 
 itemName :: State -> String
 itemName { isSearching, item } =
@@ -171,14 +150,14 @@ itemView state@{ item } selected presentActions | otherwise =
     , E.onClick (E.input_ Toggle)
     , E.onMouseEnter (E.input_ PresentActions)
     , E.onMouseLeave (E.input_ HideActions)
-    , E.onDoubleClick (E.input_ Open)
+    , E.onDoubleClick $ E.input_ $ Open (itemResource item)
     , ARIA.label label
     ]
     [ H.div
         [ P.class_ B.row ]
         [ H.div [ P.classes [ B.colXs9, Rc.itemContent ] ]
             [ H.a
-                [ E.onClick (\_ -> E.preventDefault $> action Open) ]
+                [ E.onClick (\_ -> E.preventDefault $> action (Open (itemResource item))) ]
                 [ H.i [ iconClasses item ] []
                 , H.text $ itemName state
                 ]
@@ -210,8 +189,8 @@ iconClasses item = P.classes
   iconClass (File _) = B.glyphiconFile
   iconClass (Notebook _) = B.glyphiconBook
   iconClass (Directory _) = B.glyphiconFolderOpen
-  iconClass (Database _) = B.glyphiconHdd
-  iconClass (ViewMount _) = B.glyphiconFile
+  iconClass (Mount (Database _)) = B.glyphiconHdd
+  iconClass (Mount (View _)) = B.glyphiconFile
 
 itemActions :: forall p. Boolean -> Item -> HTML p Query
 itemActions presentActions item | not presentActions = H.text ""
@@ -220,18 +199,13 @@ itemActions presentActions item | otherwise =
     [ P.classes [ B.listInline, B.pullRight ]
     , CSS.style $ marginBottom (px zero)
     ]
-    (viewConf <> conf <> common <> share)
+    (conf <> common <> share)
   where
   r :: Resource
   r = itemResource item
 
-  viewConf :: Array (HTML p Query)
-  viewConf =
-    guard (isViewMount r) $>
-      itemAction ConfigureView "Configure view mount" B.glyphiconWrench
-
   conf :: Array (HTML p Query)
-  conf = guard (isDatabase r) $>
+  conf = guard (isMount r) $>
     itemAction Configure "Configure" B.glyphiconWrench
 
   common :: Array (HTML p Query)
@@ -245,11 +219,11 @@ itemActions presentActions item | otherwise =
   share = guard (isFile r || isNotebook r || isViewMount r) $>
     itemAction Share "Share" B.glyphiconShare
 
-  itemAction :: Action Query -> String -> H.ClassName -> HTML p Query
+  itemAction :: (Resource -> Action Query) -> String -> H.ClassName -> HTML p Query
   itemAction act label cls =
     H.li_
       [ H.button
-          [ E.onClick (E.input_ act)
+          [ E.onClick $ E.input_ (act (itemResource item))
           , P.title label
           , ARIA.label label
           , P.class_ Rc.fileAction

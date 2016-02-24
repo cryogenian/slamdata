@@ -1,10 +1,25 @@
 .dialog-mount {
 
-    .form-group {
-        margin-bottom: 0;
-        +.form-group {
-            margin-top: 15px;
+    .panel {
+        margin: 0;
+        + .panel {
+            margin: 10px 0 0;
         }
+    }
+
+    .panel-body {
+        padding: 10px 15px;
+        .ace_editor {
+            margin: -10px -15px;
+        }
+    }
+
+    .panel-heading {
+        padding: 5px 10px;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
     }
 
     label {
@@ -27,22 +42,9 @@
         }
     }
 
-    .mount-uri input {
-        background: #eee;
-    }
-
-    .mount-name input {
-    }
-
     .mount-userinfo {
-        label {
-            width: 50%;
-        }
         label+label {
-            span {
-                padding-right: 10px;
-                text-align: right;
-            }
+            padding-top: 10px;
         }
     }
 
@@ -79,7 +81,6 @@
             float: left;
         }
         table {
-            width: ~"calc(100% - 100px)";
             input.form-control {
                 width: 100%;
                 border: none;
@@ -102,7 +103,7 @@
     }
 
     .mount-props-scrollbox {
-        max-height: 110px;
+        max-height: 200px;
         overflow: auto;
     }
 

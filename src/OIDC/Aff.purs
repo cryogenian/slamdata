@@ -8,7 +8,6 @@ import Control.UI.Browser (hostAndProtocol, getHref, setLocation)
 import DOM (DOM())
 import Data.Foldable as F
 import Data.StrMap as Sm
-import Data.String as String
 import Data.Tuple (Tuple(..))
 import Data.URI as URI
 import Data.URI.Types as URI

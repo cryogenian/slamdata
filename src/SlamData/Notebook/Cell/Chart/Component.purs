@@ -23,12 +23,11 @@ import Control.Monad (when)
 import Data.Argonaut (jsonEmptyObject)
 import Data.Either (Either(..))
 import Data.Int (toNumber)
-import Data.Lens (preview)
 import Data.Maybe (Maybe(..))
 
-import CSS.Display
+import CSS.Display (position, relative)
 import CSS.Geometry (height, width, left, marginLeft)
-import CSS.Size
+import CSS.Size (px, pct)
 
 import Halogen
 import Halogen.ECharts as He
@@ -39,7 +38,7 @@ import Halogen.HTML.Properties.Indexed as P
 import SlamData.Notebook.Cell.Chart.Component.State
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
 import SlamData.Notebook.Cell.Component as Cc
-import SlamData.Notebook.Cell.Port (_ChartOptions)
+import SlamData.Notebook.Cell.Port (Port(..))
 import SlamData.Effects (Slam())
 import SlamData.Render.CSS as Rc
 
@@ -72,8 +71,8 @@ render state =
 eval :: Natural Ec.CellEvalQuery ChartDSL
 eval (Ec.NotifyRunCell next) = pure next
 eval (Ec.EvalCell value continue) =
-  case value.inputPort >>= preview _ChartOptions of
-    Just options -> do
+  case value.inputPort of
+    Just (ChartOptions options) -> do
       state <- get
       set { width: options.width, height: options.height }
       when (state.width /= options.width)
@@ -83,7 +82,10 @@ eval (Ec.EvalCell value continue) =
       query unit $ action $ He.Set options.options
       query unit $ action He.Resize
       pure $ continue { output: Nothing, messages: [] }
-    Nothing ->
+    Just Blocked -> do
+      query unit $ action He.Clear
+      pure $ continue { output: Nothing, messages: [] }
+    _ ->
       pure $ continue
         { output: Nothing
         , messages: [Left "Expected ChartOptions input"]

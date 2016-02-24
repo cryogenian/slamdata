@@ -121,16 +121,18 @@ type Config =
   , share :: { markShare :: String
              , urlField :: String
              }
-  , configureMount :: { nameField :: String
-                      , uriField :: String
-                      , hostField :: String
-                      , portField :: String
-                      , usernameField :: String
-                      , pathField :: String
-                      , saveButton :: String
-                      , cancelButton :: String
-                      , warningBox :: String
-                      }
+  , configureMount ::
+      { nameField :: String
+      , typeDropdown :: String
+      , uriField :: String
+      , hostField :: String
+      , portField :: String
+      , usernameField :: String
+      , pathField :: String
+      , saveButton :: String
+      , cancelButton :: String
+      , warningBox :: String
+      }
   , modalShown :: String
   , modalDismissed :: String
   , toolbar :: { main :: String

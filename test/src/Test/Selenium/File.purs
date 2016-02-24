@@ -17,80 +17,50 @@ limitations under the License.
 module Test.Selenium.File where
 
 import Prelude
+
 import Control.Bind ((=<<))
-import Control.Monad.Error.Class (throwError)
 import Control.Monad.Eff.Exception (error)
+import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans (lift)
-import Data.Argonaut.Parser (jsonParser)
+
 import Data.Argonaut.Core (toArray)
 import Data.Argonaut.JCursor (toPrims)
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
-import Data.Maybe.Unsafe (fromJust)
+import Data.Argonaut.Parser (jsonParser)
+import Data.Array as Arr
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl, elem)
-import Data.Traversable (traverse)
 import Data.List (List(), length, reverse, filter, null, fromList, (!!))
-import Selenium.Types
-import Selenium.ActionSequence hiding (sequence)
-import Selenium.Monad
-import Selenium.Combinators (checker, awaitUrlChanged, tryToFind)
-import Selenium (showLocator)
-import Node.FS.Aff
-import Node.Encoding (Encoding(UTF8))
-
-import Test.Config
-import SlamData.FileSystem.Routing (Routes(..), routing)
-import SlamData.FileSystem.Routing.Search (searchPath)
-import Routing (matchHash)
-import Data.Array as Arr
-import Data.String.Regex as R
-import Data.String as Str
+import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
+import Data.Maybe.Unsafe (fromJust)
 import Data.Set as S
+import Data.String as Str
+import Data.String.Regex as R
+import Data.Traversable (traverse)
+
+import Node.Encoding (Encoding(UTF8))
+import Node.FS.Aff
+
+import Routing (matchHash)
+
+import Selenium (showLocator)
+import Selenium.ActionSequence hiding (sequence)
+import Selenium.Combinators (checker, awaitUrlChanged, tryToFind)
+import Selenium.Monad
+import Selenium.Types
+
 import SlamData.Config as SDCfg
 import SlamData.Config.Version as Version
+import SlamData.FileSystem.Routing (Routes(..), routing)
+import SlamData.FileSystem.Routing.Search (searchPath)
+
 import Test.Selenium.ActionSequence
 import Test.Selenium.Common
-import Test.Selenium.Monad
+import Test.Selenium.File.Common
+import Test.Selenium.File.Mount.Database
 import Test.Selenium.Log
-
+import Test.Selenium.Monad
 
 foreign import data MODULE :: !
-
-click' :: Element -> Check Unit
-click' = sequence <<< leftClick
-
-home :: Check Unit
-home = do
-  getConfig >>= get <<< _.slamdataUrl
-  fileComponentLoaded
-
-findOpenItem :: String -> Check Element
-findOpenItem name = tryRepeatedlyTo $ findExact =<< byXPath xPath
-  where
-  xPath = "//a[text()='" ++ name ++ "']"
-
-loseItem :: String -> Check Unit
-loseItem name = tryRepeatedlyTo $ loseElement =<< byXPath xPath
-  where
-  xPath = "//*[text()='" ++ name ++ "']"
-
-findItem :: String -> Check Element
-findItem name =
-  tryRepeatedlyTo $ findExact =<< byXPath (selectXPath `xPathOr` deselectXPath)
-  where
-  selectXPath = "//*[@aria-label='Select " ++ name ++ "']"
-  deselectXPath = "//*[@aria-label='Deselect " ++ name ++ "']"
-  xPathOr x y = x ++ "|" ++ y
-
-selectFile :: String -> Check Unit
-selectFile filename = click' =<< findSingle =<< byCss (selectFileCss filename)
-  where
-  selectFileCss filename = "*[aria-label='Select " ++ filename ++ "']"
-
-findTestDb :: Check Element
-findTestDb = do
-  config <- getConfig
-  findItem config.database.name
 
 findOpenTestDb :: Check Element
 findOpenTestDb = do
@@ -101,202 +71,6 @@ findUploadedItem :: Check Element
 findUploadedItem = do
   config <- getConfig
   findItem config.move.name
-
-type MountConfigR =
-  { host :: String
-  , port :: Int
-  }
-
-mountConfigFromConfig :: Check MountConfigR
-mountConfigFromConfig = do
-  config <- getConfig
-  pure { host : config.mongodb.host
-       , port : config.mongodb.port
-       }
-
-mountDatabaseWithMountConfig :: MountConfigR -> Check Unit
-mountDatabaseWithMountConfig mountConfig = do
-  home
-  getMountDatabaseButton >>= sequence <<< leftClick
-  waitModalShown
-  mac <- isMac
-  chrome <- isChrome
-  if mac && chrome
-    then fieldByField
-    else copyPaste
-
-  where
-  connectionUri :: Config -> String
-  connectionUri config =
-    "mongodb://"
-    ++ mountConfig.host
-    ++ ":"
-    ++ show mountConfig.port
-
-  fieldByField :: Check Unit
-  fieldByField = tryRepeatedlyTo do
-    warnMsg $ "This test doesn't check correctness of copy/paste.\n"
-      <> "It's known bug of selenium/chrome/mac combination that modifier keys\n"
-      <> "doesn't work"
-    config <- getConfig
-    nameField <- getNameField
-    portField <- getPortField
-    hostField <- getHostField
-    pathField <- getPathField
-    saveButton <- getSaveButton
-    sequence do
-      leftClick nameField
-      keys config.mount.name
-      leftClick portField
-      keys $ show mountConfig.port
-      leftClick hostField
-      keys mountConfig.host
-      leftClick pathField
-      keys config.database.name
-      leftClick saveButton
-
-  copyPaste :: Check Unit
-  copyPaste = tryRepeatedlyTo do
-    config <- getConfig
-    uriField <- getUriField
-    nameField <- getNameField
-    saveButton <- getSaveButton
-    modifierKey <- getModifierKey
-    sequence do
-      leftClick nameField
-      keys $ connectionUri config
-      selectAll modifierKey
-      copy modifierKey
-      selectAll modifierKey
-      keys config.mount.name
-
-      leftClick uriField
-      paste modifierKey
-
-      leftClick saveButton
-
-  getSaveButton :: Check Element
-  getSaveButton = do
-    config <- getConfig
-    tryRepeatedlyTo $ byCss config.configureMount.saveButton >>= findExact
-
-  getUriField :: Check Element
-  getUriField = do
-    config <- getConfig
-    tryRepeatedlyTo $ byCss config.configureMount.uriField >>= findExact
-
-  getNameField :: Check Element
-  getNameField = do
-    config <- getConfig
-    tryRepeatedlyTo $ byCss config.configureMount.nameField >>= findExact
-
-  getPathField :: Check Element
-  getPathField = do
-    config <- getConfig
-    tryRepeatedlyTo $ byCss config.configureMount.pathField >>= findExact
-
-  getPortField :: Check Element
-  getPortField = do
-    config <- getConfig
-    tryRepeatedlyTo $ byCss config.configureMount.portField >>= findExact
-
-  getHostField :: Check Element
-  getHostField = do
-    config <- getConfig
-    tryRepeatedlyTo $ byCss config.configureMount.hostField >>= findExact
-
-  getMountDatabaseButton :: Check Element
-  getMountDatabaseButton = do
-    config <- getConfig
-    tryToFind $ byAriaLabel config.toolbar.mountDatabase
-
-goodMountDatabase :: Check Unit
-goodMountDatabase = do
-  sectionMsg "MOUNT TEST DATABASE"
-  mountConfigFromConfig
-    >>= mountDatabaseWithMountConfig
-
-  config <- getConfig
-  tryRepeatedlyTo expectMountShown
-
-  where
-  expectMountShown :: Check Unit
-  expectMountShown = do
-    config <- getConfig
-    void $ findItem config.mount.name
-
-badMountDatabase :: Check Unit
-badMountDatabase = do
-  sectionMsg "BAD MOUNT TEST DATABASE"
-  config <- getConfig
-  badMountConfig
-    >>= mountDatabaseWithMountConfig
-  warningBox <- getElementByCss config.configureMount.warningBox "no warning box"
-  -- wait for any old validation messages to disappear
-  wait (checker $ not <$> isDisplayed warningBox) config.selenium.waitTime
-  -- wait for the server error to appear
-  wait (checker $ isDisplayed warningBox) 8000
-
-  tryRepeatedlyTo
-    $ getElementByCss config.configureMount.cancelButton "no cancel button"
-    >>= sequence <<< leftClick
-  waitModalDismissed
-  where
-    badMountConfig :: Check MountConfigR
-    badMountConfig = do
-      mountConfig <- mountConfigFromConfig
-      pure $ mountConfig { port = mountConfig.port - 1 }
-
-unmountDatabase :: Check Unit
-unmountDatabase = do
-  sectionMsg "UNMOUNT TEST DATABASE"
-  home
-  config <- getConfig
-  click' =<< findItem config.mount.name
-  click' =<< itemGetDeleteIcon =<< findItem config.mount.name
-  loseItem config.mount.name
-  successMsg "successfully unmounted"
-
-
-checkMountedDatabase :: Check Unit
-checkMountedDatabase = do
-  sectionMsg "CHECK TEST DATABASE IS MOUNTED"
-  enterMount
-  void $ findTestDb
-  successMsg "test database found"
-
-checkConfigureMount :: Check Unit
-checkConfigureMount = do
-  sectionMsg "CHECK CONFIGURE MOUNT DIALOG"
-  enterMount
-
-  button <- getConfigureMountButton
-  successMsg "got configure-mount button"
-  sequence $ leftClick button
-
-  config <- getConfig
-  waitModalShown
-  successMsg "configure-mount dialog shown"
-
-  -- make sure a no-op edit doesn't result in a validation error
-  usernameField <- getElementByCss config.configureMount.usernameField "no usernameField field"
-
-  modifierKey <- getModifierKey
-  sequence do
-    leftClick usernameField
-    sendBackspaces 100
-    keys "hello"
-    undo modifierKey
-
-  getElementByCss config.configureMount.saveButton "no save button"
-    >>= isEnabled
-    >>= assertBoolean "save button should be enabled"
-
-  where
-  getConfigureMountButton :: Check Element
-  getConfigureMountButton = do
-    config <- getConfig
-    tryToFind $ byAriaLabel config.toolbar.configureMount
 
 getItemToolbar :: Check { listGroupItem :: Element, itemToolbar :: Element}
 getItemToolbar = do
@@ -344,16 +118,6 @@ checkURL = do
       else errorMsg "incorrect search path"
   checkHash _ =
     errorMsg "need additional redirects"
-
-
-enterMount :: Check Unit
-enterMount = do
-  home
-  url <- getCurrentUrl
-  config <- getConfig
-  click' =<< findOpenItem config.mount.name
-  wait (awaitUrlChanged url) config.selenium.waitTime
-  fileComponentLoaded
 
 goDown :: Check Unit
 goDown = do
@@ -551,7 +315,6 @@ awaitItemWithPhrase phrase = checker $ do
     contains :: String -> String -> Boolean
     contains phrase = R.test (R.regex phrase R.noFlags)
 
-
 awaitInNotebook :: Check Boolean
 awaitInNotebook = checker $ do
   url <- getCurrentUrl
@@ -564,12 +327,6 @@ awaitInNotebook = checker $ do
       config <- getConfig
       let phrase = "notebook.html#/explore/" <> config.mount.name <> "/" <> config.database.name
       pure $ R.regex phrase R.noFlags
-
-
-itemGetDeleteIcon :: Element -> Check Element
-itemGetDeleteIcon item = do
-  config <- getConfig
-  tryRepeatedlyTo $ byAriaLabel config.move.markDelete >>= childExact item
 
 -- | Activate the item's toolbar and click' a button/icon in it
 itemClickToolbarIcon :: Element -> Element -> Check Unit
@@ -667,57 +424,12 @@ createNotebook = do
   getNewNotebook :: Check Element
   getNewNotebook = findItem SDCfg.newNotebookName
 
-
-
 checkTitle :: Check Unit
 checkTitle = do
   windowTitle <- getTitle
   if Str.contains Version.slamDataVersion windowTitle
     then successMsg "Title contains version"
     else errorMsg $ "Title (" ++ windowTitle ++ ") doesn't contain version"
-
-moveDelete :: String -> Check Unit -> String -> String -> Check Unit
-moveDelete msg setUp src tgt = do
-  sectionMsg $ "check move/delete " <> msg
-  setUp
-  config <- getConfig
-  selectFile src
-  click' =<< (itemGetMoveIcon =<< findItem src )
-  waitModalShown
-  tryRepeatedlyTo
-    $ getElementByCss config.move.nameField "no rename field"
-    >>= editNameField
-
-  tryRepeatedlyTo
-    $ getElementByCss config.move.submit "no submit button"
-    >>= sequence <<< leftClick
-
-  findItem tgt
-  successMsg $ "ok, successfully renamed (" <> msg <> ")"
-
-  selectFile tgt
-  click' =<< (itemGetDeleteIcon =<< findItem tgt)
-  tryRepeatedlyTo $ loseItem tgt
-  successMsg $ "ok, successfully deleted (" <> msg <> ")"
-  where
-  itemGetMoveIcon :: Element -> Check Element
-  itemGetMoveIcon item = do
-    config <- getConfig
-    tryRepeatedlyTo $ byAriaLabel config.move.markMove >>= childExact item
-
-  editNameField :: Element -> Check Unit
-  editNameField nameField = do
-    config <- getConfig
-    modifierKey <- getModifierKey
-    sequence do
-      leftClick nameField
-      sendBackspaces 100
-      keys tgt
-
-moveDeleteDatabase :: Check Unit
-moveDeleteDatabase = do
-  config <- getConfig
-  moveDelete "database" home config.mount.name config.mount.otherName
 
 moveDeleteFolder :: Check Unit
 moveDeleteFolder = do
@@ -733,8 +445,6 @@ moveDeleteFile:: Check Unit
 moveDeleteFile = do
   config <- getConfig
   moveDelete "file" goDown config.move.name config.move.other
-
-
 
 downloadResource :: Check Unit
 downloadResource = do
@@ -895,14 +605,7 @@ test :: Check Unit
 test = do
   home
   startSpying
-  badMountDatabase
-  goodMountDatabase
-  moveDeleteDatabase
-  goodMountDatabase
-  unmountDatabase
-  goodMountDatabase
-  checkMountedDatabase
-  checkConfigureMount
+  testMountDatabase
   checkItemToolbar
   checkURL
   goDown

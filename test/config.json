@@ -90,6 +90,7 @@
     },
     "configureMount": {
         "nameField": ".modal.fade.in .mount-name input",
+        "typeDropdown": ".modal.fade.in select",
         "uriField": ".modal.fade.in .mount-uri input",
         "hostField": ".modal.fade.in .mount-host:first-of-type label:first-of-type input",
         "portField": ".modal.fade.in .mount-host:first-of-type label:last-of-type input",

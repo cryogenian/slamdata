@@ -101,7 +101,7 @@ predicateToSQL
   -> String
 predicateToSQL (SS.Contains (SS.Text v)) s =
   joinWith " OR " $
-    [s <> " ~* '" <> (globToRegex $ containsToGlob v) <> "'"]
+    [s <> " ~* " <> SQL2. renderLiteral (SQL2.string (globToRegex (containsToGlob v)))]
     <> (if needUnq v then renderLowercased v else [])
     <> (if not (needDateTime v) && needDate v then render date else [ ])
     <> (if needTime v then render time  else [])
@@ -157,7 +157,7 @@ predicateToSQL (SS.Gte v) s = renderBinRel s ">=" v
 predicateToSQL (SS.Lt v) s = renderBinRel s "<" v
 predicateToSQL (SS.Lte v) s = renderBinRel s "<=" v
 predicateToSQL (SS.Ne v) s = renderBinRel s "<>" v
-predicateToSQL (SS.Like v) s = s <> " ~* '" <> v <> "'"
+predicateToSQL (SS.Like v) s = s <> " ~* " <> SQL2.renderLiteral (SQL2.string v)
 
 globToRegex :: String -> String
 globToRegex =

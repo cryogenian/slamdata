@@ -7,7 +7,7 @@
 
 # SlamData
 
-Web-based visual analytics for NoSQL data, powered by Quasar.
+Web-based visual analytics for NoSQL data, powered by [Quasar](https://github.com/quasar-analytics/quasar).
 
 ## Pre-built releases
 
@@ -83,7 +83,7 @@ Here it would be
 
 ```html
 <link type="text/css" rel="stylesheet" href="css/foo.css">
-<link type="text/css" rel="stylesheet" href="http://foo.com/style.css"
+<link type="text/css" rel="stylesheet" href="http://foo.com/style.css">
 ```
 ## Additional permissions
 

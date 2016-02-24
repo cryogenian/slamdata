@@ -39,7 +39,7 @@ import Data.Functor.Coproduct (coproduct, left, right)
 import Data.Functor.Eff (liftEff)
 import Data.Lens (LensP(), view, (.~), (%~), (?~))
 import Data.List as List
-import Data.Maybe (Maybe(..), maybe, isNothing)
+import Data.Maybe (Maybe(..), maybe, fromMaybe, isNothing)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
@@ -75,7 +75,7 @@ import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import SlamData.Notebook.Cell.Component (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..))
 import SlamData.Notebook.Cell.JTable.Component as JTC
 import SlamData.Notebook.Cell.Markdown.Component as MDC
-import SlamData.Notebook.Cell.Port (Port())
+import SlamData.Notebook.Cell.Port (Port(..))
 import SlamData.Notebook.Editor.Component.CellSlot (CellSlot(..))
 import SlamData.Notebook.Editor.Component.Query
 import SlamData.Notebook.Editor.Component.State
@@ -286,6 +286,8 @@ peekCell cellId q = case q of
       Nothing -> pure unit
     when (autorun cellType) $ runCell newCellId
     triggerSave unit
+  ToggleCaching _ ->
+    triggerSave unit
   ShareCell _ -> pure unit
   StopCell _ -> do
     modify $ _runTrigger .~ Nothing
@@ -372,7 +374,7 @@ updateCell inputPort cellId = do
   globalVarMap <- gets _.globalVarMap
   let input = { notebookPath: path, inputPort, cellId, globalVarMap }
   result <- join <$> (query (CellSlot cellId) $ left $ request (UpdateCell input))
-  maybe (pure unit) (runCellDescendants cellId) result
+  runCellDescendants cellId (fromMaybe Blocked result)
   where
   runCellDescendants :: CellId -> Port -> NotebookDSL Unit
   runCellDescendants parentId value = do

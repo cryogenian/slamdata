@@ -101,7 +101,7 @@ temporaryOutputResource info =
   (outputDirectory </> outputFile)
     # if M.fromMaybe false info.cachingEnabled
       then R.File
-      else R.ViewMount
+      else R.Mount <<< R.View
   where
     outputDirectory =
       filterMaybe (== P.rootDir) info.notebookPath #

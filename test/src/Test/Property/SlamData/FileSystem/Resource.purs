@@ -22,7 +22,7 @@ import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 import Data.List (toList)
 
-import SlamData.FileSystem.Resource (Resource(..))
+import SlamData.FileSystem.Resource (Resource(..), Mount(..))
 
 import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
 import Test.StrongCheck.Gen (elements)
@@ -41,10 +41,10 @@ instance arbitraryArbResource :: Arbitrary ArbResource where
       elements
         (File fp)
         (toList
-          [ ViewMount fp
+          [ Mount (View fp)
           , Notebook dp
           , Directory dp
-          , Database dp
+          , Mount (Database dp)
           ])
 
 check :: QC Unit
