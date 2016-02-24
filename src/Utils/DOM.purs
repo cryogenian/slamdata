@@ -50,23 +50,3 @@ foreign import waitLoaded :: forall e. Aff (dom :: DOM |e) Unit
 foreign import onLoad :: forall e. Eff e Unit -> Eff e Unit
 foreign import blur :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
 foreign import focus :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
-
-foreign import getComputedStyle
-  :: forall e
-   . HTMLElement
-  -> Eff (dom :: DOM|e) (Sm.StrMap String)
-
-type ClientRect =
-  {
-    bottom :: Number
-  , top :: Number
-  , left :: Number
-  , right :: Number
-  , height :: Number
-  , width :: Number
-  }
-
-foreign import getClientRects
-  :: forall e
-   . HTMLElement
-  -> Eff (dom :: DOM|e) (Array ClientRect)

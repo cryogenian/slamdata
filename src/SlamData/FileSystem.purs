@@ -76,9 +76,7 @@ import Text.SlamSearch.Types (SearchQuery())
 
 import Utils.Path (DirPath(), hidePath, renderPath)
 
-import SlamData.Dialog.Share.RotarySelector.Component  as P
-
-import Data.NonEmpty ((:|))
+import SlamData.Dialog.Share.Permissions.Component  as P
 
 main :: Eff SlamDataEffects Unit
 main = do
@@ -93,25 +91,9 @@ main = do
 --      setSlamDataTitle version
 --      halogen.driver (left $ action $ SetVersion version)
 --    forkAff $ routeSignal halogen.driver
-  let
-    comp = P.comp
-             { itemRender: Nothing
-             , itemWidth: 200.0
-             , visibleItemCount: Just 2.3
-             , items: map (P.Option <<< {label: _, trololo: 12}) $ "foo" :| [ "bar", "baz" ]
-             }
   runAff throwException (const (pure unit)) do
     halogen <-
-      runUI comp.component
-      $ P.initialState $ map (P.Option <<< {label: _, trololo: 12}) $ "foo" :| ["bar", "baz"]
-    let
-      work =
-        later' 1000 do
-          mb <- halogen.driver (request P.GetSelected)
-          Debug.Trace.traceAnyA $ (comp.unpack mb) # P.runOption # _.trololo
-          work
-    forkAff work
-
+      runUI P.comp P.initialState
     onLoad (appendToBody halogen.node)
 
 

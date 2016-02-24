@@ -23,20 +23,3 @@ exports.focus = function(el) {
         return el.focus();
     };
 };
-
-exports.getComputedStyle = function(el) {
-    return function() {
-        return getComputedStyle(el);
-    };
-};
-
-exports.getClientRects = function(el) {
-    return function() {
-        var rects = el.getClientRects(),
-            result = [];
-        for (var i = 0; i < rects.length; i++) {
-            result.push(rects[i]);
-        }
-        return result;
-    };
-};

@@ -1,9 +1,9 @@
-module SlamData.Dialog.Share.Permissions where
+module SlamData.Dialog.Share.Permissions.Component where
 
 import Prelude
 
 import Data.Functor (($>))
-import Data.Lens (LensP(), lens, (%~))
+import Data.Lens (LensP(), lens, (%~), (.~))
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -13,7 +13,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam())
 
-type State =
+type Permissions =
   {
     add :: Boolean
   , read :: Boolean
@@ -21,14 +21,33 @@ type State =
   , delete :: Boolean
   }
 
-initialState :: State
-initialState =
+notAllowed :: Permissions
+notAllowed =
   {
     add: false
   , read: false
   , modify: false
   , delete: false
   }
+
+type State =
+  {
+    current :: Permissions
+  , max :: Permissions
+  }
+
+initialState :: State
+initialState =
+  {
+    current: notAllowed
+  , max: notAllowed
+  }
+
+_current :: forall a r. LensP {current :: a|r} a
+_current = lens _.current _{current = _}
+
+_max :: forall a r. LensP {max :: a|r} a
+_max = lens _.max _{max = _}
 
 _add :: forall a r. LensP {add :: a|r} a
 _add = lens _.add _{add = _}
@@ -47,7 +66,8 @@ data Query a
   | ToggleRead a
   | ToggleModify a
   | ToggleDelete a
-  | GetState (State -> a)
+  | SetMaximum Permissions a
+  | GetSelected (Permissions -> a)
 
 type PermissionsDSL = ComponentDSL State Query Slam
 
@@ -55,13 +75,14 @@ comp :: forall e. Component State Query Slam
 comp = component render eval
 
 render :: State -> ComponentHTML Query
-render state =
+render {current, max} =
   H.form_
     [
       H.label [ P.classes [ B.checkboxInline ] ]
         [
           H.input [ P.inputType P.InputCheckbox
-                  , P.checked state.add
+                  , P.checked (max.add && current.add)
+                  , P.disabled $ not max.add
                   , E.onChecked (E.input_ ToggleAdd)
                   ]
         , H.text  "Add"
@@ -69,7 +90,8 @@ render state =
     , H.label [ P.classes [ B.checkboxInline ] ]
         [
           H.input [ P.inputType P.InputCheckbox
-                  , P.checked state.read
+                  , P.checked (max.read && current.read)
+                  , P.disabled $ not max.read
                   , E.onChecked (E.input_ ToggleRead)
                   ]
         , H.text "Read"
@@ -77,7 +99,8 @@ render state =
     , H.label [ P.classes [ B.checkboxInline ] ]
         [
           H.input [ P.inputType P.InputCheckbox
-                  , P.checked state.modify
+                  , P.checked (max.modify && current.modify)
+                  , P.disabled $ not max.modify
                   , E.onChecked (E.input_ ToggleModify)
                   ]
         , H.text "Modify"
@@ -85,7 +108,8 @@ render state =
     , H.label [ P.classes [ B.checkboxInline ] ]
         [
           H.input [ P.inputType P.InputCheckbox
-                  , P.checked state.delete
+                  , P.checked (max.delete && current.delete)
+                  , P.disabled $ not max.delete
                   , E.onChecked (E.input_ ToggleDelete)
                   ]
         , H.text "Delete"
@@ -93,8 +117,9 @@ render state =
     ]
 
 eval :: Natural Query PermissionsDSL
-eval (ToggleAdd next) = modify (_add %~ not) $> next
-eval (ToggleRead next) = modify (_read %~ not) $> next
-eval (ToggleModify next) = modify (_modify %~ not) $> next
-eval (ToggleDelete next) = modify (_delete %~ not) $> next
-eval (GetState continue) = map continue get
+eval (ToggleAdd next) = modify (_current <<< _add %~ not) $> next
+eval (ToggleRead next) = modify (_current <<< _read %~ not) $> next
+eval (ToggleModify next) = modify (_current <<< _modify %~ not) $> next
+eval (ToggleDelete next) = modify (_current <<< _delete %~ not) $> next
+eval (SetMaximum m next) = modify (_max .~ m) $> next
+eval (GetSelected continue) = map continue $ gets _.current
