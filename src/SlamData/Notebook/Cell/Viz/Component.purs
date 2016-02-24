@@ -92,11 +92,11 @@ vizComponent = makeEditorCellComponent
 
 render :: State -> VizHTML
 render state =
-  H.div_ $
-  [ renderLoading $ not state.loading
-  , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
-  , renderForm state
-  ]
+  H.div [ P.classes [ Rc.cellInput ] ]
+    [ renderLoading $ not state.loading
+    , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
+    , renderForm state
+    ]
 
 renderLoading :: Boolean -> VizHTML
 renderLoading hidden =

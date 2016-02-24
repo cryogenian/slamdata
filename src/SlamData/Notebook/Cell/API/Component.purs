@@ -34,6 +34,7 @@ import Data.StrMap as SM
 
 import Halogen
 import Halogen.HTML.Indexed as H
+import Halogen.HTML.Properties.Indexed as P
 
 import SlamData.Notebook.Cell.API.Component.Query
 import SlamData.Notebook.Cell.API.Component.State
@@ -45,6 +46,7 @@ import SlamData.Notebook.Cell.Port as Port
 import SlamData.Effects (Slam())
 import SlamData.Notebook.FormBuilder.Component as FB
 import SlamData.Notebook.FormBuilder.Item.Component as Item
+import SlamData.Render.CSS as Rc
 
 type APIHTML = ParentHTML (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam Unit
 type APIDSL = ParentDSL State (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam Unit
@@ -64,10 +66,12 @@ render
   :: State
   -> APIHTML
 render _ =
-  H.slot unit \_ ->
-    { component : FB.formBuilderComponent
-    , initialState : installedState FB.initialState
-    }
+  H.div [ P.classes [ Rc.cellInput ] ]
+    [ H.slot unit \_ ->
+       { component : FB.formBuilderComponent
+       , initialState : installedState FB.initialState
+       }
+    ]
 
 compileVarMap
   :: L.List Item.Model
