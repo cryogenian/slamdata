@@ -44,6 +44,8 @@ import Data.Time (Milliseconds())
 
 import Halogen (ChildF())
 
+import SlamData.Notebook.AccessType as Na
+
 import SlamData.Notebook.Cell.Ace.Component.Query as Ace
 import SlamData.Notebook.Cell.API.Component.Query as API
 import SlamData.Notebook.Cell.APIResults.Component.Query as APIResults
@@ -95,6 +97,7 @@ data CellQuery a
   | GetOutput (Maybe Port -> a)
   | SaveCell CellId CellType (Cell.Model -> a)
   | LoadCell Cell.Model a
+  | SetCellAccessType Na.AccessType a
 
 type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
 

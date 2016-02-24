@@ -40,6 +40,7 @@ import Data.Functor.Eff (liftEff)
 import Data.Lens (LensP(), view, (.~), (%~), (?~))
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isNothing)
+import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
@@ -243,7 +244,12 @@ eval (SetName name next) =
              Both d _ -> Both d name
              This d -> Both d name
          ) $> next
-eval (SetAccessType aType next) = modify (_accessType .~ aType) $> next
+eval (SetAccessType aType next) = do
+  cids <- map Map.keys $ gets _.cellTypes
+  for_ cids \cellId -> do
+    void $ query (CellSlot cellId) $ left $ action $ SetCellAccessType aType
+  modify (_accessType .~ aType)
+  pure next
 eval (GetNotebookPath k) = k <$> gets notebookPath
 eval (SetViewingCell mbcid next) = modify (_viewingCell .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook unit $> next

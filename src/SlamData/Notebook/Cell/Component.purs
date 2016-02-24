@@ -33,6 +33,7 @@ import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Free (liftF)
 import Control.Monad.Aff (cancel)
 import Control.Monad.Eff.Exception as Exn
+import Control.MonadPlus (guard)
 
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Eff (liftEff)
@@ -95,7 +96,7 @@ makeEditorCellComponent def = makeCellComponentPart def render
   render =
     cellSourceRender
       def
-      (\x -> x.visibility == Invisible || x.accessType == ReadOnly)
+      (\x -> x.accessType == ReadOnly)
       (\x -> [statusBar x.hasResults x])
 
 -- | Sometimes we don't need editor or results and whole cell can be expressed
@@ -114,7 +115,7 @@ makeSingularCellComponent def = makeCellComponentPart def render
   render =
     cellSourceRender
       def
-      (\x -> x.visibility == Invisible)
+      (const false)
       (const [])
 
 cellSourceRender
@@ -126,23 +127,24 @@ cellSourceRender
   -> AnyCellState
   -> CellState
   -> CellHTML
-cellSourceRender def hided afterContent component initialState cs =
-  if hided cs
-  then H.text ""
-  else shown
+cellSourceRender def collapseWhen afterContent component initialState cs =
+  if cs.visibility == Invisible
+    then H.text ""
+    else shown
   where
-  collapsedClass = if cs.isCollapsed then [CSS.collapsed] else []
+  shouldCollapse =
+    cs.isCollapsed || collapseWhen cs
+  collapsedClass =
+    guard shouldCollapse $> CSS.collapsed
+
   shown :: CellHTML
   shown =
     H.div [ P.classes $ join [ containerClasses, collapsedClass ] ]
     $ [ header def cs
-      , row' (fadeWhen cs.isCollapsed)
+      , row' (fadeWhen shouldCollapse)
         [ H.slot unit \_ -> { component: component, initialState: initialState } ]
       ]
       <> afterContent cs
-
-
-
 
 -- | Constructs a cell component for an results-style cell.
 makeResultsCellComponent
@@ -282,6 +284,8 @@ makeCellComponentPart def render =
       modify (_cachingEnabled .~ b)
     query unit (left (action (Load model.state)))
     pure next
+  eval (SetCellAccessType at next) =
+    modify (_accessType .~ at) $> next
 
   peek :: forall a. ChildF Unit InnerCellQuery a -> CellDSL Unit
   peek (ChildF _ q) = coproduct cellEvalPeek (const $ pure unit) q

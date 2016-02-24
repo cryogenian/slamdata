@@ -63,7 +63,10 @@ exploreComponent =
 render :: State -> ParentHTML FI.State NC.CellEvalQuery FI.Query Slam Unit
 render state =
   H.div
-    [ P.class_ CSS.exploreCellEditor ]
+    [ P.classes  [ CSS.exploreCellEditor
+                 , CSS.cellInput
+                 ]
+    ]
     [ H.slot unit \_ -> { component: FI.fileInputComponent, initialState: FI.initialState } ]
 
 eval :: Natural NC.CellEvalQuery (ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
