@@ -17,8 +17,7 @@ limitations under the License.
 module Utils.Array where
 
 import Prelude
-import Data.Array (range, length, zip, concat, replicate, cons, snoc, uncons)
-import Data.Maybe (Maybe(..))
+import Data.Array (range, length, zip)
 import Data.Tuple (Tuple())
 
 enumerate :: forall a. Array a -> Array (Tuple Int a)

@@ -27,7 +27,6 @@ import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
 import DOM.Node.Types (elementToParentNode, Element(), documentToEventTarget)
 import Data.Maybe (Maybe())
-import Data.StrMap as Sm
 import Data.Nullable (toMaybe)
 import Prelude
 import Unsafe.Coerce (unsafeCoerce)
@@ -35,8 +34,11 @@ import Unsafe.Coerce (unsafeCoerce)
 elementToHTMLElement :: Element -> HTMLElement
 elementToHTMLElement = unsafeCoerce
 
-querySelector :: forall e. String -> HTMLElement ->
-                 Eff (dom :: DOM|e) (Maybe HTMLElement)
+querySelector
+  :: forall e
+   . String
+  -> HTMLElement
+  -> Eff (dom :: DOM|e) (Maybe HTMLElement)
 querySelector str htmlEl =
   map (toMaybe >>> map elementToHTMLElement)
   $ P.querySelector str $ elementToParentNode $ htmlElementToElement htmlEl

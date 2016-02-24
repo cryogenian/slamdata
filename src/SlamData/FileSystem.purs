@@ -76,7 +76,7 @@ import Text.SlamSearch.Types (SearchQuery())
 
 import Utils.Path (DirPath(), hidePath, renderPath)
 
-import SlamData.Dialog.Share.Permissions.Component  as P
+import SlamData.Dialog.Share.Code.Component  as P
 
 main :: Eff SlamDataEffects Unit
 main = do

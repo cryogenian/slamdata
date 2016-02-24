@@ -371,3 +371,9 @@ fileAction = className "file-action"
 
 permissionsCheckboxes :: ClassName
 permissionsCheckboxes = className "permissions-checkboxes"
+
+tokenGeneratorForm :: ClassName
+tokenGeneratorForm = className "token-generator-form"
+
+cancelInputRunIcon :: ClassName
+cancelInputRunIcon = className "cancel-input-run-icon"

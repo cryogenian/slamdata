@@ -71,7 +71,7 @@ data Query a
 
 type PermissionsDSL = ComponentDSL State Query Slam
 
-comp :: forall e. Component State Query Slam
+comp :: Component State Query Slam
 comp = component render eval
 
 render :: State -> ComponentHTML Query
