@@ -16,7 +16,7 @@ limitations under the License.
 
 module Utils.Array where
 
-import Prelude
+import Prelude (($))
 import Data.Array (range, length, zip)
 import Data.Tuple (Tuple())
 
