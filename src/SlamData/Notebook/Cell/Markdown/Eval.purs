@@ -20,7 +20,7 @@ import Prelude
 
 import Control.Bind ((<=<))
 import Control.Monad.Aff (attempt)
-import Control.Monad.Eff.Exception (error)
+import Control.Monad.Eff.Exception (error, message)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.State.Trans (StateT(), evalStateT, get, modify)
 
@@ -39,7 +39,6 @@ import Data.StrMap as SM
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
 
-import SlamData.FileSystem.Resource (Resource(..))
 import SlamData.Notebook.Cell.Ace.Component (AceDSL())
 import SlamData.Notebook.Cell.Ace.Component (AceDSL())
 import SlamData.Notebook.Cell.CellId (CellId(), cellIdToString)
@@ -57,7 +56,7 @@ markdownEval { cellId, notebookPath } s = liftAff do
   result <- attempt $ evalEmbeddedQueries notebookPath cellId (SD.parseMd s)
   pure case result of
     Left err ->
-      { messages: [ Left (show err) ]
+      { messages: [ Left (message err) ]
       , output: Nothing
       }
     Right doc ->
@@ -127,6 +126,6 @@ evalEmbeddedQueries dir cellId =
     Just dir' -> do
       n <- get :: EvalM Int
       modify (+ 1)
-      let tempFile = File $ dir' </> file ("tmp" <> cellIdToString cellId <> "-" <> show n)
-      result <- liftAff $ Auth.authed $ Quasar.query' tempFile code
+      let tempPath = dir' </> file ("tmp" <> cellIdToString cellId <> "-" <> show n)
+      result <- liftAff $ Auth.authed $ Quasar.query' tempPath code
       either (throwError <<< error) pure result
