@@ -377,3 +377,6 @@ tokenGeneratorForm = className "token-generator-form"
 
 cancelInputRunIcon :: ClassName
 cancelInputRunIcon = className "cancel-input-run-icon"
+
+userShareForm :: ClassName
+userShareForm = className "user-share-form"
