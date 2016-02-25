@@ -24,6 +24,7 @@ import Control.UI.ZClipboard as Z
 
 import Data.Foldable as F
 import Data.Functor.Eff (liftEff)
+import Data.Functor.Aff (liftAff)
 import Data.String.Regex as Rx
 import Data.StrMap as SM
 
@@ -40,6 +41,8 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Notebook.Cell.Port.VarMap as Port
 import SlamData.Render.CSS as Rc
+
+import Utils.DOM (waitLoaded)
 
 type Slam e = Aff (HalogenEffects (zClipboard :: Z.ZCLIPBOARD |e))
 data State = State String Port.VarMap
@@ -170,6 +173,7 @@ eval :: forall e. Eval Query State Query (Slam e)
 eval (Dismiss next) = pure next
 eval (InitZClipboard code htmlEl next) = do
   let el = htmlElementToElement htmlEl
+  liftAff $ waitLoaded
   liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" code)
   pure next
 eval (SelectElement el next) = do
