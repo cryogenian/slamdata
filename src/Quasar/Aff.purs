@@ -244,12 +244,7 @@ retryGet
   -> Array Perm.Permission
   -> AX.Affjax (RetryEffects e) a
 retryGet =
-  getWithPolicy $
-    AX.defaultRetryPolicy
-      { delayCurve = const 1000
-      , timeout = M.Just 30000
-      }
-
+  getWithPolicy $ AX.defaultRetryPolicy { delayCurve = const 1000 }
 
 mkRequest
   :: forall e fd
@@ -669,18 +664,22 @@ query res sql idToken perms =
 
 query'
   :: forall e
-   . R.Resource
+   . PU.FilePath
   -> SQL
   -> M.Maybe Auth.IdToken
   -> Array Perm.Permission
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (E.Either String JS.JArray)
-query' res@(R.File _) sql idToken perms = do
-  result <- retryGet (mkURI' res sql) applicationJSON idToken perms
-  pure if succeeded result.status
-       then JS.decodeJson <=< JS.jsonParser $ result.response
-       else E.Left $ readError "error in query" result.response
-
-query' _ _ _ _ = pure $ E.Left "Query resource is not a file"
+query' path sql idToken perms = do
+  let res = R.File path
+  eResult <- Aff.attempt $
+    AX.affjax =<< mkRequest (mkURI' res sql) applicationJSON idToken perms
+  pure
+    case eResult of
+      E.Left err -> E.Left (Exn.message err)
+      E.Right result ->
+        if succeeded result.status
+        then JS.decodeJson <=< JS.jsonParser $ result.response
+        else E.Left $ readError "error in query" result.response
 
 count
   :: forall e
@@ -753,7 +752,7 @@ portView res dest sql varMap idToken perms = do
                     <> PU.encodeURIPath (templated res sql)
                     <> queryParams
   result <-
-    slamjax
+    AX.affjax
     $ insertAuthHeaders idToken perms
     $ AX.defaultRequest
       { method = PUT
@@ -781,7 +780,7 @@ portQuery
 portQuery res dest sql vars idToken perms = do
   guard $ R.isFile dest
   result <-
-    slamjax
+    AX.affjax
       $ insertAuthHeaders idToken perms
       $ AX.defaultRequest
         { method = POST
