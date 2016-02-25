@@ -16,16 +16,18 @@ limitations under the License.
 
 module Halogen.Component.Utils where
 
-import Prelude (Applicative, pure, Unit(), unit, bind, ($))
+import Prelude (Applicative, pure, Unit(), unit, bind, ($), zero, const)
 
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling as SCR
 
-import Control.Monad.Aff (Aff(), Canceler(), forkAff)
+import Control.Monad.Aff (Aff(), Canceler(), forkAff, later', runAff)
 import Control.Monad.Aff.AVar (AVAR(), makeVar, putVar, takeVar)
 
 import Data.Functor.Aff (liftAff)
+import Data.Functor.Eff (liftEff)
 import Data.Either as E
+import Data.Time (Milliseconds(..))
 
 import Halogen as H --(ComponentDSL(), ParentDSL(), ChildF(..), liftH, subscribe)
 import Halogen.Query.EventSource as He
@@ -51,17 +53,12 @@ liftWithCanceler
    . (Canceler (avar :: AVAR|e)-> Unit -> f Unit)
   -> Aff (avar :: AVAR|e) a
   -> H.ComponentDSL s f (Aff (avar :: AVAR|e)) a
-liftWithCanceler send aff = do
+liftWithCanceler f aff = do
   v <- liftAff makeVar
   canceler <- liftAff $ forkAff do
     res <- aff
     putVar v res
-  H.subscribe
-    $ He.EventSource
-    $ SCR.producerToStallingProducer
-    $ produce \emit -> do
-      emit $ E.Left $ send canceler unit
-      emit $ E.Right unit
+  sendAfter zero $ f canceler unit
   liftAff $ takeVar v
 
 liftWithCanceler'
@@ -69,15 +66,41 @@ liftWithCanceler'
    . (Canceler (avar :: AVAR|e) -> Unit -> f Unit)
   -> Aff (avar :: AVAR|e) a
   -> H.ParentDSL s s' f f' (Aff (avar :: AVAR|e)) p a
-liftWithCanceler' send aff = do
+liftWithCanceler' f aff = do
   v <- liftAff makeVar
   canceler <- liftAff $ forkAff do
     res <- aff
     putVar v res
-  H.subscribe'
-    $ He.EventSource
-    $ SCR.producerToStallingProducer
-    $ produce \emit -> do
-      emit $ E.Left $ send canceler unit
-      emit $ E.Right unit
+  sendAfter' zero $ f canceler unit
   liftAff $ takeVar v
+
+sendAfter
+  :: forall s f e
+   . Milliseconds
+  -> f Unit
+  -> H.ComponentDSL s f (Aff (avar :: AVAR|e)) Unit
+sendAfter ms action =
+  H.subscribe $ oneTimeEventSource ms action
+
+sendAfter'
+  :: forall s s' f f' p a e
+   . Milliseconds
+  -> f Unit
+  -> H.ParentDSL s s' f f' (Aff (avar :: AVAR|e)) p Unit
+sendAfter' ms action =
+  H.subscribe' $ oneTimeEventSource ms action
+
+oneTimeEventSource
+  :: forall f e
+   . Milliseconds
+  -> f Unit
+  -> He.EventSource f (Aff (avar :: AVAR|e))
+oneTimeEventSource (Milliseconds n) action =
+  He.EventSource
+  $ SCR.producerToStallingProducer
+  $ produce \emit ->
+      runAff (const $ pure unit) (const $ pure unit)
+      $ later' (Data.Int.floor $ Math.max n zero)
+      $ liftEff do
+        emit $ E.Left action
+        emit $ E.Right unit
