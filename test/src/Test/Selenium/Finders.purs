@@ -2,145 +2,178 @@ module Test.Selenium.Finders where
 
 import Prelude
 
-import Control.Apply ((*>))
+import Control.Apply ((<*))
+import Control.Alt ((<|>))
 import Control.Bind ((<=<), (=<<))
-import Control.Monad.Eff.Exception (error)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Exception (EXCEPTION(), throw)
 import Control.Monad.Error.Class (throwError)
 import Data.List (List(), uncons, length, elemIndex, zip, filter, head)
 import Data.Tuple (fst, snd)
 import Data.Maybe (Maybe(..), maybe, maybe')
+import Data.Either (Either(), either)
 import Data.String (take)
+import Data.Monoid (Monoid, mempty)
 import Selenium (showLocator)
-import Selenium.Monad (getAttribute, later, sequence, getText, byXPath, byId, tryRepeatedlyTo, findExact, findElements, loseElement, isDisplayed, childExact, getInnerHtml)
+import Selenium.Monad (getAttribute, attempt, later, sequence, getText, byXPath, byId, tryRepeatedlyTo, findExact, findElements, loseElement, isDisplayed, childExact, getInnerHtml)
 import Selenium.ActionSequence (hover)
 import Selenium.Types (Element(), Locator())
 import Test.Selenium.Common (attrFail)
 import Test.Selenium.Monad (Check())
 import Test.XPath as XPath
 import Test.Utils (ifTrue, ifFalse, orIfItFails, passover)
-
 import Data.Traversable (traverse)
 import Data.Foldable (traverse_)
 
--- Expectations
-expectPresented :: Locator -> Element -> Check Unit
-expectPresented locator element =
-  expectPresentedVisual *> expectPresentedAria
+-- Errors
+noElementWithPropertyError :: String -> (Maybe String) -> String -> String
+noElementWithPropertyError name value =
+  XPath.errorMessage message
   where
-  expectPresentedVisual = isDisplayed element >>= ifFalse (throwLocatorError visualError locator)
-  expectPresentedAria = getAttribute element "aria-hidden" >>= validateAriaHiddenAttribute
-  validateAriaHiddenAttribute (Just "true") = throwNoElementWithAttributeOrPropertyError locator
-  validateAriaHiddenAttribute _ = pure unit
-  visualError = "Expected to find a visible element"
+  stringValue = maybe "null" show value
+  message =
+    "Unable to find element with "
+      ++ show name
+      ++ " attribute or property of "
+      ++ show stringValue
 
-expectHidden :: Locator -> Element -> Check Unit
-expectHidden locator element =
-  expectHiddenVisual *> expectHiddenAria
+elementWithPropertyError :: String -> (Maybe String) -> String -> String
+elementWithPropertyError name value =
+  XPath.errorMessage message
   where
-  expectHiddenVisual = isDisplayed element >>= ifTrue (throwLocatorError visualError locator)
-  expectHiddenAria = thisOrItsParents expectHiddenAria' element
-  expectHiddenAria' element' = getAttribute element' "aria-hidden" >>= validateAriaHiddenAttribute
-  validateAriaHiddenAttribute (Just "false") = throwLocatorError ariaError locator
-  validateAriaHiddenAttribute Nothing = throwLocatorError ariaError locator
-  validateAriaHiddenAttribute _ = pure unit
-  ariaError = "Expected attribute aria-hidden to be \"true\" for the element (or one of its parents) located by"
-  visualError = "Expected not to be able to mouse over the element located by"
+  stringValue = maybe "null" show value
+  message =
+    "Expected not to find element with "
+      ++ show name
+      ++ " attribute or property of "
+      ++ show stringValue
+
+-- Expectations
+validateHidden :: (String -> String) -> String -> Maybe String -> Check Unit
+validateHidden _ _ (Just "true") = pure unit
+validateHidden error xPath _ = liftEff $ throw $ error xPath
+
+expectHiddenAria :: (String -> Check (List Element)) -> String -> Check Unit
+expectHiddenAria findAny xPath = XPath.thisOrItsParents expectSingleHiddenAria xPath
+  where
+  expectSingleHiddenAria = traverse_ validate <=< findAny
+  validate = validateHidden ariaError xPath <=< attributeOrProperty
+  ariaError = noElementWithPropertyError "aria-hidden" (Just "true")
+  attributeOrProperty = flip getAttribute "aria-hidden"
+
+expectHiddenHtml :: (String -> Check (List Element)) -> String -> Check Unit
+expectHiddenHtml findAny xPath = XPath.thisOrItsParents expectSingleHiddenHtml xPath
+  where
+  expectSingleHiddenHtml = traverse_ validate <=< findAny
+  validate = validateHidden htmlError xPath <=< attributeOrProperty
+  htmlError = noElementWithPropertyError "hidden" (Just "true")
+  attributeOrProperty = flip getAttribute "hidden"
+
+expectHiddenVisual :: (String -> Check (List Element)) -> String -> Check Unit
+expectHiddenVisual findAny xPath = traverse_ validate =<< findAny xPath
+  where
+  validate = ifTrue throwVisualError <=< isDisplayed
+  throwVisualError = liftEff $ throw $ visualError xPath
+  visualError = XPath.errorMessage "Expected to find no visually displayed elements"
+
+expectHidden :: (String -> Check (List Element)) -> String -> Check Unit
+expectHidden findAny xPath =
+  expectHiddenVisual findAny xPath <* expectHiddenDom
+  where
+  expectHiddenDom = expectHiddenAria findAny xPath <|> expectHiddenHtml findAny xPath
+
+expectHiddenByXPath :: String -> Check Unit
+expectHiddenByXPath = expectHidden findAnyByXPath
+
+expectHiddenByXPathAndProperty :: String -> Maybe String -> String-> Check Unit
+expectHiddenByXPathAndProperty name value = expectHidden $ findAnyByXPathAndProperty name value
+
+expectPresented :: (String -> Check (List Element)) -> String -> Check Unit
+expectPresented findAny xPath =
+  expectPresentedVisual <* expectPresentedAria <* expectPresentedHtml <* expectNode
+  where
+  verify = either (const $ pure unit) <<< const <<< throwExpectation
+  throwExpectation = liftEff <<< throw
+  expectNode = (liftEff <<< throwIfEmpty nodeError) =<< findAny xPath
+  expectPresentedVisual = verify visualError =<< (attempt $ expectHiddenVisual findAny xPath)
+  expectPresentedAria = verify ariaError =<< (attempt $ expectHiddenAria findAny xPath)
+  expectPresentedHtml = verify htmlError =<< (attempt $ expectHiddenHtml findAny xPath)
+  nodeError = XPath.errorMessage nodeMessage xPath
+  visualError = XPath.errorMessage visualMessage xPath
+  ariaError = XPath.errorMessage ariaMessage xPath
+  htmlError = XPath.errorMessage htmlMessage xPath
+  nodeMessage = "Expected to find at least one elements"
+  visualMessage = "Expected to find only visually presented elements"
+  ariaMessage = "Expected no true values for \"aria-hidden\" on elements or their parents found"
+  htmlMessage = "Expected no true values for \"hidden\" on elements or their parents found"
+
+expectPresentedByXPath :: String -> Check Unit
+expectPresentedByXPath = expectPresented findAnyByXPath
+
+expectPresentedByXPathAndProperty :: String -> Maybe String -> String-> Check Unit
+expectPresentedByXPathAndProperty name value =
+  expectPresented $ findAnyByXPathAndProperty name value
 
 -- Locator dependent finders
-findSingle :: Locator -> Check Element
-findSingle locator = do
-  elements <- findElements locator
-  case uncons elements of
-    Nothing ->
-      throwLocatorError "Couldn't find an element" locator
-    Just o -> case length o.tail of
-      0 -> pure $ o.head
-      _ -> throwLocatorError "Found more than one element" locator
-
-findAtLeast :: Int -> Locator -> Check (List Element)
-findAtLeast n locator = do
-  elements <- findElements locator
+findAtLeast :: Int -> String -> Check (List Element)
+findAtLeast n xPath = do
+  elements <- findAnyByXPath xPath
   if length elements >= n
     then pure $ elements
-    else throwLocatorError ("Couldn't find at least " ++ show n ++ " elements") locator
-
--- XPath dependent finders which don't check presentation
-findByXPath' :: String -> Check Element
-findByXPath' = findSingle <=< byXPath
-
-findFirstByXPath' :: String -> Check Element
-findFirstByXPath' =
-  findExact <=< byXPath
-
-findAnyByXPath' :: String -> Check (List Element)
-findAnyByXPath' =
-  findElements <=< byXPath
-
-findAllByXPath' :: String -> Check (List Element)
-findAllByXPath' =
-  findAtLeast 1 <=< byXPath
+    else liftEff $ throw $ message
+  where
+  message = XPath.errorMessage ("Couldn't find at least " ++ show n ++ " elements") xPath
 
 -- Basic XPath dependent finders
-loseByXPath :: String -> Check Unit
-loseByXPath =
-  (loseDOM `orIfItFails` losePresented) <=< byXPath
-  where
-  loseDOM = loseElement
-  losePresented locator = traverse_ (expectHidden locator) =<< findElements locator
-
 findByXPath :: String -> Check Element
 findByXPath xPath = do
-  locator <- byXPath xPath
-  element <- findByXPath' xPath
-  expectPresented locator element
-  pure element
+  elements <- findAnyByXPath xPath
+  case uncons elements of
+    Nothing ->
+      liftEff $ throw $ XPath.errorMessage "Couldn't find an element" xPath
+    Just o -> case length o.tail of
+      0 -> pure $ o.head
+      _ -> liftEff $ throw $ XPath.errorMessage "Found more than one element" xPath
 
 findFirstByXPath :: String -> Check Element
-findFirstByXPath xPath = do
-  locator <- byXPath xPath
-  element <- findFirstByXPath' xPath
-  expectPresented locator element
-  pure element
-
-findAllByXPath :: String -> Check (List Element)
-findAllByXPath xPath = do
-  locator <- byXPath xPath
-  elements <- findAllByXPath' xPath
-  traverse_ (expectPresented locator) elements
-  pure elements
+findFirstByXPath = findExact <=< byXPath
 
 findAnyByXPath :: String -> Check (List Element)
-findAnyByXPath xPath = do
-  locator <- byXPath xPath
-  elements <- findAnyByXPath' xPath
-  traverse_ (expectPresented locator) elements
-  pure elements
+findAnyByXPath = findElements <=< byXPath
+
+findAllByXPath :: String -> Check (List Element)
+findAllByXPath = findAtLeast 1
 
 -- Property and XPath dependent finders
-findAnyByXPathAndProperty :: String -> String -> (Maybe String) -> Check (List Element)
-findAnyByXPathAndProperty xPath property expectedValue = tryRepeatedlyTo do
-  xPath
-  values <- traverse (flip getAttribute property) elements
-  let matches = map (eq expectedValue) values
-  let elementMatchTuples = zip elements matches
-  let matchingElements = map fst $ filter snd elementMatchTuples
-  pure matchingElements
+findAnyByXPathAndProperty :: String -> (Maybe String) -> String -> Check (List Element)
+findAnyByXPathAndProperty property expectedValue xPath =
+  tryRepeatedlyTo do
+    elements <- findAnyByXPath xPath
+    values <- traverse (flip getAttribute property) elements
+    let matches = map (eq expectedValue) values
+    let elementMatchTuples = zip elements matches
+    let matchingElements = map fst $ filter snd elementMatchTuples
+    pure matchingElements
 
-findAllByXPathAndAttributeOrProperty :: String -> String -> (Maybe String) -> Check (List Element)
-findAllByXPathAndAttributeOrProperty xPath property expectedValue =
-  passover throwIfEmpty =<< findAnyByXPathAndProperty xPath property expectedValue
+findAllByXPathAndProperty :: String -> (Maybe String) -> String -> Check (List Element)
+findAllByXPathAndProperty property expectedValue xPath =
+  passover (liftEff <<< throwIfEmpty emptyMessage)
+    =<< findAnyByXPathAndProperty property expectedValue xPath
   where
-  throwIfEmpty xs | length xs > 0 = pure unit
-  throwIfEmpty _ = throwNoElementWithAttributeOrPropertyError xPath property shownExpectedValue
+  emptyMessage = noElementWithPropertyError property expectedValue xPath
 
-findByXPathAndAttributeOrProperty :: String -> String -> (Maybe String) -> Check Element
-findByXPathAndAttributeOrProperty xPath property expectedValue =
-  headOrThrow =<< findAnyByXPathAndProperty xPath property expectedValue
+findByXPathAndProperty :: String -> (Maybe String) -> String -> Check Element
+findByXPathAndProperty property expectedValue xPath =
+  headOrThrow =<< findAnyByXPathAndProperty property expectedValue xPath
   where
-  headOrThrow = maybe' (const throw) pure <<< head
-  throw = throwNoElementWithPropertyError property expectedValue xPath
+  headOrThrow = maybe' (const throw') pure <<< head
+  throw' = liftEff $ throw $ noElementWithPropertyError property expectedValue xPath
 
-findByXPathAndValue :: String -> (Maybe String) -> Check Element
-findByXPathAndValue xPath value =
-  findByXPathAndAttributeOrProperty (XPath.anywhere $ xPath) "value" value
+findByXPathAndValue :: (Maybe String) -> String -> Check Element
+findByXPathAndValue value xPath =
+  findByXPathAndProperty "value" value xPath
 
+throwIfEmpty :: forall a eff. String -> List a -> Eff (err :: EXCEPTION | eff) Unit
+throwIfEmpty _ xs | length xs == 0 = pure unit
+throwIfEmpty message _ = throw message

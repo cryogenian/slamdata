@@ -14,37 +14,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.Selenium.Notebook.Viz (test, actualCanvasScreenshot) where
+module Test.Selenium.Notebook.Viz where
 
-import Prelude
-
-import Control.Monad.Eff.Random (randomInt)
-
-import Data.Foldable (foldl, traverse_)
-import Data.Function (on)
-import Data.Functor.Eff (liftEff)
-import Data.Int as Int
-import Data.List (length, List(..), filter)
-import Data.Maybe (Maybe())
-import Data.Monoid (mempty)
-import Data.Set as S
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
-
-import Selenium.ActionSequence hiding (sequence)
-import Selenium.Monad
-import Selenium.Types
-
-import Test.Selenium.ActionSequence (selectAll, sendDelete, sendEnter)
-import Test.Selenium.Common
-import Test.Selenium.Log
-import Test.Selenium.Monad
-import Test.Selenium.Notebook.Common as C
-import Test.Selenium.Notebook.Contexts
-import Test.Selenium.Notebook.Getters
-import SlamData.Config as SDConfig
-
-import Utils.Random
+--import Prelude
+--
+--import Control.Monad.Eff.Random (randomInt)
+--
+--import Data.Foldable (foldl, traverse_)
+--import Data.Function (on)
+--import Data.Functor.Eff (liftEff)
+--import Data.Int as Int
+--import Data.List (length, List(..), filter)
+--import Data.Maybe (Maybe())
+--import Data.Monoid (mempty)
+--import Data.Set as S
+--import Data.Traversable (traverse)
+--import Data.Tuple (Tuple(..))
+--
+--import Selenium.ActionSequence hiding (sequence)
+--import Selenium.Monad
+--import Selenium.Types
+--
+--import Test.Selenium.ActionSequence (selectAll, sendDelete, sendEnter)
+--import Test.Selenium.Common
+--import Test.Selenium.Log
+--import Test.Selenium.Monad
+--import Test.Selenium.Notebook.Common as C
+--import Test.Selenium.Notebook.Contexts
+--import Test.Selenium.Notebook.Getters
+--import Config as SDConfig
+--
+--import Utils.Random
 
 --checkNextVizCell :: Check Unit
 --checkNextVizCell = do
@@ -652,21 +652,21 @@ import Utils.Random
 --      screenshotsEqual $ basePath <> "series2.png"
 --
 
-actualCanvasScreenshot :: Check Unit
-actualCanvasScreenshot = do
-  config <- getConfig
-  if config.collectingScreenshots
-    then do
-    waitTime 5000
-    waitCanvas >>= flip elementScreenshot config.tmpFileForScreenshots
-    else
-    waitCanvas >>= actualElementScreenshot
+--actualCanvasScreenshot :: Check Unit
+--actualCanvasScreenshot = do
+--  config <- getConfig
+--  if config.collectingScreenshots
+--    then do
+--    waitTime 5000
+--    waitCanvas >>= flip elementScreenshot config.tmpFileForScreenshots
+--    else
+--    waitCanvas >>= actualElementScreenshot
 
-test :: Check Unit
-test = do
-  config <- getConfig
-
-  sectionMsg "lol viz"
+--test :: Check Unit
+--test = do
+--  config <- getConfig
+--
+--  sectionMsg "lol viz"
 --  sectionMsg "check next viz cell (search)"
 --  withSmallZipsSearchedAll $ checkNextVizCell
 --

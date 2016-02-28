@@ -1,29 +1,29 @@
-module Test.Selenium.Notebook.Complex (test) where
+module Test.Selenium.Notebook.Complex where
 
-import Prelude
-
-import Control.Alt ((<|>))
-import Control.Apply ((*>))
-import Data.Array (last)
-import Data.List (length)
-import Data.Traversable (traverse)
-
-import Selenium.Monad
-import Selenium.ActionSequence hiding (sequence, click)
-import Selenium.Combinators (tryToFind)
-
-import Test.Selenium.ActionSequence
-import Test.Selenium.Monad
-import Test.Selenium.Log
-import Test.Selenium.Common
-import Test.Selenium.Expect
-import Test.Selenium.Notebook.Getters
-import Test.Selenium.Notebook.Contexts
-import Test.Selenium.Notebook.Viz (actualCanvasScreenshot)
-import Test.Selenium.Notebook.Interactions (insertMdCellUsingNextActionMenu)
-
-import SlamData.Config as SDCfg
-import Data.String as S
+--import Prelude
+--
+--import Control.Alt ((<|>))
+--import Control.Apply ((*>))
+--import Data.Array (last)
+--import Data.List (length)
+--import Data.Traversable (traverse)
+--
+--import Selenium.Monad
+--import Selenium.ActionSequence hiding (sequence, click)
+--import Selenium.Combinators (tryToFind)
+--
+--import Test.Selenium.ActionSequence
+--import Test.Selenium.Monad
+--import Test.Selenium.Log
+--import Test.Selenium.Common
+--import Test.Selenium.Expect
+--import Test.Selenium.Notebook.Getters
+--import Test.Selenium.Notebook.Contexts
+--import Test.Selenium.Notebook.Viz (actualCanvasScreenshot)
+--import Test.Selenium.Notebook.Interactions (insertMdCellUsingNextActionMenu)
+--
+--import Config as SDCfg
+--import Data.String as S
 
 --checkMarkdownViz :: Check Unit
 --checkMarkdownViz = onlyFirefox do
@@ -151,9 +151,9 @@ import Data.String as S
 --  successMsg "Ok, default values propagates from markdown to query cell"
 
 
-test :: Check Unit
-test = do
-  sectionMsg "lol complex"
+--test :: Check Unit
+--test = do
+--  sectionMsg "lol complex"
 --  sectionMsg
 --    $  "Checking rendered markdown events propagating through\n"
 --    <> "query cell to viz cell"

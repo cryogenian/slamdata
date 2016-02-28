@@ -18,21 +18,22 @@ module Test.Selenium.Notebook (test) where
 
 import Prelude
 import Test.Selenium.Monad (Check())
-import Test.Selenium.Notebook.Contexts (setUp)
-import Test.Selenium.Notebook.Explore as Explore
-import Test.Selenium.Notebook.Search as Search
-import Test.Selenium.Notebook.Common as Common
-import Test.Selenium.Common
-import Test.Selenium.Notebook.Viz as Viz
-import Test.Selenium.Notebook.Markdown as Markdown
-import Test.Selenium.Notebook.Complex as Complex
+--import Test.Selenium.Notebook.Contexts (setUp)
+--import Test.Selenium.Notebook.Explore as Explore
+--import Test.Selenium.Notebook.Search as Search
+--import Test.Selenium.Notebook.Common as Common
+--import Test.Selenium.Common
+--import Test.Selenium.Notebook.Viz as Viz
+--import Test.Selenium.Notebook.Markdown as Markdown
+--import Test.Selenium.Notebook.Complex as Complex
 
 test :: Check Unit
 test = do
-  setUp
+  pure unit
+  --setUp
   --Common.test
-  Explore.test
+  --Explore.test
   --Search.test
   --Viz.test
-  Markdown.test
+  --Markdown.test
   --Complex.test
