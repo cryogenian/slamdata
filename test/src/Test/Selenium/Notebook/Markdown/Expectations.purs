@@ -4,6 +4,7 @@ import Prelude
 
 import Test.Selenium.Expect (Expectation(), expect, toEq, toNotEq, toBeGreaterThan, toMatch)
 import Data.String.Regex (regex, noFlags)
+import Data.String as String
 import Data.Int (toNumber)
 import Selenium.Combinators (tryToFind)
 import Selenium.Monad (byXPath, getText)
@@ -37,11 +38,34 @@ import Data.Foldable (traverse_)
 --  expectMdQueryColumn "gender" toMatch $ regex "^(M|X)$" noFlags
 --  expectMdQueryColumn "type" toNotEq "Gold"
 --
---expectMdQueryColumn :: forall a. (Show a) => String -> Expectation String a -> a -> Check Unit
---expectMdQueryColumn heading expectation expected =
---  findMdQueryColumnCellsTextByHeading heading >>= traverse_ expectCellText
+--expectMdQueryColumn :: String -> String -> Check Unit
+--expectMdQueryColumn heading preducate =
+--  expectPresented $ XPath.anywhere $ tdWithTh tableXPath thXPath tdXPath
 --  where
---  expectCellText cellText = expect cellText expectation expected
+--  tableXPath =
+--    XPaths.mdCellTitleXPath `XPath.following` XPaths.queryCellTitleXPath `XPath.following` "table"
+--  thXPath = XPath.thWithText heading
+--  tdXPath = "td" ++ predicate
+--
+--expectMdQueryColumnToEq :: String -> String -> Check Unit
+--expectMdQueryColumnToEq heading = expectMdQueryColumn heading <<< XPath.withText
+--
+--expectMdQueryColumnToNotEq :: String -> String -> Check Unit
+--expectMdQueryColumnToNotEq heading = expectMdQueryColumn heading <<< XPath.withoutText
+--
+--expectMdQueryColumnToBeGT :: String -> String -> Check Unit
+--expectMdQueryColumnToBeGT heading = expectMdQueryColumn heading <<< XPath.withTextGreaterThan
+--
+--expectMdQueryColumnToBeLT :: String -> String -> Check Unit
+--expectMdQueryColumnToBeLT heading = expectMdQueryColumn heading <<< XPath.withTextLessThan
+--
+--expectMdQueryColumnToEqOneOf :: String -> Array String -> Check Unit
+--expectMdQueryColumnToEqOneOf heading = expectMdQueryColumn heading <<< eqAnyOfThese
+--  where
+--  joinOr = String.joinWith " or "
+--  anyOfThesePredicates = predicate <<< joinOr
+--  eqAnyOfThese = anyOfThesePredicates <<< map withText
+
 --
 --expectMdFinishedMessage :: Check Unit
 --expectMdFinishedMessage = expectFinishedMessage xPath

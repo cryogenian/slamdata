@@ -1,9 +1,8 @@
 module Test.Selenium.Expectations where
 
 import Prelude
-
-expectPresented :: String -> Check Unit
-expectPresented = void <<< findByXPath
+import Test.Selenium.Monad (Check())
+import Test.Selenium.Finders (findByXPath)
 
 expectPresented :: String -> Check Unit
 expectPresented = void <<< findByXPath
