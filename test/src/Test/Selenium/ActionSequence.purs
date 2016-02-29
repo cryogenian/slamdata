@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.Selenium.ActionSequence
+module Test.Feature.ActionSequence
   ( selectAll
   , copy
   , paste

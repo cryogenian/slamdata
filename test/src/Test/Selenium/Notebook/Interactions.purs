@@ -1,26 +1,26 @@
 module Test.Selenium.Notebook.Interactions where
 
-import Control.Apply ((*>))
-import Control.Bind ((<=<), (=<<))
-import Control.Monad.Aff (later)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Trans (lift)
-import Control.Monad.Eff.Random (randomInt)
-import Data.Foldable (traverse_) as F
-import Data.List (replicateM)
-import Data.Traversable (traverse) as T
-import Prelude
-import Selenium.ActionSequence (leftClick)
-import Selenium.Monad (tryRepeatedlyTo, refresh, byXPath, findElements)
-import Selenium.Types (Element())
-import Test.Selenium.Interactions (click, hover)
-import Test.Selenium.Log (warnMsg)
-import Test.Selenium.Monad (Check(), getConfig, getModifierKey)
-import Test.Selenium.Finders (findByXPath)
-import Test.Selenium.Notebook.Finders as Finders
-import Test.Selenium.Common (waitTime)
-import Test.XPath (anywhere, following, anyWithExactText)
-import Test.Selenium.XPaths as XPaths
+--import Control.Apply ((*>))
+--import Control.Bind ((<=<), (=<<))
+--import Control.Monad.Aff (later)
+--import Control.Monad.Eff.Class (liftEff)
+--import Control.Monad.Trans (lift)
+--import Control.Monad.Eff.Random (randomInt)
+--import Data.Foldable (traverse_) as F
+--import Data.List (replicateM)
+--import Data.Traversable (traverse) as T
+--import Prelude
+--import Selenium.ActionSequence (leftClick)
+--import Selenium.Monad (tryRepeatedlyTo, refresh, byXPath, findElements)
+--import Selenium.Types (Element())
+--import Test.Selenium.Interactions (click, hover)
+--import Test.Selenium.Log (warnMsg)
+--import Test.Selenium.Monad (Check(), getConfig, getModifierKey)
+--import Test.Selenium.Finders (findByXPath)
+--import Test.Selenium.Notebook.Finders as Finders
+--import Test.Selenium.Common (waitTime)
+--import Test.XPath (anywhere, following, anyWithExactText)
+--import Test.Selenium.XPaths as XPaths
 
 --browseFolder :: String -> Check Unit
 --browseFolder name = findByXPath (anywhere $ anyWithExactText name) >>= click
