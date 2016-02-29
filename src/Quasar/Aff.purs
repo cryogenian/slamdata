@@ -137,7 +137,7 @@ instance listingRespondable :: AX.Respondable Listing where
 insertAuthHeaders
   :: forall a
    . M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> AX.AffjaxRequest a
   -> AX.AffjaxRequest a
 insertAuthHeaders mbToken perms r =
@@ -152,7 +152,7 @@ children
   :: forall e
    . PU.DirPath
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM | e)) (Array R.Resource)
 children dir idToken perms = do
   cs <- children' dir idToken perms
@@ -164,7 +164,7 @@ children'
   :: forall e
    . PU.DirPath
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (Array R.Resource)
 children' dir idToken perms =
   listing dir idToken perms
@@ -177,7 +177,7 @@ listing
   :: forall e
    . PU.DirPath
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) Listing
 listing p idToken perms =
   case P.relativeTo p P.rootDir of
@@ -195,7 +195,7 @@ makeFile
   -> MimeType
   -> String
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) Unit
 makeFile path mime content idToken perms =
   getResponse "error while creating file"
@@ -241,7 +241,7 @@ retryGet
   => P.Path P.Abs fd P.Sandboxed
   -> MimeType
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) a
 retryGet =
   getWithPolicy $ AX.defaultRetryPolicy { delayCurve = const 1000 }
@@ -251,7 +251,7 @@ mkRequest
    . P.Path P.Abs fd P.Sandboxed
   -> MimeType
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects e) (AX.AffjaxRequest Unit)
 mkRequest u mime idToken perms = do
   nocache <- liftEff $ Date.nowEpochMilliseconds
@@ -273,7 +273,7 @@ getOnce
   => P.Path P.Abs fd P.Sandboxed
   -> MimeType
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) a
 getOnce u mime idToken perms =
   mkRequest u mime idToken perms
@@ -286,7 +286,7 @@ getWithPolicy
   -> P.Path P.Abs fd P.Sandboxed
   -> MimeType
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) a
 getWithPolicy policy u mime idToken perms =
   mkRequest u mime idToken perms
@@ -297,7 +297,7 @@ retryDelete
    . (AX.Respondable a)
   => P.Path P.Abs fd P.Sandboxed
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) a
 retryDelete u idToken perms = do
   slamjax
@@ -313,7 +313,7 @@ retryPost
   => P.Path P.Abs fd P.Sandboxed
   -> a
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) b
 retryPost u c idToken perms =
   slamjax
@@ -331,7 +331,7 @@ retryPut
   -> a
   -> MimeType
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) b
 retryPut u c mime idToken perms =
   slamjax
@@ -365,7 +365,7 @@ mountInfo
   :: forall e
    . PU.DirPath
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) String
 mountInfo res idToken perms = do
   result <- getOnce mountPath applicationJSON idToken perms
@@ -386,7 +386,7 @@ viewInfo
   :: forall e
    . PU.FilePath
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX|e)) { query :: String, vars :: SM.StrMap String }
 viewInfo mountPath idToken perms = do
   result <-
@@ -438,7 +438,7 @@ getNewName
    . PU.DirPath
   -> String
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX |e)) String
 getNewName parent name idToken perms = do
   items <- Aff.attempt (children' parent idToken perms) <#> E.either (const []) id
@@ -464,7 +464,7 @@ move
    . R.Resource
   -> PU.AnyPath
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM |e)) (M.Maybe PU.AnyPath)
 move src tgt idToken perms = do
   let url = if R.isMount src
@@ -495,7 +495,7 @@ saveMount
    . PU.DirPath
   -> String
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX |e)) Unit
 saveMount path uri idToken perms = do
   result <-
@@ -517,7 +517,7 @@ delete
   :: forall e
    . R.Resource
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM |e)) (M.Maybe R.Resource)
 delete resource idToken perms =
   if not (R.isMount resource || alreadyInTrash resource)
@@ -565,7 +565,7 @@ forceDelete
   :: forall e
    . R.Resource
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM |e)) Unit
 forceDelete res idToken perms = do
   cleanViewMounts res idToken perms
@@ -592,7 +592,7 @@ cleanViewMounts
   :: forall e
    . R.Resource
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM|e)) Unit
 cleanViewMounts res idToken perms =
   F.for_ (R.getPath res) \dirPath ->
@@ -603,7 +603,7 @@ cleanViewMounts res idToken perms =
 getVersion
   :: forall e
    . M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX |e)) (M.Maybe String)
 getVersion idToken perms = do
   serverInfo <- retryGet Paths.serverInfoUrl applicationJSON idToken perms
@@ -618,7 +618,7 @@ transitiveChildrenProducer
   :: forall e
    . PU.DirPath
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> CR.Producer
       (Array R.Resource)
       (Aff (RetryEffects (ajax :: AX.AJAX, err :: Exn.EXCEPTION, dom :: DOM | e)))
@@ -651,7 +651,7 @@ query
    . R.Resource
   -> SQL
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
 query res sql idToken perms =
   if not $ R.isFile res
@@ -667,7 +667,7 @@ query'
    . PU.FilePath
   -> SQL
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (E.Either String JS.JArray)
 query' path sql idToken perms = do
   let res = R.File path
@@ -685,7 +685,7 @@ count
   :: forall e
    . R.Resource
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) Int
 count res idToken perms =
   query res sql idToken perms
@@ -711,7 +711,7 @@ resourceExists
   :: forall e
    . R.Resource
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX|e)) Boolean
 resourceExists res idToken perms = do
   result <- existsReq
@@ -742,7 +742,7 @@ portView
   -> SQL
   -> SM.StrMap String
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) Unit
 portView res dest sql varMap idToken perms = do
   guard $ R.isViewMount dest
@@ -775,7 +775,7 @@ portQuery
   -> SQL
   -> SM.StrMap String
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JObject
 portQuery res dest sql vars idToken perms = do
   guard $ R.isFile dest
@@ -828,7 +828,7 @@ sample'
   -> M.Maybe Int
   -> M.Maybe Int
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
 sample' res mbOffset mbLimit idToken perms =
   if not $ R.isFile res
@@ -851,7 +851,7 @@ sample
   -> Int
   -> Int
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
 sample res offset limit =
   sample' res (M.Just offset) (M.Just limit)
@@ -860,7 +860,7 @@ all
   :: forall e
    . R.Resource
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
 all res =
   sample' res M.Nothing M.Nothing
@@ -869,7 +869,7 @@ fields
   :: forall e
    . R.Resource
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (Array String)
 fields res idToken perms = do
   jarr <- sample res 0 100 idToken perms
@@ -935,7 +935,7 @@ executeQuery
   -> R.Resource
   -> R.Resource
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX, dom :: DOM | e))
       (E.Either String { outputResource :: R.Resource, plan :: M.Maybe String })
 executeQuery sql cachingEnabled varMap inputResource outputResource idToken perms = do
@@ -989,7 +989,7 @@ save
    . PU.FilePath
   -> JS.Json
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) Unit
 save path json idToken perms =
   let apiPath = Paths.dataUrl </> PU.rootifyFile path
@@ -1004,7 +1004,7 @@ load
   :: forall e
    . PU.FilePath
   -> M.Maybe Auth.IdToken
-  -> Array Perm.Permission
+  -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) (E.Either String JS.Json)
 load path idToken perms =
   let apiPath = Paths.dataUrl </> PU.rootifyFile path

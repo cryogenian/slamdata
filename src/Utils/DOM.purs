@@ -34,8 +34,11 @@ import Unsafe.Coerce (unsafeCoerce)
 elementToHTMLElement :: Element -> HTMLElement
 elementToHTMLElement = unsafeCoerce
 
-querySelector :: forall e. String -> HTMLElement ->
-                 Eff (dom :: DOM|e) (Maybe HTMLElement)
+querySelector
+  :: forall e
+   . String
+  -> HTMLElement
+  -> Eff (dom :: DOM|e) (Maybe HTMLElement)
 querySelector str htmlEl =
   map (toMaybe >>> map elementToHTMLElement)
   $ P.querySelector str $ elementToParentNode $ htmlElementToElement htmlEl

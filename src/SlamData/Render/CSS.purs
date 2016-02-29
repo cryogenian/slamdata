@@ -368,3 +368,15 @@ sqlMountAddVarPairButton = className "sql-mount-add-var-pair-button"
 
 fileAction :: ClassName
 fileAction = className "file-action"
+
+permissionsCheckboxes :: ClassName
+permissionsCheckboxes = className "permissions-checkboxes"
+
+tokenGeneratorForm :: ClassName
+tokenGeneratorForm = className "token-generator-form"
+
+cancelInputRunIcon :: ClassName
+cancelInputRunIcon = className "cancel-input-run-icon"
+
+userShareForm :: ClassName
+userShareForm = className "user-share-form"

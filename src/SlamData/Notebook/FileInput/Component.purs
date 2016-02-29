@@ -101,7 +101,7 @@ eval q =
       modify (_ { showFiles = shouldShowFiles })
       when shouldShowFiles $ do
         idToken <- liftEff' Auth.retrieveIdToken
-        perms <- liftEff' Auth.retrievePermissions
+        perms <- liftEff' Auth.retrievePermissionTokens
         let
           fileProducer =
             FT.hoistFreeT liftH $
