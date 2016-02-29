@@ -2,18 +2,18 @@ module Test.Selenium.Notebook.Markdown.Expectations where
 
 import Prelude
 
-import Test.Selenium.Expect (Expectation(), expect, toEq, toNotEq, toBeGreaterThan, toMatch)
-import Data.String.Regex (regex, noFlags)
-import Data.String as String
-import Data.Int (toNumber)
-import Selenium.Combinators (tryToFind)
-import Selenium.Monad (byXPath, getText)
-import Test.Selenium.Monad (Check())
-import Test.Selenium.Finders (findByXPath)
-import Test.XPath as XPath
-import Test.Selenium.Notebook.Expectations (expectFinishedMessage)
-
-import Data.Foldable (traverse_)
+--import Test.Selenium.Expect (Expectation(), expect, toEq, toNotEq, toBeGreaterThan, toMatch)
+--import Data.String.Regex (regex, noFlags)
+--import Data.String as String
+--import Data.Int (toNumber)
+--import Selenium.Combinators (tryToFind)
+--import Selenium.Monad (byXPath, getText)
+--import Test.Selenium.Monad (Check())
+--import Test.Selenium.Finders (findByXPath)
+--import Test.XPath as XPath
+--import Test.Selenium.Notebook.Expectations (expectFinishedMessage)
+--
+--import Data.Foldable (traverse_)
 
 --expectMdQueryResultsToBeFilteredByDefaultFormValues :: Check Unit
 --expectMdQueryResultsToBeFilteredByDefaultFormValues = do
