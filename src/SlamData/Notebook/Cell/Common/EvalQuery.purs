@@ -32,11 +32,7 @@ module SlamData.Notebook.Cell.Common.EvalQuery
 
 import Prelude
 
-import Control.Coroutine.Aff (produce)
-import Control.Coroutine.Stalling as SCR
-
-import Control.Monad.Aff (Canceler(), forkAff)
-import Control.Monad.Aff.AVar (makeVar, putVar, takeVar)
+import Control.Monad.Aff (Canceler())
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 import Control.Monad.Trans as MT
@@ -49,7 +45,6 @@ import Data.Functor.Coproduct (Coproduct(), left)
 import Data.Maybe as M
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
-import Data.Functor.Aff (liftAff)
 import Data.Tuple as TPL
 
 import SlamData.FileSystem.Resource as R
@@ -60,8 +55,8 @@ import SlamData.Effects (Slam(), SlamDataEffects())
 
 import Utils.Path (DirPath())
 
-import Halogen (ParentDSL(), subscribe')
-import Halogen.Query.EventSource (EventSource(..))
+import Halogen (ParentDSL())
+import Halogen.Component.Utils as Hu
 
 type CellEvalInputP r =
   { notebookPath :: M.Maybe DirPath
@@ -197,19 +192,8 @@ liftWithCanceler
   :: forall a state slot innerQuery innerState
    . Slam a
   -> ParentDSL state innerState CellEvalQuery innerQuery Slam slot a
-liftWithCanceler aff = do
-  v <- liftAff makeVar
-  canceler <- liftAff $ forkAff do
-    res <- aff
-    putVar v res
-  subscribe'
-    $ EventSource
-    $ SCR.producerToStallingProducer
-    $ produce \emit -> do
-      emit $ E.Left $ SetCanceler canceler unit
-      emit $ E.Right unit
-  liftAff $ takeVar v
-
+liftWithCanceler =
+  Hu.liftWithCanceler' SetCanceler
 
 liftWithCanceler'
   :: forall a state innerState innerQuery query slot
@@ -218,15 +202,5 @@ liftWithCanceler'
        state innerState
        (Coproduct CellEvalQuery query) innerQuery
        Slam slot a
-liftWithCanceler' aff = do
-  v <- liftAff makeVar
-  canceler <- liftAff $ forkAff do
-    res <- aff
-    putVar v res
-  subscribe'
-    $ EventSource
-    $ SCR.producerToStallingProducer
-    $ produce \emit -> do
-      emit $ E.Left $ left $ SetCanceler canceler unit
-      emit $ E.Right unit
-  liftAff $ takeVar v
+liftWithCanceler' =
+  Hu.liftWithCanceler' (\c u -> left $ SetCanceler c u)

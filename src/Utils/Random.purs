@@ -28,9 +28,11 @@ import Data.Tuple (Tuple(..), snd)
 
 -- | Getting random element from any `Foldable` in any `MonadEff`
 -- | Returns `Nothing` if foldable is empty
-randomIn :: forall a m f e.
-            (Foldable f, Monad m, FunctorEff (random :: RANDOM|e) m) =>
-            f a -> m (Maybe a)
+randomIn
+  :: forall a m f e
+   . (Foldable f, Monad m, FunctorEff (random :: RANDOM|e) m)
+  => f a
+  -> m (Maybe a)
 randomIn fa =
   map snd $ foldl foldFn (pure $ Tuple zero Nothing) fa
   where
@@ -40,13 +42,16 @@ randomIn fa =
     prob <- liftEff random
     pure case ma of
       Tuple _ Nothing -> Tuple prob $ Just a
-      Tuple p (Just b) -> if prob > p
-                          then Tuple prob $ Just a
-                          else Tuple p $ Just b
+      Tuple p (Just b) ->
+        if prob > p
+          then Tuple prob $ Just a
+          else Tuple p $ Just b
 
 
 -- | same as `randomIn` but returns `mempty` instead of `Nothing`
-randomInM :: forall a m f e.
-                (Foldable f, Monad m, FunctorEff (random :: RANDOM|e) m, Monoid a) =>
-                f a -> m a
+randomInM
+  :: forall a m f e
+   . (Foldable f, Monad m, FunctorEff (random :: RANDOM|e) m, Monoid a)
+   => f a
+   -> m a
 randomInM fa = fromMaybe mempty <$> randomIn fa
