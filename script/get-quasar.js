@@ -60,7 +60,7 @@ function downloadQuasar(quasarOptions, token, destFile, k) {
   fetchReleaseInfo(quasarOptions, function (info) {
     var assets =
       info.assets.filter(function (asset) {
-        return asset.name.indexOf("web") === 0
+        return asset.name.indexOf("web") !== -1
       });
 
     var asset = assets[0];
