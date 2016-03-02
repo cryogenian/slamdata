@@ -173,7 +173,8 @@ main = do
                      { download = rawConfig.download
                        { folder = resolve [ rawConfig.download.folder ] "" }
                      , upload = rawConfig.upload
-                       { filePath = resolve [ rawConfig.upload.filePath ] "" }
+                       { filePaths =
+                          map (\x -> resolve [ x ] "") rawConfig.upload.filePaths }
                      }
     close db
     case testResults of
@@ -184,4 +185,3 @@ main = do
     Ec.log $ red $ message e
     traverse_ (Ec.log <<< red) $ Str.split "\n" $ stack e
     Process.exit 1
-
