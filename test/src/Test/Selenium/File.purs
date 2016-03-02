@@ -299,9 +299,6 @@ searchForUploadedFile = do
       leftClick searchInput
       keys $ "\"" <> filename <> "\""
 
-    searchButton <- getElementByCss config.search.searchButton "no search button"
-    sequence $ leftClick searchButton
-    wait (awaitUrlChanged url) config.selenium.waitTime
     wait (awaitItemWithPhrase filename) config.selenium.waitTime
     successMsg "Searched for and found item"
 
