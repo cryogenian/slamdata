@@ -34,16 +34,17 @@ import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
 
 import Data.Array (head, last, mapMaybe, filter)
+import Data.Argonaut.Parser (jsonParser)
 import Data.Bifunctor (lmap)
-import Data.Either (Either(..), either)
-import Data.Foldable (traverse_)
+import Data.Either (Either(..), either, isRight)
+import Data.Foldable (traverse_, for_)
 import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
 import Data.Functor.Coproduct (left, right, coproduct)
 import Data.Functor.Coproduct.Nested (coproduct5)
 import Data.Functor.Eff (liftEff)
 import Data.Lens ((.~))
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
 import Data.String as S
 import Data.URI (runParseAbsoluteURI)
@@ -57,7 +58,7 @@ import Halogen.HTML.Properties.Indexed as P
 import Halogen.Query (action, request, get, modify, gets)
 import Halogen.Themes.Bootstrap3 as B
 
-import Network.HTTP.MimeType.Common (textCSV)
+import Network.HTTP.MimeType.Common (textCSV, applicationJSON)
 
 import Quasar.Aff as API
 import Quasar.Auth as Auth
@@ -198,9 +199,8 @@ eval (MakeNotebook next) = do
 
 eval (UploadFile el next) = do
   mbInput <- liftEff $ D.querySelector "input" el
-  case mbInput of
-    Nothing -> pure unit
-    Just input -> void $ liftEff $ Be.raiseEvent "click" input
+  for_ mbInput \input ->
+    void $ liftEff $ Be.raiseEvent "click" input
   pure next
 
 eval (FileListChanged el next) = do
@@ -216,15 +216,18 @@ eval (FileListChanged el next) = do
       name <- liftAff $ liftEff (Cf.name f)
                 >>= Auth.authed <<< API.getNewName path
 
+      reader <- liftEff Cf.newReaderEff
+      content <- liftAff $ Cf.readAsBinaryString f reader
+
       let fileName = path </> file name
           res = R.File fileName
           fileItem = PhantomItem res
           ext = last (S.split "." name)
           mime = if ext == Just "csv"
                  then textCSV
-                 else API.ldJSON
-      reader <- liftEff Cf.newReaderEff
-      content <- liftAff $ Cf.readAsBinaryString f reader
+                 else if isApplicationJSON content
+                      then applicationJSON
+                      else API.ldJSON
       queryListing $ action (Listing.Add fileItem)
       f <- liftAff $ attempt $ Auth.authed $ API.makeFile fileName mime content
       case f of
@@ -235,6 +238,21 @@ eval (FileListChanged el next) = do
         Right _ -> liftEff $ openItem res sort salt
 
   pure next
+  where
+  isApplicationJSON :: String -> Boolean
+  isApplicationJSON content
+    -- Parse if content is small enough
+    | S.length content < 1048576 =
+        isRight $ jsonParser content
+    -- Or check if its first/last characters are [/]
+    | otherwise =
+        let
+          trimedContent = S.trim content
+        in
+             (isJust $ S.stripPrefix "[" trimedContent)
+          && (isJust $ S.stripSuffix "]" trimedContent)
+
+
 
 eval (Download next) = do
   path <- gets _.path
