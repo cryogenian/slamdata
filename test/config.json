@@ -57,12 +57,12 @@
         "button": ".toolbar-sort a"
     },
     "upload": {
-        "filePath": "./test/file.json",
+        "filePaths": ["./test/line-delimited.json", "./test/array-wrapped.json"],
         "input": "[title='Upload file'] input[type='file']",
         "button": "[title='Upload file']"
     },
     "move": {
-        "name": "file.json",
+        "name": "array-wrapped.json",
         "other": "other",
         "button": ".item-toolbar button",
         "markMove": "Move / rename",

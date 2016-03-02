@@ -95,7 +95,7 @@ type Config =
   , upload :: { file :: String
               , input :: String
               , button :: String
-              , filePath :: String
+              , filePaths :: Array String
               }
   , move :: { name :: String
             , other :: String

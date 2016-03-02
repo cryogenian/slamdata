@@ -28,7 +28,7 @@ import Data.Argonaut.JCursor (toPrims)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Array as Arr
 import Data.Either (Either(..), either)
-import Data.Foldable (foldl, elem)
+import Data.Foldable (foldl, elem, for_)
 import Data.List (List(), length, reverse, filter, null, fromList, (!!))
 import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
@@ -239,28 +239,28 @@ fileUpload :: Check Unit
 fileUpload = do
   sectionMsg "FILE UPLOAD"
   config <- getConfig
-  successMsg "went down"
   oldItems <- S.fromList <$> getItemTexts
-  script """
-  var els = document.getElementsByTagName('i');
-  for (var i = 0; i < els.length; i++) {
-    if (/hidden-file-input/.test(els[i].className)) {
-      els[i].className = "";
+  for_ config.upload.filePaths \fp -> do
+    script """
+    var els = document.getElementsByTagName('i');
+    for (var i = 0; i < els.length; i++) {
+      if (/hidden-file-input/.test(els[i].className)) {
+        els[i].className = "";
+      }
     }
-  }
-  """
-  uploadInput <- getElementByCss config.upload.input "There is no upload input"
-  sendKeysEl config.upload.filePath uploadInput
-  wait awaitInNotebook config.selenium.waitTime
-  successMsg "Ok, explore notebook created"
-  navigateBack
-  fileComponentLoaded
+    """
+    uploadInput <- getElementByCss config.upload.input "There is no upload input"
+    sendKeysEl fp uploadInput
+    wait awaitInNotebook config.selenium.waitTime
+    successMsg "Ok, explore notebook created"
+    navigateBack
+    fileComponentLoaded
 
-  tryRepeatedlyTo do
-    items <- S.fromList <$> getItemTexts
-    if S.isEmpty $ S.difference items oldItems
-      then errorMsg "items has not changed after upload"
-      else successMsg "new items added after upload"
+    tryRepeatedlyTo do
+      items <- S.fromList <$> getItemTexts
+      if S.isEmpty $ S.difference items oldItems
+        then errorMsg "items has not changed after upload"
+        else successMsg "new items added after upload"
 
 shareFile :: Check Unit
 shareFile = do
@@ -287,22 +287,23 @@ shareFile = do
 searchForUploadedFile :: Check Unit
 searchForUploadedFile = do
   sectionMsg "SEARCH"
-  home
   config <- getConfig
-  searchInput <- getElementByCss config.search.searchInput "no search input field"
-  url <- getCurrentUrl
-  let filename = fromMaybe config.upload.filePath
-                 $ Arr.last $ Str.split "/" config.upload.filePath
-  searchButton <- getElementByCss config.search.searchButton "no search button"
-  sequence $ do
-    leftClick searchInput
-    keys filename
+  for_ config.upload.filePaths \fp -> do
+    home
+    config <- getConfig
+    searchInput <- getElementByCss config.search.searchInput "no search input field"
+    url <- getCurrentUrl
+    let filename = fromMaybe fp $ Arr.last $ Str.split "/" fp
+    searchButton <- getElementByCss config.search.searchButton "no search button"
+    sequence do
+      leftClick searchInput
+      keys $ "\"" <> filename <> "\""
 
-  searchButton <- getElementByCss config.search.searchButton "no search button"
-  sequence $ leftClick searchButton
-  wait (awaitUrlChanged url) config.selenium.waitTime
-  wait (awaitItemWithPhrase filename) config.selenium.waitTime
-  successMsg "Searched for and found item"
+    searchButton <- getElementByCss config.search.searchButton "no search button"
+    sequence $ leftClick searchButton
+    wait (awaitUrlChanged url) config.selenium.waitTime
+    wait (awaitItemWithPhrase filename) config.selenium.waitTime
+    successMsg "Searched for and found item"
 
 awaitItemWithPhrase :: String -> Check Boolean
 awaitItemWithPhrase phrase = checker $ do
