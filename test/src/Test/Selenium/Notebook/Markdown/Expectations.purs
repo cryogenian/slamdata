@@ -8,9 +8,12 @@ import Prelude
 --import Data.Int (toNumber)
 --import Selenium.Combinators (tryToFind)
 --import Selenium.Monad (byXPath, getText)
---import Test.Selenium.Monad (Check())
---import Test.Selenium.Finders (findByXPath)
---import Test.XPath as XPath
+import Test.Selenium.Monad (Check())
+import Test.Selenium.Feature (expectPresented, expectPresentedWithProperties)
+import Test.XPath as XPath
+import Test.Selenium.XPaths as XPaths
+import Test.Selenium.Properties as Properties
+import Data.Maybe (Maybe(..))
 --import Test.Selenium.Notebook.Expectations (expectFinishedMessage)
 --
 --import Data.Foldable (traverse_)
@@ -67,25 +70,30 @@ import Prelude
 --  eqAnyOfThese = anyOfThesePredicates <<< map withText
 
 --
---expectMdFinishedMessage :: Check Unit
---expectMdFinishedMessage = expectFinishedMessage xPath
+expectMdFinishedMessage :: Check Unit
+expectMdFinishedMessage = expectPresented XPaths.mdFinishedMessage
 -- where
 -- xPath = "//*[text()='Markdown']/following::*[contains(text(), 'Finished')]"
+
+expectToBePresentedWithFormWithAllInputTypes :: Check Unit
+expectToBePresentedWithFormWithAllInputTypes = do
+  expectPresentedWithProperties
+    [Properties.value (Just "")]
+    $ XPath.anywhere $ XPath.textInput `XPath.withLabelWithExactText` "discipline"
+
+  expectPresentedWithProperties
+    [Properties.value (Just "Bobsleigh")]
+    $ XPath.anywhere $ XPath.textInput `XPath.withLabelWithExactText` "sport"
+
+--  expectPresented "age" "number" ""
+--  expectPresented "year" "number" "2002"
 --
---expectToBePresentedWithFormWithAllInputTypes :: Check Unit
---expectToBePresentedWithFormWithAllInputTypes = do
---  expectInputWithLabelTypeAndValue "discipline" "text" ""
---  expectInputWithLabelTypeAndValue "sport" "text" "Bobsleigh"
+--  expectPresented "startDate" "text" ""
+--  expectPresented "finishDate" "text" "2002-06-06"
 --
---  expectInputWithLabelTypeAndValue "age" "number" ""
---  expectInputWithLabelTypeAndValue "year" "number" "2002"
---
---  expectInputWithLabelTypeAndValue "startDate" "text" ""
---  expectInputWithLabelTypeAndValue "finishDate" "text" "2002-06-06"
---
---  expectInputWithLabelTypeAndValue "startTime" "text" ""
---  expectInputWithLabelTypeAndValue "finishTime" "text" "20:39"
---
+--  expectPresented "startTime" "text" ""
+--  expectPresented "finishTime" "text" "20:39"
+
 --  expectDropdownWithLabelOptionsAndValue "event" ["1000m", "1500m", "3000m"] "1500m"
 --
 --  expectLabel "gender"

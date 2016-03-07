@@ -3,17 +3,30 @@ module Test.XPath where
 import Prelude
 import Data.String (take, joinWith)
 import Data.Foldable (Foldable, intercalate)
-import Control.Alt (Alt)
+import Control.Alt (Alt, (<|>))
 import Control.Monad.Aff (later)
 import Test.Utils (orIfItFails)
-import Control.Bind ((<=<))
+import Control.Bind ((=<<))
 import Data.Maybe (Maybe(), maybe)
+import Debug.Trace
+
+ancestorOrSelfString :: String
+ancestorOrSelfString = "/ancestor-or-self::"
+
+ancestorString :: String
+ancestorString = "/ancestor::"
 
 followingString :: String
 followingString = "/following::"
 
 following :: String -> String -> String
 following x y = x ++ followingString ++ y
+
+ancestorOrSelf :: String -> String -> String
+ancestorOrSelf x y = x ++ ancestorOrSelfString ++ y
+
+ancestor :: String -> String -> String
+ancestor x y = x ++ ancestorString ++ y
 
 inOrder :: forall m. (Foldable m) => m String -> String
 inOrder = intercalate followingString
@@ -46,16 +59,22 @@ nodeWithText :: String -> String -> String
 nodeWithText name text = name ++ "[contains(text(), '" ++ text ++ "')]"
 
 nodeWithExactAttribute :: String -> String -> String -> String
-nodeWithExactAttribute attribute name text = name ++ "[@" ++ attribute ++ "='" ++ text ++ "']"
+nodeWithExactAttribute attribute name value = name ++ "[@" ++ attribute ++ "='" ++ value ++ "']"
 
 nodeWithAttribute :: String -> String -> String -> String
-nodeWithAttribute attribute name text = name ++ "[contains(@" ++ attribute ++ ", '" ++ text ++ "')]"
+nodeWithAttribute attribute name value = name ++ "[contains(@" ++ attribute ++ ", '" ++ value ++ "')]"
+
+nodeWithAttributeWithAnyValue :: String -> String -> String
+nodeWithAttributeWithAnyValue attribute name = name ++ name ++ "[@" ++ attribute ++ "]"
 
 nodeWithExactAriaLabel :: String -> String -> String
 nodeWithExactAriaLabel = nodeWithExactAttribute "aria-label"
 
 nodeWithAriaLabel :: String -> String -> String
 nodeWithAriaLabel = nodeWithAttribute "aria-label"
+
+anyWithAttributeWithAnyValue :: String -> String
+anyWithAttributeWithAnyValue = nodeWithAttributeWithAnyValue any
 
 anyWithExactText :: String -> String
 anyWithExactText = nodeWithExactText any
@@ -76,7 +95,15 @@ inputWithPlaceholder :: String -> String
 inputWithPlaceholder = nodeWithAttribute "placeholder" "input"
 
 withLabel :: String -> String -> String
-withLabel xPath labelXPath = xPath ++ "[@id=(" ++ labelXPath ++ "/@for)]"
+withLabel xPath labelXPath = xPath ++ anyOfThesePredicates [forPredicate, ancestorPredicate]
+  where
+  ancestorPredicate = "ancestor::" ++ labelXPath
+  forPredicate = "@id=(" ++ labelXPath ++ "/@for)"
+
+withLabelWithExactText :: String -> String -> String
+withLabelWithExactText xPath = withLabel xPath <<< labelXPath
+  where
+  labelXPath text = "label[text()= '" ++ text ++ "' or descendant::*[text()= '" ++ text ++ "']]"
 
 thWithText :: String -> String -> String
 thWithText tableXPath thText = tableXPath ++ "/thead/tr/th[text()='" ++ thText ++ "']"
@@ -91,9 +118,11 @@ tdWithTh tableXPath thXPath tdXPath = indexString unindexedTdXPath thIndex
 parent :: String -> String
 parent xPath = xPath ++ "/.."
 
-thisOrItsParents :: forall a m. (Alt m) => (String -> m a) -> String -> m a
-thisOrItsParents f =
-  orIfItFails f (orIfItFails (thisOrItsParents f <<< parent) f)
+-- This can be achieved using self-or-ancestors.
+--thisOrItsParents :: forall a b m. (Bind m, Alt m) => (String -> m a) -> (a -> m b) -> String -> m b
+--thisOrItsParents f g x = traceAny x \_ -> go =<< f x
+--  where
+--  go y = g y <|> thisOrItsParents f g (parent x)
 
 anywhere :: String -> String
 anywhere xPath = if anywhered then xPath else "//" ++ xPath
@@ -107,7 +136,7 @@ any :: String
 any = "*"
 
 errorMessage :: String -> String -> String
-errorMessage errorPartial xPath = errorPartial ++ " using the xPath: " ++ xPath ++ "."
+errorMessage errorPartial xPath = errorPartial ++ " using the xPath: " ++ xPath
 
 tdWithThAndPredicate :: String -> String -> String -> String
 tdWithThAndPredicate tableXPath thXPath predicate' =
@@ -142,3 +171,9 @@ tdWithThAndTextNotEqOneOf tableXPath thXPath =
 anyOfThesePredicates :: Array String -> String
 anyOfThesePredicates =
   predicate <<< joinWith " or "
+
+textInput :: String
+textInput = nodeWithExactAttribute "type" "input" "text"
+
+numberInput :: String
+numberInput = nodeWithExactAttribute "type" "input" "number"

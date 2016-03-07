@@ -24,7 +24,7 @@ import Selenium.ActionSequence hiding (sequence)
 import Selenium.Monad
 import Selenium.Types
 
-import Test.Selenium.ActionSequence
+import Test.Feature.ActionSequence
 import Test.Selenium.Common
 import Test.Selenium.Log
 import Test.Selenium.Monad
@@ -56,7 +56,7 @@ findItem name =
   xPathOr x y = x ++ "|" ++ y
 
 selectFile :: String -> Check Unit
-selectFile filename = click' =<< findSingle =<< byCss (selectFileCss filename)
+selectFile filename = click' =<< findExact =<< byCss (selectFileCss filename)
   where
   selectFileCss filename = "*[aria-label='Select " ++ filename ++ "']"
 

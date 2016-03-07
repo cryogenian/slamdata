@@ -58,6 +58,8 @@ import DOM.Timer (interval, clearInterval)
 import Halogen
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Indexed as E
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.Themes.Bootstrap3 as B

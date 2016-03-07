@@ -16,38 +16,36 @@ limitations under the License.
 
 module Test.Selenium.Notebook.Markdown where
 
---import Prelude
---import Selenium.Monad (attempt)
---import Control.Apply ((*>))
---import Test.Selenium.Log (successMsg)
---import Test.Selenium.Common (waitTime)
---import Test.Selenium.Monad (Check())
---import Test.Selenium.Notebook.Finders (loseCellTitles)
---import Test.Selenium.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder, insertMdCellUsingNextActionMenu, insertQueryAfterMd, provideMd, changeMd, playMd, playMdQuery)
---import Test.Selenium.Notebook.Markdown.Expectations
---import Test.Selenium.Notebook.Markdown.Interactions
---import Test.Selenium.Scenario (scenario)
---
---mdScenario :: String -> Array String -> Check Unit -> Check Unit
---mdScenario =
---  scenario
---    "Markdown"
---    (createNotebookInTestFolder "Markdown")
---    (deleteFileInTestFolder "Markdown.slam")
---
---evalDefaultValueIssues :: Array String
---evalDefaultValueIssues = ["https://slamdata.atlassian.net/browse/SD-1048"]
---
---test :: Check Unit
---test = do
---  mdScenario "Provide and play markdown" [] do
---    insertMdCellUsingNextActionMenu
---    provideMdForFormWithAllInputTypes
---    playMd
---
---    --expectToBePresentedWithFormWithAllInputTypes
---    --expectMdFinishedMessage
---    successMsg "Ok, succesfully provided and played markdown."
+import Prelude
+import Selenium.Monad (attempt)
+import Control.Apply ((*>))
+import Test.Selenium.Log (successMsg)
+import Test.Selenium.Monad (Check())
+import Test.Selenium.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder, insertMdCellUsingNextActionMenu, insertQueryAfterMd, provideMd, changeMd, playMd, playMdQuery)
+import Test.Selenium.Notebook.Markdown.Expectations
+import Test.Selenium.Notebook.Markdown.Interactions
+import Test.Selenium.Scenario (scenario)
+
+mdScenario :: String -> Array String -> Check Unit -> Check Unit
+mdScenario =
+  scenario
+    "Markdown"
+    (createNotebookInTestFolder "Markdown")
+    (deleteFileInTestFolder "Markdown.slam")
+
+evalDefaultValueIssues :: Array String
+evalDefaultValueIssues = ["https://slamdata.atlassian.net/browse/SD-1048"]
+
+test :: Check Unit
+test = do
+  mdScenario "Provide and play markdown" [] do
+    insertMdCellUsingNextActionMenu
+    provideMdForFormWithAllInputTypes
+    playMd
+
+    expectToBePresentedWithFormWithAllInputTypes
+    expectMdFinishedMessage
+    successMsg "Ok, succesfully provided and played markdown."
 --
 --  mdScenario "Change and play markdown" [] do
 --    insertMdCellUsingNextActionMenu

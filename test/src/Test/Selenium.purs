@@ -19,7 +19,7 @@ module Test.Selenium where
 import Prelude
 
 import Control.Monad (when)
-import Control.Monad.Aff (Aff(), attempt)
+import Control.Monad.Aff (Aff(), attempt, later)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Trans
@@ -44,6 +44,7 @@ import Test.Effects (TestEffects())
 
 import Test.Selenium.SauceLabs as SL
 import Test.Selenium.Notebook as Notebook
+import Debug.Trace
 
 makeDownloadCapabilities :: Browser -> String -> Aff TestEffects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do
@@ -61,7 +62,7 @@ makeDownloadCapabilities _ _ = mempty
 
 test :: Config -> Aff TestEffects Unit
 test config =
-  maybe error go $ str2browser config.selenium.browser
+  traceAny "uhm" \_ -> maybe error go $ str2browser config.selenium.browser
   where
   error = void $ log $ red "Incorrect browser"
   go br = do

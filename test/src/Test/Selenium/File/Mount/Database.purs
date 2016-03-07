@@ -25,7 +25,7 @@ import Selenium.Combinators (checker, awaitUrlChanged, tryToFind)
 import Selenium.Monad
 import Selenium.Types
 
-import Test.Selenium.ActionSequence
+import Test.Feature.ActionSequence
 import Test.Selenium.Common
 import Test.Selenium.Log
 import Test.Selenium.Monad
