@@ -22,15 +22,19 @@ import Test.Selenium.Monad (Check())
 --import Test.Selenium.Notebook.Explore as Explore
 --import Test.Selenium.Notebook.Search as Search
 --import Test.Selenium.Notebook.Common as Common
---import Test.Selenium.Common
+import Test.Selenium.Notebook.Contexts (createTestDirs)
 --import Test.Selenium.Notebook.Viz as Viz
---import Test.Selenium.Notebook.Markdown as Markdown
+import Test.Selenium.Notebook.Markdown as Markdown
 --import Test.Selenium.Notebook.Complex as Complex
+import Test.Selenium.Notebook.Interactions (launchSlamData, mountTestDatabase)
+import Debug.Trace
 
 test :: Check Unit
 test = do
-  pure unit
-  --setUp
+  createTestDirs
+  launchSlamData
+  mountTestDatabase
+
   --Common.test
   --Explore.test
   --Search.test

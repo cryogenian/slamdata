@@ -4,9 +4,12 @@ import Prelude
 
 import Control.Alt (Alt, (<|>))
 import Control.Apply ((*>))
+import Control.Bind ((<=<))
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Exception (EXCEPTION(), throw)
 import Data.Foldable (Foldable, foldr)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Either (Either(..), either)
 
 ifFalse :: forall m. (Applicative m) => m Unit -> Boolean -> m Unit
 ifFalse f boolean =
@@ -24,10 +27,27 @@ orIfItFails :: forall a b m. (Alt m) => (a -> m b) -> (a -> m b) -> a -> m b
 orIfItFails f g x =
   f x <|> g x
 
-null :: forall a m. (Foldable m) => m a -> Boolean
-null = foldr (\_ _ -> false) true
+isEmpty :: forall a m. (Foldable m) => m a -> Boolean
+isEmpty =
+  foldr (\_ _ -> false) true
+
+singletonValue' :: forall a m. (Foldable m) => m a -> Either Int (Maybe a)
+singletonValue' =
+  foldr f initial
+  where
+  f x (Right (Just _)) = Left 1
+  f x (Right Nothing) = Right $ Just x
+  f x (Left i) = Left $ i + 1
+  initial = Right Nothing
+
+singletonValue :: forall a m n. (Applicative m, Foldable n) => m a -> (Int -> m a) -> n a -> m a
+singletonValue noElements tooManyElements =
+  either tooManyElements (maybe noElements pure) <<< singletonValue'
 
 throwIfEmpty :: forall a m eff. (Foldable m) => String -> m a -> Eff (err :: EXCEPTION | eff) Unit
-throwIfEmpty _ xs | null xs = pure unit
-throwIfEmpty message _ = throw message
+throwIfEmpty message xs | isEmpty xs = throw message
+throwIfEmpty _ _ = pure unit
 
+throwIfNotEmpty :: forall a m eff. (Foldable m) => String -> m a -> Eff (err :: EXCEPTION | eff) Unit
+throwIfNotEmpty message xs | isEmpty xs = pure unit
+throwIfNotEmpty _ _ = throw message

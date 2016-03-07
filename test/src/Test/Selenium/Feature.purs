@@ -1,4 +1,4 @@
-module Test.Feature where
+module Test.Selenium.Feature where
 --  ( click
 --  , hover
 --  , check
@@ -20,7 +20,7 @@ module Test.Feature where
 --  ) where
 
 import Control.Alt ((<|>))
-import Control.Apply ((<*))
+import Control.Apply ((*>))
 import Control.Bind ((=<<), (<=<))
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
@@ -28,8 +28,8 @@ import Control.Monad.Eff.Exception (EXCEPTION(), throw, message)
 import Control.Monad.Error.Class (throwError)
 import Data.Either (Either(), either)
 import Data.Foldable (foldMap, foldr, traverse_)
-import Data.Array as Array
-import Data.List (List(..), (..), index, uncons, length, singleton, elemIndex, zip, filter, head, intersectBy)
+import Data.Array ((..), index, uncons, length, singleton, elemIndex, zip, filter, head, intersectBy)
+import Data.List (toUnfoldable)
 import Data.Maybe (Maybe(..), maybe, maybe', isJust)
 import Data.Monoid (Monoid, mempty)
 import Data.String (joinWith, take)
@@ -44,51 +44,72 @@ import Selenium.Types (Element(), Locator(), ControlKey())
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Selenium.Log (sectionMsg, warnMsg, errorMsg)
 import Test.Selenium.Monad (Check(), getModifierKey)
-import Test.Utils (ifTrue, ifFalse, orIfItFails, passover, throwIfEmpty)
+import Test.Utils (ifTrue, ifFalse, orIfItFails, passover, throwIfEmpty, throwIfNotEmpty, singletonValue)
 import Test.XPath as XPath
+import Debug.Trace
 
 type Property = Tuple String (Maybe String)
 type Indexed a = Tuple Int a
 
 -- Basic XPath dependent finders
+findAll' :: String -> Check (Array Element)
+findAll' = map toUnfoldable <<< findElements <=< byXPath
+
 find' :: String -> Check Element
 find' xPath =
-  (maybe throwNoElementsError validate <<< uncons) =<< findAll' xPath
+  singletonValue throwNoElements throwMoreThanOneElement =<< findAll' xPath
   where
-  throwNoElementsError =
-    liftEff $ throw $ XPath.errorMessage "Couldn't find' an element" xPath
-  throwMoreThanOneElementError =
-    liftEff $ throw $ XPath.errorMessage "Found more than one element" xPath
-  validate o | length o.tail == 0 = pure o.head
-  validate _ = throwMoreThanOneElementError
+  throwNoElements =
+    liftEff $ throw $ XPath.errorMessage "Couldn't find an element" xPath
+  throwMoreThanOneElement i =
+    liftEff $ throw $ XPath.errorMessage ("Found (" ++ show i ++ ") more than one element") xPath
 
-findAll' :: String -> Check (List Element)
-findAll' = findElements <=< byXPath
+findAtLeastOne' :: String -> Check (Array Element)
+findAtLeastOne' xPath =
+  headOrThrow =<< findAll xPath
+  where
+  headOrThrow = passover (liftEff <<< throwIfEmpty noElementsMessage)
+  noElementsMessage = XPath.errorMessage "Couldn't find an element" xPath
 
 find :: String -> Check Element
-find xPath = find' xPath <* expectPresented xPath
+find xPath = expectPresented xPath *> find' xPath
 
-findAll :: String -> Check (List Element)
-findAll xPath = findAll' xPath <* expectPresented xPath
+findAll :: String -> Check (Array Element)
+findAll xPath = expectPresented xPath *> findAll' xPath
 
 -- Property and XPath dependent finders
-findAllWithProperties' :: Array Property -> String -> Check (List Element)
-findAllWithProperties' properties = elementsWithProperties properties <=< findAll
+findAllWithProperties' :: Array Property -> String -> Check (Array Element)
+findAllWithProperties' properties = elementsWithProperties properties <=< findAll'
+
+findAtLeastOneWithProperties' :: Array Property -> String -> Check (Array Element)
+findAtLeastOneWithProperties' properties xPath =
+  headOrThrow =<< elementsWithProperties properties =<< findAll' xPath
+  where
+  headOrThrow = passover (liftEff <<< throwIfEmpty noElementsMessage)
+  noElementsMessage =
+    XPath.errorMessage (withPropertiesMessage properties "Couldn't find an element") xPath
 
 findWithProperties' :: Array Property -> String -> Check Element
 findWithProperties' properties xPath =
-  headOrThrow =<< findAllWithProperties' properties xPath
+  singletonValue throwNoElements throwMoreThanOneElement =<< findAllWithProperties' properties xPath
   where
-  headOrThrow = maybe' (const throw') pure <<< head
-  throw' = liftEff $ throw $ noElementWithPropertiesError properties xPath
+  throwNoElements = liftEff $ throw $ noElementWithPropertiesError properties xPath
+  throwMoreThanOneElement i = liftEff $ throw $ moreThanOneElementMessage i
+  moreThanOneElementRawMessage i = "Found (" ++ show i ++ ") more than one element"
+  moreThanOneElementMessage i =
+    XPath.errorMessage (withPropertiesMessage properties $ moreThanOneElementRawMessage i) xPath
 
-findAllWithProperties :: Array Property -> String -> Check (List Element)
+findAllWithProperties :: Array Property -> String -> Check (Array Element)
 findAllWithProperties properties xPath =
-  findAllWithProperties' properties xPath <* expectPresentedWithProperties properties xPath
+  expectPresentedWithProperties properties xPath *> findAllWithProperties' properties xPath
+
+findAtLeastOneWithProperties :: Array Property -> String -> Check (Array Element)
+findAtLeastOneWithProperties properties xPath =
+  expectPresentedWithProperties properties xPath *> findAtLeastOneWithProperties' properties xPath
 
 findWithProperties :: Array Property -> String -> Check Element
 findWithProperties properties xPath =
-  findWithProperties' properties xPath <* expectPresentedWithProperties properties xPath
+  expectPresentedWithProperties properties xPath *> findWithProperties' properties xPath
 
 -- Errors
 printPropertyValue :: Maybe String -> String
@@ -102,15 +123,15 @@ printProperties = joinWith " " <<< map (uncurry printProperty)
 
 noElementWithPropertiesError :: Array Property -> String -> String
 noElementWithPropertiesError properties =
-  XPath.errorMessage $ withPropertiesMessage properties "Unable to find' element with "
+  XPath.errorMessage $ withPropertiesMessage properties "Unable to find element with "
 
 elementWithPropertiesError :: Array Property -> String -> String
 elementWithPropertiesError properties =
-  XPath.errorMessage $ withPropertiesMessage properties "Expected not to find' element with "
+  XPath.errorMessage $ withPropertiesMessage properties "Expected not to find element with "
 
 withPropertiesMessage :: Array Property -> String -> String
-withPropertiesMessage xs s | Array.length xs == 0 = ""
-withPropertiesMessage xs s = s ++ " with the attributes or properties " ++ printProperties xs
+withPropertiesMessage xs s | length xs == 0 = s
+withPropertiesMessage xs s = s ++ " with the attributes or properties: " ++ printProperties xs
 
 -- Expectations
 expectHidden :: String -> Check Unit
@@ -119,57 +140,46 @@ expectHidden xPath = expectHiddenWithProperties [] xPath
 expectPresented :: String -> Check Unit
 expectPresented xPath = expectPresentedWithProperties [] xPath
 
-validateHidden :: (String -> String) -> String -> Maybe String -> Check Unit
-validateHidden _ _ (Just "true") = pure unit
-validateHidden error xPath _ = liftEff $ throw $ error xPath
+validateJustTrue :: (String -> String) -> String -> Maybe String -> Check Unit
+validateJustTrue _ _ (Just "true") = pure unit
+validateJustTrue error xPath _ = liftEff $ throw $ error xPath
 
 expectHiddenAria :: Array Property -> String -> Check Unit
-expectHiddenAria properties xPath = XPath.thisOrItsParents expectSingleHiddenAria xPath
+expectHiddenAria properties xPath =
+  liftEff <<< throwIfNotEmpty message =<< findAllWithProperties' properties notHiddenXPath
   where
-  expectSingleHiddenAria = traverse_ validate <=< findAllWithProperties' properties
-  validate = validateHidden ariaError xPath <=< attributeOrProperty
-  ariaError = noElementWithPropertiesError $ [(Tuple "aria-hidden" (Just "true"))] ++ properties
-  attributeOrProperty = flip getAttribute "aria-hidden"
-
-expectHiddenHtml :: Array Property -> String -> Check Unit
-expectHiddenHtml properties xPath = XPath.thisOrItsParents expectSingleHiddenHtml xPath
-  where
-  expectSingleHiddenHtml = traverse_ validate <=< findAllWithProperties' properties
-  validate = validateHidden htmlError xPath <=< attributeOrProperty
-  htmlError = noElementWithPropertiesError $ [(Tuple "hidden" (Just "true"))] ++ properties
-  attributeOrProperty = flip getAttribute "hidden"
+  notHiddenXPath = xPath `XPath.ancestorOrSelf` "*[not(@aria-hidden='true')]"
+  message = XPath.errorMessage (withPropertiesMessage properties rawMessage) xPath
+  printedAriaHiddenProperty = printProperty "aria-hidden" (Just "true")
+  rawMessage =
+    "Expected an " ++ printedAriaHiddenProperty ++ " attribute of elements or their ancestors"
 
 expectHiddenVisual :: Array Property -> String -> Check Unit
-expectHiddenVisual properties xPath = traverse_ validate =<< findAllWithProperties' properties xPath
+expectHiddenVisual properties xPath =
+  traverse_ validate =<< findAllWithProperties' properties xPath
   where
   validate = ifTrue throwVisualError <=< isDisplayed
   throwVisualError = liftEff $ throw $ XPath.errorMessage message xPath
-  message = withPropertiesMessage properties "Expected to find' no visually displayed elements"
+  message = withPropertiesMessage properties "Expected to find no visually displayed elements"
 
 expectHiddenWithProperties :: Array Property -> String -> Check Unit
 expectHiddenWithProperties properties xPath =
-  expectHiddenVisual properties xPath <* expectHiddenDom
-  where
-  expectHiddenDom = expectHiddenAria properties xPath <|> expectHiddenHtml properties xPath
+  tryRepeatedlyTo $ expectHiddenAria properties xPath *> expectHiddenVisual properties xPath
 
 expectPresentedWithProperties :: Array Property -> String -> Check Unit
 expectPresentedWithProperties properties xPath =
-  expectPresentedVisual <* expectPresentedAria <* expectPresentedHtml <* expectNode
+  tryRepeatedlyTo $ expectNode *> expectPresentedVisual *> expectPresentedAria
   where
   verify = either (const $ pure unit) <<< const <<< throwExpectation
+  throwExpectation :: String -> Check Unit
   throwExpectation = liftEff <<< throw
-  expectNode = (liftEff <<< throwIfEmpty nodeError) =<< findAllWithProperties' properties xPath
+  expectNode = findAtLeastOneWithProperties' properties xPath
   expectPresentedVisual = verify visualError =<< (attempt $ expectHiddenVisual properties xPath)
   expectPresentedAria = verify ariaError =<< (attempt $ expectHiddenAria properties xPath)
-  expectPresentedHtml = verify htmlError =<< (attempt $ expectHiddenHtml properties xPath)
-  nodeError = XPath.errorMessage (withPropertiesMessage properties nodeMessage) xPath
   visualError = XPath.errorMessage (withPropertiesMessage properties visualMessage) xPath
   ariaError = XPath.errorMessage (withPropertiesMessage properties ariaMessage) xPath
-  htmlError = XPath.errorMessage (withPropertiesMessage properties htmlMessage) xPath
-  nodeMessage = "Expected to find' at least one elements"
-  visualMessage = "Expected to find' only visually presented elements"
-  ariaMessage = "Expected no true values for \"aria-hidden\" on elements or their parents found"
-  htmlMessage = "Expected no true values for \"hidden\" on elements or their parents found"
+  visualMessage = "Expected to find only visually presented elements"
+  ariaMessage = "Expected no true values for \"aria-hidden\" on elements or their ancestors found"
 
 -- Interaction utilities
 checkedProperty :: Maybe String -> Property
@@ -181,8 +191,7 @@ propertiesAndChecked checked = append [checkedProperty checked]
 -- XPath dependent interactions
 check' :: (Maybe String) -> String -> Check Unit
 check' checked xPath =
-  tryRepeatedlyTo
-    $ (traverse_ clickElement) =<< findAllWithProperties [checkedProperty checked] xPath
+  traverse_ clickElement =<< findAllWithProperties [checkedProperty checked] xPath
 
 check :: String -> Check Unit
 check = check' Nothing
@@ -202,7 +211,7 @@ selectFromDropdown xPath text =
   tryRepeatedlyTo $ selectFromDropdownElement text =<< find xPath
 
 click :: String -> Check Unit
-click = tryRepeatedlyTo <<< clickElement <=< find
+click x = tryRepeatedlyTo $ clickElement =<< find x
 
 clickAll :: String -> Check Unit
 clickAll = tryRepeatedlyTo <<< (traverse_ clickElement) <=< findAll
@@ -213,7 +222,7 @@ hover = tryRepeatedlyTo <<< hoverElement <=< find
 -- XPath and property dependent interactions
 checkWithProperties' :: (Maybe String) -> Array Property -> String -> Check Unit
 checkWithProperties' checked properties xPath =
-  tryRepeatedlyTo $ (traverse_ clickElement) =<< findAllWithProperties properties' xPath
+  tryRepeatedlyTo $ (traverse_ clickElement) =<< findAtLeastOneWithProperties properties' xPath
   where
   properties' = propertiesAndChecked checked properties
 
@@ -240,7 +249,7 @@ clickWithProperties properties =
 
 clickAllWithProperties :: Array Property -> String -> Check Unit
 clickAllWithProperties properties =
-  tryRepeatedlyTo <<< (traverse_ clickElement) <=< findAllWithProperties properties
+  tryRepeatedlyTo <<< (traverse_ clickElement) <=< findAtLeastOneWithProperties properties
 
 hoverWithProperties :: Array Property -> String -> Check Unit
 hoverWithProperties properties =
@@ -248,45 +257,43 @@ hoverWithProperties properties =
 
 -- Independent interactions
 typeString :: String -> Check Unit
-typeString string = tryRepeatedlyTo $ sequence $ FeatureSequence.keys string
+typeString string = sequence $ FeatureSequence.keys string
 
 pressEnter :: Check Unit
-pressEnter = tryRepeatedlyTo $ sequence $ FeatureSequence.sendEnter
+pressEnter = sequence $ FeatureSequence.sendEnter
 
 selectAll :: Check Unit
-selectAll = tryRepeatedlyTo $ (sequence <<< FeatureSequence.selectAll) =<< getModifierKey
+selectAll = (sequence <<< FeatureSequence.selectAll) =<< getModifierKey
 
 -- Element dependent interactions
 clickElement :: Element -> Check Unit
 clickElement element =
-  tryRepeatedlyTo
-    $ (sequence $ Sequence.mouseUp leftButton element)
-    <* (sequence $ Sequence.mouseDown leftButton element)
+  sequence $ Sequence.mouseDown leftButton element *> Sequence.mouseUp leftButton element
 
-clickAllElements :: List Element -> Check Unit
-clickAllElements = tryRepeatedlyTo <<< (traverse_ clickElement)
+clickAllElements :: Array Element -> Check Unit
+clickAllElements = traverse_ clickElement
 
 hoverElement :: Element -> Check Unit
 hoverElement = tryRepeatedlyTo <<< sequence <<< Sequence.hover
 
 provideFieldValueElement :: String -> Element -> Check Unit
 provideFieldValueElement value element =
-  tryRepeatedlyTo $ typeString value <* selectAll <* clickElement element
+  clickElement element *> selectAll *> typeString value
 
 selectFromDropdownElement :: String -> Element -> Check Unit
 selectFromDropdownElement text element =
-  tryRepeatedlyTo $ pressEnter <* typeString text <* clickElement element
+  clickElement element *> typeString text *> pressEnter
 
--- Element filters
-elementsWithProperties :: Array Property -> List Element -> Check (List Element)
-elementsWithProperties properties | Array.length properties == 0 = pure <<< id
+-- Element utilities
+elementsWithProperties :: Array Property -> Array Element -> Check (Array Element)
+elementsWithProperties properties | length properties == 0 = pure <<< id
 elementsWithProperties properties =
-  pure <<< map snd <=< flip indexedElementsWithProperties properties <<< zipWithIndices
+  tryRepeatedlyTo <<< (pure <<< map snd) <=< flip indexedElementsWithProperties properties <<< zipWithIndices
   where
-  values name = traverse (flip getAttribute name)
+  values name = traverse (later 0 <<< flip getAttribute name)
   mapEq x = map (eq x)
   tailHeadIntersectionBy f o = foldr (intersectBy f) o.head o.tail
-  intersectArrayOfListsBy f = maybe Nil (tailHeadIntersectionBy f) <<< Array.uncons
+  intersectArrayOfArraysBy f = maybe [] (tailHeadIntersectionBy f) <<< uncons
   filterByBooleans xs = map fst <<< filter snd <<< zip xs
   toIndexes xs = 0 .. (length xs - 1)
   zipWithIndices xs = zip (toIndexes xs) xs
@@ -296,4 +303,4 @@ elementsWithProperties properties =
   nonIntersectedIndexedElementsWithProperties elements =
     traverse (uncurry (indexedElementsWithProperty elements))
   indexedElementsWithProperties elements =
-    pure <<< intersectArrayOfListsBy fstEq <=< nonIntersectedIndexedElementsWithProperties elements
+    pure <<< intersectArrayOfArraysBy fstEq <=< nonIntersectedIndexedElementsWithProperties elements

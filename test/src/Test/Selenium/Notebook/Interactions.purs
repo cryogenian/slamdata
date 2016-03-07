@@ -1,80 +1,85 @@
 module Test.Selenium.Notebook.Interactions where
 
---import Control.Apply ((*>))
---import Control.Bind ((<=<), (=<<))
---import Control.Monad.Aff (later)
---import Control.Monad.Eff.Class (liftEff)
---import Control.Monad.Trans (lift)
---import Control.Monad.Eff.Random (randomInt)
---import Data.Foldable (traverse_) as F
---import Data.List (replicateM)
---import Data.Traversable (traverse) as T
---import Prelude
---import Selenium.ActionSequence (leftClick)
---import Selenium.Monad (tryRepeatedlyTo, refresh, byXPath, findElements)
---import Selenium.Types (Element())
---import Test.Selenium.Interactions (click, hover)
---import Test.Selenium.Log (warnMsg)
---import Test.Selenium.Monad (Check(), getConfig, getModifierKey)
---import Test.Selenium.Finders (findByXPath)
---import Test.Selenium.Notebook.Finders as Finders
---import Test.Selenium.Common (waitTime)
---import Test.XPath (anywhere, following, anyWithExactText)
---import Test.Selenium.XPaths as XPaths
+import Control.Apply ((<*), (*>)) -- <------------ remove <*s
+import Control.Bind ((<=<), (=<<))
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Random (randomInt)
+import Data.Foldable (traverse_) as F
+import Data.Tuple (Tuple(..))
+import Data.Maybe (Maybe(..))
+import Data.List (replicateM)
+import Data.Traversable (traverse) as T
+import Prelude
+import Selenium.ActionSequence (leftClick)
+import Selenium.Monad (get, refresh)
+import Selenium.Types (Element())
+import Test.Selenium.Feature (click, clickWithProperties, hover, pressEnter, typeString, selectAll, provideFieldValue, selectFromDropdown, expectPresentedWithProperties)
+import Test.Selenium.Monad (Check())
+import Test.Selenium.Common (waitTime)
+import Test.XPath as XPath
+import Test.Selenium.XPaths as XPaths
+import Test.Selenium.Properties as Properties
+import Debug.Trace
 
---browseFolder :: String -> Check Unit
---browseFolder name = findByXPath (anywhere $ anyWithExactText name) >>= click
---
---embedCellOutput :: Check Unit
---embedCellOutput = click =<< Finders.findEmbedCellOutput
---
---browseRootFolder :: Check Unit
---browseRootFolder = Finders.findBrowseRootFolder >>= click
---
---browseTestFolder :: Check Unit
---browseTestFolder = browseRootFolder *> browseFolder "test-mount" *> browseFolder "testDb"
---
---createNotebook :: Check Unit
---createNotebook = Finders.findCreateNotebook >>= click
---
---nameNotebook :: String -> Check Unit
---nameNotebook name = do
---  Finders.findUntitledNotebookNameInput >>= click
---  getModifierKey >>= selectAll
---  typeString name
---  pressEnter
---
---deleteFile :: String -> Check Unit
---deleteFile name = Finders.findRemoveFile name >>= click
---
---createNotebookInTestFolder :: String -> Check Unit
---createNotebookInTestFolder name = browseTestFolder *> createNotebook *> nameNotebook name
---
---deleteFileInTestFolder :: String -> Check Unit
---deleteFileInTestFolder name = browseTestFolder *> deleteFile name
---
---reopenCurrentNotebook :: Check Unit
---reopenCurrentNotebook = waitTime 2000 *> refresh
---
---expandNewCellMenu :: Check Unit
---expandNewCellMenu = Finders.findInsertCell >>= click
---
---insertCellUsingNextActionMenu :: Check Element -> Check Unit
---insertCellUsingNextActionMenu findSpecificInsertCell =
---  expandNewCellMenu *> findSpecificInsertCell >>= click
---
---insertQueryCellUsingNextActionMenu :: Check Unit
---insertQueryCellUsingNextActionMenu = insertCellUsingNextActionMenu Finders.findInsertQueryCell
---
---insertMdCellUsingNextActionMenu :: Check Unit
---insertMdCellUsingNextActionMenu = insertCellUsingNextActionMenu Finders.findInsertMdCell
---
---insertExploreCellUsingNextActionMenu :: Check Unit
---insertExploreCellUsingNextActionMenu = insertCellUsingNextActionMenu Finders.findInsertExploreCell
---
---insertSearchCellUsingNextActionMenu :: Check Unit
---insertSearchCellUsingNextActionMenu = insertCellUsingNextActionMenu Finders.findInsertSearchCell
---
+launchSlamData :: Check Unit
+launchSlamData = get "http://localhost:63175"
+
+mountTestDatabase :: Check Unit
+mountTestDatabase =
+  click (XPath.anywhere XPaths.accessMountDatabase)
+    *> provideFieldValue (XPath.anywhere XPaths.mountName) "test-mount"
+    *> selectFromDropdown (XPath.anywhere XPaths.mountType) "Mongo"
+    *> provideFieldValue (XPath.index (XPath.anywhere XPaths.mountPort) 1) "63174"
+    *> provideFieldValue (XPath.index (XPath.anywhere XPaths.mountHost) 1) "localhost"
+    *> provideFieldValue (XPath.anywhere XPaths.mountDatabase) "testDb"
+    *> click (XPath.anywhere XPaths.mountButton)
+
+browseFolder :: String -> Check Unit
+browseFolder = click <<< XPath.anywhere <<< XPath.anyWithExactText
+
+embedCellOutput :: Check Unit
+embedCellOutput = click $ XPath.anywhere XPaths.embedCellOutput
+
+browseRootFolder :: Check Unit
+browseRootFolder = click XPaths.browseRootFolder
+
+browseTestFolder :: Check Unit
+browseTestFolder = browseRootFolder *> browseFolder "test-mount" *> browseFolder "testDb"
+
+createNotebook :: Check Unit
+createNotebook = click XPaths.createNotebook
+
+nameNotebook :: String -> Check Unit
+nameNotebook =
+  provideFieldValueWithProperties [Tuple "value" "Untitled Notebook"] (XPath.anywhere "input")
+
+deleteFile :: String -> Check Unit
+deleteFile = click <<< XPaths.removeFile
+
+createNotebookInTestFolder :: String -> Check Unit
+createNotebookInTestFolder name = browseTestFolder *> createNotebook *> nameNotebook name
+
+deleteFileInTestFolder :: String -> Check Unit
+deleteFileInTestFolder name = browseTestFolder *> deleteFile name
+
+reopenCurrentNotebook :: Check Unit
+reopenCurrentNotebook = waitTime 2000 *> refresh
+
+expandNewCellMenu :: Check Unit
+expandNewCellMenu = click XPaths.insertCell
+
+insertQueryCellUsingNextActionMenu :: Check Unit
+insertQueryCellUsingNextActionMenu = expandNewCellMenu *> click XPaths.insertQueryCell
+
+insertMdCellUsingNextActionMenu :: Check Unit
+insertMdCellUsingNextActionMenu = expandNewCellMenu *> click XPaths.insertMdCell
+
+insertExploreCellUsingNextActionMenu :: Check Unit
+insertExploreCellUsingNextActionMenu = expandNewCellMenu *> click XPaths.insertExploreCell
+
+insertSearchCellUsingNextActionMenu :: Check Unit
+insertSearchCellUsingNextActionMenu =  expandNewCellMenu *> click XPaths.insertSearchCell
+
 --insertRandomNumberOfCells :: Check Unit -> Check Int
 --insertRandomNumberOfCells insertCell = do
 --  numberOfCellsToInsert <- liftEff $ randomInt 1 10
@@ -139,36 +144,36 @@ module Test.Selenium.Notebook.Interactions where
 --
 --provideExploreFile :: String -> Check Unit
 --provideExploreFile filename = focusExploreFileField *> typeString filename
---
---provideMd :: String -> Check Unit
---provideMd md = focusMdField *> typeString (md ++ " ")
---
---focusMdField :: Check Unit
---focusMdField = Finders.findMdField >>= click
---
+
+provideMd :: String -> Check Unit
+provideMd md = typeString (md ++ " ") <* focusMdField
+
+focusMdField :: Check Unit
+focusMdField = click XPaths.mdField
+
 --focusExploreFileField :: Check Unit
 --focusExploreFileField = Finders.findExploreFileField >>= click
---
---changeMd :: String -> Check Unit
---changeMd md = focusMdField *> (getModifierKey >>= selectAll) *> typeString md
---
---playMd :: Check Unit
---playMd = Finders.findMdPlayButton >>= click
---
+
+changeMd :: String -> Check Unit
+changeMd md = typeString md <* selectAll <* focusMdField
+
+playMd :: Check Unit
+playMd = click XPaths.mdPlayButton
+
 --playExplore :: Check Unit
 --playExplore = Finders.findExplorePlayButton >>= click
 --
---playMdQuery :: Check Unit
---playMdQuery = Finders.findMdQueryPlayButton >>= click
+playMdQuery :: Check Unit
+playMdQuery = click XPaths.mdQueryPlayButton
 --
 --focusMdQueryField :: Check Unit
 --focusMdQueryField = Finders.findMdQueryField >>= click
 --
 --provideMdQuery :: String -> Check Unit
 --provideMdQuery query = focusMdQueryField *> typeString (query ++ " ")
---
---insertQueryAfterMd :: Check Unit
---insertQueryAfterMd = Finders.findInsertQueryAfterMd >>= click
---
+
+insertQueryAfterMd :: Check Unit
+insertQueryAfterMd = click XPaths.insertQueryAfterMd
+
 --showExploreMessages :: Check Unit
 --showExploreMessages = Finders.findShowExploreMessages >>= click

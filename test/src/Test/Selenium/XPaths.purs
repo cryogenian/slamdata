@@ -4,190 +4,222 @@ import Data.List (List(), fromFoldable)
 import Data.String (joinWith)
 import Prelude
 import Test.XPath as XPath
-import Test.Selenium.Notebook.Data (fileFromInitialFileList, initialFileList)
+import Test.Selenium.Notebook.Data as Data
 
-aceEditorXPath :: String
-aceEditorXPath = "*[contains(@class, 'ace_editor') and not(contains(@class, 'ace_autocomplete'))]"
+aceEditor :: String
+aceEditor = "*[contains(@class, 'ace_editor') and not(contains(@class, 'ace_autocomplete'))]"
 
-playXPath :: String
-playXPath = XPath.anyWithExactAriaLabel "Play"
+play :: String
+play = XPath.anyWithExactAriaLabel "Play"
 
-fileFromInitialFileListXPath :: String
-fileFromInitialFileListXPath =
-  XPath.anyWithExactText fileFromInitialFileList
+fileFromInitialFileList :: String
+fileFromInitialFileList =
+  XPath.anyWithExactText Data.fileFromInitialFileList
 
-initialFileListXPaths :: List String
-initialFileListXPaths =
-  map XPath.anyWithExactText initialFileList
+initialFileList :: List String
+initialFileList =
+  map XPath.anyWithExactText Data.initialFileList
 
-initialFileListInOrderXPath :: String
-initialFileListInOrderXPath =
-  XPath.inOrder $ map XPath.anyWithExactText initialFileList
+initialFileListInOrder :: String
+initialFileListInOrder =
+  XPath.inOrder $ map XPath.anyWithExactText Data.initialFileList
 
-embedCellOutputXPath :: String
-embedCellOutputXPath =
+embedCellOutput :: String
+embedCellOutput =
   XPath.anyWithExactText "Embed cell output"
 
-embedCellOutputTitleXPath :: String
-embedCellOutputTitleXPath =
+embedCellOutputTitle :: String
+embedCellOutputTitle =
   XPath.anyWithExactText "Embed cell"
 
-embedCellOutputSnippetXPath :: String
-embedCellOutputSnippetXPath =
+embedCellOutputSnippet :: String
+embedCellOutputSnippet =
   XPath.anyWithText "<script type=\"text/javascript\">"
 
-exploreInputXPath :: String
-exploreInputXPath =
-  exploreCellTitleXPath `XPath.following` XPath.inputWithExactPlaceholder "Select a file"
+exploreInput :: String
+exploreInput =
+  exploreCellTitle `XPath.following` XPath.inputWithExactPlaceholder "Select a file"
 
-insertQueryAfterThisXPath :: String
-insertQueryAfterThisXPath =
+insertQueryAfterThis :: String
+insertQueryAfterThis =
   XPath.anyWithExactAriaLabel "Insert Query cell after this cell"
 
-insertSearchAfterThisXPath :: String
-insertSearchAfterThisXPath =
+insertSearchAfterThis :: String
+insertSearchAfterThis =
   XPath.anyWithExactAriaLabel "Insert Search cell after this cell"
 
-insertVisualizeAfterThisXPath :: String
-insertVisualizeAfterThisXPath =
+insertVisualizeAfterThis :: String
+insertVisualizeAfterThis =
   XPath.anyWithExactAriaLabel "Insert Visualize cell after this cell"
 
-insertDownloadAfterThisXPath :: String
-insertDownloadAfterThisXPath =
+insertDownloadAfterThis :: String
+insertDownloadAfterThis =
   XPath.anyWithExactAriaLabel "Insert Download cell after this cell"
 
-insertQueryAfterMdXPath :: String
-insertQueryAfterMdXPath =
-  mdCellTitleXPath `XPath.following` insertQueryAfterThisXPath
+insertQueryAfterMd :: String
+insertQueryAfterMd =
+  mdCellTitle `XPath.following` insertQueryAfterThis
 
-showFileListXPath :: String
-showFileListXPath =
+showFileList :: String
+showFileList =
   XPath.anyWithExactAriaLabel "Show file list"
 
-hideFileListXPath :: String
-hideFileListXPath =
+hideFileList :: String
+hideFileList =
   XPath.anyWithExactAriaLabel "Hide file list"
 
-deleteCellXPath :: String
-deleteCellXPath =
+deleteCell :: String
+deleteCell =
   XPath.anyWithExactAriaLabel "Delete cell"
 
-queryCellTitleXPath :: String
-queryCellTitleXPath =
+queryCellTitle :: String
+queryCellTitle =
   XPath.anyWithExactText "Query"
 
-mdCellTitleXPath :: String
-mdCellTitleXPath =
+mdCellTitle :: String
+mdCellTitle =
   XPath.anyWithExactText "Markdown"
 
-exploreCellTitleXPath :: String
-exploreCellTitleXPath =
+exploreCellTitle :: String
+exploreCellTitle =
   XPath.anyWithExactText "Explore"
 
-searchCellTitleXPath :: String
-searchCellTitleXPath =
+searchCellTitle :: String
+searchCellTitle =
   XPath.anyWithExactText "Search"
 
-mdQueryCellTitleXPath :: String
-mdQueryCellTitleXPath =
- mdCellTitleXPath `XPath.following` queryCellTitleXPath
+mdQueryCellTitle :: String
+mdQueryCellTitle =
+ mdCellTitle `XPath.following` queryCellTitle
 
-dismissInsertCellMenuXPath :: String
-dismissInsertCellMenuXPath =
+dismissInsertCellMenu :: String
+dismissInsertCellMenu =
   XPath.anyWithExactAriaLabel "Dismiss insert cell menu"
 
-insertCellXPath :: String
-insertCellXPath =
+insertCell :: String
+insertCell =
   XPath.anyWithExactAriaLabel "Insert cell"
 
-cellTitleXPath :: String
-cellTitleXPath =
-  joinWith "|" [queryCellTitleXPath, mdCellTitleXPath, exploreCellTitleXPath, searchCellTitleXPath]
+cellTitle :: String
+cellTitle =
+  joinWith "|" [queryCellTitle, mdCellTitle, exploreCellTitle, searchCellTitle]
 
-insertQueryCellXPath :: String
-insertQueryCellXPath =
+insertQueryCell :: String
+insertQueryCell =
   XPath.anyWithExactAriaLabel "Insert Query cell"
 
-insertMdCellXPath :: String
-insertMdCellXPath =
+insertMdCell :: String
+insertMdCell =
   XPath.anyWithExactAriaLabel "Insert Markdown cell"
 
-insertExploreCellXPath :: String
-insertExploreCellXPath =
-  XPath.anyWithExactAriaLabel "Insert Explore cell"
+insertExploreCell :: String
+insertExploreCell = XPath.anyWithExactAriaLabel "Insert Explore cell"
 
-insertSearchCellXPath :: String
-insertSearchCellXPath =
+insertSearchCell :: String
+insertSearchCell =
   XPath.anyWithExactAriaLabel "Insert Search cell"
 
-hideCellOptionsXPath :: String
-hideCellOptionsXPath =
+hideCellOptions :: String
+hideCellOptions =
   XPath.anyWithExactAriaLabel "Hide cell options"
 
-showCellOptionsXPath :: String
-showCellOptionsXPath =
+showCellOptions :: String
+showCellOptions =
   XPath.anyWithExactAriaLabel "Show cell options"
 
-hideQueryCellOptionsXPath :: String
-hideQueryCellOptionsXPath =
-  queryCellTitleXPath `XPath.following` hideCellOptionsXPath
+hideQueryCellOptions :: String
+hideQueryCellOptions =
+  queryCellTitle `XPath.following` hideCellOptions
 
-hideMdCellOptionsXPath :: String
-hideMdCellOptionsXPath =
-  mdCellTitleXPath `XPath.following` hideCellOptionsXPath
+hideMdCellOptions :: String
+hideMdCellOptions =
+  mdCellTitle `XPath.following` hideCellOptions
 
-hideExploreCellOptionsXPath :: String
-hideExploreCellOptionsXPath =
-  exploreCellTitleXPath `XPath.following` hideCellOptionsXPath
+hideExploreCellOptions :: String
+hideExploreCellOptions =
+  exploreCellTitle `XPath.following` hideCellOptions
 
-hideSearchCellOptionsXPath :: String
-hideSearchCellOptionsXPath =
-  searchCellTitleXPath `XPath.following` hideCellOptionsXPath
+hideSearchCellOptions :: String
+hideSearchCellOptions =
+  searchCellTitle `XPath.following` hideCellOptions
 
-showQueryCellOptionsXPath :: String
-showQueryCellOptionsXPath =
-  queryCellTitleXPath `XPath.following` showCellOptionsXPath
+showQueryCellOptions :: String
+showQueryCellOptions =
+  queryCellTitle `XPath.following` showCellOptions
 
-showMdCellOptionsXPath :: String
-showMdCellOptionsXPath =
-  mdCellTitleXPath `XPath.following` showCellOptionsXPath
+showMdCellOptions :: String
+showMdCellOptions =
+  mdCellTitle `XPath.following` showCellOptions
 
-showExploreCellOptionsXPath :: String
-showExploreCellOptionsXPath =
-  exploreCellTitleXPath `XPath.following` showCellOptionsXPath
+showExploreCellOptions :: String
+showExploreCellOptions =
+  exploreCellTitle `XPath.following` showCellOptions
 
-showSearchCellOptionsXPath :: String
-showSearchCellOptionsXPath =
-  searchCellTitleXPath `XPath.following` showCellOptionsXPath
+showSearchCellOptions :: String
+showSearchCellOptions =
+  searchCellTitle `XPath.following` showCellOptions
 
-browseRootFolderXPath :: String
-browseRootFolderXPath = XPath.anyWithAriaLabel "Browse root folder"
+browseRootFolder :: String
+browseRootFolder = XPath.anyWithAriaLabel "Browse root folder"
 
-createNotebookXPath :: String
-createNotebookXPath =
+createNotebook :: String
+createNotebook =
   XPath.anyWithExactAriaLabel "Create notebook"
 
-removeFileXPath :: String -> String
-removeFileXPath name =
+removeFile :: String -> String
+removeFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Remove"
 
-oneErrorMessageXPath :: String
-oneErrorMessageXPath =
+oneErrorMessage :: String
+oneErrorMessage =
   XPath.anyWithText "1 error during evaluation."
 
-showMessagesXPath :: String
-showMessagesXPath =
+showMessages :: String
+showMessages =
   XPath.anyWithExactAriaLabel "Show messages"
 
-noFileSelectedMessageXPath :: String
-noFileSelectedMessageXPath =
+noFileSelectedMessage :: String
+noFileSelectedMessage =
   XPath.anyWithExactText "No file selected"
 
-fileDoesNotExistXPath :: String -> String
-fileDoesNotExistXPath filename = XPath.anyWithExactText $ "File " ++ filename ++ " does not exist"
+fileDoesNotExist :: String -> String
+fileDoesNotExist filename = XPath.anyWithExactText $ "File " ++ filename ++ " does not exist"
 
-selectFileFieldXPath :: String
-selectFileFieldXPath = XPath.inputWithPlaceholder "Select a file"
+selectFileField :: String
+selectFileField = XPath.inputWithPlaceholder "Select a file"
 
-finishedMessageXPath :: String
-finishedMessageXPath = XPath.anyWithText "Finished"
+finishedMessage :: String
+finishedMessage = XPath.anyWithText "Finished"
+
+mdFinishedMessage :: String
+mdFinishedMessage = mdCellTitle `XPath.following` finishedMessage
+
+mdField :: String
+mdField = mdCellTitle `XPath.following` aceEditor
+
+mdPlayButton :: String
+mdPlayButton = mdCellTitle `XPath.following` play
+
+mdQueryPlayButton :: String
+mdQueryPlayButton = mdQueryCellTitle `XPath.following` play
+
+accessMountDatabase :: String
+accessMountDatabase = XPath.anyWithExactAriaLabel "Mount database"
+
+mountName :: String
+mountName = "input" `XPath.withLabelWithExactText` "Name"
+
+mountType :: String
+mountType = "select" `XPath.withLabelWithExactText` "Mount type"
+
+mountPort :: String
+mountPort = "input" `XPath.withLabelWithExactText` "Port"
+
+mountHost :: String
+mountHost = "input" `XPath.withLabelWithExactText` "Host"
+
+mountDatabase :: String
+mountDatabase = "input" `XPath.withLabelWithExactText` "Database"
+
+mountButton :: String
+mountButton = "button" `XPath.nodeWithExactText` "Mount"

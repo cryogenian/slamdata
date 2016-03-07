@@ -17,32 +17,32 @@ limitations under the License.
 -- | Setups, teardowns and execution contexts for notebook tests
 module Test.Selenium.Notebook.Contexts where
 
---import Prelude
+import Prelude
 --
 --import Control.Monad.Eff.Random (randomInt)
 --
 --import Data.Either (isRight)
 --import Control.Apply ((*>))
---import Data.Foldable (foldl, traverse_)
---import Data.Functor.Aff (liftAff)
+import Data.Foldable (foldl, traverse_)
+import Data.Functor.Aff (liftAff)
 --import Data.Functor.Eff (liftEff)
 --import Data.List (List(..), length, null, (!!), catMaybes, filter)
 --import Data.Maybe (maybe)
 --import Data.String.Regex as R
 --import Data.Traversable (traverse)
 --
---import Node.FS.Aff (mkdir)
+import Node.FS.Aff (mkdir)
 --
 --import Selenium.ActionSequence hiding (sequence)
 --import Selenium.Combinators (checker, tryToFind)
---import Selenium.Monad
+import Selenium.Monad
 --import Selenium.Types
 --
 --import Test.Selenium.ActionSequence (keys)
 --import Test.Selenium.Common
 --import Test.Selenium.File hiding (test)
 --import Test.Selenium.Log
---import Test.Selenium.Monad
+import Test.Selenium.Monad
 --import Test.Selenium.Notebook.Getters
 --
 --type Context = (Check Unit -> Check Unit)
@@ -59,8 +59,8 @@ module Test.Selenium.Notebook.Contexts where
 --  where
 --  filterFn {url: url} = R.test (R.regex "//" R.noFlags) url
 --
---setUp :: Check Unit
---setUp = void $ createTestDirs *> home *> goodMountDatabase
+-- setUp :: Check Unit
+-- setUp = void $ createTestDirs *> home *> goodMountDatabase
 --
 --onlyFirefox :: Context
 --onlyFirefox action = do
@@ -70,35 +70,35 @@ module Test.Selenium.Notebook.Contexts where
 --    else warnMsg "This test runs only in FireFox"
 --
 --
---createTestDirs :: Check Unit
---createTestDirs = do
+createTestDirs :: Check Unit
+createTestDirs = do
+  config <- getConfig
+  if not config.collectingScreenshots
+    then pure unit
+    else
+    traverse_ (apathize <<< liftAff <<< mkdir) config.screenshot.dirs
+
 --  config <- getConfig
---  if not config.collectingScreenshots
+--  els <- byCss config.cell.trash >>= findElements
+--  if null els
 --    then pure unit
---    else
---    traverse_ (apathize <<< liftAff <<< mkdir) config.screenshot.dirs
---
-----  config <- getConfig
-----  els <- byCss config.cell.trash >>= findElements
-----  if null els
-----    then pure unit
-----    else do
-----    -- to check not only top
-----    i <- liftEff $ randomInt 0 (length els - 1)
-----    maybe (pure unit) go $ els !! i
-----  where
-----  go el = do
-----    config <- getConfig
-----    old <- length <$> getCellTitles
-----    sequence $ leftClick el
-----    els <- byCss config.cell.trash >>= findElements
-----    if null els
-----      then pure unit
-----      else do
-----      await "cell has not been deleted" do
-----        new <- length <$> getCellTitles
-----        pure $ new == old - one
-----      deleteAllCells
+--    else do
+--    -- to check not only top
+--    i <- liftEff $ randomInt 0 (length els - 1)
+--    maybe (pure unit) go $ els !! i
+--  where
+--  go el = do
+--    config <- getConfig
+--    old <- length <$> getCellTitles
+--    sequence $ leftClick el
+--    els <- byCss config.cell.trash >>= findElements
+--    if null els
+--      then pure unit
+--      else do
+--      await "cell has not been deleted" do
+--        new <- length <$> getCellTitles
+--        pure $ new == old - one
+--      deleteAllCells
 --
 --
 --cellHasRun :: Check Boolean

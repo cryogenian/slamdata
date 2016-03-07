@@ -34,6 +34,7 @@ import Test.Config (Config())
 import Test.Effects (TestEffects())
 import Test.Selenium as Selenium
 import Text.Chalky
+import Debug.Trace
 
 foreign import getConfig :: forall e. Eff (fs :: FS|e) Config
 foreign import createReadStream
@@ -130,6 +131,7 @@ cleanMkDir path = do
 
 main :: Eff TestEffects Unit
 main = do
+  traceAny "ok" \_ -> pure unit
   procs <- newRef []
   Process.onExit \_ ->
     readRef procs >>= traverse_ kill
@@ -165,6 +167,7 @@ main = do
     log $ magenta "Connecting database"
     db <- connect $ mongoConnectionString rawConfig
     log $ magenta "Ok, connected"
+
 
     log $ yellow "Starting tests"
     rawConfig <- liftEff getConfig
