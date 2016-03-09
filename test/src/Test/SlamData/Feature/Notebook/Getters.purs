@@ -1,0 +1,400 @@
+{-
+Copyright 2015 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
+module Test.SlamData.Feature.Notebook.Getters where
+
+--import Prelude
+--
+--import Data.Either (Either(..))
+--import Data.Foldable (fold)
+--import Data.List (catMaybes, List(..), fromList, toList, length, (!!))
+--import Data.Maybe (Maybe(..), maybe)
+--import Data.Monoid.Conj (Conj(..), runConj)
+--import Data.Monoid.Disj (Disj(..), runDisj)
+--import Data.Traversable (traverse)
+--import Data.Tuple (Tuple(..))
+--import Data.String (joinWith)
+--import Selenium.Monad
+--import Selenium.Types
+--import Test.Config
+--import Test.SlamData.Feature.Common
+--import Test.SlamData.Feature.Log
+--import Test.SlamData.Feature.Monad ((SlamFeature(), getConfig)
+--import Test.SlamData.Feature.Types
+--
+--import Data.String.Regex as R
+
+--waitNextCellSearch :: SlamFeature Element
+--waitNextCellSearch = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.cell.nextCellSearch >>= findExact
+--
+--waitNextVizCell :: SlamFeature Element
+--waitNextVizCell = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.cell.nextCellViz >>= findExact
+--
+--waitNextQueryCellFor :: Element -> SlamFeature Element
+--waitNextQueryCellFor cell = tryRepeatedlyTo do
+--  config <- getConfig
+--  byCss config.cell.nextCellQuery >>= childExact cell
+--
+--waitNextVizCellFor :: Element -> SlamFeature Element
+--waitNextVizCellFor cell = tryRepeatedlyTo do
+--  config <- getConfig
+--  byCss config.cell.nextCellViz >>= childExact cell
+--
+--waitCanvas :: SlamFeature Element
+--waitCanvas = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.canvas >>= findExact
+--
+--fileListVisible :: SlamFeature Boolean
+--fileListVisible =
+--  getConfig
+--    >>= (_.explore >>> _.list >>> flip getElementByCss "file list not found")
+--    >>= isDisplayed
+--
+--waitVizHeightInput :: SlamFeature Element
+--waitVizHeightInput = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.heightInput >>= findExact
+--
+--waitVizWidthInput :: SlamFeature Element
+--waitVizWidthInput = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.widthInput >>= findExact
+--
+--getInputLocator :: SlamFeature Locator
+--getInputLocator = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.explore.input
+--
+--getInput :: SlamFeature Element
+--getInput = getInputLocator >>= findSingle
+--
+--getAceInput :: SlamFeature Element
+--getAceInput = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.ace.textInput >>= findExact
+--
+--getAceFor :: Element -> SlamFeature Element
+--getAceFor cell =
+--  tryRepeatedlyTo
+--  $ getConfig
+--  >>= _.ace >>> _.textInput >>> byCss
+--  >>= childExact cell
+--
+--findPlayButton :: SlamFeature Element
+--findPlayButton = tryRepeatedlyTo $ byCss "button[aria-label=\"Play\"]" >>= findExact
+--
+--getPlayButtonFor :: Element -> SlamFeature Element
+--getPlayButtonFor cell =
+--  tryRepeatedlyTo
+--  $ getConfig
+--  >>= _.cell >>> _.playButton >>> byCss
+--  >>= childExact cell
+--
+--getRefreshButton :: SlamFeature Element
+--getRefreshButton =
+--  getConfig >>= _.cell >>> _.refreshButton >>>
+--  flip getElementByCss "there is no refresh button"
+--
+--getStatus :: SlamFeature Element
+--getStatus =
+--  getConfig >>= _.cell >>> _.status >>>
+--  flip getElementByCss "there is no status text"
+--
+--getEmbedButton :: SlamFeature Element
+--getEmbedButton =
+--  getConfig >>= _.cell >>> _.embedButton >>>
+--  flip getElementByCss "there is no embed button"
+--
+--pageSizeSelectLocator :: SlamFeature Locator
+--pageSizeSelectLocator = getConfig >>= _.explore >>> _.pageSizeSelect >>> byCss
+--
+--getPageSizeInput :: SlamFeature Element
+--getPageSizeInput =
+--  getConfig >>= _.explore >>> _.pageSizeInput >>>
+--  flip getElementByCss "There is no page size input"
+--
+--getTableRows :: SlamFeature (List Element)
+--getTableRows =
+--  getConfig >>= (_.explore >>> _.row >>> byCss) >>= findElements
+--
+--getTable :: SlamFeature Element
+--getTable =
+--  getConfig >>= _.explore >>> _.table >>>
+--  flip getElementByCss "There is no result table"
+--
+--getFastForward :: SlamFeature Element
+--getFastForward =
+--  getConfig >>= _.explore >>> _.paginationFastForwardContent >>> getPaginationButton
+--
+--getStepForward :: SlamFeature Element
+--getStepForward =
+--  getConfig >>= _.explore >>> _.paginationStepForwardContent >>> getPaginationButton
+--
+--getFastBackward :: SlamFeature Element
+--getFastBackward =
+--  getConfig >>= _.explore >>> _.paginationFastBackwardContent >>> getPaginationButton
+--
+--getStepBackward :: SlamFeature Element
+--getStepBackward =
+--  getConfig >>= _.explore >>> _.paginationStepBackwardContent >>> getPaginationButton
+--
+--getPaginationButton :: String -> SlamFeature Element
+--getPaginationButton content = do
+--  config <- getConfig
+--  btns <- byCss config.explore.paginationButtons >>= findElements
+--  filtered <- filterByContent btns $ filterFn content
+--  case filtered of
+--    Nil -> errorMsg $ "There is no pagination button with content " <> content
+--    Cons el _ -> pure el
+--  where
+--  filterFn :: String -> String -> Boolean
+--  filterFn content html =
+--    R.test (R.regex content R.noFlags) html
+--
+--getPaginationInputLocator :: SlamFeature Locator
+--getPaginationInputLocator =
+--  getConfig >>= _.explore >>> _.pageInput >>> byCss
+--
+--getPaginationInput :: SlamFeature Element
+--getPaginationInput = getPaginationInputLocator >>= findSingle
+--
+--getJTableHeadContent :: SlamFeature String
+--getJTableHeadContent =
+--  getConfig >>= (_.explore >>> _.jtableHead >>>
+--                 flip getElementByCss "There is no JTable head") >>=
+--  getInnerHtml
+--
+--
+--getSearchInput :: SlamFeature Element
+--getSearchInput =
+--  getConfig >>= _.searchCell >>> _.searchInput >>>
+--  flip getElementByCss "There is no search input"
+--
+--getSearchFileList :: SlamFeature Element
+--getSearchFileList =
+--  getConfig >>= _.searchCell >>> _.fileListInput >>>
+--  flip getElementByCss "There is no file list in search cell"
+--
+--getSearchButton :: SlamFeature Element
+--getSearchButton =
+--  getConfig >>= _.searchCell >>> _.searchButton >>>
+--  flip getElementByCss "There is no button to submit search"
+--
+--getSearchClear :: SlamFeature Element
+--getSearchClear =
+--  getConfig >>= _.searchCell >>> _.searchClear >>>
+--  flip getElementByCss "There is no search clear button"
+--
+--waitOutputLabel :: SlamFeature Element
+--waitOutputLabel = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.cell.cellOutputLabel >>= findExact
+--
+--getPager :: SlamFeature Element
+--getPager = getConfig >>= _.explore >>> _.pager >>>
+--           flip getElementByCss "There is no pager"
+--
+--getPageSizeSelect :: SlamFeature Element
+--getPageSizeSelect = pageSizeSelectLocator >>= findSingle
+--
+--getPageCount :: SlamFeature Int
+--getPageCount = do
+--  getPager >>= getInnerHtml >>= extract
+--  where
+--  extract html =
+--    let countStr = R.replace (R.regex "\\D+(\\d+)" R.noFlags) "$1" html
+--    in parseToInt countStr
+--
+--getRowCount :: SlamFeature RowCount
+--getRowCount = do
+--  tc <- length <$> getTableRows
+--  loc <- pageSizeSelectLocator
+--  pc <- findSingle loc >>= flip getAttribute attr
+--                       >>= maybe (attrFail loc attr) parseToInt
+--  pure {table: tc, pager: pc}
+--    where
+--    attr = "value"
+--
+--getEnabledRecord :: SlamFeature EnabledRecord
+--getEnabledRecord = do
+--  ff <- getFastForward
+--  sf <- getStepForward
+--  fb <- getFastBackward
+--  sb <- getStepBackward
+--  inputLocator <- getPaginationInputLocator
+--  input <- findSingle inputLocator
+--  r <- { ff: _
+--       , sf: _
+--       , fb: _
+--       , sb: _
+--       , value: _}
+--       <$> isEnabled ff
+--       <*> isEnabled sf
+--       <*> isEnabled fb
+--       <*> isEnabled sb
+--       <*> (getAttribute input attr >>= maybe (attrFail inputLocator attr) pure)
+--  pure $ EnabledRecord r
+--    where
+--    attr = "value"
+--
+---- VIZ
+--getPieEditor :: SlamFeature Element
+--getPieEditor = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.pieEditor >>= findExact
+--
+--getLineEditor :: SlamFeature Element
+--getLineEditor = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.lineEditor >>= findExact
+--
+--getBarEditor :: SlamFeature Element
+--getBarEditor = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.barEditor >>= findExact
+--
+--getCurrentEditor :: SlamFeature Element
+--getCurrentEditor = do
+--  pieDisplayed <- getPieEditor >>= isDisplayed
+--  barDisplayed <- getBarEditor >>= isDisplayed
+--  lineDisplayed <- getLineEditor >>= isDisplayed
+--  if pieDisplayed
+--    then getPieEditor
+--    else if barDisplayed
+--         then getBarEditor
+--         else if lineDisplayed
+--              then getLineEditor
+--              else errorMsg "Error: Incorrect state of viz editor"
+--
+--barShown :: SlamFeature Boolean
+--barShown = getBarEditor >>= isDisplayed
+--
+--lineShown :: SlamFeature Boolean
+--lineShown = getLineEditor >>= isDisplayed
+--
+--pieShown :: SlamFeature Boolean
+--pieShown = getPieEditor >>= isDisplayed
+--
+--getPieTypeIcon :: SlamFeature Element
+--getPieTypeIcon = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.pieIcon >>= findExact
+--
+--getLineTypeIcon :: SlamFeature Element
+--getLineTypeIcon = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.lineIcon >>= findExact
+--
+--getBarTypeIcon :: SlamFeature Element
+--getBarTypeIcon = do
+--  config <- getConfig
+--  tryRepeatedlyTo $ byCss config.vizSelectors.barIcon >>= findExact
+--
+--
+--getOptions :: Maybe Element -> SlamFeature (List Element)
+--getOptions el = maybe (pure Nil) (\p -> byCss "option" >>= findChildren p) $ el
+--
+--
+--getChartSwitchers :: SlamFeature ChartSwitchers
+--getChartSwitchers = do
+--  {bar: _, line: _, pie: _}
+--  <$> getBarTypeIcon
+--  <*> getLineTypeIcon
+--  <*> getPieTypeIcon
+--
+--
+--getChartOptions :: Element -> SlamFeature ChartOptions
+--getChartOptions el = do
+--  config <- getConfig
+--  p <- { measureOne: _
+--       , measureTwo: _
+--       , category: _
+--       , dimension: _
+--       , seriesOne: _
+--       , seriesTwo: _
+--       }
+--    <$> optionTxts config.vizSelectors.measureOne
+--    <*> optionTxts config.vizSelectors.measureTwo
+--    <*> optionTxts config.vizSelectors.category
+--    <*> optionTxts config.vizSelectors.dimension
+--    <*> optionTxts config.vizSelectors.seriesOne
+--    <*> optionTxts config.vizSelectors.seriesTwo
+--  pure $ ChartOptions p
+--  where
+--  optionTxts sel =
+--    map fromList
+--    $ byCss sel
+--    >>= findChild el
+--    >>= getOptions
+--    >>= traverse getInnerHtml
+--
+--
+--getCurrentChartOptions :: SlamFeature ChartOptions
+--getCurrentChartOptions = tryRepeatedlyTo $
+--  getCurrentEditor >>= getChartOptions
+--
+--
+--getCurrentEditorChild :: String -> SlamFeature Element
+--getCurrentEditorChild sel = tryRepeatedlyTo do
+--  edit <- getCurrentEditor
+--  byCss sel >>= childExact edit
+--
+--
+--getCategoryInput :: SlamFeature Element
+--getCategoryInput =
+--  getConfig >>= _.vizSelectors >>> _.category
+--  >>> getCurrentEditorChild
+--
+--getMeasureOneInput :: SlamFeature Element
+--getMeasureOneInput =
+--  getConfig >>= _.vizSelectors >>> _.measureOne
+--  >>> getCurrentEditorChild
+--
+--getMeasureTwoInput :: SlamFeature Element
+--getMeasureTwoInput =
+--  getConfig >>= _.vizSelectors >>> _.measureTwo
+--  >>> getCurrentEditorChild
+--
+--getDimensionInput :: SlamFeature Element
+--getDimensionInput =
+--  getConfig >>= _.vizSelectors >>> _.dimension
+--  >>> getCurrentEditorChild
+--
+--getSeriesOneInput :: SlamFeature Element
+--getSeriesOneInput =
+--  getConfig >>= _.vizSelectors >>> _.seriesOne
+--  >>> getCurrentEditorChild
+--
+--getSeriesTwoInput :: SlamFeature Element
+--getSeriesTwoInput =
+--  getConfig >>= _.vizSelectors >>> _.seriesTwo
+--  >>> getCurrentEditorChild
+--
+--
+--getAggregationSelect :: SlamFeature Element
+--getAggregationSelect =
+--  getConfig >>= _.vizSelectors >>> _.aggregation
+--  >>> getCurrentEditorChild
+--
+--getAggregationOption :: Element -> String -> SlamFeature Element
+--getAggregationOption select value =
+--  byCss ("option[value=\"" <> value <> "\"]")
+--  >>= childExact select
