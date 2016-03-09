@@ -725,15 +725,22 @@ resourceExists res idToken perms = do
           Exn.error $
             "Unexpected status code " ++ show result.status
   where
-  existsReq :: Aff (RetryEffects (ajax :: AX.AJAX|e)) (AX.AffjaxResponse Unit)
+  requestPath
+    :: P.Path P.Abs P.File P.Sandboxed
+  requestPath | R.isViewMount res =
+    Paths.dataUrl
+    </> PU.rootify (R.resourceDir res)
+    </> P.file (R.resourceName res <> "?offset=0&limit=10")
+  requestPath =
+    Paths.metadataUrl
+    </> PU.rootify (R.resourceDir res)
+    </> P.file (R.resourceName res)
+
+  existsReq
+    :: Aff (RetryEffects (ajax :: AX.AJAX|e)) (AX.AffjaxResponse Unit)
   existsReq =
-    getOnce
-      (Paths.metadataUrl
-        </> PU.rootify (R.resourceDir res)
-        </> P.file (R.resourceName res))
-      applicationJSON
-      idToken
-      perms
+    getOnce requestPath applicationJSON idToken perms
+
 
 portView
   :: forall e
@@ -831,7 +838,7 @@ sample'
   -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
 sample' res mbOffset mbLimit idToken perms =
-  if not $ R.isFile res
+  if (not $ R.isFile res) && (not $ R.isViewMount res)
   then pure []
   else extractJArray =<< getResponse msg (retryGet uri applicationJSON idToken perms)
   where
@@ -976,9 +983,12 @@ executeQuery sql cachingEnabled varMap inputResource outputResource idToken perm
             , plan: planPhases >>= (.? "detail") >>> E.either (const M.Nothing) M.Just
             }
     pure
-      { outputResource: R.mkFile $ E.Left $ P.rootDir </> info.sandboxedPath
+      { outputResource: mkOutputResource $ P.rootDir </> info.sandboxedPath
       , plan: info.plan
       }
+  where
+  mkOutputResource | cachingEnabled = R.File
+  mkOutputResource = R.Mount <<< R.View
 
 -- | Saves a JSON value to a file.
 -- |

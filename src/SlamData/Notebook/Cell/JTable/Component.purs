@@ -105,7 +105,6 @@ evalCell (Load json next) = do
   either (const (pure unit)) set $ fromModel <$> Model.decode json
   pure next
 evalCell (SetCanceler _ next) = pure next
-
 -- | Evaluates jtable-specific cell queries.
 evalJTable :: Natural Query (ComponentDSL State QueryP Slam)
 evalJTable (StepPage step next) =
