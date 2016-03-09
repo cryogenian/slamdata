@@ -174,8 +174,8 @@ gulp.task("bundle-test",
         return purescript.pscBundle({
             src: "output/**/*.js",
             output: "test/index.js",
-            module: "Test.Main",
-            main: "Test.Main"
+            module: "Test.SlamData.Feature.Main",
+            main: "Test.SlamData.Feature.Main"
         });
     });
 });
