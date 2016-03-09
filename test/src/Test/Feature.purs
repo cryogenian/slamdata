@@ -14,9 +14,9 @@ module Test.Feature where
 --  , provideFieldValueWithProperty
 --  , selectFromDropdownWithProperty
 --  , expectPresented
---  , expectHidden
+--  , expectNotPresented
 --  , expectPresentedWithProperty
---  , expectHiddenWithProperty
+--  , expectNotPresentedWithProperty
 --  ) where
 
 import Control.Alt ((<|>))
@@ -132,8 +132,8 @@ withPropertiesMessage xs s | length xs == 0 = s
 withPropertiesMessage xs s = s ++ " with the attributes or properties: " ++ printProperties xs
 
 -- Expectations
-expectHidden :: forall eff o. String -> Feature eff o Unit
-expectHidden xPath = expectHiddenWithProperties [] xPath
+expectNotPresented :: forall eff o. String -> Feature eff o Unit
+expectNotPresented xPath = expectNotPresentedWithProperties [] xPath
 
 expectPresented :: forall eff o. String -> Feature eff o Unit
 expectPresented xPath = expectPresentedWithProperties [] xPath
@@ -142,8 +142,8 @@ validateJustTrue :: forall eff o. (String -> String) -> String -> Maybe String -
 validateJustTrue _ _ (Just "true") = pure unit
 validateJustTrue error xPath _ = liftEff $ throw $ error xPath
 
-expectHiddenAria :: forall eff o. Array Property -> String -> Feature eff o Unit
-expectHiddenAria properties xPath =
+expectNotPresentedAria :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectNotPresentedAria properties xPath =
   liftEff <<< throwIfNotEmpty message =<< findAllWithProperties' properties notHiddenXPath
   where
   notHiddenXPath = xPath `XPath.ancestorOrSelf` "*[not(@aria-hidden='true')]"
@@ -152,17 +152,17 @@ expectHiddenAria properties xPath =
   rawMessage =
     "Expected an " ++ printedAriaHiddenProperty ++ " attribute of elements or their ancestors"
 
-expectHiddenVisual :: forall eff o. Array Property -> String -> Feature eff o Unit
-expectHiddenVisual properties xPath =
+expectNotPresentedVisual :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectNotPresentedVisual properties xPath =
   traverse_ validate =<< findAllWithProperties' properties xPath
   where
   validate = ifTrue throwVisualError <=< isDisplayed
   throwVisualError = liftEff $ throw $ XPath.errorMessage message xPath
   message = withPropertiesMessage properties "Expected to find no visually displayed elements"
 
-expectHiddenWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
-expectHiddenWithProperties properties xPath =
-  tryRepeatedlyTo $ expectHiddenAria properties xPath *> expectHiddenVisual properties xPath
+expectNotPresentedWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectNotPresentedWithProperties properties xPath =
+  tryRepeatedlyTo $ expectNotPresentedVisual properties xPath *> expectNotPresentedAria properties xPath
 
 expectPresentedWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
 expectPresentedWithProperties properties xPath =
@@ -172,8 +172,8 @@ expectPresentedWithProperties properties xPath =
   throwExpectation :: forall eff o. String -> Feature eff o Unit
   throwExpectation = liftEff <<< throw
   expectNode = findAtLeastOneWithProperties' properties xPath
-  expectPresentedVisual = verify visualError =<< (attempt $ expectHiddenVisual properties xPath)
-  expectPresentedAria = verify ariaError =<< (attempt $ expectHiddenAria properties xPath)
+  expectPresentedVisual = verify visualError =<< (attempt $ expectNotPresentedVisual properties xPath)
+  expectPresentedAria = verify ariaError =<< (attempt $ expectNotPresentedAria properties xPath)
   visualError = XPath.errorMessage (withPropertiesMessage properties visualMessage) xPath
   ariaError = XPath.errorMessage (withPropertiesMessage properties ariaMessage) xPath
   visualMessage = "Expected to find only visually presented elements"

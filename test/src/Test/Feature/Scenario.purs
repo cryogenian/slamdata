@@ -3,10 +3,11 @@ module Test.Feature.Scenario where
 import Prelude
 
 import Control.Apply ((*>))
-import Control.Monad.Eff.Exception (message)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (message, throw)
 import Data.Either (Either(..))
 import Data.String (joinWith)
-import Test.Feature.Log (sectionMsg, warnMsg, errorMsg)
+import Test.Feature.Log (sectionMsg, warnMsg)
 import Test.Feature.Monad (Feature())
 import Selenium.Monad (attempt)
 
@@ -43,7 +44,9 @@ scenario epic before after title knownIssues actions = sectionMsg title' *> befo
   warn = warnMsg <<< warning
 
   fail :: Feature eff o Unit
-  fail = errorMsg "Ok despite known issues, if these issues are resolved please remove them"
+  fail =
+    liftEff $ throw
+      $ "Ok despite known issues, if these issues are resolved please remove them\n" ++ knownIssuesString
 
   actions' :: Feature eff o Unit
   actions' | knownIssues == [] = actions *> after

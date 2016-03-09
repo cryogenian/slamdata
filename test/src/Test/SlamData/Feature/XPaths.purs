@@ -1,6 +1,5 @@
 module Test.SlamData.Feature.XPaths where
 
-import Data.List (List(), fromFoldable)
 import Data.String (joinWith)
 import Prelude
 import XPath as XPath
@@ -16,7 +15,7 @@ fileFromInitialFileList :: String
 fileFromInitialFileList =
   XPath.anyWithExactText Data.fileFromInitialFileList
 
-initialFileList :: List String
+initialFileList :: Array String
 initialFileList =
   map XPath.anyWithExactText Data.initialFileList
 
@@ -203,6 +202,9 @@ mdPlayButton = mdCellTitle `XPath.following` play
 mdQueryPlayButton :: String
 mdQueryPlayButton = mdQueryCellTitle `XPath.following` play
 
+mdQueryField :: String
+mdQueryField = mdQueryCellTitle `XPath.following` aceEditor
+
 accessMountDatabase :: String
 accessMountDatabase = XPath.anyWithExactAriaLabel "Mount database"
 
@@ -223,3 +225,19 @@ mountDatabase = "input" `XPath.withLabelWithExactText` "Database"
 
 mountButton :: String
 mountButton = "button" `XPath.nodeWithExactText` "Mount"
+
+mdInput :: String -> String -> String
+mdInput labelText inputType =
+  mdCellTitle
+    `XPath.following` "input"
+    `XPath.withLabelWithExactText` labelText
+    `XPath.nodeWithExactAttribute "type"` inputType
+
+selectFile :: String -> String
+selectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Select " ++ filename)
+
+deselectFile :: String -> String
+deselectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Deselect " ++ filename)
+
+mdQueryTable :: String
+mdQueryTable = mdQueryCellTitle `XPath.following` "table"

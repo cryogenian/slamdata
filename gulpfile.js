@@ -184,8 +184,8 @@ gulp.task("bundle-property-tests", ["make"], function() {
     return purescript.pscBundle({
       src: "output/**/*.js",
       output: "tmp/js/property-tests.js",
-      module: "Test.Property",
-      main: "Test.Property"
+      module: "Test.SlamData.Property",
+      main: "Test.SlamData.Property"
     });
 });
 

@@ -17,11 +17,9 @@ limitations under the License.
 module Test.SlamData.Feature.Notebook.Markdown where
 
 import Prelude
-import Selenium.Monad (attempt)
-import Control.Apply ((*>))
 import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Monad (SlamFeature())
-import Test.SlamData.Feature.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder, insertMdCellUsingNextActionMenu, insertQueryAfterMd, provideMd, changeMd, playMd, playMdQuery)
+import Test.SlamData.Feature.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder, insertMdCellUsingNextActionMenu, insertQueryAfterMd, provideMd, playMd, playMdQuery)
 import Test.SlamData.Feature.Notebook.Markdown.Expectations
 import Test.SlamData.Feature.Notebook.Markdown.Interactions
 import Test.Feature.Scenario (scenario)
@@ -46,50 +44,49 @@ test = do
     expectToBePresentedWithFormWithAllInputTypes
     expectMdFinishedMessage
     successMsg "Ok, succesfully provided and played markdown."
---
---  mdScenario "Change and play markdown" [] do
---    insertMdCellUsingNextActionMenu
---    provideMd "discipline = __"
---    playMd
---    changeMd "sport = __ (Bobsleigh)"
---    playMd
---
---    --expectInputWithLabelTypeAndValue "sport" "text" "Bobsleigh"
---    successMsg "Ok, successfully changed and played markdown."
---
---  mdScenario "Provide and play markdown with evaluated content" [] do
---    insertMdCellUsingNextActionMenu
---    provideMdForFormWithEvaluatedContent
---    playMd
---
---    --expectToBePresentedWithFormWithEvaluatedContent
---    successMsg "Ok, successfully provided and played markdown with evaluated content"
---
---  mdScenario "Filter query results with default field values" evalDefaultValueIssues do
---    insertMdCellUsingNextActionMenu
---    provideMdForFormWithEvaluatedContent
---    playMd
---
---    insertQueryAfterMd
---    provideMdQueryWhichFiltersUsingFormValues
---    playMdQuery
---
---    --expectMdQueryResultsToBeFilteredByDefaultFormValues
---
---    successMsg "Ok, Filtered query resuts with fields"
---
---  mdScenario "Filter query resuts by changing field values" [] do
---    insertMdCellUsingNextActionMenu
---    provideMdForFormWithEvaluatedContent
---    playMd
---
---    insertQueryAfterMd
---    provideMdQueryWhichFiltersUsingFormValues
---    playMdQuery
---
---    --changeAllFieldsInMdFormWithEvaluatedContent
---
---    --expectMdQueryResultsToBeFilteredByChangedFormValues
---
---    successMsg "Ok, Filtered query results by changing field values"
---
+
+  mdScenario "Change and play markdown" [] do
+    insertMdCellUsingNextActionMenu
+    provideMd "discipline = __"
+    playMd
+    provideMd "sport = __ (Bobsleigh)"
+    playMd
+
+    expectToBePresentedWithMdField "sport" "text" "Bobsleigh"
+    successMsg "Ok, successfully changed and played markdown."
+
+  mdScenario "Provide and play markdown with evaluated content" [] do
+    insertMdCellUsingNextActionMenu
+    provideMdForFormWithEvaluatedContent
+    playMd
+
+    expectToBePresentedWithFormWithEvaluatedContent
+    successMsg "Ok, successfully provided and played markdown with evaluated content"
+
+  mdScenario "Filter query results with default field values" [] do
+    insertMdCellUsingNextActionMenu
+    provideMdForFormWithEvaluatedContent
+    playMd
+
+    insertQueryAfterMd
+    provideMdQueryWhichFiltersUsingFormValues
+    playMdQuery
+
+    expectMdQueryResultsToBeFilteredByDefaultFormValues
+
+    successMsg "Ok, Filtered query resuts with fields"
+
+  mdScenario "Filter query resuts by changing field values" [] do
+    insertMdCellUsingNextActionMenu
+    provideMdForFormWithEvaluatedContent
+    playMd
+
+    insertQueryAfterMd
+    provideMdQueryWhichFiltersUsingFormValues
+    playMdQuery
+
+    changeAllFieldsInMdFormWithEvaluatedContent
+
+    expectMdQueryResultsToBeFilteredByChangedFormValues
+
+    successMsg "Ok, Filtered query results by changing field values"
