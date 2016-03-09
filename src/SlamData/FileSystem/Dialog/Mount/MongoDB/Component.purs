@@ -23,11 +23,15 @@ module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
 
 import Prelude
 
+import Control.Monad (when)
 import Control.Monad.Aff (attempt)
+import Control.Monad.Cont.Trans as Ct
 
 import Data.Array ((..), length, null, filter)
+import Data.Foldable as F
 import Data.Functor (($>))
 import Data.Functor.Aff (liftAff)
+import Data.Identity as Id
 import Data.Lens (TraversalP(), (^.), (.~))
 import Data.Lens.Index (ix)
 import Data.Maybe (Maybe(..))
@@ -69,12 +73,20 @@ render state =
 
 eval :: Natural Query (ComponentDSL State Query Slam)
 eval (ModifyState f next) = modify (processState <<< f) $> next
-eval (Validate k) = do
+eval (Validate continue) = do
   state <- get
-  pure $ k
-    if null (filter (not isEmptyHost) state.hosts)
-    then Just "Please enter at least one host"
-    else Nothing
+  pure $ continue $ Id.runIdentity $ flip Ct.runContT pure $ Ct.callCC \k -> do
+    when (null (filter (not isEmptyHost) state.hosts))
+      $ k $ Just "Please enter at least one host"
+    when (userSectionTyped state) do
+      when (state.user == "") $ k $ Just "Please enter user name"
+      when (state.password == "") $ k $ Just "Please enter password"
+      when (state.path == "") $ k $ Just "Please enter authentication database name"
+    pure Nothing
+  where
+  userSectionTyped state =
+    F.any (/= "") [state.user, state.password]
+
 eval (Submit parent name k) = do
   st <- get
   let path = parent </> dir name
@@ -91,8 +103,10 @@ host :: State -> Int -> ComponentHTML Query
 host state index =
   H.div
     [ P.class_ Rc.mountHost ]
-    [ label "Host" [ input' rejectNonHostname state (_hosts <<< ix index <<< _host) [] ]
-    , label "Port" [ input' rejectNonPort state (_hosts <<< ix index <<< _port) [] ]
+    [ label "Host"
+      [ input' rejectNonHostname state (_hosts <<< ix index <<< _host) [] ]
+    , label "Port"
+      [ input' rejectNonPort state (_hosts <<< ix index <<< _port) [] ]
     ]
   where
   rejectNonHostname :: String -> String
@@ -115,10 +129,12 @@ userInfo state =
     [ fldUser state, fldPass state ]
 
 fldUser :: State -> ComponentHTML Query
-fldUser state = label "Username" [ input state _user [] ]
+fldUser state =
+  label "Username" [ input state _user [] ]
 
 fldPass :: State -> ComponentHTML Query
-fldPass state = label "Password" [ input state _password [ P.inputType P.InputPassword ] ]
+fldPass state =
+  label "Password" [ input state _password [ P.inputType P.InputPassword ] ]
 
 fldPath :: State -> ComponentHTML Query
 fldPath state =
@@ -138,7 +154,8 @@ input
   -> TraversalP State String
   -> Array (Cp.InputProp Query)
   -> HTML p Query
-input state lens = input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
+input state lens =
+  input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
 
 -- | A basic text input field that uses a lens to read from and update the
 -- | state, and allows for the input value to be modified.
