@@ -18,26 +18,12 @@ module Test.SlamData.Feature.Notebook (test) where
 
 import Prelude
 import Test.SlamData.Feature.Monad (SlamFeature())
---import Test.SlamData.Feature.Notebook.Contexts (setUp)
---import Test.SlamData.Feature.Notebook.Explore as Explore
---import Test.SlamData.Feature.Notebook.Search as Search
---import Test.SlamData.Feature.Notebook.Common as Common
-import Test.SlamData.Feature.Notebook.Contexts (createTestDirs)
---import Test.SlamData.Feature.Notebook.Viz as Viz
+--import Test.SlamData.Feature.Monad (createTestDirs)
 import Test.SlamData.Feature.Notebook.Markdown as Markdown
---import Test.SlamData.Feature.Notebook.Complex as Complex
 import Test.SlamData.Feature.Notebook.Interactions (launchSlamData, mountTestDatabase)
-import Debug.Trace
 
 test :: SlamFeature Unit
 test = do
-  createTestDirs
   launchSlamData
   mountTestDatabase
-
-  --Common.test
-  --Explore.test
-  --Search.test
-  --Viz.test
-  --Markdown.test
-  --Complex.test
+  Markdown.test

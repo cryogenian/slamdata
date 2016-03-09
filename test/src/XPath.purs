@@ -95,25 +95,38 @@ inputWithPlaceholder :: String -> String
 inputWithPlaceholder = nodeWithAttribute "placeholder" "input"
 
 withLabel :: String -> String -> String
-withLabel xPath labelXPath = xPath ++ anyOfThesePredicates [forPredicate, ancestorPredicate]
+withLabel xPath labelXPath = xPath ++ predicate (anyOfThesePredicates [forPredicate, ancestorPredicate])
   where
   ancestorPredicate = "ancestor::" ++ labelXPath
-  forPredicate = "@id=(" ++ labelXPath ++ "/@for)"
+  forPredicate = "@id=(//" ++ labelXPath ++ "/@for)"
 
 withLabelWithExactText :: String -> String -> String
 withLabelWithExactText xPath = withLabel xPath <<< labelXPath
   where
   labelXPath text = "label[text()= '" ++ text ++ "' or descendant::*[text()= '" ++ text ++ "']]"
 
-thWithText :: String -> String -> String
-thWithText tableXPath thText = tableXPath ++ "/thead/tr/th[text()='" ++ thText ++ "']"
+thWithExactText :: String -> String
+thWithExactText thText = "/thead/tr/th[text()='" ++ thText ++ "']"
 
 tdWithTh :: String -> String -> String -> String
-tdWithTh tableXPath thXPath tdXPath = indexString unindexedTdXPath thIndex
+tdWithTh tableXPath thXPath tdXPath =
+  tableXPath ++ "/tbody/tr/" ++ tdXPath ++ positionPredicate
   where
-  precedingThXPath = thXPath `precedingSibling` "th"
-  thIndex = "(count(" ++ precedingThXPath ++ ") + 1)"
-  unindexedTdXPath = tableXPath ++ "/tbody/tr/" ++ tdXPath
+  precedingThXPath = tableXPath ++ "/thead/tr/" ++ thXPath `precedingSibling` "th"
+  thPosition = "count(" ++ precedingThXPath ++ ") + 1"
+  positionPredicate = predicate $ "position()=(" ++ thPosition ++ ")"
+
+selectWithOptionsWithExactTexts :: Array String -> String
+selectWithOptionsWithExactTexts optionTexts =
+  "select" `XPath.withDescendants` (map optionWithExactText optionTexts)
+  where
+  optionWithExactText = nodeWithExactText "option"
+
+withDescendants :: String -> Array String -> String
+withDescendants xPath =
+  append xPath <<< predicate <<< allOfThesePredicates <<< map descendant
+  where
+  descendant = append "descendant::"
 
 parent :: String -> String
 parent xPath = xPath ++ "/.."
@@ -142,7 +155,7 @@ tdWithThAndPredicate :: String -> String -> String -> String
 tdWithThAndPredicate tableXPath thXPath predicate' =
   tdWithTh tableXPath thXPath tdXPath
   where
-  tdXPath = "td" ++ predicate'
+  tdXPath = "td" ++ predicate predicate'
 
 tdWithThAndTextEq :: String -> String -> String -> String
 tdWithThAndTextEq tableXPath thXPath =
@@ -169,11 +182,14 @@ tdWithThAndTextNotEqOneOf tableXPath thXPath =
   tdWithThAndPredicate tableXPath thXPath <<< anyOfThesePredicates <<< map withoutText
 
 anyOfThesePredicates :: Array String -> String
-anyOfThesePredicates =
-  predicate <<< joinWith " or "
+anyOfThesePredicates = joinWith " or "
+
+allOfThesePredicates :: Array String -> String
+allOfThesePredicates = joinWith " and "
 
 textInput :: String
 textInput = nodeWithExactAttribute "type" "input" "text"
 
 numberInput :: String
 numberInput = nodeWithExactAttribute "type" "input" "number"
+

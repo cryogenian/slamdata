@@ -46,4 +46,3 @@ getModifierKey = map modifierKey getPlatformString
 
 notMindingIfItsNotPossible :: forall eff o. Feature eff o Unit -> Feature eff o Unit
 notMindingIfItsNotPossible = flip alt (pure unit)
-

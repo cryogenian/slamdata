@@ -1,37 +1,35 @@
 module Test.SlamData.Feature.Notebook.Interactions where
 
-import Control.Apply ((<*), (*>)) -- <------------ remove <*s
-import Control.Bind ((<=<), (=<<))
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Random (randomInt)
-import Data.Foldable (traverse_) as F
+import Control.Apply ((*>))
+import Control.Bind ((=<<))
+import Control.Alt ((<|>))
+--import Control.Monad.Eff.Class (liftEff)
+--import Control.Monad.Eff.Random (randomInt)
+--import Data.Foldable (traverse_) as F
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..))
-import Data.List (replicateM)
-import Data.Traversable (traverse) as T
+--import Data.List (replicateM)
+--import Data.Traversable (traverse) as T
 import Prelude
-import Selenium.ActionSequence (leftClick)
 import Selenium.Monad (get, refresh)
-import Selenium.Types (Element())
-import Test.Feature (click, clickWithProperties, hover, pressEnter, typeString, selectAll, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, expectPresentedWithProperties)
-import Test.SlamData.Feature.Monad (SlamFeature())
+import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown)
+import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
 import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
-import Test.SlamData.Feature.Properties as Properties
 import XPath as XPath
 
 launchSlamData :: SlamFeature Unit
-launchSlamData = get "http://localhost:63175"
+launchSlamData = get <<< _.slamdataUrl =<< getConfig
 
 mountTestDatabase :: SlamFeature Unit
-mountTestDatabase =
+mountTestDatabase = do
   click (XPath.anywhere XPaths.accessMountDatabase)
-    *> provideFieldValue (XPath.anywhere XPaths.mountName) "test-mount"
-    *> selectFromDropdown (XPath.anywhere XPaths.mountType) "Mongo"
-    *> provideFieldValue (XPath.index (XPath.anywhere XPaths.mountPort) 1) "63174"
-    *> provideFieldValue (XPath.index (XPath.anywhere XPaths.mountHost) 1) "localhost"
-    *> provideFieldValue (XPath.anywhere XPaths.mountDatabase) "testDb"
-    *> click (XPath.anywhere XPaths.mountButton)
+  provideFieldValue (XPath.anywhere XPaths.mountName) "test-mount"
+  selectFromDropdown (XPath.anywhere XPaths.mountType) "Mongo"
+  provideFieldValue (XPath.index (XPath.anywhere XPaths.mountPort) 1) "63174"
+  provideFieldValue (XPath.index (XPath.anywhere XPaths.mountHost) 1) "localhost"
+  provideFieldValue (XPath.anywhere XPaths.mountDatabase) "testDb"
+  click (XPath.anywhere XPaths.mountButton)
 
 browseFolder :: String -> SlamFeature Unit
 browseFolder = click <<< XPath.anywhere <<< XPath.anyWithExactText
@@ -40,20 +38,31 @@ embedCellOutput :: SlamFeature Unit
 embedCellOutput = click $ XPath.anywhere XPaths.embedCellOutput
 
 browseRootFolder :: SlamFeature Unit
-browseRootFolder = click XPaths.browseRootFolder
+browseRootFolder = click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
 
 browseTestFolder :: SlamFeature Unit
 browseTestFolder = browseRootFolder *> browseFolder "test-mount" *> browseFolder "testDb"
 
 createNotebook :: SlamFeature Unit
-createNotebook = click XPaths.createNotebook
+createNotebook = click $ XPath.anywhere XPaths.createNotebook
 
 nameNotebook :: String -> SlamFeature Unit
-nameNotebook =
-  provideFieldValueWithProperties [Tuple "value" $ Just "Untitled Notebook"] (XPath.anywhere "input")
+nameNotebook name = do
+  provideFieldValueWithProperties
+    [Tuple "value" $ Just "Untitled Notebook"]
+    (XPath.anywhere "input")
+    name
+  pressEnter
 
 deleteFile :: String -> SlamFeature Unit
-deleteFile = click <<< XPaths.removeFile
+deleteFile name =
+  click (XPath.anywhere $ XPaths.selectFile name) *> click (XPath.anywhere $ XPaths.removeFile name)
+
+selectFile :: String -> SlamFeature Unit
+selectFile name = select name <|> (deselect name *> select name)
+  where
+  select = click <<< XPath.anywhere <<< XPaths.selectFile
+  deselect = click <<< XPath.anywhere <<< XPaths.deselectFile
 
 createNotebookInTestFolder :: String -> SlamFeature Unit
 createNotebookInTestFolder name = browseTestFolder *> createNotebook *> nameNotebook name
@@ -65,19 +74,23 @@ reopenCurrentNotebook :: SlamFeature Unit
 reopenCurrentNotebook = waitTime 2000 *> refresh
 
 expandNewCellMenu :: SlamFeature Unit
-expandNewCellMenu = click XPaths.insertCell
+expandNewCellMenu = click (XPath.anywhere XPaths.insertCell)
 
 insertQueryCellUsingNextActionMenu :: SlamFeature Unit
-insertQueryCellUsingNextActionMenu = expandNewCellMenu *> click XPaths.insertQueryCell
+insertQueryCellUsingNextActionMenu =
+  expandNewCellMenu *> click (XPath.anywhere XPaths.insertQueryCell)
 
 insertMdCellUsingNextActionMenu :: SlamFeature Unit
-insertMdCellUsingNextActionMenu = expandNewCellMenu *> click XPaths.insertMdCell
+insertMdCellUsingNextActionMenu =
+  expandNewCellMenu *> click (XPath.anywhere XPaths.insertMdCell)
 
 insertExploreCellUsingNextActionMenu :: SlamFeature Unit
-insertExploreCellUsingNextActionMenu = expandNewCellMenu *> click XPaths.insertExploreCell
+insertExploreCellUsingNextActionMenu =
+  expandNewCellMenu *> click (XPath.anywhere XPaths.insertExploreCell)
 
 insertSearchCellUsingNextActionMenu :: SlamFeature Unit
-insertSearchCellUsingNextActionMenu =  expandNewCellMenu *> click XPaths.insertSearchCell
+insertSearchCellUsingNextActionMenu =
+  expandNewCellMenu *> click (XPath.anywhere XPaths.insertSearchCell)
 
 --insertRandomNumberOfCells :: SlamFeature Unit -> SlamFeature Int
 --insertRandomNumberOfCells insertCell = do
@@ -145,34 +158,28 @@ insertSearchCellUsingNextActionMenu =  expandNewCellMenu *> click XPaths.insertS
 --provideExploreFile filename = focusExploreFileField *> typeString filename
 
 provideMd :: String -> SlamFeature Unit
-provideMd md = typeString (md ++ " ") <* focusMdField
+provideMd = provideFieldValue (XPath.anywhere XPaths.mdField)
 
 focusMdField :: SlamFeature Unit
-focusMdField = click XPaths.mdField
+focusMdField = click $ XPath.anywhere XPaths.mdField
 
 --focusExploreFileField :: SlamFeature Unit
 --focusExploreFileField = Finders.findExploreFileField >>= click
 
-changeMd :: String -> SlamFeature Unit
-changeMd md = typeString md <* selectAll <* focusMdField
-
 playMd :: SlamFeature Unit
-playMd = click XPaths.mdPlayButton
+playMd = click $ XPath.anywhere XPaths.mdPlayButton
 
 --playExplore :: SlamFeature Unit
 --playExplore = Finders.findExplorePlayButton >>= click
---
+
 playMdQuery :: SlamFeature Unit
-playMdQuery = click XPaths.mdQueryPlayButton
---
---focusMdQueryField :: SlamFeature Unit
---focusMdQueryField = Finders.findMdQueryField >>= click
---
---provideMdQuery :: String -> SlamFeature Unit
---provideMdQuery query = focusMdQueryField *> typeString (query ++ " ")
+playMdQuery = click $ XPath.anywhere XPaths.mdQueryPlayButton
+
+provideMdQuery :: String -> SlamFeature Unit
+provideMdQuery = provideFieldValue (XPath.anywhere XPaths.mdQueryField)
 
 insertQueryAfterMd :: SlamFeature Unit
-insertQueryAfterMd = click XPaths.insertQueryAfterMd
+insertQueryAfterMd = click $ XPath.anywhere XPaths.insertQueryAfterMd
 
 --showExploreMessages :: SlamFeature Unit
 --showExploreMessages = Finders.findShowExploreMessages >>= click

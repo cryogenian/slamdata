@@ -16,29 +16,26 @@ limitations under the License.
 
 module Test.SlamData.Feature.Monad where
 
-import Prelude
-
+import Control.Alt (alt)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Class
-import Control.Alt (alt)
-
+import Data.Foldable (foldl, traverse_)
+import Data.Functor.Aff (liftAff)
 import Data.Functor.Aff (liftAff)
 import Data.List (List(), length, uncons)
-import Data.Maybe (fromMaybe, Maybe(..))
-
 import Graphics.ImageDiff as GI
-
+import Node.FS.Aff (mkdir)
 import Platform (getPlatform, runOs, runPlatform)
-
+import Prelude
 import Selenium (showLocator)
 import Selenium.Key (metaKey, controlKey)
-import Selenium.Monad (Selenium(), byCss, byXPath, findElements)
+import Data.Maybe (Maybe())
+import Selenium.Monad (Selenium(), byCss, byXPath, findElements, apathize)
 import Selenium.Types (ControlKey(), Locator(), Element())
-
+import Test.Feature.Monad (Feature())
 import Test.SlamData.Feature.Config (Config())
 import Test.SlamData.Feature.Effects (SlamFeatureEffects())
-import Test.Feature.Monad (Feature())
 
 type SlamFeature = Feature (SlamFeatureEffects ()) (config :: Config)
 
@@ -47,3 +44,10 @@ getConfig = _.config <$> ask
 
 diff :: { shadow :: Boolean, diff :: Maybe String, expected :: String, actual :: String } -> SlamFeature Boolean
 diff = liftAff <<< GI.diff
+
+createTestDirs :: SlamFeature Unit
+createTestDirs = do
+  config <- getConfig
+  if not config.collectingScreenshots
+    then pure unit
+    else traverse_ (apathize <<< liftAff <<< mkdir) config.screenshot.dirs

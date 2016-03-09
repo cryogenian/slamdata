@@ -1,7 +1,7 @@
 module Test.SlamData.Feature.Main where
 
 import Control.Monad (when)
-import Control.Monad.Aff (Aff(), forkAff, runAff, launchAff, apathize, attempt, later, later', cancel)
+import Control.Monad.Aff (Aff(), forkAff, runAff, launchAff, apathize, attempt, later', cancel)
 import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, killVar, AVAR())
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff.Console (CONSOLE())
@@ -147,7 +147,6 @@ startProc name command args streamGetter check = do
 
   stream <- streamGetter pr
   liftEff $ onDataString stream UTF8 \str -> do
-    traceAnyA str
     when (Str.contains check str) do
       liftEff $ writeRef started true
       launchAff $ putVar a pr

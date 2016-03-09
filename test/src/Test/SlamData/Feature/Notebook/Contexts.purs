@@ -70,13 +70,6 @@ import Test.SlamData.Feature.Monad
 --    else warnMsg "This test runs only in FireFox"
 --
 --
-createTestDirs :: SlamFeature Unit
-createTestDirs = do
-  config <- getConfig
-  if not config.collectingScreenshots
-    then pure unit
-    else
-    traverse_ (apathize <<< liftAff <<< mkdir) config.screenshot.dirs
 
 --  config <- getConfig
 --  els <- byCss config.cell.trash >>= findElements

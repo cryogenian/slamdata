@@ -16,11 +16,9 @@ limitations under the License.
 
 module Test.SlamData.Feature.Notebook.Expectations where
 
-import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
 import Prelude
-import Test.Feature (expectPresentedWithProperties, expectPresented, expectHidden)
+import Test.Feature (expectPresentedWithProperties, expectPresented, expectNotPresented)
 import Test.SlamData.Feature.Monad (SlamFeature())
 import Test.SlamData.Feature.Properties as Properties
 import Test.SlamData.Feature.XPaths as XPaths
@@ -32,7 +30,7 @@ expectInitialFileListToBePresentedInOrder =
 
 expectInitialFileListToBeHidden :: SlamFeature Unit
 expectInitialFileListToBeHidden =
-  void $ traverse expectHidden $ map XPath.anywhere XPaths.initialFileList
+  void $ traverse expectNotPresented $ map XPath.anywhere XPaths.initialFileList
 
 expectFileFromFileListToBePresented :: String -> SlamFeature Unit
 expectFileFromFileListToBePresented =
@@ -44,7 +42,7 @@ expectEmbedCellOutputToBePresented =
 
 expectEmbedCellOutputToBeHidden :: SlamFeature Unit
 expectEmbedCellOutputToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.embedCellOutput
+  expectNotPresented $ XPath.anywhere XPaths.embedCellOutput
 
 expectInsertQueryAfterThisToBePresented :: SlamFeature Unit
 expectInsertQueryAfterThisToBePresented =
@@ -64,19 +62,19 @@ expectInsertDownloadAfterThisToBePresented =
 
 expectInsertQueryAfterThisToBeHidden :: SlamFeature Unit
 expectInsertQueryAfterThisToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.insertQueryAfterThis
+  expectNotPresented $ XPath.anywhere XPaths.insertQueryAfterThis
 
 expectInsertSearchAfterThisToBeHidden :: SlamFeature Unit
 expectInsertSearchAfterThisToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.insertSearchAfterThis
+  expectNotPresented $ XPath.anywhere XPaths.insertSearchAfterThis
 
 expectInsertVisualizeAfterThisToBeHidden :: SlamFeature Unit
 expectInsertVisualizeAfterThisToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.insertVisualizeAfterThis
+  expectNotPresented $ XPath.anywhere XPaths.insertVisualizeAfterThis
 
 expectInsertDownloadAfterThisToBeHidden :: SlamFeature Unit
 expectInsertDownloadAfterThisToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.insertDownloadAfterThis
+  expectNotPresented $ XPath.anywhere XPaths.insertDownloadAfterThis
 
 expectInsertQueryAfterMdToBePresented :: SlamFeature Unit
 expectInsertQueryAfterMdToBePresented =
@@ -84,11 +82,11 @@ expectInsertQueryAfterMdToBePresented =
 
 expectEmbedCellOutputSnippetToBeHidden :: SlamFeature Unit
 expectEmbedCellOutputSnippetToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.embedCellOutputSnippet
+  expectNotPresented $ XPath.anywhere XPaths.embedCellOutputSnippet
 
 expectEmbedCellOutputTitleToBeHidden :: SlamFeature Unit
 expectEmbedCellOutputTitleToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.embedCellOutputTitle
+  expectNotPresented $ XPath.anywhere XPaths.embedCellOutputTitle
 
 expectDismissInsertCellMenuToBePresented :: SlamFeature Unit
 expectDismissInsertCellMenuToBePresented =
@@ -132,23 +130,23 @@ expectMdCellTitlesToBePresented =
 
 expectCellTitlesToBeHidden :: SlamFeature Unit
 expectCellTitlesToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.cellTitle
+  expectNotPresented $ XPath.anywhere XPaths.cellTitle
 
 expectQueryCellTitlesToBeHidden :: SlamFeature Unit
 expectQueryCellTitlesToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.queryCellTitle
+  expectNotPresented $ XPath.anywhere XPaths.queryCellTitle
 
 expectExploreCellTitlesToBeHidden :: SlamFeature Unit
 expectExploreCellTitlesToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.exploreCellTitle
+  expectNotPresented $ XPath.anywhere XPaths.exploreCellTitle
 
 expectSearchCellTitlesToBeHidden :: SlamFeature Unit
 expectSearchCellTitlesToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.searchCellTitle
+  expectNotPresented $ XPath.anywhere XPaths.searchCellTitle
 
 expectMdCellTitlesToBeHidden :: SlamFeature Unit
 expectMdCellTitlesToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.mdCellTitle
+  expectNotPresented $ XPath.anywhere XPaths.mdCellTitle
 
 expectShowFileListToBePresented :: SlamFeature Unit
 expectShowFileListToBePresented =
@@ -216,7 +214,7 @@ expectExploreInputToBePresented =
 
 expectExploreInputToBeHidden :: SlamFeature Unit
 expectExploreInputToBeHidden =
-  expectHidden $ XPath.anywhere XPaths.exploreInput
+  expectNotPresented $ XPath.anywhere XPaths.exploreInput
 
 expectBrowseRootFolderToBePresented :: SlamFeature Unit
 expectBrowseRootFolderToBePresented =
