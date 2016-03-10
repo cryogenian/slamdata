@@ -43,7 +43,7 @@ module Quasar.Aff
   , portView
 
   , retrieveAuthProviders
-
+  , compile
   , RetryEffects()
   ) where
 
@@ -654,7 +654,7 @@ query
   -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
 query res sql idToken perms =
-  if not $ R.isFile res
+  if (not $ R.isFile res) && (not $ R.isViewMount res)
   then pure []
   else extractJArray
          =<< getResponse msg (getOnce uriPath applicationJSON idToken perms)
@@ -721,19 +721,26 @@ resourceExists res idToken perms = do
       if result.status == notFoundStatus
       then pure false
       else
-        Err.throwError $
-          Exn.error $
-            "Unexpected status code " ++ show result.status
+        Err.throwError
+          $ Exn.error
+          $ "Unexpected status code " ++ show result.status
   where
-  existsReq :: Aff (RetryEffects (ajax :: AX.AJAX|e)) (AX.AffjaxResponse Unit)
+  requestPath
+    :: P.Path P.Abs P.File P.Sandboxed
+  requestPath | R.isViewMount res =
+    Paths.dataUrl
+    </> PU.rootify (R.resourceDir res)
+    </> P.file (R.resourceName res <> "?offset=0&limit=10")
+  requestPath =
+    Paths.metadataUrl
+    </> PU.rootify (R.resourceDir res)
+    </> P.file (R.resourceName res)
+
+  existsReq
+    :: Aff (RetryEffects (ajax :: AX.AJAX|e)) (AX.AffjaxResponse Unit)
   existsReq =
-    getOnce
-      (Paths.metadataUrl
-        </> PU.rootify (R.resourceDir res)
-        </> P.file (R.resourceName res))
-      applicationJSON
-      idToken
-      perms
+    getOnce requestPath applicationJSON idToken perms
+
 
 portView
   :: forall e
@@ -831,7 +838,7 @@ sample'
   -> Array Perm.PermissionToken
   -> Aff (RetryEffects (ajax :: AX.AJAX | e)) JS.JArray
 sample' res mbOffset mbLimit idToken perms =
-  if not $ R.isFile res
+  if (not $ R.isFile res) && (not $ R.isViewMount res)
   then pure []
   else extractJArray =<< getResponse msg (retryGet uri applicationJSON idToken perms)
   where
@@ -942,11 +949,14 @@ executeQuery sql cachingEnabled varMap inputResource outputResource idToken perm
   when (R.isTempFile outputResource)
     $ void $ Aff.attempt $ forceDelete outputResource idToken perms
 
+  compiledPlan <-
+    Aff.attempt $ compile sql inputResource varMap idToken perms
+
   ejobj <- do
     Aff.attempt
       $ if cachingEnabled
         then
-          portQuery inputResource outputResource sql varMap idToken perms<#> M.Just
+          portQuery inputResource outputResource sql varMap idToken perms <#> M.Just
         else
           portView inputResource outputResource sql varMap idToken perms $> M.Nothing
   pure do
@@ -961,7 +971,7 @@ executeQuery sql cachingEnabled varMap inputResource outputResource idToken perm
               # M.maybe (E.Left "Could not sandbox output resource") pure
           pure
             { sandboxedPath
-            , plan: M.Nothing
+            , plan: E.either (\_ -> M.Nothing) M.Just compiledPlan
             }
         M.Just jobj -> do
           planPhases <- Arr.last <$> jobj .? "phases"
@@ -976,9 +986,12 @@ executeQuery sql cachingEnabled varMap inputResource outputResource idToken perm
             , plan: planPhases >>= (.? "detail") >>> E.either (const M.Nothing) M.Just
             }
     pure
-      { outputResource: R.mkFile $ E.Left $ P.rootDir </> info.sandboxedPath
+      { outputResource: mkOutputResource $ P.rootDir </> info.sandboxedPath
       , plan: info.plan
       }
+  where
+  mkOutputResource | cachingEnabled = R.File
+  mkOutputResource = R.Mount <<< R.View
 
 -- | Saves a JSON value to a file.
 -- |
@@ -1023,3 +1036,29 @@ retrieveAuthProviders = do
     case JS.decodeJson res.response of
       E.Left parseErr -> Err.throwError $ Exn.error parseErr
       E.Right val -> pure $ M.Just val
+
+
+compile
+  :: forall e
+   . String
+  -> R.Resource
+  -> SM.StrMap String
+  -> M.Maybe Auth.IdToken
+  -> Array Perm.PermissionToken
+  -> Aff (RetryEffects (ajax :: AX.AJAX|e)) String
+compile sql res varMap idToken perms = do
+  result <-
+    getOnce path applicationJSON idToken perms
+  if not $ succeeded result.status
+    then Err.throwError $ Exn.error $ readError result.response result.response
+    else case S.stripPrefix "MongoDB\n" result.response of
+      M.Nothing -> Err.throwError $ Exn.error "Incorrect compile response"
+      M.Just plan -> pure plan
+  where
+  path =
+    Paths.compileUrl
+    </> PU.rootify (R.resourceDir res)
+    </> P.dir (R.resourceName res)
+    </> P.file ("?q=" ++ encodeURIComponent (templated res sql) ++ queryVars)
+  queryVars :: String
+  queryVars = M.maybe "" ("&" ++) $ renderQueryString varMap

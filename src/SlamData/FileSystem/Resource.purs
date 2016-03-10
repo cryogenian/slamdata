@@ -37,6 +37,7 @@ module SlamData.FileSystem.Resource
   , mkDirectory
   , mkFile
   , mkNotebook
+  , mkViewMount
   , newDatabase
   , newDirectory
   , newFile

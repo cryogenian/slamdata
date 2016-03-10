@@ -58,6 +58,12 @@ queryUrl =
   </> dir "query"
   </> dir "fs"
 
+compileUrl :: AbsDir Sandboxed
+compileUrl =
+  serviceBaseUrl
+  </> dir "compile"
+  </> dir "fs"
+
 serverInfoUrl :: AbsFile Sandboxed
 serverInfoUrl =
   serviceBaseUrl

@@ -72,12 +72,9 @@ queryEval info sql =
           # Auth.authed
           # MT.lift
           >>= E.either EC.throwError pure
-
         (MT.lift $ Auth.authed $ Quasar.resourceExists outputResource)
           >>= \x -> unless x $ EC.throwError "Requested collection doesn't exist"
-
-        F.for_ plan \p ->
-          WC.tell ["Plan: " <> p]
+        F.for_ plan \p -> WC.tell ["Plan: " <> p]
 
         pure $ Port.TaggedResource {resource: outputResource, tag: pure sql}
   where
@@ -89,7 +86,6 @@ queryEval info sql =
 
   tempOutputResource = CEQ.temporaryOutputResource info
   inputResource = R.parent tempOutputResource
-
 
 querySetup :: CEQ.CellSetupInfo -> AceDSL Unit
 querySetup { inputPort, notebookPath } =

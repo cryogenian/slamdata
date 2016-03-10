@@ -145,14 +145,18 @@ cellEval q =
 
         WC.tell ["Generated SQL: " <> sql]
 
-        { plan: plan, outputResource: outputResource } <-
-          Quasar.executeQuery template (M.fromMaybe false info.cachingEnabled) SM.empty inputResource tempOutputResource
+        { plan, outputResource } <-
+          Quasar.executeQuery
+            template
+            (M.fromMaybe false info.cachingEnabled)
+            SM.empty
+            inputResource
+            tempOutputResource
             # Auth.authed
             # NC.liftWithCanceler' >>> MT.lift
             >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
-        F.for_ plan \p ->
-          WC.tell ["Plan: " <> p]
+        F.for_ plan \p -> WC.tell ["Plan: " <> p]
 
         (MT.lift $ NC.liftWithCanceler' $ Auth.authed $ Quasar.resourceExists outputResource)
           >>= \x -> when (not x)
