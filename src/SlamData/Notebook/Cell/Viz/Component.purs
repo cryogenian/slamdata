@@ -20,6 +20,7 @@ import Prelude
 
 import Control.Apply ((*>))
 import Control.Monad (when)
+import Control.Monad.Aff (attempt)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans (lift)
 import Control.MonadPlus (guard)
@@ -27,7 +28,7 @@ import Control.Plus (empty)
 
 import Data.Argonaut (JCursor())
 import Data.Array (length, null, cons, index)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Data.Foldable (foldl)
 import Data.Functor (($>))
 import Data.Functor.Coproduct (coproduct, right, left)
@@ -262,7 +263,15 @@ cellEval (EvalCell info continue) =
           r <- maybe (throwError "Incorrect port in visual builder cell") pure
                $ info.inputPort >>= preview P._Resource
           lift $ updateForms r
-          records <- lift $ liftWithCanceler' $ Auth.authed $ Api.all r
+          records <-
+            Api.all r
+              # Auth.authed
+              # attempt
+              # liftWithCanceler'
+              # lift
+              >>= either
+                  (const $ throwError $ "Can't get resource: " <> R.resourcePath r)
+                  pure
           when (length records > 10000)
             $ throwError
             $  "Maximum record count available for visualization -- 10000, "
@@ -314,7 +323,12 @@ responsePort = do
 
 updateForms :: R.Resource -> VizDSL Unit
 updateForms file = do
-  jarr <- liftWithCanceler' $ Auth.authed $ Api.sample file 0 20
+  jarr <-
+    Api.sample file 0 20
+      # Auth.authed
+      # attempt
+      # liftWithCanceler'
+      >>= either (const $ pure []) pure
   if null jarr
     then
     modify $ _availableChartTypes .~ Set.empty

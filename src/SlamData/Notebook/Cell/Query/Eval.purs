@@ -21,7 +21,6 @@ module SlamData.Notebook.Cell.Query.Eval
 
 import Prelude
 
-import Control.Monad (unless)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans as MT
@@ -29,7 +28,6 @@ import Control.Monad.Writer.Class as WC
 
 import Data.Either as E
 import Data.Foldable as F
-import Data.Functor.Aff (liftAff)
 import Data.Functor.Eff (liftEff)
 import Data.Lens as L
 import Data.Maybe (Maybe(..))
@@ -61,8 +59,8 @@ queryEval info sql =
       pure { output: Nothing, messages: [] }
     _ -> do
       addCompletions varMap
-      liftAff $ CEQ.runCellEvalT $ do
-        { plan: plan, outputResource: outputResource } <-
+      CEQ.runCellEvalT  do
+        { plan, outputResource } <-
           Quasar.executeQuery
             sql
             (M.fromMaybe false info.cachingEnabled)
@@ -70,12 +68,17 @@ queryEval info sql =
             inputResource
             tempOutputResource
           # Auth.authed
+          # CEQ.liftWithCanceler
           # MT.lift
           >>= E.either EC.throwError pure
-        (MT.lift $ Auth.authed $ Quasar.resourceExists outputResource)
-          >>= \x -> unless x $ EC.throwError "Requested collection doesn't exist"
+        Quasar.messageIfResourceNotExists
+            outputResource
+            "Requested collection doesn't exist"
+          # Auth.authed
+          # CEQ.liftWithCanceler
+          # MT.lift
+          >>= F.traverse_ EC.throwError
         F.for_ plan \p -> WC.tell ["Plan: " <> p]
-
         pure $ Port.TaggedResource {resource: outputResource, tag: pure sql}
   where
   varMap :: SM.StrMap String
