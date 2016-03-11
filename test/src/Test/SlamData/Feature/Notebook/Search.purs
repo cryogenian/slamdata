@@ -16,344 +16,98 @@ limitations under the License.
 
 module Test.SlamData.Feature.Notebook.Search where
 
---import Prelude
---
---import Control.Bind (join)
---import Control.Monad.Eff.Random (randomInt)
---
---import Data.Foldable (for_, traverse_)
---import Data.Functor.Eff (liftEff)
---import Data.List (replicateM, length, (!!))
---import Data.Maybe (Maybe(..), fromMaybe)
---import Data.String as S
---import Data.String.Regex as R
---import Data.Traversable (traverse)
---
---import Selenium.ActionSequence (leftClick, sendKeys)
---import Selenium.Monad
---import Selenium.Types
---
---import Test.Config (SearchQueryConfig())
---import Test.SlamData.Feature.ActionSequence (selectAll, sendDelete)
---import Test.SlamData.Feature.Common
---import Test.SlamData.Feature.Log
---import Test.SlamData.Feature.Monad
---import Test.SlamData.Feature.Notebook.Common as C
---import Test.SlamData.Feature.Notebook.Contexts
---import Test.SlamData.Feature.Notebook.Getters
---import Test.SlamData.Feature.Types
---import Test.SlamData.Feature.Notebook.Interactions (insertMdCellUsingNextActionMenu)
---import Test.Feature.Scenario (scenario)
---import Test.SlamData.Feature.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder)
---
---import qualified Data.String as S
---import qualified Data.String.Regex as R
---import qualified Config as SDConfig
---import qualified Test.SlamData.Feature.Notebook.Common as C
---
---
-----checkInitialSearch :: SlamFeature Unit
-----checkInitialSearch =
-----  withSearchCell $ C.checkInitial do
-----    config <- getConfig
-----    value <- getElementByCss config.searchCell.fileListInput "there is no file list"
-----             >>= flip getAttribute "value"
-----    if value /= Just ""
-----      then errorMsg "file list should be empty"
-----      else pure unit
-----
-----    search <- getElementByCss config.searchCell.searchInput "there is no search input"
-----              >>= flip getAttribute "value"
-----    if value /= Just ""
-----      then errorMsg "search input should be empty"
-----      else pure unit
-----    successMsg "Ok, initial values are empty"
-----    getElementByCss config.searchCell.searchButton "There is no search button"
-----    getElementByCss config.searchCell.searchClear "There is no search clear"
-----    successMsg "Ok, all needed elements are present"
-----
-----
-----
-----
-----checkBothEmpty :: SlamFeature Element -> SlamFeature Unit
-----checkBothEmpty btnCheck = do
-----  withSearchCell $ C.checkIncorrect btnCheck
-----  successMsg "Ok, expected behaviour when both inputs are empty"
-----
-----checkFileListEmpty :: SlamFeature Element -> SlamFeature Unit
-----checkFileListEmpty btnCheck = do
-----  withSearchCell do
-----    config <- getConfig
-----    input <- getSearchInput
-----    sequence do
-----      leftClick input
-----      sendKeys config.searchCell.allQuery
-----    C.checkIncorrect btnCheck
-----  successMsg "Ok, expected behaviour when file list is empty"
-----
-----checkSearchEmpty :: SlamFeature Element -> SlamFeature Unit
-----checkSearchEmpty btnCheck = do
-----  withSearchCell do
-----    config <- getConfig
-----    input <- getSearchFileList
-----    sequence do
-----      leftClick input
-----      sendKeys config.explore.smallZips
-----    C.checkIncorrect btnCheck
-----  successMsg "Ok, expected behaviour when search input is empty"
-----
-----checkInexistentFileMounted :: SlamFeature Element -> SlamFeature Unit
-----checkInexistentFileMounted btnCheck = do
-----  withSearchCell do
-----    config <- getConfig
-----    fl <- getSearchFileList
-----    ip <- getSearchInput
-----    sequence do
-----      leftClick fl
-----      sendKeys config.explore.mounted
-----      leftClick ip
-----      sendKeys config.searchCell.allQuery
-----    C.checkIncorrect btnCheck
-----  successMsg "Ok, expected behaviour when file list contains incorrect mounted file"
-----
-----
-----checkInexistentFileNotMounted :: SlamFeature Element -> SlamFeature Unit
-----checkInexistentFileNotMounted btnCheck  = withSearchCell do
-----  config <- getConfig
-----  input <- getSearchFileList
-----  sequence do
-----    leftClick input
-----    sendKeys config.explore.notMounted
-----  C.checkIncorrect btnCheck
-----  successMsg "Ok, expected behaviour when file list contains unmounted file"
-----
-----checkDirectoryFailure :: SlamFeature Element -> SlamFeature Unit
-----checkDirectoryFailure btnCheck = withSearchCell do
-----  config <- getConfig
-----  input <- getSearchFileList
-----  sequence do
-----    leftClick input
-----    sendKeys config.explore.notMounted
-----  C.checkIncorrect btnCheck
-----  successMsg "Ok, expected behaviour when file list contains directory"
-----
-----checkSearchIncorrect :: SlamFeature Element -> SlamFeature Unit
-----checkSearchIncorrect btnCheck = withSearchCell do
-----  btn <- btnCheck
-----  config <- getConfig
-----  fl <- getSearchFileList
-----  ip <- getSearchInput
-----  sequence do
-----    leftClick fl
-----    sendKeys config.explore.smallZips
-----    leftClick ip
-----    sendKeys config.searchCell.incorrectQuery
-----    leftClick btn
-----  C.checkIncorrect btnCheck
-----  successMsg "Ok, expected behaviour when search input contains incorrect query"
-----
-----
-----checkSearchClear :: SlamFeature Unit
-----checkSearchClear = withSearchCell do
-----  clear <- getSearchClear
-----  ip <- getSearchInput
-----  sequence do
-----    leftClick ip
-----    sendKeys "foo bar baz"
-----  await "value of search input has not been setted" do
-----    (== (Just "foo bar baz")) <$> getAttribute ip "value"
-----
-----  successMsg "Ok, correct value in search input"
-----
-----  sequence $ leftClick clear
-----  await "value of search input has not been cleared" do
-----    (== (Just "")) <$> getAttribute ip "value"
-----
-----  successMsg "Ok, value has been cleared"
-----
-----checkSearchStop :: SlamFeature Unit
-----checkSearchStop = withSearchCell do
-----  config <- getConfig
-----  clear <- getSearchClear
-----  ip <- getSearchInput
-----  fl <- getSearchFileList
-----  play <- findPlayButton
-----  startSrc <- getAttribute clear "src"
-----  sequence do
-----    leftClick fl
-----    sendKeys config.explore.smallZips
-----    leftClick ip
-----    sendKeys config.searchCell.allQuery
-----    leftClick play
-----  await "Src has not been changed" do
-----    (== startSrc) <$> (getAttribute clear "src")
-----  successMsg "Ok, src of search-clear has changed"
-----  sequence do
-----    leftClick clear
-----  await "Search stop doesn't work" do
-----    src <- getAttribute clear "src"
-----    val <- getAttribute ip "value"
-----    pure $ val == Just "" && src == startSrc
-----  successMsg "Ok, search stopped"
-----
-----checkOutputLabel :: SlamFeature Unit
-----checkOutputLabel = do
-----  config <- getConfig
-----  dummy <- liftEff $ randomInt 0 20
-----  replicateM dummy insertMdCellUsingNextActionMenu
-----  makeSearchCell
-----  deleteCells getMdCellTitles
-----  fileSearched config.explore.smallZips config.searchCell.allQuery do
-----    label <- waitOutputLabel >>= getInnerHtml
-----    if extracted label /= ("out" <> show dummy)
-----      then errorMsg "Incorrect output"
-----      else successMsg "Ok, correct output"
-----  deleteAllCells
-----  where
-----  extracted content =
-----    S.trim $ R.replace (R.regex "^([^:]+).+$" R.noFlags) "$1" content
-----
-----
-----checkNextSearchCell :: String -> SlamFeature Unit
-----checkNextSearchCell expected = do
-----  config <- getConfig
-----  waitNextCellSearch >>= sequence <<< leftClick
-----  await "Search cell has not been created" do
-----    ((== 2) <<< length) <$> getCellTitles
-----  vals <- byCss config.searchCell.fileListInput
-----          >>= findElements
-----          >>= traverse (flip getAttribute "value")
-----  let val = join (vals !! 1)
-----  if val == Just expected
-----    then successMsg "Ok, correct next search cell value"
-----    else errorMsg $ "Incorrect next search cell value:"
-----         <> "\nexpected: " <> expected
-----         <> "\nactual  : " <> fromMaybe "" val
-----  deleteAllCells
-----
-----
-----checkQuery :: SearchQueryConfig -> SlamFeature Unit
-----checkQuery conf = withSmallZipsSearchedAll do
-----  sectionMsg conf.query
-----  config <- getConfig
-----  ip <- getSearchInput
-----  btn <- findPlayButton
-----
-----  fbEnabled <- (_.fb <<< runEnabledRecord) <$> getEnabledRecord
-----  if not fbEnabled
-----    then pure unit
-----    else do
-----    afterTableChanged (getFastBackward >>= sequence <<< leftClick)
-----
-----  modifierKey <- getModifierKey
-----  afterTableChanged $ sequence do
-----    leftClick ip
-----    selectAll modifierKey
-----    sendDelete
-----    sendKeys conf.query
-----    leftClick btn
-----
-----  ffEnabled <- (_.ff <<< runEnabledRecord) <$> getEnabledRecord
-----  if not ffEnabled
-----    then pure unit
-----    else do
-----    afterTableChanged (getFastForward >>= sequence <<< leftClick)
-----
-----
-----  {table: tableCount, pager: pagerCount} <- getRowCount
-----  if tableCount == conf.rows
-----     && pagerCount == 10
-----    then successMsg "Ok, correct row count"
-----    else errorMsg $ "Incorrect row count:"
-----         <> "\nin table: " <> show tableCount
-----         <> "\nin pager: " <> show pagerCount
-----         <> "\nshould be in table: " <> show conf.rows
-----         <> "\nshould be in pager: 10"
-----
-----  count <- getPageCount
-----  if count == conf.pages
-----    then successMsg "Ok, correct page count"
-----    else errorMsg "Incorrect page count"
-----
-----checkQueries :: SlamFeature Unit
-----checkQueries = do
-----  warnMsg "Following cases has been disabled"
-----  warnMsg "\"=122\" -> pages: 1, rows: 1"
-----  warnMsg "\"=456\" -> pages: 1, rows: 1"
-----  getConfig >>= _.searchQueries >>> traverse_ checkQuery
---
---searchScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
---searchScenario =
---  scenario
---    "Search"
---    (createNotebookInTestFolder "Search")
---    (deleteFileInTestFolder "Search.slam")
---
---test :: SlamFeature Unit
---test = do
---  searchScenario "Insert some cells" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Insert some cells and re-open the notebook" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Delete all cells" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Delete all cells and re-open the notebook" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Hide then show cell options" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Show then hide file list" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Select file from file list" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Search with no file or search string" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Search with no file" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Search with no search string" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Search with inexistant file" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Search with file in non mounted folder" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Search with file that is a folder" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Search with invalid search string" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Try to embed cell output before running" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Try to insert a cell after this one in the same stack before running" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Stop a running search" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Search a file" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Insert query cell after this cell in same stack" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Insert search cell after this cell in same stack" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Insert visualise cell after this cell in same stack" ["Test pending"] do
---    errorMsg "Test pending"
---
---  searchScenario "Insert download cell after this cell in same stack" ["Test pending"] do
---    errorMsg "Test pending"
---
+import Prelude
+import Test.Feature (expectPresented, expectNotPresented)
+import Test.SlamData.Feature.Common (waitTime)
+import Test.Feature.Log (successMsg)
+import Test.SlamData.Feature.Monad (SlamFeature())
+import Test.SlamData.Feature.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder, insertExploreCellUsingNextActionMenu, provideExploreFile, provideExploreSearch, provideExploreSearchSearch, insertSearchAfterExplore, insertSearchAfterSearchAfterExplore, playExplore, playExploreSearch, playExploreSearchSearch)
+import Test.SlamData.Feature.XPaths as XPaths
+import Test.Feature.Scenario (scenario)
+
+import XPath as XPath
+
+searchScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
+searchScenario =
+  scenario
+    "Search"
+    (createNotebookInTestFolder "Search")
+    (deleteFileInTestFolder "Search.slam")
+
+--tdWithHeaderTextAndTextEqOneOf :: String -> String -> Array String -> String
+--tdWithHeaderTextAndTextEqOneOf tableXPath =
+--  XPath.tdWithThAndTextEqOneOf tableXPath <<< XPath.thWithExactText
+
+expectLastSearchResultsToContain :: Int -> String -> Array String -> SlamFeature Unit
+expectLastSearchResultsToContain = expectLastSearchResults XPath.withText
+
+expectLastSearchResultsNotToContain :: Int -> String -> Array String -> SlamFeature Unit
+expectLastSearchResultsNotToContain = expectLastSearchResults XPath.withoutText
+
+expectLastSearchResults
+  :: (String -> String)
+  -> Int
+  -> String
+  -> Array String
+  -> SlamFeature Unit
+expectLastSearchResults f i headerText xs = do
+  expectPresented $ XPath.index tdXPath i
+  expectNotPresented $ XPath.index trXPath (i + 1)
+  where
+  trXPath = tableXPath ++ "/tbody/tr"
+  tdXPath = tableXPath ++ "/tbody/tr/td" ++ anyOfTheseTexts xs
+  --anyTdXPath = XPath.tdWithTh tableXPath (XPath.thWithExactText headerText) "td"
+  --tdXPath = tdWithHeaderTextAndTextEqOneOf tableXPath headerText xs
+  tableXPath =
+    XPath.last (XPath.anywhere XPaths.searchPlayButton)
+      `XPath.following` "table"
+  anyOfTheseTexts = XPath.predicate <<< XPath.anyOfThesePredicates <<< map f
+
+
+test :: SlamFeature Unit
+test = do
+  searchScenario "Search for a city" [] do
+    insertExploreCellUsingNextActionMenu
+    provideExploreFile "/test-mount/testDb/zips"
+    playExplore
+    insertSearchAfterExplore
+    provideExploreSearch "springfield"
+    playExploreSearch
+    expectLastSearchResultsToContain 10 "city" ["SPRINGFIELD", "WEST SPRINGFIELD"]
+    successMsg "Successfully searched for a city"
+
+  searchScenario "Search within results" [] do
+    insertExploreCellUsingNextActionMenu
+    provideExploreFile "/test-mount/testDb/zips"
+    playExplore
+    insertSearchAfterExplore
+    provideExploreSearch "springfield"
+    playExploreSearch
+    insertSearchAfterSearchAfterExplore
+    provideExploreSearchSearch "OR"
+    playExploreSearchSearch
+    expectLastSearchResultsToContain 2 "city" ["SPRINGFIELD"]
+    expectLastSearchResultsToContain 2 "state" ["OR"]
+    successMsg "Successfully searched within results"
+
+  searchScenario "Search with field names" [] do
+    insertExploreCellUsingNextActionMenu
+    provideExploreFile "/test-mount/testDb/zips"
+    playExplore
+    insertSearchAfterExplore
+    provideExploreSearch "city:springfield state:or pop:>30000"
+    playExploreSearch
+    expectLastSearchResultsToContain 1 "city" ["SPRINGFIELD"]
+    expectLastSearchResultsToContain 1 "state" ["OR"]
+    successMsg "Successfully searched with field names"
+
+  searchScenario "Suppress search results" [] do
+    insertExploreCellUsingNextActionMenu
+    provideExploreFile "/test-mount/testDb/zips"
+    playExplore
+    insertSearchAfterExplore
+    provideExploreSearch "city:portland -state:OR"
+    playExploreSearch
+    expectLastSearchResultsToContain 10 "city" ["PORTLAND", "SOUTH PORTLAND", "NEW PORTLAND", "PORTLANDVILLE", "PORTLAND MILLS"]
+    expectLastSearchResultsNotToContain 10 "state" ["OR"]
+    successMsg "Successfully suppressed search results"

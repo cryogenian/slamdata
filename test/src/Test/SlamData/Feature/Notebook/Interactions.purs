@@ -154,11 +154,25 @@ insertSearchCellUsingNextActionMenu =
 --markdownQueryTitleXPath :: String
 --markdownQueryTitleXPath = XPaths.mdCellTitleXPath `following` XPaths.queryCellTitleXPath
 --
---provideExploreFile :: String -> SlamFeature Unit
---provideExploreFile filename = focusExploreFileField *> typeString filename
+
+provideExploreFile :: String -> SlamFeature Unit
+provideExploreFile = provideFieldValue (XPath.anywhere XPaths.exploreInput)
 
 provideMd :: String -> SlamFeature Unit
 provideMd = provideFieldValue (XPath.anywhere XPaths.mdField)
+
+provideExploreSearch :: String -> SlamFeature Unit
+provideExploreSearch =
+  provideFieldValue
+    $ XPath.anywhere
+    $ XPaths.exploreCellTitle `XPath.following` XPaths.searchStringInput
+
+provideExploreSearchSearch :: String -> SlamFeature Unit
+provideExploreSearchSearch =
+  provideFieldValue
+    $ flip XPath.index 2
+    $ XPath.anywhere
+    $ XPaths.exploreCellTitle `XPath.following` XPaths.searchStringInput
 
 focusMdField :: SlamFeature Unit
 focusMdField = click $ XPath.anywhere XPaths.mdField
@@ -169,17 +183,40 @@ focusMdField = click $ XPath.anywhere XPaths.mdField
 playMd :: SlamFeature Unit
 playMd = click $ XPath.anywhere XPaths.mdPlayButton
 
---playExplore :: SlamFeature Unit
---playExplore = Finders.findExplorePlayButton >>= click
+playExplore :: SlamFeature Unit
+playExplore = click $ XPath.anywhere XPaths.explorePlayButton
 
 playMdQuery :: SlamFeature Unit
 playMdQuery = click $ XPath.anywhere XPaths.mdQueryPlayButton
+
+playExploreSearch :: SlamFeature Unit
+playExploreSearch =
+  click
+    $ XPath.anywhere
+    $ XPaths.exploreCellTitle `XPath.following` XPaths.searchPlayButton
+
+playExploreSearchSearch :: SlamFeature Unit
+playExploreSearchSearch =
+  click
+    $ flip XPath.index 2
+    $ XPath.anywhere
+    $ XPaths.exploreCellTitle `XPath.following` XPaths.searchPlayButton
 
 provideMdQuery :: String -> SlamFeature Unit
 provideMdQuery = provideFieldValue (XPath.anywhere XPaths.mdQueryField)
 
 insertQueryAfterMd :: SlamFeature Unit
 insertQueryAfterMd = click $ XPath.anywhere XPaths.insertQueryAfterMd
+
+insertSearchAfterExplore :: SlamFeature Unit
+insertSearchAfterExplore = click $ XPath.anywhere XPaths.insertSearchAfterExplore
+
+insertSearchAfterSearchAfterExplore :: SlamFeature Unit
+insertSearchAfterSearchAfterExplore =
+  click
+    $ XPath.index
+        (XPath.anywhere XPaths.insertSearchAfterExplore)
+        2
 
 --showExploreMessages :: SlamFeature Unit
 --showExploreMessages = Finders.findShowExploreMessages >>= click
