@@ -23,7 +23,6 @@ module SlamData.Notebook.Cell.Search.Component
 import Prelude
 
 import Control.Bind (join)
-import Control.Monad (when)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Trans as MT
 import Control.Monad.Writer.Class as WC
@@ -80,7 +79,10 @@ render state =
                 ]
     ]
 
-    [ H.slot unit \_ -> { component: FI.fileInputComponent, initialState: FI.initialState }
+    [ H.slot unit \_ ->
+         { component: FI.fileInputComponent
+         , initialState: FI.initialState
+         }
     , H.div [ P.classes [ CSS.fileListField, B.inputGroup ] ]
         [ H.input
             [ P.classes [ B.formControl, CSS.searchCellInput ]
@@ -105,17 +107,27 @@ render state =
         ]
     ]
 
-runWith :: forall s' f f' g p. Natural (ParentDSL State s' f f' g p) (ParentDSL State s' f f' g p)
+runWith
+  :: forall s' f f' g p
+   . Natural
+       (ParentDSL State s' f f' g p)
+       (ParentDSL State s' f f' g p)
 runWith m = do
   modify (_running .~ true)
   x <- m
   modify (_running .~ false)
   pure x
 
-eval :: Natural Query (ParentDSL State FI.State Query FI.Query Slam Unit)
+eval
+  :: Natural
+       Query
+       (ParentDSL State FI.State Query FI.Query Slam Unit)
 eval = coproduct cellEval searchEval
 
-cellEval :: Natural NC.CellEvalQuery (ParentDSL State FI.State Query FI.Query Slam Unit)
+cellEval
+  :: Natural
+       NC.CellEvalQuery
+       (ParentDSL State FI.State Query FI.Query Slam Unit)
 cellEval q =
   case q of
     NC.EvalCell { inputPort: M.Just Port.Blocked } k -> do
@@ -127,16 +139,24 @@ cellEval q =
           <#> (join <<< M.maybe (Left "There is no file input subcomponent") Right)
           # MT.lift
           >>= either EC.throwError pure
+
         query <-
           get <#> _.searchString >>> SS.mkQuery
             # MT.lift
             >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
-        (MT.lift $ NC.liftWithCanceler' $ Auth.authed $ Quasar.resourceExists inputResource)
-          >>= \x -> when (not x) $ EC.throwError $ "Input resource "
-            <> R.resourcePath inputResource
-            <> " doesn't exist"
-        fields <- MT.lift <<< NC.liftWithCanceler' $ Auth.authed $ Quasar.fields inputResource
+        Quasar.messageIfResourceNotExists
+            inputResource
+            ("Input resource " <> R.resourcePath inputResource <> " doesn't exist")
+          # Auth.authed
+          # NC.liftWithCanceler'
+          # MT.lift
+          >>= F.traverse_ EC.throwError
+        fields <-
+          Quasar.fields inputResource
+            # Auth.authed
+            # NC.liftWithCanceler'
+            # MT.lift
 
         let
           template = Search.queryToSQL fields query
@@ -157,17 +177,20 @@ cellEval q =
             >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
         F.for_ plan \p -> WC.tell ["Plan: " <> p]
-
-        (MT.lift $ NC.liftWithCanceler' $ Auth.authed $ Quasar.resourceExists outputResource)
-          >>= \x -> when (not x)
-                    $ EC.throwError "Error making search temporary resource"
-
+        Quasar.messageIfResourceNotExists
+            outputResource
+            "Error making search temporary resource"
+          # Auth.authed
+          # NC.liftWithCanceler'
+          # MT.lift
+          >>= F.traverse_ EC.throwError
         pure $ Port.TaggedResource { resource: outputResource, tag: pure sql }
 
+
     NC.SetupCell { inputPort } next -> do
-      case preview Port._Resource inputPort of
-        M.Just res -> query unit (action (FI.SelectFile res)) $> next
-        M.Nothing -> pure next
+      F.for_ (preview Port._Resource inputPort) \res ->
+        query unit (action (FI.SelectFile res))
+      pure next
 
     NC.NotifyRunCell next ->
       pure next
@@ -175,22 +198,21 @@ cellEval q =
     NC.Save k -> do
       file <- query unit (request FI.GetSelectedFile)
       input <- gets _.searchString
-      pure $ k $ Model.encode { input, file: case file of
-                                  M.Just (Right res) -> M.Just res
-                                  _ -> M.Nothing
-                              }
+      pure $ k
+        $ Model.encode
+          { input
+          , file: file >>= either (const M.Nothing) pure
+          }
     NC.Load json next -> do
-      case Model.decode json of
-        Left _ -> pure unit
-        Right { file, input } -> do
-          M.maybe (pure unit) (void <<< query unit <<< action <<< FI.SelectFile) file
-          modify (_searchString .~ input)
+      F.for_ (Model.decode json) \{file, input} -> do
+        F.for_ file \f ->
+          void $ query unit $ action $ FI.SelectFile f
+        modify $ _searchString .~ input
       pure next
     NC.SetCanceler _ next -> pure next
 
-searchEval :: Natural SearchQuery (ParentDSL State FI.State Query FI.Query Slam Unit)
-searchEval q =
-  case q of
-    UpdateSearch str next -> do
-      modify (_searchString .~ str)
-      pure next
+searchEval
+  :: Natural
+       SearchQuery
+       (ParentDSL State FI.State Query FI.Query Slam Unit)
+searchEval (UpdateSearch str next) = modify (_searchString .~ str) $> next

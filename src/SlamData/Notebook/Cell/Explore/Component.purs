@@ -22,14 +22,14 @@ module SlamData.Notebook.Cell.Explore.Component
 
 import Prelude
 
-import Control.Bind (join)
-import Control.Monad (unless)
+import Control.Bind (join, (=<<))
 import Control.Monad.Error.Class as EC
 import Control.Monad.Trans as MT
 
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), maybe)
+import Data.Foldable as F
 
 import Halogen
 import Halogen.HTML.Indexed as H
@@ -63,13 +63,21 @@ exploreComponent =
 render :: State -> ParentHTML FI.State NC.CellEvalQuery FI.Query Slam Unit
 render state =
   H.div
-    [ P.classes  [ CSS.exploreCellEditor
-                 , CSS.cellInput
-                 ]
+    [ P.classes
+      [ CSS.exploreCellEditor
+      , CSS.cellInput
+      ]
     ]
-    [ H.slot unit \_ -> { component: FI.fileInputComponent, initialState: FI.initialState } ]
+    [ H.slot unit \_ ->
+         { component: FI.fileInputComponent
+         , initialState: FI.initialState
+         }
+    ]
 
-eval :: Natural NC.CellEvalQuery (ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
+eval
+  :: Natural
+       NC.CellEvalQuery
+       (ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
 eval (NC.NotifyRunCell next) = pure next
 eval (NC.EvalCell info k) =
   k <$> NC.runCellEvalT do
@@ -78,19 +86,20 @@ eval (NC.EvalCell info k) =
         <#> (join <<< maybe (Left "There is no file input subcomponent") Right)
         # MT.lift
         >>= either EC.throwError pure
-    (MT.lift $ NC.liftWithCanceler $ Auth.authed $ Quasar.resourceExists resource)
-      >>= \x -> unless x $ EC.throwError
-                $ "File " <> R.resourcePath resource <> " doesn't exist"
-
+    Quasar.messageIfResourceNotExists
+        resource
+        ("File " <> R.resourcePath resource <> " doesn't exist")
+      # Auth.authed
+      # NC.liftWithCanceler
+      # MT.lift
+      >>= F.traverse_ EC.throwError
     pure $ Port.TaggedResource {resource, tag: Nothing}
 eval (NC.SetupCell _ next) = pure next
 eval (NC.Save k) = do
   file <- query unit (request FI.GetSelectedFile)
-  pure $ k $ encodeJson $ case file of
-    Just (Right r) -> Just r
-    _ -> Nothing
+  pure $ k $ encodeJson $ either (const Nothing) pure =<< file
 eval (NC.Load json next) = do
-  let file = either (const Nothing) id $ decodeJson json
-  maybe (pure unit) (\file' -> void $ query unit $ action (FI.SelectFile file')) file
+  F.for_ (decodeJson json) \file ->
+    void $ query unit $ action (FI.SelectFile file)
   pure next
 eval (NC.SetCanceler _ next) = pure next
