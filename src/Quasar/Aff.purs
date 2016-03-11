@@ -39,7 +39,7 @@ module Quasar.Aff
 
   , save
   , load
-  , resourceExists
+  , messageIfResourceNotExists
   , portView
 
   , retrieveAuthProviders
@@ -707,23 +707,22 @@ count res idToken perms =
   sql :: SQL
   sql = "SELECT COUNT(*) as total FROM {{path}}"
 
-resourceExists
+messageIfResourceNotExists
   :: forall e
    . R.Resource
+  -> String
   -> M.Maybe Auth.IdToken
   -> Array Perm.PermissionToken
-  -> Aff (RetryEffects (ajax :: AX.AJAX|e)) Boolean
-resourceExists res idToken perms = do
-  result <- existsReq
-  if result.status == successStatus
-    then pure true
-    else
-      if result.status == notFoundStatus
-      then pure false
-      else
-        Err.throwError
-          $ Exn.error
-          $ "Unexpected status code " ++ show result.status
+  -> Aff (RetryEffects (ajax :: AX.AJAX|e)) (M.Maybe String)
+messageIfResourceNotExists res defaultMsg idToken perms = do
+  eResult <- Aff.attempt existsReq
+  pure case eResult of
+    E.Left e -> M.Just $ Exn.message e
+    E.Right result ->
+      guard (result.status /= successStatus)
+      $> if result.status == notFoundStatus
+           then defaultMsg
+           else "Unexpected status code " <> show result.status
   where
   requestPath
     :: P.Path P.Abs P.File P.Sandboxed
