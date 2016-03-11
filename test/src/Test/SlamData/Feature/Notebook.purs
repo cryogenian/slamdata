@@ -20,10 +20,12 @@ import Prelude
 import Test.SlamData.Feature.Monad (SlamFeature())
 --import Test.SlamData.Feature.Monad (createTestDirs)
 import Test.SlamData.Feature.Notebook.Markdown as Markdown
+import Test.SlamData.Feature.Notebook.Search as Search
 import Test.SlamData.Feature.Notebook.Interactions (launchSlamData, mountTestDatabase)
 
 test :: SlamFeature Unit
 test = do
   launchSlamData
   mountTestDatabase
+  Search.test
   Markdown.test

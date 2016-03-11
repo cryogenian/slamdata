@@ -34,6 +34,9 @@ inOrder = intercalate followingString
 index :: String -> Int -> String
 index xPath = indexString xPath <<< show
 
+last :: String -> String
+last xPath = indexString xPath "last()"
+
 indexString :: String -> String -> String
 indexString xPath i = "(" ++ xPath ++ ")[" ++ i ++ "]"
 
@@ -106,13 +109,13 @@ withLabelWithExactText xPath = withLabel xPath <<< labelXPath
   labelXPath text = "label[text()= '" ++ text ++ "' or descendant::*[text()= '" ++ text ++ "']]"
 
 thWithExactText :: String -> String
-thWithExactText thText = "/thead/tr/th[text()='" ++ thText ++ "']"
+thWithExactText thText = "thead/tr/th[text()='" ++ thText ++ "']"
 
 tdWithTh :: String -> String -> String -> String
 tdWithTh tableXPath thXPath tdXPath =
   tableXPath ++ "/tbody/tr/" ++ tdXPath ++ positionPredicate
   where
-  precedingThXPath = tableXPath ++ "/thead/tr/" ++ thXPath `precedingSibling` "th"
+  precedingThXPath = tableXPath ++"/" ++ thXPath `precedingSibling` "th"
   thPosition = "count(" ++ precedingThXPath ++ ") + 1"
   positionPredicate = predicate $ "position()=(" ++ thPosition ++ ")"
 
