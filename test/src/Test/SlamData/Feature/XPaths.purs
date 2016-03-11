@@ -39,6 +39,10 @@ exploreInput :: String
 exploreInput =
   exploreCellTitle `XPath.following` XPath.inputWithExactPlaceholder "Select a file"
 
+searchStringInput :: String
+searchStringInput =
+  searchCellTitle `XPath.following` XPath.inputWithExactPlaceholder "Input search string"
+
 insertQueryAfterThis :: String
 insertQueryAfterThis =
   XPath.anyWithExactAriaLabel "Insert Query cell after this cell"
@@ -58,6 +62,10 @@ insertDownloadAfterThis =
 insertQueryAfterMd :: String
 insertQueryAfterMd =
   mdCellTitle `XPath.following` insertQueryAfterThis
+
+insertSearchAfterExplore :: String
+insertSearchAfterExplore =
+  exploreCellTitle `XPath.following` insertSearchAfterThis
 
 showFileList :: String
 showFileList =
@@ -202,6 +210,12 @@ mdPlayButton = mdCellTitle `XPath.following` play
 mdQueryPlayButton :: String
 mdQueryPlayButton = mdQueryCellTitle `XPath.following` play
 
+searchPlayButton :: String
+searchPlayButton = searchCellTitle `XPath.following` play
+
+explorePlayButton :: String
+explorePlayButton = exploreCellTitle `XPath.following` play
+
 mdQueryField :: String
 mdQueryField = mdQueryCellTitle `XPath.following` aceEditor
 
@@ -241,3 +255,4 @@ deselectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Deselect " ++ filen
 
 mdQueryTable :: String
 mdQueryTable = mdQueryCellTitle `XPath.following` "table"
+
