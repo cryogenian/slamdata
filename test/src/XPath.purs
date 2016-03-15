@@ -34,6 +34,9 @@ inOrder = intercalate followingString
 index :: String -> Int -> String
 index xPath = indexString xPath <<< show
 
+last :: String -> String
+last xPath = indexString xPath "last()"
+
 indexString :: String -> String -> String
 indexString xPath i = "(" ++ xPath ++ ")[" ++ i ++ "]"
 
