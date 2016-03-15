@@ -49,5 +49,5 @@ throwIfEmpty message xs | isEmpty xs = throw message
 throwIfEmpty _ _ = pure unit
 
 throwIfNotEmpty :: forall a m eff. (Foldable m) => String -> m a -> Eff (err :: EXCEPTION | eff) Unit
-throwIfNotEmpty message xs | isEmpty xs = pure unit
-throwIfNotEmpty _ _ = throw message
+throwIfNotEmpty _ xs | isEmpty xs = pure unit
+throwIfNotEmpty message _ = throw message

@@ -1,7 +1,7 @@
 module XPath where
 
 import Prelude
-import Data.String (take, joinWith)
+import Data.String (take, drop, length, joinWith)
 import Data.Foldable (Foldable, intercalate)
 import Control.Alt (Alt, (<|>))
 import Control.Monad.Aff (later)
@@ -54,6 +54,9 @@ withoutText s = "text() != " ++ show s ++ ""
 
 predicate :: String -> String
 predicate s = "[" ++ s ++ "]"
+
+withPredicate :: String -> String -> String
+withPredicate xPath p = xPath ++ predicate p
 
 nodeWithExactText :: String -> String -> String
 nodeWithExactText name text = name ++ (predicate $ withText text)
@@ -113,11 +116,27 @@ thWithExactText thText = "thead/tr/th[text()='" ++ thText ++ "']"
 
 tdWithTh :: String -> String -> String -> String
 tdWithTh tableXPath thXPath tdXPath =
-  tableXPath ++ "/tbody/tr/" ++ tdXPath ++ positionPredicate
+  withPredicate
+    (inTable tdXPath)
+    $ anyOfThesePredicates
+        [ rangePredicate tdPosition thPosition firstFollowingSiblingThPosition
+        ]
   where
-  precedingThXPath = tableXPath ++"/" ++ thXPath `precedingSibling` "th"
-  thPosition = "count(" ++ precedingThXPath ++ ") + 1"
-  positionPredicate = predicate $ "position()=(" ++ thPosition ++ ")"
+  tdPosition = position "" "td"
+  thPosition = position (inTable thXPath) "th"
+  firstFollowingSiblingThPosition = position (firstFollowingSibling (inTable thXPath) "th") "th"
+  inTable s = inside tableXPath ++ s
+  rangePredicate x y z = "(" ++ x ++ " >= " ++ y ++ " and " ++ x ++ " < " ++ z ++ ")"
+  firstFollowingSibling s t =  "(" ++ followingSibling s t ++ ")[1]"
+  followingSibling s t = s ++ "/following-sibling::" ++ t
+  position s t =
+    "(sum(" ++ inside s ++ "preceding-sibling::" ++ t ++ "/@colspan)"
+      ++ " + count(" ++ inside s ++ "preceding-sibling::" ++ t ++ "[not(@colspan)])"
+      ++ " + 1)"
+  inside s
+    | s == "" = ""
+    | drop (length s - 1) s == "/" = s
+    | otherwise = s ++ "/"
 
 selectWithOptionsWithExactTexts :: Array String -> String
 selectWithOptionsWithExactTexts optionTexts =
@@ -133,12 +152,6 @@ withDescendants xPath =
 
 parent :: String -> String
 parent xPath = xPath ++ "/.."
-
--- This can be achieved using self-or-ancestors.
---thisOrItsParents :: forall a b m. (Bind m, Alt m) => (String -> m a) -> (a -> m b) -> String -> m b
---thisOrItsParents f g x = traceAny x \_ -> go =<< f x
---  where
---  go y = g y <|> thisOrItsParents f g (parent x)
 
 anywhere :: String -> String
 anywhere xPath = if anywhered then xPath else "//" ++ xPath
@@ -158,7 +171,7 @@ tdWithThAndPredicate :: String -> String -> String -> String
 tdWithThAndPredicate tableXPath thXPath predicate' =
   tdWithTh tableXPath thXPath tdXPath
   where
-  tdXPath = "td" ++ predicate predicate'
+  tdXPath = "tbody/tr/td" ++ predicate predicate'
 
 tdWithThAndTextEq :: String -> String -> String -> String
 tdWithThAndTextEq tableXPath thXPath =
