@@ -22,11 +22,21 @@ import Control.Monad.Reader.Class
 import Data.Maybe (fromMaybe)
 import Platform (PLATFORM(), getPlatform, runOs, runPlatform)
 import Prelude
+import Graphics.EasyImage (EASY_IMAGE())
+import Graphics.ImageDiff (IMAGE_MAGICK())
 import Selenium.Key (metaKey, controlKey)
 import Selenium.Monad (Selenium())
 import Selenium.Types (ControlKey())
 
-type Feature eff o = Selenium (platform :: PLATFORM, err :: EXCEPTION | eff) o
+type FeatureEffects eff =
+    ( platform :: PLATFORM
+    , imageDiff :: IMAGE_MAGICK
+    , easyImage :: EASY_IMAGE
+    , err :: EXCEPTION
+    | eff)
+
+type Feature eff o =
+  Selenium (FeatureEffects eff) o
 
 getPlatformString :: forall eff o. Feature eff o String
 getPlatformString = do

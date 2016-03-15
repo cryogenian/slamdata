@@ -7,8 +7,6 @@ import Control.Monad.Eff.Random (RANDOM())
 import Control.Monad.Eff.Ref (REF())
 import DOM (DOM())
 import Database.Mongo.Mongo (DB())
-import Graphics.EasyImage (EASY_IMAGE())
-import Graphics.ImageDiff (IMAGE_MAGICK())
 import Node.Buffer (BUFFER())
 import Node.ChildProcess (CHILD_PROCESS())
 import Node.FS (FS())
@@ -23,8 +21,6 @@ type SlamFeatureEffects e =
   , avar :: AVAR
   , process :: PROCESS
   , db :: DB
-  , imageDiff :: IMAGE_MAGICK
-  , easyImage :: EASY_IMAGE
   , buffer :: BUFFER
   , random :: RANDOM
   , env :: ENV

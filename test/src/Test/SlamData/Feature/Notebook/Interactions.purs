@@ -7,7 +7,7 @@ import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Prelude
-import Selenium.Monad (get, refresh)
+import Selenium.Monad (get, refresh, getCurrentURL)
 import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck)
 import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
@@ -16,6 +16,13 @@ import XPath as XPath
 
 launchSlamData :: SlamFeature Unit
 launchSlamData = get <<< _.slamdataUrl =<< getConfig
+
+accessNotebookWithModifiedURL :: (String -> String) -> SlamFeature Unit
+accessNotebookWithModifiedURL modifier =
+  getCurrentURL <#> modifier >>= get
+
+accessPublishedNotebookWithState :: SlamFeature Unit
+accessPublishedNotebookWithState = accessNotebookWithModifiedURL (flip append
 
 mountTestDatabase :: SlamFeature Unit
 mountTestDatabase = do
@@ -88,6 +95,10 @@ insertSearchCardAsFirstCardInNewStack :: SlamFeature Unit
 insertSearchCardAsFirstCardInNewStack =
   expandNewCardMenu *> click (XPath.anywhere XPaths.insertSearchCard)
 
+insertApiCardAsFirstCardInNewStack :: SlamFeature Unit
+insertApiCardAsFirstCardInNewStack =
+  expandNewCardMenu *> click (XPath.anywhere XPaths.insertApiCard)
+
 insertSearchCardAsNextAction :: SlamFeature Unit
 insertSearchCardAsNextAction =
   click
@@ -111,6 +122,13 @@ insertExploreCardAsNextAction =
   click
     $ XPath.last (XPath.anywhere XPaths.cardHeading)
     `XPath.following` XPaths.insertExploreCardAsNextAction
+
+insertVisualizeCardAsNextAction :: SlamFeature Unit
+insertVisualizeCardAsNextAction =
+  click
+    $ XPath.last (XPath.anywhere XPaths.cardHeading)
+    `XPath.following` XPaths.insertVisualizeCardAsNextAction
+
 
 playLastCard :: SlamFeature Unit
 playLastCard =
@@ -166,3 +184,44 @@ selectFromDropdownInLastMdCard labelText =
     $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
     `XPath.following` "select" `XPath.withLabelWithExactText` labelText
 
+type ApiVarName = String
+type ApiVarType = String
+type ApiVarValue = String
+
+provideKeyValuePairForApiCard
+  :: ApiVarName
+  -> ApiVarType
+  -> ApiVarValue
+  -> SlamFeature Unit
+provideKeyValuePairForApiCard _ _ =
+  Debug.Trace.traceAnyA "implement me, I'm provideKeyValuePairForApiCard"
+
+provideCategoryForLastVisualizeCard
+  :: String
+  -> SlamFeature Unit
+provideCategoryForLastVisualizeCard _ =
+  Debug.Trace.traceAnyA "implement me, I'm provideCategoryForLastVisualizeCard"
+
+provideSeriesForLastVizualizeCard
+  :: String
+  -> SlamFeature Unit
+provideSeriesForLastVizualizeCard _ =
+  Debug.Trace.traceAnyA "implement me, I'm provideSeriesForLastVizualizeCard"
+
+expectMeasureDisabledForLastVisualizeCard
+  :: SlamFeature Unit
+expectMeasureDisabledForLastVisualizeCard =
+  Debug.Trace.traceAnyA "implement me, I'm expectMeasureDisabledForLastVisualizeCard"
+
+expectMeasureEqualsForLastVisualizeCard
+  :: String
+  -> SlamFeature Unit
+expectMeasureEqualsForLastVisualizeCard _ =
+  Debug.Trace.traceAnyA "implement me, I'm expectMeasureEqualsForLastVisualizeCard"
+
+expectLastChartElementBeEqualWithScreenshot
+  :: String
+  -> SlamFeature Unit
+expectLastChartElementBeEqualWithScreenshot _ =
+  Debug.Trace.traceAnyA
+    "implement me, I'm expectLastChartElementBeEqualWithScreenshot"

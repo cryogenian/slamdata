@@ -22,6 +22,8 @@ module Test.Feature where
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Bind ((=<<), (<=<))
+import Control.Monad (unless)
+import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (EXCEPTION(), throw, message)
@@ -35,9 +37,11 @@ import Data.Monoid (Monoid, mempty)
 import Data.String (joinWith, take)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Graphics.EasyImage as Ge
+import Graphics.ImageDiff as Gi
 import Prelude
 import Selenium.ActionSequence as Sequence
-import Selenium.Monad (getAttribute, clickEl, attempt, later, sequence, getText, byXPath, byId, tryRepeatedlyTo, findExact, findElements, loseElement, isDisplayed, childExact, getInnerHtml)
+import Selenium.Monad (getAttribute, clickEl, attempt, later, sequence, getText, byXPath, byId, tryRepeatedlyTo, findExact, findElements, loseElement, isDisplayed, childExact, getInnerHtml, getLocation, getSize, saveScreenshot)
 import Selenium.MouseButton (leftButton)
 import Selenium.Types (Element())
 import Test.Feature.ActionSequence as FeatureSequence
@@ -179,6 +183,36 @@ expectPresentedWithProperties properties xPath =
   visualMessage = "Expected to find only visually presented elements"
   ariaMessage = "Expected no true values for \"aria-hidden\" on elements or their ancestors found"
 
+type XPath = String
+type FilePath = String
+
+expectMatchScreenshot
+  :: forall eff o
+   . XPath
+  -> FilePath
+  -> FilePath
+  -> Feature eff o Unit
+expectMatchScreenshot =
+  expectMatchScreenshotWithProperties []
+
+
+expectMatchScreenshotWithProperties
+  :: forall eff o
+   . Array Property
+  -> XPath
+  -> FilePath
+  -> FilePath
+  -> Feature eff o Unit
+expectMatchScreenshotWithProperties properties xpath presentedFPath expectedFPath =
+  tryRepeatedlyTo
+    $ ifFalse throwMessage
+    =<< expectElementMatchScreenshot presentedFPath expectedFPath
+    =<< findWithProperties' properties xpath
+  where
+  throwMessage = liftEff $ throw message
+  message = XPath.errorMessage rawMessage xpath
+  rawMessage = "Expected screenshot " <> expectedFPath <> " to match element"
+
 -- Interaction utilities
 checkedProperty :: Maybe String -> Property
 checkedProperty checked = Tuple "checked" checked
@@ -302,3 +336,29 @@ elementsWithProperties properties =
     traverse (uncurry (indexedElementsWithProperty elements))
   indexedElementsWithProperties elements =
     pure <<< intersectArrayOfArraysBy fstEq <=< nonIntersectedIndexedElementsWithProperties elements
+
+
+expectElementMatchScreenshot
+  :: forall eff o
+   . FilePath
+  -> FilePath
+  -> Element
+  -> Feature eff o Boolean
+expectElementMatchScreenshot presentedFPath expectedFPath el = do
+  size <- getSize el
+  location <- getLocation el
+  saveScreenshot presentedFPath
+  liftAff
+    $ Ge.cropInPlace
+        size.width
+        size.height
+        location.x
+        location.y
+        presentedFPath
+  liftAff $ Gi.diff
+    {
+      expected: expectedFPath
+    , actual: presentedFPath
+    , diff: Nothing
+    , shadow: false
+    }

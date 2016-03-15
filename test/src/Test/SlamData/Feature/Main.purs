@@ -21,6 +21,8 @@ import Data.Monoid (mempty)
 import Data.String as Str
 import Database.Mongo.Mongo (connect, close)
 import DOM (DOM())
+import Graphics.EasyImage (EASY_IMAGE())
+import Graphics.ImageDiff (IMAGE_MAGICK())
 import Node.ChildProcess (ChildProcess(), makeSpawnOption, stdout, stderr, spawn, kill, execSync)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS())
@@ -39,6 +41,7 @@ import Selenium.FFProfile
 import Selenium.Monad (setWindowSize)
 import Selenium.Remote as SR
 import Selenium.Types (SELENIUM())
+import Test.Feature.Monad (FeatureEffects())
 import Test.SlamData.Feature.Config (Config())
 import Test.SlamData.Feature.Effects (SlamFeatureEffects())
 import Test.SlamData.Feature.Notebook as Notebook
@@ -54,14 +57,12 @@ foreign import stack
   :: Error -> String
 
 type Effects =
-  SlamFeatureEffects
+  SlamFeatureEffects (FeatureEffects
     ( ref :: REF
     , console :: CONSOLE
     , dom :: DOM
     , selenium :: SELENIUM
-    , err :: EXCEPTION
-    , platform :: PLATFORM
-    )
+    ))
 
 makeDownloadCapabilities :: Browser -> String -> Aff Effects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do

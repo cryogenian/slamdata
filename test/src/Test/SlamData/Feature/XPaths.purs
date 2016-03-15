@@ -110,6 +110,10 @@ insertSearchCard :: String
 insertSearchCard =
   XPath.anyWithExactAriaLabel "Insert Search cell"
 
+insertApiCard :: String
+insertApiCard =
+  XPath.anyWithExactAriaLabel "Insert API cell"
+
 hideCardOptions :: String
 hideCardOptions =
   XPath.anyWithExactAriaLabel "Hide cell options"
