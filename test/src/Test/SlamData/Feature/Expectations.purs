@@ -1,50 +1,90 @@
 module Test.SlamData.Feature.Expectations where
 
+import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..))
 import Prelude
-import Test.Feature (expectPresented, expectNotPresented)
+import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties)
 import Test.SlamData.Feature.Monad (SlamFeature())
 import Test.SlamData.Feature.XPaths as XPaths
 
-cellsInTableColumnInLastCellToEq :: Int -> String -> String -> SlamFeature Unit
-cellsInTableColumnInLastCellToEq =
-  cellsInTableColumnInLastCell XPath.tdWithThAndTextEq
+cellsInTableColumnInLastCardToEq :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToEq =
+  cellsInTableColumnInLastCard XPath.tdWithThAndTextEq
 
-cellsInTableColumnInLastCellToContain :: Int -> String -> String -> SlamFeature Unit
-cellsInTableColumnInLastCellToContain =
-  cellsInTableColumnInLastCell XPath.tdWithThAndTextContaining
+cellsInTableColumnInLastCardToContain :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToContain =
+  cellsInTableColumnInLastCard XPath.tdWithThAndTextContaining
 
-cellsInTableColumnInLastCellToNotEq :: Int -> String -> String -> SlamFeature Unit
-cellsInTableColumnInLastCellToNotEq =
-  cellsInTableColumnInLastCell XPath.tdWithThAndTextNotEq
+cellsInTableColumnInLastCardToNotEq :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToNotEq =
+  cellsInTableColumnInLastCard XPath.tdWithThAndTextNotEq
 
-cellsInTableColumnInLastCellToBeGT :: Int -> String -> String -> SlamFeature Unit
-cellsInTableColumnInLastCellToBeGT =
-  cellsInTableColumnInLastCell XPath.tdWithThAndTextGT
+cellsInTableColumnInLastCardToBeGT :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToBeGT =
+  cellsInTableColumnInLastCard XPath.tdWithThAndTextGT
 
-cellsInTableColumnInLastCellToBeLT :: Int -> String -> String -> SlamFeature Unit
-cellsInTableColumnInLastCellToBeLT =
-  cellsInTableColumnInLastCell XPath.tdWithThAndTextLT
+cellsInTableColumnInLastCardToBeLT :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToBeLT =
+  cellsInTableColumnInLastCard XPath.tdWithThAndTextLT
 
-cellsInTableColumnInLastCellToEqOneOf :: Int -> String -> Array String -> SlamFeature Unit
-cellsInTableColumnInLastCellToEqOneOf =
-  cellsInTableColumnInLastCell XPath.tdWithThAndTextEqOneOf
+cellsInTableColumnInLastCardToEqOneOf :: Int -> String -> Array String -> SlamFeature Unit
+cellsInTableColumnInLastCardToEqOneOf =
+  cellsInTableColumnInLastCard XPath.tdWithThAndTextEqOneOf
 
-cellsInTableColumnInLastCellToNotEqOneOf :: Int -> String -> Array String -> SlamFeature Unit
-cellsInTableColumnInLastCellToNotEqOneOf =
-  cellsInTableColumnInLastCell XPath.tdWithThAndTextNotEqOneOf
+cellsInTableColumnInLastCardToNotEqOneOf :: Int -> String -> Array String -> SlamFeature Unit
+cellsInTableColumnInLastCardToNotEqOneOf =
+  cellsInTableColumnInLastCard XPath.tdWithThAndTextNotEqOneOf
 
-cellsInTableColumnInLastCell
+cellsInTableColumnInLastCard
   :: forall a
   .  (String -> String -> a -> String)
   -> Int
   -> String
   -> a
   -> SlamFeature Unit
-cellsInTableColumnInLastCell f i headerText xs = do
+cellsInTableColumnInLastCard f i headerText xs = do
   expectPresented $ XPath.index tdXPath i
   expectNotPresented $ XPath.index trXPath (i + 1)
   where
   trXPath = tableXPath ++ "/tbody/tr"
   thXPath = XPath.thWithExactText headerText
   tdXPath = f tableXPath thXPath xs
-  tableXPath = XPath.last (XPath.anywhere XPaths.searchPlayButton) `XPath.following` "table"
+  tableXPath = XPath.last (XPath.anywhere XPaths.playButton) `XPath.following` "table"
+
+labelInLastMdCard :: String -> SlamFeature Unit
+labelInLastMdCard label =
+  expectPresented
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` ("label" `XPath.nodeWithExactText` label)
+
+fieldInLastMdCard :: String -> String -> String -> SlamFeature Unit
+fieldInLastMdCard labelText inputType value =
+  expectPresentedWithProperties [valueProperty]
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` inputXPath
+  where
+  valueProperty = Tuple "value" $ Just value
+  inputXPath = XPaths.inputWithLabelAndType labelText inputType
+
+checkableFieldInLastMdCard :: String -> String -> Boolean -> SlamFeature Unit
+checkableFieldInLastMdCard labelText inputType checked =
+  expectPresentedWithProperties [checkedProperty]
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` inputXPath
+  where
+  propertyValue = if checked then Just "true" else Nothing
+  checkedProperty = Tuple "checked" propertyValue
+  inputXPath = XPaths.inputWithLabelAndType labelText inputType
+
+dropdownInLastMdCard :: String -> Array String -> SlamFeature Unit
+dropdownInLastMdCard value values =
+  expectPresentedWithProperties
+    [ Tuple "value" $ Just value ]
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` XPath.selectWithOptionsWithExactTexts values
+
+lastCardToBeFinished :: SlamFeature Unit
+lastCardToBeFinished =
+  expectPresented
+    $ (XPath.last $ XPath.anywhere $ XPaths.cardHeading)
+    `XPath.following` XPath.anyWithText "Finished"

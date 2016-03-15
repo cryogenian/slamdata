@@ -36,48 +36,48 @@ searchScenario =
 test :: SlamFeature Unit
 test = do
   searchScenario "Search for a city" [] do
-    Interact.insertExploreCellUsingNextActionMenu
-    Interact.provideExploreFile "/test-mount/testDb/zips"
-    Interact.playExplore
-    Interact.insertSearchAfterExplore
-    Interact.provideExploreSearch "springfield"
-    Interact.playExploreSearch
-    Expect.cellsInTableColumnInLastCellToContain 10 "city" "SPRINGFIELD"
+    Interact.insertExploreCardAsFirstCardInNewStack
+    Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
+    Interact.playLastCard
+    Interact.insertSearchCardAsNextAction
+    Interact.provideSearchStringInLastSearchCard "springfield"
+    Interact.playLastCard
+    Expect.cellsInTableColumnInLastCardToContain 10 "city" "SPRINGFIELD"
     successMsg "Successfully searched for a city"
 
   searchScenario "Search within results" [] do
-    Interact.insertExploreCellUsingNextActionMenu
-    Interact.provideExploreFile "/test-mount/testDb/zips"
-    Interact.playExplore
-    Interact.insertSearchAfterExplore
-    Interact.provideExploreSearch "springfield"
-    Interact.playExploreSearch
-    Interact.insertSearchAfterSearchAfterExplore
-    Interact.provideExploreSearchSearch "OR"
-    Interact.playExploreSearchSearch
-    Expect.cellsInTableColumnInLastCellToContain 2 "city" "SPRINGFIELD"
-    Expect.cellsInTableColumnInLastCellToContain 2 "state" "OR"
+    Interact.insertExploreCardAsFirstCardInNewStack
+    Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
+    Interact.playLastCard
+    Interact.insertSearchCardAsNextAction
+    Interact.provideSearchStringInLastSearchCard "springfield"
+    Interact.playLastCard
+    Interact.insertSearchCardAsNextAction
+    Interact.provideSearchStringInLastSearchCard "OR"
+    Interact.playLastCard
+    Expect.cellsInTableColumnInLastCardToContain 2 "city" "SPRINGFIELD"
+    Expect.cellsInTableColumnInLastCardToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
 
   searchScenario "Search with field names" [] do
-    Interact.insertExploreCellUsingNextActionMenu
-    Interact.provideExploreFile "/test-mount/testDb/zips"
-    Interact.playExplore
-    Interact.insertSearchAfterExplore
-    Interact.provideExploreSearch "city:springfield state:or pop:>30000"
-    Interact.playExploreSearch
-    Expect.cellsInTableColumnInLastCellToContain 1 "city" "SPRINGFIELD"
-    Expect.cellsInTableColumnInLastCellToContain 1 "state" "OR"
-    Expect.cellsInTableColumnInLastCellToBeGT 1 "pop" "30000"
+    Interact.insertExploreCardAsFirstCardInNewStack
+    Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
+    Interact.playLastCard
+    Interact.insertSearchCardAsNextAction
+    Interact.provideSearchStringInLastSearchCard "city:springfield state:or pop:>30000"
+    Interact.playLastCard
+    Expect.cellsInTableColumnInLastCardToContain 1 "city" "SPRINGFIELD"
+    Expect.cellsInTableColumnInLastCardToContain 1 "state" "OR"
+    Expect.cellsInTableColumnInLastCardToBeGT 1 "pop" "30000"
     successMsg "Successfully searched with field names"
 
   searchScenario "Suppress search results" [] do
-    Interact.insertExploreCellUsingNextActionMenu
-    Interact.provideExploreFile "/test-mount/testDb/zips"
-    Interact.playExplore
-    Interact.insertSearchAfterExplore
-    Interact.provideExploreSearch "city:portland -state:OR"
-    Interact.playExploreSearch
-    Expect.cellsInTableColumnInLastCellToContain 10 "city" "PORTLAND"
-    Expect.cellsInTableColumnInLastCellToNotEq 10 "state" "OR"
+    Interact.insertExploreCardAsFirstCardInNewStack
+    Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
+    Interact.playLastCard
+    Interact.insertSearchCardAsNextAction
+    Interact.provideSearchStringInLastSearchCard "city:portland -state:OR"
+    Interact.playLastCard
+    Expect.cellsInTableColumnInLastCardToContain 10 "city" "PORTLAND"
+    Expect.cellsInTableColumnInLastCardToNotEq 10 "state" "OR"
     successMsg "Successfully suppressed search results"

@@ -1,20 +1,16 @@
 module Test.SlamData.Feature.Notebook.Interactions where
 
+import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
-import Control.Alt ((<|>))
---import Control.Monad.Eff.Class (liftEff)
---import Control.Monad.Eff.Random (randomInt)
---import Data.Foldable (traverse_) as F
-import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..))
---import Data.List (replicateM)
---import Data.Traversable (traverse) as T
+import Data.String (joinWith)
+import Data.Tuple (Tuple(..))
 import Prelude
 import Selenium.Monad (get, refresh)
-import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown)
-import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
+import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck)
 import Test.SlamData.Feature.Common (waitTime)
+import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
 import Test.SlamData.Feature.XPaths as XPaths
 import XPath as XPath
 
@@ -34,8 +30,8 @@ mountTestDatabase = do
 browseFolder :: String -> SlamFeature Unit
 browseFolder = click <<< XPath.anywhere <<< XPath.anyWithExactText
 
-embedCellOutput :: SlamFeature Unit
-embedCellOutput = click $ XPath.anywhere XPaths.embedCellOutput
+embedCardOutput :: SlamFeature Unit
+embedCardOutput = click $ XPath.anywhere XPaths.embedCardOutput
 
 browseRootFolder :: SlamFeature Unit
 browseRootFolder = click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
@@ -73,150 +69,100 @@ deleteFileInTestFolder name = browseTestFolder *> deleteFile name
 reopenCurrentNotebook :: SlamFeature Unit
 reopenCurrentNotebook = waitTime 2000 *> refresh
 
-expandNewCellMenu :: SlamFeature Unit
-expandNewCellMenu = click (XPath.anywhere XPaths.insertCell)
+expandNewCardMenu :: SlamFeature Unit
+expandNewCardMenu = click (XPath.anywhere XPaths.insertCard)
 
-insertQueryCellUsingNextActionMenu :: SlamFeature Unit
-insertQueryCellUsingNextActionMenu =
-  expandNewCellMenu *> click (XPath.anywhere XPaths.insertQueryCell)
+insertQueryCardAsFirstCardInNewStack :: SlamFeature Unit
+insertQueryCardAsFirstCardInNewStack =
+  expandNewCardMenu *> click (XPath.anywhere XPaths.insertQueryCard)
 
-insertMdCellUsingNextActionMenu :: SlamFeature Unit
-insertMdCellUsingNextActionMenu =
-  expandNewCellMenu *> click (XPath.anywhere XPaths.insertMdCell)
+insertMdCardAsFirstCardInNewStack :: SlamFeature Unit
+insertMdCardAsFirstCardInNewStack =
+  expandNewCardMenu *> click (XPath.anywhere XPaths.insertMdCard)
 
-insertExploreCellUsingNextActionMenu :: SlamFeature Unit
-insertExploreCellUsingNextActionMenu =
-  expandNewCellMenu *> click (XPath.anywhere XPaths.insertExploreCell)
+insertExploreCardAsFirstCardInNewStack :: SlamFeature Unit
+insertExploreCardAsFirstCardInNewStack =
+  expandNewCardMenu *> click (XPath.anywhere XPaths.insertExploreCard)
 
-insertSearchCellUsingNextActionMenu :: SlamFeature Unit
-insertSearchCellUsingNextActionMenu =
-  expandNewCellMenu *> click (XPath.anywhere XPaths.insertSearchCell)
+insertSearchCardAsFirstCardInNewStack :: SlamFeature Unit
+insertSearchCardAsFirstCardInNewStack =
+  expandNewCardMenu *> click (XPath.anywhere XPaths.insertSearchCard)
 
---insertRandomNumberOfCells :: SlamFeature Unit -> SlamFeature Int
---insertRandomNumberOfCells insertCell = do
---  numberOfCellsToInsert <- liftEff $ randomInt 1 10
---  replicateM numberOfCellsToInsert insertCell
---  pure numberOfCellsToInsert
---
---insertRandomNumberOfQueryCells :: SlamFeature Int
---insertRandomNumberOfQueryCells = insertRandomNumberOfCells insertQueryCellUsingNextActionMenu
---
---insertRandomNumberOfMdCells :: SlamFeature Int
---insertRandomNumberOfMdCells = insertRandomNumberOfCells insertMdCellUsingNextActionMenu
---
---insertRandomNumberOfExploreCells :: SlamFeature Int
---insertRandomNumberOfExploreCells = insertRandomNumberOfCells insertExploreCellUsingNextActionMenu
---
---insertRandomNumberOfSearchCells :: SlamFeature Int
---insertRandomNumberOfSearchCells = insertRandomNumberOfCells insertSearchCellUsingNextActionMenu
---
----- Finds at least 1 cell and deletes it.
---deleteAllCells :: SlamFeature Unit
---deleteAllCells = Finders.findAllDeleteCellOptions >>= F.traverse_ click
---
----- Deletes any cells that there are.
---deleteAnyCells :: SlamFeature Unit
---deleteAnyCells = Finders.findAnyDeleteCellOptions >>= F.traverse_ click
---
---showQueryCellOptions :: SlamFeature Unit
---showQueryCellOptions = Finders.findShowQueryCellOptions >>= click
---
---hideQueryCellOptions :: SlamFeature Unit
---hideQueryCellOptions = Finders.findHideQueryCellOptions >>= click
---
---showMdCellOptions :: SlamFeature Unit
---showMdCellOptions = Finders.findShowMdCellOptions >>= click
---
---hideMdCellOptions :: SlamFeature Unit
---hideMdCellOptions = Finders.findHideMdCellOptions >>= click
---
---showFileList :: SlamFeature Unit
---showFileList = Finders.findShowFileList >>= click
---
---hideFileList :: SlamFeature Unit
---hideFileList = Finders.findHideFileList >>= click
---
---selectFileFromInitialFileList :: String -> SlamFeature Unit
---selectFileFromInitialFileList = click <=< Finders.findFileFromFileList
---
---showExploreCellOptions :: SlamFeature Unit
---showExploreCellOptions = Finders.findShowExploreCellOptions >>= click
---
---hideExploreCellOptions :: SlamFeature Unit
---hideExploreCellOptions = Finders.findHideExploreCellOptions >>= click
---
---showSearchCellOptions :: SlamFeature Unit
---showSearchCellOptions = Finders.findShowSearchCellOptions >>= click
---
---hideSearchCellOptions :: SlamFeature Unit
---hideSearchCellOptions = Finders.findHideSearchCellOptions >>= click
---
---markdownQueryTitleXPath :: String
---markdownQueryTitleXPath = XPaths.mdCellTitleXPath `following` XPaths.queryCellTitleXPath
---
+insertSearchCardAsNextAction :: SlamFeature Unit
+insertSearchCardAsNextAction =
+  click
+    $ XPath.last (XPath.anywhere XPaths.cardHeading)
+    `XPath.following` XPaths.insertSearchCardAsNextAction
 
-provideExploreFile :: String -> SlamFeature Unit
-provideExploreFile = provideFieldValue (XPath.anywhere XPaths.exploreInput)
+insertQueryCardAsNextAction :: SlamFeature Unit
+insertQueryCardAsNextAction =
+  click
+    $ XPath.last (XPath.anywhere XPaths.cardHeading)
+    `XPath.following` XPaths.insertQueryCardAsNextAction
 
-provideMd :: String -> SlamFeature Unit
-provideMd = provideFieldValue (XPath.anywhere XPaths.mdField)
+insertMdCardAsNextAction :: SlamFeature Unit
+insertMdCardAsNextAction =
+  click
+    $ XPath.last (XPath.anywhere XPaths.cardHeading)
+    `XPath.following` XPaths.insertMdCardAsNextAction
 
-provideExploreSearch :: String -> SlamFeature Unit
-provideExploreSearch =
+insertExploreCardAsNextAction :: SlamFeature Unit
+insertExploreCardAsNextAction =
+  click
+    $ XPath.last (XPath.anywhere XPaths.cardHeading)
+    `XPath.following` XPaths.insertExploreCardAsNextAction
+
+playLastCard :: SlamFeature Unit
+playLastCard =
+  click $ XPath.last $ XPath.anywhere XPaths.playButton
+
+provideFileInLastExploreCard :: String -> SlamFeature Unit
+provideFileInLastExploreCard =
+  provideFieldValue $ XPath.last $ XPath.anywhere XPaths.exploreInput
+
+provideSearchStringInLastSearchCard :: String -> SlamFeature Unit
+provideSearchStringInLastSearchCard =
+  provideFieldValue $ XPath.last $ XPath.anywhere XPaths.searchStringInput
+
+provideMdInLastMdCard :: String -> SlamFeature Unit
+provideMdInLastMdCard =
   provideFieldValue
-    $ XPath.anywhere
-    $ XPaths.exploreCellTitle `XPath.following` XPaths.searchStringInput
+    $ XPath.last $ XPath.anywhere XPaths.mdCardTitle
+    `XPath.following` XPaths.aceEditor
 
-provideExploreSearchSearch :: String -> SlamFeature Unit
-provideExploreSearchSearch =
+provideQueryInLastQueryCard :: String -> SlamFeature Unit
+provideQueryInLastQueryCard =
   provideFieldValue
-    $ flip XPath.index 2
-    $ XPath.anywhere
-    $ XPaths.exploreCellTitle `XPath.following` XPaths.searchStringInput
+    $ (XPath.last $ XPath.anywhere $ XPaths.queryCardTitle)
+    `XPath.following` XPaths.aceEditor
 
-focusMdField :: SlamFeature Unit
-focusMdField = click $ XPath.anywhere XPaths.mdField
+provideFieldValueInLastMdCard :: String -> String -> SlamFeature Unit
+provideFieldValueInLastMdCard labelText =
+  provideFieldValue
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` "input" `XPath.withLabelWithExactText` labelText
 
---focusExploreFileField :: SlamFeature Unit
---focusExploreFileField = Finders.findExploreFileField >>= click
+checkFieldInLastMdCard :: String -> SlamFeature Unit
+checkFieldInLastMdCard labelText =
+  check
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` "input" `XPath.withLabelWithExactText` labelText
 
-playMd :: SlamFeature Unit
-playMd = click $ XPath.anywhere XPaths.mdPlayButton
+uncheckFieldInLastMdCard :: String -> SlamFeature Unit
+uncheckFieldInLastMdCard labelText =
+  uncheck
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` "input" `XPath.withLabelWithExactText` labelText
 
-playExplore :: SlamFeature Unit
-playExplore = click $ XPath.anywhere XPaths.explorePlayButton
+pushRadioButtonInLastMdCard :: String -> SlamFeature Unit
+pushRadioButtonInLastMdCard labelText =
+  pushRadioButton
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` "input" `XPath.withLabelWithExactText` labelText
 
-playMdQuery :: SlamFeature Unit
-playMdQuery = click $ XPath.anywhere XPaths.mdQueryPlayButton
+selectFromDropdownInLastMdCard :: String -> String -> SlamFeature Unit
+selectFromDropdownInLastMdCard labelText =
+  selectFromDropdown
+    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    `XPath.following` "select" `XPath.withLabelWithExactText` labelText
 
-playExploreSearch :: SlamFeature Unit
-playExploreSearch =
-  click
-    $ XPath.anywhere
-    $ XPaths.exploreCellTitle `XPath.following` XPaths.searchPlayButton
-
-playExploreSearchSearch :: SlamFeature Unit
-playExploreSearchSearch =
-  click
-    $ flip XPath.index 2
-    $ XPath.anywhere
-    $ XPaths.exploreCellTitle `XPath.following` XPaths.searchPlayButton
-
-provideMdQuery :: String -> SlamFeature Unit
-provideMdQuery = provideFieldValue (XPath.anywhere XPaths.mdQueryField)
-
-insertQueryAfterMd :: SlamFeature Unit
-insertQueryAfterMd = click $ XPath.anywhere XPaths.insertQueryAfterMd
-
-insertSearchAfterExplore :: SlamFeature Unit
-insertSearchAfterExplore = click $ XPath.anywhere XPaths.insertSearchAfterExplore
-
-insertSearchAfterSearchAfterExplore :: SlamFeature Unit
-insertSearchAfterSearchAfterExplore =
-  click
-    $ XPath.index
-        (XPath.anywhere XPaths.insertSearchAfterExplore)
-        2
-
---showExploreMessages :: SlamFeature Unit
---showExploreMessages = Finders.findShowExploreMessages >>= click
