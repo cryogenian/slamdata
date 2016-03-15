@@ -41,16 +41,19 @@ indexString :: String -> String -> String
 indexString xPath i = "(" ++ xPath ++ ")[" ++ i ++ "]"
 
 withTextGreaterThan :: String -> String
-withTextGreaterThan s = "text() > " ++ show s ++ ""
+withTextGreaterThan s = "text() > '" ++ s ++ "'"
 
 withTextLessThan :: String -> String
-withTextLessThan s = "text() > " ++ show s ++ ""
+withTextLessThan s = "text() > '" ++ s ++ "'"
 
 withText :: String -> String
-withText s = "text() = " ++ show s ++ ""
+withText s = "text() = '" ++ s ++ "'"
 
 withoutText :: String -> String
-withoutText s = "text() != " ++ show s ++ ""
+withoutText s = "text() != '" ++ s ++ "'"
+
+withTextContaining :: String -> String
+withTextContaining s = "contains(text(), '" ++ s ++ "')"
 
 predicate :: String -> String
 predicate s = "[" ++ s ++ "]"
@@ -118,25 +121,28 @@ tdWithTh :: String -> String -> String -> String
 tdWithTh tableXPath thXPath tdXPath =
   withPredicate
     (inTable tdXPath)
-    $ anyOfThesePredicates
-        [ rangePredicate tdPosition thPosition firstFollowingSiblingThPosition
-        ]
+    (rangePredicate tdPosition thStartPosition thEndPosition)
   where
-  tdPosition = position "" "td"
-  thPosition = position (inTable thXPath) "th"
-  firstFollowingSiblingThPosition = position (firstFollowingSibling (inTable thXPath) "th") "th"
-  inTable s = inside tableXPath ++ s
+  tdPosition = startPosition "" "td"
+  thStartPosition = startPosition (inTable thXPath) "th"
+  thEndPosition = endPosition (inTable thXPath) "th"
+  inTable s = tableXPath ++ "/descendant::" ++ s
   rangePredicate x y z = "(" ++ x ++ " >= " ++ y ++ " and " ++ x ++ " < " ++ z ++ ")"
-  firstFollowingSibling s t =  "(" ++ followingSibling s t ++ ")[1]"
-  followingSibling s t = s ++ "/following-sibling::" ++ t
-  position s t =
-    "(sum(" ++ inside s ++ "preceding-sibling::" ++ t ++ "/@colspan)"
-      ++ " + count(" ++ inside s ++ "preceding-sibling::" ++ t ++ "[not(@colspan)])"
-      ++ " + 1)"
+  endPosition s t = startPosition s t ++ " + " ++ colspan s
+  colspan s = "count(" ++ s ++ "[not(@colspan)]) + sum(" ++ s ++ "/@colspan)"
+  comment =
+    "\"Comment: "
+      ++ "Cells matching " ++ tdXPath ++ " "
+      ++ "in columns with headers matching " ++ thXPath ++ " "
+      ++ "in tables matching " ++ tableXPath ++ "\""
   inside s
     | s == "" = ""
     | drop (length s - 1) s == "/" = s
     | otherwise = s ++ "/"
+  startPosition s t =
+    "(sum(" ++ inside s ++ "preceding-sibling::" ++ t ++ "/@colspan)"
+      ++ " + count(" ++ inside s ++ "preceding-sibling::" ++ t ++ "[not(@colspan)])"
+      ++ " + 1)"
 
 selectWithOptionsWithExactTexts :: Array String -> String
 selectWithOptionsWithExactTexts optionTexts =
@@ -176,6 +182,10 @@ tdWithThAndPredicate tableXPath thXPath predicate' =
 tdWithThAndTextEq :: String -> String -> String -> String
 tdWithThAndTextEq tableXPath thXPath =
   tdWithThAndPredicate tableXPath thXPath <<< withText
+
+tdWithThAndTextContaining :: String -> String -> String -> String
+tdWithThAndTextContaining tableXPath thXPath =
+  tdWithThAndPredicate tableXPath thXPath <<< withTextContaining
 
 tdWithThAndTextNotEq :: String -> String -> String -> String
 tdWithThAndTextNotEq tableXPath thXPath =
