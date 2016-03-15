@@ -36,32 +36,32 @@ evalDefaultValueIssues = ["https://slamdata.atlassian.net/browse/SD-1048"]
 
 test :: SlamFeature Unit
 test = do
-  mdScenario "Provide and play markdown" [] do
-    insertMdCellUsingNextActionMenu
-    provideMdForFormWithAllInputTypes
-    playMd
+  --mdScenario "Provide and play markdown" [] do
+  --  insertMdCellUsingNextActionMenu
+  --  provideMdForFormWithAllInputTypes
+  --  playMd
 
-    expectToBePresentedWithFormWithAllInputTypes
-    expectMdFinishedMessage
-    successMsg "Ok, succesfully provided and played markdown."
+  --  expectToBePresentedWithFormWithAllInputTypes
+  --  expectMdFinishedMessage
+  --  successMsg "Ok, succesfully provided and played markdown."
 
-  mdScenario "Change and play markdown" [] do
-    insertMdCellUsingNextActionMenu
-    provideMd "discipline = __"
-    playMd
-    provideMd "sport = __ (Bobsleigh)"
-    playMd
+  --mdScenario "Change and play markdown" [] do
+  --  insertMdCellUsingNextActionMenu
+  --  provideMd "discipline = __"
+  --  playMd
+  --  provideMd "sport = __ (Bobsleigh)"
+  --  playMd
 
-    expectToBePresentedWithMdField "sport" "text" "Bobsleigh"
-    successMsg "Ok, successfully changed and played markdown."
+  --  expectToBePresentedWithMdField "sport" "text" "Bobsleigh"
+  --  successMsg "Ok, successfully changed and played markdown."
 
-  mdScenario "Provide and play markdown with evaluated content" [] do
-    insertMdCellUsingNextActionMenu
-    provideMdForFormWithEvaluatedContent
-    playMd
+  --mdScenario "Provide and play markdown with evaluated content" [] do
+  --  insertMdCellUsingNextActionMenu
+  --  provideMdForFormWithEvaluatedContent
+  --  playMd
 
-    expectToBePresentedWithFormWithEvaluatedContent
-    successMsg "Ok, successfully provided and played markdown with evaluated content"
+  --  expectToBePresentedWithFormWithEvaluatedContent
+  --  successMsg "Ok, successfully provided and played markdown with evaluated content"
 
   mdScenario "Filter query results with default field values" [] do
     insertMdCellUsingNextActionMenu
