@@ -19,25 +19,38 @@ module Test.Feature where
 --  , expectNotPresentedWithProperty
 --  ) where
 
-import Control.Alt ((<|>))
+import Control.Alt ((<|>), alt)
 import Control.Apply ((*>))
 import Control.Bind ((=<<), (<=<))
+import Control.Monad (unless)
+import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (EXCEPTION(), throw, message)
 import Control.Monad.Error.Class (throwError)
+import Control.MonadPlus (guard)
 import Data.Either (Either(), either)
+import Data.Function as Fn
 import Data.Foldable (foldMap, foldr, traverse_)
-import Data.Array ((..), index, uncons, length, singleton, elemIndex, zip, filter, head, intersectBy)
+import Data.Foldable as F
+import Data.Functor (($>))
+import Data.Array
+  ((..), index, uncons, length, singleton, elemIndex, zip, filter, head, intersectBy)
 import Data.List (toUnfoldable)
+import Data.List as L
 import Data.Maybe (Maybe(..), maybe, maybe', isJust)
+import Data.Map as Map
 import Data.Monoid (Monoid, mempty)
+import Data.Traversable as T
 import Data.String (joinWith, take)
+import Data.String as Str
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Graphics.EasyImage as Ge
+import Graphics.ImageDiff as Gi
 import Prelude
 import Selenium.ActionSequence as Sequence
-import Selenium.Monad (getAttribute, clickEl, attempt, later, sequence, getText, byXPath, byId, tryRepeatedlyTo, findExact, findElements, loseElement, isDisplayed, childExact, getInnerHtml)
+import Selenium.Monad (getAttribute, clickEl, attempt, later, sequence, getText, byXPath, byId, tryRepeatedlyTo, findExact, findElements, loseElement, isDisplayed, childExact, getInnerHtml, getLocation, getSize, saveScreenshot)
 import Selenium.MouseButton (leftButton)
 import Selenium.Types (Element())
 import Test.Feature.ActionSequence as FeatureSequence
@@ -46,7 +59,8 @@ import Test.Utils (ifTrue, ifFalse, orIfItFails, passover, throwIfEmpty, throwIf
 import XPath as XPath
 import Debug.Trace
 
-type Property = Tuple String (Maybe String)
+type Properties = Map.Map String (Maybe String)
+
 type Indexed a = Tuple Int a
 
 -- Basic XPath dependent finders
@@ -55,12 +69,20 @@ findAll' = map toUnfoldable <<< findElements <=< byXPath
 
 find' :: forall eff o. String -> Feature eff o Element
 find' xPath =
-  singletonValue throwNoElements throwMoreThanOneElement =<< findAll' xPath
+  singletonValue throwNoElements throwMoreThanOneElement
+    =<< findAll' xPath
   where
   throwNoElements =
-    liftEff $ throw $ XPath.errorMessage "Couldn't find an element" xPath
+    liftEff
+      $ throw
+      $ XPath.errorMessage "Couldn't find an element" xPath
+
   throwMoreThanOneElement i =
-    liftEff $ throw $ XPath.errorMessage ("Found (" ++ show i ++ ") more than one element") xPath
+    liftEff
+      $ throw
+      $ XPath.errorMessage
+          ("Found (" ++ show i ++ ") more than one element")
+          xPath
 
 findAtLeastOne' :: forall eff o. String -> Feature eff o (Array Element)
 findAtLeastOne' xPath =
@@ -76,120 +98,264 @@ findAll :: forall eff o. String -> Feature eff o (Array Element)
 findAll xPath = expectPresented xPath *> findAll' xPath
 
 -- Property and XPath dependent finders
-findAllWithProperties' :: forall eff o. Array Property -> String -> Feature eff o (Array Element)
-findAllWithProperties' properties = elementsWithProperties properties <=< findAll'
+findAllWithProperties'
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o (Array Element)
+findAllWithProperties' properties =
+  elementsWithProperties properties <=< findAll'
 
-findAtLeastOneWithProperties' :: forall eff o. Array Property -> String -> Feature eff o (Array Element)
+findAtLeastOneWithProperties'
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o (Array Element)
 findAtLeastOneWithProperties' properties xPath =
-  headOrThrow =<< elementsWithProperties properties =<< findAll' xPath
+  headOrThrow
+    =<< elementsWithProperties properties
+    =<< findAll' xPath
   where
-  headOrThrow = passover (liftEff <<< throwIfEmpty noElementsMessage)
+  headOrThrow =
+    passover (liftEff <<< throwIfEmpty noElementsMessage)
   noElementsMessage =
-    XPath.errorMessage (withPropertiesMessage properties "Couldn't find an element") xPath
+    XPath.errorMessage
+      (withPropertiesMessage properties "Couldn't find an element")
+      xPath
 
-findWithProperties' :: forall eff o. Array Property -> String -> Feature eff o Element
+findWithProperties' :: forall eff o. Properties -> String -> Feature eff o Element
 findWithProperties' properties xPath =
-  singletonValue throwNoElements throwMoreThanOneElement =<< findAllWithProperties' properties xPath
+  tryRepeatedlyTo
+    $ singletonValue throwNoElements throwMoreThanOneElement
+    =<< findAllWithProperties' properties xPath
   where
-  throwNoElements = liftEff $ throw $ noElementWithPropertiesError properties xPath
-  throwMoreThanOneElement i = liftEff $ throw $ moreThanOneElementMessage i
+  throwNoElements =
+    liftEff $ throw $ noElementWithPropertiesError properties xPath
+
+  throwMoreThanOneElement i =
+    liftEff $ throw $ moreThanOneElementMessage i
+
   moreThanOneElementRawMessage i = "Found (" ++ show i ++ ") more than one element"
   moreThanOneElementMessage i =
-    XPath.errorMessage (withPropertiesMessage properties $ moreThanOneElementRawMessage i) xPath
+    XPath.errorMessage
+      (withPropertiesMessage properties
+       $ moreThanOneElementRawMessage i) xPath
 
-findAllWithProperties :: forall eff o. Array Property -> String -> Feature eff o (Array Element)
+findAllWithProperties
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o (Array Element)
 findAllWithProperties properties xPath =
-  expectPresentedWithProperties properties xPath *> findAllWithProperties' properties xPath
+  expectPresentedWithProperties properties xPath
+    *> findAllWithProperties' properties xPath
 
-findAtLeastOneWithProperties :: forall eff o. Array Property -> String -> Feature eff o (Array Element)
+findAtLeastOneWithProperties
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o (Array Element)
 findAtLeastOneWithProperties properties xPath =
-  expectPresentedWithProperties properties xPath *> findAtLeastOneWithProperties' properties xPath
+  expectPresentedWithProperties properties xPath
+    *> findAtLeastOneWithProperties' properties xPath
 
-findWithProperties :: forall eff o. Array Property -> String -> Feature eff o Element
+findWithProperties :: forall eff o. Properties -> String -> Feature eff o Element
 findWithProperties properties xPath =
-  expectPresentedWithProperties properties xPath *> findWithProperties' properties xPath
+  expectPresentedWithProperties properties xPath
+    *> findWithProperties' properties xPath
 
 -- Errors
 printPropertyValue :: Maybe String -> String
 printPropertyValue = maybe "null" show
 
 printProperty :: String -> Maybe String -> String
-printProperty name value = name ++ "=" ++ printPropertyValue value
+printProperty name value =
+  name ++ "=" ++ printPropertyValue value
 
-printProperties :: Array Property -> String
-printProperties = joinWith " " <<< map (uncurry printProperty)
+printProperties :: Properties -> String
+printProperties =
+  joinWith " "
+    <<< L.toUnfoldable
+    <<< map (uncurry printProperty)
+    <<< Map.toList
 
-noElementWithPropertiesError :: Array Property -> String -> String
+noElementWithPropertiesError :: Properties -> String -> String
 noElementWithPropertiesError properties =
-  XPath.errorMessage $ withPropertiesMessage properties "Unable to find element with "
+  XPath.errorMessage
+    $ withPropertiesMessage properties "Unable to find element with "
 
-elementWithPropertiesError :: Array Property -> String -> String
+elementWithPropertiesError :: Properties -> String -> String
 elementWithPropertiesError properties =
-  XPath.errorMessage $ withPropertiesMessage properties "Expected not to find element with "
+  XPath.errorMessage
+    $ withPropertiesMessage properties "Expected not to find element with "
 
-withPropertiesMessage :: Array Property -> String -> String
-withPropertiesMessage xs s | length xs == 0 = s
-withPropertiesMessage xs s = s ++ " with the attributes or properties: " ++ printProperties xs
+withPropertiesMessage :: Properties -> String -> String
+withPropertiesMessage mp s
+  | Map.isEmpty mp = s
+withPropertiesMessage xs s =
+  s ++ " with the attributes or properties: " ++ printProperties xs
 
 -- Expectations
 expectNotPresented :: forall eff o. String -> Feature eff o Unit
-expectNotPresented xPath = expectNotPresentedWithProperties [] xPath
+expectNotPresented xPath = expectNotPresentedWithProperties Map.empty xPath
 
 expectPresented :: forall eff o. String -> Feature eff o Unit
-expectPresented xPath = expectPresentedWithProperties [] xPath
+expectPresented xPath = expectPresentedWithProperties Map.empty xPath
 
-validateJustTrue :: forall eff o. (String -> String) -> String -> Maybe String -> Feature eff o Unit
+validateJustTrue
+  :: forall eff o
+   . (String -> String)
+  -> String
+  -> Maybe String
+  -> Feature eff o Unit
 validateJustTrue _ _ (Just "true") = pure unit
 validateJustTrue error xPath _ = liftEff $ throw $ error xPath
 
-expectNotPresentedAria :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectNotPresentedAria :: forall eff o. Properties -> String -> Feature eff o Unit
 expectNotPresentedAria properties xPath =
-  liftEff <<< throwIfNotEmpty message =<< findAllWithProperties' properties notHiddenXPath
+  liftEff
+    <<< throwIfNotEmpty message
+    =<< findAllWithProperties' properties notHiddenXPath
   where
-  notHiddenXPath = xPath `XPath.ancestorOrSelf` "*[not(@aria-hidden='true')]"
-  message = XPath.errorMessage (withPropertiesMessage properties rawMessage) xPath
-  printedAriaHiddenProperty = printProperty "aria-hidden" (Just "true")
+  notHiddenXPath =
+    xPath `XPath.ancestorOrSelf` "*[not(@aria-hidden='true')]"
+
+  message =
+    XPath.errorMessage
+      (withPropertiesMessage properties rawMessage)
+      xPath
+
+  printedAriaHiddenProperty =
+    printProperty "aria-hidden" (Just "true")
+
   rawMessage =
-    "Expected an " ++ printedAriaHiddenProperty ++ " attribute of elements or their ancestors"
+    "Expected an "
+    ++ printedAriaHiddenProperty
+    ++ " attribute of elements or their ancestors"
 
-expectNotPresentedVisual :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectNotPresentedVisual
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o Unit
 expectNotPresentedVisual properties xPath =
-  traverse_ validate =<< findAllWithProperties' properties xPath
+  traverse_ validate
+    =<< findAllWithProperties' properties xPath
   where
-  validate = ifTrue throwVisualError <=< isDisplayed
-  throwVisualError = liftEff $ throw $ XPath.errorMessage message xPath
-  message = withPropertiesMessage properties "Expected to find no visually displayed elements"
+  validate =
+    ifTrue throwVisualError <=< isDisplayed
 
-expectNotPresentedWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+  throwVisualError =
+    liftEff $ throw $ XPath.errorMessage message xPath
+
+  message =
+    withPropertiesMessage
+      properties
+      "Expected to find no visually displayed elements"
+
+expectNotPresentedWithProperties
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o Unit
 expectNotPresentedWithProperties properties xPath =
-  tryRepeatedlyTo $ expectNotPresentedVisual properties xPath *> expectNotPresentedAria properties xPath
+  tryRepeatedlyTo
+    $ expectNotPresentedVisual properties xPath
+    *> expectNotPresentedAria properties xPath
 
-expectPresentedWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
-expectPresentedWithProperties properties xPath =
-  tryRepeatedlyTo $ expectNode *> expectPresentedVisual *> expectPresentedAria
+
+expectPresentedWithProperties
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o Unit
+expectPresentedWithProperties ps xPath =
+  tryRepeatedlyTo $ expectPresentedWithProperties' ps xPath
+
+expectPresentedWithProperties'
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o Unit
+expectPresentedWithProperties' properties xPath =
+  expectNode
+    *> expectPresentedVisual
+    *> expectPresentedAria
   where
-  verify = either (const $ pure unit) <<< const <<< throwExpectation
-  throwExpectation :: forall eff o. String -> Feature eff o Unit
-  throwExpectation = liftEff <<< throw
-  expectNode = findAtLeastOneWithProperties' properties xPath
-  expectPresentedVisual = verify visualError =<< (attempt $ expectNotPresentedVisual properties xPath)
-  expectPresentedAria = verify ariaError =<< (attempt $ expectNotPresentedAria properties xPath)
-  visualError = XPath.errorMessage (withPropertiesMessage properties visualMessage) xPath
-  ariaError = XPath.errorMessage (withPropertiesMessage properties ariaMessage) xPath
-  visualMessage = "Expected to find only visually presented elements"
-  ariaMessage = "Expected no true values for \"aria-hidden\" on elements or their ancestors found"
+  verify =
+    either (const $ pure unit) <<< const <<< throwExpectation
+
+  throwExpectation
+    :: forall eff o
+     . String
+    -> Feature eff o Unit
+  throwExpectation =
+    liftEff <<< throw
+
+  expectNode =
+    findAtLeastOneWithProperties' properties xPath
+
+  expectPresentedVisual =
+    verify visualError
+      =<< (attempt $ expectNotPresentedVisual properties xPath)
+
+  expectPresentedAria =
+    verify ariaError
+      =<< (attempt $ expectNotPresentedAria properties xPath)
+
+  visualError =
+    XPath.errorMessage (withPropertiesMessage properties visualMessage) xPath
+
+  ariaError =
+    XPath.errorMessage (withPropertiesMessage properties ariaMessage) xPath
+
+  visualMessage =
+    "Expected to find only visually presented elements"
+
+  ariaMessage =
+    "Expected no true values for \"aria-hidden\" on elements or their ancestors found"
+
+type XPath = String
+type FilePath = String
+
+expectMatchScreenshot
+  :: forall eff o
+   . XPath
+  -> FilePath
+  -> FilePath
+  -> Feature eff o Unit
+expectMatchScreenshot =
+  expectMatchScreenshotWithProperties Map.empty
+
+
+expectMatchScreenshotWithProperties
+  :: forall eff o
+   . Properties
+  -> XPath
+  -> FilePath
+  -> FilePath
+  -> Feature eff o Unit
+expectMatchScreenshotWithProperties properties xpath presentedFPath expectedFPath =
+  tryRepeatedlyTo
+    $ ifFalse throwMessage
+    =<< expectElementMatchScreenshot presentedFPath expectedFPath
+    =<< findWithProperties' properties xpath
+  where
+  throwMessage = liftEff $ throw message
+  message = XPath.errorMessage rawMessage xpath
+  rawMessage = "Expected screenshot " <> expectedFPath <> " to match element"
 
 -- Interaction utilities
-checkedProperty :: Maybe String -> Property
-checkedProperty checked = Tuple "checked" checked
+checkedProperty :: Maybe String -> Properties
+checkedProperty checked = Map.singleton "checked" checked
 
-propertiesAndChecked :: Maybe String -> Array Property -> Array Property
-propertiesAndChecked checked = append [checkedProperty checked]
+propertiesAndChecked :: Maybe String -> Properties -> Properties
+propertiesAndChecked checked = Map.union (checkedProperty checked)
 
 -- XPath dependent interactions
 check' :: forall eff o. (Maybe String) -> String -> Feature eff o Unit
 check' checked xPath =
-  traverse_ clickElement =<< findAllWithProperties [checkedProperty checked] xPath
+  traverse_ clickElement =<< findAllWithProperties (checkedProperty checked) xPath
 
 check :: forall eff o. String -> Feature eff o Unit
 check = check' Nothing
@@ -201,7 +367,11 @@ pushRadioButton :: forall eff o. String -> Feature eff o Unit
 pushRadioButton = check' Nothing
 
 provideFieldValue :: forall eff o. String -> String -> Feature eff o Unit
-provideFieldValue xPath value =
+provideFieldValue =
+  provideFieldValueWithProperties Map.empty
+
+provideAceValue :: forall eff o. String -> String -> Feature eff o Unit
+provideAceValue xPath value =
   tryRepeatedlyTo $ provideFieldValueElement value =<< find xPath
 
 selectFromDropdown :: forall eff o. String -> String -> Feature eff o Unit
@@ -218,44 +388,75 @@ hover :: forall eff o. String -> Feature eff o Unit
 hover = tryRepeatedlyTo <<< hoverElement <=< find
 
 -- XPath and property dependent interactions
-checkWithProperties' :: forall eff o. (Maybe String) -> Array Property -> String -> Feature eff o Unit
+checkWithProperties'
+  :: forall eff o
+   . (Maybe String)
+  -> Properties
+  -> String
+  -> Feature eff o Unit
 checkWithProperties' checked properties xPath =
-  tryRepeatedlyTo $ (traverse_ clickElement) =<< findAtLeastOneWithProperties properties' xPath
+  tryRepeatedlyTo
+    $ (traverse_ clickElement)
+    =<< findAtLeastOneWithProperties properties' xPath
   where
   properties' = propertiesAndChecked checked properties
 
-checkWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+checkWithProperties :: forall eff o. Properties -> String -> Feature eff o Unit
 checkWithProperties = checkWithProperties' Nothing
 
-uncheckWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+uncheckWithProperties :: forall eff o. Properties -> String -> Feature eff o Unit
 uncheckWithProperties = checkWithProperties' (Just "true")
 
-pushRadioButtonWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
-pushRadioButtonWithProperties = checkWithProperties' Nothing
+pushRadioButtonWithProperties
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o Unit
+pushRadioButtonWithProperties =
+  checkWithProperties' Nothing
 
-provideFieldValueWithProperties :: forall eff o. Array Property -> String -> String -> Feature eff o Unit
+provideFieldValueWithProperties
+  :: forall eff o
+   . Properties
+  -> String
+  -> String
+  -> Feature eff o Unit
 provideFieldValueWithProperties properties xPath value =
-  provideFieldValueElement value =<< findWithProperties properties xPath
+  tryRepeatedlyTo do
+    provideFieldValueElement value
+      =<< findWithProperties properties xPath
+    expectPresentedWithProperties'
+      (Map.singleton "value" (Just value))
+      xPath
 
-selectFromDropdownWithProperties :: forall eff o. Array Property -> String -> String -> Feature eff o Unit
+selectFromDropdownWithProperties
+  :: forall eff o
+   . Properties
+  -> String
+  -> String
+  -> Feature eff o Unit
 selectFromDropdownWithProperties properties xPath text =
-  selectFromDropdownElement text =<< findWithProperties properties xPath
+  selectFromDropdownElement text
+    =<< findWithProperties properties xPath
 
-clickWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+clickWithProperties :: forall eff o. Properties -> String -> Feature eff o Unit
 clickWithProperties properties =
   tryRepeatedlyTo <<< clickElement <=< findWithProperties properties
 
-clickAllWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+clickAllWithProperties :: forall eff o. Properties -> String -> Feature eff o Unit
 clickAllWithProperties properties =
-  tryRepeatedlyTo <<< (traverse_ clickElement) <=< findAtLeastOneWithProperties properties
+  tryRepeatedlyTo
+    <<< (traverse_ clickElement)
+    <=< findAtLeastOneWithProperties properties
 
-hoverWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+hoverWithProperties :: forall eff o. Properties -> String -> Feature eff o Unit
 hoverWithProperties properties =
   tryRepeatedlyTo <<< hoverElement <=< findWithProperties properties
 
 -- Independent interactions
 typeString :: forall eff o. String -> Feature eff o Unit
-typeString string = sequence $ FeatureSequence.keys string
+typeString string =
+  sequence $ FeatureSequence.keys string
 
 pressEnter :: forall eff o. Feature eff o Unit
 pressEnter = sequence $ FeatureSequence.sendEnter
@@ -266,7 +467,9 @@ selectAll = (sequence <<< FeatureSequence.selectAll) =<< getModifierKey
 -- Element dependent interactions
 clickElement :: forall eff o. Element -> Feature eff o Unit
 clickElement element =
-  sequence $ Sequence.mouseDown leftButton element *> Sequence.mouseUp leftButton element
+  sequence
+    $ Sequence.mouseDown leftButton element
+    *> Sequence.mouseUp leftButton element
 
 clickAllElements :: forall eff o. Array Element -> Feature eff o Unit
 clickAllElements = traverse_ clickElement
@@ -276,29 +479,75 @@ hoverElement = tryRepeatedlyTo <<< sequence <<< Sequence.hover
 
 provideFieldValueElement :: forall eff o. String -> Element -> Feature eff o Unit
 provideFieldValueElement value element =
-  clickElement element *> selectAll *> typeString value
+  clickElement element
+  *> selectAll
+  *> sequence FeatureSequence.sendDelete
+  *> typeString value
+
 
 selectFromDropdownElement :: forall eff o. String -> Element -> Feature eff o Unit
 selectFromDropdownElement text element =
   clickElement element *> typeString text *> pressEnter
 
 -- Element filters
-elementsWithProperties :: forall eff o. Array Property -> Array Element -> Feature eff o (Array Element)
-elementsWithProperties properties | length properties == 0 = pure <<< id
+elementsWithProperties
+  :: forall eff o
+   . Properties
+  -> Array Element
+  -> Feature eff o (Array Element)
+elementsWithProperties properties
+  | Map.isEmpty properties = pure
 elementsWithProperties properties =
-  tryRepeatedlyTo <<< (pure <<< map snd) <=< flip indexedElementsWithProperties properties <<< zipWithIndices
+  map filterElementsPropertiesPairs
+    <<< elementsPropertiesTuples
   where
-  values name = traverse (later 0 <<< flip getAttribute name)
-  mapEq x = map (eq x)
-  tailHeadIntersectionBy f o = foldr (intersectBy f) o.head o.tail
-  intersectArrayOfArraysBy f = maybe [] (tailHeadIntersectionBy f) <<< uncons
-  filterByBooleans xs = map fst <<< filter snd <<< zip xs
-  toIndexes xs = 0 .. (length xs - 1)
-  zipWithIndices xs = zip (toIndexes xs) xs
-  fstEq x y = fst x == fst y
-  indexedElementsWithProperty elements name expectedValue =
-    pure <<< filterByBooleans elements <<< mapEq expectedValue =<< values name (map snd elements)
-  nonIntersectedIndexedElementsWithProperties elements =
-    traverse (uncurry (indexedElementsWithProperty elements))
-  indexedElementsWithProperties elements =
-    pure <<< intersectArrayOfArraysBy fstEq <=< nonIntersectedIndexedElementsWithProperties elements
+  propKeys :: L.List String
+  propKeys = Map.keys properties
+
+  filterElementsPropertiesPairs
+    :: forall f
+     . (F.Foldable f)
+    => f (Tuple Element Properties)
+    -> Array Element
+  filterElementsPropertiesPairs =
+    F.foldMap (\(Tuple el ps) -> guard (ps == properties) $> el)
+
+  getPropertiesForElement
+    :: Element
+    -> Feature eff o Properties
+  getPropertiesForElement el =
+    Map.fromFoldable
+      <$> traverse (\k -> Tuple k <$> ((later 0 $ getAttribute el k))) propKeys
+
+  elementsPropertiesTuples
+    :: forall t
+     . (T.Traversable t)
+    => t Element
+    -> Feature eff o (t (Tuple Element Properties))
+  elementsPropertiesTuples =
+    traverse (\el -> Tuple el <$> getPropertiesForElement el)
+
+expectElementMatchScreenshot
+  :: forall eff o
+   . FilePath
+  -> FilePath
+  -> Element
+  -> Feature eff o Boolean
+expectElementMatchScreenshot presentedFPath expectedFPath el = do
+  size <- getSize el
+  location <- getLocation el
+  saveScreenshot presentedFPath
+  liftAff
+    $ Ge.cropInPlace
+        size.width
+        size.height
+        location.x
+        location.y
+        presentedFPath
+  liftAff $ Gi.diff
+    {
+      expected: expectedFPath
+    , actual: presentedFPath
+    , diff: Nothing
+    , shadow: false
+    }

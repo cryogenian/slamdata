@@ -20,7 +20,6 @@ import Data.Traversable (traverse)
 import Prelude
 import Test.Feature (expectPresentedWithProperties, expectPresented, expectNotPresented)
 import Test.SlamData.Feature.Monad (SlamFeature())
-import Test.SlamData.Feature.Properties as Properties
 import Test.SlamData.Feature.XPaths as XPaths
 import XPath as XPath
 

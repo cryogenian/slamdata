@@ -42,9 +42,6 @@ type SlamFeature = Feature (SlamFeatureEffects ()) (config :: Config)
 getConfig :: SlamFeature Config
 getConfig = _.config <$> ask
 
-diff :: { shadow :: Boolean, diff :: Maybe String, expected :: String, actual :: String } -> SlamFeature Boolean
-diff = liftAff <<< GI.diff
-
 createTestDirs :: SlamFeature Unit
 createTestDirs = do
   config <- getConfig

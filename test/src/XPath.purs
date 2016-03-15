@@ -37,6 +37,9 @@ index xPath = indexString xPath <<< show
 last :: String -> String
 last xPath = indexString xPath "last()"
 
+first :: String -> String
+first xPath = index xPath 1
+
 indexString :: String -> String -> String
 indexString xPath i = "(" ++ xPath ++ ")[" ++ i ++ "]"
 
@@ -222,3 +225,5 @@ textInput = nodeWithExactAttribute "type" "input" "text"
 numberInput :: String
 numberInput = nodeWithExactAttribute "type" "input" "number"
 
+anyWithExactSrc :: String -> String
+anyWithExactSrc = nodeWithExactAttribute "src" "img"
