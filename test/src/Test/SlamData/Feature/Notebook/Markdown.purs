@@ -16,74 +16,190 @@ limitations under the License.
 
 module Test.SlamData.Feature.Notebook.Markdown where
 
+import Data.String (joinWith)
 import Prelude
 import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Monad (SlamFeature())
-import Test.SlamData.Feature.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder, insertMdCellUsingNextActionMenu, insertQueryAfterMd, provideMd, playMd, playMdQuery)
-import Test.SlamData.Feature.Notebook.Markdown.Expectations
-import Test.SlamData.Feature.Notebook.Markdown.Interactions
+import Test.SlamData.Feature.Notebook.Interactions as Interact
+import Test.SlamData.Feature.Expectations as Expect
 import Test.Feature.Scenario (scenario)
 
 mdScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
 mdScenario =
   scenario
     "Markdown"
-    (createNotebookInTestFolder "Markdown")
-    (deleteFileInTestFolder "Markdown.slam")
+    (Interact.createNotebookInTestFolder "Markdown")
+    (Interact.deleteFileInTestFolder "Markdown.slam")
 
 test :: SlamFeature Unit
 test = do
   mdScenario "Provide and play markdown" [] do
-    insertMdCellUsingNextActionMenu
-    provideMdForFormWithAllInputTypes
-    playMd
-
-    expectToBePresentedWithFormWithAllInputTypes
-    expectMdFinishedMessage
+    Interact.insertMdCardAsFirstCardInNewStack
+    Interact.provideMdInLastMdCard
+      $ joinWith "\n\n"
+          [ "discipline = __"
+          , "sport = __ (Bobsleigh)"
+          , "age = #__"
+          , "year = #__ (2002)"
+          , "startDate = __ - __ - __"
+          , "finishDate = __ - __ - __ (2002-06-06)"
+          , "startTime = __ : __"
+          , "finishTime = __ : __ (20:39)"
+          , "event = {1000m, 1500m, 3000m} (1500m)"
+          , "gender = []M []W []X"
+          , "color = [x]Red []Green [x]Blue"
+          , "type = (x)Gold ()Silver ()Bronze"
+          ]
+    Interact.playLastCard
+    Expect.fieldInLastMdCard "discipline" "text" ""
+    Expect.fieldInLastMdCard "sport" "text" "Bobsleigh"
+    Expect.fieldInLastMdCard "age" "number" ""
+    Expect.fieldInLastMdCard "year" "number" "2002"
+    Expect.fieldInLastMdCard "startDate" "text" ""
+    Expect.fieldInLastMdCard "finishDate" "text" "2002-06-06"
+    Expect.fieldInLastMdCard "startTime" "text" ""
+    Expect.fieldInLastMdCard "finishTime" "text" "20:39"
+    Expect.labelInLastMdCard "event"
+    Expect.dropdownInLastMdCard "1500m" ["1000m", "1500m", "3000m"]
+    Expect.labelInLastMdCard "gender"
+    Expect.checkableFieldInLastMdCard "X" "checkbox" false
+    Expect.checkableFieldInLastMdCard "W" "checkbox" false
+    Expect.checkableFieldInLastMdCard "M" "checkbox" false
+    Expect.labelInLastMdCard "color"
+    Expect.checkableFieldInLastMdCard "Red" "checkbox" true
+    Expect.checkableFieldInLastMdCard "Green" "checkbox" false
+    Expect.checkableFieldInLastMdCard "Blue" "checkbox" true
+    Expect.labelInLastMdCard "type"
+    Expect.checkableFieldInLastMdCard "Gold" "radio" true
+    Expect.checkableFieldInLastMdCard "Silver" "radio" false
+    Expect.checkableFieldInLastMdCard "Bronze" "radio" false
+    Expect.lastCardToBeFinished
     successMsg "Ok, succesfully provided and played markdown."
 
   mdScenario "Change and play markdown" [] do
-    insertMdCellUsingNextActionMenu
-    provideMd "discipline = __"
-    playMd
-    provideMd "sport = __ (Bobsleigh)"
-    playMd
+    Interact.insertMdCardAsFirstCardInNewStack
+    Interact.provideMdInLastMdCard "discipline = __"
+    Interact.playLastCard
+    Interact.provideMdInLastMdCard "sport =  __ (Bobsleigh)"
+    Interact.playLastCard
 
-    expectToBePresentedWithMdField "sport" "text" "Bobsleigh"
+    Expect.fieldInLastMdCard "sport" "text" "Bobsleigh"
     successMsg "Ok, successfully changed and played markdown."
 
   mdScenario "Provide and play markdown with evaluated content" [] do
-    insertMdCellUsingNextActionMenu
-    provideMdForFormWithEvaluatedContent
-    playMd
-
-    expectToBePresentedWithFormWithEvaluatedContent
+    Interact.insertMdCardAsFirstCardInNewStack
+    Interact.provideMdInLastMdCard $ joinWith "\n\n"
+      [ "discipline = __ (!``SELECT discipline FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "year = __ (!``SELECT year FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "country = {!``SELECT DISTINCT country FROM `/test-mount/testDb/olympics` ``} (!``SELECT country FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
+      , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
+      ]
+    Interact.playLastCard
+    Expect.fieldInLastMdCard "discipline" "text" "Figure skating"
+    Expect.fieldInLastMdCard "year" "text" "1924"
+    Expect.labelInLastMdCard "country"
+    Expect.dropdownInLastMdCard "AUT"
+      [ "LAT"
+      , "CZE"
+      , "UKR"
+      , "SLO"
+      , "RUS"
+      , "SVK"
+      , "KAZ"
+      , "AUS"
+      , "LUX"
+      , "UZB"
+      , "EUN"
+      , "DEN"
+      , "CHN"
+      , "ROU"
+      , "GDR"
+      , "PRK"
+      , "CRO"
+      , "URS"
+      , "BLR"
+      , "BUL"
+      , "POL"
+      , "EUA"
+      , "KOR"
+      , "NED"
+      , "ITA"
+      , "FRG"
+      , "EST"
+      , "SWE"
+      , "GBR"
+      , "TCH"
+      , "BEL"
+      , "FIN"
+      , "USA"
+      , "YUG"
+      , "SUI"
+      , "LIE"
+      , "CAN"
+      , "JPN"
+      , "HUN"
+      , "GER"
+      , "NOR"
+      , "NZL"
+      , "FRA"
+      , "AUT"
+      , "ESP"
+      ]
+    Expect.labelInLastMdCard "gender"
+    Expect.checkableFieldInLastMdCard "X" "checkbox" false
+    Expect.checkableFieldInLastMdCard "W" "checkbox" true
+    Expect.checkableFieldInLastMdCard "M" "checkbox" false
+    Expect.labelInLastMdCard "type"
+    Expect.checkableFieldInLastMdCard "Gold" "radio" false
+    Expect.checkableFieldInLastMdCard "Silver" "radio" true
+    Expect.checkableFieldInLastMdCard "Bronze" "radio" false
     successMsg "Ok, successfully provided and played markdown with evaluated content"
 
   mdScenario "Filter query results with default field values" [] do
-    insertMdCellUsingNextActionMenu
-    provideMdForFormWithEvaluatedContent
-    playMd
-
-    insertQueryAfterMd
-    provideMdQueryWhichFiltersUsingFormValues
-    playMdQuery
-
-    expectMdQueryResultsToBeFilteredByDefaultFormValues
-
+    Interact.insertMdCardAsFirstCardInNewStack
+    Interact.provideMdInLastMdCard $ joinWith "\n\n"
+      [ "discipline = __ (!``SELECT discipline FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "year = __ (!``SELECT year FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "country = {!``SELECT DISTINCT country FROM `/test-mount/testDb/olympics` ``} (!``SELECT country FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
+      , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
+      ]
+    Interact.playLastCard
+    Interact.insertQueryCardAsNextAction
+    Interact.provideQueryInLastQueryCard
+      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
+    Interact.playLastCard
+    Expect.cellsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
+    Expect.cellsInTableColumnInLastCardToEq 2 "country" "AUT"
+    Expect.cellsInTableColumnInLastCardToEq 2 "gender" "W"
+    Expect.cellsInTableColumnInLastCardToBeGT 2 "year" "1924"
+    Expect.cellsInTableColumnInLastCardToNotEq 2 "type" "Silver"
     successMsg "Ok, Filtered query resuts with fields"
 
   mdScenario "Filter query resuts by changing field values" [] do
-    insertMdCellUsingNextActionMenu
-    provideMdForFormWithEvaluatedContent
-    playMd
-
-    insertQueryAfterMd
-    provideMdQueryWhichFiltersUsingFormValues
-    playMdQuery
-
-    changeAllFieldsInMdFormWithEvaluatedContent
-
-    expectMdQueryResultsToBeFilteredByChangedFormValues
-
+    Interact.insertMdCardAsFirstCardInNewStack
+    Interact.provideMdInLastMdCard $ joinWith "\n\n"
+      [ "discipline = __ (!``SELECT discipline FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "year = __ (!``SELECT year FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "country = {!``SELECT DISTINCT country FROM `/test-mount/testDb/olympics` ``} (!``SELECT country FROM `/test-mount/testDb/olympics` LIMIT 1``)"
+      , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
+      , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
+      ]
+    Interact.playLastCard
+    Interact.insertQueryCardAsNextAction
+    Interact.provideQueryInLastQueryCard
+      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
+    Interact.playLastCard
+    Interact.provideFieldValueInLastMdCard "discipline" "Luge"
+    Interact.provideFieldValueInLastMdCard "year" "1950"
+    Interact.uncheckFieldInLastMdCard "W"
+    Interact.checkFieldInLastMdCard "X"
+    Interact.checkFieldInLastMdCard "M"
+    Interact.pushRadioButtonInLastMdCard "Gold"
+    Interact.selectFromDropdownInLastMdCard "country" "GDR"
+    Expect.cellsInTableColumnInLastCardToEq 8 "discipline" "Luge"
+    Expect.cellsInTableColumnInLastCardToEqOneOf 8 "gender" ["M", "X"]
+    Expect.cellsInTableColumnInLastCardToBeGT 8 "year" "1950"
+    Expect.cellsInTableColumnInLastCardToNotEq 8 "type" "Gold"
     successMsg "Ok, Filtered query results by changing field values"

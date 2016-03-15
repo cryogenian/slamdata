@@ -49,6 +49,9 @@ withTextLessThan s = "text() > '" ++ s ++ "'"
 withText :: String -> String
 withText s = "text() = '" ++ s ++ "'"
 
+withAriaLabel :: String -> String
+withAriaLabel s = "@aria-label = '" ++ s ++ "'"
+
 withoutText :: String -> String
 withoutText s = "text() != '" ++ s ++ "'"
 
