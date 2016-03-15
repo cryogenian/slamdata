@@ -57,7 +57,7 @@ expectMdQueryResultsToBeFilteredByDefaultFormValues = do
     XPath.tdWithThAndTextNotEq
       (XPath.anywhere XPaths.mdQueryTable)
       (XPath.thWithExactText "type")
-      "Gold"
+      "Silver"
 
 expectMdQueryResultsToBeFilteredByChangedFormValues :: SlamFeature Unit
 expectMdQueryResultsToBeFilteredByChangedFormValues = do

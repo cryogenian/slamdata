@@ -17,12 +17,11 @@ limitations under the License.
 module Test.SlamData.Feature.Notebook.Search where
 
 import Prelude
-import Test.Feature (expectPresented, expectNotPresented)
-import Test.SlamData.Feature.Common (waitTime)
 import Test.Feature.Log (successMsg)
+import Test.SlamData.Feature.Common (waitTime)
+import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature())
-import Test.SlamData.Feature.Notebook.Interactions (createNotebookInTestFolder, deleteFileInTestFolder, insertExploreCellUsingNextActionMenu, provideExploreFile, provideExploreSearch, provideExploreSearchSearch, insertSearchAfterExplore, insertSearchAfterSearchAfterExplore, playExplore, playExploreSearch, playExploreSearchSearch)
-import Test.SlamData.Feature.XPaths as XPaths
+import Test.SlamData.Feature.Notebook.Interactions as Interact
 import Test.Feature.Scenario (scenario)
 
 import XPath as XPath
@@ -31,83 +30,54 @@ searchScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
 searchScenario =
   scenario
     "Search"
-    (createNotebookInTestFolder "Search")
-    (deleteFileInTestFolder "Search.slam")
-
---tdWithHeaderTextAndTextEqOneOf :: String -> String -> Array String -> String
---tdWithHeaderTextAndTextEqOneOf tableXPath =
---  XPath.tdWithThAndTextEqOneOf tableXPath <<< XPath.thWithExactText
-
-expectLastSearchResultsToContain :: Int -> String -> Array String -> SlamFeature Unit
-expectLastSearchResultsToContain = expectLastSearchResults XPath.withText
-
-expectLastSearchResultsNotToContain :: Int -> String -> Array String -> SlamFeature Unit
-expectLastSearchResultsNotToContain = expectLastSearchResults XPath.withoutText
-
-expectLastSearchResults
-  :: (String -> String)
-  -> Int
-  -> String
-  -> Array String
-  -> SlamFeature Unit
-expectLastSearchResults f i headerText xs = do
-  expectPresented $ XPath.index tdXPath i
-  expectNotPresented $ XPath.index trXPath (i + 1)
-  where
-  trXPath = tableXPath ++ "/tbody/tr"
-  tdXPath = tableXPath ++ "/tbody/tr/td" ++ anyOfTheseTexts xs
-  --anyTdXPath = XPath.tdWithTh tableXPath (XPath.thWithExactText headerText) "td"
-  --tdXPath = tdWithHeaderTextAndTextEqOneOf tableXPath headerText xs
-  tableXPath =
-    XPath.last (XPath.anywhere XPaths.searchPlayButton)
-      `XPath.following` "table"
-  anyOfTheseTexts = XPath.predicate <<< XPath.anyOfThesePredicates <<< map f
-
+    (Interact.createNotebookInTestFolder "Search")
+    (Interact.deleteFileInTestFolder "Search.slam")
 
 test :: SlamFeature Unit
 test = do
   searchScenario "Search for a city" [] do
-    insertExploreCellUsingNextActionMenu
-    provideExploreFile "/test-mount/testDb/zips"
-    playExplore
-    insertSearchAfterExplore
-    provideExploreSearch "springfield"
-    playExploreSearch
-    expectLastSearchResultsToContain 10 "city" ["SPRINGFIELD", "WEST SPRINGFIELD"]
+    Interact.insertExploreCellUsingNextActionMenu
+    Interact.provideExploreFile "/test-mount/testDb/zips"
+    Interact.playExplore
+    Interact.insertSearchAfterExplore
+    Interact.provideExploreSearch "springfield"
+    Interact.playExploreSearch
+    Expect.cellsInTableColumnInLastCellToContain 10 "city" "SPRINGFIELD"
     successMsg "Successfully searched for a city"
 
   searchScenario "Search within results" [] do
-    insertExploreCellUsingNextActionMenu
-    provideExploreFile "/test-mount/testDb/zips"
-    playExplore
-    insertSearchAfterExplore
-    provideExploreSearch "springfield"
-    playExploreSearch
-    insertSearchAfterSearchAfterExplore
-    provideExploreSearchSearch "OR"
-    playExploreSearchSearch
-    expectLastSearchResultsToContain 2 "city" ["SPRINGFIELD"]
-    expectLastSearchResultsToContain 2 "state" ["OR"]
+    Interact.insertExploreCellUsingNextActionMenu
+    Interact.provideExploreFile "/test-mount/testDb/zips"
+    Interact.playExplore
+    Interact.insertSearchAfterExplore
+    Interact.provideExploreSearch "springfield"
+    Interact.playExploreSearch
+    Interact.insertSearchAfterSearchAfterExplore
+    Interact.provideExploreSearchSearch "OR"
+    Interact.playExploreSearchSearch
+    Expect.cellsInTableColumnInLastCellToContain 2 "city" "SPRINGFIELD"
+    Expect.cellsInTableColumnInLastCellToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
 
   searchScenario "Search with field names" [] do
-    insertExploreCellUsingNextActionMenu
-    provideExploreFile "/test-mount/testDb/zips"
-    playExplore
-    insertSearchAfterExplore
-    provideExploreSearch "city:springfield state:or pop:>30000"
-    playExploreSearch
-    expectLastSearchResultsToContain 1 "city" ["SPRINGFIELD"]
-    expectLastSearchResultsToContain 1 "state" ["OR"]
+    Interact.insertExploreCellUsingNextActionMenu
+    Interact.provideExploreFile "/test-mount/testDb/zips"
+    Interact.playExplore
+    Interact.insertSearchAfterExplore
+    Interact.provideExploreSearch "city:springfield state:or pop:>30000"
+    Interact.playExploreSearch
+    Expect.cellsInTableColumnInLastCellToContain 1 "city" "SPRINGFIELD"
+    Expect.cellsInTableColumnInLastCellToContain 1 "state" "OR"
+    Expect.cellsInTableColumnInLastCellToBeGT 1 "pop" "30000"
     successMsg "Successfully searched with field names"
 
   searchScenario "Suppress search results" [] do
-    insertExploreCellUsingNextActionMenu
-    provideExploreFile "/test-mount/testDb/zips"
-    playExplore
-    insertSearchAfterExplore
-    provideExploreSearch "city:portland -state:OR"
-    playExploreSearch
-    expectLastSearchResultsToContain 10 "city" ["PORTLAND", "SOUTH PORTLAND", "NEW PORTLAND", "PORTLANDVILLE", "PORTLAND MILLS"]
-    expectLastSearchResultsNotToContain 10 "state" ["OR"]
+    Interact.insertExploreCellUsingNextActionMenu
+    Interact.provideExploreFile "/test-mount/testDb/zips"
+    Interact.playExplore
+    Interact.insertSearchAfterExplore
+    Interact.provideExploreSearch "city:portland -state:OR"
+    Interact.playExploreSearch
+    Expect.cellsInTableColumnInLastCellToContain 10 "city" "PORTLAND"
+    Expect.cellsInTableColumnInLastCellToNotEq 10 "state" "OR"
     successMsg "Successfully suppressed search results"
