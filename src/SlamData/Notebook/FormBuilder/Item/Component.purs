@@ -35,6 +35,8 @@ import Halogen
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.Themes.Bootstrap3 as B
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Notebook.FormBuilder.Item.Component.State
 import SlamData.Notebook.FormBuilder.Item.FieldType
@@ -70,56 +72,86 @@ render { model } =
     ]
 
   where
-    nameField :: ComponentHTML Query
-    nameField =
-      H.input
-        [ HP.inputType HP.InputText
-        , HP.title "Field Name"
-        , HP.value model.name
-        , HE.onValueChange (HE.input \str -> Update <<< UpdateName str)
-        ]
+  nameField :: ComponentHTML Query
+  nameField =
+    H.label_
+    [ H.input
+      [ HP.inputType HP.InputText
+      , HP.title "Field Name"
+      , ARIA.label "API variable name"
+      , HP.value model.name
+      , HE.onValueChange (HE.input \str -> Update <<< UpdateName str)
+      , HP.classes [ B.formControl ]
+      , HP.placeholder "API variable name"
+      ]
+    ]
 
-    typeField :: ComponentHTML Query
-    typeField =
-      H.select
-        [ HE.onValueChange (HE.input \str -> Update <<< UpdateFieldType str)
-        ]
-        (typeOption <$> allFieldTypes)
+  quotedName :: String -> String
+  quotedName "" = ""
+  quotedName s = "\"" <> s <> "\""
 
-    typeOption
-      :: FieldType
-      -> ComponentHTML Query
-    typeOption ty =
-      H.option
-        [ HP.selected $ ty == model.fieldType ]
-        [ H.text $ Lens.review _FieldTypeDisplayName ty ]
+  typeField :: ComponentHTML Query
+  typeField =
+    H.label_
+    [ H.select
+      [ HE.onValueChange (HE.input \str -> Update <<< UpdateFieldType str)
+      , HP.classes [ B.formControl ]
+      , ARIA.label $ "Type of " <> (quotedName model.name) <> " API variable"
+      ]
+      (typeOption <$> allFieldTypes)
+    ]
 
-    defaultField :: ComponentHTML Query
-    defaultField =
-      case model.fieldType of
-        BooleanFieldType ->
-          H.div_
-            [ H.input
-                [ HP.inputType inputType
-                , HP.id_ inputId
-                , HP.checked $ M.fromMaybe false $ Lens.preview _StringBoolean =<< model.defaultValue
-                , HE.onChecked $ HE.input \str -> Update <<< UpdateDefaultValue (Lens.review _StringBoolean str)
-                ]
-            , H.label [ HP.for inputId ] [ H.text model.name ]
-            ]
-        _ ->
-          H.input
+  typeOption
+    :: FieldType
+    -> ComponentHTML Query
+  typeOption ty =
+    H.option
+    [ HP.selected $ ty == model.fieldType ]
+    [ H.text $ Lens.review _FieldTypeDisplayName ty ]
+
+  defaultField :: ComponentHTML Query
+  defaultField =
+    case model.fieldType of
+      BooleanFieldType ->
+        H.label_
+        [ H.input
             [ HP.inputType inputType
-            , HP.id_ inputId
-            , HP.value $ M.fromMaybe "" model.defaultValue
-            , HE.onValueChange $ HE.input \str -> Update <<< UpdateDefaultValue str
+            , HP.checked
+                $ M.fromMaybe false
+                $ Lens.preview _StringBoolean
+                =<< model.defaultValue
+            , HE.onChecked
+              $ HE.input \str ->
+                  Update <<< UpdateDefaultValue (Lens.review _StringBoolean str)
+            , ARIA.label
+                $ "Default value of "
+                <> (quotedName model.name)
+                <> " API variable is \"true\""
             ]
-      where
-        inputType =
-          fieldTypeToInputType model.fieldType
-        inputId =
-          model.name <> "-defaultValue"
-
+        , H.text model.name
+        ]
+      _ ->
+        H.label_
+          [ H.input
+             [ HP.inputType inputType
+             , HP.classes [ B.formControl ]
+             , HP.value
+                 $ M.fromMaybe "" model.defaultValue
+             , HE.onValueChange
+                 $ HE.input \str ->
+                   Update <<< UpdateDefaultValue str
+             , ARIA.label lbl
+             , HP.placeholder lbl
+             ]
+          ]
+    where
+    lbl :: String
+    lbl =
+      "Default value for "
+      <> (quotedName model.name)
+      <> " API variable"
+    inputType =
+      fieldTypeToInputType model.fieldType
 
     _StringBoolean :: Lens.PrismP String Boolean
     _StringBoolean = Lens.prism re pre
