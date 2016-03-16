@@ -33,6 +33,7 @@ import Data.Void as Void
 import Halogen
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Notebook.Cell.APIResults.Component.Query
 import SlamData.Notebook.Cell.APIResults.Component.State
@@ -56,14 +57,20 @@ render
   :: State
   -> ComponentHTML QueryP
 render { varMap } =
-  H.table [ HP.class_ $ H.className "form-builder" ] $
+  H.table
+    [ HP.classes [ H.className "form-builder"
+                 , B.table
+                 , B.tableStriped
+                 ]
+    ]
     [ H.thead_
         [ H.tr_
             [ H.th_ [ H.text "Name" ]
             , H.th_ [ H.text "Value" ]
             ]
         ]
-    ] <> SM.foldMap renderItem varMap
+      , H.tbody_ $ SM.foldMap renderItem varMap
+    ]
 
   where
     renderItem :: String -> Port.VarMapValue -> Array (ComponentHTML QueryP)
