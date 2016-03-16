@@ -134,7 +134,9 @@ render { items } =
       :: L.List ItemId
       -> FormBuilderHTML g
     renderTable items =
-      H.table [ HP.class_ $ H.className "form-builder" ] $
+      H.table [ HP.classes [ H.className "form-builder"
+                           ]
+              ]
         [ H.thead_
             [ H.tr_
                 [ H.th_ [ H.text "Name" ]
@@ -142,7 +144,8 @@ render { items } =
                 , H.th_ [ H.text "Default" ]
                 ]
             ]
-        ] <> L.fromList (renderItem <$> items)
+        , H.tbody_ $ L.fromList (renderItem <$> items)
+        ]
 
     renderItem
       :: ItemId
