@@ -125,9 +125,16 @@ createNotebook :: String
 createNotebook =
   XPath.anyWithExactAriaLabel "Create notebook"
 
+createFolder :: String
+createFolder =
+  XPath.anyWithExactAriaLabel "Create folder"
+
 removeFile :: String -> String
 removeFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Remove"
+
+moveFile :: String
+moveFile = XPath.anyWithExactAriaLabel "Move / rename"
 
 oneErrorMessage :: String
 oneErrorMessage =

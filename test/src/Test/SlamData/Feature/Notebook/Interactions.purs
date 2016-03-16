@@ -54,6 +54,15 @@ deleteFile :: String -> SlamFeature Unit
 deleteFile name =
   click (XPath.anywhere $ XPaths.selectFile name) *> click (XPath.anywhere $ XPaths.removeFile name)
 
+renameFile :: String -> String -> SlamFeature Unit
+renameFile oldName newName = do
+  selectFile oldName
+  click $ XPath.anywhere XPaths.moveFile
+  provideFieldValueWithProperties
+    [Tuple "value" $ Just oldName]
+    (XPath.anywhere "input")
+    newName
+
 selectFile :: String -> SlamFeature Unit
 selectFile name = select name <|> (deselect name *> select name)
   where
@@ -62,6 +71,9 @@ selectFile name = select name <|> (deselect name *> select name)
 
 createNotebookInTestFolder :: String -> SlamFeature Unit
 createNotebookInTestFolder name = browseTestFolder *> createNotebook *> nameNotebook name
+
+createFolder :: SlamFeature Unit
+createFolder = click $ XPath.anywhere XPaths.createFolder
 
 deleteFileInTestFolder :: String -> SlamFeature Unit
 deleteFileInTestFolder name = browseTestFolder *> deleteFile name

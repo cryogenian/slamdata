@@ -41,7 +41,9 @@ import Selenium.Remote as SR
 import Selenium.Types (SELENIUM())
 import Test.SlamData.Feature.Config (Config())
 import Test.SlamData.Feature.Effects (SlamFeatureEffects())
+import Test.SlamData.Feature.File as File
 import Test.SlamData.Feature.Notebook as Notebook
+import Test.SlamData.Feature.Notebook.Interactions (launchSlamData, mountTestDatabase)
 import Test.SlamData.Feature.SauceLabs as SL
 import Text.Chalky
 
@@ -100,7 +102,9 @@ test config =
                                      , defaultTimeout: config.selenium.waitTime
                                      , driver: driver} do
       setWindowSize { height: 1280, width: 1024 }
-      --File.test
+      launchSlamData
+      mountTestDatabase
+      File.test
       Notebook.test
     quit driver
     either throwError (const $ pure unit) res

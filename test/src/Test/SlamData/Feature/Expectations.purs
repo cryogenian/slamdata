@@ -88,3 +88,7 @@ lastCardToBeFinished =
   expectPresented
     $ (XPath.last $ XPath.anywhere $ XPaths.cardHeading)
     `XPath.following` XPath.anyWithText "Finished"
+
+file :: String -> SlamFeature Unit
+file =
+  expectPresented <<< XPath.anywhere <<< XPaths.selectFile
