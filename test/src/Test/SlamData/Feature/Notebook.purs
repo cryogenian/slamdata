@@ -22,10 +22,13 @@ import Test.SlamData.Feature.Monad (SlamFeature())
 import Test.SlamData.Feature.Notebook.Markdown as Markdown
 import Test.SlamData.Feature.Notebook.Search as Search
 import Test.SlamData.Feature.Notebook.Interactions (launchSlamData, mountTestDatabase)
+import Test.SlamData.Feature.Notebook.FlexibleVisualation as FlexibleVisualization
+
 
 test :: SlamFeature Unit
 test = do
   launchSlamData
   mountTestDatabase
-  Search.test
-  Markdown.test
+  FlexibleVisualization.test
+--  Search.test
+--  Markdown.test

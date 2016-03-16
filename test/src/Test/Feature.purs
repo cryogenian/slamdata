@@ -289,7 +289,8 @@ hoverWithProperties properties =
 
 -- Independent interactions
 typeString :: forall eff o. String -> Feature eff o Unit
-typeString string = sequence $ FeatureSequence.keys string
+typeString string =
+  sequence $ FeatureSequence.keys string
 
 pressEnter :: forall eff o. Feature eff o Unit
 pressEnter = sequence $ FeatureSequence.sendEnter
@@ -310,7 +311,11 @@ hoverElement = tryRepeatedlyTo <<< sequence <<< Sequence.hover
 
 provideFieldValueElement :: forall eff o. String -> Element -> Feature eff o Unit
 provideFieldValueElement value element =
-  clickElement element *> selectAll *> typeString value
+  clickElement element
+  *> selectAll
+  *> typeString value
+  -- Have no idea why api cell doesn't work w/o this line
+  *> pressEnter
 
 selectFromDropdownElement :: forall eff o. String -> Element -> Feature eff o Unit
 selectFromDropdownElement text element =

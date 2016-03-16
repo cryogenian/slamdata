@@ -7,7 +7,7 @@ import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Prelude
-import Selenium.Monad (get, refresh, getCurrentURL)
+import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
 import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck)
 import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
@@ -19,10 +19,9 @@ launchSlamData = get <<< _.slamdataUrl =<< getConfig
 
 accessNotebookWithModifiedURL :: (String -> String) -> SlamFeature Unit
 accessNotebookWithModifiedURL modifier =
-  getCurrentURL <#> modifier >>= get
+  getCurrentUrl >>= modifier >>> get
 
-accessPublishedNotebookWithState :: SlamFeature Unit
-accessPublishedNotebookWithState = accessNotebookWithModifiedURL (flip append
+
 
 mountTestDatabase :: SlamFeature Unit
 mountTestDatabase = do
@@ -188,13 +187,34 @@ type ApiVarName = String
 type ApiVarType = String
 type ApiVarValue = String
 
-provideKeyValuePairForApiCard
+provideApiVariableBindingsForApiCard
   :: ApiVarName
   -> ApiVarType
   -> ApiVarValue
   -> SlamFeature Unit
-provideKeyValuePairForApiCard _ _ =
-  Debug.Trace.traceAnyA "implement me, I'm provideKeyValuePairForApiCard"
+provideApiVariableBindingsForApiCard name ty val =
+  provideValueForApiCard name
+  *> provideTypeForApiCard name ty
+  *> provideDefaultValueForApiCard name val
+  where
+  provideValueForApiCard :: String -> SlamFeature Unit
+  provideValueForApiCard name =
+    provideFieldValue
+      (XPath.first $ XPath.anywhere $ XPaths.apiCardVariableName)
+      name
+  provideTypeForApiCard :: String -> String -> SlamFeature Unit
+  provideTypeForApiCard name ty =
+    tryRepeatedlyTo
+      $ selectFromDropdown
+        (XPath.first $ XPath.anywhere $ XPaths.apiCardVariableTypeFor name)
+        ty
+
+  provideDefaultValueForApiCard :: String -> String -> SlamFeature Unit
+  provideDefaultValueForApiCard name val =
+    provideFieldValue
+      (XPath.first $ XPath.anywhere $ XPaths.apiCardDefaultValueFor name)
+      val
+
 
 provideCategoryForLastVisualizeCard
   :: String

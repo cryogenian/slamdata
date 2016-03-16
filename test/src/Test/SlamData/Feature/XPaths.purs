@@ -203,3 +203,19 @@ cardHeading =
         , "Visualize cell"
         , "Download cell"
         ]
+
+apiCardVariableName :: String
+apiCardVariableName =
+  XPath.anyWithExactAriaLabel "API variable name"
+
+
+apiCardVariableTypeFor :: String -> String
+apiCardVariableTypeFor name =
+  XPath.anyWithExactAriaLabel
+    $ "Type of \"" <> name <> "\" API variable"
+
+
+apiCardDefaultValueFor :: String -> String
+apiCardDefaultValueFor name =
+  XPath.anyWithExactAriaLabel
+    $ "Default value for \"" <> name <> "\" API variable"

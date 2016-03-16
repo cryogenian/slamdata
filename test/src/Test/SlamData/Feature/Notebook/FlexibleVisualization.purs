@@ -37,23 +37,23 @@ apiVizScenario =
 
 test :: SlamFeature Unit
 test = do
-  apiVizScenario "Make embeddable patients-city charts" do
+  apiVizScenario "Make embeddable patients-city charts" [] do
     Interact.insertApiCardAsFirstCardInNewStack
-    Interact.provideKeyValuePairForApiCard "state" "string" "CO"
+    Interact.provideApiVariableBindingsForApiCard "state" "Text" "CO"
     Interact.playLastCard
     Interact.insertQueryCardAsNextAction
-    Interact.provideQueryInLastQueryCard $ Str.joinWith " "
+    Interact.provideQueryInLastQueryCard $ Str.joinWith "\n "
       $ [
-          "SELECT\n"
-        , "  count(*) as ct,\n"
-        , "  city,\n"
-        , "  gender\n"
-        , "FROM `/test-mount/testDb/smallPatients`\n"
-        , "WHERE\n"
-        , "  state = :mystate\n"
-        , "GROUP BY city, gender\n"
-        , "ORDER BY ct DESC\n"
-        , "LIMIT 30\n"
+          "SELECT"
+        , "  count(*) as ct,"
+        , "  city,"
+        , "  gender"
+        , "FROM `/test-mount/testDb/patientsSmall`"
+        , "WHERE"
+        , "  state = :state"
+        , "GROUP BY city, gender"
+        , "ORDER BY ct DESC"
+        , "LIMIT 30"
         ]
     Interact.playLastCard
     Interact.insertVisualizeCardAsNextAction
@@ -64,7 +64,7 @@ test = do
     Interact.playLastCard
     Interact.expectLastChartElementBeEqualWithScreenshot
       "/test/screenshots/flexible-visualization/CO.png"
-    Interal.accessNotebookWithModifiedURL (flip append "/?state=%22CO%22")
+    Interact.accessNotebookWithModifiedURL (flip append "/?state=%22CO%22")
     Interact.expectLastChartElementBeEqualWithScreenshot
       "/test/screenshots/flexible-visalization/CO.png"
     Interact.accessNotebookWithModifiedURL (Str.replace "CO" "NY")
