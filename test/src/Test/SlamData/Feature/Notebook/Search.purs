@@ -18,7 +18,6 @@ module Test.SlamData.Feature.Notebook.Search where
 
 import Prelude
 import Test.Feature.Log (successMsg)
-import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature())
 import Test.SlamData.Feature.Notebook.Interactions as Interact
@@ -60,6 +59,28 @@ test = do
     successMsg "Successfully searched within results"
 
   searchScenario "Search with field names" [] do
+    --Given.aDocument "/test-mount/testDb/zips"
+    --  [ Map.fromFoldable
+    --      [ Tuple "city" "WEST SPRINGFIELD"
+    --      , Tuple "state" "OR"
+    --      , Tuple "pop" "30001"
+    --      ]
+    --  , Map.fromFoldable
+    --      [ Tuple "city" "WEST SPRINGFIELD"
+    --      , Tuple "state" "OR"
+    --      , Tuple "pop" "30000"
+    --      ]
+    --  , Map.fromFoldable
+    --      [ Tuple "city" "DELAWARE"
+    --      , Tuple "state" "OR"
+    --      , Tuple "pop" "30001"
+    --      ]
+    --  , Map.fromFoldable
+    --      [ Tuple "city" "WEST SPRINGFIELD"
+    --      , Tuple "state" "CO"
+    --      , Tuple "pop" "30001"
+    --      ]
+    --  ]
     Interact.insertExploreCardAsFirstCardInNewStack
     Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
     Interact.playLastCard
