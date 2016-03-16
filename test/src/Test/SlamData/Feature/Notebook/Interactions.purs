@@ -4,6 +4,7 @@ import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
 import Data.Maybe (Maybe(..))
+import Data.Map as Map
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Prelude
@@ -34,16 +35,20 @@ mountTestDatabase = do
   click (XPath.anywhere XPaths.mountButton)
 
 browseFolder :: String -> SlamFeature Unit
-browseFolder = click <<< XPath.anywhere <<< XPath.anyWithExactText
+browseFolder =
+  click <<< XPath.anywhere <<< XPath.anyWithExactText
 
 embedCardOutput :: SlamFeature Unit
-embedCardOutput = click $ XPath.anywhere XPaths.embedCardOutput
+embedCardOutput =
+  click $ XPath.anywhere XPaths.embedCardOutput
 
 browseRootFolder :: SlamFeature Unit
-browseRootFolder = click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
+browseRootFolder =
+  click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
 
 browseTestFolder :: SlamFeature Unit
-browseTestFolder = browseRootFolder *> browseFolder "test-mount" *> browseFolder "testDb"
+browseTestFolder =
+  browseRootFolder *> browseFolder "test-mount" *> browseFolder "testDb"
 
 createNotebook :: SlamFeature Unit
 createNotebook = click $ XPath.anywhere XPaths.createNotebook
@@ -51,14 +56,14 @@ createNotebook = click $ XPath.anywhere XPaths.createNotebook
 nameNotebook :: String -> SlamFeature Unit
 nameNotebook name = do
   provideFieldValueWithProperties
-    [Tuple "value" $ Just "Untitled Notebook"]
+    (Map.singleton "value" $ Just "Untitled Notebook")
     (XPath.anywhere "input")
     name
-  pressEnter
 
 deleteFile :: String -> SlamFeature Unit
 deleteFile name =
-  click (XPath.anywhere $ XPaths.selectFile name) *> click (XPath.anywhere $ XPaths.removeFile name)
+  click (XPath.anywhere $ XPaths.selectFile name)
+  *> click (XPath.anywhere $ XPaths.removeFile name)
 
 selectFile :: String -> SlamFeature Unit
 selectFile name = select name <|> (deselect name *> select name)
@@ -67,7 +72,8 @@ selectFile name = select name <|> (deselect name *> select name)
   deselect = click <<< XPath.anywhere <<< XPaths.deselectFile
 
 createNotebookInTestFolder :: String -> SlamFeature Unit
-createNotebookInTestFolder name = browseTestFolder *> createNotebook *> nameNotebook name
+createNotebookInTestFolder name =
+  browseTestFolder *> createNotebook *> nameNotebook name
 
 deleteFileInTestFolder :: String -> SlamFeature Unit
 deleteFileInTestFolder name = browseTestFolder *> deleteFile name
@@ -198,22 +204,25 @@ provideApiVariableBindingsForApiCard name ty val =
   *> provideDefaultValueForApiCard name val
   where
   provideValueForApiCard :: String -> SlamFeature Unit
-  provideValueForApiCard name =
+  provideValueForApiCard name = do
     provideFieldValue
       (XPath.first $ XPath.anywhere $ XPaths.apiCardVariableName)
       name
+    pressEnter
   provideTypeForApiCard :: String -> String -> SlamFeature Unit
-  provideTypeForApiCard name ty =
+  provideTypeForApiCard name ty = do
     tryRepeatedlyTo
       $ selectFromDropdown
         (XPath.first $ XPath.anywhere $ XPaths.apiCardVariableTypeFor name)
         ty
+    pressEnter
 
   provideDefaultValueForApiCard :: String -> String -> SlamFeature Unit
-  provideDefaultValueForApiCard name val =
+  provideDefaultValueForApiCard name val = do
     provideFieldValue
       (XPath.first $ XPath.anywhere $ XPaths.apiCardDefaultValueFor name)
       val
+    pressEnter
 
 
 provideCategoryForLastVisualizeCard
