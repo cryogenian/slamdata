@@ -30,7 +30,7 @@
     "purescript-halogen-echarts": "^0.4.0",
     "purescript-halogen-menu": "^0.4.0",
     "purescript-jtable": "^0.10.0",
-    "purescript-maps": "^0.5.4",
+    "purescript-maps": "0.5.4",
     "purescript-markdown": "^1.12.2",
     "purescript-markdown-halogen": "^0.8.5",
     "purescript-minimatch": "^0.2.0",
