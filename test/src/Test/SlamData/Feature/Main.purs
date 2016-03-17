@@ -1,16 +1,21 @@
 module Test.SlamData.Feature.Main where
 
 import Control.Monad (when)
-import Control.Monad.Aff (Aff(), forkAff, runAff, launchAff, apathize, attempt, later', cancel)
-import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, killVar, AVAR())
+import Control.Monad.Aff
+  (Aff(), forkAff, runAff, launchAff, apathize, attempt, later', cancel)
+import Control.Monad.Aff.AVar
+  (makeVar, takeVar, putVar, killVar, AVAR())
 import Control.Monad.Aff.Console (log)
-import Control.Monad.Eff.Console (CONSOLE())
 import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Console (CONSOLE())
 import Control.Monad.Eff.Console as Ec
-import Control.Monad.Eff.Exception (Error(), EXCEPTION(), throwException, error, message)
-import Control.Monad.Eff.Ref (REF(), newRef, writeRef, modifyRef, readRef)
+import Control.Monad.Eff.Exception
+  (Error(), EXCEPTION(), throwException, error, message)
+import Control.Monad.Eff.Ref
+  (REF(), newRef, writeRef, modifyRef, readRef)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Trans
+import DOM (DOM())
 import Data.Array as Arr
 import Data.Either (Either(..), either)
 import Data.Foldable (traverse_)
@@ -20,8 +25,10 @@ import Data.Maybe (maybe, isJust)
 import Data.Monoid (mempty)
 import Data.String as Str
 import Database.Mongo.Mongo (connect, close)
-import DOM (DOM())
-import Node.ChildProcess (ChildProcess(), makeSpawnOption, stdout, stderr, spawn, kill, execSync)
+import Graphics.EasyImage (EASY_IMAGE())
+import Graphics.ImageDiff (IMAGE_MAGICK())
+import Node.ChildProcess
+  (ChildProcess(), makeSpawnOption, stdout, stderr, spawn, kill, execSync)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS())
 import Node.FS.Aff (unlink, mkdir)
@@ -39,11 +46,14 @@ import Selenium.FFProfile
 import Selenium.Monad (setWindowSize)
 import Selenium.Remote as SR
 import Selenium.Types (SELENIUM())
+import Test.Feature.Monad (FeatureEffects())
 import Test.SlamData.Feature.Config (Config())
 import Test.SlamData.Feature.Effects (SlamFeatureEffects())
 import Test.SlamData.Feature.File as File
 import Test.SlamData.Feature.Notebook as Notebook
-import Test.SlamData.Feature.Notebook.Interactions (launchSlamData, mountTestDatabase)
+import Test.SlamData.Feature.Notebook as Notebook
+import Test.SlamData.Feature.Notebook.Interactions
+  (launchSlamData, mountTestDatabase)
 import Test.SlamData.Feature.SauceLabs as SL
 import Text.Chalky
 
@@ -56,14 +66,12 @@ foreign import stack
   :: Error -> String
 
 type Effects =
-  SlamFeatureEffects
+  SlamFeatureEffects (FeatureEffects
     ( ref :: REF
     , console :: CONSOLE
     , dom :: DOM
     , selenium :: SELENIUM
-    , err :: EXCEPTION
-    , platform :: PLATFORM
-    )
+    ))
 
 makeDownloadCapabilities :: Browser -> String -> Aff Effects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do
@@ -104,7 +112,7 @@ test config =
       setWindowSize { height: 1280, width: 1024 }
       launchSlamData
       mountTestDatabase
-      File.test
+--      File.test
       Notebook.test
     quit driver
     either throwError (const $ pure unit) res

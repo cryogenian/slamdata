@@ -4,12 +4,13 @@ import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Bind ((=<<), (<=<))
 import Control.Monad.Eff.Class (liftEff)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Prelude
-import Selenium.Monad (get, refresh, tryRepeatedlyTo)
-import Test.Feature (click, clickWithExpectation, provideFileInputValue, pressEnter, focusAddressBar, paste, provideFieldValue, provideFieldValueWithProperties, provideFieldValueWithExpectedValue, provideFieldValueWithPropertiesAndExpectedValue, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, expectNotPresented', expectPresented')
+import Selenium.Monad (get, refresh, tryRepeatedlyTo, getCurrentUrl)
+import Test.Feature (click, clickWithExpectation, provideFileInputValue, pressEnter, focusAddressBar, paste, provideFieldValue, provideFieldValueWithProperties, provideFieldValueWithExpectedValue, provideFieldValueWithPropertiesAndExpectedValue, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, expectNotPresented', expectPresented', expectMatchScreenshot, provideAceValue, expectPresentedWithProperties)
 import Test.Feature.Log (warnMsg)
 import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
@@ -20,6 +21,10 @@ import Debug.Trace
 
 launchSlamData :: SlamFeature Unit
 launchSlamData = get <<< _.slamdataUrl =<< getConfig
+
+accessNotebookWithModifiedURL :: (String -> String) -> SlamFeature Unit
+accessNotebookWithModifiedURL modifier =
+  getCurrentUrl >>= modifier >>> get
 
 mountTestDatabase :: SlamFeature Unit
 mountTestDatabase = do
@@ -32,16 +37,20 @@ mountTestDatabase = do
   click (XPath.anywhere XPaths.mountButton)
 
 browseFolder :: String -> SlamFeature Unit
-browseFolder = click <<< XPath.anywhere <<< XPath.anyWithExactText
+browseFolder =
+  click <<< XPath.anywhere <<< XPath.anyWithExactText
 
 embedCardOutput :: SlamFeature Unit
-embedCardOutput = click $ XPath.anywhere XPaths.embedCardOutput
+embedCardOutput =
+  click $ XPath.anywhere XPaths.embedCardOutput
 
 browseRootFolder :: SlamFeature Unit
-browseRootFolder = click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
+browseRootFolder =
+  click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
 
 browseTestFolder :: SlamFeature Unit
-browseTestFolder = browseRootFolder *> browseFolder "test-mount" *> browseFolder "testDb"
+browseTestFolder =
+  browseRootFolder *> browseFolder "test-mount" *> browseFolder "testDb"
 
 createNotebook :: SlamFeature Unit
 createNotebook = click $ XPath.anywhere XPaths.createNotebook
@@ -49,7 +58,7 @@ createNotebook = click $ XPath.anywhere XPaths.createNotebook
 nameNotebook :: String -> SlamFeature Unit
 nameNotebook name = do
   provideFieldValueWithPropertiesAndExpectedValue
-    [Tuple "value" $ Just "Untitled Notebook"]
+    (Map.singleton "value" $ Just "Untitled Notebook")
     name
     (XPath.anywhere "input")
     name
@@ -57,18 +66,20 @@ nameNotebook name = do
 
 deleteFile :: String -> SlamFeature Unit
 deleteFile name =
-  click (XPath.anywhere $ XPaths.selectFile name) *> click (XPath.anywhere $ XPaths.removeFile name)
+  click (XPath.anywhere $ XPaths.selectFile name)
+  *> click (XPath.anywhere $ XPaths.removeFile name)
 
 shareFile :: String -> SlamFeature Unit
 shareFile name =
-  click (XPath.anywhere $ XPaths.selectFile name) *> click (XPath.anywhere $ XPaths.shareFile name)
+  click (XPath.anywhere $ XPaths.selectFile name)
+  *> click (XPath.anywhere $ XPaths.shareFile name)
 
 renameFile :: String -> String -> SlamFeature Unit
 renameFile oldName newName = do
   selectFile oldName
   click $ XPath.anywhere $ XPaths.moveFile oldName
   provideFieldValueWithProperties
-    [Tuple "value" $ Just oldName]
+    (Map.singleton "value" $ Just oldName)
     (XPath.anywhere "input")
     newName
   click $ XPath.anywhere XPaths.renameButton
@@ -88,7 +99,9 @@ moveFile fileName oldLocation newLocation = do
 
 uploadFile :: String -> SlamFeature Unit
 uploadFile =
-  provideFileInputValue (XPath.anywhere $ XPaths.uploadFile) <=< liftEff <<< appendToCwd
+  provideFileInputValue
+    (XPath.anywhere $ XPaths.uploadFile)
+    <=< liftEff <<< appendToCwd
 
 provideFileSearchString :: String -> SlamFeature Unit
 provideFileSearchString value =
@@ -103,6 +116,7 @@ selectFile name =
   where
   expectSelected = expectPresented' $ XPath.anywhere $ XPaths.deselectFile name
   xPath = XPath.anywhere $ XPaths.selectFile name
+
 
 createNotebookInTestFolder :: String -> SlamFeature Unit
 createNotebookInTestFolder name =
@@ -140,6 +154,10 @@ insertSearchCardAsFirstCardInNewStack :: SlamFeature Unit
 insertSearchCardAsFirstCardInNewStack =
   expandNewCardMenu *> click (XPath.anywhere XPaths.insertSearchCard)
 
+insertApiCardAsFirstCardInNewStack :: SlamFeature Unit
+insertApiCardAsFirstCardInNewStack =
+  expandNewCardMenu *> click (XPath.anywhere XPaths.insertApiCard)
+
 insertSearchCardAsNextAction :: SlamFeature Unit
 insertSearchCardAsNextAction =
   click
@@ -164,6 +182,12 @@ insertExploreCardAsNextAction =
     $ XPath.last (XPath.anywhere XPaths.cardHeading)
     `XPath.following` XPaths.insertExploreCardAsNextAction
 
+insertVisualizeCardAsNextAction :: SlamFeature Unit
+insertVisualizeCardAsNextAction =
+  click
+    $ XPath.last (XPath.anywhere XPaths.cardHeading)
+    `XPath.following` XPaths.insertVisualizeCardAsNextAction
+
 playLastCard :: SlamFeature Unit
 playLastCard =
   click $ XPath.last $ XPath.anywhere XPaths.playButton
@@ -178,19 +202,19 @@ provideSearchStringInLastSearchCard =
 
 provideMdInLastMdCard :: String -> SlamFeature Unit
 provideMdInLastMdCard =
-  provideFieldValue
+  provideAceValue
     $ XPath.last $ XPath.anywhere XPaths.mdCardTitle
     `XPath.following` XPaths.aceEditor
 
 provideQueryInLastQueryCard :: String -> SlamFeature Unit
 provideQueryInLastQueryCard =
-  provideFieldValue
+  provideAceValue
     $ (XPath.last $ XPath.anywhere $ XPaths.queryCardTitle)
     `XPath.following` XPaths.aceEditor
 
 provideFieldValueInLastMdCard :: String -> String -> SlamFeature Unit
 provideFieldValueInLastMdCard labelText =
-  provideFieldValue
+  provideAceValue
     $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
     `XPath.following` "input" `XPath.withLabelWithExactText` labelText
 
@@ -249,3 +273,82 @@ showHiddenFiles =
 hideHiddenFiles :: SlamFeature Unit
 hideHiddenFiles =
   click $ XPath.anywhere $ XPaths.hideHiddenFiles
+
+type ApiVarName = String
+type ApiVarType = String
+type ApiVarValue = String
+
+provideApiVariableBindingsForApiCard
+  :: ApiVarName
+  -> ApiVarType
+  -> ApiVarValue
+  -> SlamFeature Unit
+provideApiVariableBindingsForApiCard name ty val =
+  provideValueForApiCard name
+  *> provideTypeForApiCard name ty
+  *> provideDefaultValueForApiCard name val
+  where
+  provideValueForApiCard :: String -> SlamFeature Unit
+  provideValueForApiCard name = do
+    provideFieldValue
+      (XPath.first $ XPath.anywhere $ XPaths.apiCardVariableName)
+      name
+    pressEnter
+  provideTypeForApiCard :: String -> String -> SlamFeature Unit
+  provideTypeForApiCard name ty = do
+    tryRepeatedlyTo
+      $ selectFromDropdown
+        (XPath.first $ XPath.anywhere $ XPaths.apiCardVariableTypeFor name)
+        ty
+    pressEnter
+
+  provideDefaultValueForApiCard :: String -> String -> SlamFeature Unit
+  provideDefaultValueForApiCard name val = do
+    provideFieldValue
+      (XPath.first $ XPath.anywhere $ XPaths.apiCardDefaultValueFor name)
+      val
+    pressEnter
+
+provideCategoryForLastVisualizeCard
+  :: String
+  -> SlamFeature Unit
+provideCategoryForLastVisualizeCard str =
+  tryRepeatedlyTo
+    $ selectFromDropdown
+      (XPath.last $ XPath.anywhere $ XPaths.chartCategorySelector)
+      str
+
+provideSeriesForLastVizualizeCard
+  :: String
+  -> SlamFeature Unit
+provideSeriesForLastVizualizeCard str =
+  tryRepeatedlyTo
+    $ selectFromDropdown
+      (XPath.last $ XPath.anywhere $ XPaths.chartSeriesOneSelector)
+      str
+
+expectMeasureDisabledForLastVisualizeCard
+  :: SlamFeature Unit
+expectMeasureDisabledForLastVisualizeCard =
+  expectPresentedWithProperties
+    (Map.singleton "disabled" (Just "true")) -- 0_o
+    (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
+
+expectMeasureEqualsForLastVisualizeCard
+  :: String
+  -> SlamFeature Unit
+expectMeasureEqualsForLastVisualizeCard v =
+  Debug.Trace.traceAnyA "implement me, I'm expectMeasureEqualsForLastVisualizeCard"
+
+expectLastChartElementBeEqualWithScreenshot
+  :: String
+  -> SlamFeature Unit
+expectLastChartElementBeEqualWithScreenshot expectedPath =
+  expectMatchScreenshot
+    (XPath.last $ XPath.anywhere $ XPaths.chartContainer)
+    "test/image/actual.png"
+    expectedPath
+
+
+switchToBarChart :: SlamFeature Unit
+switchToBarChart = click $ XPath.anywhere $ XPaths.chartSwitchToBar

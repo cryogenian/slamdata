@@ -19,6 +19,7 @@ module Test.SlamData.Feature.Notebook.Search where
 import Prelude
 import Control.Apply ((*>))
 import Test.Feature.Log (successMsg)
+import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature())
 import Test.SlamData.Feature.Notebook.Interactions as Interact

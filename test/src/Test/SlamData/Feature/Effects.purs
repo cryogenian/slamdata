@@ -23,8 +23,6 @@ type SlamFeatureEffects e =
   , avar :: AVAR
   , process :: PROCESS
   , db :: DB
-  , imageDiff :: IMAGE_MAGICK
-  , easyImage :: EASY_IMAGE
   , buffer :: BUFFER
   , random :: RANDOM
   , env :: ENV

@@ -32,7 +32,6 @@ module Test.SlamData.Feature.Common
   , waitTime
   , saveInitialScreenshot
   , saveActualScreenshot
-  , screenshotsEqual
   , elementScreenshot
   , actualElementScreenshot
   , initialElementScreenshot
@@ -185,21 +184,6 @@ saveActualScreenshot :: SlamFeature Unit
 saveActualScreenshot =
   getConfig >>= _.screenshot >>> _.actual >>> saveScreenshot
 
-screenshotsEqual :: String -> SlamFeature Boolean
-screenshotsEqual expected = do
-  config <- getConfig
-  if config.collectingScreenshots
-    then do
-    lift $ readFile config.tmpFileForScreenshots >>= writeFile expected
-    pure true
-    else
-    diff { expected: expected
-         , actual: config.screenshot.actual
-         , diff: Nothing
-         , shadow: false
-         }
-
-
 elementScreenshot :: Element -> String -> SlamFeature Unit
 elementScreenshot el fileName = do
   size <- getSize el
@@ -236,4 +220,3 @@ attrFail loc attr =
     ++ " attribute for element located by "
     ++ showLocator loc
     ++ "."
-

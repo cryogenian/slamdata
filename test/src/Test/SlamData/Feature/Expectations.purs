@@ -5,6 +5,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans (lift)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust)
 import Data.Tuple (Tuple(..))
 import Data.Array (elemIndex)
@@ -17,31 +18,38 @@ import Test.SlamData.Feature.Common (await)
 import Test.SlamData.Feature.XPaths as XPaths
 import Test.Utils (appendToCwd)
 
-cellsInTableColumnInLastCardToEq :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToEq
+  :: Int -> String -> String -> SlamFeature Unit
 cellsInTableColumnInLastCardToEq =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextEq
 
-cellsInTableColumnInLastCardToContain :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToContain
+  :: Int -> String -> String -> SlamFeature Unit
 cellsInTableColumnInLastCardToContain =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextContaining
 
-cellsInTableColumnInLastCardToNotEq :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToNotEq
+  :: Int -> String -> String -> SlamFeature Unit
 cellsInTableColumnInLastCardToNotEq =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextNotEq
 
-cellsInTableColumnInLastCardToBeGT :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToBeGT
+  :: Int -> String -> String -> SlamFeature Unit
 cellsInTableColumnInLastCardToBeGT =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextGT
 
-cellsInTableColumnInLastCardToBeLT :: Int -> String -> String -> SlamFeature Unit
+cellsInTableColumnInLastCardToBeLT
+  :: Int -> String -> String -> SlamFeature Unit
 cellsInTableColumnInLastCardToBeLT =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextLT
 
-cellsInTableColumnInLastCardToEqOneOf :: Int -> String -> Array String -> SlamFeature Unit
+cellsInTableColumnInLastCardToEqOneOf
+  :: Int -> String -> Array String -> SlamFeature Unit
 cellsInTableColumnInLastCardToEqOneOf =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextEqOneOf
 
-cellsInTableColumnInLastCardToNotEqOneOf :: Int -> String -> Array String -> SlamFeature Unit
+cellsInTableColumnInLastCardToNotEqOneOf
+  :: Int -> String -> Array String -> SlamFeature Unit
 cellsInTableColumnInLastCardToNotEqOneOf =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextNotEqOneOf
 
@@ -69,27 +77,27 @@ labelInLastMdCard label =
 
 fieldInLastMdCard :: String -> String -> String -> SlamFeature Unit
 fieldInLastMdCard labelText inputType value =
-  expectPresentedWithProperties [valueProperty]
+  expectPresentedWithProperties valueProperty
     $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
     `XPath.following` inputXPath
   where
-  valueProperty = Tuple "value" $ Just value
+  valueProperty = Map.singleton "value" $ Just value
   inputXPath = XPaths.inputWithLabelAndType labelText inputType
 
 checkableFieldInLastMdCard :: String -> String -> Boolean -> SlamFeature Unit
 checkableFieldInLastMdCard labelText inputType checked =
-  expectPresentedWithProperties [checkedProperty]
+  expectPresentedWithProperties checkedProperty
     $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
     `XPath.following` inputXPath
   where
   propertyValue = if checked then Just "true" else Nothing
-  checkedProperty = Tuple "checked" propertyValue
+  checkedProperty = Map.singleton "checked" propertyValue
   inputXPath = XPaths.inputWithLabelAndType labelText inputType
 
 dropdownInLastMdCard :: String -> Array String -> SlamFeature Unit
 dropdownInLastMdCard value values =
   expectPresentedWithProperties
-    [ Tuple "value" $ Just value ]
+    (Map.singleton "value" $ Just value)
     $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
     `XPath.following` XPath.selectWithOptionsWithExactTexts values
 
@@ -102,7 +110,7 @@ lastCardToBeFinished =
 exploreFileInLastCard :: String -> SlamFeature Unit
 exploreFileInLastCard fileName =
   expectPresentedWithProperties
-    [Tuple "value" $ Just fileName]
+    (Map.singleton "value" $ Just fileName)
     ((XPath.last $ XPath.anywhere $ XPaths.cardHeading) `XPath.following` XPaths.exploreInput)
 
 file :: String -> SlamFeature Unit
@@ -121,7 +129,7 @@ numberOfFiles i = do
 notebookName :: String -> SlamFeature Unit
 notebookName name =
   expectPresentedWithProperties
-    [Tuple "value" $ Just name]
+    (Map.singleton "value" $ Just name)
     (XPath.anywhere "input")
 
 text :: String -> SlamFeature Unit

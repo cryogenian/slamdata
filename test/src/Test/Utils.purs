@@ -12,6 +12,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Either (Either(..), either)
 import Node.Process (PROCESS(), cwd)
 
+
 ifFalse :: forall m. (Applicative m) => m Unit -> Boolean -> m Unit
 ifFalse f boolean =
   if boolean then pure unit else f
@@ -52,6 +53,7 @@ throwIfEmpty _ _ = pure unit
 throwIfNotEmpty :: forall a m eff. (Foldable m) => String -> m a -> Eff (err :: EXCEPTION | eff) Unit
 throwIfNotEmpty _ xs | isEmpty xs = pure unit
 throwIfNotEmpty message _ = throw message
+
 
 appendToCwd :: forall eff. String -> Eff (process :: PROCESS | eff) String
 appendToCwd s = (flip append s <<< flip append "/") <$> cwd

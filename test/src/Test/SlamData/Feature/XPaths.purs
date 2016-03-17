@@ -124,6 +124,10 @@ insertSearchCard :: String
 insertSearchCard =
   XPath.anyWithExactAriaLabel "Insert Search cell"
 
+insertApiCard :: String
+insertApiCard =
+  XPath.anyWithExactAriaLabel "Insert API cell"
+
 hideCardOptions :: String
 hideCardOptions =
   XPath.anyWithExactAriaLabel "Hide cell options"
@@ -247,3 +251,34 @@ showHiddenFiles = "*" `XPath.nodeWithExactAriaLabel` "Show hidden files"
 
 hideHiddenFiles :: String
 hideHiddenFiles = "*" `XPath.nodeWithExactAriaLabel` "Hide hidden files"
+
+apiCardVariableName :: String
+apiCardVariableName =
+  XPath.anyWithExactAriaLabel "API variable name"
+
+
+apiCardVariableTypeFor :: String -> String
+apiCardVariableTypeFor name =
+  XPath.anyWithExactAriaLabel
+    $ "Type of \"" <> name <> "\" API variable"
+
+
+apiCardDefaultValueFor :: String -> String
+apiCardDefaultValueFor name =
+  XPath.anyWithExactAriaLabel
+    $ "Default value for \"" <> name <> "\" API variable"
+
+chartCategorySelector :: String
+chartCategorySelector = XPath.anyWithExactAriaLabel "Category"
+
+chartSeriesOneSelector :: String
+chartSeriesOneSelector = XPath.anyWithExactAriaLabel "Second Series"
+
+chartMeasureOneSelector :: String
+chartMeasureOneSelector = XPath.anyWithExactAriaLabel "First Measure"
+
+chartSwitchToBar :: String
+chartSwitchToBar = XPath.anyWithExactSrc "img/bar.svg"
+
+chartContainer :: String
+chartContainer = "div[@_echarts_instance_]"
