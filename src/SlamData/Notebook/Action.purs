@@ -22,10 +22,7 @@ module SlamData.Notebook.Action
   , module SlamData.Notebook.AccessType
   ) where
 
-import Prelude
-
-import Data.Either (Either(..))
-import Data.Generic (Generic, gEq, gCompare)
+import SlamData.Prelude
 
 import SlamData.Notebook.AccessType (AccessType(..))
 

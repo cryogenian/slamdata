@@ -20,15 +20,17 @@ module Utils.SessionStorage
   ) where
 
 import Prelude
-import Control.Bind ((>=>))
-import Control.Monad.Eff (Eff())
 
-import Data.Argonaut
-import Data.Functor.Eff (liftEff, FunctorEff)
+import Control.Bind ((>=>))
+import Control.Monad.Aff.Free (class Affable, fromEff)
+import Control.Monad.Eff (Eff)
+
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson, printJson)
 import Data.Either (Either(..))
+import Data.Function (Fn3, Fn2, runFn3, runFn2)
 import Data.Maybe (Maybe(..), maybe)
-import Data.Function
-import DOM (DOM())
+
+import DOM (DOM)
 
 foreign import
   setSessionStorageImpl
@@ -49,20 +51,20 @@ foreign import
 
 setSessionStorage
   :: forall a e g
-   . (EncodeJson a, FunctorEff (dom :: DOM | e) g)
+   . (EncodeJson a, Affable (dom :: DOM | e) g)
   => String
   -> a
   -> g Unit
 setSessionStorage key =
-  liftEff <<< runFn2 setSessionStorageImpl key <<< printJson <<< encodeJson
+  fromEff <<< runFn2 setSessionStorageImpl key <<< printJson <<< encodeJson
 
 getSessionStorage
   :: forall a e g
-   . (DecodeJson a, FunctorEff (dom :: DOM | e) g)
+   . (DecodeJson a, Affable (dom :: DOM | e) g)
   => String
   -> g (Either String a)
 getSessionStorage key =
-  liftEff $
+  fromEff $
     runFn3 getSessionStorageImpl Nothing Just key <#>
       maybe
         (Left $ "There is no value for key " <> key)

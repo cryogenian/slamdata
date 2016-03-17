@@ -16,24 +16,18 @@ limitations under the License.
 
 module SlamData.Notebook (main) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad (when)
-import Control.Monad.Aff (Aff(), runAff, forkAff)
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Exception (throwException)
-
-import Data.Either (Either(..))
-import Data.Functor.Eff (liftEff)
-import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..))
+import Control.Monad.Aff (Aff, forkAff)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (liftEff)
 
 import Ace.Config as AceConfig
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
-import Halogen (Driver(), runUI, installedState)
-import Halogen.Util (appendToBody, onLoad)
+import Halogen (Driver, runUI, parentState)
+import Halogen.Util (runHalogenAff, awaitBody)
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
@@ -42,11 +36,10 @@ import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.Port as Port
 import SlamData.Notebook.Component as Draftboard
 import SlamData.Notebook.Editor.Component as Notebook
-import SlamData.Effects (SlamDataRawEffects(), SlamDataEffects())
+import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Notebook.Rename.Component as Rename
 import SlamData.Notebook.Routing (Routes(..), routing)
 import SlamData.Notebook.StyleLoader as StyleLoader
-
 
 import Utils.Path as UP
 
@@ -56,15 +49,11 @@ main = do
   AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ++ "js/ace")
   browserFeatures <- detectBrowserFeatures
-  runAff throwException (const (pure unit)) $ do
-    app <- runUI Draftboard.comp
-      $ installedState
-      $ Draftboard.initialState { browserFeatures: browserFeatures }
-    onLoad do
-      appendToBody app.node
-      StyleLoader.loadStyles
-
-    forkAff (routeSignal app.driver)
+  runHalogenAff do
+    let st = parentState $ Draftboard.initialState { browserFeatures: browserFeatures }
+    driver <- runUI Draftboard.comp st =<< awaitBody
+    forkAff (routeSignal driver)
+  StyleLoader.loadStyles
 
 routeSignal
   :: Driver Draftboard.QueryP SlamDataRawEffects

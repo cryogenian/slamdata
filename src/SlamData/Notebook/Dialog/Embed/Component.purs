@@ -16,71 +16,69 @@ limitations under the License.
 
 module SlamData.Notebook.Dialog.Embed.Component where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad.Aff (Aff())
 import Control.UI.Browser (select, encodeURIComponent)
 import Control.UI.ZClipboard as Z
 
 import Data.Foldable as F
-import Data.Functor.Eff (liftEff)
-import Data.Functor.Aff (liftAff)
 import Data.String.Regex as Rx
 import Data.StrMap as SM
 
 import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
 
-import Halogen
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.CustomProps as CP
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Renderer.String (renderHTML)
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import SlamData.Effects (Slam())
 import SlamData.Notebook.Cell.Port.VarMap as Port
 import SlamData.Render.CSS as Rc
 
-import Utils.DOM (waitLoaded)
-
-type Slam e = Aff (HalogenEffects (zClipboard :: Z.ZCLIPBOARD |e))
-data State = State String Port.VarMap
+type State =
+  { url :: String
+  , varMap :: Port.VarMap
+  }
 
 data Query a
   = SelectElement HTMLElement a
-  | InitZClipboard String HTMLElement a
+  | InitZClipboard String (Maybe HTMLElement) a
   | Dismiss a
 
-comp :: forall e. Component State Query (Slam e)
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
-render (State url varMap) =
+render :: State -> H.ComponentHTML Query
+render { url, varMap } =
   modalDialog
     [ modalHeader "Embed cell"
     , modalBody $
-        H.form
-          [ Cp.nonSubmit ]
-          [ H.div
-              [ P.classes [ B.formGroup ]
-              , E.onClick (\ev -> pure $ SelectElement ev.target unit)
+        HH.form
+          [ CP.nonSubmit ]
+          [ HH.div
+              [ HP.classes [ B.formGroup ]
+              , HE.onClick (\ev -> pure $ SelectElement ev.target unit)
               ]
-              [ H.textarea
-                  [ P.classes [ B.formControl, Rc.embedBox ]
-                  , P.readonly true
-                  , P.value code
+              [ HH.textarea
+                  [ HP.classes [ B.formControl, Rc.embedBox ]
+                  , HP.readonly true
+                  , HP.value code
                   ]
               ]
           ]
     , modalFooter
-        [ H.button
-            [ P.id_ "copy-button"
-            , P.classes [ B.btn, B.btnPrimary ]
-            , E.onClick (E.input_ Dismiss)
-            , P.initializer \el -> action $ InitZClipboard code el
+        [ HH.button
+            [ HP.id_ "copy-button"
+            , HP.classes [ B.btn, B.btnPrimary ]
+            , HE.onClick (HE.input_ Dismiss)
+            , HP.ref (H.action <<< InitZClipboard code)
             ]
-            [ H.text "Copy"
+            [ HH.text "Copy"
             ]
         ]
     ]
@@ -88,14 +86,12 @@ render (State url varMap) =
   code :: String
   code =
     renderHTML $
-      H.script
-        [ P.mediaType { type: "text", subtype: "javascript", parameters: [] }
-        ]
-        [ H.text javascriptCode
-        ]
+      HH.script
+        [ HP.mediaType { type: "text", subtype: "javascript", parameters: [] } ]
+        [ HH.text javascriptCode ]
 
   statements :: Array String -> String
-  statements = F.foldl (\m x -> m <> x <> ";\n") ""
+  statements = foldl (\m x -> m <> x <> ";\n") ""
 
   wrapJS :: Array String -> String
   wrapJS xs = "\n" <> statements [ applyJS (absJS [] xs) [] ]
@@ -162,20 +158,17 @@ render (State url varMap) =
         <> "\\\" width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\">"
         <> "</iframe>"
 
-
   decls :: Port.VarMap -> Array String
   decls =
     SM.foldMap \k v ->
       [ declVar k $ quotes $ encodeURIComponent $ Port.renderVarMapValue v
       ]
 
-eval :: forall e. Eval Query State Query (Slam e)
+eval :: Natural Query (H.ComponentDSL State Query Slam)
 eval (Dismiss next) = pure next
-eval (InitZClipboard code htmlEl next) = do
+eval (InitZClipboard code (Just htmlEl) next) = do
   let el = htmlElementToElement htmlEl
-  liftAff $ waitLoaded
-  liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" code)
+  H.fromEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" code)
   pure next
-eval (SelectElement el next) = do
-  liftEff $ select el
-  pure next
+eval (InitZClipboard _ _ next) = pure next
+eval (SelectElement el next) = H.fromEff (select el) $> next

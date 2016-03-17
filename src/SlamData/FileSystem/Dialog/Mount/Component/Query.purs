@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Component.Query where
 
-import Data.Maybe (Maybe())
+import SlamData.Prelude
 
 import SlamData.FileSystem.Dialog.Mount.Component.State (State())
 import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme())

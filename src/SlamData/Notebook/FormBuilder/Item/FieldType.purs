@@ -21,15 +21,11 @@ module SlamData.Notebook.FormBuilder.Item.FieldType
   , fieldTypeToInputType
   ) where
 
-import Prelude
-
-import Control.Bind ((>=>))
+import SlamData.Prelude
 
 import Data.Argonaut as J
 import Data.Argonaut.Decode as JD
 import Data.Argonaut.Encode as JE
-import Data.Either as E
-import Data.Generic as G
 import Data.Lens as Lens
 
 import Halogen.HTML.Properties.Indexed as HP
@@ -48,8 +44,8 @@ data FieldType
   | ObjectFieldType
   | QueryFieldType
 
-derive instance genericFieldType :: G.Generic FieldType
-instance eqFieldType :: Eq FieldType where eq = G.gEq
+derive instance genericFieldType :: Generic FieldType
+instance eqFieldType :: Eq FieldType where eq = gEq
 
 allFieldTypes :: Array FieldType
 allFieldTypes =
@@ -83,19 +79,19 @@ _FieldTypeDisplayName = Lens.prism inj proj
     inj ObjectFieldType = "Object"
     inj QueryFieldType = "SQL² Query"
 
-    proj "Text" = E.Right StringFieldType
-    proj "DateTime" = E.Right DateTimeFieldType
-    proj "Date" = E.Right DateFieldType
-    proj "Time" = E.Right TimeFieldType
-    proj "Interval" = E.Right IntervalFieldType
-    proj "Boolean" = E.Right BooleanFieldType
-    proj "Numeric" = E.Right NumericFieldType
-    proj "Object ID" = E.Right ObjectIdFieldType
-    proj "Ordered Set" = E.Right OrderedSetFieldType
-    proj "Array" = E.Right ArrayFieldType
-    proj "Object" = E.Right ObjectFieldType
-    proj "SQL² Query" = E.Right QueryFieldType
-    proj t = E.Left t
+    proj "Text" = Right StringFieldType
+    proj "DateTime" = Right DateTimeFieldType
+    proj "Date" = Right DateFieldType
+    proj "Time" = Right TimeFieldType
+    proj "Interval" = Right IntervalFieldType
+    proj "Boolean" = Right BooleanFieldType
+    proj "Numeric" = Right NumericFieldType
+    proj "Object ID" = Right ObjectIdFieldType
+    proj "Ordered Set" = Right OrderedSetFieldType
+    proj "Array" = Right ArrayFieldType
+    proj "Object" = Right ObjectFieldType
+    proj "SQL² Query" = Right QueryFieldType
+    proj t = Left t
 
 fieldTypeToInputType
   :: FieldType
@@ -136,17 +132,17 @@ instance decodeJsonFieldType :: JD.DecodeJson FieldType where
   decodeJson =
     J.decodeJson >=> proj
     where
-      proj "string" = E.Right StringFieldType
-      proj "date" = E.Right DateFieldType
-      proj "time" = E.Right TimeFieldType
-      proj "interval" = E.Right IntervalFieldType
-      proj "datetime" = E.Right DateTimeFieldType
-      proj "boolean" = E.Right BooleanFieldType
-      proj "numeric" = E.Right NumericFieldType
-      proj "objectId" = E.Right ObjectIdFieldType
-      proj "orderedSet" = E.Right OrderedSetFieldType
-      proj "array" = E.Right ArrayFieldType
-      proj "object" = E.Right ObjectFieldType
-      proj "query" = E.Right QueryFieldType
-      proj _ = E.Left "invalid FieldType"
+      proj "string" = Right StringFieldType
+      proj "date" = Right DateFieldType
+      proj "time" = Right TimeFieldType
+      proj "interval" = Right IntervalFieldType
+      proj "datetime" = Right DateTimeFieldType
+      proj "boolean" = Right BooleanFieldType
+      proj "numeric" = Right NumericFieldType
+      proj "objectId" = Right ObjectIdFieldType
+      proj "orderedSet" = Right OrderedSetFieldType
+      proj "array" = Right ArrayFieldType
+      proj "object" = Right ObjectFieldType
+      proj "query" = Right QueryFieldType
+      proj _ = Left "invalid FieldType"
 

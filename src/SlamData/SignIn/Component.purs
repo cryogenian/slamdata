@@ -16,34 +16,25 @@ limitations under the License.
 
 module SlamData.SignIn.Component
   ( comp
-  , MenuSlot()
-  , QueryP()
-  , StateP()
-  , ChildQuery()
+  , MenuSlot
+  , QueryP
+  , StateP
+  , ChildQuery
   , Query(..)
-  , ChildSlot()
-  , ChildState()
+  , ChildSlot
+  , ChildState
   , module SlamData.SignIn.Component.State
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.UI.Browser (reload)
 import Control.Monad.Aff (attempt)
-import Control.MonadPlus (guard)
 
-import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct(), coproduct, left)
-import Data.Functor.Eff (liftEff)
-import Data.Functor.Aff (liftAff)
-import Data.Either as E
-import Data.Generic (Generic, gEq, gCompare)
-import Data.Maybe as M
-
-import Halogen
+import Halogen as H
 import Halogen.HTML.Core (className)
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Menu.Component as HalogenMenu
 import Halogen.Menu.Component.State as HalogenMenu
 import Halogen.Menu.Submenu.Component as HalogenMenu
@@ -62,7 +53,7 @@ data Query a
   = DismissSubmenu a
   | Init a
 
-type QueryP = Coproduct Query (ChildF MenuSlot ChildQuery)
+type QueryP = Coproduct Query (H.ChildF MenuSlot ChildQuery)
 
 data MenuSlot = MenuSlot
 
@@ -76,31 +67,35 @@ type ChildQuery = Menu.QueryP
 
 type ChildState g = Menu.StateP g
 
-type StateP = InstalledState State (ChildState Slam) Query ChildQuery Slam ChildSlot
-type SignInHTML = ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
-type SignInDSL = ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
+type StateP = H.ParentState State (ChildState Slam) Query ChildQuery Slam ChildSlot
+type SignInHTML = H.ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
+type SignInDSL = H.ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
 
-comp :: Component StateP QueryP Slam
-comp = parentComponent' render eval peek
+comp :: H.Component StateP QueryP Slam
+comp =
+  H.lifecycleParentComponent
+    { render
+    , eval
+    , peek: Just (menuPeek <<< H.runChildF)
+    , initializer: Just (H.action Init)
+    , finalizer: Nothing
+    }
 
 render :: State -> SignInHTML
 render state =
-  H.div
-    [
-      P.classes $ [ className "sd-sign-in" ]
-    , P.initializer (\_ -> action Init)
-    ]
+  HH.div
+    [ HP.classes $ [ className "sd-sign-in" ] ]
     $ guard (not state.hidden)
-    $> H.slot MenuSlot \_ ->
+    $> HH.slot MenuSlot \_ ->
         { component: HalogenMenu.menuComponent
-        , initialState: installedState $ Menu.make []
+        , initialState: H.parentState $ Menu.make []
         }
 
 eval :: Natural Query SignInDSL
 eval (DismissSubmenu next) = dismissAll $> next
 eval (Init next) = do
-  mbIdToken <- liftEff Auth.retrieveIdToken
-  M.maybe
+  mbIdToken <- H.fromEff Auth.retrieveIdToken
+  maybe
     retrieveProvidersAndUpdateMenu
     putEmailToMenu
     mbIdToken
@@ -108,37 +103,37 @@ eval (Init next) = do
   where
   putEmailToMenu :: Crypt.IdToken -> SignInDSL Unit
   putEmailToMenu token = do
-    query MenuSlot
+    H.query MenuSlot
       $ left
-      $ action
+      $ H.action
       $ HalogenMenu.SetMenu
       $ HalogenMenu.makeMenu
         [ { label:
-              M.fromMaybe "unknown user"
+              fromMaybe "unknown user"
               $ map Crypt.runEmail
               $ Crypt.pluckEmail token
           , submenu:
               [ { label: "🔒 Sign out"
-                , shortcutLabel: M.Nothing
-                , value: M.Nothing
+                , shortcutLabel: Nothing
+                , value: Nothing
                 }
               ]
           }
         ]
-    modify $ \x -> x{loggedIn = true}
+    H.modify (_{loggedIn = true})
 
   retrieveProvidersAndUpdateMenu :: SignInDSL Unit
   retrieveProvidersAndUpdateMenu = do
-    eProviders <- liftAff $ attempt $ Api.retrieveAuthProviders
+    eProviders <- H.fromAff $ attempt $ Api.retrieveAuthProviders
     case eProviders of
-      E.Left _ -> modify \x -> x{hidden = true}
-      E.Right M.Nothing -> modify \x -> x{hidden = true}
-      E.Right (M.Just []) -> modify \x -> x{hidden = true}
-      E.Right (M.Just providers) ->
+      Left _ -> H.modify (_{hidden = true})
+      Right Nothing -> H.modify (_{hidden = true})
+      Right (Just []) -> H.modify (_{hidden = true})
+      Right (Just providers) ->
         void
-        $ query MenuSlot
+        $ H.query MenuSlot
         $ left
-        $ action
+        $ H.action
         $ HalogenMenu.SetMenu
         $ HalogenMenu.makeMenu
           [ { label: "🔓 Sign in"
@@ -149,54 +144,48 @@ eval (Init next) = do
 dismissAll :: SignInDSL Unit
 dismissAll =
   queryMenu $
-    action HalogenMenu.DismissSubmenu
+    H.action HalogenMenu.DismissSubmenu
 
 makeAuthRequestWithProviderR
-  :: M.Maybe Provider.ProviderR -> SignInDSL Unit
-makeAuthRequestWithProviderR (M.Just pr) =
-  liftEff $ requestAuthentication pr
+  :: Maybe Provider.ProviderR -> SignInDSL Unit
+makeAuthRequestWithProviderR (Just pr) =
+  H.fromEff $ requestAuthentication pr
 makeAuthRequestWithProviderR _ =
   pure unit
 
-peek
-  :: forall a. ChildF ChildSlot ChildQuery a
-  -> SignInDSL Unit
-peek (ChildF p q) =
-  menuPeek q
-
 menuPeek
-  :: forall a. Menu.QueryP a
+  :: forall a
+   . Menu.QueryP a
   -> SignInDSL Unit
 menuPeek =
   coproduct
     (const (pure unit))
-    submenuPeek
+    (submenuPeek <<< H.runChildF)
 
 evaluateMenuValue
-  :: (M.Maybe Provider.ProviderR)
+  :: Maybe Provider.ProviderR
   -> SignInDSL Unit
 evaluateMenuValue _ =
   pure unit
 
 submenuPeek
   :: forall a
-   . ChildF HalogenMenu.SubmenuSlotAddress
-      (HalogenMenu.SubmenuQuery (M.Maybe Provider.ProviderR)) a
+   . HalogenMenu.SubmenuQuery (Maybe Provider.ProviderR) a
   -> SignInDSL Unit
-submenuPeek (ChildF _ (HalogenMenu.SelectSubmenuItem v _)) = do
-  {loggedIn} <- get
+submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
+  {loggedIn} <- H.get
   if loggedIn
     then logOut
     else makeAuthRequestWithProviderR v
   where
   logOut :: SignInDSL Unit
   logOut = do
-    liftEff do
+    H.fromEff do
       Auth.clearIdToken
       reload
 
 
 queryMenu
-  :: HalogenMenu.MenuQuery (M.Maybe Provider.ProviderR) Unit
+  :: HalogenMenu.MenuQuery (Maybe Provider.ProviderR) Unit
   -> SignInDSL Unit
-queryMenu q = void $ query MenuSlot (left q)
+queryMenu q = void $ H.query MenuSlot (left q)

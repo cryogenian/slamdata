@@ -17,40 +17,29 @@ limitations under the License.
 
 module SlamData.FileSystem (main) where
 
-import Prelude
+import SlamData.Prelude
 
 import Ace.Config as AceConfig
 
-import Control.Apply ((*>))
-import Control.Monad (when)
-import Control.Monad.Aff (Aff(), Canceler(), cancel, runAff, forkAff, attempt)
-import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar())
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Exception (error, message, Error(), throwException)
-import Control.MonadPlus (guard)
+import Control.Monad.Aff (Aff, Canceler, cancel, forkAff, attempt)
+import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (error, message, Error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (filter, mapMaybe)
-import Data.Either (Either(..), either)
-import Data.Foldable (foldl, traverse_)
-import Data.Functor (($>))
-import Data.Functor.Coproduct (left)
-import Data.Functor.Eff (liftEff)
 import Data.Lens ((%~), (<>~), _1, _2)
 import Data.Map as M
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Monoid (mempty)
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 import Data.These (These(..))
-import Data.Tuple (Tuple(..), uncurry)
 
-import DOM (DOM())
+import DOM (DOM)
 
-import Halogen.Component (installedState)
-import Halogen.Driver (Driver())
-import Halogen.Driver (runUI)
+import Halogen.Component (parentState)
+import Halogen.Driver (Driver, runUI)
 import Halogen.Query (action)
-import Halogen.Util (appendToBody, onLoad)
+import Halogen.Util (runHalogenAff, awaitBody)
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
@@ -58,37 +47,35 @@ import Quasar.Auth as Auth
 import Routing (matchesAff)
 
 import SlamData.Config as Config
-import SlamData.Config.Version as Version
-import SlamData.Effects
-import SlamData.FileSystem.Component
+import SlamData.Config.Version (slamDataVersion)
+import SlamData.Effects (SlamDataEffects, SlamDataRawEffects)
+import SlamData.FileSystem.Component (QueryP, Query(..), toListing, toDialog, toSearch, toFs, initialState, comp)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Listing.Item (Item(..))
 import SlamData.FileSystem.Listing.Sort (Sort(..))
-import SlamData.FileSystem.Resource (Resource(), getPath)
+import SlamData.FileSystem.Resource (Resource, getPath)
 import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
-import SlamData.FileSystem.Routing.Salt (Salt(), newSalt)
+import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
 
 import Text.SlamSearch.Printer (strQuery)
-import Text.SlamSearch.Types (SearchQuery())
+import Text.SlamSearch.Types (SearchQuery)
 
-import Utils.Path (DirPath(), hidePath, renderPath)
+import Utils.Path (DirPath, hidePath, renderPath)
 
 main :: Eff SlamDataEffects Unit
 main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
   AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ++ "js/ace")
-  runAff throwException (const (pure unit)) do
-    halogen <- runUI comp (installedState initialState)
-    onLoad (appendToBody halogen.node)
+  runHalogenAff do
+    driver <- runUI comp (parentState initialState) =<< awaitBody
     forkAff do
-      let version = Version.slamDataVersion
-      setSlamDataTitle version
-      halogen.driver (left $ action $ SetVersion version)
-    forkAff $ routeSignal halogen.driver
+      setSlamDataTitle slamDataVersion
+      driver (left $ action $ SetVersion slamDataVersion)
+    forkAff $ routeSignal driver
 
 setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
 setSlamDataTitle version =
@@ -141,7 +128,7 @@ redirects driver var mbOld (Salted sort query salt) = do
   isNewPage = fromMaybe true do
     old <- mbOld
     Tuple oldQuery oldSalt <- case old of
-      Salted _ oldQuery oldSalt -> pure $ Tuple oldQuery oldSalt
+      Salted _ oldQuery' oldSalt' -> pure $ Tuple oldQuery' oldSalt'
       _ -> Nothing
     pure $ oldQuery /= query || oldSalt == salt
 

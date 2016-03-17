@@ -16,23 +16,21 @@ limitations under the License.
 
 module SlamData.Notebook.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.BrowserFeatures (BrowserFeatures())
-import Data.Lens (LensP(), lens)
-import Data.Maybe (Maybe(..))
+import Data.BrowserFeatures (BrowserFeatures)
+import Data.Lens (LensP, lens)
 import Data.Shortcut as Shortcut
-import Data.StrMap (StrMap(), fromFoldable)
-import Data.Tuple (Tuple(..))
+import Data.StrMap (StrMap, fromFoldable)
 
-import DOM.Event.EventTarget (EventListener())
+import DOM.Event.EventTarget (EventListener)
 
 import SlamData.Notebook.AccessType (AccessType(..))
-import SlamData.Notebook.Cell.CellId (CellId())
+import SlamData.Notebook.Cell.CellId (CellId)
 import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..))
-import SlamData.Notebook.Editor.Component.Query as Notebook
-import SlamData.Effects (SlamDataEffects())
-import SlamData.Notebook.Menu.Component.Query (Value(), notebookQueryToValue)
+import SlamData.Notebook.Editor.Component.Query (Query(..))
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Notebook.Menu.Component.Query (Value, notebookQueryToValue)
 
 type NotebookShortcut =
   { shortcut :: Shortcut.Shortcut, value :: Value, label :: Maybe String }
@@ -54,37 +52,37 @@ notebookShortcuts =
     [ Tuple
         "NotebookPublish"
         { shortcut: Shortcut.modP
-        , value: notebookQueryToValue $ (Notebook.Publish) unit
+        , value: notebookQueryToValue $ Publish unit
         , label: Nothing
         }
     , Tuple
         "InsertQuery"
         { shortcut: Shortcut.altModOne
-        , value: notebookQueryToValue $ (Notebook.AddCell (Ace SQLMode)) unit
+        , value: notebookQueryToValue $ AddCell (Ace SQLMode) unit
         , label: Nothing
         }
     , Tuple
         "InsertMarkdown"
         { shortcut: Shortcut.altModTwo
-        , value: notebookQueryToValue $ (Notebook.AddCell (Ace MarkdownMode)) unit
+        , value: notebookQueryToValue $ AddCell (Ace MarkdownMode) unit
         , label: Nothing
         }
     , Tuple
         "InsertExplore"
         { shortcut: Shortcut.altModThree
-        , value: notebookQueryToValue $ (Notebook.AddCell Explore) unit
+        , value: notebookQueryToValue $ AddCell Explore unit
         , label: Nothing
         }
     , Tuple
         "InsertSearch"
         { shortcut: Shortcut.altModFour
-        , value: notebookQueryToValue $ (Notebook.AddCell Search) unit
+        , value: notebookQueryToValue $ AddCell Search unit
         , label: Nothing
         }
     , Tuple
         "InsertAPI"
         { shortcut: Shortcut.altModFive
-        , value: notebookQueryToValue $ (Notebook.AddCell API) unit
+        , value: notebookQueryToValue $ AddCell API unit
         , label: Nothing
         }
     ]

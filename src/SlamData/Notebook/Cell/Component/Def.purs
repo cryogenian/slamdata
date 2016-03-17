@@ -22,11 +22,9 @@ module SlamData.Notebook.Cell.Component.Def
   , makeQueryPrism'
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Functor.Coproduct (Coproduct(), coproduct, left, right)
 import Data.Lens (APrismP(), PrismP(), prism', review, preview)
-import Data.Maybe (Maybe(..))
 
 import Halogen (Component())
 import Halogen.HTML.Indexed as H

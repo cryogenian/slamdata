@@ -16,8 +16,6 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.ChartOptions (buildOptions) where
 
-import Prelude
-
 import Data.Argonaut (JArray(), JCursor())
 import Data.Map as M
 

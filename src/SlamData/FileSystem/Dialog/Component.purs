@@ -16,21 +16,17 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Component where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Array (singleton)
 import Data.Either.Nested (Either6())
-import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct(), coproduct)
 import Data.Functor.Coproduct.Nested (Coproduct6(), coproduct6)
-import Data.Maybe (Maybe(..), isNothing, maybe)
 
-import Halogen.Component
+import Halogen as H
 import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
-import Halogen.Query (set)
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Error.Component as Error
@@ -139,55 +135,55 @@ cpPerms
        PermsSlot ChildSlot
 cpPerms = cpR
 
-type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
-type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
-type DialogDSL = ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
+type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
+type DialogDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp :: Component StateP QueryP Slam
-comp = parentComponent' render eval (peek <<< runChildF)
+comp :: H.Component StateP QueryP Slam
+comp = H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
 
-render :: RenderParent State ChildState Query ChildQuery Slam ChildSlot
+render :: State -> H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 render state =
-  H.div
-    [ P.classes ([B.modal] <> fadeWhen (isNothing state))
-    , E.onMouseDown (E.input_ Dismiss)
+  HH.div
+    [ HP.classes ([B.modal] <> fadeWhen (isNothing state))
+    , HE.onMouseDown (HE.input_ Dismiss)
     ]
     $ maybe [] (singleton <<< dialog) state
   where
   dialog (Error str) =
-    H.slot' cpError unit \_ ->
+    HH.slot' cpError unit \_ ->
       { component: Error.comp
       , initialState: Error.State str
       }
   dialog (Share str) =
-    H.slot' cpShare unit \_ ->
+    HH.slot' cpShare unit \_ ->
       { component: Share.comp
       , initialState: Share.State str
       }
   dialog (Rename res) =
-    H.slot' cpRename unit \_ ->
+    HH.slot' cpRename unit \_ ->
       { component: Rename.comp
       , initialState: Rename.initialState res
       }
   dialog (Download res) =
-    H.slot' cpDownload unit \_ ->
+    HH.slot' cpDownload unit \_ ->
       { component: Download.comp
       , initialState: Download.initialState res
       }
   dialog (Mount parent name settings) =
-    H.slot' cpMount unit \_ ->
+    HH.slot' cpMount unit \_ ->
       { component: Mount.comp
-      , initialState: installedState (Mount.initialState parent name settings)
+      , initialState: H.parentState (Mount.initialState parent name settings)
       }
   dialog (Permissions res) =
-    H.slot' cpPerms unit \_ ->
+    HH.slot' cpPerms unit \_ ->
       { component: Perms.comp
-      , initialState: installedState $ Perms.initialState res
+      , initialState: H.parentState $ Perms.initialState res
       }
 
-eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
-eval (Dismiss next) = set Nothing $> next
-eval (Show d next) = set (Just d) $> next
+eval :: Natural Query (H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot)
+eval (Dismiss next) = H.set Nothing $> next
+eval (Show d next) = H.set (Just d) $> next
 
 -- | Children can only close dialog. Other peeking in `FileSystem`
 peek :: forall a. ChildQuery a -> DialogDSL Unit
@@ -201,28 +197,28 @@ peek =
     permsPeek
 
 errorPeek :: forall a. Error.Query a -> DialogDSL Unit
-errorPeek (Error.Dismiss _) = set Nothing
+errorPeek (Error.Dismiss _) = H.set Nothing
 
 sharePeek :: forall a. Share.Query a -> DialogDSL Unit
-sharePeek (Share.Dismiss _) = set Nothing
+sharePeek (Share.Dismiss _) = H.set Nothing
 sharePeek _ = pure unit
 
 renamePeek :: forall a. Rename.Query a -> DialogDSL Unit
-renamePeek (Rename.Dismiss _) = set Nothing
+renamePeek (Rename.Dismiss _) = H.set Nothing
 renamePeek _ = pure unit
 
 mountPeek :: forall a. Mount.QueryP a -> DialogDSL Unit
 mountPeek = coproduct go (const (pure unit))
   where
-  go (Mount.Dismiss _) = set Nothing
+  go (Mount.Dismiss _) = H.set Nothing
   go _ = pure unit
 
 downloadPeek :: forall a. Download.Query a -> DialogDSL Unit
-downloadPeek (Download.Dismiss _) = set Nothing
+downloadPeek (Download.Dismiss _) = H.set Nothing
 downloadPeek _ = pure unit
 
 permsPeek :: forall a. Perms.QueryP a -> DialogDSL Unit
 permsPeek = coproduct go (const (pure unit))
   where
-  go (Perms.Dismiss _) = set Nothing
+  go (Perms.Dismiss _) = H.set Nothing
   go _ = pure unit

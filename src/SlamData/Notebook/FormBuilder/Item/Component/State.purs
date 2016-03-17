@@ -21,9 +21,7 @@ module SlamData.Notebook.FormBuilder.Item.Component.State
   , module SlamData.Notebook.FormBuilder.Item.Model
   ) where
 
-import Prelude
-
-import Data.Lens
+import Data.Lens (LensP(), lens)
 
 import SlamData.Notebook.FormBuilder.Item.Model
 

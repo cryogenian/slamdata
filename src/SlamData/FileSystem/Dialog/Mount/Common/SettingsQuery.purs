@@ -16,12 +16,9 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Eff.Exception (Error())
-
-import Data.Either (Either())
-import Data.Maybe (Maybe())
 
 import SlamData.FileSystem.Resource (Mount())
 

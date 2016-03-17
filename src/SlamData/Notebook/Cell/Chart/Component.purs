@@ -16,24 +16,20 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.Component where
 
-import Prelude
-
-import Control.Monad (when)
+import SlamData.Prelude
 
 import Data.Argonaut (jsonEmptyObject)
-import Data.Either (Either(..))
 import Data.Int (toNumber)
-import Data.Maybe (Maybe(..))
 
 import CSS.Display (position, relative)
-import CSS.Geometry (height, width, left, marginLeft)
+import CSS.Geometry as CG
 import CSS.Size (px, pct)
 
-import Halogen
+import Halogen as H
 import Halogen.ECharts as He
 import Halogen.HTML.CSS.Indexed as CSS
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Notebook.Cell.Chart.Component.State
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
@@ -42,48 +38,50 @@ import SlamData.Notebook.Cell.Port (Port(..))
 import SlamData.Effects (Slam())
 import SlamData.Render.CSS as Rc
 
-type ChartHTML = ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
-type ChartDSL = ParentDSL State He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
+type ChartHTML = H.ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
+type ChartDSL = H.ParentDSL State He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
 
-chartComponent :: Component Cc.CellStateP Cc.CellQueryP Slam
+chartComponent :: H.Component Cc.CellStateP Cc.CellQueryP Slam
 chartComponent = Cc.makeResultsCellComponent
-  { component: parentComponent render eval
-  , initialState: installedState initialState
+  { component: H.parentComponent { render, eval, peek: Nothing }
+  , initialState: H.parentState initialState
   , _State: Cc._ChartState
   , _Query: Cc.makeQueryPrism Cc._ChartQuery
   }
 
 render :: State -> ChartHTML
 render state =
-  H.div [ P.classes [ Rc.chartOutput ]
-        , CSS.style do
-             height $ px $ toNumber state.height
-             width $ px $ toNumber state.width
-             position relative
-             left $ pct 50.0
-             marginLeft $ px $ -0.5 * (toNumber state.width)
-        ]
-  [ H.slot unit \_ -> { component: He.echarts
-                      , initialState: He.initialEChartsState 600 400
-                      }
-  ]
+  HH.div
+    [ HP.classes [ Rc.chartOutput ]
+    , CSS.style do
+        CG.height $ px $ toNumber state.height
+        CG.width $ px $ toNumber state.width
+        position relative
+        CG.left $ pct 50.0
+        CG.marginLeft $ px $ -0.5 * (toNumber state.width)
+    ]
+    [ HH.slot unit \_ ->
+        { component: He.echarts
+        , initialState: He.initialEChartsState 600 400
+        }
+    ]
 
 eval :: Natural Ec.CellEvalQuery ChartDSL
 eval (Ec.NotifyRunCell next) = pure next
 eval (Ec.EvalCell value continue) =
   case value.inputPort of
     Just (ChartOptions options) -> do
-      state <- get
-      set { width: options.width, height: options.height }
+      state <- H.get
+      H.set { width: options.width, height: options.height }
       when (state.width /= options.width)
-        $ void $ query unit $ action $ He.SetWidth options.width
+        $ void $ H.query unit $ H.action $ He.SetWidth options.width
       when (state.height /= options.height)
-        $ void $ query unit $ action $ He.SetHeight options.height
-      query unit $ action $ He.Set options.options
-      query unit $ action He.Resize
+        $ void $ H.query unit $ H.action $ He.SetHeight options.height
+      H.query unit $ H.action $ He.Set options.options
+      H.query unit $ H.action He.Resize
       pure $ continue { output: Nothing, messages: [] }
     Just Blocked -> do
-      query unit $ action He.Clear
+      H.query unit $ H.action He.Clear
       pure $ continue { output: Nothing, messages: [] }
     _ ->
       pure $ continue

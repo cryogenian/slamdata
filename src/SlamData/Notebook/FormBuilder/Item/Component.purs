@@ -21,19 +21,14 @@ module SlamData.Notebook.FormBuilder.Item.Component
   , itemComponent
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind ((=<<))
-
-import Data.Either as E
-import Data.Foldable as F
 import Data.Lens ((^?), (.~), (?~))
 import Data.Lens as Lens
-import Data.Maybe as M
 
-import Halogen
+import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as H
+import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -51,31 +46,27 @@ data Query a
   | SetModel Model a
   | GetModel (Model -> a)
 
-type ItemHTML = ComponentHTML Query
-type ItemDSL g = ComponentDSL State Query g
+type ItemHTML = H.ComponentHTML Query
+type ItemDSL g = H.ComponentDSL State Query g
 
-itemComponent
-  :: forall g
-   . (Functor g)
-  => Component State Query g
-itemComponent =
-  component render eval
+itemComponent :: forall g. H.Component State Query g
+itemComponent = H.component { render, eval }
 
 render
   :: State
-  -> ComponentHTML Query
+  -> ItemHTML
 render { model } =
-  H.tr_ $
-    [ H.td_ [ nameField ]
-    , H.td_ [ typeField ]
-    , H.td_ [ defaultField ]
+  HH.tr_ $
+    [ HH.td_ [ nameField ]
+    , HH.td_ [ typeField ]
+    , HH.td_ [ defaultField ]
     ]
 
   where
-  nameField :: ComponentHTML Query
+  nameField :: ItemHTML
   nameField =
-    H.label_
-    [ H.input
+    HH.label_
+    [ HH.input
       [ HP.inputType HP.InputText
       , HP.title "Field Name"
       , ARIA.label "API variable name"
@@ -90,10 +81,10 @@ render { model } =
   quotedName "" = ""
   quotedName s = "\"" <> s <> "\""
 
-  typeField :: ComponentHTML Query
+  typeField :: ItemHTML
   typeField =
-    H.label_
-    [ H.select
+    HH.label_
+    [ HH.select
       [ HE.onValueChange (HE.input \str -> Update <<< UpdateFieldType str)
       , HP.classes [ B.formControl ]
       , ARIA.label $ "Type of " <> (quotedName model.name) <> " API variable"
@@ -103,21 +94,21 @@ render { model } =
 
   typeOption
     :: FieldType
-    -> ComponentHTML Query
+    -> ItemHTML
   typeOption ty =
-    H.option
+    HH.option
     [ HP.selected $ ty == model.fieldType ]
-    [ H.text $ Lens.review _FieldTypeDisplayName ty ]
+    [ HH.text $ Lens.review _FieldTypeDisplayName ty ]
 
-  defaultField :: ComponentHTML Query
+  defaultField :: ItemHTML
   defaultField =
     case model.fieldType of
       BooleanFieldType ->
-        H.label_
-        [ H.input
+        HH.label_
+        [ HH.input
             [ HP.inputType inputType
             , HP.checked
-                $ M.fromMaybe false
+                $ fromMaybe false
                 $ Lens.preview _StringBoolean
                 =<< model.defaultValue
             , HE.onChecked
@@ -128,15 +119,15 @@ render { model } =
                 <> (quotedName model.name)
                 <> " API variable is \"true\""
             ]
-        , H.text model.name
+        , HH.text model.name
         ]
       _ ->
-        H.label_
-          [ H.input
+        HH.label_
+          [ HH.input
              [ HP.inputType inputType
              , HP.classes [ B.formControl ]
              , HP.value
-                 $ M.fromMaybe "" model.defaultValue
+                 $ fromMaybe "" model.defaultValue
              , HE.onValueChange
                  $ HE.input \str ->
                    Update <<< UpdateDefaultValue str
@@ -157,9 +148,9 @@ render { model } =
     _StringBoolean = Lens.prism re pre
       where
         re b = if b then "true" else "false"
-        pre "true" = E.Right true
-        pre "false" = E.Right false
-        pre str = E.Left str
+        pre "true" = Right true
+        pre "false" = Right false
+        pre str = Left str
 
 eval :: forall g. Natural Query (ItemDSL g)
 eval q =
@@ -167,21 +158,21 @@ eval q =
     Update q ->
       evalUpdate q
     SetModel m next -> do
-      modify $ _model .~ m
+      H.modify $ _model .~ m
       pure next
     GetModel k ->
-      k <<< Lens.view _model <$> get
+      k <<< Lens.view _model <$> H.get
 
 evalUpdate :: forall g. Natural UpdateQuery (ItemDSL g)
 evalUpdate q =
   case q of
     UpdateName str next -> do
-      modify $ _model <<< _name .~ str
+      H.modify $ _model <<< _name .~ str
       pure next
     UpdateFieldType str next -> do
-      F.for_ (str ^? _FieldTypeDisplayName) \ty -> do
-        modify $ _model <<< _fieldType .~ ty
+      for_ (str ^? _FieldTypeDisplayName) \ty -> do
+        H.modify $ _model <<< _fieldType .~ ty
       pure next
     UpdateDefaultValue str next -> do
-      modify $ _model <<< _defaultValue ?~ str
+      H.modify $ _model <<< _defaultValue ?~ str
       pure next

@@ -14,26 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Listing.Sort where
+module SlamData.Notebook.Menu.Component
+  ( module SlamData.Notebook.Menu.Component.Query
+  , module SlamData.Notebook.Menu.Component.State
+  ) where
 
-import SlamData.Prelude
-
-data Sort = Asc | Desc
-
-notSort :: Sort -> Sort
-notSort Asc = Desc
-notSort _ = Asc
-
-sort2string :: Sort -> String
-sort2string Asc = "asc"
-sort2string Desc = "desc"
-
-string2sort :: String -> Either String Sort
-string2sort "asc" = Right Asc
-string2sort "desc" = Right Desc
-string2sort _ = Left "incorrect sort string"
-
-instance eqSort :: Eq Sort where
-  eq Asc Asc = true
-  eq Desc Desc = true
-  eq _ _ = false
+import SlamData.Notebook.Menu.Component.Query (FromMenuQuery, QueryP, Value, HelpURI(..), dialogQueryToValue, helpURIToValue, notebookQueryToValue, renameQueryToValue)
+import SlamData.Notebook.Menu.Component.State (StateP, make)

@@ -16,15 +16,10 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Model where
 
-import Prelude ((<$>), (<*>), pure)
-
-import Control.Alt ((<|>))
-import Control.Bind ((>=>))
-import Data.Maybe as M
+import SlamData.Prelude
 
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
-import Data.Either as E
 
 import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.CellType as CT
@@ -39,7 +34,7 @@ type Model =
   , cellType :: CT.CellType
   , state :: J.Json
   , hasRun :: Boolean
-  , cachingEnabled :: M.Maybe Boolean
+  , cachingEnabled :: Maybe Boolean
   }
 
 encode :: Model -> J.Json
@@ -51,7 +46,7 @@ encode cell
   ~> "cachingEnabled" := cell.cachingEnabled
   ~> J.jsonEmptyObject
 
-decode :: J.Json -> E.Either String Model
+decode :: J.Json -> Either String Model
 decode =
   J.decodeJson >=> \obj ->
     { cellId: _, cellType: _, hasRun: _, state: _, cachingEnabled: _ }
@@ -59,4 +54,4 @@ decode =
       <*> obj .? "cellType"
       <*> obj .? "hasRun"
       <*> obj .? "state"
-      <*> (obj .? "cachingEnabled" <|> pure M.Nothing)
+      <*> (obj .? "cachingEnabled" <|> pure Nothing)

@@ -1,10 +1,9 @@
 module SlamData.FileSystem.Dialog.Permissions.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Eff.Ref (Ref())
 
-import Data.Maybe as M
 import Data.Lens (LensP(), lens)
 
 import SlamData.FileSystem.Resource as R
@@ -22,14 +21,14 @@ instance eqShareType :: Eq ShareType where
 type State =
   {
     shareType :: ShareType
-  , permissions :: M.Maybe Qp.Permissions
+  , permissions :: Maybe Qp.Permissions
   , resource :: R.Resource
-  , confirm :: M.Maybe Qp.PermissionShareRequest
-  , error :: M.Maybe String
+  , confirm :: Maybe Qp.PermissionShareRequest
+  , error :: Maybe String
   , sending :: Boolean
-  , zRef :: M.Maybe (Ref (M.Maybe String))
+  , zRef :: Maybe (Ref (Maybe String))
   , canGoFurther :: Boolean
-  , groups :: M.Maybe (Array Qp.Group)
+  , groups :: Maybe (Array Qp.Group)
   }
 
 _shareType :: forall a r. LensP {shareType :: a|r} a
@@ -63,12 +62,12 @@ initialState :: R.Resource -> State
 initialState res =
   {
     shareType: User
-  , permissions: M.Nothing
+  , permissions: Nothing
   , resource: res
-  , confirm: M.Nothing
-  , error: M.Nothing
+  , confirm: Nothing
+  , error: Nothing
   , sending: false
-  , zRef: M.Nothing
+  , zRef: Nothing
   , canGoFurther: false
-  , groups: M.Nothing
+  , groups: Nothing
   }

@@ -16,22 +16,21 @@ limitations under the License.
 
 module SlamData.Notebook.Menu.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Maybe (Maybe(..))
 import Data.StrMap as StrMap
 
-import Halogen.Menu.Component as HalogenMenu
-import Halogen.Menu.Component.State as HalogenMenu
+import Halogen.Menu.Component (MenuP)
+import Halogen.Menu.Component.State (Menu, makeMenu)
 
-import SlamData.Notebook.Component.State (NotebookShortcut())
-import SlamData.Notebook.Menu.Component.Query
+import SlamData.Notebook.Component.State (NotebookShortcut)
+import SlamData.Notebook.Menu.Component.Query (Value, HelpURI(..), helpURIToValue, renameQueryToValue)
 import SlamData.Notebook.Rename.Component as Rename
 
-type StateP g = HalogenMenu.MenuP (Maybe Value) g
+type StateP g = MenuP (Maybe Value) g
 
-make :: (StrMap.StrMap NotebookShortcut) -> HalogenMenu.Menu (Maybe Value)
-make shortcuts = HalogenMenu.makeMenu
+make :: (StrMap.StrMap NotebookShortcut) -> Menu (Maybe Value)
+make shortcuts = makeMenu
   [ { label: "Notebook"
     , submenu:
         [ { label: "Rename/Move"

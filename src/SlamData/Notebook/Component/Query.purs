@@ -16,21 +16,18 @@ limitations under the License.
 
 module SlamData.Notebook.Component.Query where
 
-import Prelude (Unit(), unit, (<<<), ($))
+import SlamData.Prelude
 
-import Data.Functor.Coproduct (Coproduct(), left, right)
-import Data.Maybe (Maybe())
+import DOM.Event.EventTarget (EventListener)
 
-import DOM.Event.EventTarget (EventListener())
+import Halogen as H
+import Halogen.Component.ChildPath (injSlot, injQuery)
 
-import Halogen
-import Halogen.Component.ChildPath
-
-import SlamData.Notebook.AccessType (AccessType())
-import SlamData.Notebook.Cell.CellId (CellId())
-import SlamData.Notebook.Component.ChildSlot
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Notebook.AccessType (AccessType)
+import SlamData.Notebook.Cell.CellId (CellId)
+import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, cpRename, cpNotebook)
 import SlamData.Notebook.Editor.Component.Query as Notebook
-import SlamData.Effects (SlamDataEffects())
 import SlamData.Notebook.Menu.Component.Query as Menu
 import SlamData.Notebook.Rename.Component as Rename
 
@@ -46,49 +43,40 @@ data Query a
   | SetParentHref String a
   | DismissAll a
 
-type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
+type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
-toDraftboard :: (Unit -> Query Unit) -> QueryP Unit
-toDraftboard = left <<< action
+toDraftboard :: H.Action Query -> QueryP Unit
+toDraftboard = left <<< H.action
 
-fromDraftboard
-  :: forall a. (forall i. (a -> i) -> Query i) -> QueryP a
-fromDraftboard r = left $ request r
+fromDraftboard :: forall a. (forall i. (a -> i) -> Query i) -> QueryP a
+fromDraftboard r = left (H.request r)
 
-toNotebook :: (Unit -> Notebook.Query Unit) -> QueryP Unit
+toNotebook :: H.Action Notebook.Query -> QueryP Unit
 toNotebook =
-      right
-  <<< ChildF (injSlot cpNotebook unit)
-  <<< right
-  <<< right
-  <<< right
-  <<< right
-  <<< left
-  <<< action
+  right
+    <<< H.ChildF (injSlot cpNotebook unit)
+    <<< injQuery cpNotebook
+    <<< left
+    <<< H.action
 
-fromNotebook
-  :: forall a. (forall i. (a -> i) -> Notebook.Query i) -> QueryP a
+fromNotebook :: forall a. (forall i. (a -> i) -> Notebook.Query i) -> QueryP a
 fromNotebook r =
-    right
-  $ ChildF (injSlot cpNotebook unit)
-  $ right
-  $ right
-  $ right
-  $ right
-  $ left
-  $ request r
+  right
+    $ H.ChildF (injSlot cpNotebook unit)
+    $ injQuery cpNotebook
+    $ left
+    $ H.request r
 
-toRename :: (Unit -> Rename.Query Unit) -> QueryP Unit
+toRename :: H.Action Rename.Query -> QueryP Unit
 toRename =
-      right
-  <<< ChildF (injSlot cpRename unit)
-  <<< left
-  <<< action
+  right
+    <<< H.ChildF (injSlot cpRename unit)
+    <<< injQuery cpRename
+    <<< H.action
 
-fromRename
-  :: forall a. (forall i. (a -> i) -> Rename.Query i) -> QueryP a
+fromRename :: forall a. (forall i. (a -> i) -> Rename.Query i) -> QueryP a
 fromRename r =
-    right
-  $ ChildF (injSlot cpRename unit)
-  $ left
-  $ request r
+  right
+    $ H.ChildF (injSlot cpRename unit)
+    $ injQuery cpRename
+    $ H.request r

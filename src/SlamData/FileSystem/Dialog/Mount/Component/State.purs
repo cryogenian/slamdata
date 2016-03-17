@@ -16,15 +16,12 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad (when)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 
-import Data.Either (Either(..), either, isLeft)
 import Data.Lens (LensP(), lens)
-import Data.Maybe (Maybe(..), isNothing, isJust)
 
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..))

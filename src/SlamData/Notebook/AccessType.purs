@@ -22,10 +22,7 @@ module SlamData.Notebook.AccessType
   , isReadOnly
   ) where
 
-import Prelude
-
-import Data.Generic (Generic, gEq, gCompare)
-import Data.Either (Either(..))
+import SlamData.Prelude
 
 data AccessType = Editable | ReadOnly
 

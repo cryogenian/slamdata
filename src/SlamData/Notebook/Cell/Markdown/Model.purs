@@ -20,16 +20,10 @@ module SlamData.Notebook.Cell.Markdown.Model
   , decode
   ) where
 
-import Prelude
-
-import Control.Alt ((<|>))
-import Control.Bind ((=<<), (>=>))
+import SlamData.Prelude
 
 import Data.Argonaut (Json(), jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
 import Data.Set as S
-import Data.Traversable (traverse)
 
 import Text.Markdown.SlamDown (SlamDown(..), Block(..), Inline(..), ListType(..), CodeBlockType(..), LinkTarget(..), Expr(..), FormField(..), TextBoxType(..))
 import Text.Markdown.SlamDown.Html (SlamDownFormState(), FormFieldValue(..))

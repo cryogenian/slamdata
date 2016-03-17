@@ -26,10 +26,9 @@ module SlamData.Notebook.Cell.Port
   , _Resource
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Lens (PrismP(), prism', TraversalP(), wander)
-import Data.Maybe (Maybe(..))
 
 import ECharts.Options as Ec
 

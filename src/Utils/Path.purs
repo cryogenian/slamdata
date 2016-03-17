@@ -25,13 +25,11 @@ import Control.UI.Browser (encodeURIComponent, decodeURIComponent)
 import Data.Array (intersect, null, (:))
 import Data.Char as Ch
 import Data.Either (Either(..), either)
-import Data.Maybe (Maybe(), maybe, fromMaybe)
+import Data.Maybe (Maybe, maybe, fromMaybe)
 import Data.Path.Pathy
-import Data.String
-  (split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
+import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
 import Data.String.Regex as Rgx
 import Data.Tuple (snd, fst)
-
 
 import Text.SlamSearch.Parser.Tokens (keyChars)
 

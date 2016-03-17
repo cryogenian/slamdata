@@ -18,16 +18,12 @@ module SlamData.Notebook.Cell.Search.Interpret
   ( queryToSQL
   ) where
 
-import Prelude
-
-import Control.Bind (join)
+import SlamData.Prelude
 
 import Data.Array (filter, catMaybes, head, nub)
-import Data.Foldable
 import Data.Int as Int
-import Data.List (fromList, List())
-import Data.Maybe
-import Data.Semiring.Free
+import Data.List (fromList, List)
+import Data.Semiring.Free (runFree)
 import Data.String (joinWith, indexOf)
 import Data.String.Regex as RX
 

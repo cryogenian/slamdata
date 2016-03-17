@@ -16,20 +16,15 @@ limitations under the License.
 
 module SlamData.FileSystem.Listing.Component where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Array (zipWith, range, length, cons, sortBy, filter, nub)
-import Data.Foldable (for_)
-import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct())
-import Data.Generic (Generic)
 import Data.Lens ((.~), (%~), (<>~), lens, LensP())
-import Data.Monoid (mempty)
 
-import Halogen hiding (HTML())
+import Halogen as H
 import Halogen.Component.Utils (forceRerender')
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam())
@@ -81,56 +76,56 @@ instance ordItemSlot :: Ord ItemSlot where
   compare (ItemSlot ix it) (ItemSlot ix' it') =
     compare ix ix' <> compare it it'
 
-type StateP = InstalledState State Item.State Query Item.Query Slam ItemSlot
-type QueryP = Coproduct Query (ChildF ItemSlot Item.Query)
+type StateP = H.ParentState State Item.State Query Item.Query Slam ItemSlot
+type QueryP = Coproduct Query (H.ChildF ItemSlot Item.Query)
 
-type HTML = ParentHTML Item.State Query Item.Query Slam ItemSlot
-type DSL = ParentDSL State Item.State Query Item.Query Slam ItemSlot
+type HTML = H.ParentHTML Item.State Query Item.Query Slam ItemSlot
+type DSL = H.ParentDSL State Item.State Query Item.Query Slam ItemSlot
 
-comp :: Component StateP QueryP Slam
-comp = parentComponent' render eval peek
+comp :: H.Component StateP QueryP Slam
+comp = H.parentComponent { render, eval, peek: Just peek }
 
 render :: State -> HTML
 render state@{ items } =
-  H.div
-    [ P.classes [ B.listGroup, Rc.results ] ]
+  HH.div
+    [ HP.classes [ B.listGroup, Rc.results ] ]
     $ zipItems (install state) items
 
 eval :: Natural Query DSL
-eval (Reset next) = modify (_items .~ mempty) $> next
-eval (Add item next) = modify (_items %~ nub <<< cons item) $> next
+eval (Reset next) = H.modify (_items .~ mempty) $> next
+eval (Add item next) = H.modify (_items %~ nub <<< cons item) $> next
 eval (Adds items next) = do
-  modify (_items <>~ items)
-  modify (_items %~ nub)
+  H.modify (_items <>~ items)
+  H.modify (_items %~ nub)
   pure next
-eval (SortBy sortFn next) = modify (_items %~ sortBy sortFn) $> next
+eval (SortBy sortFn next) = H.modify (_items %~ sortBy sortFn) $> next
 eval (SetIsSearching bool next) = do
-  modify (_isSearching .~ bool)
-  items <- gets _.items
+  H.modify (_isSearching .~ bool)
+  items <- H.gets _.items
   for_ (zipItems ItemSlot items) \slot ->
-    query slot $ action $ Item.SetIsSearching bool
+    H.query slot $ H.action $ Item.SetIsSearching bool
   pure next
-eval (Filter filterFn next) = modify (_items %~ filter filterFn) $> next
+eval (Filter filterFn next) = H.modify (_items %~ filter filterFn) $> next
 eval (SetIsHidden bool next) = do
-  modify (_isHidden .~ bool)
-  items <- gets _.items
+  H.modify (_isHidden .~ bool)
+  items <- H.gets _.items
   for_ (zipItems ItemSlot items) \slot ->
-    query slot $ action $ Item.SetIsHidden bool
+    H.query slot $ H.action $ Item.SetIsHidden bool
   forceRerender'
   pure next
 
-peek :: forall x. ChildF ItemSlot Item.Query x -> DSL Unit
-peek (ChildF p (Item.Toggle _)) = void do
-  items <- gets _.items
+peek :: forall x. H.ChildF ItemSlot Item.Query x -> DSL Unit
+peek (H.ChildF p (Item.Toggle _)) = void do
+  items <- H.gets _.items
   for_ (zipItems ItemSlot items) \slot ->
     if slot == p
     then pure $ pure unit
-    else query slot $ action Item.Deselect
+    else H.query slot $ H.action Item.Deselect
 peek _ = pure unit
 
 install :: State -> Int -> Item -> HTML
 install { isSearching, isHidden } ix item =
-  H.slot (ItemSlot ix item) \_ ->
+  HH.slot (ItemSlot ix item) \_ ->
     { component: Item.comp
     , initialState:
         { isSearching: isSearching

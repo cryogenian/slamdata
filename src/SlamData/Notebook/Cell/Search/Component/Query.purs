@@ -20,9 +20,7 @@ module SlamData.Notebook.Cell.Search.Component.Query
   , QueryP()
   ) where
 
-import Prelude (Unit())
-
-import Data.Functor.Coproduct (Coproduct())
+import SlamData.Prelude
 
 import Halogen (ChildF())
 

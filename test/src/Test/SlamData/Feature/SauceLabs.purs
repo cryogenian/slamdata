@@ -26,9 +26,9 @@ module Test.SlamData.Feature.SauceLabs
 import Prelude
 
 import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (EXCEPTION(), catchException)
 
-import Data.Functor.Eff (liftEff)
 import Data.Maybe (Maybe(..))
 
 import Selenium.Builder

@@ -16,15 +16,14 @@ limitations under the License.
 
 module SlamData.Dialog.Share.Permissions.Component where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Functor (($>))
 import Data.Lens (LensP(), lens, (%~), (.~))
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Auth.Permission (Permissions())
@@ -34,23 +33,20 @@ import SlamData.Render.CSS as Rc
 
 notAllowed :: Permissions
 notAllowed =
-  {
-    add: false
+  { add: false
   , read: false
   , modify: false
   , delete: false
   }
 
 type State =
-  {
-    current :: Permissions
+  { current :: Permissions
   , max :: Permissions
   }
 
 initialState :: State
 initialState =
-  {
-    current: notAllowed
+  { current: notAllowed
   , max: notAllowed
   }
 
@@ -80,57 +76,61 @@ data Query a
   | SetMaximum Permissions a
   | GetSelected (Permissions -> a)
 
-type PermissionsDSL = ComponentDSL State Query Slam
+type PermissionsDSL = H.ComponentDSL State Query Slam
 
-comp :: Component State Query Slam
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
-render {current, max} =
-  H.form [ P.classes [ Rc.sharePermissionsCheckboxes ] ]
-    [
-      H.label [ P.classes [ B.checkboxInline ] ]
-        [
-          H.input [ P.inputType P.InputCheckbox
-                  , P.checked (max.add && current.add)
-                  , P.disabled $ not max.add
-                  , E.onChecked (E.input_ ToggleAdd)
-                  ]
-        , H.text  "Add"
+render :: State -> H.ComponentHTML Query
+render { current, max } =
+  HH.form
+    [ HP.classes [ Rc.sharePermissionsCheckboxes ] ]
+    [ HH.label
+        [ HP.classes [ B.checkboxInline ] ]
+        [ HH.input
+            [ HP.inputType HP.InputCheckbox
+            , HP.checked (max.add && current.add)
+            , HP.disabled $ not max.add
+            , HE.onChecked (HE.input_ ToggleAdd)
+            ]
+        , HH.text "Add"
         ]
-    , H.label [ P.classes [ B.checkboxInline ] ]
-        [
-          H.input [ P.inputType P.InputCheckbox
-                  , P.checked (max.read && current.read)
-                  , P.disabled $ not max.read
-                  , E.onChecked (E.input_ ToggleRead)
-                  ]
-        , H.text "Read"
+    , HH.label
+        [ HP.classes [ B.checkboxInline ] ]
+        [ HH.input
+            [ HP.inputType HP.InputCheckbox
+            , HP.checked (max.read && current.read)
+            , HP.disabled $ not max.read
+            , HE.onChecked (HE.input_ ToggleRead)
+            ]
+        , HH.text "Read"
         ]
-    , H.label [ P.classes [ B.checkboxInline ] ]
-        [
-          H.input [ P.inputType P.InputCheckbox
-                  , P.checked (max.modify && current.modify)
-                  , P.disabled $ not max.modify
-                  , E.onChecked (E.input_ ToggleModify)
-                  ]
-        , H.text "Modify"
+    , HH.label
+        [ HP.classes [ B.checkboxInline ] ]
+        [ HH.input
+            [ HP.inputType HP.InputCheckbox
+            , HP.checked (max.modify && current.modify)
+            , HP.disabled $ not max.modify
+            , HE.onChecked (HE.input_ ToggleModify)
+            ]
+        , HH.text "Modify"
         ]
-    , H.label [ P.classes [ B.checkboxInline ] ]
-        [
-          H.input [ P.inputType P.InputCheckbox
-                  , P.checked (max.delete && current.delete)
-                  , P.disabled $ not max.delete
-                  , E.onChecked (E.input_ ToggleDelete)
-                  ]
-        , H.text "Delete"
+    , HH.label
+        [ HP.classes [ B.checkboxInline ] ]
+        [ HH.input
+            [ HP.inputType HP.InputCheckbox
+            , HP.checked (max.delete && current.delete)
+            , HP.disabled $ not max.delete
+            , HE.onChecked (HE.input_ ToggleDelete)
+            ]
+        , HH.text "Delete"
         ]
     ]
 
 eval :: Natural Query PermissionsDSL
-eval (ToggleAdd next) = modify (_current <<< _add %~ not) $> next
-eval (ToggleRead next) = modify (_current <<< _read %~ not) $> next
-eval (ToggleModify next) = modify (_current <<< _modify %~ not) $> next
-eval (ToggleDelete next) = modify (_current <<< _delete %~ not) $> next
-eval (SetMaximum m next) = modify (_max .~ m) $> next
-eval (GetSelected continue) = map continue $ gets _.current
+eval (ToggleAdd next) = H.modify (_current <<< _add %~ not) $> next
+eval (ToggleRead next) = H.modify (_current <<< _read %~ not) $> next
+eval (ToggleModify next) = H.modify (_current <<< _modify %~ not) $> next
+eval (ToggleDelete next) = H.modify (_current <<< _delete %~ not) $> next
+eval (SetMaximum m next) = H.modify (_max .~ m) $> next
+eval (GetSelected continue) = map continue $ H.gets _.current

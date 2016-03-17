@@ -20,43 +20,32 @@ module SlamData.Notebook.Component
   , module SlamData.Notebook.Component.Query
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Apply ((*>))
-import Control.Bind ((>=>), (=<<))
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Shortcut (onShortcut)
 import Control.Monad.Eff.Shortcut.Platform (shortcutPlatform)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
-import Control.Monad.Trans as MT
-import Control.MonadPlus (guard)
 import Control.UI.Browser (newTab, locationString)
 
 import Data.Array (cons)
-import Data.Either (Either(..), either)
-import Data.Foldable as F
-import Data.Functor (($>))
-import Data.Functor.Coproduct (coproduct, left, right)
-import Data.Functor.Eff (liftEff)
+import Data.Functor.Coproduct.Nested (coproduct5)
 import Data.Lens ((^.), (.~), (%~), (?~))
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Shortcut (print)
 import Data.StrMap as SM
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..), uncurry)
 
 import DOM.Event.EventTarget (removeEventListener)
 import DOM.Event.EventTypes (keydown)
 
-import Halogen
+import Halogen as H
 import Halogen.HTML.Core (className)
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Menu.Component as HalogenMenu
-import Halogen.Menu.Submenu.Component as HalogenMenu
+import Halogen.Menu.Submenu.Component as HalogenSubmenu
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Themes.Bootstrap3 as B
 
@@ -65,17 +54,16 @@ import SlamData.Notebook.Action as NA
 import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.CellType as CT
 import SlamData.Notebook.Cell.Component.Query as CQ
-import SlamData.Notebook.Component.ChildSlot
-import SlamData.Notebook.Component.Query
-import SlamData.Notebook.Component.State
+import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpMenu, cpNotebook, cpRename, cpSignIn)
+import SlamData.Notebook.Component.Query (QueryP, Query(..), fromDraftboard, fromNotebook, fromRename, toDraftboard, toNotebook, toRename)
+import SlamData.Notebook.Component.State (NotebookShortcut, State, _accessType, _browserFeatures, _keyboardListeners, _loaded, _notebookShortcuts, _parentHref, _version, _viewingCell, initialState, notebookShortcuts)
 import SlamData.Notebook.Dialog.Component as Dialog
 import SlamData.Notebook.Editor.Component as Notebook
-import SlamData.Notebook.Editor.Component.CellSlot as Notebook
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Editor.Component.CellSlot (CellSlot(..))
+import SlamData.Effects (Slam)
 import SlamData.Notebook.FormBuilder.Component as FB
 import SlamData.Notebook.FormBuilder.Item.Model as FBI
-import SlamData.Notebook.Menu.Component.Query as Menu
-import SlamData.Notebook.Menu.Component.State as Menu
+import SlamData.Notebook.Menu.Component as Menu
 import SlamData.Notebook.Rename.Component as Rename
 import SlamData.SignIn.Component as SignIn
 import SlamData.Notebook.Routing (mkNotebookCellURL)
@@ -84,32 +72,39 @@ import SlamData.Render.CSS as Rc
 
 import Utils.DOM (documentTarget)
 
-type StateP = InstalledState State (ChildState Slam) Query ChildQuery Slam ChildSlot
-type DraftboardHTML = ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
-type DraftboardDSL = ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
+type StateP = H.ParentState State (ChildState Slam) Query ChildQuery Slam ChildSlot
+type DraftboardHTML = H.ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
+type DraftboardDSL = H.ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
 
-comp :: Component StateP QueryP Slam
-comp = parentComponent' render eval peek
+comp :: H.Component StateP QueryP Slam
+comp =
+  H.lifecycleParentComponent
+    { render
+    , eval
+    , peek: Just (peek <<< H.runChildF)
+    , initializer: Just (H.action ActivateKeyboardShortcuts)
+    , finalizer: Nothing
+    }
 
 render :: State -> DraftboardHTML
 render state =
-  H.div
-    [ P.classes classes
-    , E.onClick (E.input_ DismissAll)
+  HH.div
+    [ HP.classes classes
+    , HE.onClick (HE.input_ DismissAll)
     ]
-    [ H.nav
-        [ P.classes visibilityClasses ]
+    [ HH.nav
+        [ HP.classes visibilityClasses ]
         [ renderHeader state ]
-    , H.div
-        [ P.classes [ notebookClass ] ]
-        [  H.slot' cpNotebook unit \_ ->
+    , HH.div
+        [ HP.classes [ notebookClass ] ]
+        [  HH.slot' cpNotebook unit \_ ->
           { component: Notebook.notebookComponent
           , initialState: Notebook.initialState (state ^. _browserFeatures)
           }
         ]
-    , H.slot' cpDialog unit \_ ->
+    , HH.slot' cpDialog unit \_ ->
         { component: Dialog.comp
-        , initialState: installedState Dialog.initialState
+        , initialState: H.parentState Dialog.initialState
         }
     ]
 
@@ -137,28 +132,27 @@ render state =
 
   renderHeader :: State -> DraftboardHTML
   renderHeader state =
-    H.div
-      [ P.initializer \_ -> action ActivateKeyboardShortcuts ]
-      [ H.div
-          [ P.classes [ B.clearfix ] ]
-          [ H.div
-              [ P.classes [ Rc.header, B.clearfix ] ]
+    HH.div_
+      [ HH.div
+          [ HP.classes [ B.clearfix ] ]
+          [ HH.div
+              [ HP.classes [ Rc.header, B.clearfix ] ]
               [ icon' B.glyphiconChevronLeft "Back to parent folder"
                 $ fromMaybe "" (state ^. _parentHref)
               , logo (state ^. _version)
-              , H.slot' cpRename unit \_ ->
+              , HH.slot' cpRename unit \_ ->
                   { component: Rename.comp
                   , initialState: Rename.initialState
                   }
-              , H.slot' cpSignIn unit \_ ->
+              , HH.slot' cpSignIn unit \_ ->
                   { component: SignIn.comp
-                  , initialState: installedState SignIn.initialState
+                  , initialState: H.parentState SignIn.initialState
                   }
-              , H.div
-                  [ P.classes $ [ className "sd-menu" ] <> visibilityClasses ]
-                  [ H.slot' cpMenu MenuSlot \_ ->
+              , HH.div
+                  [ HP.classes $ [ className "sd-menu" ] <> visibilityClasses ]
+                  [ HH.slot' cpMenu unit \_ ->
                     { component: HalogenMenu.menuComponent
-                    , initialState: installedState $ Menu.make SM.empty
+                    , initialState: H.parentState $ Menu.make SM.empty
                     }
                   ]
               ]
@@ -167,31 +161,31 @@ render state =
 
 activateKeyboardShortcuts :: DraftboardDSL Unit
 activateKeyboardShortcuts = do
-  initialShortcuts <- gets _.notebookShortcuts
-  platform <- liftEff shortcutPlatform
+  initialShortcuts <- H.gets _.notebookShortcuts
+  platform <- H.fromEff shortcutPlatform
   let labelShortcut shortcut =
         shortcut { label = Just $ print platform shortcut.shortcut }
       shortcuts = map labelShortcut initialShortcuts
-  modify (_notebookShortcuts .~ shortcuts)
+  H.modify (_notebookShortcuts .~ shortcuts)
 
-  queryMenu $ action $ HalogenMenu.SetMenu $ Menu.make shortcuts
+  queryMenu $ H.action $ HalogenMenu.SetMenu $ Menu.make shortcuts
 
-  subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do
+  H.subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do
     target <- documentTarget
-    let evaluateMenuValue = emit <<< Left <<< action <<< EvaluateMenuValue
-        addKeyboardListeners = emit <<< Left <<< action <<< AddKeyboardListener
+    let evaluateMenuValue' = emit <<< Left <<< H.action <<< EvaluateMenuValue
+        addKeyboardListeners = emit <<< Left <<< H.action <<< AddKeyboardListener
         activate shrtct =
-          onShortcut platform target (evaluateMenuValue shrtct.value) shrtct.shortcut
+          onShortcut platform target (evaluateMenuValue' shrtct.value) shrtct.shortcut
     listeners <- traverse activate shortcuts
     traverse addKeyboardListeners listeners
     pure unit
 
 deactivateKeyboardShortcuts :: DraftboardDSL Unit
 deactivateKeyboardShortcuts = do
-  let remove lstnr = liftEff $ documentTarget
+  let remove lstnr = H.fromEff $ documentTarget
                      >>= removeEventListener keydown lstnr false
-  gets _.keyboardListeners >>= traverse remove
-  modify (_keyboardListeners .~ [])
+  H.gets _.keyboardListeners >>= traverse remove
+  H.modify (_keyboardListeners .~ [])
 
 eval :: Natural Query DraftboardDSL
 eval (ActivateKeyboardShortcuts next) =
@@ -201,37 +195,33 @@ eval (DeactivateKeyboardShortcuts next) =
 eval (EvaluateMenuValue value next) =
   dismissAll *> evaluateMenuValue value $> next
 eval (AddKeyboardListener listener next) =
-  modify (_keyboardListeners %~ cons listener) $> next
+  H.modify (_keyboardListeners %~ cons listener) $> next
 eval (SetAccessType aType next) = do
-  modify (_accessType .~ aType)
-  queryNotebook $ action $ Notebook.SetAccessType aType
+  H.modify (_accessType .~ aType)
+  queryNotebook $ H.action $ Notebook.SetAccessType aType
   pure next
-eval (GetAccessType k) = k <$> gets _.accessType
+eval (GetAccessType k) = k <$> H.gets _.accessType
 eval (SetViewingCell mbcid next) = do
-  modify (_viewingCell .~ mbcid)
-  queryNotebook $ action $ Notebook.SetViewingCell mbcid
+  H.modify (_viewingCell .~ mbcid)
+  queryNotebook $ H.action $ Notebook.SetViewingCell mbcid
   pure next
-eval (GetViewingCell k) = k <$> gets _.viewingCell
+eval (GetViewingCell k) = k <$> H.gets _.viewingCell
 eval (DismissAll next) = dismissAll *> pure next
-eval (SetParentHref href next) = modify (_parentHref ?~ href) $> next
+eval (SetParentHref href next) = H.modify (_parentHref ?~ href) $> next
 
 dismissAll :: DraftboardDSL Unit
 dismissAll = do
-  queryMenu $ action HalogenMenu.DismissSubmenu
-  querySignIn $ action SignIn.DismissSubmenu
+  queryMenu $ H.action HalogenMenu.DismissSubmenu
+  querySignIn $ H.action SignIn.DismissSubmenu
 
-peek :: forall a. ChildF ChildSlot ChildQuery a -> DraftboardDSL Unit
-peek (ChildF p q) =
-  coproduct
+peek :: forall a. ChildQuery a -> DraftboardDSL Unit
+peek =
+  coproduct5
     renamePeek
-    (coproduct
-      signInParentPeek
-      (coproduct
-        menuPeek
-        (coproduct
-          dialogParentPeek
-          notebookPeek)))
-    q
+    signInParentPeek
+    menuPeek
+    dialogParentPeek
+    notebookPeek
 
 signInParentPeek :: forall a. SignIn.QueryP a -> DraftboardDSL Unit
 signInParentPeek = coproduct (const (pure unit)) (const (pure unit))
@@ -247,7 +237,7 @@ notebookPeek :: forall a. Notebook.QueryP a -> DraftboardDSL Unit
 notebookPeek =
   coproduct
     (const (pure unit))
-    \(ChildF (Notebook.CellSlot cid) q) ->
+    \(H.ChildF (CellSlot cid) q) ->
       coproduct
         (cellPeek cid)
         (const (pure unit))
@@ -257,14 +247,14 @@ cellPeek :: forall a. CID.CellId -> CQ.CellQuery a -> DraftboardDSL Unit
 cellPeek cid q =
   case q of
     CQ.ShareCell _ -> do
-      root <- liftEff locationString
+      root <- H.fromEff locationString
       showDialog <<< either Dialog.Error (uncurry Dialog.Embed) =<< ET.runExceptT do
-        liftNotebookQuery $ action Notebook.SaveNotebook
+        liftNotebookQuery $ H.action Notebook.SaveNotebook
         path <-
-          liftNotebookQuery (request Notebook.GetNotebookPath)
+          liftNotebookQuery (H.request Notebook.GetNotebookPath)
             >>= maybe (EC.throwError "Could not determine notebook path") pure
         varMap <-
-          liftNotebookQuery (request (Notebook.FindCellParent cid))
+          liftNotebookQuery (H.request (Notebook.FindCellParent cid))
             >>= maybe (pure SM.empty) hereditaryVarMapDefaults
         pure $
           Tuple
@@ -275,14 +265,14 @@ cellPeek cid q =
 
   where
     hereditaryVarMapDefaults cid = do
-      pid <- liftNotebookQuery (request (Notebook.FindCellParent cid))
+      pid <- liftNotebookQuery (H.request (Notebook.FindCellParent cid))
       SM.union
         <$> varMapDefaults cid
         <*> (traverse hereditaryVarMapDefaults pid <#> fromMaybe SM.empty)
 
     varMapDefaults cid = do
       tau <-
-        liftNotebookQuery (request (Notebook.GetCellType cid))
+        liftNotebookQuery (H.request (Notebook.GetCellType cid))
           >>= maybe (EC.throwError "Could not determine cell type") pure
       case tau of
         CT.API -> do
@@ -297,8 +287,8 @@ cellPeek cid q =
                 <$> _.name
                 <*> defaultVarMapValue
 
-          liftFormBuilderQuery cid (request FB.GetItems)
-            <#> F.foldl (flip alg) SM.empty
+          liftFormBuilderQuery cid (H.request FB.GetItems)
+            <#> foldl (flip alg) SM.empty
         _ ->
           pure SM.empty
 
@@ -308,23 +298,23 @@ cellPeek cid q =
       liftCellQuery cid
         <<< CQ.APIQuery
         <<< right
-        <<< ChildF unit
+        <<< H.ChildF unit
         <<< left
 
     liftCellQuery
       :: CID.CellId -> Natural CQ.AnyCellQuery (ET.ExceptT String DraftboardDSL)
     liftCellQuery cid =
-      queryCell cid >>> MT.lift
+      queryCell cid >>> lift
         >=> maybe (EC.throwError "Error querying cell") pure
 
     liftNotebookQuery :: Natural Notebook.Query (ET.ExceptT String DraftboardDSL)
     liftNotebookQuery =
-      queryNotebook >>> MT.lift
+      queryNotebook >>> lift
         >=> maybe (EC.throwError "Error querying notebook") pure
 
     showDialog =
       queryDialog
-        <<< action
+        <<< H.action
         <<< Dialog.Show
 
 menuPeek :: forall a. Menu.QueryP a -> DraftboardDSL Unit
@@ -332,9 +322,9 @@ menuPeek = coproduct (const (pure unit)) submenuPeek
 
 renamePeek :: forall a. Rename.Query a -> DraftboardDSL Unit
 renamePeek (Rename.Submit next) =
-  void $ queryNotebook $ action Notebook.SaveNotebook
+  void $ queryNotebook $ H.action Notebook.SaveNotebook
 renamePeek (Rename.SetText name next) =
-  void $ queryNotebook $ action $ Notebook.SetName name
+  void $ queryNotebook $ H.action $ Notebook.SetName name
 renamePeek _ = pure unit
 
 evaluateMenuValue :: Menu.Value -> DraftboardDSL Unit
@@ -349,38 +339,38 @@ evaluateMenuValue =
 
 submenuPeek
   :: forall a
-   . (ChildF HalogenMenu.SubmenuSlotAddress
-      (HalogenMenu.SubmenuQuery (Maybe Menu.Value))) a
+   . (H.ChildF HalogenMenu.SubmenuSlotAddress
+      (HalogenSubmenu.SubmenuQuery (Maybe Menu.Value))) a
   -> DraftboardDSL Unit
-submenuPeek (ChildF _ (HalogenMenu.SelectSubmenuItem v _)) =
+submenuPeek (H.ChildF _ (HalogenSubmenu.SelectSubmenuItem v _)) =
   maybe (pure unit) evaluateMenuValue v
 
 queryDialog :: Dialog.Query Unit -> DraftboardDSL Unit
-queryDialog q = query' cpDialog unit (left q) *> pure unit
+queryDialog q = H.query' cpDialog unit (left q) *> pure unit
 
 queryNotebook :: forall a. Notebook.Query a -> DraftboardDSL (Maybe a)
-queryNotebook = query' cpNotebook unit <<< left
+queryNotebook = H.query' cpNotebook unit <<< left
 
 queryCell :: forall a. CID.CellId -> CQ.AnyCellQuery a -> DraftboardDSL (Maybe a)
 queryCell cid =
-  query' cpNotebook unit
+  H.query' cpNotebook unit
     <<< right
-    <<< ChildF (Notebook.CellSlot cid)
+    <<< H.ChildF (CellSlot cid)
     <<< right
-    <<< ChildF unit
+    <<< H.ChildF unit
     <<< right
 
 queryRename :: Rename.Query Unit -> DraftboardDSL Unit
-queryRename q = query' cpRename unit q *> pure unit
+queryRename q = H.query' cpRename unit q *> pure unit
 
 querySignIn :: forall a. SignIn.Query a -> DraftboardDSL Unit
-querySignIn q = query' cpSignIn unit (left q) *> pure unit
+querySignIn q = H.query' cpSignIn unit (left q) *> pure unit
 
 queryMenu :: HalogenMenu.MenuQuery (Maybe Menu.Value) Unit -> DraftboardDSL Unit
-queryMenu q = query' cpMenu MenuSlot (left q) *> pure unit
+queryMenu q = H.query' cpMenu unit (left q) *> pure unit
 
 --querySignInMenu :: HalogenMenu.MenuQuery (Maybe Menu.Value) Unit -> DraftboardDSL Unit
---querySignInMenu q = query' cpSignIn MenuSlot (left q) *> pure unit
+--querySignInMenu q = H.query' cpSignIn unit (left q) *> pure unit
 
 presentHelp :: Menu.HelpURI -> DraftboardDSL Unit
-presentHelp (Menu.HelpURI uri) = liftEff $ newTab uri
+presentHelp (Menu.HelpURI uri) = H.fromEff $ newTab uri

@@ -16,14 +16,10 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Download.Component.State where
 
-import Prelude
-
-import Control.Bind ((>=>))
+import SlamData.Prelude
 
 import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Either (Either(..))
 import Data.Lens (LensP(), lens)
-import Data.Maybe (Maybe(..))
 
 import SlamData.Download.Model as D
 import SlamData.FileSystem.Resource (Resource())

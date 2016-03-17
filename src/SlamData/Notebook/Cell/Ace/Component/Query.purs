@@ -16,10 +16,9 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Ace.Component.Query (QueryP()) where
 
-import Prelude
+import SlamData.Prelude
 
 import Ace.Halogen.Component as Ace
-import Data.Functor.Coproduct (Coproduct())
 import Halogen (ChildF())
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 

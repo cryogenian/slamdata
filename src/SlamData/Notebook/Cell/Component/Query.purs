@@ -34,12 +34,10 @@ module SlamData.Notebook.Cell.Component.Query
   , module SlamData.Notebook.Cell.Common.EvalQuery
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (PrismP(), prism')
 import Data.Lens.Prism.Coproduct (_Left, _Right)
-import Data.Maybe (Maybe(..))
 import Data.Time (Milliseconds())
 
 import Halogen (ChildF())

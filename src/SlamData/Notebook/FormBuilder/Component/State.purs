@@ -24,7 +24,7 @@ module SlamData.Notebook.FormBuilder.Component.State
   , removeItem
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.List as L
 
@@ -58,5 +58,5 @@ removeItem
   -> State
   -> State
 removeItem i st =
-  st { items = L.filter (/= i) st.items }
+  st { items = L.filter (_ /= i) st.items }
 

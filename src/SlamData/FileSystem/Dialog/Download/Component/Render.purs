@@ -16,14 +16,11 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Download.Component.Render (render) where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.UI.Browser (encodeURIComponent)
 
-import Data.Either (either, isLeft, isRight)
-import Data.Functor (($>))
 import Data.Lens ((^.), (.~))
-import Data.Maybe (isNothing, maybe, isJust)
 import Data.Path.Pathy (printPath)
 
 import Halogen

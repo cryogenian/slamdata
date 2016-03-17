@@ -14,22 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Cell.Search.Component.State
-  ( State()
-  , initialState
-  , _searchString
-  , _running
-  , StateP()
-  ) where
+module SlamData.Notebook.Cell.Search.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Lens (LensP(), lens)
 
-import Halogen (InstalledState())
+import Halogen (ParentState())
 
-import SlamData.Notebook.Cell.Search.Component.Query as SQ
 import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Search.Component.Query as SQ
 import SlamData.Notebook.FileInput.Component as FI
 
 type State =
@@ -49,4 +43,4 @@ _searchString = lens _.searchString (_ { searchString = _ })
 _running :: LensP State Boolean
 _running = lens _.running (_ { running = _ })
 
-type StateP = InstalledState State FI.State SQ.Query FI.Query Slam Unit
+type StateP = ParentState State FI.State SQ.Query FI.Query Slam Unit

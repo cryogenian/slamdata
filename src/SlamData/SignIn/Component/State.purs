@@ -16,17 +16,13 @@ limitations under the License.
 
 module SlamData.SignIn.Component.State where
 
-import Prelude
-
 type State =
-  {
-    loggedIn :: Boolean
+  { loggedIn :: Boolean
   , hidden :: Boolean
   }
 
 initialState :: State
 initialState =
-  {
-    loggedIn: false
+  { loggedIn: false
   , hidden: false
   }

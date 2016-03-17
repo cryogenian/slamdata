@@ -16,16 +16,14 @@ limitations under the License.
 
 module SlamData.Download.Model where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Argonaut (EncodeJson, DecodeJson, encodeJson, decodeJson, (:=), (~>), (.?), jsonEmptyObject)
-import Data.Either (Either(..))
 import Data.Lens (LensP(), lens)
-import Data.Maybe (Maybe(..))
+import Data.MediaType (MediaType(..))
 import Data.String as Str
 import Data.String.Regex as Rx
 
-import Network.HTTP.MimeType (MimeType(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
 type CSVOptionsRec =
@@ -212,13 +210,13 @@ toHeaders' r =
   encHeaderArray r.compress ++ [ acceptHeader ]
   where
   acceptHeader :: RequestHeader
-  acceptHeader = Accept $ MimeType $ mimeType r.options ++ attachmentDisposition
+  acceptHeader = Accept $ MediaType $ mimeType r.options ++ attachmentDisposition
 
   encHeaderArray :: Boolean -> Array RequestHeader
   encHeaderArray true = [ RequestHeader "Accept-Encoding" "gzip" ]
   encHeaderArray _ = [ ]
 
-  attachmentDisposition = ";disposition=attachment" 
+  attachmentDisposition = ";disposition=attachment"
 
   mimeType :: Either CSVOptions JSONOptions -> String
   mimeType (Left (CSVOptions opts)) =

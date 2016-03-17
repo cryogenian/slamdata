@@ -16,11 +16,7 @@ limitations under the License.
 
 module SlamData.Notebook.Menu.Component.Query where
 
-import Prelude
-
-import Data.Either (Either(..))
-import Data.Functor.Coproduct (Coproduct(), left, right)
-import Data.Maybe (Maybe())
+import SlamData.Prelude
 
 import Halogen.Menu.Component as HalogenMenu
 

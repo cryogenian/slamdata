@@ -16,14 +16,13 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Common.Render where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Array ((..))
 import Data.Array as Arr
 import Data.Lens (LensP(), TraversalP(), (.~), (^.))
 import Data.Lens.Index (ix)
 import Data.Profunctor.Strong (first, second)
-import Data.Tuple (Tuple())
 
 import Halogen
 import Halogen.CustomProps as CP

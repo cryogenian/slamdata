@@ -16,15 +16,19 @@ limitations under the License.
 
 module Test.SlamData.Feature.Monad where
 
-import Control.Monad.Reader.Class
-import Data.Foldable (traverse_)
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Aff (liftAff)
-import Node.FS.Aff (mkdir)
 import Prelude
+
+import Control.Monad.Reader.Class
+import Control.Monad.Aff.Class (liftAff)
+
+import Data.Foldable (traverse_)
+
+import Node.FS.Aff (mkdir)
+
 import Selenium.Monad (apathize, later)
-import Test.Feature.Monad (Feature())
+
 import Test.Feature.Log (warnMsg)
+import Test.Feature.Monad (Feature())
 import Test.SlamData.Feature.Config (Config())
 import Test.SlamData.Feature.Effects (SlamFeatureEffects())
 

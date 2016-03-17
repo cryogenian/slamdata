@@ -16,34 +16,29 @@ limitations under the License.
 
 module SlamData.Form.Select.Component where
 
-import Prelude
-
-import Control.Monad.Aff (Aff())
+import SlamData.Prelude
 
 import Data.Array (length, range, zipWith, singleton)
-import Data.Functor (($>))
 import Data.Int as Int
 import Data.Lens ((^.))
-import Data.Maybe (Maybe(..), maybe)
 import Data.Maybe.Unsafe (fromJust)
 
-import Halogen
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Form.Select
+import SlamData.Effects (Slam())
+import SlamData.Form.Select as S
 
 data Query s a
   = Choose Int a
-  | SetSelect (Select s) a
+  | SetSelect (S.Select s) a
   | GetValue (Maybe s -> a)
-  | GetSelect (Select s -> a)
+  | GetSelect (S.Select s -> a)
   | ToggleOpened a
-
-type Slam e = Aff (HalogenEffects e)
 
 type SelectConfig r =
   { disableWhen :: Int -> Boolean
@@ -53,35 +48,40 @@ type SelectConfig r =
   }
 
 primarySelect
-  :: forall a e
-   . (OptionVal a)
-  => Maybe String -> Component (Select a) (Query a) (Slam e)
+  :: forall a
+   . (S.OptionVal a)
+  => Maybe String
+  -> H.Component (S.Select a) (Query a) Slam
 primarySelect mbLabel =
   select { disableWhen: (< 2), defaultWhen: (> 1), ariaLabel: mbLabel }
 
 secondarySelect
-  :: forall a e
-   . (OptionVal a)
-  => Maybe String -> Component (Select a) (Query a) (Slam e)
+  :: forall a
+   . (S.OptionVal a)
+  => Maybe String
+  -> H.Component (S.Select a) (Query a) Slam
 secondarySelect mbLabel =
   select { disableWhen: (< 1), defaultWhen: (const true), ariaLabel: mbLabel }
 
 select
-  :: forall a e r
-   . (OptionVal a)
-  => SelectConfig r -> Component (Select a) (Query a) (Slam e)
+  :: forall a r
+   . (S.OptionVal a)
+  => SelectConfig r
+  -> H.Component (S.Select a) (Query a) Slam
 select config =
-  component (render config) eval
+  H.component { render: (render config), eval }
 
 render
   :: forall a r
-   . (OptionVal a)
-  => SelectConfig r -> Select a -> ComponentHTML (Query a)
+   . (S.OptionVal a)
+  => SelectConfig r
+  -> S.Select a
+  -> H.ComponentHTML (Query a)
 render config state =
-  H.select ([ P.classes [ B.formControl ]
+  HH.select ([ HP.classes [ B.formControl ]
               -- `fromJust` is safe here because we know that value are `show`n ints
-            , E.onValueChange (E.input (Choose <<< fromJust <<< Int.fromString))
-            , P.disabled $ config.disableWhen len
+            , HE.onValueChange (HE.input (Choose <<< fromJust <<< Int.fromString))
+            , HP.disabled $ config.disableWhen len
             ]
            <> maybe [] (singleton <<< ARIA.label) config.ariaLabel)
   (defOption <> (zipWith (option selected) opts (range 0 len)))
@@ -90,34 +90,36 @@ render config state =
   len = length opts
 
   opts :: Array a
-  opts = state ^. _options
+  opts = state ^. S._options
 
   selected :: Maybe a
-  selected = state ^. _value
+  selected = state ^. S._value
 
-  defOption :: Array (ComponentHTML (Query a))
+  defOption :: Array (H.ComponentHTML (Query a))
   defOption =
     if config.defaultWhen len
     then singleton $ defaultOption selected
     else [ ]
 
-  defaultOption :: Maybe a -> ComponentHTML (Query a)
+  defaultOption :: Maybe a -> H.ComponentHTML (Query a)
   defaultOption val =
-    H.option [ P.selected (val == Nothing)
-             , P.value "-1"
-             ]
-    [ H.text "Select axis source" ]
+    HH.option
+      [ HP.selected (val == Nothing)
+      , HP.value "-1"
+      ]
+      [ HH.text "Select axis source" ]
 
-  option :: Maybe a -> a -> Int -> ComponentHTML (Query a)
+  option :: Maybe a -> a -> Int -> H.ComponentHTML (Query a)
   option currentVal val i =
-    H.option [ P.selected (pure val == currentVal)
-             , P.value (show i)
-             ]
-    [ H.text (stringVal val) ]
+    HH.option
+      [ HP.selected (pure val == currentVal)
+      , HP.value (show i)
+      ]
+      [ HH.text (S.stringVal val) ]
 
-eval :: forall a e. (Eq a) => Eval (Query a) (Select a) (Query a) (Slam e)
-eval (Choose i next) = modify (trySelect i) $> next
-eval (SetSelect s next) = set s $> next
-eval (GetValue continue) = map continue $ gets (^. _value)
-eval (GetSelect continue) = map continue get
+eval :: forall a. (Eq a) => Natural (Query a) (H.ComponentDSL (S.Select a) (Query a) Slam)
+eval (Choose i next) = H.modify (S.trySelect i) $> next
+eval (SetSelect s next) = H.set s $> next
+eval (GetValue continue) = map continue $ H.gets (^. S._value)
+eval (GetSelect continue) = map continue H.get
 eval (ToggleOpened next) = pure next

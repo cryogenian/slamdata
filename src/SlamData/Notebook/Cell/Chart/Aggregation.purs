@@ -16,21 +16,12 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.Aggregation where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind ((>=>))
+import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson)
+import Data.Foldable (sum, product)
 
-import Data.Argonaut (fromString)
-import Data.Argonaut.Decode (DecodeJson, decodeJson)
-import Data.Argonaut.Encode (EncodeJson)
-import Data.Bifunctor (bimap)
-import Data.Either (Either(..))
-import Data.Foldable (Foldable, foldl, sum, product)
-import Data.Generic (Generic, gEq, gCompare)
-import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..))
-
-import SlamData.Form.Select (OptionVal, Select(..))
+import SlamData.Form.Select (class OptionVal, Select(..))
 
 data Aggregation
   = Maximum

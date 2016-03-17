@@ -55,25 +55,19 @@ module SlamData.FileSystem.Resource
   , fileResourceFromString
   ) where
 
-import Prelude
-
-import Control.Bind ((=<<))
+import SlamData.Prelude
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
 import Data.Argonaut.Decode (DecodeJson, decodeJson)
 import Data.Argonaut.Encode (EncodeJson)
-import Data.Bifunctor (bimap)
-import Data.Either (Either(..), either)
 import Data.Foreign as F
 import Data.Foreign.Class as F
 import Data.Foreign.NullOrUndefined as F
 import Data.Lens (lens, prism', LensP(), PrismP(), (.~))
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
-import Data.Tuple (Tuple(..), snd)
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Listing.Sort (Sort(..))

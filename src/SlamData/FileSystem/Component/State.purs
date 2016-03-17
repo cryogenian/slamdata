@@ -16,10 +16,9 @@ limitations under the License.
 
 module SlamData.FileSystem.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Lens (LensP(), lens)
-import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (rootDir)
 
 import SlamData.FileSystem.Listing.Sort (Sort(..))

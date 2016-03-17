@@ -16,22 +16,18 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.UI.Browser (decodeURIComponent, encodeURIComponent)
 
 import Data.Array as A
-import Data.Bifunctor (rmap)
-import Data.Either (either)
 import Data.Foldable (any)
 import Data.Lens (LensP(), lens)
 import Data.List (fromList)
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
 import Data.Path.Pathy (printPath)
 import Data.String as S
 import Data.String.Regex as Rx
 import Data.StrMap (toList)
-import Data.Tuple (Tuple(..), uncurry)
 import Data.URI.Types as Uri
 
 import Utils.URI (toURI)

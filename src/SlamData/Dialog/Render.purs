@@ -16,10 +16,7 @@ limitations under the License.
 
 module SlamData.Dialog.Render where
 
-import Prelude
-
-import Data.Functor (($>))
-import Data.Maybe (Maybe(..))
+import SlamData.Prelude
 
 import Halogen.CustomProps as Cp
 import Halogen.HTML.Events.Handler as E

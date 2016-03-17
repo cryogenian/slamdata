@@ -16,19 +16,16 @@ limitations under the License.
 
 module SlamData.FileSystem.Listing.Item.Component where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.MonadPlus (guard)
-
-import Data.Functor (($>))
 import Data.Lens (LensP(), lens, (%~), (.~))
 
-import Halogen
+import Halogen as H
 import Halogen.HTML.CSS.Indexed as CSS
-import Halogen.HTML.Events.Handler as E
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Handler as HEH
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
@@ -77,44 +74,48 @@ data Query a
   | SetIsHidden Boolean a
   | SharePermissions Resource a
 
-comp :: Component State Query Slam
-comp = component render eval
+type HTML = H.ComponentHTML Query
+type DSL = H.ComponentDSL State Query Slam
 
-render :: State -> ComponentHTML Query
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
+
+render :: State -> HTML
 render state = case state.item of
   SelectedItem _ -> itemView state true true
   ActionsPresentedItem _ -> itemView state false true
   Item _ -> itemView state false false
   PhantomItem _ ->
-    H.div
-      [ P.classes [ B.listGroupItem, Rc.phantom ] ]
-      [ H.div
-          [ P.class_ B.row ]
-          [ H.div
-              [ P.classes [ B.colXs8, Rc.itemContent ] ]
-              [ H.span_
-                  [ H.img [ P.src "img/spin.gif" ]
-                  , H.text $ itemName state
+    HH.div
+      [ HP.classes [ B.listGroupItem, Rc.phantom ] ]
+      [ HH.div
+          [ HP.class_ B.row ]
+          [ HH.div
+              [ HP.classes [ B.colXs8, Rc.itemContent ] ]
+              [ HH.span_
+                  [ HH.img [ HP.src "img/spin.gif" ]
+                  , HH.text $ itemName state
                   ]
               ]
           ]
       ]
-eval :: Eval Query State Query Slam
-eval (Toggle next) = modify (_item %~ toggle) $> next
+
+eval :: Natural Query DSL
+eval (Toggle next) = H.modify (_item %~ toggle) $> next
   where
   toggle (Item r) = SelectedItem r
   toggle (ActionsPresentedItem r) = SelectedItem r
   toggle (SelectedItem r) = Item r
   toggle it = it
-eval (Deselect next) = modify (_item %~ deselect) $> next
+eval (Deselect next) = H.modify (_item %~ deselect) $> next
   where
   deselect (SelectedItem r) = Item r
   deselect it = it
-eval (PresentActions next) = modify (_item %~ presentActions) $> next
+eval (PresentActions next) = H.modify (_item %~ presentActions) $> next
   where
   presentActions (Item r) = ActionsPresentedItem r
   presentActions it = it
-eval (HideActions next) = modify (_item %~ hideActions) $> next
+eval (HideActions next) = H.modify (_item %~ hideActions) $> next
   where
   hideActions (ActionsPresentedItem r) = Item r
   hideActions it = it
@@ -124,8 +125,8 @@ eval (Move _ next) = pure next
 eval (Download _ next) = pure next
 eval (Remove _ next) = pure next
 eval (Share _ next) = pure next
-eval (SetIsSearching bool next) = modify (_isSearching .~ bool) $> next
-eval (SetIsHidden bool next) = modify (_isHidden .~ bool) $> next
+eval (SetIsSearching bool next) = H.modify (_isSearching .~ bool) $> next
+eval (SetIsHidden bool next) = H.modify (_isHidden .~ bool) $> next
 eval (SharePermissions _ next) = pure next
 
 itemName :: State -> String
@@ -144,33 +145,34 @@ presentItem state item = (isHidden && presentHiddenItem state) || not isHidden
   where
   isHidden = itemIsHidden item
 
-itemView :: forall p. State -> Boolean -> Boolean -> HTML p Query
-itemView state@{ item } selected presentActions | not (presentItem state item) = H.text ""
+itemView :: State -> Boolean -> Boolean -> HTML
+itemView state@{ item } selected presentActions | not (presentItem state item) = HH.text ""
 itemView state@{ item } selected presentActions | otherwise =
-  H.div
-    [ P.classes itemClasses
-    , E.onClick (E.input_ Toggle)
-    , E.onMouseEnter (E.input_ PresentActions)
-    , E.onMouseLeave (E.input_ HideActions)
-    , E.onDoubleClick $ E.input_ $ Open (itemResource item)
+  HH.div
+    [ HP.classes itemClasses
+    , HE.onClick (HE.input_ Toggle)
+    , HE.onMouseEnter (HE.input_ PresentActions)
+    , HE.onMouseLeave (HE.input_ HideActions)
+    , HE.onDoubleClick $ HE.input_ $ Open (itemResource item)
     , ARIA.label label
     ]
-    [ H.div
-        [ P.class_ B.row ]
-        [ H.div [ P.classes [ B.colXs8, Rc.itemContent ] ]
-            [ H.a
-                [ E.onClick (\_ -> E.preventDefault $> action (Open (itemResource item))) ]
-                [ H.i [ iconClasses item ] []
-                , H.text $ itemName state
+    [ HH.div
+        [ HP.class_ B.row ]
+        [ HH.div
+            [ HP.classes [ B.colXs8, Rc.itemContent ] ]
+            [ HH.a
+                [ HE.onClick (\_ -> HEH.preventDefault $> H.action (Open (itemResource item))) ]
+                [ HH.i [ iconClasses item ] []
+                , HH.text $ itemName state
                 ]
             ]
-        , H.div
-            [ P.classes $ [ B.colXs4, Rc.itemToolbar ] <> (guard selected $> Rc.selected) ]
+        , HH.div
+            [ HP.classes $ [ B.colXs4, Rc.itemToolbar ] <> (guard selected $> Rc.selected) ]
             [ itemActions presentActions item ]
         ]
     ]
   where
-  itemClasses :: Array H.ClassName
+  itemClasses :: Array HH.ClassName
   itemClasses =
     [ B.listGroupItem ]
     <> (guard selected $> B.listGroupItemInfo)
@@ -180,25 +182,25 @@ itemView state@{ item } selected presentActions | otherwise =
   label | selected  = "Deselect " ++ itemName state
   label | otherwise = "Select " ++ itemName state
 
-iconClasses :: forall r i. Item -> P.IProp (class :: P.I | r) i
-iconClasses item = P.classes
+iconClasses :: forall r i. Item -> HP.IProp (class :: HP.I | r) i
+iconClasses item = HP.classes
   [ B.glyphicon
   , Rc.itemIcon
   , iconClass (itemResource item)
   ]
   where
-  iconClass :: Resource -> H.ClassName
+  iconClass :: Resource -> HH.ClassName
   iconClass (File _) = B.glyphiconFile
   iconClass (Notebook _) = B.glyphiconBook
   iconClass (Directory _) = B.glyphiconFolderOpen
   iconClass (Mount (Database _)) = B.glyphiconHdd
   iconClass (Mount (View _)) = B.glyphiconFile
 
-itemActions :: forall p. Boolean -> Item -> HTML p Query
-itemActions presentActions item | not presentActions = H.text ""
+itemActions :: Boolean -> Item -> HTML
+itemActions presentActions item | not presentActions = HH.text ""
 itemActions presentActions item | otherwise =
-  H.ul
-    [ P.classes [ B.listInline, B.pullRight ]
+  HH.ul
+    [ HP.classes [ B.listInline, B.pullRight ]
     , CSS.style $ marginBottom (px zero)
     ]
     (conf <> common <> share)
@@ -206,11 +208,11 @@ itemActions presentActions item | otherwise =
   r :: Resource
   r = itemResource item
 
-  conf :: Array (HTML p Query)
+  conf :: Array HTML
   conf = guard (isMount r) $>
     itemAction Configure "Configure" B.glyphiconWrench
 
-  common :: Array (HTML p Query)
+  common :: Array HTML
   common =
     [
 -- Commented until backend is ready
@@ -220,18 +222,18 @@ itemActions presentActions item | otherwise =
     , itemAction Remove "Remove" B.glyphiconTrash
     ]
 
-  share :: Array (HTML p Query)
+  share :: Array HTML
   share = guard (isFile r || isNotebook r || isViewMount r) $>
     itemAction Share "Share" B.glyphiconShare
 
-  itemAction :: (Resource -> Action Query) -> String -> H.ClassName -> HTML p Query
+  itemAction :: (Resource -> H.Action Query) -> String -> HH.ClassName -> HTML
   itemAction act label cls =
-    H.li_
-      [ H.button
-          [ E.onClick $ E.input_ (act (itemResource item))
-          , P.title label
+    HH.li_
+      [ HH.button
+          [ HE.onClick $ HE.input_ (act (itemResource item))
+          , HP.title label
           , ARIA.label label
-          , P.class_ Rc.fileAction
+          , HP.class_ Rc.fileAction
           ]
-          [ H.i [ P.classes [ B.glyphicon, cls ] ] [] ]
+          [ HH.i [ HP.classes [ B.glyphicon, cls ] ] [] ]
       ]

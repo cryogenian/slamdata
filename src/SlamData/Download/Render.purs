@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Download.Render where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Lens (LensP(), (^.))
 

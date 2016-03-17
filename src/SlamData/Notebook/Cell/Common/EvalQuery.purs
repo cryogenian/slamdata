@@ -30,22 +30,17 @@ module SlamData.Notebook.Cell.Common.EvalQuery
   , liftWithCanceler'
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Aff (Canceler())
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
-import Control.Monad.Trans as MT
 import Control.Monad.Writer.Class as WC
 import Control.Monad.Writer.Trans as WT
 
 import Data.Argonaut.Core (Json())
-import Data.Either as E
-import Data.Functor.Coproduct (Coproduct(), left)
-import Data.Maybe as M
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
-import Data.Tuple as TPL
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellId as CID
@@ -59,8 +54,8 @@ import Halogen (ParentDSL())
 import Halogen.Component.Utils as Hu
 
 type CellEvalInputP r =
-  { notebookPath :: M.Maybe DirPath
-  , inputPort :: M.Maybe Port
+  { notebookPath :: Maybe DirPath
+  , inputPort :: Maybe Port
   , cellId :: CID.CellId
   , globalVarMap :: Port.VarMap
   | r
@@ -69,16 +64,16 @@ type CellEvalInputP r =
 type CellEvalInputPre = CellEvalInputP ()
 type CellEvalInput =
   CellEvalInputP
-    ( cachingEnabled :: M.Maybe Boolean
+    ( cachingEnabled :: Maybe Boolean
     )
 
 type CellSetupInfo =
-  { notebookPath :: M.Maybe DirPath
+  { notebookPath :: Maybe DirPath
   , inputPort :: Port
   }
 
 prepareCellEvalInput
-  :: M.Maybe Boolean
+  :: Maybe Boolean
   -> CellEvalInputPre
   -> CellEvalInput
 prepareCellEvalInput cachingEnabled { notebookPath, inputPort, cellId, globalVarMap } =
@@ -94,21 +89,21 @@ temporaryOutputResource
   -> R.Resource
 temporaryOutputResource info =
   (outputDirectory </> outputFile)
-    # if M.fromMaybe false info.cachingEnabled
+    # if fromMaybe false info.cachingEnabled
       then R.File
       else R.Mount <<< R.View
   where
     outputDirectory =
       filterMaybe (== P.rootDir) info.notebookPath #
-        M.fromMaybe (P.rootDir </> P.dir ".tmp")
+        fromMaybe (P.rootDir </> P.dir ".tmp")
 
     outputFile =
       P.file $ "out" <> CID.cellIdToString info.cellId
 
-    filterMaybe :: forall a. (a -> Boolean) -> M.Maybe a -> M.Maybe a
+    filterMaybe :: forall a. (a -> Boolean) -> Maybe a -> Maybe a
     filterMaybe p m =
       m >>= \x ->
-        if p x then M.Nothing else pure x
+        if p x then Nothing else pure x
 
 -- | The query algebra shared by the inner parts of a cell component.
 -- |
@@ -138,8 +133,8 @@ data CellEvalQuery a
 -- |   evaluation. `Left` values are errors, `Right` values are informational
 -- |   messages.
 type CellEvalResultP a =
-  { output :: M.Maybe a
-  , messages :: Array (E.Either String String)
+  { output :: Maybe a
+  , messages :: Array (Either String String)
   }
 
 type CellEvalResult = CellEvalResultP Port
@@ -164,11 +159,11 @@ instance bindCellEvalT :: (Monad m) => Bind (CellEvalT m) where
 
 instance monadCellEvalT :: (Monad m) => Monad (CellEvalT m)
 
-instance monadTransCellEvalT :: MT.MonadTrans CellEvalT where
-  lift = MT.lift >>> MT.lift >>> CellEvalT
+instance monadTransCellEvalT :: MonadTrans CellEvalT where
+  lift = lift >>> lift >>> CellEvalT
 
 instance monadWriterCellEvalT :: (Monad m) => WC.MonadWriter (Array String) (CellEvalT m) where
-  writer = WC.writer >>> MT.lift >>> CellEvalT
+  writer = WC.writer >>> lift >>> CellEvalT
   listen = getCellEvalT >>> WC.listen >>> CellEvalT
   pass = getCellEvalT >>> WC.pass >>> CellEvalT
 
@@ -182,9 +177,9 @@ runCellEvalT
   => CellEvalT m a
   -> m (CellEvalResultP a)
 runCellEvalT (CellEvalT m) =
-  WT.runWriterT (ET.runExceptT m) <#> TPL.uncurry \r ms ->
-    { output: E.either (const M.Nothing) M.Just r
-    , messages: E.either (E.Left >>> pure) (const []) r <> map E.Right ms
+  WT.runWriterT (ET.runExceptT m) <#> uncurry \r ms ->
+    { output: either (const Nothing) Just r
+    , messages: either (Left >>> pure) (const []) r <> map Right ms
     }
 
 

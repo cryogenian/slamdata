@@ -20,15 +20,11 @@ module SlamData.Notebook.Cell.Search.Model
   , decode
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind ((>=>))
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 
-import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Either (Either())
-import Data.Maybe (Maybe())
-
-import SlamData.FileSystem.Resource (Resource())
+import SlamData.FileSystem.Resource (Resource)
 
 type Model =
   { file :: Maybe Resource

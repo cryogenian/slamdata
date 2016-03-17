@@ -18,50 +18,44 @@ module SlamData.Notebook.Cell.Viz.Form.Component
   ( formComponent
   , initialState
   , Query(..)
-  , QueryP()
-  , StateP()
-  , State()
-  , ChildState()
-  , ChildSlot()
-  , ChildQuery()
-  , DimensionQuery()
-  , SeriesQuery()
-  , MeasureQuery()
-  , DimensionSlot()
-  , SeriesSlot()
-  , MeasureSlot()
-  , DimensionState()
-  , SeriesState()
-  , MeasureState()
+  , QueryP
+  , StateP
+  , State
+  , ChildState
+  , ChildSlot
+  , ChildQuery
+  , DimensionQuery
+  , SeriesQuery
+  , MeasureQuery
+  , DimensionSlot
+  , SeriesSlot
+  , MeasureSlot
+  , DimensionState
+  , SeriesState
+  , MeasureState
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Argonaut (JCursor())
+import Data.Argonaut (JCursor)
 import Data.Array ((!!), null, singleton, range, snoc, length)
-import Data.Either (Either())
-import Data.Foldable (traverse_)
-import Data.Functor.Coproduct (Coproduct(), right, left)
-import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.Maybe.Unsafe (fromJust)
-import Data.Traversable (traverse)
 
-import Halogen
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
+import Halogen as H
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import Halogen.Component.Utils (forceRerender')
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.CustomProps as CP
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Form.Select (OptionVal, Select(..))
+import SlamData.Effects (Slam)
+import SlamData.Form.Select (Select(..))
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
 import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation(..), allAggregations)
-import SlamData.Notebook.Cell.Chart.ChartConfiguration
-import SlamData.Notebook.Cell.Viz.Form.Component.Render (gridClasses, GridClasses())
-import SlamData.Effects (SlamDataRawEffects())
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Chart.ChartConfiguration (JSelect, ChartConfiguration)
+import SlamData.Notebook.Cell.Viz.Form.Component.Render (gridClasses, GridClasses)
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 
@@ -93,44 +87,47 @@ type ChildQuery = Coproduct DimensionQuery (Coproduct SeriesQuery MeasureQuery)
 
 type DimensionState = Select JCursor
 type SeriesState = Select JCursor
-type MeasureState = P.StateP Aggregation JCursor SlamDataRawEffects
+type MeasureState = P.StateP Aggregation JCursor
 type ChildState = Either DimensionState (Either SeriesState MeasureState)
 
-type FormHTML = ParentHTML ChildState Query ChildQuery Slam ChildSlot
-type FormDSL = ParentDSL State ChildState Query ChildQuery Slam ChildSlot
-type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
-type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
+type FormHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type FormDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
+type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
-cpDimension :: ChildPath
-               DimensionState ChildState
-               DimensionQuery ChildQuery
-               DimensionSlot ChildSlot
+cpDimension
+  :: ChildPath
+       DimensionState ChildState
+       DimensionQuery ChildQuery
+       DimensionSlot ChildSlot
 cpDimension = cpL
 
-cpSeries :: ChildPath
-            SeriesState ChildState
-            SeriesQuery ChildQuery
-            SeriesSlot ChildSlot
+cpSeries
+  :: ChildPath
+       SeriesState ChildState
+       SeriesQuery ChildQuery
+       SeriesSlot ChildSlot
 cpSeries = cpR :> cpL
 
-cpMeasure :: ChildPath
-             MeasureState ChildState
-             MeasureQuery ChildQuery
-             MeasureSlot ChildSlot
+cpMeasure
+  :: ChildPath
+       MeasureState ChildState
+       MeasureQuery ChildQuery
+       MeasureSlot ChildSlot
 cpMeasure = cpR :> cpR
 
-
-formComponent :: Component StateP QueryP Slam
-formComponent = parentComponent render eval
+formComponent :: H.Component StateP QueryP Slam
+formComponent = H.parentComponent { render, eval, peek: Nothing }
 
 render
   :: ChartConfiguration
-  -> ParentHTML ChildState Query ChildQuery Slam ChildSlot
+  -> FormHTML
 render conf =
-  H.div [ P.classes [ Rc.chartEditor ] ]
-  $ if null conf.dimensions
-    then renderRowsWithoutDimension 1 2 (renderCategoryRow)
-    else renderRows 0 [ ]
+  HH.div
+    [ HP.classes [ Rc.chartEditor ] ]
+    $ if null conf.dimensions
+      then renderRowsWithoutDimension 1 2 (renderCategoryRow)
+      else renderRows 0 [ ]
   where
   renderCategoryRow :: Array FormHTML
   renderCategoryRow =
@@ -182,72 +179,85 @@ render conf =
     clss :: GridClasses
     clss = gridClasses mbDimension mbMeasure mbSeries
 
-  renderDimension :: Array H.ClassName -> Int -> JSelect -> Array FormHTML
+  renderDimension :: Array HH.ClassName -> Int -> JSelect -> Array FormHTML
   renderDimension clss ix sel =
-    [ H.form [ Cp.nonSubmit
-             , P.classes $ clss <> [ Rc.chartConfigureForm, Rc.chartDimension ] ]
-      [ dimensionLabel
-      , H.slot' cpDimension ix \_ -> { component: S.primarySelect (pure "Dimension")
-                                     , initialState: sel
-                                     }
-      ]
+    [ HH.form
+        [ CP.nonSubmit
+        , HP.classes $ clss <> [ Rc.chartConfigureForm, Rc.chartDimension ]
+        ]
+        [ dimensionLabel
+        , HH.slot' cpDimension ix \_ ->
+            { component: S.primarySelect (pure "Dimension")
+            , initialState: sel
+            }
+        ]
     ]
 
-  renderMeasure :: Array H.ClassName -> Int -> JSelect -> Array FormHTML
+  renderMeasure :: Array HH.ClassName -> Int -> JSelect -> Array FormHTML
   renderMeasure clss ix sel =
-    [ H.form [ Cp.nonSubmit
-             , P.classes $ clss <> [ Rc.chartConfigureForm
-                                   , Rc.chartMeasureOne
-                                   , Rc.withAggregation
-                                   ]
-             ]
-      [ measureLabel
-      , H.slot' cpMeasure ix \_ -> { component: childMeasure ix sel
-                                   , initialState: installedState
-                                     $ P.initialState aggregationSelect
-                                   }
-      ]
+    [ HH.form
+        [ CP.nonSubmit
+        , HP.classes
+            $ clss
+            <> [ Rc.chartConfigureForm
+               , Rc.chartMeasureOne
+               , Rc.withAggregation
+               ]
+        ]
+        [ measureLabel
+        , HH.slot' cpMeasure ix \_ ->
+            { component: childMeasure ix sel
+            , initialState: H.parentState $ P.initialState aggregationSelect
+            }
+        ]
     ]
 
-  renderSeries :: Array H.ClassName -> Int -> JSelect -> Array FormHTML
+  renderSeries :: Array HH.ClassName -> Int -> JSelect -> Array FormHTML
   renderSeries clss ix sel =
-    [ H.form [ Cp.nonSubmit
-             , P.classes $ clss <> [ Rc.chartConfigureForm
-                                   , Rc.chartSeriesOne
-                                   ]
-             ]
+    [ HH.form
+        [ CP.nonSubmit
+        , HP.classes
+            $ clss
+            <> [ Rc.chartConfigureForm
+               , Rc.chartSeriesOne
+               ]
+        ]
       [ seriesLabel
-      , H.slot' cpSeries ix \_ -> { component: S.secondarySelect
-                                    $ renderLabel ix "Series"
-                                  , initialState: sel
-                                  }
+      , HH.slot' cpSeries ix \_ ->
+          { component: S.secondarySelect $ renderLabel ix "Series"
+          , initialState: sel
+          }
       ]
     ]
 
-  renderCategory :: Array H.ClassName -> Int -> JSelect -> Array FormHTML
+  renderCategory :: Array HH.ClassName -> Int -> JSelect -> Array FormHTML
   renderCategory clss ix sel =
-    [ H.form [ Cp.nonSubmit
-             , P.classes $ clss <> [ Rc.chartConfigureForm
-                                   , Rc.chartCategory
-                                   ]
-             ]
-      [ categoryLabel
-      , H.slot' cpSeries ix \_ -> { component: S.primarySelect $ pure "Category"
-                                  , initialState: sel
-                                  }
-      ]
+    [ HH.form
+        [ CP.nonSubmit
+        , HP.classes
+            $ clss
+            <> [ Rc.chartConfigureForm
+               , Rc.chartCategory
+               ]
+        ]
+        [ categoryLabel
+        , HH.slot' cpSeries ix \_ ->
+            { component: S.primarySelect $ pure "Category"
+            , initialState: sel
+            }
+        ]
     ]
 
   childMeasure i sel =
     P.selectPair
     $ if i == 0
-      then { disableWhen: (< 2)
-           , defaultWhen: (> 1)
+      then { disableWhen: (_ < 2)
+           , defaultWhen: (_ > 1)
            , mainState: sel
            , ariaLabel: renderLabel i "Measure"
            , classes: [Rc.aggregation, B.btnPrimary]
            }
-      else { disableWhen: (< 1)
+      else { disableWhen: (_ < 1)
            , defaultWhen: (const true)
            , mainState: sel
            , ariaLabel: renderLabel i "Measure"
@@ -256,12 +266,14 @@ render conf =
 
 
   aggregationSelect :: Select Aggregation
-  aggregationSelect = Select { options: allAggregations
-                             , value: Just Sum
-                             }
+  aggregationSelect =
+    Select
+      { options: allAggregations
+      , value: Just Sum
+      }
 
   label :: String -> FormHTML
-  label str = H.label [ P.classes [ B.controlLabel ] ] [ H.text str ]
+  label str = HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text str ]
 
   categoryLabel :: FormHTML
   categoryLabel = label "Category"
@@ -281,10 +293,10 @@ render conf =
   renderLabel 2 str = pure $ "Third " <> str
   renderLabel n str = pure $ show n <> "th " <> str
 
-eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
+eval :: Natural Query FormDSL
 eval (SetConfiguration conf next) = do
-  r <- get
-  set conf
+  r <- H.get
+  H.set conf
   forceRerender'
   synchronizeDimensions r.dimensions conf.dimensions
   synchronizeSeries r.series conf.series
@@ -316,7 +328,7 @@ eval (SetConfiguration conf next) = do
     -> FormDSL Unit
   syncByIndex prism old new i =
     if isJust $ old !! i
-    then maybe (pure unit) (void <<< query' prism i <<< action <<< S.SetSelect)
+    then maybe (pure unit) (void <<< H.query' prism i <<< H.action <<< S.SetSelect)
          $ (new !! i)
     else pure unit
 
@@ -328,8 +340,8 @@ eval (SetConfiguration conf next) = do
   syncMeasureByIndex old new i =
     if isJust $ old !! i
     then maybe (pure unit)
-         (void <<< query' cpMeasure i <<< right
-          <<< ChildF unit <<< action <<< S.SetSelect)
+         (void <<< H.query' cpMeasure i <<< right
+          <<< H.ChildF unit <<< H.action <<< S.SetSelect)
          $ new !! i
     else pure unit
 
@@ -344,7 +356,7 @@ eval (SetConfiguration conf next) = do
   syncAggByIndex old new i =
     if isJust $ old !! i
     then maybe (pure unit)
-         (void <<< query' cpMeasure i <<< left <<< action <<< S.SetSelect)
+         (void <<< H.query' cpMeasure i <<< left <<< H.action <<< S.SetSelect)
          $ new !! i
     else pure unit
 
@@ -357,53 +369,53 @@ eval (SetConfiguration conf next) = do
 
 
 eval (GetConfiguration continue) = do
-  conf <- get
+  conf <- H.get
   forceRerender'
   dims <- getDimensions
   series <- getSeries
   measures <- getMeasures
   r <- { dimensions: _, series: _, measures: _, aggregations: _}
-       <$> getDimensions
-       <*> getSeries
-       <*> getMeasures
-       <*> getAggregations
+    <$> getDimensions
+    <*> getSeries
+    <*> getMeasures
+    <*> getAggregations
   pure $ continue r
   where
   getDimensions :: FormDSL (Array JSelect)
   getDimensions = do
-    conf <- get
+    conf <- H.get
     traverse getDimension (range' 0 $ length conf.dimensions - 1)
 
   getDimension :: Int -> FormDSL JSelect
   getDimension i =
-    map fromJust $ query' cpDimension i $ request S.GetSelect
+    map fromJust $ H.query' cpDimension i $ H.request S.GetSelect
 
   getSeries :: FormDSL (Array JSelect)
   getSeries = do
-    conf <- get
+    conf <- H.get
     traverse getSerie (range' 0 $ length conf.series - 1)
 
   getSerie :: Int -> FormDSL JSelect
   getSerie i =
-    map fromJust $ query' cpSeries i $ request S.GetSelect
+    map fromJust $ H.query' cpSeries i $ H.request S.GetSelect
 
   getMeasures :: FormDSL (Array JSelect)
   getMeasures = do
-    conf <- get
+    conf <- H.get
     traverse getMeasure (range' 0 $ length conf.measures - 1)
 
   getMeasure :: Int -> FormDSL JSelect
   getMeasure i =
-    map fromJust $ query' cpMeasure i $ right $ ChildF unit $ request S.GetSelect
+    map fromJust $ H.query' cpMeasure i $ right $ H.ChildF unit $ H.request S.GetSelect
 
   getAggregations :: FormDSL (Array (Select Aggregation))
   getAggregations = do
-    conf <- get
+    conf <- H.get
     traverse getAggregation (range' 0 $ length conf.measures - 1)
 
   getAggregation :: Int -> FormDSL (Select Aggregation)
   getAggregation i =
-    map fromJust $ query' cpMeasure i $ left $ request S.GetSelect
+    map fromJust $ H.query' cpMeasure i $ left $ H.request S.GetSelect
 
   range' :: Int -> Int -> Array Int
   range' start end =

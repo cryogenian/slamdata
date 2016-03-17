@@ -18,17 +18,12 @@ limitations under the License.
 -- | selectable stuff.
 module SlamData.Form.Select where
 
-import Prelude
-
-import Control.Apply ((*>))
-import Control.MonadPlus (MonadPlus, guard)
+import SlamData.Prelude
 
 import Data.Argonaut
   (DecodeJson, EncodeJson, JCursor(), decodeJson, jsonEmptyObject, (.?), (~>), (:=))
 import Data.Array (filter, length, head, (!!), elemIndex)
-import Data.Foldable (Foldable, foldMap)
 import Data.Lens (LensP(), lens, view, (^.), (?~), (.~))
-import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.Monoid.Conj (Conj(..), runConj)
 
 

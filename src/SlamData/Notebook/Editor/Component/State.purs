@@ -15,12 +15,12 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Editor.Component.State
-  ( StateP()
-  , State()
+  ( StateP
+  , State
   , StateMode(..)
-  , CellDef()
-  , CellConstructor()
-  , DebounceTrigger()
+  , CellDef
+  , CellConstructor
+  , DebounceTrigger
   , initialNotebook
   , _fresh
   , _accessType
@@ -52,36 +52,34 @@ module SlamData.Notebook.Editor.Component.State
   , notebookPath
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Array as A
 import Data.Array.Unsafe as U
-import Data.BrowserFeatures (BrowserFeatures())
-import Data.Foldable (foldMap, foldr, foldl, maximum, any)
-import Data.Lens (LensP(), lens)
+import Data.BrowserFeatures (BrowserFeatures)
+import Data.Foldable (maximum, any)
+import Data.Lens (LensP, lens)
 import Data.List (List(..))
 import Data.List as L
 import Data.Map as M
-import Data.Maybe (Maybe(..), maybe)
-import Data.Monoid (mempty)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as S
 import Data.StrMap as SM
 import Data.These (These(..), theseLeft)
-import Data.Tuple (Tuple(..), fst)
 
-import Halogen
+import Halogen as H
 
 import SlamData.Config as Config
+import SlamData.Effects (Slam)
 import SlamData.Notebook.AccessType (AccessType(..))
-import SlamData.Notebook.Cell.Ace.Component (AceEvaluator(), AceSetup(), aceComponent)
+import SlamData.Notebook.Cell.Ace.Component (AceEvaluator, AceSetup, aceComponent)
 import SlamData.Notebook.Cell.API.Component (apiComponent)
 import SlamData.Notebook.Cell.APIResults.Component (apiResultsComponent)
 import SlamData.Notebook.Cell.CellId (CellId(..), runCellId)
 import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..), linkedCellType)
 import SlamData.Notebook.Cell.Chart.Component (chartComponent)
-import SlamData.Notebook.Cell.Component (CellComponent(), CellState(), CellStateP(), CellQueryP(), initEditorCellState, initResultsCellState)
+import SlamData.Notebook.Cell.Component (CellComponent, CellState, CellStateP, CellQueryP, initEditorCellState, initResultsCellState)
 import SlamData.Notebook.Cell.Download.Component (downloadComponent)
 import SlamData.Notebook.Cell.Explore.Component (exploreComponent)
 import SlamData.Notebook.Cell.JTable.Component (jtableComponent)
@@ -93,13 +91,12 @@ import SlamData.Notebook.Cell.Query.Eval (queryEval, querySetup)
 import SlamData.Notebook.Cell.Search.Component (searchComponent)
 import SlamData.Notebook.Cell.Viz.Component (vizComponent)
 import SlamData.Notebook.Editor.Component.CellSlot (CellSlot(..))
-import SlamData.Notebook.Editor.Component.Query (Query())
-import SlamData.Notebook.Editor.Model as M
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Editor.Component.Query (Query)
+import SlamData.Notebook.Editor.Model as Model
 
-import Utils.Path as P
+import Utils.Path (DirPath)
 
-type StateP = InstalledState State CellStateP Query CellQueryP Slam CellSlot
+type StateP = H.ParentState State CellStateP Query CellQueryP Slam CellSlot
 
 data StateMode
   = Loading
@@ -116,7 +113,7 @@ type State =
   , cellTypes :: M.Map CellId CellType
   , activeCellId :: Maybe CellId
   , name :: These P.DirName String
-  , path :: Maybe P.DirPath
+  , path :: Maybe DirPath
   , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
   , viewingCell :: Maybe CellId
@@ -131,7 +128,7 @@ type State =
 type CellDef = { id :: CellId, ty :: CellType, ctor :: CellConstructor }
 
 -- | The specific `SlotConstructor` type for cells in the notebook.
-type CellConstructor = SlotConstructor CellStateP CellQueryP Slam CellSlot
+type CellConstructor = H.SlotConstructor CellStateP CellQueryP Slam CellSlot
 
 -- | The type of functions used to trigger a debounced query.
 type DebounceTrigger = Query Unit -> Slam Unit
@@ -185,7 +182,7 @@ _name :: LensP State (These P.DirName String)
 _name = lens _.name _{name = _}
 
 -- | The path to the notebook in the filesystem
-_path :: LensP State (Maybe P.DirPath)
+_path :: LensP State (Maybe DirPath)
 _path = lens _.path _{path = _}
 
 -- | Toggles the display of the new cell menu.
@@ -264,11 +261,11 @@ addCellChain cellType parents st =
   mkCellDef cellType cellId =
     let component = cellTypeComponent cellType cellId st.browserFeatures
         initialState =
-          installedState (cellTypeInitialState cellType)
+          H.parentState (cellTypeInitialState cellType)
             { accessType = st.accessType }
     in { id: cellId
        , ty: cellType
-       , ctor: SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
+       , ctor: H.SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
        }
 
 cellTypeComponent :: CellType -> CellId -> BrowserFeatures -> CellComponent
@@ -418,7 +415,7 @@ addPendingCell cellId st@{ pendingCells } =
   removeDescendants = flip S.difference (findDescendants cellId st)
 
 -- | Finds the current notebook path, if the notebook has been saved.
-notebookPath :: State -> Maybe P.DirPath
+notebookPath :: State -> Maybe DirPath
 notebookPath state = do
   path <- state.path
   name <- theseLeft state.name
@@ -427,14 +424,14 @@ notebookPath state = do
 -- | Reconstructs a notebook state from a notebook model.
 fromModel
   :: BrowserFeatures
-  -> Maybe P.DirPath
+  -> Maybe DirPath
   -> Maybe P.DirName
-  -> M.Notebook
+  -> Model.Notebook
   -> Tuple (Array Cell.Model) State
 fromModel browserFeatures path name { cells, dependencies } =
   Tuple
     cells
-    ({ fresh: maybe 0 (+ 1) $ maximum $ map (runCellId <<< _.cellId) cells
+    ({ fresh: maybe 0 (_ + 1) $ maximum $ map (runCellId <<< _.cellId) cells
     , accessType: ReadOnly
     , cells: foldr (Cons <<< cellDefFromModel) Nil cells
     , cellTypes: foldl (flip \{cellId, cellType} -> M.insert cellId cellType) M.empty cells
@@ -455,8 +452,8 @@ fromModel browserFeatures path name { cells, dependencies } =
   cellDefFromModel :: Cell.Model -> CellDef
   cellDefFromModel { cellId, cellType } =
     let component = cellTypeComponent cellType cellId browserFeatures
-        initialState = installedState (cellTypeInitialState cellType)
+        initialState = H.parentState (cellTypeInitialState cellType)
     in { id: cellId
        , ty: cellType
-       , ctor: SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
+       , ctor: H.SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
        }

@@ -23,23 +23,18 @@ module SlamData.Notebook.Routing
   , mkNotebookCellURL
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Alt ((<|>))
-import Control.Apply ((*>))
 import Control.UI.Browser as Browser
 
-import Data.Either as E
 import Data.Foldable as F
 import Data.List as L
 import Data.Map as Map
-import Data.Maybe as M
 import Data.Maybe.Unsafe as MU
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String.Regex as R
 import Data.StrMap as SM
-import Data.Tuple (Tuple(..))
 
 import Routing.Match (Match())
 import Routing.Match as Match
@@ -72,12 +67,12 @@ routing
   optionalVarMap = varMap <|> pure SM.empty
 
   varMap :: Match Port.VarMap
-  varMap = Match.params <#> Map.toList >>> F.foldl go SM.empty
+  varMap = Match.params <#> Map.toList >>> foldl go SM.empty
     where
       go m (Tuple k str) =
         case P.runParser str Port.parseVarMapValue of
-          E.Left err -> m
-          E.Right v -> SM.insert k v m
+          Left err -> m
+          Right v -> SM.insert k v m
 
   oneSlash :: Match Unit
   oneSlash = Match.lit ""
@@ -85,22 +80,22 @@ routing
   explored :: Match UP.FilePath
   explored = Match.eitherMatch $ mkResource <$> Match.list Match.str
 
-  mkResource :: L.List String -> E.Either String UP.FilePath
+  mkResource :: L.List String -> Either String UP.FilePath
   mkResource parts =
     case L.last parts of
-      M.Just filename | filename /= "" ->
+      Just filename | filename /= "" ->
         let dirParts = MU.fromJust (L.init parts)
             filePart = P.file filename
-            path = F.foldr (\part acc -> P.dir part </> acc) filePart dirParts
-        in E.Right $ P.rootDir </> path
-      _ -> E.Left "Expected non-empty explore path"
+            path = foldr (\part acc -> P.dir part </> acc) filePart dirParts
+        in Right $ P.rootDir </> path
+      _ -> Left "Expected non-empty explore path"
 
   notebook :: Match UP.DirPath
   notebook = notebookFromParts <$> partsAndName
 
   notebookFromParts :: Tuple (L.List String) String -> UP.DirPath
   notebookFromParts (Tuple ps nm) =
-    F.foldl (</>) P.rootDir (map P.dir ps) </> P.dir nm
+    foldl (</>) P.rootDir (map P.dir ps) </> P.dir nm
 
   partsAndName :: Match (Tuple (L.List String) String)
   partsAndName = Tuple <$> (oneSlash *> Match.list notName) <*> name
@@ -111,15 +106,15 @@ routing
   notName :: Match String
   notName = Match.eitherMatch $ map pathPart Match.str
 
-  notebookName :: String -> E.Either String String
+  notebookName :: String -> Either String String
   notebookName input
-    | checkExtension input = E.Right input
-    | otherwise = E.Left input
+    | checkExtension input = Right input
+    | otherwise = Left input
 
-  pathPart :: String -> E.Either String String
+  pathPart :: String -> Either String String
   pathPart input
-    | input == "" || checkExtension input = E.Left "incorrect path part"
-    | otherwise = E.Right input
+    | input == "" || checkExtension input = Left "incorrect path part"
+    | otherwise = Right input
 
   extensionRegex :: R.Regex
   extensionRegex = R.regex ("\\." <> Config.notebookExtension <> "$") R.noFlags
@@ -175,7 +170,7 @@ mkNotebookHash path action varMap =
   "#"
     <> UP.encodeURIPath (P.printPath path)
     <> NA.printAction action
-    <> M.maybe "" ("/" <>)  (renderVarMapQueryString varMap)
+    <> maybe "" ("/" <>)  (renderVarMapQueryString varMap)
 
 mkNotebookCellHash
   :: UP.DirPath    -- notebook path
@@ -190,15 +185,15 @@ mkNotebookCellHash path cid accessType varMap =
     <> CID.cellIdToString cid
     <> "/"
     <> AT.printAccessType accessType
-    <> M.maybe "" ("/" <>)  (renderVarMapQueryString varMap)
+    <> maybe "" ("/" <>)  (renderVarMapQueryString varMap)
 
 renderVarMapQueryString
   :: Port.VarMap -- global `VarMap`
-  -> M.Maybe String
+  -> Maybe String
 renderVarMapQueryString varMap =
   if SM.isEmpty varMap
-     then M.Nothing
-     else M.Just $ "?" <> F.intercalate "&" (varMapComponents varMap)
+     then Nothing
+     else Just $ "?" <> F.intercalate "&" (varMapComponents varMap)
   where
     varMapComponents =
       SM.foldMap $ \key val ->

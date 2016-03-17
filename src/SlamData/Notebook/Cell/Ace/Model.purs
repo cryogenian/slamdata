@@ -21,13 +21,9 @@ module SlamData.Notebook.Cell.Ace.Model
   , decode
   ) where
 
-import Prelude
-
-import Control.Bind ((>=>))
+import SlamData.Prelude
 
 import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, encodeJson, jsonEmptyObject)
-import Data.Either (Either())
-import Data.Traversable (traverse)
 
 import Utils.Ace (RangeRec(), encodeRangeRec, decodeRangeRec)
 

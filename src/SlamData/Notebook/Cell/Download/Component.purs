@@ -16,24 +16,17 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Download.Component where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.MonadPlus (guard)
 import Control.UI.Browser (encodeURIComponent)
 
-import Data.Either (Either(..), isLeft, isRight, either)
-import Data.Foldable (for_)
-import Data.Functor (($>))
-import Data.Functor.Coproduct (coproduct, right)
 import Data.Lens ((?~), (.~), (%~), _Left, _Right, preview)
-import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Path.Pathy (printPath)
-import Data.Tuple (Tuple(..))
 
-import Halogen
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
@@ -55,14 +48,14 @@ import SlamData.Notebook.Cell.Port as P
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 
-type DownloadHTML = ComponentHTML QueryP
-type DownloadDSL = ComponentDSL State QueryP Slam
+type DownloadHTML = H.ComponentHTML QueryP
+type DownloadDSL = H.ComponentDSL State QueryP Slam
 
 downloadComponent :: Cc.CellComponent
 downloadComponent = makeSingularCellComponent
   { name: cellName Download
   , glyph: cellGlyph Download
-  , component: component render eval
+  , component: H.component { render, eval }
   , initialState: initialState
   , _State: _DownloadState
   , _Query: makeQueryPrism _DownloadQuery
@@ -72,42 +65,42 @@ render :: State -> DownloadHTML
 render state =
   case state.source of
     Nothing ->
-      H.div
-        [ P.classes [ B.alert, B.alertDanger ] ]
-        [ H.text "The current input cannot be downloaded" ]
+      HH.div
+        [ HP.classes [ B.alert, B.alertDanger ] ]
+        [ HH.text "The current input cannot be downloaded" ]
     Just _ ->
-      H.div
-        [ P.classes [ Rc.downloadCellEditor ] ]
+      HH.div
+        [ HP.classes [ Rc.downloadCellEditor ] ]
         [ renderDownloadTypeSelector state
         , renderDownloadConfiguration state
         ]
 
 renderDownloadTypeSelector :: State -> DownloadHTML
 renderDownloadTypeSelector state =
-  H.div
-    [ P.classes [ Rc.downloadTypeSelector ] ]
-    [ H.img
-        [ P.src "img/csv.svg"
-        , P.classes (guard (isLeft state.options) $> B.active)
-        , P.title "Comma separated values"
-        , E.onClick (E.input_ (right <<< SetOutput D.CSV))
+  HH.div
+    [ HP.classes [ Rc.downloadTypeSelector ] ]
+    [ HH.img
+        [ HP.src "img/csv.svg"
+        , HP.classes (guard (isLeft state.options) $> B.active)
+        , HP.title "Comma separated values"
+        , HE.onClick (HE.input_ (right <<< SetOutput D.CSV))
         ]
-    , H.img
-        [ P.src "img/json.svg"
-        , P.classes (guard (isRight state.options) $> B.active)
-        , P.title "JSON"
-        , E.onClick (E.input_ (right <<< SetOutput D.JSON))
+    , HH.img
+        [ HP.src "img/json.svg"
+        , HP.classes (guard (isRight state.options) $> B.active)
+        , HP.title "JSON"
+        , HE.onClick (HE.input_ (right <<< SetOutput D.JSON))
         ]
     ]
 
 renderDownloadConfiguration  :: State -> DownloadHTML
 renderDownloadConfiguration state =
-  H.div
-    [ P.classes [ Rc.downloadConfiguration ] ]
+  HH.div
+    [ HP.classes [ Rc.downloadConfiguration ] ]
     $  [ either optionsCSV optionsJSON state.options]
     <> [ row
-           [ H.div [ P.classes [ B.colXs4 ] ] [ compress state ]
-           , H.div [ P.classes [ B.colXs8 ] ] [ downloadButton state ]
+           [ HH.div [ HP.classes [ B.colXs4 ] ] [ compress state ]
+           , HH.div [ HP.classes [ B.colXs8 ] ] [ downloadButton state ]
            ]
        ]
 
@@ -119,15 +112,15 @@ optionsJSON = Rd.optionsJSON (\lens v -> right <<< (ModifyJSONOpts (lens .~ v)))
 
 compress :: State -> DownloadHTML
 compress state =
-  H.div
-    [ P.classes [ B.formGroup ] ]
-    [ H.label_
-        [ H.span_ [ H.text "Compress" ]
-        , H.input
-            [ P.inputType P.InputCheckbox
-            , P.checked $ compressed state
-            , P.enabled $ fromMaybe false (R.isFile <$> state.source)
-            , E.onValueChange (E.input_ (right <<< ToggleCompress))
+  HH.div
+    [ HP.classes [ B.formGroup ] ]
+    [ HH.label_
+        [ HH.span_ [ HH.text "Compress" ]
+        , HH.input
+            [ HP.inputType HP.InputCheckbox
+            , HP.checked $ compressed state
+            , HP.enabled $ fromMaybe false (R.isFile <$> state.source)
+            , HE.onValueChange (HE.input_ (right <<< ToggleCompress))
             ]
         ]
     ]
@@ -138,13 +131,13 @@ compress state =
 
 downloadButton :: State -> DownloadHTML
 downloadButton state =
-  H.a
-    [ P.classes [ B.btn, B.btnPrimary ]
-    , P.href $ fromMaybe "#" (url <$> state.source)
+  HH.a
+    [ HP.classes [ B.btn, B.btnPrimary ]
+    , HP.href $ fromMaybe "#" (url <$> state.source)
     , ARIA.label "Download"
-    , P.title "Download"
+    , HP.title "Download"
     ]
-    [ H.text "Download" ]
+    [ HH.text "Download" ]
   where
   url :: R.Resource -> String
   url res =
@@ -162,26 +155,26 @@ eval = coproduct cellEval downloadEval
 cellEval :: Natural Ec.CellEvalQuery DownloadDSL
 cellEval (Ec.EvalCell { inputPort } continue) = do
   case inputPort of
-    Just (P.TaggedResource { resource }) -> modify (_source ?~ resource)
-    Just P.Blocked -> modify (_source .~ Nothing)
+    Just (P.TaggedResource { resource }) -> H.modify (_source ?~ resource)
+    Just P.Blocked -> H.modify (_source .~ Nothing)
     _ -> pure unit
   pure $ continue { output: Nothing, messages: [] }
 cellEval (Ec.NotifyRunCell next) = pure next
-cellEval (Ec.Save k) = map (k <<< encode) get
-cellEval (Ec.Load json next) = for_ (decode json) set $> next
+cellEval (Ec.Save k) = map (k <<< encode) H.get
+cellEval (Ec.Load json next) = for_ (decode json) H.set $> next
 cellEval (Ec.SetupCell { inputPort } next) = do
-  modify $ _source .~ preview P._Resource inputPort
+  H.modify $ _source .~ preview P._Resource inputPort
   pure next
 cellEval (Ec.SetCanceler _ next) = pure next
 
 downloadEval :: Natural Query DownloadDSL
 downloadEval (SetOutput ty next) = do
-  options <- gets _.options
+  options <- H.gets _.options
   case Tuple ty options of
-    Tuple D.CSV (Right _) -> modify _{options = Left D.initialCSVOptions}
-    Tuple D.JSON (Left _) -> modify _{options = Right D.initialJSONOptions}
+    Tuple D.CSV (Right _) -> H.modify _{options = Left D.initialCSVOptions}
+    Tuple D.JSON (Left _) -> H.modify _{options = Right D.initialJSONOptions}
     _ -> pure unit
   pure next
-downloadEval (ModifyCSVOpts fn next) = modify (_options <<< _Left %~ fn) $> next
-downloadEval (ModifyJSONOpts fn next) = modify (_options <<< _Right %~ fn) $> next
-downloadEval (ToggleCompress next) = modify (_compress %~ not) $> next
+downloadEval (ModifyCSVOpts fn next) = H.modify (_options <<< _Left %~ fn) $> next
+downloadEval (ModifyJSONOpts fn next) = H.modify (_options <<< _Right %~ fn) $> next
+downloadEval (ToggleCompress next) = H.modify (_compress %~ not) $> next

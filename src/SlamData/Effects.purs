@@ -16,18 +16,18 @@ limitations under the License.
 
 module SlamData.Effects where
 
-import Ace.Types (ACE())
-import Control.Monad.Aff (Aff())
-import Control.Monad.Eff.Console (CONSOLE())
-import Control.Monad.Eff.Random (RANDOM())
-import Control.Monad.Eff.Ref (REF())
-import Control.UI.File (READ_FILE())
-import Control.UI.ZClipboard (ZCLIPBOARD())
-import DOM.Timer (Timer())
-import Data.Date (Now())
-import ECharts.Effects (ECHARTS_INIT(), ECHARTS_OPTION_SET(), ECHARTS_DISPOSE(), ECHARTS_RESIZE(), ECHARTS_REFRESH(), ECHARTS_CLEAR())
-import Halogen (HalogenEffects())
-import Network.HTTP.Affjax (AJAX())
+import Ace.Types (ACE)
+import Control.Monad.Aff (Aff)
+import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Random (RANDOM)
+import Control.Monad.Eff.Ref (REF)
+import Control.UI.File (READ_FILE)
+import Control.UI.ZClipboard (ZCLIPBOARD)
+import Data.Date (Now)
+import DOM.Timer (Timer)
+import ECharts.Effects (ECHARTS_INIT, ECHARTS_OPTION_SET, ECHARTS_DISPOSE, ECHARTS_RESIZE, ECHARTS_REFRESH, ECHARTS_CLEAR)
+import Halogen (HalogenEffects)
+import Network.HTTP.Affjax (AJAX)
 
 type Slam = Aff SlamDataEffects
 

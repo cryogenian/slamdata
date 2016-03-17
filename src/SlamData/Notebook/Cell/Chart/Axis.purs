@@ -16,22 +16,13 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.Axis where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Alt ((<|>))
-import Control.MonadPlus (guard)
-
-import Data.Argonaut
-  (JCursor(..), JObject(), JArray(), Json(), insideOut, decodeJson, encodeJson)
+import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, decodeJson, encodeJson)
 import Data.Array ((!!), length)
-import Data.Either (either)
-import Data.Foldable (foldl)
 import Data.List (List(..), filter, fromList, catMaybes)
 import Data.Map as M
-import Data.Maybe (Maybe(), maybe)
 import Data.StrMap as Sm
-import Data.Traversable (sequence)
-import Data.Tuple (Tuple(..))
 
 import SlamData.Notebook.Cell.Chart.Semantics
 

@@ -16,18 +16,12 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.JTable.Component.Render (render) where
 
-import Prelude
-
-import Control.Bind (join)
+import SlamData.Prelude
 
 import Data.Array as A
 import Data.Char (fromCharCode)
-import Data.Either (Either(), either)
-import Data.Functor (($>))
-import Data.Functor.Coproduct (left, right)
 import Data.Int as Int
 import Data.Json.JTable as JT
-import Data.Maybe (Maybe(..), isNothing, fromMaybe)
 import Data.String (fromChar)
 
 import Halogen

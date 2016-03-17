@@ -16,90 +16,73 @@ limitations under the License.
 
 module SlamData.Notebook.Component.ChildSlot where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Either
-import Data.Functor.Coproduct (Coproduct())
-import Data.Generic (Generic, gEq, gCompare)
+import Data.Either.Nested (Either5)
+import Data.Functor.Coproduct.Nested (Coproduct5)
 
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 import SlamData.Notebook.Dialog.Component as Dialog
-import SlamData.Notebook.Editor.Component.Query as Notebook
-import SlamData.Notebook.Editor.Component.State as Notebook
-import SlamData.Notebook.Menu.Component.Query as Menu
-import SlamData.Notebook.Menu.Component.State as Menu
+import SlamData.Notebook.Editor.Component as Notebook
+import SlamData.Notebook.Menu.Component as Menu
 import SlamData.Notebook.Rename.Component as Rename
 import SlamData.SignIn.Component as SignIn
 
-type DialogSlot = Unit
-type NotebookSlot = Unit
-type RenameSlot = Unit
-type SignInSlot = Unit
-data MenuSlot = MenuSlot
-
-derive instance genericMenuSlot :: Generic MenuSlot
-instance eqMenuSlot :: Eq MenuSlot where eq = gEq
-instance ordMenuSlot :: Ord MenuSlot where compare = gCompare
-
-type ChildSlot =
-  Either RenameSlot
-  (Either SignInSlot
-    (Either MenuSlot
-     (Either DialogSlot
-      NotebookSlot)))
-
 type ChildQuery =
-  Coproduct Rename.Query
-  (Coproduct SignIn.QueryP
-    (Coproduct Menu.QueryP
-     (Coproduct Dialog.QueryP
-      Notebook.QueryP)))
+  Coproduct5
+    Rename.Query
+    SignIn.QueryP
+    Menu.QueryP
+    Dialog.QueryP
+    Notebook.QueryP
 
 type ChildState g =
-  Either Rename.State
-  (Either SignIn.StateP
-    (Either (Menu.StateP g)
-     (Either Dialog.StateP
-      Notebook.StateP)))
+  Either5
+    Rename.State
+    SignIn.StateP
+    (Menu.StateP g)
+    Dialog.StateP
+    Notebook.StateP
+
+type ChildSlot = Either5 Unit Unit Unit Unit Unit
 
 cpRename
   :: forall g
    . ChildPath
        Rename.State (ChildState g)
        Rename.Query ChildQuery
-       RenameSlot ChildSlot
-cpRename = cpL
+       Unit ChildSlot
+cpRename = cpL :> cpL :> cpL :> cpL
 
 cpSignIn
   :: forall g
    . ChildPath
        SignIn.StateP (ChildState g)
        SignIn.QueryP ChildQuery
-       SignInSlot ChildSlot
-cpSignIn = cpR :> cpL
-
-cpDialog
-  :: forall g
-   . ChildPath
-       Dialog.StateP (ChildState g)
-       Dialog.QueryP ChildQuery
-       DialogSlot ChildSlot
-cpDialog = cpR :> cpR :> cpR :> cpL
-
-cpNotebook
-  :: forall g
-   . ChildPath
-       Notebook.StateP (ChildState g)
-       Notebook.QueryP ChildQuery
-       NotebookSlot ChildSlot
-cpNotebook = cpR :> cpR :> cpR :> cpR
+       Unit ChildSlot
+cpSignIn = cpL :> cpL :> cpL :> cpR
 
 cpMenu
   :: forall g
    . ChildPath
        (Menu.StateP g) (ChildState g)
        Menu.QueryP ChildQuery
-       MenuSlot ChildSlot
-cpMenu = cpR :> cpR :> cpL
+       Unit ChildSlot
+cpMenu = cpL :> cpL :> cpR
 
+cpDialog
+  :: forall g
+   . ChildPath
+       Dialog.StateP (ChildState g)
+       Dialog.QueryP ChildQuery
+       Unit ChildSlot
+cpDialog = cpL :> cpR
+
+cpNotebook
+  :: forall g
+   . ChildPath
+       Notebook.StateP (ChildState g)
+       Notebook.QueryP ChildQuery
+       Unit ChildSlot
+cpNotebook = cpR

@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.FileSystem.Routing.Salt where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Random (RANDOM(), randomInt)

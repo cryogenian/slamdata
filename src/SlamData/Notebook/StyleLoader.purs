@@ -16,33 +16,28 @@ limitations under the License.
 
 module SlamData.Notebook.StyleLoader where
 
-import Prelude
+import SlamData.Prelude
 
+import Control.Monad.Eff (Eff())
 import Control.UI.Browser (decodeURIComponent)
 
 import Data.Array as Arr
-import Data.Maybe as M
-import Data.Either as E
-import Data.Foldable as F
 import Data.Nullable as N
 import Data.String as Str
 import Data.String.Regex as Rgx
-import Data.Traversable as T
 import Data.URI as URI
 import Data.URI.Types as URI
 
 import DOM (DOM())
 import DOM.HTML (window)
 import DOM.HTML.Location as Location
-import DOM.HTML.Window as Window
 import DOM.HTML.Types (htmlDocumentToDocument, htmlDocumentToParentNode, htmlDocumentToNode)
-import DOM.Node.Types (Node(), elementToNode)
+import DOM.HTML.Window as Window
 import DOM.Node.Document (createElement)
 import DOM.Node.Element as Element
 import DOM.Node.Node as Node
 import DOM.Node.ParentNode as ParentNode
-
-import Control.Monad.Eff (Eff())
+import DOM.Node.Types (Node(), elementToNode)
 
 retrieveStyles
   :: forall e
@@ -53,15 +48,15 @@ retrieveStyles =
     >>= Location.search
     <#> additionalStyles
     <#> map URI.runParseURIRef
-    <#> F.foldMap (E.either (\_ -> []) pure)
+    <#> foldMap (either (\_ -> []) pure)
   where
   additionalStyles :: String -> Array String
   additionalStyles s =
-    M.fromMaybe []
+    fromMaybe []
       $ Str.split ","
       <$> extractStyleURIStr s
 
-  extractStyleURIStr :: String -> M.Maybe String
+  extractStyleURIStr :: String -> Maybe String
   extractStyleURIStr str =
     Rgx.match stylesRgx str
       >>= flip Arr.index 1
@@ -95,8 +90,8 @@ getHead = do
     ParentNode.querySelector "head"
     $ htmlDocumentToParentNode doc
   case map elementToNode $ N.toMaybe nullableHead of
-    M.Just head -> pure head
-    M.Nothing -> do
+    Just head -> pure head
+    Nothing -> do
       newHead <-
         map elementToNode
         $ createElement "head"
@@ -107,7 +102,7 @@ getHead = do
 loadStyles :: forall e. Eff (dom :: DOM|e) Unit
 loadStyles =
   retrieveStyles
-    >>= T.traverse createLink
-    >>= F.traverse_ \link -> do
+    >>= traverse createLink
+    >>= traverse_ \link -> do
       h <- getHead
       Node.appendChild link h

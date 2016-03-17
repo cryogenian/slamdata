@@ -20,13 +20,11 @@ module SlamData.Notebook.Cell.Component.Render
   , statusBar
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Array as A
-import Data.Either (either, isLeft)
 import Data.Int (fromNumber)
 import Data.Lens ((^?))
-import Data.Maybe (Maybe(..), maybe)
 import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
 import Data.Visibility (Visibility(..))
 
