@@ -37,11 +37,12 @@ import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Prelude
 import Selenium.ActionSequence as Sequence
-import Selenium.Monad (getAttribute, clickEl, attempt, later, sequence, getText, byXPath, byId, tryRepeatedlyTo, findExact, findElements, loseElement, isDisplayed, childExact, getInnerHtml)
+import Selenium.Monad (getAttribute, clickEl, attempt, later, sequence, getText, byXPath, byId, tryRepeatedlyTo, findExact, findElements, loseElement, isDisplayed, childExact, getInnerHtml, sendKeysEl)
 import Selenium.MouseButton (leftButton)
 import Selenium.Types (Element())
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Feature.Monad (Feature(), getModifierKey)
+import Test.Feature.Log (warnMsg)
 import Test.Utils (ifTrue, ifFalse, orIfItFails, passover, throwIfEmpty, throwIfNotEmpty, singletonValue)
 import XPath as XPath
 import Debug.Trace
@@ -132,6 +133,12 @@ withPropertiesMessage xs s | length xs == 0 = s
 withPropertiesMessage xs s = s ++ " with the attributes or properties: " ++ printProperties xs
 
 -- Expectations
+expectNotPresented' :: forall eff o. String -> Feature eff o Unit
+expectNotPresented' xPath = expectNotPresentedWithProperties' [] xPath
+
+expectPresented' :: forall eff o. String -> Feature eff o Unit
+expectPresented' xPath = expectPresentedWithProperties' [] xPath
+
 expectNotPresented :: forall eff o. String -> Feature eff o Unit
 expectNotPresented xPath = expectNotPresentedWithProperties [] xPath
 
@@ -160,13 +167,13 @@ expectNotPresentedVisual properties xPath =
   throwVisualError = liftEff $ throw $ XPath.errorMessage message xPath
   message = withPropertiesMessage properties "Expected to find no visually displayed elements"
 
-expectNotPresentedWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
-expectNotPresentedWithProperties properties xPath =
-  tryRepeatedlyTo $ expectNotPresentedVisual properties xPath *> expectNotPresentedAria properties xPath
+expectNotPresentedWithProperties' :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectNotPresentedWithProperties' properties xPath =
+  expectNotPresentedVisual properties xPath *> expectNotPresentedAria properties xPath
 
-expectPresentedWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
-expectPresentedWithProperties properties xPath =
-  tryRepeatedlyTo $ expectNode *> expectPresentedVisual *> expectPresentedAria
+expectPresentedWithProperties' :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectPresentedWithProperties' properties xPath =
+  expectNode *> expectPresentedVisual *> expectPresentedAria
   where
   verify = either (const $ pure unit) <<< const <<< throwExpectation
   throwExpectation :: forall eff o. String -> Feature eff o Unit
@@ -179,71 +186,115 @@ expectPresentedWithProperties properties xPath =
   visualMessage = "Expected to find only visually presented elements"
   ariaMessage = "Expected no true values for \"aria-hidden\" on elements or their ancestors found"
 
+expectNotPresentedWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectNotPresentedWithProperties properties xPath =
+  tryRepeatedlyTo $ expectNotPresentedWithProperties' properties xPath
+
+expectPresentedWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
+expectPresentedWithProperties properties xPath =
+  tryRepeatedlyTo $ expectPresentedWithProperties' properties xPath
+
 -- Interaction utilities
 checkedProperty :: Maybe String -> Property
 checkedProperty checked = Tuple "checked" checked
 
-propertiesAndChecked :: Maybe String -> Array Property -> Array Property
-propertiesAndChecked checked = append [checkedProperty checked]
+updateProperty :: String -> Maybe String -> Array Property -> Array Property
+updateProperty name value =
+  append [Tuple name value] <<< filter (not <<< eq name <<< fst)
 
 -- XPath dependent interactions
-check' :: forall eff o. (Maybe String) -> String -> Feature eff o Unit
-check' checked xPath =
-  traverse_ clickElement =<< findAllWithProperties [checkedProperty checked] xPath
-
 check :: forall eff o. String -> Feature eff o Unit
-check = check' Nothing
+check xPath = checkWithProperties [] xPath
 
 uncheck :: forall eff o. String -> Feature eff o Unit
-uncheck = check' (Just "true")
+uncheck xPath = uncheckWithProperties [] xPath
 
 pushRadioButton :: forall eff o. String -> Feature eff o Unit
-pushRadioButton = check' Nothing
+pushRadioButton xPath = pushRadioButtonWithProperties [] xPath
 
 provideFieldValue :: forall eff o. String -> String -> Feature eff o Unit
-provideFieldValue xPath value =
-  tryRepeatedlyTo $ provideFieldValueElement value =<< find xPath
+provideFieldValue xPath value = provideFieldValueWithProperties [] xPath value
+
+provideFieldValueWithExpectedValue :: forall eff o. String -> String -> String -> Feature eff o Unit
+provideFieldValueWithExpectedValue expectedValue xPath value =
+  provideFieldValueWithPropertiesAndExpectedValue [] expectedValue xPath value
 
 selectFromDropdown :: forall eff o. String -> String -> Feature eff o Unit
-selectFromDropdown xPath text =
-  tryRepeatedlyTo $ selectFromDropdownElement text =<< find xPath
+selectFromDropdown xPath text = selectFromDropdownWithProperties [] xPath text
 
 click :: forall eff o. String -> Feature eff o Unit
-click x = tryRepeatedlyTo $ clickElement =<< find x
+click xPath = clickWithProperties [] xPath
+
+clickWithExpectation :: forall eff o. Feature eff o Unit -> String -> Feature eff o Unit
+clickWithExpectation expectation xPath =
+  clickWithPropertiesAndExpectation [] expectation xPath
 
 clickAll :: forall eff o. String -> Feature eff o Unit
-clickAll = tryRepeatedlyTo <<< (traverse_ clickElement) <=< findAll
+clickAll xPath = clickAllWithProperties [] xPath
 
 hover :: forall eff o. String -> Feature eff o Unit
-hover = tryRepeatedlyTo <<< hoverElement <=< find
+hover xPath = hoverWithProperties [] xPath
+
+provideFileInputValue :: forall eff o. String -> String -> Feature eff o Unit
+provideFileInputValue xPath fileName = provideFileInputValueWithProperties [] xPath fileName
 
 -- XPath and property dependent interactions
 checkWithProperties' :: forall eff o. (Maybe String) -> Array Property -> String -> Feature eff o Unit
 checkWithProperties' checked properties xPath =
-  tryRepeatedlyTo $ (traverse_ clickElement) =<< findAtLeastOneWithProperties properties' xPath
+  (traverse_ clickElement) =<< findAtLeastOneWithProperties properties' xPath
   where
-  properties' = propertiesAndChecked checked properties
+  properties' = updateProperty "checked" checked properties
 
 checkWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
-checkWithProperties = checkWithProperties' Nothing
+checkWithProperties properties xPath = tryRepeatedlyTo $ check *> expectChecked
+  where
+  check = checkWithProperties' Nothing properties xPath
+  expectChecked = expectPresentedWithProperties expectedProperties xPath
+  expectedProperties = updateProperty "checked" (Just "true") properties
 
 uncheckWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
-uncheckWithProperties = checkWithProperties' (Just "true")
+uncheckWithProperties properties xPath = tryRepeatedlyTo $ uncheck *> expectUnchecked
+  where
+  uncheck = checkWithProperties' (Just "true") properties xPath
+  expectUnchecked = expectPresentedWithProperties expectedProperties xPath
+  expectedProperties = updateProperty "checked" Nothing properties
 
 pushRadioButtonWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
-pushRadioButtonWithProperties = checkWithProperties' Nothing
+pushRadioButtonWithProperties properties xPath = tryRepeatedlyTo $ push *> expectPushed
+  where
+  push = checkWithProperties' Nothing properties xPath
+  expectPushed = expectPresentedWithProperties expectedProperties xPath
+  expectedProperties = updateProperty "checked" (Just "true") properties
 
 provideFieldValueWithProperties :: forall eff o. Array Property -> String -> String -> Feature eff o Unit
 provideFieldValueWithProperties properties xPath value =
-  provideFieldValueElement value =<< findWithProperties properties xPath
+  tryRepeatedlyTo $ provideFieldValueElement value =<< findWithProperties properties xPath
+
+provideFieldValueWithPropertiesAndExpectedValue :: forall eff o. Array Property -> String -> String -> String -> Feature eff o Unit
+provideFieldValueWithPropertiesAndExpectedValue properties expectedValue xPath value =
+  tryRepeatedlyTo $ provideValue *> expectValue
+  where
+  provideValue = provideFieldValueElement value =<< findWithProperties properties xPath
+  expectValue = expectPresentedWithProperties expectedProperties xPath
+  expectedProperties = updateProperty "value" (Just expectedValue) properties
 
 selectFromDropdownWithProperties :: forall eff o. Array Property -> String -> String -> Feature eff o Unit
 selectFromDropdownWithProperties properties xPath text =
-  selectFromDropdownElement text =<< findWithProperties properties xPath
+  tryRepeatedlyTo $ select *> expectSelected
+  where
+  expectSelected = expectPresentedWithProperties expectedProperties xPath
+  expectedProperties = updateProperty "value" (Just text) properties
+  select = selectFromDropdownElement text =<< findWithProperties properties xPath
 
 clickWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
 clickWithProperties properties =
   tryRepeatedlyTo <<< clickElement <=< findWithProperties properties
+
+clickWithPropertiesAndExpectation :: forall eff o. Array Property -> Feature eff o Unit -> String -> Feature eff o Unit
+clickWithPropertiesAndExpectation properties expectation xPath =
+  tryRepeatedlyTo do
+    clickElement =<< findWithProperties properties xPath
+    expectation
 
 clickAllWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
 clickAllWithProperties properties =
@@ -252,6 +303,10 @@ clickAllWithProperties properties =
 hoverWithProperties :: forall eff o. Array Property -> String -> Feature eff o Unit
 hoverWithProperties properties =
   tryRepeatedlyTo <<< hoverElement <=< findWithProperties properties
+
+provideFileInputValueWithProperties :: forall eff o. Array Property -> String -> String -> Feature eff o Unit
+provideFileInputValueWithProperties properties xPath filePath =
+  tryRepeatedlyTo $ sendKeysEl filePath =<< findWithProperties' properties xPath
 
 -- Independent interactions
 typeString :: forall eff o. String -> Feature eff o Unit
@@ -263,10 +318,23 @@ pressEnter = sequence $ FeatureSequence.sendEnter
 selectAll :: forall eff o. Feature eff o Unit
 selectAll = (sequence <<< FeatureSequence.selectAll) =<< getModifierKey
 
+copy :: forall eff o. Feature eff o Unit
+copy = (sequence <<< FeatureSequence.copy) =<< getModifierKey
+
+paste :: forall eff o. Feature eff o Unit
+paste = (sequence <<< FeatureSequence.paste) =<< getModifierKey
+
+undo :: forall eff o. Feature eff o Unit
+undo = (sequence <<< FeatureSequence.undo) =<< getModifierKey
+
+focusAddressBar :: forall eff o. Feature eff o Unit
+focusAddressBar = (sequence <<< FeatureSequence.focusAddressBar) =<< getModifierKey
+
 -- Element dependent interactions
 clickElement :: forall eff o. Element -> Feature eff o Unit
-clickElement element =
-  sequence $ Sequence.mouseDown leftButton element *> Sequence.mouseUp leftButton element
+clickElement element = do
+  sequence $ Sequence.mouseDown leftButton element
+  sequence $ Sequence.mouseUp leftButton element
 
 clickAllElements :: forall eff o. Array Element -> Feature eff o Unit
 clickAllElements = traverse_ clickElement
@@ -281,6 +349,14 @@ provideFieldValueElement value element =
 selectFromDropdownElement :: forall eff o. String -> Element -> Feature eff o Unit
 selectFromDropdownElement text element =
   clickElement element *> typeString text *> pressEnter
+
+-- Attribute getters (please only use these) when you don't know the value of an attribute or property)
+--getAttributeOrProperty :: forall eff o. String -> String -> Feature eff o (Maybe String)
+--getAttributeOrProperty xPath name = getAttributeOrPropertyWithProperties [] xPath name
+--
+--getAttributeOrPropertyWithProperties :: forall eff o. Array Property -> String -> String -> Feature eff o (Maybe String)
+--getAttributeOrPropertyWithProperties properties xPath name =
+--  flip getAttribute name =<< findWithProperties properties xPath
 
 -- Element filters
 elementsWithProperties :: forall eff o. Array Property -> Array Element -> Feature eff o (Array Element)

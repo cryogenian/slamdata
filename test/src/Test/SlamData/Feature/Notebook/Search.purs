@@ -17,6 +17,7 @@ limitations under the License.
 module Test.SlamData.Feature.Notebook.Search where
 
 import Prelude
+import Control.Apply ((*>))
 import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature())
@@ -30,7 +31,7 @@ searchScenario =
   scenario
     "Search"
     (Interact.createNotebookInTestFolder "Search")
-    (Interact.deleteFileInTestFolder "Search.slam")
+    (Interact.deleteFileInTestFolder "Search.slam" *> Interact.browseRootFolder)
 
 test :: SlamFeature Unit
 test = do

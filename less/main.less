@@ -281,26 +281,28 @@ ol.breadcrumb {
     cursor: pointer;
 }
 .toolbar-menu {
+    input[type=file] {
+        width: 0.1px;
+        height: 0.1px;
+        opacity: 0;
+        overflow: hidden;
+        position: absolute;
+        z-index: -1;
+    }
     padding-right: 0;
     ul.list-inline {
         margin-top: 8px;
         margin-bottom: 0;
     }
-    button {
-        i {
-            padding-left: 10px;
-            font-size: 16px;
-            line-height: 40px;
-            position: relative;
-            overflow: hidden;
-            &.hidden-file-input {
-                input[type=file] {
-                    display:block;
-                    position:absolute;
-                    top:0;
-                    left:-9999px;
-                }
-            }
+    i {
+        padding-left: 10px;
+        font-size: 16px;
+        line-height: 40px;
+        position: relative;
+        overflow: hidden;
+        color: #337ab7;
+        &:hover {
+            color: #23527c
         }
     }
 }

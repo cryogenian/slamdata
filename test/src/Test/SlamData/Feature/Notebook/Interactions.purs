@@ -2,17 +2,20 @@ module Test.SlamData.Feature.Notebook.Interactions where
 
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
-import Control.Bind ((=<<))
+import Control.Bind ((=<<), (<=<))
+import Control.Monad.Eff.Class (liftEff)
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Prelude
-import Selenium.Monad (get, refresh)
-import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck)
+import Selenium.Monad (get, refresh, tryRepeatedlyTo)
+import Test.Feature (click, clickWithExpectation, provideFileInputValue, pressEnter, focusAddressBar, paste, provideFieldValue, provideFieldValueWithProperties, provideFieldValueWithExpectedValue, provideFieldValueWithPropertiesAndExpectedValue, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, expectNotPresented')
 import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
 import Test.SlamData.Feature.XPaths as XPaths
+import Test.Utils (appendToCwd)
 import XPath as XPath
+import Debug.Trace
 
 launchSlamData :: SlamFeature Unit
 launchSlamData = get <<< _.slamdataUrl =<< getConfig
@@ -21,7 +24,7 @@ mountTestDatabase :: SlamFeature Unit
 mountTestDatabase = do
   click (XPath.anywhere XPaths.accessMountDatabase)
   provideFieldValue (XPath.anywhere XPaths.mountName) "test-mount"
-  selectFromDropdown (XPath.anywhere XPaths.mountType) "Mongo"
+  selectFromDropdown (XPath.anywhere XPaths.mountType) "MongoDB"
   provideFieldValue (XPath.index (XPath.anywhere XPaths.mountPort) 1) "63174"
   provideFieldValue (XPath.index (XPath.anywhere XPaths.mountHost) 1) "localhost"
   provideFieldValue (XPath.anywhere XPaths.mountDatabase) "testDb"
@@ -44,8 +47,9 @@ createNotebook = click $ XPath.anywhere XPaths.createNotebook
 
 nameNotebook :: String -> SlamFeature Unit
 nameNotebook name = do
-  provideFieldValueWithProperties
+  provideFieldValueWithPropertiesAndExpectedValue
     [Tuple "value" $ Just "Untitled Notebook"]
+    name
     (XPath.anywhere "input")
     name
   pressEnter
@@ -54,14 +58,38 @@ deleteFile :: String -> SlamFeature Unit
 deleteFile name =
   click (XPath.anywhere $ XPaths.selectFile name) *> click (XPath.anywhere $ XPaths.removeFile name)
 
+shareFile :: String -> SlamFeature Unit
+shareFile name =
+  click (XPath.anywhere $ XPaths.selectFile name) *> click (XPath.anywhere $ XPaths.shareFile name)
+
 renameFile :: String -> String -> SlamFeature Unit
 renameFile oldName newName = do
   selectFile oldName
-  click $ XPath.anywhere XPaths.moveFile
+  click $ XPath.anywhere $ XPaths.moveFile oldName
   provideFieldValueWithProperties
     [Tuple "value" $ Just oldName]
     (XPath.anywhere "input")
     newName
+  click $ XPath.anywhere XPaths.renameButton
+
+moveFile :: String -> String -> String -> SlamFeature Unit
+moveFile fileName oldLocation newLocation = do
+  selectFile fileName
+  click $ XPath.anywhere $ XPaths.moveFile fileName
+  click $ XPath.anywhere XPaths.selectADestinationFolder
+  click $ XPath.anywhere $ XPath.anyWithExactText newLocation
+  click $ XPath.anywhere XPaths.renameButton
+
+uploadFile :: String -> SlamFeature Unit
+uploadFile =
+  provideFileInputValue (XPath.anywhere $ XPaths.uploadFile) <=< liftEff <<< appendToCwd
+
+provideFileSearchString :: String -> SlamFeature Unit
+provideFileSearchString value =
+  provideFieldValueWithExpectedValue
+    ("+" ++ value)
+    (XPath.anywhere XPaths.fileSearchInput)
+    value
 
 selectFile :: String -> SlamFeature Unit
 selectFile name = select name <|> (deselect name *> select name)
@@ -70,7 +98,8 @@ selectFile name = select name <|> (deselect name *> select name)
   deselect = click <<< XPath.anywhere <<< XPaths.deselectFile
 
 createNotebookInTestFolder :: String -> SlamFeature Unit
-createNotebookInTestFolder name = browseTestFolder *> createNotebook *> nameNotebook name
+createNotebookInTestFolder name =
+  browseTestFolder *> createNotebook *> nameNotebook name
 
 createFolder :: SlamFeature Unit
 createFolder = click $ XPath.anywhere XPaths.createFolder
@@ -178,3 +207,34 @@ selectFromDropdownInLastMdCard labelText =
     $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
     `XPath.following` "select" `XPath.withLabelWithExactText` labelText
 
+copySharingUrl :: SlamFeature Unit
+copySharingUrl =
+  clickWithExpectation expectation xPath
+  where
+  expectation = expectNotPresented' xPath
+  xPath = XPath.anywhere XPaths.copySharingUrl
+
+pasteInAddressBarAndGo :: SlamFeature Unit
+pasteInAddressBarAndGo =
+  focusAddressBar *> paste *> pressEnter
+
+downloadFileAsCSV :: String -> SlamFeature Unit
+downloadFileAsCSV fileName = do
+  selectFile fileName
+  click $ XPath.anywhere $ XPaths.downloadFile fileName
+  click $ XPath.anywhere $ XPaths.downloadButton
+
+downloadFileAsJSON :: String -> SlamFeature Unit
+downloadFileAsJSON fileName = do
+  selectFile fileName
+  click $ XPath.anywhere $ XPaths.downloadFile fileName
+  click $ XPath.anywhere $ XPath.anyWithText "JSON"
+  click $ XPath.anywhere $ XPaths.downloadButton
+
+showHiddenFiles :: SlamFeature Unit
+showHiddenFiles =
+  click $ XPath.anywhere $ XPaths.showHiddenFiles
+
+hideHiddenFiles :: SlamFeature Unit
+hideHiddenFiles =
+  click $ XPath.anywhere $ XPaths.hideHiddenFiles

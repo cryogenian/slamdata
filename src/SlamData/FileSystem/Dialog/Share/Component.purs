@@ -30,6 +30,7 @@ import Halogen.CustomProps as Cp
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
@@ -64,6 +65,8 @@ render (State url) =
       [ H.input [ P.classes [ B.formControl ]
                 , P.value url
                 , P.readonly true
+                , P.title "Sharing URL"
+                , ARIA.label "Sharing URL"
                 ]
       ]
     ]

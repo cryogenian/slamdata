@@ -45,6 +45,7 @@ import Halogen.HTML.Events.Handler as E
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import Network.HTTP.Affjax (AJAX())
@@ -204,17 +205,19 @@ render dialog =
   dirDropdownField :: HTML Void Query
   dirDropdownField =
     H.div [ P.classes [ B.inputGroup ] ]
-    [ H.input [ P.classes [ B.formControl ]
-              , P.placeholder "New directory"
-              , E.onValueInput (E.input DirTyped)
-              , P.value (printPath $ dialog ^. _dir)
-              ]
+    [ H.input
+        [ P.classes [ B.formControl ]
+        , P.placeholder "New directory"
+        , E.onValueInput (E.input DirTyped)
+        , P.value (printPath $ dialog ^. _dir)
+        ]
     , H.span [ P.classes [ B.inputGroupBtn ] ]
-      [ H.button [ P.classes [ B.btn, B.btnDefault ]
-                 , E.onClick (\_ -> E.stopPropagation
-                                    $> (action ToggleShowList)
-                             )
-                 ]
+      [ H.button
+          [ P.classes [ B.btn, B.btnDefault ]
+          , E.onClick (\_ -> E.stopPropagation $> (action ToggleShowList))
+          , ARIA.label "Select a destination folder"
+          , P.title "Select a destination folder"
+          ]
         [ H.span [ P.classes [ B.caret ] ] [ ] ]
       ]
     ]

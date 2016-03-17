@@ -17,6 +17,7 @@ limitations under the License.
 module Test.SlamData.Feature.Notebook.Markdown where
 
 import Data.String (joinWith)
+import Control.Apply ((*>))
 import Prelude
 import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Monad (SlamFeature())
@@ -29,7 +30,7 @@ mdScenario =
   scenario
     "Markdown"
     (Interact.createNotebookInTestFolder "Markdown")
-    (Interact.deleteFileInTestFolder "Markdown.slam")
+    (Interact.deleteFileInTestFolder "Markdown.slam" *> Interact.browseRootFolder)
 
 test :: SlamFeature Unit
 test = do

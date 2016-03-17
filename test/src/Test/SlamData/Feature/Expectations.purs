@@ -1,11 +1,21 @@
 module Test.SlamData.Feature.Expectations where
 
-import Data.Maybe (Maybe(..))
+import Control.Bind ((=<<))
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (error)
+import Control.Monad.Error.Class (throwError)
+import Control.Monad.Trans (lift)
+import Data.Maybe (Maybe(..), isJust)
 import Data.Tuple (Tuple(..))
+import Data.Array (elemIndex)
+import Node.Encoding (Encoding(UTF8))
+import Node.FS.Aff (readTextFile, readdir, unlink)
 import Prelude
 import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties)
-import Test.SlamData.Feature.Monad (SlamFeature())
+import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
+import Test.SlamData.Feature.Common (await)
 import Test.SlamData.Feature.XPaths as XPaths
+import Test.Utils (appendToCwd)
 
 cellsInTableColumnInLastCardToEq :: Int -> String -> String -> SlamFeature Unit
 cellsInTableColumnInLastCardToEq =
@@ -89,6 +99,44 @@ lastCardToBeFinished =
     $ (XPath.last $ XPath.anywhere $ XPaths.cardHeading)
     `XPath.following` XPath.anyWithText "Finished"
 
+exploreFileInLastCard :: String -> SlamFeature Unit
+exploreFileInLastCard fileName =
+  expectPresentedWithProperties
+    [Tuple "value" $ Just fileName]
+    ((XPath.last $ XPath.anywhere $ XPaths.cardHeading) `XPath.following` XPaths.exploreInput)
+
 file :: String -> SlamFeature Unit
 file =
   expectPresented <<< XPath.anywhere <<< XPaths.selectFile
+
+noFile :: String -> SlamFeature Unit
+noFile =
+  expectNotPresented <<< XPath.anywhere <<< XPaths.selectFile
+
+numberOfFiles :: Int -> SlamFeature Unit
+numberOfFiles i = do
+  expectPresented $ XPath.index (XPath.anywhere $ XPaths.nthFile) i
+  expectNotPresented $ XPath.index (XPath.anywhere $ XPaths.nthFile) $ i + 1
+
+notebookName :: String -> SlamFeature Unit
+notebookName name =
+  expectPresentedWithProperties
+    [Tuple "value" $ Just name]
+    (XPath.anywhere "input")
+
+text :: String -> SlamFeature Unit
+text = expectPresented <<< XPath.anywhere <<< XPath.anyWithText
+
+downloadedFileToMatchFile :: String -> String -> SlamFeature Unit
+downloadedFileToMatchFile downloadedFileName expectedFilePath = do
+  config <- getConfig
+  expectedFilePath <- liftEff $ appendToCwd expectedFilePath
+  expectedFile <- lift $ readTextFile UTF8 $ expectedFilePath
+  let filePath = config.download.folder ++ "/" ++ downloadedFileName
+  await ("Expected file " ++ filePath ++ " to be downloaded") do
+    files <- lift $ readdir config.download.folder
+    pure $ isJust $ elemIndex downloadedFileName files
+  downloadedFile <- lift $ readTextFile UTF8 $ filePath
+  if downloadedFile == expectedFile
+    then lift $ unlink filePath
+    else throwError $ error $ "Expected file " ++ filePath ++ " to match file " ++ expectedFilePath

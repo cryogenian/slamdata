@@ -25,6 +25,7 @@ module Test.Feature.ActionSequence
   , keys
   , sendBackspaces
   , close
+  , focusAddressBar
   ) where
 
 import Prelude
@@ -43,6 +44,9 @@ selectAll modifierKey = sendKeyCombo [modifierKey] "a"
 
 copy :: ControlKey -> Sequence Unit
 copy modifierKey = sendKeyCombo [modifierKey] "c"
+
+focusAddressBar :: ControlKey -> Sequence Unit
+focusAddressBar modifierKey = sendKeyCombo [modifierKey] "l"
 
 paste :: ControlKey -> Sequence Unit
 paste modifierKey = sendKeyCombo [modifierKey] "v"

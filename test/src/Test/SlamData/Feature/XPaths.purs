@@ -11,6 +11,16 @@ aceEditor = "*[contains(@class, 'ace_editor') and not(contains(@class, 'ace_auto
 playButton :: String
 playButton = XPath.anyWithExactAriaLabel "Play"
 
+renameButton :: String
+renameButton = XPath.anyWithExactText "Rename"
+
+uploadFile :: String
+uploadFile =
+  "input" `XPath.withLabel` XPath.anyWithExactAriaLabel "Upload file"
+
+selectADestinationFolder :: String
+selectADestinationFolder = XPath.anyWithExactAriaLabel "Select a destination folder"
+
 fileFromInitialFileList :: String
 fileFromInitialFileList =
   XPath.anyWithExactText Data.fileFromInitialFileList
@@ -46,6 +56,10 @@ embedCardOutputSnippet =
 exploreInput :: String
 exploreInput =
   XPath.inputWithExactPlaceholder "Select a file"
+
+fileSearchInput :: String
+fileSearchInput =
+  XPath.anyWithExactAriaLabel "File search field"
 
 searchStringInput :: String
 searchStringInput =
@@ -133,8 +147,17 @@ removeFile :: String -> String
 removeFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Remove"
 
-moveFile :: String
-moveFile = XPath.anyWithExactAriaLabel "Move / rename"
+shareFile :: String -> String
+shareFile name =
+  XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Share"
+
+downloadFile :: String -> String
+downloadFile name =
+  XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Download"
+
+moveFile :: String -> String
+moveFile name =
+  XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Move / rename"
 
 oneErrorMessage :: String
 oneErrorMessage =
@@ -181,11 +204,17 @@ mountDatabase = "input" `XPath.withLabelWithExactText` "Database"
 mountButton :: String
 mountButton = "button" `XPath.nodeWithExactText` "Mount"
 
+downloadButton :: String
+downloadButton = "button" `XPath.nodeWithExactText` "Download"
+
 inputWithLabelAndType :: String -> String -> String
 inputWithLabelAndType labelText inputType =
   "input"
     `XPath.withLabelWithExactText` labelText
     `XPath.nodeWithExactAttribute "type"` inputType
+
+nthFile :: String
+nthFile = "*" `XPath.nodeWithAriaLabel` "Select "
 
 selectFile :: String -> String
 selectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Select " ++ filename)
@@ -206,3 +235,15 @@ cardHeading =
         , "Visualize cell"
         , "Download cell"
         ]
+
+sharingUrl :: String
+sharingUrl = "*" `XPath.nodeWithExactAriaLabel` "Sharing URL"
+
+copySharingUrl :: String
+copySharingUrl = "*" `XPath.nodeWithExactText` "Copy"
+
+showHiddenFiles :: String
+showHiddenFiles = "*" `XPath.nodeWithExactAriaLabel` "Show hidden files"
+
+hideHiddenFiles :: String
+hideHiddenFiles = "*" `XPath.nodeWithExactAriaLabel` "Hide hidden files"

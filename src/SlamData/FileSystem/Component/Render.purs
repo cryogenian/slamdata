@@ -87,20 +87,22 @@ toolbar state =
 
   file :: HTML p (Query Unit)
   file =
-    H.li_ [ H.button [ E.onClick (\ev -> pure $ action (UploadFile ev.target))]
-            [ H.i [ P.title "Upload file"
-                  , ARIA.label "Upload file"
-                  , P.classes [ B.glyphicon
-                              , B.glyphiconCloudUpload
-                              , Rc.hiddenFileInput
-                              ]
-                  ]
-              [ H.input [ P.inputType P.InputFile
-                        , E.onChange (\ev -> pure $ action (FileListChanged ev.target))
-                        ]
-              ]
-            ]
+    H.li_
+      [ H.input
+          [ P.inputType P.InputFile
+          , E.onChange (\ev -> pure $ action (FileListChanged ev.target))
+          , P.id_ "upload"
           ]
+      , H.label
+            [ P.for "upload"
+            , P.title "Upload file"
+            , ARIA.label "Upload file"
+            ]
+            [ H.i
+                [ P.classes [ B.glyphicon, B.glyphiconCloudUpload, Rc.hiddenFileInput ] ]
+                []
+            ]
+      ]
 
   notebook :: HTML p (Query Unit)
   notebook = toolItem MakeNotebook "Create notebook" B.glyphiconBook
