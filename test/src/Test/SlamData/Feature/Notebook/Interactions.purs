@@ -9,7 +9,7 @@ import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Prelude
 import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
-import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck)
+import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, provideAceValue, expectPresentedWithProperties)
 import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -155,13 +155,13 @@ provideMdInLastMdCard =
 
 provideQueryInLastQueryCard :: String -> SlamFeature Unit
 provideQueryInLastQueryCard =
-  provideFieldValue
+  provideAceValue
     $ (XPath.last $ XPath.anywhere $ XPaths.queryCardTitle)
     `XPath.following` XPaths.aceEditor
 
 provideFieldValueInLastMdCard :: String -> String -> SlamFeature Unit
 provideFieldValueInLastMdCard labelText =
-  provideFieldValue
+  provideAceValue
     $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
     `XPath.following` "input" `XPath.withLabelWithExactText` labelText
 
@@ -224,28 +224,35 @@ provideApiVariableBindingsForApiCard name ty val =
       val
     pressEnter
 
-
 provideCategoryForLastVisualizeCard
   :: String
   -> SlamFeature Unit
-provideCategoryForLastVisualizeCard _ =
-  Debug.Trace.traceAnyA "implement me, I'm provideCategoryForLastVisualizeCard"
+provideCategoryForLastVisualizeCard str =
+  tryRepeatedlyTo
+    $ selectFromDropdown
+      (XPath.last $ XPath.anywhere $ XPaths.chartCategorySelector)
+      str
 
 provideSeriesForLastVizualizeCard
   :: String
   -> SlamFeature Unit
-provideSeriesForLastVizualizeCard _ =
-  Debug.Trace.traceAnyA "implement me, I'm provideSeriesForLastVizualizeCard"
+provideSeriesForLastVizualizeCard str =
+  tryRepeatedlyTo
+    $ selectFromDropdown
+      (XPath.last $ XPath.anywhere $ XPaths.chartSeriesOneSelector)
+      str
 
 expectMeasureDisabledForLastVisualizeCard
   :: SlamFeature Unit
 expectMeasureDisabledForLastVisualizeCard =
-  Debug.Trace.traceAnyA "implement me, I'm expectMeasureDisabledForLastVisualizeCard"
+  expectPresentedWithProperties
+    (Map.singleton "disabled" Nothing)
+    (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
 
 expectMeasureEqualsForLastVisualizeCard
   :: String
   -> SlamFeature Unit
-expectMeasureEqualsForLastVisualizeCard _ =
+expectMeasureEqualsForLastVisualizeCard v =
   Debug.Trace.traceAnyA "implement me, I'm expectMeasureEqualsForLastVisualizeCard"
 
 expectLastChartElementBeEqualWithScreenshot
@@ -254,3 +261,7 @@ expectLastChartElementBeEqualWithScreenshot
 expectLastChartElementBeEqualWithScreenshot _ =
   Debug.Trace.traceAnyA
     "implement me, I'm expectLastChartElementBeEqualWithScreenshot"
+
+
+switchToBarChart :: SlamFeature Unit
+switchToBarChart = click $ XPath.anywhere $ XPaths.chartSwitchToBar

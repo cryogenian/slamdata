@@ -219,3 +219,15 @@ apiCardDefaultValueFor :: String -> String
 apiCardDefaultValueFor name =
   XPath.anyWithExactAriaLabel
     $ "Default value for \"" <> name <> "\" API variable"
+
+chartCategorySelector :: String
+chartCategorySelector = XPath.anyWithExactAriaLabel "Category"
+
+chartSeriesOneSelector :: String
+chartSeriesOneSelector = XPath.anyWithExactAriaLabel "Second Series"
+
+chartMeasureOneSelector :: String
+chartMeasureOneSelector = XPath.anyWithExactAriaLabel "First Measure"
+
+chartSwitchToBar :: String
+chartSwitchToBar = XPath.anyWithExactSrc "img/bar.svg"

@@ -224,3 +224,6 @@ textInput = nodeWithExactAttribute "type" "input" "text"
 
 numberInput :: String
 numberInput = nodeWithExactAttribute "type" "input" "number"
+
+anyWithExactSrc :: String -> String
+anyWithExactSrc = nodeWithExactAttribute "src" "img"

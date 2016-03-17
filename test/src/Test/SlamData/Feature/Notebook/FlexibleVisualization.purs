@@ -57,6 +57,7 @@ test = do
         ]
     Interact.playLastCard
     Interact.insertVisualizeCardAsNextAction
+    Interact.switchToBarChart
     Interact.provideCategoryForLastVisualizeCard ".city"
     Interact.provideSeriesForLastVizualizeCard ".gender"
     Interact.expectMeasureEqualsForLastVisualizeCard ".ct"

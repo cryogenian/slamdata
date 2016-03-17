@@ -34,7 +34,8 @@ import Data.Function as Fn
 import Data.Foldable (foldMap, foldr, traverse_)
 import Data.Foldable as F
 import Data.Functor (($>))
-import Data.Array ((..), index, uncons, length, singleton, elemIndex, zip, filter, head, intersectBy)
+import Data.Array
+  ((..), index, uncons, length, singleton, elemIndex, zip, filter, head, intersectBy)
 import Data.List (toUnfoldable)
 import Data.List as L
 import Data.Maybe (Maybe(..), maybe, maybe', isJust)
@@ -42,6 +43,7 @@ import Data.Map as Map
 import Data.Monoid (Monoid, mempty)
 import Data.Traversable as T
 import Data.String (joinWith, take)
+import Data.String as Str
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Graphics.EasyImage as Ge
@@ -261,14 +263,22 @@ expectNotPresentedWithProperties properties xPath =
     $ expectNotPresentedVisual properties xPath
     *> expectNotPresentedAria properties xPath
 
+
 expectPresentedWithProperties
   :: forall eff o
    . Properties
   -> String
   -> Feature eff o Unit
-expectPresentedWithProperties properties xPath =
-  tryRepeatedlyTo
-    $ expectNode
+expectPresentedWithProperties ps xPath =
+  tryRepeatedlyTo $ expectPresentedWithProperties' ps xPath
+
+expectPresentedWithProperties'
+  :: forall eff o
+   . Properties
+  -> String
+  -> Feature eff o Unit
+expectPresentedWithProperties' properties xPath =
+  expectNode
     *> expectPresentedVisual
     *> expectPresentedAria
   where
@@ -357,7 +367,11 @@ pushRadioButton :: forall eff o. String -> Feature eff o Unit
 pushRadioButton = check' Nothing
 
 provideFieldValue :: forall eff o. String -> String -> Feature eff o Unit
-provideFieldValue xPath value =
+provideFieldValue =
+  provideFieldValueWithProperties Map.empty
+
+provideAceValue :: forall eff o. String -> String -> Feature eff o Unit
+provideAceValue xPath value =
   tryRepeatedlyTo $ provideFieldValueElement value =<< find xPath
 
 selectFromDropdown :: forall eff o. String -> String -> Feature eff o Unit
@@ -407,13 +421,13 @@ provideFieldValueWithProperties
   -> String
   -> String
   -> Feature eff o Unit
-provideFieldValueWithProperties properties xPath value = do
-  provideFieldValueElement value
-    =<< findWithProperties properties xPath
-  tryRepeatedlyTo
-    $ expectPresentedWithProperties
-        (Map.insert "value" (Just value) properties)
-        xPath
+provideFieldValueWithProperties properties xPath value =
+  tryRepeatedlyTo do
+    provideFieldValueElement value
+      =<< findWithProperties properties xPath
+    expectPresentedWithProperties'
+      (Map.singleton "value" (Just value))
+      xPath
 
 selectFromDropdownWithProperties
   :: forall eff o
@@ -467,6 +481,7 @@ provideFieldValueElement :: forall eff o. String -> Element -> Feature eff o Uni
 provideFieldValueElement value element =
   clickElement element
   *> selectAll
+  *> sequence FeatureSequence.sendDelete
   *> typeString value
 
 
