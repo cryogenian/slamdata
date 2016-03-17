@@ -380,3 +380,18 @@ cancelInputRunIcon = className "cancel-input-run-icon"
 
 userShareForm :: ClassName
 userShareForm = className "user-share-form"
+
+sharePermissionsDialog :: ClassName
+sharePermissionsDialog = className "share-permissions-dialog"
+
+sharePermissionsCheckboxes :: ClassName
+sharePermissionsCheckboxes = className "share-permissions-checkboxes"
+
+sharePermissionsResourceMark :: ClassName
+sharePermissionsResourceMark = className "share-permissions-resource-mark"
+
+sharePermissionsContent :: ClassName
+sharePermissionsContent = className "share-permissions-content"
+
+sharePermissionsButtons :: ClassName
+sharePermissionsButtons = className "share-permissions-buttons"

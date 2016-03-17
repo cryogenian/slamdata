@@ -29,7 +29,7 @@
     "gulp-content-filter": "0.0.0",
     "gulp-header": "^1.7.1",
     "gulp-less": "^3.0.5",
-    "gulp-purescript": "^0.7.0",
+    "gulp-purescript": "^0.8.0",
     "gulp-replace": "^0.5.4",
     "gulp-run": "^1.6.12",
     "gulp-trimlines": "^1.0.0",

@@ -51,6 +51,7 @@ type State =
     permissionToken :: M.Maybe Api.PermissionToken
   , inputEl :: M.Maybe HTMLElement
   , canceler :: M.Maybe (Canceler SlamDataEffects)
+  , disabled :: Boolean
   }
 
 _permissionToken :: forall a r. LensP {permissionToken :: a|r} a
@@ -62,12 +63,16 @@ _inputEl = lens _.inputEl _{inputEl = _}
 _canceler :: forall a r. LensP {canceler :: a|r} a
 _canceler = lens _.canceler _{canceler = _}
 
+_disabled :: forall a r. LensP {disabled :: a|r} a
+_disabled = lens _.disabled _{disabled = _}
+
 initialState :: State
 initialState =
   {
     permissionToken: M.Nothing
   , inputEl: M.Nothing
   , canceler: M.Nothing
+  , disabled: true
   }
 
 data Query a
@@ -76,6 +81,7 @@ data Query a
   | GetPermissionToken (M.Maybe Api.PermissionToken -> a)
   | SetCanceler (Canceler SlamDataEffects) a
   | Clear a
+  | Toggle Boolean a
 
 type ShareByCodeDSL = ComponentDSL State Query Slam
 
@@ -105,7 +111,7 @@ render state =
         [ H.button
           [ P.classes [ B.btn, B.btnPrimary ]
           , E.onClick (E.input_ Generate)
-          , P.disabled (M.isJust state.canceler)
+          , P.disabled (M.isJust state.canceler || state.disabled)
           , ARIA.label "Generate token"
           ]
           [ H.text "Generate" ]
@@ -139,3 +145,4 @@ eval (SetCanceler c next) = do
   gets _.canceler >>= F.traverse_ \c ->
     liftAff $ cancel c $ error "New token has been requested"
   modify (_canceler ?~ c) $> next
+eval (Toggle toggled next) = modify (_disabled .~ not toggled) $> next

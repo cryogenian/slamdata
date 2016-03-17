@@ -299,6 +299,8 @@ itemPeek (Item.Share res _) = do
   let url = loc <> "/" <> itemURL sort salt ReadOnly res
   showDialog (Dialog.Share url)
 itemPeek (Item.Download res _) = download res
+itemPeek (Item.SharePermissions res _) = do
+  showDialog $ Dialog.Permissions res
 itemPeek _ = pure unit
 
 searchPeek :: forall a. Search.Query a -> Algebra Unit

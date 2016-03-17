@@ -33,6 +33,7 @@ modalDialog :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalDialog children =
   (classedDiv B.modalDialog)
   [ H.div [ Cp.mbClick (\_ -> E.stopPropagation $> Nothing)
+          , Cp.mbMouseDown (\_ -> E.stopPropagation $> Nothing)
           , P.classes [ B.modalContent ]
           ]
     children

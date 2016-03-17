@@ -138,11 +138,12 @@ render state =
 
   newInput :: Int -> ComponentHTML Query
   newInput inx =
-    H.div [ P.classes ([ B.inputGroup ] <> fadeWhen shouldFade) ]
+    H.div [ P.classes ([ B.inputGroup ] <> fadeWhen shouldFade)]
       [
         H.input [ P.classes [ B.formControl ]
                 , ARIA.label "User email or name"
                 , E.onFocus (E.input_ (Create inx))
+                , P.placeholder "Name or email of user"
                 , P.value ""
                 , P.key $ show inx
                 , P.initializer (\el -> action $ RememberEl inx el)
@@ -179,7 +180,10 @@ eval (Blurred inx next) = do
   pure next
 eval (RememberEl inx el next) = modify (_elements %~ Map.insert inx el) $> next
 eval (GetValues continue) =
-  gets _.inputs <#> Map.values <#> F.foldMap pure <#> continue
+  gets _.inputs
+    <#> Map.values
+    <#> F.foldMap (\x -> guard (x /= "") $> x)
+    <#> continue
 
 
 forgetInx

@@ -35,17 +35,19 @@ import Quasar.Auth.Permission as P
 import SlamData.Effects (Slam())
 import SlamData.FileSystem.Resource as R
 
+type State = P.PermissionShareRequest
+
 data Query a
-  = Set P.PermissionShareRequest a
+  = Set State a
 
 type PermissionShareConfirmDSL
-  = ComponentDSL P.PermissionShareRequest Query Slam
+  = ComponentDSL State Query Slam
 
 
-comp :: Component P.PermissionShareRequest Query Slam
+comp :: Component State Query Slam
 comp = component render eval
 
-render :: P.PermissionShareRequest -> ComponentHTML Query
+render :: State -> ComponentHTML Query
 render state =
   if P.isPermissionsEmpty state.permissions
   then

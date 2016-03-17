@@ -1,5 +1,4 @@
 .token-generator-form {
-    width: 400px;
     button {
         width: 100px;
     }
@@ -20,10 +19,55 @@
     }
 }
 
-.user-share-form {
-    width: 400px;
-    top: 10px;
-    left: 50%;
-    position: relative;
-    margin-left: -200px;
+.share-permissions {
+    &-content {
+        height: 200px;
+        overflow: scroll;
+    }
+    &-dialog {
+        .rotary-selector-wrapper {
+            margin-top: 16px;
+            margin-bottom: 16px;
+        }
+        .rotary-selector-item {
+            font-size: 40px;
+            color: #31708f;
+            background-color: #d9edf7;
+            border: 1px solid white;
+            padding: 1px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+        }
+    }
+    &-resource-mark {
+        font-size: 22px;
+        padding-left: 18px;
+        i {
+            position: relative;
+            top: 4px;
+        }
+        span {
+            font-size: 20px;
+            padding-left: 6px;
+        }
+    }
+    &-checkboxes {
+        padding-left: 24px;
+        label {
+            width: 23%;
+            font-size: 24px;
+            input[type=checkbox] {
+                height: 30px;
+                -ms-transform: scale(2);
+                -moz-transform: scale(2);
+                -webkit-transform: scale(2);
+                -o-transform: scale(2);
+            }
+        }
+    }
+    &-buttons {
+        .btn {
+            width: 100px;
+        }
+    }
 }

@@ -30,6 +30,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Quasar.Auth.Permission (Permissions())
 
 import SlamData.Effects (Slam())
+import SlamData.Render.CSS as Rc
 
 notAllowed :: Permissions
 notAllowed =
@@ -86,7 +87,7 @@ comp = component render eval
 
 render :: State -> ComponentHTML Query
 render {current, max} =
-  H.form_
+  H.form [ P.classes [ Rc.sharePermissionsCheckboxes ] ]
     [
       H.label [ P.classes [ B.checkboxInline ] ]
         [

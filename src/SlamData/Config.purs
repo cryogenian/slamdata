@@ -83,3 +83,6 @@ autosaveTick = 1000
 
 redirectURIString :: String
 redirectURIString = "/auth_redirect.html"
+
+isSharingPermissionReady :: Boolean
+isSharingPermissionReady = true

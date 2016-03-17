@@ -19,10 +19,10 @@ module SlamData.FileSystem.Dialog.Component where
 import Prelude
 
 import Data.Array (singleton)
-import Data.Either.Nested (Either5())
+import Data.Either.Nested (Either6())
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct)
-import Data.Functor.Coproduct.Nested (Coproduct5(), coproduct5)
+import Data.Functor.Coproduct.Nested (Coproduct6(), coproduct6)
 import Data.Maybe (Maybe(..), isNothing, maybe)
 
 import Halogen.Component
@@ -40,6 +40,7 @@ import SlamData.FileSystem.Dialog.Mount.Component (MountSettings())
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
+import SlamData.FileSystem.Dialog.Permissions.Component as Perms
 import SlamData.FileSystem.Resource (Resource())
 import SlamData.Render.Common (fadeWhen)
 
@@ -51,6 +52,7 @@ data Dialog
   | Rename Resource
   | Mount DirPath String (Maybe MountSettings)
   | Download Resource
+  | Permissions Resource
 
 type State = Maybe Dialog
 
@@ -62,69 +64,80 @@ data Query a
   | Show Dialog a
 
 type ChildState =
-  Either5
+  Either6
     Mount.StateP
     Download.State
     Error.State
     Share.State
     Rename.State
+    Perms.StateP
 
 type ChildQuery =
-  Coproduct5
+  Coproduct6
     Mount.QueryP
     Download.Query
     Error.Query
     Share.Query
     Rename.Query
+    Perms.QueryP
 
 type MountSlot = Unit
 type DownloadSlot = Unit
 type ErrorSlot = Unit
 type ShareSlot = Unit
 type RenameSlot = Unit
+type PermsSlot = Unit
 
 type ChildSlot =
-  Either5
+  Either6
     MountSlot
     DownloadSlot
     ErrorSlot
     ShareSlot
     RenameSlot
+    PermsSlot
 
 cpMount
   :: ChildPath
        Mount.StateP ChildState
        Mount.QueryP ChildQuery
        MountSlot ChildSlot
-cpMount = cpL :> cpL :> cpL :> cpL
+cpMount = cpL :> cpL :> cpL :> cpL :> cpL
 
 cpDownload
   :: ChildPath
        Download.State ChildState
        Download.Query ChildQuery
        DownloadSlot ChildSlot
-cpDownload = cpL :> cpL :> cpL :> cpR
+cpDownload = cpL :> cpL :> cpL :> cpL :> cpR
 
 cpError
   :: ChildPath
        Error.State ChildState
        Error.Query ChildQuery
        ErrorSlot ChildSlot
-cpError = cpL :> cpL :> cpR
+cpError = cpL :> cpL :> cpL :> cpR
 
 cpShare
   :: ChildPath
        Share.State ChildState
        Share.Query ChildQuery
        ShareSlot ChildSlot
-cpShare = cpL :> cpR
+cpShare = cpL :> cpL :> cpR
 
 cpRename
   :: ChildPath
        Rename.State ChildState
        Rename.Query ChildQuery
        RenameSlot ChildSlot
-cpRename = cpR
+cpRename = cpL :> cpR
+
+cpPerms
+  :: ChildPath
+       Perms.StateP ChildState
+       Perms.QueryP ChildQuery
+       PermsSlot ChildSlot
+cpPerms = cpR
 
 type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
@@ -137,7 +150,7 @@ render :: RenderParent State ChildState Query ChildQuery Slam ChildSlot
 render state =
   H.div
     [ P.classes ([B.modal] <> fadeWhen (isNothing state))
-    , E.onClick (E.input_ Dismiss)
+    , E.onMouseDown (E.input_ Dismiss)
     ]
     $ maybe [] (singleton <<< dialog) state
   where
@@ -166,6 +179,11 @@ render state =
       { component: Mount.comp
       , initialState: installedState (Mount.initialState parent name settings)
       }
+  dialog (Permissions res) =
+    H.slot' cpPerms unit \_ ->
+      { component: Perms.comp
+      , initialState: installedState $ Perms.initialState res
+      }
 
 eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
 eval (Dismiss next) = set Nothing $> next
@@ -173,7 +191,14 @@ eval (Show d next) = set (Just d) $> next
 
 -- | Children can only close dialog. Other peeking in `FileSystem`
 peek :: forall a. ChildQuery a -> DialogDSL Unit
-peek = coproduct5 mountPeek downloadPeek errorPeek sharePeek renamePeek
+peek =
+  coproduct6
+    mountPeek
+    downloadPeek
+    errorPeek
+    sharePeek
+    renamePeek
+    permsPeek
 
 errorPeek :: forall a. Error.Query a -> DialogDSL Unit
 errorPeek (Error.Dismiss _) = set Nothing
@@ -195,3 +220,9 @@ mountPeek = coproduct go (const (pure unit))
 downloadPeek :: forall a. Download.Query a -> DialogDSL Unit
 downloadPeek (Download.Dismiss _) = set Nothing
 downloadPeek _ = pure unit
+
+permsPeek :: forall a. Perms.QueryP a -> DialogDSL Unit
+permsPeek = coproduct go (const (pure unit))
+  where
+  go (Perms.Dismiss _) = set Nothing
+  go _ = pure unit

@@ -22,6 +22,7 @@ module Halogen.CustomProps
   , nonSubmit
   , mbClick
   , mbDoubleClick
+  , mbMouseDown
   , mbKeyDown
   , mbKeyPress
   , onPaste
@@ -100,6 +101,12 @@ mbDoubleClick = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp MouseEvent i
   unrefined = mbHandler (eventName "dblclick")
+
+mbMouseDown :: forall r i. MbIEventProp (onMouseDown :: I|r) MouseEvent i
+mbMouseDown = unsafeCoerce unrefined
+  where
+  unrefined :: MbEventProp MouseEvent i
+  unrefined = mbHandler (eventName "mousedown")
 
 -- Keyboard events
 
