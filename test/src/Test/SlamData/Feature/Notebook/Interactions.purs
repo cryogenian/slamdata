@@ -9,7 +9,8 @@ import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Prelude
 import Selenium.Monad (get, refresh, tryRepeatedlyTo)
-import Test.Feature (click, clickWithExpectation, provideFileInputValue, pressEnter, focusAddressBar, paste, provideFieldValue, provideFieldValueWithProperties, provideFieldValueWithExpectedValue, provideFieldValueWithPropertiesAndExpectedValue, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, expectNotPresented')
+import Test.Feature (click, clickWithExpectation, provideFileInputValue, pressEnter, focusAddressBar, paste, provideFieldValue, provideFieldValueWithProperties, provideFieldValueWithExpectedValue, provideFieldValueWithPropertiesAndExpectedValue, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, expectNotPresented', expectPresented')
+import Test.Feature.Log (warnMsg)
 import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -74,10 +75,15 @@ renameFile oldName newName = do
 
 moveFile :: String -> String -> String -> SlamFeature Unit
 moveFile fileName oldLocation newLocation = do
+  warnMsg "1"
   selectFile fileName
+  warnMsg "2"
   click $ XPath.anywhere $ XPaths.moveFile fileName
+  warnMsg "3"
   click $ XPath.anywhere XPaths.selectADestinationFolder
+  warnMsg "4"
   click $ XPath.anywhere $ XPath.anyWithExactText newLocation
+  warnMsg "5"
   click $ XPath.anywhere XPaths.renameButton
 
 uploadFile :: String -> SlamFeature Unit
@@ -92,17 +98,22 @@ provideFileSearchString value =
     value
 
 selectFile :: String -> SlamFeature Unit
-selectFile name = select name <|> (deselect name *> select name)
+selectFile name =
+  clickWithExpectation expectSelected xPath
   where
-  select = click <<< XPath.anywhere <<< XPaths.selectFile
-  deselect = click <<< XPath.anywhere <<< XPaths.deselectFile
+  expectSelected = expectPresented' $ XPath.anywhere $ XPaths.deselectFile name
+  xPath = XPath.anywhere $ XPaths.selectFile name
 
 createNotebookInTestFolder :: String -> SlamFeature Unit
 createNotebookInTestFolder name =
   browseTestFolder *> createNotebook *> nameNotebook name
 
 createFolder :: SlamFeature Unit
-createFolder = click $ XPath.anywhere XPaths.createFolder
+createFolder = clickWithExpectation expectUntitledFolder xPath
+  where
+  expectUntitledFolder = expectPresented' untitledFolderXPath
+  xPath = XPath.anywhere XPaths.createFolder
+  untitledFolderXPath = XPath.anywhere $ XPaths.selectFile "Untitled Folder"
 
 deleteFileInTestFolder :: String -> SlamFeature Unit
 deleteFileInTestFolder name = browseTestFolder *> deleteFile name
