@@ -9,7 +9,7 @@ import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Prelude
 import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
-import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, provideAceValue, expectPresentedWithProperties)
+import Test.Feature (click, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, provideAceValue, expectPresentedWithProperties, expectMatchScreenshot)
 import Test.SlamData.Feature.Common (waitTime)
 import Test.SlamData.Feature.Monad (SlamFeature(), getConfig)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -149,7 +149,7 @@ provideSearchStringInLastSearchCard =
 
 provideMdInLastMdCard :: String -> SlamFeature Unit
 provideMdInLastMdCard =
-  provideFieldValue
+  provideAceValue
     $ XPath.last $ XPath.anywhere XPaths.mdCardTitle
     `XPath.following` XPaths.aceEditor
 
@@ -246,7 +246,7 @@ expectMeasureDisabledForLastVisualizeCard
   :: SlamFeature Unit
 expectMeasureDisabledForLastVisualizeCard =
   expectPresentedWithProperties
-    (Map.singleton "disabled" Nothing)
+    (Map.singleton "disabled" (Just "true")) -- 0_o
     (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
 
 expectMeasureEqualsForLastVisualizeCard
@@ -258,9 +258,11 @@ expectMeasureEqualsForLastVisualizeCard v =
 expectLastChartElementBeEqualWithScreenshot
   :: String
   -> SlamFeature Unit
-expectLastChartElementBeEqualWithScreenshot _ =
-  Debug.Trace.traceAnyA
-    "implement me, I'm expectLastChartElementBeEqualWithScreenshot"
+expectLastChartElementBeEqualWithScreenshot expectedPath =
+  expectMatchScreenshot
+    (XPath.last $ XPath.anywhere $ XPaths.chartContainer)
+    "test/image/actual.png"
+    expectedPath
 
 
 switchToBarChart :: SlamFeature Unit

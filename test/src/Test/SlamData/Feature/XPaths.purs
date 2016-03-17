@@ -231,3 +231,6 @@ chartMeasureOneSelector = XPath.anyWithExactAriaLabel "First Measure"
 
 chartSwitchToBar :: String
 chartSwitchToBar = XPath.anyWithExactSrc "img/bar.svg"
+
+chartContainer :: String
+chartContainer = "div[@_echarts_instance_]"

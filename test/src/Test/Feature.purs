@@ -19,7 +19,7 @@ module Test.Feature where
 --  , expectNotPresentedWithProperty
 --  ) where
 
-import Control.Alt ((<|>))
+import Control.Alt ((<|>), alt)
 import Control.Apply ((*>))
 import Control.Bind ((=<<), (<=<))
 import Control.Monad (unless)

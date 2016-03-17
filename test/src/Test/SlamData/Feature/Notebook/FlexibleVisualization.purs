@@ -59,17 +59,25 @@ test = do
     Interact.insertVisualizeCardAsNextAction
     Interact.switchToBarChart
     Interact.provideCategoryForLastVisualizeCard ".city"
-    Interact.provideSeriesForLastVizualizeCard ".gender"
+
     Interact.expectMeasureEqualsForLastVisualizeCard ".ct"
     Interact.expectMeasureDisabledForLastVisualizeCard
+    Interact.expectLastChartElementBeEqualWithScreenshot
+      $ pathToExpectedImages <> "CO_wo_gender.png"
+    Interact.provideSeriesForLastVizualizeCard ".gender"
     Interact.playLastCard
     Interact.expectLastChartElementBeEqualWithScreenshot
-      "/test/screenshots/flexible-visualization/CO.png"
+      $ pathToExpectedImages <> "CO.png"
     Interact.accessNotebookWithModifiedURL (flip append "/?state=%22CO%22")
     Interact.expectLastChartElementBeEqualWithScreenshot
-      "/test/screenshots/flexible-visalization/CO.png"
-    Interact.accessNotebookWithModifiedURL (Str.replace "CO" "NY")
+      $ pathToExpectedImages <> "CO.png"
+    Interact.accessNotebookWithModifiedURL (Str.replace "CO" "NE")
     Interact.expectLastChartElementBeEqualWithScreenshot
-      "/test/screenshots/flexible-visualization/NY.png"
+      $ pathToExpectedImages <> "NE.png"
 
     successMsg "Successfully created flexible patient chart"
+
+
+  where
+  pathToExpectedImages :: String
+  pathToExpectedImages = "test/image/flexible-visualization/"
