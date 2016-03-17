@@ -75,6 +75,7 @@ data Query a
   | Share Resource a
   | SetIsSearching Boolean a
   | SetIsHidden Boolean a
+  | SharePermissions Resource a
 
 comp :: Component State Query Slam
 comp = component render eval
@@ -90,7 +91,7 @@ render state = case state.item of
       [ H.div
           [ P.class_ B.row ]
           [ H.div
-              [ P.classes [ B.colXs9, Rc.itemContent ] ]
+              [ P.classes [ B.colXs8, Rc.itemContent ] ]
               [ H.span_
                   [ H.img [ P.src "img/spin.gif" ]
                   , H.text $ itemName state
@@ -125,6 +126,7 @@ eval (Remove _ next) = pure next
 eval (Share _ next) = pure next
 eval (SetIsSearching bool next) = modify (_isSearching .~ bool) $> next
 eval (SetIsHidden bool next) = modify (_isHidden .~ bool) $> next
+eval (SharePermissions _ next) = pure next
 
 itemName :: State -> String
 itemName { isSearching, item } =
@@ -155,7 +157,7 @@ itemView state@{ item } selected presentActions | otherwise =
     ]
     [ H.div
         [ P.class_ B.row ]
-        [ H.div [ P.classes [ B.colXs9, Rc.itemContent ] ]
+        [ H.div [ P.classes [ B.colXs8, Rc.itemContent ] ]
             [ H.a
                 [ E.onClick (\_ -> E.preventDefault $> action (Open (itemResource item))) ]
                 [ H.i [ iconClasses item ] []
@@ -163,7 +165,7 @@ itemView state@{ item } selected presentActions | otherwise =
                 ]
             ]
         , H.div
-            [ P.classes $ [ B.colXs3, Rc.itemToolbar ] <> (guard selected $> Rc.selected) ]
+            [ P.classes $ [ B.colXs4, Rc.itemToolbar ] <> (guard selected $> Rc.selected) ]
             [ itemActions presentActions item ]
         ]
     ]
@@ -210,7 +212,10 @@ itemActions presentActions item | otherwise =
 
   common :: Array (HTML p Query)
   common =
-    [ itemAction Move "Move / rename" B.glyphiconMove
+    [
+-- Commented until backend is ready
+--      itemAction SharePermissions "Share permissions" B.glyphiconShareAlt
+      itemAction Move "Move / rename" B.glyphiconMove
     , itemAction Download "Download" B.glyphiconCloudDownload
     , itemAction Remove "Remove" B.glyphiconTrash
     ]

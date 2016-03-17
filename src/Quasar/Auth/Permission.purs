@@ -18,19 +18,23 @@ module Quasar.Auth.Permission where
 
 import Prelude
 
+import Control.Bind ((>=>))
+
 import Control.Monad.Aff (later')
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Random (random)
 import Control.MonadPlus (guard)
 import Control.UI.Browser (decodeURIComponent)
 
+import Data.Array as Arr
+import Data.Array as Arr
+import Data.Either as E
 import Data.Functor.Eff (liftEff)
+import Data.Maybe as M
+import Data.NonEmpty as Ne
+import Data.Path.Pathy as Pt
 import Data.String as Str
 import Data.String.Regex as Rgx
-import Data.Maybe as M
-import Data.Array as Arr
-import Data.NonEmpty as Ne
-import Data.Either as E
 
 import DOM (DOM())
 import DOM.HTML (window)
@@ -132,8 +136,26 @@ genToken =
   later' 1000 $ liftEff $ PermissionToken <$> show <$> random
 
 -- One more mock
-makePermissionShareRequest
+doPermissionShareRequest
   :: PermissionShareRequest
   -> Slam Unit
-makePermissionShareRequest _ =
+doPermissionShareRequest _ =
   later' 1000 $ pure unit
+
+
+permissionsForResource
+  :: R.Resource
+  -> Slam Permissions
+permissionsForResource _ =
+  later' 1000 $ pure {add: true, read: true, modify: true, delete: true}
+
+getGroups
+  :: Slam (Array Group)
+getGroups =
+  later' 1000
+    $ pure
+    $ map Group
+    $ map (Pt.rootDir Pt.</>)
+    $ Arr.catMaybes
+    $ map (Pt.parseAbsFile >=> Pt.sandbox Pt.rootDir )
+      ["/foo", "/foo/bar", "/foo/bar/baz", "/foo/quux" ]
