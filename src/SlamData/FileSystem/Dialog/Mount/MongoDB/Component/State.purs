@@ -18,6 +18,8 @@ module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State where
 
 import Prelude
 
+import Control.UI.Browser (decodeURIComponent, encodeURIComponent)
+
 import Data.Array as A
 import Data.Bifunctor (rmap)
 import Data.Either (either)
@@ -56,10 +58,12 @@ _path :: LensP State String
 _path = lens _.path (_ { path = _ })
 
 _user :: LensP State String
-_user = lens _.user (_ { user = _ })
+_user =
+  lens _.user (_{user = _})
 
 _password :: LensP State String
-_password = lens _.password (_ { password = _ })
+_password =
+  lens _.password (_{password = _})
 
 _props :: LensP State (Array MountProp)
 _props = lens _.props (_ { props = _ })
@@ -130,12 +134,12 @@ pathFromURI _ = ""
 
 userFromURI :: Uri.AbsoluteURI -> String
 userFromURI (Uri.AbsoluteURI _ (Uri.HierarchicalPart (Just (Uri.Authority (Just ui) _)) _) _) =
-  maybe ui (\ix -> S.take ix ui) $ S.indexOf ":" ui
+  decodeURIComponent $ maybe ui (\ix -> S.take ix ui) $ S.indexOf ":" ui
 userFromURI _ = ""
 
 passwordFromURI :: Uri.AbsoluteURI -> String
 passwordFromURI (Uri.AbsoluteURI _ (Uri.HierarchicalPart (Just (Uri.Authority (Just ui) _)) _) _) =
-  maybe "" (\ix -> S.drop (ix + 1) ui) $ S.indexOf ":" ui
+  decodeURIComponent $ maybe "" (\ix -> S.drop (ix + 1) ui) $ S.indexOf ":" ui
 passwordFromURI _ = ""
 
 propsFromURI :: Uri.AbsoluteURI -> Array MountProp
@@ -149,7 +153,10 @@ mkURI { path, user, password, hosts, props } =
   then
     toURI
       { path: nonEmpty path
-      , credentials: mkCredentials <$> nonEmpty user <*> nonEmpty password
+      , credentials:
+          mkCredentials
+          <$> (encodeURIComponent <$> nonEmpty user)
+          <*> (encodeURIComponent <$> nonEmpty password)
       , hosts: prepareHost <$> A.filter (not isEmptyHost) hosts
       , props: prepareProp <$> A.filter (not isEmptyProp) props
       }
