@@ -132,6 +132,7 @@ buildLine axises angle size conf = case axisSeriesPair of
                          , yAxis = Just yAxis
                          , tooltip = Just tooltip
                          , legend = Just $ mkLegend series
+                         , color = Just colors
                          , grid = Just $ Grid gridDefault
                            { y2 = Just $ Percent 15.0
                            }

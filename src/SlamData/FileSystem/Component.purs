@@ -105,7 +105,7 @@ render state@{ version, sort, salt, path } =
     [ navbar
         [ H.div
             [ P.classes [ Rc.header, B.clearfix ] ]
-            [ icon B.glyphiconFolderOpen Config.homeHash
+            [ icon B.glyphiconFolderOpen Config.homeHash "Browse root folder"
             , logo version
             , H.slot' cpSearch unit \_ ->
                 { component: Search.comp

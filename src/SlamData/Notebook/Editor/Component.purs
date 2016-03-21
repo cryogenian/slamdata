@@ -60,6 +60,7 @@ import Halogen.Component.Utils (forceRerender')
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as Quasar
@@ -155,7 +156,8 @@ newCellMenu state =
         [ H.button
             [ P.classes [B.btnLg, B.btnLink]
             , E.onClick (E.input_ ToggleAddCellMenu)
-            , P.title "Insert new cell"
+            , P.title $ label state.isAddingCell
+            , ARIA.label $ label state.isAddingCell
             ]
             [ glyph
                 if state.isAddingCell
@@ -170,11 +172,15 @@ newCellMenu state =
     , insertMenuItem API
     ]
   where
+  label true = "Dismiss insert cell menu"
+  label false = "Insert cell"
+
   insertMenuItem :: CellType -> NotebookHTML
   insertMenuItem cellType =
     H.li_
       [ H.button
-          [ P.title (cellName cellType)
+          [ P.title $ "Insert " ++ cellName cellType ++ " cell"
+          , ARIA.label $ "Insert " ++ cellName cellType ++ " cell"
           , E.onClick $ E.input_ (AddCell cellType)
           , P.classes (fadeWhen $ not (state.isAddingCell))
           ]

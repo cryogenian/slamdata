@@ -50,6 +50,7 @@
   "devDependencies": {
     "purescript-chalky": "^0.2.0",
     "purescript-debug": "^0.1.2",
+    "purescript-webdriver": "^0.16.0",
     "purescript-easyimage": "^0.2.0",
     "purescript-imagediff": "^0.2.0",
     "purescript-node-fs-aff": "^0.2.1",
@@ -57,8 +58,7 @@
     "purescript-node-process": "^0.1.1",
     "purescript-node-streams": "^0.3.0",
     "purescript-platform": "^0.4.0",
-    "purescript-strongcheck": "^0.14.7",
-    "purescript-webdriver": "^0.14.0"
+    "purescript-strongcheck": "^0.14.7"
   },
   "resolutions": {
     "purescript-css": "^0.6.0",

@@ -36,6 +36,7 @@ import Halogen (Component(), Eval(), ComponentHTML(), component, modify, get)
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
@@ -123,12 +124,16 @@ render :: State -> ComponentHTML Query
 render state =
   H.div [ P.classes [ Rc.search ] ]
   [ H.form [ E.onSubmit (E.input_ Submit)]
-    [ H.div [ P.classes searchClasses ]
+    [ H.div
+      [ P.classes searchClasses
+      ]
       [ H.input [ P.classes [ B.formControl ]
                 , P.value value
                 , E.onFocus (E.input_ (Focus true))
                 , E.onBlur (E.input_ (Focus false))
                 , E.onValueInput (E.input Typed)
+                , P.title "File search field"
+                , ARIA.label "File search field"
                 ]
       , H.span [ P.class_ $ if state ^. _focused
                             then Rc.searchPathActive
