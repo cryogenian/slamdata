@@ -16,9 +16,7 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.Component.Query where
 
-import Prelude (Unit())
-
-import Data.Functor.Coproduct (Coproduct())
+import SlamData.Prelude
 
 import Halogen (ChildF())
 import Halogen.ECharts (EChartsQuery())

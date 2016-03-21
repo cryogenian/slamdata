@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Viz.Component.State
-  ( State()
+  ( State
   , initialState
   , _width
   , _height
@@ -27,27 +27,26 @@ module SlamData.Notebook.Cell.Viz.Component.State
   , _needToUpdate
   , _axisLabelAngle
   , _axisLabelFontSize
-  , StateP()
+  , StateP
   , fromModel
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Argonaut (JCursor(), JArray())
-import Data.Functor.Coproduct (Coproduct())
-import Data.Lens (LensP(), lens)
+import Data.Argonaut (JCursor, JArray)
+import Data.Lens (LensP, lens)
 import Data.Map as M
 import Data.Set as Set
 
-import Halogen (InstalledState())
+import Halogen (ParentState)
 
-import SlamData.Notebook.Cell.Chart.Axis (Axis())
+import SlamData.Effects (Slam)
+import SlamData.Notebook.Cell.Chart.Axis (Axis)
 import SlamData.Notebook.Cell.Chart.ChartType (ChartType(..))
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Notebook.Cell.Viz.Component.Query (Query())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
+import SlamData.Notebook.Cell.Viz.Component.Query (Query)
 import SlamData.Notebook.Cell.Viz.Form.Component as Form
-import SlamData.Notebook.Cell.Viz.Model (Model())
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Viz.Model (Model)
 
 type State =
   { width :: Int
@@ -107,7 +106,7 @@ _axisLabelAngle :: forall a r. LensP {axisLabelAngle :: a | r} a
 _axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
 
 type StateP =
-  InstalledState
+  ParentState
     State
     Form.StateP
     (Coproduct CellEvalQuery Query)

@@ -14,22 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Dialog.Component where
+module SlamData.Notebook.Dialog.Component
+  ( Dialog(..)
+  , State()
+  , initialState
+  , Query(..)
+  , ChildSlot()
+  , ChildQuery()
+  , ChildState()
+  , ErrorSlot()
+  , EmbedSlot()
+  , StateP()
+  , QueryP()
+  , comp
+  ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Alt ((<|>))
-
-import Data.Either (Either())
-import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct())
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isNothing)
-
-import Halogen
+import Halogen as H
 import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, prjQuery, prjSlot)
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Error.Component as Error
@@ -43,6 +49,7 @@ data Dialog
   | Embed String Port.VarMap
 
 type State = Maybe Dialog
+
 initialState :: State
 initialState = Nothing
 
@@ -72,48 +79,49 @@ cpEmbed
 cpEmbed =
   cpR
 
-type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
-type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
-type Algebra = ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
+type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
-comp :: Component StateP QueryP Slam
-comp = parentComponent' render eval peek
+type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-render :: RenderParent State ChildState Query ChildQuery Slam ChildSlot
+comp :: H.Component StateP QueryP Slam
+comp = H.parentComponent { render, eval, peek: Just peek }
+
+render :: State -> HTML
 render state =
-  H.div
-    [ P.classes ([B.modal] <> fadeWhen (isNothing state))
-    , E.onClick (E.input_ Dismiss)
+  HH.div
+    [ HP.classes ([B.modal] <> fadeWhen (isNothing state))
+    , HE.onClick (HE.input_ Dismiss)
     ]
     (maybe [] (pure <<< dialog) state)
   where
 
   dialog (Error str) =
-    H.slot' cpError str \_ ->
+    HH.slot' cpError str \_ ->
       { component: Error.comp
       , initialState: Error.State str
       }
 
-  dialog (Embed str varMap) =
-    H.slot' cpEmbed str \_ ->
+  dialog (Embed url varMap) =
+    HH.slot' cpEmbed url \_ ->
       { component: Embed.comp
-      , initialState: Embed.State str varMap
+      , initialState: { url, varMap }
       }
 
-eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
-eval (Dismiss next) = set Nothing $> next
-eval (Show d next) = set (Just d) $> next
+eval :: Natural Query DSL
+eval (Dismiss next) = H.set Nothing $> next
+eval (Show d next) = H.set (Just d) $> next
 
-
-peek :: forall a. ChildF ChildSlot ChildQuery a -> Algebra Unit
-peek (ChildF slot query) =
+peek :: forall a. H.ChildF ChildSlot ChildQuery a -> DSL Unit
+peek (H.ChildF slot query) =
   fromMaybe (pure unit)
   $   (errorPeek <$> prjSlot cpError slot <*> prjQuery cpError query)
   <|> (embedPeek <$> prjSlot cpEmbed slot <*> prjQuery cpEmbed query)
 
-errorPeek :: forall a. ErrorSlot -> Error.Query a -> Algebra Unit
-errorPeek _ (Error.Dismiss _) = set Nothing
+errorPeek :: forall a. ErrorSlot -> Error.Query a -> DSL Unit
+errorPeek _ (Error.Dismiss _) = H.set Nothing
 
-embedPeek :: forall a. EmbedSlot -> Embed.Query a -> Algebra Unit
-embedPeek _ (Embed.Dismiss _) = set Nothing
+embedPeek :: forall a. EmbedSlot -> Embed.Query a -> DSL Unit
+embedPeek _ (Embed.Dismiss _) = H.set Nothing
 embedPeek _ _ = pure unit

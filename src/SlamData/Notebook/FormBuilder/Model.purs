@@ -20,14 +20,10 @@ module SlamData.Notebook.FormBuilder.Model
   , decode
   ) where
 
-import Prelude
-
-import Control.Bind ((>=>))
+import SlamData.Prelude
 
 import Data.Argonaut ((.?), (:=), (~>))
 import Data.Argonaut as J
-import Data.Either as E
-import Data.Traversable as Tr
 
 import SlamData.Notebook.FormBuilder.Item.Model as Item
 
@@ -44,9 +40,9 @@ encode m =
 
 decode
   :: J.Json
-  -> E.Either String Model
+  -> Either String Model
 decode =
   J.decodeJson >=> \obj ->
     obj .? "items"
-      >>= Tr.traverse Item.decode
+      >>= traverse Item.decode
       <#> { items : _ }

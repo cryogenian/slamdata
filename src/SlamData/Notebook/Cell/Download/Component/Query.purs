@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Download.Component.Query where
 
-import Data.Functor.Coproduct (Coproduct())
+import SlamData.Prelude
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import SlamData.Download.Model (CSVOptions(), JSONOptions(), OutputType())
 

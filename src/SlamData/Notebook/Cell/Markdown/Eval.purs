@@ -16,22 +16,18 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Markdown.Eval (markdownEval, markdownSetup) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind ((<=<))
 import Control.Monad.Aff (attempt)
+import Control.Monad.Aff.Free (fromAff)
 import Control.Monad.Eff.Exception (error, message)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.State.Trans (StateT(), evalStateT, get, modify)
+import Control.Monad.State.Trans (StateT, evalStateT, get, modify)
 
-import Data.Argonaut.Core (Json())
+import Data.Argonaut.Core (Json)
 import Data.Argonaut.Core as JSON
 import Data.Array as A
-import Data.Either (Either(..), either)
-import Data.Functor.Aff (liftAff)
-import Data.List (List(), fromList, toList, head)
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Monoid (mempty)
+import Data.List (List, fromList, toList, head)
 import Data.Path.Pathy ((</>), file)
 import Data.String as Str
 import Data.StrMap as SM
@@ -39,21 +35,20 @@ import Data.StrMap as SM
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
 
-import SlamData.Notebook.Cell.Ace.Component (AceDSL())
-import SlamData.Notebook.Cell.Ace.Component (AceDSL())
-import SlamData.Notebook.Cell.CellId (CellId(), cellIdToString)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalResult(), CellEvalInput(), CellSetupInfo())
+import SlamData.Notebook.Cell.Ace.Component (AceDSL)
+import SlamData.Notebook.Cell.CellId (CellId, cellIdToString)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalResult, CellEvalInput, CellSetupInfo)
 import SlamData.Notebook.Cell.Port (Port(..))
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 
 import Text.Markdown.SlamDown as SD
-import Text.Markdown.SlamDown.Parser as SD
+import Text.Markdown.SlamDown.Parser (parseMd)
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
 markdownEval :: CellEvalInput -> String -> AceDSL CellEvalResult
-markdownEval { cellId, notebookPath } s = liftAff do
-  result <- attempt $ evalEmbeddedQueries notebookPath cellId (SD.parseMd s)
+markdownEval { cellId, notebookPath } s = fromAff do
+  result <- attempt $ evalEmbeddedQueries notebookPath cellId (parseMd s)
   pure case result of
     Left err ->
       { messages: [ Left (message err) ]
@@ -125,7 +120,7 @@ evalEmbeddedQueries dir cellId =
     Nothing -> throwError (error "Cannot evaluate markdown without a saved notebook path")
     Just dir' -> do
       n <- get :: EvalM Int
-      modify (+ 1)
+      modify (_ + 1)
       let tempPath = dir' </> file ("tmp" <> cellIdToString cellId <> "-" <> show n)
-      result <- liftAff $ Auth.authed $ Quasar.query' tempPath code
+      result <- fromAff $ Auth.authed $ Quasar.query' tempPath code
       either (throwError <<< error) pure result

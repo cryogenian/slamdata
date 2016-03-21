@@ -16,12 +16,12 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Explore.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
-import Halogen
+import Halogen (ParentState())
 
-import SlamData.Notebook.Cell.Common.EvalQuery as NC
 import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Common.EvalQuery as NC
 import SlamData.Notebook.FileInput.Component as FI
 
 type State = Unit
@@ -29,4 +29,4 @@ type State = Unit
 initialState :: State
 initialState = unit
 
-type StateP = InstalledState State FI.State NC.CellEvalQuery FI.Query Slam Unit
+type StateP = ParentState State FI.State NC.CellEvalQuery FI.Query Slam Unit

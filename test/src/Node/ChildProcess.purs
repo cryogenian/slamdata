@@ -3,10 +3,10 @@ module Node.ChildProcess where
 import Prelude
 
 import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Class (MonadEff, liftEff)
 import Control.Monad.Eff.Exception (Error())
 
 import Data.Function
-import Data.Functor.Eff (FunctorEff, liftEff)
 import Data.Maybe
 
 import Node.Stream
@@ -38,19 +38,19 @@ foreign import stdinImpl
 
 stdout
   :: forall e r m
-   . (FunctorEff (childProcess :: CHILD_PROCESS | e) m)
+   . (MonadEff (childProcess :: CHILD_PROCESS | e) m)
   => ChildProcess -> m (Readable r (childProcess :: CHILD_PROCESS | e))
 stdout = liftEff <<< stdoutImpl
 
 stderr
   :: forall e r m
-   . (FunctorEff (childProcess :: CHILD_PROCESS | e) m)
+   . (MonadEff (childProcess :: CHILD_PROCESS | e) m)
   => ChildProcess -> m (Readable r (childProcess :: CHILD_PROCESS | e))
 stderr = liftEff <<< stderrImpl
 
 stdin
   :: forall e r m
-   . (FunctorEff (childProcess :: CHILD_PROCESS | e) m)
+   . (MonadEff (childProcess :: CHILD_PROCESS | e) m)
   => ChildProcess -> m (Readable r (childProcess :: CHILD_PROCESS | e))
 stdin = liftEff <<< stdinImpl
 
@@ -64,7 +64,7 @@ foreign import spawnImpl
 
 spawn
   :: forall e m
-   . (FunctorEff (childProcess :: CHILD_PROCESS|e) m)
+   . (MonadEff (childProcess :: CHILD_PROCESS|e) m)
   => String -> Array String
   -> (Maybe Error -> Eff (childProcess :: CHILD_PROCESS|e) Unit)
   -> m ChildProcess
@@ -77,7 +77,7 @@ foreign import execSyncImpl
 
 execSync
   :: forall e m
-   . (FunctorEff (childProcess :: CHILD_PROCESS |e) m)
+   . (MonadEff (childProcess :: CHILD_PROCESS |e) m)
   => String -> SpawnOption -> m Unit
 execSync name opts = liftEff $ runFn2 execSyncImpl name opts
 
@@ -86,7 +86,7 @@ foreign import killImpl
   :: forall e. ChildProcess -> Eff (childProcess :: CHILD_PROCESS|e) Unit
 
 kill
-  :: forall e m. (FunctorEff (childProcess :: CHILD_PROCESS|e) m)
+  :: forall e m. (MonadEff (childProcess :: CHILD_PROCESS|e) m)
   => ChildProcess -> m Unit
 kill cp = liftEff $ killImpl cp
 

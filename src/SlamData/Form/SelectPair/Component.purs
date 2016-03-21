@@ -16,38 +16,31 @@ limitations under the License.
 
 module SlamData.Form.SelectPair.Component where
 
-import Prelude
-
-import Control.Monad.Aff (Aff())
+import SlamData.Prelude
 
 import Data.Array (null, singleton)
-import Data.Functor (($>))
-import Data.Functor.Coproduct (Coproduct())
 import Data.Lens (LensP(), lens, (^.), (.~), (%~), view)
-import Data.Maybe (Maybe(), maybe)
-import Data.Tuple (Tuple(..))
 
-import Halogen
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Form.Select
+import SlamData.Form.Select as S
 import SlamData.Form.Select.Component (Query(..), select)
 import SlamData.Render.CSS as Rc
+import SlamData.Effects (Slam())
 
 import Utils.Array (enumerate)
 
-type Slam e = Aff (HalogenEffects e)
-
 type State a =
-  { model :: Select a
+  { model :: S.Select a
   , disabled :: Boolean
   , opened :: Boolean
   }
 
-initialState :: forall a. Select a -> State a
+initialState :: forall a. S.Select a -> State a
 initialState sel =
   { model: sel
   , disabled: false
@@ -63,82 +56,95 @@ _disabled = lens _.disabled _{disabled = _}
 _opened :: forall a r. LensP {opened :: a | r} a
 _opened = lens _.opened _{opened = _}
 
-type StateP a b e =
-  InstalledState (State a) (Select b) (Query a) (Query b) (Slam e) Unit
+type StateP a b =
+  H.ParentState (State a) (S.Select b) (Query a) (Query b) Slam Unit
 
-type QueryP a b = Coproduct (Query a) (ChildF Unit (Query b))
+type QueryP a b = Coproduct (Query a) (H.ChildF Unit (Query b))
 
 type PairConfig a r =
   { disableWhen :: Int -> Boolean
   , defaultWhen :: Int -> Boolean
   , ariaLabel :: Maybe String
-  , mainState :: Select a
-  , classes :: Array H.ClassName
+  , mainState :: S.Select a
+  , classes :: Array HH.ClassName
   | r
   }
 
+type HTML a b = H.ParentHTML (S.Select b) (Query a) (Query b) Slam Unit
+type DSL a b = H.ParentDSL (State a) (S.Select b) (Query a) (Query b) Slam Unit
 
 selectPair
-  :: forall a b e r
-   . (OptionVal a, OptionVal b)
-  => PairConfig b r -> Component (StateP a b e) (QueryP a b) (Slam e)
+  :: forall a b r
+   . (S.OptionVal a, S.OptionVal b)
+  => PairConfig b r
+  -> H.Component (StateP a b) (QueryP a b) Slam
 selectPair config =
-  parentComponent' (render config) eval peek
+  H.parentComponent
+    { render: (render config)
+    , eval
+    , peek: Just (peek <<< H.runChildF)
+    }
 
 render
-  :: forall a b e r
-   . (OptionVal a, OptionVal b)
+  :: forall a b r
+   . (S.OptionVal a, S.OptionVal b)
   => PairConfig b r
-  -> RenderParent (State a) (Select b) (Query a) (Query b) (Slam e) Unit
-render config state = H.div_
-  [ H.slot unit \_ -> { component: select config
-                      , initialState: config.mainState
-                      }
-
-  , H.button [ P.classes ([ B.formControl ] <> config.classes <> clsValOrEmpty )
-             , P.disabled state.disabled
-             , E.onClick (E.input_ ToggleOpened)
-             ] [ ]
-  , H.ul [ P.classes $ [ B.listGroup
-                       , B.fade
-                       , Rc.fileListGroup
-                       , Rc.aggregation ]
-                     <> if state.opened then [ B.in_ ] else [ ]
-         ]
-    $ map option $ enumerate $ view _options state.model
-  ]
+  -> State a
+  -> HTML a b
+render config state =
+  HH.div_
+    [ HH.slot unit \_ ->
+        { component: select config
+        , initialState: config.mainState
+        }
+    , HH.button
+        [ HP.classes ([ B.formControl ] <> config.classes <> clsValOrEmpty )
+        , HP.disabled state.disabled
+        , HE.onClick (HE.input_ ToggleOpened)
+        ] []
+    , HH.ul
+        [ HP.classes
+            $ [ B.listGroup
+              , B.fade
+              , Rc.fileListGroup
+              , Rc.aggregation
+              ]
+            <> if state.opened then [ B.in_ ] else [ ]
+        ]
+        $ map option $ enumerate $ view S._options state.model
+    ]
   where
-  clsValOrEmpty :: Array H.ClassName
+  clsValOrEmpty :: Array HH.ClassName
   clsValOrEmpty =
-    map H.className $ maybe [] singleton $ map stringVal $ view _value state.model
+    map HH.className $ maybe [] singleton $ map S.stringVal $ view S._value state.model
 
   option
     :: Tuple Int a
-    -> ParentHTML (Select b) (Query a) (Query b) (Slam e) Unit
+    -> HTML a b
   option (Tuple i val) =
-    H.button [ P.classes [ B.listGroupItem ]
-             , E.onClick (E.input_ (Choose i))
-             ]
-    [ H.text $ stringVal val ]
+    HH.button
+      [ HP.classes [ B.listGroupItem ]
+      , HE.onClick (HE.input_ (Choose i))
+      ]
+      [ HH.text $ S.stringVal val ]
 
 eval
-  :: forall a b e
+  :: forall a b
    . (Eq a, Eq b)
-  => EvalParent (Query a) (State a) (Select b) (Query a) (Query b) (Slam e) Unit
+  => Natural (Query a) (DSL a b)
 eval (Choose i next) = do
-  modify (_opened .~ false)
-  modify (_model %~ trySelect i)
+  H.modify (_opened .~ false)
+  H.modify (_model %~ S.trySelect i)
   pure next
-eval (SetSelect sel next) = modify (_model .~ sel) $> next
-eval (GetValue continue) = map continue $ gets $ view $ _model <<< _value
-eval (GetSelect continue) = map continue $ gets $ view _model
-eval (ToggleOpened next) = modify (_opened %~ not) $> next
-
+eval (SetSelect sel next) = H.modify (_model .~ sel) $> next
+eval (GetValue continue) = map continue $ H.gets $ view $ _model <<< S._value
+eval (GetSelect continue) = map continue $ H.gets $ view _model
+eval (ToggleOpened next) = H.modify (_opened %~ not) $> next
 
 peek
-  :: forall a b e
-   . (OptionVal a, OptionVal b)
-  => Peek (ChildF Unit (Query b))
-   (State a) (Select b) (Query a) (Query b) (Slam e) Unit
-peek (ChildF _ (SetSelect s _)) = modify (_disabled .~ null (s ^. _options))
+  :: forall a b x
+   . (S.OptionVal a, S.OptionVal b)
+  => Query b x
+  -> DSL a b Unit
+peek (SetSelect s _) = H.modify (_disabled .~ null (s ^. S._options))
 peek _ = pure unit

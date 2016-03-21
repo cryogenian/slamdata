@@ -20,9 +20,9 @@ module SlamData.Notebook.Cell.API.Component.State
   , StateP()
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Halogen
+import Halogen (ParentState())
 
 import SlamData.Notebook.Cell.Common.EvalQuery as NC
 import SlamData.Effects (Slam())
@@ -34,7 +34,7 @@ initialState :: State
 initialState = {}
 
 type StateP =
-  InstalledState
+  ParentState
     State
     (FB.StateP Slam)
     NC.CellEvalQuery

@@ -16,21 +16,21 @@ limitations under the License.
 
 module SlamData.Notebook.Editor.Component.Query
   ( Query(..)
-  , QueryP()
+  , QueryP
   ) where
 
-import Data.BrowserFeatures as BF
-import Data.Functor.Coproduct (Coproduct())
-import Data.Maybe as M
+import SlamData.Prelude
 
-import Halogen (ChildF())
+import Data.BrowserFeatures as BF
+
+import Halogen (ChildF)
 
 import SlamData.Notebook.AccessType as AT
 import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.CellType as CT
-import SlamData.Notebook.Cell.Component (CellQueryP())
+import SlamData.Notebook.Cell.Component (CellQueryP)
 import SlamData.Notebook.Cell.Port.VarMap as Port
-import SlamData.Notebook.Editor.Component.CellSlot (CellSlot())
+import SlamData.Notebook.Editor.Component.CellSlot (CellSlot)
 
 import Utils.Path as UP
 
@@ -41,8 +41,8 @@ data Query a
   | RunActiveCell a
   | RunPendingCells a
   | ToggleAddCellMenu a
-  | GetNotebookPath (M.Maybe UP.DirPath -> a)
-  | SetViewingCell (M.Maybe CID.CellId) a
+  | GetNotebookPath (Maybe UP.DirPath -> a)
+  | SetViewingCell (Maybe CID.CellId) a
   | SetName String a
   | SetAccessType AT.AccessType a
   | ExploreFile BF.BrowserFeatures UP.FilePath a
@@ -52,7 +52,7 @@ data Query a
   | Reset BF.BrowserFeatures UP.DirPath a
   | GetGlobalVarMap (Port.VarMap -> a)
   | SetGlobalVarMap Port.VarMap a
-  | FindCellParent CID.CellId (M.Maybe CID.CellId -> a)
-  | GetCellType CID.CellId (M.Maybe CT.CellType -> a)
+  | FindCellParent CID.CellId (Maybe CID.CellId -> a)
+  | GetCellType CID.CellId (Maybe CT.CellType -> a)
 
 type QueryP = Coproduct Query (ChildF CellSlot CellQueryP)

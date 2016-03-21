@@ -19,23 +19,18 @@ module SlamData.Notebook.Cell.API.Component
   , queryShouldRun
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Alt ((<|>))
-import Control.Bind ((=<<))
 import Control.Monad.Error.Class as EC
-import Control.Monad.Trans as MT
 
-import Data.Foldable as F
-import Data.Functor.Coproduct
 import Data.List as L
-import Data.Maybe as M
 import Data.StrMap as SM
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 
+import SlamData.Effects (Slam())
 import SlamData.Notebook.Cell.API.Component.Query
 import SlamData.Notebook.Cell.API.Component.State
 import SlamData.Notebook.Cell.API.Model as Model
@@ -43,21 +38,20 @@ import SlamData.Notebook.Cell.CellType as CT
 import SlamData.Notebook.Cell.Common.EvalQuery as NC
 import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Effects (Slam())
 import SlamData.Notebook.FormBuilder.Component as FB
 import SlamData.Notebook.FormBuilder.Item.Component as Item
 import SlamData.Render.CSS as Rc
 
-type APIHTML = ParentHTML (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam Unit
-type APIDSL = ParentDSL State (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam Unit
+type APIHTML = H.ParentHTML (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam Unit
+type APIDSL = H.ParentDSL State (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam Unit
 
-apiComponent :: Component NC.CellStateP NC.CellQueryP Slam
+apiComponent :: H.Component NC.CellStateP NC.CellQueryP Slam
 apiComponent =
   NC.makeEditorCellComponent
     { name: CT.cellName CT.API
     , glyph: CT.cellGlyph CT.API
-    , component: parentComponent render eval
-    , initialState: installedState initialState
+    , component: H.parentComponent { render, eval, peek: Nothing }
+    , initialState: H.parentState initialState
     , _State: NC._APIState
     , _Query: NC.makeQueryPrism NC._APIQuery
     }
@@ -66,10 +60,11 @@ render
   :: State
   -> APIHTML
 render _ =
-  H.div [ P.classes [ Rc.cellInput ] ]
-    [ H.slot unit \_ ->
+  HH.div
+    [ HP.classes [ Rc.cellInput ] ]
+    [ HH.slot unit \_ ->
        { component : FB.formBuilderComponent
-       , initialState : installedState FB.initialState
+       , initialState : H.parentState FB.initialState
        }
     ]
 
@@ -78,11 +73,11 @@ compileVarMap
   -> Port.VarMap
   -> Port.VarMap
 compileVarMap fields globalVarMap =
-  F.foldl alg SM.empty fields
+  foldl alg SM.empty fields
   where
     alg =
       flip \{ name, fieldType, defaultValue } ->
-        M.maybe id (SM.insert name) $
+        maybe id (SM.insert name) $
           SM.lookup name globalVarMap
             <|> (Item.defaultValueToVarMapValue fieldType =<< defaultValue)
 
@@ -92,29 +87,25 @@ eval q =
     NC.EvalCell info k ->
       k <$> NC.runCellEvalT do
         fields <-
-          query unit (request (FB.GetItems >>> left))
-            # MT.lift
-            >>= M.maybe (EC.throwError "Error querying FormBuilder") pure
+          H.query unit (H.request (FB.GetItems >>> left))
+            # lift
+            >>= maybe (EC.throwError "Error querying FormBuilder") pure
         pure $ Port.VarMap $ compileVarMap fields info.globalVarMap
     NC.SetupCell _ next ->
       pure next
     NC.NotifyRunCell next ->
       pure next
     NC.Save k ->
-      query unit (request (FB.GetItems >>> left)) <#>
-        M.maybe [] L.fromList
+      H.query unit (H.request (FB.GetItems >>> left)) <#>
+        maybe [] L.fromList
           >>> { items : _ }
           >>> Model.encode
           >>> k
     NC.Load json next -> do
-      F.for_ (Model.decode json) \{items} ->
-        query unit $ action (FB.SetItems (L.toList items) >>> left)
+      for_ (Model.decode json) \{items} ->
+        H.query unit $ H.action (FB.SetItems (L.toList items) >>> left)
       pure next
     NC.SetCanceler _ next -> pure next
-
-getChildF :: forall i f. Natural (ChildF i f) f
-getChildF (ChildF _ q) =
-  q
 
 queryShouldRun
   :: forall a
@@ -123,10 +114,10 @@ queryShouldRun
 queryShouldRun =
   coproduct
     (const false)
-    (getChildF >>>
+    (H.runChildF >>>
        coproduct
          (const false)
-         (getChildF >>> pred))
+         (H.runChildF >>> pred))
 
   where
     pred q =

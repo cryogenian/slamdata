@@ -1,85 +1,82 @@
 module SlamData.FileSystem.Dialog.Permissions.Component
-  (
-    comp
+  ( comp
   , module SlamData.FileSystem.Dialog.Permissions.Component.State
   , module SlamData.FileSystem.Dialog.Permissions.Component.Query
   , module SlamData.FileSystem.Dialog.Permissions.Component.Install
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind (join)
-import Control.Plus (empty)
 import Control.Monad.Eff.Exception (message)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Aff (attempt)
 import Control.Monad.Maybe.Trans as Mt
-import Control.Monad.Trans (lift)
 import Control.UI.ZClipboard as Z
 
 import Data.Array as Arr
-import Data.Either as E
 import Data.Functor ((<$))
 import Data.Functor.Coproduct.Nested (coproduct6)
-import Data.Maybe as M
 import Data.NonEmpty as Ne
 import Data.Lens ((.~), (?~))
 import Data.Lens as L
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Eff (liftEff)
-import Data.Foldable as F
 import Data.Time (Milliseconds(..))
 
 import DOM.HTML.Types (htmlElementToElement)
 
-import Halogen hiding (HTML())
+import Halogen as H
 import Halogen.Component.Utils as Hu
 
-import SlamData.Effects (Slam())
-import SlamData.Dialog.Share.User.Component as User
 import SlamData.Dialog.Share.Code.Component as Code
 import SlamData.Dialog.Share.Confirm.Component as Confirm
 import SlamData.Dialog.Share.Permissions.Component as Perms
-import SlamData.Halogen.Select.Rotary.Component as Rotary
+import SlamData.Dialog.Share.User.Component as User
+import SlamData.Effects (Slam)
+import SlamData.FileSystem.Dialog.Permissions.Component.Install (CascadeQuery, CascadeState, ChildQuery, ChildSlot, ChildState, DSL, HTML, QueryP, RotaryQuery, RotaryState, StateP, cpCode, cpConfirm, cpGroup, cpPerms, cpRotary, cpUser)
+import SlamData.FileSystem.Dialog.Permissions.Component.Query (Query(..))
+import SlamData.FileSystem.Dialog.Permissions.Component.Render (render)
+import SlamData.FileSystem.Dialog.Permissions.Component.State (State, ShareType(..), _canGoFurther, _confirm, _error, _groups, _permissions, _resource, _sending, _shareType, _zRef, initialState)
 import SlamData.Halogen.Select.Cascade.Component as Cascade
-
-import SlamData.FileSystem.Dialog.Permissions.Component.State
-import SlamData.FileSystem.Dialog.Permissions.Component.Query
-import SlamData.FileSystem.Dialog.Permissions.Component.Install
-import SlamData.FileSystem.Dialog.Permissions.Component.Render
+import SlamData.Halogen.Select.Rotary.Component as Rotary
 
 import Quasar.Auth.Permission as Qp
 
 import Utils.DOM (waitLoaded)
 
-comp :: Component StateP QueryP Slam
-comp = parentComponent' render eval (peek <<< runChildF)
+comp :: H.Component StateP QueryP Slam
+comp =
+  H.lifecycleParentComponent
+    { render
+    , eval
+    , peek: Just (peek <<< H.runChildF)
+    , initializer: Just (H.action Init)
+    , finalizer: Nothing
+    }
 
 eval :: Natural Query DSL
 eval (Init next) = do
-  res <- gets _.resource
-  ps <- liftAff $ Qp.permissionsForResource res
-  r <- liftEff $ newRef M.Nothing
-  grps <- liftAff $ Qp.getGroups
-  modify $ _permissions ?~ ps
-  modify $ _zRef ?~ r
-  modify $ _groups ?~ grps
+  res <- H.gets _.resource
+  ps <- H.fromAff $ Qp.permissionsForResource res
+  r <- H.fromEff $ newRef Nothing
+  grps <- H.fromAff $ Qp.getGroups
+  H.modify $ _permissions ?~ ps
+  H.modify $ _zRef ?~ r
+  H.modify $ _groups ?~ grps
   pure next
 eval (ToConfirm next) = do
-  state <- get
-  mbPerms <- query' cpPerms unit $ request Perms.GetSelected
+  state <- H.get
+  mbPerms <- H.query' cpPerms unit $ H.request Perms.GetSelected
   mbTargets <-
     Mt.runMaybeT case state.shareType of
       Code -> empty
       Group -> do
-        arr <- Mt.MaybeT $ query' cpGroup unit $ request Cascade.GetSelected
+        arr <- Mt.MaybeT $ H.query' cpGroup unit $ H.request Cascade.GetSelected
         {head, tail} <- Mt.MaybeT $ pure $ Arr.uncons arr
-        pure $ E.Left $ head Ne.:| tail
+        pure $ Left $ head Ne.:| tail
       User -> do
-        arr <- Mt.MaybeT $ query' cpUser unit $ request User.GetValues
+        arr <- Mt.MaybeT $ H.query' cpUser unit $ H.request User.GetValues
         {head, tail} <- Mt.MaybeT $ pure $ Arr.uncons arr
-        pure $ E.Right $ map Qp.User $ head Ne.:| tail
-  modify
+        pure $ Right $ map Qp.User $ head Ne.:| tail
+  H.modify
     $ L.set _confirm
     $ { resource: state.resource
       , targets: _
@@ -89,31 +86,32 @@ eval (ToConfirm next) = do
     <*> mbPerms
   pure next
 eval (BackToForm next) = do
-  modify $ _confirm .~ M.Nothing
-  modify $ _error .~ M.Nothing
-  modify $ _canGoFurther .~ false
+  H.modify $ _confirm .~ Nothing
+  H.modify $ _error .~ Nothing
+  H.modify $ _canGoFurther .~ false
   pure next
 eval (Share next) = do
-  gets _.confirm
-    >>= F.traverse_ \rq -> do
-      modify $ _sending .~ true
-      eiRes <- liftAff $ attempt $ Qp.doPermissionShareRequest rq
+  H.gets _.confirm
+    >>= traverse_ \rq -> do
+      H.modify $ _sending .~ true
+      eiRes <- H.fromAff $ attempt $ Qp.doPermissionShareRequest rq
       case eiRes of
-        E.Left e -> modify $ _error ?~ message e
-        E.Right res -> Hu.sendAfter' (Milliseconds 200.0) $ action Dismiss
-      modify $ _sending .~ false
+        Left e -> H.modify $ _error ?~ message e
+        Right res -> Hu.sendAfter' (Milliseconds 200.0) $ H.action Dismiss
+      H.modify $ _sending .~ false
   pure next
 eval (Dismiss next) = pure next
-eval (InitZClipboard htmlEl next) = do
-  mbRef <- gets _.zRef
-  F.for_ mbRef \ref -> do
+eval (InitZClipboard (Just htmlEl) next) = do
+  mbRef <- H.gets _.zRef
+  for_ mbRef \ref -> do
     let el = htmlElementToElement htmlEl
-    liftAff waitLoaded
-    liftEff $
+    H.fromAff waitLoaded
+    H.fromEff $
       Z.make el >>= Z.onCopy \zc ->
-        readRef ref >>= F.traverse_ \tok ->
+        readRef ref >>= traverse_ \tok ->
           Z.setData "text/plain" tok zc
   pure next
+eval (InitZClipboard _ next) = pure next
 
 peek :: forall x. ChildQuery x -> DSL Unit
 peek =
@@ -129,26 +127,26 @@ peek =
 isPermsChecked :: DSL Boolean
 isPermsChecked = do
   perms <-
-    (query' cpPerms unit $ request Perms.GetSelected)
-      <#> M.fromMaybe Perms.notAllowed
+    (H.query' cpPerms unit $ H.request Perms.GetSelected)
+      <#> fromMaybe Perms.notAllowed
   pure (perms.add || perms.read || perms.modify || perms.delete)
 
 isGroupsSelected :: DSL Boolean
 isGroupsSelected = do
-  mbSelected <- query' cpGroup unit $ request Cascade.GetSelected
-  pure (not $ Arr.null $ M.fromMaybe [ ] mbSelected)
+  mbSelected <- H.query' cpGroup unit $ H.request Cascade.GetSelected
+  pure (not $ Arr.null $ fromMaybe [ ] mbSelected)
 
 isTokenGenerated :: DSL Boolean
 isTokenGenerated = do
-  mbRef <- gets _.zRef
+  mbRef <- H.gets _.zRef
   case mbRef of
-    M.Nothing -> pure false
-    M.Just ref -> liftEff $ M.isJust <$> readRef ref
+    Nothing -> pure false
+    Just ref -> H.fromEff $ isJust <$> readRef ref
 
 isUsersSelected :: DSL Boolean
 isUsersSelected = do
-  mbUserStrings <- query' cpUser unit $ request User.GetValues
-  pure (not $ Arr.null $ M.fromMaybe [ ] mbUserStrings)
+  mbUserStrings <- H.query' cpUser unit $ H.request User.GetValues
+  pure (not $ Arr.null $ fromMaybe [ ] mbUserStrings)
 
 userPeek :: forall a. User.Query a -> DSL Unit
 userPeek (User.InputChanged _ _ _) = usersUpdate
@@ -159,7 +157,7 @@ usersUpdate :: DSL Unit
 usersUpdate = do
   isP <- isPermsChecked
   isU <- isUsersSelected
-  modify $ _canGoFurther .~ (isP && isU)
+  H.modify $ _canGoFurther .~ (isP && isU)
 
 permsUpdate :: DSL Unit
 permsUpdate = do
@@ -168,26 +166,26 @@ permsUpdate = do
   isG <- isGroupsSelected
   isT <- isTokenGenerated
   tokenGenSwitch
-  modify $ _canGoFurther .~ (isP && (isU || isG || isT))
+  H.modify $ _canGoFurther .~ (isP && (isU || isG || isT))
 
 tokenGenSwitch :: DSL Unit
 tokenGenSwitch = void do
   isP <- isPermsChecked
   Hu.forceRerender'
-  query' cpCode unit $ action $ Code.Toggle isP
-  query' cpCode unit $ action Code.Clear
+  H.query' cpCode unit $ H.action $ Code.Toggle isP
+  H.query' cpCode unit $ H.action Code.Clear
 
 tokenUpdate :: DSL Unit
 tokenUpdate = do
   isP <- isPermsChecked
   isT <- isTokenGenerated
-  modify $ _canGoFurther .~ (isP && isT)
+  H.modify $ _canGoFurther .~ (isP && isT)
 
 groupsUpdate :: DSL Unit
 groupsUpdate = do
   isP <- isPermsChecked
   isG <- isGroupsSelected
-  modify $ _canGoFurther .~ (isP && isG)
+  H.modify $ _canGoFurther .~ (isP && isG)
 
 permsPeek :: forall a. Perms.Query a -> DSL Unit
 permsPeek (Perms.ToggleAdd _) = permsUpdate
@@ -199,13 +197,13 @@ permsPeek _ = pure unit
 
 codePeek :: forall a. Code.Query a -> DSL Unit
 codePeek (Code.Generate _) = unit <$ Mt.runMaybeT do
-  ref <- Mt.MaybeT $ gets _.zRef
+  ref <- Mt.MaybeT $ H.gets _.zRef
   token <-
-    Mt.MaybeT $ map join $ query' cpCode unit $ request Code.GetPermissionToken
-  liftEff $ writeRef ref $ M.Just $ Qp.runPermissionToken token
+    Mt.MaybeT $ map join $ H.query' cpCode unit $ H.request Code.GetPermissionToken
+  H.fromEff $ writeRef ref $ Just $ Qp.runPermissionToken token
   lift $ tokenUpdate
 codePeek (Code.Clear _) = do
-  gets _.zRef >>= F.traverse_ (liftEff <<< flip writeRef M.Nothing)
+  H.gets _.zRef >>= traverse_ (H.fromEff <<< flip writeRef Nothing)
   tokenUpdate
 codePeek _ = pure unit
 
@@ -214,8 +212,8 @@ confirmPeek _ = pure unit
 
 rotaryPeek :: forall a. RotaryQuery a -> DSL Unit
 rotaryPeek (Rotary.Selected opt _) = do
-  modify $ _shareType .~ (Rotary.runOption opt).shareType
-  modify $ _canGoFurther .~ false
+  H.modify $ _shareType .~ (Rotary.runOption opt).shareType
+  H.modify $ _canGoFurther .~ false
   tokenGenSwitch
 rotaryPeek _ = pure unit
 

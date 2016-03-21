@@ -16,10 +16,9 @@ limitations under the License.
 
 module SlamData.Render.Common where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Char (fromCharCode)
-import Data.Maybe (Maybe())
 import Data.String (fromChar)
 
 import Halogen.HTML.Core (HTML(), ClassName())

@@ -16,15 +16,13 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.SQL2.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Array (filter)
 import Data.Lens (LensP(), lens)
 import Data.List as List
-import Data.Maybe (Maybe(..))
 import Data.String.Regex as Rx
 import Data.StrMap as SM
-import Data.Tuple (Tuple(..))
 
 type State =
   { initialQuery :: Maybe String

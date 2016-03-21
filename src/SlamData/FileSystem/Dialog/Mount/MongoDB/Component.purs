@@ -21,28 +21,24 @@ module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
   , module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad (when)
 import Control.Monad.Aff (attempt)
 import Control.Monad.Cont.Trans as Ct
 
 import Data.Array ((..), length, null, filter)
 import Data.Foldable as F
-import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
 import Data.Identity as Id
 import Data.Lens (TraversalP(), (^.), (.~))
 import Data.Lens.Index (ix)
-import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (dir, (</>))
 import Data.String.Regex as Rx
 
-import Halogen
+import Halogen as H
 import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as API
@@ -57,24 +53,26 @@ import SlamData.Render.CSS as Rc
 
 type Query = SettingsQuery State
 
-comp :: Component State Query Slam
-comp = component render eval
+type HTML = H.ComponentHTML Query
 
-render :: State -> ComponentHTML Query
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
+
+render :: State -> HTML
 render state =
-  H.div
-    [ P.key "mount-mongodb"
-    , P.class_ Rc.mountMongoDB
+  HH.div
+    [ HP.key "mount-mongodb"
+    , HP.class_ Rc.mountMongoDB
     ]
     [ section "Server(s)" [ hosts state ]
     , section "Authentication" [ userInfo state, fldPath state ]
     , section "Settings" [ propList _props state ]
     ]
 
-eval :: Natural Query (ComponentDSL State Query Slam)
-eval (ModifyState f next) = modify (processState <<< f) $> next
+eval :: Natural Query (H.ComponentDSL State Query Slam)
+eval (ModifyState f next) = H.modify (processState <<< f) $> next
 eval (Validate continue) = do
-  state <- get
+  state <- H.get
   pure $ continue $ Id.runIdentity $ flip Ct.runContT pure $ Ct.callCC \k -> do
     when (null (filter (not isEmptyHost) state.hosts))
       $ k $ Just "Please enter at least one host"
@@ -88,25 +86,25 @@ eval (Validate continue) = do
     F.any (/= "") [state.user, state.password]
 
 eval (Submit parent name k) = do
-  st <- get
+  st <- H.get
   let path = parent </> dir name
-  result <- liftAff $ attempt $ Auth.authed $ API.saveMount path (mkURI st)
+  result <- H.fromAff $ attempt $ Auth.authed $ API.saveMount path (mkURI st)
   pure $ k $ map (const (Database path)) result
 
-hosts :: State -> ComponentHTML Query
+hosts :: State -> H.ComponentHTML Query
 hosts state =
-  H.div
-    [ P.class_ Rc.mountHostList ]
+  HH.div
+    [ HP.class_ Rc.mountHostList ]
     $ host state <$> 0 .. (length state.hosts - 1)
 
-host :: State -> Int -> ComponentHTML Query
+host :: State -> Int -> H.ComponentHTML Query
 host state index =
-  H.div
-    [ P.class_ Rc.mountHost ]
+  HH.div
+    [ HP.class_ Rc.mountHost ]
     [ label "Host"
-      [ input' rejectNonHostname state (_hosts <<< ix index <<< _host) [] ]
+        [ input' rejectNonHostname state (_hosts <<< ix index <<< _host) [] ]
     , label "Port"
-      [ input' rejectNonPort state (_hosts <<< ix index <<< _port) [] ]
+        [ input' rejectNonPort state (_hosts <<< ix index <<< _port) [] ]
     ]
   where
   rejectNonHostname :: String -> String
@@ -122,54 +120,52 @@ host state index =
   rxNonPort :: Rx.Regex
   rxNonPort = Rx.regex "[^0-9]" (Rx.noFlags { global = true })
 
-userInfo :: State -> ComponentHTML Query
+userInfo :: State -> H.ComponentHTML Query
 userInfo state =
-  H.div
-    [ P.classes [B.formGroup, Rc.mountUserInfo] ]
+  HH.div
+    [ HP.classes [B.formGroup, Rc.mountUserInfo] ]
     [ fldUser state, fldPass state ]
 
-fldUser :: State -> ComponentHTML Query
+fldUser :: State -> H.ComponentHTML Query
 fldUser state =
   label "Username" [ input state _user [] ]
 
-fldPass :: State -> ComponentHTML Query
+fldPass :: State -> H.ComponentHTML Query
 fldPass state =
-  label "Password" [ input state _password [ P.inputType P.InputPassword ] ]
+  label "Password" [ input state _password [ HP.inputType HP.InputPassword ] ]
 
-fldPath :: State -> ComponentHTML Query
+fldPath :: State -> H.ComponentHTML Query
 fldPath state =
-  H.div
-    [ P.class_ Rc.mountPath ]
+  HH.div
+    [ HP.class_ Rc.mountPath ]
     [ label "Database" [ input state _path [] ] ]
 
 -- | A labelled section within the form.
-label :: forall i p. String -> Array (HTML p i) -> HTML p i
-label text inner = H.label_ $ [ H.span_ [ H.text text ] ] ++ inner
+label :: String -> Array HTML -> HTML
+label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] ++ inner
 
 -- | A basic text input field that uses a lens to read from and update the
 -- | state.
 input
-  :: forall p
-   . State
+  :: State
   -> TraversalP State String
   -> Array (Cp.InputProp Query)
-  -> HTML p Query
+  -> HTML
 input state lens =
   input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
 
 -- | A basic text input field that uses a lens to read from and update the
 -- | state, and allows for the input value to be modified.
 input'
-  :: forall p
-   . (String -> String)
+  :: (String -> String)
   -> State
   -> TraversalP State String
   -> Array (Cp.InputProp Query)
-  -> HTML p Query
+  -> HTML
 input' f state lens attrs =
-  H.input
-    $ [ P.class_ B.formControl
-      , E.onValueInput (E.input \val -> ModifyState (lens .~ f val))
-      , P.value (state ^. lens)
+  HH.input
+    $ [ HP.class_ B.formControl
+      , HE.onValueInput (HE.input \val -> ModifyState (lens .~ f val))
+      , HP.value (state ^. lens)
       ]
     ++ attrs

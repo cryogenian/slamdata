@@ -21,18 +21,14 @@ module SlamData.Notebook.Cell.Markdown.Component
   , module SlamData.Notebook.Cell.Markdown.Component.State
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.BrowserFeatures (BrowserFeatures())
-import Data.Either (Either(..))
-import Data.Functor.Coproduct (coproduct)
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Monoid (mempty)
 import Data.StrMap as SM
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Notebook.Cell.CellId (CellId(), runCellId)
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
@@ -50,10 +46,10 @@ import Text.Markdown.SlamDown.Html as MD
 markdownComponent
   :: CellId
   -> BrowserFeatures
-  -> Component CellStateP CellQueryP Slam
+  -> H.Component CellStateP CellQueryP Slam
 markdownComponent cellId browserFeatures = makeResultsCellComponent
-  { component: parentComponent (render config) eval
-  , initialState: installedState initialState
+  { component: H.parentComponent { render: render config, eval, peek: Nothing }
+  , initialState: H.parentState initialState
   , _State: _MarkdownState
   , _Query: makeQueryPrism _MarkdownQuery
   }
@@ -65,7 +61,7 @@ markdownComponent cellId browserFeatures = makeResultsCellComponent
     }
 
 queryShouldRun :: forall a. QueryP a -> Boolean
-queryShouldRun = coproduct (const false) (\(ChildF _ q) -> pred q)
+queryShouldRun = coproduct (const false) (pred <<< H.runChildF)
   where
   pred (MD.TextChanged _ _ _ _) = true
   pred (MD.CheckBoxChanged _ _ _ _) = true
@@ -75,11 +71,11 @@ render
   :: forall a
    . MD.SlamDownConfig
   -> a
-  -> ParentHTML MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit
+  -> H.ParentHTML MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit
 render config _ =
-  H.div
-    [ P.class_ CSS.markdownOutput ]
-    [ H.slot unit \_ ->
+  HH.div
+    [ HP.class_ CSS.markdownOutput ]
+    [ HH.slot unit \_ ->
         { component: MD.slamDownComponent config
         , initialState: MD.emptySlamDownState
         }
@@ -94,30 +90,30 @@ formStateToVarMap =
 eval
   :: Natural
      CellEvalQuery
-     (ParentDSL State MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit)
+     (H.ParentDSL State MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit)
 eval (NotifyRunCell next) = pure next
 eval (EvalCell value k) =
   case value.inputPort of
     Just (Port.SlamDown input) -> do
-      set $ Just input
-      query unit $ action (MD.SetDocument input)
-      state <- query unit $ request MD.GetFormState
+      H.set $ Just input
+      H.query unit $ H.action (MD.SetDocument input)
+      state <- H.query unit $ H.request MD.GetFormState
       pure $ k case state of
         Nothing -> error "GetFormState query returned Nothing"
         Just st -> { output: Just (Port.VarMap $ formStateToVarMap st), messages: [] }
     _ -> pure $ k (error "expected SlamDown input")
 eval (SetupCell _ next) = pure next
 eval (Save k) = do
-  input <- fromMaybe mempty <$> get
-  state <- fromMaybe SM.empty <$> query unit (request MD.GetFormState)
+  input <- fromMaybe mempty <$> H.get
+  state <- fromMaybe SM.empty <$> H.query unit (H.request MD.GetFormState)
   pure $ k (encode { input, state })
 eval (Load json next) = do
   case decode json of
     Right { input, state } ->
       void $ do
-        set $ Just input
-        query unit $ action (MD.SetDocument input)
-        query unit $ action (MD.PopulateForm state)
+        H.set $ Just input
+        H.query unit $ H.action (MD.SetDocument input)
+        H.query unit $ H.action (MD.PopulateForm state)
     _ -> pure unit
   pure next
 eval (SetCanceler _ next) = pure next

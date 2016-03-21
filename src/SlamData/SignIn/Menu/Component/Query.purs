@@ -16,9 +16,8 @@ limitations under the License.
 
 module SlamData.SignIn.Menu.Component.Query where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Maybe (Maybe())
 import Halogen.Menu.Component as HalogenMenu
 
 import Quasar.Auth.Provider as Provider

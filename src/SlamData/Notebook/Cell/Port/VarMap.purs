@@ -21,14 +21,11 @@ module SlamData.Notebook.Cell.Port.VarMap
   , parseVarMapValue
   ) where
 
-import Prelude
-
-import Control.Alt ((<|>))
+import SlamData.Prelude
 
 import Data.Array as A
 import Data.SQL2.Literal as SQL2
 import Data.String as S
-import Data.StrMap as SM
 import Data.StrMap as SM
 
 import Text.Parsing.Parser as P

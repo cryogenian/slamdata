@@ -14,15 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Editor.Component.CellSlot
-  ( CellSlot(..)
-  ) where
+module SlamData.Notebook.Editor.Component.CellSlot where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Generic (Generic, gEq, gCompare)
-
-import SlamData.Notebook.Cell.CellId (CellId())
+import SlamData.Notebook.Cell.CellId (CellId)
 
 newtype CellSlot = CellSlot CellId
 

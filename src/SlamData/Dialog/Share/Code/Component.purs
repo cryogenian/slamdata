@@ -16,41 +16,35 @@ limitations under the License.
 
 module SlamData.Dialog.Share.Code.Component where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad (when)
-import Control.Monad.Aff (Canceler(), cancel)
+import Control.Monad.Aff (Canceler, cancel)
 import Control.Monad.Eff.Exception (error)
 import Control.UI.Browser as Br
 
-import Data.Functor (($>))
-import Data.Functor.Eff (liftEff)
-import Data.Functor.Aff (liftAff)
-import Data.Lens (LensP(), lens, (?~), (.~))
-import Data.Maybe as M
-import Data.Foldable as F
+import Data.Lens (LensP, lens, (?~), (.~))
 
-import DOM.HTML.Types (HTMLElement())
+import DOM.HTML.Types (HTMLElement)
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.Component.Utils as HU
+import Halogen.CustomProps as CP
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.CustomProps as Cp
-import Halogen.Component.Utils as Hu
 
 import Quasar.Auth.Permission as Api
 
-import SlamData.Effects (Slam(), SlamDataEffects())
+import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.Render.CSS as Rc
 
 type State =
   {
-    permissionToken :: M.Maybe Api.PermissionToken
-  , inputEl :: M.Maybe HTMLElement
-  , canceler :: M.Maybe (Canceler SlamDataEffects)
+    permissionToken :: Maybe Api.PermissionToken
+  , inputEl :: Maybe HTMLElement
+  , canceler :: Maybe (Canceler SlamDataEffects)
   , disabled :: Boolean
   }
 
@@ -69,80 +63,83 @@ _disabled = lens _.disabled _{disabled = _}
 initialState :: State
 initialState =
   {
-    permissionToken: M.Nothing
-  , inputEl: M.Nothing
-  , canceler: M.Nothing
+    permissionToken: Nothing
+  , inputEl: Nothing
+  , canceler: Nothing
   , disabled: true
   }
 
 data Query a
   = Generate a
-  | Init HTMLElement a
-  | GetPermissionToken (M.Maybe Api.PermissionToken -> a)
+  | Init (Maybe HTMLElement) a
+  | GetPermissionToken (Maybe Api.PermissionToken -> a)
   | SetCanceler (Canceler SlamDataEffects) a
   | Clear a
   | Toggle Boolean a
 
-type ShareByCodeDSL = ComponentDSL State Query Slam
+type ShareByCodeDSL = H.ComponentDSL State Query Slam
 
-comp :: Component State Query Slam
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
+render :: State -> H.ComponentHTML Query
 render state =
-  H.form
-    [ Cp.nonSubmit
-    , P.classes [ Rc.tokenGeneratorForm ]
+  HH.form
+    [ CP.nonSubmit
+    , HP.classes [ Rc.tokenGeneratorForm ]
     ]
-    [ H.div [ P.classes [ B.inputGroup ] ]
-      [
-        H.input [ P.classes [ B.formControl ]
-                , P.value $ M.maybe "" Api.runPermissionToken state.permissionToken
-                , P.readonly true
-                , P.placeholder "Generated token will appear here"
-                , P.initializer (\el -> action $ Init el)
-                , ARIA.label "Permission token"
+    [ HH.div
+        [ HP.classes [ B.inputGroup ] ]
+        [ HH.input
+            [ HP.classes [ B.formControl ]
+            , HP.value $ maybe "" Api.runPermissionToken state.permissionToken
+            , HP.readonly true
+            , HP.placeholder "Generated token will appear here"
+            , HP.ref (H.action <<< Init)
+            , ARIA.label "Permission token"
+            ]
+        , HH.img
+            [ HP.classes [ Rc.cancelInputRunIcon ]
+            , HP.src cancelIcon
+            , HE.onClick (HE.input_ Clear)
+            ]
+        , HH.span
+            [ HP.classes [ B.inputGroupBtn ] ]
+            [ HH.button
+                [ HP.classes [ B.btn, B.btnPrimary ]
+                , HE.onClick (HE.input_ Generate)
+                , HP.disabled (isJust state.canceler || state.disabled)
+                , ARIA.label "Generate token"
                 ]
-      , H.img [ P.classes [ Rc.cancelInputRunIcon ]
-              , P.src cancelIcon
-              , E.onClick (E.input_ Clear)
-              ]
-      , H.span [ P.classes [ B.inputGroupBtn ] ]
-        [ H.button
-          [ P.classes [ B.btn, B.btnPrimary ]
-          , E.onClick (E.input_ Generate)
-          , P.disabled (M.isJust state.canceler || state.disabled)
-          , ARIA.label "Generate token"
-          ]
-          [ H.text "Generate" ]
+                [ HH.text "Generate" ]
+            ]
         ]
-      ]
     ]
   where
   cancelIcon =
-    if M.isJust state.canceler
+    if isJust state.canceler
       then "img/spin.gif"
       else "img/remove.svg"
 
 eval :: Natural Query ShareByCodeDSL
 eval (Generate next) = do
-  gets _.canceler >>= \c -> when (M.isNothing c) do
-    perm <- Hu.liftWithCanceler SetCanceler Api.genToken
-    modify $ _permissionToken ?~ perm
-    modify $ _canceler .~ M.Nothing
-    gets _.inputEl >>= F.traverse_ (liftEff <<< Br.select)
+  H.gets _.canceler >>= \c -> when (isNothing c) do
+    perm <- HU.liftWithCanceler SetCanceler Api.genToken
+    H.modify $ _permissionToken ?~ perm
+    H.modify $ _canceler .~ Nothing
+    H.gets _.inputEl >>= traverse_ (H.fromEff <<< Br.select)
   pure next
-eval (Init htmlEl next) = (modify $ _inputEl ?~ htmlEl) $> next
+eval (Init htmlEl next) = (H.modify $ _inputEl .~ htmlEl) $> next
 eval (GetPermissionToken continue) =
-  map continue $ gets _.permissionToken
+  map continue $ H.gets _.permissionToken
 eval (Clear next) = do
-  gets _.canceler >>= F.traverse_ \c -> do
-    liftAff $ cancel c $ error "Getting token has been canceled"
-    modify $ _canceler .~ M.Nothing
-  modify $ _permissionToken .~ M.Nothing
+  H.gets _.canceler >>= traverse_ \c -> do
+    H.fromAff $ cancel c $ error "Getting token has been canceled"
+    H.modify $ _canceler .~ Nothing
+  H.modify $ _permissionToken .~ Nothing
   pure next
 eval (SetCanceler c next) = do
-  gets _.canceler >>= F.traverse_ \c ->
-    liftAff $ cancel c $ error "New token has been requested"
-  modify (_canceler ?~ c) $> next
-eval (Toggle toggled next) = modify (_disabled .~ not toggled) $> next
+  H.gets _.canceler >>= traverse_ \c ->
+    H.fromAff $ cancel c $ error "New token has been requested"
+  H.modify (_canceler ?~ c) $> next
+eval (Toggle toggled next) = H.modify (_disabled .~ not toggled) $> next

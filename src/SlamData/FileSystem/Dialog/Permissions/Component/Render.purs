@@ -2,21 +2,18 @@ module SlamData.FileSystem.Dialog.Permissions.Component.Render
   ( render
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Maybe as M
 import Data.NonEmpty as Ne
-import Data.String as S
-import Data.Foldable as F
 import Data.Path.Pathy as Pt
+import Data.String as S
 
-import Halogen hiding (HTML())
-import Halogen.HTML.Core as H
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
-import Halogen.Themes.Bootstrap3 as B
+import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Auth.Permission as Qp
 
@@ -26,65 +23,61 @@ import SlamData.Dialog.Share.Confirm.Component as Confirm
 import SlamData.Dialog.Share.Permissions.Component as Perms
 import SlamData.Dialog.Share.User.Component as User
 import SlamData.Effects (Slam())
+import SlamData.FileSystem.Dialog.Permissions.Component.Install
+import SlamData.FileSystem.Dialog.Permissions.Component.Query
+import SlamData.FileSystem.Dialog.Permissions.Component.State
 import SlamData.FileSystem.Resource as R
 import SlamData.Halogen.Select.Cascade.Component as Cascade
 import SlamData.Halogen.Select.Rotary.Component as Rotary
-import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (fadeWhen, glyph)
-
-import SlamData.FileSystem.Dialog.Permissions.Component.State
-import SlamData.FileSystem.Dialog.Permissions.Component.Query
-import SlamData.FileSystem.Dialog.Permissions.Component.Install
-
+import SlamData.Render.CSS as Rc
 
 render :: State -> HTML
 render state =
   modalDialog
-  [
-    modalHeader "Share permissions"
-  , modalBody
-      $ H.div [ P.classes [ Rc.sharePermissionsDialog ]
-              , P.initializer (\el -> action Init)
-              ]
-        $ M.maybe
-            (M.maybe loadingMessage
-             (M.maybe (renderBody state) (renderConfirm state) $ state.confirm)
-              state.permissions)
-            errorMessage
-            state.error
+    [ modalHeader "Share permissions"
+    , modalBody
+        $ HH.div
+            [ HP.classes [ Rc.sharePermissionsDialog ] ]
+            $ maybe
+              (maybe loadingMessage
+               (maybe (renderBody state) (renderConfirm state) $ state.confirm)
+                state.permissions)
+              errorMessage
+              state.error
 
-  , modalFooter
-    [ H.div [ P.classes [ Rc.sharePermissionsButtons ] ]
-      $ renderButtons state
+    , modalFooter
+        [ HH.div
+            [ HP.classes [ Rc.sharePermissionsButtons ] ]
+            $ renderButtons state
+        ]
     ]
-
-  ]
   where
   errorMessage :: String -> Array HTML
   errorMessage msg =
-    [ H.div [ P.classes [ B.alert, B.alertDanger ] ]
-      [ H.text msg ]
+    [ HH.div [ HP.classes [ B.alert, B.alertDanger ] ]
+      [ HH.text msg ]
     ]
 
   loadingMessage :: Array HTML
   loadingMessage =
-    [ H.div [ P.classes [ B.alert, B.alertInfo ] ]
-      [ H.img [ P.src "img/blue-spin.svg" ]
-      , H.text "Loading"
+    [ HH.div [ HP.classes [ B.alert, B.alertInfo ] ]
+      [ HH.img [ HP.src "img/blue-spin.svg" ]
+      , HH.text "Loading"
       ]
     ]
 
   renderButtons :: State -> Array HTML
   renderButtons state
-    | M.isJust state.error =
+    | isJust state.error =
       [ dismissButton "Close"
       , backButton B.btnPrimary
       ]
   renderButtons state
-    | M.isNothing state.permissions =
+    | isNothing state.permissions =
       [ dismissButton "Close"
       ]
-  renderButtons state@{confirm = M.Just c} =
+  renderButtons state@{confirm = Just c} =
     [ backButton B.btnDefault
     , shareButton
     ]
@@ -100,64 +93,70 @@ render state =
 
   copyButton :: HTML
   copyButton =
-    H.button [ P.classes [ B.btn, B.btnPrimary ]
-             , P.buttonType P.ButtonButton
-             , E.onClick (E.input_ Dismiss)
-             , P.initializer (\el -> action $ InitZClipboard el)
-             , P.disabled $ not state.canGoFurther
-             , ARIA.label "Copy token and close"
-             ]
-    [ H.text "Copy/close" ]
+    HH.button
+      [ HP.classes [ B.btn, B.btnPrimary ]
+      , HP.buttonType HP.ButtonButton
+      , HE.onClick (HE.input_ Dismiss)
+      , HP.ref (H.action <<< InitZClipboard)
+      , HP.disabled $ not state.canGoFurther
+      , ARIA.label "Copy token and close"
+      ]
+      [ HH.text "Copy/close" ]
 
   shareButton :: HTML
   shareButton =
-    H.button [ P.classes [ B.btn, B.btnPrimary ]
-             , P.buttonType P.ButtonButton
-             , E.onClick (E.input_ Share)
-             , ARIA.label "Share permissions"
-             ]
-    [ H.text "Share" ]
+    HH.button
+      [ HP.classes [ B.btn, B.btnPrimary ]
+      , HP.buttonType HP.ButtonButton
+      , HE.onClick (HE.input_ Share)
+      , ARIA.label "Share permissions"
+      ]
+      [ HH.text "Share" ]
 
   nextButton :: HTML
   nextButton =
-    H.button [ P.classes [ B.btn, B.btnPrimary ]
-             , E.onClick (E.input_ ToConfirm)
-             , P.buttonType P.ButtonButton
-             , P.disabled $ not state.canGoFurther
-             , ARIA.label "Confirm sharing"
-             ]
-    [ H.text "Next" ]
+    HH.button
+      [ HP.classes [ B.btn, B.btnPrimary ]
+      , HE.onClick (HE.input_ ToConfirm)
+      , HP.buttonType HP.ButtonButton
+      , HP.disabled $ not state.canGoFurther
+      , ARIA.label "Confirm sharing"
+      ]
+      [ HH.text "Next" ]
 
-  backButton :: H.ClassName -> HTML
+  backButton :: HH.ClassName -> HTML
   backButton cls =
-    H.button [ P.classes [ B.btn, cls ]
-             , P.buttonType P.ButtonButton
-             , E.onClick (E.input_ BackToForm)
-             , ARIA.label "Back to sharing settings"
-             ]
-    [ H.text "Back" ]
+    HH.button
+      [ HP.classes [ B.btn, cls ]
+      , HP.buttonType HP.ButtonButton
+      , HE.onClick (HE.input_ BackToForm)
+      , ARIA.label "Back to sharing settings"
+      ]
+      [ HH.text "Back" ]
 
   dismissButton :: String -> HTML
   dismissButton txt =
-    H.button [ P.classes [ B.btn, B.btnDefault ]
-             , E.onClick (E.input_ Dismiss)
-             , P.buttonType P.ButtonButton
-             , ARIA.label "Dismiss form"
-             ]
-    [ H.text txt ]
+    HH.button
+      [ HP.classes [ B.btn, B.btnDefault ]
+      , HE.onClick (HE.input_ Dismiss)
+      , HP.buttonType HP.ButtonButton
+      , ARIA.label "Dismiss form"
+      ]
+      [ HH.text txt ]
 
   renderConfirm :: forall a. State -> Qp.PermissionShareRequest -> a -> Array HTML
   renderConfirm state rq _ =
     [
-      H.div [ P.classes [ B.alert, B.alertInfo ] ]
-        [ H.slot' cpConfirm unit \_ ->
+      HH.div
+        [ HP.classes [ B.alert, B.alertInfo ] ]
+        [ HH.slot' cpConfirm unit \_ ->
             { component: Confirm.comp
             , initialState: rq
             }
-        , H.p [ P.classes
+        , HH.p [ HP.classes
                   $ [ B.alert, B.alertInfo ] <> (fadeWhen $ not state.sending) ]
-          [ H.img [ P.src "img/blue-spin.svg" ]
-          , H.text "Sharing..."
+          [ HH.img [ HP.src "img/blue-spin.svg" ]
+          , HH.text "Sharing..."
           ]
         ]
     ]
@@ -166,15 +165,15 @@ render state =
   renderBody state perms =
     [
       resourceMark state.resource
-    , H.slot' cpPerms unit \_ ->
+    , HH.slot' cpPerms unit \_ ->
        { component: Perms.comp
        , initialState: Perms.initialState{max=perms}
        }
-    , H.slot' cpRotary unit \_ ->
+    , HH.slot' cpRotary unit \_ ->
        { component: rotarySelect
        , initialState: rotaryInitialState
        }
-    , H.div [ P.classes [ Rc.sharePermissionsContent ] ]
+    , HH.div [ HP.classes [ Rc.sharePermissionsContent ] ]
         case state.shareType of
           User -> [ renderUser ]
           Group -> renderGroup
@@ -183,11 +182,11 @@ render state =
 
   resourceMark :: R.Resource -> HTML
   resourceMark r =
-    H.p [ P.classes [ Rc.sharePermissionsResourceMark ] ]
+    HH.p [ HP.classes [ Rc.sharePermissionsResourceMark ] ]
       [ glyph $ resourceGlyph r
-      , H.span
-          [ P.title $ R.resourcePath r ]
-          [ H.text $ resourcePathTrimmed r ]
+      , HH.span
+          [ HP.title $ R.resourcePath r ]
+          [ HH.text $ resourcePathTrimmed r ]
       ]
 
   resourcePathTrimmed :: R.Resource -> String
@@ -199,7 +198,7 @@ render state =
       then (S.take 70 rpath) <> "…"
       else rpath
 
-  resourceGlyph :: R.Resource -> H.ClassName
+  resourceGlyph :: R.Resource -> HH.ClassName
   resourceGlyph (R.File _) = B.glyphiconFile
   resourceGlyph (R.Notebook _) = B.glyphiconBook
   resourceGlyph (R.Directory _) = B.glyphiconFolderOpen
@@ -208,15 +207,15 @@ render state =
 
   renderUser :: HTML
   renderUser =
-    H.slot' cpUser  unit \_ ->
+    HH.slot' cpUser  unit \_ ->
       { component: User.comp
       , initialState: User.initialState
       }
 
   renderGroup :: Array HTML
   renderGroup =
-    flip F.foldMap state.groups \grps ->
-      [ H.slot' cpGroup unit \_ ->
+    flip foldMap state.groups \grps ->
+      [ HH.slot' cpGroup unit \_ ->
           { component: Cascade.cascadeSelect {inviteMessage: "Select group" }
           , initialState:
               Cascade.initialState grps
@@ -226,7 +225,7 @@ render state =
 
   renderCode :: HTML
   renderCode =
-    H.slot' cpCode unit \_ ->
+    HH.slot' cpCode unit \_ ->
       { component: Code.comp
       , initialState: Code.initialState
       }
@@ -234,12 +233,12 @@ render state =
   rotaryConfig :: Rotary.RotarySelectorConfig (shareType :: ShareType)
   rotaryConfig =
     {
-      itemRender: M.Nothing
+      itemRender: Nothing
     , itemWidth: 300.0
-    , visibleItemCount: M.Just 1.9
+    , visibleItemCount: Just 1.9
     }
 
-  rotarySelect :: Component RotaryState RotaryQuery Slam
+  rotarySelect :: H.Component RotaryState RotaryQuery Slam
   rotarySelect = Rotary.rotarySelect rotaryConfig
 
   rotaryInitialState :: RotaryState

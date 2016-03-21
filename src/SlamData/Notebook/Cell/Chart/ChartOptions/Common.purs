@@ -16,23 +16,17 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.ChartOptions.Common where
 
-import Prelude
-
-import Control.Bind ((>=>), join)
+import SlamData.Prelude
 
 import Data.Argonaut (JCursor())
 import Data.Array (catMaybes, cons, (!!))
 import Data.Array as A
-import Data.Bifunctor (lmap)
-import Data.Foldable (foldl)
 import Data.Int (toNumber)
 import Data.Lens (view)
 import Data.List (List(..), replicate, length)
 import Data.List as L
 import Data.Map (Map())
 import Data.Map as M
-import Data.Maybe (fromMaybe, maybe, Maybe(..))
-import Data.Tuple (Tuple(..), fst, snd)
 
 import ECharts
 

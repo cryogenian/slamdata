@@ -16,13 +16,11 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Download.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Array (findIndex)
-import Data.Either (Either(..), isLeft)
 import Data.Either.Unsafe as U
 import Data.Lens (LensP(), lens, (^.), (?~), (.~))
-import Data.Maybe (Maybe(..), isJust)
 
 import Network.HTTP.RequestHeader (RequestHeader())
 

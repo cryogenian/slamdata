@@ -44,17 +44,14 @@ module SlamData.Notebook.Cell.Component.State
   , _APIResultsState
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Aff (Canceler())
 
-import Data.Either (Either())
 import Data.Lens (LensP(), lens, PrismP(), TraversalP(), prism', wander)
-import Data.Monoid (mempty)
-import Data.Maybe (Maybe(..))
 import Data.Visibility (Visibility(..))
 
-import Halogen (InstalledState())
+import Halogen (ParentState())
 
 import SlamData.Notebook.AccessType (AccessType(..))
 import SlamData.Notebook.Cell.Ace.Component.State as Ace
@@ -105,7 +102,7 @@ type CellState =
   , canceler :: Canceler SlamDataEffects
   }
 
-type CellStateP = InstalledState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
+type CellStateP = ParentState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
 
 -- | Creates an initial `CellState` value for an editor cell.
 initEditorCellState :: CellState

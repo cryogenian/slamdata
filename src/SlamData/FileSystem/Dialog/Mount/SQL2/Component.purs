@@ -23,16 +23,12 @@ module SlamData.FileSystem.Dialog.Mount.SQL2.Component
   , module SlamData.FileSystem.Dialog.Mount.SQL2.Component.State
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Aff (attempt)
+import Control.Monad.Eff.Class (liftEff)
 
 import Data.Array (filter)
-import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Coproduct (Coproduct())
-import Data.Functor.Eff (liftEff)
-import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Path.Pathy as Pt
 import Data.StrMap as Sm
 
@@ -41,9 +37,9 @@ import Ace.EditSession as Session
 import Ace.Halogen.Component (AceQuery(..), AceState(), Autocomplete(..), aceConstructor)
 import Ace.Types (Editor())
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 
 import Quasar.Aff as API
 import Quasar.Auth as Auth
@@ -55,35 +51,35 @@ import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State
 import SlamData.FileSystem.Resource as R
 
 type Query = SettingsQuery State
-type StateP = InstalledState State AceState Query AceQuery Slam Unit
-type QueryP = Coproduct Query (ChildF Unit AceQuery)
-type SQLMountDSL = ParentDSL State AceState Query AceQuery Slam Unit
-type SQLMountHTML = ParentHTML AceState Query AceQuery Slam Unit
+type StateP = H.ParentState State AceState Query AceQuery Slam Unit
+type QueryP = Coproduct Query (H.ChildF Unit AceQuery)
+type SQLMountDSL = H.ParentDSL State AceState Query AceQuery Slam Unit
+type SQLMountHTML = H.ParentHTML AceState Query AceQuery Slam Unit
 
-comp :: Component StateP QueryP Slam
-comp = parentComponent render eval
+comp :: H.Component StateP QueryP Slam
+comp = H.parentComponent { render, eval, peek: Nothing }
 
 render :: State -> SQLMountHTML
 render state@{ initialQuery } =
-  H.div
-    [ P.key "mount-sql2" ]
+  HH.div
+    [ HP.key "mount-sql2" ]
     [ section "SQL² query"
-        [ H.Slot (aceConstructor unit (aceSetup initialQuery) (Just Live)) ]
+        [ HH.Slot (aceConstructor unit (aceSetup initialQuery) (Just Live)) ]
     , section "Query variables" [ propList _vars state ]
     ]
 
 eval :: Natural Query SQLMountDSL
-eval (ModifyState f next) = modify (processState <<< f) $> next
+eval (ModifyState f next) = H.modify (processState <<< f) $> next
 eval (Validate k) = do
-  sql <- fromMaybe "" <$> query unit (request GetText)
+  sql <- fromMaybe "" <$> H.query unit (H.request GetText)
   pure $ k if sql == "" then Just "Please enter a query" else Nothing
 eval (Submit parent name k) = do
-  sql <- fromMaybe "" <$> query unit (request GetText)
-  vars <- Sm.fromFoldable <<< filter (not isEmptyVar) <$> gets _.vars
+  sql <- fromMaybe "" <$> H.query unit (H.request GetText)
+  vars <- Sm.fromFoldable <<< filter (not isEmptyVar) <$> H.gets _.vars
   let res = R.Directory parent
       view = R.View $ parent Pt.</> Pt.file name
       dest = R.Mount view
-  result <- liftAff $ attempt $ Auth.authed $ API.portView res dest sql vars
+  result <- H.fromAff $ attempt $ Auth.authed $ API.portView res dest sql vars
   pure $ k $ map (const view) result
 
 aceSetup :: Maybe String -> Editor -> Slam Unit

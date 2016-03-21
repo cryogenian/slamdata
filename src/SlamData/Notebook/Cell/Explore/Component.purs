@@ -20,20 +20,15 @@ module SlamData.Notebook.Cell.Explore.Component
   , module SlamData.Notebook.Cell.Explore.Component.State
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind (join, (=<<))
 import Control.Monad.Error.Class as EC
-import Control.Monad.Trans as MT
 
 import Data.Argonaut (encodeJson, decodeJson)
-import Data.Either (Either(..), either)
-import Data.Maybe (Maybe(..), maybe)
-import Data.Foldable as F
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
@@ -49,57 +44,53 @@ import SlamData.Effects (Slam())
 import SlamData.Notebook.FileInput.Component as FI
 import SlamData.Render.CSS as CSS
 
-exploreComponent :: Component NC.CellStateP NC.CellQueryP Slam
+exploreComponent :: H.Component NC.CellStateP NC.CellQueryP Slam
 exploreComponent =
   NC.makeEditorCellComponent
     { name: CT.cellName CT.Explore
     , glyph: CT.cellGlyph CT.Explore
-    , component: parentComponent render eval
-    , initialState: installedState initialState
+    , component: H.parentComponent { render, eval, peek: Nothing }
+    , initialState: H.parentState initialState
     , _State: NC._ExploreState
     , _Query: NC.makeQueryPrism NC._ExploreQuery
     }
 
-render :: State -> ParentHTML FI.State NC.CellEvalQuery FI.Query Slam Unit
+render :: State -> H.ParentHTML FI.State NC.CellEvalQuery FI.Query Slam Unit
 render state =
-  H.div
-    [ P.classes
-      [ CSS.exploreCellEditor
-      , CSS.cellInput
-      ]
-    ]
-    [ H.slot unit \_ ->
-         { component: FI.fileInputComponent
-         , initialState: FI.initialState
-         }
+  HH.div
+    [ HP.classes [ CSS.exploreCellEditor, CSS.cellInput ] ]
+    [ HH.slot unit \_ ->
+        { component: FI.fileInputComponent
+        , initialState: FI.initialState
+        }
     ]
 
 eval
   :: Natural
        NC.CellEvalQuery
-       (ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
+       (H.ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
 eval (NC.NotifyRunCell next) = pure next
 eval (NC.EvalCell info k) =
   k <$> NC.runCellEvalT do
     resource <-
-      query unit (request FI.GetSelectedFile)
+      H.query unit (H.request FI.GetSelectedFile)
         <#> (join <<< maybe (Left "There is no file input subcomponent") Right)
-        # MT.lift
+        # lift
         >>= either EC.throwError pure
     Quasar.messageIfResourceNotExists
         resource
         ("File " <> R.resourcePath resource <> " doesn't exist")
       # Auth.authed
       # NC.liftWithCanceler
-      # MT.lift
-      >>= F.traverse_ EC.throwError
+      # lift
+      >>= traverse_ EC.throwError
     pure $ Port.TaggedResource {resource, tag: Nothing}
 eval (NC.SetupCell _ next) = pure next
 eval (NC.Save k) = do
-  file <- query unit (request FI.GetSelectedFile)
+  file <- H.query unit (H.request FI.GetSelectedFile)
   pure $ k $ encodeJson $ either (const Nothing) pure =<< file
 eval (NC.Load json next) = do
-  F.for_ (decodeJson json) \file ->
-    void $ query unit $ action (FI.SelectFile file)
+  for_ (decodeJson json) \file ->
+    void $ H.query unit $ H.action (FI.SelectFile file)
   pure next
 eval (NC.SetCanceler _ next) = pure next

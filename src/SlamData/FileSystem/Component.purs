@@ -21,11 +21,8 @@ module SlamData.FileSystem.Component
   , comp
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Apply ((*>))
-import Control.Bind (join, (=<<))
-import Control.Monad (when)
 import Control.Monad.Aff (attempt)
 import Control.Monad.Eff.Exception (error, message)
 import Control.Monad.Error.Class (throwError)
@@ -33,32 +30,22 @@ import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
 
-import Data.Array (head, last, mapMaybe, filter)
 import Data.Argonaut.Parser (jsonParser)
-import Data.Bifunctor (lmap)
-import Data.Either (Either(..), either, isRight)
-import Data.Foldable (traverse_, for_)
-import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Coproduct (left, right, coproduct)
+import Data.Array (head, last, mapMaybe, filter)
 import Data.Functor.Coproduct.Nested (coproduct5)
-import Data.Functor.Eff (liftEff)
 import Data.Lens ((.~))
-import Data.Maybe (Maybe(..), fromMaybe, isJust)
+import Data.MediaType.Common (textCSV, applicationJSON)
 import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
 import Data.String as S
 import Data.URI (runParseAbsoluteURI)
 
-import Halogen.Component
+import Halogen as H
 import Halogen.Component.ChildPath (ChildPath(), injSlot, prjQuery, injQuery)
 import Halogen.Component.Utils (forceRerender')
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
-import Halogen.Query (action, request, get, modify, gets)
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
-
-import Network.HTTP.MimeType.Common (textCSV, applicationJSON)
 
 import Quasar.Aff as API
 import Quasar.Auth as Auth
@@ -66,10 +53,10 @@ import Quasar.Auth as Auth
 import SlamData.Config as Config
 import SlamData.Effects (Slam())
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
-import SlamData.FileSystem.Component.Install
-import SlamData.FileSystem.Component.Query
-import SlamData.FileSystem.Component.Render
-import SlamData.FileSystem.Component.State
+import SlamData.FileSystem.Component.Install (Algebra, ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpSignIn, toDialog, toFs, toListing, toSearch, toSignIn)
+import SlamData.FileSystem.Component.Query (Query(..))
+import SlamData.FileSystem.Component.Render (sorting, toolItem, toolbar)
+import SlamData.FileSystem.Component.State (State, _isMount, _path, _salt, _showHiddenFiles, _sort, _version, initialState)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Download.Component as Download
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
@@ -86,99 +73,102 @@ import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.Notebook.Action (Action(..), AccessType(..))
 import SlamData.Notebook.Routing (mkNotebookURL)
-import SlamData.Render.Common
+import SlamData.Render.Common (navbar, logo, icon, content, row)
 import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
 
 import Utils.DOM as D
-import Utils.Path (DirPath(), getNameStr)
+import Utils.Path (DirPath, getNameStr)
 
-comp :: Component StateP QueryP Slam
-comp = parentComponent' render eval (peek <<< runChildF)
+type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-render :: RenderParent State ChildState Query ChildQuery Slam ChildSlot
+comp :: H.Component StateP QueryP Slam
+comp = H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
+
+render :: State -> HTML
 render state@{ version, sort, salt, path } =
-  H.div
-    [ P.classes [ Rc.filesystem ]
-    , E.onClick (E.input_ DismissSignInSubmenu)
+  HH.div
+    [ HP.classes [ Rc.filesystem ]
+    , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
     [ navbar
-        [ H.div
-            [ P.classes [ Rc.header, B.clearfix ] ]
+        [ HH.div
+            [ HP.classes [ Rc.header, B.clearfix ] ]
             [ icon B.glyphiconFolderOpen Config.homeHash "Browse root folder"
             , logo version
-            , H.slot' cpSearch unit \_ ->
+            , HH.slot' cpSearch unit \_ ->
                 { component: Search.comp
                 , initialState: Search.initialState sort salt
                 }
-            , H.slot' cpSignIn unit \_ ->
+            , HH.slot' cpSignIn unit \_ ->
                 { component: SignIn.comp
-                , initialState: installedState SignIn.initialState
+                , initialState: H.parentState SignIn.initialState
                 }
             ]
         ]
     , content
-        [ H.div
-            [ P.class_ B.clearfix ]
-            [ H.slot' cpBreadcrumbs unit \_ ->
+        [ HH.div
+            [ HP.class_ B.clearfix ]
+            [ HH.slot' cpBreadcrumbs unit \_ ->
                 { component: Breadcrumbs.comp
                 , initialState: Breadcrumbs.mkBreadcrumbs path sort salt
                 }
             , toolbar state
             ]
         , row [ sorting state ]
-        , H.slot' cpListing unit \_ ->
+        , HH.slot' cpListing unit \_ ->
             { component: Listing.comp
-            , initialState: installedState Listing.initialState
+            , initialState: H.parentState Listing.initialState
             }
         ]
-    , H.slot' cpDialog unit \_ ->
+    , HH.slot' cpDialog unit \_ ->
         { component: Dialog.comp
-        , initialState: installedState Dialog.initialState
+        , initialState: H.parentState Dialog.initialState
         }
     ]
 
-eval :: EvalParent Query State ChildState Query ChildQuery Slam ChildSlot
+eval :: Natural Query DSL
 eval (Resort next) = do
-  { sort, salt, path } <- get
-  searchValue <- query' cpSearch unit (request Search.GetValue)
-  liftEff $ setLocation $ browseURL (join searchValue) (notSort sort) salt path
+  { sort, salt, path } <- H.get
+  searchValue <- H.query' cpSearch unit (H.request Search.GetValue)
+  H.fromEff $ setLocation $ browseURL (join searchValue) (notSort sort) salt path
   pure next
-eval (SetPath path next) = modify (_path .~ path) *> updateBreadcrumbs $> next
+eval (SetPath path next) = H.modify (_path .~ path) *> updateBreadcrumbs $> next
 eval (SetSort sort next) = do
-  modify (_sort .~ sort)
+  H.modify (_sort .~ sort)
   updateBreadcrumbs
   resort
   pure next
-eval (SetSalt salt next) = modify (_salt .~ salt) *> updateBreadcrumbs $> next
-eval (SetIsMount isMount next) = modify (_isMount .~ isMount) $> next
+eval (SetSalt salt next) = H.modify (_salt .~ salt) *> updateBreadcrumbs $> next
+eval (SetIsMount isMount next) = H.modify (_isMount .~ isMount) $> next
 eval (ShowHiddenFiles next) = do
-  modify (_showHiddenFiles .~ true)
-  queryListing $ action (Listing.SetIsHidden false)
+  H.modify (_showHiddenFiles .~ true)
+  queryListing $ H.action (Listing.SetIsHidden false)
   pure next
 eval (HideHiddenFiles next) = do
-  modify (_showHiddenFiles .~ false)
-  queryListing $ action (Listing.SetIsHidden true)
+  H.modify (_showHiddenFiles .~ false)
+  queryListing $ H.action (Listing.SetIsHidden true)
   pure next
 eval (Configure next) = do
-  path <- gets _.path
+  path <- H.gets _.path
   configure (R.Database path)
   pure next
 eval (MakeMount next) = do
-  path <- gets _.path
+  path <- H.gets _.path
   showDialog (Dialog.Mount path "" Nothing)
   pure next
 eval (MakeFolder next) = do
-  path <- gets _.path
-  dirName <- liftAff $ Auth.authed $ API.getNewName path Config.newFolderName
+  path <- H.gets _.path
+  dirName <- H.fromAff $ Auth.authed $ API.getNewName path Config.newFolderName
   let dirPath = path </> dir dirName
       dirRes = R.Directory dirPath
       dirItem = PhantomItem dirRes
       hiddenFile = dirPath </> file (Config.folderMark)
-  queryListing $ action (Listing.Add dirItem)
-  added <- liftAff $ attempt $
+  queryListing $ H.action (Listing.Add dirItem)
+  added <- H.fromAff $ attempt $
     Auth.authed $ API.makeFile hiddenFile API.ldJSON "{}"
-  queryListing $ action (Listing.Filter (/= dirItem))
+  queryListing $ H.action (Listing.Filter (_ /= dirItem))
   case added of
     Left err ->
       showDialog $
@@ -186,38 +176,38 @@ eval (MakeFolder next) = do
           $ "There was a problem creating the directory: "
           <> message err
     Right _ -> do
-      void $ queryListing $ action $ Listing.Add (Item dirRes)
+      void $ queryListing $ H.action $ Listing.Add (Item dirRes)
   pure next
 
 eval (MakeNotebook next) = do
-  path <- gets _.path
+  path <- H.gets _.path
   let newNotebookName = Config.newNotebookName <> "." <> Config.notebookExtension
-  name <- liftAff $ Auth.authed $ API.getNewName path newNotebookName
+  name <- H.fromAff $ Auth.authed $ API.getNewName path newNotebookName
   let uri = mkNotebookURL (path </> dir name) New
-  liftEff $ setLocation uri
+  H.fromEff $ setLocation uri
   pure next
 
 eval (UploadFile el next) = do
-  mbInput <- liftEff $ D.querySelector "input" el
+  mbInput <- H.fromEff $ D.querySelector "input" el
   for_ mbInput \input ->
-    void $ liftEff $ Be.raiseEvent "click" input
+    void $ H.fromEff $ Be.raiseEvent "click" input
   pure next
 
 eval (FileListChanged el next) = do
-  fileArr <- map Cf.fileListToArray $ (liftAff $ Cf.files el)
-  liftEff $ clearValue el
+  fileArr <- map Cf.fileListToArray $ (H.fromAff $ Cf.files el)
+  H.fromEff $ clearValue el
   case head fileArr of
     Nothing ->
       let err :: Slam Unit
           err = throwError $ error "empty filelist"
-      in liftAff err
+      in H.fromAff err
     Just f -> do
-      { path, sort, salt } <- get
-      name <- liftAff $ liftEff (Cf.name f)
+      { path, sort, salt } <- H.get
+      name <- H.fromAff $ H.fromEff (Cf.name f)
                 >>= Auth.authed <<< API.getNewName path
 
-      reader <- liftEff Cf.newReaderEff
-      content <- liftAff $ Cf.readAsBinaryString f reader
+      reader <- H.fromEff Cf.newReaderEff
+      content' <- H.fromAff $ Cf.readAsBinaryString f reader
 
       let fileName = path </> file name
           res = R.File fileName
@@ -225,29 +215,29 @@ eval (FileListChanged el next) = do
           ext = last (S.split "." name)
           mime = if ext == Just "csv"
                  then textCSV
-                 else if isApplicationJSON content
+                 else if isApplicationJSON content'
                       then applicationJSON
                       else API.ldJSON
-      queryListing $ action (Listing.Add fileItem)
-      f <- liftAff $ attempt $ Auth.authed $ API.makeFile fileName mime content
-      case f of
+      queryListing $ H.action (Listing.Add fileItem)
+      f' <- H.fromAff $ attempt $ Auth.authed $ API.makeFile fileName mime content'
+      case f' of
         Left err -> do
-          queryListing $ action $
+          queryListing $ H.action $
             Listing.Filter (not <<< eq (R.File fileName) <<< itemResource)
           showDialog $ Dialog.Error (message err)
-        Right _ -> liftEff $ openItem res sort salt
+        Right _ -> H.fromEff $ openItem res sort salt
 
   pure next
   where
   isApplicationJSON :: String -> Boolean
-  isApplicationJSON content
+  isApplicationJSON content'
     -- Parse if content is small enough
-    | S.length content < 1048576 =
-        isRight $ jsonParser content
+    | S.length content' < 1048576 =
+        isRight $ jsonParser content'
     -- Or check if its first/last characters are [/]
     | otherwise =
         let
-          trimedContent = S.trim content
+          trimedContent = S.trim content'
         in
              (isJust $ S.stripPrefix "[" trimedContent)
           && (isJust $ S.stripSuffix "]" trimedContent)
@@ -255,14 +245,14 @@ eval (FileListChanged el next) = do
 
 
 eval (Download next) = do
-  path <- gets _.path
+  path <- H.gets _.path
   download (R.Directory path)
   pure next
 
-eval (SetVersion version next) = modify (_version .~ Just version) $> next
+eval (SetVersion version next) = H.modify (_version .~ Just version) $> next
 eval (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
 
-peek :: forall a. ChildQuery a -> Algebra Unit
+peek :: forall a. ChildQuery a -> DSL Unit
 peek =
   coproduct5
     listingPeek
@@ -271,31 +261,31 @@ peek =
     dialogPeek
     (const (pure unit))
 
-listingPeek :: forall a. Listing.QueryP a -> Algebra Unit
-listingPeek = coproduct go (itemPeek <<< runChildF)
+listingPeek :: forall a. Listing.QueryP a -> DSL Unit
+listingPeek = coproduct go (itemPeek <<< H.runChildF)
   where
   go (Listing.Add _ _) = resort
   go (Listing.Adds _ _) = resort
   go _ = pure unit
 
-itemPeek :: forall a. Item.Query a -> Algebra Unit
+itemPeek :: forall a. Item.Query a -> DSL Unit
 itemPeek (Item.Open res _) = do
-  { sort, salt } <- get
-  liftEff $ openItem res sort salt
+  { sort, salt } <- H.get
+  H.fromEff $ openItem res sort salt
 itemPeek (Item.Configure (R.Mount mount) _) = configure mount
 itemPeek (Item.Move res _) = do
   showDialog $ Dialog.Rename res
   flip getDirectories rootDir \x ->
-    void $ queryDialog Dialog.cpRename $ action (Rename.AddDirs x)
+    void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
 itemPeek (Item.Remove res _) = do
-  mbTrashFolder <- liftAff $ Auth.authed $ API.delete res
-  queryListing $ action $ Listing.Filter (not <<< eq res <<< itemResource)
+  mbTrashFolder <- H.fromAff $ Auth.authed $ API.delete res
+  queryListing $ H.action $ Listing.Filter (not <<< eq res <<< itemResource)
   case mbTrashFolder of
     Nothing -> pure unit
-    Just res' -> void $ queryListing $ action $ Listing.Add (Item res')
+    Just res' -> void $ queryListing $ H.action $ Listing.Add (Item res')
 itemPeek (Item.Share res _) = do
-  { sort, salt } <- get
-  loc <- liftEff locationString
+  { sort, salt } <- H.get
+  loc <- H.fromEff locationString
   let url = loc <> "/" <> itemURL sort salt ReadOnly res
   showDialog (Dialog.Share url)
 itemPeek (Item.Download res _) = download res
@@ -303,26 +293,26 @@ itemPeek (Item.SharePermissions res _) = do
   showDialog $ Dialog.Permissions res
 itemPeek _ = pure unit
 
-searchPeek :: forall a. Search.Query a -> Algebra Unit
+searchPeek :: forall a. Search.Query a -> DSL Unit
 searchPeek (Search.Clear _) = do
-  salt <- liftEff newSalt
-  { sort, path } <- get
-  liftEff $ setLocation $ browseURL Nothing sort salt path
+  salt <- H.fromEff newSalt
+  { sort, path } <- H.get
+  H.fromEff $ setLocation $ browseURL Nothing sort salt path
 searchPeek _ = pure unit
 
-dialogPeek :: forall a. Dialog.QueryP a -> Algebra Unit
-dialogPeek = coproduct (const (pure unit)) (dialogChildrenPeek <<< runChildF)
+dialogPeek :: forall a. Dialog.QueryP a -> DSL Unit
+dialogPeek = coproduct (const (pure unit)) (dialogChildrenPeek <<< H.runChildF)
 
-dialogChildrenPeek :: forall a. Dialog.ChildQuery a -> Algebra Unit
+dialogChildrenPeek :: forall a. Dialog.ChildQuery a -> DSL Unit
 dialogChildrenPeek q =
   fromMaybe (pure unit) (mountPeek <$> prjQuery Dialog.cpMount q)
 
-mountPeek :: forall a. Mount.QueryP a -> Algebra Unit
+mountPeek :: forall a. Mount.QueryP a -> DSL Unit
 mountPeek = coproduct go (const (pure unit))
   where
-  go :: Mount.Query a -> Algebra Unit
+  go :: Mount.Query a -> DSL Unit
   go (Mount.NotifySave _) = do
-    mount <- queryDialog Dialog.cpMount $ left (request Mount.Save)
+    mount <- queryDialog Dialog.cpMount $ left (H.request Mount.Save)
     case join mount of
       Nothing -> pure unit
       Just m -> do
@@ -330,36 +320,36 @@ mountPeek = coproduct go (const (pure unit))
         -- check if we just edited the mount for the current directory, as if
         -- so, we don't want to add an item to the list for it
         isCurrentMount <- case m of
-          R.Database path' -> (\p -> path' == (p </> dir "")) <$> gets _.path
+          R.Database path' -> (\p -> path' == (p </> dir "")) <$> H.gets _.path
           _ -> pure false
         when (not isCurrentMount) do
-          queryListing $ action $ Listing.Add $ Item (R.Mount m)
+          queryListing $ H.action $ Listing.Add $ Item (R.Mount m)
           resort
   go _ = pure unit
 
-dismissSignInSubmenu :: Algebra Unit
-dismissSignInSubmenu = querySignIn $ action SignIn.DismissSubmenu
+dismissSignInSubmenu :: DSL Unit
+dismissSignInSubmenu = querySignIn $ H.action SignIn.DismissSubmenu
   where
-  querySignIn :: forall a. SignIn.Query a -> Algebra Unit
-  querySignIn q = query' cpSignIn unit (left q) $> unit
+  querySignIn :: forall a. SignIn.Query a -> DSL Unit
+  querySignIn q = H.query' cpSignIn unit (left q) $> unit
 
-updateBreadcrumbs :: Algebra Unit
+updateBreadcrumbs :: DSL Unit
 updateBreadcrumbs = do
-  { path, sort, salt } <- get
-  void $ query' cpBreadcrumbs unit $ action (Breadcrumbs.Update path sort salt)
+  { path, sort, salt } <- H.get
+  void $ H.query' cpBreadcrumbs unit $ H.action (Breadcrumbs.Update path sort salt)
 
-resort :: Algebra Unit
+resort :: DSL Unit
 resort = do
-  sort <- gets _.sort
-  mbIsSearching <- query' cpSearch unit (request Search.IsSearching)
+  sort <- H.gets _.sort
+  mbIsSearching <- H.query' cpSearch unit (H.request Search.IsSearching)
   case mbIsSearching of
     Nothing -> pure unit
     Just isSearching ->
-      void $ queryListing $ action $ Listing.SortBy (sortItem isSearching sort)
+      void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
-configure :: R.Mount -> Algebra Unit
+configure :: R.Mount -> DSL Unit
 configure (R.View path) = do
-  viewInfo <- liftAff $ attempt $ Auth.authed $ API.viewInfo path
+  viewInfo <- H.fromAff $ attempt $ Auth.authed $ API.viewInfo path
   showDialog
     case viewInfo of
       Left err ->
@@ -373,7 +363,7 @@ configure (R.View path) = do
           (Just (Right (SQL2.stateFromViewInfo info)))
 
 configure (R.Database path) = do
-  viewInfo <- liftAff $ attempt $ Auth.authed $ API.mountInfo path
+  viewInfo <- H.fromAff $ attempt $ Auth.authed $ API.mountInfo path
   showDialog
     case map (lmap show) runParseAbsoluteURI =<< lmap show viewInfo of
       Left err ->
@@ -385,23 +375,23 @@ configure (R.Database path) = do
           (getNameStr (Right path))
           (Just (Left (MongoDB.stateFromURI uri)))
 
-download :: R.Resource -> Algebra Unit
+download :: R.Resource -> DSL Unit
 download res = do
   showDialog (Dialog.Download res)
   getChildren
     (const true)
-    (void <<< queryDialog Dialog.cpDownload <<< action <<< Download.AddSources)
+    (void <<< queryDialog Dialog.cpDownload <<< H.action <<< Download.AddSources)
     rootDir
   pure unit
 
 getChildren
   :: (R.Resource -> Boolean)
-  -> (Array R.Resource -> Algebra Unit)
+  -> (Array R.Resource -> DSL Unit)
   -> DirPath
-  -> Algebra Unit
+  -> DSL Unit
 getChildren pred cont start = do
   forceRerender'
-  ei <- liftAff $ attempt $ Auth.authed $ API.children start
+  ei <- H.fromAff $ attempt $ Auth.authed $ API.children start
   case ei of
     Right items -> do
       let items' = filter pred items
@@ -410,25 +400,25 @@ getChildren pred cont start = do
       traverse_ (getChildren pred cont) parents
     _ -> pure unit
 
-getDirectories :: (Array R.Resource -> Algebra Unit) -> DirPath -> Algebra Unit
+getDirectories :: (Array R.Resource -> DSL Unit) -> DirPath -> DSL Unit
 getDirectories = getChildren (R.isDirectory || R.isDatabaseMount)
 
-showDialog :: Dialog.Dialog -> Algebra Unit
-showDialog = void <<< query' cpDialog unit <<< left <<< action <<< Dialog.Show
+showDialog :: Dialog.Dialog -> DSL Unit
+showDialog = void <<< H.query' cpDialog unit <<< left <<< H.action <<< Dialog.Show
 
-hideDialog :: Algebra Unit
-hideDialog = void $ query' cpDialog unit $ left (action Dialog.Dismiss)
+hideDialog :: DSL Unit
+hideDialog = void $ H.query' cpDialog unit $ left (H.action Dialog.Dismiss)
 
-queryListing :: forall a. Listing.Query a -> Algebra (Maybe a)
-queryListing = query' cpListing unit <<< left
+queryListing :: forall a. Listing.Query a -> DSL (Maybe a)
+queryListing = H.query' cpListing unit <<< left
 
-queryItem :: forall a. Listing.ItemSlot -> Item.Query a -> Algebra (Maybe a)
-queryItem slot = query' cpListing unit <<< right <<< ChildF slot
+queryItem :: forall a. Listing.ItemSlot -> Item.Query a -> DSL (Maybe a)
+queryItem slot = H.query' cpListing unit <<< right <<< H.ChildF slot
 
 queryDialog
   :: forall s f a
    . ChildPath s Dialog.ChildState f Dialog.ChildQuery Unit Dialog.ChildSlot
   -> f a
-  -> Algebra (Maybe a)
+  -> DSL (Maybe a)
 queryDialog cp =
-  query' cpDialog unit <<< right <<< ChildF (injSlot cp unit) <<< injQuery cp
+  H.query' cpDialog unit <<< right <<< H.ChildF (injSlot cp unit) <<< injQuery cp

@@ -16,28 +16,19 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.Semantics where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Alt ((<|>))
-import Control.Apply ((*>))
-import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff())
 import Control.Monad.ST (STRef(), ST(), newSTRef, modifySTRef, readSTRef, pureST)
-import Control.MonadPlus (guard)
 
 import Data.Argonaut (runJsonPrim, toPrims, JsonPrim(), Json(), JArray(), JCursor(), DecodeJson, EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>))
 import Data.Array as A
-import Data.Either (Either(..))
-import Data.Foldable (foldl, foldMap)
 import Data.Int as Int
 import Data.List (List(..), catMaybes)
 import Data.List as L
 import Data.Map (Map(), keys, update, lookup, fromList)
-import Data.Maybe (Maybe(..))
 import Data.String (take)
 import Data.String.Regex (Regex(), noFlags, regex, match, test)
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
 
 import Utils (stringToNumber)
 

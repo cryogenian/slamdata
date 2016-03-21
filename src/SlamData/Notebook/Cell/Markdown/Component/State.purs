@@ -16,11 +16,9 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Markdown.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Maybe (Maybe(..))
-
-import Halogen (InstalledState())
+import Halogen (ParentState())
 
 import Text.Markdown.SlamDown (SlamDown())
 import Text.Markdown.SlamDown.Html (SlamDownState(), SlamDownQuery())
@@ -33,4 +31,4 @@ type State = Maybe SlamDown
 initialState :: State
 initialState = Nothing
 
-type StateP = InstalledState State SlamDownState CellEvalQuery SlamDownQuery Slam Unit
+type StateP = ParentState State SlamDownState CellEvalQuery SlamDownQuery Slam Unit

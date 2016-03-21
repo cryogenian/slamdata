@@ -19,9 +19,7 @@ module SlamData.Notebook.Cell.APIResults.Component.Query
   , QueryP()
   ) where
 
-import Data.Const
-import Data.Functor.Coproduct
-import Data.Void
+import SlamData.Prelude
 
 import SlamData.Notebook.Cell.Common.EvalQuery as NC
 

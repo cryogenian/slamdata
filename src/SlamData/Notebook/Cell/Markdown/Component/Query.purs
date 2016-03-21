@@ -16,9 +16,7 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Markdown.Component.Query where
 
-import Prelude
-
-import Data.Functor.Coproduct (Coproduct())
+import SlamData.Prelude
 
 import Halogen (ChildF())
 

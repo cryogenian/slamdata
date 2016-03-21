@@ -26,12 +26,11 @@ module SlamData.Notebook.Cell.CellType
   , aceMode
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (EncodeJson, DecodeJson, encodeJson, decodeJson)
-import Data.Maybe (Maybe(..))
 
 import Halogen.HTML (ClassName())
 import Halogen.Themes.Bootstrap3 as B

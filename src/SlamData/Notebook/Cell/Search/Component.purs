@@ -20,85 +20,83 @@ module SlamData.Notebook.Cell.Search.Component
   , module SlamData.Notebook.Cell.Search.Component.State
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind (join)
 import Control.Monad.Error.Class as EC
-import Control.Monad.Trans as MT
 import Control.Monad.Writer.Class as WC
 
-import Data.Either (Either(..), either)
-import Data.Foldable as F
-import Data.Functor (($>))
-import Data.Functor.Coproduct
 import Data.Lens ((.~), preview)
-import Data.Maybe as M
 import Data.StrMap as SM
 
-import Halogen
+import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
 
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellType as CT
-import SlamData.Notebook.Cell.Common.EvalQuery as NC
+import SlamData.Notebook.Cell.Common.EvalQuery (liftWithCanceler', temporaryOutputResource, runCellEvalT)
 import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Notebook.Cell.Search.Component.Query
-import SlamData.Notebook.Cell.Search.Component.State
+import SlamData.Notebook.Cell.Search.Component.Query (Query, QueryP, SearchQuery(..))
+import SlamData.Notebook.Cell.Search.Component.State (State, StateP, _running, _searchString, initialState)
 import SlamData.Notebook.Cell.Search.Interpret as Search
 import SlamData.Notebook.Cell.Search.Model as Model
-import SlamData.Effects (Slam())
 import SlamData.Notebook.FileInput.Component as FI
 import SlamData.Render.Common as RC
 import SlamData.Render.CSS as CSS
 
 import Text.SlamSearch as SS
 
-searchComponent :: Component NC.CellStateP NC.CellQueryP Slam
+type DSL = H.ParentDSL State FI.State Query FI.Query Slam Unit
+
+searchComponent :: H.Component NC.CellStateP NC.CellQueryP Slam
 searchComponent =
   NC.makeEditorCellComponent
     { name: CT.cellName CT.Search
     , glyph: CT.cellGlyph CT.Search
-    , component: parentComponent render eval
-    , initialState: installedState initialState
+    , component: H.parentComponent { render, eval, peek: Nothing }
+    , initialState: H.parentState initialState
     , _State: NC._SearchState
     , _Query: NC.makeQueryPrism' NC._SearchQuery
     }
 
-render :: State -> ParentHTML FI.State Query FI.Query Slam Unit
+render :: State -> H.ParentHTML FI.State Query FI.Query Slam Unit
 render state =
-  H.div
-    [ P.classes [ CSS.exploreCellEditor
-                , CSS.cellInput
-                ]
+  HH.div
+    [ HP.classes
+        [ CSS.exploreCellEditor
+        , CSS.cellInput
+        ]
     ]
 
-    [ H.slot unit \_ ->
+    [ HH.slot unit \_ ->
          { component: FI.fileInputComponent
          , initialState: FI.initialState
          }
-    , H.div [ P.classes [ CSS.fileListField, B.inputGroup ] ]
-        [ H.input
-            [ P.classes [ B.formControl, CSS.searchCellInput ]
-            , P.placeholder "Input search string"
+    , HH.div
+        [ HP.classes [ CSS.fileListField, B.inputGroup ] ]
+        [ HH.input
+            [ HP.classes [ B.formControl, CSS.searchCellInput ]
+            , HP.placeholder "Input search string"
             , HE.onValueInput $ HE.input \str -> UpdateSearch str >>> right
-            , P.value state.searchString
+            , HP.value state.searchString
             ]
-        , H.img
+        , HH.img
             [ HE.onClick (HE.input_ $ UpdateSearch "" >>> right)
-            , P.class_ CSS.searchClear
-            , P.src $ if state.running then "img/spin.gif" else "img/remove.svg"
+            , HP.class_ CSS.searchClear
+            , HP.src $ if state.running then "img/spin.gif" else "img/remove.svg"
             ]
-        , H.span [ P.class_ B.inputGroupBtn ]
-            [ H.button
-                [ P.classes [ B.btn, B.btnDefault, CSS.searchCellButton ]
-                , P.buttonType P.ButtonButton
+        , HH.span
+            [ HP.class_ B.inputGroupBtn ]
+            [ HH.button
+                [ HP.classes [ B.btn, B.btnDefault, CSS.searchCellButton ]
+                , HP.buttonType HP.ButtonButton
                 , HE.onClick (HE.input_ $ NC.NotifyRunCell >>> left)
                 ]
                 [ RC.glyph B.glyphiconSearch
@@ -110,109 +108,100 @@ render state =
 runWith
   :: forall s' f f' g p
    . Natural
-       (ParentDSL State s' f f' g p)
-       (ParentDSL State s' f f' g p)
+       (H.ParentDSL State s' f f' g p)
+       (H.ParentDSL State s' f f' g p)
 runWith m = do
-  modify (_running .~ true)
+  H.modify (_running .~ true)
   x <- m
-  modify (_running .~ false)
+  H.modify (_running .~ false)
   pure x
 
-eval
-  :: Natural
-       Query
-       (ParentDSL State FI.State Query FI.Query Slam Unit)
+eval :: Natural Query DSL
 eval = coproduct cellEval searchEval
 
-cellEval
-  :: Natural
-       NC.CellEvalQuery
-       (ParentDSL State FI.State Query FI.Query Slam Unit)
+cellEval :: Natural NC.CellEvalQuery DSL
 cellEval q =
   case q of
-    NC.EvalCell { inputPort: M.Just Port.Blocked } k -> do
-      pure $ k { output: M.Nothing, messages: [] }
+    NC.EvalCell { inputPort: Just Port.Blocked } k -> do
+      pure $ k { output: Nothing, messages: [] }
     NC.EvalCell info k -> runWith do
-      k <$> NC.runCellEvalT do
+      k <$> runCellEvalT do
         inputResource <-
-          query unit (request FI.GetSelectedFile)
-          <#> (join <<< M.maybe (Left "There is no file input subcomponent") Right)
-          # MT.lift
+          H.query unit (H.request FI.GetSelectedFile)
+          <#> (join <<< maybe (Left "There is no file input subcomponent") Right)
+          # lift
           >>= either EC.throwError pure
 
         query <-
-          get <#> _.searchString >>> SS.mkQuery
-            # MT.lift
+          H.get <#> _.searchString >>> SS.mkQuery
+            # lift
             >>= either (\_ -> EC.throwError "Incorrect query string") pure
 
         Quasar.messageIfResourceNotExists
             inputResource
             ("Input resource " <> R.resourcePath inputResource <> " doesn't exist")
           # Auth.authed
-          # NC.liftWithCanceler'
-          # MT.lift
-          >>= F.traverse_ EC.throwError
+          # liftWithCanceler'
+          # lift
+          >>= traverse_ EC.throwError
         fields <-
           Quasar.fields inputResource
             # Auth.authed
-            # NC.liftWithCanceler'
-            # MT.lift
+            # liftWithCanceler'
+            # lift
 
         let
           template = Search.queryToSQL fields query
           sql = Quasar.templated inputResource template
-          tempOutputResource = NC.temporaryOutputResource info
+          tempOutputResource = temporaryOutputResource info
 
         WC.tell ["Generated SQL: " <> sql]
 
         { plan, outputResource } <-
           Quasar.executeQuery
             template
-            (M.fromMaybe false info.cachingEnabled)
+            (fromMaybe false info.cachingEnabled)
             SM.empty
             inputResource
             tempOutputResource
             # Auth.authed
-            # NC.liftWithCanceler' >>> MT.lift
+            # liftWithCanceler' >>> lift
             >>= either (\err -> EC.throwError $ "Error in query: " <> err) pure
 
-        F.for_ plan \p -> WC.tell ["Plan: " <> p]
+        for_ plan \p -> WC.tell ["Plan: " <> p]
         Quasar.messageIfResourceNotExists
             outputResource
             "Error making search temporary resource"
           # Auth.authed
-          # NC.liftWithCanceler'
-          # MT.lift
-          >>= F.traverse_ EC.throwError
+          # liftWithCanceler'
+          # lift
+          >>= traverse_ EC.throwError
         pure $ Port.TaggedResource { resource: outputResource, tag: pure sql }
 
 
     NC.SetupCell { inputPort } next -> do
-      F.for_ (preview Port._Resource inputPort) \res ->
-        query unit (action (FI.SelectFile res))
+      for_ (preview Port._Resource inputPort) \res ->
+        H.query unit (H.action (FI.SelectFile res))
       pure next
 
     NC.NotifyRunCell next ->
       pure next
 
     NC.Save k -> do
-      file <- query unit (request FI.GetSelectedFile)
-      input <- gets _.searchString
+      file <- H.query unit (H.request FI.GetSelectedFile)
+      input <- H.gets _.searchString
       pure $ k
         $ Model.encode
           { input
-          , file: file >>= either (const M.Nothing) pure
+          , file: file >>= either (const Nothing) pure
           }
     NC.Load json next -> do
-      F.for_ (Model.decode json) \{file, input} -> do
-        F.for_ file \f ->
-          void $ query unit $ action $ FI.SelectFile f
-        modify $ _searchString .~ input
+      for_ (Model.decode json) \{file, input} -> do
+        for_ file \f ->
+          void $ H.query unit $ H.action $ FI.SelectFile f
+        H.modify $ _searchString .~ input
       pure next
     NC.SetCanceler _ next -> pure next
 
-searchEval
-  :: Natural
-       SearchQuery
-       (ParentDSL State FI.State Query FI.Query Slam Unit)
-searchEval (UpdateSearch str next) = modify (_searchString .~ str) $> next
+searchEval :: Natural SearchQuery DSL
+searchEval (UpdateSearch str next) = H.modify (_searchString .~ str) $> next

@@ -25,9 +25,9 @@ import Control.Monad.Aff (Aff())
 import Control.Monad.Aff.AVar (AVAR())
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Ref (REF(), newRef, readRef, writeRef)
+import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either (Either(..))
-import Data.Functor.Eff (liftEff)
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.NaturalTransformation (Natural())

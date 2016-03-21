@@ -21,14 +21,9 @@ module SlamData.Notebook.Cell.JTable.Model
   , decode
   ) where
 
-import Prelude
-
-import Control.Bind ((=<<))
+import SlamData.Prelude
 
 import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Either (Either())
-import Data.Maybe (Maybe())
-import Data.Traversable (traverse)
 
 import SlamData.FileSystem.Resource (Resource())
 

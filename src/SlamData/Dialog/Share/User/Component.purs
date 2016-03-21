@@ -16,30 +16,23 @@ limitations under the License.
 
 module SlamData.Dialog.Share.User.Component where
 
-import Prelude
-
-import Control.Monad (when)
-import Control.MonadPlus (guard)
+import SlamData.Prelude
 
 import Data.Foldable as F
-import Data.Functor (($>))
-import Data.Functor.Eff (liftEff)
 import Data.Lens (LensP(), lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
 import Data.Map as Map
-import Data.Maybe as M
 import Data.Time (Milliseconds(..))
-import Data.Tuple as Tpl
 
 import DOM.HTML.Types (HTMLElement())
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.CustomProps as Cp
+import Halogen.CustomProps as CP
 import Halogen.Component.Utils (forceRerender, sendAfter)
 
 import SlamData.Effects (Slam())
@@ -49,10 +42,9 @@ import SlamData.Render.Common (glyph, fadeWhen)
 import Utils.DOM (focus)
 
 type State =
-  {
-    inputs :: Map.Map Int String
+  { inputs :: Map.Map Int String
   , elements :: Map.Map Int HTMLElement
-  , blurred :: M.Maybe Int
+  , blurred :: Maybe Int
   }
 
 _inputs :: forall a r. LensP {inputs :: a|r} a
@@ -66,10 +58,9 @@ _blurred = lens _.blurred _{blurred = _}
 
 initialState :: State
 initialState =
-  {
-    inputs: Map.empty
+  { inputs: Map.empty
   , elements: Map.empty
-  , blurred: M.Nothing
+  , blurred: Nothing
   }
 
 data Query a
@@ -77,112 +68,116 @@ data Query a
   | Remove Int a
   | Blurred Int a
   | Create Int a
-  | Focused (M.Maybe Int) a
-  | RememberEl Int HTMLElement a
+  | Focused (Maybe Int) a
+  | RememberEl Int (Maybe HTMLElement) a
   | GetValues (Array String -> a)
 
-type UserShareDSL = ComponentDSL State Query Slam
+type UserShareDSL = H.ComponentDSL State Query Slam
 
-comp :: Component State Query Slam
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
+render :: State -> H.ComponentHTML Query
 render state =
-  H.form
-    [ Cp.nonSubmit
-    , P.classes [ Rc.userShareForm ]
+  HH.form
+    [ CP.nonSubmit
+    , HP.classes [ Rc.userShareForm ]
     ]
-    ((F.foldMap (Tpl.uncurry showInput) $ Map.toList state.inputs)
+    ((foldMap (uncurry showInput) $ Map.toList state.inputs)
      <> [ newInput newKey ]
     )
   where
-  mbMaxKey :: M.Maybe Int
+  mbMaxKey :: Maybe Int
   mbMaxKey = F.maximum $ Map.keys state.inputs
 
   newKey :: Int
   newKey =
-    M.fromMaybe zero $ add one mbMaxKey
+    fromMaybe zero $ add one mbMaxKey
 
   shouldFade :: Boolean
   shouldFade =
     mbMaxKey
       >>= flip Map.lookup state.inputs
       <#> eq ""
-      # M.fromMaybe false
+      # fromMaybe false
 
-  showInput :: Int -> String -> Array (ComponentHTML Query)
+  showInput :: Int -> String -> Array (H.ComponentHTML Query)
   showInput inx val =
-    [ H.div [ P.classes [ B.inputGroup ] ]
-      [
-        H.input [ P.classes [ B.formControl ]
-                , P.value val
-                , ARIA.label "User email or name"
-                , E.onValueInput (E.input (InputChanged inx))
-                , E.onBlur (E.input_ (Blurred inx))
-                , E.onFocus (E.input_ (Focused $ M.Just inx))
-                , P.key $ show inx
-                , P.initializer (\el -> action $ RememberEl inx el)
-                ]
-      , H.span [ P.classes [ B.inputGroupBtn ] ]
-        [ H.button
-          [ P.classes ([ B.btn ] <> (guard (val /= "") $> B.btnDefault))
-          , E.onClick (E.input_ (Remove inx))
-          , P.buttonType P.ButtonButton
-          , P.disabled (val == "")
-          , ARIA.label "Clear user email or name"
+    [ HH.div
+      [ HP.classes [ B.inputGroup ] ]
+      [ HH.input
+          [ HP.classes [ B.formControl ]
+          , HP.value val
+          , ARIA.label "User email or name"
+          , HE.onValueInput (HE.input (InputChanged inx))
+          , HE.onBlur (HE.input_ (Blurred inx))
+          , HE.onFocus (HE.input_ (Focused $ Just inx))
+          , HP.key $ show inx
+          , HP.ref (H.action <<< RememberEl inx)
           ]
-          [ glyph B.glyphiconRemove ]
-        ]
+      , HH.span
+          [ HP.classes [ B.inputGroupBtn ] ]
+          [ HH.button
+              [ HP.classes ([ B.btn ] <> (guard (val /= "") $> B.btnDefault))
+              , HE.onClick (HE.input_ (Remove inx))
+              , HP.buttonType HP.ButtonButton
+              , HP.disabled (val == "")
+              , ARIA.label "Clear user email or name"
+              ]
+              [ glyph B.glyphiconRemove ]
+          ]
       ]
      ]
 
-  newInput :: Int -> ComponentHTML Query
+  newInput :: Int -> H.ComponentHTML Query
   newInput inx =
-    H.div [ P.classes ([ B.inputGroup ] <> fadeWhen shouldFade)]
-      [
-        H.input [ P.classes [ B.formControl ]
-                , ARIA.label "User email or name"
-                , E.onFocus (E.input_ (Create inx))
-                , P.placeholder "Name or email of user"
-                , P.value ""
-                , P.key $ show inx
-                , P.initializer (\el -> action $ RememberEl inx el)
-                ]
-      , H.span [ P.classes [ B.inputGroupBtn ] ]
-        [ H.button
-          [ P.classes [ B.btn ]
-          , P.disabled true
-          , P.buttonType P.ButtonButton
-          , ARIA.label "Clear user email or name"
+    HH.div
+      [ HP.classes ([ B.inputGroup ] <> fadeWhen shouldFade) ]
+      [ HH.input
+          [ HP.classes [ B.formControl ]
+          , ARIA.label "User email or name"
+          , HE.onFocus (HE.input_ (Create inx))
+          , HP.placeholder "Name or email of user"
+          , HP.value ""
+          , HP.key $ show inx
+          , HP.ref (H.action <<< RememberEl inx)
           ]
-          [ glyph B.glyphiconRemove ]
-        ]
+      , HH.span
+          [ HP.classes [ B.inputGroupBtn ] ]
+          [ HH.button
+              [ HP.classes [ B.btn ]
+              , HP.disabled true
+              , HP.buttonType HP.ButtonButton
+              , ARIA.label "Clear user email or name"
+              ]
+              [ glyph B.glyphiconRemove ]
+          ]
       ]
 
 
 eval :: Natural Query UserShareDSL
 eval (Create inx next) = do
   clearBlurred $ pure unit
-  modify $ _inputs %~ Map.insert inx ""
+  H.modify $ _inputs %~ Map.insert inx ""
   forceRerender
   focusInx inx
   pure next
-eval (InputChanged inx val next) = modify (_inputs <<< ix inx .~ val) $> next
+eval (InputChanged inx val next) = H.modify (_inputs <<< ix inx .~ val) $> next
 eval (Remove inx next) = forgetInx inx $> next
 eval (Focused mbInx next) = do
   clearBlurred do
     forceRerender
-    F.for_ mbInx focusInx
+    for_ mbInx focusInx
   pure next
 eval (Blurred inx next) = do
-  modify $ _blurred ?~ inx
-  sendAfter (Milliseconds 200.0) $ action $ Focused M.Nothing
+  H.modify $ _blurred ?~ inx
+  sendAfter (Milliseconds 200.0) $ H.action $ Focused Nothing
   pure next
-eval (RememberEl inx el next) = modify (_elements %~ Map.insert inx el) $> next
+eval (RememberEl inx el next) = H.modify (_elements %~ Map.alter (const el) inx) $> next
 eval (GetValues continue) =
-  gets _.inputs
+  H.gets _.inputs
     <#> Map.values
-    <#> F.foldMap (\x -> guard (x /= "") $> x)
+    <#> foldMap (\x -> guard (x /= "") $> x)
     <#> continue
 
 
@@ -190,26 +185,26 @@ forgetInx
   :: Int
   -> UserShareDSL Unit
 forgetInx inx = do
-  modify $ _inputs %~ Map.delete inx
-  modify $ _elements %~ Map.delete inx
+  H.modify $ _inputs %~ Map.delete inx
+  H.modify $ _elements %~ Map.delete inx
 
 focusInx
   :: Int
   -> UserShareDSL Unit
 focusInx inx =
-  gets _.elements
+  H.gets _.elements
     <#> Map.lookup inx
-    >>= F.traverse_ (liftEff <<< focus)
+    >>= traverse_ (H.fromEff <<< focus)
 
 clearBlurred
   :: UserShareDSL Unit
   -> UserShareDSL Unit
 clearBlurred act =
-  gets _.blurred >>= F.traverse_ \bix -> do
+  H.gets _.blurred >>= traverse_ \bix -> do
     val <-
-      gets _.inputs
+      H.gets _.inputs
       <#> Map.lookup bix
-      <#> M.fromMaybe ""
+      <#> fromMaybe ""
     when (val == "") $ forgetInx bix
-    modify $ _blurred .~ M.Nothing
+    H.modify $ _blurred .~ Nothing
     act

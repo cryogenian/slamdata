@@ -58,6 +58,7 @@ import Control.Monad (when, unless)
 import Control.Monad.Aff (Aff())
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Error.Class as Err
@@ -71,17 +72,17 @@ import Data.Bifunctor (bimap, lmap)
 import Data.Date as Date
 import Data.Either as E
 import Data.Foldable as F
-
 import Data.Foreign (F(), parseJSON)
 import Data.Foreign.Class (readProp, read, IsForeign)
 import Data.Foreign.Index (prop)
 import Data.Foreign.NullOrUndefined (runNullOrUndefined)
-
 import Data.Functor (($>))
-import Data.Functor.Eff (liftEff)
+import Data.HTTP.Method (Method(..))
 import Data.Lens ((.~), (^.))
 import Data.List as L
 import Data.Maybe as M
+import Data.MediaType (MediaType(..), mediaTypeToString)
+import Data.MediaType.Common (applicationJSON)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as Set
@@ -97,9 +98,6 @@ import DOM (DOM())
 import Network.HTTP.Affjax as AX
 import Network.HTTP.Affjax.Request as AX
 import Network.HTTP.Affjax.Response as AX
-import Network.HTTP.Method (Method(..))
-import Network.HTTP.MimeType (MimeType(..), mimeTypeToString)
-import Network.HTTP.MimeType.Common (applicationJSON)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
 
@@ -192,7 +190,7 @@ listing p idToken perms =
 makeFile
   :: forall e
    . PU.FilePath
-  -> MimeType
+  -> MediaType
   -> String
   -> M.Maybe Auth.IdToken
   -> Array Perm.PermissionToken
@@ -202,7 +200,7 @@ makeFile path mime content idToken perms =
     $ slamjax
     $ insertAuthHeaders idToken perms
     $ AX.defaultRequest
-      { method = PUT
+      { method = E.Left PUT
       , headers = [ ContentType mime ]
       , content = M.Just content
       , url = M.fromMaybe ""
@@ -239,7 +237,7 @@ retryGet
   :: forall e a fd
    . (AX.Respondable a)
   => P.Path P.Abs fd P.Sandboxed
-  -> MimeType
+  -> MediaType
   -> M.Maybe Auth.IdToken
   -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) a
@@ -249,7 +247,7 @@ retryGet =
 mkRequest
   :: forall e fd
    . P.Path P.Abs fd P.Sandboxed
-  -> MimeType
+  -> MediaType
   -> M.Maybe Auth.IdToken
   -> Array Perm.PermissionToken
   -> Aff (RetryEffects e) (AX.AffjaxRequest Unit)
@@ -271,7 +269,7 @@ getOnce
   :: forall e a fd
    . (AX.Respondable a)
   => P.Path P.Abs fd P.Sandboxed
-  -> MimeType
+  -> MediaType
   -> M.Maybe Auth.IdToken
   -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) a
@@ -284,7 +282,7 @@ getWithPolicy
    . (AX.Respondable a)
   => AX.RetryPolicy
   -> P.Path P.Abs fd P.Sandboxed
-  -> MimeType
+  -> MediaType
   -> M.Maybe Auth.IdToken
   -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) a
@@ -304,7 +302,7 @@ retryDelete u idToken perms = do
     $ insertAuthHeaders idToken perms
     $ AX.defaultRequest
       { url = P.printPath u
-      , method = DELETE
+      , method = E.Left DELETE
       }
 
 retryPost
@@ -319,7 +317,7 @@ retryPost u c idToken perms =
   slamjax
     $ insertAuthHeaders idToken perms
     $ AX.defaultRequest
-      { method = POST
+      { method = E.Left POST
       , url = P.printPath u
       , content = M.Just c
       }
@@ -329,7 +327,7 @@ retryPut
    . (AX.Requestable a, AX.Respondable b)
   => P.Path P.Abs fd P.Sandboxed
   -> a
-  -> MimeType
+  -> MediaType
   -> M.Maybe Auth.IdToken
   -> Array Perm.PermissionToken
   -> AX.Affjax (RetryEffects e) b
@@ -337,7 +335,7 @@ retryPut u c mime idToken perms =
   slamjax
     $ insertAuthHeaders idToken perms
     $ AX.defaultRequest
-      { method = PUT
+      { method = E.Left PUT
       , url = P.printPath u
       , content = M.Just c
       , headers = [ContentType mime]
@@ -356,8 +354,8 @@ getResponse msg m = do
 reqHeadersToJSON :: Array RequestHeader -> JS.Json
 reqHeadersToJSON = F.foldl go JS.jsonEmptyObject
   where
-  go obj (Accept mime) = "Accept" := mimeTypeToString mime ~> obj
-  go obj (ContentType mime) = "Content-Type" := mimeTypeToString mime ~> obj
+  go obj (Accept mime) = "Accept" := mediaTypeToString mime ~> obj
+  go obj (ContentType mime) = "Content-Type" := mediaTypeToString mime ~> obj
   go obj (RequestHeader k v) = k := v ~> obj
 
 
@@ -475,7 +473,7 @@ move src tgt idToken perms = do
     AX.affjax
     $ insertAuthHeaders idToken perms
     $ AX.defaultRequest
-      { method = MOVE
+      { method = E.Left MOVE
       , headers = [RequestHeader "Destination"
                    $ E.either P.printPath P.printPath tgt]
       , url =
@@ -502,7 +500,7 @@ saveMount path uri idToken perms = do
     slamjax
     $ insertAuthHeaders idToken perms
     $ AX.defaultRequest
-      { method = PUT
+      { method = E.Left PUT
       , headers = [ ContentType applicationJSON ]
       , content = M.Just $ stringify { mongodb: {connectionUri: uri } }
       , url = P.printPath $ Paths.mountUrl </> PU.rootify path
@@ -609,8 +607,8 @@ getVersion idToken perms = do
   serverInfo <- retryGet Paths.serverInfoUrl applicationJSON idToken perms
   return $ E.either (const M.Nothing) M.Just (readProp "version" serverInfo.response)
 
-ldJSON :: MimeType
-ldJSON = MimeType "application/ldjson"
+ldJSON :: MediaType
+ldJSON = MediaType "application/ldjson"
 
 
 -- | Produces a stream of the transitive children of a path
@@ -761,7 +759,7 @@ portView res dest sql varMap idToken perms = do
     AX.affjax
     $ insertAuthHeaders idToken perms
     $ AX.defaultRequest
-      { method = PUT
+      { method = E.Left PUT
       , headers = [ ContentType applicationJSON ]
       , content = M.Just $ stringify { view: { connectionUri: connectionUri } }
       , url =
@@ -789,7 +787,7 @@ portQuery res dest sql vars idToken perms = do
     AX.affjax
       $ insertAuthHeaders idToken perms
       $ AX.defaultRequest
-        { method = POST
+        { method = E.Left POST
         , headers =
             [ RequestHeader "Destination" $ R.resourcePath dest
             , ContentType ldJSON

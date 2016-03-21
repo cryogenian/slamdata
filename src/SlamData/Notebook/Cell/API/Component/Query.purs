@@ -18,9 +18,7 @@ module SlamData.Notebook.Cell.API.Component.Query
   ( QueryP()
   ) where
 
-import Prelude
-
-import Data.Functor.Coproduct
+import SlamData.Prelude
 
 import Halogen
 

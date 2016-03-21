@@ -36,16 +36,11 @@ module SlamData.Notebook.Cell.JTable.Component.State
   , fromModel
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Alt ((<|>))
-import Control.Bind ((=<<))
-
-import Data.Either (Either(..), either)
 import Data.Foldable (maximum)
 import Data.Int as Int
 import Data.Lens ((^?), (?~), LensP(), lens, _Just)
-import Data.Maybe (Maybe(..), fromMaybe)
 
 import SlamData.FileSystem.Resource (Resource())
 import SlamData.Notebook.Cell.JTable.Component.Query (PageStep(..))

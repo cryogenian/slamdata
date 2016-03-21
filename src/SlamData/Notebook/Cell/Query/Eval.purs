@@ -19,19 +19,13 @@ module SlamData.Notebook.Cell.Query.Eval
   , querySetup
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Error.Class as EC
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-import Control.Monad.Trans as MT
 import Control.Monad.Writer.Class as WC
 
-import Data.Either as E
-import Data.Foldable as F
-import Data.Functor.Eff (liftEff)
 import Data.Lens as L
-import Data.Maybe (Maybe(..))
-import Data.Maybe as M
 import Data.Path.Pathy as Path
 import Data.String as Str
 import Data.StrMap as SM
@@ -39,7 +33,7 @@ import Data.StrMap as SM
 import Ace.Halogen.Component as Ace
 import Ace.Types (Completion())
 
-import Halogen (query, action, request)
+import Halogen (query, action, request, fromEff)
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
@@ -63,29 +57,29 @@ queryEval info sql =
         { plan, outputResource } <-
           Quasar.executeQuery
             sql
-            (M.fromMaybe false info.cachingEnabled)
+            (fromMaybe false info.cachingEnabled)
             varMap
             inputResource
             tempOutputResource
           # Auth.authed
           # CEQ.liftWithCanceler
-          # MT.lift
-          >>= E.either EC.throwError pure
+          # lift
+          >>= either EC.throwError pure
         Quasar.messageIfResourceNotExists
             outputResource
             "Requested collection doesn't exist"
           # Auth.authed
           # CEQ.liftWithCanceler
-          # MT.lift
-          >>= F.traverse_ EC.throwError
-        F.for_ plan \p -> WC.tell ["Plan: " <> p]
+          # lift
+          >>= traverse_ EC.throwError
+        for_ plan \p -> WC.tell ["Plan: " <> p]
         pure $ Port.TaggedResource {resource: outputResource, tag: pure sql}
   where
   varMap :: SM.StrMap String
   varMap =
     info.inputPort
     >>= L.preview Port._VarMap
-    # M.maybe SM.empty (map Port.renderVarMapValue)
+    # maybe SM.empty (map Port.renderVarMapValue)
 
   tempOutputResource = CEQ.temporaryOutputResource info
   inputResource = R.parent tempOutputResource
@@ -101,7 +95,7 @@ querySetup { inputPort, notebookPath } =
                  else R.resourcePath resource
       editor <- (MaybeT $ query unit $ request Ace.GetEditor) >>= (MaybeT <<< pure)
       MaybeT $ query unit $ action $ Ace.SetText ("SELECT  *  FROM `" <> path <> "` ")
-      MT.lift $ liftEff do
+      lift $ fromEff do
         readOnly editor
           { startRow: 0
           , startColumn: 0

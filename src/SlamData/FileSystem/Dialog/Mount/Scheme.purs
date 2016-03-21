@@ -16,9 +16,7 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Scheme where
 
-import Prelude
-
-import Data.Maybe (Maybe(..))
+import SlamData.Prelude
 
 data Scheme = MongoDB | SQL2
 

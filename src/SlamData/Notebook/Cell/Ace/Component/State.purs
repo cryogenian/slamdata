@@ -16,11 +16,13 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Ace.Component.State (StateP()) where
 
-import Prelude
+import SlamData.Prelude
 
 import Ace.Halogen.Component (AceQuery(), AceState())
-import Halogen (InstalledState())
+
+import Halogen (ParentState())
+
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
 import SlamData.Effects (Slam())
 
-type StateP = InstalledState Unit AceState CellEvalQuery AceQuery Slam Unit
+type StateP = ParentState Unit AceState CellEvalQuery AceQuery Slam Unit

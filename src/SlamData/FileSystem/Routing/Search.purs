@@ -20,11 +20,9 @@ module SlamData.FileSystem.Routing.Search
   , filterByQuery
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Foldable (foldMap)
 import Data.List (List(..))
-import Data.Maybe (Maybe(..))
 import Data.Maybe.First (First(..), runFirst)
 import Data.Minimatch as MM
 import Data.String as Str

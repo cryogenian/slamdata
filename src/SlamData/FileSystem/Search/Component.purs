@@ -16,45 +16,36 @@ limitations under the License.
 
 module SlamData.FileSystem.Search.Component where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Aff (Canceler(), Aff(), cancel, forkAff, later')
 import Control.Monad.Eff.Exception (error)
-import Control.MonadPlus (guard)
 import Control.UI.Browser (setLocation)
 
-import Data.Either (Either(..))
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Eff (liftEff)
-import Data.Lens (lens, LensP(), (^.), (.~), (%~))
-import Data.Maybe (Maybe(..), isJust)
-import Data.Monoid (mempty)
+import Data.Lens (lens, LensP(), (.~), (%~))
 import Data.Path.Pathy (printPath, rootDir)
 import Data.These (theseLeft, thisOrBoth, theseRight, these, These(..))
 
-import Halogen (Component(), Eval(), ComponentHTML(), component, modify, get)
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
-import SlamData.Effects (SlamDataEffects())
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam(), SlamDataEffects())
 import SlamData.FileSystem.Listing.Sort (Sort())
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt, Salt())
-import SlamData.Render.Common
+import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
 
 import Text.SlamSearch (mkQuery)
 
 import Utils.Path (DirPath())
 
-newtype State = State SearchRec
-
-type SearchRec =
+type State =
   { valid :: Boolean
   , focused :: Boolean
     -- `These` to differentiate path and search path
@@ -68,42 +59,39 @@ type SearchRec =
 
 initialState :: Sort -> Salt -> State
 initialState sort salt =
-  State { valid: true
-         , value: This ""
-         , focused: false
-         , loading: true
-         , timeout: mempty
-         , path: rootDir
-         , sort: sort
-         , salt: salt
-         }
-
-_State :: LensP State SearchRec
-_State  = lens (\(State obj) -> obj) (const State)
+  { valid: true
+  , value: This ""
+  , focused: false
+  , loading: true
+  , timeout: mempty
+  , path: rootDir
+  , sort: sort
+  , salt: salt
+  }
 
 _valid :: LensP State Boolean
-_valid = _State <<< lens _.valid _{valid = _}
+_valid = lens _.valid _{valid = _}
 
 _focused :: LensP State Boolean
-_focused = _State <<< lens _.focused _{focused = _}
+_focused = lens _.focused _{focused = _}
 
 _value :: LensP State (These String String)
-_value = _State <<< lens _.value _{value = _}
+_value = lens _.value _{value = _}
 
 _loading :: LensP State Boolean
-_loading = _State <<< lens _.loading _{loading = _}
+_loading = lens _.loading _{loading = _}
 
 _timeout :: LensP State (Canceler SlamDataEffects)
-_timeout = _State <<< lens _.timeout _{timeout = _}
+_timeout = lens _.timeout _{timeout = _}
 
 _path :: LensP State DirPath
-_path = _State <<< lens _.path _{path = _}
+_path = lens _.path _{path = _}
 
 _sort :: LensP State Sort
-_sort = _State <<< lens _.sort _{sort = _}
+_sort = lens _.sort _{sort = _}
 
 _salt :: LensP State Salt
-_salt = _State <<< lens _.salt _{salt = _}
+_salt = lens _.salt _{salt = _}
 
 data Query a
   = Focus Boolean a
@@ -116,110 +104,116 @@ data Query a
   | SetValid Boolean a
   | IsSearching (Boolean -> a)
 
+type HTML = H.ComponentHTML Query
+type DSL = H.ComponentDSL State Query Slam
 
-comp :: Component State Query Slam
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
+render :: State -> HTML
 render state =
-  H.div [ P.classes [ Rc.search ] ]
-  [ H.form [ E.onSubmit (E.input_ Submit)]
-    [ H.div
-      [ P.classes searchClasses
-      ]
-      [ H.input [ P.classes [ B.formControl ]
-                , P.value value
-                , E.onFocus (E.input_ (Focus true))
-                , E.onBlur (E.input_ (Focus false))
-                , E.onValueInput (E.input Typed)
-                , P.title "File search field"
+  HH.div
+    [ HP.classes [ Rc.search ] ]
+    [ HH.form
+        [ HE.onSubmit (HE.input_ Submit)]
+        [ HH.div
+            [ HP.classes searchClasses ]
+            [ HH.input
+                [ HP.classes [ B.formControl ]
+                , HP.value value
+                , HE.onFocus (HE.input_ (Focus true))
+                , HE.onBlur (HE.input_ (Focus false))
+                , HE.onValueInput (HE.input Typed)
+                , HP.title "File search field"
                 , ARIA.label "File search field"
                 ]
-      , H.span [ P.class_ $ if state ^. _focused
-                            then Rc.searchPathActive
-                            else Rc.searchPath
-               ]
-        [ H.span [ P.class_ Rc.searchPathBody ]
-          [ H.text value ]
-        , H.span [ P.class_ $ if value == ""
-                              then Rc.searchAffixEmpty
-                              else Rc.searchAffix
-                 ]
-          [ H.text $ "path:" <> printPath (state ^. _path) ]
+            , HH.span
+                [ HP.class_
+                    if state.focused
+                    then Rc.searchPathActive
+                    else Rc.searchPath
+                ]
+                [ HH.span
+                    [ HP.class_ Rc.searchPathBody ]
+                    [ HH.text value ]
+                , HH.span
+                    [ HP.class_
+                        if value == ""
+                        then Rc.searchAffixEmpty
+                        else Rc.searchAffix
+                    ]
+                    [ HH.text $ "path:" <> printPath (state.path) ]
+                ]
+            , HH.img
+                [ HP.class_ Rc.searchClear
+                , HP.src searchIcon
+                , HE.onClick (HE.input_ Clear)
+                ]
+            , HH.span
+                [ HP.class_ B.inputGroupBtn ]
+                [ HH.button
+                    [ HP.classes [ B.btn, B.btnDefault ]
+                    , HP.enabled (state.valid)
+                    ]
+                    [ glyph B.glyphiconSearch ]
+                ]
+            ]
         ]
-      , H.img [ P.class_ Rc.searchClear
-              , P.src searchIcon
-              , E.onClick (E.input_ Clear)
-              ]
-      , H.span [ P.class_ B.inputGroupBtn ]
-        [ H.button [ P.classes [ B.btn, B.btnDefault ]
-                   , P.enabled (state ^. _valid)
-                   ]
-          [ glyph B.glyphiconSearch ]
-        ]
-      ]
     ]
-  ]
   where
-  searchClasses :: Array H.ClassName
+  searchClasses :: Array HH.ClassName
   searchClasses =
     [ B.inputGroup, Rc.searchInput] <> do
-      guard (not $ state ^. _valid)
+      guard (not $ state.valid)
       pure B.hasError
 
-  value = these id id (\x y -> if x == "" then y else x) (state ^. _value)
-  searchIcon = if state ^. _loading
+  value = these id id (\x y -> if x == "" then y else x) (state.value)
+  searchIcon = if state.loading
                then "img/spin.gif"
                else "img/remove.svg"
 
-eval :: Eval Query State Query Slam
+eval :: Natural Query DSL
 eval (Focus bool next) = do
-  modify (_focused .~ bool)
+  H.modify (_focused .~ bool)
   pure next
 eval (Clear next) = do
   -- for peeking in parent
   pure next
 eval (Typed str next) = do
-  state <- get
-  let c = state ^. _timeout
-  liftAff $ cancel c (error "timeout")
-  c' <- liftAff $ forkAff
+  state <- H.get
+  let c = state.timeout
+  H.fromAff $ cancel c (error "timeout")
+  c' <- H.fromAff $ forkAff
         $ later' Config.searchTimeout $ submit
         $ (state # _value %~ (thisOrBoth str <<< theseRight))
-  modify $ _value %~ (thisOrBoth str <<< theseRight)
-  modify $ _timeout .~ c'
+  H.modify $ _value %~ (thisOrBoth str <<< theseRight)
+  H.modify $ _timeout .~ c'
   pure next
 eval (Submit next) = do
-  state <- get
-  mbFn <- liftAff $ submit state
+  state <- H.get
+  mbFn <- H.fromAff $ submit state
   case mbFn of
     Nothing -> pure unit
-    Just fn -> modify fn
+    Just fn -> H.modify fn
   pure next
 eval (GetValue continue) = do
-  state <- get
-  pure $ continue $ theseRight (state ^. _value)
-eval (SetLoading bool next) = do
-  modify (_loading .~ bool)
-  pure next
-eval (SetValue tv next) = do
-  modify (_value .~ tv)
-  pure next
-eval (SetValid bool next) = do
-  modify (_valid .~ bool)
-  pure next
+  state <- H.get
+  pure $ continue $ theseRight (state.value)
+eval (SetLoading bool next) = H.modify (_loading .~ bool) $> next
+eval (SetValue tv next) = H.modify (_value .~ tv) $> next
+eval (SetValid bool next) = H.modify (_valid .~ bool) $> next
 eval (IsSearching continue) = do
-  state <- get
-  pure $ continue $ isJust $ theseRight $ state ^. _value
+  state <- H.get
+  pure $ continue $ isJust $ theseRight $ state.value
 
 submit :: State -> Aff SlamDataEffects (Maybe (State -> State))
 submit state = do
-  salt <- liftEff newSalt
-  case theseLeft (state ^. _value) of
+  salt <- H.fromEff newSalt
+  case theseLeft (state.value) of
     Just q -> case mkQuery q of
       Left _ | q /= "" -> pure $ pure (_valid .~ false)
       _ -> do
-        liftEff $ setLocation
-          $ browseURL (Just q) (state ^. _sort) salt (state ^. _path)
+        H.fromEff $ setLocation
+          $ browseURL (Just q) (state.sort) salt (state.path)
         pure Nothing
-    _ -> pure  Nothing
+    _ -> pure Nothing

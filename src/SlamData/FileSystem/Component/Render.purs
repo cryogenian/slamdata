@@ -16,11 +16,8 @@ limitations under the License.
 
 module SlamData.FileSystem.Component.Render where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.MonadPlus (guard)
-
-import Data.Functor (($>))
 import Data.Lens ((^.))
 
 import Halogen.HTML.Core (HTML(), ClassName())

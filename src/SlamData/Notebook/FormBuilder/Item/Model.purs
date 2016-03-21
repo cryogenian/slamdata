@@ -29,15 +29,11 @@ module SlamData.Notebook.FormBuilder.Item.Model
   , emptyValueOfFieldType
   ) where
 
-import Prelude
-
-import Control.Bind ((>=>))
+import SlamData.Prelude
 
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Argonaut as J
-import Data.Either as E
-import Data.Lens
-import Data.Maybe as M
+import Data.Lens (LensP(), lens)
 import Data.SQL2.Literal as SQL2
 import Data.StrMap as SM
 
@@ -49,7 +45,7 @@ import Text.Parsing.Parser as P
 type Model =
   { name :: String
   , fieldType :: FieldType
-  , defaultValue :: M.Maybe String
+  , defaultValue :: Maybe String
   }
 
 _name :: LensP Model String
@@ -58,7 +54,7 @@ _name = lens _.name _ { name = _ }
 _fieldType :: LensP Model FieldType
 _fieldType = lens _.fieldType _ { fieldType = _ }
 
-_defaultValue :: LensP Model (M.Maybe String)
+_defaultValue :: LensP Model (Maybe String)
 _defaultValue = lens _.defaultValue _ { defaultValue = _ }
 
 newtype EqModel = EqModel Model
@@ -80,7 +76,7 @@ initialModel :: Model
 initialModel =
   { name : ""
   , fieldType : StringFieldType
-  , defaultValue : M.Nothing
+  , defaultValue : Nothing
   }
 
 encode
@@ -94,7 +90,7 @@ encode st =
 
 decode
   :: J.Json
-  -> E.Either String Model
+  -> Either String Model
 decode =
   J.decodeJson >=> \obj ->
     { name : _, fieldType : _, defaultValue : _ }
@@ -123,17 +119,17 @@ emptyValueOfFieldType tau =
 defaultValueToVarMapValue
   :: FieldType
   -> String
-  -> M.Maybe Port.VarMapValue
+  -> Maybe Port.VarMapValue
 defaultValueToVarMapValue ty str =
   case ty of
-    StringFieldType -> M.Just $ Port.Literal $ SQL2.string str
-    DateTimeFieldType -> M.Just $ Port.Literal $ SQL2.dateTime str
-    DateFieldType -> M.Just $ Port.Literal $ SQL2.date str
-    TimeFieldType -> M.Just $ Port.Literal $ SQL2.time str
-    IntervalFieldType -> M.Just $ Port.Literal $ SQL2.interval str
-    ObjectIdFieldType -> M.Just $ Port.Literal $ SQL2.objectId str
-    QueryFieldType -> M.Just $ Port.QueryExpr $ str
-    _ | str == "" -> M.Nothing
+    StringFieldType -> Just $ Port.Literal $ SQL2.string str
+    DateTimeFieldType -> Just $ Port.Literal $ SQL2.dateTime str
+    DateFieldType -> Just $ Port.Literal $ SQL2.date str
+    TimeFieldType -> Just $ Port.Literal $ SQL2.time str
+    IntervalFieldType -> Just $ Port.Literal $ SQL2.interval str
+    ObjectIdFieldType -> Just $ Port.Literal $ SQL2.objectId str
+    QueryFieldType -> Just $ Port.QueryExpr $ str
+    _ | str == "" -> Nothing
     _ ->
       P.runParser str SQL2.parseLiteral
-        # E.either (\_ -> M.Nothing) (Port.Literal >>> M.Just)
+        # either (\_ -> Nothing) (Port.Literal >>> Just)

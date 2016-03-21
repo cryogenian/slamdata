@@ -16,21 +16,16 @@ limitations under the License.
 
 module Quasar.Auth.Permission where
 
-import Prelude
-
-import Control.Bind ((>=>))
+import SlamData.Prelude
 
 import Control.Monad.Aff (later')
 import Control.Monad.Eff (Eff())
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (random)
 import Control.MonadPlus (guard)
 import Control.UI.Browser (decodeURIComponent)
 
 import Data.Array as Arr
-import Data.Array as Arr
-import Data.Either as E
-import Data.Functor.Eff (liftEff)
-import Data.Maybe as M
 import Data.NonEmpty as Ne
 import Data.Path.Pathy as Pt
 import Data.String as Str
@@ -78,7 +73,7 @@ runUser (User s) = s
 type PermissionShareRequest =
   {
     resource :: R.Resource
-  , targets :: E.Either (Ne.NonEmpty Array Group) (Ne.NonEmpty Array User)
+  , targets :: Either (Ne.NonEmpty Array Group) (Ne.NonEmpty Array User)
   , permissions :: Permissions
   }
 
@@ -86,17 +81,17 @@ requestForGroups
   :: PermissionShareRequest
   -> Boolean
 requestForGroups {targets} =
-  E.isLeft targets
+  isLeft targets
 
 requestForUsers
   :: PermissionShareRequest
   -> Boolean
 requestForUsers {targets} =
-  E.isRight targets
+  isRight targets
 
 permissionsHeader
   :: Array PermissionToken
-  -> M.Maybe RequestHeader
+  -> Maybe RequestHeader
 permissionsHeader ps = do
   guard (not $ Arr.null ps)
   pure
@@ -117,7 +112,7 @@ retrievePermissionTokens =
   permissionRegex :: Rgx.Regex
   permissionRegex = Rgx.regex "permissionsToken=([^&]+)" Rgx.noFlags
 
-  extractPermissionTokensString :: String -> M.Maybe String
+  extractPermissionTokensString :: String -> Maybe String
   extractPermissionTokensString str =
     Rgx.match permissionRegex str
       >>= flip Arr.index 1
@@ -126,7 +121,7 @@ retrievePermissionTokens =
 
   permissionTokens :: String -> Array String
   permissionTokens s =
-    M.fromMaybe []
+    fromMaybe []
       $ Str.split ","
       <$> extractPermissionTokensString s
 

@@ -14,79 +14,79 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Share.Component where
+module SlamData.FileSystem.Dialog.Share.Component
+  ( State(..)
+  , Query(..)
+  , comp
+  ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad.Aff (Aff())
 import Control.UI.Browser (select)
 import Control.UI.ZClipboard as Z
 
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Eff (liftEff)
-
-import Halogen
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.CustomProps as CP
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-
-import Utils.DOM (waitLoaded)
-
-type Slam e = Aff (HalogenEffects (zClipboard :: Z.ZCLIPBOARD | e))
+import SlamData.Effects (Slam())
 
 newtype State = State String
 
 data Query a
   = SelectElement HTMLElement a
-  | InitZClipboard String HTMLElement a
+  | InitZClipboard (Maybe HTMLElement) a
   | Dismiss a
 
 newtype Slot = Slot String
 
-comp :: forall e. Component State Query (Slam e)
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
+render :: State -> H.ComponentHTML Query
 render (State url) =
   modalDialog
-  [ modalHeader "URL"
-  , modalBody
-    $ H.form [ Cp.nonSubmit ]
-    [ H.div [ P.classes [ B.formGroup ]
-            , E.onClick (\ev -> pure $ SelectElement ev.target unit)
-            ]
-      [ H.input [ P.classes [ B.formControl ]
-                , P.value url
-                , P.readonly true
-                , P.title "Sharing URL"
-                , ARIA.label "Sharing URL"
+    [ modalHeader "URL"
+    , modalBody
+        $ HH.form
+            [ CP.nonSubmit ]
+            [ HH.div
+                [ HP.classes [ B.formGroup ]
+                , HE.onClick (\ev -> pure $ SelectElement ev.target unit)
                 ]
-      ]
+                [ HH.input
+                    [ HP.classes [ B.formControl ]
+                    , HP.value url
+                    , HP.readonly true
+                    , HP.title "Sharing URL"
+                    , ARIA.label "Sharing URL"
+                    ]
+                ]
+            ]
+    , modalFooter
+        [ HH.button
+            [ HP.id_ "copy-button"
+            , HP.classes [ B.btn, B.btnPrimary ]
+            , HE.onClick (HE.input_ Dismiss)
+            , HP.ref (H.action <<< InitZClipboard)
+            ]
+            [ HH.text "Copy" ]
+        ]
     ]
-  , modalFooter
-    [ H.button [ P.id_ "copy-button"
-               , P.classes [ B.btn, B.btnPrimary ]
-               , E.onClick (E.input_ Dismiss)
-               , P.initializer \el -> action $ InitZClipboard url el
-               ]
-      [ H.text "Copy" ]
-    ]
-  ]
 
-eval :: forall e. Eval Query State Query (Slam e)
+eval :: Natural Query (H.ComponentDSL State Query Slam)
 eval (Dismiss next) = pure next
-eval (InitZClipboard url htmlEl next) = do
+eval (InitZClipboard (Just htmlEl) next) = do
+  State url <- H.get
   let el = htmlElementToElement htmlEl
-  liftAff waitLoaded
-  liftEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
+  H.fromEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
   pure next
-eval (SelectElement el next) = do
-  liftEff $ select el
-  pure next
+eval (InitZClipboard _ next) = pure next
+eval (SelectElement el next) = H.fromEff (select el) $> next

@@ -16,12 +16,11 @@ limitations under the License.
 
 module SlamData.FileSystem.Listing.Item where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Eff (Eff())
 import Control.UI.Browser (setLocation)
 
-import Data.Maybe (Maybe(..))
 import Data.Path.Pathy (printPath)
 
 import DOM (DOM())

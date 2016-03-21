@@ -21,21 +21,13 @@ module SlamData.Notebook.Cell.JTable.Component
   , module SlamData.Notebook.Cell.JTable.Component.State
   ) where
 
-import Prelude
-
-import Control.Bind ((=<<))
-import Control.Monad (when)
+import SlamData.Prelude
 
 import Data.Argonaut.Core as JSON
-import Data.Either (Either(..), either)
-import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Coproduct (coproduct)
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
-import Data.Maybe (Maybe(..), maybe)
 
-import Halogen
+import Halogen as H
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
@@ -49,9 +41,9 @@ import SlamData.Notebook.Cell.JTable.Component.State
 import SlamData.Notebook.Cell.JTable.Model as Model
 import SlamData.Notebook.Cell.Port (Port(..))
 
-jtableComponent :: Component CellStateP CellQueryP Slam
+jtableComponent :: H.Component CellStateP CellQueryP Slam
 jtableComponent = makeResultsCellComponent
-  { component: component render (coproduct evalCell evalJTable)
+  { component: H.component { render, eval: coproduct evalCell evalJTable }
   , initialState: initialState
   , _State: _JTableState
   , _Query: makeQueryPrism _JTableQuery
@@ -65,20 +57,20 @@ queryShouldRun = coproduct (const false) pred
   pred _ = false
 
 -- | Evaluates generic cell queries.
-evalCell :: Natural CellEvalQuery (ComponentDSL State QueryP Slam)
+evalCell :: Natural CellEvalQuery (H.ComponentDSL State QueryP Slam)
 evalCell (NotifyRunCell next) = pure next
 evalCell (EvalCell value k) =
   case value.inputPort of
     Just (TaggedResource { tag, resource }) -> do
-      size <- liftAff $ Auth.authed (Quasar.count resource)
-      oldInput <- gets _.input
+      size <- H.fromAff $ Auth.authed (Quasar.count resource)
+      oldInput <- H.gets _.input
       when    (((oldInput <#> _.resource) /= pure resource)
             || ((oldInput >>= _.tag) /= tag))
-        $ set initialState
-      modify $ _input ?~ { resource, size, tag }
-      p <- gets pendingPageInfo
-      items <- liftAff $ Auth.authed $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
-      modify
+        $ H.set initialState
+      H.modify $ _input ?~ { resource, size, tag }
+      p <- H.gets pendingPageInfo
+      items <- H.fromAff $ Auth.authed $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
+      H.modify
         $ (_isEnteringPageSize .~ false)
         <<< (_result ?~
               { json: JSON.fromArray items
@@ -87,7 +79,7 @@ evalCell (EvalCell value k) =
               })
       pure $ k (result value.inputPort)
     Just Blocked -> do
-      set initialState
+      H.set initialState
       pure $ k (result Nothing)
     _ -> pure $ k (error "expected a Resource input")
   where
@@ -100,20 +92,21 @@ evalCell (EvalCell value k) =
     }
 evalCell (SetupCell _ next) = pure next
 evalCell (Save k) =
-  pure <<< k =<< gets (Model.encode <<< toModel)
+  pure <<< k =<< H.gets (Model.encode <<< toModel)
 evalCell (Load json next) = do
-  either (const (pure unit)) set $ fromModel <$> Model.decode json
+  either (const (pure unit)) H.set $ fromModel <$> Model.decode json
   pure next
 evalCell (SetCanceler _ next) = pure next
+
 -- | Evaluates jtable-specific cell queries.
-evalJTable :: Natural Query (ComponentDSL State QueryP Slam)
+evalJTable :: Natural Query (H.ComponentDSL State QueryP Slam)
 evalJTable (StepPage step next) =
-  modify (stepPage step) $> next
+  H.modify (stepPage step) $> next
 evalJTable (ChangePageSize pageSize next) =
-  maybe (pure unit) (modify <<< resizePage) (Int.fromString pageSize) $> next
+  maybe (pure unit) (H.modify <<< resizePage) (Int.fromString pageSize) $> next
 evalJTable (StartEnterCustomPageSize next) =
-  modify (_isEnteringPageSize .~ true) $> next
+  H.modify (_isEnteringPageSize .~ true) $> next
 evalJTable (SetCustomPageSize size next) =
-  modify (setPageSize size) $> next
+  H.modify (setPageSize size) $> next
 evalJTable (SetCustomPage page next) =
-  modify (setPage page) $> next
+  H.modify (setPage page) $> next

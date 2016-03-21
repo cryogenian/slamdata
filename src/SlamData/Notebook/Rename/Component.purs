@@ -16,21 +16,17 @@ limitations under the License.
 
 module SlamData.Notebook.Rename.Component where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Foldable (traverse_)
-import Data.Functor.Eff (liftEff)
-import Data.Maybe (Maybe(..))
+import DOM.HTML.Types (HTMLElement)
 
-import DOM.HTML.Types (HTMLElement())
-
-import Halogen
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Config as Config
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 
 import Utils.DOM (focus, blur)
@@ -41,12 +37,12 @@ type State =
   }
 
 data Query a
-  = Init HTMLElement a
+  = Ref (Maybe HTMLElement) a
   | SetText String a
   | Focus a
   | Submit a
 
-type RenameDSL = ComponentDSL State Query Slam
+type RenameDSL = H.ComponentDSL State Query Slam
 
 initialState :: State
 initialState =
@@ -54,30 +50,24 @@ initialState =
   , el: Nothing
   }
 
-comp :: Component State Query Slam
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
+render :: State -> H.ComponentHTML Query
 render state =
-  H.div [ P.classes [ Rc.notebookName ] ]
-  [ H.input [ P.value state.value
-            , P.id_ Config.notebookNameEditorId
-            , P.initializer \el -> action (Init el)
-            , E.onValueInput (E.input SetText)
-            , E.onValueChange (E.input_ Submit)
-            ]
-  ]
+  HH.div
+    [ HP.classes [ Rc.notebookName ] ]
+    [ HH.input
+        [ HP.value state.value
+        , HP.id_ Config.notebookNameEditorId
+        , HP.ref (H.action <<< Ref)
+        , HE.onValueInput (HE.input SetText)
+        , HE.onValueChange (HE.input_ Submit)
+        ]
+    ]
 
 eval :: Natural Query RenameDSL
-eval (Init el next) = do
-  modify _{el = pure el}
-  pure next
-eval (SetText str next) = do
-  modify _{value = str}
-  pure next
-eval (Submit next) = do
-  gets _.el >>= traverse_ (liftEff <<< blur)
-  pure next
-eval (Focus next) = do
-  gets _.el >>= traverse_ (liftEff <<< focus)
-  pure next
+eval (Ref el next) = H.modify (_{el = el}) $> next
+eval (SetText str next) = H.modify (_{value = str}) $> next
+eval (Submit next) = (H.gets _.el >>= traverse_ (H.fromEff <<< blur)) $> next
+eval (Focus next) = (H.gets _.el >>= traverse_ (H.fromEff <<< focus)) $> next

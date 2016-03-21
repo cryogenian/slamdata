@@ -1,12 +1,11 @@
 module SlamData.FileSystem.Dialog.Permissions.Component.Install where
 
-import Prelude (Unit())
+import SlamData.Prelude
 
 import Data.Either.Nested (Either6())
-import Data.Functor.Coproduct as C
 import Data.Functor.Coproduct.Nested (Coproduct6())
 
-import Halogen hiding (HTML())
+import Halogen as H
 import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
 
 import Quasar.Auth.Permission as Qp
@@ -96,8 +95,8 @@ cpGroup
        Unit ChildSlot
 cpGroup = cpR
 
-type DSL = ParentDSL State ChildState Query ChildQuery Slam ChildSlot
-type HTML = ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
-type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
-type QueryP = C.Coproduct Query (ChildF ChildSlot ChildQuery)
+type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
+type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)

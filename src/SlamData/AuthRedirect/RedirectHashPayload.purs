@@ -15,21 +15,20 @@ limitations under the License.
 -}
 
 module SlamData.AuthRedirect.RedirectHashPayload
-  ( RedirectHashPayload()
+  ( RedirectHashPayload
   , uriHashParser
   , parseUriHash
   ) where
 
-import Prelude
-import Data.Either as E
+import SlamData.Prelude
+
 import Data.List as L
-import Data.Maybe as M
 import Data.String as S
+import Data.StrMap as SM
+
 import Text.Parsing.StringParser as P
 import Text.Parsing.StringParser.Combinators as PC
 import Text.Parsing.StringParser.String as PS
-import Data.Tuple as T
-import Data.StrMap as SM
 
 import OIDCCryptUtils.Types as OIDC
 
@@ -40,12 +39,12 @@ type RedirectHashPayload =
   , prompt :: String
   }
 
-parameterParser :: P.Parser (T.Tuple String String)
+parameterParser :: P.Parser (Tuple String String)
 parameterParser = do
   key <- PC.many (PS.noneOf ['=']) <#> L.fromList >>> S.fromCharArray
   PS.char '='
   val <- PC.many (PS.noneOf ['&']) <#> L.fromList >>> S.fromCharArray
-  pure $ T.Tuple key val
+  pure $ Tuple key val
 
 parametersParser :: P.Parser (SM.StrMap String)
 parametersParser =
@@ -61,7 +60,7 @@ uriHashParser = do
   PS.char '#'
   params <- parametersParser
 
-  let lookup key = SM.lookup key params # M.maybe (P.fail $ "missing " <> key) pure
+  let lookup key = SM.lookup key params # maybe (P.fail $ "missing " <> key) pure
   idToken <- lookup "id_token" <#> OIDC.IdToken
   authUser <- lookup "authuser"
   state <- lookup "state" <#> OIDC.BoundStateJWS
@@ -76,6 +75,6 @@ uriHashParser = do
 
 parseUriHash
   :: String
-  -> E.Either P.ParseError RedirectHashPayload
+  -> Either P.ParseError RedirectHashPayload
 parseUriHash =
   P.runParser uriHashParser

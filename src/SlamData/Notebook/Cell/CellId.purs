@@ -21,13 +21,10 @@ module SlamData.Notebook.Cell.CellId
   , runCellId
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Argonaut (DecodeJson, EncodeJson, decodeJson, encodeJson)
-import Data.Either (Either(..))
-import Data.Generic (Generic, gEq, gCompare)
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Data.Int as Int
-import Data.Maybe (maybe)
 
 -- | The slot address value for cells and identifier within the notebook graph.
 newtype CellId = CellId Int

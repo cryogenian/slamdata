@@ -18,9 +18,8 @@ module SlamData.Notebook.Cell.Markdown.Interpret
   ( formFieldValueToLiteral
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Either as E
 import Data.List as L
 import Data.Set as Set
 import Data.SQL2.Literal as SQL2
@@ -39,7 +38,7 @@ formFieldValueToLiteral v =
         MD.PlainText -> SQL2.string str
         MD.Numeric ->
           P.runParser str SQL2.parseLiteral
-            # E.either
+            # either
                 (\_ -> SQL2.string str) -- input validation precludes this case
                 id
         MD.Date -> SQL2.date str

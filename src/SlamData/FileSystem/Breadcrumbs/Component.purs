@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Breadcrumbs.Component where
+module SlamData.FileSystem.Breadcrumbs.Component
+  ( State()
+  , Breadcrumb()
+  , rootBreadcrumb
+  , mkBreadcrumbs
+  , Query(..)
+  , comp
+  ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Foldable (foldl)
-import Data.List (List(..), reverse)
-import Data.Maybe (maybe, Maybe(..))
+import Data.List (List(..), (:), reverse)
 import Data.Path.Pathy (rootDir, runDirName, dirName, parentDir)
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam())
@@ -61,32 +66,31 @@ mkBreadcrumbs path sort salt =
   where
   go :: List Breadcrumb -> DirPath -> List Breadcrumb
   go result p =
-    let result' = Cons { name: maybe "" runDirName (dirName p)
-                       , link: p
-                       } result
+    let result' = { name: maybe "" runDirName (dirName p), link: p } : result
     in case parentDir p of
       Just dir -> go result' dir
-      Nothing -> Cons rootBreadcrumb result
+      Nothing -> rootBreadcrumb : result
 
 data Query a = Update DirPath Sort Salt a
 
-comp :: Component State Query Slam
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
+render :: State -> H.ComponentHTML Query
 render r =
-  H.ol [ P.classes [ B.breadcrumb, B.colXs7 ] ]
-  $ foldl (\views model -> view model <> views) [ ] r.breadcrumbs
+  HH.ol
+    [ HP.classes [ B.breadcrumb, B.colXs7 ] ]
+    $ foldl (\views model -> view model <> views) [ ] r.breadcrumbs
   where
   view b =
-    [ H.li_
-        [ H.a
-            [ P.href (browseURL Nothing r.sort r.salt b.link) ]
-            [ H.text b.name ]
+    [ HH.li_
+        [ HH.a
+            [ HP.href (browseURL Nothing r.sort r.salt b.link) ]
+            [ HH.text b.name ]
         ]
     ]
 
-eval :: Eval Query State Query Slam
+eval :: Natural Query (H.ComponentDSL State Query Slam)
 eval (Update path sort salt next) = do
-  set $ mkBreadcrumbs path sort salt
+  H.set $ mkBreadcrumbs path sort salt
   pure next

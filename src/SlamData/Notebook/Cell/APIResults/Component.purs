@@ -16,22 +16,16 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.APIResults.Component where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind ((=<<))
 import Control.Monad.Error.Class as EC
-import Control.Monad.Trans as MT
 
 import Data.Argonaut as J
-import Data.Const
-import Data.Functor.Coproduct
 import Data.Lens as Lens
-import Data.Maybe as M
 import Data.StrMap as SM
-import Data.Void as Void
 
-import Halogen
-import Halogen.HTML.Indexed as H
+import Halogen as H
+import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
@@ -42,50 +36,46 @@ import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Port as Port
 import SlamData.Effects (Slam())
 
-type APIResultsDSL = ComponentDSL State QueryP Slam
+type APIResultsDSL = H.ComponentDSL State QueryP Slam
 
-apiResultsComponent :: Component NC.CellStateP NC.CellQueryP Slam
+apiResultsComponent :: H.Component NC.CellStateP NC.CellQueryP Slam
 apiResultsComponent =
   NC.makeResultsCellComponent
-    { component: component render eval
+    { component: H.component { render, eval }
     , initialState: initialState
     , _State: NC._APIResultsState
     , _Query: NC.makeQueryPrism NC._APIResultsQuery
     }
 
-render
-  :: State
-  -> ComponentHTML QueryP
+render :: State -> H.ComponentHTML QueryP
 render { varMap } =
-  H.table
-    [ HP.classes [ H.className "form-builder"
-                 , B.table
-                 , B.tableStriped
-                 ]
+  HH.table
+    [ HP.classes
+        [ HH.className "form-builder"
+        , B.table
+        , B.tableStriped
+        ]
     ]
-    [ H.thead_
-        [ H.tr_
-            [ H.th_ [ H.text "Name" ]
-            , H.th_ [ H.text "Value" ]
+    [ HH.thead_
+        [ HH.tr_
+            [ HH.th_ [ HH.text "Name" ]
+            , HH.th_ [ HH.text "Value" ]
             ]
         ]
-      , H.tbody_ $ SM.foldMap renderItem varMap
+    , HH.tbody_ $ SM.foldMap renderItem varMap
     ]
 
   where
-    renderItem :: String -> Port.VarMapValue -> Array (ComponentHTML QueryP)
+    renderItem :: String -> Port.VarMapValue -> Array (H.ComponentHTML QueryP)
     renderItem name val =
-      [ H.tr_
-          [ H.td_ [ H.text name ]
-          , H.td_ [ H.code_ [ H.text $ Port.renderVarMapValue val ] ]
+      [ HH.tr_
+          [ HH.td_ [ HH.text name ]
+          , HH.td_ [ HH.code_ [ HH.text $ Port.renderVarMapValue val ] ]
           ]
       ]
 
 eval :: Natural QueryP APIResultsDSL
-eval =
-  coproduct
-    evalCell
-    (getConst >>> Void.absurd)
+eval = coproduct evalCell (getConst >>> absurd)
 
 evalCell :: Natural NC.CellEvalQuery APIResultsDSL
 evalCell q =
@@ -93,16 +83,12 @@ evalCell q =
     NC.EvalCell info k ->
       k <$> NC.runCellEvalT do
         case Lens.preview Port._VarMap =<< info.inputPort of
-          M.Just varMap -> do
-            MT.lift $ modify (_ { varMap = varMap })
+          Just varMap -> do
+            lift $ H.modify (_ { varMap = varMap })
             pure $ Port.VarMap varMap
-          M.Nothing -> EC.throwError "expected VarMap input"
-    NC.SetupCell _ next ->
-      pure next
-    NC.NotifyRunCell next ->
-      pure next
-    NC.Save k ->
-      pure $ k J.jsonEmptyObject
-    NC.Load json next ->
-      pure next
+          Nothing -> EC.throwError "expected VarMap input"
+    NC.SetupCell _ next -> pure next
+    NC.NotifyRunCell next -> pure next
+    NC.Save k -> pure $ k J.jsonEmptyObject
+    NC.Load json next -> pure next
     NC.SetCanceler _ next -> pure next

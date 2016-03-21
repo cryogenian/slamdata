@@ -16,19 +16,18 @@ limitations under the License.
 
 module SlamData.FileSystem.Component.Install where
 
-import Prelude (Unit(), unit, (<<<))
+import SlamData.Prelude
 
-import Data.Either.Nested (Either5())
-import Data.Functor.Coproduct (Coproduct(), left, right)
-import Data.Functor.Coproduct.Nested (Coproduct5())
+import Data.Either.Nested (Either5)
+import Data.Functor.Coproduct.Nested (Coproduct5)
 
-import Halogen (ChildF(..), InstalledState(), ParentDSL(), Action(), action)
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>), injSlot, injQuery)
+import Halogen (ChildF(..), ParentState, ParentDSL, Action, action)
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>), injSlot, injQuery)
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
-import SlamData.FileSystem.Component.Query (Query())
-import SlamData.FileSystem.Component.State (State())
+import SlamData.FileSystem.Component.Query (Query)
+import SlamData.FileSystem.Component.State (State)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Search.Component as Search
@@ -121,6 +120,6 @@ toSignIn =
     <<< left
     <<< action
 
-type StateP = InstalledState State ChildState Query ChildQuery Slam ChildSlot
+type StateP = ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
 type Algebra = ParentDSL State ChildState Query ChildQuery Slam ChildSlot

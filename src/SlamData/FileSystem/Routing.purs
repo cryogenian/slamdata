@@ -21,13 +21,10 @@ module SlamData.FileSystem.Routing
  , parentURL
  ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Alt ((<|>))
 import Control.UI.Browser as Browser
 
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Path.Pathy as P
 
 import Routing.Match (Match(), eitherMatch)

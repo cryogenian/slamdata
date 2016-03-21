@@ -16,9 +16,8 @@ limitations under the License.
 
 module SlamData.SignIn.Menu.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Maybe (Maybe(..))
 import Halogen.Menu.Component as HalogenMenu
 import Halogen.Menu.Component.State as HalogenMenuState
 import Halogen.Menu.Submenu.Component.State as HalogenSubmenuState

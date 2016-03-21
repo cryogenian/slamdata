@@ -16,21 +16,17 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.ChartOptions.Pie where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Argonaut (JCursor())
 import Data.Array
   ( catMaybes, (!!), nub, concatMap, zipWith, length, range, concat
   , groupBy, cons, filter, reverse)
-import Data.Bifunctor (bimap)
-import Data.Foldable (foldl)
 import Data.Function (on)
 import Data.Int (toNumber, fromNumber)
 import Data.List as L
 import Data.Map as M
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.String (split)
-import Data.Tuple (Tuple(..), snd, fst)
 
 import ECharts
 

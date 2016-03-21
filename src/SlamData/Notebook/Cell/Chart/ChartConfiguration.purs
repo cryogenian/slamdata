@@ -16,16 +16,12 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.ChartConfiguration where
 
-import Prelude
-
-import Control.Bind ((>=>))
+import SlamData.Prelude
 
 import Data.Argonaut (Json(), JCursor(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Array (filter)
-import Data.Either (Either())
 import Data.Foldable (any)
 import Data.Lens ((^.))
-import Data.Maybe (maybe)
 
 import SlamData.Form.Select (Select(), _value)
 import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation())

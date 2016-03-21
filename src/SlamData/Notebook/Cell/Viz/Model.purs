@@ -16,12 +16,9 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Viz.Model where
 
-import Prelude
-
-import Control.Bind ((=<<), (>=>))
+import SlamData.Prelude
 
 import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Either (Either())
 
 import SlamData.Notebook.Cell.Chart.ChartConfiguration as CC
 import SlamData.Notebook.Cell.Chart.ChartType (ChartType())

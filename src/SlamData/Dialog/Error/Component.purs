@@ -16,39 +16,40 @@ limitations under the License.
 
 module SlamData.Dialog.Error.Component where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad.Aff (Aff())
-
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import SlamData.Effects (Slam)
 
 newtype State = State String
 
 newtype Query a = Dismiss a
 
-comp :: forall e. Component State Query (Aff (HalogenEffects e))
-comp = component render eval
+comp :: H.Component State Query Slam
+comp = H.component { render, eval }
 
-render :: State -> ComponentHTML Query
+render :: State -> H.ComponentHTML Query
 render (State message) =
   modalDialog
-  [ modalHeader "Error"
-  , modalBody
-    $ H.div [ P.classes [ B.alert, B.alertDanger ] ]
-    [ H.text message ]
-  , modalFooter
-    [ H.button [ P.classes [ B.btn ]
-               , E.onClick (E.input_ Dismiss)
-               ]
-      [ H.text "Dismiss" ]
+    [ modalHeader "Error"
+    , modalBody
+        $ HH.div
+            [ HP.classes [ B.alert, B.alertDanger ] ]
+            [ HH.text message ]
+    , modalFooter
+        [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ Dismiss)
+            ]
+            [ HH.text "Dismiss" ]
+        ]
     ]
-  ]
 
-eval :: forall e. Eval Query State Query (Aff (HalogenEffects e))
+eval :: Natural Query (H.ComponentDSL State Query Slam)
 eval (Dismiss next) = pure next

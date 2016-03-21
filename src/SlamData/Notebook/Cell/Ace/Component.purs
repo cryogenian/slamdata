@@ -24,24 +24,18 @@ module SlamData.Notebook.Cell.Ace.Component
   , module SlamData.Notebook.Cell.Ace.Component.State
   ) where
 
-import Prelude
+import SlamData.Prelude
+
+import Control.Monad.Eff.Class (liftEff)
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
 import Ace.Halogen.Component (AceQuery(..), AceState(), Autocomplete(..), aceConstructor)
 import Ace.Types (Editor())
 
-import Control.Bind (join)
-
-import Data.Either (either)
-import Data.Foldable as F
-import Data.Functor (($>))
-import Data.Functor.Eff (liftEff)
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
-
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Notebook.Cell.Ace.Component.Query
 import SlamData.Notebook.Cell.Ace.Component.State
@@ -54,8 +48,8 @@ import SlamData.Render.CSS as CSS
 
 import Utils.Ace (getRangeRecs, readOnly)
 
-type AceDSL = ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit
-type AceHTML = ParentHTML AceState CellEvalQuery AceQuery Slam Unit
+type AceDSL = H.ParentDSL Unit AceState CellEvalQuery AceQuery Slam Unit
+type AceHTML = H.ParentHTML AceState CellEvalQuery AceQuery Slam Unit
 type AceEvaluator = CellEvalInput -> String -> AceDSL CellEvalResult
 type AceSetup = CellSetupInfo -> AceDSL Unit
 
@@ -65,14 +59,12 @@ type AceConfig =
   , setup :: AceSetup
   }
 
-
-aceComponent
-  :: AceConfig -> Component CellStateP CellQueryP Slam
+aceComponent :: AceConfig -> H.Component CellStateP CellQueryP Slam
 aceComponent {mode, evaluator, setup} = makeEditorCellComponent
   { name: aceCellName mode
   , glyph: aceCellGlyph mode
-  , component: parentComponent render eval
-  , initialState: installedState unit
+  , component: H.parentComponent { render, eval, peek: Nothing }
+  , initialState: H.parentState unit
   , _State: _AceState
   , _Query: makeQueryPrism _AceQuery
   }
@@ -80,10 +72,9 @@ aceComponent {mode, evaluator, setup} = makeEditorCellComponent
   where
   render :: Unit -> AceHTML
   render _ =
-    H.div
-      [ P.classes [CSS.cellInput, CSS.aceContainer]
-      ]
-      [ H.Slot (aceConstructor unit aceSetup (Just Live) ) ]
+    HH.div
+      [ HP.classes [CSS.cellInput, CSS.aceContainer] ]
+      [ HH.Slot (aceConstructor unit aceSetup (Just Live) ) ]
 
   aceSetup :: Editor -> Slam Unit
   aceSetup editor = liftEff do
@@ -96,27 +87,26 @@ aceComponent {mode, evaluator, setup} = makeEditorCellComponent
     session <- Editor.getSession editor
     Session.setMode (aceMode mode) session
 
-
   eval :: Natural CellEvalQuery AceDSL
   eval (NotifyRunCell next) = pure next
   eval (EvalCell info k) = do
-    content <- fromMaybe "" <$> query unit (request GetText)
+    content <- fromMaybe "" <$> H.query unit (H.request GetText)
     result <- evaluator info content
     pure $ k result
   eval (SetupCell input next) = setup input $> next
   eval (Save k) = do
-    content <- fromMaybe "" <$> query unit (request GetText)
-    mbEditor <- query unit (request GetEditor)
-    rrs <- liftEff $ maybe (pure []) getRangeRecs $ join mbEditor
+    content <- fromMaybe "" <$> H.query unit (H.request GetText)
+    mbEditor <- H.query unit (H.request GetEditor)
+    rrs <- H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
     pure $ k $ Model.encode { text: content, ranges: rrs }
   eval (Load json next) = do
     let model = either (const Model.emptyModel) id $ Model.decode json
         text = model.text
         ranges = model.ranges
-    query unit $ action (SetText text)
-    mbEditor <- query unit $ request GetEditor
-    liftEff $ F.for_ (join mbEditor) \editor -> do
-      F.traverse_ (readOnly editor) ranges
+    H.query unit $ H.action (SetText text)
+    mbEditor <- H.query unit $ H.request GetEditor
+    H.fromEff $ for_ (join mbEditor) \editor -> do
+      traverse_ (readOnly editor) ranges
       Editor.navigateFileEnd editor
     pure next
   eval (SetCanceler _ next) = pure next

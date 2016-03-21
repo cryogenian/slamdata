@@ -16,26 +16,23 @@ limitations under the License.
 
 module SlamData.Notebook.Editor.Model where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind ((=<<), (>=>))
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Either (Either(..))
-import Data.Map (Map(), empty)
-import Data.Traversable (traverse)
+import Data.Map as M
 
 import SlamData.Notebook.Cell.CellId (CellId())
 import SlamData.Notebook.Cell.Model as Cell
 
 type Notebook =
   { cells :: Array Cell.Model
-  , dependencies :: Map CellId CellId
+  , dependencies :: M.Map CellId CellId
   }
 
 emptyNotebook :: Notebook
-emptyNotebook = { cells: [ ], dependencies: empty }
+emptyNotebook = { cells: [ ], dependencies: M.empty }
 
 encode :: Notebook -> Json
 encode r

@@ -16,16 +16,15 @@ limitations under the License.
 
 module Halogen.Component.Utils where
 
-import Prelude (Applicative, Monad, pure, Unit(), unit, bind, ($), zero, const)
+import Prelude (Applicative, Bind, pure, Unit(), unit, bind, ($), zero, const)
 
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling as SCR
-
 import Control.Monad.Aff (Aff(), Canceler(), forkAff, later', runAff)
 import Control.Monad.Aff.AVar (AVAR(), makeVar, putVar, takeVar)
+import Control.Monad.Aff.Free (Affable, fromAff)
+import Control.Monad.Eff.Class (liftEff)
 
-import Data.Functor.Aff (FunctorAff, liftAff)
-import Data.Functor.Eff (liftEff)
 import Data.Either as E
 import Data.Time (Milliseconds(..))
 
@@ -49,17 +48,17 @@ forceRerender' = H.liftH (H.liftH (pure unit))
 
 withCanceler
   :: forall a e g
-   . (Monad g, FunctorAff (avar :: AVAR|e) g)
+   . (Bind g, Affable (avar :: AVAR|e) g)
   => (Canceler (avar :: AVAR|e) -> g Unit)
   -> Aff (avar :: AVAR|e) a
   -> g a
 withCanceler act aff = do
-  v <- liftAff makeVar
-  canceler <- liftAff $ forkAff do
+  v <- fromAff makeVar
+  canceler <- fromAff $ forkAff do
     res <- aff
     putVar v res
   act canceler
-  liftAff $ takeVar v
+  fromAff $ takeVar v
 
 liftWithCanceler
   :: forall s f e a

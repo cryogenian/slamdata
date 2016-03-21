@@ -16,13 +16,9 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.ChartType where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Argonaut (fromString)
-import Data.Argonaut.Decode (DecodeJson, decodeJson)
-import Data.Argonaut.Encode (EncodeJson)
-import Data.Either (Either(..))
-import Data.Generic (Generic, gEq, gCompare)
+import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson)
 
 data ChartType = Pie | Line | Bar
 

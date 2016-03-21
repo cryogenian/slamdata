@@ -24,46 +24,34 @@ module SlamData.Notebook.Cell.Component
   , module SlamData.Notebook.Cell.Component.State
   ) where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Bind (join, (=<<))
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Free (liftF)
 import Control.Monad.Aff (cancel)
 import Control.Monad.Eff.Exception as Exn
-import Control.MonadPlus (guard)
 
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Eff (liftEff)
-import Data.Functor.Coproduct (coproduct)
 import Data.Argonaut (jsonNull)
 import Data.Date as Date
-import Data.Either (Either(..))
-import Data.Foldable as F
 import Data.Function (on)
-import Data.Functor (($>))
-import Data.Functor.Aff (liftAff)
-import Data.Functor.Coproduct (left)
-import Data.Functor.Eff (liftEff)
 import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
-import Data.Maybe (Maybe(..), maybe, fromMaybe, isJust)
-import Data.Monoid (mempty)
 import Data.Path.Pathy as Path
 import Data.Visibility (Visibility(..), toggleVisibility)
 
 import DOM.Timer (interval, clearInterval)
 
-import Halogen
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
-import Halogen.HTML.Events.Indexed as E
+import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Effects (Slam())
 import SlamData.FileSystem.Resource (_filePath)
 import SlamData.Notebook.AccessType (AccessType(..))
 import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..), cellGlyph, cellName)
@@ -74,13 +62,12 @@ import SlamData.Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
 import SlamData.Notebook.Cell.Component.State
 import SlamData.Notebook.Cell.Port (Port(..), _Resource)
 import SlamData.Notebook.Cell.RunState (RunState(..))
-import SlamData.Effects (Slam())
 import SlamData.Render.Common (row', glyph)
 import SlamData.Render.CSS as CSS
 
 -- | Type synonym for the full type of a cell component.
-type CellComponent = Component CellStateP CellQueryP Slam
-type CellDSL = ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit
+type CellComponent = H.Component CellStateP CellQueryP Slam
+type CellDSL = H.ParentDSL CellState AnyCellState CellQuery InnerCellQuery Slam Unit
 
 -- | Constructs a cell component for an editor-style cell.
 makeEditorCellComponent
@@ -90,7 +77,7 @@ makeEditorCellComponent
 makeEditorCellComponent def = makeCellComponentPart def render
   where
   render
-    :: Component AnyCellState InnerCellQuery Slam
+    :: H.Component AnyCellState InnerCellQuery Slam
     -> AnyCellState
     -> CellState
     -> CellHTML
@@ -109,7 +96,7 @@ makeSingularCellComponent
 makeSingularCellComponent def = makeCellComponentPart def render
   where
   render
-    :: Component AnyCellState InnerCellQuery Slam
+    :: H.Component AnyCellState InnerCellQuery Slam
     -> AnyCellState
     -> CellState
     -> CellHTML
@@ -124,13 +111,13 @@ cellSourceRender
    . EditorCellDef s f
   -> (CellState -> Boolean)
   -> (CellState -> Array CellHTML)
-  -> Component AnyCellState InnerCellQuery Slam
+  -> H.Component AnyCellState InnerCellQuery Slam
   -> AnyCellState
   -> CellState
   -> CellHTML
 cellSourceRender def collapseWhen afterContent component initialState cs =
   if cs.visibility == Invisible
-    then H.text ""
+    then HH.text ""
     else shown
   where
   shouldCollapse =
@@ -140,14 +127,18 @@ cellSourceRender def collapseWhen afterContent component initialState cs =
 
   shown :: CellHTML
   shown =
-    H.div [ P.classes $ join [ containerClasses, collapsedClass ] ]
+    HH.div [ HP.classes $ join [ containerClasses, collapsedClass ] ]
     $ [ header def cs
-      , H.div
-        [ P.classes [ B.row ], hideIfCollapsed ]
-        [ H.slot unit \_ -> { component: component, initialState: initialState } ]
+      , HH.div
+          [ HP.classes [ B.row ], hideIfCollapsed ]
+          [ HH.slot unit \_ ->
+              { component: component
+              , initialState: initialState
+              }
+          ]
       ]
       <> afterContent cs
-  hideIfCollapsed = if cs.isCollapsed then ARIA.hidden "true" else ARIA.hidden "false"
+  hideIfCollapsed = ARIA.hidden (show cs.isCollapsed)
 
 -- | Constructs a cell component for an results-style cell.
 makeResultsCellComponent
@@ -157,25 +148,25 @@ makeResultsCellComponent
 makeResultsCellComponent def = makeCellComponentPart def render
   where
   render
-    :: Component AnyCellState InnerCellQuery Slam
+    :: H.Component AnyCellState InnerCellQuery Slam
     -> AnyCellState
     -> CellState
     -> CellHTML
   render component initialState cs =
     if cs.visibility == Invisible
-    then H.text ""
+    then HH.text ""
     else
-      H.div
-        [ P.classes containerClasses ]
+      HH.div
+        [ HP.classes containerClasses ]
         [ row' [CSS.cellOutput]
-            [ H.div
-                [ P.class_ CSS.cellOutputLabel ]
-                [ H.text (resLabel cs.input)
-                , H.ul [ P.class_ CSS.nextCellList ] (nextCellButtons cs.output)
+            [ HH.div
+                [ HP.class_ CSS.cellOutputLabel ]
+                [ HH.text (resLabel cs.input)
+                , HH.ul [ HP.class_ CSS.nextCellList ] (nextCellButtons cs.output)
                 ]
-            , H.div
-                [ P.class_ CSS.cellOutputResult ]
-                [ H.slot unit \_ -> { component: component
+            , HH.div
+                [ HP.class_ CSS.cellOutputResult ]
+                [ HH.slot unit \_ -> { component: component
                                     , initialState: initialState
                                     }
                 ]
@@ -202,16 +193,16 @@ makeResultsCellComponent def = makeCellComponentPart def render
 
   nextCellButton :: CellType -> CellHTML
   nextCellButton cellType =
-    H.li_
-      [ H.button
-          [ P.title $ "Insert " ++ (cellName cellType) ++ " cell after this cell"
+    HH.li_
+      [ HH.button
+          [ HP.title $ "Insert " ++ (cellName cellType) ++ " cell after this cell"
           , ARIA.label $ "Insert " ++ (cellName cellType) ++ " cell after this cell"
-          , E.onClick $ E.input_ (CreateChildCell cellType)
+          , HE.onClick $ HE.input_ (CreateChildCell cellType)
           ]
           [ glyph (cellGlyph cellType) ]
       ]
 
-containerClasses :: Array (H.ClassName)
+containerClasses :: Array (HH.ClassName)
 containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
 
 -- | Constructs a cell component from a record with the necessary properties and
@@ -219,11 +210,18 @@ containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
 makeCellComponentPart
   :: forall s f r
    . Object (CellDefProps s f r)
-  -> (Component AnyCellState InnerCellQuery Slam
-      -> AnyCellState -> CellState -> CellHTML)
+  -> (  H.Component AnyCellState InnerCellQuery Slam
+     -> AnyCellState
+     -> CellState
+     -> CellHTML
+     )
   -> CellComponent
 makeCellComponentPart def render =
-  parentComponent' (render component initialState) eval peek
+  H.parentComponent
+    { render: render component initialState
+    , eval
+    , peek: Just (peek <<< H.runChildF)
+    }
   where
 
   _State :: PrismP AnyCellState s
@@ -232,12 +230,12 @@ makeCellComponentPart def render =
   _Query :: forall a. PrismP (InnerCellQuery a) (f a)
   _Query = clonePrism def._Query
 
-  component :: Component AnyCellState InnerCellQuery Slam
+  component :: H.Component AnyCellState InnerCellQuery Slam
   component =
-    transform
-    (review _State) (preview _State)
-    (review _Query) (preview _Query)
-    def.component
+    H.transform
+      (review _State) (preview _State)
+      (review _Query) (preview _Query)
+      def.component
 
   initialState :: AnyCellState
   initialState = review _State def.initialState
@@ -246,16 +244,16 @@ makeCellComponentPart def render =
   eval (RunCell next) = pure next
   eval (StopCell next) = stopRun $> next
   eval (UpdateCell input k) = do
-    liftAff =<< gets (^. _tickStopper)
+    H.fromAff =<< H.gets (^. _tickStopper)
     tickStopper <- startInterval
-    modify (_tickStopper .~ tickStopper)
-    cachingEnabled <- gets _.cachingEnabled
+    H.modify (_tickStopper .~ tickStopper)
+    cachingEnabled <- H.gets _.cachingEnabled
     let input' = prepareCellEvalInput cachingEnabled input
-    modify (_input .~ input'.inputPort)
-    result <- query unit (left (request (EvalCell input')))
-    F.for_ result \{ output } -> modify (_hasResults .~ isJust output)
-    liftAff tickStopper
-    modify
+    H.modify (_input .~ input'.inputPort)
+    result <- H.query unit (left (H.request (EvalCell input')))
+    for_ result \{ output } -> H.modify (_hasResults .~ isJust output)
+    H.fromAff tickStopper
+    H.modify
       $ (_runState %~ finishRun)
       <<< (_output .~ (_.output =<< result))
       <<< (_messages .~ (maybe [] _.messages result))
@@ -264,18 +262,18 @@ makeCellComponentPart def render =
   eval (TrashCell next) = pure next
   eval (CreateChildCell _ next) = pure next
   eval (ToggleCollapsed next) =
-    modify (_isCollapsed %~ not) $> next
+    H.modify (_isCollapsed %~ not) $> next
   eval (ToggleMessages next) =
-    modify (_messageVisibility %~ toggleVisibility) $> next
+    H.modify (_messageVisibility %~ toggleVisibility) $> next
   eval (ToggleCaching next) =
-    modify (_cachingEnabled %~ not) $> next
+    H.modify (_cachingEnabled %~ not) $> next
   eval (ShareCell next) = pure next
   eval (Tick elapsed next) =
-    modify (_runState .~ RunElapsed elapsed) $> next
-  eval (GetOutput k) = k <$> gets (_.output)
+    H.modify (_runState .~ RunElapsed elapsed) $> next
+  eval (GetOutput k) = k <$> H.gets (_.output)
   eval (SaveCell cellId cellType k) = do
-    { hasResults, cachingEnabled } <- get
-    json <- query unit (left (request Save))
+    { hasResults, cachingEnabled } <- H.get
+    json <- H.query unit (left (H.request Save))
     pure <<< k $
       { cellId
       , cellType
@@ -284,29 +282,29 @@ makeCellComponentPart def render =
       , state: fromMaybe jsonNull json
       }
   eval (LoadCell model next) = do
-    F.for_ model.cachingEnabled \b ->
-      modify (_cachingEnabled .~ b)
-    query unit (left (action (Load model.state)))
+    for_ model.cachingEnabled \b ->
+      H.modify (_cachingEnabled .~ b)
+    H.query unit (left (H.action (Load model.state)))
     pure next
   eval (SetCellAccessType at next) =
-    modify (_accessType .~ at) $> next
+    H.modify (_accessType .~ at) $> next
 
-  peek :: forall a. ChildF Unit InnerCellQuery a -> CellDSL Unit
-  peek (ChildF _ q) = coproduct cellEvalPeek (const $ pure unit) q
+  peek :: forall a. InnerCellQuery a -> CellDSL Unit
+  peek = coproduct cellEvalPeek (const $ pure unit)
 
   cellEvalPeek :: forall a. CellEvalQuery a -> CellDSL Unit
-  cellEvalPeek (SetCanceler canceler _) = modify $ _canceler .~ canceler
-  cellEvalPeek (SetupCell _ _) = modify $ _canceler .~ mempty
-  cellEvalPeek (EvalCell _ _) = modify $ _canceler .~ mempty
+  cellEvalPeek (SetCanceler canceler _) = H.modify $ _canceler .~ canceler
+  cellEvalPeek (SetupCell _ _) = H.modify $ _canceler .~ mempty
+  cellEvalPeek (EvalCell _ _) = H.modify $ _canceler .~ mempty
   cellEvalPeek _ = pure unit
 
   stopRun :: CellDSL Unit
   stopRun = do
-    cs <- gets _.canceler
-    ts <- gets _.tickStopper
-    liftAff ts
-    liftAff $ cancel cs (Exn.error "Canceled")
-    modify $ _runState .~ RunInitial
+    cs <- H.gets _.canceler
+    ts <- H.gets _.tickStopper
+    H.fromAff ts
+    H.fromAff $ cancel cs (Exn.error "Canceled")
+    H.modify $ _runState .~ RunInitial
 
 -- | Starts a timer running on an interval that passes Tick queries back to the
 -- | component, allowing the runState to be updated with a timer.
@@ -315,17 +313,17 @@ makeCellComponentPart def render =
 -- | processed.
 startInterval :: CellDSL (Slam Unit)
 startInterval = do
-  ref <- liftEff (newRef Nothing)
-  start <- liftEff Date.now
-  modify (_runState .~ RunElapsed zero)
+  ref <- H.fromEff (newRef Nothing)
+  start <- H.fromEff Date.now
+  H.modify (_runState .~ RunElapsed zero)
 
-  subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do
-    i <- interval 1000 $ emit <<< Left <<< action <<< Tick =<< liftEff do
+  H.subscribe' $ EventSource $ producerToStallingProducer $ produce \emit -> do
+    i <- interval 1000 $ emit <<< Left <<< H.action <<< Tick =<< do
       now <- Date.now
       pure $ on (-) Date.toEpochMilliseconds now start
     writeRef ref (Just i)
 
-  pure $ maybe (pure unit) (liftEff <<< clearInterval) =<< liftEff (readRef ref)
+  pure $ maybe (pure unit) (H.fromEff <<< clearInterval) =<< H.fromEff (readRef ref)
 
 -- | Update the `RunState` from its current value to `RunFinished`.
 finishRun :: RunState -> RunState

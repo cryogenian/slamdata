@@ -18,7 +18,7 @@ module SlamData.Notebook.Cell.Chart.Component.State where
 
 import Prelude (Unit())
 
-import Halogen (InstalledState())
+import Halogen (ParentState())
 import Halogen.ECharts (EChartsState(), EChartsQuery())
 
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
@@ -30,7 +30,7 @@ type State =
   }
 
 type StateP =
-  InstalledState State EChartsState CellEvalQuery EChartsQuery Slam Unit
+  ParentState State EChartsState CellEvalQuery EChartsQuery Slam Unit
 
 initialState :: State
 initialState =

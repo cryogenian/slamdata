@@ -16,13 +16,13 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Viz.Component.Query where
 
-import Data.Functor.Coproduct (Coproduct())
-import Data.Set (Set())
+import Data.Functor.Coproduct (Coproduct)
+import Data.Set (Set)
 
-import Halogen (ChildF())
+import Halogen (ChildF)
 
-import SlamData.Notebook.Cell.Chart.ChartType (ChartType())
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import SlamData.Notebook.Cell.Chart.ChartType (ChartType)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
 import SlamData.Notebook.Cell.Viz.Form.Component as Form
 
 data Query a

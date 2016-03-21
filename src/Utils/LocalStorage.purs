@@ -17,18 +17,21 @@ limitations under the License.
 module Utils.LocalStorage
   ( getLocalStorage
   , setLocalStorage
-  , removeLocalStorage)  where
+  , removeLocalStorage
+  ) where
 
 import Prelude
 
 import Control.Bind ((>=>))
-import Control.Monad.Eff (Eff())
-import Data.Functor.Eff (liftEff, FunctorEff)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (MonadEff, liftEff)
+
 import Data.Argonaut
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), maybe)
 import Data.Function
-import DOM (DOM())
+import Data.Maybe (Maybe(..), maybe)
+
+import DOM (DOM)
 
 foreign import setLocalStorageImpl
   :: forall e. Fn2 String String (Eff (dom :: DOM|e) Unit)
@@ -42,14 +45,14 @@ foreign import removeLocalStorageImpl
 
 setLocalStorage
   :: forall a e g
-   . (EncodeJson a, FunctorEff (dom :: DOM|e) g)
+   . (EncodeJson a, MonadEff (dom :: DOM|e) g)
   => String -> a -> g Unit
 setLocalStorage  key val =
   liftEff $ runFn2 setLocalStorageImpl key $ printJson $ encodeJson val
 
 getLocalStorage
   :: forall a e g
-   . (DecodeJson a, FunctorEff (dom :: DOM|e) g)
+   . (DecodeJson a, MonadEff (dom :: DOM|e) g)
   => String -> g (Either String a)
 getLocalStorage key =
   liftEff
@@ -58,7 +61,7 @@ getLocalStorage key =
 
 removeLocalStorage
   :: forall g e
-   . (FunctorEff (dom :: DOM|e) g)
+   . (MonadEff (dom :: DOM|e) g)
   => String -> g Unit
 removeLocalStorage k =
   liftEff $ removeLocalStorageImpl k
