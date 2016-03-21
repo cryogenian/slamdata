@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Cell.Ace.Component.Query (QueryP()) where
+module SlamData.Notebook.Cell.Ace.Component.Query (QueryP) where
 
 import SlamData.Prelude
 
 import Ace.Halogen.Component as Ace
-import Halogen (ChildF())
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import Halogen (ChildF)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
 
 type QueryP = Coproduct CellEvalQuery (ChildF Unit Ace.AceQuery)

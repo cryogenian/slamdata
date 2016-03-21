@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Component
-  ( CellComponent()
+  ( CellComponent
   , makeEditorCellComponent
   , makeResultsCellComponent
   , makeSingularCellComponent
@@ -36,7 +36,7 @@ import Control.Monad.Eff.Exception as Exn
 import Data.Argonaut (jsonNull)
 import Data.Date as Date
 import Data.Function (on)
-import Data.Lens (PrismP(), review, preview, clonePrism, (.~), (%~), (^.))
+import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
 import Data.Path.Pathy as Path
 import Data.Visibility (Visibility(..), toggleVisibility)
 
@@ -51,15 +51,15 @@ import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource (_filePath)
 import SlamData.Notebook.AccessType (AccessType(..))
 import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..), cellGlyph, cellName)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), prepareCellEvalInput)
-import SlamData.Notebook.Cell.Component.Def
-import SlamData.Notebook.Cell.Component.Query
-import SlamData.Notebook.Cell.Component.Render (CellHTML(), header, statusBar)
-import SlamData.Notebook.Cell.Component.State
+import SlamData.Notebook.Cell.Common.EvalQuery (prepareCellEvalInput)
+import SlamData.Notebook.Cell.Component.Def (CellDefProps, EditorCellDef, ResultsCellDef, makeQueryPrism, makeQueryPrism')
+import SlamData.Notebook.Cell.Component.Query (CellEvalInputPre, CellQueryP, InnerCellQuery, AnyCellQuery(..), CellEvalQuery(..), CellQuery(..), _APIQuery, _APIResultsQuery, _AceQuery, _AnyCellQuery, _CellEvalQuery, _ChartQuery, _DownloadQuery, _ExploreQuery, _JTableQuery, _MarkdownQuery, _SearchQuery, _VizQuery)
+import SlamData.Notebook.Cell.Component.Render (CellHTML, header, statusBar)
+import SlamData.Notebook.Cell.Component.State (AnyCellState, CellState, CellStateP, _APIResultsState, _APIState, _AceState, _ChartState, _DownloadState, _ExploreState, _JTableState, _MarkdownState, _SearchState, _VizState, _accessType, _cachingEnabled, _canceler, _hasResults, _input, _isCollapsed, _messageVisibility, _messages, _output, _runState, _tickStopper, _visibility, initEditorCellState, initResultsCellState)
 import SlamData.Notebook.Cell.Port (Port(..), _Resource)
 import SlamData.Notebook.Cell.RunState (RunState(..))
 import SlamData.Render.Common (row', glyph)
@@ -244,7 +244,7 @@ makeCellComponentPart def render =
   eval (RunCell next) = pure next
   eval (StopCell next) = stopRun $> next
   eval (UpdateCell input k) = do
-    H.fromAff =<< H.gets (^. _tickStopper)
+    H.fromAff =<< H.gets _.tickStopper
     tickStopper <- startInterval
     H.modify (_tickStopper .~ tickStopper)
     cachingEnabled <- H.gets _.cachingEnabled

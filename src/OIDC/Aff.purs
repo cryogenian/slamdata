@@ -18,20 +18,20 @@ module OIDC.Aff where
 
 import Prelude
 
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Random (random, RANDOM())
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Random (random, RANDOM)
 import Control.UI.Browser (hostAndProtocol, getHref, setLocation)
-import DOM (DOM())
+import DOM (DOM)
 import Data.Foldable as F
 import Data.StrMap as Sm
 import Data.Tuple (Tuple(..))
-import Data.URI as URI
+import Data.URI (printURI, runParseURI)
 import Data.URI.Types as URI
 import Global as Global
 import OIDCCryptUtils as Cryptography
 import Quasar.Auth as Auth
-import Quasar.Auth.OpenIDConfiguration
-import Quasar.Auth.Provider
+import Quasar.Auth.OpenIDConfiguration (getOpenIDConfiguration)
+import Quasar.Auth.Provider (ProviderR)
 
 requestAuthentication
   :: ProviderR
@@ -50,7 +50,7 @@ requestAuthentication pr = do
         # _.authorizationEndpoint
   -- The only way to get incorrect `authURIString` is incorrect config
   -- In this situation nothing happens.
-  F.for_ (URI.runParseURI authURIString) \(URI.URI s h q f) ->
+  F.for_ (runParseURI authURIString) \(URI.URI s h q f) ->
     let
       nonce =
         Cryptography.hashNonce replay
@@ -72,4 +72,4 @@ requestAuthentication pr = do
           , Tuple "nonce" $ Cryptography.runHashedNonce nonce
           ]
       uri = URI.URI s h query f
-    in setLocation $ URI.printURI uri
+    in setLocation $ printURI uri

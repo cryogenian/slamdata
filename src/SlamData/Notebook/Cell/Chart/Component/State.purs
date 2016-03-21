@@ -16,13 +16,13 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.Component.State where
 
-import Prelude (Unit())
+import Prelude (Unit)
 
-import Halogen (ParentState())
-import Halogen.ECharts (EChartsState(), EChartsQuery())
+import Halogen (ParentState)
+import Halogen.ECharts (EChartsState, EChartsQuery)
 
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
+import SlamData.Effects (Slam)
 
 type State =
   { width :: Int

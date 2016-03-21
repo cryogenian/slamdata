@@ -18,7 +18,7 @@ module SlamData.Notebook.Cell.JTable.Component.Query where
 
 import SlamData.Prelude
 
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
 
 data Query a
   = StepPage PageStep a

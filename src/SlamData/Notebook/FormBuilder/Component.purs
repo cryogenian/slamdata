@@ -32,7 +32,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Component.Utils (forceRerender')
 
-import SlamData.Notebook.FormBuilder.Component.State
+import SlamData.Notebook.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 import SlamData.Notebook.FormBuilder.Item.Component as Item
 
 -- | The query signature for the FormBuilder component

@@ -24,7 +24,7 @@ import Data.List (List(..), filter, fromList, catMaybes)
 import Data.Map as M
 import Data.StrMap as Sm
 
-import SlamData.Notebook.Cell.Chart.Semantics
+import SlamData.Notebook.Cell.Chart.Semantics (Semantics, jarrayToSemantics, checkCategory, checkTime, checkBool, checkPercent, checkMoney, checkValues)
 
 data Axis
   = ValAxis (List (Maybe Semantics))

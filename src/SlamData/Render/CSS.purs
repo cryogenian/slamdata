@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Render.CSS where
 
-import Halogen.HTML.Core (className, ClassName())
+import Halogen.HTML.Core (className, ClassName)
 
 filesystem :: ClassName
 filesystem = className "filesystem"

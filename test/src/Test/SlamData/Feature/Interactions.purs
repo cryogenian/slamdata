@@ -1,14 +1,14 @@
 module Test.SlamData.Feature.Interactions where
 
+import Prelude
 import Control.Apply ((*>))
 import Control.Bind ((=<<), (<=<))
 import Control.Monad.Eff.Class (liftEff)
-import Data.Maybe (Maybe(..))
 import Data.Map as Map
-import Prelude
+import Data.Maybe (Maybe(..))
 import Selenium.Monad (get, refresh, getCurrentUrl)
-import Test.Feature (click, provideFileInputValue, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, provideFieldValue, selectFromDropdown, pushRadioButton, check, uncheck, accessUrlFromFieldValue, provideFieldValueUntilExpectedValue)
-import Test.SlamData.Feature.Monad (SlamFeature(), getConfig, waitTime)
+import Test.Feature (click, provideFileInputValue, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, pushRadioButton, check, uncheck, accessUrlFromFieldValue, provideFieldValueUntilExpectedValue)
+import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
 import Test.Utils (appendToCwd)
 import XPath as XPath

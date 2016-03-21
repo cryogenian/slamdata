@@ -21,7 +21,7 @@ import Prelude
 import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff.Random (random, RANDOM)
 
-import Data.Foldable (Foldable, foldl)
+import Data.Foldable (class Foldable, foldl)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Tuple (Tuple(..), snd)

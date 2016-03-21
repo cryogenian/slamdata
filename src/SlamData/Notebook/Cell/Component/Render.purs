@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Component.Render
-  ( CellHTML()
+  ( CellHTML
   , header
   , statusBar
   ) where
@@ -28,17 +28,17 @@ import Data.Lens ((^?))
 import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
 import Data.Visibility (Visibility(..))
 
-import Halogen (ParentHTML())
+import Halogen (ParentHTML)
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Notebook.Cell.Component.Query (CellQuery(..), InnerCellQuery())
-import SlamData.Notebook.Cell.Component.State (CellState(), AnyCellState(), _cachingEnabled)
+import SlamData.Notebook.Cell.Component.Query (CellQuery(..), InnerCellQuery)
+import SlamData.Notebook.Cell.Component.State (CellState, AnyCellState, _cachingEnabled)
 import SlamData.Notebook.Cell.RunState (RunState(..), isRunning)
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph, glyphInactive)
 import SlamData.Render.CSS as CSS
 

@@ -18,8 +18,8 @@ module SlamData.Download.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (EncodeJson, DecodeJson, encodeJson, decodeJson, (:=), (~>), (.?), jsonEmptyObject)
-import Data.Lens (LensP(), lens)
+import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson, (:=), (~>), (.?), jsonEmptyObject)
+import Data.Lens (LensP, lens)
 import Data.MediaType (MediaType(..))
 import Data.String as Str
 import Data.String.Regex as Rx
@@ -201,12 +201,13 @@ instance decodeJsonPrecision :: DecodeJson PrecisionMode where
       "Readable" -> pure Readable
       "Precise" -> pure Precise
       _ -> Left "Incorrect Precision"
-toHeaders'
+
+toHeaders
   :: forall r
    . { compress :: Boolean
      , options :: Either CSVOptions JSONOptions|r}
   -> Array RequestHeader
-toHeaders' r =
+toHeaders r =
   encHeaderArray r.compress ++ [ acceptHeader ]
   where
   acceptHeader :: RequestHeader

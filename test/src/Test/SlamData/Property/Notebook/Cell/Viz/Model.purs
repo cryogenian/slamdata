@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module Test.SlamData.Property.Notebook.Cell.Viz.Model
-  ( ArbModel()
+  ( ArbModel
   , runArbModel
   , check
   ) where
@@ -27,7 +27,7 @@ import Data.Foldable (fold)
 
 import SlamData.Notebook.Cell.Viz.Model as M
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 import Test.SlamData.Property.Notebook.Cell.Chart.ChartType (runArbChartType)
 import Test.SlamData.Property.Notebook.Cell.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)

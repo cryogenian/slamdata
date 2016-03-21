@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Component.State
   ( CellState(..)
-  , CellStateP()
+  , CellStateP
   , initEditorCellState
   , initResultsCellState
   , _accessType
@@ -31,7 +31,7 @@ module SlamData.Notebook.Cell.Component.State
   , _input
   , _output
   , _canceler
-  , AnyCellState()
+  , AnyCellState
   , _AceState
   , _ExploreState
   , _MarkdownState
@@ -46,28 +46,28 @@ module SlamData.Notebook.Cell.Component.State
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Canceler())
+import Control.Monad.Aff (Canceler)
 
-import Data.Lens (LensP(), lens, PrismP(), TraversalP(), prism', wander)
+import Data.Lens (LensP, lens, PrismP, TraversalP, prism', wander)
 import Data.Visibility (Visibility(..))
 
-import Halogen (ParentState())
+import Halogen (ParentState)
 
 import SlamData.Notebook.AccessType (AccessType(..))
 import SlamData.Notebook.Cell.Ace.Component.State as Ace
 import SlamData.Notebook.Cell.API.Component.State as API
 import SlamData.Notebook.Cell.APIResults.Component.State as APIResults
 import SlamData.Notebook.Cell.Chart.Component.State as Chart
-import SlamData.Notebook.Cell.Component.Query (CellQuery(), InnerCellQuery())
+import SlamData.Notebook.Cell.Component.Query (CellQuery, InnerCellQuery)
 import SlamData.Notebook.Cell.Download.Component.State as Download
 import SlamData.Notebook.Cell.Explore.Component.State as Explore
 import SlamData.Notebook.Cell.JTable.Component.State as JTable
 import SlamData.Notebook.Cell.Markdown.Component.State as Markdown
-import SlamData.Notebook.Cell.Port (Port())
+import SlamData.Notebook.Cell.Port (Port)
 import SlamData.Notebook.Cell.RunState (RunState(..))
 import SlamData.Notebook.Cell.Search.Component.State as Search
 import SlamData.Notebook.Cell.Viz.Component.State as Viz
-import SlamData.Effects (Slam(), SlamDataEffects())
+import SlamData.Effects (Slam, SlamDataEffects)
 
 -- | The common state value for notebook cells.
 -- |

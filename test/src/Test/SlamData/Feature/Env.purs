@@ -15,13 +15,13 @@ limitations under the License.
 -}
 
 module Test.SlamData.Feature.Env
-  ( ENV()
+  ( ENV
   , getEnv
   )
   where
 
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Exception (EXCEPTION())
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Exception (EXCEPTION)
 
 foreign import data ENV :: !
 foreign import getEnv :: forall eff. String -> Eff (env :: ENV, err :: EXCEPTION | eff) String

@@ -19,7 +19,7 @@ module SlamData.FileSystem.Dialog.Mount.SQL2.Component.State where
 import SlamData.Prelude
 
 import Data.Array (filter)
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 import Data.List as List
 import Data.String.Regex as Rx
 import Data.StrMap as SM

@@ -35,15 +35,15 @@ import Quasar.Paths as Paths
 
 import SlamData.Download.Model as D
 import SlamData.Download.Render as Rd
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource (resourcePath)
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellType (cellName, cellGlyph, CellType(Download))
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
 import SlamData.Notebook.Cell.Component (makeSingularCellComponent, makeQueryPrism, _DownloadState, _DownloadQuery)
 import SlamData.Notebook.Cell.Component as Cc
-import SlamData.Notebook.Cell.Download.Component.Query
-import SlamData.Notebook.Cell.Download.Component.State
+import SlamData.Notebook.Cell.Download.Component.Query (QueryP, Query(..))
+import SlamData.Notebook.Cell.Download.Component.State (State, _compress, _options, _source, decode, encode, initialState)
 import SlamData.Notebook.Cell.Port as P
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
@@ -147,7 +147,7 @@ downloadButton state =
       <> headers
 
   headers :: String
-  headers = encodeURIComponent $ show $ reqHeadersToJSON $ D.toHeaders' state
+  headers = encodeURIComponent $ show $ reqHeadersToJSON $ D.toHeaders state
 
 eval :: Natural QueryP DownloadDSL
 eval = coproduct cellEval downloadEval

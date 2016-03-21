@@ -35,12 +35,12 @@ import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellType as CT
-import SlamData.Notebook.Cell.Common.EvalQuery as NC
+import SlamData.Notebook.Cell.Common.EvalQuery (runCellEvalT, liftWithCanceler)
 import SlamData.Notebook.Cell.Component as NC
-import SlamData.Notebook.Cell.Explore.Component.Query
-import SlamData.Notebook.Cell.Explore.Component.State
+import SlamData.Notebook.Cell.Explore.Component.Query (Query(..), QueryP)
+import SlamData.Notebook.Cell.Explore.Component.State (State, StateP, initialState)
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Notebook.FileInput.Component as FI
 import SlamData.Render.CSS as CSS
 
@@ -71,7 +71,7 @@ eval
        (H.ParentDSL State FI.State NC.CellEvalQuery FI.Query Slam Unit)
 eval (NC.NotifyRunCell next) = pure next
 eval (NC.EvalCell info k) =
-  k <$> NC.runCellEvalT do
+  k <$> runCellEvalT do
     resource <-
       H.query unit (H.request FI.GetSelectedFile)
         <#> (join <<< maybe (Left "There is no file input subcomponent") Right)
@@ -81,7 +81,7 @@ eval (NC.EvalCell info k) =
         resource
         ("File " <> R.resourcePath resource <> " doesn't exist")
       # Auth.authed
-      # NC.liftWithCanceler
+      # liftWithCanceler
       # lift
       >>= traverse_ EC.throwError
     pure $ Port.TaggedResource {resource, tag: Nothing}

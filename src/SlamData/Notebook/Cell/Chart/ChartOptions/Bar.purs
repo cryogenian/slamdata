@@ -18,68 +18,67 @@ module SlamData.Notebook.Cell.Chart.ChartOptions.Bar where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor())
+import Data.Argonaut (JCursor)
 import Data.Array as A
 import Data.List as L
-import Data.Map (Map())
+import Data.Map (Map)
 import Data.Map as M
 import Data.String (split)
 
-import ECharts
+import ECharts as EC
 
 import SlamData.Notebook.Cell.Chart.Axis as Ax
-import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration())
-import SlamData.Notebook.Cell.Chart.ChartOptions.Common
+import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration)
+import SlamData.Notebook.Cell.Chart.ChartOptions.Common (Key, PieBarData, commonNameMap, keyCategory, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, pieBarData)
 
 buildBar
-  :: M.Map JCursor Ax.Axis -> Int -> Int -> ChartConfiguration -> Option
+  :: M.Map JCursor Ax.Axis -> Int -> Int -> ChartConfiguration -> EC.Option
 buildBar axises angle size conf = case axisSeriesPair of
   Tuple xAxisR series ->
-    Option optionDefault { series = Just $ map Just series
-                         , xAxis = Just $ OneAxis $ Axis
-                                   $ mixAxisLabelAngleAndFontSize angle size xAxisR
-                         , yAxis = Just yAxis
-                         , tooltip = Just tooltip
-                         , legend = Just $ mkLegend series
-                         , color = Just colors
-                         , grid = Just $ Grid gridDefault
-                           { y2 = Just $ Percent 15.0
-                           }
-                         }
+    EC.Option EC.optionDefault
+      { series = Just $ map Just series
+      , xAxis = Just $ EC.OneAxis $ EC.Axis
+                $ mixAxisLabelAngleAndFontSize angle size xAxisR
+      , yAxis = Just yAxis
+      , tooltip = Just tooltip
+      , legend = Just $ mkLegend series
+      , color = Just colors
+      , grid = Just $ EC.Grid EC.gridDefault { y2 = Just $ EC.Percent 15.0 }
+      }
   where
-  tooltip :: Tooltip
-  tooltip = Tooltip $ tooltipDefault { trigger = Just TriggerAxis }
+  tooltip :: EC.Tooltip
+  tooltip = EC.Tooltip $ EC.tooltipDefault { trigger = Just EC.TriggerAxis }
 
-  mkLegend :: Array Series -> Legend
+  mkLegend :: Array EC.Series -> EC.Legend
   mkLegend ss =
-    Legend legendDefault { "data" = Just $ map legendItemDefault $ extractNames ss }
+    EC.Legend EC.legendDefault { "data" = Just $ map EC.legendItemDefault $ extractNames ss }
 
-  extractNames :: Array Series -> Array String
+  extractNames :: Array EC.Series -> Array String
   extractNames ss = A.catMaybes $ map extractName ss
 
-  extractName :: Series -> Maybe String
-  extractName (BarSeries r) = r.common.name
+  extractName :: EC.Series -> Maybe String
+  extractName (EC.BarSeries r) = r.common.name
   extractName _ = Nothing
 
-  axisSeriesPair :: Tuple AxisRec (Array Series)
+  axisSeriesPair :: Tuple EC.AxisRec (Array EC.Series)
   axisSeriesPair = mkSeries extracted
 
   extracted :: PieBarData
   extracted = pieBarData $ buildChartAxises axises conf
 
-  yAxis :: Axises
-  yAxis = OneAxis $ Axis $ axisDefault { "type" = Just ValueAxis }
+  yAxis :: EC.Axises
+  yAxis = EC.OneAxis $ EC.Axis $ EC.axisDefault { "type" = Just EC.ValueAxis }
 
-mkSeries :: PieBarData -> Tuple AxisRec (Array Series)
+mkSeries :: PieBarData -> Tuple EC.AxisRec (Array EC.Series)
 mkSeries pbData = Tuple xAxis series
   where
-  xAxis :: AxisRec
-  xAxis = axisDefault { "type" = Just CategoryAxis
-                      , "data" = Just $ map CommonAxisData catVals
-                      , axisTick = Just $ AxisTick axisTickDefault
-                        { interval = Just $ Custom zero
-                        }
-                      }
+  xAxis :: EC.AxisRec
+  xAxis = EC.axisDefault
+    { "type" = Just EC.CategoryAxis
+    , "data" = Just $ map EC.CommonAxisData catVals
+    , axisTick = Just $
+        EC.AxisTick EC.axisTickDefault { interval = Just $ EC.Custom zero }
+    }
 
   keysArray :: Array Key
   keysArray = L.fromList $ M.keys pbData
@@ -87,25 +86,29 @@ mkSeries pbData = Tuple xAxis series
   catVals :: Array String
   catVals = A.nub $ map keyCategory keysArray
 
-  series :: Array Series
+  series :: Array EC.Series
   series = map serie $ L.fromList $ M.toList group
 
-  serie :: Tuple String (Array Number) -> Series
+  serie :: Tuple String (Array Number) -> EC.Series
   serie (Tuple name nums) =
-    BarSeries { common: universalSeriesDefault
-                  { name = if name == "" then Nothing else Just name }
-              , barSeries: barSeriesDefault
-                  { "data" = Just $ map simpleData nums
-                  , stack = Just $ "total " <> stackFromName name
-                  }
-              }
+    EC.BarSeries
+      { common:
+          EC.universalSeriesDefault
+            { name = if name == "" then Nothing else Just name }
+      , barSeries:
+          EC.barSeriesDefault
+            { "data" = Just $ map simpleData nums
+            , stack = Just $ "total " <> stackFromName name
+            }
+      }
+
   stackFromName :: String -> String
   stackFromName str = case split ":" str of
     [x, _, _] -> x
     _ -> ""
 
-  simpleData :: Number -> ItemData
-  simpleData n = Value $ Simple n
+  simpleData :: Number -> EC.ItemData
+  simpleData n = EC.Value $ EC.Simple n
 
   group :: Map String (Array Number)
   group = nameMap $ L.fromList $ M.toList pbData

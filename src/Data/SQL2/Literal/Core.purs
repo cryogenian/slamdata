@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module Data.SQL2.Literal.Core
-  ( Literal()
+  ( Literal
   , LiteralF(..)
   , renderLiteralF
   , renderLiteral
@@ -36,9 +36,9 @@ module Data.SQL2.Literal.Core
 
 import Prelude
 
-import Data.Eq1
+import Data.Eq1 (class Eq1)
 import Data.Foldable as F
-import Data.Functor.Mu
+import Data.Functor.Mu (Mu, unroll, roll)
 import Data.StrMap as SM
 import Data.String.Regex as Rx
 

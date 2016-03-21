@@ -1,5 +1,5 @@
 module Test.SlamData.Property.Notebook.FormBuilder.Model
-  ( ArbModel()
+  ( ArbModel
   , runArbModel
   , check
   ) where
@@ -7,7 +7,7 @@ module Test.SlamData.Property.Notebook.FormBuilder.Model
 import Prelude
 import Data.Either as E
 import SlamData.Notebook.FormBuilder.Model as FB
-import SlamData.Notebook.FormBuilder.Item.Model as Item
+import SlamData.Notebook.FormBuilder.Item.Model (EqModel(..))
 import Test.SlamData.Property.Notebook.FormBuilder.Item.Model as Item
 import Test.StrongCheck ((<?>))
 import Test.StrongCheck as SC
@@ -31,4 +31,4 @@ check =
     case FB.decode (FB.encode model) of
       E.Left err -> SC.Failed $ "Decode failed: " ++ err
       E.Right model' ->
-        (Item.EqModel <$> model.items) == (Item.EqModel <$> model'.items) <?> "items mismatch"
+        (EqModel <$> model.items) == (EqModel <$> model'.items) <?> "items mismatch"

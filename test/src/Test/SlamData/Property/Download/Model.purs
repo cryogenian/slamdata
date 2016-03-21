@@ -5,7 +5,7 @@ import Prelude
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 import SlamData.Download.Model as D
 
 newtype ArbArrayMode = ArbArrayMode D.ArrayMode

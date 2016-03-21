@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 module Test.SlamData.Feature.SauceLabs
-  ( SauceLabsCredentialsR()
-  , SauceLabsConfigR()
+  ( SauceLabsCredentialsR
+  , SauceLabsConfigR
   , sauceLabsCredentialsFromEnv
   , sauceLabsConfigFromConfig
   , buildSauceLabs
@@ -25,17 +25,17 @@ module Test.SlamData.Feature.SauceLabs
 
 import Prelude
 
-import Control.Monad.Eff (Eff())
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (EXCEPTION(), catchException)
+import Control.Monad.Eff.Exception (EXCEPTION, catchException)
 
 import Data.Maybe (Maybe(..))
 
-import Selenium.Builder
-import Selenium.Capabilities
+import Selenium.Builder (Build, withCapabilities, usingServer)
+import Selenium.Capabilities (Capabilities)
 
-import Test.SlamData.Feature.Config (Config())
-import Test.SlamData.Feature.Env (ENV(), getEnv)
+import Test.SlamData.Feature.Config (Config)
+import Test.SlamData.Feature.Env (ENV, getEnv)
 
 type SauceLabsCredentialsR =
   { username :: String

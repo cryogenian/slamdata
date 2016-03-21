@@ -1,5 +1,5 @@
 module Test.SlamData.Property.Notebook.Cell.Ace.Model
-  ( ArbModel()
+  ( ArbModel
   , runArbModel
   , check
   ) where
@@ -10,9 +10,9 @@ import Data.Array as A
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import SlamData.Notebook.Cell.Ace.Model as M
-import Utils.Ace (RangeRec(), eqRangeRec)
+import Utils.Ace (RangeRec, eqRangeRec)
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 newtype ArbRangeRec = ArbRangeRec RangeRec
 

@@ -15,22 +15,22 @@ limitations under the License.
 -}
 
 module Test.Property.Utils.Path
-  ( ArbFilePath()
+  ( ArbFilePath
   , runArbFilePath
-  , ArbDirPath()
+  , ArbDirPath
   , runArbDirPath
   ) where
 
 import Prelude
 
 import Data.Foldable (foldl)
-import Data.Path.Pathy (Path(), Rel(), Dir(), Sandboxed(), (</>), dir, file, rootDir)
+import Data.Path.Pathy (Path, Rel, Dir, Sandboxed, (</>), dir, file, rootDir)
 import Data.String (null)
 
-import Test.StrongCheck (Arbitrary, arbitrary)
-import Test.StrongCheck.Gen (Gen(), suchThat, chooseInt, vectorOf)
+import Test.StrongCheck (class Arbitrary, arbitrary)
+import Test.StrongCheck.Gen (Gen, suchThat, chooseInt, vectorOf)
 
-import Utils.Path (FilePath(), DirPath())
+import Utils.Path (FilePath, DirPath)
 
 newtype ArbFilePath = ArbFilePath FilePath
 

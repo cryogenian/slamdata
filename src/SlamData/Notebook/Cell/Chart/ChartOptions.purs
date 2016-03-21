@@ -16,13 +16,13 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Chart.ChartOptions (buildOptions) where
 
-import Data.Argonaut (JArray(), JCursor())
+import Data.Argonaut (JArray, JCursor)
 import Data.Map as M
 
-import ECharts (Option())
+import ECharts (Option)
 
-import SlamData.Notebook.Cell.Chart.Axis (analyzeJArray, Axis())
-import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration())
+import SlamData.Notebook.Cell.Chart.Axis (analyzeJArray, Axis)
+import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Notebook.Cell.Chart.ChartOptions.Bar (buildBar)
 import SlamData.Notebook.Cell.Chart.ChartOptions.Line (buildLine)
 import SlamData.Notebook.Cell.Chart.ChartOptions.Pie (buildPie)

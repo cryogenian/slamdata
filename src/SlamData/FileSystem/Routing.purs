@@ -27,7 +27,7 @@ import Control.UI.Browser as Browser
 
 import Data.Path.Pathy as P
 
-import Routing.Match (Match(), eitherMatch)
+import Routing.Match (Match, eitherMatch)
 import Routing.Match.Class (param)
 
 import SlamData.Config as Config
@@ -35,7 +35,7 @@ import SlamData.FileSystem.Listing.Sort (Sort(..), string2sort, sort2string)
 import SlamData.FileSystem.Routing.Salt (Salt(..), runSalt)
 
 import Text.SlamSearch (mkQuery)
-import Text.SlamSearch.Types (SearchQuery())
+import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path as UP
 

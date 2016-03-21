@@ -18,9 +18,9 @@ module SlamData.Notebook.Cell.Chart.Component.Query where
 
 import SlamData.Prelude
 
-import Halogen (ChildF())
-import Halogen.ECharts (EChartsQuery())
+import Halogen (ChildF)
+import Halogen.ECharts (EChartsQuery)
 
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
 
 type QueryP = Coproduct CellEvalQuery (ChildF Unit EChartsQuery)

@@ -30,37 +30,37 @@ import Data.String.Regex as Rgx
 
 import SlamData.FileSystem.Resource as M
 
-import Text.SlamSearch as S
-import Text.SlamSearch.Types as S
+import Text.SlamSearch as SS
+import Text.SlamSearch.Types as SST
 
-isSearchQuery :: S.SearchQuery -> Boolean
+isSearchQuery :: SST.SearchQuery -> Boolean
 isSearchQuery query =
-  not $ S.check unit query (\_ -> isNotSearchTerm)
-  where isNotSearchTerm :: S.Term -> Boolean
-        isNotSearchTerm (S.Term {predicate: p, labels: ls, include: i}) =
+  not $ SS.check unit query (\_ -> isNotSearchTerm)
+  where isNotSearchTerm :: SST.Term -> Boolean
+        isNotSearchTerm (SST.Term {predicate: p, labels: ls, include: i}) =
           case ls of
-            Cons (S.Common "path") Nil -> true
+            Cons (SST.Common "path") Nil -> true
             _ -> false
 
 -- | check if string satisfies predicate from `purescript-search`
-check :: S.Predicate -> String -> Boolean
+check :: SST.Predicate -> String -> Boolean
 check p prj =
   case p of
-    S.Contains (S.Text str) -> match $ "*" <> escapeGlob str <> "*"
-    S.Gt (S.Text str) -> compare str == GT
-    S.Gte (S.Text str) -> compare str == GT || compare str == EQ
-    S.Lt (S.Text str) -> compare str == LT
-    S.Lte (S.Text str) -> compare str == LT || compare str == EQ
-    S.Ne (S.Text str) -> compare str == LT || compare str == GT
-    S.Eq (S.Text str) -> compare str == EQ
+    SST.Contains (SST.Text str) -> match $ "*" <> escapeGlob str <> "*"
+    SST.Gt (SST.Text str) -> compare str == GT
+    SST.Gte (SST.Text str) -> compare str == GT || compare str == EQ
+    SST.Lt (SST.Text str) -> compare str == LT
+    SST.Lte (SST.Text str) -> compare str == LT || compare str == EQ
+    SST.Ne (SST.Text str) -> compare str == LT || compare str == GT
+    SST.Eq (SST.Text str) -> compare str == EQ
     -- since we use _minimatch_ to check `Contains` predicate
     -- `Like` predicate works exactly like `Contains` if we
     -- replace `% -> *` and `_ -> ?`
-    S.Like s -> match $ like2glob s
-    S.Range val val' ->
+    SST.Like s -> match $ like2glob s
+    SST.Range val val' ->
       let c = flip check prj in
-      (c (S.Gte val) && c (S.Lte val')) ||
-      (c (S.Lte val) && c (S.Gte val'))
+      (c (SST.Gte val) && c (SST.Lte val')) ||
+      (c (SST.Lte val) && c (SST.Gte val'))
     _ -> true
   where escapeGlob str = Str.replace "*" "\\*" $ Str.replace "?" "\\?" str
         percentRgx = Rgx.regex "%" flags
@@ -72,23 +72,23 @@ check p prj =
           Rgx.replace percentRgx "*" $ Rgx.replace underscoreRgx "?" $ str
 
 -- | Extract path predicate from search query
-searchPath :: S.SearchQuery -> Maybe String
+searchPath :: SST.SearchQuery -> Maybe String
 searchPath query =
   runFirst $ foldMap fn query
   where
   fn term = First $ case term of
-    S.Term { include: true
-           , predicate: S.Contains (S.Text path)
-           , labels: Cons (S.Common "path") Nil } -> Just path
+    SST.Term { include: true
+           , predicate: SST.Contains (SST.Text path)
+           , labels: Cons (SST.Common "path") Nil } -> Just path
     _ -> Nothing
 
 
 
 
 -- | Filtering function for items and predicates
-filterByTerm :: M.Resource -> S.Term -> Boolean
+filterByTerm :: M.Resource -> SST.Term -> Boolean
 filterByTerm r
-  (S.Term {predicate: predicate, labels: labels, include: include}) =
+  (SST.Term {predicate: predicate, labels: labels, include: include}) =
   let name :: String
       name = M.resourceName r
 
@@ -105,16 +105,16 @@ filterByTerm r
     -- no labels -> check by both fields
     Nil -> check' name
     -- we've already checked _path_ when had got it from backend
-    Cons (S.Common "path") Nil -> true
+    Cons (SST.Common "path") Nil -> true
     -- check _name_
-    Cons (S.Common "name") Nil -> check' name
+    Cons (SST.Common "name") Nil -> check' name
     -- check _type_
-    Cons (S.Common "type") Nil -> check' res
+    Cons (SST.Common "type") Nil -> check' res
     -- check _type_
-    Cons (S.Common "resource") Nil -> check' res
+    Cons (SST.Common "resource") Nil -> check' res
     _ -> false
 
 -- | Filter by full search query
-filterByQuery :: S.SearchQuery ->  M.Resource -> Boolean
+filterByQuery :: SST.SearchQuery ->  M.Resource -> Boolean
 filterByQuery query res =
-  S.check res query filterByTerm
+  SS.check res query filterByTerm

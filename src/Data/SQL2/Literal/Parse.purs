@@ -34,8 +34,8 @@ import Data.String as S
 import Data.StrMap as SM
 import Data.Tuple as T
 
-import Data.Functor.Mu
-import Data.SQL2.Literal.Core
+import Data.Functor.Mu (roll)
+import Data.SQL2.Literal.Core (Literal, LiteralF(..))
 
 import Text.Parsing.Parser as P
 import Text.Parsing.Parser.Combinators as PC

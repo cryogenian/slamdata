@@ -31,7 +31,7 @@ import Data.String as Str
 import Data.StrMap as SM
 
 import Ace.Halogen.Component as Ace
-import Ace.Types (Completion())
+import Ace.Types (Completion)
 
 import Halogen (query, action, request, fromEff)
 
@@ -39,7 +39,7 @@ import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
-import SlamData.Notebook.Cell.Ace.Component (AceDSL())
+import SlamData.Notebook.Cell.Ace.Component (AceDSL)
 import SlamData.Notebook.Cell.Common.EvalQuery as CEQ
 import SlamData.Notebook.Cell.Port as Port
 

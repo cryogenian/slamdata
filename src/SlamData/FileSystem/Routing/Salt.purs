@@ -18,8 +18,8 @@ module SlamData.FileSystem.Routing.Salt where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Random (RANDOM(), randomInt)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Random (RANDOM, randomInt)
 
 newtype Salt = Salt String
 

@@ -18,13 +18,13 @@ module SlamData.Notebook.Cell.Markdown.Component.State where
 
 import SlamData.Prelude
 
-import Halogen (ParentState())
+import Halogen (ParentState)
 
-import Text.Markdown.SlamDown (SlamDown())
-import Text.Markdown.SlamDown.Html (SlamDownState(), SlamDownQuery())
+import Text.Markdown.SlamDown (SlamDown)
+import Text.Markdown.SlamDown.Html (SlamDownState, SlamDownQuery)
 
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
+import SlamData.Effects (Slam)
 
 type State = Maybe SlamDown
 

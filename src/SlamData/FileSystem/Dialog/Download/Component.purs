@@ -31,10 +31,10 @@ import Data.String as Str
 import Halogen as H
 
 import SlamData.Download.Model as D
-import SlamData.FileSystem.Dialog.Download.Component.Query
-import SlamData.FileSystem.Dialog.Download.Component.Render
-import SlamData.FileSystem.Dialog.Download.Component.State
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
+import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
+import SlamData.FileSystem.Dialog.Download.Component.Render (render)
+import SlamData.FileSystem.Dialog.Download.Component.State (State, _compress, _error, _options, _showSourcesList, _source, _sources, _targetName, checkExists, initialState, validate)
 import SlamData.FileSystem.Resource (Resource(..), resourceName)
 
 import Utils.Path (parseAnyPath)
@@ -67,10 +67,11 @@ eval (ToggleCompress next) = do
   H.modify validate
   pure next
 eval (SetOutput ty next) = do
-  H.modify (_options %~ case ty of
-             D.CSV -> Left <<< either id (const D.initialCSVOptions)
-             D.JSON -> Right <<< either (const D.initialJSONOptions) id
-         )
+  H.modify
+    $ _options
+    %~ case ty of
+        D.CSV -> Left <<< either id (const D.initialCSVOptions)
+        D.JSON -> Right <<< either (const D.initialJSONOptions) id
   H.modify validate
   pure next
 eval (ModifyCSVOpts fn next) = do

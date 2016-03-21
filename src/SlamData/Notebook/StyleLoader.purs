@@ -18,17 +18,17 @@ module SlamData.Notebook.StyleLoader where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (Eff())
+import Control.Monad.Eff (Eff)
 import Control.UI.Browser (decodeURIComponent)
 
 import Data.Array as Arr
 import Data.Nullable as N
 import Data.String as Str
 import Data.String.Regex as Rgx
-import Data.URI as URI
-import Data.URI.Types as URI
+import Data.URI (printURIRef, runParseURIRef) as URI
+import Data.URI.Types (URIRef) as URI
 
-import DOM (DOM())
+import DOM (DOM)
 import DOM.HTML (window)
 import DOM.HTML.Location as Location
 import DOM.HTML.Types (htmlDocumentToDocument, htmlDocumentToParentNode, htmlDocumentToNode)
@@ -37,7 +37,7 @@ import DOM.Node.Document (createElement)
 import DOM.Node.Element as Element
 import DOM.Node.Node as Node
 import DOM.Node.ParentNode as ParentNode
-import DOM.Node.Types (Node(), elementToNode)
+import DOM.Node.Types (Node, elementToNode)
 
 retrieveStyles
   :: forall e

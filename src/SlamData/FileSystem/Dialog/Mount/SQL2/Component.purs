@@ -16,9 +16,9 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.SQL2.Component
   ( comp
-  , Query()
-  , QueryP()
-  , StateP()
+  , Query
+  , QueryP
+  , StateP
   , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
   , module SlamData.FileSystem.Dialog.Mount.SQL2.Component.State
   ) where
@@ -34,8 +34,8 @@ import Data.StrMap as Sm
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceQuery(..), AceState(), Autocomplete(..), aceConstructor)
-import Ace.Types (Editor())
+import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceConstructor)
+import Ace.Types (Editor)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -44,10 +44,10 @@ import Halogen.HTML.Properties.Indexed as HP
 import Quasar.Aff as API
 import Quasar.Auth as Auth
 
-import SlamData.Effects (Slam())
-import SlamData.FileSystem.Dialog.Mount.Common.Render
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
-import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State
+import SlamData.Effects (Slam)
+import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
+import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State (State, _initialQuery, _vars, emptyVar, initialState, isEmptyVar, processState, rxEmpty, stateFromViewInfo)
 import SlamData.FileSystem.Resource as R
 
 type Query = SettingsQuery State

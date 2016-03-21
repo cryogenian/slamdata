@@ -15,17 +15,17 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.JTable.Model
-  ( Model()
-  , Result()
+  ( Model
+  , Result
   , encode
   , decode
   ) where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 
-import SlamData.FileSystem.Resource (Resource())
+import SlamData.FileSystem.Resource (Resource)
 
 type Model =
   { input :: Maybe Resource

@@ -24,7 +24,7 @@ import Data.Foldable (fold)
 import SlamData.Notebook.Cell.Chart.ChartConfiguration as CC
 
 import Test.Property.ArbJson (runArbJCursor)
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 import Test.SlamData.Property.Form.Select (runArbSelect)
 import Test.SlamData.Property.Notebook.Cell.Chart.Aggregation (runArbAggregation)
 

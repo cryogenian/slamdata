@@ -2,14 +2,14 @@ module Test.Utils where
 
 import Prelude
 
-import Control.Alt (Alt, (<|>))
+import Control.Alt (class Alt, (<|>))
 import Control.Apply ((*>))
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Exception (EXCEPTION(), throw)
-import Data.Foldable (Foldable, foldr)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Exception (EXCEPTION, throw)
+import Data.Foldable (class Foldable, foldr)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Either (Either(..), either)
-import Node.Process (PROCESS(), cwd)
+import Node.Process (PROCESS, cwd)
 
 
 ifFalse :: forall m. (Applicative m) => m Unit -> Boolean -> m Unit

@@ -1,12 +1,12 @@
 module Test.SlamData.Property.Notebook.FormBuilder.Item.FieldType
-  ( ArbFieldType()
+  ( ArbFieldType
   , runArbFieldType
   ) where
 
 import Prelude
-import SlamData.Notebook.FormBuilder.Item.FieldType
-import Test.StrongCheck as SC
-import Test.StrongCheck.Gen as SC
+import SlamData.Notebook.FormBuilder.Item.FieldType (FieldType, allFieldTypes)
+import Test.StrongCheck (class Arbitrary)
+import Test.StrongCheck.Gen (allInArray)
 
 newtype ArbFieldType = ArbFieldType FieldType
 
@@ -16,8 +16,8 @@ runArbFieldType
 runArbFieldType (ArbFieldType ft) =
   ft
 
-instance arbitraryArbFieldType :: SC.Arbitrary ArbFieldType where
+instance arbitraryArbFieldType :: Arbitrary ArbFieldType where
   arbitrary =
     ArbFieldType <$>
-      SC.allInArray allFieldTypes
+      allInArray allFieldTypes
 

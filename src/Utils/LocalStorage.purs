@@ -26,9 +26,9 @@ import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (MonadEff, liftEff)
 
-import Data.Argonaut
+import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson, printJson)
 import Data.Either (Either(..))
-import Data.Function
+import Data.Function (Fn3, Fn2, runFn3, runFn2)
 import Data.Maybe (Maybe(..), maybe)
 
 import DOM (DOM)

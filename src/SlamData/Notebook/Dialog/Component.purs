@@ -16,23 +16,23 @@ limitations under the License.
 
 module SlamData.Notebook.Dialog.Component
   ( Dialog(..)
-  , State()
+  , State
   , initialState
   , Query(..)
-  , ChildSlot()
-  , ChildQuery()
-  , ChildState()
-  , ErrorSlot()
-  , EmbedSlot()
-  , StateP()
-  , QueryP()
+  , ChildSlot
+  , ChildQuery
+  , ChildState
+  , ErrorSlot
+  , EmbedSlot
+  , StateP
+  , QueryP
   , comp
   ) where
 
 import SlamData.Prelude
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, prjQuery, prjSlot)
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, prjQuery, prjSlot)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -41,7 +41,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Notebook.Cell.Port.VarMap as Port
 import SlamData.Notebook.Dialog.Embed.Component as Embed
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Render.Common (fadeWhen)
 
 data Dialog

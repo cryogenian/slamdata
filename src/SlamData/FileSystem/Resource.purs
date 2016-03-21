@@ -59,12 +59,12 @@ import SlamData.Prelude
 
 import Data.Argonaut.Combinators ((~>), (:=), (.?))
 import Data.Argonaut.Core (jsonEmptyObject)
-import Data.Argonaut.Decode (DecodeJson, decodeJson)
-import Data.Argonaut.Encode (EncodeJson)
-import Data.Foreign as F
-import Data.Foreign.Class as F
-import Data.Foreign.NullOrUndefined as F
-import Data.Lens (lens, prism', LensP(), PrismP(), (.~))
+import Data.Argonaut.Decode (class DecodeJson, decodeJson)
+import Data.Argonaut.Encode (class EncodeJson)
+import Data.Foreign (ForeignError(..)) as F
+import Data.Foreign.Class (class IsForeign, readProp) as F
+import Data.Foreign.NullOrUndefined (runNullOrUndefined) as F
+import Data.Lens (lens, prism', LensP, PrismP, (.~))
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S

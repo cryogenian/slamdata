@@ -1,10 +1,10 @@
 module Test.SlamData.Feature.Effects where
 
-import Control.Monad.Aff.AVar (AVAR())
-import Control.Monad.Eff.Random (RANDOM())
-import Database.Mongo.Mongo (DB())
-import Node.ChildProcess (CHILD_PROCESS())
-import Test.SlamData.Feature.Env (ENV())
+import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Eff.Random (RANDOM)
+import Database.Mongo.Mongo (DB)
+import Node.ChildProcess (CHILD_PROCESS)
+import Test.SlamData.Feature.Env (ENV)
 
 type SlamFeatureEffects e =
   ( childProcess :: CHILD_PROCESS

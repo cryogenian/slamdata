@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.API.Model
-  ( Model()
+  ( Model
   , encode
   , decode
   ) where

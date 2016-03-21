@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module Test.SlamData.Property.Notebook.Cell.Search.Model
-  ( ArbModel()
+  ( ArbModel
   , runArbModel
   , check
   ) where
@@ -27,7 +27,7 @@ import Data.Foldable (mconcat)
 
 import SlamData.Notebook.Cell.Search.Model as M
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 import Test.SlamData.Property.FileSystem.Resource (runArbResource)
 

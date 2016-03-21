@@ -1,5 +1,5 @@
 module Test.SlamData.Property.Notebook.FormBuilder.Item.Model
-  ( ArbModel()
+  ( ArbModel
   , runArbModel
   , check
   ) where

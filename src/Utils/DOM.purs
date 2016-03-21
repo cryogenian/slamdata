@@ -17,16 +17,16 @@ limitations under the License.
 module Utils.DOM where
 
 import Control.Bind ((=<<))
-import Control.Monad.Aff (Aff())
-import Control.Monad.Eff (Eff())
-import DOM (DOM())
-import DOM.Event.Types (EventTarget())
+import Control.Monad.Aff (Aff)
+import Control.Monad.Eff (Eff)
+import DOM (DOM)
+import DOM.Event.Types (EventTarget)
 import DOM.HTML (window)
-import DOM.HTML.Types (HTMLElement(), htmlElementToElement, htmlDocumentToDocument)
+import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlDocumentToDocument)
 import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
-import DOM.Node.Types (elementToParentNode, Element(), documentToEventTarget)
-import Data.Maybe (Maybe())
+import DOM.Node.Types (elementToParentNode, Element, documentToEventTarget)
+import Data.Maybe (Maybe)
 import Data.Nullable (toMaybe)
 import Prelude
 import Unsafe.Coerce (unsafeCoerce)

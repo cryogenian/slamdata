@@ -29,12 +29,12 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Notebook.Cell.APIResults.Component.Query
-import SlamData.Notebook.Cell.APIResults.Component.State
-import SlamData.Notebook.Cell.Common.EvalQuery as NC
+import SlamData.Effects (Slam)
+import SlamData.Notebook.Cell.APIResults.Component.Query (QueryP)
+import SlamData.Notebook.Cell.APIResults.Component.State (State, initialState)
+import SlamData.Notebook.Cell.Common.EvalQuery (runCellEvalT)
 import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Effects (Slam())
 
 type APIResultsDSL = H.ComponentDSL State QueryP Slam
 
@@ -81,7 +81,7 @@ evalCell :: Natural NC.CellEvalQuery APIResultsDSL
 evalCell q =
   case q of
     NC.EvalCell info k ->
-      k <$> NC.runCellEvalT do
+      k <$> runCellEvalT do
         case Lens.preview Port._VarMap =<< info.inputPort of
           Just varMap -> do
             lift $ H.modify (_ { varMap = varMap })

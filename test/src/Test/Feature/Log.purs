@@ -22,7 +22,7 @@ import Control.Monad.Trans (lift)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
-import Test.Feature.Monad (Feature())
+import Test.Feature.Monad (Feature)
 
 successMsg :: forall eff o. String -> Feature eff o Unit
 successMsg msg = void $ lift $ log $ green msg

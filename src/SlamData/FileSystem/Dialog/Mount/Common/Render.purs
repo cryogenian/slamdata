@@ -20,18 +20,18 @@ import SlamData.Prelude
 
 import Data.Array ((..))
 import Data.Array as Arr
-import Data.Lens (LensP(), TraversalP(), (.~), (^.))
+import Data.Lens (LensP, TraversalP, (.~), (^.))
 import Data.Lens.Index (ix)
 import Data.Profunctor.Strong (first, second)
 
-import Halogen
+import Halogen (HTML)
 import Halogen.CustomProps as CP
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
 import SlamData.Render.CSS as Rc
 
 section :: forall p i. String -> Array (HTML p i) -> HTML p i

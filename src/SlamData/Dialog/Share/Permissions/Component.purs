@@ -18,7 +18,7 @@ module SlamData.Dialog.Share.Permissions.Component where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP(), lens, (%~), (.~))
+import Data.Lens (LensP, lens, (%~), (.~))
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -26,9 +26,9 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Auth.Permission (Permissions())
+import Quasar.Auth.Permission (Permissions)
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 
 notAllowed :: Permissions

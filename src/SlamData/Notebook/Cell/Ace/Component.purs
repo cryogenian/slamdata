@@ -16,10 +16,10 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Ace.Component
   ( aceComponent
-  , AceEvaluator()
-  , AceDSL()
-  , AceHTML()
-  , AceSetup()
+  , AceEvaluator
+  , AceDSL
+  , AceHTML
+  , AceSetup
   , module SlamData.Notebook.Cell.Ace.Component.Query
   , module SlamData.Notebook.Cell.Ace.Component.State
   ) where
@@ -30,20 +30,20 @@ import Control.Monad.Eff.Class (liftEff)
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceQuery(..), AceState(), Autocomplete(..), aceConstructor)
-import Ace.Types (Editor())
+import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceConstructor)
+import Ace.Types (Editor)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Notebook.Cell.Ace.Component.Query
-import SlamData.Notebook.Cell.Ace.Component.State
+import SlamData.Notebook.Cell.Ace.Component.Query (QueryP)
+import SlamData.Notebook.Cell.Ace.Component.State (StateP)
 import SlamData.Notebook.Cell.Ace.Model as Model
-import SlamData.Notebook.Cell.CellType (AceMode(), aceMode, aceCellName, aceCellGlyph)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult(), CellEvalInput(), CellSetupInfo())
-import SlamData.Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism, _AceState, _AceQuery)
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.CellType (AceMode, aceMode, aceCellName, aceCellGlyph)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult, CellEvalInput, CellSetupInfo)
+import SlamData.Notebook.Cell.Component (CellStateP, CellQueryP, makeEditorCellComponent, makeQueryPrism, _AceState, _AceQuery)
+import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
 
 import Utils.Ace (getRangeRecs, readOnly)

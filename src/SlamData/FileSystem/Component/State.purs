@@ -18,13 +18,13 @@ module SlamData.FileSystem.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 import Data.Path.Pathy (rootDir)
 
 import SlamData.FileSystem.Listing.Sort (Sort(..))
 import SlamData.FileSystem.Routing.Salt (Salt(..))
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
 type State =
   { path :: DirPath

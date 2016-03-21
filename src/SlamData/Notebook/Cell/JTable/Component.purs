@@ -32,12 +32,12 @@ import Halogen as H
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
 
-import SlamData.Effects (Slam())
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
-import SlamData.Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _JTableState, _JTableQuery)
-import SlamData.Notebook.Cell.JTable.Component.Query
+import SlamData.Effects (Slam)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult)
+import SlamData.Notebook.Cell.Component (CellQueryP, CellStateP, makeResultsCellComponent, makeQueryPrism, _JTableState, _JTableQuery)
+import SlamData.Notebook.Cell.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Notebook.Cell.JTable.Component.Render (render)
-import SlamData.Notebook.Cell.JTable.Component.State
+import SlamData.Notebook.Cell.JTable.Component.State (Input, PageInfo, State, _input, _isEnteringPageSize, _page, _pageSize, _resource, _result, _size, currentPageInfo, fromModel, initialState, pendingPageInfo, resizePage, setPage, setPageSize, stepPage, toModel)
 import SlamData.Notebook.Cell.JTable.Model as Model
 import SlamData.Notebook.Cell.Port (Port(..))
 

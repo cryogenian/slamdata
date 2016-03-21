@@ -16,12 +16,12 @@ limitations under the License.
 
 module Control.UI.Browser.Event (raiseEvent) where
 
-import Control.Monad.Eff (Eff())
+import Control.Monad.Eff (Eff)
 
-import Data.Function (Fn2(), runFn2)
+import Data.Function (Fn2, runFn2)
 
-import DOM (DOM())
-import DOM.HTML.Types (HTMLElement())
+import DOM (DOM)
+import DOM.HTML.Types (HTMLElement)
 
 
 foreign import raiseEventImpl

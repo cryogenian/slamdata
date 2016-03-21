@@ -16,8 +16,8 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Component.Query
   ( CellQuery(..)
-  , CellQueryP()
-  , InnerCellQuery()
+  , CellQueryP
+  , InnerCellQuery
   , _CellEvalQuery
   , _AnyCellQuery
   , AnyCellQuery(..)
@@ -36,27 +36,27 @@ module SlamData.Notebook.Cell.Component.Query
 
 import SlamData.Prelude
 
-import Data.Lens (PrismP(), prism')
+import Data.Lens (PrismP, prism')
 import Data.Lens.Prism.Coproduct (_Left, _Right)
-import Data.Time (Milliseconds())
+import Data.Time (Milliseconds)
 
-import Halogen (ChildF())
+import Halogen (ChildF)
 
 import SlamData.Notebook.AccessType as Na
 
 import SlamData.Notebook.Cell.Ace.Component.Query as Ace
 import SlamData.Notebook.Cell.API.Component.Query as API
 import SlamData.Notebook.Cell.APIResults.Component.Query as APIResults
-import SlamData.Notebook.Cell.CellId (CellId())
-import SlamData.Notebook.Cell.CellType (CellType())
+import SlamData.Notebook.Cell.CellId (CellId)
+import SlamData.Notebook.Cell.CellType (CellType)
 import SlamData.Notebook.Cell.Chart.Component.Query as Chart
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInputPre())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalInputPre)
 import SlamData.Notebook.Cell.Download.Component.Query as Download
 import SlamData.Notebook.Cell.Explore.Component.Query as Explore
 import SlamData.Notebook.Cell.JTable.Component.Query as JTable
 import SlamData.Notebook.Cell.Markdown.Component.Query as Markdown
 import SlamData.Notebook.Cell.Model as Cell
-import SlamData.Notebook.Cell.Port (Port())
+import SlamData.Notebook.Cell.Port (Port)
 import SlamData.Notebook.Cell.Search.Component.Query as Search
 import SlamData.Notebook.Cell.Viz.Component.Query as Viz
 

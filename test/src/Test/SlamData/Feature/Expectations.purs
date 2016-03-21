@@ -4,7 +4,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Prelude
 import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectScreenshotToMatchAny, expectSelectValue)
-import Test.SlamData.Feature.Monad (SlamFeature())
+import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 
 cellsInTableColumnInLastCardToEq

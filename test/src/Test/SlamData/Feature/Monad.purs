@@ -18,7 +18,7 @@ module Test.SlamData.Feature.Monad where
 
 import Prelude
 
-import Control.Monad.Reader.Class
+import Control.Monad.Reader.Class (ask)
 import Control.Monad.Aff.Class (liftAff)
 
 import Data.Foldable (traverse_)
@@ -28,9 +28,9 @@ import Node.FS.Aff (mkdir)
 import Selenium.Monad (apathize, later)
 
 import Test.Feature.Log (warnMsg)
-import Test.Feature.Monad (Feature())
-import Test.SlamData.Feature.Config (Config())
-import Test.SlamData.Feature.Effects (SlamFeatureEffects())
+import Test.Feature.Monad (Feature)
+import Test.SlamData.Feature.Config (Config)
+import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 
 type SlamFeature = Feature (SlamFeatureEffects ()) (config :: Config)
 

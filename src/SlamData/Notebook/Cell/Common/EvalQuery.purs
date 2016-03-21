@@ -16,13 +16,13 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Common.EvalQuery
   ( CellEvalQuery(..)
-  , CellEvalResult()
-  , CellEvalResultP()
-  , CellEvalInputP()
-  , CellEvalInputPre()
-  , CellEvalInput()
-  , CellSetupInfo()
-  , CellEvalT()
+  , CellEvalResult
+  , CellEvalResultP
+  , CellEvalInputP
+  , CellEvalInputPre
+  , CellEvalInput
+  , CellSetupInfo
+  , CellEvalT
   , runCellEvalT
   , temporaryOutputResource
   , prepareCellEvalInput
@@ -32,25 +32,25 @@ module SlamData.Notebook.Cell.Common.EvalQuery
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Canceler())
+import Control.Monad.Aff (Canceler)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 import Control.Monad.Writer.Class as WC
 import Control.Monad.Writer.Trans as WT
 
-import Data.Argonaut.Core (Json())
+import Data.Argonaut.Core (Json)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellId as CID
-import SlamData.Notebook.Cell.Port (Port())
+import SlamData.Notebook.Cell.Port (Port)
 import SlamData.Notebook.Cell.Port.VarMap as Port
-import SlamData.Effects (Slam(), SlamDataEffects())
+import SlamData.Effects (Slam, SlamDataEffects)
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
-import Halogen (ParentDSL())
+import Halogen (ParentDSL)
 import Halogen.Component.Utils as Hu
 
 type CellEvalInputP r =
@@ -94,7 +94,7 @@ temporaryOutputResource info =
       else R.Mount <<< R.View
   where
     outputDirectory =
-      filterMaybe (== P.rootDir) info.notebookPath #
+      filterMaybe (_ == P.rootDir) info.notebookPath #
         fromMaybe (P.rootDir </> P.dir ".tmp")
 
     outputFile =

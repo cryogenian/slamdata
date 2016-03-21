@@ -18,23 +18,23 @@ module SlamData.Notebook.Cell.Chart.ChartOptions.Common where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor())
+import Data.Argonaut (JCursor)
 import Data.Array (catMaybes, cons, (!!))
 import Data.Array as A
 import Data.Int (toNumber)
 import Data.Lens (view)
 import Data.List (List(..), replicate, length)
 import Data.List as L
-import Data.Map (Map())
+import Data.Map (Map)
 import Data.Map as M
 
-import ECharts
+import ECharts (AxisRec, AxisLabel(..), TextStyle(..), textStyleDefault, axisLabelDefault)
 
 import SlamData.Form.Select (_value)
 import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation(..), runAggregation)
 import SlamData.Notebook.Cell.Chart.Axis as Ax
-import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(), JSelect())
-import SlamData.Notebook.Cell.Chart.Semantics (Semantics(), printSemantics, semanticsToNumber)
+import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration, JSelect)
+import SlamData.Notebook.Cell.Chart.Semantics (Semantics, printSemantics, semanticsToNumber)
 
 type ChartAxises =
   { dimensions :: Array (List (Maybe String))
@@ -217,7 +217,7 @@ mkKey cat f s =
 
 keyName :: Key -> String
 keyName k =
-  (fromMaybe "" (keyMbSeries1 k)) <> (maybe "" (":" <>) (keyMbSeries2 k))
+  (fromMaybe "" (keyMbSeries1 k)) <> (maybe "" (":" <> _) (keyMbSeries2 k))
 
 type LabeledPoints = M.Map Key (Array Number)
 type PieBarData = M.Map Key Number

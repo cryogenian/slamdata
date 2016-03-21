@@ -15,9 +15,9 @@ limitations under the License.
 -}
 
 module Test.Property.ArbJson
-  ( ArbJson()
+  ( ArbJson
   , runArbJson
-  , ArbJCursor()
+  , ArbJCursor
   , runArbJCursor
   ) where
 
@@ -29,8 +29,8 @@ import Data.Argonaut
 import Data.Array as A
 import Data.String as S
 
-import Test.StrongCheck
-import Test.StrongCheck.Gen
+import Test.StrongCheck (class Arbitrary, arbitrary)
+import Test.StrongCheck.Gen (Gen, chooseInt, suchThat, vectorOf, oneOf)
 
 newtype ArbJson = ArbJson Json
 

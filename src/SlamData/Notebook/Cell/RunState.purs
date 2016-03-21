@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.RunState (RunState(..), isRunning) where
 
-import Data.Time (Milliseconds())
+import Data.Time (Milliseconds)
 
 data RunState
   = RunInitial

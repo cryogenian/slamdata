@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Dialog.Share.Confirm.Component
   ( Query(..)
-  , State()
+  , State
   , comp
   ) where
 
@@ -31,7 +31,7 @@ import Halogen.HTML.Indexed as HH
 
 import Quasar.Auth.Permission as P
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 
 type State

@@ -30,12 +30,12 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Effects (Slam())
-import SlamData.Notebook.Cell.API.Component.Query
-import SlamData.Notebook.Cell.API.Component.State
+import SlamData.Effects (Slam)
+import SlamData.Notebook.Cell.API.Component.Query (QueryP)
+import SlamData.Notebook.Cell.API.Component.State (State, initialState)
 import SlamData.Notebook.Cell.API.Model as Model
 import SlamData.Notebook.Cell.CellType as CT
-import SlamData.Notebook.Cell.Common.EvalQuery as NC
+import SlamData.Notebook.Cell.Common.EvalQuery (runCellEvalT)
 import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Port as Port
 import SlamData.Notebook.FormBuilder.Component as FB
@@ -85,7 +85,7 @@ eval :: Natural NC.CellEvalQuery APIDSL
 eval q =
   case q of
     NC.EvalCell info k ->
-      k <$> NC.runCellEvalT do
+      k <$> runCellEvalT do
         fields <-
           H.query unit (H.request (FB.GetItems >>> left))
             # lift

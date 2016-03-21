@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 module Halogen.CustomProps
-  ( MbIEventProp()
-  , InputProp()
+  ( MbIEventProp
+  , InputProp
   , mbInput
   , mbValueInput
   , nonSubmit
@@ -34,31 +34,31 @@ import Prelude
 import Data.Either (either)
 import Data.ExistsR (mkExistsR)
 import Data.Foreign (toForeign)
-import Data.Foreign.Class (IsForeign, readProp)
+import Data.Foreign.Class (class IsForeign, readProp)
 import Data.Functor (($>))
 import Data.Maybe (Maybe(..))
 
-import Halogen.HTML.Core
-import Halogen.HTML.Events.Handler (EventHandler(), preventDefault)
-import Halogen.HTML.Events.Indexed (IEventProp())
-import Halogen.HTML.Events (EventProp())
-import Halogen.HTML.Events.Types (Event(), MouseEvent(), KeyboardEvent())
-import Halogen.HTML.Properties.Indexed (IProp(), I(), GlobalProperties(), InteractiveEvents())
+import Halogen.HTML.Core as H
+import Halogen.HTML.Events.Handler (EventHandler, preventDefault)
+import Halogen.HTML.Events.Indexed (IEventProp)
+import Halogen.HTML.Events (EventProp)
+import Halogen.HTML.Events.Types (Event, MouseEvent, KeyboardEvent)
+import Halogen.HTML.Properties.Indexed (IProp, I, GlobalProperties, InteractiveEvents)
 
 import Unsafe.Coerce (unsafeCoerce)
 
-type MbEventProp e i = (Event e -> EventHandler (Maybe i)) -> Prop i
+type MbEventProp e i = (Event e -> EventHandler (Maybe i)) -> H.Prop i
 
-mbHandler :: forall fields i. EventName fields -> MbEventProp fields i
-mbHandler name k = Handler (mkExistsR (HandlerF name k))
+mbHandler :: forall fields i. H.EventName fields -> MbEventProp fields i
+mbHandler name k = H.Handler (mkExistsR (H.HandlerF name k))
 
 addForeignMbHandler
   :: forall i value
    . (IsForeign value)
-  => String -> String -> (value -> EventHandler (Maybe i)) -> Prop i
+  => String -> String -> (value -> EventHandler (Maybe i)) -> H.Prop i
 addForeignMbHandler key prop handler =
-  handler'
-  (eventName key)
+  H.handler'
+  (H.eventName key)
   (either (const $ pure Nothing) handler <<< readProp prop <<< toForeign <<< _.target)
 
 type MbIEventProp r e i = (Event e -> EventHandler (Maybe i)) -> IProp r i
@@ -71,7 +71,7 @@ mbInput :: forall r i. MbIEventProp (onInput :: I | r) () i
 mbInput = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp () i
-  unrefined = mbHandler (eventName "input")
+  unrefined = mbHandler (H.eventName "input")
 
 mbValueInput
   :: forall i r
@@ -79,14 +79,14 @@ mbValueInput
   -> IProp (value :: I, onInput :: I | r) i
 mbValueInput = unsafeCoerce unrefined
   where
-  unrefined :: (String -> EventHandler (Maybe i)) -> Prop i
+  unrefined :: (String -> EventHandler (Maybe i)) -> H.Prop i
   unrefined = addForeignMbHandler "input" "value"
 
 nonSubmit :: forall i r . IProp (onSubmit :: I | r) i
 nonSubmit = unsafeCoerce unrefined
   where
-  unrefined :: Prop i
-  unrefined = mbHandler (eventName "submit") (\_ -> preventDefault $> Nothing)
+  unrefined :: H.Prop i
+  unrefined = mbHandler (H.eventName "submit") (\_ -> preventDefault $> Nothing)
 
 -- Mouse events
 
@@ -94,19 +94,19 @@ mbClick :: forall r i. MbIEventProp (onClick :: I|r) MouseEvent i
 mbClick = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp MouseEvent i
-  unrefined = mbHandler (eventName "click")
+  unrefined = mbHandler (H.eventName "click")
 
 mbDoubleClick :: forall r i. MbIEventProp (onDoubleClick :: I|r) MouseEvent i
 mbDoubleClick = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp MouseEvent i
-  unrefined = mbHandler (eventName "dblclick")
+  unrefined = mbHandler (H.eventName "dblclick")
 
 mbMouseDown :: forall r i. MbIEventProp (onMouseDown :: I|r) MouseEvent i
 mbMouseDown = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp MouseEvent i
-  unrefined = mbHandler (eventName "mousedown")
+  unrefined = mbHandler (H.eventName "mousedown")
 
 -- Keyboard events
 
@@ -114,13 +114,13 @@ mbKeyDown :: forall r i. MbIEventProp (onKeyDown :: I|r) KeyboardEvent i
 mbKeyDown = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp KeyboardEvent i
-  unrefined = mbHandler (eventName "keydown")
+  unrefined = mbHandler (H.eventName "keydown")
 
 mbKeyPress :: forall r i. MbIEventProp (onKeyPress :: I|r) KeyboardEvent i
 mbKeyPress = unsafeCoerce unrefined
   where
   unrefined :: MbEventProp KeyboardEvent i
-  unrefined = mbHandler (eventName "keypress")
+  unrefined = mbHandler (H.eventName "keypress")
 
 -- Non-standard
 
@@ -128,10 +128,10 @@ onPaste :: forall r i. IEventProp r () i
 onPaste = unsafeCoerce unrefined
   where
   unrefined :: EventProp () i
-  unrefined = handler (eventName "paste")
+  unrefined = H.handler (H.eventName "paste")
 
 frameBorder :: forall r i. Int -> IProp r i
 frameBorder = unsafeCoerce unrefined
   where
-  unrefined :: Int -> Prop i
-  unrefined = Attr Nothing (attrName "frameBorder") <<< show
+  unrefined :: Int -> H.Prop i
+  unrefined = H.Attr Nothing (H.attrName "frameBorder") <<< show

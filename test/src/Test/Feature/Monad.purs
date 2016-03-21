@@ -16,23 +16,23 @@ limitations under the License.
 
 module Test.Feature.Monad where
 
+import Prelude
 import Control.Alt (alt)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (EXCEPTION(), throw)
-import Control.Monad.Reader.Class
+import Control.Monad.Eff.Exception (EXCEPTION, throw)
+import Control.Monad.Reader.Class (ask)
 import Data.Either (either)
 import Data.Maybe (fromMaybe)
-import Node.FS (FS())
-import Node.Process (PROCESS())
-import Platform (PLATFORM(), getPlatform, runOs, runPlatform)
-import Prelude
-import Graphics.EasyImage (EASY_IMAGE())
-import Graphics.ImageDiff (IMAGE_MAGICK())
+import Graphics.EasyImage (EASY_IMAGE)
+import Graphics.ImageDiff (IMAGE_MAGICK)
+import Node.Buffer (BUFFER)
+import Node.FS (FS)
+import Node.Process (PROCESS)
+import Platform (PLATFORM, getPlatform, runOs, runPlatform)
 import Selenium.Combinators as Combinators
 import Selenium.Key (metaKey, controlKey)
-import Selenium.Monad (Selenium(), attempt)
-import Selenium.Types (ControlKey())
-import Node.Buffer (BUFFER())
+import Selenium.Monad (Selenium, attempt)
+import Selenium.Types (ControlKey)
 
 type FeatureEffects eff =
     ( platform :: PLATFORM

@@ -25,7 +25,7 @@ import Data.Foldable as F
 import Data.String.Regex as Rx
 import Data.StrMap as SM
 
-import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
+import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
 import Halogen as H
 import Halogen.CustomProps as CP
@@ -36,7 +36,7 @@ import Halogen.HTML.Renderer.String (renderHTML)
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Notebook.Cell.Port.VarMap as Port
 import SlamData.Render.CSS as Rc
 

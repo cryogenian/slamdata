@@ -1,53 +1,54 @@
 module Test.SlamData.Feature.Main where
 
-import Control.Monad (when)
-import Control.Monad.Aff (Aff(), forkAff, runAff, launchAff, apathize, attempt, later', cancel)
-import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, killVar, AVAR())
+import SlamData.Prelude
+
+import Control.Monad.Aff (Aff, forkAff, runAff, launchAff, apathize, attempt, later', cancel)
+import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, killVar, AVAR)
 import Control.Monad.Aff.Console (log)
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Console as Ec
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (Error(), EXCEPTION(), throwException, error, message)
-import Control.Monad.Eff.Ref (REF(), newRef, writeRef, modifyRef, readRef)
+import Control.Monad.Eff.Console as Ec
+import Control.Monad.Eff.Exception (Error, EXCEPTION, throwException, error, message)
+import Control.Monad.Eff.Ref (REF, newRef, writeRef, modifyRef, readRef)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Reader.Trans
-import DOM (DOM())
+import Control.Monad.Reader.Trans (runReaderT)
+
 import Data.Array as Arr
-import Data.Either (Either(..), either)
-import Data.Foldable (traverse_)
-import Data.Maybe (Maybe(..))
-import Data.Maybe (maybe, isJust)
-import Data.Monoid (mempty)
 import Data.String as Str
+
 import Database.Mongo.Mongo (connect, close)
-import Node.ChildProcess (ChildProcess(), makeSpawnOption, stdout, stderr, spawn, kill, execSync)
+
+import DOM (DOM)
+
+import Node.ChildProcess (ChildProcess, makeSpawnOption, stdout, stderr, spawn, kill, execSync)
 import Node.Encoding (Encoding(UTF8))
-import Node.FS (FS())
+import Node.FS (FS)
 import Node.FS.Aff (unlink, mkdir)
 import Node.Path (resolve)
 import Node.Process as Process
 import Node.Rimraf (rimraf)
-import Node.Stream (Readable(), Duplex(), pipe, onDataString, onClose)
-import Prelude
+import Node.Stream (Readable, Duplex, pipe, onDataString, onClose)
+
 import Selenium (setFileDetector, quit)
-import Selenium.Browser
-import Selenium.Builder
-import Selenium.Capabilities
-import Selenium.FFProfile
+import Selenium.Browser (Browser(..), str2browser)
+import Selenium.Builder (withCapabilities, browser, build)
+import Selenium.Capabilities (Capabilities)
+import Selenium.FFProfile (setStringPreference, setBoolPreference, setIntPreference, buildFFProfile)
 import Selenium.Monad (setWindowSize)
 import Selenium.Remote as SR
-import Selenium.Types (SELENIUM())
-import Test.Feature.Monad (FeatureEffects())
-import Test.SlamData.Feature.Config (Config())
-import Test.SlamData.Feature.Effects (SlamFeatureEffects())
+import Selenium.Types (SELENIUM)
+
+import Test.Feature.Monad (FeatureEffects)
+import Test.SlamData.Feature.Config (Config)
+import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 import Test.SlamData.Feature.Interactions (launchSlamData, mountTestDatabase)
-import Test.SlamData.Feature.Monad (SlamFeature())
+import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.SauceLabs as SL
 import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
-import Text.Chalky
+import Text.Chalky (green, yellow, magenta, gray, red)
 
 foreign import getConfig :: forall e. Eff (fs :: FS|e) Config
 foreign import createReadStream
@@ -240,7 +241,6 @@ main = do
 
 
     log $ yellow "Starting tests"
-    rawConfig <- liftEff getConfig
     testResults <- attempt
                    $ runTests rawConfig
                      { download = rawConfig.download

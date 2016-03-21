@@ -22,23 +22,23 @@ module Control.UI.File
        , readAsBinaryString
        , readAsBinaryStringEff
        , name
-       , File()
-       , FileList()
-       , FileReader()
-       , READ_FILE()
+       , File
+       , FileList
+       , FileReader
+       , READ_FILE
        ) where
 
 import Prelude
 
-import Control.Monad.Eff (Eff())
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (error)
-import Control.Monad.Aff (Aff(), makeAff)
+import Control.Monad.Aff (Aff, makeAff)
 
-import Data.Function (Fn3(), runFn3)
+import Data.Function (Fn3, runFn3)
 import Data.Maybe (Maybe(..))
 
-import DOM (DOM())
-import DOM.HTML.Types (HTMLElement())
+import DOM (DOM)
+import DOM.HTML.Types (HTMLElement)
 
 
 foreign import data FileReader :: *

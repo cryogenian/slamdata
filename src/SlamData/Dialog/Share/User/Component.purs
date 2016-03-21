@@ -19,12 +19,12 @@ module SlamData.Dialog.Share.User.Component where
 import SlamData.Prelude
 
 import Data.Foldable as F
-import Data.Lens (LensP(), lens, (.~), (%~), (?~))
+import Data.Lens (LensP, lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
 import Data.Map as Map
 import Data.Time (Milliseconds(..))
 
-import DOM.HTML.Types (HTMLElement())
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -35,7 +35,7 @@ import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps as CP
 import Halogen.Component.Utils (forceRerender, sendAfter)
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (glyph, fadeWhen)
 

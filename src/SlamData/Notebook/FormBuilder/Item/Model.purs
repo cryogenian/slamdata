@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.FormBuilder.Item.Model
-  ( Model()
+  ( Model
   , _name
   , _fieldType
   , _defaultValue
@@ -24,21 +24,21 @@ module SlamData.Notebook.FormBuilder.Item.Model
   , decode
   , EqModel(..)
   , runEqModel
-  , module SlamData.Notebook.FormBuilder.Item.FieldType
   , defaultValueToVarMapValue
   , emptyValueOfFieldType
+  , module SlamData.Notebook.FormBuilder.Item.FieldType
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Argonaut as J
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 import Data.SQL2.Literal as SQL2
 import Data.StrMap as SM
 
 import SlamData.Notebook.Cell.Port.VarMap as Port
-import SlamData.Notebook.FormBuilder.Item.FieldType
+import SlamData.Notebook.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
 
 import Text.Parsing.Parser as P
 

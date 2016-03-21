@@ -18,9 +18,9 @@ module SlamData.FileSystem.Dialog.Mount.Component.Query where
 
 import SlamData.Prelude
 
-import SlamData.FileSystem.Dialog.Mount.Component.State (State())
-import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme())
-import SlamData.FileSystem.Resource (Mount())
+import SlamData.FileSystem.Dialog.Mount.Component.State (State)
+import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme)
+import SlamData.FileSystem.Resource (Mount)
 
 data Query a
   = ModifyState (State -> State) a

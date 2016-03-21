@@ -33,8 +33,8 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
-import SlamData.Notebook.FormBuilder.Item.Component.State
-import SlamData.Notebook.FormBuilder.Item.FieldType
+import SlamData.Notebook.FormBuilder.Item.Component.State (Model, State, EqModel(..), _defaultValue, _fieldType, _model, _name, decode, defaultValueToVarMapValue, emptyValueOfFieldType, encode, initialModel, initialState, runEqModel)
+import SlamData.Notebook.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
 
 data UpdateQuery a
   = UpdateName String a

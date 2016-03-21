@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.FormBuilder.Model
-  ( Model()
+  ( Model
   , encode
   , decode
   ) where
