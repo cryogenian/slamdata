@@ -18,11 +18,11 @@ module SlamData.FileSystem.Search.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Canceler(), Aff(), cancel, forkAff, later')
+import Control.Monad.Aff (Canceler, Aff, cancel, forkAff, later')
 import Control.Monad.Eff.Exception (error)
 import Control.UI.Browser (setLocation)
 
-import Data.Lens (lens, LensP(), (.~), (%~))
+import Data.Lens (lens, LensP, (.~), (%~))
 import Data.Path.Pathy (printPath, rootDir)
 import Data.These (theseLeft, thisOrBoth, theseRight, these, These(..))
 
@@ -34,16 +34,16 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config as Config
-import SlamData.Effects (Slam(), SlamDataEffects())
-import SlamData.FileSystem.Listing.Sort (Sort())
+import SlamData.Effects (Slam, SlamDataEffects)
+import SlamData.FileSystem.Listing.Sort (Sort)
 import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (newSalt, Salt())
+import SlamData.FileSystem.Routing.Salt (newSalt, Salt)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
 
 import Text.SlamSearch (mkQuery)
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
 type State =
   { valid :: Boolean

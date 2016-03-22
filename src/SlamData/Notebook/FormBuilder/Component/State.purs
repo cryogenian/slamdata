@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.FormBuilder.Component.State
-  ( State()
-  , ItemId()
+  ( State
+  , ItemId
   , emptyState
   , initialState
 

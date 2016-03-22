@@ -15,17 +15,17 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.API.Component.State
-  ( State()
+  ( State
   , initialState
-  , StateP()
+  , StateP
   ) where
 
 import SlamData.Prelude
 
-import Halogen (ParentState())
+import Halogen (ParentState)
 
 import SlamData.Notebook.Cell.Common.EvalQuery as NC
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Notebook.FormBuilder.Component as FB
 
 type State = {}

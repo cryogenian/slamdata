@@ -34,8 +34,8 @@ import Data.Char (fromCharCode)
 import Data.Foldable (traverse_)
 import Data.String (fromChar, split)
 import Data.Array (replicate)
-import Selenium.ActionSequence (Sequence(), sendKeys, keyDown, keyUp)
-import Selenium.Types (ControlKey())
+import Selenium.ActionSequence (Sequence, sendKeys, keyDown, keyUp)
+import Selenium.Types (ControlKey)
 import Selenium.Key (shiftKey)
 
 selectAll :: ControlKey -> Sequence Unit

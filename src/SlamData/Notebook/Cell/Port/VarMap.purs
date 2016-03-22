@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Port.VarMap
-  ( VarMap()
+  ( VarMap
   , VarMapValue(..)
   , renderVarMapValue
   , parseVarMapValue

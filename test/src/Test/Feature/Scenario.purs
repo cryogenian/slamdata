@@ -8,7 +8,7 @@ import Control.Monad.Eff.Exception (message, throw)
 import Data.Either (Either(..))
 import Data.String (joinWith)
 import Test.Feature.Log (sectionMsg, warnMsg)
-import Test.Feature.Monad (Feature())
+import Test.Feature.Monad (Feature)
 import Selenium.Monad (attempt)
 
 type EpicTitle = String
@@ -59,5 +59,5 @@ scenario epic before after title knownIssues actions =
   actions' = do
     e <- attempt actions
     case e of
-      Left e -> warn (message e) *> warn knownIssuesWarning *> after
+      Left e' -> warn (message e') *> warn knownIssuesWarning *> after
       Right _ -> after *> fail

@@ -40,7 +40,7 @@ import Data.String as S
 import Data.URI (runParseAbsoluteURI)
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath(), injSlot, prjQuery, injQuery)
+import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
 import Halogen.Component.Utils (forceRerender')
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -51,7 +51,7 @@ import Quasar.Aff as API
 import Quasar.Auth as Auth
 
 import SlamData.Config as Config
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.Install (Algebra, ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpSignIn, toDialog, toFs, toListing, toSearch, toSignIn)
 import SlamData.FileSystem.Component.Query (Query(..))

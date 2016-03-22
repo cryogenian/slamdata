@@ -23,22 +23,22 @@ module SlamData.Notebook.Cell.Markdown.Component
 
 import SlamData.Prelude
 
-import Data.BrowserFeatures (BrowserFeatures())
+import Data.BrowserFeatures (BrowserFeatures)
 import Data.StrMap as SM
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Notebook.Cell.CellId (CellId(), runCellId)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult())
-import SlamData.Notebook.Cell.Component (CellQueryP(), CellStateP(), makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
-import SlamData.Notebook.Cell.Markdown.Component.Query
-import SlamData.Notebook.Cell.Markdown.Component.State
-import SlamData.Notebook.Cell.Markdown.Interpret as MD
-import SlamData.Notebook.Cell.Markdown.Model
+import SlamData.Notebook.Cell.CellId (CellId, runCellId)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult)
+import SlamData.Notebook.Cell.Component (CellQueryP, CellStateP, makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
+import SlamData.Notebook.Cell.Markdown.Component.Query (QueryP)
+import SlamData.Notebook.Cell.Markdown.Component.State (State, StateP, initialState)
+import SlamData.Notebook.Cell.Markdown.Interpret (formFieldValueToLiteral)
+import SlamData.Notebook.Cell.Markdown.Model (Model, decode, encode)
 import SlamData.Notebook.Cell.Port as Port
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
 
 import Text.Markdown.SlamDown.Html as MD
@@ -85,7 +85,7 @@ formStateToVarMap
   :: MD.SlamDownFormState
   -> Port.VarMap
 formStateToVarMap =
-  map $ MD.formFieldValueToLiteral >>> Port.Literal
+  map $ formFieldValueToLiteral >>> Port.Literal
 
 eval
   :: Natural

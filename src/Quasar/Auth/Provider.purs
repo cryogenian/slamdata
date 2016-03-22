@@ -16,14 +16,14 @@ limitations under the License.
 
 module Quasar.Auth.Provider
   ( Provider(..)
-  , ProviderR()
+  , ProviderR
   , getProvider
   ) where
 
 import Prelude
 import Data.Argonaut ((.?))
 import Data.Argonaut as JS
-import Quasar.Auth.OpenIDConfiguration
+import Quasar.Auth.OpenIDConfiguration (OpenIDConfiguration)
 
 import OIDCCryptUtils.Types as OIDC
 

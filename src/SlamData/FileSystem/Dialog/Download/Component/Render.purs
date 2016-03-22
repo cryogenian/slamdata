@@ -20,15 +20,15 @@ import SlamData.Prelude
 
 import Control.UI.Browser (encodeURIComponent)
 
-import Data.Lens ((^.), (.~))
+import Data.Lens ((.~))
 import Data.Path.Pathy (printPath)
 
-import Halogen
+import Halogen as H
 import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Handler as E
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen.HTML.Events.Handler as HEH
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
@@ -38,168 +38,180 @@ import Quasar.Paths as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Download.Model as D
 import SlamData.Download.Render as Rd
-import SlamData.FileSystem.Dialog.Download.Component.Query
-import SlamData.FileSystem.Dialog.Download.Component.State
-import SlamData.FileSystem.Resource (Resource(), isFile, resourcePath, isHidden)
+import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
+import SlamData.FileSystem.Dialog.Download.Component.State (State)
+import SlamData.FileSystem.Resource (Resource, isFile, resourcePath, isHidden)
 import SlamData.Render.Common (fadeWhen)
 import SlamData.Render.CSS as Rc
 
-render :: State -> ComponentHTML Query
+render :: State -> H.ComponentHTML Query
 render state =
   modalDialog
   [ modalHeader "Download"
   , modalBody
-    $ H.form [ Cp.nonSubmit
-             , P.classes [ Rc.dialogDownload ]
-             ]
-    [ resField state
-    , fldName state
-    , chkCompress state
-    , options state
-    , message state
-    ]
-  , modalFooter [ btnCancel state
-                , btnDownload state ]
+      $ HH.form
+          [ Cp.nonSubmit
+          , HP.classes [ Rc.dialogDownload ]
+          ]
+      [ resField state
+      , fldName state
+      , chkCompress state
+      , options state
+      , message state
+      ]
+  , modalFooter
+      [ btnCancel state
+      , btnDownload state
+      ]
   ]
 
-resField :: State -> ComponentHTML Query
+resField :: State -> H.ComponentHTML Query
 resField state =
-  H.div [ P.classes [ B.formGroup, Rc.downloadSource, B.clearfix ] ]
-  [ H.label_ [ H.span_ [ H.text "Source" ]
-             , H.input [ P.classes [ B.formControl ]
-                       , E.onValueInput (E.input SourceTyped)
-                       , P.value resValue
-                       ]
-             , H.span [ P.classes [ B.inputGroupBtn ] ]
-               [ H.button [ P.classes [ B.btn, B.btnDefault ]
-                          , E.onClick (\_ -> E.stopPropagation $>
-                                             action ToggleList
-                                      )
-                          ]
-                 [ H.span [ P.classes [ B.caret ] ]  [ ] ]
-               ]
-             ]
-  , H.ul [ P.classes $ [ B.listGroup, Rc.fileListGroup ]
-           <> fadeWhen (not $ state ^. _showSourcesList)
-         ]
-    $ resItem <$> state ^. _sources
-  ]
+  HH.div
+    [ HP.classes [ B.formGroup, Rc.downloadSource, B.clearfix ] ]
+    [ HH.label_
+        [ HH.span_ [ HH.text "Source" ]
+        , HH.input
+            [ HP.classes [ B.formControl ]
+            , HE.onValueInput (HE.input SourceTyped)
+            , HP.value resValue
+            ]
+        , HH.span
+            [ HP.classes [ B.inputGroupBtn ] ]
+            [ HH.button
+                [ HP.classes [ B.btn, B.btnDefault ]
+                , HE.onClick \_ -> HEH.stopPropagation $> H.action ToggleList
+                ]
+                [ HH.span [ HP.classes [ B.caret ] ]  [ ] ]
+            ]
+        ]
+    , HH.ul
+        [ HP.classes
+            $ [ B.listGroup, Rc.fileListGroup ]
+            <> fadeWhen (not $ state.showSourcesList)
+        ]
+        $ resItem <$> state.sources
+    ]
   where
   resValue :: String
-  resValue = either id resourcePath $ state ^. _source
+  resValue = either id resourcePath $ state.source
 
-resItem :: Resource -> ComponentHTML Query
+resItem :: Resource -> H.ComponentHTML Query
 resItem res =
-  H.button [ P.classes ([ B.listGroupItem ]
-                        <> (if isHidden res
-                            then [ Rc.itemHidden ]
-                            else [ ]))
-           , E.onClick (E.input_ (SourceClicked res))
-           ]
-  [ H.text (resourcePath res) ]
+  HH.button
+    [ HP.classes
+        $ [ B.listGroupItem ]
+        <> if isHidden res then [ Rc.itemHidden ] else []
+    , HE.onClick (HE.input_ (SourceClicked res))
+    ]
+    [ HH.text (resourcePath res) ]
 
 
-fldName :: State -> ComponentHTML Query
+fldName :: State -> H.ComponentHTML Query
 fldName state =
-  H.div [ P.classes [ B.formGroup, Rc.downloadTarget ] ]
-  [ H.label_ [ H.span_ [ H.text "Target name" ]
-             , H.input [ P.classes [ B.formControl ]
-                       , P.value tgtValue
-                       , E.onValueInput (E.input TargetTyped)
-                       ]
-             , H.div [ P.classes [ Rc.downloadTargetBox ] ]
-               [ H.span_ [ H.text tgtValue ]
-               , H.span_ [ H.text ext ]
-               ]
-             ]
-  ]
+  HH.div
+    [ HP.classes [ B.formGroup, Rc.downloadTarget ] ]
+    [ HH.label_
+        [ HH.span_ [ HH.text "Target name" ]
+        , HH.input
+            [ HP.classes [ B.formControl ]
+            , HP.value tgtValue
+            , HE.onValueInput (HE.input TargetTyped)
+            ]
+        , HH.div
+            [ HP.classes [ Rc.downloadTargetBox ] ]
+            [ HH.span_ [ HH.text tgtValue ]
+            , HH.span_ [ HH.text ext ]
+            ]
+        ]
+    ]
   where
   tgtValue :: String
-  tgtValue = either id id $ state ^. _targetName
+  tgtValue = either id id $ state.targetName
 
   ext | compressed state = ".zip"
-      | isLeft (state ^. _options) = ".csv"
+      | isLeft (state.options) = ".csv"
       | otherwise = ".json"
 
 compressed :: State -> Boolean
 compressed state =
- either (const false) (not <<< isFile) (state ^. _source) || state ^. _compress
+ either (const false) (not <<< isFile) (state.source) || state.compress
 
-chkCompress :: State -> ComponentHTML Query
+chkCompress :: State -> H.ComponentHTML Query
 chkCompress state =
-  H.div [ P.classes [ B.formGroup ] ]
-  [ H.label_ [ H.span_ [ H.text "Compress" ]
-             , H.input [ P.inputType P.InputCheckbox
-                       , P.enabled $ either (const false) isFile
-                         (state ^. _source)
-                       , P.checked $ compressed state
-                       , E.onValueChange (E.input_ ToggleCompress)
+  HH.div [ HP.classes [ B.formGroup ] ]
+  [ HH.label_ [ HH.span_ [ HH.text "Compress" ]
+             , HH.input [ HP.inputType HP.InputCheckbox
+                       , HP.enabled $ either (const false) isFile
+                         (state.source)
+                       , HP.checked $ compressed state
+                       , HE.onValueChange (HE.input_ ToggleCompress)
                        ]
              ]
   ]
 
-options :: State -> ComponentHTML Query
+options :: State -> H.ComponentHTML Query
 options state =
-  let opts = state ^. _options
-      active = [ P.class_ B.active ]
-  in H.div [ P.classes [ B.formGroup ] ]
-     [ H.ul [ P.classes [ B.nav, B.navTabs ] ]
-       [ H.li (if isLeft opts then active else [ ])
-         [ H.a [ E.onClick (E.input_ $ SetOutput D.CSV)
+  let opts = state.options
+      active = [ HP.class_ B.active ]
+  in HH.div [ HP.classes [ B.formGroup ] ]
+     [ HH.ul [ HP.classes [ B.nav, B.navTabs ] ]
+       [ HH.li (if isLeft opts then active else [ ])
+         [ HH.a [ HE.onClick (HE.input_ $ SetOutput D.CSV)
                ]
-           [ H.text "CSV" ]
+           [ HH.text "CSV" ]
          ]
-       , H.li (if isRight opts then active else [ ])
-         [ H.a [ E.onClick (E.input_ $ SetOutput D.JSON)
+       , HH.li (if isRight opts then active else [ ])
+         [ HH.a [ HE.onClick (HE.input_ $ SetOutput D.JSON)
                ]
-           [ H.text "JSON" ]
+           [ HH.text "JSON" ]
          ]
        ]
      , either optionsCSV optionsJSON opts
      ]
 
-message :: State -> ComponentHTML Query
+message :: State -> H.ComponentHTML Query
 message state =
-  let msg =  state ^. _error
-  in H.div [ P.classes $ [ B.alert, B.alertDanger, B.alertDismissable ]
+  let msg = state.error
+  in HH.div [ HP.classes $ [ B.alert, B.alertDanger, B.alertDismissable ]
              <> fadeWhen (isNothing msg)
            ]
-     $ maybe [ ] (pure <<< H.text) msg
+     $ maybe [ ] (pure <<< HH.text) msg
 
-btnCancel :: State -> ComponentHTML Query
+btnCancel :: State -> H.ComponentHTML Query
 btnCancel state =
-  H.button [ P.classes [ B.btn ]
-           , E.onClick (E.input_ Dismiss)
+  HH.button [ HP.classes [ B.btn ]
+           , HE.onClick (HE.input_ Dismiss)
            , ARIA.label "Cancel download"
-           , P.title "Cancel download"
+           , HP.title "Cancel download"
            ]
-  [ H.text "Cancel" ]
+  [ HH.text "Cancel" ]
 
-btnDownload :: State -> ComponentHTML Query
+btnDownload :: State -> H.ComponentHTML Query
 btnDownload state =
-  let headers = encodeURIComponent $ show $ reqHeadersToJSON $ toHeaders state
+  let headers = encodeURIComponent $ show $ reqHeadersToJSON $ D.toHeaders state
       url = printPath Config.dataUrl
-            <> either (const "#") resourcePath (state ^. _source)
+            <> either (const "#") resourcePath (state.source)
             <> "?request-headers="
             <> headers
-      disabled = isJust $ state ^. _error
-  in H.button
-         [ P.classes $ [ B.btn, B.btnPrimary ]
+      disabled = isJust $ state.error
+  in HH.button
+         [ HP.classes $ [ B.btn, B.btnPrimary ]
            <> if disabled
               then [ B.disabled ]
               else [ ]
-         , P.disabled disabled
-         , E.onClick (\_ -> E.preventDefault $> action (NewTab url)
+         , HP.disabled disabled
+         , HE.onClick (\_ -> HEH.preventDefault $> H.action (NewTab url)
                      )
          , ARIA.label "Proceed download"
-         , P.title "Proceed download"
+         , HP.title "Proceed download"
          ]
-     [ H.text "Download" ]
+     [ HH.text "Download" ]
 
 
 
-optionsCSV :: D.CSVOptions -> ComponentHTML Query
+optionsCSV :: D.CSVOptions -> H.ComponentHTML Query
 optionsCSV = Rd.optionsCSV (\lens v -> ModifyCSVOpts (lens .~ v))
 
-optionsJSON :: D.JSONOptions -> ComponentHTML Query
+optionsJSON :: D.JSONOptions -> H.ComponentHTML Query
 optionsJSON = Rd.optionsJSON (\lens v -> ModifyJSONOpts (lens .~ v))

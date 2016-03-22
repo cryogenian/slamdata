@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module Test.SlamData.Property.Notebook.Cell.Model
-  ( ArbCell()
+  ( ArbCell
   , runArbCell
   , check
   , checkCellEquality
@@ -26,9 +26,9 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Foldable (mconcat)
 
-import SlamData.Notebook.Cell.Model (Model(), encode, decode)
+import SlamData.Notebook.Cell.Model (Model, encode, decode)
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 import Test.Property.ArbJson (runArbJson)
 import Test.SlamData.Property.Notebook.Cell.CellId (runArbCellId)

@@ -24,7 +24,7 @@ import Data.List (toList)
 
 import SlamData.Notebook.Cell.Chart.ChartType (ChartType(..))
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, quickCheck, (<?>))
 import Test.StrongCheck.Gen (elements)
 
 newtype ArbChartType = ArbChartType ChartType

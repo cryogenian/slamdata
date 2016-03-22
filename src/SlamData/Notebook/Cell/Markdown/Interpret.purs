@@ -25,15 +25,15 @@ import Data.Set as Set
 import Data.SQL2.Literal as SQL2
 
 import Text.Markdown.SlamDown as MD
-import Text.Markdown.SlamDown.Html as MD
+import Text.Markdown.SlamDown.Html as MDH
 import Text.Parsing.Parser as P
 
 formFieldValueToLiteral
-  :: MD.FormFieldValue
+  :: MDH.FormFieldValue
   -> SQL2.Literal
 formFieldValueToLiteral v =
   case v of
-    MD.SingleValue ty str ->
+    MDH.SingleValue ty str ->
       case ty of
         MD.PlainText -> SQL2.string str
         MD.Numeric ->
@@ -44,7 +44,7 @@ formFieldValueToLiteral v =
         MD.Date -> SQL2.date str
         MD.Time -> SQL2.time str
         MD.DateTime -> SQL2.dateTime str
-    MD.MultipleValues vs ->
+    MDH.MultipleValues vs ->
       SQL2.orderedSet $
         SQL2.string <$>
           setToArray vs

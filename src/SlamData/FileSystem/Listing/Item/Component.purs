@@ -18,7 +18,7 @@ module SlamData.FileSystem.Listing.Item.Component where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP(), lens, (%~), (.~))
+import Data.Lens (LensP, lens, (%~), (.~))
 
 import Halogen as H
 import Halogen.HTML.CSS.Indexed as CSS
@@ -32,7 +32,7 @@ import Halogen.Themes.Bootstrap3 as B
 import CSS.Geometry (marginBottom)
 import CSS.Size (px)
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
 import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isNotebook, isViewMount, hiddenTopLevel, root)
 import SlamData.Render.CSS as Rc

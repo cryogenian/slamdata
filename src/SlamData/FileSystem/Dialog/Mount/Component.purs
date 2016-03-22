@@ -16,20 +16,20 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.Component
   ( comp
-  , QueryP()
-  , StateP()
-  , ChildState()
-  , ChildQuery()
-  , ChildSlot()
+  , QueryP
+  , StateP
+  , ChildState
+  , ChildQuery
+  , ChildSlot
   , module SlamData.FileSystem.Dialog.Mount.Component.Query
   , module SlamData.FileSystem.Dialog.Mount.Component.State
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception (Error(), message)
+import Control.Monad.Eff.Exception (Error, message)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except.Trans (ExceptT(), runExceptT)
+import Control.Monad.Except.Trans (ExceptT, runExceptT)
 
 import Data.Argonaut (jsonParser, decodeJson, (.?))
 import Data.Lens (set, (.~), (?~))
@@ -37,7 +37,7 @@ import Data.Lens (set, (.~), (?~))
 import Ace.Halogen.Component (AceQuery(..))
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR)
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
 import Halogen.CustomProps as CP
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -49,10 +49,10 @@ import Quasar.Aff as Api
 import Quasar.Auth as Auth
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
-import SlamData.FileSystem.Dialog.Mount.Component.Query
-import SlamData.FileSystem.Dialog.Mount.Component.State
+import SlamData.FileSystem.Dialog.Mount.Component.Query (Query(..))
+import SlamData.FileSystem.Dialog.Mount.Component.State (MountSettings, State, _message, _name, _new, _parent, _saving, _settings, canSave, initialSettings, initialState, scheme, validate)
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..), schemes, schemeToString, schemeFromString)
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2

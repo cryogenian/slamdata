@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.JTable.Component.State
-  ( State()
-  , Input()
+  ( State
+  , Input
   , initialState
   , _input
   , _result
@@ -25,7 +25,7 @@ module SlamData.Notebook.Cell.JTable.Component.State
   , _isEnteringPageSize
   , _resource
   , _size
-  , PageInfo()
+  , PageInfo
   , currentPageInfo
   , pendingPageInfo
   , stepPage
@@ -40,11 +40,11 @@ import SlamData.Prelude
 
 import Data.Foldable (maximum)
 import Data.Int as Int
-import Data.Lens ((^?), (?~), LensP(), lens, _Just)
+import Data.Lens ((^?), (?~), LensP, lens, _Just)
 
-import SlamData.FileSystem.Resource (Resource())
+import SlamData.FileSystem.Resource (Resource)
 import SlamData.Notebook.Cell.JTable.Component.Query (PageStep(..))
-import SlamData.Notebook.Cell.JTable.Model (Model(), Result())
+import SlamData.Notebook.Cell.JTable.Model (Model, Result)
 
 -- | The state for the JTable cell component.
 type State =

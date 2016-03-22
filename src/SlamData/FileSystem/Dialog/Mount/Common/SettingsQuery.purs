@@ -18,11 +18,11 @@ module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception (Error())
+import Control.Monad.Eff.Exception (Error)
 
-import SlamData.FileSystem.Resource (Mount())
+import SlamData.FileSystem.Resource (Mount)
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
 data SettingsQuery s a
   = ModifyState (s -> s) a

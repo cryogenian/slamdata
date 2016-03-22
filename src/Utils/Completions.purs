@@ -18,16 +18,16 @@ module Utils.Completions where
 
 import Prelude
 
-import Ace.Types (Completion())
-import Ace.Halogen.Component (AceEffects())
-import Control.Monad.Aff (Aff())
+import Ace.Types (Completion)
+import Ace.Halogen.Component (AceEffects)
+import Control.Monad.Aff (Aff)
 import Data.Array as Arr
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Either (Either(..), either)
 import Data.Tuple (Tuple(..))
 import Data.Path.Pathy as P
 import Data.String as S
-import DOM (DOM())
+import DOM (DOM)
 import SlamData.FileSystem.Resource as R
 import Utils.LocalStorage (getLocalStorage, setLocalStorage)
 import Utils.Path as PU

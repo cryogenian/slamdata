@@ -19,5 +19,5 @@ module Data.SQL2.Literal
   , module Data.SQL2.Literal.Parse
   ) where
 
-import Data.SQL2.Literal.Core
-import Data.SQL2.Literal.Parse
+import Data.SQL2.Literal.Core (Literal, LiteralF(Array, Boolean, Date, DateTime, Decimal, Integer, Interval, Null, Object, ObjectId, OrderedSet, String, Time), array, boolean, date, dateTime, decimal, integer, interval, null, object, objectId, orderedSet, renderLiteral, renderLiteralF, string, time)
+import Data.SQL2.Literal.Parse (parseLiteral, parseLiteralF)

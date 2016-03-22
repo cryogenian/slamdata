@@ -20,7 +20,7 @@ import Data.String (joinWith)
 import Control.Apply ((*>))
 import Prelude
 import Test.Feature.Log (successMsg)
-import Test.SlamData.Feature.Monad (SlamFeature())
+import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Expectations as Expect
 import Test.Feature.Scenario (scenario)

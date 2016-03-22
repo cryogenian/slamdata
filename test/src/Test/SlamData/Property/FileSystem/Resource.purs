@@ -24,7 +24,7 @@ import Data.List (toList)
 
 import SlamData.FileSystem.Resource (Resource(..), Mount(..))
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 import Test.StrongCheck.Gen (elements)
 import Test.Property.Utils.Path (runArbFilePath, runArbDirPath)
 

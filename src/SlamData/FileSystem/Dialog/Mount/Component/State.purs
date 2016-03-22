@@ -21,13 +21,13 @@ import SlamData.Prelude
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..))
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
 type State =
   { new :: Boolean

@@ -1,7 +1,7 @@
 module Test.Feature
-  ( Properties()
-  , XPath()
-  , FilePath()
+  ( Properties
+  , XPath
+  , FilePath
   , accessUrlFromFieldValue
   , accessUrlFromFieldValueWithProperties
   , check
@@ -66,9 +66,9 @@ import Node.Buffer (toString)
 import Prelude
 import Selenium.ActionSequence as Sequence
 import Selenium.Monad (get, getAttribute, clickEl, attempt, later, sequence, byXPath, tryRepeatedlyTo, findElements, isDisplayed, getLocation, getSize, saveScreenshot, sendKeysEl)
-import Selenium.Types (Element())
+import Selenium.Types (Element)
 import Test.Feature.ActionSequence as FeatureSequence
-import Test.Feature.Monad (Feature(), getModifierKey, await)
+import Test.Feature.Monad (Feature, getModifierKey, await)
 import Test.Utils (ifTrue, ifFalse, passover, throwIfEmpty, throwIfNotEmpty, singletonValue, appendToCwd)
 import XPath as XPath
 

@@ -15,24 +15,24 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Component.Def
-  ( EditorCellDef()
-  , ResultsCellDef()
-  , CellDefProps()
+  ( EditorCellDef
+  , ResultsCellDef
+  , CellDefProps
   , makeQueryPrism
   , makeQueryPrism'
   ) where
 
 import SlamData.Prelude
 
-import Data.Lens (APrismP(), PrismP(), prism', review, preview)
+import Data.Lens (APrismP, PrismP, prism', review, preview)
 
-import Halogen (Component())
+import Halogen (Component)
 import Halogen.HTML.Indexed as H
 
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Notebook.Cell.Component.Query (AnyCellQuery())
-import SlamData.Notebook.Cell.Component.State (AnyCellState())
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
+import SlamData.Notebook.Cell.Component.Query (AnyCellQuery)
+import SlamData.Notebook.Cell.Component.State (AnyCellState)
+import SlamData.Effects (Slam)
 
 -- | The type for the definition of an editor cell component.
 type EditorCellDef s f =

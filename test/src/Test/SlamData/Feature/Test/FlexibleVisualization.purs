@@ -21,7 +21,7 @@ import Prelude
 import Data.String as Str
 import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Expectations as Expect
-import Test.SlamData.Feature.Monad (SlamFeature())
+import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.Interactions as Interact
 import Test.Feature.Scenario (scenario)
 

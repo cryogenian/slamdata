@@ -54,7 +54,7 @@ toURI params = "mongodb://"
   credentialsToURI :: CredentialParams -> String
   credentialsToURI cred = cred.user ++ ":" ++ cred.password ++ "@"
   hostToURI :: HostParams -> String
-  hostToURI host = host.host ++ (maybe "" (":" ++) host.port)
+  hostToURI host = host.host ++ (maybe "" (":" ++ _) host.port)
   propToURI :: PropParams -> String
   propToURI prop = prop.name ++ "=" ++ prop.value
   fixSlashes :: String -> String

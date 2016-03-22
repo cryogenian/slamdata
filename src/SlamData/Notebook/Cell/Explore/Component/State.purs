@@ -18,9 +18,9 @@ module SlamData.Notebook.Cell.Explore.Component.State where
 
 import SlamData.Prelude
 
-import Halogen (ParentState())
+import Halogen (ParentState)
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Notebook.Cell.Common.EvalQuery as NC
 import SlamData.Notebook.FileInput.Component as FI
 

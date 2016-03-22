@@ -18,90 +18,92 @@ module SlamData.Notebook.Cell.Chart.ChartOptions.Pie where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor())
-import Data.Array
-  ( catMaybes, (!!), nub, concatMap, zipWith, length, range, concat
-  , groupBy, cons, filter, reverse)
+import Data.Argonaut (JCursor)
+import Data.Array ((!!), (:))
+import Data.Array as A
 import Data.Function (on)
 import Data.Int (toNumber, fromNumber)
 import Data.List as L
 import Data.Map as M
 import Data.String (split)
 
-import ECharts
+import ECharts as EC
 
 import Math (floor)
 
 import SlamData.Notebook.Cell.Chart.Axis as Ax
-import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration())
-import SlamData.Notebook.Cell.Chart.ChartOptions.Common
+import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration)
+import SlamData.Notebook.Cell.Chart.ChartOptions.Common (Key, PieBarData, keyCategory, keyName, colors, buildChartAxises, pieBarData)
 
-buildPie :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Option
+buildPie :: M.Map JCursor Ax.Axis -> ChartConfiguration -> EC.Option
 buildPie axises conf =
-  Option $ optionDefault { tooltip = tooltip
-                         , series = Just $ map Just series
-                         , legend = Just legend
-                         , color = Just colors
-                         }
+  EC.Option $ EC.optionDefault
+    { tooltip = tooltip
+    , series = Just $ map Just series
+    , legend = Just legend
+    , color = Just colors
+    }
   where
-  tooltip :: Maybe Tooltip
-  tooltip = Just $ Tooltip $ tooltipDefault { trigger = Just TriggerItem }
+  tooltip :: Maybe EC.Tooltip
+  tooltip = Just $ EC.Tooltip $ EC.tooltipDefault { trigger = Just EC.TriggerItem }
 
   extractedData :: PieBarData
   extractedData = pieBarData $ buildChartAxises axises conf
 
-  series :: Array Series
+  series :: Array EC.Series
   series = mkSeries extractedData
 
-  legend :: Legend
+  legend :: EC.Legend
   legend =
-    Legend legendDefault
-    { "data" = Just $ map legendItemDefault $ extractNames series
-    , orient = Just Vertical
-    , x = Just XLeft
-    }
-
-  extractNames :: Array Series -> Array String
-  extractNames ss = nub $ catMaybes $ concatMap extractName ss
-
-  extractName :: Series -> Array (Maybe String)
-  extractName (PieSeries r) = map extractOneDatum $ fromMaybe [] r.pieSeries."data"
-  extractName _ = []
-
-  extractOneDatum :: ItemData -> Maybe String
-  extractOneDatum (Dat r) = r.name
-  extractOneDatum _ = Nothing
-
-mkSeries :: PieBarData -> Array Series
-mkSeries pbData =
-  concat (zipWith (rows $ length groupped) (range 0 $ length groupped) groupped)
-  where
-  rows :: Int -> Int -> Array PieSeriesRec -> Array Series
-  rows count ix arr =
-    zipWith (donut count ix $ length arr) (range 0 $ length arr) arr
-
-  donut :: Int -> Int -> Int -> Int -> PieSeriesRec -> Series
-  donut rowCount rowIx donutCount donutIx r = case maxRadius rowCount rowIx of
-    Tuple maxR center -> PieSeries
-      $ { common: universalSeriesDefault
-                    { itemStyle = Just $ ItemStyle
-                            { emphasis: Nothing
-                            , normal: Just $ IStyle $ istyleDefault
-                              { label = Just $ ItemLabel $ itemLabelDefault
-                                          { show = Just false }
-                              , labelLine = Just $ ItemLabelLine
-                                            $ itemLabelLineDefault
-                                              { show = Just false }
-                              }
-                            }
-              }
-      , pieSeries: r { radius = radius maxR donutCount donutIx
-                     , center = center
-                     , startAngle = Just $ toNumber $ (45 * donutIx) `mod` 360
-                     }
+    EC.Legend EC.legendDefault
+      { "data" = Just $ map EC.legendItemDefault $ extractNames series
+      , orient = Just EC.Vertical
+      , x = Just EC.XLeft
       }
 
-  maxRadius :: Int -> Int -> Tuple Number (Maybe Center)
+  extractNames :: Array EC.Series -> Array String
+  extractNames ss = A.nub $ A.catMaybes $ A.concatMap extractName ss
+
+  extractName :: EC.Series -> Array (Maybe String)
+  extractName (EC.PieSeries r) = map extractOneDatum $ fromMaybe [] r.pieSeries."data"
+  extractName _ = []
+
+  extractOneDatum :: EC.ItemData -> Maybe String
+  extractOneDatum (EC.Dat r) = r.name
+  extractOneDatum _ = Nothing
+
+mkSeries :: PieBarData -> Array EC.Series
+mkSeries pbData =
+  A.concat (A.zipWith (rows $ A.length groupped) (A.range 0 $ A.length groupped) groupped)
+  where
+  rows :: Int -> Int -> Array EC.PieSeriesRec -> Array EC.Series
+  rows count ix arr =
+    A.zipWith (donut count ix $ A.length arr) (A.range 0 $ A.length arr) arr
+
+  donut :: Int -> Int -> Int -> Int -> EC.PieSeriesRec -> EC.Series
+  donut rowCount rowIx donutCount donutIx r = case maxRadius rowCount rowIx of
+    Tuple maxR center -> EC.PieSeries
+      { common:
+          EC.universalSeriesDefault
+            { itemStyle = Just $ EC.ItemStyle
+                { emphasis: Nothing
+                , normal: Just $ EC.IStyle $ EC.istyleDefault
+                    { label = Just $ EC.ItemLabel $ EC.itemLabelDefault
+                        { show = Just false }
+                    , labelLine = Just $ EC.ItemLabelLine
+                        $ EC.itemLabelLineDefault { show = Just false }
+                    }
+                }
+            }
+      , pieSeries:
+          r
+            { radius = radius maxR donutCount donutIx
+            , center = center
+            , startAngle = Just $ toNumber $ (45 * donutIx) `mod` 360
+            }
+      }
+
+  maxRadius :: Int -> Int -> Tuple Number (Maybe EC.Center)
   maxRadius count ix =
     let countNum = toNumber count
         ixNum = toNumber ix
@@ -109,17 +111,17 @@ mkSeries pbData =
        then maxRadiusOneRow countNum ixNum
        else maxRadiusManyRows countNum ixNum
 
-  maxRadiusOneRow :: Number -> Number -> Tuple Number (Maybe Center)
+  maxRadiusOneRow :: Number -> Number -> Tuple Number (Maybe EC.Center)
   maxRadiusOneRow count ix =
     let r = 85.0 / count
         step = 100.0 / count
         modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber count
         x = 55.0 + (modulus + 0.5 - count/2.0) * step
         y = 50.0
-        c = Just $ Tuple (Percent x) (Percent y)
+        c = Just $ Tuple (EC.Percent x) (EC.Percent y)
     in Tuple r c
 
-  maxRadiusManyRows :: Number -> Number -> Tuple Number (Maybe Center)
+  maxRadiusManyRows :: Number -> Number -> Tuple Number (Maybe EC.Center)
   maxRadiusManyRows count ix =
     let l = toNumber rowLength
         r = 85.0 / l
@@ -127,27 +129,27 @@ mkSeries pbData =
         modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber l
         x = 55.0 + (modulus - l/2.0 + 0.5) * step
         y = 1.2 * floor (ix/l) * r + r
-        c = Just $ Tuple (Percent x) (Percent y)
+        c = Just $ Tuple (EC.Percent x) (EC.Percent y)
     in Tuple r c
 
-  radius :: Number -> Int -> Int -> Maybe Radius
+  radius :: Number -> Int -> Int -> Maybe EC.Radius
   radius max count ix =
     if count == 1
-    then Just $ R (Percent max)
+    then Just $ EC.R (EC.Percent max)
     else donutRadius max (toNumber count) (toNumber ix)
 
-  donutRadius :: Number -> Number -> Number -> Maybe Radius
+  donutRadius :: Number -> Number -> Number -> Maybe EC.Radius
   donutRadius max count ix =
     let step = max / (count + 1.0)
-        record = { inner: Percent (step * (ix + 1.0))
-                 , outer: Percent (step * (ix + 2.0))
+        record = { inner: EC.Percent (step * (ix + 1.0))
+                 , outer: EC.Percent (step * (ix + 2.0))
                  }
-    in Just $ Rs record
+    in Just $ EC.Rs record
 
-  groupped :: Array (Array PieSeriesRec)
-  groupped = map (map snd) $ groupBy (on eq ((!! 1) <<< split ":" <<< fst)) series
+  groupped :: Array (Array EC.PieSeriesRec)
+  groupped = map (map snd) $ A.groupBy (on eq ((!! 1) <<< split ":" <<< fst)) series
 
-  series :: Array (Tuple String PieSeriesRec)
+  series :: Array (Tuple String EC.PieSeriesRec)
   series = map serie $ L.fromList $ M.toList group
 
   group :: M.Map String (Array (Tuple String Number))
@@ -157,7 +159,7 @@ mkSeries pbData =
   ks = L.fromList $ M.keys pbData
 
   catVals :: Array String
-  catVals = nub $ map keyCategory ks
+  catVals = A.nub $ map keyCategory ks
 
   groupByCategories
     :: Array (Tuple Key Number) -> Array (M.Map String (Tuple String Number))
@@ -169,14 +171,14 @@ mkSeries pbData =
       M.fromList
     $ L.toList
     $ map (bimap keyName (Tuple cat))
-    $ filter (\(Tuple k _) -> keyCategory k == cat)
+    $ A.filter (\(Tuple k _) -> keyCategory k == cat)
     $ arr
 
   mapByCategories
     :: Array (M.Map String (Tuple String Number))
     -> M.Map String (Array (Tuple String Number))
   mapByCategories arr =
-    map reverse $ foldl foldFn M.empty (L.fromList <<< M.toList <$> arr)
+    map A.reverse $ foldl foldFn M.empty (L.fromList <<< M.toList <$> arr)
 
   nameMap :: Array (Tuple Key Number) -> M.Map String (Array (Tuple String Number))
   nameMap = groupByCategories >>> mapByCategories
@@ -191,20 +193,19 @@ mkSeries pbData =
   alterNamed
     :: Tuple String Number -> Maybe (Array (Tuple String Number))
     -> Maybe (Array (Tuple String Number))
-  alterNamed n ns = Just $ cons n $ fromMaybe [] ns
+  alterNamed n ns = Just $ n : fromMaybe [] ns
 
   serie
     :: Tuple String (Array (Tuple String Number))
-    -> Tuple String PieSeriesRec
+    -> Tuple String EC.PieSeriesRec
   serie (Tuple k tpls) =
-    Tuple k $ pieSeriesDefault { "data" = Just $ map (dat k) $ tpls }
+    Tuple k $ EC.pieSeriesDefault { "data" = Just $ map (dat k) $ tpls }
 
-  dat :: String -> Tuple String Number -> ItemData
+  dat :: String -> Tuple String Number -> EC.ItemData
   dat str (Tuple s n) =
-    Dat $ (dataDefault $ Simple n) { name = Just $ s <> (if str == ""
-                                                         then ""
-                                                         else ":" <> str)
-                                   }
+    EC.Dat $
+      (EC.dataDefault $ EC.Simple n)
+        { name = Just $ s <> (if str == "" then "" else ":" <> str) }
 
 rowLength :: Int
 rowLength = 4

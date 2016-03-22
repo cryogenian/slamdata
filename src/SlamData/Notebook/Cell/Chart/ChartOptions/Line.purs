@@ -18,23 +18,22 @@ module SlamData.Notebook.Cell.Chart.ChartOptions.Line where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor())
+import Data.Argonaut (JCursor)
 import Data.Array ((!!), cons)
 import Data.Array as A
 import Data.Lens (view)
 import Data.List (List(..), replicate, length)
 import Data.List as L
-import Data.Map (Map())
+import Data.Map (Map)
 import Data.Map as M
 
-import ECharts
+import ECharts as EC
 
 import SlamData.Form.Select (_value)
 import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation(..), runAggregation)
 import SlamData.Notebook.Cell.Chart.Axis as Ax
-import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration())
-import SlamData.Notebook.Cell.Chart.ChartOptions.Common
-import SlamData.Notebook.Cell.Chart.ChartOptions.Common
+import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration)
+import SlamData.Notebook.Cell.Chart.ChartOptions.Common (Key, ChartAxises, commonNameMap, keyCategory, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, mkKey)
 
 type LabeledPointPairs = M.Map Key (Tuple (Array Number) (Array Number))
 type LineData = M.Map Key (Tuple Number Number)
@@ -117,51 +116,51 @@ aggregatePairs :: Aggregation -> Aggregation -> LabeledPointPairs -> LineData
 aggregatePairs fAgg sAgg = map $ bimap (runAggregation fAgg) (runAggregation sAgg)
 
 buildLine
-  :: M.Map JCursor Ax.Axis -> Int -> Int -> ChartConfiguration -> Option
+  :: M.Map JCursor Ax.Axis -> Int -> Int -> ChartConfiguration -> EC.Option
 buildLine axises angle size conf = case axisSeriesPair of
   Tuple xAxis series ->
-    Option optionDefault { series = Just $ map Just series
-                         , xAxis = Just $ OneAxis $ Axis
+    EC.Option EC.optionDefault { series = Just $ map Just series
+                         , xAxis = Just $ EC.OneAxis $ EC.Axis
                                    $ mixAxisLabelAngleAndFontSize angle size xAxis
                          , yAxis = Just yAxis
                          , tooltip = Just tooltip
                          , legend = Just $ mkLegend series
                          , color = Just colors
-                         , grid = Just $ Grid gridDefault
-                           { y2 = Just $ Percent 15.0
+                         , grid = Just $ EC.Grid EC.gridDefault
+                           { y2 = Just $ EC.Percent 15.0
                            }
                          }
   where
-  mkLegend :: Array Series -> Legend
+  mkLegend :: Array EC.Series -> EC.Legend
   mkLegend ss =
-    Legend legendDefault { "data" = Just $ map legendItemDefault $ extractNames ss }
+    EC.Legend EC.legendDefault { "data" = Just $ map EC.legendItemDefault $ extractNames ss }
 
-  tooltip :: Tooltip
-  tooltip = Tooltip $ tooltipDefault { trigger = Just TriggerItem }
+  tooltip :: EC.Tooltip
+  tooltip = EC.Tooltip $ EC.tooltipDefault { trigger = Just EC.TriggerItem }
 
-  extractNames :: Array Series -> Array String
+  extractNames :: Array EC.Series -> Array String
   extractNames ss = A.nub $A.catMaybes $ map extractName ss
 
-  extractName :: Series -> Maybe String
-  extractName (LineSeries r) = r.common.name
+  extractName :: EC.Series -> Maybe String
+  extractName (EC.LineSeries r) = r.common.name
   extractName _ = Nothing
 
-  xAxisConfig :: Tuple AxisType (Maybe Interval)
+  xAxisConfig :: Tuple EC.AxisType (Maybe EC.Interval)
   xAxisConfig = getXAxisConfig axises conf
 
   extracted :: LineData
   extracted = lineData $ buildChartAxises axises conf
 
-  yAxis :: Axises
+  yAxis :: EC.Axises
   yAxis =
     if needTwoAxises axises conf
-    then TwoAxises yAxis' yAxis'
-    else OneAxis yAxis'
+    then EC.TwoAxises yAxis' yAxis'
+    else EC.OneAxis yAxis'
 
-  yAxis' :: Axis
-  yAxis' = Axis axisDefault { "type" = Just ValueAxis }
+  yAxis' :: EC.Axis
+  yAxis' = EC.Axis EC.axisDefault { "type" = Just EC.ValueAxis }
 
-  axisSeriesPair :: Tuple AxisRec (Array Series)
+  axisSeriesPair :: Tuple EC.AxisRec (Array EC.Series)
   axisSeriesPair = mkSeries (needTwoAxises axises conf) xAxisConfig extracted
 
 needTwoAxises :: M.Map JCursor Ax.Axis -> ChartConfiguration -> Boolean
@@ -171,24 +170,24 @@ needTwoAxises axises conf =
 getXAxisConfig
   :: M.Map JCursor Ax.Axis
   -> ChartConfiguration
-  -> Tuple AxisType (Maybe Interval)
+  -> Tuple EC.AxisType (Maybe EC.Interval)
 getXAxisConfig axises conf =
   case (conf.dimensions !! 0) >>= view _value >>= flip M.lookup axises of
-    Just (Ax.TimeAxis _) -> Tuple TimeAxis $ Just $ Custom zero
-    Just (Ax.ValAxis _) -> Tuple ValueAxis Nothing
-    _ -> Tuple CategoryAxis $ Just $ Custom zero
+    Just (Ax.TimeAxis _) -> Tuple EC.TimeAxis $ Just $ EC.Custom zero
+    Just (Ax.ValAxis _) -> Tuple EC.ValueAxis Nothing
+    _ -> Tuple EC.CategoryAxis $ Just $ EC.Custom zero
 
 mkSeries
   :: Boolean
-  -> Tuple AxisType (Maybe Interval)
+  -> Tuple EC.AxisType (Maybe EC.Interval)
   -> LineData
-  -> Tuple AxisRec (Array Series)
+  -> Tuple EC.AxisRec (Array EC.Series)
 mkSeries needTwoAxis (Tuple ty interval_) lData = Tuple xAxis series
   where
-  xAxis :: AxisRec
-  xAxis = axisDefault { "type" = Just ty
-                                 , "data" = Just $ map CommonAxisData catVals
-                                 , axisTick = Just $ AxisTick axisTickDefault
+  xAxis :: EC.AxisRec
+  xAxis = EC.axisDefault { "type" = Just ty
+                                 , "data" = Just $ map EC.CommonAxisData catVals
+                                 , axisTick = Just $ EC.AxisTick EC.axisTickDefault
                                    { interval = interval_
                                    }
                                  }
@@ -199,7 +198,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData = Tuple xAxis series
   keysArray :: Array Key
   keysArray = L.fromList $ M.keys lData
 
-  series :: Array Series
+  series :: Array EC.Series
   series = case group of
     Tuple firsts seconds ->
       L.fromList $
@@ -234,22 +233,22 @@ mkSeries needTwoAxis (Tuple ty interval_) lData = Tuple xAxis series
   fill :: Map String Number -> String -> Map String Number
   fill m key = M.alter (maybe (Just 0.0) Just) key m
 
-  firstSerie :: Tuple String (Array Number) -> Series
+  firstSerie :: Tuple String (Array Number) -> EC.Series
   firstSerie = serie 0.0
 
-  secondSerie :: Tuple String (Array Number) -> Series
+  secondSerie :: Tuple String (Array Number) -> EC.Series
   secondSerie = serie 1.0
 
-  serie :: Number -> Tuple String (Array Number) -> Series
+  serie :: Number -> Tuple String (Array Number) -> EC.Series
   serie ix (Tuple name nums) =
-    LineSeries { common: if name == ""
-                         then universalSeriesDefault
-                         else universalSeriesDefault { "name" = Just name }
-               , lineSeries: lineSeriesDefault
+    EC.LineSeries { common: if name == ""
+                         then EC.universalSeriesDefault
+                         else EC.universalSeriesDefault { "name" = Just name }
+               , lineSeries: EC.lineSeriesDefault
                    { "data" = Just $ map simpleData nums
                    , yAxisIndex = Just ix
                    }
                }
 
-  simpleData :: Number -> ItemData
-  simpleData n = Value $ Simple n
+  simpleData :: Number -> EC.ItemData
+  simpleData n = EC.Value $ EC.Simple n

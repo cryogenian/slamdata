@@ -16,12 +16,12 @@ limitations under the License.
 
 module Halogen.Component.Utils where
 
-import Prelude (Applicative, Bind, pure, Unit(), unit, bind, ($), zero, const)
+import Prelude
 
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling as SCR
-import Control.Monad.Aff (Aff(), Canceler(), forkAff, later', runAff)
-import Control.Monad.Aff.AVar (AVAR(), makeVar, putVar, takeVar)
+import Control.Monad.Aff (Aff, Canceler, forkAff, later', runAff)
+import Control.Monad.Aff.AVar (AVAR, makeVar, putVar, takeVar)
 import Control.Monad.Aff.Free (Affable, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 

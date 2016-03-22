@@ -19,7 +19,7 @@ module SlamData.FileSystem.Listing.Component where
 import SlamData.Prelude
 
 import Data.Array (zipWith, range, length, cons, sortBy, filter, nub)
-import Data.Lens ((.~), (%~), (<>~), lens, LensP())
+import Data.Lens ((.~), (%~), (<>~), lens, LensP)
 
 import Halogen as H
 import Halogen.Component.Utils (forceRerender')
@@ -27,8 +27,8 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam())
-import SlamData.FileSystem.Listing.Item (Item())
+import SlamData.Effects (Slam)
+import SlamData.FileSystem.Listing.Item (Item)
 import SlamData.FileSystem.Listing.Item.Component as Item
 import SlamData.Render.CSS as Rc
 

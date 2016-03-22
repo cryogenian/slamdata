@@ -20,17 +20,12 @@ import SlamData.Prelude
 
 import Data.Array (findIndex)
 import Data.Either.Unsafe as U
-import Data.Lens (LensP(), lens, (^.), (?~), (.~))
+import Data.Lens (LensP, lens, (?~), (.~))
 
-import Network.HTTP.RequestHeader (RequestHeader())
+import SlamData.Download.Model (JSONOptions, CSVOptions, initialCSVOptions)
+import SlamData.FileSystem.Resource (Resource, resourceName, root, getPath)
 
-import SlamData.Download.Model
-import SlamData.FileSystem.Resource (Resource(), resourceName, root, getPath)
-
-toHeaders :: State -> Array RequestHeader
-toHeaders (State r) = toHeaders' r
-
-type StateRec =
+type State =
   { source :: Either String Resource
   , sources :: (Array Resource)
   , showSourcesList :: Boolean
@@ -39,51 +34,48 @@ type StateRec =
   , options :: Either CSVOptions JSONOptions
   , error :: Maybe String
   }
-newtype State = State StateRec
 
 initialState :: Resource -> State
 initialState res =
-   State { source: Right res
-         , sources: [root]
-         , showSourcesList: false
-         , targetName: let name = resourceName res
-                       in Right $ if name == "" then "archive" else name
-         , compress: false
-         , options: Left initialCSVOptions
-         , error: Nothing
-         }
-
-_State :: LensP State StateRec
-_State = lens (\(State obj) -> obj) (const State)
+  { source: Right res
+  , sources: [root]
+  , showSourcesList: false
+  , targetName:
+      let name = resourceName res
+      in Right $ if name == "" then "archive" else name
+  , compress: false
+  , options: Left initialCSVOptions
+  , error: Nothing
+  }
 
 _source :: LensP State (Either String Resource)
-_source = _State <<< lens _.source (_ { source = _ })
+_source = lens _.source (_ { source = _ })
 
 _sources :: LensP State (Array Resource)
-_sources = _State <<< lens _.sources (_ { sources = _ })
+_sources = lens _.sources (_ { sources = _ })
 
 _showSourcesList :: LensP State Boolean
-_showSourcesList = _State <<< lens _.showSourcesList (_ { showSourcesList = _ })
+_showSourcesList = lens _.showSourcesList (_ { showSourcesList = _ })
 
 _targetName :: LensP State (Either String String)
-_targetName = _State <<< lens _.targetName (_ { targetName = _ })
+_targetName = lens _.targetName (_ { targetName = _ })
 
 _compress :: LensP State Boolean
-_compress = _State <<< lens _.compress (_ { compress = _ })
+_compress = lens _.compress (_ { compress = _ })
 
 _options :: LensP State (Either CSVOptions JSONOptions)
-_options = _State <<< lens _.options (_ { options = _ })
+_options = lens _.options (_ { options = _ })
 
 _error :: LensP State (Maybe String)
-_error = _State <<< lens _.error (_ { error = _ })
+_error = lens _.error (_ { error = _ })
 
 validate :: State -> State
 validate r
-  | isLeft (r ^. _source) =
+  | isLeft (r.source) =
     r # _error ?~ "Please enter a valid source path to download"
-  | not $ checkExists (U.fromRight $ r ^. _source) (r ^. _sources) =
+  | not $ checkExists (U.fromRight $ r.source) (r.sources) =
     r # _error ?~ "The source resource does not exists"
-  | isLeft (r ^. _targetName) =
+  | isLeft (r.targetName) =
     r # _error ?~ "Please enter a valid target filename"
   | otherwise =
     r # _error .~ Nothing

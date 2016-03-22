@@ -44,7 +44,7 @@ module Quasar.Aff
 
   , retrieveAuthProviders
   , compile
-  , RetryEffects()
+  , RetryEffects
   ) where
 
 import Prelude
@@ -55,7 +55,7 @@ import Control.Bind ((>=>), (<=<), (=<<))
 import Control.Coroutine as CR
 import Control.Coroutine.Aff as ACR
 import Control.Monad (when, unless)
-import Control.Monad.Aff (Aff())
+import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff.Class (liftEff)
@@ -72,8 +72,8 @@ import Data.Bifunctor (bimap, lmap)
 import Data.Date as Date
 import Data.Either as E
 import Data.Foldable as F
-import Data.Foreign (F(), parseJSON)
-import Data.Foreign.Class (readProp, read, IsForeign)
+import Data.Foreign (F, parseJSON)
+import Data.Foreign.Class (class IsForeign, readProp, read)
 import Data.Foreign.Index (prop)
 import Data.Foreign.NullOrUndefined (runNullOrUndefined)
 import Data.Functor (($>))
@@ -90,21 +90,21 @@ import Data.String as S
 import Data.StrMap as SM
 import Data.Time as Time
 import Data.Tuple (Tuple(..))
-import Data.URI as URI
-import Data.URI.Types as URI
+import Data.URI (runParseAbsoluteURI) as URI
+import Data.URI.Types (AbsoluteURI(..), Query(..), URIScheme(..)) as URI
 
-import DOM (DOM())
+import DOM (DOM)
 
 import Network.HTTP.Affjax as AX
-import Network.HTTP.Affjax.Request as AX
-import Network.HTTP.Affjax.Response as AX
+import Network.HTTP.Affjax.Request (class Requestable)
+import Network.HTTP.Affjax.Response (class Respondable, ResponseType(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Network.HTTP.StatusCode (StatusCode(..))
 
 import Quasar.Paths as Paths
-import Quasar.Auth as Auth
+import Quasar.Auth (IdToken, authHeader) as Auth
 import Quasar.Auth.Permission as Perm
-import Quasar.Auth.Provider as Auth
+import Quasar.Auth.Provider (Provider) as Auth
 
 -- TODO: split out a core Quasar module that only deals with the API, and
 -- doesn't know about SlamData specific things.
@@ -128,8 +128,8 @@ instance listingIsForeign :: IsForeign Listing where
         <<< M.fromMaybe []
         <<< runNullOrUndefined
 
-instance listingRespondable :: AX.Respondable Listing where
-  responseType = Tuple (M.Just applicationJSON) AX.JSONResponse
+instance listingRespondable :: Respondable Listing where
+  responseType = Tuple (M.Just applicationJSON) JSONResponse
   fromResponse = read
 
 insertAuthHeaders
@@ -225,7 +225,7 @@ type RetryEffects e = (avar :: AVar.AVAR, ref :: Ref.REF, now :: Date.Now | e)
 -- | A version of `affjax` with our retry policy.
 slamjax
   :: forall e a b
-   . (AX.Requestable a, AX.Respondable b)
+   . (Requestable a, Respondable b)
   => AX.AffjaxRequest a
   -> AX.Affjax (RetryEffects e) b
 slamjax =
@@ -235,7 +235,7 @@ slamjax =
 
 retryGet
   :: forall e a fd
-   . (AX.Respondable a)
+   . (Respondable a)
   => P.Path P.Abs fd P.Sandboxed
   -> MediaType
   -> M.Maybe Auth.IdToken
@@ -267,7 +267,7 @@ mkRequest u mime idToken perms = do
 
 getOnce
   :: forall e a fd
-   . (AX.Respondable a)
+   . (Respondable a)
   => P.Path P.Abs fd P.Sandboxed
   -> MediaType
   -> M.Maybe Auth.IdToken
@@ -279,7 +279,7 @@ getOnce u mime idToken perms =
 
 getWithPolicy
   :: forall e a fd
-   . (AX.Respondable a)
+   . (Respondable a)
   => AX.RetryPolicy
   -> P.Path P.Abs fd P.Sandboxed
   -> MediaType
@@ -292,7 +292,7 @@ getWithPolicy policy u mime idToken perms =
 
 retryDelete
   :: forall e a fd
-   . (AX.Respondable a)
+   . (Respondable a)
   => P.Path P.Abs fd P.Sandboxed
   -> M.Maybe Auth.IdToken
   -> Array Perm.PermissionToken
@@ -307,7 +307,7 @@ retryDelete u idToken perms = do
 
 retryPost
   :: forall e a b fd
-   . (AX.Requestable a, AX.Respondable b)
+   . (Requestable a, Respondable b)
   => P.Path P.Abs fd P.Sandboxed
   -> a
   -> M.Maybe Auth.IdToken
@@ -324,7 +324,7 @@ retryPost u c idToken perms =
 
 retryPut
   :: forall e a b fd
-   . (AX.Requestable a, AX.Respondable b)
+   . (Requestable a, Respondable b)
   => P.Path P.Abs fd P.Sandboxed
   -> a
   -> MediaType
@@ -751,7 +751,7 @@ portView
 portView res dest sql varMap idToken perms = do
   guard $ R.isViewMount dest
   let
-    queryParams = M.maybe "" ("&" <>) $ renderQueryString varMap
+    queryParams = M.maybe "" ("&" <> _) $ renderQueryString varMap
     connectionUri = "sql2:///?q="
                     <> PU.encodeURIPath (templated res sql)
                     <> queryParams
@@ -809,7 +809,7 @@ portQuery res dest sql vars idToken perms = do
       JS.jsonParser result.response >>= JS.decodeJson
   where
   queryVars :: String
-  queryVars = M.maybe "" ("?" <>) $ renderQueryString vars
+  queryVars = M.maybe "" ("?" <> _) $ renderQueryString vars
 
 renderQueryString :: SM.StrMap String -> M.Maybe String
 renderQueryString = map go <<< L.uncons <<< SM.toList
@@ -845,8 +845,8 @@ sample' res mbOffset mbLimit idToken perms =
       </> PU.rootify (R.resourceDir res)
       </> P.file
             (R.resourceName res
-               <> (M.maybe "" (("?offset=" <>) <<< show) mbOffset)
-               <> (M.maybe "" (("&limit=" <>) <<< show ) mbLimit))
+               <> (M.maybe "" (("?offset=" <> _) <<< show) mbOffset)
+               <> (M.maybe "" (("&limit=" <> _) <<< show ) mbLimit))
 
 
 sample
@@ -904,7 +904,7 @@ extractJArray = E.either (Err.throwError <<< Exn.error) pure <<< JS.decodeJson
 -- to return an array of *arrays* of unformatted strings, which can then be formatted by the
 -- client (e.g. to intercalate with dots and add backticks).
 getFields :: JS.Json -> Array String
-getFields = Arr.filter (/= "") <<< Arr.nub <<< go []
+getFields = Arr.filter (_ /= "") <<< Arr.nub <<< go []
   where
   go :: Array String -> JS.Json -> Array String
   go [] json = go [""] json
@@ -1058,4 +1058,4 @@ compile sql res varMap idToken perms = do
     </> P.dir (R.resourceName res)
     </> P.file ("?q=" ++ encodeURIComponent (templated res sql) ++ queryVars)
   queryVars :: String
-  queryVars = M.maybe "" ("&" ++) $ renderQueryString varMap
+  queryVars = M.maybe "" ("&" ++ _) $ renderQueryString varMap

@@ -18,11 +18,11 @@ module SlamData.Notebook.Cell.Download.Component.State where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Lens (LensP(), lens)
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Lens (LensP, lens)
 
 import SlamData.Download.Model as D
-import SlamData.FileSystem.Resource (Resource())
+import SlamData.FileSystem.Resource (Resource)
 
 type State =
   { compress :: Boolean

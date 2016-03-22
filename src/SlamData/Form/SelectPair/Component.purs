@@ -19,7 +19,7 @@ module SlamData.Form.SelectPair.Component where
 import SlamData.Prelude
 
 import Data.Array (null, singleton)
-import Data.Lens (LensP(), lens, (^.), (.~), (%~), view)
+import Data.Lens (LensP, lens, (^.), (.~), (%~), view)
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -30,7 +30,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Form.Select as S
 import SlamData.Form.Select.Component (Query(..), select)
 import SlamData.Render.CSS as Rc
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 
 import Utils.Array (enumerate)
 

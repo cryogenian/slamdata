@@ -15,18 +15,18 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Markdown.Model
-  ( Model()
+  ( Model
   , encode
   , decode
   ) where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json(), jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
+import Data.Argonaut (Json, jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
 import Data.Set as S
 
 import Text.Markdown.SlamDown (SlamDown(..), Block(..), Inline(..), ListType(..), CodeBlockType(..), LinkTarget(..), Expr(..), FormField(..), TextBoxType(..))
-import Text.Markdown.SlamDown.Html (SlamDownFormState(), FormFieldValue(..))
+import Text.Markdown.SlamDown.Html (SlamDownFormState, FormFieldValue(..))
 
 -- | The serialization model used for markdown cells.
 type Model =

@@ -15,14 +15,14 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.API.Component.Query
-  ( QueryP()
+  ( QueryP
   ) where
 
 import SlamData.Prelude
 
-import Halogen
+import Halogen as H
 
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
 import SlamData.Notebook.FormBuilder.Component as FB
 
-type QueryP = Coproduct CellEvalQuery (ChildF Unit FB.QueryP)
+type QueryP = Coproduct CellEvalQuery (H.ChildF Unit FB.QueryP)

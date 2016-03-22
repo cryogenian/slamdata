@@ -21,8 +21,8 @@ import SlamData.Prelude
 import Data.Char (fromCharCode)
 import Data.String (fromChar)
 
-import Halogen.HTML.Core (HTML(), ClassName())
-import Halogen.HTML.Events.Handler as E
+import Halogen.HTML.Core (HTML, ClassName)
+import Halogen.HTML.Events.Handler (EventHandler)
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Events.Types as ET
 import Halogen.HTML.Indexed as H
@@ -92,7 +92,7 @@ logo mbVersion =
     [ H.img [ P.src "img/logo.svg" ] ]
   ]
 
-closeButton :: forall p f. (ET.Event ET.MouseEvent -> E.EventHandler f) -> HTML p f
+closeButton :: forall p f. (ET.Event ET.MouseEvent -> EventHandler f) -> HTML p f
 closeButton handler =
   H.button [ P.class_ B.close
            , E.onClick handler

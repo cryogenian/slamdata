@@ -22,10 +22,10 @@ import SlamData.Dialog.Share.Code.Component as Code
 import SlamData.Dialog.Share.Confirm.Component as Confirm
 import SlamData.Dialog.Share.Permissions.Component as Perms
 import SlamData.Dialog.Share.User.Component as User
-import SlamData.Effects (Slam())
-import SlamData.FileSystem.Dialog.Permissions.Component.Install
-import SlamData.FileSystem.Dialog.Permissions.Component.Query
-import SlamData.FileSystem.Dialog.Permissions.Component.State
+import SlamData.Effects (Slam)
+import SlamData.FileSystem.Dialog.Permissions.Component.Install (RotaryState, RotaryQuery, HTML, cpCode, cpGroup, cpUser, cpRotary, cpPerms, cpConfirm)
+import SlamData.FileSystem.Dialog.Permissions.Component.Query (Query(..))
+import SlamData.FileSystem.Dialog.Permissions.Component.State (State, ShareType(..))
 import SlamData.FileSystem.Resource as R
 import SlamData.Halogen.Select.Cascade.Component as Cascade
 import SlamData.Halogen.Select.Rotary.Component as Rotary

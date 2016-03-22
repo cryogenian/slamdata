@@ -2,15 +2,15 @@ module SlamData.FileSystem.Dialog.Permissions.Component.Install where
 
 import SlamData.Prelude
 
-import Data.Either.Nested (Either6())
-import Data.Functor.Coproduct.Nested (Coproduct6())
+import Data.Either.Nested (Either6)
+import Data.Functor.Coproduct.Nested (Coproduct6)
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 import Quasar.Auth.Permission as Qp
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Dialog.Share.User.Component as User
 import SlamData.Dialog.Share.Code.Component as Code
 import SlamData.Dialog.Share.Confirm.Component as Confirm
@@ -18,8 +18,8 @@ import SlamData.Dialog.Share.Permissions.Component as Perms
 import SlamData.Halogen.Select.Rotary.Component as Rotary
 import SlamData.Halogen.Select.Cascade.Component as Cascade
 
-import SlamData.FileSystem.Dialog.Permissions.Component.State
-import SlamData.FileSystem.Dialog.Permissions.Component.Query
+import SlamData.FileSystem.Dialog.Permissions.Component.State (State, ShareType)
+import SlamData.FileSystem.Dialog.Permissions.Component.Query (Query)
 
 type RotaryState = Rotary.State (shareType :: ShareType)
 type RotaryQuery = Rotary.Query (shareType :: ShareType)

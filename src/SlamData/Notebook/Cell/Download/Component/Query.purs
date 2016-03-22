@@ -17,8 +17,8 @@ limitations under the License.
 module SlamData.Notebook.Cell.Download.Component.Query where
 
 import SlamData.Prelude
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Download.Model (CSVOptions(), JSONOptions(), OutputType())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
+import SlamData.Download.Model (CSVOptions, JSONOptions, OutputType)
 
 data Query a
   = SetOutput OutputType a

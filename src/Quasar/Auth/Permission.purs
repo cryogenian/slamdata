@@ -19,10 +19,9 @@ module Quasar.Auth.Permission where
 import SlamData.Prelude
 
 import Control.Monad.Aff (later')
-import Control.Monad.Eff (Eff())
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (random)
-import Control.MonadPlus (guard)
 import Control.UI.Browser (decodeURIComponent)
 
 import Data.Array as Arr
@@ -31,17 +30,17 @@ import Data.Path.Pathy as Pt
 import Data.String as Str
 import Data.String.Regex as Rgx
 
-import DOM (DOM())
+import DOM (DOM)
 import DOM.HTML (window)
 import DOM.HTML.Location as Location
 import DOM.HTML.Window as Window
 
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 
-import Utils.Path (FilePath())
+import Utils.Path (FilePath)
 
 newtype PermissionToken = PermissionToken String
 runPermissionToken :: PermissionToken -> String
@@ -150,7 +149,7 @@ getGroups =
   later' 1000
     $ pure
     $ map Group
-    $ map (Pt.rootDir Pt.</>)
+    $ map (Pt.rootDir Pt.</> _)
     $ Arr.catMaybes
     $ map (Pt.parseAbsFile >=> Pt.sandbox Pt.rootDir )
       ["/foo", "/foo/bar", "/foo/bar/baz", "/foo/quux" ]

@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Search.Model
-  ( Model()
+  ( Model
   , encode
   , decode
   ) where

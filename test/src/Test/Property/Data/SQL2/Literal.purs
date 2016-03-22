@@ -1,21 +1,21 @@
 module Test.Property.Data.SQL2.Literal
-  ( ArbLiteralF()
+  ( ArbLiteralF
   , runArbLiteralF
   , check
   ) where
 
 import Prelude
-import Data.Functor ((<$))
 import Data.Either as E
-import Data.Eq1
+import Data.Eq1 (eq1)
+import Data.Functor ((<$))
 import Data.Int as Int
 import Data.List as L
-import Data.SQL2.Literal
+import Data.SQL2.Literal (LiteralF(..), renderLiteralF, parseLiteralF)
 import Data.StrMap as SM
 import Data.Tuple as T
 import Test.StrongCheck ((<?>))
-import Test.StrongCheck as SC
-import Test.StrongCheck.Gen as SC
+import Test.StrongCheck (class Arbitrary, QC, Result(Failed), quickCheck, arbitrary) as SC
+import Test.StrongCheck.Gen (Gen, oneOf, arrayOf) as SC
 import Text.Parsing.Parser as P
 import Text.Parsing.Parser.String as PS
 

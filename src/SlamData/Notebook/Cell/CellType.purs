@@ -30,9 +30,9 @@ import SlamData.Prelude
 
 import Control.Monad.Error.Class (throwError)
 
-import Data.Argonaut (EncodeJson, DecodeJson, encodeJson, decodeJson)
+import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
 
-import Halogen.HTML (ClassName())
+import Halogen.HTML (ClassName)
 import Halogen.Themes.Bootstrap3 as B
 
 data CellType

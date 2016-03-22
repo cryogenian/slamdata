@@ -16,7 +16,7 @@ limitations under the License.
 
 module Quasar.Auth.OpenIDConfiguration
   ( OpenIDConfiguration(..)
-  , OpenIDConfigurationR()
+  , OpenIDConfigurationR
   , getOpenIDConfiguration
   ) where
 

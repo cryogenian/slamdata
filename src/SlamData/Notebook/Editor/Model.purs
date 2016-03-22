@@ -20,10 +20,10 @@ import SlamData.Prelude
 
 import Control.Monad.Error.Class (throwError)
 
-import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Map as M
 
-import SlamData.Notebook.Cell.CellId (CellId())
+import SlamData.Notebook.Cell.CellId (CellId)
 import SlamData.Notebook.Cell.Model as Cell
 
 type Notebook =

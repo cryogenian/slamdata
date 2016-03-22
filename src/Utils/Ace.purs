@@ -18,7 +18,7 @@ module Utils.Ace where
 
 import Prelude
 
-import Ace.Types (Editor(), EditSession(), ACE(), Position(..), Command(..), Range())
+import Ace.Types (Editor, EditSession, ACE, Position(..), Command(..), Range)
 import Ace.Editor as Editor
 import Ace.EditSession as Session
 import Ace.Document as Document
@@ -28,16 +28,16 @@ import Ace.KeyBinding as KeyBinding
 import Ace.Marker as Marker
 
 import Control.Bind ((>=>))
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Ref (newRef, writeRef, readRef, REF())
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Ref (newRef, writeRef, readRef, REF)
 import Data.Argonaut
-  (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+  (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Array as Arr
-import Data.Either (Either())
+import Data.Either (Either)
 import Data.Maybe (Maybe(..))
 import Data.Traversable as T
 import Data.Tuple (Tuple(..), fst, snd)
-import DOM (DOM())
+import DOM (DOM)
 
 type Effects e = (ace :: ACE, dom :: DOM, ref :: REF|e)
 

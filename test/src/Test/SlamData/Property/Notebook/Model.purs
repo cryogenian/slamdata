@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module Test.SlamData.Property.Notebook.Model
-  ( ArbNotebook()
+  ( ArbNotebook
   , runArbNotebook
   , check
   ) where
@@ -30,7 +30,7 @@ import Data.Map as M
 
 import SlamData.Notebook.Editor.Model as Model
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 import Test.SlamData.Property.Notebook.Cell.Model (runArbCell, checkCellEquality)
 import Test.SlamData.Property.Notebook.Cell.CellId (runArbCellId)

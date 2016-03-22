@@ -32,10 +32,10 @@ module Control.UI.Browser
 
 import Prelude
 
-import Control.Monad.Eff (Eff())
+import Control.Monad.Eff (Eff)
 
-import DOM (DOM())
-import DOM.HTML.Types (HTMLElement(), Location())
+import DOM (DOM)
+import DOM.HTML.Types (HTMLElement, Location)
 import DOM.HTML (window)
 import DOM.HTML.Location as Location
 import DOM.HTML.Window as Window

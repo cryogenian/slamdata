@@ -16,26 +16,26 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Port
   ( Port(..)
-  , ChartPort()
-  , module SlamData.Notebook.Cell.Port.VarMap
+  , ChartPort
   , _SlamDown
   , _VarMap
   , _Resource
   , _ChartOptions
   , _ResourceTag
-  , _Resource
+  , _Blocked
+  , module SlamData.Notebook.Cell.Port.VarMap
   ) where
 
 import SlamData.Prelude
 
-import Data.Lens (PrismP(), prism', TraversalP(), wander)
+import Data.Lens (PrismP, prism', TraversalP, wander)
 
 import ECharts.Options as Ec
 
 import SlamData.FileSystem.Resource as R
-import SlamData.Notebook.Cell.Port.VarMap
+import SlamData.Notebook.Cell.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue)
 
-import Text.Markdown.SlamDown (SlamDown())
+import Text.Markdown.SlamDown (SlamDown)
 
 type ChartPort = { options :: Ec.Option, width :: Int, height :: Int }
 

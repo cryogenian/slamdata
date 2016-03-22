@@ -20,10 +20,9 @@ module SlamData.Form.Select where
 
 import SlamData.Prelude
 
-import Data.Argonaut
-  (DecodeJson, EncodeJson, JCursor(), decodeJson, jsonEmptyObject, (.?), (~>), (:=))
+import Data.Argonaut (class DecodeJson, class EncodeJson, JCursor, decodeJson, jsonEmptyObject, (.?), (~>), (:=))
 import Data.Array (filter, length, head, (!!), elemIndex)
-import Data.Lens (LensP(), lens, view, (^.), (?~), (.~))
+import Data.Lens (LensP, lens, view, (^.), (?~), (.~))
 import Data.Monoid.Conj (Conj(..), runConj)
 
 
@@ -75,7 +74,7 @@ except' sel arr = filter (\x -> Just x /= (sel ^. _value)) arr
 
 filterSelect :: forall a. (Eq a) => Select a -> a -> Select a
 filterSelect (Select r) val =
-  Select { options: filter (/= val) r.options
+  Select { options: filter (_ /= val) r.options
          , value: if Just val == r.value then Nothing else r.value
          }
 -- This function returns `Select` without provided value if it is
@@ -110,9 +109,10 @@ trySelect' a sel =
 -- | updateState :: ViewModel -> State -> State
 -- | updateState vm st = st { users = st.users <-> vm.userSelect }
 -- | ```
-infixl 2 <->
-(<->) :: forall a. (Eq a) => Array a -> Select a -> Array a
-(<->) = flip except'
+infixl 2 exceptFlipped as <->
+
+exceptFlipped :: forall a. (Eq a) => Array a -> Select a -> Array a
+exceptFlipped = flip except'
 
 ifSelected
   :: forall f m a. (Foldable f, MonadPlus m)

@@ -31,11 +31,11 @@ import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Notebook.Cell.Chart.Component.State
+import SlamData.Notebook.Cell.Chart.Component.State (State, initialState)
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
 import SlamData.Notebook.Cell.Component as Cc
 import SlamData.Notebook.Cell.Port (Port(..))
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 
 type ChartHTML = H.ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit

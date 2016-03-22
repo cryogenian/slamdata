@@ -33,10 +33,10 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import DOM.HTML.Types (HTMLElement(), htmlElementToElement)
+import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 
 newtype State = State String
 

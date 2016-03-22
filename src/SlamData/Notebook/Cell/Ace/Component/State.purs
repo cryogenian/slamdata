@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Cell.Ace.Component.State (StateP()) where
+module SlamData.Notebook.Cell.Ace.Component.State (StateP) where
 
 import SlamData.Prelude
 
-import Ace.Halogen.Component (AceQuery(), AceState())
+import Ace.Halogen.Component (AceQuery, AceState)
 
-import Halogen (ParentState())
+import Halogen (ParentState)
 
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
-import SlamData.Effects (Slam())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
+import SlamData.Effects (Slam)
 
 type StateP = ParentState Unit AceState CellEvalQuery AceQuery Slam Unit

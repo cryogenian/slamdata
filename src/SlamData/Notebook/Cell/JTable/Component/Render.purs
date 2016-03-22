@@ -24,16 +24,16 @@ import Data.Int as Int
 import Data.Json.JTable as JT
 import Data.String (fromChar)
 
-import Halogen
-import Halogen.HTML.Events.Handler as E
-import Halogen.HTML.Events.Indexed as E
-import Halogen.HTML.Indexed as H
-import Halogen.HTML.Properties.Indexed as P
+import Halogen as H
+import Halogen.HTML.Events.Handler as HEH
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
-import SlamData.Notebook.Cell.JTable.Component.Query
-import SlamData.Notebook.Cell.JTable.Component.State
+import SlamData.Notebook.Cell.JTable.Component.Query (QueryP, PageStep(..), Query(..))
+import SlamData.Notebook.Cell.JTable.Component.State (State, currentPageInfo)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 
@@ -51,14 +51,14 @@ fromInputValue { current, pending } =
     Nothing -> show current
     Just pending' -> either id show pending'
 
-render :: State -> ComponentHTML QueryP
-render { result: Nothing } = H.div_ []
+render :: State -> H.ComponentHTML QueryP
+render { result: Nothing } = HH.div_ []
 render st@{ result: Just result } =
   let p = currentPageInfo st
-  in H.div_
+  in HH.div_
     [ right <$> JT.renderJTable jTableOpts result.json
-    , H.div
-        [ P.class_ CSS.pagination ]
+    , HH.div
+        [ HP.class_ CSS.pagination ]
         [ prevButtons (p.page <= 1)
         , pageField { current: p.page, pending: st.page } p.totalPages
         , nextButtons (p.page >= p.totalPages)
@@ -72,78 +72,78 @@ jTableOpts = JT.jTableOptsDefault
   , columnOrdering = JT.alphaOrdering
   }
 
-prevButtons :: Boolean -> ComponentHTML QueryP
+prevButtons :: Boolean -> H.ComponentHTML QueryP
 prevButtons enabled =
-  H.div
-    [ P.classes [B.btnGroup] ]
-    [ H.button
-        [ P.classes [B.btn, B.btnSm, B.btnDefault]
-        , P.disabled enabled
-        , E.onClick $ E.input_ (right <<< StepPage First)
+  HH.div
+    [ HP.classes [B.btnGroup] ]
+    [ HH.button
+        [ HP.classes [B.btn, B.btnSm, B.btnDefault]
+        , HP.disabled enabled
+        , HE.onClick $ HE.input_ (right <<< StepPage First)
         ]
         [ glyph B.glyphiconFastBackward ]
-    , H.button
-        [ P.classes [B.btn, B.btnSm, B.btnDefault]
-        , P.disabled enabled
-        , E.onClick $ E.input_ (right <<< StepPage Prev)
+    , HH.button
+        [ HP.classes [B.btn, B.btnSm, B.btnDefault]
+        , HP.disabled enabled
+        , HE.onClick $ HE.input_ (right <<< StepPage Prev)
         ]
         [ glyph B.glyphiconStepBackward ]
     ]
 
-pageField :: InputValue Int -> Int -> ComponentHTML QueryP
+pageField :: InputValue Int -> Int -> H.ComponentHTML QueryP
 pageField pageValue totalPages =
-  H.div
-    [ P.classes [CSS.pageInput] ]
+  HH.div
+    [ HP.classes [CSS.pageInput] ]
     [ submittable
-        [ H.text "Page"
-        , H.input
-            [ P.classes [B.formControl, B.inputSm]
-            , P.value (fromInputValue pageValue)
-            , E.onValueInput (E.input (\x -> right <<< SetCustomPage x))
+        [ HH.text "Page"
+        , HH.input
+            [ HP.classes [B.formControl, B.inputSm]
+            , HP.value (fromInputValue pageValue)
+            , HE.onValueInput (HE.input (\x -> right <<< SetCustomPage x))
             ]
-        , H.text $ "of " ++ (show totalPages)
+        , HH.text $ "of " ++ (show totalPages)
         ]
     ]
 
-submittable :: Array (ComponentHTML QueryP) -> ComponentHTML QueryP
+submittable :: Array (H.ComponentHTML QueryP) -> H.ComponentHTML QueryP
 submittable =
-  H.form
-    [ E.onSubmit (\_ -> E.preventDefault $> action (left <<< NotifyRunCell)) ]
+  HH.form
+    [ HE.onSubmit (\_ -> HEH.preventDefault $> H.action (left <<< NotifyRunCell)) ]
 
-nextButtons :: Boolean -> ComponentHTML QueryP
+nextButtons :: Boolean -> H.ComponentHTML QueryP
 nextButtons enabled =
-  H.div
-    [ P.classes [B.btnGroup] ]
-    [ H.button
-        [ P.classes [B.btn, B.btnSm, B.btnDefault]
-        , P.disabled enabled
-        , E.onClick $ E.input_ (right <<< StepPage Next)
+  HH.div
+    [ HP.classes [B.btnGroup] ]
+    [ HH.button
+        [ HP.classes [B.btn, B.btnSm, B.btnDefault]
+        , HP.disabled enabled
+        , HE.onClick $ HE.input_ (right <<< StepPage Next)
         ]
         [ glyph B.glyphiconStepForward ]
-    , H.button
-        [ P.classes [B.btn, B.btnSm, B.btnDefault]
-        , P.disabled enabled
-        , E.onClick $ E.input_ (right <<< StepPage Last)
+    , HH.button
+        [ HP.classes [B.btn, B.btnSm, B.btnDefault]
+        , HP.disabled enabled
+        , HE.onClick $ HE.input_ (right <<< StepPage Last)
         ]
         [ glyph B.glyphiconFastForward ]
     ]
 
-pageSizeControls :: Boolean -> InputValue Int -> ComponentHTML QueryP
+pageSizeControls :: Boolean -> InputValue Int -> H.ComponentHTML QueryP
 pageSizeControls showCustom pageSize =
-  H.div
-    [ P.classes [CSS.pageSize] ]
+  HH.div
+    [ HP.classes [CSS.pageSize] ]
     [ submittable
-         $ [ H.text "Per page:" ]
+         $ [ HH.text "Per page:" ]
         ++ [ if showCustom
-             then H.input
-                [ P.classes [B.formControl, B.inputSm]
-                , P.value (fromInputValue pageSize)
-                , E.onValueInput (E.input (\v -> right <<< SetCustomPageSize v))
+             then HH.input
+                [ HP.classes [B.formControl, B.inputSm]
+                , HP.value (fromInputValue pageSize)
+                , HE.onValueInput (HE.input (\v -> right <<< SetCustomPageSize v))
                 ]
-             else H.select
-                [ P.classes [B.formControl, B.inputSm]
-                , E.onValueChange
-                    (E.input (\v ->
+             else HH.select
+                [ HP.classes [B.formControl, B.inputSm]
+                , HE.onValueChange
+                    (HE.input (\v ->
                       right <<<
                         if v == "Custom"
                         then StartEnterCustomPageSize
@@ -162,20 +162,20 @@ pageSizeControls showCustom pageSize =
     [ option <$> sizeValues
     , dividerOption
     , customOption
-    , [ H.option_ [ H.text "Custom" ] ]
+    , [ HH.option_ [ HH.text "Custom" ] ]
     ]
 
   option value =
-    H.option
-      [ P.selected (value == sizeNum) ]
-      [ H.text (show value) ]
+    HH.option
+      [ HP.selected (value == sizeNum) ]
+      [ HH.text (show value) ]
 
   -- An unselectable option dividing the custom values from the presets
   dividerOption =
-    [ H.option [ P.disabled true ] [ H.text $ fromChar $ fromCharCode 8212 ] ]
+    [ HH.option [ HP.disabled true ] [ HH.text $ fromChar $ fromCharCode 8212 ] ]
 
   -- If a custom value has been entered, create an entry for it in the dropdown
   customOption =
     if isNothing (A.elemIndex sizeNum sizeValues)
-    then [ H.option [P.selected true] [H.text (show sizeNum)] ]
+    then [ HH.option [HP.selected true] [HH.text (show sizeNum)] ]
     else []

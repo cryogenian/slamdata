@@ -18,9 +18,9 @@ module SlamData.Notebook.Cell.Explore.Component.Query where
 
 import SlamData.Prelude
 
-import Halogen (ChildF())
+import Halogen (ChildF)
 
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery())
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
 import SlamData.Notebook.FileInput.Component as FI
 
 data Query a = UpdateExplore String a

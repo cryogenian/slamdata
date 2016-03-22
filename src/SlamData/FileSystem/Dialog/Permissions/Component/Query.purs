@@ -1,7 +1,7 @@
 module SlamData.FileSystem.Dialog.Permissions.Component.Query where
 
 import SlamData.Prelude
-import DOM.HTML.Types (HTMLElement())
+import DOM.HTML.Types (HTMLElement)
 
 data Query a
   = Init a

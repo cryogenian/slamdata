@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Control.Monad.Aff (attempt)
 import Control.Monad.Error.Class (throwError)
 
-import Data.Argonaut (JCursor())
+import Data.Argonaut (JCursor)
 import Data.Array (length, null, cons, index)
 import Data.Int as Int
 import Data.Lens ((.~), view, preview)
@@ -44,23 +44,23 @@ import Quasar.Aff as Api
 import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
-import SlamData.Form.Select (Select(), autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
+import SlamData.Form.Select (Select, autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
 import SlamData.Notebook.Cell.CellType (CellType(Viz), cellName, cellGlyph)
 import SlamData.Notebook.Cell.Chart.Aggregation (aggregationSelect)
-import SlamData.Notebook.Cell.Chart.Axis (analyzeJArray, Axis())
+import SlamData.Notebook.Cell.Chart.Axis (analyzeJArray, Axis)
 import SlamData.Notebook.Cell.Chart.Axis as Ax
-import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration(), depends, dependsOnArr)
+import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
 import SlamData.Notebook.Cell.Chart.ChartOptions (buildOptions)
 import SlamData.Notebook.Cell.Chart.ChartType (ChartType(..), isPie)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT(), runCellEvalT, liftWithCanceler')
-import SlamData.Notebook.Cell.Component (CellStateP(), CellQueryP(), makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT, runCellEvalT, liftWithCanceler')
+import SlamData.Notebook.Cell.Component (CellStateP, CellQueryP, makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import SlamData.Notebook.Cell.Port as P
 import SlamData.Notebook.Cell.Viz.Component.Query (QueryC, Query(..))
 import SlamData.Notebook.Cell.Viz.Component.State (State, _needToUpdate, _availableChartTypes, _sample, fromModel, _records, _loading, _axisLabelFontSize, _axisLabelAngle, _chartType, _width, _height, initialState)
 import SlamData.Notebook.Cell.Viz.Form.Component (formComponent)
 import SlamData.Notebook.Cell.Viz.Form.Component as Form
 import SlamData.Notebook.Cell.Viz.Model as Model
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 

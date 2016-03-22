@@ -23,7 +23,7 @@ import Data.Either (Either(..))
 
 import SlamData.Form.Select (Select(..))
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 newtype ArbSelect a = ArbSelect (Select a)
 

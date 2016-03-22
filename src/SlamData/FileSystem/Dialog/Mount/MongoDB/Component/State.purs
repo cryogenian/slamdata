@@ -22,7 +22,7 @@ import Control.UI.Browser (decodeURIComponent, encodeURIComponent)
 
 import Data.Array as A
 import Data.Foldable (any)
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 import Data.List (fromList)
 import Data.Path.Pathy (printPath)
 import Data.String as S

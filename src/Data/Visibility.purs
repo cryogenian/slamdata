@@ -18,7 +18,7 @@ module Data.Visibility (Visibility(..), isVisible, isInvisible, toggleVisibility
 
 import Prelude
 
-import Data.Generic (Generic, gEq, gCompare)
+import Data.Generic (class Generic, gEq, gCompare)
 
 data Visibility = Visible | Invisible
 

@@ -17,7 +17,7 @@ limitations under the License.
 module SlamData.FileSystem.Dialog.Download.Component.Query where
 
 import SlamData.Download.Model
-import SlamData.FileSystem.Resource (Resource())
+import SlamData.FileSystem.Resource (Resource)
 
 data Query a
   = SourceTyped String a

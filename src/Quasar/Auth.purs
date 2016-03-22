@@ -26,25 +26,25 @@ module Quasar.Auth
   , storeNonce
   , storeClientId
   , clearIdToken
-  , module OIDCCryptUtils.Types
+  , module OIDC
   ) where
 
 import Prelude
-import Control.Monad.Eff (Eff())
+import Control.Monad.Aff (Aff)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Aff (Aff())
 import Data.Either as E
 import Data.Maybe as M
-import DOM (DOM())
-import Network.HTTP.RequestHeader
-import Utils.LocalStorage as LS
+import DOM (DOM)
+import Network.HTTP.RequestHeader (RequestHeader(..), requestHeaderName, requestHeaderValue)
+import OIDCCryptUtils.Types as OIDC
 import Quasar.Auth.Permission as P
-import OIDCCryptUtils.Types
+import Utils.LocalStorage as LS
 
 authHeader
-  :: IdToken
+  :: OIDC.IdToken
   -> RequestHeader
-authHeader (IdToken tok) =
+authHeader (OIDC.IdToken tok) =
   RequestHeader
     "Authorization"
     ("Bearer " <> tok)
@@ -61,46 +61,46 @@ nonceLocalStorageKey = "replay"
 clientIDLocalStorageKey :: String
 clientIDLocalStorageKey = "sd-auth-client-id"
 
-retrieveIdToken :: forall e. Eff (dom :: DOM | e) (M.Maybe IdToken)
+retrieveIdToken :: forall e. Eff (dom :: DOM | e) (M.Maybe OIDC.IdToken)
 retrieveIdToken =
   LS.getLocalStorage idTokenLocalStorageKey <#>
-    E.either (\_ -> M.Nothing) (M.Just <<< IdToken)
+    E.either (\_ -> M.Nothing) (M.Just <<< OIDC.IdToken)
 
-retrieveKeyString :: forall e. Eff (dom :: DOM | e) (M.Maybe KeyString)
+retrieveKeyString :: forall e. Eff (dom :: DOM | e) (M.Maybe OIDC.KeyString)
 retrieveKeyString =
   LS.getLocalStorage keyStringLocalStorageKey <#>
-    E.either (\_ -> M.Nothing) (M.Just <<< KeyString)
+    E.either (\_ -> M.Nothing) (M.Just <<< OIDC.KeyString)
 
-retrieveNonce :: forall e. Eff (dom :: DOM | e) (M.Maybe UnhashedNonce)
+retrieveNonce :: forall e. Eff (dom :: DOM | e) (M.Maybe OIDC.UnhashedNonce)
 retrieveNonce =
   LS.getLocalStorage nonceLocalStorageKey <#>
-    E.either (\_ -> M.Nothing) (M.Just <<< UnhashedNonce)
+    E.either (\_ -> M.Nothing) (M.Just <<< OIDC.UnhashedNonce)
 
-retrieveClientID :: forall e. Eff (dom :: DOM | e) (M.Maybe ClientID)
+retrieveClientID :: forall e. Eff (dom :: DOM | e) (M.Maybe OIDC.ClientID)
 retrieveClientID =
   LS.getLocalStorage clientIDLocalStorageKey <#>
-    E.either (\_ -> M.Nothing) (M.Just <<< ClientID)
+    E.either (\_ -> M.Nothing) (M.Just <<< OIDC.ClientID)
 
-storeIdToken :: forall e. IdToken -> Eff (dom :: DOM | e) Unit
-storeIdToken (IdToken idToken) =
+storeIdToken :: forall e. OIDC.IdToken -> Eff (dom :: DOM | e) Unit
+storeIdToken (OIDC.IdToken idToken) =
   LS.setLocalStorage
     idTokenLocalStorageKey
     idToken
 
-storeKeyString :: forall e. KeyString -> Eff (dom :: DOM |e) Unit
-storeKeyString (KeyString ks) =
+storeKeyString :: forall e. OIDC.KeyString -> Eff (dom :: DOM |e) Unit
+storeKeyString (OIDC.KeyString ks) =
   LS.setLocalStorage
     keyStringLocalStorageKey
     ks
 
-storeNonce :: forall e. UnhashedNonce -> Eff (dom :: DOM |e) Unit
-storeNonce (UnhashedNonce n) =
+storeNonce :: forall e. OIDC.UnhashedNonce -> Eff (dom :: DOM |e) Unit
+storeNonce (OIDC.UnhashedNonce n) =
   LS.setLocalStorage
     nonceLocalStorageKey
     n
 
-storeClientId :: forall e. ClientID -> Eff (dom :: DOM |e) Unit
-storeClientId (ClientID cid) =
+storeClientId :: forall e. OIDC.ClientID -> Eff (dom :: DOM |e) Unit
+storeClientId (OIDC.ClientID cid) =
   LS.setLocalStorage
     clientIDLocalStorageKey
     cid
@@ -112,7 +112,7 @@ clearIdToken =
 
 authed
   :: forall a e
-   . (M.Maybe IdToken -> Array P.PermissionToken -> Aff (dom :: DOM | e) a)
+   . (M.Maybe OIDC.IdToken -> Array P.PermissionToken -> Aff (dom :: DOM | e) a)
   -> Aff (dom :: DOM | e) a
 authed f = do
   idToken <- liftEff retrieveIdToken

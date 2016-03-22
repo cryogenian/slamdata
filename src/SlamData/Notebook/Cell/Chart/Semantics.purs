@@ -18,17 +18,17 @@ module SlamData.Notebook.Cell.Chart.Semantics where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (Eff())
-import Control.Monad.ST (STRef(), ST(), newSTRef, modifySTRef, readSTRef, pureST)
+import Control.Monad.Eff (Eff)
+import Control.Monad.ST (STRef, ST, newSTRef, modifySTRef, readSTRef, pureST)
 
-import Data.Argonaut (runJsonPrim, toPrims, JsonPrim(), Json(), JArray(), JCursor(), DecodeJson, EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>))
+import Data.Argonaut (runJsonPrim, toPrims, JsonPrim, Json, JArray, JCursor, class DecodeJson, class EncodeJson, decodeJson, jsonEmptyObject, (:=), (.?), (~>))
 import Data.Array as A
 import Data.Int as Int
 import Data.List (List(..), catMaybes)
 import Data.List as L
-import Data.Map (Map(), keys, update, lookup, fromList)
+import Data.Map (Map, keys, update, lookup, fromList)
 import Data.String (take)
-import Data.String.Regex (Regex(), noFlags, regex, match, test)
+import Data.String.Regex (Regex, noFlags, regex, match, test)
 
 import Utils (stringToNumber)
 
@@ -141,12 +141,12 @@ checkPredicateTraverseFn p corrects incorrects filtered (Just c)
 
   | p c = do
     modifySTRef filtered $ Cons $ Just c
-    modifySTRef corrects (+ 1)
+    modifySTRef corrects (_ + 1)
     pure unit
 
   | otherwise = do
     modifySTRef filtered $ Cons Nothing
-    modifySTRef incorrects (+ 1)
+    modifySTRef incorrects (_ + 1)
     pure unit
 
 isUsedAsNothing :: Semantics -> Boolean

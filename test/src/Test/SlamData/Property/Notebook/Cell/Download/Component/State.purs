@@ -1,5 +1,5 @@
 module Test.SlamData.Property.Notebook.Cell.Download.Component.State
-  ( ArbState()
+  ( ArbState
   , runArbState
   , check
   ) where
@@ -10,7 +10,7 @@ import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import SlamData.Notebook.Cell.Download.Component.State as M
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 import Test.SlamData.Property.FileSystem.Resource (runArbResource)
 import Test.SlamData.Property.Download.Model (runArbCSVOptions, runArbJSONOptions)
 

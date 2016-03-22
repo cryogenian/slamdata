@@ -23,7 +23,7 @@ import Data.Foldable (mconcat)
 
 import SlamData.Notebook.Cell.Markdown.Model as M
 
-import Test.StrongCheck (QC(), Result(..), quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), quickCheck, (<?>))
 import Text.Markdown.SlamDown.Html (SlamDownState(..))
 
 check :: QC Unit

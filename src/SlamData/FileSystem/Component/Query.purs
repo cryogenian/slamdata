@@ -16,12 +16,12 @@ limitations under the License.
 
 module SlamData.FileSystem.Component.Query where
 
-import DOM.HTML.Types (HTMLElement())
+import DOM.HTML.Types (HTMLElement)
 
-import SlamData.FileSystem.Listing.Sort (Sort())
-import SlamData.FileSystem.Routing.Salt (Salt())
+import SlamData.FileSystem.Listing.Sort (Sort)
+import SlamData.FileSystem.Routing.Salt (Salt)
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
 data Query a
   = Resort a

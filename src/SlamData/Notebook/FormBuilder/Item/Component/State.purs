@@ -15,13 +15,13 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.FormBuilder.Item.Component.State
-  ( State()
+  ( State
   , _model
   , initialState
   , module SlamData.Notebook.FormBuilder.Item.Model
   ) where
 
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 
 import SlamData.Notebook.FormBuilder.Item.Model
 

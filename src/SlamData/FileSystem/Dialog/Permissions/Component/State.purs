@@ -2,9 +2,9 @@ module SlamData.FileSystem.Dialog.Permissions.Component.State where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Ref (Ref())
+import Control.Monad.Eff.Ref (Ref)
 
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 
 import SlamData.FileSystem.Resource as R
 

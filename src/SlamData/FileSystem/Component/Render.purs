@@ -20,9 +20,9 @@ import SlamData.Prelude
 
 import Data.Lens ((^.))
 
-import Halogen.HTML.Core (HTML(), ClassName())
+import Halogen.HTML.Core (HTML, ClassName)
 import Halogen.HTML.CSS.Indexed as CSS
-import Halogen.HTML.Events.Handler as E
+import Halogen.HTML.Events.Handler as EH
 import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
@@ -31,17 +31,17 @@ import Halogen.Query (action)
 import Halogen.Themes.Bootstrap3 as B
 
 import CSS.Geometry (marginLeft)
-import CSS.Size
+import CSS.Size (px)
 
-import SlamData.FileSystem.Component.Query
-import SlamData.FileSystem.Component.State
+import SlamData.FileSystem.Component.Query (Query(..))
+import SlamData.FileSystem.Component.State (State, _showHiddenFiles, _isMount, _sort)
 import SlamData.FileSystem.Listing.Sort (Sort(..))
 import SlamData.Render.CSS as Rc
 
 sorting :: forall a. State -> HTML a (Query Unit)
 sorting state =
   H.div [ P.classes [ B.colXs4, Rc.toolbarSort ] ]
-  [ H.a [ E.onClick (\_ -> E.preventDefault $> action Resort) ]
+  [ H.a [ E.onClick (\_ -> EH.preventDefault $> action Resort) ]
     [ H.text "Name"
     , H.i
         [ chevron (state ^. _sort)

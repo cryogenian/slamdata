@@ -2,7 +2,7 @@ module XPath where
 
 import Prelude
 import Data.String (take, drop, length, joinWith)
-import Data.Foldable (Foldable, intercalate)
+import Data.Foldable (class Foldable, intercalate)
 
 ancestorOrSelfString :: String
 ancestorOrSelfString = "/ancestor-or-self::"

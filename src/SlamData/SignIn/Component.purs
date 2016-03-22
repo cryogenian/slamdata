@@ -35,16 +35,16 @@ import Halogen as H
 import Halogen.HTML.Core (className)
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Menu.Component as HalogenMenu
-import Halogen.Menu.Component.State as HalogenMenu
-import Halogen.Menu.Submenu.Component as HalogenMenu
+import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
+import Halogen.Menu.Component.State (makeMenu)
+import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 
 import OIDC.Aff (requestAuthentication)
 import OIDCCryptUtils as Crypt
-import SlamData.Effects (Slam())
-import SlamData.SignIn.Component.State
-import SlamData.SignIn.Menu.Component.Query as Menu
-import SlamData.SignIn.Menu.Component.State as Menu
+import SlamData.Effects (Slam)
+import SlamData.SignIn.Component.State (State, initialState)
+import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
+import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
 import Quasar.Auth.Provider as Provider
 import Quasar.Auth as Auth
 import Quasar.Aff as Api
@@ -107,7 +107,7 @@ eval (Init next) = do
       $ left
       $ H.action
       $ HalogenMenu.SetMenu
-      $ HalogenMenu.makeMenu
+      $ makeMenu
         [ { label:
               fromMaybe "unknown user"
               $ map Crypt.runEmail
@@ -135,7 +135,7 @@ eval (Init next) = do
         $ left
         $ H.action
         $ HalogenMenu.SetMenu
-        $ HalogenMenu.makeMenu
+        $ makeMenu
           [ { label: "🔓 Sign in"
             , submenu: Menu.makeSubmenuItem <$> providers
             }

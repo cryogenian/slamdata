@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 module SlamData.FileSystem.Breadcrumbs.Component
-  ( State()
-  , Breadcrumb()
+  ( State
+  , Breadcrumb
   , rootBreadcrumb
   , mkBreadcrumbs
   , Query(..)
@@ -33,12 +33,12 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam())
-import SlamData.FileSystem.Listing.Sort (Sort())
+import SlamData.Effects (Slam)
+import SlamData.FileSystem.Listing.Sort (Sort)
 import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (Salt())
+import SlamData.FileSystem.Routing.Salt (Salt)
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
 type State =
   { breadcrumbs :: List Breadcrumb

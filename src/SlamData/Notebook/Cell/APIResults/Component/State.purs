@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.APIResults.Component.State
-  ( State()
+  ( State
   , initialState
   ) where
 

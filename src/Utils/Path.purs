@@ -39,9 +39,10 @@ type FilePath = AbsFile Sandboxed
 type DirPath = AbsDir Sandboxed
 type AnyPath = Either FilePath DirPath
 
-infixl 6 <./>
-(<./>) :: forall a s. Path a Dir s -> String -> Path a Dir s
-(<./>) p ext = renameDir (changeDirExt $ const ext) p
+infixl 6 renameDirExt as <./>
+
+renameDirExt :: forall a s. Path a Dir s -> String -> Path a Dir s
+renameDirExt p ext = renameDir (changeDirExt $ const ext) p
 
 rootify :: DirPath -> Path Rel Dir Sandboxed
 rootify p = fromMaybe (dir "/") $ relativeTo p rootDir
@@ -56,8 +57,8 @@ phantomNotebookPath :: DirPath
 phantomNotebookPath = rootDir </> dir "phantom" <./> Config.notebookExtension
 
 parseAnyPath :: String -> Maybe AnyPath
-parseAnyPath s = Left <<< (rootDir </>) <$> (sandbox rootDir =<< parseAbsFile s)
-             <|> Right <<< (rootDir </>) <$> (sandbox rootDir =<< parseAbsDir s)
+parseAnyPath s = Left <<< (rootDir </> _) <$> (sandbox rootDir =<< parseAbsFile s)
+             <|> Right <<< (rootDir </> _) <$> (sandbox rootDir =<< parseAbsDir s)
 
 changeDirExt :: (String -> String) -> DirName -> DirName
 changeDirExt f (DirName name) =
@@ -107,11 +108,11 @@ renderPath ap =
   where
   rendered = either renderFile renderDir ap
   renderDir path =
-    printPath $ canonicalize $ maybe rootDir (rootDir </>) (sandbox rootDir path)
+    printPath $ canonicalize $ maybe rootDir (rootDir </> _) (sandbox rootDir path)
 
   renderFile path =
     printPath $ canonicalize $
-    maybe (rootDir </> file "") (rootDir </>) (sandbox rootDir path)
+    maybe (rootDir </> file "") (rootDir </> _) (sandbox rootDir path)
 
 getNameStr :: AnyPath -> String
 getNameStr ap = either getNameStr' getNameStr' ap

@@ -18,18 +18,18 @@ module SlamData.FileSystem.Listing.Item where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (Eff())
+import Control.Monad.Eff (Eff)
 import Control.UI.Browser (setLocation)
 
 import Data.Path.Pathy (printPath)
 
-import DOM (DOM())
+import DOM (DOM)
 
 import SlamData.Config as Config
-import SlamData.FileSystem.Listing.Sort (Sort())
+import SlamData.FileSystem.Listing.Sort (Sort)
 import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourcePath, resourceName, sortResource)
 import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (Salt())
+import SlamData.FileSystem.Routing.Salt (Salt)
 import SlamData.Notebook.AccessType (AccessType(..), printAccessType)
 
 import Utils.Path (encodeURIPath)

@@ -18,14 +18,12 @@ module SlamData.FileSystem.Dialog.Rename.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff(), attempt)
+import Control.Monad.Aff (attempt)
 import Control.Monad.Eff.Exception (message)
-import Control.Monad.Eff.Ref (REF())
 import Control.Monad.Error.Class (throwError)
 import Control.UI.Browser (reload)
 
 import Data.Array (elemIndex, singleton, sort, nub)
-import Data.Date (Now)
 import Data.Lens ((^.), (%~), (.~), (?~), lens, LensP)
 import Data.Path.Pathy (printPath, parseAbsDir, sandbox, rootDir, (</>))
 import Data.String as S
@@ -39,26 +37,17 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import Network.HTTP.Affjax (AJAX())
-
 import Quasar.Aff as API
 import Quasar.Auth as Auth
 
 import SlamData.Config as Config
+import SlamData.Effects (Slam)
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.FileSystem.Resource as R
-import SlamData.Render.Common
+import SlamData.Render.Common (fadeWhen, formGroup)
 import SlamData.Render.CSS as Rc
 
 import Utils.Path (DirPath, dropNotebookExt)
-
-type Slam e =
-  Aff
-    (H.HalogenEffects
-      ( ajax :: AJAX
-      , now :: Now
-      , ref :: REF
-      | e ))
 
 type State =
   { showList :: Boolean
@@ -112,7 +101,7 @@ renameSlam r =
                     then name <> "." <> Config.notebookExtension
                     else name
   in initial # (R._name .~ nameWithExt)
-           <<< (R._root .~ (r.dir))
+           <<< (R._root .~ r.dir)
 
 validate :: State -> State
 validate r
@@ -133,7 +122,7 @@ validate r
     let nameWithExt = if R.isNotebook (r.initial)
                       then name <> "." <> Config.notebookExtension
                       else name
-    when (isJust $ elemIndex nameWithExt (map (^. R._name) (r.siblings)))
+    when (isJust $ elemIndex nameWithExt (map (_ ^. R._name) (r.siblings)))
       $ throwError "An item with this name already exists in the target folder"
 
 data Query a
@@ -148,10 +137,10 @@ data Query a
   | AddDirs (Array R.Resource) a
   | Init a
 
-type DSL e = H.ComponentDSL State Query (Slam e)
+type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-comp :: forall e. H.Component State Query (Slam e)
+comp :: H.Component State Query Slam
 comp =
   H.lifecycleComponent
     { render
@@ -242,7 +231,7 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval :: forall e. Natural Query (DSL e)
+eval :: Natural Query DSL
 eval (Dismiss next) = pure next
 eval (SetShowList bool next) = do
   H.modify (_showList .~ bool)
@@ -288,7 +277,7 @@ eval (Init next) = do
   dirItemClicked $ R.parent $ state.initial
   pure next
 
-dirItemClicked :: forall e. R.Resource -> DSL e Unit
+dirItemClicked :: R.Resource -> DSL Unit
 dirItemClicked res =
   case R.getPath res of
     Left _ -> pure unit

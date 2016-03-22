@@ -21,19 +21,19 @@ import Prelude
 import Control.Bind ((=<<))
 import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
-import Control.Monad.Aff (Aff())
-import Control.Monad.Aff.AVar (AVAR())
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Ref (REF(), newRef, readRef, writeRef)
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either (Either(..))
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
-import Data.NaturalTransformation (Natural())
+import Data.NaturalTransformation (Natural)
 import Data.Time (Milliseconds(..))
 
-import DOM.Timer (Timer(), timeout, clearTimeout)
+import DOM.Timer (Timer, timeout, clearTimeout)
 
 import Halogen.Query.EventSource (EventSource(..))
 
@@ -65,6 +65,6 @@ debouncedEventSource lift subscribe (Milliseconds ms) = do
   pure \act -> liftEff do
     maybe (pure unit) clearTimeout =<< readRef timeoutRef
     timeoutId <- timeout (Int.floor ms) $
-      maybe (pure unit) ($ (Left act)) =<< readRef emitRef
+      maybe (pure unit) (_ $ (Left act)) =<< readRef emitRef
     writeRef timeoutRef (Just timeoutId)
     pure unit

@@ -36,9 +36,9 @@ import Data.Path.Pathy as P
 import Data.String.Regex as R
 import Data.StrMap as SM
 
-import Routing.Match (Match())
-import Routing.Match as Match
-import Routing.Match.Class as Match
+import Routing.Match (Match)
+import Routing.Match (eitherMatch, list) as Match
+import Routing.Match.Class (lit, str, params) as Match
 
 import SlamData.Config as Config
 import SlamData.Notebook.AccessType (AccessType(..), parseAccessType)
@@ -47,7 +47,7 @@ import SlamData.Notebook.Action as NA
 import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.Port.VarMap as Port
 
-import Text.Parsing.Parser as P
+import Text.Parsing.Parser (runParser)
 
 import Utils.Path as UP
 
@@ -70,7 +70,7 @@ routing
   varMap = Match.params <#> Map.toList >>> foldl go SM.empty
     where
       go m (Tuple k str) =
-        case P.runParser str Port.parseVarMapValue of
+        case runParser str Port.parseVarMapValue of
           Left err -> m
           Right v -> SM.insert k v m
 
@@ -170,7 +170,7 @@ mkNotebookHash path action varMap =
   "#"
     <> UP.encodeURIPath (P.printPath path)
     <> NA.printAction action
-    <> maybe "" ("/" <>)  (renderVarMapQueryString varMap)
+    <> maybe "" ("/" <> _)  (renderVarMapQueryString varMap)
 
 mkNotebookCellHash
   :: UP.DirPath    -- notebook path
@@ -185,7 +185,7 @@ mkNotebookCellHash path cid accessType varMap =
     <> CID.cellIdToString cid
     <> "/"
     <> AT.printAccessType accessType
-    <> maybe "" ("/" <>)  (renderVarMapQueryString varMap)
+    <> maybe "" ("/" <> _)  (renderVarMapQueryString varMap)
 
 renderVarMapQueryString
   :: Port.VarMap -- global `VarMap`

@@ -39,15 +39,13 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Events.Handler as HEH
 import Halogen.Themes.Bootstrap3 as B
 
 import Network.HTTP.Affjax (AJAX)
 
 import Quasar.Aff as API
-import Quasar.Auth as Auth
-import Quasar.Auth.Permission as Auth
+import Quasar.Auth (retrieveIdToken)
+import Quasar.Auth.Permission (retrievePermissionTokens)
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Render.CSS as CSS
@@ -97,8 +95,8 @@ eval q =
       shouldShowFiles <- H.get <#> _.showFiles >>> not
       H.modify (_ { showFiles = shouldShowFiles })
       when shouldShowFiles $ do
-        idToken <- H.fromEff Auth.retrieveIdToken
-        perms <- H.fromEff Auth.retrievePermissionTokens
+        idToken <- H.fromEff retrieveIdToken
+        perms <- H.fromEff retrievePermissionTokens
         let
           fileProducer =
             FT.hoistFreeT H.liftH $

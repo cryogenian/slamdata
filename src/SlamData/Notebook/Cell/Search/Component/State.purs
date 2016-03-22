@@ -18,11 +18,11 @@ module SlamData.Notebook.Cell.Search.Component.State where
 
 import SlamData.Prelude
 
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 
-import Halogen (ParentState())
+import Halogen (ParentState)
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Notebook.Cell.Search.Component.Query as SQ
 import SlamData.Notebook.FileInput.Component as FI
 

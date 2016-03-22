@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.APIResults.Component.Query
-  ( Query()
-  , QueryP()
+  ( Query
+  , QueryP
   ) where
 
 import SlamData.Prelude

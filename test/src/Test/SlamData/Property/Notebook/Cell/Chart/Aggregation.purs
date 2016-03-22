@@ -21,9 +21,9 @@ import Prelude
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 
-import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation(), allAggregations)
+import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation, allAggregations)
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, quickCheck, (<?>))
 import Test.StrongCheck.Gen (allInArray)
 
 newtype ArbAggregation = ArbAggregation Aggregation

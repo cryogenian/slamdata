@@ -2,14 +2,14 @@ module Node.ChildProcess where
 
 import Prelude
 
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Class (MonadEff, liftEff)
-import Control.Monad.Eff.Exception (Error())
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff.Exception (Error)
 
-import Data.Function
-import Data.Maybe
+import Data.Function (Fn2, Fn6, runFn2, runFn6)
+import Data.Maybe (Maybe(..))
 
-import Node.Stream
+import Node.Stream (Readable)
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import data ChildProcess :: *

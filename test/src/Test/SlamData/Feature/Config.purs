@@ -25,10 +25,10 @@ module Test.SlamData.Feature.Config
 
 import Prelude
 
-import Data.StrMap
-import Data.Maybe (Maybe())
+import Data.StrMap (StrMap)
+import Data.Maybe (Maybe)
 import Data.Function (on)
-import Selenium.Types
+import Selenium.Types (Element)
 import Data.Array as A
 
 type SearchQueryConfig =

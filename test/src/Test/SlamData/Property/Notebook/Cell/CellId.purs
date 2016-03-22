@@ -23,7 +23,7 @@ import Data.Either (Either(..))
 
 import SlamData.Notebook.Cell.CellId (CellId(..))
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 newtype ArbCellId = ArbCellId CellId
 

@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
   ( comp
-  , Query()
+  , Query
   , module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
   , module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State
   ) where
@@ -29,7 +29,7 @@ import Control.Monad.Cont.Trans as Ct
 import Data.Array ((..), length, null, filter)
 import Data.Foldable as F
 import Data.Identity as Id
-import Data.Lens (TraversalP(), (^.), (.~))
+import Data.Lens (TraversalP, (^.), (.~))
 import Data.Lens.Index (ix)
 import Data.Path.Pathy (dir, (</>))
 import Data.String.Regex as Rx
@@ -44,10 +44,10 @@ import Halogen.Themes.Bootstrap3 as B
 import Quasar.Aff as API
 import Quasar.Auth as Auth
 
-import SlamData.Effects (Slam())
-import SlamData.FileSystem.Dialog.Mount.Common.Render
-import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery
-import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State
+import SlamData.Effects (Slam)
+import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
+import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
+import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State (MountHost, MountProp, State, _host, _hosts, _password, _path, _port, _props, _user, hostsFromURI, initialMountHost, initialMountProp, initialState, isEmptyHost, isEmptyProp, mkURI, passwordFromURI, pathFromURI, processState, propsFromURI, rxEmpty, stateFromURI, userFromURI)
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Render.CSS as Rc
 
@@ -83,7 +83,7 @@ eval (Validate continue) = do
     pure Nothing
   where
   userSectionTyped state =
-    F.any (/= "") [state.user, state.password]
+    F.any (_ /= "") [state.user, state.password]
 
 eval (Submit parent name k) = do
   st <- H.get

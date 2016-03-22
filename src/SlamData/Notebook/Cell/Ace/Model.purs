@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Ace.Model
-  ( Model()
+  ( Model
   , emptyModel
   , encode
   , decode
@@ -23,9 +23,9 @@ module SlamData.Notebook.Cell.Ace.Model
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, encodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, encodeJson, jsonEmptyObject)
 
-import Utils.Ace (RangeRec(), encodeRangeRec, decodeRangeRec)
+import Utils.Ace (RangeRec, encodeRangeRec, decodeRangeRec)
 
 type Model =
   { text :: String

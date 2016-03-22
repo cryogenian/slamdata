@@ -18,13 +18,13 @@ module SlamData.Notebook.Cell.Chart.ChartConfiguration where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json(), JCursor(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, JCursor, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Array (filter)
 import Data.Foldable (any)
 import Data.Lens ((^.))
 
-import SlamData.Form.Select (Select(), _value)
-import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation())
+import SlamData.Form.Select (Select, _value)
+import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation)
 import SlamData.Notebook.Cell.Chart.Axis (dependsOn)
 
 type JSelect = Select JCursor

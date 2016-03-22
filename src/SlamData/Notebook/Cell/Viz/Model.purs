@@ -18,10 +18,10 @@ module SlamData.Notebook.Cell.Viz.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json(), (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 
 import SlamData.Notebook.Cell.Chart.ChartConfiguration as CC
-import SlamData.Notebook.Cell.Chart.ChartType (ChartType())
+import SlamData.Notebook.Cell.Chart.ChartType (ChartType)
 
 type Model =
   { width :: Int

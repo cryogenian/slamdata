@@ -30,7 +30,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Form.Select as S
 
 data Query s a
@@ -53,7 +53,7 @@ primarySelect
   => Maybe String
   -> H.Component (S.Select a) (Query a) Slam
 primarySelect mbLabel =
-  select { disableWhen: (< 2), defaultWhen: (> 1), ariaLabel: mbLabel }
+  select { disableWhen: (_ < 2), defaultWhen: (_ > 1), ariaLabel: mbLabel }
 
 secondarySelect
   :: forall a
@@ -61,7 +61,7 @@ secondarySelect
   => Maybe String
   -> H.Component (S.Select a) (Query a) Slam
 secondarySelect mbLabel =
-  select { disableWhen: (< 1), defaultWhen: (const true), ariaLabel: mbLabel }
+  select { disableWhen: (_ < 1), defaultWhen: const true, ariaLabel: mbLabel }
 
 select
   :: forall a r
@@ -69,7 +69,7 @@ select
   => SelectConfig r
   -> H.Component (S.Select a) (Query a) Slam
 select config =
-  H.component { render: (render config), eval }
+  H.component { render: render config, eval }
 
 render
   :: forall a r
@@ -120,6 +120,6 @@ render config state =
 eval :: forall a. (Eq a) => Natural (Query a) (H.ComponentDSL (S.Select a) (Query a) Slam)
 eval (Choose i next) = H.modify (S.trySelect i) $> next
 eval (SetSelect s next) = H.set s $> next
-eval (GetValue continue) = map continue $ H.gets (^. S._value)
+eval (GetValue continue) = map continue $ H.gets (_ ^. S._value)
 eval (GetSelect continue) = map continue H.get
 eval (ToggleOpened next) = pure next

@@ -21,7 +21,7 @@ import Test.Feature.Log (successMsg, errorMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
-import Test.SlamData.Feature.Monad (SlamFeature())
+import Test.SlamData.Feature.Monad (SlamFeature)
 
 fileScenario :: SlamFeature Unit -> String -> Array String -> SlamFeature Unit -> SlamFeature Unit
 fileScenario = scenario "File" (Interact.browseRootFolder)

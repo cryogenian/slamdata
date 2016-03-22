@@ -16,7 +16,7 @@ limitations under the License.
 
 module Quasar.Paths where
 
-import Data.Path.Pathy (AbsDir(), AbsFile(), Sandboxed(), file, dir, rootDir, (</>))
+import Data.Path.Pathy (AbsDir, AbsFile, Sandboxed, file, dir, rootDir, (</>))
 
 serviceBaseUrl :: AbsDir Sandboxed
 serviceBaseUrl =

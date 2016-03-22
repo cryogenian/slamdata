@@ -18,7 +18,7 @@ module Test.SlamData.Property where
 
 import Prelude
 import Control.Monad.Eff.Console (log)
-import Test.StrongCheck (QC())
+import Test.StrongCheck (QC)
 
 main :: QC Unit
 main = do

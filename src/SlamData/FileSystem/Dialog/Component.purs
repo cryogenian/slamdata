@@ -19,28 +19,28 @@ module SlamData.FileSystem.Dialog.Component where
 import SlamData.Prelude
 
 import Data.Array (singleton)
-import Data.Either.Nested (Either6())
-import Data.Functor.Coproduct.Nested (Coproduct6(), coproduct6)
+import Data.Either.Nested (Either6)
+import Data.Functor.Coproduct.Nested (Coproduct6, coproduct6)
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath(), cpL, cpR, (:>))
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Error.Component as Error
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Download.Component as Download
-import SlamData.FileSystem.Dialog.Mount.Component (MountSettings())
+import SlamData.FileSystem.Dialog.Mount.Component (MountSettings)
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Dialog.Permissions.Component as Perms
-import SlamData.FileSystem.Resource (Resource())
+import SlamData.FileSystem.Resource (Resource)
 import SlamData.Render.Common (fadeWhen)
 
-import Utils.Path (DirPath())
+import Utils.Path (DirPath)
 
 data Dialog
   = Error String

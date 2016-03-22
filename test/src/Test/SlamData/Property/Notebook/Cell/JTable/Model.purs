@@ -15,9 +15,9 @@ limitations under the License.
 -}
 
 module Test.SlamData.Property.Notebook.Cell.JTable.Model
-  ( ArbModel()
+  ( ArbModel
   , runArbModel
-  , ArbResult()
+  , ArbResult
   , runArbResult
   , check
   ) where
@@ -30,7 +30,7 @@ import Data.Maybe (Maybe(..))
 
 import SlamData.Notebook.Cell.JTable.Model as M
 
-import Test.StrongCheck (QC(), Result(..), Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 import Test.Property.ArbJson (runArbJson)
 import Test.SlamData.Property.FileSystem.Resource (runArbResource)
