@@ -24,7 +24,7 @@ import Prelude
 
 import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (MonadEff, liftEff)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson, printJson)
 import Data.Either (Either(..))

@@ -1,3 +1,4 @@
+
 module Test.SlamData.Feature.Main where
 
 import SlamData.Prelude
@@ -31,7 +32,7 @@ import Node.Stream (Readable, Duplex, pipe, onDataString, onClose)
 
 import Selenium (setFileDetector, quit)
 import Selenium.Browser (Browser(..), str2browser)
-import Selenium.Builder (withCapabilities, browser, build)
+import Selenium.Builder (withCapabilities, browser, build, usingServer)
 import Selenium.Capabilities (Capabilities)
 import Selenium.FFProfile (setStringPreference, setBoolPreference, setIntPreference, buildFFProfile)
 import Selenium.Monad (setWindowSize)
@@ -101,6 +102,7 @@ runTests config =
     driver <- build $ do
       browser br
       traverse_ SL.buildSauceLabs msauceConfig
+      usingServer "http://127.0.0.1:4444/wd/hub"
       withCapabilities downloadCapabilities
 
 

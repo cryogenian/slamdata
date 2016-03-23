@@ -69,7 +69,7 @@ import Selenium.Monad (get, getAttribute, clickEl, attempt, later, sequence, byX
 import Selenium.Types (Element)
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Feature.Monad (Feature, getModifierKey, await)
-import Test.Utils (ifTrue, ifFalse, passover, throwIfEmpty, throwIfNotEmpty, singletonValue, appendToCwd)
+import Test.Utils (ifTrue, ifFalse, passover, throwIfEmpty, throwIfNotEmpty, singletonValue, appendToCwd, nonWhite)
 import XPath as XPath
 
 type Properties = Map.Map String (Maybe String)
@@ -357,12 +357,14 @@ expectPresentedWithPropertiesNotRepeatedly properties xPath =
 -- | provide paths to expected images for each platform.
 expectScreenshotToMatchAny
   :: forall eff o
-   . XPath
+   . FilePath
+  -> Number
+  -> XPath
   -> String
   -> Array XPath
   -> Feature eff o Unit
-expectScreenshotToMatchAny =
-  expectScreenshotToMatchAnyWithProperties Map.empty
+expectScreenshotToMatchAny dp mp =
+  expectScreenshotToMatchAnyWithProperties dp mp Map.empty
 
 -- | Expect a screenshot of the node found with the provided XPath which have
 -- | the provided properties to match any of the images with the provided image
@@ -372,15 +374,17 @@ expectScreenshotToMatchAny =
 -- | provide paths to expected images for each platform.
 expectScreenshotToMatchAnyWithProperties
   :: forall eff o
-   . Properties
+   . FilePath
+  -> Number
+  -> Properties
   -> XPath
   -> FilePath
   -> Array FilePath
   -> Feature eff o Unit
-expectScreenshotToMatchAnyWithProperties properties xpath presentedPath expectedPaths =
+expectScreenshotToMatchAnyWithProperties diffPath maxPercent properties xpath presentedPath expectedPaths =
   tryRepeatedlyTo
     $ ifFalse throwMessage
-    =<< expectScreenshotOfElementToMatchAny presentedPath expectedPaths
+    =<< expectScreenshotOfElementToMatchAny diffPath maxPercent presentedPath expectedPaths
     =<< findWithPropertiesNotRepeatedly properties xpath
   where
   throwMessage = liftEff <<< throw <<< message =<< showImageFile presentedPath
@@ -689,10 +693,12 @@ elementsWithProperties properties =
 expectScreenshotOfElementToMatchAny
   :: forall eff o
    . FilePath
+  -> Number
+  -> FilePath
   -> Array FilePath
   -> Element
   -> Feature eff o Boolean
-expectScreenshotOfElementToMatchAny presentedPath expectedPaths el = do
+expectScreenshotOfElementToMatchAny diffPath maxPercent presentedPath expectedPaths el = do
   size <- getSize el
   location <- getLocation el
   saveScreenshot presentedPath
@@ -705,13 +711,16 @@ expectScreenshotOfElementToMatchAny presentedPath expectedPaths el = do
         presentedPath
   any id <$> traverse expectScreenshotOfElementToMatch expectedPaths
   where
-  expectScreenshotOfElementToMatch expectedPath =
-  liftAff $ Gi.diff
-    { expected: expectedPath
-    , actual: presentedPath
-    , diff: Nothing
-    , shadow: false
-    }
+  expectScreenshotOfElementToMatch expectedPath = liftAff do
+    Gi.diff
+      { expected: expectedPath
+      , actual: presentedPath
+      , diff: Just diffPath
+      , shadow: false
+      }
+    {percent} <- nonWhite diffPath
+    pure $ percent < maxPercent
+
 
 -- File utilities
 showImageFile :: forall eff o. FilePath -> Feature eff o String
