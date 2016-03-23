@@ -147,6 +147,8 @@ lastChartScreenshotToMatchAny
   -> SlamFeature Unit
 lastChartScreenshotToMatchAny =
   expectScreenshotToMatchAny
+    "test/image/diff.png"
+    0.2
     (XPath.last $ XPath.anywhere $ XPaths.chartContainer)
     "test/image/actual.png"
 

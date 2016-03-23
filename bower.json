@@ -59,7 +59,7 @@
     "purescript-node-streams": "^0.3.0",
     "purescript-platform": "^0.4.0",
     "purescript-strongcheck": "^0.14.7",
-    "purescript-webdriver": "^0.17.0"
+    "purescript-webdriver": "^0.18.0"
   },
   "resolutions": {
     "purescript-profunctor-lenses": "^0.4.2"

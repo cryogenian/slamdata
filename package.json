@@ -34,7 +34,6 @@
     "gulp-purescript": "^0.8.0",
     "gulp-replace": "^0.5.4",
     "gulp-run": "^1.6.12",
-    "gulp-replace": "^0.5.4",
     "gulp-trimlines": "^1.0.0",
     "minimist": "^1.2.0",
     "mongodb": "^2.1.1",
@@ -42,8 +41,9 @@
     "purescript": "^0.8.2",
     "rimraf": "^2.4.3",
     "run-sequence": "^1.1.5",
-    "selenium-webdriver": "=2.48.2",
-    "webpack-stream": "^2.1.0"
+    "selenium-webdriver": "=2.53.1",
+    "webpack-stream": "^2.1.0",
+    "pngparse": "^2.0.1"
   },
   "dependencies": {
     "easyimage": "^2.1.0",

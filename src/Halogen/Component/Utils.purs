@@ -22,7 +22,7 @@ import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling as SCR
 import Control.Monad.Aff (Aff, Canceler, forkAff, later', runAff)
 import Control.Monad.Aff.AVar (AVAR, makeVar, putVar, takeVar)
-import Control.Monad.Aff.Free (Affable, fromAff)
+import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either as E
