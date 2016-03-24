@@ -51,11 +51,11 @@ import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Text.Chalky (green, yellow, magenta, gray, red)
 
-foreign import getConfig :: forall e. Eff (fs :: FS|e) Config
+foreign import getConfig :: ∀ e. Eff (fs :: FS|e) Config
 foreign import createReadStream
-  :: forall e. String -> Aff e (Readable () e)
+  :: ∀ e. String → Aff e (Readable () e)
 foreign import createWriteStream
-  :: forall e. String -> Aff e (Duplex e)
+  :: ∀ e. String → Aff e (Duplex e)
 foreign import stack
   :: Error -> String
 
@@ -67,7 +67,7 @@ type Effects =
     , selenium :: SELENIUM
     ))
 
-makeDownloadCapabilities :: Browser -> String -> Aff Effects Capabilities
+makeDownloadCapabilities :: Browser → String → Aff Effects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do
   setIntPreference "browser.download.folderList" 2
   setBoolPreference "browser.download.manager.showWhenStarting" false
@@ -77,7 +77,8 @@ makeDownloadCapabilities FireFox path = buildFFProfile do
   setBoolPreference "browser.download.manager.closeWhenDone" true
   setBoolPreference "browser.download.manager.showAlertOnComplete" false
   setBoolPreference "browser.download.manager.useWindow" false
-  setStringPreference "browser.helperApps.neverAsk.saveToDisk" "text/csv, application/ldjson"
+  setStringPreference "browser.helperApps.neverAsk.saveToDisk"
+    "text/csv, application/ldjson"
 makeDownloadCapabilities _ _ = mempty
 
 tests :: SlamFeature Unit
@@ -89,49 +90,60 @@ tests = do
   Markdown.test
   FlexibleVisualization.test
 
-runTests :: Config -> Aff Effects Unit
+runTests :: Config → Aff Effects Unit
 runTests config =
   maybe error go $ str2browser config.selenium.browser
   where
   error = void $ log $ red "Incorrect browser"
   go br = do
-    log $ yellow $ config.selenium.browser <> " set as browser for tests\n\n"
-    msauceConfig <- liftEff $ SL.sauceLabsConfigFromConfig config
-    downloadCapabilities <-
+    log $ yellow $ config.selenium.browser ⊕ " set as browser for tests\n\n"
+
+    msauceConfig ←
+      liftEff $ SL.sauceLabsConfigFromConfig config
+
+    downloadCapabilities ←
       makeDownloadCapabilities br config.download.folder
-    driver <- build $ do
+
+    driver ← build do
       browser br
       traverse_ SL.buildSauceLabs msauceConfig
       usingServer "http://127.0.0.1:4444/wd/hub"
       withCapabilities downloadCapabilities
 
-
-    when (isJust msauceConfig) $ do
+    when (isJust msauceConfig) do
       void $ log $ yellow $ "set up to run on Sauce Labs"
       (liftEff SR.fileDetector) >>= setFileDetector driver
 
-    res <- attempt $ flip runReaderT { config: config
-                                     , defaultTimeout: config.selenium.waitTime
-                                     , driver: driver} do
-      setWindowSize { height: 1280, width: 1024 }
-      tests
+    let
+      defaultTimeout = config.selenium.waitTime
+      readerInp = { config, defaultTimeout, driver }
+
+    res ←
+      attempt
+      $ flip runReaderT readerInp do
+          setWindowSize { height: 1280, width: 1024 }
+          tests
     quit driver
     either throwError (const $ pure unit) res
 
 copyFile
-  :: forall e
+  :: ∀ e
    . String
-  -> String
-  -> Aff (fs :: FS, avar :: AVAR, err :: EXCEPTION|e) Unit
+   → String
+   → Aff (fs :: FS, avar :: AVAR, err :: EXCEPTION|e) Unit
 copyFile source tgt = do
   apathize $ unlink to
-  readFrom <- createReadStream from
-  writeTo <- createWriteStream to
-  knot <- makeVar
-  liftEff $ onClose writeTo $ runAff
-     (const $ pure unit)
-     (const $ pure unit)
-     (putVar knot unit)
+  readFrom ← createReadStream from
+  writeTo ← createWriteStream to
+  knot ← makeVar
+
+  liftEff
+    $ onClose writeTo
+    $ runAff
+        (const $ pure unit)
+        (const $ pure unit)
+        (putVar knot unit)
+
   liftEff $ readFrom `pipe` writeTo
   takeVar knot
   where
@@ -139,43 +151,50 @@ copyFile source tgt = do
   to = resolve [tgt] ""
 
 startProc
-  :: forall r
-  . String -> String -> Array String
-  -> (ChildProcess
-      -> Aff Effects (Readable r Effects))
-  -> String
-  -> Aff Effects ChildProcess
+  :: ∀ r
+   . String → String → Array String
+   → (ChildProcess → Aff Effects (Readable r Effects))
+   → String
+   → Aff Effects ChildProcess
 startProc name command args streamGetter check = do
-  a <- makeVar
-  started <- liftEff $ newRef false
-  cancelKill <- forkAff $ later' 10000
-                $ killVar a $ error $ name <> " has not been started"
-  pr <- spawn command args \err -> do
-    case err of
-      Just e -> throwException e
-      Nothing -> liftEff $ readRef started >>= \isStarted ->
-        if not isStarted
-        then throwException $ error $ name <> " process ended before it started"
-        else pure unit
+  a ← makeVar
 
-  stream <- streamGetter pr
-  liftEff $ onDataString stream UTF8 \str -> do
+  started ←
+    liftEff $ newRef false
+
+  cancelKill ←
+    forkAff
+    $ later' 10000
+    $ killVar a
+    $ error
+    $ name ⊕ " has not been started"
+  pr ← spawn command args \err → do
+    case err of
+      Just e → throwException e
+      Nothing → liftEff $ readRef started >>= \isStarted →
+        unless isStarted
+          $ throwException
+          $ error
+          $ name ⊕ " process ended before it started"
+
+  stream ← streamGetter pr
+  liftEff $ onDataString stream UTF8 \str → do
     when (Str.contains check str) do
       liftEff $ writeRef started true
       launchAff $ putVar a pr
 
-  result <- takeVar a
+  result ← takeVar a
   cancel cancelKill $ error "Ok"
-  log $ name <> " launched"
+  log $ name ⊕ " launched"
   pure result
 
-mongoArgs :: Config -> Array String
+mongoArgs :: Config → Array String
 mongoArgs config =
   [ "--port", show config.mongodb.port
   , "--dbpath", "tmp/data"
   ]
 
-quasarArgs :: Config -> Array String
+quasarArgs :: Config → Array String
 quasarArgs config =
   [ "-jar", resolve [config.quasar.jar] ""
   , "-c", resolve ["tmp", config.quasar.config] ""
@@ -183,21 +202,23 @@ quasarArgs config =
   , "-L", resolve ["public"] ""
   ]
 
-seleniumArgs :: Config -> Array String
+seleniumArgs :: Config → Array String
 seleniumArgs config =
-  [ "-jar", resolve [config.selenium.jar] "" ]
+  [ "-jar", resolve [config.selenium.jar] ""
+  , "-port", "4444"
+  ]
 
-restoreCmd :: Config -> String
+restoreCmd :: Config → String
 restoreCmd = _.restoreCmd
 
-mongoConnectionString :: Config -> String
+mongoConnectionString :: Config → String
 mongoConnectionString config =
   "mongodb://"
-  <> config.mongodb.host
-  <> ":" <> show config.mongodb.port
-  <> "/" <> config.database.name
+  ⊕ config.mongodb.host
+  ⊕ ":" ⊕ show config.mongodb.port
+  ⊕ "/" ⊕ config.database.name
 
-cleanMkDir :: String -> Aff Effects Unit
+cleanMkDir :: String → Aff Effects Unit
 cleanMkDir path = do
   let p = resolve [path] ""
   rimraf p
@@ -205,10 +226,13 @@ cleanMkDir path = do
 
 main :: Eff Effects Unit
 main = do
-  procs <- newRef []
-  Process.onExit \_ ->
+  procs ← newRef []
+
+  Process.onExit \_ →
     readRef procs >>= traverse_ kill
-  rawConfig <- getConfig
+
+  rawConfig ← getConfig
+
   runAff errHandler  (const $ Process.exit 0) do
     log $ gray "Creating data folder for MongoDB"
     cleanMkDir "tmp/data"
@@ -220,16 +244,31 @@ main = do
       "test/quasar-config.json"
       "tmp/test/quasar-config.json"
 
-    mongo <- startProc "MongoDB" "mongod" (mongoArgs rawConfig) stdout
-             "waiting for connections on port"
+    mongo ←
+      startProc
+        "MongoDB"
+        "mongod"
+        (mongoArgs rawConfig)
+        stdout
+        "waiting for connections on port"
     liftEff $ modifyRef procs (Arr.cons mongo)
 
-    quasar <- startProc "Quasar" "java" (quasarArgs rawConfig) stdout
-              "Server started listening on port"
+    quasar ←
+      startProc
+        "Quasar"
+        "java"
+        (quasarArgs rawConfig)
+        stdout
+        "Server started listening on port"
     liftEff $ modifyRef procs (Arr.cons quasar)
 
-    selenium <- startProc "Selenium" "java" (seleniumArgs rawConfig) stderr
-                "Selenium Server is up and running"
+    selenium ←
+      startProc
+        "Selenium"
+        "java"
+        (seleniumArgs rawConfig)
+        stderr
+        "Selenium Server is up and running"
     liftEff $ modifyRef procs (Arr.cons selenium)
 
     log $ gray "Restoring database"
@@ -238,25 +277,26 @@ main = do
     log $ gray "Database restored"
 
     log $ magenta "Connecting database"
-    db <- connect $ mongoConnectionString rawConfig
+    db ← connect $ mongoConnectionString rawConfig
     log $ magenta "Ok, connected"
 
-
     log $ yellow "Starting tests"
-    testResults <- attempt
-                   $ runTests rawConfig
-                     { download = rawConfig.download
-                       { folder = resolve [ rawConfig.download.folder ] "" }
-                     , upload = rawConfig.upload
-                       { filePaths =
-                          map (\x -> resolve [ x ] "") rawConfig.upload.filePaths }
-                     }
+
+    testResults
+      ← attempt
+        $ runTests rawConfig
+            { download = rawConfig.download
+              { folder = resolve [ rawConfig.download.folder ] "" }
+              , upload = rawConfig.upload
+                  { filePaths =
+                       map (\x → resolve [ x ] "") rawConfig.upload.filePaths }
+              }
     close db
     case testResults of
-      Left e ->  throwError e
-      Right _ -> log $ green "OK, tests are passed"
+      Left e →  throwError e
+      Right _ → log $ green "OK, tests are passed"
   where
   errHandler e = do
     Ec.log $ red $ message e
-    traverse_ (Ec.log <<< red) $ Str.split "\n" $ stack e
+    traverse_ (Ec.log ∘ red) $ Str.split "\n" $ stack e
     Process.exit 1

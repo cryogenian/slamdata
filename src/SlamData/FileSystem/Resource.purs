@@ -64,7 +64,7 @@ import Data.Argonaut.Encode (class EncodeJson)
 import Data.Foreign (ForeignError(..)) as F
 import Data.Foreign.Class (class IsForeign, readProp) as F
 import Data.Foreign.NullOrUndefined (runNullOrUndefined) as F
-import Data.Lens (lens, prism', LensP, PrismP, (.~))
+import Data.Lens (lens, LensP, TraversalP, wander, (.~))
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
@@ -275,10 +275,11 @@ _tempFile = lens id \r s -> case r of
     else r
   _ -> r
 
-_filePath :: PrismP Resource PU.FilePath
-_filePath = prism' File $ \s -> case s of
-  File fp -> Just fp
-  _ -> Nothing
+_filePath :: TraversalP Resource PU.FilePath
+_filePath = wander \f s -> case s of
+  File fp -> File <$> f fp
+  Mount (View fp) -> map (Mount <<< View) $ f fp
+  _ -> pure s
 
 _path :: LensP Resource PU.AnyPath
 _path = lens getPath setPath

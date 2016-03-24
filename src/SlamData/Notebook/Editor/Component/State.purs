@@ -28,7 +28,6 @@ module SlamData.Notebook.Editor.Component.State
   , _dependencies
   , _activeCellId
   , _name
-  , _isAddingCell
   , _browserFeatures
   , _viewingCell
   , _path
@@ -44,6 +43,8 @@ module SlamData.Notebook.Editor.Component.State
   , findParent
   , findChildren
   , findDescendants
+  , findLast
+  , findLastCellType
   , addPendingCell
   , getCellType
   , cellsOfType
@@ -59,7 +60,7 @@ import Data.Array.Unsafe as U
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.Foldable (maximum, any)
 import Data.Lens (LensP, lens)
-import Data.List (List(..))
+import Data.List (List)
 import Data.List as L
 import Data.Map as M
 import Data.Path.Pathy ((</>))
@@ -114,7 +115,6 @@ type State =
   , activeCellId :: Maybe CellId
   , name :: These P.DirName String
   , path :: Maybe DirPath
-  , isAddingCell :: Boolean
   , browserFeatures :: BrowserFeatures
   , viewingCell :: Maybe CellId
   , saveTrigger :: Maybe (Query Unit -> Slam Unit)
@@ -143,7 +143,6 @@ initialNotebook browserFeatures =
   , dependencies: M.empty
   , activeCellId: Nothing
   , name: That Config.newNotebookName
-  , isAddingCell: false
   , browserFeatures
   , viewingCell: Nothing
   , path: Nothing
@@ -184,10 +183,6 @@ _name = lens _.name _{name = _}
 -- | The path to the notebook in the filesystem
 _path :: LensP State (Maybe DirPath)
 _path = lens _.path _{path = _}
-
--- | Toggles the display of the new cell menu.
-_isAddingCell :: LensP State Boolean
-_isAddingCell = lens _.isAddingCell _{isAddingCell = _}
 
 -- | The available browser features - passed through to markdown results cells
 -- | as they need this information to render the output HTML.
@@ -239,24 +234,28 @@ addCell' cellType parent st =
   extractNewId = flip U.unsafeIndex (maybe 0 (const 1) parent)
 
 addCellChain
-  :: CellType -> Array CellId -> State -> Tuple State (Array CellId)
+  :: CellType
+  -> Array CellId
+  -> State
+  -> Tuple State (Array CellId)
 addCellChain cellType parents st =
-  let cellId = CellId st.fresh
-      parent = A.last parents
-      parents' = parents `A.snoc` cellId
-      newState = st
-        { fresh = st.fresh + 1
-        , cells = st.cells `L.snoc` mkCellDef cellType cellId
-        , cellTypes = M.insert cellId cellType st.cellTypes
-        , dependencies =
-            maybe st.dependencies (flip (M.insert cellId) st.dependencies) parent
-        , isAddingCell = false
-        }
-  in case linkedCellType cellType of
+  let
+    cellId = CellId st.fresh
+    parent = A.last parents
+    parents' = parents `A.snoc` cellId
+    newState = st
+      { fresh = st.fresh + 1
+      , cells = st.cells `L.snoc` mkCellDef cellType cellId
+      , cellTypes = M.insert cellId cellType st.cellTypes
+      , dependencies =
+          maybe st.dependencies (flip (M.insert cellId) st.dependencies) parent
+      }
+  in
+    case linkedCellType cellType of
       Nothing -> Tuple newState parents'
       Just nextCellType -> addCellChain nextCellType parents' newState
-  where
 
+  where
   mkCellDef :: CellType -> CellId -> CellDef
   mkCellDef cellType cellId =
     let component = cellTypeComponent cellType cellId st.browserFeatures
@@ -269,10 +268,10 @@ addCellChain cellType parents st =
        }
 
 cellTypeComponent :: CellType -> CellId -> BrowserFeatures -> CellComponent
-cellTypeComponent (Ace mode) _ _ =
-  let evaluator = aceEvalMode mode
-      setup = aceSetupMode mode
-  in aceComponent { mode, evaluator, setup }
+cellTypeComponent (Ace mode) _ _ = aceComponent { mode, evaluator, setup }
+  where
+  evaluator = aceEvalMode mode
+  setup = aceSetupMode mode
 cellTypeComponent Explore _ _ = exploreComponent
 cellTypeComponent Search _ _ = searchComponent
 cellTypeComponent Viz _ _ = vizComponent
@@ -326,6 +325,16 @@ removeCells cellIds st = st
 
   g :: Tuple CellId CellId -> Boolean
   g (Tuple kId vId) = not $ S.member kId cellIds' || S.member vId cellIds'
+
+
+-- | Finds the last cell/card
+findLast :: State -> Maybe CellId
+findLast state =
+  maximum $ M.keys state.cellTypes
+
+findLastCellType :: State -> Maybe CellType
+findLastCellType state =
+  join $ flip M.lookup state.cellTypes <$> findLast state
 
 -- | Finds the root in a chain of dependencies starting at the specified cell.
 -- | A cell can be its own root if it depends on no other cells.
@@ -433,12 +442,11 @@ fromModel browserFeatures path name { cells, dependencies } =
     cells
     ({ fresh: maybe 0 (_ + 1) $ maximum $ map (runCellId <<< _.cellId) cells
     , accessType: ReadOnly
-    , cells: foldr (Cons <<< cellDefFromModel) Nil cells
-    , cellTypes: foldl (flip \{cellId, cellType} -> M.insert cellId cellType) M.empty cells
+    , cells: foldMap cellDefFromModel cells
+    , cellTypes: foldl addCellIdTypePair M.empty cells
     , dependencies
     , activeCellId: Nothing
     , name: maybe (That Config.newNotebookName) This name
-    , isAddingCell: false
     , browserFeatures
     , viewingCell: Nothing
     , path
@@ -449,11 +457,15 @@ fromModel browserFeatures path name { cells, dependencies } =
     , stateMode: Loading
     } :: State)
   where
-  cellDefFromModel :: Cell.Model -> CellDef
-  cellDefFromModel { cellId, cellType } =
+  addCellIdTypePair mp {cellId, cellType} = M.insert cellId cellType mp
+
+  cellDefFromModel :: Cell.Model -> List CellDef
+  cellDefFromModel { cellId, cellType} =
     let component = cellTypeComponent cellType cellId browserFeatures
         initialState = H.parentState (cellTypeInitialState cellType)
-    in { id: cellId
-       , ty: cellType
-       , ctor: H.SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
-       }
+    in
+      pure
+        { id: cellId
+        , ty: cellType
+        , ctor: H.SlotConstructor (CellSlot cellId) \_ -> { component, initialState }
+        }

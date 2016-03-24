@@ -66,27 +66,27 @@ searchStringInput =
 
 insertExploreCardAsNextAction :: String
 insertExploreCardAsNextAction =
-  XPath.anyWithExactAriaLabel "Insert Explore cell after this cell"
+  XPath.anyWithExactAriaLabel "Insert Explore card"
 
 insertMdCardAsNextAction :: String
 insertMdCardAsNextAction =
-  XPath.anyWithExactAriaLabel "Insert Markdown cell after this cell"
+  XPath.anyWithExactAriaLabel "Insert Markdown card"
 
 insertQueryCardAsNextAction :: String
 insertQueryCardAsNextAction =
-  XPath.anyWithExactAriaLabel "Insert Query cell after this cell"
+  XPath.anyWithExactAriaLabel "Insert Query card"
 
 insertSearchCardAsNextAction :: String
 insertSearchCardAsNextAction =
-  XPath.anyWithExactAriaLabel "Insert Search cell after this cell"
+  XPath.anyWithExactAriaLabel "Insert Search card"
 
 insertVisualizeCardAsNextAction :: String
 insertVisualizeCardAsNextAction =
-  XPath.anyWithExactAriaLabel "Insert Visualize cell after this cell"
+  XPath.anyWithExactAriaLabel "Insert Visualize card"
 
 insertDownloadCardAsNextAction :: String
 insertDownloadCardAsNextAction =
-  XPath.anyWithExactAriaLabel "Insert Download cell after this cell"
+  XPath.anyWithExactAriaLabel "Insert Download card"
 
 showFileList :: String
 showFileList =
@@ -110,22 +110,22 @@ insertCard =
 
 insertQueryCard :: String
 insertQueryCard =
-  XPath.anyWithExactAriaLabel "Insert Query cell"
+  XPath.anyWithExactAriaLabel "Insert Query card"
 
 insertMdCard :: String
 insertMdCard =
-  XPath.anyWithExactAriaLabel "Insert Markdown cell"
+  XPath.anyWithExactAriaLabel "Insert Markdown card"
 
 insertExploreCard :: String
-insertExploreCard = XPath.anyWithExactAriaLabel "Insert Explore cell"
+insertExploreCard = XPath.anyWithExactAriaLabel "Insert Explore card"
 
 insertSearchCard :: String
 insertSearchCard =
-  XPath.anyWithExactAriaLabel "Insert Search cell"
+  XPath.anyWithExactAriaLabel "Insert Search card"
 
 insertApiCard :: String
 insertApiCard =
-  XPath.anyWithExactAriaLabel "Insert API cell"
+  XPath.anyWithExactAriaLabel "Insert API card"
 
 hideCardOptions :: String
 hideCardOptions =
@@ -175,7 +175,8 @@ noFileSelectedMessage =
   XPath.anyWithExactText "No file selected"
 
 fileDoesNotExist :: String -> String
-fileDoesNotExist filename = XPath.anyWithExactText $ "File " ++ filename ++ " does not exist"
+fileDoesNotExist filename =
+  XPath.anyWithExactText $ "File " ++ filename ++ " does not exist"
 
 selectFileField :: String
 selectFileField = XPath.inputWithPlaceholder "Select a file"

@@ -44,7 +44,10 @@ import SlamData.Render.CSS as CSS
 
 type CellHTML = ParentHTML AnyCellState CellQuery InnerCellQuery Slam Unit
 
-header :: forall r. { name :: String, glyph :: H.ClassName | r } -> CellState -> CellHTML
+header
+  :: forall r. { name :: String, glyph :: H.ClassName | r }
+  -> CellState
+  -> CellHTML
 header def cs =
   H.div
     [ P.classes [CSS.cellHeader, B.clearfix]
@@ -58,6 +61,7 @@ header def cs =
         [ H.text def.name ]
     , controls cs
     ]
+
 
 controls :: CellState -> CellHTML
 controls cs =
@@ -78,7 +82,10 @@ controls cs =
     , glyph B.glyphiconChevronLeft
     ]
   where
-  cellOptionsLabel = if cs.isCollapsed then "Show cell options" else "Hide cell options"
+  cellOptionsLabel =
+    if cs.isCollapsed
+      then "Show cell options"
+      else "Hide cell options"
 
 statusBar :: Boolean -> CellState -> CellHTML
 statusBar hasResults cs =

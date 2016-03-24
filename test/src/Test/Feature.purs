@@ -38,32 +38,22 @@ module Test.Feature
   , undo
   ) where
 
-import Control.Apply ((*>))
-import Control.Bind ((=<<), (<=<))
+import SlamData.Prelude
+
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throw)
-import Control.Monad.Trans (lift)
-import Control.MonadPlus (guard)
 import Data.Array (elemIndex)
-import Data.Either (either)
-import Data.Foldable (any, traverse_)
 import Data.Foldable as F
-import Data.Functor (($>))
 import Data.List (toUnfoldable)
 import Data.List as L
 import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.String (joinWith)
-import Data.Traversable (traverse)
-import Data.Traversable as T
-import Data.Tuple (Tuple(..), uncurry)
 import Graphics.EasyImage as Ge
 import Graphics.ImageDiff as Gi
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readFile, readTextFile, readdir, unlink)
 import Node.Buffer (toString)
-import Prelude
 import Selenium.ActionSequence as Sequence
 import Selenium.Monad (get, getAttribute, clickEl, attempt, later, sequence, byXPath, tryRepeatedlyTo, findElements, isDisplayed, getLocation, getSize, saveScreenshot, sendKeysEl)
 import Selenium.Types (Element)
@@ -387,8 +377,10 @@ expectScreenshotToMatchAnyWithProperties diffPath maxPercent properties xpath pr
     =<< expectScreenshotOfElementToMatchAny diffPath maxPercent presentedPath expectedPaths
     =<< findWithPropertiesNotRepeatedly properties xpath
   where
-  throwMessage = liftEff <<< throw <<< message =<< showImageFile presentedPath
-  message = flip XPath.errorMessage xpath <<< withPropertiesMessage properties <<< rawMessage
+  throwMessage =
+    liftEff <<< throw <<< message =<< showImageFile presentedPath
+  message =
+    flip XPath.errorMessage xpath <<< withPropertiesMessage properties <<< rawMessage
   rawMessage imageString =
     "Expected at least one of these images:\n\n"
       ++ joinWith "\n" expectedPaths
@@ -669,11 +661,11 @@ elementsWithProperties properties =
 
   filterElementsPropertiesPairs
     :: forall f
-     . (F.Foldable f)
+     . (Foldable f)
     => f (Tuple Element Properties)
     -> Array Element
   filterElementsPropertiesPairs =
-    F.foldMap (\(Tuple el ps) -> guard (ps == properties) $> el)
+    foldMap (\(Tuple el ps) -> guard (ps == properties) $> el)
 
   getPropertiesForElement
     :: Element
@@ -684,7 +676,7 @@ elementsWithProperties properties =
 
   elementsPropertiesTuples
     :: forall t
-     . (T.Traversable t)
+     . (Traversable t)
     => t Element
     -> Feature eff o (t (Tuple Element Properties))
   elementsPropertiesTuples =
@@ -709,7 +701,7 @@ expectScreenshotOfElementToMatchAny diffPath maxPercent presentedPath expectedPa
         location.x
         location.y
         presentedPath
-  any id <$> traverse expectScreenshotOfElementToMatch expectedPaths
+  F.any id <$> traverse expectScreenshotOfElementToMatch expectedPaths
   where
   expectScreenshotOfElementToMatch expectedPath = liftAff do
     Gi.diff

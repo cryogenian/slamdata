@@ -64,13 +64,21 @@ type CellDefProps s f r =
 -- |    will be the component's own internal algebra.
 makeQueryPrism
   :: forall a f
-   . PrismP (AnyCellQuery a) (Coproduct CellEvalQuery f a)
-  -> PrismP (Coproduct CellEvalQuery AnyCellQuery a) (Coproduct CellEvalQuery f a)
+   . PrismP
+       (AnyCellQuery a)
+       (Coproduct CellEvalQuery f a)
+  -> PrismP
+       (Coproduct CellEvalQuery AnyCellQuery a)
+       (Coproduct CellEvalQuery f a)
 makeQueryPrism base = prism' to fro
   where
-  to :: Coproduct CellEvalQuery f a -> Coproduct CellEvalQuery AnyCellQuery a
+  to
+    :: Coproduct CellEvalQuery f a
+    -> Coproduct CellEvalQuery AnyCellQuery a
   to = coproduct left (right <<< review base <<< right)
-  fro :: Coproduct CellEvalQuery AnyCellQuery a -> Maybe (Coproduct CellEvalQuery f a)
+  fro
+    :: Coproduct CellEvalQuery AnyCellQuery a
+    -> Maybe (Coproduct CellEvalQuery f a)
   fro = coproduct (Just <<< left) (preview base)
 
 -- | Makes a prism for `_Query` for cell components with a query algebra of the
@@ -81,11 +89,27 @@ makeQueryPrism base = prism' to fro
 -- | algebra and `g` will be some `ChildF`.
 makeQueryPrism'
   :: forall a f g
-   . PrismP (AnyCellQuery a) (Coproduct (Coproduct CellEvalQuery f) g a)
-  -> PrismP (Coproduct CellEvalQuery AnyCellQuery a) (Coproduct (Coproduct CellEvalQuery f) g a)
+   . PrismP
+       (AnyCellQuery a)
+       (Coproduct (Coproduct CellEvalQuery f) g a)
+  -> PrismP
+       (Coproduct CellEvalQuery AnyCellQuery a)
+       (Coproduct (Coproduct CellEvalQuery f) g a)
 makeQueryPrism' base = prism' to fro
   where
-  to :: Coproduct (Coproduct CellEvalQuery f) g a -> Coproduct CellEvalQuery AnyCellQuery a
-  to = coproduct (coproduct left (right <<< review base <<< left <<< right)) (right <<< review base <<< right)
-  fro :: Coproduct CellEvalQuery AnyCellQuery a -> Maybe (Coproduct (Coproduct CellEvalQuery f) g a)
-  fro = coproduct (Just <<< left <<< left) (preview base)
+  to
+    :: Coproduct (Coproduct CellEvalQuery f) g a
+    -> Coproduct CellEvalQuery AnyCellQuery a
+  to =
+    coproduct
+      (coproduct
+         left
+         (right <<< review base <<< left <<< right))
+      (right <<< review base <<< right)
+  fro
+    :: Coproduct CellEvalQuery AnyCellQuery a
+    -> Maybe (Coproduct (Coproduct CellEvalQuery f) g a)
+  fro =
+    coproduct
+      (Just <<< left <<< left)
+      (preview base)

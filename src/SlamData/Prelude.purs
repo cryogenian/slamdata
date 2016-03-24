@@ -15,7 +15,8 @@ limitations under the License.
 -}
 
 module SlamData.Prelude
-  ( module Prelude
+  ( (∘), (⊕)
+  , module Prelude
   , module Control.Alt
   , module Control.Apply
   , module Control.Bind
@@ -62,3 +63,7 @@ import Data.NaturalTransformation (Natural)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Void (Void, absurd)
+
+
+infixr 9 compose as ∘
+infixr 5 append as ⊕

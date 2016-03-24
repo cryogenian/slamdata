@@ -42,6 +42,7 @@ module SlamData.Notebook.Cell.Component.State
   , _DownloadState
   , _APIState
   , _APIResultsState
+  , _NextState
   ) where
 
 import SlamData.Prelude
@@ -67,7 +68,9 @@ import SlamData.Notebook.Cell.Port (Port)
 import SlamData.Notebook.Cell.RunState (RunState(..))
 import SlamData.Notebook.Cell.Search.Component.State as Search
 import SlamData.Notebook.Cell.Viz.Component.State as Viz
+import SlamData.Notebook.Cell.Next.Component.State as Next
 import SlamData.Effects (Slam, SlamDataEffects)
+
 
 -- | The common state value for notebook cells.
 -- |
@@ -100,6 +103,7 @@ type CellState =
   , input :: Maybe Port
   , output :: Maybe Port
   , canceler :: Canceler SlamDataEffects
+  , controllable :: Boolean
   }
 
 type CellStateP = ParentState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
@@ -119,6 +123,7 @@ initEditorCellState =
   , input: Nothing
   , output: Nothing
   , canceler: mempty
+  , controllable: true
   }
 
 -- | Creates an initial `CellState` value for a results cell.
@@ -136,6 +141,7 @@ initResultsCellState =
   , input: Nothing
   , output: Nothing
   , canceler: mempty
+  , controllable: false
   }
 
 _accessType :: LensP CellState AccessType
@@ -182,6 +188,9 @@ _output = lens _.output (_ { output = _ })
 _canceler :: LensP CellState (Canceler SlamDataEffects)
 _canceler = lens _.canceler _{canceler = _}
 
+_controllable :: forall a r. LensP {controllable :: a|r} a
+_controllable = lens _.controllable _{controllable = _}
+
 data AnyCellState
   = AceState Ace.StateP
   | ExploreState Explore.StateP
@@ -193,6 +202,7 @@ data AnyCellState
   | DownloadState Download.State
   | APIState API.StateP
   | APIResultsState APIResults.State
+  | NextState Next.State
 
 _AceState :: PrismP AnyCellState Ace.StateP
 _AceState = prism' AceState \s -> case s of
@@ -242,4 +252,9 @@ _APIState = prism' APIState \s -> case s of
 _APIResultsState :: PrismP AnyCellState APIResults.State
 _APIResultsState = prism' APIResultsState \s -> case s of
   APIResultsState s' -> Just s'
+  _ -> Nothing
+
+_NextState :: PrismP AnyCellState Next.State
+_NextState = prism' NextState \s -> case s of
+  NextState s' -> Just s'
   _ -> Nothing
