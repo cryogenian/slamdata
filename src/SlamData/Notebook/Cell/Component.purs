@@ -43,7 +43,6 @@ import Data.Visibility (Visibility(..), toggleVisibility)
 import DOM.Timer (interval, clearInterval)
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -57,12 +56,12 @@ import SlamData.Notebook.AccessType (AccessType(..))
 import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..), cellGlyph, cellName)
 import SlamData.Notebook.Cell.Common.EvalQuery (prepareCellEvalInput)
 import SlamData.Notebook.Cell.Component.Def (CellDefProps, EditorCellDef, ResultsCellDef, makeQueryPrism, makeQueryPrism')
-import SlamData.Notebook.Cell.Component.Query (CellEvalInputPre, CellQueryP, InnerCellQuery, AnyCellQuery(..), CellEvalQuery(..), CellQuery(..), _APIQuery, _APIResultsQuery, _AceQuery, _AnyCellQuery, _CellEvalQuery, _ChartQuery, _DownloadQuery, _ExploreQuery, _JTableQuery, _MarkdownQuery, _SearchQuery, _VizQuery)
+import SlamData.Notebook.Cell.Component.Query (CellEvalInputPre, CellQueryP, InnerCellQuery, AnyCellQuery(..), CellEvalQuery(..), CellQuery(..), _APIQuery, _APIResultsQuery, _AceQuery, _AnyCellQuery, _CellEvalQuery, _ChartQuery, _DownloadQuery, _ExploreQuery, _JTableQuery, _MarkdownQuery, _SearchQuery, _VizQuery, _NextQuery)
 import SlamData.Notebook.Cell.Component.Render (CellHTML, header, statusBar)
-import SlamData.Notebook.Cell.Component.State (AnyCellState, CellState, CellStateP, _APIResultsState, _APIState, _AceState, _ChartState, _DownloadState, _ExploreState, _JTableState, _MarkdownState, _SearchState, _VizState, _accessType, _cachingEnabled, _canceler, _hasResults, _input, _isCollapsed, _messageVisibility, _messages, _output, _runState, _tickStopper, _visibility, initEditorCellState, initResultsCellState)
+import SlamData.Notebook.Cell.Component.State (AnyCellState, CellState, CellStateP, _APIResultsState, _APIState, _AceState, _ChartState, _DownloadState, _ExploreState, _JTableState, _MarkdownState, _SearchState, _VizState, _NextState, _accessType, _cachingEnabled, _canceler, _hasResults, _input, _isCollapsed, _messageVisibility, _messages, _output, _runState, _tickStopper, _visibility, initEditorCellState, initResultsCellState)
 import SlamData.Notebook.Cell.Port (Port(..), _Resource)
 import SlamData.Notebook.Cell.RunState (RunState(..))
-import SlamData.Render.Common (row', glyph)
+import SlamData.Render.Common (row', fadeWhen, glyph)
 import SlamData.Render.CSS as CSS
 
 -- | Type synonym for the full type of a cell component.
@@ -125,20 +124,22 @@ cellSourceRender def collapseWhen afterContent component initialState cs =
   collapsedClass =
     guard shouldCollapse $> CSS.collapsed
 
+  hideIfCollapsed =
+    ARIA.hidden $ show shouldCollapse
+
   shown :: CellHTML
   shown =
     HH.div [ HP.classes $ join [ containerClasses, collapsedClass ] ]
-    $ [ header def cs
-      , HH.div
-          [ HP.classes [ B.row ], hideIfCollapsed ]
-          [ HH.slot unit \_ ->
-              { component: component
-              , initialState: initialState
-              }
+    $ fold
+        [
+          guard cs.controllable $> header def cs
+        , [ HH.div [ HP.classes ([B.row] ⊕ (fadeWhen shouldCollapse))
+                   , hideIfCollapsed
+                   ]
+              [ HH.slot unit \_ -> {component, initialState} ]
           ]
-      ]
-      <> afterContent cs
-  hideIfCollapsed = ARIA.hidden (show cs.isCollapsed)
+        , afterContent cs
+        ]
 
 -- | Constructs a cell component for an results-style cell.
 makeResultsCellComponent
@@ -159,10 +160,10 @@ makeResultsCellComponent def = makeCellComponentPart def render
       HH.div
         [ HP.classes containerClasses ]
         [ row' [CSS.cellOutput]
+
             [ HH.div
                 [ HP.class_ CSS.cellOutputLabel ]
                 [ HH.text (resLabel cs.input)
-                , HH.ul [ HP.class_ CSS.nextCellList ] (nextCellButtons cs.output)
                 ]
             , HH.div
                 [ HP.class_ CSS.cellOutputResult ]
@@ -177,30 +178,6 @@ makeResultsCellComponent def = makeCellComponentPart def render
   resLabel p =
     maybe "" (\p -> Path.runFileName (Path.fileName p) ++ " :=")
     $ preview (_Resource <<< _filePath) =<< p
-
-  nextCellButtons :: Maybe Port -> Array (CellHTML)
-  nextCellButtons Nothing = []
-  nextCellButtons (Just p) = case p of
-    VarMap _ ->
-      [ nextCellButton (Ace SQLMode) ]
-    TaggedResource _ ->
-      [ nextCellButton (Ace SQLMode)
-      , nextCellButton Search
-      , nextCellButton Viz
-      , nextCellButton Download
-      ]
-    _ -> []
-
-  nextCellButton :: CellType -> CellHTML
-  nextCellButton cellType =
-    HH.li_
-      [ HH.button
-          [ HP.title $ "Insert " ++ (cellName cellType) ++ " cell after this cell"
-          , ARIA.label $ "Insert " ++ (cellName cellType) ++ " cell after this cell"
-          , HE.onClick $ HE.input_ (CreateChildCell cellType)
-          ]
-          [ glyph (cellGlyph cellType) ]
-      ]
 
 containerClasses :: Array (HH.ClassName)
 containerClasses = [B.containerFluid, CSS.notebookCell, B.clearfix]
@@ -260,7 +237,6 @@ makeCellComponentPart def render =
     maybe (liftF HaltHF) (pure <<< k <<< _.output) result
   eval (RefreshCell next) = pure next
   eval (TrashCell next) = pure next
-  eval (CreateChildCell _ next) = pure next
   eval (ToggleCollapsed next) =
     H.modify (_isCollapsed %~ not) $> next
   eval (ToggleMessages next) =

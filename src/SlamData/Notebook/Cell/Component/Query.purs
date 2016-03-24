@@ -31,6 +31,7 @@ module SlamData.Notebook.Cell.Component.Query
   , _DownloadQuery
   , _APIQuery
   , _APIResultsQuery
+  , _NextQuery
   , module SlamData.Notebook.Cell.Common.EvalQuery
   ) where
 
@@ -59,6 +60,7 @@ import SlamData.Notebook.Cell.Model as Cell
 import SlamData.Notebook.Cell.Port (Port)
 import SlamData.Notebook.Cell.Search.Component.Query as Search
 import SlamData.Notebook.Cell.Viz.Component.Query as Viz
+import SlamData.Notebook.Cell.Next.Component.Query as Next
 
 -- | The common query algebra for a notebook cell.
 -- |
@@ -71,8 +73,6 @@ import SlamData.Notebook.Cell.Viz.Component.Query as Viz
 -- |   current cell's dependencies and updates the cells downwards from there.
 -- | - `TrashCell` is captured by the notebook, removes the current cell and
 -- |   any dependencies.
--- | - `CreateChildCell` is captured by the notebook and used to add a child of
--- |   the current cell.
 -- | - `ToggleCollapsed` is used to toggle the visibility of the editor
 -- |   part of the cell.
 -- | - `ToggleMessages` is used to toggle the visibility of the status/error
@@ -86,7 +86,6 @@ data CellQuery a
   | UpdateCell CellEvalInputPre (Maybe Port -> a)
   | RefreshCell a
   | TrashCell a
-  | CreateChildCell CellType a
   | ToggleCollapsed a
   | ToggleMessages a
   | ToggleCaching a
@@ -118,6 +117,7 @@ data AnyCellQuery a
   | DownloadQuery (Download.QueryP a)
   | APIQuery (API.QueryP a)
   | APIResultsQuery (APIResults.QueryP a)
+  | NextQuery (Next.QueryP a)
 
 _AceQuery :: forall a. PrismP (AnyCellQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery \q -> case q of
@@ -167,4 +167,9 @@ _APIQuery = prism' APIQuery \q -> case q of
 _APIResultsQuery :: forall a. PrismP (AnyCellQuery a) (APIResults.QueryP a)
 _APIResultsQuery = prism' APIResultsQuery \q -> case q of
   APIResultsQuery q' -> Just q'
+  _ -> Nothing
+
+_NextQuery :: forall a. PrismP (AnyCellQuery a) (Next.QueryP a)
+_NextQuery = prism' NextQuery \q -> case q of
+  NextQuery q' -> Just q'
   _ -> Nothing

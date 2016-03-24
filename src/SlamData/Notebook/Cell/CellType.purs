@@ -24,6 +24,7 @@ module SlamData.Notebook.Cell.CellType
   , aceCellName
   , aceCellGlyph
   , aceMode
+  , nextCellTypes
   ) where
 
 import SlamData.Prelude
@@ -117,10 +118,12 @@ cellName (Ace at) = aceCellName at
 cellName Explore = "Explore"
 cellName Search = "Search"
 cellName Viz = "Visualize"
+cellName Chart = "Chart"
+cellName Markdown = "Markdown"
+cellName JTable = "JTable"
 cellName Download = "Download"
 cellName API = "API"
 cellName APIResults = "API Results"
-cellName _ = ""
 
 cellGlyph :: CellType -> ClassName
 cellGlyph (Ace at) = aceCellGlyph at
@@ -143,3 +146,56 @@ aceCellGlyph SQLMode = B.glyphiconQuestionSign
 aceMode :: AceMode -> String
 aceMode MarkdownMode = "ace/mode/markdown"
 aceMode SQLMode = "ace/mode/sql"
+
+nextCellTypes :: Maybe CellType -> Array CellType
+nextCellTypes Nothing =
+  [
+    Ace SQLMode
+  , Ace MarkdownMode
+  , Explore
+  , Search
+  , API
+  ]
+nextCellTypes (Just Explore) =
+  [
+    JTable
+  ]
+nextCellTypes (Just Search) =
+  [
+    JTable
+  ]
+nextCellTypes (Just (Ace SQLMode)) =
+  [
+    JTable
+  ]
+nextCellTypes (Just Viz) =
+  [
+    Chart
+  ]
+nextCellTypes (Just API) =
+  [
+    APIResults
+  ]
+nextCellTypes (Just (Ace MarkdownMode)) =
+  [
+    Markdown
+  ]
+nextCellTypes (Just Markdown) =
+  [
+    Ace SQLMode
+  ]
+nextCellTypes (Just JTable) =
+  [
+    Ace SQLMode
+  , Search
+  , Viz
+  , Download
+  ]
+nextCellTypes (Just Download) =
+  [ ]
+nextCellTypes (Just APIResults) =
+  [
+    Ace SQLMode
+  ]
+nextCellTypes (Just Chart) =
+  [ ]

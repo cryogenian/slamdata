@@ -76,10 +76,11 @@ eval (Ec.EvalCell value continue) =
       when (state.width /= options.width)
         $ void $ H.query unit $ H.action $ He.SetWidth options.width
       when (state.height /= options.height)
+
         $ void $ H.query unit $ H.action $ He.SetHeight options.height
       H.query unit $ H.action $ He.Set options.options
       H.query unit $ H.action He.Resize
-      pure $ continue { output: Nothing, messages: [] }
+      pure $ continue { output: Just Blocked, messages: [] }
     Just Blocked -> do
       H.query unit $ H.action He.Clear
       pure $ continue { output: Nothing, messages: [] }

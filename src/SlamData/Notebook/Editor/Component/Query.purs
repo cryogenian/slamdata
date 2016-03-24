@@ -40,7 +40,6 @@ data Query a
   = AddCell CT.CellType a
   | RunActiveCell a
   | RunPendingCells a
-  | ToggleAddCellMenu a
   | GetNotebookPath (Maybe UP.DirPath -> a)
   | SetViewingCell (Maybe CID.CellId) a
   | SetName String a

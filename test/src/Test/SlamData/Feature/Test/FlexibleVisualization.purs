@@ -39,21 +39,24 @@ expectedImagesBasePath =
 expectedColoradoWithoutSeriesChartImages :: Array String
 expectedColoradoWithoutSeriesChartImages =
   map (append expectedImagesBasePath)
-    [ "CO-without-series-mac.png"
+    [
+      "CO-without-series-mac.png"
     , "CO-without-series-linux.png"
     ]
 
 expectedColoradoChartImages :: Array String
 expectedColoradoChartImages =
   map (append expectedImagesBasePath)
-    [ "CO-mac.png"
+    [
+      "CO-mac.png"
     , "CO-linux.png"
     ]
 
 expectedNebraskaChartImages :: Array String
 expectedNebraskaChartImages =
   map (append expectedImagesBasePath)
-    [ "NE-mac.png"
+    [
+      "NE-mac.png"
     , "NE-linux.png"
     ]
 

@@ -53,3 +53,7 @@ instance semiringCellId :: Semiring CellId where
   one = CellId one
   add (CellId a) (CellId b) = CellId $ a + b
   mul (CellId a) (CellId b) = CellId $ a * b
+
+instance boundedCellId :: Bounded CellId where
+  top = CellId top
+  bottom = CellId bottom

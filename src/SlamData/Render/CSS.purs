@@ -381,6 +381,10 @@ cancelInputRunIcon = className "cancel-input-run-icon"
 userShareForm :: ClassName
 userShareForm = className "user-share-form"
 
+
+nextActionCard :: ClassName
+nextActionCard = className "next-action-card"
+
 sharePermissionsDialog :: ClassName
 sharePermissionsDialog = className "share-permissions-dialog"
 

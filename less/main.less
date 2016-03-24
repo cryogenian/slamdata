@@ -495,7 +495,7 @@ ol.breadcrumb {
             float: left;
             background: #fff;
             width: ~"calc(100% - 61px)";
-
+            border-bottom: 1px solid #ccc;
             .scrollbox {
                 overflow-x: auto;
                 width: 100%;
@@ -505,26 +505,9 @@ ol.breadcrumb {
     .cell-eval-line {
         background: #ddd;
     }
-    .next-cell-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-
-        li {
-            margin-top: 8px;
-
-            button {
-                border: none;
-                background: #aaa;
-                color: #fff;
-                width: 32px;
-                height: 32px;
-            }
-
-            button:hover {
-                background: #337ab7;
-            }
-        }
+    button.next-cell-list {
+        border-radius: 0;
+        width: 61px;
     }
 }
 
@@ -761,3 +744,4 @@ div.viz-cell-editor, div.download-cell-editor {
 @import "dialog/download";
 @import "form-builder";
 @import "share-permissions";
+@import "next-cell-card";

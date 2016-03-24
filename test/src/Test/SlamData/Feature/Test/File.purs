@@ -15,15 +15,20 @@ limitations under the License.
 -}
 module Test.SlamData.Feature.Test.File where
 
-import Control.Apply ((*>))
-import Prelude
+import SlamData.Prelude
+
 import Test.Feature.Log (successMsg, errorMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
 
-fileScenario :: SlamFeature Unit -> String -> Array String -> SlamFeature Unit -> SlamFeature Unit
+fileScenario
+  :: SlamFeature Unit
+   → String
+   → Array String
+   → SlamFeature Unit
+   → SlamFeature Unit
 fileScenario = scenario "File" (Interact.browseRootFolder)
 
 defaultAfterFile :: SlamFeature Unit
@@ -45,7 +50,8 @@ afterAccessSharingUrl =
     *> Interact.deleteFile "Quarterly report.slam"
 
 unexpectedBehaviourWithoutHesitationIssue :: String
-unexpectedBehaviourWithoutHesitationIssue = "https://slamdata.atlassian.net/browse/SD-1525"
+unexpectedBehaviourWithoutHesitationIssue =
+  "https://slamdata.atlassian.net/browse/SD-1525"
 
 test :: SlamFeature Unit
 test = do
@@ -61,7 +67,10 @@ test = do
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Medical data"
     Interact.createFolder
-    Interact.moveFile "Untitled Folder" "/test-mount/testDb/" "/test-mount/testDb/Medical data/"
+    Interact.moveFile
+      "Untitled Folder"
+      "/test-mount/testDb/"
+      "/test-mount/testDb/Medical data/"
     Interact.accessFile "Medical data"
     Expect.file "Untitled Folder"
     successMsg "Successfully moved a folder"
@@ -124,12 +133,21 @@ test = do
   fileScenario defaultAfterFile "Download file as CSV" [] do
     Interact.browseTestFolder
     Interact.downloadFileAsCSV "smallZips"
-    Expect.downloadedTextFileToMatchFile "tmp/test/downloads" "smallZips" "test/smallZips.csv"
+    Expect.downloadedTextFileToMatchFile
+      "tmp/test/downloads"
+      "smallZips"
+      "test/smallZips.csv"
     successMsg "Successfully downloaded file as CSV"
 
-  fileScenario defaultAfterFile "Download file as JSON" [unexpectedBehaviourWithoutHesitationIssue] do
-    Interact.browseTestFolder
-    Interact.downloadFileAsJSON "smallZips"
-    Expect.downloadedTextFileToMatchFile "tmp/test/downloads" "smallZips" "test/smallZips.json"
-    errorMsg "The known issue occurs non-dermininistically"
-    successMsg "Successfully downloaded file as JSON"
+  fileScenario
+    defaultAfterFile
+    "Download file as JSON"
+    [unexpectedBehaviourWithoutHesitationIssue] do
+      Interact.browseTestFolder
+      Interact.downloadFileAsJSON "smallZips"
+      Expect.downloadedTextFileToMatchFile
+        "tmp/test/downloads"
+        "smallZips"
+        "test/smallZips.json"
+      errorMsg "The known issue occurs non-dermininistically"
+      successMsg "Successfully downloaded file as JSON"

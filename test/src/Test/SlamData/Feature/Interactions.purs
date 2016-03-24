@@ -1,12 +1,9 @@
 module Test.SlamData.Feature.Interactions where
 
-import Prelude
-import Control.Apply ((*>))
-import Control.Bind ((=<<), (<=<))
+import SlamData.Prelude
 import Control.Monad.Eff.Class (liftEff)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
-import Selenium.Monad (get, refresh, getCurrentUrl)
+import Selenium.Monad (get, navigateTo, refresh, getCurrentUrl)
 import Test.Feature (click, provideFileInputValue, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, pushRadioButton, check, uncheck, accessUrlFromFieldValue, provideFieldValueUntilExpectedValue)
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -112,23 +109,23 @@ expandNewCardMenu = click (XPath.anywhere XPaths.insertCard)
 
 insertQueryCardAsFirstCardInNewStack :: SlamFeature Unit
 insertQueryCardAsFirstCardInNewStack =
-  expandNewCardMenu *> click (XPath.anywhere XPaths.insertQueryCard)
+  click (XPath.anywhere XPaths.insertQueryCard)
 
 insertMdCardAsFirstCardInNewStack :: SlamFeature Unit
 insertMdCardAsFirstCardInNewStack =
-  expandNewCardMenu *> click (XPath.anywhere XPaths.insertMdCard)
+  click (XPath.anywhere XPaths.insertMdCard)
 
 insertExploreCardAsFirstCardInNewStack :: SlamFeature Unit
 insertExploreCardAsFirstCardInNewStack =
-  expandNewCardMenu *> click (XPath.anywhere XPaths.insertExploreCard)
+  click (XPath.anywhere XPaths.insertExploreCard)
 
 insertSearchCardAsFirstCardInNewStack :: SlamFeature Unit
 insertSearchCardAsFirstCardInNewStack =
-  expandNewCardMenu *> click (XPath.anywhere XPaths.insertSearchCard)
+  click (XPath.anywhere XPaths.insertSearchCard)
 
 insertApiCardAsFirstCardInNewStack :: SlamFeature Unit
 insertApiCardAsFirstCardInNewStack =
-  expandNewCardMenu *> click (XPath.anywhere XPaths.insertApiCard)
+  click (XPath.anywhere XPaths.insertApiCard)
 
 insertSearchCardAsNextAction :: SlamFeature Unit
 insertSearchCardAsNextAction =

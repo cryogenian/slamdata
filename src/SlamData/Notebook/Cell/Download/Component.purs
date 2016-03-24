@@ -158,7 +158,7 @@ cellEval (Ec.EvalCell { inputPort } continue) = do
     Just (P.TaggedResource { resource }) -> H.modify (_source ?~ resource)
     Just P.Blocked -> H.modify (_source .~ Nothing)
     _ -> pure unit
-  pure $ continue { output: Nothing, messages: [] }
+  pure $ continue { output: Just P.Blocked, messages: [] }
 cellEval (Ec.NotifyRunCell next) = pure next
 cellEval (Ec.Save k) = map (k <<< encode) H.get
 cellEval (Ec.Load json next) = for_ (decode json) H.set $> next
