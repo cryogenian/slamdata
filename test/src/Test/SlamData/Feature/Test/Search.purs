@@ -36,23 +36,20 @@ test = do
   searchScenario "Search for a city" [] do
     Interact.insertExploreCardAsFirstCardInNewStack
     Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
-    Interact.playLastCard
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "springfield"
-    Interact.playLastCard
+    Interact.insertJTableCardAsNextAction
     Expect.cellsInTableColumnInLastCardToContain 10 "city" "SPRINGFIELD"
     successMsg "Successfully searched for a city"
 
   searchScenario "Search within results" [] do
     Interact.insertExploreCardAsFirstCardInNewStack
     Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
-    Interact.playLastCard
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "springfield"
-    Interact.playLastCard
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "OR"
-    Interact.playLastCard
+    Interact.insertJTableCardAsNextAction
     Expect.cellsInTableColumnInLastCardToContain 2 "city" "SPRINGFIELD"
     Expect.cellsInTableColumnInLastCardToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
@@ -82,10 +79,10 @@ test = do
     --  ]
     Interact.insertExploreCardAsFirstCardInNewStack
     Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
-    Interact.playLastCard
     Interact.insertSearchCardAsNextAction
-    Interact.provideSearchStringInLastSearchCard "city:springfield state:or pop:>30000"
-    Interact.playLastCard
+    Interact.provideSearchStringInLastSearchCard
+      "city:springfield state:or pop:>30000"
+    Interact.insertJTableCardAsNextAction
     Expect.cellsInTableColumnInLastCardToContain 1 "city" "SPRINGFIELD"
     Expect.cellsInTableColumnInLastCardToContain 1 "state" "OR"
     Expect.cellsInTableColumnInLastCardToBeGT 1 "pop" "30000"
@@ -94,10 +91,9 @@ test = do
   searchScenario "Suppress search results" [] do
     Interact.insertExploreCardAsFirstCardInNewStack
     Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
-    Interact.playLastCard
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "city:portland -state:OR"
-    Interact.playLastCard
+    Interact.insertJTableCardAsNextAction
     Expect.cellsInTableColumnInLastCardToContain 10 "city" "PORTLAND"
     Expect.cellsInTableColumnInLastCardToNotEq 10 "state" "OR"
     successMsg "Successfully suppressed search results"

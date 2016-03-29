@@ -65,7 +65,7 @@ test = do
   apiVizScenario "Make embedable patients-city charts" [] do
     Interact.insertApiCardAsFirstCardInNewStack
     Interact.provideApiVariableBindingsForApiCard "state" "Text" "CO"
-    Interact.playLastCard
+    Interact.insertAPIResultsCardAsNextAction
     Interact.insertQueryCardAsNextAction
     Interact.provideQueryInLastQueryCard $ Str.joinWith " "
       $ [ "SELECT count(*) as ct, city, gender"
@@ -75,15 +75,16 @@ test = do
         , "ORDER BY ct DESC"
         , "LIMIT 30"
         ]
-    Interact.playLastCard
+    Interact.insertJTableCardAsNextAction
     Interact.insertVisualizeCardAsNextAction
     Interact.switchToBarChart
     Interact.provideCategoryForLastVisualizeCard ".city"
     Expect.measureInLastVisualizeCard ".ct"
     Expect.measureDisabledInLastVisualizeCard
+    Interact.insertChartCardAsNextAction
+
     Expect.lastChartScreenshotToMatchAny expectedColoradoWithoutSeriesChartImages
     Interact.provideSeriesForLastVizualizeCard ".gender"
-    Interact.playLastCard
     Expect.lastChartScreenshotToMatchAny expectedColoradoChartImages
     Interact.accessNotebookWithModifiedURL (flip append "/?state=%22NE%22")
     Expect.lastChartScreenshotToMatchAny expectedNebraskaChartImages

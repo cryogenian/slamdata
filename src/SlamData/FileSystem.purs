@@ -104,6 +104,7 @@ redirects _ _ _ (SortAndQ sort query) =
   let queryParts = splitQuery query
   in updateURL queryParts.query sort Nothing queryParts.path
 redirects driver var mbOld (Salted sort query salt) = do
+  Debug.Trace.traceAnyA ""
   Tuple canceler _ <- takeVar var
   cancel canceler $ error "cancel search"
   putVar var initialAVar

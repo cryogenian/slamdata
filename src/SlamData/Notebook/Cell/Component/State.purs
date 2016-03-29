@@ -103,7 +103,6 @@ type CellState =
   , input :: Maybe Port
   , output :: Maybe Port
   , canceler :: Canceler SlamDataEffects
-  , controllable :: Boolean
   }
 
 type CellStateP = ParentState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
@@ -123,7 +122,6 @@ initEditorCellState =
   , input: Nothing
   , output: Nothing
   , canceler: mempty
-  , controllable: true
   }
 
 -- | Creates an initial `CellState` value for a results cell.
@@ -133,7 +131,7 @@ initResultsCellState =
   , visibility: Visible
   , runState: RunInitial
   , tickStopper: pure unit
-  , isCollapsed: true
+  , isCollapsed: false
   , messages: []
   , messageVisibility: Invisible
   , hasResults: false
@@ -141,7 +139,6 @@ initResultsCellState =
   , input: Nothing
   , output: Nothing
   , canceler: mempty
-  , controllable: false
   }
 
 _accessType :: LensP CellState AccessType
@@ -188,14 +185,11 @@ _output = lens _.output (_ { output = _ })
 _canceler :: LensP CellState (Canceler SlamDataEffects)
 _canceler = lens _.canceler _{canceler = _}
 
-_controllable :: forall a r. LensP {controllable :: a|r} a
-_controllable = lens _.controllable _{controllable = _}
-
 data AnyCellState
   = AceState Ace.StateP
   | ExploreState Explore.StateP
   | MarkdownState Markdown.StateP
-  | SearchState Search.StateP
+  | SearchState Search.State
   | JTableState JTable.State
   | VizState Viz.StateP
   | ChartState Chart.StateP
@@ -219,7 +213,7 @@ _MarkdownState = prism' MarkdownState \s -> case s of
   MarkdownState s' -> Just s'
   _ -> Nothing
 
-_SearchState :: PrismP AnyCellState Search.StateP
+_SearchState :: PrismP AnyCellState Search.State
 _SearchState = prism' SearchState \s -> case s of
   SearchState s' -> Just s'
   _ -> Nothing

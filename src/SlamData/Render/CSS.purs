@@ -211,6 +211,9 @@ cellFailures = className "cell-failures"
 cellMessages :: ClassName
 cellMessages = className "cell-messages"
 
+cellBlockedMessage :: ClassName
+cellBlockedMessage = className "cell-blocked-message"
+
 cellEvalLine :: ClassName
 cellEvalLine = className "cell-eval-line"
 
@@ -399,3 +402,6 @@ sharePermissionsContent = className "share-permissions-content"
 
 sharePermissionsButtons :: ClassName
 sharePermissionsButtons = className "share-permissions-buttons"
+
+glyphImage :: ClassName
+glyphImage = className "glyph-image"

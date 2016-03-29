@@ -110,7 +110,7 @@ data AnyCellQuery a
   = AceQuery (Ace.QueryP a)
   | ExploreQuery (Explore.QueryP a)
   | MarkdownQuery (Markdown.QueryP a)
-  | SearchQuery (Search.QueryP a)
+  | SearchQuery (Search.Query a)
   | JTableQuery (JTable.QueryP a)
   | VizQuery (Viz.QueryP a)
   | ChartQuery (Chart.QueryP a)
@@ -134,7 +134,7 @@ _MarkdownQuery = prism' MarkdownQuery \q -> case q of
   MarkdownQuery q' -> Just q'
   _ -> Nothing
 
-_SearchQuery :: forall a. PrismP (AnyCellQuery a) (Search.QueryP a)
+_SearchQuery :: forall a. PrismP (AnyCellQuery a) (Search.Query a)
 _SearchQuery = prism' SearchQuery \q -> case q of
   SearchQuery q' -> Just q'
   _ -> Nothing

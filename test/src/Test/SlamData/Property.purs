@@ -55,9 +55,6 @@ main = do
   log "Check SlamData.Notebook.Cell.Markdown.Model..."
   Test.SlamData.Property.Notebook.Cell.Markdown.Model.check
 
-  log "Check SlamData.Notebook.Cell.Search.Model..."
-  Test.SlamData.Property.Notebook.Cell.Search.Model.check
-
   log "Check SlamData.Notebook.Cell.Viz.Model..."
   Test.SlamData.Property.Notebook.Cell.Viz.Model.check
 

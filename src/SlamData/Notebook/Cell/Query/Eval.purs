@@ -46,36 +46,36 @@ import SlamData.Notebook.Cell.Port as Port
 import Utils.Ace (readOnly)
 import Utils.Completions (mkCompletion, pathCompletions)
 
-queryEval :: CEQ.CellEvalInput -> String -> AceDSL CEQ.CellEvalResult
+queryEval ∷ CEQ.CellEvalInput → String → AceDSL CEQ.CellEvalResult
 queryEval info sql =
   case info.inputPort of
-    Just Port.Blocked ->
+    Just Port.Blocked →
       pure { output: Nothing, messages: [] }
-    _ -> do
+    _ → do
       addCompletions varMap
       CEQ.runCellEvalT  do
-        { plan, outputResource } <-
+        { plan, outputResource } ←
           Quasar.executeQuery
             sql
-            (fromMaybe false info.cachingEnabled)
+            false
             varMap
             inputResource
             tempOutputResource
           # Auth.authed
-          # CEQ.liftWithCanceler
+          # CEQ.liftWithCancelerP
           # lift
           >>= either EC.throwError pure
         Quasar.messageIfResourceNotExists
             outputResource
             "Requested collection doesn't exist"
           # Auth.authed
-          # CEQ.liftWithCanceler
+          # CEQ.liftWithCancelerP
           # lift
           >>= traverse_ EC.throwError
-        for_ plan \p -> WC.tell ["Plan: " <> p]
+        for_ plan \p → WC.tell ["Plan: " ⊕ p]
         pure $ Port.TaggedResource {resource: outputResource, tag: pure sql}
   where
-  varMap :: SM.StrMap String
+  varMap ∷ SM.StrMap String
   varMap =
     info.inputPort
     >>= L.preview Port._VarMap
@@ -84,17 +84,32 @@ queryEval info sql =
   tempOutputResource = CEQ.temporaryOutputResource info
   inputResource = R.parent tempOutputResource
 
-querySetup :: CEQ.CellSetupInfo -> AceDSL Unit
+querySetup ∷ CEQ.CellSetupInfo → AceDSL Unit
 querySetup { inputPort, notebookPath } =
   case inputPort of
-    Port.VarMap varMap -> addCompletions varMap
-    Port.TaggedResource {resource}  -> void $ runMaybeT do
-      resParent <- MaybeT $ pure $ L.preview R._filePath resource >>= Path.parentDir
-      let path = if notebookPath == pure resParent
+    Port.VarMap varMap →
+      addCompletions varMap
+
+    Port.TaggedResource {resource} → void $ runMaybeT do
+      resParent ←
+        MaybeT
+          $ pure
+          $ L.preview R._filePath resource
+          >>= Path.parentDir
+
+      let
+        path = if notebookPath ≡ pure resParent
                  then R.resourceName resource
                  else R.resourcePath resource
-      editor <- (MaybeT $ query unit $ request Ace.GetEditor) >>= (MaybeT <<< pure)
-      MaybeT $ query unit $ action $ Ace.SetText ("SELECT  *  FROM `" <> path <> "` ")
+      editor ←
+        (MaybeT $ query unit $ request Ace.GetEditor)
+        >>= (MaybeT ∘ pure)
+
+      MaybeT
+        $ query unit
+        $ action
+        $ Ace.SetText ("SELECT  *  FROM `" ⊕ path ⊕ "` ")
+
       lift $ fromEff do
         readOnly editor
           { startRow: 0
@@ -108,16 +123,16 @@ querySetup { inputPort, notebookPath } =
           , endRow: 0
           , endColumn: 19 + Str.length path
           }
-    _ -> pure unit
+    _ → pure unit
 
-addCompletions :: forall a. SM.StrMap a -> AceDSL Unit
+addCompletions ∷ ∀ a. SM.StrMap a → AceDSL Unit
 addCompletions vm =
-  void $ query unit $ action $ Ace.SetCompleteFn \_ _ _ inp -> do
+  void $ query unit $ action $ Ace.SetCompleteFn \_ _ _ inp → do
     let compl = varMapCompletions vm
-    paths <- pathCompletions
-    pure $ compl <> paths
+    paths ← pathCompletions
+    pure $ compl ⊕ paths
 
   where
-  varMapCompletions :: SM.StrMap a -> Array Completion
+  varMapCompletions ∷ SM.StrMap a → Array Completion
   varMapCompletions strMap =
-    SM.keys strMap <#> mkCompletion "variable" (Just <<< append ":")
+    SM.keys strMap <#> mkCompletion "variable" (Just ∘ append ":")

@@ -371,7 +371,6 @@ ol.breadcrumb {
 }
 
 .notebook-cell {
-
     .cell-header {
         background: #777;
         color: #fff;
@@ -386,6 +385,9 @@ ol.breadcrumb {
             width: 61px;
             text-align: center;
             font-size: 16px;
+            .glyph-image {
+                height: 16px;
+            }
         }
 
         .cell-name {
@@ -428,9 +430,9 @@ ol.breadcrumb {
         }
     }
 
-    .cell-failures, .cell-messages {
+    .cell-failures, .cell-messages, .cell-blocked-message {
         padding-left: 10px;
-        line-height: 30px;
+        line-height: 32px;
         margin-left: 61px;
         > div:first-child {
             margin-left: 4px;
@@ -461,13 +463,16 @@ ol.breadcrumb {
         > pre { border-top: 1px dashed #ff7878; }
         border-bottom: 1px solid #ff7878;
     }
+    .cell-blocked-message {
+        background: #ffa;
+    }
 
     button.play-button, button.stop-button {
         float: left;
         border-radius: 0;
         width: 61px;
         padding: 0px;
-        height: 30px;
+        height: 32px;
     }
     .row.cell-output {
         &.fade.in {
@@ -483,7 +488,7 @@ ol.breadcrumb {
         div.pagination {
             margin-left: 10px;
         }
-        background: #ddd;
+        background: #ccc;
         div.cell-output-label {
             width: 61px;
             float: left;
@@ -503,7 +508,7 @@ ol.breadcrumb {
         }
     }
     .cell-eval-line {
-        background: #ddd;
+        background: #eee;
     }
     button.next-cell-list {
         border-radius: 0;
@@ -550,13 +555,7 @@ ol.breadcrumb {
     }
 }
 
-.search-cell-input {
-    border-top: none;
-
-}
-
 .search-cell-button {
-    border-top: none;
     height: 34px;
 }
 
@@ -652,6 +651,10 @@ div.loading-message.alert.alert-info {
     font-weight: 28px;
 }
 
+.download-cell-editor {
+    border-bottom: 1px solid #f0f0f0;
+}
+
 div.viz-cell-editor, div.download-cell-editor {
     min-height: 160px;
     padding-left: 15px;
@@ -730,6 +733,16 @@ div.viz-cell-editor, div.download-cell-editor {
         font-size: 16px;
     }
 }
+
+button {
+    img.glyph-image {
+        width: 48px;
+        margin-top: -18px;
+    }
+}
+
+
+
 
 @import "bootstrap-overloads";
 @import "nav";

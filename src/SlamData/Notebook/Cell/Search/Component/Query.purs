@@ -17,18 +17,12 @@ limitations under the License.
 module SlamData.Notebook.Cell.Search.Component.Query
   ( SearchQuery(..)
   , Query
-  , QueryP
   ) where
 
 import SlamData.Prelude
 
-import Halogen (ChildF)
-
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
-import SlamData.Notebook.FileInput.Component as FI
 
 data SearchQuery a = UpdateSearch String a
 
 type Query = Coproduct CellEvalQuery SearchQuery
-
-type QueryP = Coproduct Query (ChildF Unit FI.Query)

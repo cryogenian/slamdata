@@ -25,6 +25,8 @@ module SlamData.Notebook.Cell.CellType
   , aceCellGlyph
   , aceMode
   , nextCellTypes
+  , controllable
+  , insertableCellTypes
   ) where
 
 import SlamData.Prelude
@@ -33,8 +35,13 @@ import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
 
-import Halogen.HTML (ClassName)
+import Halogen.HTML.Core (HTML)
+import Halogen.HTML.Indexed as HH
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.HTML.Properties.Indexed as HP
+
+import SlamData.Render.Common (glyph)
+import SlamData.Render.CSS as Rc
 
 data CellType
   = Ace AceMode
@@ -47,8 +54,24 @@ data CellType
   | Download
   | API
   | APIResults
+  | NextAction
 
-instance eqCellType :: Eq CellType where
+insertableCellTypes ∷ Array CellType
+insertableCellTypes =
+  [ Ace SQLMode
+  , Ace MarkdownMode
+  , Explore
+  , Search
+  , Viz
+  , Chart
+  , Markdown
+  , JTable
+  , Download
+  , API
+  , APIResults
+  ]
+
+instance eqCellType ∷ Eq CellType where
   eq (Ace m1) (Ace m2) = m1 == m2
   eq Explore Explore = true
   eq Search Search = true
@@ -59,18 +82,19 @@ instance eqCellType :: Eq CellType where
   eq Download Download = true
   eq API API = true
   eq APIResults APIResults = true
+  eq NextAction NextAction = true
   eq _ _ = false
 
 data AceMode
   = MarkdownMode
   | SQLMode
 
-instance eqAceMode :: Eq AceMode where
+instance eqAceMode ∷ Eq AceMode where
   eq MarkdownMode MarkdownMode = true
   eq SQLMode SQLMode = true
   eq _ _ = false
 
-linkedCellType :: CellType -> Maybe CellType
+linkedCellType ∷ CellType → Maybe CellType
 linkedCellType (Ace MarkdownMode) = Just Markdown
 linkedCellType (Ace _) = Just JTable
 linkedCellType Explore = Just JTable
@@ -79,11 +103,11 @@ linkedCellType Viz = Just Chart
 linkedCellType API = Just APIResults
 linkedCellType _ = Nothing
 
-autorun :: CellType -> Boolean
+autorun ∷ CellType → Boolean
 autorun Viz = true
 autorun _ = false
 
-instance encodeJsonCellType :: EncodeJson CellType where
+instance encodeJsonCellType ∷ EncodeJson CellType where
   encodeJson (Ace MarkdownMode) = encodeJson "ace-markdown"
   encodeJson (Ace SQLMode) = encodeJson "ace-sql"
   encodeJson Explore = encodeJson "explore"
@@ -95,78 +119,93 @@ instance encodeJsonCellType :: EncodeJson CellType where
   encodeJson Download = encodeJson "download"
   encodeJson API = encodeJson "api"
   encodeJson APIResults = encodeJson "api-results"
+  encodeJson NextAction = encodeJson "next-action"
 
-instance decodeJsonCellType :: DecodeJson CellType where
+instance decodeJsonCellType ∷ DecodeJson CellType where
   decodeJson json = do
-    str <- decodeJson json
+    str ← decodeJson json
     case str of
-      "ace-markdown" -> pure $ Ace MarkdownMode
-      "ace-sql" -> pure $ Ace SQLMode
-      "explore" -> pure Explore
-      "search" -> pure Search
-      "viz" -> pure Viz
-      "chart" -> pure Chart
-      "markdown" -> pure Markdown
-      "jtable" -> pure JTable
-      "download" -> pure Download
-      "api" -> pure API
-      "api-results" -> pure APIResults
-      name -> throwError $ "unknown cell type '" ++ name ++ "'"
+      "ace-markdown" → pure $ Ace MarkdownMode
+      "ace-sql" → pure $ Ace SQLMode
+      "explore" → pure Explore
+      "search" → pure Search
+      "viz" → pure Viz
+      "chart" → pure Chart
+      "markdown" → pure Markdown
+      "jtable" → pure JTable
+      "download" → pure Download
+      "api" → pure API
+      "api-results" → pure APIResults
+      "next-action" → pure NextAction
+      name → throwError $ "unknown cell type '" ⊕ name ⊕ "'"
 
-cellName :: CellType -> String
+cellName ∷ CellType → String
 cellName (Ace at) = aceCellName at
 cellName Explore = "Explore"
 cellName Search = "Search"
 cellName Viz = "Visualize"
 cellName Chart = "Chart"
-cellName Markdown = "Markdown"
-cellName JTable = "JTable"
+cellName Markdown = "Form"
+cellName JTable = "Table"
 cellName Download = "Download"
 cellName API = "API"
 cellName APIResults = "API Results"
+cellName NextAction = "Next Action"
 
-cellGlyph :: CellType -> ClassName
-cellGlyph (Ace at) = aceCellGlyph at
-cellGlyph Explore = B.glyphiconEyeOpen
-cellGlyph Search = B.glyphiconSearch
-cellGlyph Viz = B.glyphiconPicture
-cellGlyph Download = B.glyphiconDownloadAlt
-cellGlyph API = B.glyphiconOpenFile
-cellGlyph APIResults = B.glyphiconOpenFile
-cellGlyph _ = B.glyphiconStop
+cellGlyph ∷ ∀ s f. CellType → Boolean → HTML s f
+cellGlyph (Ace at) _ = glyph $ aceCellGlyph at
+cellGlyph Explore _ = glyph B.glyphiconEyeOpen
+cellGlyph Search _ = glyph B.glyphiconSearch
+cellGlyph Viz _ = glyph B.glyphiconPicture
+cellGlyph Download _ = glyph B.glyphiconDownloadAlt
+cellGlyph API _ = glyph B.glyphiconOpenFile
+cellGlyph APIResults _ = glyph B.glyphiconTasks
+cellGlyph Chart disabled =
+  HH.img
+    [ HP.classes [ Rc.glyphImage ]
+    , HP.src $ if disabled then "img/pie-dark.svg" else "img/pie.svg"
+    ]
+cellGlyph Markdown disabled =
+  HH.img
+    [ HP.classes [ Rc.glyphImage ]
+    , HP.src $ if disabled
+               then "img/code-icon-dark.svg"
+               else "img/code-icon-white.svg"
+    ]
+cellGlyph JTable _ = glyph B.glyphiconThList
+cellGlyph NextAction _ = glyph B.glyphiconStop
 
-aceCellName :: AceMode -> String
+aceCellName ∷ AceMode → String
 aceCellName MarkdownMode = "Markdown"
 aceCellName SQLMode = "Query"
 
-aceCellGlyph :: AceMode -> ClassName
+aceCellGlyph ∷ AceMode → HH.ClassName
 aceCellGlyph MarkdownMode = B.glyphiconEdit
 aceCellGlyph SQLMode = B.glyphiconQuestionSign
 
-aceMode :: AceMode -> String
+aceMode ∷ AceMode → String
 aceMode MarkdownMode = "ace/mode/markdown"
 aceMode SQLMode = "ace/mode/sql"
 
-nextCellTypes :: Maybe CellType -> Array CellType
+nextCellTypes ∷ Maybe CellType → Array CellType
 nextCellTypes Nothing =
   [
     Ace SQLMode
   , Ace MarkdownMode
   , Explore
-  , Search
   , API
   ]
 nextCellTypes (Just Explore) =
   [
-    JTable
+    JTable, Download, Search, Ace SQLMode, Viz
   ]
 nextCellTypes (Just Search) =
   [
-    JTable
+    JTable, Download, Search, Ace SQLMode, Viz
   ]
 nextCellTypes (Just (Ace SQLMode)) =
   [
-    JTable
+    JTable, Download, Search, Ace SQLMode, Viz
   ]
 nextCellTypes (Just Viz) =
   [
@@ -199,3 +238,10 @@ nextCellTypes (Just APIResults) =
   ]
 nextCellTypes (Just Chart) =
   [ ]
+nextCellTypes (Just NextAction) =
+  [ ]
+
+
+controllable ∷ CellType → Boolean
+controllable NextAction = false
+controllable _ = true

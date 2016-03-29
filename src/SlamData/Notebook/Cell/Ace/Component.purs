@@ -40,9 +40,9 @@ import Halogen.HTML.Properties.Indexed as HP
 import SlamData.Notebook.Cell.Ace.Component.Query (QueryP)
 import SlamData.Notebook.Cell.Ace.Component.State (StateP)
 import SlamData.Notebook.Cell.Ace.Model as Model
-import SlamData.Notebook.Cell.CellType (AceMode, aceMode, aceCellName, aceCellGlyph)
+import SlamData.Notebook.Cell.CellType (CellType(Ace), AceMode, aceMode, aceCellName, cellGlyph)
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult, CellEvalInput, CellSetupInfo)
-import SlamData.Notebook.Cell.Component (CellStateP, CellQueryP, makeEditorCellComponent, makeQueryPrism, _AceState, _AceQuery)
+import SlamData.Notebook.Cell.Component (CellStateP, CellQueryP, makeCellComponent, makeQueryPrism, _AceState, _AceQuery)
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
 
@@ -60,9 +60,8 @@ type AceConfig =
   }
 
 aceComponent :: AceConfig -> H.Component CellStateP CellQueryP Slam
-aceComponent {mode, evaluator, setup} = makeEditorCellComponent
-  { name: aceCellName mode
-  , glyph: aceCellGlyph mode
+aceComponent {mode, evaluator, setup} = makeCellComponent
+  { cellType: Ace mode
   , component: H.parentComponent { render, eval, peek: Nothing }
   , initialState: H.parentState unit
   , _State: _AceState

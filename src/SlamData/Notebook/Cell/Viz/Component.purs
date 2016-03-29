@@ -45,15 +45,15 @@ import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Form.Select (Select, autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
-import SlamData.Notebook.Cell.CellType (CellType(Viz), cellName, cellGlyph)
+import SlamData.Notebook.Cell.CellType (CellType(Viz))
 import SlamData.Notebook.Cell.Chart.Aggregation (aggregationSelect)
 import SlamData.Notebook.Cell.Chart.Axis (analyzeJArray, Axis)
 import SlamData.Notebook.Cell.Chart.Axis as Ax
 import SlamData.Notebook.Cell.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
 import SlamData.Notebook.Cell.Chart.ChartOptions (buildOptions)
 import SlamData.Notebook.Cell.Chart.ChartType (ChartType(..), isPie)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT, runCellEvalT, liftWithCanceler')
-import SlamData.Notebook.Cell.Component (CellStateP, CellQueryP, makeEditorCellComponent, makeQueryPrism', _VizState, _VizQuery)
+import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalT, runCellEvalT, liftWithCancelerP')
+import SlamData.Notebook.Cell.Component (CellStateP, CellQueryP, makeCellComponent, makeQueryPrism', _VizState, _VizQuery)
 import SlamData.Notebook.Cell.Port as P
 import SlamData.Notebook.Cell.Viz.Component.Query (QueryC, Query(..))
 import SlamData.Notebook.Cell.Viz.Component.State (State, _needToUpdate, _availableChartTypes, _sample, fromModel, _records, _loading, _axisLabelFontSize, _axisLabelAngle, _chartType, _width, _height, initialState)
@@ -68,9 +68,8 @@ type VizHTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
 type VizDSL = H.ParentDSL State Form.StateP QueryC Form.QueryP Slam ChartType
 
 vizComponent :: H.Component CellStateP CellQueryP Slam
-vizComponent = makeEditorCellComponent
-  { name: cellName Viz
-  , glyph: cellGlyph Viz
+vizComponent = makeCellComponent
+  { cellType: Viz
   , component: H.parentComponent { render, eval, peek: Just peek }
   , initialState: H.parentState initialState
   , _State: _VizState
@@ -260,7 +259,7 @@ cellEval (EvalCell info continue) =
             Api.all r
               # Auth.authed
               # attempt
-              # liftWithCanceler'
+              # liftWithCancelerP'
               # lift
               >>= either
                   (const $ throwError $ "Can't get resource: " <> R.resourcePath r)
@@ -320,7 +319,7 @@ updateForms file = do
     Api.sample file 0 20
       # Auth.authed
       # attempt
-      # liftWithCanceler'
+      # liftWithCancelerP'
       >>= either (const $ pure []) pure
   if null jarr
     then

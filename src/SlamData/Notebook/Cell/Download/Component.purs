@@ -38,9 +38,9 @@ import SlamData.Download.Render as Rd
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource (resourcePath)
 import SlamData.FileSystem.Resource as R
-import SlamData.Notebook.Cell.CellType (cellName, cellGlyph, CellType(Download))
+import SlamData.Notebook.Cell.CellType (CellType(Download))
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
-import SlamData.Notebook.Cell.Component (makeSingularCellComponent, makeQueryPrism, _DownloadState, _DownloadQuery)
+import SlamData.Notebook.Cell.Component (makeCellComponent, makeQueryPrism, _DownloadState, _DownloadQuery)
 import SlamData.Notebook.Cell.Component as Cc
 import SlamData.Notebook.Cell.Download.Component.Query (QueryP, Query(..))
 import SlamData.Notebook.Cell.Download.Component.State (State, _compress, _options, _source, decode, encode, initialState)
@@ -52,9 +52,8 @@ type DownloadHTML = H.ComponentHTML QueryP
 type DownloadDSL = H.ComponentDSL State QueryP Slam
 
 downloadComponent :: Cc.CellComponent
-downloadComponent = makeSingularCellComponent
-  { name: cellName Download
-  , glyph: cellGlyph Download
+downloadComponent = makeCellComponent
+  { cellType: Download
   , component: H.component { render, eval }
   , initialState: initialState
   , _State: _DownloadState

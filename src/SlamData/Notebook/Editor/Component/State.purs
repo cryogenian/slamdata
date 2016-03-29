@@ -55,8 +55,6 @@ module SlamData.Notebook.Editor.Component.State
 
 import SlamData.Prelude
 
-import Data.Array as A
-import Data.Array.Unsafe as U
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.Foldable (maximum, any)
 import Data.Lens (LensP, lens)
@@ -85,6 +83,7 @@ import SlamData.Notebook.Cell.Download.Component (downloadComponent)
 import SlamData.Notebook.Cell.Explore.Component (exploreComponent)
 import SlamData.Notebook.Cell.JTable.Component (jtableComponent)
 import SlamData.Notebook.Cell.Markdown.Component (markdownComponent)
+import SlamData.Notebook.Cell.Next.Component (nextCellComponent)
 import SlamData.Notebook.Cell.Markdown.Eval (markdownEval, markdownSetup)
 import SlamData.Notebook.Cell.Model as Cell
 import SlamData.Notebook.Cell.Port.VarMap as Port
@@ -220,7 +219,7 @@ _stateMode = lens _.stateMode _{stateMode = _}
 -- | Takes the current notebook state, the type of cell to add, and an optional
 -- | parent cell ID.
 addCell :: CellType -> Maybe CellId -> State -> State
-addCell cellType parent st = fst $ addCellChain cellType (maybe [] pure parent) st
+addCell cellType parent st = fst $ addCell' cellType parent st
 
 -- | Adds a new cell to the notebook.
 -- |
@@ -228,21 +227,8 @@ addCell cellType parent st = fst $ addCellChain cellType (maybe [] pure parent) 
 -- | parent cell ID and returns the modified notebook state and the new cell ID.
 addCell' :: CellType -> Maybe CellId -> State -> Tuple State CellId
 addCell' cellType parent st =
-  extractNewId <$> addCellChain cellType (maybe [] pure parent) st
-  where
-  extractNewId :: forall a. Array a -> a
-  extractNewId = flip U.unsafeIndex (maybe 0 (const 1) parent)
-
-addCellChain
-  :: CellType
-  -> Array CellId
-  -> State
-  -> Tuple State (Array CellId)
-addCellChain cellType parents st =
   let
     cellId = CellId st.fresh
-    parent = A.last parents
-    parents' = parents `A.snoc` cellId
     newState = st
       { fresh = st.fresh + 1
       , cells = st.cells `L.snoc` mkCellDef cellType cellId
@@ -251,10 +237,7 @@ addCellChain cellType parents st =
           maybe st.dependencies (flip (M.insert cellId) st.dependencies) parent
       }
   in
-    case linkedCellType cellType of
-      Nothing -> Tuple newState parents'
-      Just nextCellType -> addCellChain nextCellType parents' newState
-
+    Tuple newState cellId
   where
   mkCellDef :: CellType -> CellId -> CellDef
   mkCellDef cellType cellId =
@@ -281,6 +264,7 @@ cellTypeComponent JTable _ _ = jtableComponent
 cellTypeComponent Download _ _ = downloadComponent
 cellTypeComponent API _ _ = apiComponent
 cellTypeComponent APIResults _ _ = apiResultsComponent
+cellTypeComponent NextAction _ _ = nextCellComponent
 
 cellTypeInitialState :: CellType -> CellState
 cellTypeInitialState (Ace SQLMode) =
@@ -295,6 +279,7 @@ cellTypeInitialState JTable = initResultsCellState
 cellTypeInitialState Download = initEditorCellState
 cellTypeInitialState API = initEditorCellState
 cellTypeInitialState APIResults = initResultsCellState
+cellTypeInitialState NextAction = initEditorCellState
 
 aceEvalMode :: AceMode -> AceEvaluator
 aceEvalMode MarkdownMode = markdownEval

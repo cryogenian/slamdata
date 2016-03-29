@@ -51,7 +51,7 @@ test = do
           , "color = [x]Red []Green [x]Blue"
           , "type = (x)Gold ()Silver ()Bronze"
           ]
-    Interact.playLastCard
+    Interact.insertFormCardAsNextAction
     Expect.fieldInLastMdCard "discipline" "text" ""
     Expect.fieldInLastMdCard "sport" "text" "Bobsleigh"
     Expect.fieldInLastMdCard "age" "number" ""
@@ -80,9 +80,8 @@ test = do
   mdScenario "Change and play markdown" [] do
     Interact.insertMdCardAsFirstCardInNewStack
     Interact.provideMdInLastMdCard "discipline = __"
-    Interact.playLastCard
+    Interact.insertFormCardAsNextAction
     Interact.provideMdInLastMdCard "sport =  __ (Bobsleigh)"
-    Interact.playLastCard
 
     Expect.fieldInLastMdCard "sport" "text" "Bobsleigh"
     successMsg "Ok, successfully changed and played markdown."
@@ -96,7 +95,7 @@ test = do
       , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
-    Interact.playLastCard
+    Interact.insertFormCardAsNextAction
     Expect.fieldInLastMdCard "discipline" "text" "Figure skating"
     Expect.fieldInLastMdCard "year" "text" "1924"
     Expect.labelInLastMdCard "country"
@@ -166,11 +165,12 @@ test = do
       , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
-    Interact.playLastCard
+    Interact.insertFormCardAsNextAction
     Interact.insertQueryCardAsNextAction
     Interact.provideQueryInLastQueryCard
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
-    Interact.playLastCard
+--    Interact.playLastCard
+    Interact.insertJTableCardAsNextAction
     Expect.cellsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
     Expect.cellsInTableColumnInLastCardToEq 2 "country" "AUT"
     Expect.cellsInTableColumnInLastCardToEq 2 "gender" "W"
@@ -187,11 +187,11 @@ test = do
       , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
-    Interact.playLastCard
+    Interact.insertFormCardAsNextAction
     Interact.insertQueryCardAsNextAction
     Interact.provideQueryInLastQueryCard
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
-    Interact.playLastCard
+    Interact.insertJTableCardAsNextAction
     Interact.provideFieldValueInLastMdCard "discipline" "Luge"
     Interact.provideFieldValueInLastMdCard "year" "1950"
     Interact.uncheckFieldInLastMdCard "W"
