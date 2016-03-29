@@ -58,7 +58,6 @@ import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.AccessType (AccessType(..), isEditable)
 import SlamData.Notebook.Action as NA
-import SlamData.Notebook.Cell.API.Component as APIC
 import SlamData.Notebook.Cell.CellId (CellId(), cellIdToString)
 import SlamData.Notebook.Cell.CellType
   (CellType(..), AceMode(..), cellName, cellGlyph, autorun, nextCellTypes)
@@ -66,8 +65,6 @@ import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import SlamData.Notebook.Cell.Component
   (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..), _NextQuery, initEditorCellState)
 import SlamData.Notebook.Cell.Next.Component as Next
-import SlamData.Notebook.Cell.JTable.Component as JTC
-import SlamData.Notebook.Cell.Markdown.Component as MDC
 import SlamData.Notebook.Cell.Port (Port(..))
 import SlamData.Notebook.Editor.Component.CellSlot (CellSlot(..))
 import SlamData.Notebook.Editor.Component.Query (QueryP, Query(..))
@@ -149,7 +146,7 @@ render state =
     [ HH.slot (CellSlot top) \_ ->
        { component: Next.nextCellComponent
        , initialState:
-         H.parentState $ initEditorCellState { controllable = false}
+         H.parentState $ initEditorCellState
        }
     ]
 
@@ -315,7 +312,7 @@ createCell cellType = do
           $ H.ChildF unit
           $ left
           $ H.action (SetupCell setupInfo)
-      when (autorun cellType) $ runCell newCellId
+      runCell newCellId
   updateNextActionCell
   triggerSave unit
 
@@ -333,16 +330,9 @@ peekEvalCell _ _ = pure unit
 peekAnyCell :: forall a. CellId -> AnyCellQuery a -> NotebookDSL Unit
 peekAnyCell cellId q = do
   for_ (q ^? _NextQuery <<< _Right <<< Next._AddCellType) createCell
-  when (queryShouldRun q) $ runCell cellId
+  runCell cellId
   when (queryShouldSave q) $ triggerSave unit
   pure unit
-
-queryShouldRun :: forall a. AnyCellQuery a -> Boolean
-queryShouldRun (VizQuery q) = true
-queryShouldRun (JTableQuery q) = JTC.queryShouldRun q
-queryShouldRun (MarkdownQuery q) = MDC.queryShouldRun q
-queryShouldRun (APIQuery q) = APIC.queryShouldRun q
-queryShouldRun _ = false
 
 queryShouldSave  :: forall a. AnyCellQuery a -> Boolean
 queryShouldSave (AceQuery q) =

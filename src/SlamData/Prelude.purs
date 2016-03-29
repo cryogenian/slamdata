@@ -15,7 +15,8 @@ limitations under the License.
 -}
 
 module SlamData.Prelude
-  ( (∘), (⊕)
+  ( (∘), (⊕), (⋙), (⋘), (≡), (≠), (×), (≪), (≫)
+  , flipCompose, notEq, applyRight, applyLeft
   , module Prelude
   , module Control.Alt
   , module Control.Apply
@@ -65,5 +66,25 @@ import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Void (Void, absurd)
 
 
+flipCompose ∷ ∀ a b c d. Semigroupoid a ⇒ a b c → a c d → a b d
+flipCompose = flip compose
+
+notEq ∷ ∀ a. Eq a ⇒ a → a → Boolean
+notEq a b = not (a ≡ b)
+
+applyRight ∷ ∀ f a b. Apply f ⇒ f a → f b → f b
+applyRight a b = const id <$> a <*> b
+
+applyLeft ∷ ∀ f a b. Apply f ⇒ f a → f b → f a
+applyLeft a b = const <$> a <*> b
+
 infixr 9 compose as ∘
 infixr 5 append as ⊕
+infixr 9 flipCompose as ⋙
+infixr 9 compose as ⋘
+infixl 4 apply as ⊛
+infix 4 eq as ≡
+infix 4 notEq as ≠
+infixr 1 Tuple as ×
+infixl 4 applyRight as ≫
+infixl 4 applyLeft as ≪

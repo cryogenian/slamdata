@@ -32,12 +32,13 @@ import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Notebook.Cell.CellId (CellId, runCellId)
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult)
-import SlamData.Notebook.Cell.Component (CellQueryP, CellStateP, makeResultsCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
+import SlamData.Notebook.Cell.Component (CellQueryP, CellStateP, makeCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import SlamData.Notebook.Cell.Markdown.Component.Query (QueryP)
 import SlamData.Notebook.Cell.Markdown.Component.State (State, StateP, initialState)
 import SlamData.Notebook.Cell.Markdown.Interpret (formFieldValueToLiteral)
 import SlamData.Notebook.Cell.Markdown.Model (Model, decode, encode)
 import SlamData.Notebook.Cell.Port as Port
+import SlamData.Notebook.Cell.CellType as Ct
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
 
@@ -47,8 +48,9 @@ markdownComponent
   :: CellId
   -> BrowserFeatures
   -> H.Component CellStateP CellQueryP Slam
-markdownComponent cellId browserFeatures = makeResultsCellComponent
-  { component: H.parentComponent { render: render config, eval, peek: Nothing }
+markdownComponent cellId browserFeatures = makeCellComponent
+  { cellType: Ct.Markdown
+  , component: H.parentComponent { render: render config, eval, peek: Nothing }
   , initialState: H.parentState initialState
   , _State: _MarkdownState
   , _Query: makeQueryPrism _MarkdownQuery

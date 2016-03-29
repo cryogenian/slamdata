@@ -35,7 +35,7 @@ import Quasar.Auth as Auth
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellType as CT
-import SlamData.Notebook.Cell.Common.EvalQuery (runCellEvalT, liftWithCanceler)
+import SlamData.Notebook.Cell.Common.EvalQuery (runCellEvalT, liftWithCancelerP)
 import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Explore.Component.Query (Query(..), QueryP)
 import SlamData.Notebook.Cell.Explore.Component.State (State, StateP, initialState)
@@ -46,9 +46,8 @@ import SlamData.Render.CSS as CSS
 
 exploreComponent :: H.Component NC.CellStateP NC.CellQueryP Slam
 exploreComponent =
-  NC.makeEditorCellComponent
-    { name: CT.cellName CT.Explore
-    , glyph: CT.cellGlyph CT.Explore
+  NC.makeCellComponent
+    { cellType: CT.Explore
     , component: H.parentComponent { render, eval, peek: Nothing }
     , initialState: H.parentState initialState
     , _State: NC._ExploreState
@@ -81,7 +80,7 @@ eval (NC.EvalCell info k) =
         resource
         ("File " <> R.resourcePath resource <> " doesn't exist")
       # Auth.authed
-      # liftWithCanceler
+      # liftWithCancelerP
       # lift
       >>= traverse_ EC.throwError
     pure $ Port.TaggedResource {resource, tag: Nothing}

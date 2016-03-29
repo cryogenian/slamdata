@@ -17,43 +17,44 @@ module Test.SlamData.Feature.Test.File where
 
 import SlamData.Prelude
 
-import Test.Feature.Log (successMsg, errorMsg)
+import Selenium.Monad (later)
+import Test.Feature.Log (successMsg, errorMsg, warnMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
 
 fileScenario
-  :: SlamFeature Unit
+  ∷ SlamFeature Unit
    → String
    → Array String
    → SlamFeature Unit
    → SlamFeature Unit
 fileScenario = scenario "File" (Interact.browseRootFolder)
 
-defaultAfterFile :: SlamFeature Unit
+defaultAfterFile ∷ SlamFeature Unit
 defaultAfterFile = Interact.browseRootFolder
 
-afterRename :: SlamFeature Unit
+afterRename ∷ SlamFeature Unit
 afterRename = Interact.deleteFile "Patients"
 
-afterMove :: SlamFeature Unit
+afterMove ∷ SlamFeature Unit
 afterMove = Interact.browseTestFolder *> Interact.deleteFile "Medical data"
 
-afterUpload :: SlamFeature Unit
+afterUpload ∷ SlamFeature Unit
 afterUpload = Interact.deleteFile "array-wrapped.json"
 
-afterAccessSharingUrl :: SlamFeature Unit
+afterAccessSharingUrl ∷ SlamFeature Unit
 afterAccessSharingUrl =
   Interact.launchSlamData
     *> Interact.browseTestFolder
     *> Interact.deleteFile "Quarterly report.slam"
 
-unexpectedBehaviourWithoutHesitationIssue :: String
+unexpectedBehaviourWithoutHesitationIssue ∷ String
 unexpectedBehaviourWithoutHesitationIssue =
   "https://slamdata.atlassian.net/browse/SD-1525"
 
-test :: SlamFeature Unit
+test ∷ SlamFeature Unit
 test = do
   fileScenario afterRename "Rename a folder" [] do
     Interact.browseTestFolder
@@ -121,13 +122,15 @@ test = do
     Interact.createNotebookInTestFolder "Quarterly report"
     Interact.insertMdCardAsFirstCardInNewStack
     Interact.provideMdInLastMdCard "Quarterly"
-    Interact.playLastCard
+    Interact.insertFormCardAsNextAction
+    Expect.textInFormCell "Quarterly"
     Expect.lastCardToBeFinished
+    warnMsg "SD-1538, we don't know if notebook has been saved already"
+    later 1000 $ pure unit
     Interact.browseTestFolder
     Interact.shareFile "Quarterly report.slam"
     Interact.accessSharingUrl
-    Interact.playLastCard
-    Expect.text "Quarterly"
+    Expect.textInFormCell "Quarterly"
     successMsg "Successfully accessed sharing URL for a notebook"
 
   fileScenario defaultAfterFile "Download file as CSV" [] do

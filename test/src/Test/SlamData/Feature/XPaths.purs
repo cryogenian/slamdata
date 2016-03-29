@@ -1,245 +1,274 @@
 module Test.SlamData.Feature.XPaths where
 
-import Prelude
+import SlamData.Prelude
 import XPath as XPath
 import Test.SlamData.Feature.Data as Data
 
-aceEditor :: String
+aceEditor ∷ String
 aceEditor = "*[contains(@class, 'ace_editor') and not(contains(@class, 'ace_autocomplete'))]"
 
-playButton :: String
+playButton ∷ String
 playButton = XPath.anyWithExactAriaLabel "Play"
 
-renameButton :: String
+renameButton ∷ String
 renameButton = XPath.anyWithExactText "Rename"
 
-uploadFile :: String
+refreshButton ∷ String
+refreshButton = XPath.anyWithExactAriaLabel "Refresh"
+
+uploadFile ∷ String
 uploadFile =
   "input" `XPath.withLabel` XPath.anyWithExactAriaLabel "Upload file"
 
-selectADestinationFolder :: String
+selectADestinationFolder ∷ String
 selectADestinationFolder = XPath.anyWithExactAriaLabel "Select a destination folder"
 
-fileFromInitialFileList :: String
+fileFromInitialFileList ∷ String
 fileFromInitialFileList =
   XPath.anyWithExactText Data.fileFromInitialFileList
 
-initialFileList :: Array String
+initialFileList ∷ Array String
 initialFileList =
   map XPath.anyWithExactText Data.initialFileList
 
-initialFileListInOrder :: String
+initialFileListInOrder ∷ String
 initialFileListInOrder =
   XPath.inOrder $ map XPath.anyWithExactText Data.initialFileList
 
-embedCardOutput :: String
+embedCardOutput ∷ String
 embedCardOutput =
   XPath.anyWithExactText "Embed cell output"
 
-embedCardOutputTitle :: String
+embedCardOutputTitle ∷ String
 embedCardOutputTitle =
   XPath.anyWithExactText "Embed cell"
 
-mdCardTitle :: String
+mdCardTitle ∷ String
 mdCardTitle =
   XPath.anyWithExactText "Markdown"
 
-queryCardTitle :: String
+queryCardTitle ∷ String
 queryCardTitle =
   XPath.anyWithExactText "Query"
 
-embedCardOutputSnippet :: String
+formCardTitle ∷ String
+formCardTitle =
+  XPath.anyWithExactText "Form"
+
+
+embedCardOutputSnippet ∷ String
 embedCardOutputSnippet =
   XPath.anyWithText "<script type=\"text/javascript\">"
 
-exploreInput :: String
+
+formCellHeader ∷ String
+formCellHeader =
+  XPath.anyWithExactAriaLabel "Form cell"
+
+exploreInput ∷ String
 exploreInput =
   XPath.inputWithExactPlaceholder "Select a file"
 
-fileSearchInput :: String
+fileSearchInput ∷ String
 fileSearchInput =
   XPath.anyWithExactAriaLabel "File search field"
 
-searchStringInput :: String
+searchStringInput ∷ String
 searchStringInput =
   XPath.inputWithExactPlaceholder "Input search string"
 
-insertExploreCardAsNextAction :: String
+insertExploreCardAsNextAction ∷ String
 insertExploreCardAsNextAction =
   XPath.anyWithExactAriaLabel "Insert Explore card"
 
-insertMdCardAsNextAction :: String
+insertMdCardAsNextAction ∷ String
 insertMdCardAsNextAction =
   XPath.anyWithExactAriaLabel "Insert Markdown card"
 
-insertQueryCardAsNextAction :: String
+insertQueryCardAsNextAction ∷ String
 insertQueryCardAsNextAction =
   XPath.anyWithExactAriaLabel "Insert Query card"
 
-insertSearchCardAsNextAction :: String
+insertSearchCardAsNextAction ∷ String
 insertSearchCardAsNextAction =
   XPath.anyWithExactAriaLabel "Insert Search card"
 
-insertVisualizeCardAsNextAction :: String
+insertVisualizeCardAsNextAction ∷ String
 insertVisualizeCardAsNextAction =
   XPath.anyWithExactAriaLabel "Insert Visualize card"
 
-insertDownloadCardAsNextAction :: String
+insertDownloadCardAsNextAction ∷ String
 insertDownloadCardAsNextAction =
   XPath.anyWithExactAriaLabel "Insert Download card"
 
-showFileList :: String
+insertAPIResultsCardAsNextAction ∷ String
+insertAPIResultsCardAsNextAction =
+  XPath.anyWithExactAriaLabel "Insert API Results card"
+
+insertChartCardAsNextAction ∷ String
+insertChartCardAsNextAction =
+  XPath.anyWithExactAriaLabel "Insert Chart card"
+
+insertFormCardAsNextAction ∷ String
+insertFormCardAsNextAction =
+  XPath.anyWithExactAriaLabel "Insert Form card"
+
+showFileList ∷ String
 showFileList =
   XPath.anyWithExactAriaLabel "Show file list"
 
-hideFileList :: String
+hideFileList ∷ String
 hideFileList =
   XPath.anyWithExactAriaLabel "Hide file list"
 
-deleteCard :: String
+deleteCard ∷ String
 deleteCard =
   XPath.anyWithExactAriaLabel "Delete cell"
 
-dismissInsertCardMenu :: String
+dismissInsertCardMenu ∷ String
 dismissInsertCardMenu =
   XPath.anyWithExactAriaLabel "Dismiss insert cell menu"
 
-insertCard :: String
+insertCard ∷ String
 insertCard =
   XPath.anyWithExactAriaLabel "Insert cell"
 
-insertQueryCard :: String
+insertQueryCard ∷ String
 insertQueryCard =
   XPath.anyWithExactAriaLabel "Insert Query card"
 
-insertMdCard :: String
+insertMdCard ∷ String
 insertMdCard =
   XPath.anyWithExactAriaLabel "Insert Markdown card"
 
-insertExploreCard :: String
+insertExploreCard ∷ String
 insertExploreCard = XPath.anyWithExactAriaLabel "Insert Explore card"
 
-insertSearchCard :: String
+insertSearchCard ∷ String
 insertSearchCard =
   XPath.anyWithExactAriaLabel "Insert Search card"
 
-insertApiCard :: String
+insertApiCard ∷ String
 insertApiCard =
   XPath.anyWithExactAriaLabel "Insert API card"
 
-hideCardOptions :: String
+insertJTableCardAsNextAction ∷ String
+insertJTableCardAsNextAction =
+  XPath.anyWithExactAriaLabel "Insert Table card"
+
+hideCardOptions ∷ String
 hideCardOptions =
   XPath.anyWithExactAriaLabel "Hide cell options"
 
-showCardOptions :: String
+showCardOptions ∷ String
 showCardOptions =
   XPath.anyWithExactAriaLabel "Show cell options"
 
-browseRootFolder :: String
+browseRootFolder ∷ String
 browseRootFolder = XPath.anyWithAriaLabel "Browse root folder"
 
-createNotebook :: String
+createNotebook ∷ String
 createNotebook =
   XPath.anyWithExactAriaLabel "Create notebook"
 
-createFolder :: String
+createFolder ∷ String
 createFolder =
   XPath.anyWithExactAriaLabel "Create folder"
 
-removeFile :: String -> String
+removeFile ∷ String → String
 removeFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Remove"
 
-shareFile :: String -> String
+shareFile ∷ String → String
 shareFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Share"
 
-downloadFile :: String -> String
+downloadFile ∷ String → String
 downloadFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Download"
 
-moveFile :: String -> String
+moveFile ∷ String → String
 moveFile name =
   XPath.anyWithExactText name `XPath.following` XPath.anyWithExactAriaLabel "Move / rename"
 
-oneErrorMessage :: String
+oneErrorMessage ∷ String
 oneErrorMessage =
   XPath.anyWithText "1 error during evaluation."
 
-showMessages :: String
+showMessages ∷ String
 showMessages =
   XPath.anyWithExactAriaLabel "Show messages"
 
-noFileSelectedMessage :: String
+noFileSelectedMessage ∷ String
 noFileSelectedMessage =
   XPath.anyWithExactText "No file selected"
 
-fileDoesNotExist :: String -> String
+fileDoesNotExist ∷ String → String
 fileDoesNotExist filename =
   XPath.anyWithExactText $ "File " ++ filename ++ " does not exist"
 
-selectFileField :: String
+selectFileField ∷ String
 selectFileField = XPath.inputWithPlaceholder "Select a file"
 
-finishedMessage :: String
+finishedMessage ∷ String
 finishedMessage = XPath.anyWithText "Finished"
 
-mdField :: String
+mdField ∷ String
 mdField = aceEditor
 
-accessMountDatabase :: String
+accessMountDatabase ∷ String
 accessMountDatabase = XPath.anyWithExactAriaLabel "Mount database"
 
-mountName :: String
+mountName ∷ String
 mountName = "input" `XPath.withLabelWithExactText` "Name"
 
-mountType :: String
+mountType ∷ String
 mountType = "select" `XPath.withLabelWithExactText` "Mount type"
 
-mountPort :: String
+mountPort ∷ String
 mountPort = "input" `XPath.withLabelWithExactText` "Port"
 
-mountHost :: String
+mountHost ∷ String
 mountHost = "input" `XPath.withLabelWithExactText` "Host"
 
-mountDatabase :: String
+mountDatabase ∷ String
 mountDatabase = "input" `XPath.withLabelWithExactText` "Database"
 
-mountButton :: String
+mountButton ∷ String
 mountButton = "button" `XPath.nodeWithExactText` "Mount"
 
-downloadButton :: String
+downloadButton ∷ String
 downloadButton = "button" `XPath.nodeWithExactText` "Download"
 
-cancelButton :: String
+cancelButton ∷ String
 cancelButton = "button" `XPath.nodeWithExactText` "Cancel"
 
-inputWithLabelAndType :: String -> String -> String
+inputWithLabelAndType ∷ String → String → String
 inputWithLabelAndType labelText inputType =
   "input"
     `XPath.withLabelWithExactText` labelText
     `XPath.nodeWithExactAttribute "type"` inputType
 
-nthFile :: String
+nthFile ∷ String
 nthFile = "*" `XPath.nodeWithAriaLabel` "Select "
 
-selectFile :: String -> String
+selectFile ∷ String → String
 selectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Select " ++ filename)
 
-deselectFile :: String -> String
+deselectFile ∷ String → String
 deselectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Deselect " ++ filename)
 
-accessFile :: String -> String
+accessFile ∷ String → String
 accessFile filename =
   XPath.anyWithExactText filename
     `XPath.withPredicate` ("preceding::" ++ XPath.anyWithAriaLabel "Sort files by name")
 
-accessBreadcrumb :: String -> String
+accessBreadcrumb ∷ String → String
 accessBreadcrumb name =
   XPath.anyWithExactText name
     `XPath.withPredicate` ("following::" ++ XPath.anyWithAriaLabel "Sort files by name")
 
-cardHeading :: String
+cardHeading ∷ String
 cardHeading =
   XPath.withPredicate "*"
     $ XPath.anyOfThesePredicates
@@ -253,45 +282,50 @@ cardHeading =
         , "Download cell"
         ]
 
-sharingUrl :: String
+jtableHeading ∷ String
+jtableHeading =
+  XPath.withPredicate "*"
+    $ XPath.withAriaLabel "Table cell"
+
+sharingUrl ∷ String
 sharingUrl = "*" `XPath.nodeWithExactAriaLabel` "Sharing URL"
 
-copySharingUrl :: String
+copySharingUrl ∷ String
 copySharingUrl = "*" `XPath.nodeWithExactText` "Copy"
 
-showHiddenFiles :: String
+showHiddenFiles ∷ String
 showHiddenFiles = "*" `XPath.nodeWithExactAriaLabel` "Show hidden files"
 
-hideHiddenFiles :: String
+hideHiddenFiles ∷ String
 hideHiddenFiles = "*" `XPath.nodeWithExactAriaLabel` "Hide hidden files"
 
-apiCardVariableName :: String
+apiCardVariableName ∷ String
 apiCardVariableName =
   XPath.anyWithExactAriaLabel "API variable name"
 
 
-apiCardVariableTypeFor :: String -> String
+apiCardVariableTypeFor ∷ String → String
 apiCardVariableTypeFor name =
   XPath.anyWithExactAriaLabel
     $ "Type of \"" <> name <> "\" API variable"
 
 
-apiCardDefaultValueFor :: String -> String
+apiCardDefaultValueFor ∷ String → String
 apiCardDefaultValueFor name =
   XPath.anyWithExactAriaLabel
     $ "Default value for \"" <> name <> "\" API variable"
 
-chartCategorySelector :: String
+chartCategorySelector ∷ String
 chartCategorySelector = XPath.anyWithExactAriaLabel "Category"
 
-chartSeriesOneSelector :: String
+chartSeriesOneSelector ∷ String
 chartSeriesOneSelector = XPath.anyWithExactAriaLabel "Second Series"
 
-chartMeasureOneSelector :: String
+chartMeasureOneSelector ∷ String
 chartMeasureOneSelector = XPath.anyWithExactAriaLabel "First Measure"
 
-chartSwitchToBar :: String
+chartSwitchToBar ∷ String
 chartSwitchToBar = XPath.anyWithExactSrc "img/bar.svg"
 
-chartContainer :: String
+chartContainer ∷ String
 chartContainer = "div[@_echarts_instance_]"

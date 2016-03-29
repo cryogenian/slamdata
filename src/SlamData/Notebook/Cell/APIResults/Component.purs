@@ -35,13 +35,15 @@ import SlamData.Notebook.Cell.APIResults.Component.State (State, initialState)
 import SlamData.Notebook.Cell.Common.EvalQuery (runCellEvalT)
 import SlamData.Notebook.Cell.Component as NC
 import SlamData.Notebook.Cell.Port as Port
+import SlamData.Notebook.Cell.CellType as Ct
 
 type APIResultsDSL = H.ComponentDSL State QueryP Slam
 
 apiResultsComponent :: H.Component NC.CellStateP NC.CellQueryP Slam
 apiResultsComponent =
-  NC.makeResultsCellComponent
-    { component: H.component { render, eval }
+  NC.makeCellComponent
+    { cellType: Ct.APIResults
+    , component: H.component { render, eval }
     , initialState: initialState
     , _State: NC._APIResultsState
     , _Query: NC.makeQueryPrism NC._APIResultsQuery

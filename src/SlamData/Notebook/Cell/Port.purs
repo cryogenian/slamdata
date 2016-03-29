@@ -37,42 +37,42 @@ import SlamData.Notebook.Cell.Port.VarMap (VarMap, VarMapValue(..), parseVarMapV
 
 import Text.Markdown.SlamDown (SlamDown)
 
-type ChartPort = { options :: Ec.Option, width :: Int, height :: Int }
+type ChartPort = { options ∷ Ec.Option, width ∷ Int, height ∷ Int }
 
 data Port
   = SlamDown SlamDown
   | VarMap VarMap
   | ChartOptions ChartPort
-  | TaggedResource {tag :: Maybe String, resource :: R.Resource }
+  | TaggedResource {tag ∷ Maybe String, resource ∷ R.Resource }
   | Blocked
 
-_SlamDown :: PrismP Port SlamDown
-_SlamDown = prism' SlamDown \p -> case p of
-  SlamDown x -> Just x
-  _ -> Nothing
+_SlamDown ∷ PrismP Port SlamDown
+_SlamDown = prism' SlamDown \p → case p of
+  SlamDown x → Just x
+  _ → Nothing
 
-_VarMap :: PrismP Port VarMap
-_VarMap = prism' VarMap \p -> case p of
-  VarMap x -> Just x
-  _ -> Nothing
+_VarMap ∷ PrismP Port VarMap
+_VarMap = prism' VarMap \p → case p of
+  VarMap x → Just x
+  _ → Nothing
 
-_ChartOptions :: PrismP Port ChartPort
-_ChartOptions = prism' ChartOptions \p -> case p of
-  ChartOptions o -> Just o
-  _ -> Nothing
+_ChartOptions ∷ PrismP Port ChartPort
+_ChartOptions = prism' ChartOptions \p → case p of
+  ChartOptions o → Just o
+  _ → Nothing
 
-_ResourceTag :: TraversalP Port String
-_ResourceTag = wander \f s -> case s of
-  TaggedResource o@{tag = Just tag} ->
-    (TaggedResource <<< o{tag = _} <<< Just) <$> f tag
-  _ -> pure s
+_ResourceTag ∷ TraversalP Port String
+_ResourceTag = wander \f s → case s of
+  TaggedResource o@{tag = Just tag} →
+    (TaggedResource ∘ o{tag = _} ∘ Just) <$> f tag
+  _ → pure s
 
-_Resource :: TraversalP Port R.Resource
-_Resource = wander \f s -> case s of
-  TaggedResource o -> (TaggedResource <<< o{resource = _}) <$> f o.resource
-  _ -> pure s
+_Resource ∷ TraversalP Port R.Resource
+_Resource = wander \f s → case s of
+  TaggedResource o → (TaggedResource ∘ o{resource = _}) <$> f o.resource
+  _ → pure s
 
-_Blocked :: PrismP Port Unit
-_Blocked = prism' (const Blocked) \p -> case p of
-  Blocked -> Just unit
-  _ -> Nothing
+_Blocked ∷ PrismP Port Unit
+_Blocked = prism' (const Blocked) \p → case p of
+  Blocked → Just unit
+  _ → Nothing

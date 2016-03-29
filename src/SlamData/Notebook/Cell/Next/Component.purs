@@ -6,6 +6,7 @@ module SlamData.Notebook.Cell.Next.Component
 
 import SlamData.Prelude
 
+import Data.Array as Arr
 import Data.Argonaut (jsonEmptyObject)
 import Data.Lens ((.~))
 
@@ -17,25 +18,23 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam())
-import SlamData.Notebook.Cell.CellType (cellName, cellGlyph, CellType(..))
+import SlamData.Notebook.Cell.CellType (cellName, cellGlyph, CellType(..), insertableCellTypes)
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
 import SlamData.Notebook.Cell.Component
-  (makeSingularCellComponent, makeQueryPrism, _NextState, _NextQuery)
+  (makeCellComponent, makeQueryPrism, _NextState, _NextQuery)
 import SlamData.Notebook.Cell.Component as Cc
 import SlamData.Render.Common (row, glyph)
 import SlamData.Render.CSS as Rc
 import SlamData.Notebook.Cell.Next.Component.Query (QueryP, Query(AddCell, SetAvailableTypes, SetMessage), _AddCellType)
 import SlamData.Notebook.Cell.Next.Component.State (State, _message, _types, initialState)
-
+import SlamData.Notebook.Cell.CellType as Ct
 
 type NextHTML = H.ComponentHTML QueryP
 type NextDSL = H.ComponentDSL State QueryP Slam
 
 nextCellComponent :: Cc.CellComponent
-nextCellComponent = makeSingularCellComponent
-  {
-    name: "Next action card"
-  , glyph: B.glyphiconStop
+nextCellComponent = makeCellComponent
+  { cellType: Ct.NextAction
   , component: H.component {render, eval}
   , initialState: initialState
   , _State: _NextState
@@ -47,12 +46,20 @@ render state =
   case state.message of
     Nothing →
       HH.ul [ HP.classes [ Rc.nextActionCard ] ]
-        $ map nextButton state.types
+        (map nextButton state.types
+        ⊕ (map disabledButton $ insertableCellTypes Arr.\\ state.types))
+
     Just msg →
       HH.div [ HP.classes [ B.alert, B.alertInfo, Rc.nextActionCard ] ]
         [ HH.h4_ [ HH.text msg ] ]
   where
+  cardTitle ∷ Ct.CellType → String
   cardTitle cty = "Insert " ⊕ cellName cty ⊕ " card"
+
+  disabledTitle ∷ Ct.CellType → String
+  disabledTitle cty = cellName cty ⊕ " is unavailable as next action"
+
+  nextButton ∷ Ct.CellType → NextHTML
   nextButton cty =
     HH.li_
       [ HH.button
@@ -60,7 +67,20 @@ render state =
           , ARIA.label $ cardTitle cty
           , HE.onClick (HE.input_ (right ∘ AddCell cty))
           ]
-          [ glyph (cellGlyph cty)
+          [ cellGlyph cty false
+          , HH.p_ [ HH.text (cellName cty) ]
+          ]
+      ]
+
+  disabledButton ∷ Ct.CellType → NextHTML
+  disabledButton cty =
+    HH.li_
+      [ HH.button
+          [ HP.title $ disabledTitle cty
+          , ARIA.label $ disabledTitle cty
+          , HP.disabled true
+          ]
+          [ cellGlyph cty true
           , HH.p_ [ HH.text (cellName cty) ]
           ]
       ]

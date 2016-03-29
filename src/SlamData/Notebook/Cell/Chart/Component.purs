@@ -35,21 +35,25 @@ import SlamData.Notebook.Cell.Chart.Component.State (State, initialState)
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
 import SlamData.Notebook.Cell.Component as Cc
 import SlamData.Notebook.Cell.Port (Port(..))
+import SlamData.Notebook.Cell.CellType as Ct
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 
-type ChartHTML = H.ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
-type ChartDSL = H.ParentDSL State He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
+type ChartHTML =
+  H.ParentHTML He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
+type ChartDSL =
+  H.ParentDSL State He.EChartsState Ec.CellEvalQuery He.EChartsQuery Slam Unit
 
-chartComponent :: H.Component Cc.CellStateP Cc.CellQueryP Slam
-chartComponent = Cc.makeResultsCellComponent
-  { component: H.parentComponent { render, eval, peek: Nothing }
+chartComponent ∷ H.Component Cc.CellStateP Cc.CellQueryP Slam
+chartComponent = Cc.makeCellComponent
+  { cellType: Ct.Chart
+  , component: H.parentComponent { render, eval, peek: Nothing }
   , initialState: H.parentState initialState
   , _State: Cc._ChartState
   , _Query: Cc.makeQueryPrism Cc._ChartQuery
   }
 
-render :: State -> ChartHTML
+render ∷ State → ChartHTML
 render state =
   HH.div
     [ HP.classes [ Rc.chartOutput ]
@@ -60,31 +64,33 @@ render state =
         CG.left $ pct 50.0
         CG.marginLeft $ px $ -0.5 * (toNumber state.width)
     ]
-    [ HH.slot unit \_ ->
+    [ HH.slot unit \_ →
         { component: He.echarts
         , initialState: He.initialEChartsState 600 400
         }
     ]
 
-eval :: Natural Ec.CellEvalQuery ChartDSL
+eval ∷ Natural Ec.CellEvalQuery ChartDSL
 eval (Ec.NotifyRunCell next) = pure next
 eval (Ec.EvalCell value continue) =
   case value.inputPort of
-    Just (ChartOptions options) -> do
-      state <- H.get
+    Just (ChartOptions options) → do
+      state ← H.get
       H.set { width: options.width, height: options.height }
-      when (state.width /= options.width)
-        $ void $ H.query unit $ H.action $ He.SetWidth options.width
-      when (state.height /= options.height)
 
+      when (state.width ≠ options.width)
+        $ void $ H.query unit $ H.action $ He.SetWidth options.width
+
+      when (state.height ≠ options.height)
         $ void $ H.query unit $ H.action $ He.SetHeight options.height
+
       H.query unit $ H.action $ He.Set options.options
       H.query unit $ H.action He.Resize
       pure $ continue { output: Just Blocked, messages: [] }
-    Just Blocked -> do
+    Just Blocked → do
       H.query unit $ H.action He.Clear
       pure $ continue { output: Nothing, messages: [] }
-    _ ->
+    _ →
       pure $ continue
         { output: Nothing
         , messages: [Left "Expected ChartOptions input"]

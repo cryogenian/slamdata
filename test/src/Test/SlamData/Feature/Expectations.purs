@@ -1,150 +1,158 @@
 module Test.SlamData.Feature.Expectations where
 
+import SlamData.Prelude
+
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
-import Prelude
+import Selenium.Monad (tryRepeatedlyTo)
 import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectScreenshotToMatchAny, expectSelectValue)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 
 cellsInTableColumnInLastCardToEq
-  :: Int -> String -> String -> SlamFeature Unit
+  ∷ Int → String → String → SlamFeature Unit
 cellsInTableColumnInLastCardToEq =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextEq
 
 cellsInTableColumnInLastCardToContain
-  :: Int -> String -> String -> SlamFeature Unit
+  ∷ Int → String → String → SlamFeature Unit
 cellsInTableColumnInLastCardToContain =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextContaining
 
 cellsInTableColumnInLastCardToNotEq
-  :: Int -> String -> String -> SlamFeature Unit
+  ∷ Int → String → String → SlamFeature Unit
 cellsInTableColumnInLastCardToNotEq =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextNotEq
 
 cellsInTableColumnInLastCardToBeGT
-  :: Int -> String -> String -> SlamFeature Unit
+  ∷ Int → String → String → SlamFeature Unit
 cellsInTableColumnInLastCardToBeGT =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextGT
 
 cellsInTableColumnInLastCardToBeLT
-  :: Int -> String -> String -> SlamFeature Unit
+  ∷ Int → String → String → SlamFeature Unit
 cellsInTableColumnInLastCardToBeLT =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextLT
 
 cellsInTableColumnInLastCardToEqOneOf
-  :: Int -> String -> Array String -> SlamFeature Unit
+  ∷ Int → String → Array String → SlamFeature Unit
 cellsInTableColumnInLastCardToEqOneOf =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextEqOneOf
 
 cellsInTableColumnInLastCardToNotEqOneOf
-  :: Int -> String -> Array String -> SlamFeature Unit
+  ∷ Int → String → Array String → SlamFeature Unit
 cellsInTableColumnInLastCardToNotEqOneOf =
   cellsInTableColumnInLastCard XPath.tdWithThAndTextNotEqOneOf
 
 cellsInTableColumnInLastCard
-  :: forall a
-  .  (String -> String -> a -> String)
-  -> Int
-  -> String
-  -> a
-  -> SlamFeature Unit
+  ∷ forall a
+  . (String → String → a → String)
+  → Int
+  → String
+  → a
+  → SlamFeature Unit
 cellsInTableColumnInLastCard f i headerText xs = do
   expectPresented $ XPath.index tdXPath i
   expectNotPresented $ XPath.index trXPath (i + 1)
   where
-  trXPath = tableXPath ++ "/tbody/tr"
-  thXPath = XPath.thWithExactText headerText
-  tdXPath = f tableXPath thXPath xs
-  tableXPath = XPath.last (XPath.anywhere XPaths.playButton) `XPath.following` "table"
+  trXPath =
+    tableXPath ++ "/tbody/tr"
+  thXPath =
+    XPath.thWithExactText headerText
+  tdXPath =
+    f tableXPath thXPath xs
+  tableXPath =
+    XPath.last (XPath.anywhere XPaths.jtableHeading) `XPath.following` "table"
 
-labelInLastMdCard :: String -> SlamFeature Unit
+labelInLastMdCard ∷ String → SlamFeature Unit
 labelInLastMdCard label =
   expectPresented
-    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    $ (XPath.anywhere $ XPaths.formCardTitle)
     `XPath.following` ("label" `XPath.nodeWithExactText` label)
 
-fieldInLastMdCard :: String -> String -> String -> SlamFeature Unit
+fieldInLastMdCard ∷ String → String → String → SlamFeature Unit
 fieldInLastMdCard labelText inputType value =
   expectPresentedWithProperties valueProperty
-    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    $ (XPath.anywhere $ XPaths.formCardTitle)
     `XPath.following` inputXPath
   where
   valueProperty = Map.singleton "value" $ Just value
   inputXPath = XPaths.inputWithLabelAndType labelText inputType
 
-checkableFieldInLastMdCard :: String -> String -> Boolean -> SlamFeature Unit
+checkableFieldInLastMdCard ∷ String → String → Boolean → SlamFeature Unit
 checkableFieldInLastMdCard labelText inputType checked =
   expectPresentedWithProperties checkedProperty
-    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    $ (XPath.anywhere $ XPaths.formCardTitle)
     `XPath.following` inputXPath
   where
   propertyValue = if checked then Just "true" else Nothing
   checkedProperty = Map.singleton "checked" propertyValue
   inputXPath = XPaths.inputWithLabelAndType labelText inputType
 
-dropdownInLastMdCard :: String -> Array String -> SlamFeature Unit
+dropdownInLastMdCard ∷ String → Array String → SlamFeature Unit
 dropdownInLastMdCard value values =
   expectPresentedWithProperties
     (Map.singleton "value" $ Just value)
-    $ (XPath.last $ XPath.anywhere $ XPaths.mdCardTitle)
+    $ (XPath.anywhere $ XPaths.formCardTitle)
     `XPath.following` XPath.selectWithOptionsWithExactTexts values
 
-lastCardToBeFinished :: SlamFeature Unit
+lastCardToBeFinished ∷ SlamFeature Unit
 lastCardToBeFinished =
   expectPresented
     $ (XPath.last $ XPath.anywhere $ XPaths.cardHeading)
     `XPath.following` XPath.anyWithText "Finished"
 
-exploreFileInLastCard :: String -> SlamFeature Unit
+exploreFileInLastCard ∷ String → SlamFeature Unit
 exploreFileInLastCard fileName =
   expectPresentedWithProperties
     (Map.singleton "value" $ Just fileName)
     ((XPath.last $ XPath.anywhere $ XPaths.cardHeading) `XPath.following` XPaths.exploreInput)
 
-file :: String -> SlamFeature Unit
+file ∷ String → SlamFeature Unit
 file =
-  expectPresented <<< XPath.anywhere <<< XPaths.selectFile
+  expectPresented ∘ XPath.anywhere ∘ XPaths.selectFile
 
-noFile :: String -> SlamFeature Unit
+noFile ∷ String → SlamFeature Unit
 noFile =
-  expectNotPresented <<< XPath.anywhere <<< XPaths.selectFile
+  expectNotPresented ∘ XPath.anywhere ∘ XPaths.selectFile
 
-numberOfFiles :: Int -> SlamFeature Unit
+numberOfFiles ∷ Int → SlamFeature Unit
 numberOfFiles i = do
   expectPresented $ XPath.index (XPath.anywhere $ XPaths.nthFile) i
   expectNotPresented $ XPath.index (XPath.anywhere $ XPaths.nthFile) $ i + 1
 
-notebookName :: String -> SlamFeature Unit
+notebookName ∷ String → SlamFeature Unit
 notebookName name =
   expectPresentedWithProperties
     (Map.singleton "value" $ Just name)
     (XPath.anywhere "input")
 
-text :: String -> SlamFeature Unit
-text = expectPresented <<< XPath.anywhere <<< XPath.anyWithText
+text ∷ String → SlamFeature Unit
+text = expectPresented ∘ XPath.anywhere ∘ XPath.anyWithText
 
-downloadedTextFileToMatchFile :: String -> String -> String -> SlamFeature Unit
+textEventually ∷ String → SlamFeature Unit
+textEventually = tryRepeatedlyTo ∘ text
+
+downloadedTextFileToMatchFile ∷ String → String → String → SlamFeature Unit
 downloadedTextFileToMatchFile = expectDownloadedTextFileToMatchFile
 
 measureDisabledInLastVisualizeCard
-  :: SlamFeature Unit
+  ∷ SlamFeature Unit
 measureDisabledInLastVisualizeCard =
   expectPresentedWithProperties
     (Map.singleton "disabled" (Just "true"))
     (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
 
 measureInLastVisualizeCard
-  :: String
-  -> SlamFeature Unit
+  ∷ String
+  → SlamFeature Unit
 measureInLastVisualizeCard value =
   expectSelectValue
     value
     (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
 
 lastChartScreenshotToMatchAny
-  :: Array String
-  -> SlamFeature Unit
+  ∷ Array String
+  → SlamFeature Unit
 lastChartScreenshotToMatchAny =
   expectScreenshotToMatchAny
     "test/image/diff.png"
@@ -152,8 +160,16 @@ lastChartScreenshotToMatchAny =
     (XPath.last $ XPath.anywhere $ XPaths.chartContainer)
     "test/image/actual.png"
 
-fileSearchString :: String -> SlamFeature Unit
+fileSearchString ∷ String → SlamFeature Unit
 fileSearchString string =
   expectPresentedWithProperties
   (Map.singleton "value" $ Just string)
   (XPath.anywhere XPaths.fileSearchInput)
+
+textInFormCell ∷ String → SlamFeature Unit
+textInFormCell =
+  tryRepeatedlyTo
+    ∘ expectPresented
+    ∘ XPath.anywhere
+    ∘ XPath.following XPaths.formCellHeader
+    ∘ XPath.anyWithText

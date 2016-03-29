@@ -15,9 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Component.Def
-  ( EditorCellDef
-  , ResultsCellDef
-  , CellDefProps
+  ( CellDef
   , makeQueryPrism
   , makeQueryPrism'
   ) where
@@ -27,31 +25,22 @@ import SlamData.Prelude
 import Data.Lens (APrismP, PrismP, prism', review, preview)
 
 import Halogen (Component)
-import Halogen.HTML.Indexed as H
 
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
 import SlamData.Notebook.Cell.Component.Query (AnyCellQuery)
 import SlamData.Notebook.Cell.Component.State (AnyCellState)
+import SlamData.Notebook.Cell.CellType (CellType())
 import SlamData.Effects (Slam)
 
--- | The type for the definition of an editor cell component.
-type EditorCellDef s f =
-  { name :: String
-  , glyph :: H.ClassName
-  | CellDefProps s f ()
-  }
-
--- | The type for the definition of an results component.
-type ResultsCellDef s f = Object (CellDefProps s f ())
-
 -- | The properties required by both types of cell definition.
-type CellDefProps s f r =
-  ( component :: Component s f Slam
-  , initialState :: s
-  , _State :: APrismP AnyCellState s
-  , _Query :: forall a. APrismP (Coproduct CellEvalQuery AnyCellQuery a) (f a)
+type CellDef s f r =
+  { component ∷ Component s f Slam
+  , cellType :: CellType
+  , initialState ∷ s
+  , _State ∷ APrismP AnyCellState s
+  , _Query ∷ ∀ a. APrismP (Coproduct CellEvalQuery AnyCellQuery a) (f a)
   | r
-  )
+  }
 
 -- | Makes a prism for `_Query` for cell components with a query algebra of the
 -- | form `Coproduct CellEvalQuery f`.
@@ -63,23 +52,23 @@ type CellDefProps s f r =
 -- | 2. Self contained components with an enriched query algebra, where `f`
 -- |    will be the component's own internal algebra.
 makeQueryPrism
-  :: forall a f
+  ∷ ∀ a f
    . PrismP
        (AnyCellQuery a)
        (Coproduct CellEvalQuery f a)
-  -> PrismP
+  → PrismP
        (Coproduct CellEvalQuery AnyCellQuery a)
        (Coproduct CellEvalQuery f a)
 makeQueryPrism base = prism' to fro
   where
   to
-    :: Coproduct CellEvalQuery f a
-    -> Coproduct CellEvalQuery AnyCellQuery a
-  to = coproduct left (right <<< review base <<< right)
+    ∷ Coproduct CellEvalQuery f a
+    → Coproduct CellEvalQuery AnyCellQuery a
+  to = coproduct left (right ∘ review base ∘ right)
   fro
-    :: Coproduct CellEvalQuery AnyCellQuery a
-    -> Maybe (Coproduct CellEvalQuery f a)
-  fro = coproduct (Just <<< left) (preview base)
+    ∷ Coproduct CellEvalQuery AnyCellQuery a
+    → Maybe (Coproduct CellEvalQuery f a)
+  fro = coproduct (Just ∘ left) (preview base)
 
 -- | Makes a prism for `_Query` for cell components with a query algebra of the
 -- | form `Coproduct (Coproduct CellEvalQuery f) g`.
@@ -88,28 +77,28 @@ makeQueryPrism base = prism' to fro
 -- | an enriched query algebra, where `f` is the component's internal query
 -- | algebra and `g` will be some `ChildF`.
 makeQueryPrism'
-  :: forall a f g
-   . PrismP
-       (AnyCellQuery a)
-       (Coproduct (Coproduct CellEvalQuery f) g a)
-  -> PrismP
-       (Coproduct CellEvalQuery AnyCellQuery a)
-       (Coproduct (Coproduct CellEvalQuery f) g a)
+  ∷ ∀ a f g
+  . PrismP
+      (AnyCellQuery a)
+      (Coproduct (Coproduct CellEvalQuery f) g a)
+  → PrismP
+      (Coproduct CellEvalQuery AnyCellQuery a)
+      (Coproduct (Coproduct CellEvalQuery f) g a)
 makeQueryPrism' base = prism' to fro
   where
   to
-    :: Coproduct (Coproduct CellEvalQuery f) g a
-    -> Coproduct CellEvalQuery AnyCellQuery a
+    ∷ Coproduct (Coproduct CellEvalQuery f) g a
+    → Coproduct CellEvalQuery AnyCellQuery a
   to =
     coproduct
       (coproduct
          left
-         (right <<< review base <<< left <<< right))
-      (right <<< review base <<< right)
+         (right ∘ review base ∘ left ∘ right))
+      (right ∘ review base ∘ right)
   fro
-    :: Coproduct CellEvalQuery AnyCellQuery a
-    -> Maybe (Coproduct (Coproduct CellEvalQuery f) g a)
+    ∷ Coproduct CellEvalQuery AnyCellQuery a
+    → Maybe (Coproduct (Coproduct CellEvalQuery f) g a)
   fro =
     coproduct
-      (Just <<< left <<< left)
+      (Just ∘ left ∘ left)
       (preview base)

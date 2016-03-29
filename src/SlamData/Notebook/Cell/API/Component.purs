@@ -47,9 +47,8 @@ type APIDSL = H.ParentDSL State (FB.StateP Slam) NC.CellEvalQuery FB.QueryP Slam
 
 apiComponent :: H.Component NC.CellStateP NC.CellQueryP Slam
 apiComponent =
-  NC.makeEditorCellComponent
-    { name: CT.cellName CT.API
-    , glyph: CT.cellGlyph CT.API
+  NC.makeCellComponent
+    { cellType: CT.API
     , component: H.parentComponent { render, eval, peek: Nothing }
     , initialState: H.parentState initialState
     , _State: NC._APIState

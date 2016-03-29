@@ -24,7 +24,7 @@ import SlamData.Prelude
 
 import Data.Array as A
 import Data.Int (fromNumber)
-import Data.Lens ((^?))
+import Data.Lens (preview)
 import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
 import Data.Visibility (Visibility(..))
 
@@ -36,58 +36,73 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Notebook.Cell.Component.Query (CellQuery(..), InnerCellQuery)
-import SlamData.Notebook.Cell.Component.State (CellState, AnyCellState, _cachingEnabled)
+import SlamData.Notebook.Cell.Component.State
+  (CellState, AnyCellState)
 import SlamData.Notebook.Cell.RunState (RunState(..), isRunning)
 import SlamData.Effects (Slam)
-import SlamData.Render.Common (glyph, glyphInactive)
+import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
+import SlamData.Notebook.Cell.Port (_Blocked)
+import SlamData.Notebook.Cell.CellType (CellType, cellName, cellGlyph, controllable)
 
 type CellHTML = ParentHTML AnyCellState CellQuery InnerCellQuery Slam Unit
 
 header
-  :: forall r. { name :: String, glyph :: H.ClassName | r }
-  -> CellState
-  -> CellHTML
-header def cs =
-  H.div
-    [ P.classes [CSS.cellHeader, B.clearfix]
-    , ARIA.label $ def.name ++ " cell"
-    ]
-    [ H.div
-        [ P.class_ CSS.cellIcon ]
-        [ glyph def.glyph ]
-    , H.div
-        [ P.class_ CSS.cellName ]
-        [ H.text def.name ]
-    , controls cs
-    ]
+  ∷ CellType
+  → CellState
+  → Array CellHTML
+header cty cs =
+  guard (controllable cty) $>
+    H.div
+      [ P.classes [CSS.cellHeader, B.clearfix]
+      , ARIA.label $ (cellName cty) ⊕ " cell"
+      ]
+      [ H.div
+          [ P.class_ CSS.cellIcon ]
+          [ cellGlyph cty false ]
+      , H.div
+          [ P.class_ CSS.cellName ]
+          [ H.text $ cellName cty ]
+      , controls cs
+      ]
+
+cellBlocked ∷ CellState → Boolean
+cellBlocked cs =
+  isJust $ cs.input >>= preview _Blocked
 
 
-controls :: CellState -> CellHTML
+controls ∷ CellState → CellHTML
 controls cs =
   H.div
     [ P.classes [B.pullRight, CSS.cellControls] ]
-    [ H.button
-        [ P.title cellOptionsLabel
-        , ARIA.label cellOptionsLabel
-        , E.onClick (E.input_ ToggleCollapsed)
-        ]
-        [ glyph if cs.isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
-    , H.button
-        [ P.title "Delete cell"
-        , ARIA.label "Delete cell"
-        , E.onClick (E.input_ TrashCell)
-        ]
-        [ glyph B.glyphiconTrash ]
-    , glyph B.glyphiconChevronLeft
-    ]
+    $ (guard (not $ cellBlocked cs))
+       ≫ [ H.button
+           [ P.title cellOptionsLabel
+           , ARIA.label cellOptionsLabel
+           , E.onClick (E.input_ ToggleCollapsed)
+           ]
+           [ glyph if cs.isCollapsed
+                     then B.glyphiconEyeOpen
+                     else B.glyphiconEyeClose
+           ]
+         , H.button
+           [ P.title "Delete cell"
+           , ARIA.label "Delete cell"
+           , E.onClick (E.input_ TrashCell)
+           ]
+           [ glyph B.glyphiconTrash ]
+         ]
+    ⊕ [ glyph B.glyphiconChevronLeft ]
+
   where
+  cellOptionsLabel ∷ String
   cellOptionsLabel =
     if cs.isCollapsed
       then "Show cell options"
       else "Hide cell options"
 
-statusBar :: Boolean -> CellState -> CellHTML
+
+statusBar ∷ Boolean → CellState → CellHTML
 statusBar hasResults cs =
   H.div
     [ P.classes [CSS.cellEvalLine, B.clearfix, B.row] ]
@@ -97,45 +112,47 @@ statusBar hasResults cs =
                                   then StopCell
                                   else RunCell)
           , P.title button.label
+          , P.disabled $ cellBlocked cs
           , ARIA.label button.label
           ]
           [ glyph button.glyph ]
       , H.div
           [ P.class_ CSS.statusText ]
-          [ H.text $ runStatusMessage cs.runState ]
+          [ H.text $ if cellBlocked cs
+                       then ""
+                       else runStatusMessage cs.runState ]
       , H.div
           [ P.classes [B.pullRight, CSS.cellControls] ]
           $ A.catMaybes
               [ toggleMessageButton cs
-              , toggleCachingButton cs
-              , if hasResults then Just refreshButton else Nothing
               , if hasResults then Just linkButton else Nothing
               , Just $ glyph B.glyphiconChevronLeft
               ]
       ]
-     <> statusMessages cs
+    ⊕ statusMessages cs
   where
 
   button =
     if isRunning cs.runState
     then { className: CSS.stopButton, glyph: B.glyphiconStop, label: "Stop" }
-    else { className: CSS.playButton, glyph: B.glyphiconPlay, label: "Play" }
+    else { className: CSS.playButton, glyph: B.glyphiconRefresh, label: "Refresh" }
 
-runStatusMessage :: RunState -> String
+runStatusMessage ∷ RunState → String
 runStatusMessage RunInitial = ""
 runStatusMessage (RunElapsed t) =
-  "Running for " <> printSeconds t <> "..."
+  "Running for " ⊕ printSeconds t ⊕ "..."
 runStatusMessage (RunFinished t) =
-  "Finished: took " <> printMilliseconds t <> "."
+  "Finished: took " ⊕ printMilliseconds t ⊕ "."
 
-printSeconds :: Milliseconds -> String
+printSeconds ∷ Milliseconds → String
 printSeconds t = case toSeconds t of
-  Seconds s -> maybe "0" show (fromNumber (Math.floor s)) ++ "s"
+  Seconds s → maybe "0" show (fromNumber (Math.floor s)) ⊕ "s"
 
-printMilliseconds :: Milliseconds -> String
-printMilliseconds (Milliseconds ms) = maybe "0" show (fromNumber (Math.floor ms)) ++ "ms"
+printMilliseconds ∷ Milliseconds → String
+printMilliseconds (Milliseconds ms) =
+  maybe "0" show (fromNumber (Math.floor ms)) ⊕ "ms"
 
-refreshButton :: CellHTML
+refreshButton ∷ CellHTML
 refreshButton =
   H.button
     [ P.title "Refresh cell content"
@@ -145,7 +162,7 @@ refreshButton =
     ]
     [ glyph B.glyphiconRefresh ]
 
-toggleMessageButton :: CellState -> Maybe CellHTML
+toggleMessageButton ∷ CellState → Maybe CellHTML
 toggleMessageButton { messages, messageVisibility } =
   if A.null messages
   then Nothing
@@ -158,22 +175,9 @@ toggleMessageButton { messages, messageVisibility } =
       [ glyph if isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
   where
   label = if isCollapsed then "Show messages" else "Hide messages"
-  isCollapsed = messageVisibility == Invisible
+  isCollapsed = messageVisibility ≡ Invisible
 
-toggleCachingButton :: CellState -> Maybe CellHTML
-toggleCachingButton cs =
-  (cs ^? _cachingEnabled) <#> \cachingEnabled ->
-    H.button
-      [ P.title $ label cachingEnabled
-      , ARIA.label $ label cachingEnabled
-      , E.onClick (E.input_ ToggleCaching)
-      ]
-      [ B.glyphiconPushpin # if cachingEnabled then glyph else glyphInactive
-      ]
-  where
-  label cachingEnabled = if cachingEnabled then "Disable Caching" else "Enable Caching"
-
-linkButton :: CellHTML
+linkButton ∷ CellHTML
 linkButton =
   H.button
     [ P.title "Embed cell output"
@@ -182,32 +186,42 @@ linkButton =
     ]
     [ H.span [ P.class_ CSS.shareButton ] [] ]
 
-statusMessages :: CellState -> Array (CellHTML)
-statusMessages { messages, messageVisibility }
+statusMessages ∷ CellState → Array (CellHTML)
+statusMessages cs@{ messages, messageVisibility }
+  | cellBlocked cs =
+      [ H.div
+        [ P.classes [ CSS.cellBlockedMessage ] ]
+        [ H.div_ [ H.text "There are errors in parent cells" ] ]]
   | A.null messages = []
   | otherwise =
       [ H.div
           [ P.classes classes ]
            $ [ H.div_ failureMessage ]
-          ++ if isCollapsed
-             then []
-             else map (either message message) messages'
+           ⊕ if isCollapsed
+               then []
+               else map (either message message) messages'
       ]
   where
-  isCollapsed = messageVisibility == Invisible
+  isCollapsed = messageVisibility ≡ Invisible
   errorMessages = let es = A.filter isLeft messages in es
   hasErrors = not (A.null errorMessages)
   messages' = if hasErrors then errorMessages else messages
   classes =
-    let cls = if hasErrors then CSS.cellFailures else CSS.cellMessages
-    in if isCollapsed then [cls, CSS.collapsed] else [cls]
+    let
+      cls = if hasErrors
+              then CSS.cellFailures
+              else CSS.cellMessages
+    in
+      if isCollapsed then [cls, CSS.collapsed] else [cls]
   failureMessage =
     if hasErrors
-    then
-      let numErrors = A.length errorMessages
-          s = if numErrors == 1 then "" else "s"
-      in [H.text $ show numErrors <> " error" <> s <> " during evaluation. "]
+      then
+        let
+          numErrors = A.length errorMessages
+          s = if numErrors ≡ 1 then "" else "s"
+        in
+          [H.text $ show numErrors ⊕ " error" ⊕ s ⊕ " during evaluation. "]
     else []
 
-message :: String -> CellHTML
-message = H.pre_ <<< pure <<< H.text
+message ∷ String → CellHTML
+message = H.pre_ ∘ pure ∘ H.text

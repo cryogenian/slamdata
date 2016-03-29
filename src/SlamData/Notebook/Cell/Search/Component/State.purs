@@ -20,12 +20,6 @@ import SlamData.Prelude
 
 import Data.Lens (LensP, lens)
 
-import Halogen (ParentState)
-
-import SlamData.Effects (Slam)
-import SlamData.Notebook.Cell.Search.Component.Query as SQ
-import SlamData.Notebook.FileInput.Component as FI
-
 type State =
   { searchString :: String
   , running :: Boolean
@@ -42,5 +36,3 @@ _searchString = lens _.searchString (_ { searchString = _ })
 
 _running :: LensP State Boolean
 _running = lens _.running (_ { running = _ })
-
-type StateP = ParentState State FI.State SQ.Query FI.Query Slam Unit

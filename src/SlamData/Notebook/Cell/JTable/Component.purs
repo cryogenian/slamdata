@@ -34,22 +34,24 @@ import Quasar.Auth as Auth
 
 import SlamData.Effects (Slam)
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResult)
-import SlamData.Notebook.Cell.Component (CellQueryP, CellStateP, makeResultsCellComponent, makeQueryPrism, _JTableState, _JTableQuery)
+import SlamData.Notebook.Cell.Component (CellQueryP, CellStateP, makeCellComponent, makeQueryPrism, _JTableState, _JTableQuery)
 import SlamData.Notebook.Cell.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Notebook.Cell.JTable.Component.Render (render)
 import SlamData.Notebook.Cell.JTable.Component.State (Input, PageInfo, State, _input, _isEnteringPageSize, _page, _pageSize, _resource, _result, _size, currentPageInfo, fromModel, initialState, pendingPageInfo, resizePage, setPage, setPageSize, stepPage, toModel)
+import SlamData.Notebook.Cell.CellType as Ct
 import SlamData.Notebook.Cell.JTable.Model as Model
 import SlamData.Notebook.Cell.Port (Port(..))
 
-jtableComponent :: H.Component CellStateP CellQueryP Slam
-jtableComponent = makeResultsCellComponent
-  { component: H.component { render, eval: coproduct evalCell evalJTable }
+jtableComponent ∷ H.Component CellStateP CellQueryP Slam
+jtableComponent = makeCellComponent
+  { cellType: Ct.JTable
+  , component: H.component { render, eval: coproduct evalCell evalJTable }
   , initialState: initialState
   , _State: _JTableState
   , _Query: makeQueryPrism _JTableQuery
   }
 
-queryShouldRun :: forall a. QueryP a -> Boolean
+queryShouldRun ∷ ∀ a. QueryP a → Boolean
 queryShouldRun = coproduct (const false) pred
   where
   pred (StepPage _ _) = true
@@ -57,53 +59,70 @@ queryShouldRun = coproduct (const false) pred
   pred _ = false
 
 -- | Evaluates generic cell queries.
-evalCell :: Natural CellEvalQuery (H.ComponentDSL State QueryP Slam)
-evalCell (NotifyRunCell next) = pure next
+evalCell ∷ Natural CellEvalQuery (H.ComponentDSL State QueryP Slam)
+evalCell (NotifyRunCell next) =
+  pure next
 evalCell (EvalCell value k) =
   case value.inputPort of
-    Just (TaggedResource { tag, resource }) -> do
-      size <- H.fromAff $ Auth.authed (Quasar.count resource)
-      oldInput <- H.gets _.input
-      when    (((oldInput <#> _.resource) /= pure resource)
-            || ((oldInput >>= _.tag) /= tag))
+    Just (TaggedResource { tag, resource }) → do
+      oldInput ← H.gets _.input
+
+      when (((oldInput <#> _.resource) ≠ pure resource)
+            || ((oldInput >>= _.tag) ≠ tag))
         $ H.set initialState
+
+      size ← H.fromAff $ Auth.authed (Quasar.count resource)
+
       H.modify $ _input ?~ { resource, size, tag }
-      p <- H.gets pendingPageInfo
-      items <- H.fromAff $ Auth.authed $ Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
+
+      p ← H.gets pendingPageInfo
+
+      items ←
+        H.fromAff
+        $ Auth.authed
+        $ Quasar.sample
+            resource
+            ((p.page - 1) * p.pageSize)
+            p.pageSize
+
       H.modify
         $ (_isEnteringPageSize .~ false)
-        <<< (_result ?~
+        ∘ (_result ?~
               { json: JSON.fromArray items
               , page: p.page
               , pageSize: p.pageSize
               })
       pure $ k (result value.inputPort)
-    Just Blocked -> do
+
+    Just Blocked → do
       H.set initialState
       pure $ k (result Nothing)
-    _ -> pure $ k (error "expected a Resource input")
+
+    _ → pure $ k (error "expected a Resource input")
+
   where
-  result :: Maybe Port -> CellEvalResult
+  result ∷ Maybe Port → CellEvalResult
   result = { output: _, messages: [] }
-  error :: String -> CellEvalResult
+
+  error ∷ String → CellEvalResult
   error msg =
     { output: Nothing
-    , messages: [Left $ "An internal error occurred: " ++ msg]
+    , messages: [Left $ "An internal error occurred: " ⊕ msg]
     }
 evalCell (SetupCell _ next) = pure next
 evalCell (Save k) =
-  pure <<< k =<< H.gets (Model.encode <<< toModel)
+  pure ∘ k =<< H.gets (Model.encode ∘ toModel)
 evalCell (Load json next) = do
   either (const (pure unit)) H.set $ fromModel <$> Model.decode json
   pure next
 evalCell (SetCanceler _ next) = pure next
 
 -- | Evaluates jtable-specific cell queries.
-evalJTable :: Natural Query (H.ComponentDSL State QueryP Slam)
+evalJTable ∷ Natural Query (H.ComponentDSL State QueryP Slam)
 evalJTable (StepPage step next) =
   H.modify (stepPage step) $> next
 evalJTable (ChangePageSize pageSize next) =
-  maybe (pure unit) (H.modify <<< resizePage) (Int.fromString pageSize) $> next
+  maybe (pure unit) (H.modify ∘ resizePage) (Int.fromString pageSize) $> next
 evalJTable (StartEnterCustomPageSize next) =
   H.modify (_isEnteringPageSize .~ true) $> next
 evalJTable (SetCustomPageSize size next) =
