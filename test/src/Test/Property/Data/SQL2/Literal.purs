@@ -8,14 +8,10 @@ import Prelude
 import Data.Either as E
 import Data.Eq1 (eq1)
 import Data.Functor ((<$))
-import Data.Int as Int
 import Data.List as L
-import Data.SQL2.Literal (LiteralF(..), renderLiteralF, parseLiteralF)
-import Data.StrMap as SM
-import Data.Tuple as T
+import Data.SQL2.Literal (LiteralF, renderLiteralF, parseLiteralF, arbitraryLiteralF)
 import Test.StrongCheck ((<?>))
 import Test.StrongCheck (class Arbitrary, QC, Result(Failed), quickCheck, arbitrary) as SC
-import Test.StrongCheck.Gen (Gen, oneOf, arrayOf) as SC
 import Text.Parsing.Parser as P
 import Text.Parsing.Parser.String as PS
 
@@ -34,34 +30,8 @@ runArbLiteralF
 runArbLiteralF (ArbLiteralF c) =
   c
 
-arbitraryStrMap
-  :: forall a
-   . SC.Gen a
-  -> SC.Gen (SM.StrMap a)
-arbitraryStrMap arb =
-  map (SM.fromList <<< L.toList) <<< SC.arrayOf $
-    T.Tuple <$> SC.arbitrary <*> arb
-
-arbitraryDecimal :: SC.Gen Number
-arbitraryDecimal = Int.toNumber <$> SC.arbitrary
-
 instance arbitraryArbLiteralF :: (SC.Arbitrary a) => SC.Arbitrary (ArbLiteralF a) where
-  arbitrary = do
-    SC.oneOf (pure $ ArbLiteralF Null) $
-      map ArbLiteralF <$>
-        [ Boolean <$> SC.arbitrary
-        , Integer <$> SC.arbitrary
-        , Decimal <$> arbitraryDecimal
-        , String <$> SC.arbitrary
-        , DateTime <$> SC.arbitrary
-        , Date <$> SC.arbitrary
-        , Time <$> SC.arbitrary
-        , Interval <$> SC.arbitrary
-        , ObjectId <$> SC.arbitrary
-        , OrderedSet <$> SC.arbitrary
-        , Array <$> SC.arbitrary
-        , Object <$> arbitraryStrMap SC.arbitrary
-        ]
+  arbitrary = ArbLiteralF <$> arbitraryLiteralF SC.arbitrary
 
 data InductiveHypothesis = InductiveHypothesis
 type ArbLiteral = ArbLiteralF InductiveHypothesis

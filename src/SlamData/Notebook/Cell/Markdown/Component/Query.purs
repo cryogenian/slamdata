@@ -19,9 +19,8 @@ module SlamData.Notebook.Cell.Markdown.Component.Query where
 import SlamData.Prelude
 
 import Halogen (ChildF)
-
-import Text.Markdown.SlamDown.Html (SlamDownQuery)
-
+import Text.Markdown.SlamDown.Halogen.Component.Query (SlamDownQuery)
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
+import SlamData.Notebook.Cell.Port.VarMap as VM
 
-type QueryP = Coproduct CellEvalQuery (ChildF Unit SlamDownQuery)
+type QueryP = Coproduct CellEvalQuery (ChildF Unit (SlamDownQuery VM.VarMapValue))

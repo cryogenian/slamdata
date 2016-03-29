@@ -35,19 +35,19 @@ import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..), CellEvalResul
 import SlamData.Notebook.Cell.Component (CellQueryP, CellStateP, makeCellComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import SlamData.Notebook.Cell.Markdown.Component.Query (QueryP)
 import SlamData.Notebook.Cell.Markdown.Component.State (State, StateP, initialState)
-import SlamData.Notebook.Cell.Markdown.Interpret (formFieldValueToLiteral)
+import SlamData.Notebook.Cell.Markdown.Interpret (formFieldValueToVarMapValue)
 import SlamData.Notebook.Cell.Markdown.Model (Model, decode, encode)
 import SlamData.Notebook.Cell.Port as Port
 import SlamData.Notebook.Cell.CellType as Ct
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
 
-import Text.Markdown.SlamDown.Html as MD
+import Text.Markdown.SlamDown.Halogen.Component as SD
 
 markdownComponent
-  :: CellId
-  -> BrowserFeatures
-  -> H.Component CellStateP CellQueryP Slam
+  ∷ CellId
+  → BrowserFeatures
+  → H.Component CellStateP CellQueryP Slam
 markdownComponent cellId browserFeatures = makeCellComponent
   { cellType: Ct.Markdown
   , component: H.parentComponent { render: render config, eval, peek: Nothing }
@@ -56,71 +56,78 @@ markdownComponent cellId browserFeatures = makeCellComponent
   , _Query: makeQueryPrism _MarkdownQuery
   }
   where
-  config :: MD.SlamDownConfig
+  config ∷ SD.SlamDownConfig
   config =
     { formName: "cell-" ++ show (runCellId cellId)
     , browserFeatures
     }
 
-queryShouldRun :: forall a. QueryP a -> Boolean
-queryShouldRun = coproduct (const false) (pred <<< H.runChildF)
+queryShouldRun ∷ ∀ a. QueryP a → Boolean
+queryShouldRun = coproduct (const false) (pred ∘ H.runChildF)
   where
-  pred (MD.TextChanged _ _ _ _) = true
-  pred (MD.CheckBoxChanged _ _ _ _) = true
+  pred (SD.TextBoxChanged _ _ _) = true
+  pred (SD.CheckBoxChanged _ _ _ _) = true
+  pred (SD.DropDownChanged _ _ _) = true
+  pred (SD.RadioButtonChanged _ _ _) = true
   pred _ = false
 
+type MarkdownHTML a = H.ParentHTML (SD.SlamDownState Port.VarMapValue) CellEvalQuery (SD.SlamDownQuery Port.VarMapValue) Slam a
+type MarkdownDSL = H.ParentDSL State (SD.SlamDownState Port.VarMapValue) CellEvalQuery (SD.SlamDownQuery Port.VarMapValue) Slam Unit
+
 render
-  :: forall a
-   . MD.SlamDownConfig
-  -> a
-  -> H.ParentHTML MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit
+  ∷ ∀ a
+  . SD.SlamDownConfig
+  → a
+  → MarkdownHTML Unit
 render config _ =
   HH.div
     [ HP.class_ CSS.markdownOutput ]
-    [ HH.slot unit \_ ->
-        { component: MD.slamDownComponent config
-        , initialState: MD.emptySlamDownState
+    [ HH.slot unit \_ →
+        { component: SD.slamDownComponent config
+        , initialState: SD.emptySlamDownState
         }
     ]
 
 formStateToVarMap
-  :: MD.SlamDownFormState
-  -> Port.VarMap
+  ∷ SD.SlamDownFormState Port.VarMapValue
+  → Slam Port.VarMap
 formStateToVarMap =
-  map $ formFieldValueToLiteral >>> Port.Literal
+  SM.foldM
+    (\m k → map (maybe m $ flip (SM.insert k) m) ∘ formFieldValueToVarMapValue)
+    SM.empty
 
-eval
-  :: Natural
-     CellEvalQuery
-     (H.ParentDSL State MD.SlamDownState CellEvalQuery MD.SlamDownQuery Slam Unit)
+eval ∷ Natural CellEvalQuery MarkdownDSL
 eval (NotifyRunCell next) = pure next
 eval (EvalCell value k) =
   case value.inputPort of
-    Just (Port.SlamDown input) -> do
+    Just (Port.SlamDown input) → do
       H.set $ Just input
-      H.query unit $ H.action (MD.SetDocument input)
-      state <- H.query unit $ H.request MD.GetFormState
-      pure $ k case state of
-        Nothing -> error "GetFormState query returned Nothing"
-        Just st -> { output: Just (Port.VarMap $ formStateToVarMap st), messages: [] }
-    _ -> pure $ k (error "expected SlamDown input")
+      H.query unit $ H.action (SD.SetDocument input)
+      state ← H.query unit $ H.request SD.GetFormState
+      k <$>
+        case state of
+          Nothing → pure $ error "GetFormState query returned Nothing"
+          Just st → do
+            varMap ← H.liftH ∘ H.liftH $ formStateToVarMap st
+            pure { output: Just $ Port.VarMap varMap, messages: [] }
+    _ → pure ∘ k $ error "expected SlamDown input"
 eval (SetupCell _ next) = pure next
 eval (Save k) = do
-  input <- fromMaybe mempty <$> H.get
-  state <- fromMaybe SM.empty <$> H.query unit (H.request MD.GetFormState)
+  input ← fromMaybe mempty <$> H.get
+  state ← fromMaybe SM.empty <$> H.query unit (H.request SD.GetFormState)
   pure $ k (encode { input, state })
 eval (Load json next) = do
   case decode json of
-    Right { input, state } ->
+    Right { input, state } →
       void $ do
         H.set $ Just input
-        H.query unit $ H.action (MD.SetDocument input)
-        H.query unit $ H.action (MD.PopulateForm state)
-    _ -> pure unit
+        H.query unit $ H.action (SD.SetDocument input)
+        H.query unit $ H.action (SD.PopulateForm state)
+    _ → pure unit
   pure next
 eval (SetCanceler _ next) = pure next
 
-error :: String -> CellEvalResult
+error ∷ String → CellEvalResult
 error msg =
   { output: Nothing
   , messages: [Left $ "An internal error occurred: " ++ msg]

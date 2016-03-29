@@ -105,7 +105,7 @@ emptyValueOfFieldType tau =
   case tau of
     StringFieldType -> Port.Literal $ SQL2.string ""
     BooleanFieldType -> Port.Literal $ SQL2.boolean true
-    NumericFieldType -> Port.Literal $ SQL2.decimal 0.0
+    NumericFieldType -> Port.Literal $ SQL2.decimal zero
     DateTimeFieldType -> Port.Literal $ SQL2.dateTime ""
     DateFieldType -> Port.Literal $ SQL2.date ""
     TimeFieldType -> Port.Literal $ SQL2.time ""

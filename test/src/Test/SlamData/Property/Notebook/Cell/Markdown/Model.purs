@@ -24,15 +24,15 @@ import Data.Foldable (mconcat)
 import SlamData.Notebook.Cell.Markdown.Model as M
 
 import Test.StrongCheck (QC, Result(..), quickCheck, (<?>))
-import Text.Markdown.SlamDown.Html (SlamDownState(..))
+import Text.Markdown.SlamDown.Halogen.Component.State (SlamDownState(..))
 
 check :: QC Unit
 check = quickCheck \(SlamDownState { document, formState }) ->
-  let model = { input: document, state: formState}
+  let model = { input: document, state: formState }
   in case M.decode (M.encode model) of
     Left err -> Failed $ "Decode failed: " ++ err
     Right model' ->
       mconcat
-       [ model.input == model'.input <?> "input mismatch"
-       , map show model.state == map show model'.state <?> "state mismatch"
+       [ model.input == model'.input <?> "input mismatch: " <> show model.input <> " vs. " <> show model'.input
+       , model.state == model'.state <?> "state mismatch: " <> show model.state <> " vs. " <> show model'.state
        ]

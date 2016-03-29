@@ -34,7 +34,8 @@ module Quasar.Aff
   , all
   , sample
   , transitiveChildrenProducer
-  , query'
+  , query' -- TODO: rename this, we shouldn't be exporting things with inscruatable prime symbols
+  , queryPrecise
   , count
 
   , save
@@ -53,7 +54,6 @@ import SlamData.Prelude
 import Control.Apply (lift2)
 import Control.Coroutine as CR
 import Control.Coroutine.Aff as ACR
-
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar as AVar
@@ -655,6 +655,9 @@ getVersion idToken perms = do
 ldJSON ∷ MediaType
 ldJSON = MediaType "application/ldjson"
 
+preciseJSON ∷ MediaType
+preciseJSON = MediaType "application/json;mode=precise"
+
 
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
@@ -716,6 +719,25 @@ query' path sql idToken perms = do
   let res = R.File path
   eResult ← Aff.attempt $
     AX.affjax =<< mkRequest (mkURI' res sql) applicationJSON idToken perms
+  pure
+    case eResult of
+      Left err → Left (Exn.message err)
+      Right result →
+        if succeeded result.status
+        then JS.decodeJson <=< JS.jsonParser $ result.response
+        else Left $ readError "error in query" result.response
+
+queryPrecise
+  ∷ forall e
+  . PU.FilePath
+  → SQL
+  → Maybe Auth.IdToken
+  → Array Perm.PermissionToken
+  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) (Either String JS.JArray)
+queryPrecise path sql idToken perms = do
+  let res = R.File path
+  eResult ← Aff.attempt $
+    AX.affjax =<< mkRequest (mkURI' res sql) preciseJSON idToken perms
   pure
     case eResult of
       Left err → Left (Exn.message err)

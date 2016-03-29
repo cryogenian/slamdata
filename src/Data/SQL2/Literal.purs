@@ -15,9 +15,9 @@ limitations under the License.
 -}
 
 module Data.SQL2.Literal
-  ( module Data.SQL2.Literal.Core
-  , module Data.SQL2.Literal.Parse
+  ( module Core
+  , module Parse
   ) where
 
-import Data.SQL2.Literal.Core (Literal, LiteralF(Array, Boolean, Date, DateTime, Decimal, Integer, Interval, Null, Object, ObjectId, OrderedSet, String, Time), array, boolean, date, dateTime, decimal, integer, interval, null, object, objectId, orderedSet, renderLiteral, renderLiteralF, string, time)
-import Data.SQL2.Literal.Parse (parseLiteral, parseLiteralF)
+import Data.SQL2.Literal.Core as Core
+import Data.SQL2.Literal.Parse as Parse
