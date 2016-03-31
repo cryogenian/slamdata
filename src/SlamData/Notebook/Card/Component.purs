@@ -106,7 +106,7 @@ makeCardComponent def = makeCardComponentPart def render
           , (guard canHaveOutput) $> CR.statusBar cs.hasResults cs
           ]
 containerClasses ∷ Array (HH.ClassName)
-containerClasses = [B.containerFluid, CSS.notebookCard, B.clearfix]
+containerClasses = [CSS.notebookCard]
 
 -- | Constructs a card component from a record with the necessary properties and
 -- | a render function.

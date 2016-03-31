@@ -42,7 +42,7 @@ import SlamData.Notebook.Card.RunState (RunState(..), isRunning)
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
-import SlamData.Notebook.Card.Port as Port
+import SlamData.Notebook.Card.Port (_Blocked)
 import SlamData.Notebook.Card.CardType (CardType, cardName, cardGlyph, controllable)
 
 type CardHTML = ParentHTML AnyCardState CardQuery InnerCardQuery Slam Unit
@@ -68,20 +68,14 @@ header cty cs =
 
 cardBlocked ∷ CardState → Boolean
 cardBlocked cs =
-  isJust $ cs.input >>= preview Port._Blocked
+  isJust $ cs.input >>= preview _Blocked
 
-isErrorCard ∷ CardState → Boolean
-isErrorCard cs =
-  isJust $ cs.input >>= preview Port._CardError
-
-hasMessages ∷ CardState → Boolean
-hasMessages cs = not $ A.null cs.messages
 
 controls ∷ CardState → CardHTML
 controls cs =
   H.div
     [ P.classes [B.pullRight, CSS.cardControls] ]
-    $ (guard (not $ cardBlocked cs || isErrorCard cs))
+    $ (guard (not $ cardBlocked cs))
        ≫ [ H.button
            [ P.title cardOptionsLabel
            , ARIA.label cardOptionsLabel
@@ -111,7 +105,11 @@ controls cs =
 statusBar ∷ Boolean → CardState → CardHTML
 statusBar hasResults cs =
   H.div
-    [ P.classes [CSS.cardEvalLine] ]
+<<<<<<< 7889c6257b4c0e7fa3b03ce64114cbbffc07e0bf:src/SlamData/Notebook/Card/Component/Render.purs
+    [ P.classes [CSS.cardEvalLine, B.clearfix, B.row] ]
+=======
+    [ P.classes [CSS.cellEvalLine] ]
+>>>>>>> Layout:src/SlamData/Notebook/Cell/Component/Render.purs
     $ [ H.button
           [ P.classes [B.btn, B.btnPrimary, button.className]
           , E.onClick (E.input_ $ if isRunning cs.runState
@@ -169,8 +167,8 @@ refreshButton =
     [ glyph B.glyphiconRefresh ]
 
 toggleMessageButton ∷ CardState → Maybe CardHTML
-toggleMessageButton cs@{ messages, messageVisibility } =
-  if not (hasMessages cs)
+toggleMessageButton { messages, messageVisibility } =
+  if A.null messages
   then Nothing
   else Just $
     H.button
@@ -197,17 +195,37 @@ statusMessages cs@{ messages, messageVisibility }
   | cardBlocked cs =
       [ H.div
         [ P.classes [ CSS.cardBlockedMessage ] ]
-        [ H.div_ [ H.text "There are errors in parent cards" ] ]
-      ]
+        [ H.div_ [ H.text "There are errors in parent cards" ] ]]
+  | A.null messages = []
   | otherwise =
-      if not (hasMessages cs)
-      then []
-      else
-        [ H.div [ P.classes classes ] $ if isCollapsed then [] else map message messages
-        ]
+      [ H.div
+          [ P.classes classes ]
+           $ [ H.div_ failureMessage ]
+           ⊕ if isCollapsed
+               then []
+               else map (either message message) messages'
+      ]
   where
   isCollapsed = messageVisibility ≡ Invisible
-  classes = [CSS.cardMessages] ⊕ if isCollapsed then [CSS.collapsed] else []
+  errorMessages = let es = A.filter isLeft messages in es
+  hasErrors = not (A.null errorMessages)
+  messages' = if hasErrors then errorMessages else messages
+  classes =
+    let
+      cls = if hasErrors
+              then CSS.cardFailures
+              else CSS.cardMessages
+    in
+      if isCollapsed then [cls, CSS.collapsed] else [cls]
+  failureMessage =
+    if hasErrors
+      then
+        let
+          numErrors = A.length errorMessages
+          s = if numErrors ≡ 1 then "" else "s"
+        in
+          [H.text $ show numErrors ⊕ " error" ⊕ s ⊕ " during evaluation. "]
+    else []
 
 message ∷ String → CardHTML
 message = H.pre_ ∘ pure ∘ H.text

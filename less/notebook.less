@@ -1,5 +1,10 @@
 .sd-notebook {
-    padding-top: 30px;
+  position: absolute;
+  display: block;
+  padding-top: 113px;
+  height: 100%;
+  width: 100%;
+  background-color: pink;
 }
 
 .sd-notebook-hidden-top-menu {
@@ -7,4 +12,49 @@
     .new-card-menu {
         display: none;
     }
+}
+
+.sd-deck {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: red;
+  position: relative;
+}
+
+.sd-card-slider {
+  display: block;
+  height: 100%;
+  position: relative;
+}
+
+.sd-card {
+  min-height: 100%;
+  float: left;
+  position: relative;
+}
+
+.sd-card-gripper {
+  display: inline-block;
+  background-color: #999;
+  width: 2rem;
+  height: 100%;
+  position: absolute;
+  float: left;
+}
+
+.sd-card-gripper:hover {
+  background-color: #aaa;
+}
+
+.sd-card-gripper::before {
+  display: block;
+  position: absolute;
+  content: "⬌";
+  width: 100%;
+  text-align: center;
+  top: 50%;
+  margin-top: -50%;
+  color: #444;
 }

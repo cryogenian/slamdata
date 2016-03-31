@@ -28,11 +28,16 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject)
 
+import CSS.Geometry (width)
+import CSS.Size (pct, Size(..), Rel)
+import CSS.String (fromString)
+
 import Data.Argonaut (Json)
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures)
+import Data.Int (toNumber)
 import Data.Lens as Lens
-import Data.Lens ((.~), (%~), (^?))
+import Data.Lens (LensP(), view, (.~), (%~), (?~), (^?))
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as List
 import Data.Map as Map
@@ -47,21 +52,27 @@ import Ace.Halogen.Component as Ace
 import DOM.HTML.Location as Location
 
 import Halogen as H
+import Halogen.Component.ChildPath (ChildPath, injSlot, injState)
 import Halogen.Component.Utils (forceRerender')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
+import Halogen.HTML.CSS.Indexed (style)
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.Component.ChildPath (injSlot, injState)
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Quasar.Aff as Quasar
+import Quasar.Auth as Auth
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.AccessType (AccessType(..), isEditable)
 import SlamData.Notebook.Action as NA
-import SlamData.Notebook.Card.CardId (CardId(), cardIdToString)
-import SlamData.Notebook.Card.CardType (CardType(..), nextCardTypes)
+import SlamData.Notebook.Card.CardId (CardId(), runCardId, cardIdToString)
+import SlamData.Notebook.Card.CardType
+  (CardType(..), AceMode(..), cardName, cardGlyph, autorun, nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..))
 import SlamData.Notebook.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery, initialCardState)
 import SlamData.Notebook.Card.Next.Component as Next
@@ -148,17 +159,32 @@ render state =
     -- when the loading message disappears, rather than being reconstructed in
     -- the parent element
     HH.div
-      ([ HP.key "notebook-cards"]
+      ([ HP.key "notebook-cards"
+       , HP.classes [ CSS.cardSlider ]
+       , style $ cardSliderWidth $ List.length state.cards
+       ]
        ⊕ (guard (not visible) $> (HP.class_ CSS.invisible)))
-      ( List.fromList (map renderCard state.cards)
+      ( List.fromList (map (renderCard (List.length state.cards)) state.cards)
         ⊕ (pure $ newCardMenu state)
       )
 
-  renderCard cardDef =
+  renderCard cardsCount cardDef =
     HH.div
-    ([ HP.key ("card" ⊕ cardIdToString cardDef.id) ]
+    ([ HP.key ("card" ⊕ cardIdToString cardDef.id)
+     , HP.classes [ CSS.card ]
+     , style $ cardWidth cardsCount
+    ]
      ⊕ foldMap (viewingStyle cardDef) state.viewingCard)
-    [ HH.Slot $ transformCardConstructor cardDef.ctor ]
+    [ cardGripper $ Just $ runCardId cardDef.id
+    , HH.Slot $ transformCardConstructor cardDef.ctor
+    ]
+
+  cardGripper x =
+    HH.div
+      [ HP.classes [ CSS.cardGripper ]
+      , HE.onMouseDown (HE.input $ StartSliding x)
+      ]
+      []
 
   transformCardConstructor (H.SlotConstructor p l) =
     H.SlotConstructor
@@ -178,14 +204,29 @@ render state =
 
   newCardMenu state =
     HH.div
-      ([ HP.key ("next-action-card") ]
+      ([ HP.key ("next-action-card")
+       , HP.classes [ CSS.card ]
+       ]
        ⊕ (guard shouldHideNextAction $> (HP.class_ CSS.invisible)))
 
-    [ HH.slot' cpCard (CardSlot top) \_ →
+    [ cardGripper Nothing
+    , HH.slot' cpCard (CardSlot top) \_ →
        { component: Next.nextCardComponent
        , initialState: H.parentState initialCardState
        }
     ]
+
+  cardWidthPct cardsCount =
+    100.0 / toNumber cardsCount
+
+  cardWidth cardsCount =
+    width $ calc $ (show $ cardWidthPct cardsCount) ++ "% - 2rem"
+
+  cardSliderWidth cardsCount =
+    width $ pct $ 100.0 * toNumber cardsCount
+
+  calc :: String -> Size Rel
+  calc s = Size $ fromString $ "calc(" ++ s ++ ")"
 
 eval ∷ Natural Query NotebookDSL
 eval (AddCard cardType next) = createCard cardType $> next
@@ -280,7 +321,9 @@ eval (FindCardParent cid k) = k <$> H.gets (DCS.findParent cid)
 eval (GetCardType cid k) = k <$> H.gets (DCS.getCardType cid)
 eval (FlipDeck next) = H.modify (DCS._backsided %~ not) $> next
 eval (GetActiveCardId k) = map k $ H.gets DCS.findLast
-
+eval (StartSliding cid mouseEvent next) = pure next
+eval (StopSliding cid mouseEvent next) = pure next
+eval (UpdateSliderPosition cid mouseEvent next) = pure next
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → NotebookDSL Unit
 peek (H.ChildF s q) =

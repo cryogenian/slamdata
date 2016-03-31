@@ -426,3 +426,15 @@ openResourceCardMenu = className "open-resource-card-menu"
 
 loading ∷ ClassName
 loading = className "loading"
+
+cardSlider :: ClassName
+cardSlider = className "sd-card-slider"
+
+deck :: ClassName
+deck = className "sd-deck"
+
+card :: ClassName
+card = className "sd-card"
+
+cardGripper :: ClassName
+cardGripper = className "sd-card-gripper"

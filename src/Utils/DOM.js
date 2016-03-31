@@ -27,3 +27,15 @@ exports.focus = function(el) {
         return el.focus();
     };
 };
+
+exports.getBoundingClientRect = function(el) {
+    return function() {
+        return el.getBoundingClientRect();
+    };
+};
+
+exports.offsetLeft = function(el) {
+    return function() {
+       return el.offsetLeft;
+    };
+};

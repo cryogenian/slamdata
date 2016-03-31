@@ -31,6 +31,20 @@ import Data.Nullable (toMaybe)
 import Prelude
 import Unsafe.Coerce (unsafeCoerce)
 
+foreign import waitLoaded :: forall e. Aff (dom :: DOM |e) Unit
+foreign import onLoad :: forall e. Eff e Unit -> Eff e Unit
+foreign import blur :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
+foreign import focus :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
+foreign import offsetLeft :: forall e. HTMLElement -> Eff (dom :: DOM|e) Int
+foreign import getBoundingClientRect :: forall eff.  HTMLElement -> Eff (dom :: DOM | eff) DOMRect
+
+type DOMRect =
+  { left :: Int
+  , top :: Int
+  , width :: Int
+  , height :: Int
+  }
+
 elementToHTMLElement :: Element -> HTMLElement
 elementToHTMLElement = unsafeCoerce
 
@@ -47,8 +61,3 @@ documentTarget :: forall e. Eff (dom :: DOM|e) EventTarget
 documentTarget = htmlDocumentToEventTarget <$> (document =<< window)
   where
   htmlDocumentToEventTarget = documentToEventTarget <<< htmlDocumentToDocument
-
-foreign import waitLoaded :: forall e. Aff (dom :: DOM |e) Unit
-foreign import onLoad :: forall e. Eff e Unit -> Eff e Unit
-foreign import blur :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
-foreign import focus :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
