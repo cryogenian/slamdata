@@ -111,6 +111,10 @@ insertQueryCardAsFirstCardInNewStack ∷ SlamFeature Unit
 insertQueryCardAsFirstCardInNewStack =
   click (XPath.anywhere XPaths.insertQueryCard)
 
+insertSaveCardAsNextAction ∷ SlamFeature Unit
+insertSaveCardAsNextAction =
+  click (XPath.anywhere XPaths.insertSaveCard)
+
 insertMdCardAsFirstCardInNewStack ∷ SlamFeature Unit
 insertMdCardAsFirstCardInNewStack =
   click (XPath.anywhere XPaths.insertMdCard)
@@ -204,6 +208,14 @@ provideQueryInLastQueryCard =
   provideFieldValue
     $ (XPath.last $ XPath.anywhere $ XPaths.queryCardTitle)
     `XPath.following` XPaths.aceEditor
+
+provideSaveDestinationInLastSaveCard ∷ String → SlamFeature Unit
+provideSaveDestinationInLastSaveCard =
+  provideFieldValue (XPath.last $ XPath.anywhere XPaths.saveDestinationInput)
+
+doSaveInLastSaveCard ∷ SlamFeature Unit
+doSaveInLastSaveCard =
+  click (XPath.last $ XPath.anywhere XPaths.saveSubmitButton)
 
 provideFieldValueInLastMdCard ∷ String → String → SlamFeature Unit
 provideFieldValueInLastMdCard labelText =

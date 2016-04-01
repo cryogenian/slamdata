@@ -17,7 +17,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Effects (Slam())
+import SlamData.Effects (Slam)
 import SlamData.Notebook.Cell.CellType (cellName, cellGlyph, CellType(..), insertableCellTypes)
 import SlamData.Notebook.Cell.Common.EvalQuery as Ec
 import SlamData.Notebook.Cell.Component
@@ -67,7 +67,7 @@ render state =
           , ARIA.label $ cardTitle cty
           , HE.onClick (HE.input_ (right ∘ AddCell cty))
           ]
-          [ cellGlyph cty false
+          [ cellGlyph cty
           , HH.p_ [ HH.text (cellName cty) ]
           ]
       ]
@@ -80,7 +80,7 @@ render state =
           , ARIA.label $ disabledTitle cty
           , HP.disabled true
           ]
-          [ cellGlyph cty true
+          [ cellGlyph cty
           , HH.p_ [ HH.text (cellName cty) ]
           ]
       ]

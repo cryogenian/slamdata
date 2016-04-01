@@ -18,390 +18,399 @@ module SlamData.Render.CSS where
 
 import Halogen.HTML.Core (className, ClassName)
 
-filesystem :: ClassName
+filesystem ∷ ClassName
 filesystem = className "filesystem"
 
-dashboard :: ClassName
+dashboard ∷ ClassName
 dashboard = className "dashboard"
 
-version :: ClassName
+version ∷ ClassName
 version = className "version"
 
-selected :: ClassName
+selected ∷ ClassName
 selected = className "selected"
 
-phantom :: ClassName
+phantom ∷ ClassName
 phantom = className "phantom"
 
-searchInput :: ClassName
+searchInput ∷ ClassName
 searchInput = className "search-input"
 
-searchClear :: ClassName
+searchClear ∷ ClassName
 searchClear = className "search-clear"
 
-searchPath :: ClassName
+searchPath ∷ ClassName
 searchPath = className "search-path"
 
-searchPathActive :: ClassName
+searchPathActive ∷ ClassName
 searchPathActive = className "search-path-active"
 
-searchAffix :: ClassName
+searchAffix ∷ ClassName
 searchAffix = className "search-affix"
 
-searchPathBody :: ClassName
+searchPathBody ∷ ClassName
 searchPathBody = className "search-path-body"
 
-searchAffixEmpty :: ClassName
+searchAffixEmpty ∷ ClassName
 searchAffixEmpty = className "search-affix-empty"
 
-results :: ClassName
+results ∷ ClassName
 results = className "results"
 
-header :: ClassName
+header ∷ ClassName
 header = className "header"
 
-headerMenu :: ClassName
+headerMenu ∷ ClassName
 headerMenu = className "header-menu"
 
-logo :: ClassName
+logo ∷ ClassName
 logo = className "logo"
 
-navCont :: ClassName
+navCont ∷ ClassName
 navCont = className "nav-cont"
 
-navIcon :: ClassName
+navIcon ∷ ClassName
 navIcon = className "nav-icon"
 
-navLogo :: ClassName
+navLogo ∷ ClassName
 navLogo = className "nav-logo"
 
-search :: ClassName
+search ∷ ClassName
 search = className "search"
 
-notebookName :: ClassName
+notebookName ∷ ClassName
 notebookName = className "notebook-name"
 
-content :: ClassName
+content ∷ ClassName
 content = className "content"
 
-toolbarSort :: ClassName
+toolbarSort ∷ ClassName
 toolbarSort = className "toolbar-sort"
 
-toolbarMenu :: ClassName
+toolbarMenu ∷ ClassName
 toolbarMenu = className "toolbar-menu"
 
-itemIcon :: ClassName
+itemIcon ∷ ClassName
 itemIcon = className "item-icon"
 
-itemToolbar :: ClassName
+itemToolbar ∷ ClassName
 itemToolbar = className "item-toolbar"
 
-itemContent :: ClassName
+itemContent ∷ ClassName
 itemContent = className "item-content"
 
-itemHidden :: ClassName
+itemHidden ∷ ClassName
 itemHidden = className "item-hidden"
 
-invisible :: ClassName
+invisible ∷ ClassName
 invisible = className "sd-invisible"
 
-fileListField :: ClassName
+fileListField ∷ ClassName
 fileListField = className "file-list-field"
 
-fileListGroup :: ClassName
+fileListGroup ∷ ClassName
 fileListGroup = className "file-list-group"
 
-notebookNav :: ClassName
+notebookNav ∷ ClassName
 notebookNav = className "notebook-nav"
 
-dialogDownload :: ClassName
+dialogDownload ∷ ClassName
 dialogDownload = className "dialog-download"
 
-dialogMount :: ClassName
+dialogMount ∷ ClassName
 dialogMount = className "dialog-mount"
 
-renameDialogForm :: ClassName
+renameDialogForm ∷ ClassName
 renameDialogForm = className "rename-dialog-form"
 
-mountSection :: ClassName
+mountSection ∷ ClassName
 mountSection = className "mount-section"
 
-mountMongoDB :: ClassName
+mountMongoDB ∷ ClassName
 mountMongoDB = className "mount-mongodb"
 
-mountName :: ClassName
+mountName ∷ ClassName
 mountName = className "mount-name"
 
-mountHostList :: ClassName
+mountHostList ∷ ClassName
 mountHostList = className "mount-host-list"
 
-mountUserInfo :: ClassName
+mountUserInfo ∷ ClassName
 mountUserInfo = className "mount-userinfo"
 
-mountHost :: ClassName
+mountHost ∷ ClassName
 mountHost = className "mount-host"
 
-mountProps :: ClassName
+mountProps ∷ ClassName
 mountProps = className "mount-props"
 
-mountPath :: ClassName
+mountPath ∷ ClassName
 mountPath = className "mount-path"
 
-mountPropsScrollbox :: ClassName
+mountPropsScrollbox ∷ ClassName
 mountPropsScrollbox = className "mount-props-scrollbox"
 
-mountProgressSpinner :: Boolean -> ClassName
+mountProgressSpinner ∷ Boolean -> ClassName
 mountProgressSpinner true = className "mount-progress-spinner"
 mountProgressSpinner false = className "mount-progress-spinner-hidden"
 
-notebookContent :: ClassName
+notebookContent ∷ ClassName
 notebookContent = className "notebook-content"
 
-notebookViewHack :: ClassName
+notebookViewHack ∷ ClassName
 notebookViewHack = className "notebook-view-hack"
 
-notebookCell :: ClassName
+notebookCell ∷ ClassName
 notebookCell = className "notebook-cell"
 
-cellHeader :: ClassName
+cellHeader ∷ ClassName
 cellHeader = className "cell-header"
 
-cellIcon :: ClassName
+cellIcon ∷ ClassName
 cellIcon = className "cell-icon"
 
-cellName :: ClassName
+cellName ∷ ClassName
 cellName = className "cell-name"
 
-cellInput :: ClassName
+cellInput ∷ ClassName
 cellInput = className "cell-input"
 
-cellOutput :: ClassName
+cellOutput ∷ ClassName
 cellOutput = className "cell-output"
 
-cellOutputLabel :: ClassName
+cellOutputLabel ∷ ClassName
 cellOutputLabel = className "cell-output-label"
 
-cellOutputResult :: ClassName
+cellOutputResult ∷ ClassName
 cellOutputResult = className "cell-output-result"
 
-cellNextActions :: ClassName
+cellNextActions ∷ ClassName
 cellNextActions = className "cell-next-actions"
 
-newCellMenu :: ClassName
+newCellMenu ∷ ClassName
 newCellMenu = className "new-cell-menu"
 
-aceContainer :: ClassName
+aceContainer ∷ ClassName
 aceContainer = className "ace-container"
 
-playButton :: ClassName
+playButton ∷ ClassName
 playButton = className "play-button"
 
-stopButton :: ClassName
+stopButton ∷ ClassName
 stopButton = className "stop-button"
 
-cellControls :: ClassName
+cellControls ∷ ClassName
 cellControls = className "cell-controls"
 
-statusText :: ClassName
+statusText ∷ ClassName
 statusText = className "status-text"
 
-cellFailures :: ClassName
+cellFailures ∷ ClassName
 cellFailures = className "cell-failures"
 
-cellMessages :: ClassName
+cellMessages ∷ ClassName
 cellMessages = className "cell-messages"
 
-cellBlockedMessage :: ClassName
+cellBlockedMessage ∷ ClassName
 cellBlockedMessage = className "cell-blocked-message"
 
-cellEvalLine :: ClassName
+cellEvalLine ∷ ClassName
 cellEvalLine = className "cell-eval-line"
 
-exploreCellEditor :: ClassName
+exploreCellEditor ∷ ClassName
 exploreCellEditor = className "explore-cell-editor"
 
-pagination :: ClassName
+pagination ∷ ClassName
 pagination = className "pagination"
 
-pageInput :: ClassName
+pageInput ∷ ClassName
 pageInput = className "page-input"
 
-pageSize :: ClassName
+pageSize ∷ ClassName
 pageSize = className "page-size"
 
-markdownOutput :: ClassName
+markdownOutput ∷ ClassName
 markdownOutput = className "markdown-output"
 
-searchCellInput :: ClassName
+searchCellInput ∷ ClassName
 searchCellInput = className "search-cell-input"
 
-searchCellButton :: ClassName
+searchCellButton ∷ ClassName
 searchCellButton = className "search-cell-button"
 
-nextCellList :: ClassName
+nextCellList ∷ ClassName
 nextCellList = className "next-cell-list"
 
-echartsContainer :: ClassName
+echartsContainer ∷ ClassName
 echartsContainer = className "echarts-container"
 
-chartConfigureForm :: ClassName
+chartConfigureForm ∷ ClassName
 chartConfigureForm = className "chart-configure-form"
 
-vizCellEditor :: ClassName
+vizCellEditor ∷ ClassName
 vizCellEditor = className "viz-cell-editor"
 
-vizChartTypeSelector :: ClassName
+vizChartTypeSelector ∷ ClassName
 vizChartTypeSelector = className "viz-chart-type-selector"
 
-vizChartConfiguration :: ClassName
+vizChartConfiguration ∷ ClassName
 vizChartConfiguration = className "viz-chart-configuration"
 
-collapsed :: ClassName
+collapsed ∷ ClassName
 collapsed = className "collapsed"
 
-scrollbox :: ClassName
+scrollbox ∷ ClassName
 scrollbox = className "scrollbox"
 
-loadingMessage :: ClassName
+loadingMessage ∷ ClassName
 loadingMessage = className "loading-message"
 
-withAggregation :: ClassName
+withAggregation ∷ ClassName
 withAggregation = className "with-aggregation"
 
-aggregation :: ClassName
+aggregation ∷ ClassName
 aggregation = className "aggregation"
 
-embedBox :: ClassName
+embedBox ∷ ClassName
 embedBox = className "embed-box"
 
-downloadSource :: ClassName
+downloadSource ∷ ClassName
 downloadSource = className "download-source"
 
-downloadTarget :: ClassName
+downloadTarget ∷ ClassName
 downloadTarget = className "download-target"
 
-downloadTargetBox :: ClassName
+downloadTargetBox ∷ ClassName
 downloadTargetBox = className "download-target-box"
 
-downloadCSVDelimiters :: ClassName
+downloadCSVDelimiters ∷ ClassName
 downloadCSVDelimiters = className "download-csv-delimiters"
 
-downloadArrayMode :: ClassName
+downloadArrayMode ∷ ClassName
 downloadArrayMode = className "download-array-mode"
 
-downloadJSONOptions :: ClassName
+downloadJSONOptions ∷ ClassName
 downloadJSONOptions = className "download-json-options"
 
-refreshButton :: ClassName
+refreshButton ∷ ClassName
 refreshButton = className "refresh-button"
 
-shareButton :: ClassName
+shareButton ∷ ClassName
 shareButton = className "share-button"
 
-hiddenFileInput :: ClassName
+hiddenFileInput ∷ ClassName
 hiddenFileInput = className "hidden-file-input"
 
-chartConfigureHeight :: ClassName
+chartConfigureHeight ∷ ClassName
 chartConfigureHeight = className "chart-configure-height"
 
-chartConfigureWidth :: ClassName
+chartConfigureWidth ∷ ClassName
 chartConfigureWidth = className "chart-configure-width"
 
 
-chartCategory :: ClassName
+chartCategory ∷ ClassName
 chartCategory = className "chart-category"
 
-chartMeasureOne :: ClassName
+chartMeasureOne ∷ ClassName
 chartMeasureOne = className "chart-measure-one"
 
-chartMeasureTwo :: ClassName
+chartMeasureTwo ∷ ClassName
 chartMeasureTwo = className "chart-measure-two"
 
-chartDimension :: ClassName
+chartDimension ∷ ClassName
 chartDimension = className "chart-dimension"
 
-chartSeriesOne :: ClassName
+chartSeriesOne ∷ ClassName
 chartSeriesOne = className "chart-series-one"
 
-chartSeriesTwo :: ClassName
+chartSeriesTwo ∷ ClassName
 chartSeriesTwo = className "chart-series-two"
 
-pieChartIcon :: ClassName
+pieChartIcon ∷ ClassName
 pieChartIcon = className "pie-chart-icon"
 
-barChartIcon :: ClassName
+barChartIcon ∷ ClassName
 barChartIcon = className "bar-chart-icon"
 
-lineChartIcon :: ClassName
+lineChartIcon ∷ ClassName
 lineChartIcon = className "line-chart-icon"
 
-chartEditor :: ClassName
+chartEditor ∷ ClassName
 chartEditor = className "chart-editor"
 
-chartOutput :: ClassName
+chartOutput ∷ ClassName
 chartOutput = className "chart-output"
 
-glyphiconInactive :: ClassName
+glyphiconInactive ∷ ClassName
 glyphiconInactive = className "glyphicon-inactive"
 
 
-axisLabelParam :: ClassName
+axisLabelParam ∷ ClassName
 axisLabelParam = className "axis-label-param"
 
-chartSizeParam :: ClassName
+chartSizeParam ∷ ClassName
 chartSizeParam = className "chart-size-param"
 
-downloadCellEditor :: ClassName
+downloadCellEditor ∷ ClassName
 downloadCellEditor = className "download-cell-editor"
 
-downloadTypeSelector :: ClassName
+downloadTypeSelector ∷ ClassName
 downloadTypeSelector = className "download-type-selector"
 
-downloadConfiguration :: ClassName
+downloadConfiguration ∷ ClassName
 downloadConfiguration = className "download-configuration"
 
-sqlMountVarPair :: ClassName
+sqlMountVarPair ∷ ClassName
 sqlMountVarPair = className "sql-mount-var-pair"
 
-sqlMountForm :: ClassName
+sqlMountForm ∷ ClassName
 sqlMountForm = className "sql-mount-form"
 
-sqlMountAddVarPairButton :: ClassName
+sqlMountAddVarPairButton ∷ ClassName
 sqlMountAddVarPairButton = className "sql-mount-add-var-pair-button"
 
-fileAction :: ClassName
+fileAction ∷ ClassName
 fileAction = className "file-action"
 
-permissionsCheckboxes :: ClassName
+permissionsCheckboxes ∷ ClassName
 permissionsCheckboxes = className "permissions-checkboxes"
 
-tokenGeneratorForm :: ClassName
+tokenGeneratorForm ∷ ClassName
 tokenGeneratorForm = className "token-generator-form"
 
-cancelInputRunIcon :: ClassName
+cancelInputRunIcon ∷ ClassName
 cancelInputRunIcon = className "cancel-input-run-icon"
 
-userShareForm :: ClassName
+userShareForm ∷ ClassName
 userShareForm = className "user-share-form"
 
 
-nextActionCard :: ClassName
+nextActionCard ∷ ClassName
 nextActionCard = className "next-action-card"
 
-sharePermissionsDialog :: ClassName
+sharePermissionsDialog ∷ ClassName
 sharePermissionsDialog = className "share-permissions-dialog"
 
-sharePermissionsCheckboxes :: ClassName
+sharePermissionsCheckboxes ∷ ClassName
 sharePermissionsCheckboxes = className "share-permissions-checkboxes"
 
-sharePermissionsResourceMark :: ClassName
+sharePermissionsResourceMark ∷ ClassName
 sharePermissionsResourceMark = className "share-permissions-resource-mark"
 
-sharePermissionsContent :: ClassName
+sharePermissionsContent ∷ ClassName
 sharePermissionsContent = className "share-permissions-content"
 
-sharePermissionsButtons :: ClassName
+sharePermissionsButtons ∷ ClassName
 sharePermissionsButtons = className "share-permissions-buttons"
 
-glyphImage :: ClassName
+glyphImage ∷ ClassName
 glyphImage = className "glyph-image"
+
+saveCardButton ∷ ClassName
+saveCardButton = className "save-card-button"
+
+chartGlyph ∷ ClassName
+chartGlyph = className "chart-glyph"
+
+codeGlyph ∷ ClassName
+codeGlyph = className "code-glyph"

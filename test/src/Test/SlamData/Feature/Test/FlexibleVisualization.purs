@@ -20,10 +20,10 @@ import Prelude
 
 import Data.String as Str
 import Test.Feature.Log (successMsg)
-import Test.SlamData.Feature.Expectations as Expect
-import Test.SlamData.Feature.Monad (SlamFeature)
-import Test.SlamData.Feature.Interactions as Interact
 import Test.Feature.Scenario (scenario)
+import Test.SlamData.Feature.Expectations as Expect
+import Test.SlamData.Feature.Interactions as Interact
+import Test.SlamData.Feature.Monad (SlamFeature)
 
 apiVizScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
 apiVizScenario =
@@ -61,7 +61,7 @@ expectedNebraskaChartImages =
     ]
 
 test :: SlamFeature Unit
-test = do
+test =
   apiVizScenario "Make embedable patients-city charts" [] do
     Interact.insertApiCardAsFirstCardInNewStack
     Interact.provideApiVariableBindingsForApiCard "state" "Text" "CO"

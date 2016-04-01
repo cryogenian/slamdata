@@ -63,6 +63,11 @@ cellsInTableColumnInLastCard f i headerText xs = do
   tableXPath =
     XPath.last (XPath.anywhere XPaths.jtableHeading) `XPath.following` "table"
 
+tableColumnsAre ∷ ∀ f. Foldable f ⇒ f String → SlamFeature Unit
+tableColumnsAre expectedTexts =
+  for_ expectedTexts \et →
+    expectPresented (XPath.anywhere $ XPath.nodeWithExactText "th" et)
+
 labelInLastMdCard ∷ String → SlamFeature Unit
 labelInLastMdCard label =
   expectPresented

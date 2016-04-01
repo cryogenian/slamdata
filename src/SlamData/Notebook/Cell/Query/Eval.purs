@@ -81,7 +81,7 @@ queryEval info sql =
     >>= L.preview Port._VarMap
     # maybe SM.empty (map Port.renderVarMapValue)
 
-  tempOutputResource = CEQ.temporaryOutputResource info
+  tempOutputResource = R.Mount $ R.View $ CEQ.temporaryOutputResource info
   inputResource = R.parent tempOutputResource
 
 querySetup ∷ CEQ.CellSetupInfo → AceDSL Unit
