@@ -21,6 +21,7 @@ module SlamData.Notebook.Cell.Common.EvalQuery
   , CellEvalInputP
   , CellEvalInputPre
   , CellEvalInput
+  , CellSetupInfoP
   , CellSetupInfo
   , CellEvalT
   , runCellEvalT
@@ -50,7 +51,7 @@ import SlamData.Notebook.Cell.Port (Port)
 import SlamData.Notebook.Cell.Port.VarMap as Port
 import SlamData.Effects (Slam, SlamDataEffects)
 
-import Utils.Path (DirPath)
+import Utils.Path (DirPath, FilePath)
 
 import Halogen (ParentDSL, ComponentDSL)
 import Halogen.Component.Utils as Hu
@@ -69,10 +70,14 @@ type CellEvalInput =
     ( cachingEnabled ∷ Maybe Boolean
     )
 
-type CellSetupInfo =
+type CellSetupInfoP r =
   { notebookPath ∷ Maybe DirPath
   , inputPort ∷ Port
-  }
+  , cellId ∷ CID.CellId
+  | r}
+
+type CellSetupInfo =
+  CellSetupInfoP ()
 
 prepareCellEvalInput
   ∷ Maybe Boolean
@@ -87,13 +92,11 @@ prepareCellEvalInput cachingEnabled { notebookPath, inputPort, cellId, globalVar
   }
 
 temporaryOutputResource
-  ∷ CellEvalInput
-  → R.Resource
+  ∷ ∀ r
+  . {notebookPath ∷ Maybe DirPath, cellId ∷ CID.CellId | r}
+  → FilePath
 temporaryOutputResource info =
-  (outputDirectory </> outputFile)
-    # if fromMaybe false info.cachingEnabled
-      then R.File
-      else R.Mount ∘ R.View
+  outputDirectory </> outputFile
   where
     outputDirectory =
       filterMaybe (_ == P.rootDir) info.notebookPath #

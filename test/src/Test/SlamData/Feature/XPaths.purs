@@ -77,9 +77,21 @@ searchStringInput ∷ String
 searchStringInput =
   XPath.inputWithExactPlaceholder "Input search string"
 
+saveDestinationInput ∷ String
+saveDestinationInput =
+  XPath.anyWithExactAriaLabel "Output file destination"
+
+saveSubmitButton ∷ String
+saveSubmitButton =
+  XPath.anyWithExactAriaLabel "Confirm saving file"
+
 insertExploreCardAsNextAction ∷ String
 insertExploreCardAsNextAction =
   XPath.anyWithExactAriaLabel "Insert Explore card"
+
+insertSaveCard ∷ String
+insertSaveCard =
+  XPath.anyWithExactAriaLabel "Insert Save card"
 
 insertMdCardAsNextAction ∷ String
 insertMdCardAsNextAction =

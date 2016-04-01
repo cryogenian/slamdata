@@ -49,6 +49,7 @@ import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
+import Test.SlamData.Feature.Test.SaveCard as Save
 import Text.Chalky (green, yellow, magenta, gray, red)
 
 foreign import getConfig :: ∀ e. Eff (fs :: FS|e) Config
@@ -88,7 +89,8 @@ tests = do
   File.test
   Search.test
   Markdown.test
-  FlexibleVisualization.test
+--  FlexibleVisualization.test
+  Save.test
 
 runTests :: Config → Aff Effects Unit
 runTests config =

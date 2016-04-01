@@ -11,18 +11,45 @@ ul.next-action-card {
         display: inline-block;
         button {
             border: none;
-            background: #aaa;
             color: #fff;
             margin-right: 12px;
             width: 108px;
             height: 108px;
             font-size: 48px;
+            background: #337ab7;
+            div {
+                height: 48px;
+                width: 48px;
+            }
+            .chart-glyph, .code-glyph {
+                background-size: 100% 100%;
+                display: inline-block;
+            }
+            .chart-glyph {
+                background-image: url("/img/pie.svg");
+            }
+            .code-glyph {
+                background-image: url("/img/code-icon-white.svg");
+            }
             &[disabled] {
                 background: #ccc;
-                color: #666;
+                color: #888;
+                .chart-glyph {
+                    background-image: url("/img/pie-dark.svg");
+                }
+                .code-glyph {
+                    background-image: url("/img/code-icon-dark.svg");
+                }
                 &:hover {
                     background: #ccc;
-                    color: #666;
+                    color: #888;
+                    border: none;
+                    .chart-glyph {
+                        background-image: url("/img/pie-dark.svg");
+                    }
+                    .code-glyph {
+                        background-image: url("/img/code-icon-dark.svg");
+                    }
                 }
             }
             p {
@@ -30,8 +57,17 @@ ul.next-action-card {
                 margin-bottom: 0;
             }
             &:hover {
-                background: #337ab7;
+                border: 1px solid #337ab7;
+                color: #337ab7;
+                background: white;
+                .chart-glyph {
+                    background-image: url("/img/pie-blue.svg");
+                }
+                .code-glyph {
+                    background-image: url("/img/code-icon-blue.svg");
+                }
             }
+
         }
     }
 }

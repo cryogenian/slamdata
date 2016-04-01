@@ -59,7 +59,7 @@ header cty cs =
       ]
       [ H.div
           [ P.class_ CSS.cellIcon ]
-          [ cellGlyph cty false ]
+          [ cellGlyph cty ]
       , H.div
           [ P.class_ CSS.cellName ]
           [ H.text $ cellName cty ]

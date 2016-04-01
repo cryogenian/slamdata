@@ -34,6 +34,7 @@ import SlamData.Prelude
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
+import Data.Array as Arr
 
 import Halogen.HTML.Core (HTML)
 import Halogen.HTML.Indexed as HH
@@ -55,6 +56,7 @@ data CellType
   | API
   | APIResults
   | NextAction
+  | Save
 
 insertableCellTypes ∷ Array CellType
 insertableCellTypes =
@@ -69,6 +71,7 @@ insertableCellTypes =
   , Download
   , API
   , APIResults
+  , Save
   ]
 
 instance eqCellType ∷ Eq CellType where
@@ -83,6 +86,7 @@ instance eqCellType ∷ Eq CellType where
   eq API API = true
   eq APIResults APIResults = true
   eq NextAction NextAction = true
+  eq Save Save = true
   eq _ _ = false
 
 data AceMode
@@ -120,6 +124,7 @@ instance encodeJsonCellType ∷ EncodeJson CellType where
   encodeJson API = encodeJson "api"
   encodeJson APIResults = encodeJson "api-results"
   encodeJson NextAction = encodeJson "next-action"
+  encodeJson Save = encodeJson "save"
 
 instance decodeJsonCellType ∷ DecodeJson CellType where
   decodeJson json = do
@@ -137,6 +142,7 @@ instance decodeJsonCellType ∷ DecodeJson CellType where
       "api" → pure API
       "api-results" → pure APIResults
       "next-action" → pure NextAction
+      "save" → pure Save
       name → throwError $ "unknown cell type '" ⊕ name ⊕ "'"
 
 cellName ∷ CellType → String
@@ -151,29 +157,27 @@ cellName Download = "Download"
 cellName API = "API"
 cellName APIResults = "API Results"
 cellName NextAction = "Next Action"
+cellName Save = "Save"
 
-cellGlyph ∷ ∀ s f. CellType → Boolean → HTML s f
-cellGlyph (Ace at) _ = glyph $ aceCellGlyph at
-cellGlyph Explore _ = glyph B.glyphiconEyeOpen
-cellGlyph Search _ = glyph B.glyphiconSearch
-cellGlyph Viz _ = glyph B.glyphiconPicture
-cellGlyph Download _ = glyph B.glyphiconDownloadAlt
-cellGlyph API _ = glyph B.glyphiconOpenFile
-cellGlyph APIResults _ = glyph B.glyphiconTasks
-cellGlyph Chart disabled =
-  HH.img
-    [ HP.classes [ Rc.glyphImage ]
-    , HP.src $ if disabled then "img/pie-dark.svg" else "img/pie.svg"
-    ]
-cellGlyph Markdown disabled =
-  HH.img
-    [ HP.classes [ Rc.glyphImage ]
-    , HP.src $ if disabled
-               then "img/code-icon-dark.svg"
-               else "img/code-icon-white.svg"
-    ]
-cellGlyph JTable _ = glyph B.glyphiconThList
-cellGlyph NextAction _ = glyph B.glyphiconStop
+cellGlyph ∷ ∀ s f. CellType → HTML s f
+cellGlyph (Ace at) = glyph $ aceCellGlyph at
+cellGlyph Explore = glyph B.glyphiconEyeOpen
+cellGlyph Search = glyph B.glyphiconSearch
+cellGlyph Viz = glyph B.glyphiconPicture
+cellGlyph Download = glyph B.glyphiconDownloadAlt
+cellGlyph API = glyph B.glyphiconOpenFile
+cellGlyph APIResults = glyph B.glyphiconTasks
+cellGlyph Chart =
+  HH.div
+    [ HP.classes [ Rc.glyphImage, Rc.chartGlyph ]
+    ] [ ]
+cellGlyph Markdown =
+  HH.div
+    [ HP.classes [ Rc.glyphImage, Rc.codeGlyph ]
+    ] [ ]
+cellGlyph JTable = glyph B.glyphiconThList
+cellGlyph NextAction = glyph B.glyphiconStop
+cellGlyph Save = glyph B.glyphiconFloppyDisk
 
 aceCellName ∷ AceMode → String
 aceCellName MarkdownMode = "Markdown"
@@ -195,51 +199,28 @@ nextCellTypes Nothing =
   , Explore
   , API
   ]
-nextCellTypes (Just Explore) =
-  [
-    JTable, Download, Search, Ace SQLMode, Viz
-  ]
-nextCellTypes (Just Search) =
-  [
-    JTable, Download, Search, Ace SQLMode, Viz
-  ]
-nextCellTypes (Just (Ace SQLMode)) =
-  [
-    JTable, Download, Search, Ace SQLMode, Viz
-  ]
-nextCellTypes (Just Viz) =
-  [
-    Chart
-  ]
-nextCellTypes (Just API) =
-  [
-    APIResults
-  ]
-nextCellTypes (Just (Ace MarkdownMode)) =
-  [
-    Markdown
-  ]
-nextCellTypes (Just Markdown) =
-  [
-    Ace SQLMode
-  ]
-nextCellTypes (Just JTable) =
-  [
-    Ace SQLMode
-  , Search
-  , Viz
-  , Download
-  ]
-nextCellTypes (Just Download) =
-  [ ]
-nextCellTypes (Just APIResults) =
-  [
-    Ace SQLMode
-  ]
-nextCellTypes (Just Chart) =
-  [ ]
-nextCellTypes (Just NextAction) =
-  [ ]
+nextCellTypes (Just ct) = case ct of
+  Explore → dataSourceCards
+  Search → dataSourceCards
+  Ace SQLMode → dataSourceCards
+  Viz → [ Chart ]
+  API → [ APIResults ]
+  Ace MarkdownMode → [ Markdown ]
+  Markdown → [ Ace SQLMode ]
+  JTable → dataSourceOutput `Arr.snoc` Save
+  Download → [ ]
+  APIResults →  [ Ace SQLMode ]
+  Chart → [ ]
+  NextAction → [ ]
+  Save → dataSourceOutput `Arr.snoc` JTable
+
+  where
+  dataSourceOutput =
+    [
+      Download, Search, Ace SQLMode, Viz
+    ]
+  dataSourceCards =
+    (dataSourceOutput `Arr.snoc` JTable) `Arr.snoc` Save
 
 
 controllable ∷ CellType → Boolean

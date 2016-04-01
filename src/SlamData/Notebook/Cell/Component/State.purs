@@ -43,6 +43,7 @@ module SlamData.Notebook.Cell.Component.State
   , _APIState
   , _APIResultsState
   , _NextState
+  , _SaveState
   ) where
 
 import SlamData.Prelude
@@ -69,6 +70,7 @@ import SlamData.Notebook.Cell.RunState (RunState(..))
 import SlamData.Notebook.Cell.Search.Component.State as Search
 import SlamData.Notebook.Cell.Viz.Component.State as Viz
 import SlamData.Notebook.Cell.Next.Component.State as Next
+import SlamData.Notebook.Cell.Save.Component.State as Save
 import SlamData.Effects (Slam, SlamDataEffects)
 
 
@@ -91,24 +93,24 @@ import SlamData.Effects (Slam, SlamDataEffects)
 -- | - `hasResults` tracks whether the cell has been evaluated successfully and
 -- |   produced a result.
 type CellState =
-  { accessType :: AccessType
-  , visibility :: Visibility
-  , runState :: RunState
-  , tickStopper :: Slam Unit
-  , isCollapsed :: Boolean
-  , messages :: Array (Either String String)
-  , messageVisibility :: Visibility
-  , hasResults :: Boolean
-  , cachingEnabled :: Maybe Boolean -- Nothing if the option isn't available
-  , input :: Maybe Port
-  , output :: Maybe Port
-  , canceler :: Canceler SlamDataEffects
+  { accessType ∷ AccessType
+  , visibility ∷ Visibility
+  , runState ∷ RunState
+  , tickStopper ∷ Slam Unit
+  , isCollapsed ∷ Boolean
+  , messages ∷ Array (Either String String)
+  , messageVisibility ∷ Visibility
+  , hasResults ∷ Boolean
+  , cachingEnabled ∷ Maybe Boolean -- Nothing if the option isn't available
+  , input ∷ Maybe Port
+  , output ∷ Maybe Port
+  , canceler ∷ Canceler SlamDataEffects
   }
 
 type CellStateP = ParentState CellState AnyCellState CellQuery InnerCellQuery Slam Unit
 
 -- | Creates an initial `CellState` value for an editor cell.
-initEditorCellState :: CellState
+initEditorCellState ∷ CellState
 initEditorCellState =
   { accessType: Editable
   , visibility: Visible
@@ -125,7 +127,7 @@ initEditorCellState =
   }
 
 -- | Creates an initial `CellState` value for a results cell.
-initResultsCellState :: CellState
+initResultsCellState ∷ CellState
 initResultsCellState =
   { accessType: Editable
   , visibility: Visible
@@ -141,48 +143,48 @@ initResultsCellState =
   , canceler: mempty
   }
 
-_accessType :: LensP CellState AccessType
+_accessType ∷ LensP CellState AccessType
 _accessType = lens _.accessType (_ { accessType = _ })
 
-_visibility :: LensP CellState Visibility
+_visibility ∷ LensP CellState Visibility
 _visibility = lens _.visibility (_ { visibility = _ })
 
-_runState :: LensP CellState RunState
+_runState ∷ LensP CellState RunState
 _runState = lens _.runState (_ { runState = _ })
 
-_tickStopper :: LensP CellState (Slam Unit)
+_tickStopper ∷ LensP CellState (Slam Unit)
 _tickStopper = lens _.tickStopper (_ { tickStopper = _ })
 
-_isCollapsed :: LensP CellState Boolean
+_isCollapsed ∷ LensP CellState Boolean
 _isCollapsed = lens _.isCollapsed (_ { isCollapsed = _ })
 
-_messages :: LensP CellState (Array (Either String String))
+_messages ∷ LensP CellState (Array (Either String String))
 _messages = lens _.messages (_ { messages = _ })
 
-_messageVisibility :: LensP CellState Visibility
+_messageVisibility ∷ LensP CellState Visibility
 _messageVisibility = lens _.messageVisibility (_ { messageVisibility = _ })
 
-_hasResults :: LensP CellState Boolean
+_hasResults ∷ LensP CellState Boolean
 _hasResults = lens _.hasResults (_ { hasResults = _ })
 
-_cachingEnabled :: TraversalP CellState Boolean
+_cachingEnabled ∷ TraversalP CellState Boolean
 _cachingEnabled =
-  wander \f s ->
+  wander \f s →
     case s.cachingEnabled of
-      Nothing -> pure s
-      Just b -> f b <#> \b' -> s { cachingEnabled = Just b' }
+      Nothing → pure s
+      Just b → f b <#> \b' → s { cachingEnabled = Just b' }
 
 -- | The last input value passed into the cell when requesting evaluation.
-_input :: LensP CellState (Maybe Port)
+_input ∷ LensP CellState (Maybe Port)
 _input = lens _.input (_ { input = _ })
 
 -- | The last output value computed for the cell. This may not be up to date
 -- | with the exact state of the cell, but is the most recent result from when
 -- | the cell was evaluated.
-_output :: LensP CellState (Maybe Port)
+_output ∷ LensP CellState (Maybe Port)
 _output = lens _.output (_ { output = _ })
 
-_canceler :: LensP CellState (Canceler SlamDataEffects)
+_canceler ∷ LensP CellState (Canceler SlamDataEffects)
 _canceler = lens _.canceler _{canceler = _}
 
 data AnyCellState
@@ -197,58 +199,64 @@ data AnyCellState
   | APIState API.StateP
   | APIResultsState APIResults.State
   | NextState Next.State
+  | SaveState Save.State
 
-_AceState :: PrismP AnyCellState Ace.StateP
-_AceState = prism' AceState \s -> case s of
-  AceState s' -> Just s'
-  _ -> Nothing
+_AceState ∷ PrismP AnyCellState Ace.StateP
+_AceState = prism' AceState \s → case s of
+  AceState s' → Just s'
+  _ → Nothing
 
-_ExploreState :: PrismP AnyCellState Explore.StateP
-_ExploreState = prism' ExploreState \s -> case s of
-  ExploreState s' -> Just s'
-  _ -> Nothing
+_ExploreState ∷ PrismP AnyCellState Explore.StateP
+_ExploreState = prism' ExploreState \s → case s of
+  ExploreState s' → Just s'
+  _ → Nothing
 
-_MarkdownState :: PrismP AnyCellState Markdown.StateP
-_MarkdownState = prism' MarkdownState \s -> case s of
-  MarkdownState s' -> Just s'
-  _ -> Nothing
+_MarkdownState ∷ PrismP AnyCellState Markdown.StateP
+_MarkdownState = prism' MarkdownState \s → case s of
+  MarkdownState s' → Just s'
+  _ → Nothing
 
-_SearchState :: PrismP AnyCellState Search.State
-_SearchState = prism' SearchState \s -> case s of
-  SearchState s' -> Just s'
-  _ -> Nothing
+_SearchState ∷ PrismP AnyCellState Search.State
+_SearchState = prism' SearchState \s → case s of
+  SearchState s' → Just s'
+  _ → Nothing
 
-_JTableState :: PrismP AnyCellState JTable.State
-_JTableState = prism' JTableState \s -> case s of
-  JTableState s' -> Just s'
-  _ -> Nothing
+_JTableState ∷ PrismP AnyCellState JTable.State
+_JTableState = prism' JTableState \s → case s of
+  JTableState s' → Just s'
+  _ → Nothing
 
-_VizState :: PrismP AnyCellState Viz.StateP
-_VizState = prism' VizState \s -> case s of
-  VizState s' -> Just s'
-  _ -> Nothing
+_VizState ∷ PrismP AnyCellState Viz.StateP
+_VizState = prism' VizState \s → case s of
+  VizState s' → Just s'
+  _ → Nothing
 
-_ChartState :: PrismP AnyCellState Chart.StateP
-_ChartState = prism' ChartState \s -> case s of
-  ChartState s' -> Just s'
-  _ -> Nothing
+_ChartState ∷ PrismP AnyCellState Chart.StateP
+_ChartState = prism' ChartState \s → case s of
+  ChartState s' → Just s'
+  _ → Nothing
 
-_DownloadState :: PrismP AnyCellState Download.State
-_DownloadState = prism' DownloadState \s -> case s of
-  DownloadState s' -> Just s'
-  _ -> Nothing
+_DownloadState ∷ PrismP AnyCellState Download.State
+_DownloadState = prism' DownloadState \s → case s of
+  DownloadState s' → Just s'
+  _ → Nothing
 
-_APIState :: PrismP AnyCellState API.StateP
-_APIState = prism' APIState \s -> case s of
-  APIState s' -> Just s'
-  _ -> Nothing
+_APIState ∷ PrismP AnyCellState API.StateP
+_APIState = prism' APIState \s → case s of
+  APIState s' → Just s'
+  _ → Nothing
 
-_APIResultsState :: PrismP AnyCellState APIResults.State
-_APIResultsState = prism' APIResultsState \s -> case s of
-  APIResultsState s' -> Just s'
-  _ -> Nothing
+_APIResultsState ∷ PrismP AnyCellState APIResults.State
+_APIResultsState = prism' APIResultsState \s → case s of
+  APIResultsState s' → Just s'
+  _ → Nothing
 
-_NextState :: PrismP AnyCellState Next.State
-_NextState = prism' NextState \s -> case s of
-  NextState s' -> Just s'
-  _ -> Nothing
+_NextState ∷ PrismP AnyCellState Next.State
+_NextState = prism' NextState \s → case s of
+  NextState s' → Just s'
+  _ → Nothing
+
+_SaveState ∷ PrismP AnyCellState Save.State
+_SaveState = prism' SaveState \s → case s of
+  SaveState s' → Just s'
+  _ → Nothing

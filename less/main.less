@@ -387,6 +387,18 @@ ol.breadcrumb {
             font-size: 16px;
             .glyph-image {
                 height: 16px;
+                width: 16px;
+                &.chart-glyph, &.code-glyph {
+                    background-size: 100% 100%;
+                    display: inline-block;
+                    margin-top: 7px;
+                }
+                &.chart-glyph {
+                    background-image: url("/img/pie.svg");
+                }
+                &.code-glyph {
+                    background-image: url("/img/code-icon-white.svg");
+                }
             }
         }
 
@@ -758,3 +770,4 @@ button {
 @import "form-builder";
 @import "share-permissions";
 @import "next-cell-card";
+@import "save-card";

@@ -131,7 +131,7 @@ cellEval q =
         let
           template = Search.queryToSQL fields query
           sql = Quasar.templated resource template
-          tempOutputResource = temporaryOutputResource info
+          tempOutputResource = R.Mount $ R.View $ temporaryOutputResource info
 
         WC.tell ["Generated SQL: " ⊕ sql]
 

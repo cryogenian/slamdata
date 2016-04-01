@@ -32,6 +32,7 @@ module SlamData.Notebook.Cell.Component.Query
   , _APIQuery
   , _APIResultsQuery
   , _NextQuery
+  , _SaveQuery
   , module SlamData.Notebook.Cell.Common.EvalQuery
   ) where
 
@@ -61,6 +62,7 @@ import SlamData.Notebook.Cell.Port (Port)
 import SlamData.Notebook.Cell.Search.Component.Query as Search
 import SlamData.Notebook.Cell.Viz.Component.Query as Viz
 import SlamData.Notebook.Cell.Next.Component.Query as Next
+import SlamData.Notebook.Cell.Save.Component.Query as Save
 
 -- | The common query algebra for a notebook cell.
 -- |
@@ -83,7 +85,7 @@ import SlamData.Notebook.Cell.Next.Component.Query as Next
 data CellQuery a
   = RunCell a
   | StopCell a
-  | UpdateCell CellEvalInputPre (Maybe Port -> a)
+  | UpdateCell CellEvalInputPre (Maybe Port → a)
   | RefreshCell a
   | TrashCell a
   | ToggleCollapsed a
@@ -91,8 +93,8 @@ data CellQuery a
   | ToggleCaching a
   | ShareCell a
   | Tick Milliseconds a
-  | GetOutput (Maybe Port -> a)
-  | SaveCell CellId CellType (Cell.Model -> a)
+  | GetOutput (Maybe Port → a)
+  | SaveCell CellId CellType (Cell.Model → a)
   | LoadCell Cell.Model a
   | SetCellAccessType Na.AccessType a
 
@@ -100,10 +102,10 @@ type CellQueryP = Coproduct CellQuery (ChildF Unit InnerCellQuery)
 
 type InnerCellQuery = Coproduct CellEvalQuery AnyCellQuery
 
-_CellEvalQuery :: forall a. PrismP (InnerCellQuery a) (CellEvalQuery a)
+_CellEvalQuery ∷ forall a. PrismP (InnerCellQuery a) (CellEvalQuery a)
 _CellEvalQuery = _Left
 
-_AnyCellQuery :: forall a. PrismP (InnerCellQuery a) (AnyCellQuery a)
+_AnyCellQuery ∷ forall a. PrismP (InnerCellQuery a) (AnyCellQuery a)
 _AnyCellQuery = _Right
 
 data AnyCellQuery a
@@ -118,58 +120,64 @@ data AnyCellQuery a
   | APIQuery (API.QueryP a)
   | APIResultsQuery (APIResults.QueryP a)
   | NextQuery (Next.QueryP a)
+  | SaveQuery (Save.QueryP a)
 
-_AceQuery :: forall a. PrismP (AnyCellQuery a) (Ace.QueryP a)
-_AceQuery = prism' AceQuery \q -> case q of
-  AceQuery q' -> Just q'
-  _ -> Nothing
+_AceQuery ∷ forall a. PrismP (AnyCellQuery a) (Ace.QueryP a)
+_AceQuery = prism' AceQuery \q → case q of
+  AceQuery q' → Just q'
+  _ → Nothing
 
-_ExploreQuery :: forall a. PrismP (AnyCellQuery a) (Explore.QueryP a)
-_ExploreQuery = prism' ExploreQuery \q -> case q of
-  ExploreQuery q' -> Just q'
-  _ -> Nothing
+_ExploreQuery ∷ forall a. PrismP (AnyCellQuery a) (Explore.QueryP a)
+_ExploreQuery = prism' ExploreQuery \q → case q of
+  ExploreQuery q' → Just q'
+  _ → Nothing
 
-_MarkdownQuery :: forall a. PrismP (AnyCellQuery a) (Markdown.QueryP a)
-_MarkdownQuery = prism' MarkdownQuery \q -> case q of
-  MarkdownQuery q' -> Just q'
-  _ -> Nothing
+_MarkdownQuery ∷ forall a. PrismP (AnyCellQuery a) (Markdown.QueryP a)
+_MarkdownQuery = prism' MarkdownQuery \q → case q of
+  MarkdownQuery q' → Just q'
+  _ → Nothing
 
-_SearchQuery :: forall a. PrismP (AnyCellQuery a) (Search.Query a)
-_SearchQuery = prism' SearchQuery \q -> case q of
-  SearchQuery q' -> Just q'
-  _ -> Nothing
+_SearchQuery ∷ forall a. PrismP (AnyCellQuery a) (Search.Query a)
+_SearchQuery = prism' SearchQuery \q → case q of
+  SearchQuery q' → Just q'
+  _ → Nothing
 
-_JTableQuery :: forall a. PrismP (AnyCellQuery a) (JTable.QueryP a)
-_JTableQuery = prism' JTableQuery \q -> case q of
-  JTableQuery q' -> Just q'
-  _ -> Nothing
+_JTableQuery ∷ forall a. PrismP (AnyCellQuery a) (JTable.QueryP a)
+_JTableQuery = prism' JTableQuery \q → case q of
+  JTableQuery q' → Just q'
+  _ → Nothing
 
-_VizQuery :: forall a. PrismP (AnyCellQuery a) (Viz.QueryP a)
-_VizQuery = prism' VizQuery \q -> case q of
-  VizQuery q' -> Just q'
-  _ -> Nothing
+_VizQuery ∷ forall a. PrismP (AnyCellQuery a) (Viz.QueryP a)
+_VizQuery = prism' VizQuery \q → case q of
+  VizQuery q' → Just q'
+  _ → Nothing
 
-_ChartQuery :: forall a. PrismP (AnyCellQuery a) (Chart.QueryP a)
-_ChartQuery = prism' ChartQuery \q -> case q of
-  ChartQuery q' -> Just q'
-  _ -> Nothing
+_ChartQuery ∷ forall a. PrismP (AnyCellQuery a) (Chart.QueryP a)
+_ChartQuery = prism' ChartQuery \q → case q of
+  ChartQuery q' → Just q'
+  _ → Nothing
 
-_DownloadQuery :: forall a. PrismP (AnyCellQuery a) (Download.QueryP a)
-_DownloadQuery = prism' DownloadQuery \q -> case q of
-  DownloadQuery q' -> Just q'
-  _ -> Nothing
+_DownloadQuery ∷ forall a. PrismP (AnyCellQuery a) (Download.QueryP a)
+_DownloadQuery = prism' DownloadQuery \q → case q of
+  DownloadQuery q' → Just q'
+  _ → Nothing
 
-_APIQuery :: forall a. PrismP (AnyCellQuery a) (API.QueryP a)
-_APIQuery = prism' APIQuery \q -> case q of
-  APIQuery q' -> Just q'
-  _ -> Nothing
+_APIQuery ∷ forall a. PrismP (AnyCellQuery a) (API.QueryP a)
+_APIQuery = prism' APIQuery \q → case q of
+  APIQuery q' → Just q'
+  _ → Nothing
 
-_APIResultsQuery :: forall a. PrismP (AnyCellQuery a) (APIResults.QueryP a)
-_APIResultsQuery = prism' APIResultsQuery \q -> case q of
-  APIResultsQuery q' -> Just q'
-  _ -> Nothing
+_APIResultsQuery ∷ forall a. PrismP (AnyCellQuery a) (APIResults.QueryP a)
+_APIResultsQuery = prism' APIResultsQuery \q → case q of
+  APIResultsQuery q' → Just q'
+  _ → Nothing
 
-_NextQuery :: forall a. PrismP (AnyCellQuery a) (Next.QueryP a)
-_NextQuery = prism' NextQuery \q -> case q of
-  NextQuery q' -> Just q'
-  _ -> Nothing
+_NextQuery ∷ forall a. PrismP (AnyCellQuery a) (Next.QueryP a)
+_NextQuery = prism' NextQuery \q → case q of
+  NextQuery q' → Just q'
+  _ → Nothing
+
+_SaveQuery ∷ forall a. PrismP (AnyCellQuery a) (Save.QueryP a)
+_SaveQuery = prism' SaveQuery \q → case q of
+  SaveQuery q' → Just q'
+  _ → Nothing

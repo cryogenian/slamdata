@@ -84,6 +84,7 @@ import SlamData.Notebook.Cell.Explore.Component (exploreComponent)
 import SlamData.Notebook.Cell.JTable.Component (jtableComponent)
 import SlamData.Notebook.Cell.Markdown.Component (markdownComponent)
 import SlamData.Notebook.Cell.Next.Component (nextCellComponent)
+import SlamData.Notebook.Cell.Save.Component (saveCellComponent)
 import SlamData.Notebook.Cell.Markdown.Eval (markdownEval, markdownSetup)
 import SlamData.Notebook.Cell.Model as Cell
 import SlamData.Notebook.Cell.Port.VarMap as Port
@@ -265,6 +266,7 @@ cellTypeComponent Download _ _ = downloadComponent
 cellTypeComponent API _ _ = apiComponent
 cellTypeComponent APIResults _ _ = apiResultsComponent
 cellTypeComponent NextAction _ _ = nextCellComponent
+cellTypeComponent Save _ _ = saveCellComponent
 
 cellTypeInitialState :: CellType -> CellState
 cellTypeInitialState (Ace SQLMode) =
@@ -280,6 +282,7 @@ cellTypeInitialState Download = initEditorCellState
 cellTypeInitialState API = initEditorCellState
 cellTypeInitialState APIResults = initResultsCellState
 cellTypeInitialState NextAction = initEditorCellState
+cellTypeInitialState Save = initEditorCellState
 
 aceEvalMode :: AceMode -> AceEvaluator
 aceEvalMode MarkdownMode = markdownEval
