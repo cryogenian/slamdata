@@ -464,9 +464,12 @@ saveNotebook _ = H.get >>= \st → do
 
   isNewExploreNotebook ∷ State → Boolean
   isNewExploreNotebook { name, cells } =
-    (List.toUnfoldable (map _.ty cells) == [Explore, JTable])
-    -- We should save if name is changed from "Untitled Notebook" here.
-    && theseRight name == Just Config.newNotebookName
+    let
+      cellArrays = List.toUnfoldable (map _.ty cells)
+      nameHasntBeenModified = theseRight name == Just Config.newNotebookName
+    in
+      nameHasntBeenModified
+      && (cellArrays == [ Explore ] || cellArrays == [ Explore, JTable ])
 
   -- Finds a new name for a notebook in the specified parent directory, using
   -- a name value as a basis to start with.
