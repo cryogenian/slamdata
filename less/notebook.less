@@ -1,54 +1,69 @@
-.sd-notebook {
+.sd-board {
   position: absolute;
-  display: block;
-  padding-top: 113px;
-  height: 100%;
-  width: 100%;
-  background-color: pink;
+  top: 114px;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  background-color: #fff;
+  background-size: 1.5rem 1.5rem;
+  background-position: center top;
+  background-image:
+    linear-gradient(to right, #E8E9E9 1px, transparent 1px),
+    linear-gradient(to bottom, #E8E9E9 1px, transparent 1px);
 }
 
 .sd-notebook-hidden-top-menu {
-    padding-top: 0px;
+    top: 0px;
     .new-card-menu {
         display: none;
     }
 }
 
 .sd-deck {
-  display: block;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  background-color: red;
   position: relative;
+  margin-top: 1.5rem;
+  margin-left: auto;
+  margin-right: auto;
+  width: calc(25 * 1.5rem);
+  height: calc(20 * 1.5rem);
+  overflow: hidden;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+	box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+  border-top: 1.5rem solid #999;
+  border-bottom: 1.5rem solid #999;
+  background: #ddd;
 }
 
 .sd-card-slider {
   display: block;
   height: 100%;
-  position: relative;
 }
 
 .sd-card {
-  min-height: 100%;
   float: left;
-  position: relative;
+  min-height: 100%;
+  height: 100%;
+  background: white;
 }
 
 .sd-card-gripper {
-  display: inline-block;
-  background-color: #999;
-  width: 2rem;
+  display: block;
+  position: relative;
+  background-color: #bbb;
+  width: 1.5rem;
   height: 100%;
-  position: absolute;
   float: left;
 }
 
-.sd-card-gripper:hover {
-  background-color: #aaa;
+.sd-card-gripper:nth-child(2) {
+  float: right;
 }
 
-.sd-card-gripper::before {
+.sd-card-gripper:hover {
+  background-color: #ccc;
+}
+
+.sd-card-gripper::after {
   display: block;
   position: absolute;
   content: "⬌";

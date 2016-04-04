@@ -1,75 +1,52 @@
-ul.next-action-card, .deck-backside ul {
+ul.next-action-card {
     list-style: none;
-    padding: 0;
     margin: 0;
-    margin-top: 12px;
-
-    width: 720px;
-    margin: auto;
+    padding: 0.75rem;
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-between;
+    height: 100%;
     li {
-        margin-top: 12px;
-        display: inline-block;
+        margin-bottom: 0.75rem;
         button {
             border: none;
+            background: #aaa;
             color: #fff;
-            margin-right: 12px;
-            width: 108px;
-            height: 108px;
-            font-size: 44px;
-            background: #337ab7;
-            div {
-                height: 44px;
-                width: 44px;
-            }
-            .chart-glyph, .code-glyph {
-                background-size: 100% 100%;
-                display: inline-block;
-            }
-            .chart-glyph {
-                background-image: url("/img/pie.svg");
-            }
-            .code-glyph {
-                background-image: url("/img/code-icon-white.svg");
+            width: 6rem;
+            height: 6rem;
+            font-size: 0.75rem;
+            img {
+              width: 0.75rem;
+              height: 0.75rem;
             }
             &[disabled] {
                 background: #ccc;
-                color: #888;
-                .chart-glyph {
-                    background-image: url("/img/pie-dark.svg");
-                }
-                .code-glyph {
-                    background-image: url("/img/code-icon-dark.svg");
-                }
+                color: #666;
                 &:hover {
                     background: #ccc;
-                    color: #888;
-                    border: none;
-                    .chart-glyph {
-                        background-image: url("/img/pie-dark.svg");
-                    }
-                    .code-glyph {
-                        background-image: url("/img/code-icon-dark.svg");
-                    }
+                    color: #666;
                 }
             }
             p {
-                font-size: 14px;
-                margin-bottom: 0;
+                font-size: 0.75rem;
+                margin: 0;
+                padding: 0;
+                line-height: 0.75rem;
             }
             &:hover {
-                border: 1px solid #337ab7;
-                color: #337ab7;
-                background: white;
-                .chart-glyph {
-                    background-image: url("/img/pie-blue.svg");
-                }
-                .code-glyph {
-                    background-image: url("/img/code-icon-blue.svg");
-                }
+                background: #337ab7;
             }
-
         }
     }
+}
+
+.next-action-card li:last-child {
+  margin-left: 0.75rem;
+}
+
+.next-action-card:after {
+    content: "";
+    flex: auto;
 }
 
 .next-action-card.alert {
@@ -77,14 +54,5 @@ ul.next-action-card, .deck-backside ul {
         margin-top: 10px;
         margin-bottom: 10px;
         text-align: center;
-    }
-}
-
-.deck-backside {
-    margin-top: 12px;
-    form {
-        width: 720px;
-        margin: auto;
-        padding-right: 12px;
     }
 }

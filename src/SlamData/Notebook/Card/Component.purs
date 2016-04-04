@@ -45,10 +45,9 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
-import Halogen.Themes.Bootstrap3 as B
-
 import SlamData.Effects (Slam)
-import SlamData.Notebook.Card.CardType (nextCardTypes)
+import SlamData.Notebook.AccessType (AccessType(..))
+import SlamData.Notebook.Card.CardType (CardType, AceMode(..), cardGlyph, cardName, nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (prepareCardEvalInput)
 import SlamData.Notebook.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 
@@ -57,7 +56,7 @@ import SlamData.Notebook.Card.Component.Render as CR
 import SlamData.Notebook.Card.Component.State as CS
 import SlamData.Notebook.Card.Port (_Blocked)
 import SlamData.Notebook.Card.RunState (RunState(..))
-import SlamData.Render.Common (fadeWhen)
+import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 
 import Utils.AffableProducer (produce)
@@ -97,8 +96,9 @@ makeCardComponent def = makeCardComponentPart def render
     shown cs =
       HH.div [ HP.classes $ join [ containerClasses, collapsedClass  ] ]
       $ fold
-          [ CR.header def.cardType cs
-          , [ HH.div [ HP.classes ([B.row] ⊕ (fadeWhen shouldCollapse))
+          [
+            header def.cardType cs
+          , [ HH.div [ HP.classes ([])
                      , hideIfCollapsed
                      ]
               [ HH.slot unit \_ → {component, initialState} ]

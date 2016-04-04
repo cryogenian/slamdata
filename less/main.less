@@ -33,7 +33,8 @@ body {
     font-family: Ubuntu, Arial, Helvetica, sans-serif;
     height: 100%;
     div.filesystem, div.dashboard {
-        min-height: 100%;
+        height: 100%;
+        width: 100%;
     }
 }
 
@@ -46,7 +47,6 @@ body {
         padding-top: 0;
     }
     .card-input, .card-output-label {
-        display: none;
     }
     .notebook-card .row.card-output div.card-output-result {
         width: 100%;
@@ -348,10 +348,7 @@ ol.breadcrumb {
 .notebook-card {
   display: block;
   min-height: 100%;
-  margin-left: 2rem;
-    .card-controls {
-    }
-
+  margin-left: 1.5rem;
     .card-header {
         display: inline-block;
         background: #777;

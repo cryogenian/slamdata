@@ -38,6 +38,10 @@ module SlamData.Notebook.Deck.Component.State
   , _failingCards
   , _stateMode
   , _backsided
+  , _initialSliderX
+  , _sliderTransition
+  , _sliderTranslateX
+  , _nextActionCardElement
   , addCard
   , addCard'
   , removeCards
@@ -52,8 +56,8 @@ module SlamData.Notebook.Deck.Component.State
   , cardsOfType
   , fromModel
   , deckPath
-
   , virtualState
+  , activeCardIndex
   ) where
 
 import SlamData.Prelude
@@ -68,6 +72,8 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as S
 import Data.StrMap as SM
+
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
@@ -130,6 +136,10 @@ type State =
   , globalVarMap ∷ Port.VarMap
   , stateMode ∷ StateMode
   , backsided ∷ Boolean
+  , initialSliderX :: Maybe Number
+  , sliderTransition :: Boolean
+  , sliderTranslateX :: Number
+  , nextActionCardElement :: Maybe HTMLElement
   }
 
 -- | A record used to represent card definitions in the notebook.
@@ -159,6 +169,10 @@ initialDeck browserFeatures =
   , failingCards: S.empty
   , stateMode: Ready
   , backsided: false
+  , initialSliderX: Nothing
+  , sliderTransition: false
+  , sliderTranslateX: 0.0
+  , nextActionCardElement: Nothing
   }
 
 -- | The unique identifier of the deck. If it's a fresh, unsaved deck, the id
@@ -233,6 +247,23 @@ _stateMode = lens _.stateMode _{stateMode = _}
 -- | Is `true` if backside of deck is displayed
 _backsided ∷ ∀ a r. LensP {backsided ∷ a |r} a
 _backsided = lens _.backsided _{backsided = _}
+
+-- | The x position of the card slider at the start of the slide interaction in
+-- | pixels. If `Nothing` slide interaction is not in progress.
+_initialSliderX :: LensP State (Maybe Number)
+_initialSliderX = lens _.initialSliderX _{initialSliderX = _}
+
+-- | Whether the card slider should move with transition or snap
+_sliderTransition :: LensP State Boolean
+_sliderTransition = lens _.sliderTransition _{sliderTransition = _}
+
+-- | The current x translation of the card slider during the slide interaction.
+_sliderTranslateX :: LensP State Number
+_sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
+
+-- | The next action card HTML element
+_nextActionCardElement :: LensP State (Maybe HTMLElement)
+_nextActionCardElement = lens _.nextActionCardElement _{nextActionCardElement = _}
 
 -- | Adds a new card to the notebook.
 -- |
@@ -462,10 +493,10 @@ fromModel browserFeatures path deckId { cards, dependencies, name } =
     ({ id: deckId
     , fresh: maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
     , accessType: ReadOnly
-    , cards: foldMap cardDefFromModel cards
+    , cards: cardDefs
     , cardTypes: foldl addCardIdTypePair M.empty cards
     , dependencies
-    , activeCardId: Nothing
+    , activeCardId: _.id <$> L.last cardDefs
     , name
     , browserFeatures
     , viewingCard: Nothing
@@ -477,8 +508,14 @@ fromModel browserFeatures path deckId { cards, dependencies, name } =
     , failingCards: S.empty
     , stateMode: Loading
     , backsided: false
+    , initialSliderX: Nothing
+    , sliderTransition: false
+    , sliderTranslateX: 0.0
+    , nextActionCardElement: Nothing
     } ∷ State)
   where
+  cardDefs = foldMap cardDefFromModel cards
+
   addCardIdTypePair mp {cardId, cardType} = M.insert cardId cardType mp
 
   cardDefFromModel ∷ Card.Model → List CardDef
@@ -491,3 +528,8 @@ fromModel browserFeatures path deckId { cards, dependencies, name } =
         , ty: cardType
         , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
         }
+
+activeCardIndex :: State -> Int
+activeCardIndex st = fromMaybe (L.length st.cards) (L.findIndex isActiveCard st.cards)
+  where
+  isActiveCard = (== st.activeCardId) <<< Just <<< _.id

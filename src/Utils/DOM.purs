@@ -35,14 +35,14 @@ foreign import waitLoaded :: forall e. Aff (dom :: DOM |e) Unit
 foreign import onLoad :: forall e. Eff e Unit -> Eff e Unit
 foreign import blur :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
 foreign import focus :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
-foreign import offsetLeft :: forall e. HTMLElement -> Eff (dom :: DOM|e) Int
+foreign import offsetLeft :: forall e. HTMLElement -> Eff (dom :: DOM|e) Number
 foreign import getBoundingClientRect :: forall eff.  HTMLElement -> Eff (dom :: DOM | eff) DOMRect
 
 type DOMRect =
-  { left :: Int
-  , top :: Int
-  , width :: Int
-  , height :: Int
+  { left :: Number
+  , top :: Number
+  , width :: Number
+  , height :: Number
   }
 
 elementToHTMLElement :: Element -> HTMLElement
