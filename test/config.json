@@ -7,7 +7,7 @@
     "selenium": {
         "jar": "test/jars/selenium.jar",
         "browser": "firefox",
-        "waitTime": 15000
+        "waitTime": 30000
     },
     "sauceLabs": {
         "enabled": false,
