@@ -6,6 +6,6 @@
 , "quasar-advanced":
     { "owner": "slamdata"
     , "repo": "quasar-advanced"
-    , "tag": "build-master-264"
+    , "tag": "build-master-278"
     }
 }
