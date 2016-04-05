@@ -37,6 +37,7 @@ import Data.Lens ((.~))
 import Data.MediaType.Common (textCSV, applicationJSON)
 import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
 import Data.String as S
+import Data.String.Regex as Rgx
 import Data.URI (runParseAbsoluteURI)
 
 import Halogen as H
@@ -203,8 +204,10 @@ eval (FileListChanged el next) = do
       in H.fromAff err
     Just f -> do
       { path, sort, salt } <- H.get
-      name <- H.fromAff $ H.fromEff (Cf.name f)
-                >>= Auth.authed <<< API.getNewName path
+      name <-
+        H.fromAff $ H.fromEff (Cf.name f)
+          <#> Rgx.replace (Rgx.regex "/" Rgx.noFlags{global=true}) ":"
+          >>= Auth.authed <<< API.getNewName path
 
       reader <- H.fromEff Cf.newReaderEff
       content' <- H.fromAff $ Cf.readAsBinaryString f reader

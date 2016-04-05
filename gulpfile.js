@@ -175,7 +175,7 @@ gulp.task("bundle", [
 gulp.task("bundle-test",
           ["bundle"],
            function() {
-    sequence("less", "remove-css-fixed-positions", "make", function() {
+    sequence("less", "remove-css-fixed-positions", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
             output: "test/index.js",

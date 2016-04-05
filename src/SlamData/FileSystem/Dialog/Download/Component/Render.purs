@@ -32,7 +32,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Aff (reqHeadersToJSON)
+import Quasar.Aff (reqHeadersToJSON, encodeURI)
 import Quasar.Paths as Config
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
@@ -44,7 +44,7 @@ import SlamData.FileSystem.Resource (Resource, isFile, resourcePath, isHidden)
 import SlamData.Render.Common (fadeWhen)
 import SlamData.Render.CSS as Rc
 
-render :: State -> H.ComponentHTML Query
+render ∷ State → H.ComponentHTML Query
 render state =
   modalDialog
   [ modalHeader "Download"
@@ -65,7 +65,7 @@ render state =
       ]
   ]
 
-resField :: State -> H.ComponentHTML Query
+resField ∷ State → H.ComponentHTML Query
 resField state =
   HH.div
     [ HP.classes [ B.formGroup, Rc.downloadSource, B.clearfix ] ]
@@ -80,7 +80,7 @@ resField state =
             [ HP.classes [ B.inputGroupBtn ] ]
             [ HH.button
                 [ HP.classes [ B.btn, B.btnDefault ]
-                , HE.onClick \_ -> HEH.stopPropagation $> H.action ToggleList
+                , HE.onClick \_ → HEH.stopPropagation $> H.action ToggleList
                 ]
                 [ HH.span [ HP.classes [ B.caret ] ]  [ ] ]
             ]
@@ -88,26 +88,26 @@ resField state =
     , HH.ul
         [ HP.classes
             $ [ B.listGroup, Rc.fileListGroup ]
-            <> fadeWhen (not $ state.showSourcesList)
+            ⊕ fadeWhen (not $ state.showSourcesList)
         ]
         $ resItem <$> state.sources
     ]
   where
-  resValue :: String
+  resValue ∷ String
   resValue = either id resourcePath $ state.source
 
-resItem :: Resource -> H.ComponentHTML Query
+resItem ∷ Resource → H.ComponentHTML Query
 resItem res =
   HH.button
     [ HP.classes
         $ [ B.listGroupItem ]
-        <> if isHidden res then [ Rc.itemHidden ] else []
+        ⊕ if isHidden res then [ Rc.itemHidden ] else []
     , HE.onClick (HE.input_ (SourceClicked res))
     ]
     [ HH.text (resourcePath res) ]
 
 
-fldName :: State -> H.ComponentHTML Query
+fldName ∷ State → H.ComponentHTML Query
 fldName state =
   HH.div
     [ HP.classes [ B.formGroup, Rc.downloadTarget ] ]
@@ -126,18 +126,18 @@ fldName state =
         ]
     ]
   where
-  tgtValue :: String
+  tgtValue ∷ String
   tgtValue = either id id $ state.targetName
 
   ext | compressed state = ".zip"
       | isLeft (state.options) = ".csv"
       | otherwise = ".json"
 
-compressed :: State -> Boolean
+compressed ∷ State → Boolean
 compressed state =
- either (const false) (not <<< isFile) (state.source) || state.compress
+ either (const false) (not ∘ isFile) (state.source) || state.compress
 
-chkCompress :: State -> H.ComponentHTML Query
+chkCompress ∷ State → H.ComponentHTML Query
 chkCompress state =
   HH.div [ HP.classes [ B.formGroup ] ]
   [ HH.label_ [ HH.span_ [ HH.text "Compress" ]
@@ -150,7 +150,7 @@ chkCompress state =
              ]
   ]
 
-options :: State -> H.ComponentHTML Query
+options ∷ State → H.ComponentHTML Query
 options state =
   let opts = state.options
       active = [ HP.class_ B.active ]
@@ -170,15 +170,15 @@ options state =
      , either optionsCSV optionsJSON opts
      ]
 
-message :: State -> H.ComponentHTML Query
+message ∷ State → H.ComponentHTML Query
 message state =
   let msg = state.error
   in HH.div [ HP.classes $ [ B.alert, B.alertDanger, B.alertDismissable ]
-             <> fadeWhen (isNothing msg)
+             ⊕ fadeWhen (isNothing msg)
            ]
-     $ maybe [ ] (pure <<< HH.text) msg
+     $ maybe [ ] (pure ∘ HH.text) msg
 
-btnCancel :: State -> H.ComponentHTML Query
+btnCancel ∷ State → H.ComponentHTML Query
 btnCancel state =
   HH.button [ HP.classes [ B.btn ]
            , HE.onClick (HE.input_ Dismiss)
@@ -187,21 +187,22 @@ btnCancel state =
            ]
   [ HH.text "Cancel" ]
 
-btnDownload :: State -> H.ComponentHTML Query
+btnDownload ∷ State → H.ComponentHTML Query
 btnDownload state =
   let headers = encodeURIComponent $ show $ reqHeadersToJSON $ D.toHeaders state
-      url = printPath Config.dataUrl
-            <> either (const "#") resourcePath (state.source)
-            <> "?request-headers="
-            <> headers
+      url = (encodeURI
+             $ printPath Config.dataUrl
+             ⊕ either (const "#") resourcePath (state.source))
+            ⊕ "?request-headers="
+            ⊕ headers
       disabled = isJust $ state.error
   in HH.button
          [ HP.classes $ [ B.btn, B.btnPrimary ]
-           <> if disabled
+           ⊕ if disabled
               then [ B.disabled ]
               else [ ]
          , HP.disabled disabled
-         , HE.onClick (\_ -> HEH.preventDefault $> H.action (NewTab url)
+         , HE.onClick (\_ → HEH.preventDefault $> H.action (NewTab url)
                      )
          , ARIA.label "Proceed download"
          , HP.title "Proceed download"
@@ -210,8 +211,8 @@ btnDownload state =
 
 
 
-optionsCSV :: D.CSVOptions -> H.ComponentHTML Query
-optionsCSV = Rd.optionsCSV (\lens v -> ModifyCSVOpts (lens .~ v))
+optionsCSV ∷ D.CSVOptions → H.ComponentHTML Query
+optionsCSV = Rd.optionsCSV (\lens v → ModifyCSVOpts (lens .~ v))
 
-optionsJSON :: D.JSONOptions -> H.ComponentHTML Query
-optionsJSON = Rd.optionsJSON (\lens v -> ModifyJSONOpts (lens .~ v))
+optionsJSON ∷ D.JSONOptions → H.ComponentHTML Query
+optionsJSON = Rd.optionsJSON (\lens v → ModifyJSONOpts (lens .~ v))

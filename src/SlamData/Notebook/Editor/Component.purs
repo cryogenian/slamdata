@@ -446,7 +446,6 @@ saveNotebook _ = H.get >>= \st → do
             else rename path oldName newName
 
       H.modify (_name .~ This savedName)
-
       -- We need to get the modified version of the notebook state.
       H.gets notebookPath >>= traverse_ \path' →
         let notebookHash =

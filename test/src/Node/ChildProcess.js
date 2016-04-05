@@ -42,6 +42,19 @@ exports.execSyncImpl = function(name, opts) {
     };
 };
 
+exports.execImpl = function(name) {
+    return function(cb, eb) {
+        return cp.exec(name, function(error) {
+            if (error !== null) {
+                return eb(error);
+            }
+            else {
+                return cb({});
+            }
+        });
+    };
+};
+
 
 exports.killImpl = function(pr) {
     return function() {

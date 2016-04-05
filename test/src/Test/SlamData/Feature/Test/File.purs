@@ -36,7 +36,7 @@ defaultAfterFile ∷ SlamFeature Unit
 defaultAfterFile = Interact.browseRootFolder
 
 afterRename ∷ SlamFeature Unit
-afterRename = Interact.deleteFile "Patients"
+afterRename = Interact.deleteFile "Ϡ⨁⟶≣ΜϞ"
 
 afterMove ∷ SlamFeature Unit
 afterMove = Interact.browseTestFolder *> Interact.deleteFile "Medical data"
@@ -61,7 +61,14 @@ test = do
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Patients"
     Expect.file "Patients"
+    Interact.renameFile "Patients" "Пациенты# #"
+    Expect.file "Пациенты# #"
+    Interact.renameFile "Пациенты# #" "Ϡ⨁⟶≣ΜϞ"
+    Expect.file "Ϡ⨁⟶≣ΜϞ"
     successMsg "Successfully renamed a folder"
+
+
+
 
   fileScenario afterMove "Move a folder" [] do
     Interact.browseTestFolder
