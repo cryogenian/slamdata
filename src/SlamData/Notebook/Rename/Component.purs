@@ -18,6 +18,7 @@ module SlamData.Notebook.Rename.Component where
 
 import SlamData.Prelude
 
+import Data.String as Str
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
@@ -68,6 +69,8 @@ render state =
 
 eval :: Natural Query RenameDSL
 eval (Ref el next) = H.modify (_{el = el}) $> next
-eval (SetText str next) = H.modify (_{value = str}) $> next
+eval (SetText str next) = do
+  H.modify (_{value = Str.replace "/" "" str})
+  pure next
 eval (Submit next) = (H.gets _.el >>= traverse_ (H.fromEff <<< blur)) $> next
 eval (Focus next) = (H.gets _.el >>= traverse_ (H.fromEff <<< focus)) $> next

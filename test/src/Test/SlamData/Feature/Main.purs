@@ -21,7 +21,7 @@ import Database.Mongo.Mongo (connect, close)
 
 import DOM (DOM)
 
-import Node.ChildProcess (ChildProcess, makeSpawnOption, stdout, stderr, spawn, kill, execSync)
+import Node.ChildProcess (ChildProcess, makeSpawnOption, stdout, stderr, spawn, kill, exec)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
 import Node.FS.Aff (unlink, mkdir)
@@ -274,8 +274,7 @@ main = do
     liftEff $ modifyRef procs (Arr.cons selenium)
 
     log $ gray "Restoring database"
-    execSync (restoreCmd rawConfig)
-      $ makeSpawnOption { stdio: ["pipe", "ignore", "pipe"]}
+    exec $ restoreCmd rawConfig
     log $ gray "Database restored"
 
     log $ magenta "Connecting database"
