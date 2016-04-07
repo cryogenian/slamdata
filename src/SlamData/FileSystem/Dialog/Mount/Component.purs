@@ -213,7 +213,7 @@ formatError err =
   "There was a problem saving the mount: " <> extract (message err)
   where
   extract msg =
-    either (const msg) id (jsonParser msg >>= decodeJson >>= (.? "error"))
+    either (const msg) id (jsonParser msg >>= decodeJson >>= (_ .? "error"))
 
 querySettings :: forall a. (forall s. SQ.SettingsQuery s a) -> DSL (Maybe a)
 querySettings q = (map scheme <$> H.gets _.settings) >>= \s ->

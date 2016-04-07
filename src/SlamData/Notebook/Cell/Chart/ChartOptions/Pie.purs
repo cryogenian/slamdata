@@ -147,7 +147,7 @@ mkSeries pbData =
     in Just $ EC.Rs record
 
   groupped :: Array (Array EC.PieSeriesRec)
-  groupped = map (map snd) $ A.groupBy (on eq ((!! 1) <<< split ":" <<< fst)) series
+  groupped = map (map snd) $ A.groupBy (on eq ((_ !! 1) <<< split ":" <<< fst)) series
 
   series :: Array (Tuple String EC.PieSeriesRec)
   series = map serie $ L.fromList $ M.toList group

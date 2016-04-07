@@ -53,7 +53,6 @@ import SlamData.Prelude
 import Control.Apply (lift2)
 import Control.Coroutine as CR
 import Control.Coroutine.Aff as ACR
-import Control.UI.Browser as Cu
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
@@ -62,7 +61,6 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Error.Class as Err
-import Control.MonadPlus (guard)
 import Control.UI.Browser (encodeURIComponent)
 
 import Data.Argonaut ((~>), (:=), (.?))
@@ -394,7 +392,7 @@ makeFile path mime content idToken perms =
       , url =
           encodeURI
           $ fromMaybe ""
-          $ (P.printPath ∘ (Paths.dataUrl </>))
+          $ (P.printPath ∘ (Paths.dataUrl </> _))
           <$> P.relativeTo path P.rootDir
       }
 
@@ -511,8 +509,8 @@ move src tgt idToken perms = do
           else Paths.dataUrl
     resourceUrl =
       either
-        (P.printPath ∘ (url </>) ∘ PU.rootifyFile)
-        (P.printPath ∘ (url </>) ∘ PU.rootify)
+        (P.printPath ∘ (url </> _) ∘ PU.rootifyFile)
+        (P.printPath ∘ (url </> _) ∘ PU.rootify)
         (R.getPath src)
     queryPart =
       "?request-headers="
@@ -876,7 +874,7 @@ renderQueryString = map go ∘ L.uncons ∘ SM.toList
 
 readError ∷ String → String → String
 readError msg input =
-  let responseError = JS.jsonParser input >>= JS.decodeJson >>= (.? "error")
+  let responseError = JS.jsonParser input >>= JS.decodeJson >>= (_ .? "error")
   in either (const msg) id responseError
 
 sample'
@@ -1021,7 +1019,7 @@ executeQuery sql cachingEnabled varMap inputResource outputResource idToken perm
               # maybe (Left "Could not sandbox Quasar file") pure
           pure
             { sandboxedPath
-            , plan: planPhases >>= (.? "detail") ⋙ either (const Nothing) Just
+            , plan: planPhases >>= (_ .? "detail") ⋙ either (const Nothing) Just
             }
     pure
       { outputResource: mkOutputResource $ P.rootDir </> info.sandboxedPath

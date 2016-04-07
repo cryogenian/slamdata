@@ -150,7 +150,7 @@ root = Directory P.rootDir
 
 mkNotebook ∷ PU.AnyPath → Resource
 mkNotebook ap =
-  either go (Notebook ∘ (<./> Config.notebookExtension)) ap
+  either go (Notebook ∘ (_ <./> Config.notebookExtension)) ap
   where
   go ∷ PU.FilePath → Resource
   go p = maybe newNotebook id do
@@ -397,12 +397,12 @@ instance decodeJsonResource ∷ DecodeJson Resource where
       maybe
         (Left $ "Invalid " ⊕ ty ⊕ " path")
         (Right ∘ ctor) $
-          (P.rootDir </>) <$> (P.sandbox P.rootDir =<< parse s)
+          (P.rootDir </> _) <$> (P.sandbox P.rootDir =<< parse s)
 
 fileResourceFromString
   ∷ String
   → Either String Resource
 fileResourceFromString path =
-  case (P.rootDir </>) <$> (P.parseAbsFile path >>= P.sandbox P.rootDir) of
+  case (P.rootDir </> _) <$> (P.parseAbsFile path >>= P.sandbox P.rootDir) of
     Just path' → Right $ newFile # _path .~ Left path'
     Nothing → Left path

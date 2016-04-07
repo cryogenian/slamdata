@@ -21,7 +21,7 @@ import Database.Mongo.Mongo (connect, close)
 
 import DOM (DOM)
 
-import Node.ChildProcess (ChildProcess, makeSpawnOption, stdout, stderr, spawn, kill, exec)
+import Node.ChildProcess (ChildProcess, stdout, stderr, spawn, kill, exec)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
 import Node.FS.Aff (unlink, mkdir)
@@ -46,7 +46,7 @@ import Test.SlamData.Feature.Interactions (launchSlamData, mountTestDatabase)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.SauceLabs as SL
 import Test.SlamData.Feature.Test.File as File
-import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
+-- import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Test.SlamData.Feature.Test.SaveCard as Save

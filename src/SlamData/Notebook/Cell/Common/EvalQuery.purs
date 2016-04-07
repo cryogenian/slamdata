@@ -45,7 +45,6 @@ import Data.Argonaut.Core (Json)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 
-import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.Port (Port)
 import SlamData.Notebook.Cell.Port.VarMap as Port
@@ -160,7 +159,7 @@ instance applicativeCellEvalT ∷ (Applicative m) ⇒ Applicative (CellEvalT m) 
   pure = pure ⋙ CellEvalT
 
 instance bindCellEvalT ∷ (Monad m) ⇒ Bind (CellEvalT m) where
-  bind (CellEvalT m) = (⋙ getCellEvalT) ⋙ bind m ⋙ CellEvalT
+  bind (CellEvalT m) = (_ ⋙ getCellEvalT) ⋙ bind m ⋙ CellEvalT
 
 instance monadCellEvalT ∷ (Monad m) ⇒ Monad (CellEvalT m)
 
@@ -174,7 +173,7 @@ instance monadWriterCellEvalT ∷ (Monad m) ⇒ WC.MonadWriter (Array String) (C
 
 instance monadErrorCellEvalT ∷ (Monad m) ⇒ EC.MonadError String (CellEvalT m) where
   throwError = EC.throwError ⋙ CellEvalT
-  catchError (CellEvalT m) = CellEvalT ∘ EC.catchError m ∘ (⋙ getCellEvalT)
+  catchError (CellEvalT m) = CellEvalT ∘ EC.catchError m ∘ (getCellEvalT ∘ _)
 
 runCellEvalT
   ∷ ∀ m a

@@ -2,8 +2,6 @@ module Test.SlamData.Feature.Test.SaveCard where
 
 import SlamData.Prelude
 
-import Data.String as Str
-
 import Test.Feature.Log (successMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
@@ -18,8 +16,6 @@ saveCardScenario =
     (Interact.createNotebookInTestFolder "Save card")
     (Interact.deleteFileInTestFolder "Save card.slam"
      ≫ Interact.deleteFileInTestFolder "временный файл")
-
-import Selenium.Monad (later)
 
 test ∷ SlamFeature Unit
 test =

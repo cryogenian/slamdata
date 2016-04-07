@@ -26,7 +26,7 @@ import Data.Array (intersect, null, (:))
 import Data.Char as Ch
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe, maybe, fromMaybe)
-import Data.Path.Pathy
+import Data.Path.Pathy (Sandboxed, Abs, Path, File, Rel, Dir, AbsDir, AbsFile, DirName(..), FileName(..), peel, rootDir, sandbox, (</>), file, canonicalize, printPath, parseAbsDir, parseAbsFile, dir, relativeTo, renameDir)
 import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
 import Data.String.Regex as Rgx
 import Data.Tuple (snd, fst)
@@ -90,7 +90,7 @@ encodeURIPath :: String -> String
 encodeURIPath path =
   joinWith "/" $
   joinWith "+" <$>
-  (encodeURIComponent <$>) <$>
+  (encodeURIComponent <$> _) <$>
   split " " <$>
   split "/" path
 

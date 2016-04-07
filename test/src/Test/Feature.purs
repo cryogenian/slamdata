@@ -43,23 +43,30 @@ import SlamData.Prelude
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throw)
+
 import Data.Array (elemIndex)
 import Data.Foldable as F
 import Data.List (toUnfoldable)
 import Data.List as L
 import Data.Map as Map
 import Data.String (joinWith)
+
 import Graphics.EasyImage as Ge
 import Graphics.ImageDiff as Gi
+
+import Node.Buffer (toString)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readFile, readTextFile, readdir, unlink)
-import Node.Buffer (toString)
+
 import Selenium.ActionSequence as Sequence
-import Selenium.Monad (get, getAttribute, clickEl, attempt, later, sequence, byXPath, tryRepeatedlyTo, findElements, isDisplayed, getLocation, getSize, saveScreenshot, sendKeysEl)
+import Selenium.Monad (get, getAttribute, clickEl, attempt, later, byXPath, tryRepeatedlyTo, findElements, isDisplayed, getLocation, getSize, saveScreenshot, sendKeysEl)
+import Selenium.Monad as Selenium
 import Selenium.Types (Element)
+
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Feature.Monad (Feature, getModifierKey, await)
 import Test.Utils (ifTrue, ifFalse, passover, throwIfEmpty, throwIfNotEmpty, singletonValue, appendToCwd, nonWhite)
+
 import XPath as XPath
 
 type Properties = Map.Map String (Maybe String)
@@ -625,29 +632,29 @@ accessUrlFromFieldValueWithProperties properties xPath =
 
 -- Independent interactions
 typeString ∷ ∀ eff o. String → Feature eff o Unit
-typeString string = sequence $ FeatureSequence.keys string
+typeString string = Selenium.sequence $ FeatureSequence.keys string
 
 pressEnter ∷ ∀ eff o. Feature eff o Unit
-pressEnter = sequence $ FeatureSequence.sendEnter
+pressEnter = Selenium.sequence $ FeatureSequence.sendEnter
 
 selectAll ∷ ∀ eff o. Feature eff o Unit
-selectAll = (sequence ∘ FeatureSequence.selectAll) =<< getModifierKey
+selectAll = (Selenium.sequence ∘ FeatureSequence.selectAll) =<< getModifierKey
 
 copy ∷ ∀ eff o. Feature eff o Unit
-copy = (sequence ∘ FeatureSequence.copy) =<< getModifierKey
+copy = (Selenium.sequence ∘ FeatureSequence.copy) =<< getModifierKey
 
 paste ∷ ∀ eff o. Feature eff o Unit
-paste = (sequence ∘ FeatureSequence.paste) =<< getModifierKey
+paste = (Selenium.sequence ∘ FeatureSequence.paste) =<< getModifierKey
 
 undo ∷ ∀ eff o. Feature eff o Unit
-undo = (sequence ∘ FeatureSequence.undo) =<< getModifierKey
+undo = (Selenium.sequence ∘ FeatureSequence.undo) =<< getModifierKey
 
 -- Element dependent interactions
 clickAllElements ∷ ∀ eff o. Array Element → Feature eff o Unit
 clickAllElements = traverse_ clickEl
 
 hoverElement ∷ ∀ eff o. Element → Feature eff o Unit
-hoverElement = tryRepeatedlyTo ∘ sequence ∘ Sequence.hover
+hoverElement = tryRepeatedlyTo ∘ Selenium.sequence ∘ Sequence.hover
 
 provideFieldValueElement ∷ ∀ eff o. String → Element → Feature eff o Unit
 provideFieldValueElement value element =
