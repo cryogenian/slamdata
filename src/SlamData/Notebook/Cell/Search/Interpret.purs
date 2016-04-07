@@ -196,8 +196,8 @@ renderBinRel s op v = pars $
 -- | Whether the string should be rendered without quotes
 needUnq :: String -> Boolean
 needUnq s =
-  fromMaybe false ((show >>> (== s)) <$> Int.fromString s)
-  || fromMaybe false ((show >>> (== s)) <$> Utils.stringToNumber s)
+  fromMaybe false ((show >>> (_ == s)) <$> Int.fromString s)
+  || fromMaybe false ((show >>> (_ == s)) <$> Utils.stringToNumber s)
   || s == "true"
   || s == "false"
 

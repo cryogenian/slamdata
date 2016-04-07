@@ -25,7 +25,7 @@ import Prelude
 
 import Control.Lazy (defer, fix)
 
-import Data.Argonaut
+import Data.Argonaut (Json, JCursor(..), jsonEmptyObject, (~>), (:=), fromArray, fromString, fromNumber, fromBoolean, jsonNull)
 import Data.Array as A
 import Data.String as S
 
