@@ -64,8 +64,8 @@ main = do
   log "Check SlamData.Notebook.FormBuilder.Model..."
   Test.SlamData.Property.Notebook.FormBuilder.Model.check
 
-  log "Check SlamData.Notebook.Model..."
-  Test.SlamData.Property.Notebook.Model.check
+  log "Check SlamData.Notebook.Deck.Model..."
+  Test.SlamData.Property.Notebook.Deck.Model.check
 
   log "Check SlamData.Download.Model..."
   Test.SlamData.Property.Download.Model.check

@@ -341,3 +341,19 @@ chartSwitchToBar = XPath.anyWithExactSrc "img/bar.svg"
 
 chartContainer ∷ String
 chartContainer = "div[@_echarts_instance_]"
+
+trashCardAction ∷ String
+trashCardAction =
+  XPath.anyWithExactAriaLabel "Trash card"
+
+publishDeckAction ∷ String
+publishDeckAction =
+  XPath.anyWithExactAriaLabel "Publish deck"
+
+embedDeckAction ∷ String
+embedDeckAction =
+  XPath.anyWithExactAriaLabel "Embed deck"
+
+shareDeckAction ∷ String
+shareDeckAction =
+  XPath.anyWithExactAriaLabel "Share deck"

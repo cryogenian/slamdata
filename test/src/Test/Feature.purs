@@ -296,6 +296,10 @@ expectNotPresentedWithProperties properties xPath =
   tryRepeatedlyTo
     $ expectNotPresentedWithPropertiesNotRepeatedly properties xPath
 
+
+-- `expectNotPresentedAria` should check if the element's parent has `aria-hidden`
+-- then we can switch from `<|>` to `*>` again
+-- See SD-1563
 expectNotPresentedWithPropertiesNotRepeatedly
   ∷ ∀ eff o
   . Properties
@@ -303,7 +307,7 @@ expectNotPresentedWithPropertiesNotRepeatedly
   → Feature eff o Unit
 expectNotPresentedWithPropertiesNotRepeatedly properties xPath =
   expectNotPresentedVisual properties xPath
-    *> expectNotPresentedAria properties xPath
+    <|> expectNotPresentedAria properties xPath
 
 -- | Expect nodes found with the providied XPath which have the provided
 -- | attributes or properties to exist, be presented visually and for them or

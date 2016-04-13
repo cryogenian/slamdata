@@ -76,6 +76,10 @@ main = do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)
     forkAff $ routeSignal driver
+  Debug.Trace.traceAnyA $ testingUncurring 12 34
+
+testingUncurring ∷ Int → Int → Int
+testingUncurring a b = a * 2 + b / 3
 
 setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
 setSlamDataTitle version =

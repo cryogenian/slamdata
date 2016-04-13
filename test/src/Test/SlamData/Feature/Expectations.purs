@@ -178,3 +178,100 @@ textInFormCell =
     ∘ XPath.anywhere
     ∘ XPath.following XPaths.formCellHeader
     ∘ XPath.anyWithText
+
+backsideActionNotPresented ∷ String → SlamFeature Unit
+backsideActionNotPresented =
+  tryRepeatedlyTo
+    ∘ expectNotPresented
+    ∘ XPath.anywhere
+
+trashButtonPresented ∷ SlamFeature Unit
+trashButtonPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.trashCardAction
+shareButtonPresented ∷ SlamFeature Unit
+shareButtonPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.shareDeckAction
+
+publishButtonPresented ∷ SlamFeature Unit
+publishButtonPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.publishDeckAction
+
+embedButtonPresented ∷ SlamFeature Unit
+embedButtonPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.embedDeckAction
+
+backsideMenuPresented ∷ SlamFeature Unit
+backsideMenuPresented = do
+  trashButtonPresented
+  shareButtonPresented
+  publishButtonPresented
+  embedButtonPresented
+
+backsideMenuNotPresented ∷ SlamFeature Unit
+backsideMenuNotPresented = do
+  for_
+    [ XPaths.trashCardAction
+    , XPaths.shareDeckAction
+    , XPaths.publishDeckAction
+    , XPaths.embedDeckAction
+    ]
+    backsideActionNotPresented
+
+noJTablesPresented ∷ SlamFeature Unit
+noJTablesPresented =
+  tryRepeatedlyTo
+    $ expectNotPresented
+    $ XPath.anywhere
+    $ XPaths.jtableHeading
+
+onlyTrashActionPresented ∷ SlamFeature Unit
+onlyTrashActionPresented = do
+  trashButtonPresented
+  for_
+    [ XPaths.shareDeckAction
+    , XPaths.publishDeckAction
+    , XPaths.embedDeckAction
+    ]
+    backsideActionNotPresented
+
+onlyShareActionPresented ∷ SlamFeature Unit
+onlyShareActionPresented = do
+  shareButtonPresented
+  for_
+    [ XPaths.trashCardAction
+    , XPaths.publishDeckAction
+    , XPaths.embedDeckAction
+    ]
+    backsideActionNotPresented
+
+onlyEmbedActionPresented ∷ SlamFeature Unit
+onlyEmbedActionPresented = do
+  embedButtonPresented
+  for_
+    [ XPaths.shareDeckAction
+    , XPaths.publishDeckAction
+    , XPaths.trashCardAction
+    ]
+    backsideActionNotPresented
+
+onlyPublishActionPresented ∷ SlamFeature Unit
+onlyPublishActionPresented = do
+  publishButtonPresented
+  for_
+    [ XPaths.shareDeckAction
+    , XPaths.embedDeckAction
+    , XPaths.trashCardAction
+    ]
+    backsideActionNotPresented

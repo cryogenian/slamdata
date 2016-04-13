@@ -1,0 +1,98 @@
+module Test.SlamData.Feature.Test.FlipDeck where
+
+import SlamData.Prelude
+
+import Data.String as Str
+
+import Selenium.Monad (later, sequence)
+import Test.Feature.Log (successMsg, warnMsg)
+import Test.Feature.Scenario (scenario)
+import Test.SlamData.Feature.Expectations as Expect
+import Test.SlamData.Feature.Interactions as Interact
+import Test.SlamData.Feature.Monad (SlamFeature)
+import Test.Feature.ActionSequence as Actions
+
+flipDeckScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
+flipDeckScenario =
+  scenario
+    "Deck backside"
+    (Interact.createNotebookInTestFolder "Flipped deck")
+    (Interact.deleteFileInTestFolder "Flipped deck.slam")
+
+
+mkTwoCardTestDeck ∷ SlamFeature Unit
+mkTwoCardTestDeck = do
+    Interact.insertQueryCardAsFirstCardInNewStack
+    Interact.provideQueryInLastQueryCard
+      "select measureOne from `/test-mount/testDb/flatViz`"
+    Interact.insertJTableCardAsNextAction
+    Expect.tableColumnsAre ["measureOne"]
+
+test ∷ SlamFeature Unit
+test = do
+  flipDeckScenario "Flip deck" [] do
+    mkTwoCardTestDeck
+    Interact.flipDeck
+    Expect.backsideMenuPresented
+    Interact.flipDeck
+    Expect.backsideMenuNotPresented
+    Expect.tableColumnsAre ["measureOne"]
+    successMsg "Ok, 'flip deck' button works"
+
+  -- Note: Trash button deletes last or active card
+  flipDeckScenario "Trash last card" [] do
+    mkTwoCardTestDeck
+    Interact.flipDeck
+    Expect.backsideMenuPresented
+    Interact.trashActiveOrLastCard
+    -- Note, user should see that last|active card has been deleted
+    -- That's why we immediately flip deck after trashing
+    Expect.backsideMenuNotPresented
+    Expect.noJTablesPresented
+    successMsg "Successfuly deleted last|active card"
+
+  flipDeckScenario "Share deck" [] do
+    Interact.insertMdCardAsFirstCardInNewStack
+    Interact.provideMdInLastMdCard "Quarterly"
+    Interact.insertFormCardAsNextAction
+    Expect.textInFormCell "Quarterly"
+    Expect.lastCardToBeFinished
+    warnMsg "SD-1538, we don't know if notebook has been saved already"
+    later 1000 $ pure unit
+    Interact.flipDeck
+    Expect.backsideMenuPresented
+    Interact.shareDeck
+    Interact.accessSharingUrl
+    Expect.textInFormCell "Quarterly"
+    Interact.launchSlamData
+    successMsg "Successfully shared deck"
+
+  flipDeckScenario "Publish deck" ["SD-1560"] do
+    mkTwoCardTestDeck
+    Interact.flipDeck
+    Expect.backsideMenuPresented
+    Interact.publishDeck
+    Expect.tableColumnsAre ["measureOne"]
+    Interact.launchSlamData
+    successMsg "Successfully published deck"
+
+  flipDeckScenario "Filter backside buttons" [] do
+    mkTwoCardTestDeck
+    Interact.flipDeck
+    Expect.backsideMenuPresented
+    Interact.filterActions "rem"
+    Expect.onlyTrashActionPresented
+    sequence $ Actions.sendBackspaces 5
+    Expect.backsideMenuPresented
+    Interact.filterActions "sh"
+    Expect.onlyShareActionPresented
+    sequence $ Actions.sendBackspaces 5
+    Expect.backsideMenuPresented
+    Interact.filterActions "emb"
+    Expect.onlyEmbedActionPresented
+    sequence $ Actions.sendBackspaces 5
+    Expect.backsideMenuPresented
+    Interact.filterActions "p"
+    Expect.onlyPublishActionPresented
+    sequence $ Actions.sendBackspaces 5
+    successMsg "Successfully filtered backside actions"

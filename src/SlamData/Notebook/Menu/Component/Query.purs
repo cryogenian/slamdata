@@ -21,11 +21,11 @@ import SlamData.Prelude
 import Halogen.Menu.Component as HalogenMenu
 
 import SlamData.Notebook.Dialog.Component as Dialog
-import SlamData.Notebook.Editor.Component.Query as Notebook
+import SlamData.Notebook.Deck.Component.Query as Deck
 import SlamData.Notebook.Rename.Component as Rename
 
 type FromMenuQuery =
-  Coproduct Rename.Query (Coproduct Dialog.Query Notebook.Query)
+  Coproduct Rename.Query (Coproduct Dialog.Query Deck.Query)
 
 newtype HelpURI = HelpURI String
 
@@ -33,14 +33,14 @@ type Value = Either HelpURI (FromMenuQuery Unit)
 
 type QueryP = HalogenMenu.MenuQueryP (Maybe Value)
 
-helpURIToValue :: HelpURI -> Value
+helpURIToValue ∷ HelpURI → Value
 helpURIToValue = Left
 
-dialogQueryToValue :: Dialog.Query Unit -> Value
-dialogQueryToValue = left >>> right >>> Right
+dialogQueryToValue ∷ Dialog.Query Unit → Value
+dialogQueryToValue = left ⋙ right ⋙ Right
 
-notebookQueryToValue :: Notebook.Query Unit -> Value
-notebookQueryToValue = right >>> right >>> Right
+deckQueryToValue ∷ Deck.Query Unit → Value
+deckQueryToValue = right ⋙ right ⋙ Right
 
-renameQueryToValue :: Rename.Query Unit -> Value
-renameQueryToValue = left >>> Right
+renameQueryToValue ∷ Rename.Query Unit → Value
+renameQueryToValue = left ⋙ Right

@@ -142,7 +142,8 @@ var mkBundleTask = function (name, main) {
       src: "output/**/*.js",
       output: "tmp/" + name + ".js",
       module: main,
-      main: main
+        main: main,
+        optimize: ["uncurry"]
     });
   });
 

@@ -19,5 +19,5 @@ module SlamData.Notebook.Menu.Component
   , module SlamData.Notebook.Menu.Component.State
   ) where
 
-import SlamData.Notebook.Menu.Component.Query (FromMenuQuery, QueryP, Value, HelpURI(..), dialogQueryToValue, helpURIToValue, notebookQueryToValue, renameQueryToValue)
+import SlamData.Notebook.Menu.Component.Query (FromMenuQuery, QueryP, Value, HelpURI(..), dialogQueryToValue, helpURIToValue, deckQueryToValue, renameQueryToValue)
 import SlamData.Notebook.Menu.Component.State (StateP, make)
