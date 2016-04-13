@@ -1,4 +1,3 @@
-
 module Test.SlamData.Feature.Main where
 
 import SlamData.Prelude
@@ -6,6 +5,7 @@ import SlamData.Prelude
 import Control.Monad.Aff (Aff, forkAff, runAff, launchAff, apathize, attempt, later', cancel)
 import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, killVar, AVAR)
 import Control.Monad.Aff.Console (log)
+import Control.Monad.Aff.Reattempt (reattempt)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console as Ec
@@ -50,6 +50,7 @@ import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Test.SlamData.Feature.Test.SaveCard as Save
+--import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
 import Text.Chalky (green, yellow, magenta, gray, red)
 
 foreign import getConfig :: ∀ e. Eff (fs :: FS|e) Config
@@ -86,11 +87,13 @@ tests :: SlamFeature Unit
 tests = do
   launchSlamData
   mountTestDatabase
+
   File.test
   Search.test
   Markdown.test
 --  FlexibleVisualization.test
   Save.test
+--  FlipDeck.test
 
 runTests :: Config → Aff Effects Unit
 runTests config =
@@ -152,13 +155,16 @@ copyFile source tgt = do
   from = resolve [source] ""
   to = resolve [tgt] ""
 
+procStartMaxTimeout ∷ Int
+procStartMaxTimeout = 60000
+
 startProc
   :: ∀ r
    . String → String → Array String
    → (ChildProcess → Aff Effects (Readable r Effects))
    → String
    → Aff Effects ChildProcess
-startProc name command args streamGetter check = do
+startProc name command args streamGetter check = reattempt procStartMaxTimeout do
   a ← makeVar
 
   started ←
@@ -265,6 +271,7 @@ main = do
     liftEff $ modifyRef procs (Arr.cons quasar)
 
     selenium ←
+
       startProc
         "Selenium"
         "java"

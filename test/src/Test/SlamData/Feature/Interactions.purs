@@ -327,3 +327,22 @@ provideSeriesForLastVizualizeCard str =
 
 switchToBarChart ∷ SlamFeature Unit
 switchToBarChart = click $ XPath.anywhere $ XPaths.chartSwitchToBar
+
+flipDeck ∷ SlamFeature Unit
+flipDeck = click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Flip deck"
+
+trashActiveOrLastCard ∷ SlamFeature Unit
+trashActiveOrLastCard =
+  click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Trash card"
+
+shareDeck ∷ SlamFeature Unit
+shareDeck =
+  click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Share deck"
+
+publishDeck ∷ SlamFeature Unit
+publishDeck =
+  click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Publish deck"
+
+filterActions ∷ String → SlamFeature Unit
+filterActions =
+  provideFieldValue (XPath.anywhere $ XPath.anyWithExactAriaLabel "Filter actions")

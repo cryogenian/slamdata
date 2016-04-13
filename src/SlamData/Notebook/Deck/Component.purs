@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Editor.Component
-  ( notebookComponent
+module SlamData.Notebook.Deck.Component
+  ( deckComponent
   , initialState
-  , module SlamData.Notebook.Editor.Component.Query
-  , module SlamData.Notebook.Editor.Component.State
+  , module SlamData.Notebook.Deck.Component.Query
+  , module SlamData.Notebook.Deck.Component.State
   ) where
 
 import SlamData.Prelude
@@ -47,8 +47,11 @@ import DOM.HTML.Location as Location
 import Halogen as H
 import Halogen.Component.Utils (forceRerender')
 import Halogen.HTML.Indexed as HH
+import Halogen.Component.ChildPath (ChildPath, injSlot, injState)
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
@@ -63,29 +66,31 @@ import SlamData.Notebook.Cell.CellType
   (CellType(..), AceMode(..), cellName, cellGlyph, autorun, nextCellTypes)
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
 import SlamData.Notebook.Cell.Component
-  (CellQueryP(), CellQuery(..), InnerCellQuery(), CellStateP(), AnyCellQuery(..), _NextQuery, initEditorCellState)
+  (CellQueryP(), CellQuery(..), InnerCellQuery, CellStateP, AnyCellQuery(..), _NextQuery, initEditorCellState)
 import SlamData.Notebook.Cell.Next.Component as Next
 import SlamData.Notebook.Cell.Port (Port(..))
-import SlamData.Notebook.Editor.Component.CellSlot (CellSlot(..))
-import SlamData.Notebook.Editor.Component.Query (QueryP, Query(..))
-import SlamData.Notebook.Editor.Component.State (CellConstructor, CellDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCellId, _browserFeatures, _cells, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCells, _runTrigger, _saveTrigger, _stateMode, _viewingCell, addCell, addCell', addPendingCell, cellIsLinkedCellOf, cellsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCellType, initialNotebook, notebookPath, removeCells, findLast, findLastCellType)
-import SlamData.Notebook.Editor.Model as Model
+import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
+import SlamData.Notebook.Deck.Component.State (CellConstructor, CellDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCellId, _browserFeatures, _cells, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCells, _runTrigger, _saveTrigger, _stateMode, _viewingCell, _backsided, addCell, addCell', addPendingCell, cellIsLinkedCellOf, cellsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCellType, initialDeck, notebookPath, removeCells, findLast, findLastCellType)
+import SlamData.Notebook.Deck.Model as Model
 import SlamData.Notebook.FileInput.Component as Fi
 import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCellHash, mkNotebookURL)
 import SlamData.Render.Common (glyph, fadeWhen)
 import SlamData.Render.CSS as CSS
+import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCell, ChildQuery, ChildState, ChildSlot, CellSlot(..))
+import SlamData.Notebook.Deck.BackSide.Component as Back
+
 
 import Utils.Debounced (debouncedEventSource)
 import Utils.Path (DirPath)
 
-type NotebookHTML = H.ParentHTML CellStateP Query CellQueryP Slam CellSlot
-type NotebookDSL = H.ParentDSL State CellStateP Query CellQueryP Slam CellSlot
+type NotebookHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type NotebookDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
 initialState ∷ BrowserFeatures → StateP
-initialState fs = H.parentState $ initialNotebook fs
+initialState fs = H.parentState $ initialDeck fs
 
-notebookComponent ∷ H.Component StateP QueryP Slam
-notebookComponent = H.parentComponent { render, eval, peek: Just peek }
+deckComponent ∷ H.Component StateP QueryP Slam
+deckComponent = H.parentComponent { render, eval, peek: Just peek }
 
 render ∷ State → NotebookHTML
 render state =
@@ -103,8 +108,16 @@ render state =
     Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div_
-        [ renderCells true
-        ]
+        $ [ renderCells $ not state.backsided
+          , renderBackside state.backsided
+            -- Commented until one card representation
+--          , HH.button [ HP.classes [ B.btn, B.btnPrimary ]
+--                      , HE.onClick (HE.input_ FlipDeck)
+--                      , ARIA.label "Flip deck"
+--                      ]
+--            [ HH.text "Flip" ]
+          ]
+
     Error err →
       HH.div
         [ HP.classes [ B.alert, B.alertDanger ] ]
@@ -114,6 +127,17 @@ render state =
         ]
 
   where
+  renderBackside visible =
+    HH.div
+      ( [ ARIA.hidden $ show $ not visible ]
+        ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
+
+      [ HH.slot' cpBackSide unit \_ →
+         { component: Back.comp
+         , initialState: Back.initialState
+         }
+      ]
+
 
   renderCells visible =
     -- The key here helps out virtual-dom: the entire subtree will be moved
@@ -123,34 +147,42 @@ render state =
       ([ HP.key "notebook-cells"]
        ⊕ (guard (not visible) $> (HP.class_ CSS.invisible)))
       ( List.fromList (map renderCell state.cells)
-        ⊕ (pure $ newCellMenu state))
+        ⊕ (pure $ newCellMenu state)
+      )
+
   renderCell cellDef =
     HH.div
     ([ HP.key ("cell" ⊕ cellIdToString cellDef.id) ]
      ⊕ foldMap (viewingStyle cellDef) state.viewingCell)
-    [ HH.Slot cellDef.ctor ]
+    [ HH.Slot $ transformCellConstructor cellDef.ctor ]
+
+  transformCellConstructor (H.SlotConstructor p l) =
+    H.SlotConstructor
+      (injSlot cpCell p)
+      (l <#> \def →
+        { component: H.transformChild cpCell def.component
+        , initialState: injState cpCell def.initialState
+        }
+      )
 
   viewingStyle cellDef cid =
-    guard (not (cellDef.id == cid))
+    guard (not (cellDef.id ≡ cid))
     *> guard (not (cellIsLinkedCellOf { childId: cellDef.id, parentId: cid} state))
     $> (HP.class_ CSS.invisible)
 
   shouldHideNextAction =
-    isJust state.viewingCell || state.accessType == ReadOnly
+    isJust state.viewingCell ∨ state.accessType ≡ ReadOnly
 
   newCellMenu state =
     HH.div
       ([ HP.key ("next-action-card") ]
        ⊕ (guard shouldHideNextAction $> (HP.class_ CSS.invisible)))
 
-    [ HH.slot (CellSlot top) \_ →
+    [ HH.slot' cpCell (CellSlot top) \_ →
        { component: Next.nextCellComponent
-       , initialState:
-         H.parentState $ initEditorCellState
+       , initialState: H.parentState $ initEditorCellState
        }
     ]
-
-
 
 eval ∷ Natural Query NotebookDSL
 eval (AddCell cellType next) = createCell cellType $> next
@@ -173,7 +205,10 @@ eval (LoadNotebook fs dir next) = do
           H.set st
           forceRerender'
           ranCells ← catMaybes <$> for cells \cell → do
-            H.query (CellSlot cell.cellId) $ left $ H.action $ LoadCell cell
+            H.query' cpCell  (CellSlot cell.cellId)
+              $ left
+              $ H.action
+              $ LoadCell cell
             pure if cell.hasRun then Just cell.cellId else Nothing
           -- We only need to run the root node in each subgraph, as doing so
           -- will result in all child nodes being run also as the outputs
@@ -184,15 +219,21 @@ eval (LoadNotebook fs dir next) = do
   pure next
 
 eval (ExploreFile fs res next) = do
-  H.set $ initialNotebook fs
+  H.set $ initialDeck fs
   H.modify
     $ (_path .~ Pathy.parentDir res)
     ∘ (addCell Explore Nothing)
   forceRerender'
-  H.query (CellSlot zero) $ right
-    $ H.ChildF unit $ right $ ExploreQuery
-    $ right $ H.ChildF unit
-    $ H.action $ Fi.SelectFile $ R.File res
+  H.query' cpCell (CellSlot zero)
+    $ right
+    $ H.ChildF unit
+    $ right
+    $ ExploreQuery
+    $ right
+    $ H.ChildF unit
+    $ H.action
+    $ Fi.SelectFile
+    $ R.File res
   forceRerender'
   runCell zero
   updateNextActionCell
@@ -202,10 +243,11 @@ eval (Publish next) = do
     for_ mpath $ H.fromEff ∘ newTab ∘ flip mkNotebookURL (NA.Load ReadOnly)
   pure next
 eval (Reset fs dir next) = do
-  let nb = initialNotebook fs
-      peeledPath = Pathy.peel dir
-      path = fst <$> peeledPath
-      name = maybe nb.name This (either Just (const Nothing) ∘ snd =<< peeledPath)
+  let
+    nb = initialDeck fs
+    peeledPath = Pathy.peel dir
+    path = fst <$> peeledPath
+    name = maybe nb.name This (either Just (const Nothing) ∘ snd =<< peeledPath)
   H.set $ nb { path = path, name = name }
   pure next
 eval (SetName name next) =
@@ -216,9 +258,15 @@ eval (SetName name next) =
          ) $> next
 eval (SetAccessType aType next) = do
   cids ← map Map.keys $ H.gets _.cellTypes
-  for_ cids \cellId → do
-    void $ H.query (CellSlot cellId) $ left $ H.action $ SetCellAccessType aType
+  for_ cids \cellId →
+    void
+      $ H.query' cpCell (CellSlot cellId)
+      $ left
+      $ H.action
+      $ SetCellAccessType aType
   H.modify (_accessType .~ aType)
+  unless (isEditable aType)
+    $ H.modify (_backsided .~ false)
   pure next
 eval (GetNotebookPath k) = k <$> H.gets notebookPath
 eval (SetViewingCell mbcid next) = H.modify (_viewingCell .~ mbcid) $> next
@@ -227,16 +275,47 @@ eval (RunPendingCells next) = runPendingCells unit $> next
 eval (GetGlobalVarMap k) = k <$> H.gets _.globalVarMap
 eval (SetGlobalVarMap m next) = do
   st ← H.get
-  when (m /= st.globalVarMap) do
+  when (m ≠ st.globalVarMap) do
     H.modify (_globalVarMap .~ m)
     traverse_ runCell $ cellsOfType API st
   pure next
 eval (FindCellParent cid k) = k <$> H.gets (findParent cid)
 eval (GetCellType cid k) = k <$> H.gets (getCellType cid)
+eval (FlipDeck next) = H.modify (_backsided %~ not) $> next
+eval (GetActiveCellId k) = map k $ H.gets findLast
 
-peek ∷ ∀ a. H.ChildF CellSlot CellQueryP a → NotebookDSL Unit
-peek (H.ChildF (CellSlot cellId) q) =
+
+peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → NotebookDSL Unit
+peek (H.ChildF s q) =
+  coproduct
+    (either peekCells (\_ _ → pure unit) s)
+    peekBackSide
+    q
+
+peekBackSide ∷ ∀ a. Back.Query a → NotebookDSL Unit
+peekBackSide (Back.UpdateFilter _ _) = pure unit
+peekBackSide (Back.DoAction action _) = case action of
+  Back.Trash → do
+    activeId ← H.gets _.activeCellId
+    lastId ← H.gets findLast
+    for_ (activeId <|> lastId) \trashId → do
+      descendants ← H.gets (findDescendants trashId)
+      H.modify $ removeCells (S.insert trashId descendants)
+      triggerSave unit
+      updateNextActionCell
+      H.modify (_backsided .~ false)
+  Back.Share → pure unit
+  Back.Embed → pure unit
+  Back.Publish →
+    H.gets notebookPath >>= \mpath → do
+      for_ mpath $ H.fromEff ∘ newTab ∘ flip mkNotebookURL (NA.Load ReadOnly)
+  Back.Mirror → pure unit
+  Back.Wrap → pure unit
+
+peekCells ∷ ∀ a. CellSlot → CellQueryP a → NotebookDSL Unit
+peekCells (CellSlot cellId) q =
   coproduct (peekCell cellId) (peekCellInner cellId) q
+
 
 -- | Peek on the cell component to observe actions from the cell control
 -- | buttons.
@@ -264,7 +343,10 @@ updateNextActionCell = do
   cid ← H.gets findLast
   mbMessage ← case cid of
     Just cellId → do
-      out ← map join $ H.query (CellSlot cellId) $ left (H.request GetOutput)
+      out ←
+        map join
+          $ H.query' cpCell (CellSlot cellId)
+          $ left (H.request GetOutput)
       pure $ case out of
         Nothing →
           Just "Next actions will be made available once the last card has been run"
@@ -284,7 +366,7 @@ updateNextActionCell = do
   pure unit
   where
   queryNextActionCard q =
-    H.query (CellSlot top)
+    H.query' cpCell (CellSlot top)
       $ right
       $ H.ChildF unit
       $ right
@@ -302,12 +384,14 @@ createCell cellType = do
       Tuple st newCellId ← H.gets $ addCell' cellType (Just cellId)
       H.set st
       forceRerender'
-      input ← map join $ H.query (CellSlot cellId) $ left (H.request GetOutput)
+      input ←
+        map join $ H.query' cpCell (CellSlot cellId) $ left (H.request GetOutput)
+
       for_ input \input' → do
         path ← H.gets notebookPath
         let setupInfo = { notebookPath: path, inputPort: input', cellId: newCellId }
         void
-          $ H.query (CellSlot newCellId)
+          $ H.query' cpCell  (CellSlot newCellId)
           $ right
           $ H.ChildF unit
           $ left
@@ -368,7 +452,8 @@ runPendingCells _ = do
       -- if there's no parent there's no input port value to pass through
       Nothing → updateCell Nothing cellId
       Just parentId → do
-        value ← map join $ H.query (CellSlot parentId) $ left (H.request GetOutput)
+        value ←
+          map join $ H.query' cpCell (CellSlot parentId) $ left (H.request GetOutput)
         case value of
           -- if there's a parent but no output the parent cell hasn't been evaluated
           -- yet, so we can't run this cell either
@@ -394,7 +479,12 @@ updateCell inputPort cellId = do
   path ← H.gets notebookPath
   globalVarMap ← H.gets _.globalVarMap
   let input = { notebookPath: path, inputPort, cellId, globalVarMap }
-  result ← join <$> (H.query (CellSlot cellId) $ left $ H.request (UpdateCell input))
+  result ←
+    map join
+      $ H.query' cpCell (CellSlot cellId)
+      $ left
+      $ H.request (UpdateCell input)
+
   runCellDescendants cellId (fromMaybe Blocked result)
   where
   runCellDescendants ∷ CellId → Port → NotebookDSL Unit
@@ -427,10 +517,12 @@ fireDebouncedQuery lens act = do
 -- | Saves the notebook as JSON, using the current values present in the state.
 saveNotebook ∷ Unit → NotebookDSL Unit
 saveNotebook _ = H.get >>= \st → do
-  unless (isUnsaved st && isNewExploreNotebook st) do
+  unless (isUnsaved st ∧ isNewExploreNotebook st) do
     for_ st.path \path → do
       cells ← catMaybes <$> for (List.fromList st.cells) \cell →
-        H.query (CellSlot cell.id) $ left $ H.request (SaveCell cell.id cell.ty)
+        H.query' cpCell (CellSlot cell.id)
+          $ left
+          $ H.request (SaveCell cell.id cell.ty)
 
       let json = Model.encode { cells, dependencies: st.dependencies }
 
@@ -441,7 +533,7 @@ saveNotebook _ = H.get >>= \st → do
           save path newName json
         Both oldName newName → do
           save path oldName json
-          if newName == nameFromDirName oldName
+          if newName ≡ nameFromDirName oldName
             then pure oldName
             else rename path oldName newName
 
@@ -465,10 +557,10 @@ saveNotebook _ = H.get >>= \st → do
   isNewExploreNotebook { name, cells } =
     let
       cellArrays = List.toUnfoldable (map _.ty cells)
-      nameHasntBeenModified = theseRight name == Just Config.newNotebookName
+      nameHasntBeenModified = theseRight name ≡ Just Config.newNotebookName
     in
       nameHasntBeenModified
-      && (cellArrays == [ Explore ] || cellArrays == [ Explore, JTable ])
+      ∧ (cellArrays ≡ [ Explore ] ∨ cellArrays ≡ [ Explore, JTable ])
 
   -- Finds a new name for a notebook in the specified parent directory, using
   -- a name value as a basis to start with.

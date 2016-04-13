@@ -414,3 +414,6 @@ chartGlyph = className "chart-glyph"
 
 codeGlyph ∷ ClassName
 codeGlyph = className "code-glyph"
+
+deckBackSide ∷ ClassName
+deckBackSide = className "deck-backside"

@@ -24,7 +24,7 @@ import Data.Functor.Coproduct.Nested (Coproduct5)
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 import SlamData.Notebook.Dialog.Component as Dialog
-import SlamData.Notebook.Editor.Component as Notebook
+import SlamData.Notebook.Deck.Component as Deck
 import SlamData.Notebook.Menu.Component as Menu
 import SlamData.Notebook.Rename.Component as Rename
 import SlamData.SignIn.Component as SignIn
@@ -35,7 +35,7 @@ type ChildQuery =
     SignIn.QueryP
     Menu.QueryP
     Dialog.QueryP
-    Notebook.QueryP
+    Deck.QueryP
 
 type ChildState g =
   Either5
@@ -43,7 +43,7 @@ type ChildState g =
     SignIn.StateP
     (Menu.StateP g)
     Dialog.StateP
-    Notebook.StateP
+    Deck.StateP
 
 type ChildSlot = Either5 Unit Unit Unit Unit Unit
 
@@ -79,10 +79,10 @@ cpDialog
        Unit ChildSlot
 cpDialog = cpL :> cpR
 
-cpNotebook
+cpDeck
   :: forall g
    . ChildPath
-       Notebook.StateP (ChildState g)
-       Notebook.QueryP ChildQuery
+       Deck.StateP (ChildState g)
+       Deck.QueryP ChildQuery
        Unit ChildSlot
-cpNotebook = cpR
+cpDeck = cpR

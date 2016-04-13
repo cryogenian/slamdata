@@ -35,7 +35,7 @@ import SlamData.Notebook.Action (Action(..), toAccessType)
 import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.Port as Port
 import SlamData.Notebook.Component as Draftboard
-import SlamData.Notebook.Editor.Component as Notebook
+import SlamData.Notebook.Deck.Component as Deck
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Notebook.Rename.Component as Rename
 import SlamData.Notebook.Routing (Routes(..), routing)
@@ -43,62 +43,62 @@ import SlamData.Notebook.StyleLoader as StyleLoader
 
 import Utils.Path as UP
 
-main :: Eff SlamDataEffects Unit
+main ∷ Eff SlamDataEffects Unit
 main = do
-  AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
-  AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
-  AceConfig.set AceConfig.themePath (Config.baseUrl ++ "js/ace")
-  browserFeatures <- detectBrowserFeatures
+  AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
+  AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
+  AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
+  browserFeatures ← detectBrowserFeatures
   runHalogenAff do
     let st = parentState $ Draftboard.initialState { browserFeatures: browserFeatures }
-    driver <- runUI Draftboard.comp st =<< awaitBody
+    driver ← runUI Draftboard.comp st =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles
 
 routeSignal
-  :: Driver Draftboard.QueryP SlamDataRawEffects
-  -> Aff SlamDataEffects Unit
+  ∷ Driver Draftboard.QueryP SlamDataRawEffects
+  → Aff SlamDataEffects Unit
 routeSignal driver = do
-  Tuple _ route <- Routing.matchesAff' UP.decodeURIPath routing
+  Tuple _ route ← Routing.matchesAff' UP.decodeURIPath routing
   case route of
-    CellRoute res cellId accessType varMap ->
+    CellRoute res cellId accessType varMap →
       notebook res (Load accessType) (Just cellId) varMap
-    NotebookRoute res action varMap -> notebook res action Nothing varMap
-    ExploreRoute res -> explore res
+    NotebookRoute res action varMap → notebook res action Nothing varMap
+    ExploreRoute res → explore res
 
   where
 
-  explore :: UP.FilePath -> Aff SlamDataEffects Unit
+  explore ∷ UP.FilePath → Aff SlamDataEffects Unit
   explore path = do
-    fs <- liftEff detectBrowserFeatures
-    driver $ Draftboard.toNotebook $ Notebook.ExploreFile fs path
+    fs ← liftEff detectBrowserFeatures
+    driver $ Draftboard.toDeck $ Deck.ExploreFile fs path
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
       $ parentURL $ Left path
     driver $ Draftboard.toRename $ Rename.SetText $ Config.newNotebookName
 
   notebook
-    :: UP.DirPath
-    -> Action
-    -> Maybe CID.CellId
-    -> Port.VarMap
-    -> Aff SlamDataEffects Unit
+    ∷ UP.DirPath
+    → Action
+    → Maybe CID.CellId
+    → Port.VarMap
+    → Aff SlamDataEffects Unit
   notebook path action viewing varMap = do
     let name = UP.getNameStr $ Right path
         accessType = toAccessType action
-    currentPath <- driver $ Draftboard.fromNotebook Notebook.GetNotebookPath
-    currentVarMap <- driver $ Draftboard.fromNotebook Notebook.GetGlobalVarMap
-    currentViewing <- driver $ Draftboard.fromDraftboard Draftboard.GetViewingCell
-    currentAccessType <- driver $ Draftboard.fromDraftboard Draftboard.GetAccessType
+    currentPath ← driver $ Draftboard.fromDeck Deck.GetNotebookPath
+    currentVarMap ← driver $ Draftboard.fromDeck Deck.GetGlobalVarMap
+    currentViewing ← driver $ Draftboard.fromDraftboard Draftboard.GetViewingCell
+    currentAccessType ← driver $ Draftboard.fromDraftboard Draftboard.GetAccessType
 
-    when (currentPath /= pure path) do
-      features <- liftEff detectBrowserFeatures
-      if action == New
-        then driver $ Draftboard.toNotebook $ Notebook.Reset features path
-        else driver $ Draftboard.toNotebook $ Notebook.LoadNotebook features path
+    when (currentPath ≠ pure path) do
+      features ← liftEff detectBrowserFeatures
+      if action ≡ New
+        then driver $ Draftboard.toDeck $ Deck.Reset features path
+        else driver $ Draftboard.toDeck $ Deck.LoadNotebook features path
 
     driver $ Draftboard.toRename $ Rename.SetText $ UP.dropNotebookExt name
     driver $ Draftboard.toDraftboard $ Draftboard.SetViewingCell viewing
     driver $ Draftboard.toDraftboard $ Draftboard.SetAccessType accessType
-    driver $ Draftboard.toNotebook $ Notebook.SetGlobalVarMap varMap
+    driver $ Draftboard.toDeck $ Deck.SetGlobalVarMap varMap
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
       $ parentURL $ Right path

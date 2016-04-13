@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Editor.Model where
+module SlamData.Notebook.Deck.Model where
 
 import SlamData.Prelude
 
@@ -26,22 +26,22 @@ import Data.Map as M
 import SlamData.Notebook.Cell.CellId (CellId)
 import SlamData.Notebook.Cell.Model as Cell
 
-type Notebook =
+type Deck =
   { cells :: Array Cell.Model
   , dependencies :: M.Map CellId CellId
   }
 
-emptyNotebook :: Notebook
+emptyNotebook :: Deck
 emptyNotebook = { cells: [ ], dependencies: M.empty }
 
-encode :: Notebook -> Json
+encode :: Deck -> Json
 encode r
    = "version" := 2
   ~> "cells" := map Cell.encode r.cells
   ~> "dependencies" := r.dependencies
   ~> jsonEmptyObject
 
-decode :: Json -> Either String Notebook
+decode :: Json -> Either String Deck
 decode = decodeJson >=> \obj -> do
   case obj .? "version" of
     Right n | n /= 2 -> throwError "Expected notebook format v2"

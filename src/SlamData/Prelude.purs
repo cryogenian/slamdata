@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Prelude
   ( (∘), (⊕), (⋙), (⋘), (≡), (≠), (×), (≪), (≫)
+  , (∨), (∧)
   , flipCompose, notEq, applyRight, applyLeft
   , module Prelude
   , module Control.Alt
@@ -88,3 +89,5 @@ infix 4 notEq as ≠
 infixr 1 Tuple as ×
 infixl 4 applyRight as ≫
 infixl 4 applyLeft as ≪
+infixr 3 conj as ∧
+infixr 2 disj as ∨

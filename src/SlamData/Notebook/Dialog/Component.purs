@@ -22,8 +22,6 @@ module SlamData.Notebook.Dialog.Component
   , ChildSlot
   , ChildQuery
   , ChildState
-  , ErrorSlot
-  , EmbedSlot
   , StateP
   , QueryP
   , comp
@@ -31,8 +29,11 @@ module SlamData.Notebook.Dialog.Component
 
 import SlamData.Prelude
 
+import Data.Either.Nested (Either3)
+import Data.Functor.Coproduct.Nested (Coproduct3, coproduct3)
+
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, prjQuery, prjSlot)
+import Halogen.Component.ChildPath (ChildPath, (:>), cpL, cpR, prjQuery, prjSlot)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -41,42 +42,64 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Notebook.Cell.Port.VarMap as Port
 import SlamData.Notebook.Dialog.Embed.Component as Embed
+import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (fadeWhen)
 
 data Dialog
   = Error String
   | Embed String Port.VarMap
+  | Share String
 
 type State = Maybe Dialog
 
-initialState :: State
+initialState ∷ State
 initialState = Nothing
 
 data Query a
   = Dismiss a
   | Show Dialog a
 
-type ChildState = Either Error.State Embed.State
-type ChildQuery = Coproduct Error.Query Embed.Query
-type ErrorSlot = String
-type EmbedSlot = String
-type ChildSlot = Either ErrorSlot EmbedSlot
+type ChildState =
+  Either3
+    Error.State
+    Embed.State
+    Share.State
+
+type ChildQuery =
+  Coproduct3
+    Error.Query
+    Embed.Query
+    Share.Query
+
+type ChildSlot =
+  Either3
+    Unit
+    Unit
+    Unit
 
 cpError
-  :: ChildPath
+  ∷ ChildPath
        Error.State ChildState
        Error.Query ChildQuery
-       ErrorSlot ChildSlot
+       Unit ChildSlot
 cpError =
-  cpL
+  cpL :> cpL
 
 cpEmbed
-  :: ChildPath
+  ∷ ChildPath
        Embed.State ChildState
        Embed.Query ChildQuery
-       EmbedSlot ChildSlot
+       Unit ChildSlot
 cpEmbed =
+  cpL :> cpR
+
+cpShare
+  ∷ ChildPath
+      Share.State ChildState
+      Share.Query ChildQuery
+      Unit ChildSlot
+cpShare =
   cpR
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
@@ -85,43 +108,54 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp :: H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just peek }
+comp ∷ H.Component StateP QueryP Slam
+comp = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
 
-render :: State -> HTML
+render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes ([B.modal] <> fadeWhen (isNothing state))
+    [ HP.classes ([B.modal] ⊕ fadeWhen (isNothing state))
     , HE.onClick (HE.input_ Dismiss)
     ]
-    (maybe [] (pure <<< dialog) state)
+    (maybe [] (pure ∘ dialog) state)
   where
 
   dialog (Error str) =
-    HH.slot' cpError str \_ ->
+    HH.slot' cpError unit \_ →
       { component: Error.comp
       , initialState: Error.State str
       }
 
   dialog (Embed url varMap) =
-    HH.slot' cpEmbed url \_ ->
+    HH.slot' cpEmbed unit \_ →
       { component: Embed.comp
       , initialState: { url, varMap }
       }
 
-eval :: Natural Query DSL
+  dialog (Share str) =
+    HH.slot' cpShare unit \_ →
+      { component: Share.comp
+      , initialState: Share.State str
+      }
+
+eval ∷ Natural Query DSL
 eval (Dismiss next) = H.set Nothing $> next
 eval (Show d next) = H.set (Just d) $> next
 
-peek :: forall a. H.ChildF ChildSlot ChildQuery a -> DSL Unit
-peek (H.ChildF slot query) =
-  fromMaybe (pure unit)
-  $   (errorPeek <$> prjSlot cpError slot <*> prjQuery cpError query)
-  <|> (embedPeek <$> prjSlot cpEmbed slot <*> prjQuery cpEmbed query)
+peek ∷ ∀ a. ChildQuery a → DSL Unit
+peek =
+  coproduct3
+    errorPeek
+    embedPeek
+    sharePeek
 
-errorPeek :: forall a. ErrorSlot -> Error.Query a -> DSL Unit
-errorPeek _ (Error.Dismiss _) = H.set Nothing
+errorPeek ∷ ∀ a. Error.Query a → DSL Unit
+errorPeek (Error.Dismiss _) = H.set Nothing
 
-embedPeek :: forall a. EmbedSlot -> Embed.Query a -> DSL Unit
-embedPeek _ (Embed.Dismiss _) = H.set Nothing
-embedPeek _ _ = pure unit
+embedPeek ∷ ∀ a. Embed.Query a → DSL Unit
+embedPeek (Embed.Dismiss _) = H.set Nothing
+embedPeek _ = pure unit
+
+sharePeek ∷ ∀ a. Share.Query a → DSL Unit
+sharePeek (Share.Dismiss _) = H.set Nothing
+sharePeek _ = pure unit

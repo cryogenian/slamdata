@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Notebook.Editor.Component.Query
+module SlamData.Notebook.Deck.Component.Query
   ( Query(..)
   , QueryP
   ) where
@@ -30,7 +30,7 @@ import SlamData.Notebook.Cell.CellId as CID
 import SlamData.Notebook.Cell.CellType as CT
 import SlamData.Notebook.Cell.Component (CellQueryP)
 import SlamData.Notebook.Cell.Port.VarMap as Port
-import SlamData.Notebook.Editor.Component.CellSlot (CellSlot)
+import SlamData.Notebook.Deck.Component.ChildSlot (ChildSlot, ChildQuery)
 
 import Utils.Path as UP
 
@@ -40,7 +40,7 @@ data Query a
   = AddCell CT.CellType a
   | RunActiveCell a
   | RunPendingCells a
-  | GetNotebookPath (Maybe UP.DirPath -> a)
+  | GetNotebookPath (Maybe UP.DirPath → a)
   | SetViewingCell (Maybe CID.CellId) a
   | SetName String a
   | SetAccessType AT.AccessType a
@@ -49,9 +49,11 @@ data Query a
   | LoadNotebook BF.BrowserFeatures UP.DirPath a
   | SaveNotebook a
   | Reset BF.BrowserFeatures UP.DirPath a
-  | GetGlobalVarMap (Port.VarMap -> a)
+  | GetGlobalVarMap (Port.VarMap → a)
   | SetGlobalVarMap Port.VarMap a
-  | FindCellParent CID.CellId (Maybe CID.CellId -> a)
-  | GetCellType CID.CellId (Maybe CT.CellType -> a)
+  | FindCellParent CID.CellId (Maybe CID.CellId → a)
+  | GetCellType CID.CellId (Maybe CT.CellType → a)
+  | FlipDeck a
+  | GetActiveCellId (Maybe CID.CellId → a)
 
-type QueryP = Coproduct Query (ChildF CellSlot CellQueryP)
+type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
