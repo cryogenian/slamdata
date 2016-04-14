@@ -24,6 +24,7 @@ import Control.Monad.Eff.Ref (REF)
 import Control.UI.File (READ_FILE)
 import Control.UI.ZClipboard (ZCLIPBOARD)
 import Data.Date (Now)
+import Data.Date.Locale (Locale)
 import DOM.Timer (Timer)
 import ECharts.Effects (ECHARTS_INIT, ECHARTS_OPTION_SET, ECHARTS_DISPOSE, ECHARTS_RESIZE, ECHARTS_REFRESH, ECHARTS_CLEAR)
 import Halogen (HalogenEffects)
@@ -49,4 +50,5 @@ type SlamDataRawEffects =
   , ref :: REF
   , timer :: Timer
   , zClipboard :: ZCLIPBOARD
+  , locale :: Locale
   )

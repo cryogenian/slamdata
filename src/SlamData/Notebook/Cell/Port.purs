@@ -35,18 +35,18 @@ import ECharts.Options as Ec
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Cell.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue)
 
-import Text.Markdown.SlamDown (SlamDown)
+import Text.Markdown.SlamDown as SD
 
 type ChartPort = { options ∷ Ec.Option, width ∷ Int, height ∷ Int }
 
 data Port
-  = SlamDown SlamDown
+  = SlamDown (SD.SlamDownP VarMapValue)
   | VarMap VarMap
   | ChartOptions ChartPort
-  | TaggedResource {tag ∷ Maybe String, resource ∷ R.Resource }
+  | TaggedResource { tag ∷ Maybe String, resource ∷ R.Resource }
   | Blocked
 
-_SlamDown ∷ PrismP Port SlamDown
+_SlamDown ∷ PrismP Port (SD.SlamDownP VarMapValue)
 _SlamDown = prism' SlamDown \p → case p of
   SlamDown x → Just x
   _ → Nothing
@@ -64,12 +64,12 @@ _ChartOptions = prism' ChartOptions \p → case p of
 _ResourceTag ∷ TraversalP Port String
 _ResourceTag = wander \f s → case s of
   TaggedResource o@{tag = Just tag} →
-    (TaggedResource ∘ o{tag = _} ∘ Just) <$> f tag
+    TaggedResource ∘ o{tag = _} ∘ Just <$> f tag
   _ → pure s
 
 _Resource ∷ TraversalP Port R.Resource
 _Resource = wander \f s → case s of
-  TaggedResource o → (TaggedResource ∘ o{resource = _}) <$> f o.resource
+  TaggedResource o → TaggedResource ∘ o{resource = _} <$> f o.resource
   _ → pure s
 
 _Blocked ∷ PrismP Port Unit

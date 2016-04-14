@@ -15,44 +15,91 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Cell.Markdown.Interpret
-  ( formFieldValueToLiteral
+  ( formFieldValueToVarMapValue
   ) where
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Maybe.Trans as MT
+
+import Data.Enum as Enum
+import Data.Date as D
+import Data.Date.Locale as DL
+import Data.Time as DT
+import Data.Functor.Compose (decompose)
+import Data.Identity (Identity(..))
 import Data.List as L
-import Data.Set as Set
+import Data.Maybe as M
 import Data.SQL2.Literal as SQL2
 
-import Text.Markdown.SlamDown as MD
-import Text.Markdown.SlamDown.Html as MDH
-import Text.Parsing.Parser as P
+import SlamData.Notebook.Cell.Port.VarMap as VM
 
-formFieldValueToLiteral
-  :: MDH.FormFieldValue
-  -> SQL2.Literal
-formFieldValueToLiteral v =
-  case v of
-    MDH.SingleValue ty str ->
-      case ty of
-        MD.PlainText -> SQL2.string str
-        MD.Numeric ->
-          P.runParser str SQL2.parseLiteral
-            # either
-                (\_ -> SQL2.string str) -- input validation precludes this case
-                id
-        MD.Date -> SQL2.date str
-        MD.Time -> SQL2.time str
-        MD.DateTime -> SQL2.dateTime str
-    MDH.MultipleValues vs ->
-      SQL2.orderedSet $
-        SQL2.string <$>
-          setToArray vs
+import Text.Markdown.SlamDown as SD
+import Text.Markdown.SlamDown.Pretty as SDPR
+import Text.Markdown.SlamDown.Halogen.Component.State as SDS
+
+-- The use of this function in formFieldValueToVarMapValue is suspicious, and
+-- lead me to think that we have not arranged our data structures properly. In
+-- particular, we need to decide what it means to have a collection of SQL^2
+-- query expressions. Currently, we end up just filtering them out.
+
+-- One option that we might want to consider, in case we do intend to support things
+-- like ordered sets of query expressions, etc. would be to have something like
+-- `type VarMapValue = Mu (Coproduct LiteralF ExprF)`.
+
+getLiteral
+  ∷ ∀ m
+  . (Plus m, Applicative m)
+  ⇒ VM.VarMapValue
+  → m SQL2.Literal
+getLiteral (VM.Literal l) = pure l
+getLiteral _ = empty
+
+formFieldValueToVarMapValue
+  ∷ ∀ e m
+  . (MonadEff (locale ∷ DL.Locale | e) m, Applicative m)
+  ⇒ SDS.FormFieldValue VM.VarMapValue
+  → m (M.Maybe VM.VarMapValue)
+formFieldValueToVarMapValue v =
+  MT.runMaybeT ∘ map VM.Literal $
+    case v of
+      SD.TextBox tb → do
+        tb' ← liftMaybe $ SD.traverseTextBox decompose tb
+        case tb' of
+          SD.PlainText (Identity x) → pure $ SQL2.string x
+          SD.Numeric (Identity x) → pure $ SQL2.decimal x
+          SD.Date _ → pure ∘ SQL2.date $ SDPR.prettyPrintTextBoxValue tb'
+          SD.Time _ → pure ∘ SQL2.time $ SDPR.prettyPrintTextBoxValue tb'
+          SD.DateTime (Identity localDateTime) → do
+            let
+              year = D.Year localDateTime.date.year
+              day = D.DayOfMonth localDateTime.date.day
+              hour = DT.HourOfDay localDateTime.time.hours
+              minute = DT.MinuteOfHour localDateTime.time.minutes
+              second = DT.SecondOfMinute 0
+              millisecond = DT.MillisecondOfSecond 0
+            month ← liftMaybe $ Enum.toEnum localDateTime.date.month
+            dateTime ← MT.MaybeT ∘ liftEff $ DL.dateTime year month day hour minute second millisecond
+            pure ∘ SQL2.dateTime $ D.toISOString dateTime
+      SD.CheckBoxes (Identity bs) (Identity xs) →
+        L.zip bs xs
+          # L.filter fst
+          # L.mapMaybe (getLiteral ∘ snd)
+          # L.fromList
+          # SQL2.orderedSet
+          # pure
+      SD.RadioButtons (Identity x) _ →
+        pure ∘ SQL2.orderedSet $ getLiteral x
+      SD.DropDown mx _ → do
+        Identity x ← liftMaybe mx
+        pure ∘ SQL2.orderedSet $ getLiteral x
+
   where
-    setToArray
-      :: forall a
-       . Set.Set a
-      -> Array a
-    setToArray =
-      Set.toList
-        >>> L.fromList
+    liftMaybe
+      ∷ ∀ n a
+      . (Applicative n)
+      ⇒ Maybe a
+      → MT.MaybeT n a
+    liftMaybe =
+      MT.MaybeT ∘ pure

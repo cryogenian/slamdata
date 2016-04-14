@@ -16,19 +16,21 @@ limitations under the License.
 
 module SlamData.Notebook.Cell.Markdown.Component.State where
 
+import SlamData.Notebook.Cell.Port.VarMap as VM
+
 import SlamData.Prelude
 
 import Halogen (ParentState)
 
-import Text.Markdown.SlamDown (SlamDown)
-import Text.Markdown.SlamDown.Html (SlamDownState, SlamDownQuery)
+import Text.Markdown.SlamDown (SlamDownP)
+import Text.Markdown.SlamDown.Halogen.Component (SlamDownState, SlamDownQuery)
 
 import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery)
 import SlamData.Effects (Slam)
 
-type State = Maybe SlamDown
+type State = Maybe (SlamDownP VM.VarMapValue)
 
 initialState :: State
 initialState = Nothing
 
-type StateP = ParentState State SlamDownState CellEvalQuery SlamDownQuery Slam Unit
+type StateP = ParentState State (SlamDownState VM.VarMapValue) CellEvalQuery (SlamDownQuery VM.VarMapValue) Slam Unit

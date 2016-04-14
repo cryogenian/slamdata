@@ -28,6 +28,7 @@ import Data.Functor ((<$), ($>))
 
 import Data.Array as A
 import Data.Foldable as F
+import Data.HugeNum as HN
 import Data.Int as Int
 import Data.List as L
 import Data.String as S
@@ -151,7 +152,6 @@ parseDigit =
     , 9 <$ PS.string "9"
     ]
 
-
 many1
   :: forall m s a
    . (Monad m)
@@ -209,26 +209,34 @@ parseInt =
 parseExponent
   :: forall m
    . (Monad m)
-  => P.ParserT String m Number
+  => P.ParserT String m Int
 parseExponent =
   (PS.string "e" <|> PS.string "E")
     *> parseInt
-    <#> Int.toNumber
 
 parsePositiveDecimal
   :: forall m
    . (Monad m)
-  => P.ParserT String m Number
+  => P.ParserT String m HN.HugeNum
 parsePositiveDecimal = do
-  lhs <- PC.try $ Int.toNumber <$> parseNat <* PS.string "."
-  rhs <- A.many parseDigit <#> F.foldr (\d f -> (f + Int.toNumber d) / 10.0) 0.0
-  exp <- PC.option 0.0 parseExponent
-  pure $ (lhs + rhs) * Math.pow 10.0 exp
+  let ten = HN.fromNumber 10.0
+  lhs <- PC.try $ fromInt <$> parseNat <* PS.string "."
+  rhs <- A.many parseDigit <#> F.foldr (\d f -> divNum (f + fromInt d) ten) zero
+  exp <- PC.option 0 parseExponent
+  pure $ (lhs + rhs) * HN.pow ten exp
+
+  where
+    fromInt = HN.fromNumber <<< Int.toNumber
+
+    -- TODO: remove when HugeNum adds division
+    divNum a b =
+      HN.fromNumber $
+        HN.toNumber a / HN.toNumber b
 
 parseDecimal
   :: forall m
    . (Monad m)
-  => P.ParserT String m Number
+  => P.ParserT String m HN.HugeNum
 parseDecimal =
   parseSigned parsePositiveDecimal
 
@@ -242,8 +250,8 @@ parseLiteralF rec =
   PC.choice $
     [ Null <$ PS.string "null"
     , Boolean <$> parseBoolean
-    , Decimal <$> parseDecimal
     , Integer <$> parseInt
+    , Decimal <$> parseDecimal
     , String <$> stringLiteral
     , DateTime <$> taggedLiteral "TIMESTAMP"
     , Time <$> taggedLiteral "TIME"
