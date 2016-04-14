@@ -34,9 +34,9 @@ import OIDCCryptUtils.Types as OIDC
 
 type RedirectHashPayload =
   { idToken :: OIDC.IdToken
-  , authUser :: String
+  , authUser :: Maybe String
   , state :: OIDC.BoundStateJWS
-  , prompt :: String
+  , prompt :: Maybe String
   }
 
 parameterParser :: P.Parser (Tuple String String)
@@ -59,12 +59,13 @@ uriHashParser :: P.Parser RedirectHashPayload
 uriHashParser = do
   PS.char '#'
   params <- parametersParser
+  let
+    authUser = SM.lookup "authuser" params
+    prompt = SM.lookup "prompt" params
 
   let lookup key = SM.lookup key params # maybe (P.fail $ "missing " <> key) pure
   idToken <- lookup "id_token" <#> OIDC.IdToken
-  authUser <- lookup "authuser"
   state <- lookup "state" <#> OIDC.BoundStateJWS
-  prompt <- lookup "prompt"
 
   pure
     { idToken
