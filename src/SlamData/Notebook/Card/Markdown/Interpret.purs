@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Notebook.Card.Markdown.Interpret
   ( formFieldValueToVarMapValue
+  , formFieldEmptyValue
   ) where
 
 import SlamData.Prelude
@@ -55,6 +56,24 @@ getLiteral
   → m SQL2.Literal
 getLiteral (VM.Literal l) = pure l
 getLiteral _ = empty
+
+formFieldEmptyValue
+  ∷ ∀ f a
+  . SD.FormFieldP f a
+  → VM.VarMapValue
+formFieldEmptyValue field =
+  VM.Literal
+    case field of
+      SD.TextBox tb →
+        case tb of
+          SD.PlainText _ → SQL2.string ""
+          SD.Numeric _ → SQL2.integer 0
+          SD.Date _ → SQL2.null
+          SD.Time _ → SQL2.null
+          SD.DateTime _ → SQL2.null
+      SD.CheckBoxes _ _ → SQL2.orderedSet []
+      SD.RadioButtons _ _ → SQL2.orderedSet []
+      SD.DropDown _ _ → SQL2.orderedSet []
 
 formFieldValueToVarMapValue
   ∷ ∀ e m

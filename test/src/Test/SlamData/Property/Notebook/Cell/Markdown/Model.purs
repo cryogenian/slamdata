@@ -18,21 +18,55 @@ module Test.SlamData.Property.Notebook.Card.Markdown.Model where
 
 import Prelude
 
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Unsafe as Unsafe
+
+import Data.Date.Locale as DL
 import Data.Either (Either(..))
 import Data.Foldable (mconcat)
+import Data.List as L
+import Data.Set as Set
+import Data.StrMap as SM
 
 import SlamData.Notebook.Card.Markdown.Model as M
+import SlamData.Notebook.Card.Markdown.Component.State as MDS
+
+import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
 import Test.StrongCheck (QC, Result(..), quickCheck, (<?>))
-import Text.Markdown.SlamDown.Halogen.Component.State (SlamDownState(..))
 
-check :: QC Unit
-check = quickCheck \(SlamDownState { document, formState }) ->
-  let model = { input: document, state: formState }
-  in case M.decode (M.encode model) of
-    Left err -> Failed $ "Decode failed: " ++ err
-    Right model' ->
-      mconcat
-       [ model.input == model'.input <?> "input mismatch: " <> show model.input <> " vs. " <> show model'.input
-       , model.state == model'.state <?> "state mismatch: " <> show model.state <> " vs. " <> show model'.state
-       ]
+checkSerialization ∷ QC Unit
+checkSerialization =
+  quickCheck \(SDS.SlamDownState { document, formState }) →
+    let model = { input: document, state: formState }
+    in case M.decode (M.encode model) of
+      Left err → Failed $ "Decode failed: " ++ err
+      Right model' →
+        mconcat
+         [ model.input == model'.input <?> "input mismatch: " <> show model.input <> " vs. " <> show model'.input
+         , model.state == model'.state <?> "state mismatch: " <> show model.state <> " vs. " <> show model'.state
+         ]
+
+unsafeRunLocale
+  ∷ ∀ a
+  . Eff (locale ∷ DL.Locale) a
+  → a
+unsafeRunLocale =
+  Unsafe.unsafePerformEff
+
+checkVarMapConstruction ∷ QC Unit
+checkVarMapConstruction =
+  quickCheck \(SDS.SlamDownState { document, formState }) →
+    let
+      formDesc = SDS.formDescFromDocument document
+      varMap = unsafeRunLocale $ MDS.formStateToVarMap formDesc formState
+      descKeys = Set.fromList $ L.toList $ SM.keys formDesc
+      stateKeys = Set.fromList $ L.toList $ SM.keys varMap
+    in
+      descKeys == stateKeys
+        <?> ("Keys mismatch: " <> show descKeys <> " vs. " <> show stateKeys)
+
+check ∷ QC Unit
+check = do
+  checkVarMapConstruction
+  checkSerialization

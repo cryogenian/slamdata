@@ -23,6 +23,7 @@ module SlamData.Notebook.Card.Markdown.Component
 
 import SlamData.Prelude
 
+import Data.Array as A
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.StrMap as SM
 
@@ -34,8 +35,7 @@ import SlamData.Notebook.Card.CardId (CardId, runCardId)
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalResult)
 import SlamData.Notebook.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import SlamData.Notebook.Card.Markdown.Component.Query (QueryP)
-import SlamData.Notebook.Card.Markdown.Component.State (State, StateP, initialState)
-import SlamData.Notebook.Card.Markdown.Interpret (formFieldValueToVarMapValue)
+import SlamData.Notebook.Card.Markdown.Component.State (State, StateP, initialState, formStateToVarMap)
 import SlamData.Notebook.Card.Markdown.Model (Model, decode, encode)
 import SlamData.Notebook.Card.Port as Port
 import SlamData.Notebook.Card.CardType as Ct
@@ -101,14 +101,6 @@ render config _ =
         }
     ]
 
-formStateToVarMap
-  ∷ SD.SlamDownFormState Port.VarMapValue
-  → Slam Port.VarMap
-formStateToVarMap =
-  SM.foldM
-    (\m k → map (maybe m $ flip (SM.insert k) m) ∘ formFieldValueToVarMapValue)
-    SM.empty
-
 eval ∷ Natural CardEvalQuery MarkdownDSL
 eval (NotifyRunCard next) = pure next
 eval (EvalCard value k) =
@@ -116,12 +108,13 @@ eval (EvalCard value k) =
     Just (Port.SlamDown input) → do
       H.set $ Just input
       H.query unit $ H.action (SD.SetDocument input)
+      let desc = SD.formDescFromDocument input
       state ← H.query unit $ H.request SD.GetFormState
       k <$>
         case state of
           Nothing → pure $ error "GetFormState query returned Nothing"
           Just st → do
-            varMap ← H.liftH ∘ H.liftH $ formStateToVarMap st
+            varMap ← H.liftH ∘ H.liftH $ formStateToVarMap desc st
             pure { output: Just $ Port.VarMap varMap, messages: [] }
     _ → pure ∘ k $ error "expected SlamDown input"
 eval (SetupCard _ next) = pure next
