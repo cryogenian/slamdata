@@ -17,8 +17,7 @@ limitations under the License.
 module SlamData.Notebook.Card.Component.State
   ( CardState(..)
   , CardStateP
-  , initEditorCardState
-  , initResultsCardState
+  , initialCardState
   , _accessType
   , _visibility
   , _runState
@@ -44,6 +43,7 @@ module SlamData.Notebook.Card.Component.State
   , _APIResultsState
   , _NextState
   , _SaveState
+  , _OpenResourceState
   ) where
 
 import SlamData.Prelude
@@ -71,6 +71,7 @@ import SlamData.Notebook.Card.Search.Component.State as Search
 import SlamData.Notebook.Card.Viz.Component.State as Viz
 import SlamData.Notebook.Card.Next.Component.State as Next
 import SlamData.Notebook.Card.Save.Component.State as Save
+import SlamData.Notebook.Card.OpenResource.Component.State as Open
 import SlamData.Effects (Slam, SlamDataEffects)
 
 
@@ -110,25 +111,8 @@ type CardState =
 type CardStateP = ParentState CardState AnyCardState CardQuery InnerCardQuery Slam Unit
 
 -- | Creates an initial `CardState` value for an editor card.
-initEditorCardState ∷ CardState
-initEditorCardState =
-  { accessType: Editable
-  , visibility: Visible
-  , runState: RunInitial
-  , tickStopper: pure unit
-  , isCollapsed: false
-  , messages: []
-  , messageVisibility: Invisible
-  , hasResults: false
-  , cachingEnabled: Nothing
-  , input: Nothing
-  , output: Nothing
-  , canceler: mempty
-  }
-
--- | Creates an initial `CardState` value for a results card.
-initResultsCardState ∷ CardState
-initResultsCardState =
+initialCardState ∷ CardState
+initialCardState =
   { accessType: Editable
   , visibility: Visible
   , runState: RunInitial
@@ -200,6 +184,7 @@ data AnyCardState
   | APIResultsState APIResults.State
   | NextState Next.State
   | SaveState Save.State
+  | OpenResourceState Open.State
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState \s → case s of
@@ -259,4 +244,9 @@ _NextState = prism' NextState \s → case s of
 _SaveState ∷ PrismP AnyCardState Save.State
 _SaveState = prism' SaveState \s → case s of
   SaveState s' → Just s'
+  _ → Nothing
+
+_OpenResourceState ∷ PrismP AnyCardState Open.State
+_OpenResourceState = prism' OpenResourceState \s → case s of
+  OpenResourceState s' → Just s'
   _ → Nothing

@@ -17,8 +17,6 @@ limitations under the License.
 module SlamData.Notebook.Card.CardType
   ( CardType(..)
   , AceMode(..)
-  , linkedCardType
-  , autorun
   , cardName
   , cardGlyph
   , aceCardName
@@ -57,6 +55,7 @@ data CardType
   | APIResults
   | NextAction
   | Save
+  | OpenResource
 
 insertableCardTypes ∷ Array CardType
 insertableCardTypes =
@@ -72,6 +71,7 @@ insertableCardTypes =
   , API
   , APIResults
   , Save
+  , OpenResource
   ]
 
 instance eqCardType ∷ Eq CardType where
@@ -87,6 +87,7 @@ instance eqCardType ∷ Eq CardType where
   eq APIResults APIResults = true
   eq NextAction NextAction = true
   eq Save Save = true
+  eq OpenResource OpenResource = true
   eq _ _ = false
 
 data AceMode
@@ -97,19 +98,6 @@ instance eqAceMode ∷ Eq AceMode where
   eq MarkdownMode MarkdownMode = true
   eq SQLMode SQLMode = true
   eq _ _ = false
-
-linkedCardType ∷ CardType → Maybe CardType
-linkedCardType (Ace MarkdownMode) = Just Markdown
-linkedCardType (Ace _) = Just JTable
-linkedCardType Explore = Just JTable
-linkedCardType Search = Just JTable
-linkedCardType Viz = Just Chart
-linkedCardType API = Just APIResults
-linkedCardType _ = Nothing
-
-autorun ∷ CardType → Boolean
-autorun Viz = true
-autorun _ = false
 
 instance encodeJsonCardType ∷ EncodeJson CardType where
   encodeJson (Ace MarkdownMode) = encodeJson "ace-markdown"
@@ -125,6 +113,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
   encodeJson APIResults = encodeJson "api-results"
   encodeJson NextAction = encodeJson "next-action"
   encodeJson Save = encodeJson "save"
+  encodeJson OpenResource = encodeJson "open-resource"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -143,6 +132,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "api-results" → pure APIResults
       "next-action" → pure NextAction
       "save" → pure Save
+      "open-resource" → pure OpenResource
       name → throwError $ "unknown card type '" ⊕ name ⊕ "'"
 
 cardName ∷ CardType → String
@@ -158,6 +148,7 @@ cardName API = "API"
 cardName APIResults = "API Results"
 cardName NextAction = "Next Action"
 cardName Save = "Save"
+cardName OpenResource = "Explore!"
 
 cardGlyph ∷ ∀ s f. CardType → HTML s f
 cardGlyph (Ace at) = glyph $ aceCardGlyph at
@@ -178,6 +169,7 @@ cardGlyph Markdown =
 cardGlyph JTable = glyph B.glyphiconThList
 cardGlyph NextAction = glyph B.glyphiconStop
 cardGlyph Save = glyph B.glyphiconFloppyDisk
+cardGlyph OpenResource = glyph B.glyphiconFolderOpen
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Markdown"
@@ -198,6 +190,7 @@ nextCardTypes Nothing =
   , Ace MarkdownMode
   , Explore
   , API
+  , OpenResource
   ]
 nextCardTypes (Just ct) = case ct of
   Explore → dataSourceCards
@@ -213,7 +206,7 @@ nextCardTypes (Just ct) = case ct of
   Chart → [ ]
   NextAction → [ ]
   Save → dataSourceOutput `Arr.snoc` JTable
-
+  OpenResource → dataSourceCards
   where
   dataSourceOutput =
     [

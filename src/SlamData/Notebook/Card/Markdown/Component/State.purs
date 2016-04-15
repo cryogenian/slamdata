@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Notebook.Card.Markdown.Component.State where
 
-import SlamData.Notebook.Card.Port.VarMap as VM
+
 
 import SlamData.Prelude
 
@@ -25,6 +25,7 @@ import Halogen (ParentState)
 import Text.Markdown.SlamDown (SlamDownP)
 import Text.Markdown.SlamDown.Halogen.Component (SlamDownState, SlamDownQuery)
 
+import SlamData.Notebook.Card.Port.VarMap as VM
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Effects (Slam)
 

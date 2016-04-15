@@ -417,3 +417,9 @@ codeGlyph = className "code-glyph"
 
 deckBackSide ∷ ClassName
 deckBackSide = className "deck-backside"
+
+openResourceCard ∷ ClassName
+openResourceCard = className "open-resource-card"
+
+openResourceCardMenu ∷ ClassName
+openResourceCardMenu = className "open-resource-card-menu"

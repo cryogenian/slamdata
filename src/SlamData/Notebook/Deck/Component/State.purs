@@ -49,7 +49,6 @@ module SlamData.Notebook.Deck.Component.State
   , addPendingCard
   , getCardType
   , cardsOfType
-  , cardIsLinkedCardOf
   , fromModel
   , notebookPath
   ) where
@@ -77,9 +76,9 @@ import SlamData.Notebook.Card.Ace.Component (AceEvaluator, AceSetup, aceComponen
 import SlamData.Notebook.Card.API.Component (apiComponent)
 import SlamData.Notebook.Card.APIResults.Component (apiResultsComponent)
 import SlamData.Notebook.Card.CardId (CardId(..), runCardId)
-import SlamData.Notebook.Card.CardType (CardType(..), AceMode(..), linkedCardType)
+import SlamData.Notebook.Card.CardType (CardType(..), AceMode(..))
 import SlamData.Notebook.Card.Chart.Component (chartComponent)
-import SlamData.Notebook.Card.Component (CardComponent, CardState, CardStateP, CardQueryP, initEditorCardState, initResultsCardState)
+import SlamData.Notebook.Card.Component (CardComponent, CardState, CardStateP, CardQueryP, initialCardState)
 import SlamData.Notebook.Card.Download.Component (downloadComponent)
 import SlamData.Notebook.Card.Explore.Component (exploreComponent)
 import SlamData.Notebook.Card.JTable.Component (jtableComponent)
@@ -92,6 +91,7 @@ import SlamData.Notebook.Card.Port.VarMap as Port
 import SlamData.Notebook.Card.Query.Eval (queryEval, querySetup)
 import SlamData.Notebook.Card.Search.Component (searchComponent)
 import SlamData.Notebook.Card.Viz.Component (vizComponent)
+import SlamData.Notebook.Card.OpenResource.Component (openResourceComponent)
 import SlamData.Notebook.Deck.Component.ChildSlot (CardSlot(..), ChildSlot, ChildState, ChildQuery)
 import SlamData.Notebook.Deck.Component.Query (Query)
 import SlamData.Notebook.Deck.Model as Model
@@ -252,7 +252,7 @@ addCard' cardType parent st =
   mkCardDef cardType cardId =
     let component = cardTypeComponent cardType cardId st.browserFeatures
         initialState =
-          H.parentState (cardTypeInitialState cardType)
+          H.parentState initialCardState
             { accessType = st.accessType }
     in { id: cardId
        , ty: cardType
@@ -275,22 +275,7 @@ cardTypeComponent API _ _ = apiComponent
 cardTypeComponent APIResults _ _ = apiResultsComponent
 cardTypeComponent NextAction _ _ = nextCardComponent
 cardTypeComponent Save _ _ = saveCardComponent
-
-cardTypeInitialState ∷ CardType → CardState
-cardTypeInitialState (Ace SQLMode) =
-  initEditorCardState { cachingEnabled = Just false }
-cardTypeInitialState (Ace _) = initEditorCardState
-cardTypeInitialState Explore = initEditorCardState
-cardTypeInitialState Search = initEditorCardState { cachingEnabled = Just false }
-cardTypeInitialState Viz = initEditorCardState
-cardTypeInitialState Chart = initResultsCardState
-cardTypeInitialState Markdown = initResultsCardState
-cardTypeInitialState JTable = initResultsCardState
-cardTypeInitialState Download = initEditorCardState
-cardTypeInitialState API = initEditorCardState
-cardTypeInitialState APIResults = initResultsCardState
-cardTypeInitialState NextAction = initEditorCardState
-cardTypeInitialState Save = initEditorCardState
+cardTypeComponent OpenResource _ _ = openResourceComponent
 
 aceEvalMode ∷ AceMode → AceEvaluator
 aceEvalMode MarkdownMode = markdownEval
@@ -383,22 +368,6 @@ cardsOfType cardType =
        then Just cid
        else Nothing
 
--- | Given two card IDs, determine whether the latter is the linked results
--- | card of the former.
-cardIsLinkedCardOf
-  ∷ { childId ∷ CardId, parentId ∷ CardId }
-  → State
-  → Boolean
-cardIsLinkedCardOf { childId, parentId } st =
-  findParent childId st ≡ Just parentId ∧
-    case getCardType parentId st of
-      Nothing → false
-      Just pty →
-        case getCardType childId st of
-          Nothing → false
-          Just cty → linkedCardType pty ≡ Just cty
-
-
 -- | Adds a card to the set of cards that are enqueued to run.
 -- |
 -- | If the card is a descendant of an card that has already been enqueued this
@@ -459,7 +428,7 @@ fromModel browserFeatures path name { cards, dependencies } =
   cardDefFromModel ∷ Card.Model → List CardDef
   cardDefFromModel { cardId, cardType} =
     let component = cardTypeComponent cardType cardId browserFeatures
-        initialState = H.parentState (cardTypeInitialState cardType)
+        initialState = H.parentState initialCardState
     in
       pure
         { id: cardId
