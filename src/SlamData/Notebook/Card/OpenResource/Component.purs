@@ -117,9 +117,6 @@ cardEval (Eq.EvalCard info k) = do
           pure $ k { output: Just Port.Blocked
                    , messages: [ Left err ]
                    }
-
-
-  pure $ k { output: Nothing, messages: [ ] }
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.Save k) = pure $ k $ encodeJson ""
 cardEval (Eq.Load js next) = pure next
