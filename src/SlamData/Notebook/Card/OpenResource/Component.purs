@@ -7,6 +7,7 @@ module SlamData.Notebook.Card.OpenResource.Component
 import SlamData.Prelude
 
 import Data.Argonaut (decodeJson, encodeJson)
+import Data.Lens ((?~), (.~))
 import Data.Path.Pathy (printPath)
 
 import Halogen as H
@@ -39,7 +40,12 @@ openResourceComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
 openResourceComponent =
   NC.makeCardComponent
     { cardType: CT.OpenResource
-    , component: H.component { render, eval }
+    , component: H.lifecycleComponent
+        { render
+        , eval
+        , initializer: Just (H.action (right ∘ Init))
+        , finalizer: Nothing
+        }
     , initialState: initialState
     , _State: NC._OpenResourceState
     , _Query: NC.makeQueryPrism NC._OpenResourceQuery
@@ -88,7 +94,7 @@ cardEval (Eq.EvalCard info k) = do
   mbRes ← H.gets _.selected
   case mbRes of
     Nothing → pure $ k { output: Nothing, messages: [ ] }
-    Just r → do
+    Just resource → do
       msg ←
         Quasar.messageIfResourceNotExists
           resource
@@ -98,7 +104,7 @@ cardEval (Eq.EvalCard info k) = do
       case msg of
         Nothing →
           pure $ k { output:
-                       Just Port.TaggedResource { resource: r, tag: Nothing }
+                       Just $ Port.TaggedResource { resource, tag: Nothing }
                    , messages: [ ]
                    }
         Just err →
@@ -111,15 +117,31 @@ cardEval (Eq.EvalCard info k) = do
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.Save k) = pure $ k $ encodeJson ""
 cardEval (Eq.Load js next) = pure next
-cardEval (Eq.SetupCard info next) = pure next
+cardEval (Eq.SetupCard info next) = do
+  dp ← H.gets _.browsing
+  cs ←
+    Quasar.children dp
+      # Auth.authed
+      # liftWithCanceler'
+  H.modify (_items .~ cs)
+  pure next
 cardEval (Eq.SetCanceler _ next) = pure next
 
 openResourceEval ∷ Natural Query ORDSL
 openResourceEval (ResourceSelected r next) = do
+  Debug.Trace.traceAnyA "eval"
   case R.getPath r of
-    Left fp → modify (_selected ?~ fp)
+    Left fp → H.modify (_selected ?~ r)
     Right dp → do
-      modify (_browsing .~ dp)
-      modify (_selected .~ Nothing)
-
+      H.modify (_browsing .~ dp)
+      H.modify (_selected .~ Nothing)
+      cs ←
+        Quasar.children dp
+          # Auth.authed
+          # liftWithCanceler'
+      H.modify (_items .~ cs)
+  pure next
+openResourceEval (Init next) = do
+  H.gets _.browsing >>= Debug.Trace.traceAnyA
+  Debug.Trace.traceAnyA "init"
   pure next

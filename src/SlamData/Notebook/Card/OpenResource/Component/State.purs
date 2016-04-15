@@ -19,20 +19,17 @@ type State =
 
 initialState ∷ State
 initialState =
-  { items:
-       [ R.File (Unsafe.Coerce.unsafeCoerce $ fromJust $ parseAbsFile "/foo/bar/baz")
-       , R.Directory (Unsafe.Coerce.unsafeCoerce $ fromJust $ parseAbsDir "/foo/bar/bar/")
-       ]
-  , browsing: Unsafe.Coerce.unsafeCoerce $ fromJust $ parseAbsDir "/lolo/pepe/ququ/"
+  { items: [ ]
+  , browsing: Unsafe.Coerce.unsafeCoerce $ fromJust $ parseAbsDir "/"
   , selected: Nothing
   }
 
 
-_items ∷ ∀ a r. { items ∷ a |r} a
+_items ∷ ∀ a r. LensP { items ∷ a |r} a
 _items = lens (_.items) (_{items = _})
 
-_browsing ∷ ∀ a r. { browsing ∷ a |r} a
+_browsing ∷ ∀ a r. LensP { browsing ∷ a |r} a
 _browsing = lens (_.browsing) (_{browsing = _})
 
-_selected ∷ ∀ a r. { selected ∷ a|r} a
+_selected ∷ ∀ a r. LensP { selected ∷ a|r} a
 _selected = lens (_.selected) (_{selected = _})
