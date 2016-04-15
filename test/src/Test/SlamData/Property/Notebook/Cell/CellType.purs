@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.CellType where
+module Test.SlamData.Property.Notebook.Card.CardType where
 
 import Prelude
 
@@ -22,19 +22,19 @@ import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 import Data.List (toList)
 
-import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..))
+import SlamData.Notebook.Card.CardType (CardType(..), AceMode(..))
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, quickCheck, (<?>))
 import Test.StrongCheck.Gen (elements)
 
-newtype ArbCellType = ArbCellType CellType
+newtype ArbCardType = ArbCardType CardType
 
-runArbCellType :: ArbCellType -> CellType
-runArbCellType (ArbCellType m) = m
+runArbCardType :: ArbCardType -> CardType
+runArbCardType (ArbCardType m) = m
 
-instance arbitraryArbCellType :: Arbitrary ArbCellType where
+instance arbitraryArbCardType :: Arbitrary ArbCardType where
   arbitrary =
-    ArbCellType <$>
+    ArbCardType <$>
       elements
         Explore
         (toList
@@ -48,7 +48,7 @@ instance arbitraryArbCellType :: Arbitrary ArbCellType where
           ])
 
 check :: QC Unit
-check = quickCheck $ runArbCellType >>> \ct ->
+check = quickCheck $ runArbCardType >>> \ct ->
   case decodeJson (encodeJson ct) of
     Left err -> Failed $ "Decode failed: " ++ err
-    Right ct' -> ct == ct' <?> "CellType failed to decode as encoded value"
+    Right ct' -> ct == ct' <?> "CardType failed to decode as encoded value"

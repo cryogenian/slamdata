@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.Model
-  ( ArbCell
-  , runArbCell
+module Test.SlamData.Property.Notebook.Card.Model
+  ( ArbCard
+  , runArbCard
   , check
-  , checkCellEquality
+  , checkCardEquality
   ) where
 
 import Prelude
@@ -26,39 +26,39 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Foldable (mconcat)
 
-import SlamData.Notebook.Cell.Model (Model, encode, decode)
+import SlamData.Notebook.Card.Model (Model, encode, decode)
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 import Test.Property.ArbJson (runArbJson)
-import Test.SlamData.Property.Notebook.Cell.CellId (runArbCellId)
-import Test.SlamData.Property.Notebook.Cell.CellType (runArbCellType)
+import Test.SlamData.Property.Notebook.Card.CardId (runArbCardId)
+import Test.SlamData.Property.Notebook.Card.CardType (runArbCardType)
 
-newtype ArbCell = ArbCell Model
+newtype ArbCard = ArbCard Model
 
-runArbCell :: ArbCell -> Model
-runArbCell (ArbCell m) = m
+runArbCard :: ArbCard -> Model
+runArbCard (ArbCard m) = m
 
-instance arbitraryArbCell :: Arbitrary ArbCell where
+instance arbitraryArbCard :: Arbitrary ArbCard where
   arbitrary = do
-    cellId <- runArbCellId <$> arbitrary
-    cellType <- runArbCellType <$> arbitrary
+    cardId <- runArbCardId <$> arbitrary
+    cardType <- runArbCardType <$> arbitrary
     state <- runArbJson <$> arbitrary
     hasRun <- arbitrary
     cachingEnabled <- arbitrary
-    pure $ ArbCell { cellId, cellType, state, hasRun, cachingEnabled }
+    pure $ ArbCard { cardId, cardType, state, hasRun, cachingEnabled }
 
 check :: QC Unit
-check = quickCheck $ runArbCell >>> \model ->
+check = quickCheck $ runArbCard >>> \model ->
   case decode (encode model) of
     Left err -> Failed $ "Decode failed: " ++ err
-    Right model' -> checkCellEquality model model'
+    Right model' -> checkCardEquality model model'
 
-checkCellEquality :: Model -> Model -> Result
-checkCellEquality model model' =
+checkCardEquality :: Model -> Model -> Result
+checkCardEquality model model' =
   mconcat
-   [ model.cellId == model'.cellId <?> "cellId mismatch"
-   , model.cellType == model'.cellType <?> "cellType mismatch"
+   [ model.cardId == model'.cardId <?> "cardId mismatch"
+   , model.cardType == model'.cardType <?> "cardType mismatch"
    , model.state == model'.state <?> "state mismatch"
    , model.hasRun == model'.hasRun <?> "hasRun mismatch"
    , model.cachingEnabled == model'.cachingEnabled <?> "cachingEnabled mismatch"

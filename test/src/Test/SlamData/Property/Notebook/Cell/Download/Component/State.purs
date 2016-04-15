@@ -1,4 +1,4 @@
-module Test.SlamData.Property.Notebook.Cell.Download.Component.State
+module Test.SlamData.Property.Notebook.Card.Download.Component.State
   ( ArbState
   , runArbState
   , check
@@ -8,7 +8,7 @@ import Prelude
 
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
-import SlamData.Notebook.Cell.Download.Component.State as M
+import SlamData.Notebook.Card.Download.Component.State as M
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 import Test.SlamData.Property.FileSystem.Resource (runArbResource)
@@ -34,4 +34,4 @@ check = quickCheck $ runArbState >>> \m ->
     Right m' -> (   m.compress == m'.compress
                  && m.options == m'.options
                  && m.source == m'.source)
-                <?> "Decoded download cell model doesn't match encoded"
+                <?> "Decoded download card model doesn't match encoded"

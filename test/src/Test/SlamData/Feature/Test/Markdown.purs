@@ -171,11 +171,11 @@ test = do
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
 --    Interact.playLastCard
     Interact.insertJTableCardAsNextAction
-    Expect.cellsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
-    Expect.cellsInTableColumnInLastCardToEq 2 "country" "AUT"
-    Expect.cellsInTableColumnInLastCardToEq 2 "gender" "W"
-    Expect.cellsInTableColumnInLastCardToBeGT 2 "year" "1924"
-    Expect.cellsInTableColumnInLastCardToNotEq 2 "type" "Silver"
+    Expect.cardsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
+    Expect.cardsInTableColumnInLastCardToEq 2 "country" "AUT"
+    Expect.cardsInTableColumnInLastCardToEq 2 "gender" "W"
+    Expect.cardsInTableColumnInLastCardToBeGT 2 "year" "1924"
+    Expect.cardsInTableColumnInLastCardToNotEq 2 "type" "Silver"
     successMsg "Ok, Filtered query resuts with fields"
 
   mdScenario "Filter query resuts by changing field values" [] do
@@ -199,8 +199,8 @@ test = do
     Interact.checkFieldInLastMdCard "M"
     Interact.pushRadioButtonInLastMdCard "Gold"
     Interact.selectFromDropdownInLastMdCard "country" "GDR"
-    Expect.cellsInTableColumnInLastCardToEq 8 "discipline" "Luge"
-    Expect.cellsInTableColumnInLastCardToEqOneOf 8 "gender" ["M", "X"]
-    Expect.cellsInTableColumnInLastCardToBeGT 8 "year" "1950"
-    Expect.cellsInTableColumnInLastCardToNotEq 8 "type" "Gold"
+    Expect.cardsInTableColumnInLastCardToEq 8 "discipline" "Luge"
+    Expect.cardsInTableColumnInLastCardToEqOneOf 8 "gender" ["M", "X"]
+    Expect.cardsInTableColumnInLastCardToBeGT 8 "year" "1950"
+    Expect.cardsInTableColumnInLastCardToNotEq 8 "type" "Gold"
     successMsg "Ok, Filtered query results by changing field values"

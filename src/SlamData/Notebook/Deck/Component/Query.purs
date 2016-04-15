@@ -26,10 +26,10 @@ import Data.BrowserFeatures as BF
 import Halogen (ChildF)
 
 import SlamData.Notebook.AccessType as AT
-import SlamData.Notebook.Cell.CellId as CID
-import SlamData.Notebook.Cell.CellType as CT
-import SlamData.Notebook.Cell.Component (CellQueryP)
-import SlamData.Notebook.Cell.Port.VarMap as Port
+import SlamData.Notebook.Card.CardId as CID
+import SlamData.Notebook.Card.CardType as CT
+import SlamData.Notebook.Card.Component (CardQueryP)
+import SlamData.Notebook.Card.Port.VarMap as Port
 import SlamData.Notebook.Deck.Component.ChildSlot (ChildSlot, ChildQuery)
 
 import Utils.Path as UP
@@ -37,11 +37,11 @@ import Utils.Path as UP
 -- | `GetNotebookPath` returns the notebook's path, constructed using
 -- | `notebookPath`.
 data Query a
-  = AddCell CT.CellType a
-  | RunActiveCell a
-  | RunPendingCells a
+  = AddCard CT.CardType a
+  | RunActiveCard a
+  | RunPendingCards a
   | GetNotebookPath (Maybe UP.DirPath → a)
-  | SetViewingCell (Maybe CID.CellId) a
+  | SetViewingCard (Maybe CID.CardId) a
   | SetName String a
   | SetAccessType AT.AccessType a
   | ExploreFile BF.BrowserFeatures UP.FilePath a
@@ -51,9 +51,9 @@ data Query a
   | Reset BF.BrowserFeatures UP.DirPath a
   | GetGlobalVarMap (Port.VarMap → a)
   | SetGlobalVarMap Port.VarMap a
-  | FindCellParent CID.CellId (Maybe CID.CellId → a)
-  | GetCellType CID.CellId (Maybe CT.CellType → a)
+  | FindCardParent CID.CardId (Maybe CID.CardId → a)
+  | GetCardType CID.CardId (Maybe CT.CardType → a)
   | FlipDeck a
-  | GetActiveCellId (Maybe CID.CellId → a)
+  | GetActiveCardId (Maybe CID.CardId → a)
 
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)

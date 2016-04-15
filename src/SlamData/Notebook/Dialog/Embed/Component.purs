@@ -37,7 +37,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
-import SlamData.Notebook.Cell.Port.VarMap as Port
+import SlamData.Notebook.Card.Port.VarMap as Port
 import SlamData.Render.CSS as Rc
 
 type State =
@@ -56,7 +56,7 @@ comp = H.component { render, eval }
 render :: State -> H.ComponentHTML Query
 render { url, varMap } =
   modalDialog
-    [ modalHeader "Embed cell"
+    [ modalHeader "Embed card"
     , modalBody $
         HH.form
           [ CP.nonSubmit ]

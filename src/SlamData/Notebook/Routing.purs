@@ -18,9 +18,9 @@ module SlamData.Notebook.Routing
   ( routing
   , Routes(..)
   , mkNotebookHash
-  , mkNotebookCellHash
+  , mkNotebookCardHash
   , mkNotebookURL
-  , mkNotebookCellURL
+  , mkNotebookCardURL
   ) where
 
 import SlamData.Prelude
@@ -44,22 +44,22 @@ import SlamData.Config as Config
 import SlamData.Notebook.AccessType (AccessType(..), parseAccessType)
 import SlamData.Notebook.AccessType as AT
 import SlamData.Notebook.Action as NA
-import SlamData.Notebook.Cell.CellId as CID
-import SlamData.Notebook.Cell.Port.VarMap as Port
+import SlamData.Notebook.Card.CardId as CID
+import SlamData.Notebook.Card.Port.VarMap as Port
 
 import Text.Parsing.Parser (runParser)
 
 import Utils.Path as UP
 
 data Routes
-  = CellRoute UP.DirPath CID.CellId AccessType Port.VarMap
+  = CardRoute UP.DirPath CID.CardId AccessType Port.VarMap
   | ExploreRoute UP.FilePath
   | NotebookRoute UP.DirPath NA.Action Port.VarMap
 
 routing :: Match Routes
 routing
   =   ExploreRoute <$> (oneSlash *> Match.lit "explore" *> explored)
-  <|> CellRoute <$> notebook <*> (Match.lit "cells" *> cellId) <*> accessType <*> optionalVarMap
+  <|> CardRoute <$> notebook <*> (Match.lit "cards" *> cardId) <*> accessType <*> optionalVarMap
   <|> NotebookRoute <$> notebook <*> action <*> optionalVarMap
 
   where
@@ -132,8 +132,8 @@ routing
       = (Match.eitherMatch $ map parseAccessType Match.str)
     <|> pure ReadOnly
 
-  cellId :: Match CID.CellId
-  cellId = Match.eitherMatch $ map CID.stringToCellId Match.str
+  cardId :: Match CID.CardId
+  cardId = Match.eitherMatch $ map CID.stringToCardId Match.str
 
 -- TODO: it would be nice if `purescript-routing` had a way to render a route
 -- from a matcher, so that we could do away with the following brittle functions.
@@ -151,15 +151,15 @@ mkNotebookURL path action =
   Config.notebookUrl
     <> mkNotebookHash path action SM.empty
 
-mkNotebookCellURL
+mkNotebookCardURL
   :: UP.DirPath    -- notebook path
-  -> CID.CellId    -- cell identifier
+  -> CID.CardId    -- card identifier
   -> AT.AccessType -- access type
   -> Port.VarMap   -- global `VarMap`
   -> String
-mkNotebookCellURL path cid accessType varMap =
+mkNotebookCardURL path cid accessType varMap =
   Config.notebookUrl
-    <> mkNotebookCellHash path cid accessType varMap
+    <> mkNotebookCardHash path cid accessType varMap
 
 mkNotebookHash
   :: UP.DirPath    -- notebook path
@@ -172,17 +172,17 @@ mkNotebookHash path action varMap =
     <> NA.printAction action
     <> maybe "" ("/" <> _)  (renderVarMapQueryString varMap)
 
-mkNotebookCellHash
+mkNotebookCardHash
   :: UP.DirPath    -- notebook path
-  -> CID.CellId    -- cell identifier
+  -> CID.CardId    -- card identifier
   -> AT.AccessType -- access type
   -> Port.VarMap   -- global `VarMap`
   -> String
-mkNotebookCellHash path cid accessType varMap =
+mkNotebookCardHash path cid accessType varMap =
   "#"
     <> UP.encodeURIPath (P.printPath path)
-    <> "cells/"
-    <> CID.cellIdToString cid
+    <> "cards/"
+    <> CID.cardIdToString cid
     <> "/"
     <> AT.printAccessType accessType
     <> maybe "" ("/" <> _)  (renderVarMapQueryString varMap)

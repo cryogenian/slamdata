@@ -160,35 +160,35 @@ notebookContent = className "notebook-content"
 notebookViewHack ∷ ClassName
 notebookViewHack = className "notebook-view-hack"
 
-notebookCell ∷ ClassName
-notebookCell = className "notebook-cell"
+notebookCard ∷ ClassName
+notebookCard = className "notebook-card"
 
-cellHeader ∷ ClassName
-cellHeader = className "cell-header"
+cardHeader ∷ ClassName
+cardHeader = className "card-header"
 
-cellIcon ∷ ClassName
-cellIcon = className "cell-icon"
+cardIcon ∷ ClassName
+cardIcon = className "card-icon"
 
-cellName ∷ ClassName
-cellName = className "cell-name"
+cardName ∷ ClassName
+cardName = className "card-name"
 
-cellInput ∷ ClassName
-cellInput = className "cell-input"
+cardInput ∷ ClassName
+cardInput = className "card-input"
 
-cellOutput ∷ ClassName
-cellOutput = className "cell-output"
+cardOutput ∷ ClassName
+cardOutput = className "card-output"
 
-cellOutputLabel ∷ ClassName
-cellOutputLabel = className "cell-output-label"
+cardOutputLabel ∷ ClassName
+cardOutputLabel = className "card-output-label"
 
-cellOutputResult ∷ ClassName
-cellOutputResult = className "cell-output-result"
+cardOutputResult ∷ ClassName
+cardOutputResult = className "card-output-result"
 
-cellNextActions ∷ ClassName
-cellNextActions = className "cell-next-actions"
+cardNextActions ∷ ClassName
+cardNextActions = className "card-next-actions"
 
-newCellMenu ∷ ClassName
-newCellMenu = className "new-cell-menu"
+newCardMenu ∷ ClassName
+newCardMenu = className "new-card-menu"
 
 aceContainer ∷ ClassName
 aceContainer = className "ace-container"
@@ -199,26 +199,26 @@ playButton = className "play-button"
 stopButton ∷ ClassName
 stopButton = className "stop-button"
 
-cellControls ∷ ClassName
-cellControls = className "cell-controls"
+cardControls ∷ ClassName
+cardControls = className "card-controls"
 
 statusText ∷ ClassName
 statusText = className "status-text"
 
-cellFailures ∷ ClassName
-cellFailures = className "cell-failures"
+cardFailures ∷ ClassName
+cardFailures = className "card-failures"
 
-cellMessages ∷ ClassName
-cellMessages = className "cell-messages"
+cardMessages ∷ ClassName
+cardMessages = className "card-messages"
 
-cellBlockedMessage ∷ ClassName
-cellBlockedMessage = className "cell-blocked-message"
+cardBlockedMessage ∷ ClassName
+cardBlockedMessage = className "card-blocked-message"
 
-cellEvalLine ∷ ClassName
-cellEvalLine = className "cell-eval-line"
+cardEvalLine ∷ ClassName
+cardEvalLine = className "card-eval-line"
 
-exploreCellEditor ∷ ClassName
-exploreCellEditor = className "explore-cell-editor"
+exploreCardEditor ∷ ClassName
+exploreCardEditor = className "explore-card-editor"
 
 pagination ∷ ClassName
 pagination = className "pagination"
@@ -232,14 +232,14 @@ pageSize = className "page-size"
 markdownOutput ∷ ClassName
 markdownOutput = className "markdown-output"
 
-searchCellInput ∷ ClassName
-searchCellInput = className "search-cell-input"
+searchCardInput ∷ ClassName
+searchCardInput = className "search-card-input"
 
-searchCellButton ∷ ClassName
-searchCellButton = className "search-cell-button"
+searchCardButton ∷ ClassName
+searchCardButton = className "search-card-button"
 
-nextCellList ∷ ClassName
-nextCellList = className "next-cell-list"
+nextCardList ∷ ClassName
+nextCardList = className "next-card-list"
 
 echartsContainer ∷ ClassName
 echartsContainer = className "echarts-container"
@@ -247,8 +247,8 @@ echartsContainer = className "echarts-container"
 chartConfigureForm ∷ ClassName
 chartConfigureForm = className "chart-configure-form"
 
-vizCellEditor ∷ ClassName
-vizCellEditor = className "viz-cell-editor"
+vizCardEditor ∷ ClassName
+vizCardEditor = className "viz-card-editor"
 
 vizChartTypeSelector ∷ ClassName
 vizChartTypeSelector = className "viz-chart-type-selector"
@@ -351,8 +351,8 @@ axisLabelParam = className "axis-label-param"
 chartSizeParam ∷ ClassName
 chartSizeParam = className "chart-size-param"
 
-downloadCellEditor ∷ ClassName
-downloadCellEditor = className "download-cell-editor"
+downloadCardEditor ∷ ClassName
+downloadCardEditor = className "download-card-editor"
 
 downloadTypeSelector ∷ ClassName
 downloadTypeSelector = className "download-type-selector"

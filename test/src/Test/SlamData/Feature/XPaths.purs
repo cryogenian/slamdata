@@ -37,11 +37,11 @@ initialFileListInOrder =
 
 embedCardOutput ∷ String
 embedCardOutput =
-  XPath.anyWithExactText "Embed cell output"
+  XPath.anyWithExactText "Embed card output"
 
 embedCardOutputTitle ∷ String
 embedCardOutputTitle =
-  XPath.anyWithExactText "Embed cell"
+  XPath.anyWithExactText "Embed card"
 
 mdCardTitle ∷ String
 mdCardTitle =
@@ -61,9 +61,9 @@ embedCardOutputSnippet =
   XPath.anyWithText "<script type=\"text/javascript\">"
 
 
-formCellHeader ∷ String
-formCellHeader =
-  XPath.anyWithExactAriaLabel "Form cell"
+formCardHeader ∷ String
+formCardHeader =
+  XPath.anyWithExactAriaLabel "Form card"
 
 exploreInput ∷ String
 exploreInput =
@@ -135,15 +135,15 @@ hideFileList =
 
 deleteCard ∷ String
 deleteCard =
-  XPath.anyWithExactAriaLabel "Delete cell"
+  XPath.anyWithExactAriaLabel "Delete card"
 
 dismissInsertCardMenu ∷ String
 dismissInsertCardMenu =
-  XPath.anyWithExactAriaLabel "Dismiss insert cell menu"
+  XPath.anyWithExactAriaLabel "Dismiss insert card menu"
 
 insertCard ∷ String
 insertCard =
-  XPath.anyWithExactAriaLabel "Insert cell"
+  XPath.anyWithExactAriaLabel "Insert card"
 
 insertQueryCard ∷ String
 insertQueryCard =
@@ -170,11 +170,11 @@ insertJTableCardAsNextAction =
 
 hideCardOptions ∷ String
 hideCardOptions =
-  XPath.anyWithExactAriaLabel "Hide cell options"
+  XPath.anyWithExactAriaLabel "Hide card options"
 
 showCardOptions ∷ String
 showCardOptions =
-  XPath.anyWithExactAriaLabel "Show cell options"
+  XPath.anyWithExactAriaLabel "Show card options"
 
 browseRootFolder ∷ String
 browseRootFolder = XPath.anyWithAriaLabel "Browse root folder"
@@ -285,19 +285,19 @@ cardHeading =
   XPath.withPredicate "*"
     $ XPath.anyOfThesePredicates
     $ XPath.withAriaLabel
-    <$> [ "Query cell"
-        , "Markdown cell"
-        , "Explore cell"
-        , "Search cell"
-        , "API cell"
-        , "Visualize cell"
-        , "Download cell"
+    <$> [ "Query card"
+        , "Markdown card"
+        , "Explore card"
+        , "Search card"
+        , "API card"
+        , "Visualize card"
+        , "Download card"
         ]
 
 jtableHeading ∷ String
 jtableHeading =
   XPath.withPredicate "*"
-    $ XPath.withAriaLabel "Table cell"
+    $ XPath.withAriaLabel "Table card"
 
 sharingUrl ∷ String
 sharingUrl = "*" `XPath.nodeWithExactAriaLabel` "Sharing URL"

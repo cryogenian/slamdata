@@ -14,19 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.Chart.ChartConfiguration where
+module Test.SlamData.Property.Notebook.Card.Chart.ChartConfiguration where
 
 import Prelude
 
 import Data.Either (Either(..))
 import Data.Foldable (fold)
 
-import SlamData.Notebook.Cell.Chart.ChartConfiguration as CC
+import SlamData.Notebook.Card.Chart.ChartConfiguration as CC
 
 import Test.Property.ArbJson (runArbJCursor)
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 import Test.SlamData.Property.Form.Select (runArbSelect)
-import Test.SlamData.Property.Notebook.Cell.Chart.Aggregation (runArbAggregation)
+import Test.SlamData.Property.Notebook.Card.Chart.Aggregation (runArbAggregation)
 
 newtype ArbChartConfiguration = ArbChartConfiguration CC.ChartConfiguration
 

@@ -61,22 +61,22 @@ import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.AccessType (AccessType(..), isEditable)
 import SlamData.Notebook.Action as NA
-import SlamData.Notebook.Cell.CellId (CellId(), cellIdToString)
-import SlamData.Notebook.Cell.CellType
-  (CellType(..), AceMode(..), cellName, cellGlyph, autorun, nextCellTypes)
-import SlamData.Notebook.Cell.Common.EvalQuery (CellEvalQuery(..))
-import SlamData.Notebook.Cell.Component
-  (CellQueryP(), CellQuery(..), InnerCellQuery, CellStateP, AnyCellQuery(..), _NextQuery, initEditorCellState)
-import SlamData.Notebook.Cell.Next.Component as Next
-import SlamData.Notebook.Cell.Port (Port(..))
+import SlamData.Notebook.Card.CardId (CardId(), cardIdToString)
+import SlamData.Notebook.Card.CardType
+  (CardType(..), AceMode(..), cardName, cardGlyph, autorun, nextCardTypes)
+import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..))
+import SlamData.Notebook.Card.Component
+  (CardQueryP(), CardQuery(..), InnerCardQuery, CardStateP, AnyCardQuery(..), _NextQuery, initEditorCardState)
+import SlamData.Notebook.Card.Next.Component as Next
+import SlamData.Notebook.Card.Port (Port(..))
 import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
-import SlamData.Notebook.Deck.Component.State (CellConstructor, CellDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCellId, _browserFeatures, _cells, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCells, _runTrigger, _saveTrigger, _stateMode, _viewingCell, _backsided, addCell, addCell', addPendingCell, cellIsLinkedCellOf, cellsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCellType, initialDeck, notebookPath, removeCells, findLast, findLastCellType)
+import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard, cardIsLinkedCardOf, cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, notebookPath, removeCards, findLast, findLastCardType)
 import SlamData.Notebook.Deck.Model as Model
 import SlamData.Notebook.FileInput.Component as Fi
-import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCellHash, mkNotebookURL)
+import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCardHash, mkNotebookURL)
 import SlamData.Render.Common (glyph, fadeWhen)
 import SlamData.Render.CSS as CSS
-import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCell, ChildQuery, ChildState, ChildSlot, CellSlot(..))
+import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildState, ChildSlot, CardSlot(..))
 import SlamData.Notebook.Deck.BackSide.Component as Back
 
 
@@ -101,14 +101,14 @@ render state =
         [ HH.h1
           [ HP.class_ B.textCenter ]
           [ HH.text "Loading..." ]
-          -- We need to render the cells but have them invisible during loading
+          -- We need to render the cards but have them invisible during loading
           -- otherwise the various nested components won't initialise correctly
-        , renderCells false
+        , renderCards false
         ]
     Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div_
-        $ [ renderCells $ not state.backsided
+        $ [ renderCards $ not state.backsided
           , renderBackside state.backsided
             -- Commented until one card representation
 --          , HH.button [ HP.classes [ B.btn, B.btnPrimary ]
@@ -139,55 +139,55 @@ render state =
       ]
 
 
-  renderCells visible =
+  renderCards visible =
     -- The key here helps out virtual-dom: the entire subtree will be moved
     -- when the loading message disappears, rather than being reconstructed in
     -- the parent element
     HH.div
-      ([ HP.key "notebook-cells"]
+      ([ HP.key "notebook-cards"]
        ⊕ (guard (not visible) $> (HP.class_ CSS.invisible)))
-      ( List.fromList (map renderCell state.cells)
-        ⊕ (pure $ newCellMenu state)
+      ( List.fromList (map renderCard state.cards)
+        ⊕ (pure $ newCardMenu state)
       )
 
-  renderCell cellDef =
+  renderCard cardDef =
     HH.div
-    ([ HP.key ("cell" ⊕ cellIdToString cellDef.id) ]
-     ⊕ foldMap (viewingStyle cellDef) state.viewingCell)
-    [ HH.Slot $ transformCellConstructor cellDef.ctor ]
+    ([ HP.key ("card" ⊕ cardIdToString cardDef.id) ]
+     ⊕ foldMap (viewingStyle cardDef) state.viewingCard)
+    [ HH.Slot $ transformCardConstructor cardDef.ctor ]
 
-  transformCellConstructor (H.SlotConstructor p l) =
+  transformCardConstructor (H.SlotConstructor p l) =
     H.SlotConstructor
-      (injSlot cpCell p)
+      (injSlot cpCard p)
       (l <#> \def →
-        { component: H.transformChild cpCell def.component
-        , initialState: injState cpCell def.initialState
+        { component: H.transformChild cpCard def.component
+        , initialState: injState cpCard def.initialState
         }
       )
 
-  viewingStyle cellDef cid =
-    guard (not (cellDef.id ≡ cid))
-    *> guard (not (cellIsLinkedCellOf { childId: cellDef.id, parentId: cid} state))
+  viewingStyle cardDef cid =
+    guard (not (cardDef.id ≡ cid))
+    *> guard (not (cardIsLinkedCardOf { childId: cardDef.id, parentId: cid} state))
     $> (HP.class_ CSS.invisible)
 
   shouldHideNextAction =
-    isJust state.viewingCell ∨ state.accessType ≡ ReadOnly
+    isJust state.viewingCard ∨ state.accessType ≡ ReadOnly
 
-  newCellMenu state =
+  newCardMenu state =
     HH.div
       ([ HP.key ("next-action-card") ]
        ⊕ (guard shouldHideNextAction $> (HP.class_ CSS.invisible)))
 
-    [ HH.slot' cpCell (CellSlot top) \_ →
-       { component: Next.nextCellComponent
-       , initialState: H.parentState $ initEditorCellState
+    [ HH.slot' cpCard (CardSlot top) \_ →
+       { component: Next.nextCardComponent
+       , initialState: H.parentState $ initEditorCardState
        }
     ]
 
 eval ∷ Natural Query NotebookDSL
-eval (AddCell cellType next) = createCell cellType $> next
-eval (RunActiveCell next) =
-  (maybe (pure unit) runCell =<< H.gets (_.activeCellId)) $> next
+eval (AddCard cardType next) = createCard cardType $> next
+eval (RunActiveCard next) =
+  (maybe (pure unit) runCard =<< H.gets (_.activeCardId)) $> next
 eval (LoadNotebook fs dir next) = do
   H.modify (_stateMode .~ Loading)
   json ← H.fromAff $ Auth.authed $ Quasar.load $ dir </> Pathy.file "index"
@@ -201,30 +201,30 @@ eval (LoadNotebook fs dir next) = do
           path = fst <$> peeledPath
           name = either Just (const Nothing) ∘ snd =<< peeledPath
       in case fromModel fs path name model of
-        Tuple cells st → do
+        Tuple cards st → do
           H.set st
           forceRerender'
-          ranCells ← catMaybes <$> for cells \cell → do
-            H.query' cpCell  (CellSlot cell.cellId)
+          ranCards ← catMaybes <$> for cards \card → do
+            H.query' cpCard  (CardSlot card.cardId)
               $ left
               $ H.action
-              $ LoadCell cell
-            pure if cell.hasRun then Just cell.cellId else Nothing
+              $ LoadCard card
+            pure if card.hasRun then Just card.cardId else Nothing
           -- We only need to run the root node in each subgraph, as doing so
           -- will result in all child nodes being run also as the outputs
           -- propagate down each subgraph.
-          traverse_ runCell $ nub $ flip findRoot st <$> ranCells
+          traverse_ runCard $ nub $ flip findRoot st <$> ranCards
           H.modify (_stateMode .~ Ready)
-  updateNextActionCell
+  updateNextActionCard
   pure next
 
 eval (ExploreFile fs res next) = do
   H.set $ initialDeck fs
   H.modify
     $ (_path .~ Pathy.parentDir res)
-    ∘ (addCell Explore Nothing)
+    ∘ (addCard Explore Nothing)
   forceRerender'
-  H.query' cpCell (CellSlot zero)
+  H.query' cpCard (CardSlot zero)
     $ right
     $ H.ChildF unit
     $ right
@@ -235,8 +235,8 @@ eval (ExploreFile fs res next) = do
     $ Fi.SelectFile
     $ R.File res
   forceRerender'
-  runCell zero
-  updateNextActionCell
+  runCard zero
+  updateNextActionCard
   pure next
 eval (Publish next) = do
   H.gets notebookPath >>= \mpath → do
@@ -257,38 +257,38 @@ eval (SetName name next) =
              This d → Both d name
          ) $> next
 eval (SetAccessType aType next) = do
-  cids ← map Map.keys $ H.gets _.cellTypes
-  for_ cids \cellId →
+  cids ← map Map.keys $ H.gets _.cardTypes
+  for_ cids \cardId →
     void
-      $ H.query' cpCell (CellSlot cellId)
+      $ H.query' cpCard (CardSlot cardId)
       $ left
       $ H.action
-      $ SetCellAccessType aType
+      $ SetCardAccessType aType
   H.modify (_accessType .~ aType)
   unless (isEditable aType)
     $ H.modify (_backsided .~ false)
   pure next
 eval (GetNotebookPath k) = k <$> H.gets notebookPath
-eval (SetViewingCell mbcid next) = H.modify (_viewingCell .~ mbcid) $> next
+eval (SetViewingCard mbcid next) = H.modify (_viewingCard .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook unit $> next
-eval (RunPendingCells next) = runPendingCells unit $> next
+eval (RunPendingCards next) = runPendingCards unit $> next
 eval (GetGlobalVarMap k) = k <$> H.gets _.globalVarMap
 eval (SetGlobalVarMap m next) = do
   st ← H.get
   when (m ≠ st.globalVarMap) do
     H.modify (_globalVarMap .~ m)
-    traverse_ runCell $ cellsOfType API st
+    traverse_ runCard $ cardsOfType API st
   pure next
-eval (FindCellParent cid k) = k <$> H.gets (findParent cid)
-eval (GetCellType cid k) = k <$> H.gets (getCellType cid)
+eval (FindCardParent cid k) = k <$> H.gets (findParent cid)
+eval (GetCardType cid k) = k <$> H.gets (getCardType cid)
 eval (FlipDeck next) = H.modify (_backsided %~ not) $> next
-eval (GetActiveCellId k) = map k $ H.gets findLast
+eval (GetActiveCardId k) = map k $ H.gets findLast
 
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → NotebookDSL Unit
 peek (H.ChildF s q) =
   coproduct
-    (either peekCells (\_ _ → pure unit) s)
+    (either peekCards (\_ _ → pure unit) s)
     peekBackSide
     q
 
@@ -296,13 +296,13 @@ peekBackSide ∷ ∀ a. Back.Query a → NotebookDSL Unit
 peekBackSide (Back.UpdateFilter _ _) = pure unit
 peekBackSide (Back.DoAction action _) = case action of
   Back.Trash → do
-    activeId ← H.gets _.activeCellId
+    activeId ← H.gets _.activeCardId
     lastId ← H.gets findLast
     for_ (activeId <|> lastId) \trashId → do
       descendants ← H.gets (findDescendants trashId)
-      H.modify $ removeCells (S.insert trashId descendants)
+      H.modify $ removeCards (S.insert trashId descendants)
       triggerSave unit
-      updateNextActionCell
+      updateNextActionCard
       H.modify (_backsided .~ false)
   Back.Share → pure unit
   Back.Embed → pure unit
@@ -312,40 +312,40 @@ peekBackSide (Back.DoAction action _) = case action of
   Back.Mirror → pure unit
   Back.Wrap → pure unit
 
-peekCells ∷ ∀ a. CellSlot → CellQueryP a → NotebookDSL Unit
-peekCells (CellSlot cellId) q =
-  coproduct (peekCell cellId) (peekCellInner cellId) q
+peekCards ∷ ∀ a. CardSlot → CardQueryP a → NotebookDSL Unit
+peekCards (CardSlot cardId) q =
+  coproduct (peekCard cardId) (peekCardInner cardId) q
 
 
--- | Peek on the cell component to observe actions from the cell control
+-- | Peek on the card component to observe actions from the card control
 -- | buttons.
-peekCell ∷ ∀ a. CellId → CellQuery a → NotebookDSL Unit
-peekCell cellId q = case q of
-  RunCell _ → runCell cellId
-  RefreshCell _ → runCell ∘ findRoot cellId =<< H.get
-  TrashCell _ → do
-    descendants ← H.gets (findDescendants cellId)
-    H.modify $ removeCells (S.insert cellId descendants)
+peekCard ∷ ∀ a. CardId → CardQuery a → NotebookDSL Unit
+peekCard cardId q = case q of
+  RunCard _ → runCard cardId
+  RefreshCard _ → runCard ∘ findRoot cardId =<< H.get
+  TrashCard _ → do
+    descendants ← H.gets (findDescendants cardId)
+    H.modify $ removeCards (S.insert cardId descendants)
     triggerSave unit
-    updateNextActionCell
+    updateNextActionCard
   ToggleCaching _ →
     triggerSave unit
-  ShareCell _ → pure unit
-  StopCell _ → do
+  ShareCard _ → pure unit
+  StopCard _ → do
     H.modify $ _runTrigger .~ Nothing
-    H.modify $ _pendingCells %~ S.delete cellId
-    runPendingCells unit
+    H.modify $ _pendingCards %~ S.delete cardId
+    runPendingCards unit
   _ → pure unit
 
 
-updateNextActionCell ∷ NotebookDSL Unit
-updateNextActionCell = do
+updateNextActionCard ∷ NotebookDSL Unit
+updateNextActionCard = do
   cid ← H.gets findLast
   mbMessage ← case cid of
-    Just cellId → do
+    Just cardId → do
       out ←
         map join
-          $ H.query' cpCell (CellSlot cellId)
+          $ H.query' cpCard (CardSlot cardId)
           $ left (H.request GetOutput)
       pure $ case out of
         Nothing →
@@ -358,15 +358,15 @@ updateNextActionCell = do
     $ H.action
     $ Next.SetMessage mbMessage
 
-  lastCellType ← H.gets findLastCellType
+  lastCardType ← H.gets findLastCardType
   queryNextActionCard
     $ H.action
     $ Next.SetAvailableTypes
-    $ nextCellTypes lastCellType
+    $ nextCardTypes lastCardType
   pure unit
   where
   queryNextActionCard q =
-    H.query' cpCell (CellSlot top)
+    H.query' cpCard (CardSlot top)
       $ right
       $ H.ChildF unit
       $ right
@@ -374,60 +374,60 @@ updateNextActionCell = do
       $ right q
 
 
-createCell ∷ CellType → NotebookDSL Unit
-createCell cellType = do
+createCard ∷ CardType → NotebookDSL Unit
+createCard cardType = do
   cid ← H.gets findLast
   case cid of
     Nothing →
-      H.modify (addCell cellType Nothing)
-    Just cellId → do
-      Tuple st newCellId ← H.gets $ addCell' cellType (Just cellId)
+      H.modify (addCard cardType Nothing)
+    Just cardId → do
+      Tuple st newCardId ← H.gets $ addCard' cardType (Just cardId)
       H.set st
       forceRerender'
       input ←
-        map join $ H.query' cpCell (CellSlot cellId) $ left (H.request GetOutput)
+        map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
 
       for_ input \input' → do
         path ← H.gets notebookPath
-        let setupInfo = { notebookPath: path, inputPort: input', cellId: newCellId }
+        let setupInfo = { notebookPath: path, inputPort: input', cardId: newCardId }
         void
-          $ H.query' cpCell  (CellSlot newCellId)
+          $ H.query' cpCard  (CardSlot newCardId)
           $ right
           $ H.ChildF unit
           $ left
-          $ H.action (SetupCell setupInfo)
-      runCell newCellId
-  updateNextActionCell
+          $ H.action (SetupCard setupInfo)
+      runCard newCardId
+  updateNextActionCard
   triggerSave unit
 
--- | Peek on the inner cell components to observe `NotifyRunCell`, which is
--- | raised by actions within a cell that should cause the cell to run.
-peekCellInner
-  ∷ ∀ a. CellId → H.ChildF Unit InnerCellQuery a → NotebookDSL Unit
-peekCellInner cellId (H.ChildF _ q) =
-  coproduct (peekEvalCell cellId) (peekAnyCell cellId) q
+-- | Peek on the inner card components to observe `NotifyRunCard`, which is
+-- | raised by actions within a card that should cause the card to run.
+peekCardInner
+  ∷ ∀ a. CardId → H.ChildF Unit InnerCardQuery a → NotebookDSL Unit
+peekCardInner cardId (H.ChildF _ q) =
+  coproduct (peekEvalCard cardId) (peekAnyCard cardId) q
 
-peekEvalCell ∷ ∀ a. CellId → CellEvalQuery a → NotebookDSL Unit
-peekEvalCell cellId (NotifyRunCell _) = runCell cellId
-peekEvalCell _ _ = pure unit
+peekEvalCard ∷ ∀ a. CardId → CardEvalQuery a → NotebookDSL Unit
+peekEvalCard cardId (NotifyRunCard _) = runCard cardId
+peekEvalCard _ _ = pure unit
 
-peekAnyCell ∷ ∀ a. CellId → AnyCellQuery a → NotebookDSL Unit
-peekAnyCell cellId q = do
-  for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCellType) createCell
-  when (queryShouldRun q) $ runCell cellId
+peekAnyCard ∷ ∀ a. CardId → AnyCardQuery a → NotebookDSL Unit
+peekAnyCard cardId q = do
+  for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
+  when (queryShouldRun q) $ runCard cardId
   when (queryShouldSave q) $ triggerSave unit
   pure unit
 
-queryShouldRun ∷ ∀ a. AnyCellQuery a → Boolean
+queryShouldRun ∷ ∀ a. AnyCardQuery a → Boolean
 queryShouldRun (SaveQuery q) = false
 queryShouldRun _ = true
 
-queryShouldSave  ∷ ∀ a. AnyCellQuery a → Boolean
+queryShouldSave  ∷ ∀ a. AnyCardQuery a → Boolean
 queryShouldSave (AceQuery q) =
   coproduct evalQueryShouldSave aceQueryShouldSave q
 queryShouldSave _ = true
 
-evalQueryShouldSave ∷ ∀ a. CellEvalQuery a → Boolean
+evalQueryShouldSave ∷ ∀ a. CardEvalQuery a → Boolean
 evalQueryShouldSave _ = true
 
 aceQueryShouldSave
@@ -438,59 +438,59 @@ aceQueryShouldSave (H.ChildF _ q) =
     _ → false
 
 
--- | Runs all cell that are present in the set of pending cells.
-runPendingCells ∷ Unit → NotebookDSL Unit
-runPendingCells _ = do
-  cells ← H.gets _.pendingCells
-  traverse_ runCell' cells
-  updateNextActionCell
+-- | Runs all card that are present in the set of pending cards.
+runPendingCards ∷ Unit → NotebookDSL Unit
+runPendingCards _ = do
+  cards ← H.gets _.pendingCards
+  traverse_ runCard' cards
+  updateNextActionCard
   where
-  runCell' ∷ CellId → NotebookDSL Unit
-  runCell' cellId = do
-    mbParentId ← H.gets (findParent cellId)
+  runCard' ∷ CardId → NotebookDSL Unit
+  runCard' cardId = do
+    mbParentId ← H.gets (findParent cardId)
     case mbParentId of
       -- if there's no parent there's no input port value to pass through
-      Nothing → updateCell Nothing cellId
+      Nothing → updateCard Nothing cardId
       Just parentId → do
         value ←
-          map join $ H.query' cpCell (CellSlot parentId) $ left (H.request GetOutput)
+          map join $ H.query' cpCard (CardSlot parentId) $ left (H.request GetOutput)
         case value of
-          -- if there's a parent but no output the parent cell hasn't been evaluated
-          -- yet, so we can't run this cell either
+          -- if there's a parent but no output the parent card hasn't been evaluated
+          -- yet, so we can't run this card either
           Nothing → pure unit
-          -- if there's a parent and an output, pass it on as this cell's input
-          Just p → updateCell (Just p) cellId
-    H.modify $ _pendingCells %~ S.delete cellId
+          -- if there's a parent and an output, pass it on as this card's input
+          Just p → updateCard (Just p) cardId
+    H.modify $ _pendingCards %~ S.delete cardId
     triggerSave unit
 
--- | Enqueues the cell with the specified ID in the set of cells that are
--- | pending to run and enqueues a debounced H.query to trigger the cells to
+-- | Enqueues the card with the specified ID in the set of cards that are
+-- | pending to run and enqueues a debounced H.query to trigger the cards to
 -- | actually run.
-runCell ∷ CellId → NotebookDSL Unit
-runCell cellId = do
-  H.modify (addPendingCell cellId)
-  _runTrigger `fireDebouncedQuery` RunPendingCells
+runCard ∷ CardId → NotebookDSL Unit
+runCard cardId = do
+  H.modify (addPendingCard cardId)
+  _runTrigger `fireDebouncedQuery` RunPendingCards
 
--- | Updates the evaluated value for a cell by running it with the specified
--- | input and then runs any cells that depend on the cell's output with the
+-- | Updates the evaluated value for a card by running it with the specified
+-- | input and then runs any cards that depend on the card's output with the
 -- | new result.
-updateCell ∷ Maybe Port → CellId → NotebookDSL Unit
-updateCell inputPort cellId = do
+updateCard ∷ Maybe Port → CardId → NotebookDSL Unit
+updateCard inputPort cardId = do
   path ← H.gets notebookPath
   globalVarMap ← H.gets _.globalVarMap
-  let input = { notebookPath: path, inputPort, cellId, globalVarMap }
+  let input = { notebookPath: path, inputPort, cardId, globalVarMap }
   result ←
     map join
-      $ H.query' cpCell (CellSlot cellId)
+      $ H.query' cpCard (CardSlot cardId)
       $ left
-      $ H.request (UpdateCell input)
+      $ H.request (UpdateCard input)
 
-  runCellDescendants cellId (fromMaybe Blocked result)
+  runCardDescendants cardId (fromMaybe Blocked result)
   where
-  runCellDescendants ∷ CellId → Port → NotebookDSL Unit
-  runCellDescendants parentId value = do
+  runCardDescendants ∷ CardId → Port → NotebookDSL Unit
+  runCardDescendants parentId value = do
     children ← H.gets (findChildren parentId)
-    traverse_ (updateCell (Just value)) children
+    traverse_ (updateCard (Just value)) children
 
 -- | Triggers the H.query for autosave. This does not immediate perform the save
 -- | H.action, but instead enqueues a debounced H.query to trigger the actual save.
@@ -519,12 +519,12 @@ saveNotebook ∷ Unit → NotebookDSL Unit
 saveNotebook _ = H.get >>= \st → do
   unless (isUnsaved st ∧ isNewExploreNotebook st) do
     for_ st.path \path → do
-      cells ← catMaybes <$> for (List.fromList st.cells) \cell →
-        H.query' cpCell (CellSlot cell.id)
+      cards ← catMaybes <$> for (List.fromList st.cards) \card →
+        H.query' cpCard (CardSlot card.id)
           $ left
-          $ H.request (SaveCell cell.id cell.ty)
+          $ H.request (SaveCard card.id card.ty)
 
-      let json = Model.encode { cells, dependencies: st.dependencies }
+      let json = Model.encode { cards, dependencies: st.dependencies }
 
       savedName ← case st.name of
         This name → save path name json
@@ -541,11 +541,11 @@ saveNotebook _ = H.get >>= \st → do
       -- We need to get the modified version of the notebook state.
       H.gets notebookPath >>= traverse_ \path' →
         let notebookHash =
-              case st.viewingCell of
+              case st.viewingCard of
                 Nothing →
                   mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
                 Just cid →
-                  mkNotebookCellHash path' cid st.accessType st.globalVarMap
+                  mkNotebookCardHash path' cid st.accessType st.globalVarMap
         in H.fromEff $ locationObject >>= Location.setHash notebookHash
 
   where
@@ -554,13 +554,13 @@ saveNotebook _ = H.get >>= \st → do
   isUnsaved = isNothing ∘ notebookPath
 
   isNewExploreNotebook ∷ State → Boolean
-  isNewExploreNotebook { name, cells } =
+  isNewExploreNotebook { name, cards } =
     let
-      cellArrays = List.toUnfoldable (map _.ty cells)
+      cardArrays = List.toUnfoldable (map _.ty cards)
       nameHasntBeenModified = theseRight name ≡ Just Config.newNotebookName
     in
       nameHasntBeenModified
-      ∧ (cellArrays ≡ [ Explore ] ∨ cellArrays ≡ [ Explore, JTable ])
+      ∧ (cardArrays ≡ [ Explore ] ∨ cardArrays ≡ [ Explore, JTable ])
 
   -- Finds a new name for a notebook in the specified parent directory, using
   -- a name value as a basis to start with.

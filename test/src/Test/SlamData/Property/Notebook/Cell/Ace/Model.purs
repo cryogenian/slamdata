@@ -1,4 +1,4 @@
-module Test.SlamData.Property.Notebook.Cell.Ace.Model
+module Test.SlamData.Property.Notebook.Card.Ace.Model
   ( ArbModel
   , runArbModel
   , check
@@ -9,7 +9,7 @@ import Prelude
 import Data.Array as A
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
-import SlamData.Notebook.Cell.Ace.Model as M
+import SlamData.Notebook.Card.Ace.Model as M
 import Utils.Ace (RangeRec, eqRangeRec)
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
@@ -46,4 +46,4 @@ check = quickCheck $ runArbModel >>> \m ->
     Left err -> Failed $ "Decode failed: " <> err
     Right m' -> (   m.text == m'.text
                  && foldl conj true (A.zipWith eqRangeRec m.ranges m'.ranges))
-                <?> "Decoded ace cell model doesn't match encoded"
+                <?> "Decoded ace card model doesn't match encoded"

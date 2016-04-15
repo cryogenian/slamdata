@@ -147,13 +147,13 @@ type Config =
   , mount :: { name :: String
              , otherName :: String
              }
-  , newCellMenu :: { expandCollapse :: String
+  , newCardMenu :: { expandCollapse :: String
                    , queryButton :: String
                    , mdButton :: String
                    , exploreButton :: String
                    , searchButton :: String
                    }
-  , cell :: { main :: String
+  , card :: { main :: String
             , trash :: String
             , hide :: String
             , show :: String
@@ -163,21 +163,21 @@ type Config =
             , refreshButton :: String
             , playButton :: String
             , embedButton :: String
-            , nextCellList :: String
-            , nextCellSearch :: String
-            , nextCellViz :: String
-            , nextCellQuery :: String
-            , cellOutputLabel :: String
-            , cellOutputResult :: String
+            , nextCardList :: String
+            , nextCardSearch :: String
+            , nextCardViz :: String
+            , nextCardQuery :: String
+            , cardOutputLabel :: String
+            , cardOutputResult :: String
             , failures :: String
             , evalLine :: String
             , showMessages :: String
             , hideMessages :: String
             , status :: String
             , embedBox :: String
-            , nextCellsForExplore :: StrMap String
-            , nextCellsForSearch :: StrMap String
-            , nextCellButton :: String
+            , nextCardsForExplore :: StrMap String
+            , nextCardsForSearch :: StrMap String
+            , nextCardButton :: String
             , exploreFlag :: String
             , searchFlag :: String
             , mdFlag :: String
@@ -225,7 +225,7 @@ type Config =
                , nested :: String
                , jtableHead :: String
                }
-  , searchCell :: { fileListInput :: String
+  , searchCard :: { fileListInput :: String
                   , searchInput :: String
                   , searchButton :: String
                   , searchClear :: String
