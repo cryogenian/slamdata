@@ -55,7 +55,10 @@ render ∷ State → ORHTML
 render state =
   HH.div [ HP.classes [ Rc.openResourceCard ] ]
     [ HH.div [ HP.classes [ Rc.openResourceCardMenu ] ]
-      [ HH.button [ HP.classes [ B.btn, B.btnDefault ] ]
+      [ HH.button
+          [ HP.classes [ B.btn, B.btnDefault ]
+          , HP.enabled $ true
+          ]
           [ HH.text "Back" ]
       , HH.p_ [ HH.text $ printPath state.browsing ]
       ]
@@ -70,7 +73,8 @@ render state =
   renderItem ∷ R.Resource → ORHTML
   renderItem r =
     HH.div
-      [ HP.classes [ B.listGroupItem ]
+      [ HP.classes ( [ B.listGroupItem ]
+                     ⊕ ((guard (Just r ≡ state.selected)) $> B.active))
       , HE.onClick (HE.input_ (right ∘ (ResourceSelected r)))
       ]
       [ HH.a_
@@ -92,6 +96,7 @@ eval = coproduct cardEval openResourceEval
 cardEval ∷ Natural Eq.CardEvalQuery ORDSL
 cardEval (Eq.EvalCard info k) = do
   mbRes ← H.gets _.selected
+  Debug.Trace.traceAnyA mbRes
   case mbRes of
     Nothing → pure $ k { output: Nothing, messages: [ ] }
     Just resource → do
@@ -101,6 +106,7 @@ cardEval (Eq.EvalCard info k) = do
           ("File " ⊕ R.resourcePath resource ⊕ " doesn't exist")
         # Auth.authed
         # liftWithCanceler'
+      Debug.Trace.traceAnyA msg
       case msg of
         Nothing →
           pure $ k { output:
@@ -142,6 +148,10 @@ openResourceEval (ResourceSelected r next) = do
       H.modify (_items .~ cs)
   pure next
 openResourceEval (Init next) = do
-  H.gets _.browsing >>= Debug.Trace.traceAnyA
-  Debug.Trace.traceAnyA "init"
+  br ← H.gets _.browsing
+  cs ←
+    Quasar.children br
+      # Auth.authed
+      # liftWithCanceler'
+  H.modify (_items .~ cs)
   pure next
