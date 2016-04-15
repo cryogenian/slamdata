@@ -8,7 +8,7 @@ import SlamData.Prelude
 
 import Data.Argonaut (decodeJson, encodeJson)
 import Data.Lens ((?~), (.~))
-import Data.Path.Pathy (printPath)
+import Data.Path.Pathy (printPath, peel)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -28,6 +28,7 @@ import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
 import SlamData.Notebook.Card.Common.EvalQuery (runCardEvalT, liftWithCanceler')
 
+import Utils.Path as Up
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
@@ -56,9 +57,13 @@ render state =
   HH.div [ HP.classes [ Rc.openResourceCard ] ]
     [ HH.div [ HP.classes [ Rc.openResourceCardMenu ] ]
       [ HH.button
-          [ HP.classes [ B.btn, B.btnDefault ]
-          , HP.enabled $ true
-          ]
+          ([ HP.classes [ B.btn, B.btnDefault ] ]
+             ⊕ case parentDir of
+                Nothing →
+                  [ HP.disabled true ]
+                Just r →
+                  [ HE.onClick (HE.input_ (right ∘ (ResourceSelected r))) ]
+          )
           [ HH.text "Back" ]
       , HH.p_ [ HH.text $ printPath state.browsing ]
       ]
@@ -70,6 +75,9 @@ render state =
     ]
 
   where
+  parentDir ∷ _
+  parentDir = (R.Directory ∘ fst) <$> peel state.browsing
+
   renderItem ∷ R.Resource → ORHTML
   renderItem r =
     HH.div
@@ -91,7 +99,6 @@ render state =
 
 eval ∷ Natural QueryP ORDSL
 eval = coproduct cardEval openResourceEval
-
 
 cardEval ∷ Natural Eq.CardEvalQuery ORDSL
 cardEval (Eq.EvalCard info k) = do
