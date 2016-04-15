@@ -39,7 +39,7 @@ test = do
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "springfield"
     Interact.insertJTableCardAsNextAction
-    Expect.cellsInTableColumnInLastCardToContain 10 "city" "SPRINGFIELD"
+    Expect.cardsInTableColumnInLastCardToContain 10 "city" "SPRINGFIELD"
     successMsg "Successfully searched for a city"
 
   searchScenario "Search within results" [] do
@@ -50,8 +50,8 @@ test = do
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "OR"
     Interact.insertJTableCardAsNextAction
-    Expect.cellsInTableColumnInLastCardToContain 2 "city" "SPRINGFIELD"
-    Expect.cellsInTableColumnInLastCardToContain 2 "state" "OR"
+    Expect.cardsInTableColumnInLastCardToContain 2 "city" "SPRINGFIELD"
+    Expect.cardsInTableColumnInLastCardToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
 
   searchScenario "Search with field names" [] do
@@ -83,9 +83,9 @@ test = do
     Interact.provideSearchStringInLastSearchCard
       "city:springfield state:or pop:>30000"
     Interact.insertJTableCardAsNextAction
-    Expect.cellsInTableColumnInLastCardToContain 1 "city" "SPRINGFIELD"
-    Expect.cellsInTableColumnInLastCardToContain 1 "state" "OR"
-    Expect.cellsInTableColumnInLastCardToBeGT 1 "pop" "30000"
+    Expect.cardsInTableColumnInLastCardToContain 1 "city" "SPRINGFIELD"
+    Expect.cardsInTableColumnInLastCardToContain 1 "state" "OR"
+    Expect.cardsInTableColumnInLastCardToBeGT 1 "pop" "30000"
     successMsg "Successfully searched with field names"
 
   searchScenario "Suppress search results" [] do
@@ -94,6 +94,6 @@ test = do
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "city:portland -state:OR"
     Interact.insertJTableCardAsNextAction
-    Expect.cellsInTableColumnInLastCardToContain 10 "city" "PORTLAND"
-    Expect.cellsInTableColumnInLastCardToNotEq 10 "state" "OR"
+    Expect.cardsInTableColumnInLastCardToContain 10 "city" "PORTLAND"
+    Expect.cardsInTableColumnInLastCardToNotEq 10 "state" "OR"
     successMsg "Successfully suppressed search results"

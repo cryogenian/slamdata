@@ -25,7 +25,7 @@ import Halogen.Component.ChildPath (injSlot, injQuery)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Notebook.AccessType (AccessType)
-import SlamData.Notebook.Cell.CellId (CellId)
+import SlamData.Notebook.Card.CardId (CardId)
 import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, cpRename, cpDeck)
 import SlamData.Notebook.Deck.Component.Query as Deck
 import SlamData.Notebook.Menu.Component.Query as Menu
@@ -38,8 +38,8 @@ data Query a
   | AddKeyboardListener (EventListener SlamDataEffects) a
   | SetAccessType AccessType a
   | GetAccessType (AccessType → a)
-  | SetViewingCell (Maybe CellId) a
-  | GetViewingCell (Maybe CellId → a)
+  | SetViewingCard (Maybe CardId) a
+  | GetViewingCard (Maybe CardId → a)
   | SetParentHref String a
   | DismissAll a
 

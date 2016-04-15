@@ -26,8 +26,8 @@ import Data.StrMap (StrMap, fromFoldable)
 import DOM.Event.EventTarget (EventListener)
 
 import SlamData.Notebook.AccessType (AccessType(..))
-import SlamData.Notebook.Cell.CellId (CellId)
-import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..))
+import SlamData.Notebook.Card.CardId (CardId)
+import SlamData.Notebook.Card.CardType (CardType(..), AceMode(..))
 import SlamData.Notebook.Deck.Component.Query (Query(..))
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Notebook.Menu.Component.Query (Value, deckQueryToValue)
@@ -41,7 +41,7 @@ type State =
   , notebookShortcuts ∷ StrMap NotebookShortcut
   , keyboardListeners ∷ Array (EventListener SlamDataEffects)
   , loaded ∷ Boolean
-  , viewingCell ∷ Maybe CellId
+  , viewingCard ∷ Maybe CardId
   , version ∷ Maybe String
   , parentHref ∷ Maybe String
   }
@@ -58,31 +58,31 @@ notebookShortcuts =
     , Tuple
         "InsertQuery"
         { shortcut: Shortcut.altModOne
-        , value: deckQueryToValue $ AddCell (Ace SQLMode) unit
+        , value: deckQueryToValue $ AddCard (Ace SQLMode) unit
         , label: Nothing
         }
     , Tuple
         "InsertMarkdown"
         { shortcut: Shortcut.altModTwo
-        , value: deckQueryToValue $ AddCell (Ace MarkdownMode) unit
+        , value: deckQueryToValue $ AddCard (Ace MarkdownMode) unit
         , label: Nothing
         }
     , Tuple
         "InsertExplore"
         { shortcut: Shortcut.altModThree
-        , value: deckQueryToValue $ AddCell Explore unit
+        , value: deckQueryToValue $ AddCard Explore unit
         , label: Nothing
         }
     , Tuple
         "InsertSearch"
         { shortcut: Shortcut.altModFour
-        , value: deckQueryToValue $ AddCell Search unit
+        , value: deckQueryToValue $ AddCard Search unit
         , label: Nothing
         }
     , Tuple
         "InsertAPI"
         { shortcut: Shortcut.altModFive
-        , value: deckQueryToValue $ AddCell API unit
+        , value: deckQueryToValue $ AddCard API unit
         , label: Nothing
         }
     ]
@@ -94,31 +94,31 @@ initialState r =
   , notebookShortcuts: notebookShortcuts
   , keyboardListeners: []
   , loaded: false
-  , viewingCell: Nothing
+  , viewingCard: Nothing
   , version: Nothing
   , parentHref: Nothing
   }
 
-_accessType ∷ LensP State AccessType
+_accessType ∷ ∀ a r. LensP {accessType ∷ a|r} a
 _accessType = lens _.accessType _{accessType = _}
 
-_browserFeatures ∷ LensP State BrowserFeatures
+_browserFeatures ∷ ∀ a r. LensP {browserFeatures ∷ a|r} a
 _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
-_notebookShortcuts ∷ LensP State (StrMap NotebookShortcut)
+_notebookShortcuts ∷ ∀ a r. LensP {notebookShortcuts ∷ a |r} a
 _notebookShortcuts = lens _.notebookShortcuts _{notebookShortcuts = _}
 
-_keyboardListeners ∷ LensP State (Array (EventListener SlamDataEffects))
+_keyboardListeners ∷ ∀ a r. LensP {keyboardListeners ∷ a |r} a
 _keyboardListeners = lens _.keyboardListeners _{keyboardListeners = _}
 
-_loaded ∷ LensP State Boolean
+_loaded ∷ ∀ a r. LensP {loaded ∷ a|r} a
 _loaded = lens _.loaded _{loaded = _}
 
-_viewingCell ∷ LensP State (Maybe CellId)
-_viewingCell = lens _.viewingCell _{viewingCell = _}
+_viewingCard ∷ ∀ a r. LensP {viewingCard ∷ a|r} a
+_viewingCard = lens _.viewingCard _{viewingCard = _}
 
-_version ∷ LensP State (Maybe String)
+_version ∷ ∀ a r. LensP {version ∷ a|r} a
 _version = lens _.version _{version = _}
 
-_parentHref ∷ LensP State (Maybe String)
+_parentHref ∷ ∀ a r. LensP {parentHref ∷ a |r} a
 _parentHref = lens _.parentHref _{parentHref = _}

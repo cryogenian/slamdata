@@ -32,8 +32,8 @@ import Halogen.Util (runHalogenAff, awaitBody)
 import SlamData.Config as Config
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Notebook.Action (Action(..), toAccessType)
-import SlamData.Notebook.Cell.CellId as CID
-import SlamData.Notebook.Cell.Port as Port
+import SlamData.Notebook.Card.CardId as CID
+import SlamData.Notebook.Card.Port as Port
 import SlamData.Notebook.Component as Draftboard
 import SlamData.Notebook.Deck.Component as Deck
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
@@ -61,8 +61,8 @@ routeSignal
 routeSignal driver = do
   Tuple _ route ← Routing.matchesAff' UP.decodeURIPath routing
   case route of
-    CellRoute res cellId accessType varMap →
-      notebook res (Load accessType) (Just cellId) varMap
+    CardRoute res cardId accessType varMap →
+      notebook res (Load accessType) (Just cardId) varMap
     NotebookRoute res action varMap → notebook res action Nothing varMap
     ExploreRoute res → explore res
 
@@ -79,7 +79,7 @@ routeSignal driver = do
   notebook
     ∷ UP.DirPath
     → Action
-    → Maybe CID.CellId
+    → Maybe CID.CardId
     → Port.VarMap
     → Aff SlamDataEffects Unit
   notebook path action viewing varMap = do
@@ -87,7 +87,7 @@ routeSignal driver = do
         accessType = toAccessType action
     currentPath ← driver $ Draftboard.fromDeck Deck.GetNotebookPath
     currentVarMap ← driver $ Draftboard.fromDeck Deck.GetGlobalVarMap
-    currentViewing ← driver $ Draftboard.fromDraftboard Draftboard.GetViewingCell
+    currentViewing ← driver $ Draftboard.fromDraftboard Draftboard.GetViewingCard
     currentAccessType ← driver $ Draftboard.fromDraftboard Draftboard.GetAccessType
 
     when (currentPath ≠ pure path) do
@@ -97,7 +97,7 @@ routeSignal driver = do
         else driver $ Draftboard.toDeck $ Deck.LoadNotebook features path
 
     driver $ Draftboard.toRename $ Rename.SetText $ UP.dropNotebookExt name
-    driver $ Draftboard.toDraftboard $ Draftboard.SetViewingCell viewing
+    driver $ Draftboard.toDraftboard $ Draftboard.SetViewingCard viewing
     driver $ Draftboard.toDraftboard $ Draftboard.SetAccessType accessType
     driver $ Draftboard.toDeck $ Deck.SetGlobalVarMap varMap
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref

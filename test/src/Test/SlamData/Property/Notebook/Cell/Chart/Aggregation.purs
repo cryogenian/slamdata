@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.Chart.Aggregation where
+module Test.SlamData.Property.Notebook.Card.Chart.Aggregation where
 
 import Prelude
 
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 
-import SlamData.Notebook.Cell.Chart.Aggregation (Aggregation, allAggregations)
+import SlamData.Notebook.Card.Chart.Aggregation (Aggregation, allAggregations)
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, quickCheck, (<?>))
 import Test.StrongCheck.Gen (allInArray)

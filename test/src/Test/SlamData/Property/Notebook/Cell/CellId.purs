@@ -14,27 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.CellId where
+module Test.SlamData.Property.Notebook.Card.CardId where
 
 import Prelude
 
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 
-import SlamData.Notebook.Cell.CellId (CellId(..))
+import SlamData.Notebook.Card.CardId (CardId(..))
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
-newtype ArbCellId = ArbCellId CellId
+newtype ArbCardId = ArbCardId CardId
 
-runArbCellId :: ArbCellId -> CellId
-runArbCellId (ArbCellId m) = m
+runArbCardId :: ArbCardId -> CardId
+runArbCardId (ArbCardId m) = m
 
-instance arbitraryArbCellId :: Arbitrary ArbCellId where
-  arbitrary = ArbCellId <<< CellId <$> arbitrary
+instance arbitraryArbCardId :: Arbitrary ArbCardId where
+  arbitrary = ArbCardId <<< CardId <$> arbitrary
 
 check :: QC Unit
-check = quickCheck $ runArbCellId >>> \ci ->
+check = quickCheck $ runArbCardId >>> \ci ->
   case decodeJson (encodeJson ci) of
     Left err -> Failed $ "Decode failed: " ++ err
-    Right ci' -> ci == ci' <?> "CellId failed to decode as encoded value"
+    Right ci' -> ci == ci' <?> "CardId failed to decode as encoded value"

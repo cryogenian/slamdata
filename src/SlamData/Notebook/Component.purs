@@ -52,23 +52,23 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Notebook.AccessType (isReadOnly)
 import SlamData.Notebook.Action as NA
-import SlamData.Notebook.Cell.CellId as CID
-import SlamData.Notebook.Cell.CellType as CT
-import SlamData.Notebook.Cell.Component.Query as CQ
+import SlamData.Notebook.Card.CardId as CID
+import SlamData.Notebook.Card.CardType as CT
+import SlamData.Notebook.Card.Component.Query as CQ
 import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpMenu, cpDeck, cpRename, cpSignIn)
 import SlamData.Notebook.Component.Query (QueryP, Query(..), fromDraftboard, fromDeck, fromRename, toDraftboard, toDeck, toRename)
-import SlamData.Notebook.Component.State (NotebookShortcut, State, _accessType, _browserFeatures, _keyboardListeners, _loaded, _notebookShortcuts, _parentHref, _version, _viewingCell, initialState, notebookShortcuts)
+import SlamData.Notebook.Component.State (NotebookShortcut, State, _accessType, _browserFeatures, _keyboardListeners, _loaded, _notebookShortcuts, _parentHref, _version, _viewingCard, initialState, notebookShortcuts)
 import SlamData.Notebook.Dialog.Component as Dialog
 import SlamData.Notebook.Deck.Component as Deck
-import SlamData.Notebook.Deck.Component.ChildSlot (CellSlot(..))
+import SlamData.Notebook.Deck.Component.ChildSlot (CardSlot(..))
 import SlamData.Effects (Slam)
 import SlamData.Notebook.FormBuilder.Component as FB
 import SlamData.Notebook.FormBuilder.Item.Model as FBI
 import SlamData.Notebook.Menu.Component as Menu
 import SlamData.Notebook.Rename.Component as Rename
-import SlamData.Notebook.Cell.Port.VarMap as VM
+import SlamData.Notebook.Card.Port.VarMap as VM
 import SlamData.SignIn.Component as SignIn
-import SlamData.Notebook.Routing (mkNotebookCellURL)
+import SlamData.Notebook.Routing (mkNotebookCardURL)
 import SlamData.Render.Common (logo, icon')
 import SlamData.Render.CSS as Rc
 import SlamData.Notebook.Deck.BackSide.Component as Back
@@ -114,7 +114,7 @@ render state =
 
   where
   shouldHideTopMenu =
-    isJust (state ^. _viewingCell)
+    isJust (state ^. _viewingCard)
     ∨ isReadOnly (state ^. _accessType)
 
   shouldHideEditors =
@@ -209,11 +209,11 @@ eval (SetAccessType aType next) = do
   queryDeck $ H.action $ Deck.SetAccessType aType
   pure next
 eval (GetAccessType k) = k <$> H.gets _.accessType
-eval (SetViewingCell mbcid next) = do
-  H.modify (_viewingCell .~ mbcid)
-  queryDeck $ H.action $ Deck.SetViewingCell mbcid
+eval (SetViewingCard mbcid next) = do
+  H.modify (_viewingCard .~ mbcid)
+  queryDeck $ H.action $ Deck.SetViewingCard mbcid
   pure next
-eval (GetViewingCell k) = k <$> H.gets _.viewingCell
+eval (GetViewingCard k) = k <$> H.gets _.viewingCard
 eval (DismissAll next) = dismissAll *> pure next
 eval (SetParentHref href next) = H.modify (_parentHref ?~ href) $> next
 
@@ -247,13 +247,13 @@ deckPeek =
     (const (pure unit))
     \(H.ChildF s q) →
       coproduct
-        (either peekCells (\_ _ → pure unit) s)
+        (either peekCards (\_ _ → pure unit) s)
         backsidePeek
         q
   where
-  peekCells (CellSlot cid) q =
+  peekCards (CardSlot cid) q =
     coproduct
-      (cellPeek cid)
+      (cardPeek cid)
       (const $ pure unit)
       q
 
@@ -275,9 +275,9 @@ deckPeek =
           ⊕ UP.encodeURIPath (printPath nPath)
           ⊕ "view"
     Back.Embed →
-      queryDeck (H.request Deck.GetActiveCellId)
+      queryDeck (H.request Deck.GetActiveCardId)
         <#> join
-        >>= traverse_ shareCell
+        >>= traverse_ shareCard
     Back.Publish → do
       pure unit
     Back.Mirror →
@@ -285,8 +285,8 @@ deckPeek =
     Back.Wrap →
       pure unit
 
-shareCell ∷ CID.CellId → DraftboardDSL Unit
-shareCell cid = do
+shareCard ∷ CID.CardId → DraftboardDSL Unit
+shareCard cid = do
   root ← H.fromEff locationString
   showDialog ∘ either Dialog.Error (uncurry Dialog.Embed) =<< ET.runExceptT do
     liftDeckQuery $ H.action Deck.SaveNotebook
@@ -294,26 +294,26 @@ shareCell cid = do
       liftDeckQuery (H.request Deck.GetNotebookPath)
         >>= maybe (EC.throwError "Could not determine notebook path") pure
     varMap ←
-      liftDeckQuery (H.request (Deck.FindCellParent cid))
+      liftDeckQuery (H.request (Deck.FindCardParent cid))
         >>= maybe (pure SM.empty) hereditaryVarMapDefaults
     pure $
       Tuple
-      (root ⊕ "/" ⊕ mkNotebookCellURL path cid NA.ReadOnly SM.empty)
+      (root ⊕ "/" ⊕ mkNotebookCardURL path cid NA.ReadOnly SM.empty)
       varMap
 
-hereditaryVarMapDefaults ∷ CID.CellId → ET.ExceptT String DraftboardDSL VM.VarMap
+hereditaryVarMapDefaults ∷ CID.CardId → ET.ExceptT String DraftboardDSL VM.VarMap
 hereditaryVarMapDefaults cid = do
-  pid ← liftDeckQuery (H.request (Deck.FindCellParent cid))
+  pid ← liftDeckQuery (H.request (Deck.FindCardParent cid))
   SM.union
     <$> varMapDefaults cid
     <*> (traverse hereditaryVarMapDefaults pid <#> fromMaybe SM.empty)
 
 
-varMapDefaults ∷ CID.CellId → ET.ExceptT String DraftboardDSL VM.VarMap
+varMapDefaults ∷ CID.CardId → ET.ExceptT String DraftboardDSL VM.VarMap
 varMapDefaults cid = do
   τ ←
-    liftDeckQuery (H.request (Deck.GetCellType cid))
-      >>= maybe (EC.throwError "Could not determine cell type") pure
+    liftDeckQuery (H.request (Deck.GetCardType cid))
+      >>= maybe (EC.throwError "Could not determine card type") pure
   case τ of
     CT.API → do
       let
@@ -332,28 +332,28 @@ varMapDefaults cid = do
 
 
 
-cellPeek ∷ ∀ a. CID.CellId → CQ.CellQuery a → DraftboardDSL Unit
-cellPeek cid q =
+cardPeek ∷ ∀ a. CID.CardId → CQ.CardQuery a → DraftboardDSL Unit
+cardPeek cid q =
   case q of
-    CQ.ShareCell _ → shareCell cid
+    CQ.ShareCard _ → shareCard cid
     _ → pure unit
 
 
 liftFormBuilderQuery
-  ∷ CID.CellId → Natural FB.Query (ET.ExceptT String DraftboardDSL)
+  ∷ CID.CardId → Natural FB.Query (ET.ExceptT String DraftboardDSL)
 liftFormBuilderQuery cid =
-  liftCellQuery cid
+  liftCardQuery cid
     ∘ CQ.APIQuery
     ∘ right
     ∘ H.ChildF unit
     ∘ left
 
-liftCellQuery
-  ∷ CID.CellId
-  → Natural CQ.AnyCellQuery (ET.ExceptT String DraftboardDSL)
-liftCellQuery cid =
-  queryCell cid ⋙ lift
-    >=> maybe (EC.throwError "Error querying cell") pure
+liftCardQuery
+  ∷ CID.CardId
+  → Natural CQ.AnyCardQuery (ET.ExceptT String DraftboardDSL)
+liftCardQuery cid =
+  queryCard cid ⋙ lift
+    >=> maybe (EC.throwError "Error querying card") pure
 
 liftDeckQuery
   ∷ Natural Deck.Query (ET.ExceptT String DraftboardDSL)
@@ -401,11 +401,11 @@ queryDialog q = H.query' cpDialog unit (left q) *> pure unit
 queryDeck ∷ ∀ a. Deck.Query a → DraftboardDSL (Maybe a)
 queryDeck = H.query' cpDeck unit ∘ left
 
-queryCell ∷ ∀ a. CID.CellId → CQ.AnyCellQuery a → DraftboardDSL (Maybe a)
-queryCell cid =
+queryCard ∷ ∀ a. CID.CardId → CQ.AnyCardQuery a → DraftboardDSL (Maybe a)
+queryCard cid =
   H.query' cpDeck unit
     ∘ right
-    ∘ H.ChildF (Left $ CellSlot cid)
+    ∘ H.ChildF (Left $ CardSlot cid)
     ∘ left
     ∘ right
     ∘ H.ChildF unit

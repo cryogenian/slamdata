@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.Viz.Model
+module Test.SlamData.Property.Notebook.Card.Viz.Model
   ( ArbModel
   , runArbModel
   , check
@@ -25,12 +25,12 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Foldable (fold)
 
-import SlamData.Notebook.Cell.Viz.Model as M
+import SlamData.Notebook.Card.Viz.Model as M
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
-import Test.SlamData.Property.Notebook.Cell.Chart.ChartType (runArbChartType)
-import Test.SlamData.Property.Notebook.Cell.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)
+import Test.SlamData.Property.Notebook.Card.Chart.ChartType (runArbChartType)
+import Test.SlamData.Property.Notebook.Card.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)
 
 newtype ArbModel = ArbModel M.Model
 

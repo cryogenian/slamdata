@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.Markdown.Model where
+module Test.SlamData.Property.Notebook.Card.Markdown.Model where
 
 import Prelude
 
 import Data.Either (Either(..))
 import Data.Foldable (mconcat)
 
-import SlamData.Notebook.Cell.Markdown.Model as M
+import SlamData.Notebook.Card.Markdown.Model as M
 
 import Test.StrongCheck (QC, Result(..), quickCheck, (<?>))
 import Text.Markdown.SlamDown.Halogen.Component.State (SlamDownState(..))

@@ -8,49 +8,49 @@ import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithPro
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 
-cellsInTableColumnInLastCardToEq
+cardsInTableColumnInLastCardToEq
   ∷ Int → String → String → SlamFeature Unit
-cellsInTableColumnInLastCardToEq =
-  cellsInTableColumnInLastCard XPath.tdWithThAndTextEq
+cardsInTableColumnInLastCardToEq =
+  cardsInTableColumnInLastCard XPath.tdWithThAndTextEq
 
-cellsInTableColumnInLastCardToContain
+cardsInTableColumnInLastCardToContain
   ∷ Int → String → String → SlamFeature Unit
-cellsInTableColumnInLastCardToContain =
-  cellsInTableColumnInLastCard XPath.tdWithThAndTextContaining
+cardsInTableColumnInLastCardToContain =
+  cardsInTableColumnInLastCard XPath.tdWithThAndTextContaining
 
-cellsInTableColumnInLastCardToNotEq
+cardsInTableColumnInLastCardToNotEq
   ∷ Int → String → String → SlamFeature Unit
-cellsInTableColumnInLastCardToNotEq =
-  cellsInTableColumnInLastCard XPath.tdWithThAndTextNotEq
+cardsInTableColumnInLastCardToNotEq =
+  cardsInTableColumnInLastCard XPath.tdWithThAndTextNotEq
 
-cellsInTableColumnInLastCardToBeGT
+cardsInTableColumnInLastCardToBeGT
   ∷ Int → String → String → SlamFeature Unit
-cellsInTableColumnInLastCardToBeGT =
-  cellsInTableColumnInLastCard XPath.tdWithThAndTextGT
+cardsInTableColumnInLastCardToBeGT =
+  cardsInTableColumnInLastCard XPath.tdWithThAndTextGT
 
-cellsInTableColumnInLastCardToBeLT
+cardsInTableColumnInLastCardToBeLT
   ∷ Int → String → String → SlamFeature Unit
-cellsInTableColumnInLastCardToBeLT =
-  cellsInTableColumnInLastCard XPath.tdWithThAndTextLT
+cardsInTableColumnInLastCardToBeLT =
+  cardsInTableColumnInLastCard XPath.tdWithThAndTextLT
 
-cellsInTableColumnInLastCardToEqOneOf
+cardsInTableColumnInLastCardToEqOneOf
   ∷ Int → String → Array String → SlamFeature Unit
-cellsInTableColumnInLastCardToEqOneOf =
-  cellsInTableColumnInLastCard XPath.tdWithThAndTextEqOneOf
+cardsInTableColumnInLastCardToEqOneOf =
+  cardsInTableColumnInLastCard XPath.tdWithThAndTextEqOneOf
 
-cellsInTableColumnInLastCardToNotEqOneOf
+cardsInTableColumnInLastCardToNotEqOneOf
   ∷ Int → String → Array String → SlamFeature Unit
-cellsInTableColumnInLastCardToNotEqOneOf =
-  cellsInTableColumnInLastCard XPath.tdWithThAndTextNotEqOneOf
+cardsInTableColumnInLastCardToNotEqOneOf =
+  cardsInTableColumnInLastCard XPath.tdWithThAndTextNotEqOneOf
 
-cellsInTableColumnInLastCard
+cardsInTableColumnInLastCard
   ∷ forall a
   . (String → String → a → String)
   → Int
   → String
   → a
   → SlamFeature Unit
-cellsInTableColumnInLastCard f i headerText xs = do
+cardsInTableColumnInLastCard f i headerText xs = do
   expectPresented $ XPath.index tdXPath i
   expectNotPresented $ XPath.index trXPath (i + 1)
   where
@@ -171,12 +171,12 @@ fileSearchString string =
   (Map.singleton "value" $ Just string)
   (XPath.anywhere XPaths.fileSearchInput)
 
-textInFormCell ∷ String → SlamFeature Unit
-textInFormCell =
+textInFormCard ∷ String → SlamFeature Unit
+textInFormCard =
   tryRepeatedlyTo
     ∘ expectPresented
     ∘ XPath.anywhere
-    ∘ XPath.following XPaths.formCellHeader
+    ∘ XPath.following XPaths.formCardHeader
     ∘ XPath.anyWithText
 
 backsideActionNotPresented ∷ String → SlamFeature Unit

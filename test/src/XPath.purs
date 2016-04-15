@@ -141,7 +141,7 @@ tdWithTh tableXPath thXPath tdXPath =
     "count(" ⊕ s ⊕ "[not(@colspan)]) + sum(" ⊕ s ⊕ "/@colspan)"
   comment =
     "\"Comment: "
-      ⊕ "Cells matching " ⊕ tdXPath ⊕ " "
+      ⊕ "Cards matching " ⊕ tdXPath ⊕ " "
       ⊕ "in columns with headers matching " ⊕ thXPath ⊕ " "
       ⊕ "in tables matching " ⊕ tableXPath ⊕ "\""
   inside s

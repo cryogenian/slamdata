@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.Chart.ChartType where
+module Test.SlamData.Property.Notebook.Card.Chart.ChartType where
 
 import Prelude
 
@@ -22,7 +22,7 @@ import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 import Data.List (toList)
 
-import SlamData.Notebook.Cell.Chart.ChartType (ChartType(..))
+import SlamData.Notebook.Card.Chart.ChartType (ChartType(..))
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, quickCheck, (<?>))
 import Test.StrongCheck.Gen (elements)

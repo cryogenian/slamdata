@@ -4,35 +4,35 @@ import SlamData.Prelude
 
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
-import SlamData.Notebook.Cell.Component (CellQueryP, CellStateP)
-import SlamData.Notebook.Cell.CellId (CellId)
+import SlamData.Notebook.Card.Component (CardQueryP, CardStateP)
+import SlamData.Notebook.Card.CardId (CardId)
 import SlamData.Notebook.Deck.BackSide.Component as Back
 
 
-newtype CellSlot = CellSlot CellId
+newtype CardSlot = CardSlot CardId
 
-derive instance genericCellSlot :: Generic CellSlot
-instance eqCellSlot :: Eq CellSlot where eq = gEq
-instance ordCellSlot :: Ord CellSlot where compare = gCompare
+derive instance genericCardSlot :: Generic CardSlot
+instance eqCardSlot :: Eq CardSlot where eq = gEq
+instance ordCardSlot :: Ord CardSlot where compare = gCompare
 
 type BackSideSlot = Unit
 
 type ChildSlot =
-  Either CellSlot BackSideSlot
+  Either CardSlot BackSideSlot
 
 type ChildQuery =
-  Coproduct CellQueryP Back.Query
+  Coproduct CardQueryP Back.Query
 
 type ChildState =
-  Either CellStateP Back.State
+  Either CardStateP Back.State
 
 
-cpCell
+cpCard
   ∷ ChildPath
-      CellStateP ChildState
-      CellQueryP ChildQuery
-      CellSlot ChildSlot
-cpCell = cpL
+      CardStateP ChildState
+      CardQueryP ChildQuery
+      CardSlot ChildSlot
+cpCard = cpL
 
 cpBackSide
   ∷ ChildPath

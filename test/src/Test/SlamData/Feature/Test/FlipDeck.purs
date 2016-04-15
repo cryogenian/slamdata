@@ -55,7 +55,7 @@ test = do
     Interact.insertMdCardAsFirstCardInNewStack
     Interact.provideMdInLastMdCard "Quarterly"
     Interact.insertFormCardAsNextAction
-    Expect.textInFormCell "Quarterly"
+    Expect.textInFormCard "Quarterly"
     Expect.lastCardToBeFinished
     warnMsg "SD-1538, we don't know if notebook has been saved already"
     later 1000 $ pure unit
@@ -63,7 +63,7 @@ test = do
     Expect.backsideMenuPresented
     Interact.shareDeck
     Interact.accessSharingUrl
-    Expect.textInFormCell "Quarterly"
+    Expect.textInFormCard "Quarterly"
     Interact.launchSlamData
     successMsg "Successfully shared deck"
 

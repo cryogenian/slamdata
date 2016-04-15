@@ -40,7 +40,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Dialog.Error.Component as Error
-import SlamData.Notebook.Cell.Port.VarMap as Port
+import SlamData.Notebook.Card.Port.VarMap as Port
 import SlamData.Notebook.Dialog.Embed.Component as Embed
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.Effects (Slam)

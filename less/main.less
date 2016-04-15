@@ -45,13 +45,13 @@ body {
     .notebook-content {
         padding-top: 0;
     }
-    .cell-input, .cell-output-label {
+    .card-input, .card-output-label {
         display: none;
     }
-    .notebook-cell .row.cell-output div.cell-output-result {
+    .notebook-card .row.card-output div.card-output-result {
         width: 100%;
     }
-    .cell-controls {
+    .card-controls {
         > * {
             display: none;
         }
@@ -63,8 +63,8 @@ body {
     }
 }
 
-.notebook-cell {
-    .cell-controls {
+.notebook-card {
+    .card-controls {
         button {
             i {
                 top: 2px;
@@ -318,7 +318,7 @@ ol.breadcrumb {
     }
 }
 
-.new-cell-menu {
+.new-card-menu {
     list-style: none;
     margin: 10px 9px;
     padding: 0;
@@ -351,7 +351,7 @@ ol.breadcrumb {
     }
 }
 
-.cell-input {
+.card-input {
     textarea {
         width: 100%;
         height: 100%;
@@ -370,18 +370,18 @@ ol.breadcrumb {
     }
 }
 
-.notebook-cell {
-    .cell-header {
+.notebook-card {
+    .card-header {
         background: #777;
         color: #fff;
         margin: 0px -15px;
         line-height: 30px;
 
-        .cell-icon, .cell-name {
+        .card-icon, .card-name {
             float: left;
         }
 
-        .cell-icon {
+        .card-icon {
             width: 61px;
             text-align: center;
             font-size: 16px;
@@ -402,11 +402,11 @@ ol.breadcrumb {
             }
         }
 
-        .cell-name {
+        .card-name {
             margin-left: 10px;
         }
 
-        .cell-controls button {
+        .card-controls button {
             opacity: 0.6;
             &:hover {
                 color: #fff;
@@ -421,7 +421,7 @@ ol.breadcrumb {
         float: left;
     }
 
-    .cell-controls {
+    .card-controls {
         padding-right: 8px;
         line-height: 30px;
         button {
@@ -442,7 +442,7 @@ ol.breadcrumb {
         }
     }
 
-    .cell-failures, .cell-messages, .cell-blocked-message {
+    .card-failures, .card-messages, .card-blocked-message {
         padding-left: 10px;
         line-height: 32px;
         margin-left: 61px;
@@ -470,12 +470,12 @@ ol.breadcrumb {
         border-bottom: 1px solid #ddd;
     }
 
-    .cell-failures {
+    .card-failures {
         background: #faa;
         > pre { border-top: 1px dashed #ff7878; }
         border-bottom: 1px solid #ff7878;
     }
-    .cell-blocked-message {
+    .card-blocked-message {
         background: #ffa;
     }
 
@@ -486,7 +486,7 @@ ol.breadcrumb {
         padding: 0px;
         height: 32px;
     }
-    .row.cell-output {
+    .row.card-output {
         &.fade.in {
             padding-bottom: 12px;
         }
@@ -501,13 +501,13 @@ ol.breadcrumb {
             margin-left: 10px;
         }
         background: #ccc;
-        div.cell-output-label {
+        div.card-output-label {
             width: 61px;
             float: left;
             text-align: center;
             padding-top: 8px;
         }
-        div.cell-output-result {
+        div.card-output-result {
             min-height: 165px;
             float: left;
             background: #fff;
@@ -519,10 +519,10 @@ ol.breadcrumb {
             }
         }
     }
-    .cell-eval-line {
+    .card-eval-line {
         background: #eee;
     }
-    button.next-cell-list {
+    button.next-card-list {
         border-radius: 0;
         width: 61px;
     }
@@ -536,7 +536,7 @@ ol.breadcrumb {
     height: 100%;
 }
 
-.explore-cell-editor {
+.explore-card-editor {
     margin: 0 -15px;
     border-left: 76px solid #ddd;
     padding: 10px;
@@ -567,7 +567,7 @@ ol.breadcrumb {
     }
 }
 
-.search-cell-button {
+.search-card-button {
     height: 34px;
 }
 
@@ -663,11 +663,11 @@ div.loading-message.alert.alert-info {
     font-weight: 28px;
 }
 
-.download-cell-editor {
+.download-card-editor {
     border-bottom: 1px solid #f0f0f0;
 }
 
-div.viz-cell-editor, div.download-cell-editor {
+div.viz-card-editor, div.download-card-editor {
     min-height: 160px;
     padding-left: 15px;
     padding-right: 15px;
@@ -769,5 +769,5 @@ button {
 @import "dialog/download";
 @import "form-builder";
 @import "share-permissions";
-@import "next-cell-card";
+@import "next-card";
 @import "save-card";

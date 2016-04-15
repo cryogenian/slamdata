@@ -18,38 +18,38 @@ module SlamData.Notebook.Deck.Component.State
   ( StateP
   , State
   , StateMode(..)
-  , CellDef
-  , CellConstructor
+  , CardDef
+  , CardConstructor
   , DebounceTrigger
   , initialDeck
   , _fresh
   , _accessType
-  , _cells
+  , _cards
   , _dependencies
-  , _activeCellId
+  , _activeCardId
   , _name
   , _browserFeatures
-  , _viewingCell
+  , _viewingCard
   , _path
   , _saveTrigger
   , _runTrigger
   , _globalVarMap
-  , _pendingCells
+  , _pendingCards
   , _stateMode
   , _backsided
-  , addCell
-  , addCell'
-  , removeCells
+  , addCard
+  , addCard'
+  , removeCards
   , findRoot
   , findParent
   , findChildren
   , findDescendants
   , findLast
-  , findLastCellType
-  , addPendingCell
-  , getCellType
-  , cellsOfType
-  , cellIsLinkedCellOf
+  , findLastCardType
+  , addPendingCard
+  , getCardType
+  , cardsOfType
+  , cardIsLinkedCardOf
   , fromModel
   , notebookPath
   ) where
@@ -73,26 +73,26 @@ import Halogen as H
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Notebook.AccessType (AccessType(..))
-import SlamData.Notebook.Cell.Ace.Component (AceEvaluator, AceSetup, aceComponent)
-import SlamData.Notebook.Cell.API.Component (apiComponent)
-import SlamData.Notebook.Cell.APIResults.Component (apiResultsComponent)
-import SlamData.Notebook.Cell.CellId (CellId(..), runCellId)
-import SlamData.Notebook.Cell.CellType (CellType(..), AceMode(..), linkedCellType)
-import SlamData.Notebook.Cell.Chart.Component (chartComponent)
-import SlamData.Notebook.Cell.Component (CellComponent, CellState, CellStateP, CellQueryP, initEditorCellState, initResultsCellState)
-import SlamData.Notebook.Cell.Download.Component (downloadComponent)
-import SlamData.Notebook.Cell.Explore.Component (exploreComponent)
-import SlamData.Notebook.Cell.JTable.Component (jtableComponent)
-import SlamData.Notebook.Cell.Markdown.Component (markdownComponent)
-import SlamData.Notebook.Cell.Next.Component (nextCellComponent)
-import SlamData.Notebook.Cell.Save.Component (saveCellComponent)
-import SlamData.Notebook.Cell.Markdown.Eval (markdownEval, markdownSetup)
-import SlamData.Notebook.Cell.Model as Cell
-import SlamData.Notebook.Cell.Port.VarMap as Port
-import SlamData.Notebook.Cell.Query.Eval (queryEval, querySetup)
-import SlamData.Notebook.Cell.Search.Component (searchComponent)
-import SlamData.Notebook.Cell.Viz.Component (vizComponent)
-import SlamData.Notebook.Deck.Component.ChildSlot (CellSlot(..), ChildSlot, ChildState, ChildQuery)
+import SlamData.Notebook.Card.Ace.Component (AceEvaluator, AceSetup, aceComponent)
+import SlamData.Notebook.Card.API.Component (apiComponent)
+import SlamData.Notebook.Card.APIResults.Component (apiResultsComponent)
+import SlamData.Notebook.Card.CardId (CardId(..), runCardId)
+import SlamData.Notebook.Card.CardType (CardType(..), AceMode(..), linkedCardType)
+import SlamData.Notebook.Card.Chart.Component (chartComponent)
+import SlamData.Notebook.Card.Component (CardComponent, CardState, CardStateP, CardQueryP, initEditorCardState, initResultsCardState)
+import SlamData.Notebook.Card.Download.Component (downloadComponent)
+import SlamData.Notebook.Card.Explore.Component (exploreComponent)
+import SlamData.Notebook.Card.JTable.Component (jtableComponent)
+import SlamData.Notebook.Card.Markdown.Component (markdownComponent)
+import SlamData.Notebook.Card.Next.Component (nextCardComponent)
+import SlamData.Notebook.Card.Save.Component (saveCardComponent)
+import SlamData.Notebook.Card.Markdown.Eval (markdownEval, markdownSetup)
+import SlamData.Notebook.Card.Model as Card
+import SlamData.Notebook.Card.Port.VarMap as Port
+import SlamData.Notebook.Card.Query.Eval (queryEval, querySetup)
+import SlamData.Notebook.Card.Search.Component (searchComponent)
+import SlamData.Notebook.Card.Viz.Component (vizComponent)
+import SlamData.Notebook.Deck.Component.ChildSlot (CardSlot(..), ChildSlot, ChildState, ChildQuery)
 import SlamData.Notebook.Deck.Component.Query (Query)
 import SlamData.Notebook.Deck.Model as Model
 
@@ -110,27 +110,27 @@ data StateMode
 type State =
   { fresh ∷ Int
   , accessType ∷ AccessType
-  , cells ∷ List CellDef
-  , dependencies ∷ M.Map CellId CellId
-  , cellTypes ∷ M.Map CellId CellType
-  , activeCellId ∷ Maybe CellId
+  , cards ∷ List CardDef
+  , dependencies ∷ M.Map CardId CardId
+  , cardTypes ∷ M.Map CardId CardType
+  , activeCardId ∷ Maybe CardId
   , name ∷ These P.DirName String
   , path ∷ Maybe DirPath
   , browserFeatures ∷ BrowserFeatures
-  , viewingCell ∷ Maybe CellId
+  , viewingCard ∷ Maybe CardId
   , saveTrigger ∷ Maybe (Query Unit → Slam Unit)
   , runTrigger ∷ Maybe DebounceTrigger
-  , pendingCells ∷ S.Set CellId
+  , pendingCards ∷ S.Set CardId
   , globalVarMap ∷ Port.VarMap
   , stateMode ∷ StateMode
   , backsided ∷ Boolean
   }
 
--- | A record used to represent cell definitions in the notebook.
-type CellDef = { id ∷ CellId, ty ∷ CellType, ctor ∷ CellConstructor }
+-- | A record used to represent card definitions in the notebook.
+type CardDef = { id ∷ CardId, ty ∷ CardType, ctor ∷ CardConstructor }
 
--- | The specific `SlotConstructor` type for cells in the notebook.
-type CellConstructor = H.SlotConstructor CellStateP CellQueryP Slam CellSlot
+-- | The specific `SlotConstructor` type for cards in the notebook.
+type CardConstructor = H.SlotConstructor CardStateP CardQueryP Slam CardSlot
 
 -- | The type of functions used to trigger a debounced query.
 type DebounceTrigger = Query Unit → Slam Unit
@@ -140,23 +140,23 @@ initialDeck ∷ BrowserFeatures → State
 initialDeck browserFeatures =
   { fresh: 0
   , accessType: Editable
-  , cells: mempty
-  , cellTypes: M.empty
+  , cards: mempty
+  , cardTypes: M.empty
   , dependencies: M.empty
-  , activeCellId: Nothing
+  , activeCardId: Nothing
   , name: That Config.newNotebookName
   , browserFeatures
-  , viewingCell: Nothing
+  , viewingCard: Nothing
   , path: Nothing
   , saveTrigger: Nothing
   , globalVarMap: SM.empty
   , runTrigger: Nothing
-  , pendingCells: S.empty
+  , pendingCards: S.empty
   , stateMode: Ready
   , backsided: false
   }
 
--- | A counter used to generate `CellId` values.
+-- | A counter used to generate `CardId` values.
 _fresh ∷ LensP State Int
 _fresh = lens _.fresh _{fresh = _}
 
@@ -164,18 +164,18 @@ _fresh = lens _.fresh _{fresh = _}
 _accessType ∷ LensP State AccessType
 _accessType = lens _.accessType _{accessType = _}
 
--- | The list of cells currently in the notebook.
-_cells ∷ LensP State (List CellDef)
-_cells = lens _.cells _{cells = _}
+-- | The list of cards currently in the notebook.
+_cards ∷ LensP State (List CardDef)
+_cards = lens _.cards _{cards = _}
 
 -- | A map of the edges in the dependency tree, where each key/value pair
 -- | represents a child/parent relation.
-_dependencies ∷ LensP State (M.Map CellId CellId)
+_dependencies ∷ LensP State (M.Map CardId CardId)
 _dependencies = lens _.dependencies _{dependencies = _}
 
--- | The `CellId` for the currently focused cell.
-_activeCellId ∷ LensP State (Maybe CellId)
-_activeCellId = lens _.activeCellId _{activeCellId = _}
+-- | The `CardId` for the currently focused card.
+_activeCardId ∷ LensP State (Maybe CardId)
+_activeCardId = lens _.activeCardId _{activeCardId = _}
 
 -- | The current notebook name. When the value is `This` is has yet to be saved.
 -- | When the value is `That` it has been saved. When the value is `Both` a new
@@ -187,21 +187,21 @@ _name = lens _.name _{name = _}
 _path ∷ LensP State (Maybe DirPath)
 _path = lens _.path _{path = _}
 
--- | The available browser features - passed through to markdown results cells
+-- | The available browser features - passed through to markdown results cards
 -- | as they need this information to render the output HTML.
 _browserFeatures ∷ LensP State BrowserFeatures
 _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
--- | The currently focused cell when viewing an individual cell within a
+-- | The currently focused card when viewing an individual card within a
 -- | notebook.
-_viewingCell ∷ LensP State (Maybe CellId)
-_viewingCell = lens _.viewingCell _{viewingCell = _}
+_viewingCard ∷ LensP State (Maybe CardId)
+_viewingCard = lens _.viewingCard _{viewingCard = _}
 
 -- | The debounced trigger for notebook save actions.
 _saveTrigger ∷ LensP State (Maybe DebounceTrigger)
 _saveTrigger = lens _.saveTrigger _{saveTrigger = _}
 
--- | The debounced trigger for running all cells that are pending.
+-- | The debounced trigger for running all cards that are pending.
 _runTrigger ∷ LensP State (Maybe DebounceTrigger)
 _runTrigger = lens _.runTrigger _{runTrigger = _}
 
@@ -209,9 +209,9 @@ _runTrigger = lens _.runTrigger _{runTrigger = _}
 _globalVarMap ∷ LensP State Port.VarMap
 _globalVarMap = lens _.globalVarMap _{globalVarMap = _}
 
--- | The cells that have been enqueued to run.
-_pendingCells ∷ LensP State (S.Set CellId)
-_pendingCells = lens _.pendingCells _{pendingCells = _}
+-- | The cards that have been enqueued to run.
+_pendingCards ∷ LensP State (S.Set CardId)
+_pendingCards = lens _.pendingCards _{pendingCards = _}
 
 -- | The "state mode" used to track whether the notebook is ready, loading, or
 -- | if an error has occurred while loading.
@@ -222,75 +222,75 @@ _stateMode = lens _.stateMode _{stateMode = _}
 _backsided ∷ ∀ a r. LensP {backsided ∷ a |r} a
 _backsided = lens _.backsided _{backsided = _}
 
--- | Adds a new cell to the notebook.
+-- | Adds a new card to the notebook.
 -- |
--- | Takes the current notebook state, the type of cell to add, and an optional
--- | parent cell ID.
-addCell ∷ CellType → Maybe CellId → State → State
-addCell cellType parent st = fst $ addCell' cellType parent st
+-- | Takes the current notebook state, the type of card to add, and an optional
+-- | parent card ID.
+addCard ∷ CardType → Maybe CardId → State → State
+addCard cardType parent st = fst $ addCard' cardType parent st
 
--- | Adds a new cell to the notebook.
+-- | Adds a new card to the notebook.
 -- |
--- | Takes the current notebook state, the type of cell to add, and an optional
--- | parent cell ID and returns the modified notebook state and the new cell ID.
-addCell' ∷ CellType → Maybe CellId → State → Tuple State CellId
-addCell' cellType parent st =
+-- | Takes the current notebook state, the type of card to add, and an optional
+-- | parent card ID and returns the modified notebook state and the new card ID.
+addCard' ∷ CardType → Maybe CardId → State → Tuple State CardId
+addCard' cardType parent st =
   let
-    cellId = CellId st.fresh
+    cardId = CardId st.fresh
     newState = st
       { fresh = st.fresh + 1
-      , cells = st.cells `L.snoc` mkCellDef cellType cellId
-      , activeCellId = Just cellId
-      , cellTypes = M.insert cellId cellType st.cellTypes
+      , cards = st.cards `L.snoc` mkCardDef cardType cardId
+      , activeCardId = Just cardId
+      , cardTypes = M.insert cardId cardType st.cardTypes
       , dependencies =
-          maybe st.dependencies (flip (M.insert cellId) st.dependencies) parent
+          maybe st.dependencies (flip (M.insert cardId) st.dependencies) parent
       }
   in
-    Tuple newState cellId
+    Tuple newState cardId
   where
-  mkCellDef ∷ CellType → CellId → CellDef
-  mkCellDef cellType cellId =
-    let component = cellTypeComponent cellType cellId st.browserFeatures
+  mkCardDef ∷ CardType → CardId → CardDef
+  mkCardDef cardType cardId =
+    let component = cardTypeComponent cardType cardId st.browserFeatures
         initialState =
-          H.parentState (cellTypeInitialState cellType)
+          H.parentState (cardTypeInitialState cardType)
             { accessType = st.accessType }
-    in { id: cellId
-       , ty: cellType
-       , ctor: H.SlotConstructor (CellSlot cellId) \_ → { component, initialState }
+    in { id: cardId
+       , ty: cardType
+       , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
        }
 
-cellTypeComponent ∷ CellType → CellId → BrowserFeatures → CellComponent
-cellTypeComponent (Ace mode) _ _ = aceComponent { mode, evaluator, setup }
+cardTypeComponent ∷ CardType → CardId → BrowserFeatures → CardComponent
+cardTypeComponent (Ace mode) _ _ = aceComponent { mode, evaluator, setup }
   where
   evaluator = aceEvalMode mode
   setup = aceSetupMode mode
-cellTypeComponent Explore _ _ = exploreComponent
-cellTypeComponent Search _ _ = searchComponent
-cellTypeComponent Viz _ _ = vizComponent
-cellTypeComponent Chart _ _ = chartComponent
-cellTypeComponent Markdown cellId bf = markdownComponent cellId bf
-cellTypeComponent JTable _ _ = jtableComponent
-cellTypeComponent Download _ _ = downloadComponent
-cellTypeComponent API _ _ = apiComponent
-cellTypeComponent APIResults _ _ = apiResultsComponent
-cellTypeComponent NextAction _ _ = nextCellComponent
-cellTypeComponent Save _ _ = saveCellComponent
+cardTypeComponent Explore _ _ = exploreComponent
+cardTypeComponent Search _ _ = searchComponent
+cardTypeComponent Viz _ _ = vizComponent
+cardTypeComponent Chart _ _ = chartComponent
+cardTypeComponent Markdown cardId bf = markdownComponent cardId bf
+cardTypeComponent JTable _ _ = jtableComponent
+cardTypeComponent Download _ _ = downloadComponent
+cardTypeComponent API _ _ = apiComponent
+cardTypeComponent APIResults _ _ = apiResultsComponent
+cardTypeComponent NextAction _ _ = nextCardComponent
+cardTypeComponent Save _ _ = saveCardComponent
 
-cellTypeInitialState ∷ CellType → CellState
-cellTypeInitialState (Ace SQLMode) =
-  initEditorCellState { cachingEnabled = Just false }
-cellTypeInitialState (Ace _) = initEditorCellState
-cellTypeInitialState Explore = initEditorCellState
-cellTypeInitialState Search = initEditorCellState { cachingEnabled = Just false }
-cellTypeInitialState Viz = initEditorCellState
-cellTypeInitialState Chart = initResultsCellState
-cellTypeInitialState Markdown = initResultsCellState
-cellTypeInitialState JTable = initResultsCellState
-cellTypeInitialState Download = initEditorCellState
-cellTypeInitialState API = initEditorCellState
-cellTypeInitialState APIResults = initResultsCellState
-cellTypeInitialState NextAction = initEditorCellState
-cellTypeInitialState Save = initEditorCellState
+cardTypeInitialState ∷ CardType → CardState
+cardTypeInitialState (Ace SQLMode) =
+  initEditorCardState { cachingEnabled = Just false }
+cardTypeInitialState (Ace _) = initEditorCardState
+cardTypeInitialState Explore = initEditorCardState
+cardTypeInitialState Search = initEditorCardState { cachingEnabled = Just false }
+cardTypeInitialState Viz = initEditorCardState
+cardTypeInitialState Chart = initResultsCardState
+cardTypeInitialState Markdown = initResultsCardState
+cardTypeInitialState JTable = initResultsCardState
+cardTypeInitialState Download = initEditorCardState
+cardTypeInitialState API = initEditorCardState
+cardTypeInitialState APIResults = initResultsCardState
+cardTypeInitialState NextAction = initEditorCardState
+cardTypeInitialState Save = initEditorCardState
 
 aceEvalMode ∷ AceMode → AceEvaluator
 aceEvalMode MarkdownMode = markdownEval
@@ -300,124 +300,124 @@ aceSetupMode ∷ AceMode → AceSetup
 aceSetupMode MarkdownMode = markdownSetup
 aceSetupMode SQLMode = querySetup
 
--- | Removes a set of cells from the notebook. Any cells that depend on a cell
--- | in the set of provided cells will also be removed.
+-- | Removes a set of cards from the notebook. Any cards that depend on a card
+-- | in the set of provided cards will also be removed.
 -- |
--- | Takes the set of IDs for the cells to remove and the current notebook
+-- | Takes the set of IDs for the cards to remove and the current notebook
 -- | state.
-removeCells ∷ S.Set CellId → State → State
-removeCells cellIds st = st
-    { cells = L.filter f st.cells
-    , cellTypes = foldl (flip M.delete) st.cellTypes cellIds'
+removeCards ∷ S.Set CardId → State → State
+removeCards cardIds st = st
+    { cards = L.filter f st.cards
+    , cardTypes = foldl (flip M.delete) st.cardTypes cardIds'
     , dependencies = M.fromList $ L.filter g $ M.toList st.dependencies
-    , pendingCells = S.difference st.pendingCells cellIds
+    , pendingCards = S.difference st.pendingCards cardIds
     }
   where
-  cellIds' ∷ S.Set CellId
-  cellIds' = cellIds ⊕ foldMap (flip findDescendants st) cellIds
+  cardIds' ∷ S.Set CardId
+  cardIds' = cardIds ⊕ foldMap (flip findDescendants st) cardIds
 
-  f ∷ CellDef → Boolean
-  f = not ∘ flip S.member cellIds' ∘ _.id
+  f ∷ CardDef → Boolean
+  f = not ∘ flip S.member cardIds' ∘ _.id
 
-  g ∷ Tuple CellId CellId → Boolean
-  g (Tuple kId vId) = not $ S.member kId cellIds' ∨ S.member vId cellIds'
+  g ∷ Tuple CardId CardId → Boolean
+  g (Tuple kId vId) = not $ S.member kId cardIds' ∨ S.member vId cardIds'
 
 
--- | Finds the last cell/card
-findLast ∷ State → Maybe CellId
+-- | Finds the last card/card
+findLast ∷ State → Maybe CardId
 findLast state =
-  maximum $ M.keys state.cellTypes
+  maximum $ M.keys state.cardTypes
 
-findLastCellType ∷ State → Maybe CellType
-findLastCellType state =
-  join $ flip M.lookup state.cellTypes <$> findLast state
+findLastCardType ∷ State → Maybe CardType
+findLastCardType state =
+  join $ flip M.lookup state.cardTypes <$> findLast state
 
--- | Finds the root in a chain of dependencies starting at the specified cell.
--- | A cell can be its own root if it depends on no other cells.
+-- | Finds the root in a chain of dependencies starting at the specified card.
+-- | A card can be its own root if it depends on no other cards.
 -- |
--- | Takes the ID of the cell to start searching from and the current notebook
+-- | Takes the ID of the card to start searching from and the current notebook
 -- | state.
-findRoot ∷ CellId → State → CellId
-findRoot cellId st = case findParent cellId st of
-  Nothing → cellId
+findRoot ∷ CardId → State → CardId
+findRoot cardId st = case findParent cardId st of
+  Nothing → cardId
   Just parentId → findRoot parentId st
 
--- | Finds the parent of a cell. If the cell is a root it has no parent, and
+-- | Finds the parent of a card. If the card is a root it has no parent, and
 -- | the result will be `Nothing`.
 -- |
--- | Takes the ID of the cell to find the parent of and the current notebook
+-- | Takes the ID of the card to find the parent of and the current notebook
 -- | state.
-findParent ∷ CellId → State → Maybe CellId
-findParent cellId st = M.lookup cellId st.dependencies
+findParent ∷ CardId → State → Maybe CardId
+findParent cardId st = M.lookup cardId st.dependencies
 
--- | Finds the immediate dependencies of a cell.
+-- | Finds the immediate dependencies of a card.
 -- |
--- | Takes the ID of the cell to find the children of and the current notebook
+-- | Takes the ID of the card to find the children of and the current notebook
 -- | state.
-findChildren ∷ CellId → State → S.Set CellId
+findChildren ∷ CardId → State → S.Set CardId
 findChildren parentId st =
   S.fromList $ map fst $ L.filter f $ M.toList st.dependencies
   where
-  f ∷ Tuple CellId CellId → Boolean
-  f (Tuple _ cellId) = cellId ≡ parentId
+  f ∷ Tuple CardId CardId → Boolean
+  f (Tuple _ cardId) = cardId ≡ parentId
 
--- | Finds all the dependencies of a cell: the children, children's children,
+-- | Finds all the dependencies of a card: the children, children's children,
 -- | and so on until the leaves of the tree are reached.
 -- |
--- | Takes the ID of the cell to find the descendants of and the current
+-- | Takes the ID of the card to find the descendants of and the current
 -- | notebook state.
-findDescendants ∷ CellId → State → S.Set CellId
-findDescendants cellId st =
-  let children = findChildren cellId st
+findDescendants ∷ CardId → State → S.Set CardId
+findDescendants cardId st =
+  let children = findChildren cardId st
   in children ⊕ foldMap (flip findDescendants st) children
 
--- | Determine's the `CellType` of a cell; returns `Just` if the cell is
+-- | Determine's the `CardType` of a card; returns `Just` if the card is
 -- | in the notebook, and `Nothing` if it is not.
-getCellType ∷ CellId → State → Maybe CellType
-getCellType cellId st = M.lookup cellId st.cellTypes
+getCardType ∷ CardId → State → Maybe CardType
+getCardType cardId st = M.lookup cardId st.cardTypes
 
-cellsOfType ∷ CellType → State → List CellId
-cellsOfType cellType =
-  _.cellTypes ⋙ M.toList ⋙ L.mapMaybe \(Tuple cid ty) →
-    if ty ≡ cellType
+cardsOfType ∷ CardType → State → List CardId
+cardsOfType cardType =
+  _.cardTypes ⋙ M.toList ⋙ L.mapMaybe \(Tuple cid ty) →
+    if ty ≡ cardType
        then Just cid
        else Nothing
 
--- | Given two cell IDs, determine whether the latter is the linked results
--- | cell of the former.
-cellIsLinkedCellOf
-  ∷ { childId ∷ CellId, parentId ∷ CellId }
+-- | Given two card IDs, determine whether the latter is the linked results
+-- | card of the former.
+cardIsLinkedCardOf
+  ∷ { childId ∷ CardId, parentId ∷ CardId }
   → State
   → Boolean
-cellIsLinkedCellOf { childId, parentId } st =
+cardIsLinkedCardOf { childId, parentId } st =
   findParent childId st ≡ Just parentId ∧
-    case getCellType parentId st of
+    case getCardType parentId st of
       Nothing → false
       Just pty →
-        case getCellType childId st of
+        case getCardType childId st of
           Nothing → false
-          Just cty → linkedCellType pty ≡ Just cty
+          Just cty → linkedCardType pty ≡ Just cty
 
 
--- | Adds a cell to the set of cells that are enqueued to run.
+-- | Adds a card to the set of cards that are enqueued to run.
 -- |
--- | If the cell is a descendant of an cell that has already been enqueued this
--- | will have no effect, as in this case the cell is already pending by
--- | implication: all cells under the queued ancestor will be evaluated as
+-- | If the card is a descendant of an card that has already been enqueued this
+-- | will have no effect, as in this case the card is already pending by
+-- | implication: all cards under the queued ancestor will be evaluated as
 -- | changes propagate through the subgraph.
 -- |
--- | If the cell is an ancestor of cells that have already been enqueued they
--- | will be removed when this cell is added, for the same reasoning as above.
-addPendingCell ∷ CellId → State → State
-addPendingCell cellId st@{ pendingCells } =
-  if cellId `S.member` pendingCells ∨ any isAncestor pendingCells
+-- | If the card is an ancestor of cards that have already been enqueued they
+-- | will be removed when this card is added, for the same reasoning as above.
+addPendingCard ∷ CardId → State → State
+addPendingCard cardId st@{ pendingCards } =
+  if cardId `S.member` pendingCards ∨ any isAncestor pendingCards
   then st
-  else st { pendingCells = S.insert cellId (removeDescendants pendingCells) }
+  else st { pendingCards = S.insert cardId (removeDescendants pendingCards) }
   where
-  isAncestor ∷ CellId → Boolean
-  isAncestor otherId = cellId `S.member` findDescendants otherId st
-  removeDescendants ∷ S.Set CellId → S.Set CellId
-  removeDescendants = flip S.difference (findDescendants cellId st)
+  isAncestor ∷ CardId → Boolean
+  isAncestor otherId = cardId `S.member` findDescendants otherId st
+  removeDescendants ∷ S.Set CardId → S.Set CardId
+  removeDescendants = flip S.difference (findDescendants cardId st)
 
 -- | Finds the current notebook path, if the notebook has been saved.
 notebookPath ∷ State → Maybe DirPath
@@ -432,37 +432,37 @@ fromModel
   → Maybe DirPath
   → Maybe P.DirName
   → Model.Deck
-  → Tuple (Array Cell.Model) State
-fromModel browserFeatures path name { cells, dependencies } =
+  → Tuple (Array Card.Model) State
+fromModel browserFeatures path name { cards, dependencies } =
   Tuple
-    cells
-    ({ fresh: maybe 0 (_ + 1) $ maximum $ map (runCellId ∘ _.cellId) cells
+    cards
+    ({ fresh: maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
     , accessType: ReadOnly
-    , cells: foldMap cellDefFromModel cells
-    , cellTypes: foldl addCellIdTypePair M.empty cells
+    , cards: foldMap cardDefFromModel cards
+    , cardTypes: foldl addCardIdTypePair M.empty cards
     , dependencies
-    , activeCellId: Nothing
+    , activeCardId: Nothing
     , name: maybe (That Config.newNotebookName) This name
     , browserFeatures
-    , viewingCell: Nothing
+    , viewingCard: Nothing
     , path
     , saveTrigger: Nothing
     , globalVarMap: SM.empty
     , runTrigger: Nothing
-    , pendingCells: S.empty
+    , pendingCards: S.empty
     , stateMode: Loading
     , backsided: false
     } ∷ State)
   where
-  addCellIdTypePair mp {cellId, cellType} = M.insert cellId cellType mp
+  addCardIdTypePair mp {cardId, cardType} = M.insert cardId cardType mp
 
-  cellDefFromModel ∷ Cell.Model → List CellDef
-  cellDefFromModel { cellId, cellType} =
-    let component = cellTypeComponent cellType cellId browserFeatures
-        initialState = H.parentState (cellTypeInitialState cellType)
+  cardDefFromModel ∷ Card.Model → List CardDef
+  cardDefFromModel { cardId, cardType} =
+    let component = cardTypeComponent cardType cardId browserFeatures
+        initialState = H.parentState (cardTypeInitialState cardType)
     in
       pure
-        { id: cellId
-        , ty: cellType
-        , ctor: H.SlotConstructor (CellSlot cellId) \_ → { component, initialState }
+        { id: cardId
+        , ty: cardType
+        , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
         }

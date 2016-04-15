@@ -23,21 +23,21 @@ import Control.Monad.Error.Class (throwError)
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Map as M
 
-import SlamData.Notebook.Cell.CellId (CellId)
-import SlamData.Notebook.Cell.Model as Cell
+import SlamData.Notebook.Card.CardId (CardId)
+import SlamData.Notebook.Card.Model as Card
 
 type Deck =
-  { cells :: Array Cell.Model
-  , dependencies :: M.Map CellId CellId
+  { cards :: Array Card.Model
+  , dependencies :: M.Map CardId CardId
   }
 
 emptyNotebook :: Deck
-emptyNotebook = { cells: [ ], dependencies: M.empty }
+emptyNotebook = { cards: [ ], dependencies: M.empty }
 
 encode :: Deck -> Json
 encode r
    = "version" := 2
-  ~> "cells" := map Cell.encode r.cells
+  ~> "cards" := map Card.encode r.cards
   ~> "dependencies" := r.dependencies
   ~> jsonEmptyObject
 
@@ -46,6 +46,6 @@ decode = decodeJson >=> \obj -> do
   case obj .? "version" of
     Right n | n /= 2 -> throwError "Expected notebook format v2"
     l -> l
-  { cells: _, dependencies: _ }
-    <$> (traverse Cell.decode =<< obj .? "cells")
+  { cards: _, dependencies: _ }
+    <$> (traverse Card.decode =<< obj .? "cards")
     <*> obj .? "dependencies"

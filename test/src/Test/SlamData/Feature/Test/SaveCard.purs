@@ -19,7 +19,7 @@ saveCardScenario =
 
 test ∷ SlamFeature Unit
 test =
-  saveCardScenario "Save cell output to file" [] do
+  saveCardScenario "Save card output to file" [] do
     Interact.insertQueryCardAsFirstCardInNewStack
     Interact.provideQueryInLastQueryCard
       "SELECT measureOne, measureTwo from `/test-mount/testDb/flatViz`"

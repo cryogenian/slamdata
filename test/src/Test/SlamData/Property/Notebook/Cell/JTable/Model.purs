@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Test.SlamData.Property.Notebook.Cell.JTable.Model
+module Test.SlamData.Property.Notebook.Card.JTable.Model
   ( ArbModel
   , runArbModel
   , ArbResult
@@ -28,7 +28,7 @@ import Data.Either (Either(..))
 import Data.Foldable (mconcat)
 import Data.Maybe (Maybe(..))
 
-import SlamData.Notebook.Cell.JTable.Model as M
+import SlamData.Notebook.Card.JTable.Model as M
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 

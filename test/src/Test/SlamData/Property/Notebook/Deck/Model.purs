@@ -29,8 +29,8 @@ import SlamData.Notebook.Deck.Model as Model
 
 import Test.StrongCheck
   (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
-import Test.SlamData.Property.Notebook.Cell.Model (runArbCell, checkCellEquality)
-import Test.SlamData.Property.Notebook.Cell.CellId (runArbCellId)
+import Test.SlamData.Property.Notebook.Card.Model (runArbCard, checkCardEquality)
+import Test.SlamData.Property.Notebook.Card.CardId (runArbCardId)
 
 newtype ArbDeck = ArbDeck Model.Deck
 
@@ -39,9 +39,9 @@ runArbDeck (ArbDeck m) = m
 
 instance arbitraryArbNotebook ∷ Arbitrary ArbDeck where
   arbitrary = do
-    cells ← map runArbCell <$> arbitrary
-    dependencies ← M.fromList ∘ map (bimap runArbCellId runArbCellId) <$> arbitrary
-    pure $ ArbDeck { cells, dependencies }
+    cards ← map runArbCard <$> arbitrary
+    dependencies ← M.fromList ∘ map (bimap runArbCardId runArbCardId) <$> arbitrary
+    pure $ ArbDeck { cards, dependencies }
 
 check ∷ QC Unit
 check = quickCheck $ runArbDeck ⋙ \model →
@@ -50,5 +50,5 @@ check = quickCheck $ runArbDeck ⋙ \model →
     Right model' →
       fold
        [ model.dependencies ≡ model'.dependencies <?> "dependencies mismatch"
-       , fold (zipWith checkCellEquality model.cells model'.cells)
+       , fold (zipWith checkCardEquality model.cards model'.cards)
        ]
