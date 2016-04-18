@@ -80,7 +80,6 @@ import SlamData.Notebook.Card.CardType (CardType(..), AceMode(..))
 import SlamData.Notebook.Card.Chart.Component (chartComponent)
 import SlamData.Notebook.Card.Component (CardComponent, CardState, CardStateP, CardQueryP, initialCardState)
 import SlamData.Notebook.Card.Download.Component (downloadComponent)
-import SlamData.Notebook.Card.Explore.Component (exploreComponent)
 import SlamData.Notebook.Card.JTable.Component (jtableComponent)
 import SlamData.Notebook.Card.Markdown.Component (markdownComponent)
 import SlamData.Notebook.Card.Next.Component (nextCardComponent)
@@ -264,7 +263,6 @@ cardTypeComponent (Ace mode) _ _ = aceComponent { mode, evaluator, setup }
   where
   evaluator = aceEvalMode mode
   setup = aceSetupMode mode
-cardTypeComponent Explore _ _ = exploreComponent
 cardTypeComponent Search _ _ = searchComponent
 cardTypeComponent Viz _ _ = vizComponent
 cardTypeComponent Chart _ _ = chartComponent

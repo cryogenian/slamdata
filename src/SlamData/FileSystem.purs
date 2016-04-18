@@ -29,7 +29,7 @@ import Control.Monad.Eff.Exception (error, message, Error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (filter, mapMaybe)
-import Data.Lens ((%~), (⊕~), _1, _2)
+import Data.Lens ((%~), (<>~), _1, _2)
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 import Data.These (These(..))
@@ -153,7 +153,7 @@ listPath
 listPath query deep var dir driver = do
   modifyVar (_2 %~ M.alter (maybe one (add one >>> pure))  deep) var
   canceler ← forkAff goDeeper
-  modifyVar (_1 ⊕~ canceler) var
+  modifyVar (_1 <>~ canceler) var
   where
   goDeeper = do
     (attempt $ Auth.authed $ Quasar.children dir) >>= either sendError getChildren

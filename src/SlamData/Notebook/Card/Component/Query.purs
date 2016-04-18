@@ -22,7 +22,6 @@ module SlamData.Notebook.Card.Component.Query
   , _AnyCardQuery
   , AnyCardQuery(..)
   , _AceQuery
-  , _ExploreQuery
   , _MarkdownQuery
   , _SearchQuery
   , _JTableQuery
@@ -55,7 +54,6 @@ import SlamData.Notebook.Card.CardType (CardType)
 import SlamData.Notebook.Card.Chart.Component.Query as Chart
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInputPre)
 import SlamData.Notebook.Card.Download.Component.Query as Download
-import SlamData.Notebook.Card.Explore.Component.Query as Explore
 import SlamData.Notebook.Card.JTable.Component.Query as JTable
 import SlamData.Notebook.Card.Markdown.Component.Query as Markdown
 import SlamData.Notebook.Card.OpenResource.Component.Query as Open
@@ -112,7 +110,6 @@ _AnyCardQuery = _Right
 
 data AnyCardQuery a
   = AceQuery (Ace.QueryP a)
-  | ExploreQuery (Explore.QueryP a)
   | MarkdownQuery (Markdown.QueryP a)
   | SearchQuery (Search.Query a)
   | JTableQuery (JTable.QueryP a)
@@ -128,11 +125,6 @@ data AnyCardQuery a
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery \q → case q of
   AceQuery q' → Just q'
-  _ → Nothing
-
-_ExploreQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Explore.QueryP a)
-_ExploreQuery = prism' ExploreQuery \q → case q of
-  ExploreQuery q' → Just q'
   _ → Nothing
 
 _MarkdownQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Markdown.QueryP a)

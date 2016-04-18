@@ -36,7 +36,7 @@ instance arbitraryArbCardType :: Arbitrary ArbCardType where
   arbitrary =
     ArbCardType <$>
       elements
-        Explore
+        OpenResource
         (toList
           [ Ace MarkdownMode
           , Ace SQLMode

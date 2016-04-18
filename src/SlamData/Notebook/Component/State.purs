@@ -70,7 +70,7 @@ notebookShortcuts =
     , Tuple
         "InsertExplore"
         { shortcut: Shortcut.altModThree
-        , value: deckQueryToValue $ AddCard Explore unit
+        , value: deckQueryToValue $ AddCard OpenResource unit
         , label: Nothing
         }
     , Tuple

@@ -32,7 +32,6 @@ module SlamData.Notebook.Card.Component.State
   , _canceler
   , AnyCardState
   , _AceState
-  , _ExploreState
   , _MarkdownState
   , _SearchState
   , _JTableState
@@ -62,7 +61,6 @@ import SlamData.Notebook.Card.APIResults.Component.State as APIResults
 import SlamData.Notebook.Card.Chart.Component.State as Chart
 import SlamData.Notebook.Card.Component.Query (CardQuery, InnerCardQuery)
 import SlamData.Notebook.Card.Download.Component.State as Download
-import SlamData.Notebook.Card.Explore.Component.State as Explore
 import SlamData.Notebook.Card.JTable.Component.State as JTable
 import SlamData.Notebook.Card.Markdown.Component.State as Markdown
 import SlamData.Notebook.Card.Port (Port)
@@ -173,7 +171,6 @@ _canceler = lens _.canceler _{canceler = _}
 
 data AnyCardState
   = AceState Ace.StateP
-  | ExploreState Explore.StateP
   | MarkdownState Markdown.StateP
   | SearchState Search.State
   | JTableState JTable.State
@@ -189,11 +186,6 @@ data AnyCardState
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState \s → case s of
   AceState s' → Just s'
-  _ → Nothing
-
-_ExploreState ∷ PrismP AnyCardState Explore.StateP
-_ExploreState = prism' ExploreState \s → case s of
-  ExploreState s' → Just s'
   _ → Nothing
 
 _MarkdownState ∷ PrismP AnyCardState Markdown.StateP

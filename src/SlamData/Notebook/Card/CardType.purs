@@ -44,7 +44,6 @@ import SlamData.Render.CSS as Rc
 
 data CardType
   = Ace AceMode
-  | Explore
   | Search
   | Viz
   | Chart
@@ -61,7 +60,6 @@ insertableCardTypes ∷ Array CardType
 insertableCardTypes =
   [ Ace SQLMode
   , Ace MarkdownMode
-  , Explore
   , Search
   , Viz
   , Chart
@@ -76,7 +74,6 @@ insertableCardTypes =
 
 instance eqCardType ∷ Eq CardType where
   eq (Ace m1) (Ace m2) = m1 == m2
-  eq Explore Explore = true
   eq Search Search = true
   eq Viz Viz = true
   eq Chart Chart = true
@@ -102,7 +99,6 @@ instance eqAceMode ∷ Eq AceMode where
 instance encodeJsonCardType ∷ EncodeJson CardType where
   encodeJson (Ace MarkdownMode) = encodeJson "ace-markdown"
   encodeJson (Ace SQLMode) = encodeJson "ace-sql"
-  encodeJson Explore = encodeJson "explore"
   encodeJson Search = encodeJson "search"
   encodeJson Viz = encodeJson "viz"
   encodeJson Chart = encodeJson "chart"
@@ -121,7 +117,6 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
     case str of
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
-      "explore" → pure Explore
       "search" → pure Search
       "viz" → pure Viz
       "chart" → pure Chart
@@ -137,7 +132,6 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
 
 cardName ∷ CardType → String
 cardName (Ace at) = aceCardName at
-cardName Explore = "Explore"
 cardName Search = "Search"
 cardName Viz = "Visualize"
 cardName Chart = "Chart"
@@ -148,11 +142,10 @@ cardName API = "API"
 cardName APIResults = "API Results"
 cardName NextAction = "Next Action"
 cardName Save = "Save"
-cardName OpenResource = "Explore!"
+cardName OpenResource = "Explore"
 
 cardGlyph ∷ ∀ s f. CardType → HTML s f
 cardGlyph (Ace at) = glyph $ aceCardGlyph at
-cardGlyph Explore = glyph B.glyphiconEyeOpen
 cardGlyph Search = glyph B.glyphiconSearch
 cardGlyph Viz = glyph B.glyphiconPicture
 cardGlyph Download = glyph B.glyphiconDownloadAlt
@@ -188,12 +181,10 @@ nextCardTypes Nothing =
   [
     Ace SQLMode
   , Ace MarkdownMode
-  , Explore
-  , API
   , OpenResource
+  , API
   ]
 nextCardTypes (Just ct) = case ct of
-  Explore → dataSourceCards
   Search → dataSourceCards
   Ace SQLMode → dataSourceCards
   Viz → [ Chart ]
