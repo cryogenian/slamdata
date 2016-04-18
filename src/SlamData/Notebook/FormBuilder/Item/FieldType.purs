@@ -42,12 +42,13 @@ data FieldType
   | OrderedSetFieldType
   | ArrayFieldType
   | ObjectFieldType
-  | QueryFieldType
+  | SqlExprFieldType
+  | SqlIdentifierFieldType
 
-derive instance genericFieldType :: Generic FieldType
-instance eqFieldType :: Eq FieldType where eq = gEq
+derive instance genericFieldType ∷ Generic FieldType
+instance eqFieldType ∷ Eq FieldType where eq = gEq
 
-allFieldTypes :: Array FieldType
+allFieldTypes ∷ Array FieldType
 allFieldTypes =
   [ StringFieldType
   , DateTimeFieldType
@@ -60,10 +61,11 @@ allFieldTypes =
   , OrderedSetFieldType
   , ArrayFieldType
   , ObjectFieldType
-  , QueryFieldType
+  , SqlExprFieldType
+  , SqlIdentifierFieldType
   ]
 
-_FieldTypeDisplayName :: Lens.PrismP String FieldType
+_FieldTypeDisplayName ∷ Lens.PrismP String FieldType
 _FieldTypeDisplayName = Lens.prism inj proj
   where
     inj StringFieldType = "Text"
@@ -77,7 +79,8 @@ _FieldTypeDisplayName = Lens.prism inj proj
     inj OrderedSetFieldType = "Ordered Set"
     inj ArrayFieldType = "Array"
     inj ObjectFieldType = "Object"
-    inj QueryFieldType = "SQL² Query"
+    inj SqlExprFieldType = "SQL² Expression"
+    inj SqlIdentifierFieldType = "SQL² Identifier"
 
     proj "Text" = Right StringFieldType
     proj "DateTime" = Right DateTimeFieldType
@@ -90,45 +93,49 @@ _FieldTypeDisplayName = Lens.prism inj proj
     proj "Ordered Set" = Right OrderedSetFieldType
     proj "Array" = Right ArrayFieldType
     proj "Object" = Right ObjectFieldType
-    proj "SQL² Query" = Right QueryFieldType
+    proj "SQL² Identifier" = Right SqlIdentifierFieldType
+    proj "SQL² Expression" = Right SqlExprFieldType
     proj t = Left t
 
 fieldTypeToInputType
-  :: FieldType
-  -> HP.InputType
+  ∷ FieldType
+  → HP.InputType
 fieldTypeToInputType ty =
   case ty of
-    StringFieldType -> HP.InputText
-    DateTimeFieldType -> HP.InputDatetimeLocal
-    DateFieldType -> HP.InputDate
-    TimeFieldType -> HP.InputTime
-    IntervalFieldType -> HP.InputText
-    BooleanFieldType -> HP.InputCheckbox
-    NumericFieldType -> HP.InputNumber
-    ObjectIdFieldType -> HP.InputText
-    OrderedSetFieldType -> HP.InputText
-    ArrayFieldType -> HP.InputText
-    ObjectFieldType -> HP.InputText
-    QueryFieldType -> HP.InputText
+    StringFieldType → HP.InputText
+    DateTimeFieldType → HP.InputDatetimeLocal
+    DateFieldType → HP.InputDate
+    TimeFieldType → HP.InputTime
+    IntervalFieldType → HP.InputText
+    BooleanFieldType → HP.InputCheckbox
+    NumericFieldType → HP.InputNumber
+    ObjectIdFieldType → HP.InputText
+    OrderedSetFieldType → HP.InputText
+    ArrayFieldType → HP.InputText
+    ObjectFieldType → HP.InputText
+    SqlExprFieldType → HP.InputText
+    SqlIdentifierFieldType → HP.InputText
 
-instance encodeJsonFieldType :: JE.EncodeJson FieldType where
+-- PLEASE REMEMBER: do not change these tags!
+instance encodeJsonFieldType ∷ JE.EncodeJson FieldType where
   encodeJson ty =
-    J.fromString $
+    J.fromString
       case ty of
-        StringFieldType -> "string"
-        DateTimeFieldType -> "datetime"
-        DateFieldType -> "date"
-        TimeFieldType -> "time"
-        IntervalFieldType -> "interval"
-        BooleanFieldType -> "boolean"
-        NumericFieldType -> "numeric"
-        ObjectIdFieldType -> "objectId"
-        OrderedSetFieldType -> "orderedSet"
-        ArrayFieldType -> "array"
-        ObjectFieldType -> "object"
-        QueryFieldType -> "query"
+        StringFieldType → "string"
+        DateTimeFieldType → "datetime"
+        DateFieldType → "date"
+        TimeFieldType → "time"
+        IntervalFieldType → "interval"
+        BooleanFieldType → "boolean"
+        NumericFieldType → "numeric"
+        ObjectIdFieldType → "objectId"
+        OrderedSetFieldType → "orderedSet"
+        ArrayFieldType → "array"
+        ObjectFieldType → "object"
+        SqlExprFieldType → "query"
+        SqlIdentifierFieldType → "sql-identifier"
 
-instance decodeJsonFieldType :: JD.DecodeJson FieldType where
+instance decodeJsonFieldType ∷ JD.DecodeJson FieldType where
   decodeJson =
     J.decodeJson >=> proj
     where
@@ -143,6 +150,7 @@ instance decodeJsonFieldType :: JD.DecodeJson FieldType where
       proj "orderedSet" = Right OrderedSetFieldType
       proj "array" = Right ArrayFieldType
       proj "object" = Right ObjectFieldType
-      proj "query" = Right QueryFieldType
+      proj "query" = Right SqlExprFieldType
+      proj "sql-identifier" = Right SqlIdentifierFieldType
       proj _ = Left "invalid FieldType"
 
