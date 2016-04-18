@@ -6,6 +6,7 @@ module SlamData.Notebook.Card.OpenResource.Component
 
 import SlamData.Prelude
 
+import Data.Array as Arr
 import Data.Argonaut (decodeJson, encodeJson)
 import Data.Lens ((?~), (.~))
 import Data.Path.Pathy (printPath, peel)
@@ -157,19 +158,23 @@ openResourceEval (ResourceSelected r next) = do
   resourceSelected r
   pure next
 openResourceEval (Init next) = do
-  updateItems $> next
+  updateItems *> rearrangeItems $> next
 
 resourceSelected ∷ R.Resource → ORDSL Unit
 resourceSelected r = do
   case R.getPath r of
     Left fp → do
-      for_ (fst <$> peel fp) \dp →
-        H.modify (_browsing .~ dp)
+      for_ (fst <$> peel fp) \dp → do
+        oldBrowsing ← H.gets _.browsing
+        unless (oldBrowsing ≡ dp) do
+          H.modify (_browsing .~ dp)
+          updateItems
       H.modify (_selected ?~ r)
     Right dp → do
       H.modify (_browsing .~ dp)
       H.modify (_selected .~ Nothing)
-  updateItems
+      updateItems
+  rearrangeItems
 
 updateItems ∷ ORDSL Unit
 updateItems = do
@@ -179,6 +184,19 @@ updateItems = do
     Quasar.children dp
       # Auth.authed
       # liftWithCanceler'
+  mbSel ← H.gets _.selected
   H.modify (_items .~ cs)
   H.modify (_loading .~ false)
-  HU.forceRerender
+
+rearrangeItems ∷ ORDSL Unit
+rearrangeItems = do
+  mbSel ← H.gets _.selected
+  for_ mbSel \sel → do
+    is ← H.gets _.items
+    let
+      withoutSelected =
+        Arr.filter (_ ≠ sel) is
+      itemsToSet =
+        Arr.cons sel $ Arr.sort withoutSelected
+    H.modify (_items .~ itemsToSet)
+--      HU.forceRerender
