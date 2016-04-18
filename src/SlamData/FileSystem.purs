@@ -29,7 +29,7 @@ import Control.Monad.Eff.Exception (error, message, Error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (filter, mapMaybe)
-import Data.Lens ((%~), (<>~), _1, _2)
+import Data.Lens ((%~), (⊕~), _1, _2)
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 import Data.These (These(..))
@@ -65,50 +65,47 @@ import Text.SlamSearch.Types (SearchQuery)
 
 import Utils.Path (DirPath, hidePath, renderPath)
 
-main :: Eff SlamDataEffects Unit
+main ∷ Eff SlamDataEffects Unit
 main = do
-  AceConfig.set AceConfig.basePath (Config.baseUrl ++ "js/ace")
-  AceConfig.set AceConfig.modePath (Config.baseUrl ++ "js/ace")
-  AceConfig.set AceConfig.themePath (Config.baseUrl ++ "js/ace")
+  AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
+  AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
+  AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
-    driver <- runUI comp (parentState initialState) =<< awaitBody
+    driver ← runUI comp (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)
     forkAff $ routeSignal driver
-  Debug.Trace.traceAnyA $ testingUncurring 12 34
 
-testingUncurring ∷ Int → Int → Int
-testingUncurring a b = a * 2 + b / 3
-
-setSlamDataTitle :: forall e. String -> Aff (dom :: DOM|e) Unit
+setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
 setSlamDataTitle version =
-  liftEff $ setTitle $ "SlamData " <> version
+  liftEff $ setTitle $ "SlamData " ⊕ version
 
-initialAVar :: Tuple (Canceler SlamDataEffects) (M.Map Int Int)
+initialAVar ∷ Tuple (Canceler SlamDataEffects) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
-routeSignal :: Driver QueryP SlamDataRawEffects
-               -> Aff SlamDataEffects Unit
+routeSignal
+  ∷ Driver QueryP SlamDataRawEffects
+  → Aff SlamDataEffects Unit
 routeSignal driver = do
-  avar <- makeVar' initialAVar
-  routeTpl <- matchesAff routing
+  avar ← makeVar' initialAVar
+  routeTpl ← matchesAff routing
   pure unit
   uncurry (redirects driver avar) routeTpl
 
 
 redirects
-  :: Driver QueryP SlamDataRawEffects
-  -> AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
-  -> Maybe Routes -> Routes
-  -> Aff SlamDataEffects Unit
+  ∷ Driver QueryP SlamDataRawEffects
+  → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
+  → Maybe Routes → Routes
+  → Aff SlamDataEffects Unit
 redirects _ _ _ Index = updateURL Nothing Asc Nothing rootDir
 redirects _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
 redirects _ _ _ (SortAndQ sort query) =
   let queryParts = splitQuery query
   in updateURL queryParts.query sort Nothing queryParts.path
 redirects driver var mbOld (Salted sort query salt) = do
-  Tuple canceler _ <- takeVar var
+  Tuple canceler _ ← takeVar var
   cancel canceler $ error "cancel search"
   putVar var initialAVar
   driver $ toListing $ Listing.SetIsSearching $ isSearchQuery query
@@ -130,78 +127,85 @@ redirects driver var mbOld (Salted sort query salt) = do
 
   queryParts = splitQuery query
   isNewPage = fromMaybe true do
-    old <- mbOld
-    Tuple oldQuery oldSalt <- case old of
-      Salted _ oldQuery' oldSalt' -> pure $ Tuple oldQuery' oldSalt'
-      _ -> Nothing
-    pure $ oldQuery /= query || oldSalt == salt
+    old ← mbOld
+    Tuple oldQuery oldSalt ← case old of
+      Salted _ oldQuery' oldSalt' → pure $ Tuple oldQuery' oldSalt'
+      _ → Nothing
+    pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
 
 checkMount
-  :: DirPath
-  -> Driver QueryP SlamDataRawEffects
-  -> Aff SlamDataEffects Unit
+  ∷ DirPath
+  → Driver QueryP SlamDataRawEffects
+  → Aff SlamDataEffects Unit
 checkMount path driver = do
-  result <- attempt $ Auth.authed $ Quasar.mountInfo path
+  result ← attempt $ Auth.authed $ Quasar.mountInfo path
   case result of
-    Left _ -> pure unit
-    Right _ -> driver $ left $ action $ SetIsMount true
+    Left _ → pure unit
+    Right _ → driver $ left $ action $ SetIsMount true
 
 listPath
-  :: SearchQuery
-  -> Int
-  -> AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
-  -> DirPath
-  -> Driver QueryP SlamDataRawEffects
-  -> Aff SlamDataEffects Unit
+  ∷ SearchQuery
+  → Int
+  → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
+  → DirPath
+  → Driver QueryP SlamDataRawEffects
+  → Aff SlamDataEffects Unit
 listPath query deep var dir driver = do
   modifyVar (_2 %~ M.alter (maybe one (add one >>> pure))  deep) var
-  canceler <- forkAff goDeeper
-  modifyVar (_1 <>~ canceler) var
+  canceler ← forkAff goDeeper
+  modifyVar (_1 ⊕~ canceler) var
   where
   goDeeper = do
     (attempt $ Auth.authed $ Quasar.children dir) >>= either sendError getChildren
-    modifyVar (_2 %~ M.update (\v -> guard (v > one) $> (v - one)) deep) var
-    Tuple c r <- takeVar var
-    if (foldl (+) zero $ M.values r) == zero
+    modifyVar (_2 %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
+    Tuple c r ← takeVar var
+    if (foldl (+) zero $ M.values r) ≡ zero
       then do
       driver $ toSearch $ Search.SetLoading false
       putVar var initialAVar
       else
       putVar var (Tuple c r)
 
-  sendError :: Error -> Aff SlamDataEffects Unit
+  sendError ∷ Error → Aff SlamDataEffects Unit
   sendError err =
-    when ((not $ isSearchQuery query) || deep == zero)
+    when ((not $ isSearchQuery query) ∨ deep ≡ zero)
     $ driver $ toDialog $ Dialog.Show
     $ Dialog.Error ("There is a problem listing current directory: "
-                   <> message err)
+                   ⊕ message err)
 
 
-  getChildren :: Array Resource -> Aff SlamDataEffects Unit
+  getChildren ∷ Array Resource → Aff SlamDataEffects Unit
   getChildren ress = do
     let next = mapMaybe (either (const Nothing) Just <<< getPath) ress
         toAdd = map Item $ filter (filterByQuery query) ress
 
     driver $ toListing $ Listing.Adds toAdd
-    traverse_ (\n -> listPath query (deep + one) var n driver)
+    traverse_ (\n → listPath query (deep + one) var n driver)
       (guard (isSearchQuery query) *> next)
 
 
-updateURL :: Maybe String -> Sort -> Maybe Salt -> DirPath
-             -> Aff SlamDataEffects Unit
+updateURL
+  ∷ Maybe String
+  → Sort
+  → Maybe Salt
+  → DirPath
+  → Aff SlamDataEffects Unit
 updateURL query sort salt path = liftEff do
-  salt' <- maybe newSalt pure salt
+  salt' ← maybe newSalt pure salt
   replaceLocation $ browseURL query sort salt' path
 
 
-splitQuery :: SearchQuery -> { path :: DirPath, query :: Maybe String }
+splitQuery
+  ∷ SearchQuery
+  → { path ∷ DirPath, query ∷ Maybe String }
 splitQuery q =
   { path: path
   , query: query
   }
   where
-  path = rootDir </> fromMaybe currentDir
-         (searchPath q >>= parseAbsDir >>= sandbox rootDir)
+  path =
+    rootDir </> fromMaybe currentDir
+      (searchPath q >>= parseAbsDir >>= sandbox rootDir)
   query = do
     guard $ isSearchQuery q
     pure $ hidePath (renderPath $ Right path) (strQuery q)

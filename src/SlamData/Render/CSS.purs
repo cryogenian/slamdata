@@ -423,3 +423,6 @@ openResourceCard = className "open-resource-card"
 
 openResourceCardMenu ∷ ClassName
 openResourceCardMenu = className "open-resource-card-menu"
+
+loading ∷ ClassName
+loading = className "loading"

@@ -91,6 +91,7 @@ eval = coproduct cardEval nextEval
 cardEval :: Natural Ec.CardEvalQuery NextDSL
 cardEval (Ec.EvalCard _ k) = pure $ k { output: Nothing, messages: [ ]}
 cardEval (Ec.NotifyRunCard next) = pure next
+cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = pure $ k jsonEmptyObject
 cardEval (Ec.Load _ next) = pure next
 cardEval (Ec.SetupCard p next) = pure next

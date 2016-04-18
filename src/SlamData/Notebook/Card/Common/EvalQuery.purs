@@ -125,6 +125,7 @@ data CardEvalQuery a
   = EvalCard CardEvalInput (CardEvalResult → a)
   | SetupCard CardSetupInfo a
   | NotifyRunCard a
+  | NotifyStopCard a
   | SetCanceler (Canceler SlamDataEffects) a
   | Save (Json → a)
   | Load Json a

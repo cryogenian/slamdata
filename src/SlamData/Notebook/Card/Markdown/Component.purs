@@ -111,6 +111,7 @@ formStateToVarMap =
 
 eval ∷ Natural CardEvalQuery MarkdownDSL
 eval (NotifyRunCard next) = pure next
+eval (NotifyStopCard next) = pure next
 eval (EvalCard value k) =
   case value.inputPort of
     Just (Port.SlamDown input) → do

@@ -162,6 +162,7 @@ cardEval (Ec.EvalCard { inputPort } continue) = do
     _ → pure unit
   pure $ continue { output: Just P.Blocked, messages: [] }
 cardEval (Ec.NotifyRunCard next) = pure next
+cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = map (k ∘ encode) H.get
 cardEval (Ec.Load json next) = for_ (decode json) H.set $> next
 cardEval (Ec.SetupCard { inputPort } next) = do

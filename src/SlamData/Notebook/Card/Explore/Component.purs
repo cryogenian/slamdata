@@ -69,6 +69,7 @@ eval
        NC.CardEvalQuery
        (H.ParentDSL State FI.State NC.CardEvalQuery FI.Query Slam Unit)
 eval (NC.NotifyRunCard next) = pure next
+eval (NC.NotifyStopCard next) = pure next
 eval (NC.EvalCard info k) =
   k <$> runCardEvalT do
     resource <-

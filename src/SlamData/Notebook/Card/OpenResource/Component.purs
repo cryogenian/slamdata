@@ -15,6 +15,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Events.Indexed as HE
+import Halogen.Component.Utils as HU
 
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
@@ -22,7 +23,7 @@ import SlamData.Notebook.Card.CardType as CT
 import SlamData.Notebook.Card.Component as NC
 import SlamData.Notebook.Card.Common.EvalQuery as Eq
 import SlamData.Notebook.Card.OpenResource.Component.Query (QueryP, Query(..))
-import SlamData.Notebook.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items)
+import SlamData.Notebook.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _loading)
 import SlamData.Notebook.Card.Port as Port
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
@@ -54,7 +55,10 @@ openResourceComponent =
 
 render ∷ State → ORHTML
 render state =
-  HH.div [ HP.classes [ Rc.openResourceCard ] ]
+  HH.div
+    [ HP.classes ([ Rc.openResourceCard ]
+                  ⊕ (Rc.loading <$ guard state.loading))
+    ]
     [ HH.div [ HP.classes [ Rc.openResourceCardMenu ] ]
       [ HH.button
           ([ HP.classes [ B.btn, B.btnDefault ] ]
@@ -65,7 +69,7 @@ render state =
                   [ HE.onClick (HE.input_ (right ∘ (ResourceSelected r))) ]
           )
           [ HH.text "Back" ]
-      , HH.p_ [ HH.text $ printPath state.browsing ]
+      , HH.p_ [ HH.text selectedLabel ]
       ]
     , HH.div
       [ HP.classes [ B.listGroup
@@ -75,7 +79,13 @@ render state =
     ]
 
   where
-  parentDir ∷ _
+  selectedLabel ∷ String
+  selectedLabel =
+    fromMaybe ""
+    $ map R.resourcePath state.selected
+    <|> (pure $ printPath state.browsing)
+
+  parentDir ∷ Maybe R.Resource
   parentDir = (R.Directory ∘ fst) <$> peel state.browsing
 
   renderItem ∷ R.Resource → ORHTML
@@ -87,7 +97,7 @@ render state =
       ]
       [ HH.a_
         [ glyphForResource r
-        , HH.text $ R.resourcePath r
+        , HH.text $ R.resourceName r
         ]
       ]
   glyphForResource ∷ R.Resource → ORHTML
@@ -103,7 +113,6 @@ eval = coproduct cardEval openResourceEval
 cardEval ∷ Natural Eq.CardEvalQuery ORDSL
 cardEval (Eq.EvalCard info k) = do
   mbRes ← H.gets _.selected
-  Debug.Trace.traceAnyA mbRes
   case mbRes of
     Nothing → pure $ k { output: Nothing, messages: [ ] }
     Just resource → do
@@ -113,7 +122,6 @@ cardEval (Eq.EvalCard info k) = do
           ("File " ⊕ R.resourcePath resource ⊕ " doesn't exist")
         # Auth.authed
         # liftWithCanceler'
-      Debug.Trace.traceAnyA msg
       case msg of
         Nothing →
           pure $ k { output:
@@ -125,37 +133,52 @@ cardEval (Eq.EvalCard info k) = do
                    , messages: [ Left err ]
                    }
 cardEval (Eq.NotifyRunCard next) = pure next
-cardEval (Eq.Save k) = pure $ k $ encodeJson ""
-cardEval (Eq.Load js next) = pure next
-cardEval (Eq.SetupCard info next) = do
+cardEval (Eq.Save k) = do
+  mbRes ← H.gets _.selected
+  k <$> case mbRes of
+    Just res → pure $ encodeJson mbRes
+    Nothing → do
+      br ← H.gets _.browsing
+      pure $ encodeJson $ R.Directory br
+cardEval (Eq.Load js next) = do
+  for_ (decodeJson js) resourceSelected
+  pure next
+cardEval (Eq.SetupCard info next) = pure next
+cardEval (Eq.SetCanceler _ next) = pure next
+cardEval (Eq.NotifyStopCard next) = pure next
+
+
+openResourceEval ∷ Natural Query ORDSL
+openResourceEval (ResourceSelected r next) = do
+  loading ← H.gets _.loading
+  when loading do
+    HU.sendAfter zero (left $ Eq.NotifyStopCard unit)
+    H.modify (_loading .~ false)
+  resourceSelected r
+  pure next
+openResourceEval (Init next) = do
+  updateItems $> next
+
+resourceSelected ∷ R.Resource → ORDSL Unit
+resourceSelected r = do
+  case R.getPath r of
+    Left fp → do
+      for_ (fst <$> peel fp) \dp →
+        H.modify (_browsing .~ dp)
+      H.modify (_selected ?~ r)
+    Right dp → do
+      H.modify (_browsing .~ dp)
+      H.modify (_selected .~ Nothing)
+  updateItems
+
+updateItems ∷ ORDSL Unit
+updateItems = do
   dp ← H.gets _.browsing
+  H.modify (_loading .~ true)
   cs ←
     Quasar.children dp
       # Auth.authed
       # liftWithCanceler'
   H.modify (_items .~ cs)
-  pure next
-cardEval (Eq.SetCanceler _ next) = pure next
-
-openResourceEval ∷ Natural Query ORDSL
-openResourceEval (ResourceSelected r next) = do
-  Debug.Trace.traceAnyA "eval"
-  case R.getPath r of
-    Left fp → H.modify (_selected ?~ r)
-    Right dp → do
-      H.modify (_browsing .~ dp)
-      H.modify (_selected .~ Nothing)
-      cs ←
-        Quasar.children dp
-          # Auth.authed
-          # liftWithCanceler'
-      H.modify (_items .~ cs)
-  pure next
-openResourceEval (Init next) = do
-  br ← H.gets _.browsing
-  cs ←
-    Quasar.children br
-      # Auth.authed
-      # liftWithCanceler'
-  H.modify (_items .~ cs)
-  pure next
+  H.modify (_loading .~ false)
+  HU.forceRerender
