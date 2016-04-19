@@ -123,8 +123,12 @@ render state =
           [ HP.class_ B.textCenter ]
           [ HH.text "Loading..." ]
           -- We need to render the cards but have them invisible during loading
-          -- otherwise the various nested components won't initialise correctly
-        , renderCards false
+          -- otherwise the various nested components won't initialise correctly.
+          -- This div is required, along with the key, so that structurally it
+          -- is in the same place in both `Loading` and `Ready` states.
+        , HH.div
+            [ HP.key "deck-container" ]
+            [ renderCards false ]
         ]
     DCS.Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
@@ -137,7 +141,9 @@ render state =
            ⊕ (guard (isJust state.initialSliderX)
                 $> (HE.onMouseMove $ HE.input UpdateSliderPosition)))
         [ HH.div
-            [ HP.class_ CSS.deck ]
+            [ HP.class_ CSS.deck
+            , HP.key "deck-container"
+            ]
             [ renderCards $ not state.backsided
             , renderBackside state.backsided
               -- Commented until one card representation
