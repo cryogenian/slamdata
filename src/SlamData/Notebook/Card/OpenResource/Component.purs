@@ -17,6 +17,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.Component.Utils as HU
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
@@ -70,7 +71,9 @@ render state =
                   [ HE.onClick (HE.input_ (right ∘ (ResourceSelected r))) ]
           )
           [ HH.text "Back" ]
-      , HH.p_ [ HH.text selectedLabel ]
+      , HH.p
+          [ ARIA.label $ "Selected resource: " ⊕ selectedLabel ]
+          [ HH.text selectedLabel ]
       ]
     , HH.div
       [ HP.classes [ B.listGroup
@@ -93,8 +96,10 @@ render state =
   renderItem r =
     HH.div
       [ HP.classes ( [ B.listGroupItem ]
-                     ⊕ ((guard (Just r ≡ state.selected)) $> B.active))
+                     ⊕ ((guard (Just r ≡ state.selected)) $> B.active)
+                     ⊕ ((guard (R.hiddenTopLevel r)) $> Rc.itemHidden))
       , HE.onClick (HE.input_ (right ∘ (ResourceSelected r)))
+      , ARIA.label $ "Select " ⊕ R.resourcePath r
       ]
       [ HH.a_
         [ glyphForResource r
@@ -191,12 +196,19 @@ updateItems = do
 rearrangeItems ∷ ORDSL Unit
 rearrangeItems = do
   mbSel ← H.gets _.selected
-  for_ mbSel \sel → do
-    is ← H.gets _.items
-    let
-      withoutSelected =
-        Arr.filter (_ ≠ sel) is
-      itemsToSet =
-        Arr.cons sel $ Arr.sort withoutSelected
-    H.modify (_items .~ itemsToSet)
---      HU.forceRerender
+  is ← H.gets _.items
+  let
+    withoutSelected =
+      Arr.filter (\x → Just x ≠ mbSel) is
+    itemsToSet =
+      foldMap pure mbSel
+      ⊕ Arr.sortBy sortFn withoutSelected
+  H.modify (_items .~ itemsToSet)
+  HU.forceRerender
+
+  where
+  sortFn ∷ R.Resource → R.Resource → Ordering
+  sortFn a b | R.hiddenTopLevel a && R.hiddenTopLevel b = compare a b
+  sortFn a b | R.hiddenTopLevel a = GT
+  sortFn a b | R.hiddenTopLevel b = LT
+  sortFn a b = compare a b
