@@ -106,6 +106,11 @@ lastCardToBeFinished =
     $ (XPath.last $ XPath.anywhere $ XPaths.cardHeading)
     `XPath.following` XPath.anyWithText "Finished"
 
+resourceOpenedInLastExploreCard ∷ String → SlamFeature Unit
+resourceOpenedInLastExploreCard fileName =
+  expectPresented (XPath.last $ XPath.anywhere $ XPaths.resourceOpened fileName)
+
+
 exploreFileInLastCard ∷ String → SlamFeature Unit
 exploreFileInLastCard fileName =
   expectPresentedWithProperties

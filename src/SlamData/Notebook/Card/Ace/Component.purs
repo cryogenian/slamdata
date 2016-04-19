@@ -88,6 +88,7 @@ aceComponent {mode, evaluator, setup} = makeCardComponent
 
   eval :: Natural CardEvalQuery AceDSL
   eval (NotifyRunCard next) = pure next
+  eval (NotifyStopCard next) = pure next
   eval (EvalCard info k) = do
     content <- fromMaybe "" <$> H.query unit (H.request GetText)
     result <- evaluator info content

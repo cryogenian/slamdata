@@ -162,6 +162,8 @@ cardEval q =
       pure next
     NC.NotifyRunCard next →
       pure next
+    NC.NotifyStopCard next →
+      pure next
     NC.Save k → do
       input ← H.gets _.searchString
       pure $ k $ encodeJson input

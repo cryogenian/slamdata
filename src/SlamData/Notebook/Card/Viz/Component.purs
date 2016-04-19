@@ -279,6 +279,7 @@ cardEval (EvalCard info continue) =
     pure a
 cardEval (SetupCard _ next) = pure next
 cardEval (NotifyRunCard next) = pure next
+cardEval (NotifyStopCard next) = pure next
 cardEval (Save k) = do
   st <- H.get
   config <- H.query st.chartType $ left $ H.request Form.GetConfiguration

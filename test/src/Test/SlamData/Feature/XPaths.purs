@@ -357,3 +357,7 @@ embedDeckAction =
 shareDeckAction ∷ String
 shareDeckAction =
   XPath.anyWithExactAriaLabel "Share deck"
+
+resourceOpened ∷ String → String
+resourceOpened fn =
+  XPath.anyWithExactAriaLabel $ "Selected resource: " ⊕ fn

@@ -38,25 +38,25 @@ import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, reso
 import SlamData.Render.CSS as Rc
 
 type State =
-  { item :: Item
-  , isSearching :: Boolean
-  , isHidden :: Boolean
+  { item ∷ Item
+  , isSearching ∷ Boolean
+  , isHidden ∷ Boolean
   }
 
-initialState :: State
+initialState ∷ State
 initialState =
   { item: PhantomItem root
   , isSearching: false
   , isHidden: false
   }
 
-_item :: LensP State Item
+_item ∷ LensP State Item
 _item = lens _.item _{item = _}
 
-_isSearching :: LensP State Boolean
+_isSearching ∷ LensP State Boolean
 _isSearching = lens _.isSearching _{isSearching = _}
 
-_isHidden :: LensP State Boolean
+_isHidden ∷ LensP State Boolean
 _isHidden = lens _.isHidden _{isHidden = _}
 
 data Query a
@@ -77,15 +77,15 @@ data Query a
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp :: H.Component State Query Slam
+comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
-render :: State -> HTML
+render ∷ State → HTML
 render state = case state.item of
-  SelectedItem _ -> itemView state true true
-  ActionsPresentedItem _ -> itemView state false true
-  Item _ -> itemView state false false
-  PhantomItem _ ->
+  SelectedItem _ → itemView state true true
+  ActionsPresentedItem _ → itemView state false true
+  Item _ → itemView state false false
+  PhantomItem _ →
     HH.div
       [ HP.classes [ B.listGroupItem, Rc.phantom ] ]
       [ HH.div
@@ -100,7 +100,7 @@ render state = case state.item of
           ]
       ]
 
-eval :: Natural Query DSL
+eval ∷ Natural Query DSL
 eval (Toggle next) = H.modify (_item %~ toggle) $> next
   where
   toggle (Item r) = SelectedItem r
@@ -129,24 +129,25 @@ eval (SetIsSearching bool next) = H.modify (_isSearching .~ bool) $> next
 eval (SetIsHidden bool next) = H.modify (_isHidden .~ bool) $> next
 eval (SharePermissions _ next) = pure next
 
-itemName :: State -> String
+itemName ∷ State → String
 itemName { isSearching, item } =
   let toName = if isSearching then resourcePath else resourceName
   in toName $ itemResource item
 
-itemIsHidden :: Item -> Boolean
+itemIsHidden ∷ Item → Boolean
 itemIsHidden = hiddenTopLevel <<< itemResource
 
-presentHiddenItem :: State -> Boolean
+presentHiddenItem ∷ State → Boolean
 presentHiddenItem = not <<< _.isHidden
 
-presentItem :: State -> Item -> Boolean
+presentItem ∷ State → Item → Boolean
 presentItem state item = (isHidden && presentHiddenItem state) || not isHidden
   where
   isHidden = itemIsHidden item
 
-itemView :: State -> Boolean -> Boolean -> HTML
-itemView state@{ item } selected presentActions | not (presentItem state item) = HH.text ""
+itemView ∷ State → Boolean → Boolean → HTML
+itemView state@{ item } selected presentActions | not (presentItem state item) =
+  HH.text ""
 itemView state@{ item } selected presentActions | otherwise =
   HH.div
     [ HP.classes itemClasses
@@ -161,58 +162,59 @@ itemView state@{ item } selected presentActions | otherwise =
         [ HH.div
             [ HP.classes [ B.colXs8, Rc.itemContent ] ]
             [ HH.a
-                [ HE.onClick (\_ -> HEH.preventDefault $> H.action (Open (itemResource item))) ]
+                [ HE.onClick (\_ → HEH.preventDefault
+                                    $> H.action (Open (itemResource item))) ]
                 [ HH.i [ iconClasses item ] []
                 , HH.text $ itemName state
                 ]
             ]
         , HH.div
-            [ HP.classes $ [ B.colXs4, Rc.itemToolbar ] <> (guard selected $> Rc.selected) ]
+            [ HP.classes $ [ B.colXs4, Rc.itemToolbar ] ⊕ (guard selected $> Rc.selected) ]
             [ itemActions presentActions item ]
         ]
     ]
   where
-  itemClasses :: Array HH.ClassName
+  itemClasses ∷ Array HH.ClassName
   itemClasses =
     [ B.listGroupItem ]
-    <> (guard selected $> B.listGroupItemInfo)
-    <> (if itemIsHidden item && presentHiddenItem state then [ Rc.itemHidden ] else [ ])
+    ⊕ (guard selected $> B.listGroupItemInfo)
+    ⊕ (if itemIsHidden item && presentHiddenItem state then [ Rc.itemHidden ] else [ ])
 
-  label :: String
+  label ∷ String
   label | selected  = "Deselect " ++ itemName state
   label | otherwise = "Select " ++ itemName state
 
-iconClasses :: forall r i. Item -> HP.IProp (class :: HP.I | r) i
+iconClasses ∷ forall r i. Item → HP.IProp (class ∷ HP.I | r) i
 iconClasses item = HP.classes
   [ B.glyphicon
   , Rc.itemIcon
   , iconClass (itemResource item)
   ]
   where
-  iconClass :: Resource -> HH.ClassName
+  iconClass ∷ Resource → HH.ClassName
   iconClass (File _) = B.glyphiconFile
   iconClass (Notebook _) = B.glyphiconBook
   iconClass (Directory _) = B.glyphiconFolderOpen
   iconClass (Mount (Database _)) = B.glyphiconHdd
   iconClass (Mount (View _)) = B.glyphiconFile
 
-itemActions :: Boolean -> Item -> HTML
+itemActions ∷ Boolean → Item → HTML
 itemActions presentActions item | not presentActions = HH.text ""
 itemActions presentActions item | otherwise =
   HH.ul
     [ HP.classes [ B.listInline, B.pullRight ]
     , CSS.style $ marginBottom (px zero)
     ]
-    (conf <> common <> share)
+    (conf ⊕ common ⊕ share)
   where
-  r :: Resource
+  r ∷ Resource
   r = itemResource item
 
-  conf :: Array HTML
+  conf ∷ Array HTML
   conf = guard (isMount r) $>
     itemAction Configure "Configure" B.glyphiconWrench
 
-  common :: Array HTML
+  common ∷ Array HTML
   common =
     [
 -- Commented until backend is ready
@@ -222,11 +224,11 @@ itemActions presentActions item | otherwise =
     , itemAction Remove "Remove" B.glyphiconTrash
     ]
 
-  share :: Array HTML
+  share ∷ Array HTML
   share = guard (isFile r || isNotebook r || isViewMount r) $>
     itemAction Share "Share" B.glyphiconShare
 
-  itemAction :: (Resource -> H.Action Query) -> String -> HH.ClassName -> HTML
+  itemAction ∷ (Resource → H.Action Query) → String → HH.ClassName → HTML
   itemAction act label cls =
     HH.li_
       [ HH.button

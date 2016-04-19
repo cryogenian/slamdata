@@ -72,6 +72,7 @@ render state =
 
 eval ∷ Natural Ec.CardEvalQuery ChartDSL
 eval (Ec.NotifyRunCard next) = pure next
+eval (Ec.NotifyStopCard next) = pure next
 eval (Ec.EvalCard value continue) =
   case value.inputPort of
     Just (ChartOptions options) → do

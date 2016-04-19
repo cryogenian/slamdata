@@ -35,7 +35,7 @@ test :: SlamFeature Unit
 test = do
   searchScenario "Search for a city" [] do
     Interact.insertExploreCardAsFirstCardInNewStack
-    Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
+    Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "springfield"
     Interact.insertJTableCardAsNextAction
@@ -44,7 +44,7 @@ test = do
 
   searchScenario "Search within results" [] do
     Interact.insertExploreCardAsFirstCardInNewStack
-    Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
+    Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "springfield"
     Interact.insertSearchCardAsNextAction
@@ -78,7 +78,7 @@ test = do
     --      ]
     --  ]
     Interact.insertExploreCardAsFirstCardInNewStack
-    Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
+    Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard
       "city:springfield state:or pop:>30000"
@@ -90,7 +90,7 @@ test = do
 
   searchScenario "Suppress search results" [] do
     Interact.insertExploreCardAsFirstCardInNewStack
-    Interact.provideFileInLastExploreCard "/test-mount/testDb/zips"
+    Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "city:portland -state:OR"
     Interact.insertJTableCardAsNextAction

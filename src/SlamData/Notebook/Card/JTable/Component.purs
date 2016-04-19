@@ -62,6 +62,8 @@ queryShouldRun = coproduct (const false) pred
 evalCard ∷ Natural CardEvalQuery (H.ComponentDSL State QueryP Slam)
 evalCard (NotifyRunCard next) =
   pure next
+evalCard (NotifyStopCard next) =
+  pure next
 evalCard (EvalCard value k) =
   case value.inputPort of
     Just (TaggedResource { tag, resource }) → do

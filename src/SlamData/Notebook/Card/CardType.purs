@@ -17,8 +17,6 @@ limitations under the License.
 module SlamData.Notebook.Card.CardType
   ( CardType(..)
   , AceMode(..)
-  , linkedCardType
-  , autorun
   , cardName
   , cardGlyph
   , aceCardName
@@ -46,7 +44,6 @@ import SlamData.Render.CSS as Rc
 
 data CardType
   = Ace AceMode
-  | Explore
   | Search
   | Viz
   | Chart
@@ -57,12 +54,12 @@ data CardType
   | APIResults
   | NextAction
   | Save
+  | OpenResource
 
 insertableCardTypes ∷ Array CardType
 insertableCardTypes =
   [ Ace SQLMode
   , Ace MarkdownMode
-  , Explore
   , Search
   , Viz
   , Chart
@@ -72,11 +69,11 @@ insertableCardTypes =
   , API
   , APIResults
   , Save
+  , OpenResource
   ]
 
 instance eqCardType ∷ Eq CardType where
   eq (Ace m1) (Ace m2) = m1 == m2
-  eq Explore Explore = true
   eq Search Search = true
   eq Viz Viz = true
   eq Chart Chart = true
@@ -87,6 +84,7 @@ instance eqCardType ∷ Eq CardType where
   eq APIResults APIResults = true
   eq NextAction NextAction = true
   eq Save Save = true
+  eq OpenResource OpenResource = true
   eq _ _ = false
 
 data AceMode
@@ -98,23 +96,9 @@ instance eqAceMode ∷ Eq AceMode where
   eq SQLMode SQLMode = true
   eq _ _ = false
 
-linkedCardType ∷ CardType → Maybe CardType
-linkedCardType (Ace MarkdownMode) = Just Markdown
-linkedCardType (Ace _) = Just JTable
-linkedCardType Explore = Just JTable
-linkedCardType Search = Just JTable
-linkedCardType Viz = Just Chart
-linkedCardType API = Just APIResults
-linkedCardType _ = Nothing
-
-autorun ∷ CardType → Boolean
-autorun Viz = true
-autorun _ = false
-
 instance encodeJsonCardType ∷ EncodeJson CardType where
   encodeJson (Ace MarkdownMode) = encodeJson "ace-markdown"
   encodeJson (Ace SQLMode) = encodeJson "ace-sql"
-  encodeJson Explore = encodeJson "explore"
   encodeJson Search = encodeJson "search"
   encodeJson Viz = encodeJson "viz"
   encodeJson Chart = encodeJson "chart"
@@ -125,6 +109,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
   encodeJson APIResults = encodeJson "api-results"
   encodeJson NextAction = encodeJson "next-action"
   encodeJson Save = encodeJson "save"
+  encodeJson OpenResource = encodeJson "open-resource"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -132,7 +117,6 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
     case str of
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
-      "explore" → pure Explore
       "search" → pure Search
       "viz" → pure Viz
       "chart" → pure Chart
@@ -143,11 +127,11 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "api-results" → pure APIResults
       "next-action" → pure NextAction
       "save" → pure Save
+      "open-resource" → pure OpenResource
       name → throwError $ "unknown card type '" ⊕ name ⊕ "'"
 
 cardName ∷ CardType → String
 cardName (Ace at) = aceCardName at
-cardName Explore = "Explore"
 cardName Search = "Search"
 cardName Viz = "Visualize"
 cardName Chart = "Chart"
@@ -158,10 +142,10 @@ cardName API = "API"
 cardName APIResults = "API Results"
 cardName NextAction = "Next Action"
 cardName Save = "Save"
+cardName OpenResource = "Explore"
 
 cardGlyph ∷ ∀ s f. CardType → HTML s f
 cardGlyph (Ace at) = glyph $ aceCardGlyph at
-cardGlyph Explore = glyph B.glyphiconEyeOpen
 cardGlyph Search = glyph B.glyphiconSearch
 cardGlyph Viz = glyph B.glyphiconPicture
 cardGlyph Download = glyph B.glyphiconDownloadAlt
@@ -178,6 +162,7 @@ cardGlyph Markdown =
 cardGlyph JTable = glyph B.glyphiconThList
 cardGlyph NextAction = glyph B.glyphiconStop
 cardGlyph Save = glyph B.glyphiconFloppyDisk
+cardGlyph OpenResource = glyph B.glyphiconFolderOpen
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Markdown"
@@ -196,11 +181,10 @@ nextCardTypes Nothing =
   [
     Ace SQLMode
   , Ace MarkdownMode
-  , Explore
+  , OpenResource
   , API
   ]
 nextCardTypes (Just ct) = case ct of
-  Explore → dataSourceCards
   Search → dataSourceCards
   Ace SQLMode → dataSourceCards
   Viz → [ Chart ]
@@ -213,7 +197,7 @@ nextCardTypes (Just ct) = case ct of
   Chart → [ ]
   NextAction → [ ]
   Save → dataSourceOutput `Arr.snoc` JTable
-
+  OpenResource → dataSourceCards
   where
   dataSourceOutput =
     [

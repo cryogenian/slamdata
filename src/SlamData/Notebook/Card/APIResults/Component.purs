@@ -91,6 +91,7 @@ evalCard q =
           Nothing -> EC.throwError "expected VarMap input"
     NC.SetupCard _ next -> pure next
     NC.NotifyRunCard next -> pure next
+    NC.NotifyStopCard next -> pure next
     NC.Save k -> pure $ k J.jsonEmptyObject
     NC.Load json next -> pure next
     NC.SetCanceler _ next -> pure next

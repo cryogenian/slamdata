@@ -1,0 +1,73 @@
+div.open-resource-card {
+    a {
+        i {
+            margin-right: 20px;
+        }
+    }
+    .list-group {
+        height: 200px;
+        overflow: scroll;
+    }
+    .list-group-item {
+        cursor: pointer;
+        &:hover {
+            background: #d9edf7;
+        }
+        &.active {
+            opacity: 1;
+            background: #337ab7;
+            a {
+                color: white;
+            }
+        }
+    }
+    div.open-resource-card-menu {
+        height: 40px;
+        border-bottom: 1px solid #ddd;
+        button {
+            border-radius: 0;
+            border-top: 0;
+
+            margin-right: 34px;
+            height: 40px;
+        }
+        p {
+            display: inline-block;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+    }
+    &.loading {
+        div.open-resource-card-menu button {
+            margin-right: 12px;
+        }
+        .list-group-item {
+            cursor: default;
+            background: white;
+            &:hover {
+                background: white;
+                a:hover {
+                    color: multiply(#337ab7, #fafafa);
+                }
+            }
+            a {
+                text-decoration: none;
+                color: multiply(#337ab7, #fafafa);
+            }
+        }
+        .open-resource-card-menu p {
+            &:before  {
+                content: "";
+                background: url("../img/spin.svg") no-repeat;
+                height: 22px;
+                width: 22px;
+                position: relative;
+                top: 5px;
+                display: inline-block;
+                background-size: 20px 20px;
+                background-position: center;
+            }
+        }
+    }
+}
