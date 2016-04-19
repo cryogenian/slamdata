@@ -2,11 +2,14 @@ module Test.SlamData.Feature.Interactions where
 
 import SlamData.Prelude
 import Control.Monad.Eff.Class (liftEff)
+import Data.Array as Arr
 import Data.Map as Map
+import Data.String as Str
 import Selenium.Monad (get, refresh, getCurrentUrl)
 import Test.Feature (click, provideFileInputValue, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, pushRadioButton, check, uncheck, accessUrlFromFieldValue, provideFieldValueUntilExpectedValue)
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
+import Test.SlamData.Feature.Expectations as Expect
 import Test.Utils (appendToCwd)
 import XPath as XPath
 
@@ -189,9 +192,33 @@ playLastCard ∷ SlamFeature Unit
 playLastCard =
   click $ XPath.last $ XPath.anywhere XPaths.playButton
 
-provideFileInLastExploreCard ∷ String → SlamFeature Unit
-provideFileInLastExploreCard =
-  provideFieldValue $ XPath.last $ XPath.anywhere XPaths.exploreInput
+selectFileForLastExploreCard ∷ String → SlamFeature Unit
+selectFileForLastExploreCard p = do
+  Expect.resourceOpenedInLastExploreCard "/"
+  for_ paths \path → do
+    click $ resourceXPath path
+    Expect.resourceOpenedInLastExploreCard path
+  where
+  resourceXPath ∷ String → String
+  resourceXPath rPath =
+    XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel $ "Select " ⊕ rPath
+
+
+  -- Constructs ["/foo/", "/foo/bar/", "/foo/bar/baz"] from "/foo/bar/baz"
+  paths ∷ Array String
+  paths =
+    let
+      parts = foldl foldFn [] $ Str.split "/" p
+      mbUnconsed = Arr.uncons parts
+    in Arr.drop 1 $ Arr.reverse case mbUnconsed of
+      Nothing →
+        parts
+      Just {head, tail} →
+        Arr.cons (fromMaybe head (Str.stripSuffix "/" head)) tail
+
+  foldFn ∷ Array String → String → Array String
+  foldFn acc new =
+    Arr.cons (maybe "/" (\x → x ⊕ new ⊕ "/") $ Arr.head acc) acc
 
 provideSearchStringInLastSearchCard ∷ String → SlamFeature Unit
 provideSearchStringInLastSearchCard =

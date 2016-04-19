@@ -94,6 +94,8 @@ eval q =
       pure next
     NC.NotifyRunCard next ->
       pure next
+    NC.NotifyStopCard next ->
+      pure next
     NC.Save k ->
       H.query unit (H.request (FB.GetItems >>> left)) <#>
         maybe [] L.fromList

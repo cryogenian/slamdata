@@ -54,9 +54,9 @@ import SlamData.Notebook.AccessType (AccessType(..))
 import SlamData.Notebook.Card.CardType (CardType, AceMode(..), cardGlyph, cardName, nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (prepareCardEvalInput)
 import SlamData.Notebook.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
-import SlamData.Notebook.Card.Component.Query (CardEvalInputPre, CardQueryP, InnerCardQuery, AnyCardQuery(..), CardEvalQuery(..), CardQuery(..), _APIQuery, _APIResultsQuery, _AceQuery, _AnyCardQuery, _CardEvalQuery, _ChartQuery, _DownloadQuery, _ExploreQuery, _JTableQuery, _MarkdownQuery, _SearchQuery, _VizQuery, _NextQuery, _SaveQuery)
+import SlamData.Notebook.Card.Component.Query (CardEvalInputPre, CardQueryP, InnerCardQuery, AnyCardQuery(..), CardEvalQuery(..), CardQuery(..), _APIQuery, _APIResultsQuery, _AceQuery, _AnyCardQuery, _CardEvalQuery, _ChartQuery, _DownloadQuery, _JTableQuery, _MarkdownQuery, _SearchQuery, _VizQuery, _NextQuery, _SaveQuery, _OpenResourceQuery)
 import SlamData.Notebook.Card.Component.Render (CardHTML, header, statusBar)
-import SlamData.Notebook.Card.Component.State (AnyCardState, CardState, CardStateP, _APIResultsState, _APIState, _AceState, _ChartState, _DownloadState, _ExploreState, _JTableState, _MarkdownState, _SearchState, _VizState, _NextState, _accessType, _cachingEnabled, _canceler, _hasResults, _input, _isCollapsed, _messageVisibility, _messages, _output, _runState, _tickStopper, _visibility, initEditorCardState, initResultsCardState, _SaveState)
+import SlamData.Notebook.Card.Component.State (AnyCardState, CardState, CardStateP, _APIResultsState, _APIState, _AceState, _ChartState, _DownloadState, _JTableState, _MarkdownState, _SearchState, _VizState, _NextState, _accessType, _cachingEnabled, _canceler, _hasResults, _input, _isCollapsed, _messageVisibility, _messages, _output, _runState, _tickStopper, _visibility, initialCardState, _SaveState, _OpenResourceState)
 import SlamData.Notebook.Card.Port (Port(..), _Resource, _Blocked)
 import SlamData.Notebook.Card.RunState (RunState(..))
 import SlamData.Render.Common (row', fadeWhen, glyph)
@@ -199,6 +199,7 @@ makeCardComponentPart def render =
   cardEvalPeek (SetCanceler canceler _) = H.modify $ _canceler .~ canceler
   cardEvalPeek (SetupCard _ _) = H.modify $ _canceler .~ mempty
   cardEvalPeek (EvalCard _ _) = H.modify $ _canceler .~ mempty
+  cardEvalPeek (NotifyStopCard _) = stopRun
   cardEvalPeek _ = pure unit
 
   stopRun ∷ CardDSL Unit

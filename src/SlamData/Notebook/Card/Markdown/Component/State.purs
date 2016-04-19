@@ -22,7 +22,7 @@ module SlamData.Notebook.Card.Markdown.Component.State
   , formStateToVarMap
   ) where
 
-import SlamData.Notebook.Card.Port.VarMap as VM
+
 
 import SlamData.Prelude
 
@@ -36,6 +36,7 @@ import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component as SDH
 
 import SlamData.Notebook.Card.Markdown.Interpret as MDI
+import SlamData.Notebook.Card.Port.VarMap as VM
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Effects (Slam)
 
@@ -75,4 +76,3 @@ formStateToVarMap desc st =
         case SM.lookup k st of
           Just v → MDI.formFieldValueToVarMapValue v
           Nothing → pure Nothing
-

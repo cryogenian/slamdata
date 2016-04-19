@@ -63,21 +63,21 @@ import SlamData.Notebook.AccessType (AccessType(..), isEditable)
 import SlamData.Notebook.Action as NA
 import SlamData.Notebook.Card.CardId (CardId(), cardIdToString)
 import SlamData.Notebook.Card.CardType
-  (CardType(..), AceMode(..), cardName, cardGlyph, autorun, nextCardTypes)
+  (CardType(..), AceMode(..), cardName, cardGlyph, nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..))
 import SlamData.Notebook.Card.Component
-  (CardQueryP(), CardQuery(..), InnerCardQuery, CardStateP, AnyCardQuery(..), _NextQuery, initEditorCardState)
+  (CardQueryP(), CardQuery(..), InnerCardQuery, CardStateP, AnyCardQuery(..), _NextQuery, initialCardState)
 import SlamData.Notebook.Card.Next.Component as Next
+import SlamData.Notebook.Card.OpenResource.Component as Open
 import SlamData.Notebook.Card.Port (Port(..))
-import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
-import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard, cardIsLinkedCardOf, cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, notebookPath, removeCards, findLast, findLastCardType)
-import SlamData.Notebook.Deck.Model as Model
-import SlamData.Notebook.FileInput.Component as Fi
-import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCardHash, mkNotebookURL)
-import SlamData.Render.Common (glyph, fadeWhen)
-import SlamData.Render.CSS as CSS
-import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildState, ChildSlot, CardSlot(..))
 import SlamData.Notebook.Deck.BackSide.Component as Back
+import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildState, ChildSlot, CardSlot(..))
+import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
+import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard,  cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, notebookPath, removeCards, findLast, findLastCardType)
+import SlamData.Notebook.Deck.Model as Model
+import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCardHash, mkNotebookURL)
+import SlamData.Render.CSS as CSS
+import SlamData.Render.Common (glyph, fadeWhen)
 
 
 import Utils.Debounced (debouncedEventSource)
@@ -167,7 +167,6 @@ render state =
 
   viewingStyle cardDef cid =
     guard (not (cardDef.id ≡ cid))
-    *> guard (not (cardIsLinkedCardOf { childId: cardDef.id, parentId: cid} state))
     $> (HP.class_ CSS.invisible)
 
   shouldHideNextAction =
@@ -180,7 +179,7 @@ render state =
 
     [ HH.slot' cpCard (CardSlot top) \_ →
        { component: Next.nextCardComponent
-       , initialState: H.parentState $ initEditorCardState
+       , initialState: H.parentState initialCardState
        }
     ]
 
@@ -222,17 +221,16 @@ eval (ExploreFile fs res next) = do
   H.set $ initialDeck fs
   H.modify
     $ (_path .~ Pathy.parentDir res)
-    ∘ (addCard Explore Nothing)
+    ∘ (addCard OpenResource Nothing)
   forceRerender'
   H.query' cpCard (CardSlot zero)
     $ right
     $ H.ChildF unit
     $ right
-    $ ExploreQuery
+    $ OpenResourceQuery
     $ right
-    $ H.ChildF unit
     $ H.action
-    $ Fi.SelectFile
+    $ Open.ResourceSelected
     $ R.File res
   forceRerender'
   runCard zero
@@ -560,7 +558,7 @@ saveNotebook _ = H.get >>= \st → do
       nameHasntBeenModified = theseRight name ≡ Just Config.newNotebookName
     in
       nameHasntBeenModified
-      ∧ (cardArrays ≡ [ Explore ] ∨ cardArrays ≡ [ Explore, JTable ])
+      ∧ (cardArrays ≡ [ OpenResource ] ∨ cardArrays ≡ [ OpenResource, JTable ])
 
   -- Finds a new name for a notebook in the specified parent directory, using
   -- a name value as a basis to start with.

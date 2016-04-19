@@ -33,6 +33,7 @@ module SlamData.FileSystem.Resource
   , isHidden
   , isNotebook
   , isTempFile
+  , canHaveChildren
   , mkDatabase
   , mkDirectory
   , mkFile
@@ -109,6 +110,11 @@ isDatabaseMount _ = false
 isViewMount ∷ Resource → Boolean
 isViewMount (Mount (View _)) = true
 isViewMount _ = false
+
+canHaveChildren ∷ Resource → Boolean
+canHaveChildren (Mount (Database _)) = true
+canHaveChildren (Directory _) = true
+canHaveChildren _ = false
 
 isHidden ∷ Resource → Boolean
 isHidden r =

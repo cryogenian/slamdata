@@ -124,6 +124,7 @@ cardEval (Eq.EvalCard info k) = case info.inputPort of
   _ →
     pure $ k { output: Nothing, messages: [ Left "Expected Resource input" ] }
 cardEval (Eq.NotifyRunCard next) = pure next
+cardEval (Eq.NotifyStopCard next) = pure next
 cardEval (Eq.Save k) = do
   pt ← H.gets _.pathString
   case Pt.parseAbsFile pt of
