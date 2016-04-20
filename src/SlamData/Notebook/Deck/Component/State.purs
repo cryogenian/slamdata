@@ -486,33 +486,37 @@ fromModel
   → Maybe DirPath
   → Maybe DeckId
   → Model.Deck
+  → State
   → Tuple (Array Card.Model) State
 fromModel browserFeatures path deckId { cards, dependencies, name } =
   Tuple
     cards
-    ({ id: deckId
-    , fresh: maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
-    , accessType: ReadOnly
-    , cards: cardDefs
-    , cardTypes: foldl addCardIdTypePair M.empty cards
-    , dependencies
-    , activeCardId: _.id <$> L.last cardDefs
-    , name
-    , browserFeatures
-    , viewingCard: Nothing
-    , path
-    , saveTrigger: Nothing
-    , globalVarMap: SM.empty
-    , runTrigger: Nothing
-    , pendingCards: S.empty
-    , failingCards: S.empty
-    , stateMode: Loading
-    , backsided: false
-    , initialSliderX: Nothing
-    , sliderTransition: false
-    , sliderTranslateX: 0.0
-    , nextActionCardElement: Nothing
-    } ∷ State)
+    ((state
+       , accessType = ReadOnly
+       , activeCardId = _.id <$> L.last cardDefs
+       , backsided = false
+       , browserFeatures
+       , browserFeatures = browserFeatures
+       , cardTypes = foldl addCardIdTypePair M.empty cards
+       , cards = cardDefs
+       , dependencies
+       , failingCards = S.empty
+       , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
+       , globalVarMap = SM.empty
+       , id = deckId
+       , initialSliderX = Nothing
+       , name
+       , path
+       , pendingCards = S.empty
+       , runTrigger = Nothing
+       , saveTrigger = Nothing
+       , sliderTransition = false
+       , sliderTranslateX = 0.0
+       , activeCardId = _.id <$> L.last cardDefs
+       , stateMode = Loading
+       , viewingCard = Nothing
+       }
+    ) :: State)
   where
   cardDefs = foldMap cardDefFromModel cards
 

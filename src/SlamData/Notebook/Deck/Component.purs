@@ -367,7 +367,7 @@ eval (StartSliding mouseEvent next) =
   setInitialSliderX =
     H.modify <<< (DCS._initialSliderX .~)
 eval (StopSlidingAndSnap mouseEvent next) =
-  snap *> stopSliding *> startTransition $> next
+  startTransition *> snap *> stopSliding $> next
   where
   stopSliding =
     setInitialX Nothing *> setTranslateX 0.0
@@ -378,7 +378,8 @@ eval (StopSlidingAndSnap mouseEvent next) =
   getNextActionCardElement =
     H.gets _.nextActionCardElement
   getCardWidth =
-    traverse getBoundingClientWidth =<< getNextActionCardElement
+    traverse getBoundingClientWidth
+      =<< getNextActionCardElement
   setActiveCardId =
     H.modify <<< (DCS._activeCardId .~)
   setTranslateX =
