@@ -144,14 +144,15 @@ render state =
             [ HP.class_ CSS.deck
             , HP.key "deck-container"
             ]
-            [ renderCards $ not state.backsided
+            [ HH.button
+                [ HP.classes [ CSS.flipDeck ]
+                , HE.onClick (HE.input_ FlipDeck)
+                , ARIA.label "Flip deck"
+                , HP.title "Flip deck"
+                ]
+                [ HH.text "" ]
+            , renderCards $ not state.backsided
             , renderBackside state.backsided
-              -- Commented until one card representation
---            , HH.button [ HP.classes [ B.btn, B.btnPrimary ]
---                        , HE.onClick (HE.input_ FlipDeck)
---                        , ARIA.label "Flip deck"
---                        ]
---              [ HH.text "Flip" ]
             ]
         ]
 
@@ -166,15 +167,22 @@ render state =
   where
   renderBackside visible =
     HH.div
-      ( [ ARIA.hidden $ show $ not visible ]
-        ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
-
-      [ HH.slot' cpBackSide unit \_ →
-         { component: Back.comp
-         , initialState: Back.initialState
-         }
+      ([ HP.classes [ CSS.cardSlider ]
+      , ARIA.hidden $ show $ not visible
       ]
-
+      ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
+      [ HH.div
+          [ HP.classes [ CSS.card ]
+          , style $ cardWidth 1 true
+          ]
+          [ cardGripper false
+          , cardGripper true
+          , HH.slot' cpBackSide unit \_ →
+             { component: Back.comp
+             , initialState: Back.initialState
+             }
+          ]
+      ]
 
   renderCards visible =
     -- The key here helps out virtual-dom: the entire subtree will be moved
@@ -198,16 +206,16 @@ render state =
     HH.div
     ([ HP.key ("card" ⊕ cardIdToString cardDef.id)
      , HP.classes [ CSS.card ]
-     , style $ cardWidth cardsCount
+     , style $ cardWidth cardsCount false
     ]
      ⊕ foldMap (viewingStyle cardDef) state.viewingCard)
-    [ cardGripper
+    [ cardGripper false
     , HH.Slot $ transformCardConstructor cardDef.ctor
     ]
 
-  cardGripper =
+  cardGripper last =
     HH.div
-      [ HP.classes [ CSS.cardGripper ]
+      [ HP.classes [ if last then CSS.cardGripperLast else CSS.cardGripper ]
       , HE.onMouseDown \e -> HEH.preventDefault $> H.action (StartSliding e)
       ]
       []
@@ -233,11 +241,12 @@ render state =
       ([ HP.key ("next-action-card")
        , HP.classes [ CSS.card ]
        , HP.ref (H.action <<< SetNextActionCardElement)
-       , style $ cardWidth cardsCount
+       , style $ cardWidth cardsCount true
        ]
        ⊕ (guard shouldHideNextAction $> (HP.class_ CSS.invisible)))
 
-    [ cardGripper
+    [ cardGripper false
+    , cardGripper true
     , HH.slot' cpCard (CardSlot top) \_ →
        { component: Next.nextCardComponent
        , initialState: H.parentState initialCardState
@@ -247,8 +256,13 @@ render state =
   cardWidthPct cardsCount =
     100.0 / toNumber cardsCount
 
-  cardWidth cardsCount =
-    width $ calc $ (show $ cardWidthPct cardsCount) ++ "% - 1.5rem"
+  cardWidth cardsCount lastCard =
+    width $ calc
+      $ (show $ cardWidthPct cardsCount) ++ "%"
+      ++ " - " ++ (show $ nextCardGripperWidth lastCard) ++ "rem"
+
+  nextCardGripperWidth lastCard =
+    if lastCard then 0.0 else 1.5
 
   cardSliderWidth cardsCount =
     width $ pct $ 100.0 * toNumber cardsCount
@@ -282,7 +296,8 @@ eval (LoadNotebook fs dir deckId next) = do
     Right model →
       case DCS.fromModel fs (Just dir) (Just deckId) model of
         Tuple cards st → do
-          H.set st
+          Debug.Trace.traceAnyA "LoadNotebook"
+          setDeckState st
           forceRerender'
           ranCards ← catMaybes <$> for cards \card → do
             H.query' cpCard  (CardSlot card.cardId)
@@ -300,7 +315,7 @@ eval (LoadNotebook fs dir deckId next) = do
   pure next
 
 eval (ExploreFile fs res next) = do
-  H.set $ DCS.initialDeck fs
+  H.setDeckState $ DCS.initialDeck fs
   H.modify
     $ (DCS._path .~ Pathy.parentDir res)
     ∘ (DCS.addCard OpenResource Nothing)
@@ -325,8 +340,9 @@ eval (Publish next) = do
     for_ mpath $ H.fromEff ∘ newTab ∘ flip mkNotebookURL (NA.Load ReadOnly)
   pure next
 eval (Reset fs dir deckId next) = do
-  let nb = DCS.initialDeck fs
-  H.set $ nb { id = deckId, path = Just dir }
+  let
+    nb = initialDeck fs
+  setDeckState $ nb { id = deckId, path = Just dir }
   pure next
 eval (SetName name next) =
   H.modify (DCS._name .~ Just name) $> next
@@ -362,10 +378,17 @@ eval (GetCardType cid k) = k <$> H.gets (DCS.getCardType cid)
 eval (FlipDeck next) = H.modify (DCS._backsided %~ not) $> next
 eval (GetActiveCardId k) = map k $ H.gets DCS.findLast
 eval (StartSliding mouseEvent next) =
-  setInitialSliderX (Just mouseEvent.screenX) $> next
+  setInitialSliderX (Just mouseEvent.screenX)
+    *> setSliderTransition false
+    *> setBacksided false
+    $> next
   where
   setInitialSliderX =
     H.modify <<< (DCS._initialSliderX .~)
+  setSliderTransition =
+    H.modify <<< (DCS._sliderTransition .~)
+  setBacksided =
+    H.modify <<< (DCS._backsided .~)
 eval (StopSlidingAndSnap mouseEvent next) =
   startTransition *> snap *> stopSliding $> next
   where
@@ -378,8 +401,7 @@ eval (StopSlidingAndSnap mouseEvent next) =
   getNextActionCardElement =
     H.gets _.nextActionCardElement
   getCardWidth =
-    traverse getBoundingClientWidth
-      =<< getNextActionCardElement
+    traverse getBoundingClientWidth =<< getNextActionCardElement
   setActiveCardId =
     H.modify <<< (DCS._activeCardId .~)
   setTranslateX =
@@ -412,7 +434,7 @@ eval (UpdateSliderPosition mouseEvent next) =
   setTranslateX =
     H.modify <<< (DCS._sliderTranslateX .~)
 eval (SetNextActionCardElement element next) =
-  setNextActionCardElement element $> next
+  Debug.Trace.traceAnyA element *> setNextActionCardElement element *> (Debug.Trace.traceAnyA =<< H.get) $> next
   where
   setNextActionCardElement =
     H.modify <<< (DCS._nextActionCardElement .~)
@@ -522,7 +544,7 @@ createCard cardType = do
       H.modify $ DCS.addCard cardType Nothing
     Just cardId → do
       Tuple st newCardId ← H.gets $ DCS.addCard' cardType (Just cardId)
-      H.set st
+      H.setDeckState st
       forceRerender'
       input ←
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
@@ -737,3 +759,8 @@ nameFromDirName dirName =
 
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId = path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
+
+setDeckState :: State -> NotebookDSL Unit
+setDeckState newState = do
+  nextActionCardElement <- H.gets _.nextActionCardElement
+  H.set $ newState { nextActionCardElement = nextActionCardElement }

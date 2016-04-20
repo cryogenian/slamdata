@@ -441,3 +441,9 @@ card = className "sd-card"
 
 cardGripper :: ClassName
 cardGripper = className "sd-card-gripper"
+
+cardGripperLast :: ClassName
+cardGripperLast = className "sd-card-gripper-last"
+
+flipDeck :: ClassName
+flipDeck = className "sd-flip-deck"

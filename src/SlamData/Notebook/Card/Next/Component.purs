@@ -65,8 +65,7 @@ render state =
           , ARIA.label $ cardTitle cty
           , HE.onClick (HE.input_ (right ∘ AddCard cty))
           ]
-          [ cardGlyph cty
-          , HH.p_ [ HH.text (cardName cty) ]
+          [ HH.p_ [ HH.text (cardName cty) ]
           ]
       ]
 
@@ -78,8 +77,7 @@ render state =
           , ARIA.label $ disabledTitle cty
           , HP.disabled true
           ]
-          [ cardGlyph cty
-          , HH.p_ [ HH.text (cardName cty) ]
+          [ HH.p_ [ HH.text (cardName cty) ]
           ]
       ]
 

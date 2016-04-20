@@ -54,7 +54,7 @@ header
 header cty cs =
   guard (controllable cty) $>
     H.div
-      [ P.classes [CSS.cardHeader, B.clearfix]
+      [ P.classes [CSS.cardHeader]
       , ARIA.label $ (cardName cty) ⊕ " card"
       ]
       [ H.div
