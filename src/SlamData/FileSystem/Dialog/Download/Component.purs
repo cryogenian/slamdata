@@ -24,7 +24,7 @@ import SlamData.Prelude
 
 import Control.UI.Browser (newTab)
 
-import Data.Array (sort)
+import Data.Array (sort, nub)
 import Data.Lens ((.~), (%~), (<>~), _Left, _Right)
 import Data.String as Str
 
@@ -89,9 +89,9 @@ eval (Dismiss next) =
   pure next
 eval (SetSources srcs next) = do
   H.modify (_sources .~ srcs)
-  H.modify (_sources %~ sort)
+  H.modify (_sources %~ sort ∘ nub)
   pure next
 eval (AddSources srcs next) = do
   H.modify (_sources <>~ srcs)
-  H.modify (_sources %~ sort)
+  H.modify (_sources %~ sort ∘ nub)
   pure next

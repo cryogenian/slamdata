@@ -50,10 +50,6 @@ afterAccessSharingUrl =
     *> Interact.browseTestFolder
     *> Interact.deleteFile "Quarterly report.slam"
 
-unexpectedBehaviourWithoutHesitationIssue ∷ String
-unexpectedBehaviourWithoutHesitationIssue =
-  "https://slamdata.atlassian.net/browse/SD-1525"
-
 test ∷ SlamFeature Unit
 test = do
   fileScenario afterRename "Rename a folder" [] do
@@ -66,9 +62,6 @@ test = do
     Interact.renameFile "Пациенты# #" "Ϡ⨁⟶≣ΜϞ"
     Expect.file "Ϡ⨁⟶≣ΜϞ"
     successMsg "Successfully renamed a folder"
-
-
-
 
   fileScenario afterMove "Move a folder" [] do
     Interact.browseTestFolder
@@ -149,15 +142,11 @@ test = do
       "test/smallZips.csv"
     successMsg "Successfully downloaded file as CSV"
 
-  fileScenario
-    defaultAfterFile
-    "Download file as JSON"
-    [unexpectedBehaviourWithoutHesitationIssue] do
-      Interact.browseTestFolder
-      Interact.downloadFileAsJSON "smallZips"
-      Expect.downloadedTextFileToMatchFile
-        "tmp/test/downloads"
-        "smallZips"
-        "test/smallZips.json"
-      errorMsg "The known issue occurs non-dermininistically"
-      successMsg "Successfully downloaded file as JSON"
+  fileScenario defaultAfterFile "Download file as JSON" [] do
+    Interact.browseTestFolder
+    Interact.downloadFileAsJSON "smallZips"
+    Expect.downloadedTextFileToMatchFile
+      "tmp/test/downloads"
+      "smallZips"
+      "test/smallZips.json"
+    successMsg "Successfully downloaded file as JSON"

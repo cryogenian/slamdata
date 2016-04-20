@@ -80,7 +80,7 @@ makeDownloadCapabilities FireFox path = buildFFProfile do
   setBoolPreference "browser.download.manager.showAlertOnComplete" false
   setBoolPreference "browser.download.manager.useWindow" false
   setStringPreference "browser.helperApps.neverAsk.saveToDisk"
-    "text/csv, application/ldjson"
+    "text/csv, application/ldjson, application/json"
 makeDownloadCapabilities _ _ = mempty
 
 tests :: SlamFeature Unit
