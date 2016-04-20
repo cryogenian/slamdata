@@ -10,17 +10,13 @@ nav {
     }
 
     .header {
-
-        line-height: 70px;
-
+        height: 70px;
         .nav-icon {
-            float: left;
             width: 80px;
-            height: 70px;
             text-align: center;
-
-            // padding-left: 14px;
-            // padding-top: 5px;
+            vertical-align: middle;
+            display: inline-block;
+            padding-top: 10px;
             a {
                 font-size: 22px;
                 color: #fff;
@@ -37,19 +33,21 @@ nav {
                 /* fix for IE */
                 width: 140px;
             }
-            float: left;
-            width: 140px;
-            margin-top: -7px;
             margin-left: -5px;
+            display: inline-block;
+            vertical-align: middle;
         }
 
         .notebook-name, .search {
+            display: inline-block;
             margin-left: 24px;
-            float: left;
+            vertical-align: middle;
+            padding-top: 10px;
         }
 
         .notebook-name {
-            width: ~"calc(100% - 250px - 130px)";
+            width: ~"calc(100% - 250px - 250px)";
+            display: inline-block;
             color: #f0f0f0;
             font-size: 28px;
             &:hover {
@@ -67,17 +65,10 @@ nav {
         }
 
         .search {
-
-            width: ~"calc(100% - 250px - 135px)";
+            width: ~"calc(100% - 250px - 230px)";
             max-width: 800px;
-            line-height: 20px;
-            margin-top: 7px;
-
-            @media (min-width: 1260px) {
-                position: absolute;
-                left: 50%;
-                margin-left: -400px;
-            }
+            height: 50px;
+            padding-bottom: 10px;
         }
 
     }

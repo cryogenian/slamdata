@@ -152,13 +152,13 @@ render state =
                   { component: SignIn.comp
                   , initialState: H.parentState SignIn.initialState
                   }
-              , HH.div
-                  [ HP.classes $ [ className "sd-menu" ] ⊕ visibilityClasses ]
-                  [ HH.slot' cpMenu unit \_ →
-                    { component: HalogenMenu.menuComponent
-                    , initialState: H.parentState $ Menu.make SM.empty
-                    }
-                  ]
+--              , HH.div
+--                  [ HP.classes $ [ className "sd-menu" ] ⊕ visibilityClasses ]
+--                  [ HH.slot' cpMenu unit \_ →
+--                    { component: HalogenMenu.menuComponent
+--                    , initialState: H.parentState $ Menu.make SM.empty
+--                    }
+--                  ]
               ]
           ]
       ]
