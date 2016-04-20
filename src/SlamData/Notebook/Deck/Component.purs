@@ -256,7 +256,7 @@ render state =
   cardSliderTransform cardCount activeCardIndex translateX =
     transform $ translate (cardSliderTranslateX cardCount activeCardIndex translateX) nil
 
-  cardSliderTransition false = transition "0"
+  cardSliderTransition false = transition "none"
   cardSliderTransition true = transition "all 0.33s"
 
   cardSliderTranslateX cardCount activeCardIndex translateX =
