@@ -38,7 +38,7 @@ type State =
 initialState :: Resource -> State
 initialState res =
   { source: Right res
-  , sources: [root]
+  , sources: [root, res]
   , showSourcesList: false
   , targetName:
       let name = resourceName res
