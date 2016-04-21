@@ -95,7 +95,7 @@ render state@{ version, sort, salt, path } =
     ]
     [ navbar
         [ HH.div
-            [ HP.classes [ Rc.header, B.clearfix ] ]
+            [ HP.classes [ Rc.header ] ]
             [ icon B.glyphiconFolderOpen Config.homeHash "Browse root folder"
             , logo version
             , HH.slot' cpSearch unit \_ →
@@ -109,8 +109,7 @@ render state@{ version, sort, salt, path } =
             ]
         ]
     , content
-        [ HH.div
-            [ HP.class_ B.clearfix ]
+        [ HH.div_
             [ HH.slot' cpBreadcrumbs unit \_ →
                 { component: Breadcrumbs.comp
                 , initialState: Breadcrumbs.mkBreadcrumbs path sort salt
