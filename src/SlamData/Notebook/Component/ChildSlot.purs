@@ -18,8 +18,8 @@ module SlamData.Notebook.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Data.Either.Nested (Either5)
-import Data.Functor.Coproduct.Nested (Coproduct5)
+import Data.Either.Nested (Either6)
+import Data.Functor.Coproduct.Nested (Coproduct6)
 
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
@@ -28,61 +28,72 @@ import SlamData.Notebook.Deck.Component as Deck
 import SlamData.Notebook.Menu.Component as Menu
 import SlamData.Notebook.Rename.Component as Rename
 import SlamData.SignIn.Component as SignIn
+import SlamData.Notebook.HeaderGripper.Component as HeaderGripper
 
 type ChildQuery =
-  Coproduct5
+  Coproduct6
     Rename.Query
     SignIn.QueryP
     Menu.QueryP
     Dialog.QueryP
     Deck.QueryP
+    HeaderGripper.Query
 
 type ChildState g =
-  Either5
+  Either6
     Rename.State
     SignIn.StateP
     (Menu.StateP g)
     Dialog.StateP
     Deck.StateP
+    HeaderGripper.State
 
-type ChildSlot = Either5 Unit Unit Unit Unit Unit
+type ChildSlot = Either6 Unit Unit Unit Unit Unit Unit
 
 cpRename
-  :: forall g
-   . ChildPath
+  ∷ ∀ g
+  . ChildPath
        Rename.State (ChildState g)
        Rename.Query ChildQuery
        Unit ChildSlot
-cpRename = cpL :> cpL :> cpL :> cpL
+cpRename = cpL :> cpL :> cpL :> cpL :> cpL
 
 cpSignIn
-  :: forall g
-   . ChildPath
+  ∷ ∀ g
+  . ChildPath
        SignIn.StateP (ChildState g)
        SignIn.QueryP ChildQuery
        Unit ChildSlot
-cpSignIn = cpL :> cpL :> cpL :> cpR
+cpSignIn = cpL :> cpL :> cpL :> cpL :> cpR
 
 cpMenu
-  :: forall g
-   . ChildPath
+  ∷ ∀ g
+  . ChildPath
        (Menu.StateP g) (ChildState g)
        Menu.QueryP ChildQuery
        Unit ChildSlot
-cpMenu = cpL :> cpL :> cpR
+cpMenu = cpL :> cpL :> cpL :> cpR
 
 cpDialog
-  :: forall g
-   . ChildPath
+  ∷ ∀ g
+  . ChildPath
        Dialog.StateP (ChildState g)
        Dialog.QueryP ChildQuery
        Unit ChildSlot
-cpDialog = cpL :> cpR
+cpDialog = cpL :> cpL :> cpR
 
 cpDeck
-  :: forall g
-   . ChildPath
+  ∷ ∀ g
+  . ChildPath
        Deck.StateP (ChildState g)
        Deck.QueryP ChildQuery
        Unit ChildSlot
-cpDeck = cpR
+cpDeck = cpL :> cpR
+
+cpHeaderGripper
+  ∷ ∀ g
+  . ChildPath
+      HeaderGripper.State (ChildState g)
+      HeaderGripper.Query ChildQuery
+      Unit ChildSlot
+cpHeaderGripper = cpR

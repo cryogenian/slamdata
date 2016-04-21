@@ -43,6 +43,8 @@ data Query a
   | SetParentHref String a
   | DismissAll a
 
+
+
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
 toDraftboard ∷ H.Action Query → QueryP Unit

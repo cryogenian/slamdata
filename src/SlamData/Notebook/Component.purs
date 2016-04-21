@@ -31,7 +31,7 @@ import Control.Monad.Except.Trans as ET
 import Control.UI.Browser (newTab, locationString)
 
 import Data.Array (cons)
-import Data.Functor.Coproduct.Nested (coproduct5)
+import Data.Functor.Coproduct.Nested (coproduct6)
 import Data.Lens ((^.), (.~), (%~), (?~))
 import Data.Shortcut (print)
 import Data.StrMap as SM
@@ -55,7 +55,7 @@ import SlamData.Notebook.Action as NA
 import SlamData.Notebook.Card.CardId as CID
 import SlamData.Notebook.Card.CardType as CT
 import SlamData.Notebook.Card.Component.Query as CQ
-import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpMenu, cpDeck, cpRename, cpSignIn)
+import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpMenu, cpDeck, cpRename, cpSignIn, cpHeaderGripper)
 import SlamData.Notebook.Component.Query (QueryP, Query(..), fromDraftboard, fromDeck, fromRename, toDraftboard, toDeck, toRename)
 import SlamData.Notebook.Component.State (NotebookShortcut, State, _accessType, _browserFeatures, _keyboardListeners, _loaded, _notebookShortcuts, _parentHref, _version, _viewingCard, initialState, notebookShortcuts)
 import SlamData.Notebook.Dialog.Component as Dialog
@@ -72,6 +72,7 @@ import SlamData.Notebook.Routing (mkNotebookCardURL)
 import SlamData.Render.Common (logo, icon')
 import SlamData.Render.CSS as Rc
 import SlamData.Notebook.Deck.BackSide.Component as Back
+import SlamData.Notebook.HeaderGripper.Component as HeaderGripper
 
 import Utils.DOM (documentTarget)
 import Utils.Path as UP
@@ -138,9 +139,9 @@ render state =
   renderHeader state =
     HH.div_
       [ HH.div
-          [ HP.classes [ B.clearfix ] ]
+          [ HP.classes [  ] ]
           [ HH.div
-              [ HP.classes [ Rc.header, B.clearfix ] ]
+              [ HP.classes [ Rc.header ] ]
               [ icon' B.glyphiconChevronLeft "Back to parent folder"
                   $ fromMaybe "" (state ^. _parentHref)
               , logo (state ^. _version)
@@ -152,7 +153,12 @@ render state =
                   { component: SignIn.comp
                   , initialState: H.parentState SignIn.initialState
                   }
---              , HH.div
+              , HH.slot' cpHeaderGripper unit \_ →
+                  { component: HeaderGripper.comp
+                  , initialState: HeaderGripper.initialState
+                  }
+
+                  --              , HH.div
 --                  [ HP.classes $ [ className "sd-menu" ] ⊕ visibilityClasses ]
 --                  [ HH.slot' cpMenu unit \_ →
 --                    { component: HalogenMenu.menuComponent
@@ -224,12 +230,16 @@ dismissAll = do
 
 peek ∷ ∀ a. ChildQuery a → DraftboardDSL Unit
 peek =
-  coproduct5
+  coproduct6
     renamePeek
     signInParentPeek
     menuPeek
     dialogParentPeek
     deckPeek
+    headerGripperPeek
+
+headerGripperPeek ∷ ∀ α. HeaderGripper.Query α → DraftboardDSL Unit
+headerGripperPeek _ = pure unit
 
 signInParentPeek ∷ ∀ a. SignIn.QueryP a → DraftboardDSL Unit
 signInParentPeek = coproduct (const (pure unit)) (const (pure unit))
