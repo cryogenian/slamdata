@@ -23,8 +23,6 @@ module SlamData.FileSystem.Routing
 
 import SlamData.Prelude
 
-import Control.UI.Browser as Browser
-
 import Data.Path.Pathy as P
 
 import Routing.Match (Match, eitherMatch)
@@ -75,7 +73,7 @@ browseURL search sort salt path =
       if s == "" then s else s <> " "
 
   q =
-    Browser.encodeURIComponent $
+    Global.encodeURIComponent $
       search'
         <> "path:\""
         <> P.printPath path

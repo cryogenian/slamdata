@@ -18,8 +18,6 @@ module SlamData.FileSystem.Dialog.Download.Component.Render (render) where
 
 import SlamData.Prelude
 
-import Control.UI.Browser (encodeURIComponent)
-
 import Data.Lens ((.~))
 import Data.Path.Pathy (printPath)
 
@@ -189,9 +187,9 @@ btnCancel state =
 
 btnDownload ∷ State → H.ComponentHTML Query
 btnDownload state =
-  let headers = encodeURIComponent $ show $ reqHeadersToJSON $ D.toHeaders state
+  let headers = Global.encodeURIComponent $ show $ reqHeadersToJSON $ D.toHeaders state
       url = (encodeURI
-             $ printPath Config.dataUrl
+             $ printPath Config.data_
              ⊕ either (const "#") resourcePath (state.source))
             ⊕ "?request-headers="
             ⊕ headers

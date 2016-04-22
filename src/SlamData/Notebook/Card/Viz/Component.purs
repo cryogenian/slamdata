@@ -18,7 +18,6 @@ module SlamData.Notebook.Card.Viz.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (attempt)
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (JCursor)
@@ -26,6 +25,7 @@ import Data.Array (length, null, cons, index)
 import Data.Int as Int
 import Data.Lens ((.~), view, preview)
 import Data.Map as M
+import Data.Path.Pathy (printPath)
 import Data.Set as Set
 
 import CSS.Geometry (marginBottom)
@@ -42,8 +42,8 @@ import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as Api
 import Quasar.Auth as Auth
+import Quasar.Types (FilePath)
 
-import SlamData.FileSystem.Resource as R
 import SlamData.Form.Select (Select, autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
 import SlamData.Notebook.Card.CardType (CardType(Viz))
 import SlamData.Notebook.Card.Chart.Aggregation (aggregationSelect)
@@ -258,11 +258,10 @@ cardEval (EvalCard info continue) =
           records <-
             Api.all r
               # Auth.authed
-              # attempt
               # liftWithCancelerP'
               # lift
               >>= either
-                  (const $ throwError $ "Can't get resource: " <> R.resourcePath r)
+                  (const $ throwError $ "Can't get resource: " <> printPath r)
                   pure
           when (length records > 10000)
             $ throwError
@@ -314,12 +313,11 @@ responsePort = do
     , height: state.height
     }
 
-updateForms :: R.Resource -> VizDSL Unit
+updateForms :: FilePath -> VizDSL Unit
 updateForms file = do
   jarr <-
     Api.sample file 0 20
       # Auth.authed
-      # attempt
       # liftWithCancelerP'
       >>= either (const $ pure []) pure
   if null jarr

@@ -57,9 +57,6 @@ foreign import filesEff :: forall e. HTMLElement -> Eff (dom :: DOM |e) FileList
 foreign import onloadEff :: forall e e'. FileReader -> Eff e Unit ->
                             Eff (file :: READ_FILE |e') Unit
 
-
-
-
 newReader :: forall e. Aff (dom :: DOM |e) FileReader
 newReader = makeAff \_ k ->
   newReaderEff >>= \r -> k r

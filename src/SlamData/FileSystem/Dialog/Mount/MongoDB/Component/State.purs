@@ -14,160 +14,149 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State where
+module SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State
+  ( MountHost
+  , MountProp
+  , State
+  , _host
+  , _hosts
+  , _password
+  , _path
+  , _port
+  , _props
+  , _user
+  , initialState
+  , processState
+  , fromConfig
+  , toConfig
+  ) where
 
 import SlamData.Prelude
 
-import Control.UI.Browser (decodeURIComponent, encodeURIComponent)
-
 import Data.Array as A
-import Data.Foldable (any)
+import Data.Int as Int
 import Data.Lens (LensP, lens)
-import Data.List (fromList)
-import Data.Path.Pathy (printPath)
-import Data.String as S
+import Data.List (fromList, fromFoldable)
+import Data.NonEmpty (NonEmpty(..), oneOf)
+import Data.Path.Pathy (parsePath, rootDir, (</>))
+import Data.Profunctor.Strong (first, second)
 import Data.String.Regex as Rx
-import Data.StrMap (toList)
-import Data.URI.Types as Uri
+import Data.StrMap as SM
+import Data.URI.Host as URI
 
-import Utils.URI (toURI)
+import Text.Parsing.StringParser (runParser)
+
+import Quasar.Mount.MongoDB (Config, Host)
+
+import Utils.Path as PU
 
 type State =
-  { hosts :: Array MountHost
-  , path :: String
-  , user :: String
-  , password :: String
-  , props :: Array MountProp
+  { hosts ∷ Array MountHost
+  , path ∷ String
+  , user ∷ String
+  , password ∷ String
+  , props ∷ Array MountProp
   }
 
-type MountHost =
-  { host :: String
-  , port :: String
-  }
+type MountHost = Tuple String String
 
 type MountProp = Tuple String String
 
-_hosts :: LensP State (Array MountHost)
+_hosts ∷ LensP State (Array MountHost)
 _hosts = lens _.hosts (_ { hosts = _ })
 
-_path :: LensP State String
+_path ∷ LensP State String
 _path = lens _.path (_ { path = _ })
 
-_user :: LensP State String
-_user =
-  lens _.user (_{user = _})
+_user ∷ LensP State String
+_user = lens _.user (_{user = _})
 
-_password :: LensP State String
-_password =
-  lens _.password (_{password = _})
+_password ∷ LensP State String
+_password = lens _.password (_{password = _})
 
-_props :: LensP State (Array MountProp)
+_props ∷ LensP State (Array MountProp)
 _props = lens _.props (_ { props = _ })
 
-_host :: LensP MountHost String
-_host = lens _.host (_ { host = _ })
+_host ∷ LensP MountHost String
+_host = first
 
-_port :: LensP MountHost String
-_port = lens _.port (_ { port = _ })
+_port ∷ LensP MountHost String
+_port = second
 
-initialState :: State
+initialState ∷ State
 initialState =
-  { hosts: [initialMountHost]
+  { hosts: [initialTuple]
   , path: ""
   , user: ""
   , password: ""
-  , props: [initialMountProp]
+  , props: [initialTuple]
   }
 
-stateFromURI :: Uri.AbsoluteURI -> State
-stateFromURI uri =
+initialTuple ∷ Tuple String String
+initialTuple = Tuple "" ""
+
+processState ∷ State → State
+processState s = s
+  { hosts = A.filter (not isEmptyTuple) s.hosts ⊕ [initialTuple]
+  , props = A.filter (not isEmptyTuple) s.props ⊕ [initialTuple]
+  }
+
+fromConfig ∷ Config → State
+fromConfig { hosts, path, user, password, props } =
   processState
-    { hosts: hostsFromURI uri
-    , path: pathFromURI uri
-    , user: userFromURI uri
-    , password: passwordFromURI uri
-    , props: propsFromURI uri
+    { hosts: bimap URI.printHost show <$> oneOf hosts
+    , path: ""
+    , user: fromMaybe "" user
+    , password: fromMaybe "" password
+    , props: map (fromMaybe "") <$> fromList (SM.toList props)
     }
 
-initialMountHost :: MountHost
-initialMountHost =
-  { host: ""
-  , port: ""
-  }
+toConfig ∷ State → Either String Config
+toConfig { hosts, path, user, password, props } = do
+  hosts' ← nonEmptyHosts =<< traverse parseHost (A.filter (not isEmptyTuple) hosts)
+  when (not isEmpty user || not isEmpty password) do
+    when (isEmpty user) $ Left "Please enter user name"
+    when (isEmpty password) $ Left "Please enter password"
+    when (isEmpty path) $ Left "Please enter authentication database name"
+  pure
+    { hosts: hosts'
+    , path: parsePath' =<< nonEmptyString path
+    , user: nonEmptyString user
+    , password: nonEmptyString password
+    , props: SM.fromList $ fromFoldable $
+        map nonEmptyString <$> A.filter (not isEmptyTuple) props
+    }
 
-initialMountProp :: MountProp
-initialMountProp = Tuple "" ""
+parsePath' ∷ String → Maybe PU.AnyPath
+parsePath' =
+  bitraverse PU.sandbox PU.sandbox <<<
+    parsePath (Right <<< (rootDir </> _)) Right (Left <<< (rootDir </> _)) Left
 
-processState :: State -> State
-processState s = s
-  { hosts = A.filter (not isEmptyHost) s.hosts <> [initialMountHost]
-  , props = A.filter (not isEmptyProp) s.props <> [initialMountProp]
-  }
+parseHost ∷ Tuple String String → Either String Host
+parseHost (Tuple host port) = do
+  host' ← lmap show $ runParser URI.parseHost host
+  port' ← case nonEmptyString port of
+    Nothing → pure Nothing
+    Just p →
+      maybe
+        (Left $ "'" ⊕ port ⊕ "' is not a valid port number")
+        (Right <<< Just) $
+        (Int.fromString p)
+  pure $ Tuple host' port'
 
-isEmptyHost :: MountHost -> Boolean
-isEmptyHost { host, port } = Rx.test rxEmpty host && Rx.test rxEmpty port
+nonEmptyString ∷ String → Maybe String
+nonEmptyString s = if isEmpty s then Nothing else Just s
 
-isEmptyProp :: MountProp -> Boolean
-isEmptyProp (Tuple name value) = Rx.test rxEmpty name && Rx.test rxEmpty value
-
-hostsFromURI :: Uri.AbsoluteURI -> Array MountHost
-hostsFromURI (Uri.AbsoluteURI _ (Uri.HierarchicalPart (Just (Uri.Authority _ hs)) _) _) =
-  go <$> hs
+nonEmptyHosts ∷ Array Host → Either String (NonEmpty Array Host)
+nonEmptyHosts hs = maybe err Right $ NonEmpty <$> A.head hs <*> A.tail hs
   where
-  go :: Tuple Uri.Host (Maybe Uri.Port) -> MountHost
-  go (Tuple h p) = { host: getHost h, port: maybe "" show p }
-  getHost :: Uri.Host -> String
-  getHost (Uri.IPv6Address s) = s
-  getHost (Uri.IPv4Address s) = s
-  getHost (Uri.NameAddress s) = s
-hostsFromURI _ = []
+  err = Left "Please enter at least one host"
 
-pathFromURI :: Uri.AbsoluteURI -> String
-pathFromURI (Uri.AbsoluteURI _ (Uri.HierarchicalPart _ (Just p)) _) =
-  let s = either printPath printPath p
-  in if S.take 1 s == "/" then S.drop 1 s else s
-pathFromURI _ = ""
+isEmptyTuple ∷ Tuple String String → Boolean
+isEmptyTuple (Tuple k v) = isEmpty k && isEmpty v
 
-userFromURI :: Uri.AbsoluteURI -> String
-userFromURI (Uri.AbsoluteURI _ (Uri.HierarchicalPart (Just (Uri.Authority (Just ui) _)) _) _) =
-  decodeURIComponent $ maybe ui (\ix -> S.take ix ui) $ S.indexOf ":" ui
-userFromURI _ = ""
+isEmpty ∷ String → Boolean
+isEmpty = Rx.test rxEmpty
 
-passwordFromURI :: Uri.AbsoluteURI -> String
-passwordFromURI (Uri.AbsoluteURI _ (Uri.HierarchicalPart (Just (Uri.Authority (Just ui) _)) _) _) =
-  decodeURIComponent $ maybe "" (\ix -> S.drop (ix + 1) ui) $ S.indexOf ":" ui
-passwordFromURI _ = ""
-
-propsFromURI :: Uri.AbsoluteURI -> Array MountProp
-propsFromURI (Uri.AbsoluteURI _ _ (Just (Uri.Query qs))) =
-  fromList <<< map (rmap (fromMaybe "")) <<< toList $ qs
-propsFromURI _ = []
-
-mkURI :: State -> String
-mkURI { path, user, password, hosts, props } =
-  if any isValidHost hosts
-  then
-    toURI
-      { path: nonEmpty path
-      , credentials:
-          mkCredentials
-          <$> (encodeURIComponent <$> nonEmpty user)
-          <*> (encodeURIComponent <$> nonEmpty password)
-      , hosts: prepareHost <$> A.filter (not isEmptyHost) hosts
-      , props: prepareProp <$> A.filter (not isEmptyProp) props
-      }
-  else ""
-  where
-
-  mkCredentials = { user: _, password: _ }
-  prepareHost h = h { port = nonEmpty h.port }
-  prepareProp = uncurry { name: _, value: _ }
-
-  isValidHost :: MountHost -> Boolean
-  isValidHost = isJust <<< nonEmpty <<< _.host
-
-  nonEmpty :: String -> Maybe String
-  nonEmpty s = if Rx.test rxEmpty s then Nothing else Just s
-
-rxEmpty :: Rx.Regex
+rxEmpty ∷ Rx.Regex
 rxEmpty = Rx.regex "^\\s*$" Rx.noFlags

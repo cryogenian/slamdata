@@ -25,23 +25,21 @@ module Quasar.Aff
   , getNewName
   , makeFile
   , ldJSON
-  , getVersion
 
   , fields
   , templated
-  , forceDelete
-  , executeQuery
   , all
   , sample
   , transitiveChildrenProducer
-  , query' -- TODO: rename this, we shouldn't be exporting things with inscruatable prime symbols
+  , query
   , queryPrecise
   , count
 
   , save
   , load
-  , messageIfResourceNotExists
-  , portView
+  , messageIfFileNotFound
+  , viewQuery
+  , fileQuery
 
   , retrieveAuthProviders
   , compile
@@ -61,72 +59,129 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Error.Class as Err
-import Control.UI.Browser (encodeURIComponent)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Control.Monad.Reader.Trans (runReaderT)
 
-import Data.Argonaut ((~>), (:=), (.?))
+import Data.Argonaut ((~>), (:=))
 import Data.Argonaut as JS
 import Data.Array as Arr
 import Data.Date as Date
-import Data.Foreign (F, parseJSON)
-import Data.Foreign.Class (class IsForeign, readProp, read)
-import Data.Foreign.Index (prop)
-import Data.Foreign.NullOrUndefined (runNullOrUndefined)
-import Data.HTTP.Method (Method(..))
+import Data.Foldable as F
 import Data.Lens ((.~), (^.))
 import Data.List as L
 import Data.MediaType (MediaType(..), mediaTypeToString)
-import Data.MediaType.Common (applicationJSON)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as Set
 import Data.String as S
 import Data.StrMap as SM
-import Data.Time as Time
-import Data.URI (runParseAbsoluteURI) as URI
-import Data.URI.Types (AbsoluteURI(..), Query(..), URIScheme(..)) as URI
 
 import DOM (DOM)
 
+import Global (encodeURIComponent)
+
 import Network.HTTP.Affjax as AX
-import Network.HTTP.Affjax.Request (class Requestable)
-import Network.HTTP.Affjax.Response (class Respondable, ResponseType(..))
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Network.HTTP.StatusCode (StatusCode(..))
 
-import Quasar.Paths as Paths
-import Quasar.Auth (IdToken, authHeader) as Auth
-import Quasar.Auth.Permission as Perm
-import Quasar.Auth.Provider (Provider) as Auth
+import OIDCCryptUtils.Types as OIDC
 
--- TODO: split out a core Quasar module that only deals with the API, and
--- doesn't know about SlamData specific things.
+import Quasar.Advanced.Auth (PermissionToken) as Auth
+import Quasar.Advanced.Auth.Provider (Provider) as Auth
+import Quasar.Advanced.QuasarAF as QF
+import Quasar.Advanced.QuasarAF.Interpreter.Aff as QFA
+import Quasar.Data (QData(..), JSONMode(..))
+import Quasar.Error (lowerQError)
+import Quasar.FS as QFS
+import Quasar.FS.Resource as QR
+import Quasar.Mount as QM
+import Quasar.Mount.MongoDB as QMountMDB
+import Quasar.Mount.View as QMountV
+
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
 
 import Utils.Completions (memoizeCompletionStrs)
 import Utils.Path as PU
 
-successStatus ∷ StatusCode
-successStatus = StatusCode 200
+-- | Runs a `QuasarF` request in `Aff`, using the `QError` type for errors that
+-- | may arise, which allows for convenient catching of 404 errors.
+runQuasarF'
+  ∷ ∀ eff a
+  . Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → QF.QuasarAFP (Either QF.QError a)
+  → Aff (ajax ∷ AX.AJAX | eff) (Either QF.QError a)
+runQuasarF' idToken permissions qf =
+  runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }
 
-notFoundStatus ∷ StatusCode
-notFoundStatus = StatusCode 404
+-- | Runs a `QuasarF` request in `Aff`, using the standard `Error` type for
+-- | errors thay may arise.
+runQuasarF
+  ∷ ∀ eff a
+  . Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → QF.QuasarAFP (Either QF.QError a)
+  → Aff (ajax ∷ AX.AJAX | eff) (Either Exn.Error a)
+runQuasarF idToken permissions qf =
+  lmap lowerQError <$> runQuasarF' idToken permissions qf
 
-succeeded ∷ StatusCode → Boolean
-succeeded (StatusCode int) =
-  200 <= code && code < 300
-  where code = int
+type QEff eff = RetryEffects (ajax ∷ AX.AJAX | eff)
+type RetryEffects eff = (avar ∷ AVar.AVAR, ref ∷ Ref.REF, now ∷ Date.Now | eff)
 
-type RetryEffects e = (avar ∷ AVar.AVAR, ref ∷ Ref.REF, now ∷ Date.Now | e)
+children
+  ∷ ∀ eff
+  . PU.DirPath
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff (dom ∷ DOM | eff)) (Either Exn.Error (Array R.Resource))
+children dir idToken perms = runExceptT do
+  cs ← ExceptT $ listing dir idToken perms
+  let result = (R._root .~ dir) <$> cs
+  lift $ memoizeCompletionStrs dir result
+  pure result
+
+listing
+  ∷ ∀ eff
+  . PU.DirPath
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error (Array R.Resource))
+listing p idToken perms =
+  map (map toResource) <$> runQuasarF idToken perms (QF.dirMetadata p)
+  where
+  toResource ∷ QFS.Resource → R.Resource
+  toResource res = case res of
+    QFS.File path → R.File path
+    QFS.Directory path →
+      let notebookName
+            = S.stripSuffix ("." <> Config.notebookExtension)
+            <<< P.runDirName =<< P.dirName path
+      in case notebookName of
+        Just name → R.Notebook (p </> P.dir name)
+        Nothing → R.Directory path
+    QFS.Mount (QFS.MongoDB path) → R.Mount (R.Database path)
+    QFS.Mount (QFS.View path) → R.Mount (R.View path)
+
+makeFile
+  ∷ ∀ eff
+  . PU.FilePath
+  → QData
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error Unit)
+makeFile path content idToken perms =
+  runQuasarF idToken perms $ QF.writeFile path content
 
 encodeURI ∷ String → String
 encodeURI str =
   let
+    str' = fromMaybe str $ S.stripPrefix "." str
+
     encode ∷ String → String
     encode = encodeURIComponent
 
     qmSplitted ∷ Array String
-    qmSplitted = S.split "?" str
+    qmSplitted = S.split "?" str'
 
     ampSplitted ∷ Maybe (Array String)
     ampSplitted = map (S.split "&") $ qmSplitted Arr.!! 1
@@ -165,407 +220,116 @@ encodeURI str =
   in
     beforeQM ⊕ afterQM
 
--- | A version of `affjax` with our retry policy.
-slamjax
-  ∷ forall e a b
-  . (Requestable a, Respondable b)
-  ⇒ AX.AffjaxRequest a
-  → AX.Affjax (RetryEffects e) b
-slamjax =
-  AX.retry
-    AX.defaultRetryPolicy
-    AX.affjax
-
-retryGet
-  ∷ forall e a fd
-  . (Respondable a)
-  ⇒ P.Path P.Abs fd P.Sandboxed
-  → MediaType
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → AX.Affjax (RetryEffects e) a
-retryGet =
-  getWithPolicy $ AX.defaultRetryPolicy { delayCurve = const 1000 }
-
-mkRequest
-  ∷ forall e fd
-  . P.Path P.Abs fd P.Sandboxed
-  → MediaType
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects e) (AX.AffjaxRequest Unit)
-mkRequest u mime idToken perms = do
-  nocache ← liftEff $ Date.nowEpochMilliseconds
-  pure
-    $ insertAuthHeaders idToken perms
-    $ AX.defaultRequest
-      { url = encodeURI $ url' nocache
-      , headers = [ Accept mime ]
-      }
-  where
-  url' nocache = url ⊕ symbol ⊕ "nocache=" ⊕ pretty nocache
-  symbol = if S.contains "?" url then "&" else "?"
-  pretty (Time.Milliseconds ms) = let s = show ms in fromMaybe s (S.stripSuffix ".0" s)
-  url = P.printPath u
-
-getOnce
-  ∷ forall e a fd
-  . (Respondable a)
-  ⇒ P.Path P.Abs fd P.Sandboxed
-  → MediaType
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → AX.Affjax (RetryEffects e) a
-getOnce u mime idToken perms =
-  mkRequest u mime idToken perms
-    >>= AX.affjax
-
-getWithPolicy
-  ∷ forall e a fd
-  . (Respondable a)
-  ⇒ AX.RetryPolicy
-  → P.Path P.Abs fd P.Sandboxed
-  → MediaType
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → AX.Affjax (RetryEffects e) a
-getWithPolicy policy u mime idToken perms =
-  mkRequest u mime idToken perms
-    >>= AX.retry policy AX.affjax
-
-retryDelete
-  ∷ forall e a fd
-  . (Respondable a)
-  ⇒ P.Path P.Abs fd P.Sandboxed
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → AX.Affjax (RetryEffects e) a
-retryDelete u idToken perms = do
-  slamjax
-    $ insertAuthHeaders idToken perms
-    $ AX.defaultRequest
-      { url = encodeURI $ P.printPath u
-      , method = Left DELETE
-      }
-
-retryPut
-  ∷ forall e a b fd
-  . (Requestable a, Respondable b)
-  ⇒ P.Path P.Abs fd P.Sandboxed
-  → a
-  → MediaType
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → AX.Affjax (RetryEffects e) b
-retryPut u c mime idToken perms =
-  slamjax
-    $ insertAuthHeaders idToken perms
-    $ AX.defaultRequest
-      { method = Left PUT
-      , url = encodeURI $ P.printPath u
-      , content = Just c
-      , headers = [ContentType mime]
-      }
-
-getResponse ∷ forall a e. String → AX.Affjax e a → Aff (ajax ∷ AX.AJAX | e) a
-getResponse msg m = do
-  res ← Aff.attempt m
-  case res of
-    Left e → Err.throwError $ Exn.error msg
-    Right r → do
-      if not $ succeeded r.status
-        then Err.throwError $ Exn.error msg
-        else pure r.response
-
-reqHeadersToJSON ∷ ∀ f. Foldable f ⇒ f RequestHeader → JS.Json
+reqHeadersToJSON ∷ Array RequestHeader → JS.Json
 reqHeadersToJSON = foldl go JS.jsonEmptyObject
   where
   go obj (Accept mime) = "Accept" := mediaTypeToString mime ~> obj
   go obj (ContentType mime) = "Content-Type" := mediaTypeToString mime ~> obj
   go obj (RequestHeader k v) = k := v ~> obj
 
-mkURI ∷ R.Resource → SQL → PU.FilePath
-mkURI res sql =
-  Paths.queryUrl </> P.file ("?q=" ⊕ templated res sql)
-
-mkURI' ∷ R.Resource → SQL → PU.FilePath
-mkURI' res sql =
-  Paths.queryUrl
-  </> PU.rootify (R.resourceDir res)
-  </> P.dir (R.resourceName res)
-  </> P.file ("?q=" ⊕ templated res sql)
-
-templated ∷ R.Resource → SQL → SQL
-templated res = S.replace "{{path}}" ("`" ⊕ R.resourcePath res ⊕ "`")
-
-
-newtype Listing = Listing (Array R.Resource)
-
-runListing ∷ Listing → Array R.Resource
-runListing (Listing rs) = rs
-
-instance listingIsForeign ∷ IsForeign Listing where
-  read f =
-    read f
-      >>= readProp "children"
-      >>= pure
-        ∘ Listing
-        ∘ fromMaybe []
-        ∘ runNullOrUndefined
-
-instance listingRespondable ∷ Respondable Listing where
-  responseType = (Just applicationJSON) × JSONResponse
-  fromResponse = read
-
-insertAuthHeaders
-  ∷ forall a
-  . Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → AX.AffjaxRequest a
-  → AX.AffjaxRequest a
-insertAuthHeaders mbToken perms r =
-  r { headers =
-        r.headers
-        ⊕ (foldMap (pure ∘ Auth.authHeader) mbToken)
-        ⊕ (foldMap pure $ Perm.permissionsHeader perms)
-    }
-
-
-
-children
-  ∷ forall e
-  . PU.DirPath
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX, dom ∷ DOM | e)) (Array R.Resource)
-children dir idToken perms = do
-  cs ← children' dir idToken perms
-  let result = (R._root .~ dir) <$> cs
-  memoizeCompletionStrs dir result
-  pure result
-
-children'
-  ∷ forall e
-  . PU.DirPath
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) (Array R.Resource)
-children' dir idToken perms =
-  listing dir idToken perms
-    # getResponse msg
-    <#> runListing
-  where
-  msg = "Error: can not get children of resource"
-
-listing
-  ∷ forall e
-  . PU.DirPath
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → AX.Affjax (RetryEffects e) Listing
-listing p idToken perms =
-  case P.relativeTo p P.rootDir of
-    Nothing → Err.throwError $ Exn.error "incorrect path"
-    Just p →
-      retryGet
-        (Paths.metadataUrl </> p)
-        applicationJSON
-        idToken
-        perms
-
-makeFile
-  ∷ forall e
-  . PU.FilePath
-  → MediaType
-  → String
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) Unit
-makeFile path mime content idToken perms =
-  getResponse "error while creating file"
-    $ slamjax
-    $ insertAuthHeaders idToken perms
-    $ AX.defaultRequest
-      { method = Left PUT
-      , headers = [ ContentType mime ]
-      , content = Just content
-      , url =
-          encodeURI
-          $ fromMaybe ""
-          $ (P.printPath ∘ (Paths.dataUrl </> _))
-          <$> P.relativeTo path P.rootDir
-      }
-
 mountInfo
-  ∷ forall e
+  ∷ ∀ eff
   . PU.DirPath
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) String
-mountInfo res idToken perms = do
-  result ← getOnce mountPath applicationJSON idToken perms
-  if succeeded result.status
-     then case parse result.response of
-       Left err → Err.throwError $ Exn.error (show err)
-       Right uri → pure uri
-     else Err.throwError (Exn.error result.response)
-
-  where
-  mountPath ∷ P.Path P.Abs P.Dir P.Sandboxed
-  mountPath = Paths.mountUrl </> PU.rootify res
-
-  parse ∷ String → F String
-  parse = parseJSON >=> prop "mongodb" >=> readProp "connectionUri"
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error QMountMDB.Config)
+mountInfo path idToken perms = runExceptT do
+  result ← ExceptT $ runQuasarF idToken perms $ QF.getMount (Left path)
+  case result of
+    QM.MongoDBConfig config → pure config
+    _ → Err.throwError $ Exn.error $
+      P.printPath path <> " is not a MongoDB mount point"
 
 viewInfo
-  ∷ forall e
+  ∷ ∀ eff
   . PU.FilePath
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX|e))
-     { query ∷ String, vars ∷ SM.StrMap String }
-viewInfo mountPath idToken perms = do
-  result ←
-    getOnce (Paths.mountUrl </> PU.rootifyFile mountPath)
-      applicationJSON idToken perms
-  if succeeded result.status
-    then case parse result.response of
-      Left err → Err.throwError $ Exn.error err
-      Right res → pure res
-    else Err.throwError $ Exn.error result.response
-  where
-  runQuery ∷ URI.Query → SM.StrMap (Maybe String)
-  runQuery (URI.Query q) = q
-
-  parse ∷ String → Either String { query ∷ String, vars ∷ SM.StrMap String }
-  parse connURI = do
-    connStr ←
-      lmap show
-      $ parseJSON connURI
-      >>= prop "view"
-      >>= readProp "connectionUri"
-    URI.AbsoluteURI mbScheme _ mbQuery ← lmap show $ URI.runParseAbsoluteURI connStr
-    scheme ← maybe (Err.throwError "There is no scheme") pure mbScheme
-    unless (scheme ≡ URI.URIScheme "sql2") $ Err.throwError "Incorrect scheme"
-
-    let queryMap = maybe SM.empty runQuery mbQuery
-    sql ←
-      maybe (Err.throwError "There is no 'q' in queryMap") pure
-        $ SM.lookup "q" queryMap
-        >>= id
-        ⋙ map PU.decodeURIPath
-        >>= S.stripPrefix "("
-        >>= S.stripSuffix ")"
-    let vars = SM.fold foldFn SM.empty $ SM.delete "q" queryMap
-    pure { query: sql, vars }
-    where
-    foldFn ∷ SM.StrMap String → String → Maybe String → SM.StrMap String
-    foldFn acc key mbVal = fromMaybe acc do
-      k ← S.stripPrefix "var." key
-      val ← mbVal
-      pure $ SM.insert k val acc
-
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error QMountV.Config)
+viewInfo path idToken perms = runExceptT do
+  result ← ExceptT $ runQuasarF idToken perms $ QF.getMount (Right path)
+  case result of
+    QM.ViewConfig config → pure config
+    _ → Err.throwError $ Exn.error $ P.printPath path <> " is not an SQL² view"
 
 -- | Generates a new resource name based on a directory path and a name for the
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
 getNewName
-  ∷ forall e
+  ∷ ∀ eff
   . PU.DirPath
   → String
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX |e)) String
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error String)
 getNewName parent name idToken perms = do
-  items ← Aff.attempt (children' parent idToken perms) <#> either (const []) id
-  pure if exists' name items then getNewName' items 1 else name
+  result ← runQuasarF' idToken perms (QF.dirMetadata parent)
+  pure case result of
+    Left (QF.Error err) → Left err
+    Right items | exists name items → Right (getNewName' items 1)
+    _ → Right name
   where
+
+  getNewName' ∷ Array QFS.Resource → Int → String
   getNewName' items i =
     let arr = S.split "." name
     in fromMaybe "" do
       body ← Arr.head arr
       suffixes ← Arr.tail arr
-      let newName = S.joinWith "." $ Arr.cons (body ⊕ " " ⊕ show i) suffixes
-      pure if exists' newName items
+      let newName = S.joinWith "." $ Arr.cons (body <> " " <> show i) suffixes
+      pure if exists newName items
            then getNewName' items (i + one)
            else newName
 
-exists' ∷ String → Array R.Resource → Boolean
-exists' name items = isJust $ Arr.findIndex (\r → r ^. R._name ≡ name) items
+  exists ∷ String → Array QFS.Resource → Boolean
+  exists name = F.any ((_ == name) <<< printName <<< QR.getName)
+
+  printName ∷ Either (Maybe P.DirName) P.FileName → String
+  printName = either (fromMaybe "" <<< map P.runDirName) P.runFileName
 
 -- | Will return `Just` in case the resource was successfully moved, and
 -- | `Nothing` in case no resource existed at the requested source path.
 move
-  ∷ forall e
+  ∷ ∀ eff
   . R.Resource
   → PU.AnyPath
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX, dom ∷ DOM |e)) (Maybe PU.AnyPath)
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff (dom ∷ DOM | eff)) (Either Exn.Error (Maybe PU.AnyPath))
 move src tgt idToken perms = do
-  let
-    url = if R.isMount src
-          then Paths.mountUrl
-          else Paths.dataUrl
-    resourceUrl =
-      either
-        (P.printPath ∘ (url </> _) ∘ PU.rootifyFile)
-        (P.printPath ∘ (url </> _) ∘ PU.rootify)
-        (R.getPath src)
-    queryPart =
-      "?request-headers="
-      ⊕ (show
-         $ reqHeadersToJSON
-           [RequestHeader "Destination"
-            $ either P.printPath P.printPath tgt])
-
-  cleanViewMounts src idToken perms
-  result ←
-    AX.affjax
-    $ insertAuthHeaders idToken perms
-    $ AX.defaultRequest
-      { method = Left MOVE
-      , url = encodeURI $ resourceUrl ⊕ queryPart
-      }
-  if succeeded result.status
-    then pure $ Just tgt
-    else if result.status ≡ notFoundStatus
-      then pure Nothing
-      else Err.throwError (Exn.error result.response)
+  either
+    (\dir → cleanViewMounts dir idToken perms)
+    (const (pure (Right unit)))
+    (R.getPath src)
+  result <- runQuasarF' idToken perms case src of
+    R.Mount _ → QF.moveMount (R.getPath src) tgt
+    _ → QF.moveData (R.getPath src) tgt
+  pure case result of
+    Right _ → Right (Just tgt)
+    Left QF.NotFound → Right Nothing
+    Left (QF.Error err) → Left err
 
 saveMount
-  ∷ forall e
+  ∷ ∀ eff
   . PU.DirPath
-  → String
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX |e)) Unit
-saveMount path uri idToken perms = do
-  result ←
-    slamjax
-    $ insertAuthHeaders idToken perms
-    $ AX.defaultRequest
-      { method = Left PUT
-      , headers = [ ContentType applicationJSON ]
-      , content = Just $ stringify { mongodb: {connectionUri: uri } }
-      , url = encodeURI $ P.printPath $ Paths.mountUrl </> PU.rootify path
-      }
-  if succeeded result.status
-    then pure unit
-    else Err.throwError (Exn.error result.response)
-
-foreign import stringify ∷ forall r. {|r} → String
+  → QMountMDB.Config
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error Unit)
+saveMount path config idToken perms =
+  runQuasarF idToken perms $
+    QF.updateMount (Left path) (QM.MongoDBConfig config)
 
 delete
-  ∷ forall e
+  ∷ ∀ eff
   . R.Resource
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX, dom ∷ DOM |e)) (Maybe R.Resource)
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff (dom ∷ DOM | eff)) (Either Exn.Error (Maybe R.Resource))
 delete resource idToken perms =
   if not (R.isMount resource || alreadyInTrash resource)
-  then (moveToTrash resource) <|> (forceDelete resource idToken perms $> Nothing)
-  else forceDelete resource idToken perms $> Nothing
+  then moveToTrash resource <|> forceDelete resource idToken perms $> pure Nothing
+  else forceDelete resource idToken perms $> pure Nothing
 
   where
   msg ∷ String
@@ -573,101 +337,77 @@ delete resource idToken perms =
 
   moveToTrash
     ∷ R.Resource
-    → Aff (RetryEffects (ajax ∷ AX.AJAX, dom ∷ DOM | e)) (Maybe R.Resource)
-  moveToTrash res = do
+    → Aff (QEff (dom ∷ DOM | eff)) (Either Exn.Error (Maybe R.Resource))
+  moveToTrash res = runExceptT do
     let d = (res ^. R._root) </> P.dir Config.trashFolder
         path = (res # R._root .~ d) ^. R._path
-    name ← getNewName d (res ^. R._name) idToken perms
-    move res (path # R._nameAnyPath .~ name) idToken perms
+    name ← ExceptT $ getNewName d (res ^. R._name) idToken perms
+    ExceptT $ move res (path # R._nameAnyPath .~ name) idToken perms
     pure $ Just $ R.Directory d
 
   alreadyInTrash ∷ R.Resource → Boolean
   alreadyInTrash res =
     case res ^. R._path of
-      Left _ → alreadyInTrash' (res ^. R._root)
-      Right path → alreadyInTrash' path
+      Left path → alreadyInTrash' path
+      Right _ → alreadyInTrash' (res ^. R._root)
 
   alreadyInTrash' ∷ PU.DirPath → Boolean
   alreadyInTrash' d =
-    if d ≡ P.rootDir
+    if d == P.rootDir
     then false
     else maybe false go $ P.peel d
 
     where
     go ∷ Tuple PU.DirPath (Either P.DirName P.FileName) → Boolean
-    go (d × name) =
+    go (Tuple d name) =
       case name of
         Right _ → false
         Left n →
-          if n ≡ P.DirName Config.trashFolder
+          if n == P.DirName Config.trashFolder
           then true
           else alreadyInTrash' d
 
-
 forceDelete
-  ∷ forall e
+  ∷ ∀ eff
   . R.Resource
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX, dom ∷ DOM |e)) Unit
-forceDelete res idToken perms = do
-  cleanViewMounts res idToken perms
-  getResponse "cannot delete"
-    $ either
-      (\x → retryDelete x idToken perms)
-      (\y → retryDelete y idToken perms)
-    $ pathFromResource res
-
-  where
-  pathFromResource ∷ R.Resource → PU.AnyPath
-  pathFromResource r = transplant (rootForResource r) (R.getPath r)
-
-  transplant ∷ PU.DirPath → PU.AnyPath → PU.AnyPath
-  transplant newRoot =
-    bimap
-      (\p → newRoot </> PU.rootifyFile p)
-      (\p → newRoot </> PU.rootify p)
-
-  rootForResource ∷ R.Resource → PU.DirPath
-  rootForResource r = if R.isMount r then Paths.mountUrl else Paths.dataUrl
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff (dom ∷ DOM | eff)) (Either Exn.Error Unit)
+forceDelete res idToken perms = case res of
+  R.Mount _ → runQuasarF idToken perms $ QF.deleteMount (R.getPath res)
+  _ → do
+    let path = R.getPath res
+    either
+      (\dir → cleanViewMounts dir idToken perms)
+      (const (pure (Right unit)))
+      path
+    runQuasarF idToken perms $ QF.deleteData path
 
 cleanViewMounts
-  ∷ forall e
-  . R.Resource
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX, dom ∷ DOM|e)) Unit
-cleanViewMounts res idToken perms =
-  for_ (R.getPath res) \dirPath →
-    children dirPath idToken perms
-      >>= Arr.filter R.isViewMount
-      ⋙ traverse_ (\x → forceDelete x idToken perms)
-
-getVersion
-  ∷ forall e
-  . Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX |e)) (Maybe String)
-getVersion idToken perms = do
-  serverInfo ← retryGet Paths.serverInfoUrl applicationJSON idToken perms
-  return $ either (const Nothing) Just (readProp "version" serverInfo.response)
+  ∷ ∀ eff
+  . PU.DirPath
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff (dom ∷ DOM | eff)) (Either Exn.Error Unit)
+cleanViewMounts path idToken perms = runExceptT do
+  rs ← ExceptT $ children path idToken perms
+  lift $ traverse_ deleteViewMount rs
+  where
+  deleteViewMount (R.Mount (R.View vp)) = runQuasarF idToken perms $ QF.deleteMount (Right vp)
+  deleteViewMount _ = pure $ pure unit
 
 ldJSON ∷ MediaType
 ldJSON = MediaType "application/ldjson"
 
-preciseJSON ∷ MediaType
-preciseJSON = MediaType "application/json;mode=precise"
-
-
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
-  ∷ forall e
+  ∷ ∀ eff
   . PU.DirPath
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
   → CR.Producer
       (Array R.Resource)
-      (Aff (RetryEffects (ajax ∷ AX.AJAX, err ∷ Exn.EXCEPTION, dom ∷ DOM | e)))
+      (Aff (QEff (err ∷ Exn.EXCEPTION, dom ∷ DOM | eff)))
       Unit
 transitiveChildrenProducer dirPath idToken perms = do
   ACR.produce \emit → do
@@ -676,11 +416,11 @@ transitiveChildrenProducer dirPath idToken perms = do
   where
   go emit activeRequests start = do
     let strPath = P.printPath start
-    eitherChildren ← Aff.attempt $ children start idToken perms
+    eitherChildren ← children start idToken perms
     liftEff $ Ref.modifyRef activeRequests $ Set.delete strPath
     for_ eitherChildren \items → do
       liftEff $ emit $ Left items
-      let parents = Arr.mapMaybe (either (const Nothing) Just ∘ R.getPath) items
+      let parents = Arr.mapMaybe (either Just (const Nothing) <<< R.getPath) items
       for_ parents $ \p →
         liftEff $ Ref.modifyRef activeRequests $ Set.insert $ P.printPath p
       for_ parents $ go emit activeRequests
@@ -693,69 +433,39 @@ transitiveChildrenProducer dirPath idToken perms = do
 type SQL = String
 
 query
-  ∷ forall e
-  . R.Resource
+  ∷ ∀ eff
+  . PU.DirPath
   → SQL
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) JS.JArray
-query res sql idToken perms =
-  if (not $ R.isFile res) && (not $ R.isViewMount res)
-  then pure []
-  else extractJArray
-         =<< getResponse msg (getOnce uriPath applicationJSON idToken perms)
-  where
-  msg = "error in query"
-  uriPath = mkURI res sql
-
-query'
-  ∷ forall e
-  . PU.FilePath
-  → SQL
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) (Either String JS.JArray)
-query' path sql idToken perms = do
-  let res = R.File path
-  eResult ← Aff.attempt $
-    AX.affjax =<< mkRequest (mkURI' res sql) applicationJSON idToken perms
-  pure
-    case eResult of
-      Left err → Left (Exn.message err)
-      Right result →
-        if succeeded result.status
-        then JS.decodeJson <=< JS.jsonParser $ result.response
-        else Left $ readError "error in query" result.response
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either String JS.JArray)
+query path sql idToken perms = do
+  lmap QF.printQError <$>
+    runQuasarF' idToken perms (QF.readQuery Readable path sql SM.empty Nothing)
 
 queryPrecise
-  ∷ forall e
-  . PU.FilePath
+  ∷ ∀ eff
+  . PU.DirPath
   → SQL
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) (Either String JS.JArray)
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either String JS.JArray)
 queryPrecise path sql idToken perms = do
-  let res = R.File path
-  eResult ← Aff.attempt $
-    AX.affjax =<< mkRequest (mkURI' res sql) preciseJSON idToken perms
-  pure
-    case eResult of
-      Left err → Left (Exn.message err)
-      Right result →
-        if succeeded result.status
-        then JS.decodeJson <=< JS.jsonParser $ result.response
-        else Left $ readError "error in query" result.response
+  lmap QF.printQError <$>
+    runQuasarF' idToken perms (QF.readQuery Precise path sql SM.empty Nothing)
 
 count
-  ∷ forall e
-  . R.Resource
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) Int
-count res idToken perms =
-  query res sql idToken perms
-    <#> readTotal
-    ⋙ fromMaybe 0
+  ∷ ∀ eff
+  . PU.FilePath
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error Int)
+count file idToken perms = runExceptT do
+  let backendPath = fromMaybe P.rootDir (P.parentDir file)
+      sql = templated file "SELECT COUNT(*) as total FROM {{path}}"
+  result ← ExceptT $ runQuasarF idToken perms $
+    QF.readQuery Readable backendPath sql SM.empty Nothing
+  pure $ fromMaybe 0 (readTotal result)
   where
   readTotal ∷ JS.JArray → Maybe Int
   readTotal =
@@ -765,358 +475,188 @@ count res idToken perms =
       <=< JS.toObject
       <=< Arr.head
 
-
-  uriPath ∷ P.Path P.Abs P.File P.Sandboxed
-  uriPath = mkURI res sql
-
-  sql ∷ SQL
-  sql = "SELECT COUNT(*) as total FROM {{path}}"
-
-messageIfResourceNotExists
-  ∷ forall e
-  . R.Resource
+messageIfFileNotFound
+  ∷ ∀ eff
+  . PU.FilePath
   → String
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX|e)) (Maybe String)
-messageIfResourceNotExists res defaultMsg idToken perms = do
-  eResult ← Aff.attempt existsReq
-  pure case eResult of
-    Left e → Just $ Exn.message e
-    Right result →
-      guard (result.status ≠ successStatus)
-      $> if result.status ≡ notFoundStatus
-           then defaultMsg
-           else "Unexpected status code " ⊕ show result.status
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error (Maybe String))
+messageIfFileNotFound path defaultMsg idToken perms =
+  handleResult <$> runQuasarF' idToken perms (QF.fileMetadata path)
   where
-  requestPath
-    ∷ P.Path P.Abs P.File P.Sandboxed
-  requestPath | R.isViewMount res =
-    Paths.dataUrl
-    </> PU.rootify (R.resourceDir res)
-    </> P.file (R.resourceName res ⊕ "?offset=0&limit=10")
-  requestPath =
-    Paths.metadataUrl
-    </> PU.rootify (R.resourceDir res)
-    </> P.file (R.resourceName res)
+  handleResult ∷ ∀ a. Either QF.QError a → Either Exn.Error (Maybe String)
+  handleResult (Left (QF.Error e)) = Left e
+  handleResult (Left QF.NotFound) = Right (Just defaultMsg)
+  handleResult (Right _) = Right Nothing
 
-  existsReq
-    ∷ Aff (RetryEffects (ajax ∷ AX.AJAX|e)) (AX.AffjaxResponse Unit)
-  existsReq =
-    getOnce requestPath applicationJSON idToken perms
-
-
-portView
-  ∷ forall e
-  . R.Resource
-  → R.Resource
+-- | Compiles a query.
+-- |
+-- | If a file path is provided for the input path the query can use the
+-- | {{path}} template syntax to have the file's path inserted, and the file's
+-- | parent directory will be used to determine the backend to use in Quasar.
+compile
+  ∷ ∀ eff
+  . PU.AnyPath
   → SQL
   → SM.StrMap String
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) Unit
-portView res dest sql varMap idToken perms = do
-  guard $ R.isViewMount dest
-  let
-    queryParams = foldMap ("&" ⊕ _) $ renderQueryString varMap
-    connectionUri = "sql2:///?q="
-                    ⊕ (encodeURIComponent $ templated res sql)
-                    ⊕ queryParams
-  result ←
-    AX.affjax
-    $ insertAuthHeaders idToken perms
-    $ AX.defaultRequest
-      { method = Left PUT
-      , headers = [ ContentType applicationJSON ]
-      , content = Just $ stringify { view: { connectionUri: connectionUri } }
-      , url =
-          encodeURI
-          $ P.printPath
-          $ Paths.mountUrl
-          </> PU.rootify (R.resourceDir dest)
-          </> P.file (R.resourceName dest)
-      }
-  if succeeded result.status
-     then pure unit
-     else Err.throwError $ Exn.error $ readError result.response result.response
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error String)
+compile path sql varMap idToken perms = runExceptT do
+  let backendPath = either id (fromMaybe P.rootDir <<< P.parentDir) path
+      sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
+  result ← ExceptT $ runQuasarF idToken perms $
+    QF.compileQuery backendPath sql' varMap
+  case S.stripPrefix "MongoDB\n" result of
+    Nothing → Err.throwError $ Exn.error "Incorrect compile response"
+    Just plan → pure plan
 
-portQuery
-  ∷ forall e
-  . R.Resource
-  → R.Resource
+-- | Runs a query creating a view mount for the query.
+-- |
+-- | If a file path is provided for the input path the query can use the
+-- | {{path}} template syntax to have the file's path inserted.
+viewQuery
+  ∷ ∀ eff
+  . PU.AnyPath
+  → PU.FilePath
   → SQL
   → SM.StrMap String
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) JS.JObject
-portQuery res dest sql vars idToken perms = do
-  guard $ R.isFile dest
-  let
-    resourceUrl =
-      P.printPath
-        $ Paths.queryUrl
-        </> PU.rootify (R.resourceDir res)
-        </> P.dir (R.resourceName res)
-    headerPart =
-      "?request-headers="
-      ⊕ (show
-         $ reqHeadersToJSON
-             [ RequestHeader "Destination"
-                 $ R.resourcePath dest
-             , ContentType ldJSON
-             ])
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error Unit)
+viewQuery path dest sql vars idToken perms =
+  runQuasarF idToken perms $ QF.updateMount (Right dest) $ QM.ViewConfig
+    { query: maybe sql (flip templated sql) $ either (const Nothing) Just path
+    , vars
+    }
 
-    varMapPart =
-      foldMap ("&" ⊕ _) $ renderQueryString vars
-  result ←
-    AX.affjax
-      $ insertAuthHeaders idToken perms
-      $ AX.defaultRequest
-        { method = Left POST
-        , url = encodeURI $ resourceUrl ⊕ headerPart ⊕ varMapPart
-        , content = Just (templated res sql)
-        }
-
-  if not $ succeeded result.status
-    then Err.throwError $ Exn.error $ readError result.response result.response
-    else
-    -- We expect result message to be valid json.
-    either (Err.throwError ∘ Exn.error) pure $
-      JS.jsonParser result.response >>= JS.decodeJson
-
-renderQueryString ∷ SM.StrMap String → Maybe String
-renderQueryString = map go ∘ L.uncons ∘ SM.toList
-  where
-  pair ∷ Tuple String String → String
-  pair (a × b) = "var." ⊕ a ⊕ "=" ⊕ encodeURIComponent b
-
-  go { head = h, tail = t } =
-    foldl (\a v → a ⊕ "&" ⊕ pair v) (pair h) t
-
-
-readError ∷ String → String → String
-readError msg input =
-  let responseError = JS.jsonParser input >>= JS.decodeJson >>= (_ .? "error")
-  in either (const msg) id responseError
-
-sample'
-  ∷ forall e
-  . R.Resource
-  → Maybe Int
-  → Maybe Int
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) JS.JArray
-sample' res mbOffset mbLimit idToken perms =
-  if (not $ R.isFile res) && (not $ R.isViewMount res)
-    then pure []
-    else extractJArray
-           =<< getResponse msg (retryGet uri applicationJSON idToken perms)
-  where
-  msg = "error getting resource sample"
-  uri =
-    Paths.dataUrl
-      </> PU.rootify (R.resourceDir res)
-      </> P.file
-            (R.resourceName res
-               ⊕ (foldMap (("?offset=" ⊕ _) ∘ show) mbOffset)
-               ⊕ (foldMap (("&limit=" ⊕ _) ∘ show ) mbLimit))
-
+-- | Runs a query for a particular file (the query can use the {{path}} template
+-- | syntax to have the file's path inserted), writing the results to a file.
+-- | The query backend will be determined by the input file path.
+-- |
+-- | The returned value is the output path returned by Quasar. For some queries
+-- | this will be the input file rather than the specified destination.
+fileQuery
+  ∷ ∀ eff
+  . PU.FilePath
+  → PU.FilePath
+  → SQL
+  → SM.StrMap String
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error PU.FilePath)
+fileQuery file dest sql vars idToken perms =
+  let backendPath = fromMaybe P.rootDir (P.parentDir file)
+  in runQuasarF idToken perms $
+    map _.out <$> QF.writeQuery backendPath dest (templated file sql) vars
 
 sample
-  ∷ forall e
-  . R.Resource
+  ∷ ∀ eff
+  . PU.FilePath
   → Int
   → Int
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) JS.JArray
-sample res offset limit =
-  sample' res (Just offset) (Just limit)
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error JS.JArray)
+sample file offset limit idToken perms =
+  runQuasarF idToken perms $ QF.readFile Readable file (Just { limit, offset })
 
 all
-  ∷ forall e
-  . R.Resource
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) JS.JArray
-all res =
-  sample' res Nothing Nothing
+  ∷ ∀ eff
+  . PU.FilePath
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error JS.JArray)
+all file idToken perms =
+  runQuasarF idToken perms $ QF.readFile Readable file Nothing
+
+templated ∷ PU.FilePath → SQL → SQL
+templated res = S.replace "{{path}}" ("`" <> P.printPath res <> "`")
 
 fields
-  ∷ forall e
-  . R.Resource
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) (Array String)
-fields res idToken perms = do
-  jarr ← sample res 0 100 idToken perms
+  ∷ ∀ eff
+  . PU.FilePath
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error (Array String))
+fields file idToken perms = runExceptT do
+  jarr ← ExceptT $ sample file 0 100 idToken perms
   case jarr of
     [] → Err.throwError $ Exn.error "empty file"
     _ → pure $ Arr.nub $ getFields =<< jarr
 
-
-extractJArray ∷ forall m. (Err.MonadError Exn.Error m) ⇒ JS.Json → m JS.JArray
-extractJArray = either (Err.throwError ∘ Exn.error) pure ∘ JS.decodeJson
-
--- The output of this function is mysterious, but luckily is used in just one place.
---
--- TODO: Rather than accumulating a an array of formatted strings, this should be refactored
--- to return an array of *arrays* of unformatted strings, which can then be formatted by the
--- client (e.g. to intercalate with dots and add backticks).
-getFields ∷ JS.Json → Array String
-getFields = Arr.filter (_ ≠ "") ∘ Arr.nub ∘ go []
   where
-  go ∷ Array String → JS.Json → Array String
-  go [] json = go [""] json
-  go acc json =
-    if JS.isObject json
-    then maybe acc (goObj acc) $ JS.toObject json
-    else if JS.isArray json
-         then maybe acc (goArr acc) $ JS.toArray json
-         else acc
-
+  -- The output of this function is mysterious, but luckily is used in just one place.
+  --
+  -- TODO: Rather than accumulating a an array of formatted strings, this should be refactored
+  -- to return an array of *arrays* of unformatted strings, which can then be formatted by the
+  -- client (e.g. to intercalate with dots and add backticks).
+  getFields ∷ JS.Json → Array String
+  getFields = Arr.filter (_ /= "") <<< Arr.nub <<< go []
     where
-    goArr ∷ Array String → JS.JArray → Array String
-    goArr acc arr =
-      Arr.concat $ go (lift2 append acc $ mkArrIxs arr) <$> arr
+    go ∷ Array String → JS.Json → Array String
+    go [] json = go [""] json
+    go acc json =
+      if JS.isObject json
+      then maybe acc (goObj acc) $ JS.toObject json
+      else if JS.isArray json
+           then maybe acc (goArr acc) $ JS.toArray json
+           else acc
+
       where
-      mkArrIxs ∷ JS.JArray → Array String
-      mkArrIxs jarr =
-        map (show ⋙ \x → "[" ⊕ x ⊕ "]") $ Arr.range 0 $ Arr.length jarr - 1
+      goArr ∷ Array String → JS.JArray → Array String
+      goArr acc arr =
+        Arr.concat $ go (lift2 append acc $ mkArrIxs arr) <$> arr
+        where
+        mkArrIxs ∷ JS.JArray → Array String
+        mkArrIxs jarr =
+          map (\x → "[" <> show x <> "]") $ Arr.range 0 $ Arr.length jarr - 1
 
-    goObj ∷ Array String → JS.JObject → Array String
-    goObj acc = Arr.concat ∘ map (goTuple acc) ∘ L.fromList ∘ SM.toList
+      goObj ∷ Array String → JS.JObject → Array String
+      goObj acc = Arr.concat <<< map (goTuple acc) <<< L.fromList <<< SM.toList
 
-    goTuple ∷ Array String → Tuple String JS.Json → Array String
-    goTuple acc (key × json) =
-      go ((\x → x ⊕ ".`" ⊕ key ⊕ "`") <$> acc) json
+      goTuple ∷ Array String → Tuple String JS.Json → Array String
+      goTuple acc (Tuple key json) =
+        go ((\x → x <> ".`" <> key <> "`") <$> acc) json
 
-executeQuery
-  ∷ forall e
-  . String
-  → Boolean
-  → SM.StrMap String
-  → R.Resource
-  → R.Resource
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX, dom ∷ DOM | e))
-      (Either String { outputResource ∷ R.Resource, plan ∷ Maybe String })
-executeQuery sql cachingEnabled varMap inputResource outputResource idToken perms = do
-  when (R.isTempFile outputResource)
-    $ void $ Aff.attempt $ forceDelete outputResource idToken perms
-
-  compiledPlan ←
-    Aff.attempt $ compile sql inputResource varMap idToken perms
-
-  ejobj ← do
-    Aff.attempt
-      $ if cachingEnabled
-        then
-          portQuery inputResource outputResource sql varMap idToken perms <#> Just
-        else
-          portView inputResource outputResource sql varMap idToken perms $> Nothing
-  pure do
-    mjobj ← lmap Exn.message ejobj
-    info ←
-      case mjobj of
-        Nothing → do
-          path ← R.getPath outputResource # either pure \_ →
-            Left "Expected output resource as file or view mount"
-          sandboxedPath ←
-            P.sandbox P.rootDir path
-              # maybe (Left "Could not sandbox output resource") pure
-          pure
-            { sandboxedPath
-            , plan: either (\_ → Nothing) Just compiledPlan
-            }
-        Just jobj → do
-          planPhases ← Arr.last <$> jobj .? "phases"
-          sandboxedPath ← do
-            pathString ← jobj .? "out"
-            path ← P.parseAbsFile pathString
-                    # maybe (Left "Invalid file from Quasar") pure
-            P.sandbox P.rootDir path
-              # maybe (Left "Could not sandbox Quasar file") pure
-          pure
-            { sandboxedPath
-            , plan: planPhases >>= (_ .? "detail") ⋙ either (const Nothing) Just
-            }
-    pure
-      { outputResource: mkOutputResource $ P.rootDir </> info.sandboxedPath
-      , plan: info.plan
-      }
-  where
-  mkOutputResource | cachingEnabled = R.File
-  mkOutputResource = R.Mount ∘ R.View
-
--- | Saves a JSON value to a file.
+-- | Saves a single JSON value to a file.
 -- |
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 save
-  ∷ forall e
+  ∷ ∀ eff
   . PU.FilePath
   → JS.Json
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) Unit
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either Exn.Error Unit)
 save path json idToken perms =
-  let apiPath = Paths.dataUrl </> PU.rootifyFile path
-  in getResponse "error while saving file"
-       (retryPut apiPath json ldJSON idToken perms)
+  runQuasarF idToken perms $ QF.writeFile path (JSON Readable [json])
 
--- | Loads a JSON value from a file.
+-- | Loads a single JSON value from a file.
 -- |
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 load
-  ∷ forall e
+  ∷ ∀ eff
   . PU.FilePath
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX | e)) (Either String JS.Json)
-load path idToken perms =
-  let apiPath = Paths.dataUrl </> PU.rootifyFile path
-  in lmap Exn.message <$> Aff.attempt (getResponse "error loading notebook" (retryGet apiPath ldJSON idToken perms))
+  → Maybe OIDC.IdToken
+  → Array Auth.PermissionToken
+  → Aff (QEff eff) (Either String JS.Json)
+load file idToken perms =
+  runQuasarF' idToken perms (QF.readFile Readable file Nothing) <#> case _ of
+    Right [file] → Right file
+    Right _ → Left "Unexpected result when loading value from file"
+    Left err → Left (QF.printQError err)
 
 -- | Returns `Nothing` in case the authorization service is not available, and `Just` in case
 -- | Quasar responded with a valid array of OIDC providers.
 retrieveAuthProviders
-  ∷ forall e
-  . Aff (RetryEffects (ajax ∷ AX.AJAX | e)) (Maybe (Array Auth.Provider))
-retrieveAuthProviders = do
-  res ← getOnce Paths.oidcProvidersUrl applicationJSON Nothing []
-  if res.status ≡ notFoundStatus
-    then pure Nothing
-    else do
-    case JS.decodeJson res.response of
-      Left parseErr → Err.throwError $ Exn.error parseErr
-      Right val → pure $ Just val
-
-
-compile
-  ∷ forall e
-  . String
-  → R.Resource
-  → SM.StrMap String
-  → Maybe Auth.IdToken
-  → Array Perm.PermissionToken
-  → Aff (RetryEffects (ajax ∷ AX.AJAX|e)) String
-compile sql res varMap idToken perms = do
-  result ←
-    getOnce path applicationJSON idToken perms
-  if not $ succeeded result.status
-    then Err.throwError $ Exn.error $ readError result.response result.response
-    else case S.stripPrefix "MongoDB\n" result.response of
-      Nothing → Err.throwError $ Exn.error "Incorrect compile response"
-      Just plan → pure plan
-  where
-  path =
-    Paths.compileUrl
-    </> PU.rootify (R.resourceDir res)
-    </> P.dir (R.resourceName res)
-    </> P.file ("?q=" ⊕ templated res sql ⊕ queryVars)
-  queryVars ∷ String
-  queryVars = maybe "" ("&" ⊕ _) $ renderQueryString varMap
+  ∷ ∀ eff
+  . Aff (QEff eff) (Either Exn.Error (Maybe (Array Auth.Provider)))
+retrieveAuthProviders =
+  runQuasarF' Nothing [] QF.authProviders <#> case _ of
+    Left (QF.Error err) → Left err
+    Left QF.NotFound → Right Nothing
+    Right providers → Right (Just providers)

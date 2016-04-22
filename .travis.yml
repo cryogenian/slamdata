@@ -23,6 +23,7 @@ before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
 script:
+  - npm run psa
   - gulp bundle-test
   - gulp property-tests
   - node test

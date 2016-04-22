@@ -31,13 +31,10 @@ import Data.Date as D
 import Data.Date.Locale as DL
 import Data.Enum as Enum
 import Data.Foldable as F
-import Data.Functor ((<$))
 import Data.Functor.Mu as Mu
 import Data.Identity (Identity)
 import Data.List as L
 import Data.NaturalTransformation as NT
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as Path
 import Data.SQL2.Literal as SQL2
 import Data.String as S
 import Data.StrMap as SM
@@ -211,8 +208,7 @@ evalEmbeddedQueries dir cardId =
       Nothing → Err.throwError $ Exn.error "Cannot evaluate markdown without a saved notebook path"
       Just dir' → do
         n ← freshInt
-        let tempPath = dir' </> Path.file ("tmp" ⊕ CID.cardIdToString cardId ⊕ "-" ⊕ show n)
-        result ← AffF.fromAff ∘ Auth.authed $ Quasar.queryPrecise tempPath code
+        result ← AffF.fromAff ∘ Auth.authed $ Quasar.queryPrecise dir' code
         either
           (Err.throwError ∘ Exn.error)
           (pure ∘ A.mapMaybe rowToLiteral)

@@ -10,9 +10,9 @@ import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import SlamData.Notebook.Card.Download.Component.State as M
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
-import Test.SlamData.Property.FileSystem.Resource (runArbResource)
+import Test.Property.Utils.Path (runArbFilePath)
 import Test.SlamData.Property.Download.Model (runArbCSVOptions, runArbJSONOptions)
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 newtype ArbState = ArbState M.State
 
@@ -24,7 +24,7 @@ instance arbitraryArbState :: Arbitrary ArbState where
     r <- { compress: _, options: _, source: _ }
          <$> arbitrary
          <*> (map (bimap runArbCSVOptions runArbJSONOptions) arbitrary)
-         <*> (map (map runArbResource) arbitrary)
+         <*> (map (map runArbFilePath) arbitrary)
     pure $ ArbState r
 
 check :: QC Unit

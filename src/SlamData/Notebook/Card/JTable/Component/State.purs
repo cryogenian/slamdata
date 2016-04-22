@@ -42,9 +42,10 @@ import Data.Foldable (maximum)
 import Data.Int as Int
 import Data.Lens ((^?), (?~), LensP, lens, _Just)
 
-import SlamData.FileSystem.Resource (Resource)
 import SlamData.Notebook.Card.JTable.Component.Query (PageStep(..))
 import SlamData.Notebook.Card.JTable.Model (Model, Result)
+
+import Utils.Path (FilePath)
 
 -- | The state for the JTable card component.
 type State =
@@ -85,13 +86,13 @@ _isEnteringPageSize = lens _.isEnteringPageSize (_ { isEnteringPageSize = _ })
 
 -- | The card input state.
 type Input =
-  { resource :: Resource
+  { resource :: FilePath
   , tag :: Maybe String
   , size :: Int
   }
 
 -- | The resource to load pages of data from.
-_resource :: LensP Input Resource
+_resource :: LensP Input FilePath
 _resource = lens _.resource (_ { resource = _ })
 
 -- | The total size of the resource's result set.

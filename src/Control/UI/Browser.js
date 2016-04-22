@@ -28,19 +28,3 @@ exports.setTitle = function(t) {
         document.title = t;
     };
 };
-
-exports.encodeURIComponent = function(str) {
-    if (typeof window !== "undefined") {
-        return window.encodeURIComponent(str);
-    } else {
-        return global.encodeURIComponent(str);
-    }
-};
-
-exports.decodeURIComponent = function(str) {
-    if (typeof window !== "undefined") {
-        return window.decodeURIComponent(str);
-    } else {
-        return global.decodeURIComponent(str);
-    }
-};

@@ -40,8 +40,6 @@ import OIDCCryptUtils as OIDC
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
-import Quasar.Auth.OpenIDConfiguration (getOpenIDConfiguration)
-import Quasar.Auth.Provider (Provider(..))
 
 import SlamData.AuthRedirect.RedirectHashPayload as Payload
 
@@ -114,27 +112,25 @@ verifyRedirect st issuer jwk = do
 main :: Eff RedirectEffects Unit
 main = do
   -- We're getting token too fast. It isn't valid until next second (I think)
-  Aff.runAff Exn.throwException (\_ -> pure unit)  do
+  Aff.runAff Exn.throwException (const (pure unit)) do
     state <- liftEff retrieveRedirectState
     -- First, retrieve the provider that matches our stored ClientID.
-    Provider provider <- do
+    { openIDConfiguration } <- do
       providers <-
         Quasar.retrieveAuthProviders
-          >>= maybe
+          >>= either (const Nothing) id
+          >>> maybe
                 (liftEff
                  $ Exn.throw "Failed to retrieve auth providers from Quasar")
                 pure
 
-      F.find (\(Provider pr) -> pr.clientID == state.clientID) providers
+      F.find (\{ clientID } -> clientID == state.clientID) providers
         # maybe
             (liftEff
              $ Exn.throw
              $ "Could not find provider matching client ID '"
              <> OIDC.runClientID state.clientID <> "'")
             pure
-
-    let openIDConfiguration =
-          getOpenIDConfiguration provider.openIDConfiguration
 
     liftEff do
       -- Try to verify the IdToken against each of the provider's jwks,
@@ -145,7 +141,6 @@ main = do
             # foldl ((<|>)) empty
             # MBT.runMaybeT
           >>= maybe (Exn.throw "Failed to verify redirect") pure
-
 
       Auth.storeIdToken state.payload.idToken
       window

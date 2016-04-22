@@ -258,7 +258,7 @@ eval (NameTyped str next) = do
   H.modify validate
   pure next
 eval (DirTyped str next) = do
-  maybe (pure unit) (dirItemClicked <<< R.mkDirectory <<< Right) do
+  maybe (pure unit) (dirItemClicked <<< R.mkDirectory <<< Left) do
     d <- parseAbsDir str
     s <- sandbox rootDir d
     pure $ rootDir </> s
@@ -280,10 +280,10 @@ eval (Init next) = do
 dirItemClicked :: R.Resource -> DSL Unit
 dirItemClicked res =
   case R.getPath res of
-    Left _ -> pure unit
-    Right dir -> do
+    Right _ -> pure unit
+    Left dir -> do
       siblings <- H.fromAff $ Auth.authed $ API.children dir
       H.modify
         $ (_dir .~ dir)
         <<< (_showList .~ false)
-        <<< (_siblings .~ siblings)
+        <<< (_siblings .~ either (const []) id siblings)

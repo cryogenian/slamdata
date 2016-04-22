@@ -8,7 +8,6 @@ import Prelude
 import Data.Either as E
 import Data.Eq1 (eq1)
 import Data.Functor ((<$))
-import Data.List as L
 import Data.SQL2.Literal (LiteralF, renderLiteralF, parseLiteralF, arbitraryLiteralF)
 import Test.StrongCheck ((<?>))
 import Test.StrongCheck (class Arbitrary, QC, Result(Failed), quickCheck, arbitrary) as SC

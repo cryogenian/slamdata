@@ -1,8 +1,6 @@
 module Test.SlamData.Feature.Test.FlipDeck where
 
-import SlamData.Prelude
-
-import Data.String as Str
+import SlamData.Prelude (Unit, ($), bind, unit, pure)
 
 import Selenium.Monad (later, sequence)
 import Test.Feature.Log (successMsg, warnMsg)

@@ -44,7 +44,7 @@ comp = H.component { render, eval }
 
 eval :: Natural Query (H.ComponentDSL State Query Slam)
 eval (SourceTyped s next) = do
-  H.modify (_source .~ maybe (Left s) (Right <<< either File Directory)
+  H.modify (_source .~ maybe (Left s) (Right <<< either Directory File)
           (parseAnyPath s))
   H.modify validate
   pure next

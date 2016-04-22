@@ -6,8 +6,11 @@ module SlamData.Notebook.Card.OpenResource.Component
 
 import SlamData.Prelude
 
-import Data.Array as Arr
+import Control.Monad.Eff.Exception as Exn
+
 import Data.Argonaut (decodeJson, encodeJson)
+import Data.Array as Arr
+import Data.Foldable as F
 import Data.Lens ((?~), (.~))
 import Data.Path.Pathy (printPath, peel)
 
@@ -29,12 +32,12 @@ import SlamData.Notebook.Card.OpenResource.Component.State (State, initialState,
 import SlamData.Notebook.Card.Port as Port
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
-import SlamData.Notebook.Card.Common.EvalQuery (runCardEvalT, liftWithCanceler')
-
-import Utils.Path as Up
+import SlamData.Notebook.Card.Common.EvalQuery (liftWithCanceler')
 
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
+
+import Utils.Path as PU
 
 type ORHTML = H.ComponentHTML QueryP
 type ORDSL = H.ComponentDSL State QueryP Slam
@@ -86,7 +89,7 @@ render state =
   selectedLabel ∷ String
   selectedLabel =
     fromMaybe ""
-    $ map R.resourcePath state.selected
+    $ map printPath state.selected
     <|> (pure $ printPath state.browsing)
 
   parentDir ∷ Maybe R.Resource
@@ -96,7 +99,7 @@ render state =
   renderItem r =
     HH.div
       [ HP.classes ( [ B.listGroupItem ]
-                     ⊕ ((guard (Just r ≡ state.selected)) $> B.active)
+                     ⊕ ((guard (Just (R.getPath r) ≡ (Right <$> state.selected))) $> B.active)
                      ⊕ ((guard (R.hiddenTopLevel r)) $> Rc.itemHidden))
       , HE.onClick (HE.input_ (right ∘ (ResourceSelected r)))
       , ARIA.label $ "Select " ⊕ R.resourcePath r
@@ -123,31 +126,39 @@ cardEval (Eq.EvalCard info k) = do
     Nothing → pure $ k { output: Nothing, messages: [ ] }
     Just resource → do
       msg ←
-        Quasar.messageIfResourceNotExists
+        Quasar.messageIfFileNotFound
           resource
-          ("File " ⊕ R.resourcePath resource ⊕ " doesn't exist")
+          ("File " ⊕ printPath resource ⊕ " doesn't exist")
         # Auth.authed
         # liftWithCanceler'
       case msg of
-        Nothing →
-          pure $ k { output:
-                       Just $ Port.TaggedResource { resource, tag: Nothing }
-                   , messages: [ ]
-                   }
-        Just err →
-          pure $ k { output: Just Port.Blocked
-                   , messages: [ Left err ]
-                   }
+        Right Nothing →
+          pure $ k
+            { output: Just $ Port.TaggedResource { resource, tag: Nothing }
+            , messages: [ ]
+            }
+        Right (Just err) →
+          pure $ k
+            { output: Just Port.Blocked
+            , messages: [ Left err ]
+            }
+        Left err →
+          pure $ k
+            { output: Just Port.Blocked
+            , messages: [ Left (Exn.message err) ]
+            }
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.Save k) = do
   mbRes ← H.gets _.selected
   k <$> case mbRes of
-    Just res → pure $ encodeJson mbRes
+    Just res → pure $ encodeJson $ printPath <$> mbRes
     Nothing → do
       br ← H.gets _.browsing
       pure $ encodeJson $ R.Directory br
 cardEval (Eq.Load js next) = do
-  for_ (decodeJson js) resourceSelected
+  for_ (decodeJson js) \path ->
+    for_ (PU.parseFilePath path) \fp ->
+      resourceSelected (R.File fp)
   pure next
 cardEval (Eq.SetupCard info next) = pure next
 cardEval (Eq.SetCanceler _ next) = pure next
@@ -168,14 +179,14 @@ openResourceEval (Init next) = do
 resourceSelected ∷ R.Resource → ORDSL Unit
 resourceSelected r = do
   case R.getPath r of
-    Left fp → do
+    Right fp → do
       for_ (fst <$> peel fp) \dp → do
         oldBrowsing ← H.gets _.browsing
         unless (oldBrowsing ≡ dp) do
           H.modify (_browsing .~ dp)
           updateItems
-      H.modify (_selected ?~ r)
-    Right dp → do
+      H.modify (_selected ?~ fp)
+    Left dp → do
       H.modify (  (_browsing .~ dp)
                 ∘ (_selected .~ Nothing))
       updateItems
@@ -190,13 +201,13 @@ updateItems = do
       # Auth.authed
       # liftWithCanceler'
   mbSel ← H.gets _.selected
-  H.modify (_items .~ cs)
+  H.modify (_items .~ either (const []) id cs)
   H.modify (_loading .~ false)
 
 rearrangeItems ∷ ORDSL Unit
 rearrangeItems = do
-  mbSel ← H.gets _.selected
   is ← H.gets _.items
+  mbSel ← (\ms → ms >>= findRes is) <$> H.gets _.selected
   let
     withoutSelected =
       Arr.filter (\x → Just x ≠ mbSel) is
@@ -207,6 +218,10 @@ rearrangeItems = do
   HU.forceRerender
 
   where
+  findRes ∷ Array R.Resource → PU.FilePath → Maybe R.Resource
+  findRes rs path =
+    let rpath = Right path
+    in F.find (\r → R.getPath r == rpath) rs
   sortFn ∷ R.Resource → R.Resource → Ordering
   sortFn a b | R.hiddenTopLevel a && R.hiddenTopLevel b = compare a b
   sortFn a b | R.hiddenTopLevel a = GT

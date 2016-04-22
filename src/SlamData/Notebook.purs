@@ -73,7 +73,7 @@ routeSignal driver = do
     fs ← liftEff detectBrowserFeatures
     driver $ Draftboard.toDeck $ Deck.ExploreFile fs path
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
-      $ parentURL $ Left path
+      $ parentURL $ Right path
     driver $ Draftboard.toRename $ Rename.SetText $ Config.newNotebookName
 
   notebook
@@ -83,7 +83,7 @@ routeSignal driver = do
     → Port.VarMap
     → Aff SlamDataEffects Unit
   notebook path action viewing varMap = do
-    let name = UP.getNameStr $ Right path
+    let name = UP.getNameStr $ Left path
         accessType = toAccessType action
     currentPath ← driver $ Draftboard.fromDeck Deck.GetNotebookPath
     currentVarMap ← driver $ Draftboard.fromDeck Deck.GetGlobalVarMap
@@ -101,4 +101,4 @@ routeSignal driver = do
     driver $ Draftboard.toDraftboard $ Draftboard.SetAccessType accessType
     driver $ Draftboard.toDeck $ Deck.SetGlobalVarMap varMap
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
-      $ parentURL $ Right path
+      $ parentURL $ Left path

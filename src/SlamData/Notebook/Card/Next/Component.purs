@@ -18,16 +18,14 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Notebook.Card.CardType (cardName, cardGlyph, CardType(..), insertableCardTypes)
+import SlamData.Notebook.Card.CardType (cardName, cardGlyph, insertableCardTypes)
+import SlamData.Notebook.Card.CardType as Ct
 import SlamData.Notebook.Card.Common.EvalQuery as Ec
-import SlamData.Notebook.Card.Component
-  (makeCardComponent, makeQueryPrism, _NextState, _NextQuery)
+import SlamData.Notebook.Card.Component (makeCardComponent, makeQueryPrism, _NextState, _NextQuery)
 import SlamData.Notebook.Card.Component as Cc
-import SlamData.Render.Common (row, glyph)
-import SlamData.Render.CSS as Rc
 import SlamData.Notebook.Card.Next.Component.Query (QueryP, Query(AddCard, SetAvailableTypes, SetMessage), _AddCardType)
 import SlamData.Notebook.Card.Next.Component.State (State, _message, _types, initialState)
-import SlamData.Notebook.Card.CardType as Ct
+import SlamData.Render.CSS as Rc
 
 type NextHTML = H.ComponentHTML QueryP
 type NextDSL = H.ComponentDSL State QueryP Slam

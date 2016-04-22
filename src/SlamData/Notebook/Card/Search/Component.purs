@@ -22,12 +22,14 @@ module SlamData.Notebook.Card.Search.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
 import Control.Monad.Writer.Class as WC
 
 import Data.Argonaut (encodeJson, decodeJson)
-import Data.Lens ((.~), preview)
+import Data.Lens ((.~))
 import Data.StrMap as SM
+import Data.Path.Pathy as P
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -39,7 +41,6 @@ import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
 
 import SlamData.Effects (Slam)
-import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Card.CardType as CT
 import SlamData.Notebook.Card.Common.EvalQuery (liftWithCanceler', temporaryOutputResource, runCardEvalT)
 import SlamData.Notebook.Card.Component as NC
@@ -115,49 +116,48 @@ cardEval q =
             # lift
             >>= either (\_ → EC.throwError "Incorrect query string") pure
 
-        Quasar.messageIfResourceNotExists
+        Quasar.messageIfFileNotFound
             resource
-            ("Input resource " ⊕ R.resourcePath resource ⊕ " doesn't exist")
+            ("Input resource " ⊕ P.printPath resource ⊕ " doesn't exist")
           # Auth.authed
           # liftWithCanceler'
           # lift
-          >>= traverse_ EC.throwError
+          >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
+
         fields ←
           Quasar.fields resource
             # Auth.authed
             # liftWithCanceler'
             # lift
+            >>= either (EC.throwError <<< Exn.message) pure
 
         let
           template = Search.queryToSQL fields query
           sql = Quasar.templated resource template
-          tempOutputResource = R.Mount $ R.View $ temporaryOutputResource info
+          outputResource = temporaryOutputResource info
 
         WC.tell ["Generated SQL: " ⊕ sql]
 
-        { plan, outputResource } ←
-          Quasar.executeQuery
-            template
-            false
-            SM.empty
-            resource
-            tempOutputResource
-            # Auth.authed
-            # liftWithCanceler'
-            # lift
-            >>= either (\err → EC.throwError $ "Error in query: " ⊕ err) pure
+        plan ← lift $ liftWithCanceler' $ Auth.authed $
+          Quasar.compile (Right resource) sql SM.empty
 
-        for_ plan \p → WC.tell ["Plan: " ⊕ p]
-        Quasar.messageIfResourceNotExists
+        case plan of
+          Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
+          Right p → WC.tell ["Plan: " ⊕ p]
+
+        lift $ liftWithCanceler' $ Auth.authed $
+          Quasar.viewQuery (Right resource) outputResource template SM.empty
+
+        Quasar.messageIfFileNotFound
             outputResource
             "Error making search temporary resource"
           # Auth.authed
           # liftWithCanceler'
           # lift
-          >>= traverse_ EC.throwError
+          >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
         pure $ Port.TaggedResource { resource: outputResource, tag: pure sql }
     NC.EvalCard _ k →
-      pure $ k { output: Nothing, messages: [Left  "expected a Resource input"] }
+      pure $ k { output: Nothing, messages: [Left "expected a Resource input"] }
     NC.SetupCard _ next →
       pure next
     NC.NotifyRunCard next →

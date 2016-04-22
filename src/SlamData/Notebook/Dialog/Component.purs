@@ -33,7 +33,7 @@ import Data.Either.Nested (Either3)
 import Data.Functor.Coproduct.Nested (Coproduct3, coproduct3)
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, (:>), cpL, cpR, prjQuery, prjSlot)
+import Halogen.Component.ChildPath (ChildPath, (:>), cpL, cpR)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP

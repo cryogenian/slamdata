@@ -13,7 +13,7 @@ import Utils.Path as Up
 type State =
   { items ∷ Array R.Resource
   , browsing ∷ Up.DirPath
-  , selected ∷ Maybe R.Resource
+  , selected ∷ Maybe Up.FilePath
   , loading ∷ Boolean
   }
 

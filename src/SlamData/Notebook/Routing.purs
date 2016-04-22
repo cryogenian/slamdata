@@ -25,8 +25,6 @@ module SlamData.Notebook.Routing
 
 import SlamData.Prelude
 
-import Control.UI.Browser as Browser
-
 import Data.Foldable as F
 import Data.List as L
 import Data.Map as Map
@@ -199,5 +197,5 @@ renderVarMapQueryString varMap =
       SM.foldMap $ \key val ->
         [ key
             <> "="
-            <> Browser.encodeURIComponent (Port.renderVarMapValue val)
+            <> Global.encodeURIComponent (Port.renderVarMapValue val)
         ]

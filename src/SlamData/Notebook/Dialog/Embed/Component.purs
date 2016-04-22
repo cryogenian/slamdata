@@ -18,7 +18,7 @@ module SlamData.Notebook.Dialog.Embed.Component where
 
 import SlamData.Prelude
 
-import Control.UI.Browser (select, encodeURIComponent)
+import Control.UI.Browser (select)
 import Control.UI.ZClipboard as Z
 
 import Data.Foldable as F
@@ -161,7 +161,7 @@ render { url, varMap } =
   decls :: Port.VarMap -> Array String
   decls =
     SM.foldMap \k v ->
-      [ declVar k $ quotes $ encodeURIComponent $ Port.renderVarMapValue v
+      [ declVar k $ quotes $ Global.encodeURIComponent $ Port.renderVarMapValue v
       ]
 
 eval :: Natural Query (H.ComponentDSL State Query Slam)

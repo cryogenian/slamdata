@@ -39,12 +39,13 @@
     "purescript-oidc-crypt-utils": "^1.0.0",
     "purescript-pathy": "^0.3.0",
     "purescript-profunctor-lenses": "^0.3.3",
+    "purescript-quasar": "^1.0.0",
     "purescript-routing": "^0.4.0",
     "purescript-search": "^0.6.0",
     "purescript-these": "^0.3.0",
     "purescript-timers": "^1.0.0",
     "purescript-tuples": "^0.4.0",
-    "purescript-uri": "^0.2.0",
+    "purescript-uri": "^0.3.0",
     "purescript-void": "^0.3.0",
     "purescript-zclipboard": "^0.3.0"
   },
@@ -62,6 +63,8 @@
     "purescript-webdriver": "^0.18.0"
   },
   "resolutions": {
-    "purescript-profunctor-lenses": "^0.4.2"
+    "purescript-profunctor-lenses": "^0.4.2",
+    "purescript-nonempty": "^0.2.0",
+    "purescript-uri": "^0.3.0"
   }
 }

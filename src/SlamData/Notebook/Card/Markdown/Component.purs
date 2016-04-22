@@ -23,7 +23,6 @@ module SlamData.Notebook.Card.Markdown.Component
 
 import SlamData.Prelude
 
-import Data.Array as A
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.StrMap as SM
 
@@ -31,15 +30,15 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
+import SlamData.Effects (Slam)
 import SlamData.Notebook.Card.CardId (CardId, runCardId)
+import SlamData.Notebook.Card.CardType as Ct
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalResult)
 import SlamData.Notebook.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import SlamData.Notebook.Card.Markdown.Component.Query (QueryP)
 import SlamData.Notebook.Card.Markdown.Component.State (State, StateP, initialState, formStateToVarMap)
-import SlamData.Notebook.Card.Markdown.Model (Model, decode, encode)
+import SlamData.Notebook.Card.Markdown.Model (decode, encode)
 import SlamData.Notebook.Card.Port as Port
-import SlamData.Notebook.Card.CardType as Ct
-import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
 
 import Text.Markdown.SlamDown.Halogen.Component as SD

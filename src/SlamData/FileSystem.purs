@@ -21,7 +21,7 @@ import SlamData.Prelude
 
 import Ace.Config as AceConfig
 
-import Control.Monad.Aff (Aff, Canceler, cancel, forkAff, attempt)
+import Control.Monad.Aff (Aff, Canceler, cancel, forkAff)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -138,7 +138,7 @@ checkMount
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
 checkMount path driver = do
-  result ← attempt $ Auth.authed $ Quasar.mountInfo path
+  result ← Auth.authed $ Quasar.mountInfo path
   case result of
     Left _ → pure unit
     Right _ → driver $ left $ action $ SetIsMount true
@@ -156,7 +156,7 @@ listPath query deep var dir driver = do
   modifyVar (_1 <>~ canceler) var
   where
   goDeeper = do
-    (attempt $ Auth.authed $ Quasar.children dir) >>= either sendError getChildren
+    Auth.authed (Quasar.children dir) >>= either sendError getChildren
     modifyVar (_2 %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
     Tuple c r ← takeVar var
     if (foldl (+) zero $ M.values r) ≡ zero
@@ -176,7 +176,7 @@ listPath query deep var dir driver = do
 
   getChildren ∷ Array Resource → Aff SlamDataEffects Unit
   getChildren ress = do
-    let next = mapMaybe (either (const Nothing) Just <<< getPath) ress
+    let next = mapMaybe (either Just (const Nothing) <<< getPath) ress
         toAdd = map Item $ filter (filterByQuery query) ress
 
     driver $ toListing $ Listing.Adds toAdd
@@ -208,4 +208,4 @@ splitQuery q =
       (searchPath q >>= parseAbsDir >>= sandbox rootDir)
   query = do
     guard $ isSearchQuery q
-    pure $ hidePath (renderPath $ Right path) (strQuery q)
+    pure $ hidePath (renderPath $ Left path) (strQuery q)

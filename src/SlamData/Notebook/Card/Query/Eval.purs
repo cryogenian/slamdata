@@ -21,6 +21,7 @@ module SlamData.Notebook.Card.Query.Eval
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Writer.Class as WC
@@ -38,7 +39,6 @@ import Halogen (query, action, request, fromEff)
 import Quasar.Aff as Quasar
 import Quasar.Auth as Auth
 
-import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Card.Ace.Component (AceDSL)
 import SlamData.Notebook.Card.Common.EvalQuery as CEQ
 import SlamData.Notebook.Card.Port as Port
@@ -53,27 +53,32 @@ queryEval info sql =
       pure { output: Nothing, messages: [] }
     _ → do
       addCompletions varMap
-      CEQ.runCardEvalT  do
-        { plan, outputResource } ←
-          Quasar.executeQuery
+      CEQ.runCardEvalT do
+
+        plan ← lift $ CEQ.liftWithCancelerP $ Auth.authed $
+          Quasar.compile backendPath sql varMap
+
+        Quasar.viewQuery
+            backendPath
+            outputResource
             sql
-            false
             varMap
-            inputResource
-            tempOutputResource
           # Auth.authed
           # CEQ.liftWithCancelerP
           # lift
-          >>= either EC.throwError pure
-        Quasar.messageIfResourceNotExists
+          >>= either (EC.throwError <<< Exn.message) pure
+
+        Quasar.messageIfFileNotFound
             outputResource
             "Requested collection doesn't exist"
           # Auth.authed
           # CEQ.liftWithCancelerP
           # lift
-          >>= traverse_ EC.throwError
+          >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
+
         for_ plan \p → WC.tell ["Plan: " ⊕ p]
-        pure $ Port.TaggedResource {resource: outputResource, tag: pure sql}
+
+        pure $ Port.TaggedResource { resource: outputResource, tag: pure sql }
   where
   varMap ∷ SM.StrMap String
   varMap =
@@ -81,8 +86,8 @@ queryEval info sql =
     >>= L.preview Port._VarMap
     # maybe SM.empty (map Port.renderVarMapValue)
 
-  tempOutputResource = R.Mount $ R.View $ CEQ.temporaryOutputResource info
-  inputResource = R.parent tempOutputResource
+  outputResource = CEQ.temporaryOutputResource info
+  backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir outputResource)
 
 querySetup ∷ CEQ.CardSetupInfo → AceDSL Unit
 querySetup { inputPort, notebookPath } =
@@ -91,16 +96,12 @@ querySetup { inputPort, notebookPath } =
       addCompletions varMap
 
     Port.TaggedResource {resource} → void $ runMaybeT do
-      resParent ←
-        MaybeT
-          $ pure
-          $ L.preview R._filePath resource
-          >>= Path.parentDir
+      resParent ← MaybeT $ pure $ Path.parentDir resource
 
       let
         path = if notebookPath ≡ pure resParent
-                 then R.resourceName resource
-                 else R.resourcePath resource
+                 then Path.runFileName (Path.fileName resource)
+                 else Path.printPath resource
       editor ←
         (MaybeT $ query unit $ request Ace.GetEditor)
         >>= (MaybeT ∘ pure)

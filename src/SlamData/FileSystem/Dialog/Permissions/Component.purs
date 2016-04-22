@@ -14,7 +14,6 @@ import Control.Monad.Maybe.Trans as Mt
 import Control.UI.ZClipboard as Z
 
 import Data.Array as Arr
-import Data.Functor ((<$))
 import Data.Functor.Coproduct.Nested (coproduct6)
 import Data.NonEmpty as Ne
 import Data.Lens ((.~), (?~))

@@ -17,8 +17,6 @@ limitations under the License.
 module Control.UI.Browser
   ( locationObject
   , replaceLocation
-  , decodeURIComponent
-  , encodeURIComponent
   , setLocation
   , locationString
   , select
@@ -75,6 +73,3 @@ foreign import select :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
 foreign import newTab :: forall e. String -> Eff (dom :: DOM | e) Unit
 foreign import clearValue :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
 foreign import setTitle :: forall e. String -> Eff (dom :: DOM | e) Unit
-
-foreign import decodeURIComponent :: String -> String
-foreign import encodeURIComponent :: String -> String

@@ -19,7 +19,6 @@ module SlamData.Notebook.StyleLoader where
 import SlamData.Prelude
 
 import Control.Monad.Eff (Eff)
-import Control.UI.Browser (decodeURIComponent)
 
 import Data.Array as Arr
 import Data.Nullable as N
@@ -61,7 +60,7 @@ retrieveStyles =
     Rgx.match stylesRgx str
       >>= flip Arr.index 1
       >>= id
-      <#> decodeURIComponent
+      <#> Global.decodeURIComponent
 
   stylesRgx :: Rgx.Regex
   stylesRgx =

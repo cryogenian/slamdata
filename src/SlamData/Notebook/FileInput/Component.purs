@@ -46,13 +46,16 @@ import Network.HTTP.Affjax (AJAX)
 import Quasar.Aff as API
 import Quasar.Auth (retrieveIdToken)
 import Quasar.Auth.Permission (retrievePermissionTokens)
+import Quasar.Types (FilePath)
 
 import SlamData.FileSystem.Resource as R
 import SlamData.Render.CSS as CSS
 
+import Utils.Path as PU
+
 type State =
   { files :: Array R.Resource
-  , selectedFile :: Either String R.Resource
+  , selectedFile :: Either String FilePath
   , currentFilePath :: String
   , showFiles :: Boolean
   }
@@ -68,7 +71,7 @@ initialState =
 data Query a
   = ToggleFileList a
   | SelectFile R.Resource a
-  | GetSelectedFile (Either String R.Resource -> a)
+  | GetSelectedFile (Either String FilePath -> a)
   | UpdateFile String a
 
 type Effects e =
@@ -107,14 +110,17 @@ eval q =
               pure Nothing
         CR.runProcess (fileProducer CR.$$ fileConsumer)
       pure next
-    SelectFile r next -> do
-      H.modify \state ->
-        state
-          { selectedFile = pure r
-          , currentFilePath = R.resourcePath r
-          , showFiles = false
-          }
-      pure next
+    SelectFile r next ->
+      case R.getPath r of
+        Left _ -> pure next
+        Right file -> do
+          H.modify \state ->
+            state
+              { selectedFile = pure file
+              , currentFilePath = R.resourcePath r
+              , showFiles = false
+              }
+          pure next
     GetSelectedFile k ->
       k <$> H.gets _.selectedFile
     UpdateFile "" next -> do
@@ -124,8 +130,8 @@ eval q =
       pure next
     UpdateFile path next -> do
       H.modify $ _{ selectedFile =
-                     lmap (\x -> "\"" <> x <> "\" is incorrect path for file")
-                     $ R.fileResourceFromString path
+                     lmap (\x -> "\"" <> x <> "\" is an incorrect path for a file")
+                     $ fileFromString path
                 , currentFilePath = path
                 }
       pure next
@@ -180,3 +186,6 @@ renderItem r =
     ]
     [ HH.text $ R.resourcePath r
     ]
+
+fileFromString :: String -> Either String FilePath
+fileFromString path = maybe (Left path) Right (PU.parseFilePath path)

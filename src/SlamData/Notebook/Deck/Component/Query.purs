@@ -28,7 +28,6 @@ import Halogen (ChildF)
 import SlamData.Notebook.AccessType as AT
 import SlamData.Notebook.Card.CardId as CID
 import SlamData.Notebook.Card.CardType as CT
-import SlamData.Notebook.Card.Component (CardQueryP)
 import SlamData.Notebook.Card.Port.VarMap as Port
 import SlamData.Notebook.Deck.Component.ChildSlot (ChildSlot, ChildQuery)
 

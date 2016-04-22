@@ -23,12 +23,9 @@ module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (attempt)
-import Control.Monad.Cont.Trans as Ct
+import Control.Monad.Eff.Exception (error)
 
-import Data.Array ((..), length, null, filter)
-import Data.Foldable as F
-import Data.Identity as Id
+import Data.Array ((..), length)
 import Data.Lens (TraversalP, (^.), (.~))
 import Data.Lens.Index (ix)
 import Data.Path.Pathy (dir, (</>))
@@ -47,7 +44,7 @@ import Quasar.Auth as Auth
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
-import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State (MountHost, MountProp, State, _host, _hosts, _password, _path, _port, _props, _user, hostsFromURI, initialMountHost, initialMountProp, initialState, isEmptyHost, isEmptyProp, mkURI, passwordFromURI, pathFromURI, processState, propsFromURI, rxEmpty, stateFromURI, userFromURI)
+import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State (MountHost, MountProp, State, _host, _hosts, _password, _path, _port, _props, _user, initialState, processState, fromConfig, toConfig)
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Render.CSS as Rc
 
@@ -71,25 +68,18 @@ render state =
 
 eval :: Natural Query (H.ComponentDSL State Query Slam)
 eval (ModifyState f next) = H.modify (processState <<< f) $> next
-eval (Validate continue) = do
-  state <- H.get
-  pure $ continue $ Id.runIdentity $ flip Ct.runContT pure $ Ct.callCC \k -> do
-    when (null (filter (not isEmptyHost) state.hosts))
-      $ k $ Just "Please enter at least one host"
-    when (userSectionTyped state) do
-      when (state.user == "") $ k $ Just "Please enter user name"
-      when (state.password == "") $ k $ Just "Please enter password"
-      when (state.path == "") $ k $ Just "Please enter authentication database name"
-    pure Nothing
-  where
-  userSectionTyped state =
-    F.any (_ /= "") [state.user, state.password]
+eval (Validate k) =
+  k <<< either Just (const Nothing) <<< toConfig <$> H.get
 
 eval (Submit parent name k) = do
   st <- H.get
-  let path = parent </> dir name
-  result <- H.fromAff $ attempt $ Auth.authed $ API.saveMount path (mkURI st)
-  pure $ k $ map (const (Database path)) result
+  case toConfig st of
+    Left err ->
+      pure $ k $ Left $ error err
+    Right config → do
+      let path = parent </> dir name
+      result <- H.fromAff $ Auth.authed $ API.saveMount path config
+      pure $ k $ map (const (Database path)) result
 
 hosts :: State -> H.ComponentHTML Query
 hosts state =

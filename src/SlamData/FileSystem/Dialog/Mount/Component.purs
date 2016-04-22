@@ -178,14 +178,19 @@ eval (Save k) = do
   { parent, name, new } <- H.get
   H.modify (_saving .~ true)
   newName <- H.fromAff
-    if new then Auth.authed (Api.getNewName parent name) else pure name
-  result <- querySettings (H.request (SQ.Submit parent newName))
-  mount <- case result of
-    Just (Right m) -> pure (Just m)
-    Just (Left err) -> H.modify (_message ?~ formatError err) $> Nothing
-    Nothing -> pure Nothing
-  H.modify (_saving .~ false)
-  pure $ k mount
+    if new then Auth.authed (Api.getNewName parent name) else pure (pure name)
+  case newName of
+    Left err → do
+      H.modify (_message ?~ formatError err)
+      pure $ k Nothing
+    Right newName' -> do
+      result <- querySettings (H.request (SQ.Submit parent newName'))
+      mount <- case result of
+        Just (Right m) -> pure (Just m)
+        Just (Left err) -> H.modify (_message ?~ formatError err) $> Nothing
+        Nothing -> pure Nothing
+      H.modify (_saving .~ false)
+      pure $ k mount
 
 peek :: forall x. ChildQuery x -> DSL Unit
 peek = coproduct (coproduct peekSQ (peekAce <<< H.runChildF)) peekSQ

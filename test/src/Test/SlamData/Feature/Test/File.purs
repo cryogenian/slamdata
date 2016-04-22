@@ -18,7 +18,7 @@ module Test.SlamData.Feature.Test.File where
 import SlamData.Prelude
 
 import Selenium.Monad (later)
-import Test.Feature.Log (successMsg, errorMsg, warnMsg)
+import Test.Feature.Log (successMsg, warnMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact

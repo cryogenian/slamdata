@@ -20,14 +20,16 @@ import SlamData.Prelude
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Lens (LensP, lens)
+import Data.Path.Pathy as Pathy
 
 import SlamData.Download.Model as D
-import SlamData.FileSystem.Resource (Resource)
+
+import Utils.Path as PU
 
 type State =
   { compress :: Boolean
   , options :: Either D.CSVOptions D.JSONOptions
-  , source :: Maybe Resource
+  , source :: Maybe PU.FilePath
   }
 
 initialState :: State
@@ -50,12 +52,16 @@ encode :: State -> Json
 encode s
    = "compress" := s.compress
   ~> "options" := s.options
-  ~> "source" := s.source
+  ~> "source" := (Pathy.printPath <$> s.source)
   ~> jsonEmptyObject
 
 decode :: Json -> Either String State
-decode = decodeJson >=> \obj ->
-  { compress: _, options: _, source: _ }
-    <$> obj .? "compress"
-    <*> obj .? "options"
-    <*> obj .? "source"
+decode = decodeJson >=> \obj -> do
+  compress ← obj .? "compress"
+  options ← obj .? "options"
+  source ← traverse parsePath =<< obj .? "source"
+  pure { compress, options, source }
+
+parsePath ∷ String → Either String PU.FilePath
+parsePath =
+  maybe (Left "could not parse source file path") Right <<< PU.parseFilePath

@@ -23,6 +23,9 @@ module SlamData.Notebook.Card.JTable.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Eff.Exception (message)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+
 import Data.Argonaut.Core as JSON
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
@@ -67,34 +70,37 @@ evalCard (NotifyStopCard next) =
 evalCard (EvalCard value k) =
   case value.inputPort of
     Just (TaggedResource { tag, resource }) → do
-      oldInput ← H.gets _.input
+      done ← runExceptT do
+        oldInput ← lift $ H.gets _.input
 
-      when (((oldInput <#> _.resource) ≠ pure resource)
-            || ((oldInput >>= _.tag) ≠ tag))
-        $ H.set initialState
+        when (((oldInput <#> _.resource) ≠ pure resource)
+              || ((oldInput >>= _.tag) ≠ tag))
+          $ lift $ H.set initialState
 
-      size ← H.fromAff $ Auth.authed (Quasar.count resource)
+        size ← ExceptT $ H.fromAff $ Auth.authed (Quasar.count resource)
 
-      H.modify $ _input ?~ { resource, size, tag }
+        lift $ H.modify $ _input ?~ { resource, size, tag }
 
-      p ← H.gets pendingPageInfo
+        p ← lift $ H.gets pendingPageInfo
 
-      items ←
-        H.fromAff
-        $ Auth.authed
-        $ Quasar.sample
-            resource
-            ((p.page - 1) * p.pageSize)
-            p.pageSize
+        items ← ExceptT
+          $  H.fromAff
+          $ Auth.authed
+          $ Quasar.sample
+              resource
+              ((p.page - 1) * p.pageSize)
+              p.pageSize
 
-      H.modify
-        $ (_isEnteringPageSize .~ false)
-        ∘ (_result ?~
-              { json: JSON.fromArray items
-              , page: p.page
-              , pageSize: p.pageSize
-              })
-      pure $ k (result value.inputPort)
+        lift $ H.modify
+          $ (_isEnteringPageSize .~ false)
+          ∘ (_result ?~
+                { json: JSON.fromArray items
+                , page: p.page
+                , pageSize: p.pageSize
+                })
+      case done of
+        Left err → pure $ k $ error (message err)
+        Right _ → pure $ k (result value.inputPort)
 
     Just Blocked → do
       H.set initialState

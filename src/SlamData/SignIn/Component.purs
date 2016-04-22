@@ -29,7 +29,6 @@ module SlamData.SignIn.Component
 import SlamData.Prelude
 
 import Control.UI.Browser (reload)
-import Control.Monad.Aff (attempt)
 
 import Halogen as H
 import Halogen.HTML.Core (className)
@@ -41,13 +40,15 @@ import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 
 import OIDC.Aff (requestAuthentication)
 import OIDCCryptUtils as Crypt
+
+import Quasar.Advanced.Auth.Provider (Provider)
+import Quasar.Aff as Api
+import Quasar.Auth as Auth
+
 import SlamData.Effects (Slam)
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
-import Quasar.Auth.Provider as Provider
-import Quasar.Auth as Auth
-import Quasar.Aff as Api
 
 data Query a
   = DismissSubmenu a
@@ -124,7 +125,7 @@ eval (Init next) = do
 
   retrieveProvidersAndUpdateMenu :: SignInDSL Unit
   retrieveProvidersAndUpdateMenu = do
-    eProviders <- H.fromAff $ attempt $ Api.retrieveAuthProviders
+    eProviders <- H.fromAff $ Api.retrieveAuthProviders
     case eProviders of
       Left _ -> H.modify (_{hidden = true})
       Right Nothing -> H.modify (_{hidden = true})
@@ -147,7 +148,7 @@ dismissAll =
     H.action HalogenMenu.DismissSubmenu
 
 makeAuthRequestWithProviderR
-  :: Maybe Provider.ProviderR -> SignInDSL Unit
+  :: Maybe Provider -> SignInDSL Unit
 makeAuthRequestWithProviderR (Just pr) =
   H.fromEff $ requestAuthentication pr
 makeAuthRequestWithProviderR _ =
@@ -163,14 +164,14 @@ menuPeek =
     (submenuPeek <<< H.runChildF)
 
 evaluateMenuValue
-  :: Maybe Provider.ProviderR
+  :: Maybe Provider
   -> SignInDSL Unit
 evaluateMenuValue _ =
   pure unit
 
 submenuPeek
   :: forall a
-   . HalogenMenu.SubmenuQuery (Maybe Provider.ProviderR) a
+   . HalogenMenu.SubmenuQuery (Maybe Provider) a
   -> SignInDSL Unit
 submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
   {loggedIn} <- H.get
@@ -186,6 +187,6 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
 
 
 queryMenu
-  :: HalogenMenu.MenuQuery (Maybe Provider.ProviderR) Unit
+  :: HalogenMenu.MenuQuery (Maybe Provider) Unit
   -> SignInDSL Unit
 queryMenu q = void $ H.query MenuSlot (left q)

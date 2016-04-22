@@ -25,7 +25,6 @@ module SlamData.FileSystem.Dialog.Mount.SQL2.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (attempt)
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Array (filter)
@@ -76,10 +75,10 @@ eval (Validate k) = do
 eval (Submit parent name k) = do
   sql <- fromMaybe "" <$> H.query unit (H.request GetText)
   vars <- Sm.fromFoldable <<< filter (not isEmptyVar) <$> H.gets _.vars
-  let res = R.Directory parent
-      view = R.View $ parent Pt.</> Pt.file name
+  let destPath = parent Pt.</> Pt.file name
+      view = R.View $ destPath
       dest = R.Mount view
-  result <- H.fromAff $ attempt $ Auth.authed $ API.portView res dest sql vars
+  result <- H.fromAff $ Auth.authed $ API.viewQuery (Left parent) destPath sql vars
   pure $ k $ map (const view) result
 
 aceSetup :: Maybe String -> Editor -> Slam Unit

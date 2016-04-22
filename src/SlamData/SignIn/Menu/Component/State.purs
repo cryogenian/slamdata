@@ -22,24 +22,20 @@ import Halogen.Menu.Component as HalogenMenu
 import Halogen.Menu.Component.State as HalogenMenuState
 import Halogen.Menu.Submenu.Component.State as HalogenSubmenuState
 
-import Quasar.Auth.Provider as Provider
+import Quasar.Advanced.Auth.Provider (Provider)
 
-type StateP g = HalogenMenu.MenuP (Maybe Provider.ProviderR) g
+type StateP g = HalogenMenu.MenuP (Maybe Provider) g
 
-make
-  :: Array Provider.Provider
-  -> HalogenMenu.Menu (Maybe Provider.ProviderR)
+make :: Array Provider -> HalogenMenu.Menu (Maybe Provider)
 make providers = HalogenMenuState.makeMenu
   [ { label: "🔓 Sign in"
     , submenu: makeSubmenuItem <$> providers
     }
   ]
 
-makeSubmenuItem
-  :: Provider.Provider
-  -> HalogenSubmenuState.SubmenuItem (Maybe Provider.ProviderR)
-makeSubmenuItem (Provider.Provider providerR) =
-  { label: "Sign in with " ++ providerR.displayName
+makeSubmenuItem :: Provider -> HalogenSubmenuState.SubmenuItem (Maybe Provider)
+makeSubmenuItem provider =
+  { label: "Sign in with " ++ provider.displayName
   , shortcutLabel: Nothing
-  , value: Just providerR
+  , value: Just provider
   }

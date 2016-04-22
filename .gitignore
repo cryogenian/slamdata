@@ -19,3 +19,4 @@ public/css/*.css
 .psci
 .*
 phantomjsdriver.log
+npm-debug.log

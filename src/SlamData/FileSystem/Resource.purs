@@ -53,7 +53,6 @@ module SlamData.FileSystem.Resource
   , mountTypeTag
   , root
   , sortResource
-  , fileResourceFromString
   ) where
 
 import SlamData.Prelude
@@ -65,7 +64,7 @@ import Data.Argonaut.Encode (class EncodeJson)
 import Data.Foreign (ForeignError(..)) as F
 import Data.Foreign.Class (class IsForeign, readProp) as F
 import Data.Foreign.NullOrUndefined (runNullOrUndefined) as F
-import Data.Lens (lens, LensP, TraversalP, wander, (.~))
+import Data.Lens (lens, LensP, TraversalP, wander)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
@@ -156,7 +155,7 @@ root = Directory P.rootDir
 
 mkNotebook ∷ PU.AnyPath → Resource
 mkNotebook ap =
-  either go (Notebook ∘ (_ <./> Config.notebookExtension)) ap
+  either (Notebook ∘ (_ <./> Config.notebookExtension)) go ap
   where
   go ∷ PU.FilePath → Resource
   go p = maybe newNotebook id do
@@ -165,7 +164,7 @@ mkNotebook ap =
       (pp </> P.dir (PU.nameOfFileOrDir dirOrFile) <./> Config.notebookExtension)
 
 mkFile ∷ PU.AnyPath → Resource
-mkFile ap = either File go ap
+mkFile ap = either go File ap
   where
   go ∷ PU.DirPath → Resource
   go p = maybe newFile id do
@@ -173,7 +172,7 @@ mkFile ap = either File go ap
     pure $ File (pp </> P.file (PU.nameOfFileOrDir dirOrFile))
 
 mkViewMount ∷ PU.AnyPath → Resource
-mkViewMount ap = either (Mount ∘ View) go ap
+mkViewMount ap = either go (Mount ∘ View) ap
   where
   go ∷ PU.DirPath → Resource
   go p = maybe newViewMount id do
@@ -181,7 +180,7 @@ mkViewMount ap = either (Mount ∘ View) go ap
     pure $ Mount $ View (pp </> P.file (PU.nameOfFileOrDir dirOrFile))
 
 mkDirectory ∷ PU.AnyPath → Resource
-mkDirectory ap = either go Directory ap
+mkDirectory ap = either Directory go ap
   where
   go ∷ PU.FilePath → Resource
   go p = maybe newDirectory id do
@@ -189,7 +188,7 @@ mkDirectory ap = either go Directory ap
     pure $ Directory (pp </> P.dir (PU.nameOfFileOrDir dirOrFile))
 
 mkDatabase ∷ PU.AnyPath → Resource
-mkDatabase ap = either go (Mount ∘ Database) ap
+mkDatabase ap = either (Mount ∘ Database) go ap
   where
   go ∷ PU.FilePath → Resource
   go p = maybe newDatabase id do
@@ -231,16 +230,16 @@ resourcePath r = either P.printPath P.printPath $ getPath r
 
 getPath ∷ Resource → PU.AnyPath
 getPath r = case r of
-  File p → Left p
-  Notebook p → Right p
-  Directory p → Right p
-  Mount (View p) → Left p
-  Mount (Database p) → Right p
+  File p → Right p
+  Notebook p → Left p
+  Directory p → Left p
+  Mount (View p) → Right p
+  Mount (Database p) → Left p
 
 
 -- SETTERS
 setDir ∷ PU.AnyPath → PU.DirPath → PU.AnyPath
-setDir ap d = bimap (setFile' d) (setDir' d) ap
+setDir ap d = bimap (setDir' d) (setFile' d) ap
   where
   setDir' ∷ PU.DirPath → PU.DirPath → PU.DirPath
   setDir' d p =
@@ -266,7 +265,7 @@ setName r name =
 -- MODIFIERS (PRIVATE)
 
 renameAny ∷ (String → String) → PU.AnyPath → PU.AnyPath
-renameAny fn ap = bimap (P.renameFile $ liftFile fn) (P.renameDir $ liftDir fn) ap
+renameAny fn ap = bimap (P.renameDir $ liftDir fn) (P.renameFile $ liftFile fn) ap
   where
   liftFile fn (P.FileName a) = P.FileName $ fn a
   liftDir fn (P.DirName a) = P.DirName $ fn a
@@ -404,11 +403,3 @@ instance decodeJsonResource ∷ DecodeJson Resource where
         (Left $ "Invalid " ⊕ ty ⊕ " path")
         (Right ∘ ctor) $
           (P.rootDir </> _) <$> (P.sandbox P.rootDir =<< parse s)
-
-fileResourceFromString
-  ∷ String
-  → Either String Resource
-fileResourceFromString path =
-  case (P.rootDir </> _) <$> (P.parseAbsFile path >>= P.sandbox P.rootDir) of
-    Just path' → Right $ newFile # _path .~ Left path'
-    Nothing → Left path

@@ -2,7 +2,7 @@ module SlamData.Notebook.Deck.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
 
 import SlamData.Notebook.Card.Component (CardQueryP, CardStateP)
 import SlamData.Notebook.Card.CardId (CardId)

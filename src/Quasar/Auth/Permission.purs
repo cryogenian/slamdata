@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Quasar.Auth.Permission where
+module Quasar.Auth.Permission
+  ( module Quasar.Auth.Permission
+  , module Quasar.Advanced.Auth
+  ) where
 
 import SlamData.Prelude
 
@@ -22,11 +25,9 @@ import Control.Monad.Aff (later')
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (random)
-import Control.UI.Browser (decodeURIComponent)
 
 import Data.Array as Arr
 import Data.NonEmpty as Ne
-import Data.Path.Pathy as Pt
 import Data.String as Str
 import Data.String.Regex as Rgx
 
@@ -40,11 +41,8 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 
-import Utils.Path (FilePath)
-
-newtype PermissionToken = PermissionToken String
-runPermissionToken :: PermissionToken -> String
-runPermissionToken (PermissionToken s) = s
+import Quasar.Advanced.Auth (PermissionToken(..), runPermissionToken)
+import Utils.Path (FilePath, parseFilePath)
 
 type Permissions =
   {
@@ -116,7 +114,7 @@ retrievePermissionTokens =
     Rgx.match permissionRegex str
       >>= flip Arr.index 1
       >>= id
-      <#> decodeURIComponent
+      <#> Global.decodeURIComponent
 
   permissionTokens :: String -> Array String
   permissionTokens s =
@@ -149,7 +147,5 @@ getGroups =
   later' 1000
     $ pure
     $ map Group
-    $ map (Pt.rootDir Pt.</> _)
     $ Arr.catMaybes
-    $ map (Pt.parseAbsFile >=> Pt.sandbox Pt.rootDir )
-      ["/foo", "/foo/bar", "/foo/bar/baz", "/foo/quux" ]
+    $ map parseFilePath ["/foo", "/foo/bar", "/foo/bar/baz", "/foo/quux" ]

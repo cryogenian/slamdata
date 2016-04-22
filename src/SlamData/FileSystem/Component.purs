@@ -23,22 +23,22 @@ module SlamData.FileSystem.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (attempt)
 import Control.Monad.Eff.Exception (error, message)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Error.Class (throwError)
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
 
-import Data.Argonaut.Parser (jsonParser)
+import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array (head, last, mapMaybe, filter)
+import Data.Foldable as F
 import Data.Functor.Coproduct.Nested (coproduct5)
 import Data.Lens ((.~))
 import Data.MediaType.Common (textCSV, applicationJSON)
 import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
 import Data.String as S
 import Data.String.Regex as Rgx
-import Data.URI (runParseAbsoluteURI)
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
@@ -50,13 +50,14 @@ import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff as API
 import Quasar.Auth as Auth
+import Quasar.Data (QData(..))
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
 import SlamData.FileSystem.Component.Install (Algebra, ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpSignIn, toDialog, toFs, toListing, toSearch, toSignIn)
 import SlamData.FileSystem.Component.Query (Query(..))
-import SlamData.FileSystem.Component.Render (sorting, toolItem, toolbar)
+import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, _isMount, _path, _salt, _showHiddenFiles, _sort, _version, initialState)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Download.Component as Download
@@ -160,23 +161,23 @@ eval (MakeMount next) = do
   showDialog (Dialog.Mount path "" Nothing)
   pure next
 eval (MakeFolder next) = do
-  path ← H.gets _.path
-  dirName ← H.fromAff $ Auth.authed $ API.getNewName path Config.newFolderName
-  let dirPath = path </> dir dirName
-      dirRes = R.Directory dirPath
-      dirItem = PhantomItem dirRes
-      hiddenFile = dirPath </> file (Config.folderMark)
-  queryListing $ H.action (Listing.Add dirItem)
-  added ← H.fromAff $ attempt $
-    Auth.authed $ API.makeFile hiddenFile API.ldJSON "{}"
-  queryListing $ H.action (Listing.Filter (_ ≠ dirItem))
-  case added of
+  result ← runExceptT do
+    path ← lift $ H.gets _.path
+    dirName ← ExceptT $ H.fromAff $ Auth.authed $ API.getNewName path Config.newFolderName
+    let dirPath = path </> dir dirName
+        dirRes = R.Directory dirPath
+        dirItem = PhantomItem dirRes
+        hiddenFile = dirPath </> file (Config.folderMark)
+    lift $ queryListing $ H.action (Listing.Add dirItem)
+    ExceptT $ H.fromAff $ Auth.authed $ API.save hiddenFile jsonEmptyObject
+    lift $ queryListing $ H.action (Listing.Filter (_ ≠ dirItem))
+    pure dirRes
+  case result of
     Left err →
-      showDialog $
-        Dialog.Error
-          $ "There was a problem creating the directory: "
-          ⊕ message err
-    Right _ → do
+      showDialog $ Dialog.Error
+        $ "There was a problem creating the directory: "
+        ⊕ message err
+    Right dirRes →
       void $ queryListing $ H.action $ Listing.Add (Item dirRes)
   pure next
 
@@ -184,8 +185,16 @@ eval (MakeNotebook next) = do
   path ← H.gets _.path
   let newNotebookName = Config.newNotebookName ⊕ "." ⊕ Config.notebookExtension
   name ← H.fromAff $ Auth.authed $ API.getNewName path newNotebookName
-  let uri = mkNotebookURL (path </> dir name) New
-  H.fromEff $ setLocation uri
+  case name of
+    Left err →
+      -- This error isn't strictly true as we're not actually creating the
+      -- notebook here, but saying there was a problem "creating a name for the
+      -- notebook" would be a little strange
+      showDialog $ Dialog.Error
+        $ "There was a problem creating the notebook: "
+        ⊕ message err
+    Right name' → do
+      H.fromEff $ setLocation $ mkNotebookURL (path </> dir name') New
   pure next
 
 eval (UploadFile el next) = do
@@ -202,50 +211,8 @@ eval (FileListChanged el next) = do
       let err ∷ Slam Unit
           err = throwError $ error "empty filelist"
       in H.fromAff err
-    Just f → do
-      { path, sort, salt } ← H.get
-      name ←
-        H.fromAff $ H.fromEff (Cf.name f)
-          <#> Rgx.replace (Rgx.regex "/" Rgx.noFlags{global=true}) ":"
-          >>= Auth.authed ∘ API.getNewName path
-
-      reader ← H.fromEff Cf.newReaderEff
-      content' ← H.fromAff $ Cf.readAsBinaryString f reader
-
-      let fileName = path </> file name
-          res = R.File fileName
-          fileItem = PhantomItem res
-          ext = last (S.split "." name)
-          mime = if ext ≡ Just "csv"
-                 then textCSV
-                 else if isApplicationJSON content'
-                      then applicationJSON
-                      else API.ldJSON
-      queryListing $ H.action (Listing.Add fileItem)
-      f' ← H.fromAff $ attempt $ Auth.authed $ API.makeFile fileName mime content'
-      case f' of
-        Left err → do
-          queryListing $ H.action $
-            Listing.Filter (not ∘ eq (R.File fileName) ∘ itemResource)
-          showDialog $ Dialog.Error (message err)
-        Right _ → H.fromEff $ openItem res sort salt
-
+    Just f → uploadFileSelected f
   pure next
-  where
-  isApplicationJSON ∷ String → Boolean
-  isApplicationJSON content'
-    -- Parse if content is small enough
-    | S.length content' < 1048576 =
-        isRight $ jsonParser content'
-    -- Or check if its first/last characters are [/]
-    | otherwise =
-        let
-          trimedContent = S.trim content'
-        in
-            (isJust $ S.stripPrefix "[" trimedContent)
-          ∧ (isJust $ S.stripSuffix "]" trimedContent)
-
-
 
 eval (Download next) = do
   path ← H.gets _.path
@@ -254,6 +221,49 @@ eval (Download next) = do
 
 eval (SetVersion version next) = H.modify (_version .~ Just version) $> next
 eval (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
+
+uploadFileSelected ∷ Cf.File → DSL Unit
+uploadFileSelected f = do
+  { path, sort, salt } ← H.get
+  name ←
+    H.fromAff $ H.fromEff (Cf.name f)
+      <#> Rgx.replace (Rgx.regex "/" Rgx.noFlags{global=true}) ":"
+      >>= API.getNewName path
+      >>> Auth.authed
+
+  case name of
+    Left err → showDialog $ Dialog.Error (message err)
+    Right name' → do
+      reader ← H.fromEff Cf.newReaderEff
+      content' ← H.fromAff $ Cf.readAsBinaryString f reader
+
+      let fileName = path </> file name'
+          res = R.File fileName
+          fileItem = PhantomItem res
+          ext = last (S.split "." name')
+          mime = if ext ≡ Just "csv"
+                 then textCSV
+                 else if isApplicationJSON content'
+                      then applicationJSON
+                      else API.ldJSON
+      queryListing $ H.action (Listing.Add fileItem)
+      f' ← H.fromAff $ Auth.authed $
+        API.makeFile fileName (CustomData mime content')
+      case f' of
+        Left err → do
+          queryListing $ H.action $
+            Listing.Filter (not ∘ eq (R.File fileName) ∘ itemResource)
+          showDialog $ Dialog.Error (message err)
+        Right _ → H.fromEff $ openItem res sort salt
+  where
+  isApplicationJSON ∷ String → Boolean
+  isApplicationJSON content'
+    -- Parse if content is small enough
+    | S.length content' < 1048576 = isRight $ jsonParser content'
+    -- Or check if its first/last characters are [/]
+    | otherwise =
+        let trimmed = S.trim content'
+        in F.all isJust [S.stripPrefix "[" trimmed, S.stripSuffix "]" trimmed]
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =
@@ -284,8 +294,9 @@ itemPeek (Item.Remove res _) = do
   mbTrashFolder ← H.fromAff $ Auth.authed $ API.delete res
   queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
   case mbTrashFolder of
-    Nothing → pure unit
-    Just res' → void $ queryListing $ H.action $ Listing.Add (Item res')
+    Left err → showDialog $ Dialog.Error (message err)
+    Right (Nothing) → pure unit
+    Right (Just res') → void $ queryListing $ H.action $ Listing.Add (Item res')
 itemPeek (Item.Share res _) = do
   { sort, salt } ← H.get
   loc ← H.fromEff locationString
@@ -352,7 +363,7 @@ resort = do
 
 configure ∷ R.Mount → DSL Unit
 configure (R.View path) = do
-  viewInfo ← H.fromAff $ attempt $ Auth.authed $ API.viewInfo path
+  viewInfo ← H.fromAff $ Auth.authed $ API.viewInfo path
   showDialog
     case viewInfo of
       Left err →
@@ -362,21 +373,22 @@ configure (R.View path) = do
       Right info →
         Dialog.Mount
           (fromMaybe rootDir (parentDir path))
-          (getNameStr (Left path))
+          (getNameStr (Right path))
           (Just (Right (SQL2.stateFromViewInfo info)))
 
 configure (R.Database path) = do
-  viewInfo ← H.fromAff $ attempt $ Auth.authed $ API.mountInfo path
+  viewInfo ← H.fromAff $ Auth.authed $ API.mountInfo path
   showDialog
-    case map (lmap show) runParseAbsoluteURI =<< lmap show viewInfo of
+    case viewInfo of
       Left err →
         Dialog.Error
-          $ "There was a problem reading the mount settings: " ⊕ err
-      Right uri →
+          $ "There was a problem reading the mount settings: "
+          ⊕ message err
+      Right config →
         Dialog.Mount
           (fromMaybe rootDir (parentDir path))
-          (getNameStr (Right path))
-          (Just (Left (MongoDB.stateFromURI uri)))
+          (getNameStr (Left path))
+          (Just (Left (MongoDB.fromConfig config)))
 
 download ∷ R.Resource → DSL Unit
 download res = do
@@ -394,14 +406,15 @@ getChildren
   → DirPath
   → DSL Unit
 getChildren pred cont start = do
-  ei ← H.fromAff $ attempt $ Auth.authed $ API.children start
-  for_ ei \items → do
-    let
-      items' = filter pred items
-      parents = mapMaybe (either (const Nothing) Just ∘ R.getPath) items
-    cont items'
-    traverse_ (getChildren pred cont) parents
-    forceRerender'
+  forceRerender'
+  ei ← H.fromAff $ Auth.authed $ API.children start
+  case ei of
+    Right items → do
+      let items' = filter pred items
+          parents = mapMaybe (either Just (const Nothing) ∘ R.getPath) items
+      cont items'
+      traverse_ (getChildren pred cont) parents
+    _ → pure unit
 
 getDirectories ∷ (Array R.Resource → DSL Unit) → DirPath → DSL Unit
 getDirectories = getChildren (R.isDirectory ∨ R.isDatabaseMount)

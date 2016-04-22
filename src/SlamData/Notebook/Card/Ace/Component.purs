@@ -40,7 +40,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import SlamData.Notebook.Card.Ace.Component.Query (QueryP)
 import SlamData.Notebook.Card.Ace.Component.State (StateP)
 import SlamData.Notebook.Card.Ace.Model as Model
-import SlamData.Notebook.Card.CardType (CardType(Ace), AceMode, aceMode, aceCardName, cardGlyph)
+import SlamData.Notebook.Card.CardType (CardType(Ace), AceMode, aceMode)
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalResult, CardEvalInput, CardSetupInfo)
 import SlamData.Notebook.Card.Component (CardStateP, CardQueryP, makeCardComponent, makeQueryPrism, _AceState, _AceQuery)
 import SlamData.Effects (Slam)

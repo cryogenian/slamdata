@@ -15,8 +15,7 @@ limitations under the License.
 -}
 
 module Quasar.Auth
-  ( authHeader
-  , authed
+  ( authed
   , retrieveIdToken
   , storeIdToken
   , retrieveKeyString
@@ -36,18 +35,9 @@ import Control.Monad.Eff.Class (liftEff)
 import Data.Either as E
 import Data.Maybe as M
 import DOM (DOM)
-import Network.HTTP.RequestHeader (RequestHeader(..), requestHeaderName, requestHeaderValue)
 import OIDCCryptUtils.Types as OIDC
 import Quasar.Auth.Permission as P
 import Utils.LocalStorage as LS
-
-authHeader
-  :: OIDC.IdToken
-  -> RequestHeader
-authHeader (OIDC.IdToken tok) =
-  RequestHeader
-    "Authorization"
-    ("Bearer " <> tok)
 
 idTokenLocalStorageKey :: String
 idTokenLocalStorageKey = "sd-auth-id-token"

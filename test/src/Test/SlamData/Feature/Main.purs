@@ -126,7 +126,7 @@ runTests config =
     res ←
       attempt
       $ flip runReaderT readerInp do
-          setWindowSize { height: 1280, width: 1024 }
+          setWindowSize { height: 800, width: 1024 }
           tests
     quit driver
     either throwError (const $ pure unit) res
