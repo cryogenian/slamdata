@@ -29,10 +29,9 @@ import Data.NonEmpty as Ne
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 
-import Quasar.Auth.Permission as P
-
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Auth.Permission as P
 
 type State
   = P.PermissionShareRequest

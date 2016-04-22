@@ -18,7 +18,6 @@ module Halogen.Component.Utils where
 
 import Prelude
 
-import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling as SCR
 import Control.Monad.Aff (Aff, Canceler, forkAff, later', runAff)
 import Control.Monad.Aff.AVar (AVAR, makeVar, putVar, takeVar)
@@ -30,6 +29,8 @@ import Data.Time (Milliseconds(..))
 
 import Halogen as H
 import Halogen.Query.EventSource as He
+
+import Utils.AffableProducer (produce)
 
 applyCF :: forall a b c i. (a -> b i -> c) -> H.ChildF a b i -> c
 applyCF fn (H.ChildF a b) = fn a b

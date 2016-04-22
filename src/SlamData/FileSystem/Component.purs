@@ -48,8 +48,6 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Aff as API
-import Quasar.Auth as Auth
 import Quasar.Data (QData(..))
 
 import SlamData.Config as Config
@@ -75,6 +73,10 @@ import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.Notebook.Action (Action(..), AccessType(..))
 import SlamData.Notebook.Routing (mkNotebookURL)
+import SlamData.Quasar (ldJSON) as API
+import SlamData.Quasar.Data (makeFile, save) as API
+import SlamData.Quasar.FS (children, delete, getNewName) as API
+import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
 import SlamData.Render.Common (navbar, logo, icon, content, row)
 import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
@@ -163,13 +165,13 @@ eval (MakeMount next) = do
 eval (MakeFolder next) = do
   result ← runExceptT do
     path ← lift $ H.gets _.path
-    dirName ← ExceptT $ H.fromAff $ Auth.authed $ API.getNewName path Config.newFolderName
+    dirName ← ExceptT $ API.getNewName path Config.newFolderName
     let dirPath = path </> dir dirName
         dirRes = R.Directory dirPath
         dirItem = PhantomItem dirRes
         hiddenFile = dirPath </> file (Config.folderMark)
     lift $ queryListing $ H.action (Listing.Add dirItem)
-    ExceptT $ H.fromAff $ Auth.authed $ API.save hiddenFile jsonEmptyObject
+    ExceptT $ API.save hiddenFile jsonEmptyObject
     lift $ queryListing $ H.action (Listing.Filter (_ ≠ dirItem))
     pure dirRes
   case result of
@@ -184,7 +186,7 @@ eval (MakeFolder next) = do
 eval (MakeNotebook next) = do
   path ← H.gets _.path
   let newNotebookName = Config.newNotebookName ⊕ "." ⊕ Config.notebookExtension
-  name ← H.fromAff $ Auth.authed $ API.getNewName path newNotebookName
+  name ← API.getNewName path newNotebookName
   case name of
     Left err →
       -- This error isn't strictly true as we're not actually creating the
@@ -226,10 +228,9 @@ uploadFileSelected ∷ Cf.File → DSL Unit
 uploadFileSelected f = do
   { path, sort, salt } ← H.get
   name ←
-    H.fromAff $ H.fromEff (Cf.name f)
+    H.fromEff (Cf.name f)
       <#> Rgx.replace (Rgx.regex "/" Rgx.noFlags{global=true}) ":"
       >>= API.getNewName path
-      >>> Auth.authed
 
   case name of
     Left err → showDialog $ Dialog.Error (message err)
@@ -247,8 +248,7 @@ uploadFileSelected f = do
                       then applicationJSON
                       else API.ldJSON
       queryListing $ H.action (Listing.Add fileItem)
-      f' ← H.fromAff $ Auth.authed $
-        API.makeFile fileName (CustomData mime content')
+      f' ← API.makeFile fileName (CustomData mime content')
       case f' of
         Left err → do
           queryListing $ H.action $
@@ -291,7 +291,7 @@ itemPeek (Item.Move res _) = do
   flip getDirectories rootDir \x →
     void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
 itemPeek (Item.Remove res _) = do
-  mbTrashFolder ← H.fromAff $ Auth.authed $ API.delete res
+  mbTrashFolder ← API.delete res
   queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
   case mbTrashFolder of
     Left err → showDialog $ Dialog.Error (message err)
@@ -363,7 +363,7 @@ resort = do
 
 configure ∷ R.Mount → DSL Unit
 configure (R.View path) = do
-  viewInfo ← H.fromAff $ Auth.authed $ API.viewInfo path
+  viewInfo ← API.viewInfo path
   showDialog
     case viewInfo of
       Left err →
@@ -377,7 +377,7 @@ configure (R.View path) = do
           (Just (Right (SQL2.stateFromViewInfo info)))
 
 configure (R.Database path) = do
-  viewInfo ← H.fromAff $ Auth.authed $ API.mountInfo path
+  viewInfo ← API.mountInfo path
   showDialog
     case viewInfo of
       Left err →
@@ -407,7 +407,7 @@ getChildren
   → DSL Unit
 getChildren pred cont start = do
   forceRerender'
-  ei ← H.fromAff $ Auth.authed $ API.children start
+  ei ← API.children start
   case ei of
     Right items → do
       let items' = filter pred items

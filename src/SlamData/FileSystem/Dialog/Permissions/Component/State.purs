@@ -7,8 +7,7 @@ import Control.Monad.Eff.Ref (Ref)
 import Data.Lens (LensP, lens)
 
 import SlamData.FileSystem.Resource as R
-
-import Quasar.Auth.Permission as Qp
+import SlamData.Quasar.Auth.Permission as Qp
 
 data ShareType = Code | User | Group
 

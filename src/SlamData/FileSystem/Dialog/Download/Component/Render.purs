@@ -30,7 +30,6 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Aff (reqHeadersToJSON, encodeURI)
 import Quasar.Paths as Config
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
@@ -39,6 +38,7 @@ import SlamData.Download.Render as Rd
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.State (State)
 import SlamData.FileSystem.Resource (Resource, isFile, resourcePath, isHidden)
+import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Render.Common (fadeWhen)
 import SlamData.Render.CSS as Rc
 

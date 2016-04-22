@@ -54,9 +54,6 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
-import Quasar.Aff as Quasar
-import Quasar.Auth as Auth
-
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
@@ -75,6 +72,8 @@ import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
 import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard,  cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, notebookPath, removeCards, findLast, findLastCardType)
 import SlamData.Notebook.Deck.Model as Model
 import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCardHash, mkNotebookURL)
+import SlamData.Quasar.Data (save, load) as Quasar
+import SlamData.Quasar.FS (move, getNewName) as Quasar
 import SlamData.Render.CSS as CSS
 
 import Utils.Debounced (debouncedEventSource)
@@ -186,7 +185,7 @@ eval (RunActiveCard next) =
   (maybe (pure unit) runCard =<< H.gets (_.activeCardId)) $> next
 eval (LoadNotebook fs dir next) = do
   H.modify (_stateMode .~ Loading)
-  json ← H.fromAff $ Auth.authed $ Quasar.load $ dir </> Pathy.file "index"
+  json ← Quasar.load $ dir </> Pathy.file "index"
   case Model.decode =<< json of
     Left err → do
       H.fromAff $ log err
@@ -569,13 +568,13 @@ saveNotebook _ = H.get >>= \st → do
   getNewName' ∷ DirPath → String → NotebookDSL (Either Exn.Error Pathy.DirName)
   getNewName' dir name =
     let baseName = name ⊕ "." ⊕ Config.notebookExtension
-    in H.fromAff $ map Pathy.DirName <$> Auth.authed (Quasar.getNewName dir baseName)
+    in map Pathy.DirName <$> Quasar.getNewName dir baseName
 
   -- Saves a notebook and returns the name it was saved as.
   save ∷ DirPath → Pathy.DirName → Json → NotebookDSL (Either Exn.Error Pathy.DirName)
   save dir name json = do
     let notebookPath = dir </> Pathy.dir' name </> Pathy.file "index"
-    H.fromAff $ Auth.authed $ Quasar.save notebookPath json
+    Quasar.save notebookPath json
     pure (Right name)
 
   -- Renames a notebook and returns the new name it was changed to.
@@ -588,8 +587,7 @@ saveNotebook _ = H.get >>= \st → do
     newName' ← ExceptT $ getNewName' dir newName
     let oldPath = dir </> Pathy.dir' oldName
         newPath = dir </> Pathy.dir' newName'
-    ExceptT $ H.fromAff $ Auth.authed $
-      Quasar.move (R.Directory oldPath) (Left newPath)
+    ExceptT $ Quasar.move (R.Directory oldPath) (Left newPath)
     pure newName'
 
 -- | Takes a `DirName` for a saved notebook and returns the name part without

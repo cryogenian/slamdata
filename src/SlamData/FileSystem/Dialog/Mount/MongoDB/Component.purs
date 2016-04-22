@@ -38,14 +38,12 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Aff as API
-import Quasar.Auth as Auth
-
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State (MountHost, MountProp, State, _host, _hosts, _password, _path, _port, _props, _user, initialState, processState, fromConfig, toConfig)
 import SlamData.FileSystem.Resource (Mount(..))
+import SlamData.Quasar.Mount as API
 import SlamData.Render.CSS as Rc
 
 type Query = SettingsQuery State
@@ -78,7 +76,7 @@ eval (Submit parent name k) = do
       pure $ k $ Left $ error err
     Right config → do
       let path = parent </> dir name
-      result <- H.fromAff $ Auth.authed $ API.saveMount path config
+      result <- API.saveMount path config
       pure $ k $ map (const (Database path)) result
 
 hosts :: State -> H.ComponentHTML Query

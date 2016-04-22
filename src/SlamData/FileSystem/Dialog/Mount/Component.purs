@@ -45,9 +45,6 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (forceRerender')
 
-import Quasar.Aff as Api
-import Quasar.Auth as Auth
-
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery as SQ
@@ -56,6 +53,7 @@ import SlamData.FileSystem.Dialog.Mount.Component.State (MountSettings, State, _
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..), schemes, schemeToString, schemeFromString)
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
+import SlamData.Quasar.FS as Api
 import SlamData.Render.CSS as Rc
 
 type ChildState = Either SQL2.StateP MongoDB.State
@@ -177,8 +175,8 @@ eval (NotifySave next) = pure next
 eval (Save k) = do
   { parent, name, new } <- H.get
   H.modify (_saving .~ true)
-  newName <- H.fromAff
-    if new then Auth.authed (Api.getNewName parent name) else pure (pure name)
+  newName <-
+    if new then Api.getNewName parent name else pure (pure name)
   case newName of
     Left err → do
       H.modify (_message ?~ formatError err)

@@ -15,8 +15,6 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Auth.Permission as Qp
-
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Dialog.Share.Code.Component as Code
 import SlamData.Dialog.Share.Confirm.Component as Confirm
@@ -29,6 +27,7 @@ import SlamData.FileSystem.Dialog.Permissions.Component.State (State, ShareType(
 import SlamData.FileSystem.Resource as R
 import SlamData.Halogen.Select.Cascade.Component as Cascade
 import SlamData.Halogen.Select.Rotary.Component as Rotary
+import SlamData.Quasar.Auth.Permission as Qp
 import SlamData.Render.Common (fadeWhen, glyph)
 import SlamData.Render.CSS as Rc
 

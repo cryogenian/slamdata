@@ -19,7 +19,6 @@ module Utils.Debounced where
 import Prelude
 
 import Control.Bind ((=<<))
-import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
@@ -36,6 +35,8 @@ import Data.Time (Milliseconds(..))
 import DOM.Timer (Timer, timeout, clearTimeout)
 
 import Halogen.Query.EventSource (EventSource(..))
+
+import Utils.AffableProducer (produce)
 
 type DebounceEffects eff = (ref :: REF, avar :: AVAR, timer :: Timer | eff)
 

@@ -28,7 +28,6 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Aff (reqHeadersToJSON, encodeURI)
 import Quasar.Paths as Paths
 
 import SlamData.Download.Model as D
@@ -41,6 +40,7 @@ import SlamData.Notebook.Card.Component as Cc
 import SlamData.Notebook.Card.Download.Component.Query (QueryP, Query(..))
 import SlamData.Notebook.Card.Download.Component.State (State, _compress, _options, _source, decode, encode, initialState)
 import SlamData.Notebook.Card.Port as P
+import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 

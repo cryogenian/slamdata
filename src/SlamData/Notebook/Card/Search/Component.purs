@@ -37,9 +37,6 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Aff as Quasar
-import Quasar.Auth as Auth
-
 import SlamData.Effects (Slam)
 import SlamData.Notebook.Card.CardType as CT
 import SlamData.Notebook.Card.Common.EvalQuery (liftWithCanceler', temporaryOutputResource, runCardEvalT)
@@ -48,6 +45,8 @@ import SlamData.Notebook.Card.Port as Port
 import SlamData.Notebook.Card.Search.Component.Query (Query, SearchQuery(..))
 import SlamData.Notebook.Card.Search.Component.State (State, _running, _searchString, initialState)
 import SlamData.Notebook.Card.Search.Interpret as Search
+import SlamData.Quasar.FS (messageIfFileNotFound) as Quasar
+import SlamData.Quasar.Query (viewQuery, compile, templated, fields) as Quasar
 import SlamData.Render.Common as RC
 import SlamData.Render.CSS as CSS
 
@@ -119,14 +118,12 @@ cardEval q =
         Quasar.messageIfFileNotFound
             resource
             ("Input resource " ⊕ P.printPath resource ⊕ " doesn't exist")
-          # Auth.authed
           # liftWithCanceler'
           # lift
           >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
 
         fields ←
           Quasar.fields resource
-            # Auth.authed
             # liftWithCanceler'
             # lift
             >>= either (EC.throwError <<< Exn.message) pure
@@ -138,20 +135,19 @@ cardEval q =
 
         WC.tell ["Generated SQL: " ⊕ sql]
 
-        plan ← lift $ liftWithCanceler' $ Auth.authed $
+        plan ← lift $ liftWithCanceler' $
           Quasar.compile (Right resource) sql SM.empty
 
         case plan of
           Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
           Right p → WC.tell ["Plan: " ⊕ p]
 
-        lift $ liftWithCanceler' $ Auth.authed $
+        lift $ liftWithCanceler' $
           Quasar.viewQuery (Right resource) outputResource template SM.empty
 
         Quasar.messageIfFileNotFound
             outputResource
             "Error making search temporary resource"
-          # Auth.authed
           # liftWithCanceler'
           # lift
           >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)

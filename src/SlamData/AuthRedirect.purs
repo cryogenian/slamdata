@@ -21,13 +21,15 @@ module SlamData.AuthRedirect
 import SlamData.Prelude
 
 import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console as Console
 import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Maybe.Trans as MBT
 
 import Data.Foldable as F
+import Data.Date as Date
 
 import DOM as DOM
 import DOM.HTML (window)
@@ -38,19 +40,19 @@ import Network.HTTP.Affjax as AX
 
 import OIDCCryptUtils as OIDC
 
-import Quasar.Aff as Quasar
-import Quasar.Auth as Auth
-
 import SlamData.AuthRedirect.RedirectHashPayload as Payload
+import SlamData.Quasar as Quasar
+import SlamData.Quasar.Auth as Auth
 
 type RedirectEffects =
-  Quasar.RetryEffects
-    ( console :: Console.CONSOLE
-    , err :: Exn.EXCEPTION
-    , dom :: DOM.DOM
-    , rsaSignTime :: OIDC.RSASIGNTIME
-    , ajax :: AX.AJAX
-    )
+  ( ajax :: AX.AJAX
+  , avar :: AVar.AVAR
+  , dom :: DOM.DOM
+  , err :: Exn.EXCEPTION
+  , now :: Date.Now
+  , ref ∷ Ref.REF
+  , rsaSignTime :: OIDC.RSASIGNTIME
+  )
 
 type RedirectState =
   { payload :: Payload.RedirectHashPayload

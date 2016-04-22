@@ -40,14 +40,12 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import Quasar.Aff as API
-import Quasar.Auth as Auth
-
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Mount.Common.Render (propList, section)
 import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State (State, _initialQuery, _vars, emptyVar, initialState, isEmptyVar, processState, rxEmpty, stateFromViewInfo)
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Query as API
 
 type Query = SettingsQuery State
 type StateP = H.ParentState State AceState Query AceQuery Slam Unit
@@ -78,7 +76,7 @@ eval (Submit parent name k) = do
   let destPath = parent Pt.</> Pt.file name
       view = R.View $ destPath
       dest = R.Mount view
-  result <- H.fromAff $ Auth.authed $ API.viewQuery (Left parent) destPath sql vars
+  result <- API.viewQuery (Left parent) destPath sql vars
   pure $ k $ map (const view) result
 
 aceSetup :: Maybe String -> Editor -> Slam Unit

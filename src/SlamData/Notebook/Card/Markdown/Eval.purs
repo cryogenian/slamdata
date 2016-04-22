@@ -40,14 +40,12 @@ import Data.String as S
 import Data.StrMap as SM
 import Data.Time as DT
 
-import Quasar.Aff as Quasar
-import Quasar.Auth as Auth
-
+import SlamData.Effects (Slam)
 import SlamData.Notebook.Card.Ace.Component as ACE
 import SlamData.Notebook.Card.CardId as CID
 import SlamData.Notebook.Card.Common.EvalQuery as CEQ
 import SlamData.Notebook.Card.Port as Port
-import SlamData.Effects (Slam)
+import SlamData.Quasar.Query as Quasar
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Traverse as SDT
@@ -208,7 +206,7 @@ evalEmbeddedQueries dir cardId =
       Nothing → Err.throwError $ Exn.error "Cannot evaluate markdown without a saved notebook path"
       Just dir' → do
         n ← freshInt
-        result ← AffF.fromAff ∘ Auth.authed $ Quasar.queryPrecise dir' code
+        result ← Quasar.queryPrecise dir' code
         either
           (Err.throwError ∘ Exn.error)
           (pure ∘ A.mapMaybe rowToLiteral)

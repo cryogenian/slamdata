@@ -21,16 +21,16 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Random (random, RANDOM)
 import Control.UI.Browser (hostAndProtocol, getHref, setLocation)
-import DOM (DOM)
 import Data.Foldable as F
 import Data.StrMap as Sm
 import Data.Tuple (Tuple(..))
 import Data.URI (printURI, runParseURI)
 import Data.URI.Types as URI
+import DOM (DOM)
 import Global as Global
 import OIDCCryptUtils as Cryptography
-import Quasar.Auth as Auth
 import Quasar.Advanced.Auth.Provider (Provider)
+import SlamData.Quasar.Auth as Auth
 
 requestAuthentication
   :: Provider

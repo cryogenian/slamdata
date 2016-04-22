@@ -35,9 +35,8 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Auth.Permission as Api
-
 import SlamData.Effects (Slam, SlamDataEffects)
+import SlamData.Quasar.Auth.Permission as Api
 import SlamData.Render.CSS as Rc
 
 type State =

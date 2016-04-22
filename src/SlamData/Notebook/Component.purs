@@ -22,7 +22,6 @@ module SlamData.Notebook.Component
 
 import SlamData.Prelude
 
-import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Shortcut (onShortcut)
 import Control.Monad.Eff.Shortcut.Platform (shortcutPlatform)
@@ -73,6 +72,7 @@ import SlamData.Render.Common (logo, icon')
 import SlamData.Render.CSS as Rc
 import SlamData.Notebook.Deck.BackSide.Component as Back
 
+import Utils.AffableProducer (produce)
 import Utils.DOM (documentTarget)
 import Utils.Path as UP
 

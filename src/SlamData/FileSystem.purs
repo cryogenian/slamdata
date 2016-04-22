@@ -41,9 +41,6 @@ import Halogen.Driver (Driver, runUI)
 import Halogen.Query (action)
 import Halogen.Util (runHalogenAff, awaitBody)
 
-import Quasar.Aff as Quasar
-import Quasar.Auth as Auth
-
 import Routing (matchesAff)
 
 import SlamData.Config as Config
@@ -59,6 +56,8 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.Quasar.FS (children) as Quasar
+import SlamData.Quasar.Mount (mountInfo) as Quasar
 
 import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery)
@@ -138,7 +137,7 @@ checkMount
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
 checkMount path driver = do
-  result ← Auth.authed $ Quasar.mountInfo path
+  result ← Quasar.mountInfo path
   case result of
     Left _ → pure unit
     Right _ → driver $ left $ action $ SetIsMount true
@@ -156,7 +155,7 @@ listPath query deep var dir driver = do
   modifyVar (_1 <>~ canceler) var
   where
   goDeeper = do
-    Auth.authed (Quasar.children dir) >>= either sendError getChildren
+    Quasar.children dir >>= either sendError getChildren
     modifyVar (_2 %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
     Tuple c r ← takeVar var
     if (foldl (+) zero $ M.values r) ≡ zero

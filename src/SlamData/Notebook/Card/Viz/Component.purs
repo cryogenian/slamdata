@@ -40,10 +40,9 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import Quasar.Aff as Api
-import Quasar.Auth as Auth
 import Quasar.Types (FilePath)
 
+import SlamData.Effects (Slam)
 import SlamData.Form.Select (Select, autoSelect, newSelect, (<->), ifSelected, trySelect', _value)
 import SlamData.Notebook.Card.CardType (CardType(Viz))
 import SlamData.Notebook.Card.Chart.Aggregation (aggregationSelect)
@@ -60,7 +59,7 @@ import SlamData.Notebook.Card.Viz.Component.State (State, _needToUpdate, _availa
 import SlamData.Notebook.Card.Viz.Form.Component (formComponent)
 import SlamData.Notebook.Card.Viz.Form.Component as Form
 import SlamData.Notebook.Card.Viz.Model as Model
-import SlamData.Effects (Slam)
+import SlamData.Quasar.Query as Api
 import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 
@@ -257,7 +256,6 @@ cardEval (EvalCard info continue) =
           lift $ updateForms r
           records <-
             Api.all r
-              # Auth.authed
               # liftWithCancelerP'
               # lift
               >>= either
@@ -317,7 +315,6 @@ updateForms :: FilePath -> VizDSL Unit
 updateForms file = do
   jarr <-
     Api.sample file 0 20
-      # Auth.authed
       # liftWithCancelerP'
       >>= either (const $ pure []) pure
   if null jarr

@@ -24,7 +24,6 @@ module SlamData.Notebook.Card.Component
 
 import SlamData.Prelude
 
-import Control.Coroutine.Aff (produce)
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
 import Control.Monad.Free (liftF)
@@ -59,6 +58,8 @@ import SlamData.Notebook.Card.Port (_Blocked)
 import SlamData.Notebook.Card.RunState (RunState(..))
 import SlamData.Render.Common (fadeWhen)
 import SlamData.Render.CSS as CSS
+
+import Utils.AffableProducer (produce)
 
 -- | Type synonym for the full type of a card component.
 type CardComponent = H.Component CardStateP CardQueryP Slam

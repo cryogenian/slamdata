@@ -23,17 +23,16 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Events.Indexed as HE
 
-import SlamData.Notebook.Card.Common.EvalQuery as Eq
+import SlamData.Effects (Slam)
 import SlamData.Notebook.Card.CardType as Ct
+import SlamData.Notebook.Card.Common.EvalQuery as Eq
 import SlamData.Notebook.Card.Component as Cc
 import SlamData.Notebook.Card.Port as P
-import SlamData.Effects (Slam)
-import SlamData.Notebook.Card.Save.Component.State (State, initialState, _pathString)
 import SlamData.Notebook.Card.Save.Component.Query (Query(..), QueryP)
+import SlamData.Notebook.Card.Save.Component.State (State, initialState, _pathString)
+import SlamData.Quasar.FS (messageIfFileNotFound) as Api
+import SlamData.Quasar.Query (fileQuery) as Api
 import SlamData.Render.CSS as Rc
-
-import Quasar.Aff as Api
-import Quasar.Auth as Auth
 
 import Utils.Path as Up
 
@@ -96,7 +95,6 @@ cardEval (Eq.EvalCard info k) = case info.inputPort of
 
         outputResource ←
           Api.fileQuery resource fp "select * from {{path}}" Sm.empty
-           # Auth.authed
            # Eq.liftWithCanceler'
            # lift
            >>= either (EC.throwError <<< Exn.message) pure
@@ -104,7 +102,6 @@ cardEval (Eq.EvalCard info k) = case info.inputPort of
         Api.messageIfFileNotFound
           outputResource
           "Error saving file, please try another location"
-          # Auth.authed
           # Eq.liftWithCanceler'
           # lift
           >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Quasar.Auth.Permission
-  ( module Quasar.Auth.Permission
+module SlamData.Quasar.Auth.Permission
+  ( module SlamData.Quasar.Auth.Permission
   , module Quasar.Advanced.Auth
   ) where
 
@@ -38,10 +38,11 @@ import DOM.HTML.Window as Window
 
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
+import Quasar.Advanced.Auth (PermissionToken(..), runPermissionToken)
+
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 
-import Quasar.Advanced.Auth (PermissionToken(..), runPermissionToken)
 import Utils.Path (FilePath, parseFilePath)
 
 type Permissions =

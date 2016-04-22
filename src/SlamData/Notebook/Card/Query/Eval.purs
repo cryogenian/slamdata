@@ -36,12 +36,11 @@ import Ace.Types (Completion)
 
 import Halogen (query, action, request, fromEff)
 
-import Quasar.Aff as Quasar
-import Quasar.Auth as Auth
-
 import SlamData.Notebook.Card.Ace.Component (AceDSL)
 import SlamData.Notebook.Card.Common.EvalQuery as CEQ
 import SlamData.Notebook.Card.Port as Port
+import SlamData.Quasar.FS (messageIfFileNotFound) as Quasar
+import SlamData.Quasar.Query (viewQuery, compile) as Quasar
 
 import Utils.Ace (readOnly)
 import Utils.Completions (mkCompletion, pathCompletions)
@@ -55,7 +54,7 @@ queryEval info sql =
       addCompletions varMap
       CEQ.runCardEvalT do
 
-        plan ← lift $ CEQ.liftWithCancelerP $ Auth.authed $
+        plan ← lift $ CEQ.liftWithCancelerP $
           Quasar.compile backendPath sql varMap
 
         Quasar.viewQuery
@@ -63,7 +62,6 @@ queryEval info sql =
             outputResource
             sql
             varMap
-          # Auth.authed
           # CEQ.liftWithCancelerP
           # lift
           >>= either (EC.throwError <<< Exn.message) pure
@@ -71,7 +69,6 @@ queryEval info sql =
         Quasar.messageIfFileNotFound
             outputResource
             "Requested collection doesn't exist"
-          # Auth.authed
           # CEQ.liftWithCancelerP
           # lift
           >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)

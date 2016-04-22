@@ -42,10 +42,10 @@ import OIDC.Aff (requestAuthentication)
 import OIDCCryptUtils as Crypt
 
 import Quasar.Advanced.Auth.Provider (Provider)
-import Quasar.Aff as Api
-import Quasar.Auth as Auth
 
 import SlamData.Effects (Slam)
+import SlamData.Quasar as Api
+import SlamData.Quasar.Auth as Auth
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu

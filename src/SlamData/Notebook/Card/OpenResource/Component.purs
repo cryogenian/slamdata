@@ -25,17 +25,16 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.Card.CardType as CT
-import SlamData.Notebook.Card.Component as NC
+import SlamData.Notebook.Card.Common.EvalQuery (liftWithCanceler')
 import SlamData.Notebook.Card.Common.EvalQuery as Eq
+import SlamData.Notebook.Card.Component as NC
 import SlamData.Notebook.Card.OpenResource.Component.Query (QueryP, Query(..))
 import SlamData.Notebook.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _loading)
 import SlamData.Notebook.Card.Port as Port
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
-import SlamData.Notebook.Card.Common.EvalQuery (liftWithCanceler')
 
-import Quasar.Aff as Quasar
-import Quasar.Auth as Auth
+import SlamData.Quasar.FS as Quasar
 
 import Utils.Path as PU
 
@@ -129,7 +128,6 @@ cardEval (Eq.EvalCard info k) = do
         Quasar.messageIfFileNotFound
           resource
           ("File " ⊕ printPath resource ⊕ " doesn't exist")
-        # Auth.authed
         # liftWithCanceler'
       case msg of
         Right Nothing →
@@ -198,7 +196,6 @@ updateItems = do
   H.modify (_loading .~ true)
   cs ←
     Quasar.children dp
-      # Auth.authed
       # liftWithCanceler'
   mbSel ← H.gets _.selected
   H.modify (_items .~ either (const []) id cs)
