@@ -47,7 +47,8 @@ nav {
         }
 
         .notebook-name {
-            width: ~"calc(100% - 250px - 230px)";
+            width: ~"calc(100% - 320px)";
+            max-width: 1000px;
             display: inline-block;
             color: #f0f0f0;
             font-size: 28px;
@@ -100,6 +101,8 @@ nav {
     color: white;
     padding-top: 10px;
     padding-bottom: 10px;
+    // :( Don't know how to make it working with and without sign-in
+    //top: 10px;
     left: 50%;
     margin-left: -100px;
     text-align: center;
@@ -109,5 +112,14 @@ nav {
     div {
         position: relative;
         bottom: 36px;
+        border-bottom: 1px solid white;
+        img {
+            height: 20px;
+            display: inline-block;
+            margin-bottom: 2px;
+            margin-right: 8px;
+            position: relative;
+            bottom: 4px;
+        }
     }
 }

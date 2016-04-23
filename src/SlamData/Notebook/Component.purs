@@ -144,7 +144,6 @@ render state =
               [ HP.classes [ Rc.header ] ]
               [ icon' B.glyphiconChevronLeft "Back to parent folder"
                   $ fromMaybe "" (state ^. _parentHref)
-              , logo (state ^. _version)
               , HH.slot' cpRename unit \_ →
                   { component: Rename.comp
                   , initialState: Rename.initialState
