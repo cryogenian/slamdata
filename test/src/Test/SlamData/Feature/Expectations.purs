@@ -155,3 +155,10 @@ fileSearchString string =
   expectPresentedWithProperties
   (Map.singleton "value" $ Just string)
   (XPath.anywhere XPaths.fileSearchInput)
+
+lastEChartOptions ∷ String → SlamFeature Unit
+lastEChartOptions =
+  expectPresented
+    ∘ XPath.last
+    ∘ XPath.anywhere
+    ∘ XPaths.eChartOptions

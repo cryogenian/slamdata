@@ -48,7 +48,19 @@ queryCardTitle :: String
 queryCardTitle =
   XPath.anyWithExactText "Query"
 
-embedCardOutputSnippet :: String
+formCardTitle ∷ String
+formCardTitle =
+  XPath.anyWithExactText "Form"
+
+chartCardTitle ∷ String
+chartCardTitle =
+  XPath.anyWithExactText "Chart"
+
+eChartOptions ∷ String → String
+eChartOptions string =
+  chartCardTitle `XPath.following` ("pre" `XPath.nodeWithExactText` string)
+
+embedCardOutputSnippet ∷ String
 embedCardOutputSnippet =
   XPath.anyWithText "<script type=\"text/javascript\">"
 
