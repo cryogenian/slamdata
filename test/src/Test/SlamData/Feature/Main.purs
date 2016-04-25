@@ -46,7 +46,7 @@ import Test.SlamData.Feature.Interactions (launchSlamData, mountTestDatabase)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.SauceLabs as SL
 import Test.SlamData.Feature.Test.File as File
--- import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
+import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Test.SlamData.Feature.Test.SaveCard as Save
@@ -91,7 +91,7 @@ tests = do
   File.test
   Search.test
   Markdown.test
---  FlexibleVisualization.test
+  FlexibleVisualization.test
   Save.test
 --  FlipDeck.test
 

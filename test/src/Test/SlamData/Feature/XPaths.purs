@@ -55,6 +55,13 @@ formCardTitle ∷ String
 formCardTitle =
   XPath.anyWithExactText "Form"
 
+chartCardTitle ∷ String
+chartCardTitle =
+  XPath.anyWithExactText "Chart"
+
+eChartOptions ∷ String → String
+eChartOptions string =
+  chartCardTitle `XPath.following` ("pre" `XPath.nodeWithExactText` string)
 
 embedCardOutputSnippet ∷ String
 embedCardOutputSnippet =
