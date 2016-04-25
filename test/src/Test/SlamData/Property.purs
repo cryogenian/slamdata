@@ -22,9 +22,6 @@ import Test.StrongCheck (QC)
 
 main :: QC Unit
 main = do
-  log "Check Data.SQL2.Literal..."
-  Test.Property.Data.SQL2.Literal.check
-
   log "Check SlamData.FileSystem.Resource..."
   Test.SlamData.Property.FileSystem.Resource.check
 

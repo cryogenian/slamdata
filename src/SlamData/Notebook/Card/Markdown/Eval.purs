@@ -26,18 +26,17 @@ import Control.Monad.Error.Class as Err
 import Control.Monad.State.Trans as State
 
 import Data.Argonaut.Core as JSON
+import Data.Argonaut.Decode (decodeJson)
 import Data.Array as A
 import Data.Date as D
 import Data.Date.Locale as DL
 import Data.Enum as Enum
 import Data.Foldable as F
-import Data.Functor.Mu as Mu
 import Data.Identity (Identity)
+import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.NaturalTransformation as NT
-import Data.SQL2.Literal as SQL2
 import Data.String as S
-import Data.StrMap as SM
 import Data.Time as DT
 
 import SlamData.Effects (Slam)
@@ -124,7 +123,7 @@ evalEmbeddedQueries dir cardId =
     → String
     → EvalM Port.VarMapValue
   evalCode mid code
-    | languageIsSql mid = Port.Literal ∘ SQL2.array <$> runQuery code
+    | languageIsSql mid = Port.Literal ∘ EJSON.array <$> runQuery code
     | otherwise = pure $ Port.QueryExpr code
 
   languageIsSql
@@ -136,21 +135,18 @@ evalEmbeddedQueries dir cardId =
       ((_ ≡ "sql") ∘ S.toLower)
 
   extractSingletonObject
-    ∷ SQL2.Literal
-    → SQL2.Literal
+    ∷ EJSON.EJson
+    → EJSON.EJson
   extractSingletonObject lit =
-    case Mu.unroll lit of
-      SQL2.Object obj →
-        case SM.keys obj of
-          [key] → fromMaybe lit $ SM.lookup key obj
-          _ → lit
+    case EJSON.unroll lit of
+      EJSON.Object [Tuple key val] → val
       _ → lit
 
   evalValue
     ∷ String
     → EvalM Port.VarMapValue
   evalValue code = do
-    maybe (Port.Literal SQL2.null) (Port.Literal ∘ extractSingletonObject) ∘ A.head
+    maybe (Port.Literal EJSON.null) (Port.Literal ∘ extractSingletonObject) ∘ A.head
       <$> runQuery code
 
   evalTextBox
@@ -160,19 +156,18 @@ evalEmbeddedQueries dir cardId =
     let sql = getConst $ SD.traverseTextBox (map \_ → Const unit) tb
     mresult ← A.head <$> runQuery sql
     result ← maybe (Err.throwError $ Exn.error "No results") (pure ∘ extractSingletonObject) mresult
-    case Tuple tb (Mu.unroll result) of
-      Tuple (SD.PlainText _) (SQL2.String str) →
+    case Tuple tb (EJSON.unroll result) of
+      Tuple (SD.PlainText _) (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
-      Tuple (SD.Numeric _) (SQL2.Decimal a) →
+      Tuple (SD.Numeric _) (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
-      Tuple (SD.Time _) (SQL2.Time str) →
+      Tuple (SD.Time _) (EJSON.Time str) →
         SD.Time ∘ pure <$> parse parseSqlTime str
-      Tuple (SD.Date _) (SQL2.Date str) →
+      Tuple (SD.Date _) (EJSON.Date str) →
         SD.Date ∘ pure <$> parse parseSqlDate str
-      Tuple (SD.DateTime _) (SQL2.DateTime str) →
-        SD.DateTime ∘ pure <$> parseSqlDateTime str
-      Tuple _ res →
-        Err.throwError ∘ Exn.error $ "Type error: " ⊕ show res ⊕ " does not match " ⊕ show tb
+      Tuple (SD.DateTime _) (EJSON.Timestamp str) →
+        SD.DateTime ∘ pure <$> parseSqlTimeStamp str
+      _ → Err.throwError ∘ Exn.error $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
     where
       parse ∷ ∀ s a. P.Parser s a → s → EvalM a
       parse p str =
@@ -193,14 +188,14 @@ evalEmbeddedQueries dir cardId =
 
   rowToLiteral
     ∷ JSON.Json
-    → Maybe SQL2.Literal
+    → Maybe EJSON.EJson
   rowToLiteral =
     either (\_ → Nothing) Just
-      ∘ SQL2.decodeJsonLiteral
+      ∘ decodeJson
 
   runQuery
     ∷ String
-    → EvalM (Array SQL2.Literal)
+    → EvalM (Array EJSON.EJson)
   runQuery code =
     case dir of
       Nothing → Err.throwError $ Exn.error "Cannot evaluate markdown without a saved notebook path"
@@ -266,10 +261,10 @@ parseSqlTime = do
   pure { hours, minutes }
 
 -- | Parses a date-time string into the user's current locale.
-parseSqlDateTime
+parseSqlTimeStamp
   ∷ String
   → EvalM SD.DateTimeValue
-parseSqlDateTime str = do
+parseSqlTimeStamp str = do
   case D.fromString str of
     Nothing → Err.throwError ∘ Exn.error $ "Invalid date: " ⊕ show str
     Just d → Eff.liftEff do

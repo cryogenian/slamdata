@@ -21,9 +21,11 @@ module SlamData.Notebook.Card.Port.VarMap
 import SlamData.Prelude
 
 import Data.Array as A
-import Data.SQL2.Literal as SQL2
-import Data.String as S
+import Data.Foldable as F
+import Data.HugeNum as HN
+import Data.Json.Extended as EJSON
 import Data.StrMap as SM
+import Data.String as S
 
 import Data.Argonaut ((.?))
 import Data.Argonaut.Core (jsonSingletonObject)
@@ -39,7 +41,7 @@ import Text.Markdown.SlamDown.Syntax.Value as SDV
 import Test.StrongCheck as SC
 
 data VarMapValue
-  = Literal SQL2.Literal
+  = Literal EJSON.EJson
   | QueryExpr String -- TODO: syntax of SQL^2 queries
 
 instance eqVarMapValue ∷ Eq VarMapValue where
@@ -59,9 +61,9 @@ instance showVarMapValue ∷ Show VarMapValue where
 instance encodeJsonVarMapValue ∷ EncodeJson VarMapValue where
   encodeJson v =
     case v of
-      Literal lit →
+      Literal ejson →
         jsonSingletonObject "literal" $
-          SQL2.encodeJsonLiteral lit
+          encodeJson ejson
       QueryExpr str →
         jsonSingletonObject "query" $
           encodeJson str
@@ -75,7 +77,7 @@ instance decodeJsonVarMapValue :: DecodeJson VarMapValue where
     where
       decodeLiteral =
         (_ .? "literal")
-          >=> SQL2.decodeJsonLiteral
+          >=> decodeJson
           >>> map Literal
 
       decodeQueryExpr  =
@@ -87,7 +89,7 @@ renderVarMapValue
   → String
 renderVarMapValue val =
   case val of
-    Literal lit → SQL2.renderLiteral lit
+    Literal lit → EJSON.renderEJson lit
     QueryExpr str → str
 
 displayVarMapValue
@@ -95,16 +97,81 @@ displayVarMapValue
   → String
 displayVarMapValue val =
   case val of
-    Literal lit → SQL2.displayLiteral lit
+    Literal lit → displayEJson lit
     QueryExpr str → str
 
+displayEJsonF
+  ∷ ∀ a
+  . (a → String)
+  → EJSON.EJsonF a
+  → String
+displayEJsonF rec d =
+  case d of
+    EJSON.Null → "null"
+    EJSON.Boolean b → if b then "true" else "false"
+    EJSON.Integer i → show i
+    EJSON.Decimal a → HN.toString a
+    EJSON.String str → str
+    EJSON.Timestamp str → str
+    EJSON.Time str → str
+    EJSON.Date str → str
+    EJSON.Interval str → str
+    EJSON.ObjectId str → str
+    EJSON.OrderedSet ds → parens $ commaSep ds
+    EJSON.Array ds → squares $ commaSep ds
+    EJSON.Object ds → braces $ renderPairs ds
+  where
+    commaSep
+      ∷ ∀ f
+      . (Functor f, F.Foldable f)
+      ⇒ f a
+      → String
+    commaSep =
+      F.intercalate "," <<<
+        map rec
+
+    renderPairs
+      ∷ Array (Tuple a a)
+      → String
+    renderPairs =
+      F.intercalate ", " <<<
+        map \(Tuple k v) →
+          rec k <> ": " <> rec v
+
+    parens
+      ∷ String
+      → String
+    parens str =
+      "(" <> str <> ")"
+
+    squares
+      ∷ String
+      → String
+    squares str =
+      "[" <> str <> "]"
+
+    braces
+      ∷ String
+      → String
+    braces str =
+      "{" <> str <> "}"
+
+-- | A more readable, but forgetful renderer
+displayEJson
+  ∷ EJSON.EJson
+  → String
+displayEJson c =
+  displayEJsonF displayEJson $
+    EJSON.unroll c
+
+
 instance valueVarMapValue ∷ SDV.Value VarMapValue where
-  stringValue = Literal <<< SQL2.string
+  stringValue = Literal <<< EJSON.string
   renderValue = displayVarMapValue
 
 instance arbitraryVarMapValue ∷ SC.Arbitrary VarMapValue where
   arbitrary = do
-    Literal <$> SQL2.arbitraryLiteralOfSize 1
+    Literal <$> EJSON.arbitraryEJsonOfSize 1
       <|> QueryExpr <$> SC.arbitrary
 
 parseVarMapValue
@@ -112,7 +179,7 @@ parseVarMapValue
   . (Monad m)
   ⇒ P.ParserT String m VarMapValue
 parseVarMapValue =
-  Literal <$> PC.try SQL2.parseLiteral
+  Literal <$> PC.try EJSON.parseEJson
     <|> QueryExpr <$> anyString
   where
     anyString =

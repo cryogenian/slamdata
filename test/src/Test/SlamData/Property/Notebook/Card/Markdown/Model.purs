@@ -18,26 +18,51 @@ module Test.SlamData.Property.Notebook.Card.Markdown.Model where
 
 import Prelude
 
+import Control.Alt ((<|>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Unsafe as Unsafe
 
 import Data.Date.Locale as DL
 import Data.Either (Either(..))
 import Data.Foldable (mconcat)
+import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.Set as Set
 import Data.StrMap as SM
 
 import SlamData.Notebook.Card.Markdown.Model as M
 import SlamData.Notebook.Card.Markdown.Component.State as MDS
+import SlamData.Notebook.Card.Port.VarMap as VM
 
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
-import Test.StrongCheck (QC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), quickCheck, (<?>), class Arbitrary, arbitrary)
+
+newtype JsonEncodableVarMapValue = JsonEncodableVarMapValue VM.VarMapValue
+
+instance eqJsonEncodableVarMapValue ∷ Eq JsonEncodableVarMapValue where
+  eq (JsonEncodableVarMapValue x) (JsonEncodableVarMapValue y) =
+    eq x y
+
+instance ordJsonEncodableVarMapValue ∷ Ord JsonEncodableVarMapValue where
+  compare (JsonEncodableVarMapValue x) (JsonEncodableVarMapValue y) =
+    compare x y
+
+getJsonEncodableVarMapValue
+  ∷ JsonEncodableVarMapValue
+  → VM.VarMapValue
+getJsonEncodableVarMapValue (JsonEncodableVarMapValue x) =
+  x
+
+instance arbitraryJsonEncodableVarMapValue ∷ Arbitrary JsonEncodableVarMapValue where
+  arbitrary =
+    JsonEncodableVarMapValue <$> do
+      VM.Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1
+        <|> VM.QueryExpr <$> arbitrary
 
 checkSerialization ∷ QC Unit
 checkSerialization =
-  quickCheck \(SDS.SlamDownState { document, formState }) →
+  quickCheck $ map getJsonEncodableVarMapValue >>> \(SDS.SlamDownState { document, formState }) →
     let model = { input: document, state: formState }
     in case M.decode (M.encode model) of
       Left err → Failed $ "Decode failed: " ++ err

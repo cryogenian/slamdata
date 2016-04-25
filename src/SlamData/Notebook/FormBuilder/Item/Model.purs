@@ -34,8 +34,7 @@ import SlamData.Prelude
 import Data.Argonaut ((~>), (:=), (.?))
 import Data.Argonaut as J
 import Data.Lens (LensP, lens)
-import Data.SQL2.Literal as SQL2
-import Data.StrMap as SM
+import Data.Json.Extended as EJSON
 
 import SlamData.Notebook.Card.Port.VarMap as Port
 import SlamData.Notebook.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
@@ -103,17 +102,17 @@ emptyValueOfFieldType
   → Port.VarMapValue
 emptyValueOfFieldType tau =
   case tau of
-    StringFieldType → Port.Literal $ SQL2.string ""
-    BooleanFieldType → Port.Literal $ SQL2.boolean true
-    NumericFieldType → Port.Literal $ SQL2.decimal zero
-    DateTimeFieldType → Port.Literal $ SQL2.dateTime ""
-    DateFieldType → Port.Literal $ SQL2.date ""
-    TimeFieldType → Port.Literal $ SQL2.time ""
-    IntervalFieldType → Port.Literal $ SQL2.interval ""
-    ObjectIdFieldType → Port.Literal $ SQL2.objectId ""
-    OrderedSetFieldType → Port.Literal $ SQL2.orderedSet []
-    ArrayFieldType → Port.Literal $ SQL2.array []
-    ObjectFieldType → Port.Literal $ SQL2.object SM.empty
+    StringFieldType → Port.Literal $ EJSON.string ""
+    BooleanFieldType → Port.Literal $ EJSON.boolean true
+    NumericFieldType → Port.Literal $ EJSON.decimal zero
+    DateTimeFieldType → Port.Literal $ EJSON.timestamp ""
+    DateFieldType → Port.Literal $ EJSON.date ""
+    TimeFieldType → Port.Literal $ EJSON.time ""
+    IntervalFieldType → Port.Literal $ EJSON.interval ""
+    ObjectIdFieldType → Port.Literal $ EJSON.objectId ""
+    OrderedSetFieldType → Port.Literal $ EJSON.orderedSet mempty
+    ArrayFieldType → Port.Literal $ EJSON.array mempty
+    ObjectFieldType → Port.Literal $ EJSON.object mempty
     SqlExprFieldType → Port.QueryExpr ""
     SqlIdentifierFieldType → Port.QueryExpr "``"
 
@@ -123,15 +122,15 @@ defaultValueToVarMapValue
   → Maybe Port.VarMapValue
 defaultValueToVarMapValue ty str =
   case ty of
-    StringFieldType → Just $ Port.Literal $ SQL2.string str
-    DateTimeFieldType → Just $ Port.Literal $ SQL2.dateTime str
-    DateFieldType → Just $ Port.Literal $ SQL2.date str
-    TimeFieldType → Just $ Port.Literal $ SQL2.time str
-    IntervalFieldType → Just $ Port.Literal $ SQL2.interval str
-    ObjectIdFieldType → Just $ Port.Literal $ SQL2.objectId str
+    StringFieldType → Just $ Port.Literal $ EJSON.string str
+    DateTimeFieldType → Just $ Port.Literal $ EJSON.timestamp str
+    DateFieldType → Just $ Port.Literal $ EJSON.date str
+    TimeFieldType → Just $ Port.Literal $ EJSON.time str
+    IntervalFieldType → Just $ Port.Literal $ EJSON.interval str
+    ObjectIdFieldType → Just $ Port.Literal $ EJSON.objectId str
     SqlExprFieldType → Just $ Port.QueryExpr $ str
     SqlIdentifierFieldType → Just $ Port.QueryExpr $ "`" ⊕ str ⊕ "`"
     _ | str == "" → Nothing
     _ →
-      P.runParser str SQL2.parseLiteral
+      P.runParser str EJSON.parseEJson
         # either (\_ → Nothing) (Port.Literal >>> Just)

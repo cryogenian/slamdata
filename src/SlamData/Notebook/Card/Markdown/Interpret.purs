@@ -29,7 +29,7 @@ import Data.Functor.Compose (decompose)
 import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
-import Data.SQL2.Literal as SQL2
+import Data.Json.Extended as EJSON
 
 import SlamData.Notebook.Card.Port.VarMap as VM
 
@@ -44,13 +44,13 @@ import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
 -- One option that we might want to consider, in case we do intend to support things
 -- like ordered sets of query expressions, etc. would be to have something like
--- `type VarMapValue = Mu (Coproduct LiteralF ExprF)`.
+-- `type VarMapValue = Mu (Coproduct EJsonF ExprF)`.
 
 getLiteral
   ∷ ∀ m
   . (Plus m, Applicative m)
   ⇒ VM.VarMapValue
-  → m SQL2.Literal
+  → m EJSON.EJson
 getLiteral (VM.Literal l) = pure l
 getLiteral _ = empty
 
@@ -63,14 +63,14 @@ formFieldEmptyValue field =
     case field of
       SD.TextBox tb →
         case tb of
-          SD.PlainText _ → SQL2.string ""
-          SD.Numeric _ → SQL2.integer 0
-          SD.Date _ → SQL2.null
-          SD.Time _ → SQL2.null
-          SD.DateTime _ → SQL2.null
-      SD.CheckBoxes _ _ → SQL2.orderedSet []
-      SD.RadioButtons _ _ → SQL2.orderedSet []
-      SD.DropDown _ _ → SQL2.orderedSet []
+          SD.PlainText _ → EJSON.string ""
+          SD.Numeric _ → EJSON.integer 0
+          SD.Date _ → EJSON.null
+          SD.Time _ → EJSON.null
+          SD.DateTime _ → EJSON.null
+      SD.CheckBoxes _ _ → EJSON.orderedSet []
+      SD.RadioButtons _ _ → EJSON.orderedSet []
+      SD.DropDown _ _ → EJSON.orderedSet []
 
 formFieldValueToVarMapValue
   ∷ ∀ e m
@@ -83,10 +83,10 @@ formFieldValueToVarMapValue v =
       SD.TextBox tb → do
         tb' ← liftMaybe $ SD.traverseTextBox decompose tb
         case tb' of
-          SD.PlainText (Identity x) → pure $ SQL2.string x
-          SD.Numeric (Identity x) → pure $ SQL2.decimal x
-          SD.Date _ → pure ∘ SQL2.date $ SDPR.prettyPrintTextBoxValue tb'
-          SD.Time _ → pure ∘ SQL2.time $ SDPR.prettyPrintTextBoxValue tb'
+          SD.PlainText (Identity x) → pure $ EJSON.string x
+          SD.Numeric (Identity x) → pure $ EJSON.decimal x
+          SD.Date _ → pure ∘ EJSON.date $ SDPR.prettyPrintTextBoxValue tb'
+          SD.Time _ → pure ∘ EJSON.time $ SDPR.prettyPrintTextBoxValue tb'
           SD.DateTime (Identity localDateTime) → do
             let
               year = D.Year localDateTime.date.year
@@ -97,19 +97,19 @@ formFieldValueToVarMapValue v =
               millisecond = DT.MillisecondOfSecond 0
             month ← liftMaybe $ Enum.toEnum localDateTime.date.month
             dateTime ← MT.MaybeT ∘ liftEff $ DL.dateTime year month day hour minute second millisecond
-            pure ∘ SQL2.dateTime $ D.toISOString dateTime
+            pure ∘ EJSON.timestamp $ D.toISOString dateTime
       SD.CheckBoxes (Identity bs) (Identity xs) →
         L.zip bs xs
           # L.filter fst
           # L.mapMaybe (getLiteral ∘ snd)
           # L.fromList
-          # SQL2.orderedSet
+          # EJSON.orderedSet
           # pure
       SD.RadioButtons (Identity x) _ →
-        pure ∘ SQL2.orderedSet $ getLiteral x
+        pure ∘ EJSON.orderedSet $ getLiteral x
       SD.DropDown mx _ → do
         Identity x ← liftMaybe mx
-        pure ∘ SQL2.orderedSet $ getLiteral x
+        pure ∘ EJSON.orderedSet $ getLiteral x
 
   where
     liftMaybe

@@ -27,7 +27,7 @@ import Data.Semiring.Free (runFree)
 import Data.String (joinWith, indexOf)
 import Data.String.Regex as RX
 
-import Data.SQL2.Literal as SQL2
+import Data.Json.Extended as EJSON
 
 import Text.SlamSearch.Types as SS
 
@@ -97,7 +97,7 @@ predicateToSQL
   -> String
 predicateToSQL (SS.Contains (SS.Text v)) s =
   joinWith " OR " $
-    [s <> " ~* " <> SQL2. renderLiteral (SQL2.string (globToRegex (containsToGlob v)))]
+    [s <> " ~* " <> EJSON.renderEJson (EJSON.string (globToRegex (containsToGlob v)))]
     <> (if needUnq v then renderLowercased v else [])
     <> (if not (needDateTime v) && needDate v then render date else [ ])
     <> (if needTime v then render time  else [])
@@ -115,10 +115,10 @@ predicateToSQL (SS.Contains (SS.Text v)) s =
     hasSpecialChars v =
       isJust (indexOf "*" v) || isJust (indexOf "?" v)
 
-    date = SQL2.renderLiteral $ SQL2.date v
-    time = SQL2.renderLiteral $ SQL2.time v
-    ts = SQL2.renderLiteral $ SQL2.dateTime v
-    i = SQL2.renderLiteral $ SQL2.interval v
+    date = EJSON.renderEJson $ EJSON.date v
+    time = EJSON.renderEJson $ EJSON.time v
+    ts = EJSON.renderEJson $ EJSON.timestamp v
+    i = EJSON.renderEJson $ EJSON.interval v
 
     renderLowercased v = [ "LOWER(" <> s <> ") = " <> v]
     render v = [s <> " = " <> v ]
@@ -130,8 +130,8 @@ predicateToSQL (SS.Range (SS.Text v) (SS.Text v')) s =
     <> (if needDate v && needDate v' then [ forR date date' ] else [ ])
 
   where
-    date = SQL2.renderLiteral $ SQL2.date v
-    date' = SQL2.renderLiteral $ SQL2.date v'
+    date = EJSON.renderEJson $ EJSON.date v
+    date' = EJSON.renderEJson $ EJSON.date v'
 
     forR' :: String -> String -> String
     forR' v v' =
@@ -153,7 +153,7 @@ predicateToSQL (SS.Gte v) s = renderBinRel s ">=" v
 predicateToSQL (SS.Lt v) s = renderBinRel s "<" v
 predicateToSQL (SS.Lte v) s = renderBinRel s "<=" v
 predicateToSQL (SS.Ne v) s = renderBinRel s "<>" v
-predicateToSQL (SS.Like v) s = s <> " ~* " <> SQL2.renderLiteral (SQL2.string v)
+predicateToSQL (SS.Like v) s = s <> " ~* " <> EJSON.renderEJson (EJSON.string v)
 
 globToRegex :: String -> String
 globToRegex =
@@ -185,10 +185,10 @@ renderBinRel s op v = pars $
     <> (if needInterval unquoted then [ forV i ] else [])
   where
     unquoted = valueToSQL v
-    date = SQL2.renderLiteral $ SQL2.date unquoted
-    time = SQL2.renderLiteral $ SQL2.time unquoted
-    ts = SQL2.renderLiteral $ SQL2.dateTime unquoted
-    i = SQL2.renderLiteral $ SQL2.interval unquoted
+    date = EJSON.renderEJson $ EJSON.date unquoted
+    time = EJSON.renderEJson $ EJSON.time unquoted
+    ts = EJSON.renderEJson $ EJSON.timestamp unquoted
+    i = EJSON.renderEJson $ EJSON.interval unquoted
 
     forV' v = fold ["LOWER(", s, ") ", op, " ", v]
     forV v = fold [s, " ", op, " ", v]
@@ -279,7 +279,7 @@ firstDot :: RX.Regex
 firstDot = RX.regex "^\\." RX.noFlags
 
 quote :: String -> String
-quote s = SQL2.renderLiteral $ SQL2.string s
+quote s = EJSON.renderEJson $ EJSON.string s
 
 pars :: String -> String
 pars s = "(" <> s <> ")"
