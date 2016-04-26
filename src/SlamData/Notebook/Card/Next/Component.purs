@@ -18,14 +18,12 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Notebook.Card.CardType (cardName, insertableCardTypes)
 import SlamData.Notebook.Card.CardType as Ct
 import SlamData.Notebook.Card.Common.EvalQuery as Ec
 import SlamData.Notebook.Card.Component (makeCardComponent, makeQueryPrism, _NextState, _NextQuery)
 import SlamData.Notebook.Card.Component as Cc
 import SlamData.Notebook.Card.Next.Component.Query (QueryP, Query(AddCard, SetAvailableTypes, SetMessage), _AddCardType)
 import SlamData.Notebook.Card.Next.Component.State (State, _message, _types, initialState)
-import SlamData.Render.CSS as Rc
 
 type NextHTML = H.ComponentHTML QueryP
 type NextDSL = H.ComponentDSL State QueryP Slam
@@ -43,19 +41,20 @@ render :: State → NextHTML
 render state =
   case state.message of
     Nothing →
-      HH.ul [ HP.classes [ Rc.nextActionCard ] ]
-        (map nextButton state.types
-        ⊕ (map disabledButton $ insertableCardTypes Arr.\\ state.types))
+      HH.ul_
+        $ map nextButton state.types
+        ⊕ map disabledButton (Ct.insertableCardTypes Arr.\\ state.types)
 
     Just msg →
-      HH.div [ HP.classes [ B.alert, B.alertInfo, Rc.nextActionCard ] ]
+      HH.div
+        [ HP.classes [ B.alert, B.alertInfo ] ]
         [ HH.h4_ [ HH.text msg ] ]
   where
   cardTitle ∷ Ct.CardType → String
-  cardTitle cty = "Insert " ⊕ cardName cty ⊕ " card"
+  cardTitle cty = "Insert " ⊕ Ct.cardName cty ⊕ " card"
 
   disabledTitle ∷ Ct.CardType → String
-  disabledTitle cty = cardName cty ⊕ " is unavailable as next action"
+  disabledTitle cty = Ct.cardName cty ⊕ " is unavailable as next action"
 
   nextButton ∷ Ct.CardType → NextHTML
   nextButton cty =
@@ -65,7 +64,8 @@ render state =
           , ARIA.label $ cardTitle cty
           , HE.onClick (HE.input_ (right ∘ AddCard cty))
           ]
-          [ HH.p_ [ HH.text (cardName cty) ]
+          [ Ct.cardGlyph cty
+          , HH.p_ [ HH.text (Ct.cardName cty) ]
           ]
       ]
 
@@ -77,7 +77,8 @@ render state =
           , ARIA.label $ disabledTitle cty
           , HP.disabled true
           ]
-          [ HH.p_ [ HH.text (cardName cty) ]
+          [ Ct.cardGlyph cty
+          , HH.p_ [ HH.text (Ct.cardName cty) ]
           ]
       ]
 

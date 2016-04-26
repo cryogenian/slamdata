@@ -19,8 +19,10 @@ module SlamData.Notebook.Card.CardType
   , AceMode(..)
   , cardName
   , cardGlyph
+  , cardClasses
   , aceCardName
   , aceCardGlyph
+  , aceCardClasses
   , aceMode
   , nextCardTypes
   , controllable
@@ -34,7 +36,7 @@ import Control.Monad.Error.Class (throwError)
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
 import Data.Array as Arr
 
-import Halogen.HTML.Core (HTML)
+import Halogen.HTML as H
 import Halogen.HTML.Indexed as HH
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed as HP
@@ -155,27 +157,35 @@ cardName OpenResource = "Explore"
 cardName DownloadOptions = "Download"
 cardName ErrorCard = "Error"
 
-cardGlyph ∷ ∀ s f. CardType → HTML s f
+cardGlyph ∷ ∀ s f. CardType → H.HTML s f
 cardGlyph (Ace at) = glyph $ aceCardGlyph at
 cardGlyph Search = glyph B.glyphiconSearch
 cardGlyph Viz = glyph B.glyphiconPicture
 cardGlyph Download = glyph B.glyphiconDownloadAlt
 cardGlyph API = glyph B.glyphiconOpenFile
 cardGlyph APIResults = glyph B.glyphiconTasks
-cardGlyph Chart =
-  HH.div
-    [ HP.classes [ Rc.glyphImage, Rc.chartGlyph ]
-    ] [ ]
-cardGlyph Markdown =
-  HH.div
-    [ HP.classes [ Rc.glyphImage, Rc.codeGlyph ]
-    ] [ ]
+cardGlyph Chart = HH.div [ HP.classes [ Rc.glyphImage, Rc.chartGlyph ] ] [ ]
+cardGlyph Markdown = HH.div [ HP.classes [ Rc.glyphImage, Rc.codeGlyph ] ] [ ]
 cardGlyph JTable = glyph B.glyphiconThList
 cardGlyph NextAction = glyph B.glyphiconStop
 cardGlyph Save = glyph B.glyphiconFloppyDisk
 cardGlyph OpenResource = glyph B.glyphiconFolderOpen
 cardGlyph DownloadOptions = glyph B.glyphiconDownload
 cardGlyph ErrorCard = glyph B.glyphiconAlert
+
+cardClasses ∷ CardType → Array H.ClassName
+cardClasses (Ace at) = [ H.className "sd-card-ace" ] <> aceCardClasses at
+cardClasses Search = [ H.className "sd-card-search" ]
+cardClasses Viz = [ H.className "sd-card-viz" ]
+cardClasses Chart = [ H.className "sd-card-chart" ]
+cardClasses Markdown = [ H.className "sd-card-markdown" ]
+cardClasses JTable = [ H.className "sd-card-table" ]
+cardClasses Download = [ H.className "sd-card-download" ]
+cardClasses API = [ H.className "sd-card-api" ]
+cardClasses APIResults = [ H.className "sd-card-api-results" ]
+cardClasses NextAction = [ H.className "sd-card-next-action" ]
+cardClasses Save = [ H.className "sd-card-save" ]
+cardClasses OpenResource = [ H.className "sd-card-open-resource" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Markdown"
@@ -184,6 +194,10 @@ aceCardName SQLMode = "Query"
 aceCardGlyph ∷ AceMode → HH.ClassName
 aceCardGlyph MarkdownMode = B.glyphiconEdit
 aceCardGlyph SQLMode = B.glyphiconQuestionSign
+
+aceCardClasses ∷ AceMode → Array H.ClassName
+aceCardClasses MarkdownMode = [ H.className "sd-card-markdown" ]
+aceCardClasses SQLMode = [ H.className "sd-card-sql" ]
 
 aceMode ∷ AceMode → String
 aceMode MarkdownMode = "ace/mode/markdown"
@@ -218,7 +232,6 @@ nextCardTypes (Just ct) = case ct of
     ]
   dataSourceCards =
     (dataSourceOutput `Arr.snoc` JTable) `Arr.snoc` Save
-
 
 controllable ∷ CardType → Boolean
 controllable NextAction = false

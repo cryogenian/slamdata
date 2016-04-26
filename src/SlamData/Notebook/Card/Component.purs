@@ -82,31 +82,28 @@ makeCardComponent def = makeCardComponentPart def render
       then HH.text ""
       else shown cs
     where
-    canHaveOutput =
-      not $ Arr.null $ nextCardTypes $ Just def.cardType
-    shouldCollapse =
-      cs.isCollapsed || isJust (cs.input >>= preview _Blocked)
-    collapsedClass  =
-      (guard shouldCollapse) $> CSS.collapsed
 
     hideIfCollapsed =
       ARIA.hidden $ show shouldCollapse
 
     shown ∷ CS.CardState → CR.CardHTML
     shown cs =
-      HH.div [ HP.classes $ join [ containerClasses, collapsedClass  ] ]
-      $ fold
-          [
-            header def.cardType cs
-          , [ HH.div [ HP.classes ([])
-                     , hideIfCollapsed
-                     ]
-              [ HH.slot unit \_ → {component, initialState} ]
+      HH.div
+        [ HP.classes $ [ CSS.notebookCard ] <> collapsedClass ]
+        $ fold
+          [ header def.cardType cs
+          , [ HH.div
+                [ hideIfCollapsed
+                , HP.classes $ cardClasses def.cardType
+                ]
+                [ HH.slot unit \_ → {component, initialState} ]
             ]
           , (guard canHaveOutput) $> CR.statusBar cs.hasResults cs
           ]
-containerClasses ∷ Array (HH.ClassName)
-containerClasses = [CSS.notebookCard]
+    canHaveOutput = not $ Arr.null $ nextCardTypes $ Just def.cardType
+    shouldCollapse = cs.isCollapsed || isJust (cs.input >>= preview _Blocked)
+    collapsedClass = guard shouldCollapse $> CSS.collapsed
+    hideIfCollapsed = ARIA.hidden $ show shouldCollapse
 
 -- | Constructs a card component from a record with the necessary properties and
 -- | a render function.

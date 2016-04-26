@@ -416,7 +416,7 @@ codeGlyph ∷ ClassName
 codeGlyph = className "code-glyph"
 
 deckBackSide ∷ ClassName
-deckBackSide = className "deck-backside"
+deckBackSide = className "sd-deck-backside"
 
 openResourceCard ∷ ClassName
 openResourceCard = className "open-resource-card"
