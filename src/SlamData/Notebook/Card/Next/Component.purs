@@ -18,7 +18,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Notebook.Card.CardType (cardName, cardGlyph, insertableCardTypes)
+import SlamData.Notebook.Card.CardType (cardName, insertableCardTypes)
 import SlamData.Notebook.Card.CardType as Ct
 import SlamData.Notebook.Card.Common.EvalQuery as Ec
 import SlamData.Notebook.Card.Component (makeCardComponent, makeQueryPrism, _NextState, _NextQuery)
