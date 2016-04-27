@@ -14,8 +14,10 @@ saveCardScenario =
   scenario
     "Saving/caching data source card output"
     (Interact.createNotebookInTestFolder "Save card")
-    (Interact.deleteFileInTestFolder "Save card.slam"
-     ≫ Interact.deleteFileInTestFolder "временный файл")
+    (Interact.deleteFileInTestFolder "Untitled Notebook.slam"
+     ≫ Interact.deleteFile "временный файл"
+     ≫ Interact.browseRootFolderOld
+    )
 
 test ∷ SlamFeature Unit
 test =

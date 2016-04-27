@@ -21,7 +21,7 @@ import Database.Mongo.Mongo (connect, close)
 
 import DOM (DOM)
 
-import Node.ChildProcess (ChildProcess, stdout, stderr, spawn, kill, exec)
+import Node.ChildProcess (ChildProcess, stdout, spawn, kill, exec)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
 import Node.FS.Aff (unlink, mkdir)
@@ -269,16 +269,6 @@ main = do
         stdout
         "Server started listening on port"
     liftEff $ modifyRef procs (Arr.cons quasar)
-
-    selenium ←
-
-      startProc
-        "Selenium"
-        "java"
-        (seleniumArgs rawConfig)
-        stderr
-        "Selenium Server is up and running"
-    liftEff $ modifyRef procs (Arr.cons selenium)
 
     log $ gray "Restoring database"
     exec $ restoreCmd rawConfig

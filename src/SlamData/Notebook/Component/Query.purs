@@ -18,30 +18,22 @@ module SlamData.Notebook.Component.Query where
 
 import SlamData.Prelude
 
-import DOM.Event.EventTarget (EventListener)
-
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
 
-import SlamData.Effects (SlamDataEffects)
 import SlamData.Notebook.AccessType (AccessType)
 import SlamData.Notebook.Card.CardId (CardId)
-import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, cpRename, cpDeck)
+import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck)
 import SlamData.Notebook.Deck.Component.Query as Deck
-import SlamData.Notebook.Menu.Component.Query as Menu
-import SlamData.Notebook.Rename.Component as Rename
 
 data Query a
-  = ActivateKeyboardShortcuts a
-  | DeactivateKeyboardShortcuts a
-  | EvaluateMenuValue Menu.Value a
-  | AddKeyboardListener (EventListener SlamDataEffects) a
-  | SetAccessType AccessType a
+  = SetAccessType AccessType a
   | GetAccessType (AccessType → a)
   | SetViewingCard (Maybe CardId) a
   | GetViewingCard (Maybe CardId → a)
   | SetParentHref String a
   | DismissAll a
+
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
@@ -65,18 +57,4 @@ fromDeck r =
     $ H.ChildF (injSlot cpDeck unit)
     $ injQuery cpDeck
     $ left
-    $ H.request r
-
-toRename ∷ H.Action Rename.Query → QueryP Unit
-toRename =
-  right
-    ∘ H.ChildF (injSlot cpRename unit)
-    ∘ injQuery cpRename
-    ∘ H.action
-
-fromRename ∷ ∀ a. (∀ i. (a → i) → Rename.Query i) → QueryP a
-fromRename r =
-  right
-    $ H.ChildF (injSlot cpRename unit)
-    $ injQuery cpRename
     $ H.request r

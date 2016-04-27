@@ -4,7 +4,7 @@ import SlamData.Prelude
 
 import Data.Map as Map
 import Selenium.Monad (tryRepeatedlyTo)
-import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectScreenshotToMatchAny, expectSelectValue)
+import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectScreenshotToMatchAny, expectSelectValue, expectPresentedNotRepeatedly)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 
@@ -120,6 +120,10 @@ exploreFileInLastCard fileName =
 file ∷ String → SlamFeature Unit
 file =
   expectPresented ∘ XPath.anywhere ∘ XPaths.selectFile
+
+fileNotRepeatedly ∷ String → SlamFeature Unit
+fileNotRepeatedly =
+  expectPresentedNotRepeatedly ∘ XPath.anywhere ∘ XPaths.selectFile
 
 noFile ∷ String → SlamFeature Unit
 noFile =

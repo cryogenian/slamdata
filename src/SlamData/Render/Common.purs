@@ -33,17 +33,17 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Config as Config
 import SlamData.Render.CSS as Rc
 
-navbar :: forall p f. Array (HTML p f) -> HTML p f
+navbar ∷ ∀ p f. Array (HTML p f) → HTML p f
 navbar = H.nav [ P.class_ B.clearfix ]
 
-row :: forall p f. Array (HTML p f) -> HTML p f
+row ∷ ∀ p f. Array (HTML p f) → HTML p f
 row = H.div [ P.class_ B.row ]
 
-row' :: forall p f. Array ClassName -> Array (HTML p f) -> HTML p f
+row' ∷ ∀ p f. Array ClassName → Array (HTML p f) → HTML p f
 row' cs = H.div [ P.classes $ cs <> [ B.row ] ]
 
-genericContainer :: forall p f. Array ClassName -> Array ClassName ->
-                    Array (HTML p f) -> HTML p f
+genericContainer ∷ ∀ p f. Array ClassName → Array ClassName →
+                    Array (HTML p f) → HTML p f
 genericContainer wrapperClasses contentClasses nodes =
   H.div [ P.classes wrapperClasses ]
   [ row [ H.div [ P.classes contentClasses ]
@@ -51,19 +51,19 @@ genericContainer wrapperClasses contentClasses nodes =
         ]
   ]
 
-content :: forall p f. Array (HTML p f) -> HTML p f
+content ∷ ∀ p f. Array (HTML p f) → HTML p f
 content = H.div [ P.class_ Rc.content ]
 
-contentFluid :: forall p f. Array (HTML p f) -> HTML p f
+contentFluid ∷ ∀ p f. Array (HTML p f) → HTML p f
 contentFluid = genericContainer [ B.containerFluid ] [ ]
 
-glyph :: forall p f. ClassName -> HTML p f
+glyph ∷ ∀ p f. ClassName → HTML p f
 glyph g = H.i [ P.classes [ B.glyphicon, g ] ] [ ]
 
-glyphInactive :: forall p f. ClassName -> HTML p f
+glyphInactive ∷ ∀ p f. ClassName → HTML p f
 glyphInactive g = H.i [ P.classes [B.glyphicon, Rc.glyphiconInactive, g ] ] []
 
-icon :: forall p f. ClassName -> String -> String -> HTML p f
+icon ∷ ∀ p f. ClassName → String → String → HTML p f
 icon c href label =
   H.div
     [ P.classes [ Rc.navIcon ], P.title label, ARIA.label label ]
@@ -72,7 +72,7 @@ icon c href label =
         [ glyph c ]
     ]
 
-icon' :: forall p f. ClassName -> String -> String -> HTML p f
+icon' ∷ ∀ p f. ClassName → String → String → HTML p f
 icon' c title href = H.div [ P.classes [ Rc.navIcon ] ]
                      [ H.a [ P.href href
                            , P.title title
@@ -81,30 +81,32 @@ icon' c title href = H.div [ P.classes [ Rc.navIcon ] ]
                        [ glyph c ]
                      ]
 
-logo :: forall p f. Maybe String -> HTML p f
+logo ∷ ∀ p f. Maybe String → HTML p f
 logo mbVersion =
   H.div [ P.class_ Rc.navLogo ]
-  [ H.a
-    [ P.href Config.slamDataHome
-    , ARIA.label "Browse root folder"
-    , P.title "Browse root folder"
-    ]
-    [ H.img [ P.src "img/logo.svg" ] ]
-  ]
+  ([ H.a
+     [ P.href Config.slamDataHome
+     , ARIA.label "Browse root folder"
+     , P.title "Browse root folder"
+     ]
+     [ H.img [ P.src "img/logo.svg" ] ]
+   ]
+   ⊕ foldMap (pure ∘ H.div_ ∘ pure ∘ H.text) mbVersion
+  )
 
-closeButton :: forall p f. (ET.Event ET.MouseEvent -> EventHandler f) -> HTML p f
+closeButton ∷ ∀ p f. (ET.Event ET.MouseEvent → EventHandler f) → HTML p f
 closeButton handler =
   H.button [ P.class_ B.close
            , E.onClick handler
            ]
   [ H.span_ [ H.text (fromChar $ fromCharCode 215) ] ]
 
-fadeWhen :: Boolean -> Array ClassName
+fadeWhen ∷ Boolean → Array ClassName
 fadeWhen true = [ B.fade ]
 fadeWhen false = [ B.fade, B.in_ ]
 
-classedDiv :: forall f p. ClassName -> Array (HTML p (f Unit)) -> HTML p (f Unit)
+classedDiv ∷ ∀ f p. ClassName → Array (HTML p (f Unit)) → HTML p (f Unit)
 classedDiv cls = H.div [ P.classes [ cls ] ]
 
-formGroup :: forall f p. Array (HTML p (f Unit)) -> HTML p (f Unit)
+formGroup ∷ ∀ f p. Array (HTML p (f Unit)) → HTML p (f Unit)
 formGroup = classedDiv B.formGroup

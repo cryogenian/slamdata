@@ -17,6 +17,7 @@ module Test.Feature
   , expectScreenshotToMatchAny
   , expectScreenshotToMatchAnyWithProperties
   , expectSelectValue
+  , expectPresentedNotRepeatedly
   , hover
   , hoverWithProperties
   , paste

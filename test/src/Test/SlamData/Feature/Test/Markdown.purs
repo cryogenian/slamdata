@@ -30,7 +30,8 @@ mdScenario =
   scenario
     "Markdown"
     (Interact.createNotebookInTestFolder "Markdown")
-    (Interact.deleteFileInTestFolder "Markdown.slam" *> Interact.browseRootFolder)
+    (Interact.deleteFileInTestFolder "Untitled Notebook.slam"
+       *> Interact.browseRootFolderOld)
 
 test :: SlamFeature Unit
 test = do

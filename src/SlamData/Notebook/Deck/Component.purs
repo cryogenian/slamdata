@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Notebook.Deck.Component
-  ( deckComponent
+  ( comp
   , initialState
   , module SlamData.Notebook.Deck.Component.Query
   , module SlamData.Notebook.Deck.Component.State
@@ -85,8 +85,8 @@ type NotebookDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 initialState ∷ BrowserFeatures → StateP
 initialState fs = H.parentState $ initialDeck fs
 
-deckComponent ∷ H.Component StateP QueryP Slam
-deckComponent = H.parentComponent { render, eval, peek: Just peek }
+comp ∷ H.Component StateP QueryP Slam
+comp = H.parentComponent { render, eval, peek: Just peek }
 
 render ∷ State → NotebookHTML
 render state =
