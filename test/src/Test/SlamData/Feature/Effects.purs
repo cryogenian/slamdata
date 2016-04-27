@@ -7,7 +7,7 @@ import Node.ChildProcess (CHILD_PROCESS)
 import Test.SlamData.Feature.Env (ENV)
 
 type SlamFeatureEffects e =
-  ( childProcess :: CHILD_PROCESS
+  ( cp :: CHILD_PROCESS
   , avar :: AVAR
   , db :: DB
   , random :: RANDOM

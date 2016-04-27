@@ -56,19 +56,16 @@
     "purescript-debug": "^0.1.2",
     "purescript-easyimage": "^0.3.0",
     "purescript-imagediff": "^0.3.0",
-    "purescript-node-fs-aff": "^0.5.0",
     "purescript-node-mongodb": "84a82e250504140a98ebae2d7a371c26b24b36d3",
-    "purescript-node-process": "^0.4.1",
-    "purescript-node-streams": "^0.3.0",
     "purescript-platform": "^0.4.0",
     "purescript-strongcheck": "^0.14.7",
-    "purescript-webdriver": "^0.18.0"
+    "purescript-webdriver": "^0.18.0",
+    "purescript-quasar-test-starter": "slamdata/quasar-test-starter#2bd4f021891b453bc6d264cd6b769971656fa8ac"
   },
   "resolutions": {
     "purescript-profunctor-lenses": "^0.4.2",
     "purescript-nonempty": "^0.2.0",
     "purescript-uri": "^0.3.0",
-    "purescript-parsing": "^0.8.0",
     "purescript-css": "b3fc1066d8022c30898a6aae7cdcf7fb7871ae1e"
   }
 }

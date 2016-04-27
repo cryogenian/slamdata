@@ -2,33 +2,35 @@ module Test.SlamData.Feature.Main where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Aff, forkAff, runAff, launchAff, apathize, attempt, later', cancel)
-import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, killVar, AVAR)
+import Control.Monad.Aff (Aff, launchAff, runAff, apathize, attempt)
+import Control.Monad.Aff.AVar (makeVar, takeVar, putVar, AVAR)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Aff.Reattempt (reattempt)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console as Ec
-import Control.Monad.Eff.Exception (Error, EXCEPTION, throwException, error, message)
-import Control.Monad.Eff.Ref (REF, newRef, writeRef, modifyRef, readRef)
+import Control.Monad.Eff.Exception (Error, EXCEPTION, message)
+import Control.Monad.Eff.Ref (REF, newRef, modifyRef, readRef)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Trans (runReaderT)
 
 import Data.Array as Arr
+import Data.Posix.Signal (Signal(SIGTERM))
 import Data.String as Str
 
 import Database.Mongo.Mongo (connect, close)
 
 import DOM (DOM)
 
-import Node.ChildProcess (ChildProcess, stdout, spawn, kill, exec)
-import Node.Encoding (Encoding(UTF8))
+import Node.ChildProcess as CP
 import Node.FS (FS)
 import Node.FS.Aff (unlink, mkdir)
 import Node.Path (resolve)
 import Node.Process as Process
 import Node.Rimraf (rimraf)
-import Node.Stream (Readable, Duplex, pipe, onDataString, onClose)
+import Node.Stream (Readable, Duplex, pipe, onClose)
+
+import Quasar.Spawn.Util.Starter (starter, expectStdOut, expectStdErr)
 
 import Selenium (setFileDetector, quit)
 import Selenium.Browser (Browser(..), str2browser)
@@ -53,23 +55,23 @@ import Test.SlamData.Feature.Test.SaveCard as Save
 --import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
 import Text.Chalky (green, yellow, magenta, gray, red)
 
-foreign import getConfig :: ∀ e. Eff (fs :: FS|e) Config
+foreign import getConfig ∷ ∀ e. Eff (fs ∷ FS|e) Config
 foreign import createReadStream
-  :: ∀ e. String → Aff e (Readable () e)
+  ∷ ∀ e. String → Aff e (Readable () e)
 foreign import createWriteStream
-  :: ∀ e. String → Aff e (Duplex e)
+  ∷ ∀ e. String → Aff e (Duplex e)
 foreign import stack
-  :: Error -> String
+  ∷ Error -> String
 
 type Effects =
   SlamFeatureEffects (FeatureEffects
-    ( ref :: REF
-    , console :: Ec.CONSOLE
-    , dom :: DOM
-    , selenium :: SELENIUM
+    ( ref ∷ REF
+    , console ∷ Ec.CONSOLE
+    , dom ∷ DOM
+    , selenium ∷ SELENIUM
     ))
 
-makeDownloadCapabilities :: Browser → String → Aff Effects Capabilities
+makeDownloadCapabilities ∷ Browser → String → Aff Effects Capabilities
 makeDownloadCapabilities FireFox path = buildFFProfile do
   setIntPreference "browser.download.folderList" 2
   setBoolPreference "browser.download.manager.showWhenStarting" false
@@ -83,7 +85,7 @@ makeDownloadCapabilities FireFox path = buildFFProfile do
     "text/csv, application/ldjson, application/json"
 makeDownloadCapabilities _ _ = mempty
 
-tests :: SlamFeature Unit
+tests ∷ SlamFeature Unit
 tests = do
   launchSlamData
   mountTestDatabase
@@ -95,7 +97,7 @@ tests = do
   Save.test
 --  FlipDeck.test
 
-runTests :: Config → Aff Effects Unit
+runTests ∷ Config → Aff Effects Unit
 runTests config =
   maybe error go $ str2browser config.selenium.browser
   where
@@ -123,19 +125,18 @@ runTests config =
       defaultTimeout = config.selenium.waitTime
       readerInp = { config, defaultTimeout, driver }
 
-    res ←
-      attempt
-      $ flip runReaderT readerInp do
-          setWindowSize { height: 800, width: 1024 }
-          tests
+    res ← attempt $ flip runReaderT readerInp do
+      setWindowSize { height: 800, width: 1024 }
+      tests
+
     quit driver
     either throwError (const $ pure unit) res
 
 copyFile
-  :: ∀ e
+  ∷ ∀ e
    . String
    → String
-   → Aff (fs :: FS, avar :: AVAR, err :: EXCEPTION|e) Unit
+   → Aff (fs ∷ FS, avar ∷ AVAR, err ∷ EXCEPTION|e) Unit
 copyFile source tgt = do
   apathize $ unlink to
   readFrom ← createReadStream from
@@ -159,50 +160,24 @@ procStartMaxTimeout ∷ Int
 procStartMaxTimeout = 60000
 
 startProc
-  :: ∀ r
-   . String → String → Array String
-   → (ChildProcess → Aff Effects (Readable r Effects))
-   → String
-   → Aff Effects ChildProcess
-startProc name command args streamGetter check = reattempt procStartMaxTimeout do
-  a ← makeVar
+  ∷ String
+  → String
+  → Array String
+  → (Either String String → Maybe (Either String Unit))
+  → Aff Effects CP.ChildProcess
+startProc name command args check
+  = reattempt procStartMaxTimeout
+  $ starter name check
+  $ liftEff
+  $ CP.spawn command args CP.defaultSpawnOptions
 
-  started ←
-    liftEff $ newRef false
-
-  cancelKill ←
-    forkAff
-    $ later' 10000
-    $ killVar a
-    $ error
-    $ name ⊕ " has not been started"
-  pr ← spawn command args \err → do
-    case err of
-      Just e → throwException e
-      Nothing → liftEff $ readRef started >>= \isStarted →
-        unless isStarted
-          $ throwException
-          $ error
-          $ name ⊕ " process ended before it started"
-
-  stream ← streamGetter pr
-  liftEff $ onDataString stream UTF8 \str → do
-    when (Str.contains check str) do
-      liftEff $ writeRef started true
-      launchAff $ putVar a pr
-
-  result ← takeVar a
-  cancel cancelKill $ error "Ok"
-  log $ name ⊕ " launched"
-  pure result
-
-mongoArgs :: Config → Array String
+mongoArgs ∷ Config → Array String
 mongoArgs config =
   [ "--port", show config.mongodb.port
   , "--dbpath", "tmp/data"
   ]
 
-quasarArgs :: Config → Array String
+quasarArgs ∷ Config → Array String
 quasarArgs config =
   [ "-jar", resolve [config.quasar.jar] ""
   , "-c", resolve ["tmp", config.quasar.config] ""
@@ -210,38 +185,44 @@ quasarArgs config =
   , "-L", resolve ["public"] ""
   ]
 
-seleniumArgs :: Config → Array String
+seleniumArgs ∷ Config → Array String
 seleniumArgs config =
   [ "-jar", resolve [config.selenium.jar] ""
   , "-port", "4444"
   ]
 
-restoreCmd :: Config → String
-restoreCmd = _.restoreCmd
-
-mongoConnectionString :: Config → String
+mongoConnectionString ∷ Config → String
 mongoConnectionString config =
   "mongodb://"
   ⊕ config.mongodb.host
   ⊕ ":" ⊕ show config.mongodb.port
   ⊕ "/" ⊕ config.database.name
 
-cleanMkDir :: String → Aff Effects Unit
+cleanMkDir ∷ String → Aff Effects Unit
 cleanMkDir path = do
   let p = resolve [path] ""
   rimraf p
   mkdir p
 
-main :: Eff Effects Unit
+restoreDatabase ∷ Config → Aff Effects Unit
+restoreDatabase rawConfig = do
+  var ← makeVar
+  liftEff $ CP.exec
+    rawConfig.restoreCmd
+    CP.defaultExecOptions
+    (launchAff <<< putVar var)
+  res ← takeVar var
+  traverse_ throwError res.error
+
+main ∷ Eff Effects Unit
 main = do
   procs ← newRef []
 
-  Process.onExit \_ →
-    readRef procs >>= traverse_ kill
+  Process.onExit \_ → readRef procs >>= traverse_ (CP.kill SIGTERM)
 
   rawConfig ← getConfig
 
-  runAff errHandler  (const $ Process.exit 0) do
+  runAff errHandler (const $ Process.exit 0) do
     log $ gray "Creating data folder for MongoDB"
     cleanMkDir "tmp/data"
     log $ gray "Empting test folder"
@@ -257,8 +238,7 @@ main = do
         "MongoDB"
         "mongod"
         (mongoArgs rawConfig)
-        stdout
-        "waiting for connections on port"
+        (expectStdOut "waiting for connections on port")
     liftEff $ modifyRef procs (Arr.cons mongo)
 
     quasar ←
@@ -266,12 +246,19 @@ main = do
         "Quasar"
         "java"
         (quasarArgs rawConfig)
-        stdout
-        "Server started listening on port"
+        (expectStdOut "Server started listening on port")
     liftEff $ modifyRef procs (Arr.cons quasar)
 
+    selenium ←
+      startProc
+        "Selenium"
+        "java"
+        (seleniumArgs rawConfig)
+        (expectStdErr "Selenium Server is up and running")
+    liftEff $ modifyRef procs (Arr.cons selenium)
+
     log $ gray "Restoring database"
-    exec $ restoreCmd rawConfig
+    restoreDatabase rawConfig
     log $ gray "Database restored"
 
     log $ magenta "Connecting database"
@@ -293,6 +280,7 @@ main = do
     case testResults of
       Left e →  throwError e
       Right _ → log $ green "OK, tests are passed"
+
   where
   errHandler e = do
     Ec.log $ red $ message e

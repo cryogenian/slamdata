@@ -5,7 +5,7 @@
     },
     "restoreCmd": "mongorestore --host 127.0.0.1 -d testDb --port 63174 --drop test/dump/demo",
     "selenium": {
-        "jar": "test/jars/selenium.jar",
+        "jar": "test/jars/selenium-server-standalone-2.53.0.jar",
         "browser": "firefox",
         "waitTime": 30000
     },

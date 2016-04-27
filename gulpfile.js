@@ -137,7 +137,7 @@ var bundleTasks = [];
 
 var mkBundleTask = function (name, main) {
 
-  gulp.task("prebundle-" + name, ["make"], function() {
+  gulp.task("prebundle-" + name, function() {
     return purescript.pscBundle({
       src: "output/**/*.js",
       output: "tmp/" + name + ".js",
@@ -173,9 +173,11 @@ gulp.task("bundle", [
   mkBundleTask("auth_redirect", "SlamData.AuthRedirect"),
 ]);
 
-gulp.task("bundle-test",
-          ["bundle"],
-           function() {
+gulp.task("make-bundle", function () {
+  sequence("make", "bundle")
+});
+
+gulp.task("bundle-test", ["bundle"], function() {
     sequence("less", "remove-css-fixed-positions", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
@@ -186,19 +188,13 @@ gulp.task("bundle-test",
     });
 });
 
-gulp.task("bundle-property-tests", ["make"], function() {
+gulp.task("bundle-property-tests", function() {
     return purescript.pscBundle({
       src: "output/**/*.js",
       output: "tmp/js/property-tests.js",
       module: "Test.SlamData.Property",
       main: "Test.SlamData.Property"
     });
-});
-
-gulp.task("property-tests", ["bundle-property-tests"], function () {
-  run("node tmp/js/property-tests.js", { verbosity: 3 })
-    .exec()
-    .pipe(gulp.dest("output"));
 });
 
 var mkWatch = function(name, target, files) {
@@ -219,5 +215,5 @@ gulp.task("less", function() {
 });
 mkWatch("watch-less", "less", ["less/**/*.less"]);
 
-gulp.task("full", ["add-headers", "trim-whitespace", "less", "bundle"]);
-gulp.task("default", ["less", "bundle"]);
+gulp.task("full", ["clean", "add-headers", "trim-whitespace", "less", "make-bundle"]);
+gulp.task("default", ["less", "make-bundle"]);
