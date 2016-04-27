@@ -43,7 +43,7 @@ import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 -- query expressions. Currently, we end up just filtering them out.
 
 -- One option that we might want to consider, in case we do intend to support things
--- like ordered sets of query expressions, etc. would be to have something like
+-- like arrays of query expressions, etc. would be to have something like
 -- `type VarMapValue = Mu (Coproduct EJsonF ExprF)`.
 
 getLiteral
@@ -68,9 +68,9 @@ formFieldEmptyValue field =
           SD.Date _ → EJSON.null
           SD.Time _ → EJSON.null
           SD.DateTime _ → EJSON.null
-      SD.CheckBoxes _ _ → EJSON.orderedSet []
-      SD.RadioButtons _ _ → EJSON.orderedSet []
-      SD.DropDown _ _ → EJSON.orderedSet []
+      SD.CheckBoxes _ _ → EJSON.array []
+      SD.RadioButtons _ _ → EJSON.array []
+      SD.DropDown _ _ → EJSON.array []
 
 formFieldValueToVarMapValue
   ∷ ∀ e m
@@ -103,13 +103,13 @@ formFieldValueToVarMapValue v =
           # L.filter fst
           # L.mapMaybe (getLiteral ∘ snd)
           # L.fromList
-          # EJSON.orderedSet
+          # EJSON.array
           # pure
       SD.RadioButtons (Identity x) _ →
-        pure ∘ EJSON.orderedSet $ getLiteral x
+        pure ∘ EJSON.array $ getLiteral x
       SD.DropDown mx _ → do
         Identity x ← liftMaybe mx
-        pure ∘ EJSON.orderedSet $ getLiteral x
+        pure ∘ EJSON.array $ getLiteral x
 
   where
     liftMaybe

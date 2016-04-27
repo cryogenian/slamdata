@@ -110,7 +110,6 @@ emptyValueOfFieldType tau =
     TimeFieldType → Port.Literal $ EJSON.time ""
     IntervalFieldType → Port.Literal $ EJSON.interval ""
     ObjectIdFieldType → Port.Literal $ EJSON.objectId ""
-    OrderedSetFieldType → Port.Literal $ EJSON.orderedSet mempty
     ArrayFieldType → Port.Literal $ EJSON.array mempty
     ObjectFieldType → Port.Literal $ EJSON.object mempty
     SqlExprFieldType → Port.QueryExpr ""

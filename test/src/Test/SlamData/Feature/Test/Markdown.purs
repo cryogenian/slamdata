@@ -168,7 +168,7 @@ test = do
     Interact.insertFormCardAsNextAction
     Interact.insertQueryCardAsNextAction
     Interact.provideQueryInLastQueryCard
-      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
+      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
 --    Interact.playLastCard
     Interact.insertJTableCardAsNextAction
     Expect.cardsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
@@ -190,7 +190,7 @@ test = do
     Interact.insertFormCardAsNextAction
     Interact.insertQueryCardAsNextAction
     Interact.provideQueryInLastQueryCard
-      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type != :type AND gender IN :gender AND year > :year AND country = :country"
+      "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
     Interact.insertJTableCardAsNextAction
     Interact.provideFieldValueInLastMdCard "discipline" "Luge"
     Interact.provideFieldValueInLastMdCard "year" "1950"

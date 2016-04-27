@@ -39,7 +39,6 @@ data FieldType
   | TimeFieldType
   | IntervalFieldType
   | ObjectIdFieldType
-  | OrderedSetFieldType
   | ArrayFieldType
   | ObjectFieldType
   | SqlExprFieldType
@@ -58,7 +57,6 @@ allFieldTypes =
   , BooleanFieldType
   , NumericFieldType
   , ObjectIdFieldType
-  , OrderedSetFieldType
   , ArrayFieldType
   , ObjectFieldType
   , SqlExprFieldType
@@ -76,7 +74,6 @@ _FieldTypeDisplayName = Lens.prism inj proj
     inj BooleanFieldType = "Boolean"
     inj NumericFieldType = "Numeric"
     inj ObjectIdFieldType = "Object ID"
-    inj OrderedSetFieldType = "Ordered Set"
     inj ArrayFieldType = "Array"
     inj ObjectFieldType = "Object"
     inj SqlExprFieldType = "SQL² Expression"
@@ -90,7 +87,6 @@ _FieldTypeDisplayName = Lens.prism inj proj
     proj "Boolean" = Right BooleanFieldType
     proj "Numeric" = Right NumericFieldType
     proj "Object ID" = Right ObjectIdFieldType
-    proj "Ordered Set" = Right OrderedSetFieldType
     proj "Array" = Right ArrayFieldType
     proj "Object" = Right ObjectFieldType
     proj "SQL² Identifier" = Right SqlIdentifierFieldType
@@ -110,7 +106,6 @@ fieldTypeToInputType ty =
     BooleanFieldType → HP.InputCheckbox
     NumericFieldType → HP.InputNumber
     ObjectIdFieldType → HP.InputText
-    OrderedSetFieldType → HP.InputText
     ArrayFieldType → HP.InputText
     ObjectFieldType → HP.InputText
     SqlExprFieldType → HP.InputText
@@ -129,7 +124,6 @@ instance encodeJsonFieldType ∷ JE.EncodeJson FieldType where
         BooleanFieldType → "boolean"
         NumericFieldType → "numeric"
         ObjectIdFieldType → "objectId"
-        OrderedSetFieldType → "orderedSet"
         ArrayFieldType → "array"
         ObjectFieldType → "object"
         SqlExprFieldType → "query"
@@ -147,7 +141,7 @@ instance decodeJsonFieldType ∷ JD.DecodeJson FieldType where
       proj "boolean" = Right BooleanFieldType
       proj "numeric" = Right NumericFieldType
       proj "objectId" = Right ObjectIdFieldType
-      proj "orderedSet" = Right OrderedSetFieldType
+      proj "orderedSet" = Right ArrayFieldType -- for compatibility
       proj "array" = Right ArrayFieldType
       proj "object" = Right ObjectFieldType
       proj "query" = Right SqlExprFieldType

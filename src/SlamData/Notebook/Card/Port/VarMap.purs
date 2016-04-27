@@ -117,7 +117,6 @@ displayEJsonF rec d =
     EJSON.Date str → str
     EJSON.Interval str → str
     EJSON.ObjectId str → str
-    EJSON.OrderedSet ds → parens $ commaSep ds
     EJSON.Array ds → squares $ commaSep ds
     EJSON.Object ds → braces $ renderPairs ds
   where
