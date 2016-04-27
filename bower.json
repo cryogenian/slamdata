@@ -48,7 +48,8 @@
     "purescript-tuples": "^0.4.0",
     "purescript-uri": "^0.3.0",
     "purescript-void": "^0.3.0",
-    "purescript-zclipboard": "^0.3.0"
+    "purescript-zclipboard": "^0.3.0",
+    "purescript-css": "b3fc1066d8022c30898a6aae7cdcf7fb7871ae1e"
   },
   "devDependencies": {
     "purescript-chalky": "^0.2.0",
@@ -67,6 +68,7 @@
     "purescript-profunctor-lenses": "^0.4.2",
     "purescript-nonempty": "^0.2.0",
     "purescript-uri": "^0.3.0",
-    "purescript-parsing": "^0.8.0"
+    "purescript-parsing": "^0.8.0",
+    "purescript-css": "b3fc1066d8022c30898a6aae7cdcf7fb7871ae1e"
   }
 }

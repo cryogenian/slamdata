@@ -37,7 +37,6 @@ import SlamData.Notebook.Card.Port as Port
 import SlamData.Notebook.Component as Draftboard
 import SlamData.Notebook.Deck.Component as Deck
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
-import SlamData.Notebook.Rename.Component as Rename
 import SlamData.Notebook.Routing (Routes(..), routing)
 import SlamData.Notebook.StyleLoader as StyleLoader
 
@@ -50,7 +49,12 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   browserFeatures ← detectBrowserFeatures
   runHalogenAff do
-    let st = parentState $ Draftboard.initialState { browserFeatures: browserFeatures }
+    let
+      st = parentState
+           $ Draftboard.initialState
+              { browserFeatures: browserFeatures
+              , version: Just "3.0"
+              }
     driver ← runUI Draftboard.comp st =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles
@@ -74,7 +78,6 @@ routeSignal driver = do
     driver $ Draftboard.toDeck $ Deck.ExploreFile fs path
     driver $ Draftboard.toDraftboard $ Draftboard.SetParentHref
       $ parentURL $ Right path
-    driver $ Draftboard.toRename $ Rename.SetText $ Config.newNotebookName
 
   notebook
     ∷ UP.DirPath
@@ -96,7 +99,6 @@ routeSignal driver = do
         then driver $ Draftboard.toDeck $ Deck.Reset features path
         else driver $ Draftboard.toDeck $ Deck.LoadNotebook features path
 
-    driver $ Draftboard.toRename $ Rename.SetText $ UP.dropNotebookExt name
     driver $ Draftboard.toDraftboard $ Draftboard.SetViewingCard viewing
     driver $ Draftboard.toDraftboard $ Draftboard.SetAccessType accessType
     driver $ Draftboard.toDeck $ Deck.SetGlobalVarMap varMap

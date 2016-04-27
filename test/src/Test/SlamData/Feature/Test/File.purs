@@ -30,16 +30,16 @@ fileScenario
    → Array String
    → SlamFeature Unit
    → SlamFeature Unit
-fileScenario = scenario "File" (Interact.browseRootFolder)
+fileScenario = scenario "File" (Interact.browseRootFolderOld)
 
 defaultAfterFile ∷ SlamFeature Unit
-defaultAfterFile = Interact.browseRootFolder
+defaultAfterFile = Interact.browseRootFolderOld
 
 afterRename ∷ SlamFeature Unit
 afterRename = Interact.deleteFile "Ϡ⨁⟶≣ΜϞ"
 
 afterMove ∷ SlamFeature Unit
-afterMove = Interact.browseTestFolder *> Interact.deleteFile "Medical data"
+afterMove = Interact.browseTestFolderOld *> Interact.deleteFile "Medical data"
 
 afterUpload ∷ SlamFeature Unit
 afterUpload = Interact.deleteFile "array-wrapped.json"
@@ -47,13 +47,13 @@ afterUpload = Interact.deleteFile "array-wrapped.json"
 afterAccessSharingUrl ∷ SlamFeature Unit
 afterAccessSharingUrl =
   Interact.launchSlamData
-    *> Interact.browseTestFolder
-    *> Interact.deleteFile "Quarterly report.slam"
+    *> Interact.browseTestFolderOld
+    *> Interact.deleteFile "Untitled Notebook.slam"
 
 test ∷ SlamFeature Unit
 test = do
   fileScenario afterRename "Rename a folder" [] do
-    Interact.browseTestFolder
+    Interact.browseTestFolderOld
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Patients"
     Expect.file "Patients"
@@ -64,7 +64,7 @@ test = do
     successMsg "Successfully renamed a folder"
 
   fileScenario afterMove "Move a folder" [] do
-    Interact.browseTestFolder
+    Interact.browseTestFolderOld
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Medical data"
     Interact.createFolder
@@ -77,7 +77,7 @@ test = do
     successMsg "Successfully moved a folder"
 
   fileScenario defaultAfterFile "Delete a folder" [] do
-    Interact.browseTestFolder
+    Interact.browseTestFolderOld
     Interact.createFolder
     Interact.deleteFile "Untitled Folder"
     Expect.noFile "Untitled Folder"
@@ -89,17 +89,18 @@ test = do
     successMsg "Successfully deleted a folder"
 
   fileScenario defaultAfterFile "Navigate back using breadcrumbs" [] do
-    Interact.browseTestFolder
+    Interact.browseTestFolderOld
     Interact.accessBreadcrumb "test-mount"
     Interact.accessBreadcrumb "Home"
     Expect.file "test-mount"
     successMsg "Successfully navigated back using breadcrumbs"
 
   fileScenario afterUpload "Upload a file" [] do
-    Interact.browseTestFolder
+    Interact.browseTestFolderOld
     Interact.uploadFile "test/array-wrapped.json"
     Expect.resourceOpenedInLastExploreCard "/test-mount/testDb/array-wrapped.json"
-    Interact.browseTestFolder
+    Interact.browseRootFolder
+    Interact.browseTestFolderOld
     Expect.file "array-wrapped.json"
     successMsg "Successfully uploaded file"
 
@@ -111,7 +112,7 @@ test = do
     successMsg "Succesfully searched for a file"
 
   fileScenario defaultAfterFile "Access sharing URL for a file" [] do
-    Interact.browseTestFolder
+    Interact.browseTestFolderOld
     Interact.shareFile "smallZips"
     Interact.accessSharingUrl
     Expect.resourceOpenedInLastExploreCard "/test-mount/testDb/smallZips"
@@ -127,14 +128,15 @@ test = do
     Expect.lastCardToBeFinished
     warnMsg "SD-1538, we don't know if notebook has been saved already"
     later 1000 $ pure unit
-    Interact.browseTestFolder
-    Interact.shareFile "Quarterly report.slam"
+    Interact.browseRootFolder
+    Interact.browseTestFolderOld
+    Interact.shareFile "Untitled Notebook.slam"
     Interact.accessSharingUrl
     Expect.textInFormCard "Quarterly"
     successMsg "Successfully accessed sharing URL for a notebook"
 
   fileScenario defaultAfterFile "Download file as CSV" [] do
-    Interact.browseTestFolder
+    Interact.browseTestFolderOld
     Interact.downloadFileAsCSV "smallZips"
     Expect.downloadedTextFileToMatchFile
       "tmp/test/downloads"
@@ -143,7 +145,7 @@ test = do
     successMsg "Successfully downloaded file as CSV"
 
   fileScenario defaultAfterFile "Download file as JSON" [] do
-    Interact.browseTestFolder
+    Interact.browseTestFolderOld
     Interact.downloadFileAsJSON "smallZips"
     Expect.downloadedTextFileToMatchFile
       "tmp/test/downloads"

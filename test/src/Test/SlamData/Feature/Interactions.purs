@@ -5,7 +5,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Data.Array as Arr
 import Data.Map as Map
 import Data.String as Str
-import Selenium.Monad (get, refresh, getCurrentUrl)
+import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
 import Test.Feature (click, provideFileInputValue, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, pushRadioButton, check, uncheck, accessUrlFromFieldValue, provideFieldValueUntilExpectedValue)
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
@@ -40,10 +40,25 @@ embedCardOutput ∷ SlamFeature Unit
 embedCardOutput = click $ XPath.anywhere XPaths.embedCardOutput
 
 browseRootFolder ∷ SlamFeature Unit
-browseRootFolder = click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
+browseRootFolder = do
+  click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Show header"
+  tryRepeatedlyTo do
+    click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
+    Expect.fileNotRepeatedly "test-mount"
+
+-- DEPRECATED: Used only in filesystem app. Need to remove after filesystem
+-- header update.
+browseRootFolderOld ∷ SlamFeature Unit
+browseRootFolderOld =
+  click $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1
+
+browseTestFolderOld ∷ SlamFeature Unit
+browseTestFolderOld =
+  browseRootFolderOld *> accessFile "test-mount" *> accessFile "testDb"
 
 browseTestFolder ∷ SlamFeature Unit
-browseTestFolder = browseRootFolder *> accessFile "test-mount" *> accessFile "testDb"
+browseTestFolder =
+  browseRootFolder *> accessFile "test-mount" *> accessFile "testDb"
 
 createNotebook ∷ SlamFeature Unit
 createNotebook = click $ XPath.anywhere XPaths.createNotebook
@@ -84,7 +99,9 @@ moveFile fileName oldLocation newLocation = do
 
 uploadFile ∷ String → SlamFeature Unit
 uploadFile =
-  provideFileInputValue (XPath.anywhere $ XPaths.uploadFile) <=< liftEff <<< appendToCwd
+  provideFileInputValue (XPath.anywhere $ XPaths.uploadFile)
+    <=< liftEff
+    <<< appendToCwd
 
 provideFileSearchString ∷ String → SlamFeature Unit
 provideFileSearchString value =
@@ -96,7 +113,7 @@ selectFile name =
 
 createNotebookInTestFolder ∷ String → SlamFeature Unit
 createNotebookInTestFolder name =
-  browseTestFolder *> createNotebook *> nameNotebook name
+  browseTestFolderOld *> createNotebook
 
 createFolder ∷ SlamFeature Unit
 createFolder = click $ XPath.anywhere XPaths.createFolder

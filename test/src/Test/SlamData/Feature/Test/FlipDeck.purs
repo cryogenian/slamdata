@@ -15,7 +15,7 @@ flipDeckScenario =
   scenario
     "Deck backside"
     (Interact.createNotebookInTestFolder "Flipped deck")
-    (Interact.deleteFileInTestFolder "Flipped deck.slam")
+    (Interact.deleteFileInTestFolder "Untitled Notebook.slam")
 
 
 mkTwoCardTestDeck ∷ SlamFeature Unit

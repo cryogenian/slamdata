@@ -31,7 +31,7 @@ apiVizScenario =
   scenario
     "Flexible Visualization"
     (Interact.createNotebookInTestFolder "Flexible Visualization")
-    (Interact.deleteFileInTestFolder "Flexible Visualization.slam")
+    (Interact.deleteFileInTestFolder "Untitled Notebook.slam")
 
 expectedImagesBasePath :: String
 expectedImagesBasePath =

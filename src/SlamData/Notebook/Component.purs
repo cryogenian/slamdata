@@ -22,72 +22,55 @@ module SlamData.Notebook.Component
 
 import SlamData.Prelude
 
-import Control.Coroutine.Stalling (producerToStallingProducer)
-import Control.Monad.Eff.Shortcut (onShortcut)
-import Control.Monad.Eff.Shortcut.Platform (shortcutPlatform)
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
-import Control.UI.Browser (newTab, locationString)
+import Control.UI.Browser (locationString)
 
-import Data.Array (cons)
-import Data.Functor.Coproduct.Nested (coproduct5)
-import Data.Lens ((^.), (.~), (%~), (?~))
-import Data.Shortcut (print)
+import Data.Functor.Coproduct.Nested (coproduct3)
+import Data.Lens ((^.), (.~), (?~))
 import Data.StrMap as SM
 import Data.Path.Pathy (printPath)
 
-import DOM.Event.EventTarget (removeEventListener)
-import DOM.Event.EventTypes (keydown)
-
 import Halogen as H
-import Halogen.HTML.Core (className)
+import Halogen.Component.ChildPath (injSlot)
+import Halogen.HTML.Core (ClassName, className)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Menu.Component as HalogenMenu
-import Halogen.Menu.Submenu.Component as HalogenSubmenu
-import Halogen.Query.EventSource (EventSource(..))
-import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Effects (Slam)
+import SlamData.Header.Component as Header
 import SlamData.Notebook.AccessType (isReadOnly)
 import SlamData.Notebook.Action as NA
 import SlamData.Notebook.Card.CardId as CID
 import SlamData.Notebook.Card.CardType as CT
 import SlamData.Notebook.Card.Component.Query as CQ
-import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpMenu, cpDeck, cpRename, cpSignIn)
-import SlamData.Notebook.Component.Query (QueryP, Query(..), fromDraftboard, fromDeck, fromRename, toDraftboard, toDeck, toRename)
-import SlamData.Notebook.Component.State (NotebookShortcut, State, _accessType, _browserFeatures, _keyboardListeners, _loaded, _notebookShortcuts, _parentHref, _version, _viewingCard, initialState, notebookShortcuts)
-import SlamData.Notebook.Dialog.Component as Dialog
+import SlamData.Notebook.Card.Port.VarMap as VM
+import SlamData.Notebook.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpDeck, cpHeader)
+import SlamData.Notebook.Component.Query (QueryP, Query(..), fromDraftboard, fromDeck, toDraftboard, toDeck)
+import SlamData.Notebook.Component.State (State, _accessType, _browserFeatures,  _loaded, _parentHref, _version, _viewingCard, initialState)
+import SlamData.Notebook.Deck.BackSide.Component as Back
 import SlamData.Notebook.Deck.Component as Deck
 import SlamData.Notebook.Deck.Component.ChildSlot (CardSlot(..))
-import SlamData.Effects (Slam)
+import SlamData.Notebook.Dialog.Component as Dialog
 import SlamData.Notebook.FormBuilder.Component as FB
 import SlamData.Notebook.FormBuilder.Item.Model as FBI
-import SlamData.Notebook.Menu.Component as Menu
-import SlamData.Notebook.Rename.Component as Rename
-import SlamData.Notebook.Card.Port.VarMap as VM
-import SlamData.SignIn.Component as SignIn
 import SlamData.Notebook.Routing (mkNotebookCardURL)
-import SlamData.Render.Common (logo, icon')
 import SlamData.Render.CSS as Rc
-import SlamData.Notebook.Deck.BackSide.Component as Back
+import SlamData.SignIn.Component as SignIn
 
-import Utils.AffableProducer (produce)
-import Utils.DOM (documentTarget)
 import Utils.Path as UP
 
-type StateP = H.ParentState State (ChildState Slam) Query ChildQuery Slam ChildSlot
-type DraftboardHTML = H.ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
-type DraftboardDSL = H.ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
+type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
+type DraftboardHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+type DraftboardDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
 comp ∷ H.Component StateP QueryP Slam
 comp =
-  H.lifecycleParentComponent
+  H.parentComponent
     { render
     , eval
     , peek: Just (peek ∘ H.runChildF)
-    , initializer: Just (H.action ActivateKeyboardShortcuts)
-    , finalizer: Nothing
     }
 
 render ∷ State → DraftboardHTML
@@ -96,114 +79,54 @@ render state =
     [ HP.classes classes
     , HE.onClick (HE.input_ DismissAll)
     ]
-    [ HH.nav
-        [ HP.classes visibilityClasses ]
-        [ renderHeader state ]
-    , HH.div
-        [ HP.classes [ notebookClass ] ]
-        [  HH.slot' cpDeck unit \_ →
-          { component: Deck.deckComponent
-          , initialState: Deck.initialState (state ^. _browserFeatures)
-          }
-        ]
-    , HH.slot' cpDialog unit \_ →
-        { component: Dialog.comp
-        , initialState: H.parentState Dialog.initialState
-        }
-    ]
-
+    $ header ⊕ [ deck, dialog ]
   where
+  header ∷ Array DraftboardHTML
+  header = do
+    guard (not shouldHideTopMenu)
+    pure $ HH.slot' cpHeader unit \_→
+      { component: Header.comp
+      , initialState: H.parentState Header.initialState
+      }
+
+  deck ∷ DraftboardHTML
+  deck =
+    HH.div [ HP.classes [ notebookClass ] ]
+      [ HH.slot' cpDeck unit \_ →
+         { component: Deck.comp
+         , initialState: Deck.initialState (state.browserFeatures)
+         }
+      ]
+
+  dialog ∷ DraftboardHTML
+  dialog =
+    HH.slot' cpDialog unit \_ →
+      { component: Dialog.comp
+      , initialState: H.parentState Dialog.initialState
+      }
+
+  shouldHideTopMenu ∷ Boolean
   shouldHideTopMenu =
     isJust (state ^. _viewingCard)
     ∨ isReadOnly (state ^. _accessType)
 
+  shouldHideEditors ∷ Boolean
   shouldHideEditors =
     isReadOnly (state ^. _accessType)
 
+  classes ∷ Array ClassName
   classes =
     if shouldHideEditors
       then [ Rc.notebookViewHack ]
       else [ Rc.dashboard ]
 
+  notebookClass ∷ ClassName
   notebookClass =
     if shouldHideTopMenu
       then className "sd-notebook-hidden-top-menu"
       else className "sd-notebook"
 
-  visibilityClasses =
-    guard shouldHideTopMenu
-      $> Rc.invisible
-
-  renderHeader ∷ State → DraftboardHTML
-  renderHeader state =
-    HH.div_
-      [ HH.div
-          [ HP.classes [ B.clearfix ] ]
-          [ HH.div
-              [ HP.classes [ Rc.header, B.clearfix ] ]
-              [ icon' B.glyphiconChevronLeft "Back to parent folder"
-                  $ fromMaybe "" (state ^. _parentHref)
-              , logo (state ^. _version)
-              , HH.slot' cpRename unit \_ →
-                  { component: Rename.comp
-                  , initialState: Rename.initialState
-                  }
-              , HH.slot' cpSignIn unit \_ →
-                  { component: SignIn.comp
-                  , initialState: H.parentState SignIn.initialState
-                  }
-              , HH.div
-                  [ HP.classes $ [ className "sd-menu" ] ⊕ visibilityClasses ]
-                  [ HH.slot' cpMenu unit \_ →
-                    { component: HalogenMenu.menuComponent
-                    , initialState: H.parentState $ Menu.make SM.empty
-                    }
-                  ]
-              ]
-          ]
-      ]
-
-activateKeyboardShortcuts ∷ DraftboardDSL Unit
-activateKeyboardShortcuts = do
-  initialShortcuts ← H.gets _.notebookShortcuts
-  platform ← H.fromEff shortcutPlatform
-  let
-    labelShortcut shortcut =
-      shortcut { label = Just $ print platform shortcut.shortcut }
-    shortcuts = map labelShortcut initialShortcuts
-  H.modify (_notebookShortcuts .~ shortcuts)
-
-  queryMenu $ H.action $ HalogenMenu.SetMenu $ Menu.make shortcuts
-
-  H.subscribe' $ EventSource $ producerToStallingProducer $ produce \emit → do
-    target ← documentTarget
-    let
-      evaluateMenuValue' = emit ∘ Left ∘ H.action ∘ EvaluateMenuValue
-      addKeyboardListeners = emit ∘ Left ∘ H.action ∘ AddKeyboardListener
-      activate shrtct =
-        onShortcut platform target (evaluateMenuValue' shrtct.value) shrtct.shortcut
-    listeners ← traverse activate shortcuts
-    traverse addKeyboardListeners listeners
-    pure unit
-
-deactivateKeyboardShortcuts ∷ DraftboardDSL Unit
-deactivateKeyboardShortcuts = do
-  let
-    remove lstnr =
-      H.fromEff $ documentTarget
-        >>= removeEventListener keydown lstnr false
-  H.gets _.keyboardListeners >>= traverse remove
-  H.modify (_keyboardListeners .~ [])
-
 eval ∷ Natural Query DraftboardDSL
-eval (ActivateKeyboardShortcuts next) =
-  activateKeyboardShortcuts $> next
-eval (DeactivateKeyboardShortcuts next) =
-  deactivateKeyboardShortcuts $> next
-eval (EvaluateMenuValue value next) =
-  dismissAll *> evaluateMenuValue value $> next
-eval (AddKeyboardListener listener next) =
-  H.modify (_keyboardListeners %~ cons listener) $> next
 eval (SetAccessType aType next) = do
   H.modify (_accessType .~ aType)
   queryDeck $ H.action $ Deck.SetAccessType aType
@@ -214,32 +137,24 @@ eval (SetViewingCard mbcid next) = do
   queryDeck $ H.action $ Deck.SetViewingCard mbcid
   pure next
 eval (GetViewingCard k) = k <$> H.gets _.viewingCard
-eval (DismissAll next) = dismissAll *> pure next
 eval (SetParentHref href next) = H.modify (_parentHref ?~ href) $> next
-
-dismissAll ∷ DraftboardDSL Unit
-dismissAll = do
-  queryMenu $ H.action HalogenMenu.DismissSubmenu
+eval (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
+  pure next
+
 
 peek ∷ ∀ a. ChildQuery a → DraftboardDSL Unit
 peek =
-  coproduct5
-    renamePeek
-    signInParentPeek
-    menuPeek
+  coproduct3
     dialogParentPeek
     deckPeek
-
-signInParentPeek ∷ ∀ a. SignIn.QueryP a → DraftboardDSL Unit
-signInParentPeek = coproduct (const (pure unit)) (const (pure unit))
+    (const $ pure unit)
 
 dialogParentPeek ∷ ∀ a. Dialog.QueryP a → DraftboardDSL Unit
 dialogParentPeek = coproduct dialogPeek (const (pure unit))
 
 dialogPeek ∷ ∀ a. Dialog.Query a → DraftboardDSL Unit
-dialogPeek (Dialog.Dismiss _) = activateKeyboardShortcuts
-dialogPeek (Dialog.Show _ _) = deactivateKeyboardShortcuts
+dialogPeek _ = pure unit
 
 deckPeek ∷ ∀ a. Deck.QueryP a → DraftboardDSL Unit
 deckPeek =
@@ -278,7 +193,7 @@ deckPeek =
       queryDeck (H.request Deck.GetActiveCardId)
         <#> join
         >>= traverse_ shareCard
-    Back.Publish → do
+    Back.Publish →
       pure unit
     Back.Mirror →
       pure unit
@@ -367,34 +282,6 @@ showDialog =
     ∘ H.action
     ∘ Dialog.Show
 
-menuPeek ∷ ∀ a. Menu.QueryP a → DraftboardDSL Unit
-menuPeek = coproduct (const (pure unit)) submenuPeek
-
-renamePeek ∷ ∀ a. Rename.Query a → DraftboardDSL Unit
-renamePeek (Rename.Submit next) =
-  void $ queryDeck $ H.action Deck.SaveNotebook
-renamePeek (Rename.SetText name next) =
-  void $ queryDeck $ H.action $ Deck.SetName name
-renamePeek _ = pure unit
-
-evaluateMenuValue ∷ Menu.Value → DraftboardDSL Unit
-evaluateMenuValue =
-  either
-    presentHelp
-    (coproduct
-      queryRename
-      (coproduct
-        queryDialog
-        (queryDeck ⋙ void)))
-
-submenuPeek
-  ∷ ∀ a
-  . (H.ChildF HalogenMenu.SubmenuSlotAddress
-      (HalogenSubmenu.SubmenuQuery (Maybe Menu.Value))) a
-  → DraftboardDSL Unit
-submenuPeek (H.ChildF _ (HalogenSubmenu.SelectSubmenuItem v _)) =
-  maybe (pure unit) evaluateMenuValue v
-
 queryDialog ∷ Dialog.Query Unit → DraftboardDSL Unit
 queryDialog q = H.query' cpDialog unit (left q) *> pure unit
 
@@ -411,14 +298,11 @@ queryCard cid =
     ∘ H.ChildF unit
     ∘ right
 
-queryRename ∷ Rename.Query Unit → DraftboardDSL Unit
-queryRename q = H.query' cpRename unit q *> pure unit
-
 querySignIn ∷ ∀ a. SignIn.Query a → DraftboardDSL Unit
-querySignIn q = H.query' cpSignIn unit (left q) *> pure unit
-
-queryMenu ∷ HalogenMenu.MenuQuery (Maybe Menu.Value) Unit → DraftboardDSL Unit
-queryMenu q = H.query' cpMenu unit (left q) *> pure unit
-
-presentHelp ∷ Menu.HelpURI → DraftboardDSL Unit
-presentHelp (Menu.HelpURI uri) = H.fromEff $ newTab uri
+querySignIn =
+  void
+    ∘ H.query' cpHeader unit
+    ∘ right
+    ∘ H.ChildF (injSlot Header.cpSignIn unit)
+    ∘ right
+    ∘ left
