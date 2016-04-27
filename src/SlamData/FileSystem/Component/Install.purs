@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+   http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.Either.Nested (Either5)
 import Data.Functor.Coproduct.Nested (Coproduct5)
 
-import Halogen (ChildF(..), ParentState, ParentDSL, Action, action)
+import Halogen (ChildF(..), ParentState, Action, action)
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>), injSlot, injQuery)
 
 import SlamData.Effects (Slam)
@@ -31,7 +31,7 @@ import SlamData.FileSystem.Component.State (State)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Listing.Component as Listing
 import SlamData.FileSystem.Search.Component as Search
-import SlamData.SignIn.Component as SignIn
+import SlamData.Header.Component as Header
 
 type ChildState =
   Either5
@@ -39,7 +39,7 @@ type ChildState =
     Search.State
     Breadcrumbs.State
     Dialog.StateP
-    SignIn.StateP
+    Header.StateP
 
 type ChildQuery =
   Coproduct5
@@ -47,79 +47,76 @@ type ChildQuery =
     Search.Query
     Breadcrumbs.Query
     Dialog.QueryP
-    SignIn.QueryP
+    Header.QueryP
 
-type ChildSlot = Either5 Unit Unit Unit Unit Unit
+type ChildSlot =
+  Either5
+    Unit
+    Unit
+    Unit
+    Unit
+    Unit
 
 cpListing
-  :: ChildPath
-       Listing.StateP ChildState
-       Listing.QueryP ChildQuery
-       Unit ChildSlot
+  ∷ ChildPath
+      Listing.StateP ChildState
+      Listing.QueryP ChildQuery
+      Unit ChildSlot
 cpListing = cpL :> cpL :> cpL :> cpL
 
 cpSearch
-  :: ChildPath
-       Search.State ChildState
-       Search.Query ChildQuery
-       Unit ChildSlot
+  ∷ ChildPath
+      Search.State ChildState
+      Search.Query ChildQuery
+      Unit ChildSlot
 cpSearch = cpL :> cpL :> cpL :> cpR
 
 cpBreadcrumbs
-  :: ChildPath
-       Breadcrumbs.State ChildState
-       Breadcrumbs.Query ChildQuery
-       Unit ChildSlot
+  ∷ ChildPath
+      Breadcrumbs.State ChildState
+      Breadcrumbs.Query ChildQuery
+      Unit ChildSlot
 cpBreadcrumbs = cpL :> cpL :> cpR
 
 cpDialog
-  :: ChildPath
-       Dialog.StateP ChildState
-       Dialog.QueryP ChildQuery
-       Unit ChildSlot
+  ∷ ChildPath
+      Dialog.StateP ChildState
+      Dialog.QueryP ChildQuery
+      Unit ChildSlot
 cpDialog = cpL :> cpR
 
-cpSignIn
-  :: ChildPath
-       SignIn.StateP ChildState
-       SignIn.QueryP ChildQuery
-       Unit ChildSlot
-cpSignIn = cpR
+cpHeader
+  ∷ ChildPath
+      Header.StateP ChildState
+      Header.QueryP ChildQuery
+      Unit ChildSlot
+cpHeader = cpR
 
-toFs :: Action Query -> QueryP Unit
-toFs = left <<< action
+toFs ∷ Action Query → QueryP Unit
+toFs = left ∘ action
 
-toListing :: Action Listing.Query -> QueryP Unit
+toListing ∷ Action Listing.Query → QueryP Unit
 toListing =
   right
-    <<< ChildF (injSlot cpListing unit)
-    <<< injQuery cpListing
-    <<< left
-    <<< action
+    ∘ ChildF (injSlot cpListing unit)
+    ∘ injQuery cpListing
+    ∘ left
+    ∘ action
 
-toSearch :: Action Search.Query -> QueryP Unit
+toSearch ∷ Action Search.Query → QueryP Unit
 toSearch =
   right
-    <<< ChildF (injSlot cpSearch unit)
-    <<< injQuery cpSearch
-    <<< action
+    ∘ ChildF (injSlot cpSearch unit)
+    ∘ injQuery cpSearch
+    ∘ action
 
-toDialog :: Action Dialog.Query -> QueryP Unit
+toDialog ∷ Action Dialog.Query → QueryP Unit
 toDialog =
   right
-    <<< ChildF (injSlot cpDialog unit)
-    <<< injQuery cpDialog
-    <<< left
-    <<< action
-
-toSignIn :: Action SignIn.Query -> QueryP Unit
-toSignIn =
-  right
-    <<< ChildF (injSlot cpSignIn unit)
-    <<< injQuery cpSignIn
-    <<< left
-    <<< action
+    ∘ ChildF (injSlot cpDialog unit)
+    ∘ injQuery cpDialog
+    ∘ left
+    ∘ action
 
 type StateP = ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
-type Algebra = ParentDSL State ChildState Query ChildQuery Slam ChildSlot

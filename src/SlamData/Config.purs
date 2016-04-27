@@ -27,8 +27,8 @@ browserUrl = baseUrl <> "index.html"
 notebookUrl :: String
 notebookUrl = baseUrl <> "notebook.html"
 
-searchTimeout :: Int
-searchTimeout = 500
+searchTimeout :: Number
+searchTimeout = 500.0
 
 slamDataHome :: String
 slamDataHome = baseUrl <> "index.html"

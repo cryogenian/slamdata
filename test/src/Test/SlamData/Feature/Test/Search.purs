@@ -30,7 +30,7 @@ searchScenario =
     "Search"
     (Interact.createNotebookInTestFolder "Search")
     (Interact.deleteFileInTestFolder "Untitled Notebook.slam"
-       *> Interact.browseRootFolderOld)
+       *> Interact.browseRootFolder)
 
 test :: SlamFeature Unit
 test = do

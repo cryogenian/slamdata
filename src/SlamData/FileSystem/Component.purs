@@ -46,14 +46,13 @@ import Halogen.Component.Utils (forceRerender')
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Data (QData(..))
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
-import SlamData.FileSystem.Component.Install (Algebra, ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpSignIn, toDialog, toFs, toListing, toSearch, toSignIn)
+import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpHeader, toDialog, toFs, toListing, toSearch)
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, _isMount, _path, _salt, _showHiddenFiles, _sort, _version, initialState)
@@ -77,9 +76,10 @@ import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
-import SlamData.Render.Common (navbar, logo, icon, content, row)
+import SlamData.Render.Common (content, row)
 import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
+import SlamData.Header.Component as Header
 
 import Utils.DOM as D
 import Utils.Path (DirPath, getNameStr)
@@ -96,23 +96,17 @@ render state@{ version, sort, salt, path } =
     [ HP.classes [ Rc.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
-    [ navbar
-        [ HH.div
-            [ HP.classes [ Rc.header ] ]
-            [ icon B.glyphiconFolderOpen Config.homeHash "Browse root folder"
-            , logo version
-            , HH.slot' cpSearch unit \_ →
-                { component: Search.comp
-                , initialState: Search.initialState sort salt
-                }
-            , HH.slot' cpSignIn unit \_ →
-                { component: SignIn.comp
-                , initialState: H.parentState SignIn.initialState
-                }
-            ]
-        ]
+    [ HH.slot' cpHeader unit \_ →
+          { component: Header.comp
+          , initialState: H.parentState Header.initialState
+          }
+
     , content
-        [ HH.div_
+        [ HH.slot' cpSearch unit \_ →
+             { component: Search.comp
+             , initialState: Search.initialState
+             }
+        , HH.div_
             [ HH.slot' cpBreadcrumbs unit \_ →
                 { component: Breadcrumbs.comp
                 , initialState: Breadcrumbs.mkBreadcrumbs path sort salt
@@ -131,11 +125,11 @@ render state@{ version, sort, salt, path } =
         }
     ]
 
-eval ∷ Natural Query DSL
+eval ∷ Query ~> DSL
 eval (Resort next) = do
   { sort, salt, path } ← H.get
   searchValue ← H.query' cpSearch unit (H.request Search.GetValue)
-  H.fromEff $ setLocation $ browseURL (join searchValue) (notSort sort) salt path
+  H.fromEff $ setLocation $ browseURL searchValue (notSort sort) salt path
   pure next
 eval (SetPath path next) = H.modify (_path .~ path) *> updateBreadcrumbs $> next
 eval (SetSort sort next) = do
@@ -311,6 +305,11 @@ searchPeek (Search.Clear _) = do
   salt ← H.fromEff newSalt
   { sort, path } ← H.get
   H.fromEff $ setLocation $ browseURL Nothing sort salt path
+searchPeek (Search.Submit _) = do
+  salt ← H.fromEff newSalt
+  { sort, path } ← H.get
+  value ← H.query' cpSearch unit $ H.request Search.GetValue
+  H.fromEff $ setLocation $ browseURL value sort salt path
 searchPeek _ = pure unit
 
 dialogPeek ∷ ∀ a. Dialog.QueryP a → DSL Unit
@@ -344,7 +343,13 @@ dismissSignInSubmenu ∷ DSL Unit
 dismissSignInSubmenu = querySignIn $ H.action SignIn.DismissSubmenu
   where
   querySignIn ∷ ∀ a. SignIn.Query a → DSL Unit
-  querySignIn q = H.query' cpSignIn unit (left q) $> unit
+  querySignIn =
+    void
+      ∘ H.query' cpHeader unit
+      ∘ right
+      ∘ H.ChildF (injSlot Header.cpSignIn unit)
+      ∘ right
+      ∘ left
 
 updateBreadcrumbs ∷ DSL Unit
 updateBreadcrumbs = do

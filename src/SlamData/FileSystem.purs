@@ -32,7 +32,6 @@ import Data.Array (filter, mapMaybe)
 import Data.Lens ((%~), (<>~), _1, _2)
 import Data.Map as M
 import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
-import Data.These (These(..))
 
 import DOM (DOM)
 
@@ -116,8 +115,9 @@ redirects driver var mbOld (Salted sort query salt) = do
     driver $ toFs $ SetSalt salt
     driver $ toFs $ SetIsMount false
     driver $ toSearch $ Search.SetLoading true
-    driver $ toSearch $ Search.SetValue $ maybe (This "") That queryParts.query
+    driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
     driver $ toSearch $ Search.SetValid true
+    driver $ toSearch $ Search.SetPath queryParts.path
     listPath query zero var queryParts.path driver
     maybe (checkMount queryParts.path driver) (const $ pure unit) queryParts.query
     else
@@ -138,9 +138,8 @@ checkMount
   → Aff SlamDataEffects Unit
 checkMount path driver = do
   result ← Quasar.mountInfo path
-  case result of
-    Left _ → pure unit
-    Right _ → driver $ left $ action $ SetIsMount true
+  for_ result \_ →
+    driver $ left $ action $ SetIsMount true
 
 listPath
   ∷ SearchQuery
