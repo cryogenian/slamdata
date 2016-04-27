@@ -16,7 +16,7 @@ saveCardScenario =
     (Interact.createNotebookInTestFolder "Save card")
     (Interact.deleteFileInTestFolder "Untitled Notebook.slam"
      ≫ Interact.deleteFile "временный файл"
-     ≫ Interact.browseRootFolderOld
+     ≫ Interact.browseRootFolder
     )
 
 test ∷ SlamFeature Unit

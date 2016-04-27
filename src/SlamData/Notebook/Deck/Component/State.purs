@@ -117,7 +117,7 @@ type State =
   , path ∷ Maybe DirPath
   , browserFeatures ∷ BrowserFeatures
   , viewingCard ∷ Maybe CardId
-  , saveTrigger ∷ Maybe (Query Unit → Slam Unit)
+  , saveTrigger ∷ Maybe DebounceTrigger
   , runTrigger ∷ Maybe DebounceTrigger
   , pendingCards ∷ S.Set CardId
   , globalVarMap ∷ Port.VarMap

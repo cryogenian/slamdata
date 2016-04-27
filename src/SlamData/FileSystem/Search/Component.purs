@@ -18,13 +18,9 @@ module SlamData.FileSystem.Search.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Canceler, Aff, cancel, forkAff, later')
-import Control.Monad.Eff.Exception (error)
-import Control.UI.Browser (setLocation)
-
-import Data.Lens (lens, LensP, (.~), (%~))
+import Data.Lens (lens, LensP, (.~))
 import Data.Path.Pathy (printPath, rootDir)
-import Data.These (theseLeft, thisOrBoth, theseRight, these, These(..))
+import Data.Time (Milliseconds(..))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -32,85 +28,78 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.Component.Utils as HU
 
 import SlamData.Config as Config
-import SlamData.Effects (Slam, SlamDataEffects)
-import SlamData.FileSystem.Listing.Sort (Sort)
-import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (newSalt, Salt)
+import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
 
 import Text.SlamSearch (mkQuery)
 
 import Utils.Path (DirPath)
+import Utils.Debounced (debouncedEventSource)
 
 type State =
-  { valid :: Boolean
-  , focused :: Boolean
-    -- `These` to differentiate path and search path
-  , value :: These String String
-  , loading :: Boolean
-  , timeout :: Canceler SlamDataEffects
-  , path :: DirPath
-  , sort :: Sort
-  , salt :: Salt
+  { valid ∷ Boolean
+  , focused ∷ Boolean
+  , value ∷ String
+  , loading ∷ Boolean
+  , path ∷ DirPath
+  , trigger ∷ Maybe (Query Unit → Slam Unit)
   }
 
-initialState :: Sort -> Salt -> State
-initialState sort salt =
+initialState ∷ State
+initialState =
   { valid: true
-  , value: This ""
+  , value: ""
   , focused: false
   , loading: true
-  , timeout: mempty
   , path: rootDir
-  , sort: sort
-  , salt: salt
+  , trigger: Nothing
   }
 
-_valid :: LensP State Boolean
-_valid = lens _.valid _{valid = _}
+_valid ∷ ∀ a r. LensP {valid ∷ a|r} a
+_valid = lens (_.valid) (_{valid = _})
 
-_focused :: LensP State Boolean
-_focused = lens _.focused _{focused = _}
+_focused ∷ ∀ a r. LensP {focused ∷ a|r} a
+_focused = lens (_.focused) (_{focused = _})
 
-_value :: LensP State (These String String)
-_value = lens _.value _{value = _}
+_value ∷ ∀ a r. LensP {value ∷ a|r} a
+_value = lens (_.value) (_{value = _})
 
-_loading :: LensP State Boolean
-_loading = lens _.loading _{loading = _}
+_loading ∷ ∀ a r. LensP {loading ∷ a|r} a
+_loading = lens (_.loading) (_{loading = _})
 
-_timeout :: LensP State (Canceler SlamDataEffects)
-_timeout = lens _.timeout _{timeout = _}
+_timeout ∷ ∀ a r. LensP {timeout ∷ a|r} a
+_timeout = lens (_.timeout) (_{timeout = _})
 
-_path :: LensP State DirPath
-_path = lens _.path _{path = _}
+_path ∷ ∀ a r. LensP {path ∷ a|r} a
+_path = lens (_.path) (_{path = _})
 
-_sort :: LensP State Sort
-_sort = lens _.sort _{sort = _}
-
-_salt :: LensP State Salt
-_salt = lens _.salt _{salt = _}
+_trigger ∷ ∀ a r. LensP {trigger ∷ a|r} a
+_trigger = lens (_.trigger) (_{trigger = _})
 
 data Query a
   = Focus Boolean a
   | Typed String a
   | Clear a
+  | Validate a
   | Submit a
-  | GetValue (Maybe String -> a)
+  | GetValue (String → a)
   | SetLoading Boolean a
-  | SetValue (These String String) a
+  | SetValue String a
   | SetValid Boolean a
-  | IsSearching (Boolean -> a)
+  | IsSearching (Boolean → a)
+  | SetPath DirPath  a
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp :: H.Component State Query Slam
+comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
-render :: State -> HTML
+render ∷ State → HTML
 render state =
   HH.div
     [ HP.classes [ Rc.search ] ]
@@ -120,7 +109,7 @@ render state =
             [ HP.classes searchClasses ]
             [ HH.input
                 [ HP.classes [ B.formControl ]
-                , HP.value value
+                , HP.value state.value
                 , HE.onFocus (HE.input_ (Focus true))
                 , HE.onBlur (HE.input_ (Focus false))
                 , HE.onValueInput (HE.input Typed)
@@ -130,19 +119,19 @@ render state =
             , HH.span
                 [ HP.class_
                     if state.focused
-                    then Rc.searchPathActive
-                    else Rc.searchPath
+                      then Rc.searchPathActive
+                      else Rc.searchPath
                 ]
                 [ HH.span
                     [ HP.class_ Rc.searchPathBody ]
-                    [ HH.text value ]
+                    [ HH.text state.value ]
                 , HH.span
                     [ HP.class_
-                        if value == ""
+                        if state.value ≡ ""
                         then Rc.searchAffixEmpty
                         else Rc.searchAffix
                     ]
-                    [ HH.text $ "path:" <> printPath (state.path) ]
+                    [ HH.text $ "path:" ⊕ printPath (state.path) ]
                 ]
             , HH.img
                 [ HP.class_ Rc.searchClear
@@ -161,59 +150,49 @@ render state =
         ]
     ]
   where
-  searchClasses :: Array HH.ClassName
+  searchClasses ∷ Array HH.ClassName
   searchClasses =
-    [ B.inputGroup, Rc.searchInput] <> do
+    [ B.inputGroup, Rc.searchInput] ⊕ do
       guard (not $ state.valid)
       pure B.hasError
 
-  value = these id id (\x y -> if x == "" then y else x) (state.value)
-  searchIcon = if state.loading
-               then "img/spin.gif"
-               else "img/remove.svg"
+  searchIcon =
+    if state.loading
+      then "img/spin.gif"
+      else "img/remove.svg"
 
-eval :: Natural Query DSL
-eval (Focus bool next) = do
-  H.modify (_focused .~ bool)
-  pure next
-eval (Clear next) = do
-  -- for peeking in parent
-  pure next
+eval ∷ Query ~> DSL
+eval (Focus bool next) = H.modify (_focused .~ bool) $> next
+eval (Clear next) = pure next
 eval (Typed str next) = do
-  state <- H.get
-  let c = state.timeout
-  H.fromAff $ cancel c (error "timeout")
-  c' <- H.fromAff $ forkAff
-        $ later' Config.searchTimeout $ submit
-        $ (state # _value %~ (thisOrBoth str <<< theseRight))
-  H.modify $ _value %~ (thisOrBoth str <<< theseRight)
-  H.modify $ _timeout .~ c'
+  state ← H.get
+  H.modify (_value .~ str)
+  t ← case state.trigger of
+    Just t' → pure t'
+    Nothing → do
+      t' ←
+        debouncedEventSource
+          H.fromEff
+          H.subscribe
+          (Milliseconds Config.searchTimeout)
+      H.modify (_trigger .~ pure t')
+      pure t'
+  H.liftH $ t $ H.action Validate
   pure next
-eval (Submit next) = do
-  state <- H.get
-  mbFn <- H.fromAff $ submit state
-  case mbFn of
-    Nothing -> pure unit
-    Just fn -> H.modify fn
+eval (Validate next) = do
+  val ← H.gets _.value
+  case mkQuery val of
+    Left _ | val ≠ "" → H.modify (_valid .~ false)
+    _ → do
+      H.modify (_valid .~ true)
+      HU.sendAfter (Milliseconds zero) $ H.action Submit
   pure next
-eval (GetValue continue) = do
-  state <- H.get
-  pure $ continue $ theseRight (state.value)
+eval (Submit next) = pure next
+eval (GetValue continue) = map continue $ H.gets _.value
 eval (SetLoading bool next) = H.modify (_loading .~ bool) $> next
 eval (SetValue tv next) = H.modify (_value .~ tv) $> next
 eval (SetValid bool next) = H.modify (_valid .~ bool) $> next
 eval (IsSearching continue) = do
-  state <- H.get
-  pure $ continue $ isJust $ theseRight $ state.value
-
-submit :: State -> Aff SlamDataEffects (Maybe (State -> State))
-submit state = do
-  salt <- H.fromEff newSalt
-  case theseLeft (state.value) of
-    Just q -> case mkQuery q of
-      Left _ | q /= "" -> pure $ pure (_valid .~ false)
-      _ -> do
-        H.fromEff $ setLocation
-          $ browseURL (Just q) (state.sort) salt (state.path)
-        pure Nothing
-    _ -> pure Nothing
+  state ← H.get
+  pure $ continue $ (_ ≠ "") $ state.value
+eval (SetPath p next) = H.modify (_path .~ p) $> next

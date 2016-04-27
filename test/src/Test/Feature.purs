@@ -8,6 +8,7 @@ module Test.Feature
   , checkWithProperties
   , click
   , clickWithProperties
+  , clickNotRepeatedly
   , copy
   , expectDownloadedTextFileToMatchFile
   , expectNotPresented
@@ -496,6 +497,9 @@ click xPath = clickWithProperties Map.empty xPath
 clickAll ∷ ∀ eff o. XPath → Feature eff o Unit
 clickAll xPath = clickAllWithProperties Map.empty xPath
 
+clickNotRepeatedly ∷ ∀ eff o. XPath → Feature eff o Unit
+clickNotRepeatedly xPath = clickWithPropertiesNotRepeatedly Map.empty xPath
+
 -- | Hover over the node found with the provided XPath.
 hover ∷ ∀ eff o. XPath → Feature eff o Unit
 hover xPath = hoverWithProperties Map.empty xPath
@@ -576,7 +580,9 @@ provideFieldValueWithPropertiesUntilExpectedValue
 provideFieldValueWithPropertiesUntilExpectedValue properties expectedValue xPath value  =
   tryRepeatedlyTo $ action *> (later smallWaitTime expectation)
   where
-  action = provideFieldValueElement value =<< findWithPropertiesNotRepeatedly properties xPath
+  action =
+    provideFieldValueElement value
+      =<< findWithPropertiesNotRepeatedly properties xPath
   expectation =
     expectPresentedWithPropertiesNotRepeatedly
       (updateProperty "value" (Just expectedValue) properties)
@@ -587,6 +593,15 @@ provideFieldValueWithPropertiesUntilExpectedValue properties expectedValue xPath
 selectFromDropdownWithProperties ∷ ∀ eff o. Properties → XPath → String → Feature eff o Unit
 selectFromDropdownWithProperties properties xPath text =
   tryRepeatedlyTo $ selectFromDropdownElement text =<< findWithProperties properties xPath
+
+clickWithPropertiesNotRepeatedly
+  ∷ ∀ eff o
+  . Properties
+  → XPath
+  → Feature eff o Unit
+clickWithPropertiesNotRepeatedly properties =
+  clickEl <=< findWithPropertiesNotRepeatedly properties
+
 
 -- | Click node with the provided properties or attributes found with the
 -- | provided XPath.
@@ -616,7 +631,8 @@ hoverWithProperties properties =
 -- | properties found with the provided XPath.
 provideFileInputValueWithProperties ∷ ∀ eff o. Properties → XPath → FilePath → Feature eff o Unit
 provideFileInputValueWithProperties properties xPath filePath =
-  tryRepeatedlyTo $ sendKeysEl filePath =<< findWithPropertiesNotRepeatedly properties xPath
+  tryRepeatedlyTo $ sendKeysEl filePath
+    =<< findWithPropertiesNotRepeatedly properties xPath
 
 -- | Navigate to the URL presented in the field with the provided attributes or
 -- | properties found with the providied Xath.
