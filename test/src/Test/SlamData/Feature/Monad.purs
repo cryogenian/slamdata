@@ -19,13 +19,8 @@ module Test.SlamData.Feature.Monad where
 import Prelude
 
 import Control.Monad.Reader.Class (ask)
-import Control.Monad.Aff.Class (liftAff)
 
-import Data.Foldable (traverse_)
-
-import Node.FS.Aff (mkdir)
-
-import Selenium.Monad (apathize, later)
+import Selenium.Monad (later)
 
 import Test.Feature.Log (warnMsg)
 import Test.Feature.Monad (Feature)
@@ -37,15 +32,7 @@ type SlamFeature = Feature (SlamFeatureEffects ()) (config :: Config)
 getConfig :: SlamFeature Config
 getConfig = _.config <$> ask
 
-createTestDirs :: SlamFeature Unit
-createTestDirs = do
-  config <- getConfig
-  if not config.collectingScreenshots
-    then pure unit
-    else traverse_ (apathize <<< liftAff <<< mkdir) config.screenshot.dirs
-
 waitTime :: Int -> SlamFeature Unit
 waitTime t = do
   warnMsg $ "Warning: Tests manually waited for " ++ show t ++ " milliseconds."
   later t $ pure unit
-

@@ -182,7 +182,7 @@ quasarArgs config =
   [ "-jar", resolve [config.quasar.jar] ""
   , "-c", resolve ["tmp", config.quasar.config] ""
   , "-C", resolve ["public"] ""
-  , "-L", resolve ["public"] ""
+  , "-L", "/slamdata"
   ]
 
 seleniumArgs ∷ Config → Array String

@@ -13,305 +13,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -}
--- TODO: this module should be splitted or renamed, but I'm not sure
--- what's correct way to do it
-module Test.SlamData.Feature.Config
-  ( Config(..)
-  , SearchQueryConfig(..)
-  , ChartOptions(..)
-  , ChartSwitchers(..)
-  , ChartEditors(..)
-  ) where
 
-import Prelude
-
-import Data.StrMap (StrMap)
-import Data.Maybe (Maybe)
-import Data.Function (on)
-import Selenium.Types (Element)
-import Data.Array as A
-
-type SearchQueryConfig =
-  { query :: String
-  , pages :: Int
-  , rows :: Int
-  }
-
-
-newtype ChartOptions = ChartOptions
-  { measureOne :: Array String
-  , measureTwo :: Array String
-  , category :: Array String
-  , dimension :: Array String
-  , seriesOne :: Array String
-  , seriesTwo :: Array String
-  }
-
-
-instance eqChartOptions :: Eq ChartOptions where
-  eq (ChartOptions a) (ChartOptions b) =
-    eqq a.measureOne b.measureOne
-    && eqq a.measureTwo b.measureTwo
-    && eqq a.category b.category
-    && eqq a.dimension b.dimension
-    && eqq a.seriesOne b.seriesOne
-    && eqq a.seriesTwo b.seriesTwo
-    where
-    eqq = on eq A.sort
+module Test.SlamData.Feature.Config where
 
 type Config =
-  { restoreCmd :: String
-  , selenium :: { browser :: String
-                , waitTime :: Int
-                , jar :: String
-                }
-  , sauceLabs :: { enabled :: Boolean
-                 , platform :: String
-                 , maxDuration :: Int
-                 }
-  , slamdataUrl :: String
-  , notebookUrl :: String
-  , mongodb :: { host :: String
-               , port :: Int
-               }
-  , quasar :: { jar :: String
-              , config :: String
-              }
-  , locators :: StrMap String
-  , notebookLocators :: StrMap String
-  , item :: { main :: String
-            , toolbar :: String
-            }
-  , breadcrumbs :: { main :: String
-                   , text :: String
-                   , home :: String
-                   }
-  , search :: { searchInput :: String
-              , searchButton :: String
-              }
-  , database :: { name :: String }
-  , sort :: { main :: String
-            , button :: String}
-  , upload :: { file :: String
-              , input :: String
-              , button :: String
-              , filePaths :: Array String
-              }
-  , move :: { name :: String
-            , other :: String
-            , markMove :: String
-            , button :: String
-            , nameField :: String
-            , submit :: String
-            , markDelete :: String
-            }
-  , download :: { item :: String
-                , proceed :: String
-                , cancel :: String
-                , sourceInputSelector :: String
-                , targetInputSelector :: String
-                , folder :: String
-                , rowCount :: Int
-                , colCount :: Int
-                , rowDelimiterInputSelector :: String
-                , colDelimiterInputSelector :: String
-                , jsonTabSelector :: String
-                , multiLineJsonRadioSelector :: String
-                }
-  , share :: { markShare :: String
-             , urlField :: String
-             }
-  , configureMount ::
-      { nameField :: String
-      , typeDropdown :: String
-      , uriField :: String
-      , hostField :: String
-      , portField :: String
-      , usernameField :: String
-      , pathField :: String
-      , saveButton :: String
-      , cancelButton :: String
-      , warningBox :: String
+  { mongodb ∷
+      { host ∷ String
+      , port ∷ Int
       }
-  , modalShown :: String
-  , modalDismissed :: String
-  , toolbar :: { main :: String
-               , showHide :: String
-               , button :: String
-               , newFolder :: String
-               , newNotebook :: String
-               , mountDatabase :: String
-               , configureMount :: String
-               , download :: String
-               }
-  , mount :: { name :: String
-             , otherName :: String
-             }
-  , newCardMenu :: { expandCollapse :: String
-                   , queryButton :: String
-                   , mdButton :: String
-                   , exploreButton :: String
-                   , searchButton :: String
-                   }
-  , card :: { main :: String
-            , trash :: String
-            , hide :: String
-            , show :: String
-            , exploreEditor :: String
-            , searchEditor :: String
-            , vizEditor :: String
-            , refreshButton :: String
-            , playButton :: String
-            , embedButton :: String
-            , nextCardList :: String
-            , nextCardSearch :: String
-            , nextCardViz :: String
-            , nextCardQuery :: String
-            , cardOutputLabel :: String
-            , cardOutputResult :: String
-            , failures :: String
-            , evalLine :: String
-            , showMessages :: String
-            , hideMessages :: String
-            , status :: String
-            , embedBox :: String
-            , nextCardsForExplore :: StrMap String
-            , nextCardsForSearch :: StrMap String
-            , nextCardButton :: String
-            , exploreFlag :: String
-            , searchFlag :: String
-            , mdFlag :: String
-            }
-  , explore :: { notebookPath :: String
-               , input :: String
-               , expand :: String
-               , list :: String
-               , listItem :: String
-               , notMounted :: String
-               , mounted :: String
-               , directory :: String
-               , smallZips :: String
-               , smallZipsName :: String
-               , olympics :: String
-               , olympicsName :: String
-               , pagination :: String
-               , pager :: String
-               , pageInput :: String
-               , row :: String
-               , smallZipsPageCount :: Int
-               , olympicsPageCount :: Int
-               , initialRowCount :: Int
-               , pageSizeInput :: String
-               , pageSizeSelect :: String
-               , table :: String
-               , option :: String
-               , optionNums :: Array String
-               , optionCustom :: String
-               , paginationStepForwardContent :: String
-               , paginationFastForwardContent :: String
-               , paginationStepBackwardContent :: String
-               , paginationFastBackwardContent :: String
-               , paginationButtons :: String
-               , firstPageContent :: String
-               , secondPageContent :: String
-               , lastPageContent :: String
-               , prenultPageContent :: String
-               , customPageContent :: String
-               , customPageNumber :: String
-               , smallZipsHead :: String
-               , olympicsHead :: String
-               , nestedHead :: String
-               , nestedHeadInversed :: String
-               , nested :: String
-               , jtableHead :: String
-               }
-  , searchCard :: { fileListInput :: String
-                  , searchInput :: String
-                  , searchButton :: String
-                  , searchClear :: String
-                  , allQuery :: String
-                  , incorrectQuery :: String
-              }
-  , searchQueries :: Array SearchQueryConfig
-  , ace :: { textInput :: String
-           }
-  , query :: { smallZipsAll :: String
-             , flatVizAll :: String
-             , flatVizMeasures :: String
-             , flatVizOneOption :: String
-             , parameterized :: String
-             }
-  , vizSelectors :: { heightInput :: String
-                    , widthInput :: String
-                    , canvas :: String
-                    , category :: String
-                    , measureOne :: String
-                    , measureTwo :: String
-                    , seriesOne :: String
-                    , seriesTwo :: String
-                    , dimension :: String
-                    , aggregation :: String
-                    , barIcon :: String
-                    , lineIcon :: String
-                    , pieIcon :: String
-                    , pieEditor :: String
-                    , lineEditor :: String
-                    , barEditor :: String
-                    , alert :: String
-                    }
-  , markdown :: { focusEditorCssSelector :: String }
-  , vizAggregation :: { sum :: String
-                      , product :: String
-                      , average :: String
-                      , max :: String
-                      , min :: String
-                      }
-  , vizOptions :: { clearSelection :: String
-                  , set :: { category :: String
-                           , dimension :: String
-                           , seriesOne :: String
-                           , seriesTwo :: String
-                           , measureOne :: String
-                           , measureTwo :: String
-                           }
-                  , flatVizAll :: { pie :: ChartOptions
-                                  , line :: ChartOptions
-                                  , bar :: ChartOptions
-                                  }
-                  , flatVizOneOption :: { pie :: ChartOptions
-                                        , line :: ChartOptions
-                                        , bar :: ChartOptions
-                                        }
-                  }
-  , screenshot :: { dirs :: Array String
-                  , initial :: String
-                  , actual :: String
-                  , aggregation :: { bar :: String
-                                   , line :: String
-                                   , pie :: String
-                                   }
-                  , charts :: { bar :: String
-                              , line :: String
-                              , pie :: String
-                              }
-                  , complex :: String
-
-                  }
-  , complex :: { inputSelector :: String
-               , values :: Array String
-               }
-  , collectingScreenshots :: Boolean
-  , tmpFileForScreenshots :: String
-  }
-
-type ChartSwitchers =
-  { bar :: Element
-  , line :: Element
-  , pie :: Element
-  }
-
-type ChartEditors =
-  { pie :: Maybe Element
-  , line :: Maybe Element
-  , bar :: Maybe Element
+  , restoreCmd ∷ String
+  , selenium ∷
+      { jar ∷ String
+      , browser ∷ String
+      , waitTime ∷ Int
+      }
+  , sauceLabs ∷
+      { enabled ∷ Boolean
+      , platform ∷ String
+      , maxDuration ∷ Int
+      }
+  , slamdataUrl ∷ String
+  , quasar ∷
+      { jar ∷ String
+      , config ∷ String
+      }
+  , database ∷
+      { name ∷ String }
+  , upload ∷
+      { filePaths ∷ Array String }
+  , download ∷
+      { folder ∷ String }
   }
