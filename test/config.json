@@ -15,15 +15,9 @@
         "maxDuration": 10800
     },
     "slamdataUrl": "http://localhost:63175",
-    "notebookUrl": "/slamdata/notebook.html",
     "quasar": {
         "jar": "jars/quasar.jar",
         "config": "test/quasar-config.json"
-    },
-    "links": {
-        "output": "output",
-        "testNM": "test/node_modules",
-        "outputNM": "output/node_modules"
     },
     "database": {
         "name": "testDb"
@@ -33,7 +27,5 @@
     },
     "download": {
         "folder": "tmp/test/downloads"
-    },
-    "collectingScreenshots": false,
-    "tmpFileForScreenshots": "image/tmp.png"
+    }
 }
