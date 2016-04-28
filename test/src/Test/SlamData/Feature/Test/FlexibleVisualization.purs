@@ -24,7 +24,7 @@ import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
-import Selenium.Monad (script)
+import Selenium.Monad (script, tryRepeatedlyTo)
 
 apiVizScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
 apiVizScenario =
@@ -64,15 +64,18 @@ expectedNebraskaChartImages =
 test :: SlamFeature Unit
 test =
   apiVizScenario "Make embedable patients-city charts" [] do
-    script """
-      var __init = echarts.init;
-      echarts.init = function (el) {
-        var chart = __init.call(echarts, el);
-        chart.setOption = function (options) {
-          el.innerHTML = "<pre>" + JSON.stringify(options) + "</pre>";
+    tryRepeatedlyTo $ script """
+      var run = function() {
+        var __init = echarts.init;
+        echarts.init = function (el) {
+          var chart = __init.call(echarts, el);
+          chart.setOption = function (options) {
+            el.innerHTML = "<pre>" + JSON.stringify(options) + "</pre>";
+          };
+          return chart;
         };
-        return chart;
       };
+      run();
     """
     Interact.insertApiCardAsFirstCardInNewStack
     Interact.provideApiVariableBindingsForApiCard "state" "Text" "CO"

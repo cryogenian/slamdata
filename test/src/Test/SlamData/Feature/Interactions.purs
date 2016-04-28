@@ -6,7 +6,7 @@ import Data.Array as Arr
 import Data.Map as Map
 import Data.String as Str
 import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
-import Test.Feature (clickNotRepeatedly, click, provideFileInputValue, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, pushRadioButton, check, uncheck, accessUrlFromFieldValue, provideFieldValueUntilExpectedValue)
+import Test.Feature (clickNotRepeatedly, click, provideFileInputValue, pressEnter, provideFieldValue, provideFieldValueWithProperties, selectFromDropdown, pushRadioButton, check, uncheck, accessUrlFromFieldValue, provideFieldValueUntilExpectedValue, expectPresented)
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
 import Test.SlamData.Feature.Expectations as Expect
@@ -42,7 +42,7 @@ embedCardOutput = click $ XPath.anywhere XPaths.embedCardOutput
 browseRootFolder ∷ SlamFeature Unit
 browseRootFolder = do
   tryRepeatedlyTo do
-    ((clickNotRepeatedly $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Show header")
+    ((clickNotRepeatedly $ XPath.anywhere XPaths.headerGripper)
      <|>
      (clickNotRepeatedly $ XPath.index (XPath.anywhere XPaths.browseRootFolder) 1))
     Expect.fileNotRepeatedly "test-mount"
@@ -103,8 +103,12 @@ selectFile name =
   click $ XPath.anywhere $ XPaths.selectFile name
 
 createNotebookInTestFolder ∷ String → SlamFeature Unit
-createNotebookInTestFolder name =
-  browseTestFolder *> createNotebook
+createNotebookInTestFolder name = do
+  browseTestFolder
+  createNotebook
+  expectPresented
+    $ XPath.anywhere
+    $ XPaths.headerGripper
 
 createFolder ∷ SlamFeature Unit
 createFolder = click $ XPath.anywhere XPaths.createFolder
