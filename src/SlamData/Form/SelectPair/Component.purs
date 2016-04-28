@@ -136,7 +136,11 @@ eval (Choose i next) = do
   H.modify (_opened .~ false)
   H.modify (_model %~ S.trySelect i)
   pure next
-eval (SetSelect sel next) = H.modify (_model .~ sel) $> next
+eval (SetSelect sel next) = do
+  Debug.Trace.traceAnyA "\n???"
+  Debug.Trace.traceAnyA sel
+  Debug.Trace.traceAnyA "???\n"
+  H.modify (_model .~ sel) $> next
 eval (GetValue continue) = map continue $ H.gets $ view $ _model <<< S._value
 eval (GetSelect continue) = map continue $ H.gets $ view _model
 eval (ToggleOpened next) = H.modify (_opened %~ not) $> next
@@ -146,5 +150,9 @@ peek
    . (S.OptionVal a, S.OptionVal b)
   => Query b x
   -> DSL a b Unit
-peek (SetSelect s _) = H.modify (_disabled .~ null (s ^. S._options))
+peek (SetSelect s _) = do
+  Debug.Trace.traceAnyA "\n!!!"
+  Debug.Trace.traceAnyA s
+  Debug.Trace.traceAnyA "!!!\n"
+  H.modify (_disabled .~ null (s ^. S._options))
 peek _ = pure unit

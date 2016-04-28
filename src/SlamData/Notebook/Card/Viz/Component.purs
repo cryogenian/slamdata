@@ -66,7 +66,7 @@ import SlamData.Render.CSS as Rc
 type VizHTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
 type VizDSL = H.ParentDSL State Form.StateP QueryC Form.QueryP Slam ChartType
 
-vizComponent :: H.Component CardStateP CardQueryP Slam
+vizComponent ∷ H.Component CardStateP CardQueryP Slam
 vizComponent = makeCardComponent
   { cardType: Viz
   , component: H.parentComponent { render, eval, peek: Just peek }
@@ -75,7 +75,7 @@ vizComponent = makeCardComponent
   , _Query: makeQueryPrism' _VizQuery
   }
 
-render :: State -> VizHTML
+render ∷ State → VizHTML
 render state =
   HH.div
     [ HP.classes [ Rc.cardInput ] ]
@@ -84,71 +84,71 @@ render state =
     , renderForm state
     ]
 
-renderLoading :: Boolean -> VizHTML
+renderLoading ∷ Boolean → VizHTML
 renderLoading hidden =
   HH.div
     [ HP.classes
         $ [ B.alert, B.alertInfo, Rc.loadingMessage ]
-        <> (guard hidden $> B.hide)
+        ⊕ (guard hidden $> B.hide)
     ]
     [ HH.text "Loading"
     , HH.img [ HP.src "/img/blue-spin.gif" ]
     ]
 
-renderEmpty :: Boolean -> VizHTML
+renderEmpty ∷ Boolean → VizHTML
 renderEmpty hidden =
   HH.div
     [ HP.classes
         $ [ B.alert, B.alertDanger ]
-        <> (guard hidden $> B.hide)
+        ⊕ (guard hidden $> B.hide)
     , CSS.style $ marginBottom $ px 12.0
     ]
     [ HH.text "There is no available chart for this dataset" ]
 
-renderForm :: State -> VizHTML
+renderForm ∷ State → VizHTML
 renderForm state =
   HH.div
     [ HP.classes
         $ [ Rc.vizCardEditor ]
-        <> (guard hidden $> B.hide)
+        ⊕ (guard hidden $> B.hide)
     ]
     [ renderChartTypeSelector state
     , renderChartConfiguration state
     ]
   where
-  hidden :: Boolean
+  hidden ∷ Boolean
   hidden = Set.isEmpty state.availableChartTypes || state.loading
 
 
-renderChartTypeSelector :: State -> VizHTML
+renderChartTypeSelector ∷ State → VizHTML
 renderChartTypeSelector state =
   HH.div
     [ HP.classes [ Rc.vizChartTypeSelector ] ]
     $ foldl (foldFn state.chartType) empty state.availableChartTypes
   where
-  foldFn :: ChartType -> Array VizHTML -> ChartType -> Array VizHTML
+  foldFn ∷ ChartType → Array VizHTML → ChartType → Array VizHTML
   foldFn selected accum current =
     flip cons accum $
       HH.img
         [ HP.src $ src current
         , HP.classes
             $ [ cls state.chartType ]
-            <> (guard (selected == current) $> B.active)
-        , HE.onClick (HE.input_ (right <<< SetChartType current))
+            ⊕ (guard (selected == current) $> B.active)
+        , HE.onClick (HE.input_ (right ∘ SetChartType current))
         ]
 
-  src :: ChartType -> String
+  src ∷ ChartType → String
   src Pie = "img/pie.svg"
   src Line = "img/line.svg"
   src Bar = "img/bar.svg"
 
-  cls :: ChartType -> HH.ClassName
+  cls ∷ ChartType → HH.ClassName
   cls Pie = Rc.pieChartIcon
   cls Line = Rc.lineChartIcon
   cls Bar = Rc.barChartIcon
 
 
-renderChartConfiguration :: State -> VizHTML
+renderChartConfiguration ∷ State → VizHTML
 renderChartConfiguration state =
   HH.div
     [ HP.classes [ Rc.vizChartConfiguration ] ]
@@ -158,43 +158,43 @@ renderChartConfiguration state =
     , renderDimensions state
     ]
   where
-  renderTab :: ChartType -> VizHTML
+  renderTab ∷ ChartType → VizHTML
   renderTab ty =
     showIf (state.chartType == ty)
-    [ HH.slot ty \_ ->
+    [ HH.slot ty \_ →
         { component: formComponent
         , initialState: H.parentState Form.initialState
         }
     ]
 
-  showIf :: Boolean -> Array VizHTML -> VizHTML
+  showIf ∷ Boolean → Array VizHTML → VizHTML
   showIf ok content = HH.div [ HP.classes $ (guard (not ok) $> B.hide) ] content
 
 
-renderDimensions :: State -> VizHTML
+renderDimensions ∷ State → VizHTML
 renderDimensions state =
   row
   [ chartInput Rc.chartSizeParam "Height"
-      (_.height >>> showIfNeqZero) SetHeight false
+      (_.height ⋙ showIfNeqZero) SetHeight false
   , chartInput Rc.chartSizeParam "Width"
-      (_.width >>> showIfNeqZero) SetWidth false
+      (_.width ⋙ showIfNeqZero) SetWidth false
   , chartInput Rc.axisLabelParam "Axis label angle"
-      (_.axisLabelAngle >>> show) RotateAxisLabel (isPie state.chartType)
+      (_.axisLabelAngle ⋙ show) RotateAxisLabel (isPie state.chartType)
   , chartInput Rc.axisLabelParam "Axis font size"
-      (_.axisLabelFontSize >>> show) SetAxisFontSize (isPie state.chartType)
+      (_.axisLabelFontSize ⋙ show) SetAxisFontSize (isPie state.chartType)
   ]
   where
   chartInput
-    :: HH.ClassName
-    -> String
-    -> (State -> String)
-    -> (Int -> Unit -> Query Unit)
-    -> Boolean -> VizHTML
+    ∷ HH.ClassName
+    → String
+    → (State → String)
+    → (Int → Unit → Query Unit)
+    → Boolean → VizHTML
   chartInput cls labelText valueFromState queryCtor isHidden =
     HH.form
       [ HP.classes
           $ [ B.colXs3, cls ]
-          <> (guard isHidden $> B.hide)
+          ⊕ (guard isHidden $> B.hide)
       , Cp.nonSubmit
       ]
       [ label labelText
@@ -203,83 +203,83 @@ renderDimensions state =
           , HP.value $ valueFromState state
           , ARIA.label labelText
           , Cp.mbValueInput
-              $ pure <<< map (right <<< flip queryCtor unit) <<< stringToInt
+              $ pure ∘ map (right ∘ flip queryCtor unit) ∘ stringToInt
           ]
       ]
 
-  label :: String -> VizHTML
+  label ∷ String → VizHTML
   label str = HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text str ]
 
-  showIfNeqZero :: forall a. (Eq a, Show a, Semiring a) => a -> String
+  showIfNeqZero ∷ forall a. (Eq a, Show a, Semiring a) ⇒ a → String
   showIfNeqZero a = if zero == a then "" else show a
 
-  stringToInt :: String -> Maybe Int
+  stringToInt ∷ String → Maybe Int
   stringToInt s = if s == "" then Just 0 else Int.fromString s
 
 -- Note: need to put running to state
-eval :: Natural QueryC VizDSL
+eval ∷ Natural QueryC VizDSL
 eval = coproduct cardEval vizEval
 
-vizEval :: Natural Query VizDSL
+vizEval ∷ Natural Query VizDSL
 vizEval q = do
   H.modify $ _needToUpdate .~ false
   case q of
-    SetHeight h next ->
+    SetHeight h next →
       H.modify (_height .~ h) *> configure $> next
-    SetWidth w next ->
+    SetWidth w next →
       H.modify (_width .~ w) *> configure $> next
-    SetChartType ct next ->
+    SetChartType ct next →
       H.modify (_chartType .~ ct) *> configure $> next
-    SetAvailableChartTypes ts next ->
+    SetAvailableChartTypes ts next →
       H.modify (_availableChartTypes .~ ts) *> configure $> next
-    RotateAxisLabel angle next ->
+    RotateAxisLabel angle next →
       H.modify (_axisLabelAngle .~ angle) *> configure $> next
-    SetAxisFontSize size next ->
+    SetAxisFontSize size next →
       H.modify (_axisLabelFontSize .~ size) *> configure $> next
 
-cardEval :: Natural CardEvalQuery VizDSL
+cardEval ∷ Natural CardEvalQuery VizDSL
 cardEval (EvalCard info continue) =
   case info.inputPort of
-    Just P.Blocked -> do
+    Just P.Blocked → do
       H.modify
         $ (_needToUpdate .~ true)
-        <<< (_sample .~ mempty)
-        <<< (_records .~ mempty)
-        <<< (_availableChartTypes .~ mempty)
+        ∘ (_sample .~ mempty)
+        ∘ (_records .~ mempty)
+        ∘ (_availableChartTypes .~ mempty)
       pure $ continue { output: Nothing, messages: [] }
-    _ -> do
-      needToUpdate <- H.gets _.needToUpdate
+    _ → do
+      needToUpdate ← H.gets _.needToUpdate
       map continue $ runCardEvalT do
         when needToUpdate $ withLoading do
-          r <- maybe (throwError "Incorrect port in visual builder card") pure
+          r ← maybe (throwError "Incorrect port in visual builder card") pure
                $ info.inputPort >>= preview P._Resource
           lift $ updateForms r
-          records <-
+          records ←
             Api.all r
               # liftWithCancelerP'
               # lift
               >>= either
-                  (const $ throwError $ "Can't get resource: " <> printPath r)
+                  (const $ throwError $ "Can't get resource: " ⊕ printPath r)
                   pure
           when (length records > 10000)
             $ throwError
             $  "Maximum record count available for visualization -- 10000, "
-            <> "please consider using 'limit' or 'group by' in your H.request"
+            ⊕ "please consider using 'limit' or 'group by' in your H.request"
           lift $ H.modify $ _records .~ records
         lift $ H.modify $ _needToUpdate .~ true
         responsePort
   where
   withLoading action = do
     lift $ H.modify $ _loading .~ true
-    a <- action
+    a ← action
     lift $ H.modify $ _loading .~ false
     pure a
 cardEval (SetupCard _ next) = pure next
 cardEval (NotifyRunCard next) = pure next
 cardEval (NotifyStopCard next) = pure next
 cardEval (Save k) = do
-  st <- H.get
-  config <- H.query st.chartType $ left $ H.request Form.GetConfiguration
+  st ← H.get
+  config ← H.query st.chartType $ left $ H.request Form.GetConfiguration
   pure $ k $ Model.encode
     { width: st.width
     , height: st.height
@@ -290,19 +290,19 @@ cardEval (Save k) = do
     }
 cardEval (Load json next) =
   case Model.decode json of
-    Left err -> pure next
-    Right model -> do
+    Left err → pure next
+    Right model → do
       let st = fromModel model
       H.set st
       H.query st.chartType $ left $ H.action $ Form.SetConfiguration model.chartConfig
       pure next
 cardEval (SetCanceler _ next) = pure next
 
-responsePort :: CardEvalT VizDSL P.Port
+responsePort ∷ CardEvalT VizDSL P.Port
 responsePort = do
-  state <- lift H.get
-  mbConf <- lift $ H.query state.chartType $ left $ H.request Form.GetConfiguration
-  conf <- maybe (throwError "Form state has not been set in responsePort")
+  state ← lift H.get
+  mbConf ← lift $ H.query state.chartType $ left $ H.request Form.GetConfiguration
+  conf ← maybe (throwError "Form state has not been set in responsePort")
           pure mbConf
   pure
     $ P.ChartOptions
@@ -311,9 +311,9 @@ responsePort = do
     , height: state.height
     }
 
-updateForms :: FilePath -> VizDSL Unit
+updateForms ∷ FilePath → VizDSL Unit
 updateForms file = do
-  jarr <-
+  jarr ←
     Api.sample file 0 20
       # liftWithCancelerP'
       >>= either (const $ pure []) pure
@@ -325,32 +325,32 @@ updateForms file = do
     configure
 
 type AxisAccum =
- { category :: Array JCursor
- , value :: Array JCursor,
-   time :: Array JCursor
+ { category ∷ Array JCursor
+ , value ∷ Array JCursor,
+   time ∷ Array JCursor
  }
 
-configure :: VizDSL Unit
+configure ∷ VizDSL Unit
 configure = void do
-  axises <- getAxises
-  pieConf <- getOrInitial Pie
+  axises ← getAxises
+  pieConf ← getOrInitial Pie
   setConfFor Pie $ pieBarConfiguration axises pieConf
-  lineConf <- getOrInitial Line
+  lineConf ← getOrInitial Line
   setConfFor Line $ lineConfiguration axises lineConf
-  barConf <- getOrInitial Bar
+  barConf ← getOrInitial Bar
   setConfFor Bar $ pieBarConfiguration axises barConf
   H.modify (_availableChartTypes .~ available axises)
   where
-  getOrInitial :: ChartType -> VizDSL ChartConfiguration
+  getOrInitial ∷ ChartType → VizDSL ChartConfiguration
   getOrInitial ty =
     map (fromMaybe Form.initialState)
     $ H.query ty $ left (H.request Form.GetConfiguration)
 
-  setConfFor :: ChartType -> ChartConfiguration -> VizDSL Unit
+  setConfFor ∷ ChartType → ChartConfiguration → VizDSL Unit
   setConfFor ty conf =
     void $ H.query ty $ left $ H.action $ Form.SetConfiguration conf
 
-  available :: AxisAccum -> Set.Set ChartType
+  available ∷ AxisAccum → Set.Set ChartType
   available axises =
     foldMap Set.singleton
     $ if null axises.value
@@ -361,12 +361,12 @@ configure = void do
                 then []
                 else [Line]
 
-  getAxises :: VizDSL AxisAccum
+  getAxises ∷ VizDSL AxisAccum
   getAxises = do
-    sample <- H.gets _.sample
+    sample ← H.gets _.sample
     pure $ foldl axisFolder {category: [], value: [], time: [] } $ M.toList sample
 
-  axisFolder :: AxisAccum -> Tuple JCursor Axis -> AxisAccum
+  axisFolder ∷ AxisAccum → Tuple JCursor Axis → AxisAccum
   axisFolder accum (Tuple cursor axis)
     | Ax.isCatAxis axis = accum { category = cons cursor accum.category }
     | Ax.isValAxis axis = accum { value = cons cursor accum.value }
@@ -375,13 +375,13 @@ configure = void do
 
 
   setPreviousValueFrom
-    :: forall a. (Eq a) => Maybe (Select a) -> Select a -> Select a
+    ∷ forall a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
   setPreviousValueFrom mbSel target  =
     (maybe id trySelect' $ mbSel >>= view _value) $ target
 
-  pieBarConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
+  pieBarConfiguration ∷ AxisAccum → ChartConfiguration → ChartConfiguration
   pieBarConfiguration axises current =
-    let allAxises = axises.category <> axises.time <> axises.value
+    let allAxises = axises.category ⊕ axises.time ⊕ axises.value
         categories =
           setPreviousValueFrom (index current.series 0)
           $ autoSelect $ newSelect allAxises
@@ -403,9 +403,9 @@ configure = void do
        , aggregations: [aggregation]
        }
 
-  lineConfiguration :: AxisAccum -> ChartConfiguration -> ChartConfiguration
+  lineConfiguration ∷ AxisAccum → ChartConfiguration → ChartConfiguration
   lineConfiguration axises current =
-    let allAxises = (axises.category <> axises.time <> axises.value)
+    let allAxises = (axises.category ⊕ axises.time ⊕ axises.value)
         dimensions =
           setPreviousValueFrom (index current.dimensions 0)
           $ autoSelect $ newSelect $ dependsOnArr axises.value
@@ -434,7 +434,7 @@ configure = void do
        , aggregations: [aggregationSelect, aggregationSelect]
        }
 
-peek :: forall a. H.ChildF ChartType Form.QueryP a -> VizDSL Unit
+peek ∷ forall a. H.ChildF ChartType Form.QueryP a → VizDSL Unit
 peek _ = do
   H.modify $ _needToUpdate .~ false
   configure
