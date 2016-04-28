@@ -66,7 +66,7 @@ import SlamData.Notebook.Card.Markdown.Component.State as Markdown
 import SlamData.Notebook.Card.Port (Port)
 import SlamData.Notebook.Card.RunState (RunState(..))
 import SlamData.Notebook.Card.Search.Component.State as Search
-import SlamData.Notebook.Card.Viz.Component.State as Viz
+import SlamData.Notebook.Card.Viz.Component.ChildSlot as Viz
 import SlamData.Notebook.Card.Next.Component.State as Next
 import SlamData.Notebook.Card.Save.Component.State as Save
 import SlamData.Notebook.Card.OpenResource.Component.State as Open

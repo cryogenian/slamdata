@@ -16,14 +16,8 @@ limitations under the License.
 
 module SlamData.Notebook.Card.Viz.Component.Query where
 
-import Data.Functor.Coproduct (Coproduct)
 import Data.Set (Set)
-
-import Halogen (ChildF)
-
 import SlamData.Notebook.Card.Chart.ChartType (ChartType)
-import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Notebook.Card.Viz.Form.Component as Form
 
 data Query a
   = SetHeight Int a
@@ -32,7 +26,3 @@ data Query a
   | SetChartType ChartType a
   | RotateAxisLabel Int a
   | SetAxisFontSize Int a
-
-type QueryC = Coproduct CardEvalQuery Query
-
-type QueryP = Coproduct QueryC (ChildF ChartType Form.QueryP)

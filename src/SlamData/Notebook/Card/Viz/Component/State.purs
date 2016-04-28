@@ -27,7 +27,6 @@ module SlamData.Notebook.Card.Viz.Component.State
   , _needToUpdate
   , _axisLabelAngle
   , _axisLabelFontSize
-  , StateP
   , fromModel
   ) where
 
@@ -38,14 +37,8 @@ import Data.Lens (LensP, lens)
 import Data.Map as M
 import Data.Set as Set
 
-import Halogen (ParentState)
-
-import SlamData.Effects (Slam)
 import SlamData.Notebook.Card.Chart.Axis (Axis)
 import SlamData.Notebook.Card.Chart.ChartType (ChartType(..))
-import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Notebook.Card.Viz.Component.Query (Query)
-import SlamData.Notebook.Card.Viz.Form.Component as Form
 import SlamData.Notebook.Card.Viz.Model (Model)
 
 type State =
@@ -104,14 +97,6 @@ _axisLabelFontSize = lens _.axisLabelFontSize _{axisLabelFontSize = _}
 
 _axisLabelAngle :: forall a r. LensP {axisLabelAngle :: a | r} a
 _axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
-
-type StateP =
-  ParentState
-    State
-    Form.StateP
-    (Coproduct CardEvalQuery Query)
-    Form.QueryP
-    Slam ChartType
 
 fromModel :: Model -> State
 fromModel m =

@@ -60,7 +60,7 @@ import SlamData.Notebook.Card.OpenResource.Component.Query as Open
 import SlamData.Notebook.Card.Model as Card
 import SlamData.Notebook.Card.Port (Port)
 import SlamData.Notebook.Card.Search.Component.Query as Search
-import SlamData.Notebook.Card.Viz.Component.Query as Viz
+import SlamData.Notebook.Card.Viz.Component.ChildSlot as Viz
 import SlamData.Notebook.Card.Next.Component.Query as Next
 import SlamData.Notebook.Card.Save.Component.Query as Save
 

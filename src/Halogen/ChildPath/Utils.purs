@@ -2,6 +2,7 @@
 module Halogen.ChildPath.Utils where
 
 import SlamData.Prelude
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 inj1 ∷ ∀ a z. a → a ∨ z
 inj1 = Left
@@ -122,16 +123,25 @@ cprj8
   ∷ ∀ a b c d e f g h z u. (a ⨁ b ⨁ c ⨁ d ⨁ e ⨁ f ⨁ g ⨁ h ⨁ z) u → Maybe (h u)
 cprj8 = coproduct (const Nothing) cprj7
 
+newtype OrdVoid = OrdVoid Void
+runOrdVoid ∷ OrdVoid → Void
+runOrdVoid (OrdVoid v) = v
 
-type Either2 a b = a ∨ b ∨ Void
-type Either3 a b c = a ∨ b ∨ c ∨ Void
-type Either4 a b c d = a ∨ b ∨ c ∨ d ∨ Void
-type Either5 a b c d e = a ∨ b ∨ c ∨ d ∨ e ∨ Void
-type Either6 a b c d e f = a ∨ b ∨ c ∨ d ∨ e ∨ f ∨ Void
-type Either7 a b c d e f g = a ∨ b ∨ c ∨ d ∨ e ∨ f ∨ g ∨ Void
-type Either8 a b c d e f g h = a ∨ b ∨ c ∨ d ∨ e ∨ f ∨ g ∨ h ∨ Void
+instance eqOrdVoid ∷ Eq OrdVoid where
+  eq _ = absurd ∘ runOrdVoid
 
-type ConstVoid = Const Void
+instance ordOrdVoid ∷ Ord OrdVoid where
+  compare _ = absurd ∘ runOrdVoid
+
+type Either2 a b = a ∨ b ∨ OrdVoid
+type Either3 a b c = a ∨ b ∨ c ∨ OrdVoid
+type Either4 a b c d = a ∨ b ∨ c ∨ d ∨ OrdVoid
+type Either5 a b c d e = a ∨ b ∨ c ∨ d ∨ e ∨ OrdVoid
+type Either6 a b c d e f = a ∨ b ∨ c ∨ d ∨ e ∨ f ∨ OrdVoid
+type Either7 a b c d e f g = a ∨ b ∨ c ∨ d ∨ e ∨ f ∨ g ∨ OrdVoid
+type Either8 a b c d e f g h = a ∨ b ∨ c ∨ d ∨ e ∨ f ∨ g ∨ h ∨ OrdVoid
+
+type ConstVoid = Const OrdVoid
 type Coproduct2 a b = a ⨁ b ⨁ ConstVoid
 type Coproduct3 a b c = a ⨁ b ⨁ c ⨁ ConstVoid
 type Coproduct4 a b c d = a ⨁ b ⨁ c ⨁ d ⨁ ConstVoid
@@ -146,7 +156,7 @@ either2
   . (a → r) → (b → r)
   → Either2 a b
   → r
-either2 a2r b2r = either a2r (either b2r absurd)
+either2 a2r b2r = either a2r (either b2r (absurd ∘ runOrdVoid))
 
 either3
   ∷ ∀ a b c r
@@ -192,3 +202,75 @@ either8
   → r
 either8 a2r b2r c2r d2r e2r f2r g2r h2r =
   either a2r (either7 b2r c2r d2r e2r f2r g2r h2r)
+
+coproduct2
+  ∷ ∀ a b r u
+  . (a u → r) → (b u → r)
+  → Coproduct2 a b u
+  → r
+coproduct2 a2r b2r =
+  coproduct a2r (coproduct b2r (absurd ∘ runOrdVoid ∘ getConst))
+
+coproduct3
+  ∷ ∀ a b c r u
+  . (a u → r) → (b u → r) → (c u → r)
+  → Coproduct3 a b c u
+  → r
+coproduct3 a2r b2r c2r =
+  coproduct a2r (coproduct2 b2r c2r)
+
+coproduct4
+  ∷ ∀ a b c d r u
+  . (a u → r) → (b u → r) → (c u → r) → (d u → r)
+  → Coproduct4 a b c d u
+  → r
+coproduct4 a2r b2r c2r d2r =
+  coproduct a2r (coproduct3 b2r c2r d2r)
+
+coproduct5
+  ∷ ∀ a b c d e r u
+  . (a u → r) → (b u → r) → (c u → r) → (d u → r) → (e u → r)
+  → Coproduct5 a b c d e u
+  → r
+coproduct5 a2r b2r c2r d2r e2r =
+  coproduct a2r (coproduct4 b2r c2r d2r e2r)
+
+coproduct6
+  ∷ ∀ a b c d e f r u
+  . (a u → r) → (b u → r) → (c u → r) → (d u → r) → (e u → r) → (f u → r)
+  → Coproduct6 a b c d e f u
+  → r
+coproduct6 a2r b2r c2r d2r e2r f2r =
+  coproduct a2r (coproduct5 b2r c2r d2r e2r f2r)
+
+coproduct7
+  ∷ ∀ a b c d e f g r u
+  . (a u → r) → (b u → r) → (c u → r) → (d u → r) → (e u → r) → (f u → r) → (g u → r)
+  → Coproduct7 a b c d e f g u
+  → r
+coproduct7 a2r b2r c2r d2r e2r f2r g2r =
+  coproduct a2r (coproduct6 b2r c2r d2r e2r f2r g2r)
+
+coproduct8
+  ∷ ∀ a b c d e f g h r u
+  . (a u → r) → (b u → r) → (c u → r) → (d u → r)
+  → (e u → r) → (f u → r) → (g u → r) → (h u → r)
+  → Coproduct8 a b c d e f g h u
+  → r
+coproduct8 a2r b2r c2r d2r e2r f2r g2r h2r =
+  coproduct a2r (coproduct7 b2r c2r d2r e2r f2r g2r h2r)
+
+cp1
+  ∷ ∀ s t f g p q
+  . ChildPath s (s ∨ t) f (f ⨁ g) p (p ∨ q)
+cp1 = cpL
+
+cp2
+  ∷ ∀ s t u f g h p q r
+  . ChildPath t (s ∨ t ∨ u) g (f ⨁ g ⨁ h) q (p ∨ q ∨ r)
+cp2 = cpR :> cpL
+
+cp3
+  ∷ ∀ a b c d k l m n p q r s
+  . ChildPath c (a ∨ b ∨ c ∨ d) m (k ⨁ l ⨁ m ⨁ n) r (p ∨ q ∨ r ∨ s)
+cp3 = cpR :> cpR :> cpL
