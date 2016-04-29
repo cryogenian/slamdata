@@ -109,7 +109,7 @@ trySelect' a sel =
 -- | updateState :: ViewModel -> State -> State
 -- | updateState vm st = st { users = st.users <-> vm.userSelect }
 -- | ```
-infixl 2 exceptFlipped as <->
+infixl 2 exceptFlipped as ⊝
 
 exceptFlipped :: forall a. (Eq a) => Array a -> Select a -> Array a
 exceptFlipped = flip except'

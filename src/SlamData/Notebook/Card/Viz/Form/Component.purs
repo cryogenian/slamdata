@@ -61,11 +61,11 @@ import SlamData.Render.CSS as Rc
 
 data Query a
   = SetConfiguration ChartConfiguration a
-  | GetConfiguration (ChartConfiguration -> a)
+  | GetConfiguration (ChartConfiguration → a)
 
 type State = ChartConfiguration
 
-initialState :: State
+initialState ∷ State
 initialState =
   { dimensions: []
   , series: []
@@ -96,32 +96,32 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
 cpDimension
-  :: ChildPath
+  ∷ ChildPath
        DimensionState ChildState
        DimensionQuery ChildQuery
        DimensionSlot ChildSlot
 cpDimension = cpL
 
 cpSeries
-  :: ChildPath
+  ∷ ChildPath
        SeriesState ChildState
        SeriesQuery ChildQuery
        SeriesSlot ChildSlot
 cpSeries = cpR :> cpL
 
 cpMeasure
-  :: ChildPath
+  ∷ ChildPath
        MeasureState ChildState
        MeasureQuery ChildQuery
        MeasureSlot ChildSlot
 cpMeasure = cpR :> cpR
 
-formComponent :: H.Component StateP QueryP Slam
+formComponent ∷ H.Component StateP QueryP Slam
 formComponent = H.parentComponent { render, eval, peek: Nothing }
 
 render
-  :: ChartConfiguration
-  -> FormHTML
+  ∷ ChartConfiguration
+  → FormHTML
 render conf =
   HH.div
     [ HP.classes [ Rc.chartEditor ] ]
@@ -129,119 +129,119 @@ render conf =
       then renderRowsWithoutDimension 1 2 (renderCategoryRow)
       else renderRows 0 [ ]
   where
-  renderCategoryRow :: Array FormHTML
+  renderCategoryRow ∷ Array FormHTML
   renderCategoryRow =
-       singleton
-    $  row
-    $  maybe [] (renderCategory clss.first 0) (conf.series !! 0)
-    <> maybe [] (renderMeasure clss.second 0) (conf.measures !! 0)
-    <> maybe [] (renderSeries clss.third 1) (conf.series !! 1)
+    singleton
+    $ row
+    $ foldMap (renderCategory clss.first 0) (conf.series !! 0)
+    ⊕ foldMap (renderMeasure clss.second 0) (conf.measures !! 0)
+    ⊕ foldMap (renderSeries clss.third 1) (conf.series !! 1)
     where
-    clss :: GridClasses
+    clss ∷ GridClasses
     clss = gridClasses (conf.series !! 0) (conf.measures !! 0) (conf.series !! 1)
 
   renderRowsWithoutDimension
-    :: Int -> Int -> Array FormHTML -> Array FormHTML
+    ∷ Int → Int → Array FormHTML → Array FormHTML
   renderRowsWithoutDimension measureIx seriesIx acc =
     maybe acc
     (renderRowsWithoutDimension (measureIx + one) (seriesIx + one)
-     <<< snoc acc)
+     ∘ snoc acc)
     $ renderOneRowWithoutDimension
         measureIx (conf.measures !! measureIx)
         seriesIx (conf.series !! seriesIx)
 
   renderOneRowWithoutDimension
-    :: Int -> Maybe JSelect -> Int -> Maybe JSelect -> Maybe FormHTML
+    ∷ Int → Maybe JSelect → Int → Maybe JSelect → Maybe FormHTML
   renderOneRowWithoutDimension _ Nothing _ Nothing = Nothing
   renderOneRowWithoutDimension measureIx mbMeasure seriesIx mbSeries =
-       pure
-    $  row
-    $  maybe [] (renderMeasure [ B.colXs4 ] measureIx) mbMeasure
-    <> maybe [] (renderSeries [ B.colXs4, B.colXsOffset8 ] seriesIx) mbSeries
+    pure
+    $ row
+    $ foldMap (renderMeasure [ B.colXs4 ] measureIx) mbMeasure
+    ⊕ foldMap (renderSeries [ B.colXs4, B.colXsOffset8 ] seriesIx) mbSeries
 
   renderRows
-    :: Int -> Array FormHTML -> Array FormHTML
+    ∷ Int → Array FormHTML → Array FormHTML
   renderRows ix acc =
-    maybe acc (renderRows (ix + one) <<< snoc acc)
+    maybe acc (renderRows (ix + one) ∘ snoc acc)
     $ renderOneRow ix
     (conf.dimensions !! ix) (conf.series !! ix) (conf.measures !! ix)
 
   renderOneRow
-    :: Int -> Maybe JSelect -> Maybe JSelect -> Maybe JSelect -> Maybe FormHTML
+    ∷ Int → Maybe JSelect → Maybe JSelect → Maybe JSelect → Maybe FormHTML
   renderOneRow _ Nothing Nothing Nothing = Nothing
   renderOneRow ix mbDimension mbSeries mbMeasure =
-       pure
-    $  row
-    $  maybe [] (renderDimension clss.first ix) mbDimension
-    <> maybe [] (renderMeasure clss.second ix) mbMeasure
-    <> maybe [] (renderSeries clss.third ix) mbSeries
+    pure
+    $ row
+    $ foldMap (renderDimension clss.first ix) mbDimension
+    ⊕ foldMap (renderMeasure clss.second ix) mbMeasure
+    ⊕ foldMap (renderSeries clss.third ix) mbSeries
     where
-    clss :: GridClasses
+    clss ∷ GridClasses
     clss = gridClasses mbDimension mbMeasure mbSeries
 
-  renderDimension :: Array HH.ClassName -> Int -> JSelect -> Array FormHTML
+  renderDimension ∷ Array HH.ClassName → Int → JSelect → Array FormHTML
   renderDimension clss ix sel =
     [ HH.form
         [ CP.nonSubmit
-        , HP.classes $ clss <> [ Rc.chartConfigureForm, Rc.chartDimension ]
+        , HP.classes $ clss ⊕ [ Rc.chartConfigureForm, Rc.chartDimension ]
         ]
         [ dimensionLabel
-        , HH.slot' cpDimension ix \_ ->
+        , HH.slot' cpDimension ix \_ →
             { component: S.primarySelect (pure "Dimension")
             , initialState: sel
             }
         ]
     ]
 
-  renderMeasure :: Array HH.ClassName -> Int -> JSelect -> Array FormHTML
+  renderMeasure ∷ Array HH.ClassName → Int → JSelect → Array FormHTML
   renderMeasure clss ix sel =
     [ HH.form
         [ CP.nonSubmit
         , HP.classes
             $ clss
-            <> [ Rc.chartConfigureForm
+            ⊕ [ Rc.chartConfigureForm
                , Rc.chartMeasureOne
                , Rc.withAggregation
                ]
         ]
         [ measureLabel
-        , HH.slot' cpMeasure ix \_ ->
+        , HH.slot' cpMeasure ix \_ →
             { component: childMeasure ix sel
             , initialState: H.parentState $ P.initialState aggregationSelect
             }
         ]
     ]
 
-  renderSeries :: Array HH.ClassName -> Int -> JSelect -> Array FormHTML
+  renderSeries ∷ Array HH.ClassName → Int → JSelect → Array FormHTML
   renderSeries clss ix sel =
     [ HH.form
         [ CP.nonSubmit
         , HP.classes
             $ clss
-            <> [ Rc.chartConfigureForm
+            ⊕ [ Rc.chartConfigureForm
                , Rc.chartSeriesOne
                ]
         ]
       [ seriesLabel
-      , HH.slot' cpSeries ix \_ ->
+      , HH.slot' cpSeries ix \_ →
           { component: S.secondarySelect $ renderLabel ix "Series"
           , initialState: sel
           }
       ]
     ]
 
-  renderCategory :: Array HH.ClassName -> Int -> JSelect -> Array FormHTML
+  renderCategory ∷ Array HH.ClassName → Int → JSelect → Array FormHTML
   renderCategory clss ix sel =
     [ HH.form
         [ CP.nonSubmit
         , HP.classes
             $ clss
-            <> [ Rc.chartConfigureForm
+            ⊕ [ Rc.chartConfigureForm
                , Rc.chartCategory
                ]
         ]
         [ categoryLabel
-        , HH.slot' cpSeries ix \_ ->
+        , HH.slot' cpSeries ix \_ →
             { component: S.primarySelect $ pure "Category"
             , initialState: sel
             }
@@ -265,37 +265,37 @@ render conf =
            }
 
 
-  aggregationSelect :: Select Aggregation
+  aggregationSelect ∷ Select Aggregation
   aggregationSelect =
     Select
       { options: allAggregations
       , value: Just Sum
       }
 
-  label :: String -> FormHTML
+  label ∷ String → FormHTML
   label str = HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text str ]
 
-  categoryLabel :: FormHTML
+  categoryLabel ∷ FormHTML
   categoryLabel = label "Category"
 
-  dimensionLabel :: FormHTML
+  dimensionLabel ∷ FormHTML
   dimensionLabel = label "Dimension"
 
-  measureLabel :: FormHTML
+  measureLabel ∷ FormHTML
   measureLabel = label "Measure"
 
-  seriesLabel :: FormHTML
+  seriesLabel ∷ FormHTML
   seriesLabel = label "Series"
 
-  renderLabel :: Int -> String -> Maybe String
-  renderLabel 0 str = pure $ "First " <> str
-  renderLabel 1 str = pure $ "Second " <> str
-  renderLabel 2 str = pure $ "Third " <> str
-  renderLabel n str = pure $ show n <> "th " <> str
+  renderLabel ∷ Int → String → Maybe String
+  renderLabel 0 str = pure $ "First " ⊕ str
+  renderLabel 1 str = pure $ "Second " ⊕ str
+  renderLabel 2 str = pure $ "Third " ⊕ str
+  renderLabel n str = pure $ show n ⊕ "th " ⊕ str
 
-eval :: Natural Query FormDSL
+eval ∷ Natural Query FormDSL
 eval (SetConfiguration conf next) = do
-  r <- H.get
+  r ← H.get
   H.set conf
   forceRerender'
   synchronizeDimensions r.dimensions conf.dimensions
@@ -304,63 +304,69 @@ eval (SetConfiguration conf next) = do
   synchronizeAggregations r.aggregations conf.aggregations
   pure next
   where
-  synchronizeDimensions :: Array JSelect -> Array JSelect -> FormDSL Unit
+  synchronizeDimensions ∷ Array JSelect → Array JSelect → FormDSL Unit
   synchronizeDimensions = synchronize cpDimension
 
-  synchronizeSeries :: Array JSelect -> Array JSelect -> FormDSL Unit
+  synchronizeSeries ∷ Array JSelect → Array JSelect → FormDSL Unit
   synchronizeSeries = synchronize cpSeries
 
   synchronize
-    :: forall s
-     . ChildPath s ChildState (S.Query JCursor) ChildQuery Int ChildSlot
-    -> Array JSelect
-    -> Array JSelect
-    -> FormDSL Unit
+    ∷ ∀ s
+    . ChildPath s ChildState (S.Query JCursor) ChildQuery Int ChildSlot
+    → Array JSelect
+    → Array JSelect
+    → FormDSL Unit
   synchronize prism old new =
     traverse_ (syncByIndex prism old new) $ range 0 $ getLastIndex old new
 
   syncByIndex
-    :: forall s
-     . ChildPath s ChildState (S.Query JCursor) ChildQuery Int ChildSlot
-    -> Array JSelect
-    -> Array JSelect
-    -> Int
-    -> FormDSL Unit
+    ∷ ∀ s
+    . ChildPath s ChildState (S.Query JCursor) ChildQuery Int ChildSlot
+    → Array JSelect
+    → Array JSelect
+    → Int
+    → FormDSL Unit
   syncByIndex prism old new i =
-    if isJust $ old !! i
-    then maybe (pure unit) (void <<< H.query' prism i <<< H.action <<< S.SetSelect)
-         $ (new !! i)
-    else pure unit
+    for_ (old !! i) \_ →
+      for_ (new !! i)
+        $ void
+        ∘ H.query' prism i
+        ∘ H.action
+        ∘ S.SetSelect
 
-  synchronizeMeasures :: Array JSelect -> Array JSelect -> FormDSL Unit
+  synchronizeMeasures ∷ Array JSelect → Array JSelect → FormDSL Unit
   synchronizeMeasures old new =
     traverse_ (syncMeasureByIndex old new) $ range 0 $ getLastIndex old new
 
-  syncMeasureByIndex :: Array JSelect -> Array JSelect -> Int -> FormDSL Unit
+  syncMeasureByIndex ∷ Array JSelect → Array JSelect → Int → FormDSL Unit
   syncMeasureByIndex old new i =
-    if isJust $ old !! i
-    then maybe (pure unit)
-         (void <<< H.query' cpMeasure i <<< right
-          <<< H.ChildF unit <<< H.action <<< S.SetSelect)
-         $ new !! i
-    else pure unit
+    for_ (old !! i) \_ →
+      for_ (new !! i)
+        $ void
+        ∘ H.query' cpMeasure i
+        ∘ right
+        ∘ H.ChildF unit
+        ∘ H.action
+        ∘ S.SetSelect
 
   synchronizeAggregations
-    :: Array (Select Aggregation) -> Array (Select Aggregation) -> FormDSL Unit
+    ∷ Array (Select Aggregation) → Array (Select Aggregation) → FormDSL Unit
   synchronizeAggregations old new =
     traverse_ (syncAggByIndex old new) $ range 0 $ getLastIndex old new
 
   syncAggByIndex
-    :: Array (Select Aggregation) -> Array (Select Aggregation) -> Int
-    -> FormDSL Unit
+    ∷ Array (Select Aggregation) → Array (Select Aggregation) → Int
+    → FormDSL Unit
   syncAggByIndex old new i =
-    if isJust $ old !! i
-    then maybe (pure unit)
-         (void <<< H.query' cpMeasure i <<< left <<< H.action <<< S.SetSelect)
-         $ new !! i
-    else pure unit
+    for_ (old !! i) \_ →
+      for_ (new !! i)
+        $ void
+        ∘ H.query' cpMeasure i
+        ∘ left
+        ∘ H.action
+        ∘ S.SetSelect
 
-  getLastIndex :: forall a b. Array a -> Array b -> Int
+  getLastIndex ∷ ∀ a b. Array a → Array b → Int
   getLastIndex old new =
     let oldL = length old
         newL = length new
@@ -369,55 +375,66 @@ eval (SetConfiguration conf next) = do
 
 
 eval (GetConfiguration continue) = do
-  conf <- H.get
+  conf ← H.get
   forceRerender'
-  dims <- getDimensions
-  series <- getSeries
-  measures <- getMeasures
-  r <- { dimensions: _, series: _, measures: _, aggregations: _}
+  dims ← getDimensions
+  series ← getSeries
+  measures ← getMeasures
+  r ← { dimensions: _, series: _, measures: _, aggregations: _}
     <$> getDimensions
     <*> getSeries
     <*> getMeasures
     <*> getAggregations
   pure $ continue r
   where
-  getDimensions :: FormDSL (Array JSelect)
+  getDimensions ∷ FormDSL (Array JSelect)
   getDimensions = do
-    conf <- H.get
+    conf ← H.get
     traverse getDimension (range' 0 $ length conf.dimensions - 1)
 
-  getDimension :: Int -> FormDSL JSelect
+  getDimension ∷ Int → FormDSL JSelect
   getDimension i =
-    map fromJust $ H.query' cpDimension i $ H.request S.GetSelect
+    map fromJust
+      $ H.query' cpDimension i
+      $ H.request S.GetSelect
 
-  getSeries :: FormDSL (Array JSelect)
+  getSeries ∷ FormDSL (Array JSelect)
   getSeries = do
-    conf <- H.get
+    conf ← H.get
     traverse getSerie (range' 0 $ length conf.series - 1)
 
-  getSerie :: Int -> FormDSL JSelect
+  getSerie ∷ Int → FormDSL JSelect
   getSerie i =
-    map fromJust $ H.query' cpSeries i $ H.request S.GetSelect
+    map fromJust
+      $ H.query' cpSeries i
+      $ H.request S.GetSelect
 
-  getMeasures :: FormDSL (Array JSelect)
+  getMeasures ∷ FormDSL (Array JSelect)
   getMeasures = do
-    conf <- H.get
+    conf ← H.get
     traverse getMeasure (range' 0 $ length conf.measures - 1)
 
-  getMeasure :: Int -> FormDSL JSelect
+  getMeasure ∷ Int → FormDSL JSelect
   getMeasure i =
-    map fromJust $ H.query' cpMeasure i $ right $ H.ChildF unit $ H.request S.GetSelect
+    map fromJust
+      $ H.query' cpMeasure i
+      $ right
+      $ H.ChildF unit
+      $ H.request S.GetSelect
 
-  getAggregations :: FormDSL (Array (Select Aggregation))
+  getAggregations ∷ FormDSL (Array (Select Aggregation))
   getAggregations = do
-    conf <- H.get
+    conf ← H.get
     traverse getAggregation (range' 0 $ length conf.measures - 1)
 
-  getAggregation :: Int -> FormDSL (Select Aggregation)
+  getAggregation ∷ Int → FormDSL (Select Aggregation)
   getAggregation i =
-    map fromJust $ H.query' cpMeasure i $ left $ H.request S.GetSelect
+    map fromJust
+      $ H.query' cpMeasure i
+      $ left
+      $ H.request S.GetSelect
 
-  range' :: Int -> Int -> Array Int
+  range' ∷ Int → Int → Array Int
   range' start end =
     if end >= start
     then range start end
