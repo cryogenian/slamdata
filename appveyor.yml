@@ -1,0 +1,18 @@
+platform: x64
+version: '{build}'
+
+install:
+- PATH=C:\mongodb\bin\;%PATH%
+- java -version
+- mongod --version
+- ps: Install-Product node 4
+- npm install bower gulp -g
+- npm install
+- bower install
+
+build_script:
+- npm run psa
+
+test_script:
+- npm run property-tests
+- npm test

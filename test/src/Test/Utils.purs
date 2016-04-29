@@ -7,11 +7,14 @@ import Control.Apply ((*>))
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (EXCEPTION, throw)
+
+import Data.Either (Either(..), either)
 import Data.Foldable (class Foldable, foldr)
 import Data.Maybe (Maybe(..), maybe)
-import Data.Either (Either(..), either)
-import Node.Process (PROCESS, cwd)
+
 import Node.FS (FS)
+import Node.Path (normalize)
+import Node.Process (PROCESS, cwd)
 
 ifFalse :: ∀ m. (Applicative m) ⇒ m Unit → Boolean → m Unit
 ifFalse f boolean =
@@ -55,7 +58,7 @@ throwIfNotEmpty _ xs | isEmpty xs = pure unit
 throwIfNotEmpty message _ = throw message
 
 appendToCwd :: ∀ eff. String → Eff (process :: PROCESS | eff) String
-appendToCwd s = (flip append s <<< flip append "/") <$> cwd
+appendToCwd s = normalize <<< (flip append s <<< flip append "/") <$> cwd
 
 foreign import nonWhite
   :: ∀ e

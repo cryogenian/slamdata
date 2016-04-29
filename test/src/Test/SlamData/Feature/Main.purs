@@ -129,7 +129,7 @@ runTests config =
       setWindowSize { height: 800, width: 1024 }
       tests
 
-    quit driver
+    apathize $ quit driver
     either throwError (const $ pure unit) res
 
 copyFile
