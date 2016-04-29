@@ -22,6 +22,7 @@ module SlamData.Notebook.Card.Port
   , _Resource
   , _ChartOptions
   , _ResourceTag
+  , _CardError
   , _Blocked
   , module SlamData.Notebook.Card.Port.VarMap
   ) where
@@ -29,20 +30,17 @@ module SlamData.Notebook.Card.Port
 import SlamData.Prelude
 
 import Data.Lens (PrismP, prism', TraversalP, wander)
-
-import ECharts.Options as Ec
-
+import ECharts.Options as EC
 import SlamData.Notebook.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue)
-
 import Text.Markdown.SlamDown as SD
-
 import Utils.Path as PU
 
-type ChartPort = { options ∷ Ec.Option, width ∷ Int, height ∷ Int }
+type ChartPort = { options ∷ EC.Option, width ∷ Int, height ∷ Int }
 
 data Port
   = SlamDown (SD.SlamDownP VarMapValue)
   | VarMap VarMap
+  | CardError String
   | ChartOptions ChartPort
   | TaggedResource { tag ∷ Maybe String, resource ∷ PU.FilePath }
   | Blocked
@@ -55,6 +53,11 @@ _SlamDown = prism' SlamDown \p → case p of
 _VarMap ∷ PrismP Port VarMap
 _VarMap = prism' VarMap \p → case p of
   VarMap x → Just x
+  _ → Nothing
+
+_CardError ∷ PrismP Port String
+_CardError = prism' CardError \p → case p of
+  CardError x → Just x
   _ → Nothing
 
 _ChartOptions ∷ PrismP Port ChartPort

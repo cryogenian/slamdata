@@ -18,8 +18,8 @@ module SlamData.Notebook.Card.Component
   ( CardComponent
   , makeCardComponent
   , module SlamData.Notebook.Card.Component.Def
-  , module SlamData.Notebook.Card.Component.Query
-  , module SlamData.Notebook.Card.Component.State
+  , module CQ
+  , module CS
   ) where
 
 import SlamData.Prelude
@@ -51,9 +51,10 @@ import SlamData.Effects (Slam)
 import SlamData.Notebook.Card.CardType (nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (prepareCardEvalInput)
 import SlamData.Notebook.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
-import SlamData.Notebook.Card.Component.Query (CardEvalInputPre, CardQueryP, InnerCardQuery, AnyCardQuery(..), CardEvalQuery(..), CardQuery(..), _APIQuery, _APIResultsQuery, _AceQuery, _AnyCardQuery, _CardEvalQuery, _ChartQuery, _DownloadQuery, _JTableQuery, _MarkdownQuery, _SearchQuery, _VizQuery, _NextQuery, _SaveQuery, _OpenResourceQuery)
-import SlamData.Notebook.Card.Component.Render (CardHTML, header, statusBar)
-import SlamData.Notebook.Card.Component.State (AnyCardState, CardState, CardStateP, _APIResultsState, _APIState, _AceState, _ChartState, _DownloadState, _JTableState, _MarkdownState, _NextState, _OpenResourceState, _SaveState, _SearchState, _VizState, _accessType, _cachingEnabled, _canceler, _hasResults, _input, _isCollapsed, _messageVisibility, _messages, _output, _runState, _tickStopper, _visibility, initialCardState)
+
+import SlamData.Notebook.Card.Component.Query as CQ
+import SlamData.Notebook.Card.Component.Render as CR
+import SlamData.Notebook.Card.Component.State as CS
 import SlamData.Notebook.Card.Port (_Blocked)
 import SlamData.Notebook.Card.RunState (RunState(..))
 import SlamData.Render.Common (fadeWhen)
@@ -62,8 +63,8 @@ import SlamData.Render.CSS as CSS
 import Utils.AffableProducer (produce)
 
 -- | Type synonym for the full type of a card component.
-type CardComponent = H.Component CardStateP CardQueryP Slam
-type CardDSL = H.ParentDSL CardState AnyCardState CardQuery InnerCardQuery Slam Unit
+type CardComponent = H.Component CS.CardStateP CQ.CardQueryP Slam
+type CardDSL = H.ParentDSL CS.CardState CS.AnyCardState CQ.CardQuery CQ.InnerCardQuery Slam Unit
 
 -- | Card component factory
 makeCardComponent
@@ -73,10 +74,10 @@ makeCardComponent
 makeCardComponent def = makeCardComponentPart def render
   where
   render
-    ∷ H.Component AnyCardState InnerCardQuery Slam
-    → AnyCardState
-    → CardState
-    → CardHTML
+    ∷ H.Component CS.AnyCardState CQ.InnerCardQuery Slam
+    → CS.AnyCardState
+    → CS.CardState
+    → CR.CardHTML
   render component initialState cs =
     if cs.visibility ≡ Invisible
       then HH.text ""
@@ -92,18 +93,17 @@ makeCardComponent def = makeCardComponentPart def render
     hideIfCollapsed =
       ARIA.hidden $ show shouldCollapse
 
-    shown ∷ CardState → CardHTML
+    shown ∷ CS.CardState → CR.CardHTML
     shown cs =
       HH.div [ HP.classes $ join [ containerClasses, collapsedClass  ] ]
       $ fold
-          [
-            header def.cardType cs
+          [ CR.header def.cardType cs
           , [ HH.div [ HP.classes ([B.row] ⊕ (fadeWhen shouldCollapse))
                      , hideIfCollapsed
                      ]
               [ HH.slot unit \_ → {component, initialState} ]
             ]
-          , (guard canHaveOutput) $> statusBar cs.hasResults cs
+          , (guard canHaveOutput) $> CR.statusBar cs.hasResults cs
           ]
 containerClasses ∷ Array (HH.ClassName)
 containerClasses = [B.containerFluid, CSS.notebookCard, B.clearfix]
@@ -113,11 +113,10 @@ containerClasses = [B.containerFluid, CSS.notebookCard, B.clearfix]
 makeCardComponentPart
   ∷ ∀ s f r
   . CardDef s f r
-  → (H.Component AnyCardState InnerCardQuery Slam
-     → AnyCardState
-     → CardState
-     → CardHTML
-     )
+  → (H.Component CS.AnyCardState CQ.InnerCardQuery Slam
+     → CS.AnyCardState
+     → CS.CardState
+     → CR.CardHTML)
   → CardComponent
 makeCardComponentPart def render =
   H.parentComponent
@@ -127,55 +126,55 @@ makeCardComponentPart def render =
     }
   where
 
-  _State ∷ PrismP AnyCardState s
+  _State ∷ PrismP CS.AnyCardState s
   _State = clonePrism def._State
 
-  _Query ∷ ∀ a. PrismP (InnerCardQuery a) (f a)
+  _Query ∷ ∀ a. PrismP (CQ.InnerCardQuery a) (f a)
   _Query = clonePrism def._Query
 
-  component ∷ H.Component AnyCardState InnerCardQuery Slam
+  component ∷ H.Component CS.AnyCardState CQ.InnerCardQuery Slam
   component =
     H.transform
       (review _State) (preview _State)
       (review _Query) (preview _Query)
       def.component
 
-  initialState ∷ AnyCardState
+  initialState ∷ CS.AnyCardState
   initialState = review _State def.initialState
 
-  eval ∷ Natural CardQuery CardDSL
-  eval (RunCard next) = pure next
-  eval (StopCard next) = stopRun $> next
-  eval (UpdateCard input k) = do
+  eval ∷ Natural CQ.CardQuery CardDSL
+  eval (CQ.RunCard next) = pure next
+  eval (CQ.StopCard next) = stopRun $> next
+  eval (CQ.UpdateCard input k) = do
     H.fromAff =<< H.gets _.tickStopper
     tickStopper ← startInterval
-    H.modify (_tickStopper .~ tickStopper)
+    H.modify (CS._tickStopper .~ tickStopper)
     cachingEnabled ← H.gets _.cachingEnabled
     let input' = prepareCardEvalInput cachingEnabled input
-    H.modify (_input .~ input'.inputPort)
-    result ← H.query unit (left (H.request (EvalCard input')))
-    for_ result \{ output } → H.modify (_hasResults .~ isJust output)
+    H.modify (CS._input .~ input'.inputPort)
+    result ← H.query unit (left (H.request (CQ.EvalCard input')))
+    for_ result \{ output } → H.modify (CS._hasResults .~ isJust output)
     H.fromAff tickStopper
     H.modify
-      $ (_runState %~ finishRun)
-      ∘ (_output .~ (_.output =<< result))
-      ∘ (_messages .~ (maybe [] _.messages result))
+      $ (CS._runState %~ finishRun)
+      ∘ (CS._output .~ (_.output =<< result))
+      ∘ (CS._messages .~ (maybe [] _.messages result))
     maybe (liftF HaltHF) (pure ∘ k ∘ _.output) result
-  eval (RefreshCard next) = pure next
-  eval (TrashCard next) = pure next
-  eval (ToggleCollapsed next) =
-    H.modify (_isCollapsed %~ not) $> next
-  eval (ToggleMessages next) =
-    H.modify (_messageVisibility %~ toggleVisibility) $> next
-  eval (ToggleCaching next) =
-    H.modify (_cachingEnabled %~ not) $> next
-  eval (ShareCard next) = pure next
-  eval (Tick elapsed next) =
-    H.modify (_runState .~ RunElapsed elapsed) $> next
-  eval (GetOutput k) = k <$> H.gets (_.output)
-  eval (SaveCard cardId cardType k) = do
+  eval (CQ.RefreshCard next) = pure next
+  eval (CQ.TrashCard next) = pure next
+  eval (CQ.ToggleCollapsed next) =
+    H.modify (CS._isCollapsed %~ not) $> next
+  eval (CQ.ToggleMessages next) =
+    H.modify (CS._messageVisibility %~ toggleVisibility) $> next
+  eval (CQ.ToggleCaching next) =
+    H.modify (CS._cachingEnabled %~ not) $> next
+  eval (CQ.ShareCard next) = pure next
+  eval (CQ.Tick elapsed next) =
+    H.modify (CS._runState .~ RunElapsed elapsed) $> next
+  eval (CQ.GetOutput k) = k <$> H.gets (_.output)
+  eval (CQ.SaveCard cardId cardType k) = do
     { hasResults, cachingEnabled } ← H.get
-    json ← H.query unit (left (H.request Save))
+    json ← H.query unit (left (H.request CQ.Save))
     pure ∘ k $
       { cardId
       , cardType
@@ -183,22 +182,22 @@ makeCardComponentPart def render =
       , hasRun: hasResults
       , state: fromMaybe jsonNull json
       }
-  eval (LoadCard model next) = do
+  eval (CQ.LoadCard model next) = do
     for_ model.cachingEnabled \b →
-      H.modify (_cachingEnabled .~ b)
-    H.query unit (left (H.action (Load model.state)))
+      H.modify (CS._cachingEnabled .~ b)
+    H.query unit (left (H.action (CQ.Load model.state)))
     pure next
-  eval (SetCardAccessType at next) =
-    H.modify (_accessType .~ at) $> next
+  eval (CQ.SetCardAccessType at next) =
+    H.modify (CS._accessType .~ at) $> next
 
-  peek ∷ ∀ a. InnerCardQuery a → CardDSL Unit
+  peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit
   peek = coproduct cardEvalPeek (const $ pure unit)
 
-  cardEvalPeek ∷ ∀ a. CardEvalQuery a → CardDSL Unit
-  cardEvalPeek (SetCanceler canceler _) = H.modify $ _canceler .~ canceler
-  cardEvalPeek (SetupCard _ _) = H.modify $ _canceler .~ mempty
-  cardEvalPeek (EvalCard _ _) = H.modify $ _canceler .~ mempty
-  cardEvalPeek (NotifyStopCard _) = stopRun
+  cardEvalPeek ∷ ∀ a. CQ.CardEvalQuery a → CardDSL Unit
+  cardEvalPeek (CQ.SetCanceler canceler _) = H.modify $ CS._canceler .~ canceler
+  cardEvalPeek (CQ.SetupCard _ _) = H.modify $ CS._canceler .~ mempty
+  cardEvalPeek (CQ.EvalCard _ _) = H.modify $ CS._canceler .~ mempty
+  cardEvalPeek (CQ.NotifyStopCard _) = stopRun
   cardEvalPeek _ = pure unit
 
   stopRun ∷ CardDSL Unit
@@ -207,7 +206,7 @@ makeCardComponentPart def render =
     ts ← H.gets _.tickStopper
     H.fromAff ts
     H.fromAff $ cancel cs (Exn.error "Canceled")
-    H.modify $ _runState .~ RunInitial
+    H.modify $ CS._runState .~ RunInitial
 
 -- | Starts a timer running on an interval that passes Tick queries back to the
 -- | component, allowing the runState to be updated with a timer.
@@ -218,13 +217,13 @@ startInterval ∷ CardDSL (Slam Unit)
 startInterval = do
   ref ← H.fromEff (newRef Nothing)
   start ← H.fromEff Date.now
-  H.modify (_runState .~ RunElapsed zero)
+  H.modify (CS._runState .~ RunElapsed zero)
 
   H.subscribe'
     $ EventSource
     $ producerToStallingProducer
     $ produce \emit → do
-        i ← interval 1000 $ emit ∘ Left ∘ H.action ∘ Tick =<< do
+        i ← interval 1000 $ emit ∘ Left ∘ H.action ∘ CQ.Tick =<< do
           now ← Date.now
           pure $ on (-) Date.toEpochMilliseconds now start
         writeRef ref (Just i)

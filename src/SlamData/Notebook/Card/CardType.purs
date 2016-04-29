@@ -178,8 +178,7 @@ aceMode SQLMode = "ace/mode/sql"
 
 nextCardTypes ∷ Maybe CardType → Array CardType
 nextCardTypes Nothing =
-  [
-    Ace SQLMode
+  [ Ace SQLMode
   , Ace MarkdownMode
   , OpenResource
   , API
@@ -200,8 +199,7 @@ nextCardTypes (Just ct) = case ct of
   OpenResource → dataSourceCards
   where
   dataSourceOutput =
-    [
-      Download, Search, Ace SQLMode, Viz
+    [ Download, Search, Ace SQLMode, Viz
     ]
   dataSourceCards =
     (dataSourceOutput `Arr.snoc` JTable) `Arr.snoc` Save

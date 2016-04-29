@@ -83,42 +83,42 @@ eval ∷ Natural QueryP SaveDSL
 eval = coproduct cardEval saveEval
 
 cardEval ∷ Natural Eq.CardEvalQuery SaveDSL
-cardEval (Eq.EvalCard info k) = case info.inputPort of
-  Just P.Blocked →
-    pure $ k { output: Nothing, messages: [ ] }
-  Just (P.TaggedResource {tag, resource}) → do
-    pt ← H.gets _.pathString
-    case pt, Up.parseAnyPath pt of
-      "", _ →
-        pure $ k { output: Nothing, messages: [ ] }
-      _, Just (Right fp) → map k $ Eq.runCardEvalT do
+cardEval (Eq.EvalCard info k) =
+  k <$> Eq.runCardEvalT do
+    case info.inputPort of
+      Just P.Blocked →
+        pure Nothing
+      Just (P.TaggedResource {tag, resource}) → do
+        pt ← lift $ H.gets _.pathString
+        case pt, Up.parseAnyPath pt of
+          "", _ →
+            pure Nothing
+          _, Just (Right fp) → do
+            outputResource ←
+              Api.fileQuery resource fp "select * from {{path}}" Sm.empty
+               # Eq.liftWithCanceler'
+               # lift
+               >>= either (EC.throwError <<< Exn.message) pure
 
-        outputResource ←
-          Api.fileQuery resource fp "select * from {{path}}" Sm.empty
-           # Eq.liftWithCanceler'
-           # lift
-           >>= either (EC.throwError <<< Exn.message) pure
+            Api.messageIfFileNotFound
+              outputResource
+              "Error saving file, please try another location"
+              # Eq.liftWithCanceler'
+              # lift
+              >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
 
-        Api.messageIfFileNotFound
-          outputResource
-          "Error saving file, please try another location"
-          # Eq.liftWithCanceler'
-          # lift
-          >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
+            when (fp ≠ outputResource)
+              $ EC.throwError
+              $ "Resource: " ⊕ Pt.printPath outputResource ⊕ " hasn't been modified"
 
-        when (fp ≠ outputResource)
-          $ EC.throwError
-          $ "Resource: " ⊕ Pt.printPath outputResource ⊕ " hasn't been modified"
+            WC.tell ["Resource successfully saved as: " ⊕ Pt.printPath fp]
 
-        WC.tell ["Resource successfully saved as: " ⊕ Pt.printPath fp]
+            pure ∘ Just $ P.TaggedResource { resource: outputResource, tag: Nothing }
+          _, _ →
+            EC.throwError $ pt ⊕ " is incorrect file path"
 
-        pure $ P.TaggedResource { resource: outputResource, tag: Nothing }
-      _, _ →
-        pure $ k { output: Just P.Blocked
-                 , messages: [ Left $ pt ⊕ " is incorrect file path" ] }
-
-  _ →
-    pure $ k { output: Nothing, messages: [ Left "Expected Resource input" ] }
+      _ →
+        EC.throwError $ "Expected Resource input"
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.NotifyStopCard next) = pure next
 cardEval (Eq.Save k) = do

@@ -149,11 +149,12 @@ eval = coproduct cardEval downloadEval
 
 cardEval ∷ Natural Ec.CardEvalQuery DownloadDSL
 cardEval (Ec.EvalCard { inputPort } continue) = do
-  case inputPort of
-    Just (P.TaggedResource { resource }) → H.modify (_source ?~ resource)
-    Just P.Blocked → H.modify (_source .~ Nothing)
-    _ → pure unit
-  pure $ continue { output: Just P.Blocked, messages: [] }
+  continue <$> Ec.runCardEvalT do
+    lift case inputPort of
+      Just (P.TaggedResource { resource }) → H.modify (_source ?~ resource)
+      Just P.Blocked → H.modify (_source .~ Nothing)
+      _ → pure unit
+    pure $ Just P.Blocked
 cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = map (k ∘ encode) H.get

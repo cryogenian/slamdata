@@ -47,13 +47,12 @@ import Utils.Completions (mkCompletion, pathCompletions)
 
 queryEval ∷ CEQ.CardEvalInput → String → AceDSL CEQ.CardEvalResult
 queryEval info sql =
-  case info.inputPort of
-    Just Port.Blocked →
-      pure { output: Nothing, messages: [] }
-    _ → do
-      addCompletions varMap
-      CEQ.runCardEvalT do
-
+  CEQ.runCardEvalT do
+    case info.inputPort of
+      Just Port.Blocked →
+        pure Nothing
+      _ → do
+        lift $ addCompletions varMap
         plan ← lift $ CEQ.liftWithCancelerP $
           Quasar.compile backendPath sql varMap
 
@@ -64,18 +63,18 @@ queryEval info sql =
             varMap
           # CEQ.liftWithCancelerP
           # lift
-          >>= either (EC.throwError <<< Exn.message) pure
+          >>= either (EC.throwError ∘ Exn.message) pure
 
         Quasar.messageIfFileNotFound
             outputResource
             "Requested collection doesn't exist"
           # CEQ.liftWithCancelerP
           # lift
-          >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
+          >>= either (EC.throwError ∘ Exn.message) (traverse EC.throwError)
 
         for_ plan \p → WC.tell ["Plan: " ⊕ p]
 
-        pure $ Port.TaggedResource { resource: outputResource, tag: pure sql }
+        pure ∘ Just $ Port.TaggedResource { resource: outputResource, tag: pure sql }
   where
   varMap ∷ SM.StrMap String
   varMap =

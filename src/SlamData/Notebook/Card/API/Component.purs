@@ -89,7 +89,7 @@ eval q =
           H.query unit (H.request (FB.GetItems >>> left))
             # lift
             >>= maybe (EC.throwError "Error querying FormBuilder") pure
-        pure $ Port.VarMap $ compileVarMap fields info.globalVarMap
+        pure ∘ Just $ Port.VarMap $ compileVarMap fields info.globalVarMap
     NC.SetupCard _ next ->
       pure next
     NC.NotifyRunCard next ->

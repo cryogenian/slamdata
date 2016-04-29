@@ -23,6 +23,8 @@ module SlamData.Notebook.Card.Markdown.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Error.Class as Err
+
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.StrMap as SM
 
@@ -33,7 +35,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import SlamData.Effects (Slam)
 import SlamData.Notebook.Card.CardId (CardId, runCardId)
 import SlamData.Notebook.Card.CardType as Ct
-import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalResult)
+import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..), runCardEvalT)
 import SlamData.Notebook.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
 import SlamData.Notebook.Card.Markdown.Component.Query (QueryP)
 import SlamData.Notebook.Card.Markdown.Component.State (State, StateP, initialState, formStateToVarMap)
@@ -104,19 +106,20 @@ eval ∷ Natural CardEvalQuery MarkdownDSL
 eval (NotifyRunCard next) = pure next
 eval (NotifyStopCard next) = pure next
 eval (EvalCard value k) =
-  case value.inputPort of
-    Just (Port.SlamDown input) → do
-      H.set $ Just input
-      H.query unit $ H.action (SD.SetDocument input)
-      let desc = SD.formDescFromDocument input
-      state ← H.query unit $ H.request SD.GetFormState
-      k <$>
+  k <$> runCardEvalT do
+    case value.inputPort of
+      Just (Port.SlamDown input) → do
+        lift ∘ H.set $ Just input
+        lift ∘ H.query unit $ H.action (SD.SetDocument input)
+        let desc = SD.formDescFromDocument input
+        state ← lift ∘ H.query unit $ H.request SD.GetFormState
         case state of
-          Nothing → pure $ error "GetFormState query returned Nothing"
+          Nothing →
+            Err.throwError "An internal error occured: GetFormState query returned Nothing"
           Just st → do
-            varMap ← H.liftH ∘ H.liftH $ formStateToVarMap desc st
-            pure { output: Just $ Port.VarMap varMap, messages: [] }
-    _ → pure ∘ k $ error "expected SlamDown input"
+            varMap ← lift ∘ H.liftH ∘ H.liftH $ formStateToVarMap desc st
+            pure ∘ Just $ Port.VarMap varMap
+      _ → Err.throwError "Expected SlamDown input"
 eval (SetupCard _ next) = pure next
 eval (Save k) = do
   input ← fromMaybe mempty <$> H.get
@@ -132,9 +135,3 @@ eval (Load json next) = do
     _ → pure unit
   pure next
 eval (SetCanceler _ next) = pure next
-
-error :: String -> CardEvalResult
-error msg =
-  { output: Nothing
-  , messages: [Left $ "An internal error occurred: " ++ msg]
-  }

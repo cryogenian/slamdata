@@ -87,7 +87,7 @@ evalCard q =
         case Lens.preview Port._VarMap =<< info.inputPort of
           Just varMap -> do
             lift $ H.modify (_ { varMap = varMap })
-            pure $ Port.VarMap varMap
+            pure ∘ Just $ Port.VarMap varMap
           Nothing -> EC.throwError "expected VarMap input"
     NC.SetupCard _ next -> pure next
     NC.NotifyRunCard next -> pure next

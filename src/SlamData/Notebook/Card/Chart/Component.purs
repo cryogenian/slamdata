@@ -18,6 +18,8 @@ module SlamData.Notebook.Card.Chart.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Error.Class (throwError)
+
 import Data.Argonaut (jsonEmptyObject)
 import Data.Int (toNumber)
 
@@ -26,31 +28,30 @@ import CSS.Geometry as CG
 import CSS.Size (px, pct)
 
 import Halogen as H
-import Halogen.ECharts as He
+import Halogen.ECharts as HECH
 import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Notebook.Card.Chart.Component.State (State, initialState)
-import SlamData.Notebook.Card.Common.EvalQuery as Ec
-import SlamData.Notebook.Card.Component as Cc
+import SlamData.Notebook.Card.Common.EvalQuery as ECH
+import SlamData.Notebook.Card.Component as CC
+import SlamData.Notebook.Card.Common.EvalQuery as CEQ
 import SlamData.Notebook.Card.Port (Port(..))
 import SlamData.Notebook.Card.CardType as Ct
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 
-type ChartHTML =
-  H.ParentHTML He.EChartsState Ec.CardEvalQuery He.EChartsQuery Slam Unit
-type ChartDSL =
-  H.ParentDSL State He.EChartsState Ec.CardEvalQuery He.EChartsQuery Slam Unit
+type ChartHTML = H.ParentHTML HECH.EChartsState ECH.CardEvalQuery HECH.EChartsQuery Slam Unit
+type ChartDSL = H.ParentDSL State HECH.EChartsState ECH.CardEvalQuery HECH.EChartsQuery Slam Unit
 
-chartComponent ∷ H.Component Cc.CardStateP Cc.CardQueryP Slam
-chartComponent = Cc.makeCardComponent
+chartComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
+chartComponent = CC.makeCardComponent
   { cardType: Ct.Chart
   , component: H.parentComponent { render, eval, peek: Nothing }
   , initialState: H.parentState initialState
-  , _State: Cc._ChartState
-  , _Query: Cc.makeQueryPrism Cc._ChartQuery
+  , _State: CC._ChartState
+  , _Query: CC.makeQueryPrism CC._ChartQuery
   }
 
 render ∷ State → ChartHTML
@@ -65,41 +66,41 @@ render state =
         CG.marginLeft $ px $ -0.5 * (toNumber state.width)
     ]
     [ HH.slot unit \_ →
-        { component: He.echarts
-        , initialState: He.initialEChartsState 600 400
+        { component: HECH.echarts
+        , initialState: HECH.initialEChartsState 600 400
         }
     ]
 
-eval ∷ Natural Ec.CardEvalQuery ChartDSL
-eval (Ec.NotifyRunCard next) = pure next
-eval (Ec.NotifyStopCard next) = pure next
-eval (Ec.EvalCard value continue) =
-  case value.inputPort of
-    Just (ChartOptions options) → do
-      state ← H.get
-      H.set { width: options.width, height: options.height }
+eval ∷ ECH.CardEvalQuery ~> ChartDSL
+eval (ECH.NotifyRunCard next) = pure next
+eval (ECH.NotifyStopCard next) = pure next
+eval (ECH.EvalCard value continue) =
+  continue <$> CEQ.runCardEvalT do
+    case value.inputPort of
+      Just (ChartOptions options) → do
+        lift do
+          state ← H.get
+          H.set { width: options.width, height: options.height }
 
-      when (state.width ≠ options.width)
-        $ void $ H.query unit $ H.action $ He.SetWidth options.width
+          when (state.width ≠ options.width)
+            $ void $ H.query unit $ H.action $ HECH.SetWidth options.width
 
-      when (state.height ≠ options.height)
-        $ void $ H.query unit $ H.action $ He.SetHeight options.height
+          when (state.height ≠ options.height)
+            $ void $ H.query unit $ H.action $ HECH.SetHeight options.height
 
-      H.query unit $ H.action $ He.Set options.options
-      H.query unit $ H.action He.Resize
-      pure $ continue { output: Just Blocked, messages: [] }
-    Just Blocked → do
-      H.query unit $ H.action He.Clear
-      pure $ continue { output: Nothing, messages: [] }
-    _ →
-      pure $ continue
-        { output: Nothing
-        , messages: [Left "Expected ChartOptions input"]
-        }
-eval (Ec.SetupCard _ next) = pure next
+          H.query unit $ H.action $ HECH.Set options.options
+          H.query unit $ H.action HECH.Resize
+        pure $ Just Blocked
+      Just Blocked → do
+        lift $ H.query unit $ H.action HECH.Clear
+        pure Nothing
+      _ →
+        throwError "Expected ChartOptions input"
+eval (ECH.SetupCard _ next) = pure next
 -- No state needs loading/saving for the chart card, as it is fully populated
 -- by its input, and will be restored by the parent `Viz` card running when
 -- the notebook is restored
-eval (Ec.Save k) = pure (k jsonEmptyObject)
-eval (Ec.Load _ next) = pure next
-eval (Ec.SetCanceler _ next) = pure next
+eval (ECH.Save k) = pure (k jsonEmptyObject)
+eval (ECH.Load _ next) = pure next
+eval (ECH.SetCanceler _ next) = pure next
+

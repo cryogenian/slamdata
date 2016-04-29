@@ -275,17 +275,17 @@ vizEval q = do
 
 cardEval ∷ CardEvalQuery ~> VizDSL
 cardEval (EvalCard info continue) =
-  case info.inputPort of
-    Just P.Blocked → do
-      H.modify
-        $ (_needToUpdate .~ true)
-        ∘ (_sample .~ mempty)
-        ∘ (_records .~ mempty)
-        ∘ (_availableChartTypes .~ mempty)
-      pure $ continue { output: Nothing, messages: [] }
-    _ → do
-      needToUpdate ← H.gets _.needToUpdate
-      map continue $ runCardEvalT do
+  continue <$> runCardEvalT do
+    case info.inputPort of
+      Just P.Blocked → do
+        lift ∘ H.modify
+          $ (_needToUpdate .~ true)
+          ∘ (_sample .~ mempty)
+          ∘ (_records .~ mempty)
+          ∘ (_availableChartTypes .~ mempty)
+        pure Nothing
+      _ → do
+        needToUpdate ← lift $ H.gets _.needToUpdate
         when needToUpdate $ withLoading do
           r ←
             maybe (throwError "Incorrect port in visual builder card") pure
@@ -305,7 +305,7 @@ cardEval (EvalCard info continue) =
             ⊕ "please consider using 'limit' or 'group by' in your H.request"
           lift $ H.modify $ _records .~ records
         lift $ H.modify $ _needToUpdate .~ true
-        responsePort
+        Just <$> responsePort
   where
   withLoading action = do
     lift $ H.modify $ _loading .~ true
@@ -339,8 +339,7 @@ responsePort ∷ CardEvalT VizDSL P.Port
 responsePort = do
   state ← lift H.get
   mbConf ← lift $ H.query state.chartType $ left $ H.request Form.GetConfiguration
-  conf ← maybe (throwError "Form state has not been set in responsePort")
-          pure mbConf
+  conf ← maybe (throwError "Form state has not been set in responsePort") pure mbConf
   pure
     $ P.ChartOptions
     { options: buildOptions state conf

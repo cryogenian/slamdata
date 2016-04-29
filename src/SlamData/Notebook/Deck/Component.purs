@@ -346,6 +346,8 @@ updateNextActionCard = do
           Just "Next actions will be made available once the last card has been run"
         Just Blocked →
           Just "There are no available next actions"
+        Just (CardError _) →
+          Just "There are no available next actions (parent cards have errors)"
         _ → Nothing
     Nothing → pure Nothing
   queryNextActionCard

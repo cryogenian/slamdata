@@ -18,13 +18,13 @@ module SlamData.Notebook.Card.JTable.Component
   ( jtableComponent
   , queryShouldRun
   , module SlamData.Notebook.Card.JTable.Component.Query
-  , module SlamData.Notebook.Card.JTable.Component.State
+  , module JTS
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception (message)
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut.Core as JSON
 import Data.Int as Int
@@ -34,11 +34,11 @@ import Halogen as H
 
 import SlamData.Effects (Slam)
 import SlamData.Notebook.Card.CardType as Ct
-import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalResult)
+import SlamData.Notebook.Card.Common.EvalQuery as CEQ
 import SlamData.Notebook.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism, _JTableState, _JTableQuery)
 import SlamData.Notebook.Card.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Notebook.Card.JTable.Component.Render (render)
-import SlamData.Notebook.Card.JTable.Component.State (Input, PageInfo, State, _input, _isEnteringPageSize, _page, _pageSize, _resource, _result, _size, currentPageInfo, fromModel, initialState, pendingPageInfo, resizePage, setPage, setPageSize, stepPage, toModel)
+import SlamData.Notebook.Card.JTable.Component.State as JTS
 import SlamData.Notebook.Card.JTable.Model as Model
 import SlamData.Notebook.Card.Port (Port(..))
 import SlamData.Quasar.Query as Quasar
@@ -47,7 +47,7 @@ jtableComponent ∷ H.Component CardStateP CardQueryP Slam
 jtableComponent = makeCardComponent
   { cardType: Ct.JTable
   , component: H.component { render, eval: coproduct evalCard evalJTable }
-  , initialState: initialState
+  , initialState: JTS.initialState
   , _State: _JTableState
   , _Query: makeQueryPrism _JTableQuery
   }
@@ -60,76 +60,67 @@ queryShouldRun = coproduct (const false) pred
   pred _ = false
 
 -- | Evaluates generic card queries.
-evalCard ∷ Natural CardEvalQuery (H.ComponentDSL State QueryP Slam)
-evalCard (NotifyRunCard next) =
+evalCard ∷ Natural CEQ.CardEvalQuery (H.ComponentDSL JTS.State QueryP Slam)
+evalCard (CEQ.NotifyRunCard next) =
   pure next
-evalCard (NotifyStopCard next) =
+evalCard (CEQ.NotifyStopCard next) =
   pure next
-evalCard (EvalCard value k) =
-  case value.inputPort of
-    Just (TaggedResource { tag, resource }) → do
-      done ← runExceptT do
-        oldInput ← lift $ H.gets _.input
+evalCard (CEQ.EvalCard value k) =
+  k <$> CEQ.runCardEvalT do
+    case value.inputPort of
+      Just (TaggedResource { tag, resource }) → do
+          oldInput ← lift $ H.gets _.input
+          when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
+            $ lift $ H.set JTS.initialState
 
-        when (((oldInput <#> _.resource) ≠ pure resource)
-              || ((oldInput >>= _.tag) ≠ tag))
-          $ lift $ H.set initialState
+          size ←
+            lift (Quasar.count resource)
+              >>= either (throwError ∘ Exn.message) pure
 
-        size ← ExceptT $ Quasar.count resource
+          lift $ H.modify $ JTS._input ?~ { resource, size, tag }
+          p ← lift $ H.gets JTS.pendingPageInfo
 
-        lift $ H.modify $ _input ?~ { resource, size, tag }
+          items ←
+            lift (Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize)
+              >>= either (throwError ∘ Exn.message) pure
 
-        p ← lift $ H.gets pendingPageInfo
+          lift $
+            H.modify
+              $ (JTS._isEnteringPageSize .~ false)
+              ∘ (JTS._result ?~
+                   { json: JSON.fromArray items
+                   , page: p.page
+                   , pageSize: p.pageSize
+                   })
 
-        items ← ExceptT
-          $ Quasar.sample
-              resource
-              ((p.page - 1) * p.pageSize)
-              p.pageSize
+          pure value.inputPort
 
-        lift $ H.modify
-          $ (_isEnteringPageSize .~ false)
-          ∘ (_result ?~
-                { json: JSON.fromArray items
-                , page: p.page
-                , pageSize: p.pageSize
-                })
-      case done of
-        Left err → pure $ k $ error (message err)
-        Right _ → pure $ k (result value.inputPort)
+      Just Blocked → do
+        lift $ H.set JTS.initialState
+        pure Nothing
 
-    Just Blocked → do
-      H.set initialState
-      pure $ k (result Nothing)
+      _ → throwError "Expected a Resource input"
 
-    _ → pure $ k (error "expected a Resource input")
-
-  where
-  result ∷ Maybe Port → CardEvalResult
-  result = { output: _, messages: [] }
-
-  error ∷ String → CardEvalResult
-  error msg =
-    { output: Nothing
-    , messages: [Left $ "An internal error occurred: " ⊕ msg]
-    }
-evalCard (SetupCard _ next) = pure next
-evalCard (Save k) =
-  pure ∘ k =<< H.gets (Model.encode ∘ toModel)
-evalCard (Load json next) = do
-  either (const (pure unit)) H.set $ fromModel <$> Model.decode json
+evalCard (CEQ.SetupCard _ next) = pure next
+evalCard (CEQ.Save k) =
+  pure ∘ k =<< H.gets (Model.encode ∘ JTS.toModel)
+evalCard (CEQ.Load json next) = do
+  either (const (pure unit)) H.set $ JTS.fromModel <$> Model.decode json
   pure next
-evalCard (SetCanceler _ next) = pure next
+evalCard (CEQ.SetCanceler _ next) = pure next
+
+hole ∷ ∀ a. a
+hole = Unsafe.Coerce.unsafeCoerce "hole"
 
 -- | Evaluates jtable-specific card queries.
-evalJTable ∷ Natural Query (H.ComponentDSL State QueryP Slam)
+evalJTable ∷ Natural Query (H.ComponentDSL JTS.State QueryP Slam)
 evalJTable (StepPage step next) =
-  H.modify (stepPage step) $> next
+  H.modify (JTS.stepPage step) $> next
 evalJTable (ChangePageSize pageSize next) =
-  maybe (pure unit) (H.modify ∘ resizePage) (Int.fromString pageSize) $> next
+  maybe (pure unit) (H.modify ∘ JTS.resizePage) (Int.fromString pageSize) $> next
 evalJTable (StartEnterCustomPageSize next) =
-  H.modify (_isEnteringPageSize .~ true) $> next
+  H.modify (JTS._isEnteringPageSize .~ true) $> next
 evalJTable (SetCustomPageSize size next) =
-  H.modify (setPageSize size) $> next
+  H.modify (JTS.setPageSize size) $> next
 evalJTable (SetCustomPage page next) =
-  H.modify (setPage page) $> next
+  H.modify (JTS.setPage page) $> next

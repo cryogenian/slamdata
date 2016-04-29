@@ -24,6 +24,7 @@ import Control.Monad.Eff.Class as Eff
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as Err
 import Control.Monad.State.Trans as State
+import Control.Monad.Writer.Class as WC
 
 import Data.Array as A
 import Data.Date as D
@@ -60,18 +61,11 @@ markdownEval
   → String
   → ACE.AceDSL CEQ.CardEvalResult
 markdownEval { cardId, notebookPath } str =
-  AffF.fromAff do
-    result ← Aff.attempt ∘ evalEmbeddedQueries notebookPath cardId $ SDP.parseMd str
-    pure
-      case result of
-        Left err →
-          { messages: [ Left $ Exn.message err ]
-          , output: Nothing
-          }
-        Right doc →
-          { messages: [ Right $ "Exported fields: " ⊕ S.joinWith ", " (findFields doc) ]
-          , output: Just $ Port.SlamDown doc
-          }
+  AffF.fromAff $ CEQ.runCardEvalT do
+    result ← lift ∘ Aff.attempt ∘ evalEmbeddedQueries notebookPath cardId $ SDP.parseMd str
+    doc ← either (Err.throwError ∘ Exn.message) pure result
+    WC.tell [ "Exported fields: " ⊕ S.joinWith ", " (findFields doc) ]
+    pure ∘ Just $ Port.SlamDown doc
 
 markdownSetup
   ∷ CEQ.CardSetupInfo

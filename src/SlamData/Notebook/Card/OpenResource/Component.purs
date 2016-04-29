@@ -7,6 +7,7 @@ module SlamData.Notebook.Card.OpenResource.Component
 import SlamData.Prelude
 
 import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Error.Class as Err
 
 import Data.Argonaut (decodeJson, encodeJson)
 import Data.Array as Arr
@@ -115,36 +116,29 @@ render state =
   glyphForResource (R.Mount (R.Database _)) = glyph B.glyphiconHdd
   glyphForResource (R.Mount (R.View _)) = glyph B.glyphiconFile
 
-eval ∷ Natural QueryP ORDSL
+eval ∷ QueryP ~> ORDSL
 eval = coproduct cardEval openResourceEval
 
-cardEval ∷ Natural Eq.CardEvalQuery ORDSL
-cardEval (Eq.EvalCard info k) = do
-  mbRes ← H.gets _.selected
-  case mbRes of
-    Nothing → pure $ k { output: Nothing, messages: [ ] }
-    Just resource → do
-      msg ←
-        Quasar.messageIfFileNotFound
-          resource
-          ("File " ⊕ printPath resource ⊕ " doesn't exist")
-        # liftWithCanceler'
-      case msg of
-        Right Nothing →
-          pure $ k
-            { output: Just $ Port.TaggedResource { resource, tag: Nothing }
-            , messages: [ ]
-            }
-        Right (Just err) →
-          pure $ k
-            { output: Just Port.Blocked
-            , messages: [ Left err ]
-            }
-        Left err →
-          pure $ k
-            { output: Just Port.Blocked
-            , messages: [ Left (Exn.message err) ]
-            }
+cardEval ∷ Eq.CardEvalQuery ~> ORDSL
+cardEval (Eq.EvalCard info k) =
+  k <$> Eq.runCardEvalT do
+    mbRes ← lift $ H.gets _.selected
+    case mbRes of
+      Nothing → pure Nothing
+      Just resource → do
+        msg ←
+          Quasar.messageIfFileNotFound
+            resource
+            ("File " ⊕ printPath resource ⊕ " doesn't exist")
+          # liftWithCanceler'
+          # lift
+        case msg of
+          Right Nothing →
+            pure ∘ Just $ Port.TaggedResource { resource, tag: Nothing }
+          Right (Just err) →
+            Err.throwError err
+          Left exn →
+            Err.throwError $ Exn.message exn
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.Save k) = do
   mbRes ← H.gets _.selected
@@ -163,7 +157,7 @@ cardEval (Eq.SetCanceler _ next) = pure next
 cardEval (Eq.NotifyStopCard next) = pure next
 
 
-openResourceEval ∷ Natural Query ORDSL
+openResourceEval ∷ Query ~> ORDSL
 openResourceEval (ResourceSelected r next) = do
   loading ← H.gets _.loading
   when loading do

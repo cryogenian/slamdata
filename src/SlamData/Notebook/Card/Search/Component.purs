@@ -107,7 +107,8 @@ cardEval ∷ Natural NC.CardEvalQuery DSL
 cardEval q =
   case q of
     NC.EvalCard { inputPort: Just Port.Blocked } k → do
-      pure $ k { output: Nothing, messages: [] }
+      k <$> runCardEvalT do
+        pure Nothing
     NC.EvalCard info@{ inputPort: Just (Port.TaggedResource {tag, resource})} k →
       k <$> runCardEvalT do
         query ←
@@ -120,13 +121,13 @@ cardEval q =
             ("Input resource " ⊕ P.printPath resource ⊕ " doesn't exist")
           # liftWithCanceler'
           # lift
-          >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
+          >>= either (EC.throwError ∘ Exn.message) (traverse EC.throwError)
 
         fields ←
           Quasar.fields resource
             # liftWithCanceler'
             # lift
-            >>= either (EC.throwError <<< Exn.message) pure
+            >>= either (EC.throwError ∘ Exn.message) pure
 
         let
           template = Search.queryToSQL fields query
@@ -150,10 +151,11 @@ cardEval q =
             "Error making search temporary resource"
           # liftWithCanceler'
           # lift
-          >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
-        pure $ Port.TaggedResource { resource: outputResource, tag: pure sql }
+          >>= either (EC.throwError ∘ Exn.message) (traverse EC.throwError)
+        pure ∘ Just $ Port.TaggedResource { resource: outputResource, tag: pure sql }
     NC.EvalCard _ k →
-      pure $ k { output: Nothing, messages: [Left "expected a Resource input"] }
+      k <$> runCardEvalT do
+        EC.throwError "Expected a Resource input"
     NC.SetupCard _ next →
       pure next
     NC.NotifyRunCard next →

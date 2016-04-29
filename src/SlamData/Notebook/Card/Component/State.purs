@@ -84,9 +84,8 @@ import SlamData.Effects (Slam, SlamDataEffects)
 -- | - `isCollapsed` tracks whether the card is expanded or collapsed. In the
 -- |   case of editor cards this shows/hides the whole editor, in the case of
 -- |   results cards this shows/hides the evaluation messages.
--- | - `messages` is the list of error and informational messages generated
--- |   during evaluation. `Left` values are errors, `Right` values are
--- |   informational.
+-- | - `messages` is the informational messages generated
+-- |   during evaluation.
 -- | - `messageVisibility` determines whether the messages should be shown or
 -- |   not.
 -- | - `hasResults` tracks whether the card has been evaluated successfully and
@@ -97,7 +96,7 @@ type CardState =
   , runState ∷ RunState
   , tickStopper ∷ Slam Unit
   , isCollapsed ∷ Boolean
-  , messages ∷ Array (Either String String)
+  , messages ∷ Array String
   , messageVisibility ∷ Visibility
   , hasResults ∷ Boolean
   , cachingEnabled ∷ Maybe Boolean -- Nothing if the option isn't available
@@ -140,7 +139,7 @@ _tickStopper = lens _.tickStopper (_ { tickStopper = _ })
 _isCollapsed ∷ LensP CardState Boolean
 _isCollapsed = lens _.isCollapsed (_ { isCollapsed = _ })
 
-_messages ∷ LensP CardState (Array (Either String String))
+_messages ∷ LensP CardState (Array String)
 _messages = lens _.messages (_ { messages = _ })
 
 _messageVisibility ∷ LensP CardState Visibility

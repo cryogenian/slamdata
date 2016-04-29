@@ -83,11 +83,11 @@ render state =
           ]
       ]
 
-eval :: Natural QueryP NextDSL
+eval :: QueryP ~> NextDSL
 eval = coproduct cardEval nextEval
 
-cardEval :: Natural Ec.CardEvalQuery NextDSL
-cardEval (Ec.EvalCard _ k) = pure $ k { output: Nothing, messages: [ ]}
+cardEval :: Ec.CardEvalQuery ~> NextDSL
+cardEval (Ec.EvalCard _ k) = map k ∘ Ec.runCardEvalT $ pure Nothing
 cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = pure $ k jsonEmptyObject
@@ -95,7 +95,7 @@ cardEval (Ec.Load _ next) = pure next
 cardEval (Ec.SetupCard p next) = pure next
 cardEval (Ec.SetCanceler _ next) = pure next
 
-nextEval :: Natural Query NextDSL
+nextEval :: Query ~> NextDSL
 nextEval (AddCard _ next) = pure next
 nextEval (SetAvailableTypes cts next) = H.modify (_types .~ cts) $> next
 nextEval (SetMessage mbTxt next) = H.modify (_message .~ mbTxt) $> next

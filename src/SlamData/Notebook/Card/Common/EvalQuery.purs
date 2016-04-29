@@ -46,8 +46,8 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 
 import SlamData.Notebook.Card.CardId as CID
-import SlamData.Notebook.Card.Port (Port)
-import SlamData.Notebook.Card.Port.VarMap as Port
+import SlamData.Notebook.Card.Port as Port
+import SlamData.Notebook.Card.Port.VarMap as VM
 import SlamData.Effects (Slam, SlamDataEffects)
 
 import Utils.Path (DirPath, FilePath)
@@ -57,9 +57,9 @@ import Halogen.Component.Utils as Hu
 
 type CardEvalInputP r =
   { notebookPath ∷ Maybe DirPath
-  , inputPort ∷ Maybe Port
+  , inputPort ∷ Maybe Port.Port
   , cardId ∷ CID.CardId
-  , globalVarMap ∷ Port.VarMap
+  , globalVarMap ∷ VM.VarMap
   | r
   }
 
@@ -71,9 +71,10 @@ type CardEvalInput =
 
 type CardSetupInfoP r =
   { notebookPath ∷ Maybe DirPath
-  , inputPort ∷ Port
+  , inputPort ∷ Port.Port
   , cardId ∷ CID.CardId
-  | r}
+  | r
+  }
 
 type CardSetupInfo =
   CardSetupInfoP ()
@@ -134,15 +135,14 @@ data CardEvalQuery a
 -- |
 -- | - `output` is the value that this card component produces that is taken as
 -- |   the input for dependant cards. Not every card produces an output.
--- | - `messages` is for any error or status messages that arise during
--- |   evaluation. `Left` values are errors, `Right` values are informational
--- |   messages.
+-- | - `messages` is for any status messages that arise during
+-- |   evaluation.
 type CardEvalResultP a =
   { output ∷ Maybe a
-  , messages ∷ Array (Either String String)
+  , messages ∷ Array String
   }
 
-type CardEvalResult = CardEvalResultP Port
+type CardEvalResult = CardEvalResultP Port.Port
 
 type CardEvalTP m = ET.ExceptT String (WT.WriterT (Array String) m)
 newtype CardEvalT m a = CardEvalT (CardEvalTP m a)
@@ -177,16 +177,15 @@ instance monadErrorCardEvalT ∷ (Monad m) ⇒ EC.MonadError String (CardEvalT m
   catchError (CardEvalT m) = CardEvalT ∘ EC.catchError m ∘ (getCardEvalT ∘ _)
 
 runCardEvalT
-  ∷ ∀ m a
+  ∷ ∀ m
   . (Functor m)
-  ⇒ CardEvalT m a
-  → m (CardEvalResultP a)
+  ⇒ CardEvalT m (Maybe Port.Port)
+  → m CardEvalResult
 runCardEvalT (CardEvalT m) =
   WT.runWriterT (ET.runExceptT m) <#> uncurry \r ms →
-    { output: either (const Nothing) Just r
-    , messages: either (Left ⋙ pure) (const []) r ⊕ map Right ms
+    { output: either (Just ∘ Port.CardError) id r
+    , messages: ms
     }
-
 
 liftWithCancelerP
   ∷ ∀ a state slot innerQuery innerState
