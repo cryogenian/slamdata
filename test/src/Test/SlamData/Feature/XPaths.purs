@@ -368,3 +368,7 @@ shareDeckAction =
 resourceOpened ∷ String → String
 resourceOpened fn =
   XPath.anyWithExactAriaLabel $ "Selected resource: " ⊕ fn
+
+headerGripper ∷ String
+headerGripper =
+  XPath.anyWithExactAriaLabel "Show header"
