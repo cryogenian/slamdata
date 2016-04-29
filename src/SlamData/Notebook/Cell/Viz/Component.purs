@@ -426,10 +426,14 @@ configure = void do
           setPreviousValueFrom (index current.series 1)
           $ newSelect $ ifSelected [dimensions, firstSeries]
           $ allAxises <-> dimensions <-> firstSeries
+        firstAggregation =
+          setPreviousValueFrom (index current.aggregations 0) aggregationSelect
+        secondAggregation =
+          setPreviousValueFrom (index current.aggregations 1) aggregationSelect
     in { series: [firstSeries, secondSeries]
        , dimensions: [dimensions]
        , measures: [firstMeasures, secondMeasures]
-       , aggregations: [aggregationSelect, aggregationSelect]
+       , aggregations: [firstAggregation, secondAggregation]
        }
 
 peek :: forall a. ChildF ChartType Form.QueryP a -> VizDSL Unit
