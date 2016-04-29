@@ -35,7 +35,7 @@
     "purescript-markdown-halogen": "^0.8.5",
     "purescript-minimatch": "^0.2.0",
     "purescript-oidc-crypt-utils": "^1.0.0",
-    "purescript-pathy": "^0.3.0",
+    "purescript-pathy": "=0.3.1",
     "purescript-profunctor-lenses": "^0.3.3",
     "purescript-routing": "^0.3.0",
     "purescript-search": "^0.6.0",
@@ -57,6 +57,10 @@
     "purescript-node-streams": "^0.3.0",
     "purescript-platform": "^0.4.0",
     "purescript-strongcheck": "^0.14.7",
-    "purescript-webdriver": "^0.14.0"
+    "purescript-webdriver": "^0.18.0"
+  },
+  "resolutions": {
+    "purescript-aff": "~0.16.1",
+    "purescript-aff-reattempt": "^0.3.0"
   }
 }

@@ -74,6 +74,7 @@ test config =
       browser br
       traverse_ SL.buildSauceLabs msauceConfig
       withCapabilities downloadCapabilities
+      usingServer "http://127.0.0.1:4444/wd/hub"
 
 
     when (isJust msauceConfig) $ do

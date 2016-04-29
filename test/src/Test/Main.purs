@@ -110,7 +110,9 @@ quasarArgs config =
 
 seleniumArgs :: Config -> Array String
 seleniumArgs config =
-  [ "-jar", resolve [config.selenium.jar] "" ]
+  [ "-jar", resolve [config.selenium.jar] ""
+  , "-port", "4444"
+  ]
 
 restoreCmd :: Config -> String
 restoreCmd = _.restoreCmd
