@@ -19,7 +19,7 @@ module SlamData.Quasar.Query
   , templated
   , compile
   , query
-  , queryPrecise
+  , queryEJson
   , viewQuery
   , fileQuery
   , all
@@ -38,10 +38,11 @@ import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Argonaut as JS
 import Data.Array as Arr
+import Data.Json.Extended as EJS
 import Data.List as L
 import Data.Path.Pathy as P
-import Data.String as S
 import Data.StrMap as SM
+import Data.String as S
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
@@ -90,15 +91,15 @@ query path sql =
   runQuasarF $ lmap QF.printQError <$>
     QF.readQuery Readable path sql SM.empty Nothing
 
-queryPrecise
+queryEJson
   ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
   ⇒ DirPath
   → SQL
-  → m (Either String JS.JArray)
-queryPrecise path sql =
+  → m (Either String (Array EJS.EJson))
+queryEJson path sql =
   runQuasarF $ lmap QF.printQError <$>
-    QF.readQuery Precise path sql SM.empty Nothing
+    QF.readQueryEJson path sql SM.empty Nothing
 
 -- | Runs a query creating a view mount for the query.
 -- |

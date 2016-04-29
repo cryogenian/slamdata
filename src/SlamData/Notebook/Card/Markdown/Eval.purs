@@ -25,8 +25,6 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as Err
 import Control.Monad.State.Trans as State
 
-import Data.Argonaut.Core as JSON
-import Data.Argonaut.Decode (decodeJson)
 import Data.Array as A
 import Data.Date as D
 import Data.Date.Locale as DL
@@ -186,13 +184,6 @@ evalEmbeddedQueries dir cardId =
         then map Port.Literal (A.take limit items) ⊕ [ SD.stringValue $ "<" ⊕ show limit ⊕ "item limit reached>" ]
         else Port.Literal <$> items
 
-  rowToLiteral
-    ∷ JSON.Json
-    → Maybe EJSON.EJson
-  rowToLiteral =
-    either (\_ → Nothing) Just
-      ∘ decodeJson
-
   runQuery
     ∷ String
     → EvalM (Array EJSON.EJson)
@@ -201,10 +192,10 @@ evalEmbeddedQueries dir cardId =
       Nothing → Err.throwError $ Exn.error "Cannot evaluate markdown without a saved notebook path"
       Just dir' → do
         n ← freshInt
-        result ← Quasar.queryPrecise dir' code
+        result ← Quasar.queryEJson dir' code
         either
           (Err.throwError ∘ Exn.error)
-          (pure ∘ A.mapMaybe rowToLiteral)
+          pure
           result
 
 parseDigit ∷ P.Parser String Int
