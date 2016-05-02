@@ -35,7 +35,7 @@ searchScenario =
 test :: SlamFeature Unit
 test = do
   searchScenario "Search for a city" [] do
-    Interact.insertExploreCardAsFirstCardInNewStack
+    Interact.insertExploreCardAsFirstCardInNewDeck
     Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "springfield"
@@ -44,7 +44,7 @@ test = do
     successMsg "Successfully searched for a city"
 
   searchScenario "Search within results" [] do
-    Interact.insertExploreCardAsFirstCardInNewStack
+    Interact.insertExploreCardAsFirstCardInNewDeck
     Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "springfield"
@@ -78,7 +78,7 @@ test = do
     --      , Tuple "pop" "30001"
     --      ]
     --  ]
-    Interact.insertExploreCardAsFirstCardInNewStack
+    Interact.insertExploreCardAsFirstCardInNewDeck
     Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard
@@ -90,7 +90,7 @@ test = do
     successMsg "Successfully searched with field names"
 
   searchScenario "Suppress search results" [] do
-    Interact.insertExploreCardAsFirstCardInNewStack
+    Interact.insertExploreCardAsFirstCardInNewDeck
     Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.insertSearchCardAsNextAction
     Interact.provideSearchStringInLastSearchCard "city:portland -state:OR"

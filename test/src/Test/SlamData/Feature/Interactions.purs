@@ -122,28 +122,34 @@ reopenCurrentNotebook = waitTime 2000 *> refresh
 expandNewCardMenu ∷ SlamFeature Unit
 expandNewCardMenu = click (XPath.anywhere XPaths.insertCard)
 
-insertQueryCardAsFirstCardInNewStack ∷ SlamFeature Unit
-insertQueryCardAsFirstCardInNewStack =
+accessPreviousCard ∷ SlamFeature Unit
+accessPreviousCard =
+  drag
+    (XPath.anywhere XPaths.nextCardGripperXPath)
+    (XPath.anywhere XPaths.previousCardGripperXPath)
+
+insertQueryCardAsFirstCardInNewDeck ∷ SlamFeature Unit
+insertQueryCardAsFirstCardInNewDeck =
   click (XPath.anywhere XPaths.insertQueryCard)
 
 insertSaveCardAsNextAction ∷ SlamFeature Unit
 insertSaveCardAsNextAction =
   click (XPath.anywhere XPaths.insertSaveCard)
 
-insertMdCardAsFirstCardInNewStack ∷ SlamFeature Unit
-insertMdCardAsFirstCardInNewStack =
+insertMdCardAsFirstCardInNewDeck ∷ SlamFeature Unit
+insertMdCardAsFirstCardInNewDeck =
   click (XPath.anywhere XPaths.insertMdCard)
 
-insertExploreCardAsFirstCardInNewStack ∷ SlamFeature Unit
-insertExploreCardAsFirstCardInNewStack =
+insertExploreCardAsFirstCardInNewDeck ∷ SlamFeature Unit
+insertExploreCardAsFirstCardInNewDeck =
   click (XPath.anywhere XPaths.insertExploreCard)
 
-insertSearchCardAsFirstCardInNewStack ∷ SlamFeature Unit
-insertSearchCardAsFirstCardInNewStack =
+insertSearchCardAsFirstCardInNewDeck ∷ SlamFeature Unit
+insertSearchCardAsFirstCardInNewDeck =
   click (XPath.anywhere XPaths.insertSearchCard)
 
-insertApiCardAsFirstCardInNewStack ∷ SlamFeature Unit
-insertApiCardAsFirstCardInNewStack =
+insertApiCardAsFirstCardInNewDeck ∷ SlamFeature Unit
+insertApiCardAsFirstCardInNewDeck =
   click (XPath.anywhere XPaths.insertApiCard)
 
 insertSearchCardAsNextAction ∷ SlamFeature Unit

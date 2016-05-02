@@ -63,7 +63,7 @@ import Node.FS.Aff (readFile, readTextFile, readdir, unlink)
 import Selenium.ActionSequence as Sequence
 import Selenium.Monad (get, getAttribute, clickEl, attempt, later, byXPath, tryRepeatedlyTo, findElements, isDisplayed, getLocation, getSize, saveScreenshot, sendKeysEl)
 import Selenium.Monad as Selenium
-import Selenium.Types (Element)
+import Selenium.Types (Element, Location)
 
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Feature.Monad (Feature, getModifierKey, await)
@@ -500,6 +500,11 @@ clickAll xPath = clickAllWithProperties Map.empty xPath
 clickNotRepeatedly ∷ ∀ eff o. XPath → Feature eff o Unit
 clickNotRepeatedly xPath = clickWithPropertiesNotRepeatedly Map.empty xPath
 
+-- | Drag node found with the first provided XPath to the node found with the
+-- | second provided XPath.
+drag ∷ ∀ eff o. XPath → XPath → Feature eff o Unit
+drag fromXPath toXPath = dragWithProperties Map.empty fromXPath Map.empty toXPath
+
 -- | Hover over the node found with the provided XPath.
 hover ∷ ∀ eff o. XPath → Feature eff o Unit
 hover xPath = hoverWithProperties Map.empty xPath
@@ -621,6 +626,21 @@ clickAllWithProperties properties =
     ∘ (traverse_ clickEl)
     <=< findAtLeastOneWithProperties properties
 
+-- | Drag node with the first provided properties or attributes found with the first
+-- | provided XPath to the node with the second provided properties or attributes found with
+-- | the second provided XPath.
+dragWithProperties
+  ∷ ∀ eff o
+  . Properties
+  → XPath
+  → Properties
+  → XPath
+  → Feature eff o Unit
+dragWithProperties fromProperties fromXPath toProperties toXPath = do
+  from <- findWithProperties fromProperties fromXPath
+  to <- findWithProperties toProperties toXPath
+  tryRepeatedlyTo $ dragElement from to
+
 -- | Hover over the node with the provided properties or attributes found with
 -- | the provided XPath.
 hoverWithProperties ∷ ∀ eff o. Properties → XPath → Feature eff o Unit
@@ -675,7 +695,7 @@ clickAllElements ∷ ∀ eff o. Array Element → Feature eff o Unit
 clickAllElements = traverse_ clickEl
 
 hoverElement ∷ ∀ eff o. Element → Feature eff o Unit
-hoverElement = tryRepeatedlyTo ∘ Selenium.sequence ∘ Sequence.hover
+hoverElement = Selenium.sequence ∘ Sequence.hover
 
 provideFieldValueElement ∷ ∀ eff o. String → Element → Feature eff o Unit
 provideFieldValueElement value element =
@@ -684,6 +704,9 @@ provideFieldValueElement value element =
 selectFromDropdownElement ∷ ∀ eff o. String → Element → Feature eff o Unit
 selectFromDropdownElement text element =
   clickEl element *> typeString text *> pressEnter
+
+dragElement ∷ ∀ eff o. Element → Element → Feature eff o Unit
+dragElement from = Selenium.sequence ∘ Sequence.dndToElement from
 
 -- Element dependent functions
 elementsWithProperties

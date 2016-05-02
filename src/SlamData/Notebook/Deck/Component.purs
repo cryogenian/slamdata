@@ -53,6 +53,7 @@ import Data.Time (Milliseconds(..))
 import Ace.Halogen.Component as Ace
 
 import DOM.HTML.Location as Location
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, injSlot, injState)
@@ -198,15 +199,14 @@ render state =
            *> (cardSliderTransition state.sliderTransition)
        ]
        ⊕ (guard (not visible) $> (HP.class_ CSS.invisible)))
-      ( List.fromList (map (renderCard $ List.length state.cards + 1) state.cards)
-        ⊕ (pure $ newCardMenu (List.length state.cards + 1) state))
+      []
+      -- ((List.fromList $ map (renderCard state) state.cards) ⊕ [ newCardMenu state ])
 
-
-  renderCard cardsCount cardDef =
+  renderCard state cardDef =
     HH.div
     ([ HP.key ("card" ⊕ cardIdToString cardDef.id)
      , HP.classes [ CSS.card ]
-     , style $ cardWidth cardsCount false
+     , style $ cardWidth (List.length state.cards + 1) false
     ]
      ⊕ foldMap (viewingStyle cardDef) state.viewingCard)
     [ cardGripper false
@@ -219,6 +219,16 @@ render state =
       , HE.onMouseDown \e -> HEH.preventDefault $> H.action (StartSliding e)
       ]
       []
+
+  --gripperLabel =
+  --  map $ either
+  --    (const "Drag right to access previous card")
+  --    (const "Drag left to access next card")
+
+  --gripperDef activeCardIndex cardIndex
+  --  | activeCardIndex == cardIndex = Just $ Left unit
+  --  | activeCardIndex == cardIndex + 1 = Just $ Right unit
+  --  | otherwise = Nothing
 
   transformCardConstructor (H.SlotConstructor p l) =
     H.SlotConstructor
@@ -236,22 +246,23 @@ render state =
   shouldHideNextAction =
     isJust state.viewingCard ∨ state.accessType ≡ ReadOnly
 
-  newCardMenu cardsCount state =
+  newCardMenu :: State -> NotebookHTML
+  newCardMenu state =
     HH.div
       ([ HP.key ("next-action-card")
        , HP.classes [ CSS.card ]
        , HP.ref (H.action <<< SetNextActionCardElement)
-       , style $ cardWidth cardsCount true
+       , style $ cardWidth (List.length state.cards + 1) true
        ]
-       ⊕ (guard shouldHideNextAction $> (HP.class_ CSS.invisible)))
-
-    [ cardGripper false
-    , cardGripper true
-    , HH.slot' cpCard (CardSlot top) \_ →
-       { component: Next.nextCardComponent
-       , initialState: H.parentState initialCardState
-       }
-    ]
+       ⊕ (guard shouldHideNextAction $> (HP.class_ CSS.invisible))
+      )
+      [ cardGripper false
+      , cardGripper true
+      , HH.slot' cpCard (CardSlot top) \_ →
+         { component: Next.nextCardComponent
+         , initialState: H.parentState initialCardState
+         }
+      ]
 
   cardWidthPct cardsCount =
     100.0 / toNumber cardsCount
@@ -382,67 +393,95 @@ eval (StartSliding mouseEvent next) =
     *> setSliderTransition false
     *> setBacksided false
     $> next
-  where
-  setInitialSliderX =
-    H.modify <<< (DCS._initialSliderX .~)
-  setSliderTransition =
-    H.modify <<< (DCS._sliderTransition .~)
-  setBacksided =
-    H.modify <<< (DCS._backsided .~)
 eval (StopSlidingAndSnap mouseEvent next) =
   startTransition *> snap *> stopSliding $> next
-  where
-  stopSliding =
-    setInitialX Nothing *> setTranslateX 0.0
-  setInitialX =
-    H.modify <<< (DCS._initialSliderX .~)
-  getBoundingClientWidth =
-    fromEff <<< map _.width <<< getBoundingClientRect
-  getNextActionCardElement =
-    H.gets _.nextActionCardElement
-  getCardWidth =
-    traverse getBoundingClientWidth =<< getNextActionCardElement
-  setActiveCardId =
-    H.modify <<< (DCS._activeCardId .~)
-  setTranslateX =
-    H.modify <<< (DCS._sliderTranslateX .~)
-  snapActiveCardIndex translateX (Just cardWidth) | translateX < (-(cardWidth / 2.0)) =
-    add 1
-  snapActiveCardIndex translateX (Just cardWidth) | translateX > (cardWidth / 2.0) =
-    max 0 <<< flip sub 1
-  snapActiveCardIndex translateX _ =
-    id
-  getCardIdByIndex cards =
-    map _.id <<< List.index cards
-  snapActiveCardId st cardWidth =
-    getCardIdByIndex st.cards
-      $ snapActiveCardIndex st.sliderTranslateX cardWidth
-      $ activeCardIndex st
-  snap =
-    setActiveCardId =<< (snapActiveCardId <$> H.get <*> getCardWidth)
-  setSliderTransition =
-    H.modify <<< (DCS._sliderTransition .~)
-  startTransition =
-    setSliderTransition true
 eval (UpdateSliderPosition mouseEvent next) =
-  (maybe (pure unit) (setTranslateX <<< translateXCalc) =<< getInitialX) $> next
-  where
-  getInitialX =
-    H.gets _.initialSliderX
-  translateXCalc initialX =
-    mouseEvent.screenX - initialX
-  setTranslateX =
-    H.modify <<< (DCS._sliderTranslateX .~)
+  (maybe (pure unit) (setTranslateX <<< translateXCalc mouseEvent.screenX) =<< getInitialX) $> next
 eval (SetNextActionCardElement element next) =
-  Debug.Trace.traceAnyA element *> setNextActionCardElement element *> (Debug.Trace.traceAnyA =<< H.get) $> next
-  where
-  setNextActionCardElement =
-    H.modify <<< (DCS._nextActionCardElement .~)
+  setNextActionCardElement element $> next
 eval (StopSliderTransition next) =
   setSliderTransition false $> next
+
+setNextActionCardElement :: Maybe HTMLElement -> NotebookDSL Unit
+setNextActionCardElement =
+  H.modify <<< (_nextActionCardElement .~ _)
+
+getInitialX :: NotebookDSL (Maybe Number)
+getInitialX =
+  H.gets _.initialSliderX
+
+translateXCalc :: Number -> Number -> Number
+translateXCalc eventScreenX initialX =
+  eventScreenX - initialX
+
+setTranslateX :: Number -> NotebookDSL Unit
+setTranslateX =
+  H.modify <<< (_sliderTranslateX .~ _)
+
+setInitialSliderX :: Maybe Number -> NotebookDSL Unit
+setInitialSliderX =
+  H.modify <<< (_initialSliderX .~ _)
+
+setBacksided :: Boolean -> NotebookDSL Unit
+setBacksided =
+  H.modify <<< (_backsided .~ _)
+
+stopSliding :: NotebookDSL Unit
+stopSliding =
+  setInitialX Nothing *> setTranslateX 0.0
+
+setInitialX :: Maybe Number -> NotebookDSL Unit
+setInitialX =
+  H.modify <<< (_initialSliderX .~ _)
+
+getBoundingClientWidth :: NotebookDSL Number
+getBoundingClientWidth =
+  fromEff <<< map _.width <<< getBoundingClientRect
+
+getNextActionCardElement :: NotebookDSL (Maybe HTMLElement)
+getNextActionCardElement =
+  H.gets _.nextActionCardElement
+
+getCardWidth :: NotebookDSL Number
+getCardWidth =
+  traverse getBoundingClientWidth =<< getNextActionCardElement
   where
-  setSliderTransition =
-    H.modify <<< (DCS._sliderTransition .~)
+  getNextActionCardElement =
+    H.gets _.nextActionCardElement
+
+setActiveCardId :: Maybe CardId -> NotebookDSL Unit
+setActiveCardId =
+  H.modify <<< (_activeCardId .~ _)
+
+snapActiveCardIndex :: Number -> Maybe Number -> Int -> Int
+snapActiveCardIndex translateX (Just cardWidth) | translateX < (-(cardWidth / 2.0)) =
+  add 1
+snapActiveCardIndex translateX (Just cardWidth) | translateX > (cardWidth / 2.0) =
+  max 0 <<< flip sub 1
+snapActiveCardIndex translateX _ =
+  id
+
+getCardIdByIndex :: List.List CardDef -> Maybe CardId
+getCardIdByIndex cards =
+  map _.id <<< List.index cards
+
+snapActiveCardId :: State -> Number -> Maybe CardId
+snapActiveCardId st cardWidth =
+  getCardIdByIndex st.cards
+    $ snapActiveCardIndex st.sliderTranslateX cardWidth
+    $ activeCardIndex st
+
+snap :: NotebookDSL Unit
+snap =
+  setActiveCardId =<< (snapActiveCardId <$> H.get <*> getCardWidth)
+
+setSliderTransition :: Boolean -> NotebookDSL Unit
+setSliderTransition =
+  H.modify <<< (_sliderTransition .~ _)
+
+startTransition :: NotebookDSL Unit
+startTransition =
+  setSliderTransition true
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → NotebookDSL Unit
 peek (H.ChildF s q) =
