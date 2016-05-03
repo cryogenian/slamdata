@@ -18,12 +18,7 @@ module SlamData.Notebook.Card.Download.Component.Query where
 
 import SlamData.Prelude
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Download.Model (CSVOptions, JSONOptions, OutputType)
 
-data Query a
-  = SetOutput OutputType a
-  | ModifyCSVOpts (CSVOptions -> CSVOptions) a
-  | ModifyJSONOpts (JSONOptions-> JSONOptions) a
-  | ToggleCompress a
+type Query = Const Void
 
-type QueryP = Coproduct CardEvalQuery Query
+type QueryP = CardEvalQuery ⨁ Query

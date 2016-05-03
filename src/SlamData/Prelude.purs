@@ -18,7 +18,7 @@ module SlamData.Prelude
   ( (∘), (⊕), (⋙), (⋘), (≡), (≠), (×), (≪), (≫)
   , (∨), (∧)
   , flipCompose, notEq, applyRight, applyLeft
-  , type (~>)
+  , type (~>), type (⨁)
   , module Prelude
   , module Control.Alt
   , module Control.Apply
@@ -98,3 +98,4 @@ infixr 3 conj as ∧
 infixr 2 disj as ∨
 
 infixr 6 type Natural as ~>
+infixr 4 type Coproduct as ⨁

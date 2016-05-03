@@ -84,6 +84,7 @@ import SlamData.Notebook.Card.JTable.Component (jtableComponent)
 import SlamData.Notebook.Card.Markdown.Component (markdownComponent)
 import SlamData.Notebook.Card.Next.Component (nextCardComponent)
 import SlamData.Notebook.Card.Save.Component (saveCardComponent)
+import SlamData.Notebook.Card.DownloadOptions.Component as DOpts
 import SlamData.Notebook.Card.Markdown.Eval (markdownEval, markdownSetup)
 import SlamData.Notebook.Card.Model as Card
 import SlamData.Notebook.Card.Port.VarMap as Port
@@ -274,6 +275,7 @@ cardTypeComponent APIResults _ _ = apiResultsComponent
 cardTypeComponent NextAction _ _ = nextCardComponent
 cardTypeComponent Save _ _ = saveCardComponent
 cardTypeComponent OpenResource _ _ = openResourceComponent
+cardTypeComponent DownloadOptions _ _ = DOpts.comp
 
 aceEvalMode ∷ AceMode → AceEvaluator
 aceEvalMode MarkdownMode = markdownEval

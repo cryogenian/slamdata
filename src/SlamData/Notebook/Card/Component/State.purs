@@ -43,6 +43,7 @@ module SlamData.Notebook.Card.Component.State
   , _NextState
   , _SaveState
   , _OpenResourceState
+  , _DownloadOptionsState
   ) where
 
 import SlamData.Prelude
@@ -70,6 +71,7 @@ import SlamData.Notebook.Card.Viz.Component.State as Viz
 import SlamData.Notebook.Card.Next.Component.State as Next
 import SlamData.Notebook.Card.Save.Component.State as Save
 import SlamData.Notebook.Card.OpenResource.Component.State as Open
+import SlamData.Notebook.Card.DownloadOptions.Component.State as DOpts
 import SlamData.Effects (Slam, SlamDataEffects)
 
 
@@ -181,6 +183,7 @@ data AnyCardState
   | NextState Next.State
   | SaveState Save.State
   | OpenResourceState Open.State
+  | DownloadOptionsState DOpts.State
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState \s → case s of
@@ -240,4 +243,9 @@ _SaveState = prism' SaveState \s → case s of
 _OpenResourceState ∷ PrismP AnyCardState Open.State
 _OpenResourceState = prism' OpenResourceState \s → case s of
   OpenResourceState s' → Just s'
+  _ → Nothing
+
+_DownloadOptionsState ∷ PrismP AnyCardState DOpts.State
+_DownloadOptionsState = prism' DownloadOptionsState \s → case s of
+  DownloadOptionsState s' → Just s'
   _ → Nothing
