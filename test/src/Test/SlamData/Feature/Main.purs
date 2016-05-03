@@ -82,8 +82,8 @@ tests :: SlamFeature Unit
 tests = do
   launchSlamData
   mountTestDatabase
-  --File.test
-  --Search.test
+  File.test
+  Search.test
   --Markdown.test
   FlexibleVisualization.test
 
