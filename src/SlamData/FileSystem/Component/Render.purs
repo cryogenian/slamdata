@@ -46,14 +46,19 @@ sorting state =
   H.div [ P.classes [ B.colXs4, Rc.toolbarSort ] ]
   [ H.a [ E.onClick (\_ -> E.preventDefault $> action Resort) ]
     [ H.text "Name"
-    , H.i [ chevron (state ^. _sort)
-          , CSS.style (marginLeft $ px 10.0)
-          ] [ ]
+    , H.i
+        [ chevron (state ^. _sort)
+        , CSS.style (marginLeft $ px 10.0)
+        , ARIA.label $ label (state ^. _sort)
+        , P.title $ label (state ^. _sort)
+        ] [ ]
     ]
   ]
   where
   chevron Asc = P.classes [ B.glyphicon, B.glyphiconChevronUp ]
   chevron Desc = P.classes [ B.glyphicon, B.glyphiconChevronDown ]
+  label Asc = "Sort files by name descending"
+  label Desc = "Sort files by name ascending"
 
 toolbar :: forall p. State -> HTML p (Query Unit)
 toolbar state =
@@ -87,20 +92,22 @@ toolbar state =
 
   file :: HTML p (Query Unit)
   file =
-    H.li_ [ H.button [ E.onClick (\ev -> pure $ action (UploadFile ev.target))]
-            [ H.i [ P.title "Upload file"
-                  , ARIA.label "Upload file"
-                  , P.classes [ B.glyphicon
-                              , B.glyphiconCloudUpload
-                              , Rc.hiddenFileInput
-                              ]
-                  ]
-              [ H.input [ P.inputType P.InputFile
-                        , E.onChange (\ev -> pure $ action (FileListChanged ev.target))
-                        ]
-              ]
-            ]
+    H.li_
+      [ H.input
+          [ P.inputType P.InputFile
+          , E.onChange (\ev -> pure $ action (FileListChanged ev.target))
+          , P.id_ "upload"
           ]
+      , H.label
+            [ P.for "upload"
+            , P.title "Upload file"
+            , ARIA.label "Upload file"
+            ]
+            [ H.i
+                [ P.classes [ B.glyphicon, B.glyphiconCloudUpload, Rc.hiddenFileInput ] ]
+                []
+            ]
+      ]
 
   notebook :: HTML p (Query Unit)
   notebook = toolItem MakeNotebook "Create notebook" B.glyphiconBook

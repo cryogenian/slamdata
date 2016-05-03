@@ -33,6 +33,17 @@ var foreigns = [
   "test/src/**/*.js"
 ];
 
+// Webdriver thinks elements which are obscured by elements with fixed positions
+// are visible. By and large fixed positions fall back gracefully to
+// absolute positions so this task can be used to swap the two after less
+// compilation.
+// This task can be reverted by the `less` task.
+gulp.task('remove-css-fixed-positions', function(){
+  gulp.src(['public/css/main.css'])
+    .pipe(replace('fixed', 'absolute'))
+    .pipe(gulp.dest('public/css'));
+});
+
 gulp.task("clean", function () {
     [
         "output",
@@ -164,12 +175,12 @@ gulp.task("bundle", [
 gulp.task("bundle-test",
           ["bundle"],
            function() {
-    sequence("less", "make", function() {
+    sequence("less", "remove-css-fixed-positions", "make", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
             output: "test/index.js",
-            module: "Test.Main",
-            main: "Test.Main"
+            module: "Test.SlamData.Feature.Main",
+            main: "Test.SlamData.Feature.Main"
         });
     });
 });
@@ -178,8 +189,8 @@ gulp.task("bundle-property-tests", ["make"], function() {
     return purescript.pscBundle({
       src: "output/**/*.js",
       output: "tmp/js/property-tests.js",
-      module: "Test.Property",
-      main: "Test.Property"
+      module: "Test.SlamData.Property",
+      main: "Test.SlamData.Property"
     });
 });
 
