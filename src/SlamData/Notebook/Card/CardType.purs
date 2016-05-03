@@ -55,6 +55,7 @@ data CardType
   | NextAction
   | Save
   | OpenResource
+  | DownloadOptions
 
 insertableCardTypes ∷ Array CardType
 insertableCardTypes =
@@ -70,6 +71,7 @@ insertableCardTypes =
   , APIResults
   , Save
   , OpenResource
+  , DownloadOptions
   ]
 
 instance eqCardType ∷ Eq CardType where
@@ -85,6 +87,7 @@ instance eqCardType ∷ Eq CardType where
   eq NextAction NextAction = true
   eq Save Save = true
   eq OpenResource OpenResource = true
+  eq DownloadOptions DownloadOptions = true
   eq _ _ = false
 
 data AceMode
@@ -110,6 +113,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
   encodeJson NextAction = encodeJson "next-action"
   encodeJson Save = encodeJson "save"
   encodeJson OpenResource = encodeJson "open-resource"
+  encodeJson DownloadOptions = encodeJson "download-options"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -128,6 +132,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "next-action" → pure NextAction
       "save" → pure Save
       "open-resource" → pure OpenResource
+      "download-options" → pure DownloadOptions
       name → throwError $ "unknown card type '" ⊕ name ⊕ "'"
 
 cardName ∷ CardType → String
@@ -143,6 +148,7 @@ cardName APIResults = "API Results"
 cardName NextAction = "Next Action"
 cardName Save = "Save"
 cardName OpenResource = "Explore"
+cardName DownloadOptions = "Download Options"
 
 cardGlyph ∷ ∀ s f. CardType → HTML s f
 cardGlyph (Ace at) = glyph $ aceCardGlyph at
@@ -163,6 +169,7 @@ cardGlyph JTable = glyph B.glyphiconThList
 cardGlyph NextAction = glyph B.glyphiconStop
 cardGlyph Save = glyph B.glyphiconFloppyDisk
 cardGlyph OpenResource = glyph B.glyphiconFolderOpen
+cardGlyph DownloadOptions = glyph B.glyphiconDownloadAlt
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Markdown"
@@ -197,9 +204,10 @@ nextCardTypes (Just ct) = case ct of
   NextAction → [ ]
   Save → dataSourceOutput `Arr.snoc` JTable
   OpenResource → dataSourceCards
+  DownloadOptions → [ Download ]
   where
   dataSourceOutput =
-    [ Download, Search, Ace SQLMode, Viz
+    [ DownloadOptions, Search, Ace SQLMode, Viz
     ]
   dataSourceCards =
     (dataSourceOutput `Arr.snoc` JTable) `Arr.snoc` Save

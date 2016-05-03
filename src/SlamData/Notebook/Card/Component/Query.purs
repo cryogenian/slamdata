@@ -33,6 +33,7 @@ module SlamData.Notebook.Card.Component.Query
   , _NextQuery
   , _SaveQuery
   , _OpenResourceQuery
+  , _DownloadOptionsQueryb
   , module SlamData.Notebook.Card.Common.EvalQuery
   ) where
 
@@ -63,6 +64,7 @@ import SlamData.Notebook.Card.Search.Component.Query as Search
 import SlamData.Notebook.Card.Viz.Component.Query as Viz
 import SlamData.Notebook.Card.Next.Component.Query as Next
 import SlamData.Notebook.Card.Save.Component.Query as Save
+import SlamData.Notebook.Card.DownloadOptions.Component.Query as DOpts
 
 -- | The common query algebra for a notebook card.
 -- |
@@ -121,6 +123,7 @@ data AnyCardQuery a
   | NextQuery (Next.QueryP a)
   | SaveQuery (Save.QueryP a)
   | OpenResourceQuery (Open.QueryP a)
+  | DownloadOptionsQuery (DOpts.QueryP a)
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery \q → case q of
@@ -180,4 +183,9 @@ _SaveQuery = prism' SaveQuery \q → case q of
 _OpenResourceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Open.QueryP a)
 _OpenResourceQuery = prism' OpenResourceQuery \q → case q of
   OpenResourceQuery q' → Just q'
+  _ → Nothing
+
+_DownloadOptionsQuery ∷ ∀ a. PrismP (AnyCardQuery a) (DOpts.QueryP a)
+_DownloadOptionsQuery = prism' DownloadOptionsQuery \q → case q of
+  DownloadOptionsQuery q' → Just q'
   _ → Nothing
