@@ -33,7 +33,7 @@ module SlamData.Notebook.Card.Component.Query
   , _NextQuery
   , _SaveQuery
   , _OpenResourceQuery
-  , _DownloadOptionsQueryb
+  , _DownloadOptionsQuery
   , module SlamData.Notebook.Card.Common.EvalQuery
   ) where
 

@@ -67,8 +67,8 @@ main = do
   log "Check SlamData.Download.Model..."
   Test.SlamData.Property.Download.Model.check
 
-  log "Check SlamData.Notebook.Card.Download.Component.State..."
-  Test.SlamData.Property.Notebook.Card.Download.Component.State.check
+  log "Check SlamData.Notebook.Card.DownloadOptions.Component.State..."
+  Test.SlamData.Property.Notebook.Card.DownloadOptions.Component.State.check
 
   log "Check SlamData.Notebook.Card.Ace.Model..."
   Test.SlamData.Property.Notebook.Card.Ace.Model.check

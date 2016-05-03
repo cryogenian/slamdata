@@ -2,10 +2,9 @@ module SlamData.Notebook.Card.DownloadOptions.Component.State where
 
 import SlamData.Prelude
 
---import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Lens (LensP, lens)
---import Data.Path.Pathy as Pathy
-
+import Data.Path.Pathy as Pathy
 import SlamData.Download.Model as D
 
 import Utils.Path as PU
@@ -31,3 +30,22 @@ _options = lens (_.options) (_{options = _})
 
 _source ∷ ∀ a r. LensP {source ∷ a|r} a
 _source = lens (_.source) (_{source = _})
+
+
+encode :: State -> Json
+encode s
+   = "compress" := s.compress
+  ~> "options" := s.options
+  ~> "source" := (Pathy.printPath <$> s.source)
+  ~> jsonEmptyObject
+
+decode :: Json → Either String State
+decode = decodeJson >=> \obj → do
+  compress ← obj .? "compress"
+  options ← obj .? "options"
+  source ← traverse parsePath =<< obj .? "source"
+  pure { compress, options, source }
+
+parsePath ∷ String → Either String PU.FilePath
+parsePath =
+  maybe (Left "could not parse source file path") Right ∘ PU.parseFilePath

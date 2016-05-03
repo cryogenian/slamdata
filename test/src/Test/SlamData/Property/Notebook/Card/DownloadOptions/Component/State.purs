@@ -1,4 +1,4 @@
-module Test.SlamData.Property.Notebook.Card.Download.Component.State
+module Test.SlamData.Property.Notebook.Card.DownloadOptions.Component.State
   ( ArbState
   , runArbState
   , check
@@ -8,7 +8,7 @@ import Prelude
 
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
-import SlamData.Notebook.Card.Download.Component.State as M
+import SlamData.Notebook.Card.DownloadOptions.Component.State as M
 
 import Test.Property.Utils.Path (runArbFilePath)
 import Test.SlamData.Property.Download.Model (runArbCSVOptions, runArbJSONOptions)

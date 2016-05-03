@@ -17,6 +17,8 @@ limitations under the License.
 module SlamData.Notebook.Card.Port
   ( Port(..)
   , ChartPort
+  , TaggedResourcePort
+  , DownloadPort
   , _SlamDown
   , _VarMap
   , _Resource
@@ -32,17 +34,32 @@ import SlamData.Prelude
 import Data.Lens (PrismP, prism', TraversalP, wander)
 import ECharts.Options as EC
 import SlamData.Notebook.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue)
+import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
-type ChartPort = { options ∷ EC.Option, width ∷ Int, height ∷ Int }
+type ChartPort =
+  { options ∷ EC.Option
+  , width ∷ Int
+  , height ∷ Int
+  }
+type DownloadPort =
+  { resource ∷ PU.FilePath
+  , compress ∷ Boolean
+  , options ∷ DownloadOptions
+  }
+type TaggedResourcePort =
+  { resource ∷ PU.FilePath
+  , tag ∷ Maybe String
+  }
 
 data Port
   = SlamDown (SD.SlamDownP VarMapValue)
   | VarMap VarMap
   | CardError String
   | ChartOptions ChartPort
-  | TaggedResource { tag ∷ Maybe String, resource ∷ PU.FilePath }
+  | TaggedResource TaggedResourcePort
+  | DownloadOptions DownloadPort
   | Blocked
 
 _SlamDown ∷ PrismP Port (SD.SlamDownP VarMapValue)
@@ -79,4 +96,9 @@ _Resource = wander \f s → case s of
 _Blocked ∷ PrismP Port Unit
 _Blocked = prism' (const Blocked) \p → case p of
   Blocked → Just unit
+  _ → Nothing
+
+_DownloadOptions ∷ PrismP Port DownloadPort
+_DownloadOptions = prism' DownloadOptions \p → case p of
+  DownloadOptions p' → Just p'
   _ → Nothing

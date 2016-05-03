@@ -2,6 +2,8 @@ module SlamData.Notebook.Card.DownloadOptions.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Error.Class (throwError)
+
 import Data.Lens ((?~), (.~), preview, _Left, _Right, (%~))
 
 import Halogen as H
@@ -14,7 +16,7 @@ import SlamData.Notebook.Card.Common.EvalQuery as Ec
 import SlamData.Notebook.Card.Component as Cc
 import SlamData.Notebook.Card.Component (makeCardComponent, makeQueryPrism, _DownloadOptionsState, _DownloadOptionsQuery)
 import SlamData.Notebook.Card.DownloadOptions.Component.Query (QueryP, Query(..))
-import SlamData.Notebook.Card.Download.Component.State (State, _compress, _options, _source, decode, encode, initialState)
+import SlamData.Notebook.Card.DownloadOptions.Component.State (State, _compress, _options, _source, initialState, encode, decode)
 import SlamData.Render.CSS as Rc
 import SlamData.Effects (Slam)
 import SlamData.Download.Model as D
@@ -107,11 +109,21 @@ eval = coproduct cardEval downloadOptsEval
 cardEval ∷ Ec.CardEvalQuery ~> DSL
 cardEval (Ec.EvalCard {inputPort} continue) = do
   map continue $ Ec.runCardEvalT do
-    lift case inputPort of
-      Just (P.TaggedResource {resource}) → H.modify (_source ?~ resource)
-      Just P.Blocked → H.modify (_source .~ Nothing)
-      _ → pure unit
-    pure $ Just P.Blocked
+    case inputPort of
+      Just P.Blocked → lift do
+        H.modify (_source .~ Nothing)
+        pure $ Just P.Blocked
+      Just (P.TaggedResource {resource}) → lift do
+        H.modify (_source ?~ resource)
+        state ← H.get
+        pure
+          $ Just
+          $ P.DownloadOptions
+              { resource
+              , compress: state.compress
+              , options: state.options
+              }
+      _ → throwError "Incorrect input in download options card"
 cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = map (k ∘ encode) H.get

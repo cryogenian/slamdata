@@ -26,6 +26,8 @@ import Data.String.Regex as Rx
 
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
+type DownloadOptions = Either CSVOptions JSONOptions
+
 type CSVOptionsRec =
   { colDelimiter :: String
   , rowDelimiter :: String

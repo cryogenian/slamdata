@@ -148,7 +148,7 @@ cardName APIResults = "API Results"
 cardName NextAction = "Next Action"
 cardName Save = "Save"
 cardName OpenResource = "Explore"
-cardName DownloadOptions = "Download Options"
+cardName DownloadOptions = "Download"
 
 cardGlyph ∷ ∀ s f. CardType → HTML s f
 cardGlyph (Ace at) = glyph $ aceCardGlyph at
@@ -169,7 +169,7 @@ cardGlyph JTable = glyph B.glyphiconThList
 cardGlyph NextAction = glyph B.glyphiconStop
 cardGlyph Save = glyph B.glyphiconFloppyDisk
 cardGlyph OpenResource = glyph B.glyphiconFolderOpen
-cardGlyph DownloadOptions = glyph B.glyphiconDownloadAlt
+cardGlyph DownloadOptions = glyph B.glyphiconDownload
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Markdown"
