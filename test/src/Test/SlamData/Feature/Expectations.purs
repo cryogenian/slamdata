@@ -156,9 +156,9 @@ fileSearchString string =
   (Map.singleton "value" $ Just string)
   (XPath.anywhere XPaths.fileSearchInput)
 
-lastEChartOptions ∷ String → SlamFeature Unit
+lastEChartOptions :: String -> SlamFeature Unit
 lastEChartOptions =
   expectPresented
-    ∘ XPath.last
-    ∘ XPath.anywhere
-    ∘ XPaths.eChartOptions
+    <<< XPath.last
+    <<< XPath.anywhere
+    <<< XPaths.eChartOptions

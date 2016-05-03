@@ -82,9 +82,9 @@ tests :: SlamFeature Unit
 tests = do
   launchSlamData
   mountTestDatabase
-  File.test
-  Search.test
-  Markdown.test
+  --File.test
+  --Search.test
+  --Markdown.test
   FlexibleVisualization.test
 
 runTests :: Config -> Aff Effects Unit
