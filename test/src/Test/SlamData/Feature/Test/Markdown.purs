@@ -177,9 +177,9 @@ test = do
     Expect.cardsInTableColumnInLastCardToEq 2 "gender" "W"
     Expect.cardsInTableColumnInLastCardToBeGT 2 "year" "1924"
     Expect.cardsInTableColumnInLastCardToNotEq 2 "type" "Silver"
-    successMsg "Ok, Filtered query resuts with fields"
+    successMsg "Ok, Filtered query results with fields"
 
-  mdScenario "Filter query resuts by changing field values" [] do
+  mdScenario "Filter query results by changing field values" ["https://slamdata.atlassian.net/browse/SD-1605"] do
     Interact.insertMdCardAsFirstCardInNewStack
     Interact.provideMdInLastMdCard $ joinWith "\n\n"
       [ "discipline = __ (!``SELECT discipline FROM `/test-mount/testDb/olympics` LIMIT 1``)"
@@ -205,3 +205,4 @@ test = do
     Expect.cardsInTableColumnInLastCardToBeGT 8 "year" "1950"
     Expect.cardsInTableColumnInLastCardToNotEq 8 "type" "Gold"
     successMsg "Ok, Filtered query results by changing field values"
+    Test.Feature.Log.errorMsg "This scenario passed but is known to fail non-deterministically"

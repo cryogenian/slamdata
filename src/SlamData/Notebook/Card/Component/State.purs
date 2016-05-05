@@ -44,6 +44,7 @@ module SlamData.Notebook.Card.Component.State
   , _SaveState
   , _OpenResourceState
   , _DownloadOptionsState
+  , _ErrorState
   ) where
 
 import SlamData.Prelude
@@ -72,6 +73,7 @@ import SlamData.Notebook.Card.Next.Component.State as Next
 import SlamData.Notebook.Card.Save.Component.State as Save
 import SlamData.Notebook.Card.OpenResource.Component.State as Open
 import SlamData.Notebook.Card.DownloadOptions.Component.State as DOpts
+import SlamData.Notebook.Card.Error.Component.State as Error
 import SlamData.Effects (Slam, SlamDataEffects)
 
 
@@ -184,6 +186,7 @@ data AnyCardState
   | SaveState Save.State
   | OpenResourceState Open.State
   | DownloadOptionsState DOpts.State
+  | ErrorState Error.State
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState \s → case s of
@@ -249,3 +252,9 @@ _DownloadOptionsState ∷ PrismP AnyCardState DOpts.State
 _DownloadOptionsState = prism' DownloadOptionsState \s → case s of
   DownloadOptionsState s' → Just s'
   _ → Nothing
+
+_ErrorState ∷ PrismP AnyCardState Error.State
+_ErrorState = prism' ErrorState \s → case s of
+  ErrorState s' → Just s'
+  _ → Nothing
+

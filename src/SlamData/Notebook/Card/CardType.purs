@@ -56,6 +56,7 @@ data CardType
   | Save
   | OpenResource
   | DownloadOptions
+  | ErrorCard
 
 insertableCardTypes ∷ Array CardType
 insertableCardTypes =
@@ -88,6 +89,7 @@ instance eqCardType ∷ Eq CardType where
   eq Save Save = true
   eq OpenResource OpenResource = true
   eq DownloadOptions DownloadOptions = true
+  eq ErrorCard ErrorCard = true
   eq _ _ = false
 
 data AceMode
@@ -114,6 +116,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
   encodeJson Save = encodeJson "save"
   encodeJson OpenResource = encodeJson "open-resource"
   encodeJson DownloadOptions = encodeJson "download-options"
+  encodeJson ErrorCard = encodeJson "error"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -133,6 +136,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "save" → pure Save
       "open-resource" → pure OpenResource
       "download-options" → pure DownloadOptions
+      "error" → pure ErrorCard
       name → throwError $ "unknown card type '" ⊕ name ⊕ "'"
 
 cardName ∷ CardType → String
@@ -149,6 +153,7 @@ cardName NextAction = "Next Action"
 cardName Save = "Save"
 cardName OpenResource = "Explore"
 cardName DownloadOptions = "Download"
+cardName ErrorCard = "Error"
 
 cardGlyph ∷ ∀ s f. CardType → HTML s f
 cardGlyph (Ace at) = glyph $ aceCardGlyph at
@@ -170,6 +175,7 @@ cardGlyph NextAction = glyph B.glyphiconStop
 cardGlyph Save = glyph B.glyphiconFloppyDisk
 cardGlyph OpenResource = glyph B.glyphiconFolderOpen
 cardGlyph DownloadOptions = glyph B.glyphiconDownload
+cardGlyph ErrorCard = glyph B.glyphiconAlert
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Markdown"
@@ -205,6 +211,7 @@ nextCardTypes (Just ct) = case ct of
   Save → dataSourceOutput `Arr.snoc` JTable
   OpenResource → dataSourceCards
   DownloadOptions → [ Download ]
+  ErrorCard → [ ]
   where
   dataSourceOutput =
     [ DownloadOptions, Search, Ace SQLMode, Viz
