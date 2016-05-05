@@ -31,7 +31,7 @@ import Control.UI.Browser (newTab, locationObject)
 import Data.Argonaut (Json)
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures)
-import Data.Lens (LensP(), view, (.~), (%~), (?~), (^?))
+import Data.Lens ((.~), (%~), (^?))
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as List
 import Data.Map as Map
@@ -39,7 +39,6 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
 import Data.String as Str
-import Data.These (These(..), theseRight)
 import Data.Time (Milliseconds(..))
 
 import Ace.Halogen.Component as Ace
@@ -48,6 +47,7 @@ import DOM.HTML.Location as Location
 
 import Halogen as H
 import Halogen.Component.Utils (forceRerender')
+import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Indexed as HH
 import Halogen.Component.ChildPath (injSlot, injState)
 import Halogen.HTML.Properties.Indexed as HP
@@ -69,15 +69,16 @@ import SlamData.Notebook.Card.Port (Port(..))
 import SlamData.Notebook.Deck.BackSide.Component as Back
 import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildState, ChildSlot, CardSlot(..))
 import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
-import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard,  cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, notebookPath, removeCards, findLast, findLastCardType)
+import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _id, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard,  cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, deckPath, removeCards, findLast, findLastCardType)
+import SlamData.Notebook.Deck.DeckId (DeckId(..), deckIdToString)
 import SlamData.Notebook.Deck.Model as Model
+import SlamData.Notebook.Model as NB
 import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCardHash, mkNotebookURL)
 import SlamData.Quasar.Data (save, load) as Quasar
 import SlamData.Quasar.FS (move, getNewName) as Quasar
 import SlamData.Render.CSS as CSS
 
-import Utils.Debounced (debouncedEventSource)
-import Utils.Path (DirPath)
+import Utils.Path (DirPath, FilePath)
 
 type NotebookHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type NotebookDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
@@ -181,21 +182,19 @@ render state =
 
 eval ∷ Natural Query NotebookDSL
 eval (AddCard cardType next) = createCard cardType $> next
-eval (RunActiveCard next) =
+eval (RunActiveCard next) = do
   (maybe (pure unit) runCard =<< H.gets (_.activeCardId)) $> next
-eval (LoadNotebook fs dir next) = do
+eval (LoadNotebook fs dir deckId next) = do
+  state ← H.get
   H.modify (_stateMode .~ Loading)
-  json ← Quasar.load $ dir </> Pathy.file "index"
+  json ← Quasar.load $ deckIndex dir deckId
   case Model.decode =<< json of
     Left err → do
       H.fromAff $ log err
       H.modify (_stateMode .~
                 Error "There was a problem decoding the saved notebook")
     Right model →
-      let peeledPath = Pathy.peel dir
-          path = fst <$> peeledPath
-          name = either Just (const Nothing) ∘ snd =<< peeledPath
-      in case fromModel fs path name model of
+      case fromModel fs (Just dir) (Just deckId) model of
         Tuple cards st → do
           H.set st
           forceRerender'
@@ -230,26 +229,20 @@ eval (ExploreFile fs res next) = do
     $ R.File res
   forceRerender'
   runCard zero
+  -- Flush the eval queue
+  saveNotebook
   updateNextActionCard
   pure next
 eval (Publish next) = do
-  H.gets notebookPath >>= \mpath → do
+  H.gets deckPath >>= \mpath →
     for_ mpath $ H.fromEff ∘ newTab ∘ flip mkNotebookURL (NA.Load ReadOnly)
   pure next
-eval (Reset fs dir next) = do
-  let
-    nb = initialDeck fs
-    peeledPath = Pathy.peel dir
-    path = fst <$> peeledPath
-    name = maybe nb.name This (either Just (const Nothing) ∘ snd =<< peeledPath)
-  H.set $ nb { path = path, name = name }
+eval (Reset fs dir deckId next) = do
+  let nb = initialDeck fs
+  H.set $ nb { id = deckId, path = Just dir }
   pure next
 eval (SetName name next) =
-  H.modify (_name %~ \n → case n of
-             That _ → That name
-             Both d _ → Both d name
-             This d → Both d name
-         ) $> next
+  H.modify (_name .~ Just name) $> next
 eval (SetAccessType aType next) = do
   cids ← map Map.keys $ H.gets _.cardTypes
   for_ cids \cardId →
@@ -262,10 +255,14 @@ eval (SetAccessType aType next) = do
   unless (isEditable aType)
     $ H.modify (_backsided .~ false)
   pure next
-eval (GetNotebookPath k) = k <$> H.gets notebookPath
+eval (GetNotebookPath k) = k <$> H.gets deckPath
 eval (SetViewingCard mbcid next) = H.modify (_viewingCard .~ mbcid) $> next
-eval (SaveNotebook next) = saveNotebook unit $> next
-eval (RunPendingCards next) = runPendingCards unit $> next
+eval (SaveNotebook next) = saveNotebook $> next
+eval (RunPendingCards next) = do
+  -- Only run pending cards if we have a deckPath. Some cards run with the
+  -- assumption that the deck is saved to disk.
+  H.gets deckPath >>= traverse_ \_ → runPendingCards
+  pure next
 eval (GetGlobalVarMap k) = k <$> H.gets _.globalVarMap
 eval (SetGlobalVarMap m next) = do
   st ← H.get
@@ -295,13 +292,13 @@ peekBackSide (Back.DoAction action _) = case action of
     for_ (activeId <|> lastId) \trashId → do
       descendants ← H.gets (findDescendants trashId)
       H.modify $ removeCards (S.insert trashId descendants)
-      triggerSave unit
+      triggerSave
       updateNextActionCard
       H.modify (_backsided .~ false)
   Back.Share → pure unit
   Back.Embed → pure unit
   Back.Publish →
-    H.gets notebookPath >>= \mpath → do
+    H.gets deckPath >>= \mpath →
       for_ mpath $ H.fromEff ∘ newTab ∘ flip mkNotebookURL (NA.Load ReadOnly)
   Back.Mirror → pure unit
   Back.Wrap → pure unit
@@ -320,15 +317,15 @@ peekCard cardId q = case q of
   TrashCard _ → do
     descendants ← H.gets (findDescendants cardId)
     H.modify $ removeCards (S.insert cardId descendants)
-    triggerSave unit
+    triggerSave
     updateNextActionCard
   ToggleCaching _ →
-    triggerSave unit
+    triggerSave
   ShareCard _ → pure unit
   StopCard _ → do
     H.modify $ _runTrigger .~ Nothing
     H.modify $ _pendingCards %~ S.delete cardId
-    runPendingCards unit
+    runPendingCards
   _ → pure unit
 
 
@@ -373,6 +370,7 @@ updateNextActionCard = do
 createCard ∷ CardType → NotebookDSL Unit
 createCard cardType = do
   cid ← H.gets findLast
+  s ← H.get
   case cid of
     Nothing →
       H.modify (addCard cardType Nothing)
@@ -384,7 +382,7 @@ createCard cardType = do
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
 
       for_ input \input' → do
-        path ← H.gets notebookPath
+        path ← H.gets deckPath
         let setupInfo = { notebookPath: path, inputPort: input', cardId: newCardId }
         void
           $ H.query' cpCard  (CardSlot newCardId)
@@ -394,7 +392,7 @@ createCard cardType = do
           $ H.action (SetupCard setupInfo)
       runCard newCardId
   updateNextActionCard
-  triggerSave unit
+  triggerSave
 
 -- | Peek on the inner card components to observe `NotifyRunCard`, which is
 -- | raised by actions within a card that should cause the card to run.
@@ -411,7 +409,7 @@ peekAnyCard ∷ ∀ a. CardId → AnyCardQuery a → NotebookDSL Unit
 peekAnyCard cardId q = do
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
   when (queryShouldRun q) $ runCard cardId
-  when (queryShouldSave q) $ triggerSave unit
+  when (queryShouldSave q) triggerSave
   pure unit
 
 queryShouldRun ∷ ∀ a. AnyCardQuery a → Boolean
@@ -435,8 +433,8 @@ aceQueryShouldSave (H.ChildF _ q) =
 
 
 -- | Runs all card that are present in the set of pending cards.
-runPendingCards ∷ Unit → NotebookDSL Unit
-runPendingCards _ = do
+runPendingCards ∷ NotebookDSL Unit
+runPendingCards = do
   cards ← H.gets _.pendingCards
   traverse_ runCard' cards
   updateNextActionCard
@@ -457,7 +455,7 @@ runPendingCards _ = do
           -- if there's a parent and an output, pass it on as this card's input
           Just p → updateCard (Just p) cardId
     H.modify $ _pendingCards %~ S.delete cardId
-    triggerSave unit
+    triggerSave
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced H.query to trigger the cards to
@@ -465,14 +463,14 @@ runPendingCards _ = do
 runCard ∷ CardId → NotebookDSL Unit
 runCard cardId = do
   H.modify (addPendingCard cardId)
-  _runTrigger `fireDebouncedQuery` RunPendingCards
+  fireDebouncedQuery' (Milliseconds 500.0) _runTrigger RunPendingCards
 
 -- | Updates the evaluated value for a card by running it with the specified
 -- | input and then runs any cards that depend on the card's output with the
 -- | new result.
 updateCard ∷ Maybe Port → CardId → NotebookDSL Unit
 updateCard inputPort cardId = do
-  path ← H.gets notebookPath
+  path ← H.gets deckPath
   globalVarMap ← H.gets _.globalVarMap
   let input = { notebookPath: path, inputPort, cardId, globalVarMap }
   result ←
@@ -490,80 +488,62 @@ updateCard inputPort cardId = do
 
 -- | Triggers the H.query for autosave. This does not immediate perform the save
 -- | H.action, but instead enqueues a debounced H.query to trigger the actual save.
-triggerSave ∷ Unit → NotebookDSL Unit
-triggerSave _ =
-  _saveTrigger `fireDebouncedQuery` SaveNotebook
-
--- | Fires the specified debouced H.query trigger with the passed H.query. This
--- | function also handles constructing the initial trigger if it has not yet
--- | been created.
-fireDebouncedQuery
-  ∷ LensP State (Maybe DebounceTrigger)
-  → H.Action Query
-  → NotebookDSL Unit
-fireDebouncedQuery lens act = do
-  t ← H.gets (view lens) >>= \mbt → case mbt of
-    Just t' → pure t'
-    Nothing → do
-      t' ← debouncedEventSource H.fromEff H.subscribe' (Milliseconds 500.0)
-      H.modify (lens ?~ t')
-      pure t'
-  H.liftH $ H.liftH $ t $ H.action $ act
+triggerSave ∷ NotebookDSL Unit
+triggerSave =
+  fireDebouncedQuery' (Milliseconds 500.0) _saveTrigger SaveNotebook
 
 -- | Saves the notebook as JSON, using the current values present in the state.
-saveNotebook ∷ Unit → NotebookDSL Unit
-saveNotebook _ = H.get >>= \st → do
-  unless (isUnsaved st ∧ isNewExploreNotebook st) do
-    for_ st.path \path → do
+saveNotebook ∷ NotebookDSL Unit
+saveNotebook = H.get >>= \st → do
+  if isUnsaved st ∧ isNewExploreNotebook st
+    -- If its an unsaved Explore notebook, it is safe to go ahead and run it.
+    then runPendingCards
+    else do
       cards ← catMaybes <$> for (List.fromList st.cards) \card →
         H.query' cpCard (CardSlot card.id)
           $ left
           $ H.request (SaveCard card.id card.ty)
 
-      let json = Model.encode { cards, dependencies: st.dependencies }
+      let json = Model.encode { name: st.name, cards, dependencies: st.dependencies }
 
-      savedName ← runExceptT case st.name of
-        This name → ExceptT $ save path name json
-        That name → do
-          newName ← ExceptT $ getNewName' path name
-          ExceptT $ save path newName json
-        Both oldName newName → do
-          ExceptT $ save path oldName json
-          if newName ≡ nameFromDirName oldName
-            then pure oldName
-            else ExceptT $ rename path oldName newName
+      for_ st.path \path → do
+        deckId ← runExceptT do
+          i ← ExceptT $ genId path st.id
+          ExceptT $ save path i json
+          pure i
 
-      case savedName of
-        Left err →
-          -- TODO: do something to notify the user saving failed
-          pure unit
-        Right savedName' → do
-          H.modify (_name .~ This savedName')
-          -- We need to get the modified version of the notebook state.
-          H.gets notebookPath >>= traverse_ \path' →
-            let notebookHash =
-                  case st.viewingCard of
-                    Nothing →
-                      mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
-                    Just cid →
-                      mkNotebookCardHash path' cid st.accessType st.globalVarMap
-            in H.fromEff $ locationObject >>= Location.setHash notebookHash
+        case deckId of
+          Left err → do
+            -- TODO: do something to notify the user saving failed
+            pure unit
+          Right deckId' → do
+            H.modify (_id .~ Just deckId')
 
-      pure unit
+            -- runPendingCards would be deffered if there had previously been
+            -- no `deckPath`. We need to flush the queue.
+            when (isNothing $ deckPath st) runPendingCards
+
+            -- We need to get the modified version of the notebook state.
+            H.gets deckPath >>= traverse_ \path' →
+              let notebookHash =
+                    case st.viewingCard of
+                      Nothing →
+                        mkNotebookHash path' (NA.Load st.accessType) st.globalVarMap
+                      Just cid →
+                        mkNotebookCardHash path' cid st.accessType st.globalVarMap
+              in H.fromEff $ locationObject >>= Location.setHash notebookHash
 
   where
 
   isUnsaved ∷ State → Boolean
-  isUnsaved = isNothing ∘ notebookPath
+  isUnsaved = isNothing ∘ deckPath
 
   isNewExploreNotebook ∷ State → Boolean
-  isNewExploreNotebook { name, cards } =
+  isNewExploreNotebook { cards } =
     let
       cardArrays = List.toUnfoldable (map _.ty cards)
-      nameHasntBeenModified = theseRight name ≡ Just Config.newNotebookName
     in
-      nameHasntBeenModified
-      ∧ (cardArrays ≡ [ OpenResource ] ∨ cardArrays ≡ [ OpenResource, JTable ])
+      cardArrays ≡ [ OpenResource ] ∨ cardArrays ≡ [ OpenResource, JTable ]
 
   -- Finds a new name for a notebook in the specified parent directory, using
   -- a name value as a basis to start with.
@@ -572,12 +552,14 @@ saveNotebook _ = H.get >>= \st → do
     let baseName = name ⊕ "." ⊕ Config.notebookExtension
     in map Pathy.DirName <$> Quasar.getNewName dir baseName
 
+  genId ∷ DirPath → Maybe DeckId → NotebookDSL (Either Exn.Error DeckId)
+  genId path deckId = case deckId of
+    Just id' → pure $ Right id'
+    Nothing → map DeckId <$> NB.fresh (path </> Pathy.file "index")
+
   -- Saves a notebook and returns the name it was saved as.
-  save ∷ DirPath → Pathy.DirName → Json → NotebookDSL (Either Exn.Error Pathy.DirName)
-  save dir name json = do
-    let notebookPath = dir </> Pathy.dir' name </> Pathy.file "index"
-    Quasar.save notebookPath json
-    pure (Right name)
+  save ∷ DirPath → DeckId → Json → NotebookDSL (Either Exn.Error Unit)
+  save dir deckId json = Quasar.save (deckIndex dir deckId) json
 
   -- Renames a notebook and returns the new name it was changed to.
   rename
@@ -598,3 +580,6 @@ nameFromDirName ∷ Pathy.DirName → String
 nameFromDirName dirName =
   let name = Pathy.runDirName dirName
   in Str.take (Str.length name - Str.length Config.notebookExtension - 1) name
+
+deckIndex ∷ DirPath → DeckId → FilePath
+deckIndex path deckId = path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
