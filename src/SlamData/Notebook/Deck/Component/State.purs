@@ -35,6 +35,7 @@ module SlamData.Notebook.Deck.Component.State
   , _runTrigger
   , _globalVarMap
   , _pendingCards
+  , _failingCards
   , _stateMode
   , _backsided
   , addCard
@@ -51,6 +52,8 @@ module SlamData.Notebook.Deck.Component.State
   , cardsOfType
   , fromModel
   , deckPath
+
+  , virtualState
   ) where
 
 import SlamData.Prelude
@@ -123,6 +126,7 @@ type State =
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , pendingCards ∷ S.Set CardId
+  , failingCards ∷ S.Set CardId
   , globalVarMap ∷ Port.VarMap
   , stateMode ∷ StateMode
   , backsided ∷ Boolean
@@ -152,6 +156,7 @@ initialDeck browserFeatures =
   , globalVarMap: SM.empty
   , runTrigger: Nothing
   , pendingCards: S.empty
+  , failingCards: S.empty
   , stateMode: Ready
   , backsided: false
   }
@@ -216,6 +221,10 @@ _globalVarMap = lens _.globalVarMap _{globalVarMap = _}
 _pendingCards ∷ LensP State (S.Set CardId)
 _pendingCards = lens _.pendingCards _{pendingCards = _}
 
+-- | The cards which currently have errors.
+_failingCards ∷ LensP State (S.Set CardId)
+_failingCards = lens _.failingCards _{failingCards = _}
+
 -- | The "state mode" used to track whether the notebook is ready, loading, or
 -- | if an error has occurred while loading.
 _stateMode ∷ LensP State StateMode
@@ -242,7 +251,7 @@ addCard' cardType parent st =
     cardId = CardId st.fresh
     newState = st
       { fresh = st.fresh + 1
-      , cards = st.cards `L.snoc` mkCardDef cardType cardId
+      , cards = st.cards `L.snoc` mkCardDef cardType cardId st
       , activeCardId = Just cardId
       , cardTypes = M.insert cardId cardType st.cardTypes
       , dependencies =
@@ -250,17 +259,39 @@ addCard' cardType parent st =
       }
   in
     Tuple newState cardId
+
+-- | Insert an error card as a child to a specified card, and reassociate all
+-- | its children as children of the error card.
+insertErrorCard ∷ CardId → State → State
+insertErrorCard parentId st =
+  st
+    { cards =
+        fromMaybe st.cards do
+          parentAddr ← L.findIndex (\c → c.id ≡ parentId) st.cards
+          let errorCard = mkCardDef ErrorCard cardId st
+          L.insertAt (parentAddr + 1) errorCard st.cards
+    , cardTypes = M.insert cardId ErrorCard st.cardTypes
+    , dependencies =
+        let
+          children = S.toList $ findChildren parentId st
+          updates = children <#> \childId → M.insert childId cardId
+        in foldr (∘) id updates $ M.insert cardId parentId st.dependencies
+    }
   where
-  mkCardDef ∷ CardType → CardId → CardDef
-  mkCardDef cardType cardId =
-    let component = cardTypeComponent cardType cardId st.browserFeatures
-        initialState =
-          H.parentState initialCardState
-            { accessType = st.accessType }
-    in { id: cardId
-       , ty: cardType
-       , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
-       }
+    -- The -1 index is reserved for the error card.
+    cardId = CardId (-1)
+
+mkCardDef ∷ CardType → CardId → State → CardDef
+mkCardDef cardType cardId st =
+  { id: cardId
+  , ty: cardType
+  , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
+  }
+  where
+  component = cardTypeComponent cardType cardId st.browserFeatures
+  initialState =
+    H.parentState initialCardState
+      { accessType = st.accessType }
 
 cardTypeComponent ∷ CardType → CardId → BrowserFeatures → CardComponent
 cardTypeComponent (Ace mode) _ _ = aceComponent { mode, evaluator, setup }
@@ -372,6 +403,25 @@ cardsOfType cardType =
        then Just cid
        else Nothing
 
+-- | Equip the state for presentation by inserting Error cards
+-- | in the appropriate places.
+virtualState ∷ State → State
+virtualState st =
+  case findFirst hasError st.cards of
+    Just c → insertErrorCard c.id st
+    Nothing → st
+  where
+
+  -- in case you're wondering, Data.Foldable.find does not find the *first*
+  -- satisfying element in the list! This took me a long time to figure out.
+  findFirst ∷ ∀ a. (a → Boolean) → List a → Maybe a
+  findFirst p xs =
+    L.findIndex p xs
+      >>= L.index xs
+
+  hasError ∷ CardDef → Boolean
+  hasError c = S.member c.id st.failingCards
+
 -- | Adds a card to the set of cards that are enqueued to run.
 -- |
 -- | If the card is a descendant of an card that has already been enqueued this
@@ -424,6 +474,7 @@ fromModel browserFeatures path deckId { cards, dependencies, name } =
     , globalVarMap: SM.empty
     , runTrigger: Nothing
     , pendingCards: S.empty
+    , failingCards: S.empty
     , stateMode: Loading
     , backsided: false
     } ∷ State)

@@ -18,7 +18,7 @@ module SlamData.Notebook.Deck.Component
   ( comp
   , initialState
   , module SlamData.Notebook.Deck.Component.Query
-  , module SlamData.Notebook.Deck.Component.State
+  , module DCS
   ) where
 
 import SlamData.Prelude
@@ -31,6 +31,7 @@ import Control.UI.Browser (newTab, locationObject)
 import Data.Argonaut (Json)
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures)
+import Data.Lens as Lens
 import Data.Lens ((.~), (%~), (^?))
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as List
@@ -69,7 +70,8 @@ import SlamData.Notebook.Card.Port (Port(..))
 import SlamData.Notebook.Deck.BackSide.Component as Back
 import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildState, ChildSlot, CardSlot(..))
 import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
-import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _id, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard,  cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, deckPath, removeCards, findLast, findLastCardType)
+
+import SlamData.Notebook.Deck.Component.State as DCS
 import SlamData.Notebook.Deck.DeckId (DeckId(..), deckIdToString)
 import SlamData.Notebook.Deck.Model as Model
 import SlamData.Notebook.Model as NB
@@ -81,18 +83,23 @@ import SlamData.Render.CSS as CSS
 import Utils.Path (DirPath, FilePath)
 
 type NotebookHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
-type NotebookDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
+type NotebookDSL = H.ParentDSL DCS.State ChildState Query ChildQuery Slam ChildSlot
 
-initialState ∷ BrowserFeatures → StateP
-initialState fs = H.parentState $ initialDeck fs
+initialState ∷ BrowserFeatures → DCS.StateP
+initialState fs = H.parentState $ DCS.initialDeck fs
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just peek }
+comp ∷ H.Component DCS.StateP QueryP Slam
+comp =
+  H.parentComponent
+    { render: render ∘ DCS.virtualState
+    , eval
+    , peek: Just peek
+    }
 
-render ∷ State → NotebookHTML
+render ∷ DCS.State → NotebookHTML
 render state =
   case state.stateMode of
-    Loading →
+    DCS.Loading →
       HH.div
         [ HP.classes [ B.alert, B.alertInfo ] ]
         [ HH.h1
@@ -102,7 +109,7 @@ render state =
           -- otherwise the various nested components won't initialise correctly
         , renderCards false
         ]
-    Ready →
+    DCS.Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div_
         $ [ renderCards $ not state.backsided
@@ -115,7 +122,7 @@ render state =
 --            [ HH.text "Flip" ]
           ]
 
-    Error err →
+    DCS.Error err →
       HH.div
         [ HP.classes [ B.alert, B.alertDanger ] ]
         [ HH.h1
@@ -186,15 +193,14 @@ eval (RunActiveCard next) = do
   (maybe (pure unit) runCard =<< H.gets (_.activeCardId)) $> next
 eval (LoadNotebook fs dir deckId next) = do
   state ← H.get
-  H.modify (_stateMode .~ Loading)
+  H.modify (DCS._stateMode .~ DCS.Loading)
   json ← Quasar.load $ deckIndex dir deckId
   case Model.decode =<< json of
     Left err → do
       H.fromAff $ log err
-      H.modify (_stateMode .~
-                Error "There was a problem decoding the saved notebook")
+      H.modify $ DCS._stateMode .~ DCS.Error "There was a problem decoding the saved notebook"
     Right model →
-      case fromModel fs (Just dir) (Just deckId) model of
+      case DCS.fromModel fs (Just dir) (Just deckId) model of
         Tuple cards st → do
           H.set st
           forceRerender'
@@ -207,16 +213,16 @@ eval (LoadNotebook fs dir deckId next) = do
           -- We only need to run the root node in each subgraph, as doing so
           -- will result in all child nodes being run also as the outputs
           -- propagate down each subgraph.
-          traverse_ runCard $ nub $ flip findRoot st <$> ranCards
-          H.modify (_stateMode .~ Ready)
+          traverse_ runCard $ nub $ flip DCS.findRoot st <$> ranCards
+          H.modify $ DCS._stateMode .~ DCS.Ready
   updateNextActionCard
   pure next
 
 eval (ExploreFile fs res next) = do
-  H.set $ initialDeck fs
+  H.set $ DCS.initialDeck fs
   H.modify
-    $ (_path .~ Pathy.parentDir res)
-    ∘ (addCard OpenResource Nothing)
+    $ (DCS._path .~ Pathy.parentDir res)
+    ∘ (DCS.addCard OpenResource Nothing)
   forceRerender'
   H.query' cpCard (CardSlot zero)
     $ right
@@ -234,15 +240,15 @@ eval (ExploreFile fs res next) = do
   updateNextActionCard
   pure next
 eval (Publish next) = do
-  H.gets deckPath >>= \mpath →
+  H.gets DCS.deckPath >>= \mpath →
     for_ mpath $ H.fromEff ∘ newTab ∘ flip mkNotebookURL (NA.Load ReadOnly)
   pure next
 eval (Reset fs dir deckId next) = do
-  let nb = initialDeck fs
+  let nb = DCS.initialDeck fs
   H.set $ nb { id = deckId, path = Just dir }
   pure next
 eval (SetName name next) =
-  H.modify (_name .~ Just name) $> next
+  H.modify (DCS._name .~ Just name) $> next
 eval (SetAccessType aType next) = do
   cids ← map Map.keys $ H.gets _.cardTypes
   for_ cids \cardId →
@@ -251,29 +257,29 @@ eval (SetAccessType aType next) = do
       $ left
       $ H.action
       $ SetCardAccessType aType
-  H.modify (_accessType .~ aType)
+  H.modify $ DCS._accessType .~ aType
   unless (isEditable aType)
-    $ H.modify (_backsided .~ false)
+    $ H.modify (DCS._backsided .~ false)
   pure next
-eval (GetNotebookPath k) = k <$> H.gets deckPath
-eval (SetViewingCard mbcid next) = H.modify (_viewingCard .~ mbcid) $> next
+eval (GetNotebookPath k) = k <$> H.gets DCS.deckPath
+eval (SetViewingCard mbcid next) = H.modify (DCS._viewingCard .~ mbcid) $> next
 eval (SaveNotebook next) = saveNotebook $> next
 eval (RunPendingCards next) = do
   -- Only run pending cards if we have a deckPath. Some cards run with the
   -- assumption that the deck is saved to disk.
-  H.gets deckPath >>= traverse_ \_ → runPendingCards
+  H.gets DCS.deckPath >>= traverse_ \_ → runPendingCards
   pure next
 eval (GetGlobalVarMap k) = k <$> H.gets _.globalVarMap
 eval (SetGlobalVarMap m next) = do
   st ← H.get
   when (m ≠ st.globalVarMap) do
-    H.modify (_globalVarMap .~ m)
-    traverse_ runCard $ cardsOfType API st
+    H.modify $ DCS._globalVarMap .~ m
+    traverse_ runCard $ DCS.cardsOfType API st
   pure next
-eval (FindCardParent cid k) = k <$> H.gets (findParent cid)
-eval (GetCardType cid k) = k <$> H.gets (getCardType cid)
-eval (FlipDeck next) = H.modify (_backsided %~ not) $> next
-eval (GetActiveCardId k) = map k $ H.gets findLast
+eval (FindCardParent cid k) = k <$> H.gets (DCS.findParent cid)
+eval (GetCardType cid k) = k <$> H.gets (DCS.getCardType cid)
+eval (FlipDeck next) = H.modify (DCS._backsided %~ not) $> next
+eval (GetActiveCardId k) = map k $ H.gets DCS.findLast
 
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → NotebookDSL Unit
@@ -288,17 +294,17 @@ peekBackSide (Back.UpdateFilter _ _) = pure unit
 peekBackSide (Back.DoAction action _) = case action of
   Back.Trash → do
     activeId ← H.gets _.activeCardId
-    lastId ← H.gets findLast
+    lastId ← H.gets DCS.findLast
     for_ (activeId <|> lastId) \trashId → do
-      descendants ← H.gets (findDescendants trashId)
-      H.modify $ removeCards (S.insert trashId descendants)
+      descendants ← H.gets $ DCS.findDescendants trashId
+      H.modify ∘ DCS.removeCards $ S.insert trashId descendants
       triggerSave
       updateNextActionCard
-      H.modify (_backsided .~ false)
+      H.modify $ DCS._backsided .~ false
   Back.Share → pure unit
   Back.Embed → pure unit
   Back.Publish →
-    H.gets deckPath >>= \mpath →
+    H.gets DCS.deckPath >>= \mpath →
       for_ mpath $ H.fromEff ∘ newTab ∘ flip mkNotebookURL (NA.Load ReadOnly)
   Back.Mirror → pure unit
   Back.Wrap → pure unit
@@ -313,25 +319,25 @@ peekCards (CardSlot cardId) q =
 peekCard ∷ ∀ a. CardId → CardQuery a → NotebookDSL Unit
 peekCard cardId q = case q of
   RunCard _ → runCard cardId
-  RefreshCard _ → runCard ∘ findRoot cardId =<< H.get
+  RefreshCard _ → runCard ∘ DCS.findRoot cardId =<< H.get
   TrashCard _ → do
-    descendants ← H.gets (findDescendants cardId)
-    H.modify $ removeCards (S.insert cardId descendants)
+    descendants ← H.gets $ DCS.findDescendants cardId
+    H.modify ∘ DCS.removeCards $ S.insert cardId descendants
     triggerSave
     updateNextActionCard
   ToggleCaching _ →
     triggerSave
   ShareCard _ → pure unit
   StopCard _ → do
-    H.modify $ _runTrigger .~ Nothing
-    H.modify $ _pendingCards %~ S.delete cardId
+    H.modify $ DCS._runTrigger .~ Nothing
+    H.modify $ DCS._pendingCards %~ S.delete cardId
     runPendingCards
   _ → pure unit
 
 
 updateNextActionCard ∷ NotebookDSL Unit
 updateNextActionCard = do
-  cid ← H.gets findLast
+  cid ← H.gets DCS.findLast
   mbMessage ← case cid of
     Just cardId → do
       out ←
@@ -351,7 +357,7 @@ updateNextActionCard = do
     $ H.action
     $ Next.SetMessage mbMessage
 
-  lastCardType ← H.gets findLastCardType
+  lastCardType ← H.gets DCS.findLastCardType
   queryNextActionCard
     $ H.action
     $ Next.SetAvailableTypes
@@ -369,20 +375,20 @@ updateNextActionCard = do
 
 createCard ∷ CardType → NotebookDSL Unit
 createCard cardType = do
-  cid ← H.gets findLast
+  cid ← H.gets DCS.findLast
   s ← H.get
   case cid of
     Nothing →
-      H.modify (addCard cardType Nothing)
+      H.modify $ DCS.addCard cardType Nothing
     Just cardId → do
-      Tuple st newCardId ← H.gets $ addCard' cardType (Just cardId)
+      Tuple st newCardId ← H.gets $ DCS.addCard' cardType (Just cardId)
       H.set st
       forceRerender'
       input ←
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
 
       for_ input \input' → do
-        path ← H.gets deckPath
+        path ← H.gets DCS.deckPath
         let setupInfo = { notebookPath: path, inputPort: input', cardId: newCardId }
         void
           $ H.query' cpCard  (CardSlot newCardId)
@@ -441,7 +447,7 @@ runPendingCards = do
   where
   runCard' ∷ CardId → NotebookDSL Unit
   runCard' cardId = do
-    mbParentId ← H.gets (findParent cardId)
+    mbParentId ← H.gets $ DCS.findParent cardId
     case mbParentId of
       -- if there's no parent there's no input port value to pass through
       Nothing → updateCard Nothing cardId
@@ -454,7 +460,7 @@ runPendingCards = do
           Nothing → pure unit
           -- if there's a parent and an output, pass it on as this card's input
           Just p → updateCard (Just p) cardId
-    H.modify $ _pendingCards %~ S.delete cardId
+    H.modify $ DCS._pendingCards %~ S.delete cardId
     triggerSave
 
 -- | Enqueues the card with the specified ID in the set of cards that are
@@ -462,15 +468,15 @@ runPendingCards = do
 -- | actually run.
 runCard ∷ CardId → NotebookDSL Unit
 runCard cardId = do
-  H.modify (addPendingCard cardId)
-  fireDebouncedQuery' (Milliseconds 500.0) _runTrigger RunPendingCards
+  H.modify (DCS.addPendingCard cardId)
+  fireDebouncedQuery' (Milliseconds 500.0) DCS._runTrigger RunPendingCards
 
 -- | Updates the evaluated value for a card by running it with the specified
 -- | input and then runs any cards that depend on the card's output with the
 -- | new result.
 updateCard ∷ Maybe Port → CardId → NotebookDSL Unit
 updateCard inputPort cardId = do
-  path ← H.gets deckPath
+  path ← H.gets DCS.deckPath
   globalVarMap ← H.gets _.globalVarMap
   let input = { notebookPath: path, inputPort, cardId, globalVarMap }
   result ←
@@ -479,18 +485,26 @@ updateCard inputPort cardId = do
       $ left
       $ H.request (UpdateCard input)
 
+  H.modify ∘ Lens.over DCS._failingCards $
+    case result of
+      Just (CardError msg) → S.insert cardId
+      _ → S.delete cardId
+  forceRerender'
+
   runCardDescendants cardId (fromMaybe Blocked result)
   where
   runCardDescendants ∷ CardId → Port → NotebookDSL Unit
   runCardDescendants parentId value = do
-    children ← H.gets (findChildren parentId)
+    -- Crucially, we run the card descendents according to the virtual graph;
+    -- this enables the correct behavior of virtual cards, including the Error Card.
+    children ← H.gets $ DCS.findChildren parentId ∘ DCS.virtualState
     traverse_ (updateCard (Just value)) children
 
 -- | Triggers the H.query for autosave. This does not immediate perform the save
 -- | H.action, but instead enqueues a debounced H.query to trigger the actual save.
 triggerSave ∷ NotebookDSL Unit
 triggerSave =
-  fireDebouncedQuery' (Milliseconds 500.0) _saveTrigger SaveNotebook
+  fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger SaveNotebook
 
 -- | Saves the notebook as JSON, using the current values present in the state.
 saveNotebook ∷ NotebookDSL Unit
@@ -517,14 +531,14 @@ saveNotebook = H.get >>= \st → do
             -- TODO: do something to notify the user saving failed
             pure unit
           Right deckId' → do
-            H.modify (_id .~ Just deckId')
+            H.modify $ DCS._id .~ Just deckId'
 
             -- runPendingCards would be deffered if there had previously been
             -- no `deckPath`. We need to flush the queue.
-            when (isNothing $ deckPath st) runPendingCards
+            when (isNothing $ DCS.deckPath st) runPendingCards
 
             -- We need to get the modified version of the notebook state.
-            H.gets deckPath >>= traverse_ \path' →
+            H.gets DCS.deckPath >>= traverse_ \path' →
               let notebookHash =
                     case st.viewingCard of
                       Nothing →
@@ -535,10 +549,10 @@ saveNotebook = H.get >>= \st → do
 
   where
 
-  isUnsaved ∷ State → Boolean
-  isUnsaved = isNothing ∘ deckPath
+  isUnsaved ∷ DCS.State → Boolean
+  isUnsaved = isNothing ∘ DCS.deckPath
 
-  isNewExploreNotebook ∷ State → Boolean
+  isNewExploreNotebook ∷ DCS.State → Boolean
   isNewExploreNotebook { cards } =
     let
       cardArrays = List.toUnfoldable (map _.ty cards)
