@@ -31,6 +31,7 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
+import SlamData.Render.CSS as RC
 import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 import SlamData.Workspace.FormBuilder.Item.Component as Item
 
@@ -124,12 +125,12 @@ render { items } =
       -> FormBuilderHTML g
     renderTable items =
       HH.table
-        [ HP.classes [ HH.className "form-builder" ] ]
+        [ HP.classes [ HH.className "form-builder", RC.form ] ]
         [ HH.thead_
             [ HH.tr_
                 [ HH.th_ [ HH.text "Name" ]
                 , HH.th_ [ HH.text "Type" ]
-                , HH.th_ [ HH.text "Default" ]
+                , HH.th_ [ HH.text "Default value" ]
                 ]
             ]
         , HH.tbody_ $ L.fromList (renderItem <$> items)

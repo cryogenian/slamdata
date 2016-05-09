@@ -68,36 +68,21 @@ searchComponent =
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes
-        [ CSS.exploreCardEditor
-        , CSS.cardInput
+    [ HP.classes [ CSS.form, HH.className "sd-search-field" ] ]
+    [ HH.input
+        [ HP.inputType HP.InputText
+        , HP.placeholder "Input search string"
+        , HE.onValueInput $ HE.input \str → UpdateSearch str ⋙ right
+        , HP.value state.searchString
         ]
-    ]
-    [
-      HH.div
-        [ HP.classes [ CSS.fileListField, B.inputGroup ] ]
-        [ HH.input
-            [ HP.classes [ B.formControl, CSS.searchCardInput ]
-            , HP.placeholder "Input search string"
-            , HE.onValueInput $ HE.input \str → UpdateSearch str ⋙ right
-            , HP.value state.searchString
-            ]
-        , HH.img
-            [ HE.onClick (HE.input_ $ UpdateSearch "" ⋙ right)
-            , HP.class_ CSS.searchClear
-            , HP.src $ if state.running then "img/spin.gif" else "img/remove.svg"
-            ]
-        , HH.span
-            [ HP.class_ B.inputGroupBtn ]
-            [ HH.button
-                [ HP.classes [ B.btn, B.btnDefault, CSS.searchCardButton ]
-                , HP.buttonType HP.ButtonButton
-                , HE.onClick (HE.input_ $ NC.NotifyRunCard ⋙ left)
-                ]
-                [ RC.glyph B.glyphiconSearch
-                ]
-            ]
+    , HH.button
+        [ HP.class_ (HH.className "sd-search-state-btn")
+        , HE.onClick $ HE.input_ (UpdateSearch "" ⋙ right)
         ]
+        [ HH.img [ HP.src $ if state.running then "img/spin.gif" else "img/remove.svg" ] ]
+    , HH.button
+        [ HE.onClick $ HE.input_ (NC.NotifyRunCard ⋙ left) ]
+        [ RC.glyph B.glyphiconSearch ]
     ]
 
 eval ∷ Natural Query DSL

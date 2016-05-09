@@ -95,7 +95,7 @@ render
   → MarkdownHTML Unit
 render config _ =
   HH.div
-    [ HP.class_ CSS.markdownOutput ]
+    [ HP.class_ CSS.form ]
     [ HH.slot unit \_ →
         { component: SD.slamDownComponent config
         , initialState: SD.emptySlamDownState

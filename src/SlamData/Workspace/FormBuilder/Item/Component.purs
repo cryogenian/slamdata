@@ -30,7 +30,6 @@ import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Workspace.FormBuilder.Item.Component.State (Model, State, EqModel(..), _defaultValue, _fieldType, _model, _name, decode, defaultValueToVarMapValue, emptyValueOfFieldType, encode, initialModel, initialState, runEqModel)
@@ -65,17 +64,14 @@ render { model } =
   where
   nameField :: ItemHTML
   nameField =
-    HH.label_
-    [ HH.input
+    HH.input
       [ HP.inputType HP.InputText
       , HP.title "Field Name"
       , ARIA.label "API variable name"
       , HP.value model.name
-      , HE.onValueChange (HE.input \str -> Update <<< UpdateName str)
-      , HP.classes [ B.formControl ]
+      , HE.onValueInput (HE.input \str -> Update <<< UpdateName str)
       , HP.placeholder "API variable name"
       ]
-    ]
 
   quotedName :: String -> String
   quotedName "" = ""
@@ -83,14 +79,11 @@ render { model } =
 
   typeField :: ItemHTML
   typeField =
-    HH.label_
-    [ HH.select
+    HH.select
       [ HE.onValueChange (HE.input \str -> Update <<< UpdateFieldType str)
-      , HP.classes [ B.formControl ]
       , ARIA.label $ "Type of " <> (quotedName model.name) <> " API variable"
       ]
       (typeOption <$> allFieldTypes)
-    ]
 
   typeOption
     :: FieldType
@@ -104,43 +97,39 @@ render { model } =
   defaultField =
     case model.fieldType of
       BooleanFieldType ->
-        HH.label_
-        [ HH.input
-            [ HP.inputType inputType
-            , HP.checked
-                $ fromMaybe false
-                $ Lens.preview _StringBoolean
-                =<< model.defaultValue
-            , HE.onChecked
-              $ HE.input \str ->
-                  Update <<< UpdateDefaultValue (Lens.review _StringBoolean str)
-            , ARIA.label
-                $ "Default value of "
-                <> (quotedName model.name)
-                <> " API variable is \"true\""
-            ]
-        , HH.text model.name
-        ]
-      _ ->
-        HH.label_
+        HH.label
+          [ HP.class_ (HH.className "sd-option") ]
           [ HH.input
-             [ HP.inputType inputType
-             , HP.classes [ B.formControl ]
-             , HP.value
-                 $ fromMaybe "" model.defaultValue
-             , HE.onValueChange
-                 $ HE.input \str ->
-                   Update <<< UpdateDefaultValue str
-             , ARIA.label lbl
-             , HP.placeholder lbl
-             ]
+              [ HP.inputType inputType
+              , HP.checked
+                  $ fromMaybe false
+                  $ Lens.preview _StringBoolean
+                  =<< model.defaultValue
+              , HE.onChecked
+                $ HE.input \str ->
+                    Update <<< UpdateDefaultValue (Lens.review _StringBoolean str)
+              , ARIA.label
+                  $ "Default value of "
+                  <> (quotedName model.name)
+                  <> " API variable is \"true\""
+              ]
+          , HH.span_ [ HH.text model.name ]
           ]
+      _ ->
+          HH.input
+            [ HP.inputType inputType
+            , HP.value (fromMaybe "" model.defaultValue)
+            , HE.onValueInput
+                $ HE.input \str -> Update <<< UpdateDefaultValue str
+            , ARIA.label lbl
+            , HP.placeholder lbl
+            ]
+
     where
     lbl :: String
-    lbl =
-      "Default value for "
-      <> (quotedName model.name)
-      <> " API variable"
+    lbl
+      = "Default value"
+      <> if model.name /= "" then " for " <> (quotedName model.name) <> " API variable" else ""
     inputType =
       fieldTypeToInputType model.fieldType
 

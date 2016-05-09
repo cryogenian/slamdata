@@ -77,14 +77,10 @@ aceComponent {mode, evaluator, setup} = makeCardComponent
 
   aceSetup :: Editor -> Slam Unit
   aceSetup editor = liftEff do
-    Editor.setMinLines 4 editor
-    Editor.setMaxLines 10000 editor
-    Editor.setAutoScrollEditorIntoView true editor
     Editor.setTheme "ace/theme/chrome" editor
     Editor.setEnableLiveAutocompletion true editor
     Editor.setEnableBasicAutocompletion true editor
-    session <- Editor.getSession editor
-    Session.setMode (aceMode mode) session
+    Session.setMode (aceMode mode) =<< Editor.getSession editor
 
   eval :: Natural CardEvalQuery AceDSL
   eval (NotifyRunCard next) = pure next

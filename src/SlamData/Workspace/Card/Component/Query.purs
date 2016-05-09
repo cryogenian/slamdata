@@ -84,8 +84,6 @@ import SlamData.Workspace.Card.Error.Component.Query as Error
 -- | - `ToggleMessages` is used to toggle the visibility of the status/error
 -- |   messages generated while evaluating the card.
 -- | - `ToggleCaching` is used to toggle the use of the views & query APIs.
--- | - `ShareCard` is captured by the deck and should raise a dialog with a
--- |   share/embed message appropriate for the card.
 data CardQuery a
   = RunCard a
   | StopCard a
@@ -95,7 +93,6 @@ data CardQuery a
   | ToggleCollapsed a
   | ToggleMessages a
   | ToggleCaching a
-  | ShareCard a
   | Tick Milliseconds a
   | GetOutput (Maybe Port → a)
   | SaveCard CardId CardType (Card.Model → a)

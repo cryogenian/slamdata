@@ -16,6 +16,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.JTable.Component.State
   ( State
+  , Result
   , Input
   , initialState
   , _input
@@ -38,12 +39,13 @@ module SlamData.Workspace.Card.JTable.Component.State
 
 import SlamData.Prelude
 
+import Data.Argonaut (Json)
 import Data.Foldable (maximum)
 import Data.Int as Int
 import Data.Lens ((^?), (?~), LensP, lens, _Just)
 
 import SlamData.Workspace.Card.JTable.Component.Query (PageStep(..))
-import SlamData.Workspace.Card.JTable.Model (Model, Result)
+import SlamData.Workspace.Card.JTable.Model (Model)
 
 import Utils.Path (FilePath)
 
@@ -54,6 +56,13 @@ type State =
   , page :: Maybe (Either String Int)
   , pageSize :: Maybe (Either String Int)
   , isEnteringPageSize :: Boolean
+  }
+
+-- | The current result value being displayed.
+type Result =
+  { json :: Json
+  , page :: Int
+  , pageSize :: Int
   }
 
 -- | An empty initial state for the JTable card component.
@@ -175,7 +184,14 @@ setPageSize :: String -> State -> State
 setPageSize size = _pageSize ?~ Left size
 
 toModel :: State -> Model
-toModel st = { input: Nothing, result: Nothing }
+toModel st =
+  { page: (_.page <$> st.result) <|> (either (const Nothing) Just =<< st.page)
+  , pageSize: (_.pageSize <$> st.result) <|> (either (const Nothing) Just =<< st.pageSize)
+  }
 
 fromModel :: Model -> State
-fromModel _ = initialState
+fromModel m =
+  spy $ initialState
+    { page = Right <$> m.page
+    , pageSize = Right <$> m.pageSize
+    }

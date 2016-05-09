@@ -1,0 +1,57 @@
+.sd-form input[type=text],
+.sd-form input[type=number],
+.sd-form input[type=date],
+.sd-form input[type=time],
+.sd-form input[type=datetime-local],
+.sd-form select,
+.sd-form-input {
+  height: 2rem;
+  box-sizing: border-box;
+  margin: 0.5rem 0;
+  padding: 0 8px;
+  border: 1px solid #ccc;
+  box-shadow: inset 2px 3px 6px -3px @shade-tint;
+  background: #fff;
+}
+
+label.sd-option span {
+  margin-left: 0.5rem;
+}
+
+.sd-form button,
+.sd-form-button {
+  height: 2rem;
+  min-width: 2rem;
+  margin: 0.5rem 0;
+  border: 1px solid #ccc;
+  padding: 0 0.5rem;
+  background: #eee;
+  background-image: linear-gradient(to top, @shade-tint, transparent);
+
+  &:disabled {
+    background: #fff;
+    i.glyphicon {
+      color: #aaa;
+    }
+  }
+
+  &:not(:disabled):hover {
+    background-color: #ddd;
+  }
+
+  &:not(:disabled):active {
+    background-image: linear-gradient(to bottom, @shade-tint, transparent);
+  }
+
+  i.glyphicon { // BS
+    top: 2px;
+    margin-left: 1px;
+    color: #444;
+  }
+}
+
+.sd-form-button-group {
+  button+button {
+    border-left: 0px;
+  }
+}

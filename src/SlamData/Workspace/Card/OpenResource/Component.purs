@@ -32,15 +32,18 @@ import Data.Lens ((?~), (.~))
 import Data.Path.Pathy (printPath, peel)
 
 import Halogen as H
+import Halogen.Component.Utils as HU
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.Component.Utils as HU
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.FS as Quasar
+import SlamData.Render.Common (glyph)
+import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery (liftWithCanceler')
 import SlamData.Workspace.Card.Common.EvalQuery as Eq
@@ -48,16 +51,11 @@ import SlamData.Workspace.Card.Component as NC
 import SlamData.Workspace.Card.OpenResource.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _loading)
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Render.Common (glyph)
-import SlamData.Render.CSS as Rc
-
-import SlamData.Quasar.FS as Quasar
 
 import Utils.Path as PU
 
 type ORHTML = H.ComponentHTML QueryP
 type ORDSL = H.ComponentDSL State QueryP Slam
-
 
 openResourceComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
 openResourceComponent =
@@ -77,28 +75,25 @@ openResourceComponent =
 render ∷ State → ORHTML
 render state =
   HH.div
-    [ HP.classes ([ Rc.openResourceCard ]
-                  ⊕ (Rc.loading <$ guard state.loading))
-    ]
+    [ HP.classes (Rc.loading <$ guard state.loading) ]
     [ HH.div [ HP.classes [ Rc.openResourceCardMenu ] ]
       [ HH.button
-          ([ HP.classes [ B.btn, B.btnDefault ] ]
-             ⊕ case parentDir of
+          ([ HP.class_ Rc.formButton
+           ] ⊕ case parentDir of
                 Nothing →
                   [ HP.disabled true ]
                 Just r →
-                  [ HE.onClick (HE.input_ (right ∘ (ResourceSelected r))) ]
+                  [ HE.onClick (HE.input_ (right ∘ (ResourceSelected r)))
+                  , HP.title "Up a directory"
+                  , ARIA.label "Up a directory"
+                  ]
           )
-          [ HH.text "Back" ]
+          [ glyph B.glyphiconChevronUp ]
       , HH.p
           [ ARIA.label $ "Selected resource: " ⊕ selectedLabel ]
           [ HH.text selectedLabel ]
       ]
-    , HH.div
-      [ HP.classes [ B.listGroup
-                   ]
-      ]
-      $ map renderItem state.items
+    , HH.ul_ (map renderItem state.items)
     ]
 
   where
@@ -109,21 +104,21 @@ render state =
     <|> (pure $ printPath state.browsing)
 
   parentDir ∷ Maybe R.Resource
-  parentDir = (R.Directory ∘ fst) <$> peel state.browsing
+  parentDir = R.Directory ∘ fst <$> peel state.browsing
 
   renderItem ∷ R.Resource → ORHTML
   renderItem r =
-    HH.div
-      [ HP.classes ( [ B.listGroupItem ]
-                     ⊕ ((guard (Just (R.getPath r) ≡ (Right <$> state.selected))) $> B.active)
-                     ⊕ ((guard (R.hiddenTopLevel r)) $> Rc.itemHidden))
-      , HE.onClick (HE.input_ (right ∘ (ResourceSelected r)))
+    HH.li
+      [ HP.classes
+          $ ((guard (Just (R.getPath r) ≡ (Right <$> state.selected))) $> B.active)
+          ⊕ ((guard (R.hiddenTopLevel r)) $> Rc.itemHidden)
+      , HE.onClick (HE.input_ (right ∘ ResourceSelected r))
       , ARIA.label $ "Select " ⊕ R.resourcePath r
       ]
       [ HH.a_
-        [ glyphForResource r
-        , HH.text $ R.resourceName r
-        ]
+          [ glyphForResource r
+          , HH.text $ R.resourceName r
+          ]
       ]
   glyphForResource ∷ R.Resource → ORHTML
   glyphForResource (R.File _) = glyph B.glyphiconFile

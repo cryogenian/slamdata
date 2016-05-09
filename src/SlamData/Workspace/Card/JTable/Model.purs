@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.JTable.Model
   ( Model
-  , Result
   , encode
   , decode
   ) where
@@ -25,43 +24,19 @@ import SlamData.Prelude
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 
-import SlamData.FileSystem.Resource (Resource)
-
 type Model =
-  { input :: Maybe Resource
-  , result :: Maybe Result
-  }
-
-type Result =
-  { json :: Json
-  , page :: Int
-  , pageSize :: Int
+  { page :: Maybe Int
+  , pageSize :: Maybe Int
   }
 
 encode :: Model -> Json
-encode m
-   = "input" := m.input
-  ~> "result" := (encodeResult <$> m.result)
-  ~> jsonEmptyObject
-
-decode :: Json -> Either String Model
-decode json = do
-  obj <- decodeJson json
-  { input: _, result: _ }
-    <$> obj .? "input"
-    <*> (traverse decodeResult =<< obj .? "result")
-
-encodeResult :: Result -> Json
-encodeResult r
-   = "json" := r.json
-  ~> "page" := r.page
+encode r
+   = "page" := r.page
   ~> "pageSize" := r.pageSize
   ~> jsonEmptyObject
 
-decodeResult :: Json -> Either String Result
-decodeResult json = do
-  obj <- decodeJson json
-  { json: _, page: _, pageSize: _ }
-    <$> obj .? "json"
-    <*> obj .? "page"
+decode :: Json -> Either String Model
+decode = decodeJson >=> \obj ->
+  { page: _, pageSize: _ }
+    <$> obj .? "page"
     <*> obj .? "pageSize"
