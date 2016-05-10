@@ -13,10 +13,12 @@ module Test.Feature
   , expectDownloadedTextFileToMatchFile
   , expectNotPresented
   , expectNotPresentedWithProperties
+  , expectNotPresentedNotRepeatedly
+  , expectNotPresentedWithPropertiesNotRepeatedly
   , expectPresented
   , expectPresentedWithProperties
-  , expectScreenshotToMatchAny
-  , expectScreenshotToMatchAnyWithProperties
+  , expectPresentedNotRepeatedly
+  , expectPresentedWithPropertiesNotRepeatedly
   , expectSelectValue
   , expectPresentedNotRepeatedly
   , hover

@@ -27,23 +27,15 @@ import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject)
-import Control.Monad.Aff.Free (fromEff)
-
-import CSS.Geometry (width)
-import CSS.Size (pct, Size(..), Rel, nil)
-import CSS.String (fromString)
-import CSS.Transform (transform, translate)
 
 import Data.Argonaut (Json)
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures)
-import Data.Int (toNumber)
 import Data.Lens as Lens
 import Data.Lens (LensP(), view, (.~), (%~), (?~), (^?))
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as List
 import Data.Map as Map
-import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
@@ -53,15 +45,12 @@ import Data.Time (Milliseconds(..))
 import Ace.Halogen.Component as Ace
 
 import DOM.HTML.Location as Location
-import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath, injSlot, injState)
 import Halogen.Component.Utils (forceRerender')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.CSS.Indexed (style)
 import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Indexed as HH
 import Halogen.Component.ChildPath (injSlot, injState)
 import Halogen.HTML.Properties.Indexed as HP
@@ -79,29 +68,29 @@ import SlamData.Notebook.Card.CardId (CardId(), runCardId, cardIdToString)
 import SlamData.Notebook.Card.CardType
   (CardType(..), AceMode(..), cardName, cardGlyph, autorun, nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..))
-import SlamData.Notebook.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery, initialCardState)
+import SlamData.Notebook.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
 import SlamData.Notebook.Card.Next.Component as Next
 import SlamData.Notebook.Card.OpenResource.Component as Open
 import SlamData.Notebook.Card.Port (Port(..))
 import SlamData.Notebook.Deck.BackSide.Component as Back
-import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildState, ChildSlot, CardSlot(..))
+import SlamData.Notebook.Deck.Common (NotebookHTML, NotebookDSL)
+import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildSlot, CardSlot(..))
 import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
 
 import SlamData.Notebook.Deck.Component.State as DCS
 import SlamData.Notebook.Deck.DeckId (DeckId(..), deckIdToString)
+import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard,  cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, notebookPath, removeCards, findLast, findLastCardType, cardIndexFromId, activeCardIndex, _initialSliderX, _initialSliderCardWidth, _sliderTransition, _sliderTranslateX, _sliderSelectedCardId, _nextActionCardElement)
+import SlamData.Notebook.Deck.Gripper as Gripper
 import SlamData.Notebook.Deck.Model as Model
 import SlamData.Notebook.Model as NB
+import SlamData.Notebook.Deck.Slider as Slider
 import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCardHash, mkNotebookURL)
 import SlamData.Quasar.Data (save, load) as Quasar
 import SlamData.Quasar.FS (move, getNewName) as Quasar
 import SlamData.Render.CSS as CSS
+
 import Utils.Debounced (debouncedEventSource)
 import Utils.Path (DirPath, FilePath)
-import Utils.DOM (getBoundingClientRect, offsetLeft)
-import Utils.CSS (transition)
-
-type NotebookHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
-type NotebookDSL = H.ParentDSL DCS.State ChildState Query ChildQuery Slam ChildSlot
 
 initialState ∷ BrowserFeatures → DCS.StateP
 initialState fs = H.parentState $ DCS.initialDeck fs
@@ -129,18 +118,12 @@ render state =
           -- is in the same place in both `Loading` and `Ready` states.
         , HH.div
             [ HP.key "deck-container" ]
-            [ renderCards false ]
+            [ Slider.render state $ not state.backsided ]
         ]
     DCS.Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div
-        ([ HP.class_ CSS.board ]
-           ⊕ (guard (isJust state.initialSliderX)
-                $> (HE.onMouseUp \e -> HEH.preventDefault $> H.action (StopSlidingAndSnap e)))
-           ⊕ (guard (isJust state.initialSliderX)
-                $> (HE.onMouseLeave \e -> HEH.stopPropagation $> HEH.preventDefault $> H.action (StopSlidingAndSnap e)))
-           ⊕ (guard (isJust state.initialSliderX)
-                $> (HE.onMouseMove $ HE.input UpdateSliderPosition)))
+        ([ HP.class_ CSS.board ] ++ Slider.containerProperties state)
         [ HH.div
             [ HP.class_ CSS.deck
             , HP.key "deck-container"
@@ -152,7 +135,7 @@ render state =
                 , HP.title "Flip deck"
                 ]
                 [ HH.text "" ]
-            , renderCards $ not state.backsided
+            , Slider.render state $ not state.backsided
             , renderBackside state.backsided
             ]
         ]
@@ -169,128 +152,24 @@ render state =
   renderBackside visible =
     HH.div
       ([ HP.classes [ CSS.cardSlider ]
-      , ARIA.hidden $ show $ not visible
-      ]
-      ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
+       , ARIA.hidden $ show $ not visible
+       ]
+         ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
       [ HH.div
           [ HP.classes [ CSS.card ]
-          , style $ cardWidth 1 true
+          , style $ Slider.cardWidthCSS 1
           ]
-          [ cardGripper false
-          , cardGripper true
-          , HH.slot' cpBackSide unit \_ →
-             { component: Back.comp
-             , initialState: Back.initialState
-             }
-          ]
+          (Gripper.renderGrippers
+             visible
+             (isJust state.initialSliderX)
+             (Gripper.gripperDefsForCardId state.cards state.activeCardId)
+             ⊕ [ HH.slot' cpBackSide unit \_ →
+                  { component: Back.comp
+                  , initialState: Back.initialState
+                  }
+               ]
+          )
       ]
-
-  renderCards visible =
-    -- The key here helps out virtual-dom: the entire subtree will be moved
-    -- when the loading message disappears, rather than being reconstructed in
-    -- the parent element
-    HH.div
-      ([ HP.key "notebook-cards"
-       , HP.classes [ CSS.cardSlider ]
-       , HE.onTransitionEnd $ HE.input_ StopSliderTransition
-       , style
-           $ (cardSliderWidth $ List.length state.cards + 1)
-           *> (cardSliderTransform (List.length state.cards + 1) (activeCardIndex state) state.sliderTranslateX)
-           *> (cardSliderTransition state.sliderTransition)
-       ]
-       ⊕ (guard (not visible) $> (HP.class_ CSS.invisible)))
-      []
-      -- ((List.fromList $ map (renderCard state) state.cards) ⊕ [ newCardMenu state ])
-
-  renderCard state cardDef =
-    HH.div
-    ([ HP.key ("card" ⊕ cardIdToString cardDef.id)
-     , HP.classes [ CSS.card ]
-     , style $ cardWidth (List.length state.cards + 1) false
-    ]
-     ⊕ foldMap (viewingStyle cardDef) state.viewingCard)
-    [ cardGripper false
-    , HH.Slot $ transformCardConstructor cardDef.ctor
-    ]
-
-  cardGripper last =
-    HH.div
-      [ HP.classes [ if last then CSS.cardGripperLast else CSS.cardGripper ]
-      , HE.onMouseDown \e -> HEH.preventDefault $> H.action (StartSliding e)
-      ]
-      []
-
-  --gripperLabel =
-  --  map $ either
-  --    (const "Drag right to access previous card")
-  --    (const "Drag left to access next card")
-
-  --gripperDef activeCardIndex cardIndex
-  --  | activeCardIndex == cardIndex = Just $ Left unit
-  --  | activeCardIndex == cardIndex + 1 = Just $ Right unit
-  --  | otherwise = Nothing
-
-  transformCardConstructor (H.SlotConstructor p l) =
-    H.SlotConstructor
-      (injSlot cpCard p)
-      (l <#> \def →
-        { component: H.transformChild cpCard def.component
-        , initialState: injState cpCard def.initialState
-        }
-      )
-
-  viewingStyle cardDef cid =
-    guard (not (cardDef.id ≡ cid))
-    $> (HP.class_ CSS.invisible)
-
-  shouldHideNextAction =
-    isJust state.viewingCard ∨ state.accessType ≡ ReadOnly
-
-  newCardMenu :: State -> NotebookHTML
-  newCardMenu state =
-    HH.div
-      ([ HP.key ("next-action-card")
-       , HP.classes [ CSS.card ]
-       , HP.ref (H.action <<< SetNextActionCardElement)
-       , style $ cardWidth (List.length state.cards + 1) true
-       ]
-       ⊕ (guard shouldHideNextAction $> (HP.class_ CSS.invisible))
-      )
-      [ cardGripper false
-      , cardGripper true
-      , HH.slot' cpCard (CardSlot top) \_ →
-         { component: Next.nextCardComponent
-         , initialState: H.parentState initialCardState
-         }
-      ]
-
-  cardWidthPct cardsCount =
-    100.0 / toNumber cardsCount
-
-  cardWidth cardsCount lastCard =
-    width $ calc
-      $ (show $ cardWidthPct cardsCount) ++ "%"
-      ++ " - " ++ (show $ nextCardGripperWidth lastCard) ++ "rem"
-
-  nextCardGripperWidth lastCard =
-    if lastCard then 0.0 else 1.5
-
-  cardSliderWidth cardsCount =
-    width $ pct $ 100.0 * toNumber cardsCount
-
-  cardSliderTransform cardCount activeCardIndex translateX =
-    transform $ translate (cardSliderTranslateX cardCount activeCardIndex translateX) nil
-
-  cardSliderTransition false = transition "none"
-  cardSliderTransition true = transition "all 0.33s"
-
-  cardSliderTranslateX cardCount activeCardIndex translateX =
-    calc
-      $ "(((-100% / " ++ show cardCount ++ ") + 1.5rem)"
-      ++ " * " ++ show activeCardIndex ++ ")"
-      ++ " + (" ++ show translateX ++ "px)"
-
-  calc s = Size $ fromString $ "calc(" ++ s ++ ")"
 
 eval ∷ Natural Query NotebookDSL
 eval (AddCard cardType next) = createCard cardType $> next
@@ -307,7 +186,6 @@ eval (LoadNotebook fs dir deckId next) = do
     Right model →
       case DCS.fromModel fs (Just dir) (Just deckId) model of
         Tuple cards st → do
-          Debug.Trace.traceAnyA "LoadNotebook"
           setDeckState st
           forceRerender'
           ranCards ← catMaybes <$> for cards \card → do
@@ -326,7 +204,7 @@ eval (LoadNotebook fs dir deckId next) = do
   pure next
 
 eval (ExploreFile fs res next) = do
-  H.setDeckState $ DCS.initialDeck fs
+  setDeckState $ DCS.initialDeck fs
   H.modify
     $ (DCS._path .~ Pathy.parentDir res)
     ∘ (DCS.addCard OpenResource Nothing)
@@ -389,99 +267,15 @@ eval (GetCardType cid k) = k <$> H.gets (DCS.getCardType cid)
 eval (FlipDeck next) = H.modify (DCS._backsided %~ not) $> next
 eval (GetActiveCardId k) = map k $ H.gets DCS.findLast
 eval (StartSliding mouseEvent next) =
-  setInitialSliderX (Just mouseEvent.screenX)
-    *> setSliderTransition false
-    *> setBacksided false
-    $> next
+  Slider.startSliding mouseEvent $> next
 eval (StopSlidingAndSnap mouseEvent next) =
-  startTransition *> snap *> stopSliding $> next
+  Slider.stopSlidingAndSnap $> next
 eval (UpdateSliderPosition mouseEvent next) =
-  (maybe (pure unit) (setTranslateX <<< translateXCalc mouseEvent.screenX) =<< getInitialX) $> next
+  Slider.updateSliderPositionAndSetSliderSelectedCardId mouseEvent $> next
 eval (SetNextActionCardElement element next) =
-  setNextActionCardElement element $> next
+  Slider.setNextActionCardElement element $> next
 eval (StopSliderTransition next) =
-  setSliderTransition false $> next
-
-setNextActionCardElement :: Maybe HTMLElement -> NotebookDSL Unit
-setNextActionCardElement =
-  H.modify <<< (_nextActionCardElement .~ _)
-
-getInitialX :: NotebookDSL (Maybe Number)
-getInitialX =
-  H.gets _.initialSliderX
-
-translateXCalc :: Number -> Number -> Number
-translateXCalc eventScreenX initialX =
-  eventScreenX - initialX
-
-setTranslateX :: Number -> NotebookDSL Unit
-setTranslateX =
-  H.modify <<< (_sliderTranslateX .~ _)
-
-setInitialSliderX :: Maybe Number -> NotebookDSL Unit
-setInitialSliderX =
-  H.modify <<< (_initialSliderX .~ _)
-
-setBacksided :: Boolean -> NotebookDSL Unit
-setBacksided =
-  H.modify <<< (_backsided .~ _)
-
-stopSliding :: NotebookDSL Unit
-stopSliding =
-  setInitialX Nothing *> setTranslateX 0.0
-
-setInitialX :: Maybe Number -> NotebookDSL Unit
-setInitialX =
-  H.modify <<< (_initialSliderX .~ _)
-
-getBoundingClientWidth :: NotebookDSL Number
-getBoundingClientWidth =
-  fromEff <<< map _.width <<< getBoundingClientRect
-
-getNextActionCardElement :: NotebookDSL (Maybe HTMLElement)
-getNextActionCardElement =
-  H.gets _.nextActionCardElement
-
-getCardWidth :: NotebookDSL Number
-getCardWidth =
-  traverse getBoundingClientWidth =<< getNextActionCardElement
-  where
-  getNextActionCardElement =
-    H.gets _.nextActionCardElement
-
-setActiveCardId :: Maybe CardId -> NotebookDSL Unit
-setActiveCardId =
-  H.modify <<< (_activeCardId .~ _)
-
-snapActiveCardIndex :: Number -> Maybe Number -> Int -> Int
-snapActiveCardIndex translateX (Just cardWidth) | translateX < (-(cardWidth / 2.0)) =
-  add 1
-snapActiveCardIndex translateX (Just cardWidth) | translateX > (cardWidth / 2.0) =
-  max 0 <<< flip sub 1
-snapActiveCardIndex translateX _ =
-  id
-
-getCardIdByIndex :: List.List CardDef -> Maybe CardId
-getCardIdByIndex cards =
-  map _.id <<< List.index cards
-
-snapActiveCardId :: State -> Number -> Maybe CardId
-snapActiveCardId st cardWidth =
-  getCardIdByIndex st.cards
-    $ snapActiveCardIndex st.sliderTranslateX cardWidth
-    $ activeCardIndex st
-
-snap :: NotebookDSL Unit
-snap =
-  setActiveCardId =<< (snapActiveCardId <$> H.get <*> getCardWidth)
-
-setSliderTransition :: Boolean -> NotebookDSL Unit
-setSliderTransition =
-  H.modify <<< (_sliderTransition .~ _)
-
-startTransition :: NotebookDSL Unit
-startTransition =
-  setSliderTransition true
+  Slider.setSliderTransition false $> next
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → NotebookDSL Unit
 peek (H.ChildF s q) =
@@ -583,7 +377,7 @@ createCard cardType = do
       H.modify $ DCS.addCard cardType Nothing
     Just cardId → do
       Tuple st newCardId ← H.gets $ DCS.addCard' cardType (Just cardId)
-      H.setDeckState st
+      setDeckState st
       forceRerender'
       input ←
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)

@@ -52,6 +52,10 @@
   height: 100%;
 }
 
+.sd-card:not(:last-child) {
+  margin-right: calc(2 * @grid-size);
+}
+
 .sd-card-gripper, .sd-card-gripper-last {
   display: block;
   position: relative;
@@ -66,10 +70,6 @@
 
 .sd-card-gripper-last {
   float: right;
-}
-
-.sd-card-gripper:hover, .sd-card-gripper-last:hover {
-  background-color: #ccc;
 }
 
 .sd-card-gripper::after, .sd-card-gripper-last::after {
@@ -102,9 +102,21 @@
 
 .notebook-card {
   height: 100%;
+  overflow-y: auto;
 }
 
+*[aria-grabbed="true"] {
+  background-color: cyan;
+}
+
+*[aria-dropeffect="execute"] {
+  background-color: yellow;
+}
 
 @import "deck/next-card";
 @import "deck/open-resource-card";
 @import "deck/save-card";
+
+*[aria-hidden="true"] {
+  display: none;
+}

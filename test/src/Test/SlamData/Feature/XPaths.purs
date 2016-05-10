@@ -372,3 +372,7 @@ resourceOpened fn =
 headerGripper ∷ String
 headerGripper =
   XPath.anyWithExactAriaLabel "Show header"
+
+nextCardGripper :: String
+nextCardGripper =
+  XPath.anyWithExactAriaLabel $ ""

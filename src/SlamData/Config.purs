@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Config where
 
-import Prelude ((<>))
+import Prelude ((<>), (*))
 
 baseUrl :: String
 baseUrl = ""
@@ -86,3 +86,12 @@ redirectURIString = "/auth_redirect.html"
 
 isSharingPermissionReady :: Boolean
 isSharingPermissionReady = true
+
+remPx :: Number
+remPx = 16.0
+
+gridRem :: Number
+gridRem = 1.5
+
+gridPx :: Number
+gridPx = gridRem * remPx
