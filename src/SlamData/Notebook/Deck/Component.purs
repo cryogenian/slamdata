@@ -32,7 +32,7 @@ import Data.Argonaut (Json)
 import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.Lens as Lens
-import Data.Lens (LensP(), view, (.~), (%~), (?~), (^?))
+import Data.Lens ((.~), (%~), (^?))
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as List
 import Data.Map as Map
@@ -52,21 +52,17 @@ import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.CSS.Indexed (style)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
-import Halogen.Component.ChildPath (injSlot, injState)
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Quasar.Aff as Quasar
-import Quasar.Auth as Auth
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.AccessType (AccessType(..), isEditable)
 import SlamData.Notebook.Action as NA
-import SlamData.Notebook.Card.CardId (CardId(), runCardId, cardIdToString)
-import SlamData.Notebook.Card.CardType
-  (CardType(..), AceMode(..), cardName, cardGlyph, autorun, nextCardTypes)
+import SlamData.Notebook.Card.CardId (CardId())
+import SlamData.Notebook.Card.CardType (CardType(JTable, OpenResource, API), nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..))
 import SlamData.Notebook.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
 import SlamData.Notebook.Card.Next.Component as Next
@@ -79,7 +75,6 @@ import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
 
 import SlamData.Notebook.Deck.Component.State as DCS
 import SlamData.Notebook.Deck.DeckId (DeckId(..), deckIdToString)
-import SlamData.Notebook.Deck.Component.State (CardConstructor, CardDef, DebounceTrigger, State, StateP, StateMode(..), _accessType, _activeCardId, _browserFeatures, _cards, _dependencies, _fresh, _globalVarMap, _name, _path, _pendingCards, _runTrigger, _saveTrigger, _stateMode, _viewingCard, _backsided, addCard, addCard', addPendingCard,  cardsOfType, findChildren, findDescendants, findParent, findRoot, fromModel, getCardType, initialDeck, notebookPath, removeCards, findLast, findLastCardType, cardIndexFromId, activeCardIndex, _initialSliderX, _initialSliderCardWidth, _sliderTransition, _sliderTranslateX, _sliderSelectedCardId, _nextActionCardElement)
 import SlamData.Notebook.Deck.Gripper as Gripper
 import SlamData.Notebook.Deck.Model as Model
 import SlamData.Notebook.Model as NB
@@ -89,7 +84,6 @@ import SlamData.Quasar.Data (save, load) as Quasar
 import SlamData.Quasar.FS (move, getNewName) as Quasar
 import SlamData.Render.CSS as CSS
 
-import Utils.Debounced (debouncedEventSource)
 import Utils.Path (DirPath, FilePath)
 
 initialState ∷ BrowserFeatures → DCS.StateP
@@ -108,7 +102,9 @@ render state =
   case state.stateMode of
     DCS.Loading →
       HH.div
-        [ HP.classes [ B.alert, B.alertInfo ] ]
+        [ HP.classes [ B.alert, B.alertInfo ]
+        , HP.key "board"
+        ]
         [ HH.h1
           [ HP.class_ B.textCenter ]
           [ HH.text "Loading..." ]
@@ -123,7 +119,9 @@ render state =
     DCS.Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div
-        ([ HP.class_ CSS.board ] ++ Slider.containerProperties state)
+        ([ HP.class_ CSS.board
+         , HP.key "board"
+         ] ++ Slider.containerProperties state)
         [ HH.div
             [ HP.class_ CSS.deck
             , HP.key "deck-container"
@@ -184,7 +182,7 @@ eval (LoadNotebook fs dir deckId next) = do
       H.fromAff $ log err
       H.modify $ DCS._stateMode .~ DCS.Error "There was a problem decoding the saved notebook"
     Right model →
-      case DCS.fromModel fs (Just dir) (Just deckId) model of
+      case DCS.fromModel fs (Just dir) (Just deckId) model state of
         Tuple cards st → do
           setDeckState st
           forceRerender'
@@ -200,7 +198,6 @@ eval (LoadNotebook fs dir deckId next) = do
           traverse_ runCard $ nub $ flip DCS.findRoot st <$> ranCards
           H.modify $ DCS._stateMode .~ DCS.Ready
   updateNextActionCard
-  forceRerender'
   pure next
 
 eval (ExploreFile fs res next) = do
@@ -230,7 +227,7 @@ eval (Publish next) = do
   pure next
 eval (Reset fs dir deckId next) = do
   let
-    nb = initialDeck fs
+    nb = DCS.initialDeck fs
   setDeckState $ nb { id = deckId, path = Just dir }
   pure next
 eval (SetName name next) =
@@ -269,7 +266,7 @@ eval (GetActiveCardId k) = map k $ H.gets DCS.findLast
 eval (StartSliding mouseEvent next) =
   Slider.startSliding mouseEvent $> next
 eval (StopSlidingAndSnap mouseEvent next) =
-  Slider.stopSlidingAndSnap $> next
+  Slider.stopSlidingAndSnap mouseEvent $> next
 eval (UpdateSliderPosition mouseEvent next) =
   Slider.updateSliderPositionAndSetSliderSelectedCardId mouseEvent $> next
 eval (SetNextActionCardElement element next) =
@@ -593,7 +590,7 @@ nameFromDirName dirName =
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId = path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
 
-setDeckState :: State -> NotebookDSL Unit
+setDeckState :: DCS.State -> NotebookDSL Unit
 setDeckState newState = do
   nextActionCardElement <- H.gets _.nextActionCardElement
   H.set $ newState { nextActionCardElement = nextActionCardElement }

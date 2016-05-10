@@ -54,20 +54,17 @@ gripperDefsForCardId cards cardId =
   nextCardAvailable =
     isJust cardId
 
-previousGripperLabel :: String
-previousGripperLabel =
+isAvailable :: GripperDef -> Boolean
+isAvailable (Previous available) =
+  available
+isAvailable (Next available) =
+  available
+
+gripperLabel :: GripperDef -> String
+gripperLabel (Previous _) =
   "Drag right to access previous cards"
-
-nextGripperLabel :: String
-nextGripperLabel =
+gripperLabel (Next _) =
   "Drag left to access next cards"
-
--- | Provides a label for a given gripper detailing it's guaranteed interaction.
-gripperLabel :: GripperDef -> Maybe String
-gripperLabel (Previous available) =
-  if available then Just previousGripperLabel else Nothing
-gripperLabel (Next available) =
-  if available then Just nextGripperLabel else Nothing
 
 gripperClassName :: GripperDef -> ClassName
 gripperClassName (Previous _) = ClassNames.cardGripper
@@ -83,8 +80,10 @@ renderGrippers isActiveCard isGrabbed =
       ([ HP.classes [ gripperClassName gripperDef ]
        , HE.onMouseDown \e -> HEH.preventDefault $> H.action (StartSliding e)
        , ARIA.grabbed $ show $ isGrabbed
+       , ARIA.disabled $ show $ (not $ isAvailable gripperDef) || (not $ isActiveCard)
        ]
-       ⊕ (guard isActiveCard *> maybe [] (Array.singleton <<< ARIA.label) (gripperLabel gripperDef)))
+       ⊕ (guard (isActiveCard) $> ARIA.label (gripperLabel gripperDef))
+      )
       []
 
   renderSingleton :: GripperDef -> Array NotebookHTML

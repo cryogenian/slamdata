@@ -305,6 +305,7 @@ addCard' cardType parent st =
       { fresh = st.fresh + 1
       , cards = st.cards `L.snoc` mkCardDef cardType cardId st
       , activeCardId = Just cardId
+      , sliderSelectedCardId = Just cardId
       , cardTypes = M.insert cardId cardType st.cardTypes
       , dependencies =
           maybe st.dependencies (flip (M.insert cardId) st.dependencies) parent
@@ -509,31 +510,28 @@ fromModel
   → Model.Deck
   → State
   → Tuple (Array Card.Model) State
-fromModel browserFeatures path deckId { cards, dependencies, name } =
+fromModel browserFeatures path deckId { cards, dependencies, name } state =
   Tuple
     cards
     ((state
-       , accessType = ReadOnly
-       , activeCardId = _.id <$> L.last cardDefs
-       , backsided = false
-       , browserFeatures
-       , browserFeatures = browserFeatures
-       , cardTypes = foldl addCardIdTypePair M.empty cards
-       , cards = cardDefs
-       , dependencies
-       , failingCards = S.empty
-       , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
-       , globalVarMap = SM.empty
-       , id = deckId
-       , initialSliderX = Nothing
-       , name
-       , path
-       , pendingCards = S.empty
-       , runTrigger = Nothing
-       , pendingCards = S.empty
-       , sliderSelectedCardId = activeCardId
-       }
-    ) :: State)
+        { accessType = ReadOnly
+        , activeCardId = _.id <$> L.last cardDefs
+        , backsided = false
+        , browserFeatures = browserFeatures
+        , cardTypes = foldl addCardIdTypePair M.empty cards
+        , cards = cardDefs
+        , dependencies = dependencies
+        , failingCards = S.empty
+        , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
+        , globalVarMap = SM.empty
+        , id = deckId
+        , initialSliderX = Nothing
+        , name = name
+        , path = path
+        , runTrigger = Nothing
+        , pendingCards = S.empty
+        , sliderSelectedCardId = activeCardId
+        }) :: State)
   where
   cardDefs = foldMap cardDefFromModel cards
 

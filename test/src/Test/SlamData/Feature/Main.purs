@@ -52,7 +52,7 @@ import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Test.SlamData.Feature.Test.SaveCard as Save
---import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
+import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
 import Text.Chalky (green, yellow, magenta, gray, red)
 
 foreign import getConfig ∷ ∀ e. Eff (fs ∷ FS|e) Config
@@ -90,12 +90,12 @@ tests = do
   launchSlamData
   mountTestDatabase
 
---  File.test
+  File.test
   Search.test
   Markdown.test
   FlexibleVisualization.test
   Save.test
---  FlipDeck.test
+  FlipDeck.test
 
 runTests ∷ Config → Aff Effects Unit
 runTests config =

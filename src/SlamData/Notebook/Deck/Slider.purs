@@ -81,9 +81,12 @@ startSliding mouseEvent =
     *> setSliderTransition false
     *> setBacksided false
 
-stopSlidingAndSnap :: NotebookDSL Unit
-stopSlidingAndSnap =
-  startTransition *> snap *> stopSliding
+stopSlidingAndSnap :: Event MouseEvent -> NotebookDSL Unit
+stopSlidingAndSnap mouseEvent =
+  updateSliderPositionAndSetSliderSelectedCardId mouseEvent
+    *> startTransition
+    *> snap
+    *> stopSliding
 
 updateSliderPositionAndSetSliderSelectedCardId :: Event MouseEvent -> NotebookDSL Unit
 updateSliderPositionAndSetSliderSelectedCardId mouseEvent =
@@ -167,21 +170,21 @@ getInitialSliderCardWidth = H.gets _.initialSliderCardWidth
 
 snapActiveCardIndex :: Number -> Number -> Int -> Int
 snapActiveCardIndex translateX cardWidth
-  | translateX <= -(f cardWidth / 2.0) =
-    flip sub (1 + Int.floor ((translateX - (f cardWidth / 2.0)) / cardWidth))
-  | translateX >= (f cardWidth / 2.0) =
-    max 0 <<< add (1 + Int.floor ((-translateX - (f cardWidth / 2.0)) / cardWidth))
+  | translateX <= -(offsetCardSpacing cardWidth / 2.0) =
+    flip sub (1 + Int.floor ((translateX - (offsetCardSpacing cardWidth / 2.0)) / cardWidth))
+  | translateX >= (offsetCardSpacing cardWidth / 2.0) =
+    max 0 <<< add (1 + Int.floor ((-translateX - (offsetCardSpacing cardWidth / 2.0)) / cardWidth))
   | otherwise =
     id
 
-f = add $ cardSpacingGridSquares * Config.gridPx
+offsetCardSpacing :: Number -> Number
+offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
 snapActiveCardId :: State -> Maybe CardId
 snapActiveCardId st =
-  Debug.Trace.traceAny st.initialSliderCardWidth \_ ->
-    getCardIdByIndex st.cards
-      $ maybe' (const id) (snapActiveCardIndex st.sliderTranslateX) st.initialSliderCardWidth
-      $ State.activeCardIndex st
+  getCardIdByIndex st.cards
+    $ maybe' (const id) (snapActiveCardIndex st.sliderTranslateX) st.initialSliderCardWidth
+    $ State.activeCardIndex st
 
 snap :: NotebookDSL Unit
 snap =
@@ -254,11 +257,7 @@ cardPresented state cardId =
 
 cardProperties :: forall a b. State -> CardId -> Array (IProp a b)
 cardProperties state cardId =
-  [ ARIA.disabled
-      $ show $ not $ cardSelected state cardId
-  , ARIA.hidden
-      $ show $ not $ cardPresented state cardId
-  ]
+  [ ARIA.disabled $ show $ not $ cardSelected state cardId ]
 
 cardSpacingGridSquares :: Number
 cardSpacingGridSquares = 2.0

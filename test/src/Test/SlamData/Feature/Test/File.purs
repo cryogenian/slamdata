@@ -121,9 +121,10 @@ test = do
 
   fileScenario afterAccessSharingUrl "Access sharing URL for a notebook" [] do
     Interact.createNotebookInTestFolder "Quarterly report"
-    Interact.insertMdCardAsFirstCardInNewStack
+    Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard "Quarterly"
-    Interact.insertFormCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertFormCardInLastDeck
     Expect.textInFormCard "Quarterly"
     Expect.lastCardToBeFinished
     warnMsg "SD-1538, we don't know if notebook has been saved already"

@@ -181,11 +181,13 @@ cardClasses Chart = [ H.className "sd-card-chart" ]
 cardClasses Markdown = [ H.className "sd-card-markdown" ]
 cardClasses JTable = [ H.className "sd-card-table" ]
 cardClasses Download = [ H.className "sd-card-download" ]
+cardClasses DownloadOptions = [ H.className "sd-card-download-options" ]
 cardClasses API = [ H.className "sd-card-api" ]
 cardClasses APIResults = [ H.className "sd-card-api-results" ]
 cardClasses NextAction = [ H.className "sd-card-next-action" ]
 cardClasses Save = [ H.className "sd-card-save" ]
 cardClasses OpenResource = [ H.className "sd-card-open-resource" ]
+cardClasses ErrorCard = [ H.className "sd-card-error" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Markdown"

@@ -4,7 +4,7 @@ import SlamData.Prelude
 
 import Data.Map as Map
 import Selenium.Monad (tryRepeatedlyTo)
-import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectScreenshotToMatchAny, expectSelectValue, expectPresentedNotRepeatedly)
+import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectSelectValue, expectPresentedNotRepeatedly)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
 
@@ -163,16 +163,6 @@ measureInLastVisualizeCard value =
   expectSelectValue
     value
     (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
-
-lastChartScreenshotToMatchAny
-  ∷ Array String
-  → SlamFeature Unit
-lastChartScreenshotToMatchAny =
-  expectScreenshotToMatchAny
-    "test/image/diff.png"
-    0.2
-    (XPath.last $ XPath.anywhere $ XPaths.chartContainer)
-    "test/image/actual.png"
 
 fileSearchString ∷ String → SlamFeature Unit
 fileSearchString string =

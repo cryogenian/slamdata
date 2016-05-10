@@ -47,7 +47,7 @@
 
 .sd-card {
   background: white;
-  overflow: hidden;
+  overflow: auto;
   float: left;
   height: 100%;
 }
@@ -101,7 +101,7 @@
 }
 
 .notebook-card {
-  height: 100%;
+  max-height: 100%;
   overflow-y: auto;
 }
 
@@ -109,7 +109,7 @@
   background-color: cyan;
 }
 
-*[aria-dropeffect="execute"] {
+*[aria-dropeffect="execute"] *[aria-grabbed="true"]{
   background-color: yellow;
 }
 

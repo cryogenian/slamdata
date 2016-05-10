@@ -92,44 +92,37 @@ saveSubmitButton ∷ String
 saveSubmitButton =
   XPath.anyWithExactAriaLabel "Confirm saving file"
 
-insertExploreCardAsNextAction ∷ String
-insertExploreCardAsNextAction =
-  XPath.anyWithExactAriaLabel "Insert Explore card"
 
 insertSaveCard ∷ String
 insertSaveCard =
   XPath.anyWithExactAriaLabel "Insert Save card"
 
-insertMdCardAsNextAction ∷ String
-insertMdCardAsNextAction =
+insertMdCard ∷ String
+insertMdCard =
   XPath.anyWithExactAriaLabel "Insert Markdown card"
 
-insertQueryCardAsNextAction ∷ String
-insertQueryCardAsNextAction =
-  XPath.anyWithExactAriaLabel "Insert Query card"
-
-insertSearchCardAsNextAction ∷ String
-insertSearchCardAsNextAction =
+insertSearchCard ∷ String
+insertSearchCard =
   XPath.anyWithExactAriaLabel "Insert Search card"
 
-insertVisualizeCardAsNextAction ∷ String
-insertVisualizeCardAsNextAction =
+insertVisualizeCard ∷ String
+insertVisualizeCard =
   XPath.anyWithExactAriaLabel "Insert Visualize card"
 
-insertDownloadCardAsNextAction ∷ String
-insertDownloadCardAsNextAction =
+insertDownloadCard ∷ String
+insertDownloadCard =
   XPath.anyWithExactAriaLabel "Insert Download card"
 
-insertAPIResultsCardAsNextAction ∷ String
-insertAPIResultsCardAsNextAction =
+insertApiResultsCard ∷ String
+insertApiResultsCard =
   XPath.anyWithExactAriaLabel "Insert API Results card"
 
-insertChartCardAsNextAction ∷ String
-insertChartCardAsNextAction =
+insertChartCard ∷ String
+insertChartCard =
   XPath.anyWithExactAriaLabel "Insert Chart card"
 
-insertFormCardAsNextAction ∷ String
-insertFormCardAsNextAction =
+insertFormCard ∷ String
+insertFormCard =
   XPath.anyWithExactAriaLabel "Insert Form card"
 
 showFileList ∷ String
@@ -156,23 +149,15 @@ insertQueryCard ∷ String
 insertQueryCard =
   XPath.anyWithExactAriaLabel "Insert Query card"
 
-insertMdCard ∷ String
-insertMdCard =
-  XPath.anyWithExactAriaLabel "Insert Markdown card"
-
 insertExploreCard ∷ String
 insertExploreCard = XPath.anyWithExactAriaLabel "Insert Explore card"
-
-insertSearchCard ∷ String
-insertSearchCard =
-  XPath.anyWithExactAriaLabel "Insert Search card"
 
 insertApiCard ∷ String
 insertApiCard =
   XPath.anyWithExactAriaLabel "Insert API card"
 
-insertJTableCardAsNextAction ∷ String
-insertJTableCardAsNextAction =
+insertJTableCard ∷ String
+insertJTableCard =
   XPath.anyWithExactAriaLabel "Insert Table card"
 
 hideCardOptions ∷ String
@@ -291,7 +276,7 @@ cardHeading ∷ String
 cardHeading =
   XPath.withPredicate "*"
     $ XPath.anyOfThesePredicates
-    $ XPath.withAriaLabel
+    $ XPath.ariaLabel
     <$> [ "Query card"
         , "Markdown card"
         , "Explore card"
@@ -304,7 +289,7 @@ cardHeading =
 jtableHeading ∷ String
 jtableHeading =
   XPath.withPredicate "*"
-    $ XPath.withAriaLabel "Table card"
+    $ XPath.ariaLabel "Table card"
 
 sharingUrl ∷ String
 sharingUrl = "*" `XPath.nodeWithExactAriaLabel` "Sharing URL"
@@ -373,6 +358,26 @@ headerGripper ∷ String
 headerGripper =
   XPath.anyWithExactAriaLabel "Show header"
 
+previousCardGripper :: String
+previousCardGripper =
+  XPath.any
+    `XPath.withPredicate` XPath.ariaLabel "Drag right to access previous cards"
+
 nextCardGripper :: String
 nextCardGripper =
-  XPath.anyWithExactAriaLabel $ ""
+  XPath.any
+    `XPath.withPredicate` XPath.ariaLabel "Drag left to access next cards"
+
+enabledPreviousCardGripper :: String
+enabledPreviousCardGripper =
+  previousCardGripper
+    ++ "[ancestor-or-self::*[not(@aria-disabled = 'true')]]"
+
+enabledNextCardGripper :: String
+enabledNextCardGripper =
+  nextCardGripper
+    ++ "[ancestor-or-self::*[not(@aria-disabled = 'true')]]"
+
+deck :: String
+deck =
+  XPath.anyWithExactAriaLabel $ "Deck"

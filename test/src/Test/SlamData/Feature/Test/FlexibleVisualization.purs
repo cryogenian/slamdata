@@ -77,10 +77,12 @@ test =
       };
       run();
     """
-    Interact.insertApiCardAsFirstCardInNewStack
+    Interact.insertApiCardInLastDeck
     Interact.provideApiVariableBindingsForApiCard "state" "Text" "CO"
-    Interact.insertAPIResultsCardAsNextAction
-    Interact.insertQueryCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertApiResultsCardInLastDeck
+    Interact.accessNextCardInLastDeck
+    Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard $ Str.joinWith " "
       $ [ "SELECT count(*) as ct, city, gender"
         , "FROM `/test-mount/testDb/patients`"
@@ -89,19 +91,25 @@ test =
         , "ORDER BY ct DESC"
         , "LIMIT 30"
         ]
-    Interact.insertJTableCardAsNextAction
-    Interact.insertVisualizeCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertJTableCardInLastDeck
+    Interact.accessNextCardInLastDeck
+    Interact.insertVisualizeCardInLastDeck
     Interact.switchToBarChart
     Interact.provideCategoryForLastVisualizeCard ".city"
     Expect.measureInLastVisualizeCard ".ct"
     Expect.measureDisabledInLastVisualizeCard
-    Interact.insertChartCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertChartCardInLastDeck
     Expect.lastEChartOptions chartOptions_CO
+    Interact.accessPreviousCardInLastDeck
     Interact.provideSeriesForLastVizualizeCard ".gender"
+    Interact.accessNextCardInLastDeck
     Expect.lastEChartOptions chartOptions_CO_gender
     Interact.accessNotebookWithModifiedURL (flip append "/?state=%22NE%22")
     Expect.lastEChartOptions chartOptions_NE_gender
     Interact.accessNotebookWithModifiedURL (Str.replace "NE" "CO")
+    Expect.lastEChartOptions chartOptions_CO_gender
     successMsg "Successfully created flexible patient chart"
 
 chartOptions_CO :: String

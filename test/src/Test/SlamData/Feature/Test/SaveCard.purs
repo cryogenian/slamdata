@@ -22,17 +22,20 @@ saveCardScenario =
 test ∷ SlamFeature Unit
 test =
   saveCardScenario "Save card output to file" [] do
-    Interact.insertQueryCardAsFirstCardInNewStack
+    Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT measureOne, measureTwo from `/test-mount/testDb/flatViz`"
-    Interact.insertSaveCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertSaveCardInLastDeck
     Interact.provideSaveDestinationInLastSaveCard
       "/test-mount/testDb/временный файл"
     Interact.doSaveInLastSaveCard
-    Interact.insertJTableCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertJTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     Interact.browseTestFolder
     Interact.accessFile "временный файл"
-    Interact.insertJTableCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertJTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     successMsg "Successfully saved data source card output to file"

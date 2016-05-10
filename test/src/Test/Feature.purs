@@ -9,6 +9,8 @@ module Test.Feature
   , click
   , clickWithProperties
   , clickNotRepeatedly
+  , dragAndDrop
+  , dragAndDropWithProperties
   , copy
   , expectDownloadedTextFileToMatchFile
   , expectNotPresented
@@ -40,6 +42,7 @@ module Test.Feature
   , uncheck
   , uncheckWithProperties
   , undo
+  , smallWaitTime
   ) where
 
 import SlamData.Prelude
@@ -504,8 +507,9 @@ clickNotRepeatedly xPath = clickWithPropertiesNotRepeatedly Map.empty xPath
 
 -- | Drag node found with the first provided XPath to the node found with the
 -- | second provided XPath.
-drag ∷ ∀ eff o. XPath → XPath → Feature eff o Unit
-drag fromXPath toXPath = dragWithProperties Map.empty fromXPath Map.empty toXPath
+dragAndDrop ∷ ∀ eff o. XPath → XPath → Feature eff o Unit
+dragAndDrop fromXPath toXPath =
+  dragAndDropWithProperties Map.empty fromXPath Map.empty toXPath
 
 -- | Hover over the node found with the provided XPath.
 hover ∷ ∀ eff o. XPath → Feature eff o Unit
@@ -631,17 +635,31 @@ clickAllWithProperties properties =
 -- | Drag node with the first provided properties or attributes found with the first
 -- | provided XPath to the node with the second provided properties or attributes found with
 -- | the second provided XPath.
-dragWithProperties
+dragAndDropWithProperties
   ∷ ∀ eff o
   . Properties
   → XPath
   → Properties
   → XPath
   → Feature eff o Unit
-dragWithProperties fromProperties fromXPath toProperties toXPath = do
-  from <- findWithProperties fromProperties fromXPath
-  to <- findWithProperties toProperties toXPath
-  tryRepeatedlyTo $ dragElement from to
+dragAndDropWithProperties fromProperties fromXPath toProperties toXPath =
+  tryRepeatedlyTo do
+    from <- findWithPropertiesNotRepeatedly fromProperties fromXPath
+    fromLocation <- getCenterLocation from
+    toLocation <- getCenterLocation =<< findWithPropertiesNotRepeatedly toProperties toXPath
+    dragAndDropElement from $ offset fromLocation toLocation
+  where
+  offset from to =
+    { x: to.x - from.x
+    , y: to.y - from.y
+    }
+  getCenterLocation element = do
+    location <- getLocation element
+    size <- getSize element
+    pure
+      { x: location.x + (size.width / 2)
+      , y: location.y + (size.height / 2)
+      }
 
 -- | Hover over the node with the provided properties or attributes found with
 -- | the provided XPath.
@@ -707,8 +725,9 @@ selectFromDropdownElement ∷ ∀ eff o. String → Element → Feature eff o Un
 selectFromDropdownElement text element =
   clickEl element *> typeString text *> pressEnter
 
-dragElement ∷ ∀ eff o. Element → Element → Feature eff o Unit
-dragElement from = Selenium.sequence ∘ Sequence.dndToElement from
+dragAndDropElement ∷ ∀ eff o. Element → Location → Feature eff o Unit
+dragAndDropElement from =
+  Selenium.sequence <<< Sequence.dndToLocation from
 
 -- Element dependent functions
 elementsWithProperties

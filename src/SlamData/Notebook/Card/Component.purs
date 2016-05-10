@@ -46,8 +46,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import SlamData.Effects (Slam)
-import SlamData.Notebook.AccessType (AccessType(..))
-import SlamData.Notebook.Card.CardType (CardType, AceMode(..), cardGlyph, cardName, nextCardTypes)
+import SlamData.Notebook.Card.CardType (cardClasses, nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (prepareCardEvalInput)
 import SlamData.Notebook.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 
@@ -56,7 +55,6 @@ import SlamData.Notebook.Card.Component.Render as CR
 import SlamData.Notebook.Card.Component.State as CS
 import SlamData.Notebook.Card.Port (_Blocked)
 import SlamData.Notebook.Card.RunState (RunState(..))
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 
 import Utils.AffableProducer (produce)
@@ -82,16 +80,11 @@ makeCardComponent def = makeCardComponentPart def render
       then HH.text ""
       else shown cs
     where
-
-    hideIfCollapsed =
-      ARIA.hidden $ show shouldCollapse
-
-    shown ∷ CS.CardState → CR.CardHTML
     shown cs =
       HH.div
         [ HP.classes $ [ CSS.notebookCard ] <> collapsedClass ]
         $ fold
-          [ header def.cardType cs
+          [ CR.header def.cardType cs
           , [ HH.div
                 [ hideIfCollapsed
                 , HP.classes $ cardClasses def.cardType
