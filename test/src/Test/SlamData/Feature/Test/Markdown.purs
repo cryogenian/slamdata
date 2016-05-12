@@ -29,8 +29,8 @@ mdScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
 mdScenario =
   scenario
     "Markdown"
-    (Interact.createNotebookInTestFolder "Markdown")
-    (Interact.deleteFileInTestFolder "Untitled Notebook.slam"
+    (Interact.createWorkspaceInTestFolder "Markdown")
+    (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
        *> Interact.browseRootFolder)
 
 test :: SlamFeature Unit

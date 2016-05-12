@@ -61,7 +61,7 @@ toolbar :: forall p. State -> HTML p (Query Unit)
 toolbar state =
   H.div [ P.classes [ B.colXs5, Rc.toolbarMenu ] ]
   [ H.ul [ P.classes [ B.listInline, B.pullRight ] ]
-    $ configure <> [ showHide, download, mount, folder, file, notebook ]
+    $ configure <> [ showHide, download, mount, folder, file, workspace ]
   ]
   where
   configure :: Array (HTML p (Query Unit))
@@ -106,8 +106,8 @@ toolbar state =
             ]
       ]
 
-  notebook :: HTML p (Query Unit)
-  notebook = toolItem MakeNotebook "Create notebook" B.glyphiconBook
+  workspace :: HTML p (Query Unit)
+  workspace = toolItem MakeWorkspace "Create workspace" B.glyphiconBook
 
 toolItem :: forall p f. (Unit -> f Unit)
             -> String -> ClassName -> HTML p (f Unit)

@@ -30,7 +30,7 @@ import SlamData.FileSystem.Listing.Sort (Sort)
 import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourcePath, resourceName, sortResource)
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt)
-import SlamData.Notebook.AccessType (AccessType(..), printAccessType)
+import SlamData.Workspace.AccessType (AccessType(..), printAccessType)
 
 import Utils.Path (encodeURIPath)
 
@@ -50,11 +50,11 @@ itemResource (PhantomItem r) = r
 itemURL :: Sort -> Salt -> AccessType -> Resource -> String
 itemURL sort salt act res = case res of
   File path ->
-    Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
+    Config.workspaceUrl ++ "#/explore" ++ encodeURIPath (printPath path)
   Mount (View path) ->
-    Config.notebookUrl ++ "#/explore" ++ encodeURIPath (printPath path)
-  Notebook path ->
-    Config.notebookUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAccessType act
+    Config.workspaceUrl ++ "#/explore" ++ encodeURIPath (printPath path)
+  Workspace path ->
+    Config.workspaceUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAccessType act
   Directory path ->
     browseURL Nothing sort salt path
   Mount (Database path) ->

@@ -48,7 +48,7 @@ afterAccessSharingUrl ∷ SlamFeature Unit
 afterAccessSharingUrl =
   Interact.launchSlamData
     *> Interact.browseTestFolder
-    *> Interact.deleteFile "Untitled Notebook.slam"
+    *> Interact.deleteFile "Untitled Workspace.slam"
 
 test ∷ SlamFeature Unit
 test = do
@@ -119,22 +119,22 @@ test = do
     successMsg "Successfully accessed sharing URL for a file"
     Interact.launchSlamData
 
-  fileScenario afterAccessSharingUrl "Access sharing URL for a notebook" [] do
-    Interact.createNotebookInTestFolder "Quarterly report"
+  fileScenario afterAccessSharingUrl "Access sharing URL for a deck" [] do
+    Interact.createWorkspaceInTestFolder "Quarterly report"
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard "Quarterly"
     Interact.accessNextCardInLastDeck
     Interact.insertFormCardInLastDeck
     Expect.textInFormCard "Quarterly"
     Expect.lastCardToBeFinished
-    warnMsg "SD-1538, we don't know if notebook has been saved already"
+    warnMsg "SD-1538, we don't know if workspace has been saved already"
     later 1000 $ pure unit
     Interact.browseRootFolder
     Interact.browseTestFolder
-    Interact.shareFile "Untitled Notebook.slam"
+    Interact.shareFile "Untitled Workspace.slam"
     Interact.accessSharingUrl
     Expect.textInFormCard "Quarterly"
-    successMsg "Successfully accessed sharing URL for a notebook"
+    successMsg "Successfully accessed sharing URL for a workspace"
 
   fileScenario defaultAfterFile "Download file as CSV" [] do
     Interact.browseTestFolder

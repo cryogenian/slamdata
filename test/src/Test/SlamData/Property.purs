@@ -28,47 +28,47 @@ main = do
   log "Check SlamData.Form.Select..."
   Test.SlamData.Property.Form.Select.check
 
-  log "Check SlamData.Notebook.Card.CardId..."
-  Test.SlamData.Property.Notebook.Card.CardId.check
+  log "Check SlamData.Workspace.Card.CardId..."
+  Test.SlamData.Property.Workspace.Card.CardId.check
 
-  log "Check SlamData.Notebook.Card.CardType..."
-  Test.SlamData.Property.Notebook.Card.CardType.check
+  log "Check SlamData.Workspace.Card.CardType..."
+  Test.SlamData.Property.Workspace.Card.CardType.check
 
-  log "Check SlamData.Notebook.Card.Model..."
-  Test.SlamData.Property.Notebook.Card.Model.check
+  log "Check SlamData.Workspace.Card.Model..."
+  Test.SlamData.Property.Workspace.Card.Model.check
 
-  log "Check SlamData.Notebook.Card.Chart.Aggregation..."
-  Test.SlamData.Property.Notebook.Card.Chart.Aggregation.check
+  log "Check SlamData.Workspace.Card.Chart.Aggregation..."
+  Test.SlamData.Property.Workspace.Card.Chart.Aggregation.check
 
-  log "Check SlamData.Notebook.Card.Chart.ChartConfiguration..."
-  Test.SlamData.Property.Notebook.Card.Chart.ChartConfiguration.check
+  log "Check SlamData.Workspace.Card.Chart.ChartConfiguration..."
+  Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration.check
 
-  log "Check SlamData.Notebook.Card.Chart.ChartType..."
-  Test.SlamData.Property.Notebook.Card.Chart.ChartType.check
+  log "Check SlamData.Workspace.Card.Chart.ChartType..."
+  Test.SlamData.Property.Workspace.Card.Chart.ChartType.check
 
-  log "Check SlamData.Notebook.Card.JTable.Model..."
-  Test.SlamData.Property.Notebook.Card.JTable.Model.check
+  log "Check SlamData.Workspace.Card.JTable.Model..."
+  Test.SlamData.Property.Workspace.Card.JTable.Model.check
 
-  log "Check SlamData.Notebook.Card.Markdown.Model..."
-  Test.SlamData.Property.Notebook.Card.Markdown.Model.check
+  log "Check SlamData.Workspace.Card.Markdown.Model..."
+  Test.SlamData.Property.Workspace.Card.Markdown.Model.check
 
-  log "Check SlamData.Notebook.Card.Viz.Model..."
-  Test.SlamData.Property.Notebook.Card.Viz.Model.check
+  log "Check SlamData.Workspace.Card.Viz.Model..."
+  Test.SlamData.Property.Workspace.Card.Viz.Model.check
 
-  log "Check SlamData.Notebook.FormBuilder.Item.Model..."
-  Test.SlamData.Property.Notebook.FormBuilder.Item.Model.check
+  log "Check SlamData.Workspace.FormBuilder.Item.Model..."
+  Test.SlamData.Property.Workspace.FormBuilder.Item.Model.check
 
-  log "Check SlamData.Notebook.FormBuilder.Model..."
-  Test.SlamData.Property.Notebook.FormBuilder.Model.check
+  log "Check SlamData.Workspace.FormBuilder.Model..."
+  Test.SlamData.Property.Workspace.FormBuilder.Model.check
 
-  log "Check SlamData.Notebook.Deck.Model..."
-  Test.SlamData.Property.Notebook.Deck.Model.check
+  log "Check SlamData.Workspace.Deck.Model..."
+  Test.SlamData.Property.Workspace.Deck.Model.check
 
   log "Check SlamData.Download.Model..."
   Test.SlamData.Property.Download.Model.check
 
-  log "Check SlamData.Notebook.Card.DownloadOptions.Component.State..."
-  Test.SlamData.Property.Notebook.Card.DownloadOptions.Component.State.check
+  log "Check SlamData.Workspace.Card.DownloadOptions.Component.State..."
+  Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State.check
 
-  log "Check SlamData.Notebook.Card.Ace.Model..."
-  Test.SlamData.Property.Notebook.Card.Ace.Model.check
+  log "Check SlamData.Workspace.Card.Ace.Model..."
+  Test.SlamData.Property.Workspace.Card.Ace.Model.check

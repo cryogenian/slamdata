@@ -134,8 +134,8 @@ numberOfFiles i = do
   expectPresented $ XPath.index (XPath.anywhere $ XPaths.nthFile) i
   expectNotPresented $ XPath.index (XPath.anywhere $ XPaths.nthFile) $ i + 1
 
-notebookName ∷ String → SlamFeature Unit
-notebookName name =
+workspaceName ∷ String → SlamFeature Unit
+workspaceName name =
   expectPresentedWithProperties
     (Map.singleton "value" $ Just name)
     (XPath.anywhere "input")

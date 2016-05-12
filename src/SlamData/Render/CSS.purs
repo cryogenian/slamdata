@@ -78,9 +78,6 @@ navLogo = className "nav-logo"
 search ∷ ClassName
 search = className "search"
 
-notebookName ∷ ClassName
-notebookName = className "notebook-name"
-
 content ∷ ClassName
 content = className "content"
 
@@ -111,8 +108,8 @@ fileListField = className "file-list-field"
 fileListGroup ∷ ClassName
 fileListGroup = className "file-list-group"
 
-notebookNav ∷ ClassName
-notebookNav = className "notebook-nav"
+workspaceNav ∷ ClassName
+workspaceNav = className "workspace-nav"
 
 dialogDownload ∷ ClassName
 dialogDownload = className "dialog-download"
@@ -154,14 +151,11 @@ mountProgressSpinner ∷ Boolean -> ClassName
 mountProgressSpinner true = className "mount-progress-spinner"
 mountProgressSpinner false = className "mount-progress-spinner-hidden"
 
-notebookContent ∷ ClassName
-notebookContent = className "notebook-content"
+workspaceViewHack ∷ ClassName
+workspaceViewHack = className "workspace-view-hack"
 
-notebookViewHack ∷ ClassName
-notebookViewHack = className "notebook-view-hack"
-
-notebookCard ∷ ClassName
-notebookCard = className "notebook-card"
+deckCard ∷ ClassName
+deckCard = className "deck-card"
 
 cardHeader ∷ ClassName
 cardHeader = className "card-header"

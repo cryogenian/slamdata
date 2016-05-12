@@ -34,7 +34,7 @@ import CSS.Size (px)
 
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
-import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isNotebook, isViewMount, hiddenTopLevel, root)
+import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isWorkspace, isViewMount, hiddenTopLevel, root)
 import SlamData.Render.CSS as Rc
 
 type State =
@@ -193,7 +193,7 @@ iconClasses item = HP.classes
   where
   iconClass ∷ Resource → HH.ClassName
   iconClass (File _) = B.glyphiconFile
-  iconClass (Notebook _) = B.glyphiconBook
+  iconClass (Workspace _) = B.glyphiconBook
   iconClass (Directory _) = B.glyphiconFolderOpen
   iconClass (Mount (Database _)) = B.glyphiconHdd
   iconClass (Mount (View _)) = B.glyphiconFile
@@ -225,7 +225,7 @@ itemActions presentActions item | otherwise =
     ]
 
   share ∷ Array HTML
-  share = guard (isFile r || isNotebook r || isViewMount r) $>
+  share = guard (isFile r || isWorkspace r || isViewMount r) $>
     itemAction Share "Share" B.glyphiconShare
 
   itemAction ∷ (Resource → H.Action Query) → String → HH.ClassName → HTML

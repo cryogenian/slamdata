@@ -44,7 +44,7 @@ import SlamData.Quasar.FS as API
 import SlamData.Render.Common (fadeWhen, formGroup)
 import SlamData.Render.CSS as Rc
 
-import Utils.Path (DirPath, dropNotebookExt)
+import Utils.Path (DirPath, dropWorkspaceExt)
 
 type State =
   { showList :: Boolean
@@ -60,8 +60,8 @@ initialState :: R.Resource -> State
 initialState resource =
   { showList: false
   , initial: resource
-  , name: if R.isNotebook resource
-          then dropNotebookExt $ R.resourceName resource
+  , name: if R.isWorkspace resource
+          then dropWorkspaceExt $ R.resourceName resource
           else R.resourceName resource
   , dir: R.resourceDir resource
   , siblings: mempty
@@ -94,8 +94,8 @@ renameSlam :: State -> R.Resource
 renameSlam r =
   let initial = r.initial
       name = r.name
-      nameWithExt = if R.isNotebook initial
-                    then name <> "." <> Config.notebookExtension
+      nameWithExt = if R.isWorkspace initial
+                    then name <> "." <> Config.workspaceExtension
                     else name
   in initial # (R._name .~ nameWithExt)
            <<< (R._root .~ r.dir)
@@ -108,16 +108,16 @@ validate r
     when (name == "")
       $ throwError "Please enter a name for the file"
 
-    when (isJust $ S.stripSuffix ("." <> Config.notebookExtension) name)
+    when (isJust $ S.stripSuffix ("." <> Config.workspaceExtension) name)
       $ throwError $ "Please choose an alternative name, ."
-      <> Config.notebookExtension
+      <> Config.workspaceExtension
       <> " is a reserved extension"
 
     when (isJust $ S.indexOf "/" name)
       $ throwError "Please entera valid name for the file"
 
-    let nameWithExt = if R.isNotebook (r.initial)
-                      then name <> "." <> Config.notebookExtension
+    let nameWithExt = if R.isWorkspace (r.initial)
+                      then name <> "." <> Config.workspaceExtension
                       else name
     when (isJust $ elemIndex nameWithExt (map (_ ^. R._name) (r.siblings)))
       $ throwError "An item with this name already exists in the target folder"

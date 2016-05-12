@@ -42,7 +42,7 @@ instance arbitraryArbResource :: Arbitrary ArbResource where
         (File fp)
         (toList
           [ Mount (View fp)
-          , Notebook dp
+          , Workspace dp
           , Directory dp
           , Mount (Database dp)
           ])

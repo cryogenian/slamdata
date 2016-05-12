@@ -199,7 +199,7 @@ render state =
 
   resourceGlyph :: R.Resource -> HH.ClassName
   resourceGlyph (R.File _) = B.glyphiconFile
-  resourceGlyph (R.Notebook _) = B.glyphiconBook
+  resourceGlyph (R.Workspace _) = B.glyphiconBook
   resourceGlyph (R.Directory _) = B.glyphiconFolderOpen
   resourceGlyph (R.Mount (R.Database _)) = B.glyphiconHdd
   resourceGlyph (R.Mount (R.View _)) = B.glyphiconFloppyDisk

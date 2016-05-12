@@ -171,9 +171,9 @@ showCardOptions =
 browseRootFolder ∷ String
 browseRootFolder = XPath.anyWithAriaLabel "Browse root folder"
 
-createNotebook ∷ String
-createNotebook =
-  XPath.anyWithExactAriaLabel "Create notebook"
+createWorkspace ∷ String
+createWorkspace =
+  XPath.anyWithExactAriaLabel "Create workspace"
 
 createFolder ∷ String
 createFolder =

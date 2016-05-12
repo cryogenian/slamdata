@@ -70,8 +70,8 @@ import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
-import SlamData.Notebook.Action (Action(..), AccessType(..))
-import SlamData.Notebook.Routing (mkNotebookURL)
+import SlamData.Workspace.Action (Action(..), AccessType(..))
+import SlamData.Workspace.Routing (mkWorkspaceURL)
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
@@ -176,20 +176,20 @@ eval (MakeFolder next) = do
       void $ queryListing $ H.action $ Listing.Add (Item dirRes)
   pure next
 
-eval (MakeNotebook next) = do
+eval (MakeWorkspace next) = do
   path ← H.gets _.path
-  let newNotebookName = Config.newNotebookName ⊕ "." ⊕ Config.notebookExtension
-  name ← API.getNewName path newNotebookName
+  let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
+  name ← API.getNewName path newWorkspaceName
   case name of
     Left err →
       -- This error isn't strictly true as we're not actually creating the
-      -- notebook here, but saying there was a problem "creating a name for the
-      -- notebook" would be a little strange
+      -- workspace here, but saying there was a problem "creating a name for the
+      -- workspace" would be a little strange
       showDialog $ Dialog.Error
-        $ "There was a problem creating the notebook: "
+        $ "There was a problem creating the workspace: "
         ⊕ message err
     Right name' → do
-      H.fromEff $ setLocation $ mkNotebookURL (path </> dir name') New
+      H.fromEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
   pure next
 
 eval (UploadFile el next) = do

@@ -24,8 +24,8 @@ baseUrl = ""
 browserUrl :: String
 browserUrl = baseUrl <> "index.html"
 
-notebookUrl :: String
-notebookUrl = baseUrl <> "notebook.html"
+workspaceUrl :: String
+workspaceUrl = baseUrl <> "workspace.html"
 
 searchTimeout :: Number
 searchTimeout = 500.0
@@ -42,11 +42,11 @@ newFolderName = "Untitled Folder"
 folderMark :: String
 folderMark = ".folder"
 
-notebookExtension :: String
-notebookExtension = "slam"
+workspaceExtension :: String
+workspaceExtension = "slam"
 
-newNotebookName :: String
-newNotebookName = "Untitled Notebook"
+newWorkspaceName :: String
+newWorkspaceName = "Untitled Workspace"
 
 newFileName :: String
 newFileName = "Untitled File"
@@ -60,8 +60,8 @@ newViewMountName = "Untitled View"
 homeHash :: String
 homeHash = "index.html#?sort=asc&q=path%3A%2F&salt="
 
-notebookNameEditorId :: String
-notebookNameEditorId = "name-editor"
+workspaceNameEditorId :: String
+workspaceNameEditorId = "name-editor"
 
 defaultPageSize :: Int
 defaultPageSize = 10

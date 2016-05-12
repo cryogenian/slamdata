@@ -80,7 +80,7 @@ render state =
   renderResource r =
     let
       resourceType (R.File _) = "File"
-      resourceType (R.Notebook _) = "Notebook"
+      resourceType (R.Workspace _) = "Workspace"
       resourceType (R.Directory _) = "Directory"
       resourceType (R.Mount (R.View _)) = "View mount"
       resourceType (R.Mount (R.Database _)) = "Database"

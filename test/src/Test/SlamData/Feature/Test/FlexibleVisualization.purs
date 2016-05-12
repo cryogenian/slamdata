@@ -30,8 +30,8 @@ apiVizScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
 apiVizScenario =
   scenario
     "Flexible Visualization"
-    (Interact.createNotebookInTestFolder "Flexible Visualization")
-    (Interact.deleteFileInTestFolder "Untitled Notebook.slam")
+    (Interact.createWorkspaceInTestFolder "Flexible Visualization")
+    (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
 
 expectedImagesBasePath :: String
 expectedImagesBasePath =
@@ -106,9 +106,9 @@ test =
     Interact.provideSeriesForLastVizualizeCard ".gender"
     Interact.accessNextCardInLastDeck
     Expect.lastEChartOptions chartOptions_CO_gender
-    Interact.accessNotebookWithModifiedURL (flip append "/?state=%22NE%22")
+    Interact.accessWorkspaceWithModifiedURL (flip append "/?state=%22NE%22")
     Expect.lastEChartOptions chartOptions_NE_gender
-    Interact.accessNotebookWithModifiedURL (Str.replace "NE" "CO")
+    Interact.accessWorkspaceWithModifiedURL (Str.replace "NE" "CO")
     Expect.lastEChartOptions chartOptions_CO_gender
     successMsg "Successfully created flexible patient chart"
 

@@ -104,11 +104,11 @@ listing p =
   toResource res = case res of
     QFS.File path → R.File path
     QFS.Directory path →
-      let notebookName
-            = S.stripSuffix ("." <> Config.notebookExtension)
+      let workspaceName
+            = S.stripSuffix ("." <> Config.workspaceExtension)
             <<< P.runDirName =<< P.dirName path
-      in case notebookName of
-        Just name → R.Notebook (p </> P.dir name)
+      in case workspaceName of
+        Just name → R.Workspace (p </> P.dir name)
         Nothing → R.Directory path
     QFS.Mount (QFS.MongoDB path) → R.Mount (R.Database path)
     QFS.Mount (QFS.View path) → R.Mount (R.View path)

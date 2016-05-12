@@ -22,7 +22,6 @@ module Test.Feature
   , expectPresentedNotRepeatedly
   , expectPresentedWithPropertiesNotRepeatedly
   , expectSelectValue
-  , expectPresentedNotRepeatedly
   , hover
   , hoverWithProperties
   , paste

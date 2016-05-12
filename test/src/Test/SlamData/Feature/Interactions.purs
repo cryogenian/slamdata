@@ -22,8 +22,8 @@ followingLastPreviousCardGripper = XPath.following lastPreviousCardGripperXPath
 launchSlamData ∷ SlamFeature Unit
 launchSlamData = get ∘ _.slamdataUrl =<< getConfig
 
-accessNotebookWithModifiedURL ∷ (String → String) → SlamFeature Unit
-accessNotebookWithModifiedURL modifier =
+accessWorkspaceWithModifiedURL ∷ (String → String) → SlamFeature Unit
+accessWorkspaceWithModifiedURL modifier =
   getCurrentUrl >>= modifier >>> get
 
 mountTestDatabase ∷ SlamFeature Unit
@@ -57,13 +57,13 @@ browseTestFolder ∷ SlamFeature Unit
 browseTestFolder =
   browseRootFolder *> accessFile "test-mount" *> accessFile "testDb"
 
-createNotebook ∷ SlamFeature Unit
-createNotebook = Feature.click $ XPath.anywhere XPaths.createNotebook
+createWorkspace ∷ SlamFeature Unit
+createWorkspace = Feature.click $ XPath.anywhere XPaths.createWorkspace
 
-nameNotebook ∷ String → SlamFeature Unit
-nameNotebook name = do
+nameWorkspace ∷ String → SlamFeature Unit
+nameWorkspace name = do
   Feature.provideFieldValueWithProperties
-    (Map.singleton "value" $ Just "Untitled Notebook")
+    (Map.singleton "value" $ Just "Untitled Workspace")
     (XPath.anywhere "input")
     name
   Feature.pressEnter
@@ -111,10 +111,10 @@ selectFile ∷ String → SlamFeature Unit
 selectFile name =
   Feature.click $ XPath.anywhere $ XPaths.selectFile name
 
-createNotebookInTestFolder ∷ String → SlamFeature Unit
-createNotebookInTestFolder name = do
+createWorkspaceInTestFolder ∷ String → SlamFeature Unit
+createWorkspaceInTestFolder name = do
   browseTestFolder
-  createNotebook
+  createWorkspace
   Feature.expectPresented
     $ XPath.anywhere
     $ XPaths.headerGripper
@@ -125,8 +125,8 @@ createFolder = Feature.click $ XPath.anywhere XPaths.createFolder
 deleteFileInTestFolder ∷ String → SlamFeature Unit
 deleteFileInTestFolder name = browseTestFolder *> deleteFile name
 
-reopenCurrentNotebook ∷ SlamFeature Unit
-reopenCurrentNotebook = waitTime 2000 *> refresh
+reopenCurrentWorkspace ∷ SlamFeature Unit
+reopenCurrentWorkspace = waitTime 2000 *> refresh
 
 expandNewCardMenu ∷ SlamFeature Unit
 expandNewCardMenu = Feature.click (XPath.anywhere XPaths.insertCard)

@@ -28,8 +28,8 @@ searchScenario :: String -> Array String -> SlamFeature Unit -> SlamFeature Unit
 searchScenario =
   scenario
     "Search"
-    (Interact.createNotebookInTestFolder "Search")
-    (Interact.deleteFileInTestFolder "Untitled Notebook.slam"
+    (Interact.createWorkspaceInTestFolder "Search")
+    (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
        *> Interact.browseRootFolder)
 
 test :: SlamFeature Unit

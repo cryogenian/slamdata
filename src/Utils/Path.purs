@@ -54,10 +54,10 @@ sandbox ∷ ∀ b. Path Abs b Unsandboxed → Maybe (Path Abs b Sandboxed)
 sandbox = map (rootDir </> _) <<< P.sandbox rootDir
 
 -- | Set by default to support cells without
--- | `pathToNotebook` field. After first save `pathToNotebook` is
--- | setted to correct notebook path.
-phantomNotebookPath :: DirPath
-phantomNotebookPath = rootDir </> dir "phantom" <./> Config.notebookExtension
+-- | `pathToWorkspace` field. After first save `pathToWorkspace` is
+-- | setted to correct workspace path.
+phantomWorkspacePath :: DirPath
+phantomWorkspacePath = rootDir </> dir "phantom" <./> Config.workspaceExtension
 
 parseAnyPath :: String -> Maybe AnyPath
 parseAnyPath s
@@ -86,8 +86,8 @@ takeDirExt :: DirName -> String
 takeDirExt (DirName d) =
   maybe "" (\idx -> drop (idx + 1) d) $ lastIndexOf "." d
 
-dropNotebookExt :: String -> String
-dropNotebookExt name = take (length name - length Config.notebookExtension - 1) name
+dropWorkspaceExt :: String -> String
+dropWorkspaceExt name = take (length name - length Config.workspaceExtension - 1) name
 
 decodeURIPath :: String -> String
 decodeURIPath uri =

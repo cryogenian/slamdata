@@ -14,8 +14,8 @@ flipDeckScenario ∷ String → Array String → SlamFeature Unit → SlamFeatur
 flipDeckScenario =
   scenario
     "Deck backside"
-    (Interact.createNotebookInTestFolder "Flipped deck")
-    (Interact.deleteFileInTestFolder "Untitled Notebook.slam")
+    (Interact.createWorkspaceInTestFolder "Flipped deck")
+    (Interact.deleteFileInTestFolder "Untitled Workspace.slam")
 
 
 mkTwoCardTestDeck ∷ SlamFeature Unit
@@ -57,7 +57,7 @@ test = do
     Interact.insertFormCardInLastDeck
     Expect.textInFormCard "Quarterly"
     Expect.lastCardToBeFinished
-    warnMsg "SD-1538, we don't know if notebook has been saved already"
+    warnMsg "SD-1538, we don't know if workspace has been saved already"
     later 1000 $ pure unit
     Interact.flipDeck
     Expect.backsideMenuPresented

@@ -13,8 +13,8 @@ saveCardScenario ∷ String → Array String → SlamFeature Unit → SlamFeatur
 saveCardScenario =
   scenario
     "Saving/caching data source card output"
-    (Interact.createNotebookInTestFolder "Save card")
-    (Interact.deleteFileInTestFolder "Untitled Notebook.slam"
+    (Interact.createWorkspaceInTestFolder "Save card")
+    (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
      ≫ Interact.deleteFile "временный файл"
      ≫ Interact.browseRootFolder
     )

@@ -42,13 +42,10 @@ body {
   display: none;
 }
 
-.notebook-view-hack {
-    .notebook-content {
-        padding-top: 0;
-    }
+.workspace-view-hack {
     .card-input, .card-output-label {
     }
-    .notebook-card .row.card-output div.card-output-result {
+    .deck-card .row.card-output div.card-output-result {
     }
     .card-controls {
         > * {
@@ -62,15 +59,10 @@ body {
     }
 }
 
-
 .content {
     max-width: 750px;
     margin: auto;
     padding: 60px 15px 0px 15px;
-}
-
-.notebook-content {
-    padding-top: 111px;
 }
 
 button:focus {
@@ -344,7 +336,7 @@ ol.breadcrumb {
     }
 }
 
-.notebook-card {
+.deck-card {
     .card-header {
         background: #777;
         color: #fff;

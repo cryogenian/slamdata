@@ -35,7 +35,7 @@ data Query a
   | Download a
   | MakeMount a
   | MakeFolder a
-  | MakeNotebook a
+  | MakeWorkspace a
   | UploadFile HTMLElement a
   | FileListChanged HTMLElement a
   | SetVersion String a

@@ -31,19 +31,19 @@ module SlamData.FileSystem.Resource
   , isDatabaseMount
   , isViewMount
   , isHidden
-  , isNotebook
+  , isWorkspace
   , isTempFile
   , canHaveChildren
   , mkDatabase
   , mkDirectory
   , mkFile
-  , mkNotebook
+  , mkWorkspace
   , mkViewMount
   , newDatabase
   , newDirectory
   , newFile
   , newViewMount
-  , newNotebook
+  , newWorkspace
   , parent
   , resourceDir
   , resourceName
@@ -77,7 +77,7 @@ import Utils.Path as PU
 
 data Resource
   = File PU.FilePath
-  | Notebook PU.DirPath
+  | Workspace PU.DirPath
   | Directory PU.DirPath
   | Mount Mount
 
@@ -86,9 +86,9 @@ data Mount
   | View PU.FilePath
 
 -- PREDICATES
-isNotebook ∷ Resource → Boolean
-isNotebook (Notebook _) = true
-isNotebook _ = false
+isWorkspace ∷ Resource → Boolean
+isWorkspace (Workspace _) = true
+isWorkspace _ = false
 
 isFile ∷ Resource → Boolean
 isFile (File _) = true
@@ -131,11 +131,11 @@ hiddenTopLevel r = "." ≡ S.take 1 (resourceName r)
 
 isTempFile ∷ Resource → Boolean
 isTempFile r =
-  (PU.takeDirExt <$> P.dirName (resourceDir r)) ≡ Just Config.notebookExtension
+  (PU.takeDirExt <$> P.dirName (resourceDir r)) ≡ Just Config.workspaceExtension
 
 -- EMPTY
-newNotebook ∷ Resource
-newNotebook = Notebook $ P.rootDir </> P.dir Config.newNotebookName <./> Config.notebookExtension
+newWorkspace ∷ Resource
+newWorkspace = Workspace $ P.rootDir </> P.dir Config.newWorkspaceName <./> Config.workspaceExtension
 
 newFile ∷ Resource
 newFile = File $ P.rootDir </> P.file Config.newFileName
@@ -153,15 +153,15 @@ newViewMount = Mount $ View $ P.rootDir </> P.file Config.newViewMountName
 root ∷ Resource
 root = Directory P.rootDir
 
-mkNotebook ∷ PU.AnyPath → Resource
-mkNotebook ap =
-  either (Notebook ∘ (_ <./> Config.notebookExtension)) go ap
+mkWorkspace ∷ PU.AnyPath → Resource
+mkWorkspace ap =
+  either (Workspace ∘ (_ <./> Config.workspaceExtension)) go ap
   where
   go ∷ PU.FilePath → Resource
-  go p = maybe newNotebook id do
+  go p = maybe newWorkspace id do
     Tuple pp dirOrFile ← P.peel p
-    pure $ Notebook $
-      (pp </> P.dir (PU.nameOfFileOrDir dirOrFile) <./> Config.notebookExtension)
+    pure $ Workspace $
+      (pp </> P.dir (PU.nameOfFileOrDir dirOrFile) <./> Config.workspaceExtension)
 
 mkFile ∷ PU.AnyPath → Resource
 mkFile ap = either go File ap
@@ -204,7 +204,7 @@ parent = Directory ∘ resourceDir
 resourceTag ∷ Resource → String
 resourceTag r = case r of
   File _ → "file"
-  Notebook _ → "notebook"
+  Workspace _ → "workspace"
   Directory _ → "directory"
   Mount (View _) → "file"
   Mount (Database _) → "directory"
@@ -231,7 +231,7 @@ resourcePath r = either P.printPath P.printPath $ getPath r
 getPath ∷ Resource → PU.AnyPath
 getPath r = case r of
   File p → Right p
-  Notebook p → Left p
+  Workspace p → Left p
   Directory p → Left p
   Mount (View p) → Right p
   Mount (Database p) → Left p
@@ -252,7 +252,7 @@ setDir ap d = bimap (setDir' d) (setFile' d) ap
     (maybe (P.file "") (snd ⋙ PU.nameOfFileOrDir ⋙ P.file) $ P.peel p)
 
 setPath ∷ Resource → PU.AnyPath → Resource
-setPath (Notebook _) p = mkNotebook p
+setPath (Workspace _) p = mkWorkspace p
 setPath (File _) p = mkFile p
 setPath (Directory _) p = mkDirectory p
 setPath (Mount (Database _)) p = mkDatabase p
@@ -313,7 +313,7 @@ sortResource project direction a b
 
 instance eqResource ∷ Eq Resource where
   eq (File p) (File p') = p ≡ p'
-  eq (Notebook p) (Notebook p') = p ≡ p'
+  eq (Workspace p) (Workspace p') = p ≡ p'
   eq (Directory p) (Directory p') = p ≡ p'
   eq (Mount m) (Mount m') = m ≡ m'
   eq _ _ = false
@@ -340,8 +340,8 @@ instance resourceIsForeign ∷ F.IsForeign Resource where
           Just "mongodb" →
             newDatabase
           _ →
-            maybe newDirectory (const newNotebook)
-              $ S.stripSuffix Config.notebookExtension name
+            maybe newDirectory (const newWorkspace)
+              $ S.stripSuffix Config.workspaceExtension name
 
       "file" →
         pure case mountType of
@@ -381,8 +381,8 @@ instance decodeJsonResource ∷ DecodeJson Resource where
               _ → File
         in
           parsePath "file" constr P.parseAbsFile path
-      "notebook" →
-        parsePath "notebook" Notebook P.parseAbsDir path
+      "workspace" →
+        parsePath "workspace" Workspace P.parseAbsDir path
       "directory" →
         case mountType of
           Just "mongodb" →
