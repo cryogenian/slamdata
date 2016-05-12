@@ -270,9 +270,9 @@ eval (StopSlidingAndSnap mouseEvent next) =
 eval (UpdateSliderPosition mouseEvent next) =
   Slider.updateSliderPositionAndSetSliderSelectedCardId mouseEvent $> next
 eval (SetNextActionCardElement element next) =
-  Slider.setNextActionCardElement element $> next
+  Slider.setLens DCS._nextActionCardElement element $> next
 eval (StopSliderTransition next) =
-  Slider.setSliderTransition false $> next
+  Slider.setLens DCS._sliderTransition false $> next
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → NotebookDSL Unit
 peek (H.ChildF s q) =

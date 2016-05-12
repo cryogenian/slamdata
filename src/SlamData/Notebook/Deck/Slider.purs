@@ -18,8 +18,7 @@ module SlamData.Notebook.Deck.Slider
   ( startSliding
   , stopSlidingAndSnap
   , updateSliderPositionAndSetSliderSelectedCardId
-  , setNextActionCardElement
-  , setSliderTransition
+  , setLens
   , cardWidthCSS
   , render
   , containerProperties
@@ -30,6 +29,7 @@ import SlamData.Notebook.AccessType as AccessType
 import Control.Monad.Aff.Free (fromEff)
 import DOM.HTML.Types (HTMLElement)
 import Data.Int as Int
+import Data.Lens (LensP)
 import Data.Lens.Setter ((.~))
 import Data.List as List
 import Data.Ord (max)
@@ -76,10 +76,10 @@ render state visible =
 
 startSliding :: Event MouseEvent -> NotebookDSL Unit
 startSliding mouseEvent =
-  setInitialSliderX (Just mouseEvent.screenX)
-    *> (setInitialSliderCardWidth =<< getCardWidth)
-    *> setSliderTransition false
-    *> setBacksided false
+  setLens State._initialSliderX (Just mouseEvent.screenX)
+    *> (setLens State._initialSliderCardWidth =<< getCardWidth)
+    *> setLens State._sliderTransition false
+    *> setLens State._backsided false
 
 stopSlidingAndSnap :: Event MouseEvent -> NotebookDSL Unit
 stopSlidingAndSnap mouseEvent =
@@ -90,72 +90,32 @@ stopSlidingAndSnap mouseEvent =
 
 updateSliderPositionAndSetSliderSelectedCardId :: Event MouseEvent -> NotebookDSL Unit
 updateSliderPositionAndSetSliderSelectedCardId mouseEvent =
-  (updateSliderPosition mouseEvent.screenX =<< getInitialX)
-    *> (setSliderSelectedCardId =<< getSnappedActiveCardId)
-
-setNextActionCardElement :: Maybe HTMLElement -> NotebookDSL Unit
-setNextActionCardElement =
-  H.modify <<< (State._nextActionCardElement .~ _)
-
-setSliderTransition :: Boolean -> NotebookDSL Unit
-setSliderTransition =
-  H.modify <<< (State._sliderTransition .~ _)
+  (updateSliderPosition mouseEvent.screenX =<< H.gets _.initialSliderX)
+    *> (setLens State._sliderSelectedCardId =<< getSnappedActiveCardId)
 
 updateSliderPosition :: Number -> Maybe Number -> NotebookDSL Unit
 updateSliderPosition screenX =
-  maybe (pure unit) (setTranslateX <<< translateXCalc screenX)
-
-getInitialX :: NotebookDSL (Maybe Number)
-getInitialX =
-  H.gets _.initialSliderX
+  maybe (pure unit) (setLens State._sliderTranslateX <<< translateXCalc screenX)
 
 translateXCalc :: Number -> Number -> Number
 translateXCalc eventScreenX initialX =
   eventScreenX - initialX
 
-setTranslateX :: Number -> NotebookDSL Unit
-setTranslateX =
-  H.modify <<< (State._sliderTranslateX .~ _)
-
-setInitialSliderX :: Maybe Number -> NotebookDSL Unit
-setInitialSliderX =
-  H.modify <<< (State._initialSliderX .~ _)
-
-setInitialSliderCardWidth :: Maybe Number -> NotebookDSL Unit
-setInitialSliderCardWidth =
-  H.modify <<< (State._initialSliderCardWidth .~ _)
-
-setBacksided :: Boolean -> NotebookDSL Unit
-setBacksided =
-  H.modify <<< (State._backsided .~ _)
-
-setActiveCardId :: Maybe CardId -> NotebookDSL Unit
-setActiveCardId =
-  H.modify <<< (State._activeCardId .~ _)
-
-setInitialX :: Maybe Number -> NotebookDSL Unit
-setInitialX =
-  H.modify <<< (State._initialSliderX .~ _)
-
-setSliderSelectedCardId :: Maybe CardId -> NotebookDSL Unit
-setSliderSelectedCardId =
-  H.modify <<< (State._sliderSelectedCardId .~ _)
+setLens :: forall b. LensP State b -> b -> NotebookDSL Unit
+setLens lens =
+  H.modify <<< (lens .~ _)
 
 stopSliding :: NotebookDSL Unit
 stopSliding =
-  setInitialX Nothing *> setTranslateX 0.0
+  setLens State._initialSliderX Nothing *> setLens State._sliderTranslateX 0.0
 
 getBoundingClientWidth :: HTMLElement -> NotebookDSL Number
 getBoundingClientWidth =
   fromEff <<< map _.width <<< getBoundingClientRect
 
-getNextActionCardElement :: NotebookDSL (Maybe HTMLElement)
-getNextActionCardElement =
-  H.gets _.nextActionCardElement
-
 getCardWidth :: NotebookDSL (Maybe Number)
 getCardWidth =
-  traverse getBoundingClientWidth =<< getNextActionCardElement
+  traverse getBoundingClientWidth =<< H.gets _.nextActionCardElement
 
 getCardIdByIndex :: List.List CardDef -> Int -> Maybe CardId
 getCardIdByIndex cards =
@@ -164,9 +124,6 @@ getCardIdByIndex cards =
 getSnappedActiveCardId :: NotebookDSL (Maybe CardId)
 getSnappedActiveCardId =
   snapActiveCardId <$> H.get
-
-getInitialSliderCardWidth :: NotebookDSL (Maybe Number)
-getInitialSliderCardWidth = H.gets _.initialSliderCardWidth
 
 snapActiveCardIndex :: Number -> Number -> Int -> Int
 snapActiveCardIndex translateX cardWidth
@@ -188,11 +145,11 @@ snapActiveCardId st =
 
 snap :: NotebookDSL Unit
 snap =
-  setActiveCardId =<< getSnappedActiveCardId
+  setLens State._activeCardId =<< getSnappedActiveCardId
 
 startTransition :: NotebookDSL Unit
 startTransition =
-  setSliderTransition true
+  setLens State._sliderTransition true
 
 willChangeActiveCardWhenDropped :: State -> Boolean
 willChangeActiveCardWhenDropped st =
