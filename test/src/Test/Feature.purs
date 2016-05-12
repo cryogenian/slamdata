@@ -9,14 +9,18 @@ module Test.Feature
   , click
   , clickWithProperties
   , clickNotRepeatedly
+  , dragAndDrop
+  , dragAndDropWithProperties
   , copy
   , expectDownloadedTextFileToMatchFile
   , expectNotPresented
   , expectNotPresentedWithProperties
+  , expectNotPresentedNotRepeatedly
+  , expectNotPresentedWithPropertiesNotRepeatedly
   , expectPresented
   , expectPresentedWithProperties
-  , expectScreenshotToMatchAny
-  , expectScreenshotToMatchAnyWithProperties
+  , expectPresentedNotRepeatedly
+  , expectPresentedWithPropertiesNotRepeatedly
   , expectSelectValue
   , expectPresentedNotRepeatedly
   , hover
@@ -38,6 +42,7 @@ module Test.Feature
   , uncheck
   , uncheckWithProperties
   , undo
+  , smallWaitTime
   ) where
 
 import SlamData.Prelude
@@ -63,7 +68,7 @@ import Node.FS.Aff (readFile, readTextFile, readdir, unlink)
 import Selenium.ActionSequence as Sequence
 import Selenium.Monad (get, getAttribute, clickEl, attempt, later, byXPath, tryRepeatedlyTo, findElements, isDisplayed, getLocation, getSize, saveScreenshot, sendKeysEl)
 import Selenium.Monad as Selenium
-import Selenium.Types (Element)
+import Selenium.Types (Element, Location)
 
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Feature.Monad (Feature, getModifierKey, await)
@@ -500,6 +505,12 @@ clickAll xPath = clickAllWithProperties Map.empty xPath
 clickNotRepeatedly ∷ ∀ eff o. XPath → Feature eff o Unit
 clickNotRepeatedly xPath = clickWithPropertiesNotRepeatedly Map.empty xPath
 
+-- | Drag node found with the first provided XPath to the node found with the
+-- | second provided XPath.
+dragAndDrop ∷ ∀ eff o. XPath → XPath → Feature eff o Unit
+dragAndDrop fromXPath toXPath =
+  dragAndDropWithProperties Map.empty fromXPath Map.empty toXPath
+
 -- | Hover over the node found with the provided XPath.
 hover ∷ ∀ eff o. XPath → Feature eff o Unit
 hover xPath = hoverWithProperties Map.empty xPath
@@ -621,6 +632,35 @@ clickAllWithProperties properties =
     ∘ (traverse_ clickEl)
     <=< findAtLeastOneWithProperties properties
 
+-- | Drag node with the first provided properties or attributes found with the first
+-- | provided XPath to the node with the second provided properties or attributes found with
+-- | the second provided XPath.
+dragAndDropWithProperties
+  ∷ ∀ eff o
+  . Properties
+  → XPath
+  → Properties
+  → XPath
+  → Feature eff o Unit
+dragAndDropWithProperties fromProperties fromXPath toProperties toXPath =
+  tryRepeatedlyTo do
+    from <- findWithPropertiesNotRepeatedly fromProperties fromXPath
+    fromLocation <- getCenterLocation from
+    toLocation <- getCenterLocation =<< findWithPropertiesNotRepeatedly toProperties toXPath
+    dragAndDropElement from $ offset fromLocation toLocation
+  where
+  offset from to =
+    { x: to.x - from.x
+    , y: to.y - from.y
+    }
+  getCenterLocation element = do
+    location <- getLocation element
+    size <- getSize element
+    pure
+      { x: location.x + (size.width / 2)
+      , y: location.y + (size.height / 2)
+      }
+
 -- | Hover over the node with the provided properties or attributes found with
 -- | the provided XPath.
 hoverWithProperties ∷ ∀ eff o. Properties → XPath → Feature eff o Unit
@@ -675,7 +715,7 @@ clickAllElements ∷ ∀ eff o. Array Element → Feature eff o Unit
 clickAllElements = traverse_ clickEl
 
 hoverElement ∷ ∀ eff o. Element → Feature eff o Unit
-hoverElement = tryRepeatedlyTo ∘ Selenium.sequence ∘ Sequence.hover
+hoverElement = Selenium.sequence ∘ Sequence.hover
 
 provideFieldValueElement ∷ ∀ eff o. String → Element → Feature eff o Unit
 provideFieldValueElement value element =
@@ -684,6 +724,10 @@ provideFieldValueElement value element =
 selectFromDropdownElement ∷ ∀ eff o. String → Element → Feature eff o Unit
 selectFromDropdownElement text element =
   clickEl element *> typeString text *> pressEnter
+
+dragAndDropElement ∷ ∀ eff o. Element → Location → Feature eff o Unit
+dragAndDropElement from =
+  Selenium.sequence <<< Sequence.dndToLocation from
 
 -- Element dependent functions
 elementsWithProperties

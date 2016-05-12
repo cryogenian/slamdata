@@ -20,10 +20,11 @@ flipDeckScenario =
 
 mkTwoCardTestDeck ∷ SlamFeature Unit
 mkTwoCardTestDeck = do
-    Interact.insertQueryCardAsFirstCardInNewStack
+    Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "select measureOne from `/test-mount/testDb/flatViz`"
-    Interact.insertJTableCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertJTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne"]
 
 test ∷ SlamFeature Unit
@@ -50,9 +51,10 @@ test = do
     successMsg "Successfuly deleted last|active card"
 
   flipDeckScenario "Share deck" [] do
-    Interact.insertMdCardAsFirstCardInNewStack
+    Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard "Quarterly"
-    Interact.insertFormCardAsNextAction
+    Interact.accessNextCardInLastDeck
+    Interact.insertFormCardInLastDeck
     Expect.textInFormCard "Quarterly"
     Expect.lastCardToBeFinished
     warnMsg "SD-1538, we don't know if notebook has been saved already"

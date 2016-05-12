@@ -46,8 +46,11 @@ withTextLessThan s = "text() > '" ⊕ s ⊕ "'"
 withText ∷ String → String
 withText s = "text() = '" ⊕ s ⊕ "'"
 
-withAriaLabel ∷ String → String
-withAriaLabel s = "@aria-label = '" ⊕ s ⊕ "'"
+ariaLabel ∷ String → String
+ariaLabel s = "@aria-label = '" ⊕ s ⊕ "'"
+
+ariaDisabled ∷ String → String
+ariaDisabled s = "@aria-disabled = '" ⊕ s ⊕ "'"
 
 withoutText ∷ String → String
 withoutText s = "text() != '" ⊕ s ⊕ "'"
@@ -175,6 +178,9 @@ anywhere xPath = if anywhered then xPath else "//" ⊕ xPath
 
 precedingSibling ∷ String → String → String
 precedingSibling x y = x ⊕ "/preceding-sibling::" ⊕ y
+
+not :: String -> String
+not s = "not(" ++ s ++ ")"
 
 any ∷ String
 any = "*"

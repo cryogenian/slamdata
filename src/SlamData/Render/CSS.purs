@@ -416,7 +416,7 @@ codeGlyph ∷ ClassName
 codeGlyph = className "code-glyph"
 
 deckBackSide ∷ ClassName
-deckBackSide = className "deck-backside"
+deckBackSide = className "sd-deck-backside"
 
 openResourceCard ∷ ClassName
 openResourceCard = className "open-resource-card"
@@ -426,3 +426,24 @@ openResourceCardMenu = className "open-resource-card-menu"
 
 loading ∷ ClassName
 loading = className "loading"
+
+cardSlider :: ClassName
+cardSlider = className "sd-card-slider"
+
+board :: ClassName
+board = className "sd-board"
+
+deck :: ClassName
+deck = className "sd-deck"
+
+card :: ClassName
+card = className "sd-card"
+
+cardGripper :: ClassName
+cardGripper = className "sd-card-gripper"
+
+cardGripperLast :: ClassName
+cardGripperLast = className "sd-card-gripper-last"
+
+flipDeck :: ClassName
+flipDeck = className "sd-flip-deck"

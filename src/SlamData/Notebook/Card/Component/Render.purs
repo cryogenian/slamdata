@@ -54,7 +54,7 @@ header
 header cty cs =
   guard (controllable cty) $>
     H.div
-      [ P.classes [CSS.cardHeader, B.clearfix]
+      [ P.classes [CSS.cardHeader]
       , ARIA.label $ (cardName cty) ⊕ " card"
       ]
       [ H.div
@@ -111,7 +111,7 @@ controls cs =
 statusBar ∷ Boolean → CardState → CardHTML
 statusBar hasResults cs =
   H.div
-    [ P.classes [CSS.cardEvalLine, B.clearfix, B.row] ]
+    [ P.classes [CSS.cardEvalLine] ]
     $ [ H.button
           [ P.classes [B.btn, B.btnPrimary, button.className]
           , E.onClick (E.input_ $ if isRunning cs.runState

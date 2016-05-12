@@ -38,6 +38,12 @@ module SlamData.Notebook.Deck.Component.State
   , _failingCards
   , _stateMode
   , _backsided
+  , _initialSliderX
+  , _initialSliderCardWidth
+  , _sliderTransition
+  , _sliderTranslateX
+  , _sliderSelectedCardId
+  , _nextActionCardElement
   , addCard
   , addCard'
   , removeCards
@@ -52,8 +58,9 @@ module SlamData.Notebook.Deck.Component.State
   , cardsOfType
   , fromModel
   , deckPath
-
   , virtualState
+  , cardIndexFromId
+  , activeCardIndex
   ) where
 
 import SlamData.Prelude
@@ -68,6 +75,8 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as S
 import Data.StrMap as SM
+
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
@@ -130,6 +139,12 @@ type State =
   , globalVarMap ∷ Port.VarMap
   , stateMode ∷ StateMode
   , backsided ∷ Boolean
+  , initialSliderX :: Maybe Number
+  , initialSliderCardWidth :: Maybe Number
+  , sliderTransition :: Boolean
+  , sliderTranslateX :: Number
+  , sliderSelectedCardId :: Maybe CardId
+  , nextActionCardElement :: Maybe HTMLElement
   }
 
 -- | A record used to represent card definitions in the notebook.
@@ -159,6 +174,12 @@ initialDeck browserFeatures =
   , failingCards: S.empty
   , stateMode: Ready
   , backsided: false
+  , initialSliderX: Nothing
+  , initialSliderCardWidth: Nothing
+  , sliderTransition: false
+  , sliderTranslateX: 0.0
+  , sliderSelectedCardId: Nothing
+  , nextActionCardElement: Nothing
   }
 
 -- | The unique identifier of the deck. If it's a fresh, unsaved deck, the id
@@ -183,7 +204,8 @@ _cards = lens _.cards _{cards = _}
 _dependencies ∷ LensP State (M.Map CardId CardId)
 _dependencies = lens _.dependencies _{dependencies = _}
 
--- | The `CardId` for the currently focused card.
+-- | The `CardId` for the currently focused card. `Nothing` indicates the next
+-- | action card.
 _activeCardId ∷ LensP State (Maybe CardId)
 _activeCardId = lens _.activeCardId _{activeCardId = _}
 
@@ -234,6 +256,36 @@ _stateMode = lens _.stateMode _{stateMode = _}
 _backsided ∷ ∀ a r. LensP {backsided ∷ a |r} a
 _backsided = lens _.backsided _{backsided = _}
 
+-- | The x position of the card slider at the start of the slide interaction in
+-- | pixels. If `Nothing` slide interaction is not in progress.
+_initialSliderX :: LensP State (Maybe Number)
+_initialSliderX = lens _.initialSliderX _{initialSliderX = _}
+
+-- | The width of the next action card at the start of the slide interaction in
+-- | pixels. If `Nothing` either the slide interaction is not in progress or the
+-- | next action card element reference is broken.
+_initialSliderCardWidth :: LensP State (Maybe Number)
+_initialSliderCardWidth = lens _.initialSliderCardWidth _{initialSliderCardWidth = _}
+
+-- | Whether the translation of the card slider should be animated or not.
+-- | Should be true between the end of the slide interaction and the end of the
+-- | transition.
+_sliderTransition :: LensP State Boolean
+_sliderTransition = lens _.sliderTransition _{sliderTransition = _}
+
+-- | The current x translation of the card slider during the slide interaction.
+_sliderTranslateX :: LensP State Number
+_sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
+
+-- | The card to be selected (made active) when the slide interation ends.
+-- | `Nothing` indicates the next action card.
+_sliderSelectedCardId :: LensP State (Maybe CardId)
+_sliderSelectedCardId = lens _.sliderSelectedCardId _{sliderSelectedCardId = _}
+
+-- | The next action card HTML element
+_nextActionCardElement :: LensP State (Maybe HTMLElement)
+_nextActionCardElement = lens _.nextActionCardElement _{nextActionCardElement = _}
+
 -- | Adds a new card to the notebook.
 -- |
 -- | Takes the current notebook state, the type of card to add, and an optional
@@ -253,6 +305,7 @@ addCard' cardType parent st =
       { fresh = st.fresh + 1
       , cards = st.cards `L.snoc` mkCardDef cardType cardId st
       , activeCardId = Just cardId
+      , sliderSelectedCardId = Just cardId
       , cardTypes = M.insert cardId cardType st.cardTypes
       , dependencies =
           maybe st.dependencies (flip (M.insert cardId) st.dependencies) parent
@@ -455,30 +508,35 @@ fromModel
   → Maybe DirPath
   → Maybe DeckId
   → Model.Deck
+  → State
   → Tuple (Array Card.Model) State
-fromModel browserFeatures path deckId { cards, dependencies, name } =
+fromModel browserFeatures path deckId { cards, dependencies, name } state =
   Tuple
     cards
-    ({ id: deckId
-    , fresh: maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
-    , accessType: ReadOnly
-    , cards: foldMap cardDefFromModel cards
-    , cardTypes: foldl addCardIdTypePair M.empty cards
-    , dependencies
-    , activeCardId: Nothing
-    , name
-    , browserFeatures
-    , viewingCard: Nothing
-    , path
-    , saveTrigger: Nothing
-    , globalVarMap: SM.empty
-    , runTrigger: Nothing
-    , pendingCards: S.empty
-    , failingCards: S.empty
-    , stateMode: Loading
-    , backsided: false
-    } ∷ State)
+    ((state
+        { accessType = ReadOnly
+        , activeCardId = _.id <$> L.last cardDefs
+        , backsided = false
+        , browserFeatures = browserFeatures
+        , cardTypes = foldl addCardIdTypePair M.empty cards
+        , cards = cardDefs
+        , dependencies = dependencies
+        , failingCards = S.empty
+        , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
+        , globalVarMap = SM.empty
+        , id = deckId
+        , initialSliderX = Nothing
+        , name = name
+        , path = path
+        , runTrigger = Nothing
+        , pendingCards = S.empty
+        , sliderSelectedCardId = activeCardId
+        }) :: State)
   where
+  cardDefs = foldMap cardDefFromModel cards
+
+  activeCardId = _.id <$> L.last cardDefs
+
   addCardIdTypePair mp {cardId, cardType} = M.insert cardId cardType mp
 
   cardDefFromModel ∷ Card.Model → List CardDef
@@ -491,3 +549,13 @@ fromModel browserFeatures path deckId { cards, dependencies, name } =
         , ty: cardType
         , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
         }
+
+activeCardIndex :: State -> Int
+activeCardIndex state =
+  fromMaybe (L.length state.cards) (L.findIndex isActiveCard state.cards)
+  where
+  isActiveCard = eq state.activeCardId <<< Just <<< _.id
+
+cardIndexFromId :: State -> Maybe CardId -> Maybe Int
+cardIndexFromId state =
+  maybe (Just $ L.length state.cards) (flip L.elemIndex (_.id <$> state.cards))

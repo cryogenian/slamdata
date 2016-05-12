@@ -68,14 +68,13 @@ keywordsAction Mirror = [] --["mirror", "copy", "duplicate", "shallow"]
 keywordsAction Wrap = [] --["wrap", "pin", "card"]
 
 actionGlyph ∷ BackAction → HTML
-actionGlyph action = case action of
-  Trash → glyph B.glyphiconTrash
-  Share → glyph B.glyphiconShare
-  Embed → glyph B.glyphiconShareAlt
-  Publish → glyph B.glyphiconBlackboard
-  Mirror → glyph B.glyphiconDuplicate
-  Wrap → glyph B.glyphiconLogIn
-
+actionGlyph = glyph ∘ case _ of
+  Trash → B.glyphiconTrash
+  Share → B.glyphiconShare
+  Embed → B.glyphiconShareAlt
+  Publish → B.glyphiconBlackboard
+  Mirror → B.glyphiconDuplicate
+  Wrap → B.glyphiconLogIn
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
@@ -85,30 +84,30 @@ comp = H.component {render, eval}
 
 render ∷ State → HTML
 render state =
-  HH.div [ HP.classes [ Rc.deckBackSide ] ]
-  [ HH.form_
-      [ HH.div [ HP.classes [ B.inputGroup ] ]
-          [ HH.input
-            [ HP.value state.filterString
-            , HE.onValueInput (HE.input UpdateFilter)
-            , HP.classes [ B.formControl ]
-            , ARIA.label "Filter actions"
-            , HP.placeholder "Filter actions"
+  HH.div
+    [ HP.class_ Rc.notebookCard ]
+    [ HH.div
+        [ HP.class_ Rc.deckBackSide ]
+        [ HH.div_
+            [ HH.form_
+                [ HH.div_
+                    [ HH.input
+                        [ HP.value state.filterString
+                        , HE.onValueInput (HE.input UpdateFilter)
+                        , ARIA.label "Filter actions"
+                        , HP.placeholder "Filter actions"
+                        ]
+                    , HH.button
+                          [ HP.buttonType HP.ButtonButton ]
+                          [ glyph B.glyphiconRemove ]
+                    ]
+                ]
+            , HH.ul_
+                $ map backsideAction spannedAction.init -- allBackActions
+                ⊕ map disabledAction spannedAction.rest
             ]
-          , HH.span
-              [ HP.classes [ B.inputGroupBtn ] ]
-              [ HH.button
-                  [ HP.classes [ B.btn, B.btnDefault ]
-                  , HP.buttonType HP.ButtonButton
-                  ]
-                  [ glyph B.glyphiconRemove ]
-              ]
-          ]
-      ]
-  , HH.ul_
-      (map backsideAction spannedAction.init -- allBackActions
-       ⊕ map disabledAction spannedAction.rest)
-  ]
+        ]
+    ]
   where
   spannedAction ∷ {init ∷ Array BackAction, rest ∷ Array BackAction}
   spannedAction =

@@ -22,8 +22,10 @@ module SlamData.Notebook.Deck.Component.Query
 import SlamData.Prelude
 
 import Data.BrowserFeatures as BF
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen (ChildF)
+import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.Notebook.AccessType as AT
 import SlamData.Notebook.Card.CardId as CID
@@ -53,5 +55,10 @@ data Query a
   | GetCardType CID.CardId (Maybe CT.CardType → a)
   | FlipDeck a
   | GetActiveCardId (Maybe CID.CardId → a)
+  | StartSliding (Event MouseEvent) a
+  | StopSlidingAndSnap (Event MouseEvent) a
+  | UpdateSliderPosition (Event MouseEvent) a
+  | SetNextActionCardElement (Maybe HTMLElement) a
+  | StopSliderTransition a
 
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)

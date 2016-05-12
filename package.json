@@ -31,6 +31,7 @@
     "chalk": "^1.1.1",
     "gulp": "^3.9.0",
     "gulp-content-filter": "0.0.0",
+    "gulp-footer": "^1.0.5",
     "gulp-header": "^1.7.1",
     "gulp-less": "^3.0.5",
     "gulp-purescript": "^0.8.0",
@@ -46,7 +47,7 @@
     "purescript-psa": "^0.3.6",
     "rimraf": "^2.4.3",
     "run-sequence": "^1.1.5",
-    "selenium-webdriver": "=2.53.1",
+    "selenium-webdriver": "=2.53.2",
     "webpack-stream": "^2.1.0"
   },
   "dependencies": {

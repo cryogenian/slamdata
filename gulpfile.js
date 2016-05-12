@@ -11,7 +11,8 @@ var gulp = require("gulp"),
     less = require("gulp-less"),
     sequence = require("run-sequence"),
     run = require("gulp-run"),
-    replace = require("gulp-replace");
+    replace = require("gulp-replace"),
+    footer = require("gulp-footer");
 
 var slamDataSources = [
   "src/**/*.purs",
@@ -38,8 +39,10 @@ var foreigns = [
 // absolute positions so this task can be used to swap the two after less
 // compilation.
 // This task can be reverted by the `less` task.
-gulp.task('remove-css-fixed-positions', function(){
+gulp.task('prevent-css-transitions-and-remove-fixed-positions', function() {
+  var css = fs.readFileSync("test/prevent-css-transitions.css", "utf8");
   gulp.src(['public/css/main.css'])
+    .pipe(footer(css))
     .pipe(replace('fixed', 'absolute'))
     .pipe(gulp.dest('public/css'));
 });
@@ -178,7 +181,7 @@ gulp.task("make-bundle", function () {
 });
 
 gulp.task("bundle-test", ["bundle"], function() {
-    sequence("less", "remove-css-fixed-positions", function() {
+    sequence("less", "prevent-css-transitions-and-remove-fixed-positions", function() {
         return purescript.pscBundle({
             src: "output/**/*.js",
             output: "test/index.js",

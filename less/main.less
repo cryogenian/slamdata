@@ -26,14 +26,15 @@
 
 html {
   height: 100%;
-  font-size: 12pt;
+  font-size: 16px;
 }
 body {
     padding: 0;
     font-family: Ubuntu, Arial, Helvetica, sans-serif;
     height: 100%;
     div.filesystem, div.dashboard {
-        min-height: 100%;
+        height: 100%;
+        width: 100%;
     }
 }
 
@@ -46,10 +47,8 @@ body {
         padding-top: 0;
     }
     .card-input, .card-output-label {
-        display: none;
     }
     .notebook-card .row.card-output div.card-output-result {
-        width: 100%;
     }
     .card-controls {
         > * {
@@ -63,31 +62,6 @@ body {
     }
 }
 
-.notebook-card {
-    .card-controls {
-        button {
-            i {
-                top: 2px;
-            }
-            span.share-button {
-                background: no-repeat url(../img/code-icon.svg) center;
-                background-size: 16px;
-                width: 16px;
-                height: 14px;
-                display: inline-block;
-                position: relative;
-                top: 4px;
-                opacity: 0.7;
-            }
-            &:hover {
-                span.share-button {
-                    background-image: url(../img/code-icon-blue.svg);
-                    opacity: 1;
-                }
-            }
-        }
-    }
-}
 
 .content {
     max-width: 750px;
@@ -374,32 +348,18 @@ ol.breadcrumb {
     .card-header {
         background: #777;
         color: #fff;
-        margin: 0px -15px;
-        line-height: 30px;
+        line-height: 2rem;
+        height: 2rem;
+        width: 100%;
 
         .card-icon, .card-name {
             float: left;
         }
 
         .card-icon {
-            width: 61px;
+            width: 2rem;
+            height: 2rem;
             text-align: center;
-            font-size: 16px;
-            .glyph-image {
-                height: 16px;
-                width: 16px;
-                &.chart-glyph, &.code-glyph {
-                    background-size: 100% 100%;
-                    display: inline-block;
-                    margin-top: 7px;
-                }
-                &.chart-glyph {
-                    background-image: url("/img/pie.svg");
-                }
-                &.code-glyph {
-                    background-image: url("/img/code-icon-white.svg");
-                }
-            }
         }
 
         .card-name {
@@ -408,6 +368,7 @@ ol.breadcrumb {
 
         .card-controls button {
             opacity: 0.6;
+            float: right;
             &:hover {
                 color: #fff;
                 opacity: 1;
@@ -416,9 +377,11 @@ ol.breadcrumb {
     }
 
     .status-text {
-        line-height: 30px;
+        line-height: 2rem;
         padding-left: 10px;
         float: left;
+        display: block;
+        height: 2rem;
     }
 
     .card-controls {
@@ -435,8 +398,25 @@ ol.breadcrumb {
             &:hover {
                 color: #286090;
             }
-        }
-        > i {
+            > i {
+                top: 2px;
+            }
+            span.share-button {
+                background: no-repeat url(../img/code-icon.svg) center;
+                background-size: 16px;
+                width: 16px;
+                height: 14px;
+                display: inline-block;
+                position: relative;
+                top: 4px;
+                opacity: 0.7;
+            }
+            &:hover {
+                span.share-button {
+                    background-image: url(../img/code-icon-blue.svg);
+                    opacity: 1;
+                }
+            }
             margin-left: 6px;
             opacity: 0.5;
         }
@@ -451,7 +431,6 @@ ol.breadcrumb {
         }
         > pre {
             background: none;
-            clear: left;
             line-height: 30px;
             padding: 0 10px;
             margin: 0;
@@ -489,10 +468,9 @@ ol.breadcrumb {
         padding: 0px;
         height: 32px;
     }
-    .row.card-output {
-        &.fade.in {
-            padding-bottom: 12px;
-        }
+    .card-output {
+      display: block;
+      height: 100%;
         table {
             margin: 0;
             border-bottom: 1px solid #ddd;
@@ -511,19 +489,18 @@ ol.breadcrumb {
             padding-top: 8px;
         }
         div.card-output-result {
-            min-height: 165px;
-            float: left;
+            height: 100%;
             background: #fff;
-            width: ~"calc(100% - 61px)";
-            border-bottom: 1px solid #ccc;
+            width: 100%;
             .scrollbox {
                 overflow-x: auto;
-                width: 100%;
             }
         }
     }
     .card-eval-line {
-        background: #eee;
+        display: block;
+        height: 2rem;
+        background: #ddd;
     }
     button.next-card-list {
         border-radius: 0;
@@ -678,8 +655,6 @@ div.viz-card-editor, div.download-card-editor {
         height: 160px;
     }
     .viz-chart-type-selector, .download-type-selector {
-        position: absolute;
-        left: 0;
         width: 60px;
         height: 160px;
         background-color: #f0f0f0;
@@ -763,7 +738,6 @@ button {
 @import "nav";
 @import "menu";
 @import "sign-in";
-@import "notebook";
 @import "markdown-output";
 @import "filesystem";
 @import "dialog/mount";
@@ -772,7 +746,4 @@ button {
 @import "dialog/download";
 @import "form-builder";
 @import "share-permissions";
-@import "next-card";
-@import "save-card";
-@import "open-resource-card";
-@import "download-card";
+@import "deck";

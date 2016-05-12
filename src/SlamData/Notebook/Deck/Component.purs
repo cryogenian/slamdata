@@ -49,8 +49,9 @@ import DOM.HTML.Location as Location
 import Halogen as H
 import Halogen.Component.Utils (forceRerender')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
+import Halogen.HTML.CSS.Indexed (style)
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
-import Halogen.Component.ChildPath (injSlot, injState)
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -60,30 +61,30 @@ import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Notebook.AccessType (AccessType(..), isEditable)
 import SlamData.Notebook.Action as NA
-import SlamData.Notebook.Card.CardId (CardId(), cardIdToString)
-import SlamData.Notebook.Card.CardType (CardType(..), nextCardTypes)
+import SlamData.Notebook.Card.CardId (CardId())
+import SlamData.Notebook.Card.CardType (CardType(JTable, OpenResource, API), nextCardTypes)
 import SlamData.Notebook.Card.Common.EvalQuery (CardEvalQuery(..))
-import SlamData.Notebook.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery, initialCardState)
+import SlamData.Notebook.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
 import SlamData.Notebook.Card.Next.Component as Next
 import SlamData.Notebook.Card.OpenResource.Component as Open
 import SlamData.Notebook.Card.Port (Port(..))
 import SlamData.Notebook.Deck.BackSide.Component as Back
-import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildState, ChildSlot, CardSlot(..))
+import SlamData.Notebook.Deck.Common (NotebookHTML, NotebookDSL)
+import SlamData.Notebook.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildSlot, CardSlot(..))
 import SlamData.Notebook.Deck.Component.Query (QueryP, Query(..))
 
 import SlamData.Notebook.Deck.Component.State as DCS
 import SlamData.Notebook.Deck.DeckId (DeckId(..), deckIdToString)
+import SlamData.Notebook.Deck.Gripper as Gripper
 import SlamData.Notebook.Deck.Model as Model
 import SlamData.Notebook.Model as NB
+import SlamData.Notebook.Deck.Slider as Slider
 import SlamData.Notebook.Routing (mkNotebookHash, mkNotebookCardHash, mkNotebookURL)
 import SlamData.Quasar.Data (save, load) as Quasar
 import SlamData.Quasar.FS (move, getNewName) as Quasar
 import SlamData.Render.CSS as CSS
 
 import Utils.Path (DirPath, FilePath)
-
-type NotebookHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
-type NotebookDSL = H.ParentDSL DCS.State ChildState Query ChildQuery Slam ChildSlot
 
 initialState ∷ BrowserFeatures → DCS.StateP
 initialState fs = H.parentState $ DCS.initialDeck fs
@@ -101,26 +102,41 @@ render state =
   case state.stateMode of
     DCS.Loading →
       HH.div
-        [ HP.classes [ B.alert, B.alertInfo ] ]
+        [ HP.classes [ B.alert, B.alertInfo ]
+        , HP.key "board"
+        ]
         [ HH.h1
           [ HP.class_ B.textCenter ]
           [ HH.text "Loading..." ]
           -- We need to render the cards but have them invisible during loading
-          -- otherwise the various nested components won't initialise correctly
-        , renderCards false
+          -- otherwise the various nested components won't initialise correctly.
+          -- This div is required, along with the key, so that structurally it
+          -- is in the same place in both `Loading` and `Ready` states.
+        , HH.div
+            [ HP.key "deck-container" ]
+            [ Slider.render state $ not state.backsided ]
         ]
     DCS.Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
-      HH.div_
-        $ [ renderCards $ not state.backsided
-          , renderBackside state.backsided
-            -- Commented until one card representation
---          , HH.button [ HP.classes [ B.btn, B.btnPrimary ]
---                      , HE.onClick (HE.input_ FlipDeck)
---                      , ARIA.label "Flip deck"
---                      ]
---            [ HH.text "Flip" ]
-          ]
+      HH.div
+        ([ HP.class_ CSS.board
+         , HP.key "board"
+         ] ++ Slider.containerProperties state)
+        [ HH.div
+            [ HP.class_ CSS.deck
+            , HP.key "deck-container"
+            ]
+            [ HH.button
+                [ HP.classes [ CSS.flipDeck ]
+                , HE.onClick (HE.input_ FlipDeck)
+                , ARIA.label "Flip deck"
+                , HP.title "Flip deck"
+                ]
+                [ HH.text "" ]
+            , Slider.render state $ not state.backsided
+            , renderBackside state.backsided
+            ]
+        ]
 
     DCS.Error err →
       HH.div
@@ -133,59 +149,25 @@ render state =
   where
   renderBackside visible =
     HH.div
-      ( [ ARIA.hidden $ show $ not visible ]
-        ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
-
-      [ HH.slot' cpBackSide unit \_ →
-         { component: Back.comp
-         , initialState: Back.initialState
-         }
+      ([ HP.classes [ CSS.cardSlider ]
+       , ARIA.hidden $ show $ not visible
+       ]
+         ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
+      [ HH.div
+          [ HP.classes [ CSS.card ]
+          , style $ Slider.cardWidthCSS 1
+          ]
+          (Gripper.renderGrippers
+             visible
+             (isJust state.initialSliderX)
+             (Gripper.gripperDefsForCardId state.cards state.activeCardId)
+             ⊕ [ HH.slot' cpBackSide unit \_ →
+                  { component: Back.comp
+                  , initialState: Back.initialState
+                  }
+               ]
+          )
       ]
-
-
-  renderCards visible =
-    -- The key here helps out virtual-dom: the entire subtree will be moved
-    -- when the loading message disappears, rather than being reconstructed in
-    -- the parent element
-    HH.div
-      ([ HP.key "notebook-cards"]
-       ⊕ (guard (not visible) $> (HP.class_ CSS.invisible)))
-      ( List.fromList (map renderCard state.cards)
-        ⊕ (pure $ newCardMenu state)
-      )
-
-  renderCard cardDef =
-    HH.div
-    ([ HP.key ("card" ⊕ cardIdToString cardDef.id) ]
-     ⊕ foldMap (viewingStyle cardDef) state.viewingCard)
-    [ HH.Slot $ transformCardConstructor cardDef.ctor ]
-
-  transformCardConstructor (H.SlotConstructor p l) =
-    H.SlotConstructor
-      (injSlot cpCard p)
-      (l <#> \def →
-        { component: H.transformChild cpCard def.component
-        , initialState: injState cpCard def.initialState
-        }
-      )
-
-  viewingStyle cardDef cid =
-    guard (not (cardDef.id ≡ cid))
-    $> (HP.class_ CSS.invisible)
-
-  shouldHideNextAction =
-    isJust state.viewingCard ∨ state.accessType ≡ ReadOnly
-
-  newCardMenu state =
-    HH.div
-      ([ HP.key ("next-action-card") ]
-       ⊕ (guard shouldHideNextAction $> (HP.class_ CSS.invisible)))
-
-    [ HH.slot' cpCard (CardSlot top) \_ →
-       { component: Next.nextCardComponent
-       , initialState: H.parentState initialCardState
-       }
-    ]
 
 eval ∷ Natural Query NotebookDSL
 eval (AddCard cardType next) = createCard cardType $> next
@@ -200,9 +182,9 @@ eval (LoadNotebook fs dir deckId next) = do
       H.fromAff $ log err
       H.modify $ DCS._stateMode .~ DCS.Error "There was a problem decoding the saved notebook"
     Right model →
-      case DCS.fromModel fs (Just dir) (Just deckId) model of
+      case DCS.fromModel fs (Just dir) (Just deckId) model state of
         Tuple cards st → do
-          H.set st
+          setDeckState st
           forceRerender'
           ranCards ← catMaybes <$> for cards \card → do
             H.query' cpCard  (CardSlot card.cardId)
@@ -219,7 +201,7 @@ eval (LoadNotebook fs dir deckId next) = do
   pure next
 
 eval (ExploreFile fs res next) = do
-  H.set $ DCS.initialDeck fs
+  setDeckState $ DCS.initialDeck fs
   H.modify
     $ (DCS._path .~ Pathy.parentDir res)
     ∘ (DCS.addCard OpenResource Nothing)
@@ -244,8 +226,9 @@ eval (Publish next) = do
     for_ mpath $ H.fromEff ∘ newTab ∘ flip mkNotebookURL (NA.Load ReadOnly)
   pure next
 eval (Reset fs dir deckId next) = do
-  let nb = DCS.initialDeck fs
-  H.set $ nb { id = deckId, path = Just dir }
+  let
+    nb = DCS.initialDeck fs
+  setDeckState $ nb { id = deckId, path = Just dir }
   pure next
 eval (SetName name next) =
   H.modify (DCS._name .~ Just name) $> next
@@ -280,7 +263,16 @@ eval (FindCardParent cid k) = k <$> H.gets (DCS.findParent cid)
 eval (GetCardType cid k) = k <$> H.gets (DCS.getCardType cid)
 eval (FlipDeck next) = H.modify (DCS._backsided %~ not) $> next
 eval (GetActiveCardId k) = map k $ H.gets DCS.findLast
-
+eval (StartSliding mouseEvent next) =
+  Slider.startSliding mouseEvent $> next
+eval (StopSlidingAndSnap mouseEvent next) =
+  Slider.stopSlidingAndSnap mouseEvent $> next
+eval (UpdateSliderPosition mouseEvent next) =
+  Slider.updateSliderPositionAndSetSliderSelectedCardId mouseEvent $> next
+eval (SetNextActionCardElement element next) =
+  Slider.setLens DCS._nextActionCardElement element $> next
+eval (StopSliderTransition next) =
+  Slider.setLens DCS._sliderTransition false $> next
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → NotebookDSL Unit
 peek (H.ChildF s q) =
@@ -382,7 +374,7 @@ createCard cardType = do
       H.modify $ DCS.addCard cardType Nothing
     Just cardId → do
       Tuple st newCardId ← H.gets $ DCS.addCard' cardType (Just cardId)
-      H.set st
+      setDeckState st
       forceRerender'
       input ←
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
@@ -597,3 +589,8 @@ nameFromDirName dirName =
 
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId = path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
+
+setDeckState :: DCS.State -> NotebookDSL Unit
+setDeckState newState = do
+  nextActionCardElement <- H.gets _.nextActionCardElement
+  H.set $ newState { nextActionCardElement = nextActionCardElement }
