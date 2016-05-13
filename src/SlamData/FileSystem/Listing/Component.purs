@@ -22,7 +22,6 @@ import Data.Array (zipWith, range, length, cons, sortBy, filter, nub)
 import Data.Lens ((.~), (%~), (<>~), lens, LensP)
 
 import Halogen as H
-import Halogen.Component.Utils (forceRerender')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
@@ -111,7 +110,6 @@ eval (SetIsHidden bool next) = do
   items <- H.gets _.items
   for_ (zipItems ItemSlot items) \slot ->
     H.query slot $ H.action $ Item.SetIsHidden bool
-  forceRerender'
   pure next
 
 peek :: forall x. H.ChildF ItemSlot Item.Query x -> DSL Unit

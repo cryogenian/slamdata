@@ -43,7 +43,6 @@ import Data.Maybe.Unsafe (fromJust)
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
-import Halogen.Component.Utils (forceRerender')
 import Halogen.CustomProps as CP
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -297,7 +296,6 @@ eval ∷ Natural Query FormDSL
 eval (SetConfiguration conf next) = do
   r ← H.get
   H.set conf
-  forceRerender'
   synchronizeDimensions r.dimensions conf.dimensions
   synchronizeSeries r.series conf.series
   synchronizeMeasures r.measures conf.measures
@@ -376,7 +374,6 @@ eval (SetConfiguration conf next) = do
 
 eval (GetConfiguration continue) = do
   conf ← H.get
-  forceRerender'
   dims ← getDimensions
   series ← getSeries
   measures ← getMeasures

@@ -42,7 +42,6 @@ import Data.String.Regex as Rgx
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
-import Halogen.Component.Utils (forceRerender')
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -397,7 +396,6 @@ configure (R.Database path) = do
 download ∷ R.Resource → DSL Unit
 download res = do
   showDialog (Dialog.Download res)
-  forceRerender'
   getChildren
     (const true)
     (void ∘ queryDialog Dialog.cpDownload ∘ H.action ∘ Download.AddSources)
@@ -410,7 +408,6 @@ getChildren
   → DirPath
   → DSL Unit
 getChildren pred cont start = do
-  forceRerender'
   ei ← API.children start
   case ei of
     Right items → do

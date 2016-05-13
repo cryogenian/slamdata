@@ -162,8 +162,10 @@ itemView state@{ item } selected presentActions | otherwise =
         [ HH.div
             [ HP.classes [ B.colXs8, Rc.itemContent ] ]
             [ HH.a
-                [ HE.onClick (\_ → HEH.preventDefault
-                                    $> H.action (Open (itemResource item))) ]
+                [ HE.onClick \_ →
+                    HEH.preventDefault $>
+                      Just (H.action (Open (itemResource item)))
+                ]
                 [ HH.i [ iconClasses item ] []
                 , HH.text $ itemName state
                 ]

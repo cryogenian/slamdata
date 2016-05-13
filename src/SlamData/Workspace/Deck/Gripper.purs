@@ -78,7 +78,8 @@ renderGrippers isActiveCard isGrabbed =
   render gripperDef =
     HH.div
       ([ HP.classes [ gripperClassName gripperDef ]
-       , HE.onMouseDown \e -> HEH.preventDefault $> H.action (StartSliding e)
+       , HE.onMouseDown \e ->
+             HEH.preventDefault $> Just (H.action (StartSliding e))
        , ARIA.grabbed $ show $ isGrabbed
        , ARIA.disabled $ show $ (not $ isAvailable gripperDef) || (not $ isActiveCard)
        ]

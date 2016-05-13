@@ -78,7 +78,8 @@ resField state =
             [ HP.classes [ B.inputGroupBtn ] ]
             [ HH.button
                 [ HP.classes [ B.btn, B.btnDefault ]
-                , HE.onClick \_ → HEH.stopPropagation $> H.action ToggleList
+                , HE.onClick \_ →
+                    HEH.stopPropagation $> Just (H.action ToggleList)
                 ]
                 [ HH.span [ HP.classes [ B.caret ] ]  [ ] ]
             ]
@@ -200,8 +201,8 @@ btnDownload state =
               then [ B.disabled ]
               else [ ]
          , HP.disabled disabled
-         , HE.onClick (\_ → HEH.preventDefault $> H.action (NewTab url)
-                     )
+         , HE.onClick \_ →
+             HEH.preventDefault $> Just (H.action (NewTab url))
          , ARIA.label "Proceed download"
          , HP.title "Proceed download"
          ]

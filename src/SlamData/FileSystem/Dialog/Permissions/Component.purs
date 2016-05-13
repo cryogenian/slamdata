@@ -169,7 +169,6 @@ permsUpdate = do
 tokenGenSwitch :: DSL Unit
 tokenGenSwitch = void do
   isP <- isPermsChecked
-  Hu.forceRerender'
   H.query' cpCode unit $ H.action $ Code.Toggle isP
   H.query' cpCode unit $ H.action Code.Clear
 

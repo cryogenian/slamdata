@@ -30,7 +30,6 @@ import Data.List as L
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Component.Utils (forceRerender')
 
 import SlamData.Workspace.FormBuilder.Component.State (ItemId, State, addItem, emptyState, initialState, removeItem)
 import SlamData.Workspace.FormBuilder.Item.Component as Item
@@ -73,9 +72,6 @@ eval (SetItems items next) = do
   H.set emptyState
   L.replicateM (L.length items + 1) $
     H.modify addItem
-
-  -- force a re-render in order for the child components to be updated
-  forceRerender'
 
   let
     stepItem i m =

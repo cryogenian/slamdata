@@ -198,9 +198,9 @@ containerProperties :: forall a. State -> Array (IProp (onMouseUp :: I, onMouseL
 containerProperties state =
   [ ARIA.dropEffect $ dropEffect $ willChangeActiveCardWhenDropped state ]
     ⊕ (guard (isJust state.initialSliderX)
-         $> (HE.onMouseUp \e -> HEH.preventDefault $> H.action (Query.StopSlidingAndSnap e)))
+         $> (HE.onMouseUp \e -> HEH.preventDefault $> Just (H.action (Query.StopSlidingAndSnap e))))
     ⊕ (guard (isJust state.initialSliderX)
-         $> (HE.onMouseLeave \e -> HEH.stopPropagation $> HEH.preventDefault $> H.action (Query.StopSlidingAndSnap e)))
+         $> (HE.onMouseLeave \e -> HEH.stopPropagation $> HEH.preventDefault $> Just (H.action (Query.StopSlidingAndSnap e))))
     ⊕ (guard (isJust state.initialSliderX)
          $> (HE.onMouseMove $ HE.input Query.UpdateSliderPosition))
 

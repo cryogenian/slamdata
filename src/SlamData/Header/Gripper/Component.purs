@@ -21,7 +21,6 @@ import CSS.Time (sec)
 import CSS.Transition (easeOut)
 
 import Halogen as H
-import Halogen.Component.Utils as Hu
 import Halogen.HTML.CSS as CSS
 import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
@@ -70,7 +69,7 @@ render sel state =
         [ HH.className "header-gripper"
         ]
     , HE.onMouseDown \evt →
-        HEH.preventDefault $> (H.action $ StartDragging evt.clientY)
+        HEH.preventDefault $> Just (H.action $ StartDragging evt.clientY)
     ]
     [ HH.div
         [ ARIA.label $ label state
@@ -175,7 +174,6 @@ eval _ (StartDragging pos next) = do
     Closed → H.set (Dragging Down pos pos)
     Opened → H.set (Dragging Up (pos - maxMargin) pos)
     _ → pure unit
-  Hu.forceRerender
   pure next
 eval _ (StopDragging next) = do
   astate ← H.get

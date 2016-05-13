@@ -46,7 +46,6 @@ import Ace.Halogen.Component as Ace
 import DOM.HTML.Location as Location
 
 import Halogen as H
-import Halogen.Component.Utils (forceRerender')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.CSS.Indexed (style)
 import Halogen.HTML.Events.Indexed as HE
@@ -182,7 +181,6 @@ eval (Load fs dir deckId next) = do
       case DCS.fromModel fs (Just dir) (Just deckId) model state of
         Tuple cards st → do
           setDeckState st
-          forceRerender'
           ranCards ← catMaybes <$> for cards \card → do
             H.query' cpCard  (CardSlot card.cardId)
               $ left
@@ -202,7 +200,6 @@ eval (ExploreFile fs res next) = do
   H.modify
     $ (DCS._path .~ Pathy.parentDir res)
     ∘ (DCS.addCard CT.OpenResource Nothing)
-  forceRerender'
   H.query' cpCard (CardSlot zero)
     $ right
     $ H.ChildF unit
@@ -212,7 +209,6 @@ eval (ExploreFile fs res next) = do
     $ H.action
     $ Open.ResourceSelected
     $ R.File res
-  forceRerender'
   runCard zero
   -- Flush the eval queue
   saveDeck
@@ -371,7 +367,6 @@ createCard cardType = do
     Just cardId → do
       Tuple st newCardId ← H.gets $ DCS.addCard' cardType (Just cardId)
       setDeckState st
-      forceRerender'
       input ←
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
 
@@ -477,7 +472,6 @@ updateCard inputPort cardId = do
     case result of
       Just (CardError msg) → S.insert cardId
       _ → S.delete cardId
-  forceRerender'
 
   runCardDescendants cardId (fromMaybe Blocked result)
   where

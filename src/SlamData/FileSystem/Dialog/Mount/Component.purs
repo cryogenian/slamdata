@@ -43,7 +43,6 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.Component.Utils (forceRerender')
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
@@ -167,7 +166,6 @@ eval (SelectScheme newScheme next) = do
   currentScheme <- map scheme <$> H.gets _.settings
   when (currentScheme /= newScheme) do
     H.modify (_settings .~ map initialSettings newScheme)
-    forceRerender'
     validateInput
   pure next
 eval (Dismiss next) = pure next

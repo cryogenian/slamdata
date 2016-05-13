@@ -206,7 +206,6 @@ rearrangeItems = do
       foldMap pure mbSel
       ⊕ Arr.sortBy sortFn withoutSelected
   H.modify (_items .~ itemsToSet)
-  HU.forceRerender
 
   where
   findRes ∷ Array R.Resource → PU.FilePath → Maybe R.Resource

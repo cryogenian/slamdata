@@ -53,7 +53,7 @@ optionsCSV func opts =
           , HH.input
               [ HP.classes [ B.formControl ]
               , HP.value (opts ^. lens)
-              , HE.onValueInput (\v -> pure $ func lens v unit)
+              , HE.onValueInput $ HE.input (func lens)
               ]
           ]
       ]

@@ -18,8 +18,8 @@ module SlamData.Dialog.Render where
 
 import SlamData.Prelude
 
-import Halogen.CustomProps as Cp
-import Halogen.HTML.Events.Handler as E
+import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.Themes.Bootstrap3 as B
@@ -29,8 +29,8 @@ import SlamData.Render.Common (classedDiv)
 modalDialog :: forall f p. Array (H.HTML p (f Unit)) -> H.HTML p (f Unit)
 modalDialog children =
   (classedDiv B.modalDialog)
-  [ H.div [ Cp.mbClick (\_ -> E.stopPropagation $> Nothing)
-          , Cp.mbMouseDown (\_ -> E.stopPropagation $> Nothing)
+  [ H.div [ HE.onClick (\_ -> HEH.stopPropagation $> Nothing)
+          , HE.onMouseDown (\_ -> HEH.stopPropagation $> Nothing)
           , P.classes [ B.modalContent ]
           ]
     children

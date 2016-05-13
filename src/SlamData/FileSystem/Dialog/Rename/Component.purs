@@ -154,7 +154,8 @@ render dialog =
     $ HH.form
         [ HP.classes [ Rc.renameDialogForm ]
         , Cp.nonSubmit
-        , HE.onClick (\_ -> HEH.stopPropagation $> H.action (SetShowList false))
+        , HE.onClick \_ ->
+            HEH.stopPropagation $> Just (H.action (SetShowList false))
         ]
         [ nameInput
         , dirDropdownField
@@ -199,7 +200,8 @@ render dialog =
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick \_ -> HEH.stopPropagation $> H.action ToggleShowList
+              , HE.onClick \_ ->
+                  HEH.stopPropagation $> Just (H.action ToggleShowList)
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
               ]

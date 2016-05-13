@@ -41,7 +41,7 @@ import SlamData.Render.CSS as Rc
 sorting :: forall a. State -> HTML a (Query Unit)
 sorting state =
   H.div [ P.classes [ B.colXs4, Rc.toolbarSort ] ]
-  [ H.a [ E.onClick (\_ -> EH.preventDefault $> action Resort) ]
+  [ H.a [ E.onClick \_ -> EH.preventDefault $> Just (action Resort) ]
     [ H.text "Name"
     , H.i
         [ chevron (state ^. _sort)
@@ -92,7 +92,7 @@ toolbar state =
     H.li_
       [ H.input
           [ P.inputType P.InputFile
-          , E.onChange (\ev -> pure $ action (FileListChanged ev.target))
+          , E.onChange $ E.input (FileListChanged <<< _.target)
           , P.id_ "upload"
           ]
       , H.label
@@ -114,7 +114,7 @@ toolItem :: forall p f. (Unit -> f Unit)
 toolItem func title icon =
   H.li_ [ H.button [ ARIA.label title
                    , P.title title
-                   , E.onClick (\_ -> pure $ func unit)
+                   , E.onClick (E.input_ func)
                    ]
           [ H.i [ P.title title
                 , P.classes [ B.glyphicon, icon ]

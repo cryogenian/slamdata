@@ -152,7 +152,8 @@ render st =
                   , HP.buttonType HP.ButtonButton
                   , ARIA.label toggleLabel
                   , HP.title toggleLabel
-                  , HE.onClick \_ -> HEH.stopPropagation $> H.action ToggleFileList
+                  , HE.onClick \_ ->
+                      HEH.stopPropagation $> Just (H.action ToggleFileList)
                   ]
                   [ HH.span [ HP.class_ B.caret ] [ ]
                   ]
@@ -180,7 +181,7 @@ renderItem r =
     [ HP.classes $
         [ B.listGroupItem
         ] <> if R.isHidden r then [ CSS.itemHidden ] else [ ]
-    , HE.onClick \_ -> pure $ H.action (SelectFile r)
+    , HE.onClick $ HE.input_ (SelectFile r)
     ]
     [ HH.text $ R.resourcePath r
     ]

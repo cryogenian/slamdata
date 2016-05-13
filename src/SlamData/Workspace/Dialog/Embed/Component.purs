@@ -62,7 +62,7 @@ render { url, varMap } =
           [ CP.nonSubmit ]
           [ HH.div
               [ HP.classes [ B.formGroup ]
-              , HE.onClick (\ev -> pure $ SelectElement ev.target unit)
+              , HE.onClick $ HE.input (SelectElement <<< _.target)
               ]
               [ HH.textarea
                   [ HP.classes [ B.formControl, Rc.embedBox ]

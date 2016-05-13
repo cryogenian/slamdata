@@ -59,7 +59,7 @@ render (State url) =
             [ CP.nonSubmit ]
             [ HH.div
                 [ HP.classes [ B.formGroup ]
-                , HE.onClick (\ev -> pure $ SelectElement ev.target unit)
+                , HE.onClick $ HE.input (SelectElement <<< _.target)
                 ]
                 [ HH.input
                     [ HP.classes [ B.formControl ]

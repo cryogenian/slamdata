@@ -97,7 +97,7 @@ logo mbVersion =
 closeButton ∷ ∀ p f. (ET.Event ET.MouseEvent → EventHandler f) → HTML p f
 closeButton handler =
   H.button [ P.class_ B.close
-           , E.onClick handler
+           , E.onClick (map Just <$> handler)
            ]
   [ H.span_ [ H.text (fromChar $ fromCharCode 215) ] ]
 

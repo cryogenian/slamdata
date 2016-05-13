@@ -32,21 +32,6 @@ import Halogen.Query.EventSource as He
 
 import Utils.AffableProducer (produce)
 
-applyCF :: forall a b c i. (a -> b i -> c) -> H.ChildF a b i -> c
-applyCF fn (H.ChildF a b) = fn a b
-
-forceRerender
-  :: forall s f g
-   . (Applicative g)
-  => H.ComponentDSL s f g Unit
-forceRerender = H.liftH (pure unit)
-
-forceRerender'
-  :: forall s s' f f' g p
-   . (Applicative g)
-  => H.ParentDSL s s' f f' g p Unit
-forceRerender' = H.liftH (H.liftH (pure unit))
-
 withCanceler
   :: forall a e g
    . (Bind g, Affable (avar :: AVAR|e) g)

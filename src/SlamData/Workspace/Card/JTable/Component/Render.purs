@@ -108,7 +108,9 @@ pageField pageValue totalPages =
 submittable :: Array (H.ComponentHTML QueryP) -> H.ComponentHTML QueryP
 submittable =
   HH.form
-    [ HE.onSubmit (\_ -> HEH.preventDefault $> H.action (left <<< NotifyRunCard)) ]
+    [ HE.onSubmit \_ ->
+        HEH.preventDefault $> Just (H.action (left <<< NotifyRunCard))
+    ]
 
 nextButtons :: Boolean -> H.ComponentHTML QueryP
 nextButtons enabled =

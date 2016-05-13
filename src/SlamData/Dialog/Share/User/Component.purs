@@ -33,7 +33,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps as CP
-import Halogen.Component.Utils (forceRerender, sendAfter)
+import Halogen.Component.Utils (sendAfter)
 
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
@@ -159,15 +159,12 @@ eval :: Natural Query UserShareDSL
 eval (Create inx next) = do
   clearBlurred $ pure unit
   H.modify $ _inputs %~ Map.insert inx ""
-  forceRerender
   focusInx inx
   pure next
 eval (InputChanged inx val next) = H.modify (_inputs <<< ix inx .~ val) $> next
 eval (Remove inx next) = forgetInx inx $> next
 eval (Focused mbInx next) = do
-  clearBlurred do
-    forceRerender
-    for_ mbInx focusInx
+  clearBlurred $ for_ mbInx focusInx
   pure next
 eval (Blurred inx next) = do
   H.modify $ _blurred ?~ inx

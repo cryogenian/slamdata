@@ -238,7 +238,7 @@ renderDimensions state =
           [ HP.classes [ B.formControl ]
           , HP.value $ valueFromState state
           , ARIA.label labelText
-          , Cp.mbValueInput
+          , HE.onValueInput
               $ pure ∘ map (right ∘ flip queryCtor unit) ∘ stringToInt
           ]
       ]
