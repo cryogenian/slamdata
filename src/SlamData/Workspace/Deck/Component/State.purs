@@ -42,7 +42,6 @@ module SlamData.Workspace.Deck.Component.State
   , _initialSliderCardWidth
   , _sliderTransition
   , _sliderTranslateX
-  , _sliderSelectedCardId
   , _nextActionCardElement
   , addCard
   , addCard'
@@ -58,9 +57,12 @@ module SlamData.Workspace.Deck.Component.State
   , cardsOfType
   , fromModel
   , deckPath
-  , virtualState
   , cardIndexFromId
   , activeCardIndex
+
+  , VirtualState()
+  , runVirtualState
+  , virtualState
   ) where
 
 import SlamData.Prelude
@@ -143,7 +145,6 @@ type State =
   , initialSliderCardWidth :: Maybe Number
   , sliderTransition :: Boolean
   , sliderTranslateX :: Number
-  , sliderSelectedCardId :: Maybe CardId
   , nextActionCardElement :: Maybe HTMLElement
   }
 
@@ -178,7 +179,6 @@ initialDeck browserFeatures =
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
   , sliderTranslateX: 0.0
-  , sliderSelectedCardId: Nothing
   , nextActionCardElement: Nothing
   }
 
@@ -277,11 +277,6 @@ _sliderTransition = lens _.sliderTransition _{sliderTransition = _}
 _sliderTranslateX :: LensP State Number
 _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 
--- | The card to be selected (made active) when the slide interation ends.
--- | `Nothing` indicates the next action card.
-_sliderSelectedCardId :: LensP State (Maybe CardId)
-_sliderSelectedCardId = lens _.sliderSelectedCardId _{sliderSelectedCardId = _}
-
 -- | The next action card HTML element
 _nextActionCardElement :: LensP State (Maybe HTMLElement)
 _nextActionCardElement = lens _.nextActionCardElement _{nextActionCardElement = _}
@@ -305,7 +300,6 @@ addCard' cardType parent st =
       { fresh = st.fresh + 1
       , cards = st.cards `L.snoc` mkCardDef cardType cardId st
       , activeCardId = Just cardId
-      , sliderSelectedCardId = Just cardId
       , cardTypes = M.insert cardId cardType st.cardTypes
       , dependencies =
           maybe st.dependencies (flip (M.insert cardId) st.dependencies) parent
@@ -456,13 +450,19 @@ cardsOfType cardType =
        then Just cid
        else Nothing
 
+newtype VirtualState = VirtualState State
+
+runVirtualState ∷ VirtualState → State
+runVirtualState (VirtualState st) = st
+
 -- | Equip the state for presentation by inserting Error cards
 -- | in the appropriate places.
-virtualState ∷ State → State
+virtualState ∷ State → VirtualState
 virtualState st =
-  case findFirst hasError st.cards of
-    Just c → insertErrorCard c.id st
-    Nothing → st
+  VirtualState
+    case findFirst hasError st.cards of
+      Just c → insertErrorCard c.id st
+      Nothing → st
   where
 
   -- in case you're wondering, Data.Foldable.find does not find the *first*
@@ -530,7 +530,6 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
         , path = path
         , runTrigger = Nothing
         , pendingCards = S.empty
-        , sliderSelectedCardId = activeCardId
         }) :: State)
   where
   cardDefs = foldMap cardDefFromModel cards
@@ -550,12 +549,16 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
         , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
         }
 
-activeCardIndex :: State -> Int
-activeCardIndex state =
+activeCardIndex :: VirtualState -> Int
+activeCardIndex vstate =
   fromMaybe (L.length state.cards) (L.findIndex isActiveCard state.cards)
   where
+  state = runVirtualState vstate
   isActiveCard = eq state.activeCardId <<< Just <<< _.id
 
-cardIndexFromId :: State -> Maybe CardId -> Maybe Int
-cardIndexFromId state =
+cardIndexFromId :: VirtualState -> Maybe CardId -> Maybe Int
+cardIndexFromId vstate =
   maybe (Just $ L.length state.cards) (flip L.elemIndex (_.id <$> state.cards))
+  where
+  state = runVirtualState vstate
+

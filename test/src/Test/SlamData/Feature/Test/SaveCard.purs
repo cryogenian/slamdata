@@ -2,7 +2,7 @@ module Test.SlamData.Feature.Test.SaveCard where
 
 import SlamData.Prelude
 
-import Test.Feature.Log (successMsg)
+import Test.Feature.Log (successMsg, errorMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
@@ -21,7 +21,7 @@ saveCardScenario =
 
 test ∷ SlamFeature Unit
 test =
-  saveCardScenario "Save card output to file" [] do
+  saveCardScenario "Save card output to file" ["https://slamdata.atlassian.net/browse/SD-1616"] do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT measureOne, measureTwo from `/test-mount/testDb/flatViz`"
@@ -39,3 +39,4 @@ test =
     Interact.insertJTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     successMsg "Successfully saved data source card output to file"
+    errorMsg "This scenario passed but is known to fail non-deterministically"

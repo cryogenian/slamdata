@@ -67,15 +67,6 @@ test = do
     Interact.launchSlamData
     successMsg "Successfully shared deck"
 
-  flipDeckScenario "Publish deck" ["SD-1560"] do
-    mkTwoCardTestDeck
-    Interact.flipDeck
-    Expect.backsideMenuPresented
-    Interact.publishDeck
-    Expect.tableColumnsAre ["measureOne"]
-    Interact.launchSlamData
-    successMsg "Successfully published deck"
-
   flipDeckScenario "Filter backside buttons" [] do
     mkTwoCardTestDeck
     Interact.flipDeck
