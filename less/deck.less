@@ -39,21 +39,23 @@
 }
 
 .sd-card-slider {
-  clear: both;
-  display: block;
-  height: calc(18 * @grid-size);
-  max-height: calc(18 * @grid-size);
+  position: absolute;
+  top: @grid-size;
+  bottom: @grid-size;
+  width: 100%;
 }
 
 .sd-card {
   background: white;
-  overflow: auto;
   float: left;
+  position: absolute;
+  top: 0;
   height: 100%;
-}
+  width: 100%;
 
-.sd-card:not(:last-child) {
-  margin-right: calc(2 * @grid-size);
+  > div {
+    height: 100%;
+  }
 }
 
 .sd-card-gripper, .sd-card-gripper-last {
@@ -101,8 +103,8 @@
 }
 
 .deck-card {
-  max-height: 100%;
-  overflow-y: auto;
+  height: 100%;
+  overflow: auto;
 }
 
 *[aria-grabbed="true"] {
