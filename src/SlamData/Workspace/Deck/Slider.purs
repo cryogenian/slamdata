@@ -19,7 +19,6 @@ module SlamData.Workspace.Deck.Slider
   , stopSlidingAndSnap
   , updateSliderPosition
   , setLens
-  , cardWidthCSS
   , render
   , containerProperties
   ) where
@@ -31,8 +30,10 @@ import DOM.HTML.Types (HTMLElement)
 import Data.Int as Int
 import Data.Lens (LensP)
 import Data.Lens.Setter ((.~))
+import Data.List ((..))
 import Data.List as List
 import Data.Ord (max)
+import Data.Tuple as Tuple
 import Halogen as H
 import Halogen.HTML.CSS.Indexed (style)
 import Halogen.HTML.Indexed as HH
@@ -67,12 +68,11 @@ render virtualState visible =
      , HP.classes [ ClassNames.cardSlider ]
      , HE.onTransitionEnd $ HE.input_ Query.StopSliderTransition
      , style
-         $ (cardSliderWidthCSS $ List.length state.cards + 1)
-         *> (cardSliderTransformCSS (List.length state.cards + 1) (State.activeCardIndex virtualState) state.sliderTranslateX)
+         $ (cardSliderTransformCSS (State.activeCardIndex virtualState) state.sliderTranslateX)
          *> (cardSliderTransitionCSS state.sliderTransition)
      ]
        ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
-    ((List.fromList (map (renderCard state) state.cards)) ⊕ [ renderNextActionCard state ])
+    ((List.fromList (map (Tuple.uncurry (renderCard state)) (List.zip state.cards (0 .. List.length state.cards)))) ⊕ [ renderNextActionCard state ])
   where
     state = State.runVirtualState virtualState
 
@@ -155,37 +155,26 @@ willChangeActiveCardWhenDropped :: State -> Boolean
 willChangeActiveCardWhenDropped st =
   st.activeCardId ≠ snapActiveCardId (State.virtualState st)
 
-cardWidthPct :: Int -> Number
-cardWidthPct cardsCount =
-  100.0 / Int.toNumber cardsCount
+cardPositionCSS :: Int -> CSS
+cardPositionCSS index = do
+  CSSUtils.left $ CSSUtils.calc $
+    "(100% + " <> show cardSpacingPx <> "px) * " <> show index
 
-cardWidthCSS :: Int -> CSS
-cardWidthCSS cardsCount =
-  CSSUtils.width $ CSSUtils.calc
-    $ (show $ cardWidthPct cardsCount) ++ "%"
-    ++ " - " ++ show cardSpacingPx ++ "px"
-
-cardSliderWidthCSS :: Int -> CSS
-cardSliderWidthCSS cardsCount =
-  CSSUtils.width $ CSSUtils.calc
-    $ (show $ 100.0 * Int.toNumber cardsCount) ++ "%"
-    ++ " + " ++ (show $ cardSpacingPx * Int.toNumber cardsCount) ++ "px"
-
-cardSliderTransformCSS :: Int -> Int -> Number -> CSS
-cardSliderTransformCSS cardCount activeCardIndex translateX =
+cardSliderTransformCSS :: Int -> Number -> CSS
+cardSliderTransformCSS activeCardIndex translateX =
   CSSUtils.transform
-    $ CSSUtils.translate3d (cardSliderTranslateX cardCount activeCardIndex translateX) "0" "0"
+    $ CSSUtils.translate3d (cardSliderTranslateX activeCardIndex translateX) "0" "0"
 
 cardSliderTransitionCSS :: Boolean -> CSS
 cardSliderTransitionCSS false = CSSUtils.transition "none"
 cardSliderTransitionCSS true = CSSUtils.transition "all 0.33s"
 
-cardSliderTranslateX :: Int -> Int -> Number -> String
-cardSliderTranslateX cardCount activeCardIndex translateX =
+cardSliderTranslateX :: Int -> Number -> String
+cardSliderTranslateX activeCardIndex translateX =
   CSSUtils.calc
-    $ "((((-100% / " ++ show cardCount ++ ")))"
-    ++ " * " ++ show activeCardIndex ++ ")"
-    ++ " + (" ++ show translateX ++ "px)"
+    $ "(-100% - " <> show cardSpacingPx <> "px)"
+    ++ " * " ++ show activeCardIndex
+    ++ " + " ++ show translateX ++ "px"
 
 dropEffect :: Boolean -> String
 dropEffect true = "execute"
@@ -222,12 +211,12 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx :: Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard :: State -> CardDef -> DeckHTML
-renderCard state cardDef =
+renderCard :: State -> CardDef -> Int -> DeckHTML
+renderCard state cardDef index =
   HH.div
   ([ HP.key ("card" ⊕ CardId.cardIdToString cardDef.id)
    , HP.classes [ ClassNames.card ]
-   , style $ cardWidthCSS (List.length state.cards + 1)
+   , style $ cardPositionCSS index
    ]
    ⊕ foldMap (viewingStyle cardDef) state.viewingCard)
   (Gripper.renderGrippers
@@ -258,7 +247,7 @@ renderNextActionCard state =
     ([ HP.key ("next-action-card")
      , HP.classes [ ClassNames.card ]
      , HP.ref (H.action <<< Query.SetNextActionCardElement)
-     , style $ cardWidthCSS (List.length state.cards + 1)
+     , style $ cardPositionCSS (List.length state.cards)
      ]
        ⊕ (guard (shouldHideNextActionCard state) $> (HP.class_ ClassNames.invisible))
     )

@@ -47,7 +47,6 @@ import DOM.HTML.Location as Location
 
 import Halogen as H
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
-import Halogen.HTML.CSS.Indexed (style)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -151,9 +150,7 @@ render vstate =
        ]
          ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
       [ HH.div
-          [ HP.classes [ CSS.card ]
-          , style $ Slider.cardWidthCSS 1
-          ]
+          [ HP.classes [ CSS.card ] ]
           (Gripper.renderGrippers
              visible
              (isJust state.initialSliderX)
