@@ -26,7 +26,7 @@ module SlamData.Workspace.Deck.Component.State
   , _accessType
   , _cards
   , _dependencies
-  , _activeCardId
+  , _activeCardIndex
   , _name
   , _browserFeatures
   , _viewingCard
@@ -58,7 +58,8 @@ module SlamData.Workspace.Deck.Component.State
   , fromModel
   , deckPath
   , cardIndexFromId
-  , activeCardIndex
+  , cardIdFromIndex
+  , activeCardId
 
   , VirtualState()
   , runVirtualState
@@ -70,7 +71,7 @@ import SlamData.Prelude
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.Foldable (maximum, any)
 import Data.Lens (LensP, lens)
-import Data.List (List)
+import Data.Array as A
 import Data.List as L
 import Data.Map as M
 import Data.Path.Pathy ((</>))
@@ -126,10 +127,10 @@ type State =
   { id ∷ Maybe DeckId
   , fresh ∷ Int
   , accessType ∷ AccessType
-  , cards ∷ List CardDef
+  , cards ∷ Array CardDef
   , dependencies ∷ M.Map CardId CardId
   , cardTypes ∷ M.Map CardId CardType
-  , activeCardId ∷ Maybe CardId
+  , activeCardIndex ∷ Int
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
   , browserFeatures ∷ BrowserFeatures
@@ -163,7 +164,7 @@ initialDeck browserFeatures =
   , cards: mempty
   , cardTypes: M.empty
   , dependencies: M.empty
-  , activeCardId: Nothing
+  , activeCardIndex: 0
   , name: Nothing
   , browserFeatures
   , viewingCard: Nothing
@@ -196,7 +197,7 @@ _accessType ∷ LensP State AccessType
 _accessType = lens _.accessType _{accessType = _}
 
 -- | The list of cards currently in the deck.
-_cards ∷ LensP State (List CardDef)
+_cards ∷ LensP State (Array CardDef)
 _cards = lens _.cards _{cards = _}
 
 -- | A map of the edges in the dependency tree, where each key/value pair
@@ -206,8 +207,8 @@ _dependencies = lens _.dependencies _{dependencies = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.
-_activeCardId ∷ LensP State (Maybe CardId)
-_activeCardId = lens _.activeCardId _{activeCardId = _}
+_activeCardIndex ∷ LensP State Int
+_activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 
 -- | The display name of the deck.
 _name ∷ LensP State (Maybe String)
@@ -298,8 +299,7 @@ addCard' cardType parent st =
     cardId = CardId st.fresh
     newState = st
       { fresh = st.fresh + 1
-      , cards = st.cards `L.snoc` mkCardDef cardType cardId st
-      , activeCardId = Just cardId
+      , cards = st.cards `A.snoc` mkCardDef cardType cardId st
       , cardTypes = M.insert cardId cardType st.cardTypes
       , dependencies =
           maybe st.dependencies (flip (M.insert cardId) st.dependencies) parent
@@ -314,13 +314,14 @@ insertErrorCard parentId st =
   st
     { cards =
         fromMaybe st.cards do
-          parentAddr ← L.findIndex (\c → c.id ≡ parentId) st.cards
+          parentAddr ← A.findIndex (\c → c.id ≡ parentId) st.cards
           let errorCard = mkCardDef ErrorCard cardId st
-          L.insertAt (parentAddr + 1) errorCard st.cards
+          A.insertAt (parentAddr + 1) errorCard st.cards
     , cardTypes = M.insert cardId ErrorCard st.cardTypes
     , dependencies =
         let
-          children = S.toList $ findChildren parentId st
+          children :: Array CardId
+          children = foldMap pure $ findChildren parentId st
           updates = children <#> \childId → M.insert childId cardId
         in foldr (∘) id updates $ M.insert cardId parentId st.dependencies
     }
@@ -374,12 +375,15 @@ aceSetupMode SQLMode = querySetup
 -- | state.
 removeCards ∷ S.Set CardId → State → State
 removeCards cardIds st = st
-    { cards = L.filter f st.cards
+    { cards = cards
+    , activeCardIndex = A.length cards - 1
     , cardTypes = foldl (flip M.delete) st.cardTypes cardIds'
     , dependencies = M.fromList $ L.filter g $ M.toList st.dependencies
     , pendingCards = S.difference st.pendingCards cardIds
     }
   where
+  cards = A.filter f st.cards
+
   cardIds' ∷ S.Set CardId
   cardIds' = cardIds ⊕ foldMap (flip findDescendants st) cardIds
 
@@ -443,9 +447,11 @@ findDescendants cardId st =
 getCardType ∷ CardId → State → Maybe CardType
 getCardType cardId st = M.lookup cardId st.cardTypes
 
-cardsOfType ∷ CardType → State → List CardId
+cardsOfType ∷ CardType → State → Array CardId
 cardsOfType cardType =
-  _.cardTypes ⋙ M.toList ⋙ L.mapMaybe \(Tuple cid ty) →
+  _.cardTypes ⋙ M.toList ⋙ L.mapMaybe cardTypeMatches ⋙ foldMap pure
+  where
+  cardTypeMatches (Tuple cid ty) =
     if ty ≡ cardType
        then Just cid
        else Nothing
@@ -467,10 +473,10 @@ virtualState st =
 
   -- in case you're wondering, Data.Foldable.find does not find the *first*
   -- satisfying element in the list! This took me a long time to figure out.
-  findFirst ∷ ∀ a. (a → Boolean) → List a → Maybe a
+  findFirst ∷ ∀ a. (a → Boolean) → Array a → Maybe a
   findFirst p xs =
-    L.findIndex p xs
-      >>= L.index xs
+    A.findIndex p xs
+      >>= A.index xs
 
   hasError ∷ CardDef → Boolean
   hasError c = S.member c.id st.failingCards
@@ -515,7 +521,7 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
     cards
     ((state
         { accessType = ReadOnly
-        , activeCardId = _.id <$> L.last cardDefs
+        , activeCardIndex = A.length cardDefs - 1
         , backsided = false
         , browserFeatures = browserFeatures
         , cardTypes = foldl addCardIdTypePair M.empty cards
@@ -534,11 +540,11 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
   where
   cardDefs = foldMap cardDefFromModel cards
 
-  activeCardId = _.id <$> L.last cardDefs
+  activeCardIndex = _.id <$> A.last cardDefs
 
   addCardIdTypePair mp {cardId, cardType} = M.insert cardId cardType mp
 
-  cardDefFromModel ∷ Card.Model → List CardDef
+  cardDefFromModel ∷ Card.Model → Array CardDef
   cardDefFromModel { cardId, cardType} =
     let component = cardTypeComponent cardType cardId browserFeatures
         initialState = H.parentState initialCardState
@@ -549,16 +555,16 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
         , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
         }
 
-activeCardIndex :: VirtualState -> Int
-activeCardIndex vstate =
-  fromMaybe (L.length state.cards) (L.findIndex isActiveCard state.cards)
-  where
-  state = runVirtualState vstate
-  isActiveCard = eq state.activeCardId <<< Just <<< _.id
-
-cardIndexFromId :: VirtualState -> Maybe CardId -> Maybe Int
+cardIndexFromId :: VirtualState -> CardId -> Int
 cardIndexFromId vstate =
-  maybe (Just $ L.length state.cards) (flip L.elemIndex (_.id <$> state.cards))
+  fromMaybe (A.length state.cards) <<< flip A.elemIndex (_.id <$> state.cards)
   where
   state = runVirtualState vstate
 
+cardIdFromIndex :: State -> Int -> Maybe CardId
+cardIdFromIndex state =
+  map _.id <<< A.index (_.cards state)
+
+activeCardId :: State -> Maybe CardId
+activeCardId state =
+  cardIdFromIndex state state.activeCardIndex

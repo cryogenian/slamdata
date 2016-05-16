@@ -21,8 +21,6 @@ module SlamData.Workspace.Deck.Gripper
   ) where
 
 import Data.Array as Array
-import Data.List (List)
-import Data.List as List
 import Halogen as H
 import Halogen.HTML.Core (ClassName)
 import Halogen.HTML.Elements.Indexed as HH
@@ -45,12 +43,12 @@ import Data.Bifoldable (bifoldMap)
 
 data GripperDef = Previous Boolean | Next Boolean
 
-gripperDefsForCardId :: List CardDef -> Maybe CardId -> Tuple GripperDef GripperDef
+gripperDefsForCardId :: Array CardDef -> Maybe CardId -> Tuple GripperDef GripperDef
 gripperDefsForCardId cards cardId =
   Tuple (Previous previousCardAvailable) (Next nextCardAvailable)
   where
   previousCardAvailable =
-    cardId /= (_.id <$> List.head cards)
+    cardId /= (_.id <$> Array.head cards)
   nextCardAvailable =
     isJust cardId
 
