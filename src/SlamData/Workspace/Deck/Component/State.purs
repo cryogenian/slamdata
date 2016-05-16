@@ -375,12 +375,15 @@ aceSetupMode SQLMode = querySetup
 -- | state.
 removeCards ∷ S.Set CardId → State → State
 removeCards cardIds st = st
-    { cards = A.filter f st.cards
+    { cards = cards
+    , activeCardIndex = A.length cards - 1
     , cardTypes = foldl (flip M.delete) st.cardTypes cardIds'
     , dependencies = M.fromList $ L.filter g $ M.toList st.dependencies
     , pendingCards = S.difference st.pendingCards cardIds
     }
   where
+  cards = A.filter f st.cards
+
   cardIds' ∷ S.Set CardId
   cardIds' = cardIds ⊕ foldMap (flip findDescendants st) cardIds
 
