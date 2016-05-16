@@ -115,7 +115,7 @@ render vstate =
       HH.div
         ([ HP.class_ CSS.board
          , HP.key "board"
-         ] ++ Slider.containerProperties state)
+         ] ++ Slider.containerProperties vstate)
         [ HH.div
             [ HP.class_ CSS.deck
             , HP.key "deck-container"
@@ -153,7 +153,7 @@ render vstate =
           (Gripper.renderGrippers
              visible
              (isJust state.initialSliderX)
-             (Gripper.gripperDefsForCardId state.cards $ DCS.cardIdFromIndex state state.activeCardIndex)
+             (Gripper.gripperDefsForCardId state.cards $ DCS.activeCardId vstate)
              ⊕ [ HH.slot' cpBackSide unit \_ →
                   { component: Back.comp
                   , initialState: Back.initialState
@@ -164,8 +164,10 @@ render vstate =
 
 eval ∷ Natural Query DeckDSL
 eval (AddCard cardType next) = createCard cardType $> next
-eval (RunActiveCard next) =
-  (maybe (pure unit) runCard <<< DCS.activeCardId =<< H.get) $> next
+eval (RunActiveCard next) = do
+  H.gets (DCS.activeCardId ∘ DCS.virtualState)
+    >>= maybe (pure unit) runCard
+  pure next
 eval (Load fs dir deckId next) = do
   state ← H.get
   H.modify (DCS._stateMode .~ DCS.Loading)
@@ -259,9 +261,9 @@ eval (StopSlidingAndSnap mouseEvent next) =
 eval (UpdateSliderPosition mouseEvent next) =
   Slider.updateSliderPosition mouseEvent $> next
 eval (SetNextActionCardElement element next) =
-  Slider.setLens DCS._nextActionCardElement element $> next
+  H.modify (DCS._nextActionCardElement .~ element) $> next
 eval (StopSliderTransition next) =
-  Slider.setLens DCS._sliderTransition false $> next
+  H.modify (DCS._sliderTransition .~ false) $> next
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek (H.ChildF s q) =
@@ -276,7 +278,7 @@ peekBackSide (Back.DoAction action _) = case action of
   Back.Trash → do
     state ← H.get
     lastId ← H.gets DCS.findLast
-    for_ (DCS.cardIdFromIndex state state.activeCardIndex <|> lastId) \trashId → do
+    for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId) \trashId → do
       descendants ← H.gets $ DCS.findDescendants trashId
       H.modify ∘ DCS.removeCards $ S.insert trashId descendants
       triggerSave
@@ -550,7 +552,7 @@ saveDeck = H.get >>= \st → do
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId = path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
 
-setDeckState :: DCS.State -> DeckDSL Unit
-setDeckState newState = do
-  nextActionCardElement <- H.gets _.nextActionCardElement
-  H.set $ newState { nextActionCardElement = nextActionCardElement }
+setDeckState ∷ DCS.State → DeckDSL Unit
+setDeckState newState =
+  H.modify \oldState →
+    newState { nextActionCardElement = oldState.nextActionCardElement }

@@ -27,6 +27,8 @@ module SlamData.Workspace.Card.CardType
   , nextCardTypes
   , controllable
   , insertableCardTypes
+
+  , blocking
   ) where
 
 import SlamData.Prelude
@@ -238,3 +240,7 @@ nextCardTypes (Just ct) = case ct of
 controllable ∷ CardType → Boolean
 controllable NextAction = false
 controllable _ = true
+
+blocking ∷ CardType → Boolean
+blocking ErrorCard = true
+blocking _ = false

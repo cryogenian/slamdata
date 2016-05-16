@@ -62,15 +62,18 @@ module SlamData.Workspace.Deck.Component.State
   , activeCardId
 
   , VirtualState()
+  , _VirtualState
   , runVirtualState
   , virtualState
+
+  , VirtualIndex(..)
   ) where
 
 import SlamData.Prelude
 
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.Foldable (maximum, any)
-import Data.Lens (LensP, lens)
+import Data.Lens (LensP, lens, (^.))
 import Data.Array as A
 import Data.List as L
 import Data.Map as M
@@ -114,12 +117,23 @@ import SlamData.Workspace.Deck.Model as Model
 
 import Utils.Path (DirPath)
 
+
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 
 data StateMode
   = Loading
   | Ready
   | Error String
+
+newtype VirtualIndex = VirtualIndex Int
+
+instance eqVirtualIndex ∷ Eq VirtualIndex where
+  eq (VirtualIndex i) (VirtualIndex j) =
+    i ≡ j
+
+instance ordVirtualIndex ∷ Ord VirtualIndex where
+  compare (VirtualIndex i) (VirtualIndex j) =
+    compare i j
 
 -- | The deck state. See the corresponding lenses for descriptions of
 -- | the fields.
@@ -130,7 +144,7 @@ type State =
   , cards ∷ Array CardDef
   , dependencies ∷ M.Map CardId CardId
   , cardTypes ∷ M.Map CardId CardType
-  , activeCardIndex ∷ Int
+  , activeCardIndex ∷ VirtualIndex
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
   , browserFeatures ∷ BrowserFeatures
@@ -142,11 +156,11 @@ type State =
   , globalVarMap ∷ Port.VarMap
   , stateMode ∷ StateMode
   , backsided ∷ Boolean
-  , initialSliderX :: Maybe Number
-  , initialSliderCardWidth :: Maybe Number
-  , sliderTransition :: Boolean
-  , sliderTranslateX :: Number
-  , nextActionCardElement :: Maybe HTMLElement
+  , initialSliderX ∷ Maybe Number
+  , initialSliderCardWidth ∷ Maybe Number
+  , sliderTransition ∷ Boolean
+  , sliderTranslateX ∷ Number
+  , nextActionCardElement ∷ Maybe HTMLElement
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -164,7 +178,7 @@ initialDeck browserFeatures =
   , cards: mempty
   , cardTypes: M.empty
   , dependencies: M.empty
-  , activeCardIndex: 0
+  , activeCardIndex: VirtualIndex 0
   , name: Nothing
   , browserFeatures
   , viewingCard: Nothing
@@ -207,7 +221,7 @@ _dependencies = lens _.dependencies _{dependencies = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.
-_activeCardIndex ∷ LensP State Int
+_activeCardIndex ∷ LensP State VirtualIndex
 _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 
 -- | The display name of the deck.
@@ -259,27 +273,27 @@ _backsided = lens _.backsided _{backsided = _}
 
 -- | The x position of the card slider at the start of the slide interaction in
 -- | pixels. If `Nothing` slide interaction is not in progress.
-_initialSliderX :: LensP State (Maybe Number)
+_initialSliderX ∷ LensP State (Maybe Number)
 _initialSliderX = lens _.initialSliderX _{initialSliderX = _}
 
 -- | The width of the next action card at the start of the slide interaction in
 -- | pixels. If `Nothing` either the slide interaction is not in progress or the
 -- | next action card element reference is broken.
-_initialSliderCardWidth :: LensP State (Maybe Number)
+_initialSliderCardWidth ∷ LensP State (Maybe Number)
 _initialSliderCardWidth = lens _.initialSliderCardWidth _{initialSliderCardWidth = _}
 
 -- | Whether the translation of the card slider should be animated or not.
 -- | Should be true between the end of the slide interaction and the end of the
 -- | transition.
-_sliderTransition :: LensP State Boolean
+_sliderTransition ∷ LensP State Boolean
 _sliderTransition = lens _.sliderTransition _{sliderTransition = _}
 
 -- | The current x translation of the card slider during the slide interaction.
-_sliderTranslateX :: LensP State Number
+_sliderTranslateX ∷ LensP State Number
 _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 
 -- | The next action card HTML element
-_nextActionCardElement :: LensP State (Maybe HTMLElement)
+_nextActionCardElement ∷ LensP State (Maybe HTMLElement)
 _nextActionCardElement = lens _.nextActionCardElement _{nextActionCardElement = _}
 
 -- | Adds a new card to the deck.
@@ -320,7 +334,7 @@ insertErrorCard parentId st =
     , cardTypes = M.insert cardId ErrorCard st.cardTypes
     , dependencies =
         let
-          children :: Array CardId
+          children ∷ Array CardId
           children = foldMap pure $ findChildren parentId st
           updates = children <#> \childId → M.insert childId cardId
         in foldr (∘) id updates $ M.insert cardId parentId st.dependencies
@@ -376,12 +390,13 @@ aceSetupMode SQLMode = querySetup
 removeCards ∷ S.Set CardId → State → State
 removeCards cardIds st = st
     { cards = cards
-    , activeCardIndex = A.length cards - 1
+    , activeCardIndex = VirtualIndex $ A.length virtualCards - 1
     , cardTypes = foldl (flip M.delete) st.cardTypes cardIds'
     , dependencies = M.fromList $ L.filter g $ M.toList st.dependencies
     , pendingCards = S.difference st.pendingCards cardIds
     }
   where
+  virtualCards = A.filter f (runVirtualState (virtualState st)).cards
   cards = A.filter f st.cards
 
   cardIds' ∷ S.Set CardId
@@ -461,6 +476,9 @@ newtype VirtualState = VirtualState State
 runVirtualState ∷ VirtualState → State
 runVirtualState (VirtualState st) = st
 
+_VirtualState ∷ LensP VirtualState State
+_VirtualState = lens runVirtualState \_ → VirtualState
+
 -- | Equip the state for presentation by inserting Error cards
 -- | in the appropriate places.
 virtualState ∷ State → VirtualState
@@ -521,7 +539,7 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
     cards
     ((state
         { accessType = ReadOnly
-        , activeCardIndex = A.length cardDefs - 1
+        , activeCardIndex = VirtualIndex $ A.length cardDefs - 1 -- fishy!
         , backsided = false
         , browserFeatures = browserFeatures
         , cardTypes = foldl addCardIdTypePair M.empty cards
@@ -536,7 +554,7 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
         , path = path
         , runTrigger = Nothing
         , pendingCards = S.empty
-        }) :: State)
+        }) ∷ State)
   where
   cardDefs = foldMap cardDefFromModel cards
 
@@ -555,16 +573,20 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
         , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
         }
 
-cardIndexFromId :: VirtualState -> CardId -> Int
-cardIndexFromId vstate =
-  fromMaybe (A.length state.cards) <<< flip A.elemIndex (_.id <$> state.cards)
+cardIndexFromId ∷ VirtualState → CardId → VirtualIndex
+cardIndexFromId st =
+  -- TODO: for performance, use A.findIndex instead
+  VirtualIndex ∘ fromMaybe (A.length cards) ∘ flip A.elemIndex (_.id <$> cards)
   where
-  state = runVirtualState vstate
+  cards = st ^. _VirtualState ∘ _cards
 
-cardIdFromIndex :: State -> Int -> Maybe CardId
-cardIdFromIndex state =
-  map _.id <<< A.index (_.cards state)
+cardIdFromIndex ∷ VirtualState → VirtualIndex → Maybe CardId
+cardIdFromIndex st (VirtualIndex i)=
+  _.id <$> A.index cards i
+  where
+    cards = st ^. _VirtualState ∘ _cards
 
-activeCardId :: State -> Maybe CardId
-activeCardId state =
-  cardIdFromIndex state state.activeCardIndex
+activeCardId ∷ VirtualState → Maybe CardId
+activeCardId st =
+  cardIdFromIndex st $
+    st ^. _VirtualState ∘ _activeCardIndex
