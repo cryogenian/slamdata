@@ -30,8 +30,8 @@ import DOM.HTML.Types (HTMLElement)
 import Data.Int as Int
 import Data.Lens (LensP)
 import Data.Lens.Setter ((.~))
-import Data.List ((..))
-import Data.List as List
+import Data.Array ((..))
+import Data.Array as Array
 import Data.Ord (max, min)
 import Data.Tuple as Tuple
 import Halogen as H
@@ -72,7 +72,7 @@ render virtualState visible =
          *> (cardSliderTransitionCSS state.sliderTransition)
      ]
        ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
-    ((List.fromList (map (Tuple.uncurry (renderCard state)) (List.zip state.cards (0 .. List.length state.cards)))) ⊕ [ renderNextActionCard state ])
+    ((map (Tuple.uncurry (renderCard state)) (Array.zip state.cards (0 .. Array.length state.cards))) ⊕ [ renderNextActionCard state ])
   where
     state = State.runVirtualState virtualState
 
@@ -118,9 +118,9 @@ getCardWidth :: DeckDSL (Maybe Number)
 getCardWidth =
   traverse getBoundingClientWidth =<< H.gets _.nextActionCardElement
 
-getCardIdByIndex :: List.List CardDef -> Int -> Maybe CardId
+getCardIdByIndex :: Array CardDef -> Int -> Maybe CardId
 getCardIdByIndex cards =
-  map _.id <<< List.index cards
+  map _.id <<< Array.index cards
 
 snapActiveCardIndexByTranslationAndCardWidth :: Int -> Number -> Number -> Int -> Int
 snapActiveCardIndexByTranslationAndCardWidth numberOfCards translateX cardWidth
@@ -136,7 +136,7 @@ offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
 snapActiveCardIndex :: VirtualState -> Int
 snapActiveCardIndex virtualState =
-  maybe id (snapActiveCardIndexByTranslationAndCardWidth (List.length st.cards) st.sliderTranslateX) st.initialSliderCardWidth st.activeCardIndex
+  maybe id (snapActiveCardIndexByTranslationAndCardWidth (Array.length st.cards) st.sliderTranslateX) st.initialSliderCardWidth st.activeCardIndex
   where
   st = State.runVirtualState virtualState
 
@@ -245,7 +245,7 @@ renderNextActionCard state =
     ([ HP.key ("next-action-card")
      , HP.classes [ ClassNames.card ]
      , HP.ref (H.action <<< Query.SetNextActionCardElement)
-     , style $ cardPositionCSS (List.length state.cards)
+     , style $ cardPositionCSS (Array.length state.cards)
      ]
        ⊕ (guard (shouldHideNextActionCard state) $> (HP.class_ ClassNames.invisible))
     )

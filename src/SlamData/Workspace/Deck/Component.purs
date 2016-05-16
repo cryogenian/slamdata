@@ -29,12 +29,11 @@ import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject)
 
 import Data.Argonaut (Json)
-import Data.Array (catMaybes, nub)
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.Lens as Lens
 import Data.Lens ((.~), (%~), (^?))
 import Data.Lens.Prism.Coproduct (_Right)
-import Data.List as List
+import Data.Array as Array
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
@@ -179,7 +178,7 @@ eval (Load fs dir deckId next) = do
       case DCS.fromModel fs (Just dir) (Just deckId) model state of
         Tuple cards st → do
           setDeckState st
-          ranCards ← catMaybes <$> for cards \card → do
+          ranCards ← Array.catMaybes <$> for cards \card → do
             H.query' cpCard  (CardSlot card.cardId)
               $ left
               $ H.action
@@ -188,7 +187,7 @@ eval (Load fs dir deckId next) = do
           -- We only need to run the root node in each subgraph, as doing so
           -- will result in all child nodes being run also as the outputs
           -- propagate down each subgraph.
-          traverse_ runCard $ nub $ flip DCS.findRoot st <$> ranCards
+          traverse_ runCard $ Array.nub $ flip DCS.findRoot st <$> ranCards
           H.modify $ DCS._stateMode .~ DCS.Ready
   updateNextActionCard
   pure next
@@ -493,7 +492,7 @@ saveDeck = H.get >>= \st → do
     -- If its an unsaved Explore deck, it is safe to go ahead and run it.
     then runPendingCards
     else do
-      cards ← catMaybes <$> for (List.fromList st.cards) \card →
+      cards ← Array.catMaybes <$> for st.cards \card →
         H.query' cpCard (CardSlot card.id)
           $ left
           $ H.request (SaveCard card.id card.ty)
@@ -535,7 +534,7 @@ saveDeck = H.get >>= \st → do
   isNewExploreDeck ∷ DCS.State → Boolean
   isNewExploreDeck { cards } =
     let
-      cardArrays = List.toUnfoldable (map _.ty cards)
+      cardArrays = map _.ty cards
     in
       cardArrays ≡ [ CT.OpenResource ] ∨ cardArrays ≡ [ CT.OpenResource, CT.JTable ]
 
