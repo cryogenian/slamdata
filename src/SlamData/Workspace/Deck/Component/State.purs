@@ -26,7 +26,7 @@ module SlamData.Workspace.Deck.Component.State
   , _accessType
   , _cards
   , _dependencies
-  , _activeCardId
+  , _activeCardIndex
   , _name
   , _browserFeatures
   , _viewingCard
@@ -58,7 +58,8 @@ module SlamData.Workspace.Deck.Component.State
   , fromModel
   , deckPath
   , cardIndexFromId
-  , activeCardIndex
+  , cardIdFromIndex
+  , activeCardId
 
   , VirtualState()
   , runVirtualState
@@ -129,7 +130,7 @@ type State =
   , cards ∷ List CardDef
   , dependencies ∷ M.Map CardId CardId
   , cardTypes ∷ M.Map CardId CardType
-  , activeCardId ∷ Maybe CardId
+  , activeCardIndex ∷ Int
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
   , browserFeatures ∷ BrowserFeatures
@@ -163,7 +164,7 @@ initialDeck browserFeatures =
   , cards: mempty
   , cardTypes: M.empty
   , dependencies: M.empty
-  , activeCardId: Nothing
+  , activeCardIndex: 0
   , name: Nothing
   , browserFeatures
   , viewingCard: Nothing
@@ -206,8 +207,8 @@ _dependencies = lens _.dependencies _{dependencies = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.
-_activeCardId ∷ LensP State (Maybe CardId)
-_activeCardId = lens _.activeCardId _{activeCardId = _}
+_activeCardIndex ∷ LensP State Int
+_activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 
 -- | The display name of the deck.
 _name ∷ LensP State (Maybe String)
@@ -299,7 +300,6 @@ addCard' cardType parent st =
     newState = st
       { fresh = st.fresh + 1
       , cards = st.cards `L.snoc` mkCardDef cardType cardId st
-      , activeCardId = Just cardId
       , cardTypes = M.insert cardId cardType st.cardTypes
       , dependencies =
           maybe st.dependencies (flip (M.insert cardId) st.dependencies) parent
@@ -515,7 +515,7 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
     cards
     ((state
         { accessType = ReadOnly
-        , activeCardId = _.id <$> L.last cardDefs
+        , activeCardIndex = L.length cardDefs - 1
         , backsided = false
         , browserFeatures = browserFeatures
         , cardTypes = foldl addCardIdTypePair M.empty cards
@@ -534,7 +534,7 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
   where
   cardDefs = foldMap cardDefFromModel cards
 
-  activeCardId = _.id <$> L.last cardDefs
+  activeCardIndex = _.id <$> L.last cardDefs
 
   addCardIdTypePair mp {cardId, cardType} = M.insert cardId cardType mp
 
@@ -549,16 +549,16 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
         , ctor: H.SlotConstructor (CardSlot cardId) \_ → { component, initialState }
         }
 
-activeCardIndex :: VirtualState -> Int
-activeCardIndex vstate =
-  fromMaybe (L.length state.cards) (L.findIndex isActiveCard state.cards)
-  where
-  state = runVirtualState vstate
-  isActiveCard = eq state.activeCardId <<< Just <<< _.id
-
-cardIndexFromId :: VirtualState -> Maybe CardId -> Maybe Int
+cardIndexFromId :: VirtualState -> CardId -> Int
 cardIndexFromId vstate =
-  maybe (Just $ L.length state.cards) (flip L.elemIndex (_.id <$> state.cards))
+  fromMaybe (L.length state.cards) <<< flip L.elemIndex (_.id <$> state.cards)
   where
   state = runVirtualState vstate
 
+cardIdFromIndex :: State -> Int -> Maybe CardId
+cardIdFromIndex state =
+  map _.id <<< L.index (_.cards state)
+
+activeCardId :: State -> Maybe CardId
+activeCardId state =
+  cardIdFromIndex state state.activeCardIndex

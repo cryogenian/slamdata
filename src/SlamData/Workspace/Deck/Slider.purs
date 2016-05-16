@@ -32,7 +32,7 @@ import Data.Lens (LensP)
 import Data.Lens.Setter ((.~))
 import Data.List ((..))
 import Data.List as List
-import Data.Ord (max)
+import Data.Ord (max, min)
 import Data.Tuple as Tuple
 import Halogen as H
 import Halogen.HTML.CSS.Indexed (style)
@@ -68,7 +68,7 @@ render virtualState visible =
      , HP.classes [ ClassNames.cardSlider ]
      , HE.onTransitionEnd $ HE.input_ Query.StopSliderTransition
      , style
-         $ (cardSliderTransformCSS (State.activeCardIndex virtualState) state.sliderTranslateX)
+         $ (cardSliderTransformCSS state.activeCardIndex state.sliderTranslateX)
          *> (cardSliderTransitionCSS state.sliderTransition)
      ]
        ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
@@ -122,10 +122,10 @@ getCardIdByIndex :: List.List CardDef -> Int -> Maybe CardId
 getCardIdByIndex cards =
   map _.id <<< List.index cards
 
-snapActiveCardIndex :: Number -> Number -> Int -> Int
-snapActiveCardIndex translateX cardWidth
+snapActiveCardIndexByTranslationAndCardWidth :: Int -> Number -> Number -> Int -> Int
+snapActiveCardIndexByTranslationAndCardWidth numberOfCards translateX cardWidth
   | translateX <= -(offsetCardSpacing cardWidth / 2.0) =
-    flip sub (1 + Int.floor ((translateX - (offsetCardSpacing cardWidth / 2.0)) / cardWidth))
+    min numberOfCards <<< flip sub (1 + Int.floor ((translateX - (offsetCardSpacing cardWidth / 2.0)) / cardWidth))
   | translateX >= (offsetCardSpacing cardWidth / 2.0) =
     max 0 <<< add (1 + Int.floor ((-translateX - (offsetCardSpacing cardWidth / 2.0)) / cardWidth))
   | otherwise =
@@ -134,18 +134,16 @@ snapActiveCardIndex translateX cardWidth
 offsetCardSpacing :: Number -> Number
 offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
-snapActiveCardId :: VirtualState -> Maybe CardId
-snapActiveCardId virtualState =
-  getCardIdByIndex st.cards
-    $ maybe id (snapActiveCardIndex st.sliderTranslateX) st.initialSliderCardWidth
-    $ State.activeCardIndex virtualState
+snapActiveCardIndex :: VirtualState -> Int
+snapActiveCardIndex virtualState =
+  maybe id (snapActiveCardIndexByTranslationAndCardWidth (List.length st.cards) st.sliderTranslateX) st.initialSliderCardWidth st.activeCardIndex
   where
   st = State.runVirtualState virtualState
 
 snap :: DeckDSL Unit
 snap =
   H.modify $ \st →
-    st # State._activeCardId .~ snapActiveCardId (State.virtualState st)
+    st # State._activeCardIndex .~ snapActiveCardIndex (State.virtualState st)
 
 startTransition :: DeckDSL Unit
 startTransition =
@@ -153,7 +151,7 @@ startTransition =
 
 willChangeActiveCardWhenDropped :: State -> Boolean
 willChangeActiveCardWhenDropped st =
-  st.activeCardId ≠ snapActiveCardId (State.virtualState st)
+  st.activeCardIndex ≠ snapActiveCardIndex (State.virtualState st)
 
 cardPositionCSS :: Int -> CSS
 cardPositionCSS index = do
@@ -181,7 +179,7 @@ dropEffect true = "execute"
 dropEffect false = "none"
 
 nextActionCardActive :: State -> Boolean
-nextActionCardActive state = isNothing state.activeCardId
+nextActionCardActive state = isNothing $ State.cardIdFromIndex state state.activeCardIndex
 
 containerProperties :: forall a. State -> Array (IProp (onMouseUp :: I, onMouseLeave :: I, onMouseMove :: I | a) (Query Unit))
 containerProperties state =
@@ -195,7 +193,7 @@ containerProperties state =
 
 cardSelected :: State -> CardId -> Boolean
 cardSelected state cardId =
-  Just cardId == state.activeCardId
+  Just cardId == State.cardIdFromIndex state state.activeCardIndex
 
 cardPresented :: State -> CardId -> Boolean
 cardPresented state cardId =
@@ -252,7 +250,7 @@ renderNextActionCard state =
        ⊕ (guard (shouldHideNextActionCard state) $> (HP.class_ ClassNames.invisible))
     )
     (Gripper.renderGrippers
-       (isNothing state.activeCardId)
+       (isNothing $ State.cardIdFromIndex state state.activeCardIndex)
        (isJust state.initialSliderX)
        (Gripper.gripperDefsForCardId state.cards Nothing)
        ⊕ [ HH.slot' ChildSlot.cpCard (ChildSlot.CardSlot top) \_ →

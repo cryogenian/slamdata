@@ -154,7 +154,7 @@ render vstate =
           (Gripper.renderGrippers
              visible
              (isJust state.initialSliderX)
-             (Gripper.gripperDefsForCardId state.cards state.activeCardId)
+             (Gripper.gripperDefsForCardId state.cards $ DCS.cardIdFromIndex state state.activeCardIndex)
              ⊕ [ HH.slot' cpBackSide unit \_ →
                   { component: Back.comp
                   , initialState: Back.initialState
@@ -165,8 +165,8 @@ render vstate =
 
 eval ∷ Natural Query DeckDSL
 eval (AddCard cardType next) = createCard cardType $> next
-eval (RunActiveCard next) = do
-  (maybe (pure unit) runCard =<< H.gets (_.activeCardId)) $> next
+eval (RunActiveCard next) =
+  (maybe (pure unit) runCard <<< DCS.activeCardId =<< H.get) $> next
 eval (Load fs dir deckId next) = do
   state ← H.get
   H.modify (DCS._stateMode .~ DCS.Loading)
@@ -275,9 +275,9 @@ peekBackSide ∷ ∀ a. Back.Query a → DeckDSL Unit
 peekBackSide (Back.UpdateFilter _ _) = pure unit
 peekBackSide (Back.DoAction action _) = case action of
   Back.Trash → do
-    activeId ← H.gets _.activeCardId
+    state ← H.get
     lastId ← H.gets DCS.findLast
-    for_ (activeId <|> lastId) \trashId → do
+    for_ (DCS.cardIdFromIndex state state.activeCardIndex <|> lastId) \trashId → do
       descendants ← H.gets $ DCS.findDescendants trashId
       H.modify ∘ DCS.removeCards $ S.insert trashId descendants
       triggerSave

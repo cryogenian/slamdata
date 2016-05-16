@@ -18,7 +18,7 @@ module Test.SlamData.Feature.Test.Search where
 
 import Prelude
 import Control.Apply ((*>))
-import Test.Feature.Log (successMsg, errorMsg)
+import Test.Feature.Log (successMsg)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.Interactions as Interact
@@ -46,7 +46,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToContain 10 "city" "SPRINGFIELD"
     successMsg "Successfully searched for a city"
 
-  searchScenario "Search within results" ["https://slamdata.atlassian.net/browse/SD-1616"] do
+  searchScenario "Search within results" [] do
     Interact.insertExploreCardInLastDeck
     Interact.selectFileForLastExploreCard "/test-mount/testDb/zips"
     Interact.accessNextCardInLastDeck
@@ -60,7 +60,6 @@ test = do
     Expect.cardsInTableColumnInLastCardToContain 2 "city" "SPRINGFIELD"
     Expect.cardsInTableColumnInLastCardToContain 2 "state" "OR"
     successMsg "Successfully searched within results"
-    errorMsg "This scenario passed but is known to fail non-deterministically"
 
   searchScenario "Search with field names" [] do
     --Given.aDocument "/test-mount/testDb/zips"
