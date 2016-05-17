@@ -16,9 +16,9 @@ limitations under the License.
 
 module SlamData.Prelude
   ( (∘), (⊕), (⋙), (⋘), (≡), (≠), (×), (≪), (≫)
-  , (∨), (∧)
+  , (∨), (∧), (⨁), (⊹)
   , flipCompose, notEq, applyRight, applyLeft
-  , type (~>), type (⨁)
+  , type (~>), type (⨁), type (⊹), type (×)
   , module Prelude
   , module Control.Alt
   , module Control.Apply
@@ -100,5 +100,12 @@ infixl 4 applyLeft as ≪
 infixr 3 conj as ∧
 infixr 2 disj as ∨
 
+
 infixr 6 type Natural as ~>
+
+infixr 4 type Either as ⊹
 infixr 4 type Coproduct as ⨁
+infixr 5 either as ⊹
+infixr 5 coproduct as ⨁
+
+infixr 4 type Tuple as ×

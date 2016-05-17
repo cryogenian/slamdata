@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -}
-
 module SlamData.Workspace.Deck.Slider
   ( startSliding
   , stopSlidingAndSnap
@@ -141,7 +140,6 @@ snapActiveCardIndexByTranslationAndCardWidth st cardWidth (DCS.VirtualIndex idx)
   | otherwise =
     DCS.VirtualIndex idx
 
-
 offsetCardSpacing ∷ Number → Number
 offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
@@ -177,7 +175,7 @@ willChangeActiveCardWhenDropped vstate =
 cardPositionCSS ∷ Int → CSS
 cardPositionCSS index = do
   CSSUtils.left $ CSSUtils.calc $
-    "(100% + " <> show cardSpacingPx <> "px) * " <> show index
+    "(100% + " ⊕ show cardSpacingPx ⊕ "px) * " ⊕ show index
 
 cardSliderTransformCSS ∷ DCS.VirtualIndex → Number → CSS
 cardSliderTransformCSS activeCardIndex translateX =
@@ -191,9 +189,9 @@ cardSliderTransitionCSS true = CSSUtils.transition "all 0.33s"
 cardSliderTranslateX ∷ DCS.VirtualIndex → Number → String
 cardSliderTranslateX (DCS.VirtualIndex activeCardIndex) translateX =
   CSSUtils.calc
-    $ "(-100% - " <> show cardSpacingPx <> "px)"
-    ++ " * " ++ show activeCardIndex
-    ++ " + " ++ show translateX ++ "px"
+    $ "(-100% - " ⊕ show cardSpacingPx ⊕ "px)"
+    ⊕ " * " ⊕ show activeCardIndex
+    ⊕ " + " ⊕ show translateX ⊕ "px"
 
 dropEffect ∷ Boolean → String
 dropEffect true = "execute"

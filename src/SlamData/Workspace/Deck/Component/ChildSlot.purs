@@ -18,12 +18,12 @@ module SlamData.Workspace.Deck.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 import SlamData.Workspace.Card.Component (CardQueryP, CardStateP)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.BackSide.Component as Back
-
+import SlamData.Workspace.Deck.Indicator.Component as Indicator
 
 newtype CardSlot = CardSlot CardId
 
@@ -33,14 +33,16 @@ instance ordCardSlot :: Ord CardSlot where compare = gCompare
 
 type BackSideSlot = Unit
 
+type IndicatorSlot = Unit
+
 type ChildSlot =
-  Either CardSlot BackSideSlot
+  CardSlot ⊹ BackSideSlot ⊹ IndicatorSlot
 
 type ChildQuery =
-  Coproduct CardQueryP Back.Query
+  CardQueryP ⨁ Back.Query ⨁ Indicator.Query
 
 type ChildState =
-  Either CardStateP Back.State
+  CardStateP ⊹ Back.State ⊹ Indicator.State
 
 
 cpCard
@@ -55,4 +57,11 @@ cpBackSide
       Back.State ChildState
       Back.Query ChildQuery
       BackSideSlot ChildSlot
-cpBackSide = cpR
+cpBackSide = cpR :> cpL
+
+cpIndicator
+  ∷ ChildPath
+      Indicator.State ChildState
+      Indicator.Query ChildQuery
+      IndicatorSlot ChildSlot
+cpIndicator = cpR :> cpR

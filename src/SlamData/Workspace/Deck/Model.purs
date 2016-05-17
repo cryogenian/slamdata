@@ -27,15 +27,19 @@ import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
 
 type Deck =
-  { name :: Maybe String
-  , cards :: Array Card.Model
-  , dependencies :: M.Map CardId CardId
+  { name ∷ Maybe String
+  , cards ∷ Array Card.Model
+  , dependencies ∷ M.Map CardId CardId
   }
 
-emptyWorkspace :: Deck
-emptyWorkspace = { name: Nothing, cards: [ ], dependencies: M.empty }
+emptyWorkspace ∷ Deck
+emptyWorkspace =
+  { name: Nothing
+  , cards: [ ]
+  , dependencies: M.empty
+  }
 
-encode :: Deck -> Json
+encode ∷ Deck → Json
 encode r
    = "version" := 3
   ~> "name" := r.name
@@ -43,11 +47,11 @@ encode r
   ~> "dependencies" := r.dependencies
   ~> jsonEmptyObject
 
-decode :: Json -> Either String Deck
-decode = decodeJson >=> \obj -> do
+decode ∷ Json → Either String Deck
+decode = decodeJson >=> \obj → do
   case obj .? "version" of
-    Right n | n /= 3 -> throwError "Expected deck format v3"
-    l -> l
+    Right n | n ≠ 3 → throwError "Expected deck format v3"
+    l → l
   { name: _
   , cards: _
   , dependencies: _

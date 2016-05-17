@@ -59,14 +59,14 @@ module SlamData.Workspace.Deck.Component.State
   , deckPath
   , cardIndexFromId
   , cardIdFromIndex
-  , activeCardId
-
   , VirtualState()
   , _VirtualState
   , runVirtualState
   , virtualState
 
   , VirtualIndex(..)
+  , runVirtualIndex
+  , activeCardId
   ) where
 
 import SlamData.Prelude
@@ -126,6 +126,8 @@ data StateMode
   | Error String
 
 newtype VirtualIndex = VirtualIndex Int
+runVirtualIndex ∷ VirtualIndex → Int
+runVirtualIndex (VirtualIndex i) = i
 
 instance eqVirtualIndex ∷ Eq VirtualIndex where
   eq (VirtualIndex i) (VirtualIndex j) =
@@ -340,9 +342,8 @@ insertErrorCard parentId st =
         in foldr (∘) id updates $ M.insert cardId parentId st.dependencies
     }
   where
-    -- The -1 index is reserved for the error card.
-    cardId = CardId (-1)
-
+  -- The -1 index is reserved for the error card.
+  cardId = CardId (-1)
 mkCardDef ∷ CardType → CardId → State → CardDef
 mkCardDef cardType cardId st =
   { id: cardId
@@ -558,8 +559,6 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
   where
   cardDefs = foldMap cardDefFromModel cards
 
-  activeCardIndex = _.id <$> A.last cardDefs
-
   addCardIdTypePair mp {cardId, cardType} = M.insert cardId cardType mp
 
   cardDefFromModel ∷ Card.Model → Array CardDef
@@ -578,7 +577,7 @@ cardIndexFromId st =
   -- TODO: for performance, use A.findIndex instead
   VirtualIndex ∘ fromMaybe (A.length cards) ∘ flip A.elemIndex (_.id <$> cards)
   where
-  cards = st ^. _VirtualState ∘ _cards
+    cards = st ^. _VirtualState ∘ _cards
 
 cardIdFromIndex ∷ VirtualState → VirtualIndex → Maybe CardId
 cardIdFromIndex st (VirtualIndex i)=

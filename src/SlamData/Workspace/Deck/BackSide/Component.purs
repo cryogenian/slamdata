@@ -174,7 +174,7 @@ render state =
             , HH.p_ [ HH.text lbl ] ]
         ]
 
-eval ∷ Natural Query DSL
+eval ∷ Query ~> DSL
 eval (DoAction _ next) = pure next
 eval (UpdateFilter str next) =
   H.modify (_{filterString = str}) $> next

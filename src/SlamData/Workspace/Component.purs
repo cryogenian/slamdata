@@ -178,13 +178,11 @@ dialogPeek _ = pure unit
 
 deckPeek ∷ ∀ a. Deck.QueryP a → WorkspaceDSL Unit
 deckPeek =
-  coproduct
-    (const (pure unit))
-    \(H.ChildF s q) →
-      coproduct
-        (const $ pure unit)
-        backsidePeek
-        q
+  (const $ pure unit)
+  ⨁ (\(H.ChildF _ q) → q
+     # (const $ pure unit)
+     ⨁ backsidePeek
+     ⨁ (const $ pure unit))
   where
   backsidePeek (Back.UpdateFilter _ _) = pure unit
   backsidePeek (Back.DoAction action _) = case action of

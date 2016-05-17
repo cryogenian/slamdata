@@ -29,31 +29,31 @@ import Data.Int as Int
 -- | The slot address value for cards and identifier within the deck graph.
 newtype CardId = CardId Int
 
-runCardId :: CardId -> Int
+runCardId ∷ CardId → Int
 runCardId (CardId i) = i
 
-stringToCardId :: String -> Either String CardId
-stringToCardId = maybe (Left "incorrect card id") (Right <<< CardId) <<< Int.fromString
+stringToCardId ∷ String → Either String CardId
+stringToCardId = maybe (Left "incorrect card id") (Right ∘ CardId) ∘ Int.fromString
 
-cardIdToString :: CardId -> String
-cardIdToString = show <<< runCardId
+cardIdToString ∷ CardId → String
+cardIdToString = show ∘ runCardId
 
-derive instance genericCardId :: Generic CardId
-instance eqCardId :: Eq CardId where eq = gEq
-instance ordCardId :: Ord CardId where compare = gCompare
+derive instance genericCardId ∷ Generic CardId
+instance eqCardId ∷ Eq CardId where eq = gEq
+instance ordCardId ∷ Ord CardId where compare = gCompare
 
-instance encodeJsonCardId :: EncodeJson CardId where
-  encodeJson = encodeJson <<< runCardId
+instance encodeJsonCardId ∷ EncodeJson CardId where
+  encodeJson = encodeJson ∘ runCardId
 
-instance decodeJsonCardId :: DecodeJson CardId where
+instance decodeJsonCardId ∷ DecodeJson CardId where
   decodeJson json = CardId <$> decodeJson json
 
-instance semiringCardId :: Semiring CardId where
+instance semiringCardId ∷ Semiring CardId where
   zero = CardId zero
   one = CardId one
   add (CardId a) (CardId b) = CardId $ a + b
   mul (CardId a) (CardId b) = CardId $ a * b
 
-instance boundedCardId :: Bounded CardId where
+instance boundedCardId ∷ Bounded CardId where
   top = CardId top
   bottom = CardId bottom

@@ -1,0 +1,48 @@
+.before-image(@img-url) {
+    font-size: 16px;
+    line-height: 16px;
+    background: url(@img-url);
+    height: 16px;
+    width: 16px;
+    background-size: 16px;
+    content: " ";
+    display: inline-block;
+    position: relative;
+    top: 1px;
+}
+.indicator {
+    position: absolute;
+    bottom: 0;
+    padding-left: 2px;
+    i {
+        padding-left: 2px;
+        padding-right: 2px;
+        padding: 2px;
+        padding-top: 6px;
+    }
+    .placeholder {
+        &:before {
+            .before-image("../img/circle-question.svg");
+        }
+        &.focused:before {
+            .before-image("../img/circle-question-focused.svg");
+        }
+    }
+    .errored {
+        &.focused:before {
+            .before-image("../img/circle-errored.svg");
+        }
+        &:before {
+            .before-image("../img/circle-crossed.svg");
+        }
+    }
+    .available {
+        color: white;
+        &:before {
+            .before-image("../img/circle.svg");
+        }
+        &.focused:before {
+            .before-image("../img/circle-focused.svg");
+        }
+    }
+}
