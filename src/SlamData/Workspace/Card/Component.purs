@@ -47,7 +47,6 @@ import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.CardType (cardClasses, nextCardTypes)
-import SlamData.Workspace.Card.Common.EvalQuery (prepareCardEvalInput)
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 
 import SlamData.Workspace.Card.Component.Query as CQ
@@ -138,11 +137,10 @@ makeCardComponentPart def render =
   eval (CQ.UpdateCard input k) = do
     H.fromAff =<< H.gets _.tickStopper
     tickStopper ← startInterval
-    H.modify (CS._tickStopper .~ tickStopper)
-    cachingEnabled ← H.gets _.cachingEnabled
-    let input' = prepareCardEvalInput cachingEnabled input
-    H.modify (CS._input .~ input'.inputPort)
-    result ← H.query unit (left (H.request (CQ.EvalCard input')))
+    H.modify
+      $ (CS._tickStopper .~ tickStopper)
+      ∘ (CS._input .~ input.inputPort)
+    result ← H.query unit (left (H.request (CQ.EvalCard input)))
     for_ result \{ output } → H.modify (CS._hasResults .~ isJust output)
     H.fromAff tickStopper
     H.modify
@@ -156,24 +154,19 @@ makeCardComponentPart def render =
     H.modify (CS._isCollapsed %~ not) $> next
   eval (CQ.ToggleMessages next) =
     H.modify (CS._messageVisibility %~ toggleVisibility) $> next
-  eval (CQ.ToggleCaching next) =
-    H.modify (CS._cachingEnabled %~ not) $> next
   eval (CQ.Tick elapsed next) =
     H.modify (CS._runState .~ RunElapsed elapsed) $> next
   eval (CQ.GetOutput k) = k <$> H.gets (_.output)
   eval (CQ.SaveCard cardId cardType k) = do
-    { hasResults, cachingEnabled } ← H.get
+    { hasResults } ← H.get
     json ← H.query unit (left (H.request CQ.Save))
     pure ∘ k $
       { cardId
       , cardType
-      , cachingEnabled
       , hasRun: hasResults
       , state: fromMaybe jsonNull json
       }
   eval (CQ.LoadCard model next) = do
-    for_ model.cachingEnabled \b →
-      H.modify (CS._cachingEnabled .~ b)
     H.query unit (left (H.action (CQ.Load model.state)))
     pure next
   eval (CQ.SetCardAccessType at next) =

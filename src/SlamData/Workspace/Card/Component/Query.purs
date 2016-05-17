@@ -54,7 +54,7 @@ import SlamData.Workspace.Card.APIResults.Component.Query as APIResults
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Chart.Component.Query as Chart
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInputPre)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInput)
 import SlamData.Workspace.Card.Download.Component.Query as Download
 import SlamData.Workspace.Card.JTable.Component.Query as JTable
 import SlamData.Workspace.Card.Markdown.Component.Query as Markdown
@@ -83,16 +83,14 @@ import SlamData.Workspace.Card.Error.Component.Query as Error
 -- |   part of the card.
 -- | - `ToggleMessages` is used to toggle the visibility of the status/error
 -- |   messages generated while evaluating the card.
--- | - `ToggleCaching` is used to toggle the use of the views & query APIs.
 data CardQuery a
   = RunCard a
   | StopCard a
-  | UpdateCard CardEvalInputPre (Maybe Port → a)
+  | UpdateCard CardEvalInput (Maybe Port → a)
   | RefreshCard a
   | TrashCard a
   | ToggleCollapsed a
   | ToggleMessages a
-  | ToggleCaching a
   | Tick Milliseconds a
   | GetOutput (Maybe Port → a)
   | SaveCard CardId CardType (Card.Model → a)

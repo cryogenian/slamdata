@@ -26,7 +26,6 @@ module SlamData.Workspace.Card.Component.State
   , _messages
   , _messageVisibility
   , _hasResults
-  , _cachingEnabled
   , _input
   , _output
   , _canceler
@@ -51,11 +50,12 @@ import SlamData.Prelude
 
 import Control.Monad.Aff (Canceler)
 
-import Data.Lens (LensP, lens, PrismP, TraversalP, prism', wander)
+import Data.Lens (LensP, lens, PrismP, prism')
 import Data.Visibility (Visibility(..))
 
 import Halogen (ParentState)
 
+import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Ace.Component.State as Ace
 import SlamData.Workspace.Card.API.Component.State as API
@@ -63,18 +63,17 @@ import SlamData.Workspace.Card.APIResults.Component.State as APIResults
 import SlamData.Workspace.Card.Chart.Component.State as Chart
 import SlamData.Workspace.Card.Component.Query (CardQuery, InnerCardQuery)
 import SlamData.Workspace.Card.Download.Component.State as Download
-import SlamData.Workspace.Card.JTable.Component.State as JTable
-import SlamData.Workspace.Card.Markdown.Component.State as Markdown
-import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Card.RunState (RunState(..))
-import SlamData.Workspace.Card.Search.Component.State as Search
-import SlamData.Workspace.Card.Viz.Component.State as Viz
-import SlamData.Workspace.Card.Next.Component.State as Next
-import SlamData.Workspace.Card.Save.Component.State as Save
-import SlamData.Workspace.Card.OpenResource.Component.State as Open
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DOpts
 import SlamData.Workspace.Card.Error.Component.State as Error
-import SlamData.Effects (Slam, SlamDataEffects)
+import SlamData.Workspace.Card.JTable.Component.State as JTable
+import SlamData.Workspace.Card.Markdown.Component.State as Markdown
+import SlamData.Workspace.Card.Next.Component.State as Next
+import SlamData.Workspace.Card.OpenResource.Component.State as Open
+import SlamData.Workspace.Card.Port (Port)
+import SlamData.Workspace.Card.RunState (RunState(..))
+import SlamData.Workspace.Card.Save.Component.State as Save
+import SlamData.Workspace.Card.Search.Component.State as Search
+import SlamData.Workspace.Card.Viz.Component.State as Viz
 
 
 -- | The common state value for deck cards.
@@ -103,7 +102,6 @@ type CardState =
   , messages ∷ Array String
   , messageVisibility ∷ Visibility
   , hasResults ∷ Boolean
-  , cachingEnabled ∷ Maybe Boolean -- Nothing if the option isn't available
   , input ∷ Maybe Port
   , output ∷ Maybe Port
   , canceler ∷ Canceler SlamDataEffects
@@ -122,7 +120,6 @@ initialCardState =
   , messages: []
   , messageVisibility: Invisible
   , hasResults: false
-  , cachingEnabled: Nothing
   , input: Nothing
   , output: Nothing
   , canceler: mempty
@@ -151,13 +148,6 @@ _messageVisibility = lens _.messageVisibility (_ { messageVisibility = _ })
 
 _hasResults ∷ LensP CardState Boolean
 _hasResults = lens _.hasResults (_ { hasResults = _ })
-
-_cachingEnabled ∷ TraversalP CardState Boolean
-_cachingEnabled =
-  wander \f s →
-    case s.cachingEnabled of
-      Nothing → pure s
-      Just b → f b <#> \b' → s { cachingEnabled = Just b' }
 
 -- | The last input value passed into the card when requesting evaluation.
 _input ∷ LensP CardState (Maybe Port)
@@ -257,4 +247,3 @@ _ErrorState ∷ PrismP AnyCardState Error.State
 _ErrorState = prism' ErrorState \s → case s of
   ErrorState s' → Just s'
   _ → Nothing
-
