@@ -309,8 +309,6 @@ peekCard cardId q = case q of
     H.modify ∘ DCS.removeCards $ S.insert cardId descendants
     triggerSave
     updateNextActionCard
-  ToggleCaching _ →
-    triggerSave
   StopCard _ → do
     H.modify $ DCS._runTrigger .~ Nothing
     H.modify $ DCS._pendingCards %~ S.delete cardId

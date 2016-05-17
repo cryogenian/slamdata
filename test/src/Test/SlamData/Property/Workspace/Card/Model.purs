@@ -45,8 +45,7 @@ instance arbitraryArbCard :: Arbitrary ArbCard where
     cardType <- runArbCardType <$> arbitrary
     state <- runArbJson <$> arbitrary
     hasRun <- arbitrary
-    cachingEnabled <- arbitrary
-    pure $ ArbCard { cardId, cardType, state, hasRun, cachingEnabled }
+    pure $ ArbCard { cardId, cardType, state, hasRun }
 
 check :: QC Unit
 check = quickCheck $ runArbCard >>> \model ->
@@ -61,5 +60,4 @@ checkCardEquality model model' =
    , model.cardType == model'.cardType <?> "cardType mismatch"
    , model.state == model'.state <?> "state mismatch"
    , model.hasRun == model'.hasRun <?> "hasRun mismatch"
-   , model.cachingEnabled == model'.cachingEnabled <?> "cachingEnabled mismatch"
    ]

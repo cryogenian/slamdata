@@ -34,7 +34,6 @@ type Model =
   , cardType :: CT.CardType
   , state :: J.Json
   , hasRun :: Boolean
-  , cachingEnabled :: Maybe Boolean
   }
 
 encode :: Model -> J.Json
@@ -43,15 +42,13 @@ encode card
   ~> "cardType" := card.cardType
   ~> "state" := card.state
   ~> "hasRun" := card.hasRun
-  ~> "cachingEnabled" := card.cachingEnabled
   ~> J.jsonEmptyObject
 
 decode :: J.Json -> Either String Model
 decode =
   J.decodeJson >=> \obj ->
-    { cardId: _, cardType: _, hasRun: _, state: _, cachingEnabled: _ }
+    { cardId: _, cardType: _, hasRun: _, state: _ }
       <$> obj .? "cardId"
       <*> obj .? "cardType"
       <*> obj .? "hasRun"
       <*> obj .? "state"
-      <*> (obj .? "cachingEnabled" <|> pure Nothing)

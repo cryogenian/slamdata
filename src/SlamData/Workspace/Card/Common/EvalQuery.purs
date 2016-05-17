@@ -17,16 +17,11 @@ limitations under the License.
 module SlamData.Workspace.Card.Common.EvalQuery
   ( CardEvalQuery(..)
   , CardEvalResult
-  , CardEvalResultP
-  , CardEvalInputP
-  , CardEvalInputPre
   , CardEvalInput
-  , CardSetupInfoP
   , CardSetupInfo
   , CardEvalT
   , runCardEvalT
   , temporaryOutputResource
-  , prepareCardEvalInput
   , liftWithCanceler
   , liftWithCanceler'
   , liftWithCancelerP
@@ -55,40 +50,17 @@ import Utils.Path (DirPath, FilePath)
 import Halogen (ParentDSL, ComponentDSL)
 import Halogen.Component.Utils as Hu
 
-type CardEvalInputP r =
+type CardEvalInput =
   { path ∷ Maybe DirPath
   , inputPort ∷ Maybe Port.Port
   , cardId ∷ CID.CardId
   , globalVarMap ∷ VM.VarMap
-  | r
-  }
-
-type CardEvalInputPre = CardEvalInputP ()
-type CardEvalInput =
-  CardEvalInputP
-    ( cachingEnabled ∷ Maybe Boolean
-    )
-
-type CardSetupInfoP r =
-  { path ∷ Maybe DirPath
-  , inputPort ∷ Port.Port
-  , cardId ∷ CID.CardId
-  | r
   }
 
 type CardSetupInfo =
-  CardSetupInfoP ()
-
-prepareCardEvalInput
-  ∷ Maybe Boolean
-  → CardEvalInputPre
-  → CardEvalInput
-prepareCardEvalInput cachingEnabled { path, inputPort, cardId, globalVarMap } =
-  { path
-  , inputPort
-  , cardId
-  , cachingEnabled
-  , globalVarMap
+  { path ∷ Maybe DirPath
+  , inputPort ∷ Port.Port
+  , cardId ∷ CID.CardId
   }
 
 temporaryOutputResource
@@ -137,12 +109,10 @@ data CardEvalQuery a
 -- |   the input for dependant cards. Not every card produces an output.
 -- | - `messages` is for any status messages that arise during
 -- |   evaluation.
-type CardEvalResultP a =
-  { output ∷ Maybe a
+type CardEvalResult =
+  { output ∷ Maybe Port.Port
   , messages ∷ Array String
   }
-
-type CardEvalResult = CardEvalResultP Port.Port
 
 type CardEvalTP m = ET.ExceptT String (WT.WriterT (Array String) m)
 newtype CardEvalT m a = CardEvalT (CardEvalTP m a)
