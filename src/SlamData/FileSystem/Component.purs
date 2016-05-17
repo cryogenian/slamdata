@@ -283,12 +283,28 @@ itemPeek (Item.Move res _) = do
   flip getDirectories rootDir \x →
     void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
 itemPeek (Item.Remove res _) = do
-  mbTrashFolder ← API.delete res
+  -- Replace actual item with phantom
   queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
+  queryListing $ H.action $ Listing.Add (PhantomItem res)
+  -- Save order of items during deletion (or phantom will be on top of list)
+  resort
+  -- Try to delete
+  mbTrashFolder ← API.delete res
+  -- Remove phantom resource after we have response from server
+  queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
+
   case mbTrashFolder of
-    Left err → showDialog $ Dialog.Error (message err)
-    Right (Nothing) → pure unit
-    Right (Just res') → void $ queryListing $ H.action $ Listing.Add (Item res')
+    Left err → do
+      -- Error occured: put item back and show dialog
+      void $ queryListing $ H.action $ Listing.Add (Item res)
+      showDialog $ Dialog.Error (message err)
+    Right mbRes →
+      -- Item has been deleted: probably add trash folder
+      for_ mbRes \res' →
+        void $ queryListing $ H.action $ Listing.Add (Item res')
+
+  resort
+
 itemPeek (Item.Share res _) = do
   { sort, salt } ← H.get
   loc ← H.fromEff locationString
