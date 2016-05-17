@@ -6,6 +6,6 @@
 , "quasar-advanced":
     { "owner": "slamdata"
     , "repo": "quasar-advanced"
-    , "tag": "backport-388"
+    , "tag": "backport-396"
     }
 }
