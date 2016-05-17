@@ -42,6 +42,7 @@ module SlamData.Prelude
   , module Data.Traversable
   , module Data.Tuple
   , module Data.Void
+  , module Debug.Trace
   )
   where
 
@@ -70,6 +71,8 @@ import Data.NaturalTransformation (Natural)
 import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Void (Void, absurd)
+
+import Debug.Trace
 
 
 flipCompose ∷ ∀ a b c d. Semigroupoid a ⇒ a b c → a c d → a b d

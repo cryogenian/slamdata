@@ -60,6 +60,7 @@ import SlamData.Workspace.Card.CardId (CardId())
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
+import SlamData.Workspace.Card.JTable.Component as JTable
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.OpenResource.Component as Open
 import SlamData.Workspace.Card.Port (Port(..))
@@ -310,7 +311,6 @@ peekCard cardId q = case q of
     updateNextActionCard
   ToggleCaching _ →
     triggerSave
-  ShareCard _ → pure unit
   StopCard _ → do
     H.modify $ DCS._runTrigger .~ Nothing
     H.modify $ DCS._pendingCards %~ S.delete cardId
@@ -402,23 +402,21 @@ peekAnyCard cardId q = do
 
 queryShouldRun ∷ ∀ a. AnyCardQuery a → Boolean
 queryShouldRun (SaveQuery q) = false
+queryShouldRun (JTableQuery q) = coproduct (const true) jTableQueryShouldRun q
 queryShouldRun _ = true
 
+jTableQueryShouldRun ∷ ∀ a. JTable.Query a → Boolean
+jTableQueryShouldRun (JTable.StartEnterCustomPageSize _) = false
+jTableQueryShouldRun _ = true
+
 queryShouldSave  ∷ ∀ a. AnyCardQuery a → Boolean
-queryShouldSave (AceQuery q) =
-  coproduct evalQueryShouldSave aceQueryShouldSave q
+queryShouldSave (AceQuery q) = coproduct (const true) aceQueryShouldSave q
 queryShouldSave _ = true
 
-evalQueryShouldSave ∷ ∀ a. CEQ.CardEvalQuery a → Boolean
-evalQueryShouldSave _ = true
-
-aceQueryShouldSave
-  ∷ ∀ p a. H.ChildF p Ace.AceQuery a → Boolean
-aceQueryShouldSave (H.ChildF _ q) =
-  case q of
-    Ace.TextChanged _ → true
-    _ → false
-
+aceQueryShouldSave ∷ ∀ p a. H.ChildF p Ace.AceQuery a → Boolean
+aceQueryShouldSave = H.runChildF >>> case _ of
+  Ace.TextChanged _ → true
+  _ → false
 
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit

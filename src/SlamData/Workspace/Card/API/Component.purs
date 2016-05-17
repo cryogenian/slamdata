@@ -28,7 +28,6 @@ import Data.StrMap as SM
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.API.Component.Query (QueryP)
@@ -40,7 +39,6 @@ import SlamData.Workspace.Card.Component as NC
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.FormBuilder.Component as FB
 import SlamData.Workspace.FormBuilder.Item.Component as Item
-import SlamData.Render.CSS as Rc
 
 type APIHTML = H.ParentHTML (FB.StateP Slam) NC.CardEvalQuery FB.QueryP Slam Unit
 type APIDSL = H.ParentDSL State (FB.StateP Slam) NC.CardEvalQuery FB.QueryP Slam Unit
@@ -59,13 +57,10 @@ render
   :: State
   -> APIHTML
 render _ =
-  HH.div
-    [ HP.classes [ Rc.cardInput ] ]
-    [ HH.slot unit \_ ->
-       { component : FB.formBuilderComponent
-       , initialState : H.parentState FB.initialState
-       }
-    ]
+  HH.slot unit \_ ->
+   { component : FB.formBuilderComponent
+   , initialState : H.parentState FB.initialState
+   }
 
 compileVarMap
   :: L.List Item.Model

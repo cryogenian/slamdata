@@ -158,7 +158,6 @@ makeCardComponentPart def render =
     H.modify (CS._messageVisibility %~ toggleVisibility) $> next
   eval (CQ.ToggleCaching next) =
     H.modify (CS._cachingEnabled %~ not) $> next
-  eval (CQ.ShareCard next) = pure next
   eval (CQ.Tick elapsed next) =
     H.modify (CS._runState .~ RunElapsed elapsed) $> next
   eval (CQ.GetOutput k) = k <$> H.gets (_.output)

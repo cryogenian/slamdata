@@ -31,34 +31,34 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Render.Common (glyph)
+import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..))
 import SlamData.Workspace.Card.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.JTable.Component.State (State, currentPageInfo)
-import SlamData.Render.Common (glyph)
-import SlamData.Render.CSS as CSS
 
 -- | A value that holds all possible states for an inputtable value: the current
 -- | actual value, and a possible pending user-entered or selected value.
 type InputValue a =
-  { current :: a
-  , pending :: Maybe (Either String a)
+  { current ∷ a
+  , pending ∷ Maybe (Either String a)
   }
 
 -- | Converts an `InputValue` into a string for use as a HTML form field value.
-fromInputValue :: forall a. (Show a) => InputValue a -> String
+fromInputValue ∷ ∀ a. Show a ⇒ InputValue a → String
 fromInputValue { current, pending } =
   case pending of
-    Nothing -> show current
-    Just pending' -> either id show pending'
+    Nothing → show current
+    Just pending' → either id show pending'
 
-render :: State -> H.ComponentHTML QueryP
+render ∷ State → H.ComponentHTML QueryP
 render { result: Nothing } = HH.div_ []
 render st@{ result: Just result } =
   let p = currentPageInfo st
   in HH.div_
     [ right <$> JT.renderJTable jTableOpts result.json
     , HH.div
-        [ HP.class_ CSS.pagination ]
+        [ HP.classes [CSS.pagination, CSS.form] ]
         [ prevButtons (p.page <= 1)
         , pageField { current: p.page, pending: st.page } p.totalPages
         , nextButtons (p.page >= p.totalPages)
@@ -66,90 +66,85 @@ render st@{ result: Just result } =
         ]
     ]
 
-jTableOpts :: JT.JTableOpts
+jTableOpts ∷ JT.JTableOpts
 jTableOpts = JT.jTableOptsDefault
-  { style = JT.bootstrapStyle
+  { style = JT.noStyle
   , columnOrdering = JT.alphaOrdering
   }
 
-prevButtons :: Boolean -> H.ComponentHTML QueryP
+prevButtons ∷ Boolean → H.ComponentHTML QueryP
 prevButtons enabled =
   HH.div
-    [ HP.classes [B.btnGroup] ]
+    [ HP.class_ CSS.formButtonGroup ]
     [ HH.button
-        [ HP.classes [B.btn, B.btnSm, B.btnDefault]
+        [ HP.class_ CSS.formButton
         , HP.disabled enabled
         , HE.onClick $ HE.input_ (right <<< StepPage First)
         ]
         [ glyph B.glyphiconFastBackward ]
     , HH.button
-        [ HP.classes [B.btn, B.btnSm, B.btnDefault]
+        [ HP.class_ CSS.formButton
         , HP.disabled enabled
         , HE.onClick $ HE.input_ (right <<< StepPage Prev)
         ]
         [ glyph B.glyphiconStepBackward ]
     ]
 
-pageField :: InputValue Int -> Int -> H.ComponentHTML QueryP
+pageField ∷ InputValue Int → Int → H.ComponentHTML QueryP
 pageField pageValue totalPages =
-  HH.div
-    [ HP.classes [CSS.pageInput] ]
+  HH.div_
     [ submittable
         [ HH.text "Page"
         , HH.input
-            [ HP.classes [B.formControl, B.inputSm]
+            [ HP.inputType HP.InputNumber
             , HP.value (fromInputValue pageValue)
-            , HE.onValueInput (HE.input (\x -> right <<< SetCustomPage x))
+            , HE.onValueInput (HE.input (\x → right <<< SetCustomPage x))
             ]
-        , HH.text $ "of " ++ (show totalPages)
+        , HH.text $ "of " <> show totalPages
         ]
     ]
 
-submittable :: Array (H.ComponentHTML QueryP) -> H.ComponentHTML QueryP
+submittable ∷ Array (H.ComponentHTML QueryP) → H.ComponentHTML QueryP
 submittable =
   HH.form
-    [ HE.onSubmit \_ ->
+    [ HE.onSubmit \_ →
         HEH.preventDefault $> Just (H.action (left <<< NotifyRunCard))
     ]
 
-nextButtons :: Boolean -> H.ComponentHTML QueryP
+nextButtons ∷ Boolean → H.ComponentHTML QueryP
 nextButtons enabled =
   HH.div
-    [ HP.classes [B.btnGroup] ]
+    [ HP.class_ CSS.formButtonGroup ]
     [ HH.button
-        [ HP.classes [B.btn, B.btnSm, B.btnDefault]
-        , HP.disabled enabled
+        [ HP.disabled enabled
         , HE.onClick $ HE.input_ (right <<< StepPage Next)
         ]
         [ glyph B.glyphiconStepForward ]
     , HH.button
-        [ HP.classes [B.btn, B.btnSm, B.btnDefault]
-        , HP.disabled enabled
+        [ HP.disabled enabled
         , HE.onClick $ HE.input_ (right <<< StepPage Last)
         ]
         [ glyph B.glyphiconFastForward ]
     ]
 
-pageSizeControls :: Boolean -> InputValue Int -> H.ComponentHTML QueryP
+pageSizeControls ∷ Boolean → InputValue Int → H.ComponentHTML QueryP
 pageSizeControls showCustom pageSize =
-  HH.div
-    [ HP.classes [CSS.pageSize] ]
+  HH.div_
     [ submittable
          $ [ HH.text "Per page:" ]
-        ++ [ if showCustom
+        <> [ if showCustom
              then HH.input
-                [ HP.classes [B.formControl, B.inputSm]
+                [ HP.inputType HP.InputNumber
                 , HP.value (fromInputValue pageSize)
-                , HE.onValueInput (HE.input (\v -> right <<< SetCustomPageSize v))
+                , HE.onValueInput (HE.input (\v → right <<< SetCustomPageSize v))
                 ]
              else HH.select
-                [ HP.classes [B.formControl, B.inputSm]
-                , HE.onValueChange
-                    (HE.input (\v ->
+                [ HE.onValueChange
+                    (HE.input \v →
                       right <<<
                         if v == "Custom"
                         then StartEnterCustomPageSize
-                        else ChangePageSize v))
+                        else ChangePageSize v)
                 ]
                 pageOptions
            ]
@@ -174,7 +169,10 @@ pageSizeControls showCustom pageSize =
 
   -- An unselectable option dividing the custom values from the presets
   dividerOption =
-    [ HH.option [ HP.disabled true ] [ HH.text $ fromChar $ fromCharCode 8212 ] ]
+    [ HH.option
+        [ HP.disabled true ]
+        [ HH.text $ fromChar $ fromCharCode 8212 ]
+    ]
 
   -- If a custom value has been entered, create an entry for it in the dropdown
   customOption =

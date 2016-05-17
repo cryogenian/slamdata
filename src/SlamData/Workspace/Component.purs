@@ -182,16 +182,10 @@ deckPeek =
     (const (pure unit))
     \(H.ChildF s q) →
       coproduct
-        (either peekCards (\_ _ → pure unit) s)
+        (const $ pure unit)
         backsidePeek
         q
   where
-  peekCards (CardSlot cid) q =
-    coproduct
-      (cardPeek cid)
-      (const $ pure unit)
-      q
-
   backsidePeek (Back.UpdateFilter _ _) = pure unit
   backsidePeek (Back.DoAction action _) = case action of
     Back.Trash →
@@ -264,15 +258,6 @@ varMapDefaults cid = do
         <#> foldl (flip alg) SM.empty
     _ →
       pure SM.empty
-
-
-
-cardPeek ∷ ∀ a. CID.CardId → CQ.CardQuery a → WorkspaceDSL Unit
-cardPeek cid q =
-  case q of
-    CQ.ShareCard _ → shareCard cid
-    _ → pure unit
-
 
 liftFormBuilderQuery
   ∷ CID.CardId → Natural FB.Query (ET.ExceptT String WorkspaceDSL)

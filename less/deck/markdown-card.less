@@ -1,0 +1,55 @@
+.sd-card-markdown {
+
+    h1, h2, h3 {
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+
+    .sd-form {
+      padding: 1.5em;
+    }
+
+    span.slamdown-field {
+      > label {
+        margin-left: 1.5em;
+      }
+      > input {
+        margin: 0 0.5em 0 1em;
+      }
+    }
+
+    span.slamdown-field:first-child {
+      > label {
+        margin-left: 0;
+        display: block;
+        width: calc(100px - 0.5em);
+        padding-top: 7px;
+        padding-right: 0.5em;
+        float: left;
+      }
+      > input, select {
+        margin: 0;
+      }
+      overflow: hidden;
+    }
+
+    ul.slamdown-radios, ul.slamdown-checkboxes {
+      margin: 0;
+      list-style: none;
+      padding: 5px 0 0;
+      li {
+        display: inline;
+        margin-right: 1.5em;
+        label {
+          margin-left: 0.5em;
+          position: relative;
+          top: -2px;
+        }
+      }
+    }
+
+    p {
+      overflow: hidden;
+    }
+}

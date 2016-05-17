@@ -33,6 +33,7 @@ import Data.Lens ((.~), (?~))
 import Halogen as H
 
 import SlamData.Effects (Slam)
+import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism, _JTableState, _JTableQuery)
@@ -40,8 +41,7 @@ import SlamData.Workspace.Card.JTable.Component.Query (QueryP, PageStep(..), Que
 import SlamData.Workspace.Card.JTable.Component.Render (render)
 import SlamData.Workspace.Card.JTable.Component.State as JTS
 import SlamData.Workspace.Card.JTable.Model as Model
-import SlamData.Workspace.Card.Port (Port(..))
-import SlamData.Quasar.Query as Quasar
+import SlamData.Workspace.Card.Port as Port
 
 jtableComponent ∷ H.Component CardStateP CardQueryP Slam
 jtableComponent = makeCardComponent
@@ -61,46 +61,10 @@ queryShouldRun = coproduct (const false) pred
 
 -- | Evaluates generic card queries.
 evalCard ∷ Natural CEQ.CardEvalQuery (H.ComponentDSL JTS.State QueryP Slam)
-evalCard (CEQ.NotifyRunCard next) =
-  pure next
-evalCard (CEQ.NotifyStopCard next) =
-  pure next
-evalCard (CEQ.EvalCard value k) =
-  k <$> CEQ.runCardEvalT do
-    case value.inputPort of
-      Just (TaggedResource { tag, resource }) → do
-          oldInput ← lift $ H.gets _.input
-          when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
-            $ lift $ H.set JTS.initialState
-
-          size ←
-            lift (Quasar.count resource)
-              >>= either (throwError ∘ Exn.message) pure
-
-          lift $ H.modify $ JTS._input ?~ { resource, size, tag }
-          p ← lift $ H.gets JTS.pendingPageInfo
-
-          items ←
-            lift (Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize)
-              >>= either (throwError ∘ Exn.message) pure
-
-          lift $
-            H.modify
-              $ (JTS._isEnteringPageSize .~ false)
-              ∘ (JTS._result ?~
-                   { json: JSON.fromArray items
-                   , page: p.page
-                   , pageSize: p.pageSize
-                   })
-
-          pure value.inputPort
-
-      Just Blocked → do
-        lift $ H.set JTS.initialState
-        pure Nothing
-
-      _ → throwError "Expected a Resource input"
-
+evalCard (CEQ.NotifyRunCard next) = pure next
+evalCard (CEQ.NotifyStopCard next) = pure next
+evalCard (CEQ.EvalCard value k) = do
+  k <$> CEQ.runCardEvalT (runTable value.inputPort)
 evalCard (CEQ.SetupCard _ next) = pure next
 evalCard (CEQ.Save k) =
   pure ∘ k =<< H.gets (Model.encode ∘ JTS.toModel)
@@ -109,8 +73,46 @@ evalCard (CEQ.Load json next) = do
   pure next
 evalCard (CEQ.SetCanceler _ next) = pure next
 
-hole ∷ ∀ a. a
-hole = Unsafe.Coerce.unsafeCoerce "hole"
+runTable
+  ∷ Maybe Port.Port
+  → CEQ.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) (Maybe Port.Port)
+runTable inputPort = case inputPort of
+  Just (Port.TaggedResource { tag, resource }) → do
+    oldInput ← lift $ H.gets _.input
+    when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
+      $ lift $ resetState
+
+    size ←
+      lift (Quasar.count resource)
+        >>= either (throwError ∘ Exn.message) pure
+
+    lift $ H.modify $ JTS._input ?~ { resource, size, tag }
+    p ← lift $ H.gets JTS.pendingPageInfo
+
+    items ←
+      lift (Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize)
+        >>= either (throwError ∘ Exn.message) pure
+
+    lift $
+      H.modify
+        $ (JTS._isEnteringPageSize .~ false)
+        ∘ (JTS._result ?~
+             { json: JSON.fromArray items
+             , page: p.page
+             , pageSize: p.pageSize
+             })
+
+    pure inputPort
+
+  Just Port.Blocked → do
+    lift $ resetState
+    pure Nothing
+
+  _ → throwError "Expected a TaggedResource input"
+
+-- | Resets the state while preserving settings like page size.
+resetState ∷ H.ComponentDSL JTS.State QueryP Slam Unit
+resetState = H.modify (JTS._result .~ Nothing)
 
 -- | Evaluates jtable-specific card queries.
 evalJTable ∷ Natural Query (H.ComponentDSL JTS.State QueryP Slam)

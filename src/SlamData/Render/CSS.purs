@@ -214,20 +214,11 @@ cardEvalLine = className "card-eval-line"
 exploreCardEditor ∷ ClassName
 exploreCardEditor = className "explore-card-editor"
 
-pagination ∷ ClassName
-pagination = className "pagination"
-
 pageInput ∷ ClassName
 pageInput = className "page-input"
 
 pageSize ∷ ClassName
 pageSize = className "page-size"
-
-markdownOutput ∷ ClassName
-markdownOutput = className "markdown-output"
-
-searchCardInput ∷ ClassName
-searchCardInput = className "search-card-input"
 
 searchCardButton ∷ ClassName
 searchCardButton = className "search-card-button"
@@ -441,3 +432,9 @@ cardGripperLast = className "sd-card-gripper-last"
 
 flipDeck :: ClassName
 flipDeck = className "sd-flip-deck"
+
+form ∷ ClassName
+form = className "sd-form"
+
+formButton ∷ ClassName
+formButton = className "sd-form-button"
