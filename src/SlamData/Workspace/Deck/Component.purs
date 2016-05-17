@@ -66,7 +66,7 @@ import SlamData.Workspace.Card.OpenResource.Component as Open
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
-import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, ChildQuery, ChildSlot, CardSlot(..))
+import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..))
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..))
 
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -75,6 +75,7 @@ import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Model as NB
 import SlamData.Workspace.Deck.Slider as Slider
+import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceCardHash, mkWorkspaceURL)
 import SlamData.Quasar.Data (save, load) as Quasar
 import SlamData.Render.CSS as CSS
@@ -116,7 +117,7 @@ render vstate =
       HH.div
         ([ HP.class_ CSS.board
          , HP.key "board"
-         ] ++ Slider.containerProperties vstate)
+         ] ⊕ Slider.containerProperties vstate)
         [ HH.div
             [ HP.class_ CSS.deck
             , HP.key "deck-container"
@@ -129,6 +130,10 @@ render vstate =
                 ]
                 [ HH.text "" ]
             , Slider.render vstate $ not state.backsided
+            , HH.slot' cpIndicator unit \_ →
+                { component: Indicator.comp
+                , initialState: Indicator.initialState
+                }
             , renderBackside state.backsided
             ]
         ]
@@ -191,8 +196,8 @@ eval (Load fs dir deckId next) = do
           -- will result in all child nodes being run also as the outputs
           -- propagate down each subgraph.
           traverse_ runCard $ Array.nub $ flip DCS.findRoot st <$> ranCards
-          H.modify $ DCS._stateMode .~ DCS.Ready
-  updateNextActionCard
+          H.modify (DCS._stateMode .~ DCS.Ready)
+  updateIndicatorAndNextAction
   pure next
 
 eval (ExploreFile fs res next) = do
@@ -212,7 +217,7 @@ eval (ExploreFile fs res next) = do
   runCard zero
   -- Flush the eval queue
   saveDeck
-  updateNextActionCard
+  updateIndicatorAndNextAction
   pure next
 eval (Publish next) = do
   H.gets DCS.deckPath >>= \mpath →
@@ -221,6 +226,7 @@ eval (Publish next) = do
 eval (Reset fs dir deckId next) = do
   let deck = DCS.initialDeck fs
   setDeckState $ deck { id = deckId, path = Just dir }
+  updateIndicatorAndNextAction
   pure next
 eval (SetName name next) =
   H.modify (DCS._name .~ Just name) $> next
@@ -257,8 +263,10 @@ eval (FlipDeck next) = H.modify (DCS._backsided %~ not) $> next
 eval (GetActiveCardId k) = map k $ H.gets DCS.findLast
 eval (StartSliding mouseEvent next) =
   Slider.startSliding mouseEvent $> next
-eval (StopSlidingAndSnap mouseEvent next) =
-  Slider.stopSlidingAndSnap mouseEvent $> next
+eval (StopSlidingAndSnap mouseEvent next) = do
+  Slider.stopSlidingAndSnap mouseEvent
+  updateIndicator
+  pure next
 eval (UpdateSliderPosition mouseEvent next) =
   Slider.updateSliderPosition mouseEvent $> next
 eval (SetNextActionCardElement element next) =
@@ -268,10 +276,10 @@ eval (StopSliderTransition next) =
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek (H.ChildF s q) =
-  coproduct
-    (either peekCards (\_ _ → pure unit) s)
-    peekBackSide
-    q
+  (either peekCards (\_ _ → pure unit) s)
+   ⨁ peekBackSide
+   ⨁ (const $ pure unit)
+   $ q
 
 peekBackSide ∷ ∀ a. Back.Query a → DeckDSL Unit
 peekBackSide (Back.UpdateFilter _ _) = pure unit
@@ -283,7 +291,7 @@ peekBackSide (Back.DoAction action _) = case action of
       descendants ← H.gets $ DCS.findDescendants trashId
       H.modify ∘ DCS.removeCards $ S.insert trashId descendants
       triggerSave
-      updateNextActionCard
+      updateIndicatorAndNextAction
       H.modify $ DCS._backsided .~ false
   Back.Share → pure unit
   Back.Embed → pure unit
@@ -294,8 +302,8 @@ peekBackSide (Back.DoAction action _) = case action of
   Back.Wrap → pure unit
 
 peekCards ∷ ∀ a. CardSlot → CardQueryP a → DeckDSL Unit
-peekCards (CardSlot cardId) q =
-  coproduct (peekCard cardId) (peekCardInner cardId) q
+peekCards (CardSlot cardId) =
+  (peekCard cardId) ⨁ (peekCardInner cardId)
 
 
 -- | Peek on the card component to observe actions from the card control
@@ -308,13 +316,35 @@ peekCard cardId q = case q of
     descendants ← H.gets $ DCS.findDescendants cardId
     H.modify ∘ DCS.removeCards $ S.insert cardId descendants
     triggerSave
-    updateNextActionCard
+    updateIndicatorAndNextAction
   StopCard _ → do
     H.modify $ DCS._runTrigger .~ Nothing
     H.modify $ DCS._pendingCards %~ S.delete cardId
     runPendingCards
   _ → pure unit
 
+
+updateIndicatorAndNextAction ∷ DeckDSL Unit
+updateIndicatorAndNextAction = do
+  updateIndicator
+  updateNextActionCard
+
+updateIndicator ∷ DeckDSL Unit
+updateIndicator = do
+  cids ← H.gets $ map _.id ∘ _.cards ∘ DCS.runVirtualState ∘ DCS.virtualState
+  outs ←
+    for cids \cid → do
+      map join
+        $ H.query' cpCard (CardSlot cid)
+        $ left (H.request GetOutput)
+  H.query' cpIndicator unit
+    $ H.action
+    $ Indicator.UpdatePortList outs
+  vid ← H.gets $ DCS.runVirtualIndex ∘ _.activeCardIndex
+  void
+    $ H.query' cpIndicator unit
+    $ H.action
+    $ Indicator.UpdateActiveId vid
 
 updateNextActionCard ∷ DeckDSL Unit
 updateNextActionCard = do
@@ -377,7 +407,7 @@ createCard cardType = do
           $ left
           $ H.action (CEQ.SetupCard setupInfo)
       runCard newCardId
-  updateNextActionCard
+  updateIndicatorAndNextAction
   triggerSave
 
 -- | Peek on the inner card components to observe `NotifyRunCard`, which is
@@ -421,7 +451,7 @@ runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
   cards ← H.gets _.pendingCards
   traverse_ runCard' cards
-  updateNextActionCard
+  updateIndicatorAndNextAction
   where
   runCard' ∷ CardId → DeckDSL Unit
   runCard' cardId = do
@@ -495,7 +525,12 @@ saveDeck = H.get >>= \st → do
           $ left
           $ H.request (SaveCard card.id card.ty)
 
-      let json = Model.encode { name: st.name, cards, dependencies: st.dependencies }
+      let
+        json = Model.encode
+          { name: st.name
+          , cards
+          , dependencies: st.dependencies
+          }
 
       for_ st.path \path → do
         deckId ← runExceptT do
@@ -546,7 +581,8 @@ saveDeck = H.get >>= \st → do
   save dir deckId json = Quasar.save (deckIndex dir deckId) json
 
 deckIndex ∷ DirPath → DeckId → FilePath
-deckIndex path deckId = path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
+deckIndex path deckId =
+  path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
 
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
