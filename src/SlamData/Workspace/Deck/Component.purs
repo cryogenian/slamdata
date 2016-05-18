@@ -54,6 +54,8 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Data (save, load) as Quasar
+import SlamData.Render.CSS as CSS
 import SlamData.Workspace.AccessType (AccessType(..), isEditable)
 import SlamData.Workspace.Action as NA
 import SlamData.Workspace.Card.CardId (CardId())
@@ -68,17 +70,14 @@ import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..))
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..))
-
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId(..), deckIdToString)
 import SlamData.Workspace.Deck.Gripper as Gripper
-import SlamData.Workspace.Deck.Model as Model
-import SlamData.Workspace.Model as NB
-import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
-import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceCardHash, mkWorkspaceURL)
-import SlamData.Quasar.Data (save, load) as Quasar
-import SlamData.Render.CSS as CSS
+import SlamData.Workspace.Deck.Model as Model
+import SlamData.Workspace.Deck.Slider as Slider
+import SlamData.Workspace.Model as NB
+import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 
 import Utils.Path (DirPath, FilePath)
 
@@ -243,7 +242,6 @@ eval (SetAccessType aType next) = do
     $ H.modify (DCS._backsided .~ false)
   pure next
 eval (GetPath k) = k <$> H.gets DCS.deckPath
-eval (SetViewingCard mbcid next) = H.modify (DCS._viewingCard .~ mbcid) $> next
 eval (Save next) = saveDeck $> next
 eval (RunPendingCards next) = do
   -- Only run pending cards if we have a deckPath. Some cards run with the
@@ -552,11 +550,7 @@ saveDeck = H.get >>= \st → do
             -- We need to get the modified version of the deck state.
             H.gets DCS.deckPath >>= traverse_ \path' →
               let deckHash =
-                    case st.viewingCard of
-                      Nothing →
-                        mkWorkspaceHash path' (NA.Load st.accessType) st.globalVarMap
-                      Just cid →
-                        mkWorkspaceCardHash path' cid st.accessType st.globalVarMap
+                    mkWorkspaceHash path' (NA.Load st.accessType) st.globalVarMap
               in H.fromEff $ locationObject >>= Location.setHash deckHash
 
   where

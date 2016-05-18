@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module Utils.Path where
+module Utils.Path
+  ( module Utils.Path
+  , module Quasar.Types
+  ) where
 
 import Prelude
 
@@ -25,7 +28,7 @@ import Data.Array (intersect, null, (:))
 import Data.Char as Ch
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe, maybe, fromMaybe)
-import Data.Path.Pathy (Sandboxed, Unsandboxed, Abs, Path, File, Rel, Dir, AbsDir, AbsFile, DirName(..), FileName(..), peel, rootDir, (</>), file, canonicalize, printPath, parseAbsDir, parseAbsFile, dir, relativeTo, renameDir)
+import Data.Path.Pathy (Sandboxed, Unsandboxed, Abs, Path, File, Rel, Dir, DirName(..), FileName(..), peel, rootDir, (</>), file, canonicalize, printPath, parseAbsDir, parseAbsFile, dir, relativeTo, renameDir)
 import Data.Path.Pathy as P
 import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, length, toCharArray)
 import Data.String.Regex as Rgx
@@ -33,11 +36,9 @@ import Data.Tuple (snd, fst)
 
 import Text.SlamSearch.Parser.Tokens (keyChars)
 
-import SlamData.Config as Config
+import Quasar.Types (AnyPath, DirPath, FilePath)
 
-type FilePath = AbsFile Sandboxed
-type DirPath = AbsDir Sandboxed
-type AnyPath = Either DirPath FilePath
+import SlamData.Config as Config
 
 infixl 6 renameDirExt as <./>
 

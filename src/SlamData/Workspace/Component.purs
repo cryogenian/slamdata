@@ -26,7 +26,6 @@ import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 import Control.UI.Browser (locationString)
 
-import Data.Functor.Coproduct.Nested (coproduct3)
 import Data.Lens ((^.), (.~), (?~))
 import Data.List as L
 import Data.StrMap as SM
@@ -34,34 +33,33 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 
 import Halogen as H
-import Halogen.Component.ChildPath (injSlot)
+import Halogen.Component.ChildPath (injSlot, injQuery)
 import Halogen.HTML.Core (ClassName, className)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
+import SlamData.Config (workspaceUrl)
 import SlamData.Effects (Slam)
 import SlamData.Header.Component as Header
-import SlamData.Workspace.AccessType (isReadOnly)
-import SlamData.Workspace.Action as NA
-import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Component.Query as CQ
-import SlamData.Workspace.Card.Port.VarMap as VM
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpDeck, cpHeader)
-import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _browserFeatures,  _loaded, _parentHref, _path, _version, _viewingCard, initialState)
-import SlamData.Workspace.Deck.BackSide.Component as Back
-import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Workspace.Deck.Component.ChildSlot (CardSlot(..))
-import SlamData.Workspace.Deck.DeckId (DeckId(..))
-import SlamData.Workspace.Dialog.Component as Dialog
-import SlamData.Workspace.Model as Model
-import SlamData.Workspace.FormBuilder.Component as FB
-import SlamData.Workspace.FormBuilder.Item.Model as FBI
-import SlamData.Workspace.Routing (mkWorkspaceCardURL)
 import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
+import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Action as NA
+import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.Component.Query as CQ
+import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpDeck, cpHeader)
+import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
+import SlamData.Workspace.Component.State (State, _accessType, _browserFeatures,  _loaded, _parentHref, _path, _version, initialState)
+import SlamData.Workspace.Deck.BackSide.Component as Back
+import SlamData.Workspace.Deck.Component as Deck
+import SlamData.Workspace.Deck.Component.ChildSlot (CardSlot(..), cpCard)
+import SlamData.Workspace.Deck.DeckId (DeckId(..))
+import SlamData.Workspace.Dialog.Component as Dialog
+import SlamData.Workspace.FormBuilder.Component as FB
+import SlamData.Workspace.Model as Model
+import SlamData.Workspace.Routing (mkWorkspaceHash)
 
 import Utils.Path as UP
 
@@ -110,13 +108,10 @@ render state =
       }
 
   shouldHideTopMenu ∷ Boolean
-  shouldHideTopMenu =
-    isJust (state ^. _viewingCard)
-    ∨ isReadOnly (state ^. _accessType)
+  shouldHideTopMenu = AT.isReadOnly (state ^. _accessType)
 
   shouldHideEditors ∷ Boolean
-  shouldHideEditors =
-    isReadOnly (state ^. _accessType)
+  shouldHideEditors = AT.isReadOnly (state ^. _accessType)
 
   classes ∷ Array ClassName
   classes =
@@ -135,12 +130,6 @@ eval (SetAccessType aType next) = do
   H.modify (_accessType .~ aType)
   queryDeck $ H.action $ Deck.SetAccessType aType
   pure next
-eval (GetAccessType k) = k <$> H.gets _.accessType
-eval (SetViewingCard mbcid next) = do
-  H.modify (_viewingCard .~ mbcid)
-  queryDeck $ H.action $ Deck.SetViewingCard mbcid
-  pure next
-eval (GetViewingCard k) = k <$> H.gets _.viewingCard
 eval (SetParentHref href next) = H.modify (_parentHref ?~ href) $> next
 eval (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
@@ -160,102 +149,34 @@ eval (Load features path deckIds next) = do
   pure next
 
 rootDeck ∷ UP.DirPath → WorkspaceDSL (Either String DeckId)
-rootDeck path = map (map DeckId) $ Model.getRoot (path </> Pathy.file "index")
-
+rootDeck path = map DeckId <$> Model.getRoot (path </> Pathy.file "index")
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
-peek =
-  coproduct3
-    dialogParentPeek
-    deckPeek
-    (const $ pure unit)
-
-dialogParentPeek ∷ ∀ a. Dialog.QueryP a → WorkspaceDSL Unit
-dialogParentPeek = coproduct dialogPeek (const (pure unit))
-
-dialogPeek ∷ ∀ a. Dialog.Query a → WorkspaceDSL Unit
-dialogPeek _ = pure unit
+peek = const (pure unit) ⨁ deckPeek ⨁ const (pure unit)
 
 deckPeek ∷ ∀ a. Deck.QueryP a → WorkspaceDSL Unit
-deckPeek =
-  (const $ pure unit)
-  ⨁ (\(H.ChildF _ q) → q
-     # (const $ pure unit)
-     ⨁ backsidePeek
-     ⨁ (const $ pure unit))
+deckPeek
+  = const (pure unit)
+  ⨁ (const (pure unit) ⨁ backsidePeek ⨁ const (pure unit)) ∘ H.runChildF
   where
-  backsidePeek (Back.UpdateFilter _ _) = pure unit
-  backsidePeek (Back.DoAction action _) = case action of
-    Back.Trash →
-      pure unit
-    Back.Share → do
+  backsidePeek = case _ of
+    Back.DoAction Back.Share _ -> do
+      url ← mkShareURL SM.empty
+      for_ url (showDialog ∘ Dialog.Share)
+    Back.DoAction Back.Embed _ -> do
+      varMap ← fromMaybe SM.empty <$> queryDeck (H.request Deck.GetGlobalVarMap)
+      url ← mkShareURL varMap
       loc ← H.fromEff locationString
-      queryDeck (H.request Deck.GetPath)
-        <#> join
-        >>= traverse_ \nPath →
-          showDialog
-          $ Dialog.Share
-          $ loc
-          ⊕ "/"
-          ⊕ SlamData.Config.workspaceUrl
-          ⊕ "#"
-          ⊕ UP.encodeURIPath (Pathy.printPath nPath)
-          ⊕ "view"
-    Back.Embed →
-      queryDeck (H.request Deck.GetActiveCardId)
-        <#> join
-        >>= traverse_ shareCard
-    Back.Publish →
-      pure unit
-    Back.Mirror →
-      pure unit
-    Back.Wrap →
-      pure unit
+      for_ url (showDialog ∘ flip Dialog.Embed varMap)
+    _ -> pure unit
 
-shareCard ∷ CID.CardId → WorkspaceDSL Unit
-shareCard cid = do
-  root ← H.fromEff locationString
-  showDialog ∘ either Dialog.Error (uncurry Dialog.Embed) =<< ET.runExceptT do
-    liftDeckQuery $ H.action Deck.Save
-    path ←
-      liftDeckQuery (H.request Deck.GetPath)
-        >>= maybe (EC.throwError "Could not determine workspace path") pure
-    varMap ←
-      liftDeckQuery (H.request (Deck.FindCardParent cid))
-        >>= maybe (pure SM.empty) hereditaryVarMapDefaults
-    pure $
-      Tuple
-      (root ⊕ "/" ⊕ mkWorkspaceCardURL path cid NA.ReadOnly SM.empty)
-      varMap
-
-hereditaryVarMapDefaults ∷ CID.CardId → ET.ExceptT String WorkspaceDSL VM.VarMap
-hereditaryVarMapDefaults cid = do
-  pid ← liftDeckQuery (H.request (Deck.FindCardParent cid))
-  SM.union
-    <$> varMapDefaults cid
-    <*> (traverse hereditaryVarMapDefaults pid <#> fromMaybe SM.empty)
-
-
-varMapDefaults ∷ CID.CardId → ET.ExceptT String WorkspaceDSL VM.VarMap
-varMapDefaults cid = do
-  τ ←
-    liftDeckQuery (H.request (Deck.GetCardType cid))
-      >>= maybe (EC.throwError "Could not determine card type") pure
-  case τ of
-    CT.API → do
-      let
-        defaultVarMapValue { defaultValue, fieldType } =
-          case FBI.defaultValueToVarMapValue fieldType =<< defaultValue of
-            Just val → val
-            Nothing → FBI.emptyValueOfFieldType fieldType
-        alg =
-          SM.insert
-          <$> _.name
-          <*> defaultVarMapValue
-      liftFormBuilderQuery cid (H.request FB.GetItems)
-        <#> foldl (flip alg) SM.empty
-    _ →
-      pure SM.empty
+mkShareURL :: Port.VarMap -> WorkspaceDSL (Maybe String)
+mkShareURL varMap = do
+  loc ← H.fromEff locationString
+  queryDeck $ H.action Deck.Save -- TODO: maybe GetPath should imply this?
+  path ← join <$> queryDeck (H.request Deck.GetPath)
+  pure $ path <#> \p →
+    loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash p (NA.Load AT.ReadOnly) varMap
 
 liftFormBuilderQuery
   ∷ CID.CardId → Natural FB.Query (ET.ExceptT String WorkspaceDSL)
@@ -295,8 +216,8 @@ queryCard ∷ ∀ a. CID.CardId → CQ.AnyCardQuery a → WorkspaceDSL (Maybe a)
 queryCard cid =
   H.query' cpDeck unit
     ∘ right
-    ∘ H.ChildF (Left $ CardSlot cid)
-    ∘ left
+    ∘ H.ChildF (injSlot cpCard (CardSlot cid))
+    ∘ injQuery cpCard
     ∘ right
     ∘ H.ChildF unit
     ∘ right
@@ -307,5 +228,5 @@ querySignIn =
     ∘ H.query' cpHeader unit
     ∘ right
     ∘ H.ChildF (injSlot Header.cpSignIn unit)
-    ∘ right
+    ∘ injQuery Header.cpSignIn
     ∘ left

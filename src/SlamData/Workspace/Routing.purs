@@ -18,9 +18,7 @@ module SlamData.Workspace.Routing
   ( routing
   , Routes(..)
   , mkWorkspaceHash
-  , mkWorkspaceCardHash
   , mkWorkspaceURL
-  , mkWorkspaceCardURL
   ) where
 
 import SlamData.Prelude
@@ -39,10 +37,8 @@ import Routing.Match (eitherMatch, list) as Match
 import Routing.Match.Class (lit, str, params) as Match
 
 import SlamData.Config as Config
-import SlamData.Workspace.AccessType (AccessType(..), parseAccessType)
-import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Action as NA
-import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as D
 
@@ -51,14 +47,12 @@ import Text.Parsing.Parser (runParser)
 import Utils.Path as UP
 
 data Routes
-  = CardRoute UP.DirPath (L.List D.DeckId) CID.CardId AccessType Port.VarMap
-  | ExploreRoute UP.FilePath
+  = ExploreRoute UP.FilePath
   | WorkspaceRoute UP.DirPath (L.List D.DeckId) NA.Action Port.VarMap
 
 routing :: Match Routes
 routing
   =   ExploreRoute <$> (oneSlash *> Match.lit "explore" *> explored)
-  <|> CardRoute <$> workspace <*> deckIds <*> (Match.lit "cards" *> cardId) <*> accessType <*> optionalVarMap
   <|> WorkspaceRoute <$> workspace <*> deckIds <*> action <*> optionalVarMap
 
   where
@@ -129,14 +123,6 @@ routing
       = (Match.eitherMatch $ map NA.parseAction Match.str)
     <|> pure (NA.Load ReadOnly)
 
-  accessType :: Match AccessType
-  accessType
-      = (Match.eitherMatch $ map parseAccessType Match.str)
-    <|> pure ReadOnly
-
-  cardId :: Match CID.CardId
-  cardId = Match.eitherMatch $ map CID.stringToCardId Match.str
-
 -- TODO: it would be nice if `purescript-routing` had a way to render a route
 -- from a matcher, so that we could do away with the following brittle functions.
 
@@ -153,16 +139,6 @@ mkWorkspaceURL path action =
   Config.workspaceUrl
     <> mkWorkspaceHash path action SM.empty
 
-mkWorkspaceCardURL
-  :: UP.DirPath    -- workspace path
-  -> CID.CardId    -- card identifier
-  -> AT.AccessType -- access type
-  -> Port.VarMap   -- global `VarMap`
-  -> String
-mkWorkspaceCardURL path cid accessType varMap =
-  Config.workspaceUrl
-    <> mkWorkspaceCardHash path cid accessType varMap
-
 mkWorkspaceHash
   :: UP.DirPath    -- workspace path
   -> NA.Action     -- workspace action
@@ -172,21 +148,6 @@ mkWorkspaceHash path action varMap =
   "#"
     <> UP.encodeURIPath (P.printPath path)
     <> NA.printAction action
-    <> maybe "" ("/" <> _)  (renderVarMapQueryString varMap)
-
-mkWorkspaceCardHash
-  :: UP.DirPath    -- workspace path
-  -> CID.CardId    -- card identifier
-  -> AT.AccessType -- access type
-  -> Port.VarMap   -- global `VarMap`
-  -> String
-mkWorkspaceCardHash path cid accessType varMap =
-  "#"
-    <> UP.encodeURIPath (P.printPath path)
-    <> "cards/"
-    <> CID.cardIdToString cid
-    <> "/"
-    <> AT.printAccessType accessType
     <> maybe "" ("/" <> _)  (renderVarMapQueryString varMap)
 
 renderVarMapQueryString
