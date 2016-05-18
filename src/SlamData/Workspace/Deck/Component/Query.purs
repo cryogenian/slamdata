@@ -41,7 +41,6 @@ data Query a
   | RunActiveCard a
   | RunPendingCards a
   | GetPath (Maybe UP.DirPath → a)
-  | SetViewingCard (Maybe CID.CardId) a
   | SetName String a
   | SetAccessType AT.AccessType a
   | ExploreFile BF.BrowserFeatures UP.FilePath a

@@ -227,33 +227,24 @@ cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 renderCard ∷ VirtualState → CardDef → Int → DeckHTML
 renderCard state cardDef index =
   HH.div
-  ([ HP.key ("card" ⊕ CardId.cardIdToString cardDef.id)
-   , HP.classes [ ClassNames.card ]
-   , style $ cardPositionCSS index
-   ]
-   ⊕ foldMap (viewingStyle cardDef) viewingCard)
-  (Gripper.renderGrippers
-      (cardSelected state cardDef.id)
-      (isJust initialSliderX)
-      (Gripper.gripperDefsForCardId cards $ Just cardDef.id)
-      ⊕ [ HH.div
-            (cardProperties state cardDef.id)
-            [ HH.Slot $ transformCardConstructor cardDef.ctor ]
-        ]
-  )
+    [ HP.key ("card" ⊕ CardId.cardIdToString cardDef.id)
+    , HP.classes [ ClassNames.card ]
+    , style $ cardPositionCSS index
+    ]
+    $ Gripper.renderGrippers
+        (cardSelected state cardDef.id)
+        (isJust initialSliderX)
+        (Gripper.gripperDefsForCardId cards $ Just cardDef.id)
+        ⊕ [ HH.div
+              (cardProperties state cardDef.id)
+              [ HH.Slot $ transformCardConstructor cardDef.ctor ]
+           ]
   where
   cards =
     state ^. DCS._VirtualState ∘ DCS._cards
 
   initialSliderX =
     state ^. DCS._VirtualState ∘ DCS._initialSliderX
-
-  viewingCard =
-    state ^. DCS._VirtualState ∘ DCS._viewingCard
-
-  viewingStyle cardDef cid =
-    guard (not (cardDef.id ≡ cid))
-    $> (HP.class_ ClassNames.invisible)
 
   transformCardConstructor (H.SlotConstructor p l) =
     H.SlotConstructor
@@ -289,6 +280,4 @@ renderNextActionCard vstate =
 
 shouldHideNextActionCard ∷ VirtualState → Boolean
 shouldHideNextActionCard vstate =
-  isJust state.viewingCard ∨ state.accessType ≡ AccessType.ReadOnly
-  where
-  state = DCS.runVirtualState vstate
+  (DCS.runVirtualState vstate).accessType ≡ AccessType.ReadOnly

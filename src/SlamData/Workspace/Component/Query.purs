@@ -25,7 +25,6 @@ import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
 
 import SlamData.Workspace.AccessType (AccessType)
-import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck)
 import SlamData.Workspace.Deck.Component.Query as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -34,15 +33,11 @@ import Utils.Path as UP
 
 data Query a
   = SetAccessType AccessType a
-  | GetAccessType (AccessType → a)
-  | SetViewingCard (Maybe CardId) a
-  | GetViewingCard (Maybe CardId → a)
   | SetParentHref String a
   | DismissAll a
   | Reset BF.BrowserFeatures UP.DirPath a
   | Load BF.BrowserFeatures UP.DirPath (L.List DeckId) a
   | GetPath (Maybe UP.DirPath → a)
-
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 

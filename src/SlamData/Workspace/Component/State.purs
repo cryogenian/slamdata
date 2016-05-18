@@ -22,7 +22,6 @@ import Data.BrowserFeatures (BrowserFeatures)
 import Data.Lens (LensP, lens)
 
 import SlamData.Workspace.AccessType (AccessType(..))
-import SlamData.Workspace.Card.CardId (CardId)
 
 import Utils.Path (DirPath)
 
@@ -30,20 +29,17 @@ type State =
   { accessType ∷ AccessType
   , browserFeatures ∷ BrowserFeatures
   , loaded ∷ Boolean
-  , viewingCard ∷ Maybe CardId
   , version ∷ Maybe String
   , parentHref ∷ Maybe String
   , path ∷ Maybe DirPath
   }
 
-
 initialState ∷ { browserFeatures ∷ BrowserFeatures, version ∷ Maybe String } → State
 initialState {browserFeatures, version} =
   { accessType: Editable
-  , browserFeatures: browserFeatures
+  , browserFeatures
   , loaded: false
-  , viewingCard: Nothing
-  , version: version
+  , version
   , parentHref: Nothing
   , path: Nothing
   }
@@ -56,9 +52,6 @@ _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
 _loaded ∷ ∀ a r. LensP {loaded ∷ a|r} a
 _loaded = lens _.loaded _{loaded = _}
-
-_viewingCard ∷ ∀ a r. LensP {viewingCard ∷ a|r} a
-_viewingCard = lens _.viewingCard _{viewingCard = _}
 
 _version ∷ ∀ a r. LensP {version ∷ a|r} a
 _version = lens _.version _{version = _}

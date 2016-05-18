@@ -29,7 +29,6 @@ module SlamData.Workspace.Deck.Component.State
   , _activeCardIndex
   , _name
   , _browserFeatures
-  , _viewingCard
   , _path
   , _saveTrigger
   , _runTrigger
@@ -150,7 +149,6 @@ type State =
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
   , browserFeatures ∷ BrowserFeatures
-  , viewingCard ∷ Maybe CardId
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , pendingCards ∷ S.Set CardId
@@ -183,7 +181,6 @@ initialDeck browserFeatures =
   , activeCardIndex: VirtualIndex 0
   , name: Nothing
   , browserFeatures
-  , viewingCard: Nothing
   , path: Nothing
   , saveTrigger: Nothing
   , globalVarMap: SM.empty
@@ -238,11 +235,6 @@ _path = lens _.path _{path = _}
 -- | as they need this information to render the output HTML.
 _browserFeatures ∷ LensP State BrowserFeatures
 _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
-
--- | The currently focused card when viewing an individual card within a
--- | deck.
-_viewingCard ∷ LensP State (Maybe CardId)
-_viewingCard = lens _.viewingCard _{viewingCard = _}
 
 -- | The debounced trigger for deck save actions.
 _saveTrigger ∷ LensP State (Maybe (DebounceTrigger Query Slam))
