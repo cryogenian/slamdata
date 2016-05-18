@@ -24,25 +24,26 @@ import SlamData.Workspace.Card.Component (CardQueryP, CardStateP)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
+import SlamData.Workspace.Deck.Dialog.Component as Dialog
 
 newtype CardSlot = CardSlot CardId
 
-derive instance genericCardSlot :: Generic CardSlot
-instance eqCardSlot :: Eq CardSlot where eq = gEq
-instance ordCardSlot :: Ord CardSlot where compare = gCompare
+derive instance genericCardSlot ∷ Generic CardSlot
+instance eqCardSlot ∷ Eq CardSlot where eq = gEq
+instance ordCardSlot ∷ Ord CardSlot where compare = gCompare
 
 type BackSideSlot = Unit
 
 type IndicatorSlot = Unit
 
 type ChildSlot =
-  CardSlot ⊹ BackSideSlot ⊹ IndicatorSlot
+  CardSlot ⊹ Unit ⊹ Unit ⊹ Unit
 
 type ChildQuery =
-  CardQueryP ⨁ Back.Query ⨁ Indicator.Query
+  CardQueryP ⨁ Back.Query ⨁ Indicator.Query ⨁ Dialog.QueryP
 
 type ChildState =
-  CardStateP ⊹ Back.State ⊹ Indicator.State
+  CardStateP ⊹ Back.State ⊹ Indicator.State ⊹ Dialog.StateP
 
 
 cpCard
@@ -56,12 +57,19 @@ cpBackSide
   ∷ ChildPath
       Back.State ChildState
       Back.Query ChildQuery
-      BackSideSlot ChildSlot
+      Unit ChildSlot
 cpBackSide = cpR :> cpL
 
 cpIndicator
   ∷ ChildPath
       Indicator.State ChildState
       Indicator.Query ChildQuery
-      IndicatorSlot ChildSlot
-cpIndicator = cpR :> cpR
+      Unit ChildSlot
+cpIndicator = cpR :> cpR :> cpL
+
+cpDialog
+  ∷ ChildPath
+      Dialog.StateP ChildState
+      Dialog.QueryP ChildQuery
+      Unit ChildSlot
+cpDialog = cpR :> cpR :> cpR

@@ -18,35 +18,30 @@ module SlamData.Workspace.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
 
-import SlamData.Workspace.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Header.Component as Header
 
-type ChildQuery = Dialog.QueryP ⨁ Deck.QueryP ⨁ Header.QueryP
+type ChildQuery =
+  Deck.QueryP ⨁ Header.QueryP
 
-type ChildState = Dialog.StateP ⊹ Deck.StateP ⊹ Header.StateP
+type ChildState =
+  Deck.StateP ⊹ Header.StateP
 
-type ChildSlot = Unit ⊹ Unit ⊹ Unit
-
-cpDialog
-  ∷ ChildPath
-      Dialog.StateP ChildState
-      Dialog.QueryP ChildQuery
-      Unit ChildSlot
-cpDialog = cpL
+type ChildSlot =
+  Unit ⊹ Unit
 
 cpDeck
   ∷ ChildPath
       Deck.StateP ChildState
       Deck.QueryP ChildQuery
       Unit ChildSlot
-cpDeck = cpR :> cpL
+cpDeck = cpL
 
 cpHeader
   ∷ ChildPath
       Header.StateP ChildState
       Header.QueryP ChildQuery
       Unit ChildSlot
-cpHeader = cpR :> cpR
+cpHeader = cpR

@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Deck.Component.State
   ( StateP
   , State
+  , DisplayMode(..)
   , StateMode(..)
   , CardDef
   , CardConstructor
@@ -36,7 +37,7 @@ module SlamData.Workspace.Deck.Component.State
   , _pendingCards
   , _failingCards
   , _stateMode
-  , _backsided
+  , _displayMode
   , _initialSliderX
   , _initialSliderCardWidth
   , _sliderTransition
@@ -136,6 +137,13 @@ instance ordVirtualIndex ∷ Ord VirtualIndex where
   compare (VirtualIndex i) (VirtualIndex j) =
     compare i j
 
+data DisplayMode
+  = Normal
+  | Backside
+  | Dialog
+
+derive instance eqDisplayMode ∷ Eq DisplayMode
+
 -- | The deck state. See the corresponding lenses for descriptions of
 -- | the fields.
 type State =
@@ -155,7 +163,7 @@ type State =
   , failingCards ∷ S.Set CardId
   , globalVarMap ∷ Port.VarMap
   , stateMode ∷ StateMode
-  , backsided ∷ Boolean
+  , displayMode ∷ DisplayMode
   , initialSliderX ∷ Maybe Number
   , initialSliderCardWidth ∷ Maybe Number
   , sliderTransition ∷ Boolean
@@ -188,7 +196,7 @@ initialDeck browserFeatures =
   , pendingCards: S.empty
   , failingCards: S.empty
   , stateMode: Ready
-  , backsided: false
+  , displayMode: Normal
   , initialSliderX: Nothing
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
@@ -261,9 +269,9 @@ _failingCards = lens _.failingCards _{failingCards = _}
 _stateMode ∷ LensP State StateMode
 _stateMode = lens _.stateMode _{stateMode = _}
 
--- | Is `true` if backside of deck is displayed
-_backsided ∷ ∀ a r. LensP {backsided ∷ a |r} a
-_backsided = lens _.backsided _{backsided = _}
+-- | backsided, dialog or normal (card)
+_displayMode ∷ ∀ a r. LensP {displayMode ∷ a |r} a
+_displayMode = lens (_.displayMode) (_{displayMode = _})
 
 -- | The x position of the card slider at the start of the slide interaction in
 -- | pixels. If `Nothing` slide interaction is not in progress.
@@ -533,7 +541,7 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
     ((state
         { accessType = ReadOnly
         , activeCardIndex = VirtualIndex $ A.length cardDefs - 1 -- fishy!
-        , backsided = false
+        , displayMode = Normal
         , browserFeatures = browserFeatures
         , cardTypes = foldl addCardIdTypePair M.empty cards
         , cards = cardDefs

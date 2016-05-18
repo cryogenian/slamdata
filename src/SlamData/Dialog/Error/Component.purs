@@ -31,10 +31,28 @@ newtype State = State String
 
 newtype Query a = Dismiss a
 
-comp :: H.Component State Query Slam
+comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
-render :: State -> H.ComponentHTML Query
+nonModalComp ∷ H.Component State Query Slam
+nonModalComp = H.component { render: nonModalRender, eval }
+
+nonModalRender ∷ State → H.ComponentHTML Query
+nonModalRender (State message) =
+  HH.div [ HP.classes [ HH.className "deck-dialog-error" ] ]
+    [ HH.h4_ [ HH.text "Error" ]
+    , HH.div [ HP.classes [ HH.className "deck-dialog-body", B.alert, B.alertDanger ] ]
+        [ HH.text message ]
+    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+        [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ Dismiss)
+            ]
+            [ HH.text "Dismiss" ]
+        ]
+    ]
+
+render ∷ State → H.ComponentHTML Query
 render (State message) =
   modalDialog
     [ modalHeader "Error"
@@ -51,5 +69,5 @@ render (State message) =
         ]
     ]
 
-eval :: Natural Query (H.ComponentDSL State Query Slam)
+eval ∷ Query ~> (H.ComponentDSL State Query Slam)
 eval (Dismiss next) = pure next

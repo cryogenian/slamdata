@@ -22,13 +22,8 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class as EC
-import Control.Monad.Except.Trans as ET
-import Control.UI.Browser (locationString)
-
 import Data.Lens ((^.), (.~), (?~))
 import Data.List as L
-import Data.StrMap as SM
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 
@@ -39,27 +34,17 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Config (workspaceUrl)
 import SlamData.Effects (Slam)
 import SlamData.Header.Component as Header
 import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
 import SlamData.Workspace.AccessType as AT
-import SlamData.Workspace.Action as NA
-import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.Component.Query as CQ
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDialog, cpDeck, cpHeader)
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
 import SlamData.Workspace.Component.State (State, _accessType, _browserFeatures,  _loaded, _parentHref, _path, _version, initialState)
-import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Workspace.Deck.Component.ChildSlot (CardSlot(..), cpCard)
 import SlamData.Workspace.Deck.DeckId (DeckId(..))
-import SlamData.Workspace.Dialog.Component as Dialog
-import SlamData.Workspace.FormBuilder.Component as FB
 import SlamData.Workspace.Model as Model
-import SlamData.Workspace.Routing (mkWorkspaceHash)
 
 import Utils.Path as UP
 
@@ -72,7 +57,7 @@ comp =
   H.parentComponent
     { render
     , eval
-    , peek: Just (peek ∘ H.runChildF)
+    , peek: Nothing
     }
 
 render ∷ State → WorkspaceHTML
@@ -81,7 +66,7 @@ render state =
     [ HP.classes classes
     , HE.onClick (HE.input_ DismissAll)
     ]
-    $ header ⊕ [ deck, dialog ]
+    $ header ⊕ deck
   where
   header ∷ Array WorkspaceHTML
   header = do
@@ -91,21 +76,15 @@ render state =
       , initialState: H.parentState Header.initialState
       }
 
-  deck ∷ WorkspaceHTML
+  deck ∷ Array WorkspaceHTML
   deck =
-    HH.div [ HP.classes [ workspaceClass ] ]
-      [ HH.slot' cpDeck unit \_ →
-         { component: Deck.comp
-         , initialState: Deck.initialState (state.browserFeatures)
-         }
-      ]
-
-  dialog ∷ WorkspaceHTML
-  dialog =
-    HH.slot' cpDialog unit \_ →
-      { component: Dialog.comp
-      , initialState: H.parentState Dialog.initialState
-      }
+    [ HH.div [ HP.classes [ workspaceClass ] ]
+        [ HH.slot' cpDeck unit \_ →
+           { component: Deck.comp
+           , initialState: Deck.initialState (state.browserFeatures)
+           }
+        ]
+    ]
 
   shouldHideTopMenu ∷ Boolean
   shouldHideTopMenu = AT.isReadOnly (state ^. _accessType)
@@ -149,78 +128,10 @@ eval (Load features path deckIds next) = do
   pure next
 
 rootDeck ∷ UP.DirPath → WorkspaceDSL (Either String DeckId)
-rootDeck path = map DeckId <$> Model.getRoot (path </> Pathy.file "index")
-
-peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
-peek = const (pure unit) ⨁ deckPeek ⨁ const (pure unit)
-
-deckPeek ∷ ∀ a. Deck.QueryP a → WorkspaceDSL Unit
-deckPeek
-  = const (pure unit)
-  ⨁ (const (pure unit) ⨁ backsidePeek ⨁ const (pure unit)) ∘ H.runChildF
-  where
-  backsidePeek = case _ of
-    Back.DoAction Back.Share _ -> do
-      url ← mkShareURL SM.empty
-      for_ url (showDialog ∘ Dialog.Share)
-    Back.DoAction Back.Embed _ -> do
-      varMap ← fromMaybe SM.empty <$> queryDeck (H.request Deck.GetGlobalVarMap)
-      url ← mkShareURL varMap
-      loc ← H.fromEff locationString
-      for_ url (showDialog ∘ flip Dialog.Embed varMap)
-    _ -> pure unit
-
-mkShareURL :: Port.VarMap -> WorkspaceDSL (Maybe String)
-mkShareURL varMap = do
-  loc ← H.fromEff locationString
-  queryDeck $ H.action Deck.Save -- TODO: maybe GetPath should imply this?
-  path ← join <$> queryDeck (H.request Deck.GetPath)
-  pure $ path <#> \p →
-    loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash p (NA.Load AT.ReadOnly) varMap
-
-liftFormBuilderQuery
-  ∷ CID.CardId → Natural FB.Query (ET.ExceptT String WorkspaceDSL)
-liftFormBuilderQuery cid =
-  liftCardQuery cid
-    ∘ CQ.APIQuery
-    ∘ right
-    ∘ H.ChildF unit
-    ∘ left
-
-liftCardQuery
-  ∷ CID.CardId
-  → Natural CQ.AnyCardQuery (ET.ExceptT String WorkspaceDSL)
-liftCardQuery cid =
-  queryCard cid ⋙ lift
-    >=> maybe (EC.throwError "Error querying card") pure
-
-liftDeckQuery
-  ∷ Natural Deck.Query (ET.ExceptT String WorkspaceDSL)
-liftDeckQuery =
-  queryDeck ⋙ lift
-    >=> maybe (EC.throwError "Error querying workspace") pure
-
-showDialog ∷ Dialog.Dialog → WorkspaceDSL Unit
-showDialog =
-  queryDialog
-    ∘ H.action
-    ∘ Dialog.Show
-
-queryDialog ∷ Dialog.Query Unit → WorkspaceDSL Unit
-queryDialog q = H.query' cpDialog unit (left q) *> pure unit
+rootDeck path = map (map DeckId) $ Model.getRoot (path </> Pathy.file "index")
 
 queryDeck ∷ ∀ a. Deck.Query a → WorkspaceDSL (Maybe a)
 queryDeck = H.query' cpDeck unit ∘ left
-
-queryCard ∷ ∀ a. CID.CardId → CQ.AnyCardQuery a → WorkspaceDSL (Maybe a)
-queryCard cid =
-  H.query' cpDeck unit
-    ∘ right
-    ∘ H.ChildF (injSlot cpCard (CardSlot cid))
-    ∘ injQuery cpCard
-    ∘ right
-    ∘ H.ChildF unit
-    ∘ right
 
 querySignIn ∷ ∀ a. SignIn.Query a → WorkspaceDSL Unit
 querySignIn =

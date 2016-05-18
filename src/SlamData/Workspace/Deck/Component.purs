@@ -26,7 +26,7 @@ import SlamData.Prelude
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
-import Control.UI.Browser (newTab, locationObject)
+import Control.UI.Browser (newTab, locationObject, locationString)
 
 import Data.Argonaut (Json)
 import Data.BrowserFeatures (BrowserFeatures)
@@ -39,6 +39,7 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
 import Data.Time (Milliseconds(..))
+import Data.StrMap as SM
 
 import Ace.Halogen.Component as Ace
 
@@ -52,26 +53,30 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
+import SlamData.Config (workspaceUrl)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Data (save, load) as Quasar
 import SlamData.Render.CSS as CSS
-import SlamData.Workspace.AccessType (AccessType(..), isEditable)
+import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as NA
 import SlamData.Workspace.Card.CardId (CardId())
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
+import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.JTable.Component as JTable
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.OpenResource.Component as Open
 import SlamData.Workspace.Card.Port (Port(..))
+import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
-import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..))
+import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId(..), deckIdToString)
+import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Model as Model
@@ -109,7 +114,7 @@ render vstate =
           -- is in the same place in both `Loading` and `Ready` states.
         , HH.div
             [ HP.key "deck-container" ]
-            [ Slider.render vstate $ not state.backsided ]
+            [ Slider.render vstate $ state.displayMode ≡ DCS.Normal ]
         ]
     DCS.Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
@@ -128,12 +133,13 @@ render vstate =
                 , HP.title "Flip deck"
                 ]
                 [ HH.text "" ]
-            , Slider.render vstate $ not state.backsided
+            , Slider.render vstate $ state.displayMode ≡ DCS.Normal
             , HH.slot' cpIndicator unit \_ →
                 { component: Indicator.comp
                 , initialState: Indicator.initialState
                 }
-            , renderBackside state.backsided
+            , renderBackside $ state.displayMode ≡ DCS.Backside
+            , renderDialog $ state.displayMode ≡ DCS.Dialog
             ]
         ]
 
@@ -147,6 +153,19 @@ render vstate =
 
   where
   state = DCS.runVirtualState vstate
+
+  renderDialog visible =
+    HH.div
+      ([ HP.classes [ HH.className "deck-dialog-wrapper" ]
+       , ARIA.hidden $ show $ not visible
+       ]
+       ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
+      [ HH.slot' cpDialog unit \_ →
+         { component: Dialog.comp
+         , initialState: H.parentState Dialog.initialState
+         }
+      ]
+
   renderBackside visible =
     HH.div
       ([ HP.classes [ CSS.cardSlider ]
@@ -168,10 +187,9 @@ render vstate =
       ]
 
 eval ∷ Natural Query DeckDSL
-eval (AddCard cardType next) = createCard cardType $> next
 eval (RunActiveCard next) = do
   H.gets (DCS.activeCardId ∘ DCS.virtualState)
-    >>= maybe (pure unit) runCard
+    >>= traverse_ runCard
   pure next
 eval (Load fs dir deckId next) = do
   state ← H.get
@@ -220,7 +238,7 @@ eval (ExploreFile fs res next) = do
   pure next
 eval (Publish next) = do
   H.gets DCS.deckPath >>= \mpath →
-    for_ mpath $ H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load ReadOnly)
+    for_ mpath $ H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly)
   pure next
 eval (Reset fs dir deckId next) = do
   let deck = DCS.initialDeck fs
@@ -238,10 +256,9 @@ eval (SetAccessType aType next) = do
       $ H.action
       $ SetCardAccessType aType
   H.modify $ DCS._accessType .~ aType
-  unless (isEditable aType)
-    $ H.modify (DCS._backsided .~ false)
+  unless (AT.isEditable aType)
+    $ H.modify (DCS._displayMode .~ DCS.Normal)
   pure next
-eval (GetPath k) = k <$> H.gets DCS.deckPath
 eval (Save next) = saveDeck $> next
 eval (RunPendingCards next) = do
   -- Only run pending cards if we have a deckPath. Some cards run with the
@@ -255,10 +272,10 @@ eval (SetGlobalVarMap m next) = do
     H.modify $ DCS._globalVarMap .~ m
     traverse_ runCard $ DCS.cardsOfType CT.API st
   pure next
-eval (FindCardParent cid k) = k <$> H.gets (DCS.findParent cid)
-eval (GetCardType cid k) = k <$> H.gets (DCS.getCardType cid)
-eval (FlipDeck next) = H.modify (DCS._backsided %~ not) $> next
-eval (GetActiveCardId k) = map k $ H.gets DCS.findLast
+eval (FlipDeck next) =
+  H.modify (DCS._displayMode %~ case _ of
+               DCS.Normal → DCS.Backside
+               _ → DCS.Normal) $> next
 eval (StartSliding mouseEvent next) =
   Slider.startSliding mouseEvent $> next
 eval (StopSlidingAndSnap mouseEvent next) = do
@@ -274,10 +291,17 @@ eval (StopSliderTransition next) =
 
 peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek (H.ChildF s q) =
-  (either peekCards (\_ _ → pure unit) s)
+  (peekCards ⊹ (\_ _ → pure unit) $ s)
    ⨁ peekBackSide
    ⨁ (const $ pure unit)
+   ⨁ (peekDialog ⨁ (const $ pure unit))
    $ q
+
+peekDialog ∷ ∀ a. Dialog.Query a → DeckDSL Unit
+peekDialog (Dialog.Show _ _) =
+  H.modify (DCS._displayMode .~ DCS.Dialog)
+peekDialog (Dialog.Dismiss _) =
+  H.modify (DCS._displayMode .~ DCS.Backside)
 
 peekBackSide ∷ ∀ a. Back.Query a → DeckDSL Unit
 peekBackSide (Back.UpdateFilter _ _) = pure unit
@@ -285,19 +309,32 @@ peekBackSide (Back.DoAction action _) = case action of
   Back.Trash → do
     state ← H.get
     lastId ← H.gets DCS.findLast
-    for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId) \trashId → do
-      descendants ← H.gets $ DCS.findDescendants trashId
-      H.modify ∘ DCS.removeCards $ S.insert trashId descendants
-      triggerSave
-      updateIndicatorAndNextAction
-      H.modify $ DCS._backsided .~ false
-  Back.Share → pure unit
-  Back.Embed → pure unit
+    for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId)  \trashId → do
+      trashCard trashId
+      H.modify $ DCS._displayMode .~ DCS.Normal
+  Back.Share → do
+    url ← mkShareURL SM.empty
+    for_ url $ showDialog ∘ Dialog.Share
+    H.modify (DCS._displayMode .~ DCS.Dialog)
+  Back.Embed → do
+    varMap ← H.gets _.globalVarMap
+    url ← mkShareURL varMap
+    for_ url (showDialog ∘ flip Dialog.Embed varMap)
+    H.modify (DCS._displayMode .~ DCS.Dialog)
   Back.Publish →
     H.gets DCS.deckPath >>= \mpath →
-      for_ mpath $ H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load ReadOnly)
+      for_ mpath $ H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly)
   Back.Mirror → pure unit
   Back.Wrap → pure unit
+
+mkShareURL ∷ VM.VarMap → DeckDSL (Maybe String)
+mkShareURL varMap = do
+  loc ← H.fromEff locationString
+  saveDeck
+  path ← H.gets DCS.deckPath
+  pure $ path <#> \p →
+    loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash p (NA.Load AT.ReadOnly) varMap
+
 
 peekCards ∷ ∀ a. CardSlot → CardQueryP a → DeckDSL Unit
 peekCards (CardSlot cardId) =
@@ -310,17 +347,36 @@ peekCard ∷ ∀ a. CardId → CardQuery a → DeckDSL Unit
 peekCard cardId q = case q of
   RunCard _ → runCard cardId
   RefreshCard _ → runCard ∘ DCS.findRoot cardId =<< H.get
-  TrashCard _ → do
-    descendants ← H.gets $ DCS.findDescendants cardId
-    H.modify ∘ DCS.removeCards $ S.insert cardId descendants
-    triggerSave
-    updateIndicatorAndNextAction
+  TrashCard _ → trashCard cardId
   StopCard _ → do
     H.modify $ DCS._runTrigger .~ Nothing
     H.modify $ DCS._pendingCards %~ S.delete cardId
     runPendingCards
   _ → pure unit
 
+
+trashCard ∷ CardId → DeckDSL Unit
+trashCard cid = do
+  descendants ← H.gets $ DCS.findDescendants cid
+  H.modify ∘ DCS.removeCards $ S.insert cid descendants
+  triggerSave
+  updateIndicatorAndNextAction
+
+showDialog ∷ Dialog.Dialog → DeckDSL Unit
+showDialog =
+  queryDialog
+    ∘ H.action
+    ∘ Dialog.Show
+
+queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
+queryDialog q = H.query' cpDialog unit (left q) *> pure unit
+
+queryCard ∷ ∀ a. CardId → CQ.AnyCardQuery a → DeckDSL (Maybe a)
+queryCard cid =
+  H.query' cpCard (CardSlot cid)
+    ∘ right
+    ∘ H.ChildF unit
+    ∘ right
 
 updateIndicatorAndNextAction ∷ DeckDSL Unit
 updateIndicatorAndNextAction = do
@@ -381,7 +437,6 @@ updateNextActionCard = do
       $ NextQuery
       $ right q
 
-
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
   cid ← H.gets DCS.findLast
@@ -413,7 +468,7 @@ createCard cardType = do
 peekCardInner
   ∷ ∀ a. CardId → H.ChildF Unit InnerCardQuery a → DeckDSL Unit
 peekCardInner cardId (H.ChildF _ q) =
-  coproduct (peekEvalCard cardId) (peekAnyCard cardId) q
+  (peekEvalCard cardId) ⨁ (peekAnyCard cardId) $ q
 
 peekEvalCard ∷ ∀ a. CardId → CEQ.CardEvalQuery a → DeckDSL Unit
 peekEvalCard cardId (CEQ.NotifyRunCard _) = runCard cardId

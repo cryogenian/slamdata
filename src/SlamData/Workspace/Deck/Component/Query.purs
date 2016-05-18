@@ -28,8 +28,6 @@ import Halogen (ChildF)
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.Workspace.AccessType as AT
-import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery)
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -37,10 +35,8 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import Utils.Path as UP
 
 data Query a
-  = AddCard CT.CardType a
-  | RunActiveCard a
+  = RunActiveCard a
   | RunPendingCards a
-  | GetPath (Maybe UP.DirPath → a)
   | SetName String a
   | SetAccessType AT.AccessType a
   | ExploreFile BF.BrowserFeatures UP.FilePath a
@@ -50,10 +46,7 @@ data Query a
   | Reset BF.BrowserFeatures UP.DirPath (Maybe DeckId) a
   | GetGlobalVarMap (Port.VarMap → a)
   | SetGlobalVarMap Port.VarMap a
-  | FindCardParent CID.CardId (Maybe CID.CardId → a)
-  | GetCardType CID.CardId (Maybe CT.CardType → a)
   | FlipDeck a
-  | GetActiveCardId (Maybe CID.CardId → a)
   | StartSliding (Event MouseEvent) a
   | StopSlidingAndSnap (Event MouseEvent) a
   | UpdateSliderPosition (Event MouseEvent) a
