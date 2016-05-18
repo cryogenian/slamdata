@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Dialog.Component
+module SlamData.Workspace.Deck.Dialog.Component
   ( Dialog(..)
   , State
   , initialState
@@ -29,22 +29,17 @@ module SlamData.Workspace.Dialog.Component
 
 import SlamData.Prelude
 
-import Data.Either.Nested (Either3)
-import Data.Functor.Coproduct.Nested (Coproduct3, coproduct3)
-
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, (:>), cpL, cpR)
-import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
+import Halogen.Component.Utils (sendAfter')
 
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Dialog.Embed.Component as Embed
+import SlamData.Workspace.Deck.Dialog.Embed.Component as Embed
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.Effects (Slam)
-import SlamData.Render.Common (fadeWhen)
 
 data Dialog
   = Error String
@@ -61,46 +56,34 @@ data Query a
   | Show Dialog a
 
 type ChildState =
-  Either3
-    Error.State
-    Embed.State
-    Share.State
+  Error.State ⊹ Embed.State ⊹ Share.State
 
 type ChildQuery =
-  Coproduct3
-    Error.Query
-    Embed.Query
-    Share.Query
+  Error.Query ⨁ Embed.Query ⨁ Share.Query
 
 type ChildSlot =
-  Either3
-    Unit
-    Unit
-    Unit
+  Unit ⊹ Unit ⊹ Unit
 
 cpError
   ∷ ChildPath
        Error.State ChildState
        Error.Query ChildQuery
        Unit ChildSlot
-cpError =
-  cpL :> cpL
+cpError = cpL
 
 cpEmbed
   ∷ ChildPath
        Embed.State ChildState
        Embed.Query ChildQuery
        Unit ChildSlot
-cpEmbed =
-  cpL :> cpR
+cpEmbed = cpR :> cpL
 
 cpShare
   ∷ ChildPath
       Share.State ChildState
       Share.Query ChildQuery
       Unit ChildSlot
-cpShare =
-  cpR
+cpShare = cpR :> cpR
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
@@ -114,15 +97,13 @@ comp = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes ([B.modal] ⊕ fadeWhen (isNothing state))
-    , HE.onClick (HE.input_ Dismiss)
-    ]
-    (maybe [] (pure ∘ dialog) state)
+    [ HP.classes [ HH.className "deck-dialog" ] ]
+    $ foldMap (pure ∘ dialog) state
   where
 
   dialog (Error str) =
     HH.slot' cpError unit \_ →
-      { component: Error.comp
+      { component: Error.nonModalComp
       , initialState: Error.State str
       }
 
@@ -134,7 +115,7 @@ render state =
 
   dialog (Share str) =
     HH.slot' cpShare unit \_ →
-      { component: Share.comp
+      { component: Share.nonModalComp
       , initialState: Share.State str
       }
 
@@ -144,18 +125,21 @@ eval (Show d next) = H.set (Just d) $> next
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =
-  coproduct3
-    errorPeek
-    embedPeek
-    sharePeek
+  errorPeek ⨁ embedPeek ⨁ sharePeek
 
+-- Send `Dismiss` after child's `Dismiss` to simplify parent of
+-- this component peeking. (I.e. it can observe only this component queries and
+-- don't provide separate handlers for embed dialog)
 errorPeek ∷ ∀ a. Error.Query a → DSL Unit
-errorPeek (Error.Dismiss _) = H.set Nothing
+errorPeek (Error.Dismiss _) = do
+  sendAfter' zero $ Dismiss unit
 
 embedPeek ∷ ∀ a. Embed.Query a → DSL Unit
-embedPeek (Embed.Dismiss _) = H.set Nothing
+embedPeek (Embed.Dismiss _) = do
+  sendAfter' zero $ Dismiss unit
 embedPeek _ = pure unit
 
 sharePeek ∷ ∀ a. Share.Query a → DSL Unit
-sharePeek (Share.Dismiss _) = H.set Nothing
+sharePeek (Share.Dismiss _) = do
+  sendAfter' zero $ Dismiss unit
 sharePeek _ = pure unit

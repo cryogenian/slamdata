@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Dialog.Embed.Component where
+module SlamData.Workspace.Deck.Dialog.Embed.Component where
 
 import SlamData.Prelude
 
@@ -35,14 +35,13 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Renderer.String (renderHTML)
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Render.CSS as Rc
 
 type State =
-  { url :: String
-  , varMap :: Port.VarMap
+  { url ∷ String
+  , varMap ∷ Port.VarMap
   }
 
 data Query a
@@ -50,19 +49,19 @@ data Query a
   | InitZClipboard String (Maybe HTMLElement) a
   | Dismiss a
 
-comp :: H.Component State Query Slam
+comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
-render :: State -> H.ComponentHTML Query
+render ∷ State → H.ComponentHTML Query
 render { url, varMap } =
-  modalDialog
-    [ modalHeader "Embed card"
-    , modalBody $
-        HH.form
+  HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
+    [ HH.h4_ [ HH.text  "Embed card" ]
+    , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
+        [ HH.form
           [ CP.nonSubmit ]
           [ HH.div
               [ HP.classes [ B.formGroup ]
-              , HE.onClick $ HE.input (SelectElement <<< _.target)
+              , HE.onClick $ HE.input (SelectElement ∘ _.target)
               ]
               [ HH.textarea
                   [ HP.classes [ B.formControl, Rc.embedBox ]
@@ -71,100 +70,108 @@ render { url, varMap } =
                   ]
               ]
           ]
-    , modalFooter
+        ]
+    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
         [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ Dismiss)
+            ]
+            [ HH.text "Dismiss" ]
+        , HH.button
             [ HP.id_ "copy-button"
             , HP.classes [ B.btn, B.btnPrimary ]
             , HE.onClick (HE.input_ Dismiss)
-            , HP.ref (H.action <<< InitZClipboard code)
+            , HP.ref (H.action ∘ InitZClipboard code)
             ]
             [ HH.text "Copy"
             ]
         ]
     ]
+
+
   where
-  code :: String
+  code ∷ String
   code =
     renderHTML $
       HH.script
         [ HP.mediaType { type: "text", subtype: "javascript", parameters: [] } ]
         [ HH.text javascriptCode ]
 
-  statements :: Array String -> String
-  statements = foldl (\m x -> m <> x <> ";\n") ""
+  statements ∷ Array String → String
+  statements = foldl (\m x → m ⊕ x ⊕ ";\n") ""
 
-  wrapJS :: Array String -> String
-  wrapJS xs = "\n" <> statements [ applyJS (absJS [] xs) [] ]
+  wrapJS ∷ Array String → String
+  wrapJS xs = "\n" ⊕ statements [ applyJS (absJS [] xs) [] ]
 
-  absJS :: Array String -> Array String -> String
+  absJS ∷ Array String → Array String → String
   absJS args xs =
     parens $
-      "function" <> parens (commaSep args) <> "{\n"
-        <> statements (indent <$> xs)
-        <> "}"
+      "function" ⊕ parens (commaSep args) ⊕ "{\n"
+        ⊕ statements (indent <$> xs)
+        ⊕ "}"
 
-  indent :: String -> String
-  indent x = "    " <> x
+  indent ∷ String → String
+  indent x = "    " ⊕ x
 
-  parens :: String -> String
-  parens x = "(" <> x <> ")"
+  parens ∷ String → String
+  parens x = "(" ⊕ x ⊕ ")"
 
-  applyJS :: String -> Array String -> String
+  applyJS ∷ String → Array String → String
   applyJS f xs =
-    f <> parens (commaSep xs)
+    f ⊕ parens (commaSep xs)
 
-  commaSep :: Array String -> String
+  commaSep ∷ Array String → String
   commaSep = F.intercalate ","
 
-  declVar :: String -> String -> String
-  declVar k v = "var " <> k <> " = " <> v
+  declVar ∷ String → String → String
+  declVar k v = "var " ⊕ k ⊕ " = " ⊕ v
 
-  quotes :: String -> String
-  quotes x = "\"" <> x <> "\""
+  quotes ∷ String → String
+  quotes x = "\"" ⊕ x ⊕ "\""
 
-  escapeQuotes :: String -> String
+  escapeQuotes ∷ String → String
   escapeQuotes =
     Rx.replace
       (Rx.regex "\"" $ Rx.noFlags { global = true })
       "\\\""
 
-  javascriptCode :: String
+  javascriptCode ∷ String
   javascriptCode =
     wrapJS $
       decls varMap
-        <> [ writeIFrame ]
+        ⊕ [ writeIFrame ]
 
-  writeIFrame :: String
+  writeIFrame ∷ String
   writeIFrame =
     applyJS "document.writeln"
       [ iframeHTML
       ]
 
-  iframeSource :: String
+  iframeSource ∷ String
   iframeSource =
-    url <>
+    url ⊕
       if SM.isEmpty varMap
          then ""
-         else "/?" <> F.intercalate "&" (printArg <$> SM.keys varMap)
+         else "/?" ⊕ F.intercalate "&" (printArg <$> SM.keys varMap)
     where
       printArg k =
-        k <> "=\" +" <> k <> "+ \""
+        k ⊕ "=\" +" ⊕ k ⊕ "+ \""
 
-  iframeHTML :: String
+  iframeHTML ∷ String
   iframeHTML =
     quotes $
       "<iframe src=\\\""
-        <> iframeSource
-        <> "\\\" width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\">"
-        <> "</iframe>"
+        ⊕ iframeSource
+        ⊕ "\\\" width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\">"
+        ⊕ "</iframe>"
 
-  decls :: Port.VarMap -> Array String
+  decls ∷ Port.VarMap → Array String
   decls =
-    SM.foldMap \k v ->
+    SM.foldMap \k v →
       [ declVar k $ quotes $ Global.encodeURIComponent $ Port.renderVarMapValue v
       ]
 
-eval :: Natural Query (H.ComponentDSL State Query Slam)
+eval ∷ Natural Query (H.ComponentDSL State Query Slam)
 eval (Dismiss next) = pure next
 eval (InitZClipboard code (Just htmlEl) next) = do
   let el = htmlElementToElement htmlEl

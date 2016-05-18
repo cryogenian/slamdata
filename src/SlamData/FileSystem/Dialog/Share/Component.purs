@@ -18,6 +18,7 @@ module SlamData.FileSystem.Dialog.Share.Component
   ( State(..)
   , Query(..)
   , comp
+  , nonModalComp
   ) where
 
 import SlamData.Prelude
@@ -47,10 +48,13 @@ data Query a
 
 newtype Slot = Slot String
 
-comp :: H.Component State Query Slam
+comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
-render :: State -> H.ComponentHTML Query
+nonModalComp ∷ H.Component State Query Slam
+nonModalComp = H.component { render: nonModalRender, eval }
+
+render ∷ State → H.ComponentHTML Query
 render (State url) =
   modalDialog
     [ modalHeader "URL"
@@ -59,7 +63,7 @@ render (State url) =
             [ CP.nonSubmit ]
             [ HH.div
                 [ HP.classes [ B.formGroup ]
-                , HE.onClick $ HE.input (SelectElement <<< _.target)
+                , HE.onClick $ HE.input (SelectElement ∘ _.target)
                 ]
                 [ HH.input
                     [ HP.classes [ B.formControl ]
@@ -75,16 +79,55 @@ render (State url) =
             [ HP.id_ "copy-button"
             , HP.classes [ B.btn, B.btnPrimary ]
             , HE.onClick (HE.input_ Dismiss)
-            , HP.ref (H.action <<< InitZClipboard)
+            , HP.ref (H.action ∘ InitZClipboard)
             ]
             [ HH.text "Copy" ]
         ]
     ]
 
-eval :: Natural Query (H.ComponentDSL State Query Slam)
+
+
+nonModalRender ∷ State → H.ComponentHTML Query
+nonModalRender (State url) =
+  HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
+    [ HH.h4_ [ HH.text "URL" ]
+    , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
+       [ HH.form
+           [ CP.nonSubmit ]
+           [ HH.div
+             [ HP.classes [ B.formGroup ]
+             , HE.onClick $ HE.input (SelectElement ∘ _.target)
+             ]
+             [ HH.input
+               [ HP.classes [ B.formControl ]
+               , HP.value url
+               , HP.readonly true
+               , HP.title "Sharing URL"
+               , ARIA.label "Sharing URL"
+               ]
+             ]
+           ]
+       ]
+    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+      [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ Dismiss)
+            ]
+            [ HH.text "Dismiss" ]
+      , HH.button
+        [ HP.id_ "copy-button"
+        , HP.classes [ B.btn, B.btnPrimary ]
+        , HE.onClick (HE.input_ Dismiss)
+        , HP.ref (H.action ∘ InitZClipboard)
+        ]
+        [ HH.text "Copy" ]
+      ]
+    ]
+
+eval ∷ Query ~> (H.ComponentDSL State Query Slam)
 eval (Dismiss next) = pure next
 eval (InitZClipboard (Just htmlEl) next) = do
-  State url <- H.get
+  State url ← H.get
   let el = htmlElementToElement htmlEl
   H.fromEff $ Z.make el >>= Z.onCopy (Z.setData "text/plain" url)
   pure next

@@ -80,7 +80,7 @@ stateStartSliding mouseEvent cardWidth =
   (DCS._initialSliderX .~ Just mouseEvent.screenX)
     ∘ (DCS._initialSliderCardWidth .~ cardWidth)
     ∘ (DCS._sliderTransition .~ false)
-    ∘ (DCS._backsided .~ false)
+    ∘ (DCS._displayMode .~ DCS.Normal)
 
 startSliding ∷ Event MouseEvent → DeckDSL Unit
 startSliding mouseEvent =
