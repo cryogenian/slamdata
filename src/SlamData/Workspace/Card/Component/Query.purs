@@ -77,10 +77,6 @@ import SlamData.Workspace.Card.Error.Component.Query as Error
 -- |   its state, and then returns its own output value.
 -- | - `RefreshCard` is captured by the deck and goes to the root of the
 -- |   current card's dependencies and updates the cards downwards from there.
--- | - `TrashCard` is captured by the deck, removes the current card and
--- |   any dependencies.
--- | - `ToggleCollapsed` is used to toggle the visibility of the editor
--- |   part of the card.
 -- | - `ToggleMessages` is used to toggle the visibility of the status/error
 -- |   messages generated while evaluating the card.
 data CardQuery a
@@ -88,8 +84,6 @@ data CardQuery a
   | StopCard a
   | UpdateCard CardEvalInput (Maybe Port → a)
   | RefreshCard a
-  | TrashCard a
-  | ToggleCollapsed a
   | ToggleMessages a
   | Tick Milliseconds a
   | GetOutput (Maybe Port → a)

@@ -23,14 +23,11 @@ module Test.SlamData.Property.Workspace.Deck.Model
 import SlamData.Prelude
 
 import Data.Array (zipWith)
-import Data.Map as M
 
 import SlamData.Workspace.Deck.Model as Model
 
-import Test.StrongCheck
-  (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck)
 import Test.SlamData.Property.Workspace.Card.Model (runArbCard, checkCardEquality)
-import Test.SlamData.Property.Workspace.Card.CardId (runArbCardId)
 
 newtype ArbDeck = ArbDeck Model.Deck
 
@@ -40,16 +37,12 @@ runArbDeck (ArbDeck m) = m
 instance arbitraryArbWorkspace ∷ Arbitrary ArbDeck where
   arbitrary = do
     cards ← map runArbCard <$> arbitrary
-    dependencies ← M.fromList ∘ map (bimap runArbCardId runArbCardId) <$> arbitrary
     name ← arbitrary
-    pure $ ArbDeck { name, cards, dependencies }
+    pure $ ArbDeck { name, cards }
 
 check ∷ QC Unit
 check = quickCheck $ runArbDeck ⋙ \model →
   case Model.decode (Model.encode model) of
     Left err → Failed $ "Decode failed: " ⊕ err
     Right model' →
-      fold
-       [ model.dependencies ≡ model'.dependencies <?> "dependencies mismatch"
-       , fold (zipWith checkCardEquality model.cards model'.cards)
-       ]
+      fold (zipWith checkCardEquality model.cards model'.cards)

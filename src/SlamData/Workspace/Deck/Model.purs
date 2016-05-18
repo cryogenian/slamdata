@@ -21,22 +21,18 @@ import SlamData.Prelude
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Data.Map as M
 
-import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
 
 type Deck =
   { name ∷ Maybe String
   , cards ∷ Array Card.Model
-  , dependencies ∷ M.Map CardId CardId
   }
 
 emptyWorkspace ∷ Deck
 emptyWorkspace =
   { name: Nothing
   , cards: [ ]
-  , dependencies: M.empty
   }
 
 encode ∷ Deck → Json
@@ -44,7 +40,6 @@ encode r
    = "version" := 3
   ~> "name" := r.name
   ~> "cards" := map Card.encode r.cards
-  ~> "dependencies" := r.dependencies
   ~> jsonEmptyObject
 
 decode ∷ Json → Either String Deck
@@ -54,7 +49,5 @@ decode = decodeJson >=> \obj → do
     l → l
   { name: _
   , cards: _
-  , dependencies: _
   } <$> obj .? "name"
     <*> (traverse Card.decode =<< obj .? "cards")
-    <*> obj .? "dependencies"
