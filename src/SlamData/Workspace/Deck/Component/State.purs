@@ -67,6 +67,7 @@ module SlamData.Workspace.Deck.Component.State
   , VirtualIndex(..)
   , runVirtualIndex
   , activeCardId
+  , activeCardType
   ) where
 
 import SlamData.Prelude
@@ -344,6 +345,7 @@ insertErrorCard parentId st =
   where
   -- The -1 index is reserved for the error card.
   cardId = CardId (-1)
+  
 mkCardDef ∷ CardType → CardId → State → CardDef
 mkCardDef cardType cardId st =
   { id: cardId
@@ -589,3 +591,8 @@ activeCardId ∷ VirtualState → Maybe CardId
 activeCardId st =
   cardIdFromIndex st $
     st ^. _VirtualState ∘ _activeCardIndex
+
+activeCardType ∷ VirtualState → Maybe CardType
+activeCardType st = do
+  cid ← activeCardId st
+  getCardType cid (runVirtualState st)
