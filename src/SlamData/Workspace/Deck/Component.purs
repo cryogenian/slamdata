@@ -415,7 +415,8 @@ updateBackSide = do
 
 updateNextActionCard ∷ DeckDSL Unit
 updateNextActionCard = do
-  cid ← H.gets DCS.findLast
+  pure unit
+{-  cid ← H.gets DCS.findLast
   mbMessage ← case cid of
     Just cardId → do
       out ←
@@ -449,6 +450,7 @@ updateNextActionCard = do
       ∘ right
       ∘ NextQuery
       ∘ right
+-}
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
@@ -473,6 +475,7 @@ createCard cardType = do
           $ left
           $ H.action (CEQ.SetupCard setupInfo)
       runCard newCardId
+      H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
   updateIndicatorAndNextAction
   triggerSave
 
