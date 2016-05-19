@@ -47,12 +47,10 @@ import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
-import SlamData.Workspace.Card.Component as Card
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
-import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Deck.Component.State (VirtualState, State, CardDef)
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Prelude
@@ -66,12 +64,13 @@ render vstate visible =
     ([ HP.key "deck-cards"
      , HP.classes [ ClassNames.cardSlider ]
      , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
-     , style
-         $ (cardSliderTransformCSS state.activeCardIndex state.sliderTranslateX)
-         *> (cardSliderTransitionCSS state.sliderTransition)
+     , style do
+         cardSliderTransformCSS state.activeCardIndex state.sliderTranslateX
+         cardSliderTransitionCSS state.sliderTransition
      ]
-       ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
-    ((map (Tuple.uncurry (renderCard vstate)) (Array.zip state.cards (0 .. Array.length state.cards))) ⊕ [ renderNextActionCard vstate ])
+     ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
+    $ map (Tuple.uncurry (renderCard vstate))
+    $ Array.zip state.cards (0 .. Array.length state.cards)
   where
     state = DCS.runVirtualState vstate
 
@@ -99,9 +98,9 @@ getBoundingClientWidth =
 stateStopSlidingAndSnap ∷ Event MouseEvent → State → State
 stateStopSlidingAndSnap mouseEvent =
   stateUpdateSliderPosition mouseEvent
-    >>> startTransition
-    >>> snap
-    >>> stopSliding
+    ⋙ startTransition
+    ⋙ snap
+    ⋙ stopSliding
 
 stopSlidingAndSnap ∷ Event MouseEvent → DeckDSL Unit
 stopSlidingAndSnap = H.modify ∘ stateStopSlidingAndSnap
@@ -124,21 +123,30 @@ stopSliding =
     (DCS._initialSliderX .~ Nothing)
       ∘ (DCS._sliderTranslateX .~ 0.0)
 
-snapActiveCardIndexByTranslationAndCardWidth ∷ VirtualState → Number → DCS.VirtualIndex → DCS.VirtualIndex
-snapActiveCardIndexByTranslationAndCardWidth st cardWidth (DCS.VirtualIndex idx)
-  | st ^. DCS._VirtualState ∘ DCS._sliderTranslateX <= -(offsetCardSpacing cardWidth / 2.0) =
-    DCS.VirtualIndex $ min numberOfCards $ sub idx $ 1 + Int.floor ((translateX - (offsetCardSpacing cardWidth / 2.0)) / cardWidth)
-    where
-    numberOfCards = Array.length $ st ^. DCS._VirtualState ∘ DCS._cards
+snapActiveCardIndexByTranslationAndCardWidth
+  ∷ VirtualState
+  → Number
+  → DCS.VirtualIndex
+  → DCS.VirtualIndex
+snapActiveCardIndexByTranslationAndCardWidth st cardWidth (DCS.VirtualIndex idx) =
+  let
     translateX = st ^. DCS._VirtualState ∘ DCS._sliderTranslateX
-
-  | st ^. DCS._VirtualState ∘ DCS._sliderTranslateX >= (offsetCardSpacing cardWidth / 2.0) =
-    DCS.VirtualIndex $ max 0 $ add (1 + Int.floor ((-translateX - (offsetCardSpacing cardWidth / 2.0)) / cardWidth)) idx
-    where
-    translateX = st ^. DCS._VirtualState ∘ DCS._sliderTranslateX
-
-  | otherwise =
-    DCS.VirtualIndex idx
+    numberOfCards = (Array.length $ st ^. DCS._VirtualState ∘ DCS._cards)
+    halfOffset = (offsetCardSpacing cardWidth) / 2.0
+  in
+    DCS.VirtualIndex
+    $ if translateX <= -1.0 * halfOffset
+      then
+        min numberOfCards
+        $ sub idx
+        $ one
+        + Int.floor ((translateX - halfOffset) / cardWidth)
+      else if translateX >= halfOffset
+           then
+             max 0
+             $ idx
+             + Int.floor ((-translateX - halfOffset) / cardWidth)
+           else idx
 
 offsetCardSpacing ∷ Number → Number
 offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
@@ -147,18 +155,27 @@ snapActiveCardIndex ∷ VirtualState → DCS.VirtualIndex
 snapActiveCardIndex st =
   min idx $ maximumSnappingCardIndex st
   where
-  idx = maybe id snap' (st ^. DCS._VirtualState ∘ DCS._initialSliderCardWidth) activeCardIndex
+  idx =
+    maybe id snap'
+      (st ^. DCS._VirtualState ∘ DCS._initialSliderCardWidth) $ activeCardIndex
   snap' = snapActiveCardIndexByTranslationAndCardWidth st
   activeCardIndex = st ^. DCS._VirtualState ∘ DCS._activeCardIndex
 
 -- We cannot snap to any card past a "blocking card".
 maximumSnappingCardIndex ∷ VirtualState → DCS.VirtualIndex
 maximumSnappingCardIndex st =
-  case Array.findIndex (CT.blocking ∘ _.ty) cards of
-    Just idx → DCS.VirtualIndex idx
-    Nothing → DCS.VirtualIndex $ max 0 $ Array.length cards
+  DCS.VirtualIndex case Array.findIndex (CT.blocking ∘ _.ty) cards of
+    Just idx → idx
+    Nothing → max 0 maximumActiveCardIndex
   where
-    cards = st ^. DCS._VirtualState ∘ DCS._cards
+  maximumActiveCardIndex =
+    Array.length cards
+    - one
+    -- NextAction card is disabled in readonly mode
+    - if (DCS.runVirtualState st).accessType ≡ AccessType.ReadOnly
+      then one
+      else zero
+  cards = st ^. DCS._VirtualState ∘ DCS._cards
 
 snap ∷ State → State
 snap st = st # DCS._activeCardIndex .~ snapActiveCardIndex (DCS.virtualState st)
@@ -197,13 +214,20 @@ dropEffect ∷ Boolean → String
 dropEffect true = "execute"
 dropEffect false = "none"
 
-containerProperties ∷ ∀ a. VirtualState → Array (IProp (onMouseUp ∷ I, onMouseLeave ∷ I, onMouseMove ∷ I | a) (Query Unit))
+containerProperties
+  ∷ ∀ a. VirtualState
+  → Array (IProp (onMouseUp ∷ I, onMouseLeave ∷ I, onMouseMove ∷ I | a) (Query Unit))
 containerProperties vstate =
   [ ARIA.dropEffect $ dropEffect $ willChangeActiveCardWhenDropped vstate ]
     ⊕ (guard (isJust initialSliderX)
-         $> (HE.onMouseUp \e → HEH.preventDefault $> Just (H.action (DCQ.StopSlidingAndSnap e))))
+         $> (HE.onMouseUp \e →
+              HEH.preventDefault
+              $> Just (H.action (DCQ.StopSlidingAndSnap e))))
     ⊕ (guard (isJust initialSliderX)
-         $> (HE.onMouseLeave \e → HEH.stopPropagation $> HEH.preventDefault $> Just (H.action (DCQ.StopSlidingAndSnap e))))
+         $> (HE.onMouseLeave \e →
+              HEH.stopPropagation
+              $> HEH.preventDefault
+              $> Just (H.action (DCQ.StopSlidingAndSnap e))))
     ⊕ (guard (isJust initialSliderX)
          $> (HE.onMouseMove $ HE.input DCQ.UpdateSliderPosition))
   where
@@ -227,10 +251,13 @@ cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 renderCard ∷ VirtualState → CardDef → Int → DeckHTML
 renderCard state cardDef index =
   HH.div
-    [ HP.key ("card" ⊕ CardId.cardIdToString cardDef.id)
+    ([ HP.key ("card" ⊕ CardId.cardIdToString cardDef.id)
     , HP.classes [ ClassNames.card ]
     , style $ cardPositionCSS index
+    , HP.ref (H.action ∘ DCQ.SetNextActionCardElement)
     ]
+     ⊕ (guard (shouldHideNextActionCard index state)
+        $> (HP.class_ ClassNames.invisible)))
     $ Gripper.renderGrippers
         (cardSelected state cardDef.id)
         (isJust initialSliderX)
@@ -255,29 +282,7 @@ renderCard state cardDef index =
         }
       )
 
-renderNextActionCard ∷ VirtualState → DeckHTML
-renderNextActionCard vstate =
-  HH.div
-    ([ HP.key ("next-action-card")
-     , HP.classes [ ClassNames.card ]
-     , HP.ref (H.action ∘ DCQ.SetNextActionCardElement)
-     , style ∘ cardPositionCSS $ Array.length state.cards
-     ]
-       ⊕ (guard (shouldHideNextActionCard vstate) $> (HP.class_ ClassNames.invisible))
-    )
-    (Gripper.renderGrippers
-       (isNothing $ DCS.activeCardId vstate)
-       (isJust state.initialSliderX)
-       (Gripper.gripperDefsForCardId state.cards Nothing)
-       ⊕ [ HH.slot' ChildSlot.cpCard (ChildSlot.CardSlot top) \_ →
-             { component: Next.nextCardComponent
-             , initialState: H.parentState Card.initialCardState
-             }
-         ]
-    )
-  where
-  state = DCS.runVirtualState vstate
-
-shouldHideNextActionCard ∷ VirtualState → Boolean
-shouldHideNextActionCard vstate =
-  (DCS.runVirtualState vstate).accessType ≡ AccessType.ReadOnly
+shouldHideNextActionCard ∷ Int → VirtualState → Boolean
+shouldHideNextActionCard index vstate =
+  index ≡ Array.length (DCS.runVirtualState vstate).cards - one
+  ∧ (DCS.runVirtualState vstate).accessType ≡ AccessType.ReadOnly

@@ -344,6 +344,17 @@ insertErrorCard parentId st =
   where
   -- The -1 index is reserved for the error card.
   cardId = CardId (-1)
+
+insertNextActionCard ∷ State → State
+insertNextActionCard st =
+  st
+    { cards = A.snoc st.cards $ mkCardDef NextAction top st
+    , cardTypes = M.insert top NextAction st.cardTypes
+    , dependencies =
+        maybe st.dependencies (\lid → M.insert top lid st.dependencies) $ findLast st
+    }
+
+
 mkCardDef ∷ CardType → CardId → State → CardDef
 mkCardDef cardType cardId st =
   { id: cardId
@@ -485,9 +496,10 @@ _VirtualState = lens runVirtualState \_ → VirtualState
 virtualState ∷ State → VirtualState
 virtualState st =
   VirtualState
-    case findFirst hasError st.cards of
-      Just c → insertErrorCard c.id st
-      Nothing → st
+    $ insertNextActionCard
+    $ case findFirst hasError st.cards of
+        Just c → insertErrorCard c.id st
+        Nothing → st
   where
 
   -- in case you're wondering, Data.Foldable.find does not find the *first*

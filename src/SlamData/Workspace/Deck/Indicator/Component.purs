@@ -90,7 +90,11 @@ portToStatus (Just p) = case p of
 
 eval ∷ Query ~> DSL
 eval (UpdatePortList ports next) = do
-  H.modify (_icons .~ (Arr.reverse $ snd $ foldl foldFn (false × [ ]) ports))
+  H.modify
+     $ _icons .~ (Arr.drop one
+                  $ Arr.reverse
+                  $ snd
+                  $ foldl foldFn (false × [ ]) ports)
   pure next
   where
   foldFn ∷ Boolean × (Array Status) → Maybe Port → Boolean × (Array Status)
