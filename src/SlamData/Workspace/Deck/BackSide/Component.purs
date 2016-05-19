@@ -17,25 +17,24 @@ limitations under the License.
 module SlamData.Workspace.Deck.BackSide.Component where
 
 import SlamData.Prelude
-
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.String as Str
-
 import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.HTML.Events.Indexed as HE
-
-import SlamData.Effects (Slam)
+import Halogen.Themes.Bootstrap3 as B
 import SlamData.Render.CSS as Rc
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
 
 data Query a
   = UpdateFilter String a
   | DoAction BackAction a
+  | UpdateCardType (Maybe CT.CardType) a
 
 data BackAction
   = Trash
@@ -58,11 +57,13 @@ allBackActions =
 
 type State =
   { filterString ∷ String
+  , cardType ∷ Maybe CT.CardType
   }
 
 initialState ∷ State
 initialState =
   { filterString: ""
+  , cardType: Nothing
   }
 
 
@@ -82,6 +83,14 @@ keywordsAction Embed = ["embed"]
 keywordsAction Publish = ["publish", "presentation", "view"]
 keywordsAction Mirror = [] --["mirror", "copy", "duplicate", "shallow"]
 keywordsAction Wrap = [] --["wrap", "pin", "card"]
+
+actionEnabled ∷ State → BackAction → Boolean
+actionEnabled st a =
+  case st.cardType, a of
+    Just CT.ErrorCard, Trash → false
+    Just CT.NextAction, Trash → false
+    Nothing, Trash → false
+    _, _ → true
 
 actionGlyph ∷ BackAction → HTML
 actionGlyph = glyph ∘ case _ of
@@ -119,62 +128,53 @@ render state =
                     ]
                 ]
             , HH.ul_
-                $ map backsideAction spannedAction.init -- allBackActions
-                ⊕ map disabledAction spannedAction.rest
+                $ map (backsideAction true) actions.enabledActions
+                ⊕ map (backsideAction false) actions.disabledActions
             ]
         ]
     ]
   where
-  spannedAction ∷ {init ∷ Array BackAction, rest ∷ Array BackAction}
-  spannedAction =
+
+  actions ∷ {enabledActions ∷ Array BackAction, disabledActions ∷ Array BackAction}
+  actions =
     foldl
-      (\{init, rest} action →
+      (\{enabledActions, disabledActions} action →
          if backActionConforms action
-           then { init: Arr.snoc init action, rest }
-           else { init, rest: Arr.snoc rest action }
+           then { enabledActions: Arr.snoc enabledActions action, disabledActions }
+           else { enabledActions, disabledActions: Arr.snoc disabledActions action }
       )
-      {init: [], rest: []}
+      {enabledActions: [], disabledActions: []}
       allBackActions
 
   backActionConforms ∷ BackAction → Boolean
   backActionConforms ba =
-    F.any
-      (isJust ∘ Str.stripPrefix (Str.trim $ Str.toLower state.filterString))
-      (keywordsAction ba)
-  backsideAction ∷ BackAction → HTML
-  backsideAction action =
-    let
-      lbl = labelAction action
-      icon = actionGlyph action
-    in
-      HH.li_
-        [ HH.button
-            [ HP.title lbl
-            , ARIA.label lbl
-            , HE.onClick (HE.input_ (DoAction action))
-            ]
-            [ icon
-            , HH.p_ [ HH.text lbl ] ]
-        ]
+    actionEnabled state ba &&
+      F.any
+        (isJust ∘ Str.stripPrefix (Str.trim $ Str.toLower state.filterString))
+        (keywordsAction ba)
 
-  disabledAction ∷ BackAction → HTML
-  disabledAction action =
-    let
-      lbl = labelAction action
+  backsideAction ∷ Boolean → BackAction → HTML
+  backsideAction enabled action =
+    HH.li_
+      [ HH.button attrs
+          [ icon
+          , HH.p_ [ HH.text $ labelAction action ]
+          ]
+      ]
+    where
+      attrs =
+        [ HP.title lbl
+        , ARIA.label lbl
+        , HP.disabled (not enabled)
+        , HP.buttonType HP.ButtonButton
+        ] ⊕ if enabled then [ HE.onClick (HE.input_ (DoAction action)) ] else [ ]
+
+      lbl = labelAction action ⊕ if enabled then "" else " disabled"
       icon = actionGlyph action
-    in
-      HH.li_
-        [ HH.button
-            [ HP.title $ lbl ⊕ " disabled"
-            , ARIA.label $ lbl ⊕ " disabled"
-            , HP.disabled true
-            , HP.buttonType HP.ButtonButton
-            ]
-            [ icon
-            , HH.p_ [ HH.text lbl ] ]
-        ]
 
 eval ∷ Query ~> DSL
 eval (DoAction _ next) = pure next
 eval (UpdateFilter str next) =
-  H.modify (_{filterString = str}) $> next
+  H.modify (_ { filterString = str }) $> next
+eval (UpdateCardType cty next) =
+  H.modify (_ { cardType = cty }) $> next

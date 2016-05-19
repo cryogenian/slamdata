@@ -158,8 +158,7 @@ render vstate =
     HH.div
       ([ HP.classes [ HH.className "deck-dialog-wrapper" ]
        , ARIA.hidden $ show $ not visible
-       ]
-       ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
+       ] ⊕ (guard (not visible) $> HP.class_ CSS.invisible))
       [ HH.slot' cpDialog unit \_ →
          { component: Dialog.comp
          , initialState: H.parentState Dialog.initialState
@@ -170,8 +169,7 @@ render vstate =
     HH.div
       ([ HP.classes [ CSS.cardSlider ]
        , ARIA.hidden $ show $ not visible
-       ]
-         ⊕ ((guard $ not visible) $> (HP.class_ CSS.invisible)))
+       ] ⊕ (guard (not visible) $> HP.class_ CSS.invisible))
       [ HH.div
           [ HP.classes [ CSS.card ] ]
           (Gripper.renderGrippers
@@ -272,10 +270,14 @@ eval (SetGlobalVarMap m next) = do
     H.modify $ DCS._globalVarMap .~ m
     traverse_ runCard $ DCS.cardsOfType CT.API st
   pure next
-eval (FlipDeck next) =
-  H.modify (DCS._displayMode %~ case _ of
-               DCS.Normal → DCS.Backside
-               _ → DCS.Normal) $> next
+eval (FlipDeck next) = do
+  updateBackSide
+  H.modify $
+    DCS._displayMode %~
+      case _ of
+        DCS.Normal → DCS.Backside
+        _ → DCS.Normal
+  pure next
 eval (StartSliding mouseEvent next) =
   Slider.startSliding mouseEvent $> next
 eval (StopSlidingAndSnap mouseEvent next) = do
@@ -305,27 +307,29 @@ peekDialog (Dialog.Dismiss _) =
 
 peekBackSide ∷ ∀ a. Back.Query a → DeckDSL Unit
 peekBackSide (Back.UpdateFilter _ _) = pure unit
-peekBackSide (Back.DoAction action _) = case action of
-  Back.Trash → do
-    state ← H.get
-    lastId ← H.gets DCS.findLast
-    for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId)  \trashId → do
-      trashCard trashId
-      H.modify $ DCS._displayMode .~ DCS.Normal
-  Back.Share → do
-    url ← mkShareURL SM.empty
-    for_ url $ showDialog ∘ Dialog.Share
-    H.modify (DCS._displayMode .~ DCS.Dialog)
-  Back.Embed → do
-    varMap ← H.gets _.globalVarMap
-    url ← mkShareURL varMap
-    for_ url (showDialog ∘ flip Dialog.Embed varMap)
-    H.modify (DCS._displayMode .~ DCS.Dialog)
-  Back.Publish →
-    H.gets DCS.deckPath >>= \mpath →
-      for_ mpath $ H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly)
-  Back.Mirror → pure unit
-  Back.Wrap → pure unit
+peekBackSide (Back.UpdateCardType _ _) = pure unit
+peekBackSide (Back.DoAction action _) =
+  case action of
+    Back.Trash → do
+      state ← H.get
+      lastId ← H.gets DCS.findLast
+      for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId)  \trashId → do
+        trashCard trashId
+        H.modify $ DCS._displayMode .~ DCS.Normal
+    Back.Share → do
+      url ← mkShareURL SM.empty
+      for_ url $ showDialog ∘ Dialog.Share
+      H.modify (DCS._displayMode .~ DCS.Dialog)
+    Back.Embed → do
+      varMap ← H.gets _.globalVarMap
+      url ← mkShareURL varMap
+      for_ url (showDialog ∘ flip Dialog.Embed varMap)
+      H.modify (DCS._displayMode .~ DCS.Dialog)
+    Back.Publish →
+      H.gets DCS.deckPath >>= \mpath →
+        for_ mpath $ H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly)
+    Back.Mirror → pure unit
+    Back.Wrap → pure unit
 
 mkShareURL ∷ VM.VarMap → DeckDSL (Maybe String)
 mkShareURL varMap = do
@@ -400,6 +404,15 @@ updateIndicator = do
     $ H.action
     $ Indicator.UpdateActiveId vid
 
+updateBackSide ∷ DeckDSL Unit
+updateBackSide = do
+  state ← H.gets DCS.virtualState
+  let ty = DCS.activeCardType state
+  void
+    $ H.query' cpBackSide unit
+    $ H.action
+    $ Back.UpdateCardType ty
+
 updateNextActionCard ∷ DeckDSL Unit
 updateNextActionCard = do
   cid ← H.gets DCS.findLast
@@ -429,13 +442,13 @@ updateNextActionCard = do
     $ CT.nextCardTypes lastCardType
   pure unit
   where
-  queryNextActionCard q =
+  queryNextActionCard =
     H.query' cpCard (CardSlot top)
-      $ right
-      $ H.ChildF unit
-      $ right
-      $ NextQuery
-      $ right q
+      ∘ right
+      ∘ H.ChildF unit
+      ∘ right
+      ∘ NextQuery
+      ∘ right
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
