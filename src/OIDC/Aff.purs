@@ -20,7 +20,7 @@ import Prelude
 
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Random (random, RANDOM())
-import Control.UI.Browser (hostAndProtocol, getHref, setLocation)
+import Control.UI.Browser as Browser
 import DOM (DOM())
 import Data.Foldable as F
 import Data.StrMap as Sm
@@ -35,15 +35,15 @@ import Quasar.Auth.Provider
 
 requestAuthentication
   :: ProviderR
+  -> String
   -> forall e. Eff (dom :: DOM, random :: RANDOM | e) Unit
-requestAuthentication pr = do
+requestAuthentication pr redirectURIStr = do
   csrf <- (Cryptography.KeyString <<< show) <$> random
   replay <- (Cryptography.UnhashedNonce <<< show) <$> random
   Auth.storeKeyString csrf
   Auth.storeNonce replay
   Auth.storeClientId pr.clientID
-  hap <- hostAndProtocol
-  hrefState <- map Cryptography.StateString getHref
+  hrefState <- map Cryptography.StateString Browser.getHref
   let authURIString =
         pr.openIDConfiguration
         # getOpenIDConfiguration
@@ -54,8 +54,6 @@ requestAuthentication pr = do
     let
       nonce =
         Cryptography.hashNonce replay
-      redirectURIStr =
-        hap <> SlamData.Config.redirectURIString
       state =
         Cryptography.bindState hrefState csrf
       query =
@@ -72,4 +70,4 @@ requestAuthentication pr = do
           , Tuple "nonce" $ Cryptography.runHashedNonce nonce
           ]
       uri = URI.URI s h query f
-    in setLocation $ URI.printURI uri
+    in Browser.setLocation $ URI.printURI uri

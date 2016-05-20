@@ -28,9 +28,10 @@ module SlamData.SignIn.Component
 
 import Prelude
 
-import Control.UI.Browser (reload)
+import Control.UI.Browser as Browser
 import Control.Monad.Aff (attempt)
 import Control.MonadPlus (guard)
+import Control.Bind ((=<<))
 
 import Data.Functor (($>))
 import Data.Functor.Coproduct (Coproduct(), coproduct, left)
@@ -54,6 +55,7 @@ import SlamData.Effects (Slam())
 import SlamData.SignIn.Component.State
 import SlamData.SignIn.Menu.Component.Query as Menu
 import SlamData.SignIn.Menu.Component.State as Menu
+import SlamData.Config as Config
 import Quasar.Auth.Provider as Provider
 import Quasar.Auth as Auth
 import Quasar.Aff as Api
@@ -154,7 +156,9 @@ dismissAll =
 makeAuthRequestWithProviderR
   :: M.Maybe Provider.ProviderR -> SignInDSL Unit
 makeAuthRequestWithProviderR (M.Just pr) =
-  liftEff $ requestAuthentication pr
+  liftEff $ requestAuthentication pr <<< appendAuthPath =<< Browser.locationString
+  where
+  appendAuthPath s = s ++ Config.redirectURIString
 makeAuthRequestWithProviderR _ =
   pure unit
 
@@ -193,7 +197,7 @@ submenuPeek (ChildF _ (HalogenMenu.SelectSubmenuItem v _)) = do
   logOut = do
     liftEff do
       Auth.clearIdToken
-      reload
+      Browser.reload
 
 
 queryMenu
