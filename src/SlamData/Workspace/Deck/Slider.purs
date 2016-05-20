@@ -69,7 +69,7 @@ render vstate visible =
          cardSliderTransitionCSS state.sliderTransition
      ]
      ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
-    $ map (Tuple.uncurry (renderCard vstate))
+    $ map (Tuple.uncurry $ renderCard vstate)
     $ Array.zip state.cards (0 .. Array.length state.cards)
   where
     state = DCS.runVirtualState vstate

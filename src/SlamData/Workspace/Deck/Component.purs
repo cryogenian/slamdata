@@ -212,6 +212,7 @@ eval (Load fs dir deckId next) = do
           -- propagate down each subgraph.
           traverse_ runCard $ Array.nub $ flip DCS.findRoot st <$> ranCards
           H.modify (DCS._stateMode .~ DCS.Ready)
+          H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
   updateIndicatorAndNextAction
   pure next
 

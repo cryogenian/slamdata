@@ -138,6 +138,15 @@ instance ordVirtualIndex ∷ Ord VirtualIndex where
   compare (VirtualIndex i) (VirtualIndex j) =
     compare i j
 
+instance semiringVirtualIndex ∷ Semiring VirtualIndex where
+  one = VirtualIndex one
+  zero = VirtualIndex zero
+  add (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a + b
+  mul (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a * b
+
+instance ringVirtualIndex ∷ Ring VirtualIndex where
+  sub (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a - b
+
 data DisplayMode
   = Normal
   | Backside
@@ -348,11 +357,27 @@ insertErrorCard parentId st =
 
 insertNextActionCard ∷ State → State
 insertNextActionCard st =
-  st
-    { cards = A.snoc st.cards $ mkCardDef NextAction top st
-    , cardTypes = M.insert top NextAction st.cardTypes
-    , dependencies =
-        maybe st.dependencies (\lid → M.insert top lid st.dependencies) $ findLast st
+  let
+    lastId = findLast st
+  in
+    st
+      { cards = st.cards # maybe id (\ctor cs → A.snoc cs ctor) do
+           lst ← A.last st.cards
+           guard $ lst.id ≠ top
+           pure $ mkCardDef NextAction top st
+      , cardTypes = M.insert top NextAction st.cardTypes
+      , activeCardIndex =
+          maybe
+            zero
+            (\lid → st.activeCardIndex
+                    # if lid ≡ top
+                      then const zero
+                      else (_ - one))
+            lastId
+      , dependencies =
+          maybe
+            st.dependencies
+            (\lid → M.insert top lid st.dependencies) lastId
     }
 
 mkCardDef ∷ CardType → CardId → State → CardDef
@@ -402,7 +427,7 @@ aceSetupMode SQLMode = querySetup
 removeCards ∷ S.Set CardId → State → State
 removeCards cardIds st = st
     { cards = cards
-    , activeCardIndex = VirtualIndex $ A.length virtualCards - 1
+    , activeCardIndex = VirtualIndex $ A.length virtualCards - 2
     , cardTypes = foldl (flip M.delete) st.cardTypes cardIds'
     , dependencies = M.fromList $ L.filter g $ M.toList st.dependencies
     , pendingCards = S.difference st.pendingCards cardIds
@@ -551,8 +576,8 @@ fromModel browserFeatures path deckId { cards, dependencies, name } state =
   Tuple
     cards
     ((state
-        { accessType = ReadOnly
-        , activeCardIndex = VirtualIndex $ A.length cardDefs - 1 -- fishy!
+        { accessType = Editable -- ? why was it ReadOnly
+        , activeCardIndex = VirtualIndex $ A.length cardDefs - 2 -- fishy!
         , displayMode = Normal
         , browserFeatures = browserFeatures
         , cardTypes = foldl addCardIdTypePair M.empty cards
