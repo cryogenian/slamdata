@@ -31,7 +31,7 @@ import Control.UI.Browser (newTab, locationObject, locationString)
 import Data.Array as Array
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.Foldable as Foldable
-import Data.Lens ((.~), (%~), (^?))
+import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
@@ -82,6 +82,7 @@ import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Model as NB
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 
+import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath, FilePath)
 
 initialState ∷ BrowserFeatures → DCS.StateP
@@ -205,7 +206,7 @@ eval (Load fs dir deckId next) = do
           when hasRun $ traverse_ runCard (DCS.findFirst st)
           H.modify (DCS._stateMode .~ DCS.Ready)
           H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
-  updateIndicatorAndNextAction
+  updateIndicator
   pure next
 eval (ExploreFile fs res next) = do
   setDeckState $ DCS.initialDeck fs
@@ -224,7 +225,7 @@ eval (ExploreFile fs res next) = do
   runCard zero
   -- Flush the eval queue
   saveDeck
-  updateIndicatorAndNextAction
+  updateIndicator
   pure next
 eval (Publish next) = do
   H.gets DCS.deckPath >>=
@@ -233,7 +234,7 @@ eval (Publish next) = do
 eval (Reset fs dir deckId next) = do
   let deck = DCS.initialDeck fs
   setDeckState $ deck { id = deckId, path = Just dir }
-  updateIndicatorAndNextAction
+  updateIndicator
   pure next
 eval (SetName name next) =
   H.modify (DCS._name .~ Just name) $> next
@@ -273,11 +274,12 @@ eval (StopSlidingAndSnap mouseEvent next) = do
 eval (UpdateSliderPosition mouseEvent next) =
   Slider.updateSliderPosition mouseEvent $> next
 eval (SetCardElement element next) =
-  H.modify (DCS._cardElement %~ \set → case set, element of
-              _, Nothing → Nothing
-              (Just el), _ → Just el
-              _, Just el → Just el
-              ) $> next
+  next <$ for_ element \el → do
+    width ← getBoundingClientWidth el
+    H.modify (DCS._cardElementWidth ?~ width)
+  where
+  getBoundingClientWidth =
+    H.fromEff ∘ map _.width ∘ getBoundingClientRect
 eval (StopSliderTransition next) =
   H.modify (DCS._sliderTransition .~ false) $> next
 
@@ -302,11 +304,15 @@ peekBackSide (Back.DoAction action _) =
   case action of
     Back.Trash → do
       state ← H.get
-      lastId ← H.gets DCS.findLast
+      lastId ← H.gets DCS.findLastRealCard
+      traceAnyA "lololo"
+      traceAnyA (DCS.activeCardId (DCS.virtualState state))
+      traceAnyA lastId
       for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId) \trashId → do
         H.modify $ DCS.removeCard trashId
         triggerSave
-        updateIndicatorAndNextAction
+        updateNextActionCard
+        updateIndicator
         H.modify $ DCS._displayMode .~ DCS.Normal
     Back.Share → do
       url ← mkShareURL SM.empty
@@ -394,46 +400,24 @@ updateBackSide = do
 
 updateNextActionCard ∷ DeckDSL Unit
 updateNextActionCard = do
-  pure unit
-{-  cid ← H.gets DCS.findLast
-  mbMessage ← case cid of
-    Just cardId → do
-      out ←
-        map join
-          $ H.query' cpCard (CardSlot cardId)
-          $ left (H.request GetOutput)
-      pure $ case out of
-        Nothing →
-          Just "Next actions will be made available once the last card has been run"
-        Just Blocked →
-          Just "There are no available next actions"
-        Just (CardError _) →
-          Just "There are no available next actions (parent cards have errors)"
-        _ → Nothing
-    Nothing → pure Nothing
-  queryNextActionCard
-    $ H.action
-    $ Next.SetMessage mbMessage
+  mbLid ← H.gets DCS.findLastRealCard
+  inputPort ←
+    map join $ for mbLid \lid →
+      map join $ H.query' cpCard (CardSlot lid) $ left (H.request GetOutput)
 
-  lastCardType ← H.gets DCS.findLastCardType
-  queryNextActionCard
-    $ H.action
-    $ Next.SetAvailableTypes
-    $ CT.nextCardTypes lastCardType
-  pure unit
-  where
-  queryNextActionCard =
-    H.query' cpCard (CardSlot top)
-      ∘ right
-      ∘ H.ChildF unit
-      ∘ right
-      ∘ NextQuery
-      ∘ right
--}
+  path ← H.gets DCS.deckPath
+  globalVarMap ← H.gets _.globalVarMap
+  let
+    info ∷ CEQ.CardEvalInput
+    info = { path, inputPort, cardId: top, globalVarMap }
+
+  void
+    $ H.query' cpCard (CardSlot top)
+    $ left $ H.request (UpdateCard info)
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
-  cid ← H.gets DCS.findLast
+  cid ← H.gets DCS.findLastRealCard
   case cid of
     Nothing →
       H.modify $ DCS.addCard cardType
@@ -453,8 +437,9 @@ createCard cardType = do
           $ H.ChildF unit
           $ left
           $ H.action (CEQ.SetupCard setupInfo)
+      H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
       runCard newCardId
---      H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
+
   updateIndicatorAndNextAction
   triggerSave
 
@@ -603,4 +588,4 @@ deckIndex path deckId =
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
   H.modify \oldState →
-    newState { cardElement = oldState.cardElement }
+    newState { cardElementWidth = oldState.cardElementWidth }

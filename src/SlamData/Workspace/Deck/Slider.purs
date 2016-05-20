@@ -21,8 +21,6 @@ module SlamData.Workspace.Deck.Slider
   , containerProperties
   ) where
 
-import Control.Monad.Aff.Free (fromEff)
-
 import SlamData.Prelude
 
 import Data.Array ((..))
@@ -34,8 +32,6 @@ import Data.Ord (max, min)
 import Data.Tuple as Tuple
 
 import CSS (CSS)
-
-import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.HTML.CSS.Indexed (style)
@@ -64,7 +60,6 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Gripper as Gripper
 
 import Utils.CSS as CSSUtils
-import Utils.DOM (getBoundingClientRect)
 
 render ∷ VirtualState → Boolean → DeckHTML
 render vstate visible =
@@ -91,17 +86,8 @@ stateStartSliding mouseEvent cardWidth =
 
 startSliding ∷ Event MouseEvent → DeckDSL Unit
 startSliding mouseEvent =
-  getCardWidth
+  H.gets _.cardElementWidth
     >>= H.modify ∘ stateStartSliding mouseEvent
-
-getCardWidth ∷ DeckDSL (Maybe Number)
-getCardWidth =
-  traverse getBoundingClientWidth
-    =<< H.gets _.cardElement
-
-getBoundingClientWidth ∷ HTMLElement → DeckDSL Number
-getBoundingClientWidth =
-  fromEff ∘ map _.width ∘ getBoundingClientRect
 
 stateStopSlidingAndSnap ∷ Event MouseEvent → State → State
 stateStopSlidingAndSnap mouseEvent =
@@ -142,9 +128,7 @@ snapActiveCardIndexByTranslationAndCardWidth st cardWidth (DCS.VirtualIndex idx)
     numberOfCards = (Array.length $ st ^. DCS._VirtualState ∘ DCS._cards)
     halfOffset = (offsetCardSpacing cardWidth) / 2.0
   in
-    traceAny "snap active index" \_ →
-    spy
-    $ DCS.VirtualIndex
+    DCS.VirtualIndex
     $ if translateX <= -1.0 * halfOffset
       then
         min numberOfCards
@@ -164,10 +148,6 @@ offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
 snapActiveCardIndex ∷ VirtualState → DCS.VirtualIndex
 snapActiveCardIndex st =
-  traceAny "idx" \_ →
-  traceAny idx \_ →
-  traceAny "maximum" \_ →
-  traceAny (maximumSnappingCardIndex st) \_ →
   min idx $ maximumSnappingCardIndex st
   where
   idx =
@@ -175,9 +155,7 @@ snapActiveCardIndex st =
       (st ^. DCS._VirtualState ∘ DCS._initialSliderCardWidth) $ activeCardIndex
   snap' = snapActiveCardIndexByTranslationAndCardWidth st
   activeCardIndex =
-    let a =
-          st ^. DCS._VirtualState ∘ DCS._activeCardIndex
-    in traceAny "activeIndex" \_ → spy a
+    st ^. DCS._VirtualState ∘ DCS._activeCardIndex
 
 -- We cannot snap to any card past a "blocking card".
 maximumSnappingCardIndex ∷ VirtualState → DCS.VirtualIndex
