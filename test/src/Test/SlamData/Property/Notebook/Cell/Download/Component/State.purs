@@ -21,7 +21,7 @@ runArbState (ArbState s) = s
 
 instance arbitraryArbState :: Arbitrary ArbState where
   arbitrary = do
-    r <- { compress: _, options: _, source: _ }
+    r <- { compress: _, options: _, source: _, authHeaders: []}
          <$> arbitrary
          <*> (map (bimap runArbCSVOptions runArbJSONOptions) arbitrary)
          <*> (map (map runArbResource) arbitrary)

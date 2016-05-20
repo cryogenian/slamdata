@@ -26,6 +26,7 @@ module Quasar.Auth
   , storeNonce
   , storeClientId
   , clearIdToken
+  , authHeaders
   , module OIDCCryptUtils.Types
   ) where
 
@@ -33,6 +34,7 @@ import Prelude
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Aff (Aff())
+import Data.Array as A
 import Data.Either as E
 import Data.Maybe as M
 import DOM (DOM())
@@ -118,3 +120,11 @@ authed f = do
   idToken <- liftEff retrieveIdToken
   perms <- liftEff P.retrievePermissionTokens
   f idToken perms
+
+authHeaders
+  :: forall e
+   . Eff (dom :: DOM|e) (Array RequestHeader)
+authHeaders = do
+  idToken <- retrieveIdToken
+  permTokens <- P.retrievePermissionTokens
+  pure $ A.catMaybes [map authHeader idToken, P.permissionsHeader permTokens ]

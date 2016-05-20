@@ -97,3 +97,6 @@ eval (AddSources srcs next) = do
   modify (_sources <>~ srcs)
   modify (_sources %~ sort)
   pure next
+eval (SetAuthHeaders hs next) = do
+  modify (_authHeaders .~ hs)
+  pure next
