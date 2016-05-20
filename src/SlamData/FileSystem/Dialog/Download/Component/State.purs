@@ -40,6 +40,7 @@ type StateRec =
   , compress :: Boolean
   , options :: Either CSVOptions JSONOptions
   , error :: Maybe String
+  , authHeaders :: Array RequestHeader
   }
 newtype State = State StateRec
 
@@ -53,6 +54,7 @@ initialState res =
          , compress: false
          , options: Left initialCSVOptions
          , error: Nothing
+         , authHeaders: []
          }
 
 _State :: LensP State StateRec
@@ -78,6 +80,9 @@ _options = _State <<< lens _.options (_ { options = _ })
 
 _error :: LensP State (Maybe String)
 _error = _State <<< lens _.error (_ { error = _ })
+
+_authHeaders :: LensP State (Array RequestHeader)
+_authHeaders = _State <<< lens _.authHeaders (_{authHeaders = _})
 
 validate :: State -> State
 validate r

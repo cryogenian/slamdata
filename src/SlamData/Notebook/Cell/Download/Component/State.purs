@@ -25,6 +25,8 @@ import Data.Either (Either(..))
 import Data.Lens (LensP(), lens)
 import Data.Maybe (Maybe(..))
 
+import Network.HTTP.RequestHeader (RequestHeader())
+
 import SlamData.Download.Model as D
 import SlamData.FileSystem.Resource (Resource())
 
@@ -32,6 +34,7 @@ type State =
   { compress :: Boolean
   , options :: Either D.CSVOptions D.JSONOptions
   , source :: Maybe Resource
+  , authHeaders :: Array RequestHeader
   }
 
 initialState :: State
@@ -39,6 +42,7 @@ initialState =
   { compress: false
   , options: Left D.initialCSVOptions
   , source: Nothing
+  , authHeaders: [ ]
   }
 
 _compress :: forall a r. LensP {compress :: a|r} a
@@ -50,6 +54,9 @@ _options = lens _.options _{options = _}
 _source :: forall a r. LensP {source :: a|r} a
 _source = lens _.source _{source = _}
 
+_authHeaders :: forall a r. LensP {authHeaders :: a |r} a
+_authHeaders = lens _.authHeaders _{authHeaders = _}
+
 encode :: State -> Json
 encode s
    = "compress" := s.compress
@@ -59,7 +66,7 @@ encode s
 
 decode :: Json -> Either String State
 decode = decodeJson >=> \obj ->
-  { compress: _, options: _, source: _ }
+  { compress: _, options: _, source: _, authHeaders: []}
     <$> obj .? "compress"
     <*> obj .? "options"
     <*> obj .? "source"

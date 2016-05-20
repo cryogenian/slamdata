@@ -24,6 +24,7 @@ import Control.UI.Browser (encodeURIComponent)
 import Data.Either (Either(..), isLeft, isRight, either)
 import Data.Foldable (for_)
 import Data.Functor (($>))
+import Data.Functor.Eff (liftEff)
 import Data.Functor.Coproduct (coproduct, right)
 import Data.Lens ((?~), (.~), (%~), _Left, _Right, preview)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -38,6 +39,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Aff (reqHeadersToJSON)
+import Quasar.Auth as Auth
 import Quasar.Paths as Paths
 
 import SlamData.Download.Model as D
@@ -154,7 +156,12 @@ downloadButton state =
       <> headers
 
   headers :: String
-  headers = encodeURIComponent $ show $ reqHeadersToJSON $ D.toHeaders' state
+  headers =
+    encodeURIComponent
+      $ show
+      $ reqHeadersToJSON
+      $ append state.authHeaders
+      $ D.toHeaders' state
 
 eval :: Natural QueryP DownloadDSL
 eval = coproduct cellEval downloadEval
@@ -168,11 +175,20 @@ cellEval (Ec.EvalCell { inputPort } continue) = do
   pure $ continue { output: Nothing, messages: [] }
 cellEval (Ec.NotifyRunCell next) = pure next
 cellEval (Ec.Save k) = map (k <<< encode) get
-cellEval (Ec.Load json next) = for_ (decode json) set $> next
+cellEval (Ec.Load json next) = do
+  for_ (decode json) set
+  setAuthHeaders
+  pure next
 cellEval (Ec.SetupCell { inputPort } next) = do
   modify $ _source .~ preview P._Resource inputPort
+  setAuthHeaders
   pure next
 cellEval (Ec.SetCanceler _ next) = pure next
+
+setAuthHeaders :: DownloadDSL Unit
+setAuthHeaders = do
+  hs <- liftEff Auth.authHeaders
+  modify $ _authHeaders .~ hs
 
 downloadEval :: Natural Query DownloadDSL
 downloadEval (SetOutput ty next) = do

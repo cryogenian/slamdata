@@ -386,6 +386,9 @@ configure (R.Database path) = do
 download :: R.Resource -> Algebra Unit
 download res = do
   showDialog (Dialog.Download res)
+  forceRerender'
+  hs <- liftEff Auth.authHeaders
+  queryDialog Dialog.cpDownload (action $ Download.SetAuthHeaders hs)
   getChildren
     (const true)
     (void <<< queryDialog Dialog.cpDownload <<< action <<< Download.AddSources)

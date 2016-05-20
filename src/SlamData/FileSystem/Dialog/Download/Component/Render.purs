@@ -180,12 +180,20 @@ btnCancel state =
 
 btnDownload :: State -> ComponentHTML Query
 btnDownload state =
-  let headers = encodeURIComponent $ show $ reqHeadersToJSON $ toHeaders state
-      url = printPath Config.dataUrl
-            <> either (const "#") resourcePath (state ^. _source)
-            <> "?request-headers="
-            <> headers
-      disabled = isJust $ state ^. _error
+  let
+    headers =
+      encodeURIComponent
+        $ show
+        $ reqHeadersToJSON
+        $ append (state ^. _authHeaders)
+        $ toHeaders state
+    url =
+      printPath Config.dataUrl
+        <> either (const "#") resourcePath (state ^. _source)
+        <> "?request-headers="
+        <> headers
+    disabled =
+      isJust $ state ^. _error
   in H.button
          [ P.classes $ [ B.btn, B.btnPrimary ]
            <> if disabled
