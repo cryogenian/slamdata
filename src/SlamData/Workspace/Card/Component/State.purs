@@ -22,11 +22,9 @@ module SlamData.Workspace.Card.Component.State
   , _visibility
   , _runState
   , _tickStopper
-  , _isCollapsed
   , _messages
   , _messageVisibility
   , _hasResults
-  , _input
   , _output
   , _canceler
   , AnyCardState
@@ -84,9 +82,6 @@ import SlamData.Workspace.Card.Viz.Component.State as Viz
 -- |   all - used when embedding a single card in another page.
 -- | - `runState` tracks whether the card has run yet, is running, or has
 -- |   completed running.
--- | - `isCollapsed` tracks whether the card is expanded or collapsed. In the
--- |   case of editor cards this shows/hides the whole editor, in the case of
--- |   results cards this shows/hides the evaluation messages.
 -- | - `messages` is the informational messages generated
 -- |   during evaluation.
 -- | - `messageVisibility` determines whether the messages should be shown or
@@ -98,11 +93,9 @@ type CardState =
   , visibility ∷ Visibility
   , runState ∷ RunState
   , tickStopper ∷ Slam Unit
-  , isCollapsed ∷ Boolean
   , messages ∷ Array String
   , messageVisibility ∷ Visibility
   , hasResults ∷ Boolean
-  , input ∷ Maybe Port
   , output ∷ Maybe Port
   , canceler ∷ Canceler SlamDataEffects
   }
@@ -116,11 +109,9 @@ initialCardState =
   , visibility: Visible
   , runState: RunInitial
   , tickStopper: pure unit
-  , isCollapsed: false
   , messages: []
   , messageVisibility: Invisible
   , hasResults: false
-  , input: Nothing
   , output: Nothing
   , canceler: mempty
   }
@@ -137,9 +128,6 @@ _runState = lens _.runState (_ { runState = _ })
 _tickStopper ∷ LensP CardState (Slam Unit)
 _tickStopper = lens _.tickStopper (_ { tickStopper = _ })
 
-_isCollapsed ∷ LensP CardState Boolean
-_isCollapsed = lens _.isCollapsed (_ { isCollapsed = _ })
-
 _messages ∷ LensP CardState (Array String)
 _messages = lens _.messages (_ { messages = _ })
 
@@ -148,10 +136,6 @@ _messageVisibility = lens _.messageVisibility (_ { messageVisibility = _ })
 
 _hasResults ∷ LensP CardState Boolean
 _hasResults = lens _.hasResults (_ { hasResults = _ })
-
--- | The last input value passed into the card when requesting evaluation.
-_input ∷ LensP CardState (Maybe Port)
-_input = lens _.input (_ { input = _ })
 
 -- | The last output value computed for the card. This may not be up to date
 -- | with the exact state of the card, but is the most recent result from when

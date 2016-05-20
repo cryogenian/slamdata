@@ -42,7 +42,6 @@ import DOM.Timer (interval, clearInterval)
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
 import SlamData.Effects (Slam)
@@ -52,7 +51,6 @@ import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQuery
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.Render as CR
 import SlamData.Workspace.Card.Component.State as CS
-import SlamData.Workspace.Card.Port (_Blocked)
 import SlamData.Workspace.Card.RunState (RunState(..))
 import SlamData.Render.CSS as CSS
 
@@ -81,21 +79,16 @@ makeCardComponent def = makeCardComponentPart def render
     where
     shown cs =
       HH.div
-        [ HP.classes $ [ CSS.deckCard ] <> collapsedClass ]
+        [ HP.classes $ [ CSS.deckCard ] ]
         $ fold
           [ CR.header def.cardType cs
           , [ HH.div
-                [ hideIfCollapsed
-                , HP.classes $ cardClasses def.cardType
-                ]
+                [ HP.classes $ cardClasses def.cardType ]
                 [ HH.slot unit \_ → {component, initialState} ]
             ]
           , (guard canHaveOutput) $> CR.statusBar cs.hasResults cs
           ]
     canHaveOutput = not $ Arr.null $ nextCardTypes $ Just def.cardType
-    shouldCollapse = cs.isCollapsed || isJust (cs.input >>= preview _Blocked)
-    collapsedClass = guard shouldCollapse $> CSS.collapsed
-    hideIfCollapsed = ARIA.hidden $ show shouldCollapse
 
 -- | Constructs a card component from a record with the necessary properties and
 -- | a render function.
@@ -139,7 +132,6 @@ makeCardComponentPart def render =
     tickStopper ← startInterval
     H.modify
       $ (CS._tickStopper .~ tickStopper)
-      ∘ (CS._input .~ input.inputPort)
     result ← H.query unit (left (H.request (CQ.EvalCard input)))
     for_ result \{ output } → H.modify (CS._hasResults .~ isJust output)
     H.fromAff tickStopper
@@ -149,9 +141,6 @@ makeCardComponentPart def render =
       ∘ (CS._messages .~ (maybe [] _.messages result))
     maybe (liftF HaltHF) (pure ∘ k ∘ _.output) result
   eval (CQ.RefreshCard next) = pure next
-  eval (CQ.TrashCard next) = pure next
-  eval (CQ.ToggleCollapsed next) =
-    H.modify (CS._isCollapsed %~ not) $> next
   eval (CQ.ToggleMessages next) =
     H.modify (CS._messageVisibility %~ toggleVisibility) $> next
   eval (CQ.Tick elapsed next) =
