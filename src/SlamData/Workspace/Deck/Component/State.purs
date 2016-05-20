@@ -317,10 +317,7 @@ insertNextActionCard st =
       , activeCardIndex =
           case lastId of
             Nothing → zero
-            Just lid →
-              if lid ≡ top
-                then st.activeCardIndex
-                else st.activeCardIndex
+            Just lid → st.activeCardIndex
     }
 
 mkCardDef ∷ CardType → CardId → CardDef
@@ -332,7 +329,7 @@ removeCard cardId st =
   removePendingCard cardId $
     st
       { cards = newCards
-      , activeCardIndex = VirtualIndex $ A.length virtualCards - 2
+      , activeCardIndex = VirtualIndex $ A.length virtualCards - 1
       }
   where
   virtualCards = A.filter f (runVirtualState (virtualState st)).cards
