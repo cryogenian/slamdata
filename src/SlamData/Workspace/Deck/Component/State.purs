@@ -39,7 +39,7 @@ module SlamData.Workspace.Deck.Component.State
   , _initialSliderCardWidth
   , _sliderTransition
   , _sliderTranslateX
-  , _nextActionCardElement
+  , _cardElement
   , addCard
   , addCard'
   , removeCard
@@ -148,7 +148,7 @@ type State =
   , initialSliderCardWidth ∷ Maybe Number
   , sliderTransition ∷ Boolean
   , sliderTranslateX ∷ Number
-  , nextActionCardElement ∷ Maybe HTMLElement
+  , cardElement ∷ Maybe HTMLElement
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -176,7 +176,7 @@ initialDeck browserFeatures =
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
   , sliderTranslateX: 0.0
-  , nextActionCardElement: Nothing
+  , cardElement: Nothing
   }
 
 -- | The unique identifier of the deck. If it's a fresh, unsaved deck, the id
@@ -263,30 +263,29 @@ _sliderTranslateX ∷ LensP State Number
 _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 
 -- | The next action card HTML element
-_nextActionCardElement ∷ LensP State (Maybe HTMLElement)
-_nextActionCardElement = lens _.nextActionCardElement _{nextActionCardElement = _}
+_cardElement ∷ LensP State (Maybe HTMLElement)
+_cardElement = lens _.cardElement _{cardElement = _}
 
--- | Adds a new card to the deck.
--- |
--- | Takes the current deck state, the type of card to add, and an optional
--- | parent card ID.
-addCard ∷ CardType → Maybe CardId → State → State
-addCard cardType parent st = fst $ addCard' cardType parent st
+addCard ∷ CardType → State → State
+addCard cardType st = fst $ addCard' cardType st
 
--- | Adds a new card to the deck.
--- |
--- | Takes the current deck state, the type of card to add, and an optional
--- | parent card ID and returns the modified deck state and the new card ID.
-addCard' ∷ CardType → Maybe CardId → State → Tuple State CardId
-addCard' cardType parent st =
+addCard' ∷ CardType → State → State × CardId
+addCard' cardType st =
   let
     cardId = CardId st.fresh
     newState = st
-      { fresh = st.fresh + 1
-      , cards = st.cards `A.snoc` mkCardDef cardType cardId
+      { fresh = st.fresh + one
+      , cards =
+          let
+            def = mkCardDef cardType cardId
+          in case A.uncons $ A.reverse st.cards of
+            Nothing → st.cards `A.snoc` def
+            Just {head, tail} →
+              if head.id ≡ top
+                then A.reverse $ def A.: tail
+                else st.cards `A.snoc` def
       }
-  in
-    Tuple newState cardId
+  in newState × cardId
 
 -- | Insert an error card as a child to a specified card, and reassociate all
 -- | its children as children of the error card.
@@ -314,7 +313,7 @@ insertNextActionCard st =
              Nothing → [ mkCardDef NextAction top ]
              Just lid →
                if lid ≡ top
-                 then [ mkCardDef NextAction top ]
+                 then st.cards
                  else st.cards `A.snoc` mkCardDef NextAction top
       , activeCardIndex =
           case lastId of
@@ -438,7 +437,7 @@ fromModel browserFeatures path deckId { cards, name } state =
     cards
     ((state
         { accessType = Editable -- ? why was it ReadOnly
-        , activeCardIndex = VirtualIndex $ A.length cardDefs - one -- fishy!
+        , activeCardIndex = VirtualIndex $ A.length cardDefs - 2 -- fishy!
         , displayMode = Normal
         , browserFeatures = browserFeatures
         , cards = cardDefs

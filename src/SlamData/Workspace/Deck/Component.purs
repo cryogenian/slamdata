@@ -211,7 +211,7 @@ eval (ExploreFile fs res next) = do
   setDeckState $ DCS.initialDeck fs
   H.modify
     $ (DCS._path .~ Pathy.parentDir res)
-    ∘ (DCS.addCard CT.OpenResource Nothing)
+    ∘ (DCS.addCard CT.OpenResource)
   H.query' cpCard (CardSlot zero)
     $ right
     $ H.ChildF unit
@@ -272,8 +272,12 @@ eval (StopSlidingAndSnap mouseEvent next) = do
   pure next
 eval (UpdateSliderPosition mouseEvent next) =
   Slider.updateSliderPosition mouseEvent $> next
-eval (SetNextActionCardElement element next) =
-  H.modify (DCS._nextActionCardElement .~ element) $> next
+eval (SetCardElement element next) =
+  H.modify (DCS._cardElement %~ \set → case set, element of
+              _, Nothing → Nothing
+              (Just el), _ → Just el
+              _, Just el → Just el
+              ) $> next
 eval (StopSliderTransition next) =
   H.modify (DCS._sliderTransition .~ false) $> next
 
@@ -430,12 +434,12 @@ updateNextActionCard = do
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
   cid ← H.gets DCS.findLast
-  s ← H.get
   case cid of
     Nothing →
-      H.modify $ DCS.addCard cardType Nothing
+      H.modify $ DCS.addCard cardType
     Just cardId → do
-      Tuple st newCardId ← H.gets $ DCS.addCard' cardType (Just cardId)
+      (st × newCardId) ← H.gets $ DCS.addCard' cardType
+
       setDeckState st
       input ←
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
@@ -450,8 +454,7 @@ createCard cardType = do
           $ left
           $ H.action (CEQ.SetupCard setupInfo)
       runCard newCardId
-      H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
-      H.get >>= traceAnyA
+--      H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
   updateIndicatorAndNextAction
   triggerSave
 
@@ -495,10 +498,11 @@ aceQueryShouldSave = H.runChildF >>> case _ of
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
   H.gets _.pendingCard >>= traverse_ \pendingCard -> do
-    cards ← H.gets (_.cards <<< DCS.runVirtualState <<< DCS.virtualState)
+    cards ← H.gets (_.cards ∘ DCS.runVirtualState ∘ DCS.virtualState)
     path ← H.gets DCS.deckPath
     globalVarMap ← H.gets _.globalVarMap
     void $ Array.foldM (runStep pendingCard path globalVarMap) Nothing (_.id <$> cards)
+--    H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
     updateIndicatorAndNextAction
     -- triggerSave <-- why?
   where
@@ -599,4 +603,4 @@ deckIndex path deckId =
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
   H.modify \oldState →
-    newState { nextActionCardElement = oldState.nextActionCardElement }
+    newState { cardElement = oldState.cardElement }

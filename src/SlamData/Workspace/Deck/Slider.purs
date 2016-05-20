@@ -80,7 +80,7 @@ render vstate visible =
     $ map (Tuple.uncurry $ renderCard vstate)
     $ Array.zip state.cards (0 .. Array.length state.cards)
   where
-    state = spy $ DCS.runVirtualState vstate
+  state = DCS.runVirtualState vstate
 
 stateStartSliding ∷ Event MouseEvent → Maybe Number → State → State
 stateStartSliding mouseEvent cardWidth =
@@ -97,7 +97,7 @@ startSliding mouseEvent =
 getCardWidth ∷ DeckDSL (Maybe Number)
 getCardWidth =
   traverse getBoundingClientWidth
-    =<< H.gets _.nextActionCardElement
+    =<< H.gets _.cardElement
 
 getBoundingClientWidth ∷ HTMLElement → DeckDSL Number
 getBoundingClientWidth =
@@ -142,7 +142,9 @@ snapActiveCardIndexByTranslationAndCardWidth st cardWidth (DCS.VirtualIndex idx)
     numberOfCards = (Array.length $ st ^. DCS._VirtualState ∘ DCS._cards)
     halfOffset = (offsetCardSpacing cardWidth) / 2.0
   in
-    DCS.VirtualIndex
+    traceAny "snap active index" \_ →
+    spy
+    $ DCS.VirtualIndex
     $ if translateX <= -1.0 * halfOffset
       then
         min numberOfCards
@@ -153,6 +155,7 @@ snapActiveCardIndexByTranslationAndCardWidth st cardWidth (DCS.VirtualIndex idx)
            then
              max 0
              $ idx
+             + one
              + Int.floor ((-translateX - halfOffset) / cardWidth)
            else idx
 
@@ -161,13 +164,20 @@ offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
 snapActiveCardIndex ∷ VirtualState → DCS.VirtualIndex
 snapActiveCardIndex st =
+  traceAny "idx" \_ →
+  traceAny idx \_ →
+  traceAny "maximum" \_ →
+  traceAny (maximumSnappingCardIndex st) \_ →
   min idx $ maximumSnappingCardIndex st
   where
   idx =
     maybe id snap'
       (st ^. DCS._VirtualState ∘ DCS._initialSliderCardWidth) $ activeCardIndex
   snap' = snapActiveCardIndexByTranslationAndCardWidth st
-  activeCardIndex = st ^. DCS._VirtualState ∘ DCS._activeCardIndex
+  activeCardIndex =
+    let a =
+          st ^. DCS._VirtualState ∘ DCS._activeCardIndex
+    in traceAny "activeIndex" \_ → spy a
 
 -- We cannot snap to any card past a "blocking card".
 maximumSnappingCardIndex ∷ VirtualState → DCS.VirtualIndex
@@ -262,7 +272,7 @@ renderCard vstate cardDef index =
     ([ HP.key ("card" ⊕ CardId.cardIdToString cardDef.id)
     , HP.classes [ ClassNames.card ]
     , style $ cardPositionCSS index
-    , HP.ref (H.action ∘ DCQ.SetNextActionCardElement)
+    , HP.ref (H.action ∘ DCQ.SetCardElement)
     ]
      ⊕ (guard (shouldHideNextActionCard index vstate)
         $> (HP.class_ ClassNames.invisible)))
@@ -286,5 +296,5 @@ renderCard vstate cardDef index =
 
 shouldHideNextActionCard ∷ Int → VirtualState → Boolean
 shouldHideNextActionCard index vstate =
-  (Debug.Trace.spy index) ≡ spy (Array.length (DCS.runVirtualState vstate).cards - one)
+  index ≡ Array.length (DCS.runVirtualState vstate).cards - one
   ∧ (DCS.runVirtualState vstate).accessType ≡ AccessType.ReadOnly

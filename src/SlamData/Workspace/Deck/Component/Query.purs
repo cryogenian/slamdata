@@ -50,7 +50,7 @@ data Query a
   | StartSliding (Event MouseEvent) a
   | StopSlidingAndSnap (Event MouseEvent) a
   | UpdateSliderPosition (Event MouseEvent) a
-  | SetNextActionCardElement (Maybe HTMLElement) a
+  | SetCardElement (Maybe HTMLElement) a
   | StopSliderTransition a
 
 type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
