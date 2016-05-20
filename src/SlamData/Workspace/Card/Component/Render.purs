@@ -24,7 +24,6 @@ import SlamData.Prelude
 
 import Data.Array as A
 import Data.Int (fromNumber)
-import Data.Lens (preview)
 import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
 import Data.Visibility (Visibility(..))
 
@@ -41,7 +40,6 @@ import SlamData.Workspace.Card.RunState (RunState(..), isRunning)
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType (CardType, cardName, cardGlyph, controllable)
 
 type CardHTML = ParentHTML AnyCardState CardQuery InnerCardQuery Slam Unit
@@ -65,12 +63,7 @@ header cty cs =
       ]
 
 cardBlocked ∷ CardState → Boolean
-cardBlocked cs =
-  isJust $ cs.input >>= preview Port._Blocked
-
-isErrorCard ∷ CardState → Boolean
-isErrorCard cs =
-  isJust $ cs.input >>= preview Port._CardError
+cardBlocked cs = false -- TODO: this may be redundant?
 
 hasMessages ∷ CardState → Boolean
 hasMessages cs = not $ A.null cs.messages

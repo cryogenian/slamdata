@@ -21,40 +21,48 @@ module SlamData.Workspace.Deck.Slider
   , containerProperties
   ) where
 
-import CSS (CSS)
-import SlamData.Workspace.AccessType as AccessType
 import Control.Monad.Aff.Free (fromEff)
-import DOM.HTML.Types (HTMLElement)
-import Data.Int as Int
-import Data.Lens as Lens
-import Data.Lens ((.~), (^.))
+
+import SlamData.Prelude
+
 import Data.Array ((..))
 import Data.Array as Array
+import Data.Int as Int
+import Data.Lens ((.~), (^.))
+import Data.Lens as Lens
 import Data.Ord (max, min)
 import Data.Tuple as Tuple
+
+import CSS (CSS)
+
+import DOM.HTML.Types (HTMLElement)
+
 import Halogen as H
 import Halogen.HTML.CSS.Indexed (style)
-import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Events.Handler as HEH
-import Halogen.Component.ChildPath (injSlot, injState)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Events.Types (Event, MouseEvent)
+import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed (IProp(), I)
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+
 import SlamData.Config as Config
+import SlamData.Render.CSS as ClassNames
+import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Component as Card
+import SlamData.Workspace.Card.Factory (cardTypeComponent)
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
-import SlamData.Workspace.Deck.Gripper as Gripper
+import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.Query as DCQ
-import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
 import SlamData.Workspace.Deck.Component.State (VirtualState, State, CardDef)
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Prelude
-import SlamData.Render.CSS as ClassNames
+import SlamData.Workspace.Deck.Gripper as Gripper
+
 import Utils.CSS as CSSUtils
 import Utils.DOM (getBoundingClientRect)
 
@@ -72,7 +80,7 @@ render vstate visible =
     $ map (Tuple.uncurry $ renderCard vstate)
     $ Array.zip state.cards (0 .. Array.length state.cards)
   where
-    state = DCS.runVirtualState vstate
+    state = spy $ DCS.runVirtualState vstate
 
 stateStartSliding ∷ Event MouseEvent → Maybe Number → State → State
 stateStartSliding mouseEvent cardWidth =
@@ -249,40 +257,34 @@ cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
 renderCard ∷ VirtualState → CardDef → Int → DeckHTML
-renderCard state cardDef index =
+renderCard vstate cardDef index =
   HH.div
     ([ HP.key ("card" ⊕ CardId.cardIdToString cardDef.id)
     , HP.classes [ ClassNames.card ]
     , style $ cardPositionCSS index
     , HP.ref (H.action ∘ DCQ.SetNextActionCardElement)
     ]
-     ⊕ (guard (shouldHideNextActionCard index state)
+     ⊕ (guard (shouldHideNextActionCard index vstate)
         $> (HP.class_ ClassNames.invisible)))
     $ Gripper.renderGrippers
-        (cardSelected state cardDef.id)
-        (isJust initialSliderX)
-        (Gripper.gripperDefsForCardId cards $ Just cardDef.id)
+        (cardSelected vstate cardDef.id)
+        (isJust state.initialSliderX)
+        (Gripper.gripperDefsForCardId state.cards $ Just cardDef.id)
         ⊕ [ HH.div
-              (cardProperties state cardDef.id)
-              [ HH.Slot $ transformCardConstructor cardDef.ctor ]
+              (cardProperties vstate cardDef.id)
+              [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
            ]
   where
-  cards =
-    state ^. DCS._VirtualState ∘ DCS._cards
-
-  initialSliderX =
-    state ^. DCS._VirtualState ∘ DCS._initialSliderX
-
-  transformCardConstructor (H.SlotConstructor p l) =
-    H.SlotConstructor
-      (injSlot ChildSlot.cpCard p)
-      (l <#> \def →
-        { component: H.transformChild ChildSlot.cpCard def.component
-        , initialState: injState ChildSlot.cpCard def.initialState
-        }
-      )
+  state = DCS.runVirtualState vstate
+  slotId = ChildSlot.CardSlot cardDef.id
+  cardComponent =
+    { component: cardTypeComponent cardDef.ty cardDef.id state.browserFeatures
+    , initialState:
+        H.parentState
+          Card.initialCardState { accessType = state.accessType }
+    }
 
 shouldHideNextActionCard ∷ Int → VirtualState → Boolean
 shouldHideNextActionCard index vstate =
-  index ≡ Array.length (DCS.runVirtualState vstate).cards - one
+  (Debug.Trace.spy index) ≡ spy (Array.length (DCS.runVirtualState vstate).cards - one)
   ∧ (DCS.runVirtualState vstate).accessType ≡ AccessType.ReadOnly

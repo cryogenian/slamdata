@@ -28,13 +28,11 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject, locationString)
 
-import Data.Argonaut (Json)
+import Data.Array as Array
 import Data.BrowserFeatures (BrowserFeatures)
-import Data.Lens as Lens
+import Data.Foldable as Foldable
 import Data.Lens ((.~), (%~), (^?))
 import Data.Lens.Prism.Coproduct (_Right)
-import Data.Array as Array
-import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as S
@@ -69,7 +67,7 @@ import SlamData.Workspace.Card.JTable.Component as JTable
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.OpenResource.Component as Open
 import SlamData.Workspace.Card.Port (Port(..))
-import SlamData.Workspace.Card.Port.VarMap as VM
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
@@ -186,8 +184,7 @@ render vstate =
 
 eval ∷ Natural Query DeckDSL
 eval (RunActiveCard next) = do
-  H.gets (DCS.activeCardId ∘ DCS.virtualState)
-    >>= traverse_ runCard
+  traverse_ runCard =<< H.gets (DCS.activeCardId ∘ DCS.virtualState)
   pure next
 eval (Load fs dir deckId next) = do
   state ← H.get
@@ -201,21 +198,15 @@ eval (Load fs dir deckId next) = do
       case DCS.fromModel fs (Just dir) (Just deckId) model state of
         Tuple cards st → do
           setDeckState st
-          ranCards ← Array.catMaybes <$> for cards \card → do
-            H.query' cpCard  (CardSlot card.cardId)
-              $ left
-              $ H.action
-              $ LoadCard card
-            pure if card.hasRun then Just card.cardId else Nothing
-          -- We only need to run the root node in each subgraph, as doing so
-          -- will result in all child nodes being run also as the outputs
-          -- propagate down each subgraph.
-          traverse_ runCard $ Array.nub $ flip DCS.findRoot st <$> ranCards
+          hasRun ← Foldable.or <$> for cards \card → do
+            H.query' cpCard (CardSlot card.cardId)
+              $ left $ H.action $ LoadCard card
+            pure card.hasRun
+          when hasRun $ traverse_ runCard (DCS.findFirst st)
           H.modify (DCS._stateMode .~ DCS.Ready)
           H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
   updateIndicatorAndNextAction
   pure next
-
 eval (ExploreFile fs res next) = do
   setDeckState $ DCS.initialDeck fs
   H.modify
@@ -236,8 +227,8 @@ eval (ExploreFile fs res next) = do
   updateIndicatorAndNextAction
   pure next
 eval (Publish next) = do
-  H.gets DCS.deckPath >>= \mpath →
-    for_ mpath $ H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly)
+  H.gets DCS.deckPath >>=
+    traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly))
   pure next
 eval (Reset fs dir deckId next) = do
   let deck = DCS.initialDeck fs
@@ -247,13 +238,7 @@ eval (Reset fs dir deckId next) = do
 eval (SetName name next) =
   H.modify (DCS._name .~ Just name) $> next
 eval (SetAccessType aType next) = do
-  cids ← map Map.keys $ H.gets _.cardTypes
-  for_ cids \cardId →
-    void
-      $ H.query' cpCard (CardSlot cardId)
-      $ left
-      $ H.action
-      $ SetCardAccessType aType
+  void $ H.queryAll' cpCard $ left $ H.action $ SetCardAccessType aType
   H.modify $ DCS._accessType .~ aType
   unless (AT.isEditable aType)
     $ H.modify (DCS._displayMode .~ DCS.Normal)
@@ -314,8 +299,10 @@ peekBackSide (Back.DoAction action _) =
     Back.Trash → do
       state ← H.get
       lastId ← H.gets DCS.findLast
-      for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId)  \trashId → do
-        trashCard trashId
+      for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId) \trashId → do
+        H.modify $ DCS.removeCard trashId
+        triggerSave
+        updateIndicatorAndNextAction
         H.modify $ DCS._displayMode .~ DCS.Normal
     Back.Share → do
       url ← mkShareURL SM.empty
@@ -327,12 +314,12 @@ peekBackSide (Back.DoAction action _) =
       for_ url (showDialog ∘ flip Dialog.Embed varMap)
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish →
-      H.gets DCS.deckPath >>= \mpath →
-        for_ mpath $ H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly)
+      H.gets DCS.deckPath >>=
+        traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly))
     Back.Mirror → pure unit
     Back.Wrap → pure unit
 
-mkShareURL ∷ VM.VarMap → DeckDSL (Maybe String)
+mkShareURL ∷ Port.VarMap → DeckDSL (Maybe String)
 mkShareURL varMap = do
   loc ← H.fromEff locationString
   saveDeck
@@ -340,32 +327,22 @@ mkShareURL varMap = do
   pure $ path <#> \p →
     loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash p (NA.Load AT.ReadOnly) varMap
 
-
 peekCards ∷ ∀ a. CardSlot → CardQueryP a → DeckDSL Unit
-peekCards (CardSlot cardId) =
-  (peekCard cardId) ⨁ (peekCardInner cardId)
-
+peekCards (CardSlot cardId) = peekCard cardId ⨁ peekCardInner cardId
 
 -- | Peek on the card component to observe actions from the card control
 -- | buttons.
 peekCard ∷ ∀ a. CardId → CardQuery a → DeckDSL Unit
-peekCard cardId q = case q of
+peekCard cardId = case _ of
   RunCard _ → runCard cardId
-  RefreshCard _ → runCard ∘ DCS.findRoot cardId =<< H.get
-  TrashCard _ → trashCard cardId
+  RefreshCard _ → traverse_ runCard =<< H.gets DCS.findFirst
   StopCard _ → do
-    H.modify $ DCS._runTrigger .~ Nothing
-    H.modify $ DCS._pendingCards %~ S.delete cardId
+    -- TODO: does it even make sense to have a stop action on cards anymore?
+    -- I don't think there's a button for it anyway. Maybe the deck as a whole
+    -- should be stoppable via an action on the back? -gb
+    H.modify $ DCS.removePendingCard cardId
     runPendingCards
   _ → pure unit
-
-
-trashCard ∷ CardId → DeckDSL Unit
-trashCard cid = do
-  descendants ← H.gets $ DCS.findDescendants cid
-  H.modify ∘ DCS.removeCards $ S.insert cid descendants
-  triggerSave
-  updateIndicatorAndNextAction
 
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
 showDialog =
@@ -400,10 +377,7 @@ updateIndicator = do
     $ H.action
     $ Indicator.UpdatePortList outs
   vid ← H.gets $ DCS.runVirtualIndex ∘ _.activeCardIndex
-  void
-    $ H.query' cpIndicator unit
-    $ H.action
-    $ Indicator.UpdateActiveId vid
+  void $ H.query' cpIndicator unit $ H.action $ Indicator.UpdateActiveId vid
 
 updateBackSide ∷ DeckDSL Unit
 updateBackSide = do
@@ -477,6 +451,7 @@ createCard cardType = do
           $ H.action (CEQ.SetupCard setupInfo)
       runCard newCardId
       H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
+      H.get >>= traceAnyA
   updateIndicatorAndNextAction
   triggerSave
 
@@ -519,27 +494,36 @@ aceQueryShouldSave = H.runChildF >>> case _ of
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
-  cards ← H.gets _.pendingCards
-  traverse_ runCard' cards
-  updateIndicatorAndNextAction
+  H.gets _.pendingCard >>= traverse_ \pendingCard -> do
+    cards ← H.gets (_.cards <<< DCS.runVirtualState <<< DCS.virtualState)
+    path ← H.gets DCS.deckPath
+    globalVarMap ← H.gets _.globalVarMap
+    void $ Array.foldM (runStep pendingCard path globalVarMap) Nothing (_.id <$> cards)
+    updateIndicatorAndNextAction
+    -- triggerSave <-- why?
   where
-  runCard' ∷ CardId → DeckDSL Unit
-  runCard' cardId = do
-    mbParentId ← H.gets $ DCS.findParent cardId
-    case mbParentId of
-      -- if there's no parent there's no input port value to pass through
-      Nothing → updateCard Nothing cardId
-      Just parentId → do
-        value ←
-          map join $ H.query' cpCard (CardSlot parentId) $ left (H.request GetOutput)
-        case value of
-          -- if there's a parent but no output the parent card hasn't been evaluated
-          -- yet, so we can't run this card either
-          Nothing → pure unit
-          -- if there's a parent and an output, pass it on as this card's input
-          Just p → updateCard (Just p) cardId
-    H.modify $ DCS._pendingCards %~ S.delete cardId
-    triggerSave
+  runStep
+    :: CardId
+    -> Maybe DirPath
+    → Port.VarMap
+    → Maybe Port
+    → CardId
+    → DeckDSL (Maybe Port)
+  runStep pendingCard path globalVarMap inputPort cardId =
+    if cardId < pendingCard
+    then map join
+      $ H.query' cpCard (CardSlot cardId)
+      $ left (H.request GetOutput)
+    else do
+      let input = { path, inputPort, cardId, globalVarMap }
+      outputPort ←
+        map join
+          $ H.query' cpCard (CardSlot cardId)
+          $ left $ H.request (UpdateCard input)
+      H.modify $ DCS._failingCards %~ case outputPort of
+        Just (CardError msg) → S.insert cardId
+        _ → S.delete cardId
+      pure outputPort
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced H.query to trigger the cards to
@@ -549,81 +533,47 @@ runCard cardId = do
   H.modify (DCS.addPendingCard cardId)
   fireDebouncedQuery' (Milliseconds 500.0) DCS._runTrigger RunPendingCards
 
--- | Updates the evaluated value for a card by running it with the specified
--- | input and then runs any cards that depend on the card's output with the
--- | new result.
-updateCard ∷ Maybe Port → CardId → DeckDSL Unit
-updateCard inputPort cardId = do
-  path ← H.gets DCS.deckPath
-  globalVarMap ← H.gets _.globalVarMap
-  let input = { path, inputPort, cardId, globalVarMap }
-  result ←
-    map join
-      $ H.query' cpCard (CardSlot cardId)
-      $ left
-      $ H.request (UpdateCard input)
-
-  H.modify ∘ Lens.over DCS._failingCards $
-    case result of
-      Just (CardError msg) → S.insert cardId
-      _ → S.delete cardId
-
-  runCardDescendants cardId (fromMaybe Blocked result)
-  where
-  runCardDescendants ∷ CardId → Port → DeckDSL Unit
-  runCardDescendants parentId value = do
-    -- Crucially, we run the card descendents according to the virtual graph;
-    -- this enables the correct behavior of virtual cards, including the Error Card.
-    children ← H.gets $ DCS.findChildren parentId ∘ DCS.runVirtualState ∘ DCS.virtualState
-    traverse_ (updateCard (Just value)) children
-
 -- | Triggers the H.query for autosave. This does not immediate perform the save
 -- | H.action, but instead enqueues a debounced H.query to trigger the actual save.
 triggerSave ∷ DeckDSL Unit
-triggerSave =
-  fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
+triggerSave = fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
 
 -- | Saves the deck as JSON, using the current values present in the state.
 saveDeck ∷ DeckDSL Unit
-saveDeck = H.get >>= \st → do
+saveDeck = H.get >>= \st →
   if isUnsaved st ∧ isNewExploreDeck st
-    -- If its an unsaved Explore deck, it is safe to go ahead and run it.
-    then runPendingCards
-    else do
-      cards ← Array.catMaybes <$> for st.cards \card →
-        H.query' cpCard (CardSlot card.id)
-          $ left
-          $ H.request (SaveCard card.id card.ty)
+  -- If it's an unsaved Explore deck, it is safe to go ahead and run it.
+  then runPendingCards
+  else do
+    cards ← Array.catMaybes <$> for st.cards \card →
+      H.query' cpCard (CardSlot card.id)
+        $ left
+        $ H.request (SaveCard card.id card.ty)
 
-      let
-        json = Model.encode
-          { name: st.name
-          , cards
-          , dependencies: st.dependencies
-          }
+    let json = Model.encode { name: st.name , cards }
 
-      for_ st.path \path → do
-        deckId ← runExceptT do
-          i ← ExceptT $ genId path st.id
-          ExceptT $ save path i json
-          pure i
+    for_ st.path \path → do
+      deckId ← runExceptT do
+        i ← ExceptT $ genId path st.id
+        ExceptT $ Quasar.save (deckIndex path i) json
+        pure i
 
-        case deckId of
-          Left err → do
-            -- TODO: do something to notify the user saving failed
-            pure unit
-          Right deckId' → do
-            H.modify $ DCS._id .~ Just deckId'
+      case deckId of
+        Left err → do
+          -- TODO: do something to notify the user saving failed
+          pure unit
+        Right deckId' → do
+          H.modify $ DCS._id .~ Just deckId'
 
-            -- runPendingCards would be deffered if there had previously been
-            -- no `deckPath`. We need to flush the queue.
-            when (isNothing $ DCS.deckPath st) runPendingCards
+          -- runPendingCards would be deferred if there had previously been
+          -- no `deckPath`. We need to flush the queue.
+          when (isNothing $ DCS.deckPath st) runPendingCards
 
-            -- We need to get the modified version of the deck state.
-            H.gets DCS.deckPath >>= traverse_ \path' →
-              let deckHash =
-                    mkWorkspaceHash path' (NA.Load st.accessType) st.globalVarMap
-              in H.fromEff $ locationObject >>= Location.setHash deckHash
+          -- We need to get the modified version of the deck state.
+          H.gets DCS.deckPath >>= traverse_ \path' →
+            let deckHash =
+                  mkWorkspaceHash path' (NA.Load st.accessType) st.globalVarMap
+            in H.fromEff $ locationObject >>= Location.setHash deckHash
 
   where
 
@@ -641,10 +591,6 @@ saveDeck = H.get >>= \st → do
   genId path deckId = case deckId of
     Just id' → pure $ Right id'
     Nothing → map DeckId <$> NB.fresh (path </> Pathy.file "index")
-
-  -- Saves a workspace and returns the name it was saved as.
-  save ∷ DirPath → DeckId → Json → DeckDSL (Either Exn.Error Unit)
-  save dir deckId json = Quasar.save (deckIndex dir deckId) json
 
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId =

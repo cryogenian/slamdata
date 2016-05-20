@@ -107,7 +107,13 @@ cardEval (Ec.EvalCard value k) = do
   case value.inputPort of
     Nothing →
       H.modify
-        $ _message ?~ "Next actions will be made available once the last card has been run"
+        $ (_message .~ Nothing)
+        ∘ (_types .~ [ Ct.Ace Ct.SQLMode
+                     , Ct.Ace Ct.MarkdownMode
+                     , Ct.OpenResource
+                     , Ct.API
+                     ]
+          )
     Just port →
       updatePort port
   map k ∘ Ec.runCardEvalT $ pure Nothing
