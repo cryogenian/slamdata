@@ -39,13 +39,14 @@ module SlamData.Workspace.Deck.Component.State
   , _initialSliderCardWidth
   , _sliderTransition
   , _sliderTranslateX
-  , _nextActionCardElement
+  , _cardElementWidth
   , addCard
   , addCard'
   , removeCard
   , findFirst
   , findLast
   , findLastCardType
+  , findLastRealCard
   , addPendingCard
   , removePendingCard
   , cardsOfType
@@ -70,12 +71,11 @@ import Data.Array as A
 import Data.BrowserFeatures (BrowserFeatures)
 import Data.Foldable (maximum, elem)
 import Data.Lens (LensP, lens, (^.))
+import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as S
 import Data.StrMap as SM
-
-import DOM.HTML.Types (HTMLElement)
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
@@ -109,6 +109,15 @@ runVirtualIndex (VirtualIndex i) = i
 derive instance eqVirtualIndex ∷ Eq VirtualIndex
 derive instance ordVirtualIndex ∷ Ord VirtualIndex
 
+instance semiringVirtualIndex ∷ Semiring VirtualIndex where
+  one = VirtualIndex one
+  zero = VirtualIndex zero
+  add (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a + b
+  mul (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a * b
+
+instance ringVirtualIndex ∷ Ring VirtualIndex where
+  sub (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a - b
+
 data DisplayMode
   = Normal
   | Backside
@@ -138,7 +147,7 @@ type State =
   , initialSliderCardWidth ∷ Maybe Number
   , sliderTransition ∷ Boolean
   , sliderTranslateX ∷ Number
-  , nextActionCardElement ∷ Maybe HTMLElement
+  , cardElementWidth ∷ Maybe Number
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -166,65 +175,65 @@ initialDeck browserFeatures =
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
   , sliderTranslateX: 0.0
-  , nextActionCardElement: Nothing
+  , cardElementWidth: Nothing
   }
 
 -- | The unique identifier of the deck. If it's a fresh, unsaved deck, the id
 -- | will be Nothing.
-_id ∷ LensP State (Maybe DeckId)
+_id ∷ ∀ a r. LensP {id ∷ a|r} a
 _id = lens _.id _{id = _}
 
 -- | A counter used to generate `CardId` values. This should be a monotonically increasing value
-_fresh ∷ LensP State Int
+_fresh ∷ ∀ a r. LensP {fresh ∷ a|r} a
 _fresh = lens _.fresh _{fresh = _}
 
 -- | Determines whether the deck is editable.
-_accessType ∷ LensP State AccessType
+_accessType ∷ ∀ a r. LensP {accessType ∷ a|r} a
 _accessType = lens _.accessType _{accessType = _}
 
 -- | The list of cards currently in the deck.
-_cards ∷ LensP State (Array CardDef)
+_cards ∷ ∀ a r. LensP {cards ∷ a |r} a
 _cards = lens _.cards _{cards = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.
-_activeCardIndex ∷ LensP State VirtualIndex
+_activeCardIndex ∷ ∀ a r. LensP {activeCardIndex ∷ a |r} a
 _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 
 -- | The display name of the deck.
-_name ∷ LensP State (Maybe String)
+_name ∷ ∀ a r. LensP {name ∷ a |r} a
 _name = lens _.name _{name = _}
 
-_browserFeatures ∷ LensP State BrowserFeatures
+_browserFeatures ∷ ∀ a r. LensP {browserFeatures ∷ a |r} a
 _browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
 -- | The path to the deck in the filesystem
-_path ∷ LensP State (Maybe DirPath)
+_path ∷ ∀ a r. LensP {path ∷ a |r} a
 _path = lens _.path _{path = _}
 
 -- | The debounced trigger for deck save actions.
-_saveTrigger ∷ LensP State (Maybe (DebounceTrigger Query Slam))
+_saveTrigger ∷ ∀ a r. LensP {saveTrigger ∷ a|r} a
 _saveTrigger = lens _.saveTrigger _{saveTrigger = _}
 
 -- | The debounced trigger for running all cards that are pending.
-_runTrigger ∷ LensP State (Maybe (DebounceTrigger Query Slam))
+_runTrigger ∷ ∀ a r. LensP {runTrigger ∷ a|r} a
 _runTrigger = lens _.runTrigger _{runTrigger = _}
 
 -- | The global `VarMap`, passed through to the deck via the URL.
-_globalVarMap ∷ LensP State Port.VarMap
+_globalVarMap ∷ ∀ a r. LensP {globalVarMap ∷ a |r} a
 _globalVarMap = lens _.globalVarMap _{globalVarMap = _}
 
 -- | The earliest card in the deck that needs to evaluate.
-_pendingCard ∷ LensP State (Maybe CardId)
+_pendingCard ∷ ∀ a r. LensP {pendingCard ∷ a|r} a
 _pendingCard = lens _.pendingCard _{pendingCard = _}
 
 -- | The cards which currently have errors.
-_failingCards ∷ LensP State (S.Set CardId)
+_failingCards ∷ ∀ a r. LensP {failingCards ∷ a|r} a
 _failingCards = lens _.failingCards _{failingCards = _}
 
 -- | The "state mode" used to track whether the deck is ready, loading, or
 -- | if an error has occurred while loading.
-_stateMode ∷ LensP State StateMode
+_stateMode ∷ ∀ a r. LensP {stateMode ∷ a|r} a
 _stateMode = lens _.stateMode _{stateMode = _}
 
 -- | backsided, dialog or normal (card)
@@ -233,50 +242,49 @@ _displayMode = lens (_.displayMode) (_{displayMode = _})
 
 -- | The x position of the card slider at the start of the slide interaction in
 -- | pixels. If `Nothing` slide interaction is not in progress.
-_initialSliderX ∷ LensP State (Maybe Number)
+_initialSliderX ∷ ∀ a r. LensP {initialSliderX ∷ a|r} a
 _initialSliderX = lens _.initialSliderX _{initialSliderX = _}
 
 -- | The width of the next action card at the start of the slide interaction in
 -- | pixels. If `Nothing` either the slide interaction is not in progress or the
 -- | next action card element reference is broken.
-_initialSliderCardWidth ∷ LensP State (Maybe Number)
+_initialSliderCardWidth ∷ ∀ a r. LensP {initialSliderCardWidth ∷ a|r} a
 _initialSliderCardWidth = lens _.initialSliderCardWidth _{initialSliderCardWidth = _}
 
 -- | Whether the translation of the card slider should be animated or not.
 -- | Should be true between the end of the slide interaction and the end of the
 -- | transition.
-_sliderTransition ∷ LensP State Boolean
+_sliderTransition ∷ ∀ a r. LensP {sliderTransition ∷ a |r} a
 _sliderTransition = lens _.sliderTransition _{sliderTransition = _}
 
 -- | The current x translation of the card slider during the slide interaction.
-_sliderTranslateX ∷ LensP State Number
+_sliderTranslateX ∷ ∀ a r. LensP {sliderTranslateX ∷ a |r} a
 _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 
--- | The next action card HTML element
-_nextActionCardElement ∷ LensP State (Maybe HTMLElement)
-_nextActionCardElement = lens _.nextActionCardElement _{nextActionCardElement = _}
+-- | The width of card
+_cardElementWidth ∷ ∀ a r. LensP {cardElementWidth ∷ a|r} a
+_cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
 
--- | Adds a new card to the deck.
--- |
--- | Takes the current deck state, the type of card to add, and an optional
--- | parent card ID.
-addCard ∷ CardType → Maybe CardId → State → State
-addCard cardType parent st = fst $ addCard' cardType parent st
+addCard ∷ CardType → State → State
+addCard cardType st = fst $ addCard' cardType st
 
--- | Adds a new card to the deck.
--- |
--- | Takes the current deck state, the type of card to add, and an optional
--- | parent card ID and returns the modified deck state and the new card ID.
-addCard' ∷ CardType → Maybe CardId → State → Tuple State CardId
-addCard' cardType parent st =
+addCard' ∷ CardType → State → State × CardId
+addCard' cardType st =
   let
     cardId = CardId st.fresh
     newState = st
-      { fresh = st.fresh + 1
-      , cards = st.cards `A.snoc` mkCardDef cardType cardId
+      { fresh = st.fresh + one
+      , cards =
+          let
+            def = mkCardDef cardType cardId
+          in case A.uncons $ A.reverse st.cards of
+            Nothing → st.cards `A.snoc` def
+            Just {head, tail} →
+              if head.id ≡ top
+                then A.reverse $ def A.: tail
+                else st.cards `A.snoc` def
       }
-  in
-    Tuple newState cardId
+  in newState × cardId
 
 -- | Insert an error card as a child to a specified card, and reassociate all
 -- | its children as children of the error card.
@@ -293,20 +301,35 @@ insertErrorCard parentId st =
   -- The -1 index is reserved for the error card.
   cardId = CardId (-1)
 
+insertNextActionCard ∷ State → State
+insertNextActionCard st =
+  let
+    lastId = findLast st
+  in
+    st
+      { cards =
+           case lastId of
+             Nothing → [ mkCardDef NextAction top ]
+             Just lid →
+               if lid ≡ top
+                 then st.cards
+                 else st.cards `A.snoc` mkCardDef NextAction top
+      , activeCardIndex =
+          case lastId of
+            Nothing → zero
+            Just lid → st.activeCardIndex
+    }
+
 mkCardDef ∷ CardType → CardId → CardDef
 mkCardDef cardType cardId = { id: cardId, ty: cardType }
 
--- | Removes a set of cards from the deck. Any cards that depend on a card
--- | in the set of provided cards will also be removed.
--- |
--- | Takes the set of IDs for the cards to remove and the current deck
--- | state.
+
 removeCard ∷ CardId → State → State
 removeCard cardId st =
   removePendingCard cardId $
     st
       { cards = newCards
-      , activeCardIndex = VirtualIndex $ A.length virtualCards - 1
+      , activeCardIndex = VirtualIndex $ max zero $ A.length newCards - one
       }
   where
   virtualCards = A.filter f (runVirtualState (virtualState st)).cards
@@ -329,6 +352,12 @@ findFirst { cards } = _.id <$> A.head cards
 -- | Finds the last card in the deck.
 findLast ∷ State → Maybe CardId
 findLast { cards } = _.id <$> A.last cards
+
+findLastRealCard ∷ State → Maybe CardId
+findLastRealCard { cards } =
+  A.findLastIndex (\x → x.id ≠ top) cards
+    >>= A.index cards
+    <#> _.id
 
 -- | Finds the type of the last card.
 findLastCardType ∷ State → Maybe CardType
@@ -356,9 +385,10 @@ _VirtualState = lens runVirtualState \_ → VirtualState
 virtualState ∷ State → VirtualState
 virtualState st =
   VirtualState
-    case find' hasError st.cards of
-      Just c → insertErrorCard c.id st
-      Nothing → st
+    $ insertNextActionCard
+    $ case find' hasError st.cards of
+        Just c → insertErrorCard c.id st
+        Nothing → st
   where
 
   -- in case you're wondering, Data.Foldable.find does not find the *first*
@@ -408,7 +438,7 @@ fromModel browserFeatures path deckId { cards, name } state =
   Tuple
     cards
     ((state
-        { accessType = ReadOnly
+        { accessType = Editable -- why was it ReadOnly?
         , activeCardIndex = VirtualIndex $ A.length cardDefs - 1 -- fishy!
         , displayMode = Normal
         , browserFeatures = browserFeatures

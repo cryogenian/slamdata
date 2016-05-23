@@ -191,7 +191,7 @@ toModel st =
 
 fromModel :: Model -> State
 fromModel m =
-  spy $ initialState
+  initialState
     { page = Right <$> m.page
     , pageSize = Right <$> m.pageSize
     }

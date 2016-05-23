@@ -24,7 +24,7 @@ import SlamData.Prelude
 
 import Data.Array as Arr
 import Data.Argonaut (jsonEmptyObject)
-import Data.Lens ((.~))
+import Data.Lens ((.~), (?~))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -34,11 +34,12 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
+import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery as Ec
 import SlamData.Workspace.Card.Component (makeCardComponent, makeQueryPrism, _NextState, _NextQuery)
 import SlamData.Workspace.Card.Component as Cc
-import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(AddCard, SetAvailableTypes, SetMessage), _AddCardType)
+import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(AddCard), _AddCardType)
 import SlamData.Workspace.Card.Next.Component.State (State, _message, _types, initialState)
 
 type NextHTML = H.ComponentHTML QueryP
@@ -102,7 +103,20 @@ eval :: QueryP ~> NextDSL
 eval = coproduct cardEval nextEval
 
 cardEval :: Ec.CardEvalQuery ~> NextDSL
-cardEval (Ec.EvalCard _ k) = map k ∘ Ec.runCardEvalT $ pure Nothing
+cardEval (Ec.EvalCard value k) = do
+  case value.inputPort of
+    Nothing →
+      H.modify
+        $ (_message .~ Nothing)
+        ∘ (_types .~
+             [ Ct.Ace Ct.SQLMode
+             , Ct.Ace Ct.MarkdownMode
+             , Ct.OpenResource
+             , Ct.API
+             ])
+    Just port →
+      updatePort port
+  map k ∘ Ec.runCardEvalT $ pure Nothing
 cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = pure $ k jsonEmptyObject
@@ -110,7 +124,41 @@ cardEval (Ec.Load _ next) = pure next
 cardEval (Ec.SetupCard p next) = pure next
 cardEval (Ec.SetCanceler _ next) = pure next
 
+updatePort ∷ P.Port → NextDSL Unit
+updatePort = case _ of
+  P.Blocked →
+    H.modify
+      $ _message ?~ "There are no available next actions"
+  P.CardError _ →
+    H.modify
+      $ _message ?~ "There are no available next actions (parent cards have errors)"
+  P.DownloadOptions _ →
+    H.modify
+      $ (_types .~ [ Ct.Download ])
+      ∘ (_message .~ Nothing)
+  P.VarMap _ →
+    H.modify
+      $ (_types .~ [ Ct.Ace Ct.SQLMode, Ct.APIResults ])
+      ∘ (_message .~ Nothing)
+  P.SlamDown _ →
+    H.modify
+      $ (_types .~ [ Ct.Markdown ])
+      ∘ (_message .~ Nothing)
+  P.ChartOptions _ →
+    H.modify
+      $ (_types .~ [ Ct.Chart ])
+      ∘ (_message .~ Nothing)
+  P.TaggedResource _ →
+    H.modify
+      $ (_types .~
+           [ Ct.JTable
+           , Ct.DownloadOptions
+           , Ct.Search
+           , Ct.Ace Ct.SQLMode
+           , Ct.Viz
+           , Ct.Save
+           ])
+      ∘ (_message .~ Nothing)
+
 nextEval :: Query ~> NextDSL
 nextEval (AddCard _ next) = pure next
-nextEval (SetAvailableTypes cts next) = H.modify (_types .~ cts) $> next
-nextEval (SetMessage mbTxt next) = H.modify (_message .~ mbTxt) $> next
