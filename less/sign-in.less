@@ -6,7 +6,6 @@
   position: relative;
   z-index: 800;
   max-width: 230px;
-  overflow: scroll;
 }
 
 .sd-sign-in a {
@@ -19,7 +18,12 @@
 }
 
 .sd-sign-in > ul > li a {
-  color: rgb(210,210,210);
+    color: rgb(210,210,210);
+    overflow: auto;
+    display: block;
+    height: 70px;
+    line-height: 70px;
+    width: 100%;
 }
 
 .sd-sign-in > ul > li a:hover {
@@ -80,6 +84,7 @@
   border-radius: 0 0 0.25rem 0.25rem;
   border-width: 0 1px 1px 1px;
   padding-bottom: 1rem;
+  line-height: 45px;
 }
 
 .sd-sign-in > ul > li > ul > li > a:hover {
