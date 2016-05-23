@@ -426,7 +426,6 @@ createCard cardType = do
       setDeckState st
       input ←
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
-      H.get >>= setDeckState ∘ DCS.runVirtualState ∘ DCS.virtualState
       for_ input \input' → do
         path ← H.gets DCS.deckPath
         let setupInfo = { path, inputPort: input', cardId: newCardId }
