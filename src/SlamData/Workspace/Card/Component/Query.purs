@@ -44,6 +44,8 @@ import Data.Lens (PrismP, prism')
 import Data.Lens.Prism.Coproduct (_Left, _Right)
 import Data.Time (Milliseconds)
 
+import DOM.HTML.Types (HTMLElement)
+
 import Halogen (ChildF)
 
 import SlamData.Workspace.AccessType as Na
@@ -56,17 +58,17 @@ import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Chart.Component.Query as Chart
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInput)
 import SlamData.Workspace.Card.Download.Component.Query as Download
-import SlamData.Workspace.Card.JTable.Component.Query as JTable
-import SlamData.Workspace.Card.Markdown.Component.Query as Markdown
-import SlamData.Workspace.Card.OpenResource.Component.Query as Open
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Card.Search.Component.Query as Search
-import SlamData.Workspace.Card.Viz.Component.Query as Viz
-import SlamData.Workspace.Card.Next.Component.Query as Next
-import SlamData.Workspace.Card.Save.Component.Query as Save
 import SlamData.Workspace.Card.DownloadOptions.Component.Query as DOpts
 import SlamData.Workspace.Card.Error.Component.Query as Error
+import SlamData.Workspace.Card.JTable.Component.Query as JTable
+import SlamData.Workspace.Card.Markdown.Component.Query as Markdown
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Next.Component.Query as Next
+import SlamData.Workspace.Card.OpenResource.Component.Query as Open
+import SlamData.Workspace.Card.Port (Port)
+import SlamData.Workspace.Card.Save.Component.Query as Save
+import SlamData.Workspace.Card.Search.Component.Query as Search
+import SlamData.Workspace.Card.Viz.Component.Query as Viz
 
 -- | The common query algebra for a card.
 -- |
@@ -90,6 +92,8 @@ data CardQuery a
   | SaveCard CardId CardType (Card.Model → a)
   | LoadCard Card.Model a
   | SetCardAccessType Na.AccessType a
+  | SetHTMLElement (Maybe HTMLElement) a
+  | UpdateDimensions a
 
 type CardQueryP = Coproduct CardQuery (ChildF Unit InnerCardQuery)
 

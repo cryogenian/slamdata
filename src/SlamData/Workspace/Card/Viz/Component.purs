@@ -334,6 +334,7 @@ cardEval (Load json next) =
       $ left
       $ H.action $ Form.SetConfiguration model.chartConfig
 cardEval (SetCanceler _ next) = pure next
+cardEval (SetDimensions _ next) = pure next
 
 responsePort ∷ CardEvalT VizDSL P.Port
 responsePort = do

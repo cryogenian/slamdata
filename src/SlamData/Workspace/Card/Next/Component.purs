@@ -123,6 +123,7 @@ cardEval (Ec.Save k) = pure $ k jsonEmptyObject
 cardEval (Ec.Load _ next) = pure next
 cardEval (Ec.SetupCard p next) = pure next
 cardEval (Ec.SetCanceler _ next) = pure next
+cardEval (Ec.SetDimensions _ next) = pure next
 
 updatePort ∷ P.Port → NextDSL Unit
 updatePort = case _ of

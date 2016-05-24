@@ -135,3 +135,4 @@ eval (Load json next) = do
     _ → pure unit
   pure next
 eval (SetCanceler _ next) = pure next
+eval (SetDimensions _ next) = pure next

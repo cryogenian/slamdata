@@ -27,6 +27,7 @@ module SlamData.Workspace.Card.Component.State
   , _hasResults
   , _output
   , _canceler
+  , _element
   , AnyCardState
   , _AceState
   , _MarkdownState
@@ -50,6 +51,8 @@ import Control.Monad.Aff (Canceler)
 
 import Data.Lens (LensP, lens, PrismP, prism')
 import Data.Visibility (Visibility(..))
+
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen (ParentState)
 
@@ -98,6 +101,7 @@ type CardState =
   , hasResults ∷ Boolean
   , output ∷ Maybe Port
   , canceler ∷ Canceler SlamDataEffects
+  , element ∷ Maybe HTMLElement
   }
 
 type CardStateP = ParentState CardState AnyCardState CardQuery InnerCardQuery Slam Unit
@@ -114,6 +118,7 @@ initialCardState =
   , hasResults: false
   , output: Nothing
   , canceler: mempty
+  , element: Nothing
   }
 
 _accessType ∷ LensP CardState AccessType
@@ -145,6 +150,9 @@ _output = lens _.output (_ { output = _ })
 
 _canceler ∷ LensP CardState (Canceler SlamDataEffects)
 _canceler = lens _.canceler _{canceler = _}
+
+_element ∷ LensP CardState (Maybe HTMLElement)
+_element = lens _.element _{element = _}
 
 data AnyCardState
   = AceState Ace.StateP
