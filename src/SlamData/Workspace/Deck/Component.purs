@@ -29,7 +29,6 @@ import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject, locationString)
 
 import Data.Array as Array
-import Data.BrowserFeatures (BrowserFeatures)
 import Data.Foldable as Foldable
 import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens.Prism.Coproduct (_Right)
@@ -86,8 +85,8 @@ import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath, FilePath)
 
-initialState ∷ BrowserFeatures → DCS.StateP
-initialState fs = opaqueState $ DCS.initialDeck fs
+initialState ∷ DCS.StateP
+initialState = opaqueState DCS.initialDeck
 
 comp ∷ H.Component DCS.StateP QueryP Slam
 comp =
@@ -190,7 +189,7 @@ eval ∷ Natural Query DeckDSL
 eval (RunActiveCard next) = do
   traverse_ runCard =<< H.gets (DCS.activeCardId ∘ DCS.virtualState)
   pure next
-eval (Load fs dir deckId next) = do
+eval (Load dir deckId next) = do
   state ← H.get
   H.modify (DCS._stateMode .~ DCS.Loading)
   json ← Quasar.load $ deckIndex dir deckId
@@ -199,7 +198,7 @@ eval (Load fs dir deckId next) = do
       H.fromAff $ log err
       H.modify $ DCS._stateMode .~ DCS.Error "There was a problem decoding the saved deck"
     Right model →
-      case DCS.fromModel fs (Just dir) (Just deckId) model state of
+      case DCS.fromModel (Just dir) (Just deckId) model state of
         Tuple cards st → do
           setDeckState st
           hasRun ← Foldable.or <$> for cards \card → do
@@ -210,8 +209,8 @@ eval (Load fs dir deckId next) = do
           H.modify (DCS._stateMode .~ DCS.Ready)
   updateIndicator
   pure next
-eval (ExploreFile fs res next) = do
-  setDeckState $ DCS.initialDeck fs
+eval (ExploreFile res next) = do
+  setDeckState DCS.initialDeck
   H.modify
     $ (DCS._path .~ Pathy.parentDir res)
     ∘ (DCS.addCard CT.OpenResource)
@@ -233,8 +232,8 @@ eval (Publish next) = do
   H.gets DCS.deckPath >>=
     traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly))
   pure next
-eval (Reset fs dir deckId next) = do
-  let deck = DCS.initialDeck fs
+eval (Reset dir deckId next) = do
+  let deck = DCS.initialDeck
   setDeckState $ deck { id = deckId, path = Just dir }
   updateIndicator
   pure next

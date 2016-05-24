@@ -267,7 +267,7 @@ renderCard comp vstate cardDef index =
   state = DCS.runVirtualState vstate
   slotId = ChildSlot.CardSlot cardDef.id
   cardComponent =
-    { component: cardTypeComponent cardDef.ty cardDef.id state.browserFeatures comp
+    { component: cardTypeComponent cardDef.ty cardDef.id comp
     , initialState:
         H.parentState
           Card.initialCardState { accessType = state.accessType }

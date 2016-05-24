@@ -22,11 +22,8 @@ import Data.List as L
 
 import Control.Monad.Aff (Aff, forkAff)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
 
 import Ace.Config as AceConfig
-
-import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Halogen (Driver, runUI, parentState)
 import Halogen.Util (runHalogenAff, awaitBody)
@@ -49,9 +46,8 @@ main = do
   AceConfig.set AceConfig.basePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
-  browserFeatures ← detectBrowserFeatures
   runHalogenAff do
-    let st = Workspace.initialState { browserFeatures, version: Just "3.0" }
+    let st = Workspace.initialState (Just "3.0")
     driver ← runUI Workspace.comp (parentState st) =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles
@@ -70,8 +66,7 @@ routeSignal driver =
 
   explore ∷ UP.FilePath → Aff SlamDataEffects Unit
   explore path = do
-    fs ← liftEff detectBrowserFeatures
-    driver $ Workspace.toDeck $ Deck.ExploreFile fs path
+    driver $ Workspace.toDeck $ Deck.ExploreFile path
     driver $ Workspace.toWorkspace $ Workspace.SetParentHref
       $ parentURL $ Right path
 
@@ -87,10 +82,9 @@ routeSignal driver =
     currentPath ← driver $ Workspace.fromWorkspace Workspace.GetPath
 
     when (currentPath ≠ pure path) do
-      features ← liftEff detectBrowserFeatures
       if action ≡ New
-        then driver $ Workspace.toWorkspace $ Workspace.Reset features path
-        else driver $ Workspace.toWorkspace $ Workspace.Load features path deckIds
+        then driver $ Workspace.toWorkspace $ Workspace.Reset path
+        else driver $ Workspace.toWorkspace $ Workspace.Load path deckIds
 
     driver $ Workspace.toWorkspace $ Workspace.SetAccessType accessType
     driver $ Workspace.toDeck $ Deck.SetGlobalVarMap varMap

@@ -21,7 +21,6 @@ module SlamData.Workspace.Deck.Component.Query
 
 import SlamData.Prelude
 
-import Data.BrowserFeatures as BF
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
@@ -38,11 +37,11 @@ data Query a
   | RunPendingCards a
   | SetName String a
   | SetAccessType AT.AccessType a
-  | ExploreFile BF.BrowserFeatures UP.FilePath a
+  | ExploreFile UP.FilePath a
   | Publish a
-  | Load BF.BrowserFeatures UP.DirPath DeckId a
+  | Load UP.DirPath DeckId a
   | Save a
-  | Reset BF.BrowserFeatures UP.DirPath (Maybe DeckId) a
+  | Reset UP.DirPath (Maybe DeckId) a
   | GetGlobalVarMap (Port.VarMap → a)
   | SetGlobalVarMap Port.VarMap a
   | FlipDeck a

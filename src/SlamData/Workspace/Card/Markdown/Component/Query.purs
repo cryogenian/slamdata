@@ -24,4 +24,8 @@ import Text.Markdown.SlamDown.Halogen.Component.Query (SlamDownQuery)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Port.VarMap as VM
 
-type QueryP = Coproduct CardEvalQuery (ChildF Unit (SlamDownQuery VM.VarMapValue))
+data Query a = Init a
+
+type QueryP
+  = (CardEvalQuery ⨁ Query)
+  ⨁ (ChildF Unit (SlamDownQuery VM.VarMapValue))
