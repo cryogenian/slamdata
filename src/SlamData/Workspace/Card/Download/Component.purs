@@ -93,6 +93,7 @@ cardEval (Ec.SetupCard { inputPort } next) = do
     _ → pure unit
   pure next
 cardEval (Ec.SetCanceler _ next) = pure next
+cardEval (Ec.SetDimensions _ next) = pure next
 
 handleDownloadPort ∷ P.DownloadPort → DSL Unit
 handleDownloadPort opts = do

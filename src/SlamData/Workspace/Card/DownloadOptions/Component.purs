@@ -148,6 +148,7 @@ cardEval (Ec.SetupCard {inputPort} next) = do
   H.modify $ _source .~ preview P._Resource inputPort
   pure next
 cardEval (Ec.SetCanceler _ next) = pure next
+cardEval (Ec.SetDimensions _ next) = pure next
 
 downloadOptsEval ∷ Query ~> DSL
 downloadOptsEval (SetOutput ty next) = do

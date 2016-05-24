@@ -55,6 +55,7 @@ import SlamData.Workspace.Card.RunState (RunState(..))
 import SlamData.Render.CSS as CSS
 
 import Utils.AffableProducer (produce)
+import Utils.DOM as DOMUtils
 
 -- | Type synonym for the full type of a card component.
 type CardComponent = H.Component CS.CardStateP CQ.CardQueryP Slam
@@ -79,7 +80,9 @@ makeCardComponent def = makeCardComponentPart def render
     where
     shown cs =
       HH.div
-        [ HP.classes $ [ CSS.deckCard ] ]
+        [ HP.classes $ [ CSS.deckCard ]
+        , HP.ref (H.action ∘ CQ.SetHTMLElement)
+        ]
         $ fold
           [ CR.header def.cardType cs
           , [ HH.div
@@ -101,10 +104,12 @@ makeCardComponentPart
      → CR.CardHTML)
   → CardComponent
 makeCardComponentPart def render =
-  H.parentComponent
+  H.lifecycleParentComponent
     { render: render component initialState
     , eval
     , peek: Just (peek ∘ H.runChildF)
+    , initializer: Just (H.action CQ.UpdateDimensions)
+    , finalizer: Nothing
     }
   where
 
@@ -160,6 +165,13 @@ makeCardComponentPart def render =
     pure next
   eval (CQ.SetCardAccessType at next) =
     H.modify (CS._accessType .~ at) $> next
+  eval (CQ.SetHTMLElement el next) =
+    H.modify (CS._element .~ el) $> next
+  eval (CQ.UpdateDimensions next) = do
+    H.gets _.element >>= traverse_ \el -> do
+      { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
+      H.queryAll $ left $ H.action (CQ.SetDimensions { width, height })
+    pure next
 
   peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit
   peek = coproduct cardEvalPeek (const $ pure unit)
