@@ -25,8 +25,9 @@ import SlamData.Prelude
 
 import Control.Monad.Error.Class as Err
 
-import Data.BrowserFeatures (BrowserFeatures)
 import Data.StrMap as SM
+
+import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -36,8 +37,8 @@ import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.CardId (CardId, runCardId)
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), runCardEvalT)
-import SlamData.Workspace.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism, _MarkdownState, _MarkdownQuery)
-import SlamData.Workspace.Card.Markdown.Component.Query (QueryP)
+import SlamData.Workspace.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism', _MarkdownState, _MarkdownQuery)
+import SlamData.Workspace.Card.Markdown.Component.Query (Query(..), QueryP)
 import SlamData.Workspace.Card.Markdown.Component.State (State, StateP, initialState, formStateToVarMap)
 import SlamData.Workspace.Card.Markdown.Model (decode, encode)
 import SlamData.Workspace.Card.Port as Port
@@ -47,21 +48,21 @@ import Text.Markdown.SlamDown.Halogen.Component as SD
 
 markdownComponent
   :: CardId
-  -> BrowserFeatures
   -> H.Component CardStateP CardQueryP Slam
-markdownComponent cardId browserFeatures = makeCardComponent
+markdownComponent cardId = makeCardComponent
   { cardType: Ct.Markdown
-  , component: H.parentComponent { render: render config, eval, peek: Nothing }
+  , component:
+      H.lifecycleParentComponent
+        { render: render ("card-" ++ show (runCardId cardId))
+        , eval
+        , peek: Nothing
+        , initializer: Just $ right (H.action Init)
+        , finalizer: Nothing
+        }
   , initialState: H.parentState initialState
   , _State: _MarkdownState
-  , _Query: makeQueryPrism _MarkdownQuery
+  , _Query: makeQueryPrism' _MarkdownQuery
   }
-  where
-  config ∷ SD.SlamDownConfig
-  config =
-    { formName: "card-" ++ show (runCardId cardId)
-    , browserFeatures
-    }
 
 queryShouldRun ∷ ∀ a. QueryP a → Boolean
 queryShouldRun = coproduct (const false) (pred ∘ H.runChildF)
@@ -75,7 +76,7 @@ queryShouldRun = coproduct (const false) (pred ∘ H.runChildF)
 type MarkdownHTML a =
   H.ParentHTML
     (SD.SlamDownState Port.VarMapValue)
-    CardEvalQuery
+    (CardEvalQuery ⨁ Query)
     (SD.SlamDownQuery Port.VarMapValue)
     Slam
     a
@@ -83,33 +84,44 @@ type MarkdownDSL =
   H.ParentDSL
     State
     (SD.SlamDownState Port.VarMapValue)
-    CardEvalQuery
+    (CardEvalQuery ⨁ Query)
     (SD.SlamDownQuery Port.VarMapValue)
     Slam
     Unit
 
 render
-  ∷ ∀ a
-  . SD.SlamDownConfig
-  → a
+  ∷ String
+  → State
   → MarkdownHTML Unit
-render config _ =
-  HH.div
-    [ HP.class_ CSS.form ]
-    [ HH.slot unit \_ →
-        { component: SD.slamDownComponent config
-        , initialState: SD.emptySlamDownState
-        }
-    ]
+render formName st =
+  case st.browserFeatures of
+    Nothing → HH.div_ []
+    Just browserFeatures → do
+      HH.div
+        [ HP.class_ CSS.form ]
+        [ HH.slot unit \_ →
+            { component: SD.slamDownComponent { formName, browserFeatures }
+            , initialState: SD.emptySlamDownState
+            }
+        ]
 
-eval ∷ Natural CardEvalQuery MarkdownDSL
-eval (NotifyRunCard next) = pure next
-eval (NotifyStopCard next) = pure next
-eval (EvalCard value k) =
+eval ∷ (CardEvalQuery ⨁ Query) ~> MarkdownDSL
+eval = evalCEQ ⨁ evalQ
+
+evalQ ∷ Query ~> MarkdownDSL
+evalQ (Init next) = do
+  browserFeatures ← H.fromEff detectBrowserFeatures
+  H.modify (_ { browserFeatures = Just browserFeatures })
+  pure next
+
+evalCEQ ∷ CardEvalQuery ~> MarkdownDSL
+evalCEQ (NotifyRunCard next) = pure next
+evalCEQ (NotifyStopCard next) = pure next
+evalCEQ (EvalCard value k) =
   k <$> runCardEvalT do
     case value.inputPort of
       Just (Port.SlamDown input) → do
-        lift ∘ H.set $ Just input
+        lift $ H.modify (_ { input = Just input })
         lift ∘ H.query unit $ H.action (SD.SetDocument input)
         let desc = SD.formDescFromDocument input
         state ← lift ∘ H.query unit $ H.request SD.GetFormState
@@ -120,19 +132,19 @@ eval (EvalCard value k) =
             varMap ← lift ∘ H.liftH ∘ H.liftH $ formStateToVarMap desc st
             pure ∘ Just $ Port.VarMap varMap
       _ → Err.throwError "Expected SlamDown input"
-eval (SetupCard _ next) = pure next
-eval (Save k) = do
-  input ← fromMaybe mempty <$> H.get
+evalCEQ (SetupCard _ next) = pure next
+evalCEQ (Save k) = do
+  input ← fromMaybe mempty <$> H.gets _.input
   state ← fromMaybe SM.empty <$> H.query unit (H.request SD.GetFormState)
   pure $ k (encode { input, state })
-eval (Load json next) = do
+evalCEQ (Load json next) = do
   case decode json of
     Right { input, state } →
       void $ do
-        H.set $ Just input
+        H.modify (_ { input = Just input })
         H.query unit $ H.action (SD.SetDocument input)
         H.query unit $ H.action (SD.PopulateForm state)
     _ → pure unit
   pure next
-eval (SetCanceler _ next) = pure next
-eval (SetDimensions _ next) = pure next
+evalCEQ (SetCanceler _ next) = pure next
+evalCEQ (SetDimensions _ next) = pure next

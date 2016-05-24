@@ -19,8 +19,6 @@ module SlamData.Workspace.Card.Factory where
 
 import SlamData.Prelude
 
-import Data.BrowserFeatures (BrowserFeatures)
-
 import SlamData.Workspace.Card.Ace.Component (AceEvaluator, AceSetup, aceComponent)
 import SlamData.Workspace.Card.API.Component (apiComponent)
 import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
@@ -42,24 +40,24 @@ import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 
-cardTypeComponent ∷ CardType → CardId → BrowserFeatures → DeckComponent → CardComponent
-cardTypeComponent (Ace mode) _ _ _ = aceComponent { mode, evaluator, setup }
+cardTypeComponent ∷ CardType → CardId → DeckComponent → CardComponent
+cardTypeComponent (Ace mode) _ _ = aceComponent { mode, evaluator, setup }
   where
   evaluator = aceEvalMode mode
   setup = aceSetupMode mode
-cardTypeComponent Search _ _ _ = searchComponent
-cardTypeComponent Viz _ _ _ = vizComponent
-cardTypeComponent Chart _ _ _ = chartComponent
-cardTypeComponent Markdown cardId bf _ = markdownComponent cardId bf
-cardTypeComponent JTable _ _ _ = jtableComponent
-cardTypeComponent Download _ _ _ = downloadComponent
-cardTypeComponent API _ _ _ = apiComponent
-cardTypeComponent APIResults _ _ _ = apiResultsComponent
-cardTypeComponent NextAction _ _ _ = nextCardComponent
-cardTypeComponent Save _ _ _ = saveCardComponent
-cardTypeComponent OpenResource _ _ _ = openResourceComponent
-cardTypeComponent DownloadOptions _ _ _ = DOpts.comp
-cardTypeComponent ErrorCard _ _ _ = Error.comp
+cardTypeComponent Search _ _ = searchComponent
+cardTypeComponent Viz _ _ = vizComponent
+cardTypeComponent Chart _ _ = chartComponent
+cardTypeComponent Markdown cardId _ = markdownComponent cardId
+cardTypeComponent JTable _ _ = jtableComponent
+cardTypeComponent Download _ _ = downloadComponent
+cardTypeComponent API _ _ = apiComponent
+cardTypeComponent APIResults _ _ = apiResultsComponent
+cardTypeComponent NextAction _ _ = nextCardComponent
+cardTypeComponent Save _ _ = saveCardComponent
+cardTypeComponent OpenResource _ _ = openResourceComponent
+cardTypeComponent DownloadOptions _ _ = DOpts.comp
+cardTypeComponent ErrorCard _ _ = Error.comp
 
 aceEvalMode ∷ AceMode → AceEvaluator
 aceEvalMode MarkdownMode = markdownEval

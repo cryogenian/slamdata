@@ -42,7 +42,7 @@ import SlamData.SignIn.Component as SignIn
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _browserFeatures,  _loaded, _parentHref, _path, _version, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _loaded, _parentHref, _path, _version, initialState)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId(..))
 import SlamData.Workspace.Model as Model
@@ -82,7 +82,7 @@ render state =
     [ HH.div [ HP.classes [ workspaceClass ] ]
         [ HH.slot' cpDeck unit \_ →
            { component: Deck.comp
-           , initialState: Deck.initialState (state.browserFeatures)
+           , initialState: Deck.initialState
            }
         ]
     ]
@@ -115,13 +115,13 @@ eval (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
   pure next
 eval (GetPath k) = k <$> H.gets _.path
-eval (Reset features path next) = do
+eval (Reset path next) = do
   H.modify (_path .~ Just path)
-  queryDeck $ H.action $ Deck.Reset features path Nothing
+  queryDeck $ H.action $ Deck.Reset path Nothing
   pure next
-eval (Load features path deckIds next) = do
+eval (Load path deckIds next) = do
   H.modify (_path .~ Just path)
-  let load = void ∘ queryDeck ∘ H.action ∘ Deck.Load features path
+  let load = void ∘ queryDeck ∘ H.action ∘ Deck.Load path
   case L.head deckIds of
     Just deckId → load deckId
     Nothing → rootDeck path >>= either (const (pure unit)) load

@@ -26,7 +26,6 @@ module SlamData.Workspace.Deck.Component.State
   , _cards
   , _activeCardIndex
   , _name
-  , _browserFeatures
   , _path
   , _saveTrigger
   , _runTrigger
@@ -68,7 +67,6 @@ module SlamData.Workspace.Deck.Component.State
 import SlamData.Prelude
 
 import Data.Array as A
-import Data.BrowserFeatures (BrowserFeatures)
 import Data.Foldable (maximum, elem)
 import Data.Lens (LensP, lens, (^.))
 import Data.Ord (max)
@@ -135,7 +133,6 @@ type State =
   , activeCardIndex ∷ VirtualIndex
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
-  , browserFeatures ∷ BrowserFeatures
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , pendingCard ∷ Maybe CardId
@@ -154,15 +151,14 @@ type State =
 type CardDef = { id ∷ CardId, ty ∷ CardType }
 
 -- | Constructs a default `State` value.
-initialDeck ∷ BrowserFeatures → State
-initialDeck browserFeatures =
+initialDeck ∷ State
+initialDeck =
   { id: Nothing
   , fresh: 0
   , accessType: Editable
   , cards: mempty
   , activeCardIndex: VirtualIndex 0
   , name: Nothing
-  , browserFeatures
   , path: Nothing
   , saveTrigger: Nothing
   , globalVarMap: SM.empty
@@ -203,9 +199,6 @@ _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
 -- | The display name of the deck.
 _name ∷ ∀ a r. LensP {name ∷ a |r} a
 _name = lens _.name _{name = _}
-
-_browserFeatures ∷ ∀ a r. LensP {browserFeatures ∷ a |r} a
-_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
 -- | The path to the deck in the filesystem
 _path ∷ ∀ a r. LensP {path ∷ a |r} a
@@ -428,20 +421,18 @@ deckPath state = do
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
-  ∷ BrowserFeatures
-  → Maybe DirPath
+  ∷ Maybe DirPath
   → Maybe DeckId
   → Model.Deck
   → State
   → Tuple (Array Card.Model) State
-fromModel browserFeatures path deckId { cards, name } state =
+fromModel path deckId { cards, name } state =
   Tuple
     cards
     ((state
         { accessType = Editable -- why was it ReadOnly?
         , activeCardIndex = VirtualIndex $ A.length cardDefs - 1 -- fishy!
         , displayMode = Normal
-        , browserFeatures = browserFeatures
         , cards = cardDefs
         , failingCards = S.empty
         , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards

@@ -18,7 +18,6 @@ module SlamData.Workspace.Component.Query where
 
 import SlamData.Prelude
 
-import Data.BrowserFeatures as BF
 import Data.List as L
 
 import Halogen as H
@@ -36,8 +35,8 @@ data Query a
   = SetAccessType AccessType a
   | SetParentHref String a
   | DismissAll a
-  | Reset BF.BrowserFeatures UP.DirPath a
-  | Load BF.BrowserFeatures UP.DirPath (L.List DeckId) a
+  | Reset UP.DirPath a
+  | Load UP.DirPath (L.List DeckId) a
   | GetPath (Maybe UP.DirPath → a)
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)

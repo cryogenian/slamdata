@@ -18,7 +18,6 @@ module SlamData.Workspace.Component.State where
 
 import SlamData.Prelude
 
-import Data.BrowserFeatures (BrowserFeatures)
 import Data.Lens (LensP, lens)
 
 import SlamData.Workspace.AccessType (AccessType(..))
@@ -27,17 +26,15 @@ import Utils.Path (DirPath)
 
 type State =
   { accessType ∷ AccessType
-  , browserFeatures ∷ BrowserFeatures
   , loaded ∷ Boolean
   , version ∷ Maybe String
   , parentHref ∷ Maybe String
   , path ∷ Maybe DirPath
   }
 
-initialState ∷ { browserFeatures ∷ BrowserFeatures, version ∷ Maybe String } → State
-initialState {browserFeatures, version} =
+initialState ∷ Maybe String → State
+initialState version =
   { accessType: Editable
-  , browserFeatures
   , loaded: false
   , version
   , parentHref: Nothing
@@ -46,9 +43,6 @@ initialState {browserFeatures, version} =
 
 _accessType ∷ ∀ a r. LensP {accessType ∷ a|r} a
 _accessType = lens _.accessType _{accessType = _}
-
-_browserFeatures ∷ ∀ a r. LensP {browserFeatures ∷ a|r} a
-_browserFeatures = lens _.browserFeatures _{browserFeatures = _}
 
 _loaded ∷ ∀ a r. LensP {loaded ∷ a|r} a
 _loaded = lens _.loaded _{loaded = _}

@@ -27,6 +27,8 @@ module SlamData.Workspace.Card.Markdown.Component.State
 import SlamData.Prelude
 
 import Control.Monad.Eff.Class (class MonadEff)
+
+import Data.BrowserFeatures (BrowserFeatures)
 import Data.Date.Locale as DL
 import Data.StrMap as SM
 
@@ -35,20 +37,27 @@ import Halogen (ParentState)
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component as SDH
 
+import SlamData.Effects (Slam)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
+import SlamData.Workspace.Card.Markdown.Component.Query (Query)
 import SlamData.Workspace.Card.Markdown.Interpret as MDI
 import SlamData.Workspace.Card.Port.VarMap as VM
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
-import SlamData.Effects (Slam)
 
-type State = Maybe (SD.SlamDownP VM.VarMapValue)
+type State =
+  { browserFeatures ∷ Maybe BrowserFeatures
+  , input ∷ Maybe (SD.SlamDownP VM.VarMapValue)
+  }
 
-initialState :: State
-initialState = Nothing
+initialState ∷ State
+initialState =
+  { browserFeatures: Nothing
+  , input: Nothing
+  }
 
 type StateP =
   ParentState
     State (SDH.SlamDownState VM.VarMapValue)
-    CardEvalQuery (SDH.SlamDownQuery VM.VarMapValue)
+    (CardEvalQuery ⨁ Query) (SDH.SlamDownQuery VM.VarMapValue)
     Slam Unit
 
 formStateToVarMap
