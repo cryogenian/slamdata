@@ -98,13 +98,8 @@ formFieldValueToVarMapValue v =
             month ← liftMaybe $ Enum.toEnum localDateTime.date.month
             dateTime ← MT.MaybeT ∘ liftEff $ DL.dateTime year month day hour minute second millisecond
             pure ∘ EJSON.timestamp $ D.toISOString dateTime
-      SD.CheckBoxes (Identity bs) (Identity xs) →
-        L.zip bs xs
-          # L.filter fst
-          # L.mapMaybe (getLiteral ∘ snd)
-          # L.fromList
-          # EJSON.array
-          # pure
+      SD.CheckBoxes (Identity sel) _ →
+        pure ∘ EJSON.array ∘ L.fromList $ L.mapMaybe getLiteral sel
       SD.RadioButtons (Identity x) _ →
         pure ∘ EJSON.array $ getLiteral x
       SD.DropDown mx _ → do
