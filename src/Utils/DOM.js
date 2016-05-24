@@ -39,3 +39,13 @@ exports.offsetLeft = function(el) {
        return el.offsetLeft;
     };
 };
+
+
+exports.getTextWidth = function(text, font) {
+    return function() {
+        var canvas = document.createElement("canvas");
+        var context = canvas.getContext("2d");
+        context.font = font;
+        return context.measureText(text).width;
+    };
+};

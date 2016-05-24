@@ -37,6 +37,7 @@ foreign import blur :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
 foreign import focus :: forall e. HTMLElement -> Eff (dom :: DOM|e) Unit
 foreign import offsetLeft :: forall e. HTMLElement -> Eff (dom :: DOM|e) Number
 foreign import getBoundingClientRect :: forall eff.  HTMLElement -> Eff (dom :: DOM | eff) DOMRect
+foreign import getTextWidth :: forall eff. String -> String -> Eff (dom :: DOM | eff) Number
 
 type DOMRect =
   { left :: Number
