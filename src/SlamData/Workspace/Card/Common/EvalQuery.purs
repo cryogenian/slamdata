@@ -16,71 +16,29 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Common.EvalQuery
   ( CardEvalQuery(..)
-  , CardEvalResult
-  , CardEvalInput
   , CardSetupInfo
-  , CardEvalT
-  , runCardEvalT
-  , temporaryOutputResource
   , liftWithCanceler
   , liftWithCanceler'
   , liftWithCancelerP
   , liftWithCancelerP'
+  , module SlamData.Workspace.Card.Eval.CardEvalT
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Aff (Canceler)
-import Control.Monad.Error.Class as EC
-import Control.Monad.Except.Trans as ET
-import Control.Monad.Writer.Class as WC
-import Control.Monad.Writer.Trans as WT
 
-import Data.Argonaut.Core (Json)
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as P
-
-import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Port.VarMap as VM
-import SlamData.Effects (Slam, SlamDataEffects)
-
-import Utils.Path (DirPath, FilePath)
+import Data.Argonaut (Json)
 
 import Halogen (ParentDSL, ComponentDSL)
 import Halogen.Component.Utils as Hu
 
-type CardEvalInput =
-  { path ∷ Maybe DirPath
-  , inputPort ∷ Maybe Port.Port
-  , cardId ∷ CID.CardId
-  , globalVarMap ∷ VM.VarMap
-  }
+import SlamData.Effects (Slam, SlamDataEffects)
+import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.Eval.CardEvalT (CardEvalInput, CardEvalResult, CardEvalT, runCardEvalT, temporaryOutputResource)
+import SlamData.Workspace.Card.Port as Port
 
-type CardSetupInfo =
-  { path ∷ Maybe DirPath
-  , inputPort ∷ Port.Port
-  , cardId ∷ CID.CardId
-  }
-
-temporaryOutputResource
-  ∷ ∀ r
-  . {path ∷ Maybe DirPath, cardId ∷ CID.CardId | r}
-  → FilePath
-temporaryOutputResource info =
-  outputDirectory </> outputFile
-  where
-    outputDirectory =
-      filterMaybe (_ == P.rootDir) info.path #
-        fromMaybe (P.rootDir </> P.dir ".tmp")
-
-    outputFile =
-      P.file $ "out" ⊕ CID.cardIdToString info.cardId
-
-    filterMaybe ∷ ∀ a. (a → Boolean) → Maybe a → Maybe a
-    filterMaybe p m =
-      m >>= \x →
-        if p x then Nothing else pure x
+import Utils.Path (DirPath)
 
 -- | The query algebra shared by the inner parts of a card component.
 -- |
@@ -104,59 +62,11 @@ data CardEvalQuery a
   | Load Json a
   | SetDimensions { width ∷ Number, height ∷ Number } a
 
--- | The result value produced when evaluating a card.
--- |
--- | - `output` is the value that this card component produces that is taken as
--- |   the input for dependant cards. Not every card produces an output.
--- | - `messages` is for any status messages that arise during
--- |   evaluation.
-type CardEvalResult =
-  { output ∷ Maybe Port.Port
-  , messages ∷ Array String
+type CardSetupInfo =
+  { path ∷ Maybe DirPath
+  , input ∷ Port.Port
+  , cardId ∷ CID.CardId
   }
-
-type CardEvalTP m = ET.ExceptT String (WT.WriterT (Array String) m)
-newtype CardEvalT m a = CardEvalT (CardEvalTP m a)
-
-getCardEvalT ∷ ∀ m a. CardEvalT m a → CardEvalTP m a
-getCardEvalT (CardEvalT m) = m
-
-instance functorCardEvalT ∷ (Functor m) ⇒ Functor (CardEvalT m) where
-  map f = getCardEvalT ⋙ map f ⋙ CardEvalT
-
-instance applyCardEvalT ∷ (Apply m) ⇒ Apply (CardEvalT m) where
-  apply (CardEvalT f) = getCardEvalT ⋙ apply f ⋙ CardEvalT
-
-instance applicativeCardEvalT ∷ (Applicative m) ⇒ Applicative (CardEvalT m) where
-  pure = pure ⋙ CardEvalT
-
-instance bindCardEvalT ∷ (Monad m) ⇒ Bind (CardEvalT m) where
-  bind (CardEvalT m) = (_ ⋙ getCardEvalT) ⋙ bind m ⋙ CardEvalT
-
-instance monadCardEvalT ∷ (Monad m) ⇒ Monad (CardEvalT m)
-
-instance monadTransCardEvalT ∷ MonadTrans CardEvalT where
-  lift = lift ⋙ lift ⋙ CardEvalT
-
-instance monadWriterCardEvalT ∷ (Monad m) ⇒ WC.MonadWriter (Array String) (CardEvalT m) where
-  writer = WC.writer ⋙ lift ⋙ CardEvalT
-  listen = getCardEvalT ⋙ WC.listen ⋙ CardEvalT
-  pass = getCardEvalT ⋙ WC.pass ⋙ CardEvalT
-
-instance monadErrorCardEvalT ∷ (Monad m) ⇒ EC.MonadError String (CardEvalT m) where
-  throwError = EC.throwError ⋙ CardEvalT
-  catchError (CardEvalT m) = CardEvalT ∘ EC.catchError m ∘ (getCardEvalT ∘ _)
-
-runCardEvalT
-  ∷ ∀ m
-  . (Functor m)
-  ⇒ CardEvalT m (Maybe Port.Port)
-  → m CardEvalResult
-runCardEvalT (CardEvalT m) =
-  WT.runWriterT (ET.runExceptT m) <#> uncurry \r ms →
-    { output: either (Just ∘ Port.CardError) id r
-    , messages: ms
-    }
 
 liftWithCancelerP
   ∷ ∀ a state slot innerQuery innerState

@@ -21,15 +21,12 @@ module SlamData.Workspace.Card.Query.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as EC
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-import Control.Monad.Writer.Class as WC
 
-import Data.Lens as L
 import Data.Path.Pathy as Path
 import Data.String as Str
 import Data.StrMap as SM
+import Data.Lens (_Just, (^?))
 
 import Ace.Halogen.Component as Ace
 import Ace.Types (Completion)
@@ -38,56 +35,20 @@ import Halogen (query, action, request, fromEff)
 
 import SlamData.Workspace.Card.Ace.Component (AceDSL)
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
+import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Quasar.FS (messageIfFileNotFound) as Quasar
-import SlamData.Quasar.Query (viewQuery, compile) as Quasar
 
 import Utils.Ace (readOnly)
 import Utils.Completions (mkCompletion, pathCompletions)
 
 queryEval ∷ CEQ.CardEvalInput → String → AceDSL CEQ.CardEvalResult
-queryEval info sql =
-  CEQ.runCardEvalT do
-    case info.inputPort of
-      Just Port.Blocked →
-        pure Nothing
-      _ → do
-        lift $ addCompletions varMap
-        plan ← lift $ CEQ.liftWithCancelerP $
-          Quasar.compile backendPath sql varMap
-
-        Quasar.viewQuery
-            backendPath
-            outputResource
-            sql
-            varMap
-          # CEQ.liftWithCancelerP
-          # lift
-          >>= either (EC.throwError ∘ Exn.message) pure
-
-        Quasar.messageIfFileNotFound
-            outputResource
-            "Requested collection doesn't exist"
-          # CEQ.liftWithCancelerP
-          # lift
-          >>= either (EC.throwError ∘ Exn.message) (traverse EC.throwError)
-
-        for_ plan \p → WC.tell ["Plan: " ⊕ p]
-
-        pure ∘ Just $ Port.TaggedResource { resource: outputResource, tag: pure sql }
-  where
-  varMap ∷ SM.StrMap String
-  varMap =
-    info.inputPort
-    >>= L.preview Port._VarMap
-    # maybe SM.empty (map Port.renderVarMapValue)
-
-  outputResource = CEQ.temporaryOutputResource info
-  backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir outputResource)
+queryEval info sql = do
+  addCompletions $ fromMaybe SM.empty $ info.input ^? _Just ∘ Port._VarMap
+  Eval.runEvalCard info (Eval.Query sql)
 
 querySetup ∷ CEQ.CardSetupInfo → AceDSL Unit
-querySetup { inputPort, path } =
-  case inputPort of
+querySetup { input, path } =
+  case input of
     Port.VarMap varMap →
       addCompletions varMap
 

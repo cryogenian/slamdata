@@ -37,6 +37,7 @@ import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism, _JTableState, _JTableQuery)
+import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.JTable.Component.Render (render)
 import SlamData.Workspace.Card.JTable.Component.State as JTS
@@ -63,8 +64,10 @@ queryShouldRun = coproduct (const false) pred
 evalCard ∷ Natural CEQ.CardEvalQuery (H.ComponentDSL JTS.State QueryP Slam)
 evalCard (CEQ.NotifyRunCard next) = pure next
 evalCard (CEQ.NotifyStopCard next) = pure next
-evalCard (CEQ.EvalCard value k) = do
-  k <$> CEQ.runCardEvalT (runTable value.inputPort)
+evalCard (CEQ.EvalCard input k) = do
+  k <$> CEQ.runCardEvalT do
+    port ← Eval.evalCard input Eval.Pass
+    runTable port $> port
 evalCard (CEQ.SetupCard _ next) = pure next
 evalCard (CEQ.Save k) =
   pure ∘ k =<< H.gets (Model.encode ∘ JTS.toModel)
@@ -75,10 +78,10 @@ evalCard (CEQ.SetCanceler _ next) = pure next
 evalCard (CEQ.SetDimensions _ next) = pure next
 
 runTable
-  ∷ Maybe Port.Port
-  → CEQ.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) (Maybe Port.Port)
-runTable inputPort = case inputPort of
-  Just (Port.TaggedResource { tag, resource }) → do
+  ∷ Port.Port
+  → CEQ.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
+runTable = case _ of
+  Port.TaggedResource { tag, resource } → do
     oldInput ← lift $ H.gets _.input
     when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
       $ lift $ resetState
@@ -103,11 +106,7 @@ runTable inputPort = case inputPort of
              , pageSize: p.pageSize
              })
 
-    pure inputPort
-
-  Just Port.Blocked → do
-    lift $ resetState
-    pure Nothing
+  Port.Blocked → lift $ resetState
 
   _ → throwError "Expected a TaggedResource input"
 

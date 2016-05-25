@@ -24,7 +24,7 @@ module SlamData.Workspace.Card.Component.State
   , _tickStopper
   , _messages
   , _messageVisibility
-  , _hasResults
+  , _hasRun
   , _output
   , _canceler
   , _element
@@ -89,8 +89,7 @@ import SlamData.Workspace.Card.Viz.Component.State as Viz
 -- |   during evaluation.
 -- | - `messageVisibility` determines whether the messages should be shown or
 -- |   not.
--- | - `hasResults` tracks whether the card has been evaluated successfully and
--- |   produced a result.
+-- | - `hasRun` tracks whether the card has been run.
 type CardState =
   { accessType ∷ AccessType
   , visibility ∷ Visibility
@@ -98,7 +97,7 @@ type CardState =
   , tickStopper ∷ Slam Unit
   , messages ∷ Array String
   , messageVisibility ∷ Visibility
-  , hasResults ∷ Boolean
+  , hasRun ∷ Boolean
   , output ∷ Maybe Port
   , canceler ∷ Canceler SlamDataEffects
   , element ∷ Maybe HTMLElement
@@ -115,7 +114,7 @@ initialCardState =
   , tickStopper: pure unit
   , messages: []
   , messageVisibility: Invisible
-  , hasResults: false
+  , hasRun: false
   , output: Nothing
   , canceler: mempty
   , element: Nothing
@@ -139,8 +138,8 @@ _messages = lens _.messages (_ { messages = _ })
 _messageVisibility ∷ LensP CardState Visibility
 _messageVisibility = lens _.messageVisibility (_ { messageVisibility = _ })
 
-_hasResults ∷ LensP CardState Boolean
-_hasResults = lens _.hasResults (_ { hasResults = _ })
+_hasRun ∷ LensP CardState Boolean
+_hasRun = lens _.hasRun (_ { hasRun = _ })
 
 -- | The last output value computed for the card. This may not be up to date
 -- | with the exact state of the card, but is the most recent result from when

@@ -74,20 +74,20 @@ eval ∷ QueryP ~> DSL
 eval = coproduct cardEval (absurd ∘ getConst)
 
 cardEval ∷ Ec.CardEvalQuery ~> DSL
-cardEval (Ec.EvalCard { inputPort } continue) = do
+cardEval (Ec.EvalCard { input } continue) = do
   map continue $ Ec.runCardEvalT do
-    case inputPort of
-      Just P.Blocked → lift $ pure $ Just P.Blocked
+    case input of
+      Just P.Blocked → lift $ pure $ P.Blocked
       Just (P.DownloadOptions opts) → lift do
         handleDownloadPort opts
-        pure $ Just P.Blocked
+        pure $ P.Blocked
       _ → throwError "Incorrect input in download card"
 cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = pure $ k jsonEmptyObject
 cardEval (Ec.Load json next) = pure next
-cardEval (Ec.SetupCard { inputPort } next) = do
-  case inputPort of
+cardEval (Ec.SetupCard { input } next) = do
+  case input of
     P.DownloadOptions opts → do
       handleDownloadPort opts
       pure unit

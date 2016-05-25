@@ -16,6 +16,7 @@ module SlamData.Workspace.Card.Port.VarMap
   , VarMapValue(..)
   , renderVarMapValue
   , parseVarMapValue
+  , emptyVarMap
   ) where
 
 import SlamData.Prelude
@@ -186,3 +187,6 @@ parseVarMapValue =
         <#> S.fromCharArray
 
 type VarMap = SM.StrMap VarMapValue
+
+emptyVarMap ∷ VarMap
+emptyVarMap = SM.empty

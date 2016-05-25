@@ -123,17 +123,16 @@ eval ∷ QueryP ~> DSL
 eval = coproduct cardEval downloadOptsEval
 
 cardEval ∷ Ec.CardEvalQuery ~> DSL
-cardEval (Ec.EvalCard {inputPort} continue) = do
+cardEval (Ec.EvalCard {input} continue) = do
   map continue $ Ec.runCardEvalT do
-    case inputPort of
+    case input of
       Just P.Blocked → lift do
         H.modify (_source .~ Nothing)
-        pure $ Just P.Blocked
+        pure $ P.Blocked
       Just (P.TaggedResource {resource}) → lift do
         H.modify (_source ?~ resource)
         state ← H.get
         pure
-          $ Just
           $ P.DownloadOptions
               { resource
               , compress: state.compress
@@ -144,8 +143,8 @@ cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = map (k ∘ encode) H.get
 cardEval (Ec.Load json next) = for_ (decode json) H.set $> next
-cardEval (Ec.SetupCard {inputPort} next) = do
-  H.modify $ _source .~ preview P._Resource inputPort
+cardEval (Ec.SetupCard {input} next) = do
+  H.modify $ _source .~ preview P._Resource input
   pure next
 cardEval (Ec.SetCanceler _ next) = pure next
 cardEval (Ec.SetDimensions _ next) = pure next

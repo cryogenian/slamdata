@@ -31,7 +31,7 @@ import Control.Monad.Aff (cancel)
 import Control.Monad.Eff.Exception as Exn
 
 import Data.Array as Arr
-import Data.Argonaut (jsonNull)
+import Data.Argonaut as JSON
 import Data.Date as Date
 import Data.Function (on)
 import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
@@ -89,7 +89,7 @@ makeCardComponent def = makeCardComponentPart def render
                 [ HP.classes $ cardClasses def.cardType ]
                 [ HH.slot unit \_ → {component, initialState} ]
             ]
-          , (guard canHaveOutput) $> CR.statusBar cs.hasResults cs
+          , (guard canHaveOutput) $> CR.statusBar cs.hasRun cs
           ]
     canHaveOutput = not $ Arr.null $ nextCardTypes $ Just def.cardType
 
@@ -138,11 +138,11 @@ makeCardComponentPart def render =
     H.modify
       $ (CS._tickStopper .~ tickStopper)
     result ← H.query unit (left (H.request (CQ.EvalCard input)))
-    for_ result \{ output } → H.modify (CS._hasResults .~ isJust output)
     H.fromAff tickStopper
     H.modify
       $ (CS._runState %~ finishRun)
-      ∘ (CS._output .~ (_.output =<< result))
+      ∘ (CS._hasRun .~ true)
+      ∘ (CS._output .~ (_.output <$> result))
       ∘ (CS._messages .~ (maybe [] _.messages result))
     maybe (liftF HaltHF) (pure ∘ k ∘ _.output) result
   eval (CQ.RefreshCard next) = pure next
@@ -152,16 +152,11 @@ makeCardComponentPart def render =
     H.modify (CS._runState .~ RunElapsed elapsed) $> next
   eval (CQ.GetOutput k) = k <$> H.gets (_.output)
   eval (CQ.SaveCard cardId cardType k) = do
-    { hasResults } ← H.get
+    hasRun ← H.gets _.hasRun
     json ← H.query unit (left (H.request CQ.Save))
-    pure ∘ k $
-      { cardId
-      , cardType
-      , hasRun: hasResults
-      , state: fromMaybe jsonNull json
-      }
+    pure $ k { cardId, cardType, hasRun, inner: fromMaybe JSON.jsonNull json }
   eval (CQ.LoadCard model next) = do
-    H.query unit (left (H.action (CQ.Load model.state)))
+    H.query unit (left (H.action (CQ.Load model.inner)))
     pure next
   eval (CQ.SetCardAccessType at next) =
     H.modify (CS._accessType .~ at) $> next

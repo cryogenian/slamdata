@@ -135,7 +135,8 @@ cardEval (Eq.EvalCard info k) =
   k <$> Eq.runCardEvalT do
     mbRes ← lift $ H.gets _.selected
     case mbRes of
-      Nothing → pure Nothing
+      -- TODO: not exactly blocked, just there's no valid next card until a resource is selected -gb
+      Nothing → pure Port.Blocked
       Just resource → do
         msg ←
           Quasar.messageIfFileNotFound
@@ -145,7 +146,7 @@ cardEval (Eq.EvalCard info k) =
           # lift
         case msg of
           Right Nothing →
-            pure ∘ Just $ Port.TaggedResource { resource, tag: Nothing }
+            pure $ Port.TaggedResource { resource, tag: Nothing }
           Right (Just err) →
             Err.throwError err
           Left exn →

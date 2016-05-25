@@ -65,13 +65,13 @@ eval = coproduct cardEval ECQ.initiality
 cardEval ∷ CEQ.CardEvalQuery ~> DSL
 cardEval q =
   case q of
-    CEQ.EvalCard {inputPort} k →
+    CEQ.EvalCard {input} k →
       k <$> CEQ.runCardEvalT do
         lift ∘ H.modify ∘ Lens.set ECS._message $
-          inputPort ^? Lens._Just ∘ Port._CardError
-        pure $ Just Port.Blocked
-    CEQ.SetupCard {inputPort} next → do
-      H.modify ∘ Lens.set ECS._message $ inputPort ^? Port._CardError
+          input ^? Lens._Just ∘ Port._CardError
+        pure Port.Blocked
+    CEQ.SetupCard {input} next → do
+      H.modify ∘ Lens.set ECS._message $ input ^? Port._CardError
       pure next
     CEQ.NotifyRunCard next →
       pure next

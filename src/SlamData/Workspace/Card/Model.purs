@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Argonaut ((:=), (~>), (.?))
 import Data.Argonaut as J
 
+import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 
@@ -32,7 +33,7 @@ import SlamData.Workspace.Card.CardType as CT
 type Model =
   { cardId :: CID.CardId
   , cardType :: CT.CardType
-  , state :: J.Json
+  , inner :: J.Json
   , hasRun :: Boolean
   }
 
@@ -40,15 +41,35 @@ encode :: Model -> J.Json
 encode card
    = "cardId" := card.cardId
   ~> "cardType" := card.cardType
-  ~> "state" := card.state
+  ~> "inner" := card.inner
   ~> "hasRun" := card.hasRun
   ~> J.jsonEmptyObject
 
 decode :: J.Json -> Either String Model
 decode =
   J.decodeJson >=> \obj ->
-    { cardId: _, cardType: _, hasRun: _, state: _ }
+    { cardId: _, cardType: _, hasRun: _, inner: _ }
       <$> obj .? "cardId"
       <*> obj .? "cardType"
       <*> obj .? "hasRun"
-      <*> obj .? "state"
+      <*> obj .? "inner"
+
+-- TODO: this implementation is terrible and fragile. I just happen to know that
+-- the `inner` representation for these components is a naked string. Ideally
+-- these should be at least newtyped so a specifically typed decoder can exist.
+--
+-- Better still, inner should be an `AnyCardModel` sum of possible model types.
+--
+-- -gb
+modelToEval :: Model -> Eval.Eval
+modelToEval { cardType, inner } =
+  fromMaybe (Eval.Error "A card inner model did not decode as expected") $
+    case cardType of
+      CT.Ace CT.SQLMode →
+        either (const Nothing) (Just ∘ Eval.Query) $ J.decodeJson inner
+      CT.Search →
+        either (const Nothing) (Just ∘ Eval.Search) $ J.decodeJson inner
+      CT.Save →
+        either (const Nothing) (Just ∘ Eval.Save) $ J.decodeJson inner
+      _ →
+        Just Eval.Pass

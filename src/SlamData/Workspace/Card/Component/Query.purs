@@ -84,7 +84,7 @@ import SlamData.Workspace.Card.Viz.Component.Query as Viz
 data CardQuery a
   = RunCard a
   | StopCard a
-  | UpdateCard CardEvalInput (Maybe Port → a)
+  | UpdateCard CardEvalInput (Port → a)
   | RefreshCard a
   | ToggleMessages a
   | Tick Milliseconds a

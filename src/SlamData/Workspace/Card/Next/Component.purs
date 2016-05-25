@@ -104,7 +104,7 @@ eval = coproduct cardEval nextEval
 
 cardEval :: Ec.CardEvalQuery ~> NextDSL
 cardEval (Ec.EvalCard value k) = do
-  case value.inputPort of
+  case value.input of
     Nothing →
       H.modify
         $ (_message .~ Nothing)
@@ -116,7 +116,7 @@ cardEval (Ec.EvalCard value k) = do
              ])
     Just port →
       updatePort port
-  map k ∘ Ec.runCardEvalT $ pure Nothing
+  map k ∘ Ec.runCardEvalT $ pure P.Blocked
 cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = pure $ k jsonEmptyObject

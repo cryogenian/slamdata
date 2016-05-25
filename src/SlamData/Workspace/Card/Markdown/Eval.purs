@@ -65,7 +65,7 @@ markdownEval { cardId, path } str =
     result ← lift ∘ Aff.attempt ∘ evalEmbeddedQueries path cardId $ SDP.parseMd str
     doc ← either (Err.throwError ∘ Exn.message) pure result
     WC.tell [ "Exported fields: " ⊕ S.joinWith ", " (findFields doc) ]
-    pure ∘ Just $ Port.SlamDown doc
+    pure $ Port.SlamDown doc
 
 markdownSetup
   ∷ CEQ.CardSetupInfo

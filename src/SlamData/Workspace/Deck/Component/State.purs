@@ -129,7 +129,8 @@ type State =
   { id ∷ Maybe DeckId
   , fresh ∷ Int
   , accessType ∷ AccessType
-  , cards ∷ Array CardDef
+  , cards ∷ Array CardDef -- TODO: this becomes list of card models instead -gb
+  -- TODO: add list for the ephemeral cards that we actually render, recomputed when the deck is run -gb
   , activeCardIndex ∷ VirtualIndex
   , name ∷ Maybe String
   , path ∷ Maybe DirPath

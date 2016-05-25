@@ -276,20 +276,20 @@ vizEval q = do
 cardEval ∷ CardEvalQuery ~> VizDSL
 cardEval (EvalCard info continue) =
   continue <$> runCardEvalT do
-    case info.inputPort of
+    case info.input of
       Just P.Blocked → do
         lift ∘ H.modify
           $ (_needToUpdate .~ true)
           ∘ (_sample .~ mempty)
           ∘ (_records .~ mempty)
           ∘ (_availableChartTypes .~ mempty)
-        pure Nothing
+        pure P.Blocked
       _ → do
         needToUpdate ← lift $ H.gets _.needToUpdate
         when needToUpdate $ withLoading do
           r ←
             maybe (throwError "Incorrect port in visual builder card") pure
-               $ info.inputPort
+               $ info.input
                >>= preview P._Resource
           lift $ updateForms r
           records ←
@@ -305,7 +305,7 @@ cardEval (EvalCard info continue) =
             ⊕ "please consider using 'limit' or 'group by' in your H.request"
           lift $ H.modify $ _records .~ records
         lift $ H.modify $ _needToUpdate .~ true
-        Just <$> responsePort
+        responsePort
   where
   withLoading action = do
     lift $ H.modify $ _loading .~ true

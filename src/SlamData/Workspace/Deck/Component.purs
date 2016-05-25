@@ -407,7 +407,7 @@ updateNextActionCard = do
   globalVarMap ← H.gets _.globalVarMap
   let
     info ∷ CEQ.CardEvalInput
-    info = { path, inputPort, cardId: top, globalVarMap }
+    info = { path, input: inputPort, cardId: top, globalVarMap }
 
   void
     $ H.query' cpCard (CardSlot top)
@@ -427,7 +427,7 @@ createCard cardType = do
         map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
       for_ input \input' → do
         path ← H.gets DCS.deckPath
-        let setupInfo = { path, inputPort: input', cardId: newCardId }
+        let setupInfo = { path, input: input', cardId: newCardId }
         void
           $ H.query' cpCard  (CardSlot newCardId)
           $ right
@@ -500,10 +500,11 @@ runPendingCards = do
       $ H.query' cpCard (CardSlot cardId)
       $ left (H.request GetOutput)
     else do
-      let input = { path, inputPort, cardId, globalVarMap }
+      let input = { path, input: inputPort, cardId, globalVarMap }
+      -- TODO: insert model-based eval here, and then pass through the input &
+      -- eval-computed output ports to the card -gb
       outputPort ←
-        map join
-          $ H.query' cpCard (CardSlot cardId)
+        H.query' cpCard (CardSlot cardId)
           $ left $ H.request (UpdateCard input)
       H.modify $ DCS._failingCards %~ case outputPort of
         Just (CardError msg) → S.insert cardId

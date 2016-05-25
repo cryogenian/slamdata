@@ -76,7 +76,7 @@ eval (ECH.NotifyRunCard next) = pure next
 eval (ECH.NotifyStopCard next) = pure next
 eval (ECH.EvalCard value continue) =
   continue <$> CEQ.runCardEvalT do
-    case value.inputPort of
+    case value.input of
       Just (ChartOptions options) → do
         lift do
           state ← H.get
@@ -90,10 +90,10 @@ eval (ECH.EvalCard value continue) =
 
           H.query unit $ H.action $ HECH.Set options.options
           H.query unit $ H.action HECH.Resize
-        pure $ Just Blocked
+        pure Blocked
       Just Blocked → do
         lift $ H.query unit $ H.action HECH.Clear
-        pure Nothing
+        pure Blocked
       _ →
         throwError "Expected ChartOptions input"
 eval (ECH.SetupCard _ next) = pure next

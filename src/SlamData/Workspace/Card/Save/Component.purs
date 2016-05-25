@@ -23,14 +23,9 @@ module SlamData.Workspace.Card.Save.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as EC
-import Control.Monad.Writer.Class as WC
-
 import Data.Argonaut (decodeJson, encodeJson)
 import Data.Lens ((.~))
 import Data.Path.Pathy as Pt
-import Data.StrMap as Sm
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -40,21 +35,16 @@ import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Events.Indexed as HE
 
 import SlamData.Effects (Slam)
+import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery as Eq
 import SlamData.Workspace.Card.Component as Cc
-import SlamData.Workspace.Card.Port as P
+import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Save.Component.Query (Query(..), QueryP)
 import SlamData.Workspace.Card.Save.Component.State (State, initialState, _pathString)
-import SlamData.Quasar.FS (messageIfFileNotFound) as Api
-import SlamData.Quasar.Query (fileQuery) as Api
-import SlamData.Render.CSS as Rc
-
-import Utils.Path as Up
 
 type SaveHTML = H.ComponentHTML QueryP
 type SaveDSL = H.ComponentDSL State QueryP Slam
-
 
 saveCardComponent ∷ Cc.CardComponent
 saveCardComponent = Cc.makeCardComponent
@@ -100,41 +90,7 @@ eval = coproduct cardEval saveEval
 
 cardEval ∷ Natural Eq.CardEvalQuery SaveDSL
 cardEval (Eq.EvalCard info k) =
-  k <$> Eq.runCardEvalT do
-    case info.inputPort of
-      Just P.Blocked →
-        pure Nothing
-      Just (P.TaggedResource {tag, resource}) → do
-        pt ← lift $ H.gets _.pathString
-        case pt, Up.parseAnyPath pt of
-          "", _ →
-            pure Nothing
-          _, Just (Right fp) → do
-            outputResource ←
-              Api.fileQuery resource fp "select * from {{path}}" Sm.empty
-               # Eq.liftWithCanceler'
-               # lift
-               >>= either (EC.throwError <<< Exn.message) pure
-
-            Api.messageIfFileNotFound
-              outputResource
-              "Error saving file, please try another location"
-              # Eq.liftWithCanceler'
-              # lift
-              >>= either (EC.throwError <<< Exn.message) (traverse EC.throwError)
-
-            when (fp ≠ outputResource)
-              $ EC.throwError
-              $ "Resource: " ⊕ Pt.printPath outputResource ⊕ " hasn't been modified"
-
-            WC.tell ["Resource successfully saved as: " ⊕ Pt.printPath fp]
-
-            pure ∘ Just $ P.TaggedResource { resource: outputResource, tag: Nothing }
-          _, _ →
-            EC.throwError $ pt ⊕ " is incorrect file path"
-
-      _ →
-        EC.throwError $ "Expected Resource input"
+  k <$> (Eval.runEvalCard info ∘ Eval.Save =<< H.gets _.pathString)
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.NotifyStopCard next) = pure next
 cardEval (Eq.Save k) = do

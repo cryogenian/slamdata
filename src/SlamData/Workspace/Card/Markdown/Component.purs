@@ -119,7 +119,7 @@ evalCEQ (NotifyRunCard next) = pure next
 evalCEQ (NotifyStopCard next) = pure next
 evalCEQ (EvalCard value k) =
   k <$> runCardEvalT do
-    case value.inputPort of
+    case value.input of
       Just (Port.SlamDown input) → do
         lift $ H.modify (_ { input = Just input })
         lift ∘ H.query unit $ H.action (SD.SetDocument input)
@@ -130,7 +130,7 @@ evalCEQ (EvalCard value k) =
             Err.throwError "An internal error occured: GetFormState query returned Nothing"
           Just st → do
             varMap ← lift ∘ H.liftH ∘ H.liftH $ formStateToVarMap desc st
-            pure ∘ Just $ Port.VarMap varMap
+            pure $ Port.VarMap varMap
       _ → Err.throwError "Expected SlamDown input"
 evalCEQ (SetupCard _ next) = pure next
 evalCEQ (Save k) = do
