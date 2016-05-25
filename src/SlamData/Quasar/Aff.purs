@@ -20,6 +20,10 @@ import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
+import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Eff.Ref as Ref
+
 import Control.Monad.Reader.Trans (runReaderT)
 
 import DOM (DOM)
@@ -32,7 +36,7 @@ import SlamData.Quasar.Auth.Permission (retrievePermissionTokens)
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Advanced.QuasarAF.Interpreter.Aff as QFA
 
-type QEff eff = (ajax ∷ AX.AJAX, dom ∷ DOM | eff)
+type QEff eff = (ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
 
 -- | Runs a `QuasarF` request in `Aff`, using the `QError` type for errors that
 -- | may arise, which allows for convenient catching of 404 errors.

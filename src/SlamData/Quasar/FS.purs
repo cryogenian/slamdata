@@ -27,16 +27,18 @@ import SlamData.Prelude
 
 import Control.Coroutine as CR
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Control.Monad.Error.Class (catchError)
+import Control.Monad.Rec.Class as MR
+import Control.Monad.Free.Trans as FT
 
 import Data.Array as Arr
 import Data.Foldable as F
-import Data.Lens ((.~), (^.))
+import Data.Lens ((.~), (^.), (^?), _Left)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as Set
@@ -69,7 +71,7 @@ children dir = runExceptT do
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
   ∷ ∀ eff m
-  . (Functor m, Affable (QEff (avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)) m)
+  . (Functor m, Affable (QEff eff) m)
   ⇒ DirPath
   → CR.Producer (Array R.Resource) m Unit
 transitiveChildrenProducer dirPath = do
@@ -88,9 +90,8 @@ transitiveChildrenProducer dirPath = do
         liftEff $ Ref.modifyRef activeRequests $ Set.insert $ P.printPath p
       for_ parents $ go emit activeRequests
     remainingRequests ← liftEff $ Ref.readRef activeRequests
-    if Set.isEmpty remainingRequests
-      then liftEff $ emit $ Right unit
-      else pure unit
+    when (Set.isEmpty remainingRequests) $
+      liftEff ∘ emit $ Right unit
 
 listing
   ∷ ∀ eff m
@@ -151,34 +152,36 @@ getNewName parent name = do
 -- | `Nothing` in case no resource existed at the requested source path.
 move
   ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
+  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ R.Resource
   → AnyPath
   → m (Either Exn.Error (Maybe AnyPath))
 move src tgt = do
-  either
-    (\dir → cleanViewMounts dir)
-    (const (pure (Right unit)))
-    (R.getPath src)
-  result <- runQuasarF case src of
-    R.Mount _ → QF.moveMount (R.getPath src) tgt
-    _ → QF.moveData (R.getPath src) tgt
-  pure case result of
-    Right _ → Right (Just tgt)
-    Left QF.NotFound → Right Nothing
-    Left (QF.Error err) → Left err
+  let srcPath = R.getPath src
+  runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
+  result ←
+    runQuasarF case src of
+      R.Mount _ → QF.moveMount srcPath tgt
+      _ → QF.moveData srcPath tgt
+  pure
+    case result of
+      Right _ → Right (Just tgt)
+      Left QF.NotFound → Right Nothing
+      Left (QF.Error err) → Left err
 
 delete
   ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
+  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ R.Resource
   → m (Either Exn.Error (Maybe R.Resource))
 delete resource =
-  if R.isMount resource || alreadyInTrash resource
-  then forceDelete resource $> pure Nothing
-  else moveToTrash resource >>= case _ of
-    Left _ → forceDelete resource $> pure Nothing
-    Right _ → pure $ pure Nothing
+  runExceptT $
+    if R.isMount resource || alreadyInTrash resource
+    then
+      forceDelete resource $> Nothing
+    else
+      moveToTrash resource `catchError` \(err ∷ Exn.Error) →
+        forceDelete resource $> Nothing
 
   where
   msg ∷ String
@@ -186,13 +189,14 @@ delete resource =
 
   moveToTrash
     ∷ R.Resource
-    → m (Either Exn.Error (Maybe R.Resource))
-  moveToTrash res = runExceptT do
-    let d = (res ^. R._root) </> P.dir Config.trashFolder
-        path = (res # R._root .~ d) ^. R._path
+    → ExceptT Exn.Error m (Maybe R.Resource)
+  moveToTrash res = do
+    let
+      d = (res ^. R._root) </> P.dir Config.trashFolder
+      path = (res # R._root .~ d) ^. R._path
     name ← ExceptT $ getNewName d (res ^. R._name)
     ExceptT $ move res (path # R._nameAnyPath .~ name)
-    pure $ Just $ R.Directory d
+    pure ∘ Just $ R.Directory d
 
   alreadyInTrash ∷ R.Resource → Boolean
   alreadyInTrash res =
@@ -218,34 +222,50 @@ delete resource =
 
 forceDelete
   ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
+  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ R.Resource
-  → m (Either Exn.Error Unit)
-forceDelete res = case res of
-  R.Mount _ → runQuasarF $ lmap lowerQError <$>
-    QF.deleteMount (R.getPath res)
-  _ → do
-    let path = R.getPath res
-    either
-      (\dir → cleanViewMounts dir)
-      (const (pure (Right unit)))
-      path
-    runQuasarF $ lmap lowerQError <$>
-      QF.deleteData path
+  → ExceptT Exn.Error m Unit
+forceDelete res =
+  case res of
+    R.Mount _ →
+      ExceptT ∘ runQuasarF $ lmap lowerQError <$>
+        QF.deleteMount (R.getPath res)
+    _ → do
+      let path = R.getPath res
+      traverse cleanViewMounts $ path ^? _Left
+      ExceptT ∘ runQuasarF $ lmap lowerQError <$>
+        QF.deleteData path
 
 cleanViewMounts
   ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
+  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ DirPath
-  → m (Either Exn.Error Unit)
-cleanViewMounts path = runExceptT do
-  rs ← ExceptT $ children path
-  lift $ traverse_ deleteViewMount rs
+  → ExceptT Exn.Error m Unit
+cleanViewMounts path =
+  CR.runProcess (producer CR.$$ consumer)
+
   where
-  deleteViewMount (R.Mount (R.View vp)) =
-    runQuasarF $ lmap lowerQError <$>
-      QF.deleteMount (Right vp)
-  deleteViewMount _ = pure $ pure unit
+  producer ∷ CR.Producer (Array R.Resource) (ExceptT Exn.Error m) Unit
+  producer =
+    FT.hoistFreeT lift $
+      transitiveChildrenProducer path
+
+  consumer ∷ CR.Consumer (Array R.Resource) (ExceptT Exn.Error m) Unit
+  consumer =
+    CR.consumer \fs → do
+      traverse_ deleteViewMount fs
+      pure Nothing
+
+  deleteViewMount
+    ∷ R.Resource
+    → ExceptT Exn.Error m Unit
+  deleteViewMount =
+    case _ of
+      R.Mount (R.View vp) →
+        ExceptT ∘ runQuasarF $
+          lmap lowerQError <$>
+            QF.deleteMount (Right vp)
+      _ → pure unit
 
 messageIfFileNotFound
   ∷ ∀ eff m
