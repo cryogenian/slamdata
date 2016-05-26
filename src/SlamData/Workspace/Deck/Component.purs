@@ -31,6 +31,7 @@ import Control.UI.Browser (newTab, locationObject, locationString)
 import Data.Array as Array
 import Data.Foldable as Foldable
 import Data.Lens ((.~), (%~), (^?), (?~))
+import Data.Lens as Lens
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as L
 import Data.Path.Pathy ((</>))
@@ -479,47 +480,71 @@ aceQueryShouldSave = H.runChildF >>> case _ of
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
-  H.gets _.pendingCard >>= traverse_ \pendingCard -> do
-    { modelCards, path, globalVarMap } ← H.get
-    H.modify $ DCS._displayCards .~ []
+  { modelCards, path, globalVarMap } ← H.get
+  result ←
+    H.gets _.pendingCard >>= traverse \pendingCard → do
+      let
+        go ∷ L.List Card.Model → Maybe Port → L.List Card.Model → DeckDSL { state ∷ Either String (Maybe Port), cards ∷ L.List Card.Model }
+        go rs port =
+          case _ of
+            L.Nil → pure { state : Right $ port, cards : rs }
+            L.Cons x xs → do
+              runStep pendingCard path globalVarMap port x >>=
+                case _ of
+                  Left err → pure { state : Left err, cards : L.Cons x rs }
+                  Right output → go (L.Cons x rs) output xs
 
-    let
-      go ∷ Maybe Port → L.List Card.Model → DeckDSL (Either String (Maybe Port))
-      go port =
-        case _ of
-          L.Nil → pure $ Right $ port
-          L.Cons x xs → do
-            H.modify $ DCS._displayCards %~ flip Array.snoc x
-            runStep pendingCard path globalVarMap port x >>=
-              case _ of
-                Left err → pure $ Left err
-                Right output → go output xs
+      go L.Nil Nothing (L.toList modelCards)
 
-    result ← go Nothing $ L.toList modelCards
+  let
+    nextActionCard ∷ Card.Model
+    nextActionCard =
+      { cardId : top
+      , cardType : CT.NextAction
+      , inner : J.jsonEmptyObject
+      , hasRun : true
+      }
+
+    errorCard ∷ Card.Model
+    errorCard =
+      { cardId : CardId (-1)
+      , cardType : CT.ErrorCard
+      , inner : J.jsonEmptyObject
+      , hasRun : true
+      }
+
+    lastCard =
+      case result of
+        Just { cards, state } →
+          case state of
+            Left _ → errorCard
+            Right _ → nextActionCard
+        Nothing → nextActionCard
+
+  H.modify $ Lens.over DCS._displayCards \displayCards →
     case result of
-      Right _ → do
-        let
-          nextActionCard ∷ Card.Model
-          nextActionCard =
-            { cardId : top
-            , cardType : CT.NextAction
-            , inner : J.jsonEmptyObject
-            , hasRun : false
-            }
-        H.modify $ DCS._displayCards %~ flip Array.snoc nextActionCard
-      Left err → do
-        let
-          errorCard ∷ Card.Model
-          errorCard =
-            { cardId : CardId (-1)
-            , cardType : CT.ErrorCard
-            , inner : J.jsonEmptyObject
-            , hasRun : false
-            }
-        H.modify $ DCS._displayCards %~ flip Array.snoc errorCard
-        -- TODO: run the error card!
+      Just { cards, state } → L.fromList ∘ L.reverse $ L.Cons lastCard cards
+      Nothing →
+         case displayCards of
+           [] → [lastCard]
+           _ → displayCards
 
-    updateIndicatorAndNextAction
+  for_ result \{ state } →
+    let
+      evalInput =
+        { path
+        , globalVarMap
+        , cardId : lastCard.cardId
+        , input :
+            case state of
+              Right p → p
+              Left err → Just $ CardError err
+        }
+    in
+      H.query' cpCard (CardSlot lastCard.cardId) $ left $ H.request (UpdateCard evalInput)
+
+
+  updateIndicatorAndNextAction
     -- triggerSave <-- why?
   where
   runStep
@@ -530,6 +555,7 @@ runPendingCards = do
     → Card.Model
     → DeckDSL (Either String (Maybe Port))
   runStep pendingCard path globalVarMap inputPort card @ { cardId } = do
+    Debug.Trace.traceAnyA {cardId, pendingCard}
     if cardId < pendingCard
       then
         map (Right ∘ join)
