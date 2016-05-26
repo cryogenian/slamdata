@@ -91,16 +91,14 @@ initialState = opaqueState DCS.initialDeck
 comp ∷ H.Component DCS.StateP QueryP Slam
 comp =
   opaque $ H.parentComponent
-    -- Eta-expansion required by PSC because of the recursive reference of
-    -- `comp` within `render`.
-    { render: \s → render $ DCS.virtualState s
+    { render: \x → render x -- eta expansion required because of mutual recursion
     , eval
     , peek: Just peek
     }
 
-render ∷ DCS.VirtualState → DeckHTML
-render vstate =
-  case state.stateMode of
+render ∷ DCS.State → DeckHTML
+render st =
+  case st.stateMode of
     DCS.Loading →
       HH.div
         [ HP.classes [ B.alert, B.alertInfo ]
@@ -115,14 +113,14 @@ render vstate =
           -- is in the same place in both `Loading` and `Ready` states.
         , HH.div
             [ HP.key "deck-container" ]
-            [ Slider.render comp vstate $ state.displayMode ≡ DCS.Normal ]
+            [ Slider.render comp st $ st.displayMode ≡ DCS.Normal ]
         ]
     DCS.Ready →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div
         ([ HP.class_ CSS.board
          , HP.key "board"
-         ] ⊕ Slider.containerProperties vstate)
+         ] ⊕ Slider.containerProperties st)
         [ HH.div
             [ HP.class_ CSS.deck
             , HP.key "deck-container"
@@ -134,13 +132,13 @@ render vstate =
                 , HP.title "Flip deck"
                 ]
                 [ HH.text "" ]
-            , Slider.render comp vstate $ state.displayMode ≡ DCS.Normal
+            , Slider.render comp st $ st.displayMode ≡ DCS.Normal
             , HH.slot' cpIndicator unit \_ →
                 { component: Indicator.comp
                 , initialState: Indicator.initialState
                 }
-            , renderBackside $ state.displayMode ≡ DCS.Backside
-            , renderDialog $ state.displayMode ≡ DCS.Dialog
+            , renderBackside $ st.displayMode ≡ DCS.Backside
+            , renderDialog $ st.displayMode ≡ DCS.Dialog
             ]
         ]
 
@@ -153,7 +151,6 @@ render vstate =
         ]
 
   where
-  state = DCS.runVirtualState vstate
 
   renderDialog visible =
     HH.div
@@ -175,8 +172,8 @@ render vstate =
           [ HP.classes [ CSS.card ] ]
           (Gripper.renderGrippers
              visible
-             (isJust state.initialSliderX)
-             (Gripper.gripperDefsForCardId state.cards $ DCS.activeCardId vstate)
+             (isJust st.initialSliderX)
+             (Gripper.gripperDefsForCardId st.cards $ DCS.activeCardId st)
              ⊕ [ HH.slot' cpBackSide unit \_ →
                   { component: Back.comp
                   , initialState: Back.initialState
@@ -187,7 +184,7 @@ render vstate =
 
 eval ∷ Natural Query DeckDSL
 eval (RunActiveCard next) = do
-  traverse_ runCard =<< H.gets (DCS.activeCardId ∘ DCS.virtualState)
+  traverse_ runCard =<< H.gets DCS.activeCardId
   pure next
 eval (Load dir deckId next) = do
   state ← H.get
@@ -306,7 +303,7 @@ peekBackSide (Back.DoAction action _) =
     Back.Trash → do
       state ← H.get
       lastId ← H.gets DCS.findLastRealCard
-      for_ (DCS.activeCardId (DCS.virtualState state) <|> lastId) \trashId → do
+      for_ (DCS.activeCardId state <|> lastId) \trashId → do
         H.modify $ DCS.removeCard trashId
         triggerSave
         updateNextActionCard
@@ -375,21 +372,21 @@ updateIndicatorAndNextAction = do
 
 updateIndicator ∷ DeckDSL Unit
 updateIndicator = do
-  cids ← H.gets $ map _.cardId ∘ _.cards ∘ DCS.runVirtualState ∘ DCS.virtualState
+  cards ← H.gets _.cards
   outs ←
-    for cids \cid → do
+    for cards \{cardId} → do
       map join
-        $ H.query' cpCard (CardSlot cid)
+        $ H.query' cpCard (CardSlot cardId)
         $ left (H.request GetOutput)
   H.query' cpIndicator unit
     $ H.action
     $ Indicator.UpdatePortList outs
-  vid ← H.gets $ DCS.runVirtualIndex ∘ _.activeCardIndex
+  vid ← H.gets _.activeCardIndex
   void $ H.query' cpIndicator unit $ H.action $ Indicator.UpdateActiveId vid
 
 updateBackSide ∷ DeckDSL Unit
 updateBackSide = do
-  state ← H.gets DCS.virtualState
+  state ← H.get
   let ty = DCS.activeCardType state
   void
     $ H.query' cpBackSide unit
@@ -480,9 +477,7 @@ aceQueryShouldSave = H.runChildF >>> case _ of
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
   H.gets _.pendingCard >>= traverse_ \pendingCard -> do
-    cards ← H.gets (_.cards ∘ DCS.runVirtualState ∘ DCS.virtualState)
-    path ← H.gets DCS.deckPath
-    globalVarMap ← H.gets _.globalVarMap
+    { cards, path, globalVarMap } ← H.get
     void $ Array.foldM (runStep pendingCard path globalVarMap) Nothing (_.cardId <$> cards)
     updateIndicatorAndNextAction
     -- triggerSave <-- why?

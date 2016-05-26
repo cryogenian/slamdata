@@ -53,13 +53,6 @@ module SlamData.Workspace.Deck.Component.State
   , deckPath
   , cardIndexFromId
   , cardIdFromIndex
-  , VirtualState
-  , _VirtualState
-  , runVirtualState
-  , virtualState
-
-  , VirtualIndex(..)
-  , runVirtualIndex
   , activeCardId
   , activeCardType
   ) where
@@ -68,7 +61,7 @@ import SlamData.Prelude
 
 import Data.Array as A
 import Data.Foldable (maximum, elem)
-import Data.Lens (LensP, lens, (^.))
+import Data.Lens (LensP, lens)
 import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
@@ -101,23 +94,6 @@ data StateMode
   | Ready
   | Error String
 
-newtype VirtualIndex = VirtualIndex Int
-
-runVirtualIndex ∷ VirtualIndex → Int
-runVirtualIndex (VirtualIndex i) = i
-
-derive instance eqVirtualIndex ∷ Eq VirtualIndex
-derive instance ordVirtualIndex ∷ Ord VirtualIndex
-
-instance semiringVirtualIndex ∷ Semiring VirtualIndex where
-  one = VirtualIndex one
-  zero = VirtualIndex zero
-  add (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a + b
-  mul (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a * b
-
-instance ringVirtualIndex ∷ Ring VirtualIndex where
-  sub (VirtualIndex a) (VirtualIndex b) = VirtualIndex $ a - b
-
 data DisplayMode
   = Normal
   | Backside
@@ -133,7 +109,7 @@ type State =
   , accessType ∷ AccessType
   , cards ∷ Array Card.Model -- TODO: this becomes list of card models instead -gb
   -- TODO: add list for the ephemeral cards that we actually render, recomputed when the deck is run -gb
-  , activeCardIndex ∷ VirtualIndex
+  , activeCardIndex ∷ Int
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
@@ -160,7 +136,7 @@ initialDeck =
   , fresh: 0
   , accessType: Editable
   , cards: mempty
-  , activeCardIndex: VirtualIndex 0
+  , activeCardIndex: 0
   , name: Nothing
   , path: Nothing
   , saveTrigger: Nothing
@@ -338,10 +314,9 @@ removeCard cardId st =
   removePendingCard cardId $
     st
       { cards = newCards
-      , activeCardIndex = VirtualIndex $ max zero $ A.length newCards - one
+      , activeCardIndex = max zero $ A.length newCards - one
       }
   where
-  virtualCards = A.filter f (runVirtualState (virtualState st)).cards
   cards = A.filter f st.cards
 
   newCards ∷ Array Card.Model
@@ -381,36 +356,6 @@ cardsOfType cardType =
        then Just cid
        else Nothing
 
-newtype VirtualState = VirtualState State
-
-runVirtualState ∷ VirtualState → State
-runVirtualState (VirtualState st) = st
-
-_VirtualState ∷ LensP VirtualState State
-_VirtualState = lens runVirtualState \_ → VirtualState
-
--- | Equip the state for presentation by inserting Error cards
--- | in the appropriate places.
-virtualState ∷ State → VirtualState
-virtualState st =
-  VirtualState
-    $ insertNextActionCard
-    $ case find' hasError st.cards of
-        Just c → insertErrorCard c.cardId st
-        Nothing → st
-  where
-
-  -- in case you're wondering, Data.Foldable.find does not find the *first*
-  -- satisfying element in the list! This took me a long time to figure out.
-  -- TODO: this is unnecessary after updating to foldable-traversable v1.0.0
-  find' ∷ ∀ a. (a → Boolean) → Array a → Maybe a
-  find' p xs =
-    A.findIndex p xs
-      >>= A.index xs
-
-  hasError ∷ Card.Model → Boolean
-  hasError c = S.member c.cardId st.failingCards
-
 -- | Updates the stored card that is pending to run. This handles the logic of
 -- | changing the pending card when a provided card appears earlier in the deck
 -- | than the currently enqueued card, and if the provided card appears after
@@ -447,7 +392,7 @@ fromModel path deckId { cards, name } state =
     cards
     ((state
         { accessType = Editable -- why was it ReadOnly?
-        , activeCardIndex = VirtualIndex $ A.length cards - 1 -- fishy!
+        , activeCardIndex = A.length cards - 1 -- fishy!
         , displayMode = Normal
         , cards = cards
         , failingCards = S.empty
@@ -461,24 +406,25 @@ fromModel path deckId { cards, name } state =
         , pendingCard = Nothing
         }) ∷ State)
 
-cardIndexFromId ∷ VirtualState → CardId → VirtualIndex
+cardIndexFromId ∷ State → CardId → Int
 cardIndexFromId st =
   -- TODO: for performance, use A.findIndex instead
-  VirtualIndex ∘ fromMaybe (A.length cards) ∘ flip A.elemIndex (_.cardId <$> cards)
+  fromMaybe (A.length cards) ∘ flip A.elemIndex (_.cardId <$> cards)
   where
-    cards = st ^. _VirtualState ∘ _cards
+    cards = st.cards
 
-cardFromIndex ∷ VirtualState → VirtualIndex → Maybe Card.Model
-cardFromIndex st (VirtualIndex i) = A.index (st ^. _VirtualState ∘ _cards) i
+cardFromIndex ∷ State  → Int → Maybe Card.Model
+cardFromIndex st i = A.index st.cards i
 
-cardIdFromIndex ∷ VirtualState → VirtualIndex → Maybe CardId
+cardIdFromIndex ∷ State→ Int → Maybe CardId
 cardIdFromIndex st vi = _.cardId <$> cardFromIndex st vi
 
-activeCardId ∷ VirtualState → Maybe CardId
+activeCardId ∷ State → Maybe CardId
 activeCardId st =
   cardIdFromIndex st $
-    st ^. _VirtualState ∘ _activeCardIndex
+    st.activeCardIndex
 
-activeCardType ∷ VirtualState → Maybe CardType
+activeCardType ∷ State → Maybe CardType
 activeCardType st =
-  _.cardType <$> cardFromIndex st (st ^. _VirtualState ∘ _activeCardIndex)
+  _.cardType <$>
+    cardFromIndex st st.activeCardIndex

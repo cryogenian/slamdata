@@ -26,7 +26,7 @@ import SlamData.Prelude
 import Data.Array ((..))
 import Data.Array as Array
 import Data.Int as Int
-import Data.Lens ((.~), (^.))
+import Data.Lens ((.~))
 import Data.Lens as Lens
 import Data.Ord (max, min)
 import Data.Tuple as Tuple
@@ -57,27 +57,25 @@ import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.Query as DCQ
-import SlamData.Workspace.Deck.Component.State (VirtualState, State)
+import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Gripper as Gripper
 
 import Utils.CSS as CSSUtils
 
-render ∷ DeckComponent → VirtualState → Boolean → DeckHTML
-render comp vstate visible =
+render ∷ DeckComponent → State → Boolean → DeckHTML
+render comp st visible =
   HH.div
     ([ HP.key "deck-cards"
      , HP.classes [ ClassNames.cardSlider ]
      , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
      , style do
-         cardSliderTransformCSS state.activeCardIndex state.sliderTranslateX
-         cardSliderTransitionCSS state.sliderTransition
+         cardSliderTransformCSS st.activeCardIndex st.sliderTranslateX
+         cardSliderTransitionCSS st.sliderTransition
      ]
      ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
-    $ map (Tuple.uncurry $ renderCard comp vstate)
-    $ Array.zip state.cards (0 .. Array.length state.cards)
-  where
-  state = DCS.runVirtualState vstate
+    $ map (Tuple.uncurry $ renderCard comp st)
+    $ Array.zip st.cards (0 .. Array.length st.cards)
 
 stateStartSliding ∷ Event MouseEvent → Maybe Number → State → State
 stateStartSliding mouseEvent cardWidth =
@@ -120,79 +118,72 @@ stopSliding =
       ∘ (DCS._sliderTranslateX .~ 0.0)
 
 snapActiveCardIndexByTranslationAndCardWidth
-  ∷ VirtualState
+  ∷ State
   → Number
-  → DCS.VirtualIndex
-  → DCS.VirtualIndex
-snapActiveCardIndexByTranslationAndCardWidth st cardWidth (DCS.VirtualIndex idx) =
+  → Int
+  → Int
+snapActiveCardIndexByTranslationAndCardWidth st cardWidth idx =
   let
-    translateX = st ^. DCS._VirtualState ∘ DCS._sliderTranslateX
-    numberOfCards = (Array.length $ st ^. DCS._VirtualState ∘ DCS._cards)
+    translateX = st.sliderTranslateX
+    numberOfCards = Array.length st.cards
     halfOffset = (offsetCardSpacing cardWidth) / 2.0
   in
-    DCS.VirtualIndex
-    $ if translateX <= -1.0 * halfOffset
-      then
-        min numberOfCards
+    if translateX <= -1.0 * halfOffset
+    then
+      min numberOfCards
         $ sub idx
         $ one
         + Int.floor ((translateX - halfOffset) / cardWidth)
-      else if translateX >= halfOffset
-           then
-             max 0
-             $ idx
-             + one
-             + Int.floor ((-translateX - halfOffset) / cardWidth)
-           else idx
+    else
+      if translateX >= halfOffset
+      then
+        max 0
+          $ idx
+          + one
+          + Int.floor ((-translateX - halfOffset) / cardWidth)
+      else idx
 
 offsetCardSpacing ∷ Number → Number
 offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
-snapActiveCardIndex ∷ VirtualState → DCS.VirtualIndex
+snapActiveCardIndex ∷ State → Int
 snapActiveCardIndex st =
   min idx $ maximumSnappingCardIndex st
   where
-  idx =
-    maybe id snap'
-      (st ^. DCS._VirtualState ∘ DCS._initialSliderCardWidth) $ activeCardIndex
+  idx = maybe id snap' st.initialSliderCardWidth st.activeCardIndex
   snap' = snapActiveCardIndexByTranslationAndCardWidth st
-  activeCardIndex =
-    st ^. DCS._VirtualState ∘ DCS._activeCardIndex
 
 -- We cannot snap to any card past a "blocking card".
-maximumSnappingCardIndex ∷ VirtualState → DCS.VirtualIndex
+maximumSnappingCardIndex ∷ State → Int
 maximumSnappingCardIndex st =
-  DCS.VirtualIndex case Array.findIndex (CT.blocking ∘ _.cardType) cards of
+  case Array.findIndex (CT.blocking ∘ _.cardType) st.cards of
     Just idx → idx
     Nothing → max 0 maximumActiveCardIndex
   where
   maximumActiveCardIndex =
-    Array.length cards
-    - one
-    -- NextAction card is disabled in readonly mode
-    - if (DCS.runVirtualState st).accessType ≡ AccessType.ReadOnly
-      then one
-      else zero
-  cards = st ^. DCS._VirtualState ∘ DCS._cards
+    Array.length st.cards
+      - one
+      -- NextAction card is disabled in readonly mode
+      - if st.accessType ≡ AccessType.ReadOnly
+        then one
+        else zero
 
 snap ∷ State → State
-snap st = st # DCS._activeCardIndex .~ snapActiveCardIndex (DCS.virtualState st)
+snap st = st { activeCardIndex = snapActiveCardIndex st }
 
 startTransition ∷ State → State
 startTransition = DCS._sliderTransition .~ true
 
-willChangeActiveCardWhenDropped ∷ VirtualState → Boolean
-willChangeActiveCardWhenDropped vstate =
-  st.activeCardIndex ≠ snapActiveCardIndex vstate
-  where
-    st = DCS.runVirtualState vstate
+willChangeActiveCardWhenDropped ∷ State → Boolean
+willChangeActiveCardWhenDropped st=
+  st.activeCardIndex ≠ snapActiveCardIndex st
 
 cardPositionCSS ∷ Int → CSS
 cardPositionCSS index = do
   CSSUtils.left $ CSSUtils.calc $
     "(100% + " ⊕ show cardSpacingPx ⊕ "px) * " ⊕ show index
 
-cardSliderTransformCSS ∷ DCS.VirtualIndex → Number → CSS
+cardSliderTransformCSS ∷ Int → Number → CSS
 cardSliderTransformCSS activeCardIndex translateX =
   CSSUtils.transform
     $ CSSUtils.translate3d (cardSliderTranslateX activeCardIndex translateX) "0" "0"
@@ -201,8 +192,8 @@ cardSliderTransitionCSS ∷ Boolean → CSS
 cardSliderTransitionCSS false = CSSUtils.transition "none"
 cardSliderTransitionCSS true = CSSUtils.transition "all 0.33s"
 
-cardSliderTranslateX ∷ DCS.VirtualIndex → Number → String
-cardSliderTranslateX (DCS.VirtualIndex activeCardIndex) translateX =
+cardSliderTranslateX ∷ Int → Number → String
+cardSliderTranslateX activeCardIndex translateX =
   CSSUtils.calc
     $ "(-100% - " ⊕ show cardSpacingPx ⊕ "px)"
     ⊕ " * " ⊕ show activeCardIndex
@@ -213,30 +204,28 @@ dropEffect true = "execute"
 dropEffect false = "none"
 
 containerProperties
-  ∷ ∀ a. VirtualState
+  ∷ ∀ a
+  . State
   → Array (IProp (onMouseUp ∷ I, onMouseLeave ∷ I, onMouseMove ∷ I | a) (Query Unit))
-containerProperties vstate =
-  [ ARIA.dropEffect $ dropEffect $ willChangeActiveCardWhenDropped vstate ]
-    ⊕ (guard (isJust initialSliderX)
+containerProperties st =
+  [ ARIA.dropEffect $ dropEffect $ willChangeActiveCardWhenDropped st ]
+    ⊕ (guard (isJust st.initialSliderX)
          $> (HE.onMouseUp \e →
               HEH.preventDefault
               $> Just (H.action (DCQ.StopSlidingAndSnap e))))
-    ⊕ (guard (isJust initialSliderX)
+    ⊕ (guard (isJust st.initialSliderX)
          $> (HE.onMouseLeave \e →
               HEH.stopPropagation
               $> HEH.preventDefault
               $> Just (H.action (DCQ.StopSlidingAndSnap e))))
-    ⊕ (guard (isJust initialSliderX)
+    ⊕ (guard (isJust st.initialSliderX)
          $> (HE.onMouseMove $ HE.input DCQ.UpdateSliderPosition))
-  where
-  initialSliderX = vstate ^. DCS._VirtualState ∘ DCS._initialSliderX
 
-
-cardSelected ∷ VirtualState → CardId → Boolean
+cardSelected ∷ State → CardId → Boolean
 cardSelected state cardId =
   Just cardId ≡ DCS.activeCardId state
 
-cardProperties ∷ ∀ a b. VirtualState → CardId → Array (IProp a b)
+cardProperties ∷ ∀ a b. State → CardId → Array (IProp a b)
 cardProperties state cardId =
   [ ARIA.disabled ∘ show ∘ not $ cardSelected state cardId ]
 
@@ -246,35 +235,34 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard ∷ DeckComponent → VirtualState → Card.Model → Int → DeckHTML
-renderCard comp vstate card index =
+renderCard ∷ DeckComponent → State → Card.Model → Int → DeckHTML
+renderCard comp st card index =
   HH.div
     ([ HP.key ("card" ⊕ CardId.cardIdToString card.cardId)
     , HP.classes [ ClassNames.card ]
     , style $ cardPositionCSS index
     , HP.ref (H.action ∘ DCQ.SetCardElement)
     ]
-     ⊕ (guard (shouldHideNextActionCard index vstate)
+     ⊕ (guard (shouldHideNextActionCard index st)
         $> (HP.class_ ClassNames.invisible)))
     $ Gripper.renderGrippers
-        (cardSelected vstate card.cardId)
-        (isJust state.initialSliderX)
-        (Gripper.gripperDefsForCardId state.cards $ Just card.cardId)
+        (cardSelected st card.cardId)
+        (isJust st.initialSliderX)
+        (Gripper.gripperDefsForCardId st.cards $ Just card.cardId)
         ⊕ [ HH.div
-              (cardProperties vstate card.cardId)
+              (cardProperties st card.cardId)
               [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
            ]
   where
-  state = DCS.runVirtualState vstate
   slotId = ChildSlot.CardSlot card.cardId
   cardComponent =
     { component: cardTypeComponent card.cardType card.cardId comp
     , initialState:
         H.parentState
-          CardC.initialCardState { accessType = state.accessType }
+          CardC.initialCardState { accessType = st.accessType }
     }
 
-shouldHideNextActionCard ∷ Int → VirtualState → Boolean
-shouldHideNextActionCard index vstate =
-  index ≡ Array.length (DCS.runVirtualState vstate).cards - one
-  ∧ (DCS.runVirtualState vstate).accessType ≡ AccessType.ReadOnly
+shouldHideNextActionCard ∷ Int → State → Boolean
+shouldHideNextActionCard index st =
+  index ≡ Array.length st.cards - one
+    ∧ st.accessType ≡ AccessType.ReadOnly
