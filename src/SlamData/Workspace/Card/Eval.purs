@@ -83,10 +83,12 @@ evalQuery info sql varMap = do
   let resource = CET.temporaryOutputResource info
   let backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
   plan ← lift $ QQ.compile backendPath sql varMap'
+  case plan of
+    Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
+    Right p → WC.tell ["Plan: " ⊕ p]
   liftQ do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
-  for_ plan \p → WC.tell ["Plan: " ⊕ p]
   pure { resource, tag: pure sql }
 
 evalSearch
