@@ -49,14 +49,15 @@ import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Component as Card
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Component as CardC
 import SlamData.Workspace.Card.Factory (cardTypeComponent)
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.Query as DCQ
-import SlamData.Workspace.Deck.Component.State (VirtualState, State, CardDef)
+import SlamData.Workspace.Deck.Component.State (VirtualState, State)
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.Gripper as Gripper
 
@@ -161,7 +162,7 @@ snapActiveCardIndex st =
 -- We cannot snap to any card past a "blocking card".
 maximumSnappingCardIndex ∷ VirtualState → DCS.VirtualIndex
 maximumSnappingCardIndex st =
-  DCS.VirtualIndex case Array.findIndex (CT.blocking ∘ _.ty) cards of
+  DCS.VirtualIndex case Array.findIndex (CT.blocking ∘ _.cardType) cards of
     Just idx → idx
     Nothing → max 0 maximumActiveCardIndex
   where
@@ -245,10 +246,10 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard ∷ DeckComponent → VirtualState → CardDef → Int → DeckHTML
-renderCard comp vstate cardDef index =
+renderCard ∷ DeckComponent → VirtualState → Card.Model → Int → DeckHTML
+renderCard comp vstate card index =
   HH.div
-    ([ HP.key ("card" ⊕ CardId.cardIdToString cardDef.id)
+    ([ HP.key ("card" ⊕ CardId.cardIdToString card.cardId)
     , HP.classes [ ClassNames.card ]
     , style $ cardPositionCSS index
     , HP.ref (H.action ∘ DCQ.SetCardElement)
@@ -256,21 +257,21 @@ renderCard comp vstate cardDef index =
      ⊕ (guard (shouldHideNextActionCard index vstate)
         $> (HP.class_ ClassNames.invisible)))
     $ Gripper.renderGrippers
-        (cardSelected vstate cardDef.id)
+        (cardSelected vstate card.cardId)
         (isJust state.initialSliderX)
-        (Gripper.gripperDefsForCardId state.cards $ Just cardDef.id)
+        (Gripper.gripperDefsForCardId state.cards $ Just card.cardId)
         ⊕ [ HH.div
-              (cardProperties vstate cardDef.id)
+              (cardProperties vstate card.cardId)
               [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
            ]
   where
   state = DCS.runVirtualState vstate
-  slotId = ChildSlot.CardSlot cardDef.id
+  slotId = ChildSlot.CardSlot card.cardId
   cardComponent =
-    { component: cardTypeComponent cardDef.ty cardDef.id comp
+    { component: cardTypeComponent card.cardType card.cardId comp
     , initialState:
         H.parentState
-          Card.initialCardState { accessType = state.accessType }
+          CardC.initialCardState { accessType = state.accessType }
     }
 
 shouldHideNextActionCard ∷ Int → VirtualState → Boolean

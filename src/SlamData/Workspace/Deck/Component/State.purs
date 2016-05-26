@@ -75,6 +75,8 @@ import Data.Path.Pathy as P
 import Data.Set as S
 import Data.StrMap as SM
 
+import Data.Argonaut as J
+
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
 
@@ -129,7 +131,7 @@ type State =
   { id ∷ Maybe DeckId
   , fresh ∷ Int
   , accessType ∷ AccessType
-  , cards ∷ Array CardDef -- TODO: this becomes list of card models instead -gb
+  , cards ∷ Array Card.Model -- TODO: this becomes list of card models instead -gb
   -- TODO: add list for the ephemeral cards that we actually render, recomputed when the deck is run -gb
   , activeCardIndex ∷ VirtualIndex
   , name ∷ Maybe String
@@ -269,12 +271,11 @@ addCard' cardType st =
     newState = st
       { fresh = st.fresh + one
       , cards =
-          let
-            def = mkCardDef cardType cardId
+          let def = { cardId, cardType, inner: J.jsonEmptyObject, hasRun: false }
           in case A.uncons $ A.reverse st.cards of
             Nothing → st.cards `A.snoc` def
             Just {head, tail} →
-              if head.id ≡ top
+              if head.cardId ≡ top
                 then A.reverse $ def A.: tail
                 else st.cards `A.snoc` def
       }
@@ -287,32 +288,46 @@ insertErrorCard parentId st =
   st
     { cards =
         fromMaybe st.cards do
-          parentAddr ← A.findIndex (\c → c.id ≡ parentId) st.cards
-          let errorCard = mkCardDef ErrorCard cardId
+          parentAddr ← A.findIndex (\c → c.cardId ≡ parentId) st.cards
+          -- let errorCard = { cardId : cardId, } -- mkCardDef ErrorCard cardId
           A.insertAt (parentAddr + 1) errorCard st.cards
     }
   where
+  errorCard ∷ Card.Model
+  errorCard =
+    { cardId : cardId
+    , cardType : ErrorCard
+    , inner : J.jsonEmptyObject
+    , hasRun : false
+    }
   -- The -1 index is reserved for the error card.
   cardId = CardId (-1)
 
 insertNextActionCard ∷ State → State
 insertNextActionCard st =
-  let
-    lastId = findLast st
-  in
-    st
-      { cards =
-           case lastId of
-             Nothing → [ mkCardDef NextAction top ]
-             Just lid →
-               if lid ≡ top
-                 then st.cards
-                 else st.cards `A.snoc` mkCardDef NextAction top
-      , activeCardIndex =
-          case lastId of
-            Nothing → zero
-            Just lid → st.activeCardIndex
+  st
+    { cards =
+         case lastId of
+           Nothing → [ nextActionCard ]
+           Just lid →
+             if lid ≡ top
+               then st.cards
+               else st.cards `A.snoc` nextActionCard
+    , activeCardIndex =
+        case lastId of
+          Nothing → zero
+          Just lid → st.activeCardIndex
     }
+  where
+    nextActionCard ∷ Card.Model
+    nextActionCard =
+      { cardId: top
+      , cardType: NextAction
+      , inner: J.jsonEmptyObject
+      , hasRun: false
+      }
+
+    lastId = findLast st
 
 mkCardDef ∷ CardType → CardId → CardDef
 mkCardDef cardType cardId = { id: cardId, ty: cardType }
@@ -329,39 +344,39 @@ removeCard cardId st =
   virtualCards = A.filter f (runVirtualState (virtualState st)).cards
   cards = A.filter f st.cards
 
-  newCards ∷ Array CardDef
-  newCards = A.filter (\c → c.id < cardId) st.cards
+  newCards ∷ Array Card.Model
+  newCards = A.filter (\c → c.cardId < cardId) st.cards
 
   oldCards ∷ Array CardId
   oldCards =
-    A.mapMaybe (\c → if c.id >= cardId then Just c.id else Nothing) st.cards
+    A.mapMaybe (\c → if c.cardId >= cardId then Just c.cardId else Nothing) st.cards
 
-  f ∷ CardDef → Boolean
-  f = not ∘ flip elem oldCards ∘ _.id
+  f ∷ Card.Model → Boolean
+  f = not ∘ flip elem oldCards ∘ _.cardId
 
 -- | Finds the first card in the deck.
 findFirst ∷ State → Maybe CardId
-findFirst { cards } = _.id <$> A.head cards
+findFirst { cards } = _.cardId <$> A.head cards
 
 -- | Finds the last card in the deck.
 findLast ∷ State → Maybe CardId
-findLast { cards } = _.id <$> A.last cards
+findLast { cards } = _.cardId <$> A.last cards
 
 findLastRealCard ∷ State → Maybe CardId
 findLastRealCard { cards } =
-  A.findLastIndex (\x → x.id ≠ top) cards
+  A.findLastIndex (\x → x.cardId ≠ top) cards
     >>= A.index cards
-    <#> _.id
+    <#> _.cardId
 
 -- | Finds the type of the last card.
 findLastCardType ∷ State → Maybe CardType
-findLastCardType { cards } = _.ty <$> A.last cards
+findLastCardType { cards } = _.cardType <$> A.last cards
 
 cardsOfType ∷ CardType → State → Array CardId
 cardsOfType cardType =
   _.cards ⋙ A.mapMaybe cardTypeMatches ⋙ foldMap pure
   where
-  cardTypeMatches { id: cid, ty } =
+  cardTypeMatches { cardId: cid, cardType: ty } =
     if ty ≡ cardType
        then Just cid
        else Nothing
@@ -381,7 +396,7 @@ virtualState st =
   VirtualState
     $ insertNextActionCard
     $ case find' hasError st.cards of
-        Just c → insertErrorCard c.id st
+        Just c → insertErrorCard c.cardId st
         Nothing → st
   where
 
@@ -393,8 +408,8 @@ virtualState st =
     A.findIndex p xs
       >>= A.index xs
 
-  hasError ∷ CardDef → Boolean
-  hasError c = S.member c.id st.failingCards
+  hasError ∷ Card.Model → Boolean
+  hasError c = S.member c.cardId st.failingCards
 
 -- | Updates the stored card that is pending to run. This handles the logic of
 -- | changing the pending card when a provided card appears earlier in the deck
@@ -432,9 +447,9 @@ fromModel path deckId { cards, name } state =
     cards
     ((state
         { accessType = Editable -- why was it ReadOnly?
-        , activeCardIndex = VirtualIndex $ A.length cardDefs - 1 -- fishy!
+        , activeCardIndex = VirtualIndex $ A.length cards - 1 -- fishy!
         , displayMode = Normal
-        , cards = cardDefs
+        , cards = cards
         , failingCards = S.empty
         , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
         , globalVarMap = SM.empty
@@ -445,24 +460,19 @@ fromModel path deckId { cards, name } state =
         , runTrigger = Nothing
         , pendingCard = Nothing
         }) ∷ State)
-  where
-  cardDefs = foldMap cardDefFromModel cards
-
-  cardDefFromModel ∷ Card.Model → Array CardDef
-  cardDefFromModel { cardId, cardType } = pure { id: cardId, ty: cardType }
 
 cardIndexFromId ∷ VirtualState → CardId → VirtualIndex
 cardIndexFromId st =
   -- TODO: for performance, use A.findIndex instead
-  VirtualIndex ∘ fromMaybe (A.length cards) ∘ flip A.elemIndex (_.id <$> cards)
+  VirtualIndex ∘ fromMaybe (A.length cards) ∘ flip A.elemIndex (_.cardId <$> cards)
   where
     cards = st ^. _VirtualState ∘ _cards
 
-cardFromIndex ∷ VirtualState → VirtualIndex → Maybe CardDef
+cardFromIndex ∷ VirtualState → VirtualIndex → Maybe Card.Model
 cardFromIndex st (VirtualIndex i) = A.index (st ^. _VirtualState ∘ _cards) i
 
 cardIdFromIndex ∷ VirtualState → VirtualIndex → Maybe CardId
-cardIdFromIndex st vi = _.id <$> cardFromIndex st vi
+cardIdFromIndex st vi = _.cardId <$> cardFromIndex st vi
 
 activeCardId ∷ VirtualState → Maybe CardId
 activeCardId st =
@@ -471,4 +481,4 @@ activeCardId st =
 
 activeCardType ∷ VirtualState → Maybe CardType
 activeCardType st =
-  _.ty <$> cardFromIndex st (st ^. _VirtualState ∘ _activeCardIndex)
+  _.cardType <$> cardFromIndex st (st ^. _VirtualState ∘ _activeCardIndex)

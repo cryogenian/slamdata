@@ -375,7 +375,7 @@ updateIndicatorAndNextAction = do
 
 updateIndicator ∷ DeckDSL Unit
 updateIndicator = do
-  cids ← H.gets $ map _.id ∘ _.cards ∘ DCS.runVirtualState ∘ DCS.virtualState
+  cids ← H.gets $ map _.cardId ∘ _.cards ∘ DCS.runVirtualState ∘ DCS.virtualState
   outs ←
     for cids \cid → do
       map join
@@ -483,7 +483,7 @@ runPendingCards = do
     cards ← H.gets (_.cards ∘ DCS.runVirtualState ∘ DCS.virtualState)
     path ← H.gets DCS.deckPath
     globalVarMap ← H.gets _.globalVarMap
-    void $ Array.foldM (runStep pendingCard path globalVarMap) Nothing (_.id <$> cards)
+    void $ Array.foldM (runStep pendingCard path globalVarMap) Nothing (_.cardId <$> cards)
     updateIndicatorAndNextAction
     -- triggerSave <-- why?
   where
@@ -532,12 +532,12 @@ saveDeck = H.get >>= \st →
   then runPendingCards
   else do
     cards ← Array.catMaybes <$> for st.cards \card →
-      if card.id ≡ top
+      if card.cardId ≡ top
         then pure Nothing
         else
-        H.query' cpCard (CardSlot card.id)
+        H.query' cpCard (CardSlot card.cardId)
           $ left
-          $ H.request (SaveCard card.id card.ty)
+          $ H.request (SaveCard card.cardId card.cardType)
 
     let json = Model.encode { name: st.name , cards }
 
@@ -571,10 +571,10 @@ saveDeck = H.get >>= \st →
 
   isNewExploreDeck ∷ DCS.State → Boolean
   isNewExploreDeck { cards } =
-    let
-      cardArrays = map _.ty cards
-    in
-      cardArrays ≡ [ CT.OpenResource ] ∨ cardArrays ≡ [ CT.OpenResource, CT.JTable ]
+    cardArrays ≡ [ CT.OpenResource ]
+      ∨ cardArrays ≡ [ CT.OpenResource, CT.JTable ]
+    where
+      cardArrays = _.cardType <$> cards
 
   genId ∷ DirPath → Maybe DeckId → DeckDSL (Either Exn.Error DeckId)
   genId path deckId = case deckId of
