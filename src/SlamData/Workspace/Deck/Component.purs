@@ -32,11 +32,13 @@ import Data.Array as Array
 import Data.Foldable as Foldable
 import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens.Prism.Coproduct (_Right)
+import Data.List as L
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
-import Data.Set as S
 import Data.Time (Milliseconds(..))
 import Data.StrMap as SM
+
+import Data.Argonaut as J
 
 import Ace.Halogen.Component as Ace
 
@@ -58,8 +60,9 @@ import SlamData.Quasar.Data (save, load) as Quasar
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as NA
-import SlamData.Workspace.Card.CardId (CardId())
+import SlamData.Workspace.Card.CardId (CardId(..))
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
@@ -173,7 +176,7 @@ render st =
           (Gripper.renderGrippers
              visible
              (isJust st.initialSliderX)
-             (Gripper.gripperDefsForCardId st.cards $ DCS.activeCardId st)
+             (Gripper.gripperDefsForCardId st.displayCards $ DCS.activeCardId st)
              ⊕ [ HH.slot' cpBackSide unit \_ →
                   { component: Back.comp
                   , initialState: Back.initialState
@@ -372,7 +375,7 @@ updateIndicatorAndNextAction = do
 
 updateIndicator ∷ DeckDSL Unit
 updateIndicator = do
-  cards ← H.gets _.cards
+  cards ← H.gets _.displayCards
   outs ←
     for cards \{cardId} → do
       map join
@@ -477,34 +480,72 @@ aceQueryShouldSave = H.runChildF >>> case _ of
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
   H.gets _.pendingCard >>= traverse_ \pendingCard -> do
-    { cards, path, globalVarMap } ← H.get
-    void $ Array.foldM (runStep pendingCard path globalVarMap) Nothing (_.cardId <$> cards)
+    { modelCards, path, globalVarMap } ← H.get
+    H.modify $ DCS._displayCards .~ []
+
+    let
+      go ∷ Maybe Port → L.List Card.Model → DeckDSL (Either String (Maybe Port))
+      go port =
+        case _ of
+          L.Nil → pure $ Right $ port
+          L.Cons x xs → do
+            H.modify $ DCS._displayCards %~ flip Array.snoc x
+            runStep pendingCard path globalVarMap port x >>=
+              case _ of
+                Left err → pure $ Left err
+                Right output → go output xs
+
+    result ← go Nothing $ L.toList modelCards
+    case result of
+      Right _ → do
+        let
+          nextActionCard ∷ Card.Model
+          nextActionCard =
+            { cardId : top
+            , cardType : CT.NextAction
+            , inner : J.jsonEmptyObject
+            , hasRun : false
+            }
+        H.modify $ DCS._displayCards %~ flip Array.snoc nextActionCard
+      Left err → do
+        let
+          errorCard ∷ Card.Model
+          errorCard =
+            { cardId : CardId (-1)
+            , cardType : CT.ErrorCard
+            , inner : J.jsonEmptyObject
+            , hasRun : false
+            }
+        H.modify $ DCS._displayCards %~ flip Array.snoc errorCard
+        -- TODO: run the error card!
+
     updateIndicatorAndNextAction
     -- triggerSave <-- why?
   where
   runStep
     :: CardId
-    -> Maybe DirPath
+    → Maybe DirPath
     → Port.VarMap
     → Maybe Port
-    → CardId
-    → DeckDSL (Maybe Port)
-  runStep pendingCard path globalVarMap inputPort cardId =
+    → Card.Model
+    → DeckDSL (Either String (Maybe Port))
+  runStep pendingCard path globalVarMap inputPort card @ { cardId } = do
     if cardId < pendingCard
-    then map join
-      $ H.query' cpCard (CardSlot cardId)
-      $ left (H.request GetOutput)
-    else do
-      let input = { path, input: inputPort, cardId, globalVarMap }
-      -- TODO: insert model-based eval here, and then pass through the input &
-      -- eval-computed output ports to the card -gb
-      outputPort ←
-        H.query' cpCard (CardSlot cardId)
-          $ left $ H.request (UpdateCard input)
-      H.modify $ DCS._failingCards %~ case outputPort of
-        Just (CardError msg) → S.insert cardId
-        _ → S.delete cardId
-      pure outputPort
+      then
+        map (Right ∘ join)
+          $ H.query' cpCard (CardSlot cardId)
+          $ left (H.request GetOutput)
+      else do
+        let input = { path, input: inputPort, cardId, globalVarMap }
+        -- TODO: insert model-based eval here, and then pass through the input &
+        -- eval-computed output ports to the card -gb
+        outputPort ←
+          H.query' cpCard (CardSlot cardId)
+            $ left $ H.request (UpdateCard input)
+
+        pure case outputPort of
+          Just (CardError err) → Left err
+          _ → Right outputPort
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced H.query to trigger the cards to
@@ -526,7 +567,8 @@ saveDeck = H.get >>= \st →
   -- If it's an unsaved Explore deck, it is safe to go ahead and run it.
   then runPendingCards
   else do
-    cards ← Array.catMaybes <$> for st.cards \card →
+    cards ← Array.catMaybes <$> for st.modelCards \card →
+      -- TODO: this check won't be necessary - js
       if card.cardId ≡ top
         then pure Nothing
         else
@@ -565,11 +607,11 @@ saveDeck = H.get >>= \st →
   isUnsaved = isNothing ∘ DCS.deckPath
 
   isNewExploreDeck ∷ DCS.State → Boolean
-  isNewExploreDeck { cards } =
+  isNewExploreDeck { modelCards } =
     cardArrays ≡ [ CT.OpenResource ]
       ∨ cardArrays ≡ [ CT.OpenResource, CT.JTable ]
     where
-      cardArrays = _.cardType <$> cards
+      cardArrays = _.cardType <$> modelCards
 
   genId ∷ DirPath → Maybe DeckId → DeckDSL (Either Exn.Error DeckId)
   genId path deckId = case deckId of

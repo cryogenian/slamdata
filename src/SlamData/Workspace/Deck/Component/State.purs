@@ -23,7 +23,8 @@ module SlamData.Workspace.Deck.Component.State
   , initialDeck
   , _id
   , _accessType
-  , _cards
+  , _modelCards
+  , _displayCards
   , _activeCardIndex
   , _name
   , _path
@@ -60,7 +61,7 @@ module SlamData.Workspace.Deck.Component.State
 import SlamData.Prelude
 
 import Data.Array as A
-import Data.Foldable (maximum, elem)
+import Data.Foldable (maximum)
 import Data.Lens (LensP, lens)
 import Data.Ord (max)
 import Data.Path.Pathy ((</>))
@@ -77,7 +78,7 @@ import SlamData.Effects (Slam)
 import SlamData.Workspace.AccessType (AccessType(..))
 
 import SlamData.Workspace.Card.CardId (CardId(..), runCardId)
-import SlamData.Workspace.Card.CardType (CardType(..))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port.VarMap as Port
 
@@ -107,8 +108,8 @@ type State =
   { id ∷ Maybe DeckId
   , fresh ∷ Int
   , accessType ∷ AccessType
-  , cards ∷ Array Card.Model -- TODO: this becomes list of card models instead -gb
-  -- TODO: add list for the ephemeral cards that we actually render, recomputed when the deck is run -gb
+  , modelCards ∷ Array Card.Model
+  , displayCards ∷ Array Card.Model
   , activeCardIndex ∷ Int
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
@@ -127,7 +128,7 @@ type State =
   }
 
 -- | A record used to represent card definitions in the deck.
-type CardDef = { id ∷ CardId, ty ∷ CardType }
+type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 
 -- | Constructs a default `State` value.
 initialDeck ∷ State
@@ -135,7 +136,8 @@ initialDeck =
   { id: Nothing
   , fresh: 0
   , accessType: Editable
-  , cards: mempty
+  , modelCards: mempty
+  , displayCards: mempty
   , activeCardIndex: 0
   , name: Nothing
   , path: Nothing
@@ -167,8 +169,12 @@ _accessType ∷ ∀ a r. LensP {accessType ∷ a|r} a
 _accessType = lens _.accessType _{accessType = _}
 
 -- | The list of cards currently in the deck.
-_cards ∷ ∀ a r. LensP {cards ∷ a |r} a
-_cards = lens _.cards _{cards = _}
+_modelCards ∷ ∀ a r. LensP {modelCards ∷ a |r} a
+_modelCards = lens _.modelCards _{modelCards = _}
+
+-- | The list of cards to be displayed in the deck
+_displayCards ∷ ∀ a r. LensP {displayCards ∷ a |r} a
+_displayCards = lens _.displayCards _{displayCards = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.
@@ -237,119 +243,80 @@ _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 _cardElementWidth ∷ ∀ a r. LensP {cardElementWidth ∷ a|r} a
 _cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
 
-addCard ∷ CardType → State → State
+addCard ∷ CT.CardType → State → State
 addCard cardType st = fst $ addCard' cardType st
 
-addCard' ∷ CardType → State → State × CardId
+addCard' ∷ CT.CardType → State → State × CardId
 addCard' cardType st =
   let
     cardId = CardId st.fresh
     newState = st
       { fresh = st.fresh + one
-      , cards =
+      , modelCards =
           let def = { cardId, cardType, inner: J.jsonEmptyObject, hasRun: false }
-          in case A.uncons $ A.reverse st.cards of
-            Nothing → st.cards `A.snoc` def
+          in case A.uncons $ A.reverse st.modelCards of
+            Nothing → st.modelCards `A.snoc` def
             Just {head, tail} →
               if head.cardId ≡ top
                 then A.reverse $ def A.: tail
-                else st.cards `A.snoc` def
+                else st.modelCards `A.snoc` def
       }
   in newState × cardId
 
--- | Insert an error card as a child to a specified card, and reassociate all
--- | its children as children of the error card.
-insertErrorCard ∷ CardId → State → State
-insertErrorCard parentId st =
-  st
-    { cards =
-        fromMaybe st.cards do
-          parentAddr ← A.findIndex (\c → c.cardId ≡ parentId) st.cards
-          -- let errorCard = { cardId : cardId, } -- mkCardDef ErrorCard cardId
-          A.insertAt (parentAddr + 1) errorCard st.cards
-    }
-  where
-  errorCard ∷ Card.Model
-  errorCard =
-    { cardId : cardId
-    , cardType : ErrorCard
-    , inner : J.jsonEmptyObject
-    , hasRun : false
-    }
-  -- The -1 index is reserved for the error card.
-  cardId = CardId (-1)
-
-insertNextActionCard ∷ State → State
-insertNextActionCard st =
-  st
-    { cards =
-         case lastId of
-           Nothing → [ nextActionCard ]
-           Just lid →
-             if lid ≡ top
-               then st.cards
-               else st.cards `A.snoc` nextActionCard
-    , activeCardIndex =
-        case lastId of
-          Nothing → zero
-          Just lid → st.activeCardIndex
-    }
-  where
-    nextActionCard ∷ Card.Model
-    nextActionCard =
-      { cardId: top
-      , cardType: NextAction
-      , inner: J.jsonEmptyObject
-      , hasRun: false
-      }
-
-    lastId = findLast st
-
-mkCardDef ∷ CardType → CardId → CardDef
+mkCardDef ∷ CT.CardType → CardId → CardDef
 mkCardDef cardType cardId = { id: cardId, ty: cardType }
-
 
 removeCard ∷ CardId → State → State
 removeCard cardId st =
   removePendingCard cardId $
     st
-      { cards = newCards
-      , activeCardIndex = max zero $ A.length newCards - one
+      { modelCards = newModelCards
+      , displayCards = newDisplayCards
+      , activeCardIndex = max zero $ A.length newDisplayCards - 1
       }
   where
-  cards = A.filter f st.cards
+  -- TODO: clean this up
+  newDisplayCards ∷ Array Card.Model
+  newDisplayCards = A.filter (\c → c.cardId < cardId) st.displayCards
 
-  newCards ∷ Array Card.Model
-  newCards = A.filter (\c → c.cardId < cardId) st.cards
+  newModelCards ∷ Array Card.Model
+  newModelCards = A.filter (\c → c.cardId < cardId) st.modelCards
 
-  oldCards ∷ Array CardId
-  oldCards =
-    A.mapMaybe (\c → if c.cardId >= cardId then Just c.cardId else Nothing) st.cards
+  oldModelCards ∷ Array CardId
+  oldModelCards =
+    A.mapMaybe
+      (\c → if c.cardId >= cardId then Just c.cardId else Nothing)
+      st.modelCards
 
-  f ∷ Card.Model → Boolean
-  f = not ∘ flip elem oldCards ∘ _.cardId
+  oldDisplayCards ∷ Array CardId
+  oldDisplayCards =
+    A.mapMaybe
+      (\c → if c.cardId >= cardId then Just c.cardId else Nothing) -- TODO: weird thing will happen with error card currently
+      st.displayCards
 
 -- | Finds the first card in the deck.
 findFirst ∷ State → Maybe CardId
-findFirst { cards } = _.cardId <$> A.head cards
+findFirst { displayCards } = _.cardId <$> A.head displayCards
+-- TODO: should this be modelCards?  - js
 
 -- | Finds the last card in the deck.
 findLast ∷ State → Maybe CardId
-findLast { cards } = _.cardId <$> A.last cards
+findLast { displayCards } = _.cardId <$> A.last displayCards
 
 findLastRealCard ∷ State → Maybe CardId
-findLastRealCard { cards } =
-  A.findLastIndex (\x → x.cardId ≠ top) cards
-    >>= A.index cards
+findLastRealCard { displayCards } =
+  A.findLastIndex (\x → x.cardId ≠ top) displayCards
+    >>= A.index displayCards
     <#> _.cardId
 
 -- | Finds the type of the last card.
-findLastCardType ∷ State → Maybe CardType
-findLastCardType { cards } = _.cardType <$> A.last cards
+findLastCardType ∷ State → Maybe CT.CardType
+findLastCardType { displayCards } = _.cardType <$> A.last displayCards
 
-cardsOfType ∷ CardType → State → Array CardId
+-- TODO: should this be displayCards? - js
+cardsOfType ∷ CT.CardType → State → Array CardId
 cardsOfType cardType =
-  _.cards ⋙ A.mapMaybe cardTypeMatches ⋙ foldMap pure
+  _.modelCards ⋙ A.mapMaybe cardTypeMatches ⋙ foldMap pure
   where
   cardTypeMatches { cardId: cid, cardType: ty } =
     if ty ≡ cardType
@@ -394,7 +361,8 @@ fromModel path deckId { cards, name } state =
         { accessType = Editable -- why was it ReadOnly?
         , activeCardIndex = A.length cards - 1 -- fishy!
         , displayMode = Normal
-        , cards = cards
+        , modelCards = cards
+        , displayCards = mempty
         , failingCards = S.empty
         , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
         , globalVarMap = SM.empty
@@ -411,10 +379,10 @@ cardIndexFromId st =
   -- TODO: for performance, use A.findIndex instead
   fromMaybe (A.length cards) ∘ flip A.elemIndex (_.cardId <$> cards)
   where
-    cards = st.cards
+    cards = st.displayCards
 
 cardFromIndex ∷ State  → Int → Maybe Card.Model
-cardFromIndex st i = A.index st.cards i
+cardFromIndex st i = A.index st.displayCards i
 
 cardIdFromIndex ∷ State→ Int → Maybe CardId
 cardIdFromIndex st vi = _.cardId <$> cardFromIndex st vi
@@ -424,7 +392,7 @@ activeCardId st =
   cardIdFromIndex st $
     st.activeCardIndex
 
-activeCardType ∷ State → Maybe CardType
+activeCardType ∷ State → Maybe CT.CardType
 activeCardType st =
   _.cardType <$>
     cardFromIndex st st.activeCardIndex

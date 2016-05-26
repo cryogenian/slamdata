@@ -48,7 +48,6 @@ import SlamData.Render.CSS as ClassNames
 import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
-import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Component as CardC
 import SlamData.Workspace.Card.Factory (cardTypeComponent)
@@ -75,7 +74,7 @@ render comp st visible =
      ]
      ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
     $ map (Tuple.uncurry $ renderCard comp st)
-    $ Array.zip st.cards (0 .. Array.length st.cards)
+    $ Array.zip st.displayCards (0 .. Array.length st.displayCards)
 
 stateStartSliding ∷ Event MouseEvent → Maybe Number → State → State
 stateStartSliding mouseEvent cardWidth =
@@ -125,7 +124,7 @@ snapActiveCardIndexByTranslationAndCardWidth
 snapActiveCardIndexByTranslationAndCardWidth st cardWidth idx =
   let
     translateX = st.sliderTranslateX
-    numberOfCards = Array.length st.cards
+    numberOfCards = Array.length st.displayCards
     halfOffset = (offsetCardSpacing cardWidth) / 2.0
   in
     if translateX <= -1.0 * halfOffset
@@ -147,26 +146,9 @@ offsetCardSpacing ∷ Number → Number
 offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
 snapActiveCardIndex ∷ State → Int
-snapActiveCardIndex st =
-  min idx $ maximumSnappingCardIndex st
+snapActiveCardIndex st = maybe id snap' st.initialSliderCardWidth st.activeCardIndex
   where
-  idx = maybe id snap' st.initialSliderCardWidth st.activeCardIndex
   snap' = snapActiveCardIndexByTranslationAndCardWidth st
-
--- We cannot snap to any card past a "blocking card".
-maximumSnappingCardIndex ∷ State → Int
-maximumSnappingCardIndex st =
-  case Array.findIndex (CT.blocking ∘ _.cardType) st.cards of
-    Just idx → idx
-    Nothing → max 0 maximumActiveCardIndex
-  where
-  maximumActiveCardIndex =
-    Array.length st.cards
-      - one
-      -- NextAction card is disabled in readonly mode
-      - if st.accessType ≡ AccessType.ReadOnly
-        then one
-        else zero
 
 snap ∷ State → State
 snap st = st { activeCardIndex = snapActiveCardIndex st }
@@ -248,7 +230,7 @@ renderCard comp st card index =
     $ Gripper.renderGrippers
         (cardSelected st card.cardId)
         (isJust st.initialSliderX)
-        (Gripper.gripperDefsForCardId st.cards $ Just card.cardId)
+        (Gripper.gripperDefsForCardId st.displayCards $ Just card.cardId)
         ⊕ [ HH.div
               (cardProperties st card.cardId)
               [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
@@ -264,5 +246,5 @@ renderCard comp st card index =
 
 shouldHideNextActionCard ∷ Int → State → Boolean
 shouldHideNextActionCard index st =
-  index ≡ Array.length st.cards - one
+  index ≡ Array.length st.displayCards - one
     ∧ st.accessType ≡ AccessType.ReadOnly
