@@ -366,9 +366,9 @@ fromModel path deckId { cards, name } state =
         }) ∷ State)
 
 cardIndexFromId ∷ State → CardId → Int
-cardIndexFromId st =
-  -- TODO: for performance, use A.findIndex instead
-  fromMaybe (A.length cards) ∘ flip A.elemIndex (_.cardId <$> cards)
+cardIndexFromId st cid =
+  fromMaybe (A.length cards - 1) $
+    A.findIndex (\c → c.cardId ≡ cid) cards
   where
     cards = st.displayCards
 
