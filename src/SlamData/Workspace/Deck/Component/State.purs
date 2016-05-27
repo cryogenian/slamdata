@@ -25,6 +25,7 @@ module SlamData.Workspace.Deck.Component.State
   , _accessType
   , _modelCards
   , _displayCards
+  , _cardOutputs
   , _activeCardIndex
   , _name
   , _path
@@ -64,6 +65,7 @@ import Data.Foldable (maximum)
 import Data.Lens (LensP, lens)
 import Data.Lens as Lens
 import Data.Ord (max)
+import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.StrMap as SM
@@ -80,6 +82,7 @@ import SlamData.Workspace.Card.CardId (CardId(..))
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port.VarMap as Port
 
 import SlamData.Workspace.Deck.Component.Query (Query)
@@ -110,6 +113,7 @@ type State =
   , accessType ∷ AccessType
   , modelCards ∷ Array Card.Model
   , displayCards ∷ Array Card.Model
+  , cardOutputs ∷ Map.Map CardId Port
   , activeCardIndex ∷ Int
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
@@ -137,6 +141,7 @@ initialDeck =
   , accessType: Editable
   , modelCards: mempty
   , displayCards: mempty
+  , cardOutputs: mempty
   , activeCardIndex: 0
   , name: Nothing
   , path: Nothing
@@ -173,6 +178,9 @@ _modelCards = lens _.modelCards _{modelCards = _}
 -- | The list of cards to be displayed in the deck
 _displayCards ∷ ∀ a r. LensP {displayCards ∷ a |r} a
 _displayCards = lens _.displayCards _{displayCards = _}
+
+_cardOutputs ∷ ∀ a r. LensP {cardOutputs ∷ a |r} a
+_cardOutputs = lens _.cardOutputs _{cardOutputs = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.

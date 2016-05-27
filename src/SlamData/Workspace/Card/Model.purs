@@ -63,13 +63,18 @@ decode =
 -- -gb
 modelToEval :: Model -> Eval.Eval
 modelToEval { cardType, inner } =
-  fromMaybe (Eval.Error "A card inner model did not decode as expected") $
+  fromMaybe (Eval.Error $ "A card inner model did not decode as expected: " ++ show inner) $
     case cardType of
       CT.Ace CT.SQLMode →
-        either (const Nothing) (Just ∘ Eval.Query) $ J.decodeJson inner
+        either (const Nothing) (Just ∘ Eval.Query) $ do
+          obj ← J.decodeJson inner
+          obj .? "text"
       CT.Search →
         either (const Nothing) (Just ∘ Eval.Search) $ J.decodeJson inner
       CT.Save →
         either (const Nothing) (Just ∘ Eval.Save) $ J.decodeJson inner
+      CT.OpenResource → do
+        p ← J.decodeJson inner # either (const Nothing) Just
+        Just $ Eval.OpenResource $ p
       _ →
         Just Eval.Pass

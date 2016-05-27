@@ -23,11 +23,13 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
 import Control.Monad.Writer.Class as WC
 
+import Data.Lens ((^?))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
 import Quasar.Types (SQL, FilePath)
 
+import SlamData.FileSystem.Resource as R
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
@@ -44,7 +46,7 @@ data Eval
   | Search String
   | Save String
   | Error String
-  | OpenResource (Maybe FilePath)
+  | OpenResource R.Resource
 
 evalCard
   ∷ ∀ m
@@ -69,8 +71,8 @@ evalCard input = case _, input.input of
     Port.TaggedResource <$> evalSearch input query resource
   Save pathString, Just (Port.TaggedResource { resource }) →
     Port.TaggedResource <$> evalSave input pathString resource
-  OpenResource path, _ →
-    Port.TaggedResource <$> evalOpenResource input path
+  OpenResource res, _ →
+    Port.TaggedResource <$> evalOpenResource input res
   _, _ →
     EC.throwError "Card received unexpected input type"
 
@@ -78,17 +80,17 @@ evalOpenResource
   ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
-  → Maybe FilePath
+  → R.Resource
   → CET.CardEvalT m Port.TaggedResourcePort
-evalOpenResource info mresource = do
-   resource ← maybe (EC.throwError "No resource is selected") pure mresource
+evalOpenResource info res = do
+   filePath ← maybe (EC.throwError "No resource is selected") pure $ res ^? R._filePath
    msg ←
      QFS.messageIfFileNotFound
-       resource
-       ("File " ⊕ Path.printPath resource ⊕ " doesn't exist")
+       filePath
+       ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
      # lift
    case msg of
-     Right Nothing → pure { resource, tag: Nothing }
+     Right Nothing → pure { resource: filePath, tag: Nothing }
      Right (Just err) →
        EC.throwError err
      Left exn →
@@ -102,9 +104,10 @@ evalQuery
   → Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
 evalQuery info sql varMap = do
-  let varMap' = Port.renderVarMapValue <$> varMap
-  let resource = CET.temporaryOutputResource info
-  let backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
+  let
+    varMap' = Port.renderVarMapValue <$> varMap
+    resource = CET.temporaryOutputResource info
+    backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
   plan ← lift $ QQ.compile backendPath sql varMap'
   case plan of
     Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
@@ -132,9 +135,10 @@ evalSearch info queryText resource = do
       ("Input resource " ⊕ Path.printPath resource ⊕ " doesn't exist")
     QQ.fields resource
 
-  let template = Search.queryToSQL fields query
-  let sql = QQ.templated resource template
-  let outputResource = CET.temporaryOutputResource info
+  let
+    template = Search.queryToSQL fields query
+    sql = QQ.templated resource template
+    outputResource = CET.temporaryOutputResource info
 
   WC.tell ["Generated SQL: " ⊕ sql]
 

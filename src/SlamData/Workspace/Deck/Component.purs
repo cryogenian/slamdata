@@ -37,6 +37,7 @@ import Data.List as L
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
+import Data.Map as Map
 import Data.StrMap as SM
 
 import Data.Argonaut as J
@@ -64,6 +65,7 @@ import SlamData.Workspace.Action as NA
 import SlamData.Workspace.Card.CardId (CardId(..))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
@@ -424,8 +426,7 @@ createCard cardType = do
       (st × newCardId) ← H.gets $ DCS.addCard' cardType
 
       setDeckState st
-      input ←
-        map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
+      input ← map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
       for_ input \input' → do
         path ← H.gets DCS.deckPath
         let setupInfo = { path, input: input', cardId: newCardId }
@@ -555,23 +556,29 @@ runPendingCards = do
     → Card.Model
     → DeckDSL (Either String (Maybe Port))
   runStep pendingCard path globalVarMap inputPort card @ { cardId } = do
-    Debug.Trace.traceAnyA {cardId, pendingCard}
     if cardId < pendingCard
       then
-        map (Right ∘ join)
-          $ H.query' cpCard (CardSlot cardId)
-          $ left (H.request GetOutput)
+        H.gets (Map.lookup cardId ∘ _.cardOutputs)
+          <#> Right
       else do
         let input = { path, input: inputPort, cardId, globalVarMap }
+        card' <-
+          H.query' cpCard (CardSlot card.cardId)
+            $ left
+            $ H.request (SaveCard card.cardId card.cardType)
+
         -- TODO: insert model-based eval here, and then pass through the input &
         -- eval-computed output ports to the card -gb
-        outputPort ←
-          H.query' cpCard (CardSlot cardId)
-            $ left $ H.request (UpdateCard input)
+        result ← Eval.runEvalCard input $ Card.modelToEval $ fromMaybe card card'
+        H.modify $ DCS._cardOutputs %~ Map.insert cardId result.output
+        --outputPort ←
+        --  H.query' cpCard (CardSlot cardId)
+        --    $ left $ H.request (UpdateCard input)
 
-        pure case outputPort of
-          Just (CardError err) → Left err
-          _ → Right outputPort
+        Debug.Trace.traceAnyA {input,result, card'}
+        pure case result.output of
+          CardError err → Left err
+          p → Right $ Just p
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced H.query to trigger the cards to

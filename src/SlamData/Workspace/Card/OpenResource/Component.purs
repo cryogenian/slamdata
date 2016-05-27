@@ -22,9 +22,6 @@ module SlamData.Workspace.Card.OpenResource.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as Err
-
 import Data.Argonaut (decodeJson, encodeJson)
 import Data.Array as Arr
 import Data.Foldable as F
@@ -51,7 +48,6 @@ import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Component as NC
 import SlamData.Workspace.Card.OpenResource.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _loading)
-import SlamData.Workspace.Card.Port as Port
 
 import Utils.Path as PU
 
@@ -133,19 +129,23 @@ eval = coproduct cardEval openResourceEval
 
 cardEval ∷ Eq.CardEvalQuery ~> ORDSL
 cardEval (Eq.EvalCard info k) =
-  k <$> (Eval.runEvalCard info ∘ Eval.OpenResource =<< H.gets _.selected)
+  k <$> do
+    { selected, browsing } ← H.get
+    let res = fromMaybe (R.Directory browsing) $ R.File <$> selected
+    Eval.runEvalCard info $ Eval.OpenResource res
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.Save k) = do
   mbRes ← H.gets _.selected
   k <$> case mbRes of
-    Just res → pure $ encodeJson $ printPath <$> mbRes
+    Just res → pure $ encodeJson $ R.File res
     Nothing → do
       br ← H.gets _.browsing
       pure $ encodeJson $ R.Directory br
 cardEval (Eq.Load js next) = do
-  for_ (decodeJson js) \path ->
-    for_ (PU.parseFilePath path) \fp ->
-      resourceSelected (R.File fp)
+  for_ (decodeJson js) \res →
+    case res of
+      R.File fp → resourceSelected res
+      _ → pure unit
   pure next
 cardEval (Eq.SetupCard info next) = pure next
 cardEval (Eq.SetCanceler _ next) = pure next
