@@ -498,8 +498,9 @@ runPendingCards = do
       go L.Nil Nothing (L.toList modelCards)
 
   let
-    nextActionCard ∷ Card.Model
+    nextActionCard ∷ Maybe Card.Model
     nextActionCard =
+      Just
       { cardId : NextActionCardId
       , cardType : CT.NextAction
       , inner : J.jsonEmptyObject
@@ -514,20 +515,20 @@ runPendingCards = do
       , hasRun : true
       }
 
-    lastCard =
+    mlastCard =
       case result of
         Just { cards, state } →
           case state of
-            Left _ → errorCard
+            Left _ → Just errorCard
             Right _ → nextActionCard
         Nothing → nextActionCard
 
   H.modify $ Lens.over DCS._displayCards \displayCards →
     case result of
-      Just { cards, state } → L.fromList ∘ L.reverse $ L.Cons lastCard cards
+      Just { cards, state } → L.fromList ∘ L.reverse $ maybe cards (flip L.Cons cards) mlastCard
       Nothing →
          case displayCards of
-           [] → [lastCard]
+           [] → maybe [] Array.singleton mlastCard
            _ → displayCards
 
   { displayCards, cardOutputs } ← H.get
@@ -538,20 +539,20 @@ runPendingCards = do
     (fromMaybe [] (Array.tail displayCards))
     cardInputs
 
-  Debug.Trace.traceAnyA {result}
   for_ result \{ state } →
-    let
-      evalInput =
-        { path
-        , globalVarMap
-        , cardId : lastCard.cardId
-        , input :
-            case state of
-              Right p → p
-              Left err → Just $ CardError err
-        }
-    in
-      H.query' cpCard (CardSlot lastCard.cardId) $ left $ H.request (UpdateCard evalInput)
+    for_ mlastCard \lastCard →
+      let
+        evalInput =
+          { path
+          , globalVarMap
+          , cardId : lastCard.cardId
+          , input :
+              case state of
+                Right p → p
+                Left err → Just $ CardError err
+          }
+      in
+        H.query' cpCard (CardSlot lastCard.cardId) $ left $ H.request (UpdateCard evalInput)
 
 
   updateIndicatorAndNextAction

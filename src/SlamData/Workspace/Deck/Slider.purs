@@ -45,7 +45,6 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Config as Config
 import SlamData.Render.CSS as ClassNames
-import SlamData.Workspace.AccessType as AccessType
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Model as Card
@@ -129,7 +128,7 @@ snapActiveCardIndexByTranslationAndCardWidth st cardWidth idx =
   in
     if translateX <= -1.0 * halfOffset
     then
-      min numberOfCards
+      min (numberOfCards - 1)
         $ sub idx
         $ one
         + Int.floor ((translateX - halfOffset) / cardWidth)
@@ -224,9 +223,7 @@ renderCard comp st card index =
     , HP.classes [ ClassNames.card ]
     , style $ cardPositionCSS index
     , HP.ref (H.action ∘ DCQ.SetCardElement)
-    ]
-     ⊕ (guard (shouldHideNextActionCard index st)
-        $> (HP.class_ ClassNames.invisible)))
+    ])
     $ Gripper.renderGrippers
         (cardSelected st card.cardId)
         (isJust st.initialSliderX)
@@ -243,8 +240,3 @@ renderCard comp st card index =
         H.parentState
           CardC.initialCardState { accessType = st.accessType }
     }
-
-shouldHideNextActionCard ∷ Int → State → Boolean
-shouldHideNextActionCard index st =
-  index ≡ Array.length st.displayCards - one
-    ∧ st.accessType ≡ AccessType.ReadOnly
