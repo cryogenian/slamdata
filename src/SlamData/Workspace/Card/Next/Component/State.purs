@@ -24,8 +24,7 @@ import Data.Lens (LensP(), lens)
 import SlamData.Workspace.Card.CardType as Ct
 
 type State =
-  {
-    types :: Array Ct.CardType
+  { types :: Array Ct.CardType
     -- THis would be unnecessary after error card and autorun for every card
     -- be implemented
   , message :: M.Maybe String
@@ -40,7 +39,6 @@ _message = lens _.message (_{message = _})
 
 initialState :: State
 initialState =
-  {
-    types: Ct.nextCardTypes M.Nothing
+  { types: Ct.nextCardTypes M.Nothing
   , message: M.Nothing
   }
