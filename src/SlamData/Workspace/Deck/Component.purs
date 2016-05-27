@@ -408,10 +408,10 @@ updateNextActionCard = do
   globalVarMap ← H.gets _.globalVarMap
   let
     info ∷ CEQ.CardEvalInput
-    info = { path, input: inputPort, cardId: top, globalVarMap }
+    info = { path, input: inputPort, cardId: NextActionCardId, globalVarMap }
 
   void
-    $ H.query' cpCard (CardSlot top)
+    $ H.query' cpCard (CardSlot NextActionCardId)
     $ left $ H.request (UpdateCard info)
 
 createCard ∷ CT.CardType → DeckDSL Unit
@@ -499,7 +499,7 @@ runPendingCards = do
   let
     nextActionCard ∷ Card.Model
     nextActionCard =
-      { cardId : top
+      { cardId : NextActionCardId
       , cardType : CT.NextAction
       , inner : J.jsonEmptyObject
       , hasRun : true
@@ -595,7 +595,7 @@ saveDeck = H.get >>= \st →
   else do
     cards ← Array.catMaybes <$> for st.modelCards \card →
       -- TODO: this check won't be necessary - js
-      if card.cardId ≡ top
+      if card.cardId ≡ NextActionCardId
         then pure Nothing
         else
         H.query' cpCard (CardSlot card.cardId)

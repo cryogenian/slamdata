@@ -251,7 +251,7 @@ addCard' cardType st =
           in case A.uncons $ A.reverse st.modelCards of
             Nothing → st.modelCards `A.snoc` def
             Just {head, tail} →
-              if head.cardId ≡ top
+              if head.cardId ≡ NextActionCardId
                 then A.reverse $ def A.: tail
                 else st.modelCards `A.snoc` def
       }
@@ -299,7 +299,7 @@ findLast { displayCards } = _.cardId <$> A.last displayCards
 
 findLastRealCard ∷ State → Maybe CardId
 findLastRealCard { displayCards } =
-  A.findLastIndex (\x → x.cardId ≠ top) displayCards
+  A.findLastIndex (Lens.has CID._CardId ∘ _.cardId) displayCards
     >>= A.index displayCards
     <#> _.cardId
 

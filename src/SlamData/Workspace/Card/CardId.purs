@@ -34,6 +34,7 @@ import Data.Lens as Lens
 data CardId
   = ErrorCardId
   | CardId Int
+  | NextActionCardId
 
 _CardId ∷ Lens.PrismP CardId Int
 _CardId =
@@ -46,6 +47,7 @@ stringToCardId ∷ String → Either String CardId
 stringToCardId =
   case _ of
     "ErrorCardId" → Right ErrorCardId
+    "NextActionCardId" → Right NextActionCardId
     str →
       case Int.fromString str of
         Just i → Right $ CardId i
@@ -55,11 +57,13 @@ cardIdToString ∷ CardId → String
 cardIdToString =
   case _ of
     ErrorCardId → "ErrorCardId"
+    NextActionCardId → "NextActionCardId"
     CardId i → show i
 
 _StringCardId ∷ Lens.PrismP String CardId
 _StringCardId = Lens.prism cardIdToString stringToCardId
 
+derive instance genericCardId ∷ Generic CardId
 derive instance eqCardId ∷ Eq CardId
 derive instance ordCardId ∷ Ord CardId
 
@@ -68,6 +72,7 @@ instance encodeJsonCardId ∷ EncodeJson CardId where
     case _ of
       CardId i → encodeJson i
       ErrorCardId → encodeJson "ErrorCardId"
+      NextActionCardId → encodeJson "NextActionCardId"
 
 instance decodeJsonCardId ∷ DecodeJson CardId where
   decodeJson json =
@@ -78,11 +83,8 @@ instance decodeJsonCardId ∷ DecodeJson CardId where
         decodeJson json >>=
           case _ of
             "ErrorCardId" → pure ErrorCardId
+            "NextActionCardId" → pure NextActionCardId
             str → Left $ "Invalid CardId: " <> str
       decodeNumeric =
         CardId <$>
           decodeJson json
-
-instance boundedCardId ∷ Bounded CardId where
-  top = ErrorCardId
-  bottom = CardId bottom
