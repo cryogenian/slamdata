@@ -58,6 +58,8 @@ decode =
 -- the `inner` representation for these components is a naked string. Ideally
 -- these should be at least newtyped so a specifically typed decoder can exist.
 --
+--    ^^^^ It is not in fact a naked string ;-)   -js
+--
 -- Better still, inner should be an `AnyCardModel` sum of possible model types.
 --
 -- -gb
