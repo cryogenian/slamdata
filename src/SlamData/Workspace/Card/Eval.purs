@@ -44,6 +44,7 @@ data Eval
   | Search String
   | Save String
   | Error String
+  | OpenResource (Maybe FilePath)
 
 evalCard
   ∷ ∀ m
@@ -68,8 +69,30 @@ evalCard input = case _, input.input of
     Port.TaggedResource <$> evalSearch input query resource
   Save pathString, Just (Port.TaggedResource { resource }) →
     Port.TaggedResource <$> evalSave input pathString resource
+  OpenResource path, _ →
+    Port.TaggedResource <$> evalOpenResource input path
   _, _ →
     EC.throwError "Card received unexpected input type"
+
+evalOpenResource
+  ∷ ∀ m
+  . (Monad m, Affable SlamDataEffects m)
+  ⇒ CET.CardEvalInput
+  → Maybe FilePath
+  → CET.CardEvalT m Port.TaggedResourcePort
+evalOpenResource info mresource = do
+   resource ← maybe (EC.throwError "No resource is selected") pure mresource
+   msg ←
+     QFS.messageIfFileNotFound
+       resource
+       ("File " ⊕ Path.printPath resource ⊕ " doesn't exist")
+     # lift
+   case msg of
+     Right Nothing → pure { resource, tag: Nothing }
+     Right (Just err) →
+       EC.throwError err
+     Left exn →
+       EC.throwError $ Exn.message exn
 
 evalQuery
   ∷ ∀ m
@@ -166,4 +189,6 @@ runEvalCard
   ⇒ CET.CardEvalInput
   → Eval
   → m CET.CardEvalResult
-runEvalCard input port = CET.runCardEvalT $ evalCard input port
+runEvalCard input =
+  CET.runCardEvalT ∘
+    evalCard input

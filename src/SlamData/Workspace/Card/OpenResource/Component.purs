@@ -47,6 +47,7 @@ import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery (liftWithCanceler')
 import SlamData.Workspace.Card.Common.EvalQuery as Eq
+import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Component as NC
 import SlamData.Workspace.Card.OpenResource.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _loading)
@@ -132,25 +133,7 @@ eval = coproduct cardEval openResourceEval
 
 cardEval ∷ Eq.CardEvalQuery ~> ORDSL
 cardEval (Eq.EvalCard info k) =
-  k <$> Eq.runCardEvalT do
-    mbRes ← lift $ H.gets _.selected
-    case mbRes of
-      -- TODO: not exactly blocked, just there's no valid next card until a resource is selected -gb
-      Nothing → pure Port.Blocked
-      Just resource → do
-        msg ←
-          Quasar.messageIfFileNotFound
-            resource
-            ("File " ⊕ printPath resource ⊕ " doesn't exist")
-          # liftWithCanceler'
-          # lift
-        case msg of
-          Right Nothing →
-            pure $ Port.TaggedResource { resource, tag: Nothing }
-          Right (Just err) →
-            Err.throwError err
-          Left exn →
-            Err.throwError $ Exn.message exn
+  k <$> (Eval.runEvalCard info ∘ Eval.OpenResource =<< H.gets _.selected)
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.Save k) = do
   mbRes ← H.gets _.selected
