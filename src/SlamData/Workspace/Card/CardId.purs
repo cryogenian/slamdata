@@ -16,34 +16,36 @@ limitations under the License.
 
 module SlamData.Workspace.Card.CardId
   ( CardId(..)
+  , _CardId
+  
   , stringToCardId
   , cardIdToString
-  , runCardId
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Data.Int as Int
+import Data.Lens as Lens
 
 -- | The slot address value for cards and identifier within the deck graph.
 newtype CardId = CardId Int
 
-runCardId ∷ CardId → Int
-runCardId (CardId i) = i
+_CardId ∷ Lens.PrismP CardId Int
+_CardId = Lens.prism CardId \(CardId i) → Right i
 
 stringToCardId ∷ String → Either String CardId
 stringToCardId = maybe (Left "incorrect card id") (Right ∘ CardId) ∘ Int.fromString
 
 cardIdToString ∷ CardId → String
-cardIdToString = show ∘ runCardId
+cardIdToString (CardId i) = show i
 
 derive instance genericCardId ∷ Generic CardId
 instance eqCardId ∷ Eq CardId where eq = gEq
 instance ordCardId ∷ Ord CardId where compare = gCompare
 
 instance encodeJsonCardId ∷ EncodeJson CardId where
-  encodeJson = encodeJson ∘ runCardId
+  encodeJson (CardId i) = encodeJson i
 
 instance decodeJsonCardId ∷ DecodeJson CardId where
   decodeJson json = CardId <$> decodeJson json

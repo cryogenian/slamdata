@@ -62,6 +62,7 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Foldable (maximum)
 import Data.Lens (LensP, lens)
+import Data.Lens as Lens
 import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
@@ -75,7 +76,8 @@ import Halogen.Component.Utils.Debounced (DebounceTrigger)
 import SlamData.Effects (Slam)
 import SlamData.Workspace.AccessType (AccessType(..))
 
-import SlamData.Workspace.Card.CardId (CardId(..), runCardId)
+import SlamData.Workspace.Card.CardId (CardId(..))
+import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port.VarMap as Port
@@ -355,7 +357,7 @@ fromModel path deckId { cards, name } state =
         , displayMode = Normal
         , modelCards = cards
         , displayCards = mempty
-        , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
+        , fresh = fresh
         , globalVarMap = SM.empty
         , id = deckId
         , initialSliderX = Nothing
@@ -365,6 +367,10 @@ fromModel path deckId { cards, name } state =
         , pendingCard = Nothing
         }) ∷ State)
 
+  where
+    fresh ∷ Int
+    fresh = maybe 0 (_ + 1) $ maximum $ A.mapMaybe (Lens.preview CID._CardId ∘ _.cardId) cards
+
 cardIndexFromId ∷ State → CardId → Int
 cardIndexFromId st cid =
   fromMaybe (A.length cards - 1) $
@@ -372,10 +378,10 @@ cardIndexFromId st cid =
   where
     cards = st.displayCards
 
-cardFromIndex ∷ State  → Int → Maybe Card.Model
+cardFromIndex ∷ State → Int → Maybe Card.Model
 cardFromIndex st i = A.index st.displayCards i
 
-cardIdFromIndex ∷ State→ Int → Maybe CardId
+cardIdFromIndex ∷ State → Int → Maybe CardId
 cardIdFromIndex st vi = _.cardId <$> cardFromIndex st vi
 
 activeCardId ∷ State → Maybe CardId

@@ -34,7 +34,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.CardId (CardId, runCardId)
+import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), runCardEvalT)
 import SlamData.Workspace.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism', _MarkdownState, _MarkdownQuery)
@@ -47,13 +47,13 @@ import SlamData.Render.CSS as CSS
 import Text.Markdown.SlamDown.Halogen.Component as SD
 
 markdownComponent
-  :: CardId
+  :: CID.CardId
   -> H.Component CardStateP CardQueryP Slam
 markdownComponent cardId = makeCardComponent
   { cardType: Ct.Markdown
   , component:
       H.lifecycleParentComponent
-        { render: render ("card-" ++ show (runCardId cardId))
+        { render: render ("card-" ++ CID.cardIdToString cardId)
         , eval
         , peek: Nothing
         , initializer: Just $ right (H.action Init)
