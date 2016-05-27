@@ -48,12 +48,6 @@ instance encodeJsonCardId ∷ EncodeJson CardId where
 instance decodeJsonCardId ∷ DecodeJson CardId where
   decodeJson json = CardId <$> decodeJson json
 
-instance semiringCardId ∷ Semiring CardId where
-  zero = CardId zero
-  one = CardId one
-  add (CardId a) (CardId b) = CardId $ a + b
-  mul (CardId a) (CardId b) = CardId $ a * b
-
 instance boundedCardId ∷ Bounded CardId where
   top = CardId top
   bottom = CardId bottom

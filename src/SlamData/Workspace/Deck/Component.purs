@@ -215,7 +215,7 @@ eval (ExploreFile res next) = do
   H.modify
     $ (DCS._path .~ Pathy.parentDir res)
     ∘ (DCS.addCard CT.OpenResource)
-  H.query' cpCard (CardSlot zero)
+  H.query' cpCard (CardSlot $ CardId zero)
     $ right
     $ H.ChildF unit
     $ right
@@ -224,7 +224,7 @@ eval (ExploreFile res next) = do
     $ H.action
     $ Open.ResourceSelected
     $ R.File res
-  runCard zero
+  runCard $ CardId zero
   -- Flush the eval queue
   saveDeck
   updateIndicator
