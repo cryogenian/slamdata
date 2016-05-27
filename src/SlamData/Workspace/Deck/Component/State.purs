@@ -32,7 +32,6 @@ module SlamData.Workspace.Deck.Component.State
   , _runTrigger
   , _globalVarMap
   , _pendingCard
-  , _failingCards
   , _stateMode
   , _displayMode
   , _initialSliderX
@@ -66,7 +65,6 @@ import Data.Lens (LensP, lens)
 import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
-import Data.Set as S
 import Data.StrMap as SM
 
 import Data.Argonaut as J
@@ -116,7 +114,6 @@ type State =
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , pendingCard ∷ Maybe CardId
-  , failingCards ∷ S.Set CardId
   , globalVarMap ∷ Port.VarMap
   , stateMode ∷ StateMode
   , displayMode ∷ DisplayMode
@@ -145,7 +142,6 @@ initialDeck =
   , globalVarMap: SM.empty
   , runTrigger: Nothing
   , pendingCard: Nothing
-  , failingCards: S.empty
   , stateMode: Ready
   , displayMode: Normal
   , initialSliderX: Nothing
@@ -204,10 +200,6 @@ _globalVarMap = lens _.globalVarMap _{globalVarMap = _}
 -- | The earliest card in the deck that needs to evaluate.
 _pendingCard ∷ ∀ a r. LensP {pendingCard ∷ a|r} a
 _pendingCard = lens _.pendingCard _{pendingCard = _}
-
--- | The cards which currently have errors.
-_failingCards ∷ ∀ a r. LensP {failingCards ∷ a|r} a
-_failingCards = lens _.failingCards _{failingCards = _}
 
 -- | The "state mode" used to track whether the deck is ready, loading, or
 -- | if an error has occurred while loading.
@@ -363,7 +355,6 @@ fromModel path deckId { cards, name } state =
         , displayMode = Normal
         , modelCards = cards
         , displayCards = mempty
-        , failingCards = S.empty
         , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
         , globalVarMap = SM.empty
         , id = deckId
