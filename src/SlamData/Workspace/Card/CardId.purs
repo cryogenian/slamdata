@@ -17,7 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Card.CardId
   ( CardId(..)
   , _CardId
-  
+
   , stringToCardId
   , cardIdToString
   ) where
@@ -40,9 +40,8 @@ stringToCardId = maybe (Left "incorrect card id") (Right ∘ CardId) ∘ Int.fro
 cardIdToString ∷ CardId → String
 cardIdToString (CardId i) = show i
 
-derive instance genericCardId ∷ Generic CardId
-instance eqCardId ∷ Eq CardId where eq = gEq
-instance ordCardId ∷ Ord CardId where compare = gCompare
+derive instance eqCardId ∷ Eq CardId
+derive instance ordCardId ∷ Ord CardId
 
 instance encodeJsonCardId ∷ EncodeJson CardId where
   encodeJson (CardId i) = encodeJson i
