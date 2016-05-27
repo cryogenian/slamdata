@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.CardId
   ( CardId(..)
   , _CardId
 
+  , _StringCardId
+
   , stringToCardId
   , cardIdToString
   ) where
@@ -29,26 +31,58 @@ import Data.Int as Int
 import Data.Lens as Lens
 
 -- | The slot address value for cards and identifier within the deck graph.
-newtype CardId = CardId Int
+data CardId
+  = ErrorCardId
+  | CardId Int
 
 _CardId ∷ Lens.PrismP CardId Int
-_CardId = Lens.prism CardId \(CardId i) → Right i
+_CardId =
+  Lens.prism CardId
+    case _ of
+      CardId i → Right i
+      cid → Left cid
 
 stringToCardId ∷ String → Either String CardId
-stringToCardId = maybe (Left "incorrect card id") (Right ∘ CardId) ∘ Int.fromString
+stringToCardId =
+  case _ of
+    "ErrorCardId" → Right ErrorCardId
+    str →
+      case Int.fromString str of
+        Just i → Right $ CardId i
+        Nothing → Left "Invalid CardId"
 
 cardIdToString ∷ CardId → String
-cardIdToString (CardId i) = show i
+cardIdToString =
+  case _ of
+    ErrorCardId → "ErrorCardId"
+    CardId i → show i
+
+_StringCardId ∷ Lens.PrismP String CardId
+_StringCardId = Lens.prism cardIdToString stringToCardId
 
 derive instance eqCardId ∷ Eq CardId
 derive instance ordCardId ∷ Ord CardId
 
 instance encodeJsonCardId ∷ EncodeJson CardId where
-  encodeJson (CardId i) = encodeJson i
+  encodeJson =
+    case _ of
+      CardId i → encodeJson i
+      ErrorCardId → encodeJson "ErrorCardId"
 
 instance decodeJsonCardId ∷ DecodeJson CardId where
-  decodeJson json = CardId <$> decodeJson json
+  decodeJson json =
+    decodeErrorCardId <|> decodeNumeric
+
+    where
+      decodeErrorCardId = do
+        decodeJson json >>=
+          case _ of
+            "ErrorCardId" → pure ErrorCardId
+            str → Left $ "Invalid CardId: " <> str
+      decodeNumeric =
+        CardId <$>
+          decodeJson json
 
 instance boundedCardId ∷ Bounded CardId where
-  top = CardId top
+  top = ErrorCardId
   bottom = CardId bottom

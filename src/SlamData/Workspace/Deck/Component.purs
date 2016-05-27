@@ -507,7 +507,7 @@ runPendingCards = do
 
     errorCard ∷ Card.Model
     errorCard =
-      { cardId : CardId (-1)
+      { cardId : ErrorCardId
       , cardType : CT.ErrorCard
       , inner : J.jsonEmptyObject
       , hasRun : true
