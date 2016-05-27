@@ -312,7 +312,7 @@ peekBackSide (Back.DoAction action _) =
       for_ (DCS.activeCardId state <|> lastId) \trashId → do
         H.modify $ DCS.removeCard trashId
         triggerSave
-        updateNextActionCard
+        -- updateNextActionCard ??? -js
         updateIndicator
         H.modify $ DCS._displayMode .~ DCS.Normal
     Back.Share → do
@@ -374,7 +374,7 @@ queryCard cid =
 updateIndicatorAndNextAction ∷ DeckDSL Unit
 updateIndicatorAndNextAction = do
   updateIndicator
-  updateNextActionCard
+  -- updateNextActionCard ??? -js
 
 updateIndicator ∷ DeckDSL Unit
 updateIndicator = do
@@ -530,6 +530,15 @@ runPendingCards = do
            [] → [lastCard]
            _ → displayCards
 
+  { displayCards, cardOutputs } ← H.get
+  let cardInputs = displayCards <#> \{ cardId } → Map.lookup cardId cardOutputs
+
+  Array.zipWithA
+    (updateCard path globalVarMap)
+    (fromMaybe [] (Array.tail displayCards))
+    cardInputs
+
+  Debug.Trace.traceAnyA {result}
   for_ result \{ state } →
     let
       evalInput =
@@ -548,6 +557,17 @@ runPendingCards = do
   updateIndicatorAndNextAction
     -- triggerSave <-- why?
   where
+
+  updateCard
+    ∷ Maybe DirPath
+    → Port.VarMap
+    → Card.Model
+    → Maybe Port
+    → DeckDSL (Maybe Port)
+  updateCard path globalVarMap card mport = do
+    let input = { path, input: mport, cardId: card.cardId, globalVarMap }
+    H.query' cpCard (CardSlot card.cardId) $ left $ H.request (UpdateCard input)
+
   runStep
     :: CardId
     → Maybe DirPath
@@ -562,6 +582,8 @@ runPendingCards = do
           <#> Right
       else do
         let input = { path, input: inputPort, cardId, globalVarMap }
+
+        -- first we get the current state of the card
         card' <-
           H.query' cpCard (CardSlot card.cardId)
             $ left
