@@ -594,13 +594,9 @@ saveDeck = H.get >>= \st →
   then runPendingCards
   else do
     cards ← Array.catMaybes <$> for st.modelCards \card →
-      -- TODO: this check won't be necessary - js
-      if card.cardId ≡ NextActionCardId
-        then pure Nothing
-        else
-        H.query' cpCard (CardSlot card.cardId)
-          $ left
-          $ H.request (SaveCard card.cardId card.cardType)
+      H.query' cpCard (CardSlot card.cardId)
+        $ left
+        $ H.request (SaveCard card.cardId card.cardType)
 
     let json = Model.encode { name: st.name , cards }
 
