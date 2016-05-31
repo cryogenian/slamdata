@@ -18,6 +18,7 @@ module SlamData.FileSystem.Dialog.Download.Component.Query where
 
 import SlamData.Download.Model
 import SlamData.FileSystem.Resource (Resource)
+import Network.HTTP.RequestHeader (RequestHeader)
 
 data Query a
   = SourceTyped String a
@@ -32,3 +33,4 @@ data Query a
   | ModifyJSONOpts (JSONOptions -> JSONOptions) a
   | AddSources (Array Resource) a
   | SetSources (Array Resource) a
+  | SetAuthHeaders (Array RequestHeader) a

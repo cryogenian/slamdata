@@ -42,6 +42,7 @@ import SlamData.Workspace.Card.Download.Component.Query (QueryP)
 import SlamData.Workspace.Card.Download.Component.State (State, initialState)
 import SlamData.Workspace.Card.Port as P
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
+import SlamData.Quasar.Auth as API
 
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
@@ -97,17 +98,17 @@ cardEval (Ec.SetDimensions _ next) = pure next
 
 handleDownloadPort ∷ P.DownloadPort → DSL Unit
 handleDownloadPort opts = do
-  H.set url
+  hs ← H.fromEff API.authHeaders
+  H.set $ url hs
   where
-  url ∷ String
-  url =
+  url hs =
     (encodeURI (printPath Paths.data_ ⊕ printPath opts.resource))
-    ⊕ headersPart
+    ⊕ headersPart hs
 
-  headersPart ∷ String
-  headersPart =
+  headersPart hs =
     "?request-headers="
       ⊕ (Global.encodeURIComponent
            $ show
            $ reqHeadersToJSON
+           $ append hs
            $ D.toHeaders opts)

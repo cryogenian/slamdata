@@ -34,17 +34,17 @@ import SlamData.Download.Model as D
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.Render (render)
-import SlamData.FileSystem.Dialog.Download.Component.State (State, _compress, _error, _options, _showSourcesList, _source, _sources, _targetName, checkExists, initialState, validate)
+import SlamData.FileSystem.Dialog.Download.Component.State (State, _authHeaders,  _compress, _error, _options, _showSourcesList, _source, _sources, _targetName, checkExists, initialState, validate)
 import SlamData.FileSystem.Resource (Resource(..), resourceName)
 
 import Utils.Path (parseAnyPath)
 
-comp :: H.Component State Query Slam
+comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
-eval :: Natural Query (H.ComponentDSL State Query Slam)
+eval ∷ Natural Query (H.ComponentDSL State Query Slam)
 eval (SourceTyped s next) = do
-  H.modify (_source .~ maybe (Left s) (Right <<< either Directory File)
+  H.modify (_source .~ maybe (Left s) (Right ∘ either Directory File)
           (parseAnyPath s))
   H.modify validate
   pure next
@@ -54,8 +54,8 @@ eval (ToggleList next) = do
   pure next
 eval (SourceClicked r next) = do
   H.modify $ (_showSourcesList .~ false)
-       <<< (_targetName .~ (Right $ resourceName r))
-       <<< (_source .~ Right r)
+       ∘ (_targetName .~ (Right $ resourceName r))
+       ∘ (_source .~ Right r)
   H.modify validate
   pure next
 eval (TargetTyped s next) = do
@@ -70,16 +70,16 @@ eval (SetOutput ty next) = do
   H.modify
     $ _options
     %~ case ty of
-        D.CSV -> Left <<< either id (const D.initialCSVOptions)
-        D.JSON -> Right <<< either (const D.initialJSONOptions) id
+        D.CSV → Left ∘ either id (const D.initialCSVOptions)
+        D.JSON → Right ∘ either (const D.initialJSONOptions) id
   H.modify validate
   pure next
 eval (ModifyCSVOpts fn next) = do
-  H.modify (_options <<< _Left %~ fn)
+  H.modify (_options ∘ _Left %~ fn)
   H.modify validate
   pure next
 eval (ModifyJSONOpts fn next) = do
-  H.modify (_options <<< _Right %~ fn)
+  H.modify (_options ∘ _Right %~ fn)
   H.modify validate
   pure next
 eval (NewTab url next) = do
@@ -95,3 +95,5 @@ eval (AddSources srcs next) = do
   H.modify (_sources <>~ srcs)
   H.modify (_sources %~ sort ∘ nub)
   pure next
+eval (SetAuthHeaders as next) = do
+  H.modify (_authHeaders .~ as) $> next
