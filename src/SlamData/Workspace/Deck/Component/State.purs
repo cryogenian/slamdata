@@ -245,17 +245,17 @@ _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 _cardElementWidth ∷ ∀ a r. LensP {cardElementWidth ∷ a|r} a
 _cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
 
-addCard ∷ CT.CardType → State → State
-addCard cardType st = fst $ addCard' cardType st
+addCard ∷ CT.CardType → J.Json → State → State
+addCard cardType inner st = fst $ addCard' cardType inner st
 
-addCard' ∷ CT.CardType → State → State × CardId
-addCard' cardType st =
+addCard' ∷ CT.CardType → J.Json → State → State × CardId
+addCard' cardType inner st =
   let
     cardId = CardId st.fresh
     newState = st
       { fresh = st.fresh + one
       , modelCards =
-          let def = { cardId, cardType, inner: J.jsonEmptyObject, hasRun: false }
+          let def = { cardId, cardType, inner, hasRun: false }
           in case A.uncons $ A.reverse st.modelCards of
             Nothing → st.modelCards `A.snoc` def
             Just {head, tail} →

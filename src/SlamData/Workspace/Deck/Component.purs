@@ -71,7 +71,6 @@ import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQu
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.JTable.Component as JTable
 import SlamData.Workspace.Card.Next.Component as Next
-import SlamData.Workspace.Card.OpenResource.Component as Open
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.BackSide.Component as Back
@@ -216,16 +215,7 @@ eval (ExploreFile res next) = do
   setDeckState DCS.initialDeck
   H.modify
     $ (DCS._path .~ Pathy.parentDir res)
-    ∘ (DCS.addCard CT.OpenResource)
-  H.query' cpCard (CardSlot $ CardId zero)
-    $ right
-    $ H.ChildF unit
-    $ right
-    $ OpenResourceQuery
-    $ right
-    $ H.action
-    $ Open.ResourceSelected
-    $ R.File res
+    ∘ (DCS.addCard CT.OpenResource $ J.encodeJson $ R.File res)
   runCard $ CardId zero
   -- Flush the eval queue
   saveDeck
@@ -421,9 +411,9 @@ createCard cardType = do
   cid ← H.gets DCS.findLastRealCard
   case cid of
     Nothing →
-      H.modify $ DCS.addCard cardType
+      H.modify $ DCS.addCard cardType J.jsonEmptyObject
     Just cardId → do
-      (st × newCardId) ← H.gets $ DCS.addCard' cardType
+      (st × newCardId) ← H.gets $ DCS.addCard' cardType J.jsonEmptyObject
 
       setDeckState st
       input ← map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
