@@ -72,6 +72,7 @@ import SlamData.FileSystem.Search.Component as Search
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 import SlamData.Quasar (ldJSON) as API
+import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
@@ -411,7 +412,9 @@ configure (R.Database path) = do
 
 download ∷ R.Resource → DSL Unit
 download res = do
+  hs ← H.fromEff API.authHeaders
   showDialog (Dialog.Download res)
+  queryDialog Dialog.cpDownload (H.action $ Download.SetAuthHeaders hs)
   getChildren
     (const true)
     (void ∘ queryDialog Dialog.cpDownload ∘ H.action ∘ Download.AddSources)

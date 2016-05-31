@@ -22,54 +22,61 @@ import Data.Array (findIndex)
 import Data.Either.Unsafe as U
 import Data.Lens (LensP, lens, (?~), (.~))
 
+import Network.HTTP.RequestHeader (RequestHeader)
+
 import SlamData.Download.Model (JSONOptions, CSVOptions, initialCSVOptions)
 import SlamData.FileSystem.Resource (Resource, resourceName, root, getPath)
 
 type State =
-  { source :: Either String Resource
-  , sources :: (Array Resource)
-  , showSourcesList :: Boolean
-  , targetName :: Either String String
-  , compress :: Boolean
-  , options :: Either CSVOptions JSONOptions
-  , error :: Maybe String
+  { source ∷ Either String Resource
+  , sources ∷ (Array Resource)
+  , showSourcesList ∷ Boolean
+  , targetName ∷ Either String String
+  , compress ∷ Boolean
+  , options ∷ Either CSVOptions JSONOptions
+  , error ∷ Maybe String
+  , authHeaders ∷ Array RequestHeader
   }
 
-initialState :: Resource -> State
+initialState ∷ Resource → State
 initialState res =
   { source: Right res
   , sources: [root, res]
   , showSourcesList: false
   , targetName:
       let name = resourceName res
-      in Right $ if name == "" then "archive" else name
+      in Right $ if name ≡ "" then "archive" else name
   , compress: false
   , options: Left initialCSVOptions
   , error: Nothing
+  , authHeaders: []
   }
 
-_source :: LensP State (Either String Resource)
+_source ∷ LensP State (Either String Resource)
 _source = lens _.source (_ { source = _ })
 
-_sources :: LensP State (Array Resource)
+_sources ∷ LensP State (Array Resource)
 _sources = lens _.sources (_ { sources = _ })
 
-_showSourcesList :: LensP State Boolean
+_showSourcesList ∷ LensP State Boolean
 _showSourcesList = lens _.showSourcesList (_ { showSourcesList = _ })
 
-_targetName :: LensP State (Either String String)
+_targetName ∷ LensP State (Either String String)
 _targetName = lens _.targetName (_ { targetName = _ })
 
-_compress :: LensP State Boolean
+_compress ∷ LensP State Boolean
 _compress = lens _.compress (_ { compress = _ })
 
-_options :: LensP State (Either CSVOptions JSONOptions)
+_options ∷ LensP State (Either CSVOptions JSONOptions)
 _options = lens _.options (_ { options = _ })
 
-_error :: LensP State (Maybe String)
+_error ∷ LensP State (Maybe String)
 _error = lens _.error (_ { error = _ })
 
-validate :: State -> State
+_authHeaders ∷ ∀ a r. LensP {authHeaders ∷ a | r} a
+_authHeaders = lens _.authHeaders (_{authHeaders = _})
+
+validate ∷ State → State
 validate r
   | isLeft (r.source) =
     r # _error ?~ "Please enter a valid source path to download"
@@ -80,7 +87,7 @@ validate r
   | otherwise =
     r # _error .~ Nothing
 
-checkExists :: Resource -> Array Resource -> Boolean
+checkExists ∷ Resource → Array Resource → Boolean
 checkExists r rs =
   let path = getPath r
-  in isJust $ findIndex (getPath >>> eq path) rs
+  in isJust $ findIndex (getPath ⋙ eq path) rs

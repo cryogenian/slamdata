@@ -25,6 +25,7 @@ module SlamData.Quasar.Auth
   , storeNonce
   , storeClientId
   , clearIdToken
+  , authHeaders
   , module OIDC
   ) where
 
@@ -33,14 +34,19 @@ import Prelude
 import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff (Eff)
 
+import Data.Array as A
 import Data.Either as E
 import Data.Maybe as M
 
 import DOM (DOM)
 
+import Network.HTTP.RequestHeader (RequestHeader)
+
 import OIDCCryptUtils.Types as OIDC
 
 import SlamData.Quasar.Auth.Permission as P
+
+import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader)
 
 import Utils.LocalStorage as LS
 
@@ -113,3 +119,11 @@ authed f = do
   idToken <- fromEff retrieveIdToken
   perms <- fromEff P.retrievePermissionTokens
   f idToken perms
+
+authHeaders
+  ∷ ∀ e
+  . Eff (dom ∷ DOM|e) (Array RequestHeader)
+authHeaders = do
+  idToken ← retrieveIdToken
+  permTokens ← P.retrievePermissionTokens
+  pure $ A.catMaybes [ map authHeader idToken, permissionsHeader permTokens ]
