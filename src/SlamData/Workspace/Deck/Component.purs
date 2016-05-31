@@ -478,46 +478,120 @@ aceQueryShouldSave = H.runChildF >>> case _ of
   Ace.TextChanged _ → true
   _ → false
 
+nextActionCard ∷ Maybe Card.Model
+nextActionCard =
+  Just
+  { cardId : NextActionCardId
+  , cardType : CT.NextAction
+  , inner : J.jsonEmptyObject
+  , hasRun : true
+  }
+
+errorCard ∷ Card.Model
+errorCard =
+  { cardId : ErrorCardId
+  , cardType : CT.ErrorCard
+  , inner : J.jsonEmptyObject
+  , hasRun : true
+  }
+
+type RunCardsConfig =
+  { pendingCardId ∷ CardId
+  , path ∷ Maybe DirPath
+  , globalVarMap ∷ Port.VarMap
+  }
+
+type RunCardsMachine =
+  { state ∷ Either String (Maybe Port)
+  , cards ∷ L.List Card.Model
+  , stack ∷ L.List Card.Model
+  }
+
+initialRunCardsState ∷ L.List Card.Model → RunCardsMachine
+initialRunCardsState input =
+  { state: Right Nothing
+  , cards: L.Nil
+  , stack: input
+  }
+
+runCardsStateIsFinal ∷ RunCardsMachine → Boolean
+runCardsStateIsFinal m =
+  case m.state of
+    Left _ → true
+    Right _ →
+      case m.stack of
+        L.Nil → true
+        _ → false
+
+stepRunCards
+  ∷ RunCardsConfig
+  → RunCardsMachine
+  → DeckDSL RunCardsMachine
+stepRunCards cfg m @ { state, cards, stack } =
+  case stack of
+    L.Nil → pure m
+    L.Cons x stack' → do
+      state' ← runStep cfg (join $ state ^? Lens._Right) x
+      let cards' = L.Cons x cards
+      pure { state: state', cards: cards', stack: stack'}
+
+evalRunCardsMachine
+  ∷ RunCardsConfig
+  → RunCardsMachine
+  → DeckDSL RunCardsMachine
+evalRunCardsMachine cfg m =
+  if runCardsStateIsFinal m
+  then pure m
+  else evalRunCardsMachine cfg =<< stepRunCards cfg m
+
+
+runStep
+  :: RunCardsConfig
+  → Maybe Port
+  → Card.Model
+  → DeckDSL (Either String (Maybe Port))
+runStep cfg inputPort card @ { cardId } = do
+  if cardId < cfg.pendingCardId
+    then
+      H.gets (Map.lookup cardId ∘ _.cardOutputs)
+        <#> Right
+    else do
+      let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap }
+
+      -- first we get the current state of the card
+      card' <-
+        H.query' cpCard (CardSlot card.cardId)
+          $ left
+          $ H.request (SaveCard card.cardId card.cardType)
+
+      -- TODO: insert model-based eval here, and then pass through the input &
+      -- eval-computed output ports to the card -gb
+      result ← Eval.runEvalCard input $ Card.modelToEval $ fromMaybe card card'
+      H.modify $ DCS._cardOutputs %~ Map.insert cardId result.output
+      --outputPort ←
+      --  H.query' cpCard (CardSlot cardId)
+      --    $ left $ H.request (UpdateCard input)
+
+      Debug.Trace.traceAnyA {input,result, card'}
+      pure case result.output of
+        CardError err → Left err
+        p → Right $ Just p
+
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
   { modelCards, path, globalVarMap } ← H.get
   result ←
-    H.gets _.pendingCard >>= traverse \pendingCard → do
+    H.gets _.pendingCard >>= traverse \pendingCardId → do
       let
-        go ∷ L.List Card.Model → Maybe Port → L.List Card.Model → DeckDSL { state ∷ Either String (Maybe Port), cards ∷ L.List Card.Model }
-        go rs port =
-          case _ of
-            L.Nil → pure { state : Right $ port, cards : rs }
-            L.Cons x xs → do
-              runStep pendingCard path globalVarMap port x >>=
-                case _ of
-                  Left err → pure { state : Left err, cards : L.Cons x rs }
-                  Right output → go (L.Cons x rs) output xs
-
-      go L.Nil Nothing (L.toList modelCards)
+        config ∷ RunCardsConfig
+        config = { pendingCardId, path, globalVarMap }
+      evalRunCardsMachine config ∘ initialRunCardsState $ L.toList modelCards
 
   let
-    nextActionCard ∷ Maybe Card.Model
-    nextActionCard =
-      Just
-      { cardId : NextActionCardId
-      , cardType : CT.NextAction
-      , inner : J.jsonEmptyObject
-      , hasRun : true
-      }
-
-    errorCard ∷ Card.Model
-    errorCard =
-      { cardId : ErrorCardId
-      , cardType : CT.ErrorCard
-      , inner : J.jsonEmptyObject
-      , hasRun : true
-      }
-
     mlastCard =
       case result of
-        Just { cards, state } →
+        Just { state, cards } →
           case state of
             Left _ → Just errorCard
             Right _ → nextActionCard
@@ -568,40 +642,6 @@ runPendingCards = do
   updateCard path globalVarMap card mport = do
     let input = { path, input: mport, cardId: card.cardId, globalVarMap }
     H.query' cpCard (CardSlot card.cardId) $ left $ H.request (UpdateCard input)
-
-  runStep
-    :: CardId
-    → Maybe DirPath
-    → Port.VarMap
-    → Maybe Port
-    → Card.Model
-    → DeckDSL (Either String (Maybe Port))
-  runStep pendingCard path globalVarMap inputPort card @ { cardId } = do
-    if cardId < pendingCard
-      then
-        H.gets (Map.lookup cardId ∘ _.cardOutputs)
-          <#> Right
-      else do
-        let input = { path, input: inputPort, cardId, globalVarMap }
-
-        -- first we get the current state of the card
-        card' <-
-          H.query' cpCard (CardSlot card.cardId)
-            $ left
-            $ H.request (SaveCard card.cardId card.cardType)
-
-        -- TODO: insert model-based eval here, and then pass through the input &
-        -- eval-computed output ports to the card -gb
-        result ← Eval.runEvalCard input $ Card.modelToEval $ fromMaybe card card'
-        H.modify $ DCS._cardOutputs %~ Map.insert cardId result.output
-        --outputPort ←
-        --  H.query' cpCard (CardSlot cardId)
-        --    $ left $ H.request (UpdateCard input)
-
-        Debug.Trace.traceAnyA {input,result, card'}
-        pure case result.output of
-          CardError err → Left err
-          p → Right $ Just p
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced H.query to trigger the cards to
