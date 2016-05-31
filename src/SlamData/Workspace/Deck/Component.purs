@@ -34,10 +34,10 @@ import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens as Lens
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as L
+import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
-import Data.Map as Map
 import Data.StrMap as SM
 
 import Data.Argonaut as J
@@ -62,7 +62,7 @@ import SlamData.Quasar.Data (save, load) as Quasar
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as NA
-import SlamData.Workspace.Card.CardId (CardId(..))
+import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Eval as Eval
@@ -302,8 +302,7 @@ peekBackSide (Back.DoAction action _) =
       for_ (DCS.activeCardId state <|> lastId) \trashId → do
         H.modify $ DCS.removeCard trashId
         triggerSave
-        -- updateNextActionCard ??? -js
-        updateIndicator
+        updateIndicatorAndNextAction
         H.modify $ DCS._displayMode .~ DCS.Normal
     Back.Share → do
       url ← mkShareURL SM.empty
@@ -363,8 +362,35 @@ queryCard cid =
 
 updateIndicatorAndNextAction ∷ DeckDSL Unit
 updateIndicatorAndNextAction = do
+  { displayCards, cardOutputs } ← H.get
+  let
+    realCards = Array.filter (Lens.has _CardId ∘ _.cardId) displayCards
+    info =
+      case _.cardId <$> Array.last realCards of
+        Just (cid @ CardId _) →
+          { lastRealCardId: Just cid
+          , cardToAdd:
+              case Map.lookup cid cardOutputs of
+                Just (Port.CardError err) → errorCard
+                _ → nextActionCard
+          }
+        _ →
+          { lastRealCardId: Nothing
+          , cardToAdd: nextActionCard
+          }
+
+  H.modify $ DCS._displayCards .~ Array.snoc realCards info.cardToAdd
+  for_ info.lastRealCardId \lastRealCardId → do
+    mlastCardId ← H.gets DCS.findLast
+    for_ mlastCardId \lastCardId → do
+      path ← H.gets DCS.deckPath
+      outputs ← H.gets _.cardOutputs
+      globalVarMap ← H.gets _.globalVarMap
+      let
+        input = Map.lookup lastRealCardId outputs
+        evalInput = { path, globalVarMap, cardId: lastCardId, input: input}
+      H.query' cpCard (CardSlot lastCardId) $ left $ H.request (UpdateCard evalInput)
   updateIndicator
-  -- updateNextActionCard ??? -js
 
 updateIndicator ∷ DeckDSL Unit
 updateIndicator = do
@@ -468,9 +494,8 @@ aceQueryShouldSave = H.runChildF >>> case _ of
   Ace.TextChanged _ → true
   _ → false
 
-nextActionCard ∷ Maybe Card.Model
+nextActionCard ∷ Card.Model
 nextActionCard =
-  Just
   { cardId : NextActionCardId
   , cardType : CT.NextAction
   , inner : J.jsonEmptyObject
@@ -578,22 +603,12 @@ runPendingCards = do
         config = { pendingCardId, path, globalVarMap }
       evalRunCardsMachine config ∘ initialRunCardsState $ L.toList modelCards
 
-  let
-    mlastCard =
-      case result of
-        Just { state, cards } →
-          case state of
-            Left _ → Just errorCard
-            Right _ → nextActionCard
-        Nothing → nextActionCard
-
   H.modify $ Lens.over DCS._displayCards \displayCards →
     case result of
-      Just { cards, state } → L.fromList ∘ L.reverse $ maybe cards (flip L.Cons cards) mlastCard
-      Nothing →
-         case displayCards of
-           [] → maybe [] Array.singleton mlastCard
-           _ → displayCards
+      Just { cards } → L.fromList $ L.reverse cards
+      Nothing → displayCards
+
+  updateIndicatorAndNextAction
 
   { displayCards, cardOutputs } ← H.get
   let cardInputs = displayCards <#> \{ cardId } → Map.lookup cardId cardOutputs
@@ -603,23 +618,8 @@ runPendingCards = do
     (fromMaybe [] (Array.tail displayCards))
     cardInputs
 
-  for_ result \{ state } →
-    for_ mlastCard \lastCard →
-      let
-        evalInput =
-          { path
-          , globalVarMap
-          , cardId : lastCard.cardId
-          , input :
-              case state of
-                Right p → p
-                Left err → Just $ CardError err
-          }
-      in
-        H.query' cpCard (CardSlot lastCard.cardId) $ left $ H.request (UpdateCard evalInput)
+  pure unit
 
-
-  updateIndicatorAndNextAction
     -- triggerSave <-- why?
   where
 
