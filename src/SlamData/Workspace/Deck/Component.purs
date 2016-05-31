@@ -530,8 +530,8 @@ initialRunCardsState input =
   , stack: input
   }
 
-runCardsStateIsFinal ∷ RunCardsMachine → Boolean
-runCardsStateIsFinal m =
+runCardsStateIsTerminal ∷ RunCardsMachine → Boolean
+runCardsStateIsTerminal m =
   case m.state of
     Just (CardError _) → true
     Just Blocked → true
@@ -557,7 +557,7 @@ evalRunCardsMachine
   → RunCardsMachine
   → DeckDSL RunCardsMachine
 evalRunCardsMachine cfg m =
-  if runCardsStateIsFinal m
+  if runCardsStateIsTerminal m
   then pure m
   else evalRunCardsMachine cfg =<< stepRunCards cfg m
 
