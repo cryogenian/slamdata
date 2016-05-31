@@ -4,6 +4,7 @@ import SlamData.Prelude
 
 import Data.Array ((:))
 import Data.Array as Arr
+import Data.Lens as Lens
 import Data.Lens (lens, LensP, (.~))
 
 import Halogen as H
@@ -54,7 +55,8 @@ render state =
   renderCircle ∷ Int × Status → Array HTML
   renderCircle (ix × status) =
     [ HH.i
-      [ HP.classes $ pure case status of
+      [ HP.classes $
+          pure case status of
             Available →
                HH.className "available"
             Errored →
@@ -68,11 +70,9 @@ render state =
 
   renderPlaceholder ∷ Array HTML
   renderPlaceholder =
-    [ HH.i [ HP.classes
-               $ [ HH.className "placeholder" ]
-               ⊕ (guard notFocused $> HH.className "focused")
-           ]
-      [ HH.text ""]
+    [ HH.i
+        [ HP.classes $ [ HH.className "placeholder" ] ⊕ (guard notFocused $> HH.className "focused") ]
+        [ HH.text ""]
     ]
 
   notFocused ∷ Boolean
@@ -80,21 +80,9 @@ render state =
   notFocused | state.focused >= Arr.length state.icons = true
   notFocused = false
 
-
-portToStatus ∷ Maybe Port → Status
-portToStatus Nothing = Available
-portToStatus (Just p) = case p of
-  CardError _ → Errored
-  _ → Available
-
-
 eval ∷ Query ~> DSL
 eval (UpdatePortList ports next) = do
-  H.modify
-     $ _icons .~ (Arr.drop one
-                  $ Arr.reverse
-                  $ snd
-                  $ foldl foldFn (false × [ ]) ports)
+  H.modify $ Lens.set _icons $ Arr.drop one $ Arr.reverse $ snd $ foldl foldFn (false × [ ]) ports
   pure next
   where
   foldFn ∷ Boolean × (Array Status) → Maybe Port → Boolean × (Array Status)
