@@ -41,23 +41,27 @@ import SlamData.Workspace.Card.Viz.Component (vizComponent)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 
 cardTypeComponent ∷ CardType → CardId → DeckComponent → CardComponent
-cardTypeComponent (Ace mode) _ _ = aceComponent { mode, evaluator, setup }
-  where
-  evaluator = aceEvalMode mode
-  setup = aceSetupMode mode
-cardTypeComponent Search _ _ = searchComponent
-cardTypeComponent Viz _ _ = vizComponent
-cardTypeComponent Chart _ _ = chartComponent
-cardTypeComponent Markdown cardId _ = markdownComponent cardId
-cardTypeComponent JTable _ _ = jtableComponent
-cardTypeComponent Download _ _ = downloadComponent
-cardTypeComponent API _ _ = apiComponent
-cardTypeComponent APIResults _ _ = apiResultsComponent
-cardTypeComponent NextAction _ _ = nextCardComponent
-cardTypeComponent Save _ _ = saveCardComponent
-cardTypeComponent OpenResource _ _ = openResourceComponent
-cardTypeComponent DownloadOptions _ _ = DOpts.comp
-cardTypeComponent ErrorCard _ _ = Error.comp
+cardTypeComponent ty cid deck =
+  case ty of
+    Ace mode →
+      aceComponent
+        { mode
+        , evaluator: aceEvalMode mode
+        , setup: aceSetupMode mode
+        }
+    Search → searchComponent
+    Viz → vizComponent
+    Chart → chartComponent
+    Markdown → markdownComponent cid
+    JTable → jtableComponent
+    Download → downloadComponent
+    API → apiComponent
+    APIResults → apiResultsComponent
+    NextAction → nextCardComponent
+    Save → saveCardComponent
+    OpenResource → openResourceComponent
+    DownloadOptions → DOpts.comp
+    ErrorCard → Error.comp
 
 aceEvalMode ∷ AceMode → AceEvaluator
 aceEvalMode MarkdownMode = markdownEval
