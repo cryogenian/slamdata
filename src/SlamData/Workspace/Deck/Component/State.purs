@@ -265,9 +265,6 @@ addCard' cardType inner st =
       }
   in newState × cardId
 
-mkCardDef ∷ CT.CardType → CardId → CardDef
-mkCardDef cardType cardId = { id: cardId, ty: cardType }
-
 removeCard ∷ CardId → State → State
 removeCard cardId st =
   removePendingCard cardId $
