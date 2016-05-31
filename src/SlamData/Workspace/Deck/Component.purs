@@ -372,6 +372,7 @@ updateIndicatorAndNextAction = do
           , cardToAdd:
               case Map.lookup cid cardOutputs of
                 Just (Port.CardError err) → errorCard
+                Just Port.Blocked → errorCard -- TODO: what's the correct thing to do here?
                 _ → nextActionCard
           }
         _ →
@@ -517,14 +518,14 @@ type RunCardsConfig =
   }
 
 type RunCardsMachine =
-  { state ∷ Either String (Maybe Port)
+  { state ∷ Maybe Port
   , cards ∷ L.List Card.Model
   , stack ∷ L.List Card.Model
   }
 
 initialRunCardsState ∷ L.List Card.Model → RunCardsMachine
 initialRunCardsState input =
-  { state: Right Nothing
+  { state: Nothing
   , cards: L.Nil
   , stack: input
   }
@@ -532,8 +533,9 @@ initialRunCardsState input =
 runCardsStateIsFinal ∷ RunCardsMachine → Boolean
 runCardsStateIsFinal m =
   case m.state of
-    Left _ → true
-    Right _ →
+    Just (CardError _) → true
+    Just Blocked → true
+    _ →
       case m.stack of
         L.Nil → true
         _ → false
@@ -546,7 +548,7 @@ stepRunCards cfg m @ { state, cards, stack } =
   case stack of
     L.Nil → pure m
     L.Cons x stack' → do
-      state' ← runStep cfg (join $ state ^? Lens._Right) x
+      state' ← runStep cfg state x
       let cards' = L.Cons x cards
       pure { state: state', cards: cards', stack: stack'}
 
@@ -564,12 +566,10 @@ runStep
   :: RunCardsConfig
   → Maybe Port
   → Card.Model
-  → DeckDSL (Either String (Maybe Port))
+  → DeckDSL (Maybe Port)
 runStep cfg inputPort card @ { cardId } = do
   if cardId < cfg.pendingCardId
-    then
-      H.gets (Map.lookup cardId ∘ _.cardOutputs)
-        <#> Right
+    then H.gets (Map.lookup cardId ∘ _.cardOutputs)
     else do
       let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap }
 
@@ -588,9 +588,7 @@ runStep cfg inputPort card @ { cardId } = do
       --    $ left $ H.request (UpdateCard input)
 
       Debug.Trace.traceAnyA {input,result, card'}
-      pure case result.output of
-        CardError err → Left err
-        p → Right $ Just p
+      pure $ Just result.output
 
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit
