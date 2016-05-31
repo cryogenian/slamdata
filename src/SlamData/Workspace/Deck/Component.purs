@@ -396,14 +396,10 @@ updateIndicatorAndNextAction = do
 updateIndicator ∷ DeckDSL Unit
 updateIndicator = do
   cards ← H.gets _.displayCards
-  outs ←
-    for cards \{cardId} → do
-      map join
-        $ H.query' cpCard (CardSlot cardId)
-        $ left (H.request GetOutput)
   H.query' cpIndicator unit
     $ H.action
-    $ Indicator.UpdatePortList outs
+    $ Indicator.UpdatePortList
+    $ map _.cardType cards
   vid ← H.gets _.activeCardIndex
   void $ H.query' cpIndicator unit $ H.action $ Indicator.UpdateActiveId vid
 
