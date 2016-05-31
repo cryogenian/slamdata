@@ -235,7 +235,7 @@ renderCard comp st card index =
   where
   slotId = ChildSlot.CardSlot card.cardId
   cardComponent =
-    { component: cardTypeComponent card.cardType card.cardId comp
+    { component: cardTypeComponent card.cardType card.cardId comp card.inner
     , initialState:
         H.parentState
           CardC.initialCardState { accessType = st.accessType }

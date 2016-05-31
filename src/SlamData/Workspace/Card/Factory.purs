@@ -19,6 +19,8 @@ module SlamData.Workspace.Card.Factory where
 
 import SlamData.Prelude
 
+import Data.Argonaut as J
+
 import SlamData.Workspace.Card.Ace.Component (AceEvaluator, AceSetup, aceComponent)
 import SlamData.Workspace.Card.API.Component (apiComponent)
 import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
@@ -40,8 +42,8 @@ import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 
-cardTypeComponent ∷ CardType → CardId → DeckComponent → CardComponent
-cardTypeComponent ty cid deck =
+cardTypeComponent ∷ CardType → CardId → DeckComponent -> J.Json → CardComponent
+cardTypeComponent ty cid deck inner =
   case ty of
     Ace mode →
       aceComponent
@@ -59,7 +61,7 @@ cardTypeComponent ty cid deck =
     APIResults → apiResultsComponent
     NextAction → nextCardComponent
     Save → saveCardComponent
-    OpenResource → openResourceComponent
+    OpenResource → openResourceComponent inner
     DownloadOptions → DOpts.comp
     ErrorCard → Error.comp
 

@@ -22,10 +22,11 @@ module SlamData.Workspace.Card.OpenResource.Component
 
 import SlamData.Prelude
 
-import Data.Argonaut (decodeJson, encodeJson)
+import Data.Argonaut as J
 import Data.Array as Arr
 import Data.Foldable as F
-import Data.Lens ((?~), (.~))
+import Data.Lens as Lens
+import Data.Lens ((?~), (.~), (^?))
 import Data.Path.Pathy (printPath, peel)
 
 import Halogen as H
@@ -54,20 +55,24 @@ import Utils.Path as PU
 type ORHTML = H.ComponentHTML QueryP
 type ORDSL = H.ComponentDSL State QueryP Slam
 
-openResourceComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
-openResourceComponent =
+openResourceComponent ∷ J.Json → H.Component NC.CardStateP NC.CardQueryP Slam
+openResourceComponent inner =
   NC.makeCardComponent
     { cardType: CT.OpenResource
     , component: H.lifecycleComponent
         { render
         , eval
-        , initializer: Just (H.action (right ∘ Init))
+        , initializer: Just (H.action (right ∘ Init mres))
         , finalizer: Nothing
         }
     , initialState: initialState
     , _State: NC._OpenResourceState
     , _Query: NC.makeQueryPrism NC._OpenResourceQuery
     }
+
+  where
+    mres =
+      J.decodeJson inner ^? Lens._Right
 
 render ∷ State → ORHTML
 render state =
@@ -137,12 +142,12 @@ cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.Save k) = do
   mbRes ← H.gets _.selected
   k <$> case mbRes of
-    Just res → pure $ encodeJson $ R.File res
+    Just res → pure $ J.encodeJson $ R.File res
     Nothing → do
       br ← H.gets _.browsing
-      pure $ encodeJson $ R.Directory br
+      pure $ J.encodeJson $ R.Directory br
 cardEval (Eq.Load js next) = do
-  for_ (decodeJson js) \res →
+  for_ (J.decodeJson js) \res →
     case res of
       R.File fp → resourceSelected res
       _ → pure unit
@@ -161,8 +166,10 @@ openResourceEval (ResourceSelected r next) = do
     H.modify (_loading .~ false)
   resourceSelected r
   pure next
-openResourceEval (Init next) = do
-  updateItems *> rearrangeItems $> next
+openResourceEval (Init mres next) = do
+  updateItems *> rearrangeItems
+  traverse_ resourceSelected mres
+  pure next
 
 resourceSelected ∷ R.Resource → ORDSL Unit
 resourceSelected r = do
