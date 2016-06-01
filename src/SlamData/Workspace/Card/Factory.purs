@@ -25,7 +25,9 @@ import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
+import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component (CardComponent)
+import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
 import SlamData.Workspace.Card.Download.Component (downloadComponent)
 import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Error.Component as Error
@@ -38,9 +40,8 @@ import SlamData.Workspace.Card.Query.Eval (queryEval, querySetup)
 import SlamData.Workspace.Card.Save.Component (saveCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
-import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 
-cardTypeComponent ∷ CardType → CardId → DeckComponent → CardComponent
+cardTypeComponent ∷ CardType → CardId → CardOptions → CardComponent
 cardTypeComponent (Ace mode) _ _ = aceComponent { mode, evaluator, setup }
   where
   evaluator = aceEvalMode mode
@@ -57,6 +58,7 @@ cardTypeComponent NextAction _ _ = nextCardComponent
 cardTypeComponent Save _ _ = saveCardComponent
 cardTypeComponent OpenResource _ _ = openResourceComponent
 cardTypeComponent DownloadOptions _ _ = DOpts.comp
+cardTypeComponent Draftboard _ opts = draftboardComponent opts
 cardTypeComponent ErrorCard _ _ = Error.comp
 
 aceEvalMode ∷ AceMode → AceEvaluator

@@ -1,18 +1,32 @@
 @import "deck/common";
 @import "deck/indicator";
 
+.sd-grid-pattern {
+  background-color: #eee;
+  background-size: @grid-size @grid-size;
+  background-position: top top;
+  background-image:
+    linear-gradient(to right, #ddd 1px, transparent 1px),
+    linear-gradient(to bottom, #ddd 1px, transparent 1px);
+}
+
 .sd-board {
   position: absolute;
   top: 0;
   right: 0;
   left: 0;
   bottom: 0;
-  background-color: #eee;
-  background-size: @grid-size @grid-size;
-  background-position: center top;
-  background-image:
-    linear-gradient(to right, #ddd 1px, transparent 1px),
-    linear-gradient(to bottom, #ddd 1px, transparent 1px);
+
+  & > .loading {
+    position: absolute;
+    top: @grid-size;
+    bottom: @grid-size;
+    width: 100%;
+    background-color: #fff;
+    background-image:
+      linear-gradient(to left, #bbb @grid-size, transparent @grid-size),
+      linear-gradient(to right, #bbb @grid-size, transparent @grid-size);
+  }
 }
 
 .sd-deck-hidden-top-menu {
@@ -23,14 +37,13 @@
 }
 
 .sd-deck {
-  position: relative;
-  margin-top: @grid-size * 3;
-  margin-left: auto;
-  margin-right: auto;
-  width: calc(37 * @grid-size);
-  height: calc(20 * @grid-size);
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
   overflow: hidden;
-        box-shadow: 0 0 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 32px rgba(0, 0, 0, 0.15);
   background-color: #ddd;
   background-size: 100%;
   background-position: left top;
@@ -99,9 +112,71 @@
   display: block;
 }
 
+.sd-grab-deck {
+  height: @grid-size;
+  width: (@grid-size * 6);
+  position: absolute;
+  background: transparent;
+  top: 0;
+  left: 50%;
+  margin: 0 0 0 -(@grid-size * 3);
+  border: none;
+
+  &:before {
+    content: "";
+    position: absolute;
+    top: (@grid-size / 3);
+    left: 20%;
+    right: 20%;
+    border-top: 1px solid #ccc;
+  }
+
+  &:after {
+    content: "";
+    position: absolute;
+    margin-top: -1px;
+    top: (@grid-size / 3 * 2);
+    left: 25%;
+    right: 25%;
+    border-top: 1px solid #ccc;
+  }
+}
+
+.sd-resize-deck {
+  height: @grid-size;
+  width: @grid-size;
+  background-color: transparent;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  border: none;
+  margin: 0;
+
+  &:before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    border-top: 1px solid #ccc;
+    transform: rotate(-45deg);
+  }
+
+  &:after {
+    content: "";
+    position: absolute;
+    top: (@grid-size / 3 * 2);
+    left: 40%;
+    width: 50%;
+    border-top: 1px solid #ccc;
+    transform: rotate(-45deg);
+  }
+}
+
 .deck-card {
   height: 100%;
   overflow: auto;
+  position: relative;
 }
 
 .sd-card-ace {
@@ -128,4 +203,5 @@
 @import "deck/save-card";
 @import "deck/search-card";
 @import "deck/table-card";
+@import "deck/draftboard-card";
 @import "deck/dialog";

@@ -418,6 +418,9 @@ cardSlider = className "sd-card-slider"
 board :: ClassName
 board = className "sd-board"
 
+gridPattern :: ClassName
+gridPattern = className "sd-grid-pattern"
+
 deck :: ClassName
 deck = className "sd-deck"
 
@@ -432,6 +435,12 @@ cardGripperLast = className "sd-card-gripper-last"
 
 flipDeck :: ClassName
 flipDeck = className "sd-flip-deck"
+
+grabDeck :: ClassName
+grabDeck = className "sd-grab-deck"
+
+resizeDeck :: ClassName
+resizeDeck = className "sd-resize-deck"
 
 form ∷ ClassName
 form = className "sd-form"

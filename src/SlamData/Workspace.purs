@@ -66,6 +66,7 @@ routeSignal driver =
 
   explore ∷ UP.FilePath → Aff SlamDataEffects Unit
   explore path = do
+    driver $ Workspace.toWorkspace $ Workspace.Reset Nothing
     driver $ Workspace.toDeck $ Deck.ExploreFile path
     driver $ Workspace.toWorkspace $ Workspace.SetParentHref
       $ parentURL $ Right path
@@ -83,7 +84,7 @@ routeSignal driver =
 
     when (currentPath ≠ pure path) do
       if action ≡ New
-        then driver $ Workspace.toWorkspace $ Workspace.Reset path
+        then driver $ Workspace.toWorkspace $ Workspace.Reset (Just path)
         else driver $ Workspace.toWorkspace $ Workspace.Load path deckIds
 
     driver $ Workspace.toWorkspace $ Workspace.SetAccessType accessType
