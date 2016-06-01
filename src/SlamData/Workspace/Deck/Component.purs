@@ -598,21 +598,15 @@ runStep cfg inputPort card @ { cardId } = do
     else do
       let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap }
 
-      -- first we get the current state of the card
-      card' <-
-        H.query' cpCard (CardSlot card.cardId)
-          $ left
-          $ H.request (SaveCard card.cardId card.cardType)
-
       -- TODO: insert model-based eval here, and then pass through the input &
       -- eval-computed output ports to the card -gb
-      result ← Eval.runEvalCard input $ Card.modelToEval $ fromMaybe card card'
+      result ← Eval.runEvalCard input $ Card.modelToEval card
       H.modify $ DCS._cardOutputs %~ Map.insert cardId result.output
       --outputPort ←
       --  H.query' cpCard (CardSlot cardId)
       --    $ left $ H.request (UpdateCard input)
 
-      Debug.Trace.traceAnyA {input,result, card'}
+      Debug.Trace.traceAnyA {input,result, card}
       pure $ Just result.output
 
 -- | Runs all card that are present in the set of pending cards.
@@ -673,10 +667,13 @@ triggerSave = fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
 saveDeck ∷ DeckDSL Unit
 saveDeck =
   H.get >>= \st → do
-    cards ← Array.catMaybes <$> for st.modelCards \card →
-      H.query' cpCard (CardSlot card.cardId)
+    cards ← for st.modelCards \card → do
+      currentState ← H.query' cpCard (CardSlot card.cardId)
         $ left
         $ H.request (SaveCard card.cardId card.cardType)
+      pure $ fromMaybe card currentState
+
+    H.modify $ DCS._modelCards .~ cards
 
     let json = Model.encode { name: st.name , cards }
 
@@ -725,7 +722,7 @@ setModel dir deckId model = do
         H.query' cpCard (CardSlot card.cardId)
           $ left $ H.action $ LoadCard card
         pure card.hasRun
-      Debug.Trace.traceAnyA {load: { cards, st, hasRun}}
-      when hasRun $ traverse_ runCard $ _.cardId <$> Array.head st.modelCards
+      Debug.Trace.traceAnyA {setModel: { cards, st, hasRun}}
+      traverse_ runCard $ _.cardId <$> Array.head st.modelCards
       H.modify (DCS._stateMode .~ Ready)
   updateIndicatorAndNextAction
