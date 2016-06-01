@@ -35,7 +35,6 @@ import CSS (CSS)
 
 import Halogen as H
 import Halogen.HTML.CSS.Indexed (style)
-import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 import Halogen.HTML.Indexed as HH
@@ -218,13 +217,10 @@ containerProperties vstate =
   [ ARIA.dropEffect $ dropEffect $ willChangeActiveCardWhenDropped vstate ]
     ⊕ (guard (isJust initialSliderX)
          $> (HE.onMouseUp \e →
-              HEH.preventDefault
-              $> Just (H.action (DCQ.StopSlidingAndSnap e))))
+                pure $ Just (H.action (DCQ.StopSlidingAndSnap e))))
     ⊕ (guard (isJust initialSliderX)
          $> (HE.onMouseLeave \e →
-              HEH.stopPropagation
-              $> HEH.preventDefault
-              $> Just (H.action (DCQ.StopSlidingAndSnap e))))
+                pure $ Just (H.action (DCQ.StopSlidingAndSnap e))))
     ⊕ (guard (isJust initialSliderX)
          $> (HE.onMouseMove $ HE.input DCQ.UpdateSliderPosition))
   where

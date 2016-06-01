@@ -24,7 +24,6 @@ import Data.Array as Array
 import Halogen as H
 import Halogen.HTML.Core (ClassName)
 import Halogen.HTML.Elements.Indexed as HH
-import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -74,10 +73,10 @@ renderGrippers isActiveCard isGrabbed =
   where
   render :: GripperDef -> DeckHTML
   render gripperDef =
-    HH.div
+    HH.button
       ([ HP.classes [ gripperClassName gripperDef ]
        , HE.onMouseDown \e ->
-             HEH.preventDefault $> Just (H.action (StartSliding e))
+             pure $ Just (H.action (StartSliding e))
        , ARIA.grabbed $ show $ isGrabbed
        , ARIA.disabled $ show $ (not $ isAvailable gripperDef) || (not $ isActiveCard)
        ]
