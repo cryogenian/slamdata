@@ -65,6 +65,9 @@
   background-color: #bbb;
   width: @grid-size;
   height: 100%;
+  padding-left: 3px;
+  padding-right: 3px;
+  border: none;
 }
 
 .sd-card-gripper {
@@ -76,11 +79,7 @@
 }
 
 .sd-card-gripper::after, .sd-card-gripper-last::after {
-  display: block;
-  position: absolute;
   content: "⬌";
-  width: 100%;
-  text-align: center;
   top: 50%;
   margin-top: -50%;
   color: #444;
