@@ -27,7 +27,9 @@ import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
+import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component (CardComponent)
+import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
 import SlamData.Workspace.Card.Download.Component (downloadComponent)
 import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Error.Component as Error
@@ -40,11 +42,11 @@ import SlamData.Workspace.Card.Query.Eval (queryEval, querySetup)
 import SlamData.Workspace.Card.Save.Component (saveCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
-import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 
-cardTypeComponent ∷ CardType → CardId → DeckComponent -> J.Json → CardComponent
-cardTypeComponent ty cid deck inner =
+import SlamData.Workspace.Card.Eval.CardEvalT as CET
+
+cardTypeComponent ∷ CardType → CardId → J.Json → CardOptions → CardComponent
+cardTypeComponent ty cid inner opts =
   case ty of
     Ace mode →
       aceComponent
@@ -65,6 +67,8 @@ cardTypeComponent ty cid deck inner =
     OpenResource → openResourceComponent inner
     DownloadOptions → DOpts.comp
     ErrorCard → Error.comp
+    Draftboard -> draftboardComponent opts
+
 
 -- TODO: make aceEvalMode do nothing, since this will be handled by the deck -js
 aceEvalMode ∷ AceMode → AceEvaluator
