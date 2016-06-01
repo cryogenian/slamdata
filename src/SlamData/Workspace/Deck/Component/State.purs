@@ -46,6 +46,7 @@ module SlamData.Workspace.Deck.Component.State
   , findFirst
   , findLast
   , findLastCardType
+  , findLastRealCardIndex
   , findLastRealCard
   , addPendingCard
   , removePendingCard
@@ -302,10 +303,15 @@ findFirst { displayCards } = _.cardId <$> A.head displayCards
 findLast ∷ State → Maybe CardId
 findLast { displayCards } = _.cardId <$> A.last displayCards
 
+findLastRealCardIndex ∷ State → Maybe Int
+findLastRealCardIndex =
+  A.findLastIndex (Lens.has CID._CardId ∘ _.cardId)
+    ∘ _.displayCards
+
 findLastRealCard ∷ State → Maybe CardId
-findLastRealCard { displayCards } =
-  A.findLastIndex (Lens.has CID._CardId ∘ _.cardId) displayCards
-    >>= A.index displayCards
+findLastRealCard state =
+  findLastRealCardIndex state
+    >>= A.index state.displayCards
     <#> _.cardId
 
 -- | Finds the type of the last card.

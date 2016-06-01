@@ -397,7 +397,10 @@ updateIndicatorAndNextAction = do
   case activeCardIndex of
     Nothing → do
       H.modify $ \st →
-        st { activeCardIndex = Just $ max 0 $ Array.length st.displayCards - 1 }
+        let
+          lastCardIndex = max 0 $ Array.length st.displayCards - 1
+          lastRealCardIndex = DCS.findLastRealCardIndex st
+        in st { activeCardIndex = Just $ fromMaybe lastCardIndex lastRealCardIndex }
     Just _ → pure unit
 
   updateIndicator
