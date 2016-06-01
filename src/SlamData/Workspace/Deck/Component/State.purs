@@ -43,8 +43,6 @@ module SlamData.Workspace.Deck.Component.State
   , addCard
   , addCard'
   , removeCard
-  , findFirst
-  , findLast
   , findLastCardType
   , findLastRealCardIndex
   , findLastRealCard
@@ -293,15 +291,6 @@ removeCard cardId st =
     A.mapMaybe
       (\c → if c.cardId >= cardId then Just c.cardId else Nothing) -- TODO: weird thing will happen with error card currently
       st.displayCards
-
--- | Finds the first card in the deck.
-findFirst ∷ State → Maybe CardId
-findFirst { displayCards } = _.cardId <$> A.head displayCards
--- TODO: should this be modelCards?  - js
-
--- | Finds the last card in the deck.
-findLast ∷ State → Maybe CardId
-findLast { displayCards } = _.cardId <$> A.last displayCards
 
 findLastRealCardIndex ∷ State → Maybe Int
 findLastRealCardIndex =

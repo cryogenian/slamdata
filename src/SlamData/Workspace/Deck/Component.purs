@@ -208,7 +208,8 @@ eval (Load dir deckId next) = do
             H.query' cpCard (CardSlot card.cardId)
               $ left $ H.action $ LoadCard card
             pure card.hasRun
-          when hasRun $ traverse_ runCard (DCS.findFirst st)
+          Debug.Trace.traceAnyA {load: { cards, st, hasRun}}
+          when hasRun $ traverse_ runCard $ _.cardId <$> Array.head st.modelCards
           H.modify (DCS._stateMode .~ DCS.Ready)
   updateIndicatorAndNextAction
   pure next
@@ -336,7 +337,7 @@ peekCards (CardSlot cardId) = peekCard cardId ⨁ peekCardInner cardId
 peekCard ∷ ∀ a. CardId → CardQuery a → DeckDSL Unit
 peekCard cardId = case _ of
   RunCard _ → runCard cardId
-  RefreshCard _ → traverse_ runCard =<< H.gets DCS.findFirst
+  RefreshCard _ → traverse_ runCard =<< H.gets (map _.cardId ∘ Array.head ∘ _.modelCards)
   StopCard _ → do
     -- TODO: does it even make sense to have a stop action on cards anymore?
     -- I don't think there's a button for it anyway. Maybe the deck as a whole
@@ -383,7 +384,7 @@ updateIndicatorAndNextAction = do
 
   H.modify $ DCS._displayCards .~ Array.snoc realCards info.cardToAdd
   for_ info.lastRealCardId \lastRealCardId → do
-    mlastCardId ← H.gets DCS.findLast
+    mlastCardId ← H.gets $ map _.cardId ∘ Array.last ∘ _.displayCards
     for_ mlastCardId \lastCardId → do
       path ← H.gets DCS.deckPath
       outputs ← H.gets _.cardOutputs
