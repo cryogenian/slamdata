@@ -358,7 +358,7 @@ fromModel path deckId { cards, name } state =
     cards
     ((state
         { accessType = Editable -- why was it ReadOnly?
-        , activeCardIndex = A.length cards - 1 -- fishy!
+        , activeCardIndex = max 0 $ A.length cards - 1 -- fishy!
         , displayMode = Normal
         , modelCards = cards
         , displayCards = mempty
