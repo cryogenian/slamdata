@@ -62,6 +62,17 @@ data Port
   | DownloadOptions DownloadPort
   | Blocked
 
+instance showPort ∷ Show Port where
+  show =
+    case _ of
+      SlamDown sd → "SlamDown " <> show sd
+      VarMap vm → "VarMap " <> show vm
+      CardError str → "CardError " <> show str
+      ChartOptions p → "ChartPort"
+      TaggedResource p → "TaggedResource (" <> show p.resource <> " " <> show p.tag <> ")"
+      DownloadOptions p → "DownloadOptions"
+      Blocked → "Blocked"
+
 _SlamDown ∷ PrismP Port (SD.SlamDownP VarMapValue)
 _SlamDown = prism' SlamDown \p → case p of
   SlamDown x → Just x

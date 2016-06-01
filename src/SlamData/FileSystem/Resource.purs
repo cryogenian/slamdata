@@ -85,6 +85,20 @@ data Mount
   = Database PU.DirPath
   | View PU.FilePath
 
+instance showResource ∷ Show Resource where
+  show =
+    case _ of
+      File p → "File " <> show p
+      Workspace p → "Workspace " <> show p
+      Directory p → "Directory " <> show p
+      Mount m → "Mount " <> show m
+
+instance showMount ∷ Show Mount where
+  show =
+    case _ of
+      Database p → "Database " <> show p
+      View p → "View " <> show p
+
 -- PREDICATES
 isWorkspace ∷ Resource → Boolean
 isWorkspace (Workspace _) = true

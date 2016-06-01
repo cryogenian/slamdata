@@ -50,6 +50,17 @@ data Eval
   | Markdown String
   | OpenResource R.Resource
 
+instance showEval ∷ Show Eval where
+  show =
+    case _ of
+      Pass → "Pass"
+      Query str → "Query " <> show str
+      Search str → "Search " <> show str
+      Save str → "Save " <> show str
+      Error str → "Error " <> show str
+      Markdown str → "Markdown " <> show str
+      OpenResource res → "OpenResource " <> show res
+
 evalCard
   ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
@@ -79,8 +90,8 @@ evalCard input =
       Port.TaggedResource <$> evalSave input pathString resource
     OpenResource res, _ →
       Port.TaggedResource <$> evalOpenResource input res
-    _, _ →
-      EC.throwError "Card received unexpected input type"
+    e, i →
+      EC.throwError $ "Card received unexpected input type; " <> show e <> " | " <> show i
 
 evalOpenResource
   ∷ ∀ m

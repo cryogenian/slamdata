@@ -41,6 +41,8 @@ import SlamData.Workspace.Card.Port as Port
 import Utils.Ace (readOnly)
 import Utils.Completions (mkCompletion, pathCompletions)
 
+
+-- TODO: remove this -js
 queryEval ∷ CEQ.CardEvalInput → String → AceDSL CEQ.CardEvalResult
 queryEval info sql = do
   addCompletions $ fromMaybe SM.empty $ info.input ^? _Just ∘ Port._VarMap
