@@ -80,7 +80,7 @@ evalCard input =
       pure port
     Query sql, Just (Port.VarMap varMap) →
       Port.TaggedResource <$> evalQuery input sql varMap
-    Query sql, Just (Port.TaggedResource _) →
+    Query sql, _ →
       Port.TaggedResource <$> evalQuery input sql Port.emptyVarMap
     Markdown txt, _ →
       MDE.markdownEval input txt
