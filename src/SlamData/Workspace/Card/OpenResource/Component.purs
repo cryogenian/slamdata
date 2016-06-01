@@ -45,7 +45,6 @@ import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery (liftWithCanceler')
 import SlamData.Workspace.Card.Common.EvalQuery as Eq
-import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Component as NC
 import SlamData.Workspace.Card.OpenResource.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _loading)
@@ -133,11 +132,7 @@ eval ∷ QueryP ~> ORDSL
 eval = coproduct cardEval openResourceEval
 
 cardEval ∷ Eq.CardEvalQuery ~> ORDSL
-cardEval (Eq.EvalCard info k) =
-  k <$> do
-    { selected, browsing } ← H.get
-    let res = fromMaybe (R.Directory browsing) $ R.File <$> selected
-    Eval.runEvalCard info $ Eval.OpenResource res
+cardEval (Eq.EvalCard info output next) = pure next
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.Save k) = do
   mbRes ← H.gets _.selected

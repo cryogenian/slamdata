@@ -78,13 +78,14 @@ compileVarMap fields globalVarMap =
 eval :: Natural NC.CardEvalQuery APIDSL
 eval q =
   case q of
-    NC.EvalCard info k ->
-      k <$> runCardEvalT do
-        fields <-
-          H.query unit (H.request (FB.GetItems >>> left))
-            # lift
-            >>= maybe (EC.throwError "Error querying FormBuilder") pure
-        pure $ Port.VarMap $ compileVarMap fields info.globalVarMap
+    NC.EvalCard info output next ->
+      pure next -- TODO: check this -js
+      --k <$> runCardEvalT do
+      --  fields <-
+      --    H.query unit (H.request (FB.GetItems >>> left))
+      --      # lift
+      --      >>= maybe (EC.throwError "Error querying FormBuilder") pure
+      --  pure $ Port.VarMap $ compileVarMap fields info.globalVarMap
     NC.SetupCard _ next ->
       pure next
     NC.NotifyRunCard next ->

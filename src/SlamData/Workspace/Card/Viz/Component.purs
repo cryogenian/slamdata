@@ -274,8 +274,9 @@ vizEval q = do
       H.modify (_axisLabelFontSize .~ size) *> configure $> next
 
 cardEval ∷ CardEvalQuery ~> VizDSL
-cardEval (EvalCard info continue) =
-  continue <$> runCardEvalT do
+cardEval (EvalCard info output next) = do
+  -- TODO: check this! -js
+  runCardEvalT do
     case info.input of
       Just P.Blocked → do
         lift ∘ H.modify
@@ -306,6 +307,7 @@ cardEval (EvalCard info continue) =
           lift $ H.modify $ _records .~ records
         lift $ H.modify $ _needToUpdate .~ true
         responsePort
+  pure next
   where
   withLoading action = do
     lift $ H.modify $ _loading .~ true

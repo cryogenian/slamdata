@@ -74,28 +74,27 @@ render state =
 eval ∷ ECH.CardEvalQuery ~> ChartDSL
 eval (ECH.NotifyRunCard next) = pure next
 eval (ECH.NotifyStopCard next) = pure next
-eval (ECH.EvalCard value continue) =
-  continue <$> CEQ.runCardEvalT do
-    case value.input of
-      Just (ChartOptions options) → do
-        lift do
-          state ← H.get
-          H.set { width: options.width, height: options.height }
+eval (ECH.EvalCard value output next) = do
+  -- TODO: check this -js
+  case value.input of
+    Just (ChartOptions options) → do
+      state ← H.get
+      H.set { width: options.width, height: options.height }
 
-          when (state.width ≠ options.width)
-            $ void $ H.query unit $ H.action $ HECH.SetWidth options.width
+      when (state.width ≠ options.width)
+        $ void $ H.query unit $ H.action $ HECH.SetWidth options.width
 
-          when (state.height ≠ options.height)
-            $ void $ H.query unit $ H.action $ HECH.SetHeight options.height
+      when (state.height ≠ options.height)
+        $ void $ H.query unit $ H.action $ HECH.SetHeight options.height
 
-          H.query unit $ H.action $ HECH.Set options.options
-          H.query unit $ H.action HECH.Resize
-        pure Blocked
-      Just Blocked → do
-        lift $ H.query unit $ H.action HECH.Clear
-        pure Blocked
-      _ →
-        throwError "Expected ChartOptions input"
+      H.query unit $ H.action $ HECH.Set options.options
+      H.query unit $ H.action HECH.Resize
+      pure next
+      -- pure Blocked
+    Just Blocked → do
+      H.query unit $ H.action HECH.Clear
+      pure next
+    _ → pure next -- throwError "Expected ChartOptions input"
 eval (ECH.SetupCard _ next) = pure next
 -- No state needs loading/saving for the chart card, as it is fully populated
 -- by its input, and will be restored by the parent `Viz` card running when

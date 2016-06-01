@@ -89,8 +89,7 @@ eval ∷ Natural QueryP SaveDSL
 eval = coproduct cardEval saveEval
 
 cardEval ∷ Natural Eq.CardEvalQuery SaveDSL
-cardEval (Eq.EvalCard info k) =
-  k <$> (Eval.runEvalCard info ∘ Eval.Save =<< H.gets _.pathString)
+cardEval (Eq.EvalCard info output next) = pure next
 cardEval (Eq.NotifyRunCard next) = pure next
 cardEval (Eq.NotifyStopCard next) = pure next
 cardEval (Eq.Save k) = do

@@ -79,9 +79,8 @@ eval = coproduct cardEval searchEval
 cardEval ∷ Natural NC.CardEvalQuery DSL
 cardEval q =
   case q of
-    NC.EvalCard input k → do
-      searchText ← H.gets _.searchString
-      k <$> Eval.runEvalCard input (Eval.Search searchText)
+    NC.EvalCard input output next →
+      pure next
     NC.SetupCard _ next →
       pure next
     NC.NotifyRunCard next →

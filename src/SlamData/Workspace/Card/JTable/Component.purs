@@ -64,10 +64,14 @@ queryShouldRun = coproduct (const false) pred
 evalCard ∷ Natural CEQ.CardEvalQuery (H.ComponentDSL JTS.State QueryP Slam)
 evalCard (CEQ.NotifyRunCard next) = pure next
 evalCard (CEQ.NotifyStopCard next) = pure next
-evalCard (CEQ.EvalCard input k) = do
-  k <$> CEQ.runCardEvalT do
-    port ← Eval.evalCard input Eval.Pass
-    runTable port $> port
+evalCard (CEQ.EvalCard input output next) = do
+-- TODO: check this -js
+  for_ output \port →
+    CEQ.runCardEvalT $ runTable port $> port
+  pure next
+--  k <$> CEQ.runCardEvalT do
+--    port ← Eval.evalCard input Eval.Pass
+--    runTable port $> port
 evalCard (CEQ.SetupCard _ next) = pure next
 evalCard (CEQ.Save k) =
   pure ∘ k =<< H.gets (Model.encode ∘ JTS.toModel)

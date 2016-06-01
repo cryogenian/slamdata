@@ -45,6 +45,8 @@ import Utils.Path (DirPath)
 -- | - `EvalCard` is a command sent from the deck that runs the card. An
 -- |   optional input value (the output from another card) is provided, and a
 -- |   continuation for the evaluation result to be returned to.
+-- |         TODO: update these notes -js
+-- |
 -- | - `SetupCard` is will be called when the card is being added as a linked
 -- |   card from another, passing through the current input port value so the
 -- |   current card can set its state based on that. Used to pull a VarMap
@@ -53,7 +55,7 @@ import Utils.Path (DirPath)
 -- | - `NotifyRunCard` allows the card to notify the deck that it should be
 -- |   run - the card cannot run itself directly.
 data CardEvalQuery a
-  = EvalCard CardEvalInput (CardEvalResult → a)
+  = EvalCard CardEvalInput (Maybe Port.Port) a -- (CardEvalResult → a)
   | SetupCard CardSetupInfo a
   | NotifyRunCard a
   | NotifyStopCard a

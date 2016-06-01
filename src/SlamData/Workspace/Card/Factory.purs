@@ -21,7 +21,7 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 
-import SlamData.Workspace.Card.Ace.Component (AceEvaluator, AceSetup, aceComponent)
+import SlamData.Workspace.Card.Ace.Component (AceSetup, aceComponent)
 import SlamData.Workspace.Card.API.Component (apiComponent)
 import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
 import SlamData.Workspace.Card.CardId (CardId)
@@ -35,15 +35,12 @@ import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.JTable.Component (jtableComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
-import SlamData.Workspace.Card.Markdown.Eval (markdownEval)
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
 import SlamData.Workspace.Card.OpenResource.Component (openResourceComponent)
-import SlamData.Workspace.Card.Query.Eval (queryEval, querySetup)
+import SlamData.Workspace.Card.Query.Eval (querySetup)
 import SlamData.Workspace.Card.Save.Component (saveCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
-
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
 
 cardTypeComponent ∷ CardType → CardId → J.Json → CardOptions → CardComponent
 cardTypeComponent ty cid inner opts =
@@ -51,7 +48,6 @@ cardTypeComponent ty cid inner opts =
     Ace mode →
       aceComponent
         { mode
-        , evaluator: aceEvalMode mode
         , setup: aceSetupMode mode
         }
     Search → searchComponent
@@ -68,12 +64,6 @@ cardTypeComponent ty cid inner opts =
     DownloadOptions → DOpts.comp
     ErrorCard → Error.comp
     Draftboard -> draftboardComponent opts
-
-
--- TODO: make aceEvalMode do nothing, since this will be handled by the deck -js
-aceEvalMode ∷ AceMode → AceEvaluator
-aceEvalMode MarkdownMode = \i → CET.runCardEvalT ∘ markdownEval i
-aceEvalMode SQLMode = queryEval
 
 aceSetupMode ∷ AceMode → AceSetup
 aceSetupMode MarkdownMode = \_ → pure unit

@@ -123,7 +123,7 @@ render opts state =
     CSS.height $ CSS.px $ gridToPx $ size'.height + 1.0
 
 evalCard ∷ Natural Ceq.CardEvalQuery DraftboardDSL
-evalCard (Ceq.EvalCard input k) = pure $ k { output: Port.CardError "Not sure what to do here", messages: [] }
+evalCard (Ceq.EvalCard input output next) = pure next
 evalCard (Ceq.SetupCard info next) = pure next
 evalCard (Ceq.NotifyRunCard next) = pure next
 evalCard (Ceq.NotifyStopCard next) = pure next

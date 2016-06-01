@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Ace.Component
   ( aceComponent
-  , AceEvaluator
   , AceDSL
   , AceHTML
   , AceSetup
@@ -50,17 +49,15 @@ import Utils.Ace (getRangeRecs, readOnly)
 
 type AceDSL = H.ParentDSL Unit AceState CardEvalQuery AceQuery Slam Unit
 type AceHTML = H.ParentHTML AceState CardEvalQuery AceQuery Slam Unit
-type AceEvaluator = CardEvalInput -> String -> AceDSL CardEvalResult
 type AceSetup = CardSetupInfo -> AceDSL Unit
 
 type AceConfig =
   { mode :: AceMode
-  , evaluator :: AceEvaluator
   , setup :: AceSetup
   }
 
 aceComponent :: AceConfig -> H.Component CardStateP CardQueryP Slam
-aceComponent {mode, evaluator, setup} = makeCardComponent
+aceComponent {mode, setup} = makeCardComponent
   { cardType: Ace mode
   , component: H.parentComponent { render, eval, peek: Nothing }
   , initialState: H.parentState unit
@@ -85,10 +82,12 @@ aceComponent {mode, evaluator, setup} = makeCardComponent
   eval :: Natural CardEvalQuery AceDSL
   eval (NotifyRunCard next) = pure next
   eval (NotifyStopCard next) = pure next
-  eval (EvalCard info k) = do
-    content <- fromMaybe "" <$> H.query unit (H.request GetText)
-    result <- evaluator info content
-    pure $ k result
+  eval (EvalCard info output next) = do
+    -- TODO: check!
+    pure next
+    --content <- fromMaybe "" <$> H.query unit (H.request GetText)
+    --result <- evaluator info content
+    --pure $ k result
   eval (SetupCard input next) = setup input $> next
   eval (Save k) = do
     content <- fromMaybe "" <$> H.query unit (H.request GetText)

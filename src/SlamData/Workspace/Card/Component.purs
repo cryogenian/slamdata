@@ -132,19 +132,23 @@ makeCardComponentPart def render =
   eval ∷ Natural CQ.CardQuery CardDSL
   eval (CQ.RunCard next) = pure next
   eval (CQ.StopCard next) = stopRun $> next
-  eval (CQ.UpdateCard input k) = do
+  eval (CQ.UpdateCard input output next) = do
     H.fromAff =<< H.gets _.tickStopper
     tickStopper ← startInterval
-    H.modify
-      $ (CS._tickStopper .~ tickStopper)
-    result ← H.query unit (left (H.request (CQ.EvalCard input)))
+    H.modify $ (CS._tickStopper .~ tickStopper)
+    -- result ← H.query unit (left (H.request (CQ.EvalCard input)))
+    void $ H.query unit (left (H.action (CQ.EvalCard input output)))
     H.fromAff tickStopper
     H.modify
       $ (CS._runState %~ finishRun)
       ∘ (CS._hasRun .~ true)
-      ∘ (CS._output .~ (_.output <$> result))
-      ∘ (CS._messages .~ (maybe [] _.messages result))
-    maybe (liftF HaltHF) (pure ∘ k ∘ _.output) result
+      -- ∘ (CS._output .~ (_.output <$> result))
+      ∘ (CS._output .~ output)
+      -- ∘ (CS._messages .~ (maybe [] _.messages result))
+      ∘ (CS._messages .~ [])
+    pure next
+    -- TODO: check this -js
+    -- maybe (liftF HaltHF) (pure ∘ k ∘ _.output) result
   eval (CQ.RefreshCard next) = pure next
   eval (CQ.ToggleMessages next) =
     H.modify (CS._messageVisibility %~ toggleVisibility) $> next
@@ -174,7 +178,7 @@ makeCardComponentPart def render =
   cardEvalPeek ∷ ∀ a. CQ.CardEvalQuery a → CardDSL Unit
   cardEvalPeek (CQ.SetCanceler canceler _) = H.modify $ CS._canceler .~ canceler
   cardEvalPeek (CQ.SetupCard _ _) = H.modify $ CS._canceler .~ mempty
-  cardEvalPeek (CQ.EvalCard _ _) = H.modify $ CS._canceler .~ mempty
+  cardEvalPeek (CQ.EvalCard _ _ _) = H.modify $ CS._canceler .~ mempty
   cardEvalPeek (CQ.NotifyStopCard _) = stopRun
   cardEvalPeek _ = pure unit
 

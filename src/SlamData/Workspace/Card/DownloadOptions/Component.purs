@@ -123,22 +123,23 @@ eval ∷ QueryP ~> DSL
 eval = coproduct cardEval downloadOptsEval
 
 cardEval ∷ Ec.CardEvalQuery ~> DSL
-cardEval (Ec.EvalCard {input} continue) = do
-  map continue $ Ec.runCardEvalT do
-    case input of
-      Just P.Blocked → lift do
-        H.modify (_source .~ Nothing)
-        pure $ P.Blocked
-      Just (P.TaggedResource {resource}) → lift do
-        H.modify (_source ?~ resource)
-        state ← H.get
-        pure
-          $ P.DownloadOptions
-              { resource
-              , compress: state.compress
-              , options: state.options
-              }
-      _ → throwError "Incorrect input in download options card"
+cardEval (Ec.EvalCard {input} output next) = do
+  -- TODO: check this -js
+  case input of
+    Just P.Blocked → do
+      H.modify (_source .~ Nothing)
+      pure next
+      -- pure $ P.Blocked
+    Just (P.TaggedResource {resource}) → do
+      H.modify (_source ?~ resource)
+      state ← H.get
+      pure next
+    --    P.DownloadOptions
+    --      { resource
+    --      , compress: state.compress
+    --      , options: state.options
+    --      }
+    _ → pure next -- throwError "Incorrect input in download options card"
 cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = map (k ∘ encode) H.get

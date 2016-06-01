@@ -408,7 +408,7 @@ updateIndicatorAndNextAction = do
       let
         input = Map.lookup lastRealCardId outputs
         evalInput = { path, globalVarMap, cardId: lastCardId, input: input}
-      H.query' cpCard (CardSlot lastCardId) $ left $ H.request (UpdateCard evalInput)
+      H.query' cpCard (CardSlot lastCardId) $ left $ H.action (UpdateCard evalInput Nothing)
 
   activeCardIndex ← H.gets _.activeCardIndex
   case activeCardIndex of
@@ -456,7 +456,7 @@ updateNextActionCard = do
 
   void
     $ H.query' cpCard (CardSlot NextActionCardId)
-    $ left $ H.request (UpdateCard info)
+    $ left $ H.action (UpdateCard info Nothing)
 
 createCard ∷ CT.CardType → DeckDSL Unit
 createCard cardType = do
@@ -645,10 +645,11 @@ runPendingCards = do
     → Port.VarMap
     → Card.Model
     → Maybe Port
-    → DeckDSL (Maybe Port)
+    → DeckDSL Unit
   updateCard path globalVarMap card mport = do
+    output ← H.gets $ Map.lookup card.cardId ∘ _.cardOutputs
     let input = { path, input: mport, cardId: card.cardId, globalVarMap }
-    H.query' cpCard (CardSlot card.cardId) $ left $ H.request (UpdateCard input)
+    void $ H.query' cpCard (CardSlot card.cardId) $ left $ H.action (UpdateCard input output)
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced H.query to trigger the cards to
@@ -723,6 +724,7 @@ setModel dir deckId model = do
           $ left $ H.action $ LoadCard card
         pure card.hasRun
       Debug.Trace.traceAnyA {setModel: { cards, st, hasRun}}
+      -- TODO: used to be when hasRun $ traverse_ runCard.... Why? -js
       traverse_ runCard $ _.cardId <$> Array.head st.modelCards
       H.modify (DCS._stateMode .~ Ready)
   updateIndicatorAndNextAction
