@@ -114,7 +114,7 @@ type State =
   , modelCards ∷ Array Card.Model
   , displayCards ∷ Array Card.Model
   , cardOutputs ∷ Map.Map CardId Port
-  , activeCardIndex ∷ Int
+  , activeCardIndex ∷ Maybe Int
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
@@ -142,7 +142,7 @@ initialDeck =
   , modelCards: mempty
   , displayCards: mempty
   , cardOutputs: mempty
-  , activeCardIndex: 0
+  , activeCardIndex: Nothing
   , name: Nothing
   , path: Nothing
   , saveTrigger: Nothing
@@ -271,7 +271,7 @@ removeCard cardId st =
     st
       { modelCards = newModelCards
       , displayCards = newDisplayCards
-      , activeCardIndex = max zero $ A.length newDisplayCards - 1
+      , activeCardIndex = Just $ max zero $ A.length newDisplayCards - 1
       }
   where
   -- TODO: clean this up
@@ -358,7 +358,7 @@ fromModel path deckId { cards, name } state =
     cards
     ((state
         { accessType = Editable -- why was it ReadOnly?
-        , activeCardIndex = max 0 $ A.length cards - 1 -- fishy!
+        , activeCardIndex = Nothing
         , displayMode = Normal
         , modelCards = cards
         , displayCards = mempty
@@ -392,9 +392,9 @@ cardIdFromIndex st vi = _.cardId <$> cardFromIndex st vi
 activeCardId ∷ State → Maybe CardId
 activeCardId st =
   cardIdFromIndex st $
-    st.activeCardIndex
+    fromMaybe 0 st.activeCardIndex
 
 activeCardType ∷ State → Maybe CT.CardType
 activeCardType st =
   _.cardType <$>
-    cardFromIndex st st.activeCardIndex
+    cardFromIndex st (fromMaybe 0 st.activeCardIndex)

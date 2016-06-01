@@ -35,6 +35,7 @@ import Data.Lens as Lens
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as L
 import Data.Map as Map
+import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
@@ -372,7 +373,7 @@ updateIndicatorAndNextAction = do
           , cardToAdd:
               case Map.lookup cid cardOutputs of
                 Just (Port.CardError err) → errorCard
-                Just Port.Blocked → errorCard -- TODO: what's the correct thing to do here?
+                Just Port.Blocked → errorCard -- TODO: what's the correct thing to do here? In fact, I don't know if case can actually happen in practice.
                 _ → nextActionCard
           }
         _ →
@@ -391,6 +392,14 @@ updateIndicatorAndNextAction = do
         input = Map.lookup lastRealCardId outputs
         evalInput = { path, globalVarMap, cardId: lastCardId, input: input}
       H.query' cpCard (CardSlot lastCardId) $ left $ H.request (UpdateCard evalInput)
+
+  activeCardIndex ← H.gets _.activeCardIndex
+  case activeCardIndex of
+    Nothing → do
+      H.modify $ \st →
+        st { activeCardIndex = Just $ max 0 $ Array.length st.displayCards - 1 }
+    Just _ → pure unit
+
   updateIndicator
 
 updateIndicator ∷ DeckDSL Unit
@@ -400,7 +409,7 @@ updateIndicator = do
     $ H.action
     $ Indicator.UpdatePortList
     $ map _.cardType cards
-  vid ← H.gets _.activeCardIndex
+  vid ← H.gets $ fromMaybe 0 ∘ _.activeCardIndex
   void $ H.query' cpIndicator unit $ H.action $ Indicator.UpdateActiveId vid
 
 updateBackSide ∷ DeckDSL Unit

@@ -67,7 +67,7 @@ render comp st visible =
      , HP.classes [ ClassNames.cardSlider ]
      , HE.onTransitionEnd $ HE.input_ DCQ.StopSliderTransition
      , style do
-         cardSliderTransformCSS st.activeCardIndex st.sliderTranslateX
+         cardSliderTransformCSS (fromMaybe 0 st.activeCardIndex) st.sliderTranslateX
          cardSliderTransitionCSS st.sliderTransition
      ]
      ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
@@ -144,19 +144,19 @@ offsetCardSpacing ∷ Number → Number
 offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx
 
 snapActiveCardIndex ∷ State → Int
-snapActiveCardIndex st = maybe id snap' st.initialSliderCardWidth st.activeCardIndex
+snapActiveCardIndex st = maybe id snap' st.initialSliderCardWidth $ fromMaybe 0 st.activeCardIndex
   where
   snap' = snapActiveCardIndexByTranslationAndCardWidth st
 
 snap ∷ State → State
-snap st = st { activeCardIndex = snapActiveCardIndex st }
+snap st = st { activeCardIndex = Just $ snapActiveCardIndex st }
 
 startTransition ∷ State → State
 startTransition = DCS._sliderTransition .~ true
 
 willChangeActiveCardWhenDropped ∷ State → Boolean
 willChangeActiveCardWhenDropped st=
-  st.activeCardIndex ≠ snapActiveCardIndex st
+  fromMaybe 0 st.activeCardIndex ≠ snapActiveCardIndex st
 
 cardPositionCSS ∷ Int → CSS
 cardPositionCSS index = do
