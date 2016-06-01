@@ -673,8 +673,8 @@ saveDeck = H.get >>= \st →
 
           -- We need to get the modified version of the deck state.
           H.gets DCS.deckPath >>= traverse_ \path' →
-            let deckHash =
-                  mkWorkspaceHash path' (NA.Load st.accessType) st.globalVarMap
+            Debug.Trace.traceAny {savePath: path'} \_ →
+            let deckHash = mkWorkspaceHash path' (NA.Load st.accessType) st.globalVarMap
             in H.fromEff $ locationObject >>= Location.setHash deckHash
 
   where
