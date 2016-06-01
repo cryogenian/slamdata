@@ -209,7 +209,7 @@ eval (Load dir deckId next) = do
             pure card.hasRun
           when hasRun $ traverse_ runCard (DCS.findFirst st)
           H.modify (DCS._stateMode .~ DCS.Ready)
-  updateIndicator
+  updateIndicatorAndNextAction
   pure next
 eval (ExploreFile res next) = do
   setDeckState DCS.initialDeck
