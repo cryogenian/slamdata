@@ -229,7 +229,7 @@ eval (Publish next) = do
 eval (Reset dir deckId next) = do
   let deck = DCS.initialDeck
   setDeckState $ deck { id = deckId, path = Just dir }
-  updateIndicator
+  updateIndicatorAndNextAction
   pure next
 eval (SetName name next) =
   H.modify (DCS._name .~ Just name) $> next
