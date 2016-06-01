@@ -642,11 +642,8 @@ triggerSave = fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
 
 -- | Saves the deck as JSON, using the current values present in the state.
 saveDeck ∷ DeckDSL Unit
-saveDeck = H.get >>= \st →
-  if isUnsaved st ∧ isNewExploreDeck st
-  -- If it's an unsaved Explore deck, it is safe to go ahead and run it.
-  then runPendingCards
-  else do
+saveDeck =
+  H.get >>= \st → do
     cards ← Array.catMaybes <$> for st.modelCards \card →
       H.query' cpCard (CardSlot card.cardId)
         $ left
@@ -678,17 +675,6 @@ saveDeck = H.get >>= \st →
             in H.fromEff $ locationObject >>= Location.setHash deckHash
 
   where
-
-  isUnsaved ∷ DCS.State → Boolean
-  isUnsaved = isNothing ∘ DCS.deckPath
-
-  isNewExploreDeck ∷ DCS.State → Boolean
-  isNewExploreDeck { modelCards } =
-    cardArrays ≡ [ CT.OpenResource ]
-      ∨ cardArrays ≡ [ CT.OpenResource, CT.JTable ]
-    where
-      cardArrays = _.cardType <$> modelCards
-
   genId ∷ DirPath → Maybe DeckId → DeckDSL (Either Exn.Error DeckId)
   genId path deckId = case deckId of
     Just id' → pure $ Right id'
