@@ -35,6 +35,7 @@ import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Search.Interpret as Search
 
 import Text.SlamSearch as SS
@@ -46,6 +47,7 @@ data Eval
   | Search String
   | Save String
   | Error String
+  | Markdown String
   | OpenResource R.Resource
 
 evalCard
@@ -54,27 +56,31 @@ evalCard
   ⇒ CET.CardEvalInput
   → Eval
   → CET.CardEvalT m Port.Port
-evalCard input = case _, input.input of
-  Error msg, _ →
-    pure $ Port.CardError msg
-  _, Just Port.Blocked →
-    pure Port.Blocked
-  Pass, Nothing →
-    EC.throwError "Card expected an input value"
-  Pass, Just port →
-    pure port
-  Query sql, Just (Port.VarMap varMap) →
-    Port.TaggedResource <$> evalQuery input sql varMap
-  Query sql, Just (Port.TaggedResource _) →
-    Port.TaggedResource <$> evalQuery input sql Port.emptyVarMap
-  Search query, Just (Port.TaggedResource { resource }) →
-    Port.TaggedResource <$> evalSearch input query resource
-  Save pathString, Just (Port.TaggedResource { resource }) →
-    Port.TaggedResource <$> evalSave input pathString resource
-  OpenResource res, _ →
-    Port.TaggedResource <$> evalOpenResource input res
-  _, _ →
-    EC.throwError "Card received unexpected input type"
+evalCard input =
+  Debug.Trace.traceAny {evalCard:{input}} \_ →
+  case _, input.input of
+    Error msg, _ →
+      pure $ Port.CardError msg
+    _, Just Port.Blocked →
+      pure Port.Blocked
+    Pass, Nothing →
+      EC.throwError "Card expected an input value"
+    Pass, Just port →
+      pure port
+    Query sql, Just (Port.VarMap varMap) →
+      Port.TaggedResource <$> evalQuery input sql varMap
+    Query sql, Just (Port.TaggedResource _) →
+      Port.TaggedResource <$> evalQuery input sql Port.emptyVarMap
+    Markdown txt, _ →
+      MDE.markdownEval input txt
+    Search query, Just (Port.TaggedResource { resource }) →
+      Port.TaggedResource <$> evalSearch input query resource
+    Save pathString, Just (Port.TaggedResource { resource }) →
+      Port.TaggedResource <$> evalSave input pathString resource
+    OpenResource res, _ →
+      Port.TaggedResource <$> evalOpenResource input res
+    _, _ →
+      EC.throwError "Card received unexpected input type"
 
 evalOpenResource
   ∷ ∀ m

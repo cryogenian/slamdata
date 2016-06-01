@@ -33,13 +33,14 @@ import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.JTable.Component (jtableComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
-import SlamData.Workspace.Card.Markdown.Eval (markdownEval, markdownSetup)
+import SlamData.Workspace.Card.Markdown.Eval (markdownEval)
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
 import SlamData.Workspace.Card.OpenResource.Component (openResourceComponent)
 import SlamData.Workspace.Card.Query.Eval (queryEval, querySetup)
 import SlamData.Workspace.Card.Save.Component (saveCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
+import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 
 cardTypeComponent ∷ CardType → CardId → DeckComponent -> J.Json → CardComponent
@@ -65,10 +66,11 @@ cardTypeComponent ty cid deck inner =
     DownloadOptions → DOpts.comp
     ErrorCard → Error.comp
 
+-- TODO: make aceEvalMode do nothing, since this will be handled by the deck -js
 aceEvalMode ∷ AceMode → AceEvaluator
-aceEvalMode MarkdownMode = markdownEval
+aceEvalMode MarkdownMode = \i → CET.runCardEvalT ∘ markdownEval i
 aceEvalMode SQLMode = queryEval
 
 aceSetupMode ∷ AceMode → AceSetup
-aceSetupMode MarkdownMode = markdownSetup
+aceSetupMode MarkdownMode = \_ → pure unit
 aceSetupMode SQLMode = querySetup

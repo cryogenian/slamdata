@@ -13,7 +13,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Markdown.Eval
   ( markdownEval
-  , markdownSetup
   ) where
 
 import SlamData.Prelude
@@ -38,8 +37,7 @@ import Data.NaturalTransformation as NT
 import Data.String as S
 import Data.Time as DT
 
-import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.Ace.Component as ACE
+import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Port as Port
@@ -57,21 +55,16 @@ import Text.Parsing.Parser.String as PS
 import Utils.Path (DirPath)
 
 markdownEval
-  ∷ CEQ.CardEvalInput
+  ∷ ∀ m
+  . (Monad m, AffF.Affable SlamDataEffects m)
+  ⇒ CEQ.CardEvalInput
   → String
-  → ACE.AceDSL CEQ.CardEvalResult
-markdownEval { cardId, path } str =
-  AffF.fromAff $ CEQ.runCardEvalT do
-    result ← lift ∘ Aff.attempt ∘ evalEmbeddedQueries path cardId $ SDP.parseMd str
-    doc ← either (Err.throwError ∘ Exn.message) pure result
-    WC.tell [ "Exported fields: " ⊕ S.joinWith ", " (findFields doc) ]
-    pure $ Port.SlamDown doc
-
-markdownSetup
-  ∷ CEQ.CardSetupInfo
-  → ACE.AceDSL Unit
-markdownSetup _ =
-  pure unit
+  → CEQ.CardEvalT m Port.Port
+markdownEval { cardId, path } str = do
+  result ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries path cardId $ SDP.parseMd str
+  doc ← either (Err.throwError ∘ Exn.message) pure result
+  WC.tell [ "Exported fields: " ⊕ S.joinWith ", " (findFields doc) ]
+  pure $ Port.SlamDown doc
 
 findFields
   ∷ ∀ a

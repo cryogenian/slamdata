@@ -71,6 +71,10 @@ modelToEval { cardType, inner } =
         either (const Nothing) (Just ∘ Eval.Query) $ do
           obj ← J.decodeJson inner
           obj .? "text"
+      CT.Ace CT.MarkdownMode →
+        either (const Nothing) (Just ∘ Eval.Markdown) $ do
+          obj ← J.decodeJson inner
+          obj .? "text"
       CT.Search →
         either (const Nothing) (Just ∘ Eval.Search) $ J.decodeJson inner
       CT.Save →
