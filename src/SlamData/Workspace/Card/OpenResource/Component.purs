@@ -191,8 +191,9 @@ resourceSelected r = do
           updateItems
       H.modify (_selected ?~ fp)
     Left dp → do
-      H.modify (  (_browsing .~ dp)
-                ∘ (_selected .~ Nothing))
+      H.modify
+        $ (_browsing .~ dp)
+        ∘ (_selected .~ Nothing)
       updateItems
   rearrangeItems
 

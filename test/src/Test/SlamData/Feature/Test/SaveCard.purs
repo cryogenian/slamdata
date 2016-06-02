@@ -35,7 +35,6 @@ test =
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     Interact.browseTestFolder
     Interact.accessFile "временный файл"
-    Interact.accessNextCardInLastDeck
-    Interact.insertJTableCardInLastDeck
+    Interact.exploreFile
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     successMsg "Successfully saved data source card output to file"

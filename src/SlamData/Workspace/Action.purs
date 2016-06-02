@@ -24,27 +24,52 @@ module SlamData.Workspace.Action
 
 import SlamData.Prelude
 
+import Data.Path.Pathy as Pt
+import Data.String as Str
+
 import SlamData.Workspace.AccessType (AccessType(..))
 
-data Action = New | Load AccessType
+import Utils.Path as UP
+
+data Action
+  = New
+  | Load AccessType
+  | Exploring UP.FilePath
 
 -- | Used in route parsing
 parseAction :: String -> Either String Action
 parseAction "view" = Right (Load ReadOnly)
 parseAction "edit" = Right (Load Editable)
 parseAction "new" = Right New
-parseAction _ = Left "incorrect action string"
+-- This is useless, added for consistensy
+parseAction str =
+  Str.stripPrefix "exploring" str
+    >>= UP.parseFilePath
+    # maybe (Left "incorrect action string") (Right ∘ Exploring)
 
 -- | Used in route construction
 printAction :: Action -> String
 printAction (Load Editable) = "edit"
 printAction (Load ReadOnly) = "view"
 printAction New = "new"
+printAction (Exploring fp) = "exploring" ⊕ UP.encodeURIPath (Pt.printPath fp)
 
 toAccessType :: Action -> AccessType
 toAccessType New = Editable
 toAccessType (Load t) = t
+toAccessType (Exploring _) = Editable
 
-derive instance genericAccessType :: Generic Action
-instance eqAccessType :: Eq Action where eq = gEq
-instance ordAccessType :: Ord Action where compare = gCompare
+instance eqAccessType ∷ Eq Action where
+  eq New New = true
+  eq (Load at) (Load at') = at ≡ at'
+  eq (Exploring fp) (Exploring fp') = Pt.printPath fp ≡ Pt.printPath fp'
+  eq _ _ = false
+
+instance ordAccessType ∷ Ord Action where
+  compare New New = EQ
+  compare New _ = LT
+  compare _ New = GT
+  compare (Load at) (Load at') = compare at at'
+  compare (Load _) _ = LT
+  compare _ (Load _) = GT
+  compare (Exploring fp) (Exploring fp') = compare (Pt.printPath fp) (Pt.printPath fp')
