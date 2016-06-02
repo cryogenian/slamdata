@@ -606,7 +606,6 @@ runStep cfg inputPort card @ { cardId } = do
       --  H.query' cpCard (CardSlot cardId)
       --    $ left $ H.request (UpdateCard input)
 
-      Debug.Trace.traceAnyA {input,result, card}
       pure $ Just result.output
 
 -- | Runs all card that are present in the set of pending cards.
@@ -723,7 +722,6 @@ setModel dir deckId model = do
         H.query' cpCard (CardSlot card.cardId)
           $ left $ H.action $ LoadCard card
         pure card.hasRun
-      Debug.Trace.traceAnyA {setModel: { cards, st, hasRun}}
       -- TODO: used to be when hasRun $ traverse_ runCard.... Why? -js
       traverse_ runCard $ _.cardId <$> Array.head st.modelCards
       H.modify (DCS._stateMode .~ Ready)

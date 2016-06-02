@@ -68,7 +68,6 @@ evalCard
   → Eval
   → CET.CardEvalT m Port.Port
 evalCard input =
-  Debug.Trace.traceAny {evalCard:{input}} \_ →
   case _, input.input of
     Error msg, _ →
       pure $ Port.CardError msg

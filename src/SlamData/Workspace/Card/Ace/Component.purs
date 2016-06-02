@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Ace.Component
   ( aceComponent
   , AceDSL
   , AceHTML
+  , AceEval
   , AceSetup
   , module SlamData.Workspace.Card.Ace.Component.Query
   , module SlamData.Workspace.Card.Ace.Component.State
@@ -50,15 +51,17 @@ import Utils.Ace (getRangeRecs, readOnly)
 type AceDSL = H.ParentDSL Unit AceState CardEvalQuery AceQuery Slam Unit
 type AceHTML = H.ParentHTML AceState CardEvalQuery AceQuery Slam Unit
 type AceSetup = CardSetupInfo -> AceDSL Unit
+type AceEval = CardEvalInput -> AceDSL Unit
 
 type AceConfig =
   { mode :: AceMode
   , setup :: AceSetup
+  , eval :: AceEval
   }
 
 aceComponent :: AceConfig -> H.Component CardStateP CardQueryP Slam
-aceComponent {mode, setup} = makeCardComponent
-  { cardType: Ace mode
+aceComponent cfg = makeCardComponent
+  { cardType: Ace cfg.mode
   , component: H.parentComponent { render, eval, peek: Nothing }
   , initialState: H.parentState unit
   , _State: _AceState
@@ -77,18 +80,19 @@ aceComponent {mode, setup} = makeCardComponent
     Editor.setTheme "ace/theme/chrome" editor
     Editor.setEnableLiveAutocompletion true editor
     Editor.setEnableBasicAutocompletion true editor
-    Session.setMode (aceMode mode) =<< Editor.getSession editor
+    Session.setMode (aceMode cfg.mode) =<< Editor.getSession editor
 
   eval :: Natural CardEvalQuery AceDSL
   eval (NotifyRunCard next) = pure next
   eval (NotifyStopCard next) = pure next
   eval (EvalCard info output next) = do
     -- TODO: check!
+    cfg.eval info
     pure next
     --content <- fromMaybe "" <$> H.query unit (H.request GetText)
     --result <- evaluator info content
     --pure $ k result
-  eval (SetupCard input next) = setup input $> next
+  eval (SetupCard input next) = cfg.setup input $> next
   eval (Save k) = do
     content <- fromMaybe "" <$> H.query unit (H.request GetText)
     mbEditor <- H.query unit (H.request GetEditor)

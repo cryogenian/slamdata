@@ -15,8 +15,8 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Card.Query.Eval
-  ( queryEval
-  , querySetup
+  ( querySetup
+  , queryEval
   ) where
 
 import SlamData.Prelude
@@ -35,18 +35,14 @@ import Halogen (query, action, request, fromEff)
 
 import SlamData.Workspace.Card.Ace.Component (AceDSL)
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
-import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Port as Port
 
 import Utils.Ace (readOnly)
 import Utils.Completions (mkCompletion, pathCompletions)
 
 
--- TODO: remove this -js
-queryEval ∷ CEQ.CardEvalInput → String → AceDSL CEQ.CardEvalResult
-queryEval info sql = do
-  addCompletions $ fromMaybe SM.empty $ info.input ^? _Just ∘ Port._VarMap
-  Eval.runEvalCard info (Eval.Query sql)
+queryEval ∷ CEQ.CardEvalInput → AceDSL Unit
+queryEval info = addCompletions $ fromMaybe SM.empty $ info.input ^? _Just ∘ Port._VarMap
 
 querySetup ∷ CEQ.CardSetupInfo → AceDSL Unit
 querySetup { input, path } =

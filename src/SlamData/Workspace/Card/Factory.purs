@@ -21,7 +21,7 @@ import SlamData.Prelude
 
 import Data.Argonaut as J
 
-import SlamData.Workspace.Card.Ace.Component (AceSetup, aceComponent)
+import SlamData.Workspace.Card.Ace.Component (AceSetup, AceEval, aceComponent)
 import SlamData.Workspace.Card.API.Component (apiComponent)
 import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
 import SlamData.Workspace.Card.CardId (CardId)
@@ -37,7 +37,7 @@ import SlamData.Workspace.Card.JTable.Component (jtableComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
 import SlamData.Workspace.Card.OpenResource.Component (openResourceComponent)
-import SlamData.Workspace.Card.Query.Eval (querySetup)
+import SlamData.Workspace.Card.Query.Eval (querySetup, queryEval)
 import SlamData.Workspace.Card.Save.Component (saveCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
@@ -49,6 +49,7 @@ cardTypeComponent ty cid inner opts =
       aceComponent
         { mode
         , setup: aceSetupMode mode
+        , eval: aceEval mode
         }
     Search → searchComponent
     Viz → vizComponent
@@ -68,3 +69,7 @@ cardTypeComponent ty cid inner opts =
 aceSetupMode ∷ AceMode → AceSetup
 aceSetupMode MarkdownMode = \_ → pure unit
 aceSetupMode SQLMode = querySetup
+
+aceEval ∷ AceMode → AceEval
+aceEval MarkdownMode = \_ → pure unit
+aceEval SQLMode = queryEval
