@@ -18,9 +18,6 @@ module SlamData.FileSystem.Component.Install where
 
 import SlamData.Prelude
 
-import Data.Either.Nested (Either5)
-import Data.Functor.Coproduct.Nested (Coproduct5)
-
 import Halogen (ChildF(..), ParentState, Action, action)
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>), injSlot, injQuery)
 
@@ -34,63 +31,60 @@ import SlamData.FileSystem.Search.Component as Search
 import SlamData.Header.Component as Header
 
 type ChildState =
-  Either5
-    Listing.StateP
-    Search.State
-    Breadcrumbs.State
-    Dialog.StateP
-    Header.StateP
+  Listing.StateP
+  ⊹ Search.State
+  ⊹ Breadcrumbs.State
+  ⊹ Dialog.StateP
+  ⊹ Header.StateP
 
 type ChildQuery =
-  Coproduct5
-    Listing.QueryP
-    Search.Query
-    Breadcrumbs.Query
-    Dialog.QueryP
-    Header.QueryP
+  Listing.QueryP
+  ⨁ Search.Query
+  ⨁ Breadcrumbs.Query
+  ⨁ Dialog.QueryP
+  ⨁ Header.QueryP
 
 type ChildSlot =
-  Either5
-    Unit
-    Unit
-    Unit
-    Unit
-    Unit
+  Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
 
 cpListing
   ∷ ChildPath
       Listing.StateP ChildState
       Listing.QueryP ChildQuery
       Unit ChildSlot
-cpListing = cpL :> cpL :> cpL :> cpL
+cpListing = cpL
 
 cpSearch
   ∷ ChildPath
       Search.State ChildState
       Search.Query ChildQuery
       Unit ChildSlot
-cpSearch = cpL :> cpL :> cpL :> cpR
+cpSearch = cpR :> cpL
 
 cpBreadcrumbs
   ∷ ChildPath
       Breadcrumbs.State ChildState
       Breadcrumbs.Query ChildQuery
       Unit ChildSlot
-cpBreadcrumbs = cpL :> cpL :> cpR
+cpBreadcrumbs = cpR :> cpR :> cpL
 
 cpDialog
   ∷ ChildPath
       Dialog.StateP ChildState
       Dialog.QueryP ChildQuery
       Unit ChildSlot
-cpDialog = cpL :> cpR
+cpDialog = cpR :> cpR :> cpR :> cpL
 
 cpHeader
   ∷ ChildPath
       Header.StateP ChildState
       Header.QueryP ChildQuery
       Unit ChildSlot
-cpHeader = cpR
+cpHeader = cpR :> cpR :> cpR :> cpR
 
 toFs ∷ Action Query → QueryP Unit
 toFs = left ∘ action
@@ -119,4 +113,4 @@ toDialog =
     ∘ action
 
 type StateP = ParentState State ChildState Query ChildQuery Slam ChildSlot
-type QueryP = Coproduct Query (ChildF ChildSlot ChildQuery)
+type QueryP = Query ⨁ (ChildF ChildSlot ChildQuery)

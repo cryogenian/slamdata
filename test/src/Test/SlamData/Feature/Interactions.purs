@@ -37,7 +37,12 @@ mountTestDatabase = do
   Feature.click (XPath.anywhere XPaths.mountButton)
 
 accessFile ∷ String → SlamFeature Unit
-accessFile = Feature.click ∘ XPath.anywhere ∘ XPaths.accessFile
+accessFile =
+  Feature.click ∘ XPath.anywhere ∘ XPaths.accessFile
+
+exploreFile ∷ SlamFeature Unit
+exploreFile =
+  Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Explore file"
 
 accessBreadcrumb ∷ String → SlamFeature Unit
 accessBreadcrumb = Feature.click ∘ XPath.anywhere ∘ XPaths.accessBreadcrumb

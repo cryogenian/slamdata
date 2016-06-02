@@ -18,6 +18,8 @@ module SlamData.FileSystem.Resource
   ( Resource(..)
   , Mount(..)
   , _filePath
+  , _dirPath
+  , _Workspace
   , _name
   , _nameAnyPath
   , _path
@@ -64,7 +66,7 @@ import Data.Argonaut.Encode (class EncodeJson)
 import Data.Foreign (ForeignError(..)) as F
 import Data.Foreign.Class (class IsForeign, readProp) as F
 import Data.Foreign.NullOrUndefined (runNullOrUndefined) as F
-import Data.Lens (lens, LensP, TraversalP, wander)
+import Data.Lens (lens, prism', PrismP, LensP, TraversalP, wander)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
@@ -299,6 +301,17 @@ _filePath = wander \f s → case s of
   File fp → File <$> f fp
   Mount (View fp) → map (Mount ∘ View) $ f fp
   _ → pure s
+
+_dirPath ∷ TraversalP Resource PU.DirPath
+_dirPath = wander \f s → case s of
+  Directory dp → Directory <$> f dp
+  Mount (Database dp) → map (Mount ∘ Database) $ f dp
+  _ → pure s
+
+_Workspace ∷ PrismP Resource PU.DirPath
+_Workspace = prism' Workspace case _ of
+  Workspace dp → Just dp
+  _ → Nothing
 
 _path ∷ LensP Resource PU.AnyPath
 _path = lens getPath setPath
