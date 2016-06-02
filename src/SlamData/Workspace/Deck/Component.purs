@@ -654,7 +654,7 @@ runPendingCards = do
     let input = { path, input: mport, cardId: card.cardId, globalVarMap }
     traceAnyA {updateCard:card,input, cardType: card.cardType, shouldLoad}
     when shouldLoad do
-      res ← H.query' cpCard (CardSlot card.cardId) $ left $ H.action (LoadCard card) -- TODO: check this -js
+      res ← H.query' cpCard (CardSlot card.cardId) $ left $ H.action (LoadCard card)
       for_ res \_ →
         H.modify $ DCS._cardsToLoad %~ Set.delete card.cardId
     void $ H.query' cpCard (CardSlot card.cardId) $ left $ H.action (UpdateCard input output)
@@ -728,12 +728,9 @@ setModel dir deckId model = do
     Tuple cards st → do
       setDeckState st
       H.modify $ DCS._cardsToLoad .~ Set.fromFoldable (_.cardId <$> cards)
---      hasRun ← Foldable.or <$> for cards \card → do
---        H.query' cpCard (CardSlot card.cardId)
---          $ left $ H.action $ LoadCard card
---        pure card.hasRun
-      -- TODO: used to be when hasRun $ traverse_ runCard.... Why? -js
-      traceAnyA {setModel:st.modelCards}
-      traverse_ runCard $ _.cardId <$> Array.head st.modelCards
+      let hasRun = Foldable.or $ _.hasRun <$> cards
+      traceAnyA {setModel:st.modelCards, hasRun}
+      -- TODO: Can someone explain why we want to run the cards when one has run already? Or is that not what this means? -js
+      when hasRun $ traverse_ runCard $ _.cardId <$> Array.head st.modelCards
       H.modify $ DCS._stateMode .~ Ready
   updateIndicatorAndNextAction
