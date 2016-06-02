@@ -380,6 +380,8 @@ queryCard cid =
     ∘ H.ChildF unit
     ∘ right
 
+-- This is the only function where we use the stored cardOutputs state
+-- It would be really nice if we could find a way to get rid of that. -js
 updateIndicatorAndNextAction ∷ DeckDSL Unit
 updateIndicatorAndNextAction = do
   { displayCards, cardOutputs } ← H.get
@@ -548,12 +550,14 @@ type RunCardsMachine =
   { state ∷ Maybe Port
   , cards ∷ L.List Card.Model
   , stack ∷ L.List Card.Model
+  , outputs ∷ Map.Map CardId Port
   }
 
 initialRunCardsState ∷ L.List Card.Model → RunCardsMachine
 initialRunCardsState input =
   { state: Nothing
-  , cards: L.Nil
+  , cards: mempty
+  , outputs: mempty
   , stack: input
   }
 
@@ -571,13 +575,23 @@ stepRunCards
   ∷ RunCardsConfig
   → RunCardsMachine
   → DeckDSL RunCardsMachine
-stepRunCards cfg m @ { state, cards, stack } =
+stepRunCards cfg m @ { state, cards, stack, outputs } =
   case stack of
     L.Nil → pure m
     L.Cons x stack' → do
-      state' ← runStep cfg state x
-      let cards' = L.Cons x cards
-      pure { state: state', cards: cards', stack: stack'}
+      state' ←
+        if x.cardId < cfg.pendingCardId
+          then pure $ Map.lookup x.cardId outputs
+          else runStep cfg state x
+      let
+        cards' = L.Cons x cards
+        outputs' = maybe id (Map.insert x.cardId) state' outputs
+      pure
+        { state: state'
+        , cards: cards'
+        , stack: stack'
+        , outputs: outputs'
+        }
 
 evalRunCardsMachine
   ∷ RunCardsConfig
@@ -589,24 +603,31 @@ evalRunCardsMachine cfg m =
   else evalRunCardsMachine cfg =<< stepRunCards cfg m
 
 
+-- | If the card model is represented in the live / Halogen deck, then we query it for its
+-- | current state. Otherwise, we use the data we have stored in the model.
+currentStateOfCard
+  ∷ Card.Model
+  → DeckDSL Card.Model
+currentStateOfCard card =
+  H.query' cpCard (CardSlot card.cardId) (left $ H.request (SaveCard card.cardId card.cardType))
+    <#> fromMaybe card
+
 runStep
-  :: RunCardsConfig
+  ∷ RunCardsConfig
   → Maybe Port
   → Card.Model
   → DeckDSL (Maybe Port)
 runStep cfg inputPort card @ { cardId } = do
-  if cardId < cfg.pendingCardId
-    then H.gets (Map.lookup cardId ∘ _.cardOutputs)
-    else do
-      let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap }
-      result ← Eval.runEvalCard input $ Card.modelToEval card
-      H.modify $ DCS._cardOutputs %~ Map.insert cardId result.output
-      pure $ Just result.output
+  let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap }
+  result ← Eval.runEvalCard input ∘ Card.modelToEval =<< currentStateOfCard card
+  pure $ Just result.output
 
-displayCardUpdates ∷ DCS.State → Array { card ∷ Card.Model, input ∷ Maybe Port.Port, output ∷ Maybe Port.Port}
-displayCardUpdates st =
+type CardUpdate = { card ∷ Card.Model, input ∷ Maybe Port, output ∷ Maybe Port}
+
+displayCardUpdates ∷ DCS.State → RunCardsMachine → Array CardUpdate
+displayCardUpdates st m =
   let
-    outputs = st.displayCards <#> \{ cardId } → Map.lookup cardId st.cardOutputs
+    outputs = st.displayCards <#> \{ cardId } → Map.lookup cardId m.outputs
     inputs = Array.take (Array.length outputs) $ Array.cons Nothing outputs
   in
     Array.zipWith
@@ -618,16 +639,18 @@ displayCardUpdates st =
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
   { modelCards, path, globalVarMap } ← H.get
-  result ←
+  mresult ←
     H.gets _.pendingCard >>= traverse \pendingCardId → do
       evalRunCardsMachine { pendingCardId, path, globalVarMap }
         ∘ initialRunCardsState
         $ L.toList modelCards
 
-  for_ result \{ cards } → do
-    H.modify $ DCS._displayCards .~ L.fromList (L.reverse cards)
-    H.gets displayCardUpdates
-      >>= traverse_ (updateCard path globalVarMap)
+  for_ mresult \result → do
+    H.modify
+      $ (DCS._displayCards .~ L.fromList (L.reverse result.cards))
+      ∘ (DCS._cardOutputs .~ result.outputs)
+    state ← H.get
+    traverse_ (updateCard path globalVarMap) $ displayCardUpdates state result
 
   updateIndicatorAndNextAction
     -- triggerSave <-- why?
@@ -636,7 +659,7 @@ runPendingCards = do
   updateCard
     ∷ Maybe DirPath
     → Port.VarMap
-    → { card ∷ Card.Model, input ∷ Maybe Port.Port, output ∷ Maybe Port.Port }
+    → CardUpdate
     → DeckDSL Unit
   updateCard path globalVarMap { card, input = mport, output } = do
     shouldLoad ← H.gets $ Set.member card.cardId ∘ _.cardsToLoad
