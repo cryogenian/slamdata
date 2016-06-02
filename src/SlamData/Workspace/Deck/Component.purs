@@ -35,6 +35,7 @@ import Data.Lens as Lens
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as L
 import Data.Map as Map
+import Data.Set as Set
 import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
@@ -213,6 +214,7 @@ eval (RunActiveCard next) = do
 eval (Load dir deckId next) = do
   H.modify (DCS._stateMode .~ Loading)
   json ← Quasar.load $ deckIndex dir deckId
+  traceAnyA {deckLoad:json, dir, deckId}
   case Model.decode =<< json of
     Left err → do
       H.fromAff $ log err
@@ -617,6 +619,7 @@ runPendingCards = do
       let
         config ∷ RunCardsConfig
         config = { pendingCardId, path, globalVarMap }
+      traceAnyA {runPendingCards:{config,modelCards}}
       evalRunCardsMachine config ∘ initialRunCardsState $ L.toList modelCards
 
   H.modify $ Lens.over DCS._displayCards \displayCards →
@@ -647,7 +650,13 @@ runPendingCards = do
     → DeckDSL Unit
   updateCard path globalVarMap card mport = do
     output ← H.gets $ Map.lookup card.cardId ∘ _.cardOutputs
+    shouldLoad ← H.gets $ Set.member card.cardId ∘ _.cardsToLoad
     let input = { path, input: mport, cardId: card.cardId, globalVarMap }
+    traceAnyA {updateCard:card,input, cardType: card.cardType, shouldLoad}
+    when shouldLoad do
+      res ← H.query' cpCard (CardSlot card.cardId) $ left $ H.action (LoadCard card) -- TODO: check this -js
+      for_ res \_ →
+        H.modify $ DCS._cardsToLoad %~ Set.delete card.cardId
     void $ H.query' cpCard (CardSlot card.cardId) $ left $ H.action (UpdateCard input output)
 
 -- | Enqueues the card with the specified ID in the set of cards that are
@@ -718,11 +727,13 @@ setModel dir deckId model = do
   case DCS.fromModel dir deckId model state of
     Tuple cards st → do
       setDeckState st
-      hasRun ← Foldable.or <$> for cards \card → do
-        H.query' cpCard (CardSlot card.cardId)
-          $ left $ H.action $ LoadCard card
-        pure card.hasRun
+      H.modify $ DCS._cardsToLoad .~ Set.fromFoldable (_.cardId <$> cards)
+--      hasRun ← Foldable.or <$> for cards \card → do
+--        H.query' cpCard (CardSlot card.cardId)
+--          $ left $ H.action $ LoadCard card
+--        pure card.hasRun
       -- TODO: used to be when hasRun $ traverse_ runCard.... Why? -js
+      traceAnyA {setModel:st.modelCards}
       traverse_ runCard $ _.cardId <$> Array.head st.modelCards
-      H.modify (DCS._stateMode .~ Ready)
+      H.modify $ DCS._stateMode .~ Ready
   updateIndicatorAndNextAction

@@ -25,6 +25,7 @@ module SlamData.Workspace.Deck.Component.State
   , _modelCards
   , _displayCards
   , _cardOutputs
+  , _cardsToLoad
   , _activeCardIndex
   , _name
   , _path
@@ -67,6 +68,7 @@ import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.StrMap as SM
+import Data.Set as Set
 
 import Data.Argonaut as J
 
@@ -108,6 +110,7 @@ type State =
   , modelCards ∷ Array Card.Model
   , displayCards ∷ Array Card.Model
   , cardOutputs ∷ Map.Map CardId Port
+  , cardsToLoad ∷ Set.Set CardId
   , activeCardIndex ∷ Maybe Int
   , name ∷ Maybe String
   , path ∷ Maybe DirPath
@@ -136,6 +139,7 @@ initialDeck =
   , modelCards: mempty
   , displayCards: mempty
   , cardOutputs: mempty
+  , cardsToLoad: mempty
   , activeCardIndex: Nothing
   , name: Nothing
   , path: Nothing
@@ -175,6 +179,9 @@ _displayCards = lens _.displayCards _{displayCards = _}
 
 _cardOutputs ∷ ∀ a r. LensP {cardOutputs ∷ a |r} a
 _cardOutputs = lens _.cardOutputs _{cardOutputs = _}
+
+_cardsToLoad ∷ ∀ a r. LensP {cardsToLoad ∷ a |r} a
+_cardsToLoad = lens _.cardsToLoad _{cardsToLoad = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.
