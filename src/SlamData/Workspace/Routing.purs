@@ -38,7 +38,7 @@ import Routing.Match.Class (lit, str, params) as Match
 
 import SlamData.Config as Config
 import SlamData.Workspace.AccessType (AccessType(..))
-import SlamData.Workspace.Action as NA
+import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as D
 
@@ -47,119 +47,113 @@ import Text.Parsing.Parser (runParser)
 import Utils.Path as UP
 
 data Routes
-  = ExploreRoute UP.FilePath
-  | WorkspaceRoute UP.DirPath (L.List D.DeckId) NA.Action Port.VarMap
+  = WorkspaceRoute UP.DirPath (L.List D.DeckId) WA.Action Port.VarMap
 
-routing :: Match Routes
+routing ∷ Match Routes
 routing
-  =   ExploreRoute <$> (oneSlash *> Match.lit "explore" *> explored)
-  <|> WorkspaceRoute <$> workspace <*> deckIds <*> action <*> optionalVarMap
+  =  WorkspaceRoute <$> workspace <*> deckIds <*> action <*> optionalVarMap
 
   where
-  optionalVarMap :: Match Port.VarMap
+  optionalVarMap ∷ Match Port.VarMap
   optionalVarMap = varMap <|> pure SM.empty
 
-  varMap :: Match Port.VarMap
+  varMap ∷ Match Port.VarMap
   varMap = Match.params <#> Map.toList >>> foldl go SM.empty
     where
       go m (Tuple k str) =
         case runParser str Port.parseVarMapValue of
-          Left err -> m
-          Right v -> SM.insert k v m
+          Left err → m
+          Right v → SM.insert k v m
 
-  oneSlash :: Match Unit
+  oneSlash ∷ Match Unit
   oneSlash = Match.lit ""
 
-  explored :: Match UP.FilePath
+  explored ∷ Match UP.FilePath
   explored = Match.eitherMatch $ mkResource <$> Match.list Match.str
 
-  mkResource :: L.List String -> Either String UP.FilePath
+  mkResource ∷ L.List String → Either String UP.FilePath
   mkResource parts =
     case L.last parts of
-      Just filename | filename /= "" ->
+      Just filename | filename /= "" →
         let dirParts = MU.fromJust (L.init parts)
             filePart = P.file filename
-            path = foldr (\part acc -> P.dir part </> acc) filePart dirParts
+            path = foldr (\part acc → P.dir part </> acc) filePart dirParts
         in Right $ P.rootDir </> path
-      _ -> Left "Expected non-empty explore path"
+      _ → Left "Expected non-empty explore path"
 
-  workspace :: Match UP.DirPath
+  workspace ∷ Match UP.DirPath
   workspace = workspaceFromParts <$> partsAndName
 
-  workspaceFromParts :: Tuple (L.List String) String -> UP.DirPath
+  workspaceFromParts ∷ Tuple (L.List String) String → UP.DirPath
   workspaceFromParts (Tuple ps nm) =
     foldl (</>) P.rootDir (map P.dir ps) </> P.dir nm
 
-  partsAndName :: Match (Tuple (L.List String) String)
+  partsAndName ∷ Match (Tuple (L.List String) String)
   partsAndName = Tuple <$> (oneSlash *> Match.list notName) <*> name
 
-  name :: Match String
+  name ∷ Match String
   name = Match.eitherMatch $ map workspaceName Match.str
 
-  notName :: Match String
+  notName ∷ Match String
   notName = Match.eitherMatch $ map pathPart Match.str
 
-  workspaceName :: String -> Either String String
+  workspaceName ∷ String → Either String String
   workspaceName input
     | checkExtension input = Right input
     | otherwise = Left input
 
-  pathPart :: String -> Either String String
+  pathPart ∷ String → Either String String
   pathPart input
     | input == "" || checkExtension input = Left "incorrect path part"
     | otherwise = Right input
 
-  extensionRegex :: R.Regex
+  extensionRegex ∷ R.Regex
   extensionRegex = R.regex ("\\." <> Config.workspaceExtension <> "$") R.noFlags
 
-  checkExtension :: String -> Boolean
+  checkExtension ∷ String → Boolean
   checkExtension = R.test extensionRegex
 
-  deckIds :: Match (L.List D.DeckId)
+  deckIds ∷ Match (L.List D.DeckId)
   deckIds = Match.list $ Match.eitherMatch $ map D.stringToDeckId Match.str
 
-  action :: Match NA.Action
+  action ∷ Match WA.Action
   action
-      = (Match.eitherMatch $ map NA.parseAction Match.str)
-    <|> pure (NA.Load ReadOnly)
+      = (WA.Exploring <$> (Match.lit "exploring" *> explored))
+    <|> (Match.eitherMatch $ map WA.parseAction Match.str)
+    <|> pure (WA.Load ReadOnly)
 
 -- TODO: it would be nice if `purescript-routing` had a way to render a route
 -- from a matcher, so that we could do away with the following brittle functions.
 
--- Currently the only place where modules from `Workspace.Model` are used
--- is `Controller.File`. I think that it would be better if url will be constructed
--- from things that are already in `FileSystem` (In fact that using of
--- `workspaceURL` is redundant, because (state ^. _path) is `DirPath`
--- `theseRight $ That Config.newWorkspaceName` ≣ `Just Config.newWorkspaceName`
 mkWorkspaceURL
-  :: UP.DirPath    -- workspace path
-  -> NA.Action     -- workspace action
-  -> String
+  ∷ UP.DirPath    -- workspace path
+  → WA.Action     -- workspace action
+  → String
 mkWorkspaceURL path action =
   Config.workspaceUrl
     <> mkWorkspaceHash path action SM.empty
 
 mkWorkspaceHash
-  :: UP.DirPath    -- workspace path
-  -> NA.Action     -- workspace action
-  -> Port.VarMap   -- global `VarMap`
-  -> String
+  ∷ UP.DirPath    -- workspace path
+  → WA.Action     -- workspace action
+  → Port.VarMap   -- global `VarMap`
+  → String
 mkWorkspaceHash path action varMap =
   "#"
     <> UP.encodeURIPath (P.printPath path)
-    <> NA.printAction action
+    <> WA.printAction action
     <> maybe "" ("/" <> _)  (renderVarMapQueryString varMap)
 
 renderVarMapQueryString
-  :: Port.VarMap -- global `VarMap`
-  -> Maybe String
+  ∷ Port.VarMap -- global `VarMap`
+  → Maybe String
 renderVarMapQueryString varMap =
   if SM.isEmpty varMap
      then Nothing
      else Just $ "?" <> F.intercalate "&" (varMapComponents varMap)
   where
     varMapComponents =
-      SM.foldMap $ \key val ->
+      SM.foldMap $ \key val →
         [ key
             <> "="
             <> Global.encodeURIComponent (Port.renderVarMapValue val)

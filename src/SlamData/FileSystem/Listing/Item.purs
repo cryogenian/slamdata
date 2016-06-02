@@ -18,22 +18,8 @@ module SlamData.FileSystem.Listing.Item where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.UI.Browser (setLocation)
-
-import Data.Path.Pathy (printPath)
-
-import DOM (DOM)
-
-import SlamData.Config as Config
 import SlamData.FileSystem.Listing.Sort (Sort)
-import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourcePath, resourceName, sortResource)
-import SlamData.FileSystem.Routing (browseURL)
-import SlamData.FileSystem.Routing.Salt (Salt)
-import SlamData.Workspace.AccessType (AccessType(..), printAccessType)
-
-import Utils.Path (encodeURIPath)
-
+import SlamData.FileSystem.Resource (Resource, resourcePath, resourceName, sortResource)
 
 data Item
   = Item Resource
@@ -41,45 +27,27 @@ data Item
   | ActionsPresentedItem Resource
   | PhantomItem Resource
 
-itemResource :: Item -> Resource
+itemResource ∷ Item → Resource
 itemResource (Item r) = r
 itemResource (SelectedItem r) = r
 itemResource (ActionsPresentedItem r) = r
 itemResource (PhantomItem r) = r
 
-itemURL :: Sort -> Salt -> AccessType -> Resource -> String
-itemURL sort salt act res = case res of
-  File path ->
-    Config.workspaceUrl ++ "#/explore" ++ encodeURIPath (printPath path)
-  Mount (View path) ->
-    Config.workspaceUrl ++ "#/explore" ++ encodeURIPath (printPath path)
-  Workspace path ->
-    Config.workspaceUrl ++ "#" ++ encodeURIPath (printPath path) ++ printAccessType act
-  Directory path ->
-    browseURL Nothing sort salt path
-  Mount (Database path) ->
-    browseURL Nothing sort salt path
-
-
-openItem :: forall e. Resource -> Sort -> Salt -> Eff (dom :: DOM|e) Unit
-openItem res sort salt = setLocation (itemURL sort salt Editable res)
-
-
-sortItem :: Boolean -> Sort -> Item -> Item -> Ordering
+sortItem ∷ Boolean → Sort → Item → Item → Ordering
 sortItem isSearching sort a b =
   sortResource (sortProjection isSearching) sort (itemResource a) (itemResource b)
   where
   sortProjection true = resourcePath
   sortProjection _ = resourceName
 
-instance eqItem :: Eq Item where
-  eq (Item r) (Item r') = r == r'
-  eq (SelectedItem r) (SelectedItem r') = r == r'
-  eq (ActionsPresentedItem r) (ActionsPresentedItem r') = r == r'
-  eq (PhantomItem r) (PhantomItem r') = r == r'
+instance eqItem ∷ Eq Item where
+  eq (Item r) (Item r') = r ≡ r'
+  eq (SelectedItem r) (SelectedItem r') = r ≡ r'
+  eq (ActionsPresentedItem r) (ActionsPresentedItem r') = r ≡ r'
+  eq (PhantomItem r) (PhantomItem r') = r ≡ r'
   eq _ _ = false
 
-instance ordItem :: Ord Item where
+instance ordItem ∷ Ord Item where
   compare (SelectedItem r) (SelectedItem r') = compare r r'
   compare (SelectedItem _) _ = GT
   compare _ (SelectedItem _) = LT

@@ -222,9 +222,9 @@ eval (SetModel deckId model next) = do
   setModel state.path (Just deckId) model
   pure next
 eval (ExploreFile res next) = do
-  setDeckState DCS.initialDeck
   H.modify
-    $ (DCS._path .~ Pathy.parentDir res)
+    $ (DCS._activeCardIndex .~ one)
+    ∘ (DCS.addCard CT.JTable)
     ∘ (DCS.addCard CT.OpenResource)
   H.query' cpCard (CardSlot zero)
     $ right

@@ -59,18 +59,8 @@ routeSignal driver =
   Routing.matchesAff' UP.decodeURIPath routing >>= snd >>> case _ of
     WorkspaceRoute res deckIds action varMap →
       workspace res deckIds action varMap
-    ExploreRoute res →
-      explore res
 
   where
-
-  explore ∷ UP.FilePath → Aff SlamDataEffects Unit
-  explore path = do
-    driver $ Workspace.toWorkspace $ Workspace.Reset Nothing
-    driver $ Workspace.toDeck $ Deck.ExploreFile path
-    driver $ Workspace.toWorkspace $ Workspace.SetParentHref
-      $ parentURL $ Right path
-
   workspace
     ∷ UP.DirPath
     → L.List DeckId
@@ -82,10 +72,12 @@ routeSignal driver =
         accessType = toAccessType action
     currentPath ← driver $ Workspace.fromWorkspace Workspace.GetPath
 
-    when (currentPath ≠ pure path) do
-      if action ≡ New
-        then driver $ Workspace.toWorkspace $ Workspace.Reset (Just path)
-        else driver $ Workspace.toWorkspace $ Workspace.Load path deckIds
+    when (currentPath ≠ pure path) case action of
+      New → driver $ Workspace.toWorkspace $ Workspace.Reset (Just path)
+      Load _ → driver $ Workspace.toWorkspace $ Workspace.Load path deckIds
+      Exploring fp → do
+        driver $ Workspace.toWorkspace $ Workspace.Reset (Just path)
+        driver $ Workspace.toDeck $ Deck.ExploreFile fp
 
     driver $ Workspace.toWorkspace $ Workspace.SetAccessType accessType
     driver $ Workspace.toDeck $ Deck.SetGlobalVarMap varMap

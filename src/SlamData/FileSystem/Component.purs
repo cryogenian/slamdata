@@ -33,8 +33,7 @@ import Control.UI.File as Cf
 import Data.Argonaut (jsonParser, jsonEmptyObject)
 import Data.Array (head, last, mapMaybe, filter)
 import Data.Foldable as F
-import Data.Functor.Coproduct.Nested (coproduct5)
-import Data.Lens ((.~))
+import Data.Lens ((.~), preview)
 import Data.MediaType.Common (textCSV, applicationJSON)
 import Data.Path.Pathy (rootDir, (</>), dir, file, parentDir)
 import Data.String as S
@@ -57,29 +56,30 @@ import SlamData.FileSystem.Component.Render (sorting, toolbar)
 import SlamData.FileSystem.Component.State (State, _isMount, _path, _salt, _showHiddenFiles, _sort, _version, initialState)
 import SlamData.FileSystem.Dialog.Component as Dialog
 import SlamData.FileSystem.Dialog.Download.Component as Download
+import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State as MongoDB
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component.State as SQL2
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Listing.Component as Listing
-import SlamData.FileSystem.Listing.Item (Item(..), itemResource, itemURL, openItem, sortItem)
+import SlamData.FileSystem.Listing.Item (Item(..), itemResource, sortItem)
 import SlamData.FileSystem.Listing.Item.Component as Item
 import SlamData.FileSystem.Listing.Sort (notSort)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
-import SlamData.Workspace.Action (Action(..), AccessType(..))
-import SlamData.Workspace.Routing (mkWorkspaceURL)
+import SlamData.Header.Component as Header
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
-import SlamData.Render.Common (content, row)
 import SlamData.Render.CSS as Rc
+import SlamData.Render.Common (content, row)
 import SlamData.SignIn.Component as SignIn
-import SlamData.Header.Component as Header
+import SlamData.Workspace.Action (Action(..), AccessType(..))
+import SlamData.Workspace.Routing (mkWorkspaceURL)
 
 import Utils.DOM as D
 import Utils.Path (DirPath, getNameStr)
@@ -242,12 +242,14 @@ uploadFileSelected f = do
                       else API.ldJSON
       queryListing $ H.action (Listing.Add fileItem)
       f' ← API.makeFile fileName (CustomData mime content')
+      queryListing $ H.action $
+        Listing.Filter (not ∘ eq res ∘ itemResource)
       case f' of
-        Left err → do
-          queryListing $ H.action $
-            Listing.Filter (not ∘ eq (R.File fileName) ∘ itemResource)
+        Left err →
           showDialog $ Dialog.Error (message err)
-        Right _ → H.fromEff $ openItem res sort salt
+        Right _ →
+          void $ queryListing $ H.action $ Listing.Add (Item res)
+
   where
   isApplicationJSON ∷ String → Boolean
   isApplicationJSON content'
@@ -260,15 +262,14 @@ uploadFileSelected f = do
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =
-  coproduct5
-    listingPeek
-    searchPeek
-    (const (pure unit))
-    dialogPeek
-    (const (pure unit))
+  listingPeek
+  ⨁ searchPeek
+  ⨁ const (pure unit)
+  ⨁ dialogPeek
+  ⨁ const (pure unit)
 
 listingPeek ∷ ∀ a. Listing.QueryP a → DSL Unit
-listingPeek = coproduct go (itemPeek ∘ H.runChildF)
+listingPeek = go ⨁ (itemPeek ∘ H.runChildF)
   where
   go (Listing.Add _ _) = resort
   go (Listing.Adds _ _) = resort
@@ -276,10 +277,19 @@ listingPeek = coproduct go (itemPeek ∘ H.runChildF)
 
 itemPeek ∷ ∀ a. Item.Query a → DSL Unit
 itemPeek (Item.Open res _) = do
-  { sort, salt } ← H.get
-  H.fromEff $ openItem res sort salt
+  { sort, salt, path } ← H.get
+  loc ← H.fromEff locationString
+  for_ (preview R._filePath res) \fp →
+    showDialog $ Dialog.Explore fp
+  for_ (preview R._dirPath res) \dp →
+    H.fromEff $ setLocation $ browseURL Nothing sort salt dp
+  for_ (preview R._Workspace res) \wp →
+    H.fromEff $ setLocation $ append loc $ mkWorkspaceURL wp (Load Editable)
+
+
 itemPeek (Item.Configure (R.Mount mount) _) = configure mount
 itemPeek (Item.Move res _) = do
+  Debug.Trace.traceAnyA "Moving"
   showDialog $ Dialog.Rename res
   flip getDirectories rootDir \x →
     void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
@@ -307,10 +317,21 @@ itemPeek (Item.Remove res _) = do
   resort
 
 itemPeek (Item.Share res _) = do
-  { sort, salt } ← H.get
-  loc ← H.fromEff locationString
-  let url = loc ⊕ "/" ⊕ itemURL sort salt ReadOnly res
-  showDialog (Dialog.Share url)
+  path ← H.gets _.path
+  loc ← map (_ ⊕ "/") $ H.fromEff locationString
+  for_ (preview R._filePath res) \fp → do
+    let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
+    name ← API.getNewName path newWorkspaceName
+    case name of
+      Left err →
+        showDialog $ Dialog.Error
+          $ "There was a problem creating the workspace: "
+          ⊕ message err
+      Right name' → do
+        showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
+  for_ (preview R._Workspace res) \wp → do
+    showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
+
 itemPeek (Item.Download res _) = download res
 itemPeek (Item.SharePermissions res _) = do
   showDialog $ Dialog.Permissions res
@@ -329,30 +350,43 @@ searchPeek (Search.Submit _) = do
 searchPeek _ = pure unit
 
 dialogPeek ∷ ∀ a. Dialog.QueryP a → DSL Unit
-dialogPeek = coproduct (const (pure unit)) (dialogChildrenPeek ∘ H.runChildF)
+dialogPeek = const (pure unit) ⨁ dialogChildrenPeek ∘ H.runChildF
 
 dialogChildrenPeek ∷ ∀ a. Dialog.ChildQuery a → DSL Unit
-dialogChildrenPeek q =
-  fromMaybe (pure unit) (mountPeek <$> prjQuery Dialog.cpMount q)
+dialogChildrenPeek q = do
+  for_ (prjQuery Dialog.cpMount q) mountPeek
+  for_ (prjQuery Dialog.cpExplore q) explorePeek
+
+explorePeek ∷ ∀ a. Explore.Query a → DSL Unit
+explorePeek (Explore.Explore fp name next) = do
+  { path } ← H.get
+  let newWorkspaceName = name ⊕ "." ⊕ Config.workspaceExtension
+  name ← API.getNewName path newWorkspaceName
+  case name of
+    Left err →
+      showDialog $ Dialog.Error
+        $ "There was a problem creating the workspace: "
+        ⊕ message err
+    Right name' →
+      H.fromEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
+explorePeek _ = pure unit
 
 mountPeek ∷ ∀ a. Mount.QueryP a → DSL Unit
-mountPeek = coproduct go (const (pure unit))
+mountPeek = go ⨁ const (pure unit)
   where
   go ∷ Mount.Query a → DSL Unit
   go (Mount.NotifySave _) = do
     mount ← queryDialog Dialog.cpMount $ left (H.request Mount.Save)
-    case join mount of
-      Nothing → pure unit
-      Just m → do
-        hideDialog
-        -- check if we just edited the mount for the current directory, as if
-        -- so, we don't want to add an item to the list for it
-        isCurrentMount ← case m of
-          R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
-          _ → pure false
-        when (not isCurrentMount) do
-          queryListing $ H.action $ Listing.Add $ Item (R.Mount m)
-          resort
+    for_ (join mount) \m → do
+      hideDialog
+      -- check if we just edited the mount for the current directory, as if
+      -- so, we don't want to add an item to the list for it
+      isCurrentMount ← case m of
+        R.Database path' → (\p → path' ≡ (p </> dir "")) <$> H.gets _.path
+        _ → pure false
+      unless isCurrentMount do
+        queryListing $ H.action $ Listing.Add $ Item (R.Mount m)
+        resort
   go _ = pure unit
 
 dismissSignInSubmenu ∷ DSL Unit
@@ -375,10 +409,8 @@ updateBreadcrumbs = do
 resort ∷ DSL Unit
 resort = do
   sort ← H.gets _.sort
-  mbIsSearching ← H.query' cpSearch unit (H.request Search.IsSearching)
-  case mbIsSearching of
-    Nothing → pure unit
-    Just isSearching →
+  H.query' cpSearch unit (H.request Search.IsSearching)
+    >>= traverse_ \isSearching →
       void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
 configure ∷ R.Mount → DSL Unit

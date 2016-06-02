@@ -99,7 +99,6 @@ test = do
   fileScenario afterUpload "Upload a file" [] do
     Interact.browseTestFolder
     Interact.uploadFile "test/array-wrapped.json"
-    Expect.resourceOpenedInLastExploreCard "/test-mount/testDb/array-wrapped.json"
     Interact.browseRootFolder
     Interact.browseTestFolder
     Expect.file "array-wrapped.json"
@@ -116,7 +115,7 @@ test = do
     Interact.browseTestFolder
     Interact.shareFile "smallZips"
     Interact.accessSharingUrl
-    Expect.resourceOpenedInLastExploreCard "/test-mount/testDb/smallZips"
+    Expect.tableColumnsAre ["city", "loc", "pop", "state"]
     successMsg "Successfully accessed sharing URL for a file"
     Interact.launchSlamData
 
