@@ -631,8 +631,8 @@ runPendingCards = do
 
   Array.zipWithA
     (updateCard path globalVarMap)
-    (fromMaybe [] (Array.tail displayCards))
-    cardInputs
+    displayCards
+    (Array.cons Nothing cardInputs)
 
   pure unit
 
