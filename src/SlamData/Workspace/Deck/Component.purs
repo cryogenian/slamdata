@@ -599,16 +599,20 @@ runStep cfg inputPort card @ { cardId } = do
     then H.gets (Map.lookup cardId ∘ _.cardOutputs)
     else do
       let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap }
-
-      -- TODO: insert model-based eval here, and then pass through the input &
-      -- eval-computed output ports to the card -gb
       result ← Eval.runEvalCard input $ Card.modelToEval card
       H.modify $ DCS._cardOutputs %~ Map.insert cardId result.output
-      --outputPort ←
-      --  H.query' cpCard (CardSlot cardId)
-      --    $ left $ H.request (UpdateCard input)
-
       pure $ Just result.output
+
+displayCardUpdates ∷ DCS.State → Array { card ∷ Card.Model, input ∷ Maybe Port.Port, output ∷ Maybe Port.Port}
+displayCardUpdates st =
+  let
+    outputs = st.displayCards <#> \{ cardId } → Map.lookup cardId st.cardOutputs
+    inputs = Array.take (Array.length outputs) $ Array.cons Nothing outputs
+  in
+    Array.zipWith
+      (\c f → f c)
+      st.displayCards
+      (Array.zipWith (\input output card → { card, input, output }) inputs outputs)
 
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit
@@ -616,47 +620,34 @@ runPendingCards = do
   { modelCards, path, globalVarMap } ← H.get
   result ←
     H.gets _.pendingCard >>= traverse \pendingCardId → do
-      let
-        config ∷ RunCardsConfig
-        config = { pendingCardId, path, globalVarMap }
-      traceAnyA {runPendingCards:{config,modelCards}}
-      evalRunCardsMachine config ∘ initialRunCardsState $ L.toList modelCards
+      evalRunCardsMachine { pendingCardId, path, globalVarMap }
+        ∘ initialRunCardsState
+        $ L.toList modelCards
 
-  H.modify $ Lens.over DCS._displayCards \displayCards →
-    case result of
-      Just { cards } → L.fromList $ L.reverse cards
-      Nothing → displayCards
+  for_ result \{ cards } → do
+    H.modify $ DCS._displayCards .~ L.fromList (L.reverse cards)
+    H.gets displayCardUpdates
+      >>= traverse_ (updateCard path globalVarMap)
 
   updateIndicatorAndNextAction
-
-  { displayCards, cardOutputs } ← H.get
-  let cardInputs = displayCards <#> \{ cardId } → Map.lookup cardId cardOutputs
-
-  Array.zipWithA
-    (updateCard path globalVarMap)
-    displayCards
-    (Array.cons Nothing cardInputs)
-
-  pure unit
-
     -- triggerSave <-- why?
   where
 
   updateCard
     ∷ Maybe DirPath
     → Port.VarMap
-    → Card.Model
-    → Maybe Port
+    → { card ∷ Card.Model, input ∷ Maybe Port.Port, output ∷ Maybe Port.Port }
     → DeckDSL Unit
-  updateCard path globalVarMap card mport = do
-    output ← H.gets $ Map.lookup card.cardId ∘ _.cardOutputs
+  updateCard path globalVarMap { card, input = mport, output } = do
     shouldLoad ← H.gets $ Set.member card.cardId ∘ _.cardsToLoad
     let input = { path, input: mport, cardId: card.cardId, globalVarMap }
-    traceAnyA {updateCard:card,input, cardType: card.cardType, shouldLoad}
+    traceAnyA {updateCard:card,input, cardType: card.cardType, shouldLoad, output}
+
     when shouldLoad do
       res ← H.query' cpCard (CardSlot card.cardId) $ left $ H.action (LoadCard card)
       for_ res \_ →
         H.modify $ DCS._cardsToLoad %~ Set.delete card.cardId
+
     void $ H.query' cpCard (CardSlot card.cardId) $ left $ H.action (UpdateCard input output)
 
 -- | Enqueues the card with the specified ID in the set of cards that are

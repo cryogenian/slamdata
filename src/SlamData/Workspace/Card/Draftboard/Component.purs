@@ -84,7 +84,6 @@ draftboardComponent opts = Cp.makeCardComponent
 
 render ∷ CardOptions → State → DraftboardHTML
 render opts state =
-  traceAny {boardDecks:state.decks} \_ →
   HH.div
     [ HP.classes [ RC.gridPattern ]
     , HC.style bgSize
