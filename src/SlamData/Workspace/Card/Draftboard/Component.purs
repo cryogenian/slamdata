@@ -356,7 +356,7 @@ deckGraph path deckId = runExceptT do
   boards ← ExceptT
     $ pure
     $ sequence
-    $ map (decode ∘ _.state)
+    $ map (decode ∘ _.inner) -- TODO: check this -js
     $ Array.filter (\c → c.cardType == Ct.Draftboard) deck.cards
 
   let children = join $ map (listToArray ∘ Map.keys ∘ _.decks) boards
