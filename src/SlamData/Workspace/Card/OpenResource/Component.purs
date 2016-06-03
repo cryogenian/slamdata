@@ -165,7 +165,7 @@ cardEval (Eq.Load js next) = do
   pure next
 cardEval (Eq.SetupCard info next) = pure next
 cardEval (Eq.SetCanceler _ next) = pure next
-cardEval (Eq.SetDimensions _ next) = pure next
+cardEval (Eq.SetDimensions _ cont) = pure $ cont true
 cardEval (Eq.NotifyStopCard next) = pure next
 
 

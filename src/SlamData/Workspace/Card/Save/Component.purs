@@ -149,7 +149,7 @@ cardEval (Eq.SetupCard p next) = do
   H.modify (_pathString .~ (Pt.printPath $ Eq.temporaryOutputResource p))
   pure next
 cardEval (Eq.SetCanceler _ next) = pure next
-cardEval (Eq.SetDimensions _ next) = pure next
+cardEval (Eq.SetDimensions _ cont) = pure $ cont true
 
 saveEval ∷ Natural Query SaveDSL
 saveEval (UpdatePathString str next) =

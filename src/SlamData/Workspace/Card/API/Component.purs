@@ -102,7 +102,7 @@ eval q =
         H.query unit $ H.action (FB.SetItems (L.toList items) >>> left)
       pure next
     NC.SetCanceler _ next -> pure next
-    NC.SetDimensions _ next -> pure next
+    NC.SetDimensions _ cont -> pure $ cont true
 
 queryShouldRun
   :: forall a

@@ -72,7 +72,7 @@ evalCard (CEQ.Load json next) = do
   either (const (pure unit)) H.set $ JTS.fromModel <$> Model.decode json
   pure next
 evalCard (CEQ.SetCanceler _ next) = pure next
-evalCard (CEQ.SetDimensions _ next) = pure next
+evalCard (CEQ.SetDimensions _ cont) = pure $ cont true
 
 runTable
   ∷ Maybe Port.Port

@@ -155,7 +155,7 @@ cardEval q =
         H.modify $ _searchString .~ input
       pure next
     NC.SetCanceler _ next → pure next
-    NC.SetDimensions _ next → pure next
+    NC.SetDimensions _ cont → pure $ cont true
 
 searchEval ∷ Natural SearchQuery DSL
 searchEval (UpdateSearch str next) =

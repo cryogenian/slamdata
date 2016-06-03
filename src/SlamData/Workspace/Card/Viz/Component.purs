@@ -55,7 +55,7 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalT, r
 import SlamData.Workspace.Card.Component (CardStateP, CardQueryP, makeCardComponent, makeQueryPrism', _VizState, _VizQuery)
 import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.Card.Viz.Component.Query (QueryC, Query(..))
-import SlamData.Workspace.Card.Viz.Component.State (State, _needToUpdate, _availableChartTypes, _sample, fromModel, _records, _loading, _axisLabelFontSize, _axisLabelAngle, _chartType, _width, _height, initialState)
+import SlamData.Workspace.Card.Viz.Component.State (State, _needToUpdate, _availableChartTypes, _sample, fromModel, _records, _loading, _axisLabelFontSize, _axisLabelAngle, _chartType, _width, _height, initialState, _levelOfDetails, LevelOfDetails(..))
 import SlamData.Workspace.Card.Viz.Form.Component (formComponent)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model as Model
@@ -113,12 +113,19 @@ vizComponent = makeCardComponent
 
 render ∷ State → VizHTML
 render state =
-  HH.div
-    [ HP.classes [ Rc.cardInput ] ]
-    [ renderLoading $ not state.loading
-    , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
-    , renderForm state
-    ]
+  case state.levelOfDetails of
+    High →
+      HH.div
+        [ HP.classes [ Rc.cardInput ] ]
+        [ renderLoading $ not state.loading
+        , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
+        , renderForm state
+        ]
+    Low →
+      HH.div
+        [ HP.classes [ Rc.cardInput ] ]
+        [ HH.text "Lol" ]
+
 
 renderLoading ∷ Boolean → VizHTML
 renderLoading hidden =
@@ -334,7 +341,15 @@ cardEval (Load json next) =
       $ left
       $ H.action $ Form.SetConfiguration model.chartConfig
 cardEval (SetCanceler _ next) = pure next
-cardEval (SetDimensions _ next) = pure next
+cardEval (SetDimensions dims cont) = do
+  curLevel ← H.gets _.levelOfDetails
+  let
+    nextLevel =
+      if dims.width < 200.0 ∨ dims.height < 200.0
+         then Low
+         else High
+  H.modify $ _levelOfDetails .~ nextLevel
+  pure $ cont $ nextLevel ≠ curLevel
 
 responsePort ∷ CardEvalT VizDSL P.Port
 responsePort = do

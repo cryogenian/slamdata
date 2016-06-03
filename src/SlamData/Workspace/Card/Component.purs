@@ -33,6 +33,8 @@ import Control.Monad.Eff.Exception as Exn
 import Data.Array as Arr
 import Data.Argonaut (jsonNull)
 import Data.Date as Date
+import Data.Time (Milliseconds(..))
+import Data.Foldable as F
 import Data.Function (on)
 import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
 import Data.Visibility (Visibility(..), toggleVisibility)
@@ -40,6 +42,7 @@ import Data.Visibility (Visibility(..), toggleVisibility)
 import DOM.Timer (interval, clearInterval)
 
 import Halogen as H
+import Halogen.Component.Utils (sendAfter')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource (EventSource(..))
@@ -108,7 +111,7 @@ makeCardComponentPart def render =
     { render: render component initialState
     , eval
     , peek: Just (peek ∘ H.runChildF)
-    , initializer: Just (H.action CQ.UpdateDimensions)
+    , initializer: Just (H.action $ CQ.UpdateDimensions zero)
     , finalizer: Nothing
     }
   where
@@ -167,10 +170,13 @@ makeCardComponentPart def render =
     H.modify (CS._accessType .~ at) $> next
   eval (CQ.SetHTMLElement el next) =
     H.modify (CS._element .~ el) $> next
-  eval (CQ.UpdateDimensions next) = do
+  eval (CQ.UpdateDimensions attempts next) = do
+--    Debug.Trace.traceAnyA
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
-      H.queryAll $ left $ H.action (CQ.SetDimensions { width, height })
+      resMap ← H.queryAll $ left $ H.request (CQ.SetDimensions { width, height })
+      when ((not $ F.and resMap) ∧ attempts ≠ zero ∧ attempts < 10)
+        $ sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions (attempts + one) unit)
     pure next
 
   peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit

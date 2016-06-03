@@ -94,8 +94,9 @@ data CardQuery a
   | SaveCard CardId CardType (Card.Model → a)
   | LoadCard Card.Model a
   | SetCardAccessType Na.AccessType a
+  | UpdateDimensions Int a
   | SetHTMLElement (Maybe HTMLElement) a
-  | UpdateDimensions a
+
 
 type CardQueryP = Coproduct CardQuery (ChildF Unit InnerCardQuery)
 

@@ -103,4 +103,4 @@ eval (ECH.SetupCard _ next) = pure next
 eval (ECH.Save k) = pure (k jsonEmptyObject)
 eval (ECH.Load _ next) = pure next
 eval (ECH.SetCanceler _ next) = pure next
-eval (ECH.SetDimensions _ next) = pure next
+eval (ECH.SetDimensions _ cont) = pure $ cont true

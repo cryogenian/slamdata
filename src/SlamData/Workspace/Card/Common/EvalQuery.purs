@@ -102,7 +102,7 @@ data CardEvalQuery a
   | SetCanceler (Canceler SlamDataEffects) a
   | Save (Json → a)
   | Load Json a
-  | SetDimensions { width ∷ Number, height ∷ Number } a
+  | SetDimensions { width ∷ Number, height ∷ Number } (Boolean → a)
 
 -- | The result value produced when evaluating a card.
 -- |

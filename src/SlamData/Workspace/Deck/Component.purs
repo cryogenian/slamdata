@@ -280,7 +280,9 @@ eval (FlipDeck next) = do
         _ → DCS.Normal
   pure next
 eval (GrabDeck _ next) = pure next
-eval (ResizeDeck _ next) = pure next
+eval (ResizeDeck p next) = do
+  void $ H.queryAll' cpCard $ left $ H.action (UpdateDimensions zero)
+  pure next
 eval (StartSliding mouseEvent next) =
   Slider.startSliding mouseEvent $> next
 eval (StopSlidingAndSnap mouseEvent next) = do
