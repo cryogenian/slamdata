@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.APIResults.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class as EC
-
 import Data.Argonaut as J
 import Data.Lens as Lens
 import Data.StrMap as SM
@@ -32,7 +30,6 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.APIResults.Component.Query (QueryP)
 import SlamData.Workspace.Card.APIResults.Component.State (State, initialState)
-import SlamData.Workspace.Card.Common.EvalQuery (runCardEvalT)
 import SlamData.Workspace.Card.Component as NC
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType as Ct
@@ -77,19 +74,15 @@ render { varMap } =
       ]
 
 eval :: Natural QueryP APIResultsDSL
-eval = coproduct evalCard (getConst >>> absurd)
+eval = coproduct evalCard (absurd ∘ getConst)
 
 evalCard :: Natural NC.CardEvalQuery APIResultsDSL
 evalCard q =
   case q of
-    NC.EvalCard info output next ->
-      pure next -- TODO: check this -js
-    --  k <$> runCardEvalT do
-    --    case Lens.preview Port._VarMap =<< info.input of
-    --      Just varMap -> do
-    --        lift $ H.modify (_ { varMap = varMap })
-    --        pure $ Port.VarMap varMap
-    --      Nothing -> EC.throwError "expected VarMap input"
+    NC.EvalCard info output next → do
+      for (info.input >>= Lens.preview Port._VarMap) \varMap →
+        H.modify (_ { varMap = varMap })
+      pure next
     NC.SetupCard _ next -> pure next
     NC.NotifyRunCard next -> pure next
     NC.NotifyStopCard next -> pure next
