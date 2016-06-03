@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.Chart.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class (throwError)
-
 import Data.Argonaut (jsonEmptyObject)
 import Data.Int (toNumber)
 
@@ -36,7 +34,6 @@ import Halogen.HTML.Properties.Indexed as HP
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState)
 import SlamData.Workspace.Card.Common.EvalQuery as ECH
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Effects (Slam)
@@ -75,7 +72,6 @@ eval ∷ ECH.CardEvalQuery ~> ChartDSL
 eval (ECH.NotifyRunCard next) = pure next
 eval (ECH.NotifyStopCard next) = pure next
 eval (ECH.EvalCard value output next) = do
-  -- TODO: check this -js
   case value.input of
     Just (ChartOptions options) → do
       state ← H.get
@@ -90,11 +86,9 @@ eval (ECH.EvalCard value output next) = do
       H.query unit $ H.action $ HECH.Set options.options
       H.query unit $ H.action HECH.Resize
       pure next
-      -- pure Blocked
-    Just Blocked → do
+    _ → do
       H.query unit $ H.action HECH.Clear
       pure next
-    _ → pure next -- throwError "Expected ChartOptions input"
 eval (ECH.SetupCard _ next) = pure next
 -- No state needs loading/saving for the chart card, as it is fully populated
 -- by its input, and will be restored by the parent `Viz` card running when
