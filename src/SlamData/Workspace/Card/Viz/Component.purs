@@ -349,6 +349,8 @@ cardEval (SetDimensions dims cont) = do
          then Low
          else High
   H.modify $ _levelOfDetails .~ nextLevel
+  Debug.Trace.traceAnyA nextLevel
+  Debug.Trace.traceAnyA curLevel
   pure $ cont $ nextLevel ≠ curLevel
 
 responsePort ∷ CardEvalT VizDSL P.Port

@@ -165,18 +165,18 @@ makeCardComponentPart def render =
       }
   eval (CQ.LoadCard model next) = do
     H.query unit (left (H.action (CQ.Load model.state)))
+    sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions zero unit)
     pure next
   eval (CQ.SetCardAccessType at next) =
     H.modify (CS._accessType .~ at) $> next
   eval (CQ.SetHTMLElement el next) =
     H.modify (CS._element .~ el) $> next
   eval (CQ.UpdateDimensions attempts next) = do
---    Debug.Trace.traceAnyA
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
-      resMap ← H.queryAll $ left $ H.request (CQ.SetDimensions { width, height })
-      when ((not $ F.and resMap) ∧ attempts ≠ zero ∧ attempts < 10)
-        $ sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions (attempts + one) unit)
+      mbRes ← H.query unit $ left $ H.request (CQ.SetDimensions { width, height })
+      Debug.Trace.traceAnyA mbRes
+
     pure next
 
   peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit

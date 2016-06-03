@@ -126,6 +126,7 @@ render vstate =
       HH.div
         ([ HP.class_ CSS.board
          , HP.key "board"
+         , HE.onMouseUp (HE.input_ UpdateCardSize)
          ] ⊕ Slider.containerProperties vstate)
         [ HH.div
             [ HP.class_ CSS.deck
@@ -153,6 +154,7 @@ render vstate =
             , HH.button
                 [ HP.classes [ CSS.resizeDeck ]
                 , HE.onMouseDown (HE.input ResizeDeck)
+
                 , ARIA.label "Resize deck"
                 , HP.title "Resize deck"
                 ]
@@ -280,7 +282,9 @@ eval (FlipDeck next) = do
         _ → DCS.Normal
   pure next
 eval (GrabDeck _ next) = pure next
-eval (ResizeDeck p next) = do
+eval (ResizeDeck p next) = pure next
+eval (UpdateCardSize next) = do
+  traceAnyA "!!!"
   void $ H.queryAll' cpCard $ left $ H.action (UpdateDimensions zero)
   pure next
 eval (StartSliding mouseEvent next) =
