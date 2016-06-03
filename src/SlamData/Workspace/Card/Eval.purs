@@ -73,8 +73,12 @@ evalCard input =
       pure $ Port.CardError msg
     _, Just Port.Blocked →
       pure Port.Blocked
+
+    -- TODO: there are plenty of cases where we Pass an empty input—such as when a
+    -- card is first. We can't just throw an error here... -js
     Pass, Nothing →
       EC.throwError "Card expected an input value"
+
     Pass, Just port →
       pure port
     Query sql, Just (Port.VarMap varMap) →
