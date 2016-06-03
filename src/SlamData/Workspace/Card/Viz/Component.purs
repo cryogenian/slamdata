@@ -113,25 +113,38 @@ vizComponent = makeCardComponent
 
 render ∷ State → VizHTML
 render state =
-  case state.levelOfDetails of
-    High →
-      HH.div
-        [ HP.classes [ Rc.cardInput, HH.className "card-input-maximum-lod" ] ]
-        [ renderLoading $ not state.loading
-        , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
-        , renderForm state
-        ]
-    Low →
-      HH.div [ HP.classes [ HH.className "card-input-minimum-lod" ] ]
-        [ HH.button
-            [ ARIA.label "Expand to see visualization options"
-            , HP.title "Expand to see visualization options"
-            ]
-            [ glyph B.glyphiconPicture
-            , HH.text "Please, expand to see options"
-            ]
-        ]
+  HH.div_
+    [ renderHighLOD state
+    , renderLowLOD state
+    ]
 
+renderHighLOD ∷ State → VizHTML
+renderHighLOD state =
+    HH.div
+      [ HP.classes
+          $ [ Rc.cardInput, HH.className "card-input-maximum-lod" ]
+          ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+      ]
+      [ renderLoading $ not state.loading
+      , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
+      , renderForm state
+      ]
+
+renderLowLOD ∷ State → VizHTML
+renderLowLOD state =
+  HH.div
+    [ HP.classes
+        $ [ HH.className "card-input-minimum-lod" ]
+        ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
+    ]
+    [ HH.button
+      [ ARIA.label "Expand to see visualization options"
+      , HP.title "Expand to see visualization options"
+      ]
+      [ glyph B.glyphiconPicture
+      , HH.text "Please, expand to see options"
+      ]
+    ]
 
 renderLoading ∷ Boolean → VizHTML
 renderLoading hidden =
