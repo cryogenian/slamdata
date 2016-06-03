@@ -26,6 +26,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.API.Model as API
 import SlamData.Workspace.Card.Markdown.Model as MD
+import SlamData.Workspace.Card.Viz.Model as Viz
 
 -- | `cardType` and `cardId` characterize what is this card and where is it
 -- | `hasRun` is flag for routing process, if it's `hasRun` we probably should
@@ -78,17 +79,20 @@ modelToEval { cardType, inner } =
           obj ← J.decodeJson inner
           obj .? "text"
       CT.Markdown → do
-        m ← MD.decode inner # either (const Nothing) Just
-        Just $ Eval.MarkdownForm m
+        model ← MD.decode inner # either (const Nothing) Just
+        Just $ Eval.MarkdownForm model
       CT.Search →
         either (const Nothing) (Just ∘ Eval.Search) $ J.decodeJson inner
       CT.Save →
         either (const Nothing) (Just ∘ Eval.Save) $ J.decodeJson inner
       CT.OpenResource → do
         p ← J.decodeJson inner # either (const Nothing) Just
-        Just $ Eval.OpenResource $ p
+        Just $ Eval.OpenResource p
       CT.API → do
-        p ← API.decode inner # either (const Nothing) Just
-        Just $ Eval.API $ p
+        model ← API.decode inner # either (const Nothing) Just
+        Just $ Eval.API model
+      CT.Viz → do
+        model ← Viz.decode inner # either (const Nothing) Just
+        Just $ Eval.Viz model
       _ →
         Just Eval.Pass

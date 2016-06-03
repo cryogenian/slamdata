@@ -121,4 +121,5 @@ fromModel m =
     , chartType = m.chartType
     , axisLabelFontSize = m.axisLabelFontSize
     , axisLabelAngle = m.axisLabelAngle
+    , records = m.records
     }

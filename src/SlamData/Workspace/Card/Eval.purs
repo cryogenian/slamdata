@@ -26,6 +26,8 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
 import Control.Monad.Writer.Class as WC
 
+import Data.Array as A
+import Data.Lens as Lens
 import Data.Lens ((^?))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
@@ -43,6 +45,8 @@ import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.API.Model as API
+import SlamData.Workspace.Card.Viz.Model as Viz
+import SlamData.Workspace.Card.Chart.ChartOptions as ChartOptions
 import SlamData.Workspace.FormBuilder.Item.Model as FBI
 
 import Text.SlamSearch as SS
@@ -59,6 +63,7 @@ data Eval
   | MarkdownForm MD.Model
   | OpenResource R.Resource
   | API API.Model
+  | Viz Viz.Model
 
 instance showEval ∷ Show Eval where
   show =
@@ -71,6 +76,7 @@ instance showEval ∷ Show Eval where
       Markdown str → "Markdown " <> show str
       OpenResource res → "OpenResource " <> show res
       MarkdownForm m → "MarkdownForm ??"
+      Viz m → "Viz ??"
       API m → "API ???" -- TODO: I don't have time to write these show instances -js
 
 evalCard
@@ -107,6 +113,8 @@ evalCard input =
       Port.TaggedResource <$> evalSave input pathString resource
     OpenResource res, _ →
       Port.TaggedResource <$> evalOpenResource input res
+    Viz model, _ →
+      Port.ChartOptions <$> evalViz input model
     API model, _ →
       pure $ Port.VarMap $ evalAPI input model
     e, i →
@@ -124,6 +132,41 @@ evalAPI info model =
         maybe id (SM.insert name) $
           SM.lookup name info.globalVarMap
             <|> (FBI.defaultValueToVarMapValue fieldType =<< defaultValue)
+
+evalViz
+  ∷ ∀ m
+  . (Monad m, Affable SlamDataEffects m)
+  ⇒ CET.CardEvalInput
+  → Viz.Model
+  → CET.CardEvalT m Port.ChartPort
+evalViz info model = do
+  resource ←
+    info.input
+      ^? Lens._Just ∘ Port._Resource
+      # maybe (EC.throwError "Expected Resource input") pure
+
+  records ←
+    QQ.all resource
+      # lift
+      >>= either (EC.throwError ∘ Exn.message) pure
+
+  when (A.length records > 10000) $
+    EC.throwError
+      $ "Maximum record count available for visualization -- 10000, "
+      ⊕ "please consider using 'limit' or 'group by' in your H.request"
+
+  recordsSample ←
+    QQ.sample resource 0 20
+      # lift
+      >>= either (const $ pure []) pure
+
+  pure
+    { options: ChartOptions.buildOptions model model.chartConfig
+    , width: model.width
+    , height: model.height
+    , records: records
+    , recordsSample: recordsSample
+    }
 
 evalMarkdownForm
   ∷ ∀ m

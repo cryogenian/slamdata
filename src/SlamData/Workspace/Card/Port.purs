@@ -32,6 +32,7 @@ module SlamData.Workspace.Card.Port
 
 import SlamData.Prelude
 
+import Data.Argonaut as J
 import Data.Lens (PrismP, prism', TraversalP, wander)
 import ECharts.Options as EC
 import SlamData.Workspace.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
@@ -43,12 +44,16 @@ type ChartPort =
   { options ∷ EC.Option
   , width ∷ Int
   , height ∷ Int
+  , records ∷ J.JArray
+  , recordsSample ∷ J.JArray -- not sure what to call this -js
   }
+
 type DownloadPort =
   { resource ∷ PU.FilePath
   , compress ∷ Boolean
   , options ∷ DownloadOptions
   }
+
 type TaggedResourcePort =
   { resource ∷ PU.FilePath
   , tag ∷ Maybe String

@@ -29,15 +29,18 @@ import SlamData.Workspace.Card.Chart.ChartOptions.Pie (buildPie)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 type BuildOptions o =
-  { chartType :: ChartType
-  , records :: JArray
-  , axisLabelAngle :: Int
-  , axisLabelFontSize :: Int
-  | o }
+  { chartType ∷ ChartType
+  , records ∷ JArray
+  , axisLabelAngle ∷ Int
+  , axisLabelFontSize ∷ Int
+  | o
+  }
 
 buildOptions
-  :: forall o
-   . BuildOptions o -> ChartConfiguration -> Option
+  ∷ ∀ o
+  . BuildOptions o
+  → ChartConfiguration
+  → Option
 buildOptions args conf =
   buildOptions_
   args.chartType
@@ -47,12 +50,12 @@ buildOptions args conf =
   conf
 
 buildOptions_
-  :: ChartType
-  -> M.Map JCursor Axis
-  -> Int
-  -> Int
-  -> ChartConfiguration
-  -> Option
+  ∷ ChartType
+  → M.Map JCursor Axis
+  → Int
+  → Int
+  → ChartConfiguration
+  → Option
 buildOptions_ Pie mp _ _ conf = buildPie mp conf
 buildOptions_ Bar mp angle size conf = buildBar mp angle size conf
 buildOptions_ Line mp angle size conf = buildLine mp angle size conf

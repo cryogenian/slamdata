@@ -45,7 +45,10 @@ instance arbitraryArbModel :: Arbitrary ArbModel where
     chartConfig <- runArbChartConfiguration <$> arbitrary
     axisLabelFontSize <- arbitrary
     axisLabelAngle <- arbitrary
-    pure $ ArbModel { width, height, chartType, chartConfig, axisLabelFontSize, axisLabelAngle }
+
+    -- TODO: proper generator for json array -js
+    let records = []
+    pure $ ArbModel { width, height, chartType, chartConfig, axisLabelFontSize, axisLabelAngle, records }
 
 check :: QC Unit
 check = quickCheck $ runArbModel >>> \model ->
@@ -59,4 +62,5 @@ check = quickCheck $ runArbModel >>> \model ->
        , checkChartConfigEquality model.chartConfig model'.chartConfig
        , model.axisLabelFontSize == model'.axisLabelFontSize <?> "axisLabelFontSize mismatch"
        , model.axisLabelAngle == model'.axisLabelAngle <?> "axisLabelAngle mismatch"
+       , model.records == model'.records <?> "records mismatch"
        ]
