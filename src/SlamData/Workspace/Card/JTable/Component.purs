@@ -37,7 +37,6 @@ import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism, _JTableState, _JTableQuery)
-import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.JTable.Component.Render (render)
 import SlamData.Workspace.Card.JTable.Component.State as JTS
@@ -64,14 +63,10 @@ queryShouldRun = coproduct (const false) pred
 evalCard ∷ Natural CEQ.CardEvalQuery (H.ComponentDSL JTS.State QueryP Slam)
 evalCard (CEQ.NotifyRunCard next) = pure next
 evalCard (CEQ.NotifyStopCard next) = pure next
-evalCard (CEQ.EvalCard input output next) = do
--- TODO: check this -js
-  for_ output \port →
+evalCard (CEQ.EvalCard info output next) = do
+  for_ info.input \port →
     CEQ.runCardEvalT $ runTable port $> port
   pure next
---  k <$> CEQ.runCardEvalT do
---    port ← Eval.evalCard input Eval.Pass
---    runTable port $> port
 evalCard (CEQ.SetupCard _ next) = pure next
 evalCard (CEQ.Save k) =
   pure ∘ k =<< H.gets (Model.encode ∘ JTS.toModel)
