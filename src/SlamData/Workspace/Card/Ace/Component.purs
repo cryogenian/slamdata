@@ -41,7 +41,7 @@ import SlamData.Workspace.Card.Ace.Component.Query (QueryP)
 import SlamData.Workspace.Card.Ace.Component.State (StateP)
 import SlamData.Workspace.Card.Ace.Model as Model
 import SlamData.Workspace.Card.CardType (CardType(Ace), AceMode, aceMode)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalResult, CardEvalInput, CardSetupInfo)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInput, CardSetupInfo)
 import SlamData.Workspace.Card.Component (CardStateP, CardQueryP, makeCardComponent, makeQueryPrism, _AceState, _AceQuery)
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS

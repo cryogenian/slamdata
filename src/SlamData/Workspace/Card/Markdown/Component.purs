@@ -23,8 +23,6 @@ module SlamData.Workspace.Card.Markdown.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class as Err
-
 import Data.StrMap as SM
 
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
@@ -36,7 +34,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as Ct
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), runCardEvalT)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..))
 import SlamData.Workspace.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism', _MarkdownState, _MarkdownQuery)
 import SlamData.Workspace.Card.Markdown.Component.Query (Query(..), QueryP)
 import SlamData.Workspace.Card.Markdown.Component.State (State, StateP, initialState, formStateToVarMap)
@@ -119,7 +117,7 @@ evalCEQ (NotifyRunCard next) = pure next
 evalCEQ (NotifyStopCard next) = pure next
 evalCEQ (EvalCard value output next) =
   pure next
-  -- TODO: check this-
+  -- TODO: check this -js
 --  case value.input of
 --    Just (Port.SlamDown input) → do
 --      lift $ H.modify (_ { input = Just input })

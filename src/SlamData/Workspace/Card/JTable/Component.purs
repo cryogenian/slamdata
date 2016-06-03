@@ -44,13 +44,14 @@ import SlamData.Workspace.Card.JTable.Model as Model
 import SlamData.Workspace.Card.Port as Port
 
 jtableComponent ∷ H.Component CardStateP CardQueryP Slam
-jtableComponent = makeCardComponent
-  { cardType: Ct.JTable
-  , component: H.component { render, eval: coproduct evalCard evalJTable }
-  , initialState: JTS.initialState
-  , _State: _JTableState
-  , _Query: makeQueryPrism _JTableQuery
-  }
+jtableComponent =
+  makeCardComponent
+    { cardType: Ct.JTable
+    , component: H.component { render, eval: coproduct evalCard evalJTable }
+    , initialState: JTS.initialState
+    , _State: _JTableState
+    , _Query: makeQueryPrism _JTableQuery
+    }
 
 queryShouldRun ∷ ∀ a. QueryP a → Boolean
 queryShouldRun = coproduct (const false) pred
@@ -61,53 +62,57 @@ queryShouldRun = coproduct (const false) pred
 
 -- | Evaluates generic card queries.
 evalCard ∷ Natural CEQ.CardEvalQuery (H.ComponentDSL JTS.State QueryP Slam)
-evalCard (CEQ.NotifyRunCard next) = pure next
-evalCard (CEQ.NotifyStopCard next) = pure next
-evalCard (CEQ.EvalCard info output next) = do
-  for_ info.input \port →
-    CEQ.runCardEvalT $ runTable port $> port
-  pure next
-evalCard (CEQ.SetupCard _ next) = pure next
-evalCard (CEQ.Save k) =
-  pure ∘ k =<< H.gets (Model.encode ∘ JTS.toModel)
-evalCard (CEQ.Load json next) = do
-  either (const (pure unit)) H.set $ JTS.fromModel <$> Model.decode json
-  pure next
-evalCard (CEQ.SetCanceler _ next) = pure next
-evalCard (CEQ.SetDimensions _ next) = pure next
+evalCard =
+  case _ of
+    CEQ.NotifyRunCard next → pure next
+    CEQ.NotifyStopCard next → pure next
+    CEQ.EvalCard info output next → do
+      for_ info.input \port →
+        CEQ.runCardEvalT $ runTable port $> port
+      pure next
+    CEQ.SetupCard _ next → pure next
+    CEQ.Save k → pure ∘ k =<< H.gets (Model.encode ∘ JTS.toModel)
+    CEQ.Load json next → do
+      either (const (pure unit)) H.set $ JTS.fromModel <$> Model.decode json
+      pure next
+    CEQ.SetCanceler _ next → pure next
+    CEQ.SetDimensions _ next → pure next
 
+-- TODO: we ought to lift this into the new Eval machinery, but it's not clear how
+-- to get the information (table items) back to the cell, since they will not be
+-- manifest in the output port. -js
 runTable
   ∷ Port.Port
   → CEQ.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
-runTable = case _ of
-  Port.TaggedResource { tag, resource } → do
-    oldInput ← lift $ H.gets _.input
-    when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
-      $ lift $ resetState
+runTable =
+  case _ of
+    Port.TaggedResource { tag, resource } → do
+      oldInput ← lift $ H.gets _.input
+      when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
+        $ lift $ resetState
 
-    size ←
-      lift (Quasar.count resource)
-        >>= either (throwError ∘ Exn.message) pure
+      size ←
+        lift (Quasar.count resource)
+          >>= either (throwError ∘ Exn.message) pure
 
-    lift $ H.modify $ JTS._input ?~ { resource, size, tag }
-    p ← lift $ H.gets JTS.pendingPageInfo
+      lift $ H.modify $ JTS._input ?~ { resource, size, tag }
+      p ← lift $ H.gets JTS.pendingPageInfo
 
-    items ←
-      lift (Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize)
-        >>= either (throwError ∘ Exn.message) pure
+      items ←
+        lift (Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize)
+          >>= either (throwError ∘ Exn.message) pure
 
-    lift $
-      H.modify
-        $ (JTS._isEnteringPageSize .~ false)
-        ∘ (JTS._result ?~
-             { json: JSON.fromArray items
-             , page: p.page
-             , pageSize: p.pageSize
-             })
+      lift $
+        H.modify
+          $ (JTS._isEnteringPageSize .~ false)
+          ∘ (JTS._result ?~
+               { json: JSON.fromArray items
+               , page: p.page
+               , pageSize: p.pageSize
+               })
 
-  Port.Blocked → lift $ resetState
-
-  _ → throwError "Expected a TaggedResource input"
+    Port.Blocked → lift $ resetState
+    _ → throwError "Expected a TaggedResource input"
 
 -- | Resets the state while preserving settings like page size.
 resetState ∷ H.ComponentDSL JTS.State QueryP Slam Unit
@@ -115,13 +120,24 @@ resetState = H.modify (JTS._result .~ Nothing)
 
 -- | Evaluates jtable-specific card queries.
 evalJTable ∷ Natural Query (H.ComponentDSL JTS.State QueryP Slam)
-evalJTable (StepPage step next) =
-  H.modify (JTS.stepPage step) $> next
-evalJTable (ChangePageSize pageSize next) =
-  maybe (pure unit) (H.modify ∘ JTS.resizePage) (Int.fromString pageSize) $> next
-evalJTable (StartEnterCustomPageSize next) =
-  H.modify (JTS._isEnteringPageSize .~ true) $> next
-evalJTable (SetCustomPageSize size next) =
-  H.modify (JTS.setPageSize size) $> next
-evalJTable (SetCustomPage page next) =
-  H.modify (JTS.setPage page) $> next
+evalJTable =
+  case _ of
+    StepPage step next →
+      H.modify (JTS.stepPage step)
+        $> next
+
+    ChangePageSize pageSize next →
+      maybe (pure unit) (H.modify ∘ JTS.resizePage) (Int.fromString pageSize)
+        $> next
+
+    StartEnterCustomPageSize next →
+      H.modify (JTS._isEnteringPageSize .~ true)
+        $> next
+
+    SetCustomPageSize size next →
+      H.modify (JTS.setPageSize size)
+        $> next
+
+    SetCustomPage page next →
+      H.modify (JTS.setPage page)
+        $> next
