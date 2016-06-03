@@ -18,7 +18,10 @@ module SlamData.Workspace.Card.Eval where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Eff as Eff
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Aff as Aff
+import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
 import Control.Monad.Writer.Class as WC
@@ -36,11 +39,14 @@ import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Markdown.Eval as MDE
+import SlamData.Workspace.Card.Markdown.Model as MD
+import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.API.Model as API
 import SlamData.Workspace.FormBuilder.Item.Model as FBI
 
 import Text.SlamSearch as SS
+import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 import Utils.Path as PathUtils
 
 data Eval
@@ -50,6 +56,7 @@ data Eval
   | Save String
   | Error String
   | Markdown String
+  | MarkdownForm MD.Model
   | OpenResource R.Resource
   | API API.Model
 
@@ -63,7 +70,8 @@ instance showEval ∷ Show Eval where
       Error str → "Error " <> show str
       Markdown str → "Markdown " <> show str
       OpenResource res → "OpenResource " <> show res
-      API m → "API ???" -- TODO: I don't have time to write this Show instance -js
+      MarkdownForm m → "MarkdownForm ??"
+      API m → "API ???" -- TODO: I don't have time to write these show instances -js
 
 evalCard
   ∷ ∀ m
@@ -91,6 +99,8 @@ evalCard input =
       Port.TaggedResource <$> evalQuery input sql Port.emptyVarMap
     Markdown txt, _ →
       MDE.markdownEval input txt
+    MarkdownForm model, _ →
+      lift $ Port.VarMap <$> evalMarkdownForm input model
     Search query, Just (Port.TaggedResource { resource }) →
       Port.TaggedResource <$> evalSearch input query resource
     Save pathString, Just (Port.TaggedResource { resource }) →
@@ -115,6 +125,16 @@ evalAPI info model =
           SM.lookup name info.globalVarMap
             <|> (FBI.defaultValueToVarMapValue fieldType =<< defaultValue)
 
+evalMarkdownForm
+  ∷ ∀ m
+  . (Monad m, Affable SlamDataEffects m)
+  ⇒ CET.CardEvalInput
+  → MD.Model
+  → m Port.VarMap
+evalMarkdownForm info model = do
+  let desc = SDH.formDescFromDocument model.input
+  -- TODO: find a way to smash these annotations if possible -js
+  fromAff $ (liftEff ((MDS.formStateToVarMap desc model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)) ∷ Aff.Aff SlamDataEffects Port.VarMap)
 
 evalOpenResource
   ∷ ∀ m
