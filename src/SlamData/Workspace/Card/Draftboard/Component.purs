@@ -57,7 +57,6 @@ import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Common.EvalQuery as Ceq
 import SlamData.Workspace.Card.Component as Cp
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId(..), deckIdToString)
@@ -356,7 +355,7 @@ deckGraph path deckId = runExceptT do
   boards ← ExceptT
     $ pure
     $ sequence
-    $ map (decode ∘ _.inner) -- TODO: check this -js
+    $ map (decode ∘ _.inner)
     $ Array.filter (\c → c.cardType == Ct.Draftboard) deck.cards
 
   let children = join $ map (listToArray ∘ Map.keys ∘ _.decks) boards
