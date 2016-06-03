@@ -25,6 +25,9 @@ import SlamData.Prelude
 
 import Data.StrMap as SM
 
+import Data.Lens as Lens
+import Data.Lens ((^?))
+
 import DOM.BrowserFeatures.Detectors (detectBrowserFeatures)
 
 import Halogen as H
@@ -115,22 +118,11 @@ evalQ (Init next) = do
 evalCEQ ∷ CardEvalQuery ~> MarkdownDSL
 evalCEQ (NotifyRunCard next) = pure next
 evalCEQ (NotifyStopCard next) = pure next
-evalCEQ (EvalCard value output next) =
+evalCEQ (EvalCard info output next) = do
+  for_ (info.input ^? Lens._Just ∘ Port._SlamDown) \sd → do
+    H.modify (_ { input = Just sd })
+    void $ H.query unit $ H.action (SD.SetDocument sd)
   pure next
-  -- TODO: check this -js
---  case value.input of
---    Just (Port.SlamDown input) → do
---      lift $ H.modify (_ { input = Just input })
---      lift ∘ H.query unit $ H.action (SD.SetDocument input)
---      let desc = SD.formDescFromDocument input
---      state ← lift ∘ H.query unit $ H.request SD.GetFormState
---      case state of
---        Nothing →
---          Err.throwError "An internal error occured: GetFormState query returned Nothing"
---        Just st → do
---          varMap ← lift ∘ H.liftH ∘ H.liftH $ formStateToVarMap desc st
---          pure $ Port.VarMap varMap
---    _ → pure next -- Err.throwError "Expected SlamDown input"
 evalCEQ (SetupCard _ next) = pure next
 evalCEQ (Save k) = do
   input ← fromMaybe mempty <$> H.gets _.input
