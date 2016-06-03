@@ -79,8 +79,8 @@ cardEval q =
       pure next
     CEQ.SetCanceler _ next →
       pure next
-    CEQ.SetDimensions _ cont →
-      pure $ cont true
+    CEQ.SetDimensions _ next →
+      pure next
     CEQ.Save k →
       k ∘ ECS.encode
         <$> H.get

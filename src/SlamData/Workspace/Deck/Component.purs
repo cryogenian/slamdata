@@ -284,7 +284,6 @@ eval (FlipDeck next) = do
 eval (GrabDeck _ next) = pure next
 eval (ResizeDeck p next) = pure next
 eval (UpdateCardSize next) = do
-  traceAnyA "!!!"
   void $ H.queryAll' cpCard $ left $ H.action (UpdateDimensions zero)
   pure next
 eval (StartSliding mouseEvent next) =

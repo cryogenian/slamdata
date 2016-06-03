@@ -39,7 +39,7 @@ import SlamData.Workspace.Card.CardType as Ct
 
 type APIResultsDSL = H.ComponentDSL State QueryP Slam
 
-apiResultsComponent :: H.Component NC.CardStateP NC.CardQueryP Slam
+apiResultsComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
 apiResultsComponent =
   NC.makeCardComponent
     { cardType: Ct.APIResults
@@ -49,7 +49,7 @@ apiResultsComponent =
     , _Query: NC.makeQueryPrism NC._APIResultsQuery
     }
 
-render :: State -> H.ComponentHTML QueryP
+render ∷ State → H.ComponentHTML QueryP
 render { varMap } =
   HH.table
     [ HP.classes
@@ -68,7 +68,7 @@ render { varMap } =
     ]
 
   where
-    renderItem :: String -> Port.VarMapValue -> Array (H.ComponentHTML QueryP)
+    renderItem ∷ String → Port.VarMapValue → Array (H.ComponentHTML QueryP)
     renderItem name val =
       [ HH.tr_
           [ HH.td_ [ HH.text name ]
@@ -76,23 +76,23 @@ render { varMap } =
           ]
       ]
 
-eval :: Natural QueryP APIResultsDSL
-eval = coproduct evalCard (getConst >>> absurd)
+eval ∷ Natural QueryP APIResultsDSL
+eval = coproduct evalCard (getConst ⋙ absurd)
 
-evalCard :: Natural NC.CardEvalQuery APIResultsDSL
+evalCard ∷ Natural NC.CardEvalQuery APIResultsDSL
 evalCard q =
   case q of
-    NC.EvalCard info k ->
+    NC.EvalCard info k →
       k <$> runCardEvalT do
         case Lens.preview Port._VarMap =<< info.inputPort of
-          Just varMap -> do
+          Just varMap → do
             lift $ H.modify (_ { varMap = varMap })
             pure ∘ Just $ Port.VarMap varMap
-          Nothing -> EC.throwError "expected VarMap input"
-    NC.SetupCard _ next -> pure next
-    NC.NotifyRunCard next -> pure next
-    NC.NotifyStopCard next -> pure next
-    NC.Save k -> pure $ k J.jsonEmptyObject
-    NC.Load json next -> pure next
-    NC.SetCanceler _ next -> pure next
-    NC.SetDimensions _ cont -> pure $ cont true
+          Nothing → EC.throwError "expected VarMap input"
+    NC.SetupCard _ next → pure next
+    NC.NotifyRunCard next → pure next
+    NC.NotifyStopCard next → pure next
+    NC.Save k → pure $ k J.jsonEmptyObject
+    NC.Load json next → pure next
+    NC.SetCanceler _ next → pure next
+    NC.SetDimensions _ next → pure next

@@ -289,7 +289,6 @@ itemPeek (Item.Open res _) = do
 
 itemPeek (Item.Configure (R.Mount mount) _) = configure mount
 itemPeek (Item.Move res _) = do
-  Debug.Trace.traceAnyA "Moving"
   showDialog $ Dialog.Rename res
   flip getDirectories rootDir \x →
     void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)

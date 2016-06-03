@@ -106,4 +106,4 @@ aceComponent {mode, evaluator, setup} = makeCardComponent
       Editor.navigateFileEnd editor
     pure next
   eval (SetCanceler _ next) = pure next
-  eval (SetDimensions dims cont) = pure $ cont true
+  eval (SetDimensions dims next) = pure next

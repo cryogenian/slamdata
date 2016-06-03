@@ -60,8 +60,8 @@ import SlamData.Workspace.Card.Viz.Form.Component (formComponent)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model as Model
 import SlamData.Quasar.Query as Api
-import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
+import SlamData.Render.Common (row, glyph)
 
 type VizHTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
 type VizDSL = H.ParentDSL State Form.StateP QueryC Form.QueryP Slam ChartType
@@ -116,15 +116,21 @@ render state =
   case state.levelOfDetails of
     High →
       HH.div
-        [ HP.classes [ Rc.cardInput ] ]
+        [ HP.classes [ Rc.cardInput, HH.className "card-input-maximum-lod" ] ]
         [ renderLoading $ not state.loading
         , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
         , renderForm state
         ]
     Low →
-      HH.div
-        [ HP.classes [ Rc.cardInput ] ]
-        [ HH.text "Lol" ]
+      HH.div [ HP.classes [ HH.className "card-input-minimum-lod" ] ]
+        [ HH.button
+            [ ARIA.label "Expand to see visualization options"
+            , HP.title "Expand to see visualization options"
+            ]
+            [ glyph B.glyphiconPicture
+            , HH.text "Please, expand to see options"
+            ]
+        ]
 
 
 renderLoading ∷ Boolean → VizHTML
@@ -341,17 +347,13 @@ cardEval (Load json next) =
       $ left
       $ H.action $ Form.SetConfiguration model.chartConfig
 cardEval (SetCanceler _ next) = pure next
-cardEval (SetDimensions dims cont) = do
-  curLevel ← H.gets _.levelOfDetails
-  let
-    nextLevel =
-      if dims.width < 200.0 ∨ dims.height < 200.0
+cardEval (SetDimensions dims next) = do
+  H.modify
+    $ _levelOfDetails
+    .~ if dims.width < 300.0 ∨ dims.height < 200.0
          then Low
          else High
-  H.modify $ _levelOfDetails .~ nextLevel
-  Debug.Trace.traceAnyA nextLevel
-  Debug.Trace.traceAnyA curLevel
-  pure $ cont $ nextLevel ≠ curLevel
+  pure next
 
 responsePort ∷ CardEvalT VizDSL P.Port
 responsePort = do

@@ -34,7 +34,6 @@ import Data.Array as Arr
 import Data.Argonaut (jsonNull)
 import Data.Date as Date
 import Data.Time (Milliseconds(..))
-import Data.Foldable as F
 import Data.Function (on)
 import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
 import Data.Visibility (Visibility(..), toggleVisibility)
@@ -174,9 +173,7 @@ makeCardComponentPart def render =
   eval (CQ.UpdateDimensions attempts next) = do
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
-      mbRes ← H.query unit $ left $ H.request (CQ.SetDimensions { width, height })
-      Debug.Trace.traceAnyA mbRes
-
+      void $ H.query unit $ left $ H.action (CQ.SetDimensions { width, height })
     pure next
 
   peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit
