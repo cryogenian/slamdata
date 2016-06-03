@@ -46,6 +46,7 @@ import SlamData.Workspace.Card.Markdown.Component.State as MDS
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.API.Model as API
 import SlamData.Workspace.Card.Viz.Model as Viz
+import SlamData.Workspace.Card.DownloadOptions.Component.State as DO
 import SlamData.Workspace.Card.Chart.ChartOptions as ChartOptions
 import SlamData.Workspace.FormBuilder.Item.Model as FBI
 
@@ -64,6 +65,7 @@ data Eval
   | OpenResource R.Resource
   | API API.Model
   | Viz Viz.Model
+  | DownloadOptions DO.State
 
 instance showEval ∷ Show Eval where
   show =
@@ -75,9 +77,10 @@ instance showEval ∷ Show Eval where
       Error str → "Error " <> show str
       Markdown str → "Markdown " <> show str
       OpenResource res → "OpenResource " <> show res
-      MarkdownForm m → "MarkdownForm ??"
-      Viz m → "Viz ??"
-      API m → "API ???" -- TODO: I don't have time to write these show instances -js
+      MarkdownForm m → "MarkdownForm"
+      Viz m → "Viz"
+      API m → "API" -- TODO: I don't have time to write these show instances -js
+      DownloadOptions m → "DownloadOptions"
 
 evalCard
   ∷ ∀ m
@@ -117,6 +120,8 @@ evalCard input =
       Port.ChartOptions <$> evalViz input model
     API model, _ →
       pure $ Port.VarMap $ evalAPI input model
+    DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
+      pure $ Port.DownloadOptions { resource, compress, options }
     e, i →
       EC.throwError $ "Card received unexpected input type; " <> show e <> " | " <> show i
 

@@ -27,6 +27,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.API.Model as API
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Viz.Model as Viz
+import SlamData.Workspace.Card.DownloadOptions.Component.State as DO
 
 -- | `cardType` and `cardId` characterize what is this card and where is it
 -- | `hasRun` is flag for routing process, if it's `hasRun` we probably should
@@ -94,5 +95,8 @@ modelToEval { cardType, inner } =
       CT.Viz → do
         model ← Viz.decode inner # either (const Nothing) Just
         Just $ Eval.Viz model
+      CT.DownloadOptions → do
+        model ← DO.decode inner # either (const Nothing) Just
+        Just $ Eval.DownloadOptions model
       _ →
         Just Eval.Pass
