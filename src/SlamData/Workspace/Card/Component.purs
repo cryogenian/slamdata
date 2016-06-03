@@ -26,7 +26,6 @@ import SlamData.Prelude
 
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
-import Control.Monad.Free (liftF)
 import Control.Monad.Aff (cancel)
 import Control.Monad.Eff.Exception as Exn
 
@@ -43,7 +42,6 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource (EventSource(..))
-import Halogen.Query.HalogenF (HalogenFP(..))
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.CardType (cardClasses, nextCardTypes)
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
@@ -135,20 +133,18 @@ makeCardComponentPart def render =
   eval (CQ.UpdateCard input output next) = do
     H.fromAff =<< H.gets _.tickStopper
     tickStopper ← startInterval
-    H.modify $ (CS._tickStopper .~ tickStopper)
-    -- result ← H.query unit (left (H.request (CQ.EvalCard input)))
+    H.modify $ CS._tickStopper .~ tickStopper
     void $ H.query unit (left (H.action (CQ.EvalCard input output)))
     H.fromAff tickStopper
+
+    -- TODO: check this & restore messages somehow -js
     H.modify
       $ (CS._runState %~ finishRun)
       ∘ (CS._hasRun .~ true)
-      -- ∘ (CS._output .~ (_.output <$> result))
       ∘ (CS._output .~ output)
       -- ∘ (CS._messages .~ (maybe [] _.messages result))
       ∘ (CS._messages .~ [])
     pure next
-    -- TODO: check this -js
-    -- maybe (liftF HaltHF) (pure ∘ k ∘ _.output) result
   eval (CQ.RefreshCard next) = pure next
   eval (CQ.ToggleMessages next) =
     H.modify (CS._messageVisibility %~ toggleVisibility) $> next
