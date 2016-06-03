@@ -24,6 +24,7 @@ import Data.Argonaut as J
 import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.API.Model as API
 
 -- | `cardType` and `cardId` characterize what is this card and where is it
 -- | `hasRun` is flag for routing process, if it's `hasRun` we probably should
@@ -82,5 +83,8 @@ modelToEval { cardType, inner } =
       CT.OpenResource → do
         p ← J.decodeJson inner # either (const Nothing) Just
         Just $ Eval.OpenResource $ p
+      CT.API → do
+        p ← API.decode inner # either (const Nothing) Just
+        Just $ Eval.API $ p
       _ →
         Just Eval.Pass

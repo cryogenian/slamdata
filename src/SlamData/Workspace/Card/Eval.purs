@@ -37,6 +37,8 @@ import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Search.Interpret as Search
+import SlamData.Workspace.Card.API.Model as API
+import SlamData.Workspace.FormBuilder.Item.Model as FBI
 
 import Text.SlamSearch as SS
 import Utils.Path as PathUtils
@@ -49,6 +51,7 @@ data Eval
   | Error String
   | Markdown String
   | OpenResource R.Resource
+  | API API.Model
 
 instance showEval ∷ Show Eval where
   show =
@@ -60,6 +63,7 @@ instance showEval ∷ Show Eval where
       Error str → "Error " <> show str
       Markdown str → "Markdown " <> show str
       OpenResource res → "OpenResource " <> show res
+      API m → "API ???" -- TODO: I don't have time to write this Show instance -js
 
 evalCard
   ∷ ∀ m
@@ -93,8 +97,24 @@ evalCard input =
       Port.TaggedResource <$> evalSave input pathString resource
     OpenResource res, _ →
       Port.TaggedResource <$> evalOpenResource input res
+    API model, _ →
+      pure $ Port.VarMap $ evalAPI input model
     e, i →
       EC.throwError $ "Card received unexpected input type; " <> show e <> " | " <> show i
+
+evalAPI
+  ∷ CET.CardEvalInput
+  → API.Model
+  → Port.VarMap
+evalAPI info model =
+  foldl alg SM.empty model.items
+  where
+    alg =
+      flip \{ name, fieldType, defaultValue } ->
+        maybe id (SM.insert name) $
+          SM.lookup name info.globalVarMap
+            <|> (FBI.defaultValueToVarMapValue fieldType =<< defaultValue)
+
 
 evalOpenResource
   ∷ ∀ m

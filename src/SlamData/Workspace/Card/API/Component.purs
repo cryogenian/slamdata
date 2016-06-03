@@ -21,10 +21,7 @@ module SlamData.Workspace.Card.API.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class as EC
-
 import Data.List as L
-import Data.StrMap as SM
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -34,9 +31,7 @@ import SlamData.Workspace.Card.API.Component.Query (QueryP)
 import SlamData.Workspace.Card.API.Component.State (State, initialState)
 import SlamData.Workspace.Card.API.Model as Model
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Common.EvalQuery (runCardEvalT)
 import SlamData.Workspace.Card.Component as NC
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.FormBuilder.Component as FB
 import SlamData.Workspace.FormBuilder.Item.Component as Item
 
@@ -62,30 +57,11 @@ render _ =
    , initialState : H.parentState FB.initialState
    }
 
-compileVarMap
-  :: L.List Item.Model
-  -> Port.VarMap
-  -> Port.VarMap
-compileVarMap fields globalVarMap =
-  foldl alg SM.empty fields
-  where
-    alg =
-      flip \{ name, fieldType, defaultValue } ->
-        maybe id (SM.insert name) $
-          SM.lookup name globalVarMap
-            <|> (Item.defaultValueToVarMapValue fieldType =<< defaultValue)
-
 eval :: Natural NC.CardEvalQuery APIDSL
 eval q =
   case q of
     NC.EvalCard info output next ->
-      pure next -- TODO: check this -js
-      --k <$> runCardEvalT do
-      --  fields <-
-      --    H.query unit (H.request (FB.GetItems >>> left))
-      --      # lift
-      --      >>= maybe (EC.throwError "Error querying FormBuilder") pure
-      --  pure $ Port.VarMap $ compileVarMap fields info.globalVarMap
+      pure next
     NC.SetupCard _ next ->
       pure next
     NC.NotifyRunCard next ->
