@@ -19,9 +19,9 @@ module SlamData.Workspace.Card.Download.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class (throwError)
-
 import Data.Argonaut (jsonEmptyObject)
+import Data.Lens ((^?))
+import Data.Lens as Lens
 import Data.Path.Pathy (printPath)
 
 import Halogen as H
@@ -74,15 +74,9 @@ eval ∷ QueryP ~> DSL
 eval = coproduct cardEval (absurd ∘ getConst)
 
 cardEval ∷ Ec.CardEvalQuery ~> DSL
-cardEval (Ec.EvalCard { input } output next ) = do
-  -- TODO: check this -js
-  case input of
-    Just P.Blocked → pure next -- lift $ pure $ P.Blocked
-    Just (P.DownloadOptions opts) → do
-      handleDownloadPort opts
-      pure next
-      -- pure $ P.Blocked
-    _ → pure next -- throwError "Incorrect input in download card"
+cardEval (Ec.EvalCard info output next ) = do
+  for_ (info.input ^? Lens._Just ∘ P._DownloadOptions) handleDownloadPort
+  pure next
 cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = pure $ k jsonEmptyObject

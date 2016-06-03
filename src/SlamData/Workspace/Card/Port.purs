@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Port
   , _VarMap
   , _Resource
   , _ChartOptions
+  , _DownloadOptions
   , _ResourceTag
   , _CardError
   , _Blocked
