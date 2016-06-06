@@ -272,12 +272,12 @@ vizEval q = do
 
 cardEval ∷ CardEvalQuery ~> VizDSL
 cardEval (EvalCard info output next) = do
+  traceAnyA {output}
   -- TODO: not sure how to restore the "needToUpdate" logic that used to be here. -js
   for (output ^? Lens._Just ∘ P._ChartOptions) \opts → do
-    for (info.input ^? Lens._Just ∘ P._Resource) \res → do
-      if null opts.recordsSample
-        then H.modify (VCS._availableChartTypes .~ Set.empty)
-        else H.modify (VCS._sample .~ analyzeJArray opts.recordsSample) *> configure
+    if null opts.recordsSample
+      then H.modify (VCS._availableChartTypes .~ Set.empty)
+      else H.modify (VCS._sample .~ analyzeJArray opts.recordsSample) *> configure
     H.modify $ VCS._records .~ opts.records
 
   -- TODO: find a way to "bracket" the loading state like we did before. It is not
