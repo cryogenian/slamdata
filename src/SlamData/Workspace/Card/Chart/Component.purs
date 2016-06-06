@@ -77,11 +77,6 @@ eval (ECH.EvalCard value continue) =
     case value.inputPort of
       Just (ChartOptions options) → do
         lift do
-          state ← H.get
---          H.modify $ _{width = options.width, height = options.height }
-
-
-
           H.query unit $ H.action $ HECH.Set options.options
           H.query unit $ H.action HECH.Resize
         pure $ Just Blocked
@@ -103,10 +98,10 @@ eval (ECH.SetDimensions dims next) = do
     intWidth = floor dims.width
     intHeight = floor dims.height
   when (state.width ≠ intWidth) do
-    H.query unit $ H.action $ HECH.SetWidth $ intWidth - 80
+    H.query unit $ H.action $ HECH.SetWidth $ intWidth
     H.modify _{ width = intWidth }
   when (state.height ≠ intHeight) do
-    H.query unit $ H.action $ HECH.SetHeight $ intHeight - 80
+    H.query unit $ H.action $ HECH.SetHeight $ intHeight - 60
     H.modify _{ height = intHeight }
 
 --  H.modify

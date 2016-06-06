@@ -23,11 +23,13 @@ import Data.Array ((!!), cons)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Function (on)
+import Data.Int as Int
 import Data.Lens (view)
 import Data.List (List(..), replicate, length)
 import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
+import Data.String as Str
 
 import ECharts as EC
 
@@ -37,12 +39,15 @@ import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Workspace.Card.Chart.ChartOptions.Common (Key, ChartAxises, commonNameMap, keyCategory, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, mkKey)
 
+import Math as Math
+
 import Utils (stringToNumber)
+import Utils.DOM (getTextWidthPure)
 
 type LabeledPointPairs = M.Map Key (Tuple (Array Number) (Array Number))
 type LineData = L.List (Tuple Key (Tuple Number Number))
 
-lineData :: ChartAxises → LineData
+lineData ∷ ChartAxises → LineData
 lineData axises =
   let
     lr =
@@ -56,31 +61,31 @@ lineData axises =
   in
     aggregatePairs firstAgg secondAgg lr
   where
-  firstAgg :: Aggregation
+  firstAgg ∷ Aggregation
   firstAgg = fromMaybe Sum $ join (axises.aggregations !! 0)
 
-  secondAgg :: Aggregation
+  secondAgg ∷ Aggregation
   secondAgg = fromMaybe Sum $ join (axises.aggregations !! 1)
 
-  dimensions :: List (Maybe String)
+  dimensions ∷ List (Maybe String)
   dimensions = fromMaybe Nil $ axises.dimensions !! 0
 
-  firstValues :: List (Maybe Number)
+  firstValues ∷ List (Maybe Number)
   firstValues = fromMaybe Nil $ axises.measures !! 0
 
-  firstSeries :: List (Maybe String)
+  firstSeries ∷ List (Maybe String)
   firstSeries = fromMaybe nothings $ axises.series !! 0
 
-  secondSeries :: List (Maybe String)
+  secondSeries ∷ List (Maybe String)
   secondSeries = fromMaybe nothings $ axises.series !! 1
 
-  secondValues :: List (Maybe Number)
+  secondValues ∷ List (Maybe Number)
   secondValues = fromMaybe nothings $ axises.measures !! 1
 
-  nothings :: ∀ a. List (Maybe a)
+  nothings ∷ ∀ a. List (Maybe a)
   nothings = flip replicate Nothing $ maxLen firstValues dimensions
 
-  maxLen :: ∀ a b. List a → List b → Int
+  maxLen ∷ ∀ a b. List a → List b → Int
   maxLen lstA lstB =
     let lA = length lstA
         lB = length lstB
@@ -88,7 +93,7 @@ lineData axises =
 
 
 lineRawData
-  :: List (Maybe String)
+  ∷ List (Maybe String)
    → List (Maybe String)
    → List (Maybe String)
    → List (Maybe Number)
@@ -111,35 +116,35 @@ lineRawData
     lineRawData dims firstSeries secondSeries firstValues secondValues
     $ M.alter (alterFn $ Tuple firstVal secondVal) key acc
   where
-  firstVal :: Number
+  firstVal ∷ Number
   firstVal = fromMaybe zero mbFirstValue
 
-  secondVal :: Number
+  secondVal ∷ Number
   secondVal = fromMaybe zero mbSecondValue
 
-  key :: Key
+  key ∷ Key
   key = mkKey dimension mbFirstSerie mbSecondSerie
 
   alterFn
-    :: Tuple Number Number → Maybe (Tuple (Array Number) (Array Number))
+    ∷ Tuple Number Number → Maybe (Tuple (Array Number) (Array Number))
     → Maybe (Tuple (Array Number) (Array Number))
   alterFn (Tuple v1 v2) acc =
     case fromMaybe (Tuple [] []) acc of
       Tuple v1s v2s → pure $ Tuple (cons v1 v1s) (cons v2 v2s)
 
 
-aggregatePairs :: Aggregation → Aggregation → LabeledPointPairs → LineData
+aggregatePairs ∷ Aggregation → Aggregation → LabeledPointPairs → LineData
 aggregatePairs fAgg sAgg lp =
   M.toList $ map (bimap (runAggregation fAgg) (runAggregation sAgg)) lp
 
 buildLine
-  :: M.Map JCursor Ax.Axis
+  ∷ M.Map JCursor Ax.Axis
    → Int
    → Int
    → ChartConfiguration
    → EC.Option
-buildLine axises angle size conf = case axisSeriesPair of
-  Tuple xAxis series →
+buildLine axises angle size conf = case preSeries of
+  xAxis × series × longestCat →
     EC.Option EC.optionDefault
       { series = Just $ map Just series
       , xAxis =
@@ -150,11 +155,22 @@ buildLine axises angle size conf = case axisSeriesPair of
       , legend = Just $ mkLegend series
       , color = Just colors
       , grid = Just $ EC.Grid EC.gridDefault
-          { y2 = Just $ EC.Percent 15.0
+          { y2 = Just $ EC.Pixel $ labelHeight $ fromMaybe "" longestCat
           }
       }
   where
-  mkLegend :: Array EC.Series → EC.Legend
+  labelHeight ∷ String → Number
+  labelHeight longestCat =
+    let
+      width = getTextWidthPure longestCat $ "normal " <> show size <> "px Ubuntu"
+    in
+      add 24.0
+        $ Math.max (Int.toNumber size + 2.0)
+        $ Math.abs
+        $ width
+        * Math.sin (Int.toNumber angle / 180.0 * Math.pi)
+
+  mkLegend ∷ Array EC.Series → EC.Legend
   mkLegend ss =
     EC.Legend EC.legendDefault
       { "data" = Just $ map EC.legendItemDefault $ extractNames ss
@@ -162,38 +178,38 @@ buildLine axises angle size conf = case axisSeriesPair of
           { fontFamily = Just "Ubuntu sans" }
       }
 
-  tooltip :: EC.Tooltip
+  tooltip ∷ EC.Tooltip
   tooltip = EC.Tooltip $ EC.tooltipDefault { trigger = Just EC.TriggerItem }
 
-  extractNames :: Array EC.Series → Array String
+  extractNames ∷ Array EC.Series → Array String
   extractNames ss = A.nub $ A.catMaybes $ map extractName ss
 
-  extractName :: EC.Series → Maybe String
+  extractName ∷ EC.Series → Maybe String
   extractName (EC.LineSeries r) = r.common.name
   extractName _ = Nothing
 
-  xAxisConfig :: Tuple EC.AxisType (Maybe EC.Interval)
+  xAxisConfig ∷ Tuple EC.AxisType (Maybe EC.Interval)
   xAxisConfig = getXAxisConfig axises conf
 
-  extracted :: LineData
+  extracted ∷ LineData
   extracted =
-    L.sortBy (mkSortFn `on` (fst >>> keyCategory))
+    L.sortBy (mkSortFn `on` (fst ⋙ keyCategory))
       $ lineData $ buildChartAxises axises conf
 
   mkSortFn
-    :: String → String → Ordering
+    ∷ String → String → Ordering
   mkSortFn =
     case (conf.dimensions !! 0) >>= view _value >>= flip M.lookup axises of
       Just (Ax.ValAxis _) → compare `on` stringToNumber
       _ → compare
 
-  yAxis :: EC.Axises
+  yAxis ∷ EC.Axises
   yAxis =
     if needTwoAxises axises conf
     then EC.TwoAxises yAxis' yAxis'
     else EC.OneAxis yAxis'
 
-  yAxis' :: EC.Axis
+  yAxis' ∷ EC.Axis
   yAxis' =
     EC.Axis EC.axisDefault
       { "type" = Just EC.ValueAxis
@@ -203,15 +219,15 @@ buildLine axises angle size conf = case axisSeriesPair of
         }
       }
 
-  axisSeriesPair :: Tuple EC.AxisRec (Array EC.Series)
-  axisSeriesPair = mkSeries (needTwoAxises axises conf) xAxisConfig extracted
+  preSeries ∷ EC.AxisRec × (Array EC.Series) × (Maybe String)
+  preSeries = mkSeries (needTwoAxises axises conf) xAxisConfig extracted
 
-needTwoAxises :: M.Map JCursor Ax.Axis → ChartConfiguration → Boolean
+needTwoAxises ∷ M.Map JCursor Ax.Axis → ChartConfiguration → Boolean
 needTwoAxises axises conf =
   isJust $ (conf.measures !! 1) >>= view _value >>= flip M.lookup axises
 
 getXAxisConfig
-  :: M.Map JCursor Ax.Axis
+  ∷ M.Map JCursor Ax.Axis
   → ChartConfiguration
   → Tuple EC.AxisType (Maybe EC.Interval)
 getXAxisConfig axises conf =
@@ -221,14 +237,18 @@ getXAxisConfig axises conf =
     _ → Tuple EC.CategoryAxis $ Just $ EC.Custom zero
 
 mkSeries
-  :: Boolean
+  ∷ Boolean
    → Tuple EC.AxisType (Maybe EC.Interval)
    → LineData
-   → Tuple EC.AxisRec (Array EC.Series)
+   → EC.AxisRec × (Array EC.Series) × (Maybe String)
 mkSeries needTwoAxis (Tuple ty interval_) lData =
-  Tuple xAxis series
+  xAxis × series × longestCat
   where
-  xAxis :: EC.AxisRec
+  longestCat ∷ Maybe String
+  longestCat =
+    F.maximumBy (\a b → compare (Str.length a) (Str.length b)) catVals
+
+  xAxis ∷ EC.AxisRec
   xAxis =
     EC.axisDefault
       { "type" = Just ty
@@ -239,13 +259,13 @@ mkSeries needTwoAxis (Tuple ty interval_) lData =
             }
       }
 
-  catVals :: Array String
+  catVals ∷ Array String
   catVals = A.nub $ map keyCategory keysArray
 
-  keysArray :: Array Key
-  keysArray = F.foldMap (pure <<< fst) lData
+  keysArray ∷ Array Key
+  keysArray = F.foldMap (pure ∘ fst) lData
 
-  series :: Array EC.Series
+  series ∷ Array EC.Series
   series = case group of
     Tuple firsts seconds →
       L.fromList $
@@ -255,41 +275,41 @@ mkSeries needTwoAxis (Tuple ty interval_) lData =
           else Nil
          )
 
-  group :: Tuple (Map String (Array Number)) (Map String (Array Number))
+  group ∷ Tuple (Map String (Array Number)) (Map String (Array Number))
   group = bimap nameMap nameMap $ splitSeries $ L.fromList lData
 
   splitSeries
-    :: Array (Tuple Key (Tuple Number Number))
+    ∷ Array (Tuple Key (Tuple Number Number))
     → Tuple (Array (Tuple Key Number)) (Array (Tuple Key Number))
   splitSeries src =
     foldl (\(Tuple firsts seconds) (Tuple k (Tuple f s)) →
             Tuple (A.cons (Tuple k f) firsts) (A.cons (Tuple k s) seconds))
     (Tuple [] []) src
 
-  nameMap :: Array (Tuple Key Number) → Map String (Array Number)
+  nameMap ∷ Array (Tuple Key Number) → Map String (Array Number)
   nameMap = commonNameMap fillEmpties catVals
 
-  arrKeys :: Array (Map String Number) → Array String
-  arrKeys ms = A.nub $ A.concat (L.fromList <<< M.keys <$> ms)
+  arrKeys ∷ Array (Map String Number) → Array String
+  arrKeys ms = A.nub $ A.concat (L.fromList ∘ M.keys <$> ms)
 
-  fillEmpties :: Array (Map String Number) → Array (Map String Number)
+  fillEmpties ∷ Array (Map String Number) → Array (Map String Number)
   fillEmpties ms =
     let ks = arrKeys ms
     in map (\m → foldl fill m ks) ms
 
-  fill :: Map String Number → String → Map String Number
+  fill ∷ Map String Number → String → Map String Number
   fill m key = M.alter (maybe (Just 0.0) Just) key m
 
-  firstSerie :: Tuple String (Array Number) → EC.Series
+  firstSerie ∷ Tuple String (Array Number) → EC.Series
   firstSerie = serie 0.0
 
-  secondSerie :: Tuple String (Array Number) → EC.Series
+  secondSerie ∷ Tuple String (Array Number) → EC.Series
   secondSerie = serie 1.0
 
-  serie :: Number → Tuple String (Array Number) → EC.Series
+  serie ∷ Number → Tuple String (Array Number) → EC.Series
   serie ix (Tuple name nums) =
     EC.LineSeries
-      { common: if name == ""
+      { common: if name ≡ ""
                 then EC.universalSeriesDefault
                 else EC.universalSeriesDefault { "name" = Just name }
       , lineSeries: EC.lineSeriesDefault
@@ -298,5 +318,5 @@ mkSeries needTwoAxis (Tuple ty interval_) lData =
           }
       }
 
-  simpleData :: Number → EC.ItemData
+  simpleData ∷ Number → EC.ItemData
   simpleData n = EC.Value $ EC.Simple n

@@ -42,6 +42,12 @@ foreign import scrollTop ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Nu
 foreign import scrollLeft ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Number
 foreign import getOffsetClientRect ∷ ∀ eff.  HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
 
+-- | Same as `getTextWidth` but w/o Eff wrapper. This function definitely has effects
+-- | of allocating canvas and should have `Eff (ref ∷ REF|e)` or `Eff (dom ∷ DOM|e)`
+-- | but since we don't use intermediate `canvas` anywhere it's safe to think about
+-- | this as pure function from font style and string to width.
+foreign import getTextWidthPure ∷ String → String → Number
+
 type DOMRect =
   { left ∷ Number
   , top ∷ Number
