@@ -133,9 +133,7 @@ evalCard (Ceq.SetCanceler canceler next) = pure next
 evalCard (Ceq.SetDimensions dims next) = pure next
 evalCard (Ceq.Save k) = map (k ∘ encode) H.get
 evalCard (Ceq.Load json next) = do
-  traceAnyA {boardLoad:json}
   for_ (decode json) \model → do
-    traceAnyA {boardLoadDecoded:model}
     H.modify _ { decks = model.decks }
     loadDecks
   pure next

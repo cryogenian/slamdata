@@ -214,7 +214,6 @@ eval (RunActiveCard next) = do
 eval (Load dir deckId next) = do
   H.modify (DCS._stateMode .~ Loading)
   json ← Quasar.load $ deckIndex dir deckId
-  traceAnyA {deckLoad:json, dir, deckId}
   case Model.decode =<< json of
     Left err → do
       H.fromAff $ log err
@@ -678,7 +677,6 @@ runPendingCards = do
   updateCard path globalVarMap { card, input = mport, output } = do
     shouldLoad ← H.gets $ Set.member card.cardId ∘ _.cardsToLoad
     let input = { path, input: mport, cardId: card.cardId, globalVarMap }
-    traceAnyA {updateCard:card,input, cardType: card.cardType, shouldLoad, output}
 
     when shouldLoad do
       res ← H.query' cpCard (CardSlot card.cardId) $ left $ H.action (LoadCard card)
@@ -757,7 +755,6 @@ setModel dir deckId model = do
       setDeckState st
       H.modify $ DCS._cardsToLoad .~ Set.fromFoldable (_.cardId <$> cards)
       let hasRun = Foldable.or $ _.hasRun <$> cards
-      traceAnyA {setModel:st.modelCards, hasRun}
       -- TODO: Can someone explain why we want to run the cards when one has run already? Or is that not what this means? -js
       when hasRun $ traverse_ runCard $ _.cardId <$> Array.head st.modelCards
       H.modify $ DCS._stateMode .~ Ready
