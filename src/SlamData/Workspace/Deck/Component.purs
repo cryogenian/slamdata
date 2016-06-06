@@ -396,24 +396,25 @@ queryCard cid =
     ∘ H.ChildF unit
     ∘ right
 
--- This is the only function where we use the stored cardOutputs state
--- It would be really nice if we could find a way to get rid of that. -js
 updateIndicatorAndNextAction ∷ DeckDSL Unit
 updateIndicatorAndNextAction = do
-  { displayCards, cardOutputs } ← H.get
-  let
-    realCards = Array.filter (Lens.has _CardId ∘ _.cardId) displayCards
-    info =
-      case _.cardId <$> Array.last realCards of
-        Just (cid @ CardId _) →
+  { displayCards } ← H.get
+  let realCards = Array.filter (Lens.has _CardId ∘ _.cardId) displayCards
+
+  info ←
+    case _.cardId <$> Array.last realCards of
+      Just (cid @ CardId _) → do
+        lastOutput ← map join $ H.query' cpCard (CardSlot cid) $ left $ H.request GetOutput
+        pure
           { lastRealCardId: Just cid
           , cardToAdd:
-              case Map.lookup cid cardOutputs of
+              case lastOutput of
                 Just (Port.CardError err) → errorCard
                 Just Port.Blocked → errorCard -- TODO: what's the correct thing to do here? In fact, I don't know if case can actually happen in practice.
                 _ → nextActionCard
           }
-        _ →
+      _ →
+        pure
           { lastRealCardId: Nothing
           , cardToAdd: nextActionCard
           }
@@ -423,12 +424,11 @@ updateIndicatorAndNextAction = do
     mlastCardId ← H.gets $ map _.cardId ∘ Array.last ∘ _.displayCards
     for_ mlastCardId \lastCardId → do
       path ← H.gets DCS.deckPath
-      outputs ← H.gets _.cardOutputs
-      globalVarMap ← H.gets _.globalVarMap
-      let
-        input = Map.lookup lastRealCardId outputs
-        evalInput = { path, globalVarMap, cardId: lastCardId, input: input}
-      H.query' cpCard (CardSlot lastCardId) $ left $ H.action (UpdateCard evalInput Nothing)
+      minput ← H.query' cpCard (CardSlot lastRealCardId) $ left $ H.request GetOutput
+      for_ minput \input → do
+        globalVarMap ← H.gets _.globalVarMap
+        let evalInput = { path, globalVarMap, cardId: lastCardId, input: input}
+        H.query' cpCard (CardSlot lastCardId) $ left $ H.action (UpdateCard evalInput Nothing)
 
   activeCardIndex ← H.gets _.activeCardIndex
   case activeCardIndex of
@@ -662,9 +662,7 @@ runPendingCards = do
         $ L.toList modelCards
 
   for_ mresult \result → do
-    H.modify
-      $ (DCS._displayCards .~ L.fromList (L.reverse result.cards))
-      ∘ (DCS._cardOutputs .~ result.outputs)
+    H.modify $ DCS._displayCards .~ L.fromList (L.reverse result.cards)
     state ← H.get
     traverse_ (updateCard path globalVarMap) $ displayCardUpdates state result
 
