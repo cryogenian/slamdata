@@ -177,6 +177,14 @@ lastEChartOptions =
     ∘ XPath.anywhere
     ∘ XPaths.eChartOptions
 
+formCardPresented ∷ SlamFeature Unit
+formCardPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.formCardHeader
+
+
 textInFormCard ∷ String → SlamFeature Unit
 textInFormCard =
   tryRepeatedlyTo
@@ -197,6 +205,7 @@ trashButtonPresented =
     $ expectPresented
     $ XPath.anywhere
     $ XPaths.trashCardAction
+
 shareButtonPresented ∷ SlamFeature Unit
 shareButtonPresented =
   tryRepeatedlyTo

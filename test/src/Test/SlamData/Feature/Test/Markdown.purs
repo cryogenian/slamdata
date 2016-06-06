@@ -162,15 +162,6 @@ test = do
     Expect.checkableFieldInLastMdCard "Bronze" "radio" false
     successMsg "Ok, successfully provided and played markdown with evaluated content"
 
-  -- The following scenario fails; by adding some logging, I have determined what (I think)
-  -- is happening. After `insertFormCardInLastDeck`, there is a bit of a delay before the
-  -- Form card appears; the next action is `accessNextCardInLastDeck`, but when this gets run, I
-  -- think that the Next Action card is still displayed, and so this is basically a no-op. Then,
-  -- the Form card appears, and we try to run `insertQueryCardInLastDeck`, but at this point, we the active
-  -- card is the Form card, and not the Next Action card! So this fails.
-  --
-  -- I think maybe we need to await the *actual* appearance of the Form card before we say run
-  -- `accessNextCardInLastDeck`. -js
   mdScenario "Filter query results with default field values" [] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard $ joinWith "\n\n"
@@ -180,13 +171,10 @@ test = do
       , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
-    successMsg "Will access Next card"
     Interact.accessNextCardInLastDeck
-    successMsg "Will insert Form card"
     Interact.insertFormCardInLastDeck
-    successMsg "Will access Next card"
+    Expect.formCardPresented
     Interact.accessNextCardInLastDeck
-    successMsg "Will insert Query card"
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
@@ -210,6 +198,7 @@ test = do
       ]
     Interact.accessNextCardInLastDeck
     Interact.insertFormCardInLastDeck
+    Expect.formCardPresented
     Interact.accessNextCardInLastDeck
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
