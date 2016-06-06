@@ -94,7 +94,7 @@ data CardQuery a
   | SaveCard CardId CardType (Card.Model → a)
   | LoadCard Card.Model a
   | SetCardAccessType Na.AccessType a
-  | UpdateDimensions Int a
+  | UpdateDimensions a
   | SetHTMLElement (Maybe HTMLElement) a
 
 

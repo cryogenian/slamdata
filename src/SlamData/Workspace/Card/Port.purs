@@ -34,12 +34,14 @@ import SlamData.Prelude
 import Data.Lens (PrismP, prism', TraversalP, wander)
 import ECharts.Options as EC
 import SlamData.Workspace.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
 type ChartPort =
   { options ∷ EC.Option
+  , chartType ∷ ChartType
   }
 type DownloadPort =
   { resource ∷ PU.FilePath

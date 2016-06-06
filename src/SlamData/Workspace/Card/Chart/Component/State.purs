@@ -16,13 +16,14 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Chart.Component.State where
 
-import Prelude (Unit)
+import SlamData.Prelude
 
 import Data.Lens (lens, LensP)
 
 import Halogen (ParentState)
 import Halogen.ECharts (EChartsState, EChartsQuery)
 
+import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Effects (Slam)
@@ -31,10 +32,15 @@ type State =
   { width ∷ Int
   , height ∷ Int
   , levelOfDetails ∷ LevelOfDetails
+  , chartType ∷ Maybe ChartType
   }
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
+
+_chartType ∷ ∀ a r. LensP {chartType ∷ a|r} a
+_chartType = lens (_.chartType) (_{chartType = _})
+
 
 type StateP =
   ParentState State EChartsState CardEvalQuery EChartsQuery Slam Unit
@@ -44,4 +50,5 @@ initialState =
   { width: 600
   , height: 400
   , levelOfDetails: High
+  , chartType: Nothing
   }

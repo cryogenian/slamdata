@@ -368,6 +368,7 @@ responsePort = do
   pure
     $ P.ChartOptions
     { options: buildOptions state conf
+    , chartType: state.chartType
     }
 
 updateForms ∷ FilePath → VizDSL Unit

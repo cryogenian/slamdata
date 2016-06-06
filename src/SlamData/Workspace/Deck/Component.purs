@@ -284,7 +284,7 @@ eval (FlipDeck next) = do
 eval (GrabDeck _ next) = pure next
 eval (ResizeDeck p next) = pure next
 eval (UpdateCardSize next) = do
-  void $ H.queryAll' cpCard $ left $ H.action (UpdateDimensions zero)
+  H.queryAll' cpCard $ left $ H.action UpdateDimensions
   pure next
 eval (StartSliding mouseEvent next) =
   Slider.startSliding mouseEvent $> next
@@ -338,7 +338,7 @@ peekBackSide (Back.DoAction action _) =
         updateNextActionCard
         updateIndicator
         H.modify $ DCS._displayMode .~ DCS.Normal
-      void $ H.queryAll' cpCard $ left $ H.action (UpdateDimensions zero)
+      void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Share → do
       url ← mkShareURL SM.empty
       for_ url $ showDialog ∘ Dialog.Share

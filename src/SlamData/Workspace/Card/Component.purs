@@ -110,7 +110,7 @@ makeCardComponentPart def render =
     { render: render component initialState
     , eval
     , peek: Just (peek ∘ H.runChildF)
-    , initializer: Just (H.action $ CQ.UpdateDimensions zero)
+    , initializer: Just (H.action CQ.UpdateDimensions)
     , finalizer: Nothing
     }
   where
@@ -164,13 +164,13 @@ makeCardComponentPart def render =
       }
   eval (CQ.LoadCard model next) = do
     H.query unit (left (H.action (CQ.Load model.state)))
-    sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions zero unit)
+    sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions unit)
     pure next
   eval (CQ.SetCardAccessType at next) =
     H.modify (CS._accessType .~ at) $> next
   eval (CQ.SetHTMLElement el next) =
     H.modify (CS._element .~ el) $> next
-  eval (CQ.UpdateDimensions attempts next) = do
+  eval (CQ.UpdateDimensions next) = do
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
       void $ H.query unit $ left $ H.action (CQ.SetDimensions { width, height })
