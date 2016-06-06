@@ -354,7 +354,7 @@ cardEval (SetCanceler _ next) = pure next
 cardEval (SetDimensions dims next) = do
   H.modify
     $ _levelOfDetails
-    .~ if dims.width < 576.0 ∨ dims.height < 368.0
+    .~ if dims.width < 576.0 ∨ dims.height < 416.0
          then Low
          else High
   pure next

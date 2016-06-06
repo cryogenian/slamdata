@@ -38,8 +38,7 @@ module SlamData.Workspace.Card.Viz.Form.Component
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Array ((!!), null, range, length)
-import Data.Maybe.Unsafe (fromJust)
+import Data.Array ((!!), null, range, length, catMaybes)
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
@@ -54,8 +53,6 @@ import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), allAggregations)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (JSelect, ChartConfiguration)
---import SlamData.Workspace.Card.Viz.Form.Component.Render (gridClasses, GridClasses)
---import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 
 data Query a
@@ -135,13 +132,14 @@ render conf =
       , let ixes =
           if null conf.dimensions then { fstIx: 1, sndIx: 2} else { fstIx: 0, sndIx: 1}
         in
-          foldMap (renderSeries 0) (conf.series !! ixes.fstIx)
-          ⊕ foldMap (renderSeries 1) (conf.series !! ixes.sndIx)
+          foldMap (renderSeries ixes.fstIx) (conf.series !! ixes.fstIx)
+          ⊕ foldMap (renderSeries ixes.sndIx) (conf.series !! ixes.sndIx)
       , hr
       ]
   where
   hr ∷ Array FormHTML
   hr = [ HH.hr_ ]
+
   renderDimension ∷ Int → JSelect → Array FormHTML
   renderDimension ix sel =
     [ HH.form
@@ -348,34 +346,34 @@ eval (GetConfiguration continue) = do
   getDimensions ∷ FormDSL (Array JSelect)
   getDimensions = do
     conf ← H.get
-    traverse getDimension (range' 0 $ length conf.dimensions - 1)
+    map catMaybes
+      $ traverse getDimension (range' 0 $ length conf.dimensions - 1)
 
-  getDimension ∷ Int → FormDSL JSelect
+  getDimension ∷ Int → FormDSL (Maybe JSelect)
   getDimension i =
-    map fromJust
-      $ H.query' cpDimension i
+    H.query' cpDimension i
       $ H.request S.GetSelect
 
   getSeries ∷ FormDSL (Array JSelect)
   getSeries = do
     conf ← H.get
-    traverse getSerie (range' 0 $ length conf.series - 1)
+    map catMaybes
+      $ traverse getSerie (range' 0 $ length conf.series - 1)
 
-  getSerie ∷ Int → FormDSL JSelect
-  getSerie i =
-    map fromJust
-      $ H.query' cpSeries i
+  getSerie ∷ Int → FormDSL (Maybe JSelect)
+  getSerie i = do
+    H.query' cpSeries i
       $ H.request S.GetSelect
 
   getMeasures ∷ FormDSL (Array JSelect)
   getMeasures = do
     conf ← H.get
-    traverse getMeasure (range' 0 $ length conf.measures - 1)
+    map catMaybes
+      $ traverse getMeasure (range' 0 $ length conf.measures - 1)
 
-  getMeasure ∷ Int → FormDSL JSelect
+  getMeasure ∷ Int → FormDSL (Maybe JSelect)
   getMeasure i =
-    map fromJust
-      $ H.query' cpMeasure i
+    H.query' cpMeasure i
       $ right
       $ H.ChildF unit
       $ H.request S.GetSelect
@@ -383,12 +381,12 @@ eval (GetConfiguration continue) = do
   getAggregations ∷ FormDSL (Array (Select Aggregation))
   getAggregations = do
     conf ← H.get
-    traverse getAggregation (range' 0 $ length conf.measures - 1)
+    map catMaybes
+      $ traverse getAggregation (range' 0 $ length conf.measures - 1)
 
-  getAggregation ∷ Int → FormDSL (Select Aggregation)
+  getAggregation ∷ Int → FormDSL (Maybe (Select Aggregation))
   getAggregation i =
-    map fromJust
-      $ H.query' cpMeasure i
+    H.query' cpMeasure i
       $ left
       $ H.request S.GetSelect
 
