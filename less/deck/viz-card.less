@@ -1,6 +1,11 @@
 .sd-card-viz {
     height: ~"calc(100% - 4rem)";
     > div { height: 100%; }
+    div.loading-message.alert.alert-info {
+        height: 100%;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
     .card-input {
         &-minimum-lod {
             height: 100%;
@@ -26,9 +31,7 @@
                 padding: 0;
                 height: 100%;
                 position: relative;
-                .loading-message.alert.alert-info {
-                    height: 100%;
-                }
+
                 .viz-chart-type-selector {
                     width: 60px;
                     height: 100%;

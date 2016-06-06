@@ -252,7 +252,7 @@ renderDimensions state =
   chartInput cls labelText valueFromState queryCtor isHidden =
     HH.form
       [ HP.classes
-          $ [ B.colXs3, cls ]
+          $ [ B.colXs6, cls ]
           ⊕ (guard isHidden $> B.hide)
       , Cp.nonSubmit
       ]
@@ -320,7 +320,7 @@ cardEval (EvalCard info continue) =
                   pure
           when (length records > 10000)
             $ throwError
-            $  "Maximum record count available for visualization -- 10000, "
+            $ "Maximum record count available for visualization -- 10000, "
             ⊕ "please consider using 'limit' or 'group by' in your H.request"
           lift $ H.modify $ _records .~ records
         lift $ H.modify $ _needToUpdate .~ true
@@ -354,7 +354,7 @@ cardEval (SetCanceler _ next) = pure next
 cardEval (SetDimensions dims next) = do
   H.modify
     $ _levelOfDetails
-    .~ if dims.width < 300.0 ∨ dims.height < 200.0
+    .~ if dims.width < 576.0 ∨ dims.height < 368.0
          then Low
          else High
   pure next

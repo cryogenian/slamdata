@@ -51,7 +51,8 @@ buildBar axises angle size conf = case preSeries of
       , legend = mkLegend series
       , color = Just colors
       , grid = Just $ EC.Grid EC.gridDefault
-          { y2 = Just $ EC.Pixel $ labelHeight $ fromMaybe "" longestCat }
+          { y2 = Just $ EC.Pixel $ labelHeight $ fromMaybe "" longestCat
+          }
       }
   where
   labelHeight ∷ String → Number
@@ -94,7 +95,12 @@ buildBar axises angle size conf = case preSeries of
   extracted = pieBarData $ buildChartAxises axises conf
 
   yAxis ∷ EC.Axises
-  yAxis = EC.OneAxis $ EC.Axis $ EC.axisDefault { "type" = Just EC.ValueAxis }
+  yAxis =
+    EC.OneAxis
+      $ EC.Axis
+      $ EC.axisDefault
+        { "type" = Just EC.ValueAxis
+        }
 
 mkSeries ∷ PieBarData → EC.AxisRec × (Array EC.Series) × (Maybe String)
 mkSeries pbData = xAxis × series × longestCat

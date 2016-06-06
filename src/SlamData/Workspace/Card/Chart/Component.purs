@@ -22,10 +22,12 @@ import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (jsonEmptyObject)
 import Data.Int (toNumber, floor)
---import Data.Lens ((.~))
+import Data.Lens ((.~))
 
 import CSS.Geometry as CG
 import CSS.Size (px)
+
+import ECharts as EC
 
 import Halogen as H
 import Halogen.ECharts as HECH
@@ -33,13 +35,13 @@ import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Workspace.Card.Chart.Component.State (State, initialState {-, _levelOfDetails) ]-} )
+import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails)
 import SlamData.Workspace.Card.Common.EvalQuery as ECH
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Card.CardType as Ct
---import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 
@@ -79,6 +81,7 @@ eval (ECH.EvalCard value continue) =
         lift do
           H.query unit $ H.action $ HECH.Set options.options
           H.query unit $ H.action HECH.Resize
+          setLevelOfDetails options.options
         pure $ Just Blocked
       Just Blocked → do
         lift $ H.query unit $ H.action HECH.Clear
@@ -103,10 +106,28 @@ eval (ECH.SetDimensions dims next) = do
   when (state.height ≠ intHeight) do
     H.query unit $ H.action $ HECH.SetHeight $ intHeight - 60
     H.modify _{ height = intHeight }
-
+  mbOpts ← H.query unit $ H.request HECH.GetOptions
+  for_ (join mbOpts) \opts →
+    setLevelOfDetails opts
 --  H.modify
 --    $ _levelOfDetails
 --    .~ if dims.width < (toNumber s.width - 100.0) ∨ dims.height < (toNumber s.height - 100.0)
 --         then Low
 --         else High
   pure next
+
+
+setLevelOfDetails ∷ EC.Option → ChartDSL Unit
+setLevelOfDetails (EC.Option r) = do
+  state ← H.get
+  let
+    runGrid (EC.Grid r) = r
+    runPercentOrPixel total (EC.Percent pct) = total * pct / 100.0
+    runPercentOrPixel _ (EC.Pixel pxs) = pxs
+    yOffset =
+      floor $ fromMaybe zero $ r.grid >>= runGrid ⋙ _.y2 <#> runPercentOrPixel (toNumber state.width)
+  H.modify
+    $ _levelOfDetails
+    .~ if (state.height - yOffset) < 200 ∨ state.width < 300
+         then Low
+         else High

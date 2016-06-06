@@ -215,7 +215,9 @@ buildLine axises angle size conf = case preSeries of
       { "type" = Just EC.ValueAxis
       , axisLabel = Just $ EC.AxisLabel EC.axisLabelDefault
         { textStyle = Just $ EC.TextStyle EC.textStyleDefault
-          { fontFamily = Just "Ubuntu sans" }
+          { fontFamily = Just "Ubuntu sans"
+          , fontSize = Just $ Int.toNumber size
+          }
         }
       }
 
