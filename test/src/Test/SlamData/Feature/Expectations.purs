@@ -184,6 +184,19 @@ formCardPresented =
     $ XPath.anywhere
     $ XPaths.formCardHeader
 
+apiResultsCardPresented ∷ SlamFeature Unit
+apiResultsCardPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.apiResultsCardHeader
+
+tableCardPresented ∷ SlamFeature Unit
+tableCardPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.tableCardHeader
 
 textInFormCard ∷ String → SlamFeature Unit
 textInFormCard =

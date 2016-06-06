@@ -72,6 +72,14 @@ formCardHeader ∷ String
 formCardHeader =
   XPath.anyWithExactAriaLabel "Form card"
 
+apiResultsCardHeader ∷ String
+apiResultsCardHeader =
+  XPath.anyWithExactAriaLabel "API Results card"
+
+tableCardHeader ∷ String
+tableCardHeader =
+  XPath.anyWithExactAriaLabel "Table card"
+
 exploreInput ∷ String
 exploreInput =
   XPath.inputWithExactPlaceholder "Select a file"

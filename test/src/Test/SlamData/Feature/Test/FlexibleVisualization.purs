@@ -78,10 +78,16 @@ test =
       run();
     """
     Interact.insertApiCardInLastDeck
+    successMsg "Inserted API Card"
     Interact.provideApiVariableBindingsForApiCard "state" "Text" "CO"
+    successMsg "Provided variables; Will access next card"
     Interact.accessNextCardInLastDeck
+    successMsg "Accessed next card, will insert API Results card"
     Interact.insertApiResultsCardInLastDeck
+    Expect.apiResultsCardPresented
+    successMsg "presented API results card, will access next card"
     Interact.accessNextCardInLastDeck
+    successMsg "will insert query card"
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard $ Str.joinWith " "
       $ [ "SELECT count(*) as ct, city, gender"
@@ -92,14 +98,19 @@ test =
         , "LIMIT 30"
         ]
     Interact.accessNextCardInLastDeck
+    successMsg "will insert JTAble card"
     Interact.insertJTableCardInLastDeck
+    Expect.tableCardPresented
     Interact.accessNextCardInLastDeck
+    successMsg "Will insert visualize card"
     Interact.insertVisualizeCardInLastDeck
     Interact.switchToBarChart
     Interact.provideCategoryForLastVisualizeCard ".city"
     Expect.measureInLastVisualizeCard ".ct"
     Expect.measureDisabledInLastVisualizeCard
+    successMsg "Will access next card"
     Interact.accessNextCardInLastDeck
+    successMsg "Will insert chart card"
     Interact.insertChartCardInLastDeck
     Expect.lastEChartOptions chartOptions_CO
     Interact.accessPreviousCardInLastDeck
