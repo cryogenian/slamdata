@@ -126,7 +126,14 @@ render st =
             [ HP.class_ CSS.loading ]
             []
         ]
-    Ready →
+    Error err →
+      HH.div
+        [ HP.classes [ B.alert, B.alertDanger ] ]
+        [ HH.h1
+            [ HP.class_ B.textCenter ]
+            [ HH.text err ]
+        ]
+    _ →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div
         ([ HP.class_ CSS.board
@@ -165,14 +172,6 @@ render st =
             , renderBackside $ st.displayMode ≡ DCS.Backside
             , renderDialog $ st.displayMode ≡ DCS.Dialog
             ]
-        ]
-
-    Error err →
-      HH.div
-        [ HP.classes [ B.alert, B.alertDanger ] ]
-        [ HH.h1
-            [ HP.class_ B.textCenter ]
-            [ HH.text err ]
         ]
 
   where
@@ -230,12 +229,9 @@ eval (ExploreFile res next) = do
   H.modify
     $ (DCS.addCard CT.JTable J.jsonEmptyObject)
     ∘ (DCS.addCard CT.OpenResource $ J.encodeJson $ R.File res)
-
+    ∘ (DCS._stateMode .~ Preparing)
   H.gets (map _.cardId ∘ Array.head ∘ _.modelCards) >>=
     traverse_ runCard
-
-  -- TODO: somehow set the right active card index; we can't do it naïvely because the cards may not be added to the display state yet. -js
-
   -- Flush the eval queue
   saveDeck
   updateIndicator
@@ -653,7 +649,7 @@ displayCardUpdates st m =
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
-  { modelCards, path, globalVarMap } ← H.get
+  { modelCards, path, globalVarMap, stateMode } ← H.get
   mresult ←
     H.gets _.pendingCard >>= traverse \pendingCardId → do
       evalRunCardsMachine { pendingCardId, path, globalVarMap }
@@ -665,8 +661,13 @@ runPendingCards = do
     state ← H.get
     traverse_ (updateCard path globalVarMap) $ displayCardUpdates state result
 
+  when (stateMode == Preparing) do
+    lastIndex <- H.gets DCS.findLastRealCardIndex
+    H.modify
+      $ (DCS._stateMode .~ Ready)
+      ∘ (DCS._activeCardIndex .~ lastIndex)
+
   updateIndicatorAndNextAction
-    -- triggerSave <-- why?
   where
 
   updateCard
@@ -757,5 +758,5 @@ setModel dir deckId model = do
       let hasRun = Foldable.or $ _.hasRun <$> cards
       -- TODO: Can someone explain why we want to run the cards when one has run already? Or is that not what this means? -js
       when hasRun $ traverse_ runCard $ _.cardId <$> Array.head st.modelCards
-      H.modify $ DCS._stateMode .~ Ready
+      H.modify $ DCS._stateMode .~ Preparing
   updateIndicatorAndNextAction
