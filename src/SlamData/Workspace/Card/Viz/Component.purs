@@ -24,6 +24,7 @@ import Data.Argonaut (JCursor)
 import Data.Array (length, null, cons, index)
 import Data.Int as Int
 import Data.Lens ((.~), view, preview)
+import Data.List as L
 import Data.Map as M
 import Data.Path.Pathy (printPath)
 import Data.Set as Set
@@ -397,7 +398,12 @@ configure = void do
   setConfFor Line $ lineConfiguration axises lineConf
   barConf ← getOrInitial Bar
   setConfFor Bar $ pieBarConfiguration axises barConf
-  H.modify (_availableChartTypes .~ available axises)
+  let chartTypes = available axises
+  H.modify (_availableChartTypes .~ chartTypes)
+
+  case Set.toList chartTypes of
+    L.Cons ct L.Nil → H.modify (_chartType .~ ct)
+    _ → pure unit
   where
   getOrInitial ∷ ChartType → VizDSL ChartConfiguration
   getOrInitial ty =
