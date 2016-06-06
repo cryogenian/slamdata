@@ -338,6 +338,7 @@ peekBackSide (Back.DoAction action _) =
         updateNextActionCard
         updateIndicator
         H.modify $ DCS._displayMode .~ DCS.Normal
+      void $ H.queryAll' cpCard $ left $ H.action (UpdateDimensions zero)
     Back.Share → do
       url ← mkShareURL SM.empty
       for_ url $ showDialog ∘ Dialog.Share

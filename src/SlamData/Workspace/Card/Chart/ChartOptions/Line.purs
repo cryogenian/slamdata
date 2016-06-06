@@ -157,7 +157,10 @@ buildLine axises angle size conf = case axisSeriesPair of
   mkLegend :: Array EC.Series → EC.Legend
   mkLegend ss =
     EC.Legend EC.legendDefault
-      { "data" = Just $ map EC.legendItemDefault $ extractNames ss }
+      { "data" = Just $ map EC.legendItemDefault $ extractNames ss
+      , textStyle = Just $ EC.TextStyle EC.textStyleDefault
+          { fontFamily = Just "Ubuntu sans" }
+      }
 
   tooltip :: EC.Tooltip
   tooltip = EC.Tooltip $ EC.tooltipDefault { trigger = Just EC.TriggerItem }
@@ -191,7 +194,14 @@ buildLine axises angle size conf = case axisSeriesPair of
     else EC.OneAxis yAxis'
 
   yAxis' :: EC.Axis
-  yAxis' = EC.Axis EC.axisDefault { "type" = Just EC.ValueAxis }
+  yAxis' =
+    EC.Axis EC.axisDefault
+      { "type" = Just EC.ValueAxis
+      , axisLabel = Just $ EC.AxisLabel EC.axisLabelDefault
+        { textStyle = Just $ EC.TextStyle EC.textStyleDefault
+          { fontFamily = Just "Ubuntu sans" }
+        }
+      }
 
   axisSeriesPair :: Tuple EC.AxisRec (Array EC.Series)
   axisSeriesPair = mkSeries (needTwoAxises axises conf) xAxisConfig extracted

@@ -17,8 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Viz.Component.State
   ( State
   , initialState
-  , _width
-  , _height
   , _chartType
   , _availableChartTypes
   , _loading
@@ -28,7 +26,6 @@ module SlamData.Workspace.Card.Viz.Component.State
   , _axisLabelAngle
   , _axisLabelFontSize
   , _levelOfDetails
-  , LevelOfDetails(..)
   , StateP
   , fromModel
   ) where
@@ -49,22 +46,11 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Viz.Component.Query (Query)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model (Model)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-
-data LevelOfDetails
-  = Low
-  | High
-
-derive instance eqLevelOfDetails ∷ Eq LevelOfDetails
-derive instance ordLevelOfDetails ∷ Ord LevelOfDetails
-
-_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
-_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
 type State =
-  { width ∷ Int
-  , height ∷ Int
-  , chartType ∷ ChartType
+  { chartType ∷ ChartType
   , availableChartTypes ∷ Set.Set ChartType
   , sample ∷ M.Map JCursor Axis
   , loading ∷ Boolean
@@ -77,9 +63,7 @@ type State =
 
 initialState ∷ State
 initialState =
-  { width: 600
-  , height: 400
-  , chartType: Pie
+  { chartType: Pie
   , availableChartTypes: Set.empty
   , loading: true
   , sample: M.empty
@@ -89,12 +73,6 @@ initialState =
   , axisLabelAngle: 30
   , levelOfDetails: High
   }
-
-_width ∷ forall a r. LensP {width ∷ a |r} a
-_width = lens _.width _{width = _}
-
-_height ∷ forall a r. LensP {height ∷ a |r} a
-_height = lens _.height _{height = _}
 
 _chartType ∷ forall a r. LensP {chartType ∷ a |r} a
 _chartType = lens _.chartType _{chartType = _}
@@ -120,6 +98,10 @@ _axisLabelFontSize = lens _.axisLabelFontSize _{axisLabelFontSize = _}
 _axisLabelAngle ∷ forall a r. LensP {axisLabelAngle ∷ a | r} a
 _axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
 
+_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
+
+
 type StateP =
   ParentState
     State
@@ -131,9 +113,7 @@ type StateP =
 fromModel ∷ Model → State
 fromModel m =
   initialState
-    { width = m.width
-    , height = m.height
-    , chartType = m.chartType
+    { chartType = m.chartType
     , axisLabelFontSize = m.axisLabelFontSize
     , axisLabelAngle = m.axisLabelAngle
     }

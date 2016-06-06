@@ -311,6 +311,7 @@ mixAxisLabelAngleAndFontSize angle size r =
       { rotate = Just $ toNumber angle
       , textStyle = Just $ TextStyle textStyleDefault
         { fontSize = Just $ toNumber size
+        , fontFamily = Just "Ubuntu sans"
         }
       }
     }

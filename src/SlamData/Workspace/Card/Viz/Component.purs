@@ -55,10 +55,11 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalT, r
 import SlamData.Workspace.Card.Component (CardStateP, CardQueryP, makeCardComponent, makeQueryPrism', _VizState, _VizQuery)
 import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.Card.Viz.Component.Query (QueryC, Query(..))
-import SlamData.Workspace.Card.Viz.Component.State (State, _needToUpdate, _availableChartTypes, _sample, fromModel, _records, _loading, _axisLabelFontSize, _axisLabelAngle, _chartType, _width, _height, initialState, _levelOfDetails, LevelOfDetails(..))
+import SlamData.Workspace.Card.Viz.Component.State (State, _needToUpdate, _availableChartTypes, _sample, fromModel, _records, _loading, _axisLabelFontSize, _axisLabelAngle, _chartType, initialState, _levelOfDetails)
 import SlamData.Workspace.Card.Viz.Form.Component (formComponent)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model as Model
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Quasar.Query as Api
 import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (row, glyph)
@@ -236,11 +237,7 @@ renderChartConfiguration state =
 renderDimensions ∷ State → VizHTML
 renderDimensions state =
   row
-  [ chartInput Rc.chartSizeParam "Height"
-      (_.height ⋙ showIfNeqZero) SetHeight false
-  , chartInput Rc.chartSizeParam "Width"
-      (_.width ⋙ showIfNeqZero) SetWidth false
-  , chartInput Rc.axisLabelParam "Axis label angle"
+  [ chartInput Rc.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel (isPie state.chartType)
   , chartInput Rc.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize (isPie state.chartType)
@@ -286,10 +283,6 @@ vizEval ∷ Query ~> VizDSL
 vizEval q = do
   H.modify $ _needToUpdate .~ false
   case q of
-    SetHeight h next →
-      H.modify (_height .~ h) *> configure $> next
-    SetWidth w next →
-      H.modify (_width .~ w) *> configure $> next
     SetChartType ct next →
       H.modify (_chartType .~ ct) *> configure $> next
     SetAvailableChartTypes ts next →
@@ -345,9 +338,7 @@ cardEval (Save k) = do
   st ← H.get
   config ← H.query st.chartType $ left $ H.request Form.GetConfiguration
   pure $ k $ Model.encode
-    { width: st.width
-    , height: st.height
-    , chartType: st.chartType
+    { chartType: st.chartType
     , chartConfig: fromMaybe Form.initialState config
     , axisLabelFontSize: st.axisLabelFontSize
     , axisLabelAngle: st.axisLabelAngle
@@ -376,8 +367,6 @@ responsePort = do
   pure
     $ P.ChartOptions
     { options: buildOptions state conf
-    , width: state.width
-    , height: state.height
     }
 
 updateForms ∷ FilePath → VizDSL Unit

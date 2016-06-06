@@ -51,7 +51,11 @@ buildBar axises angle size conf = case axisSeriesPair of
 
   mkLegend :: Array EC.Series -> EC.Legend
   mkLegend ss =
-    EC.Legend EC.legendDefault { "data" = Just $ map EC.legendItemDefault $ extractNames ss }
+    EC.Legend EC.legendDefault
+      { "data" = Just $ map EC.legendItemDefault $ extractNames ss
+      , textStyle = Just $ EC.TextStyle EC.textStyleDefault
+          { fontFamily = Just "Ubuntu sans" }
+      }
 
   extractNames :: Array EC.Series -> Array String
   extractNames ss = A.catMaybes $ map extractName ss

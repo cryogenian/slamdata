@@ -18,16 +18,23 @@ module SlamData.Workspace.Card.Chart.Component.State where
 
 import Prelude (Unit)
 
+import Data.Lens (lens, LensP)
+
 import Halogen (ParentState)
 import Halogen.ECharts (EChartsState, EChartsQuery)
 
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Effects (Slam)
 
 type State =
-  { width :: Int
-  , height :: Int
+  { width ∷ Int
+  , height ∷ Int
+  , levelOfDetails ∷ LevelOfDetails
   }
+
+_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
 type StateP =
   ParentState State EChartsState CardEvalQuery EChartsQuery Slam Unit
@@ -36,4 +43,5 @@ initialState :: State
 initialState =
   { width: 600
   , height: 400
+  , levelOfDetails: High
   }

@@ -21,11 +21,11 @@ import SlamData.Prelude
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (jsonEmptyObject)
-import Data.Int (toNumber)
+import Data.Int (toNumber, floor)
+--import Data.Lens ((.~))
 
-import CSS.Display (position, relative)
 import CSS.Geometry as CG
-import CSS.Size (px, pct)
+import CSS.Size (px)
 
 import Halogen as H
 import Halogen.ECharts as HECH
@@ -33,12 +33,13 @@ import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import SlamData.Workspace.Card.Chart.Component.State (State, initialState)
+import SlamData.Workspace.Card.Chart.Component.State (State, initialState {-, _levelOfDetails) ]-} )
 import SlamData.Workspace.Card.Common.EvalQuery as ECH
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Card.CardType as Ct
+--import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 
@@ -59,11 +60,8 @@ render state =
   HH.div
     [ HP.classes [ Rc.chartOutput ]
     , CSS.style do
-        CG.height $ px $ toNumber state.height
+        CG.height $ px $ toNumber $ state.height - 80
         CG.width $ px $ toNumber state.width
-        position relative
-        CG.left $ pct 50.0
-        CG.marginLeft $ px $ -0.5 * (toNumber state.width)
     ]
     [ HH.slot unit \_ →
         { component: HECH.echarts
@@ -80,13 +78,9 @@ eval (ECH.EvalCard value continue) =
       Just (ChartOptions options) → do
         lift do
           state ← H.get
-          H.set { width: options.width, height: options.height }
+--          H.modify $ _{width = options.width, height = options.height }
 
-          when (state.width ≠ options.width)
-            $ void $ H.query unit $ H.action $ HECH.SetWidth options.width
 
-          when (state.height ≠ options.height)
-            $ void $ H.query unit $ H.action $ HECH.SetHeight options.height
 
           H.query unit $ H.action $ HECH.Set options.options
           H.query unit $ H.action HECH.Resize
@@ -103,4 +97,21 @@ eval (ECH.SetupCard _ next) = pure next
 eval (ECH.Save k) = pure (k jsonEmptyObject)
 eval (ECH.Load _ next) = pure next
 eval (ECH.SetCanceler _ next) = pure next
-eval (ECH.SetDimensions _ next) = pure next
+eval (ECH.SetDimensions dims next) = do
+  state ← H.get
+  let
+    intWidth = floor dims.width
+    intHeight = floor dims.height
+  when (state.width ≠ intWidth) do
+    H.query unit $ H.action $ HECH.SetWidth $ intWidth - 80
+    H.modify _{ width = intWidth }
+  when (state.height ≠ intHeight) do
+    H.query unit $ H.action $ HECH.SetHeight $ intHeight - 80
+    H.modify _{ height = intHeight }
+
+--  H.modify
+--    $ _levelOfDetails
+--    .~ if dims.width < (toNumber s.width - 100.0) ∨ dims.height < (toNumber s.height - 100.0)
+--         then Low
+--         else High
+  pure next

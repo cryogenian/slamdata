@@ -24,9 +24,7 @@ import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 
 type Model =
-  { width :: Int
-  , height :: Int
-  , chartType :: ChartType
+  { chartType :: ChartType
   , chartConfig :: CC.ChartConfiguration
   , axisLabelFontSize :: Int
   , axisLabelAngle :: Int
@@ -34,9 +32,7 @@ type Model =
 
 encode :: Model -> Json
 encode m
-   = "width" := m.width
-  ~> "height" := m.height
-  ~> "chartType" := m.chartType
+   = "chartType" := m.chartType
   ~> "chartConfig" := CC.encode m.chartConfig
   ~> "axisLabelFontSize" := m.axisLabelFontSize
   ~> "axisLabelAngle" := m.axisLabelAngle
@@ -44,10 +40,8 @@ encode m
 
 decode :: Json -> Either String Model
 decode = decodeJson >=> \obj -> do
-  width <- obj .? "width"
-  height <- obj .? "height"
   chartType <- obj .? "chartType"
   chartConfig <- CC.decode =<< obj .? "chartConfig"
   axisLabelFontSize <- obj .? "axisLabelFontSize"
   axisLabelAngle <- obj .? "axisLabelAngle"
-  pure { width, height, chartType, chartConfig, axisLabelFontSize, axisLabelAngle }
+  pure { chartType, chartConfig, axisLabelFontSize, axisLabelAngle }

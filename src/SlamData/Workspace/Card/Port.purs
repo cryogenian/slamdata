@@ -40,8 +40,6 @@ import Utils.Path as PU
 
 type ChartPort =
   { options ∷ EC.Option
-  , width ∷ Int
-  , height ∷ Int
   }
 type DownloadPort =
   { resource ∷ PU.FilePath
