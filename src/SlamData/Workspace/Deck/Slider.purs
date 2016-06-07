@@ -233,6 +233,8 @@ renderCard comp st card index =
   cardOpts =
     { deckComponent: comp
     , path: st.path
+    , cardId: card.cardId
+    , deckId: st.id
     }
 
   cardComponent =

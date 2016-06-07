@@ -26,7 +26,7 @@ import SlamData.Prelude
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
-import Control.UI.Browser (newTab, locationObject, locationString)
+import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
 import Data.Foldable as Foldable
@@ -61,10 +61,12 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Config (workspaceUrl)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
+import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Quasar.Data (save, load) as Quasar
+import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.AccessType as AT
-import SlamData.Workspace.Action as NA
+import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
@@ -79,7 +81,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
-import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
+import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..), DeckLevel(..))
 import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId(..), deckIdToString)
@@ -150,6 +152,21 @@ render st =
                 , HP.title "Flip deck"
                 ]
                 [ HH.text "" ]
+            , if st.level == Root
+                then HH.button
+                       [ ARIA.label "Zoom deck"
+                       , HP.classes [ CSS.zoomOutDeck ]
+                       , HP.title "Zoom out"
+                       , HE.onClick (HE.input_ ZoomOut)
+                       ]
+                       [ glyph B.glyphiconZoomOut ]
+                else HH.button
+                       [ ARIA.label "Zoom deck"
+                       , HP.classes [ CSS.zoomInDeck ]
+                       , HP.title "Zoom in"
+                       , HE.onClick (HE.input_ ZoomIn)
+                       ]
+                       [ glyph B.glyphiconZoomIn ]
             , HH.button
                 [ HP.classes [ CSS.grabDeck ]
                 , HE.onMouseDown (HE.input GrabDeck)
@@ -210,19 +227,13 @@ eval ∷ Natural Query DeckDSL
 eval (RunActiveCard next) = do
   traverse_ runCard =<< H.gets DCS.activeCardId
   pure next
-eval (Load dir deckId next) = do
-  H.modify (DCS._stateMode .~ Loading)
-  json ← Quasar.load $ deckIndex dir deckId
-  case Model.decode =<< json of
-    Left err → do
-      H.fromAff $ log err
-      H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
-    Right model →
-      setModel (Just dir) (Just deckId) model
-  updateIndicatorAndNextAction
+eval (Load dir deckId level next) = do
+  H.modify $ DCS._level .~ level
+  loadDeck dir deckId
   pure next
-eval (SetModel deckId model next) = do
+eval (SetModel deckId model level next) = do
   state ← H.get
+  H.modify $ DCS._level .~ level
   setModel state.path (Just deckId) model
   pure next
 eval (ExploreFile res next) = do
@@ -238,14 +249,19 @@ eval (ExploreFile res next) = do
   pure next
 eval (Publish next) = do
   H.gets DCS.deckPath >>=
-    traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly))
+    traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (WA.Load AT.ReadOnly))
   pure next
 eval (Reset dir next) = do
-  setDeckState $ DCS.initialDeck { path = dir }
+  setDeckState $ DCS.initialDeck
+    { path = dir
+    , stateMode = Ready
+    }
   updateIndicatorAndNextAction
   pure next
 eval (SetName name next) =
   H.modify (DCS._name .~ Just name) $> next
+eval (SetParent parent next) =
+  H.modify (DCS._parent .~ Just parent) $> next
 eval (SetAccessType aType next) = do
   void $ H.queryAll' cpCard $ left $ H.action $ SetCardAccessType aType
   H.modify $ DCS._accessType .~ aType
@@ -254,6 +270,7 @@ eval (SetAccessType aType next) = do
   pure next
 eval (GetPath k) = k <$> H.gets DCS.deckPath
 eval (GetId k) = k <$> H.gets _.id
+eval (GetParent k) = k <$> H.gets _.parent
 eval (Save next) = saveDeck $> next
 eval (RunPendingCards next) = do
   -- Only run pending cards if we have a deckPath. Some cards run with the
@@ -277,6 +294,22 @@ eval (FlipDeck next) = do
   pure next
 eval (GrabDeck _ next) = pure next
 eval (ResizeDeck _ next) = pure next
+eval (ZoomIn next) = do
+  st ← H.get
+  for_ (DCS.deckPath st) \path → do
+    let deckHash = mkWorkspaceHash path (WA.Load st.accessType) st.globalVarMap
+    H.fromEff $ locationObject >>= Location.setHash deckHash
+  pure next
+eval (ZoomOut next) = do
+  st ← H.get
+  for_ st.path \path →
+    case st.parent of
+      Just (Tuple deckId _) → do
+        let deckHash = mkWorkspaceHash (DCS.deckPath' path deckId) (WA.Load st.accessType) st.globalVarMap
+        H.fromEff $ locationObject >>= Location.setHash deckHash
+      Nothing →
+        void $ H.fromEff $ setHref $ parentURL $ Left path
+  pure next
 eval (StartSliding mouseEvent next) =
   Slider.startSliding mouseEvent $> next
 eval (StopSlidingAndSnap mouseEvent next) = do
@@ -339,7 +372,7 @@ peekBackSide (Back.DoAction action _) =
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish →
       H.gets DCS.deckPath >>=
-        traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (NA.Load AT.ReadOnly))
+        traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (WA.Load AT.ReadOnly))
     Back.DeleteDeck → do
       cards ← H.gets _.modelCards
       if Array.null cards
@@ -356,7 +389,7 @@ mkShareURL varMap = do
   saveDeck
   path ← H.gets DCS.deckPath
   pure $ path <#> \p →
-    loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash p (NA.Load AT.ReadOnly) varMap
+    loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash p (WA.Load AT.ReadOnly) varMap
 
 peekCards ∷ ∀ a. CardSlot → CardQueryP a → DeckDSL Unit
 peekCards (CardSlot cardId) = peekCard cardId ⨁ peekCardInner cardId
@@ -698,7 +731,7 @@ saveDeck =
 
     H.modify $ DCS._modelCards .~ cards
 
-    let json = Model.encode { name: st.name , cards }
+    let json = Model.encode { name: st.name, parent: st.parent, cards }
 
     for_ st.path \path → do
       deckId ← runExceptT do
@@ -715,10 +748,10 @@ saveDeck =
           -- runPendingCards would be deferred if there had previously been
           -- no `deckPath`. We need to flush the queue.
           when (isNothing $ DCS.deckPath st) runPendingCards
-
-          let deckHash =
-                mkWorkspaceHash path (NA.Load st.accessType) st.globalVarMap
-          H.fromEff $ locationObject >>= Location.setHash deckHash
+          when (st.level == Root) $
+            H.gets DCS.deckPath >>= traverse_ \path' → do
+              let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
+              H.fromEff $ locationObject >>= Location.setHash deckHash
 
   where
   genId ∷ DirPath → Maybe DeckId → DeckDSL (Either Exn.Error DeckId)
@@ -734,6 +767,17 @@ setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
   H.modify \oldState →
     newState { cardElementWidth = oldState.cardElementWidth }
+
+loadDeck ∷ DirPath → DeckId → DeckDSL Unit
+loadDeck dir deckId = do
+  H.modify $ DCS._stateMode .~ Loading
+  json ← Quasar.load $ deckIndex dir deckId
+  case Model.decode =<< json of
+    Left err → do
+      H.fromAff $ log err
+      H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
+    Right model →
+      setModel (Just dir) (Just deckId) model
 
 setModel ∷ Maybe DirPath → Maybe DeckId → Deck → DeckDSL Unit
 setModel dir deckId model = do
