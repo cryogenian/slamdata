@@ -142,6 +142,7 @@ renderLowLOD state =
     [ HH.button
       [ ARIA.label "Expand to see visualization options"
       , HP.title "Expand to see visualization options"
+      , HP.disabled true
       ]
       [ glyph B.glyphiconPicture
       , HH.text "Please, expand to see options"

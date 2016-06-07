@@ -34,10 +34,11 @@ import Halogen.ECharts as HECH
 import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
-import SlamData.Workspace.Card.Chart.ChartType (printChartType)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Common.EvalQuery as ECH
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
@@ -72,7 +73,7 @@ render state =
   renderHighLOD state =
     HH.div
       [ HP.classes
-          $ [ Rc.chartOutput ]
+          $ [ Rc.chartOutput, HH.className "card-input-maximum-lod" ]
           ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
       , CSS.style do
            CG.height $ px $ toNumber $ state.height - heightPadding
@@ -87,13 +88,28 @@ render state =
   renderLowLOD ∷ State → ChartHTML
   renderLowLOD state =
     HH.div
-      [ HP.classes (guard (state.levelOfDetails ≠ Low) $> B.hidden) ]
-      [ HH.text
-          $ "Low level details"
-          ⊕ (fromMaybe "unknown"
-             $ printChartType <$> state.chartType)
+      [ HP.classes
+          $ [ HH.className "card-input-minimum-lod" ]
+          ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
+      ]
+      [ HH.button
+        [ ARIA.label "Expand to see chart"
+        , HP.title "Expand to see chart"
+        , HP.disabled true
+        ]
+        $ foldMap renderButton state.chartType
       ]
 
+  renderButton ∷ ChartType → Array ChartHTML
+  renderButton ct =
+    [ HH.img [ HP.src $ src ct ]
+    , HH.text "Please, expand to see chart"
+    ]
+
+  src ∷ ChartType → String
+  src Pie = "img/pie-black.svg"
+  src Bar = "img/bar-black.svg"
+  src Line = "img/line-black.svg"
 
   heightPadding ∷ Int
   heightPadding = 80
