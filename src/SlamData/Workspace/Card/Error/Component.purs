@@ -66,11 +66,7 @@ cardEval ∷ CEQ.CardEvalQuery ~> DSL
 cardEval q =
   case q of
     CEQ.EvalCard {input} output next → do
-      H.modify ∘ Lens.set ECS._message $
-        input ^? Lens._Just ∘ Port._CardError
-      pure next
-    CEQ.SetupCard {input} next → do
-      H.modify ∘ Lens.set ECS._message $ input ^? Port._CardError
+      H.modify ∘ Lens.set ECS._message $ input ^? Lens._Just ∘ Port._CardError
       pure next
     CEQ.NotifyRunCard next →
       pure next

@@ -89,7 +89,6 @@ eval (ECH.EvalCard value output next) = do
     _ → do
       H.query unit $ H.action HECH.Clear
       pure next
-eval (ECH.SetupCard _ next) = pure next
 -- No state needs loading/saving for the chart card, as it is fully populated
 -- by its input, and will be restored by the parent `Viz` card running when
 -- the deck is restored

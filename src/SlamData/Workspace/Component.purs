@@ -92,20 +92,18 @@ render state =
     Loading →
       HH.div [ HP.classes [ workspaceClass ] ]
         []
-
-    Ready →
-      HH.div [ HP.classes [ workspaceClass ] ]
-        [ HH.slot' cpDeck unit \_ →
-           { component: Deck.comp
-           , initialState: Deck.initialState
-           }
-        ]
-
     Error err →
       HH.div [ HP.classes [ B.alert, B.alertDanger ] ]
         [ HH.h1
             [ HP.class_ B.textCenter ]
             [ HH.text err ]
+        ]
+    _ →
+      HH.div [ HP.classes [ workspaceClass ] ]
+        [ HH.slot' cpDeck unit \_ →
+           { component: Deck.comp
+           , initialState: Deck.initialState
+           }
         ]
 
   shouldHideTopMenu ∷ Boolean

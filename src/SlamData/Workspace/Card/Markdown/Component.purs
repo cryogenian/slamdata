@@ -123,7 +123,6 @@ evalCEQ (EvalCard info output next) = do
     H.modify (_ { input = Just sd })
     void $ H.query unit $ H.action (SD.SetDocument sd)
   pure next
-evalCEQ (SetupCard _ next) = pure next
 evalCEQ (Save k) = do
   input ← fromMaybe mempty <$> H.gets _.input
   state ← fromMaybe SM.empty <$> H.query unit (H.request SD.GetFormState)

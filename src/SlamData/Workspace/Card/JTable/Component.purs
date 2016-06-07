@@ -70,7 +70,6 @@ evalCard =
       for_ info.input \port →
         CEQ.runCardEvalT $ runTable port $> port
       pure next
-    CEQ.SetupCard _ next → pure next
     CEQ.Save k → pure ∘ k =<< H.gets (Model.encode ∘ JTS.toModel)
     CEQ.Load json next → do
       either (const (pure unit)) H.set $ JTS.fromModel <$> Model.decode json

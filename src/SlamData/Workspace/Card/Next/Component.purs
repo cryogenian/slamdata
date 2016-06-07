@@ -122,7 +122,6 @@ cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = pure $ k jsonEmptyObject
 cardEval (Ec.Load _ next) = pure next
-cardEval (Ec.SetupCard p next) = pure next
 cardEval (Ec.SetCanceler _ next) = pure next
 cardEval (Ec.SetDimensions _ next) = pure next
 

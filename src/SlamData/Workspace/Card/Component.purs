@@ -173,7 +173,6 @@ makeCardComponentPart def render =
 
   cardEvalPeek ∷ ∀ a. CQ.CardEvalQuery a → CardDSL Unit
   cardEvalPeek (CQ.SetCanceler canceler _) = H.modify $ CS._canceler .~ canceler
-  cardEvalPeek (CQ.SetupCard _ _) = H.modify $ CS._canceler .~ mempty
   cardEvalPeek (CQ.EvalCard _ _ _) = H.modify $ CS._canceler .~ mempty
   cardEvalPeek (CQ.NotifyStopCard _) = stopRun
   cardEvalPeek _ = pure unit

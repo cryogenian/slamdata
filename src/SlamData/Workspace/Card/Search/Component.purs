@@ -81,8 +81,6 @@ cardEval q =
   case q of
     NC.EvalCard input output next →
       pure next
-    NC.SetupCard _ next →
-      pure next
     NC.NotifyRunCard next →
       pure next
     NC.NotifyStopCard next →
