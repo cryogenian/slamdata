@@ -44,3 +44,5 @@ deploy:
 notifications:
   slack:
     secure: EbxkmDGMm5b2K5tpFrcjEmywSzhU6TSJM6VuCzIfpZ78UWqxQ6u2bbpL5a7FYjYqLZI4U/+7p+M85o0Sj58KHgfwWtpgJn84uKvIkSHo808LU/zmCBuiY4kB4z5AnTXVVFdJ2Lx+vjaeBvZA0XNztdDAViT0QM0nTAs7T94oAW8=
+  email:
+    on_failure: change
