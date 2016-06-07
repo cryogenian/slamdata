@@ -517,9 +517,9 @@ createCard cardType = do
   cid ← H.gets DCS.findLastRealCard
   case cid of
     Nothing →
-      H.modify $ DCS.addCard cardType J.jsonEmptyObject
+      H.modify $ DCS.addCard cardType (Card.innerModelOfType cardType)
     Just cardId → do
-      (st × newCardId) ← H.gets $ DCS.addCard' cardType J.jsonEmptyObject
+      (st × newCardId) ← H.gets $ DCS.addCard' cardType (Card.innerModelOfType cardType)
       setDeckState st
       runCard newCardId
   updateIndicatorAndNextAction

@@ -14,7 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Model where
+module SlamData.Workspace.Card.Model
+  ( Model
+  , encode
+  , decode
+  , modelToEval
+  , innerModelOfType
+  ) where
 
 import SlamData.Prelude
 
@@ -100,3 +106,10 @@ modelToEval { cardType, inner } =
         Just $ Eval.DownloadOptions model
       _ →
         Just Eval.Pass
+
+innerModelOfType ∷ CT.CardType → J.Json
+innerModelOfType =
+  case _ of
+    CT.Viz → Viz.encode Viz.initialModel
+    CT.Search → J.encodeJson ""
+    _ → J.jsonEmptyObject

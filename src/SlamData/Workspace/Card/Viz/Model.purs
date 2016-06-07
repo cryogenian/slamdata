@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject, JArray)
 
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
-import SlamData.Workspace.Card.Chart.ChartType (ChartType)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 type Model =
   { chartType ∷ ChartType
@@ -47,9 +47,24 @@ decode = decodeJson >=> \obj → do
   axisLabelFontSize ← obj .? "axisLabelFontSize"
   axisLabelAngle ← obj .? "axisLabelAngle"
   records ← obj .? "records"
-  pure { chartType
-       , chartConfig
-       , axisLabelFontSize
-       , axisLabelAngle
-       , records
-       }
+  pure
+    { chartType
+    , chartConfig
+    , axisLabelFontSize
+    , axisLabelAngle
+    , records
+    }
+
+initialModel ∷ Model
+initialModel =
+  { chartType: Pie
+  , chartConfig:
+     { series: []
+     , dimensions: []
+     , measures: []
+     , aggregations: []
+     }
+  , axisLabelFontSize: 12
+  , axisLabelAngle: 30
+  , records: []
+  }
