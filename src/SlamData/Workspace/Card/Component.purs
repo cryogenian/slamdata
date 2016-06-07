@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Component
   ) where
 
 import SlamData.Prelude
+import SlamData.Config as Config
 
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
@@ -46,10 +47,12 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource (EventSource(..))
 import Halogen.Query.HalogenF (HalogenFP(..))
+
+import Math as Math
+
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.CardType (cardClasses, nextCardTypes)
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
-
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.Render as CR
 import SlamData.Workspace.Card.Component.State as CS
@@ -173,7 +176,18 @@ makeCardComponentPart def render =
   eval (CQ.UpdateDimensions next) = do
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
-      void $ H.query unit $ left $ H.action (CQ.SetDimensions { width, height })
+      let
+        round n = (Math.round (n / Config.gridPx)) * Config.gridPx
+        roundedWidth = round width
+        roundedHeight = round height
+      void
+        $ H.query unit
+        $ left
+        $ H.action
+        $ CQ.SetDimensions
+            { width: roundedWidth
+            , height: roundedHeight
+            }
     pure next
 
   peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit
