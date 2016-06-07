@@ -1,0 +1,66 @@
+.sd-card-viz {
+    height: ~"calc(100% - 4rem)";
+    > div { height: 100%; }
+    div.loading-message.alert.alert-info {
+        height: 100%;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+    .card-input {
+        &-minimum-lod {
+            height: 100%;
+            button {
+                height: 100px;
+                width: 150px;
+                background: white;
+                border: 1px black solid;
+                color: black;
+                position: relative;
+                left: 50%;
+                margin-left: -75px;
+                margin-top: 10px;
+                i.glyphicon {
+                    display: block;
+                    font-size: 26pt;
+                }
+            }
+        }
+        &-maximum-lod {
+            height: 100%;
+            .viz-card-editor {
+                padding: 0;
+                height: 100%;
+                position: relative;
+
+                .viz-chart-type-selector {
+                    width: 60px;
+                    height: 100%;
+                    background-color: #f0f0f0;
+                    position: absolute;
+                    left: 0;
+                    img {
+                        width: 32px;
+                        height: 32px;
+                        padding: 6px;
+                        background-color: #aaa;
+                        cursor: pointer;
+                        margin-left: 16px;
+                        margin-top: 8px;
+                        left: 50%;
+                        &.active, &:hover {
+                            background-color: #337ab7;
+                        }
+                    }
+                }
+                .viz-chart-configuration {
+                    width: ~"calc(100% - 60px - 12px)";
+                    position: absolute;
+                    left: 60px;
+                    padding-left: 6px;
+                    padding-right: 6px;
+                    padding-top: 12px;
+                }
+            }
+        }
+    }
+}

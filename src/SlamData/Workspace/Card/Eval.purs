@@ -165,12 +165,13 @@ evalViz info model = do
       # lift
       >>= either (const $ pure []) pure
 
+
+
   pure
     { options: ChartOptions.buildOptions model model.chartConfig
-    , width: model.width
-    , height: model.height
     , records: records
     , recordsSample: recordsSample
+    , chartType: model.chartType
     }
 
 evalMarkdownForm

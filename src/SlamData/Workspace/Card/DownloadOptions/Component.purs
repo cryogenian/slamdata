@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.DownloadOptions.Component where
 import SlamData.Prelude
 
 import Data.Lens as Lens
-import Data.Lens ((.~), (^?), preview, _Left, _Right, (%~))
+import Data.Lens ((.~), (^?), _Left, _Right, (%~))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE

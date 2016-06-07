@@ -36,7 +36,7 @@ import SlamData.Render.Common as RC
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as NC
-import SlamData.Workspace.Card.Eval as Eval
+--import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Search.Component.Query (Query, SearchQuery(..))
 import SlamData.Workspace.Card.Search.Component.State (State, _running, _searchString, initialState)
 

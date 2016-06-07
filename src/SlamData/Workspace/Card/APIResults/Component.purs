@@ -36,7 +36,7 @@ import SlamData.Workspace.Card.CardType as Ct
 
 type APIResultsDSL = H.ComponentDSL State QueryP Slam
 
-apiResultsComponent :: H.Component NC.CardStateP NC.CardQueryP Slam
+apiResultsComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
 apiResultsComponent =
   NC.makeCardComponent
     { cardType: Ct.APIResults
@@ -46,7 +46,7 @@ apiResultsComponent =
     , _Query: NC.makeQueryPrism NC._APIResultsQuery
     }
 
-render :: State -> H.ComponentHTML QueryP
+render ∷ State → H.ComponentHTML QueryP
 render { varMap } =
   HH.table
     [ HP.classes
@@ -65,7 +65,7 @@ render { varMap } =
     ]
 
   where
-    renderItem :: String -> Port.VarMapValue -> Array (H.ComponentHTML QueryP)
+    renderItem ∷ String → Port.VarMapValue → Array (H.ComponentHTML QueryP)
     renderItem name val =
       [ HH.tr_
           [ HH.td_ [ HH.text name ]
@@ -76,7 +76,8 @@ render { varMap } =
 eval :: Natural QueryP APIResultsDSL
 eval = coproduct evalCard (absurd ∘ getConst)
 
-evalCard :: Natural NC.CardEvalQuery APIResultsDSL
+
+evalCard ∷ Natural NC.CardEvalQuery APIResultsDSL
 evalCard q =
   case q of
     NC.EvalCard info output next → do

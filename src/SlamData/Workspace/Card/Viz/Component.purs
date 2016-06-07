@@ -23,6 +23,7 @@ import Data.Array (length, null, cons, index)
 import Data.Int as Int
 import Data.Lens as Lens
 import Data.Lens ((.~), (^?))
+import Data.List as L
 import Data.Map as M
 import Data.Set as Set
 
@@ -54,8 +55,9 @@ import SlamData.Workspace.Card.Viz.Component.State as VCS
 import SlamData.Workspace.Card.Viz.Form.Component (formComponent)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model as Model
-import SlamData.Render.Common (row)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Render.CSS as Rc
+import SlamData.Render.Common (row, glyph)
 
 type VizHTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
 type VizDSL = H.ParentDSL VCS.State Form.StateP QueryC Form.QueryP Slam ChartType
@@ -73,7 +75,7 @@ type VizDSL = H.ParentDSL VCS.State Form.StateP QueryC Form.QueryP Slam ChartTyp
 -- | + Form's state (ChartConfiguration) is record with `dimensions`,
 -- |   `aggregations`, `series` and `measures` fields.
 -- |   These fields are arrays of `Select JCursor`  where `Select α`
--- |   is model of html combobox with maybe selected α and list of α choices.
+-- |   Is model of html combobox with maybe selected α and list of α choices.
 -- | + Form can render any kind of `ChartConfiguration` and has weird logic
 -- |   for doing this :)
 -- |
@@ -110,11 +112,38 @@ vizComponent = makeCardComponent
 
 render ∷ VCS.State → VizHTML
 render state =
+  HH.div_
+    [ renderHighLOD state
+    , renderLowLOD state
+    ]
+
+renderHighLOD ∷ VCS.State → VizHTML
+renderHighLOD state =
+    HH.div
+      [ HP.classes
+          $ [ Rc.cardInput, HH.className "card-input-maximum-lod" ]
+          ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+      ]
+      [ renderLoading $ not state.loading
+      , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
+      , renderForm state
+      ]
+
+renderLowLOD ∷ VCS.State → VizHTML
+renderLowLOD state =
   HH.div
-    [ HP.classes [ Rc.cardInput ] ]
-    [ renderLoading $ not state.loading
-    , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
-    , renderForm state
+    [ HP.classes
+        $ [ HH.className "card-input-minimum-lod" ]
+        ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
+    ]
+    [ HH.button
+      [ ARIA.label "Expand to see visualization options"
+      , HP.title "Expand to see visualization options"
+      , HP.disabled true
+      ]
+      [ glyph B.glyphiconPicture
+      , HH.text "Please, expand to see options"
+      ]
     ]
 
 renderLoading ∷ Boolean → VizHTML
@@ -207,11 +236,7 @@ renderChartConfiguration state =
 renderDimensions ∷ VCS.State → VizHTML
 renderDimensions state =
   row
-  [ chartInput Rc.chartSizeParam "Height"
-      (_.height ⋙ showIfNeqZero) SetHeight false
-  , chartInput Rc.chartSizeParam "Width"
-      (_.width ⋙ showIfNeqZero) SetWidth false
-  , chartInput Rc.axisLabelParam "Axis label angle"
+  [ chartInput Rc.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel (isPie state.chartType)
   , chartInput Rc.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize (isPie state.chartType)
@@ -226,7 +251,7 @@ renderDimensions state =
   chartInput cls labelText valueFromState queryCtor isHidden =
     HH.form
       [ HP.classes
-          $ [ B.colXs3, cls ]
+          $ [ B.colXs6, cls ]
           ⊕ (guard isHidden $> B.hide)
       , Cp.nonSubmit
       ]
@@ -257,10 +282,6 @@ vizEval ∷ Query ~> VizDSL
 vizEval q = do
   H.modify $ VCS._needToUpdate .~ false
   case q of
-    SetHeight h next →
-      H.modify (VCS._height .~ h) *> configure $> next
-    SetWidth w next →
-      H.modify (VCS._width .~ w) *> configure $> next
     SetChartType ct next →
       H.modify (VCS._chartType .~ ct) *> configure $> next
     SetAvailableChartTypes ts next →
@@ -291,9 +312,7 @@ cardEval (Save k) = do
   st ← H.get
   config ← H.query st.chartType $ left $ H.request Form.GetConfiguration
   pure $ k $ Model.encode
-    { width: st.width
-    , height: st.height
-    , chartType: st.chartType
+    { chartType: st.chartType
     , chartConfig: fromMaybe Form.initialState config
     , axisLabelFontSize: st.axisLabelFontSize
     , axisLabelAngle: st.axisLabelAngle
@@ -307,7 +326,13 @@ cardEval (Load json next) =
       $ left
       $ H.action $ Form.SetConfiguration model.chartConfig
 cardEval (SetCanceler _ next) = pure next
-cardEval (SetDimensions _ next) = pure next
+cardEval (SetDimensions dims next) = do
+  H.modify
+    $ VCS._levelOfDetails
+    .~ if dims.width < 576.0 ∨ dims.height < 416.0
+         then Low
+         else High
+  pure next
 
 type AxisAccum =
   { category ∷ Array JCursor
@@ -324,7 +349,11 @@ configure = void do
   setConfFor Line $ lineConfiguration axises lineConf
   barConf ← getOrInitial Bar
   setConfFor Bar $ pieBarConfiguration axises barConf
+  let chartTypes = available axises
   H.modify (VCS._availableChartTypes .~ available axises)
+  case Set.toList chartTypes of
+    L.Cons ct L.Nil → H.modify (VCS._chartType .~ ct)
+    _ → pure unit
   where
   getOrInitial ∷ ChartType → VizDSL ChartConfiguration
   getOrInitial ty =
