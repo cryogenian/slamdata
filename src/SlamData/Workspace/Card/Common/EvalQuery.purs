@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Common.EvalQuery
   ( CardEvalQuery(..)
-  , CardSetupInfo
   , liftWithCanceler
   , liftWithCanceler'
   , liftWithCancelerP
@@ -34,11 +33,8 @@ import Halogen (ParentDSL, ComponentDSL)
 import Halogen.Component.Utils as Hu
 
 import SlamData.Effects (Slam, SlamDataEffects)
-import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Eval.CardEvalT (CardEvalInput, CardEvalResult, CardEvalT, runCardEvalT, temporaryOutputResource)
 import SlamData.Workspace.Card.Port as Port
-
-import Utils.Path (DirPath)
 
 -- | The query algebra shared by the inner parts of a card component.
 -- |
@@ -47,28 +43,16 @@ import Utils.Path (DirPath)
 -- |   continuation for the evaluation result to be returned to.
 -- |         TODO: update these notes -js
 -- |
--- | - `SetupCard` is will be called when the card is being added as a linked
--- |   card from another, passing through the current input port value so the
--- |   current card can set its state based on that. Used to pull a VarMap
--- |   through for autocomplete purposes, or for the search card to be able to
--- |   auto-select the parent card's result set as the resource, etc.
 -- | - `NotifyRunCard` allows the card to notify the deck that it should be
 -- |   run - the card cannot run itself directly.
 data CardEvalQuery a
   = EvalCard CardEvalInput (Maybe Port.Port) a -- (CardEvalResult → a)
-  | SetupCard CardSetupInfo a
   | NotifyRunCard a
   | NotifyStopCard a
   | SetCanceler (Canceler SlamDataEffects) a
   | Save (Json → a)
   | Load Json a
   | SetDimensions { width ∷ Number, height ∷ Number } a
-
-type CardSetupInfo =
-  { path ∷ Maybe DirPath
-  , input ∷ Port.Port
-  , cardId ∷ CID.CardId
-  }
 
 liftWithCancelerP
   ∷ ∀ a state slot innerQuery innerState

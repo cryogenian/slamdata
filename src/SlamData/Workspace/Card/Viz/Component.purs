@@ -285,7 +285,6 @@ cardEval (EvalCard info output next) = do
   -- data takes place exterinallyin the model eval machinery.
   H.modify $ VCS._loading .~ false
   pure next
-cardEval (SetupCard _ next) = pure next
 cardEval (NotifyRunCard next) = pure next
 cardEval (NotifyStopCard next) = pure next
 cardEval (Save k) = do

@@ -481,21 +481,8 @@ createCard cardType = do
       H.modify $ DCS.addCard cardType J.jsonEmptyObject
     Just cardId → do
       (st × newCardId) ← H.gets $ DCS.addCard' cardType J.jsonEmptyObject
-
       setDeckState st
-      input ← map join $ H.query' cpCard (CardSlot cardId) $ left (H.request GetOutput)
-      for_ input \input' → do
-        path ← H.gets DCS.deckPath
-        let setupInfo = { path, input: input', cardId: newCardId }
-        void
-          $ H.query' cpCard  (CardSlot newCardId)
-          $ right
-          $ H.ChildF unit
-          $ left
-          $ H.action (CEQ.SetupCard setupInfo)
-
       runCard newCardId
-
   updateIndicatorAndNextAction
   triggerSave
 

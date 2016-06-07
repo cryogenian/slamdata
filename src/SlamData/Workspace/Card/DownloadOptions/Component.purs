@@ -129,9 +129,6 @@ cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = map (k ∘ encode) H.get
 cardEval (Ec.Load json next) = for_ (decode json) H.set $> next
-cardEval (Ec.SetupCard {input} next) = do
-  H.modify $ _source .~ preview P._Resource input
-  pure next
 cardEval (Ec.SetCanceler _ next) = pure next
 cardEval (Ec.SetDimensions _ next) = pure next
 

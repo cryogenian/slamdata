@@ -100,9 +100,10 @@ cardEval (Eq.Save k) = do
 cardEval (Eq.Load js next) = do
   for_ (decodeJson js) \s → H.modify (_pathString .~ s)
   pure next
-cardEval (Eq.SetupCard p next) = do
-  H.modify (_pathString .~ (Pt.printPath $ Eq.temporaryOutputResource p))
-  pure next
+-- TODO: move something equivalent to this into EvalCard -gb
+-- cardEval (Eq.SetupCard p next) = do
+--   H.modify (_pathString .~ (Pt.printPath $ Eq.temporaryOutputResource p))
+--   pure next
 cardEval (Eq.SetCanceler _ next) = pure next
 cardEval (Eq.SetDimensions _ next) = pure next
 

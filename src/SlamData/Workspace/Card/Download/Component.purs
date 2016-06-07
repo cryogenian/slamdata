@@ -81,13 +81,6 @@ cardEval (Ec.NotifyRunCard next) = pure next
 cardEval (Ec.NotifyStopCard next) = pure next
 cardEval (Ec.Save k) = pure $ k jsonEmptyObject
 cardEval (Ec.Load json next) = pure next
-cardEval (Ec.SetupCard { input } next) = do
-  case input of
-    P.DownloadOptions opts → do
-      handleDownloadPort opts
-      pure unit
-    _ → pure unit
-  pure next
 cardEval (Ec.SetCanceler _ next) = pure next
 cardEval (Ec.SetDimensions _ next) = pure next
 

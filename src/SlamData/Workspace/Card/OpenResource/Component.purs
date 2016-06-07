@@ -147,7 +147,6 @@ cardEval (Eq.Load js next) = do
       R.File fp → resourceSelected res
       _ → pure unit
   pure next
-cardEval (Eq.SetupCard info next) = pure next
 cardEval (Eq.SetCanceler _ next) = pure next
 cardEval (Eq.SetDimensions _ next) = pure next
 cardEval (Eq.NotifyStopCard next) = pure next

@@ -126,7 +126,6 @@ render opts state =
 
 evalCard ∷ Natural Ceq.CardEvalQuery DraftboardDSL
 evalCard (Ceq.EvalCard input output next) = pure next
-evalCard (Ceq.SetupCard info next) = pure next
 evalCard (Ceq.NotifyRunCard next) = pure next
 evalCard (Ceq.NotifyStopCard next) = pure next
 evalCard (Ceq.SetCanceler canceler next) = pure next

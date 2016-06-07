@@ -19,7 +19,6 @@ module SlamData.Workspace.Card.Ace.Component
   , AceDSL
   , AceHTML
   , AceEval
-  , AceSetup
   , module SlamData.Workspace.Card.Ace.Component.Query
   , module SlamData.Workspace.Card.Ace.Component.State
   ) where
@@ -41,7 +40,7 @@ import SlamData.Workspace.Card.Ace.Component.Query (QueryP)
 import SlamData.Workspace.Card.Ace.Component.State (StateP)
 import SlamData.Workspace.Card.Ace.Model as Model
 import SlamData.Workspace.Card.CardType (CardType(Ace), AceMode, aceMode)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInput, CardSetupInfo)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInput)
 import SlamData.Workspace.Card.Component (CardStateP, CardQueryP, makeCardComponent, makeQueryPrism, _AceState, _AceQuery)
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
@@ -50,12 +49,10 @@ import Utils.Ace (getRangeRecs, readOnly)
 
 type AceDSL = H.ParentDSL Unit AceState CardEvalQuery AceQuery Slam Unit
 type AceHTML = H.ParentHTML AceState CardEvalQuery AceQuery Slam Unit
-type AceSetup = CardSetupInfo -> AceDSL Unit
 type AceEval = CardEvalInput -> AceDSL Unit
 
 type AceConfig =
   { mode :: AceMode
-  , setup :: AceSetup
   , eval :: AceEval
   }
 
@@ -92,7 +89,6 @@ aceComponent cfg = makeCardComponent
     --content <- fromMaybe "" <$> H.query unit (H.request GetText)
     --result <- evaluator info content
     --pure $ k result
-  eval (SetupCard input next) = cfg.setup input $> next
   eval (Save k) = do
     content <- fromMaybe "" <$> H.query unit (H.request GetText)
     mbEditor <- H.query unit (H.request GetEditor)
