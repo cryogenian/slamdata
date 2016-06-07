@@ -64,7 +64,7 @@ openResourceComponent inner =
         , initializer: Just (H.action (right ∘ Init mres))
         , finalizer: Nothing
         }
-    , initialState: initialState
+    , initialState: initialState { selected = Lens.preview Lens._Right ∘ R.getPath =<< mres  }
     , _State: NC._OpenResourceState
     , _Query: NC.makeQueryPrism NC._OpenResourceQuery
     }
