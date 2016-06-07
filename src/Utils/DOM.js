@@ -40,12 +40,22 @@ exports.offsetLeft = function(el) {
     };
 };
 
-exports.getTextWidth = function(text, font) {
-    return function() {
+var getTextWidth_ = function(text) {
+    return function(font) {
         var canvas = document.createElement("canvas");
         var context = canvas.getContext("2d");
         context.font = font;
         return context.measureText(text).width;
+    };
+};
+
+exports.getTextWidthPure = getTextWidth_;
+
+exports.getTextWidth = function(text) {
+    return function(font) {
+        return function() {
+            return getTextWidth_(text)(font);
+        };
     };
 };
 

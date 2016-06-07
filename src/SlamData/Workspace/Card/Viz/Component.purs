@@ -24,6 +24,7 @@ import Data.Argonaut (JCursor)
 import Data.Array (length, null, cons, index)
 import Data.Int as Int
 import Data.Lens ((.~), view, preview)
+import Data.List as L
 import Data.Map as M
 import Data.Path.Pathy (printPath)
 import Data.Set as Set
@@ -55,13 +56,14 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalT, r
 import SlamData.Workspace.Card.Component (CardStateP, CardQueryP, makeCardComponent, makeQueryPrism', _VizState, _VizQuery)
 import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.Card.Viz.Component.Query (QueryC, Query(..))
-import SlamData.Workspace.Card.Viz.Component.State (State, _needToUpdate, _availableChartTypes, _sample, fromModel, _records, _loading, _axisLabelFontSize, _axisLabelAngle, _chartType, _width, _height, initialState)
+import SlamData.Workspace.Card.Viz.Component.State (State, _needToUpdate, _availableChartTypes, _sample, fromModel, _records, _loading, _axisLabelFontSize, _axisLabelAngle, _chartType, initialState, _levelOfDetails)
 import SlamData.Workspace.Card.Viz.Form.Component (formComponent)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model as Model
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Quasar.Query as Api
-import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
+import SlamData.Render.Common (row, glyph)
 
 type VizHTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
 type VizDSL = H.ParentDSL State Form.StateP QueryC Form.QueryP Slam ChartType
@@ -113,11 +115,38 @@ vizComponent = makeCardComponent
 
 render ∷ State → VizHTML
 render state =
+  HH.div_
+    [ renderHighLOD state
+    , renderLowLOD state
+    ]
+
+renderHighLOD ∷ State → VizHTML
+renderHighLOD state =
+    HH.div
+      [ HP.classes
+          $ [ Rc.cardInput, HH.className "card-input-maximum-lod" ]
+          ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+      ]
+      [ renderLoading $ not state.loading
+      , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
+      , renderForm state
+      ]
+
+renderLowLOD ∷ State → VizHTML
+renderLowLOD state =
   HH.div
-    [ HP.classes [ Rc.cardInput ] ]
-    [ renderLoading $ not state.loading
-    , renderEmpty $ state.loading || (not $ Set.isEmpty state.availableChartTypes)
-    , renderForm state
+    [ HP.classes
+        $ [ HH.className "card-input-minimum-lod" ]
+        ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
+    ]
+    [ HH.button
+      [ ARIA.label "Expand to see visualization options"
+      , HP.title "Expand to see visualization options"
+      , HP.disabled true
+      ]
+      [ glyph B.glyphiconPicture
+      , HH.text "Please, expand to see options"
+      ]
     ]
 
 renderLoading ∷ Boolean → VizHTML
@@ -210,11 +239,7 @@ renderChartConfiguration state =
 renderDimensions ∷ State → VizHTML
 renderDimensions state =
   row
-  [ chartInput Rc.chartSizeParam "Height"
-      (_.height ⋙ showIfNeqZero) SetHeight false
-  , chartInput Rc.chartSizeParam "Width"
-      (_.width ⋙ showIfNeqZero) SetWidth false
-  , chartInput Rc.axisLabelParam "Axis label angle"
+  [ chartInput Rc.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel (isPie state.chartType)
   , chartInput Rc.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize (isPie state.chartType)
@@ -229,7 +254,7 @@ renderDimensions state =
   chartInput cls labelText valueFromState queryCtor isHidden =
     HH.form
       [ HP.classes
-          $ [ B.colXs3, cls ]
+          $ [ B.colXs6, cls ]
           ⊕ (guard isHidden $> B.hide)
       , Cp.nonSubmit
       ]
@@ -260,10 +285,6 @@ vizEval ∷ Query ~> VizDSL
 vizEval q = do
   H.modify $ _needToUpdate .~ false
   case q of
-    SetHeight h next →
-      H.modify (_height .~ h) *> configure $> next
-    SetWidth w next →
-      H.modify (_width .~ w) *> configure $> next
     SetChartType ct next →
       H.modify (_chartType .~ ct) *> configure $> next
     SetAvailableChartTypes ts next →
@@ -301,7 +322,7 @@ cardEval (EvalCard info continue) =
                   pure
           when (length records > 10000)
             $ throwError
-            $  "Maximum record count available for visualization -- 10000, "
+            $ "Maximum record count available for visualization -- 10000, "
             ⊕ "please consider using 'limit' or 'group by' in your H.request"
           lift $ H.modify $ _records .~ records
         lift $ H.modify $ _needToUpdate .~ true
@@ -319,9 +340,7 @@ cardEval (Save k) = do
   st ← H.get
   config ← H.query st.chartType $ left $ H.request Form.GetConfiguration
   pure $ k $ Model.encode
-    { width: st.width
-    , height: st.height
-    , chartType: st.chartType
+    { chartType: st.chartType
     , chartConfig: fromMaybe Form.initialState config
     , axisLabelFontSize: st.axisLabelFontSize
     , axisLabelAngle: st.axisLabelAngle
@@ -334,7 +353,13 @@ cardEval (Load json next) =
       $ left
       $ H.action $ Form.SetConfiguration model.chartConfig
 cardEval (SetCanceler _ next) = pure next
-cardEval (SetDimensions _ next) = pure next
+cardEval (SetDimensions dims next) = do
+  H.modify
+    $ _levelOfDetails
+    .~ if dims.width < 576.0 ∨ dims.height < 416.0
+         then Low
+         else High
+  pure next
 
 responsePort ∷ CardEvalT VizDSL P.Port
 responsePort = do
@@ -344,8 +369,7 @@ responsePort = do
   pure
     $ P.ChartOptions
     { options: buildOptions state conf
-    , width: state.width
-    , height: state.height
+    , chartType: state.chartType
     }
 
 updateForms ∷ FilePath → VizDSL Unit
@@ -376,7 +400,12 @@ configure = void do
   setConfFor Line $ lineConfiguration axises lineConf
   barConf ← getOrInitial Bar
   setConfFor Bar $ pieBarConfiguration axises barConf
-  H.modify (_availableChartTypes .~ available axises)
+  let chartTypes = available axises
+  H.modify (_availableChartTypes .~ chartTypes)
+
+  case Set.toList chartTypes of
+    L.Cons ct L.Nil → H.modify (_chartType .~ ct)
+    _ → pure unit
   where
   getOrInitial ∷ ChartType → VizDSL ChartConfiguration
   getOrInitial ty =

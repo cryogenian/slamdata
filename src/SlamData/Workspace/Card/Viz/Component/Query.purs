@@ -26,9 +26,7 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 
 data Query a
-  = SetHeight Int a
-  | SetWidth Int a
-  | SetAvailableChartTypes (Set ChartType) a
+  = SetAvailableChartTypes (Set ChartType) a
   | SetChartType ChartType a
   | RotateAxisLabel Int a
   | SetAxisFontSize Int a

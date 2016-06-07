@@ -21,24 +21,30 @@ import SlamData.Prelude
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (jsonEmptyObject)
-import Data.Int (toNumber)
+import Data.Int (toNumber, floor)
+import Data.Lens ((.~), (?~))
 
-import CSS.Display (position, relative)
 import CSS.Geometry as CG
-import CSS.Size (px, pct)
+import CSS.Size (px)
+
+import ECharts as EC
 
 import Halogen as H
 import Halogen.ECharts as HECH
 import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Workspace.Card.Chart.Component.State (State, initialState)
+import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Common.EvalQuery as ECH
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Port (Port(..))
 import SlamData.Workspace.Card.CardType as Ct
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as Rc
 
@@ -56,20 +62,57 @@ chartComponent = CC.makeCardComponent
 
 render ∷ State → ChartHTML
 render state =
-  HH.div
-    [ HP.classes [ Rc.chartOutput ]
-    , CSS.style do
-        CG.height $ px $ toNumber state.height
-        CG.width $ px $ toNumber state.width
-        position relative
-        CG.left $ pct 50.0
-        CG.marginLeft $ px $ -0.5 * (toNumber state.width)
+  HH.div_
+    [ renderHighLOD state
+    , renderLowLOD state
     ]
-    [ HH.slot unit \_ →
-        { component: HECH.echarts
-        , initialState: HECH.initialEChartsState 600 400
-        }
+
+
+  where
+  renderHighLOD ∷ State → ChartHTML
+  renderHighLOD state =
+    HH.div
+      [ HP.classes
+          $ [ Rc.chartOutput, HH.className "card-input-maximum-lod" ]
+          ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
+      , CSS.style do
+           CG.height $ px $ toNumber $ state.height - heightPadding
+           CG.width $ px $ toNumber state.width
+      ]
+      [ HH.slot unit \_ →
+         { component: HECH.echarts
+         , initialState: HECH.initialEChartsState 600 400
+         }
+      ]
+
+  renderLowLOD ∷ State → ChartHTML
+  renderLowLOD state =
+    HH.div
+      [ HP.classes
+          $ [ HH.className "card-input-minimum-lod" ]
+          ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
+      ]
+      [ HH.button
+        [ ARIA.label "Expand to see chart"
+        , HP.title "Expand to see chart"
+        , HP.disabled true
+        ]
+        $ foldMap renderButton state.chartType
+      ]
+
+  renderButton ∷ ChartType → Array ChartHTML
+  renderButton ct =
+    [ HH.img [ HP.src $ src ct ]
+    , HH.text "Please, expand to see chart"
     ]
+
+  src ∷ ChartType → String
+  src Pie = "img/pie-black.svg"
+  src Bar = "img/bar-black.svg"
+  src Line = "img/line-black.svg"
+
+  heightPadding ∷ Int
+  heightPadding = 80
 
 eval ∷ ECH.CardEvalQuery ~> ChartDSL
 eval (ECH.NotifyRunCard next) = pure next
@@ -79,17 +122,10 @@ eval (ECH.EvalCard value continue) =
     case value.inputPort of
       Just (ChartOptions options) → do
         lift do
-          state ← H.get
-          H.set { width: options.width, height: options.height }
-
-          when (state.width ≠ options.width)
-            $ void $ H.query unit $ H.action $ HECH.SetWidth options.width
-
-          when (state.height ≠ options.height)
-            $ void $ H.query unit $ H.action $ HECH.SetHeight options.height
-
           H.query unit $ H.action $ HECH.Set options.options
           H.query unit $ H.action HECH.Resize
+          setLevelOfDetails options.options
+          H.modify (_chartType ?~ options.chartType)
         pure $ Just Blocked
       Just Blocked → do
         lift $ H.query unit $ H.action HECH.Clear
@@ -103,4 +139,42 @@ eval (ECH.SetupCard _ next) = pure next
 eval (ECH.Save k) = pure (k jsonEmptyObject)
 eval (ECH.Load _ next) = pure next
 eval (ECH.SetCanceler _ next) = pure next
-eval (ECH.SetDimensions _ next) = pure next
+eval (ECH.SetDimensions dims next) = do
+  state ← H.get
+  let
+    intWidth = floor dims.width
+    intHeight = floor dims.height
+  when (state.width ≠ intWidth) do
+    H.query unit $ H.action $ HECH.SetWidth $ intWidth
+    H.modify _{ width = intWidth }
+  when (state.height ≠ intHeight) do
+    H.query unit $ H.action $ HECH.SetHeight $ intHeight - heightPadding
+    H.modify _{ height = intHeight }
+  mbOpts ← H.query unit $ H.request HECH.GetOptions
+  for_ (join mbOpts) \opts → do
+    setLevelOfDetails opts
+  pure next
+  where
+  heightPadding ∷ Int
+  heightPadding = 60
+
+
+setLevelOfDetails ∷ EC.Option → ChartDSL Unit
+setLevelOfDetails (EC.Option r) = do
+  state ← H.get
+  let
+    runGrid (EC.Grid r) = r
+    runPercentOrPixel total (EC.Percent pct) = total * pct / 100.0
+    runPercentOrPixel _ (EC.Pixel pxs) = pxs
+    yOffset =
+      floor
+        $ fromMaybe zero
+        $ r.grid
+        >>= runGrid
+        ⋙ _.y2
+        <#> runPercentOrPixel (toNumber state.width)
+  H.modify
+    $ _levelOfDetails
+    .~ if (state.height - yOffset) < 200 ∨ state.width < 300
+         then Low
+         else High

@@ -43,7 +43,7 @@ import SlamData.Workspace.FormBuilder.Item.Component as Item
 type APIHTML = H.ParentHTML (FB.StateP Slam) NC.CardEvalQuery FB.QueryP Slam Unit
 type APIDSL = H.ParentDSL State (FB.StateP Slam) NC.CardEvalQuery FB.QueryP Slam Unit
 
-apiComponent :: H.Component NC.CardStateP NC.CardQueryP Slam
+apiComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
 apiComponent =
   NC.makeCardComponent
     { cardType: CT.API
@@ -54,70 +54,70 @@ apiComponent =
     }
 
 render
-  :: State
-  -> APIHTML
+  ∷ State
+  → APIHTML
 render _ =
-  HH.slot unit \_ ->
+  HH.slot unit \_ →
    { component : FB.formBuilderComponent
    , initialState : H.parentState FB.initialState
    }
 
 compileVarMap
-  :: L.List Item.Model
-  -> Port.VarMap
-  -> Port.VarMap
+  ∷ L.List Item.Model
+  → Port.VarMap
+  → Port.VarMap
 compileVarMap fields globalVarMap =
   foldl alg SM.empty fields
   where
     alg =
-      flip \{ name, fieldType, defaultValue } ->
+      flip \{ name, fieldType, defaultValue } →
         maybe id (SM.insert name) $
           SM.lookup name globalVarMap
             <|> (Item.defaultValueToVarMapValue fieldType =<< defaultValue)
 
-eval :: Natural NC.CardEvalQuery APIDSL
+eval ∷ Natural NC.CardEvalQuery APIDSL
 eval q =
   case q of
-    NC.EvalCard info k ->
+    NC.EvalCard info k →
       k <$> runCardEvalT do
-        fields <-
-          H.query unit (H.request (FB.GetItems >>> left))
+        fields ←
+          H.query unit (H.request (FB.GetItems ⋙ left))
             # lift
             >>= maybe (EC.throwError "Error querying FormBuilder") pure
         pure ∘ Just $ Port.VarMap $ compileVarMap fields info.globalVarMap
-    NC.SetupCard _ next ->
+    NC.SetupCard _ next →
       pure next
-    NC.NotifyRunCard next ->
+    NC.NotifyRunCard next →
       pure next
-    NC.NotifyStopCard next ->
+    NC.NotifyStopCard next →
       pure next
-    NC.Save k ->
-      H.query unit (H.request (FB.GetItems >>> left)) <#>
+    NC.Save k →
+      H.query unit (H.request (FB.GetItems ⋙ left)) <#>
         maybe [] L.fromList
-          >>> { items : _ }
-          >>> Model.encode
-          >>> k
-    NC.Load json next -> do
-      for_ (Model.decode json) \{items} ->
-        H.query unit $ H.action (FB.SetItems (L.toList items) >>> left)
+          ⋙ { items : _ }
+          ⋙ Model.encode
+          ⋙ k
+    NC.Load json next → do
+      for_ (Model.decode json) \{items} →
+        H.query unit $ H.action (FB.SetItems (L.toList items) ⋙ left)
       pure next
-    NC.SetCanceler _ next -> pure next
-    NC.SetDimensions _ next -> pure next
+    NC.SetCanceler _ next → pure next
+    NC.SetDimensions _ next → pure next
 
 queryShouldRun
-  :: forall a
+  ∷ forall a
    . QueryP a
-  -> Boolean
+  → Boolean
 queryShouldRun =
   coproduct
     (const false)
-    (H.runChildF >>>
+    (H.runChildF ⋙
        coproduct
          (const false)
-         (H.runChildF >>> pred))
+         (H.runChildF ⋙ pred))
 
   where
     pred q =
       case q of
-        Item.Update _ -> true
-        _ -> false
+        Item.Update _ → true
+        _ → false

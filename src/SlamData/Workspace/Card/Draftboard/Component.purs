@@ -130,7 +130,7 @@ evalCard (Ceq.SetupCard info next) = pure next
 evalCard (Ceq.NotifyRunCard next) = pure next
 evalCard (Ceq.NotifyStopCard next) = pure next
 evalCard (Ceq.SetCanceler canceler next) = pure next
-evalCard (Ceq.SetDimensions dims next) = pure next
+evalCard (Ceq.SetDimensions _ next) = pure next
 evalCard (Ceq.Save k) = map (k ∘ encode) H.get
 evalCard (Ceq.Load json next) = do
   for_ (decode json) \model → do

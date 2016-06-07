@@ -128,6 +128,7 @@ render vstate =
       HH.div
         ([ HP.class_ CSS.board
          , HP.key "board"
+         , HE.onMouseUp (HE.input_ UpdateCardSize)
          ] ⊕ Slider.containerProperties vstate)
         [ HH.div
             [ HP.class_ CSS.deck
@@ -170,6 +171,7 @@ render vstate =
             , HH.button
                 [ HP.classes [ CSS.resizeDeck ]
                 , HE.onMouseDown (HE.input ResizeDeck)
+
                 , ARIA.label "Resize deck"
                 , HP.title "Resize deck"
                 ]
@@ -298,6 +300,9 @@ eval (FlipDeck next) = do
         _ → DCS.Normal
   pure next
 eval (GrabDeck _ next) = pure next
+eval (UpdateCardSize next) = do
+  H.queryAll' cpCard $ left $ H.action UpdateDimensions
+  pure next
 eval (ResizeDeck _ next) = pure next
 eval (ZoomIn next) = do
   st ← H.get
@@ -367,6 +372,7 @@ peekBackSide (Back.DoAction action _) =
         updateNextActionCard
         updateIndicator
         H.modify $ DCS._displayMode .~ DCS.Normal
+      void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Share → do
       url ← mkShareURL SM.empty
       for_ url $ showDialog ∘ Dialog.Share

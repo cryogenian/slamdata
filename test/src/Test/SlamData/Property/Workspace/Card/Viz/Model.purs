@@ -39,13 +39,11 @@ runArbModel (ArbModel m) = m
 
 instance arbitraryArbModel :: Arbitrary ArbModel where
   arbitrary = do
-    width <- arbitrary
-    height <- arbitrary
     chartType <- runArbChartType <$> arbitrary
     chartConfig <- runArbChartConfiguration <$> arbitrary
     axisLabelFontSize <- arbitrary
     axisLabelAngle <- arbitrary
-    pure $ ArbModel { width, height, chartType, chartConfig, axisLabelFontSize, axisLabelAngle }
+    pure $ ArbModel { chartType, chartConfig, axisLabelFontSize, axisLabelAngle }
 
 check :: QC Unit
 check = quickCheck $ runArbModel >>> \model ->
@@ -53,9 +51,7 @@ check = quickCheck $ runArbModel >>> \model ->
     Left err -> Failed $ "Decode failed: " ++ err
     Right model' ->
       fold
-       [ model.width == model'.width <?> "width mismatch"
-       , model.height == model'.height <?> "height mismatch"
-       , model.chartType == model'.chartType <?> "chartType mismatch"
+       [ model.chartType == model'.chartType <?> "chartType mismatch"
        , checkChartConfigEquality model.chartConfig model'.chartConfig
        , model.axisLabelFontSize == model'.axisLabelFontSize <?> "axisLabelFontSize mismatch"
        , model.axisLabelAngle == model'.axisLabelAngle <?> "axisLabelAngle mismatch"

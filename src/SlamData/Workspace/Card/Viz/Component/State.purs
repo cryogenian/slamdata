@@ -17,8 +17,6 @@ limitations under the License.
 module SlamData.Workspace.Card.Viz.Component.State
   ( State
   , initialState
-  , _width
-  , _height
   , _chartType
   , _availableChartTypes
   , _loading
@@ -27,6 +25,7 @@ module SlamData.Workspace.Card.Viz.Component.State
   , _needToUpdate
   , _axisLabelAngle
   , _axisLabelFontSize
+  , _levelOfDetails
   , StateP
   , fromModel
   ) where
@@ -47,25 +46,24 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.Viz.Component.Query (Query)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model (Model)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+
 
 type State =
-  { width :: Int
-  , height :: Int
-  , chartType :: ChartType
-  , availableChartTypes :: Set.Set ChartType
-  , sample :: M.Map JCursor Axis
-  , loading :: Boolean
-  , records :: JArray
-  , needToUpdate :: Boolean
-  , axisLabelFontSize :: Int
-  , axisLabelAngle :: Int
+  { chartType ∷ ChartType
+  , availableChartTypes ∷ Set.Set ChartType
+  , sample ∷ M.Map JCursor Axis
+  , loading ∷ Boolean
+  , records ∷ JArray
+  , needToUpdate ∷ Boolean
+  , axisLabelFontSize ∷ Int
+  , axisLabelAngle ∷ Int
+  , levelOfDetails ∷ LevelOfDetails
   }
 
-initialState :: State
+initialState ∷ State
 initialState =
-  { width: 600
-  , height: 400
-  , chartType: Pie
+  { chartType: Pie
   , availableChartTypes: Set.empty
   , loading: true
   , sample: M.empty
@@ -73,37 +71,36 @@ initialState =
   , needToUpdate: true
   , axisLabelFontSize: 12
   , axisLabelAngle: 30
+  , levelOfDetails: High
   }
 
-_width :: forall a r. LensP {width :: a |r} a
-_width = lens _.width _{width = _}
-
-_height :: forall a r. LensP {height :: a |r} a
-_height = lens _.height _{height = _}
-
-_chartType :: forall a r. LensP {chartType :: a |r} a
+_chartType ∷ forall a r. LensP {chartType ∷ a |r} a
 _chartType = lens _.chartType _{chartType = _}
 
-_availableChartTypes :: forall a r. LensP {availableChartTypes :: a |r} a
+_availableChartTypes ∷ forall a r. LensP {availableChartTypes ∷ a |r} a
 _availableChartTypes = lens _.availableChartTypes _{availableChartTypes = _}
 
-_loading :: forall a r. LensP {loading :: a | r} a
+_loading ∷ forall a r. LensP {loading ∷ a | r} a
 _loading = lens _.loading _{loading = _}
 
-_sample :: forall a r. LensP {sample :: a | r} a
+_sample ∷ forall a r. LensP {sample ∷ a | r} a
 _sample = lens _.sample _{sample = _}
 
-_records :: forall a r. LensP {records :: a | r} a
+_records ∷ forall a r. LensP {records ∷ a | r} a
 _records = lens _.records _{records = _}
 
-_needToUpdate :: forall a r. LensP {needToUpdate :: a | r} a
+_needToUpdate ∷ forall a r. LensP {needToUpdate ∷ a | r} a
 _needToUpdate = lens _.needToUpdate _{needToUpdate = _}
 
-_axisLabelFontSize :: forall a r. LensP {axisLabelFontSize :: a | r} a
+_axisLabelFontSize ∷ forall a r. LensP {axisLabelFontSize ∷ a | r} a
 _axisLabelFontSize = lens _.axisLabelFontSize _{axisLabelFontSize = _}
 
-_axisLabelAngle :: forall a r. LensP {axisLabelAngle :: a | r} a
+_axisLabelAngle ∷ forall a r. LensP {axisLabelAngle ∷ a | r} a
 _axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
+
+_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
+
 
 type StateP =
   ParentState
@@ -113,12 +110,10 @@ type StateP =
     Form.QueryP
     Slam ChartType
 
-fromModel :: Model -> State
+fromModel ∷ Model → State
 fromModel m =
   initialState
-    { width = m.width
-    , height = m.height
-    , chartType = m.chartType
+    { chartType = m.chartType
     , axisLabelFontSize = m.axisLabelFontSize
     , axisLabelAngle = m.axisLabelAngle
     }

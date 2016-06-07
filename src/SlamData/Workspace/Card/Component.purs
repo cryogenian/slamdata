@@ -33,6 +33,7 @@ import Control.Monad.Eff.Exception as Exn
 import Data.Array as Arr
 import Data.Argonaut (jsonNull)
 import Data.Date as Date
+import Data.Time (Milliseconds(..))
 import Data.Function (on)
 import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
 import Data.Visibility (Visibility(..), toggleVisibility)
@@ -40,6 +41,7 @@ import Data.Visibility (Visibility(..), toggleVisibility)
 import DOM.Timer (interval, clearInterval)
 
 import Halogen as H
+import Halogen.Component.Utils (sendAfter')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource (EventSource(..))
@@ -162,6 +164,7 @@ makeCardComponentPart def render =
       }
   eval (CQ.LoadCard model next) = do
     H.query unit (left (H.action (CQ.Load model.state)))
+    sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions unit)
     pure next
   eval (CQ.SetCardAccessType at next) =
     H.modify (CS._accessType .~ at) $> next
@@ -170,7 +173,7 @@ makeCardComponentPart def render =
   eval (CQ.UpdateDimensions next) = do
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
-      H.queryAll $ left $ H.action (CQ.SetDimensions { width, height })
+      void $ H.query unit $ left $ H.action (CQ.SetDimensions { width, height })
     pure next
 
   peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit
