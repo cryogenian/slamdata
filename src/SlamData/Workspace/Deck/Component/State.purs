@@ -21,6 +21,7 @@ module SlamData.Workspace.Deck.Component.State
   , CardDef
   , initialDeck
   , _id
+  , _parent
   , _accessType
   , _cards
   , _activeCardIndex
@@ -38,6 +39,7 @@ module SlamData.Workspace.Deck.Component.State
   , _sliderTransition
   , _sliderTranslateX
   , _cardElementWidth
+  , _level
   , addCard
   , addCard'
   , removeCard
@@ -50,6 +52,7 @@ module SlamData.Workspace.Deck.Component.State
   , cardsOfType
   , fromModel
   , deckPath
+  , deckPath'
   , cardIndexFromId
   , cardIdFromIndex
   , VirtualState
@@ -85,7 +88,7 @@ import SlamData.Workspace.Card.CardType (CardType(..))
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port.VarMap as Port
 
-import SlamData.Workspace.Deck.Component.Query (Query)
+import SlamData.Workspace.Deck.Component.Query (Query, DeckLevel(..))
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.StateMode (StateMode(..))
@@ -122,6 +125,7 @@ derive instance eqDisplayMode ∷ Eq DisplayMode
 -- | the fields.
 type State =
   { id ∷ Maybe DeckId
+  , parent ∷ Maybe (Tuple DeckId CardId)
   , fresh ∷ Int
   , accessType ∷ AccessType
   , cards ∷ Array CardDef
@@ -140,6 +144,7 @@ type State =
   , sliderTransition ∷ Boolean
   , sliderTranslateX ∷ Number
   , cardElementWidth ∷ Maybe Number
+  , level ∷ DeckLevel
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -149,6 +154,7 @@ type CardDef = { id ∷ CardId, ty ∷ CardType }
 initialDeck ∷ State
 initialDeck =
   { id: Nothing
+  , parent: Nothing
   , fresh: 0
   , accessType: Editable
   , cards: mempty
@@ -160,19 +166,25 @@ initialDeck =
   , runTrigger: Nothing
   , pendingCard: Nothing
   , failingCards: S.empty
-  , stateMode: Ready
+  , stateMode: Loading
   , displayMode: Normal
   , initialSliderX: Nothing
   , initialSliderCardWidth: Nothing
   , sliderTransition: false
   , sliderTranslateX: 0.0
   , cardElementWidth: Nothing
+  , level: Root
   }
 
 -- | The unique identifier of the deck. If it's a fresh, unsaved deck, the id
 -- | will be Nothing.
 _id ∷ ∀ a r. LensP {id ∷ a|r} a
 _id = lens _.id _{id = _}
+
+-- | A pointer to the parent deck/card. If `Nothing`, the deck is assumed to be
+-- | the root deck.
+_parent ∷ ∀ a r. LensP {parent ∷ a|r} a
+_parent = lens _.parent _{parent = _}
 
 -- | A counter used to generate `CardId` values. This should be a monotonically increasing value
 _fresh ∷ ∀ a r. LensP {fresh ∷ a|r} a
@@ -252,6 +264,10 @@ _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 -- | The width of card
 _cardElementWidth ∷ ∀ a r. LensP {cardElementWidth ∷ a|r} a
 _cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
+
+-- | Whether the deck is at the top-level of the deck component hierarchy
+_level ∷ ∀ a r. LensP {level ∷ a|r} a
+_level = lens _.level _{level = _}
 
 addCard ∷ CardType → State → State
 addCard cardType st = fst $ addCard' cardType st
@@ -409,10 +425,10 @@ removePendingCard cardId st@{ pendingCard } =
 
 -- | Finds the current deck path
 deckPath ∷ State → Maybe DirPath
-deckPath state = do
-  path ← state.path
-  deckId ← deckIdToString <$> state.id
-  pure $ path </> P.dir deckId
+deckPath state = deckPath' <$> state.path <*> state.id
+
+deckPath' ∷ DirPath → DeckId → DirPath
+deckPath' path deckId = path </> P.dir (deckIdToString deckId)
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
@@ -421,7 +437,7 @@ fromModel
   → Model.Deck
   → State
   → Tuple (Array Card.Model) State
-fromModel path deckId { cards, name } state =
+fromModel path deckId { cards, name, parent } state =
   Tuple
     cards
     ((state
@@ -433,6 +449,7 @@ fromModel path deckId { cards, name } state =
         , fresh = maybe 0 (_ + 1) $ maximum $ map (runCardId ∘ _.cardId) cards
         , globalVarMap = SM.empty
         , id = deckId
+        , parent = parent
         , initialSliderX = Nothing
         , name = name
         , path = path

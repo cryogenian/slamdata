@@ -17,6 +17,7 @@ limitations under the License.
 module SlamData.Workspace.Deck.Component.Query
   ( Query(..)
   , DeckAction(..)
+  , DeckLevel(..)
   , QueryP
   ) where
 
@@ -28,6 +29,7 @@ import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
@@ -39,12 +41,14 @@ data Query a
   | RunPendingCards a
   | GetId (Maybe DeckId → a)
   | GetPath (Maybe UP.DirPath → a)
+  | GetParent (Maybe (Tuple DeckId CardId) → a)
+  | SetParent (Tuple DeckId CardId) a
   | SetName String a
   | SetAccessType AT.AccessType a
   | ExploreFile UP.FilePath a
   | Publish a
-  | Load UP.DirPath DeckId a
-  | SetModel DeckId Deck a
+  | Load UP.DirPath DeckId DeckLevel a
+  | SetModel DeckId Deck DeckLevel a
   | Save a
   | Reset (Maybe UP.DirPath) a
   | GetGlobalVarMap (Port.VarMap → a)
@@ -53,6 +57,8 @@ data Query a
   | GrabDeck (Event MouseEvent) a
   | ResizeDeck (Event MouseEvent) a
   | UpdateCardSize a
+  | ZoomIn a
+  | ZoomOut a
   | StartSliding (Event MouseEvent) a
   | StopSlidingAndSnap (Event MouseEvent) a
   | UpdateSliderPosition (Event MouseEvent) a
@@ -64,5 +70,9 @@ data DeckAction
   = Mirror
   | Wrap
   | DeleteDeck
+
+data DeckLevel = Root | Nested
+
+derive instance eqDeckLevel ∷ Eq DeckLevel
 
 type QueryP = OpaqueQuery Query
