@@ -39,7 +39,7 @@ import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery as Eq
 import SlamData.Workspace.Card.Component as Cc
-import SlamData.Workspace.Card.Eval as Eval
+--import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Save.Component.Query (Query(..), QueryP)
 import SlamData.Workspace.Card.Save.Component.State (State, initialState, _pathString)
 

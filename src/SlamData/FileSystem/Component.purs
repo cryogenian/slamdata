@@ -284,12 +284,11 @@ itemPeek (Item.Open res _) = do
   for_ (preview R._dirPath res) \dp →
     H.fromEff $ setLocation $ browseURL Nothing sort salt dp
   for_ (preview R._Workspace res) \wp →
-    H.fromEff $ setLocation $ append loc $ mkWorkspaceURL wp (Load Editable)
+    H.fromEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
 
 
 itemPeek (Item.Configure (R.Mount mount) _) = configure mount
 itemPeek (Item.Move res _) = do
-  Debug.Trace.traceAnyA "Moving"
   showDialog $ Dialog.Rename res
   flip getDirectories rootDir \x →
     void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)

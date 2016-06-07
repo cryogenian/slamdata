@@ -23,6 +23,7 @@ module SlamData.Workspace.Card.Component
   ) where
 
 import SlamData.Prelude
+import SlamData.Config as Config
 
 import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
@@ -32,6 +33,7 @@ import Control.Monad.Eff.Exception as Exn
 import Data.Array as Arr
 import Data.Argonaut as JSON
 import Data.Date as Date
+import Data.Time (Milliseconds(..))
 import Data.Function (on)
 import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
 import Data.Visibility (Visibility(..), toggleVisibility)
@@ -39,13 +41,16 @@ import Data.Visibility (Visibility(..), toggleVisibility)
 import DOM.Timer (interval, clearInterval)
 
 import Halogen as H
+import Halogen.Component.Utils (sendAfter')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource (EventSource(..))
+
+import Math as Math
+
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.CardType (cardClasses, nextCardTypes)
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
-
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.Render as CR
 import SlamData.Workspace.Card.Component.State as CS
@@ -157,6 +162,7 @@ makeCardComponentPart def render =
     pure $ k { cardId, cardType, hasRun, inner: fromMaybe JSON.jsonNull json }
   eval (CQ.LoadCard model next) = do
     H.query unit (left (H.action (CQ.Load model.inner)))
+    sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions unit)
     pure next
   eval (CQ.SetCardAccessType at next) =
     H.modify (CS._accessType .~ at) $> next
@@ -165,7 +171,18 @@ makeCardComponentPart def render =
   eval (CQ.UpdateDimensions next) = do
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
-      H.queryAll $ left $ H.action (CQ.SetDimensions { width, height })
+      let
+        round n = (Math.round (n / Config.gridPx)) * Config.gridPx
+        roundedWidth = round width
+        roundedHeight = round height
+      void
+        $ H.query unit
+        $ left
+        $ H.action
+        $ CQ.SetDimensions
+            { width: roundedWidth
+            , height: roundedHeight
+            }
     pure next
 
   peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit

@@ -56,6 +56,7 @@ data Query a
   | FlipDeck a
   | GrabDeck (Event MouseEvent) a
   | ResizeDeck (Event MouseEvent) a
+  | UpdateCardSize a
   | ZoomIn a
   | ZoomOut a
   | StartSliding (Event MouseEvent) a

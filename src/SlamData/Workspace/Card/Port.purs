@@ -36,14 +36,14 @@ import Data.Argonaut as J
 import Data.Lens (PrismP, prism', TraversalP, wander)
 import ECharts.Options as EC
 import SlamData.Workspace.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
 type ChartPort =
   { options ∷ EC.Option
-  , width ∷ Int
-  , height ∷ Int
+  , chartType ∷ ChartType
   , records ∷ J.JArray
   , recordsSample ∷ J.JArray -- not sure what to call this -js
   }

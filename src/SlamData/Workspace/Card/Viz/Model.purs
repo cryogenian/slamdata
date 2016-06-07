@@ -24,36 +24,32 @@ import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.ChartType (ChartType)
 
 type Model =
-  { width :: Int
-  , height :: Int
-  , chartType :: ChartType
-  , chartConfig :: CC.ChartConfiguration
-  , axisLabelFontSize :: Int
-  , axisLabelAngle :: Int
-  , records :: JArray
+  { chartType ∷ ChartType
+  , chartConfig ∷ CC.ChartConfiguration
+  , axisLabelFontSize ∷ Int
+  , axisLabelAngle ∷ Int
+  , records ∷ JArray
   }
 
-encode :: Model -> Json
+encode ∷ Model → Json
 encode m
-   = "width" := m.width
-  ~> "height" := m.height
-  ~> "chartType" := m.chartType
+   = "chartType" := m.chartType
   ~> "chartConfig" := CC.encode m.chartConfig
   ~> "axisLabelFontSize" := m.axisLabelFontSize
   ~> "axisLabelAngle" := m.axisLabelAngle
   ~> "records" := m.records
   ~> jsonEmptyObject
 
-decode
-  ∷ Json
-  → Either String Model
-decode =
-  decodeJson >=> \obj -> do
-    width ← obj .? "width"
-    height ← obj .? "height"
-    chartType ← obj .? "chartType"
-    chartConfig ← CC.decode =<< obj .? "chartConfig"
-    axisLabelFontSize ← obj .? "axisLabelFontSize"
-    axisLabelAngle ← obj .? "axisLabelAngle"
-    records ← obj .? "records"
-    pure { width, height, chartType, chartConfig, axisLabelFontSize, axisLabelAngle, records }
+decode ∷ Json → Either String Model
+decode = decodeJson >=> \obj → do
+  chartType ← obj .? "chartType"
+  chartConfig ← CC.decode =<< obj .? "chartConfig"
+  axisLabelFontSize ← obj .? "axisLabelFontSize"
+  axisLabelAngle ← obj .? "axisLabelAngle"
+  records ← obj .? "records"
+  pure { chartType
+       , chartConfig
+       , axisLabelFontSize
+       , axisLabelAngle
+       , records
+       }
