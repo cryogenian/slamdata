@@ -30,6 +30,7 @@ import Data.Argonaut as J
 import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Ace.Model as Ace
 import SlamData.Workspace.Card.API.Model as API
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Viz.Model as Viz
@@ -110,6 +111,10 @@ modelToEval { cardType, inner } =
 innerModelOfType ∷ CT.CardType → J.Json
 innerModelOfType =
   case _ of
-    CT.Viz → Viz.encode Viz.initialModel
+    CT.Ace _ → Ace.encode Ace.emptyModel
+    CT.Markdown → MD.encode MD.emptyModel
     CT.Search → J.encodeJson ""
+    CT.Save → J.encodeJson ""
+    CT.Viz → Viz.encode Viz.initialModel
+    CT.DownloadOptions → DO.encode DO.initialState
     _ → J.jsonEmptyObject

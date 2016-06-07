@@ -15,6 +15,7 @@ module SlamData.Workspace.Card.Markdown.Model
   ( Model
   , encode
   , decode
+  , emptyModel
   ) where
 
 import SlamData.Prelude
@@ -23,6 +24,7 @@ import Data.Identity (runIdentity)
 import Data.Functor.Compose (Compose(..))
 import Data.Argonaut (Json, jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
 import Data.HugeNum as HN
+import Data.StrMap as SM
 import Data.Traversable as T
 import SlamData.Workspace.Card.Port.VarMap as VM
 
@@ -33,6 +35,12 @@ import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 type Model =
   { input ∷ SD.SlamDownP VM.VarMapValue
   , state ∷ SDS.SlamDownFormState VM.VarMapValue
+  }
+
+emptyModel ∷ Model
+emptyModel =
+  { input: SD.SlamDown mempty
+  , state: SM.empty
   }
 
 -- | For getting parse error messages that are suitable for diagnostics.
