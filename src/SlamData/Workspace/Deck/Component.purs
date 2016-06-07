@@ -669,9 +669,10 @@ displayCardUpdates st m =
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
-  { modelCards, path, globalVarMap, stateMode } ← H.get
+  { modelCards, path, globalVarMap, stateMode, pendingCard } ← H.get
+
   mresult ←
-    H.gets _.pendingCard >>= traverse \pendingCardId → do
+    for pendingCard \pendingCardId → do
       evalRunCardsMachine { pendingCardId, path, globalVarMap }
         ∘ initialRunCardsState
         $ L.toList modelCards
@@ -682,7 +683,7 @@ runPendingCards = do
     traverse_ (updateCard path globalVarMap) $ displayCardUpdates state result
 
   when (stateMode == Preparing) do
-    lastIndex <- H.gets DCS.findLastRealCardIndex
+    lastIndex ← H.gets DCS.findLastRealCardIndex
     H.modify
       $ (DCS._stateMode .~ Ready)
       ∘ (DCS._activeCardIndex .~ lastIndex)
