@@ -17,8 +17,7 @@ module Test.SlamData.Feature.Test.File where
 
 import SlamData.Prelude
 
-import Selenium.Monad (later)
-import Test.Feature.Log (successMsg, warnMsg, errorMsg)
+import Test.Feature.Log (successMsg, errorMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
@@ -118,23 +117,6 @@ test = do
     Expect.tableColumnsAre ["city", "loc", "pop", "state"]
     successMsg "Successfully accessed sharing URL for a file"
     Interact.launchSlamData
-
---  fileScenario afterAccessSharingUrl "Access sharing URL for a deck" [] do
---    Interact.createWorkspaceInTestFolder "Quarterly report"
---    Interact.insertMdCardInLastDeck
---    Interact.provideMdInLastMdCard "Quarterly"
---    Interact.accessNextCardInLastDeck
---    Interact.insertFormCardInLastDeck
---    Expect.textInFormCard "Quarterly"
---    Expect.lastCardToBeFinished
---    warnMsg "SD-1538, we don't know if workspace has been saved already"
---    later 1000 $ pure unit
---    Interact.browseRootFolder
---    Interact.browseTestFolder
---    Interact.shareFile "Untitled Workspace.slam"
---    Interact.accessSharingUrl
---    Expect.textInFormCard "Quarterly"
---    successMsg "Successfully accessed sharing URL for a workspace"
 
   fileScenario defaultAfterFile "Download file as CSV" [] do
     Interact.browseTestFolder
