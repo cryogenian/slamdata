@@ -49,7 +49,7 @@ wrappedDeck rect deckId = emptyDeck
   { cards = pure
     { cardId: CardId 0
     , cardType: CT.Draftboard
-    , state: DBS.encode $ DBS.initialState { decks = Map.singleton deckId rect }
+    , inner: DBS.encode $ DBS.initialState { decks = Map.singleton deckId rect }
     , hasRun: false
     }
   }
