@@ -357,26 +357,24 @@ fromModel
   → Maybe DeckId
   → Model.Deck
   → State
-  → Tuple (Array Card.Model) State
+  → State
 fromModel path deckId { cards, name, parent } state =
-  Tuple
-    cards
-    ((state
-        { accessType = Editable -- why was it ReadOnly?
-        , activeCardIndex = Nothing
-        , displayMode = Normal
-        , modelCards = cards
-        , displayCards = mempty
-        , fresh = fresh
-        , globalVarMap = SM.empty
-        , id = deckId
-        , parent = parent
-        , initialSliderX = Nothing
-        , name = name
-        , path = path
-        , runTrigger = Nothing
-        , pendingCard = Nothing
-        }) ∷ State)
+  state
+    { accessType = Editable -- why was it ReadOnly?
+    , activeCardIndex = Nothing
+    , displayMode = Normal
+    , modelCards = cards
+    , displayCards = mempty
+    , fresh = fresh
+    , globalVarMap = SM.empty
+    , id = deckId
+    , parent = parent
+    , initialSliderX = Nothing
+    , name = name
+    , path = path
+    , runTrigger = Nothing
+    , pendingCard = Nothing
+    }
 
   where
     fresh ∷ Int

@@ -792,15 +792,13 @@ loadDeck dir deckId = do
 
 setModel ∷ Maybe DirPath → Maybe DeckId → Deck → DeckDSL Unit
 setModel dir deckId model = do
-  state ← H.get
-  case DCS.fromModel dir deckId model state of
-    Tuple cards st → do
-      setDeckState st
-      if Array.null st.modelCards
-        then H.modify $ DCS._stateMode .~ Ready
-        else do
-          H.modify
-            $ (DCS._cardsToLoad .~ Set.fromFoldable (_.cardId <$> cards))
-            ∘ (DCS._stateMode .~ Preparing)
-          traverse_ runCard $ _.cardId <$> Array.head st.modelCards
+  st ← DCS.fromModel dir deckId model <$> H.get
+  setDeckState st
+  if Array.null st.modelCards
+    then H.modify $ DCS._stateMode .~ Ready
+    else do
+      H.modify
+        $ (DCS._cardsToLoad .~ Set.fromFoldable (_.cardId <$> st.modelCards))
+        ∘ (DCS._stateMode .~ Preparing)
+      traverse_ runCard $ _.cardId <$> Array.head st.modelCards
   updateIndicatorAndNextAction
