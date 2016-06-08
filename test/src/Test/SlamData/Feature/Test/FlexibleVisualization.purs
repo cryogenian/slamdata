@@ -19,7 +19,7 @@ module Test.SlamData.Feature.Test.FlexibleVisualation where
 import Prelude
 
 import Data.String as Str
-import Test.Feature.Log (successMsg)
+import Test.Feature.Log (successMsg, errorMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
@@ -123,6 +123,7 @@ test =
     Interact.accessWorkspaceWithModifiedURL (Str.replace "NE" "CO")
     Expect.lastEChartOptions chartOptions_CO_gender
     successMsg "Successfully created flexible patient chart"
+    errorMsg "This scenario succeeded, but is known to fail non-deterministically (https://slamdata.atlassian.net/browse/SD-1688)"
 
 chartOptions_CO ∷ String
 chartOptions_CO =
