@@ -165,10 +165,12 @@ evalViz info model = do
       # lift
       >>= either (const $ pure []) pure
 
-
+  let
+    model' = model { records = records }
+    options = ChartOptions.buildOptions model' model'.chartConfig
 
   pure
-    { options: ChartOptions.buildOptions model model.chartConfig
+    { options: options
     , records: records
     , recordsSample: recordsSample
     , chartType: model.chartType
