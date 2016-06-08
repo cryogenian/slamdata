@@ -160,6 +160,10 @@ updatePort = case _ of
            , Ct.Save
            ])
       ∘ (_message .~ Nothing)
+  P.Draftboard → 
+    H.modify
+      $ (_types .~ [ ])
+      ∘ (_message .~ Nothing)
 
 nextEval :: Query ~> NextDSL
 nextEval (AddCard _ next) = pure next

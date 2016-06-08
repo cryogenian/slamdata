@@ -101,13 +101,7 @@ evalCard input =
     Pass, Just port →
       pure port
     Draftboard, _ →
-      -- TODO: I have no idea if this is the right thing to do.
-      -- But we need to have some kind of eval constructor for the
-      -- Draftboard, since it cannot be Pass (which does not work for
-      -- cards that can appear first). I am using this VarMap port
-      -- purely as a dummy until either Gary or Nathan introduces a Better
-      -- idea. -js
-      pure $ Port.VarMap SM.empty
+      pure Port.Draftboard
     Query sql, Just (Port.VarMap varMap) →
       Port.TaggedResource <$> evalQuery input sql varMap
     Query sql, _ →

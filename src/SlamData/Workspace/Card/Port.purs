@@ -25,6 +25,7 @@ module SlamData.Workspace.Card.Port
   , _ChartOptions
   , _DownloadOptions
   , _ResourceTag
+  , _Draftboard
   , _CardError
   , _Blocked
   , module SlamData.Workspace.Card.Port.VarMap
@@ -66,6 +67,7 @@ data Port
   | ChartOptions ChartPort
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
+  | Draftboard
   | Blocked
 
 instance showPort ∷ Show Port where
@@ -77,6 +79,7 @@ instance showPort ∷ Show Port where
       ChartOptions p → "ChartPort"
       TaggedResource p → "TaggedResource (" <> show p.resource <> " " <> show p.tag <> ")"
       DownloadOptions p → "DownloadOptions"
+      Draftboard → "Draftboard"
       Blocked → "Blocked"
 
 _SlamDown ∷ PrismP Port (SD.SlamDownP VarMapValue)
@@ -118,4 +121,9 @@ _Blocked = prism' (const Blocked) \p → case p of
 _DownloadOptions ∷ PrismP Port DownloadPort
 _DownloadOptions = prism' DownloadOptions \p → case p of
   DownloadOptions p' → Just p'
+  _ → Nothing
+
+_Draftboard ∷ PrismP Port Unit
+_Draftboard = prism' (const Draftboard) \p → case p of
+  Draftboard → Just unit
   _ → Nothing
