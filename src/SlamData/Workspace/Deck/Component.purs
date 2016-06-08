@@ -110,30 +110,9 @@ comp =
 render ∷ DCS.State → DeckHTML
 render st =
   case st.stateMode of
-    Loading →
-      HH.div
-        [ HP.class_ CSS.board
-        , HP.key "board"
-        ]
-        -- We need to render the cards but have them invisible during loading
-        -- otherwise the various nested components won't initialise correctly.
-        -- This div is required, along with the key, so that structurally it
-        -- is in the same place in both `Loading` and `Ready` states.
-        [ HH.div
-            [ HP.class_ CSS.deck
-            , HP.key "deck-container" ]
-            [ Slider.render comp st $ st.displayMode ≡ DCS.Normal ]
-        , HH.div
-            [ HP.class_ CSS.loading ]
-            []
-        ]
-    Error err →
-      HH.div
-        [ HP.classes [ B.alert, B.alertDanger ] ]
-        [ HH.h1
-            [ HP.class_ B.textCenter ]
-            [ HH.text err ]
-        ]
+    Loading → renderLoading unit
+    Preparing → renderLoading unit
+    Error err → renderError err
     _ →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div
@@ -193,6 +172,32 @@ render st =
         ]
 
   where
+
+  renderLoading _ =
+    HH.div
+      [ HP.class_ CSS.board
+      , HP.key "board"
+      ]
+      -- We need to render the cards but have them invisible during loading
+      -- otherwise the various nested components won't initialise correctly.
+      -- This div is required, along with the key, so that structurally it
+      -- is in the same place in both `Loading` and `Ready` states.
+      [ HH.div
+          [ HP.class_ CSS.deck
+          , HP.key "deck-container" ]
+          [ Slider.render comp st $ st.displayMode ≡ DCS.Normal ]
+      , HH.div
+          [ HP.class_ CSS.loading ]
+          []
+      ]
+
+  renderError err =
+    HH.div
+      [ HP.classes [ B.alert, B.alertDanger ] ]
+      [ HH.h1
+          [ HP.class_ B.textCenter ]
+          [ HH.text err ]
+      ]
 
   renderDialog visible =
     HH.div
@@ -791,7 +796,11 @@ setModel dir deckId model = do
   case DCS.fromModel dir deckId model state of
     Tuple cards st → do
       setDeckState st
-      H.modify $ DCS._cardsToLoad .~ Set.fromFoldable (_.cardId <$> cards)
-      traverse_ runCard $ _.cardId <$> Array.head st.modelCards
-      H.modify $ DCS._stateMode .~ Preparing
+      if Array.null st.modelCards
+        then H.modify $ DCS._stateMode .~ Ready
+        else do
+          H.modify
+            $ (DCS._cardsToLoad .~ Set.fromFoldable (_.cardId <$> cards))
+            ∘ (DCS._stateMode .~ Preparing)
+          traverse_ runCard $ _.cardId <$> Array.head st.modelCards
   updateIndicatorAndNextAction
