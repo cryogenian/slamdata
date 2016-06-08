@@ -29,7 +29,6 @@ import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
-import Data.Foldable as Foldable
 import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens as Lens
 import Data.Lens.Prism.Coproduct (_Right)
