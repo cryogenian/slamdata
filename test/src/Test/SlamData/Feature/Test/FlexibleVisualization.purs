@@ -63,7 +63,7 @@ expectedNebraskaChartImages =
 
 test ∷ SlamFeature Unit
 test =
-  apiVizScenario "Make embeddable patients-city charts" [] do
+  apiVizScenario "Make embeddable patients-city charts" ["https://slamdata.atlassian.net/browse/SD-1688"] do
     tryRepeatedlyTo $ script """
       var run = function() {
         var __init = echarts.init;
