@@ -22,6 +22,8 @@ import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Lens (LensP, lens)
 import Data.Path.Pathy as Pathy
 import SlamData.Download.Model as D
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+
 
 import Utils.Path as PU
 
@@ -29,6 +31,7 @@ type State =
   { compress ∷ Boolean
   , options ∷ Either D.CSVOptions D.JSONOptions
   , source ∷ Maybe PU.FilePath
+  , levelOfDetails ∷ LevelOfDetails
   }
 
 initialState ∷ State
@@ -36,6 +39,7 @@ initialState =
   { compress: false
   , options: Left D.initialCSVOptions
   , source: Nothing
+  , levelOfDetails: High
   }
 
 _compress ∷ ∀ a r. LensP {compress ∷ a|r} a
@@ -47,6 +51,8 @@ _options = lens (_.options) (_{options = _})
 _source ∷ ∀ a r. LensP {source ∷ a|r} a
 _source = lens (_.source) (_{source = _})
 
+_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
 encode :: State -> Json
 encode s
@@ -60,7 +66,8 @@ decode = decodeJson >=> \obj → do
   compress ← obj .? "compress"
   options ← obj .? "options"
   source ← traverse parsePath =<< obj .? "source"
-  pure { compress, options, source }
+  let levelOfDetails = High
+  pure { compress, options, source, levelOfDetails }
 
 parsePath ∷ String → Either String PU.FilePath
 parsePath =
