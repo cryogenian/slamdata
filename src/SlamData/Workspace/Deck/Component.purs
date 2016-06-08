@@ -793,8 +793,6 @@ setModel dir deckId model = do
     Tuple cards st → do
       setDeckState st
       H.modify $ DCS._cardsToLoad .~ Set.fromFoldable (_.cardId <$> cards)
-      let hasRun = Foldable.or $ _.hasRun <$> cards
-      -- TODO: Can someone explain why we want to run the cards when one has run already? Or is that not what this means? -js
-      when hasRun $ traverse_ runCard $ _.cardId <$> Array.head st.modelCards
+      traverse_ runCard $ _.cardId <$> Array.head st.modelCards
       H.modify $ DCS._stateMode .~ Preparing
   updateIndicatorAndNextAction
