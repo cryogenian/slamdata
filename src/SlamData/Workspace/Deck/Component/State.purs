@@ -274,33 +274,24 @@ addCard' cardType inner st =
       }
   in newState × cardId
 
-removeCard ∷ CardId → State → State
+removeCard ∷ CardId → State → Tuple (Array Card.Model) State
 removeCard cardId st =
-  removePendingCard cardId $
-    st
+  Tuple oldModelCards
+    $ removePendingCard cardId
+    $ st
       { modelCards = newModelCards
       , displayCards = newDisplayCards
       , activeCardIndex = Just $ max zero $ A.length newDisplayCards - 1
       }
   where
-  -- TODO: clean this up
   newDisplayCards ∷ Array Card.Model
   newDisplayCards = A.filter (\c → c.cardId < cardId) st.displayCards
 
   newModelCards ∷ Array Card.Model
   newModelCards = A.filter (\c → c.cardId < cardId) st.modelCards
 
-  oldModelCards ∷ Array CardId
-  oldModelCards =
-    A.mapMaybe
-      (\c → if c.cardId >= cardId then Just c.cardId else Nothing)
-      st.modelCards
-
-  oldDisplayCards ∷ Array CardId
-  oldDisplayCards =
-    A.mapMaybe
-      (\c → if c.cardId >= cardId then Just c.cardId else Nothing) -- TODO: weird thing will happen with error card currently
-      st.displayCards
+  oldModelCards ∷ Array Card.Model
+  oldModelCards = A.filter (\c → c.cardId >= cardId) st.modelCards
 
 findLastRealCardIndex ∷ State → Maybe Int
 findLastRealCardIndex =

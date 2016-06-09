@@ -24,6 +24,7 @@ module SlamData.Workspace.Deck.Component
 import SlamData.Prelude
 
 import Control.Monad.Aff.Console (log)
+import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
@@ -73,6 +74,7 @@ import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
+import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.JTable.Component as JTable
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port (Port(..))
@@ -81,9 +83,9 @@ import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..), DeckLevel(..))
-import SlamData.Workspace.Deck.Model (Deck)
+import SlamData.Workspace.Deck.Model (Deck, deckIndex)
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckId (DeckId(..), deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId(..))
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
@@ -94,7 +96,7 @@ import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils.DOM (getBoundingClientRect)
-import Utils.Path (DirPath, FilePath)
+import Utils.Path (DirPath)
 
 initialState ∷ DCS.StateP
 initialState = opaqueState DCS.initialDeck
@@ -367,7 +369,11 @@ peekBackSide (Back.DoAction action _) =
       state ← H.get
       lastId ← H.gets DCS.findLastRealCard
       for_ (DCS.activeCardId state <|> lastId) \trashId → do
-        H.modify $ DCS.removeCard trashId
+        let rem = DCS.removeCard trashId state
+        for_ state.path \path →
+          for_ (DBC.childDeckIds (fst rem)) $
+            H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph path)
+        H.set $ snd rem
         triggerSave
         updateIndicatorAndNextAction
         H.modify $ DCS._displayMode .~ DCS.Normal
@@ -764,10 +770,6 @@ saveDeck = do
   genId path deckId = case deckId of
     Just id' → pure $ Right id'
     Nothing → map DeckId <$> WS.freshId (path </> Pathy.file "index")
-
-deckIndex ∷ DirPath → DeckId → FilePath
-deckIndex path deckId =
-  path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
 
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =

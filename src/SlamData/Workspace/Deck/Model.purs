@@ -21,10 +21,14 @@ import SlamData.Prelude
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as Pathy
 
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
+
+import Utils.Path (DirPath, FilePath)
 
 type Deck =
   { name ∷ Maybe String
@@ -58,3 +62,7 @@ decode = decodeJson >=> \obj → do
   } <$> obj .? "name"
     <*> obj .? "parent"
     <*> (traverse Card.decode =<< obj .? "cards")
+
+deckIndex ∷ DirPath → DeckId → FilePath
+deckIndex path deckId =
+  path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"

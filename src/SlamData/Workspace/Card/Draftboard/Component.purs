@@ -22,9 +22,8 @@ module SlamData.Workspace.Card.Draftboard.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT, withExceptT)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Array as Array
 import Data.Function (on)
@@ -49,8 +48,9 @@ import Math (round, floor)
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
-import SlamData.Quasar.Data (save, load, delete) as Quasar
+import SlamData.Quasar.Data as Quasar
 import SlamData.Render.CSS as RC
+import SlamData.Workspace.Card.Draftboard.Common (deleteGraph)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, QueryC)
 import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode)
 import SlamData.Workspace.Card.CardId as CID
@@ -67,7 +67,7 @@ import SlamData.Workspace.Model as WS
 
 import Utils.CSS (zIndex)
 import Utils.DOM (elementEq, scrollTop, scrollLeft, getOffsetClientRect)
-import Utils.Path (DirPath, FilePath)
+import Utils.Path (DirPath)
 
 type DraftboardDSL = H.ParentDSL State DCS.StateP QueryC DCQ.QueryP Slam DeckId
 
@@ -94,7 +94,7 @@ render opts state =
     , HP.ref (right ∘ H.action ∘ SetElement)
     , HE.onMouseDown (pure ∘ Just ∘ right ∘ H.action ∘ AddDeck)
     ]
-    $ map renderDeck (listToArray $ Map.toList state.decks)
+    $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
 
   where
 
@@ -314,22 +314,13 @@ addDeck opts coords = do
 saveDeck ∷ DirPath → DM.Deck → DraftboardDSL (Either Exn.Error DeckId)
 saveDeck path model = runExceptT do
   i ← ExceptT $ map DeckId <$> WS.freshId (path </> Pathy.file "index")
-  ExceptT $ Quasar.save (deckIndex path i) $ DM.encode model
+  ExceptT $ Quasar.save (DM.deckIndex path i) $ DM.encode model
   pure i
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck opts deckId =
   for_ opts.path \path → do
-    let deleteId i = Quasar.delete $ Left $ path </> Pathy.dir (deckIdToString i)
-    res ← H.fromAff $ runExceptT do
-      children ← ExceptT $ deckGraph path deckId
-      withExceptT Exn.message
-        $ ExceptT
-        $ map sequence
-        $ runPar
-        $ traverse (Par ∘ deleteId)
-        $ Array.cons deckId children
-
+    res ← deleteGraph path deckId
     case res of
       Left err →
         -- TODO: do something to notify the user deleting failed
@@ -364,33 +355,5 @@ wrapDeck opts oldId = do
           $ H.action
           $ DCQ.Load path newId DCQ.Nested
 
-deckIndex ∷ DirPath → DeckId → FilePath
-deckIndex path deckId =
-  path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
-
-deckGraph
-  ∷ DirPath
-  → DeckId
-  → Slam (Either String (Array DeckId))
-deckGraph path deckId = runExceptT do
-  json ← ExceptT $ Quasar.load $ deckIndex path deckId
-  deck ← ExceptT $ pure $ DM.decode json
-  boards ← ExceptT
-    $ pure
-    $ sequence
-    $ map (decode ∘ _.inner)
-    $ Array.filter (\c → c.cardType == Ct.Draftboard) deck.cards
-
-  let children = join $ map (listToArray ∘ Map.keys ∘ _.decks) boards
-
-  ExceptT $ map (children <> _) <$> transDecks children
-
-  where
-  transDecks ids = map (map join ∘ sequence) $ runPar $ traverse (Par ∘ deckGraph path) ids
-
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck deckId = H.query deckId <<< opaqueQuery
-
--- This can be removed once Array gets fromFoldable
-listToArray ∷ ∀ a. List.List a → Array a
-listToArray = foldl Array.snoc []
