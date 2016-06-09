@@ -249,9 +249,9 @@ eval (ExploreFile res next) = do
     $ (DCS.addCard CT.JTable J.jsonEmptyObject)
     ∘ (DCS.addCard CT.OpenResource $ J.encodeJson $ R.File res)
     ∘ (DCS._stateMode .~ Preparing)
-  H.gets (map _.cardId ∘ Array.head ∘ _.modelCards) >>=
-    traverse_ runCard
-  -- Flush the eval queue
+  H.gets (map _.cardId ∘ Array.head ∘ _.modelCards) >>= traverse \cid → do
+    H.modify $ DCS.addPendingCard cid
+    runPendingCards
   saveDeck
   updateIndicator
   pure next
