@@ -32,6 +32,7 @@ import Control.Monad.Except.Trans as ET
 import Control.Monad.Writer.Class as WC
 import Control.Monad.Writer.Trans as WT
 
+import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
@@ -43,6 +44,7 @@ type CardEvalInput =
   , input ∷ Maybe Port.Port
   , cardId ∷ CID.CardId
   , globalVarMap ∷ VM.VarMap
+  , accessType ∷ AT.AccessType
   }
 
 -- | The result value produced when evaluating a card.

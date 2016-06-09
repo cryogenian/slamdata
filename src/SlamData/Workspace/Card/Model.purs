@@ -105,6 +105,8 @@ modelToEval { cardType, inner } =
       CT.DownloadOptions → do
         model ← DO.decode inner # either (const Nothing) Just
         Just $ Eval.DownloadOptions model
+      CT.Draftboard →
+        Just Eval.Draftboard
       _ →
         Just Eval.Pass
 

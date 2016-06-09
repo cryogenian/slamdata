@@ -380,25 +380,19 @@ fromModel path deckId { cards, name, parent } state =
     fresh ∷ Int
     fresh = maybe 0 (_ + 1) $ maximum $ A.mapMaybe (Lens.preview CID._CardId ∘ _.cardId) cards
 
-cardIndexFromId ∷ State → CardId → Int
-cardIndexFromId st cid =
-  fromMaybe (A.length cards - 1) $
-    A.findIndex (\c → c.cardId ≡ cid) cards
-  where
-    cards = st.displayCards
+cardIndexFromId ∷ CardId → State → Maybe Int
+cardIndexFromId cid = A.findIndex (\c → c.cardId ≡ cid) ∘ _.displayCards
 
-cardFromIndex ∷ State → Int → Maybe Card.Model
-cardFromIndex st i = A.index st.displayCards i
+cardFromIndex ∷ Int → State → Maybe Card.Model
+cardFromIndex i st = A.index st.displayCards i
 
-cardIdFromIndex ∷ State → Int → Maybe CardId
-cardIdFromIndex st vi = _.cardId <$> cardFromIndex st vi
+cardIdFromIndex ∷ Int → State → Maybe CardId
+cardIdFromIndex vi = map _.cardId ∘ cardFromIndex vi
 
 activeCardId ∷ State → Maybe CardId
-activeCardId st =
-  cardIdFromIndex st $
-    fromMaybe 0 st.activeCardIndex
+activeCardId st = cardIdFromIndex (fromMaybe 0 st.activeCardIndex) st
 
 activeCardType ∷ State → Maybe CT.CardType
 activeCardType st =
   _.cardType <$>
-    cardFromIndex st (fromMaybe 0 st.activeCardIndex)
+    cardFromIndex (fromMaybe 0 st.activeCardIndex) st

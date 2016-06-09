@@ -127,7 +127,9 @@ render opts state =
     CSS.height $ CSS.px $ gridToPx $ size'.height + 1.0
 
 evalCard ∷ Natural Ceq.CardEvalQuery DraftboardDSL
-evalCard (Ceq.EvalCard input output next) = pure next
+evalCard (Ceq.EvalCard input output next) = do
+  H.queryAll ∘ opaqueQuery ∘ H.action $ DCQ.SetAccessType input.accessType
+  pure next
 evalCard (Ceq.NotifyRunCard next) = pure next
 evalCard (Ceq.NotifyStopCard next) = pure next
 evalCard (Ceq.SetCanceler canceler next) = pure next
