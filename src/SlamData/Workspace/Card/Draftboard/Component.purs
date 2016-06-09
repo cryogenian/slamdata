@@ -27,6 +27,7 @@ import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Array as Array
 import Data.Function (on)
+import Data.Lens ((.~), (?~))
 import Data.List as List
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
@@ -50,9 +51,10 @@ import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Render.CSS as RC
+import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Draftboard.Common (deleteGraph)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, QueryC)
-import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode)
+import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _accessType)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common (CardOptions)
@@ -128,6 +130,7 @@ render opts state =
 
 evalCard ∷ Natural Ceq.CardEvalQuery DraftboardDSL
 evalCard (Ceq.EvalCard input output next) = do
+  H.modify $ _accessType .~ input.accessType
   H.queryAll ∘ opaqueQuery ∘ H.action $ DCQ.SetAccessType input.accessType
   pure next
 evalCard (Ceq.NotifyRunCard next) = pure next
@@ -150,7 +153,7 @@ evalBoard _ (Grabbing deckId ev next) = do
               { x = rect.x + (pxToGrid d.offsetX)
               , y = rect.y + (pxToGrid d.offsetY)
               }
-        H.modify _ { moving = Just (Tuple deckId newRect) }
+        H.modify $ _moving ?~ Tuple deckId newRect
     Drag.Done _ →
       stopDragging
   pure next
@@ -162,7 +165,7 @@ evalBoard _ (Resizing deckId ev next) = do
               { width = rect.width + (pxToGrid d.offsetX)
               , height = rect.height + (pxToGrid d.offsetY)
               }
-        H.modify _ { moving = Just (Tuple deckId newRect) }
+        H.modify $ _moving ?~ Tuple deckId newRect
     Drag.Done _ →
       stopDragging
   pure next
@@ -170,16 +173,18 @@ evalBoard _ (SetElement el next) = do
   H.modify _ { canvas = el }
   pure next
 evalBoard opts (AddDeck e next) = do
-  let e' = mouseEventToPageEvent e
-  H.gets _.canvas >>= traverse_ \el →
-    H.fromEff (elementEq el e'.target) >>= \same →
-      when same do
-        rect ← H.fromEff $ getOffsetClientRect el
-        scroll ← { top: _, left: _ } <$> H.fromEff (scrollTop el) <*> H.fromEff (scrollLeft el)
-        addDeck opts
-          { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
-          , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
-          }
+  accessType ← H.gets _.accessType
+  when (AT.isEditable accessType) do
+    let e' = mouseEventToPageEvent e
+    H.gets _.canvas >>= traverse_ \el →
+      H.fromEff (elementEq el e'.target) >>= \same →
+        when same do
+          rect ← H.fromEff $ getOffsetClientRect el
+          scroll ← { top: _, left: _ } <$> H.fromEff (scrollTop el) <*> H.fromEff (scrollLeft el)
+          addDeck opts
+            { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
+            , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
+            }
   pure next
 evalBoard opts (LoadDeck deckId next) = do
   for_ opts.path \path →
@@ -200,7 +205,7 @@ peek opts (H.ChildF deckId q) = flip peekOpaqueQuery q
   where
   startDragging deckId ev tag =
     H.gets (Map.lookup deckId ∘ _.decks) >>= traverse_ \rect → do
-      H.modify _ { moving = Just (Tuple deckId rect) }
+      H.modify $ _moving ?~ Tuple deckId rect
       void
         $ Drag.subscribe' ev
         $ right ∘ H.action ∘ tag deckId

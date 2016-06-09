@@ -14,7 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Draftboard.Component.State where
+module SlamData.Workspace.Card.Draftboard.Component.State
+  ( State
+  , StateP
+  , DeckPosition
+  , initialState
+  , _decks
+  , _moving
+  , _accessType
+  , encode
+  , decode
+  ) where
 
 import SlamData.Prelude
 
@@ -28,6 +38,8 @@ import Data.Lens (LensP, lens)
 import Data.Map as Map
 
 import SlamData.Effects (Slam)
+
+import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Draftboard.Component.Query (QueryC)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -37,6 +49,7 @@ type State =
   { decks ∷ Map.Map DeckId DeckPosition
   , moving ∷ Maybe (Tuple DeckId DeckPosition)
   , canvas ∷ Maybe HTMLElement
+  , accessType ∷ AT.AccessType
   }
 
 type StateP =
@@ -57,6 +70,7 @@ initialState =
   { decks: Map.empty
   , moving: Nothing
   , canvas: Nothing
+  , accessType: AT.Editable
   }
 
 -- | An array of positioned decks.
@@ -65,6 +79,9 @@ _decks = lens _.decks _{ decks = _ }
 
 _moving ∷ LensP State (Maybe (Tuple DeckId DeckPosition))
 _moving = lens _.moving _{ moving = _ }
+
+_accessType ∷ LensP State AT.AccessType
+_accessType = lens _.accessType _{ accessType = _ }
 
 encode ∷ State → Json
 encode state
@@ -84,6 +101,7 @@ decode = decodeJson >=> \obj →
   { decks: _
   , moving: Nothing
   , canvas: Nothing
+  , accessType: AT.Editable
   } <$> (traverse decodeDeckPosition =<< obj .? "decks")
 
 decodeDeckPosition ∷ Json → Either String DeckPosition
