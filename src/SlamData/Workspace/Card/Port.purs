@@ -33,20 +33,18 @@ module SlamData.Workspace.Card.Port
 
 import SlamData.Prelude
 
-import Data.Argonaut as J
 import Data.Lens (PrismP, prism', TraversalP, wander)
-import ECharts.Options as EC
 import SlamData.Workspace.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType)
+import SlamData.Workspace.Card.Chart.ChartOptions (BuildOptions)
+import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
 type ChartPort =
-  { options ∷ EC.Option
-  , chartType ∷ ChartType
-  , records ∷ J.JArray
-  , recordsSample ∷ J.JArray -- not sure what to call this -js
+  { options ∷ BuildOptions
+  , chartConfig ∷ ChartConfiguration
+  , resource ∷ PU.FilePath
   }
 
 type DownloadPort =
@@ -76,7 +74,7 @@ instance showPort ∷ Show Port where
       SlamDown sd → "SlamDown " <> show sd
       VarMap vm → "VarMap " <> show vm
       CardError str → "CardError " <> show str
-      ChartOptions p → "ChartPort"
+      ChartOptions p → "ChartOptions"
       TaggedResource p → "TaggedResource (" <> show p.resource <> " " <> show p.tag <> ")"
       DownloadOptions p → "DownloadOptions"
       Draftboard → "Draftboard"

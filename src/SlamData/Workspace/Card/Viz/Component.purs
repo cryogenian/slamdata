@@ -18,7 +18,9 @@ module SlamData.Workspace.Card.Viz.Component where
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
+import Control.Monad.Eff.Exception (Error)
+
+import Data.Argonaut (JArray, JCursor)
 import Data.Array (length, null, cons, index)
 import Data.Int as Int
 import Data.Lens as Lens
@@ -41,6 +43,9 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
 import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, trySelect', _value)
+import SlamData.Quasar.Query as Quasar
+import SlamData.Render.Common (row, glyph)
+import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType (CardType(Viz))
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect)
 import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
@@ -56,8 +61,6 @@ import SlamData.Workspace.Card.Viz.Form.Component (formComponent)
 import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model as Model
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Render.CSS as Rc
-import SlamData.Render.Common (row, glyph)
 
 type VizHTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
 type VizDSL = H.ParentDSL VCS.State Form.StateP QueryC Form.QueryP Slam ChartType
@@ -280,12 +283,9 @@ eval = coproduct cardEval vizEval
 
 vizEval ∷ Query ~> VizDSL
 vizEval q = do
-  H.modify $ VCS._needToUpdate .~ false
   case q of
     SetChartType ct next →
       H.modify (VCS._chartType .~ ct) *> configure $> next
-    SetAvailableChartTypes ts next →
-      H.modify (VCS._availableChartTypes .~ ts) *> configure $> next
     RotateAxisLabel angle next →
       H.modify (VCS._axisLabelAngle .~ angle) *> configure $> next
     SetAxisFontSize size next →
@@ -293,17 +293,16 @@ vizEval q = do
 
 cardEval ∷ CardEvalQuery ~> VizDSL
 cardEval (EvalCard info output next) = do
-  traceAnyA {output}
-  -- TODO: not sure how to restore the "needToUpdate" logic that used to be here. -js
   for (output ^? Lens._Just ∘ P._ChartOptions) \opts → do
-    if null opts.recordsSample
+    sample ← either (const []) id <$>
+      H.fromAff (Quasar.sample opts.resource 0 20 :: Slam (Either Error JArray))
+    if null sample
       then H.modify (VCS._availableChartTypes .~ Set.empty)
-      else H.modify (VCS._sample .~ analyzeJArray opts.recordsSample) *> configure
-    H.modify $ VCS._records .~ opts.records
+      else H.modify (VCS._sample .~ analyzeJArray sample) *> configure
 
   -- TODO: find a way to "bracket" the loading state like we did before. It is not
   -- clear how to do this at the moment, since the actual activity of loading the
-  -- data takes place exterinallyin the model eval machinery.
+  -- data takes place exterinallyin the model eval machinery. -js
   H.modify $ VCS._loading .~ false
   pure next
 cardEval (NotifyRunCard next) = pure next
@@ -312,11 +311,12 @@ cardEval (Save k) = do
   st ← H.get
   config ← H.query st.chartType $ left $ H.request Form.GetConfiguration
   pure $ k $ Model.encode
-    { chartType: st.chartType
-    , chartConfig: fromMaybe Form.initialState config
-    , axisLabelFontSize: st.axisLabelFontSize
-    , axisLabelAngle: st.axisLabelAngle
-    , records: st.records
+    { chartConfig: fromMaybe Form.initialState config
+    , options:
+        { chartType: st.chartType
+        , axisLabelFontSize: st.axisLabelFontSize
+        , axisLabelAngle: st.axisLabelAngle
+        }
     }
 cardEval (Load json next) =
   next <$ for_ (Model.decode json) \model → do
@@ -454,6 +454,4 @@ configure = void do
        }
 
 peek ∷ ∀ a. H.ChildF ChartType Form.QueryP a → VizDSL Unit
-peek _ = do
-  H.modify $ VCS._needToUpdate .~ false
-  configure
+peek _ = configure

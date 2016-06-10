@@ -14,9 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.ChartOptions (buildOptions) where
+module SlamData.Workspace.Card.Chart.ChartOptions
+  ( BuildOptions
+  , encode
+  , decode
+  , buildOptions
+  ) where
 
-import Data.Argonaut (JArray, JCursor)
+import SlamData.Prelude
+
+import Data.Argonaut (JArray, JCursor, Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
 import Data.Map as M
 
 import ECharts (Option)
@@ -28,26 +35,38 @@ import SlamData.Workspace.Card.Chart.ChartOptions.Line (buildLine)
 import SlamData.Workspace.Card.Chart.ChartOptions.Pie (buildPie)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
-type BuildOptions o =
+type BuildOptions =
   { chartType ∷ ChartType
-  , records ∷ JArray
   , axisLabelAngle ∷ Int
   , axisLabelFontSize ∷ Int
-  | o
   }
 
+encode ∷ BuildOptions → Json
+encode m
+   = "chartType" := m.chartType
+  ~> "axisLabelAngle" := m.axisLabelAngle
+  ~> "axisLabelFontSize" := m.axisLabelFontSize
+  ~> jsonEmptyObject
+
+decode ∷ Json → Either String BuildOptions
+decode = decodeJson >=> \obj →
+  { chartType: _, axisLabelAngle: _, axisLabelFontSize: _ }
+    <$> (obj .? "chartType")
+    <*> (obj .? "axisLabelAngle")
+    <*> (obj .? "axisLabelFontSize")
+
 buildOptions
-  ∷ ∀ o
-  . BuildOptions o
+  ∷ BuildOptions
   → ChartConfiguration
+  → JArray
   → Option
-buildOptions args conf =
+buildOptions args conf records =
   buildOptions_
-  args.chartType
-  (analyzeJArray args.records)
-  args.axisLabelAngle
-  args.axisLabelFontSize
-  conf
+    args.chartType
+    (analyzeJArray records)
+    args.axisLabelAngle
+    args.axisLabelFontSize
+    conf
 
 buildOptions_
   ∷ ChartType

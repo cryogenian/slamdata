@@ -21,8 +21,6 @@ module SlamData.Workspace.Card.Viz.Component.State
   , _availableChartTypes
   , _loading
   , _sample
-  , _records
-  , _needToUpdate
   , _axisLabelAngle
   , _axisLabelFontSize
   , _levelOfDetails
@@ -32,7 +30,7 @@ module SlamData.Workspace.Card.Viz.Component.State
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor, JArray)
+import Data.Argonaut (JCursor)
 import Data.Lens (LensP, lens)
 import Data.Map as M
 import Data.Set as Set
@@ -48,14 +46,11 @@ import SlamData.Workspace.Card.Viz.Form.Component as Form
 import SlamData.Workspace.Card.Viz.Model (Model)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-
 type State =
   { chartType ∷ ChartType
   , availableChartTypes ∷ Set.Set ChartType
   , sample ∷ M.Map JCursor Axis
   , loading ∷ Boolean
-  , records ∷ JArray
-  , needToUpdate ∷ Boolean
   , axisLabelFontSize ∷ Int
   , axisLabelAngle ∷ Int
   , levelOfDetails ∷ LevelOfDetails
@@ -67,8 +62,6 @@ initialState =
   , availableChartTypes: Set.empty
   , loading: true
   , sample: M.empty
-  , records: []
-  , needToUpdate: true
   , axisLabelFontSize: 12
   , axisLabelAngle: 30
   , levelOfDetails: High
@@ -86,12 +79,6 @@ _loading = lens _.loading _{loading = _}
 _sample ∷ forall a r. LensP {sample ∷ a | r} a
 _sample = lens _.sample _{sample = _}
 
-_records ∷ forall a r. LensP {records ∷ a | r} a
-_records = lens _.records _{records = _}
-
-_needToUpdate ∷ forall a r. LensP {needToUpdate ∷ a | r} a
-_needToUpdate = lens _.needToUpdate _{needToUpdate = _}
-
 _axisLabelFontSize ∷ forall a r. LensP {axisLabelFontSize ∷ a | r} a
 _axisLabelFontSize = lens _.axisLabelFontSize _{axisLabelFontSize = _}
 
@@ -100,7 +87,6 @@ _axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
-
 
 type StateP =
   ParentState
@@ -111,10 +97,9 @@ type StateP =
     Slam ChartType
 
 fromModel ∷ Model → State
-fromModel m =
+fromModel { options } =
   initialState
-    { chartType = m.chartType
-    , axisLabelFontSize = m.axisLabelFontSize
-    , axisLabelAngle = m.axisLabelAngle
-    , records = m.records
+    { chartType = options.chartType
+    , axisLabelFontSize = options.axisLabelFontSize
+    , axisLabelAngle = options.axisLabelAngle
     }
