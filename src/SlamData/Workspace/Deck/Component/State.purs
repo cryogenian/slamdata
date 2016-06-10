@@ -264,7 +264,7 @@ addCard' cardType inner st =
     newState = st
       { fresh = st.fresh + one
       , modelCards =
-          let def = { cardId, cardType, inner, hasRun: false }
+          let def = { cardId, cardType, inner }
           in case A.uncons $ A.reverse st.modelCards of
             Nothing → st.modelCards `A.snoc` def
             Just {head, tail} →

@@ -33,20 +33,20 @@ import Halogen (ParentDSL, ComponentDSL)
 import Halogen.Component.Utils as Hu
 
 import SlamData.Effects (Slam, SlamDataEffects)
-import SlamData.Workspace.Card.Eval.CardEvalT (CardEvalInput, CardEvalResult, CardEvalT, runCardEvalT, temporaryOutputResource)
+import SlamData.Workspace.Card.Eval.CardEvalT (CardEvalInput, CardEvalT, runCardEvalT, temporaryOutputResource)
 import SlamData.Workspace.Card.Port as Port
 
 -- | The query algebra shared by the inner parts of a card component.
 -- |
--- | - `EvalCard` is a command sent from the deck that runs the card. An
--- |   optional input value (the output from another card) is provided, and a
--- |   continuation for the evaluation result to be returned to.
--- |         TODO: update these notes -js
--- |
+-- | - `EvalCard` is a command sent from the deck when a card component needs
+-- |   updating during the evaluation process. An input value from the previous
+-- |   card in the deck is provided, along with the output from the card's model
+-- |   evaluator. The card cannot return a new port value, it's eval is only
+-- |   allowed to update the card component state.
 -- | - `NotifyRunCard` allows the card to notify the deck that it should be
 -- |   run - the card cannot run itself directly.
 data CardEvalQuery a
-  = EvalCard CardEvalInput (Maybe Port.Port) a -- (CardEvalResult → a)
+  = EvalCard CardEvalInput (Maybe Port.Port) a
   | NotifyRunCard a
   | NotifyStopCard a
   | SetCanceler (Canceler SlamDataEffects) a

@@ -81,14 +81,11 @@ import SlamData.Workspace.Card.Viz.Component.Query as Viz
 -- |   its state, and then returns its own output value.
 -- | - `RefreshCard` is captured by the deck and goes to the root of the
 -- |   current card's dependencies and updates the cards downwards from there.
--- | - `ToggleMessages` is used to toggle the visibility of the status/error
--- |   messages generated while evaluating the card.
 data CardQuery a
   = RunCard a
   | StopCard a
   | UpdateCard CardEvalInput (Maybe Port) a
   | RefreshCard a
-  | ToggleMessages a
   | Tick Milliseconds a
   | GetOutput (Maybe Port → a)
   | SaveCard CardId CardType (Card.Model → a)

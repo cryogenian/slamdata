@@ -22,10 +22,8 @@ module SlamData.Workspace.Card.Component.Render
 
 import SlamData.Prelude
 
-import Data.Array as A
 import Data.Int (fromNumber)
 import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
-import Data.Visibility (Visibility(..))
 
 import Halogen (ParentHTML)
 import Halogen.HTML.Events.Indexed as E
@@ -63,10 +61,10 @@ header cty cs =
       ]
 
 cardBlocked ∷ CardState → Boolean
-cardBlocked cs = false -- TODO: this may be redundant?
+cardBlocked cs = false -- TODO: this should be redundant -gb
 
 hasMessages ∷ CardState → Boolean
-hasMessages cs = not $ A.null cs.messages
+hasMessages cs = false -- TODO: this _is_ redundant -gb
 
 statusBar ∷ Boolean → CardState → CardHTML
 statusBar hasResults cs =
@@ -87,11 +85,7 @@ statusBar hasResults cs =
           [ H.text $ if cardBlocked cs
                        then ""
                        else runStatusMessage cs.runState ]
-      , H.div
-          [ P.classes [B.pullRight, CSS.cardControls] ]
-          $ A.catMaybes [ toggleMessageButton cs ]
       ]
-    ⊕ statusMessages cs
   where
 
   button =
@@ -123,38 +117,3 @@ refreshButton =
     , E.onClick (E.input_ RefreshCard)
     ]
     [ glyph B.glyphiconRefresh ]
-
-toggleMessageButton ∷ CardState → Maybe CardHTML
-toggleMessageButton cs@{ messages, messageVisibility } =
-  if not (hasMessages cs)
-  then Nothing
-  else Just $
-    H.button
-      [ P.title label
-      , ARIA.label label
-      , E.onClick (E.input_ ToggleMessages)
-      ]
-      [ glyph if isCollapsed then B.glyphiconEyeOpen else B.glyphiconEyeClose ]
-  where
-  label = if isCollapsed then "Show messages" else "Hide messages"
-  isCollapsed = messageVisibility ≡ Invisible
-
-statusMessages ∷ CardState → Array (CardHTML)
-statusMessages cs@{ messages, messageVisibility }
-  | cardBlocked cs =
-      [ H.div
-        [ P.classes [ CSS.cardBlockedMessage ] ]
-        [ H.div_ [ H.text "There are errors in parent cards" ] ]
-      ]
-  | otherwise =
-      if not (hasMessages cs)
-      then []
-      else
-        [ H.div [ P.classes classes ] $ if isCollapsed then [] else map message messages
-        ]
-  where
-  isCollapsed = messageVisibility ≡ Invisible
-  classes = [CSS.cardMessages] ⊕ if isCollapsed then [CSS.collapsed] else []
-
-message ∷ String → CardHTML
-message = H.pre_ ∘ pure ∘ H.text

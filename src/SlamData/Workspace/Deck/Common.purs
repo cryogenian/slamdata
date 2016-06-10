@@ -50,6 +50,5 @@ wrappedDeck rect deckId = emptyDeck
     { cardId: CardId 0
     , cardType: CT.Draftboard
     , inner: DBS.encode $ DBS.initialState { decks = Map.singleton deckId rect }
-    , hasRun: false
     }
   }

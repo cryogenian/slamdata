@@ -19,12 +19,9 @@ module SlamData.Workspace.Card.Eval where
 import SlamData.Prelude
 
 import Control.Monad.Eff as Eff
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Aff as Aff
-import Control.Monad.Aff.Free (class Affable, fromAff)
+import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
-import Control.Monad.Writer.Class as WC
 
 import Data.Lens ((^?))
 import Data.Path.Pathy as Path
@@ -145,7 +142,7 @@ evalMarkdownForm
 evalMarkdownForm info model = do
   let desc = SDH.formDescFromDocument model.input
   -- TODO: find a way to smash these annotations if possible -js
-  fromAff $ (liftEff ((MDS.formStateToVarMap desc model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)) ∷ Aff.Aff SlamDataEffects Port.VarMap)
+  fromEff (MDS.formStateToVarMap desc model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)
 
 evalOpenResource
   ∷ ∀ m
@@ -182,7 +179,7 @@ evalQuery info sql varMap = do
   plan ← lift $ QQ.compile backendPath sql varMap'
   case plan of
     Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
-    Right p → WC.tell ["Plan: " ⊕ p]
+    Right p → pure unit -- WC.tell ["Plan: " ⊕ p]
   liftQ do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
@@ -211,13 +208,13 @@ evalSearch info queryText resource = do
     sql = QQ.templated resource template
     outputResource = CET.temporaryOutputResource info
 
-  WC.tell ["Generated SQL: " ⊕ sql]
+  -- WC.tell ["Generated SQL: " ⊕ sql]
 
   plan ← lift $ QQ.compile (Right resource) sql SM.empty
 
   case plan of
     Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
-    Right p → WC.tell ["Plan: " ⊕ p]
+    Right p → pure unit -- WC.tell ["Plan: " ⊕ p]
 
   liftQ do
     QQ.viewQuery (Right resource) outputResource template SM.empty
@@ -249,7 +246,8 @@ evalSave info pt resource =
         $ EC.throwError
         $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
 
-      WC.tell ["Resource successfully saved as: " ⊕ Path.printPath fp]
+      -- WC.tell ["Resource successfully saved as: " ⊕ Path.printPath fp]
+      -- WC.tell ["Resource successfully saved as: " ⊕ Path.printPath fp]
 
       pure { resource: outputResource, tag: Nothing }
     _ →
@@ -263,7 +261,7 @@ runEvalCard
   . (Monad m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → Eval
-  → m CET.CardEvalResult
+  → m Port.Port
 runEvalCard input =
   CET.runCardEvalT ∘
     evalCard input
