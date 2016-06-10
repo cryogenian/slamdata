@@ -64,6 +64,9 @@ routeSignal driver =
     new ← await
     case new of
       WorkspaceRoute path deckId action varMap → lift do
+        driver $ Workspace.toWorkspace $ Workspace.SetAccessType $ toAccessType action
+        driver $ Workspace.toWorkspace $ Workspace.SetGlobalVarMap varMap
+
         case old of
           Just (WorkspaceRoute path' deckId' _ _) | path ≠ path' || deckId ≠ deckId' →
             workspace path deckId action
@@ -71,9 +74,6 @@ routeSignal driver =
             workspace path deckId action
           _ →
             pure unit
-
-        driver $ Workspace.toWorkspace $ Workspace.SetAccessType $ toAccessType action
-        driver $ Workspace.toDeck $ Deck.SetGlobalVarMap varMap
 
     routeConsumer (Just new)
 

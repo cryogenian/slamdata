@@ -260,9 +260,11 @@ eval (Publish next) = do
     traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (WA.Load AT.ReadOnly))
   pure next
 eval (Reset dir next) = do
+  st ← H.get
   setDeckState $ DCS.initialDeck
     { path = dir
     , stateMode = Ready
+    , accessType = st.accessType
     }
   updateIndicatorAndNextAction
   pure next

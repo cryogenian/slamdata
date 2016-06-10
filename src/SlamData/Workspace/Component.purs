@@ -30,7 +30,7 @@ import Data.Path.Pathy as Pathy
 
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
-import Halogen.Component.Opaque.Unsafe (opaqueQuery, peekOpaqueQuery)
+import Halogen.Component.Opaque.Unsafe (opaqueQuery, opaqueState, peekOpaqueQuery)
 import Halogen.HTML.Core (ClassName, className)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -47,7 +47,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _loaded, _path, _version, _stateMode,  initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _loaded, _path, _version, _stateMode, _globalVarMap, initialState)
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId(..))
@@ -99,7 +99,10 @@ render state =
       HH.div [ HP.classes [ workspaceClass ] ]
         [ HH.slot' cpDeck unit \_ →
            { component: Deck.comp
-           , initialState: Deck.initialState
+           , initialState: opaqueState $ Deck.initialDeck
+              { accessType = state.accessType
+              , globalVarMap = state.globalVarMap
+              }
            }
         ]
 
@@ -125,6 +128,10 @@ eval ∷ Natural Query WorkspaceDSL
 eval (SetAccessType aType next) = do
   H.modify (_accessType .~ aType)
   queryDeck $ H.action $ Deck.SetAccessType aType
+  pure next
+eval (SetGlobalVarMap varMap next) = do
+  H.modify (_globalVarMap .~ varMap)
+  queryDeck $ H.action $ Deck.SetGlobalVarMap varMap
   pure next
 eval (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu

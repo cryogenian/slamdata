@@ -351,8 +351,7 @@ fromModel
   → State
 fromModel path deckId { cards, name, parent } state =
   state
-    { accessType = Editable -- why was it ReadOnly?
-    , activeCardIndex = Nothing
+    { activeCardIndex = Nothing
     , displayMode = Normal
     , modelCards = cards
     , displayCards = mempty
