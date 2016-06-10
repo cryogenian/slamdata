@@ -43,7 +43,6 @@ import SlamData.Prelude
 
 import Data.Lens (PrismP, prism')
 import Data.Lens.Prism.Coproduct (_Left, _Right)
-import Data.Time (Milliseconds)
 
 import DOM.HTML.Types (HTMLElement)
 
@@ -74,26 +73,19 @@ import SlamData.Workspace.Card.Viz.Component.Query as Viz
 
 -- | The common query algebra for a card.
 -- |
--- | - `RunCard` is captured by the deck and used to call `UpdateCard` on
--- |   the card that raised it, passing in an input value if one is required.
 -- | - `UpdateCard` accepts an input value from a parent card if one is
 -- |   required, performs any necessary actions to evalute the card and update
 -- |   its state, and then returns its own output value.
 -- | - `RefreshCard` is captured by the deck and goes to the root of the
 -- |   current card's dependencies and updates the cards downwards from there.
 data CardQuery a
-  = RunCard a
-  | StopCard a
-  | UpdateCard CardEvalInput (Maybe Port) a
-  | RefreshCard a
-  | Tick Milliseconds a
+  = UpdateCard CardEvalInput (Maybe Port) a
   | GetOutput (Maybe Port → a)
   | SaveCard CardId CardType (Card.Model → a)
   | LoadCard Card.Model a
   | SetCardAccessType Na.AccessType a
   | UpdateDimensions a
   | SetHTMLElement (Maybe HTMLElement) a
-
 
 type CardQueryP = Coproduct CardQuery (ChildF Unit InnerCardQuery)
 

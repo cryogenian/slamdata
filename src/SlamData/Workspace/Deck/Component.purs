@@ -409,21 +409,7 @@ mkShareURL varMap = do
     loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash p (WA.Load AT.ReadOnly) varMap
 
 peekCards ∷ ∀ a. CardSlot → CardQueryP a → DeckDSL Unit
-peekCards (CardSlot cardId) = peekCard cardId ⨁ peekCardInner cardId
-
--- | Peek on the card component to observe actions from the card control
--- | buttons.
-peekCard ∷ ∀ a. CardId → CardQuery a → DeckDSL Unit
-peekCard cardId = case _ of
-  RunCard _ → runCard cardId
-  RefreshCard _ → traverse_ runCard =<< H.gets (map _.cardId ∘ Array.head ∘ _.modelCards)
-  StopCard _ → do
-    -- TODO: does it even make sense to have a stop action on cards anymore?
-    -- I don't think there's a button for it anyway. Maybe the deck as a whole
-    -- should be stoppable via an action on the back? -gb
-    H.modify $ DCS.removePendingCard cardId
-    runPendingCards
-  _ → pure unit
+peekCards (CardSlot cardId) = const (pure unit) ⨁ peekCardInner cardId
 
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
 showDialog =

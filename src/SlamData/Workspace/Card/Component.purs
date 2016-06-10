@@ -25,39 +25,26 @@ module SlamData.Workspace.Card.Component
 import SlamData.Prelude
 import SlamData.Config as Config
 
-import Control.Coroutine.Stalling (producerToStallingProducer)
-import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
-import Control.Monad.Aff (cancel)
-import Control.Monad.Eff.Exception as Exn
-
-import Data.Array as Arr
 import Data.Argonaut as JSON
-import Data.Date as Date
 import Data.Time (Milliseconds(..))
-import Data.Function (on)
-import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
+import Data.Lens (PrismP, (.~), review, preview, clonePrism)
 import Data.Visibility (Visibility(..))
-
-import DOM.Timer (interval, clearInterval)
 
 import Halogen as H
 import Halogen.Component.Utils (sendAfter')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Query.EventSource (EventSource(..))
 
 import Math as Math
 
 import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.CardType (cardClasses, nextCardTypes)
+import SlamData.Workspace.Card.CardType (cardClasses)
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.Render as CR
 import SlamData.Workspace.Card.Component.State as CS
-import SlamData.Workspace.Card.RunState (RunState(..))
 import SlamData.Render.CSS as CSS
 
-import Utils.AffableProducer (produce)
 import Utils.DOM as DOMUtils
 
 -- | Type synonym for the full type of a card component.
@@ -92,9 +79,7 @@ makeCardComponent def = makeCardComponentPart def render
                 [ HP.classes $ cardClasses def.cardType ]
                 [ HH.slot unit \_ → {component, initialState} ]
             ]
-          , (guard canHaveOutput) $> CR.statusBar true cs
           ]
-    canHaveOutput = not $ Arr.null $ nextCardTypes $ Just def.cardType
 
 -- | Constructs a card component from a record with the necessary properties and
 -- | a render function.
@@ -110,7 +95,7 @@ makeCardComponentPart def render =
   H.lifecycleParentComponent
     { render: render component initialState
     , eval
-    , peek: Just (peek ∘ H.runChildF)
+    , peek: Nothing
     , initializer: Just (H.action CQ.UpdateDimensions)
     , finalizer: Nothing
     }
@@ -133,21 +118,10 @@ makeCardComponentPart def render =
   initialState = review _State def.initialState
 
   eval ∷ Natural CQ.CardQuery CardDSL
-  eval (CQ.RunCard next) = pure next
-  eval (CQ.StopCard next) = stopRun $> next
   eval (CQ.UpdateCard input output next) = do
-    H.fromAff =<< H.gets _.tickStopper
-    tickStopper ← startInterval
-    H.modify $ CS._tickStopper .~ tickStopper
     void $ H.query unit (left (H.action (CQ.EvalCard input output)))
-    H.fromAff tickStopper
-    H.modify
-      $ (CS._runState %~ finishRun)
-      ∘ (CS._output .~ output)
+    H.modify $ CS._output .~ output
     pure next
-  eval (CQ.RefreshCard next) = pure next
-  eval (CQ.Tick elapsed next) =
-    H.modify (CS._runState .~ RunElapsed elapsed) $> next
   eval (CQ.GetOutput k) = k <$> H.gets (_.output)
   eval (CQ.SaveCard cardId cardType k) = do
     json ← H.query unit (left (H.request CQ.Save))
@@ -176,48 +150,3 @@ makeCardComponentPart def render =
             , height: roundedHeight
             }
     pure next
-
-  peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit
-  peek = coproduct cardEvalPeek (const $ pure unit)
-
-  cardEvalPeek ∷ ∀ a. CQ.CardEvalQuery a → CardDSL Unit
-  cardEvalPeek (CQ.SetCanceler canceler _) = H.modify $ CS._canceler .~ canceler
-  cardEvalPeek (CQ.EvalCard _ _ _) = H.modify $ CS._canceler .~ mempty
-  cardEvalPeek (CQ.NotifyStopCard _) = stopRun
-  cardEvalPeek _ = pure unit
-
-  stopRun ∷ CardDSL Unit
-  stopRun = do
-    cs ← H.gets _.canceler
-    ts ← H.gets _.tickStopper
-    H.fromAff ts
-    H.fromAff $ cancel cs (Exn.error "Canceled")
-    H.modify $ CS._runState .~ RunInitial
-
--- | Starts a timer running on an interval that passes Tick queries back to the
--- | component, allowing the runState to be updated with a timer.
--- |
--- | The returned value is an action that will stop the timer running when
--- | processed.
-startInterval ∷ CardDSL (Slam Unit)
-startInterval = do
-  ref ← H.fromEff (newRef Nothing)
-  start ← H.fromEff Date.now
-  H.modify (CS._runState .~ RunElapsed zero)
-
-  H.subscribe'
-    $ EventSource
-    $ producerToStallingProducer
-    $ produce \emit → do
-        i ← interval 1000 $ emit ∘ Left ∘ H.action ∘ CQ.Tick =<< do
-          now ← Date.now
-          pure $ on (-) Date.toEpochMilliseconds now start
-        writeRef ref (Just i)
-
-  pure $ maybe (pure unit) (H.fromEff ∘ clearInterval) =<< H.fromEff (readRef ref)
-
--- | Update the `RunState` from its current value to `RunFinished`.
-finishRun ∷ RunState → RunState
-finishRun RunInitial = RunElapsed zero
-finishRun (RunElapsed ms) = RunFinished ms
-finishRun (RunFinished ms) = RunFinished ms
