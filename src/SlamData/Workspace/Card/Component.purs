@@ -36,7 +36,7 @@ import Data.Date as Date
 import Data.Time (Milliseconds(..))
 import Data.Function (on)
 import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
-import Data.Visibility (Visibility(..), toggleVisibility)
+import Data.Visibility (Visibility(..))
 
 import DOM.Timer (interval, clearInterval)
 
@@ -92,7 +92,7 @@ makeCardComponent def = makeCardComponentPart def render
                 [ HP.classes $ cardClasses def.cardType ]
                 [ HH.slot unit \_ → {component, initialState} ]
             ]
-          , (guard canHaveOutput) $> CR.statusBar cs.hasRun cs
+          , (guard canHaveOutput) $> CR.statusBar true cs
           ]
     canHaveOutput = not $ Arr.null $ nextCardTypes $ Just def.cardType
 
@@ -141,25 +141,17 @@ makeCardComponentPart def render =
     H.modify $ CS._tickStopper .~ tickStopper
     void $ H.query unit (left (H.action (CQ.EvalCard input output)))
     H.fromAff tickStopper
-
-    -- TODO: check this & restore messages somehow -js
     H.modify
       $ (CS._runState %~ finishRun)
-      ∘ (CS._hasRun .~ true)
       ∘ (CS._output .~ output)
-      -- ∘ (CS._messages .~ (maybe [] _.messages result))
-      ∘ (CS._messages .~ [])
     pure next
   eval (CQ.RefreshCard next) = pure next
-  eval (CQ.ToggleMessages next) =
-    H.modify (CS._messageVisibility %~ toggleVisibility) $> next
   eval (CQ.Tick elapsed next) =
     H.modify (CS._runState .~ RunElapsed elapsed) $> next
   eval (CQ.GetOutput k) = k <$> H.gets (_.output)
   eval (CQ.SaveCard cardId cardType k) = do
-    hasRun ← H.gets _.hasRun
     json ← H.query unit (left (H.request CQ.Save))
-    pure $ k { cardId, cardType, hasRun, inner: fromMaybe JSON.jsonNull json }
+    pure $ k { cardId, cardType, inner: fromMaybe JSON.jsonNull json }
   eval (CQ.LoadCard model next) = do
     H.query unit (left (H.action (CQ.Load model.inner)))
     sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions unit)

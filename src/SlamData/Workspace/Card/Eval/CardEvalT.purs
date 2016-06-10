@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Eval.CardEvalT
   ( CardEvalInput
-  , CardEvalResult
   , CardEvalT
   , runCardEvalT
   , temporaryOutputResource
@@ -29,8 +28,6 @@ import Data.Path.Pathy as Path
 
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
-import Control.Monad.Writer.Class as WC
-import Control.Monad.Writer.Trans as WT
 
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
@@ -47,18 +44,7 @@ type CardEvalInput =
   , accessType ∷ AT.AccessType
   }
 
--- | The result value produced when evaluating a card.
--- |
--- | - `output` is the value that this card component produces that is taken as
--- |   the input for dependant cards.
--- | - `messages` is for any status messages that arise during
--- |   evaluation.
-type CardEvalResult =
-  { output ∷ Port.Port
-  , messages ∷ Array String
-  }
-
-type CardEvalTP m = ET.ExceptT String (WT.WriterT (Array String) m)
+type CardEvalTP m = ET.ExceptT String m
 
 newtype CardEvalT m a = CardEvalT (CardEvalTP m a)
 
@@ -80,23 +66,15 @@ instance bindCardEvalT ∷ Monad m ⇒ Bind (CardEvalT m) where
 instance monadCardEvalT ∷ Monad m ⇒ Monad (CardEvalT m)
 
 instance monadTransCardEvalT ∷ MonadTrans CardEvalT where
-  lift = lift ⋙ lift ⋙ CardEvalT
-
-instance monadWriterCardEvalT ∷ Monad m ⇒ WC.MonadWriter (Array String) (CardEvalT m) where
-  writer = WC.writer ⋙ lift ⋙ CardEvalT
-  listen = getCardEvalT ⋙ WC.listen ⋙ CardEvalT
-  pass = getCardEvalT ⋙ WC.pass ⋙ CardEvalT
+  lift = lift ⋙ CardEvalT
 
 instance monadErrorCardEvalT ∷ Monad m ⇒ EC.MonadError String (CardEvalT m) where
   throwError = EC.throwError ⋙ CardEvalT
   catchError (CardEvalT m) = CardEvalT ∘ EC.catchError m ∘ (getCardEvalT ∘ _)
 
-runCardEvalT ∷ ∀ m. Functor m ⇒ CardEvalT m Port.Port → m CardEvalResult
+runCardEvalT ∷ ∀ m. Functor m ⇒ CardEvalT m Port.Port → m Port.Port
 runCardEvalT (CardEvalT m) =
-  WT.runWriterT (ET.runExceptT m) <#> uncurry \r ms →
-    { output: either Port.CardError id r
-    , messages: ms
-    }
+  ET.runExceptT m <#> either Port.CardError id
 
 temporaryOutputResource ∷
   ∀ r

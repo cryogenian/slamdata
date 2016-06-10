@@ -37,15 +37,12 @@ import SlamData.Workspace.Card.Viz.Model as Viz
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DO
 
 -- | `cardType` and `cardId` characterize what is this card and where is it
--- | `hasRun` is flag for routing process, if it's `hasRun` we probably should
--- | rerun it after loading
 -- | `state` is card state, it's already encoded to `Json` to keep `Card` type a bit
 -- | simpler. I.e. it can hold markdown texts or viz options
 type Model =
   { cardId :: CID.CardId
   , cardType :: CT.CardType
   , inner :: J.Json
-  , hasRun :: Boolean
   }
 
 encode :: Model -> J.Json
@@ -53,16 +50,14 @@ encode card
    = "cardId" := card.cardId
   ~> "cardType" := card.cardType
   ~> "inner" := card.inner
-  ~> "hasRun" := card.hasRun
   ~> J.jsonEmptyObject
 
 decode :: J.Json -> Either String Model
 decode =
   J.decodeJson >=> \obj ->
-    { cardId: _, cardType: _, hasRun: _, inner: _ }
+    { cardId: _, cardType: _, inner: _ }
       <$> obj .? "cardId"
       <*> obj .? "cardType"
-      <*> obj .? "hasRun"
       <*> obj .? "inner"
 
 -- TODO: this implementation is terrible and fragile. I just happen to know that

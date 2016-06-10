@@ -207,10 +207,6 @@ oneErrorMessage ∷ String
 oneErrorMessage =
   XPath.anyWithText "1 error during evaluation."
 
-showMessages ∷ String
-showMessages =
-  XPath.anyWithExactAriaLabel "Show messages"
-
 noFileSelectedMessage ∷ String
 noFileSelectedMessage =
   XPath.anyWithExactText "No file selected"

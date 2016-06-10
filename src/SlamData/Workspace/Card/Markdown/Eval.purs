@@ -23,7 +23,6 @@ import Control.Monad.Eff.Class as Eff
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as Err
 import Control.Monad.State.Trans as State
-import Control.Monad.Writer.Class as WC
 
 import Data.Array as A
 import Data.Date as D
@@ -63,7 +62,6 @@ markdownEval
 markdownEval { cardId, path } str = do
   result ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries path cardId $ SDP.parseMd str
   doc ← either (Err.throwError ∘ Exn.message) pure result
-  WC.tell [ "Exported fields: " ⊕ S.joinWith ", " (findFields doc) ]
   pure $ Port.SlamDown doc
 
 findFields

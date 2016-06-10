@@ -567,7 +567,6 @@ nextActionCard =
   { cardId : NextActionCardId
   , cardType : CT.NextAction
   , inner : J.jsonEmptyObject
-  , hasRun : true
   }
 
 errorCard ∷ Card.Model
@@ -575,7 +574,6 @@ errorCard =
   { cardId : ErrorCardId
   , cardType : CT.ErrorCard
   , inner : J.jsonEmptyObject
-  , hasRun : true
   }
 
 type RunCardsConfig =
@@ -621,7 +619,7 @@ stepRunCards cfg m @ { state, cards, stack, outputs } =
       state' ←
         if x.cardId < cfg.pendingCardId
           then pure $ Map.lookup x.cardId outputs
-          else runStep cfg state x
+          else Just <$> runStep cfg state x
       let
         cards' = L.Cons x cards
         outputs' = maybe id (Map.insert x.cardId) state' outputs
@@ -655,11 +653,10 @@ runStep
   ∷ RunCardsConfig
   → Maybe Port
   → Card.Model
-  → DeckDSL (Maybe Port)
+  → DeckDSL Port
 runStep cfg inputPort card @ { cardId } = do
   let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap, accessType: cfg.accessType }
-  result ← Eval.runEvalCard input ∘ Card.modelToEval =<< currentStateOfCard card
-  pure $ Just result.output
+  Eval.runEvalCard input ∘ Card.modelToEval =<< currentStateOfCard card
 
 type CardUpdate = { card ∷ Card.Model, input ∷ Maybe Port, output ∷ Maybe Port}
 

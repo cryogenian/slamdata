@@ -44,8 +44,7 @@ instance arbitraryArbCard :: Arbitrary ArbCard where
     cardId <- runArbCardId <$> arbitrary
     cardType <- runArbCardType <$> arbitrary
     inner <- runArbJson <$> arbitrary
-    hasRun <- arbitrary
-    pure $ ArbCard { cardId, cardType, inner, hasRun }
+    pure $ ArbCard { cardId, cardType, inner }
 
 check :: QC Unit
 check = quickCheck $ runArbCard >>> \model ->
@@ -59,5 +58,4 @@ checkCardEquality model model' =
    [ model.cardId == model'.cardId <?> "cardId mismatch"
    , model.cardType == model'.cardType <?> "cardType mismatch"
    , model.inner == model'.inner <?> "inner mismatch"
-   , model.hasRun == model'.hasRun <?> "hasRun mismatch"
    ]
