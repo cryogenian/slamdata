@@ -53,16 +53,6 @@ eval info model = do
       $ "The 10000 record limit for visualizations has been exceeded - the current dataset contains " ⊕ show numRecords ⊕ " records. "
       ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
 
-  records ←
-    QQ.sample resource 0 200
-      # lift
-      >>= either (const $ pure []) pure
-
-  recordsSample ←
-    QQ.sample resource 0 2
-      # lift
-      >>= either (const $ pure []) pure
-
   pure
     { options: model.options
     , chartConfig: model.chartConfig
