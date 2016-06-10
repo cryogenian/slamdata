@@ -17,26 +17,18 @@ limitations under the License.
 module SlamData.Workspace.Card.Component.Render
   ( CardHTML
   , header
-  , statusBar
   ) where
 
 import SlamData.Prelude
 
-import Data.Int (fromNumber)
-import Data.Time (Seconds(..), Milliseconds(..), toSeconds)
-
 import Halogen (ParentHTML)
-import Halogen.HTML.Events.Indexed as E
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Workspace.Card.Component.Query (CardQuery(..), InnerCardQuery)
+import SlamData.Workspace.Card.Component.Query (CardQuery, InnerCardQuery)
 import SlamData.Workspace.Card.Component.State (CardState, AnyCardState)
-import SlamData.Workspace.Card.RunState (RunState(..), isRunning)
 import SlamData.Effects (Slam)
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType (CardType, cardName, cardGlyph, controllable)
 
@@ -59,61 +51,3 @@ header cty cs =
           [ P.class_ CSS.cardName ]
           [ H.text $ cardName cty ]
       ]
-
-cardBlocked ∷ CardState → Boolean
-cardBlocked cs = false -- TODO: this should be redundant -gb
-
-hasMessages ∷ CardState → Boolean
-hasMessages cs = false -- TODO: this _is_ redundant -gb
-
-statusBar ∷ Boolean → CardState → CardHTML
-statusBar hasResults cs =
-  H.div
-    [ P.classes [CSS.cardEvalLine] ]
-    $ [ H.button
-          [ P.classes [B.btn, B.btnPrimary, button.className]
-          , E.onClick (E.input_ $ if isRunning cs.runState
-                                  then StopCard
-                                  else RunCard)
-          , P.title button.label
-          , P.disabled $ cardBlocked cs
-          , ARIA.label button.label
-          ]
-          [ glyph button.glyph ]
-      , H.div
-          [ P.class_ CSS.statusText ]
-          [ H.text $ if cardBlocked cs
-                       then ""
-                       else runStatusMessage cs.runState ]
-      ]
-  where
-
-  button =
-    if isRunning cs.runState
-    then { className: CSS.stopButton, glyph: B.glyphiconStop, label: "Stop" }
-    else { className: CSS.playButton, glyph: B.glyphiconRefresh, label: "Refresh" }
-
-runStatusMessage ∷ RunState → String
-runStatusMessage RunInitial = ""
-runStatusMessage (RunElapsed t) =
-  "Running for " ⊕ printSeconds t ⊕ "..."
-runStatusMessage (RunFinished t) =
-  "Finished: took " ⊕ printMilliseconds t ⊕ "."
-
-printSeconds ∷ Milliseconds → String
-printSeconds t = case toSeconds t of
-  Seconds s → maybe "0" show (fromNumber (Math.floor s)) ⊕ "s"
-
-printMilliseconds ∷ Milliseconds → String
-printMilliseconds (Milliseconds ms) =
-  maybe "0" show (fromNumber (Math.floor ms)) ⊕ "ms"
-
-refreshButton ∷ CardHTML
-refreshButton =
-  H.button
-    [ P.title "Refresh card content"
-    , ARIA.label "Refresh card content"
-    , P.classes [CSS.refreshButton]
-    , E.onClick (E.input_ RefreshCard)
-    ]
-    [ glyph B.glyphiconRefresh ]
