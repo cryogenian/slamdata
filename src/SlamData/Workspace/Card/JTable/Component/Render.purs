@@ -29,6 +29,7 @@ import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.Common (glyph)
@@ -36,6 +37,7 @@ import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..))
 import SlamData.Workspace.Card.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.JTable.Component.State (State, currentPageInfo)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 -- | A value that holds all possible states for an inputtable value: the current
 -- | actual value, and a possible pending user-entered or selected value.
@@ -52,19 +54,50 @@ fromInputValue { current, pending } =
     Just pending' → either id show pending'
 
 render ∷ State → H.ComponentHTML QueryP
-render { result: Nothing } = HH.div_ []
-render st@{ result: Just result } =
-  let p = currentPageInfo st
-  in HH.div_
-    [ right <$> JT.renderJTable jTableOpts result.json
-    , HH.div
-        [ HP.classes [CSS.pagination, CSS.form] ]
-        [ prevButtons (p.page <= 1)
-        , pageField { current: p.page, pending: st.page } p.totalPages
-        , nextButtons (p.page >= p.totalPages)
-        , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
+render state =
+  HH.div_
+    [ renderHighLOD state
+    , renderLowLOD state
+    ]
+renderHighLOD ∷ State → H.ComponentHTML QueryP
+renderHighLOD st =
+  HH.div
+    [ HP.classes $ (guard (st.levelOfDetails ≠ High) $> B.hidden) ]
+    $ flip foldMap st.result \result →
+        let
+          p = currentPageInfo st
+        in
+          [ right <$> JT.renderJTable jTableOpts result.json
+          , HH.div
+            [ HP.classes [CSS.pagination, CSS.form] ]
+            [ prevButtons (p.page <= 1)
+            , pageField { current: p.page, pending: st.page } p.totalPages
+            , nextButtons (p.page >= p.totalPages)
+            , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
+            ]
+          ]
+
+renderLowLOD ∷ State → H.ComponentHTML QueryP
+renderLowLOD st =
+  HH.div
+    [ HP.classes
+        $ (guard (st.levelOfDetails ≠ Low) $> B.hidden)
+        ⊕ [ HH.className "card-input-minimum-lod" ]
+    ]
+    [ HH.button
+        [ ARIA.label "Expand to see results"
+        , HP.title "Expand to see results"
+        , HP.disabled true
+        ]
+        [ glyph B.glyphiconThList
+          -- Works nice for less then 1000000000 records :)
+        , HH.text
+            $ "Please, expand to see all "
+            ⊕ (show $ fromMaybe zero $ st.input <#> _.size)
+            ⊕ " results"
         ]
     ]
+
 
 jTableOpts ∷ JT.JTableOpts
 jTableOpts = JT.jTableOptsDefault
@@ -79,13 +112,13 @@ prevButtons enabled =
     [ HH.button
         [ HP.class_ CSS.formButton
         , HP.disabled enabled
-        , HE.onClick $ HE.input_ (right <<< StepPage First)
+        , HE.onClick $ HE.input_ (right ∘ StepPage First)
         ]
         [ glyph B.glyphiconFastBackward ]
     , HH.button
         [ HP.class_ CSS.formButton
         , HP.disabled enabled
-        , HE.onClick $ HE.input_ (right <<< StepPage Prev)
+        , HE.onClick $ HE.input_ (right ∘ StepPage Prev)
         ]
         [ glyph B.glyphiconStepBackward ]
     ]
@@ -98,7 +131,7 @@ pageField pageValue totalPages =
         , HH.input
             [ HP.inputType HP.InputNumber
             , HP.value (fromInputValue pageValue)
-            , HE.onValueInput (HE.input (\x → right <<< SetCustomPage x))
+            , HE.onValueInput (HE.input (\x → right ∘ SetCustomPage x))
             ]
         , HH.text $ "of " <> show totalPages
         ]
@@ -108,7 +141,7 @@ submittable ∷ Array (H.ComponentHTML QueryP) → H.ComponentHTML QueryP
 submittable =
   HH.form
     [ HE.onSubmit \_ →
-        HEH.preventDefault $> Just (H.action (left <<< NotifyRunCard))
+        HEH.preventDefault $> Just (H.action (left ∘ NotifyRunCard))
     ]
 
 nextButtons ∷ Boolean → H.ComponentHTML QueryP
@@ -117,12 +150,12 @@ nextButtons enabled =
     [ HP.class_ CSS.formButtonGroup ]
     [ HH.button
         [ HP.disabled enabled
-        , HE.onClick $ HE.input_ (right <<< StepPage Next)
+        , HE.onClick $ HE.input_ (right ∘ StepPage Next)
         ]
         [ glyph B.glyphiconStepForward ]
     , HH.button
         [ HP.disabled enabled
-        , HE.onClick $ HE.input_ (right <<< StepPage Last)
+        , HE.onClick $ HE.input_ (right ∘ StepPage Last)
         ]
         [ glyph B.glyphiconFastForward ]
     ]
@@ -132,17 +165,17 @@ pageSizeControls showCustom pageSize =
   HH.div_
     [ submittable
          $ [ HH.text "Per page:" ]
-        <> [ if showCustom
+         ⊕ [ if showCustom
              then HH.input
                 [ HP.inputType HP.InputNumber
                 , HP.value (fromInputValue pageSize)
-                , HE.onValueInput (HE.input (\v → right <<< SetCustomPageSize v))
+                , HE.onValueInput (HE.input (\v → right ∘ SetCustomPageSize v))
                 ]
              else HH.select
                 [ HE.onValueChange
                     (HE.input \v →
-                      right <<<
-                        if v == "Custom"
+                      right ∘
+                        if v ≡ "Custom"
                         then StartEnterCustomPageSize
                         else ChangePageSize v)
                 ]
@@ -164,7 +197,7 @@ pageSizeControls showCustom pageSize =
 
   option value =
     HH.option
-      [ HP.selected (value == sizeNum) ]
+      [ HP.selected (value ≡ sizeNum) ]
       [ HH.text (show value) ]
 
   -- An unselectable option dividing the custom values from the presets

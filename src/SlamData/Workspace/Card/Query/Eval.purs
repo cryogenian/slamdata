@@ -28,13 +28,13 @@ import Ace.Types (Completion)
 
 import Halogen (query, action)
 
-import SlamData.Workspace.Card.Ace.Component (AceDSL)
+import SlamData.Workspace.Card.Ace.Component (DSL)
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Port as Port
 
 import Utils.Completions (mkCompletion, pathCompletions)
 
-queryEval ∷ CEQ.CardEvalInput → AceDSL Unit
+queryEval ∷ CEQ.CardEvalInput → DSL Unit
 queryEval info = addCompletions $ fromMaybe SM.empty $ info.input ^? _Just ∘ Port._VarMap
 
 -- TODO: something equivalent to this via queryEval instead -gb
@@ -75,7 +75,7 @@ queryEval info = addCompletions $ fromMaybe SM.empty $ info.input ^? _Just ∘ P
 --           }
 --     _ → pure unit
 
-addCompletions ∷ ∀ a. SM.StrMap a → AceDSL Unit
+addCompletions ∷ ∀ a. SM.StrMap a → DSL Unit
 addCompletions vm =
   void $ query unit $ action $ Ace.SetCompleteFn \_ _ _ inp → do
     let compl = varMapCompletions vm

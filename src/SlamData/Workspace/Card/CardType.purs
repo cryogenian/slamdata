@@ -90,6 +90,10 @@ data AceMode
 derive instance eqAceMode ∷ Eq AceMode
 derive instance ordAceMode ∷ Ord AceMode
 
+instance showAcemode ∷ Show AceMode where
+  show MarkdownMode = "MarkdownMode"
+  show SQLMode = "SQLMode"
+
 instance encodeJsonCardType ∷ EncodeJson CardType where
   encodeJson (Ace MarkdownMode) = encodeJson "ace-markdown"
   encodeJson (Ace SQLMode) = encodeJson "ace-sql"
