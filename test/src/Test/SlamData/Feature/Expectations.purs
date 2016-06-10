@@ -100,12 +100,6 @@ dropdownInLastMdCard value values =
     $ (XPath.anywhere $ XPaths.formCardTitle)
     `XPath.following` XPath.selectWithOptionsWithExactTexts values
 
-lastCardToBeFinished ∷ SlamFeature Unit
-lastCardToBeFinished =
-  expectPresented
-    $ (XPath.last $ XPath.anywhere $ XPaths.cardHeading)
-    `XPath.following` XPath.anyWithText "Finished"
-
 resourceOpenedInLastExploreCard ∷ String → SlamFeature Unit
 resourceOpenedInLastExploreCard fileName =
   expectPresented (XPath.last $ XPath.anywhere $ XPaths.resourceOpened fileName)

@@ -56,7 +56,6 @@ test = do
     Interact.accessNextCardInLastDeck
     Interact.insertFormCardInLastDeck
     Expect.textInFormCard "Quarterly"
-    Expect.lastCardToBeFinished
     warnMsg "SD-1538, we don't know if workspace has been saved already"
     later 1000 $ pure unit
     Interact.flipDeck
