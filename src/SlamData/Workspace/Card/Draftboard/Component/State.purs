@@ -22,6 +22,7 @@ module SlamData.Workspace.Card.Draftboard.Component.State
   , _decks
   , _moving
   , _accessType
+  , _inserting
   , encode
   , decode
   ) where
@@ -50,6 +51,7 @@ type State =
   , moving ∷ Maybe (Tuple DeckId DeckPosition)
   , canvas ∷ Maybe HTMLElement
   , accessType ∷ AT.AccessType
+  , inserting ∷ Boolean
   }
 
 type StateP =
@@ -71,9 +73,9 @@ initialState =
   , moving: Nothing
   , canvas: Nothing
   , accessType: AT.Editable
+  , inserting: false
   }
 
--- | An array of positioned decks.
 _decks ∷ LensP State (Map.Map DeckId DeckPosition)
 _decks = lens _.decks _{ decks = _ }
 
@@ -82,6 +84,9 @@ _moving = lens _.moving _{ moving = _ }
 
 _accessType ∷ LensP State AT.AccessType
 _accessType = lens _.accessType _{ accessType = _ }
+
+_inserting ∷ LensP State Boolean
+_inserting = lens _.inserting _{ inserting = _ }
 
 encode ∷ State → Json
 encode state
@@ -102,6 +107,7 @@ decode = decodeJson >=> \obj →
   , moving: Nothing
   , canvas: Nothing
   , accessType: AT.Editable
+  , inserting: false
   } <$> (traverse decodeDeckPosition =<< obj .? "decks")
 
 decodeDeckPosition ∷ Json → Either String DeckPosition

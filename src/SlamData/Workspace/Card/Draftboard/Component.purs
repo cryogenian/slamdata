@@ -54,7 +54,7 @@ import SlamData.Render.CSS as RC
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Draftboard.Common (deleteGraph)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, QueryC)
-import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _accessType)
+import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _accessType, _inserting)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common (CardOptions)
@@ -94,7 +94,9 @@ render opts state =
     [ HP.classes [ RC.gridPattern ]
     , HC.style bgSize
     , HP.ref (right ∘ H.action ∘ SetElement)
-    , HE.onMouseDown (pure ∘ Just ∘ right ∘ H.action ∘ AddDeck)
+    , HE.onMouseDown \e → pure $
+        guard (AT.isEditable state.accessType && not state.inserting) $>
+        right (H.action $ AddDeck e)
     ]
     $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
 
@@ -173,18 +175,16 @@ evalBoard _ (SetElement el next) = do
   H.modify _ { canvas = el }
   pure next
 evalBoard opts (AddDeck e next) = do
-  accessType ← H.gets _.accessType
-  when (AT.isEditable accessType) do
-    let e' = mouseEventToPageEvent e
-    H.gets _.canvas >>= traverse_ \el →
-      H.fromEff (elementEq el e'.target) >>= \same →
-        when same do
-          rect ← H.fromEff $ getOffsetClientRect el
-          scroll ← { top: _, left: _ } <$> H.fromEff (scrollTop el) <*> H.fromEff (scrollLeft el)
-          addDeck opts
-            { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
-            , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
-            }
+  let e' = mouseEventToPageEvent e
+  H.gets _.canvas >>= traverse_ \el → do
+    same ← H.fromEff (elementEq el e'.target)
+    when same do
+      rect ← H.fromEff $ getOffsetClientRect el
+      scroll ← { top: _, left: _ } <$> H.fromEff (scrollTop el) <*> H.fromEff (scrollLeft el)
+      addDeck opts
+        { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
+        , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
+        }
   pure next
 evalBoard opts (LoadDeck deckId next) = do
   for_ opts.path \path →
@@ -305,13 +305,18 @@ addDeck opts coords = do
   for_ (accomodateDeck decks coords deckPos) \deckPos' →
   for_ opts.deckId \parentId →
   for_ opts.path \path → do
+    H.modify $ _inserting .~ true
     deckId ← saveDeck path $ DM.emptyDeck { parent = Just (Tuple parentId opts.cardId) }
     case deckId of
       Left err → do
+        H.modify $ _inserting .~ false
         -- TODO: do something to notify the user saving failed
         pure unit
       Right deckId' → void do
-        H.modify \s → s { decks = Map.insert deckId' deckPos' s.decks }
+        H.modify \s → s
+          { decks = Map.insert deckId' deckPos' s.decks
+          , inserting = false
+          }
         queryDeck deckId'
           $ H.action
           $ DCQ.Load path deckId' DCQ.Nested
