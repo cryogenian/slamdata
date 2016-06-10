@@ -14,15 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Ace.Component.State (StateP) where
+module SlamData.Workspace.Card.Ace.Component.State
+  ( StateP
+  , State
+  , initialState
+  , _levelOfDetails
+  ) where
 
 import SlamData.Prelude
 
 import Ace.Halogen.Component (AceQuery, AceState)
 
+import Data.Lens (LensP, lens)
+
 import Halogen (ParentState)
 
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Effects (Slam)
 
-type StateP = ParentState Unit AceState CardEvalQuery AceQuery Slam Unit
+type State =
+  { levelOfDetails ∷ LevelOfDetails }
+
+initialState ∷ State
+initialState =
+  { levelOfDetails: High }
+
+_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a |r} a
+_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
+
+
+type StateP = ParentState State AceState CardEvalQuery AceQuery Slam Unit

@@ -42,19 +42,20 @@ import SlamData.Workspace.Card.JTable.Component.Render (render)
 import SlamData.Workspace.Card.JTable.Component.State as JTS
 import SlamData.Workspace.Card.JTable.Model as Model
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 jtableComponent ∷ H.Component CardStateP CardQueryP Slam
 jtableComponent =
   makeCardComponent
     { cardType: Ct.JTable
-    , component: H.component { render, eval: coproduct evalCard evalJTable }
+    , component: H.component { render, eval: evalCard ⨁ evalJTable }
     , initialState: JTS.initialState
     , _State: _JTableState
     , _Query: makeQueryPrism _JTableQuery
     }
 
 queryShouldRun ∷ ∀ a. QueryP a → Boolean
-queryShouldRun = coproduct (const false) pred
+queryShouldRun = const false ⨁ pred
   where
   pred (StepPage _ _) = true
   pred (ChangePageSize _ _) = true
@@ -75,7 +76,13 @@ evalCard =
       either (const (pure unit)) H.set $ JTS.fromModel <$> Model.decode json
       pure next
     CEQ.SetCanceler _ next → pure next
-    CEQ.SetDimensions _ next → pure next
+    CEQ.SetDimensions dims next → do
+      H.modify
+        $ JTS._levelOfDetails
+        .~ if dims.width < 336.0 ∨ dims.height < 240.0
+             then Low
+             else High
+      pure next
 
 -- TODO: we ought to lift this into the new Eval machinery, but it's not clear how
 -- to get the information (table items) back to the cell, since they will not be
