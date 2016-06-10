@@ -18,7 +18,9 @@ module SlamData.Workspace.Card.Chart.Component where
 
 import SlamData.Prelude
 
-import Data.Argonaut (jsonEmptyObject)
+import Control.Monad.Eff.Exception (Error)
+
+import Data.Argonaut (JArray, jsonEmptyObject)
 import Data.Int (toNumber, floor)
 import Data.Lens ((.~), (?~))
 
@@ -35,15 +37,17 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
+import SlamData.Effects (Slam)
+import SlamData.Quasar.Query as Quasar
+import SlamData.Render.CSS as Rc
+import SlamData.Workspace.Card.CardType as Ct
+import SlamData.Workspace.Card.Chart.ChartOptions as CO
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
 import SlamData.Workspace.Card.Common.EvalQuery as ECH
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Port (Port(..))
-import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Effects (Slam)
-import SlamData.Render.CSS as Rc
 
 type ChartHTML = H.ParentHTML HECH.EChartsState ECH.CardEvalQuery HECH.EChartsQuery Slam Unit
 type ChartDSL = H.ParentDSL State HECH.EChartsState ECH.CardEvalQuery HECH.EChartsQuery Slam Unit
@@ -117,10 +121,15 @@ eval (ECH.NotifyStopCard next) = pure next
 eval (ECH.EvalCard value output next) = do
   case value.input of
     Just (ChartOptions options) → do
-      H.query unit $ H.action $ HECH.Set options.options
+      -- TODO: this could possibly be optimised by caching records in the state,
+      -- but we'd need to know when the input dataset going into Viz changes.
+      -- Basically something equivalent to the old `needsToUpdate`. -gb
+      records <- either (const []) id <$> H.fromAff (Quasar.all options.resource :: Slam (Either Error JArray))
+      let option = CO.buildOptions options.options options.chartConfig records
+      H.query unit $ H.action $ HECH.Set option
       H.query unit $ H.action HECH.Resize
-      setLevelOfDetails options.options
-      H.modify (_chartType ?~ options.chartType)
+      setLevelOfDetails option
+      H.modify (_chartType ?~ options.options.chartType)
       pure next
     _ → do
       H.query unit $ H.action HECH.Clear

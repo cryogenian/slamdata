@@ -18,53 +18,40 @@ module SlamData.Workspace.Card.Viz.Model where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject, JArray)
+import Data.Argonaut (Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
 
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
+import SlamData.Workspace.Card.Chart.ChartOptions as CO
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 type Model =
-  { chartType ∷ ChartType
-  , chartConfig ∷ CC.ChartConfiguration
-  , axisLabelFontSize ∷ Int
-  , axisLabelAngle ∷ Int
-  , records ∷ JArray
+  { chartConfig ∷ CC.ChartConfiguration
+  , options ∷ CO.BuildOptions
   }
 
 encode ∷ Model → Json
 encode m
-   = "chartType" := m.chartType
-  ~> "chartConfig" := CC.encode m.chartConfig
-  ~> "axisLabelFontSize" := m.axisLabelFontSize
-  ~> "axisLabelAngle" := m.axisLabelAngle
-  ~> "records" := m.records
+   = "chartConfig" := CC.encode m.chartConfig
+  ~> "options" := CO.encode m.options
   ~> jsonEmptyObject
 
 decode ∷ Json → Either String Model
-decode = decodeJson >=> \obj → do
-  chartType ← obj .? "chartType"
-  chartConfig ← CC.decode =<< obj .? "chartConfig"
-  axisLabelFontSize ← obj .? "axisLabelFontSize"
-  axisLabelAngle ← obj .? "axisLabelAngle"
-  records ← obj .? "records"
-  pure
-    { chartType
-    , chartConfig
-    , axisLabelFontSize
-    , axisLabelAngle
-    , records
-    }
+decode = decodeJson >=> \obj →
+  { chartConfig: _, options: _ }
+    <$> (CC.decode =<< obj .? "chartConfig")
+    <*> (CO.decode =<< obj .? "options")
 
 initialModel ∷ Model
 initialModel =
-  { chartType: Pie
-  , chartConfig:
+  { chartConfig:
      { series: []
      , dimensions: []
      , measures: []
      , aggregations: []
      }
-  , axisLabelFontSize: 12
-  , axisLabelAngle: 30
-  , records: []
+  , options:
+      { chartType: Pie
+      , axisLabelFontSize: 12
+      , axisLabelAngle: 30
+      }
   }

@@ -27,10 +27,9 @@ import Data.Foldable (fold)
 
 import SlamData.Workspace.Card.Viz.Model as M
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
-
-import Test.SlamData.Property.Workspace.Card.Chart.ChartType (runArbChartType)
+import Test.StrongCheck (class Arbitrary, QC, Result(Failed), quickCheck, arbitrary)
 import Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)
+import Test.SlamData.Property.Workspace.Card.Chart.ChartOptions (runArbBuildOptions, checkBuildOptionsEquality)
 
 newtype ArbModel = ArbModel M.Model
 
@@ -39,20 +38,9 @@ runArbModel (ArbModel m) = m
 
 instance arbitraryArbModel :: Arbitrary ArbModel where
   arbitrary = do
-    chartType <- runArbChartType <$> arbitrary
+    options <- runArbBuildOptions <$> arbitrary
     chartConfig <- runArbChartConfiguration <$> arbitrary
-    axisLabelFontSize <- arbitrary
-    axisLabelAngle <- arbitrary
-    -- TODO: proper generator for json array -js
-    let records = []
-    pure
-      $ ArbModel
-        { chartType
-        , chartConfig
-        , axisLabelFontSize
-        , axisLabelAngle
-        , records
-        }
+    pure $ ArbModel { options, chartConfig }
 
 
 check :: QC Unit
@@ -61,9 +49,6 @@ check = quickCheck $ runArbModel >>> \model ->
     Left err -> Failed $ "Decode failed: " ++ err
     Right model' ->
       fold
-       [ model.chartType == model'.chartType <?> "chartType mismatch"
-       , checkChartConfigEquality model.chartConfig model'.chartConfig
-       , model.axisLabelFontSize == model'.axisLabelFontSize <?> "axisLabelFontSize mismatch"
-       , model.axisLabelAngle == model'.axisLabelAngle <?> "axisLabelAngle mismatch"
-       , model.records == model'.records <?> "records mismatch"
+       [ checkChartConfigEquality model.chartConfig model'.chartConfig
+       , checkBuildOptionsEquality model.options model'.options
        ]
