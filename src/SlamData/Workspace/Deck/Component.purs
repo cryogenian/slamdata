@@ -231,7 +231,7 @@ render st =
           )
       ]
 
-eval ∷ Natural Query DeckDSL
+eval ∷ Query ~> DeckDSL
 eval (RunActiveCard next) = do
   traverse_ runCard =<< H.gets DCS.activeCardId
   pure next
@@ -297,11 +297,11 @@ eval (SetGlobalVarMap m next) = do
   pure next
 eval (FlipDeck next) = do
   updateBackSide
-  H.modify $
-    DCS._displayMode %~
-      case _ of
-        DCS.Normal → DCS.Backside
-        _ → DCS.Normal
+  H.modify
+    $ DCS._displayMode
+    %~ case _ of
+      DCS.Normal → DCS.Backside
+      _ → DCS.Normal
   pure next
 eval (GrabDeck _ next) = pure next
 eval (UpdateCardSize next) = do
@@ -319,7 +319,8 @@ eval (ZoomOut next) = do
   for_ st.path \path →
     case st.parent of
       Just (Tuple deckId _) → do
-        let deckHash = mkWorkspaceHash (DCS.deckPath' path deckId) (WA.Load st.accessType) st.globalVarMap
+        let deckHash =
+              mkWorkspaceHash (DCS.deckPath' path deckId) (WA.Load st.accessType) st.globalVarMap
         H.fromEff $ locationObject >>= Location.setHash deckHash
       Nothing →
         void $ H.fromEff $ setHref $ parentURL $ Left path

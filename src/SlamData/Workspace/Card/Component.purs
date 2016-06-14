@@ -141,7 +141,8 @@ makeCardComponentPart def render =
         round n = (Math.round (n / Config.gridPx)) * Config.gridPx
         roundedWidth = round width
         roundedHeight = round height
-      void
+      unless (roundedWidth ≡ zero ∧ roundedHeight ≡ zero)
+        $ void
         $ H.query unit
         $ left
         $ H.action
