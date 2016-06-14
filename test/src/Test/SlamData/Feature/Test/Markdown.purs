@@ -76,7 +76,6 @@ test = do
     Expect.checkableFieldInLastMdCard "Gold" "radio" true
     Expect.checkableFieldInLastMdCard "Silver" "radio" false
     Expect.checkableFieldInLastMdCard "Bronze" "radio" false
-    Expect.lastCardToBeFinished
     successMsg "Ok, succesfully provided and played markdown."
 
   mdScenario "Change and play markdown" [] do
