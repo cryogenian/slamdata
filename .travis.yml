@@ -7,12 +7,12 @@ before_install:
   - nvm install 4
   - nvm use 4
 install:
-  - export CHROME_BIN=chromium-browser
-  - cp test/chromedriver/linux $HOME/bin/chromedriver
   - sudo apt-get install imagemagick
   - convert -version
   - java -version
   - mkdir $HOME/bin
+  - export CHROME_BIN=chromium-browser
+  - cp test/chromedriver/linux $HOME/bin/chromedriver
   - curl -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.6.tgz
   - tar -zxvf mongodb-linux-x86_64-3.0.6.tgz
   - mkdir -p $HOME/bin/mongodb
