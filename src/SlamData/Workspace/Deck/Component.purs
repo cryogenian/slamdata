@@ -291,7 +291,7 @@ eval (SetGlobalVarMap m next) = do
   st ← H.get
   when (m ≠ st.globalVarMap) do
     H.modify $ DCS._globalVarMap .~ m
-    traverse_ runCard $ DCS.cardsOfType CT.API st
+    traverse_ runCard $ DCS.apiCards st
   pure next
 eval (FlipDeck next) = do
   updateBackSide
