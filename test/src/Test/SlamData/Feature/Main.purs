@@ -34,13 +34,10 @@ import Platform (getPlatform, runOs, runPlatform)
 
 import Quasar.Spawn.Util.Starter (starter, expectStdOut, expectStdErr)
 
-import Selenium (setFileDetector, quit)
-import Selenium.Browser (Browser(..), str2browser, browserCapabilities)
-import Selenium.Builder (withCapabilities, browser, build, usingServer)
-import Selenium.Capabilities (Capabilities)
-import Selenium.FFProfile (setStringPreference, setBoolPreference, setIntPreference, buildFFProfile)
+import Selenium (quit)
+import Selenium.Browser (Browser(..), browserCapabilities)
+import Selenium.Builder (withCapabilities, build, usingServer)
 import Selenium.Monad (setWindowSize)
-import Selenium.Remote as SR
 import Selenium.Types (SELENIUM)
 
 import Test.Feature.Monad (FeatureEffects)
@@ -48,7 +45,6 @@ import Test.SlamData.Feature.Config (Config)
 import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 import Test.SlamData.Feature.Interactions (launchSlamData, mountTestDatabase)
 import Test.SlamData.Feature.Monad (SlamFeature)
-import Test.SlamData.Feature.SauceLabs as SL
 import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
