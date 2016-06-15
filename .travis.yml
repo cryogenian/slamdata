@@ -19,6 +19,8 @@ install:
   - npm install bower gulp -g
   - npm install
   - bower install
+env:
+  - PATH=.:$PATH
 before_script:
   - export CHROME_BIN=chromium-browser
   - "export DISPLAY=:99.0"
