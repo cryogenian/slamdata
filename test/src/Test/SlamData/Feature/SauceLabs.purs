@@ -66,7 +66,8 @@ sauceLabsConfigFromConfig config =
     pure $ Just
       { credentials : creds
       , platform : config.sauceLabs.platform
-      , browserName : config.selenium.browser
+-- TODO, remove this
+      , browserName : "chrome"
       , tunnelIdentifier : travisJobNumber
       , maxDuration : config.sauceLabs.maxDuration
       }

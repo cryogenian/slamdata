@@ -30,9 +30,8 @@ module Test.Feature.ActionSequence
 
 import Prelude
 
-import Data.Char (fromCharCode)
 import Data.Foldable (traverse_)
-import Data.String (fromChar, split)
+import Data.String (split)
 import Data.Array (replicate)
 import Selenium.ActionSequence (Sequence, sendKeys, keyDown, keyUp)
 import Selenium.Types (ControlKey)
@@ -69,7 +68,10 @@ sendBackspaces :: Int -> Sequence Unit
 sendBackspaces n = traverse_ sendKeys $ replicate n "\xE003"
 
 sendEnter :: Sequence Unit
-sendEnter = sendKeys $ fromChar $ fromCharCode 13
+sendEnter =
+  sendKeys "\xE007"
+--  sendKeys "\xE006"
+--  sendKeys $ fromChar $ fromCharCode 13
 
 sendKeyCombo :: Array ControlKey -> String -> Sequence Unit
 sendKeyCombo ctrlKeys str = do

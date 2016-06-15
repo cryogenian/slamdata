@@ -695,7 +695,9 @@ typeString ∷ ∀ eff o. String → Feature eff o Unit
 typeString string = Selenium.sequence $ FeatureSequence.keys string
 
 pressEnter ∷ ∀ eff o. Feature eff o Unit
-pressEnter = Selenium.sequence $ FeatureSequence.sendEnter
+pressEnter = do
+  Debug.Trace.traceAnyA "press enter"
+  Selenium.sequence $ FeatureSequence.sendEnter
 
 selectAll ∷ ∀ eff o. Feature eff o Unit
 selectAll = (Selenium.sequence ∘ FeatureSequence.selectAll) =<< getModifierKey
@@ -721,8 +723,14 @@ provideFieldValueElement value element =
   clickEl element *> selectAll *> typeString value
 
 selectFromDropdownElement ∷ ∀ eff o. String → Element → Feature eff o Unit
-selectFromDropdownElement text element =
-  clickEl element *> typeString text *> pressEnter
+selectFromDropdownElement text element = do
+  Debug.Trace.traceAnyA "Selecting"
+  clickEl element
+  Debug.Trace.traceAnyA "from dropdown"
+  typeString text
+  Debug.Trace.traceAnyA "element"
+  pressEnter
+  Debug.Trace.traceAnyA "???"
 
 dragAndDropElement ∷ ∀ eff o. Element → Location → Feature eff o Unit
 dragAndDropElement from =

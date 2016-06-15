@@ -39,8 +39,8 @@ type FeatureEffects eff =
     , imageDiff :: IMAGE_MAGICK
     , easyImage :: EASY_IMAGE
     , err :: EXCEPTION
-  	, fs :: FS
- 	  , process :: PROCESS
+        , fs :: FS
+          , process :: PROCESS
     , buffer :: BUFFER
     | eff)
 

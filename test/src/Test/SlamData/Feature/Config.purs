@@ -24,7 +24,6 @@ type Config =
   , restoreCmd ∷ String
   , selenium ∷
       { jar ∷ String
-      , browser ∷ String
       , waitTime ∷ Int
       }
   , sauceLabs ∷

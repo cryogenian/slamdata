@@ -30,10 +30,12 @@ import Node.Process as Process
 import Node.Rimraf (rimraf)
 import Node.Stream (Readable, Duplex, pipe, onClose)
 
+import Platform (getPlatform, runOs, runPlatform)
+
 import Quasar.Spawn.Util.Starter (starter, expectStdOut, expectStdErr)
 
 import Selenium (setFileDetector, quit)
-import Selenium.Browser (Browser(..), str2browser)
+import Selenium.Browser (Browser(..), str2browser, browserCapabilities)
 import Selenium.Builder (withCapabilities, browser, build, usingServer)
 import Selenium.Capabilities (Capabilities)
 import Selenium.FFProfile (setStringPreference, setBoolPreference, setIntPreference, buildFFProfile)
@@ -71,20 +73,6 @@ type Effects =
     , selenium ∷ SELENIUM
     ))
 
-makeDownloadCapabilities ∷ Browser → String → Aff Effects Capabilities
-makeDownloadCapabilities FireFox path = buildFFProfile do
-  setIntPreference "browser.download.folderList" 2
-  setBoolPreference "browser.download.manager.showWhenStarting" false
-  setBoolPreference "browser.download.manager.focusWhenStartin" false
-  setBoolPreference "browser.download.useDownloadDir" true
-  setStringPreference "browser.download.dir" path
-  setBoolPreference "browser.download.manager.closeWhenDone" true
-  setBoolPreference "browser.download.manager.showAlertOnComplete" false
-  setBoolPreference "browser.download.manager.useWindow" false
-  setStringPreference "browser.helperApps.neverAsk.saveToDisk"
-    "text/csv, application/ldjson, application/json"
-makeDownloadCapabilities _ _ = mempty
-
 tests ∷ SlamFeature Unit
 tests = do
   launchSlamData
@@ -98,39 +86,21 @@ tests = do
   FlipDeck.test
 
 runTests ∷ Config → Aff Effects Unit
-runTests config =
-  maybe error go $ str2browser config.selenium.browser
-  where
-  error = void $ log $ red "Incorrect browser"
-  go br = do
-    log $ yellow $ config.selenium.browser ⊕ " set as browser for tests\n\n"
+runTests config = do
+  driver ← build do
+    usingServer "http://127.0.0.1:4444/wd/hub"
+    withCapabilities $ browserCapabilities Chrome
 
-    msauceConfig ←
-      liftEff $ SL.sauceLabsConfigFromConfig config
+  let
+    defaultTimeout = config.selenium.waitTime
+    readerInp = { config, defaultTimeout, driver }
 
-    downloadCapabilities ←
-      makeDownloadCapabilities br config.download.folder
+  res ← attempt $ flip runReaderT readerInp do
+    setWindowSize { height: 800, width: 1024 }
+    tests
 
-    driver ← build do
-      browser br
-      traverse_ SL.buildSauceLabs msauceConfig
-      usingServer "http://127.0.0.1:4444/wd/hub"
-      withCapabilities downloadCapabilities
-
-    when (isJust msauceConfig) do
-      void $ log $ yellow $ "set up to run on Sauce Labs"
-      (liftEff SR.fileDetector) >>= setFileDetector driver
-
-    let
-      defaultTimeout = config.selenium.waitTime
-      readerInp = { config, defaultTimeout, driver }
-
-    res ← attempt $ flip runReaderT readerInp do
-      setWindowSize { height: 800, width: 1024 }
-      tests
-
-    apathize $ quit driver
-    either throwError (const $ pure unit) res
+  apathize $ quit driver
+  either throwError (const $ pure unit) res
 
 copyFile
   ∷ ∀ e
@@ -214,6 +184,36 @@ restoreDatabase rawConfig = do
   res ← takeVar var
   traverse_ throwError res.error
 
+
+chromeDriverForOS ∷ String → Maybe String
+chromeDriverForOS "win32" = Just "win.exe"
+chromeDriverForOS "darwin" = Just "mac"
+chromeDriverForOS "linux" = Just "linux"
+chromeDriverForOS _ = Nothing
+
+exeSuffix ∷ String → String
+exeSuffix "win.exe" = ".exe"
+exeSuffix _ = ""
+
+copyChromeDriver ∷ Aff Effects Unit
+copyChromeDriver = do
+  platform ← getPlatform
+  let
+    chromeDriverName =
+      platform
+      >>= runPlatform
+      >>> _.os
+      >>> runOs
+      >>> _.family
+      <#> Str.toLower
+      >>= chromeDriverForOS
+  for_ chromeDriverName \driverName → do
+    copyFile
+      ("test/chromedriver/" ⊕ driverName)
+      ("chromedriver" ⊕ exeSuffix driverName)
+    Debug.Trace.traceAnyA driverName
+
+
 main ∷ Eff Effects Unit
 main = do
   procs ← newRef []
@@ -232,6 +232,11 @@ main = do
     copyFile
       "test/quasar-config.json"
       "tmp/test/quasar-config.json"
+
+
+    log $ gray "Copying chromedriver"
+    copyChromeDriver
+    log $ gray "Ok, chromedriver is copied"
 
     mongo ←
       startProc

@@ -58,10 +58,10 @@ test = do
     Expect.fieldInLastMdCard "sport" "text" "Bobsleigh"
     Expect.fieldInLastMdCard "age" "number" ""
     Expect.fieldInLastMdCard "year" "number" "2002"
-    Expect.fieldInLastMdCard "startDate" "text" ""
-    Expect.fieldInLastMdCard "finishDate" "text" "2002-06-06"
-    Expect.fieldInLastMdCard "startTime" "text" ""
-    Expect.fieldInLastMdCard "finishTime" "text" "20:39"
+    Expect.fieldInLastMdCard "startDate" "date" ""
+    Expect.fieldInLastMdCard "finishDate" "date" "2002-06-06"
+    Expect.fieldInLastMdCard "startTime" "time" ""
+    Expect.fieldInLastMdCard "finishTime" "time" "20:39"
     Expect.labelInLastMdCard "event"
     Expect.dropdownInLastMdCard "1500m" ["1000m", "1500m", "3000m"]
     Expect.labelInLastMdCard "gender"
@@ -76,6 +76,7 @@ test = do
     Expect.checkableFieldInLastMdCard "Gold" "radio" true
     Expect.checkableFieldInLastMdCard "Silver" "radio" false
     Expect.checkableFieldInLastMdCard "Bronze" "radio" false
+
     successMsg "Ok, succesfully provided and played markdown."
 
   mdScenario "Change and play markdown" [] do
