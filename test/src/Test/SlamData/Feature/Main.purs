@@ -230,9 +230,9 @@ main = do
       "tmp/test/quasar-config.json"
 
 
-    log $ gray "Copying chromedriver"
-    copyChromeDriver
-    log $ gray "Ok, chromedriver is copied"
+--    log $ gray "Copying chromedriver"
+--    copyChromeDriver
+--    log $ gray "Ok, chromedriver is copied"
 
     mongo ←
       startProc
