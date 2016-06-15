@@ -207,7 +207,6 @@ copyChromeDriver = do
     copyFile
       ("test/chromedriver/" ⊕ driverName)
       ("chromedriver" ⊕ exeSuffix driverName)
-    Debug.Trace.traceAnyA driverName
 
 
 main ∷ Eff Effects Unit
@@ -230,9 +229,9 @@ main = do
       "tmp/test/quasar-config.json"
 
 
---    log $ gray "Copying chromedriver"
---    copyChromeDriver
---    log $ gray "Ok, chromedriver is copied"
+    log $ gray "Copying chromedriver"
+    copyChromeDriver
+    log $ gray "Ok, chromedriver is copied"
 
     mongo ←
       startProc
