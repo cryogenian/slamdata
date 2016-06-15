@@ -19,11 +19,9 @@ install:
   - npm install bower gulp -g
   - npm install
   - bower install
-env:
-  - PATH=.:$PATH
-before_script:
   - export CHROME_BIN=chromium-browser
-  - cp test/chromedriver/linux chromedriver
+  - cp test/chromedriver/linux $HOME/bin/chromedriver
+before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
 script:
