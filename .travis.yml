@@ -23,6 +23,7 @@ env:
   - PATH=.:$PATH
 before_script:
   - export CHROME_BIN=chromium-browser
+  - cp test/chromedriver/linux chromedriver
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
 script:
