@@ -22,35 +22,20 @@ module SlamData.Workspace.Card.Search.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as EC
-import Control.Monad.Writer.Class as WC
-
-import Data.Argonaut (encodeJson, decodeJson)
 import Data.Lens ((.~))
-import Data.StrMap as SM
-import Data.Path.Pathy as P
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Common.EvalQuery (liftWithCanceler', temporaryOutputResource, runCardEvalT)
-import SlamData.Workspace.Card.Component as NC
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Search.Component.Query (Query, SearchQuery(..))
-import SlamData.Workspace.Card.Search.Component.State (State, _running, _searchString, initialState)
-import SlamData.Workspace.Card.Search.Interpret as Search
-import SlamData.Quasar.FS (messageIfFileNotFound) as Quasar
-import SlamData.Quasar.Query (viewQuery, compile, templated, fields) as Quasar
-import SlamData.Render.Common as RC
 import SlamData.Render.CSS as CSS
-
-import Text.SlamSearch as SS
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Component as NC
+import SlamData.Workspace.Card.Search.Component.Query (Query, SearchQuery(..))
+import SlamData.Workspace.Card.Search.Component.State (State, _searchString, initialState)
 
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
@@ -79,10 +64,7 @@ render state =
         [ HP.class_ (HH.className "sd-search-state-btn")
         , HE.onClick $ HE.input_ (UpdateSearch "" ⋙ right)
         ]
-        [ HH.img [ HP.src $ if state.running then "img/spin.gif" else "img/remove.svg" ] ]
-    , HH.button
-        [ HE.onClick $ HE.input_ (NC.NotifyRunCard ⋙ left) ]
-        [ RC.glyph B.glyphiconSearch ]
+        [ HH.img [ HP.src "img/remove.svg" ] ]
     ]
 
 eval ∷ Natural Query DSL
@@ -91,70 +73,16 @@ eval = coproduct cardEval searchEval
 cardEval ∷ Natural NC.CardEvalQuery DSL
 cardEval q =
   case q of
-    NC.EvalCard { inputPort: Just Port.Blocked } k → do
-      k <$> runCardEvalT do
-        pure Nothing
-    NC.EvalCard info@{ inputPort: Just (Port.TaggedResource {tag, resource})} k →
-      k <$> runCardEvalT do
-        query ←
-          H.get <#> _.searchString ⋙ SS.mkQuery
-            # lift
-            >>= either (\_ → EC.throwError "Incorrect query string") pure
-
-        Quasar.messageIfFileNotFound
-            resource
-            ("Input resource " ⊕ P.printPath resource ⊕ " doesn't exist")
-          # liftWithCanceler'
-          # lift
-          >>= either (EC.throwError ∘ Exn.message) (traverse EC.throwError)
-
-        fields ←
-          Quasar.fields resource
-            # liftWithCanceler'
-            # lift
-            >>= either (EC.throwError ∘ Exn.message) pure
-
-        let
-          template = Search.queryToSQL fields query
-          sql = Quasar.templated resource template
-          outputResource = temporaryOutputResource info
-
-        WC.tell ["Generated SQL: " ⊕ sql]
-
-        plan ← lift $ liftWithCanceler' $
-          Quasar.compile (Right resource) sql SM.empty
-
-        case plan of
-          Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
-          Right p → WC.tell ["Plan: " ⊕ p]
-
-        lift $ liftWithCanceler' $
-          Quasar.viewQuery (Right resource) outputResource template SM.empty
-
-        Quasar.messageIfFileNotFound
-            outputResource
-            "Error making search temporary resource"
-          # liftWithCanceler'
-          # lift
-          >>= either (EC.throwError ∘ Exn.message) (traverse EC.throwError)
-        pure ∘ Just $ Port.TaggedResource { resource: outputResource, tag: pure sql }
-    NC.EvalCard _ k →
-      k <$> runCardEvalT do
-        EC.throwError "Expected a Resource input"
-    NC.SetupCard _ next →
-      pure next
-    NC.NotifyRunCard next →
-      pure next
-    NC.NotifyStopCard next →
+    NC.EvalCard input output next →
       pure next
     NC.Save k → do
       input ← H.gets _.searchString
-      pure $ k $ encodeJson input
-    NC.Load json next → do
-      for_ (decodeJson json) \input →
-        H.modify $ _searchString .~ input
+      pure ∘ k $ Card.Search input
+    NC.Load card next → do
+      case card of
+        Card.Search input → H.modify $ _searchString .~ input
+        _ → pure unit
       pure next
-    NC.SetCanceler _ next → pure next
     NC.SetDimensions _ next → pure next
 
 searchEval ∷ Natural SearchQuery DSL

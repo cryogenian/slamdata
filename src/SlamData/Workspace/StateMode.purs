@@ -16,7 +16,19 @@ limitations under the License.
 
 module SlamData.Workspace.StateMode where
 
+import Prelude
+
+-- | The current state of the deck.
+-- |
+-- | - `Loading` indicates loading from the server is in progress
+-- | - `Preparing` indicates a deck has been restored but not yet run
+-- | - `Ready` indicates there are no pending load/setup operations.
+-- | - `Error` is used when there is a problem restoring the deck.
 data StateMode
   = Loading
+  | Preparing
   | Ready
   | Error String
+
+derive instance eqStateMode :: Eq StateMode
+derive instance ordStateMode :: Ord StateMode

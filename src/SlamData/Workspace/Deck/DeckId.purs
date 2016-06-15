@@ -25,8 +25,12 @@ import SlamData.Prelude
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Data.Int as Int
+import Test.StrongCheck as SC
 
 newtype DeckId = DeckId Int
+
+instance arbitraryDeckId ∷ SC.Arbitrary DeckId where
+  arbitrary = DeckId <$> SC.arbitrary
 
 runDeckId ∷ DeckId → Int
 runDeckId (DeckId i) = i

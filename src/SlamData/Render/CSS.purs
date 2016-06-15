@@ -202,9 +202,6 @@ statusText = className "status-text"
 cardFailures ∷ ClassName
 cardFailures = className "card-failures"
 
-cardMessages ∷ ClassName
-cardMessages = className "card-messages"
-
 cardBlockedMessage ∷ ClassName
 cardBlockedMessage = className "card-blocked-message"
 

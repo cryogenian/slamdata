@@ -24,7 +24,7 @@ import Halogen as H
 
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.CardId (CardId(..))
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Draftboard.Component.State as DBS
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.State (State)
@@ -45,11 +45,10 @@ defaultPosition =
   }
 
 wrappedDeck ∷ DBS.DeckPosition → DeckId → Deck
-wrappedDeck rect deckId = emptyDeck
-  { cards = pure
-    { cardId: CardId 0
-    , cardType: CT.Draftboard
-    , state: DBS.encode $ DBS.initialState { decks = Map.singleton deckId rect }
-    , hasRun: false
+wrappedDeck rect deckId =
+  emptyDeck
+    { cards = pure
+      { cardId: CardId 0
+      , model: Card.Draftboard { decks: Map.singleton deckId rect }
+      }
     }
-  }

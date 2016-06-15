@@ -18,25 +18,47 @@ module SlamData.Workspace.Card.JTable.Model
   ( Model
   , encode
   , decode
+  , emptyModel
+  , genModel
+  , eqModel
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
 
 type Model =
-  { page :: Maybe Int
-  , pageSize :: Maybe Int
+  { page ∷ Maybe Int
+  , pageSize ∷ Maybe Int
   }
 
-encode :: Model -> Json
+eqModel ∷ Model → Model → Boolean
+eqModel m1 m2 =
+  m1.page ≡ m2.page
+    && m1.pageSize ≡ m2.pageSize
+
+genModel ∷ Gen.Gen Model
+genModel = do
+  page ← SC.arbitrary
+  pageSize ← SC.arbitrary
+  pure { page, pageSize }
+
+emptyModel ∷ Model
+emptyModel =
+  { page: Nothing
+  , pageSize: Nothing
+  }
+
+encode ∷ Model → Json
 encode r
    = "page" := r.page
   ~> "pageSize" := r.pageSize
   ~> jsonEmptyObject
 
-decode :: Json -> Either String Model
-decode = decodeJson >=> \obj ->
+decode ∷ Json → Either String Model
+decode = decodeJson >=> \obj →
   { page: _, pageSize: _ }
     <$> obj .? "page"
     <*> obj .? "pageSize"

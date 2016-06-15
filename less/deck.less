@@ -190,7 +190,8 @@
 }
 
 .sd-card-ace {
-  height: ~"calc(100% - 4rem)";
+  height: ~"calc(100% - 2rem)";
+  > div { height: 100%; }
 }
 
 *[aria-grabbed="true"] {
@@ -233,3 +234,8 @@
 @import "deck/table-card";
 @import "deck/draftboard-card";
 @import "deck/dialog";
+@import "deck/viz-card";
+@import "deck/chart-card";
+@import "deck/download-options-card";
+@import "deck/download-card";
+@import "deck/card-minimum-lod";

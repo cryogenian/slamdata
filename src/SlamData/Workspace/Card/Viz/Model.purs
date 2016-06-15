@@ -14,40 +14,63 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Viz.Model where
+module SlamData.Workspace.Card.Viz.Model
+  ( Model
+  , eqModel
+  , encode
+  , decode
+  , initialModel
+  , genModel
+  ) where
 
 import SlamData.Prelude
 
-import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
 
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
-import SlamData.Workspace.Card.Chart.ChartType (ChartType)
+import SlamData.Workspace.Card.Chart.ChartOptions as CO
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import Test.StrongCheck.Gen as Gen
 
 type Model =
-  { width :: Int
-  , height :: Int
-  , chartType :: ChartType
-  , chartConfig :: CC.ChartConfiguration
-  , axisLabelFontSize :: Int
-  , axisLabelAngle :: Int
+  { chartConfig ∷ CC.ChartConfiguration
+  , options ∷ CO.BuildOptions
   }
 
-encode :: Model -> Json
+eqModel ∷ Model → Model → Boolean
+eqModel m1 m2 =
+  CC.eqChartConfiguration m1.chartConfig m2.chartConfig
+    && CO.eqBuildOptions m1.options m2.options
+
+genModel ∷ Gen.Gen Model
+genModel = do
+  chartConfig ← CC.genChartConfiguration
+  options ← CO.genBuildOptions
+  pure { chartConfig, options }
+
+encode ∷ Model → Json
 encode m
-   = "width" := m.width
-  ~> "height" := m.height
-  ~> "chartType" := m.chartType
-  ~> "chartConfig" := CC.encode m.chartConfig
-  ~> "axisLabelFontSize" := m.axisLabelFontSize
-  ~> "axisLabelAngle" := m.axisLabelAngle
+   = "chartConfig" := CC.encode m.chartConfig
+  ~> "options" := CO.encode m.options
   ~> jsonEmptyObject
 
-decode :: Json -> Either String Model
-decode = decodeJson >=> \obj -> do
-  width <- obj .? "width"
-  height <- obj .? "height"
-  chartType <- obj .? "chartType"
-  chartConfig <- CC.decode =<< obj .? "chartConfig"
-  axisLabelFontSize <- obj .? "axisLabelFontSize"
-  axisLabelAngle <- obj .? "axisLabelAngle"
-  pure { width, height, chartType, chartConfig, axisLabelFontSize, axisLabelAngle }
+decode ∷ Json → Either String Model
+decode = decodeJson >=> \obj →
+  { chartConfig: _, options: _ }
+    <$> (CC.decode =<< obj .? "chartConfig")
+    <*> (CO.decode =<< obj .? "options")
+
+initialModel ∷ Model
+initialModel =
+  { chartConfig:
+     { series: []
+     , dimensions: []
+     , measures: []
+     , aggregations: []
+     }
+  , options:
+      { chartType: Pie
+      , axisLabelFontSize: 12
+      , axisLabelAngle: 30
+      }
+  }

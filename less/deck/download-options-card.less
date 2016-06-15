@@ -1,0 +1,61 @@
+.sd-card-download-options {
+    height: ~"calc(100% - 2rem)";
+    > div { height: 100%; }
+    div.load-message.alert {
+        height: 100%;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+    .card-input {
+        &-maximum-lod.download-card-editor {
+            padding:0;
+            height: 100%;
+            position: relative;
+            div.download-type-selector {
+                width: 60px;
+                height: 100%;
+                background-color: #f0f0f0;
+                position: absolute;
+                left: 0;
+                img {
+                    width: 32px;
+                    height: 32px;
+                    padding: 6px;
+                    background-color: #aaa;
+                    cursor: pointer;
+                    margin-left: 16px;
+                    margin-top: 8px;
+                    left: 50%;
+                    &.active, &:hover {
+                                  background-color: #337ab7;
+                              }
+                }
+            }
+            .download-configuration {
+                width: ~"calc(100% - 60px - 12px)";
+                position: absolute;
+                left: 60px;
+                padding-left: 6px;
+                padding-right: 6px;
+                padding-top: 12px;
+                .download-json-options {
+                    width: 100%;
+                    margin-top: 0;
+                    padding-top: 0;
+                    > div {
+                        padding-bottom: 12px;
+                        padding-top: 12px;
+                        border-bottom: 1px solid #ccc;
+                    }
+                }
+                .download-csv-delimiters {
+                    border-bottom: 1px solid #ccc;
+                    padding-top: 12px;
+                    padding-bottom: 12px;
+                    margin-top: 0;
+                    margin-bottom: 0;
+                }
+            }
+        }
+    }
+}

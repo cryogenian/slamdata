@@ -27,10 +27,10 @@ import Halogen.HTML.Elements.Indexed as HH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.Common (DeckHTML)
 import SlamData.Workspace.Deck.Component.Query (Query(StartSliding))
-import SlamData.Workspace.Deck.Component.State (CardDef)
 import SlamData.Prelude
 import SlamData.Render.CSS as ClassNames
 import Data.Bifoldable (bifoldMap)
@@ -42,12 +42,12 @@ import Data.Bifoldable (bifoldMap)
 
 data GripperDef = Previous Boolean | Next Boolean
 
-gripperDefsForCardId :: Array CardDef -> Maybe CardId -> Tuple GripperDef GripperDef
+gripperDefsForCardId :: Array Card.Model -> Maybe CardId -> Tuple GripperDef GripperDef
 gripperDefsForCardId cards cardId =
   Tuple (Previous previousCardAvailable) (Next nextCardAvailable)
   where
   previousCardAvailable =
-    cardId /= (_.id <$> Array.head cards)
+    cardId /= (_.cardId <$> Array.head cards)
   nextCardAvailable =
     isJust cardId
 

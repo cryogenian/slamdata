@@ -23,7 +23,6 @@ module SlamData.Workspace.Card.Next.Component
 import SlamData.Prelude
 
 import Data.Array as Arr
-import Data.Argonaut (jsonEmptyObject)
 import Data.Lens ((.~), (?~))
 
 import Halogen as H
@@ -35,6 +34,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.Port as P
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery as Ec
 import SlamData.Workspace.Card.Component (makeCardComponent, makeQueryPrism, _NextState, _NextQuery)
@@ -103,8 +103,8 @@ eval :: QueryP ~> NextDSL
 eval = coproduct cardEval nextEval
 
 cardEval :: Ec.CardEvalQuery ~> NextDSL
-cardEval (Ec.EvalCard value k) = do
-  case value.inputPort of
+cardEval (Ec.EvalCard value output next) = do
+  case value.input of
     Nothing →
       H.modify
         $ (_message .~ Nothing)
@@ -116,13 +116,9 @@ cardEval (Ec.EvalCard value k) = do
              ])
     Just port →
       updatePort port
-  map k ∘ Ec.runCardEvalT $ pure Nothing
-cardEval (Ec.NotifyRunCard next) = pure next
-cardEval (Ec.NotifyStopCard next) = pure next
-cardEval (Ec.Save k) = pure $ k jsonEmptyObject
+  pure next
+cardEval (Ec.Save k) = pure $ k Card.NextAction
 cardEval (Ec.Load _ next) = pure next
-cardEval (Ec.SetupCard p next) = pure next
-cardEval (Ec.SetCanceler _ next) = pure next
 cardEval (Ec.SetDimensions _ next) = pure next
 
 updatePort ∷ P.Port → NextDSL Unit
@@ -159,6 +155,10 @@ updatePort = case _ of
            , Ct.Viz
            , Ct.Save
            ])
+      ∘ (_message .~ Nothing)
+  P.Draftboard →
+    H.modify
+      $ (_types .~ [ ])
       ∘ (_message .~ Nothing)
 
 nextEval :: Query ~> NextDSL

@@ -16,6 +16,7 @@ module SlamData.Workspace.Card.Port.VarMap
   , VarMapValue(..)
   , renderVarMapValue
   , parseVarMapValue
+  , emptyVarMap
   ) where
 
 import SlamData.Prelude
@@ -170,7 +171,7 @@ instance valueVarMapValue ∷ SDV.Value VarMapValue where
 
 instance arbitraryVarMapValue ∷ SC.Arbitrary VarMapValue where
   arbitrary = do
-    Literal <$> EJSON.arbitraryEJsonOfSize 1
+    Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1
       <|> QueryExpr <$> SC.arbitrary
 
 parseVarMapValue
@@ -186,3 +187,6 @@ parseVarMapValue =
         <#> S.fromCharArray
 
 type VarMap = SM.StrMap VarMapValue
+
+emptyVarMap ∷ VarMap
+emptyVarMap = SM.empty

@@ -20,8 +20,12 @@ import SlamData.Prelude
 
 import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson)
 import Data.Foldable (sum, product)
+import Data.List as L
 
 import SlamData.Form.Select (class OptionVal, Select(..))
+
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
 
 data Aggregation
   = Maximum
@@ -30,24 +34,26 @@ data Aggregation
   | Sum
   | Product
 
-allAggregations :: Array Aggregation
-allAggregations = [ Maximum
-                  , Minimum
-                  , Average
-                  , Sum
-                  , Product
-                  ]
-defaultAggregation :: Aggregation
+allAggregations ∷ Array Aggregation
+allAggregations =
+  [ Maximum
+  , Minimum
+  , Average
+  , Sum
+  , Product
+  ]
+
+defaultAggregation ∷ Aggregation
 defaultAggregation = Sum
 
-printAggregation :: Aggregation -> String
+printAggregation ∷ Aggregation → String
 printAggregation Maximum = "Maximum"
 printAggregation Minimum = "Minimum"
 printAggregation Average = "Average"
 printAggregation Sum = "Sum"
 printAggregation Product = "Product"
 
-parseAggregation :: String -> Either String Aggregation
+parseAggregation ∷ String → Either String Aggregation
 parseAggregation "Maximum" = pure Maximum
 parseAggregation "Minimum" = pure Minimum
 parseAggregation "Average" = pure Average
@@ -56,35 +62,40 @@ parseAggregation "Product" = pure Product
 parseAggregation _ = Left "Incorrect aggregation string"
 
 runAggregation
-  :: forall a f
-   . (Ord a, ModuloSemiring a, Foldable f)
-  => Aggregation -> f a -> a
-runAggregation Maximum nums = foldl (\b a -> if b > a then b else a) zero nums
-runAggregation Minimum nums = foldl (\b a -> if b > a then a else b) zero nums
+  ∷ ∀  a f
+  . (Ord a, ModuloSemiring a, Foldable f)
+  ⇒ Aggregation
+  → f a
+  → a
+runAggregation Maximum nums = foldl (\b a → if b > a then b else a) zero nums
+runAggregation Minimum nums = foldl (\b a → if b > a then a else b) zero nums
 runAggregation Average nums =
   normalize
-  $ foldl (\acc a -> bimap (add one) (add a) acc)  (Tuple zero zero) nums
+  $ foldl (\acc a → bimap (add one) (add a) acc)  (Tuple zero zero) nums
   where
   normalize (Tuple count sum) = sum / count
 runAggregation Sum nums = sum nums
 runAggregation Product nums = product nums
 
-aggregationSelect :: Select Aggregation
+aggregationSelect ∷ Select Aggregation
 aggregationSelect =
-  Select { value: Just Sum
-         , options: allAggregations
-         }
+  Select
+     { value: Just Sum
+     , options: allAggregations
+     }
 
 
+derive instance genericAggregation ∷ Generic Aggregation
+derive instance eqAggregation ∷ Eq Aggregation
+derive instance ordAggregation ∷ Ord Aggregation
 
-derive instance genericAggregation :: Generic Aggregation
-instance eqAggregation :: Eq Aggregation where eq = gEq
-instance ordAggregation :: Ord Aggregation where compare = gCompare
-
-instance encodeJsonAggregation :: EncodeJson Aggregation where
+instance encodeJsonAggregation ∷ EncodeJson Aggregation where
   encodeJson = fromString <<< printAggregation
-instance decodeJsonAggregation :: DecodeJson Aggregation where
+instance decodeJsonAggregation ∷ DecodeJson Aggregation where
   decodeJson = decodeJson >=> parseAggregation
 
-instance optionValAggregation :: OptionVal Aggregation where
+instance optionValAggregation ∷ OptionVal Aggregation where
   stringVal = printAggregation
+
+instance arbitraryAggregation ∷ SC.Arbitrary Aggregation where
+  arbitrary = Gen.elements defaultAggregation $ L.toList allAggregations

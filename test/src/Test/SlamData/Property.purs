@@ -22,6 +22,9 @@ import Test.StrongCheck (QC)
 
 main :: QC Unit
 main = do
+  log "Check SlamData.Download.Model..."
+  Test.SlamData.Property.Download.Model.check
+
   log "Check SlamData.FileSystem.Resource..."
   Test.SlamData.Property.FileSystem.Resource.check
 
@@ -37,14 +40,23 @@ main = do
   log "Check SlamData.Workspace.Card.Model..."
   Test.SlamData.Property.Workspace.Card.Model.check
 
+  log "Check SlamData.Workspace.Card.Ace.Model..."
+  Test.SlamData.Property.Workspace.Card.Ace.Model.check
+
   log "Check SlamData.Workspace.Card.Chart.Aggregation..."
   Test.SlamData.Property.Workspace.Card.Chart.Aggregation.check
 
   log "Check SlamData.Workspace.Card.Chart.ChartConfiguration..."
   Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration.check
 
+  log "Check SlamData.Workspace.Card.Chart.ChartOptions..."
+  Test.SlamData.Property.Workspace.Card.Chart.ChartOptions.check
+
   log "Check SlamData.Workspace.Card.Chart.ChartType..."
   Test.SlamData.Property.Workspace.Card.Chart.ChartType.check
+
+  log "Check SlamData.Workspace.Card.DownloadOptions.Component.State..."
+  Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State.check
 
   log "Check SlamData.Workspace.Card.JTable.Model..."
   Test.SlamData.Property.Workspace.Card.JTable.Model.check
@@ -55,20 +67,14 @@ main = do
   log "Check SlamData.Workspace.Card.Viz.Model..."
   Test.SlamData.Property.Workspace.Card.Viz.Model.check
 
+  log "Check SlamData.Workspace.Deck.DeckId..."
+  Test.SlamData.Property.Workspace.Deck.DeckId.check
+
+  log "Check SlamData.Workspace.Deck.Model..."
+  Test.SlamData.Property.Workspace.Deck.Model.check
+
   log "Check SlamData.Workspace.FormBuilder.Item.Model..."
   Test.SlamData.Property.Workspace.FormBuilder.Item.Model.check
 
   log "Check SlamData.Workspace.FormBuilder.Model..."
   Test.SlamData.Property.Workspace.FormBuilder.Model.check
-
-  log "Check SlamData.Workspace.Deck.Model..."
-  Test.SlamData.Property.Workspace.Deck.Model.check
-
-  log "Check SlamData.Download.Model..."
-  Test.SlamData.Property.Download.Model.check
-
-  log "Check SlamData.Workspace.Card.DownloadOptions.Component.State..."
-  Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State.check
-
-  log "Check SlamData.Workspace.Card.Ace.Model..."
-  Test.SlamData.Property.Workspace.Card.Ace.Model.check

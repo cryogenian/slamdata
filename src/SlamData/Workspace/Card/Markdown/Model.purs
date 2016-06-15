@@ -15,6 +15,9 @@ module SlamData.Workspace.Card.Markdown.Model
   ( Model
   , encode
   , decode
+  , eqModel
+  , genModel
+  , emptyModel
   ) where
 
 import SlamData.Prelude
@@ -23,16 +26,38 @@ import Data.Identity (runIdentity)
 import Data.Functor.Compose (Compose(..))
 import Data.Argonaut (Json, jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
 import Data.HugeNum as HN
+import Data.List as L
+import Data.StrMap as SM
 import Data.Traversable as T
 import SlamData.Workspace.Card.Port.VarMap as VM
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
+
 -- | The serialization model used for markdown cards.
 type Model =
   { input ∷ SD.SlamDownP VM.VarMapValue
   , state ∷ SDS.SlamDownFormState VM.VarMapValue
+  }
+
+genModel ∷ Gen.Gen Model
+genModel = do
+  input ← SC.arbitrary
+  state ← SM.fromList ∘ L.toList <$> Gen.arrayOf (Tuple <$> SC.arbitrary <*> SC.arbitrary)
+  pure { input, state }
+
+eqModel ∷ Model → Model → Boolean
+eqModel m1 m2 =
+  m1.input ≡ m2.input
+    && m1.state ≡ m2.state
+
+emptyModel ∷ Model
+emptyModel =
+  { input: SD.SlamDown mempty
+  , state: SM.empty
   }
 
 -- | For getting parse error messages that are suitable for diagnostics.

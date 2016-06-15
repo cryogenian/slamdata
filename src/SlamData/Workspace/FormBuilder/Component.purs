@@ -42,8 +42,8 @@ data Query a
 
 newtype ItemSlot = ItemSlot ItemId
 derive instance genericItemSlot :: Generic ItemSlot
-instance eqItemSlot :: Eq ItemSlot where eq = gEq
-instance ordItemSlot :: Ord ItemSlot where compare = gCompare
+derive instance eqItemSlot :: Eq ItemSlot
+derive instance ordItemSlot :: Ord ItemSlot
 
 type StateP g = H.ParentState State Item.State Query Item.Query g ItemSlot
 type QueryP = Coproduct Query (H.ChildF ItemSlot Item.Query)

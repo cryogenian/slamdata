@@ -22,6 +22,6 @@ import SlamData.FileSystem.Resource as R
 
 data Query a
   = ResourceSelected R.Resource a
-  | Init a
+  | Init (Maybe R.Resource) a
 
 type QueryP = Coproduct CardEvalQuery Query

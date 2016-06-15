@@ -15,14 +15,17 @@ limitations under the License.
 -}
 
 -- haha only serious
-module SlamData.Workspace.Card.Factory where
+module SlamData.Workspace.Card.Factory
+  ( cardComponent
+  ) where
 
 import SlamData.Prelude
 
-import SlamData.Workspace.Card.Ace.Component (AceEvaluator, AceSetup, aceComponent)
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent)
 import SlamData.Workspace.Card.API.Component (apiComponent)
 import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
-import SlamData.Workspace.Card.CardType (CardType(..), AceMode(..))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component (CardComponent)
@@ -32,38 +35,36 @@ import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.JTable.Component (jtableComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
-import SlamData.Workspace.Card.Markdown.Eval (markdownEval, markdownSetup)
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
 import SlamData.Workspace.Card.OpenResource.Component (openResourceComponent)
-import SlamData.Workspace.Card.Query.Eval (queryEval, querySetup)
+import SlamData.Workspace.Card.Query.Eval (queryEval)
 import SlamData.Workspace.Card.Save.Component (saveCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
 
-cardTypeComponent ∷ CardType → CardOptions → CardComponent
-cardTypeComponent (Ace mode) _ = aceComponent { mode, evaluator, setup }
-  where
-  evaluator = aceEvalMode mode
-  setup = aceSetupMode mode
-cardTypeComponent Search _ = searchComponent
-cardTypeComponent Viz _ = vizComponent
-cardTypeComponent Chart _ = chartComponent
-cardTypeComponent Markdown opts = markdownComponent opts.cardId
-cardTypeComponent JTable _ = jtableComponent
-cardTypeComponent Download _ = downloadComponent
-cardTypeComponent API _ = apiComponent
-cardTypeComponent APIResults _ = apiResultsComponent
-cardTypeComponent NextAction _ = nextCardComponent
-cardTypeComponent Save _ = saveCardComponent
-cardTypeComponent OpenResource _ = openResourceComponent
-cardTypeComponent DownloadOptions _ = DOpts.comp
-cardTypeComponent Draftboard opts = draftboardComponent opts
-cardTypeComponent ErrorCard _ = Error.comp
+cardComponent ∷ Card.Model → CardOptions → CardComponent
+cardComponent card opts =
+  case card.model of
+    Card.Ace mode _ →
+      aceComponent
+        { mode
+        , eval: aceEval mode
+        }
+    Card.Search _ → searchComponent
+    Card.Viz _ → vizComponent
+    Card.Chart → chartComponent
+    Card.Markdown _ → markdownComponent card.cardId
+    Card.JTable _ → jtableComponent
+    Card.Download → downloadComponent
+    Card.API _ → apiComponent
+    Card.APIResults → apiResultsComponent
+    Card.NextAction → nextCardComponent
+    Card.Save _ → saveCardComponent
+    Card.OpenResource mres → openResourceComponent mres
+    Card.DownloadOptions _ → DOpts.comp
+    Card.ErrorCard → Error.comp
+    Card.Draftboard _ → draftboardComponent opts
 
-aceEvalMode ∷ AceMode → AceEvaluator
-aceEvalMode MarkdownMode = markdownEval
-aceEvalMode SQLMode = queryEval
-
-aceSetupMode ∷ AceMode → AceSetup
-aceSetupMode MarkdownMode = markdownSetup
-aceSetupMode SQLMode = querySetup
+aceEval ∷ CT.AceMode → AceEval
+aceEval CT.MarkdownMode = \_ → pure unit
+aceEval CT.SQLMode = queryEval

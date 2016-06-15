@@ -59,8 +59,8 @@ type QueryP = Coproduct Query (H.ChildF MenuSlot ChildQuery)
 data MenuSlot = MenuSlot
 
 derive instance genericMenuSlot ∷ Generic MenuSlot
-instance eqMenuSlot ∷ Eq MenuSlot where eq = gEq
-instance ordMenuSlot ∷ Ord MenuSlot where compare = gCompare
+derive instance eqMenuSlot ∷ Eq MenuSlot
+derive instance ordMenuSlot ∷ Ord MenuSlot
 
 type ChildSlot = MenuSlot
 

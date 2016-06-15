@@ -18,9 +18,6 @@ module SlamData.Workspace.Card.APIResults.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class as EC
-
-import Data.Argonaut as J
 import Data.Lens as Lens
 import Data.StrMap as SM
 
@@ -32,14 +29,14 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.APIResults.Component.Query (QueryP)
 import SlamData.Workspace.Card.APIResults.Component.State (State, initialState)
-import SlamData.Workspace.Card.Common.EvalQuery (runCardEvalT)
 import SlamData.Workspace.Card.Component as NC
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.CardType as Ct
 
 type APIResultsDSL = H.ComponentDSL State QueryP Slam
 
-apiResultsComponent :: H.Component NC.CardStateP NC.CardQueryP Slam
+apiResultsComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
 apiResultsComponent =
   NC.makeCardComponent
     { cardType: Ct.APIResults
@@ -49,7 +46,7 @@ apiResultsComponent =
     , _Query: NC.makeQueryPrism NC._APIResultsQuery
     }
 
-render :: State -> H.ComponentHTML QueryP
+render ∷ State → H.ComponentHTML QueryP
 render { varMap } =
   HH.table
     [ HP.classes
@@ -68,7 +65,7 @@ render { varMap } =
     ]
 
   where
-    renderItem :: String -> Port.VarMapValue -> Array (H.ComponentHTML QueryP)
+    renderItem ∷ String → Port.VarMapValue → Array (H.ComponentHTML QueryP)
     renderItem name val =
       [ HH.tr_
           [ HH.td_ [ HH.text name ]
@@ -77,22 +74,16 @@ render { varMap } =
       ]
 
 eval :: Natural QueryP APIResultsDSL
-eval = coproduct evalCard (getConst >>> absurd)
+eval = coproduct evalCard (absurd ∘ getConst)
 
-evalCard :: Natural NC.CardEvalQuery APIResultsDSL
+
+evalCard ∷ Natural NC.CardEvalQuery APIResultsDSL
 evalCard q =
   case q of
-    NC.EvalCard info k ->
-      k <$> runCardEvalT do
-        case Lens.preview Port._VarMap =<< info.inputPort of
-          Just varMap -> do
-            lift $ H.modify (_ { varMap = varMap })
-            pure ∘ Just $ Port.VarMap varMap
-          Nothing -> EC.throwError "expected VarMap input"
-    NC.SetupCard _ next -> pure next
-    NC.NotifyRunCard next -> pure next
-    NC.NotifyStopCard next -> pure next
-    NC.Save k -> pure $ k J.jsonEmptyObject
-    NC.Load json next -> pure next
-    NC.SetCanceler _ next -> pure next
+    NC.EvalCard info output next → do
+      for (info.input >>= Lens.preview Port._VarMap) \varMap →
+        H.modify (_ { varMap = varMap })
+      pure next
+    NC.Save k -> pure $ k Card.APIResults
+    NC.Load _ next -> pure next
     NC.SetDimensions _ next -> pure next

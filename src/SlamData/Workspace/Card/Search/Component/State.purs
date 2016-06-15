@@ -22,17 +22,12 @@ import Data.Lens (LensP, lens)
 
 type State =
   { searchString :: String
-  , running :: Boolean
   }
 
 initialState :: State
 initialState =
   { searchString: ""
-  , running: false
   }
 
 _searchString :: LensP State String
 _searchString = lens _.searchString (_ { searchString = _ })
-
-_running :: LensP State Boolean
-_running = lens _.running (_ { running = _ })

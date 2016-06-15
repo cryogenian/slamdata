@@ -16,113 +16,66 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Query.Eval
   ( queryEval
-  , querySetup
   ) where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as EC
-import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-import Control.Monad.Writer.Class as WC
-
-import Data.Lens as L
-import Data.Path.Pathy as Path
-import Data.String as Str
 import Data.StrMap as SM
+import Data.Lens (_Just, (^?))
 
 import Ace.Halogen.Component as Ace
 import Ace.Types (Completion)
 
-import Halogen (query, action, request, fromEff)
+import Halogen (query, action)
 
-import SlamData.Workspace.Card.Ace.Component (AceDSL)
-import SlamData.Workspace.Card.Common.EvalQuery as CEQ
+import SlamData.Workspace.Card.Ace.Component as AceCard
+import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Quasar.FS (messageIfFileNotFound) as Quasar
-import SlamData.Quasar.Query (viewQuery, compile) as Quasar
 
-import Utils.Ace (readOnly)
 import Utils.Completions (mkCompletion, pathCompletions)
 
-queryEval ∷ CEQ.CardEvalInput → String → AceDSL CEQ.CardEvalResult
-queryEval info sql =
-  CEQ.runCardEvalT do
-    case info.inputPort of
-      Just Port.Blocked →
-        pure Nothing
-      _ → do
-        lift $ addCompletions varMap
-        plan ← lift $ CEQ.liftWithCancelerP $
-          Quasar.compile backendPath sql varMap
+queryEval ∷ CET.CardEvalInput → AceCard.DSL Unit
+queryEval info = addCompletions $ fromMaybe SM.empty $ info.input ^? _Just ∘ Port._VarMap
 
-        Quasar.viewQuery
-            backendPath
-            outputResource
-            sql
-            varMap
-          # CEQ.liftWithCancelerP
-          # lift
-          >>= either (EC.throwError ∘ Exn.message) pure
+-- TODO: something equivalent to this via queryEval instead -gb
+-- querySetup ∷ CET.CardSetupInfo → AceDSL Unit
+-- querySetup { input, path } =
+--   case input of
+--     Port.VarMap varMap →
+--       addCompletions varMap
+--
+--     Port.TaggedResource {resource} → void $ runMaybeT do
+--       resParent ← MaybeT $ pure $ Path.parentDir resource
+--
+--       let
+--         path' = if path ≡ pure resParent
+--                   then Path.runFileName (Path.fileName resource)
+--                   else Path.printPath resource
+--       editor ←
+--         (MaybeT $ query unit $ request Ace.GetEditor)
+--         >>= (MaybeT ∘ pure)
+--
+--       MaybeT
+--         $ query unit
+--         $ action
+--         $ Ace.SetText ("SELECT  *  FROM `" ⊕ path' ⊕ "` ")
+--
+--       lift $ fromEff do
+--         readOnly editor
+--           { startRow: 0
+--           , startColumn: 0
+--           , endRow: 0
+--           , endColumn: 7
+--           }
+--         readOnly editor
+--           { startRow: 0
+--           , startColumn: 10
+--           , endRow: 0
+--           , endColumn: 19 + Str.length path'
+--           }
+--     _ → pure unit
 
-        Quasar.messageIfFileNotFound
-            outputResource
-            "Requested collection doesn't exist"
-          # CEQ.liftWithCancelerP
-          # lift
-          >>= either (EC.throwError ∘ Exn.message) (traverse EC.throwError)
-
-        for_ plan \p → WC.tell ["Plan: " ⊕ p]
-
-        pure ∘ Just $ Port.TaggedResource { resource: outputResource, tag: pure sql }
-  where
-  varMap ∷ SM.StrMap String
-  varMap =
-    info.inputPort
-    >>= L.preview Port._VarMap
-    # maybe SM.empty (map Port.renderVarMapValue)
-
-  outputResource = CEQ.temporaryOutputResource info
-  backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir outputResource)
-
-querySetup ∷ CEQ.CardSetupInfo → AceDSL Unit
-querySetup { inputPort, path } =
-  case inputPort of
-    Port.VarMap varMap →
-      addCompletions varMap
-
-    Port.TaggedResource {resource} → void $ runMaybeT do
-      resParent ← MaybeT $ pure $ Path.parentDir resource
-
-      let
-        path' = if path ≡ pure resParent
-                  then Path.runFileName (Path.fileName resource)
-                  else Path.printPath resource
-      editor ←
-        (MaybeT $ query unit $ request Ace.GetEditor)
-        >>= (MaybeT ∘ pure)
-
-      MaybeT
-        $ query unit
-        $ action
-        $ Ace.SetText ("SELECT  *  FROM `" ⊕ path' ⊕ "` ")
-
-      lift $ fromEff do
-        readOnly editor
-          { startRow: 0
-          , startColumn: 0
-          , endRow: 0
-          , endColumn: 7
-          }
-        readOnly editor
-          { startRow: 0
-          , startColumn: 10
-          , endRow: 0
-          , endColumn: 19 + Str.length path'
-          }
-    _ → pure unit
-
-addCompletions ∷ ∀ a. SM.StrMap a → AceDSL Unit
+addCompletions ∷ ∀ a. SM.StrMap a → AceCard.DSL Unit
 addCompletions vm =
   void $ query unit $ action $ Ace.SetCompleteFn \_ _ _ inp → do
     let compl = varMapCompletions vm

@@ -74,6 +74,10 @@ import Data.String as S
 import SlamData.Config as Config
 import SlamData.FileSystem.Listing.Sort (Sort(..))
 
+import Test.Property.Utils.Path as TP
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
+
 import Utils.Path ((<./>))
 import Utils.Path as PU
 
@@ -86,6 +90,36 @@ data Resource
 data Mount
   = Database PU.DirPath
   | View PU.FilePath
+
+instance arbitaryMount ∷ SC.Arbitrary Mount where
+  arbitrary = do
+    b ← SC.arbitrary
+    if b
+      then Database ∘ TP.runArbDirPath <$> SC.arbitrary
+      else View ∘ TP.runArbFilePath <$> SC.arbitrary
+
+instance arbitraryResource ∷ SC.Arbitrary Resource where
+  arbitrary = do
+    Gen.oneOf (Mount <$> SC.arbitrary)
+      [ File ∘ TP.runArbFilePath <$> SC.arbitrary
+      , Workspace ∘ TP.runArbDirPath <$> SC.arbitrary
+      , Directory ∘ TP.runArbDirPath <$> SC.arbitrary
+      , Mount <$> SC.arbitrary
+      ]
+
+instance showResource ∷ Show Resource where
+  show =
+    case _ of
+      File p → "File " <> show p
+      Workspace p → "Workspace " <> show p
+      Directory p → "Directory " <> show p
+      Mount m → "Mount " <> show m
+
+instance showMount ∷ Show Mount where
+  show =
+    case _ of
+      Database p → "Database " <> show p
+      View p → "View " <> show p
 
 -- PREDICATES
 isWorkspace ∷ Resource → Boolean

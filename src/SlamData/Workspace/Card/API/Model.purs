@@ -18,23 +18,40 @@ module SlamData.Workspace.Card.API.Model
   ( Model
   , encode
   , decode
+  , emptyModel
+  , eqModel
+  , genModel
   ) where
 
 import Data.Argonaut as J
 import Data.Either as E
 
 import SlamData.Workspace.FormBuilder.Model as FB
+import Test.StrongCheck.Gen as Gen
 
 type Model = FB.Model
 
+emptyModel ∷ Model
+emptyModel = FB.emptyModel
+
+genModel ∷ Gen.Gen Model
+genModel = FB.genModel
+
+eqModel
+  ∷ Model
+  → Model
+  → Boolean
+eqModel =
+  FB.eqModel
+
 encode
-  :: Model
-  -> J.Json
+  ∷ Model
+  → J.Json
 encode =
   FB.encode
 
 decode
-  :: J.Json
-  -> E.Either String Model
+  ∷ J.Json
+  → E.Either String Model
 decode =
   FB.decode

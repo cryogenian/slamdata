@@ -23,41 +23,38 @@ module Test.SlamData.Property.Workspace.Card.Model
 
 import Prelude
 
+import Data.Argonaut as J
 import Data.Either (Either(..))
 import Data.Foldable (mconcat)
 
-import SlamData.Workspace.Card.Model (Model, encode, decode)
+import SlamData.Workspace.Card.Model as Card
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
-
-import Test.Property.ArbJson (runArbJson)
 import Test.SlamData.Property.Workspace.Card.CardId (runArbCardId)
-import Test.SlamData.Property.Workspace.Card.CardType (runArbCardType)
 
-newtype ArbCard = ArbCard Model
+import Test.StrongCheck ((<?>))
+import Test.StrongCheck as SC
 
-runArbCard :: ArbCard -> Model
+newtype ArbCard = ArbCard Card.Model
+
+runArbCard ∷ ArbCard → Card.Model
 runArbCard (ArbCard m) = m
 
-instance arbitraryArbCard :: Arbitrary ArbCard where
+instance arbitraryArbCard ∷ SC.Arbitrary ArbCard where
   arbitrary = do
-    cardId <- runArbCardId <$> arbitrary
-    cardType <- runArbCardType <$> arbitrary
-    state <- runArbJson <$> arbitrary
-    hasRun <- arbitrary
-    pure $ ArbCard { cardId, cardType, state, hasRun }
+    cardId ← runArbCardId <$> SC.arbitrary
+    model ← SC.arbitrary
+    pure $ ArbCard { cardId, model }
 
-check :: QC Unit
-check = quickCheck $ runArbCard >>> \model ->
-  case decode (encode model) of
-    Left err -> Failed $ "Decode failed: " ++ err
-    Right model' -> checkCardEquality model model'
+check ∷ SC.QC Unit
+check =
+  SC.quickCheck $ runArbCard >>> \model →
+    case Card.decode (Card.encode model) of
+      Left err -> SC.Failed $ "Decode failed: " ++ err
+      Right model' -> checkCardEquality model model'
 
-checkCardEquality :: Model -> Model -> Result
+checkCardEquality ∷ Card.Model → Card.Model → SC.Result
 checkCardEquality model model' =
   mconcat
    [ model.cardId == model'.cardId <?> "cardId mismatch"
-   , model.cardType == model'.cardType <?> "cardType mismatch"
-   , model.state == model'.state <?> "state mismatch"
-   , model.hasRun == model'.hasRun <?> "hasRun mismatch"
+   , model.model == model'.model <?> ("model mismatch:\n " <> show (J.encodeJson model.model) <> "\n" <> show (J.encodeJson model'.model))
    ]

@@ -624,50 +624,13 @@ form.axis-label-param {
 
 div.loading-message.alert.alert-info {
     text-align: center;
-    margin-bottom: 12px;
-    margin-top: 12px;
-    height: 136px;
     line-height: 130px;
     font-size: 28px;
-    font-weight: 28px;
 }
 
-// .download-card-editor {
-//     border-bottom: 1px solid #f0f0f0;
-// }
+.modal {
 
-.download-type-selector {
-    width: 60px;
-        height: 160px;
-        background-color: #f0f0f0;
-        img {
-            width: 32px;
-            height: 32px;
-            padding: 6px;
-            background-color: #aaa;
-            cursor: pointer;
-            margin-left: 16px;
-            margin-top: 8px;
-            left: 50%;
-            &.active, &:hover {
-                background-color: #337ab7;
-            }
-        }
-}
-
-.download-configuration {
-        margin-left: 60px;
-        padding-top: 10px;
-    }
-
-div.viz-card-editor {
-    min-height: 160px;
-    padding-left: 15px;
-    padding-right: 15px;
-    div.loading-message.alert.alert-info {
-        height: 160px;
-    }
-    .viz-chart-type-selector, .download-type-selector {
+    .download-type-selector {
         width: 60px;
         height: 160px;
         background-color: #f0f0f0;
@@ -685,12 +648,33 @@ div.viz-card-editor {
             }
         }
     }
-    .download-type-selector img {
-        padding: 4px;
-    }
-    .viz-chart-configuration, .download-configuration {
+
+    .download-configuration {
         margin-left: 60px;
         padding-top: 10px;
+    }
+}
+div.viz-card-editor {
+    min-height: 160px;
+    padding-left: 15px;
+    padding-right: 15px;
+    .download-type-selector {
+        width: 60px;
+        height: 160px;
+        background-color: #f0f0f0;
+        img {
+            width: 32px;
+            height: 32px;
+            padding: 6px;
+            background-color: #aaa;
+            cursor: pointer;
+            margin-left: 16px;
+            margin-top: 8px;
+            left: 50%;
+            &.active, &:hover {
+                background-color: #337ab7;
+            }
+        }
     }
 }
 

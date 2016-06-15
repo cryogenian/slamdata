@@ -21,5 +21,6 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 
 data Query a
   = UpdatePathString String a
+  | ConfirmPathString a
 
 type QueryP = Coproduct CardEvalQuery Query

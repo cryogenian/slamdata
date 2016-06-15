@@ -100,12 +100,6 @@ dropdownInLastMdCard value values =
     $ (XPath.anywhere $ XPaths.formCardTitle)
     `XPath.following` XPath.selectWithOptionsWithExactTexts values
 
-lastCardToBeFinished ∷ SlamFeature Unit
-lastCardToBeFinished =
-  expectPresented
-    $ (XPath.last $ XPath.anywhere $ XPaths.cardHeading)
-    `XPath.following` XPath.anyWithText "Finished"
-
 resourceOpenedInLastExploreCard ∷ String → SlamFeature Unit
 resourceOpenedInLastExploreCard fileName =
   expectPresented (XPath.last $ XPath.anywhere $ XPaths.resourceOpened fileName)
@@ -177,6 +171,27 @@ lastEChartOptions =
     ∘ XPath.anywhere
     ∘ XPaths.eChartOptions
 
+formCardPresented ∷ SlamFeature Unit
+formCardPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.formCardHeader
+
+apiResultsCardPresented ∷ SlamFeature Unit
+apiResultsCardPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.apiResultsCardHeader
+
+tableCardPresented ∷ SlamFeature Unit
+tableCardPresented =
+  tryRepeatedlyTo
+    $ expectPresented
+    $ XPath.anywhere
+    $ XPaths.tableCardHeader
+
 textInFormCard ∷ String → SlamFeature Unit
 textInFormCard =
   tryRepeatedlyTo
@@ -197,6 +212,7 @@ trashButtonPresented =
     $ expectPresented
     $ XPath.anywhere
     $ XPaths.trashCardAction
+
 shareButtonPresented ∷ SlamFeature Unit
 shareButtonPresented =
   tryRepeatedlyTo

@@ -19,14 +19,7 @@ module SlamData.Workspace.Card.Component.State
   , CardStateP
   , initialCardState
   , _accessType
-  , _visibility
-  , _runState
-  , _tickStopper
-  , _messages
-  , _messageVisibility
-  , _hasResults
   , _output
-  , _canceler
   , _element
   , AnyCardState
   , _AceState
@@ -48,16 +41,13 @@ module SlamData.Workspace.Card.Component.State
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (Canceler)
-
 import Data.Lens (LensP, lens, PrismP, prism')
-import Data.Visibility (Visibility(..))
 
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen (ParentState)
 
-import SlamData.Effects (Slam, SlamDataEffects)
+import SlamData.Effects (Slam)
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Ace.Component.State as Ace
 import SlamData.Workspace.Card.API.Component.State as API
@@ -73,7 +63,6 @@ import SlamData.Workspace.Card.Markdown.Component.State as Markdown
 import SlamData.Workspace.Card.Next.Component.State as Next
 import SlamData.Workspace.Card.OpenResource.Component.State as Open
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Card.RunState (RunState(..))
 import SlamData.Workspace.Card.Save.Component.State as Save
 import SlamData.Workspace.Card.Search.Component.State as Search
 import SlamData.Workspace.Card.Viz.Component.State as Viz
@@ -86,22 +75,9 @@ import SlamData.Workspace.Card.Viz.Component.State as Viz
 -- |   all - used when embedding a single card in another page.
 -- | - `runState` tracks whether the card has run yet, is running, or has
 -- |   completed running.
--- | - `messages` is the informational messages generated
--- |   during evaluation.
--- | - `messageVisibility` determines whether the messages should be shown or
--- |   not.
--- | - `hasResults` tracks whether the card has been evaluated successfully and
--- |   produced a result.
 type CardState =
   { accessType ∷ AccessType
-  , visibility ∷ Visibility
-  , runState ∷ RunState
-  , tickStopper ∷ Slam Unit
-  , messages ∷ Array String
-  , messageVisibility ∷ Visibility
-  , hasResults ∷ Boolean
   , output ∷ Maybe Port
-  , canceler ∷ Canceler SlamDataEffects
   , element ∷ Maybe HTMLElement
   }
 
@@ -111,46 +87,18 @@ type CardStateP = ParentState CardState AnyCardState CardQuery InnerCardQuery Sl
 initialCardState ∷ CardState
 initialCardState =
   { accessType: Editable
-  , visibility: Visible
-  , runState: RunInitial
-  , tickStopper: pure unit
-  , messages: []
-  , messageVisibility: Invisible
-  , hasResults: false
   , output: Nothing
-  , canceler: mempty
   , element: Nothing
   }
 
 _accessType ∷ LensP CardState AccessType
 _accessType = lens _.accessType (_ { accessType = _ })
 
-_visibility ∷ LensP CardState Visibility
-_visibility = lens _.visibility (_ { visibility = _ })
-
-_runState ∷ LensP CardState RunState
-_runState = lens _.runState (_ { runState = _ })
-
-_tickStopper ∷ LensP CardState (Slam Unit)
-_tickStopper = lens _.tickStopper (_ { tickStopper = _ })
-
-_messages ∷ LensP CardState (Array String)
-_messages = lens _.messages (_ { messages = _ })
-
-_messageVisibility ∷ LensP CardState Visibility
-_messageVisibility = lens _.messageVisibility (_ { messageVisibility = _ })
-
-_hasResults ∷ LensP CardState Boolean
-_hasResults = lens _.hasResults (_ { hasResults = _ })
-
 -- | The last output value computed for the card. This may not be up to date
 -- | with the exact state of the card, but is the most recent result from when
 -- | the card was evaluated.
 _output ∷ LensP CardState (Maybe Port)
 _output = lens _.output (_ { output = _ })
-
-_canceler ∷ LensP CardState (Canceler SlamDataEffects)
-_canceler = lens _.canceler _{canceler = _}
 
 _element ∷ LensP CardState (Maybe HTMLElement)
 _element = lens _.element _{element = _}

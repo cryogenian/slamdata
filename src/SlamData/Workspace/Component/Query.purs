@@ -23,6 +23,7 @@ import Halogen.Component.ChildPath (injSlot, injQuery)
 import Halogen.Component.Opaque.Unsafe (opaqueQuery)
 
 import SlamData.Workspace.AccessType (AccessType)
+import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, cpDeck)
 import SlamData.Workspace.Deck.Component.Query as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -31,6 +32,7 @@ import Utils.Path as UP
 
 data Query a
   = SetAccessType AccessType a
+  | SetGlobalVarMap Port.VarMap a
   | DismissAll a
   | Reset (Maybe UP.DirPath) a
   | Load UP.DirPath (Maybe DeckId) a

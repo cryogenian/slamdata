@@ -20,6 +20,7 @@ module SlamData.Workspace.FormBuilder.Item.Model
   , _fieldType
   , _defaultValue
   , initialModel
+  , genModel
   , encode
   , decode
   , EqModel(..)
@@ -41,11 +42,21 @@ import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeD
 
 import Text.Parsing.Parser as P
 
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
+
 type Model =
   { name ∷ String
   , fieldType ∷ FieldType
   , defaultValue ∷ Maybe String
   }
+
+genModel ∷ Gen.Gen Model
+genModel = do
+  name ← SC.arbitrary
+  fieldType ← SC.arbitrary
+  defaultValue ← SC.arbitrary
+  pure { name, fieldType, defaultValue }
 
 _name ∷ LensP Model String
 _name = lens _.name _ { name = _ }

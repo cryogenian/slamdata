@@ -30,14 +30,16 @@ import Ace.Marker as Marker
 import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (newRef, writeRef, readRef, REF)
-import Data.Argonaut
-  (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Array as Arr
 import Data.Either (Either)
 import Data.Maybe (Maybe(..))
 import Data.Traversable as T
 import Data.Tuple (Tuple(..), fst, snd)
 import DOM (DOM)
+
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
 
 type Effects e = (ace :: ACE, dom :: DOM, ref :: REF|e)
 
@@ -57,13 +59,20 @@ type RangeRec =
   , endColumn :: Int
   }
 
+genRangeRec ∷ Gen.Gen RangeRec
+genRangeRec = do
+  startRow ← SC.arbitrary
+  startColumn ← SC.arbitrary
+  endRow ← SC.arbitrary
+  endColumn ← SC.arbitrary
+  pure { startRow, startColumn, endRow, endColumn }
+
 eqRangeRec :: RangeRec -> RangeRec -> Boolean
 eqRangeRec r rr =
   r.startRow == rr.startRow
   && r.startColumn == rr.startColumn
   && r.endRow == rr.endRow
   && r.endColumn == rr.endColumn
-
 
 encodeRangeRec :: RangeRec -> Json
 encodeRangeRec p

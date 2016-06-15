@@ -23,7 +23,9 @@ module SlamData.Workspace.Card.Port
   , _VarMap
   , _Resource
   , _ChartOptions
+  , _DownloadOptions
   , _ResourceTag
+  , _Draftboard
   , _CardError
   , _Blocked
   , module SlamData.Workspace.Card.Port.VarMap
@@ -32,22 +34,25 @@ module SlamData.Workspace.Card.Port
 import SlamData.Prelude
 
 import Data.Lens (PrismP, prism', TraversalP, wander)
-import ECharts.Options as EC
-import SlamData.Workspace.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue)
+import SlamData.Workspace.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
+import SlamData.Workspace.Card.Chart.ChartOptions (BuildOptions)
+import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
 import Utils.Path as PU
 
 type ChartPort =
-  { options ∷ EC.Option
-  , width ∷ Int
-  , height ∷ Int
+  { options ∷ BuildOptions
+  , chartConfig ∷ ChartConfiguration
+  , resource ∷ PU.FilePath
   }
+
 type DownloadPort =
   { resource ∷ PU.FilePath
   , compress ∷ Boolean
   , options ∷ DownloadOptions
   }
+
 type TaggedResourcePort =
   { resource ∷ PU.FilePath
   , tag ∷ Maybe String
@@ -60,7 +65,20 @@ data Port
   | ChartOptions ChartPort
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
+  | Draftboard
   | Blocked
+
+instance showPort ∷ Show Port where
+  show =
+    case _ of
+      SlamDown sd → "SlamDown " <> show sd
+      VarMap vm → "VarMap " <> show vm
+      CardError str → "CardError " <> show str
+      ChartOptions p → "ChartOptions"
+      TaggedResource p → "TaggedResource (" <> show p.resource <> " " <> show p.tag <> ")"
+      DownloadOptions p → "DownloadOptions"
+      Draftboard → "Draftboard"
+      Blocked → "Blocked"
 
 _SlamDown ∷ PrismP Port (SD.SlamDownP VarMapValue)
 _SlamDown = prism' SlamDown \p → case p of
@@ -101,4 +119,9 @@ _Blocked = prism' (const Blocked) \p → case p of
 _DownloadOptions ∷ PrismP Port DownloadPort
 _DownloadOptions = prism' DownloadOptions \p → case p of
   DownloadOptions p' → Just p'
+  _ → Nothing
+
+_Draftboard ∷ PrismP Port Unit
+_Draftboard = prism' (const Draftboard) \p → case p of
+  Draftboard → Just unit
   _ → Nothing

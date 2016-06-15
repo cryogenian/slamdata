@@ -22,12 +22,12 @@ module SlamData.Workspace.Card.Draftboard.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT, withExceptT)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Array as Array
 import Data.Function (on)
+import Data.Lens ((.~), (?~))
 import Data.List as List
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
@@ -44,17 +44,23 @@ import Halogen.HTML.CSS.Indexed as HC
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
 import Math (round, floor)
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
-import SlamData.Quasar.Data (save, load, delete) as Quasar
+import SlamData.Quasar.Data as Quasar
+import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as RC
+import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Card.Draftboard.Common (deleteGraph)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, QueryC)
-import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode)
+import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _accessType, _inserting, modelFromState)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as Ct
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Common.EvalQuery as Ceq
 import SlamData.Workspace.Card.Component as Cp
@@ -62,16 +68,24 @@ import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId(..), deckIdToString)
+import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as WS
+import SlamData.Workspace.LevelOfDetails as LOD
 
 import Utils.CSS (zIndex)
 import Utils.DOM (elementEq, scrollTop, scrollLeft, getOffsetClientRect)
-import Utils.Path (DirPath, FilePath)
+import Utils.Path (DirPath)
 
 type DraftboardDSL = H.ParentDSL State DCS.StateP QueryC DCQ.QueryP Slam DeckId
 
 type DraftboardHTML = H.ParentHTML DCS.StateP QueryC DCQ.QueryP Slam DeckId
+
+levelOfDetails ∷ DL.DeckLevel → LOD.LevelOfDetails
+levelOfDetails dl =
+  if DL.runDeckLevel dl < 2
+    then LOD.High
+    else LOD.Low
 
 draftboardComponent ∷ CardOptions → Cp.CardComponent
 draftboardComponent opts = Cp.makeCardComponent
@@ -88,13 +102,32 @@ draftboardComponent opts = Cp.makeCardComponent
 
 render ∷ CardOptions → State → DraftboardHTML
 render opts state =
-  HH.div
-    [ HP.classes [ RC.gridPattern ]
-    , HC.style bgSize
-    , HP.ref (right ∘ H.action ∘ SetElement)
-    , HE.onMouseDown (pure ∘ Just ∘ right ∘ H.action ∘ AddDeck)
-    ]
-    $ map renderDeck (listToArray $ Map.toList state.decks)
+  case levelOfDetails opts.level of
+    LOD.High →
+      HH.div
+        [ HP.classes [ RC.gridPattern ]
+        , HC.style bgSize
+        , HP.ref (right ∘ H.action ∘ SetElement)
+        , HE.onMouseDown \e → pure $
+            guard (AT.isEditable state.accessType && not state.inserting) $>
+            right (H.action $ AddDeck e)
+        ]
+        $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
+    LOD.Low →
+      HH.div
+        [ HP.classes [ HH.className "lod-overlay" ] ]
+        [ HH.div
+            [ HP.classes [ HH.className "card-input-minimum-lod" ] ]
+            [ HH.button
+                [ ARIA.label "Zoom to view"
+                , HP.title "Zoom to view"
+                , HP.disabled true
+                ]
+                [ glyph B.glyphiconZoomIn
+                , HH.text $ "Please, zoom to see the draftboard"
+                ]
+            ]
+        ]
 
   where
 
@@ -127,17 +160,18 @@ render opts state =
     CSS.height $ CSS.px $ gridToPx $ size'.height + 1.0
 
 evalCard ∷ Natural Ceq.CardEvalQuery DraftboardDSL
-evalCard (Ceq.EvalCard input k) = pure $ k { output: Nothing, messages: [] }
-evalCard (Ceq.SetupCard info next) = pure next
-evalCard (Ceq.NotifyRunCard next) = pure next
-evalCard (Ceq.NotifyStopCard next) = pure next
-evalCard (Ceq.SetCanceler canceler next) = pure next
-evalCard (Ceq.SetDimensions dims next) = pure next
-evalCard (Ceq.Save k) = map (k ∘ encode) H.get
-evalCard (Ceq.Load json next) = do
-  for_ (decode json) \model → do
-    H.modify _ { decks = model.decks }
-    loadDecks
+evalCard (Ceq.EvalCard input output next) = do
+  H.modify $ _accessType .~ input.accessType
+  H.queryAll ∘ opaqueQuery ∘ H.action $ DCQ.SetAccessType input.accessType
+  pure next
+evalCard (Ceq.SetDimensions _ next) = pure next
+evalCard (Ceq.Save k) = map (k ∘ Card.Draftboard ∘ modelFromState) H.get
+evalCard (Ceq.Load card next) = do
+  case card of
+    Card.Draftboard model → do
+      H.modify _ { decks = model.decks }
+      loadDecks
+    _ → pure unit
   pure next
 
 evalBoard ∷ CardOptions → Natural Query DraftboardDSL
@@ -149,7 +183,7 @@ evalBoard _ (Grabbing deckId ev next) = do
               { x = rect.x + (pxToGrid d.offsetX)
               , y = rect.y + (pxToGrid d.offsetY)
               }
-        H.modify _ { moving = Just (Tuple deckId newRect) }
+        H.modify $ _moving ?~ Tuple deckId newRect
     Drag.Done _ →
       stopDragging
   pure next
@@ -161,7 +195,7 @@ evalBoard _ (Resizing deckId ev next) = do
               { width = rect.width + (pxToGrid d.offsetX)
               , height = rect.height + (pxToGrid d.offsetY)
               }
-        H.modify _ { moving = Just (Tuple deckId newRect) }
+        H.modify $ _moving ?~ Tuple deckId newRect
     Drag.Done _ →
       stopDragging
   pure next
@@ -170,21 +204,21 @@ evalBoard _ (SetElement el next) = do
   pure next
 evalBoard opts (AddDeck e next) = do
   let e' = mouseEventToPageEvent e
-  H.gets _.canvas >>= traverse_ \el →
-    H.fromEff (elementEq el e'.target) >>= \same →
-      when same do
-        rect ← H.fromEff $ getOffsetClientRect el
-        scroll ← { top: _, left: _ } <$> H.fromEff (scrollTop el) <*> H.fromEff (scrollLeft el)
-        addDeck opts
-          { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
-          , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
-          }
+  H.gets _.canvas >>= traverse_ \el → do
+    same ← H.fromEff (elementEq el e'.target)
+    when same do
+      rect ← H.fromEff $ getOffsetClientRect el
+      scroll ← { top: _, left: _ } <$> H.fromEff (scrollTop el) <*> H.fromEff (scrollLeft el)
+      addDeck opts
+        { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
+        , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
+        }
   pure next
 evalBoard opts (LoadDeck deckId next) = do
   for_ opts.path \path →
     queryDeck deckId
       $ H.action
-      $ DCQ.Load path deckId DCQ.Nested
+      $ DCQ.Load path deckId (DL.succ opts.level)
   pure next
 
 peek ∷ ∀ a. CardOptions → H.ChildF DeckId (OpaqueQuery DCQ.Query) a → DraftboardDSL Unit
@@ -199,7 +233,7 @@ peek opts (H.ChildF deckId q) = flip peekOpaqueQuery q
   where
   startDragging deckId ev tag =
     H.gets (Map.lookup deckId ∘ _.decks) >>= traverse_ \rect → do
-      H.modify _ { moving = Just (Tuple deckId rect) }
+      H.modify $ _moving ?~ Tuple deckId rect
       void
         $ Drag.subscribe' ev
         $ right ∘ H.action ∘ tag deckId
@@ -299,36 +333,32 @@ addDeck opts coords = do
   for_ (accomodateDeck decks coords deckPos) \deckPos' →
   for_ opts.deckId \parentId →
   for_ opts.path \path → do
+    H.modify $ _inserting .~ true
     deckId ← saveDeck path $ DM.emptyDeck { parent = Just (Tuple parentId opts.cardId) }
     case deckId of
       Left err → do
+        H.modify $ _inserting .~ false
         -- TODO: do something to notify the user saving failed
         pure unit
       Right deckId' → void do
-        H.modify \s → s { decks = Map.insert deckId' deckPos' s.decks }
+        H.modify \s → s
+          { decks = Map.insert deckId' deckPos' s.decks
+          , inserting = false
+          }
         queryDeck deckId'
           $ H.action
-          $ DCQ.Load path deckId' DCQ.Nested
+          $ DCQ.Load path deckId' (DL.succ opts.level)
 
 saveDeck ∷ DirPath → DM.Deck → DraftboardDSL (Either Exn.Error DeckId)
 saveDeck path model = runExceptT do
   i ← ExceptT $ map DeckId <$> WS.freshId (path </> Pathy.file "index")
-  ExceptT $ Quasar.save (deckIndex path i) $ DM.encode model
+  ExceptT $ Quasar.save (DM.deckIndex path i) $ DM.encode model
   pure i
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck opts deckId =
   for_ opts.path \path → do
-    let deleteId i = Quasar.delete $ Left $ path </> Pathy.dir (deckIdToString i)
-    res ← H.fromAff $ runExceptT do
-      children ← ExceptT $ deckGraph path deckId
-      withExceptT Exn.message
-        $ ExceptT
-        $ map sequence
-        $ runPar
-        $ traverse (Par ∘ deleteId)
-        $ Array.cons deckId children
-
+    res ← deleteGraph path deckId
     case res of
       Left err →
         -- TODO: do something to notify the user deleting failed
@@ -361,35 +391,7 @@ wrapDeck opts oldId = do
           }
         queryDeck newId
           $ H.action
-          $ DCQ.Load path newId DCQ.Nested
-
-deckIndex ∷ DirPath → DeckId → FilePath
-deckIndex path deckId =
-  path </> Pathy.dir (deckIdToString deckId) </> Pathy.file "index"
-
-deckGraph
-  ∷ DirPath
-  → DeckId
-  → Slam (Either String (Array DeckId))
-deckGraph path deckId = runExceptT do
-  json ← ExceptT $ Quasar.load $ deckIndex path deckId
-  deck ← ExceptT $ pure $ DM.decode json
-  boards ← ExceptT
-    $ pure
-    $ sequence
-    $ map (decode ∘ _.state)
-    $ Array.filter (\c → c.cardType == Ct.Draftboard) deck.cards
-
-  let children = join $ map (listToArray ∘ Map.keys ∘ _.decks) boards
-
-  ExceptT $ map (children <> _) <$> transDecks children
-
-  where
-  transDecks ids = map (map join ∘ sequence) $ runPar $ traverse (Par ∘ deckGraph path) ids
+          $ DCQ.Load path newId (DL.succ opts.level)
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck deckId = H.query deckId <<< opaqueQuery
-
--- This can be removed once Array gets fromFoldable
-listToArray ∷ ∀ a. List.List a → Array a
-listToArray = foldl Array.snoc []

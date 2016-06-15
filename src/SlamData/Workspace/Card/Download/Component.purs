@@ -19,9 +19,8 @@ module SlamData.Workspace.Card.Download.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class (throwError)
-
-import Data.Argonaut (jsonEmptyObject)
+import Data.Lens ((^?), (.~))
+import Data.Lens as Lens
 import Data.Path.Pathy (printPath)
 
 import Halogen as H
@@ -34,15 +33,20 @@ import Quasar.Paths as Paths
 
 import SlamData.Download.Model as D
 import SlamData.Effects (Slam)
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType (CardType(Download))
 import SlamData.Workspace.Card.Common.EvalQuery as Ec
 import SlamData.Workspace.Card.Component (makeCardComponent, makeQueryPrism, _DownloadState, _DownloadQuery)
 import SlamData.Workspace.Card.Component as Cc
 import SlamData.Workspace.Card.Download.Component.Query (QueryP)
-import SlamData.Workspace.Card.Download.Component.State (State, initialState)
+import SlamData.Workspace.Card.Download.Component.State (State, initialState, _url, _levelOfDetails, _fileName)
 import SlamData.Workspace.Card.Port as P
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Quasar.Auth as API
+
+import Utils.Path as UP
+import Utils.DOM (getTextWidthPure)
 
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
@@ -64,43 +68,55 @@ render state =
         , B.btnPrimary
         , HH.className "download-button"
         ]
-    , HP.href state
-    , ARIA.label "Download"
-    , HP.title "Download"
+    , HP.href state.url
+    , ARIA.label $ fullDownloadString state
+    , HP.title $ fullDownloadString state
     ]
-    [ HH.text "Download" ]
+    [ HH.text $ buttonText state ]
+  where
+
+  buttonText ∷ State → String
+  buttonText state
+    | state.levelOfDetails ≡ Low = "Download"
+    | otherwise = fullDownloadString state
+
+fullDownloadString ∷ State → String
+fullDownloadString state = "Download " ⊕ state.fileName
 
 eval ∷ QueryP ~> DSL
 eval = coproduct cardEval (absurd ∘ getConst)
 
 cardEval ∷ Ec.CardEvalQuery ~> DSL
-cardEval (Ec.EvalCard { inputPort } continue) = do
-  map continue $ Ec.runCardEvalT do
-    case inputPort of
-      Just P.Blocked → lift $ pure $ Just P.Blocked
-      Just (P.DownloadOptions opts) → lift do
-        handleDownloadPort opts
-        pure $ Just P.Blocked
-      _ → throwError "Incorrect input in download card"
-cardEval (Ec.NotifyRunCard next) = pure next
-cardEval (Ec.NotifyStopCard next) = pure next
-cardEval (Ec.Save k) = pure $ k jsonEmptyObject
-cardEval (Ec.Load json next) = pure next
-cardEval (Ec.SetupCard { inputPort } next) = do
-  case inputPort of
-    P.DownloadOptions opts → do
-      handleDownloadPort opts
-      pure unit
-    _ → pure unit
+cardEval (Ec.EvalCard info output next ) = do
+  for_ (info.input ^? Lens._Just ∘ P._DownloadOptions) handleDownloadPort
   pure next
-cardEval (Ec.SetCanceler _ next) = pure next
-cardEval (Ec.SetDimensions _ next) = pure next
+cardEval (Ec.Save k) = pure (k Card.Download)
+cardEval (Ec.Load json next) = pure next
+cardEval (Ec.SetDimensions dims next) = do
+  textWidth ← H.gets $ flip getTextWidthPure "normal 14px Ubuntu" ∘ _.fileName
+  let
+    buttonPadding = 24.0
+    cardPadding = 24.0
+    grippersWidth = 48.0
+  H.modify
+    $ _levelOfDetails
+    .~ if dims.width < textWidth + buttonPadding + cardPadding + grippersWidth
+         then Low
+         else High
+  pure next
 
 handleDownloadPort ∷ P.DownloadPort → DSL Unit
 handleDownloadPort opts = do
   hs ← H.fromEff API.authHeaders
-  H.set $ url hs
+  H.modify $ _url .~ url hs
+  let
+    fileName = UP.getNameStr $ Right opts.resource
+    ext | opts.compress = ".zip"
+    ext | isRight opts.options = ".json"
+    ext | otherwise = ".csv"
+  H.modify $ _fileName .~ (fileName ⊕ ext)
   where
+
   url hs =
     (encodeURI (printPath Paths.data_ ⊕ printPath opts.resource))
     ⊕ headersPart hs

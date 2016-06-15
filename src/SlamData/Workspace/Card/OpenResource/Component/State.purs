@@ -14,7 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.OpenResource.Component.State where
+module SlamData.Workspace.Card.OpenResource.Component.State
+  ( State
+  , initialState
+  , _items
+  , _browsing
+  , _selected
+  , _levelOfDetails
+  ) where
 
 import SlamData.Prelude
 
@@ -22,15 +29,15 @@ import Data.Lens (LensP, lens)
 import Data.Path.Pathy (rootDir)
 
 import SlamData.FileSystem.Resource as R
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 import Utils.Path as Up
-
 
 type State =
   { items ∷ Array R.Resource
   , browsing ∷ Up.DirPath
   , selected ∷ Maybe Up.FilePath
-  , loading ∷ Boolean
+  , levelOfDetails ∷ LevelOfDetails
   }
 
 initialState ∷ State
@@ -38,7 +45,7 @@ initialState =
   { items: [ ]
   , browsing: rootDir
   , selected: Nothing
-  , loading: false
+  , levelOfDetails: High
   }
 
 
@@ -51,5 +58,5 @@ _browsing = lens (_.browsing) (_{browsing = _})
 _selected ∷ ∀ a r. LensP { selected ∷ a|r} a
 _selected = lens (_.selected) (_{selected = _})
 
-_loading ∷ ∀ a r. LensP { loading ∷ a|r} a
-_loading = lens (_.loading) (_{loading = _})
+_levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
+_levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})

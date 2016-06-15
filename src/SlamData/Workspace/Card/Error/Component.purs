@@ -23,6 +23,7 @@ import Data.Lens ((^?))
 import Data.Lens as Lens
 
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Error.Component.State as ECS
@@ -65,25 +66,12 @@ eval = coproduct cardEval ECQ.initiality
 cardEval ∷ CEQ.CardEvalQuery ~> DSL
 cardEval q =
   case q of
-    CEQ.EvalCard {inputPort} k →
-      k <$> CEQ.runCardEvalT do
-        lift ∘ H.modify ∘ Lens.set ECS._message $
-          inputPort ^? Lens._Just ∘ Port._CardError
-        pure $ Just Port.Blocked
-    CEQ.SetupCard {inputPort} next → do
-      H.modify ∘ Lens.set ECS._message $ inputPort ^? Port._CardError
-      pure next
-    CEQ.NotifyRunCard next →
-      pure next
-    CEQ.NotifyStopCard next →
-      pure next
-    CEQ.SetCanceler _ next →
+    CEQ.EvalCard {input} output next → do
+      H.modify ∘ Lens.set ECS._message $ input ^? Lens._Just ∘ Port._CardError
       pure next
     CEQ.SetDimensions _ next →
       pure next
     CEQ.Save k →
-      k ∘ ECS.encode
-        <$> H.get
-    CEQ.Load json next →
-      for_ (ECS.decode json) H.set
-        $> next
+      pure $ k Card.ErrorCard
+    CEQ.Load _ next →
+      pure next

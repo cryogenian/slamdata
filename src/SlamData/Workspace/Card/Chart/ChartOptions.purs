@@ -14,9 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.ChartOptions (buildOptions) where
+module SlamData.Workspace.Card.Chart.ChartOptions
+  ( BuildOptions
+  , encode
+  , decode
+  , buildOptions
+  , eqBuildOptions
+  , genBuildOptions
+  ) where
 
-import Data.Argonaut (JArray, JCursor)
+import SlamData.Prelude
+
+import Data.Argonaut (JArray, JCursor, Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
 import Data.Map as M
 
 import ECharts (Option)
@@ -28,31 +37,62 @@ import SlamData.Workspace.Card.Chart.ChartOptions.Line (buildLine)
 import SlamData.Workspace.Card.Chart.ChartOptions.Pie (buildPie)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
-type BuildOptions o =
-  { chartType :: ChartType
-  , records :: JArray
-  , axisLabelAngle :: Int
-  , axisLabelFontSize :: Int
-  | o }
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
+
+type BuildOptions =
+  { chartType ∷ ChartType
+  , axisLabelAngle ∷ Int
+  , axisLabelFontSize ∷ Int
+  }
+
+eqBuildOptions ∷ BuildOptions → BuildOptions → Boolean
+eqBuildOptions o1 o2 =
+  o1.chartType ≡ o2.chartType
+    && o1.axisLabelAngle ≡ o2.axisLabelAngle
+    && o1.axisLabelFontSize ≡ o2.axisLabelFontSize
+
+genBuildOptions ∷ Gen.Gen BuildOptions
+genBuildOptions = do
+  chartType ← SC.arbitrary
+  axisLabelAngle ← SC.arbitrary
+  axisLabelFontSize ← SC.arbitrary
+  pure { chartType, axisLabelAngle, axisLabelFontSize }
+
+encode ∷ BuildOptions → Json
+encode m
+   = "chartType" := m.chartType
+  ~> "axisLabelAngle" := m.axisLabelAngle
+  ~> "axisLabelFontSize" := m.axisLabelFontSize
+  ~> jsonEmptyObject
+
+decode ∷ Json → Either String BuildOptions
+decode = decodeJson >=> \obj →
+  { chartType: _, axisLabelAngle: _, axisLabelFontSize: _ }
+    <$> (obj .? "chartType")
+    <*> (obj .? "axisLabelAngle")
+    <*> (obj .? "axisLabelFontSize")
 
 buildOptions
-  :: forall o
-   . BuildOptions o -> ChartConfiguration -> Option
-buildOptions args conf =
+  ∷ BuildOptions
+  → ChartConfiguration
+  → JArray
+  → Option
+buildOptions args conf records =
   buildOptions_
-  args.chartType
-  (analyzeJArray args.records)
-  args.axisLabelAngle
-  args.axisLabelFontSize
-  conf
+    args.chartType
+    (analyzeJArray records)
+    args.axisLabelAngle
+    args.axisLabelFontSize
+    conf
 
 buildOptions_
-  :: ChartType
-  -> M.Map JCursor Axis
-  -> Int
-  -> Int
-  -> ChartConfiguration
-  -> Option
+  ∷ ChartType
+  → M.Map JCursor Axis
+  → Int
+  → Int
+  → ChartConfiguration
+  → Option
 buildOptions_ Pie mp _ _ conf = buildPie mp conf
 buildOptions_ Bar mp angle size conf = buildBar mp angle size conf
 buildOptions_ Line mp angle size conf = buildLine mp angle size conf

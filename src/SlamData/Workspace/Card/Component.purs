@@ -23,38 +23,27 @@ module SlamData.Workspace.Card.Component
   ) where
 
 import SlamData.Prelude
+import SlamData.Config as Config
 
-import Control.Coroutine.Stalling (producerToStallingProducer)
-import Control.Monad.Eff.Ref (newRef, readRef, writeRef)
-import Control.Monad.Free (liftF)
-import Control.Monad.Aff (cancel)
-import Control.Monad.Eff.Exception as Exn
-
-import Data.Array as Arr
-import Data.Argonaut (jsonNull)
-import Data.Date as Date
-import Data.Function (on)
-import Data.Lens (PrismP, review, preview, clonePrism, (.~), (%~))
-import Data.Visibility (Visibility(..), toggleVisibility)
-
-import DOM.Timer (interval, clearInterval)
+import Data.Time (Milliseconds(..))
+import Data.Lens (PrismP, (.~), review, preview, clonePrism)
 
 import Halogen as H
+import Halogen.Component.Utils (sendAfter')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Query.EventSource (EventSource(..))
-import Halogen.Query.HalogenF (HalogenFP(..))
-import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.CardType (cardClasses, nextCardTypes)
-import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 
+import Math as Math
+
+import SlamData.Effects (Slam)
+import SlamData.Workspace.Card.CardType (cardClasses)
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.Render as CR
 import SlamData.Workspace.Card.Component.State as CS
-import SlamData.Workspace.Card.RunState (RunState(..))
 import SlamData.Render.CSS as CSS
 
-import Utils.AffableProducer (produce)
 import Utils.DOM as DOMUtils
 
 -- | Type synonym for the full type of a card component.
@@ -74,24 +63,17 @@ makeCardComponent def = makeCardComponentPart def render
     → CS.CardState
     → CR.CardHTML
   render component initialState cs =
-    if cs.visibility ≡ Invisible
-      then HH.text ""
-      else shown cs
-    where
-    shown cs =
-      HH.div
-        [ HP.classes $ [ CSS.deckCard ]
-        , HP.ref (H.action ∘ CQ.SetHTMLElement)
-        ]
-        $ fold
-          [ CR.header def.cardType cs
-          , [ HH.div
-                [ HP.classes $ cardClasses def.cardType ]
-                [ HH.slot unit \_ → {component, initialState} ]
-            ]
-          , (guard canHaveOutput) $> CR.statusBar cs.hasResults cs
+    HH.div
+      [ HP.classes $ [ CSS.deckCard ]
+      , HP.ref (H.action ∘ CQ.SetHTMLElement)
+      ]
+      $ fold
+        [ CR.header def.cardType cs
+        , [ HH.div
+              [ HP.classes $ cardClasses def.cardType ]
+              [ HH.slot unit \_ → {component, initialState} ]
           ]
-    canHaveOutput = not $ Arr.null $ nextCardTypes $ Just def.cardType
+        ]
 
 -- | Constructs a card component from a record with the necessary properties and
 -- | a render function.
@@ -107,7 +89,7 @@ makeCardComponentPart def render =
   H.lifecycleParentComponent
     { render: render component initialState
     , eval
-    , peek: Just (peek ∘ H.runChildF)
+    , peek: Nothing
     , initializer: Just (H.action CQ.UpdateDimensions)
     , finalizer: Nothing
     }
@@ -130,38 +112,16 @@ makeCardComponentPart def render =
   initialState = review _State def.initialState
 
   eval ∷ Natural CQ.CardQuery CardDSL
-  eval (CQ.RunCard next) = pure next
-  eval (CQ.StopCard next) = stopRun $> next
-  eval (CQ.UpdateCard input k) = do
-    H.fromAff =<< H.gets _.tickStopper
-    tickStopper ← startInterval
-    H.modify
-      $ (CS._tickStopper .~ tickStopper)
-    result ← H.query unit (left (H.request (CQ.EvalCard input)))
-    for_ result \{ output } → H.modify (CS._hasResults .~ isJust output)
-    H.fromAff tickStopper
-    H.modify
-      $ (CS._runState %~ finishRun)
-      ∘ (CS._output .~ (_.output =<< result))
-      ∘ (CS._messages .~ (maybe [] _.messages result))
-    maybe (liftF HaltHF) (pure ∘ k ∘ _.output) result
-  eval (CQ.RefreshCard next) = pure next
-  eval (CQ.ToggleMessages next) =
-    H.modify (CS._messageVisibility %~ toggleVisibility) $> next
-  eval (CQ.Tick elapsed next) =
-    H.modify (CS._runState .~ RunElapsed elapsed) $> next
-  eval (CQ.GetOutput k) = k <$> H.gets (_.output)
+  eval (CQ.UpdateCard input output next) = do
+    void $ H.query unit (left (H.action (CQ.EvalCard input output)))
+    H.modify $ CS._output .~ output
+    pure next
   eval (CQ.SaveCard cardId cardType k) = do
-    { hasResults } ← H.get
-    json ← H.query unit (left (H.request CQ.Save))
-    pure ∘ k $
-      { cardId
-      , cardType
-      , hasRun: hasResults
-      , state: fromMaybe jsonNull json
-      }
-  eval (CQ.LoadCard model next) = do
-    H.query unit (left (H.action (CQ.Load model.state)))
+    model ← fromMaybe (Card.cardModelOfType cardType) <$> H.query unit (left (H.request CQ.Save))
+    pure $ k { cardId, model }
+  eval (CQ.LoadCard card next) = do
+    H.query unit ∘ left ∘ H.action $ CQ.Load card.model
+    sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions unit)
     pure next
   eval (CQ.SetCardAccessType at next) =
     H.modify (CS._accessType .~ at) $> next
@@ -170,51 +130,17 @@ makeCardComponentPart def render =
   eval (CQ.UpdateDimensions next) = do
     H.gets _.element >>= traverse_ \el -> do
       { width, height } ← H.fromEff (DOMUtils.getBoundingClientRect el)
-      H.queryAll $ left $ H.action (CQ.SetDimensions { width, height })
+      let
+        round n = (Math.round (n / Config.gridPx)) * Config.gridPx
+        roundedWidth = round width
+        roundedHeight = round height
+      unless (roundedWidth ≡ zero ∧ roundedHeight ≡ zero)
+        $ void
+        $ H.query unit
+        $ left
+        $ H.action
+        $ CQ.SetDimensions
+            { width: roundedWidth
+            , height: roundedHeight
+            }
     pure next
-
-  peek ∷ ∀ a. CQ.InnerCardQuery a → CardDSL Unit
-  peek = coproduct cardEvalPeek (const $ pure unit)
-
-  cardEvalPeek ∷ ∀ a. CQ.CardEvalQuery a → CardDSL Unit
-  cardEvalPeek (CQ.SetCanceler canceler _) = H.modify $ CS._canceler .~ canceler
-  cardEvalPeek (CQ.SetupCard _ _) = H.modify $ CS._canceler .~ mempty
-  cardEvalPeek (CQ.EvalCard _ _) = H.modify $ CS._canceler .~ mempty
-  cardEvalPeek (CQ.NotifyStopCard _) = stopRun
-  cardEvalPeek _ = pure unit
-
-  stopRun ∷ CardDSL Unit
-  stopRun = do
-    cs ← H.gets _.canceler
-    ts ← H.gets _.tickStopper
-    H.fromAff ts
-    H.fromAff $ cancel cs (Exn.error "Canceled")
-    H.modify $ CS._runState .~ RunInitial
-
--- | Starts a timer running on an interval that passes Tick queries back to the
--- | component, allowing the runState to be updated with a timer.
--- |
--- | The returned value is an action that will stop the timer running when
--- | processed.
-startInterval ∷ CardDSL (Slam Unit)
-startInterval = do
-  ref ← H.fromEff (newRef Nothing)
-  start ← H.fromEff Date.now
-  H.modify (CS._runState .~ RunElapsed zero)
-
-  H.subscribe'
-    $ EventSource
-    $ producerToStallingProducer
-    $ produce \emit → do
-        i ← interval 1000 $ emit ∘ Left ∘ H.action ∘ CQ.Tick =<< do
-          now ← Date.now
-          pure $ on (-) Date.toEpochMilliseconds now start
-        writeRef ref (Just i)
-
-  pure $ maybe (pure unit) (H.fromEff ∘ clearInterval) =<< H.fromEff (readRef ref)
-
--- | Update the `RunState` from its current value to `RunFinished`.
-finishRun ∷ RunState → RunState
-finishRun RunInitial = RunElapsed zero
-finishRun (RunElapsed ms) = RunFinished ms
-finishRun (RunFinished ms) = RunFinished ms

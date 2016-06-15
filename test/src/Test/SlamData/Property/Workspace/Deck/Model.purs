@@ -47,5 +47,4 @@ check ∷ QC Unit
 check = quickCheck $ runArbDeck ⋙ \model →
   case Model.decode (Model.encode model) of
     Left err → Failed $ "Decode failed: " ⊕ err
-    Right model' →
-      fold (zipWith checkCardEquality model.cards model'.cards)
+    Right model' → fold (zipWith checkCardEquality model.cards model'.cards)

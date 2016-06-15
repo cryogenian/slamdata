@@ -27,28 +27,28 @@ import SlamData.Prelude
 data AccessType = Editable | ReadOnly
 
 -- | Used in route parsing
-parseAccessType :: String -> Either String AccessType
+parseAccessType ∷ String → Either String AccessType
 parseAccessType "view" = Right ReadOnly
 parseAccessType "edit" = Right Editable
 parseAccessType _ = Left "incorrect accessType string"
 
 -- | Used in route construction
-printAccessType :: AccessType -> String
+printAccessType ∷ AccessType → String
 printAccessType Editable = "edit"
 printAccessType ReadOnly = "view"
 
-isEditable :: AccessType -> Boolean
+isEditable ∷ AccessType → Boolean
 isEditable Editable = true
 isEditable _ = false
 
-isReadOnly :: AccessType -> Boolean
+isReadOnly ∷ AccessType → Boolean
 isReadOnly ReadOnly = true
 isReadOnly _ = false
 
-derive instance genericAccessType :: Generic AccessType
-instance eqAccessType :: Eq AccessType where eq = gEq
-instance ordAccessType :: Ord AccessType where compare = gCompare
+derive instance genericAccessType ∷ Generic AccessType
+derive instance eqAccessType ∷ Eq AccessType
+derive instance ordAccessType ∷ Ord AccessType
 
-instance showAccessType :: Show AccessType where
+instance showAccessType ∷ Show AccessType where
   show Editable = "Editable"
   show ReadOnly = "ReadOnly"

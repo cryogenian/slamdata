@@ -16,44 +16,75 @@ limitations under the License.
 
 module SlamData.Workspace.Card.CardId
   ( CardId(..)
+  , _CardId
+
+  , _StringCardId
+
   , stringToCardId
   , cardIdToString
-  , runCardId
   ) where
 
 import SlamData.Prelude
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
 import Data.Int as Int
+import Data.Lens as Lens
 
 -- | The slot address value for cards and identifier within the deck graph.
-newtype CardId = CardId Int
+data CardId
+  = ErrorCardId
+  | CardId Int
+  | NextActionCardId
 
-runCardId ∷ CardId → Int
-runCardId (CardId i) = i
+_CardId ∷ Lens.PrismP CardId Int
+_CardId =
+  Lens.prism CardId
+    case _ of
+      CardId i → Right i
+      cid → Left cid
 
 stringToCardId ∷ String → Either String CardId
-stringToCardId = maybe (Left "incorrect card id") (Right ∘ CardId) ∘ Int.fromString
+stringToCardId =
+  case _ of
+    "ErrorCardId" → Right ErrorCardId
+    "NextActionCardId" → Right NextActionCardId
+    str →
+      case Int.fromString str of
+        Just i → Right $ CardId i
+        Nothing → Left "Invalid CardId"
 
 cardIdToString ∷ CardId → String
-cardIdToString = show ∘ runCardId
+cardIdToString =
+  case _ of
+    ErrorCardId → "ErrorCardId"
+    NextActionCardId → "NextActionCardId"
+    CardId i → show i
+
+_StringCardId ∷ Lens.PrismP String CardId
+_StringCardId = Lens.prism cardIdToString stringToCardId
 
 derive instance genericCardId ∷ Generic CardId
-instance eqCardId ∷ Eq CardId where eq = gEq
-instance ordCardId ∷ Ord CardId where compare = gCompare
+derive instance eqCardId ∷ Eq CardId
+derive instance ordCardId ∷ Ord CardId
 
 instance encodeJsonCardId ∷ EncodeJson CardId where
-  encodeJson = encodeJson ∘ runCardId
+  encodeJson =
+    case _ of
+      CardId i → encodeJson i
+      ErrorCardId → encodeJson "ErrorCardId"
+      NextActionCardId → encodeJson "NextActionCardId"
 
 instance decodeJsonCardId ∷ DecodeJson CardId where
-  decodeJson json = CardId <$> decodeJson json
+  decodeJson json =
+    decodeErrorCardId <|> decodeNumeric
 
-instance semiringCardId ∷ Semiring CardId where
-  zero = CardId zero
-  one = CardId one
-  add (CardId a) (CardId b) = CardId $ a + b
-  mul (CardId a) (CardId b) = CardId $ a * b
-
-instance boundedCardId ∷ Bounded CardId where
-  top = CardId top
-  bottom = CardId bottom
+    where
+      decodeErrorCardId = do
+        decodeJson json >>=
+          case _ of
+            "ErrorCardId" → pure ErrorCardId
+            "NextActionCardId" → pure NextActionCardId
+            str → Left $ "Invalid CardId: " <> str
+      decodeNumeric =
+        CardId <$>
+          decodeJson json

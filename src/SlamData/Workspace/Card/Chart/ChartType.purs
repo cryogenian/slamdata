@@ -14,11 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.ChartType where
+module SlamData.Workspace.Card.Chart.ChartType
+  ( ChartType(..)
+  , isPie
+  , isLine
+  , isBar
+  , parseChartType
+  , printChartType
+  ) where
 
 import SlamData.Prelude
-
 import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson)
+import Data.List as L
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
 
 data ChartType = Pie | Line | Bar
 
@@ -46,11 +55,14 @@ printChartType Line = "line"
 printChartType Bar = "bar"
 
 derive instance genericChartType :: Generic ChartType
-instance eqChartType :: Eq ChartType where eq = gEq
-instance ordChartType :: Ord ChartType where compare = gCompare
+derive instance eqChartType :: Eq ChartType
+derive instance ordChartType :: Ord ChartType
 
 instance encodeJsonChartType :: EncodeJson ChartType where
   encodeJson = fromString <<< printChartType
 
 instance decodeJsonChartType :: DecodeJson ChartType where
   decodeJson json = decodeJson json >>= parseChartType
+
+instance arbitraryChartType ∷ SC.Arbitrary ChartType where
+  arbitrary = Gen.elements Pie $ L.toList [ Pie, Line, Bar ]

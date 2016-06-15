@@ -17,17 +17,22 @@ limitations under the License.
 module SlamData.Workspace.Card.Save.Component.State where
 
 import Data.Lens (LensP, lens)
+import Data.Maybe (Maybe(..))
+import Data.Path.Pathy as Path
 
 type State =
-  {
-    pathString ∷ String
+  { pathString ∷ Maybe String
+  , confirmedPath ∷ Maybe (Path.AbsFile Path.Sandboxed)
   }
 
 initialState ∷ State
 initialState =
-  {
-    pathString: ""
+  { pathString: Nothing
+  , confirmedPath: Nothing
   }
 
 _pathString ∷ ∀ a r. LensP {pathString ∷ a|r} a
 _pathString = lens _.pathString (_{pathString = _})
+
+_confirmedPath ∷ ∀ a r. LensP {confirmedPath ∷ a|r} a
+_confirmedPath = lens _.confirmedPath (_{confirmedPath = _})

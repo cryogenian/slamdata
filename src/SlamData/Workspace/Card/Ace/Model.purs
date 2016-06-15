@@ -17,20 +17,38 @@ limitations under the License.
 module SlamData.Workspace.Card.Ace.Model
   ( Model
   , emptyModel
+  , eqModel
   , encode
   , decode
+  , genModel
   ) where
 
 import SlamData.Prelude
 
+import Data.Array as A
+import Data.Foldable as F
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, encodeJson, jsonEmptyObject)
 
-import Utils.Ace (RangeRec, encodeRangeRec, decodeRangeRec)
+import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
+
+import Utils.Ace (RangeRec, encodeRangeRec, decodeRangeRec, eqRangeRec, genRangeRec)
 
 type Model =
   { text :: String
   , ranges :: Array RangeRec
   }
+
+eqModel ∷ Model → Model → Boolean
+eqModel m1 m2 =
+  m1.text ≡ m2.text
+    && F.all id (A.zipWith eqRangeRec m1.ranges m2.ranges)
+
+genModel ∷ Gen.Gen Model
+genModel = do
+  text ← SC.arbitrary
+  ranges ← Gen.arrayOf genRangeRec
+  pure { text, ranges }
 
 emptyModel :: Model
 emptyModel =

@@ -18,6 +18,9 @@ module SlamData.Workspace.FormBuilder.Model
   ( Model
   , encode
   , decode
+  , emptyModel
+  , eqModel
+  , genModel
   ) where
 
 import SlamData.Prelude
@@ -26,23 +29,39 @@ import Data.Argonaut ((.?), (:=), (~>))
 import Data.Argonaut as J
 
 import SlamData.Workspace.FormBuilder.Item.Model as Item
+import Test.StrongCheck.Gen as Gen
 
 type Model =
-  { items :: Array Item.Model
+  { items ∷ Array Item.Model
   }
 
+genModel ∷ Gen.Gen Model
+genModel = do
+  items ← Gen.arrayOf Item.genModel
+  pure { items }
+
+eqModel
+  ∷ Model
+  → Model
+  → Boolean
+eqModel m1 m2 =
+  Item.EqModel <$> m1.items ≡ Item.EqModel <$> m2.items
+
+emptyModel ∷ Model
+emptyModel = { items: [] }
+
 encode
-  :: Model
-  -> J.Json
+  ∷ Model
+  → J.Json
 encode m =
   "items" := (Item.encode <$> m.items)
      ~> J.jsonEmptyObject
 
 decode
-  :: J.Json
-  -> Either String Model
+  ∷ J.Json
+  → Either String Model
 decode =
-  J.decodeJson >=> \obj ->
+  J.decodeJson >=> \obj →
     obj .? "items"
       >>= traverse Item.decode
       <#> { items : _ }

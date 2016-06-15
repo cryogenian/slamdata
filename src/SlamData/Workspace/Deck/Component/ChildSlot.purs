@@ -29,8 +29,8 @@ import SlamData.Workspace.Deck.Dialog.Component as Dialog
 newtype CardSlot = CardSlot CardId
 
 derive instance genericCardSlot ∷ Generic CardSlot
-instance eqCardSlot ∷ Eq CardSlot where eq = gEq
-instance ordCardSlot ∷ Ord CardSlot where compare = gCompare
+derive instance eqCardSlot ∷ Eq CardSlot
+derive instance ordCardSlot ∷ Ord CardSlot
 
 type BackSideSlot = Unit
 

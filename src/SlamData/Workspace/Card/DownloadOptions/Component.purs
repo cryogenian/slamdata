@@ -18,28 +18,30 @@ module SlamData.Workspace.Card.DownloadOptions.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Error.Class (throwError)
-
-import Data.Lens ((?~), (.~), preview, _Left, _Right, (%~))
+import Data.Lens as Lens
+import Data.Lens ((.~), (^?), _Left, _Right, (%~))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Common.EvalQuery as Ec
 import SlamData.Workspace.Card.Component as Cc
 import SlamData.Workspace.Card.Component (makeCardComponent, makeQueryPrism, _DownloadOptionsState, _DownloadOptionsQuery)
 import SlamData.Workspace.Card.DownloadOptions.Component.Query (QueryP, Query(..))
-import SlamData.Workspace.Card.DownloadOptions.Component.State (State, _compress, _options, _source, initialState, encode, decode)
+import SlamData.Workspace.Card.DownloadOptions.Component.State (State, _compress, _options, _source, initialState, _levelOfDetails)
 import SlamData.Render.CSS as Rc
 import SlamData.Effects (Slam)
 import SlamData.Download.Model as D
 import SlamData.Download.Render as Rd
 import SlamData.Workspace.Card.CardType (CardType(DownloadOptions))
 import SlamData.Workspace.Card.Port as P
-import SlamData.Render.Common (row)
+import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Render.Common (glyph)
 
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
@@ -55,27 +57,63 @@ comp = makeCardComponent
 
 render ∷ State → HTML
 render state =
+  HH.div_
+    [ renderHighLOD state
+    , renderLowLOD state
+    ]
+
+renderHighLOD ∷ State → HTML
+renderHighLOD state =
   case state.source of
     Nothing →
       HH.div
-        [ HP.classes [ B.alert, B.alertDanger ] ]
+        [ HP.classes
+            $ [ B.alert, B.alertDanger ]
+            ⊕ hideClasses
+        ]
         [ HH.text "The current input cannot be downloaded" ]
     Just _ →
       HH.div
-        [ HP.classes [ Rc.downloadCardEditor ] ]
+        [ HP.classes
+            $ [ Rc.downloadCardEditor
+              , HH.className "card-input-maximum-lod"
+              ]
+            ⊕ hideClasses
+        ]
         [ renderDownloadTypeSelector state
         , renderDownloadConfiguration state
         ]
+  where
+  hideClasses = guard (state.levelOfDetails ≠ High) $> B.hidden
+
+renderLowLOD ∷ State → HTML
+renderLowLOD state =
+  HH.div
+    [ HP.classes
+        $ [ HH.className "card-input-minimum-lod" ]
+        ⊕ hideClasses
+    ]
+    [ HH.button
+      [ ARIA.label "Expand to see download options"
+      , HP.title "Expand to see download options"
+      , HP.disabled true
+      ]
+      [ glyph B.glyphiconDownloadAlt
+      , HH.text "Please, expand to see options"
+      ]
+    ]
+
+  where
+  hideClasses = guard (state.levelOfDetails ≠ Low) $> B.hidden
+
 
 renderDownloadConfiguration ∷ State → HTML
 renderDownloadConfiguration state =
   HH.div
     [ HP.classes [ Rc.downloadConfiguration ] ]
     $ [ either optionsCSV optionsJSON state.options ]
-    ⊕ [ row
-          [ HH.div [ HP.classes [ B.colXs4 ] ] [ compress state ]
-          ]
-      ]
+    ⊕ [ compress state ]
+
 
 optionsCSV ∷ D.CSVOptions → HTML
 optionsCSV = Rd.optionsCSV (\lens v → right ∘ (ModifyCSVOpts (lens .~ v)))
@@ -123,32 +161,22 @@ eval ∷ QueryP ~> DSL
 eval = coproduct cardEval downloadOptsEval
 
 cardEval ∷ Ec.CardEvalQuery ~> DSL
-cardEval (Ec.EvalCard {inputPort} continue) = do
-  map continue $ Ec.runCardEvalT do
-    case inputPort of
-      Just P.Blocked → lift do
-        H.modify (_source .~ Nothing)
-        pure $ Just P.Blocked
-      Just (P.TaggedResource {resource}) → lift do
-        H.modify (_source ?~ resource)
-        state ← H.get
-        pure
-          $ Just
-          $ P.DownloadOptions
-              { resource
-              , compress: state.compress
-              , options: state.options
-              }
-      _ → throwError "Incorrect input in download options card"
-cardEval (Ec.NotifyRunCard next) = pure next
-cardEval (Ec.NotifyStopCard next) = pure next
-cardEval (Ec.Save k) = map (k ∘ encode) H.get
-cardEval (Ec.Load json next) = for_ (decode json) H.set $> next
-cardEval (Ec.SetupCard {inputPort} next) = do
-  H.modify $ _source .~ preview P._Resource inputPort
+cardEval (Ec.EvalCard info output next) = do
+  H.modify $ _source .~ info.input ^? Lens._Just ∘ P._Resource
   pure next
-cardEval (Ec.SetCanceler _ next) = pure next
-cardEval (Ec.SetDimensions _ next) = pure next
+cardEval (Ec.Save k) = map (k ∘ Card.DownloadOptions) H.get
+cardEval (Ec.Load card next) = do
+  case card of
+    Card.DownloadOptions st → H.set st
+    _ → pure unit
+  pure next
+cardEval (Ec.SetDimensions dims next) = do
+  H.modify
+    $ _levelOfDetails
+    .~ if dims.width < 648.0 ∨ dims.height < 240.0
+         then Low
+         else High
+  pure next
 
 downloadOptsEval ∷ Query ~> DSL
 downloadOptsEval (SetOutput ty next) = do
