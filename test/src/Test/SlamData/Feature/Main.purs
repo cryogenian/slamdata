@@ -24,7 +24,8 @@ import DOM (DOM)
 
 import Node.ChildProcess as CP
 import Node.FS (FS)
-import Node.FS.Aff (unlink, mkdir)
+import Node.FS.Aff (unlink, mkdir, chmod)
+import Node.FS.Perms as Np
 import Node.Path (resolve)
 import Node.Process as Process
 import Node.Rimraf (rimraf)
@@ -203,10 +204,15 @@ copyChromeDriver = do
       >>> _.family
       <#> Str.toLower
       >>= chromeDriverForOS
-  for_ chromeDriverName \driverName → do
-    copyFile
-      ("test/chromedriver/" ⊕ driverName)
-      ("chromedriver" ⊕ exeSuffix driverName)
+  for_ chromeDriverName \driverName →
+    let
+      suffix = exeSuffix driverName
+      oldName = "test/chromedriver/" ⊕ driverName
+      newName = "chromedriver" ⊕ suffix
+      allPerms = Np.mkPerms Np.all Np.all Np.all
+    in
+      copyFile oldName newName
+      *> chmod newName allPerms
 
 
 main ∷ Eff Effects Unit
