@@ -25,9 +25,7 @@ before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
 script:
-  - npm run psa
-  - npm run property-tests
-  - npm test
+  - chromedriver
 before_deploy:
 - mkdir -p slamdata
 - cp -r public slamdata/
