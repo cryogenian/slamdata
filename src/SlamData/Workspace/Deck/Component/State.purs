@@ -112,7 +112,7 @@ type State =
   , cardsToLoad ∷ Set.Set CardId
   , activeCardIndex ∷ Maybe Int
   , name ∷ Maybe String
-  , path ∷ Maybe DirPath
+  , path ∷ DirPath
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , pendingCard ∷ Maybe CardId
@@ -131,8 +131,8 @@ type State =
 type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 
 -- | Constructs a default `State` value.
-initialDeck ∷ State
-initialDeck =
+initialDeck ∷ DirPath → State
+initialDeck path =
   { id: Nothing
   , parent: Nothing
   , fresh: 0
@@ -142,7 +142,7 @@ initialDeck =
   , cardsToLoad: mempty
   , activeCardIndex: Nothing
   , name: Nothing
-  , path: Nothing
+  , path
   , saveTrigger: Nothing
   , globalVarMap: SM.empty
   , runTrigger: Nothing
@@ -328,14 +328,14 @@ removePendingCard cardId st@{ pendingCard } =
 
 -- | Finds the current deck path
 deckPath ∷ State → Maybe DirPath
-deckPath state = deckPath' <$> state.path <*> state.id
+deckPath state = deckPath' state.path <$> state.id
 
 deckPath' ∷ DirPath → DeckId → DirPath
 deckPath' path deckId = path </> P.dir (deckIdToString deckId)
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
-  ∷ Maybe DirPath
+  ∷ DirPath
   → Maybe DeckId
   → Model.Deck
   → State

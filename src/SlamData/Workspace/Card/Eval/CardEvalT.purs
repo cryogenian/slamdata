@@ -38,7 +38,7 @@ import SlamData.Workspace.Card.Port.VarMap as VM
 import Utils.Path (DirPath, FilePath)
 
 type CardEvalInput =
-  { path ∷ Maybe DirPath
+  { path ∷ DirPath
   , input ∷ Maybe Port.Port
   , cardId ∷ CID.CardId
   , globalVarMap ∷ VM.VarMap
@@ -83,15 +83,15 @@ runCardEvalT_ (CardEvalT m) =
 
 temporaryOutputResource ∷
   ∀ r
-  . { path ∷ Maybe DirPath, cardId ∷ CID.CardId | r }
+  . { path ∷ DirPath, cardId ∷ CID.CardId | r }
   → FilePath
 temporaryOutputResource { path, cardId } = outputDirectory </> outputFile
   where
   outputDirectory =
-    fromMaybe (Path.rootDir </> Path.dir ".tmp") $
-      filterMaybe (_ == Path.rootDir) path
+    if path ≡ Path.rootDir
+    then Path.rootDir </> Path.dir ".tmp"
+    else path
 
-  outputFile = Path.file $ "out" ⊕ CID.cardIdToString cardId
-
-  filterMaybe ∷ ∀ a. (a → Boolean) → Maybe a → Maybe a
-  filterMaybe p m = m >>= \x → if p x then Nothing else pure x
+  outputFile =
+    Path.file $
+      "out" ⊕ CID.cardIdToString cardId

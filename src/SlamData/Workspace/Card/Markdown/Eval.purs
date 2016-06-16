@@ -86,7 +86,7 @@ runEvalM ∷ NT.Natural EvalM Slam
 runEvalM = flip State.evalStateT 0
 
 evalEmbeddedQueries
-  ∷ Maybe DirPath
+  ∷ DirPath
   → CID.CardId
   → SD.SlamDownP Port.VarMapValue
   → Slam (SD.SlamDownP Port.VarMapValue)
@@ -172,16 +172,13 @@ evalEmbeddedQueries dir cardId =
   runQuery
     ∷ String
     → EvalM (Array EJSON.EJson)
-  runQuery code =
-    case dir of
-      Nothing → Err.throwError $ Exn.error "Cannot evaluate markdown without a saved path"
-      Just dir' → do
-        n ← freshInt
-        result ← Quasar.queryEJson dir' code
-        either
-          (Err.throwError ∘ Exn.error)
-          pure
-          result
+  runQuery code = do
+    n ← freshInt
+    result ← Quasar.queryEJson dir code
+    either
+      (Err.throwError ∘ Exn.error)
+      pure
+      result
 
 parseDigit ∷ P.Parser String Int
 parseDigit =

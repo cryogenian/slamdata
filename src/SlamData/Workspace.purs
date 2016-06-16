@@ -84,8 +84,8 @@ routeSignal driver =
     → Aff SlamDataEffects Unit
   workspace path deckId =
     case _ of
-      New → driver $ Workspace.toWorkspace $ Workspace.Reset (Just path)
+      New → driver $ Workspace.toWorkspace $ Workspace.Reset path
       Load _ → driver $ Workspace.toWorkspace $ Workspace.Load path deckId
       Exploring fp → do
-        driver $ Workspace.toWorkspace $ Workspace.Reset (Just path)
+        driver $ Workspace.toWorkspace $ Workspace.Reset path
         driver $ Workspace.toDeck $ Deck.ExploreFile fp

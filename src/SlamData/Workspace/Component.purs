@@ -89,26 +89,33 @@ render state =
       }
 
   deck ∷ Array WorkspaceHTML
-  deck = pure case state.stateMode of
-    Loading →
-      HH.div [ HP.classes [ workspaceClass ] ]
-        []
-    Error err →
-      HH.div [ HP.classes [ B.alert, B.alertDanger ] ]
-        [ HH.h1
-            [ HP.class_ B.textCenter ]
-            [ HH.text err ]
-        ]
-    _ →
-      HH.div [ HP.classes [ workspaceClass ] ]
-        [ HH.slot' cpDeck unit \_ →
-           { component: Deck.comp
-           , initialState: opaqueState $ Deck.initialDeck
-              { accessType = state.accessType
-              , globalVarMap = state.globalVarMap
-              }
-           }
-        ]
+  deck =
+    pure case state.stateMode, state.path of
+      Loading, _ →
+        HH.div [ HP.classes [ workspaceClass ] ]
+          []
+      Error err, _ → showError err
+      _, Just path →
+        HH.div [ HP.classes [ workspaceClass ] ]
+          [ HH.slot' cpDeck unit \_ →
+             { component: Deck.comp
+             , initialState:
+                 opaqueState $
+                   (Deck.initialDeck path)
+                     { accessType = state.accessType
+                     , globalVarMap = state.globalVarMap
+                     }
+             }
+          ]
+      _, _ → showError "Missing workspace path"
+
+  showError err =
+    HH.div [ HP.classes [ B.alert, B.alertDanger ] ]
+      [ HH.h1
+          [ HP.class_ B.textCenter ]
+          [ HH.text err ]
+      ]
+
 
   shouldHideTopMenu ∷ Boolean
   shouldHideTopMenu = AT.isReadOnly (state ^. _accessType)
@@ -143,7 +150,7 @@ eval (DismissAll next) = do
 eval (GetPath k) = k <$> H.gets _.path
 eval (Reset path next) = do
   H.modify _
-    { path = path
+    { path = Just path
     , stateMode = Ready
     }
   queryDeck $ H.action $ Deck.Reset path
@@ -161,7 +168,7 @@ eval (Load path deckId next) = do
       { stateMode = Loading
       , path = Just path
       }
-    queryDeck $ H.action $ Deck.Reset (Just path)
+    queryDeck $ H.action $ Deck.Reset path
     maybe loadRoot loadDeck deckId
 
   loadDeck deckId = void do
@@ -193,7 +200,7 @@ peek = (peekOpaqueQuery peekDeck) ⨁ (const $ pure unit)
           traverse_ (queryDeck ∘ H.action)
             [ Deck.SetParent (Tuple newId' (CID.CardId 0))
             , Deck.Save
-            , Deck.Reset (Just path)
+            , Deck.Reset path
             , Deck.SetModel newId' newDeck DL.root
             , Deck.Save
             ]

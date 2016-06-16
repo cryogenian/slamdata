@@ -34,7 +34,7 @@ data Query a
   = SetAccessType AccessType a
   | SetGlobalVarMap Port.VarMap a
   | DismissAll a
-  | Reset (Maybe UP.DirPath) a
+  | Reset UP.DirPath a
   | Load UP.DirPath (Maybe DeckId) a
   | GetPath (Maybe UP.DirPath → a)
 

@@ -143,7 +143,7 @@ render opts state =
 
   mkDeckComponent id _ =
     { component: opts.deckComponent
-    , initialState: opaqueState $ DCS.initialDeck
+    , initialState: opaqueState $ DCS.initialDeck opts.path
     }
 
   cssPos rect = do
@@ -215,10 +215,9 @@ evalBoard opts (AddDeck e next) = do
         }
   pure next
 evalBoard opts (LoadDeck deckId next) = do
-  for_ opts.path \path →
-    queryDeck deckId
-      $ H.action
-      $ DCQ.Load path deckId (DL.succ opts.level)
+  queryDeck deckId
+    $ H.action
+    $ DCQ.Load opts.path deckId (DL.succ opts.level)
   pure next
 
 peek ∷ ∀ a. CardOptions → H.ChildF DeckId (OpaqueQuery DCQ.Query) a → DraftboardDSL Unit
@@ -331,23 +330,22 @@ addDeck opts coords = do
         , y = coords.y
         }
   for_ (accomodateDeck decks coords deckPos) \deckPos' →
-  for_ opts.deckId \parentId →
-  for_ opts.path \path → do
-    H.modify $ _inserting .~ true
-    deckId ← saveDeck path $ DM.emptyDeck { parent = Just (Tuple parentId opts.cardId) }
-    case deckId of
-      Left err → do
-        H.modify $ _inserting .~ false
-        -- TODO: do something to notify the user saving failed
-        pure unit
-      Right deckId' → void do
-        H.modify \s → s
-          { decks = Map.insert deckId' deckPos' s.decks
-          , inserting = false
-          }
-        queryDeck deckId'
-          $ H.action
-          $ DCQ.Load path deckId' (DL.succ opts.level)
+    for_ opts.deckId \parentId → do
+      H.modify $ _inserting .~ true
+      deckId ← saveDeck opts.path $ DM.emptyDeck { parent = Just (Tuple parentId opts.cardId) }
+      case deckId of
+        Left err → do
+          H.modify $ _inserting .~ false
+          -- TODO: do something to notify the user saving failed
+          pure unit
+        Right deckId' → void do
+          H.modify \s → s
+            { decks = Map.insert deckId' deckPos' s.decks
+            , inserting = false
+            }
+          queryDeck deckId'
+            $ H.action
+            $ DCQ.Load opts.path deckId' (DL.succ opts.level)
 
 saveDeck ∷ DirPath → DM.Deck → DraftboardDSL (Either Exn.Error DeckId)
 saveDeck path model = runExceptT do
@@ -356,24 +354,23 @@ saveDeck path model = runExceptT do
   pure i
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
-deleteDeck opts deckId =
-  for_ opts.path \path → do
-    res ← deleteGraph path deckId
-    case res of
-      Left err →
-        -- TODO: do something to notify the user deleting failed
-        pure unit
-      Right _ →
-        H.modify \s → s { decks = Map.delete deckId s.decks }
+deleteDeck opts deckId = do
+  res ← deleteGraph opts.path deckId
+  case res of
+    Left err →
+      -- TODO: do something to notify the user deleting failed
+      pure unit
+    Right _ →
+      H.modify \s → s { decks = Map.delete deckId s.decks }
 
 wrapDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 wrapDeck opts oldId = do
   H.gets (Map.lookup oldId ∘ _.decks) >>= traverse_ \deckPos →
-  for_ opts.deckId \parentId →
-  for_ opts.path \path → do
-    let deckPos' = deckPos { x = 1.0, y = 1.0 }
-        newDeck = (wrappedDeck deckPos' oldId) { parent = Just (Tuple parentId opts.cardId) }
-    deckId ← saveDeck path newDeck
+  for_ opts.deckId \parentId → do
+    let
+      deckPos' = deckPos { x = 1.0, y = 1.0 }
+      newDeck = (wrappedDeck deckPos' oldId) { parent = Just (Tuple parentId opts.cardId) }
+    deckId ← saveDeck opts.path newDeck
     case deckId of
       Left err → do
         -- TODO: do something to notify the user saving failed
@@ -391,7 +388,7 @@ wrapDeck opts oldId = do
           }
         queryDeck newId
           $ H.action
-          $ DCQ.Load path newId (DL.succ opts.level)
+          $ DCQ.Load opts.path newId (DL.succ opts.level)
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck deckId = H.query deckId <<< opaqueQuery

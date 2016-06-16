@@ -95,8 +95,8 @@ import SlamData.Workspace.StateMode (StateMode(..))
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
 
-initialState ∷ DCS.StateP
-initialState = opaqueState DCS.initialDeck
+initialState ∷ DirPath → DCS.StateP
+initialState = opaqueState ∘ DCS.initialDeck
 
 comp ∷ H.Component DCS.StateP QueryP Slam
 comp =
@@ -258,11 +258,11 @@ eval (Publish next) = do
   pure next
 eval (Reset dir next) = do
   st ← H.get
-  setDeckState $ DCS.initialDeck
-    { path = dir
-    , stateMode = Ready
-    , accessType = st.accessType
-    }
+  setDeckState $
+    (DCS.initialDeck dir)
+      { stateMode = Ready
+      , accessType = st.accessType
+      }
   runPendingCards
   updateActiveCardAndIndicator
   pure next
@@ -314,14 +314,12 @@ eval (ZoomIn next) = do
   pure next
 eval (ZoomOut next) = do
   st ← H.get
-  for_ st.path \path →
-    case st.parent of
-      Just (Tuple deckId _) → do
-        let deckHash =
-              mkWorkspaceHash (DCS.deckPath' path deckId) (WA.Load st.accessType) st.globalVarMap
-        H.fromEff $ locationObject >>= Location.setHash deckHash
-      Nothing →
-        void $ H.fromEff $ setHref $ parentURL $ Left path
+  case st.parent of
+    Just (Tuple deckId _) → do
+      let deckHash = mkWorkspaceHash (DCS.deckPath' st.path deckId) (WA.Load st.accessType) st.globalVarMap
+      H.fromEff $ locationObject >>= Location.setHash deckHash
+    Nothing →
+      void $ H.fromEff $ setHref $ parentURL $ Left st.path
   pure next
 eval (StartSliding mouseEvent next) =
   Slider.startSliding mouseEvent $> next
@@ -371,9 +369,8 @@ peekBackSide (Back.DoAction action _) =
       lastId ← H.gets DCS.findLastRealCard
       for_ (DCS.activeCardId state <|> lastId) \trashId → do
         let rem = DCS.removeCard trashId state
-        for_ state.path \path →
-          DBC.childDeckIds (fst rem) #
-            H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph path)
+        DBC.childDeckIds (fst rem) #
+          H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph state.path)
         H.set $ snd rem
         triggerSave
         updateActiveCardAndIndicator
@@ -516,7 +513,7 @@ errorCard =
 
 type RunCardsConfig =
   { pendingCardId ∷ Maybe CardId
-  , path ∷ Maybe DirPath
+  , path ∷ DirPath
   , globalVarMap ∷ Port.VarMap
   , accessType ∷ AT.AccessType
   }
@@ -655,7 +652,7 @@ runPendingCards = do
   where
 
   updateCard
-    ∷ Maybe DirPath
+    ∷ DirPath
     → Port.VarMap
     → CardUpdate
     → DeckDSL Unit
@@ -700,25 +697,24 @@ saveDeck = do
 
     let json = Model.encode { name: st.name, parent: st.parent, cards }
 
-    for_ st.path \path → do
-      deckId ← runExceptT do
-        i ← ExceptT $ genId path st.id
-        ExceptT $ Quasar.save (deckIndex path i) json
-        pure i
+    deckId ← runExceptT do
+      i ← ExceptT $ genId st.path st.id
+      ExceptT $ Quasar.save (deckIndex st.path i) json
+      pure i
 
-      case deckId of
-        Left err → do
-          -- TODO: do something to notify the user saving failed
-          pure unit
-        Right deckId' → do
-          H.modify $ DCS._id .~ Just deckId'
-          -- runPendingCards would be deferred if there had previously been
-          -- no `deckPath`. We need to flush the queue.
-          when (isNothing $ DCS.deckPath st) runPendingCards
-          when (st.level ≡ DL.root) $
-            H.gets DCS.deckPath >>= traverse_ \path' → do
-              let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
-              H.fromEff $ locationObject >>= Location.setHash deckHash
+    case deckId of
+      Left err → do
+        -- TODO: do something to notify the user saving failed
+        pure unit
+      Right deckId' → do
+        H.modify $ DCS._id .~ Just deckId'
+        -- runPendingCards would be deferred if there had previously been
+        -- no `deckPath`. We need to flush the queue.
+        when (isNothing $ DCS.deckPath st) runPendingCards
+        when (st.level ≡ DL.root) $
+          H.gets DCS.deckPath >>= traverse_ \path' → do
+            let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
+            H.fromEff $ locationObject >>= Location.setHash deckHash
 
   where
   genId ∷ DirPath → Maybe DeckId → DeckDSL (Either Exn.Error DeckId)
@@ -740,9 +736,9 @@ loadDeck dir deckId = do
       H.fromAff $ log err
       H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
     Right model →
-      setModel (Just dir) (Just deckId) model
+      setModel dir (Just deckId) model
 
-setModel ∷ Maybe DirPath → Maybe DeckId → Deck → DeckDSL Unit
+setModel ∷ DirPath → Maybe DeckId → Deck → DeckDSL Unit
 setModel dir deckId model = do
   st ← DCS.fromModel dir deckId model <$> H.get
   setDeckState st
