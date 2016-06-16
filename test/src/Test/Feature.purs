@@ -721,8 +721,10 @@ provideFieldValueElement value element =
   clickEl element *> selectAll *> typeString value
 
 selectFromDropdownElement ∷ ∀ eff o. String → Element → Feature eff o Unit
-selectFromDropdownElement text element =
-  clickEl element *> typeString text *> pressEnter
+selectFromDropdownElement text element = do
+  clickEl element
+  typeString text
+  pressEnter
 
 dragAndDropElement ∷ ∀ eff o. Element → Location → Feature eff o Unit
 dragAndDropElement from =

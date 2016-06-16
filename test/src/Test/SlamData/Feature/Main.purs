@@ -9,7 +9,7 @@ import Control.Monad.Aff.Reattempt (reattempt)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console as Ec
-import Control.Monad.Eff.Exception (Error, EXCEPTION, message)
+import Control.Monad.Eff.Exception (Error, EXCEPTION, message, error)
 import Control.Monad.Eff.Ref (REF, newRef, modifyRef, readRef)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Trans (runReaderT)
@@ -24,21 +24,21 @@ import DOM (DOM)
 
 import Node.ChildProcess as CP
 import Node.FS (FS)
-import Node.FS.Aff (unlink, mkdir)
+import Node.FS.Aff (unlink, mkdir, chmod)
+import Node.FS.Perms as Np
 import Node.Path (resolve)
 import Node.Process as Process
 import Node.Rimraf (rimraf)
 import Node.Stream (Readable, Duplex, pipe, onClose)
 
+import Platform (getPlatform, runOs, runPlatform)
+
 import Quasar.Spawn.Util.Starter (starter, expectStdOut, expectStdErr)
 
-import Selenium (setFileDetector, quit)
-import Selenium.Browser (Browser(..), str2browser)
-import Selenium.Builder (withCapabilities, browser, build, usingServer)
-import Selenium.Capabilities (Capabilities)
-import Selenium.FFProfile (setStringPreference, setBoolPreference, setIntPreference, buildFFProfile)
+import Selenium (quit)
+import Selenium.Browser (Browser(..), browserCapabilities)
+import Selenium.Builder (withCapabilities, build, usingServer)
 import Selenium.Monad (setWindowSize)
-import Selenium.Remote as SR
 import Selenium.Types (SELENIUM)
 
 import Test.Feature.Monad (FeatureEffects)
@@ -46,7 +46,6 @@ import Test.SlamData.Feature.Config (Config)
 import Test.SlamData.Feature.Effects (SlamFeatureEffects)
 import Test.SlamData.Feature.Interactions (launchSlamData, mountTestDatabase)
 import Test.SlamData.Feature.Monad (SlamFeature)
-import Test.SlamData.Feature.SauceLabs as SL
 import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
@@ -71,20 +70,6 @@ type Effects =
     , selenium ∷ SELENIUM
     ))
 
-makeDownloadCapabilities ∷ Browser → String → Aff Effects Capabilities
-makeDownloadCapabilities FireFox path = buildFFProfile do
-  setIntPreference "browser.download.folderList" 2
-  setBoolPreference "browser.download.manager.showWhenStarting" false
-  setBoolPreference "browser.download.manager.focusWhenStartin" false
-  setBoolPreference "browser.download.useDownloadDir" true
-  setStringPreference "browser.download.dir" path
-  setBoolPreference "browser.download.manager.closeWhenDone" true
-  setBoolPreference "browser.download.manager.showAlertOnComplete" false
-  setBoolPreference "browser.download.manager.useWindow" false
-  setStringPreference "browser.helperApps.neverAsk.saveToDisk"
-    "text/csv, application/ldjson, application/json"
-makeDownloadCapabilities _ _ = mempty
-
 tests ∷ SlamFeature Unit
 tests = do
   launchSlamData
@@ -98,39 +83,21 @@ tests = do
   FlipDeck.test
 
 runTests ∷ Config → Aff Effects Unit
-runTests config =
-  maybe error go $ str2browser config.selenium.browser
-  where
-  error = void $ log $ red "Incorrect browser"
-  go br = do
-    log $ yellow $ config.selenium.browser ⊕ " set as browser for tests\n\n"
+runTests config = do
+  driver ← build do
+    usingServer "http://127.0.0.1:4444/wd/hub"
+    withCapabilities $ browserCapabilities Chrome
 
-    msauceConfig ←
-      liftEff $ SL.sauceLabsConfigFromConfig config
+  let
+    defaultTimeout = config.selenium.waitTime
+    readerInp = { config, defaultTimeout, driver }
 
-    downloadCapabilities ←
-      makeDownloadCapabilities br config.download.folder
+  res ← attempt $ flip runReaderT readerInp do
+    setWindowSize { height: 800, width: 1024 }
+    tests
 
-    driver ← build do
-      browser br
-      traverse_ SL.buildSauceLabs msauceConfig
-      usingServer "http://127.0.0.1:4444/wd/hub"
-      withCapabilities downloadCapabilities
-
-    when (isJust msauceConfig) do
-      void $ log $ yellow $ "set up to run on Sauce Labs"
-      (liftEff SR.fileDetector) >>= setFileDetector driver
-
-    let
-      defaultTimeout = config.selenium.waitTime
-      readerInp = { config, defaultTimeout, driver }
-
-    res ← attempt $ flip runReaderT readerInp do
-      setWindowSize { height: 800, width: 1024 }
-      tests
-
-    apathize $ quit driver
-    either throwError (const $ pure unit) res
+  apathize $ quit driver
+  either throwError (const $ pure unit) res
 
 copyFile
   ∷ ∀ e
@@ -214,6 +181,42 @@ restoreDatabase rawConfig = do
   res ← takeVar var
   traverse_ throwError res.error
 
+
+chromeDriverForOS ∷ String → Maybe String
+chromeDriverForOS "win32" = Just "win.exe"
+chromeDriverForOS "darwin" = Just "mac"
+chromeDriverForOS "linux" = Just "linux"
+chromeDriverForOS _ = Nothing
+
+exeSuffix ∷ String → String
+exeSuffix "win.exe" = ".exe"
+exeSuffix _ = ""
+
+copyChromeDriver ∷ Aff Effects Unit
+copyChromeDriver = do
+  platform ← getPlatform
+  let
+    chromeDriverName =
+      platform
+      >>= runPlatform
+      >>> _.os
+      >>> runOs
+      >>> _.family
+      <#> Str.toLower
+      >>= chromeDriverForOS
+  case chromeDriverName of
+    Nothing → throwError $ error $ "Unknown OS, only Mac, Win and Linux are supported"
+    Just driverName →
+      let
+        suffix = exeSuffix driverName
+        oldName = "test/chromedriver/" ⊕ driverName
+        newName = "chromedriver" ⊕ suffix
+        allPerms = Np.mkPerms Np.all Np.all Np.all
+      in
+        copyFile oldName newName
+        *> chmod newName allPerms
+
+
 main ∷ Eff Effects Unit
 main = do
   procs ← newRef []
@@ -232,6 +235,11 @@ main = do
     copyFile
       "test/quasar-config.json"
       "tmp/test/quasar-config.json"
+
+
+    log $ gray "Copying chromedriver"
+    copyChromeDriver
+    log $ gray "Ok, chromedriver is copied"
 
     mongo ←
       startProc

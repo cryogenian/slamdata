@@ -118,20 +118,22 @@ test = do
     successMsg "Successfully accessed sharing URL for a file"
     Interact.launchSlamData
 
-  fileScenario defaultAfterFile "Download file as CSV" [] do
-    Interact.browseTestFolder
-    Interact.downloadFileAsCSV "smallZips"
-    Expect.downloadedTextFileToMatchFile
-      "tmp/test/downloads"
-      "smallZips"
-      "test/smallZips.csv"
-    successMsg "Successfully downloaded file as CSV"
+-- TODO: figure out how to move downloaded by chrome files to specific folders
+-- and omit prompt
+--  fileScenario defaultAfterFile "Download file as CSV" [] do
+--    Interact.browseTestFolder
+--    Interact.downloadFileAsCSV "smallZips"
+--    Expect.downloadedTextFileToMatchFile
+--      "tmp/test/downloads"
+--      "smallZips"
+--      "test/smallZips.csv"
+--    successMsg "Successfully downloaded file as CSV"
 
-  fileScenario defaultAfterFile "Download file as JSON" [] do
-    Interact.browseTestFolder
-    Interact.downloadFileAsJSON "smallZips"
-    Expect.downloadedTextFileToMatchFile
-      "tmp/test/downloads"
-      "smallZips"
-      "test/smallZips.json"
-    successMsg "Successfully downloaded file as JSON"
+--  fileScenario defaultAfterFile "Download file as JSON" [] do
+--    Interact.browseTestFolder
+--    Interact.downloadFileAsJSON "smallZips"
+--    Expect.downloadedTextFileToMatchFile
+--      "tmp/test/downloads"
+--      "smallZips"
+--      "test/smallZips.json"
+--    successMsg "Successfully downloaded file as JSON"

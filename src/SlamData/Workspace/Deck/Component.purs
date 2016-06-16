@@ -686,7 +686,6 @@ saveDeck ∷ DeckDSL Unit
 saveDeck = do
   st ← H.get
   when (AT.isEditable st.accessType) do
-
     cards ← for st.modelCards \card → do
       currentState ← H.query' cpCard (CardSlot card.cardId)
         $ left

@@ -6,6 +6,10 @@ jdk:
 before_install:
   - nvm install 4
   - nvm use 4
+  - sudo apt-get update
+  - sudo apt-get install -y libappindicator1 fonts-liberation
+  - wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+  - sudo dpkg -i google-chrome*.deb
 install:
   - sudo apt-get install imagemagick
   - convert -version
@@ -44,3 +48,5 @@ deploy:
 notifications:
   slack:
     secure: EbxkmDGMm5b2K5tpFrcjEmywSzhU6TSJM6VuCzIfpZ78UWqxQ6u2bbpL5a7FYjYqLZI4U/+7p+M85o0Sj58KHgfwWtpgJn84uKvIkSHo808LU/zmCBuiY4kB4z5AnTXVVFdJ2Lx+vjaeBvZA0XNztdDAViT0QM0nTAs7T94oAW8=
+  email:
+    on_failure: change
