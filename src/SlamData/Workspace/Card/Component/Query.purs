@@ -48,8 +48,6 @@ import DOM.HTML.Types (HTMLElement)
 
 import Halogen (ChildF)
 
-import SlamData.Workspace.AccessType as Na
-
 import SlamData.Workspace.Card.Ace.Component.Query as Ace
 import SlamData.Workspace.Card.API.Component.Query as API
 import SlamData.Workspace.Card.APIResults.Component.Query as APIResults
@@ -82,7 +80,6 @@ data CardQuery a
   = UpdateCard CardEvalInput (Maybe Port) a
   | SaveCard CardId CardType (Card.Model → a)
   | LoadCard Card.Model a
-  | SetCardAccessType Na.AccessType a
   | UpdateDimensions a
   | SetHTMLElement (Maybe HTMLElement) a
 

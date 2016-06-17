@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.Component.State
   ( CardState(..)
   , CardStateP
   , initialCardState
-  , _accessType
-  , _output
   , _element
   , AnyCardState
   , _AceState
@@ -48,7 +46,6 @@ import DOM.HTML.Types (HTMLElement)
 import Halogen (ParentState)
 
 import SlamData.Effects (Slam)
-import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Ace.Component.State as Ace
 import SlamData.Workspace.Card.API.Component.State as API
 import SlamData.Workspace.Card.APIResults.Component.State as APIResults
@@ -62,23 +59,13 @@ import SlamData.Workspace.Card.JTable.Component.State as JTable
 import SlamData.Workspace.Card.Markdown.Component.State as Markdown
 import SlamData.Workspace.Card.Next.Component.State as Next
 import SlamData.Workspace.Card.OpenResource.Component.State as Open
-import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Save.Component.State as Save
 import SlamData.Workspace.Card.Search.Component.State as Search
 import SlamData.Workspace.Card.Viz.Component.State as Viz
 
 -- | The common state value for deck cards.
--- |
--- | - `accessType` tracks whether the card is in an editable or read-only
--- |   deck. In the case of read-only decks editor cards are hidden.
--- | - `visibility` is used to specify whether the card should be rendered at
--- |   all - used when embedding a single card in another page.
--- | - `runState` tracks whether the card has run yet, is running, or has
--- |   completed running.
 type CardState =
-  { accessType ∷ AccessType
-  , output ∷ Maybe Port
-  , element ∷ Maybe HTMLElement
+  { element ∷ Maybe HTMLElement
   }
 
 type CardStateP = ParentState CardState AnyCardState CardQuery InnerCardQuery Slam Unit
@@ -86,19 +73,8 @@ type CardStateP = ParentState CardState AnyCardState CardQuery InnerCardQuery Sl
 -- | Creates an initial `CardState` value for an editor card.
 initialCardState ∷ CardState
 initialCardState =
-  { accessType: Editable
-  , output: Nothing
-  , element: Nothing
+  { element: Nothing
   }
-
-_accessType ∷ LensP CardState AccessType
-_accessType = lens _.accessType (_ { accessType = _ })
-
--- | The last output value computed for the card. This may not be up to date
--- | with the exact state of the card, but is the most recent result from when
--- | the card was evaluated.
-_output ∷ LensP CardState (Maybe Port)
-_output = lens _.output (_ { output = _ })
 
 _element ∷ LensP CardState (Maybe HTMLElement)
 _element = lens _.element _{element = _}

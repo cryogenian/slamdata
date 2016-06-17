@@ -39,9 +39,8 @@ runArbDeck (ArbDeck m) = m
 instance arbitraryArbWorkspace ∷ Arbitrary ArbDeck where
   arbitrary = do
     cards ← map runArbCard <$> arbitrary
-    name ← arbitrary
     parent ← map (bimap runArbDeckId runArbCardId) <$> arbitrary
-    pure $ ArbDeck { name, cards, parent }
+    pure $ ArbDeck { cards, parent }
 
 check ∷ QC Unit
 check = quickCheck $ runArbDeck ⋙ \model →
