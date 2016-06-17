@@ -21,20 +21,12 @@ import Prelude
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 
-import SlamData.Workspace.Deck.DeckId (DeckId(..))
+import SlamData.Workspace.Deck.DeckId (DeckId)
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
-
-newtype ArbDeckId = ArbDeckId DeckId
-
-runArbDeckId :: ArbDeckId -> DeckId
-runArbDeckId (ArbDeckId m) = m
-
-instance arbitraryArbDeckId :: Arbitrary ArbDeckId where
-  arbitrary = ArbDeckId <<< DeckId <$> arbitrary
+import Test.StrongCheck (QC, Result(..), quickCheck, (<?>))
 
 check :: QC Unit
-check = quickCheck $ runArbDeckId >>> \ci ->
+check = quickCheck $ \(ci ∷ DeckId) ->
   case decodeJson (encodeJson ci) of
     Left err -> Failed $ "Decode failed: " ++ err
     Right ci' -> ci == ci' <?> "DeckId failed to decode as encoded value"

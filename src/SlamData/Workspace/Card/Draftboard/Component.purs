@@ -30,9 +30,6 @@ import Data.Function (on)
 import Data.Lens ((.~), (?~))
 import Data.List as List
 import Data.Map as Map
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as Pathy
-
 import CSS as CSS
 
 import Halogen as H
@@ -67,10 +64,9 @@ import SlamData.Workspace.Card.Component as Cp
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckId (DeckId(..), deckIdToString)
+import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString, freshDeckId)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
-import SlamData.Workspace.Model as WS
 import SlamData.Workspace.LevelOfDetails as LOD
 
 import Utils.CSS (zIndex)
@@ -143,7 +139,7 @@ render opts state =
 
   mkDeckComponent id _ =
     { component: opts.deckComponent
-    , initialState: opaqueState $ DCS.initialDeck opts.path
+    , initialState: opaqueState $ DCS.initialDeck opts.path id
     }
 
   cssPos rect = do
@@ -326,27 +322,27 @@ addDeck opts coords = do
         { x = coords.x - 10.0
         , y = coords.y
         }
-  for_ (accomodateDeck decks coords deckPos) \deckPos' →
-    for_ opts.deckId \parentId → do
-      H.modify $ _inserting .~ true
-      deckId ← saveDeck opts.path $ DM.emptyDeck { parent = Just (Tuple parentId opts.cardId) }
-      case deckId of
-        Left err → do
-          H.modify $ _inserting .~ false
-          -- TODO: do something to notify the user saving failed
-          pure unit
-        Right deckId' → void do
-          H.modify \s → s
-            { decks = Map.insert deckId' deckPos' s.decks
-            , inserting = false
-            }
-          queryDeck deckId'
-            $ H.action
-            $ DCQ.Load opts.path deckId' (DL.succ opts.level)
+  for_ (accomodateDeck decks coords deckPos) \deckPos' → do
+    let parentId = opts.deckId
+    H.modify $ _inserting .~ true
+    deckId ← saveDeck opts.path $ DM.emptyDeck { parent = Just (Tuple parentId opts.cardId) }
+    case deckId of
+      Left err → do
+        H.modify $ _inserting .~ false
+        -- TODO: do something to notify the user saving failed
+        pure unit
+      Right deckId' → void do
+        H.modify \s → s
+          { decks = Map.insert deckId' deckPos' s.decks
+          , inserting = false
+          }
+        queryDeck deckId'
+          $ H.action
+          $ DCQ.Load opts.path deckId' (DL.succ opts.level)
 
 saveDeck ∷ DirPath → DM.Deck → DraftboardDSL (Either Exn.Error DeckId)
 saveDeck path model = runExceptT do
-  i ← ExceptT $ map DeckId <$> WS.freshId (path </> Pathy.file "index")
+  i ← lift $ H.fromEff freshDeckId
   ExceptT $ Quasar.save (DM.deckIndex path i) $ DM.encode model
   pure i
 
@@ -362,9 +358,9 @@ deleteDeck opts deckId = do
 
 wrapDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 wrapDeck opts oldId = do
-  H.gets (Map.lookup oldId ∘ _.decks) >>= traverse_ \deckPos →
-  for_ opts.deckId \parentId → do
+  H.gets (Map.lookup oldId ∘ _.decks) >>= traverse_ \deckPos → do
     let
+      parentId = opts.deckId
       deckPos' = deckPos { x = 1.0, y = 1.0 }
       newDeck = (wrappedDeck deckPos' oldId) { parent = Just (Tuple parentId opts.cardId) }
     deckId ← saveDeck opts.path newDeck

@@ -15,37 +15,58 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Deck.DeckId
-  ( DeckId(..)
-  , runDeckId
+  ( DeckId
   , stringToDeckId
   , deckIdToString
+  , freshDeckId
   ) where
 
 import SlamData.Prelude
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Random as Rand
+import Data.String as S
+import Data.String.Regex as Rx
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
-import Data.Int as Int
 import Test.StrongCheck as SC
+import Test.StrongCheck.Gen as Gen
 
-newtype DeckId = DeckId Int
+newtype DeckId = DeckId String
 
 instance arbitraryDeckId ∷ SC.Arbitrary DeckId where
-  arbitrary = DeckId <$> SC.arbitrary
+  arbitrary =
+    DeckId <$> do
+      x1 ← genString 8
+      x2 ← genString 4
+      x3 ← genString 4
+      x4 ← genString 4
+      x5 ← genString 12
+      pure $ x1 <> "-" <> x2 <> "-" <> x3 <> "-" <> x4 <> "-" <> x5
 
-runDeckId ∷ DeckId → Int
-runDeckId (DeckId i) = i
+    where
+      genString n =
+        Gen.vectorOf n SC.arbitrary
+          <#> S.fromCharArray
 
 stringToDeckId ∷ String → Either String DeckId
-stringToDeckId = maybe (Left "incorrect deck id") (Right ∘ DeckId) ∘ Int.fromString
+stringToDeckId str =
+  if Rx.test (Rx.regex "\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}" Rx.noFlags) str
+  then Right $ DeckId str
+  else Left $ "Invalid DeckId: " <> str
 
 deckIdToString ∷ DeckId → String
-deckIdToString = show ∘ runDeckId
+deckIdToString (DeckId x) = x
 
 derive instance eqDeckId ∷ Eq DeckId
 derive instance ordDeckId ∷ Ord DeckId
 
 instance encodeJsonDeckId ∷ EncodeJson DeckId where
-  encodeJson = encodeJson ∘ runDeckId
+  encodeJson (DeckId x) = encodeJson x
 
 instance decodeJsonDeckId ∷ DecodeJson DeckId where
-  decodeJson json = DeckId <$> decodeJson json
+  decodeJson = map DeckId ∘ decodeJson
+
+foreign import _generateUUID ∷ ∀ eff. Eff (random ∷ Rand.RANDOM | eff) String
+
+freshDeckId ∷ ∀ eff. Eff (random ∷ Rand.RANDOM | eff) DeckId
+freshDeckId = DeckId <$> _generateUUID

@@ -19,8 +19,6 @@ module SlamData.Workspace.Model
   , emptyWorkspace
   , encode
   , decode
-  , freshId
-  , freshRoot
   , getRoot
   , setRoot
   ) where
@@ -37,79 +35,39 @@ import Quasar.Types (FilePath)
 
 import SlamData.Quasar.Aff (QEff)
 import SlamData.Quasar.Data as QD
+import SlamData.Workspace.Deck.DeckId (DeckId)
 
 type Workspace =
-  { fresh ∷ Int
-  , root ∷ Int
+  { root ∷ Maybe DeckId
   }
 
 emptyWorkspace ∷ Workspace
-emptyWorkspace = { fresh: 0, root: 0 }
+emptyWorkspace = { root: Nothing }
 
 encode ∷ Workspace → Json
 encode ws
-   = "fresh" := ws.fresh
-  ~> "root" := ws.root
+   = "root" := ws.root
   ~> jsonEmptyObject
 
 decode ∷ Json → Either String Workspace
 decode = decodeJson >=> \obj ->
-  { fresh: _
-  , root: _
-  } <$> obj .? "fresh"
-    <*> obj .? "root"
-
-fresh
-  ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ Boolean -- Should this be the new root
-  → FilePath
-  → m (Either Exn.Error Int)
-fresh isRoot file  = do
-  json ← QD.load file
-  runExceptT $ case json of
-    Left _ → bump emptyWorkspace
-    Right json' → liftExn (pure $ decode json') >>= bump
-  where
-  bump ws = do
-    let root =
-          if isRoot
-            then ws.fresh
-            else ws.root
-    ExceptT
-      $ QD.save file
-      $ encode
-      $ ws { fresh = ws.fresh + 1, root = root }
-    pure ws.fresh
-
-freshId
-  ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
-  → m (Either Exn.Error Int)
-freshId = fresh false
-
-freshRoot
-  ∷ ∀ eff m
-  . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
-  → m (Either Exn.Error Int)
-freshRoot = fresh true
+  { root: _
+  } <$> obj .? "root"
 
 getRoot
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ FilePath
-  → m (Either String Int)
+  → m (Either String DeckId)
 getRoot file = runExceptT do
   json ← ExceptT $ QD.load file
   ws ← ExceptT $ pure $ decode json
-  pure ws.root
+  maybe (ExceptT $ pure $ Left "No root") pure ws.root
 
 setRoot
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ Int
+  ⇒ DeckId
   → FilePath
   → m (Either Exn.Error Unit)
 setRoot root file = runExceptT do
@@ -118,7 +76,7 @@ setRoot root file = runExceptT do
   ExceptT
     $ QD.save file
     $ encode
-    $ ws { root = root }
+    $ { root: Just root }
 
 liftExn ∷ ∀ m a. (Monad m) ⇒ m (Either String a) → ExceptT Exn.Error m a
 liftExn = withExceptT Exn.error ∘ ExceptT

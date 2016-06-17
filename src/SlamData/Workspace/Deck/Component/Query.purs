@@ -37,7 +37,7 @@ import Utils.Path as UP
 
 data Query a
   = RunPendingCards a
-  | GetId (Maybe DeckId → a)
+  | GetId (DeckId → a)
   | GetParent (Maybe (Tuple DeckId CardId) → a)
   | SetParent (Tuple DeckId CardId) a
   | ExploreFile UP.FilePath a

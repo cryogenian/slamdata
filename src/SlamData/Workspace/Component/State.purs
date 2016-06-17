@@ -22,6 +22,7 @@ module SlamData.Workspace.Component.State
   , _loaded
   , _version
   , _path
+  , _deckId
   , _stateMode
   ) where
 
@@ -33,6 +34,7 @@ import Data.StrMap as SM
 import SlamData.Workspace.AccessType (AccessType(..))
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.Deck.DeckId (DeckId)
 
 import Utils.Path (DirPath)
 
@@ -42,6 +44,7 @@ type State =
   , loaded ∷ Boolean
   , version ∷ Maybe String
   , path ∷ Maybe DirPath
+  , deckId ∷ Maybe DeckId
   , stateMode ∷ StateMode
   }
 
@@ -52,6 +55,7 @@ initialState version =
   , loaded: false
   , version
   , path: Nothing
+  , deckId: Nothing
   , stateMode: Loading
   }
 
@@ -69,6 +73,9 @@ _version = lens _.version _{version = _}
 
 _path ∷ ∀ a r. LensP {path ∷ a|r} a
 _path = lens _.path _{path = _}
+
+_deckId ∷ ∀ a r. LensP {deckId ∷ a|r} a
+_deckId = lens _.deckId _{deckId = _}
 
 _stateMode ∷ LensP State StateMode
 _stateMode = lens _.stateMode _{stateMode = _}

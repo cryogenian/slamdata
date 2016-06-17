@@ -32,7 +32,7 @@ type CardOptions =
   { deckComponent ∷ DeckComponent
   , path ∷ DirPath
   , cardId ∷ CardId
-  , deckId ∷ Maybe DeckId
+  , deckId ∷ DeckId
   , level ∷ DeckLevel
   , accessType ∷ AccessType
   }

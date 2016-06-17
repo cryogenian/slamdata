@@ -102,7 +102,7 @@ derive instance eqDisplayMode ∷ Eq DisplayMode
 -- | The deck state. See the corresponding lenses for descriptions of
 -- | the fields.
 type State =
-  { id ∷ Maybe DeckId
+  { id ∷ DeckId
   , parent ∷ Maybe (Tuple DeckId CardId)
   , fresh ∷ Int
   , accessType ∷ AccessType
@@ -129,9 +129,9 @@ type State =
 type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 
 -- | Constructs a default `State` value.
-initialDeck ∷ DirPath → State
-initialDeck path =
-  { id: Nothing
+initialDeck ∷ DirPath → DeckId → State
+initialDeck path deckId =
+  { id: deckId
   , parent: Nothing
   , fresh: 0
   , accessType: Editable
@@ -320,8 +320,8 @@ removePendingCard cardId st@{ pendingCard } =
     _ → st
 
 -- | Finds the current deck path
-deckPath ∷ State → Maybe DirPath
-deckPath state = deckPath' state.path <$> state.id
+deckPath ∷ State → DirPath
+deckPath state = deckPath' state.path state.id
 
 deckPath' ∷ DirPath → DeckId → DirPath
 deckPath' path deckId = path </> P.dir (deckIdToString deckId)
@@ -329,7 +329,7 @@ deckPath' path deckId = path </> P.dir (deckIdToString deckId)
 -- | Reconstructs a deck state from a deck model.
 fromModel
   ∷ DirPath
-  → Maybe DeckId
+  → DeckId
   → Model.Deck
   → State
   → State

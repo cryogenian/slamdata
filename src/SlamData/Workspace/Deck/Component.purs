@@ -25,8 +25,6 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Aff.Par (Par(..), runPar)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
@@ -36,8 +34,6 @@ import Data.List as L
 import Data.Map as Map
 import Data.Set as Set
 import Data.Ord (max)
-import Data.Path.Pathy ((</>))
-import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
 import Data.StrMap as SM
 
@@ -80,14 +76,13 @@ import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckId (DeckId(..))
+import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Model (Deck, deckIndex)
 import SlamData.Workspace.Deck.Model as Model
-import SlamData.Workspace.Model as WS
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
@@ -95,8 +90,8 @@ import SlamData.Workspace.StateMode (StateMode(..))
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
 
-initialState ∷ DirPath → DCS.StateP
-initialState = opaqueState ∘ DCS.initialDeck
+initialState ∷ DirPath → DeckId → DCS.StateP
+initialState path = opaqueState ∘ DCS.initialDeck path
 
 comp ∷ H.Component DCS.StateP QueryP Slam
 comp =
@@ -236,7 +231,7 @@ eval (Load dir deckId level next) = do
 eval (SetModel deckId model level next) = do
   state ← H.get
   H.modify $ DCS._level .~ level
-  setModel state.path (Just deckId) model
+  setModel state.path deckId model
   pure next
 eval (ExploreFile res next) = do
   H.modify
@@ -250,13 +245,13 @@ eval (ExploreFile res next) = do
   updateIndicator
   pure next
 eval (Publish next) = do
-  H.gets DCS.deckPath >>=
-    traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (WA.Load AT.ReadOnly))
+  path ← H.gets DCS.deckPath
+  H.fromEff ∘ newTab $ mkWorkspaceURL path (WA.Load AT.ReadOnly)
   pure next
 eval (Reset dir next) = do
   st ← H.get
   setDeckState $
-    (DCS.initialDeck dir)
+    (DCS.initialDeck dir st.id)
       { stateMode = Ready
       , accessType = st.accessType
       }
@@ -269,9 +264,7 @@ eval (GetId k) = k <$> H.gets _.id
 eval (GetParent k) = k <$> H.gets _.parent
 eval (Save next) = saveDeck $> next
 eval (RunPendingCards next) = do
-  -- Only run pending cards if we have a deckPath. Some cards run with the
-  -- assumption that the deck is saved to disk.
-  H.gets DCS.deckPath >>= traverse_ \_ → runPendingCards
+  runPendingCards
   pure next
 eval (SetGlobalVarMap m next) = do
   st ← H.get
@@ -294,9 +287,8 @@ eval (UpdateCardSize next) = do
 eval (ResizeDeck _ next) = pure next
 eval (ZoomIn next) = do
   st ← H.get
-  for_ (DCS.deckPath st) \path → do
-    let deckHash = mkWorkspaceHash path (WA.Load st.accessType) st.globalVarMap
-    H.fromEff $ locationObject >>= Location.setHash deckHash
+  let deckHash = mkWorkspaceHash (DCS.deckPath st) (WA.Load st.accessType) st.globalVarMap
+  H.fromEff $ locationObject >>= Location.setHash deckHash
   pure next
 eval (ZoomOut next) = do
   st ← H.get
@@ -365,16 +357,16 @@ peekBackSide (Back.DoAction action _) =
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Share → do
       url ← mkShareURL SM.empty
-      for_ url $ showDialog ∘ Dialog.Share
+      showDialog $ Dialog.Share url
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Embed → do
       varMap ← H.gets _.globalVarMap
       url ← mkShareURL varMap
-      for_ url (showDialog ∘ flip Dialog.Embed varMap)
+      showDialog $ Dialog.Embed url varMap
       H.modify (DCS._displayMode .~ DCS.Dialog)
-    Back.Publish →
-      H.gets DCS.deckPath >>=
-        traverse_ (H.fromEff ∘ newTab ∘ flip mkWorkspaceURL (WA.Load AT.ReadOnly))
+    Back.Publish → do
+      path ← H.gets DCS.deckPath
+      H.fromEff ∘ newTab $ mkWorkspaceURL path (WA.Load AT.ReadOnly)
     Back.DeleteDeck → do
       cards ← H.gets _.modelCards
       if Array.null cards
@@ -385,13 +377,12 @@ peekBackSide (Back.DoAction action _) =
     Back.Mirror → raise' $ H.action $ DoAction Mirror
     Back.Wrap → raise' $ H.action $ DoAction Wrap
 
-mkShareURL ∷ Port.VarMap → DeckDSL (Maybe String)
+mkShareURL ∷ Port.VarMap → DeckDSL String
 mkShareURL varMap = do
   loc ← H.fromEff locationString
   saveDeck
   path ← H.gets DCS.deckPath
-  pure $ path <#> \p →
-    loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash p (WA.Load AT.ReadOnly) varMap
+  pure $ loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash path (WA.Load AT.ReadOnly) varMap
 
 peekCards ∷ ∀ a. CardSlot → CardQueryP a → DeckDSL Unit
 peekCards (CardSlot cardId) = const (pure unit) ⨁ peekCardInner cardId
@@ -680,31 +671,17 @@ saveDeck = do
     H.modify $ DCS._modelCards .~ cards
 
     let json = Model.encode { parent: st.parent, cards }
+    saveResult ← Quasar.save (deckIndex st.path st.id) json
 
-    deckId ← runExceptT do
-      i ← ExceptT $ genId st.path st.id
-      ExceptT $ Quasar.save (deckIndex st.path i) json
-      pure i
-
-    case deckId of
+    case saveResult of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
-      Right deckId' → do
-        H.modify $ DCS._id .~ Just deckId'
-        -- runPendingCards would be deferred if there had previously been
-        -- no `deckPath`. We need to flush the queue.
-        when (isNothing $ DCS.deckPath st) runPendingCards
-        when (st.level ≡ DL.root) $
-          H.gets DCS.deckPath >>= traverse_ \path' → do
-            let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
-            H.fromEff $ locationObject >>= Location.setHash deckHash
-
-  where
-  genId ∷ DirPath → Maybe DeckId → DeckDSL (Either Exn.Error DeckId)
-  genId path deckId = case deckId of
-    Just id' → pure $ Right id'
-    Nothing → map DeckId <$> WS.freshId (path </> Pathy.file "index")
+      Right _ →
+        when (st.level ≡ DL.root) $ do
+          path' ← H.gets DCS.deckPath
+          let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
+          H.fromEff $ locationObject >>= Location.setHash deckHash
 
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
@@ -720,9 +697,9 @@ loadDeck dir deckId = do
       H.fromAff $ log err
       H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
     Right model →
-      setModel dir (Just deckId) model
+      setModel dir deckId model
 
-setModel ∷ DirPath → Maybe DeckId → Deck → DeckDSL Unit
+setModel ∷ DirPath → DeckId → Deck → DeckDSL Unit
 setModel dir deckId model = do
   st ← DCS.fromModel dir deckId model <$> H.get
   setDeckState st

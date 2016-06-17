@@ -25,7 +25,7 @@ import SlamData.Prelude
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.UI.Browser (setHref)
 
-import Data.Lens ((^.), (.~))
+import Data.Lens ((^.), (.~), (?~))
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 
@@ -49,10 +49,10 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _loaded, _path, _version, _stateMode, _globalVarMap, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _loaded, _path, _version, _stateMode, _globalVarMap, _deckId, initialState)
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component as Deck
-import SlamData.Workspace.Deck.DeckId (DeckId(..))
+import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as Model
@@ -66,10 +66,12 @@ type WorkspaceDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
 comp ∷ H.Component StateP QueryP Slam
 comp =
-  H.parentComponent
+  H.lifecycleParentComponent
     { render
     , eval
     , peek: Just (peek ∘ H.runChildF)
+    , initializer: Just $ Init unit
+    , finalizer: Nothing
     }
 
 render ∷ State → WorkspaceHTML
@@ -90,24 +92,25 @@ render state =
 
   deck ∷ Array WorkspaceHTML
   deck =
-    pure case state.stateMode, state.path of
-      Loading, _ →
+    pure case state.stateMode, state.path, state.deckId of
+      Loading, _, _ →
         HH.div [ HP.classes [ workspaceClass ] ]
           []
-      Error err, _ → showError err
-      _, Just path →
+      Error err, _, _→ showError err
+      _, Just path, Just deckId →
         HH.div [ HP.classes [ workspaceClass ] ]
           [ HH.slot' cpDeck unit \_ →
              { component: Deck.comp
              , initialState:
                  opaqueState $
-                   (Deck.initialDeck path)
+                   (Deck.initialDeck path deckId)
                      { accessType = state.accessType
                      , globalVarMap = state.globalVarMap
                      }
              }
           ]
-      _, _ → showError "Missing workspace path"
+      _, Nothing, _ → showError "Missing workspace path"
+      _, _, Nothing → showError "Missing deck id (impossible!)"
 
   showError err =
     HH.div [ HP.classes [ B.alert, B.alertDanger ] ]
@@ -135,6 +138,10 @@ render state =
       else className "sd-workspace"
 
 eval ∷ Natural Query WorkspaceDSL
+eval (Init next) = do
+  deckId ← H.fromEff freshDeckId
+  H.modify (_deckId ?~ deckId)
+  pure next
 eval (SetGlobalVarMap varMap next) = do
   H.modify (_globalVarMap .~ varMap)
   queryDeck $ H.action $ Deck.SetGlobalVarMap varMap
@@ -154,7 +161,7 @@ eval (Load path deckId accessType next) = do
   oldAccessType <- H.gets _.accessType
   H.modify (_accessType .~ accessType)
 
-  queryDeck (H.request Deck.GetId) >>= join >>> \deckId' →
+  queryDeck (H.request Deck.GetId) >>= \deckId' →
     case deckId, deckId' of
       Just a, Just b | a == b && oldAccessType == accessType → pure unit
       _, _ → load
@@ -165,6 +172,7 @@ eval (Load path deckId accessType next) = do
     H.modify _
       { stateMode = Loading
       , path = Just path
+      , deckId = deckId
       }
     queryDeck $ H.action $ Deck.Reset path
     maybe loadRoot loadDeck deckId
@@ -178,7 +186,7 @@ eval (Load path deckId accessType next) = do
       either (\err → H.modify $ _stateMode .~ Error err) loadDeck
 
 rootDeck ∷ UP.DirPath → WorkspaceDSL (Either String DeckId)
-rootDeck path = map (map DeckId) $ Model.getRoot (path </> Pathy.file "index")
+rootDeck path = Model.getRoot (path </> Pathy.file "index")
 
 peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
 peek = (peekOpaqueQuery peekDeck) ⨁ (const $ pure unit)
@@ -190,16 +198,15 @@ peek = (peekOpaqueQuery peekDeck) ⨁ (const $ pure unit)
     let index = path </> Pathy.file "index"
 
     parent ← lift $ join <$> queryDeck (H.request Deck.GetParent)
-    oldId  ← MaybeT $ join <$> queryDeck (H.request Deck.GetId)
-    newId  ← MaybeT $ either (const Nothing) Just <$> Model.freshId index
+    oldId ← MaybeT $ queryDeck (H.request Deck.GetId)
+    newId ← lift $ H.fromEff freshDeckId
 
-    let newId' = DeckId newId
-        transitionDeck newDeck =
+    let transitionDeck newDeck =
           traverse_ (queryDeck ∘ H.action)
-            [ Deck.SetParent (Tuple newId' (CID.CardId 0))
+            [ Deck.SetParent (Tuple newId (CID.CardId 0))
             , Deck.Save
             , Deck.Reset path
-            , Deck.SetModel newId' newDeck DL.root
+            , Deck.SetModel newId newDeck DL.root
             , Deck.Save
             ]
 
@@ -208,7 +215,7 @@ peek = (peekOpaqueQuery peekDeck) ⨁ (const $ pure unit)
         Quasar.load (DM.deckIndex path deckId)
           >>= flip bind DM.decode
           >>> traverse_ \parentDeck → void do
-            let cards = DBC.replacePointer oldId newId' cardId parentDeck.cards
+            let cards = DBC.replacePointer oldId newId cardId parentDeck.cards
             Quasar.save (DM.deckIndex path deckId) $ DM.encode parentDeck { cards = cards }
             transitionDeck $ (wrappedDeck defaultPosition oldId) { parent = parent }
       Nothing → void do
