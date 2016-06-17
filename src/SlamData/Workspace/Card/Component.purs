@@ -114,7 +114,6 @@ makeCardComponentPart def render =
   eval ∷ Natural CQ.CardQuery CardDSL
   eval (CQ.UpdateCard input output next) = do
     void $ H.query unit (left (H.action (CQ.EvalCard input output)))
-    H.modify $ CS._output .~ output
     pure next
   eval (CQ.SaveCard cardId cardType k) = do
     model ← fromMaybe (Card.cardModelOfType cardType) <$> H.query unit (left (H.request CQ.Save))
@@ -123,8 +122,6 @@ makeCardComponentPart def render =
     H.query unit ∘ left ∘ H.action $ CQ.Load card.model
     sendAfter' (Milliseconds 100.0) (CQ.UpdateDimensions unit)
     pure next
-  eval (CQ.SetCardAccessType at next) =
-    H.modify (CS._accessType .~ at) $> next
   eval (CQ.SetHTMLElement el next) =
     H.modify (CS._element .~ el) $> next
   eval (CQ.UpdateDimensions next) = do

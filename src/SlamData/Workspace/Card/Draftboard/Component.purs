@@ -57,7 +57,7 @@ import SlamData.Render.CSS as RC
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Draftboard.Common (deleteGraph)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, QueryC)
-import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _accessType, _inserting, modelFromState)
+import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _inserting, modelFromState)
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Model as Card
@@ -109,7 +109,7 @@ render opts state =
         , HC.style bgSize
         , HP.ref (right ∘ H.action ∘ SetElement)
         , HE.onMouseDown \e → pure $
-            guard (AT.isEditable state.accessType && not state.inserting) $>
+            guard (AT.isEditable opts.accessType && not state.inserting) $>
             right (H.action $ AddDeck e)
         ]
         $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
@@ -160,10 +160,7 @@ render opts state =
     CSS.height $ CSS.px $ gridToPx $ size'.height + 1.0
 
 evalCard ∷ Natural Ceq.CardEvalQuery DraftboardDSL
-evalCard (Ceq.EvalCard input output next) = do
-  H.modify $ _accessType .~ input.accessType
-  H.queryAll ∘ opaqueQuery ∘ H.action $ DCQ.SetAccessType input.accessType
-  pure next
+evalCard (Ceq.EvalCard _ _ next) = pure next
 evalCard (Ceq.SetDimensions _ next) = pure next
 evalCard (Ceq.Save k) = map (k ∘ Card.Draftboard ∘ modelFromState) H.get
 evalCard (Ceq.Load card next) = do

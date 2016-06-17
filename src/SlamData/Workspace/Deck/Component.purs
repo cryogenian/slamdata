@@ -229,9 +229,6 @@ render st =
       ]
 
 eval ∷ Query ~> DeckDSL
-eval (RunActiveCard next) = do
-  traverse_ runCard =<< H.gets DCS.activeCardId
-  pure next
 eval (Load dir deckId level next) = do
   H.modify $ DCS._level .~ level
   loadDeck dir deckId
@@ -266,18 +263,8 @@ eval (Reset dir next) = do
   runPendingCards
   updateActiveCardAndIndicator
   pure next
-eval (SetName name next) =
-  H.modify (DCS._name .~ Just name) $> next
 eval (SetParent parent next) =
   H.modify (DCS._parent .~ Just parent) $> next
-eval (SetAccessType aType next) = do
-  void $ H.queryAll' cpCard $ left $ H.action $ SetCardAccessType aType
-  H.modify $ DCS._accessType .~ aType
-  unless (AT.isEditable aType)
-    $ H.modify (DCS._displayMode .~ DCS.Normal)
-  updateActiveCardAndIndicator
-  pure next
-eval (GetPath k) = k <$> H.gets DCS.deckPath
 eval (GetId k) = k <$> H.gets _.id
 eval (GetParent k) = k <$> H.gets _.parent
 eval (Save next) = saveDeck $> next
@@ -286,7 +273,6 @@ eval (RunPendingCards next) = do
   -- assumption that the deck is saved to disk.
   H.gets DCS.deckPath >>= traverse_ \_ → runPendingCards
   pure next
-eval (GetGlobalVarMap k) = k <$> H.gets _.globalVarMap
 eval (SetGlobalVarMap m next) = do
   st ← H.get
   when (m ≠ st.globalVarMap) do
@@ -609,7 +595,7 @@ runStep
   → Card.Model
   → DeckDSL Port
 runStep cfg inputPort card @ { cardId } = do
-  let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap, accessType: cfg.accessType }
+  let input = { path: cfg.path, input: inputPort, cardId, globalVarMap: cfg.globalVarMap }
   card' ← currentStateOfCard card
   case Card.modelToEval card'.model of
     Left err → pure ∘ Port.CardError $ "Could not evaluate card: " <> err
@@ -658,8 +644,7 @@ runPendingCards = do
     → DeckDSL Unit
   updateCard path globalVarMap { card, input = mport, output } = do
     shouldLoad ← H.gets $ Set.member card.cardId ∘ _.cardsToLoad
-    accessType ← H.gets _.accessType
-    let input = { path, input: mport, cardId: card.cardId, globalVarMap, accessType }
+    let input = { path, input: mport, cardId: card.cardId, globalVarMap }
 
     when shouldLoad do
       res ← H.query' cpCard (CardSlot card.cardId) $ left $ H.action (LoadCard card)
@@ -695,7 +680,7 @@ saveDeck = do
 
     H.modify $ DCS._modelCards .~ cards
 
-    let json = Model.encode { name: st.name, parent: st.parent, cards }
+    let json = Model.encode { parent: st.parent, cards }
 
     deckId ← runExceptT do
       i ← ExceptT $ genId st.path st.id

@@ -236,11 +236,10 @@ renderCard comp st card index =
     , cardId: card.cardId
     , deckId: st.id
     , level: st.level
+    , accessType: st.accessType
     }
 
   cardComponent =
     { component: Factory.cardComponent card cardOpts
-    , initialState:
-        H.parentState
-          CardC.initialCardState { accessType = st.accessType }
+    , initialState: H.parentState CardC.initialCardState
     }

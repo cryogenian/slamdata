@@ -27,7 +27,6 @@ module SlamData.Workspace.Deck.Component.State
   , _displayCards
   , _cardsToLoad
   , _activeCardIndex
-  , _name
   , _path
   , _saveTrigger
   , _runTrigger
@@ -111,7 +110,6 @@ type State =
   , displayCards ∷ Array Card.Model
   , cardsToLoad ∷ Set.Set CardId
   , activeCardIndex ∷ Maybe Int
-  , name ∷ Maybe String
   , path ∷ DirPath
   , saveTrigger ∷ Maybe (DebounceTrigger Query Slam)
   , runTrigger ∷ Maybe (DebounceTrigger Query Slam)
@@ -141,7 +139,6 @@ initialDeck path =
   , displayCards: mempty
   , cardsToLoad: mempty
   , activeCardIndex: Nothing
-  , name: Nothing
   , path
   , saveTrigger: Nothing
   , globalVarMap: SM.empty
@@ -190,10 +187,6 @@ _cardsToLoad = lens _.cardsToLoad _{cardsToLoad = _}
 -- | action card.
 _activeCardIndex ∷ ∀ a r. LensP {activeCardIndex ∷ a |r} a
 _activeCardIndex = lens _.activeCardIndex _{activeCardIndex = _}
-
--- | The display name of the deck.
-_name ∷ ∀ a r. LensP {name ∷ a |r} a
-_name = lens _.name _{name = _}
 
 -- | The path to the deck in the filesystem
 _path ∷ ∀ a r. LensP {path ∷ a |r} a
@@ -340,7 +333,7 @@ fromModel
   → Model.Deck
   → State
   → State
-fromModel path deckId { cards, name, parent } state =
+fromModel path deckId { cards, parent } state =
   state
     { activeCardIndex = Nothing
     , displayMode = Normal
@@ -351,7 +344,6 @@ fromModel path deckId { cards, name, parent } state =
     , id = deckId
     , parent = parent
     , initialSliderX = Nothing
-    , name = name
     , path = path
     , runTrigger = Nothing
     , pendingCard = Nothing

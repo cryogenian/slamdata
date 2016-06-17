@@ -53,8 +53,8 @@ import SlamData.Workspace.Component.State (State, _accessType, _loaded, _path, _
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId(..))
-import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Deck.DeckLevel as DL
+import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.StateMode (StateMode(..))
 
@@ -136,10 +136,6 @@ render state =
       else className "sd-workspace"
 
 eval ∷ Natural Query WorkspaceDSL
-eval (SetAccessType aType next) = do
-  H.modify (_accessType .~ aType)
-  queryDeck $ H.action $ Deck.SetAccessType aType
-  pure next
 eval (SetGlobalVarMap varMap next) = do
   H.modify (_globalVarMap .~ varMap)
   queryDeck $ H.action $ Deck.SetGlobalVarMap varMap
@@ -147,18 +143,21 @@ eval (SetGlobalVarMap varMap next) = do
 eval (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
   pure next
-eval (GetPath k) = k <$> H.gets _.path
 eval (Reset path next) = do
   H.modify _
     { path = Just path
     , stateMode = Ready
+    , accessType = AT.Editable
     }
   queryDeck $ H.action $ Deck.Reset path
   pure next
-eval (Load path deckId next) = do
+eval (Load path deckId accessType next) = do
+  oldAccessType <- H.gets _.accessType
+  H.modify (_accessType .~ accessType)
+
   queryDeck (H.request Deck.GetId) >>= join >>> \deckId' →
     case deckId, deckId' of
-      Just a, Just b | a == b → pure unit
+      Just a, Just b | a == b && oldAccessType == accessType → pure unit
       _, _ → load
   pure next
 

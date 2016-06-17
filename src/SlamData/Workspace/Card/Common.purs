@@ -20,6 +20,7 @@ module SlamData.Workspace.Card.Common
 
 import SlamData.Prelude
 
+import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
@@ -33,4 +34,5 @@ type CardOptions =
   , cardId ∷ CardId
   , deckId ∷ Maybe DeckId
   , level ∷ DeckLevel
+  , accessType ∷ AccessType
   }

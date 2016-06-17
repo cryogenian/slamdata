@@ -31,12 +31,10 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import Utils.Path as UP
 
 data Query a
-  = SetAccessType AccessType a
-  | SetGlobalVarMap Port.VarMap a
+  = SetGlobalVarMap Port.VarMap a
   | DismissAll a
   | Reset UP.DirPath a
-  | Load UP.DirPath (Maybe DeckId) a
-  | GetPath (Maybe UP.DirPath → a)
+  | Load UP.DirPath (Maybe DeckId) AccessType a
 
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 

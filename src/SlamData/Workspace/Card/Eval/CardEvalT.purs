@@ -30,7 +30,6 @@ import Data.Path.Pathy as Path
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 
-import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
@@ -42,7 +41,6 @@ type CardEvalInput =
   , input ∷ Maybe Port.Port
   , cardId ∷ CID.CardId
   , globalVarMap ∷ VM.VarMap
-  , accessType ∷ AT.AccessType
   }
 
 type CardEvalTP m = ET.ExceptT String m

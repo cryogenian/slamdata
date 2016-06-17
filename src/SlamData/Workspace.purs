@@ -29,7 +29,7 @@ import Halogen (Driver, runUI, parentState)
 import Halogen.Util (runHalogenAff, awaitBody)
 
 import SlamData.Config as Config
-import SlamData.Workspace.Action (Action(..), toAccessType)
+import SlamData.Workspace.Action (Action(..))
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -64,16 +64,14 @@ routeSignal driver =
     new ← await
     case new of
       WorkspaceRoute path deckId action varMap → lift do
-        driver $ Workspace.toWorkspace $ Workspace.SetAccessType $ toAccessType action
         driver $ Workspace.toWorkspace $ Workspace.SetGlobalVarMap varMap
 
         case old of
-          Just (WorkspaceRoute path' deckId' _ _) | path ≠ path' || deckId ≠ deckId' →
+          Just (WorkspaceRoute path' deckId' action' _)
+            | path == path' && deckId == deckId' && action == action' →
+                pure unit
+          _ → do
             workspace path deckId action
-          Nothing →
-            workspace path deckId action
-          _ →
-            pure unit
 
     routeConsumer (Just new)
 
@@ -84,8 +82,10 @@ routeSignal driver =
     → Aff SlamDataEffects Unit
   workspace path deckId =
     case _ of
-      New → driver $ Workspace.toWorkspace $ Workspace.Reset path
-      Load _ → driver $ Workspace.toWorkspace $ Workspace.Load path deckId
+      New →
+        driver $ Workspace.toWorkspace $ Workspace.Reset path
+      Load accessType →
+        driver $ Workspace.toWorkspace $ Workspace.Load path deckId accessType
       Exploring fp → do
         driver $ Workspace.toWorkspace $ Workspace.Reset path
         driver $ Workspace.toDeck $ Deck.ExploreFile fp

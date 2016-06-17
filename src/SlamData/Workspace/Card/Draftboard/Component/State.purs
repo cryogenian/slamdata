@@ -22,7 +22,6 @@ module SlamData.Workspace.Card.Draftboard.Component.State
   , modelFromState
   , _decks
   , _moving
-  , _accessType
   , _inserting
   , module Model
   ) where
@@ -39,7 +38,6 @@ import Data.Map as Map
 
 import SlamData.Effects (Slam)
 
-import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.Draftboard.Component.Query (QueryC)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -51,7 +49,6 @@ type State =
   { decks ∷ Map.Map DeckId Model.DeckPosition
   , moving ∷ Maybe (Tuple DeckId Model.DeckPosition)
   , canvas ∷ Maybe HTMLElement
-  , accessType ∷ AT.AccessType
   , inserting ∷ Boolean
   }
 
@@ -66,7 +63,6 @@ initialState =
   { decks: Map.empty
   , moving: Nothing
   , canvas: Nothing
-  , accessType: AT.Editable
   , inserting: false
   }
 
@@ -89,9 +85,6 @@ _decks = lens _.decks _{ decks = _ }
 
 _moving ∷ LensP State (Maybe (Tuple DeckId Model.DeckPosition))
 _moving = lens _.moving _{ moving = _ }
-
-_accessType ∷ LensP State AT.AccessType
-_accessType = lens _.accessType _{ accessType = _ }
 
 _inserting ∷ LensP State Boolean
 _inserting = lens _.inserting _{ inserting = _ }
