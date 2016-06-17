@@ -15,8 +15,7 @@ limitations under the License.
 -}
 
 module Test.Feature.ActionSequence
-  ( selectAll
-  , copy
+  ( copy
   , paste
   , undo
   , sendDelete
@@ -36,9 +35,6 @@ import Data.Array (replicate)
 import Selenium.ActionSequence (Sequence, sendKeys, keyDown, keyUp)
 import Selenium.Types (ControlKey)
 import Selenium.Key (shiftKey)
-
-selectAll :: ControlKey -> Sequence Unit
-selectAll modifierKey = sendKeyCombo [modifierKey] "a"
 
 copy :: ControlKey -> Sequence Unit
 copy modifierKey = sendKeyCombo [modifierKey] "c"

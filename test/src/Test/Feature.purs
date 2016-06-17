@@ -34,7 +34,6 @@ module Test.Feature
   , provideFileInputValueWithProperties
   , pushRadioButton
   , pushRadioButtonWithProperties
-  , selectAll
   , selectFromDropdown
   , selectFromDropdownWithProperties
   , typeString
@@ -65,7 +64,7 @@ import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readFile, readTextFile, readdir, unlink)
 
 import Selenium.ActionSequence as Sequence
-import Selenium.Monad (get, getAttribute, clickEl, attempt, later, byXPath, tryRepeatedlyTo, findElements, isDisplayed, getLocation, getSize, saveScreenshot, sendKeysEl)
+import Selenium.Monad (get, getAttribute, clickEl, clearEl, attempt, later, byXPath, tryRepeatedlyTo, findElements, isDisplayed, getLocation, getSize, saveScreenshot, sendKeysEl)
 import Selenium.Monad as Selenium
 import Selenium.Types (Element, Location)
 
@@ -697,9 +696,6 @@ typeString string = Selenium.sequence $ FeatureSequence.keys string
 pressEnter ∷ ∀ eff o. Feature eff o Unit
 pressEnter = Selenium.sequence $ FeatureSequence.sendEnter
 
-selectAll ∷ ∀ eff o. Feature eff o Unit
-selectAll = (Selenium.sequence ∘ FeatureSequence.selectAll) =<< getModifierKey
-
 copy ∷ ∀ eff o. Feature eff o Unit
 copy = (Selenium.sequence ∘ FeatureSequence.copy) =<< getModifierKey
 
@@ -717,8 +713,10 @@ hoverElement ∷ ∀ eff o. Element → Feature eff o Unit
 hoverElement = Selenium.sequence ∘ Sequence.hover
 
 provideFieldValueElement ∷ ∀ eff o. String → Element → Feature eff o Unit
-provideFieldValueElement value element =
-  clickEl element *> selectAll *> typeString value
+provideFieldValueElement value element = do
+  clickEl element
+  clearEl element
+  typeString value
 
 selectFromDropdownElement ∷ ∀ eff o. String → Element → Feature eff o Unit
 selectFromDropdownElement text element = do
