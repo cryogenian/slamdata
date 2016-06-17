@@ -68,7 +68,7 @@ import Selenium.Monad as Selenium
 import Selenium.Types (Element, Location)
 
 import Test.Feature.ActionSequence as FeatureSequence
-import Test.Feature.Monad (Feature, getModifierKey, await)
+import Test.Feature.Monad (Feature, await)
 import Test.Utils (ifTrue, ifFalse, passover, throwIfEmpty, throwIfNotEmpty, singletonValue, appendToCwd, nonWhite)
 
 import XPath as XPath
@@ -707,20 +707,27 @@ typeString string = Selenium.sequence $ FeatureSequence.keys string
 pressEnter ∷ ∀ eff o. Feature eff o Unit
 pressEnter = Selenium.sequence $ FeatureSequence.sendEnter
 
-typeBackspaces ∷ ∀ eff o. Int → Feature eff o Unit
-typeBackspaces = Selenium.sequence ∘ FeatureSequence.sendBackspaces
-
 -- Element dependent interactions
 clickAllElements ∷ ∀ eff o. Array Element → Feature eff o Unit
 clickAllElements = traverse_ clickEl
 
 clearElement ∷ ∀ eff o. Element → Feature eff o Unit
-clearElement element = Selenium.clickEl element *> typeEnoughBackspaces
+clearElement element = Selenium.clickEl element *> moveToEndOfString *> typeEnoughBackspaces
   where
   getValueLength ∷ Feature eff o (Maybe Int)
   getValueLength = map String.length <$> Selenium.getAttribute element "value"
 
   typeEnoughBackspaces = traverse_ typeBackspaces =<< getValueLength
+
+  moveToEndOfString = traverse_ typeRightArrow =<< getValueLength
+
+
+  typeBackspaces ∷ Int → Feature eff o Unit
+  typeBackspaces = Selenium.sequence ∘ FeatureSequence.sendBackspaces
+
+  typeRightArrow ∷ Int → Feature eff o Unit
+  typeRightArrow = Selenium.sequence ∘ FeatureSequence.sendRights
+
 
 hoverElement ∷ ∀ eff o. Element → Feature eff o Unit
 hoverElement = Selenium.sequence ∘ Sequence.hover

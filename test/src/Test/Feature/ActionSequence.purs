@@ -20,6 +20,7 @@ module Test.Feature.ActionSequence
   , shifted
   , keys
   , sendBackspaces
+  , sendRights
   ) where
 
 import Prelude
@@ -31,22 +32,25 @@ import Selenium.ActionSequence (Sequence, sendKeys, keyDown, keyUp)
 import Selenium.Types (ControlKey)
 import Selenium.Key (shiftKey)
 
-shifted :: String -> Sequence Unit
+shifted ∷ String → Sequence Unit
 shifted str = do
   keyDown shiftKey
   sendKeys str
   keyUp shiftKey
 
-sendDelete :: Sequence Unit
+sendDelete ∷ Sequence Unit
 sendDelete = sendKeys "\xE017"
 
-sendBackspaces :: Int -> Sequence Unit
+sendBackspaces ∷ Int → Sequence Unit
 sendBackspaces n = traverse_ sendKeys $ replicate n "\xE003"
 
-sendEnter :: Sequence Unit
+sendRights ∷ Int → Sequence Unit
+sendRights n = traverse_ sendKeys $ replicate n "\xE014"
+
+sendEnter ∷ Sequence Unit
 sendEnter = sendKeys "\xE007"
 
-sendKeyCombo :: Array ControlKey -> String -> Sequence Unit
+sendKeyCombo ∷ Array ControlKey → String → Sequence Unit
 sendKeyCombo ctrlKeys str = do
   traverse_ keyDown ctrlKeys
   sendKeys str
@@ -54,10 +58,10 @@ sendKeyCombo ctrlKeys str = do
 
 -- Send keys one by one and replace if they can't be processed
 -- by selenium driver
-keys :: String -> Sequence Unit
+keys ∷ String → Sequence Unit
 keys str = traverse_ sendKey $ split "" str
   where
-  sendKey :: String -> Sequence Unit
+  sendKey ∷ String → Sequence Unit
   sendKey "!" = shifted "1"
   sendKey "(" = shifted "9"
   sendKey ")" = shifted "0"
