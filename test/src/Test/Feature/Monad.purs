@@ -35,21 +35,21 @@ import Selenium.Monad (Selenium, attempt)
 import Selenium.Types (ControlKey)
 
 type FeatureEffects eff =
-    ( platform :: PLATFORM
-    , imageDiff :: IMAGE_MAGICK
-    , easyImage :: EASY_IMAGE
-    , err :: EXCEPTION
-  	, fs :: FS
- 	  , process :: PROCESS
-    , buffer :: BUFFER
+    ( platform ∷ PLATFORM
+    , imageDiff ∷ IMAGE_MAGICK
+    , easyImage ∷ EASY_IMAGE
+    , err ∷ EXCEPTION
+    , fs ∷ FS
+    , process ∷ PROCESS
+    , buffer ∷ BUFFER
     | eff)
 
 type Feature eff o =
   Selenium (FeatureEffects eff) o
 
-getPlatformString :: forall eff o. Feature eff o String
+getPlatformString ∷ forall eff o. Feature eff o String
 getPlatformString = do
-  platform <- getPlatform
+  platform ← getPlatform
   pure $ fromMaybe ""
     $ platform
     >>= runPlatform
@@ -57,21 +57,21 @@ getPlatformString = do
     >>> runOs
     >>> _.family
 
-getModifierKey :: forall eff o. Feature eff o ControlKey
+getModifierKey ∷ forall eff o. Feature eff o ControlKey
 getModifierKey = map modifierKey getPlatformString
   where
   modifierKey "Darwin" = metaKey
   modifierKey _ = controlKey
 
-notMindingIfItsNotPossible :: forall eff o. Feature eff o Unit -> Feature eff o Unit
+notMindingIfItsNotPossible ∷ forall eff o. Feature eff o Unit → Feature eff o Unit
 notMindingIfItsNotPossible = flip alt (pure unit)
 
-await' :: forall eff o. Int -> String -> Feature eff o Boolean -> Feature eff o Unit
+await' ∷ forall eff o. Int → String → Feature eff o Boolean → Feature eff o Unit
 await' timeout msg check =
   attempt (Combinators.await timeout check)
     >>= either (const $ liftEff $ throw msg) (const $ pure unit)
 
 -- | Same as `await'` but max wait time is setted to `config.selenium.waitTime`
-await :: forall eff o. String -> Feature eff o Boolean -> Feature eff o Unit
+await ∷ forall eff o. String → Feature eff o Boolean → Feature eff o Unit
 await msg check =
-  ask >>= \r -> await' r.defaultTimeout msg check
+  ask >>= \r → await' r.defaultTimeout msg check

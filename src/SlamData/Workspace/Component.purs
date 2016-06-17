@@ -116,7 +116,6 @@ render state =
           [ HH.text err ]
       ]
 
-
   shouldHideTopMenu ∷ Boolean
   shouldHideTopMenu = AT.isReadOnly (state ^. _accessType)
 

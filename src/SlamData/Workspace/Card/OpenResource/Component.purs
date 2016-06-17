@@ -48,7 +48,6 @@ import SlamData.Workspace.Card.OpenResource.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _levelOfDetails)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
-
 import Utils.Path as PU
 
 type HTML = H.ComponentHTML QueryP

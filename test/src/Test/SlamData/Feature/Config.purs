@@ -24,13 +24,7 @@ type Config =
   , restoreCmd ∷ String
   , selenium ∷
       { jar ∷ String
-      , browser ∷ String
       , waitTime ∷ Int
-      }
-  , sauceLabs ∷
-      { enabled ∷ Boolean
-      , platform ∷ String
-      , maxDuration ∷ Int
       }
   , slamdataUrl ∷ String
   , quasar ∷

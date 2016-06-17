@@ -20,3 +20,5 @@ public/css/*.css
 .*
 phantomjsdriver.log
 npm-debug.log
+chromedriver
+chromedriver.exe

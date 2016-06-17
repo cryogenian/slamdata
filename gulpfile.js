@@ -10,7 +10,6 @@ var gulp = require("gulp"),
     trimlines = require("gulp-trimlines"),
     less = require("gulp-less"),
     sequence = require("run-sequence"),
-    run = require("gulp-run"),
     replace = require("gulp-replace"),
     footer = require("gulp-footer");
 

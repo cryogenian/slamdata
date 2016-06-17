@@ -6,13 +6,7 @@
     "restoreCmd": "mongorestore --host 127.0.0.1 -d testDb --port 63174 --drop test/dump/demo",
     "selenium": {
         "jar": "test/jars/selenium-server-standalone-2.53.0.jar",
-        "browser": "firefox",
         "waitTime": 30000
-    },
-    "sauceLabs": {
-        "enabled": false,
-        "platform": "OS X 10.10",
-        "maxDuration": 10800
     },
     "slamdataUrl": "http://localhost:63175",
     "quasar": {

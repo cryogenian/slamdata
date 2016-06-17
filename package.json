@@ -36,7 +36,6 @@
     "gulp-less": "^3.0.5",
     "gulp-purescript": "^0.8.0",
     "gulp-replace": "^0.5.4",
-    "gulp-run": "^1.6.12",
     "gulp-trimlines": "^1.0.0",
     "minimist": "^1.2.0",
     "mongodb": "^2.1.1",

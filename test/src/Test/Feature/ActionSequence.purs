@@ -15,63 +15,42 @@ limitations under the License.
 -}
 
 module Test.Feature.ActionSequence
-  ( selectAll
-  , copy
-  , paste
-  , undo
-  , sendDelete
+  ( sendDelete
   , sendEnter
   , shifted
   , keys
   , sendBackspaces
-  , close
-  , focusAddressBar
+  , sendRights
   ) where
 
 import Prelude
 
-import Data.Char (fromCharCode)
 import Data.Foldable (traverse_)
-import Data.String (fromChar, split)
+import Data.String (split)
 import Data.Array (replicate)
 import Selenium.ActionSequence (Sequence, sendKeys, keyDown, keyUp)
 import Selenium.Types (ControlKey)
 import Selenium.Key (shiftKey)
 
-selectAll :: ControlKey -> Sequence Unit
-selectAll modifierKey = sendKeyCombo [modifierKey] "a"
-
-copy :: ControlKey -> Sequence Unit
-copy modifierKey = sendKeyCombo [modifierKey] "c"
-
-focusAddressBar :: ControlKey -> Sequence Unit
-focusAddressBar modifierKey = sendKeyCombo [modifierKey] "l"
-
-paste :: ControlKey -> Sequence Unit
-paste modifierKey = sendKeyCombo [modifierKey] "v"
-
-undo :: ControlKey -> Sequence Unit
-undo modifierKey = sendKeyCombo [modifierKey] "z"
-
-close :: ControlKey -> Sequence Unit
-close modifierKey = sendKeyCombo [modifierKey] "w"
-
-shifted :: String -> Sequence Unit
+shifted ∷ String → Sequence Unit
 shifted str = do
   keyDown shiftKey
   sendKeys str
   keyUp shiftKey
 
-sendDelete :: Sequence Unit
+sendDelete ∷ Sequence Unit
 sendDelete = sendKeys "\xE017"
 
-sendBackspaces :: Int -> Sequence Unit
+sendBackspaces ∷ Int → Sequence Unit
 sendBackspaces n = traverse_ sendKeys $ replicate n "\xE003"
 
-sendEnter :: Sequence Unit
-sendEnter = sendKeys $ fromChar $ fromCharCode 13
+sendRights ∷ Int → Sequence Unit
+sendRights n = traverse_ sendKeys $ replicate n "\xE014"
 
-sendKeyCombo :: Array ControlKey -> String -> Sequence Unit
+sendEnter ∷ Sequence Unit
+sendEnter = sendKeys "\xE007"
+
+sendKeyCombo ∷ Array ControlKey → String → Sequence Unit
 sendKeyCombo ctrlKeys str = do
   traverse_ keyDown ctrlKeys
   sendKeys str
@@ -79,10 +58,10 @@ sendKeyCombo ctrlKeys str = do
 
 -- Send keys one by one and replace if they can't be processed
 -- by selenium driver
-keys :: String -> Sequence Unit
+keys ∷ String → Sequence Unit
 keys str = traverse_ sendKey $ split "" str
   where
-  sendKey :: String -> Sequence Unit
+  sendKey ∷ String → Sequence Unit
   sendKey "!" = shifted "1"
   sendKey "(" = shifted "9"
   sendKey ")" = shifted "0"
