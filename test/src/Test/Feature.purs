@@ -6,12 +6,13 @@ module Test.Feature
   , accessUrlFromFieldValueWithProperties
   , check
   , checkWithProperties
+  , clear
+  , clearWithProperties
   , click
   , clickWithProperties
   , clickNotRepeatedly
   , dragAndDrop
   , dragAndDropWithProperties
-  , copy
   , expectDownloadedTextFileToMatchFile
   , expectNotPresented
   , expectNotPresentedWithProperties
@@ -24,7 +25,6 @@ module Test.Feature
   , expectSelectValue
   , hover
   , hoverWithProperties
-  , paste
   , pressEnter
   , provideFieldValue
   , provideFieldValueUntilExpectedValue
@@ -34,13 +34,11 @@ module Test.Feature
   , provideFileInputValueWithProperties
   , pushRadioButton
   , pushRadioButtonWithProperties
-  , selectAll
   , selectFromDropdown
   , selectFromDropdownWithProperties
   , typeString
   , uncheck
   , uncheckWithProperties
-  , undo
   , smallWaitTime
   ) where
 
@@ -55,7 +53,7 @@ import Data.Foldable as F
 import Data.List (toUnfoldable)
 import Data.List as L
 import Data.Map as Map
-import Data.String (joinWith)
+import Data.String as String
 
 import Graphics.EasyImage as Ge
 import Graphics.ImageDiff as Gi
@@ -196,7 +194,7 @@ printProperty name value =
 
 printProperties ∷ Properties → String
 printProperties =
-  joinWith " "
+  String.joinWith " "
     ∘ L.toUnfoldable
     ∘ map (uncurry printProperty)
     ∘ Map.toList
@@ -408,7 +406,7 @@ expectScreenshotToMatchAnyWithProperties diffPath maxPercent properties xpath pr
     flip XPath.errorMessage xpath ∘ withPropertiesMessage properties ∘ rawMessage
   rawMessage imageString =
     "Expected at least one of these images:\n\n"
-      ⊕ joinWith "\n" expectedPaths
+      ⊕ String.joinWith "\n" expectedPaths
       ⊕ "\n\nto match this screenshot:\n"
       ⊕ imageString
       ⊕ "\n\nof the element found"
@@ -470,6 +468,10 @@ updateProperty name value =
   Map.union $ Map.singleton name value
 
 -- XPath dependent interactions
+-- | Clear the element's value
+clear ∷ ∀ eff o. XPath → Feature eff o Unit
+clear xPath = clearWithProperties Map.empty xPath
+
 -- | Check the checkbox node found with the provided XPath.
 check ∷ ∀ eff o. XPath → Feature eff o Unit
 check xPath = checkWithProperties Map.empty xPath
@@ -526,6 +528,14 @@ accessUrlFromFieldValue ∷ ∀ eff o. XPath → Feature eff o Unit
 accessUrlFromFieldValue xPath = accessUrlFromFieldValueWithProperties Map.empty xPath
 
 -- XPath and property dependent interactions
+clearWithProperties
+  ∷ ∀ eff o
+  . Properties
+  → XPath
+  → Feature eff o Unit
+clearWithProperties properties xPath =
+  Selenium.clearEl =<< findWithProperties properties xPath
+
 checkWithProperties'
   ∷ ∀ eff o
   . (Maybe String)
@@ -697,28 +707,27 @@ typeString string = Selenium.sequence $ FeatureSequence.keys string
 pressEnter ∷ ∀ eff o. Feature eff o Unit
 pressEnter = Selenium.sequence $ FeatureSequence.sendEnter
 
-selectAll ∷ ∀ eff o. Feature eff o Unit
-selectAll = (Selenium.sequence ∘ FeatureSequence.selectAll) =<< getModifierKey
-
-copy ∷ ∀ eff o. Feature eff o Unit
-copy = (Selenium.sequence ∘ FeatureSequence.copy) =<< getModifierKey
-
-paste ∷ ∀ eff o. Feature eff o Unit
-paste = (Selenium.sequence ∘ FeatureSequence.paste) =<< getModifierKey
-
-undo ∷ ∀ eff o. Feature eff o Unit
-undo = (Selenium.sequence ∘ FeatureSequence.undo) =<< getModifierKey
+typeBackspaces ∷ ∀ eff o. Int -> Feature eff o Unit
+typeBackspaces = Selenium.sequence ∘ FeatureSequence.sendBackspaces
 
 -- Element dependent interactions
 clickAllElements ∷ ∀ eff o. Array Element → Feature eff o Unit
 clickAllElements = traverse_ clickEl
+
+clearElement ∷ ∀ eff o. Element -> Feature eff o Unit
+clearElement element = Selenium.clickEl element *> typeEnoughBackspaces
+  where
+  getValueLength ∷ Feature eff o (Maybe Int)
+  getValueLength = map String.length <$> Selenium.getAttribute element "value"
+
+  typeEnoughBackspaces = traverse_ typeBackspaces =<< getValueLength
 
 hoverElement ∷ ∀ eff o. Element → Feature eff o Unit
 hoverElement = Selenium.sequence ∘ Sequence.hover
 
 provideFieldValueElement ∷ ∀ eff o. String → Element → Feature eff o Unit
 provideFieldValueElement value element =
-  clickEl element *> selectAll *> typeString value
+  Selenium.clickEl element *> clearElement element *> typeString value
 
 selectFromDropdownElement ∷ ∀ eff o. String → Element → Feature eff o Unit
 selectFromDropdownElement text element = do
