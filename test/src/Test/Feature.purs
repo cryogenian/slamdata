@@ -653,9 +653,9 @@ dragAndDropWithProperties
   → Feature eff o Unit
 dragAndDropWithProperties fromProperties fromXPath toProperties toXPath =
   tryRepeatedlyTo do
-    from <- findWithPropertiesNotRepeatedly fromProperties fromXPath
-    fromLocation <- getCenterLocation from
-    toLocation <- getCenterLocation =<< findWithPropertiesNotRepeatedly toProperties toXPath
+    from ← findWithPropertiesNotRepeatedly fromProperties fromXPath
+    fromLocation ← getCenterLocation from
+    toLocation ← getCenterLocation =<< findWithPropertiesNotRepeatedly toProperties toXPath
     dragAndDropElement from $ offset fromLocation toLocation
   where
   offset from to =
@@ -663,8 +663,8 @@ dragAndDropWithProperties fromProperties fromXPath toProperties toXPath =
     , y: to.y - from.y
     }
   getCenterLocation element = do
-    location <- getLocation element
-    size <- getSize element
+    location ← getLocation element
+    size ← getSize element
     pure
       { x: location.x + (size.width / 2)
       , y: location.y + (size.height / 2)
@@ -707,14 +707,14 @@ typeString string = Selenium.sequence $ FeatureSequence.keys string
 pressEnter ∷ ∀ eff o. Feature eff o Unit
 pressEnter = Selenium.sequence $ FeatureSequence.sendEnter
 
-typeBackspaces ∷ ∀ eff o. Int -> Feature eff o Unit
+typeBackspaces ∷ ∀ eff o. Int → Feature eff o Unit
 typeBackspaces = Selenium.sequence ∘ FeatureSequence.sendBackspaces
 
 -- Element dependent interactions
 clickAllElements ∷ ∀ eff o. Array Element → Feature eff o Unit
 clickAllElements = traverse_ clickEl
 
-clearElement ∷ ∀ eff o. Element -> Feature eff o Unit
+clearElement ∷ ∀ eff o. Element → Feature eff o Unit
 clearElement element = Selenium.clickEl element *> typeEnoughBackspaces
   where
   getValueLength ∷ Feature eff o (Maybe Int)
