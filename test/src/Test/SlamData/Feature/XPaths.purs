@@ -52,9 +52,9 @@ queryCardTitle ∷ String
 queryCardTitle =
   XPath.anyWithExactText "Query"
 
-formCardTitle ∷ String
-formCardTitle =
-  XPath.anyWithExactText "Form"
+displayMarkdownCardTitle ∷ String
+displayMarkdownCardTitle =
+  XPath.anyWithExactText "Display Markdown"
 
 chartCardTitle ∷ String
 chartCardTitle =
@@ -69,9 +69,9 @@ embedCardOutputSnippet =
   XPath.anyWithText "<script type=\"text/javascript\">"
 
 
-formCardHeader ∷ String
-formCardHeader =
-  XPath.anyWithExactAriaLabel "Form card"
+displayMarkdownCardHeader ∷ String
+displayMarkdownCardHeader =
+  XPath.anyWithExactAriaLabel "Display Markdown card"
 
 apiResultsCardHeader ∷ String
 apiResultsCardHeader =
@@ -102,9 +102,9 @@ saveSubmitButton =
   XPath.anyWithExactAriaLabel "Confirm saving file"
 
 
-insertSaveCard ∷ String
-insertSaveCard =
-  XPath.anyWithExactAriaLabel "Insert Save card"
+insertCacheCard ∷ String
+insertCacheCard =
+  XPath.anyWithExactAriaLabel "Insert Cache card"
 
 insertMdCard ∷ String
 insertMdCard =
@@ -130,9 +130,9 @@ insertChartCard ∷ String
 insertChartCard =
   XPath.anyWithExactAriaLabel "Insert Chart card"
 
-insertFormCard ∷ String
-insertFormCard =
-  XPath.anyWithExactAriaLabel "Insert Form card"
+insertDisplayMarkdownCard ∷ String
+insertDisplayMarkdownCard =
+  XPath.anyWithExactAriaLabel "Insert Display Markdown card"
 
 showFileList ∷ String
 showFileList =

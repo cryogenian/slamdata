@@ -31,7 +31,7 @@ module SlamData.Workspace.Card.Component.Query
   , _APIQuery
   , _APIResultsQuery
   , _NextQuery
-  , _SaveQuery
+  , _CacheQuery
   , _OpenResourceQuery
   , _DownloadOptionsQuery
   , _DraftboardQuery
@@ -67,7 +67,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component.Query as Next
 import SlamData.Workspace.Card.OpenResource.Component.Query as Open
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Card.Save.Component.Query as Save
+import SlamData.Workspace.Card.Cache.Component.Query as Cache
 import SlamData.Workspace.Card.Search.Component.Query as Search
 import SlamData.Workspace.Card.Viz.Component.Query as Viz
 
@@ -106,7 +106,7 @@ data AnyCardQuery a
   | APIQuery (API.QueryP a)
   | APIResultsQuery (APIResults.QueryP a)
   | NextQuery (Next.QueryP a)
-  | SaveQuery (Save.QueryP a)
+  | CacheQuery (Cache.QueryP a)
   | OpenResourceQuery (Open.QueryP a)
   | DownloadOptionsQuery (DOpts.QueryP a)
   | DraftboardQuery (Draftboard.QueryP a)
@@ -163,9 +163,9 @@ _NextQuery = prism' NextQuery \q → case q of
   NextQuery q' → Just q'
   _ → Nothing
 
-_SaveQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Save.QueryP a)
-_SaveQuery = prism' SaveQuery \q → case q of
-  SaveQuery q' → Just q'
+_CacheQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Cache.QueryP a)
+_CacheQuery = prism' CacheQuery \q → case q of
+  CacheQuery q' → Just q'
   _ → Nothing
 
 _OpenResourceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Open.QueryP a)

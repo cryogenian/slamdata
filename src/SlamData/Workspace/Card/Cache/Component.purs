@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Save.Component
-  ( saveCardComponent
-  , module SlamData.Workspace.Card.Save.Component.State
-  , module SlamData.Workspace.Card.Save.Component.Query
+module SlamData.Workspace.Card.Cache.Component
+  ( cacheCardComponent
+  , module SlamData.Workspace.Card.Cache.Component.State
+  , module SlamData.Workspace.Card.Cache.Component.Query
   ) where
 
 
@@ -40,24 +40,24 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Common.EvalQuery as Eq
 import SlamData.Workspace.Card.Component as Cc
-import SlamData.Workspace.Card.Save.Component.Query (Query(..), QueryP)
-import SlamData.Workspace.Card.Save.Component.State (State, initialState, _pathString, _confirmedPath)
+import SlamData.Workspace.Card.Cache.Component.Query (Query(..), QueryP)
+import SlamData.Workspace.Card.Cache.Component.State (State, initialState, _pathString, _confirmedPath)
 
 import Utils.Path as PU
 
-type SaveHTML = H.ComponentHTML QueryP
-type SaveDSL = H.ComponentDSL State QueryP Slam
+type CacheHTML = H.ComponentHTML QueryP
+type CacheDSL = H.ComponentDSL State QueryP Slam
 
-saveCardComponent ∷ Cc.CardComponent
-saveCardComponent = Cc.makeCardComponent
-  { cardType: Ct.Save
+cacheCardComponent ∷ Cc.CardComponent
+cacheCardComponent = Cc.makeCardComponent
+  { cardType: Ct.Cache
   , component: H.component { render, eval }
   , initialState: initialState
-  , _State: Cc._SaveState
-  , _Query: Cc.makeQueryPrism Cc._SaveQuery
+  , _State: Cc._CacheState
+  , _Query: Cc.makeQueryPrism Cc._CacheQuery
   }
 
-render ∷ State → SaveHTML
+render ∷ State → CacheHTML
 render state =
   HH.div
     [ HP.classes
@@ -82,15 +82,15 @@ render state =
               , HP.disabled $ isNothing $ PU.parseFilePath =<< state.pathString
               , HE.onClick (HE.input_ $ right ∘ ConfirmPathString)
               ]
-              [ HH.text "Save" ]
+              [ HH.text "Cache" ]
             ]
         ]
     ]
 
-eval ∷ QueryP ~> SaveDSL
+eval ∷ QueryP ~> CacheDSL
 eval = coproduct cardEval saveEval
 
-cardEval ∷ Eq.CardEvalQuery ~> SaveDSL
+cardEval ∷ Eq.CardEvalQuery ~> CacheDSL
 cardEval (Eq.EvalCard info output next) = do
   for_ output case _ of
     Port.TaggedResource { resource } →
@@ -100,10 +100,10 @@ cardEval (Eq.EvalCard info output next) = do
     _ → pure unit
   pure next
 cardEval (Eq.Save k) =
-  k ∘ Card.Save ∘ map Pt.printPath <$> H.gets _.confirmedPath
+  k ∘ Card.Cache ∘ map Pt.printPath <$> H.gets _.confirmedPath
 cardEval (Eq.Load card next) = do
   case card of
-    Card.Save s →
+    Card.Cache s →
       H.modify
         $ (_pathString .~ s)
         ∘ (_confirmedPath .~ (PU.parseFilePath =<< s))
@@ -111,7 +111,7 @@ cardEval (Eq.Load card next) = do
   pure next
 cardEval (Eq.SetDimensions _ next) = pure next
 
-saveEval ∷ Query ~> SaveDSL
+saveEval ∷ Query ~> CacheDSL
 saveEval (UpdatePathString str next) =
   H.modify (_pathString ?~ str) $> next
 saveEval (ConfirmPathString next) = do

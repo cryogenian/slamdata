@@ -40,7 +40,7 @@ import SlamData.Workspace.Card.Markdown.Component.State.Core as MDS
 import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Save.Eval as Save
+import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.Viz.Eval as VizE
 import SlamData.Workspace.Card.Viz.Model as Viz
@@ -53,7 +53,7 @@ data Eval
   = Pass
   | Query SQL
   | Search String
-  | Save (Maybe String)
+  | Cache (Maybe String)
   | Error String
   | Markdown String
   | MarkdownForm MD.Model
@@ -69,7 +69,7 @@ instance showEval ∷ Show Eval where
       Pass → "Pass"
       Query str → "Query " <> show str
       Search str → "Search " <> show str
-      Save str → "Save " <> show str
+      Cache str → "Cache " <> show str
       Error str → "Error " <> show str
       Markdown str → "Markdown " <> show str
       OpenResource res → "OpenResource " <> show res
@@ -107,8 +107,8 @@ evalCard input =
       lift $ Port.VarMap <$> evalMarkdownForm input model
     Search query, Just (Port.TaggedResource { resource }) →
       Port.TaggedResource <$> evalSearch input query resource
-    Save pathString, Just (Port.TaggedResource { resource }) →
-      Port.TaggedResource <$> Save.eval input pathString resource
+    Cache pathString, Just (Port.TaggedResource { resource }) →
+      Port.TaggedResource <$> Cache.eval input pathString resource
     OpenResource res, _ →
       Port.TaggedResource <$> evalOpenResource input res
     Viz model, _ →

@@ -53,7 +53,7 @@ test = do
           , "type = (x)Gold ()Silver ()Bronze"
           ]
     Interact.accessNextCardInLastDeck
-    Interact.insertFormCardInLastDeck
+    Interact.insertDisplayMarkdownCardInLastDeck
     Expect.fieldInLastMdCard "discipline" "text" ""
     Expect.fieldInLastMdCard "sport" "text" "Bobsleigh"
     Expect.fieldInLastMdCard "age" "number" ""
@@ -83,7 +83,7 @@ test = do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard "discipline = __"
     Interact.accessNextCardInLastDeck
-    Interact.insertFormCardInLastDeck
+    Interact.insertDisplayMarkdownCardInLastDeck
     Interact.accessPreviousCardInLastDeck
     Interact.provideMdInLastMdCard "sport =  __ (Bobsleigh)"
     Interact.accessNextCardInLastDeck
@@ -101,7 +101,7 @@ test = do
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
     Interact.accessNextCardInLastDeck
-    Interact.insertFormCardInLastDeck
+    Interact.insertDisplayMarkdownCardInLastDeck
     Expect.fieldInLastMdCard "discipline" "text" "Figure skating"
     Expect.fieldInLastMdCard "year" "text" "1924"
     Expect.labelInLastMdCard "country"
@@ -172,8 +172,8 @@ test = do
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
     Interact.accessNextCardInLastDeck
-    Interact.insertFormCardInLastDeck
-    Expect.formCardPresented
+    Interact.insertDisplayMarkdownCardInLastDeck
+    Expect.displayMarkdownCardPresented
     Interact.accessNextCardInLastDeck
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
@@ -197,8 +197,8 @@ test = do
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
     Interact.accessNextCardInLastDeck
-    Interact.insertFormCardInLastDeck
-    Expect.formCardPresented
+    Interact.insertDisplayMarkdownCardInLastDeck
+    Expect.displayMarkdownCardPresented
     Interact.accessNextCardInLastDeck
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard

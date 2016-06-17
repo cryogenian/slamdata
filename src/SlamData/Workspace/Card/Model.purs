@@ -55,7 +55,7 @@ data AnyCardModel
   | Download
   | API API.Model
   | APIResults
-  | Save (Maybe String)
+  | Cache (Maybe String)
   | OpenResource (Maybe R.Resource)
   | DownloadOptions DLO.State
   | Draftboard DB.Model
@@ -75,7 +75,7 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
       , pure Download
       , API <$> API.genModel
       , pure APIResults
-      , Save <$> SC.arbitrary
+      , Cache <$> SC.arbitrary
       , OpenResource <$> SC.arbitrary
       , Draftboard <$> DB.genModel
       , pure ErrorCard
@@ -94,7 +94,7 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
       Download, Download → true
       API x, API y → API.eqModel x y
       APIResults, APIResults → true
-      Save x, Save y → x ≡ y
+      Cache x, Cache y → x ≡ y
       OpenResource x, OpenResource y → x ≡ y
       DownloadOptions x, DownloadOptions y → DLO.eqState x y
       Draftboard x, Draftboard y → DB.eqModel x y
@@ -119,7 +119,7 @@ modelCardType =
     Download → CT.Download
     API _ → CT.API
     APIResults → CT.APIResults
-    Save _ → CT.Save
+    Cache _ → CT.Cache
     OpenResource _ → CT.OpenResource
     DownloadOptions _ → CT.DownloadOptions
     Draftboard _ → CT.Draftboard
@@ -165,7 +165,7 @@ encodeCardModel =
     Download → J.jsonEmptyObject
     API model → API.encode model
     APIResults → J.jsonEmptyObject
-    Save model → J.encodeJson model
+    Cache model → J.encodeJson model
     OpenResource mres → J.encodeJson mres
     DownloadOptions model → DLO.encode model
     Draftboard model → DB.encode model
@@ -188,7 +188,7 @@ decodeCardModel ty =
     CT.Download → const $ pure Download
     CT.API → map API ∘ API.decode
     CT.APIResults → const $ pure APIResults
-    CT.Save → map Save ∘ J.decodeJson
+    CT.Cache → map Cache ∘ J.decodeJson
     CT.OpenResource → map OpenResource ∘ J.decodeJson
     CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
     CT.Draftboard → map Draftboard ∘ DB.decode
@@ -211,7 +211,7 @@ cardModelOfType =
     CT.Download → Download
     CT.API → API API.emptyModel
     CT.APIResults → APIResults
-    CT.Save → Save Nothing
+    CT.Cache → Cache Nothing
     CT.OpenResource → OpenResource Nothing
     CT.DownloadOptions → DownloadOptions DLO.initialState
     CT.Draftboard → Draftboard DB.emptyModel
@@ -228,7 +228,7 @@ modelToEval =
     Ace CT.MarkdownMode model → pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model
     Markdown model → pure $ Eval.MarkdownForm model
     Search txt → pure $ Eval.Search txt
-    Save fp → pure $ Eval.Save fp
+    Cache fp → pure $ Eval.Cache fp
     OpenResource (Just res) → pure $ Eval.OpenResource res
     OpenResource _ → Left $ "OpenResource model missing resource"
     API model → pure $ Eval.API model

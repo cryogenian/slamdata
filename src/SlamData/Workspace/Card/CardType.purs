@@ -59,7 +59,7 @@ data CardType
   | API
   | APIResults
   | NextAction
-  | Save
+  | Cache
   | OpenResource
   | DownloadOptions
   | Draftboard
@@ -78,7 +78,7 @@ insertableCardTypes =
   , Download
   , API
   , APIResults
-  , Save
+  , Cache
   , OpenResource
   , DownloadOptions
   ]
@@ -117,7 +117,7 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
         API → "api"
         APIResults → "api-results"
         NextAction → "next-action"
-        Save → "save"
+        Cache → "cache"
         OpenResource → "open-resource"
         DownloadOptions → "download-options"
         Draftboard → "draftboard"
@@ -139,7 +139,7 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "api" → pure API
       "api-results" → pure APIResults
       "next-action" → pure NextAction
-      "save" → pure Save
+      "cache" → pure Cache
       "open-resource" → pure OpenResource
       "download-options" → pure DownloadOptions
       "draftboard" → pure Draftboard
@@ -154,13 +154,13 @@ cardName =
     Search → "Search"
     Viz → "Visualize"
     Chart → "Chart"
-    Markdown → "Form"
+    Markdown → "Display Markdown"
     JTable → "Table"
     Download → "Link"
     API → "API"
     APIResults → "API Results"
     NextAction → "Next Action"
-    Save → "Save"
+    Cache → "Cache"
     OpenResource → "Explore"
     DownloadOptions → "Download"
     Draftboard → "Draftboard"
@@ -180,7 +180,7 @@ cardGlyph =
     Markdown → HH.div [ HP.classes [ Rc.glyphImage, Rc.codeGlyph ] ] [ ]
     JTable → glyph B.glyphiconThList
     NextAction → glyph B.glyphiconStop -- arbitrary
-    Save → glyph B.glyphiconFloppyDisk
+    Cache → glyph B.glyphiconFloppyDisk
     OpenResource → glyph B.glyphiconFolderOpen
     DownloadOptions → glyph B.glyphiconDownload
     Draftboard → glyph B.glyphiconTh
@@ -201,7 +201,7 @@ cardClasses =
     API → [ H.className "sd-card-api" ]
     APIResults → [ H.className "sd-card-api-results" ]
     NextAction → [ H.className "sd-card-next-action" ]
-    Save → [ H.className "sd-card-save" ]
+    Cache → [ H.className "sd-card-cache" ]
     OpenResource → [ H.className "sd-card-open-resource" ]
     Draftboard → [ H.className "sd-card-draftboard" ]
     ErrorCard → [ H.className "sd-card-error" ]
@@ -238,12 +238,12 @@ nextCardTypes (Just ct) =
     API → [ APIResults ]
     Ace MarkdownMode → [ Markdown ]
     Markdown → [ Ace SQLMode ]
-    JTable → dataSourceOutput `Arr.snoc` Save
+    JTable → dataSourceOutput `Arr.snoc` Cache
     Download → [ ]
     APIResults →  [ Ace SQLMode ]
     Chart → [ ]
     NextAction → [ ]
-    Save → dataSourceOutput `Arr.snoc` JTable
+    Cache → dataSourceOutput `Arr.snoc` JTable
     OpenResource → dataSourceCards
     DownloadOptions → [ Download ]
     Draftboard → [ ]
@@ -254,7 +254,7 @@ nextCardTypes (Just ct) =
     [ DownloadOptions, Search, Ace SQLMode, Viz
     ]
   dataSourceCards =
-    (dataSourceOutput `Arr.snoc` JTable) `Arr.snoc` Save
+    (dataSourceOutput `Arr.snoc` JTable) `Arr.snoc` Cache
 
 controllable ∷ CardType → Boolean
 controllable NextAction = false

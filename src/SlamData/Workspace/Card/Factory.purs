@@ -41,7 +41,7 @@ import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
 import SlamData.Workspace.Card.OpenResource.Component (openResourceComponent)
 import SlamData.Workspace.Card.Query.Eval (queryEval)
-import SlamData.Workspace.Card.Save.Component (saveCardComponent)
+import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
 import SlamData.Workspace.Card.Viz.Component (vizComponent)
 
@@ -62,7 +62,7 @@ cardComponent card opts =
     Card.API _ → apiComponent
     Card.APIResults → apiResultsComponent
     Card.NextAction → nextCardComponent
-    Card.Save _ → saveCardComponent
+    Card.Cache _ → cacheCardComponent
     Card.OpenResource mres → openResourceComponent mres
     Card.DownloadOptions _ → DOpts.comp
     Card.ErrorCard → Error.comp
