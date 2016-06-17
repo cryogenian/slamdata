@@ -22,6 +22,7 @@ import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
+import Selenium.Monad as Selenium
 
 fileScenario
   ∷ SlamFeature Unit
@@ -35,7 +36,8 @@ defaultAfterFile ∷ SlamFeature Unit
 defaultAfterFile = Interact.browseRootFolder
 
 afterRename ∷ SlamFeature Unit
-afterRename = Interact.deleteFile "Ϡ⨁⟶≣ΜϞ"
+afterRename =
+  Selenium.apathize $ Interact.deleteFile "Ϡ⨁⟶≣ΜϞ"
 
 afterMove ∷ SlamFeature Unit
 afterMove = Interact.browseTestFolder *> Interact.deleteFile "Medical data"
@@ -51,7 +53,7 @@ afterAccessSharingUrl =
 
 test ∷ SlamFeature Unit
 test = do
-  fileScenario afterRename "Rename a folder" [] do
+  fileScenario afterRename "Rename a folder" ["https://slamdata.atlassian.net/browse/SD-1711"] do
     Interact.browseTestFolder
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Patients"
