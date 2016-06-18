@@ -61,6 +61,7 @@ data AnyCardModel
   | Draftboard DB.Model
   | ErrorCard
   | NextAction
+  | PendingCard
 
 instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
   arbitrary = do
@@ -124,6 +125,7 @@ modelCardType =
     Draftboard _ → CT.Draftboard
     ErrorCard → CT.ErrorCard
     NextAction → CT.NextAction
+    PendingCard → CT.PendingCard
 
 type Model =
   { cardId ∷ CID.CardId
@@ -169,6 +171,7 @@ encodeCardModel =
     Draftboard model → DB.encode model
     ErrorCard → J.jsonEmptyObject
     NextAction → J.jsonEmptyObject
+    PendingCard → J.jsonEmptyObject
 
 decodeCardModel
   ∷ CT.CardType
@@ -191,6 +194,7 @@ decodeCardModel ty =
     CT.Draftboard → map Draftboard ∘ DB.decode
     CT.ErrorCard → const $ pure ErrorCard
     CT.NextAction → const $ pure NextAction
+    CT.PendingCard → const $ pure PendingCard
 
 
 cardModelOfType
@@ -213,6 +217,7 @@ cardModelOfType =
     CT.Draftboard → Draftboard DB.emptyModel
     CT.ErrorCard → ErrorCard
     CT.NextAction → NextAction
+    CT.PendingCard → PendingCard
 
 modelToEval
   ∷ AnyCardModel

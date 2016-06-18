@@ -33,6 +33,7 @@ import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
 import SlamData.Workspace.Card.Download.Component (downloadComponent)
 import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Error.Component as Error
+import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Card.JTable.Component (jtableComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
@@ -63,6 +64,7 @@ cardComponent card opts =
     Card.OpenResource mres → openResourceComponent mres
     Card.DownloadOptions _ → DOpts.comp
     Card.ErrorCard → Error.comp
+    Card.PendingCard → Pending.comp
     Card.Draftboard _ → draftboardComponent opts
 
 aceEval ∷ CT.AceMode → AceEval

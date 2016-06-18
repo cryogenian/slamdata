@@ -35,6 +35,7 @@ module SlamData.Workspace.Card.Component.State
   , _DownloadOptionsState
   , _DraftboardState
   , _ErrorState
+  , _PendingState
   ) where
 
 import SlamData.Prelude
@@ -55,6 +56,7 @@ import SlamData.Workspace.Card.Download.Component.State as Download
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.State as Draftboard
 import SlamData.Workspace.Card.Error.Component.State as Error
+import SlamData.Workspace.Card.Pending.Component.State as Pending
 import SlamData.Workspace.Card.JTable.Component.State as JTable
 import SlamData.Workspace.Card.Markdown.Component.State as Markdown
 import SlamData.Workspace.Card.Next.Component.State as Next
@@ -95,6 +97,7 @@ data AnyCardState
   | DownloadOptionsState DOpts.State
   | DraftboardState Draftboard.StateP
   | ErrorState Error.State
+  | PendingState Pending.State
 
 _AceState ∷ PrismP AnyCardState Ace.StateP
 _AceState = prism' AceState \s → case s of
@@ -169,4 +172,9 @@ _DraftboardState = prism' DraftboardState \s → case s of
 _ErrorState ∷ PrismP AnyCardState Error.State
 _ErrorState = prism' ErrorState \s → case s of
   ErrorState s' → Just s'
+  _ → Nothing
+
+_PendingState ∷ PrismP AnyCardState Pending.State
+_PendingState = prism' PendingState \s → case s of
+  PendingState s' → Just s'
   _ → Nothing

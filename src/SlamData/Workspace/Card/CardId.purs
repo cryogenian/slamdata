@@ -35,6 +35,7 @@ data CardId
   = ErrorCardId
   | CardId Int
   | NextActionCardId
+  | PendingCardId
 
 _CardId ∷ Lens.PrismP CardId Int
 _CardId =
@@ -48,6 +49,7 @@ stringToCardId =
   case _ of
     "ErrorCardId" → Right ErrorCardId
     "NextActionCardId" → Right NextActionCardId
+    "PendingCardId" → Right PendingCardId
     str →
       case Int.fromString str of
         Just i → Right $ CardId i
@@ -58,6 +60,7 @@ cardIdToString =
   case _ of
     ErrorCardId → "ErrorCardId"
     NextActionCardId → "NextActionCardId"
+    PendingCardId → "PendingCardId"
     CardId i → show i
 
 _StringCardId ∷ Lens.PrismP String CardId
@@ -73,6 +76,7 @@ instance encodeJsonCardId ∷ EncodeJson CardId where
       CardId i → encodeJson i
       ErrorCardId → encodeJson "ErrorCardId"
       NextActionCardId → encodeJson "NextActionCardId"
+      PendingCardId → encodeJson "PendingCardId"
 
 instance decodeJsonCardId ∷ DecodeJson CardId where
   decodeJson json =
@@ -84,6 +88,7 @@ instance decodeJsonCardId ∷ DecodeJson CardId where
           case _ of
             "ErrorCardId" → pure ErrorCardId
             "NextActionCardId" → pure NextActionCardId
+            "PendingCardId" → pure PendingCardId
             str → Left $ "Invalid CardId: " <> str
       decodeNumeric =
         CardId <$>

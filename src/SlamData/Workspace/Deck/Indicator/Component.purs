@@ -21,6 +21,7 @@ data Status
   = Available
   | Errored
   | Placeholder
+  | Pending
 
 type State =
   { icons ∷ Array Status
@@ -59,6 +60,7 @@ render state =
             Available → HH.className "available"
             Errored → HH.className "errored"
             Placeholder → HH.className "placeholder"
+            Pending → HH.className "pending"
 
         ⊕ ((guard (state.focused ≡ ix)) $> (HH.className "focused"))
        ]
@@ -81,6 +83,7 @@ eval (UpdatePortList cardTypes next) = do
     case _ of
       ErrorCard → Errored
       NextAction → Placeholder
+      PendingCard → Pending
       _ → Available
 
 eval (UpdateActiveId ix next) = do

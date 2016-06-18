@@ -36,6 +36,14 @@
             .before-image("../img/circle-crossed.svg");
         }
     }
+    .pending {
+        &.focused:before {
+            .before-image("../img/circle-pending-focused.svg");
+        }
+        &:before {
+            .before-image("../img/circle-pending.svg");
+        }
+    }
     .available {
         color: white;
         &:before {

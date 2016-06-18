@@ -36,6 +36,7 @@ module SlamData.Workspace.Card.Component.Query
   , _DownloadOptionsQuery
   , _DraftboardQuery
   , _ErrorQuery
+  , _PendingQuery
   , module SlamData.Workspace.Card.Common.EvalQuery
   ) where
 
@@ -59,6 +60,7 @@ import SlamData.Workspace.Card.Download.Component.Query as Download
 import SlamData.Workspace.Card.DownloadOptions.Component.Query as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.Query as Draftboard
 import SlamData.Workspace.Card.Error.Component.Query as Error
+import SlamData.Workspace.Card.Pending.Component.Query as Pending
 import SlamData.Workspace.Card.JTable.Component.Query as JTable
 import SlamData.Workspace.Card.Markdown.Component.Query as Markdown
 import SlamData.Workspace.Card.Model as Card
@@ -109,6 +111,7 @@ data AnyCardQuery a
   | DownloadOptionsQuery (DOpts.QueryP a)
   | DraftboardQuery (Draftboard.QueryP a)
   | ErrorQuery (Error.QueryP a)
+  | PendingQuery (Pending.QueryP a)
 
 _AceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Ace.QueryP a)
 _AceQuery = prism' AceQuery \q → case q of
@@ -183,4 +186,9 @@ _DraftboardQuery = prism' DraftboardQuery \q → case q of
 _ErrorQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Error.QueryP a)
 _ErrorQuery = prism' ErrorQuery \q → case q of
   ErrorQuery q' → Just q'
+  _ → Nothing
+
+_PendingQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Pending.QueryP a)
+_PendingQuery = prism' PendingQuery \q → case q of
+  PendingQuery q' → Just q'
   _ → Nothing

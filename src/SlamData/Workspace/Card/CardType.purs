@@ -64,6 +64,7 @@ data CardType
   | DownloadOptions
   | Draftboard
   | ErrorCard
+  | PendingCard
 
 insertableCardTypes ∷ Array CardType
 insertableCardTypes =
@@ -102,22 +103,26 @@ instance arbitraryAceMode ∷ SC.Arbitrary AceMode where
     pure $ if b then MarkdownMode else SQLMode
 
 instance encodeJsonCardType ∷ EncodeJson CardType where
-  encodeJson (Ace MarkdownMode) = encodeJson "ace-markdown"
-  encodeJson (Ace SQLMode) = encodeJson "ace-sql"
-  encodeJson Search = encodeJson "search"
-  encodeJson Viz = encodeJson "viz"
-  encodeJson Chart = encodeJson "chart"
-  encodeJson Markdown = encodeJson "markdown"
-  encodeJson JTable = encodeJson "jtable"
-  encodeJson Download = encodeJson "download"
-  encodeJson API = encodeJson "api"
-  encodeJson APIResults = encodeJson "api-results"
-  encodeJson NextAction = encodeJson "next-action"
-  encodeJson Save = encodeJson "save"
-  encodeJson OpenResource = encodeJson "open-resource"
-  encodeJson DownloadOptions = encodeJson "download-options"
-  encodeJson Draftboard = encodeJson "draftboard"
-  encodeJson ErrorCard = encodeJson "error"
+  encodeJson =
+    encodeJson ∘
+      case _ of
+        Ace MarkdownMode → "ace-markdown"
+        Ace SQLMode → "ace-sql"
+        Search → "search"
+        Viz → "viz"
+        Chart → "chart"
+        Markdown → "markdown"
+        JTable → "jtable"
+        Download → "download"
+        API → "api"
+        APIResults → "api-results"
+        NextAction → "next-action"
+        Save → "save"
+        OpenResource → "open-resource"
+        DownloadOptions → "download-options"
+        Draftboard → "draftboard"
+        ErrorCard → "error"
+        PendingCard → "pending"
 
 instance decodeJsonCardType ∷ DecodeJson CardType where
   decodeJson json = do
@@ -139,58 +144,68 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "download-options" → pure DownloadOptions
       "draftboard" → pure Draftboard
       "error" → pure ErrorCard
+      "pending" → pure PendingCard
       name → throwError $ "unknown card type '" ⊕ name ⊕ "'"
 
 cardName ∷ CardType → String
-cardName (Ace at) = aceCardName at
-cardName Search = "Search"
-cardName Viz = "Visualize"
-cardName Chart = "Chart"
-cardName Markdown = "Form"
-cardName JTable = "Table"
-cardName Download = "Link"
-cardName API = "API"
-cardName APIResults = "API Results"
-cardName NextAction = "Next Action"
-cardName Save = "Save"
-cardName OpenResource = "Explore"
-cardName DownloadOptions = "Download"
-cardName Draftboard = "Draftboard"
-cardName ErrorCard = "Error"
+cardName =
+  case _ of
+    Ace at → aceCardName at
+    Search → "Search"
+    Viz → "Visualize"
+    Chart → "Chart"
+    Markdown → "Form"
+    JTable → "Table"
+    Download → "Link"
+    API → "API"
+    APIResults → "API Results"
+    NextAction → "Next Action"
+    Save → "Save"
+    OpenResource → "Explore"
+    DownloadOptions → "Download"
+    Draftboard → "Draftboard"
+    ErrorCard → "Error"
+    PendingCard → "Pending"
 
 cardGlyph ∷ ∀ s f. CardType → H.HTML s f
-cardGlyph (Ace at) = glyph $ aceCardGlyph at
-cardGlyph Search = glyph B.glyphiconSearch
-cardGlyph Viz = glyph B.glyphiconPicture
-cardGlyph Download = glyph B.glyphiconDownloadAlt
-cardGlyph API = glyph B.glyphiconOpenFile
-cardGlyph APIResults = glyph B.glyphiconTasks
-cardGlyph Chart = HH.div [ HP.classes [ Rc.glyphImage, Rc.chartGlyph ] ] [ ]
-cardGlyph Markdown = HH.div [ HP.classes [ Rc.glyphImage, Rc.codeGlyph ] ] [ ]
-cardGlyph JTable = glyph B.glyphiconThList
-cardGlyph NextAction = glyph B.glyphiconStop
-cardGlyph Save = glyph B.glyphiconFloppyDisk
-cardGlyph OpenResource = glyph B.glyphiconFolderOpen
-cardGlyph DownloadOptions = glyph B.glyphiconDownload
-cardGlyph Draftboard = glyph B.glyphiconTh
-cardGlyph ErrorCard = glyph B.glyphiconAlert
+cardGlyph =
+  case _ of
+    Ace at →glyph $ aceCardGlyph at
+    Search → glyph B.glyphiconSearch
+    Viz → glyph B.glyphiconPicture
+    Download → glyph B.glyphiconDownloadAlt
+    API → glyph B.glyphiconOpenFile
+    APIResults → glyph B.glyphiconTasks
+    Chart → HH.div [ HP.classes [ Rc.glyphImage, Rc.chartGlyph ] ] [ ]
+    Markdown → HH.div [ HP.classes [ Rc.glyphImage, Rc.codeGlyph ] ] [ ]
+    JTable → glyph B.glyphiconThList
+    NextAction → glyph B.glyphiconStop -- arbitrary
+    Save → glyph B.glyphiconFloppyDisk
+    OpenResource → glyph B.glyphiconFolderOpen
+    DownloadOptions → glyph B.glyphiconDownload
+    Draftboard → glyph B.glyphiconTh
+    ErrorCard → glyph B.glyphiconAlert
+    PendingCard → glyph B.glyphiconAlert --arbitrary
 
 cardClasses ∷ CardType → Array H.ClassName
-cardClasses (Ace at) = [ H.className "sd-card-ace" ] <> aceCardClasses at
-cardClasses Search = [ H.className "sd-card-search" ]
-cardClasses Viz = [ H.className "sd-card-viz" ]
-cardClasses Chart = [ H.className "sd-card-chart" ]
-cardClasses Markdown = [ H.className "sd-card-markdown" ]
-cardClasses JTable = [ H.className "sd-card-table" ]
-cardClasses Download = [ H.className "sd-card-download" ]
-cardClasses DownloadOptions = [ H.className "sd-card-download-options" ]
-cardClasses API = [ H.className "sd-card-api" ]
-cardClasses APIResults = [ H.className "sd-card-api-results" ]
-cardClasses NextAction = [ H.className "sd-card-next-action" ]
-cardClasses Save = [ H.className "sd-card-save" ]
-cardClasses OpenResource = [ H.className "sd-card-open-resource" ]
-cardClasses Draftboard = [ H.className "sd-card-draftboard" ]
-cardClasses ErrorCard = [ H.className "sd-card-error" ]
+cardClasses =
+  case _ of
+    Ace at → [ H.className "sd-card-ace" ] <> aceCardClasses at
+    Search → [ H.className "sd-card-search" ]
+    Viz → [ H.className "sd-card-viz" ]
+    Chart → [ H.className "sd-card-chart" ]
+    Markdown → [ H.className "sd-card-markdown" ]
+    JTable → [ H.className "sd-card-table" ]
+    Download → [ H.className "sd-card-download" ]
+    DownloadOptions → [ H.className "sd-card-download-options" ]
+    API → [ H.className "sd-card-api" ]
+    APIResults → [ H.className "sd-card-api-results" ]
+    NextAction → [ H.className "sd-card-next-action" ]
+    Save → [ H.className "sd-card-save" ]
+    OpenResource → [ H.className "sd-card-open-resource" ]
+    Draftboard → [ H.className "sd-card-draftboard" ]
+    ErrorCard → [ H.className "sd-card-error" ]
+    PendingCard → [ H.className "sd-card-pending" ]
 
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Markdown"
@@ -215,23 +230,25 @@ nextCardTypes Nothing =
   , OpenResource
   , API
   ]
-nextCardTypes (Just ct) = case ct of
-  Search → dataSourceCards
-  Ace SQLMode → dataSourceCards
-  Viz → [ Chart ]
-  API → [ APIResults ]
-  Ace MarkdownMode → [ Markdown ]
-  Markdown → [ Ace SQLMode ]
-  JTable → dataSourceOutput `Arr.snoc` Save
-  Download → [ ]
-  APIResults →  [ Ace SQLMode ]
-  Chart → [ ]
-  NextAction → [ ]
-  Save → dataSourceOutput `Arr.snoc` JTable
-  OpenResource → dataSourceCards
-  DownloadOptions → [ Download ]
-  Draftboard → [ ]
-  ErrorCard → [ ]
+nextCardTypes (Just ct) =
+  case ct of
+    Search → dataSourceCards
+    Ace SQLMode → dataSourceCards
+    Viz → [ Chart ]
+    API → [ APIResults ]
+    Ace MarkdownMode → [ Markdown ]
+    Markdown → [ Ace SQLMode ]
+    JTable → dataSourceOutput `Arr.snoc` Save
+    Download → [ ]
+    APIResults →  [ Ace SQLMode ]
+    Chart → [ ]
+    NextAction → [ ]
+    Save → dataSourceOutput `Arr.snoc` JTable
+    OpenResource → dataSourceCards
+    DownloadOptions → [ Download ]
+    Draftboard → [ ]
+    ErrorCard → [ ]
+    PendingCard → [ ]
   where
   dataSourceOutput =
     [ DownloadOptions, Search, Ace SQLMode, Viz

@@ -28,6 +28,7 @@ import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
+import Data.Lens as Lens
 import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as L
@@ -60,7 +61,7 @@ import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
-import SlamData.Workspace.Card.CardId (CardId(..))
+import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Eval as Eval
@@ -104,8 +105,6 @@ comp =
 render ∷ DCS.State → DeckHTML
 render st =
   case st.stateMode of
-    Loading → renderLoading unit
-    Preparing → renderLoading unit
     Error err → renderError err
     _ →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
@@ -166,24 +165,6 @@ render st =
         ]
 
   where
-
-  renderLoading _ =
-    HH.div
-      [ HP.class_ CSS.board
-      , HP.key "board"
-      ]
-      -- We need to render the cards but have them invisible during loading
-      -- otherwise the various nested components won't initialise correctly.
-      -- This div is required, along with the key, so that structurally it
-      -- is in the same place in both `Loading` and `Ready` states.
-      [ HH.div
-          [ HP.class_ CSS.deck
-          , HP.key "deck-container" ]
-          [ Slider.render comp st $ st.displayMode ≡ DCS.Normal ]
-      , HH.div
-          [ HP.class_ CSS.loading ]
-          []
-      ]
 
   renderError err =
     HH.div
@@ -605,15 +586,29 @@ displayCardUpdates st m =
       st.displayCards
       (Array.zipWith (\input output card → { card, input, output }) inputs outputs)
 
+applyPendingState
+  ∷ Array Card.Model
+  → Array Card.Model
+applyPendingState cards =
+  Array.snoc
+    realCards
+    { cardId: PendingCardId, model: Card.PendingCard }
+  where
+    realCards = Array.filter (Lens.has _CardId ∘ _.cardId) cards
+
 -- | Runs all card that are present in the set of pending cards.
 runPendingCards ∷ DeckDSL Unit
 runPendingCards = do
   { modelCards, path, globalVarMap, stateMode, pendingCard, accessType } ← H.get
 
-  result ←
-    evalRunCardsMachine { pendingCardId: pendingCard, path, globalVarMap, accessType }
-      ∘ initialRunCardsState
-      $ L.toList modelCards
+  let
+    config = { pendingCardId: pendingCard, path, globalVarMap, accessType }
+    initialMachineState = initialRunCardsState $ L.toList modelCards
+
+  unless (runCardsStateIsTerminal config initialMachineState) do
+    H.modify $ DCS._displayCards %~ applyPendingState
+
+  result ← evalRunCardsMachine config initialMachineState
 
   H.modify $ DCS._displayCards .~ L.fromList (L.reverse result.cards)
   state ← H.get
@@ -690,7 +685,9 @@ setDeckState newState =
 
 loadDeck ∷ DirPath → DeckId → DeckDSL Unit
 loadDeck dir deckId = do
-  H.modify $ DCS._stateMode .~ Loading
+  H.modify
+    $ (DCS._stateMode .~ Loading)
+    ∘ (DCS._displayCards .~ applyPendingState [])
   json ← Quasar.load $ deckIndex dir deckId
   case Model.decode =<< json of
     Left err → do
