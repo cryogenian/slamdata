@@ -712,15 +712,28 @@ clickAllElements ∷ ∀ eff o. Array Element → Feature eff o Unit
 clickAllElements = traverse_ clickEl
 
 clearElement ∷ ∀ eff o. Element → Feature eff o Unit
-clearElement element = Selenium.clickEl element *> moveToEndOfString *> typeEnoughBackspaces
+clearElement element =
+  Selenium.clickEl element
+    *> moveToEndOfString
+    *> typeEnoughBackspaces
   where
   getValueLength ∷ Feature eff o (Maybe Int)
   getValueLength = map String.length <$> Selenium.getAttribute element "value"
 
-  typeEnoughBackspaces = traverse_ typeBackspaces =<< getValueLength
+  getTextLength ∷ Feature eff o Int
+  getTextLength = map String.length $ Selenium.getText element
 
-  moveToEndOfString = traverse_ typeRightArrow =<< getValueLength
+  getTotalLength ∷ Feature eff o Int
+  getTotalLength = do
+    vl ← map (fromMaybe zero) getValueLength
+    tl ← getTextLength
+    pure $ vl + tl
 
+  typeEnoughBackspaces ∷ Feature eff o Unit
+  typeEnoughBackspaces = typeBackspaces =<< getTotalLength
+
+  moveToEndOfString ∷ Feature eff o Unit
+  moveToEndOfString = typeRightArrow =<< getTotalLength
 
   typeBackspaces ∷ Int → Feature eff o Unit
   typeBackspaces = Selenium.sequence ∘ FeatureSequence.sendBackspaces

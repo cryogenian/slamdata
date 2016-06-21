@@ -26,7 +26,7 @@ type State =
 
 initialState :: State
 initialState =
-  { searchString: ""
+  { searchString: "*"
   }
 
 _searchString :: LensP State String

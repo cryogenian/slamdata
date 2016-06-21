@@ -219,8 +219,8 @@ modelToEval
   → Either String Eval.Eval
 modelToEval =
   case _ of
-    Ace CT.SQLMode model → pure $ Eval.Query model.text
-    Ace CT.MarkdownMode model → pure $ Eval.Markdown model.text
+    Ace CT.SQLMode model → pure $ Eval.Query $ fromMaybe "" $ _.text <$> model
+    Ace CT.MarkdownMode model → pure $ Eval.Markdown $ fromMaybe "" $ _.text <$> model
     Markdown model → pure $ Eval.MarkdownForm model
     Search txt → pure $ Eval.Search txt
     Save fp → pure $ Eval.Save fp

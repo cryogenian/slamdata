@@ -21,59 +21,67 @@ module SlamData.Workspace.Card.Query.Eval
 import SlamData.Prelude
 
 import Data.StrMap as SM
-import Data.Lens (_Just, (^?))
+import Data.Lens (_Just, _Nothing, (^?), (.~))
+import Data.Path.Pathy as Pt
+import Data.String as Str
 
+import Ace.Editor as Editor
 import Ace.Halogen.Component as Ace
 import Ace.Types (Completion)
 
-import Halogen (query, action)
+import Halogen (query, action, gets, request, fromEff, modify)
 
 import SlamData.Workspace.Card.Ace.Component as AceCard
+import SlamData.Workspace.Card.Ace.Component.State (_isNew)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
+import Utils.Ace (readOnly)
 import Utils.Completions (mkCompletion, pathCompletions)
 
 queryEval ∷ CET.CardEvalInput → AceCard.DSL Unit
-queryEval info = addCompletions $ fromMaybe SM.empty $ info.input ^? _Just ∘ Port._VarMap
+queryEval info = do
+  isNew ← gets _.isNew
+  when isNew do
+    mbEditor ←
+      map join $ query unit $ request Ace.GetEditor
 
--- TODO: something equivalent to this via queryEval instead -gb
--- querySetup ∷ CET.CardSetupInfo → AceDSL Unit
--- querySetup { input, path } =
---   case input of
---     Port.VarMap varMap →
---       addCompletions varMap
---
---     Port.TaggedResource {resource} → void $ runMaybeT do
---       resParent ← MaybeT $ pure $ Path.parentDir resource
---
---       let
---         path' = if path ≡ pure resParent
---                   then Path.runFileName (Path.fileName resource)
---                   else Path.printPath resource
---       editor ←
---         (MaybeT $ query unit $ request Ace.GetEditor)
---         >>= (MaybeT ∘ pure)
---
---       MaybeT
---         $ query unit
---         $ action
---         $ Ace.SetText ("SELECT  *  FROM `" ⊕ path' ⊕ "` ")
---
---       lift $ fromEff do
---         readOnly editor
---           { startRow: 0
---           , startColumn: 0
---           , endRow: 0
---           , endColumn: 7
---           }
---         readOnly editor
---           { startRow: 0
---           , startColumn: 10
---           , endRow: 0
---           , endColumn: 19 + Str.length path'
---           }
---     _ → pure unit
+    for_ (info.input ^? _Just ∘ Port._VarMap) \vm → do
+      addCompletions vm
+      for_ mbEditor setSelectEmpty
+
+    for_ (info.input ^? _Just ∘ Port._Resource) \r → do
+      let resParent = Pt.parentDir r
+          strPath =
+            if pure info.path ≡ resParent
+              then Pt.runFileName (Pt.fileName r)
+              else Pt.printPath r
+
+      query unit $ action $ Ace.SetText (" SELECT  *  FROM `" ⊕ strPath ⊕ "` ")
+
+      for_ mbEditor \editor → fromEff do
+        readOnly editor
+          { startRow: 0
+          , startColumn: 0
+          , endRow: 0
+          , endColumn: 8
+          }
+        readOnly editor
+          { startRow: 0
+          , startColumn: 11
+          , endRow: 0
+          , endColumn: 20 + Str.length strPath
+          }
+        Editor.navigateFileEnd editor
+
+    for_ (info.input ^? _Nothing) \_ →
+      for_ mbEditor setSelectEmpty
+
+    modify $ _isNew .~ false
+  where
+  setSelectEmpty editor = do
+    void $ query unit $ action $ Ace.SetText ("SELECT \"Hello World!\"")
+    fromEff $ Editor.navigateFileEnd editor
 
 addCompletions ∷ ∀ a. SM.StrMap a → AceCard.DSL Unit
 addCompletions vm =

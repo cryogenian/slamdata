@@ -27,7 +27,7 @@ import SlamData.Prelude
 
 import Data.Array as A
 import Data.Foldable as F
-import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, encodeJson, jsonEmptyObject)
+import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, encodeJson, jsonEmptyObject, jsonNull)
 
 import Test.StrongCheck as SC
 import Test.StrongCheck.Gen as Gen
@@ -35,36 +35,43 @@ import Test.StrongCheck.Gen as Gen
 import Utils.Ace (RangeRec, encodeRangeRec, decodeRangeRec, eqRangeRec, genRangeRec)
 
 type Model =
-  { text :: String
-  , ranges :: Array RangeRec
-  }
+  Maybe { text ∷ String
+        , ranges ∷ Array RangeRec
+        }
 
 eqModel ∷ Model → Model → Boolean
-eqModel m1 m2 =
+eqModel (Just m1) (Just m2) =
   m1.text ≡ m2.text
     && F.all id (A.zipWith eqRangeRec m1.ranges m2.ranges)
+eqModel Nothing Nothing = true
+eqModel _ _ = false
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  text ← SC.arbitrary
-  ranges ← Gen.arrayOf genRangeRec
-  pure { text, ranges }
+  isNothing_ ← SC.arbitrary
+  if isNothing_
+    then pure Nothing
+    else do
+    text ← SC.arbitrary
+    ranges ← Gen.arrayOf genRangeRec
+    pure $ Just { text, ranges }
 
-emptyModel :: Model
-emptyModel =
-  { text: ""
-  , ranges: []
-  }
+emptyModel ∷ Model
+emptyModel = Nothing
 
-encode :: Model -> Json
-encode m
+encode ∷ Model → Json
+encode Nothing = jsonNull
+encode (Just m)
    = ("text" := m.text)
   ~> ("ranges" := (encodeJson $ map encodeRangeRec m.ranges))
   ~> jsonEmptyObject
 
-
-decode :: Json -> Either String Model
-decode = decodeJson >=> \obj -> do
-  { text: _, ranges: _ }
-    <$> (obj .? "text")
-    <*> (obj .? "ranges" >>= traverse decodeRangeRec)
+decode ∷ Json → Either String Model
+decode = decodeJson >=> case _ of
+  Nothing → pure Nothing
+  Just obj → do
+    m ←
+      { text: _, ranges: _ }
+      <$> (obj .? "text")
+      <*> (obj .? "ranges" >>= traverse decodeRangeRec)
+    pure $ Just m
