@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Save.Eval where
+module SlamData.Workspace.Card.Cache.Eval where
 
 import SlamData.Prelude
 

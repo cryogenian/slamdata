@@ -448,7 +448,7 @@ peekAnyCard cardCoord q = do
   pure unit
 
 queryShouldRun ∷ ∀ a. AnyCardQuery a → Boolean
-queryShouldRun (SaveQuery q) = false
+queryShouldRun (CacheQuery q) = false
 queryShouldRun (JTableQuery q) = coproduct (const true) jTableQueryShouldRun q
 queryShouldRun _ = true
 

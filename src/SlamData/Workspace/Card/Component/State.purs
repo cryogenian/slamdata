@@ -30,7 +30,7 @@ module SlamData.Workspace.Card.Component.State
   , _APIState
   , _APIResultsState
   , _NextState
-  , _SaveState
+  , _CacheState
   , _OpenResourceState
   , _DownloadOptionsState
   , _DraftboardState
@@ -50,6 +50,7 @@ import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.Ace.Component.State as Ace
 import SlamData.Workspace.Card.API.Component.State as API
 import SlamData.Workspace.Card.APIResults.Component.State as APIResults
+import SlamData.Workspace.Card.Cache.Component.State as Cache
 import SlamData.Workspace.Card.Chart.Component.State as Chart
 import SlamData.Workspace.Card.Component.Query (CardQuery, InnerCardQuery)
 import SlamData.Workspace.Card.Download.Component.State as Download
@@ -61,7 +62,6 @@ import SlamData.Workspace.Card.JTable.Component.State as JTable
 import SlamData.Workspace.Card.Markdown.Component.State as Markdown
 import SlamData.Workspace.Card.Next.Component.State as Next
 import SlamData.Workspace.Card.OpenResource.Component.State as Open
-import SlamData.Workspace.Card.Save.Component.State as Save
 import SlamData.Workspace.Card.Search.Component.State as Search
 import SlamData.Workspace.Card.Viz.Component.State as Viz
 
@@ -92,7 +92,7 @@ data AnyCardState
   | APIState API.StateP
   | APIResultsState APIResults.State
   | NextState Next.State
-  | SaveState Save.State
+  | CacheState Cache.State
   | OpenResourceState Open.State
   | DownloadOptionsState DOpts.State
   | DraftboardState Draftboard.StateP
@@ -149,9 +149,9 @@ _NextState = prism' NextState \s → case s of
   NextState s' → Just s'
   _ → Nothing
 
-_SaveState ∷ PrismP AnyCardState Save.State
-_SaveState = prism' SaveState \s → case s of
-  SaveState s' → Just s'
+_CacheState ∷ PrismP AnyCardState Cache.State
+_CacheState = prism' CacheState \s → case s of
+  CacheState s' → Just s'
   _ → Nothing
 
 _OpenResourceState ∷ PrismP AnyCardState Open.State

@@ -54,15 +54,15 @@ test = do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard "Quarterly"
     Interact.accessNextCardInLastDeck
-    Interact.insertFormCardInLastDeck
-    Expect.textInFormCard "Quarterly"
+    Interact.insertDisplayMarkdownCardInLastDeck
+    Expect.textInDisplayMarkdownCard "Quarterly"
     warnMsg "SD-1538, we don't know if workspace has been saved already"
     later 1000 $ pure unit
     Interact.flipDeck
     Expect.backsideMenuPresented
     Interact.shareDeck
     Interact.accessSharingUrl
-    Expect.textInFormCard "Quarterly"
+    Expect.textInDisplayMarkdownCard "Quarterly"
     Interact.launchSlamData
     successMsg "Successfully shared deck"
 

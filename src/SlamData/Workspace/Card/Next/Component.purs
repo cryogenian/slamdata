@@ -153,7 +153,7 @@ updatePort = case _ of
            , Ct.Search
            , Ct.Ace Ct.SQLMode
            , Ct.Viz
-           , Ct.Save
+           , Ct.Cache
            ])
       ∘ (_message .~ Nothing)
   P.Draftboard →

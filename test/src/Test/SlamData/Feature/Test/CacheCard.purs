@@ -1,4 +1,4 @@
-module Test.SlamData.Feature.Test.SaveCard where
+module Test.SlamData.Feature.Test.CacheCard where
 
 import SlamData.Prelude
 
@@ -9,11 +9,11 @@ import Test.SlamData.Feature.Interactions as Interact
 import Test.SlamData.Feature.Monad (SlamFeature)
 
 
-saveCardScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
-saveCardScenario =
+cacheCardScenario ∷ String → Array String → SlamFeature Unit → SlamFeature Unit
+cacheCardScenario =
   scenario
-    "Saving/caching data source card output"
-    (Interact.createWorkspaceInTestFolder "Save card")
+    "Caching data source card output"
+    (Interact.createWorkspaceInTestFolder "Cache card")
     (Interact.deleteFileInTestFolder "Untitled Workspace.slam"
      ≫ Interact.deleteFile "временный файл"
      ≫ Interact.browseRootFolder
@@ -21,15 +21,15 @@ saveCardScenario =
 
 test ∷ SlamFeature Unit
 test =
-  saveCardScenario "Save card output to file" [] do
+  cacheCardScenario "Cache card output to file" [] do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT measureOne, measureTwo from `/test-mount/testDb/flatViz`"
     Interact.accessNextCardInLastDeck
-    Interact.insertSaveCardInLastDeck
-    Interact.provideSaveDestinationInLastSaveCard
+    Interact.insertCacheCardInLastDeck
+    Interact.provideSaveDestinationInLastCacheCard
       "/test-mount/testDb/временный файл"
-    Interact.doSaveInLastSaveCard
+    Interact.doSaveInLastCacheCard
     Interact.accessNextCardInLastDeck
     Interact.insertJTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne", "measureTwo"]

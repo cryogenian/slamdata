@@ -71,13 +71,13 @@ tableColumnsAre expectedTexts =
 labelInLastMdCard ∷ String → SlamFeature Unit
 labelInLastMdCard label =
   expectPresented
-    $ (XPath.anywhere $ XPaths.formCardTitle)
+    $ (XPath.anywhere $ XPaths.displayMarkdownCardTitle)
     `XPath.following` ("label" `XPath.nodeWithExactText` label)
 
 fieldInLastMdCard ∷ String → String → String → SlamFeature Unit
 fieldInLastMdCard labelText inputType value =
   expectPresentedWithProperties valueProperty
-    $ (XPath.anywhere $ XPaths.formCardTitle)
+    $ (XPath.anywhere $ XPaths.displayMarkdownCardTitle)
     `XPath.following` inputXPath
   where
   valueProperty = Map.singleton "value" $ Just value
@@ -86,7 +86,7 @@ fieldInLastMdCard labelText inputType value =
 checkableFieldInLastMdCard ∷ String → String → Boolean → SlamFeature Unit
 checkableFieldInLastMdCard labelText inputType checked =
   expectPresentedWithProperties checkedProperty
-    $ (XPath.anywhere $ XPaths.formCardTitle)
+    $ (XPath.anywhere $ XPaths.displayMarkdownCardTitle)
     `XPath.following` inputXPath
   where
   propertyValue = if checked then Just "true" else Nothing
@@ -97,7 +97,7 @@ dropdownInLastMdCard ∷ String → Array String → SlamFeature Unit
 dropdownInLastMdCard value values =
   expectPresentedWithProperties
     (Map.singleton "value" $ Just value)
-    $ (XPath.anywhere $ XPaths.formCardTitle)
+    $ (XPath.anywhere $ XPaths.displayMarkdownCardTitle)
     `XPath.following` XPath.selectWithOptionsWithExactTexts values
 
 resourceOpenedInLastExploreCard ∷ String → SlamFeature Unit
@@ -171,12 +171,12 @@ lastEChartOptions =
     ∘ XPath.anywhere
     ∘ XPaths.eChartOptions
 
-formCardPresented ∷ SlamFeature Unit
-formCardPresented =
+displayMarkdownCardPresented ∷ SlamFeature Unit
+displayMarkdownCardPresented =
   tryRepeatedlyTo
     $ expectPresented
     $ XPath.anywhere
-    $ XPaths.formCardHeader
+    $ XPaths.displayMarkdownCardHeader
 
 apiResultsCardPresented ∷ SlamFeature Unit
 apiResultsCardPresented =
@@ -192,12 +192,12 @@ tableCardPresented =
     $ XPath.anywhere
     $ XPaths.tableCardHeader
 
-textInFormCard ∷ String → SlamFeature Unit
-textInFormCard =
+textInDisplayMarkdownCard ∷ String → SlamFeature Unit
+textInDisplayMarkdownCard =
   tryRepeatedlyTo
     ∘ expectPresented
     ∘ XPath.anywhere
-    ∘ XPath.following XPaths.formCardHeader
+    ∘ XPath.following XPaths.displayMarkdownCardHeader
     ∘ XPath.anyWithText
 
 backsideActionNotPresented ∷ String → SlamFeature Unit

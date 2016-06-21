@@ -50,7 +50,7 @@ import Test.SlamData.Feature.Test.File as File
 import Test.SlamData.Feature.Test.FlexibleVisualation as FlexibleVisualization
 import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
-import Test.SlamData.Feature.Test.SaveCard as Save
+import Test.SlamData.Feature.Test.CacheCard as Cache
 import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
 import Text.Chalky (green, yellow, magenta, gray, red)
 
@@ -79,7 +79,7 @@ tests = do
   Search.test
   Markdown.test
   FlexibleVisualization.test
-  Save.test
+  Cache.test
   FlipDeck.test
 
 runTests ∷ Config → Aff Effects Unit

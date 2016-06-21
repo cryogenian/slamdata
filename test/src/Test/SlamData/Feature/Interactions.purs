@@ -168,9 +168,9 @@ insertVisualizeCardInLastDeck ∷ SlamFeature Unit
 insertVisualizeCardInLastDeck =
   Feature.click $ followingLastPreviousCardGripper XPaths.insertVisualizeCard
 
-insertFormCardInLastDeck ∷ SlamFeature Unit
-insertFormCardInLastDeck =
-  Feature.click $ followingLastPreviousCardGripper XPaths.insertFormCard
+insertDisplayMarkdownCardInLastDeck ∷ SlamFeature Unit
+insertDisplayMarkdownCardInLastDeck =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertDisplayMarkdownCard
 
 insertJTableCardInLastDeck ∷ SlamFeature Unit
 insertJTableCardInLastDeck =
@@ -180,9 +180,9 @@ insertChartCardInLastDeck ∷ SlamFeature Unit
 insertChartCardInLastDeck =
   Feature.click $ followingLastPreviousCardGripper XPaths.insertChartCard
 
-insertSaveCardInLastDeck ∷ SlamFeature Unit
-insertSaveCardInLastDeck =
-  Feature.click $ followingLastPreviousCardGripper XPaths.insertSaveCard
+insertCacheCardInLastDeck ∷ SlamFeature Unit
+insertCacheCardInLastDeck =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertCacheCard
 
 insertApiCardInLastDeck ∷ SlamFeature Unit
 insertApiCardInLastDeck =
@@ -235,13 +235,12 @@ provideQueryInLastQueryCard =
     $ (XPath.last $ XPath.anywhere $ XPaths.queryCardTitle)
     `XPath.following` XPaths.aceEditor
 
-
-provideSaveDestinationInLastSaveCard ∷ String → SlamFeature Unit
-provideSaveDestinationInLastSaveCard =
+provideSaveDestinationInLastCacheCard ∷ String → SlamFeature Unit
+provideSaveDestinationInLastCacheCard =
   Feature.provideFieldValue (XPath.last $ XPath.anywhere XPaths.saveDestinationInput)
 
-doSaveInLastSaveCard ∷ SlamFeature Unit
-doSaveInLastSaveCard =
+doSaveInLastCacheCard ∷ SlamFeature Unit
+doSaveInLastCacheCard =
   Feature.click (XPath.last $ XPath.anywhere XPaths.saveSubmitButton)
 
 provideFieldValueInLastDeck ∷ String → String → SlamFeature Unit
