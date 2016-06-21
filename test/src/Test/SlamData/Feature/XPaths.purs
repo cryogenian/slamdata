@@ -7,6 +7,7 @@ import Test.SlamData.Feature.Data as Data
 aceEditor ∷ String
 aceEditor = "*[contains(@class, 'ace_editor') and not(contains(@class, 'ace_autocomplete'))]"
 
+
 playButton ∷ String
 playButton = XPath.anyWithExactAriaLabel "Play"
 

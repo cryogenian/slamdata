@@ -235,6 +235,7 @@ provideQueryInLastQueryCard =
     $ (XPath.last $ XPath.anywhere $ XPaths.queryCardTitle)
     `XPath.following` XPaths.aceEditor
 
+
 provideSaveDestinationInLastSaveCard ∷ String → SlamFeature Unit
 provideSaveDestinationInLastSaveCard =
   Feature.provideFieldValue (XPath.last $ XPath.anywhere XPaths.saveDestinationInput)

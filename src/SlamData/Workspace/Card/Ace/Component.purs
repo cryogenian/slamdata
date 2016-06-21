@@ -42,7 +42,7 @@ import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Ace.Component.Query (QueryP)
-import SlamData.Workspace.Card.Ace.Component.State (State, StateP, initialState, _levelOfDetails)
+import SlamData.Workspace.Card.Ace.Component.State (State, StateP, initialState, _levelOfDetails, _isNew)
 import SlamData.Workspace.Card.CardType (CardType(Ace), AceMode, aceMode, aceCardGlyph)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInput)
 import SlamData.Workspace.Card.Component (CardStateP, CardQueryP, makeCardComponent, makeQueryPrism, _AceState, _AceQuery)
@@ -82,18 +82,26 @@ aceComponent cfg = makeCardComponent
     --result ← evaluator info content
     --pure $ k result
   eval (Save k) = do
+    isNew ← H.gets _.isNew
     content ← fromMaybe "" <$> H.query unit (H.request GetText)
     mbEditor ← H.query unit (H.request GetEditor)
     rrs ← H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
-    pure ∘ k $ Card.Ace cfg.mode { text: content, ranges: rrs }
+
+    pure ∘ k
+      $ Card.Ace cfg.mode
+      $ if isNew
+        then Nothing
+        else Just { text: content, ranges: rrs }
+
   eval (Load card next) = do
     case card of
-      Card.Ace _ { text, ranges } → do
+      Card.Ace _ (Just { text, ranges }) → do
         H.query unit $ H.action (SetText text)
         mbEditor ← H.query unit $ H.request GetEditor
         H.fromEff $ for_ (join mbEditor) \editor → do
           traverse_ (readOnly editor) ranges
           Editor.navigateFileEnd editor
+        H.modify $ _isNew .~ false
       _ → pure unit
     pure next
   eval (SetDimensions dims next) = do
@@ -109,8 +117,6 @@ aceSetup cfg editor = liftEff do
   Editor.setEnableLiveAutocompletion true editor
   Editor.setEnableBasicAutocompletion true editor
   Session.setMode (aceMode cfg.mode) =<< Editor.getSession editor
-
-
 
 
 render ∷ AceConfig → State → HTML

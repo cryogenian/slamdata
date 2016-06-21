@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.Ace.Component.State
   , State
   , initialState
   , _levelOfDetails
+  , _isNew
   ) where
 
 import SlamData.Prelude
@@ -34,14 +35,20 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Effects (Slam)
 
 type State =
-  { levelOfDetails ∷ LevelOfDetails }
+  { levelOfDetails ∷ LevelOfDetails
+  , isNew ∷ Boolean
+  }
 
 initialState ∷ State
 initialState =
-  { levelOfDetails: High }
+  { levelOfDetails: High
+  , isNew: true
+  }
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a |r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
+_isNew ∷ ∀ a r. LensP {isNew ∷ a|r} a
+_isNew = lens (_.isNew) (_{isNew = _})
 
 type StateP = ParentState State AceState CardEvalQuery AceQuery Slam Unit

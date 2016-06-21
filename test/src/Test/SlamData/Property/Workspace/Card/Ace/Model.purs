@@ -6,22 +6,21 @@ module Test.SlamData.Property.Workspace.Card.Ace.Model
 
 import Prelude
 
-import Data.Array as A
 import Data.Either (Either(..))
-import Data.Foldable (foldl)
+import Data.Maybe (Maybe(..))
 import SlamData.Workspace.Card.Ace.Model as M
-import Utils.Ace (RangeRec, eqRangeRec)
+import Utils.Ace (RangeRec)
 
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
 
 newtype ArbRangeRec = ArbRangeRec RangeRec
 
-runArbRangeRec :: ArbRangeRec -> RangeRec
+runArbRangeRec ∷ ArbRangeRec → RangeRec
 runArbRangeRec (ArbRangeRec r) = r
 
-instance arbitraryArbRangeRec :: Arbitrary ArbRangeRec where
+instance arbitraryArbRangeRec ∷ Arbitrary ArbRangeRec where
   arbitrary = do
-    r <- { startColumn: _, startRow: _, endColumn: _, endRow: _ }
+    r ← { startColumn: _, startRow: _, endColumn: _, endRow: _ }
          <$> arbitrary
          <*> arbitrary
          <*> arbitrary
@@ -30,20 +29,22 @@ instance arbitraryArbRangeRec :: Arbitrary ArbRangeRec where
 
 newtype ArbModel = ArbModel M.Model
 
-runArbModel :: ArbModel -> M.Model
+runArbModel ∷ ArbModel → M.Model
 runArbModel (ArbModel m) = m
 
-instance arbitraryArbModel :: Arbitrary ArbModel where
+instance arbitraryArbModel ∷ Arbitrary ArbModel where
   arbitrary = do
-    r <- { text: _, ranges: _ }
-         <$> arbitrary
-         <*> (map (map runArbRangeRec) arbitrary)
-    pure $ ArbModel r
+    isNothing_ ← arbitrary
+    if isNothing_
+      then pure $ ArbModel Nothing
+      else do
+      r ← { text: _, ranges: _ }
+          <$> arbitrary
+          <*> (map (map runArbRangeRec) arbitrary)
+      pure $ ArbModel $ Just r
 
-check :: QC Unit
-check = quickCheck $ runArbModel >>> \m ->
+check ∷ QC Unit
+check = quickCheck $ runArbModel >>> \m →
   case M.decode (M.encode m) of
-    Left err -> Failed $ "Decode failed: " <> err
-    Right m' -> (   m.text == m'.text
-                 && foldl conj true (A.zipWith eqRangeRec m.ranges m'.ranges))
-                <?> "Decoded ace card model doesn't match encoded"
+    Left err → Failed $ "Decode failed: " <> err
+    Right m' → M.eqModel m m' <?> "Decoced ace card model doesn't match encoded"
