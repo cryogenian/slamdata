@@ -281,8 +281,8 @@ eval (ZoomOut next) = do
     Nothing →
       void $ H.fromEff $ setHref $ parentURL $ Left st.path
   pure next
-eval (StartSliding mouseEvent next) =
-  Slider.startSliding mouseEvent $> next
+eval (StartSliding mouseEvent gDef next) =
+  Slider.startSliding mouseEvent gDef $> next
 eval (StopSlidingAndSnap mouseEvent next) = do
   Slider.stopSlidingAndSnap mouseEvent
   updateIndicator

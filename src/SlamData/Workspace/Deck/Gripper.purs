@@ -15,9 +15,9 @@ limitations under the License.
 -}
 
 module SlamData.Workspace.Deck.Gripper
-  ( GripperDef
-  , gripperDefsForCard
+  ( gripperDefsForCard
   , renderGrippers
+  , module SlamData.Workspace.Deck.Gripper.Def
   ) where
 
 import Data.Array as Array
@@ -28,61 +28,59 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.CardId (CardId(CardId))
 import SlamData.Workspace.Deck.Common (DeckHTML)
 import SlamData.Workspace.Deck.Component.Query (Query(StartSliding))
 import SlamData.Workspace.Deck.Component.State (coordModelToCoord)
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 import SlamData.Prelude
 import SlamData.Render.CSS as ClassNames
 import Data.Bifoldable (bifoldMap)
-
--- | Dependent on deck width any gripper may provide an interaction to select any
--- | card in the deck. Each gripper is guaranteed to provide a single interaction
--- | to select one card in one direction (either previous or next) if that card
--- | is available.
-
-data GripperDef = Previous Boolean | Next Boolean
 
 gripperDefsForCard
   ∷ Array (DeckId × Card.Model)
   → Maybe (DeckId × CardId)
   → GripperDef × GripperDef
 gripperDefsForCard cards coord =
-  Tuple (Previous previousCardAvailable) (Next nextCardAvailable)
+  Previous previousCardAvailable × Next nextCardAvailable
   where
   previousCardAvailable =
-    fromMaybe true $
-      not ∘ eq <$> coord <*> map coordModelToCoord (Array.head cards)
-  nextCardAvailable =
-    isJust coord
+    fromMaybe true
+      $ not ∘ eq
+      <$> coord
+      <*> map coordModelToCoord (Array.head cards)
 
-isAvailable :: GripperDef -> Boolean
+  nextCardAvailable = case coord of
+    Just (_ × (CardId _)) → true
+    _ → false
+
+isAvailable ∷ GripperDef → Boolean
 isAvailable (Previous available) =
   available
 isAvailable (Next available) =
   available
 
-gripperLabel :: GripperDef -> String
+gripperLabel ∷ GripperDef → String
 gripperLabel (Previous _) =
   "Drag right to access previous cards"
 gripperLabel (Next _) =
   "Drag left to access next cards"
 
-gripperClassName :: GripperDef -> ClassName
+gripperClassName ∷ GripperDef → ClassName
 gripperClassName (Previous _) = ClassNames.cardGripper
 gripperClassName (Next _) = ClassNames.cardGripperLast
 
-renderGrippers :: Boolean -> Boolean -> Tuple GripperDef GripperDef -> Array DeckHTML
+renderGrippers ∷ Boolean → Boolean → GripperDef × GripperDef → Array DeckHTML
 renderGrippers isActiveCard isGrabbed =
   bifoldMap renderSingleton renderSingleton
   where
-  render :: GripperDef -> DeckHTML
+  render ∷ GripperDef → DeckHTML
   render gripperDef =
     HH.button
       ([ HP.classes [ gripperClassName gripperDef ]
-       , HE.onMouseDown \e ->
-             pure $ Just (H.action (StartSliding e))
+       , HE.onMouseDown \e →
+             pure $ Just (H.action (StartSliding e gripperDef))
        , ARIA.grabbed $ show $ isGrabbed
        , ARIA.disabled $ show $ (not $ isAvailable gripperDef) || (not $ isActiveCard)
        ]
@@ -90,5 +88,5 @@ renderGrippers isActiveCard isGrabbed =
       )
       []
 
-  renderSingleton :: GripperDef -> Array DeckHTML
-  renderSingleton = Array.singleton <<< render
+  renderSingleton ∷ GripperDef → Array DeckHTML
+  renderSingleton = Array.singleton ∘ render

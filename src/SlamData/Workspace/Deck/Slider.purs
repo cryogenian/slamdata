@@ -26,7 +26,7 @@ import SlamData.Prelude
 import Data.Array ((..))
 import Data.Array as Array
 import Data.Int as Int
-import Data.Lens ((.~))
+import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
 import Data.Ord (max, min)
 import Data.Tuple as Tuple
@@ -58,6 +58,7 @@ import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Gripper as Gripper
+import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 
 import Utils.CSS as CSSUtils
 
@@ -75,27 +76,24 @@ render comp st visible =
     $ map (Tuple.uncurry $ renderCard comp st)
     $ Array.zip st.displayCards (0 .. Array.length st.displayCards)
 
-stateStartSliding ∷ Event MouseEvent → Maybe Number → State → State
-stateStartSliding mouseEvent cardWidth =
-  (DCS._initialSliderX .~ Just mouseEvent.screenX)
+startSliding ∷ Event MouseEvent → GripperDef → DeckDSL Unit
+startSliding mouseEvent gDef = do
+  cardWidth ← H.gets _.cardElementWidth
+  H.modify
+    $ (DCS._initialSliderX .~ Just mouseEvent.screenX)
     ∘ (DCS._initialSliderCardWidth .~ cardWidth)
     ∘ (DCS._sliderTransition .~ false)
     ∘ (DCS._displayMode .~ DCS.Normal)
-
-startSliding ∷ Event MouseEvent → DeckDSL Unit
-startSliding mouseEvent =
-  H.gets _.cardElementWidth
-    >>= H.modify ∘ stateStartSliding mouseEvent
-
-stateStopSlidingAndSnap ∷ Event MouseEvent → State → State
-stateStopSlidingAndSnap mouseEvent =
-  stateUpdateSliderPosition mouseEvent
-    ⋙ startTransition
-    ⋙ snap
-    ⋙ stopSliding
+    ∘ (DCS._slidingTo ?~ gDef)
 
 stopSlidingAndSnap ∷ Event MouseEvent → DeckDSL Unit
-stopSlidingAndSnap = H.modify ∘ stateStopSlidingAndSnap
+stopSlidingAndSnap mEvent =
+  H.modify
+    $ stopSliding
+    ∘ (DCS._slidingTo .~ Nothing)
+    ∘ snap
+    ∘ stateUpdateSliderPosition mEvent
+
 
 stateUpdateSliderPosition ∷ Event MouseEvent → State → State
 stateUpdateSliderPosition mouseEvent =
@@ -112,8 +110,8 @@ translateXCalc eventScreenX initialX =
 
 stopSliding ∷ State → State
 stopSliding =
-    (DCS._initialSliderX .~ Nothing)
-      ∘ (DCS._sliderTranslateX .~ 0.0)
+  (DCS._initialSliderX .~ Nothing)
+  ∘ (DCS._sliderTranslateX .~ 0.0)
 
 snapActiveCardIndexByTranslationAndCardWidth
   ∷ State
@@ -123,23 +121,29 @@ snapActiveCardIndexByTranslationAndCardWidth
 snapActiveCardIndexByTranslationAndCardWidth st cardWidth idx =
   let
     translateX = st.sliderTranslateX
+
     numberOfCards = Array.length st.displayCards
+
     halfOffset = (offsetCardSpacing cardWidth) / 2.0
-  in
-    if translateX <= -1.0 * halfOffset
-    then
+
+    result | translateX ≡ zero = case st.slidingTo of
+      Just (Previous true) → idx - one
+      Just (Next true) → idx + one
+      _ → idx
+    result | translateX <= -1.0 * halfOffset =
       min (numberOfCards - 1)
-        $ sub idx
-        $ one
-        + Int.floor ((translateX - halfOffset) / cardWidth)
-    else
-      if translateX >= halfOffset
-      then
-        max 0
-          $ idx
-          + one
-          + Int.floor ((-translateX - halfOffset) / cardWidth)
-      else idx
+      $ sub idx
+      $ one
+      + Int.floor ((translateX - halfOffset) / cardWidth)
+    result | translateX >= halfOffset =
+      max 0
+      $ idx
+      + one
+      + Int.floor ((-translateX - halfOffset) / cardWidth)
+    result | otherwise =
+      idx
+  in
+    result
 
 offsetCardSpacing ∷ Number → Number
 offsetCardSpacing = add $ cardSpacingGridSquares * Config.gridPx

@@ -32,6 +32,7 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
+import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 
 import Utils.Path as UP
 
@@ -53,7 +54,7 @@ data Query a
   | UpdateCardSize a
   | ZoomIn a
   | ZoomOut a
-  | StartSliding (Event MouseEvent) a
+  | StartSliding (Event MouseEvent) GripperDef a
   | StopSlidingAndSnap (Event MouseEvent) a
   | UpdateSliderPosition (Event MouseEvent) a
   | SetCardElement (Maybe HTMLElement) a
