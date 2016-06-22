@@ -73,6 +73,7 @@ eval = case _ of
     pure next
   CC.ModelUpdated _ next →
     pure next
+  CC.ZoomIn next → pure next
 
 peek ∷ ∀ x. FB.QueryP x → APIDSL Unit
 peek = const (pure unit) ⨁ peekItemQuery ∘ H.runChildF

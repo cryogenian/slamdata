@@ -36,6 +36,7 @@ import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.JTable.Component.State (State, currentPageInfo)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(ZoomIn))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 -- | A value that holds all possible states for an inputtable value: the current
@@ -84,16 +85,14 @@ renderLowLOD st =
         ⊕ [ HH.className "card-input-minimum-lod" ]
     ]
     [ HH.button
-        [ ARIA.label "Expand to see results"
-        , HP.title "Expand to see results"
-        , HP.disabled true
+        [ ARIA.label "Zoom or resize"
+        , HP.title "Zoom or resize"
+        , HE.onClick (HE.input_ (left ∘ ZoomIn))
         ]
         [ glyph B.glyphiconThList
           -- Works nice for less then 1000000000 records :)
         , HH.text
-            $ "Please, expand to see all "
-            ⊕ (show $ fromMaybe zero $ st.input <#> _.size)
-            ⊕ " results"
+            "Zoom or resize"
         ]
     ]
 

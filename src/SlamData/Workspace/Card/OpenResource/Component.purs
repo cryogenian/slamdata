@@ -23,9 +23,8 @@ module SlamData.Workspace.Card.OpenResource.Component
 import SlamData.Prelude
 
 import Data.Array as Arr
-import Data.Foldable as F
 import Data.Lens as Lens
-import Data.Lens ((?~), (.~))
+import Data.Lens ((?~), (.~), (%~))
 import Data.Path.Pathy (printPath, peel)
 
 import Halogen as H
@@ -46,8 +45,6 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.OpenResource.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _levelOfDetails)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-
-import Utils.Path as PU
 
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
@@ -83,14 +80,15 @@ renderLowLOD state =
         ⊕ [ HH.className "card-input-minimum-lod" ]
     ]
     [ HH.button
-        [ ARIA.label "Expand to browse"
-        , HP.title "Expand to browse"
-        , HP.disabled true
+        [ ARIA.label "Zoom or resize"
+        , HP.title "Zoom or resize"
+        , HE.onClick (HE.input_ (left ∘ CC.ZoomIn))
         ]
         [ glyph B.glyphiconFolderOpen
-        , HH.text "Please, expand to browse"
+        , HH.text "Zoom or resize"
         ]
     ]
+
 
 renderHighLOD ∷ State → HTML
 renderHighLOD state =
@@ -111,7 +109,7 @@ renderHighLOD state =
                   , ARIA.label "Up a directory"
                   ]
           )
-          [ glyph B.glyphiconChevronUp ]
+          [ glyphForDeselectOrUp ]
       , HH.p
           [ ARIA.label $ "Selected resource: " ⊕ selectedLabel ]
           [ HH.text selectedLabel ]
@@ -120,6 +118,10 @@ renderHighLOD state =
     ]
 
   where
+  glyphForDeselectOrUp ∷ HTML
+  glyphForDeselectOrUp | isJust state.selected = glyph B.glyphiconRemove
+  glyphForDeselectOrUp | otherwise = glyph B.glyphiconChevronUp
+
   selectedLabel ∷ String
   selectedLabel =
     fromMaybe ""
@@ -127,7 +129,10 @@ renderHighLOD state =
     <|> (pure $ printPath state.browsing)
 
   parentDir ∷ Maybe R.Resource
-  parentDir = R.Directory ∘ fst <$> peel state.browsing
+  parentDir =
+    R.Directory
+    <$> ((state.selected $> state.browsing)
+         <|> (fst <$> peel state.browsing))
 
   renderItem ∷ R.Resource → HTML
   renderItem r =
@@ -187,6 +192,8 @@ cardEval = case _ of
     pure next
   CC.ModelUpdated _ next →
     pure next
+  CC.ZoomIn next →
+    pure next
 
 openResourceEval ∷ Query ~> DSL
 openResourceEval (ResourceSelected r next) = do
@@ -224,22 +231,8 @@ updateItems = do
 
 rearrangeItems ∷ DSL Unit
 rearrangeItems = do
-  is ← H.gets _.items
-  mbSel ← H.gets $ _.selected >=> findRes is
-  let
-    withoutSelected =
-      Arr.filter (\x → Just x ≠ mbSel) is
-    itemsToSet =
-      foldMap pure mbSel
-      ⊕ Arr.sortBy sortFn withoutSelected
-  H.modify (_items .~ itemsToSet)
-
+  H.modify $ _items %~ Arr.sortBy sortFn
   where
-  findRes ∷ Array R.Resource → PU.FilePath → Maybe R.Resource
-  findRes rs path =
-    let rpath = Right path
-    in F.find (\r → R.getPath r ≡ rpath) rs
-
   sortFn ∷ R.Resource → R.Resource → Ordering
   sortFn a b | R.hiddenTopLevel a && R.hiddenTopLevel b = compare a b
   sortFn a b | R.hiddenTopLevel a = GT

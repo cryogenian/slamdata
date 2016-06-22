@@ -40,7 +40,6 @@ import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
 import Data.StrMap as SM
 
-
 import DOM.HTML.Location as Location
 
 import Halogen as H
@@ -50,16 +49,16 @@ import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config (workspaceUrl)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Quasar.Data (save, load) as Quasar
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
+import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
@@ -368,7 +367,7 @@ mkShareURL varMap = do
   pure $ loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash path (WA.Load AT.ReadOnly) varMap
 
 peekCards ∷ ∀ a. CardSlot → CardQueryP a → DeckDSL Unit
-peekCards (CardSlot cardId) = const (pure unit) ⨁ peekCardInner cardId
+peekCards (CardSlot cardId) = (const $ pure unit) ⨁ peekCardInner cardId
 
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
 showDialog =
@@ -436,14 +435,16 @@ peekCardInner
   . DeckId × CardId
   → H.ChildF Unit InnerCardQuery a
   → DeckDSL Unit
-peekCardInner cardCoord = H.runChildF >>>
+peekCardInner cardCoord = H.runChildF ⋙
   (peekCardEvalQuery cardCoord ⨁ (peekAnyCard cardCoord))
 
 peekCardEvalQuery ∷ ∀ a. DeckId × CardId → CEQ.CardEvalQuery a → DeckDSL Unit
 peekCardEvalQuery cardCoord = case _ of
   CEQ.ModelUpdated CEQ.StateOnlyUpdate _ → triggerSave
   CEQ.ModelUpdated CEQ.EvalModelUpdate _ → runCard cardCoord
+  CEQ.ZoomIn _ → raise' $ H.action ZoomIn
   _ → pure unit
+
 
 peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
 peekAnyCard cardCoord q = do

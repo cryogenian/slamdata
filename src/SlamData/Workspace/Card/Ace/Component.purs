@@ -35,6 +35,7 @@ import Ace.Types (Editor)
 import Data.Lens ((.~))
 
 import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -106,8 +107,10 @@ eval _ (CC.SetDimensions dims next) = do
   pure next
 eval _ (CC.ModelUpdated _ next) =
   pure next
+eval _ (CC.ZoomIn next) =
+  pure next
 
-peek ∷ forall x. AceQuery x → DSL Unit
+peek ∷ ∀ x. AceQuery x → DSL Unit
 peek = case _ of
   TextChanged _ → CC.raiseUpdatedP CC.EvalModelUpdate
   _ → pure unit
@@ -143,11 +146,11 @@ renderLowLOD cfg state =
         ⊕ [ HH.className "card-input-minimum-lod" ]
     ]
     [ HH.button
-        [ ARIA.label "Expand to edit"
-        , HP.title "Expand to edit"
-        , HP.disabled true
+        [ ARIA.label "Zoom or resize"
+        , HP.title "Zoom or resize"
+        , HE.onClick (HE.input_ CC.ZoomIn)
         ]
         [ glyph $ CT.aceCardGlyph cfg.mode
-        , HH.text "Please, expand to edit"
+        , HH.text "Zoom or resize"
         ]
     ]

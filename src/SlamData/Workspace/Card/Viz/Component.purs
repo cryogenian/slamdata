@@ -138,12 +138,12 @@ renderLowLOD state =
         ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
     ]
     [ HH.button
-      [ ARIA.label "Expand to see visualization options"
-      , HP.title "Expand to see visualization options"
-      , HP.disabled true
+      [ ARIA.label "Zoom or resize"
+      , HP.title "Zoom or resize"
+      , HE.onClick (HE.input_ (left ∘ CC.ZoomIn))
       ]
       [ glyph B.glyphiconPicture
-      , HH.text "Please, expand to see options"
+      , HH.text "Zoom or resize"
       ]
     ]
 
@@ -316,6 +316,8 @@ cardEval = case _ of
            else High
     pure next
   CC.ModelUpdated _ next →
+    pure next
+  CC.ZoomIn next →
     pure next
 
 type AxisAccum =

@@ -129,6 +129,8 @@ evalCEQ = case _ of
     pure next
   CC.ModelUpdated _ next →
     pure next
+  CC.ZoomIn next →
+    pure next
 
 peek ∷ ∀ x. SD.SlamDownQuery Port.VarMapValue x → MarkdownDSL Unit
 peek = case _ of
