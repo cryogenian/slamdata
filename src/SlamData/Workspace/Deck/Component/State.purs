@@ -40,6 +40,7 @@ module SlamData.Workspace.Deck.Component.State
   , _sliderTranslateX
   , _cardElementWidth
   , _level
+  , _slidingTo
   , addCard
   , addCard'
   , removeCard
@@ -89,6 +90,7 @@ import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as Model
+import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils.Path (DirPath)
@@ -127,6 +129,7 @@ type State =
   , sliderTranslateX ∷ Number
   , cardElementWidth ∷ Maybe Number
   , level ∷ DL.DeckLevel
+  , slidingTo ∷ Maybe GripperDef
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -157,6 +160,7 @@ initialDeck path deckId =
   , sliderTranslateX: 0.0
   , cardElementWidth: Nothing
   , level: DL.root
+  , slidingTo: Nothing
   }
 
 -- | The unique identifier of the deck. If it's a fresh, unsaved deck, the id
@@ -251,6 +255,10 @@ _sliderTranslateX = lens _.sliderTranslateX _{sliderTranslateX = _}
 -- | The width of card
 _cardElementWidth ∷ ∀ a r. LensP {cardElementWidth ∷ a|r} a
 _cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
+
+_slidingTo ∷ ∀ a r. LensP {slidingTo ∷ a|r} a
+_slidingTo = lens _.slidingTo _{slidingTo = _}
+
 
 -- | Whether the deck is at the top-level of the deck component hierarchy
 _level ∷ ∀ a r. LensP {level ∷ a|r} a
@@ -386,7 +394,7 @@ compareCoordCards
   → DeckId × CardId
   → Array (DeckId × Card.Model)
   → Maybe Ordering
-compareCoordCards coordA coordB cards = 
+compareCoordCards coordA coordB cards =
   compare
     <$> A.findIndex (eqCoordModel coordA) cards
     <*> A.findIndex (eqCoordModel coordB) cards
