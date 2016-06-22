@@ -117,6 +117,8 @@ cardEval = case _ of
     pure next
   CC.ModelUpdated _ next →
     pure next
+  CC.ZoomIn next →
+    pure next
 
 updatePort ∷ Port.Port → NextDSL Unit
 updatePort = case _ of

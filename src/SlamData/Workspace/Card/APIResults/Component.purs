@@ -76,7 +76,7 @@ render { varMap } =
 eval ∷ Natural QueryP APIResultsDSL
 eval = coproduct evalCard (absurd ∘ getConst)
 
-evalCard ∷ Natural CC.CardEvalQuery APIResultsDSL
+evalCard ∷ CC.CardEvalQuery ~> APIResultsDSL
 evalCard = case _ of
   CC.EvalCard info output next → do
     for (info.input >>= Lens.preview Port._VarMap) \varMap →
@@ -89,4 +89,6 @@ evalCard = case _ of
   CC.SetDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
+    pure next
+  CC.ZoomIn next →
     pure next

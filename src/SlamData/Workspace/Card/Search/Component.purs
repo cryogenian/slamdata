@@ -64,7 +64,7 @@ render state =
         [ HP.class_ (HH.className "sd-search-state-btn")
         , HE.onClick $ HE.input_ (UpdateSearch "" ⋙ right)
         ]
-        [ HH.img [ HP.src "img/remove.svg" ] ]
+        [ HH.text "×" ]
     ]
 
 eval ∷ Natural Query DSL
@@ -85,6 +85,8 @@ cardEval = case _ of
   CC.SetDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
+    pure next
+  CC.ZoomIn next →
     pure next
 
 searchEval ∷ Natural SearchQuery DSL

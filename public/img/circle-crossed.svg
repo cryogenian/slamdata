@@ -37,7 +37,7 @@
       <path
          id="path3182"
          d="M 128.57143,312.8979 L 150.17857,291.29075"
-         style="fill:none;fill-rule:evenodd;stroke:red;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:none;fill-rule:evenodd;stroke:white;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
       <path
          transform="matrix(0.9248738,0,0,1.0490473,28.477057,-55.254349)"
          d="M 136.60715,340.66574 A 16.339285,15.089286 0 1 1 103.92858,340.66574 A 16.339285,15.089286 0 1 1 136.60715,340.66574 z"
@@ -46,12 +46,12 @@
          sodipodi:cy="340.66574"
          sodipodi:cx="120.26786"
          id="path3172"
-         style="opacity:1;fill:none;fill-opacity:1;stroke:red;stroke-width:3.04;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         style="opacity:1;fill:none;fill-opacity:1;stroke:white;stroke-width:3.04;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
          sodipodi:type="arc" />
       <path
          id="path3184"
          d="M 128.39286,291.11218 L 150.71429,313.79075"
-         style="fill:none;fill-rule:evenodd;stroke:red;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:none;fill-rule:evenodd;stroke:white;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     </g>
   </g>
 </svg>

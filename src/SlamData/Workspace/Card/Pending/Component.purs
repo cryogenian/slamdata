@@ -68,3 +68,5 @@ cardEval q =
       pure next
     CC.ModelUpdated _ next →
       pure next
+    CC.ZoomIn next →
+      pure next

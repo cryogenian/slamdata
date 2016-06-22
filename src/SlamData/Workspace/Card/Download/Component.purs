@@ -106,6 +106,8 @@ cardEval = case _ of
     pure next
   CC.ModelUpdated _ next →
     pure next
+  CC.ZoomIn next →
+    pure next
 
 handleDownloadPort ∷ Port.DownloadPort → DSL Unit
 handleDownloadPort opts = do

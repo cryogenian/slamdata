@@ -54,6 +54,7 @@ jtableComponent =
     }
 
 -- | Evaluates generic card queries.
+
 evalCard ∷ CC.CardEvalQuery ~> (H.ComponentDSL JTS.State QueryP Slam)
 evalCard = case _ of
   CC.EvalCard info output next → do
@@ -73,6 +74,8 @@ evalCard = case _ of
            else High
     pure next
   CC.ModelUpdated _ next →
+    pure next
+  CC.ZoomIn next →
     pure next
 
 runTable

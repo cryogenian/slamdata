@@ -31,6 +31,7 @@ import ECharts as EC
 
 import Halogen as H
 import Halogen.ECharts as HEC
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.CSS.Indexed as CSS
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -95,17 +96,18 @@ renderLowLOD state =
         ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
     ]
     [ HH.button
-      [ ARIA.label "Expand to see chart"
-      , HP.title "Expand to see chart"
-      , HP.disabled true
+      [ ARIA.label "Zoom or resize"
+      , HP.title "Zoom or resize"
+      , HE.onClick (HE.input_ CC.ZoomIn)
       ]
       $ foldMap renderButton state.chartType
     ]
 
+
 renderButton ∷ ChartType → Array ChartHTML
 renderButton ct =
   [ HH.img [ HP.src $ src ct ]
-  , HH.text "Please, expand to see chart"
+  , HH.text "Zoom or resize"
   ]
   where
   src ∷ ChartType → String
@@ -152,6 +154,8 @@ eval = case _ of
       setLevelOfDetails opts
     pure next
   CC.ModelUpdated _ next →
+    pure next
+  CC.ZoomIn next →
     pure next
 
 setLevelOfDetails ∷ EC.Option → ChartDSL Unit

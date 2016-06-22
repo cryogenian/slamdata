@@ -62,6 +62,7 @@ data CardEvalQuery a
   | Save (AnyCardModel → a)
   | Load AnyCardModel a
   | SetDimensions { width ∷ Number, height ∷ Number } a
+  | ZoomIn a
   | ModelUpdated ModelUpdateType a
 
 -- | This type is used to indicate whether a model update only affects the

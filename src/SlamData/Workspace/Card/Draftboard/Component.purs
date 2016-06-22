@@ -171,6 +171,8 @@ evalCard = case _ of
     pure next
   CC.ModelUpdated _ next →
     pure next
+  CC.ZoomIn next →
+    pure next
 
 evalBoard ∷ CardOptions → Natural Query DraftboardDSL
 evalBoard _ (Grabbing deckId ev next) = do

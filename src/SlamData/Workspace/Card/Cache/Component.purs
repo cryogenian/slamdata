@@ -31,16 +31,16 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Render.CSS as RC
+import SlamData.Render.CSS.New as Cn
 import SlamData.Workspace.Card.Cache.Component.Query (Query(..), QueryP)
 import SlamData.Workspace.Card.Cache.Component.State (State, initialState, _pathString, _confirmedPath)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
+
 
 import Utils.Path as PU
 
@@ -58,33 +58,25 @@ cacheCardComponent = CC.makeCardComponent
 
 render ∷ State → CacheHTML
 render state =
-  HH.div
-    [ HP.classes
-        [ RC.exploreCardEditor
-        , RC.cardInput
-        ]
-    ]
+  HH.div_
     [
-      HH.div [ HP.classes [ B.inputGroup, RC.fileListField ] ]
+      HH.div [ HP.classes [ Cn.form  ] ]
         [ HH.input
-            [ HP.classes [ B.formControl ]
-            , HP.value $ fromMaybe "" state.pathString
+            [ HP.value $ fromMaybe "" state.pathString
             , ARIA.label "Output file destination"
             , HE.onValueInput $ HE.input \s → right ∘ UpdatePathString s
             ]
-        , HH.span
-            [ HP.classes [ B.inputGroupBtn, RC.saveCardButton ] ]
-            [ HH.button
-              [ HP.classes [ B.btn, B.btnPrimary ]
-              , HP.buttonType HP.ButtonButton
+        , HH.button
+              [ HP.buttonType HP.ButtonButton
+              , HP.classes [ Cn.formButton ]
               , ARIA.label "Confirm saving file"
               , HP.disabled $ isNothing $ PU.parseFilePath =<< state.pathString
               , HE.onClick (HE.input_ $ right ∘ ConfirmPathString)
               ]
               [ HH.text "Cache" ]
-            ]
         ]
     ]
+
 
 eval ∷ QueryP ~> CacheDSL
 eval = coproduct cardEval saveEval
@@ -112,6 +104,8 @@ cardEval = case _ of
   CC.SetDimensions _ next →
     pure next
   CC.ModelUpdated _ next →
+    pure next
+  CC.ZoomIn next →
     pure next
 
 saveEval ∷ Query ~> CacheDSL
