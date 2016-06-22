@@ -120,52 +120,57 @@ render st =
             [ HP.class_ CSS.deck
             , HP.key "deck-container"
             ]
-            [ HH.button
-                [ HP.classes [ CSS.flipDeck ]
-                , HE.onClick (HE.input_ FlipDeck)
-                , ARIA.label "Flip deck"
-                , HP.title "Flip deck"
-                ]
-                [ HH.text "" ]
-            , if st.level ≡ DL.root
-                then HH.button
-                       [ ARIA.label "Zoom deck"
-                       , HP.classes [ CSS.zoomOutDeck ]
-                       , HP.title "Zoom out"
-                       , HE.onClick (HE.input_ ZoomOut)
-                       ]
-                       [ glyph B.glyphiconZoomOut ]
-                else HH.button
-                       [ ARIA.label "Zoom deck"
-                       , HP.classes [ CSS.zoomInDeck ]
-                       , HP.title "Zoom in"
-                       , HE.onClick (HE.input_ ZoomIn)
-                       ]
-                       [ glyph B.glyphiconZoomIn ]
-            , HH.button
-                [ HP.classes [ CSS.grabDeck ]
-                , HE.onMouseDown (HE.input GrabDeck)
-                , ARIA.label "Grab deck"
-                , HP.title "Grab deck"
-                ]
-                [ HH.text "" ]
-            , Slider.render comp st $ st.displayMode ≡ DCS.Normal
-            , HH.slot' cpIndicator unit \_ →
-                { component: Indicator.comp
-                , initialState: Indicator.initialState
-                }
-            , HH.button
-                [ HP.classes [ CSS.resizeDeck ]
-                , HE.onMouseDown (HE.input ResizeDeck)
+            $ (guard (AT.isEditable st.accessType)
+               *> [ HH.button
+                    [ HP.classes [ CSS.flipDeck ]
+                    , HE.onClick (HE.input_ FlipDeck)
+                    , ARIA.label "Flip deck"
+                    , HP.title "Flip deck"
+                    ]
+                    [ HH.text "" ]
+                  , if st.level ≡ DL.root
+                    then HH.button
+                         [ ARIA.label "Zoom deck"
+                         , HP.classes [ CSS.zoomOutDeck ]
+                         , HP.title "Zoom out"
+                         , HE.onClick (HE.input_ ZoomOut)
+                         ]
+                         [ glyph B.glyphiconZoomOut ]
+                    else HH.button
+                         [ ARIA.label "Zoom deck"
+                         , HP.classes [ CSS.zoomInDeck ]
+                         , HP.title "Zoom in"
+                         , HE.onClick (HE.input_ ZoomIn)
+                         ]
+                         [ glyph B.glyphiconZoomIn ]
+                  , HH.button
+                    [ HP.classes [ CSS.grabDeck ]
+                    , HE.onMouseDown (HE.input GrabDeck)
+                    , ARIA.label "Grab deck"
+                    , HP.title "Grab deck"
+                    ]
+                    [ HH.text "" ]
+                  ])
+            ⊕ [ Slider.render comp st $ st.displayMode ≡ DCS.Normal ]
+            ⊕ ( guard (AT.isEditable st.accessType)
+                *> [ HH.slot' cpIndicator unit \_ →
+                      { component: Indicator.comp
+                      , initialState: Indicator.initialState
+                      }
+                   , HH.button
+                     [ HP.classes [ CSS.resizeDeck ]
+                     , HE.onMouseDown (HE.input ResizeDeck)
 
-                , ARIA.label "Resize deck"
-                , HP.title "Resize deck"
-                ]
-                [ HH.text "" ]
-            , renderBackside $ st.displayMode ≡ DCS.Backside
-            , renderDialog $ st.displayMode ≡ DCS.Dialog
-            ]
+                     , ARIA.label "Resize deck"
+                     , HP.title "Resize deck"
+                     ]
+                     [ HH.text "" ]
+                   ])
+            ⊕ [ renderBackside $ st.displayMode ≡ DCS.Backside
+              , renderDialog $ st.displayMode ≡ DCS.Dialog
+              ]
         ]
+
 
   where
 
@@ -196,6 +201,7 @@ render st =
       [ HH.div
           [ HP.classes [ CSS.card ] ]
           (Gripper.renderGrippers
+             false
              visible
              (isJust st.initialSliderX)
              (Gripper.gripperDefsForCard st.displayCards $ DCS.activeCardCoord st)
@@ -208,9 +214,10 @@ render st =
       ]
 
 eval ∷ Query ~> DeckDSL
-eval (Load dir deckId level next) = do
+eval (Load dir deckId level at next) = do
   H.modify $ DCS._level .~ level
   loadDeck dir deckId
+  H.modify $ DCS._accessType .~ at
   pure next
 eval (SetModel deckId model level next) = do
   state ← H.get

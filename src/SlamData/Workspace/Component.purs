@@ -163,12 +163,12 @@ eval (Load path deckId accessType next) = do
 
   queryDeck (H.request Deck.GetId) >>= \deckId' →
     case deckId, deckId' of
-      Just a, Just b | a == b && oldAccessType == accessType → pure unit
-      _, _ → load
+      Just a, Just b | a ≡ b ∧ oldAccessType ≡ accessType → pure unit
+      _, _ → load accessType
   pure next
 
   where
-  load = do
+  load accessType = do
     H.modify _
       { stateMode = Loading
       , path = Just path
@@ -176,14 +176,14 @@ eval (Load path deckId accessType next) = do
       }
     queryDeck $ H.action $ Deck.Reset path
     maybe loadRoot loadDeck deckId
+    where
+    loadDeck deckId = void do
+      H.modify _ { stateMode = Ready, deckId = Just deckId }
+      queryDeck $ H.action $ Deck.Load path deckId DL.root accessType
 
-  loadDeck deckId = void do
-    H.modify _ { stateMode = Ready, deckId = Just deckId }
-    queryDeck $ H.action $ Deck.Load path deckId DL.root
-
-  loadRoot =
-    rootDeck path >>=
-      either (\err → H.modify $ _stateMode .~ Error err) loadDeck
+    loadRoot =
+      rootDeck path >>=
+        either (\err → H.modify $ _stateMode .~ Error err) loadDeck
 
 rootDeck ∷ UP.DirPath → WorkspaceDSL (Either String DeckId)
 rootDeck path = Model.getRoot (path </> Pathy.file "index")

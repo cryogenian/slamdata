@@ -22,7 +22,7 @@ module SlamData.Workspace.Deck.Gripper
 
 import Data.Array as Array
 import Halogen as H
-import Halogen.HTML.Core (ClassName)
+import Halogen.HTML.Core (className, ClassName)
 import Halogen.HTML.Elements.Indexed as HH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
@@ -73,16 +73,18 @@ gripperClassName :: GripperDef -> ClassName
 gripperClassName (Previous _) = ClassNames.cardGripper
 gripperClassName (Next _) = ClassNames.cardGripperLast
 
-renderGrippers :: Boolean -> Boolean -> Tuple GripperDef GripperDef -> Array DeckHTML
-renderGrippers isActiveCard isGrabbed =
+renderGrippers :: Boolean -> Boolean -> Boolean -> Tuple GripperDef GripperDef -> Array DeckHTML
+renderGrippers isEditable isActiveCard isGrabbed =
   bifoldMap renderSingleton renderSingleton
   where
   render :: GripperDef -> DeckHTML
   render gripperDef =
     HH.button
-      ([ HP.classes [ gripperClassName gripperDef ]
+      ([ HP.classes
+           $ [ gripperClassName gripperDef ]
+           ⊕ (guard isEditable $> className "active")
        , HE.onMouseDown \e ->
-             pure $ Just (H.action (StartSliding e))
+            pure $ guard isEditable $> (H.action $ StartSliding e)
        , ARIA.grabbed $ show $ isGrabbed
        , ARIA.disabled $ show $ (not $ isAvailable gripperDef) || (not $ isActiveCard)
        ]

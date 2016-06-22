@@ -88,7 +88,7 @@ draftboardComponent opts = Cp.makeCardComponent
   { cardType: Ct.Draftboard
   , component: H.parentComponent
       { render: render opts
-      , eval: coproduct evalCard (evalBoard opts)
+      , eval: evalCard ⨁ (evalBoard opts)
       , peek: Just (peek opts)
       }
   , initialState: H.parentState initialState
@@ -210,7 +210,7 @@ evalBoard opts (AddDeck e next) = do
 evalBoard opts (LoadDeck deckId next) = do
   queryDeck deckId
     $ H.action
-    $ DCQ.Load opts.path deckId (DL.succ opts.level)
+    $ DCQ.Load opts.path deckId (DL.succ opts.level) opts.accessType
   pure next
 
 peek ∷ ∀ a. CardOptions → H.ChildF DeckId (OpaqueQuery DCQ.Query) a → DraftboardDSL Unit
@@ -338,7 +338,7 @@ addDeck opts coords = do
           }
         queryDeck deckId'
           $ H.action
-          $ DCQ.Load opts.path deckId' (DL.succ opts.level)
+          $ DCQ.Load opts.path deckId' (DL.succ opts.level) opts.accessType
 
 saveDeck ∷ DirPath → DM.Deck → DraftboardDSL (Either Exn.Error DeckId)
 saveDeck path model = runExceptT do
@@ -381,7 +381,7 @@ wrapDeck opts oldId = do
           }
         queryDeck newId
           $ H.action
-          $ DCQ.Load opts.path newId (DL.succ opts.level)
+          $ DCQ.Load opts.path newId (DL.succ opts.level) opts.accessType
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
-queryDeck deckId = H.query deckId <<< opaqueQuery
+queryDeck deckId = H.query deckId ∘ opaqueQuery

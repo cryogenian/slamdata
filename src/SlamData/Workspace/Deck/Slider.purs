@@ -44,6 +44,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Config as Config
 import SlamData.Render.CSS as ClassNames
+import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Model as Card
@@ -222,6 +223,7 @@ renderCard comp st (deckId × card) index =
     , HP.ref (H.action ∘ DCQ.SetCardElement)
     ])
     $ Gripper.renderGrippers
+        (AT.isEditable st.accessType)
         (cardSelected st (deckId × card.cardId))
         (isJust st.initialSliderX)
         (Gripper.gripperDefsForCard st.displayCards $ Just coord)

@@ -27,6 +27,7 @@ import DOM.HTML.Types (HTMLElement)
 import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 
+import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
@@ -42,7 +43,7 @@ data Query a
   | SetParent (Tuple DeckId CardId) a
   | ExploreFile UP.FilePath a
   | Publish a
-  | Load UP.DirPath DeckId DeckLevel a
+  | Load UP.DirPath DeckId DeckLevel AccessType a
   | SetModel DeckId Deck DeckLevel a
   | Save a
   | Reset UP.DirPath a

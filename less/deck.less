@@ -81,6 +81,12 @@
   padding-left: 3px;
   padding-right: 3px;
   border: none;
+  &.active::after {
+      content: "⬌";
+      top: 50%;
+      margin-top: -50%;
+      color: #444;
+  }
 }
 
 .sd-card-gripper {
@@ -89,13 +95,6 @@
 
 .sd-card-gripper-last {
   float: right;
-}
-
-.sd-card-gripper::after, .sd-card-gripper-last::after {
-  content: "⬌";
-  top: 50%;
-  margin-top: -50%;
-  color: #444;
 }
 
 .sd-flip-deck {
