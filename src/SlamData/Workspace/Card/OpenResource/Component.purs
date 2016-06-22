@@ -39,11 +39,10 @@ import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.FS as Quasar
 import SlamData.Render.Common (glyph)
-import SlamData.Render.CSS as Rc
+import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Common.EvalQuery as Eq
+import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Component as NC
 import SlamData.Workspace.Card.OpenResource.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.OpenResource.Component.State (State, initialState, _selected, _browsing, _items, _levelOfDetails)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -53,9 +52,9 @@ import Utils.Path as PU
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-openResourceComponent ∷ Maybe R.Resource → H.Component NC.CardStateP NC.CardQueryP Slam
+openResourceComponent ∷ Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
 openResourceComponent mres =
-  NC.makeCardComponent
+  CC.makeCardComponent
     { cardType: CT.OpenResource
     , component: H.lifecycleComponent
         { render
@@ -64,8 +63,8 @@ openResourceComponent mres =
         , finalizer: Nothing
         }
     , initialState: initialState { selected = Lens.preview Lens._Right ∘ R.getPath =<< mres  }
-    , _State: NC._OpenResourceState
-    , _Query: NC.makeQueryPrism NC._OpenResourceQuery
+    , _State: CC._OpenResourceState
+    , _Query: CC.makeQueryPrism CC._OpenResourceQuery
     }
 
 render ∷ State → HTML
@@ -100,9 +99,9 @@ renderHighLOD state =
          $ [ HH.className "card-input-maximum-lod" ]
          ⊕ (B.hidden <$ guard (state.levelOfDetails ≠ High))
     ]
-    [ HH.div [ HP.classes [ Rc.openResourceCardMenu ] ]
+    [ HH.div [ HP.classes [ RC.openResourceCardMenu ] ]
       [ HH.button
-          ([ HP.class_ Rc.formButton
+          ([ HP.class_ RC.formButton
            ] ⊕ case parentDir of
                 Nothing →
                   [ HP.disabled true ]
@@ -135,7 +134,7 @@ renderHighLOD state =
     HH.li
       [ HP.classes
           $ ((guard (Just (R.getPath r) ≡ (Right <$> state.selected))) $> B.active)
-          ⊕ ((guard (R.hiddenTopLevel r)) $> Rc.itemHidden)
+          ⊕ ((guard (R.hiddenTopLevel r)) $> RC.itemHidden)
       , HE.onClick (HE.input_ (right ∘ ResourceSelected r))
       , ARIA.label labelTitle
 
@@ -152,38 +151,42 @@ renderHighLOD state =
       "Select " ⊕ R.resourcePath r
 
 glyphForResource ∷ R.Resource → HTML
-glyphForResource (R.File _) = glyph B.glyphiconFile
-glyphForResource (R.Workspace _) = glyph B.glyphiconBook
-glyphForResource (R.Directory _) = glyph B.glyphiconFolderOpen
-glyphForResource (R.Mount (R.Database _)) = glyph B.glyphiconHdd
-glyphForResource (R.Mount (R.View _)) = glyph B.glyphiconFile
-
+glyphForResource = case _ of
+  R.File _ → glyph B.glyphiconFile
+  R.Workspace _ → glyph B.glyphiconBook
+  R.Directory _ → glyph B.glyphiconFolderOpen
+  R.Mount (R.Database _) → glyph B.glyphiconHdd
+  R.Mount (R.View _) → glyph B.glyphiconFile
 
 eval ∷ QueryP ~> DSL
 eval = cardEval ⨁ openResourceEval
 
-cardEval ∷ Eq.CardEvalQuery ~> DSL
-cardEval (Eq.EvalCard info output next) = pure next
-cardEval (Eq.Save k) = do
-  mbRes ← H.gets _.selected
-  k ∘ Card.OpenResource <$>
-    case mbRes of
-      Just res → pure ∘ Just $ R.File res
-      Nothing → do
-        br ← H.gets _.browsing
-        pure ∘ Just $ R.Directory br
-cardEval (Eq.Load card next) = do
-  case card of
-    Card.OpenResource (Just (res @ R.File _)) → resourceSelected res
-    _ → pure unit
-  pure next
-cardEval (Eq.SetDimensions dims next) = do
-  H.modify
-    $ (_levelOfDetails
-       .~ if dims.width < 288.0 ∨ dims.height < 240.0
-            then Low
-            else High)
-  pure next
+cardEval ∷ CC.CardEvalQuery ~> DSL
+cardEval = case _ of
+  CC.EvalCard info output next →
+    pure next
+  CC.Save k → do
+    mbRes ← H.gets _.selected
+    k ∘ Card.OpenResource <$>
+      case mbRes of
+        Just res → pure ∘ Just $ R.File res
+        Nothing → do
+          br ← H.gets _.browsing
+          pure ∘ Just $ R.Directory br
+  CC.Load card next → do
+    case card of
+      Card.OpenResource (Just (res @ R.File _)) → resourceSelected res
+      _ → pure unit
+    pure next
+  CC.SetDimensions dims next → do
+    H.modify
+      $ (_levelOfDetails
+         .~ if dims.width < 288.0 ∨ dims.height < 240.0
+              then Low
+              else High)
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
 
 openResourceEval ∷ Query ~> DSL
 openResourceEval (ResourceSelected r next) = do
@@ -204,6 +207,7 @@ resourceSelected r = do
           H.modify (_browsing .~ dp)
           updateItems
       H.modify (_selected ?~ fp)
+      CC.raiseUpdatedC' CC.EvalModelUpdate
     Left dp → do
       H.modify
         $ (_browsing .~ dp)

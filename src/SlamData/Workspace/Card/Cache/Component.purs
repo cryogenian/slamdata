@@ -24,49 +24,48 @@ module SlamData.Workspace.Card.Cache.Component
 import SlamData.Prelude
 
 import Data.Lens ((.~), (?~))
-import Data.Path.Pathy as Pt
+import Data.Path.Pathy as Path
 
 import Halogen as H
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import Halogen.HTML.Events.Indexed as HE
 
 import SlamData.Effects (Slam)
-import SlamData.Render.CSS as Rc
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.CardType as Ct
-import SlamData.Workspace.Card.Common.EvalQuery as Eq
-import SlamData.Workspace.Card.Component as Cc
+import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.Cache.Component.Query (Query(..), QueryP)
 import SlamData.Workspace.Card.Cache.Component.State (State, initialState, _pathString, _confirmedPath)
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 
 import Utils.Path as PU
 
 type CacheHTML = H.ComponentHTML QueryP
 type CacheDSL = H.ComponentDSL State QueryP Slam
 
-cacheCardComponent ∷ Cc.CardComponent
-cacheCardComponent = Cc.makeCardComponent
-  { cardType: Ct.Cache
+cacheCardComponent ∷ CC.CardComponent
+cacheCardComponent = CC.makeCardComponent
+  { cardType: CT.Cache
   , component: H.component { render, eval }
   , initialState: initialState
-  , _State: Cc._CacheState
-  , _Query: Cc.makeQueryPrism Cc._CacheQuery
+  , _State: CC._CacheState
+  , _Query: CC.makeQueryPrism CC._CacheQuery
   }
 
 render ∷ State → CacheHTML
 render state =
   HH.div
     [ HP.classes
-        [ Rc.exploreCardEditor
-        , Rc.cardInput
+        [ RC.exploreCardEditor
+        , RC.cardInput
         ]
     ]
     [
-      HH.div [ HP.classes [ B.inputGroup, Rc.fileListField ] ]
+      HH.div [ HP.classes [ B.inputGroup, RC.fileListField ] ]
         [ HH.input
             [ HP.classes [ B.formControl ]
             , HP.value $ fromMaybe "" state.pathString
@@ -74,7 +73,7 @@ render state =
             , HE.onValueInput $ HE.input \s → right ∘ UpdatePathString s
             ]
         , HH.span
-            [ HP.classes [ B.inputGroupBtn, Rc.saveCardButton ] ]
+            [ HP.classes [ B.inputGroupBtn, RC.saveCardButton ] ]
             [ HH.button
               [ HP.classes [ B.btn, B.btnPrimary ]
               , HP.buttonType HP.ButtonButton
@@ -90,31 +89,37 @@ render state =
 eval ∷ QueryP ~> CacheDSL
 eval = coproduct cardEval saveEval
 
-cardEval ∷ Eq.CardEvalQuery ~> CacheDSL
-cardEval (Eq.EvalCard info output next) = do
-  for_ output case _ of
-    Port.TaggedResource { resource } →
-      H.modify
-        $ (_pathString ?~ Pt.printPath resource)
-        ∘ (_confirmedPath ?~ resource)
-    _ → pure unit
-  pure next
-cardEval (Eq.Save k) =
-  k ∘ Card.Cache ∘ map Pt.printPath <$> H.gets _.confirmedPath
-cardEval (Eq.Load card next) = do
-  case card of
-    Card.Cache s →
-      H.modify
-        $ (_pathString .~ s)
-        ∘ (_confirmedPath .~ (PU.parseFilePath =<< s))
-    _ → pure unit
-  pure next
-cardEval (Eq.SetDimensions _ next) = pure next
+cardEval ∷ CC.CardEvalQuery ~> CacheDSL
+cardEval = case _ of
+  CC.EvalCard info output next → do
+    for_ output case _ of
+      Port.TaggedResource { resource } →
+        H.modify
+          $ (_pathString ?~ Path.printPath resource)
+          ∘ (_confirmedPath ?~ resource)
+      _ → pure unit
+    pure next
+  CC.Save k →
+    k ∘ Card.Cache ∘ map Path.printPath <$> H.gets _.confirmedPath
+  CC.Load card next → do
+    case card of
+      Card.Cache s →
+        H.modify
+          $ (_pathString .~ s)
+          ∘ (_confirmedPath .~ (PU.parseFilePath =<< s))
+      _ → pure unit
+    pure next
+  CC.SetDimensions _ next →
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
 
 saveEval ∷ Query ~> CacheDSL
-saveEval (UpdatePathString str next) =
-  H.modify (_pathString ?~ str) $> next
-saveEval (ConfirmPathString next) = do
-  pathString ← H.gets _.pathString
-  H.modify $ \st → st { confirmedPath = PU.parseFilePath =<< pathString }
-  pure next
+saveEval = case _ of
+  UpdatePathString str next →
+    H.modify (_pathString ?~ str) $> next
+  ConfirmPathString next → do
+    pathString ← H.gets _.pathString
+    H.modify $ \st → st { confirmedPath = PU.parseFilePath =<< pathString }
+    CC.raiseUpdatedC' CC.EvalModelUpdate
+    pure next

@@ -40,7 +40,6 @@ import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
 import Data.StrMap as SM
 
-import Ace.Halogen.Component as Ace
 
 import DOM.HTML.Location as Location
 
@@ -65,12 +64,12 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Eval as Eval
-import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery(..), _NextQuery)
+import SlamData.Workspace.Card.Common.EvalQuery as CEQ
+import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery, _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Draftboard.Common as DBC
-import SlamData.Workspace.Card.JTable.Component as JTable
+import SlamData.Workspace.Card.Eval as Eval
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
@@ -424,46 +423,31 @@ updateBackSide = do
     $ Back.UpdateCardType ty
 
 createCard ∷ CT.CardType → DeckDSL Unit
-createCard cardType =
-  H.gets _.id >>= \deckId → do
-    (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
-    setDeckState st
-    runCard (deckId × newCardId)
-    updateActiveCardAndIndicator
-    triggerSave
+createCard cardType = do
+  deckId ← H.gets _.id
+  (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
+  setDeckState st
+  runCard (deckId × newCardId)
+  updateActiveCardAndIndicator
+  triggerSave
 
 peekCardInner
   ∷ ∀ a
   . DeckId × CardId
   → H.ChildF Unit InnerCardQuery a
   → DeckDSL Unit
-peekCardInner cardCoord (H.ChildF _ q) =
-  const (pure unit) ⨁ (peekAnyCard cardCoord) $ q
+peekCardInner cardCoord = H.runChildF >>>
+  (peekCardEvalQuery cardCoord ⨁ (peekAnyCard cardCoord))
+
+peekCardEvalQuery ∷ ∀ a. DeckId × CardId → CEQ.CardEvalQuery a → DeckDSL Unit
+peekCardEvalQuery cardCoord = case _ of
+  CEQ.ModelUpdated CEQ.StateOnlyUpdate _ → triggerSave
+  CEQ.ModelUpdated CEQ.EvalModelUpdate _ → runCard cardCoord
+  _ → pure unit
 
 peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
 peekAnyCard cardCoord q = do
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
-  when (queryShouldRun q) $ runCard cardCoord
-  when (queryShouldSave q) triggerSave
-  pure unit
-
-queryShouldRun ∷ ∀ a. AnyCardQuery a → Boolean
-queryShouldRun (CacheQuery q) = false
-queryShouldRun (JTableQuery q) = coproduct (const true) jTableQueryShouldRun q
-queryShouldRun _ = true
-
-jTableQueryShouldRun ∷ ∀ a. JTable.Query a → Boolean
-jTableQueryShouldRun (JTable.StartEnterCustomPageSize _) = false
-jTableQueryShouldRun _ = true
-
-queryShouldSave  ∷ ∀ a. AnyCardQuery a → Boolean
-queryShouldSave (AceQuery q) = coproduct (const true) aceQueryShouldSave q
-queryShouldSave _ = true
-
-aceQueryShouldSave ∷ ∀ p a. H.ChildF p Ace.AceQuery a → Boolean
-aceQueryShouldSave = H.runChildF >>> case _ of
-  Ace.TextChanged _ → true
-  _ → false
 
 nextActionCard ∷ Card.Model
 nextActionCard =
@@ -677,7 +661,7 @@ runPendingCards = do
     void $ H.query' cpCard (CardSlot cardCoord) $ left $ H.action (UpdateCard input output)
 
 -- | Enqueues the card with the specified ID in the set of cards that are
--- | pending to run and enqueues a debounced H.query to trigger the cards to
+-- | pending to run and enqueues a debounced query to trigger the cards to
 -- | actually run.
 runCard ∷ DeckId × CardId → DeckDSL Unit
 runCard coord = do
@@ -685,7 +669,7 @@ runCard coord = do
   fireDebouncedQuery' (Milliseconds 500.0) DCS._runTrigger RunPendingCards
 
 -- | Triggers the H.query for autosave. This does not immediate perform the save
--- | H.action, but instead enqueues a debounced H.query to trigger the actual save.
+-- | H.action, but instead enqueues a debounced query to trigger the actual save.
 triggerSave ∷ DeckDSL Unit
 triggerSave = fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
 

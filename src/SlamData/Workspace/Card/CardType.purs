@@ -24,7 +24,6 @@ module SlamData.Workspace.Card.CardType
   , aceCardGlyph
   , aceCardClasses
   , aceMode
-  , nextCardTypes
   , controllable
   , insertableCardTypes
 
@@ -36,7 +35,6 @@ import SlamData.Prelude
 import Control.Monad.Error.Class (throwError)
 
 import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson)
-import Data.Array as Arr
 
 import Halogen.HTML as H
 import Halogen.HTML.Indexed as HH
@@ -222,39 +220,6 @@ aceCardClasses SQLMode = [ H.className "sd-card-sql" ]
 aceMode ∷ AceMode → String
 aceMode MarkdownMode = "ace/mode/markdown"
 aceMode SQLMode = "ace/mode/sql"
-
-nextCardTypes ∷ Maybe CardType → Array CardType
-nextCardTypes Nothing =
-  [ Ace SQLMode
-  , Ace MarkdownMode
-  , OpenResource
-  , API
-  ]
-nextCardTypes (Just ct) =
-  case ct of
-    Search → dataSourceCards
-    Ace SQLMode → dataSourceCards
-    Viz → [ Chart ]
-    API → [ APIResults ]
-    Ace MarkdownMode → [ Markdown ]
-    Markdown → [ Ace SQLMode ]
-    JTable → dataSourceOutput `Arr.snoc` Cache
-    Download → [ ]
-    APIResults →  [ Ace SQLMode ]
-    Chart → [ ]
-    NextAction → [ ]
-    Cache → dataSourceOutput `Arr.snoc` JTable
-    OpenResource → dataSourceCards
-    DownloadOptions → [ Download ]
-    Draftboard → [ ]
-    ErrorCard → [ ]
-    PendingCard → [ ]
-  where
-  dataSourceOutput =
-    [ DownloadOptions, Search, Ace SQLMode, Viz
-    ]
-  dataSourceCards =
-    (dataSourceOutput `Arr.snoc` JTable) `Arr.snoc` Cache
 
 controllable ∷ CardType → Boolean
 controllable NextAction = false

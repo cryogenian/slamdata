@@ -16,7 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Markdown.Component
   ( markdownComponent
-  , queryShouldRun
   , module SlamData.Workspace.Card.Markdown.Component.Query
   , module SlamData.Workspace.Card.Markdown.Component.State
   ) where
@@ -37,9 +36,8 @@ import Halogen.HTML.Properties.Indexed as HP
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.CardType as Ct
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..))
-import SlamData.Workspace.Card.Component (CardQueryP, CardStateP, makeCardComponent, makeQueryPrism', _MarkdownState, _MarkdownQuery)
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Markdown.Component.Query (Query(..), QueryP)
 import SlamData.Workspace.Card.Markdown.Component.State (State, StateP, initialState, formStateToVarMap)
 import SlamData.Workspace.Card.Port as Port
@@ -49,43 +47,35 @@ import Text.Markdown.SlamDown.Halogen.Component as SD
 
 markdownComponent
   :: CID.CardId
-  -> H.Component CardStateP CardQueryP Slam
-markdownComponent cardId = makeCardComponent
-  { cardType: Ct.Markdown
+  -> H.Component CC.CardStateP CC.CardQueryP Slam
+markdownComponent cardId = CC.makeCardComponent
+  { cardType: CT.Markdown
   , component:
       H.lifecycleParentComponent
         { render: render ("card-" ++ CID.cardIdToString cardId)
         , eval
-        , peek: Nothing
+        , peek: Just (peek ∘ H.runChildF)
         , initializer: Just $ right (H.action Init)
         , finalizer: Nothing
         }
   , initialState: H.parentState initialState
-  , _State: _MarkdownState
-  , _Query: makeQueryPrism' _MarkdownQuery
+  , _State: CC._MarkdownState
+  , _Query: CC.makeQueryPrism' CC._MarkdownQuery
   }
-
-queryShouldRun ∷ ∀ a. QueryP a → Boolean
-queryShouldRun = coproduct (const false) (pred ∘ H.runChildF)
-  where
-  pred (SD.TextBoxChanged _ _ _) = true
-  pred (SD.CheckBoxChanged _ _ _ _) = true
-  pred (SD.DropDownChanged _ _ _) = true
-  pred (SD.RadioButtonChanged _ _ _) = true
-  pred _ = false
 
 type MarkdownHTML a =
   H.ParentHTML
     (SD.SlamDownState Port.VarMapValue)
-    (CardEvalQuery ⨁ Query)
+    (CC.CardEvalQuery ⨁ Query)
     (SD.SlamDownQuery Port.VarMapValue)
     Slam
     a
+
 type MarkdownDSL =
   H.ParentDSL
     State
     (SD.SlamDownState Port.VarMapValue)
-    (CardEvalQuery ⨁ Query)
+    (CC.CardEvalQuery ⨁ Query)
     (SD.SlamDownQuery Port.VarMapValue)
     Slam
     Unit
@@ -106,7 +96,7 @@ render formName st =
             }
         ]
 
-eval ∷ (CardEvalQuery ⨁ Query) ~> MarkdownDSL
+eval ∷ (CC.CardEvalQuery ⨁ Query) ~> MarkdownDSL
 eval = evalCEQ ⨁ evalQ
 
 evalQ ∷ Query ~> MarkdownDSL
@@ -115,23 +105,35 @@ evalQ (Init next) = do
   H.modify (_ { browserFeatures = Just browserFeatures })
   pure next
 
-evalCEQ ∷ CardEvalQuery ~> MarkdownDSL
-evalCEQ (EvalCard info output next) = do
-  for_ (info.input ^? Lens._Just ∘ Port._SlamDown) \sd → do
-    H.modify (_ { input = Just sd })
-    void $ H.query unit $ H.action (SD.SetDocument sd)
-  pure next
-evalCEQ (Save k) = do
-  input ← fromMaybe mempty <$> H.gets _.input
-  state ← fromMaybe SM.empty <$> H.query unit (H.request SD.GetFormState)
-  pure ∘ k $ Card.Markdown { input, state }
-evalCEQ (Load card next) = do
-  case card of
-    Card.Markdown { input, state } →
-      void $ do
-        H.modify (_ { input = Just input })
-        H.query unit $ H.action (SD.SetDocument input)
-        H.query unit $ H.action (SD.PopulateForm state)
-    _ → pure unit
-  pure next
-evalCEQ (SetDimensions _ next) = pure next
+evalCEQ ∷ CC.CardEvalQuery ~> MarkdownDSL
+evalCEQ = case _ of
+  CC.EvalCard info output next → do
+    for_ (info.input ^? Lens._Just ∘ Port._SlamDown) \sd → do
+      H.modify (_ { input = Just sd })
+      void $ H.query unit $ H.action (SD.SetDocument sd)
+    pure next
+  CC.Save k → do
+    input ← fromMaybe mempty <$> H.gets _.input
+    state ← fromMaybe SM.empty <$> H.query unit (H.request SD.GetFormState)
+    pure ∘ k $ Card.Markdown { input, state }
+  CC.Load card next → do
+    case card of
+      Card.Markdown { input, state } →
+        void $ do
+          H.modify (_ { input = Just input })
+          H.query unit $ H.action (SD.SetDocument input)
+          H.query unit $ H.action (SD.PopulateForm state)
+      _ → pure unit
+    pure next
+  CC.SetDimensions _ next →
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
+
+peek ∷ ∀ x. SD.SlamDownQuery Port.VarMapValue x → MarkdownDSL Unit
+peek = case _ of
+  SD.TextBoxChanged _ _ _ → CC.raiseUpdatedP' CC.EvalModelUpdate
+  SD.CheckBoxChanged _ _ _ _ → CC.raiseUpdatedP' CC.EvalModelUpdate
+  SD.DropDownChanged _ _ _ → CC.raiseUpdatedP' CC.EvalModelUpdate
+  SD.RadioButtonChanged _ _ _ → CC.raiseUpdatedP' CC.EvalModelUpdate
+  _ → pure unit

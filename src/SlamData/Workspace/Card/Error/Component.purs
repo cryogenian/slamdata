@@ -22,7 +22,6 @@ import SlamData.Effects (Slam)
 import Data.Lens ((^?))
 import Data.Lens as Lens
 
-import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -63,15 +62,16 @@ render st =
 eval ∷ ECQ.QueryP ~> DSL
 eval = coproduct cardEval ECQ.initiality
 
-cardEval ∷ CEQ.CardEvalQuery ~> DSL
-cardEval q =
-  case q of
-    CEQ.EvalCard {input} output next → do
-      H.modify ∘ Lens.set ECS._message $ input ^? Lens._Just ∘ Port._CardError
-      pure next
-    CEQ.SetDimensions _ next →
-      pure next
-    CEQ.Save k →
-      pure $ k Card.ErrorCard
-    CEQ.Load _ next →
-      pure next
+cardEval ∷ CC.CardEvalQuery ~> DSL
+cardEval = case _ of
+  CC.EvalCard {input} output next → do
+    H.modify ∘ Lens.set ECS._message $ input ^? Lens._Just ∘ Port._CardError
+    pure next
+  CC.SetDimensions _ next →
+    pure next
+  CC.Save k →
+    pure $ k Card.ErrorCard
+  CC.Load _ next →
+    pure next
+  CC.ModelUpdated _ next →
+    pure next

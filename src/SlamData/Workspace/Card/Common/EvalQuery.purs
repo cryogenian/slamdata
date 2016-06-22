@@ -16,14 +16,25 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Common.EvalQuery
   ( CardEvalQuery(..)
+  , ModelUpdateType(..)
+  , raiseUpdatedC
+  , raiseUpdatedC'
+  , raiseUpdatedP
+  , raiseUpdatedP'
   , module SlamData.Workspace.Card.Eval.CardEvalT
   ) where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVAR)
+
+import Halogen as H
+import Halogen.Component.Utils (raise, raise')
+
 import SlamData.Workspace.Card.Eval.CardEvalT (CardEvalInput, CardEvalT, runCardEvalT, runCardEvalT_, temporaryOutputResource)
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Model (AnyCardModel)
+import SlamData.Workspace.Card.Port as Port
 
 -- | The query algebra shared by the inner parts of a card component.
 -- |
@@ -32,8 +43,63 @@ import SlamData.Workspace.Card.Model (AnyCardModel)
 -- |   card in the deck is provided, along with the output from the card's model
 -- |   evaluator. The card cannot return a new port value, it's eval is only
 -- |   allowed to update the card component state.
+-- |
+-- | - `Save` requests the current model value for the card, used when
+-- |   serialising model and when running the cards in a deck.
+-- |
+-- | - `Load` attempts to populate the card with a model value. This function
+-- |   is partial, in the sense that the passed model should use the appropriate
+-- |   constructor for the card type. The behaviour is unspecified when a
+-- |   mismatched value is passed in.
+-- |
+-- | - `SetDimensions` is used to notify the card of the size of the deck upon
+-- |   resize and initialisation.
+-- |
+-- | - `ModelUpdated` is a query the card sends to itself so that the deck can
+-- |   peek the query and know that the deck needs saving/evaluating.
 data CardEvalQuery a
   = EvalCard CardEvalInput (Maybe Port.Port) a
   | Save (AnyCardModel → a)
   | Load AnyCardModel a
   | SetDimensions { width ∷ Number, height ∷ Number } a
+  | ModelUpdated ModelUpdateType a
+
+-- | This type is used to indicate whether a model update only affects the
+-- | internal state of the card (and therefore only requires saving), or whether
+-- | the model changes in a way that will affect the evaluated output of the
+-- | card.
+data ModelUpdateType
+  = StateOnlyUpdate
+  | EvalModelUpdate
+
+-- | Raises a `ModelUpdateType` self-query for a card that is a standalone
+-- | component.
+raiseUpdatedC
+  ∷ ∀ s eff
+  . ModelUpdateType
+  → H.ComponentDSL s CardEvalQuery (Aff (avar ∷ AVAR | eff)) Unit
+raiseUpdatedC updateType = raise $ H.action $ ModelUpdated updateType
+
+-- | Raises a `ModelUpdateType` self-query for a card that is a standalone
+-- | component with an expanded query algebra.
+raiseUpdatedC'
+  ∷ ∀ f s eff
+  . ModelUpdateType
+  → H.ComponentDSL s (CardEvalQuery ⨁ f) (Aff (avar ∷ AVAR | eff)) Unit
+raiseUpdatedC' updateType = raise $ left $ H.action $ ModelUpdated updateType
+
+-- | Raises a `ModelUpdateType` self-query for a card that is a parent
+-- | component.
+raiseUpdatedP
+  ∷ ∀ s s' f' p eff
+  . ModelUpdateType
+  → H.ParentDSL s s' CardEvalQuery f' (Aff (avar ∷ AVAR | eff)) p Unit
+raiseUpdatedP updateType = raise' $ H.action $ ModelUpdated updateType
+
+-- | Raises a `ModelUpdateType` self-query for a card that is a parent
+-- | component with an expanded query algebra.
+raiseUpdatedP'
+  ∷ ∀ s s' f f' p eff
+  . ModelUpdateType
+  → H.ParentDSL s s' (CardEvalQuery ⨁ f) f' (Aff (avar ∷ AVAR | eff)) p Unit
+raiseUpdatedP' updateType = raise' $ left $ H.action $ ModelUpdated updateType

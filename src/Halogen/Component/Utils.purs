@@ -33,72 +33,72 @@ import Halogen.Query.EventSource as He
 import Utils.AffableProducer (produce)
 
 withCanceler
-  :: forall a e g
-   . (Bind g, Affable (avar :: AVAR|e) g)
-  => (Canceler (avar :: AVAR|e) -> g Unit)
-  -> Aff (avar :: AVAR|e) a
-  -> g a
+  ∷ ∀ a eff g
+  . (Bind g, Affable (avar ∷ AVAR | eff) g)
+  ⇒ (Canceler (avar ∷ AVAR | eff) → g Unit)
+  → Aff (avar ∷ AVAR | eff) a
+  → g a
 withCanceler act aff = do
-  v <- fromAff makeVar
-  canceler <- fromAff $ forkAff do
-    res <- aff
+  v ← fromAff makeVar
+  canceler ← fromAff $ forkAff do
+    res ← aff
     putVar v res
   act canceler
   fromAff $ takeVar v
 
 liftWithCanceler
-  :: forall s f e a
-   . (Canceler (avar :: AVAR|e)-> Unit -> f Unit)
-  -> Aff (avar :: AVAR|e) a
-  -> H.ComponentDSL s f (Aff (avar :: AVAR|e)) a
+  ∷ ∀ s f eff a
+  . (Canceler (avar ∷ AVAR | eff) → Unit → f Unit)
+  → Aff (avar ∷ AVAR | eff) a
+  → H.ComponentDSL s f (Aff (avar ∷ AVAR | eff)) a
 liftWithCanceler f aff = do
-  withCanceler (\c -> sendAfter zero $ f c unit) aff
+  withCanceler (\c → sendAfter zero $ f c unit) aff
 
 liftWithCanceler'
-  :: forall s s' f f' p a e
-   . (Canceler (avar :: AVAR|e) -> Unit -> f Unit)
-  -> Aff (avar :: AVAR|e) a
-  -> H.ParentDSL s s' f f' (Aff (avar :: AVAR|e)) p a
+  ∷ ∀ s s' f f' p a eff
+  . (Canceler (avar ∷ AVAR | eff) → Unit → f Unit)
+  → Aff (avar ∷ AVAR | eff) a
+  → H.ParentDSL s s' f f' (Aff (avar ∷ AVAR | eff)) p a
 liftWithCanceler' f aff = do
-  withCanceler (\c -> sendAfter' zero $ f c unit) aff
+  withCanceler (\c → sendAfter' zero $ f c unit) aff
 
 sendAfter
-  :: forall s f e
-   . Milliseconds
-  -> f Unit
-  -> H.ComponentDSL s f (Aff (avar :: AVAR|e)) Unit
+  ∷ ∀ s f eff
+  . Milliseconds
+  → f Unit
+  → H.ComponentDSL s f (Aff (avar ∷ AVAR | eff)) Unit
 sendAfter ms action =
   H.subscribe $ oneTimeEventSource ms action
 
 sendAfter'
-  :: forall s s' f f' p e
-   . Milliseconds
-  -> f Unit
-  -> H.ParentDSL s s' f f' (Aff (avar :: AVAR|e)) p Unit
+  ∷ ∀ s s' f f' p eff
+  . Milliseconds
+  → f Unit
+  → H.ParentDSL s s' f f' (Aff (avar ∷ AVAR | eff)) p Unit
 sendAfter' ms action =
   H.subscribe' $ oneTimeEventSource ms action
 
 raise
-  :: forall s f e
-   . f Unit
-  -> H.ComponentDSL s f (Aff (avar :: AVAR|e)) Unit
+  ∷ ∀ s f eff
+  . f Unit
+  → H.ComponentDSL s f (Aff (avar ∷ AVAR | eff)) Unit
 raise = sendAfter (Milliseconds 0.0)
 
 raise'
-  :: forall s s' f f' p e
-   . f Unit
-  -> H.ParentDSL s s' f f' (Aff (avar :: AVAR|e)) p Unit
+  ∷ ∀ s s' f f' p eff
+  . f Unit
+  → H.ParentDSL s s' f f' (Aff (avar ∷ AVAR | eff)) p Unit
 raise' = sendAfter' (Milliseconds 0.0)
 
 oneTimeEventSource
-  :: forall f e
-   . Milliseconds
-  -> f Unit
-  -> He.EventSource f (Aff (avar :: AVAR|e))
+  ∷ ∀ f eff
+  . Milliseconds
+  → f Unit
+  → He.EventSource f (Aff (avar ∷ AVAR | eff))
 oneTimeEventSource (Milliseconds n) action =
   He.EventSource
   $ SCR.producerToStallingProducer
-  $ produce \emit ->
+  $ produce \emit →
       runAff (const $ pure unit) (const $ pure unit)
       $ later' (Data.Int.floor $ Math.max n zero)
       $ liftEff do

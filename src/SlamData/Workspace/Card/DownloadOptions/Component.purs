@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.DownloadOptions.Component where
+module SlamData.Workspace.Card.DownloadOptions.Component (comp) where
 
 import SlamData.Prelude
 
@@ -28,31 +28,29 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Common.EvalQuery as Ec
-import SlamData.Workspace.Card.Component as Cc
-import SlamData.Workspace.Card.Component (makeCardComponent, makeQueryPrism, _DownloadOptionsState, _DownloadOptionsQuery)
+import SlamData.Download.Model as DL
+import SlamData.Download.Render as DLR
+import SlamData.Effects (Slam)
+import SlamData.Render.Common (glyph)
+import SlamData.Render.CSS as RC
+import SlamData.Workspace.Card.CardType (CardType(DownloadOptions))
+import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.DownloadOptions.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.DownloadOptions.Component.State (State, _compress, _options, _source, initialState, _levelOfDetails)
-import SlamData.Render.CSS as Rc
-import SlamData.Effects (Slam)
-import SlamData.Download.Model as D
-import SlamData.Download.Render as Rd
-import SlamData.Workspace.Card.CardType (CardType(DownloadOptions))
-import SlamData.Workspace.Card.Port as P
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
-import SlamData.Render.Common (glyph)
 
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-comp ∷ Cc.CardComponent
-comp = makeCardComponent
+comp ∷ CC.CardComponent
+comp = CC.makeCardComponent
   { cardType: DownloadOptions
   , component: H.component {render, eval}
   , initialState: initialState
-  , _State: _DownloadOptionsState
-  , _Query: makeQueryPrism _DownloadOptionsQuery
+  , _State: CC._DownloadOptionsState
+  , _Query: CC.makeQueryPrism CC._DownloadOptionsQuery
   }
 
 render ∷ State → HTML
@@ -75,7 +73,7 @@ renderHighLOD state =
     Just _ →
       HH.div
         [ HP.classes
-            $ [ Rc.downloadCardEditor
+            $ [ RC.downloadCardEditor
               , HH.className "card-input-maximum-lod"
               ]
             ⊕ hideClasses
@@ -106,20 +104,18 @@ renderLowLOD state =
   where
   hideClasses = guard (state.levelOfDetails ≠ Low) $> B.hidden
 
-
 renderDownloadConfiguration ∷ State → HTML
 renderDownloadConfiguration state =
   HH.div
-    [ HP.classes [ Rc.downloadConfiguration ] ]
+    [ HP.classes [ RC.downloadConfiguration ] ]
     $ [ either optionsCSV optionsJSON state.options ]
     ⊕ [ compress state ]
 
+optionsCSV ∷ DL.CSVOptions → HTML
+optionsCSV = DLR.optionsCSV (\lens v → right ∘ (ModifyCSVOpts (lens .~ v)))
 
-optionsCSV ∷ D.CSVOptions → HTML
-optionsCSV = Rd.optionsCSV (\lens v → right ∘ (ModifyCSVOpts (lens .~ v)))
-
-optionsJSON ∷ D.JSONOptions → HTML
-optionsJSON = Rd.optionsJSON (\lens v → right ∘ (ModifyJSONOpts (lens .~ v)))
+optionsJSON ∷ DL.JSONOptions → HTML
+optionsJSON = DLR.optionsJSON (\lens v → right ∘ (ModifyJSONOpts (lens .~ v)))
 
 compress ∷ State → HTML
 compress state =
@@ -142,52 +138,61 @@ compress state =
 renderDownloadTypeSelector ∷ State → HTML
 renderDownloadTypeSelector state =
   HH.div
-    [ HP.classes [ Rc.downloadTypeSelector ] ]
+    [ HP.classes [ RC.downloadTypeSelector ] ]
     [ HH.img
         [ HP.src "img/csv.svg"
         , HP.classes (guard (isLeft state.options) $> B.active)
         , HP.title "Comma separated values"
-        , HE.onClick (HE.input_ (right ∘ SetOutput D.CSV))
+        , HE.onClick (HE.input_ (right ∘ SetOutput DL.CSV))
         ]
     , HH.img
         [ HP.src "img/json.svg"
         , HP.classes (guard (isRight state.options) $> B.active)
         , HP.title "JSON"
-        , HE.onClick (HE.input_ (right ∘ SetOutput D.JSON))
+        , HE.onClick (HE.input_ (right ∘ SetOutput DL.JSON))
         ]
     ]
 
 eval ∷ QueryP ~> DSL
 eval = coproduct cardEval downloadOptsEval
 
-cardEval ∷ Ec.CardEvalQuery ~> DSL
-cardEval (Ec.EvalCard info output next) = do
-  H.modify $ _source .~ info.input ^? Lens._Just ∘ P._Resource
-  pure next
-cardEval (Ec.Save k) = map (k ∘ Card.DownloadOptions) H.get
-cardEval (Ec.Load card next) = do
-  case card of
-    Card.DownloadOptions st → H.set st
-    _ → pure unit
-  pure next
-cardEval (Ec.SetDimensions dims next) = do
-  H.modify
-    $ _levelOfDetails
-    .~ if dims.width < 648.0 ∨ dims.height < 240.0
-         then Low
-         else High
-  pure next
+cardEval ∷ CC.CardEvalQuery ~> DSL
+cardEval = case _ of
+  CC.EvalCard info output next → do
+    H.modify $ _source .~ info.input ^? Lens._Just ∘ Port._Resource
+    pure next
+  CC.Save k →
+    map (k ∘ Card.DownloadOptions) H.get
+  CC.Load card next → do
+    case card of
+      Card.DownloadOptions st → H.set st
+      _ → pure unit
+    pure next
+  CC.SetDimensions dims next → do
+    H.modify
+      $ _levelOfDetails
+      .~ if dims.width < 648.0 ∨ dims.height < 240.0
+           then Low
+           else High
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
 
 downloadOptsEval ∷ Query ~> DSL
-downloadOptsEval (SetOutput ty next) = do
-  options ← H.gets _.options
-  case ty, options of
-    D.CSV, (Right _) → H.modify _{options = Left D.initialCSVOptions}
-    D.JSON, (Left _) → H.modify _{options = Right D.initialJSONOptions}
-    _, _ → pure unit
-  pure next
-downloadOptsEval (ModifyCSVOpts fn next) =
- H.modify (_options ∘ _Left %~ fn) $> next
-downloadOptsEval (ModifyJSONOpts fn next) =
-  H.modify (_options ∘ _Right %~ fn) $> next
-downloadOptsEval (ToggleCompress next) = H.modify (_compress %~ not) $> next
+downloadOptsEval q = do
+  n ← case q of
+    SetOutput ty next → do
+      options ← H.gets _.options
+      case ty, options of
+        DL.CSV, (Right _) → H.modify _{options = Left DL.initialCSVOptions}
+        DL.JSON, (Left _) → H.modify _{options = Right DL.initialJSONOptions}
+        _, _ → pure unit
+      pure next
+    ModifyCSVOpts fn next →
+      H.modify (_options ∘ _Left %~ fn) $> next
+    ModifyJSONOpts fn next →
+      H.modify (_options ∘ _Right %~ fn) $> next
+    ToggleCompress next →
+      H.modify (_compress %~ not) $> next
+  CC.raiseUpdatedC' CC.EvalModelUpdate
+  pure n

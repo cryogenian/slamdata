@@ -52,15 +52,14 @@ import SlamData.Quasar.Data as Quasar
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Card.CardId as CID
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Common (CardOptions)
+import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Common (deleteGraph)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, QueryC)
 import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _inserting, modelFromState)
-import SlamData.Workspace.Card.CardId as CID
-import SlamData.Workspace.Card.CardType as Ct
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Common (CardOptions)
-import SlamData.Workspace.Card.Common.EvalQuery as Ceq
-import SlamData.Workspace.Card.Component as Cp
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -83,17 +82,17 @@ levelOfDetails dl =
     then LOD.High
     else LOD.Low
 
-draftboardComponent ∷ CardOptions → Cp.CardComponent
-draftboardComponent opts = Cp.makeCardComponent
-  { cardType: Ct.Draftboard
+draftboardComponent ∷ CardOptions → CC.CardComponent
+draftboardComponent opts = CC.makeCardComponent
+  { cardType: CT.Draftboard
   , component: H.parentComponent
       { render: render opts
       , eval: coproduct evalCard (evalBoard opts)
       , peek: Just (peek opts)
       }
   , initialState: H.parentState initialState
-  , _State: Cp._DraftboardState
-  , _Query: Cp.makeQueryPrism' Cp._DraftboardQuery
+  , _State: CC._DraftboardState
+  , _Query: CC.makeQueryPrism' CC._DraftboardQuery
   }
 
 render ∷ CardOptions → State → DraftboardHTML
@@ -155,17 +154,23 @@ render opts state =
     CSS.width $ CSS.px $ gridToPx $ size'.width + 1.0
     CSS.height $ CSS.px $ gridToPx $ size'.height + 1.0
 
-evalCard ∷ Natural Ceq.CardEvalQuery DraftboardDSL
-evalCard (Ceq.EvalCard _ _ next) = pure next
-evalCard (Ceq.SetDimensions _ next) = pure next
-evalCard (Ceq.Save k) = map (k ∘ Card.Draftboard ∘ modelFromState) H.get
-evalCard (Ceq.Load card next) = do
-  case card of
-    Card.Draftboard model → do
-      H.modify _ { decks = model.decks }
-      loadDecks
-    _ → pure unit
-  pure next
+evalCard ∷ Natural CC.CardEvalQuery DraftboardDSL
+evalCard = case _ of
+  CC.EvalCard _ _ next →
+    pure next
+  CC.SetDimensions _ next →
+    pure next
+  CC.Save k →
+    map (k ∘ Card.Draftboard ∘ modelFromState) H.get
+  CC.Load card next → do
+    case card of
+      Card.Draftboard model → do
+        H.modify _ { decks = model.decks }
+        loadDecks
+      _ → pure unit
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
 
 evalBoard ∷ CardOptions → Natural Query DraftboardDSL
 evalBoard _ (Grabbing deckId ev next) = do
@@ -177,7 +182,8 @@ evalBoard _ (Grabbing deckId ev next) = do
               , y = rect.y + (pxToGrid d.offsetY)
               }
         H.modify $ _moving ?~ Tuple deckId newRect
-    Drag.Done _ →
+    Drag.Done _ → do
+      CC.raiseUpdatedP' CC.StateOnlyUpdate
       stopDragging
   pure next
 evalBoard _ (Resizing deckId ev next) = do
@@ -189,7 +195,8 @@ evalBoard _ (Resizing deckId ev next) = do
               , height = rect.height + (pxToGrid d.offsetY)
               }
         H.modify $ _moving ?~ Tuple deckId newRect
-    Drag.Done _ →
+    Drag.Done _ → do
+      CC.raiseUpdatedP' CC.StateOnlyUpdate
       stopDragging
   pure next
 evalBoard _ (SetElement el next) = do
@@ -206,6 +213,7 @@ evalBoard opts (AddDeck e next) = do
         { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
         , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
         }
+  CC.raiseUpdatedP' CC.StateOnlyUpdate
   pure next
 evalBoard opts (LoadDeck deckId next) = do
   queryDeck deckId
@@ -218,8 +226,12 @@ peek opts (H.ChildF deckId q) = flip peekOpaqueQuery q
   case _ of
     DCQ.GrabDeck ev _ → startDragging deckId ev Grabbing
     DCQ.ResizeDeck ev _ → startDragging deckId ev Resizing
-    DCQ.DoAction DCQ.DeleteDeck _ → deleteDeck opts deckId
-    DCQ.DoAction DCQ.Wrap _ → wrapDeck opts deckId
+    DCQ.DoAction DCQ.DeleteDeck _ → do
+      deleteDeck opts deckId
+      CC.raiseUpdatedP' CC.StateOnlyUpdate
+    DCQ.DoAction DCQ.Wrap _ → do
+      wrapDeck opts deckId
+      CC.raiseUpdatedP' CC.StateOnlyUpdate
     _ → pure unit
 
   where

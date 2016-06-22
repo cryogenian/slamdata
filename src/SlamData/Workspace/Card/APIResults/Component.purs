@@ -29,21 +29,21 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.APIResults.Component.Query (QueryP)
 import SlamData.Workspace.Card.APIResults.Component.State (State, initialState)
-import SlamData.Workspace.Card.Component as NC
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.CardType as Ct
 
 type APIResultsDSL = H.ComponentDSL State QueryP Slam
 
-apiResultsComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
+apiResultsComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 apiResultsComponent =
-  NC.makeCardComponent
-    { cardType: Ct.APIResults
+  CC.makeCardComponent
+    { cardType: CT.APIResults
     , component: H.component { render, eval }
     , initialState: initialState
-    , _State: NC._APIResultsState
-    , _Query: NC.makeQueryPrism NC._APIResultsQuery
+    , _State: CC._APIResultsState
+    , _Query: CC.makeQueryPrism CC._APIResultsQuery
     }
 
 render ∷ State → H.ComponentHTML QueryP
@@ -73,17 +73,20 @@ render { varMap } =
           ]
       ]
 
-eval :: Natural QueryP APIResultsDSL
+eval ∷ Natural QueryP APIResultsDSL
 eval = coproduct evalCard (absurd ∘ getConst)
 
-
-evalCard ∷ Natural NC.CardEvalQuery APIResultsDSL
-evalCard q =
-  case q of
-    NC.EvalCard info output next → do
-      for (info.input >>= Lens.preview Port._VarMap) \varMap →
-        H.modify (_ { varMap = varMap })
-      pure next
-    NC.Save k -> pure $ k Card.APIResults
-    NC.Load _ next -> pure next
-    NC.SetDimensions _ next -> pure next
+evalCard ∷ Natural CC.CardEvalQuery APIResultsDSL
+evalCard = case _ of
+  CC.EvalCard info output next → do
+    for (info.input >>= Lens.preview Port._VarMap) \varMap →
+      H.modify (_ { varMap = varMap })
+    pure next
+  CC.Save k →
+    pure $ k Card.APIResults
+  CC.Load _ next →
+    pure next
+  CC.SetDimensions _ next →
+    pure next
+  CC.ModelUpdated _ next →
+    pure next

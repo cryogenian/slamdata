@@ -19,12 +19,11 @@ module SlamData.Workspace.Card.Pending.Component where
 import SlamData.Prelude
 import SlamData.Effects (Slam)
 
-import SlamData.Workspace.Card.Common.EvalQuery as CEQ
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Pending.Component.State as PCS
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Pending.Component.Query as PCQ
+import SlamData.Workspace.Card.Pending.Component.State as PCS
 
 import Halogen as H
 import Halogen.Themes.Bootstrap3 as B
@@ -56,14 +55,16 @@ render st =
 eval ∷ PCQ.QueryP ~> DSL
 eval = coproduct cardEval PCQ.initiality
 
-cardEval ∷ CEQ.CardEvalQuery ~> DSL
+cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval q =
   case q of
-    CEQ.EvalCard _ _ next → do
+    CC.EvalCard _ _ next → do
       pure next
-    CEQ.SetDimensions _ next →
-      pure next
-    CEQ.Save k →
+    CC.Save k →
       pure $ k Card.PendingCard
-    CEQ.Load _ next →
+    CC.Load _ next →
+      pure next
+    CC.SetDimensions _ next →
+      pure next
+    CC.ModelUpdated _ next →
       pure next

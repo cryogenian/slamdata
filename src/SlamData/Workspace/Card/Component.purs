@@ -36,13 +36,13 @@ import Halogen.HTML.Properties.Indexed as HP
 import Math as Math
 
 import SlamData.Effects (Slam)
+import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType (cardClasses)
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Component.Render as CR
 import SlamData.Workspace.Card.Component.State as CS
-import SlamData.Render.CSS as CSS
+import SlamData.Workspace.Card.Model as Card
 
 import Utils.DOM as DOMUtils
 

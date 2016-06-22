@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Viz.Component where
+module SlamData.Workspace.Card.Viz.Component (vizComponent) where
 
 import SlamData.Prelude
 
@@ -47,14 +47,13 @@ import SlamData.Quasar.Query as Quasar
 import SlamData.Render.Common (row, glyph)
 import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType (CardType(Viz))
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect)
 import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..))
-import SlamData.Workspace.Card.Component (CardStateP, CardQueryP, makeCardComponent, makeQueryPrism', _VizState, _VizQuery)
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.Card.Viz.Component.Query (QueryC, Query(..))
 import SlamData.Workspace.Card.Viz.Component.State as VCS
@@ -104,13 +103,13 @@ type VizDSL = H.ParentDSL VCS.State Form.StateP QueryC Form.QueryP Slam ChartTyp
 -- | cryogenian 04/29/2016
 
 
-vizComponent ∷ H.Component CardStateP CardQueryP Slam
-vizComponent = makeCardComponent
+vizComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
+vizComponent = CC.makeCardComponent
   { cardType: Viz
   , component: H.parentComponent { render, eval, peek: Just peek }
   , initialState: H.parentState VCS.initialState
-  , _State: _VizState
-  , _Query: makeQueryPrism' _VizQuery
+  , _State: CC._VizState
+  , _Query: CC.makeQueryPrism' CC._VizQuery
   }
 
 render ∷ VCS.State → VizHTML
@@ -269,53 +268,55 @@ eval ∷ QueryC ~> VizDSL
 eval = coproduct cardEval vizEval
 
 vizEval ∷ Query ~> VizDSL
-vizEval q = do
-  case q of
-    SetChartType ct next →
-      H.modify (VCS._chartType .~ ct) *> configure $> next
-    RotateAxisLabel angle next →
-      H.modify (VCS._axisLabelAngle .~ angle) *> configure $> next
-    SetAxisFontSize size next →
-      H.modify (VCS._axisLabelFontSize .~ size) *> configure $> next
+vizEval = case _ of
+  SetChartType ct next →
+    H.modify (VCS._chartType .~ ct) *> configure $> next
+  RotateAxisLabel angle next →
+    H.modify (VCS._axisLabelAngle .~ angle) *> configure $> next
+  SetAxisFontSize size next →
+    H.modify (VCS._axisLabelFontSize .~ size) *> configure $> next
 
-cardEval ∷ CardEvalQuery ~> VizDSL
-cardEval (EvalCard info output next) = do
-  for (output ^? Lens._Just ∘ P._ChartOptions) \opts → do
-    sample ← either (const []) id <$>
-      H.fromAff (Quasar.sample opts.resource 0 20 :: Slam (Either Error JArray))
-    if null sample
-      then H.modify (VCS._availableChartTypes .~ Set.empty)
-      else H.modify (VCS._sample .~ analyzeJArray sample) *> configure
-  pure next
-cardEval (Save k) = do
-  st ← H.get
-  config ← H.query st.chartType $ left $ H.request Form.GetConfiguration
-  pure ∘ k $ Card.Viz
-    { chartConfig: fromMaybe Form.initialState config
-    , options:
-        { chartType: st.chartType
-        , axisLabelFontSize: st.axisLabelFontSize
-        , axisLabelAngle: st.axisLabelAngle
-        }
-    }
-cardEval (Load card next) = do
-  case card of
-    Card.Viz model → do
-      let st = VCS.fromModel model
-      H.set st
-      H.query st.chartType
-        $ left
-        $ H.action $ Form.SetConfiguration model.chartConfig
-      pure unit
-    _ → pure unit
-  pure next
-cardEval (SetDimensions dims next) = do
-  H.modify
-    $ VCS._levelOfDetails
-    .~ if dims.width < 576.0 ∨ dims.height < 416.0
-         then Low
-         else High
-  pure next
+cardEval ∷ CC.CardEvalQuery ~> VizDSL
+cardEval = case _ of
+  CC.EvalCard info output next → do
+    for (output ^? Lens._Just ∘ P._ChartOptions) \opts → do
+      sample ← either (const []) id <$>
+        H.fromAff (Quasar.sample opts.resource 0 20 :: Slam (Either Error JArray))
+      if null sample
+        then H.modify (VCS._availableChartTypes .~ Set.empty)
+        else H.modify (VCS._sample .~ analyzeJArray sample) *> configure
+    pure next
+  CC.Save k → do
+    st ← H.get
+    config ← H.query st.chartType $ left $ H.request Form.GetConfiguration
+    pure ∘ k $ Card.Viz
+      { chartConfig: fromMaybe Form.initialState config
+      , options:
+          { chartType: st.chartType
+          , axisLabelFontSize: st.axisLabelFontSize
+          , axisLabelAngle: st.axisLabelAngle
+          }
+      }
+  CC.Load card next → do
+    case card of
+      Card.Viz model → do
+        let st = VCS.fromModel model
+        H.set st
+        H.query st.chartType
+          $ left
+          $ H.action $ Form.SetConfiguration model.chartConfig
+        pure unit
+      _ → pure unit
+    pure next
+  CC.SetDimensions dims next → do
+    H.modify
+      $ VCS._levelOfDetails
+      .~ if dims.width < 576.0 ∨ dims.height < 416.0
+           then Low
+           else High
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
 
 type AxisAccum =
   { category ∷ Array JCursor
@@ -337,6 +338,7 @@ configure = void do
   case Set.toList chartTypes of
     L.Cons ct L.Nil → H.modify (VCS._chartType .~ ct)
     _ → pure unit
+  CC.raiseUpdatedP' CC.EvalModelUpdate
   where
   getOrInitial ∷ ChartType → VizDSL ChartConfiguration
   getOrInitial ty =

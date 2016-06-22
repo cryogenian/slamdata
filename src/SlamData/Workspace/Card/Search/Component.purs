@@ -31,23 +31,23 @@ import Halogen.HTML.Properties.Indexed as HP
 
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Component as NC
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Search.Component.Query (Query, SearchQuery(..))
 import SlamData.Workspace.Card.Search.Component.State (State, _searchString, initialState)
 
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-searchComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
+searchComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 searchComponent =
-  NC.makeCardComponent
+  CC.makeCardComponent
     { cardType: CT.Search
     , component: H.component { render, eval }
     , initialState: initialState
-    , _State: NC._SearchState
-    , _Query: NC.makeQueryPrism NC._SearchQuery
+    , _State: CC._SearchState
+    , _Query: CC.makeQueryPrism CC._SearchQuery
     }
 
 render ∷ State → HTML
@@ -70,21 +70,25 @@ render state =
 eval ∷ Natural Query DSL
 eval = coproduct cardEval searchEval
 
-cardEval ∷ Natural NC.CardEvalQuery DSL
-cardEval q =
-  case q of
-    NC.EvalCard input output next →
-      pure next
-    NC.Save k → do
-      input ← H.gets _.searchString
-      pure ∘ k $ Card.Search input
-    NC.Load card next → do
-      case card of
-        Card.Search input → H.modify $ _searchString .~ input
-        _ → pure unit
-      pure next
-    NC.SetDimensions _ next → pure next
+cardEval ∷ Natural CC.CardEvalQuery DSL
+cardEval = case _ of
+  CC.EvalCard input output next →
+    pure next
+  CC.Save k → do
+    input ← H.gets _.searchString
+    pure ∘ k $ Card.Search input
+  CC.Load card next → do
+    case card of
+      Card.Search input → H.modify $ _searchString .~ input
+      _ → pure unit
+    pure next
+  CC.SetDimensions _ next →
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
 
 searchEval ∷ Natural SearchQuery DSL
-searchEval (UpdateSearch str next) =
-  H.modify (_searchString .~ str) $> next
+searchEval (UpdateSearch str next) = do
+  H.modify (_searchString .~ str)
+  CC.raiseUpdatedC' CC.EvalModelUpdate
+  pure next

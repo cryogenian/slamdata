@@ -19,17 +19,16 @@ module SlamData.Workspace.Card.Next.Component.State where
 import Prelude
 
 import Data.Maybe as M
-import Data.Lens (LensP(), lens)
+import Data.Lens (LensP, lens)
 
-import SlamData.Workspace.Card.CardType as Ct
+import SlamData.Workspace.Card.CardType as CT
 
 type State =
-  { types :: Array Ct.CardType
-    -- THis would be unnecessary after error card and autorun for every card
+  { types :: Array CT.CardType
+    -- This would be unnecessary after error card and autorun for every card
     -- be implemented
   , message :: M.Maybe String
   }
-
 
 _types :: ∀ a r. LensP {types :: a |r} a
 _types = lens _.types (_{types = _})
@@ -39,6 +38,11 @@ _message = lens _.message (_{message = _})
 
 initialState :: State
 initialState =
-  { types: Ct.nextCardTypes M.Nothing
+  { types:
+      [ CT.Ace CT.SQLMode
+      , CT.Ace CT.MarkdownMode
+      , CT.OpenResource
+      , CT.API
+      ]
   , message: M.Nothing
   }

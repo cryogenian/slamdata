@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.API.Component
-  ( apiComponent
-  , queryShouldRun
-  ) where
+module SlamData.Workspace.Card.API.Component (apiComponent) where
 
 import SlamData.Prelude
 
@@ -27,25 +24,24 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 
 import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.API.Component.Query (QueryP)
 import SlamData.Workspace.Card.API.Component.State (State, initialState)
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Component as NC
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.FormBuilder.Component as FB
 import SlamData.Workspace.FormBuilder.Item.Component as Item
 
-type APIHTML = H.ParentHTML (FB.StateP Slam) NC.CardEvalQuery FB.QueryP Slam Unit
-type APIDSL = H.ParentDSL State (FB.StateP Slam) NC.CardEvalQuery FB.QueryP Slam Unit
+type APIHTML = H.ParentHTML (FB.StateP Slam) CC.CardEvalQuery FB.QueryP Slam Unit
+type APIDSL = H.ParentDSL State (FB.StateP Slam) CC.CardEvalQuery FB.QueryP Slam Unit
 
-apiComponent ∷ H.Component NC.CardStateP NC.CardQueryP Slam
+apiComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 apiComponent =
-  NC.makeCardComponent
+  CC.makeCardComponent
     { cardType: CT.API
-    , component: H.parentComponent { render, eval, peek: Nothing }
+    , component: H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
     , initialState: H.parentState initialState
-    , _State: NC._APIState
-    , _Query: NC.makeQueryPrism NC._APIQuery
+    , _State: CC._APIState
+    , _Query: CC.makeQueryPrism CC._APIQuery
     }
 
 render
@@ -57,39 +53,31 @@ render _ =
    , initialState : H.parentState FB.initialState
    }
 
-eval :: Natural NC.CardEvalQuery APIDSL
-eval q =
-  case q of
-    NC.EvalCard info output next ->
-      pure next
-    NC.Save k →
-      H.query unit (H.request (FB.GetItems ⋙ left)) <#>
-        maybe [] L.fromList
-          ⋙ { items : _ }
-          ⋙ Card.API
-          ⋙ k
-    NC.Load card next → do
-      case card of
-        Card.API { items } →
-          void ∘ H.query unit $ H.action (FB.SetItems (L.toList items) ⋙ left)
-        _ → pure unit
-      pure next
-    NC.SetDimensions _ next → pure next
+eval ∷ CC.CardEvalQuery ~> APIDSL
+eval = case _ of
+  CC.EvalCard info output next ->
+    pure next
+  CC.Save k →
+    H.query unit (H.request (FB.GetItems ⋙ left)) <#>
+      maybe [] L.fromList
+        ⋙ { items: _ }
+        ⋙ Card.API
+        ⋙ k
+  CC.Load card next → do
+    case card of
+      Card.API { items } →
+        void ∘ H.query unit $ H.action (FB.SetItems (L.toList items) ⋙ left)
+      _ → pure unit
+    pure next
+  CC.SetDimensions _ next →
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
 
-queryShouldRun
-  ∷ forall a
-   . QueryP a
-  → Boolean
-queryShouldRun =
-  coproduct
-    (const false)
-    (H.runChildF ⋙
-       coproduct
-         (const false)
-         (H.runChildF ⋙ pred))
+peek ∷ ∀ x. FB.QueryP x → APIDSL Unit
+peek = const (pure unit) ⨁ peekItemQuery ∘ H.runChildF
 
-  where
-    pred q =
-      case q of
-        Item.Update _ → true
-        _ → false
+peekItemQuery ∷ ∀ x. Item.Query x → APIDSL Unit
+peekItemQuery = case _ of
+  Item.Update _ → CC.raiseUpdatedP CC.EvalModelUpdate
+  _ → pure unit

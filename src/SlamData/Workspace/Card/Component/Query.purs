@@ -52,22 +52,22 @@ import Halogen (ChildF)
 import SlamData.Workspace.Card.Ace.Component.Query as Ace
 import SlamData.Workspace.Card.API.Component.Query as API
 import SlamData.Workspace.Card.APIResults.Component.Query as APIResults
+import SlamData.Workspace.Card.Cache.Component.Query as Cache
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Chart.Component.Query as Chart
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(..), CardEvalInput)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalInput, CardEvalT, CardEvalQuery(..), ModelUpdateType(..), raiseUpdatedC, raiseUpdatedC', raiseUpdatedP, raiseUpdatedP')
 import SlamData.Workspace.Card.Download.Component.Query as Download
 import SlamData.Workspace.Card.DownloadOptions.Component.Query as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.Query as Draftboard
 import SlamData.Workspace.Card.Error.Component.Query as Error
-import SlamData.Workspace.Card.Pending.Component.Query as Pending
 import SlamData.Workspace.Card.JTable.Component.Query as JTable
 import SlamData.Workspace.Card.Markdown.Component.Query as Markdown
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component.Query as Next
 import SlamData.Workspace.Card.OpenResource.Component.Query as Open
+import SlamData.Workspace.Card.Pending.Component.Query as Pending
 import SlamData.Workspace.Card.Port (Port)
-import SlamData.Workspace.Card.Cache.Component.Query as Cache
 import SlamData.Workspace.Card.Search.Component.Query as Search
 import SlamData.Workspace.Card.Viz.Component.Query as Viz
 

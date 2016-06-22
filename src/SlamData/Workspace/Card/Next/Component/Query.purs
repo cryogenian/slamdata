@@ -17,14 +17,12 @@ limitations under the License.
 module SlamData.Workspace.Card.Next.Component.Query where
 
 import SlamData.Prelude
-import Data.Lens (TraversalP(), wander)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery())
-import SlamData.Workspace.Card.CardType (CardType())
-
+import Data.Lens (TraversalP, wander)
+import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
+import SlamData.Workspace.Card.CardType (CardType)
 
 data Query a
   = AddCard CardType a
-
 
 _AddCardType :: forall a. TraversalP (Query a) CardType
 _AddCardType = wander \f s → case s of
