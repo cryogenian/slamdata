@@ -268,13 +268,14 @@ eval ∷ QueryC ~> VizDSL
 eval = coproduct cardEval vizEval
 
 vizEval ∷ Query ~> VizDSL
-vizEval = case _ of
-  SetChartType ct next →
-    H.modify (VCS._chartType .~ ct) *> configure $> next
-  RotateAxisLabel angle next →
-    H.modify (VCS._axisLabelAngle .~ angle) *> configure $> next
-  SetAxisFontSize size next →
-    H.modify (VCS._axisLabelFontSize .~ size) *> configure $> next
+vizEval q = do
+  next <- case q of
+    SetChartType ct n → H.modify (VCS._chartType .~ ct) $> n
+    RotateAxisLabel angle n → H.modify (VCS._axisLabelAngle .~ angle) $> n
+    SetAxisFontSize size n → H.modify (VCS._axisLabelFontSize .~ size) $> n
+  configure
+  CC.raiseUpdatedP' CC.EvalModelUpdate
+  pure next
 
 cardEval ∷ CC.CardEvalQuery ~> VizDSL
 cardEval = case _ of
@@ -340,7 +341,6 @@ configure = void do
   case Set.toList chartTypes of
     L.Cons ct L.Nil → H.modify (VCS._chartType .~ ct)
     _ → pure unit
-  CC.raiseUpdatedP' CC.EvalModelUpdate
   where
   getOrInitial ∷ ChartType → VizDSL ChartConfiguration
   getOrInitial ty =
@@ -441,4 +441,4 @@ configure = void do
        }
 
 peek ∷ ∀ a. H.ChildF ChartType Form.QueryP a → VizDSL Unit
-peek _ = configure
+peek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate
