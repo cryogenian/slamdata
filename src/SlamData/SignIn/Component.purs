@@ -52,6 +52,7 @@ import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as M
 
 data Query a
   = DismissSubmenu a
+  | IsLogged (Boolean → a)
   | Init a
 
 type QueryP = Coproduct Query (H.ChildF MenuSlot ChildQuery)
@@ -94,6 +95,7 @@ render state =
 
 eval ∷ Natural Query SignInDSL
 eval (DismissSubmenu next) = dismissAll $> next
+eval (IsLogged cont) = map cont $ H.gets _.loggedIn
 eval (Init next) = do
   mbIdToken ← H.fromEff Auth.retrieveIdToken
   maybe

@@ -40,12 +40,15 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
 import SlamData.Workspace.Deck.Dialog.Embed.Component as Embed
 import SlamData.FileSystem.Dialog.Share.Component as Share
+import SlamData.Workspace.Deck.Dialog.Export.Component as Export
 import SlamData.Effects (Slam)
+
+import Utils.Path (DirPath)
 
 data Dialog
   = Error String
-  | Embed String Port.VarMap
-  | Share String
+  | Embed DirPath Port.VarMap
+  | Publish DirPath Port.VarMap
   | DeleteDeck
 
 type State = Maybe Dialog
@@ -59,13 +62,28 @@ data Query a
   | Show Dialog a
 
 type ChildState =
-  Error.State ⊹ Embed.State ⊹ Share.State ⊹ Confirm.State
+  Error.State
+  ⊹ Embed.State
+  ⊹ Share.State
+  ⊹ Confirm.State
+  ⊹ Export.State
+  ⊹ Export.State
 
 type ChildQuery =
-  Error.Query ⨁ Embed.Query ⨁ Share.Query ⨁  Confirm.Query
+  Error.Query
+  ⨁ Embed.Query
+  ⨁ Share.Query
+  ⨁ Confirm.Query
+  ⨁ Export.Query
+  ⨁ Export.Query
 
 type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit ⊹ Unit
+  Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
 
 cpError
   ∷ ChildPath
@@ -93,7 +111,21 @@ cpDeleteDeck
       Confirm.State ChildState
       Confirm.Query ChildQuery
       Unit ChildSlot
-cpDeleteDeck = cpR :> cpR :> cpR
+cpDeleteDeck = cpR :> cpR :> cpR :> cpL
+
+cpPublish
+  ∷ ChildPath
+      Export.State ChildState
+      Export.Query ChildQuery
+      Unit ChildSlot
+cpPublish = cpR :> cpR :> cpR :> cpR :> cpL
+
+cpEmbedNew
+  ∷ ChildPath
+      Export.State ChildState
+      Export.Query ChildQuery
+      Unit ChildSlot
+cpEmbedNew = cpR :> cpR :> cpR :> cpR :> cpR
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
@@ -117,16 +149,15 @@ render state =
       , initialState: Error.State str
       }
 
-  dialog (Embed url varMap) =
-    HH.slot' cpEmbed unit \_ →
-      { component: Embed.comp
-      , initialState: { url, varMap }
-      }
-
-  dialog (Share str) =
-    HH.slot' cpShare unit \_ →
-      { component: Share.nonModalComp
-      , initialState: Share.State str
+  dialog (Embed deckPath varMap) =
+    HH.slot' cpEmbedNew unit \_ →
+      { component: Export.comp
+      , initialState:
+          { presentingAs: Export.IFrame
+          , varMap
+          , deckPath
+          , step: Export.Confirmation
+          }
       }
 
   dialog DeleteDeck =
@@ -139,6 +170,17 @@ render state =
           , confirm: "Delete"
           }
       }
+  dialog (Publish deckPath varMap) =
+    HH.slot' cpPublish unit \_ →
+      { component: Export.comp
+      , initialState:
+          { presentingAs: Export.URI
+          , varMap
+          , deckPath
+          , step: Export.Confirmation
+          }
+      }
+
 
 eval ∷ Natural Query DSL
 eval (Dismiss next) = H.set Nothing $> next
@@ -147,22 +189,27 @@ eval (Show d next) = H.set (Just d) $> next
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =
-  errorPeek ⨁ embedPeek ⨁ sharePeek ⨁ deleteDeckPeek
+  errorPeek
+  ⨁ embedPeek
+  ⨁ sharePeek
+  ⨁ deleteDeckPeek
+  ⨁ exportPeek
+  ⨁ exportPeek
 
 -- Send `Dismiss` after child's `Dismiss` to simplify parent of
 -- this component peeking. (I.e. it can observe only this component queries and
 -- don't provide separate handlers for embed dialog)
 errorPeek ∷ ∀ a. Error.Query a → DSL Unit
-errorPeek (Error.Dismiss _) = do
+errorPeek (Error.Dismiss _) =
   raise' $ Dismiss unit
 
 embedPeek ∷ ∀ a. Embed.Query a → DSL Unit
-embedPeek (Embed.Dismiss _) = do
+embedPeek (Embed.Dismiss _) =
   raise' $ Dismiss unit
 embedPeek _ = pure unit
 
 sharePeek ∷ ∀ a. Share.Query a → DSL Unit
-sharePeek (Share.Dismiss _) = do
+sharePeek (Share.Dismiss _) =
   raise' $ Dismiss unit
 sharePeek _ = pure unit
 
@@ -170,3 +217,8 @@ deleteDeckPeek ∷ ∀ a. Confirm.Query a → DSL Unit
 deleteDeckPeek (Confirm.Confirm b _) = do
   H.get >>= traverse_ \dialog →
     raise' $ Confirm dialog b unit
+
+exportPeek ∷ ∀ a. Export.Query a → DSL Unit
+exportPeek (Export.Dismiss _) =
+  raise' $ Dismiss unit
+exportPeek _ = pure unit

@@ -38,7 +38,6 @@ import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
-import Data.StrMap as SM
 
 import DOM.HTML.Location as Location
 
@@ -338,17 +337,20 @@ peekBackSide (Back.DoAction action _) =
         runPendingCards
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Share → do
-      url ← mkShareURL SM.empty
-      showDialog $ Dialog.Share url
-      H.modify (DCS._displayMode .~ DCS.Dialog)
+      pure unit
+--      url ← mkShareURL SM.empty
+--      showDialog $ Dialog.Share url
+--      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Embed → do
       varMap ← H.gets _.globalVarMap
-      url ← mkShareURL varMap
-      showDialog $ Dialog.Embed url varMap
+      deckPath ← H.gets DCS.deckPath
+      showDialog $ Dialog.Embed deckPath varMap
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish → do
-      path ← H.gets DCS.deckPath
-      H.fromEff ∘ newTab $ mkWorkspaceURL path (WA.Load AT.ReadOnly)
+      deckPath ← H.gets DCS.deckPath
+      varMap ← H.gets _.globalVarMap
+      showDialog $ Dialog.Publish deckPath varMap
+      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.DeleteDeck → do
       cards ← H.gets _.modelCards
       if Array.null cards
