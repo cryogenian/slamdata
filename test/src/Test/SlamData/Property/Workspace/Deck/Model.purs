@@ -29,18 +29,29 @@ import SlamData.Workspace.Deck.Model as Model
 import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck)
 import Test.SlamData.Property.Workspace.Card.Model (runArbCard, checkCardEquality)
 import Test.SlamData.Property.Workspace.Card.CardId (runArbCardId)
+import Data.Time (Milliseconds(..))
 
 newtype ArbDeck = ArbDeck Model.Deck
 
 runArbDeck ∷ ArbDeck → Model.Deck
 runArbDeck (ArbDeck m) = m
 
+newtype ArbMilliseconds = ArbMilliseconds Milliseconds
+
+runArbMilliseconds ∷ ArbMilliseconds → Milliseconds
+runArbMilliseconds (ArbMilliseconds ms) = ms
+
+instance arbitraryArbMilliseconds ∷ Arbitrary ArbMilliseconds where
+  arbitrary = ArbMilliseconds <$> Milliseconds <$> arbitrary
+
 instance arbitraryArbWorkspace ∷ Arbitrary ArbDeck where
   arbitrary = do
     cards ← map runArbCard <$> arbitrary
     parent ← map (bimap id runArbCardId) <$> arbitrary
     mirror ← arbitrary
-    pure $ ArbDeck { cards, parent, mirror }
+    name ← arbitrary
+    createdAt ← map (map runArbMilliseconds) arbitrary
+    pure $ ArbDeck { cards, parent, mirror, name, createdAt }
 
 check ∷ QC Unit
 check = quickCheck $ runArbDeck ⋙ \model →

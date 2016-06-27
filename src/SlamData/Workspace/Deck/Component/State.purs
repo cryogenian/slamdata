@@ -73,6 +73,7 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.StrMap as SM
 import Data.Set as Set
+import Data.Time (Milliseconds)
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
@@ -108,6 +109,8 @@ derive instance eqDisplayMode ∷ Eq DisplayMode
 -- | the fields.
 type State =
   { id ∷ DeckId
+  , createdAt ∷ Maybe Milliseconds
+  , name ∷ Maybe String
   , parent ∷ Maybe (DeckId × CardId)
   , mirror ∷ Maybe (DeckId × Int)
   , fresh ∷ Int
@@ -139,6 +142,8 @@ type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 initialDeck ∷ DirPath → DeckId → State
 initialDeck path deckId =
   { id: deckId
+  , createdAt: Nothing
+  , name: Nothing
   , parent: Nothing
   , mirror: Nothing
   , fresh: 0
@@ -167,6 +172,17 @@ initialDeck path deckId =
 -- | will be Nothing.
 _id ∷ ∀ a r. LensP {id ∷ a|r} a
 _id = lens _.id _{id = _}
+
+-- | The Instant when the deck was created. Initially Nothing then set to the
+-- | current Instant by the deck component.
+_createdAt ∷ ∀ a r. LensP {createdAt ∷ a|r} a
+_createdAt = lens _.createdAt _{createdAt = _}
+
+-- | The name of the deck. This is initially Nothing then set to "Deck created
+-- | at" followed by a time stamp by the deck component. It can be changed by
+-- | the user.
+_name ∷ ∀ a r. LensP {name ∷ a|r} a
+_name = lens _.name _{name = _}
 
 -- | A pointer to the parent deck/card. If `Nothing`, the deck is assumed to be
 -- | the root deck.
@@ -348,9 +364,11 @@ fromModel
   → Model.Deck
   → State
   → State
-fromModel path deckId { cards, parent } state =
+fromModel path deckId { cards, parent, createdAt, name } state =
   state
     { activeCardIndex = Nothing
+    , createdAt = createdAt
+    , name = name
     , displayMode = Normal
     , modelCards = Tuple deckId <$> cards
     , displayCards = mempty

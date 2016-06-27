@@ -25,6 +25,7 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Aff.Par (Par(..), runPar)
+import Control.Monad.Eff (Eff)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
@@ -38,6 +39,7 @@ import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
+import Data.Date as Date
 import Data.StrMap as SM
 
 import DOM.HTML.Location as Location
@@ -688,11 +690,19 @@ saveDeck = do
     H.modify $ DCS._modelCards .~ cards
 
     let
+      freshCreatedAt :: ∀ eff. Eff (now :: Date.Now | eff) (Maybe Milliseconds)
+      freshCreatedAt = map Just Date.nowEpochMilliseconds
+
+    createdAt <- H.fromEff $ maybe freshCreatedAt (pure <<< Just) st.createdAt
+
+    let
       index = st.path </> Pathy.file "index"
       json = Model.encode
         { parent: st.parent
         , mirror: st.mirror
         , cards: snd <$> cards
+        , name: st.name
+        , createdAt: createdAt
         }
 
     when (isNothing st.parent) do
