@@ -130,7 +130,6 @@ render st =
                 , HP.title "Flip deck"
                 ]
                 [ HH.text "" ]
-            , renderName
             , if st.level ≡ DL.root
                 then HH.button
                        [ ARIA.label "Zoom deck"
@@ -146,6 +145,7 @@ render st =
                        , HE.onClick (HE.input_ ZoomIn)
                        ]
                        [ glyph B.glyphiconZoomIn ]
+            , renderName
             , HH.button
                 [ HP.classes [ CSS.grabDeck ]
                 , HE.onMouseDown (HE.input GrabDeck)
