@@ -199,6 +199,7 @@ render st =
              visible
              (isJust st.initialSliderX)
              (Gripper.gripperDefsForCard st.displayCards $ DCS.activeCardCoord st)
+             ⊕ (maybe [HH.text "uh"] (Array.singleton <<< HH.text <<< show <<< Date.fromEpochMilliseconds) st.createdAt)
              ⊕ [ HH.slot' cpBackSide unit \_ →
                   { component: Back.comp
                   , initialState: Back.initialState
@@ -694,6 +695,8 @@ saveDeck = do
       freshCreatedAt = map Just Date.nowEpochMilliseconds
 
     createdAt <- H.fromEff $ maybe freshCreatedAt (pure <<< Just) st.createdAt
+
+    H.modify $ DCS._createdAt .~ createdAt
 
     let
       index = st.path </> Pathy.file "index"

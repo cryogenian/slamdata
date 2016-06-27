@@ -21,6 +21,8 @@ module SlamData.Workspace.Deck.Component.State
   , CardDef
   , initialDeck
   , _id
+  , _name
+  , _createdAt
   , _parent
   , _accessType
   , _modelCards
