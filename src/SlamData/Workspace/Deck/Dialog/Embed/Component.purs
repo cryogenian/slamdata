@@ -55,7 +55,7 @@ comp = H.component { render, eval }
 render ∷ State → H.ComponentHTML Query
 render { url, varMap } =
   HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
-    [ HH.h4_ [ HH.text  "Embed card" ]
+    [ HH.h4_ [ HH.text  "Embed deck" ]
     , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
         [ HH.form
           [ CP.nonSubmit ]

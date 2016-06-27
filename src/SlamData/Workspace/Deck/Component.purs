@@ -140,6 +140,7 @@ render st =
                        , HE.onClick (HE.input_ ZoomIn)
                        ]
                        [ glyph B.glyphiconZoomIn ]
+            , renderName
             , HH.button
                 [ HP.classes [ CSS.grabDeck ]
                 , HE.onMouseDown (HE.input GrabDeck)
@@ -204,6 +205,11 @@ render st =
                ]
           )
       ]
+
+  renderName =
+    HH.div
+      [ HP.classes [ CSS.deckName ] ]
+      [ HH.text st.name ]
 
 eval ∷ Query ~> DeckDSL
 eval (Load dir deckId level next) = do
@@ -313,6 +319,9 @@ peekDialog (Dialog.Show _ _) =
   H.modify (DCS._displayMode .~ DCS.Dialog)
 peekDialog (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
+peekDialog (Dialog.SetDeckName name _) =
+  H.modify ((DCS._displayMode .~ DCS.Normal) ∘ (DCS._name .~ name))
+    *> saveDeck
 peekDialog (Dialog.Confirm d b _) = do
   H.modify (DCS._displayMode .~ DCS.Backside)
   case d of
@@ -337,6 +346,10 @@ peekBackSide (Back.DoAction action _) =
         H.modify $ DCS._displayMode .~ DCS.Normal
         runPendingCards
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
+    Back.Rename → do
+      name ← H.gets _.name
+      showDialog $ Dialog.Rename name
+      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Share → do
       url ← mkShareURL SM.empty
       showDialog $ Dialog.Share url
@@ -693,6 +706,7 @@ saveDeck = do
         { parent: st.parent
         , mirror: st.mirror
         , cards: snd <$> cards
+        , name: st.name
         }
 
     when (isNothing st.parent) do
@@ -704,7 +718,7 @@ saveDeck = do
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
-      Right _ →
+      Right _ → do
         when (st.level ≡ DL.root) $ do
           path' ← H.gets DCS.deckPath
           let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
@@ -731,6 +745,7 @@ loadDeck dir deckId = do
 setModel ∷ DirPath → DeckId → Deck → DeckDSL Unit
 setModel dir deckId model = do
   st ← DCS.fromModel dir deckId model <$> H.get
+
   setDeckState st
   runCards $ DCS.coordModelToCoord <$> st.modelCards
   updateActiveCardAndIndicator

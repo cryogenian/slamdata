@@ -147,7 +147,7 @@ mountPath = className "mount-path"
 mountPropsScrollbox ∷ ClassName
 mountPropsScrollbox = className "mount-props-scrollbox"
 
-mountProgressSpinner ∷ Boolean -> ClassName
+mountProgressSpinner ∷ Boolean → ClassName
 mountProgressSpinner true = className "mount-progress-spinner"
 mountProgressSpinner false = className "mount-progress-spinner-hidden"
 
@@ -414,40 +414,43 @@ openResourceCardMenu = className "open-resource-card-menu"
 loading ∷ ClassName
 loading = className "loading"
 
-cardSlider :: ClassName
+cardSlider ∷ ClassName
 cardSlider = className "sd-card-slider"
 
-board :: ClassName
+board ∷ ClassName
 board = className "sd-board"
 
-gridPattern :: ClassName
+gridPattern ∷ ClassName
 gridPattern = className "sd-grid-pattern"
 
-deck :: ClassName
+deck ∷ ClassName
 deck = className "sd-deck"
 
-card :: ClassName
+deckName ∷ ClassName
+deckName = className "sd-deck-name"
+
+card ∷ ClassName
 card = className "sd-card"
 
-cardGripper :: ClassName
+cardGripper ∷ ClassName
 cardGripper = className "sd-card-gripper"
 
-cardGripperLast :: ClassName
+cardGripperLast ∷ ClassName
 cardGripperLast = className "sd-card-gripper-last"
 
-flipDeck :: ClassName
+flipDeck ∷ ClassName
 flipDeck = className "sd-flip-deck"
 
-grabDeck :: ClassName
+grabDeck ∷ ClassName
 grabDeck = className "sd-grab-deck"
 
-resizeDeck :: ClassName
+resizeDeck ∷ ClassName
 resizeDeck = className "sd-resize-deck"
 
-zoomInDeck :: ClassName
+zoomInDeck ∷ ClassName
 zoomInDeck = className "sd-zoom-in-deck"
 
-zoomOutDeck :: ClassName
+zoomOutDeck ∷ ClassName
 zoomOutDeck = className "sd-zoom-out-deck"
 
 form ∷ ClassName

@@ -40,7 +40,8 @@ instance arbitraryArbWorkspace ∷ Arbitrary ArbDeck where
     cards ← map runArbCard <$> arbitrary
     parent ← map (bimap id runArbCardId) <$> arbitrary
     mirror ← arbitrary
-    pure $ ArbDeck { cards, parent, mirror }
+    name ← arbitrary
+    pure $ ArbDeck { cards, parent, mirror, name }
 
 check ∷ QC Unit
 check = quickCheck $ runArbDeck ⋙ \model →

@@ -21,6 +21,7 @@ module SlamData.Workspace.Deck.Component.State
   , CardDef
   , initialDeck
   , _id
+  , _name
   , _parent
   , _accessType
   , _modelCards
@@ -108,6 +109,7 @@ derive instance eqDisplayMode ∷ Eq DisplayMode
 -- | the fields.
 type State =
   { id ∷ DeckId
+  , name ∷ String
   , parent ∷ Maybe (DeckId × CardId)
   , mirror ∷ Maybe (DeckId × Int)
   , fresh ∷ Int
@@ -139,6 +141,7 @@ type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 initialDeck ∷ DirPath → DeckId → State
 initialDeck path deckId =
   { id: deckId
+  , name: ""
   , parent: Nothing
   , mirror: Nothing
   , fresh: 0
@@ -163,10 +166,13 @@ initialDeck path deckId =
   , slidingTo: Nothing
   }
 
--- | The unique identifier of the deck. If it's a fresh, unsaved deck, the id
--- | will be Nothing.
+-- | The unique identifier of the deck.
 _id ∷ ∀ a r. LensP {id ∷ a|r} a
 _id = lens _.id _{id = _}
+
+-- | The name of the deck. Initially Nothing.
+_name ∷ ∀ a r. LensP {name ∷ a|r} a
+_name = lens _.name _{name = _}
 
 -- | A pointer to the parent deck/card. If `Nothing`, the deck is assumed to be
 -- | the root deck.
@@ -348,9 +354,10 @@ fromModel
   → Model.Deck
   → State
   → State
-fromModel path deckId { cards, parent } state =
+fromModel path deckId { cards, parent, name } state =
   state
     { activeCardIndex = Nothing
+    , name = name
     , displayMode = Normal
     , modelCards = Tuple deckId <$> cards
     , displayCards = mempty

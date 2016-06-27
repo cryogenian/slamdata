@@ -23,6 +23,7 @@ import Control.Monad.Error.Class (throwError)
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.Time (Milliseconds(..))
 
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
@@ -34,13 +35,15 @@ type Deck =
   { parent ∷ Maybe (DeckId × CardId)
   , mirror ∷ Maybe (DeckId × Int)
   , cards ∷ Array Card.Model
+  , name ∷ String
   }
 
-emptyDeck :: Deck
+emptyDeck ∷ Deck
 emptyDeck =
   { parent: Nothing
   , mirror: Nothing
   , cards: mempty
+  , name: ""
   }
 
 encode ∷ Deck → Json
@@ -49,7 +52,10 @@ encode r
   ~> "parent" := r.parent
   ~> "mirror" := r.mirror
   ~> "cards" := map Card.encode r.cards
+  ~> "name" := r.name
   ~> jsonEmptyObject
+  where
+  runMilliseconds (Milliseconds n) = n
 
 decode ∷ Json → Either String Deck
 decode = decodeJson >=> \obj → do
@@ -59,7 +65,8 @@ decode = decodeJson >=> \obj → do
   parent ← obj .? "parent"
   mirror ← obj .? "mirror"
   cards ← traverse Card.decode =<< obj .? "cards"
-  pure { parent, mirror, cards }
+  name ← obj .? "name"
+  pure { parent, mirror, cards, name }
 
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId =
