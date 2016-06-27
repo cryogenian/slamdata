@@ -23,6 +23,7 @@ module SlamData.Workspace.Deck.Component.State
   , _id
   , _name
   , _createdAt
+  , _createdAtString
   , _parent
   , _accessType
   , _modelCards
@@ -112,6 +113,7 @@ derive instance eqDisplayMode ∷ Eq DisplayMode
 type State =
   { id ∷ DeckId
   , createdAt ∷ Maybe Milliseconds
+  , createdAtString ∷ Maybe String
   , name ∷ Maybe String
   , parent ∷ Maybe (DeckId × CardId)
   , mirror ∷ Maybe (DeckId × Int)
@@ -145,6 +147,7 @@ initialDeck ∷ DirPath → DeckId → State
 initialDeck path deckId =
   { id: deckId
   , createdAt: Nothing
+  , createdAtString: Nothing
   , name: Nothing
   , parent: Nothing
   , mirror: Nothing
@@ -175,14 +178,17 @@ initialDeck path deckId =
 _id ∷ ∀ a r. LensP {id ∷ a|r} a
 _id = lens _.id _{id = _}
 
--- | The Instant when the deck was created. Initially Nothing then set to the
--- | current Instant by the deck component.
+-- | The date and time when the deck was created. Initially Nothing.
+-- | Set at save and load. Value created at save if Nothing.
 _createdAt ∷ ∀ a r. LensP {createdAt ∷ a|r} a
 _createdAt = lens _.createdAt _{createdAt = _}
 
--- | The name of the deck. This is initially Nothing then set to "Deck created
--- | at" followed by a time stamp by the deck component. It can be changed by
--- | the user.
+-- | Human readable localized string of the created at date. Initially Nothing.
+-- | Set at save or load. Value created at save and load dependent on createdAt.
+_createdAtString ∷ ∀ a r. LensP {createdAtString ∷ a|r} a
+_createdAtString = lens _.createdAtString _{createdAtString = _}
+
+-- | The name of the deck. Initially Nothing.
 _name ∷ ∀ a r. LensP {name ∷ a|r} a
 _name = lens _.name _{name = _}
 

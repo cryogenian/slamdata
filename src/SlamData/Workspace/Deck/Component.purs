@@ -39,7 +39,10 @@ import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
+import Data.Date (Date)
 import Data.Date as Date
+import Data.Date.Locale (Locale)
+import Data.Date.Locale as DateLocale
 import Data.StrMap as SM
 
 import DOM.HTML.Location as Location
@@ -127,6 +130,7 @@ render st =
                 , HP.title "Flip deck"
                 ]
                 [ HH.text "" ]
+            , renderName
             , if st.level ≡ DL.root
                 then HH.button
                        [ ARIA.label "Zoom deck"
@@ -199,7 +203,7 @@ render st =
              visible
              (isJust st.initialSliderX)
              (Gripper.gripperDefsForCard st.displayCards $ DCS.activeCardCoord st)
-             ⊕ (maybe [HH.text "uh"] (Array.singleton <<< HH.text <<< show <<< Date.fromEpochMilliseconds) st.createdAt)
+             --⊕ (maybe [HH.text "uh"] (Array.singleton <<< HH.text <<< show <<< Date.fromEpochMilliseconds) st.createdAt)
              ⊕ [ HH.slot' cpBackSide unit \_ →
                   { component: Back.comp
                   , initialState: Back.initialState
@@ -207,6 +211,18 @@ render st =
                ]
           )
       ]
+
+  renderName =
+    HH.div
+      [ HP.classes [ CSS.deckName ] ]
+      [ HH.text nameText ]
+
+  nameText =
+    fromMaybe unsavedDeckName
+      $ maybe (map untitledDeckName st.createdAtString) Just st.name
+
+  unsavedDeckName = "Unsaved deck"
+  untitledDeckName createdAtString = "Untitled deck created at " ⊕ createdAtString
 
 eval ∷ Query ~> DeckDSL
 eval (Load dir deckId level next) = do
@@ -677,6 +693,12 @@ runCard coord = do
 triggerSave ∷ DeckDSL Unit
 triggerSave = fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
 
+printDate ∷ ∀ eff. Date -> Eff (locale ∷ Locale | eff) String
+printDate date =
+  go <$> DateLocale.toLocaleTimeString date <*> DateLocale.toLocaleDateString date
+  where
+  go timeString dateString = timeString ⊕ " " ⊕ dateString
+
 -- | Saves the deck as JSON, using the current values present in the state.
 saveDeck ∷ DeckDSL Unit
 saveDeck = do
@@ -690,13 +712,8 @@ saveDeck = do
 
     H.modify $ DCS._modelCards .~ cards
 
-    let
-      freshCreatedAt :: ∀ eff. Eff (now :: Date.Now | eff) (Maybe Milliseconds)
-      freshCreatedAt = map Just Date.nowEpochMilliseconds
-
-    createdAt <- H.fromEff $ maybe freshCreatedAt (pure <<< Just) st.createdAt
-
-    H.modify $ DCS._createdAt .~ createdAt
+    createdAt <- getCreatedAt st.createdAt
+    createdAtString <- getCreatedAtString createdAt
 
     let
       index = st.path </> Pathy.file "index"
@@ -717,11 +734,25 @@ saveDeck = do
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
-      Right _ →
+      Right _ → do
+        H.modify $ DCS._createdAt .~ createdAt
+        H.modify $ DCS._createdAtString .~ createdAtString
+
         when (st.level ≡ DL.root) $ do
           path' ← H.gets DCS.deckPath
           let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
           H.fromEff $ locationObject >>= Location.setHash deckHash
+
+getCreatedAt ∷ Maybe Milliseconds -> DeckDSL (Maybe Milliseconds)
+getCreatedAt createdAt =
+  H.fromEff $ maybe freshCreatedAt (pure ∘ Just) createdAt
+  where
+  freshCreatedAt :: ∀ eff. Eff (now :: Date.Now | eff) (Maybe Milliseconds)
+  freshCreatedAt = map Just Date.nowEpochMilliseconds
+
+getCreatedAtString ∷ Maybe Milliseconds -> DeckDSL (Maybe String)
+getCreatedAtString createdAt =
+  H.fromEff $ traverse printDate $ Date.fromEpochMilliseconds =<< createdAt
 
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
@@ -744,7 +775,9 @@ loadDeck dir deckId = do
 setModel ∷ DirPath → DeckId → Deck → DeckDSL Unit
 setModel dir deckId model = do
   st ← DCS.fromModel dir deckId model <$> H.get
-  setDeckState st
+  createdAtString <- getCreatedAtString st.createdAt
+
+  setDeckState st { createdAtString = createdAtString }
   runCards $ DCS.coordModelToCoord <$> st.modelCards
   updateActiveCardAndIndicator
 

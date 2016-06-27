@@ -426,6 +426,9 @@ gridPattern = className "sd-grid-pattern"
 deck :: ClassName
 deck = className "sd-deck"
 
+deckName :: ClassName
+deckName = className "sd-deck-name"
+
 card :: ClassName
 card = className "sd-card"
 
