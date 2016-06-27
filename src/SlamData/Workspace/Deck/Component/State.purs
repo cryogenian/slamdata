@@ -22,8 +22,6 @@ module SlamData.Workspace.Deck.Component.State
   , initialDeck
   , _id
   , _name
-  , _createdAt
-  , _createdAtString
   , _parent
   , _accessType
   , _modelCards
@@ -76,7 +74,6 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.StrMap as SM
 import Data.Set as Set
-import Data.Time (Milliseconds)
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
@@ -112,9 +109,7 @@ derive instance eqDisplayMode ∷ Eq DisplayMode
 -- | the fields.
 type State =
   { id ∷ DeckId
-  , createdAt ∷ Maybe Milliseconds
-  , createdAtString ∷ Maybe String
-  , name ∷ Maybe String
+  , name ∷ String
   , parent ∷ Maybe (DeckId × CardId)
   , mirror ∷ Maybe (DeckId × Int)
   , fresh ∷ Int
@@ -146,9 +141,7 @@ type CardDef = { id ∷ CardId, ty ∷ CT.CardType }
 initialDeck ∷ DirPath → DeckId → State
 initialDeck path deckId =
   { id: deckId
-  , createdAt: Nothing
-  , createdAtString: Nothing
-  , name: Nothing
+  , name: ""
   , parent: Nothing
   , mirror: Nothing
   , fresh: 0
@@ -176,17 +169,6 @@ initialDeck path deckId =
 -- | The unique identifier of the deck.
 _id ∷ ∀ a r. LensP {id ∷ a|r} a
 _id = lens _.id _{id = _}
-
--- | The date and time when the deck was created. Initially Nothing.
--- | Set at save and load. Value created at save if Nothing.
-_createdAt ∷ ∀ a r. LensP {createdAt ∷ a|r} a
-_createdAt = lens _.createdAt _{createdAt = _}
-
--- | Human readable localized string of the created at date. Initially Nothing.
--- | Set at save or load. Value created at save and load dependent on createdAt.
--- | Not serialized.
-_createdAtString ∷ ∀ a r. LensP {createdAtString ∷ a|r} a
-_createdAtString = lens _.createdAtString _{createdAtString = _}
 
 -- | The name of the deck. Initially Nothing.
 _name ∷ ∀ a r. LensP {name ∷ a|r} a
@@ -372,10 +354,9 @@ fromModel
   → Model.Deck
   → State
   → State
-fromModel path deckId { cards, parent, createdAt, name } state =
+fromModel path deckId { cards, parent, name } state =
   state
     { activeCardIndex = Nothing
-    , createdAt = createdAt
     , name = name
     , displayMode = Normal
     , modelCards = Tuple deckId <$> cards

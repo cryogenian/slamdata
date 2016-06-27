@@ -35,8 +35,7 @@ type Deck =
   { parent ∷ Maybe (DeckId × CardId)
   , mirror ∷ Maybe (DeckId × Int)
   , cards ∷ Array Card.Model
-  , name ∷ Maybe String
-  , createdAt ∷ Maybe Milliseconds
+  , name ∷ String
   }
 
 emptyDeck ∷ Deck
@@ -44,8 +43,7 @@ emptyDeck =
   { parent: Nothing
   , mirror: Nothing
   , cards: mempty
-  , name: Nothing
-  , createdAt: Nothing
+  , name: ""
   }
 
 encode ∷ Deck → Json
@@ -55,7 +53,6 @@ encode r
   ~> "mirror" := r.mirror
   ~> "cards" := map Card.encode r.cards
   ~> "name" := r.name
-  ~> "createdAt" := map runMilliseconds r.createdAt
   ~> jsonEmptyObject
   where
   runMilliseconds (Milliseconds n) = n
@@ -69,8 +66,7 @@ decode = decodeJson >=> \obj → do
   mirror ← obj .? "mirror"
   cards ← traverse Card.decode =<< obj .? "cards"
   name ← obj .? "name"
-  createdAt ← obj .? "createdAt"
-  pure { parent, mirror, cards, name, createdAt: map Milliseconds createdAt }
+  pure { parent, mirror, cards, name }
 
 deckIndex ∷ DirPath → DeckId → FilePath
 deckIndex path deckId =

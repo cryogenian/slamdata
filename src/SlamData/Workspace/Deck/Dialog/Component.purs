@@ -40,12 +40,11 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
 import SlamData.Workspace.Deck.Dialog.Embed.Component as Embed
 import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
-import SlamData.Workspace.Deck.Name (nameText)
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.Effects (Slam)
 
 data Dialog
-  = Rename (Maybe String) (Maybe String)
+  = Rename String
   | Error String
   | Embed String Port.VarMap
   | Share String
@@ -122,10 +121,10 @@ render state =
     $ foldMap (pure ∘ dialog) state
   where
 
-  dialog (Rename name createdAtString) =
+  dialog (Rename name) =
     HH.slot' cpRename unit \_ →
       { component: Rename.comp
-      , initialState: { newName: nameText name createdAtString }
+      , initialState: { newName: name }
       }
 
   dialog (Error str) =

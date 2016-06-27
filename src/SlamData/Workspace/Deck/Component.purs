@@ -25,7 +25,6 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Aff.Par (Par(..), runPar)
-import Control.Monad.Eff (Eff)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
@@ -39,10 +38,6 @@ import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Time (Milliseconds(..))
-import Data.Date (Date)
-import Data.Date as Date
-import Data.Date.Locale (Locale)
-import Data.Date.Locale as DateLocale
 import Data.StrMap as SM
 
 import DOM.HTML.Location as Location
@@ -79,7 +74,6 @@ import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
-import SlamData.Workspace.Deck.Name (nameText)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -215,7 +209,7 @@ render st =
   renderName =
     HH.div
       [ HP.classes [ CSS.deckName ] ]
-      [ HH.text $ nameText st.name st.createdAtString ]
+      [ HH.text st.name ]
 
 eval ∷ Query ~> DeckDSL
 eval (Load dir deckId level next) = do
@@ -228,7 +222,7 @@ eval (SetModel deckId model level next) = do
   setModel state.path deckId model
   pure next
 eval (SetName name next) =
-  H.modify $ DCS._name .~ Just name *> saveDeck $> next
+  H.modify $ DCS._name .~ name *> saveDeck $> next
 eval (ExploreFile res next) = do
   H.modify
     $ (DCS.addCard $ Card.cardModelOfType CT.JTable)
@@ -328,7 +322,7 @@ peekDialog (Dialog.Show _ _) =
 peekDialog (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
 peekDialog (Dialog.SetDeckName name _) =
-  H.modify ((DCS._displayMode .~ DCS.Backside) ∘ (DCS._name .~ Just name))
+  H.modify ((DCS._displayMode .~ DCS.Backside) ∘ (DCS._name .~ name))
     *> saveDeck
 peekDialog (Dialog.Confirm d b _) = do
   H.modify (DCS._displayMode .~ DCS.Backside)
@@ -356,8 +350,7 @@ peekBackSide (Back.DoAction action _) =
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Rename → do
       name ← H.gets _.name
-      createdAtString ← H.gets _.createdAtString
-      showDialog $ Dialog.Rename name createdAtString
+      showDialog $ Dialog.Rename name
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Share → do
       url ← mkShareURL SM.empty
@@ -696,12 +689,6 @@ runCard coord = do
 triggerSave ∷ DeckDSL Unit
 triggerSave = fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
 
-printDate ∷ ∀ eff. Date → Eff (locale ∷ Locale | eff) String
-printDate date =
-  go <$> DateLocale.toLocaleTimeString date <*> DateLocale.toLocaleDateString date
-  where
-  go timeString dateString = timeString ⊕ " " ⊕ dateString
-
 -- | Saves the deck as JSON, using the current values present in the state.
 saveDeck ∷ DeckDSL Unit
 saveDeck = do
@@ -715,9 +702,6 @@ saveDeck = do
 
     H.modify $ DCS._modelCards .~ cards
 
-    createdAt <- getCreatedAt st.createdAt
-    createdAtString <- getCreatedAtString createdAt
-
     let
       index = st.path </> Pathy.file "index"
       json = Model.encode
@@ -725,7 +709,6 @@ saveDeck = do
         , mirror: st.mirror
         , cards: snd <$> cards
         , name: st.name
-        , createdAt: createdAt
         }
 
     when (isNothing st.parent) do
@@ -738,24 +721,10 @@ saveDeck = do
         -- TODO: do something to notify the user saving failed
         pure unit
       Right _ → do
-        H.modify $ DCS._createdAt .~ createdAt
-        H.modify $ DCS._createdAtString .~ createdAtString
-
         when (st.level ≡ DL.root) $ do
           path' ← H.gets DCS.deckPath
           let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
           H.fromEff $ locationObject >>= Location.setHash deckHash
-
-getCreatedAt ∷ Maybe Milliseconds → DeckDSL (Maybe Milliseconds)
-getCreatedAt createdAt =
-  H.fromEff $ maybe freshCreatedAt (pure ∘ Just) createdAt
-  where
-  freshCreatedAt ∷ ∀ eff. Eff (now ∷ Date.Now | eff) (Maybe Milliseconds)
-  freshCreatedAt = map Just Date.nowEpochMilliseconds
-
-getCreatedAtString ∷ Maybe Milliseconds → DeckDSL (Maybe String)
-getCreatedAtString createdAt =
-  H.fromEff $ traverse printDate $ Date.fromEpochMilliseconds =<< createdAt
 
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
@@ -778,9 +747,8 @@ loadDeck dir deckId = do
 setModel ∷ DirPath → DeckId → Deck → DeckDSL Unit
 setModel dir deckId model = do
   st ← DCS.fromModel dir deckId model <$> H.get
-  createdAtString <- getCreatedAtString st.createdAt
 
-  setDeckState st { createdAtString = createdAtString }
+  setDeckState st
   runCards $ DCS.coordModelToCoord <$> st.modelCards
   updateActiveCardAndIndicator
 
