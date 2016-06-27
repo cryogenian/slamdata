@@ -39,7 +39,7 @@ type Deck =
   , createdAt ∷ Maybe Milliseconds
   }
 
-emptyDeck :: Deck
+emptyDeck ∷ Deck
 emptyDeck =
   { parent: Nothing
   , mirror: Nothing

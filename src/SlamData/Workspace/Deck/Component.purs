@@ -696,7 +696,7 @@ runCard coord = do
 triggerSave ∷ DeckDSL Unit
 triggerSave = fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
 
-printDate ∷ ∀ eff. Date -> Eff (locale ∷ Locale | eff) String
+printDate ∷ ∀ eff. Date → Eff (locale ∷ Locale | eff) String
 printDate date =
   go <$> DateLocale.toLocaleTimeString date <*> DateLocale.toLocaleDateString date
   where
@@ -746,14 +746,14 @@ saveDeck = do
           let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
           H.fromEff $ locationObject >>= Location.setHash deckHash
 
-getCreatedAt ∷ Maybe Milliseconds -> DeckDSL (Maybe Milliseconds)
+getCreatedAt ∷ Maybe Milliseconds → DeckDSL (Maybe Milliseconds)
 getCreatedAt createdAt =
   H.fromEff $ maybe freshCreatedAt (pure ∘ Just) createdAt
   where
-  freshCreatedAt :: ∀ eff. Eff (now :: Date.Now | eff) (Maybe Milliseconds)
+  freshCreatedAt ∷ ∀ eff. Eff (now ∷ Date.Now | eff) (Maybe Milliseconds)
   freshCreatedAt = map Just Date.nowEpochMilliseconds
 
-getCreatedAtString ∷ Maybe Milliseconds -> DeckDSL (Maybe String)
+getCreatedAtString ∷ Maybe Milliseconds → DeckDSL (Maybe String)
 getCreatedAtString createdAt =
   H.fromEff $ traverse printDate $ Date.fromEpochMilliseconds =<< createdAt
 

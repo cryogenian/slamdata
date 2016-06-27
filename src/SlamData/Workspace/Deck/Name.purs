@@ -18,7 +18,7 @@ module SlamData.Workspace.Deck.Name where
 
 import SlamData.Prelude
 
-nameText :: Maybe String -> Maybe String -> String
+nameText ∷ Maybe String → Maybe String → String
 nameText name createdAtString =
   fromMaybe unsavedDeckName
     $ maybe (map untitledDeckName createdAtString) Just name
