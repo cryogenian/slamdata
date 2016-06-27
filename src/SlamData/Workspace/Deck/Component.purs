@@ -221,8 +221,6 @@ eval (SetModel deckId model level next) = do
   H.modify $ DCS._level .~ level
   setModel state.path deckId model
   pure next
-eval (SetName name next) =
-  H.modify $ DCS._name .~ name *> saveDeck $> next
 eval (ExploreFile res next) = do
   H.modify
     $ (DCS.addCard $ Card.cardModelOfType CT.JTable)
@@ -322,7 +320,7 @@ peekDialog (Dialog.Show _ _) =
 peekDialog (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
 peekDialog (Dialog.SetDeckName name _) =
-  H.modify ((DCS._displayMode .~ DCS.Backside) ∘ (DCS._name .~ name))
+  H.modify ((DCS._displayMode .~ DCS.Normal) ∘ (DCS._name .~ name))
     *> saveDeck
 peekDialog (Dialog.Confirm d b _) = do
   H.modify (DCS._displayMode .~ DCS.Backside)

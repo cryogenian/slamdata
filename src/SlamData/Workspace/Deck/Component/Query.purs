@@ -45,7 +45,6 @@ data Query a
   | Publish a
   | Load UP.DirPath DeckId DeckLevel a
   | SetModel DeckId Deck DeckLevel a
-  | SetName String a
   | Save a
   | Reset UP.DirPath a
   | SetGlobalVarMap Port.VarMap a
