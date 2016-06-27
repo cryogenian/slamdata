@@ -37,7 +37,7 @@ comp = H.component { render, eval }
 render ∷ State → H.ComponentHTML Query
 render { newName } =
   HH.div [ HP.classes [ HH.className "deck-dialog-rename" ] ]
-    [ HH.h4_ [ HH.text  "Embed card" ]
+    [ HH.h4_ [ HH.text  "Rename deck" ]
     , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
         [ HH.form
           [ CP.nonSubmit ]
