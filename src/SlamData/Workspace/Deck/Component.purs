@@ -79,6 +79,7 @@ import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
+import SlamData.Workspace.Deck.Name (nameText)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.State as DCS
@@ -203,7 +204,6 @@ render st =
              visible
              (isJust st.initialSliderX)
              (Gripper.gripperDefsForCard st.displayCards $ DCS.activeCardCoord st)
-             --⊕ (maybe [HH.text "uh"] (Array.singleton <<< HH.text <<< show <<< Date.fromEpochMilliseconds) st.createdAt)
              ⊕ [ HH.slot' cpBackSide unit \_ →
                   { component: Back.comp
                   , initialState: Back.initialState
@@ -215,14 +215,7 @@ render st =
   renderName =
     HH.div
       [ HP.classes [ CSS.deckName ] ]
-      [ HH.text nameText ]
-
-  nameText =
-    fromMaybe unsavedDeckName
-      $ maybe (map untitledDeckName st.createdAtString) Just st.name
-
-  unsavedDeckName = "Unsaved deck"
-  untitledDeckName createdAtString = "Untitled deck created at " ⊕ createdAtString
+      [ HH.text $ nameText st.name st.createdAtString ]
 
 eval ∷ Query ~> DeckDSL
 eval (Load dir deckId level next) = do
@@ -234,6 +227,8 @@ eval (SetModel deckId model level next) = do
   H.modify $ DCS._level .~ level
   setModel state.path deckId model
   pure next
+eval (SetName name next) =
+  H.modify $ DCS._name .~ Just name *> saveDeck $> next
 eval (ExploreFile res next) = do
   H.modify
     $ (DCS.addCard $ Card.cardModelOfType CT.JTable)
@@ -332,6 +327,9 @@ peekDialog (Dialog.Show _ _) =
   H.modify (DCS._displayMode .~ DCS.Dialog)
 peekDialog (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
+peekDialog (Dialog.SetDeckName name _) =
+  H.modify ((DCS._displayMode .~ DCS.Backside) ∘ (DCS._name .~ Just name))
+    *> saveDeck
 peekDialog (Dialog.Confirm d b _) = do
   H.modify (DCS._displayMode .~ DCS.Backside)
   case d of
@@ -356,6 +354,11 @@ peekBackSide (Back.DoAction action _) =
         H.modify $ DCS._displayMode .~ DCS.Normal
         runPendingCards
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
+    Back.Rename → do
+      name ← H.gets _.name
+      createdAtString ← H.gets _.createdAtString
+      showDialog $ Dialog.Rename name createdAtString
+      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Share → do
       url ← mkShareURL SM.empty
       showDialog $ Dialog.Share url

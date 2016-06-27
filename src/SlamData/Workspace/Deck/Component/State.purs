@@ -173,8 +173,7 @@ initialDeck path deckId =
   , slidingTo: Nothing
   }
 
--- | The unique identifier of the deck. If it's a fresh, unsaved deck, the id
--- | will be Nothing.
+-- | The unique identifier of the deck.
 _id ∷ ∀ a r. LensP {id ∷ a|r} a
 _id = lens _.id _{id = _}
 
@@ -185,6 +184,7 @@ _createdAt = lens _.createdAt _{createdAt = _}
 
 -- | Human readable localized string of the created at date. Initially Nothing.
 -- | Set at save or load. Value created at save and load dependent on createdAt.
+-- | Not serialized.
 _createdAtString ∷ ∀ a r. LensP {createdAtString ∷ a|r} a
 _createdAtString = lens _.createdAtString _{createdAtString = _}
 

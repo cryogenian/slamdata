@@ -39,11 +39,14 @@ import SlamData.Dialog.Error.Component as Error
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
 import SlamData.Workspace.Deck.Dialog.Embed.Component as Embed
+import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
+import SlamData.Workspace.Deck.Name (nameText)
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.Effects (Slam)
 
 data Dialog
-  = Error String
+  = Rename (Maybe String) (Maybe String)
+  | Error String
   | Embed String Port.VarMap
   | Share String
   | DeleteDeck
@@ -56,44 +59,52 @@ initialState = Nothing
 data Query a
   = Dismiss a
   | Confirm Dialog Boolean a
+  | SetDeckName String a
   | Show Dialog a
 
 type ChildState =
-  Error.State ⊹ Embed.State ⊹ Share.State ⊹ Confirm.State
+  Rename.State ⊹ Error.State ⊹ Embed.State ⊹ Share.State ⊹ Confirm.State
 
 type ChildQuery =
-  Error.Query ⨁ Embed.Query ⨁ Share.Query ⨁  Confirm.Query
+  Rename.Query ⨁ Error.Query ⨁ Embed.Query ⨁ Share.Query ⨁  Confirm.Query
 
 type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit ⊹ Unit
+  Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit
+
+cpRename
+  ∷ ChildPath
+       Rename.State ChildState
+       Rename.Query ChildQuery
+       Unit ChildSlot
+cpRename = cpL
 
 cpError
   ∷ ChildPath
        Error.State ChildState
        Error.Query ChildQuery
        Unit ChildSlot
-cpError = cpL
+cpError = cpR :> cpL
 
 cpEmbed
   ∷ ChildPath
        Embed.State ChildState
        Embed.Query ChildQuery
        Unit ChildSlot
-cpEmbed = cpR :> cpL
+cpEmbed = cpR :> cpR :> cpL
 
 cpShare
   ∷ ChildPath
       Share.State ChildState
       Share.Query ChildQuery
       Unit ChildSlot
-cpShare = cpR :> cpR :> cpL
+cpShare = cpR :> cpR :> cpR :> cpL
 
 cpDeleteDeck
   ∷ ChildPath
       Confirm.State ChildState
       Confirm.Query ChildQuery
       Unit ChildSlot
-cpDeleteDeck = cpR :> cpR :> cpR
+cpDeleteDeck = cpR :> cpR :> cpR :> cpR
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
@@ -110,6 +121,12 @@ render state =
     [ HP.classes [ HH.className "deck-dialog" ] ]
     $ foldMap (pure ∘ dialog) state
   where
+
+  dialog (Rename name createdAtString) =
+    HH.slot' cpRename unit \_ →
+      { component: Rename.comp
+      , initialState: { newName: nameText name createdAtString }
+      }
 
   dialog (Error str) =
     HH.slot' cpError unit \_ →
@@ -142,16 +159,22 @@ render state =
 
 eval ∷ Natural Query DSL
 eval (Dismiss next) = H.set Nothing $> next
+eval (SetDeckName _ next) = H.set Nothing $> next
 eval (Confirm _ _ next) = H.set Nothing $> next
 eval (Show d next) = H.set (Just d) $> next
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =
-  errorPeek ⨁ embedPeek ⨁ sharePeek ⨁ deleteDeckPeek
+  renamePeek ⨁ errorPeek ⨁ embedPeek ⨁ sharePeek ⨁ deleteDeckPeek
 
 -- Send `Dismiss` after child's `Dismiss` to simplify parent of
 -- this component peeking. (I.e. it can observe only this component queries and
 -- don't provide separate handlers for embed dialog)
+renamePeek ∷ ∀ a. Rename.Query a → DSL Unit
+renamePeek (Rename.Dismiss _) = raise' $ Dismiss unit
+renamePeek (Rename.Rename name _) = raise' $ SetDeckName name unit
+renamePeek _ = pure unit
+
 errorPeek ∷ ∀ a. Error.Query a → DSL Unit
 errorPeek (Error.Dismiss _) = do
   raise' $ Dismiss unit

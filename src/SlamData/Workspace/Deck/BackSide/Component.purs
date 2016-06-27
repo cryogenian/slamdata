@@ -38,6 +38,7 @@ data Query a
 
 data BackAction
   = Trash
+  | Rename
   | Share
   | Embed
   | Publish
@@ -49,6 +50,7 @@ data BackAction
 allBackActions ∷ Array BackAction
 allBackActions =
   [ Trash
+  , Rename
   , Share
   , Embed
   , Publish
@@ -60,18 +62,21 @@ allBackActions =
 type State =
   { filterString ∷ String
   , cardType ∷ Maybe CT.CardType
+  , saved ∷ Boolean
   }
 
 initialState ∷ State
 initialState =
   { filterString: ""
   , cardType: Nothing
+  , saved: false
   }
 
 
 labelAction ∷ BackAction → String
 labelAction action = case action of
   Trash → "Trash card"
+  Rename → "Rename deck"
   Share → "Share deck"
   Embed → "Embed deck"
   Publish → "Publish deck"
@@ -81,6 +86,7 @@ labelAction action = case action of
 
 keywordsAction ∷ BackAction → Array String
 keywordsAction Trash = ["remove", "delete", "trash"]
+keywordsAction Rename = ["rename", "title"]
 keywordsAction Share = ["share"]
 keywordsAction Embed = ["embed"]
 keywordsAction Publish = ["publish", "presentation", "view"]
@@ -99,6 +105,7 @@ actionEnabled st a =
 actionGlyph ∷ BackAction → HTML
 actionGlyph = case _ of
   Trash → glyph B.glyphiconTrash
+  Rename → glyph B.glyphiconPencil
   Share → glyph B.glyphiconShare
   Embed → glyph B.glyphiconShareAlt
   Publish → glyph B.glyphiconBlackboard
