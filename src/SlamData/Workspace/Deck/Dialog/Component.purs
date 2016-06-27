@@ -38,7 +38,6 @@ import Halogen.Component.Utils (raise')
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
-import SlamData.Workspace.Deck.Dialog.Embed.Component as Embed
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.Workspace.Deck.Dialog.Export.Component as Export
 import SlamData.Effects (Slam)
@@ -63,7 +62,6 @@ data Query a
 
 type ChildState =
   Error.State
-  ⊹ Embed.State
   ⊹ Share.State
   ⊹ Confirm.State
   ⊹ Export.State
@@ -71,7 +69,6 @@ type ChildState =
 
 type ChildQuery =
   Error.Query
-  ⨁ Embed.Query
   ⨁ Share.Query
   ⨁ Confirm.Query
   ⨁ Export.Query
@@ -79,7 +76,6 @@ type ChildQuery =
 
 type ChildSlot =
   Unit
-  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -92,40 +88,33 @@ cpError
        Unit ChildSlot
 cpError = cpL
 
-cpEmbed
-  ∷ ChildPath
-       Embed.State ChildState
-       Embed.Query ChildQuery
-       Unit ChildSlot
-cpEmbed = cpR :> cpL
-
 cpShare
   ∷ ChildPath
       Share.State ChildState
       Share.Query ChildQuery
       Unit ChildSlot
-cpShare = cpR :> cpR :> cpL
+cpShare = cpR :> cpL
 
 cpDeleteDeck
   ∷ ChildPath
       Confirm.State ChildState
       Confirm.Query ChildQuery
       Unit ChildSlot
-cpDeleteDeck = cpR :> cpR :> cpR :> cpL
+cpDeleteDeck = cpR :> cpR :> cpL
 
 cpPublish
   ∷ ChildPath
       Export.State ChildState
       Export.Query ChildQuery
       Unit ChildSlot
-cpPublish = cpR :> cpR :> cpR :> cpR :> cpL
+cpPublish = cpR :> cpR :> cpR :> cpL
 
-cpEmbedNew
+cpEmbed
   ∷ ChildPath
       Export.State ChildState
       Export.Query ChildQuery
       Unit ChildSlot
-cpEmbedNew = cpR :> cpR :> cpR :> cpR :> cpR
+cpEmbed = cpR :> cpR :> cpR :> cpR
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
@@ -150,13 +139,14 @@ render state =
       }
 
   dialog (Embed deckPath varMap) =
-    HH.slot' cpEmbedNew unit \_ →
+    HH.slot' cpEmbed unit \_ →
       { component: Export.comp
       , initialState:
           { presentingAs: Export.IFrame
           , varMap
           , deckPath
           , step: Export.Confirmation
+          , locationString: Nothing
           }
       }
 
@@ -178,6 +168,7 @@ render state =
           , varMap
           , deckPath
           , step: Export.Confirmation
+          , locationString: Nothing
           }
       }
 
@@ -190,7 +181,6 @@ eval (Show d next) = H.set (Just d) $> next
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =
   errorPeek
-  ⨁ embedPeek
   ⨁ sharePeek
   ⨁ deleteDeckPeek
   ⨁ exportPeek
@@ -202,11 +192,6 @@ peek =
 errorPeek ∷ ∀ a. Error.Query a → DSL Unit
 errorPeek (Error.Dismiss _) =
   raise' $ Dismiss unit
-
-embedPeek ∷ ∀ a. Embed.Query a → DSL Unit
-embedPeek (Embed.Dismiss _) =
-  raise' $ Dismiss unit
-embedPeek _ = pure unit
 
 sharePeek ∷ ∀ a. Share.Query a → DSL Unit
 sharePeek (Share.Dismiss _) =

@@ -2,7 +2,7 @@ module SlamData.Workspace.Deck.Dialog.Export.Component where
 
 import SlamData.Prelude
 
-import Control.UI.Browser (select)
+import Control.UI.Browser (select, locationString)
 import Control.UI.ZClipboard as Z
 
 import Data.Foldable as F
@@ -41,6 +41,7 @@ type State =
   , varMap ∷ Port.VarMap
   , deckPath ∷ DirPath
   , step ∷ DialogStep
+  , locationString ∷ Maybe String
   }
 
 initialState ∷ DirPath → State
@@ -49,11 +50,12 @@ initialState =
   , varMap: SM.empty
   , deckPath: _
   , step: Confirmation
+  , locationString: Nothing
   }
 
 data Query a
   = SelectElement HTMLElement a
-  | InitZClipboard String (Maybe HTMLElement) a
+  | Init String (Maybe HTMLElement) a
   | Dismiss a
   | Confirm a
 
@@ -88,6 +90,16 @@ renderCopying ∷ State → H.ComponentHTML Query
 renderCopying state | state.presentingAs ≡ URI = renderPublishURI state
 renderCopying state | otherwise = renderPublishIFrame state
 
+renderURL ∷ State → String
+renderURL {locationString, deckPath, varMap} =
+  foldMap (_ ⊕ "/") locationString
+  ⊕ mkWorkspaceURL deckPath (WA.Load AT.ReadOnly)
+  ⊕ if SM.isEmpty varMap
+      then ""
+      else "/?" ⊕ F.intercalate "&" (map printArg $ SM.toList varMap)
+  where
+  printArg (k × v) = k ⊕ "=" ⊕ "\"" ⊕ (Global.encodeURIComponent $ Port.renderVarMapValue v ⊕ "\"")
+
 renderPublishURI ∷ State → H.ComponentHTML Query
 renderPublishURI state =
   HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
@@ -101,7 +113,7 @@ renderPublishURI state =
                 ]
                 [ HH.input
                   [ HP.classes [ B.formControl ]
-                  , HP.value url
+                  , HP.value $ renderURL state
                   , HP.readonly true
                   , HP.title "Publish URL"
                   , ARIA.label "Publish URL"
@@ -119,7 +131,7 @@ renderPublishURI state =
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
             , HE.onClick (HE.input_ Dismiss)
-            , HP.ref (H.action ∘ InitZClipboard url)
+            , HP.ref (H.action ∘ Init (renderURL state))
             , HP.id_ "copy-button"
             , HP.buttonType HP.ButtonButton
             ]
@@ -127,20 +139,12 @@ renderPublishURI state =
         , HH.a
             [ HP.classes [ B.btn, B.btnInfo ]
             , HP.target "_blank"
-            , HP.href url
+            , HP.href $ renderURL state
             ]
             [ HH.text "Preview" ]
         ]
     ]
-  where
-  url ∷ String
-  url =
-    mkWorkspaceURL state.deckPath (WA.Load AT.ReadOnly)
-    ⊕ if SM.isEmpty state.varMap
-        then ""
-        else "/?" ⊕ F.intercalate "&" (map printArg $ SM.toList state.varMap)
-    where
-    printArg (k × v) = k ⊕ "=" ⊕ "\"" ⊕ (Global.encodeURIComponent $ Port.renderVarMapValue v ⊕ "\"")
+
 
 renderPublishIFrame ∷ State → H.ComponentHTML Query
 renderPublishIFrame state =
@@ -171,22 +175,13 @@ renderPublishIFrame state =
             [ HP.id_ "copy-button"
             , HP.classes [ B.btn, B.btnPrimary ]
             , HE.onClick (HE.input_ Dismiss)
-            , HP.ref (H.action ∘ InitZClipboard code)
+            , HP.ref (H.action ∘ Init code)
             ]
             [ HH.text "Copy"
             ]
         ]
     ]
   where
-  url ∷ String
-  url =
-    mkWorkspaceURL state.deckPath (WA.Load AT.ReadOnly)
-    ⊕ if SM.isEmpty state.varMap
-        then ""
-        else "/?" ⊕ F.intercalate "&" (map printArg $ SM.toList state.varMap)
-    where
-    printArg (k × v) = k ⊕ "=" ⊕ "\"" ⊕ (Global.encodeURIComponent $ Port.renderVarMapValue v ⊕ "\"")
-
   code ∷ String
   code =
     renderHTML $
@@ -196,19 +191,22 @@ renderPublishIFrame state =
 
   javascriptCode ∷ String
   javascriptCode =
-    "(function() { \n"
-    ⊕ "  document.writeln(̈\"<iframe "
+    "document.writeln(\"<iframe "
     ⊕ "width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" "
-    ⊕ "src=\\̈\"" ⊕ url ⊕ "\\\"> </iframe>̈\");"
-    ⊕ "})()"
+    ⊕ "src=\\\"" ⊕ renderURL state ⊕ "\\\"></iframe>̈\");"
+
 
 
 eval ∷ Query ~> (H.ComponentDSL State Query Slam)
 eval (Dismiss next) = pure next
-eval (InitZClipboard code mbEl next) =
-  next <$ for_ mbEl \htmlEl →
-    H.fromEff
-      $ Z.make (htmlElementToElement htmlEl)
-      >>= Z.onCopy (Z.setData "text/plain" code)
+eval (Init code mbEl next) =
+  next <$ do
+    locString ← H.fromEff locationString
+    H.modify $ _{locationString = Just locString}
+    -- Note, that `code` hasn't locString yet
+    for_ mbEl \htmlEl →
+      H.fromEff
+        $ Z.make (htmlElementToElement htmlEl)
+        >>= Z.onCopy (Z.setData "text/plain" $ locString ⊕ "/" ⊕ code)
 eval (SelectElement el next) = H.fromEff (select el) $> next
 eval (Confirm next) = H.modify _{step = Copying} $> next
