@@ -18,7 +18,6 @@ module SlamData.FileSystem.Dialog.Share.Component
   ( State(..)
   , Query(..)
   , comp
-  , nonModalComp
   ) where
 
 import SlamData.Prelude
@@ -37,6 +36,7 @@ import Halogen.Themes.Bootstrap3 as B
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
+import SlamData.Render.Common (glyph)
 import SlamData.Effects (Slam)
 
 newtype State = State String
@@ -51,9 +51,6 @@ newtype Slot = Slot String
 comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
-nonModalComp ∷ H.Component State Query Slam
-nonModalComp = H.component { render: nonModalRender, eval }
-
 render ∷ State → H.ComponentHTML Query
 render (State url) =
   modalDialog
@@ -62,7 +59,7 @@ render (State url) =
         $ HH.form
             [ CP.nonSubmit ]
             [ HH.div
-                [ HP.classes [ B.formGroup ]
+                [ HP.classes [ B.inputGroup ]
                 , HE.onClick $ HE.input (SelectElement ∘ _.target)
                 ]
                 [ HH.input
@@ -72,56 +69,26 @@ render (State url) =
                     , HP.title "Sharing URL"
                     , ARIA.label "Sharing URL"
                     ]
+                , HH.span
+                    [ HP.classes [ B.inputGroupBtn ] ]
+                    [ HH.button
+                        [ HP.classes [ B.btn, B.btnDefault ]
+                        , HE.onClick (HE.input_ Dismiss)
+                        , HP.ref (H.action ∘ InitZClipboard)
+                        , HP.id_ "copy-button"
+                        ]
+                        [ glyph B.glyphiconCopy ]
+                    ]
                 ]
             ]
     , modalFooter
         [ HH.button
             [ HP.id_ "copy-button"
-            , HP.classes [ B.btn, B.btnPrimary ]
-            , HE.onClick (HE.input_ Dismiss)
-            , HP.ref (H.action ∘ InitZClipboard)
-            ]
-            [ HH.text "Copy" ]
-        ]
-    ]
-
-
-
-nonModalRender ∷ State → H.ComponentHTML Query
-nonModalRender (State url) =
-  HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
-    [ HH.h4_ [ HH.text "URL" ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
-       [ HH.form
-           [ CP.nonSubmit ]
-           [ HH.div
-             [ HP.classes [ B.formGroup ]
-             , HE.onClick $ HE.input (SelectElement ∘ _.target)
-             ]
-             [ HH.input
-               [ HP.classes [ B.formControl ]
-               , HP.value url
-               , HP.readonly true
-               , HP.title "Sharing URL"
-               , ARIA.label "Sharing URL"
-               ]
-             ]
-           ]
-       ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
-      [ HH.button
-            [ HP.classes [ B.btn ]
+            , HP.classes [ B.btn, B.btnDefault ]
             , HE.onClick (HE.input_ Dismiss)
             ]
             [ HH.text "Dismiss" ]
-      , HH.button
-        [ HP.id_ "copy-button"
-        , HP.classes [ B.btn, B.btnPrimary ]
-        , HE.onClick (HE.input_ Dismiss)
-        , HP.ref (H.action ∘ InitZClipboard)
         ]
-        [ HH.text "Copy" ]
-      ]
     ]
 
 eval ∷ Query ~> (H.ComponentDSL State Query Slam)
