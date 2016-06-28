@@ -60,8 +60,9 @@ test = do
     later 1000 $ pure unit
     Interact.flipDeck
     Expect.backsideMenuPresented
-    Interact.shareDeck
-    Interact.accessSharingUrl
+    Interact.publishDeck
+    Interact.confirmDeckAction
+    Interact.accessPublishingUrl
     Expect.textInDisplayMarkdownCard "Quarterly"
     Interact.launchSlamData
     successMsg "Successfully shared deck"

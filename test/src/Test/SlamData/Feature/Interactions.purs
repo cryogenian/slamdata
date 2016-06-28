@@ -276,6 +276,9 @@ selectFromDropdownInLastDeck labelText =
 accessSharingUrl ∷ SlamFeature Unit
 accessSharingUrl = Feature.accessUrlFromFieldValue $ XPath.anywhere XPaths.sharingUrl
 
+accessPublishingUrl ∷ SlamFeature Unit
+accessPublishingUrl = Feature.accessUrlFromFieldValue $ XPath.anywhere XPaths.publishingUrl
+
 downloadFileAsCSV ∷ String → SlamFeature Unit
 downloadFileAsCSV fileName = do
   selectFile fileName
@@ -372,3 +375,7 @@ publishDeck =
 filterActions ∷ String → SlamFeature Unit
 filterActions =
   Feature.provideFieldValue (XPath.anywhere $ XPath.anyWithExactAriaLabel "Filter actions")
+
+confirmDeckAction ∷ SlamFeature Unit
+confirmDeckAction =
+  Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Confirm"

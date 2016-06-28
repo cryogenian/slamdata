@@ -18,8 +18,6 @@ module SlamData.Header.Component where
 
 import SlamData.Prelude
 
-import Data.Identity (Identity(..))
-
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
@@ -36,7 +34,7 @@ type State = Unit
 initialState ∷ State
 initialState = unit
 
-type Query = Identity
+type Query = Const Void
 
 type ChildState =
   Either
@@ -98,5 +96,5 @@ render _ =
         ]
     ]
 
-eval ∷ Identity ~> DSL
-eval (Identity next) = pure next
+eval ∷ Query ~> DSL
+eval = absurd ∘ getConst
