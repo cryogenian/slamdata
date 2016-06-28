@@ -7,6 +7,7 @@ import Control.UI.ZClipboard as Z
 
 import Data.Foldable as F
 import Data.StrMap as SM
+import Data.Path.Pathy as Pathy
 
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
@@ -18,6 +19,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.HTML.Renderer.String (renderHTML)
 import Halogen.Themes.Bootstrap3 as B
+import Halogen.Component.Utils (raise)
 
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.Port.VarMap as Port
@@ -25,6 +27,9 @@ import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Routing (mkWorkspaceURL)
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.AccessType as AT
+import SlamData.Quasar.Auth as Auth
+
+import Quasar.Advanced.Auth (PermissionToken(..), runPermissionToken)
 
 import Utils.Path (DirPath)
 
@@ -32,9 +37,11 @@ data PresentAs = IFrame | URI
 
 derive instance eqPresentAs ∷ Eq PresentAs
 
-data DialogStep = Confirmation | Copying
+data DialogStep = Confirmation | Copying | ConfirmRevocation
 
 derive instance eqDialogStep ∷ Eq DialogStep
+
+type DSL = H.ComponentDSL State Query Slam
 
 type State =
   { presentingAs ∷ PresentAs
@@ -42,6 +49,8 @@ type State =
   , deckPath ∷ DirPath
   , step ∷ DialogStep
   , locationString ∷ Maybe String
+  , permToken ∷ Maybe PermissionToken
+  , canRevoke ∷ Boolean
   }
 
 initialState ∷ DirPath → State
@@ -51,27 +60,31 @@ initialState =
   , deckPath: _
   , step: Confirmation
   , locationString: Nothing
+  , permToken: Nothing
+  , canRevoke: false
   }
 
 data Query a
   = SelectElement HTMLElement a
   | Init String (Maybe HTMLElement) a
   | Dismiss a
-  | Confirm a
+  | ToCopying a
+  | Revoke a
+  | ToConfirmRevocation a
 
 comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
 render ∷ State → H.ComponentHTML Query
 render state | state.step ≡ Confirmation = renderConfirm state
+render state | state.step ≡ ConfirmRevocation = renderConfirmRevocation state
 render state | otherwise = renderCopying state
 
 renderConfirm ∷ State → H.ComponentHTML Query
-renderConfirm _ =
+renderConfirm state =
   HH.div_
-    [ HH.div [ HP.classes [ B.alert, B.alertInfo ] ]
-        [ HH.p_ [ HH.text "You're going to publish current workspace to arbitrary large audience" ]
-        ]
+    [ HH.h4_ [ HH.text headerText ]
+    , HH.p_ [ HH.text "You're going to publish deck to arbitrary large audience" ]
     , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
         [ HH.button
             [ HP.classes [ B.btn ]
@@ -80,9 +93,33 @@ renderConfirm _ =
             [ HH.text "Dismiss" ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
-            , HE.onClick (HE.input_ Confirm)
+            , HE.onClick (HE.input_ ToCopying)
             ]
             [ HH.text "Confirm" ]
+        ]
+    ]
+  where
+  headerText ∷ String
+  headerText
+    | state.presentingAs ≡ URI = "Publish deck"
+    | otherwise = "Embed deck"
+
+renderConfirmRevocation ∷ State → H.ComponentHTML Query
+renderConfirmRevocation state =
+  HH.div_
+    [ HH.h4_ [ HH.text "Token revocation" ]
+    , HH.p_ [ HH.text "You're going to revoke access to this deck" ]
+    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+        [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ ToCopying)
+            ]
+            [ HH.text "Back" ]
+        , HH.button
+            [ HP.classes [ B.btn, B.btnPrimary ]
+            , HE.onClick (HE.input_ Revoke)
+            ]
+            [ HH.text "Revoke" ]
         ]
     ]
 
@@ -91,8 +128,9 @@ renderCopying state | state.presentingAs ≡ URI = renderPublishURI state
 renderCopying state | otherwise = renderPublishIFrame state
 
 renderURL ∷ State → String
-renderURL {locationString, deckPath, varMap} =
+renderURL {locationString, deckPath, varMap, permToken} =
   foldMap (_ ⊕ "/") locationString
+  ⊕ foldMap (append "?permissionTokens=" ∘ runPermissionToken) permToken
   ⊕ mkWorkspaceURL deckPath (WA.Load AT.ReadOnly)
   ⊕ if SM.isEmpty varMap
       then ""
@@ -111,23 +149,24 @@ renderPublishURI state =
                 [ HP.classes [ B.formGroup ]
                 , HE.onClick $ HE.input (SelectElement ∘ _.target)
                 ]
-                [ HH.input
-                  [ HP.classes [ B.formControl ]
-                  , HP.value $ renderURL state
-                  , HP.readonly true
-                  , HP.title "Publish URL"
-                  , ARIA.label "Publish URL"
+                $ [ HH.input
+                    [ HP.classes [ B.formControl ]
+                    , HP.value $ renderURL state
+                    , HP.readonly true
+                    , HP.title "Publish URL"
+                    , ARIA.label "Publish URL"
+                    ]
                   ]
-                ]
+                ⊕ (renderRevokeButton state <$ guard state.canRevoke)
             ]
         ]
     , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
         [ HH.button
             [ HP.classes [ B.btn ]
-            , HE.onClick (HE.input_ Dismiss)
+            , HE.onClick (HE.input_ Revoke)
             , HP.buttonType HP.ButtonButton
             ]
-            [ HH.text "Dismiss" ]
+            [ HH.text "Cancel" ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
             , HE.onClick (HE.input_ Dismiss)
@@ -166,20 +205,21 @@ renderPublishIFrame state =
           ]
         ]
     , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
-        [ HH.button
-            [ HP.classes [ B.btn ]
-            , HE.onClick (HE.input_ Dismiss)
-            ]
-            [ HH.text "Dismiss" ]
-        , HH.button
-            [ HP.id_ "copy-button"
-            , HP.classes [ B.btn, B.btnPrimary ]
-            , HE.onClick (HE.input_ Dismiss)
-            , HP.ref (H.action ∘ Init code)
-            ]
-            [ HH.text "Copy"
-            ]
-        ]
+        $ [ HH.button
+              [ HP.classes [ B.btn ]
+              , HE.onClick (HE.input_ Revoke)
+              ]
+              [ HH.text "Cancel" ]
+          , HH.button
+              [ HP.id_ "copy-button"
+              , HP.classes [ B.btn, B.btnPrimary ]
+              , HE.onClick (HE.input_ Dismiss)
+              , HP.ref (H.action ∘ Init code)
+              ]
+              [ HH.text "Copy"
+              ]
+          ]
+      ⊕ (renderRevokeButton state <$ guard state.canRevoke)
     ]
   where
   code ∷ String
@@ -196,8 +236,18 @@ renderPublishIFrame state =
     ⊕ "src=\\\"" ⊕ renderURL state ⊕ "\\\"></iframe>̈\");"
 
 
+renderRevokeButton ∷ State → H.ComponentHTML Query
+renderRevokeButton state =
+  HH.button
+    [ HP.classes [ HH.className "revoke-published-token-button" ]
+    , HE.onClick (HE.input_ ToConfirmRevocation)
+    , ARIA.label "Revoke access to this deck"
+    , HP.title "Revoke access to this deck"
+    ]
+    [ HH.text "Revoke" ]
 
-eval ∷ Query ~> (H.ComponentDSL State Query Slam)
+
+eval ∷ Query ~> DSL
 eval (Dismiss next) = pure next
 eval (Init code mbEl next) =
   next <$ do
@@ -209,4 +259,50 @@ eval (Init code mbEl next) =
         $ Z.make (htmlElementToElement htmlEl)
         >>= Z.onCopy (Z.setData "text/plain" $ locString ⊕ "/" ⊕ code)
 eval (SelectElement el next) = H.fromEff (select el) $> next
-eval (Confirm next) = H.modify _{step = Copying} $> next
+eval (ToCopying next) = next <$ do
+  -- To know if user is authed
+  mbAuthToken ← H.fromEff Auth.retrieveIdToken
+  case mbAuthToken of
+    Nothing → H.modify _{permToken = Nothing, canRevoke = false}
+    Just _ → do
+      tokens ← getAllTokens
+      tokenForThisDeck ← H.gets makeTokenForThisDeck
+      -- TODO: find by token name
+      let
+        foundToken = F.find (\x → runPermissionToken x ≡ runPermissionToken tokenForThisDeck) tokens
+      case foundToken of
+        Just oldToken →
+          H.modify _{ permToken = Just oldToken
+                    , canRevoke = true
+                    }
+        Nothing → do
+          saveToken tokenForThisDeck
+          H.modify _{ permToken = Just tokenForThisDeck
+                    , canRevoke = false
+                    }
+  H.modify _{step = Copying}
+  where
+  -- TODO: actually get token list
+  getAllTokens ∷ DSL (Array PermissionToken)
+  getAllTokens = pure []
+
+  -- TODO, update after purescript-quasar
+  makeTokenForThisDeck ∷ State → PermissionToken
+  makeTokenForThisDeck {deckPath} =
+    -- TODO: we need only name here
+    PermissionToken $ "publish-" ⊕ Pathy.printPath deckPath
+
+  -- TODO: should actually PUT new token into quasar
+  saveToken ∷ PermissionToken → DSL Unit
+  saveToken _ = pure unit
+eval (ToConfirmRevocation next) =
+  H.modify _{step = ConfirmRevocation} $> next
+eval (Revoke next) = next <$ do
+  permToken ← H.gets _.permToken
+  for_ permToken deleteToken
+  raise $ Dismiss unit
+
+
+-- TODO: actually DELETE token
+deleteToken ∷ PermissionToken → DSL Unit
+deleteToken _ = pure unit

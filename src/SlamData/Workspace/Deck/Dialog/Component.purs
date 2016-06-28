@@ -142,12 +142,10 @@ render state =
     HH.slot' cpEmbed unit \_ →
       { component: Export.comp
       , initialState:
-          { presentingAs: Export.IFrame
-          , varMap
-          , deckPath
-          , step: Export.Confirmation
-          , locationString: Nothing
-          }
+          (Export.initialState deckPath)
+            { presentingAs = Export.IFrame
+            , varMap = varMap
+            }
       }
 
   dialog DeleteDeck =
@@ -164,12 +162,10 @@ render state =
     HH.slot' cpPublish unit \_ →
       { component: Export.comp
       , initialState:
-          { presentingAs: Export.URI
-          , varMap
-          , deckPath
-          , step: Export.Confirmation
-          , locationString: Nothing
-          }
+          (Export.initialState deckPath)
+            { presentingAs = Export.URI
+            , varMap = varMap
+            }
       }
 
 
