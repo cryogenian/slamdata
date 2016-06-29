@@ -61,7 +61,6 @@ test = do
     Interact.flipDeck
     Expect.backsideMenuPresented
     Interact.publishDeck
-    Interact.confirmDeckAction
     Interact.accessPublishingUrl
     Expect.textInDisplayMarkdownCard "Quarterly"
     Interact.launchSlamData
