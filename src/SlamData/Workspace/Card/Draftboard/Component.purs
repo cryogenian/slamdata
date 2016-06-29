@@ -67,6 +67,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString, freshDeckId)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.LevelOfDetails as LOD
+import SlamData.Workspace.Wiring (putDeck)
 
 import Utils.CSS (zIndex)
 import Utils.DOM (elementEq, scrollTop, scrollLeft, getOffsetClientRect)
@@ -211,11 +212,11 @@ evalBoard opts (AddDeck e next) = do
     when same do
       rect ← H.fromEff $ getOffsetClientRect el
       scroll ← { top: _, left: _ } <$> H.fromEff (scrollTop el) <*> H.fromEff (scrollLeft el)
-      addDeck opts
+      addDeck opts DM.emptyDeck
         { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
         , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
         }
-  CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.StateOnlyUpdate
   pure next
 evalBoard opts (LoadDeck deckId next) = do
   queryDeck deckId
@@ -233,6 +234,9 @@ peek opts (H.ChildF deckId q) = flip peekOpaqueQuery q
       CC.raiseUpdatedP' CC.StateOnlyUpdate
     DCQ.DoAction DCQ.Wrap _ → do
       wrapDeck opts deckId
+      CC.raiseUpdatedP' CC.StateOnlyUpdate
+    DCQ.DoAction DCQ.Mirror _ → do
+      mirrorDeck opts deckId
       CC.raiseUpdatedP' CC.StateOnlyUpdate
     _ → pure unit
 
@@ -329,30 +333,36 @@ loadDecks =
   H.gets (Map.keys ∘ _.decks) >>=
     traverse_ (raise' ∘ right ∘ H.action ∘ LoadDeck)
 
-addDeck ∷ CardOptions → { x ∷ Number, y ∷ Number } → DraftboardDSL Unit
-addDeck opts coords = do
+addDeck ∷ CardOptions → DM.Deck → { x ∷ Number, y ∷ Number } → DraftboardDSL Unit
+addDeck opts deck coords = do
   decks ← Map.toList <$> H.gets _.decks
   let deckPos = clampDeck $ defaultPosition
         { x = coords.x - 10.0
         , y = coords.y
         }
-  for_ (accomodateDeck decks coords deckPos) \deckPos' → do
-    let parentId = opts.deckId
-    H.modify $ _inserting .~ true
-    deckId ← saveDeck opts.path $ DM.emptyDeck { parent = Just (Tuple parentId opts.cardId) }
-    case deckId of
-      Left err → do
-        H.modify $ _inserting .~ false
-        -- TODO: do something to notify the user saving failed
-        pure unit
-      Right deckId' → void do
-        H.modify \s → s
-          { decks = Map.insert deckId' deckPos' s.decks
-          , inserting = false
-          }
-        queryDeck deckId'
-          $ H.action
-          $ DCQ.Load opts.path deckId' (DL.succ opts.level)
+  for_ (accomodateDeck decks coords deckPos) $
+    addDeckAt opts deck
+
+addDeckAt ∷ CardOptions → DM.Deck → DeckPosition → DraftboardDSL Unit
+addDeckAt opts deck deckPos = do
+  let parentId = opts.deckId
+      deck' = deck { parent = Just (Tuple parentId opts.cardId) }
+  H.modify $ _inserting .~ true
+  deckId ← saveDeck opts.path deck'
+  case deckId of
+    Left err → do
+      H.modify $ _inserting .~ false
+      -- TODO: do something to notify the user saving failed
+      pure unit
+    Right deckId' → void do
+      putDeck deckId' deck' opts.wiring.decks
+      H.modify \s → s
+        { decks = Map.insert deckId' deckPos s.decks
+        , inserting = false
+        }
+      queryDeck deckId'
+        $ H.action
+        $ DCQ.Load opts.path deckId' (DL.succ opts.level)
 
 saveDeck ∷ DirPath → DM.Deck → DraftboardDSL (Either Exn.Error DeckId)
 saveDeck path model = runExceptT do
@@ -383,9 +393,10 @@ wrapDeck opts oldId = do
         -- TODO: do something to notify the user saving failed
         pure unit
       Right newId → void do
+        putDeck newId newDeck opts.wiring.decks
         traverse_ (queryDeck oldId ∘ H.action)
           [ DCQ.SetParent (Tuple newId (CID.CardId 0))
-          , DCQ.Save
+          , DCQ.Save Nothing
           ]
         H.modify \s → s
           { decks
@@ -396,6 +407,43 @@ wrapDeck opts oldId = do
         queryDeck newId
           $ H.action
           $ DCQ.Load opts.path newId (DL.succ opts.level)
+
+mirrorDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
+mirrorDeck opts oldId = do
+  queryDeck oldId (H.request DCQ.GetModelCards) >>= traverse_ \modelCards → do
+    let modelCards' = Array.span (not ∘ eq oldId ∘ fst) modelCards
+    if Array.null modelCards'.rest
+      then insertNewDeck DM.emptyDeck { mirror = DCS.coordModelToCoord <$> modelCards'.init }
+      else do
+        res ←
+          saveDeck opts.path
+            { parent: Nothing
+            , mirror: map _.cardId <$> modelCards'.init
+            , cards: snd <$> modelCards'.rest
+            , name: ""
+            }
+        case res of
+          Left _ →
+            -- TODO: do something to notify the user saving failed
+            pure unit
+          Right newId → do
+            let modelCards'' = modelCards'.init <> map (lmap (const newId)) modelCards'.rest
+            queryDeck oldId $ H.action $ DCQ.SetModelCards modelCards''
+            insertNewDeck DM.emptyDeck { mirror = DCS.coordModelToCoord <$> modelCards'' }
+  where
+  insertNewDeck deck = do
+    st ← H.get
+    for_ (Map.lookup oldId st.decks) \deckPos →
+      addDeckAt opts deck $
+        reallyAccomodateDeck (Map.toList st.decks) deckPos
+
+  reallyAccomodateDeck decks deckPos =
+    let deckPos' = deckPos { y = deckPos.y + deckPos.height }
+        coords = { x: floor (deckPos'.x + deckPos'.x / 2.0), y: deckPos'.y }
+    in
+        case accomodateDeck decks coords deckPos of
+          Nothing → reallyAccomodateDeck decks deckPos'
+          Just a → a
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck deckId = H.query deckId <<< opaqueQuery

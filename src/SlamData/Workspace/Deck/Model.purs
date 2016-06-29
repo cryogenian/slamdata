@@ -33,7 +33,7 @@ import Utils.Path (DirPath, FilePath)
 
 type Deck =
   { parent ∷ Maybe (DeckId × CardId)
-  , mirror ∷ Maybe (DeckId × Int)
+  , mirror ∷ Array (DeckId × CardId)
   , cards ∷ Array Card.Model
   , name ∷ String
   }
@@ -41,7 +41,7 @@ type Deck =
 emptyDeck ∷ Deck
 emptyDeck =
   { parent: Nothing
-  , mirror: Nothing
+  , mirror: mempty
   , cards: mempty
   , name: ""
   }

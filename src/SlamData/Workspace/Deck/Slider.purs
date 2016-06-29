@@ -57,13 +57,15 @@ import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
+import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.CSS as CSSUtils
 
-render ∷ DeckComponent → State → Boolean → DeckHTML
-render comp st visible =
+render ∷ Wiring → DeckComponent → State → Boolean → DeckHTML
+render wiring comp st visible =
   HH.div
     ([ HP.key "deck-cards"
      , HP.classes [ ClassNames.cardSlider ]
@@ -73,7 +75,7 @@ render comp st visible =
          cardSliderTransitionCSS st.sliderTransition
      ]
      ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
-    $ map (Tuple.uncurry $ renderCard comp st)
+    $ map (Tuple.uncurry $ renderCard wiring comp st)
     $ Array.zip st.displayCards (0 .. Array.length st.displayCards)
 
 startSliding ∷ Event MouseEvent → GripperDef → DeckDSL Unit
@@ -217,10 +219,10 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard ∷ DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
-renderCard comp st (deckId × card) index =
+renderCard ∷ Wiring → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
+renderCard wiring comp st (deckId × card) index =
   HH.div
-    ([ HP.key ("card" ⊕ CardId.cardIdToString card.cardId)
+    ([ HP.key key
     , HP.classes [ ClassNames.card ]
     , style $ cardPositionCSS index
     , HP.ref (H.action ∘ DCQ.SetCardElement)
@@ -234,6 +236,7 @@ renderCard comp st (deckId × card) index =
               [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
            ]
   where
+  key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
   coord = deckId × card.cardId
   slotId = ChildSlot.CardSlot coord
   cardOpts =
@@ -243,6 +246,7 @@ renderCard comp st (deckId × card) index =
     , deckId: st.id
     , level: st.level
     , accessType: st.accessType
+    , wiring
     }
 
   cardComponent =

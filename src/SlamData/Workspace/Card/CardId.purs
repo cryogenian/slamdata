@@ -70,6 +70,9 @@ derive instance genericCardId ∷ Generic CardId
 derive instance eqCardId ∷ Eq CardId
 derive instance ordCardId ∷ Ord CardId
 
+instance showCardId ∷ Show CardId where
+  show c = "CardId " <> cardIdToString c
+
 instance encodeJsonCardId ∷ EncodeJson CardId where
   encodeJson =
     case _ of

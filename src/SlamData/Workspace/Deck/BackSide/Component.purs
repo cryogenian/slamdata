@@ -91,7 +91,7 @@ keywordsAction Share = ["share"]
 keywordsAction Embed = ["embed"]
 keywordsAction Publish = ["publish", "presentation", "view"]
 keywordsAction DeleteDeck = ["remove", "delete", "trash"]
-keywordsAction Mirror = [] --["mirror", "copy", "duplicate", "shallow"]
+keywordsAction Mirror = ["mirror", "copy", "duplicate", "shallow"]
 keywordsAction Wrap = ["wrap", "pin", "card"]
 
 actionEnabled ∷ State → BackAction → Boolean

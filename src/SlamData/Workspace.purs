@@ -36,6 +36,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
+import SlamData.Workspace.Wiring (makeWiring)
 
 import Utils.Path as UP
 
@@ -46,7 +47,8 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
     let st = Workspace.initialState (Just "3.0")
-    driver ← runUI Workspace.comp (parentState st) =<< awaitBody
+    wiring ← makeWiring
+    driver ← runUI (Workspace.comp wiring) (parentState st) =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles
 

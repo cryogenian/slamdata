@@ -21,6 +21,8 @@ import Prelude
 import Control.Coroutine.Stalling as SCR
 import Control.Monad.Aff (Aff, Canceler, forkAff, later', runAff)
 import Control.Monad.Aff.AVar (AVAR, makeVar, putVar, takeVar)
+import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 
@@ -104,3 +106,22 @@ oneTimeEventSource (Milliseconds n) action =
       $ liftEff do
         emit $ E.Left action
         emit $ E.Right unit
+
+subscribeToBus'
+  ∷ ∀ s s' f f' p a r eff
+  . (a → f Unit)
+  → Bus.Bus (read ∷ Bus.Cap | r) a
+  → H.ParentDSL s s' f f' (Aff (avar ∷ AVAR | eff)) p (EventLoop.Breaker Unit)
+subscribeToBus' k bus = do
+  breaker ← fromAff makeVar
+  H.subscribe'
+    $ He.EventSource
+    $ SCR.producerToStallingProducer
+    $ produce \emit →
+        runAff (const $ pure unit) (const $ pure unit) do
+          loop ← EventLoop.forever do
+            a ← Bus.read bus
+            forkAff $ H.fromEff $ emit $ E.Left (k a)
+          putVar breaker loop.breaker
+          loop.run
+  H.fromAff $ takeVar breaker

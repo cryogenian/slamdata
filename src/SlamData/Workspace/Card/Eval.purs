@@ -47,6 +47,7 @@ import SlamData.Workspace.Card.Viz.Model as Viz
 import SlamData.Workspace.FormBuilder.Item.Model as FBI
 
 import Text.SlamSearch as SS
+import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component.State as SDH
 
 data Eval
@@ -103,8 +104,8 @@ evalCard input =
       Port.TaggedResource <$> evalQuery input sql Port.emptyVarMap
     Markdown txt, _ →
       MDE.markdownEval input txt
-    MarkdownForm model, _ →
-      lift $ Port.VarMap <$> evalMarkdownForm input model
+    MarkdownForm model, (Just (Port.SlamDown doc)) →
+      lift $ Port.VarMap <$> evalMarkdownForm doc model
     Search query, Just (Port.TaggedResource { resource }) →
       Port.TaggedResource <$> evalSearch input query resource
     Cache pathString, Just (Port.TaggedResource { resource }) →
@@ -136,13 +137,13 @@ evalAPI info model =
 evalMarkdownForm
   ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ SD.SlamDownP Port.VarMapValue
   → MD.Model
   → m Port.VarMap
-evalMarkdownForm info model = do
-  let desc = SDH.formDescFromDocument model.input
+evalMarkdownForm doc model = do
+  let inputState = SDH.formStateFromDocument doc
   -- TODO: find a way to smash these annotations if possible -js
-  fromEff (MDS.formStateToVarMap desc model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)
+  fromEff (MDS.formStateToVarMap inputState model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)
 
 evalOpenResource
   ∷ ∀ m

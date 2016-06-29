@@ -25,6 +25,7 @@ import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
+import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.Path (DirPath)
 
@@ -35,4 +36,5 @@ type CardOptions =
   , deckId ∷ DeckId
   , level ∷ DeckLevel
   , accessType ∷ AccessType
+  , wiring ∷ Wiring
   }

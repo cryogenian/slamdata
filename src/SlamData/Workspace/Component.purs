@@ -57,6 +57,7 @@ import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.Path as UP
 
@@ -64,18 +65,18 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp =
+comp ∷ Wiring → H.Component StateP QueryP Slam
+comp wiring =
   H.lifecycleParentComponent
-    { render
-    , eval
+    { render: render wiring
+    , eval: eval wiring
     , peek: Just (peek ∘ H.runChildF)
     , initializer: Just $ Init unit
     , finalizer: Nothing
     }
 
-render ∷ State → WorkspaceHTML
-render state =
+render ∷ Wiring → State → WorkspaceHTML
+render wiring state =
   HH.div
     [ HP.classes classes
     , HE.onClick (HE.input_ DismissAll)
@@ -100,7 +101,7 @@ render state =
       _, Just path, Just deckId →
         HH.div [ HP.classes [ workspaceClass ] ]
           [ HH.slot' cpDeck unit \_ →
-             { component: Deck.comp
+             { component: Deck.comp wiring
              , initialState:
                  opaqueState $
                    (Deck.initialDeck path deckId)
@@ -137,27 +138,29 @@ render state =
       then className "sd-workspace-hidden-top-menu"
       else className "sd-workspace"
 
-eval ∷ Natural Query WorkspaceDSL
-eval (Init next) = do
+eval ∷ Wiring → Natural Query WorkspaceDSL
+eval _ (Init next) = do
   deckId ← H.fromEff freshDeckId
   H.modify (_deckId ?~ deckId)
   pure next
-eval (SetGlobalVarMap varMap next) = do
+eval _ (SetGlobalVarMap varMap next) = do
   H.modify (_globalVarMap .~ varMap)
   queryDeck $ H.action $ Deck.SetGlobalVarMap varMap
   pure next
-eval (DismissAll next) = do
+eval _ (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
   pure next
-eval (Reset path next) = do
+eval _ (Reset path next) = do
+  deckId ← H.fromEff freshDeckId
   H.modify _
     { path = Just path
     , stateMode = Ready
     , accessType = AT.Editable
+    , deckId = Just deckId
     }
   queryDeck $ H.action $ Deck.Reset path
   pure next
-eval (Load path deckId accessType next) = do
+eval _ (Load path deckId accessType next) = do
   oldAccessType <- H.gets _.accessType
   H.modify (_accessType .~ accessType)
 
@@ -204,10 +207,10 @@ peek = (peekOpaqueQuery peekDeck) ⨁ (const $ pure unit)
     let transitionDeck newDeck =
           traverse_ (queryDeck ∘ H.action)
             [ Deck.SetParent (Tuple newId (CID.CardId 0))
-            , Deck.Save
+            , Deck.Save Nothing
             , Deck.Reset path
             , Deck.SetModel newId newDeck DL.root
-            , Deck.Save
+            , Deck.Save Nothing
             ]
 
     lift case parent of

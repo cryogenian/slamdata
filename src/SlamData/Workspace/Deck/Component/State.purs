@@ -26,7 +26,6 @@ module SlamData.Workspace.Deck.Component.State
   , _accessType
   , _modelCards
   , _displayCards
-  , _cardsToLoad
   , _activeCardIndex
   , _path
   , _saveTrigger
@@ -42,6 +41,7 @@ module SlamData.Workspace.Deck.Component.State
   , _cardElementWidth
   , _level
   , _slidingTo
+  , _breakers
   , addCard
   , addCard'
   , removeCard
@@ -58,12 +58,15 @@ module SlamData.Workspace.Deck.Component.State
   , cardCoordFromIndex
   , activeCardCoord
   , activeCardType
+  , prevCard
   , eqCoordModel
   , compareCoordCards
   , coordModelToCoord
   ) where
 
 import SlamData.Prelude
+
+import Control.Monad.Aff.EventLoop (Breaker)
 
 import Data.Array as A
 import Data.Foldable (maximum)
@@ -90,7 +93,6 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.DeckLevel as DL
-import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.StateMode (StateMode(..))
 
@@ -111,7 +113,6 @@ type State =
   { id ∷ DeckId
   , name ∷ String
   , parent ∷ Maybe (DeckId × CardId)
-  , mirror ∷ Maybe (DeckId × Int)
   , fresh ∷ Int
   , accessType ∷ AccessType
   , modelCards ∷ Array (DeckId × Card.Model)
@@ -132,6 +133,7 @@ type State =
   , cardElementWidth ∷ Maybe Number
   , level ∷ DL.DeckLevel
   , slidingTo ∷ Maybe GripperDef
+  , breakers ∷ Array (Breaker Unit)
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -143,7 +145,6 @@ initialDeck path deckId =
   { id: deckId
   , name: ""
   , parent: Nothing
-  , mirror: Nothing
   , fresh: 0
   , accessType: Editable
   , modelCards: mempty
@@ -164,6 +165,7 @@ initialDeck path deckId =
   , cardElementWidth: Nothing
   , level: DL.root
   , slidingTo: Nothing
+  , breakers: mempty
   }
 
 -- | The unique identifier of the deck.
@@ -178,11 +180,6 @@ _name = lens _.name _{name = _}
 -- | the root deck.
 _parent ∷ ∀ a r. LensP {parent ∷ a|r} a
 _parent = lens _.parent _{parent = _}
-
--- | A pointer to the mirrored base of the deck. A mirror is a slice of some
--- | other deck, represented by a DeckId and a card offset.
-_mirror ∷ ∀ a r. LensP {mirror ∷ a|r} a
-_mirror = lens _.mirror _{mirror = _}
 
 -- | A counter used to generate `CardId` values. This should be a monotonically increasing value
 _fresh ∷ ∀ a r. LensP {fresh ∷ a|r} a
@@ -199,9 +196,6 @@ _modelCards = lens _.modelCards _{modelCards = _}
 -- | The list of cards to be displayed in the deck
 _displayCards ∷ ∀ a r. LensP {displayCards ∷ a |r} a
 _displayCards = lens _.displayCards _{displayCards = _}
-
-_cardsToLoad ∷ ∀ a r. LensP {cardsToLoad ∷ a |r} a
-_cardsToLoad = lens _.cardsToLoad _{cardsToLoad = _}
 
 -- | The `CardId` for the currently focused card. `Nothing` indicates the next
 -- | action card.
@@ -265,6 +259,8 @@ _cardElementWidth = lens _.cardElementWidth _{cardElementWidth = _}
 _slidingTo ∷ ∀ a r. LensP {slidingTo ∷ a|r} a
 _slidingTo = lens _.slidingTo _{slidingTo = _}
 
+_breakers ∷ ∀ a r. LensP {breakers ∷ a|r} a
+_breakers = lens _.breakers _{breakers = _}
 
 -- | Whether the deck is at the top-level of the deck component hierarchy
 _level ∷ ∀ a r. LensP {level ∷ a|r} a
@@ -349,31 +345,37 @@ deckPath' path deckId = path </> P.dir (deckIdToString deckId)
 
 -- | Reconstructs a deck state from a deck model.
 fromModel
-  ∷ DirPath
-  → DeckId
-  → Model.Deck
+  ∷ { path ∷ DirPath
+    , id ∷ DeckId
+    , parent ∷ Maybe (DeckId × CardId)
+    , modelCards ∷ Array (DeckId × Card.Model)
+    , name ∷ String
+    }
   → State
   → State
-fromModel path deckId { cards, parent, name } state =
+fromModel { path, id: deckId, parent, modelCards, name } state =
   state
-    { activeCardIndex = Nothing
+    { path = path
+    , id = deckId
+    , parent = parent
+    , modelCards = modelCards
     , name = name
+    , activeCardIndex = Nothing
     , displayMode = Normal
-    , modelCards = Tuple deckId <$> cards
     , displayCards = mempty
     , fresh = fresh
     , globalVarMap = SM.empty
-    , id = deckId
-    , parent = parent
     , initialSliderX = Nothing
-    , path = path
     , runTrigger = Nothing
     , pendingCard = Nothing
     }
-
   where
-    fresh ∷ Int
-    fresh = maybe 0 (_ + 1) $ maximum $ A.mapMaybe (Lens.preview CID._CardId ∘ _.cardId) cards
+  fresh =
+    modelCards
+      # A.filter (eq deckId ∘ fst)
+      # A.mapMaybe (Lens.preview CID._CardId ∘ _.cardId ∘ snd)
+      # maximum
+      # maybe 0 (add 1)
 
 cardIndexFromCoord ∷ DeckId × CardId → State → Maybe Int
 cardIndexFromCoord coord = A.findIndex (eqCoordModel coord) ∘ _.displayCards
@@ -386,6 +388,11 @@ cardCoordFromIndex vi = map (map _.cardId) ∘ cardFromIndex vi
 
 activeCardCoord ∷ State → Maybe (DeckId × CardId)
 activeCardCoord st = cardCoordFromIndex (fromMaybe 0 st.activeCardIndex) st
+
+prevCard ∷ DeckId × CardId → State → Maybe (DeckId × Card.Model)
+prevCard coord st = do
+  i ← cardIndexFromCoord coord st
+  cardFromIndex (i - 1) st
 
 activeCardType ∷ State → Maybe CT.CardType
 activeCardType st =

@@ -28,16 +28,21 @@ import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
+import SlamData.Workspace.Wiring (PendingMessage)
 
 import Utils.Path as UP
 
 data Query a
-  = RunPendingCards a
+  = Init a
+  | Finish a
+  | RunPendingCards PendingMessage a
+  | QueuePendingCard a
   | GetId (DeckId → a)
   | GetParent (Maybe (Tuple DeckId CardId) → a)
   | SetParent (Tuple DeckId CardId) a
@@ -45,7 +50,9 @@ data Query a
   | Publish a
   | Load UP.DirPath DeckId DeckLevel a
   | SetModel DeckId Deck DeckLevel a
-  | Save a
+  | GetModelCards (Array (DeckId × Card.Model) → a)
+  | SetModelCards (Array (DeckId × Card.Model)) a
+  | Save (Maybe (DeckId × CardId)) a
   | Reset UP.DirPath a
   | SetGlobalVarMap Port.VarMap a
   | FlipDeck a

@@ -98,6 +98,8 @@ eval _ (CC.Load card next) = do
         traverse_ (readOnly editor) ranges
         Editor.navigateFileEnd editor
       H.modify $ _isNew .~ false
+    Card.Ace CT.MarkdownMode Nothing →
+      H.modify $ _isNew .~ false
     _ → pure unit
   pure next
 eval _ (CC.SetDimensions dims next) = do

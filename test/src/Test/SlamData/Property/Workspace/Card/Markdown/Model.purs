@@ -83,9 +83,9 @@ checkVarMapConstruction ∷ QC Unit
 checkVarMapConstruction =
   quickCheck \(SDS.SlamDownState { document, formState }) →
     let
-      formDesc = SDS.formDescFromDocument document
-      varMap = unsafeRunLocale $ MDS.formStateToVarMap formDesc formState
-      descKeys = Set.fromList $ L.toList $ SM.keys formDesc
+      inputState = SDS.formStateFromDocument document
+      varMap = unsafeRunLocale $ MDS.formStateToVarMap inputState formState
+      descKeys = Set.fromList $ L.toList $ SM.keys inputState
       stateKeys = Set.fromList $ L.toList $ SM.keys varMap
     in
       descKeys == stateKeys

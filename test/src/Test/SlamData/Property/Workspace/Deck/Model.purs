@@ -38,8 +38,8 @@ runArbDeck (ArbDeck m) = m
 instance arbitraryArbWorkspace ∷ Arbitrary ArbDeck where
   arbitrary = do
     cards ← map runArbCard <$> arbitrary
-    parent ← map (bimap id runArbCardId) <$> arbitrary
-    mirror ← arbitrary
+    parent ← map (rmap runArbCardId) <$> arbitrary
+    mirror ← map (rmap runArbCardId) <$> arbitrary
     name ← arbitrary
     pure $ ArbDeck { cards, parent, mirror, name }
 

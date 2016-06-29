@@ -27,7 +27,7 @@ initialState =
 formStateToVarMap
   ∷ ∀ m e
   . (MonadEff (locale ∷ DL.Locale | e) m, Applicative m)
-  ⇒ SDH.SlamDownFormDesc VM.VarMapValue
+  ⇒ SDH.SlamDownFormState VM.VarMapValue
   → SDH.SlamDownFormState VM.VarMapValue
   → m VM.VarMap
 formStateToVarMap desc st =
@@ -40,12 +40,11 @@ formStateToVarMap desc st =
 
   where
     valueForKey
-      ∷ ∀ f a
-      . String
-      → SD.FormFieldP f a
+      ∷ String
+      → SDH.FormFieldValue VM.VarMapValue
       → m VM.VarMapValue
     valueForKey k field =
       fromMaybe (MDI.formFieldEmptyValue field) <$>
         case SM.lookup k st of
           Just v → MDI.formFieldValueToVarMapValue v
-          Nothing → pure Nothing
+          Nothing → MDI.formFieldValueToVarMapValue field

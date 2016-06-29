@@ -61,6 +61,9 @@ derive instance genericDeckId ∷ Generic DeckId
 derive instance eqDeckId ∷ Eq DeckId
 derive instance ordDeckId ∷ Ord DeckId
 
+instance showDeckId ∷ Show DeckId where
+  show d = "DeckId " <> deckIdToString d
+
 instance encodeJsonDeckId ∷ EncodeJson DeckId where
   encodeJson (DeckId x) = encodeJson x
 

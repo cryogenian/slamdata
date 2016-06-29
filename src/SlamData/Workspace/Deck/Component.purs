@@ -23,27 +23,30 @@ module SlamData.Workspace.Deck.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Console (log)
 import Control.Monad.Aff.Par (Par(..), runPar)
+import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.EventLoop as EventLoop
+import Control.Monad.Aff.Promise as Pr
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
+import Data.Foldable (find, sequence_, any)
 import Data.Lens as Lens
 import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens.Prism.Coproduct (_Right)
 import Data.List as L
-import Data.Map as Map
-import Data.Set as Set
 import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.Set as Set
 import Data.Time (Milliseconds(..))
 
 import DOM.HTML.Location as Location
 
 import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaque, opaqueState)
-import Halogen.Component.Utils (raise')
+import Halogen.Component.Utils (raise', subscribeToBus')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -55,7 +58,7 @@ import SlamData.Config (workspaceUrl)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
-import SlamData.Quasar.Data (save, load) as Quasar
+import SlamData.Quasar.Data (save) as Quasar
 import SlamData.Render.CSS as CSS
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
@@ -81,12 +84,13 @@ import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
-import SlamData.Workspace.Deck.Model (Deck, deckIndex)
+import SlamData.Workspace.Deck.Model (deckIndex)
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
+import SlamData.Workspace.Wiring (Wiring, CardEval, Cache, getDeck, putDeck, putCardEval, getCache, makeCache)
 
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
@@ -94,16 +98,18 @@ import Utils.Path (DirPath)
 initialState ∷ DirPath → DeckId → DCS.StateP
 initialState path = opaqueState ∘ DCS.initialDeck path
 
-comp ∷ H.Component DCS.StateP QueryP Slam
-comp =
-  opaque $ H.parentComponent
-    { render: \x → render x -- eta expansion required because of mutual recursion
-    , eval
-    , peek: Just peek
+comp ∷ Wiring → H.Component DCS.StateP QueryP Slam
+comp wiring =
+  opaque $ H.lifecycleParentComponent
+    { render: render wiring
+    , eval: eval wiring
+    , peek: Just (peek wiring)
+    , initializer: Just (H.action Init)
+    , finalizer: Just (H.action Finish)
     }
 
-render ∷ DCS.State → DeckHTML
-render st =
+render ∷ Wiring → DCS.State → DeckHTML
+render wiring st =
   case st.stateMode of
     Error err → renderError err
     _ →
@@ -147,7 +153,7 @@ render st =
                 , HP.title "Grab deck"
                 ]
                 [ HH.text "" ]
-            , Slider.render comp st $ st.displayMode ≡ DCS.Normal
+            , Slider.render wiring (comp wiring) st $ st.displayMode ≡ DCS.Normal
             , HH.slot' cpIndicator unit \_ →
                 { component: Indicator.comp
                 , initialState: Indicator.initialState
@@ -210,56 +216,90 @@ render st =
       [ HP.classes [ CSS.deckName ] ]
       [ HH.text st.name ]
 
-eval ∷ Query ~> DeckDSL
-eval (Load dir deckId level next) = do
-  H.modify $ DCS._level .~ level
-  loadDeck dir deckId
+eval ∷ Wiring → Query ~> DeckDSL
+eval wiring (Init next) = do
+  breaker ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
+  H.modify $ DCS._breakers .~ pure breaker
   pure next
-eval (SetModel deckId model level next) = do
+eval _ (Finish next) = do
+  H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
+  pure next
+eval wiring (Load dir deckId level next) = do
+  H.modify $ DCS._level .~ level
+  loadDeck wiring dir deckId
+  pure next
+eval wiring (SetModel deckId model level next) = do
   state ← H.get
   H.modify $ DCS._level .~ level
-  setModel state.path deckId model
+  setModel wiring
+    { path: state.path
+    , id: deckId
+    , parent: model.parent
+    , modelCards: Tuple deckId <$> model.cards
+    , name: state.name
+    }
   pure next
-eval (ExploreFile res next) = do
+eval wiring (ExploreFile res next) = do
   H.modify
     $ (DCS.addCard $ Card.cardModelOfType CT.JTable)
     ∘ (DCS.addCard ∘ Card.OpenResource ∘ Just $ R.File res)
     ∘ (DCS._stateMode .~ Preparing)
-  H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards) >>= traverse \cid → do
-    H.modify $ DCS.addPendingCard cid
-    runPendingCards
-  saveDeck
+  initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
+  for_ initialCard $ queuePendingCard wiring
+  saveDeck wiring Nothing
   updateIndicator
   pure next
-eval (Publish next) = do
+eval _ (Publish next) = do
   path ← H.gets DCS.deckPath
   H.fromEff ∘ newTab $ mkWorkspaceURL path (WA.Load AT.ReadOnly)
   pure next
-eval (Reset dir next) = do
+-- TODO: How can we get rid of this? What is it's purpose? It smells.
+eval wiring (Reset path next) = do
   st ← H.get
   setDeckState $
-    (DCS.initialDeck dir st.id)
+    (DCS.initialDeck path st.id)
       { stateMode = Ready
       , accessType = st.accessType
+      , displayCards = [ st.id × nextActionCard ]
       }
-  runPendingCards
-  updateActiveCardAndIndicator
   pure next
-eval (SetParent parent next) =
+eval _ (SetParent parent next) =
   H.modify (DCS._parent .~ Just parent) $> next
-eval (GetId k) = k <$> H.gets _.id
-eval (GetParent k) = k <$> H.gets _.parent
-eval (Save next) = saveDeck $> next
-eval (RunPendingCards next) = do
-  runPendingCards
+eval _ (GetModelCards k) = k <$> getModelCards
+eval wiring (SetModelCards modelCards next) = do
+  st ← H.get
+  setModel wiring
+    { path: st.path
+    , id: st.id
+    , parent: st.parent
+    , modelCards
+    , name: st.name
+    }
+  saveDeck wiring Nothing
   pure next
-eval (SetGlobalVarMap m next) = do
+eval _ (GetId k) = k <$> H.gets _.id
+eval _ (GetParent k) = k <$> H.gets _.parent
+eval wiring (Save coord next) = saveDeck wiring coord $> next
+eval wiring (RunPendingCards { pendingCard, cards } next) = do
+  st ← H.get
+  when (any (DCS.eqCoordModel pendingCard) st.modelCards) do
+    runPendingCards wiring pendingCard cards
+  pure next
+eval wiring (QueuePendingCard next) = do
+  H.gets _.pendingCard >>= traverse_ \pending → do
+    modelCards ← getModelCards
+    H.modify
+      $ (DCS._modelCards .~ modelCards)
+      ∘ (DCS._pendingCard .~ Nothing)
+    queuePendingCard wiring pending
+  pure next
+eval _ (SetGlobalVarMap m next) = do
   st ← H.get
   when (m ≠ st.globalVarMap) do
     H.modify $ DCS._globalVarMap .~ m
     traverse_ runCard $ DCS.apiCards st
   pure next
-eval (FlipDeck next) = do
+eval _ (FlipDeck next) = do
   updateBackSide
   H.modify
     $ DCS._displayMode
@@ -267,17 +307,17 @@ eval (FlipDeck next) = do
       DCS.Normal → DCS.Backside
       _ → DCS.Normal
   pure next
-eval (GrabDeck _ next) = pure next
-eval (UpdateCardSize next) = do
+eval _ (GrabDeck _ next) = pure next
+eval _ (UpdateCardSize next) = do
   H.queryAll' cpCard $ left $ H.action UpdateDimensions
   pure next
-eval (ResizeDeck _ next) = pure next
-eval (ZoomIn next) = do
+eval _ (ResizeDeck _ next) = pure next
+eval _ (ZoomIn next) = do
   st ← H.get
   let deckHash = mkWorkspaceHash (DCS.deckPath st) (WA.Load st.accessType) st.globalVarMap
   H.fromEff $ locationObject >>= Location.setHash deckHash
   pure next
-eval (ZoomOut next) = do
+eval _ (ZoomOut next) = do
   st ← H.get
   case st.parent of
     Just (Tuple deckId _) → do
@@ -286,51 +326,51 @@ eval (ZoomOut next) = do
     Nothing →
       void $ H.fromEff $ setHref $ parentURL $ Left st.path
   pure next
-eval (StartSliding mouseEvent gDef next) =
+eval _ (StartSliding mouseEvent gDef next) =
   Slider.startSliding mouseEvent gDef $> next
-eval (StopSlidingAndSnap mouseEvent next) = do
+eval _ (StopSlidingAndSnap mouseEvent next) = do
   Slider.stopSlidingAndSnap mouseEvent
   updateIndicator
   pure next
-eval (UpdateSliderPosition mouseEvent next) =
+eval _ (UpdateSliderPosition mouseEvent next) =
   Slider.updateSliderPosition mouseEvent $> next
-eval (SetCardElement element next) =
+eval _ (SetCardElement element next) =
   next <$ for_ element \el → do
     width ← getBoundingClientWidth el
     H.modify (DCS._cardElementWidth ?~ width)
   where
   getBoundingClientWidth =
     H.fromEff ∘ map _.width ∘ getBoundingClientRect
-eval (StopSliderTransition next) =
+eval _ (StopSliderTransition next) =
   H.modify (DCS._sliderTransition .~ false) $> next
-eval (DoAction _ next) = pure next
+eval _ (DoAction _ next) = pure next
 
-peek ∷ ∀ a. H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
-peek (H.ChildF s q) =
-  (peekCards ⊹ (\_ _ → pure unit) $ s)
-   ⨁ peekBackSide
+peek ∷ ∀ a. Wiring → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
+peek wiring (H.ChildF s q) =
+  (peekCards wiring ⊹ (\_ _ → pure unit) $ s)
+   ⨁ peekBackSide wiring
    ⨁ (const $ pure unit)
-   ⨁ (peekDialog ⨁ (const $ pure unit))
+   ⨁ (peekDialog wiring ⨁ (const $ pure unit))
    $ q
 
-peekDialog ∷ ∀ a. Dialog.Query a → DeckDSL Unit
-peekDialog (Dialog.Show _ _) =
+peekDialog ∷ ∀ a. Wiring → Dialog.Query a → DeckDSL Unit
+peekDialog _ (Dialog.Show _ _) =
   H.modify (DCS._displayMode .~ DCS.Dialog)
-peekDialog (Dialog.Dismiss _) =
+peekDialog _ (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
-peekDialog (Dialog.SetDeckName name _) =
+peekDialog wiring (Dialog.SetDeckName name _) =
   H.modify ((DCS._displayMode .~ DCS.Normal) ∘ (DCS._name .~ name))
-    *> saveDeck
-peekDialog (Dialog.Confirm d b _) = do
+    *> saveDeck wiring Nothing
+peekDialog _ (Dialog.Confirm d b _) = do
   H.modify (DCS._displayMode .~ DCS.Backside)
   case d of
     Dialog.DeleteDeck | b → raise' $ H.action $ DoAction DeleteDeck
     _ → pure unit
 
-peekBackSide ∷ ∀ a. Back.Query a → DeckDSL Unit
-peekBackSide (Back.UpdateFilter _ _) = pure unit
-peekBackSide (Back.UpdateCardType _ _) = pure unit
-peekBackSide (Back.DoAction action _) =
+peekBackSide ∷ ∀ a. Wiring → Back.Query a → DeckDSL Unit
+peekBackSide _ (Back.UpdateFilter _ _) = pure unit
+peekBackSide _ (Back.UpdateCardType _ _) = pure unit
+peekBackSide wiring (Back.DoAction action _) =
   case action of
     Back.Trash → do
       state ← H.get
@@ -340,10 +380,11 @@ peekBackSide (Back.DoAction action _) =
         DBC.childDeckIds (snd <$> fst rem) #
           H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph state.path)
         H.set $ snd rem
-        triggerSave
+        triggerSave Nothing
         updateActiveCardAndIndicator
         H.modify $ DCS._displayMode .~ DCS.Normal
-        runPendingCards
+        DCS.activeCardCoord (snd rem)
+          # maybe (runCardUpdates L.Nil) (queuePendingCard wiring)
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Rename → do
       name ← H.gets _.name
@@ -371,18 +412,19 @@ peekBackSide (Back.DoAction action _) =
         else do
           showDialog Dialog.DeleteDeck
           H.modify (DCS._displayMode .~ DCS.Dialog)
-    Back.Mirror → raise' $ H.action $ DoAction Mirror
+    Back.Mirror → do
+      H.modify $ DCS._displayMode .~ DCS.Normal
+      raise' $ H.action $ DoAction Mirror
     Back.Wrap → raise' $ H.action $ DoAction Wrap
 
 mkShareURL ∷ Port.VarMap → DeckDSL String
 mkShareURL varMap = do
   loc ← H.fromEff locationString
-  saveDeck
   path ← H.gets DCS.deckPath
   pure $ loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash path (WA.Load AT.ReadOnly) varMap
 
-peekCards ∷ ∀ a. CardSlot → CardQueryP a → DeckDSL Unit
-peekCards (CardSlot cardId) = (const $ pure unit) ⨁ peekCardInner cardId
+peekCards ∷ ∀ a. Wiring → CardSlot → CardQueryP a → DeckDSL Unit
+peekCards wiring (CardSlot cardId) = (const $ pure unit) ⨁ peekCardInner wiring cardId
 
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
 showDialog =
@@ -436,34 +478,34 @@ updateBackSide = do
     $ H.action
     $ Back.UpdateCardType ty
 
-createCard ∷ CT.CardType → DeckDSL Unit
-createCard cardType = do
+createCard ∷ Wiring → CT.CardType → DeckDSL Unit
+createCard wiring cardType = do
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
   setDeckState st
-  runCard (deckId × newCardId)
-  updateActiveCardAndIndicator
-  triggerSave
+  queuePendingCard wiring (deckId × newCardId)
+  triggerSave $ Just (deckId × newCardId)
 
 peekCardInner
   ∷ ∀ a
-  . DeckId × CardId
+  . Wiring
+  → DeckId × CardId
   → H.ChildF Unit InnerCardQuery a
   → DeckDSL Unit
-peekCardInner cardCoord = H.runChildF ⋙
-  (peekCardEvalQuery cardCoord ⨁ (peekAnyCard cardCoord))
+peekCardInner wiring cardCoord = H.runChildF ⋙
+  (peekCardEvalQuery cardCoord ⨁ (peekAnyCard wiring cardCoord))
 
 peekCardEvalQuery ∷ ∀ a. DeckId × CardId → CEQ.CardEvalQuery a → DeckDSL Unit
 peekCardEvalQuery cardCoord = case _ of
-  CEQ.ModelUpdated CEQ.StateOnlyUpdate _ → triggerSave
-  CEQ.ModelUpdated CEQ.EvalModelUpdate _ → runCard cardCoord
+  CEQ.ModelUpdated CEQ.StateOnlyUpdate _ → triggerSave (Just cardCoord)
+  CEQ.ModelUpdated CEQ.EvalModelUpdate _ → runCard cardCoord *> triggerSave (Just cardCoord)
   CEQ.ZoomIn _ → raise' $ H.action ZoomIn
   _ → pure unit
 
 
-peekAnyCard ∷ ∀ a. DeckId × CardId → AnyCardQuery a → DeckDSL Unit
-peekAnyCard cardCoord q = do
-  for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) createCard
+peekAnyCard ∷ ∀ a. Wiring → DeckId × CardId → AnyCardQuery a → DeckDSL Unit
+peekAnyCard wiring cardCoord q = do
+  for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) $ createCard wiring
 
 nextActionCard ∷ Card.Model
 nextActionCard =
@@ -477,178 +519,141 @@ errorCard =
   , model: Card.ErrorCard
   }
 
-type RunCardsConfig =
-  { pendingCardId ∷ Maybe (DeckId × CardId)
-  , path ∷ DirPath
-  , globalVarMap ∷ Port.VarMap
-  , accessType ∷ AT.AccessType
-  , deckId ∷ DeckId
-  , modelCards ∷ Array (DeckId × Card.Model)
+pendingEvalCard ∷ Card.Model
+pendingEvalCard =
+  { cardId: PendingCardId
+  , model: Card.PendingCard
   }
 
-type RunCardsMachine =
-  { state ∷ Maybe Port
-  , cards ∷ L.List (DeckId × Card.Model)
-  , stack ∷ L.List (DeckId × Card.Model)
-  , outputs ∷ Map.Map (DeckId × CardId) Port
+type UpdateAccum =
+  { cards ∷ L.List (DeckId × Card.Model)
+  , steps ∷ L.List CardEval
+  , updates ∷ L.List (DeckDSL Unit)
   }
 
-initialRunCardsState ∷ L.List (DeckId × Card.Model) → RunCardsMachine
-initialRunCardsState input =
-  { state: Nothing
-  , cards: mempty
-  , outputs: mempty
-  , stack: input
+type UpdateResult =
+  { displayCards ∷ Array (DeckId × Card.Model)
+  , updates ∷ L.List (DeckDSL Unit)
   }
 
-runCardsStateIsTerminal ∷ RunCardsConfig → RunCardsMachine → Boolean
-runCardsStateIsTerminal cfg m =
-  case m.stack of
-    L.Nil →
-      case _.cardId ∘ snd <$> L.head m.cards of
-        Just ErrorCardId → true
-        Just NextActionCardId → true
-        _ → not $ AT.isEditable cfg.accessType
-    _ → false
+queuePendingCard
+  ∷ Wiring
+  → DeckId × CardId
+  → DeckDSL Unit
+queuePendingCard wiring pendingCard = H.fromAff do
+  cards ← makeCache
+  Bus.write { pendingCard, cards } wiring.pending
 
-stepRunCards
-  ∷ RunCardsConfig
-  → RunCardsMachine
-  → DeckDSL RunCardsMachine
-stepRunCards cfg m @ { state, cards, stack, outputs } = do
-  case stack of
-    L.Nil →
-      pure case L.head cards of
-        Just card →
-          case Map.lookup (DCS.coordModelToCoord card) outputs of
-            Just (Port.CardError _) → pushCard errorCard m
-            _ → pushNextActionCard m
-        Nothing → pushNextActionCard m
-    L.Cons x stack' → do
-      let
-        coord = DCS.coordModelToCoord x
-        ltPending =
-          fromMaybe true do
-            coord' ← cfg.pendingCardId
-            eq LT <$> DCS.compareCoordCards coord coord' cfg.modelCards
-      state' ←
-        if ltPending
-          then pure $ Map.lookup coord outputs
-          else Just <$> runStep cfg state x
-      let
-        cards' = L.Cons x cards
-        outputs' = maybe id (Map.insert (DCS.coordModelToCoord x)) state' outputs
-        stack'' =
-          case state' of
-            Just (Port.CardError _) → L.Nil
-            _ → stack'
-      pure
-        { state: state'
-        , cards: cards'
-        , stack: stack''
-        , outputs: outputs'
-        }
-
-  where
-    pushCard card m =
-      m { stack = L.Cons (cfg.deckId × card) m.stack }
-
-    pushNextActionCard =
-      if AT.isEditable cfg.accessType
-      then pushCard nextActionCard
-      else id
-
-evalRunCardsMachine
-  ∷ RunCardsConfig
-  → RunCardsMachine
-  → DeckDSL RunCardsMachine
-evalRunCardsMachine cfg m =
-  if runCardsStateIsTerminal cfg m
-  then pure m
-  else evalRunCardsMachine cfg =<< stepRunCards cfg m
-
-
--- | If the card model is represented in the live / Halogen deck, then we query it for its
--- | current state. Otherwise, we use the data we have stored in the model.
-currentStateOfCard
-  ∷ DeckId × Card.Model
-  → DeckDSL (DeckId × Card.Model)
-currentStateOfCard cm @ (deckId × card) =
-  Tuple deckId ∘ fromMaybe card <$>
-    queryCardEval (DCS.coordModelToCoord cm)
-      (H.request (SaveCard card.cardId (Card.modelCardType card.model)))
-
-runStep
-  ∷ RunCardsConfig
-  → Maybe Port
-  → DeckId × Card.Model
-  → DeckDSL Port
-runStep cfg inputPort cm = do
-  let
-    input =
-      { path: cfg.path
-      , input: inputPort
-      , cardCoord: DCS.coordModelToCoord cm
-      , globalVarMap: cfg.globalVarMap
-      }
-
-  card' ← currentStateOfCard cm
-  case Card.modelToEval (snd card').model of
-    Left err → pure ∘ Port.CardError $ "Could not evaluate card: " <> err
-    Right cmd → Eval.runEvalCard input cmd
-
-type CardUpdate =
-  { card ∷ DeckId × Card.Model
-  , input ∷ Maybe Port
-  , output ∷ Maybe Port
-  }
-
-displayCardUpdates ∷ DCS.State → RunCardsMachine → Array CardUpdate
-displayCardUpdates st m =
-  let
-    outputs = st.displayCards <#> \c → Map.lookup (DCS.coordModelToCoord c) m.outputs
-    inputs = Array.take (Array.length outputs) $ Array.cons Nothing outputs
-  in
-    Array.zipWith
-      (\c f → f c)
-      st.displayCards
-      (Array.zipWith (\input output card → { card, input, output }) inputs outputs)
-
-applyPendingState
-  ∷ DeckId
-  → Array (DeckId × Card.Model)
-  → Array (DeckId × Card.Model)
-applyPendingState deckId cards =
-  Array.snoc realCards $
-    deckId × { cardId: PendingCardId, model: Card.PendingCard }
-  where
-    realCards = Array.filter (Lens.has _CardId ∘ _.cardId ∘ snd) cards
-
--- | Runs all card that are present in the set of pending cards.
-runPendingCards ∷ DeckDSL Unit
-runPendingCards = do
+runPendingCards
+  ∷ Wiring
+  → DeckId × CardId
+  → Cache (DeckId × CardId) CardEval
+  → DeckDSL Unit
+runPendingCards wiring pendingCard pendingCards = do
   st ← H.get
   let
-    config =
-      { pendingCardId: st.pendingCard
-      , path: st.path
-      , globalVarMap: st.globalVarMap
-      , accessType: st.accessType
-      , modelCards: st.modelCards
-      , deckId: st.id
+    splitCards = L.span (not ∘ DCS.eqCoordModel pendingCard) $ L.toList st.modelCards
+    prevCard = DCS.coordModelToCoord <$> L.last splitCards.init
+
+  input ← join <$> for prevCard (flip getCache wiring.cards)
+  steps ← resume st (input >>= _.output) splitCards.rest
+  runCardUpdates steps
+
+  where
+  resume st = go L.Nil where
+    go steps input L.Nil = pure $ L.reverse steps
+    go steps input (L.Cons c cs) = do
+      step ←
+        getCache (DCS.coordModelToCoord c) pendingCards >>= case _ of
+          Just ev → pure ev
+          Nothing → do
+            ev ← evalCard st.path st.globalVarMap input c
+            putCardEval ev pendingCards
+            putCardEval ev wiring.cards
+            pure ev
+      go (L.Cons step steps) step.output cs
+
+-- | When we initially eval a deck we want to use whatever is in the main cache.
+-- | If we were to just queuePendingCard then everything would get freshly
+-- | evaluated, which is unnecessary.
+runInitialEval
+  ∷ Wiring
+  → DeckDSL Unit
+runInitialEval wiring = do
+  st ← H.get
+  cards ← makeCache
+
+  let
+    cardCoords = DCS.coordModelToCoord <$> L.toList st.modelCards
+
+  for_ cardCoords \coord → do
+    getCache coord wiring.cards >>= traverse_ \ev →
+      putCardEval ev cards
+
+  for_ (L.head cardCoords) \pendingCard →
+    H.fromAff $ Bus.write { pendingCard, cards } wiring.pending
+
+-- | Evaluates a card given an input and model.
+evalCard
+  ∷ DirPath
+  → Port.VarMap
+  → Maybe (Pr.Promise Port)
+  → DeckId × Card.Model
+  → DeckDSL CardEval
+evalCard path globalVarMap input card = do
+  output ← H.fromAff $ Pr.defer do
+    input' ← for input Pr.wait
+    case Card.modelToEval (snd card).model of
+      Left err →
+        pure $ Port.CardError $ "Could not evaluate card: " <> err
+      Right cmd → do
+        flip Eval.runEvalCard cmd
+          { path
+          , globalVarMap
+          , cardCoord: DCS.coordModelToCoord card
+          , input: input'
+          }
+  pure { input, card, output: Just output }
+
+-- | Interprets a list of pending card evaluations into updates for the
+-- | display cards. Takes care of the pending card, next action card and
+-- | error card.
+runCardUpdates ∷ L.List CardEval → DeckDSL Unit
+runCardUpdates steps = do
+  st ← H.get
+  let
+    realCards = Array.filter (Lens.has _CardId ∘ _.cardId ∘ snd) st.displayCards
+    loadedCards = foldr (Set.insert ∘ DCS.coordModelToCoord) Set.empty realCards
+    pendingCm = st.id × pendingEvalCard
+    nextActionStep =
+      { card: st.id × nextActionCard
+      , input: _.output =<< L.last steps
+      , output: Nothing
       }
-    initialMachineState =
-      initialRunCardsState $ L.toList st.modelCards
+    updateSteps =
+      if AT.isEditable st.accessType
+        then L.snoc steps nextActionStep
+        else steps
 
-  unless (runCardsStateIsTerminal config initialMachineState) do
-    H.modify $ DCS._displayCards %~ applyPendingState st.id
+  H.modify $
+    DCS._displayCards .~ Array.snoc realCards pendingCm
 
-  result ← evalRunCardsMachine config initialMachineState
+  updateResult ←
+    H.fromAff $ Pr.wait $
+      updateCards st loadedCards { steps: updateSteps, cards: L.Nil, updates: mempty }
 
-  H.modify $ DCS._displayCards .~ L.fromList (L.reverse result.cards)
-  state ← H.get
-  traverse_ (updateCard st.path st.globalVarMap) $ displayCardUpdates state result
+  -- Splice in the new display cards and run their updates.
+  for_ (Array.head updateResult.displayCards) \card → do
+    let
+      pendingId = DCS.coordModelToCoord card
+      oldCards = Array.takeWhile (not ∘ DCS.eqCoordModel pendingId) realCards
+      displayCards = oldCards <> updateResult.displayCards
 
+    H.modify
+      $ DCS._displayCards .~ displayCards
+    sequence_ updateResult.updates
+
+  -- Final cleanup
   when (st.stateMode == Preparing) do
     lastIndex ← H.gets DCS.findLastRealCardIndex
     H.modify
@@ -656,25 +661,47 @@ runPendingCards = do
       ∘ (DCS._activeCardIndex .~ lastIndex)
 
   updateActiveCardAndIndicator
+
   where
+  updateCards ∷ DCS.State → Set.Set (DeckId × CardId) → UpdateAccum → Pr.Promise UpdateResult
+  updateCards st loadedCards = case _ of
+    { steps: L.Nil, cards, updates } →
+      pure
+        { displayCards: L.fromList $ L.reverse cards
+        , updates: L.reverse updates
+        }
+    { steps: L.Cons x xs, cards, updates } → do
+      output ← sequence x.output
+      let cards' = L.Cons x.card cards
+          updates' = L.Cons (updateCard st loadedCards x) updates
+      updateCards st loadedCards $ case output of
+        Just (Port.CardError err) →
+          let errorCard' = st.id × errorCard
+              errorStep  = { input: x.output, output: Nothing, card: errorCard' }
+          in
+              { steps: L.Nil
+              , cards: L.Cons errorCard' cards'
+              , updates: L.Cons (updateCard st loadedCards errorStep) updates'
+              }
+        _ →
+          { steps: xs
+          , cards: cards'
+          , updates: updates'
+          }
 
-  updateCard
-    ∷ DirPath
-    → Port.VarMap
-    → CardUpdate
-    → DeckDSL Unit
-  updateCard path globalVarMap { card, input = mport, output } = do
-    let cardCoord = DCS.coordModelToCoord card
-    shouldLoad ← H.gets $ Set.member cardCoord ∘ _.cardsToLoad
-    accessType ← H.gets _.accessType
-    let input = { path, input: mport, cardCoord, globalVarMap }
+  updateCard ∷ DCS.State → Set.Set (DeckId × CardId) → CardEval → DeckDSL Unit
+  updateCard st loadedCards step = void do
+    input ← for step.input (H.fromAff ∘ Pr.wait)
+    output ← for step.output (H.fromAff ∘ Pr.wait)
 
-    when shouldLoad do
-      res ← H.query' cpCard (CardSlot cardCoord) $ left $ H.action (LoadCard (snd card))
-      for_ res \_ →
-        H.modify $ DCS._cardsToLoad %~ Set.delete cardCoord
+    let
+      cardCoord = DCS.coordModelToCoord step.card
+      evalInput = { path: st.path, globalVarMap: st.globalVarMap, input, cardCoord }
 
-    void $ H.query' cpCard (CardSlot cardCoord) $ left $ H.action (UpdateCard input output)
+    when (not $ Set.member cardCoord loadedCards) $ void do
+      queryCardEval cardCoord $ H.action $ LoadCard (snd step.card)
+
+    queryCardEval cardCoord $ H.action $ UpdateCard evalInput output
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced query to trigger the cards to
@@ -682,41 +709,40 @@ runPendingCards = do
 runCard ∷ DeckId × CardId → DeckDSL Unit
 runCard coord = do
   H.modify (DCS.addPendingCard coord)
-  fireDebouncedQuery' (Milliseconds 500.0) DCS._runTrigger RunPendingCards
+  fireDebouncedQuery' (Milliseconds 500.0) DCS._runTrigger QueuePendingCard
 
 -- | Triggers the H.query for autosave. This does not immediate perform the save
 -- | H.action, but instead enqueues a debounced query to trigger the actual save.
-triggerSave ∷ DeckDSL Unit
-triggerSave = fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger Save
+triggerSave ∷ Maybe (DeckId × CardId) → DeckDSL Unit
+triggerSave coord =
+  fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger $ Save coord
 
 -- | Saves the deck as JSON, using the current values present in the state.
-saveDeck ∷ DeckDSL Unit
-saveDeck = do
+saveDeck ∷ Wiring → Maybe (DeckId × CardId) → DeckDSL Unit
+saveDeck wiring coord = do
   st ← H.get
   when (AT.isEditable st.accessType) do
-    cards ← for st.modelCards \(deckId × card) → do
-      currentState ←
-        queryCardEval (deckId × card.cardId)
-          $ H.request (SaveCard card.cardId $ Card.modelCardType card.model)
-      pure $ deckId × (fromMaybe card currentState)
+    modelCards ← Array.span (not ∘ eq st.id ∘ fst) <$> getModelCards
+    coord >>= DCS.eqCoordModel >>> flip find modelCards.init
+      # maybe' (\_ → saveMainDeck st modelCards) (saveMirroredCard st)
 
-    H.modify $ DCS._modelCards .~ cards
-
-    let
-      index = st.path </> Pathy.file "index"
-      json = Model.encode
-        { parent: st.parent
-        , mirror: st.mirror
-        , cards: snd <$> cards
-        , name: st.name
-        }
+  where
+  saveMainDeck st modelCards = do
+    let model =
+          { parent: st.parent
+          , mirror: map _.cardId <$> modelCards.init
+          , cards: snd <$> modelCards.rest
+          , name: st.name
+          }
 
     when (isNothing st.parent) do
+      let index = st.path </> Pathy.file "index"
       WM.getRoot index >>= case _ of
         Left _ → void $ WM.setRoot index st.id
         Right _ → pure unit
 
-    Quasar.save (deckIndex st.path st.id) json >>= case _ of
+    putDeck st.id model wiring.decks
+    Quasar.save (deckIndex st.path st.id) (Model.encode model) >>= case _ of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
@@ -726,36 +752,85 @@ saveDeck = do
           let deckHash = mkWorkspaceHash path' (WA.Load st.accessType) st.globalVarMap
           H.fromEff $ locationObject >>= Location.setHash deckHash
 
+  saveMirroredCard st (deckId × card) =
+    getDeck st.path deckId wiring.decks >>= case _ of
+      Left err → do
+        -- TODO: do something to notify the user saving failed
+        pure unit
+      Right deck → do
+        let cards = deck.cards <#> \c → if c.cardId == card.cardId then card else c
+            model = deck { cards = cards }
+        putDeck deckId model wiring.decks
+        void $ Quasar.save (deckIndex st.path deckId) $ Model.encode model
+
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
   H.modify \oldState →
     newState { cardElementWidth = oldState.cardElementWidth }
 
-loadDeck ∷ DirPath → DeckId → DeckDSL Unit
-loadDeck dir deckId = do
+loadDeck ∷ Wiring → DirPath → DeckId → DeckDSL Unit
+loadDeck wiring path deckId = do
   H.modify
     $ (DCS._stateMode .~ Loading)
-    ∘ (DCS._displayCards .~ applyPendingState deckId [])
-  json ← Quasar.load $ deckIndex dir deckId
-  case Model.decode =<< json of
-    Left err → do
-      H.fromAff $ log err
+    ∘ (DCS._displayCards .~ [ deckId × pendingEvalCard ])
+
+  res ← runExceptT do
+    deck ← ExceptT $ getDeck path deckId wiring.decks
+    mirroredCards ← ExceptT $ H.fromAff $ loadMirroredCards deck.mirror
+    pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
+
+  case res of
+    Left err →
       H.modify $ DCS._stateMode .~ Error "There was a problem decoding the saved deck"
-    Right model →
-      setModel dir deckId model
-
-setModel ∷ DirPath → DeckId → Deck → DeckDSL Unit
-setModel dir deckId model = do
-  st ← DCS.fromModel dir deckId model <$> H.get
-
-  setDeckState st
-  runCards $ DCS.coordModelToCoord <$> st.modelCards
-  updateActiveCardAndIndicator
-
+    Right (deck × modelCards) →
+      setModel wiring
+        { path
+        , id: deckId
+        , parent: deck.parent
+        , modelCards
+        , name: deck.name
+        }
   where
-  runCards cards = do
-    H.modify
-      $ (DCS._cardsToLoad .~ Set.fromFoldable cards)
-      ∘ (DCS._stateMode .~ Preparing)
-      ∘ (fromMaybe id $ DCS.addPendingCard <$> Array.head cards)
-    runPendingCards
+  loadMirroredCards coords = do
+    let deckIds = Array.nub (fst <$> coords)
+    res ← sequence <$> runPar (traverse (Par ∘ flip (getDeck path) wiring.decks) deckIds)
+    pure $ hydrateCards coords =<< map (Array.zip deckIds) res
+
+  hydrateCards coords decks =
+    for coords \(deckId × cardId) →
+      case find (eq deckId ∘ fst) decks of
+        Nothing → Left "Deck not found"
+        Just (_ × deck) →
+          case find (eq cardId ∘ _.cardId) deck.cards of
+            Nothing → Left "Card not found"
+            Just card → Right (deckId × card)
+
+setModel
+  ∷ Wiring
+  → { path ∷ DirPath
+    , id ∷ DeckId
+    , parent ∷ Maybe (DeckId × CardId)
+    , modelCards ∷ Array (DeckId × Card.Model)
+    , name ∷ String
+    }
+  → DeckDSL Unit
+setModel wiring model =
+  case Array.head model.modelCards of
+    Just pending → do
+      st ← DCS.fromModel model <$>
+        H.gets (DCS._stateMode .~ Preparing)
+      setDeckState st
+      runInitialEval wiring
+    Nothing → do
+      st ← DCS.fromModel model <$> H.get
+      setDeckState st
+      runCardUpdates L.Nil
+
+getModelCards ∷ DeckDSL (Array (DeckId × Card.Model))
+getModelCards = do
+  st ← H.get
+  for st.modelCards \(deckId × card) → do
+    currentState ←
+      queryCardEval (deckId × card.cardId)
+        $ H.request (SaveCard card.cardId $ Card.modelCardType card.model)
+    pure $ deckId × (fromMaybe card currentState)
