@@ -50,6 +50,7 @@ import Halogen.Component.Opaque.Unsafe (opaque, opaqueState)
 import Halogen.Component.Utils (raise', subscribeToBus')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Events.Indexed as HE
+import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
@@ -91,7 +92,7 @@ import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
-import SlamData.Workspace.Wiring (Wiring, CardEval, Cache, getDeck, putDeck, putCardEval, getCache, makeCache)
+import SlamData.Workspace.Wiring (Wiring, CardEval, Cache, DeckMessage(..), getDeck, putDeck, putCardEval, getCache, makeCache)
 
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
@@ -116,11 +117,15 @@ render wiring st =
     _ →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div
-        ([ HP.class_ CSS.board
+        ([ HP.classes $ [ CSS.board ] ++ (if st.focused then [ HH.className "focused" ] else [])
          , HP.key "board"
          , HE.onMouseUp (HE.input_ UpdateCardSize)
+         , HE.onMouseDown \_ → HEH.stopPropagation $> Just (H.action Focus)
          ] ⊕ Slider.containerProperties st)
         [ HH.div
+            [ HP.class_ (HH.className "sd-deck-frame") ]
+            []
+        , HH.div
             [ HP.class_ CSS.deck
             , HP.key "deck-container"
             ]
@@ -219,8 +224,9 @@ render wiring st =
 
 eval ∷ Wiring → Query ~> DeckDSL
 eval wiring (Init next) = do
-  breaker ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
-  H.modify $ DCS._breakers .~ pure breaker
+  pb ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
+  mb ← subscribeToBus' (H.action ∘ HandleMessage) wiring.messaging
+  H.modify $ DCS._breakers .~ [pb, mb]
   pure next
 eval _ (Finish next) = do
   H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
@@ -346,6 +352,17 @@ eval _ (SetCardElement element next) =
 eval _ (StopSliderTransition next) =
   H.modify (DCS._sliderTransition .~ false) $> next
 eval _ (DoAction _ next) = pure next
+eval wiring (Focus next) = do
+  H.modify (DCS._focused .~ true)
+  deckId ← H.gets _.id
+  H.fromAff $ Bus.write (DeckFocused deckId) wiring.messaging
+  pure next
+eval _ (HandleMessage msg next) = do
+  case msg of
+    DeckFocused focusedDeckId -> do
+      deckId <- H.gets _.id
+      when (deckId /= focusedDeckId) $ H.modify (DCS._focused .~ false)
+  pure next
 
 peek ∷ ∀ a. Wiring → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek wiring (H.ChildF s q) =

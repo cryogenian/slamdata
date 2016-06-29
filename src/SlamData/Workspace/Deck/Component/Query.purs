@@ -34,7 +34,7 @@ import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
-import SlamData.Workspace.Wiring (PendingMessage)
+import SlamData.Workspace.Wiring (DeckMessage, PendingMessage)
 
 import Utils.Path as UP
 
@@ -67,6 +67,8 @@ data Query a
   | SetCardElement (Maybe HTMLElement) a
   | StopSliderTransition a
   | DoAction DeckAction a
+  | Focus a
+  | HandleMessage DeckMessage a
 
 data DeckAction
   = Mirror
