@@ -59,7 +59,8 @@ type DeckRef = Promise (Either String Deck)
 type Cache k v = AVar (Map.Map k v)
 
 type PendingMessage =
-  { pendingCard ∷ DeckId × CardId
+  { source ∷ DeckId
+  , pendingCard ∷ DeckId × Card.Model
   , cards ∷ Cache (DeckId × CardId) CardEval
   }
 

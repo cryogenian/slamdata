@@ -1,3 +1,4 @@
+
 {-
 Copyright 2016 SlamData, Inc.
 
@@ -31,7 +32,7 @@ import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
-import Data.Foldable (find, sequence_, any)
+import Data.Foldable (find, any)
 import Data.Lens as Lens
 import Data.Lens ((.~), (%~), (^?), (?~))
 import Data.Lens.Prism.Coproduct (_Right)
@@ -280,10 +281,11 @@ eval wiring (SetModelCards modelCards next) = do
 eval _ (GetId k) = k <$> H.gets _.id
 eval _ (GetParent k) = k <$> H.gets _.parent
 eval wiring (Save coord next) = saveDeck wiring coord $> next
-eval wiring (RunPendingCards { pendingCard, cards } next) = do
+eval wiring (RunPendingCards { source, pendingCard, cards } next) = do
   st ← H.get
-  when (any (DCS.eqCoordModel pendingCard) st.modelCards) do
-    runPendingCards wiring pendingCard cards
+  let pendingCoord = DCS.coordModelToCoord pendingCard
+  when (any (DCS.eqCoordModel pendingCoord) st.modelCards) do
+    runPendingCards wiring source pendingCard cards
   pure next
 eval wiring (QueuePendingCard next) = do
   H.gets _.pendingCard >>= traverse_ \pending → do
@@ -384,7 +386,7 @@ peekBackSide wiring (Back.DoAction action _) =
         updateActiveCardAndIndicator
         H.modify $ DCS._displayMode .~ DCS.Normal
         DCS.activeCardCoord (snd rem)
-          # maybe (runCardUpdates L.Nil) (queuePendingCard wiring)
+          # maybe (runCardUpdates state.id L.Nil) (queuePendingCard wiring)
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Rename → do
       name ← H.gets _.name
@@ -528,36 +530,43 @@ pendingEvalCard =
 type UpdateAccum =
   { cards ∷ L.List (DeckId × Card.Model)
   , steps ∷ L.List CardEval
-  , updates ∷ L.List (DeckDSL Unit)
+  , updates ∷ L.List CardEval
   }
 
 type UpdateResult =
   { displayCards ∷ Array (DeckId × Card.Model)
-  , updates ∷ L.List (DeckDSL Unit)
+  , updates ∷ L.List CardEval
   }
 
 queuePendingCard
   ∷ Wiring
   → DeckId × CardId
   → DeckDSL Unit
-queuePendingCard wiring pendingCard = H.fromAff do
-  cards ← makeCache
-  Bus.write { pendingCard, cards } wiring.pending
+queuePendingCard wiring pendingCoord = do
+  st ← H.get
+  for_ (find (DCS.eqCoordModel pendingCoord) st.modelCards) \pendingCard →
+    H.fromAff do
+      cards ← makeCache
+      Bus.write { source: st.id, pendingCard, cards } wiring.pending
 
 runPendingCards
   ∷ Wiring
-  → DeckId × CardId
+  → DeckId
+  → DeckId × Card.Model
   → Cache (DeckId × CardId) CardEval
   → DeckDSL Unit
-runPendingCards wiring pendingCard pendingCards = do
+runPendingCards wiring source pendingCard pendingCards = do
   st ← H.get
   let
-    splitCards = L.span (not ∘ DCS.eqCoordModel pendingCard) $ L.toList st.modelCards
+    pendingCoord = DCS.coordModelToCoord pendingCard
+    splitCards = L.span (not ∘ DCS.eqCoordModel pendingCoord) $ L.toList st.modelCards
     prevCard = DCS.coordModelToCoord <$> L.last splitCards.init
+    pendingCards = L.Cons pendingCard <$> L.tail splitCards.rest
 
-  input ← join <$> for prevCard (flip getCache wiring.cards)
-  steps ← resume st (input >>= _.output) splitCards.rest
-  runCardUpdates steps
+  for_ pendingCards \cards → do
+    input ← join <$> for prevCard (flip getCache wiring.cards)
+    steps ← resume st (input >>= _.output) cards
+    runCardUpdates source steps
 
   where
   resume st = go L.Nil where
@@ -585,13 +594,14 @@ runInitialEval wiring = do
 
   let
     cardCoords = DCS.coordModelToCoord <$> L.toList st.modelCards
+    source = st.id
 
   for_ cardCoords \coord → do
     getCache coord wiring.cards >>= traverse_ \ev →
       putCardEval ev cards
 
-  for_ (L.head cardCoords) \pendingCard →
-    H.fromAff $ Bus.write { pendingCard, cards } wiring.pending
+  for_ (Array.head st.modelCards) \pendingCard →
+    H.fromAff $ Bus.write { source, pendingCard, cards } wiring.pending
 
 -- | Evaluates a card given an input and model.
 evalCard
@@ -618,8 +628,8 @@ evalCard path globalVarMap input card = do
 -- | Interprets a list of pending card evaluations into updates for the
 -- | display cards. Takes care of the pending card, next action card and
 -- | error card.
-runCardUpdates ∷ L.List CardEval → DeckDSL Unit
-runCardUpdates steps = do
+runCardUpdates ∷ DeckId → L.List CardEval → DeckDSL Unit
+runCardUpdates source steps = do
   st ← H.get
   let
     realCards = Array.filter (Lens.has _CardId ∘ _.cardId ∘ snd) st.displayCards
@@ -640,7 +650,7 @@ runCardUpdates steps = do
 
   updateResult ←
     H.fromAff $ Pr.wait $
-      updateCards st loadedCards { steps: updateSteps, cards: L.Nil, updates: mempty }
+      updateCards st { steps: updateSteps, cards: mempty, updates: mempty }
 
   -- Splice in the new display cards and run their updates.
   for_ (Array.head updateResult.displayCards) \card → do
@@ -651,7 +661,9 @@ runCardUpdates steps = do
 
     H.modify
       $ DCS._displayCards .~ displayCards
-    sequence_ updateResult.updates
+
+    for_ updateResult.updates $
+      updateCard st source pendingId loadedCards
 
   -- Final cleanup
   when (st.stateMode == Preparing) do
@@ -663,8 +675,8 @@ runCardUpdates steps = do
   updateActiveCardAndIndicator
 
   where
-  updateCards ∷ DCS.State → Set.Set (DeckId × CardId) → UpdateAccum → Pr.Promise UpdateResult
-  updateCards st loadedCards = case _ of
+  updateCards ∷ DCS.State → UpdateAccum → Pr.Promise UpdateResult
+  updateCards st = case _ of
     { steps: L.Nil, cards, updates } →
       pure
         { displayCards: L.fromList $ L.reverse cards
@@ -673,15 +685,15 @@ runCardUpdates steps = do
     { steps: L.Cons x xs, cards, updates } → do
       output ← sequence x.output
       let cards' = L.Cons x.card cards
-          updates' = L.Cons (updateCard st loadedCards x) updates
-      updateCards st loadedCards $ case output of
+          updates' = L.Cons x updates
+      updateCards st $ case output of
         Just (Port.CardError err) →
           let errorCard' = st.id × errorCard
               errorStep  = { input: x.output, output: Nothing, card: errorCard' }
           in
               { steps: L.Nil
               , cards: L.Cons errorCard' cards'
-              , updates: L.Cons (updateCard st loadedCards errorStep) updates'
+              , updates: L.Cons errorStep updates'
               }
         _ →
           { steps: xs
@@ -689,8 +701,14 @@ runCardUpdates steps = do
           , updates: updates'
           }
 
-  updateCard ∷ DCS.State → Set.Set (DeckId × CardId) → CardEval → DeckDSL Unit
-  updateCard st loadedCards step = void do
+  updateCard
+    ∷ DCS.State
+    → DeckId
+    → DeckId × CardId
+    → Set.Set (DeckId × CardId)
+    → CardEval
+    → DeckDSL Unit
+  updateCard st source pendingId loadedCards step = void do
     input ← for step.input (H.fromAff ∘ Pr.wait)
     output ← for step.output (H.fromAff ∘ Pr.wait)
 
@@ -698,7 +716,9 @@ runCardUpdates steps = do
       cardCoord = DCS.coordModelToCoord step.card
       evalInput = { path: st.path, globalVarMap: st.globalVarMap, input, cardCoord }
 
-    when (not $ Set.member cardCoord loadedCards) $ void do
+    -- We always load the card when we are updating a mirrored deck. This is
+    -- so mirrors will always have the most recent model.
+    when (not (Set.member cardCoord loadedCards) || st.id ≠ source) $ void do
       queryCardEval cardCoord $ H.action $ LoadCard (snd step.card)
 
     queryCardEval cardCoord $ H.action $ UpdateCard evalInput output
@@ -824,7 +844,7 @@ setModel wiring model =
     Nothing → do
       st ← DCS.fromModel model <$> H.get
       setDeckState st
-      runCardUpdates L.Nil
+      runCardUpdates st.id L.Nil
 
 getModelCards ∷ DeckDSL (Array (DeckId × Card.Model))
 getModelCards = do
