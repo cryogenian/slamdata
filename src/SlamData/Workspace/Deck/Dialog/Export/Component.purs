@@ -19,7 +19,6 @@ import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.HTML.Renderer.String (renderHTML)
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (raise)
 
@@ -283,17 +282,22 @@ eval (Init mbEl next) = next <$ do
     | state.presentingAs ≡ URI =
         renderURL locString state
     | otherwise =
-        renderHTML
-          $ HH.script
-              [ HP.mediaType { type: "text", subtype: "javascript", parameters: [] } ]
-              [ HH.text javascriptCode ]
-    where
-    javascriptCode ∷ String
-    javascriptCode =
-      "document.writeln(\"<iframe "
-      ⊕ "width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" "
-      ⊕ "src=\\\"" ⊕ renderURL locString state ⊕ "\\\"></iframe>̈\");"
-
+      "<script type=\"text/javascript\">\n"
+      ⊕ "(function() {\n"
+      ⊕ "  var slamdataPermissionToken = "
+      ⊕ maybe "window.SLAMDATA_PERMISSION_TOKEN" (\x → "\"" ⊕ runPermissionToken x ⊕ "\"") state.permToken ⊕ ";\n"
+      ⊕ "  var queryString = \"?permissionTokens=\" + slamdataPermissionToken;\n"
+      ⊕ "  var uri = \""
+        ⊕ locString
+        ⊕ "/"
+        ⊕ Config.workspaceUrl
+        ⊕ "\"\n    + queryString\n    + \""
+        ⊕ mkWorkspaceHash state.deckPath (WA.Load AT.ReadOnly) state.varMap
+        ⊕ "\";\n"
+      ⊕ "  var iframe = \"<iframe width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" src=\\\"\" + uri + \"\\\"></iframe>\""
+      ⊕ "  document.writeln(iframe);\n"
+      ⊕ "})();\n"
+      ⊕ "</script>"
 
   -- TODO: actually get token list
   getAllTokens ∷ DSL (Array PermissionToken)
