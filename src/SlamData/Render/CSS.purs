@@ -432,6 +432,15 @@ deckName = className "sd-deck-name"
 card ∷ ClassName
 card = className "sd-card"
 
+cardSliding ∷ ClassName
+cardSliding = className "sd-card-sliding"
+
+cardTransitioning ∷ ClassName
+cardTransitioning = className "sd-card-transitioning"
+
+cardActive ∷ ClassName
+cardActive = className "sd-card-active"
+
 cardGripper ∷ ClassName
 cardGripper = className "sd-card-gripper"
 

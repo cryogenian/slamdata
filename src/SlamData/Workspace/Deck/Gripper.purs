@@ -63,9 +63,9 @@ isAvailable (Next available) =
 
 gripperLabel ∷ GripperDef → String
 gripperLabel (Previous _) =
-  "Drag right to access previous cards"
+  "Access previous card"
 gripperLabel (Next _) =
-  "Drag left to access next cards"
+  "Access next card"
 
 gripperClassName ∷ GripperDef → ClassName
 gripperClassName (Previous _) = ClassNames.cardGripper

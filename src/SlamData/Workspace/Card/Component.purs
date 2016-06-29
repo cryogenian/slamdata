@@ -68,7 +68,7 @@ makeCardComponent def = makeCardComponentPart def render
       , HP.ref (H.action ∘ CQ.SetHTMLElement)
       ]
       $ fold
-        [ CR.header def.cardType cs
+        [ CR.renderHeader def.cardType cs
         , [ HH.div
               [ HP.classes $ cardClasses def.cardType ]
               [ HH.slot unit \_ → {component, initialState} ]

@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Component.Render
-  ( CardHTML
-  , header
-  ) where
+module SlamData.Workspace.Card.Component.Render where
 
 import SlamData.Prelude
 
@@ -30,24 +27,21 @@ import SlamData.Workspace.Card.Component.Query (CardQuery, InnerCardQuery)
 import SlamData.Workspace.Card.Component.State (CardState, AnyCardState)
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
-import SlamData.Workspace.Card.CardType (CardType, cardName, cardGlyph, controllable)
+import SlamData.Workspace.Card.CardType (CardType(PendingCard), cardName)
 
 type CardHTML = ParentHTML AnyCardState CardQuery InnerCardQuery Slam Unit
 
-header
+renderHeader
   ∷ CardType
   → CardState
   → Array CardHTML
-header cty cs =
-  guard (controllable cty) $>
+renderHeader cty cs =
+  guard (cty ≠ PendingCard) $>
     H.div
       [ P.classes [CSS.cardHeader]
       , ARIA.label $ (cardName cty) ⊕ " card"
       ]
       [ H.div
-          [ P.class_ CSS.cardIcon ]
-          [ cardGlyph cty ]
-      , H.div
           [ P.class_ CSS.cardName ]
           [ H.text $ cardName cty ]
       ]
