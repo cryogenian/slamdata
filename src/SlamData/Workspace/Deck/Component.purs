@@ -353,15 +353,17 @@ eval _ (StopSliderTransition next) =
   H.modify (DCS._sliderTransition .~ false) $> next
 eval _ (DoAction _ next) = pure next
 eval wiring (Focus next) = do
-  H.modify (DCS._focused .~ true)
-  deckId ← H.gets _.id
-  H.fromAff $ Bus.write (DeckFocused deckId) wiring.messaging
+  st ← H.get
+  when (not st.focused) do
+    H.modify (DCS._focused .~ true)
+    H.fromAff $ Bus.write (DeckFocused st.id) wiring.messaging
   pure next
 eval _ (HandleMessage msg next) = do
   case msg of
     DeckFocused focusedDeckId -> do
-      deckId <- H.gets _.id
-      when (deckId /= focusedDeckId) $ H.modify (DCS._focused .~ false)
+      st <- H.get
+      when (st.id /= focusedDeckId && st.focused) $
+        H.modify (DCS._focused .~ false)
   pure next
 
 peek ∷ ∀ a. Wiring → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
