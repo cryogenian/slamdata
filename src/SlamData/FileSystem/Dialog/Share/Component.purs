@@ -54,7 +54,7 @@ comp = H.component { render, eval }
 render ∷ State → H.ComponentHTML Query
 render (State url) =
   modalDialog
-    [ modalHeader "URL"
+    [ modalHeader "Link to deck"
     , modalBody
         $ HH.form
             [ CP.nonSubmit ]

@@ -91,11 +91,7 @@ renderPublishURI ∷ State → H.ComponentHTML Query
 renderPublishURI state =
   HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
     [ HH.h4_ [ HH.text "Publish deck" ]
-    , HH.p_
-        [ HH.text
-          $ "Anyone has access to the following URL "
-          ⊕ "will be able to view the deck. You may undo this by revoking access."
-        ]
+    , HH.p_ message
     , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
         [ HH.form
             [ CP.nonSubmit ]
@@ -150,6 +146,24 @@ renderPublishURI state =
               [ HH.text "Preview" ]
           ]
       ]
+  where
+  message
+    | state.isLogged =
+        [ HH.text
+          $ "Anyone has access to the following link "
+          ⊕ "will be able to view the deck. You may undo this by revoking access."
+        ]
+    | otherwise =
+        [ HH.text
+            $ "Anyone with access to this link may be able to view this deck. "
+            ⊕ "They may also be able to modify the link to view or edit any deck "
+            ⊕ "in this workspace. Please see "
+        , HH.a [ HP.href "http://docs.slamdata.com/en/latest/securing-slamdata.html"
+               , HP.target  "_blank"
+               ]
+            [ HH.text "Securing SlamData Community Edition" ]
+        , HH.text " for more information."
+        ]
 
 
 
@@ -191,11 +205,7 @@ renderPublishIFrame state =
                            , HP.checked state.shouldGenerateToken
                            , HE.onChecked (HE.input_ ToggleShouldGenerateToken)
                            ])
-                    ⊕ [ HH.text
-                        $ "Include a permission token so the deck "
-                        ⊕ "can be accessed by anyone who has the access to this script. "
-                        ⊕ "You may undo this by revoking access."
-                      ]
+                    ⊕ message
                   ]
                 ]
           ]
@@ -219,6 +229,24 @@ renderPublishIFrame state =
                 ]
                 [ HH.text "Revoke" ])
 
+        ]
+  where
+  message
+    | state.isLogged =
+        [ HH.text
+            $ "Include a permission token so the deck "
+            ⊕ "can be accessed by anyone who has the access to this script. "
+            ⊕ "You may undo this by revoking access."
+        ]
+    | otherwise =
+        [ HH.text
+            $ "Anyone with access to this script may be able to view this deck. "
+            ⊕ "They may also be able to modify the script to view or edit any "
+            ⊕ "deck in this workspace. Please see "
+        , HH.a [ HP.href "http://docs.slamdata.com/en/latest/securing-slamdata.html"
+               , HP.target "_blank"]
+            [ HH.text "Securing SlamData Community Edition" ]
+        , HH.text " for more information."
         ]
 
 
