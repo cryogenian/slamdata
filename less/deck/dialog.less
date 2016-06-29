@@ -12,13 +12,29 @@
         }
         h4 { padding-top: 20px }
         .deck-dialog-body {
-            height: ~"calc(100% - 100px)";
+            height: ~"calc(100% - 140px)";
+            form {
+                width: 100%;
+                .input-group {
+                    width: 100%;
+                }
+
+                .textarea-copy-button {
+                    position: absolute;
+                    top: 80px;
+                    right: 28px;
+
+                }
+            }
         }
         .deck-dialog-footer {
             position: absolute;
             bottom: 36px;
-            button {
-                margin-right: 20px;
+            text-align: right;
+            width: 100%;
+            right: 20px;
+            button, a {
+                margin-left: 20px;
             }
         }
         .deck-dialog-embed {
@@ -28,7 +44,8 @@
                     height: 100%;
                     textarea {
                         resize: none;
-                        height: ~"calc(100% - 20px)";
+                        height: ~"calc(100% - 48px)";
+                        min-height: 60px;
                     }
                 }
             }

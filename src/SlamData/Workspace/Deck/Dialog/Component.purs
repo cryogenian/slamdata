@@ -38,16 +38,17 @@ import Halogen.Component.Utils (raise')
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
-import SlamData.Workspace.Deck.Dialog.Embed.Component as Embed
 import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
-import SlamData.FileSystem.Dialog.Share.Component as Share
+import SlamData.Workspace.Deck.Dialog.Export.Component as Export
 import SlamData.Effects (Slam)
 
+import Utils.Path (DirPath)
+
 data Dialog
-  = Rename String
-  | Error String
-  | Embed String Port.VarMap
-  | Share String
+  = Error String
+  | Embed DirPath Port.VarMap
+  | Publish DirPath Port.VarMap
+  | Rename String
   | DeleteDeck
 
 type State = Maybe Dialog
@@ -62,13 +63,25 @@ data Query a
   | Show Dialog a
 
 type ChildState =
-  Rename.State ⊹ Error.State ⊹ Embed.State ⊹ Share.State ⊹ Confirm.State
+  Rename.State
+  ⊹ Error.State
+  ⊹ Confirm.State
+  ⊹ Export.State
+  ⊹ Export.State
 
 type ChildQuery =
-  Rename.Query ⨁ Error.Query ⨁ Embed.Query ⨁ Share.Query ⨁  Confirm.Query
+  Rename.Query
+  ⨁ Error.Query
+  ⨁ Confirm.Query
+  ⨁ Export.Query
+  ⨁ Export.Query
 
 type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit
+  Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
 
 cpRename
   ∷ ChildPath
@@ -84,26 +97,28 @@ cpError
        Unit ChildSlot
 cpError = cpR :> cpL
 
-cpEmbed
-  ∷ ChildPath
-       Embed.State ChildState
-       Embed.Query ChildQuery
-       Unit ChildSlot
-cpEmbed = cpR :> cpR :> cpL
-
-cpShare
-  ∷ ChildPath
-      Share.State ChildState
-      Share.Query ChildQuery
-      Unit ChildSlot
-cpShare = cpR :> cpR :> cpR :> cpL
 
 cpDeleteDeck
   ∷ ChildPath
       Confirm.State ChildState
       Confirm.Query ChildQuery
       Unit ChildSlot
-cpDeleteDeck = cpR :> cpR :> cpR :> cpR
+cpDeleteDeck = cpR :> cpR :> cpL
+
+cpPublish
+  ∷ ChildPath
+      Export.State ChildState
+      Export.Query ChildQuery
+      Unit ChildSlot
+cpPublish = cpR :> cpR :> cpR :> cpL
+
+cpEmbed
+  ∷ ChildPath
+      Export.State ChildState
+      Export.Query ChildQuery
+      Unit ChildSlot
+cpEmbed = cpR :> cpR :> cpR :> cpR
+
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
@@ -133,16 +148,14 @@ render state =
       , initialState: Error.State str
       }
 
-  dialog (Embed url varMap) =
+  dialog (Embed deckPath varMap) =
     HH.slot' cpEmbed unit \_ →
-      { component: Embed.comp
-      , initialState: { url, varMap }
-      }
-
-  dialog (Share str) =
-    HH.slot' cpShare unit \_ →
-      { component: Share.nonModalComp
-      , initialState: Share.State str
+      { component: Export.comp
+      , initialState:
+          (Export.initialState deckPath)
+            { presentingAs = Export.IFrame
+            , varMap = varMap
+            }
       }
 
   dialog DeleteDeck =
@@ -155,6 +168,16 @@ render state =
           , confirm: "Delete"
           }
       }
+  dialog (Publish deckPath varMap) =
+    HH.slot' cpPublish unit \_ →
+      { component: Export.comp
+      , initialState:
+          (Export.initialState deckPath)
+            { presentingAs = Export.URI
+            , varMap = varMap
+            }
+      }
+
 
 eval ∷ Natural Query DSL
 eval (Dismiss next) = H.set Nothing $> next
@@ -164,7 +187,11 @@ eval (Show d next) = H.set (Just d) $> next
 
 peek ∷ ∀ a. ChildQuery a → DSL Unit
 peek =
-  renamePeek ⨁ errorPeek ⨁ embedPeek ⨁ sharePeek ⨁ deleteDeckPeek
+  renamePeek
+  ⨁ errorPeek
+  ⨁ deleteDeckPeek
+  ⨁ exportPeek
+  ⨁ exportPeek
 
 -- Send `Dismiss` after child's `Dismiss` to simplify parent of
 -- this component peeking. (I.e. it can observe only this component queries and
@@ -175,20 +202,15 @@ renamePeek (Rename.Rename name _) = raise' $ SetDeckName name unit
 renamePeek _ = pure unit
 
 errorPeek ∷ ∀ a. Error.Query a → DSL Unit
-errorPeek (Error.Dismiss _) = do
+errorPeek (Error.Dismiss _) =
   raise' $ Dismiss unit
-
-embedPeek ∷ ∀ a. Embed.Query a → DSL Unit
-embedPeek (Embed.Dismiss _) = do
-  raise' $ Dismiss unit
-embedPeek _ = pure unit
-
-sharePeek ∷ ∀ a. Share.Query a → DSL Unit
-sharePeek (Share.Dismiss _) = do
-  raise' $ Dismiss unit
-sharePeek _ = pure unit
 
 deleteDeckPeek ∷ ∀ a. Confirm.Query a → DSL Unit
 deleteDeckPeek (Confirm.Confirm b _) = do
   H.get >>= traverse_ \dialog →
     raise' $ Confirm dialog b unit
+
+exportPeek ∷ ∀ a. Export.Query a → DSL Unit
+exportPeek (Export.Dismiss _) =
+  raise' $ Dismiss unit
+exportPeek _ = pure unit
