@@ -61,7 +61,7 @@ cardsInTableColumnInLastCard f i headerText xs = do
   tdXPath =
     f tableXPath thXPath xs
   tableXPath =
-    XPath.last (XPath.anywhere XPaths.jtableHeading) `XPath.following` "table"
+    XPath.last $ XPath.anywhere "table"
 
 tableColumnsAre ∷ ∀ f. Foldable f ⇒ f String → SlamFeature Unit
 tableColumnsAre expectedTexts =
@@ -71,14 +71,12 @@ tableColumnsAre expectedTexts =
 labelInLastMdCard ∷ String → SlamFeature Unit
 labelInLastMdCard label =
   expectPresented
-    $ (XPath.anywhere $ XPaths.displayMarkdownCardTitle)
-    `XPath.following` ("label" `XPath.nodeWithExactText` label)
+    $ XPath.anywhere "label" `XPath.nodeWithExactText` label
 
 fieldInLastMdCard ∷ String → String → String → SlamFeature Unit
 fieldInLastMdCard labelText inputType value =
   expectPresentedWithProperties valueProperty
-    $ (XPath.anywhere $ XPaths.displayMarkdownCardTitle)
-    `XPath.following` inputXPath
+    $ XPath.anywhere inputXPath
   where
   valueProperty = Map.singleton "value" $ Just value
   inputXPath = XPaths.inputWithLabelAndType labelText inputType
@@ -86,8 +84,7 @@ fieldInLastMdCard labelText inputType value =
 checkableFieldInLastMdCard ∷ String → String → Boolean → SlamFeature Unit
 checkableFieldInLastMdCard labelText inputType checked =
   expectPresentedWithProperties checkedProperty
-    $ (XPath.anywhere $ XPaths.displayMarkdownCardTitle)
-    `XPath.following` inputXPath
+    $ XPath.anywhere inputXPath
   where
   propertyValue = if checked then Just "true" else Nothing
   checkedProperty = Map.singleton "checked" propertyValue
@@ -97,8 +94,7 @@ dropdownInLastMdCard ∷ String → Array String → SlamFeature Unit
 dropdownInLastMdCard value values =
   expectPresentedWithProperties
     (Map.singleton "value" $ Just value)
-    $ (XPath.anywhere $ XPaths.displayMarkdownCardTitle)
-    `XPath.following` XPath.selectWithOptionsWithExactTexts values
+    $ XPath.anywhere $ XPath.selectWithOptionsWithExactTexts values
 
 resourceOpenedInLastExploreCard ∷ String → SlamFeature Unit
 resourceOpenedInLastExploreCard fileName =
@@ -109,7 +105,7 @@ exploreFileInLastCard ∷ String → SlamFeature Unit
 exploreFileInLastCard fileName =
   expectPresentedWithProperties
     (Map.singleton "value" $ Just fileName)
-    ((XPath.last $ XPath.anywhere $ XPaths.cardHeading) `XPath.following` XPaths.exploreInput)
+    (XPath.last $ XPath.anywhere XPaths.exploreInput)
 
 file ∷ String → SlamFeature Unit
 file =
@@ -197,7 +193,6 @@ textInDisplayMarkdownCard =
   tryRepeatedlyTo
     ∘ expectPresented
     ∘ XPath.anywhere
-    ∘ XPath.following XPaths.displayMarkdownCardHeader
     ∘ XPath.anyWithText
 
 backsideActionNotPresented ∷ String → SlamFeature Unit

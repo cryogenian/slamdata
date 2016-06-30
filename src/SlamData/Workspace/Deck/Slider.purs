@@ -92,10 +92,8 @@ stopSlidingAndSnap ∷ Event MouseEvent → DeckDSL Unit
 stopSlidingAndSnap mEvent =
   H.modify
     $ stopSliding
-    ∘ (DCS._slidingTo .~ Nothing)
     ∘ snap
     ∘ stateUpdateSliderPosition mEvent
-
 
 stateUpdateSliderPosition ∷ Event MouseEvent → State → State
 stateUpdateSliderPosition mouseEvent =
@@ -114,6 +112,14 @@ stopSliding ∷ State → State
 stopSliding =
   (DCS._initialSliderX .~ Nothing)
   ∘ (DCS._sliderTranslateX .~ 0.0)
+  ∘ (DCS._slidingTo .~ Nothing)
+  ∘ startTransition
+
+clickBound ∷ Number
+clickBound = 4.0
+
+isClick ∷ Number -> Boolean
+isClick n = n < clickBound ∧ n > -clickBound
 
 snapActiveCardIndexByTranslationAndCardWidth
   ∷ State
@@ -128,9 +134,9 @@ snapActiveCardIndexByTranslationAndCardWidth st cardWidth idx =
 
     halfOffset = (offsetCardSpacing cardWidth) / 2.0
 
-    result | translateX ≡ zero = case st.slidingTo of
-      Just (Previous true) → idx - one
-      Just (Next true) → idx + one
+    result | isClick translateX  = case st.slidingTo of
+      Just (Previous true) → min (numberOfCards - 1) $ idx - one
+      Just (Next true) → max 0 $ idx + one
       _ → idx
     result | translateX <= -1.0 * halfOffset =
       min (numberOfCards - 1)
@@ -162,7 +168,7 @@ startTransition ∷ State → State
 startTransition = DCS._sliderTransition .~ true
 
 willChangeActiveCardWhenDropped ∷ State → Boolean
-willChangeActiveCardWhenDropped st=
+willChangeActiveCardWhenDropped st =
   fromMaybe 0 st.activeCardIndex ≠ snapActiveCardIndex st
 
 cardPositionCSS ∷ Int → CSS
@@ -177,7 +183,7 @@ cardSliderTransformCSS activeCardIndex translateX =
 
 cardSliderTransitionCSS ∷ Boolean → CSS
 cardSliderTransitionCSS false = CSSUtils.transition "none"
-cardSliderTransitionCSS true = CSSUtils.transition "all 0.33s"
+cardSliderTransitionCSS true = CSSUtils.transition "all 0.125s"
 
 cardSliderTranslateX ∷ Int → Number → String
 cardSliderTranslateX activeCardIndex translateX =
@@ -223,7 +229,7 @@ renderCard ∷ Wiring → DeckComponent → State → (DeckId × Card.Model) →
 renderCard wiring comp st (deckId × card) index =
   HH.div
     ([ HP.key key
-    , HP.classes [ ClassNames.card ]
+    , HP.classes classes
     , style $ cardPositionCSS index
     , HP.ref (H.action ∘ DCQ.SetCardElement)
     ])
@@ -237,6 +243,10 @@ renderCard wiring comp st (deckId × card) index =
            ]
   where
   key = "card-" ⊕ DeckId.deckIdToString deckId ⊕ "-" ⊕ CardId.cardIdToString card.cardId
+  classes =
+    [ ClassNames.card ]
+      ⊕ (guard (not $ isClick st.sliderTranslateX) $> ClassNames.cardSliding)
+      ⊕ (guard (cardSelected st (deckId × card.cardId)) $> ClassNames.cardActive)
   coord = deckId × card.cardId
   slotId = ChildSlot.CardSlot coord
   cardOpts =

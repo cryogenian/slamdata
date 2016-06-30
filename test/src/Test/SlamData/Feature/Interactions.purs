@@ -226,14 +226,12 @@ provideSearchStringInLastSearchCard =
 provideMdInLastMdCard ∷ String → SlamFeature Unit
 provideMdInLastMdCard =
   Feature.provideFieldValue
-    $ XPath.last $ XPath.anywhere XPaths.mdCardTitle
-    `XPath.following` XPaths.aceEditor
+    $ XPath.last $ XPath.anywhere XPaths.aceEditor
 
 provideQueryInLastQueryCard ∷ String → SlamFeature Unit
 provideQueryInLastQueryCard =
   Feature.provideFieldValue
-    $ (XPath.last $ XPath.anywhere $ XPaths.queryCardTitle)
-    `XPath.following` XPaths.aceEditor
+    $ XPath.last $ XPath.anywhere XPaths.aceEditor
 
 provideSaveDestinationInLastCacheCard ∷ String → SlamFeature Unit
 provideSaveDestinationInLastCacheCard =
