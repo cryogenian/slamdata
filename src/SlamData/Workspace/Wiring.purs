@@ -20,6 +20,7 @@ module SlamData.Workspace.Wiring
   , CardEval
   , DeckRef
   , PendingMessage
+  , DeckMessage(..)
   , makeWiring
   , makeCache
   , putDeck
@@ -64,10 +65,14 @@ type PendingMessage =
   , cards ∷ Cache (DeckId × CardId) CardEval
   }
 
+data DeckMessage
+  = DeckFocused DeckId
+
 type Wiring =
   { decks ∷ Cache DeckId DeckRef
   , cards ∷ Cache (DeckId × CardId) CardEval
   , pending ∷ Bus.BusRW PendingMessage
+  , messaging ∷ Bus.BusRW DeckMessage
   }
 
 makeWiring
@@ -78,7 +83,8 @@ makeWiring = fromAff do
   decks ← makeCache
   cards ← makeCache
   pending ← Bus.make
-  pure { decks, cards, pending }
+  messaging ← Bus.make
+  pure { decks, cards, pending, messaging }
 
 makeCache
   ∷ ∀ m k v

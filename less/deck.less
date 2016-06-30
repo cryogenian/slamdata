@@ -17,6 +17,15 @@
   left: 0;
   bottom: 0;
 
+  &.focused > div.sd-deck-frame {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 2px solid red;
+    z-index: 1;
+    pointer-events: none;
+  }
+
   & > .loading {
     position: absolute;
     top: @grid-size;

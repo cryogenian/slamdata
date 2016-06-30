@@ -42,6 +42,7 @@ module SlamData.Workspace.Deck.Component.State
   , _level
   , _slidingTo
   , _breakers
+  , _focused
   , addCard
   , addCard'
   , removeCard
@@ -134,6 +135,7 @@ type State =
   , level ∷ DL.DeckLevel
   , slidingTo ∷ Maybe GripperDef
   , breakers ∷ Array (Breaker Unit)
+  , focused ∷ Boolean
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -166,6 +168,7 @@ initialDeck path deckId =
   , level: DL.root
   , slidingTo: Nothing
   , breakers: mempty
+  , focused: false
   }
 
 -- | The unique identifier of the deck.
@@ -265,6 +268,9 @@ _breakers = lens _.breakers _{breakers = _}
 -- | Whether the deck is at the top-level of the deck component hierarchy
 _level ∷ ∀ a r. LensP {level ∷ a|r} a
 _level = lens _.level _{level = _}
+
+_focused ∷ ∀ a r. LensP {focused ∷ a|r} a
+_focused = lens _.focused _{focused = _}
 
 addCard ∷ Card.AnyCardModel → State → State
 addCard card st = fst $ addCard' card st

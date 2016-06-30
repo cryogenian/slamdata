@@ -159,6 +159,7 @@ eval _ (Reset path next) = do
     , deckId = Just deckId
     }
   queryDeck $ H.action $ Deck.Reset path
+  queryDeck $ H.action $ Deck.Focus
   pure next
 eval _ (Load path deckId accessType next) = do
   oldAccessType <- H.gets _.accessType
@@ -179,6 +180,7 @@ eval _ (Load path deckId accessType next) = do
       }
     queryDeck $ H.action $ Deck.Reset path
     maybe loadRoot loadDeck deckId
+    void $ queryDeck $ H.action $ Deck.Focus
 
   loadDeck deckId = void do
     H.modify _ { stateMode = Ready, deckId = Just deckId }
