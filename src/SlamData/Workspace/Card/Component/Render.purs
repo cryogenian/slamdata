@@ -27,7 +27,7 @@ import SlamData.Workspace.Card.Component.Query (CardQuery, InnerCardQuery)
 import SlamData.Workspace.Card.Component.State (CardState, AnyCardState)
 import SlamData.Effects (Slam)
 import SlamData.Render.CSS as CSS
-import SlamData.Workspace.Card.CardType (CardType(PendingCard), cardName)
+import SlamData.Workspace.Card.CardType (CardType(PendingCard), cardName, cardGlyph)
 
 type CardHTML = ParentHTML AnyCardState CardQuery InnerCardQuery Slam Unit
 
@@ -43,5 +43,7 @@ renderHeader cty cs =
       ]
       [ H.div
           [ P.class_ CSS.cardName ]
-          [ H.text $ cardName cty ]
+          [ cardGlyph cty
+          , H.text $ " " ⊕ cardName cty
+          ]
       ]
