@@ -32,7 +32,7 @@ import Ace.Types (Completion)
 import Halogen (query, action, gets, request, fromEff, modify)
 
 import SlamData.Workspace.Card.Ace.Component as AceCard
-import SlamData.Workspace.Card.Ace.Component.State (_isNew)
+import SlamData.Workspace.Card.Ace.Component.State (Status(..), _status, isNew)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
@@ -41,8 +41,8 @@ import Utils.Completions (mkCompletion, pathCompletions)
 
 queryEval ∷ CET.CardEvalInput → AceCard.DSL Unit
 queryEval info = do
-  isNew ← gets _.isNew
-  when isNew do
+  status ← gets _.status
+  when (isNew status) do
     mbEditor ←
       map join $ query unit $ request Ace.GetEditor
 
@@ -77,7 +77,7 @@ queryEval info = do
     for_ (info.input ^? _Nothing) \_ →
       for_ mbEditor setSelectEmpty
 
-    modify $ _isNew .~ false
+    modify $ _status .~ Ready
   where
   setSelectEmpty editor = do
     void $ query unit $ action $ Ace.SetText ("SELECT \"Hello World!\"")

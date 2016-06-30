@@ -45,7 +45,7 @@ import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.Ace.Component.Query (QueryP)
-import SlamData.Workspace.Card.Ace.Component.State (State, StateP, initialState, _levelOfDetails, _isNew)
+import SlamData.Workspace.Card.Ace.Component.State (State, StateP, Status(..), initialState, _levelOfDetails, _status, isNew, isLoading, isReady)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
@@ -80,26 +80,29 @@ eval cfg (CC.EvalCard info output next) = do
   cfg.eval info
   pure next
 eval cfg (CC.Save k) = do
-  isNew ← H.gets _.isNew
+  status ← H.gets _.status
   content ← fromMaybe "" <$> H.query unit (H.request GetText)
   mbEditor ← H.query unit (H.request GetEditor)
   rrs ← H.fromEff $ maybe (pure []) getRangeRecs $ join mbEditor
   pure ∘ k
     $ Card.Ace cfg.mode
-    $ if isNew
+    $ if isNew status
       then Nothing
       else Just { text: content, ranges: rrs }
 eval _ (CC.Load card next) = do
   case card of
     Card.Ace _ (Just { text, ranges }) → do
+      -- We don't want the Ace component to trigger a TextChanged event when we
+      -- initially set the text, so we use this nasty state to filter it out.
+      H.modify $ _status .~ Loading
       H.query unit $ H.action (SetText text)
+      H.modify $ _status .~ Ready
       mbEditor ← H.query unit $ H.request GetEditor
       H.fromEff $ for_ (join mbEditor) \editor → do
         traverse_ (readOnly editor) ranges
         Editor.navigateFileEnd editor
-      H.modify $ _isNew .~ false
     Card.Ace CT.MarkdownMode Nothing →
-      H.modify $ _isNew .~ false
+      H.modify $ _status .~ Ready
     _ → pure unit
   pure next
 eval _ (CC.SetDimensions dims next) = do
@@ -114,7 +117,10 @@ eval _ (CC.ZoomIn next) =
 
 peek ∷ ∀ x. AceQuery x → DSL Unit
 peek = case _ of
-  TextChanged _ → CC.raiseUpdatedP CC.EvalModelUpdate
+  TextChanged _ → do
+    status ← H.gets _.status
+    when (isReady status) $
+      CC.raiseUpdatedP CC.EvalModelUpdate
   _ → pure unit
 
 aceSetup ∷ AceConfig → Editor → Slam Unit

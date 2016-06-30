@@ -17,9 +17,13 @@ limitations under the License.
 module SlamData.Workspace.Card.Ace.Component.State
   ( StateP
   , State
+  , Status(..)
   , initialState
   , _levelOfDetails
-  , _isNew
+  , _status
+  , isNew
+  , isLoading
+  , isReady
   ) where
 
 import SlamData.Prelude
@@ -34,21 +38,38 @@ import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 import SlamData.Effects (Slam)
 
+data Status
+  = New
+  | Loading
+  | Ready
+
 type State =
   { levelOfDetails ∷ LevelOfDetails
-  , isNew ∷ Boolean
+  , status ∷ Status
   }
 
 initialState ∷ State
 initialState =
   { levelOfDetails: High
-  , isNew: true
+  , status: New
   }
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a |r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
-_isNew ∷ ∀ a r. LensP {isNew ∷ a|r} a
-_isNew = lens (_.isNew) (_{isNew = _})
+_status ∷ ∀ a r. LensP {status ∷ a|r} a
+_status = lens (_.status) (_{status = _})
+
+isNew ∷ Status → Boolean
+isNew New = true
+isNew _   = false
+
+isLoading ∷ Status → Boolean
+isLoading Loading = true
+isLoading _       = false
+
+isReady ∷ Status → Boolean
+isReady Ready = true
+isReady _     = false
 
 type StateP = ParentState State AceState CardEvalQuery AceQuery Slam Unit

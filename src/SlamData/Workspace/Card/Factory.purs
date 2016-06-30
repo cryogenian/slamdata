@@ -24,7 +24,7 @@ import SlamData.Prelude
 import Halogen as H
 
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent)
+import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent, Status(..))
 import SlamData.Workspace.Card.API.Component (apiComponent)
 import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
 import SlamData.Workspace.Card.CardType as CT
@@ -70,5 +70,5 @@ cardComponent card opts =
     Card.Draftboard _ → draftboardComponent opts
 
 aceEval ∷ CT.AceMode → AceEval
-aceEval CT.MarkdownMode = const $ H.modify _{isNew = false}
+aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}
 aceEval CT.SQLMode = queryEval
