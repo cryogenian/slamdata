@@ -62,7 +62,7 @@ chartCardTitle =
 
 eChartOptions ∷ String → String
 eChartOptions string =
-  chartCardTitle `XPath.following` ("pre" `XPath.nodeWithExactText` string)
+  ("pre" `XPath.nodeWithExactText` string)
 
 embedCardOutputSnippet ∷ String
 embedCardOutputSnippet =
@@ -369,12 +369,12 @@ headerGripper =
 previousCardGripper :: String
 previousCardGripper =
   XPath.any
-    `XPath.withPredicate` XPath.ariaLabel "Drag right to access previous cards"
+    `XPath.withPredicate` XPath.ariaLabel "Access previous card"
 
 nextCardGripper :: String
 nextCardGripper =
   XPath.any
-    `XPath.withPredicate` XPath.ariaLabel "Drag left to access next cards"
+    `XPath.withPredicate` XPath.ariaLabel "Access next card"
 
 enabledPreviousCardGripper :: String
 enabledPreviousCardGripper =
