@@ -89,7 +89,6 @@ renderLowLOD state =
         ]
     ]
 
-
 renderHighLOD ∷ State → HTML
 renderHighLOD state =
   HH.div
@@ -198,6 +197,7 @@ cardEval = case _ of
 openResourceEval ∷ Query ~> DSL
 openResourceEval (ResourceSelected r next) = do
   resourceSelected r
+  CC.raiseUpdatedC' CC.EvalModelUpdate
   pure next
 openResourceEval (Init mres next) = do
   updateItems *> rearrangeItems
@@ -214,7 +214,6 @@ resourceSelected r = do
           H.modify (_browsing .~ dp)
           updateItems
       H.modify (_selected ?~ fp)
-      CC.raiseUpdatedC' CC.EvalModelUpdate
     Left dp → do
       H.modify
         $ (_browsing .~ dp)
@@ -224,8 +223,7 @@ resourceSelected r = do
 
 updateItems ∷ DSL Unit
 updateItems = do
-  dp ← H.gets _.browsing
-  cs ← Quasar.children dp
+  cs ← Quasar.children =<< H.gets _.browsing
   mbSel ← H.gets _.selected
   H.modify (_items .~ foldMap id cs)
 
@@ -234,7 +232,8 @@ rearrangeItems = do
   H.modify $ _items %~ Arr.sortBy sortFn
   where
   sortFn ∷ R.Resource → R.Resource → Ordering
-  sortFn a b | R.hiddenTopLevel a && R.hiddenTopLevel b = compare a b
-  sortFn a b | R.hiddenTopLevel a = GT
-  sortFn a b | R.hiddenTopLevel b = LT
-  sortFn a b = compare a b
+  sortFn a b
+    | R.hiddenTopLevel a && R.hiddenTopLevel b = compare a b
+    | R.hiddenTopLevel a = GT
+    | R.hiddenTopLevel b = LT
+    | otherwise = compare a b
