@@ -74,8 +74,6 @@ test = do
     Expect.onlyTrashActionPresented
     sequence $ Actions.sendBackspaces 5
     Expect.backsideMenuPresented
-    Interact.filterActions "sh"
-    Expect.onlyShareActionPresented
     sequence $ Actions.sendBackspaces 5
     Expect.backsideMenuPresented
     Interact.filterActions "emb"

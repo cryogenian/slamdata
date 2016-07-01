@@ -1,0 +1,42 @@
+.deck-dialog-unshare {
+    height: 100%;
+    .deck-dialog-body {
+        form {
+            height: 100%;
+            overflow: auto;
+        }
+
+    }
+    .alert.share-loading {
+        margin-left: 0;
+        height: ~"calc(100% - 140px)";
+    }
+    .subject-label {
+        display: block
+    }
+    .row {
+        margin-bottom: 12px;
+        margin-left: 0;
+        margin-right: 0;
+        div {
+            line-height: 34px;
+            padding-left: 6px;
+            padding-right: 6px;
+        }
+    }
+    button.unshare-button {
+        min-width: 96px;
+    }
+    .has-error {
+        button {
+            border-color: #a94442;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+            -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+        }
+    }
+    .alert {
+        margin-bottom: 12px;
+        margin-left: 36px;
+        text-align: left;
+    }
+}

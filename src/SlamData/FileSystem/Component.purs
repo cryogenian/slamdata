@@ -332,8 +332,6 @@ itemPeek (Item.Share res _) = do
     showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
 
 itemPeek (Item.Download res _) = download res
-itemPeek (Item.SharePermissions res _) = do
-  showDialog $ Dialog.Permissions res
 itemPeek _ = pure unit
 
 searchPeek ∷ ∀ a. Search.Query a → DSL Unit
