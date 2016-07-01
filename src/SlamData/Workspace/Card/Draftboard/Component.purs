@@ -35,7 +35,7 @@ import CSS as CSS
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
-import Halogen.Component.Opaque.Unsafe (opaqueState, opaqueQuery, peekOpaqueQuery, OpaqueQuery)
+import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils.Drag as Drag
 import Halogen.Component.Utils (raise')
 import Halogen.CustomEvents (mouseEventToPageEvent)
@@ -43,15 +43,12 @@ import Halogen.HTML.CSS.Indexed as HC
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import Math (round, floor)
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Quasar.Data as Quasar
-import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
@@ -63,27 +60,22 @@ import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, Qu
 import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _inserting, _grouping, modelFromState)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
+import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
+import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString, freshDeckId)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
-import SlamData.Workspace.LevelOfDetails as LOD
 import SlamData.Workspace.Wiring (putDeck)
 
 import Utils.CSS (zIndex)
 import Utils.DOM (elementEq, scrollTop, scrollLeft, getOffsetClientRect)
 import Utils.Path (DirPath)
 
-type DraftboardDSL = H.ParentDSL State DCS.StateP QueryC DCQ.QueryP Slam DeckId
+type DraftboardDSL = H.ParentDSL State DNS.State QueryC DNQ.QueryP Slam DeckId
 
-type DraftboardHTML = H.ParentHTML DCS.StateP QueryC DCQ.QueryP Slam DeckId
-
-levelOfDetails ∷ DL.DeckLevel → LOD.LevelOfDetails
-levelOfDetails dl =
-  if DL.runDeckLevel dl < 2
-    then LOD.High
-    else LOD.Low
+type DraftboardHTML = H.ParentHTML DNS.State QueryC DNQ.QueryP Slam DeckId
 
 draftboardComponent ∷ CardOptions → CC.CardComponent
 draftboardComponent opts = CC.makeCardComponent
@@ -100,35 +92,18 @@ draftboardComponent opts = CC.makeCardComponent
 
 render ∷ CardOptions → State → DraftboardHTML
 render opts state =
-  case levelOfDetails opts.level of
-    LOD.High →
-      HH.div_
-        [ HH.div [ HP.class_ CCSS.insetShadow ] []
-        , HH.div
-            [ HP.class_ CCSS.grid
-            , HC.style bgSize
-            , HP.ref (right ∘ H.action ∘ SetElement)
-            , HE.onClick \e → pure $
-                guard (AT.isEditable opts.accessType && not state.inserting) $>
-                right (H.action $ AddDeck e)
-            ]
-            $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
+  HH.div_
+    [ HH.div [ HP.class_ CCSS.insetShadow ] []
+    , HH.div
+        [ HP.class_ CCSS.grid
+        , HC.style bgSize
+        , HP.ref (right ∘ H.action ∘ SetElement)
+        , HE.onClick \e → pure $
+            guard (AT.isEditable opts.accessType && not state.inserting) $>
+            right (H.action $ AddDeck e)
         ]
-    LOD.Low →
-      HH.div
-        [ HP.classes [ HH.className "lod-overlay" ] ]
-        [ HH.div
-            [ HP.classes [ HH.className "card-input-minimum-lod" ] ]
-            [ HH.button
-                [ ARIA.label "Zoom to view"
-                , HP.title "Zoom to view"
-                , HP.disabled true
-                ]
-                [ glyph B.glyphiconZoomIn
-                , HH.text $ "Please, zoom to see the draftboard"
-                ]
-            ]
-        ]
+        $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
+    ]
 
   where
   renderDeck (deckId × rect) =
@@ -146,8 +121,8 @@ render opts state =
       [ HH.slot deckId $ mkDeckComponent deckId ]
 
   mkDeckComponent id _ =
-    { component: opts.deckComponent
-    , initialState: opaqueState $ DCS.initialDeck opts.path id
+    { component: opts.deckComponent (opaqueState $ DCS.initialDeck opts.path id)
+    , initialState: DNS.initialState
     }
 
   cssPos rect = do
@@ -249,9 +224,11 @@ evalBoard opts = case _ of
       $ DCQ.Load opts.path deckId (DL.succ opts.level)
     pure next
 
-peek ∷ ∀ a. CardOptions → H.ChildF DeckId (OpaqueQuery DCQ.Query) a → DraftboardDSL Unit
-peek opts (H.ChildF deckId q) = flip peekOpaqueQuery q
-  case _ of
+peek ∷ ∀ a. CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL Unit
+peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
+  where
+  peekDeck ∷ DCQ.Query a → DraftboardDSL Unit
+  peekDeck = case _ of
     DCQ.GrabDeck ev _ → startDragging deckId ev Grabbing
     DCQ.ResizeDeck ev _ → startDragging deckId ev Resizing
     DCQ.DoAction DCQ.DeleteDeck _ → do
@@ -265,7 +242,6 @@ peek opts (H.ChildF deckId q) = flip peekOpaqueQuery q
       CC.raiseUpdatedP' CC.StateOnlyUpdate
     _ → pure unit
 
-  where
   startDragging deckId ev tag =
     H.gets (Map.lookup deckId ∘ _.decks) >>= traverse_ \rect → do
       H.modify $ _moving ?~ Tuple deckId rect
@@ -534,4 +510,4 @@ groupDecks opts deckFrom deckTo = do
           $ DCQ.Load opts.path newId (DL.succ opts.level)
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
-queryDeck deckId = H.query deckId <<< opaqueQuery
+queryDeck deckId = H.query deckId ∘ right
