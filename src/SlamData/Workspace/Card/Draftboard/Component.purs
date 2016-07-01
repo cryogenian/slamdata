@@ -32,6 +32,8 @@ import Data.List as List
 import Data.Map as Map
 import CSS as CSS
 
+import DOM.HTML.Types (HTMLElement)
+
 import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaqueState, opaqueQuery, peekOpaqueQuery, OpaqueQuery)
 import Halogen.Component.Utils.Drag as Drag
@@ -58,7 +60,7 @@ import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Common (deleteGraph)
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, QueryC)
-import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _inserting, modelFromState)
+import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _inserting, _grouping, modelFromState)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component.Query as DCQ
@@ -126,13 +128,16 @@ render opts state =
         ]
 
   where
-
-  renderDeck (Tuple deckId rect) =
+  renderDeck (deckId × rect) =
     HH.div
       [ HP.key $ deckIdToString deckId
+      , HP.classes $
+          case state.grouping of
+            Just deckId' | deckId == deckId' → [ HH.className "grouping" ]
+            _ → []
       , HC.style $
           case state.moving of
-            Just (Tuple deckId' rect') | deckId == deckId' → zIndex 1 *> cssPos rect'
+            Just (deckId' × rect') | deckId == deckId' → zIndex 2 *> cssPos rect'
             _ → cssPos rect
       ]
       [ HH.slot deckId $ mkDeckComponent deckId ]
@@ -176,53 +181,70 @@ evalCard = case _ of
     pure next
 
 evalBoard ∷ CardOptions → Natural Query DraftboardDSL
-evalBoard _ (Grabbing deckId ev next) = do
-  case ev of
-    Drag.Move _ d → do
-      H.gets (Map.lookup deckId ∘ _.decks) >>= traverse_ \rect → do
-        let newRect = clampDeck rect
+evalBoard opts = case _ of
+  Grabbing deckId ev next → do
+    case ev of
+      Drag.Move _ d → do
+        st ← H.get
+        for_ (Map.lookup deckId (st.decks)) \rect →
+        for_ st.canvas \el → do
+          coords ← pageToGrid d el
+          let
+            cursorRect =
+              { x: coords.x
+              , y: coords.y
+              , width: 1.0
+              , height: 1.0
+              }
+            newRect = clampDeck rect
               { x = rect.x + (pxToGrid d.offsetX)
               , y = rect.y + (pxToGrid d.offsetY)
               }
-        H.modify $ _moving ?~ Tuple deckId newRect
-    Drag.Done _ → do
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
-      stopDragging
-  pure next
-evalBoard _ (Resizing deckId ev next) = do
-  case ev of
-    Drag.Move _ d → do
-      H.gets (Map.lookup deckId ∘ _.decks) >>= traverse_ \rect → do
-        let newRect = clampDeck rect
+            grouping =
+              case overlapping cursorRect (Map.toList st.decks) of
+                List.Cons (deckId' × _) _ | deckId ≠ deckId' → Just deckId'
+                _ → Nothing
+          H.modify
+            $ (_moving ?~ Tuple deckId newRect)
+            ∘ (_grouping .~ grouping)
+      Drag.Done _ → do
+        stopDragging opts
+        CC.raiseUpdatedP' CC.StateOnlyUpdate
+    pure next
+  Resizing deckId ev next → do
+    case ev of
+      Drag.Move _ d → do
+        H.gets (Map.lookup deckId ∘ _.decks) >>= traverse_ \rect → do
+          let
+            newRect = clampDeck rect
               { width = rect.width + (pxToGrid d.offsetX)
               , height = rect.height + (pxToGrid d.offsetY)
               }
-        H.modify $ _moving ?~ Tuple deckId newRect
-    Drag.Done _ → do
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
-      stopDragging
-  pure next
-evalBoard _ (SetElement el next) = do
-  H.modify _ { canvas = el }
-  pure next
-evalBoard opts (AddDeck e next) = do
-  let e' = mouseEventToPageEvent e
-  H.gets _.canvas >>= traverse_ \el → do
-    same ← H.fromEff (elementEq el e'.target)
-    when same do
-      rect ← H.fromEff $ getOffsetClientRect el
-      scroll ← { top: _, left: _ } <$> H.fromEff (scrollTop el) <*> H.fromEff (scrollLeft el)
-      addDeck opts DM.emptyDeck
-        { x: floor $ pxToGrid $ e'.pageX - rect.left + scroll.left
-        , y: floor $ pxToGrid $ e'.pageY - rect.top + scroll.top
-        }
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
-  pure next
-evalBoard opts (LoadDeck deckId next) = do
-  queryDeck deckId
-    $ H.action
-    $ DCQ.Load opts.path deckId (DL.succ opts.level)
-  pure next
+          H.modify $ _moving ?~ Tuple deckId newRect
+      Drag.Done _ → do
+        stopDragging opts
+        CC.raiseUpdatedP' CC.StateOnlyUpdate
+    pure next
+  SetElement el next → do
+    H.modify _ { canvas = el }
+    pure next
+  AddDeck e next → do
+    let e' = mouseEventToPageEvent e
+    H.gets _.canvas >>= traverse_ \el → do
+      same ← H.fromEff (elementEq el e'.target)
+      when same do
+        coords ← pageToGrid { x: e'.pageX, y: e'.pageY } el
+        addDeck opts DM.emptyDeck
+          { x: floor $ coords.x + 1.0
+          , y: floor $ coords.y
+          }
+        CC.raiseUpdatedP' CC.StateOnlyUpdate
+    pure next
+  LoadDeck deckId next → do
+    queryDeck deckId
+      $ H.action
+      $ DCQ.Load opts.path deckId (DL.succ opts.level)
+    pure next
 
 peek ∷ ∀ a. CardOptions → H.ChildF DeckId (OpaqueQuery DCQ.Query) a → DraftboardDSL Unit
 peek opts (H.ChildF deckId q) = flip peekOpaqueQuery q
@@ -248,21 +270,44 @@ peek opts (H.ChildF deckId q) = flip peekOpaqueQuery q
         $ Drag.subscribe' ev
         $ right ∘ H.action ∘ tag deckId
 
+pageToGrid
+  ∷ ∀ r
+  . { x ∷ Number, y ∷ Number | r }
+  → HTMLElement
+  → DraftboardDSL { x ∷ Number, y ∷ Number }
+pageToGrid e el = do
+  rect ← H.fromEff $ getOffsetClientRect el
+  scroll ←
+    { top: _, left: _ }
+    <$> H.fromEff (scrollTop el)
+    <*> H.fromEff (scrollLeft el)
+  pure
+    { x: pxToGrid $ e.x - rect.left + scroll.left
+    , y: pxToGrid $ e.y - rect.top + scroll.top
+    }
+
 pxToGrid ∷ Number → Number
 pxToGrid = (_ / Config.gridPx)
 
 gridToPx ∷ Number → Number
 gridToPx = (_ * Config.gridPx)
 
-stopDragging ∷ DraftboardDSL Unit
-stopDragging = do
+stopDragging ∷ CardOptions → DraftboardDSL Unit
+stopDragging opts = do
   st ← H.get
-  for_ st.moving \(Tuple deckId rect) → do
+  for_ st.moving \(deckId × rect) → do
     let rect' = roundDeck rect
         decks = List.filter ((deckId /= _) ∘ fst) $ Map.toList st.decks
-    when (List.null $ overlapping rect' decks) do
-      H.modify \s → s { decks = Map.insert deckId rect' s.decks }
-  H.modify _ { moving = Nothing }
+    case st.grouping of
+      Just deckId' →
+        groupDecks opts deckId deckId'
+      Nothing →
+        when (List.null $ overlapping rect' decks) do
+          H.modify \s → s { decks = Map.insert deckId rect' s.decks }
+  H.modify _
+    { moving = Nothing
+    , grouping = Nothing
+    }
 
 maxSize
   ∷ DeckPosition
@@ -294,18 +339,18 @@ roundDeck rect =
 
 overlapping
   ∷ DeckPosition
-  → List.List (Tuple DeckId DeckPosition)
-  → List.List (Tuple DeckId DeckPosition)
+  → List.List (DeckId × DeckPosition)
+  → List.List (DeckId × DeckPosition)
 overlapping a = List.filter go
   where
-  go (Tuple _ b) =
+  go (_ × b) =
     not $ a.x + a.width <= b.x
        || b.x + b.width <= a.x
        || a.y + a.height <= b.y
        || b.y + b.height <= a.y
 
 accomodateDeck
-  ∷ List.List (Tuple DeckId DeckPosition)
+  ∷ List.List (DeckId × DeckPosition)
   → { x ∷ Number, y ∷ Number }
   → DeckPosition
   → Maybe DeckPosition
@@ -336,17 +381,19 @@ loadDecks =
 addDeck ∷ CardOptions → DM.Deck → { x ∷ Number, y ∷ Number } → DraftboardDSL Unit
 addDeck opts deck coords = do
   decks ← Map.toList <$> H.gets _.decks
-  let deckPos = clampDeck $ defaultPosition
-        { x = coords.x - 10.0
-        , y = coords.y
-        }
+  let
+    deckPos = clampDeck $ defaultPosition
+      { x = coords.x - 10.0
+      , y = coords.y
+      }
   for_ (accomodateDeck decks coords deckPos) $
     addDeckAt opts deck
 
 addDeckAt ∷ CardOptions → DM.Deck → DeckPosition → DraftboardDSL Unit
 addDeckAt opts deck deckPos = do
-  let parentId = opts.deckId
-      deck' = deck { parent = Just (Tuple parentId opts.cardId) }
+  let
+    parentId = opts.deckId
+    deck' = deck { parent = Just (parentId × opts.cardId) }
   H.modify $ _inserting .~ true
   deckId ← saveDeck opts.path deck'
   case deckId of
@@ -386,7 +433,7 @@ wrapDeck opts oldId = do
     let
       parentId = opts.deckId
       deckPos' = deckPos { x = 1.0, y = 1.0 }
-      newDeck = (wrappedDeck deckPos' oldId) { parent = Just (Tuple parentId opts.cardId) }
+      newDeck = (wrappedDeck deckPos' oldId) { parent = Just (parentId × opts.cardId) }
     deckId ← saveDeck opts.path newDeck
     case deckId of
       Left err → do
@@ -395,7 +442,7 @@ wrapDeck opts oldId = do
       Right newId → void do
         putDeck newId newDeck opts.wiring.decks
         traverse_ (queryDeck oldId ∘ H.action)
-          [ DCQ.SetParent (Tuple newId (CID.CardId 0))
+          [ DCQ.SetParent (newId × CID.CardId 0)
           , DCQ.Save Nothing
           ]
         H.modify \s → s
@@ -444,6 +491,44 @@ mirrorDeck opts oldId = do
         case accomodateDeck decks coords deckPos of
           Nothing → reallyAccomodateDeck decks deckPos'
           Just a → a
+
+groupDecks ∷ CardOptions → DeckId → DeckId → DraftboardDSL Unit
+groupDecks opts deckFrom deckTo = do
+  st ← H.get
+  for_ (Map.lookup deckFrom st.decks) \rectFrom →
+  for_ (Map.lookup deckTo st.decks) \rectTo → do
+    let
+      rectTo' = rectTo { x = 1.0, y = 1.0 }
+      rectFrom' = rectFrom { x = 1.0, y = rectTo.height + 2.0 }
+      newDeck = DM.emptyDeck
+        { parent = Just (opts.deckId × opts.cardId)
+        , cards = pure
+          { cardId: CID.CardId 0
+          , model: Card.Draftboard
+            { decks: Map.fromFoldable
+              [ deckTo × rectTo'
+              , deckFrom × rectFrom'
+              ]
+            }
+          }
+        }
+    deckId ← saveDeck opts.path newDeck
+    case deckId of
+      Left err → do
+        -- TODO: do something to notify the user saving failed
+        pure unit
+      Right newId → void do
+        putDeck newId newDeck opts.wiring.decks
+        H.modify \s → s
+          { decks
+              = Map.insert newId rectTo
+              $ Map.delete deckFrom
+              $ Map.delete deckTo
+              $ s.decks
+          }
+        queryDeck newId
+          $ H.action
+          $ DCQ.Load opts.path newId (DL.succ opts.level)
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck deckId = H.query deckId <<< opaqueQuery

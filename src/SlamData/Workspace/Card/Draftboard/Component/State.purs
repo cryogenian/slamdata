@@ -22,6 +22,7 @@ module SlamData.Workspace.Card.Draftboard.Component.State
   , modelFromState
   , _decks
   , _moving
+  , _grouping
   , _inserting
   , module Model
   ) where
@@ -49,6 +50,7 @@ type State =
   { decks ∷ Map.Map DeckId Model.DeckPosition
   , moving ∷ Maybe (Tuple DeckId Model.DeckPosition)
   , canvas ∷ Maybe HTMLElement
+  , grouping ∷ Maybe DeckId
   , inserting ∷ Boolean
   }
 
@@ -63,20 +65,21 @@ initialState =
   { decks: Map.empty
   , moving: Nothing
   , canvas: Nothing
+  , grouping: Nothing
   , inserting: false
   }
 
 stateFromModel
   ∷ Model.Model
   → State
-stateFromModel { decks }=
+stateFromModel { decks } =
   initialState
     { decks = decks }
 
 modelFromState
   ∷ State
   → Model.Model
-modelFromState { decks }  =
+modelFromState { decks } =
   { decks }
 
 -- | An array of positioned decks.
@@ -85,6 +88,9 @@ _decks = lens _.decks _{ decks = _ }
 
 _moving ∷ LensP State (Maybe (Tuple DeckId Model.DeckPosition))
 _moving = lens _.moving _{ moving = _ }
+
+_grouping ∷ LensP State (Maybe DeckId)
+_grouping = lens _.grouping _{ grouping = _ }
 
 _inserting ∷ LensP State Boolean
 _inserting = lens _.inserting _{ inserting = _ }
