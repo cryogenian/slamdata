@@ -34,7 +34,6 @@ import SlamData.FileSystem.Dialog.Mount.Component (MountSettings)
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
-import SlamData.FileSystem.Dialog.Permissions.Component as Perms
 import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Resource (Resource)
 import SlamData.Render.Common (fadeWhen)
@@ -47,7 +46,6 @@ data Dialog
   | Rename Resource
   | Mount DirPath String (Maybe MountSettings)
   | Download Resource
-  | Permissions Resource
   | Explore FilePath
 
 type State = Maybe Dialog
@@ -66,7 +64,6 @@ type ChildState =
   ⊹ Error.State
   ⊹ Share.State
   ⊹ Rename.State
-  ⊹ Perms.StateP
   ⊹ Explore.State
 
 type ChildQuery =
@@ -75,11 +72,15 @@ type ChildQuery =
   ⨁ Error.Query
   ⨁ Share.Query
   ⨁ Rename.Query
-  ⨁ Perms.QueryP
   ⨁ Explore.Query
 
 type ChildSlot =
-  Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹ Unit ⊹Unit
+  Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
+  ⊹ Unit
 
 cpMount
   ∷ ChildPath
@@ -116,19 +117,12 @@ cpRename
        Unit ChildSlot
 cpRename = cpR :> cpR :> cpR :> cpR :> cpL
 
-cpPerms
-  ∷ ChildPath
-       Perms.StateP ChildState
-       Perms.QueryP ChildQuery
-       Unit ChildSlot
-cpPerms = cpR :> cpR :> cpR :> cpR :> cpR :> cpL
-
 cpExplore
   ∷ ChildPath
       Explore.State ChildState
       Explore.Query ChildQuery
       Unit ChildSlot
-cpExplore = cpR :> cpR :> cpR :> cpR :> cpR :> cpR
+cpExplore = cpR :> cpR :> cpR :> cpR :> cpR
 
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
@@ -171,12 +165,6 @@ render state =
       { component: Mount.comp
       , initialState: H.parentState (Mount.initialState parent name settings)
       }
-  dialog (Permissions res) =
-    HH.slot' cpPerms unit \_ →
-      { component: Perms.comp
-      , initialState: H.parentState $ Perms.initialState res
-      }
-
   dialog (Explore fp) =
     HH.slot' cpExplore unit \_ →
       { component: Explore.comp
@@ -195,7 +183,6 @@ peek =
   ⨁ errorPeek
   ⨁ sharePeek
   ⨁ renamePeek
-  ⨁ permsPeek
   ⨁ explorePeek
 
 errorPeek ∷ ∀ a. Error.Query a → DialogDSL Unit
@@ -218,12 +205,6 @@ mountPeek = go ⨁ const (pure unit)
 downloadPeek ∷ ∀ a. Download.Query a → DialogDSL Unit
 downloadPeek (Download.Dismiss _) = H.set Nothing
 downloadPeek _ = pure unit
-
-permsPeek ∷ ∀ a. Perms.QueryP a → DialogDSL Unit
-permsPeek = go ⨁ const (pure unit)
-  where
-  go (Perms.Dismiss _) = H.set Nothing
-  go _ = pure unit
 
 explorePeek ∷ ∀ a. Explore.Query a → DialogDSL Unit
 explorePeek (Explore.Dismiss _) = H.set Nothing

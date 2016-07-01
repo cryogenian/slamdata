@@ -31,7 +31,6 @@
     "purescript-halogen-css": "^0.5.0",
     "purescript-halogen-echarts": "^0.7.0",
     "purescript-halogen-menu": "^0.7.0",
-    "purescript-halogen-selects": "^0.5.0",
     "purescript-jtable": "^0.13.0",
     "purescript-maps": "^0.5.4",
     "purescript-markdown": "^4.0.0",

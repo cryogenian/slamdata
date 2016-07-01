@@ -40,6 +40,8 @@ import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
 import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Deck.Dialog.Export.Component as Export
+import SlamData.Workspace.Deck.Dialog.Share.Component as Share
+import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
 import SlamData.Effects (Slam)
 
 import Utils.Path (DirPath)
@@ -48,6 +50,8 @@ data Dialog
   = Error String
   | Embed DirPath Port.VarMap
   | Publish DirPath Port.VarMap
+  | Share DirPath
+  | Unshare DirPath
   | Rename String
   | DeleteDeck
 
@@ -68,6 +72,8 @@ type ChildState =
   ⊹ Confirm.State
   ⊹ Export.State
   ⊹ Export.State
+  ⊹ Share.State
+  ⊹ Unshare.State
 
 type ChildQuery =
   Rename.Query
@@ -75,9 +81,13 @@ type ChildQuery =
   ⨁ Confirm.Query
   ⨁ Export.Query
   ⨁ Export.Query
+  ⨁ Share.Query
+  ⨁ Unshare.Query
 
 type ChildSlot =
   Unit
+  ⊹ Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -117,7 +127,22 @@ cpEmbed
       Export.State ChildState
       Export.Query ChildQuery
       Unit ChildSlot
-cpEmbed = cpR :> cpR :> cpR :> cpR
+cpEmbed = cpR :> cpR :> cpR :> cpR :> cpL
+
+
+cpShare
+  ∷ ChildPath
+      Share.State ChildState
+      Share.Query ChildQuery
+      Unit ChildSlot
+cpShare = cpR :> cpR :> cpR :> cpR :> cpR :> cpL
+
+cpUnshare
+  ∷ ChildPath
+      Unshare.State ChildState
+      Unshare.Query ChildQuery
+      Unit ChildSlot
+cpUnshare = cpR :> cpR :> cpR :> cpR :> cpR :> cpR
 
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
@@ -177,6 +202,17 @@ render state =
             , varMap = varMap
             }
       }
+  dialog (Share deckPath) =
+    HH.slot' cpShare unit \_ →
+      { component: Share.comp
+      , initialState: Share.initialState
+      }
+
+  dialog (Unshare deckPath) =
+    HH.slot' cpUnshare unit \_ →
+      { component: Unshare.comp
+      , initialState: Unshare.initialState
+      }
 
 
 eval ∷ Natural Query DSL
@@ -192,6 +228,8 @@ peek =
   ⨁ deleteDeckPeek
   ⨁ exportPeek
   ⨁ exportPeek
+  ⨁ sharePeek
+  ⨁ unsharePeek
 
 -- Send `Dismiss` after child's `Dismiss` to simplify parent of
 -- this component peeking. (I.e. it can observe only this component queries and
@@ -214,3 +252,14 @@ exportPeek ∷ ∀ a. Export.Query a → DSL Unit
 exportPeek (Export.Dismiss _) =
   raise' $ Dismiss unit
 exportPeek _ = pure unit
+
+
+sharePeek ∷ ∀ a. Share.Query a → DSL Unit
+sharePeek (Share.Dismiss _) =
+  raise' $ Dismiss unit
+sharePeek _ = pure unit
+
+unsharePeek ∷ ∀ a. Unshare.Query a → DSL Unit
+unsharePeek (Unshare.Dismiss _) =
+  raise' $ Dismiss unit
+unsharePeek _ = pure unit

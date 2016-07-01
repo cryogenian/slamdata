@@ -404,8 +404,6 @@ peekDialog _ (Dialog.Confirm d b _) = do
     _ → pure unit
 
 peekBackSide ∷ ∀ a. Wiring → Back.Query a → DeckDSL Unit
-peekBackSide _ (Back.UpdateFilter _ _) = pure unit
-peekBackSide _ (Back.UpdateCardType _ _) = pure unit
 peekBackSide wiring (Back.DoAction action _) =
   case action of
     Back.Trash → do
@@ -427,10 +425,13 @@ peekBackSide wiring (Back.DoAction action _) =
       showDialog $ Dialog.Rename name
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Share → do
-      pure unit
---      url ← mkShareURL SM.empty
---      showDialog $ Dialog.Share url
---      H.modify (DCS._displayMode .~ DCS.Dialog)
+      deckPath ← H.gets DCS.deckPath
+      showDialog $ Dialog.Share deckPath
+      H.modify (DCS._displayMode .~ DCS.Dialog)
+    Back.Unshare → do
+      deckPath ← H.gets DCS.deckPath
+      showDialog $ Dialog.Unshare deckPath
+      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Embed → do
       varMap ← H.gets _.globalVarMap
       deckPath ← H.gets DCS.deckPath
@@ -452,6 +453,7 @@ peekBackSide wiring (Back.DoAction action _) =
       H.modify $ DCS._displayMode .~ DCS.Normal
       raise' $ H.action $ DoAction Mirror
     Back.Wrap → raise' $ H.action $ DoAction Wrap
+peekBackSide _ _ = pure unit
 
 mkShareURL ∷ Port.VarMap → DeckDSL String
 mkShareURL varMap = do

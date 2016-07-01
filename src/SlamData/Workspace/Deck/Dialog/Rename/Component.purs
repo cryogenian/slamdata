@@ -47,19 +47,23 @@ render { newName } =
               [ HH.input
                   [ HE.onValueInput $ HE.input SetNewName
                   , HP.value newName
+                  , HP.inputType HP.InputText
+                  , HP.classes [ B.formControl ]
                   ]
               ]
           ]
         ]
     , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
         [ HH.button
-            [ HP.classes [ B.btn ]
+            [ HP.classes [ B.btn, B.btnDefault ]
             , HE.onClick (HE.input_ Dismiss)
+            , HP.buttonType HP.ButtonButton
             ]
             [ HH.text "Dismiss" ]
         , HH.button
             [ HP.classes [ B.btn, B.btnPrimary ]
             , HE.onClick (HE.input_ $ Rename newName)
+            , HP.buttonType HP.ButtonButton
             ]
             [ HH.text "Save"
             ]

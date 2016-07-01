@@ -72,7 +72,6 @@ data Query a
   | Share Resource a
   | SetIsSearching Boolean a
   | SetIsHidden Boolean a
-  | SharePermissions Resource a
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
@@ -127,7 +126,6 @@ eval (Remove _ next) = pure next
 eval (Share _ next) = pure next
 eval (SetIsSearching bool next) = H.modify (_isSearching .~ bool) $> next
 eval (SetIsHidden bool next) = H.modify (_isHidden .~ bool) $> next
-eval (SharePermissions _ next) = pure next
 
 itemName ∷ State → String
 itemName { isSearching, item } =
@@ -219,8 +217,6 @@ itemActions presentActions item | otherwise =
   common ∷ Array HTML
   common =
     [
--- Commented until backend is ready
---      itemAction SharePermissions "Share permissions" B.glyphiconShareAlt
       itemAction Move "Move / rename" B.glyphiconMove
     , itemAction Download "Download" B.glyphiconCloudDownload
     , itemAction Remove "Remove" B.glyphiconTrash

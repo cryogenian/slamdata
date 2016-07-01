@@ -232,7 +232,6 @@ embedButtonPresented =
 backsideMenuPresented ∷ SlamFeature Unit
 backsideMenuPresented = do
   trashButtonPresented
-  shareButtonPresented
   publishButtonPresented
   embedButtonPresented
 
@@ -240,7 +239,6 @@ backsideMenuNotPresented ∷ SlamFeature Unit
 backsideMenuNotPresented = do
   for_
     [ XPaths.trashCardAction
-    , XPaths.shareDeckAction
     , XPaths.publishDeckAction
     , XPaths.embedDeckAction
     ]
@@ -257,18 +255,7 @@ onlyTrashActionPresented ∷ SlamFeature Unit
 onlyTrashActionPresented = do
   trashButtonPresented
   for_
-    [ XPaths.shareDeckAction
-    , XPaths.publishDeckAction
-    , XPaths.embedDeckAction
-    ]
-    backsideActionNotPresented
-
-onlyShareActionPresented ∷ SlamFeature Unit
-onlyShareActionPresented = do
-  shareButtonPresented
-  for_
-    [ XPaths.trashCardAction
-    , XPaths.publishDeckAction
+    [ XPaths.publishDeckAction
     , XPaths.embedDeckAction
     ]
     backsideActionNotPresented
@@ -287,8 +274,7 @@ onlyPublishActionPresented ∷ SlamFeature Unit
 onlyPublishActionPresented = do
   publishButtonPresented
   for_
-    [ XPaths.shareDeckAction
-    , XPaths.embedDeckAction
+    [ XPaths.embedDeckAction
     , XPaths.trashCardAction
     ]
     backsideActionNotPresented
