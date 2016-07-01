@@ -59,6 +59,7 @@ render state =
     [ renderHighLOD state
     , renderLowLOD state
     ]
+
 renderHighLOD ∷ State → H.ComponentHTML QueryP
 renderHighLOD st =
   HH.div

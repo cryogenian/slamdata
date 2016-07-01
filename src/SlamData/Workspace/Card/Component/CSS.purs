@@ -14,30 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Render.CSS.New where
+module SlamData.Workspace.Card.Component.CSS where
 
 import Halogen.HTML.Core (className, ClassName)
 
-pagination ∷ ClassName
-pagination = className "sd-pagination"
+deckCard ∷ ClassName
+deckCard = className "sd-deck-card"
 
-deckBackSide ∷ ClassName
-deckBackSide = className "sd-deck-backside"
+cardHeader ∷ ClassName
+cardHeader = className "sd-card-header"
 
-loading ∷ ClassName
-loading = className "loading"
-
-cardGripper :: ClassName
-cardGripper = className "sd-card-gripper"
-
-cardGripperLast :: ClassName
-cardGripperLast = className "sd-card-gripper-last"
-
-form ∷ ClassName
-form = className "sd-form"
-
-formButton ∷ ClassName
-formButton = className "sd-form-button"
-
-formButtonGroup ∷ ClassName
-formButtonGroup = className "sd-form-button-group"
+cardName ∷ ClassName
+cardName = className "sd-card-name"

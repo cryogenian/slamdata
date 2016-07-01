@@ -52,13 +52,13 @@ import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Render.Common (glyph)
-import SlamData.Render.CSS as RC
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Draftboard.Common (deleteGraph)
+import SlamData.Workspace.Card.Draftboard.Component.CSS as CCSS
 import SlamData.Workspace.Card.Draftboard.Component.Query (Query(..), QueryP, QueryC)
 import SlamData.Workspace.Card.Draftboard.Component.State (State, DeckPosition, initialState, encode, decode, _moving, _inserting, _grouping, modelFromState)
 import SlamData.Workspace.Card.Model as Card
@@ -102,15 +102,18 @@ render ∷ CardOptions → State → DraftboardHTML
 render opts state =
   case levelOfDetails opts.level of
     LOD.High →
-      HH.div
-        [ HP.classes [ RC.gridPattern ]
-        , HC.style bgSize
-        , HP.ref (right ∘ H.action ∘ SetElement)
-        , HE.onMouseDown \e → pure $
-            guard (AT.isEditable opts.accessType && not state.inserting) $>
-            right (H.action $ AddDeck e)
+      HH.div_
+        [ HH.div [ HP.class_ CCSS.insetShadow ] []
+        , HH.div
+            [ HP.class_ CCSS.grid
+            , HC.style bgSize
+            , HP.ref (right ∘ H.action ∘ SetElement)
+            , HE.onClick \e → pure $
+                guard (AT.isEditable opts.accessType && not state.inserting) $>
+                right (H.action $ AddDeck e)
+            ]
+            $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
         ]
-        $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
     LOD.Low →
       HH.div
         [ HP.classes [ HH.className "lod-overlay" ] ]

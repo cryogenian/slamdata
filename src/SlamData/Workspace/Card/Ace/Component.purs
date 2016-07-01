@@ -144,7 +144,9 @@ renderHighLOD cfg state =
         $ [ CSS.cardInput, CSS.aceContainer ]
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
-    [ HH.Slot (aceConstructor unit (aceSetup cfg) (Just Live) ) ]
+    [ HH.div [ HP.class_ (HH.className "sd-ace-inset-shadow") ] []
+    , HH.Slot (aceConstructor unit (aceSetup cfg) (Just Live) )
+    ]
 
 renderLowLOD ∷ AceConfig → State → HTML
 renderLowLOD cfg state =

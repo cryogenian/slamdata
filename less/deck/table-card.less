@@ -1,5 +1,8 @@
 .sd-card-table {
-  height: ~"calc(100% - 2rem)";
+
+  @pagination-height: @grid-size * 2;
+
+  height: ~"calc(100% - @{pagination-height} - 1px)";
   overflow: auto;
 
   table {
@@ -11,12 +14,21 @@
     border-bottom: 1px solid #ddd;
   }
 
+  tr:last-child td {
+    border-bottom: none;
+  }
+
   th {
     border-bottom-width: 2px;
   }
 
   .sd-pagination {
-    padding: 0 0.5rem;
+    position: absolute;
+    bottom: 1px;
+    height: ~"calc(@{pagination-height})";
+    border-top: 1px solid #ddd;
+    width: 100%;
+    .noselect;
 
     div {
       display: inline-block;

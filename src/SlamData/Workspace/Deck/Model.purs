@@ -65,7 +65,7 @@ decode = decodeJson >=> \obj → do
   parent ← obj .? "parent"
   mirror ← obj .? "mirror"
   cards ← traverse Card.decode =<< obj .? "cards"
-  name ← obj .? "name"
+  name ← obj .? "name" <|> pure ""
   pure { parent, mirror, cards, name }
 
 deckIndex ∷ DirPath → DeckId → FilePath

@@ -28,13 +28,16 @@ import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
+import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
+import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Search.Component.Query (Query, SearchQuery(..))
+import SlamData.Workspace.Card.Search.Component.Query (Query, SearchQuery(UpdateSearch))
 import SlamData.Workspace.Card.Search.Component.State (State, _searchString, initialState)
 
 type DSL = H.ComponentDSL State Query Slam
@@ -53,18 +56,20 @@ searchComponent =
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ CSS.form, HH.className "sd-search-field" ] ]
+    [ HP.class_ CSS.form ]
     [ HH.input
         [ HP.inputType HP.InputText
-        , HP.placeholder "Input search string"
-        , HE.onValueInput $ HE.input \str → UpdateSearch str ⋙ right
+        , HP.placeholder "Search string"
+        , ARIA.label "Search string"
+        , HE.onValueInput $ HE.input \str → right ∘ UpdateSearch str
         , HP.value state.searchString
         ]
     , HH.button
-        [ HP.class_ (HH.className "sd-search-state-btn")
-        , HE.onClick $ HE.input_ (UpdateSearch "" ⋙ right)
+        [ HP.title "Clear search string"
+        , ARIA.label "Clear search string"
+        , HE.onClick $ HE.input_ (right ∘ UpdateSearch "")
         ]
-        [ HH.text "×" ]
+        [ glyph B.glyphiconRemove ]
     ]
 
 eval ∷ Natural Query DSL

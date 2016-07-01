@@ -17,19 +17,23 @@ limitations under the License.
 module SlamData.Workspace.Deck.BackSide.Component where
 
 import SlamData.Prelude
+
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.String as Str
+
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
-import SlamData.Render.CSS as Rc
-import SlamData.Workspace.Card.CardType as CT
+
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
+import SlamData.Render.CSS as Rc
+import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Component.CSS as CCSS
 
 data Query a
   = UpdateFilter String a
@@ -122,7 +126,7 @@ comp = H.component {render, eval}
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.class_ Rc.deckCard ]
+    [ HP.class_ CCSS.deckCard ]
     [ HH.div
         [ HP.class_ Rc.deckBackSide ]
         [ HH.div_

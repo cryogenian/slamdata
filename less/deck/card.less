@@ -22,7 +22,8 @@
   }
 }
 
-.card-header {
+.sd-card-header {
+  .noselect;
   position: absolute;
   left: 0;
   top: 0;
@@ -32,23 +33,23 @@
   transform: translate3d(0, 0, 0);
   pointer-events: none;
   opacity: 0;
-} 
+}
 
-.focused > .sd-deck > .sd-card-slider .sd-card-sliding > div > .deck-card > .card-header {
+.focused > .sd-deck > .sd-card-slider .sd-card-sliding > div > .sd-deck-card > .sd-card-header {
   animation-name: fadeIn;
   animation-duration: 0.25s;
   z-index: 5000;
   opacity: 1;
 }
 
-.focused > .sd-deck > .sd-card-slider > .sd-card-active:not(.sd-card-sliding) > div > .deck-card > .card-header {
+.focused > .sd-deck > .sd-card-slider > .sd-card-active:not(.sd-card-sliding) > div > .sd-deck-card > .sd-card-header {
   opacity: 0;
   animation-name: fadeOut;
   z-index: 5000;
   animation-duration: 0.9s;
 }
 
-.card-name {
+.sd-card-name {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -66,6 +67,6 @@
   }
 }
 
-.deck-card {
+.sd-deck-card {
   position: relative;
 }

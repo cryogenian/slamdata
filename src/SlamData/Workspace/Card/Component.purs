@@ -25,22 +25,23 @@ module SlamData.Workspace.Card.Component
 import SlamData.Prelude
 import SlamData.Config as Config
 
-import Data.Time (Milliseconds(..))
+import Data.Foldable (elem)
 import Data.Lens (PrismP, (.~), review, preview, clonePrism)
+import Data.Time (Milliseconds(..))
 
 import Halogen as H
 import Halogen.Component.Utils (sendAfter')
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import Math as Math
 
 import SlamData.Effects (Slam)
-import SlamData.Render.CSS as CSS
-import SlamData.Workspace.Card.CardType (cardClasses)
+import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, cardGlyph)
+import SlamData.Workspace.Card.Component.CSS as CSS
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 import SlamData.Workspace.Card.Component.Query as CQ
-import SlamData.Workspace.Card.Component.Render as CR
 import SlamData.Workspace.Card.Component.State as CS
 import SlamData.Workspace.Card.Model as Card
 
@@ -49,6 +50,7 @@ import Utils.DOM as DOMUtils
 -- | Type synonym for the full type of a card component.
 type CardComponent = H.Component CS.CardStateP CQ.CardQueryP Slam
 type CardDSL = H.ParentDSL CS.CardState CS.AnyCardState CQ.CardQuery CQ.InnerCardQuery Slam Unit
+type CardHTML = H.ParentHTML CS.AnyCardState CQ.CardQuery CQ.InnerCardQuery Slam Unit
 
 -- | Card component factory
 makeCardComponent
@@ -61,19 +63,35 @@ makeCardComponent def = makeCardComponentPart def render
     ∷ H.Component CS.AnyCardState CQ.InnerCardQuery Slam
     → CS.AnyCardState
     → CS.CardState
-    → CR.CardHTML
-  render component initialState cs =
+    → CardHTML
+  render component initialState = const $
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
       , HP.ref (H.action ∘ CQ.SetHTMLElement)
       ]
-      $ fold
-        [ CR.renderHeader def.cardType cs
-        , [ HH.div
-              [ HP.classes $ cardClasses def.cardType ]
-              [ HH.slot unit \_ → {component, initialState} ]
+      $ fold [cardLabel, card]
+    where
+    cardLabel :: Array CardHTML
+    cardLabel
+      | def.cardType `elem` [PendingCard, ErrorCard, NextAction, Draftboard] = []
+      | otherwise =
+          [ HH.div
+              [ HP.classes [CSS.cardHeader]
+              , ARIA.label $ (cardName def.cardType) ⊕ " card"
+              ]
+              [ HH.div
+                  [ HP.class_ CSS.cardName ]
+                  [ cardGlyph def.cardType
+                  , HH.text $ cardName def.cardType
+                  ]
+              ]
           ]
-        ]
+    card :: Array CardHTML
+    card =
+      [ HH.div
+        [ HP.classes $ cardClasses def.cardType ]
+        [ HH.slot unit \_ → { component, initialState } ]
+      ]
 
 -- | Constructs a card component from a record with the necessary properties and
 -- | a render function.
@@ -83,7 +101,7 @@ makeCardComponentPart
   → (H.Component CS.AnyCardState CQ.InnerCardQuery Slam
      → CS.AnyCardState
      → CS.CardState
-     → CR.CardHTML)
+     → CardHTML)
   → CardComponent
 makeCardComponentPart def render =
   H.lifecycleParentComponent

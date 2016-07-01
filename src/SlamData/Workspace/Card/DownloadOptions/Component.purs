@@ -171,7 +171,7 @@ cardEval = case _ of
   CC.SetDimensions dims next → do
     H.modify
       $ _levelOfDetails
-      .~ if dims.width < 648.0 ∨ dims.height < 240.0
+      .~ if dims.width < 504.0 ∨ dims.height < 192.0
            then Low
            else High
     pure next

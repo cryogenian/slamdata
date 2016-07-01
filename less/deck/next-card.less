@@ -55,12 +55,16 @@
 }
 
 .sd-card-next-action, .sd-deck-backside {
+
+  @spacing: 0.5px;
+  @size: @grid-size * 4;
+
   display: table;
-  height: 100%;
+  min-height: 100%;
   width: 100%;
   box-sizing: border-box;
-
-  padding: @grid-size;
+  position: absolute;
+  top: -@spacing;
 
   .alert { // BS
     display: table-cell;
@@ -71,25 +75,24 @@
 
   ul {
     list-style: none;
-    margin: auto;
     display: table-cell;
-    padding: @grid-size / 2;
+    margin: 0;
+    padding: 0;
     text-align: center;
     vertical-align: middle;
-    max-width: ~"calc(100% - @{grid-size} * 2)";
     li {
         display: inline-block;
         vertical-align: top;
-        height: 6rem;
-        width: 6rem;
-        margin: @grid-size / 2;
+        height: @size;
+        width: @size;
+        margin: @spacing;
         button {
             position: relative;
             border: none;
             background: #aaa;
             color: #fff;
-            width: 6rem;
-            height: 6rem;
+            width: @size;
+            height: @size;
             padding: 0;
             img {
               width: 0.75rem;

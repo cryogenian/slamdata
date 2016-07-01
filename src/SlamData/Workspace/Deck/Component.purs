@@ -60,7 +60,6 @@ import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Quasar.Data (save) as Quasar
-import SlamData.Render.CSS as CSS
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -78,6 +77,7 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
+import SlamData.Workspace.Deck.Component.CSS as CSS
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -116,18 +116,13 @@ render wiring st =
     _ →
       -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
       HH.div
-        ([ HP.classes $ [ CSS.board ] ++ (if st.focused then [ HH.className "focused" ] else [])
-         , HP.key "board"
+        ([ HP.classes $ [ CSS.deckContainer ] ++ (if st.focused then [ HH.className "focused" ] else [])
+         , HP.key "deck-container"
          , HE.onMouseUp (HE.input_ UpdateCardSize)
          , HE.onMouseDown \_ → HEH.stopPropagation $> Just (H.action Focus)
          ] ⊕ Slider.containerProperties st)
         [ HH.div
-            [ HP.class_ (HH.className "sd-deck-frame") ]
-            []
-        , HH.div
-            [ HP.class_ CSS.deck
-            , HP.key "deck-container"
-            ]
+            [ HP.class_ CSS.deckFrame ]
             [ HH.button
                 [ HP.classes [ CSS.flipDeck ]
                 , HE.onClick (HE.input_ FlipDeck)
@@ -135,21 +130,17 @@ render wiring st =
                 , HP.title "Flip deck"
                 ]
                 [ HH.text "" ]
+            , zoomButton
             , if st.level ≡ DL.root
-                then HH.button
-                       [ ARIA.label "Zoom deck"
-                       , HP.classes [ CSS.zoomOutDeck ]
-                       , HP.title "Zoom out"
-                       , HE.onClick (HE.input_ ZoomOut)
-                       ]
-                       [ glyph B.glyphiconZoomOut ]
-                else HH.button
-                       [ ARIA.label "Zoom deck"
-                       , HP.classes [ CSS.zoomInDeck ]
-                       , HP.title "Zoom in"
-                       , HE.onClick (HE.input_ ZoomIn)
-                       ]
-                       [ glyph B.glyphiconZoomIn ]
+                then HH.text ""
+                else
+                  HH.button
+                    [ HP.classes [ CSS.grabDeck ]
+                    , HE.onMouseDown (HE.input GrabDeck)
+                    , ARIA.label "Grab deck"
+                    , HP.title "Grab deck"
+                    ]
+                    [ HH.text "" ]
             , renderName
             , HH.button
                 [ HP.classes [ CSS.grabDeck ]
@@ -158,25 +149,50 @@ render wiring st =
                 , HP.title "Grab deck"
                 ]
                 [ HH.text "" ]
-            , Slider.render wiring (comp wiring) st $ st.displayMode ≡ DCS.Normal
             , HH.slot' cpIndicator unit \_ →
                 { component: Indicator.comp
                 , initialState: Indicator.initialState
                 }
-            , HH.button
-                [ HP.classes [ CSS.resizeDeck ]
-                , HE.onMouseDown (HE.input ResizeDeck)
-
-                , ARIA.label "Resize deck"
-                , HP.title "Resize deck"
-                ]
-                [ HH.text "" ]
+            , if st.level ≡ DL.root
+                then HH.text ""
+                else
+                  HH.button
+                    [ HP.classes [ CSS.resizeDeck ]
+                    , HE.onMouseDown (HE.input ResizeDeck)
+                    , ARIA.label "Resize deck"
+                    , HP.title "Resize deck"
+                    ]
+                    [ HH.text "" ]
+            ]
+        , HH.div
+            [ HP.class_ CSS.deck
+            , HP.key "deck"
+            ]
+            [ Slider.render wiring (comp wiring) st $ st.displayMode ≡ DCS.Normal
             , renderBackside $ st.displayMode ≡ DCS.Backside
             , renderDialog $ st.displayMode ≡ DCS.Dialog
             ]
         ]
 
   where
+
+  zoomButton
+    | st.level ≡ DL.root =
+        HH.button
+         [ HP.classes [ CSS.zoomDeck ]
+         , ARIA.label "Zoom out"
+         , HP.title "Zoom out"
+         , HE.onClick (HE.input_ ZoomOut)
+         ]
+         [ glyph B.glyphiconZoomOut ]
+    | otherwise =
+        HH.button
+           [ HP.classes [ CSS.zoomDeck ]
+           , ARIA.label "Zoom in"
+           , HP.title "Zoom in"
+           , HE.onClick (HE.input_ ZoomIn)
+           ]
+           [ glyph B.glyphiconZoomIn ]
 
   renderError err =
     HH.div

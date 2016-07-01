@@ -14,7 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Download.Component (downloadComponent) where
+module SlamData.Workspace.Card.Download.Component
+  ( downloadComponent
+  , module SlamData.Workspace.Card.Download.Component.Query
+  , module SlamData.Workspace.Card.Download.Component.State
+  ) where
 
 import SlamData.Prelude
 
@@ -26,7 +30,6 @@ import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import Quasar.Paths as Paths
 
@@ -34,10 +37,11 @@ import SlamData.Download.Model as D
 import SlamData.Effects (Slam)
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Quasar.Auth as API
+import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Download.Component.Query (QueryP)
-import SlamData.Workspace.Card.Download.Component.State (State, initialState, _url, _levelOfDetails, _fileName)
+import SlamData.Workspace.Card.Download.Component.Query (Query, QueryP)
+import SlamData.Workspace.Card.Download.Component.State (State, _fileName, _levelOfDetails, _url, initialState)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -59,23 +63,20 @@ downloadComponent = CC.makeCardComponent
 
 render ∷ State → HTML
 render state =
-  HH.a
-    [ HP.classes
-        [ B.btn
-        , B.btnPrimary
-        , HH.className "download-button"
+  HH.div_
+    [ HH.a
+        [ HP.class_ CSS.formButton
+        , HP.href state.url
+        , ARIA.label $ fullDownloadString state
+        , HP.title $ fullDownloadString state
         ]
-    , HP.href state.url
-    , ARIA.label $ fullDownloadString state
-    , HP.title $ fullDownloadString state
+        [ HH.text $ buttonText state ]
     ]
-    [ HH.text $ buttonText state ]
-  where
 
-  buttonText ∷ State → String
-  buttonText state
-    | state.levelOfDetails ≡ Low = "Download"
-    | otherwise = fullDownloadString state
+buttonText ∷ State → String
+buttonText state
+  | state.levelOfDetails ≡ Low = "Download"
+  | otherwise = fullDownloadString state
 
 fullDownloadString ∷ State → String
 fullDownloadString state = "Download " ⊕ state.fileName

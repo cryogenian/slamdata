@@ -43,6 +43,8 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
+type DSL = H.ComponentDSL JTS.State QueryP Slam
+
 jtableComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
 jtableComponent =
   CC.makeCardComponent
@@ -55,7 +57,7 @@ jtableComponent =
 
 -- | Evaluates generic card queries.
 
-evalCard ∷ CC.CardEvalQuery ~> (H.ComponentDSL JTS.State QueryP Slam)
+evalCard ∷ CC.CardEvalQuery ~> DSL
 evalCard = case _ of
   CC.EvalCard info output next → do
     for_ info.input $ CEQ.runCardEvalT_ ∘ runTable
@@ -115,25 +117,32 @@ updateTable { resource, tag } = do
            })
 
 -- | Resets the state while preserving settings like page size.
-resetState ∷ H.ComponentDSL JTS.State QueryP Slam Unit
+resetState ∷ DSL Unit
 resetState = H.modify (JTS._result .~ Nothing)
 
 -- | Evaluates jtable-specific card queries.
-evalJTable ∷ Natural Query (H.ComponentDSL JTS.State QueryP Slam)
+evalJTable ∷ Query ~> (H.ComponentDSL JTS.State QueryP Slam)
 evalJTable = case _ of
-  StepPage step next →
-    H.modify (JTS.stepPage step) $> next
-  ChangePageSize pageSize next →
-    for_ (Int.fromString pageSize) (H.modify ∘ JTS.resizePage) $> next
+  StepPage step next → do
+    H.modify (JTS.stepPage step)
+    refresh
+    pure next
+  ChangePageSize pageSize next → do
+    for_ (Int.fromString pageSize) (H.modify ∘ JTS.resizePage)
+    refresh
+    pure next
   StartEnterCustomPageSize next →
     H.modify (JTS._isEnteringPageSize .~ true) $> next
   SetCustomPageSize size next →
     H.modify (JTS.setPageSize size) $> next
   SetCustomPage page next →
     H.modify (JTS.setPage page) $> next
-  Update next → do
-    input ← H.gets _.input
-    for_ input \{ resource, tag } →
-      CEQ.runCardEvalT_ $ updateTable { resource, tag }
-    CC.raiseUpdatedC' CC.StateOnlyUpdate
-    pure next
+  Update next →
+    refresh $> next
+
+refresh ∷ DSL Unit
+refresh = do
+  input ← H.gets _.input
+  for_ input \{ resource, tag } →
+    CEQ.runCardEvalT_ $ updateTable { resource, tag }
+  CC.raiseUpdatedC' CC.StateOnlyUpdate

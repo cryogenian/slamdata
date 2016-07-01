@@ -1,5 +1,5 @@
 .sd-card-download-options {
-    height: ~"calc(100% - 2rem)";
+    height: 100%;
     > div { height: 100%; }
     div.load-message.alert {
         height: 100%;
@@ -37,15 +37,20 @@
                 left: 60px;
                 padding-left: 6px;
                 padding-right: 6px;
-                padding-top: 12px;
                 .download-json-options {
                     width: 100%;
-                    margin-top: 0;
-                    padding-top: 0;
                     > div {
                         padding-bottom: 12px;
-                        padding-top: 12px;
                         border-bottom: 1px solid #ccc;
+                    }
+
+                    > div+div {
+                      padding-top: 12px;
+                    }
+
+                    li {
+                      float: none;
+                      width: auto;
                     }
                 }
                 .download-csv-delimiters {

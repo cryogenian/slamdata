@@ -4,8 +4,7 @@
   <circle cx="60"
           cy="60"
           r="50"
-          fill="white"
-          fill-opacity="0.0"
-          stroke="white"
+          fill="none"
+          stroke="#999"
           stroke-width="16"/>
 </svg>

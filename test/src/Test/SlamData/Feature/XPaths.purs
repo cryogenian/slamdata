@@ -91,15 +91,15 @@ fileSearchInput =
 
 searchStringInput ∷ String
 searchStringInput =
-  XPath.inputWithExactPlaceholder "Input search string"
+  XPath.inputWithExactPlaceholder "Search string"
 
 saveDestinationInput ∷ String
 saveDestinationInput =
-  XPath.anyWithExactAriaLabel "Output file destination"
+  XPath.anyWithExactAriaLabel "Cache file destination"
 
 saveSubmitButton ∷ String
 saveSubmitButton =
-  XPath.anyWithExactAriaLabel "Confirm saving file"
+  XPath.anyWithExactAriaLabel "Confirm file destination"
 
 
 insertCacheCard ∷ String

@@ -154,18 +154,6 @@ mountProgressSpinner false = className "mount-progress-spinner-hidden"
 workspaceViewHack ∷ ClassName
 workspaceViewHack = className "workspace-view-hack"
 
-deckCard ∷ ClassName
-deckCard = className "deck-card"
-
-cardHeader ∷ ClassName
-cardHeader = className "card-header"
-
-cardIcon ∷ ClassName
-cardIcon = className "card-icon"
-
-cardName ∷ ClassName
-cardName = className "card-name"
-
 cardInput ∷ ClassName
 cardInput = className "card-input"
 
@@ -192,9 +180,6 @@ playButton = className "play-button"
 
 stopButton ∷ ClassName
 stopButton = className "stop-button"
-
-cardControls ∷ ClassName
-cardControls = className "card-controls"
 
 statusText ∷ ClassName
 statusText = className "status-text"
@@ -417,19 +402,7 @@ loading = className "loading"
 cardSlider ∷ ClassName
 cardSlider = className "sd-card-slider"
 
-board ∷ ClassName
-board = className "sd-board"
-
-gridPattern ∷ ClassName
-gridPattern = className "sd-grid-pattern"
-
-deck ∷ ClassName
-deck = className "sd-deck"
-
-deckName ∷ ClassName
-deckName = className "sd-deck-name"
-
-card ∷ ClassName
+card :: ClassName
 card = className "sd-card"
 
 cardSliding ∷ ClassName
@@ -446,21 +419,6 @@ cardGripper = className "sd-card-gripper"
 
 cardGripperLast ∷ ClassName
 cardGripperLast = className "sd-card-gripper-last"
-
-flipDeck ∷ ClassName
-flipDeck = className "sd-flip-deck"
-
-grabDeck ∷ ClassName
-grabDeck = className "sd-grab-deck"
-
-resizeDeck ∷ ClassName
-resizeDeck = className "sd-resize-deck"
-
-zoomInDeck ∷ ClassName
-zoomInDeck = className "sd-zoom-in-deck"
-
-zoomOutDeck ∷ ClassName
-zoomOutDeck = className "sd-zoom-out-deck"
 
 form ∷ ClassName
 form = className "sd-form"

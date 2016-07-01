@@ -5,10 +5,12 @@
 .sd-form input[type=datetime-local],
 .sd-form select,
 .sd-form-input {
+  color: #333;
   height: 2rem;
+  line-height: 2rem;
   box-sizing: border-box;
   margin: 0.5rem 0;
-  padding: 0 8px;
+  padding: 0 0.5rem;
   border: 1px solid #ccc;
   box-shadow: inset 2px 3px 6px -3px @shade-tint;
   background: #fff;
@@ -20,7 +22,13 @@ label.sd-option span {
 
 .sd-form button,
 .sd-form-button {
+  color: #333;
   height: 2rem;
+  // stupid value here keeps line height consistent between <button> and <a>
+  // without breaking form alignment.
+  line-height: ~"calc(2rem - 1px)";
+  text-decoration: none;
+  display: inline-block;
   min-width: 2rem;
   margin: 0.5rem 0;
   border: 1px solid #ccc;

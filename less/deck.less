@@ -1,29 +1,27 @@
 @import "deck/common";
 @import "deck/indicator";
 
-.sd-grid-pattern {
-  background-color: #eee;
-  background-size: @grid-size @grid-size;
-  background-position: top top;
-  background-image:
-    linear-gradient(to right, #ddd 1px, transparent 1px),
-    linear-gradient(to bottom, #ddd 1px, transparent 1px);
-}
-
-.sd-board {
+.sd-deck-container {
   position: absolute;
   top: 0;
   right: 0;
   left: 0;
   bottom: 0;
+  box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.25);
 
-  &.focused > div.sd-deck-frame {
+  transition: 0.2s ease-out box-shadow;
+
+  .sd-deck-frame {
+    .noselect;
     position: absolute;
     width: 100%;
     height: 100%;
-    border: 2px solid red;
-    z-index: 1;
-    pointer-events: none;
+    background: #fff;
+    > * {
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.2s ease-out opacity;
+    }
   }
 
   & > .loading {
@@ -36,46 +34,39 @@
       linear-gradient(to left, #bbb @grid-size, transparent @grid-size),
       linear-gradient(to right, #bbb @grid-size, transparent @grid-size);
   }
-}
 
-.sd-deck-hidden-top-menu {
-    top: 0px;
-    .new-card-menu {
-        display: none;
+  &.focused {
+    z-index: 2;
+    box-shadow: 0px 0px 16px rgba(0, 0, 0, 0.25);
+    > div.sd-deck-frame {
+      > * {
+        opacity: 1;
+        pointer-events: auto;
+      }
     }
+  }
 }
 
 .sd-deck {
   position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  bottom: 0;
+  top: @grid-size;
+  bottom: @grid-size;
+  width: 100%;
   overflow: hidden;
-  box-shadow: 0 0 32px rgba(0, 0, 0, 0.15);
-  background-color: #ddd;
-  background-size: 100%;
-  background-position: left top;
-  background-image:
-    linear-gradient(to bottom, #999 @grid-size, transparent @grid-size),
-    linear-gradient(to top, #999 @grid-size, transparent @grid-size);
 }
 
 .sd-card-slider {
   position: absolute;
-  top: @grid-size;
-  bottom: @grid-size;
-  width: 100%;
+  height: 100%;
+  left: @grid-size;
+  right: @grid-size;
 }
 
 .sd-card {
   background: white;
-  float: left;
   position: absolute;
-  top: 0;
   height: 100%;
   width: 100%;
-
   > div {
     height: 100%;
   }
@@ -84,27 +75,42 @@
 .sd-card-gripper, .sd-card-gripper-last {
   display: block;
   position: relative;
-  background-color: #bbb;
+  background-color: #fff;
   width: @grid-size;
   height: 100%;
   padding-left: 3px;
   padding-right: 3px;
   border: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.focused > .sd-deck > .sd-card-slider > .sd-card {
+  > .sd-card-gripper,
+  > .sd-card-gripper-last {
+    transition: 0.2s ease-out opacity;
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .sd-card-gripper {
   float: left;
+  margin-left: -@grid-size;
 }
 
 .sd-card-gripper-last {
   float: right;
+  margin-right: -@grid-size;
 }
 
 .sd-card-gripper::after, .sd-card-gripper-last::after {
-  content: "⬌";
+  content: " ";
   top: 50%;
   margin-top: -50%;
-  color: #444;
+  display: block;
+  height: @grid-size * 4;
+  background: url(../img/gripper.svg) repeat-y center;
 }
 
 .sd-flip-deck {
@@ -134,32 +140,13 @@
 
 .sd-grab-deck {
   height: @grid-size;
-  width: (@grid-size * 6);
+  width: (@grid-size * 4);
   position: absolute;
-  background: transparent;
   top: 0;
   left: 50%;
-  margin: 0 0 0 -(@grid-size * 3);
+  margin: 0 0 0 -(@grid-size * 2);
   border: none;
-
-  &:before {
-    content: "";
-    position: absolute;
-    top: (@grid-size / 3);
-    left: 20%;
-    right: 20%;
-    border-top: 1px solid #ccc;
-  }
-
-  &:after {
-    content: "";
-    position: absolute;
-    margin-top: -1px;
-    top: (@grid-size / 3 * 2);
-    left: 25%;
-    right: 25%;
-    border-top: 1px solid #ccc;
-  }
+  background: url(../img/gripper.svg) repeat-x center
 }
 
 .sd-resize-deck {
@@ -193,33 +180,24 @@
   }
 }
 
-.sd-zoom-in-deck,
-.sd-zoom-out-deck {
+button.sd-zoom-deck {
   height: @grid-size;
   width: @grid-size;
   background-color: transparent;
   float: left;
   border: none;
   margin: 0;
+
+  i.glyphicon {
+    top: 2px;
+    left: -1px;
+  }
 }
 
-.deck-card {
+.sd-deck-card {
   height: 100%;
   overflow: auto;
   position: relative;
-}
-
-.sd-card-ace {
-  height: ~"calc(100% - 2rem)";
-  > div { height: 100%; }
-}
-
-*[aria-grabbed="true"] {
-  background-color: cyan;
-}
-
-*[aria-dropeffect="execute"] *[aria-grabbed="true"]{
-  background-color: yellow;
 }
 
 *[aria-hidden="true"] {
@@ -243,9 +221,10 @@
   }
 }
 
-
 @import "deck/card";
+@import "deck/ace-card";
 @import "deck/api-card";
+@import "deck/cache-card";
 @import "deck/download-card";
 @import "deck/markdown-card";
 @import "deck/next-card";

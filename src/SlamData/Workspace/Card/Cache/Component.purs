@@ -20,7 +20,6 @@ module SlamData.Workspace.Card.Cache.Component
   , module SlamData.Workspace.Card.Cache.Component.Query
   ) where
 
-
 import SlamData.Prelude
 
 import Data.Lens ((.~), (?~))
@@ -33,14 +32,13 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Effects (Slam)
-import SlamData.Render.CSS.New as Cn
-import SlamData.Workspace.Card.Cache.Component.Query (Query(..), QueryP)
-import SlamData.Workspace.Card.Cache.Component.State (State, initialState, _pathString, _confirmedPath)
+import SlamData.Render.CSS as CSS
+import SlamData.Workspace.Card.Cache.Component.Query (QueryP, Query(..))
+import SlamData.Workspace.Card.Cache.Component.State (State, _confirmedPath, _pathString, initialState)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as Port
-
 
 import Utils.Path as PU
 
@@ -58,25 +56,23 @@ cacheCardComponent = CC.makeCardComponent
 
 render ∷ State → CacheHTML
 render state =
-  HH.div_
-    [
-      HH.div [ HP.classes [ Cn.form  ] ]
-        [ HH.input
-            [ HP.value $ fromMaybe "" state.pathString
-            , ARIA.label "Output file destination"
-            , HE.onValueInput $ HE.input \s → right ∘ UpdatePathString s
-            ]
-        , HH.button
-              [ HP.buttonType HP.ButtonButton
-              , HP.classes [ Cn.formButton ]
-              , ARIA.label "Confirm saving file"
-              , HP.disabled $ isNothing $ PU.parseFilePath =<< state.pathString
-              , HE.onClick (HE.input_ $ right ∘ ConfirmPathString)
-              ]
-              [ HH.text "Cache" ]
+  HH.div
+    [ HP.class_ CSS.form ]
+    [ HH.input
+        [ HP.inputType HP.InputText
+        , HP.placeholder "Cache file destination"
+        , ARIA.label "Cache file destination"
+        , HE.onValueInput $ HE.input \s → right ∘ UpdatePathString s
+        , HP.value $ fromMaybe "" state.pathString
         ]
+    , HH.button
+          [ HP.title "Confirm file destination"
+          , ARIA.label "Confirm file destination"
+          , HP.disabled $ isNothing $ PU.parseFilePath =<< state.pathString
+          , HE.onClick (HE.input_ $ right ∘ ConfirmPathString)
+          ]
+          [ HH.text "Confirm" ]
     ]
-
 
 eval ∷ QueryP ~> CacheDSL
 eval = coproduct cardEval saveEval

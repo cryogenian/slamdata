@@ -1,31 +1,46 @@
 .sd-card-search {
-  height: ~"calc(100% - 2rem)";
+  height: 100%;
   width: 100%;
-  position: relative;
-}
 
-.sd-form.sd-search-field {
+  .sd-form {
+
     text-align: center;
-    input {
-        width: 100%;
-        display: inline-block;
-        max-width: 600px;
-    }
     position: absolute;
     top: 50%;
-    margin-top: -40px;
+    margin-top: -@grid-size;
     width: 100%;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    > button:nth-child(2) {
-        width: 32px;
-        height: 32px;
-        padding: none;
-        position: absolute;
-        margin-left: -32px;
-        font-size: 1.5rem;
-        font-weight: bolder;
-        line-height: 30px;
+
+    // input {
+    //   width: 100%;
+    //   display: inline-block;
+    //   max-width: 600px;
+    //   width: ~"calc(100% - 5em)";
+    // }
+    //
+    // button {
+    //   display: inline-block;
+    //   width: 5em;
+    //   margin-left: -1px;
+    // }
+
+    input {
+      max-width: 600px;
+      width: ~"calc(100% - 2rem)";
     }
+
+    button {
+      width: 2rem;
+      margin-left: -1px;
+      // height: 32px;
+      // padding: none;
+      // position: absolute;
+      // margin-left: -32px;
+      // font-size: 1.5rem;
+      // font-weight: bold;
+      // line-height: 2rem;
+      // padding: 0;
+     }
+
+  }
 
 }
