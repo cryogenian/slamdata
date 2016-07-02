@@ -179,7 +179,7 @@ eval opts@{ wiring } = case _ of
     st ← H.get
     let pendingCoord = DCS.coordModelToCoord pendingCard
     when (any (DCS.eqCoordModel pendingCoord) st.modelCards) do
-      runPendingCards opts pendingCard cards
+      runPendingCards opts source pendingCard cards
     pure next
   QueuePendingCard next → do
     H.gets _.pendingCard >>= traverse_ \pending → do
@@ -297,7 +297,7 @@ peekBackSide opts (Back.DoAction action _) =
         updateActiveCardAndIndicator
         H.modify $ DCS._displayMode .~ DCS.Normal
         DCS.activeCardCoord (snd rem)
-          # maybe (runCardUpdates opts L.Nil) (queuePendingCard opts.wiring)
+          # maybe (runCardUpdates opts state.id L.Nil) (queuePendingCard opts.wiring)
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Rename → do
       name ← H.gets _.name
@@ -466,10 +466,11 @@ queuePendingCard wiring pendingCoord = do
 
 runPendingCards
   ∷ DeckOptions
+  → DeckId
   → DeckId × Card.Model
   → Cache (DeckId × CardId) CardEval
   → DeckDSL Unit
-runPendingCards opts pendingCard pendingCards = do
+runPendingCards opts source pendingCard pendingCards = do
   st ← H.get
   let
     pendingCoord = DCS.coordModelToCoord pendingCard
@@ -480,7 +481,7 @@ runPendingCards opts pendingCard pendingCards = do
   for_ pendingCards \cards → do
     input ← join <$> for prevCard (flip getCache opts.wiring.cards)
     steps ← resume st (input >>= _.output) cards
-    runCardUpdates opts steps
+    runCardUpdates opts source steps
 
   where
   resume st = go L.Nil where
@@ -542,8 +543,8 @@ evalCard path globalVarMap input card = do
 -- | Interprets a list of pending card evaluations into updates for the
 -- | display cards. Takes care of the pending card, next action card and
 -- | error card.
-runCardUpdates ∷ DeckOptions → L.List CardEval → DeckDSL Unit
-runCardUpdates opts steps = do
+runCardUpdates ∷ DeckOptions → DeckId → L.List CardEval → DeckDSL Unit
+runCardUpdates opts source steps = do
   st ← H.get
   let
     realCards = Array.filter (Lens.has _CardId ∘ _.cardId ∘ snd) st.displayCards
@@ -577,7 +578,7 @@ runCardUpdates opts steps = do
       $ DCS._displayCards .~ displayCards
 
     for_ updateResult.updates $
-      updateCard st opts.id pendingId loadedCards
+      updateCard st source pendingId loadedCards
 
   -- Final cleanup
   when (st.stateMode == Preparing) do
@@ -758,7 +759,7 @@ setModel opts model =
     Nothing → do
       st ← DCS.fromModel model <$> H.get
       setDeckState st
-      runCardUpdates opts L.Nil
+      runCardUpdates opts opts.id L.Nil
 
 getModelCards ∷ DeckDSL (Array (DeckId × Card.Model))
 getModelCards = do
