@@ -99,7 +99,7 @@ render opts state =
         , HC.style bgSize
         , HP.ref (right ∘ H.action ∘ SetElement)
         , HE.onClick \e → pure $
-            guard (AT.isEditable opts.accessType && not state.inserting) $>
+            guard (AT.isEditable opts.deck.accessType && not state.inserting) $>
             right (H.action $ AddDeck e)
         ]
         $ map renderDeck (foldl Array.snoc [] $ Map.toList state.decks)
@@ -121,7 +121,7 @@ render opts state =
       [ HH.slot deckId $ mkDeckComponent deckId ]
 
   mkDeckComponent id _ =
-    { component: opts.deckComponent (opaqueState $ DCS.initialDeck opts.path id)
+    { component: opts.deckComponent (opaqueState $ DCS.initialDeck opts.deck.path id)
     , initialState: DNS.initialState
     }
 
@@ -221,7 +221,7 @@ evalBoard opts = case _ of
   LoadDeck deckId next → do
     queryDeck deckId
       $ H.action
-      $ DCQ.Load opts.path deckId (DL.succ opts.level)
+      $ DCQ.Load opts.deck.path deckId (DL.succ opts.deck.level)
     pure next
 
 peek ∷ ∀ a. CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL Unit
@@ -369,10 +369,10 @@ addDeck opts deck coords = do
     addDeckAt opts deck
 
 addDeckAt ∷ CardOptions → DM.Deck → DeckPosition → DraftboardDSL Unit
-addDeckAt opts deck deckPos = do
+addDeckAt { deck: opts, id: cardId } deck deckPos = do
   let
-    parentId = opts.deckId
-    deck' = deck { parent = Just (parentId × opts.cardId) }
+    parentId = opts.id
+    deck' = deck { parent = Just (parentId × cardId) }
   H.modify $ _inserting .~ true
   deckId ← saveDeck opts.path deck'
   case deckId of
@@ -397,8 +397,8 @@ saveDeck path model = runExceptT do
   pure i
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
-deleteDeck opts deckId = do
-  res ← deleteGraph opts.path deckId
+deleteDeck { deck } deckId = do
+  res ← deleteGraph deck.path deckId
   case res of
     Left err →
       -- TODO: do something to notify the user deleting failed
@@ -407,19 +407,19 @@ deleteDeck opts deckId = do
       H.modify \s → s { decks = Map.delete deckId s.decks }
 
 wrapDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
-wrapDeck opts oldId = do
+wrapDeck { id: cardId, deck } oldId = do
   H.gets (Map.lookup oldId ∘ _.decks) >>= traverse_ \deckPos → do
     let
-      parentId = opts.deckId
+      parentId = deck.id
       deckPos' = deckPos { x = 1.0, y = 1.0 }
-      newDeck = (wrappedDeck deckPos' oldId) { parent = Just (parentId × opts.cardId) }
-    deckId ← saveDeck opts.path newDeck
+      newDeck = (wrappedDeck deckPos' oldId) { parent = Just (parentId × cardId) }
+    deckId ← saveDeck deck.path newDeck
     case deckId of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
       Right newId → void do
-        putDeck newId newDeck opts.wiring.decks
+        putDeck newId newDeck deck.wiring.decks
         traverse_ (queryDeck oldId ∘ H.action)
           [ DCQ.SetParent (newId × CID.CardId 0)
           , DCQ.Save Nothing
@@ -432,7 +432,7 @@ wrapDeck opts oldId = do
           }
         queryDeck newId
           $ H.action
-          $ DCQ.Load opts.path newId (DL.succ opts.level)
+          $ DCQ.Load deck.path newId (DL.succ deck.level)
 
 mirrorDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 mirrorDeck opts oldId = do
@@ -442,7 +442,7 @@ mirrorDeck opts oldId = do
       then insertNewDeck DM.emptyDeck { mirror = DCS.coordModelToCoord <$> modelCards'.init }
       else do
         res ←
-          saveDeck opts.path
+          saveDeck opts.deck.path
             { parent: Nothing
             , mirror: map _.cardId <$> modelCards'.init
             , cards: snd <$> modelCards'.rest
@@ -472,7 +472,7 @@ mirrorDeck opts oldId = do
           Just a → a
 
 groupDecks ∷ CardOptions → DeckId → DeckId → DraftboardDSL Unit
-groupDecks opts deckFrom deckTo = do
+groupDecks { id: cardId, deck } deckFrom deckTo = do
   st ← H.get
   for_ (Map.lookup deckFrom st.decks) \rectFrom →
   for_ (Map.lookup deckTo st.decks) \rectTo → do
@@ -480,7 +480,7 @@ groupDecks opts deckFrom deckTo = do
       rectTo' = rectTo { x = 1.0, y = 1.0 }
       rectFrom' = rectFrom { x = 1.0, y = rectTo.height + 2.0 }
       newDeck = DM.emptyDeck
-        { parent = Just (opts.deckId × opts.cardId)
+        { parent = Just (deck.id × cardId)
         , cards = pure
           { cardId: CID.CardId 0
           , model: Card.Draftboard
@@ -491,13 +491,13 @@ groupDecks opts deckFrom deckTo = do
             }
           }
         }
-    deckId ← saveDeck opts.path newDeck
+    deckId ← saveDeck deck.path newDeck
     case deckId of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
       Right newId → void do
-        putDeck newId newDeck opts.wiring.decks
+        putDeck newId newDeck deck.wiring.decks
         H.modify \s → s
           { decks
               = Map.insert newId rectTo
@@ -507,7 +507,7 @@ groupDecks opts deckFrom deckTo = do
           }
         queryDeck newId
           $ H.action
-          $ DCQ.Load opts.path newId (DL.succ opts.level)
+          $ DCQ.Load deck.path newId (DL.succ deck.level)
 
 queryDeck ∷ ∀ a. DeckId → DCQ.Query a → DraftboardDSL (Maybe a)
 queryDeck deckId = H.query deckId ∘ right

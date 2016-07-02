@@ -32,7 +32,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Deck.BackSide.Component as Back
-import SlamData.Workspace.Deck.Common (DeckHTML)
+import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpIndicator, cpBackSide, cpDialog)
 import SlamData.Workspace.Deck.Component.CSS as CSS
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
@@ -42,7 +42,6 @@ import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Slider as Slider
-import SlamData.Workspace.Wiring (Wiring)
 
 renderError ∷ String → DeckHTML
 renderError err =
@@ -53,20 +52,20 @@ renderError err =
         [ HH.text err ]
     ]
 
-renderDeck ∷ Wiring → DeckComponent → DCS.State → DeckHTML
-renderDeck wiring deckComponent st =
+renderDeck ∷ DeckOptions → DeckComponent → DCS.State → DeckHTML
+renderDeck opts deckComponent st =
   HH.div
     ([ HP.classes $ [CSS.deckContainer] ⊕ (guard st.focused $> CSS.focused) ]
      ⊕ deckProperties
      ⊕ Slider.containerProperties st)
     [ HH.div
         [ HP.class_ CSS.deckFrame ]
-        $ frameElements st ⊕ [ renderName st.name, deckIndicator ]
+        $ frameElements opts.accessType st ⊕ [ renderName st.name, deckIndicator ]
     , HH.div
         [ HP.class_ CSS.deck
         , HP.key "deck"
         ]
-        [ Slider.render wiring deckComponent st $ st.displayMode ≡ DCS.Normal
+        [ Slider.render opts deckComponent st $ st.displayMode ≡ DCS.Normal
         , renderBackside $ st.displayMode ≡ DCS.Backside
         , renderDialog $ st.displayMode ≡ DCS.Dialog
         ]
@@ -102,9 +101,9 @@ renderName name =
     [ HP.class_ CSS.deckName ]
     [ HH.text name ]
 
-frameElements ∷ DCS.State → Array DeckHTML
-frameElements st
-  | st.accessType ≡ AT.ReadOnly = mempty
+frameElements ∷ AT.AccessType → DCS.State → Array DeckHTML
+frameElements accessType st
+  | accessType ≡ AT.ReadOnly = mempty
   | st.level ≡ DL.root = rootFrameElements
   | otherwise = childFrameElements
 

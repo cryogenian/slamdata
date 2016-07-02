@@ -50,7 +50,7 @@ import SlamData.Workspace.Card.CardId as CardId
 import SlamData.Workspace.Card.Component as CardC
 import SlamData.Workspace.Card.Factory as Factory
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
+import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query)
@@ -61,12 +61,11 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckId as DeckId
 import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
-import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.CSS as CSSUtils
 
-render ∷ Wiring → DeckComponent → State → Boolean → DeckHTML
-render wiring comp st visible =
+render ∷ DeckOptions → DeckComponent → State → Boolean → DeckHTML
+render opts deckComponent st visible =
   HH.div
     ([ HP.key "deck-cards"
      , HP.classes [ ClassNames.cardSlider ]
@@ -76,7 +75,7 @@ render wiring comp st visible =
          cardSliderTransitionCSS st.sliderTransition
      ]
      ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
-    $ map (Tuple.uncurry $ renderCard wiring comp st)
+    $ map (Tuple.uncurry $ renderCard opts deckComponent st)
     $ Array.zip st.displayCards (0 .. Array.length st.displayCards)
 
 startSliding ∷ Event MouseEvent → GripperDef → DeckDSL Unit
@@ -226,14 +225,14 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard ∷ Wiring → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
-renderCard wiring comp st (deckId × card) index =
+renderCard ∷ DeckOptions → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
+renderCard opts deckComponent st (deckId × card) index =
   HH.div
     [ HP.key key
     , HP.classes classes
     , style $ cardPositionCSS index
     ]
-    if st.accessType == AT.ReadOnly
+    if opts.accessType == AT.ReadOnly
     then
       [ HH.div
           (cardProperties st coord)
@@ -257,13 +256,9 @@ renderCard wiring comp st (deckId × card) index =
   coord = deckId × card.cardId
   slotId = ChildSlot.CardSlot coord
   cardOpts =
-    { deckComponent: comp
-    , path: st.path
-    , cardId: card.cardId
-    , deckId: st.id
-    , level: st.level
-    , accessType: st.accessType
-    , wiring
+    { deck: opts
+    , deckComponent
+    , id: card.cardId
     }
 
   cardComponent =
