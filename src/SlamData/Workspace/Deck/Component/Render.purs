@@ -60,7 +60,7 @@ renderDeck opts deckComponent st =
      ⊕ Slider.containerProperties st)
     [ HH.div
         [ HP.class_ CSS.deckFrame ]
-        $ frameElements opts.accessType st ⊕ [ renderName st.name, deckIndicator ]
+        $ frameElements opts.accessType st ⊕ [ renderName st.name ]
     , HH.div
         [ HP.class_ CSS.deck
         , HP.key "deck"
@@ -111,6 +111,7 @@ rootFrameElements ∷ Array DeckHTML
 rootFrameElements =
   [ zoomOutButton
   , flipButton
+  , deckIndicator
   ]
 
 childFrameElements ∷ Array DeckHTML
@@ -119,6 +120,7 @@ childFrameElements =
   , flipButton
   , moveGripper
   , resizeGripper
+  , deckIndicator
   ]
 
 dialogSlot ∷ DeckHTML
