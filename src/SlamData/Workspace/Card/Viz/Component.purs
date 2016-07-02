@@ -44,7 +44,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Effects (Slam)
 import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, trySelect', _value)
 import SlamData.Quasar.Query as Quasar
-import SlamData.Render.Common (row, glyph)
+import SlamData.Render.Common (row)
 import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType (CardType(Viz))
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect)
@@ -52,6 +52,7 @@ import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie)
+import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port as P
@@ -116,7 +117,7 @@ render ∷ VCS.State → VizHTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD state
+    , renderLowLOD B.glyphiconPicture left state.levelOfDetails
     ]
 
 renderHighLOD ∷ VCS.State → VizHTML
@@ -129,23 +130,6 @@ renderHighLOD state =
       [ renderEmpty $ not Set.isEmpty state.availableChartTypes
       , renderForm state
       ]
-
-renderLowLOD ∷ VCS.State → VizHTML
-renderLowLOD state =
-  HH.div
-    [ HP.classes
-        $ [ HH.className "card-input-minimum-lod" ]
-        ⊕ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
-    ]
-    [ HH.button
-      [ ARIA.label "Zoom or resize"
-      , HP.title "Zoom or resize"
-      , HE.onClick (HE.input_ (left ∘ CC.ZoomIn))
-      ]
-      [ glyph B.glyphiconPicture
-      , HH.text "Zoom or resize"
-      ]
-    ]
 
 renderEmpty ∷ Boolean → VizHTML
 renderEmpty hidden =

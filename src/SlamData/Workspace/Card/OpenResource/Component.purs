@@ -40,6 +40,7 @@ import SlamData.Quasar.FS as Quasar
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.OpenResource.Component.Query (QueryP, Query(..))
@@ -68,25 +69,7 @@ render ∷ State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD state
-    ]
-
-
-renderLowLOD ∷ State → HTML
-renderLowLOD state =
-  HH.div
-    [ HP.classes
-        $ (B.hidden <$ guard (state.levelOfDetails ≠ Low))
-        ⊕ [ HH.className "card-input-minimum-lod" ]
-    ]
-    [ HH.button
-        [ ARIA.label "Zoom or resize"
-        , HP.title "Zoom or resize"
-        , HE.onClick (HE.input_ (left ∘ CC.ZoomIn))
-        ]
-        [ glyph B.glyphiconFolderOpen
-        , HH.text "Zoom or resize"
-        ]
+    , renderLowLOD B.glyphiconFolderOpen left state.levelOfDetails
     ]
 
 renderHighLOD ∷ State → HTML
