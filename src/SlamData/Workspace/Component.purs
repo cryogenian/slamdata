@@ -106,15 +106,22 @@ render wiring state =
                init =
                  opaqueState $
                    (Deck.initialDeck path deckId)
-                     { accessType = state.accessType
-                     , globalVarMap = state.globalVarMap
+                     { globalVarMap = state.globalVarMap
                      }
-              in { component: DN.comp wiring init
+              in { component: DN.comp (deckOpts path deckId) init
                  , initialState: DN.initialState
                  }
           ]
       _, Nothing, _ → showError "Missing workspace path"
       _, _, Nothing → showError "Missing deck id (impossible!)"
+
+  deckOpts path deckId =
+    { path
+    , id: deckId
+    , level: DL.root
+    , accessType: state.accessType
+    , wiring
+    }
 
   showError err =
     HH.div [ HP.classes [ B.alert, B.alertDanger ] ]

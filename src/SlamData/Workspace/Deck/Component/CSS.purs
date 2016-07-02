@@ -18,32 +18,35 @@ module SlamData.Workspace.Deck.Component.CSS where
 
 import Halogen.HTML.Core (className, ClassName)
 
-deckContainer :: ClassName
+deckContainer ∷ ClassName
 deckContainer = className "sd-deck-container"
 
-deck :: ClassName
+deck ∷ ClassName
 deck = className "sd-deck"
 
-deckFrame :: ClassName
+deckFrame ∷ ClassName
 deckFrame = className "sd-deck-frame"
 
-deckName :: ClassName
+deckName ∷ ClassName
 deckName = className "sd-deck-name"
 
-deckUnfocused :: ClassName
-deckUnfocused = className "sd-deck-unfocused"
+focused ∷ ClassName
+focused = className "sd-focused"
 
-zoomDeck :: ClassName
+zoomDeck ∷ ClassName
 zoomDeck = className "sd-zoom-deck"
 
-flipDeck :: ClassName
+flipDeck ∷ ClassName
 flipDeck = className "sd-flip-deck"
 
-grabDeck :: ClassName
+grabDeck ∷ ClassName
 grabDeck = className "sd-grab-deck"
 
-resizeDeck :: ClassName
+resizeDeck ∷ ClassName
 resizeDeck = className "sd-resize-deck"
+
+dialogWrapper ∷ ClassName
+dialogWrapper = className "deck-dialog-wrapper"
 
 -------------------------------------------------------------------------------
 
@@ -52,8 +55,8 @@ invisible = className "sd-invisible"
 
 -------------------------------------------------------------------------------
 
-card :: ClassName
+card ∷ ClassName
 card = className "sd-card"
 
-cardSlider :: ClassName
+cardSlider ∷ ClassName
 cardSlider = className "sd-card-slider"

@@ -14,27 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Common
-  ( CardOptions
-  ) where
+module SlamData.Workspace.Card.Common where
 
-import SlamData.Prelude
-
-import SlamData.Workspace.AccessType (AccessType)
 import SlamData.Workspace.Card.CardId (CardId)
-import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
+import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
-import SlamData.Workspace.Wiring (Wiring)
-
-import Utils.Path (DirPath)
 
 type CardOptions =
-  { deckComponent ∷ DeckComponent
-  , path ∷ DirPath
-  , cardId ∷ CardId
-  , deckId ∷ DeckId
-  , level ∷ DeckLevel
-  , accessType ∷ AccessType
-  , wiring ∷ Wiring
+  { deck ∷ DeckOptions
+  , deckComponent ∷ DeckComponent
+  , id ∷ CardId
   }

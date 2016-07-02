@@ -20,20 +20,20 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource as HE
 
 import SlamData.Effects (SlamDataEffects, Slam)
+import SlamData.Workspace.Deck.Common (DeckOptions)
+import SlamData.Workspace.Deck.Component as DC
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
-import SlamData.Workspace.Deck.Component as DC
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.AffableProducer (produce)
 
 type DSL = H.ComponentDSL DNS.State DNQ.QueryP Slam
 type HTML = H.ComponentHTML DNQ.QueryP
 
-comp ∷ Wiring → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
-comp wiring deckState =
+comp ∷ DeckOptions → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
+comp opts deckState =
   H.lifecycleComponent
     { render
     , eval: coproduct eval evalProxy
@@ -45,16 +45,16 @@ comp wiring deckState =
   deckComponent' ∷ (DCQ.Query Unit → Eff SlamDataEffects Unit) → H.Component DCS.StateP DCQ.QueryP Slam
   deckComponent' emitter =
     opaque $ H.lifecycleParentComponent
-      { render: DC.render wiring (comp wiring)
+      { render: DC.render opts (comp opts)
       , eval: \query → do
-          res ← DC.eval wiring query
+          res ← DC.eval opts query
           case query of
             DCQ.DoAction a _ → H.fromEff $ emitter $ DCQ.DoAction a unit
             DCQ.GrabDeck a _ → H.fromEff $ emitter $ DCQ.GrabDeck a unit
             DCQ.ResizeDeck a _ → H.fromEff $ emitter $ DCQ.ResizeDeck a unit
             _ → pure unit
           pure res
-      , peek: Just (DC.peek wiring)
+      , peek: Just (DC.peek opts)
       , initializer: Just (H.action DCQ.Init)
       , finalizer: Nothing
       }
