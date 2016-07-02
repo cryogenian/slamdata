@@ -152,32 +152,12 @@
 .sd-resize-deck {
   height: @grid-size;
   width: @grid-size;
-  background-color: transparent;
+  background: url(../img/gripper-resize.svg) no-repeat center;
   position: absolute;
   bottom: 0;
   right: 0;
   border: none;
   margin: 0;
-
-  &:before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    border-top: 1px solid #ccc;
-    transform: rotate(-45deg);
-  }
-
-  &:after {
-    content: "";
-    position: absolute;
-    top: (@grid-size / 3 * 2);
-    left: 40%;
-    width: 50%;
-    border-top: 1px solid #ccc;
-    transform: rotate(-45deg);
-  }
 }
 
 button.sd-zoom-deck {
