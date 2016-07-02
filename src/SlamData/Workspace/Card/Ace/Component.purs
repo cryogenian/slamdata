@@ -35,18 +35,16 @@ import Ace.Types (Editor)
 import Data.Lens ((.~))
 
 import Halogen as H
-import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.Ace.Component.Query (QueryP)
 import SlamData.Workspace.Card.Ace.Component.State (State, StateP, Status(..), initialState, _levelOfDetails, _status, isNew, isLoading, isReady)
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -134,7 +132,7 @@ render ∷ AceConfig → State → HTML
 render cfg state =
   HH.div_
     [ renderHighLOD cfg state
-    , renderLowLOD cfg state
+    , renderLowLOD (CT.aceCardGlyph cfg.mode) id state.levelOfDetails
     ]
 
 renderHighLOD ∷ AceConfig → State → HTML
@@ -146,21 +144,4 @@ renderHighLOD cfg state =
     ]
     [ HH.div [ HP.class_ (HH.className "sd-ace-inset-shadow") ] []
     , HH.Slot (aceConstructor unit (aceSetup cfg) (Just Live) )
-    ]
-
-renderLowLOD ∷ AceConfig → State → HTML
-renderLowLOD cfg state =
-  HH.div
-    [ HP.classes
-        $ (guard (state.levelOfDetails ≠ Low) $> B.hidden)
-        ⊕ [ HH.className "card-input-minimum-lod" ]
-    ]
-    [ HH.button
-        [ ARIA.label "Zoom or resize"
-        , HP.title "Zoom or resize"
-        , HE.onClick (HE.input_ CC.ZoomIn)
-        ]
-        [ glyph $ CT.aceCardGlyph cfg.mode
-        , HH.text "Zoom or resize"
-        ]
     ]

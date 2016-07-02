@@ -29,14 +29,13 @@ import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
+import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.JTable.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.JTable.Component.State (State, currentPageInfo)
-import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery(ZoomIn))
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 -- | A value that holds all possible states for an inputtable value: the current
@@ -57,7 +56,7 @@ render ∷ State → H.ComponentHTML QueryP
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD state
+    , renderLowLOD B.glyphiconThList left state.levelOfDetails
     ]
 
 renderHighLOD ∷ State → H.ComponentHTML QueryP
@@ -77,26 +76,6 @@ renderHighLOD st =
             , pageSizeControls st.isEnteringPageSize { current: p.pageSize, pending: st.pageSize }
             ]
           ]
-
-renderLowLOD ∷ State → H.ComponentHTML QueryP
-renderLowLOD st =
-  HH.div
-    [ HP.classes
-        $ (guard (st.levelOfDetails ≠ Low) $> B.hidden)
-        ⊕ [ HH.className "card-input-minimum-lod" ]
-    ]
-    [ HH.button
-        [ ARIA.label "Zoom or resize"
-        , HP.title "Zoom or resize"
-        , HE.onClick (HE.input_ (left ∘ ZoomIn))
-        ]
-        [ glyph B.glyphiconThList
-          -- Works nice for less then 1000000000 records :)
-        , HH.text
-            "Zoom or resize"
-        ]
-    ]
-
 
 jTableOpts ∷ JT.JTableOpts
 jTableOpts = JT.jTableOptsDefault

@@ -25,16 +25,15 @@ import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Download.Model as DL
 import SlamData.Download.Render as DLR
 import SlamData.Effects (Slam)
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType (CardType(DownloadOptions))
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.DownloadOptions.Component.Query (QueryP, Query(..))
 import SlamData.Workspace.Card.DownloadOptions.Component.State (State, _compress, _options, _source, initialState, _levelOfDetails)
 import SlamData.Workspace.Card.Model as Card
@@ -57,7 +56,7 @@ render ∷ State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD state
+    , renderLowLOD B.glyphiconDownloadAlt left state.levelOfDetails
     ]
 
 renderHighLOD ∷ State → HTML
@@ -83,26 +82,6 @@ renderHighLOD state =
         ]
   where
   hideClasses = guard (state.levelOfDetails ≠ High) $> B.hidden
-
-renderLowLOD ∷ State → HTML
-renderLowLOD state =
-  HH.div
-    [ HP.classes
-        $ [ HH.className "card-input-minimum-lod" ]
-        ⊕ hideClasses
-    ]
-    [ HH.button
-      [ ARIA.label "Zoom or resize"
-      , HP.title "Zoom or resize"
-      , HE.onClick (HE.input_ (left ∘ CC.ZoomIn))
-      ]
-      [ glyph B.glyphiconDownloadAlt
-      , HH.text "Zoom or resize"
-      ]
-    ]
-
-  where
-  hideClasses = guard (state.levelOfDetails ≠ Low) $> B.hidden
 
 renderDownloadConfiguration ∷ State → HTML
 renderDownloadConfiguration state =
