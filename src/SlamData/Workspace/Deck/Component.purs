@@ -50,18 +50,12 @@ import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils (raise', subscribeToBus')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
-import Halogen.HTML.Events.Indexed as HE
-import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
-import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Config (workspaceUrl)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Quasar.Data (save) as Quasar
-import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
@@ -78,14 +72,13 @@ import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
-import SlamData.Workspace.Deck.Component.CSS as CSS
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.State as DCS
+import SlamData.Workspace.Deck.Component.Render as DCR
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
-import SlamData.Workspace.Deck.Gripper as Gripper
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Model (deckIndex)
 import SlamData.Workspace.Deck.Model as Model
@@ -109,131 +102,8 @@ render wiring deckComponent st =
   if st.finalized
   then HH.div_ []
   else case st.stateMode of
-    Error err → renderError err
-    _ →
-      -- WARNING: Very strange things happen when this is not in a div; see SD-1326.
-      HH.div
-        ([ HP.classes $ [ CSS.deckContainer ] ++ (if st.focused then [ HH.className "focused" ] else [])
-         , HP.key "deck-container"
-         , HE.onMouseUp (HE.input_ UpdateCardSize)
-         , HE.onMouseDown \_ → HEH.stopPropagation $> Just (H.action Focus)
-         , HP.ref (H.action ∘ SetCardElement)
-         ] ⊕ Slider.containerProperties st)
-        [ HH.div
-            [ HP.class_ CSS.deckFrame ]
-            [ HH.button
-                [ HP.classes [ CSS.flipDeck ]
-                , HE.onClick (HE.input_ FlipDeck)
-                , ARIA.label "Flip deck"
-                , HP.title "Flip deck"
-                ]
-                [ HH.text "" ]
-            , zoomButton
-            , if st.level ≡ DL.root
-                then HH.text ""
-                else
-                  HH.button
-                    [ HP.classes [ CSS.grabDeck ]
-                    , HE.onMouseDown (HE.input GrabDeck)
-                    , ARIA.label "Grab deck"
-                    , HP.title "Grab deck"
-                    ]
-                    [ HH.text "" ]
-            , renderName
-            , HH.button
-                [ HP.classes [ CSS.grabDeck ]
-                , HE.onMouseDown (HE.input GrabDeck)
-                , ARIA.label "Grab deck"
-                , HP.title "Grab deck"
-                ]
-                [ HH.text "" ]
-            , HH.slot' cpIndicator unit \_ →
-                { component: Indicator.comp
-                , initialState: Indicator.initialState
-                }
-            , if st.level ≡ DL.root
-                then HH.text ""
-                else
-                  HH.button
-                    [ HP.classes [ CSS.resizeDeck ]
-                    , HE.onMouseDown (HE.input ResizeDeck)
-                    , ARIA.label "Resize deck"
-                    , HP.title "Resize deck"
-                    ]
-                    [ HH.text "" ]
-            ]
-        , HH.div
-            [ HP.class_ CSS.deck
-            , HP.key "deck"
-            ]
-            [ Slider.render wiring deckComponent st $ st.displayMode ≡ DCS.Normal
-            , renderBackside $ st.displayMode ≡ DCS.Backside
-            , renderDialog $ st.displayMode ≡ DCS.Dialog
-            ]
-        ]
-
-  where
-
-  zoomButton
-    | st.level ≡ DL.root =
-        HH.button
-         [ HP.classes [ CSS.zoomDeck ]
-         , ARIA.label "Zoom out"
-         , HP.title "Zoom out"
-         , HE.onClick (HE.input_ ZoomOut)
-         ]
-         [ glyph B.glyphiconZoomOut ]
-    | otherwise =
-        HH.button
-           [ HP.classes [ CSS.zoomDeck ]
-           , ARIA.label "Zoom in"
-           , HP.title "Zoom in"
-           , HE.onClick (HE.input_ ZoomIn)
-           ]
-           [ glyph B.glyphiconZoomIn ]
-
-  renderError err =
-    HH.div
-      [ HP.classes [ B.alert, B.alertDanger ] ]
-      [ HH.h1
-          [ HP.class_ B.textCenter ]
-          [ HH.text err ]
-      ]
-
-  renderDialog visible =
-    HH.div
-      ([ HP.classes [ HH.className "deck-dialog-wrapper" ]
-       , ARIA.hidden $ show $ not visible
-       ] ⊕ (guard (not visible) $> HP.class_ CSS.invisible))
-      [ HH.slot' cpDialog unit \_ →
-         { component: Dialog.comp
-         , initialState: H.parentState Dialog.initialState
-         }
-      ]
-
-  renderBackside visible =
-    HH.div
-      ([ HP.classes [ CSS.cardSlider ]
-       , ARIA.hidden $ show $ not visible
-       ] ⊕ (guard (not visible) $> HP.class_ CSS.invisible))
-      [ HH.div
-          [ HP.classes [ CSS.card ] ]
-          (Gripper.renderGrippers
-             visible
-             (isJust st.initialSliderX)
-             (Gripper.gripperDefsForCard st.displayCards $ DCS.activeCardCoord st)
-             ⊕ [ HH.slot' cpBackSide unit \_ →
-                  { component: Back.comp
-                  , initialState: Back.initialState
-                  }
-               ]
-          )
-      ]
-
-  renderName =
-    HH.div
-      [ HP.classes [ CSS.deckName ] ]
-      [ HH.text st.name ]
+    Error err → DCR.renderError err
+    _ → DCR.renderDeck wiring deckComponent st
 
 eval ∷ Wiring → Query ~> DeckDSL
 eval wiring (Init next) = do

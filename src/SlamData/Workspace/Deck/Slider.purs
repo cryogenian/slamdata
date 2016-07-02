@@ -44,11 +44,12 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Config as Config
 import SlamData.Render.CSS as ClassNames
+import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardId as CardId
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Component as CardC
 import SlamData.Workspace.Card.Factory as Factory
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Deck.Common (DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot as ChildSlot
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
@@ -228,11 +229,18 @@ cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 renderCard ∷ Wiring → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
 renderCard wiring comp st (deckId × card) index =
   HH.div
-    ([ HP.key key
+    [ HP.key key
     , HP.classes classes
     , style $ cardPositionCSS index
-    ])
-    $ Gripper.renderGrippers
+    ]
+    if st.accessType == AT.ReadOnly
+    then
+      [ HH.div
+          (cardProperties st coord)
+          [ HH.slot' ChildSlot.cpCard slotId \_ → cardComponent ]
+      ]
+    else
+      Gripper.renderGrippers
         (cardSelected st (deckId × card.cardId))
         (isJust st.initialSliderX)
         (Gripper.gripperDefsForCard st.displayCards $ Just coord)
