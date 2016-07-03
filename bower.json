@@ -39,7 +39,7 @@
     "purescript-oidc-crypt-utils": "^1.0.0",
     "purescript-pathy": "^0.3.0",
     "purescript-profunctor-lenses": "^0.3.3",
-    "purescript-quasar": "^1.2.0",
+    "purescript-quasar": "cryogenian/purescript-quasar#security",
     "purescript-routing": "^0.4.0",
     "purescript-search": "^0.7.0",
     "purescript-these": "^0.3.0",

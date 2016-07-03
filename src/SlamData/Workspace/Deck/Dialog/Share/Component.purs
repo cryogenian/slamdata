@@ -7,6 +7,8 @@ import Control.UI.ZClipboard as Z
 
 import Data.Array as Arr
 import Data.String as Str
+import Data.Path.Pathy (rootDir, (</>), file)
+import Data.Path.Pathy as Pt
 
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
@@ -18,8 +20,14 @@ import Halogen.CustomProps as Cp
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (raise)
 
+import Quasar.Advanced.Types as QT
+
+import SlamData.Quasar.Security as Q
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
+import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), sharingActions)
+
+import Utils.Path (FilePath, DirPath, rootFile)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
@@ -36,13 +44,6 @@ data ErrorType
   | Validation
 
 derive instance errorTypeEq ∷ Eq ErrorType
-
-data ShareResume
-  = View
-  | Edit
-
-
-derive instance shareResumeEq ∷ Eq ShareResume
 
 -- This is utility function that should be used only in
 -- select/option stuff
@@ -68,18 +69,19 @@ type State =
   , error ∷ Maybe ErrorType
   , email ∷ String
     -- Actually should be Group from purescript-quasar
-  , groups ∷ Array String
-  , groupSelected ∷ Maybe String
+  , groups ∷ Array FilePath
+  , groupSelected ∷ Maybe FilePath
   , tokenName ∷ String
   , loading ∷ Boolean
   , showError ∷ Boolean
   , submitting ∷ Boolean
   , shareResume ∷ ShareResume
   , tokenSecret ∷ Maybe String
+  , deckPath ∷ DirPath
   }
 
-initialState ∷ State
-initialState =
+initialState ∷ DirPath → State
+initialState deckPath =
   { subjectType: User
   , error: Nothing
   , email: ""
@@ -91,6 +93,7 @@ initialState =
   , submitting: false
   , shareResume: View
   , tokenSecret: Nothing
+  , deckPath
   }
 
 data Query a
@@ -223,11 +226,11 @@ render state =
                              -- because it's break context. OTOH, lambdas are not
                              -- so fancy as named func. cryogenian.
                              let
-                               renderOption ∷ String → HTML
+                               renderOption ∷ FilePath → HTML
                                renderOption group =
                                  HH.option
-                                   [ HP.value group ]
-                                   [ HH.text group ]
+                                   [ HP.value $ Pt.printPath  group ]
+                                   [ HH.text $ Pt.printPath  group ]
                              in
                                map renderOption state.groups
                          ]
@@ -322,20 +325,51 @@ eval (ChangeSubjectType st next) = do
                  , showError = false
                  })
   pure next
-eval (Share next) = do
+eval (Share next) = next <$ do
   H.modify (_{ error = Nothing
              , showError = false
              , submitting = true
              })
-  H.get >>= Debug.Trace.traceAnyA
+
   H.modify (_{submitting = true})
-  subject ← H.gets _.subjectType
-  if subject ≡ Token
-    then H.modify (_{ tokenSecret = Just "some random string"
-                    , submitting = false
-                    })
-    else raise $ Dismiss unit
-  pure next
+  state ← H.get
+
+  let
+    actions = sharingActions state.deckPath state.shareResume
+
+  if state.subjectType ≡ Token
+    then do
+    res ←
+      Q.createToken
+        (if state.tokenName ≡ "" then Nothing else Just $ QT.TokenName state.tokenName)
+        actions
+
+    case res of
+      Left _ →
+        showConnectionError
+      Right token →
+        H.modify (_{ tokenSecret = QT.runTokenHash <$> token.secret
+                   , submitting = false
+                   })
+    else do
+    let
+      shareRequest ∷ QT.ShareRequestR
+      shareRequest =
+        { users: (if state.subjectType ≡ User
+                  then map (const $ QT.UserId state.email) actions
+                  else [ ])
+        , groups: (if state.subjectType ≡ Group
+                   then Arr.catMaybes $ map (const $ state.groupSelected) actions
+                   else [ ])
+        , actions
+        }
+    res ← Q.sharePermission shareRequest
+    case res of
+      Left _ →
+        showConnectionError
+      Right [] →
+        showConnectionError
+      _ → raise $ H.action Dismiss
 eval (DismissError next) =
   H.modify (_{showError = false}) $> next
 eval (EmailChanged str next) = do
@@ -353,13 +387,20 @@ eval (EmailChanged str next) = do
                , showError = false
                })
   pure next
-eval (Init next) = do
-  grps ← getAllAvailableGroups
-  H.modify (_{groups = grps, loading = false })
-  pure next
-eval (GroupSelected grpString next) =
-  -- Actuall find group by its name in state.groups
-  H.modify (_{groupSelected = Just grpString}) $> next
+eval (Init next) = next <$ do
+  res ← Q.groupInfo (rootDir </> file "")
+  case res of
+    Left _ →
+      showConnectionError
+    Right grInfo →
+      H.modify (_{groups = [rootFile] ⊕ grInfo.subGroups, loading = false })
+eval (GroupSelected grpString next) = next <$ do
+  groups ← H.gets _.groups
+  let
+    group =
+      Arr.findIndex (\x → grpString ≡ Pt.printPath x) groups
+      >>= Arr.index groups
+  H.modify (_{groupSelected = group})
 eval (TokenNameChanged str next) =
   H.modify (_{tokenName = str}) $> next
 eval (ChangeShareResume sr next) =
@@ -371,14 +412,12 @@ eval (InitZClipboard token mbEl next) =
 eval (SelectElement el next) =
   next <$ H.fromEff (select el)
 
-getAllAvailableGroups ∷ DSL (Array String)
-getAllAvailableGroups =
-  pure
-    [ "/foo"
-    , "/foo/bar"
-    , "/foo/bar/baz"
-    , "/engineering"
-    ]
-
 emailIsIncorrect ∷ String → Boolean
 emailIsIncorrect = not ∘ Str.contains "@"
+
+showConnectionError ∷ DSL Unit
+showConnectionError =
+  H.modify (_{ error = Just Connection
+             , showError = true
+             , submitting = false
+             })

@@ -31,7 +31,7 @@ import DOM (DOM)
 import Network.HTTP.Affjax as AX
 
 import SlamData.Quasar.Auth (retrieveIdToken)
-import SlamData.Quasar.Auth.Permission (retrievePermissionTokens)
+import SlamData.Quasar.Auth.Permission (retrieveTokenHashes)
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Advanced.QuasarAF.Interpreter.Aff as QFA
@@ -43,9 +43,9 @@ type QEff eff = (ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.
 runQuasarF
   ∷ ∀ eff m e a
   . Affable (QEff eff) m
-  ⇒ QF.QuasarAFP (Either e a)
+  ⇒ QF.QuasarAFC (Either e a)
   → m (Either e a)
 runQuasarF qf = (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
-  idToken <- fromEff retrieveIdToken
-  permissions <- fromEff retrievePermissionTokens
+  idToken ← fromEff retrieveIdToken
+  permissions ← fromEff retrieveTokenHashes
   runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }

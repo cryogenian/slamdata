@@ -20,6 +20,6 @@ import SlamData.Prelude
 
 import Halogen.Menu.Component as HalogenMenu
 
-import Quasar.Advanced.Auth.Provider (Provider)
+import Quasar.Advanced.Types (ProviderR)
 
-type QueryP = HalogenMenu.MenuQueryP (Maybe Provider)
+type QueryP = HalogenMenu.MenuQueryP (Maybe ProviderR)

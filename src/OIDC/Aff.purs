@@ -16,36 +16,35 @@ limitations under the License.
 
 module OIDC.Aff where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Random (random, RANDOM)
 import Control.UI.Browser (hostAndProtocol, getHref, setLocation)
-import Data.Foldable as F
 import Data.StrMap as Sm
-import Data.Tuple (Tuple(..))
 import Data.URI (printURI, runParseURI)
 import Data.URI.Types as URI
 import DOM (DOM)
 import OIDCCryptUtils as Cryptography
-import Quasar.Advanced.Auth.Provider (Provider)
+import Quasar.Advanced.Types (ProviderR)
 import SlamData.Quasar.Auth as Auth
 
 requestAuthentication
-  ∷ Provider
+  ∷ ProviderR
   → ∀ e. Eff (dom ∷ DOM, random ∷ RANDOM | e) Unit
 requestAuthentication pr = do
-  csrf ← (Cryptography.KeyString <<< show) <$> random
-  replay ← (Cryptography.UnhashedNonce <<< show) <$> random
+  csrf ← (Cryptography.KeyString ∘ show) <$> random
+  replay ← (Cryptography.UnhashedNonce ∘ show) <$> random
   Auth.storeKeyString csrf
   Auth.storeNonce replay
   Auth.storeClientId pr.clientID
   hap ← hostAndProtocol
   hrefState ← map Cryptography.StateString getHref
-  let authURIString = pr.openIDConfiguration.authorizationEndpoint
+  let
+    authURIString = pr.openIDConfiguration.authorizationEndpoint
   -- The only way to get incorrect `authURIString` is incorrect config
   -- In this situation nothing happens.
-  F.for_ (runParseURI authURIString) \(URI.URI s h q f) →
+  for_ (runParseURI authURIString) \(URI.URI s h q f) →
     let
       nonce =
         Cryptography.hashNonce replay

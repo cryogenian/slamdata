@@ -22,6 +22,8 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (raise)
 
+import OIDCCryptUtils as OIDC
+
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.Port.VarMap as Port
@@ -30,9 +32,11 @@ import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.AccessType as AT
 import SlamData.Quasar.Auth as Auth
+import SlamData.Quasar.Security as Q
 import SlamData.Render.Common (glyph, fadeWhen)
+import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..))
 
-import Quasar.Advanced.Auth (PermissionToken(..), runPermissionToken)
+import Quasar.Advanced.Types as QTA
 
 import Utils.Path (DirPath)
 
@@ -46,7 +50,7 @@ type State =
   { presentingAs ∷ PresentAs
   , varMap ∷ Port.VarMap
   , deckPath ∷ DirPath
-  , permToken ∷ Maybe PermissionToken
+  , permToken ∷ Maybe QTA.TokenR
   , canRevoke ∷ Boolean
   , shouldGenerateToken ∷ Boolean
   , hovered ∷ Boolean
@@ -273,30 +277,40 @@ eval (Init mbEl next) = next <$ do
                 , canRevoke = false
                 , isLogged = false
                 }
-    Just _ → do
+    Just oidcToken → do
       H.modify _{isLogged = true, canRevoke = true}
-      tokens ← getAllTokens
-      tokenForThisDeck ← H.gets makeTokenForThisDeck
-      -- TODO: find by token name
+      tokensRes ← Q.tokenList
+
       let
-        foundToken =
-          F.find (\x → runPermissionToken x ≡ runPermissionToken tokenForThisDeck) tokens
-      case foundToken of
-        Just oldToken →
-          H.modify _{ permToken = Just oldToken }
+        tokenName =
+          Just $ workspaceTokenName state.deckPath oidcToken
+        oldTokenId =
+          _.id <$> case tokensRes of
+            Left _ → Nothing
+            Right tokens →
+              F.find (\x → x.name ≡ tokenName) tokens
+      -- TODO: handle connection errors
+      case oldTokenId of
+        Just tid  → do
+          oldTokenRes ← Q.tokenInfo tid
+          for_ oldTokenRes \oldToken →
+            H.modify _ { permToken = Just oldToken }
         Nothing → do
-          shouldGenerate ← H.gets _.shouldGenerateToken
           isURI ← (_ ≡ URI) <$> H.gets _.presentingAs
-          when (shouldGenerate ∨ isURI) do
-            saveToken tokenForThisDeck
-            H.modify _{permToken = Just tokenForThisDeck}
+          when (state.shouldGenerateToken ∨ isURI) do
+            createdRes ←
+              Q.createToken
+              tokenName
+              (sharingActions state.deckPath View)
+            for_ createdRes \newToken →
+              H.modify _{permToken = Just newToken}
 
   updateCopyVal
 
 eval (SelectElement el next) = next <$ H.fromEff (select el)
 eval (Revoke next) = next <$ do
   permToken ← H.gets _.permToken
-  for_ permToken deleteToken
+  for_ permToken $ _.id ⋙ Q.deleteToken
   raise $ Dismiss unit
 eval (ToggleShouldGenerateToken next) = next <$ do
   state ← H.get
@@ -305,12 +319,17 @@ eval (ToggleShouldGenerateToken next) = next <$ do
   case state.permToken of
     Nothing →
       unless state.shouldGenerateToken do
-        let
-          tokenForThisDeck = makeTokenForThisDeck state
-        saveToken tokenForThisDeck
-        H.modify _{permToken = Just tokenForThisDeck}
+        mbOIDC ← H.fromEff Auth.retrieveIdToken
+        deckPath ← H.gets _.deckPath
+        for_ mbOIDC \oidc → do
+          let
+            actions = sharingActions deckPath View
+            tokenName = Just $ workspaceTokenName deckPath oidc
+          recreated ← Q.createToken tokenName actions
+          for_ recreated \tokenForThisDeck →
+            H.modify _{permToken = Just tokenForThisDeck}
     Just tok → do
-      deleteToken tok
+      Q.deleteToken tok.id
       H.modify _{permToken = Nothing}
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
@@ -319,26 +338,25 @@ eval (TextAreaHovered next) =
 eval (TextAreaLeft next) =
   next <$ H.modify _{hovered = false}
 
--- TODO: actually DELETE token
-deleteToken ∷ PermissionToken → DSL Unit
-deleteToken _ = pure unit
+workspaceTokenName ∷ DirPath → OIDC.IdToken → QTA.TokenName
+workspaceTokenName deckPath token =
+  let
+    email =
+      fromMaybe "unknown user"
+        $ map OIDC.runEmail
+        $ OIDC.pluckEmail token
+    workspace =
+      maybe
+        "Unknown workspace"
+        (fst ⋙ Pathy.printPath)
+        (Pathy.peel deckPath)
+  in
+    QTA.TokenName
+      $ "publish permission granted by "
+      ⊕ email
+      ⊕ " for "
+      ⊕ workspace
 
-makeTokenForThisDeck ∷ State → PermissionToken
-makeTokenForThisDeck {deckPath} =
-  -- TODO: we need only name here
-  PermissionToken
-  $ "publish-"
-  ⊕ (Global.encodeURIComponent
-     $ Global.encodeURIComponent
-     $ Pathy.printPath deckPath)
-
--- TODO: should actually PUT new token into quasar
-saveToken ∷ PermissionToken → DSL Unit
-saveToken _ = pure unit
-
--- TODO: actually get token list
-getAllTokens ∷ DSL (Array PermissionToken)
-getAllTokens = pure []
 
 updateCopyVal ∷ DSL Unit
 updateCopyVal = do
@@ -358,13 +376,13 @@ renderCopyVal locString state
     "<script type=\"text/javascript\">\n"
     ⊕ "(function() {\n"
     ⊕ (if state.isLogged
-        then "  var slamdataPermissionToken = "
+        then "  var slamdataTokenHash = "
              ⊕ maybe
-             "window.SLAMDATA_PERMISSION_TOKEN"
-             (\x → "\"" ⊕ runPermissionToken x ⊕ "\"")
-             state.permToken
+                 "window.SLAMDATA_PERMISSION_TOKEN"
+                 (\x → "\"" ⊕ QTA.runTokenHash x ⊕ "\"")
+                 (state.permToken >>= _.secret)
              ⊕ ";\n"
-             ⊕ "  var queryString = \"?permissionTokens=\" + slamdataPermissionToken;\n"
+             ⊕ "  var queryString = \"?permissionTokens=\" + slamdataTokenHash;\n"
         else "")
     ⊕ "  var uri = \""
       ⊕ locString
@@ -383,5 +401,10 @@ renderURL locationString state@{deckPath, varMap, permToken, isLogged} =
   locationString
   ⊕ "/"
   ⊕ Config.workspaceUrl
-  ⊕ foldMap (append "?permissionTokens=" ∘ runPermissionToken) (permToken <* guard isLogged)
+  ⊕ foldMap
+      (append "?permissionTokens=" ∘ QTA.runTokenHash)
+      (do guard isLogged
+          token ← permToken
+          token.secret)
+
   ⊕ mkWorkspaceHash deckPath (WA.Load AT.ReadOnly) varMap

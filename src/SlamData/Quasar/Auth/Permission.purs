@@ -16,7 +16,7 @@ limitations under the License.
 
 module SlamData.Quasar.Auth.Permission
   ( module SlamData.Quasar.Auth.Permission
-  , module Quasar.Advanced.Auth
+  , module Quasar.Advanced.Types
   ) where
 
 import SlamData.Prelude
@@ -38,7 +38,7 @@ import DOM.HTML.Window as Window
 
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
-import Quasar.Advanced.Auth (PermissionToken(..), runPermissionToken)
+import Quasar.Advanced.Types (TokenHash(..), runTokenHash)
 
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
@@ -88,30 +88,30 @@ requestForUsers {targets} =
   isRight targets
 
 permissionsHeader
-  :: Array PermissionToken
+  :: Array TokenHash
   -> Maybe RequestHeader
 permissionsHeader ps = do
   guard (not $ Arr.null ps)
   pure
-    $ RequestHeader "X-Extra-PermissionTokens"
+    $ RequestHeader "X-Extra-TokenHashs"
     $ Str.joinWith ","
-    $ map runPermissionToken ps
+    $ map runTokenHash ps
 
-retrievePermissionTokens
+retrieveTokenHashes
   :: forall e
-   . Eff (dom :: DOM|e) (Array PermissionToken)
-retrievePermissionTokens =
+   . Eff (dom :: DOM|e) (Array TokenHash)
+retrieveTokenHashes =
   window
     >>= Window.location
     >>= Location.search
     <#> permissionTokens
-    <#> map PermissionToken
+    <#> map TokenHash
   where
   permissionRegex :: Rgx.Regex
   permissionRegex = Rgx.regex "permissionsToken=([^&]+)" Rgx.noFlags
 
-  extractPermissionTokensString :: String -> Maybe String
-  extractPermissionTokensString str =
+  extractTokenHashsString :: String -> Maybe String
+  extractTokenHashsString str =
     Rgx.match permissionRegex str
       >>= flip Arr.index 1
       >>= id
@@ -121,12 +121,12 @@ retrievePermissionTokens =
   permissionTokens s =
     fromMaybe []
       $ Str.split ","
-      <$> extractPermissionTokensString s
+      <$> extractTokenHashsString s
 
 -- A mock for generating new tokens
-genToken :: Slam PermissionToken
+genToken :: Slam TokenHash
 genToken =
-  later' 1000 $ liftEff $ PermissionToken <$> show <$> random
+  later' 1000 $ liftEff $ TokenHash <$> show <$> random
 
 -- One more mock
 doPermissionShareRequest

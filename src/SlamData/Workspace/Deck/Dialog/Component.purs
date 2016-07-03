@@ -205,7 +205,7 @@ render state =
   dialog (Share deckPath) =
     HH.slot' cpShare unit \_ →
       { component: Share.comp
-      , initialState: Share.initialState
+      , initialState: Share.initialState deckPath
       }
 
   dialog (Unshare deckPath) =
