@@ -41,7 +41,7 @@ import Utils.DOM (getTextWidthPure)
 buildBar
   ∷ M.Map JCursor Ax.Axis → Int → Int → ChartConfiguration → EC.Option
 buildBar axises angle size conf = case preSeries of
-  xAxisR × series × longestCat  →
+  xAxisR × series × longestCat × longestVal →
     EC.Option EC.optionDefault
       { series = Just $ map Just series
       , xAxis = Just $ EC.OneAxis $ EC.Axis
@@ -51,20 +51,26 @@ buildBar axises angle size conf = case preSeries of
       , legend = mkLegend series
       , color = Just colors
       , grid = Just $ EC.Grid EC.gridDefault
-          { y2 = Just $ EC.Pixel $ labelHeight $ fromMaybe "" longestCat
+          { x2 = Just $ EC.Pixel 6.0
+          , x = Just $ EC.Pixel $ labelWidth $ fromMaybe "" longestVal
+          , y = Just $ EC.Pixel 6.0
+          , y2 = Just $ EC.Pixel $ labelHeight $ fromMaybe "" longestCat
           }
       }
   where
+  txtWidth txt = getTextWidthPure txt $ "normal " <> show size <> "px Ubuntu"
+
   labelHeight ∷ String → Number
   labelHeight longestCat =
-    let
-      width = getTextWidthPure longestCat $ "normal " <> show size <> "px Ubuntu"
-    in
-      add 24.0
-        $ Math.max (Int.toNumber size + 2.0)
-        $ Math.abs
-        $ width
-        * Math.sin (Int.toNumber angle / 180.0 * Math.pi)
+    add 12.0
+      $ Math.max (Int.toNumber size + 2.0)
+      $ Math.abs
+      $ txtWidth longestCat
+      * Math.sin (Int.toNumber angle / 180.0 * Math.pi)
+
+  labelWidth ∷ String → Number
+  labelWidth longestVal =
+    txtWidth longestVal + 6.0
 
 
   tooltip ∷ EC.Tooltip
@@ -88,7 +94,7 @@ buildBar axises angle size conf = case preSeries of
   extractName (EC.BarSeries r) = r.common.name
   extractName _ = Nothing
 
-  preSeries ∷ EC.AxisRec × (Array EC.Series) × (Maybe String)
+  preSeries ∷ EC.AxisRec × (Array EC.Series) × (Maybe String) × (Maybe String)
   preSeries = mkSeries extracted
 
   extracted ∷ PieBarData
@@ -102,8 +108,8 @@ buildBar axises angle size conf = case preSeries of
         { "type" = Just EC.ValueAxis
         }
 
-mkSeries ∷ PieBarData → EC.AxisRec × (Array EC.Series) × (Maybe String)
-mkSeries pbData = xAxis × series × longestCat
+mkSeries ∷ PieBarData → EC.AxisRec × (Array EC.Series) × (Maybe String) × (Maybe String)
+mkSeries pbData = xAxis × series × longestCat × longestVal
   where
   xAxis ∷ EC.AxisRec
   xAxis = EC.axisDefault
@@ -125,6 +131,25 @@ mkSeries pbData = xAxis × series × longestCat
 
   series ∷ Array EC.Series
   series = map serie $ L.fromList $ M.toList group
+
+  longestVal ∷ Maybe String
+  longestVal =
+    let
+      compareOnSnd (_ × a) (_ × b) = compare a b
+
+      compareMbSnd Nothing Nothing = EQ
+      compareMbSnd Nothing _ = LT
+      compareMbSnd _ Nothing = GT
+      compareMbSnd (Just a) (Just b) = compareOnSnd a b
+    in
+      map fst
+      $ join
+      $ F.maximumBy compareMbSnd
+      $ map (F.maximumBy compareOnSnd
+             ∘ map ((\s → s × Str.length s) ∘ show))
+        group
+
+
 
   serie ∷ Tuple String (Array Number) → EC.Series
   serie (Tuple name nums) =

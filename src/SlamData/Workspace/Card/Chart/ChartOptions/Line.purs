@@ -144,7 +144,7 @@ buildLine
    → ChartConfiguration
    → EC.Option
 buildLine axises angle size conf = case preSeries of
-  xAxis × series × longestCat →
+  xAxis × series × longestCat × longestLeft × longestRight →
     EC.Option EC.optionDefault
       { series = Just $ map Just series
       , xAxis =
@@ -155,20 +155,26 @@ buildLine axises angle size conf = case preSeries of
       , legend = Just $ mkLegend series
       , color = Just colors
       , grid = Just $ EC.Grid EC.gridDefault
-          { y2 = Just $ EC.Pixel $ labelHeight $ fromMaybe "" longestCat
+          { x = Just $ EC.Pixel $ labelWidth $ fromMaybe "" longestLeft
+          , x2 = Just $ EC.Pixel $ labelWidth $ fromMaybe "" longestRight
+          , y = Just $ EC.Pixel 6.0
+          , y2 = Just $ EC.Pixel $ labelHeight $ fromMaybe "" longestCat
           }
       }
   where
+  txtWidth txt = getTextWidthPure txt $ "normal " <> show size <> "px Ubuntu"
+
+  labelWidth ∷ String → Number
+  labelWidth longestVal =
+    txtWidth longestVal + 6.0
+
   labelHeight ∷ String → Number
   labelHeight longestCat =
-    let
-      width = getTextWidthPure longestCat $ "normal " <> show size <> "px Ubuntu"
-    in
-      add 24.0
-        $ Math.max (Int.toNumber size + 2.0)
-        $ Math.abs
-        $ width
-        * Math.sin (Int.toNumber angle / 180.0 * Math.pi)
+    add 12.0
+      $ Math.max (Int.toNumber size + 2.0)
+      $ Math.abs
+      $ txtWidth longestCat
+      * Math.sin (Int.toNumber angle / 180.0 * Math.pi)
 
   mkLegend ∷ Array EC.Series → EC.Legend
   mkLegend ss =
@@ -221,7 +227,7 @@ buildLine axises angle size conf = case preSeries of
         }
       }
 
-  preSeries ∷ EC.AxisRec × (Array EC.Series) × (Maybe String)
+  preSeries ∷ EC.AxisRec × (Array EC.Series) × (Maybe String) × (Maybe String) × (Maybe String)
   preSeries = mkSeries (needTwoAxises axises conf) xAxisConfig extracted
 
 needTwoAxises ∷ M.Map JCursor Ax.Axis → ChartConfiguration → Boolean
@@ -242,13 +248,37 @@ mkSeries
   ∷ Boolean
    → Tuple EC.AxisType (Maybe EC.Interval)
    → LineData
-   → EC.AxisRec × (Array EC.Series) × (Maybe String)
+   → EC.AxisRec × (Array EC.Series) × (Maybe String) × (Maybe String) × (Maybe String)
 mkSeries needTwoAxis (Tuple ty interval_) lData =
-  xAxis × series × longestCat
+  xAxis × series × longestCat × longestLeft × longestRight
   where
   longestCat ∷ Maybe String
   longestCat =
     F.maximumBy (\a b → compare (Str.length a) (Str.length b)) catVals
+
+  longestVal ∷ Map String (Array Number) → Maybe String
+  longestVal grp =
+    let
+      compareOnSnd (_ × a) (_ × b) = compare a b
+
+      compareMbSnd Nothing Nothing = EQ
+      compareMbSnd Nothing _ = LT
+      compareMbSnd _ Nothing = GT
+      compareMbSnd (Just a) (Just b) = compareOnSnd a b
+
+    in
+      map fst
+      $ join
+      $ F.maximumBy compareMbSnd
+      $ map (F.maximumBy compareOnSnd
+             ∘ map ((\s → s × Str.length s) ∘ show))
+        grp
+
+  longestLeft ∷ Maybe String
+  longestLeft = longestVal $ fst group
+
+  longestRight ∷ Maybe String
+  longestRight = longestVal $ snd group
 
   xAxis ∷ EC.AxisRec
   xAxis =
@@ -277,7 +307,8 @@ mkSeries needTwoAxis (Tuple ty interval_) lData =
           else Nil
          )
 
-  group ∷ Tuple (Map String (Array Number)) (Map String (Array Number))
+
+  group ∷ (Map String (Array Number)) × (Map String (Array Number))
   group = bimap nameMap nameMap $ splitSeries $ L.fromList lData
 
   splitSeries

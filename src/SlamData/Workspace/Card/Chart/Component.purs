@@ -140,7 +140,7 @@ eval = case _ of
   CC.SetDimensions dims next → do
     state ← H.get
     let
-      heightPadding = 60
+      heightPadding = 24
       intWidth = floor dims.width
       intHeight = floor dims.height
     when (state.width ≠ intWidth) do
