@@ -4,8 +4,6 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
---import Control.Monad.Error.Class as Err
---import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Error (lowerQError)
@@ -67,3 +65,21 @@ tokenInfo
 tokenInfo tid =
   runQuasarF $ lmap lowerQError
     <$> QF.tokenInfo tid
+
+permissionList
+  ∷ ∀ eff m
+  . (Monad m, Affable (QEff eff) m)
+  ⇒ Boolean
+  → m (Exn.Error ⊹ (Array QTA.PermissionR))
+permissionList isTransitive =
+  runQuasarF $ lmap lowerQError
+    <$> QF.permissionList isTransitive
+
+deletePermission
+  ∷ ∀ eff m
+  . (Monad m, Affable (QEff eff) m)
+  ⇒ QTA.PermissionId
+  → m (Exn.Error ⊹ Unit)
+deletePermission pid =
+  runQuasarF $ lmap lowerQError
+    <$> QF.deletePermission pid

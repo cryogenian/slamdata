@@ -14,6 +14,10 @@ data ShareResume
 
 derive instance eqShareResume ∷ Eq ShareResume
 
+printShareResume ∷ ShareResume → String
+printShareResume View = "View"
+printShareResume Edit = "Edit"
+
 sharingActions ∷ DirPath → ShareResume → Array QT.ActionR
 sharingActions deckPath View =
   case fst <$> Pt.peel deckPath of

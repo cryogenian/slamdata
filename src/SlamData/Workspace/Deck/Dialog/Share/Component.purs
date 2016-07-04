@@ -163,7 +163,6 @@ render state =
                        [ HP.classes [ B.inputGroupBtn ] ]
                        [ HH.button
                            [ HP.classes [ B.btn, B.btnDefault ]
-                           , HE.onClick (HE.input_ Dismiss)
                            , HP.ref (H.action ∘ InitZClipboard token)
                            , HP.id_ "copy-button"
                            ]
@@ -309,7 +308,7 @@ render state =
                    ⊕ (if isJust state.error && state.showError then [ B.hasError ] else [ ])
                , HP.buttonType HP.ButtonButton
                , HE.onClick (HE.input_ Share)
-               , HP.enabled $ (isNothing state.error ∧ not state.submitting)
+               , HP.enabled (not state.submitting)
                ]
                [ HH.text if state.submitting then "Sharing..." else  "Share" ]
            ])

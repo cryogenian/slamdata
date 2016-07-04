@@ -2,7 +2,6 @@ module SlamData.Workspace.Deck.Dialog.Unshare.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff (later') -- for mock
 import Control.UI.Browser (select)
 import Control.UI.ZClipboard as Z
 
@@ -10,6 +9,10 @@ import Data.Array as Arr
 import Data.Foldable as F
 import Data.Lens (LensP, lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
+import Data.Set as Set
+import Data.Map as Map
+import Data.StrMap as SM
+import Data.Path.Pathy as Pt
 
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
@@ -20,24 +23,20 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.CustomProps as Cp
 
+import Quasar.Advanced.Types as QTA
+
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
+import SlamData.Quasar.Security as Q
+import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareResume)
+import SlamData.Workspace.Deck.Dialog.Share.Model as Model
+
+import Utils.Path (DirPath, parseFilePath)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-data ShareResume
-  = View
-  | Edit
-
-derive instance shareResumeEq ∷ Eq ShareResume
-
-printShareResume ∷ ShareResume → String
-printShareResume View = "View"
-printShareResume Edit = "Edit"
-
-type PermissionId = String
-type TokenId = String
+type PermissionId = Set.Set QTA.PermissionId
 
 data PermissionState
   = Unsharing
@@ -48,28 +47,24 @@ data PermissionState
 derive instance permissionStateEq ∷ Eq PermissionState
 
 type Permission =
-  { name ∷ String
-  , resume ∷ ShareResume
-  , permissionId ∷ PermissionId
+  { resume ∷ ShareResume
+  , actions ∷ Map.Map QTA.PermissionId QTA.ActionR
   , state ∷ Maybe PermissionState
   }
+
+
+data Modifyable = User | Group
 
 type TokenPermission =
   { name ∷ Maybe String
   , secret ∷ String
   , resume ∷ ShareResume
-  , tokenId ∷ String
+  , tokenId ∷ QTA.TokenId
   , state ∷ Maybe PermissionState
   }
 
 _resume ∷ ∀ a r. LensP {resume ∷ a|r} a
 _resume = lens (_.resume) (_{resume = _})
-
-_name ∷ ∀ a r. LensP {name ∷ a |r} a
-_name = lens (_.name) (_{name = _})
-
-_permissionId ∷ ∀ a r. LensP {permissionId ∷ a |r} a
-_permissionId = lens (_.permissionId) (_{permissionId = _})
 
 _tokenId ∷ ∀ a r. LensP {tokenId ∷ a|r} a
 _tokenId = lens (_.tokenId) (_{tokenId = _})
@@ -77,24 +72,27 @@ _tokenId = lens (_.tokenId) (_{tokenId = _})
 _secret ∷ ∀ a r. LensP {secret ∷ a|r} a
 _secret = lens (_.secret) (_{secret = _})
 
-
 -- :( `ix` doesn't work without `Maybe PermissionState`
 _state ∷ ∀ r. LensP {state ∷ (Maybe PermissionState)|r} (Maybe PermissionState)
 _state = lens (_.state) (_{state = _})
 
 type State =
-  { userPermissions ∷ Array Permission
+  { userPermissions ∷ SM.StrMap Permission
   , tokenPermissions ∷ Array TokenPermission
-  , groupPermissions ∷ Array Permission
+  , groupPermissions ∷ SM.StrMap Permission
   , loading ∷ Boolean
+  , errored ∷ Boolean
+  , deckPath ∷ DirPath
   }
 
-initialState ∷ State
-initialState =
-  { userPermissions: [ ]
+initialState ∷ DirPath → State
+initialState deckPath =
+  { userPermissions: SM.empty
   , tokenPermissions: [ ]
-  , groupPermissions: [ ]
+  , groupPermissions: SM.empty
   , loading: true
+  , errored: false
+  , deckPath
   }
 
 _userPermissions ∷ ∀ a r. LensP {userPermissions ∷ a|r} a
@@ -109,14 +107,17 @@ _tokenPermissions = lens (_.tokenPermissions) (_{tokenPermissions = _})
 _loading ∷ ∀ a r. LensP {loading ∷ a|r} a
 _loading = lens (_.loading) (_{loading = _})
 
+_errored ∷ ∀ a r. LensP {errored ∷ a|r} a
+_errored = lens (_.errored) (_{errored = _})
+
 data Query a
   = Dismiss a
   | InitZClipboard String (Maybe HTMLElement) a
   | Init a
   | SelectElement HTMLElement a
-  | PermissionResumeChanged PermissionId String a
-  | Unshare PermissionId a
-  | UnshareToken String  a
+  | PermissionResumeChanged String String a
+  | Unshare String a
+  | UnshareToken QTA.TokenId  a
 
 
 comp ∷ H.Component State Query Slam
@@ -148,23 +149,23 @@ render state =
         ]
         [ HH.form
             [ Cp.nonSubmit ]
-            $ (if Arr.null state.userPermissions
+            $ (if SM.isEmpty state.userPermissions
                  then [ ]
                  else
                  [ HH.label
                      [ HP.classes [ HH.className "subject-label" ] ]
                      [ HH.text "Users" ]
                  ]
-                 ⊕ map renderUserOrGroup state.userPermissions
+                 ⊕ (foldMap renderUserOrGroup $ SM.toList state.userPermissions)
               )
-            ⊕ (if Arr.null state.groupPermissions
+            ⊕ (if SM.isEmpty state.groupPermissions
                  then [ ]
                  else
                  [ HH.label
                     [ HP.classes [ HH.className "subject-label" ] ]
                     [ HH.text "Groups" ]
                  ]
-                 ⊕ map renderUserOrGroup state.groupPermissions
+                 ⊕ (foldMap renderUserOrGroup $ SM.toList state.groupPermissions)
               )
             ⊕ (if Arr.null state.tokenPermissions
                  then [ ]
@@ -175,8 +176,8 @@ render state =
                    ]
                    ⊕ map renderToken state.tokenPermissions
               )
-            ⊕ (if Arr.null state.userPermissions
-                  ∧ Arr.null state.groupPermissions
+            ⊕ (if SM.isEmpty state.userPermissions
+                  ∧ SM.isEmpty state.groupPermissions
                   ∧ Arr.null state.tokenPermissions
                  then
                    [ HH.p_ [ HH.text "This deck has no shared permissions" ] ]
@@ -185,9 +186,9 @@ render state =
         ]
     , let
         states =
-          (_.state <$> state.userPermissions)
-          ⊕ (_.state <$> state.groupPermissions)
-          ⊕ (_.state <$> state.tokenPermissions)
+          (foldMap (\x → [x.state]) state.userPermissions)
+          ⊕ (foldMap (\x → [x.state]) state.groupPermissions)
+          ⊕ (foldMap (\x → [x.state]) state.tokenPermissions)
         somethingErrored =
           F.any (\x → x ≡ Just ModifyError ∨ x ≡ Just RevokeError) states
         somethingHappening =
@@ -196,7 +197,6 @@ render state =
        HH.div
         [ HP.classes
             $ [ HH.className "deck-dialog-footer" ]
-            ⊕ (if somethingErrored then [ B.hasError ] else [ ])
             ⊕ (if state.loading then [ B.hidden ] else [ ])
         ]
         [ HH.div
@@ -208,7 +208,16 @@ render state =
                 $ "This action couldn't be performed. "
                 ⊕ "Please check your network connection and try again"
             ]
-          , HH.button
+        , HH.div
+            [ HP.classes
+                $ [ B.alert, B.alertDanger ]
+                ⊕ (if state.errored then [ ] else [ B.hidden ])
+            ]
+            [ HH.text
+                $ "Couldn't share/unshare deck. "
+                ⊕ "Please check your network connection and try again"
+            ]
+        , HH.button
             [ HE.onClick (HE.input_ Dismiss)
             , HP.buttonType HP.ButtonButton
             , HP.classes [ B.btn, B.btnDefault ]
@@ -218,13 +227,13 @@ render state =
         ]
     ]
 
-renderUserOrGroup ∷ Permission → HTML
-renderUserOrGroup perm =
-  HH.div
+renderUserOrGroup ∷ (String × Permission) → Array HTML
+renderUserOrGroup (name × perm) =
+  [ HH.div
     [ HP.classes [ B.row ] ]
     [ HH.div
         [ HP.classes [ B.colXs7 ] ]
-        [ HH.text perm.name ]
+        [ HH.text name ]
     , HH.div
         [ HP.classes
             $ [ B.colXs3 ]
@@ -232,7 +241,7 @@ renderUserOrGroup perm =
         ]
         [ HH.select
             [ HP.classes [ B.formControl ]
-            , HE.onValueChange (HE.input (PermissionResumeChanged perm.permissionId))
+            , HE.onValueChange (HE.input (PermissionResumeChanged name))
             , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
             ]
             [ HH.option
@@ -264,7 +273,7 @@ renderUserOrGroup perm =
         ]
         [ HH.button
             [ HP.classes [ B.btn, B.btnDefault, HH.className "unshare-button" ]
-            , HE.onClick (HE.input_ (Unshare perm.permissionId))
+            , HE.onClick (HE.input_ (Unshare name))
             , HP.disabled $ perm.state ≡ Just Modifying ∨ perm.state ≡ Just Unsharing
             ]
             [ HH.text if perm.state ≡ Just Unsharing
@@ -273,13 +282,14 @@ renderUserOrGroup perm =
             ]
         ]
     ]
+  ]
 
 renderToken ∷ TokenPermission → HTML
 renderToken token =
   HH.div
     [ HP.classes [ B.row ] ]
     [ HH.div
-        [ HP.classes [ B.colXs4 ] ]
+        [ HP.classes [ B.colXs4, HH.className "token-name-field" ] ]
         [ HH.text $ fromMaybe "Untitled token" token.name ]
     , HH.div
         [ HP.classes [ B.colXs1 ] ]
@@ -330,18 +340,27 @@ renderToken token =
 
 eval ∷ Query ~> DSL
 eval (Init next) = next <$ do
-  allTokens ← getAllTokens
-  permissions ← getAllPermissions
-  let
-    adjustedPermissions = adjustPermissions allTokens permissions
-  H.fromAff $ later' 3000 $ slamUnit
-  H.modify (_{ userPermissions = adjustedPermissions.users
-             , tokenPermissions = adjustedPermissions.tokens
-             , groupPermissions = adjustedPermissions.groups
-             , loading = false
-             })
+  tokensRes ← Q.tokenList
+  deckPath ← H.gets _.deckPath
+  case tokensRes of
+    Left e → H.modify (_{errored = true})
+    Right toks →
+      let
+        tokenPerms = prepareAndFilterTokens toks deckPath
+      in
+        H.modify (_{tokenPermissions = tokenPerms})
 
-  pure unit
+  permsRes ← Q.permissionList false
+  case permsRes of
+    Left e → H.modify (_{errored = true})
+    Right ps →
+      let
+        adjusted = adjustPermissions ps deckPath
+      in
+        H.modify (_{ userPermissions = adjusted.users
+                   , groupPermissions = adjusted.groups
+                   })
+  H.modify (_{ loading = false})
 eval (InitZClipboard token mbEl next) =
   next <$ for_ mbEl \el → do
     H.fromEff $ Z.make (htmlElementToElement el)
@@ -349,138 +368,195 @@ eval (InitZClipboard token mbEl next) =
 eval (Dismiss next) = pure next
 eval (SelectElement el next) =
   next <$ H.fromEff (select el)
-eval (PermissionResumeChanged permId string next) = next <$ do
+eval (PermissionResumeChanged name string next) = next <$ do
   state ← H.get
   let
-    muix = Arr.findIndex (\x → x.permissionId ≡ permId) state.userPermissions
-    mgix = Arr.findIndex (\x → x.permissionId ≡ permId) state.groupPermissions
+    mbUserPerms = SM.lookup name state.userPermissions
+    mbGroupPerms = SM.lookup name state.groupPermissions
+
     newResume | string ≡ "view" = View
               | otherwise = Edit
 
-  for_ muix \uix →
+  for_ mbUserPerms \perms → do
     H.modify
-      $ _userPermissions ∘ ix uix ∘ _state ?~ Modifying
-
-  for_ mgix \gix →
+      $ _userPermissions ∘ ix name ∘ _state ?~ Modifying
+    changePermissionResumeForUser name state.deckPath newResume perms
     H.modify
-      $ _groupPermissions ∘ ix gix ∘ _state ?~ Modifying
+      $ (_userPermissions ∘ ix name ∘ _resume .~ newResume)
+      ∘ (_userPermissions ∘ ix name ∘ _state .~ Nothing)
 
-
-  changePermissionResume newResume permId
-
-  for_ muix \uix →
+  for_ mbGroupPerms \perms → do
     H.modify
-      $ (_userPermissions ∘ ix uix ∘ _resume .~ newResume)
-      ∘ (_userPermissions ∘ ix uix ∘ _state .~ Nothing)
-
-  for_ mgix \gix →
+      $ _groupPermissions ∘ ix name ∘ _state ?~ Modifying
+    changePermissionResumeForGroup name state.deckPath newResume perms
     H.modify
-      $ (_groupPermissions ∘ ix gix ∘ _resume .~ newResume)
-      ∘ (_groupPermissions ∘ ix gix ∘ _state .~ Nothing)
+      $ (_groupPermissions ∘ ix name ∘ _resume .~ newResume)
+      ∘ (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
+
 
 eval (UnshareToken tokenId next) = next <$ do
   state ← H.get
   let
     mtix = Arr.findIndex (\x → x.tokenId ≡ tokenId) state.tokenPermissions
 
-  for_ mtix \tix →
+  for_ mtix \tix → do
     H.modify $ _tokenPermissions ∘ ix tix ∘ _state ?~ Unsharing
 
-  deleteToken tokenId
+    Q.deleteToken tokenId >>= case _ of
+      Left _ →
+        H.modify
+          $ (_tokenPermissions ∘ ix tix ∘ _state ?~ RevokeError)
+          ∘ (_errored .~ false)
 
-  H.modify
-    $ _tokenPermissions %~ Arr.filter (\x → x.tokenId ≠ tokenId)
+      Right _ →
+        H.modify
+          $ _tokenPermissions %~ Arr.filter (\x → x.tokenId ≠ tokenId)
 
-  for_ mtix \tix →
-    H.modify $ _tokenPermissions ∘ ix tix ∘ _state .~ Nothing
-
-eval (Unshare permId next) = next <$ do
+eval (Unshare name next) = next <$ do
   state ← H.get
   let
-    muix = Arr.findIndex (\x → x.permissionId ≡ permId) state.userPermissions
-    mgix = Arr.findIndex (\x → x.permissionId ≡ permId) state.groupPermissions
+    mbUserPerms = SM.lookup name state.userPermissions
+    mbGroupPerms = SM.lookup name state.groupPermissions
 
-  for_ muix \uix →
-    H.modify $ _userPermissions ∘ ix uix ∘ _state ?~ Unsharing
-  for_ mgix \gix →
-    H.modify $ _groupPermissions ∘ ix gix ∘ _state ?~ Unsharing
+  for_ mbUserPerms \userPerms → do
+    H.modify $ _userPermissions ∘ ix name ∘ _state ?~ Unsharing
+    deletePermission userPerms.actions
+    H.modify
+      $ (_userPermissions %~ SM.delete name)
+      ∘ (_userPermissions ∘ ix name ∘ _state .~ Nothing)
 
-  deletePermission permId
-
-  H.modify $ _userPermissions %~ Arr.filter (\x → x.permissionId ≠ permId)
-  H.modify $ _groupPermissions %~ Arr.filter (\x → x.permissionId ≠ permId)
-
-
-  for_ muix \uix →
-    H.modify $ _userPermissions ∘ ix uix ∘ _state .~ Nothing
-  for_ mgix \gix →
-    H.modify $ _groupPermissions ∘ ix gix ∘ _state .~ Nothing
-
-getAllTokens ∷ DSL Unit
-getAllTokens =
-  Debug.Trace.traceAnyA "get all tokens"
-
-getAllPermissions ∷ DSL Unit
-getAllPermissions =
-  Debug.Trace.traceAnyA "get all permissions"
+  for_ mbGroupPerms \groupPerms → do
+    H.modify $ _groupPermissions ∘ ix name ∘ _state ?~ Unsharing
+    deletePermission groupPerms.actions
+    H.modify
+      $ (_groupPermissions %~ SM.delete name)
+      ∘ (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
 
 slamUnit ∷ Slam Unit
 slamUnit = pure unit
 
-changePermissionResume ∷ ShareResume → PermissionId → DSL Unit
-changePermissionResume res pid = do
-  Debug.Trace.traceAnyA "change resume"
-  Debug.Trace.traceAnyA res
-  Debug.Trace.traceAnyA pid
-  H.fromAff $ later' 2000 slamUnit
+changePermissionResumeForUser
+  ∷ String → DirPath → ShareResume → Permission → DSL Unit
+changePermissionResumeForUser name deckPath res perm = do
+  deletePermission perm.actions
+  let
+    actions = Model.sharingActions deckPath res
+    shareRequest =
+      { users: [ QTA.UserId name ]
+      , groups: [ ]
+      , actions
+      }
 
+  Q.sharePermission shareRequest
+  pure unit
 
-deleteToken ∷ String → DSL Unit
-deleteToken tid = do
-  Debug.Trace.traceAnyA "delete token"
-  Debug.Trace.traceAnyA tid
-  H.fromAff $ later' 2000 slamUnit
+changePermissionResumeForGroup
+  ∷ String → DirPath → ShareResume → Permission → DSL Unit
+changePermissionResumeForGroup name deckPath res perm = do
+  deletePermission perm.actions
+  let
+    actions = Model.sharingActions deckPath res
+    shareRequest =
+      parseFilePath name
+      <#> \x → { users: [ ]
+               , groups: [ x ]
+               , actions
+               }
 
-deletePermission ∷ String → DSL Unit
-deletePermission pid = do
-  Debug.Trace.traceAnyA "delete permission"
-  Debug.Trace.traceAnyA pid
-  H.fromAff $ later' 200000 slamUnit
+  for_ shareRequest \x → do
+    Q.sharePermission x
+    pure unit
+
+deletePermission ∷ Map.Map QTA.PermissionId QTA.ActionR → DSL Unit
+deletePermission permissionMap = do
+  results ←
+    for (Map.keys permissionMap) Q.deletePermission
+
+  if F.any isLeft results
+    then Debug.Trace.traceAnyA "errored"
+    else Debug.Trace.traceAnyA "ok"
 
 type AdjustedPermissions =
-  { users ∷ Array Permission
-  , groups ∷ Array Permission
-  , tokens ∷ Array TokenPermission
+  { users ∷ SM.StrMap Permission
+  , groups ∷ SM.StrMap Permission
   }
 
-adjustPermissions ∷ Unit → Unit → AdjustedPermissions
-adjustPermissions _ _ =
-  { users:
-      [ { name: "maxim@slamdata.com"
-        , resume: View
-        , permissionId: "999"
-        , state: Just ModifyError
-        }
-      ]
-  , groups:
-      [ { name: "/foo"
-        , resume: Edit
-        , permissionId: "0000"
+adjustPermissions ∷ Array QTA.PermissionR → DirPath → AdjustedPermissions
+adjustPermissions prs deckPath =
+  let
+    folded = foldl foldFn Map.empty prs
+    foldFn mp pr =
+      Map.alter (alterFn pr) pr.grantedTo mp
+
+    alterFn pr Nothing = Just [ pr ]
+    alterFn pr (Just arr) = Just $ Arr.cons pr arr
+
+    sharingActionsEdit =
+      Set.fromFoldable $ map QTA.Action $ Model.sharingActions deckPath Edit
+    sharingActionsView =
+      Set.fromFoldable $ map QTA.Action $ Model.sharingActions deckPath View
+
+
+    obj = foldl objFoldFn { users: SM.empty, groups: SM.empty } $ Map.toList folded
+
+    objFoldFn acc@{ users, groups } (key × arr) =
+      let
+        actions = foldMap (\a → Map.singleton a.id a.action) arr
+        actionsSet = Set.fromFoldable $ map QTA.Action actions
+        perm = { resume: View
+               , actions
+               , state: Nothing
+               }
+      in case key of
+        QTA.TokenGranted _ → acc
+        QTA.UserGranted (QTA.UserId uid) →
+          let
+            res
+              | sharingActionsEdit ≡ actionsSet =
+                acc{users = SM.insert uid perm{resume = Edit} users }
+              | sharingActionsView ≡ actionsSet =
+                acc{users = SM.insert uid perm users}
+              | otherwise = acc
+          in res
+        QTA.GroupGranted pt →
+          let
+            gid = Pt.printPath pt
+            res
+              | sharingActionsEdit ≡ actionsSet =
+                acc{groups = SM.insert gid perm{resume = Edit} groups }
+              | sharingActionsView ≡ actionsSet =
+                acc{groups = SM.insert gid perm groups}
+              | otherwise = acc
+          in res
+  in obj
+
+
+prepareAndFilterTokens ∷ Array QTA.TokenR → DirPath →  Array TokenPermission
+prepareAndFilterTokens toks deckPath =
+  foldMap foldFn toks
+  where
+  foldFn ∷ QTA.TokenR → Array TokenPermission
+  foldFn tr =
+    let
+      sharingActionsEdit =
+        Set.fromFoldable $ map QTA.Action $ Model.sharingActions deckPath Edit
+      sharingActionsView =
+        Set.fromFoldable $ map QTA.Action $ Model.sharingActions deckPath View
+      actions =
+        Set.fromFoldable $ map QTA.Action tr.actions
+      preToken =
+        { name: map QTA.runTokenName tr.name
+        , secret: maybe "" QTA.runTokenHash tr.secret
+        , tokenId: tr.id
         , state: Nothing
-        }
-      ]
-  , tokens:
-      [ { name: Just "First"
-        , secret: "ololo-trololo"
-        , resume: Edit
-        , tokenId: "1111111"
-        , state: Just RevokeError
-        }
-      , { name: Nothing
-        , secret: "foo-bar-baz-quux"
         , resume: View
-        , tokenId: "22222"
-        , state: Nothing
         }
-      ]
-  }
+      res
+        | sharingActionsEdit ≡ actions =
+          [ preToken{resume = Edit} ]
+        | sharingActionsView ≡ actions =
+          [ preToken ]
+        | otherwise =
+            [ ]
+    in
+      res
