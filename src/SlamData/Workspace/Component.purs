@@ -23,11 +23,15 @@ module SlamData.Workspace.Component
 import SlamData.Prelude
 
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-import Control.UI.Browser (setHref)
+import Control.UI.Browser (setHref, locationObject)
 
 import Data.Lens ((^.), (.~), (?~))
+import Data.List as List
+import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+
+import DOM.HTML.Location as Location
 
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
@@ -44,6 +48,7 @@ import SlamData.Header.Component as Header
 import SlamData.Quasar.Data as Quasar
 import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
+import SlamData.Workspace.Action as WA
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Draftboard.Common as DBC
@@ -57,6 +62,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as Model
+import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Wiring (Wiring)
 
@@ -207,6 +213,32 @@ peek ∷ ∀ a. ChildQuery a → WorkspaceDSL Unit
 peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
   where
   peekDeck (Deck.DoAction Deck.Mirror _) = pure unit
+  peekDeck (Deck.DoAction (Deck.Unwrap decks) _) = void $ runMaybeT do
+    state ← lift H.get
+    path ← MaybeT $ pure state.path
+    oldId ← MaybeT $ pure state.deckId
+    parent ← lift $ join <$> queryDeck (H.request Deck.GetParent)
+    newId × (_ × deck) ← MaybeT $ pure $ List.head $ Map.toList decks
+    let deck' = deck { parent = parent }
+
+    lift do
+      H.modify (_deckId ?~ newId)
+      queryDeck $ H.action $ Deck.SetModel newId deck' DL.root
+      queryDeck $ H.action $ Deck.Save Nothing
+
+      case parent of
+        Just parentCoord@(Tuple deckId cardId) → do
+          Quasar.load (DM.deckIndex path deckId)
+            >>= flip bind DM.decode
+            >>> traverse_ \parentDeck → void do
+              let cards = DBC.replacePointer oldId newId cardId parentDeck.cards
+              Quasar.save (DM.deckIndex path deckId) $ DM.encode parentDeck { cards = cards }
+          let deckHash = mkWorkspaceHash (Deck.deckPath' path newId) (WA.Load state.accessType) state.globalVarMap
+          H.fromEff $ locationObject >>= Location.setHash deckHash
+        Nothing -> do
+          let index = path </> Pathy.file "index"
+          void $ Model.setRoot index newId
+
   peekDeck (Deck.DoAction Deck.Wrap _) = void $ runMaybeT do
     path ← MaybeT $ H.gets _.path
 

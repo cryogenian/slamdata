@@ -344,7 +344,7 @@ chartContainer = "div[@_echarts_instance_]"
 
 trashCardAction ∷ String
 trashCardAction =
-  XPath.anyWithExactAriaLabel "Trash card"
+  XPath.anyWithExactAriaLabel "Delete card"
 
 publishDeckAction ∷ String
 publishDeckAction =

@@ -360,7 +360,7 @@ flipDeck =
 
 trashActiveOrLastCard ∷ SlamFeature Unit
 trashActiveOrLastCard =
-  Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Trash card"
+  Feature.click $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Delete card"
 
 shareDeck ∷ SlamFeature Unit
 shareDeck =

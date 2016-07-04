@@ -24,6 +24,7 @@ import SlamData.Prelude
 
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 
 import Data.Array as Array
 import Data.Function (on)
@@ -223,6 +224,17 @@ evalBoard opts = case _ of
       $ H.action
       $ DCQ.Load opts.deck.path deckId (DL.succ opts.deck.level)
     pure next
+  -- TODO: hopefully we can get rid of this later, as it's relatively expensive
+  -- and will run quite frequently, as it's used to enable the `Unwrap` action.
+  -- If we can add a real mechanism for handling card-specific actions on the
+  -- deck backside we should be able to do something much more sensible, only
+  -- building the decks' value here when we actually trigger an unwrap. -gb
+  GetDecks k → do
+    decks ← H.gets _.decks
+    decks' ← runMaybeT $ for (Map.toList decks) \(deckId × position) -> do
+      model ← MaybeT $ queryDeck deckId $ H.request DCQ.GetModel
+      pure (deckId × (position × model))
+    pure $ k $ maybe Map.empty Map.fromList decks'
 
 peek ∷ ∀ a. CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL Unit
 peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
@@ -236,6 +248,9 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
       CC.raiseUpdatedP' CC.StateOnlyUpdate
     DCQ.DoAction DCQ.Wrap _ → do
       wrapDeck opts deckId
+      CC.raiseUpdatedP' CC.StateOnlyUpdate
+    DCQ.DoAction (DCQ.Unwrap decks) _ → do
+      unwrapDeck opts deckId decks
       CC.raiseUpdatedP' CC.StateOnlyUpdate
     DCQ.DoAction DCQ.Mirror _ → do
       mirrorDeck opts deckId
@@ -352,6 +367,18 @@ accomodateDeck bs = go List.Nil
     | c.y < b.x = a { x = b.x - a.width }
     | otherwise = a
 
+reallyAccomodateDeck
+  ∷ List.List (DeckId × DeckPosition)
+  → DeckPosition
+  → DeckPosition
+reallyAccomodateDeck decks deckPos =
+  let deckPos' = deckPos { y = deckPos.y + deckPos.height }
+      coords = { x: floor (deckPos'.x + deckPos'.x / 2.0), y: deckPos'.y }
+  in
+      case accomodateDeck decks coords deckPos of
+        Nothing → reallyAccomodateDeck decks deckPos'
+        Just a → a
+
 loadDecks ∷ DraftboardDSL Unit
 loadDecks =
   H.gets (Map.keys ∘ _.decks) >>=
@@ -434,6 +461,37 @@ wrapDeck { id: cardId, deck } oldId = do
           $ H.action
           $ DCQ.Load deck.path newId (DL.succ deck.level)
 
+unwrapDeck
+  ∷ CardOptions
+  → DeckId
+  → Map.Map DeckId (DeckPosition × DM.Deck)
+  → DraftboardDSL Unit
+unwrapDeck opts oldId decks = void $ runMaybeT do
+  -- sort the decks here so they are ordered by position, this ensures that if
+  -- decks need to be accomodated when broken out, the decks in the top left
+  -- corner will maintain their position and the others will be accomodated.
+  let deckList = List.sortBy (compare `on` toCoords) $ Map.toList decks
+  let coord = opts.deck.id × opts.id
+  let level' = DL.succ opts.deck.level
+  offset ← MaybeT $ H.gets (Map.lookup oldId ∘ _.decks)
+  lift do
+    H.modify \s →
+      s { decks = foldl (reinsert offset) (Map.delete oldId s.decks) deckList }
+    for_ deckList \(deckId × (_ × deck)) → do
+      let deck' = deck { parent = Just coord }
+      queryDeck deckId $ H.action $ DCQ.SetModel deckId deck' level'
+      queryDeck deckId $ H.action $ DCQ.Save Nothing
+  where
+  reinsert offset acc (deckId × (pos × deck)) =
+    Map.insert deckId (updatePos (Map.toList acc) offset pos) acc
+  updatePos currentDecks offset pos =
+    reallyAccomodateDeck currentDecks $
+      pos
+        { x = pos.x + offset.x + 1.0
+        , y = pos.y + offset.y + 1.0
+        }
+  toCoords (_ × (pos × _)) = Tuple pos.x pos.y
+
 mirrorDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 mirrorDeck opts oldId = do
   queryDeck oldId (H.request DCQ.GetModelCards) >>= traverse_ \modelCards → do
@@ -462,14 +520,6 @@ mirrorDeck opts oldId = do
     for_ (Map.lookup oldId st.decks) \deckPos →
       addDeckAt opts deck $
         reallyAccomodateDeck (Map.toList st.decks) deckPos
-
-  reallyAccomodateDeck decks deckPos =
-    let deckPos' = deckPos { y = deckPos.y + deckPos.height }
-        coords = { x: floor (deckPos'.x + deckPos'.x / 2.0), y: deckPos'.y }
-    in
-        case accomodateDeck decks coords deckPos of
-          Nothing → reallyAccomodateDeck decks deckPos'
-          Just a → a
 
 groupDecks ∷ CardOptions → DeckId → DeckId → DraftboardDSL Unit
 groupDecks { id: cardId, deck } deckFrom deckTo = do

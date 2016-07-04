@@ -22,18 +22,20 @@ module SlamData.Workspace.Deck.Component.Query
 
 import SlamData.Prelude
 
+import Data.Map as Map
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.Model (Deck)
+import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
+import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Wiring (DeckMessage, PendingMessage)
 
 import Utils.Path as UP
@@ -50,6 +52,7 @@ data Query a
   | Publish a
   | Load UP.DirPath DeckId DeckLevel a
   | SetModel DeckId Deck DeckLevel a
+  | GetModel (Deck → a)
   | GetModelCards (Array (DeckId × Card.Model) → a)
   | SetModelCards (Array (DeckId × Card.Model)) a
   | Save (Maybe (DeckId × CardId)) a
@@ -73,6 +76,7 @@ data Query a
 data DeckAction
   = Mirror
   | Wrap
+  | Unwrap (Map.Map DeckId (DeckPosition × Deck))
   | DeleteDeck
 
 type QueryP = OpaqueQuery Query

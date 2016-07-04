@@ -21,6 +21,7 @@ import SlamData.Prelude
 import Data.Array as Arr
 import Data.Foldable as F
 import Data.String as Str
+import Data.Map as Map
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -36,11 +37,19 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Quasar.Auth (retrieveIdToken)
 
+import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Model (Deck)
+
 data Query a
   = UpdateFilter String a
   | DoAction BackAction a
   | UpdateCardType (Maybe CT.CardType) a
   | Init a
+  -- TODO: this is a bit of a hack, we probably instead want a way of
+  -- customising the available and enabled actions based on card type & state
+  -- in the long run -gb
+  | SetUnwrappable DeckMap a
 
 data BackAction
   = Trash
@@ -51,9 +60,9 @@ data BackAction
   | DeleteDeck
   | Mirror
   | Wrap
+  | Unwrap DeckMap
   | Share
   | Unshare
-
 
 allBackActions ∷ State → Array BackAction
 allBackActions state =
@@ -71,12 +80,16 @@ allBackActions state =
     , Mirror
     , Wrap
     ]
+  ⊕ (guard (state.cardType == Just CT.Draftboard) $> Unwrap state.unwrappableDecks)
+
+type DeckMap = Map.Map DeckId (DeckPosition × Deck)
 
 type State =
   { filterString ∷ String
   , cardType ∷ Maybe CT.CardType
   , saved ∷ Boolean
   , isLogged ∷ Boolean
+  , unwrappableDecks ∷ DeckMap
   }
 
 initialState ∷ State
@@ -85,12 +98,12 @@ initialState =
   , cardType: Nothing
   , saved: false
   , isLogged: false
+  , unwrappableDecks: Map.empty
   }
 
-
 labelAction ∷ BackAction → String
-labelAction action = case action of
-  Trash → "Trash card"
+labelAction = case _ of
+  Trash → "Delete card"
   Rename → "Rename deck"
   Share → "Share deck"
   Embed → "Embed deck"
@@ -98,18 +111,21 @@ labelAction action = case action of
   DeleteDeck → "Delete deck"
   Mirror → "Mirror"
   Wrap → "Wrap"
+  Unwrap _ → "Collapse board"
   Unshare → "Unshare deck"
 
 keywordsAction ∷ BackAction → Array String
-keywordsAction Trash = ["remove", "delete", "trash"]
-keywordsAction Rename = ["rename", "title"]
-keywordsAction Share = ["share"]
-keywordsAction Embed = ["embed"]
-keywordsAction Publish = ["publish", "presentation", "view"]
-keywordsAction DeleteDeck = ["remove", "delete", "trash"]
-keywordsAction Mirror = ["mirror", "copy", "duplicate", "shallow"]
-keywordsAction Wrap = ["wrap", "pin", "card"]
-keywordsAction Unshare = ["unshare", "manage"]
+keywordsAction = case _ of
+  Trash → ["remove", "delete", "trash"]
+  Rename → ["rename", "title"]
+  Share → ["share"]
+  Embed → ["embed"]
+  Publish → ["publish", "presentation", "view"]
+  DeleteDeck → ["remove", "delete", "trash"]
+  Mirror → ["mirror", "copy", "duplicate", "shallow"]
+  Wrap → ["wrap", "pin", "card"]
+  Unwrap _ → ["collapse", "unwrap", "breakout", "remove", "merge"]
+  Unshare → ["unshare", "manage"]
 
 actionEnabled ∷ State → BackAction → Boolean
 actionEnabled st a =
@@ -117,6 +133,7 @@ actionEnabled st a =
     Just CT.ErrorCard, Trash → false
     Just CT.NextAction, Trash → false
     Nothing, Trash → false
+    _, Unwrap _ → not Map.isEmpty st.unwrappableDecks
     _, _ → true
 
 actionGlyph ∷ BackAction → HTML
@@ -129,6 +146,7 @@ actionGlyph = case _ of
   Publish → glyph B.glyphiconBlackboard
   Mirror → glyph B.glyphiconDuplicate
   Wrap → glyph B.glyphiconLogIn
+  Unwrap _ → glyph B.glyphiconLogOut
   DeleteDeck → HH.i [ HP.classes [ Rc.actionIcon, Rc.deleteDeckIcon ] ] [ ]
 
 type HTML = H.ComponentHTML Query
@@ -213,7 +231,9 @@ eval (DoAction _ next) = pure next
 eval (UpdateFilter str next) =
   H.modify (_ { filterString = str }) $> next
 eval (UpdateCardType cty next) =
-  H.modify (_ { cardType = cty }) $> next
+  H.modify (_ { cardType = cty, unwrappableDecks = Map.empty :: DeckMap }) $> next
 eval (Init next) = next <$ do
   isLogged ← map isJust $ H.fromEff retrieveIdToken
   H.modify (_ { isLogged = isLogged })
+eval (SetUnwrappable decks next) =
+  H.modify (_ { unwrappableDecks = decks }) $> next

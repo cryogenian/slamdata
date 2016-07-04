@@ -30,6 +30,7 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Promise as Pr
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
 import Data.Array as Array
@@ -42,6 +43,7 @@ import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as Set
+import Data.Map as Map
 import Data.Time (Milliseconds(..))
 
 import DOM.HTML.Location as Location
@@ -64,6 +66,7 @@ import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery, _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Draftboard.Common as DBC
+import SlamData.Workspace.Card.Draftboard.Component.Query as DBQ
 import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component as Next
@@ -157,7 +160,8 @@ eval opts@{ wiring } = case _ of
     pure next
   SetParent parent next →
     H.modify (DCS._parent .~ Just parent) $> next
-  GetModelCards k → k <$> getModelCards
+  GetModelCards k →
+    k <$> getModelCards
   SetModelCards modelCards next → do
     st ← H.get
     setModel opts
@@ -255,6 +259,8 @@ eval opts@{ wiring } = case _ of
         when (st.id /= focusedDeckId && st.focused) $
           H.modify (DCS._focused .~ false)
     pure next
+  GetModel k →
+    k <$> getDeckModel
 
   where
   getBoundingClientWidth =
@@ -331,7 +337,10 @@ peekBackSide opts (Back.DoAction action _) =
     Back.Mirror → do
       H.modify $ DCS._displayMode .~ DCS.Normal
       raise' $ H.action $ DoAction Mirror
-    Back.Wrap → raise' $ H.action $ DoAction Wrap
+    Back.Wrap →
+      raise' $ H.action $ DoAction Wrap
+    Back.Unwrap decks →
+      raise' $ H.action $ DoAction $ Unwrap decks
 peekBackSide _ _ = pure unit
 
 mkShareURL ∷ Port.VarMap → DeckDSL String
@@ -390,10 +399,31 @@ updateBackSide ∷ DeckDSL Unit
 updateBackSide = do
   state ← H.get
   let ty = DCS.activeCardType state
-  void
-    $ H.query' cpBackSide unit
-    $ H.action
-    $ Back.UpdateCardType ty
+  void $ H.query' cpBackSide unit $ H.action $ Back.UpdateCardType ty
+
+  -- For an unwrap to be at all possible the current deck must only have one
+  -- card, which is a board card
+  when (ty == Just CT.Draftboard && Array.length state.modelCards == 1) $
+    void $ runMaybeT do
+      coord ← MaybeT $ pure $ DCS.activeCardCoord state
+
+      -- TODO: 😱 never do this... if the query fails because the prism
+      -- fails, a runtime error will occur. It should be safe here, because
+      -- we're guarded by the card type, but even still it would be better for
+      -- this to arise through the card itself somehow. -gb
+      decks ← MaybeT $
+        queryCard coord $ Lens.review CQ._DraftboardQuery $ left $ right $
+          H.request DBQ.GetDecks
+
+      -- Further to the prior predicate, it is only possible to unwrap when one
+      -- of the following hold:
+      --   - a board is a child of another board
+      --   - there is only one deck inside a root board
+      when (state.level /= DL.root || Map.size decks == 1) $
+        void $ lift $
+          H.query' cpBackSide unit $ H.action $ Back.SetUnwrappable decks
+
+      pure unit
 
 createCard ∷ Wiring → CT.CardType → DeckDSL Unit
 createCard wiring cardType = do
@@ -651,6 +681,17 @@ runCard coord = do
 triggerSave ∷ Maybe (DeckId × CardId) → DeckDSL Unit
 triggerSave coord =
   fireDebouncedQuery' (Milliseconds 500.0) DCS._saveTrigger $ Save coord
+
+getDeckModel ∷ DeckDSL Model.Deck
+getDeckModel = do
+  st ← H.get
+  modelCards ← Array.span (not ∘ eq st.id ∘ fst) <$> getModelCards
+  pure
+    { parent: st.parent
+    , mirror: map _.cardId <$> modelCards.init
+    , cards: snd <$> modelCards.rest
+    , name: st.name
+    }
 
 -- | Saves the deck as JSON, using the current values present in the state.
 saveDeck ∷ DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
