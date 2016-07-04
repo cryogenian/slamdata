@@ -396,10 +396,8 @@ addDeck opts deck coords = do
     addDeckAt opts deck
 
 addDeckAt ∷ CardOptions → DM.Deck → DeckPosition → DraftboardDSL Unit
-addDeckAt { deck: opts, id: cardId } deck deckPos = do
-  let
-    parentId = opts.id
-    deck' = deck { parent = Just (parentId × cardId) }
+addDeckAt { deck: opts, deckId: parentId, cardId } deck deckPos = do
+  let deck' = deck { parent = Just (parentId × cardId) }
   H.modify $ _inserting .~ true
   deckId ← saveDeck opts.path deck'
   case deckId of
@@ -434,14 +432,12 @@ deleteDeck { deck } deckId = do
       H.modify \s → s { decks = Map.delete deckId s.decks }
 
 wrapDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
-wrapDeck { id: cardId, deck } oldId = do
+wrapDeck { cardId, deckId: parentId, deck } oldId = do
   H.gets (Map.lookup oldId ∘ _.decks) >>= traverse_ \deckPos → do
     let
-      parentId = deck.id
       deckPos' = deckPos { x = 1.0, y = 1.0 }
       newDeck = (wrappedDeck deckPos' oldId) { parent = Just (parentId × cardId) }
-    deckId ← saveDeck deck.path newDeck
-    case deckId of
+    saveDeck deck.path newDeck >>= case _ of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
@@ -466,13 +462,13 @@ unwrapDeck
   → DeckId
   → Map.Map DeckId (DeckPosition × DM.Deck)
   → DraftboardDSL Unit
-unwrapDeck opts oldId decks = void $ runMaybeT do
+unwrapDeck { deckId, cardId, deck } oldId decks = void $ runMaybeT do
   -- sort the decks here so they are ordered by position, this ensures that if
   -- decks need to be accomodated when broken out, the decks in the top left
   -- corner will maintain their position and the others will be accomodated.
   let deckList = List.sortBy (compare `on` toCoords) $ Map.toList decks
-  let coord = opts.deck.id × opts.id
-  let level' = DL.succ opts.deck.level
+  let coord = deckId × cardId
+  let level' = DL.succ deck.level
   offset ← MaybeT $ H.gets (Map.lookup oldId ∘ _.decks)
   lift do
     H.modify \s →
@@ -522,7 +518,7 @@ mirrorDeck opts oldId = do
         reallyAccomodateDeck (Map.toList st.decks) deckPos
 
 groupDecks ∷ CardOptions → DeckId → DeckId → DraftboardDSL Unit
-groupDecks { id: cardId, deck } deckFrom deckTo = do
+groupDecks { cardId, deckId, deck } deckFrom deckTo = do
   st ← H.get
   for_ (Map.lookup deckFrom st.decks) \rectFrom →
   for_ (Map.lookup deckTo st.decks) \rectTo → do
@@ -530,7 +526,7 @@ groupDecks { id: cardId, deck } deckFrom deckTo = do
       rectTo' = rectTo { x = 1.0, y = 1.0 }
       rectFrom' = rectFrom { x = 1.0, y = rectTo.height + 2.0 }
       newDeck = DM.emptyDeck
-        { parent = Just (deck.id × cardId)
+        { parent = Just (deckId × cardId)
         , cards = pure
           { cardId: CID.CardId 0
           , model: Card.Draftboard
@@ -541,8 +537,7 @@ groupDecks { id: cardId, deck } deckFrom deckTo = do
             }
           }
         }
-    deckId ← saveDeck deck.path newDeck
-    case deckId of
+    saveDeck deck.path newDeck >>= case _ of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit

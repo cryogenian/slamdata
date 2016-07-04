@@ -800,7 +800,7 @@ setModel opts model =
     Nothing → do
       st ← DCS.fromModel model <$> H.get
       setDeckState st
-      runCardUpdates opts opts.id L.Nil
+      runCardUpdates opts model.id L.Nil
 
 getModelCards ∷ DeckDSL (Array (DeckId × Card.Model))
 getModelCards = do

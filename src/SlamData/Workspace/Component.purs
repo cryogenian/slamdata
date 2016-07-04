@@ -123,7 +123,6 @@ render wiring state =
 
   deckOpts path deckId =
     { path
-    , id: deckId
     , level: DL.root
     , accessType: state.accessType
     , wiring

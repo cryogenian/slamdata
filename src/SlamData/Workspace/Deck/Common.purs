@@ -43,7 +43,6 @@ type DeckDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
 type DeckOptions =
   { path ∷ DirPath
-  , id ∷ DeckId
   , level ∷ DeckLevel
   , accessType ∷ AccessType
   , wiring ∷ Wiring
