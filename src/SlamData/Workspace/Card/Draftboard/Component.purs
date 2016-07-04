@@ -188,7 +188,7 @@ evalBoard opts = case _ of
             ∘ (_grouping .~ grouping)
       Drag.Done _ → do
         stopDragging opts
-        CC.raiseUpdatedP' CC.StateOnlyUpdate
+        CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Resizing deckId ev next → do
     case ev of
@@ -202,7 +202,7 @@ evalBoard opts = case _ of
           H.modify $ _moving ?~ Tuple deckId newRect
       Drag.Done _ → do
         stopDragging opts
-        CC.raiseUpdatedP' CC.StateOnlyUpdate
+        CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   SetElement el next → do
     H.modify _ { canvas = el }
@@ -217,7 +217,7 @@ evalBoard opts = case _ of
           { x: floor $ coords.x + 1.0
           , y: floor $ coords.y
           }
-        CC.raiseUpdatedP' CC.StateOnlyUpdate
+        CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   LoadDeck deckId next → do
     queryDeck deckId
@@ -245,16 +245,16 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
     DCQ.ResizeDeck ev _ → startDragging deckId ev Resizing
     DCQ.DoAction DCQ.DeleteDeck _ → do
       deleteDeck opts deckId
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction DCQ.Wrap _ → do
       wrapDeck opts deckId
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction (DCQ.Unwrap decks) _ → do
       unwrapDeck opts deckId decks
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction DCQ.Mirror _ → do
       mirrorDeck opts deckId
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     _ → pure unit
 
   startDragging deckId ev tag =
