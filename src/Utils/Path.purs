@@ -138,3 +138,6 @@ getDir ap = either getDir' getDir' ap
   where
   getDir' :: forall b. Path Abs b Sandboxed -> DirPath
   getDir' = maybe rootDir fst <<< peel
+
+rootFile ∷ FilePath
+rootFile = rootDir </> file ""

@@ -62,7 +62,8 @@ nonceLocalStorageKey = "replay"
 clientIDLocalStorageKey ∷ String
 clientIDLocalStorageKey = "sd-auth-client-id"
 
-retrieveIdToken ∷ ∀ e. Eff (dom ∷ DOM | e) (M.Maybe OIDC.IdToken)
+retrieveIdToken
+  ∷ ∀ e. Eff (dom ∷ DOM | e) (M.Maybe OIDC.IdToken)
 retrieveIdToken =
   LS.getLocalStorage idTokenLocalStorageKey <#>
     E.either (\_ → M.Nothing) (M.Just <<< OIDC.IdToken)
@@ -113,11 +114,11 @@ clearIdToken =
 authed
   ∷ ∀ a eff m
   . (Bind m, Affable (dom ∷ DOM | eff) m)
-  ⇒ (M.Maybe OIDC.IdToken → Array P.PermissionToken → m a)
+  ⇒ (M.Maybe OIDC.IdToken → Array P.TokenHash → m a)
   → m a
 authed f = do
-  idToken <- fromEff retrieveIdToken
-  perms <- fromEff P.retrievePermissionTokens
+  idToken ← fromEff retrieveIdToken
+  perms ← fromEff P.retrieveTokenHashes
   f idToken perms
 
 authHeaders
@@ -125,5 +126,5 @@ authHeaders
   . Eff (dom ∷ DOM|e) (Array RequestHeader)
 authHeaders = do
   idToken ← retrieveIdToken
-  permTokens ← P.retrievePermissionTokens
-  pure $ A.catMaybes [ map authHeader idToken, permissionsHeader permTokens ]
+  hashes ← P.retrieveTokenHashes
+  pure $ A.catMaybes [ map authHeader idToken, permissionsHeader hashes ]

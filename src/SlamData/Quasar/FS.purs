@@ -85,7 +85,7 @@ transitiveChildrenProducer dirPath = do
     liftEff $ Ref.modifyRef activeRequests $ Set.delete strPath
     for_ eitherChildren \items → do
       liftEff $ emit $ Left items
-      let parents = Arr.mapMaybe (either Just (const Nothing) <<< R.getPath) items
+      let parents = Arr.mapMaybe (either Just (const Nothing) ∘ R.getPath) items
       for_ parents $ \p →
         liftEff $ Ref.modifyRef activeRequests $ Set.insert $ P.printPath p
       for_ parents $ go emit activeRequests
@@ -107,7 +107,7 @@ listing p =
     QFS.Directory path →
       let workspaceName
             = S.stripSuffix ("." <> Config.workspaceExtension)
-            <<< P.runDirName =<< P.dirName path
+            ∘ P.runDirName =<< P.dirName path
       in case workspaceName of
         Just name → R.Workspace (p </> P.dir name)
         Nothing → R.Directory path
@@ -143,10 +143,10 @@ getNewName parent name = do
            else newName
 
   exists ∷ String → Array QFS.Resource → Boolean
-  exists name = F.any ((_ == name) <<< printName <<< QR.getName)
+  exists name = F.any ((_ == name) ∘ printName ∘ QR.getName)
 
   printName ∷ Either (Maybe P.DirName) P.FileName → String
-  printName = either (fromMaybe "" <<< map P.runDirName) P.runFileName
+  printName = either (fromMaybe "" ∘ map P.runDirName) P.runFileName
 
 -- | Will return `Just` in case the resource was successfully moved, and
 -- | `Nothing` in case no resource existed at the requested source path.
@@ -168,6 +168,7 @@ move src tgt = do
       Right _ → Right (Just tgt)
       Left QF.NotFound → Right Nothing
       Left (QF.Error err) → Left err
+      Left QF.Forbidden → Right Nothing
 
 delete
   ∷ ∀ eff m
@@ -279,4 +280,5 @@ messageIfFileNotFound path defaultMsg =
   handleResult ∷ ∀ a. Either QF.QError a → Either Exn.Error (Maybe String)
   handleResult (Left (QF.Error e)) = Left e
   handleResult (Left QF.NotFound) = Right (Just defaultMsg)
+  handleResult (Left QF.Forbidden) = Right (Just defaultMsg)
   handleResult (Right _) = Right Nothing

@@ -41,7 +41,7 @@ import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 import OIDC.Aff (requestAuthentication)
 import OIDCCryptUtils as Crypt
 
-import Quasar.Advanced.Auth.Provider (Provider)
+import Quasar.Advanced.Types (ProviderR)
 
 import SlamData.Effects (Slam)
 import SlamData.Quasar as Api
@@ -159,7 +159,7 @@ menuPeek =
 
 submenuPeek
   ∷ ∀ a
-  . HalogenMenu.SubmenuQuery (Maybe Provider) a
+  . HalogenMenu.SubmenuQuery (Maybe ProviderR) a
   → SignInDSL Unit
 submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
   {loggedIn} ← H.get
@@ -175,6 +175,6 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
 
 
 queryMenu
-  ∷ HalogenMenu.MenuQuery (Maybe Provider) Unit
+  ∷ HalogenMenu.MenuQuery (Maybe ProviderR) Unit
   → SignInDSL Unit
 queryMenu q = void $ H.query MenuSlot (left q)
