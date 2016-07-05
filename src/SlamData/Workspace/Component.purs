@@ -54,7 +54,7 @@ import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _loaded, _path, _version, _stateMode, _globalVarMap, _deckId, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, _globalVarMap, initialState)
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
@@ -100,7 +100,7 @@ render wiring state =
 
   deck ∷ Array WorkspaceHTML
   deck =
-    pure case state.stateMode, state.path, state.deckId of
+    pure case state.stateMode, state.path, state.initialDeckId of
       Loading, _, _ →
         HH.div [ HP.classes [ workspaceClass ] ]
           []
@@ -123,7 +123,6 @@ render wiring state =
 
   deckOpts path deckId =
     { path
-    , id: deckId
     , level: DL.root
     , accessType: state.accessType
     , wiring
@@ -157,7 +156,7 @@ render wiring state =
 eval ∷ Wiring → Natural Query WorkspaceDSL
 eval _ (Init next) = do
   deckId ← H.fromEff freshDeckId
-  H.modify (_deckId ?~ deckId)
+  H.modify (_initialDeckId ?~ deckId)
   pure next
 eval _ (SetGlobalVarMap varMap next) = do
   H.modify (_globalVarMap .~ varMap)
@@ -167,12 +166,10 @@ eval _ (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
   pure next
 eval _ (Reset path next) = do
-  deckId ← H.fromEff freshDeckId
   H.modify _
     { path = Just path
     , stateMode = Ready
     , accessType = AT.Editable
-    , deckId = Just deckId
     }
   queryDeck $ H.action $ Deck.Reset path
   queryDeck $ H.action $ Deck.Focus
@@ -192,14 +189,13 @@ eval _ (Load path deckId accessType next) = do
     H.modify _
       { stateMode = Loading
       , path = Just path
-      , deckId = deckId
       }
     queryDeck $ H.action $ Deck.Reset path
     maybe loadRoot loadDeck deckId
     void $ queryDeck $ H.action $ Deck.Focus
 
   loadDeck deckId = void do
-    H.modify _ { stateMode = Ready, deckId = Just deckId }
+    H.modify _ { stateMode = Ready }
     queryDeck $ H.action $ Deck.Load path deckId DL.root
 
   loadRoot =
@@ -216,13 +212,12 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
   peekDeck (Deck.DoAction (Deck.Unwrap decks) _) = void $ runMaybeT do
     state ← lift H.get
     path ← MaybeT $ pure state.path
-    oldId ← MaybeT $ pure state.deckId
+    oldId ← MaybeT $ queryDeck $ H.request Deck.GetId
     parent ← lift $ join <$> queryDeck (H.request Deck.GetParent)
     newId × (_ × deck) ← MaybeT $ pure $ List.head $ Map.toList decks
     let deck' = deck { parent = parent }
 
     lift do
-      H.modify (_deckId ?~ newId)
       queryDeck $ H.action $ Deck.SetModel newId deck' DL.root
       queryDeck $ H.action $ Deck.Save Nothing
 
@@ -248,7 +243,7 @@ peek = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
     oldId ← MaybeT $ queryDeck (H.request Deck.GetId)
     newId ← lift $ H.fromEff freshDeckId
 
-    let transitionDeck newDeck =
+    let transitionDeck newDeck = do
           traverse_ (queryDeck ∘ H.action)
             [ Deck.SetParent (Tuple newId (CID.CardId 0))
             , Deck.Save Nothing
