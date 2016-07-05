@@ -57,6 +57,9 @@ type State =
   , isLogged ∷ Boolean
   , copyRef ∷ Maybe (Ref String)
   , copyVal ∷ String
+  , errored ∷ Boolean
+  , submitting ∷ Boolean
+  , loading ∷ Boolean
   }
 
 initialState ∷ DirPath → State
@@ -71,6 +74,9 @@ initialState =
   , isLogged: false
   , copyRef: Nothing
   , copyVal: ""
+  , errored: false
+  , submitting: false
+  , loading: true
   }
 
 data Query a
@@ -95,9 +101,21 @@ renderPublishURI ∷ State → H.ComponentHTML Query
 renderPublishURI state =
   HH.div [ HP.classes [ HH.className "deck-dialog-share" ] ]
     [ HH.h4_ [ HH.text "Publish deck" ]
-    , HH.p_ message
-    , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
-        [ HH.form
+    , HH.div
+        [ HP.classes
+            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            ⊕ if state.loading then [ ] else [ B.hidden ]
+        ]
+        [ HH.img [ HP.src "img/blue-spin.svg" ]
+        , HH.text "Loading"
+        ]
+    , HH.div
+        [ HP.classes
+            $ [ HH.className "deck-dialog-body" ]
+            ⊕ if state.loading then [ B.hidden ] else [ ]
+        ]
+        [ HH.p_ message
+        , HH.form
             [ CP.nonSubmit ]
             [ HH.div
                 [ HP.classes [ B.inputGroup ] ]
@@ -105,10 +123,13 @@ renderPublishURI state =
                     [ HP.classes [ B.formControl ]
                     , HP.value state.copyVal
                     , HP.readonly true
+                    , HP.disabled state.submitting
                     , HP.title "Published deck URL"
                     , ARIA.label "Published deck URL"
                     , HE.onClick \e →
-                        HEH.stopPropagation $> Just (H.action (SelectElement e.target))
+                        HEH.stopPropagation
+                          $> (guard (not state.submitting)
+                              $> (H.action (SelectElement e.target)))
                     ]
                   , HH.span
                       [ HP.classes [ B.inputGroupBtn ] ]
@@ -118,14 +139,28 @@ renderPublishURI state =
                         , HP.ref (H.action ∘ Init)
                         , HP.id_ "copy-button"
                         , HP.buttonType HP.ButtonButton
+                        , HP.disabled state.submitting
                         ]
                         [ glyph B.glyphiconCopy ]
                       ]
                   ]
             ]
         ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
-        $ [ HH.button
+    , HH.div
+        [ HP.classes
+            $ [ HH.className "deck-dialog-footer" ]
+            ⊕ if state.loading then [ B.hidden ] else [ ]
+        ]
+        $ [ HH.div
+              [ HP.classes
+                  $ [ B.alert, B.alertDanger ]
+                  ⊕ (if state.errored then [ ] else [ B.hidden ])
+              ]
+              [ HH.text
+                  $ "Couldn't share/unshare deck. "
+                  ⊕ "Please check you network connection and try again"
+              ]
+          , HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
               , HE.onClick (HE.input_ Dismiss)
               , HP.buttonType HP.ButtonButton
@@ -139,14 +174,17 @@ renderPublishURI state =
                  , ARIA.label "Revoke access to this deck"
                  , HP.title "Revoke access to this deck"
                  , HP.buttonType HP.ButtonButton
-                 , HP.enabled state.canRevoke
+                 , HP.enabled $ state.canRevoke ∧ not state.submitting
                  ]
                  [ HH.text "Revoke" ])
         ⊕ [ HH.a
-              [ HP.classes [ B.btn, B.btnPrimary ]
-              , HP.target "_blank"
-              , HP.href state.copyVal
-              ]
+              ( [ HP.classes
+                    $ [ B.btn, B.btnPrimary ]
+                    ⊕ if state.submitting then [ B.disabled ] else [ ]
+                , HP.target "_blank"
+                ]
+                ⊕ if state.submitting then [ ] else [ HP.href state.copyVal ]
+              )
               [ HH.text "Preview" ]
           ]
       ]
@@ -175,7 +213,19 @@ renderPublishIFrame ∷ State → H.ComponentHTML Query
 renderPublishIFrame state =
   HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
     [ HH.h4_ [ HH.text  "Embed deck" ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-body" ] ]
+    , HH.div
+        [ HP.classes
+            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
+            ⊕ if state.loading then [ ] else [ B.hidden ]
+        ]
+        [ HH.img [ HP.src "img/blue-spin.svg" ]
+        , HH.text "Loading"
+        ]
+    , HH.div
+        [ HP.classes
+            $ [ HH.className "deck-dialog-body" ]
+            ⊕ if state.loading then [ B.hidden ] else [ ]
+        ]
         [ HH.form
           [ CP.nonSubmit
           , HE.onMouseOver (HE.input_ TextAreaHovered)
@@ -188,7 +238,9 @@ renderPublishIFrame state =
                   , HP.readonly true
                   , HP.value state.copyVal
                   , HE.onClick \e →
-                      HEH.stopPropagation $> Just (H.action (SelectElement e.target))
+                      HEH.stopPropagation
+                        $> (guard (not state.submitting)
+                            $> (H.action (SelectElement e.target)))
                   ]
                 , HH.button
                   [ HP.id_ "copy-button"
@@ -198,7 +250,7 @@ renderPublishIFrame state =
                       ⊕ fadeWhen (not state.hovered)
                   , HP.ref (H.action ∘ Init)
                   , HP.buttonType HP.ButtonButton
-                  , HE.onClick (HE.input_ Dismiss)
+                  , HP.disabled state.submitting
                   ]
                   [ glyph B.glyphiconCopy ]
                 , HH.div [ HP.classes [ B.checkbox ] ]
@@ -207,6 +259,7 @@ renderPublishIFrame state =
                        $> HH.input
                            [ HP.inputType HP.InputCheckbox
                            , HP.checked state.shouldGenerateToken
+                           , HP.disabled state.submitting
                            , HE.onChecked (HE.input_ ToggleShouldGenerateToken)
                            ])
                     ⊕ message
@@ -214,8 +267,21 @@ renderPublishIFrame state =
                 ]
           ]
         ]
-    , HH.div [ HP.classes [ HH.className "deck-dialog-footer" ] ]
-        $ [ HH.button
+    , HH.div
+        [ HP.classes
+            $ [ HH.className "deck-dialog-footer" ]
+            ⊕ if state.loading then [ B.hidden ] else [ ]
+        ]
+        $ [ HH.div
+              [ HP.classes
+                  $ [ B.alert, B.alertDanger ]
+                  ⊕ (if state.errored then [ ] else [ B.hidden ])
+              ]
+              [ HH.text
+                  $ "Couldn't share/unshare deck. "
+                  ⊕ "Please check you network connection and try again"
+              ]
+          , HH.button
               [ HP.classes [ B.btn ]
               , HE.onClick (HE.input_ Dismiss)
               , HP.buttonType HP.ButtonButton
@@ -229,7 +295,7 @@ renderPublishIFrame state =
                 , HP.title "Revoke access to this deck"
                 , ARIA.label "Revoke access to this deck"
                 , HP.buttonType HP.ButtonButton
-                , HP.enabled state.canRevoke
+                , HP.enabled $ state.canRevoke ∧ not state.submitting
                 ]
                 [ HH.text "Revoke" ])
 
@@ -276,46 +342,56 @@ eval (Init mbEl next) = next <$ do
       H.modify _{ permToken = Nothing
                 , canRevoke = false
                 , isLogged = false
+                , loading = false
                 }
     Just oidcToken → do
       H.modify _{isLogged = true, canRevoke = true}
       tokensRes ← Q.tokenList
-
-      let
-        tokenName =
-          Just $ workspaceTokenName state.deckPath oidcToken
-        oldTokenId =
-          _.id <$> case tokensRes of
-            Left _ → Nothing
-            Right tokens →
+      H.modify _{loading = false}
+      case tokensRes of
+        Left _ → H.modify _{errored = true}
+        Right tokens →
+          let
+            tokenName =
+              Just $ workspaceTokenName state.deckPath oidcToken
+            oldToken =
               F.find (\x → x.name ≡ tokenName) tokens
-      -- TODO: handle connection errors
-      case oldTokenId of
-        Just tid  → do
-          oldTokenRes ← Q.tokenInfo tid
-          for_ oldTokenRes \oldToken →
-            H.modify _ { permToken = Just oldToken }
-        Nothing → do
-          isURI ← (_ ≡ URI) <$> H.gets _.presentingAs
-          when (state.shouldGenerateToken ∨ isURI) do
-            createdRes ←
-              Q.createToken
-              tokenName
-              (sharingActions state.deckPath View)
-            for_ createdRes \newToken →
-              H.modify _{permToken = Just newToken}
-
+          in case oldToken of
+            Just token → do
+              H.modify _{ permToken = Just token
+                        , errored = false
+                        }
+            Nothing → do
+              isURI ← (_ ≡ URI) <$> H.gets _.presentingAs
+              when (state.shouldGenerateToken ∨ isURI) do
+                H.modify _{submitting = true}
+                createdRes ←
+                  Q.createToken
+                    tokenName
+                    (sharingActions state.deckPath View)
+                H.modify _{submitting = false}
+                H.modify case createdRes of
+                  Left _ →  _{errored = true}
+                  Right newToken →
+                     _{ errored = false
+                      , permToken = Just newToken
+                      }
   updateCopyVal
 
 eval (SelectElement el next) = next <$ H.fromEff (select el)
-eval (Revoke next) = next <$ do
-  permToken ← H.gets _.permToken
-  for_ permToken $ _.id ⋙ Q.deleteToken
-  raise $ Dismiss unit
+eval (Revoke next) = do
+  mbPermToken ← H.gets _.permToken
+  for_ mbPermToken \tok → do
+    H.modify _{submitting = true}
+    deleteRes ← Q.deleteToken tok.id
+    H.modify _{submitting = false}
+    case deleteRes of
+      Left _ → H.modify _{ errored = true }
+      Right _ → raise $ Dismiss unit
+  pure next
+
 eval (ToggleShouldGenerateToken next) = next <$ do
   state ← H.get
-  -- Actually we don't need to make token on all check/uncheck
-  -- But this should work
   case state.permToken of
     Nothing →
       unless state.shouldGenerateToken do
@@ -325,12 +401,25 @@ eval (ToggleShouldGenerateToken next) = next <$ do
           let
             actions = sharingActions deckPath View
             tokenName = Just $ workspaceTokenName deckPath oidc
-          recreated ← Q.createToken tokenName actions
-          for_ recreated \tokenForThisDeck →
-            H.modify _{permToken = Just tokenForThisDeck}
+          H.modify _{submitting = true}
+          recreatedRes ← Q.createToken tokenName actions
+          H.modify _{submitting = false}
+          H.modify case recreatedRes of
+            Left _ →
+              _ { permToken = Nothing
+                , errored = true
+                }
+            Right token →
+              _ { permToken = Just token
+                , errored = false
+                }
     Just tok → do
-      Q.deleteToken tok.id
-      H.modify _{permToken = Nothing}
+      H.modify _{submitting = true}
+      deleteRes ← Q.deleteToken tok.id
+      H.modify _{submitting = false}
+      H.modify case deleteRes of
+        Left _ → _ { errored = true }
+        Right _ → _ { errored = false, permToken = Nothing }
   H.modify _{shouldGenerateToken = not state.shouldGenerateToken}
   updateCopyVal
 eval (TextAreaHovered next) =
