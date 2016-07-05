@@ -77,7 +77,7 @@ compile path sql varMap = runExceptT do
       sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
   result ← ExceptT $ runQuasarF $ lmap lowerQError <$>
     QF.compileQuery backendPath sql' varMap
-  case S.stripPrefix "MongoDB\n" result of
+  case S.stripPrefix "MongoDB\n" result.physicalPlanText of
     Nothing → Err.throwError $ Exn.error "Incorrect compile response"
     Just plan → pure plan
 
