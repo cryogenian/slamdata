@@ -36,15 +36,15 @@ instance arbitraryArbCardType :: Arbitrary ArbCardType where
   arbitrary =
     ArbCardType <$>
       elements
-        OpenResource
+        Open
         (toList
           [ Ace MarkdownMode
           , Ace SQLMode
           , Search
-          , Viz
+          , ChartOptions
           , Chart
           , Markdown
-          , JTable
+          , Table
           ])
 
 check :: QC Unit

@@ -24,7 +24,7 @@ mkTwoCardTestDeck = do
     Interact.provideQueryInLastQueryCard
       "select measureOne from `/test-mount/testDb/flatViz`"
     Interact.accessNextCardInLastDeck
-    Interact.insertJTableCardInLastDeck
+    Interact.insertTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne"]
 
 test ∷ SlamFeature Unit
@@ -47,7 +47,7 @@ test = do
     -- Note, user should see that last|active card has been deleted
     -- That's why we immediately flip deck after trashing
     Expect.backsideMenuNotPresented
-    Expect.noJTablesPresented
+    Expect.noTablesPresented
     successMsg "Successfuly deleted last|active card"
 
   flipDeckScenario "Share deck" [] do

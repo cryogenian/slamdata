@@ -36,54 +36,21 @@ initialFileListInOrder ∷ String
 initialFileListInOrder =
   XPath.inOrder $ map XPath.anyWithExactText Data.initialFileList
 
-embedCardOutput ∷ String
-embedCardOutput =
-  XPath.anyWithExactText "Embed card output"
-
-embedCardOutputTitle ∷ String
-embedCardOutputTitle =
-  XPath.anyWithExactText "Embed card"
-
-mdCardTitle ∷ String
-mdCardTitle =
-  XPath.anyWithExactText "Markdown"
-
-queryCardTitle ∷ String
-queryCardTitle =
-  XPath.anyWithExactText "Query"
-
-displayMarkdownCardTitle ∷ String
-displayMarkdownCardTitle =
-  XPath.anyWithExactText "Display Markdown"
-
-chartCardTitle ∷ String
-chartCardTitle =
-  XPath.anyWithExactText "Chart"
-
-eChartOptions ∷ String → String
-eChartOptions string =
+eChart ∷ String → String
+eChart string =
   ("pre" `XPath.nodeWithExactText` string)
-
-embedCardOutputSnippet ∷ String
-embedCardOutputSnippet =
-  XPath.anyWithText "<script type=\"text/javascript\">"
-
 
 displayMarkdownCardHeader ∷ String
 displayMarkdownCardHeader =
-  XPath.anyWithExactAriaLabel "Display Markdown card"
+  XPath.anyWithExactAriaLabel "Show Markdown card"
 
-apiResultsCardHeader ∷ String
-apiResultsCardHeader =
-  XPath.anyWithExactAriaLabel "API Results card"
+troubleshootCardHeader ∷ String
+troubleshootCardHeader =
+  XPath.anyWithExactAriaLabel "Troubleshoot card"
 
 tableCardHeader ∷ String
 tableCardHeader =
-  XPath.anyWithExactAriaLabel "Table card"
-
-exploreInput ∷ String
-exploreInput =
-  XPath.inputWithExactPlaceholder "Select a file"
+  XPath.anyWithExactAriaLabel "Show Table card"
 
 fileSearchInput ∷ String
 fileSearchInput =
@@ -108,31 +75,31 @@ insertCacheCard =
 
 insertMdCard ∷ String
 insertMdCard =
-  XPath.anyWithExactAriaLabel "Insert Markdown card"
+  XPath.anyWithExactAriaLabel "Insert Setup Markdown card"
 
 insertSearchCard ∷ String
 insertSearchCard =
   XPath.anyWithExactAriaLabel "Insert Search card"
 
-insertVisualizeCard ∷ String
-insertVisualizeCard =
-  XPath.anyWithExactAriaLabel "Insert Visualize card"
+insertChartOptionsCard ∷ String
+insertChartOptionsCard =
+  XPath.anyWithExactAriaLabel "Insert Setup Chart card"
 
-insertDownloadCard ∷ String
-insertDownloadCard =
-  XPath.anyWithExactAriaLabel "Insert Download card"
+insertDownloadOptionsCard ∷ String
+insertDownloadOptionsCard =
+  XPath.anyWithExactAriaLabel "Insert Setup Download card"
 
-insertApiResultsCard ∷ String
-insertApiResultsCard =
-  XPath.anyWithExactAriaLabel "Insert API Results card"
+insertTroubleshootCard ∷ String
+insertTroubleshootCard =
+  XPath.anyWithExactAriaLabel "Insert Troubleshoot card"
 
 insertChartCard ∷ String
 insertChartCard =
-  XPath.anyWithExactAriaLabel "Insert Chart card"
+  XPath.anyWithExactAriaLabel "Insert Show Chart card"
 
 insertDisplayMarkdownCard ∷ String
 insertDisplayMarkdownCard =
-  XPath.anyWithExactAriaLabel "Insert Display Markdown card"
+  XPath.anyWithExactAriaLabel "Insert Show Markdown card"
 
 showFileList ∷ String
 showFileList =
@@ -158,16 +125,16 @@ insertQueryCard ∷ String
 insertQueryCard =
   XPath.anyWithExactAriaLabel "Insert Query card"
 
-insertExploreCard ∷ String
-insertExploreCard = XPath.anyWithExactAriaLabel "Insert Explore card"
+insertOpenCard ∷ String
+insertOpenCard = XPath.anyWithExactAriaLabel "Insert Open card"
 
-insertApiCard ∷ String
-insertApiCard =
-  XPath.anyWithExactAriaLabel "Insert API card"
+insertVariablesCard ∷ String
+insertVariablesCard =
+  XPath.anyWithExactAriaLabel "Insert Setup Variables card"
 
-insertJTableCard ∷ String
-insertJTableCard =
-  XPath.anyWithExactAriaLabel "Insert Table card"
+insertTableCard ∷ String
+insertTableCard =
+  XPath.anyWithExactAriaLabel "Insert Show Table card"
 
 hideCardOptions ∷ String
 hideCardOptions =
@@ -283,16 +250,16 @@ cardHeading =
     $ XPath.anyOfThesePredicates
     $ XPath.ariaLabel
     <$> [ "Query card"
-        , "Markdown card"
-        , "Explore card"
+        , "Setup Markdown card"
+        , "Open card"
         , "Search card"
-        , "API card"
-        , "Visualize card"
-        , "Download card"
+        , "Setup Variables card"
+        , "Setup Chart card"
+        , "Setup Download card"
         ]
 
-jtableHeading ∷ String
-jtableHeading =
+tableHeading ∷ String
+tableHeading =
   XPath.withPredicate "*"
     $ XPath.ariaLabel "Table card"
 
@@ -311,21 +278,21 @@ showHiddenFiles = "*" `XPath.nodeWithExactAriaLabel` "Show hidden files"
 hideHiddenFiles ∷ String
 hideHiddenFiles = "*" `XPath.nodeWithExactAriaLabel` "Hide hidden files"
 
-apiCardVariableName ∷ String
-apiCardVariableName =
-  XPath.anyWithExactAriaLabel "API variable name"
+variablesCardVariableName ∷ String
+variablesCardVariableName =
+  XPath.anyWithExactAriaLabel "Variable name"
 
 
-apiCardVariableTypeFor ∷ String → String
-apiCardVariableTypeFor name =
+variablesCardVariableTypeFor ∷ String → String
+variablesCardVariableTypeFor name =
   XPath.anyWithExactAriaLabel
-    $ "Type of \"" <> name <> "\" API variable"
+    $ "Type of \"" <> name <> "\" variable"
 
 
-apiCardDefaultValueFor ∷ String → String
-apiCardDefaultValueFor name =
+variablesCardDefaultValueFor ∷ String → String
+variablesCardDefaultValueFor name =
   XPath.anyWithExactAriaLabel
-    $ "Default value for \"" <> name <> "\" API variable"
+    $ "Default value for \"" <> name <> "\" variable"
 
 chartCategorySelector ∷ String
 chartCategorySelector = XPath.anyWithExactAriaLabel "Category"

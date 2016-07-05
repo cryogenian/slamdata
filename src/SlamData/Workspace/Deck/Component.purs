@@ -134,8 +134,8 @@ eval opts@{ wiring } = case _ of
     pure next
   ExploreFile res next → do
     H.modify
-      $ (DCS.addCard $ Card.cardModelOfType CT.JTable)
-      ∘ (DCS.addCard ∘ Card.OpenResource ∘ Just $ R.File res)
+      $ (DCS.addCard $ Card.cardModelOfType CT.Table)
+      ∘ (DCS.addCard ∘ Card.Open ∘ Just $ R.File res)
       ∘ (DCS._stateMode .~ Preparing)
     initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
     for_ initialCard $ queuePendingCard wiring
@@ -195,7 +195,7 @@ eval opts@{ wiring } = case _ of
     st ← H.get
     when (m ≠ st.globalVarMap) do
       H.modify $ DCS._globalVarMap .~ m
-      traverse_ runCard $ DCS.apiCards st
+      traverse_ runCard $ DCS.variablesCards st
     pure next
   FlipDeck next → do
     updateBackSide

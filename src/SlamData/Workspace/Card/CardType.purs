@@ -49,16 +49,16 @@ import Test.StrongCheck as SC
 data CardType
   = Ace AceMode
   | Search
-  | Viz
+  | ChartOptions
   | Chart
   | Markdown
-  | JTable
+  | Table
   | Download
-  | API
-  | APIResults
+  | Variables
+  | Troubleshoot
   | NextAction
   | Cache
-  | OpenResource
+  | Open
   | DownloadOptions
   | Draftboard
   | ErrorCard
@@ -69,15 +69,15 @@ insertableCardTypes =
   [ Ace SQLMode
   , Ace MarkdownMode
   , Search
-  , Viz
+  , ChartOptions
   , Chart
   , Markdown
-  , JTable
+  , Table
   , Download
-  , API
-  , APIResults
+  , Variables
+  , Troubleshoot
   , Cache
-  , OpenResource
+  , Open
   , DownloadOptions
   ]
 
@@ -107,16 +107,16 @@ instance encodeJsonCardType ∷ EncodeJson CardType where
         Ace MarkdownMode → "ace-markdown"
         Ace SQLMode → "ace-sql"
         Search → "search"
-        Viz → "viz"
+        ChartOptions → "chart-options"
         Chart → "chart"
         Markdown → "markdown"
-        JTable → "jtable"
+        Table → "table"
         Download → "download"
-        API → "api"
-        APIResults → "api-results"
+        Variables → "variables"
+        Troubleshoot → "troubleshoot"
         NextAction → "next-action"
         Cache → "cache"
-        OpenResource → "open-resource"
+        Open → "open"
         DownloadOptions → "download-options"
         Draftboard → "draftboard"
         ErrorCard → "error"
@@ -129,16 +129,16 @@ instance decodeJsonCardType ∷ DecodeJson CardType where
       "ace-markdown" → pure $ Ace MarkdownMode
       "ace-sql" → pure $ Ace SQLMode
       "search" → pure Search
-      "viz" → pure Viz
+      "chart-options" → pure ChartOptions
       "chart" → pure Chart
       "markdown" → pure Markdown
-      "jtable" → pure JTable
+      "table" → pure Table
       "download" → pure Download
-      "api" → pure API
-      "api-results" → pure APIResults
+      "variables" → pure Variables
+      "troubleshoot" → pure Troubleshoot
       "next-action" → pure NextAction
       "cache" → pure Cache
-      "open-resource" → pure OpenResource
+      "open" → pure Open
       "download-options" → pure DownloadOptions
       "draftboard" → pure Draftboard
       "error" → pure ErrorCard
@@ -150,17 +150,17 @@ cardName =
   case _ of
     Ace at → aceCardName at
     Search → "Search"
-    Viz → "Visualize"
-    Chart → "Chart"
-    Markdown → "Display Markdown"
-    JTable → "Table"
-    Download → "Link"
-    API → "API"
-    APIResults → "API Results"
+    ChartOptions → "Setup Chart"
+    Chart → "Show Chart"
+    Markdown → "Show Markdown"
+    Table → "Show Table"
+    Download → "Show Download"
+    Variables → "Setup Variables"
+    Troubleshoot → "Troubleshoot"
     NextAction → "Next Action"
     Cache → "Cache"
-    OpenResource → "Explore"
-    DownloadOptions → "Download"
+    Open → "Open"
+    DownloadOptions → "Setup Download"
     Draftboard → "Draftboard"
     ErrorCard → "Error"
     PendingCard → "Pending"
@@ -170,16 +170,16 @@ cardGlyph =
   case _ of
     Ace at →glyph $ aceCardGlyph at
     Search → glyph B.glyphiconSearch
-    Viz → glyph B.glyphiconPicture
+    ChartOptions → glyph B.glyphiconPicture
     Download → glyph B.glyphiconDownloadAlt
-    API → glyph B.glyphiconOpenFile
-    APIResults → glyph B.glyphiconTasks
+    Variables → glyph B.glyphiconOpenFile
+    Troubleshoot → glyph B.glyphiconTasks
     Chart → HH.div [ HP.classes [ Rc.glyphImage, Rc.chartGlyph ] ] [ ]
     Markdown → HH.div [ HP.classes [ Rc.glyphImage, Rc.codeGlyph ] ] [ ]
-    JTable → glyph B.glyphiconThList
+    Table → glyph B.glyphiconThList
     NextAction → glyph B.glyphiconStop -- arbitrary
     Cache → glyph B.glyphiconFloppyDisk
-    OpenResource → glyph B.glyphiconFolderOpen
+    Open → glyph B.glyphiconFolderOpen
     DownloadOptions → glyph B.glyphiconDownload
     Draftboard → glyph B.glyphiconTh
     ErrorCard → glyph B.glyphiconAlert
@@ -190,23 +190,23 @@ cardClasses =
   case _ of
     Ace at → [ H.className "sd-card-ace" ] <> aceCardClasses at
     Search → [ H.className "sd-card-search" ]
-    Viz → [ H.className "sd-card-viz" ]
+    ChartOptions → [ H.className "sd-card-chart-options" ]
     Chart → [ H.className "sd-card-chart" ]
     Markdown → [ H.className "sd-card-markdown" ]
-    JTable → [ H.className "sd-card-table" ]
+    Table → [ H.className "sd-card-table" ]
     Download → [ H.className "sd-card-download" ]
     DownloadOptions → [ H.className "sd-card-download-options" ]
-    API → [ H.className "sd-card-api" ]
-    APIResults → [ H.className "sd-card-api-results" ]
+    Variables → [ H.className "sd-card-variables" ]
+    Troubleshoot → [ H.className "sd-card-troubleshoot" ]
     NextAction → [ H.className "sd-card-next-action" ]
     Cache → [ H.className "sd-card-cache" ]
-    OpenResource → [ H.className "sd-card-open-resource" ]
+    Open → [ H.className "sd-card-open" ]
     Draftboard → [ H.className "sd-card-draftboard" ]
     ErrorCard → [ H.className "sd-card-error" ]
     PendingCard → [ H.className "sd-card-pending" ]
 
 aceCardName ∷ AceMode → String
-aceCardName MarkdownMode = "Markdown"
+aceCardName MarkdownMode = "Setup Markdown"
 aceCardName SQLMode = "Query"
 
 aceCardGlyph ∷ AceMode → HH.ClassName

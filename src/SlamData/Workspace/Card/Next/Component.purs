@@ -134,24 +134,24 @@ updatePort = case _ of
       ∘ (_message .~ Nothing)
   Port.VarMap _ →
     H.modify
-      $ (_types .~ [ CT.Ace CT.SQLMode, CT.APIResults ])
+      $ (_types .~ [ CT.Ace CT.SQLMode, CT.Troubleshoot ])
       ∘ (_message .~ Nothing)
   Port.SlamDown _ →
     H.modify
       $ (_types .~ [ CT.Markdown ])
       ∘ (_message .~ Nothing)
-  Port.ChartOptions _ →
+  Port.Chart _ →
     H.modify
       $ (_types .~ [ CT.Chart ])
       ∘ (_message .~ Nothing)
   Port.TaggedResource _ →
     H.modify
       $ (_types .~
-           [ CT.JTable
+           [ CT.Table
            , CT.DownloadOptions
            , CT.Search
            , CT.Ace CT.SQLMode
-           , CT.Viz
+           , CT.ChartOptions
            , CT.Cache
            ])
       ∘ (_message .~ Nothing)

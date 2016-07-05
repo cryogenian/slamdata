@@ -42,7 +42,7 @@ import SlamData.Effects (Slam)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.Chart.ChartOptions as CO
+import SlamData.Workspace.Card.Chart.BuildOptions as BO
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Chart.Component.State (State, initialState, _levelOfDetails, _chartType)
 import SlamData.Workspace.Card.Component as CC
@@ -119,12 +119,12 @@ eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of
   CC.EvalCard value output next → do
     case value.input of
-      Just (ChartOptions options) → do
+      Just (Chart options) → do
         -- TODO: this could possibly be optimised by caching records in the state,
-        -- but we'd need to know when the input dataset going into Viz changes.
+        -- but we'd need to know when the input dataset going into ChartOptions changes.
         -- Basically something equivalent to the old `needsToUpdate`. -gb
         records <- either (const []) id <$> H.fromAff (Quasar.all options.resource :: Slam (Either Error JArray))
-        let option = CO.buildOptions options.options options.chartConfig records
+        let option = BO.buildOptions options.options options.chartConfig records
         H.query unit $ H.action $ HEC.Set option
         H.query unit $ H.action HEC.Resize
         setLevelOfDetails option

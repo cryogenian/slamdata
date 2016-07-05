@@ -96,16 +96,10 @@ dropdownInLastMdCard value values =
     (Map.singleton "value" $ Just value)
     $ XPath.anywhere $ XPath.selectWithOptionsWithExactTexts values
 
-resourceOpenedInLastExploreCard ∷ String → SlamFeature Unit
-resourceOpenedInLastExploreCard fileName =
+resourceOpenedInLastOpenCard ∷ String → SlamFeature Unit
+resourceOpenedInLastOpenCard fileName =
   expectPresented (XPath.last $ XPath.anywhere $ XPaths.resourceOpened fileName)
 
-
-exploreFileInLastCard ∷ String → SlamFeature Unit
-exploreFileInLastCard fileName =
-  expectPresentedWithProperties
-    (Map.singleton "value" $ Just fileName)
-    (XPath.last $ XPath.anywhere XPaths.exploreInput)
 
 file ∷ String → SlamFeature Unit
 file =
@@ -139,17 +133,17 @@ textEventually = tryRepeatedlyTo ∘ text
 downloadedTextFileToMatchFile ∷ String → String → String → SlamFeature Unit
 downloadedTextFileToMatchFile = expectDownloadedTextFileToMatchFile
 
-measureDisabledInLastVisualizeCard
+measureDisabledInLastChartCard
   ∷ SlamFeature Unit
-measureDisabledInLastVisualizeCard =
+measureDisabledInLastChartCard =
   expectPresentedWithProperties
     (Map.singleton "disabled" (Just "true"))
     (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
 
-measureInLastVisualizeCard
+measureInLastChartCard
   ∷ String
   → SlamFeature Unit
-measureInLastVisualizeCard value =
+measureInLastChartCard value =
   expectSelectValue
     value
     (XPath.last $ XPath.anywhere $ XPaths.chartMeasureOneSelector)
@@ -160,12 +154,12 @@ fileSearchString string =
   (Map.singleton "value" $ Just string)
   (XPath.anywhere XPaths.fileSearchInput)
 
-lastEChartOptions ∷ String → SlamFeature Unit
-lastEChartOptions =
+lastEChart ∷ String → SlamFeature Unit
+lastEChart =
   expectPresented
     ∘ XPath.last
     ∘ XPath.anywhere
-    ∘ XPaths.eChartOptions
+    ∘ XPaths.eChart
 
 displayMarkdownCardPresented ∷ SlamFeature Unit
 displayMarkdownCardPresented =
@@ -174,12 +168,12 @@ displayMarkdownCardPresented =
     $ XPath.anywhere
     $ XPaths.displayMarkdownCardHeader
 
-apiResultsCardPresented ∷ SlamFeature Unit
-apiResultsCardPresented =
+troubleshootCardPresented ∷ SlamFeature Unit
+troubleshootCardPresented =
   tryRepeatedlyTo
     $ expectPresented
     $ XPath.anywhere
-    $ XPaths.apiResultsCardHeader
+    $ XPaths.troubleshootCardHeader
 
 tableCardPresented ∷ SlamFeature Unit
 tableCardPresented =
@@ -244,12 +238,12 @@ backsideMenuNotPresented = do
     ]
     backsideActionNotPresented
 
-noJTablesPresented ∷ SlamFeature Unit
-noJTablesPresented =
+noTablesPresented ∷ SlamFeature Unit
+noTablesPresented =
   tryRepeatedlyTo
     $ expectNotPresented
     $ XPath.anywhere
-    $ XPaths.jtableHeading
+    $ XPaths.tableHeading
 
 onlyTrashActionPresented ∷ SlamFeature Unit
 onlyTrashActionPresented = do

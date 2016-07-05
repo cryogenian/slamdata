@@ -35,10 +35,10 @@ import SlamData.Workspace.Card.Eval as Eval
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Ace.Model as Ace
-import SlamData.Workspace.Card.API.Model as API
-import SlamData.Workspace.Card.JTable.Model as JT
+import SlamData.Workspace.Card.Variables.Model as Variables
+import SlamData.Workspace.Card.Table.Model as JT
 import SlamData.Workspace.Card.Markdown.Model as MD
-import SlamData.Workspace.Card.Viz.Model as Viz
+import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 
@@ -48,15 +48,15 @@ import Test.StrongCheck.Gen as Gen
 data AnyCardModel
   = Ace CT.AceMode Ace.Model
   | Search String
-  | Viz Viz.Model
+  | ChartOptions ChartOptions.Model
   | Chart
   | Markdown MD.Model
-  | JTable JT.Model
+  | Table JT.Model
   | Download
-  | API API.Model
-  | APIResults
+  | Variables Variables.Model
+  | Troubleshoot
   | Cache (Maybe String)
-  | OpenResource (Maybe R.Resource)
+  | Open (Maybe R.Resource)
   | DownloadOptions DLO.State
   | Draftboard DB.Model
   | ErrorCard
@@ -68,15 +68,15 @@ instance arbitraryAnyCardModel ∷ SC.Arbitrary AnyCardModel where
     Gen.oneOf (pure ErrorCard)
       [ Ace <$> SC.arbitrary <*> Ace.genModel
       , Search <$> SC.arbitrary
-      , Viz <$> Viz.genModel
+      , ChartOptions <$> ChartOptions.genModel
       , pure Chart
       , Markdown <$> MD.genModel
-      , JTable <$> JT.genModel
+      , Table <$> JT.genModel
       , pure Download
-      , API <$> API.genModel
-      , pure APIResults
+      , Variables <$> Variables.genModel
+      , pure Troubleshoot
       , Cache <$> SC.arbitrary
-      , OpenResource <$> SC.arbitrary
+      , Open <$> SC.arbitrary
       , Draftboard <$> DB.genModel
       , pure ErrorCard
       , pure NextAction
@@ -87,15 +87,15 @@ instance eqAnyCardModel ∷ Eq AnyCardModel where
     case _, _ of
       Ace x1 y1, Ace x2 y2 → x1 ≡ x2 && Ace.eqModel y1 y2
       Search s1, Search s2 → s1 ≡ s2
-      Viz x1, Viz x2 → Viz.eqModel x1 x2
+      ChartOptions x1, ChartOptions x2 → ChartOptions.eqModel x1 x2
       Chart, Chart → true
       Markdown x, Markdown y → MD.eqModel x y
-      JTable x, JTable y → JT.eqModel x y
+      Table x, Table y → JT.eqModel x y
       Download, Download → true
-      API x, API y → API.eqModel x y
-      APIResults, APIResults → true
+      Variables x, Variables y → Variables.eqModel x y
+      Troubleshoot, Troubleshoot → true
       Cache x, Cache y → x ≡ y
-      OpenResource x, OpenResource y → x ≡ y
+      Open x, Open y → x ≡ y
       DownloadOptions x, DownloadOptions y → DLO.eqState x y
       Draftboard x, Draftboard y → DB.eqModel x y
       ErrorCard, ErrorCard → true
@@ -112,15 +112,15 @@ modelCardType =
   case _ of
     Ace mode _ → CT.Ace mode
     Search _ → CT.Search
-    Viz _ → CT.Viz
+    ChartOptions _ → CT.ChartOptions
     Chart → CT.Chart
     Markdown _ → CT.Markdown
-    JTable _ → CT.JTable
+    Table _ → CT.Table
     Download → CT.Download
-    API _ → CT.API
-    APIResults → CT.APIResults
+    Variables _ → CT.Variables
+    Troubleshoot → CT.Troubleshoot
     Cache _ → CT.Cache
-    OpenResource _ → CT.OpenResource
+    Open _ → CT.Open
     DownloadOptions _ → CT.DownloadOptions
     Draftboard _ → CT.Draftboard
     ErrorCard → CT.ErrorCard
@@ -158,15 +158,15 @@ encodeCardModel =
   case _ of
     Ace mode model → Ace.encode model
     Search txt → J.encodeJson txt
-    Viz model → Viz.encode model
+    ChartOptions model → ChartOptions.encode model
     Chart → J.jsonEmptyObject
     Markdown model → MD.encode model
-    JTable model → JT.encode model
+    Table model → JT.encode model
     Download → J.jsonEmptyObject
-    API model → API.encode model
-    APIResults → J.jsonEmptyObject
+    Variables model → Variables.encode model
+    Troubleshoot → J.jsonEmptyObject
     Cache model → J.encodeJson model
-    OpenResource mres → J.encodeJson mres
+    Open mres → J.encodeJson mres
     DownloadOptions model → DLO.encode model
     Draftboard model → DB.encode model
     ErrorCard → J.jsonEmptyObject
@@ -181,15 +181,15 @@ decodeCardModel ty =
   case ty of
     CT.Ace mode → map (Ace mode) ∘ Ace.decode
     CT.Search → map Search ∘ J.decodeJson
-    CT.Viz → map Viz ∘ Viz.decode
+    CT.ChartOptions → map ChartOptions ∘ ChartOptions.decode
     CT.Chart → const $ pure Chart
     CT.Markdown → map Markdown ∘ MD.decode
-    CT.JTable → map JTable ∘ JT.decode
+    CT.Table → map Table ∘ JT.decode
     CT.Download → const $ pure Download
-    CT.API → map API ∘ API.decode
-    CT.APIResults → const $ pure APIResults
+    CT.Variables → map Variables ∘ Variables.decode
+    CT.Troubleshoot → const $ pure Troubleshoot
     CT.Cache → map Cache ∘ J.decodeJson
-    CT.OpenResource → map OpenResource ∘ J.decodeJson
+    CT.Open → map Open ∘ J.decodeJson
     CT.DownloadOptions → map DownloadOptions ∘ DLO.decode
     CT.Draftboard → map Draftboard ∘ DB.decode
     CT.ErrorCard → const $ pure ErrorCard
@@ -204,15 +204,15 @@ cardModelOfType =
   case _ of
     CT.Ace mode → Ace mode Ace.emptyModel
     CT.Search → Search ""
-    CT.Viz → Viz Viz.initialModel
+    CT.ChartOptions → ChartOptions ChartOptions.initialModel
     CT.Chart → Chart
     CT.Markdown → Markdown MD.emptyModel
-    CT.JTable → JTable JT.emptyModel
+    CT.Table → Table JT.emptyModel
     CT.Download → Download
-    CT.API → API API.emptyModel
-    CT.APIResults → APIResults
+    CT.Variables → Variables Variables.emptyModel
+    CT.Troubleshoot → Troubleshoot
     CT.Cache → Cache Nothing
-    CT.OpenResource → OpenResource Nothing
+    CT.Open → Open Nothing
     CT.DownloadOptions → DownloadOptions DLO.initialState
     CT.Draftboard → Draftboard DB.emptyModel
     CT.ErrorCard → ErrorCard
@@ -229,10 +229,10 @@ modelToEval =
     Markdown model → pure $ Eval.MarkdownForm model
     Search txt → pure $ Eval.Search txt
     Cache fp → pure $ Eval.Cache fp
-    OpenResource (Just res) → pure $ Eval.OpenResource res
-    OpenResource _ → Left $ "OpenResource model missing resource"
-    API model → pure $ Eval.API model
-    Viz model → pure $ Eval.Viz model
+    Open (Just res) → pure $ Eval.Open res
+    Open _ → Left $ "Open model missing resource"
+    Variables model → pure $ Eval.Variables model
+    ChartOptions model → pure $ Eval.ChartOptions model
     DownloadOptions model → pure $ Eval.DownloadOptions model
     Draftboard _ → pure Eval.Draftboard
     _ → pure Eval.Pass

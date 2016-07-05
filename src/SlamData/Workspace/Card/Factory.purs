@@ -25,8 +25,8 @@ import Halogen as H
 
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent, Status(..))
-import SlamData.Workspace.Card.API.Component (apiComponent)
-import SlamData.Workspace.Card.APIResults.Component (apiResultsComponent)
+import SlamData.Workspace.Card.Variables.Component (variablesComponent)
+import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
 import SlamData.Workspace.Card.Common (CardOptions)
@@ -36,14 +36,14 @@ import SlamData.Workspace.Card.Download.Component (downloadComponent)
 import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
 import SlamData.Workspace.Card.Error.Component as Error
 import SlamData.Workspace.Card.Pending.Component as Pending
-import SlamData.Workspace.Card.JTable.Component (jtableComponent)
+import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
-import SlamData.Workspace.Card.OpenResource.Component (openResourceComponent)
+import SlamData.Workspace.Card.Open.Component (openComponent)
 import SlamData.Workspace.Card.Query.Eval (queryEval)
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
-import SlamData.Workspace.Card.Viz.Component (vizComponent)
+import SlamData.Workspace.Card.ChartOptions.Component (chartOptionsComponent)
 
 cardComponent ∷ Card.Model → CardOptions → CardComponent
 cardComponent card opts =
@@ -54,16 +54,16 @@ cardComponent card opts =
         , eval: aceEval mode
         }
     Card.Search _ → searchComponent
-    Card.Viz _ → vizComponent
+    Card.ChartOptions _ → chartOptionsComponent
     Card.Chart → chartComponent
     Card.Markdown _ → markdownComponent card.cardId
-    Card.JTable _ → jtableComponent
+    Card.Table _ → tableComponent
     Card.Download → downloadComponent
-    Card.API _ → apiComponent
-    Card.APIResults → apiResultsComponent
+    Card.Variables _ → variablesComponent
+    Card.Troubleshoot → troubleshootComponent
     Card.NextAction → nextCardComponent
     Card.Cache _ → cacheCardComponent
-    Card.OpenResource mres → openResourceComponent mres
+    Card.Open mres → openComponent mres
     Card.DownloadOptions _ → DOpts.comp
     Card.ErrorCard → Error.comp
     Card.PendingCard → Pending.comp
