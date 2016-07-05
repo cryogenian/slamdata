@@ -392,7 +392,8 @@ eval (Init next) = next <$ do
     Left _ →
       showConnectionError
     Right grInfo →
-      H.modify (_{groups = [rootFile] ⊕ grInfo.subGroups, loading = false })
+      H.modify (_{groups = [rootFile] ⊕ grInfo.subGroups })
+  H.modify (_{loading = false})
 eval (GroupSelected grpString next) = next <$ do
   groups ← H.gets _.groups
   let
