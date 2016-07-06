@@ -40,36 +40,56 @@ comp = H.component { render, eval } where
 
   render ∷ State → H.ComponentHTML Query
   render state =
-    HH.div [ HP.classes [ HH.className "deck-dialog-embed" ] ]
-    [ HH.h4_ [ HH.text $ "Couldn't insert a " ++ CardType.cardName state.attemptedCardType ++ " card into this deck" ]
-      , HH.div
-          [ HP.classes [ HH.className "deck-dialog-body" ] ]
-          [ HH.p_
-              [ HH.text state.reason
-              ]
-          , HH.p_ renderCardPathsMessage
-          , HH.div_ $ map renderCardPath state.cardPaths
-          ]
-      , HH.div
-          [ HP.classes [ HH.className "deck-dialog-footer" ] ]
-          [ HH.button
-              [ HP.classes [ B.btn ]
-              , HE.onClick (HE.input_ $ Dismiss)
-              ]
-              [ HH.text "Dismiss" ]
-          ]
-      ]
+    HH.div
+    [ HP.classes [ HH.className "deck-dialog-embed" ] ]
+    [ HH.h4_
+        [ HH.text
+          $ "Couldn't insert a "
+          ++ CardType.cardName state.attemptedCardType
+          ++ " card into this deck"
+        ]
+    , HH.div
+        [ HP.classes [ HH.className "deck-dialog-body" ] ]
+        [ HH.p_
+            [ HH.text state.reason
+            ]
+        , HH.p_ renderCardPathsMessage
+        , HH.div_ $ map renderCardPath state.cardPaths
+        ]
+    , HH.div
+        [ HP.classes [ HH.className "deck-dialog-footer" ] ]
+        [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ $ Dismiss)
+            ]
+            [ HH.text "Dismiss" ]
+        ]
+    ]
     where
     renderCardPathsMessage =
       case Array.length state.cardPaths of
         0 → []
-        1 → [ HH.text $ "To be able to insert a " ++ CardType.cardName state.attemptedCardType ++ " card here you can add these cards in order first." ]
-        n → [ HH.text $ "To insert a " ++ CardType.cardName state.attemptedCardType ++ " card here you can add one of these sets of cards in order first." ]
+        i →
+          [ HH.text
+              $ "To be able to insert a "
+              ++ show (CardType.cardName state.attemptedCardType)
+              ++ " card here you can add " ++ setsOfCardsText i ++ " first:"
+          ]
 
-    renderCardPath cardPath = HH.div [ HP.classes [ HH.className "deck-dialog-cardpath" ] ] $ map renderCard cardPath
+    onlySingleCardPaths = Array.nub (Array.length <$> state.cardPaths) == [1]
+
+    setsOfCardsText =
+      case _ of
+        1 -> if onlySingleCardPaths then "this card" else "these cards in order"
+        _ -> if onlySingleCardPaths then "any of these cards" else "any of these sets of cards in order"
+
+    renderCardPath cardPath =
+      HH.p
+        [ HP.classes [ HH.className "deck-dialog-cardpath" ] ]
+        (map renderCard cardPath)
 
     renderCard card =
-      HH.div
+      HH.span
         [ HP.classes [HH.className "deck-dialog-cardpath-card" ] ]
         [ HH.text $ CardType.cardName card ]
 

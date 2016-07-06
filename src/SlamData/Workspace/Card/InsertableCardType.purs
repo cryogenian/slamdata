@@ -110,15 +110,12 @@ cardPathsFromPaths = map _.c
 allPathsFinished ∷ Array Path → Boolean
 allPathsFinished = Foldable.all _.f
 
-cardPathsBetween ∷ Maybe InsertableCardType → InsertableCardType -> Array (Array InsertableCardType)
-cardPathsBetween from = cardPathsFromPaths ∘ pathsBetween from
+cardPathsBetween ∷ InsertableCardIOType → InsertableCardType -> Array (Array InsertableCardType)
+cardPathsBetween fromIO = cardPathsFromPaths ∘ pathsBetween fromIO
 
-pathsBetween ∷ Maybe InsertableCardType → InsertableCardType → Array Path
-pathsBetween fromCard toCard =
-  Array.concat
-    $ pathsBetweenIO
-        <$> maybe [] Array.singleton (maybe (Just None) outputFor fromCard)
-        <*> inputsFor toCard
+pathsBetween ∷ InsertableCardIOType → InsertableCardType → Array Path
+pathsBetween fromIO toCard =
+  Array.concat $ pathsBetweenIO fromIO <$> inputsFor toCard
 
 cardPathNeeded ∷ Array (Array InsertableCardType) → Boolean
 cardPathNeeded cardPaths =

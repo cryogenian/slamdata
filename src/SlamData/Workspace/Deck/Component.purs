@@ -61,6 +61,8 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
 import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.InsertableCardType as ICT
+import SlamData.Workspace.Card.InsertableCardType (InsertableCardType, InsertableCardIOType)
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery, _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
@@ -277,6 +279,8 @@ peekDialog _ (Dialog.Show _ _) =
   H.modify (DCS._displayMode .~ DCS.Dialog)
 peekDialog _ (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
+peekDialog _ (Dialog.FlipToFront _) =
+  H.modify (DCS._displayMode .~ DCS.Normal)
 peekDialog opts (Dialog.SetDeckName name _) =
   H.modify ((DCS._displayMode .~ DCS.Normal) ∘ (DCS._name .~ name))
     *> saveDeck opts Nothing
@@ -449,8 +453,19 @@ peekCardEvalQuery cardCoord = case _ of
 
 
 peekAnyCard ∷ ∀ a. Wiring → DeckId × CardId → AnyCardQuery a → DeckDSL Unit
-peekAnyCard wiring cardCoord q =
+peekAnyCard wiring cardCoord q = do
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) $ createCard wiring
+  for_ (q ^? _NextQuery ∘ _Right ∘ Next._PresentReason) $ uncurry presentReason
+
+presentReason ∷ (Maybe Port.Port) -> CT.CardType → DeckDSL Unit
+presentReason input cardType =
+  traverse_ showDialog dialog *> H.modify (DCS._displayMode .~ DCS.Dialog)
+  where
+  insertableCardType = ICT.fromCardType cardType
+  ioType = ICT.fromMaybePort input
+  reason = ICT.reason ioType <$> insertableCardType
+  cardPaths = map (map ICT.toCardType) ∘ ICT.cardPathsBetween ioType <$> insertableCardType
+  dialog = Dialog.Reason cardType <$> reason <*> cardPaths
 
 nextActionCard ∷ Card.Model
 nextActionCard =

@@ -22,21 +22,19 @@ module SlamData.Workspace.Card.Next.Component
 
 import SlamData.Prelude
 
-import Data.Array as Arr
-import Data.Lens ((.~), (?~))
+import Data.Lens ((.~))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
-import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType)
+import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType, _PresentReason)
 import SlamData.Workspace.Card.Next.Component.State (State, initialState, _input)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.InsertableCardType as ICT
@@ -64,10 +62,11 @@ render state =
   nextButton cty =
     HH.li_
       [ HH.button
-          [ HP.title $ cardTitle cty
+          ([ HP.title $ cardTitle cty
           , ARIA.label $ cardTitle cty
           , HE.onClick (HE.input_ (right ∘ addCardOrPresentReason state.input cty))
-          ]
+          ] ⊕ (guard (not $ takesInput state.input cty)
+                 $> HP.classes [ HH.className "sd-button-warning" ]))
           [ CT.cardGlyph cty
           , HH.p_ [ HH.text (CT.cardName cty) ]
           ]
@@ -109,4 +108,4 @@ addCardOrPresentReason input cardType a =
 
 nextEval ∷ Query ~> NextDSL
 nextEval (AddCard _ next) = pure next
-nextEval (PresentReason io card next) = trace (ICT.reason (ICT.fromMaybePort io) (fromMaybe ICT.SetupChartCard (ICT.fromCardType card))) \_ -> pure next
+nextEval (PresentReason io card next) = pure next

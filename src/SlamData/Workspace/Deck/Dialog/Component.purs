@@ -66,6 +66,7 @@ initialState = Nothing
 
 data Query a
   = Dismiss a
+  | FlipToFront a
   | Confirm Dialog Boolean a
   | SetDeckName String a
   | Show Dialog a
@@ -236,6 +237,7 @@ render state =
 
 eval ∷ Natural Query DSL
 eval (Dismiss next) = H.set Nothing $> next
+eval (FlipToFront next) = H.set Nothing $> next
 eval (SetDeckName _ next) = H.set Nothing $> next
 eval (Confirm _ _ next) = H.set Nothing $> next
 eval (Show d next) = H.set (Just d) $> next
@@ -286,4 +288,4 @@ unsharePeek _ = pure unit
 
 reasonPeek ∷ ∀ a. Reason.Query a → DSL Unit
 reasonPeek (Reason.Dismiss _) =
-  raise' $ Dismiss unit
+  raise' $ FlipToFront unit
