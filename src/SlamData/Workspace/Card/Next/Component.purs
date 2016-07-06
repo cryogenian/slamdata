@@ -44,7 +44,7 @@ import SlamData.Workspace.Card.InsertableCardType as ICT
 type NextHTML = H.ComponentHTML QueryP
 type NextDSL = H.ComponentDSL State QueryP Slam
 
-nextCardComponent :: CC.CardComponent
+nextCardComponent ∷ CC.CardComponent
 nextCardComponent = CC.makeCardComponent
   { cardType: CT.NextAction
   , component: H.component {render, eval}
@@ -53,15 +53,12 @@ nextCardComponent = CC.makeCardComponent
   , _Query: CC.makeQueryPrism CC._NextQuery
   }
 
-render :: State → NextHTML
+render ∷ State → NextHTML
 render state =
   HH.ul_ $ map nextButton CT.insertableCardTypes
   where
   cardTitle ∷ CT.CardType → String
   cardTitle cty = "Insert " ⊕ CT.cardName cty ⊕ " card"
-
-  disabledTitle ∷ CT.CardType → String
-  disabledTitle cty = CT.cardName cty ⊕ " is unavailable as next action"
 
   nextButton ∷ CT.CardType → NextHTML
   nextButton cty =
@@ -69,8 +66,8 @@ render state =
       [ HH.button
           [ HP.title $ cardTitle cty
           , ARIA.label $ cardTitle cty
-          , HE.onClick (HE.input_ (right ∘ AddCard cty))
-          , HP.disabled $ not $ takesInput state.input cty
+          , HE.onClick (HE.input_ (right ∘ addCardOrPresentReason state.input cty))
+          , HP.disabled $ not $ possibleToGetTo state.input cty
           ]
           [ CT.cardGlyph cty
           , HH.p_ [ HH.text (CT.cardName cty) ]
@@ -78,10 +75,10 @@ render state =
       ]
 
 
-eval :: QueryP ~> NextDSL
+eval ∷ QueryP ~> NextDSL
 eval = coproduct cardEval nextEval
 
-cardEval :: CC.CardEvalQuery ~> NextDSL
+cardEval ∷ CC.CardEvalQuery ~> NextDSL
 cardEval = case _ of
   CC.EvalCard value output next →
     H.modify (_input .~ value.input) $> next
@@ -96,9 +93,21 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-takesInput ∷ Maybe Port.Port -> CT.CardType -> Boolean
-takesInput input =
-  maybe false (ICT.takesInput $ maybe ICT.None ICT.fromPort input) ∘ ICT.fromCardType
 
-nextEval :: Query ~> NextDSL
+takesInput ∷ Maybe Port.Port → CT.CardType → Boolean
+takesInput input =
+  maybe false (ICT.takesInput $ ICT.fromMaybePort input) ∘ ICT.fromCardType
+
+possibleToGetTo ∷ Maybe Port.Port → CT.CardType → Boolean
+possibleToGetTo input =
+  maybe false (ICT.possibleToGetTo $ ICT.fromMaybePort input) ∘ ICT.fromCardType
+
+addCardOrPresentReason ∷ ∀ a. Maybe Port.Port → CT.CardType → a -> Query a
+addCardOrPresentReason input cardType a =
+  if takesInput input cardType
+     then AddCard cardType a
+     else PresentReason input cardType a
+
+nextEval ∷ Query ~> NextDSL
 nextEval (AddCard _ next) = pure next
+nextEval (PresentReason _ _ next) = pure next

@@ -20,10 +20,13 @@ import SlamData.Prelude
 import Data.Lens (TraversalP, wander)
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.CardType (CardType)
+import SlamData.Workspace.Card.Port (Port)
 
 data Query a
   = AddCard CardType a
+  | PresentReason (Maybe Port) CardType a
 
+-- This is now partial and I don't know how to fix it.
 _AddCardType :: forall a. TraversalP (Query a) CardType
 _AddCardType = wander \f s → case s of
   AddCard cty next → flip AddCard next <$> f cty

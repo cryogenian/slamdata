@@ -37,11 +37,14 @@ import Halogen.Component.Utils (raise')
 
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Workspace.Card.CardType (CardType)
+import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
 import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Deck.Dialog.Export.Component as Export
 import SlamData.Workspace.Deck.Dialog.Share.Component as Share
 import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
+import SlamData.Workspace.Deck.Dialog.Reason.Component as Reason
 import SlamData.Effects (Slam)
 
 import Utils.Path (DirPath)
@@ -50,6 +53,7 @@ data Dialog
   = Error String
   | Embed DirPath Port.VarMap
   | Publish DirPath Port.VarMap
+  | Reason CardType String (Array (Array CardType))
   | Share DirPath
   | Unshare DirPath
   | Rename String
@@ -74,6 +78,7 @@ type ChildState =
   ⊹ Export.State
   ⊹ Share.State
   ⊹ Unshare.State
+  ⊹ Reason.State
 
 type ChildQuery =
   Rename.Query
@@ -83,9 +88,11 @@ type ChildQuery =
   ⨁ Export.Query
   ⨁ Share.Query
   ⨁ Unshare.Query
+  ⨁ Reason.Query
 
 type ChildSlot =
   Unit
+  ⊹ Unit
   ⊹ Unit
   ⊹ Unit
   ⊹ Unit
@@ -142,8 +149,14 @@ cpUnshare
       Unshare.State ChildState
       Unshare.Query ChildQuery
       Unit ChildSlot
-cpUnshare = cpR :> cpR :> cpR :> cpR :> cpR :> cpR
+cpUnshare = cpR :> cpR :> cpR :> cpR :> cpR :> cpR :> cpL
 
+cpReason
+  ∷ ChildPath
+      Reason.State ChildState
+      Reason.Query ChildQuery
+      Unit ChildSlot
+cpReason = cpR :> cpR :> cpR :> cpR :> cpR :> cpR :> cpR
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
@@ -214,6 +227,12 @@ render state =
       , initialState: Unshare.initialState deckPath
       }
 
+  dialog (Reason attemptedCardType reason cardPaths) =
+    HH.slot' cpReason unit \_ →
+      { component: Reason.comp
+      , initialState: { attemptedCardType, reason, cardPaths }
+      }
+
 
 eval ∷ Natural Query DSL
 eval (Dismiss next) = H.set Nothing $> next
@@ -230,6 +249,7 @@ peek =
   ⨁ exportPeek
   ⨁ sharePeek
   ⨁ unsharePeek
+  ⨁ reasonPeek
 
 -- Send `Dismiss` after child's `Dismiss` to simplify parent of
 -- this component peeking. (I.e. it can observe only this component queries and
@@ -263,3 +283,7 @@ unsharePeek ∷ ∀ a. Unshare.Query a → DSL Unit
 unsharePeek (Unshare.Dismiss _) =
   raise' $ Dismiss unit
 unsharePeek _ = pure unit
+
+reasonPeek ∷ ∀ a. Reason.Query a → DSL Unit
+reasonPeek (Reason.Dismiss _) =
+  raise' $ Dismiss unit

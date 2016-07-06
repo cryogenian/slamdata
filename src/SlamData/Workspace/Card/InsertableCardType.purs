@@ -123,6 +123,10 @@ cardPathNeeded ∷ Array (Array InsertableCardType) → Boolean
 cardPathNeeded cardPaths =
   not $ Array.null cardPaths || [] `Foldable.elem` cardPaths
 
+possibleToGetTo ∷ InsertableCardIOType -> InsertableCardType -> Boolean
+possibleToGetTo io card =
+  not $ Array.null $ Array.concat $ pathsBetweenIO io <$> inputsFor card
+
 pathsBetweenIO ∷ InsertableCardIOType → InsertableCardIOType → Array Path
 pathsBetweenIO fromIO toIO =
   go $ [ purePath toIO ]
@@ -154,6 +158,9 @@ expandPath fromIO initialPath | otherwise =
     pathFinished = fromIO `Foldable.elem` pathIO
     pathIO = Array.cons io initialPath.io
     pathCards = Array.cons card initialPath.c
+
+fromMaybePort ∷ Maybe Port → InsertableCardIOType
+fromMaybePort input = maybe None fromPort input
 
 fromPort ∷ Port → InsertableCardIOType
 fromPort =
