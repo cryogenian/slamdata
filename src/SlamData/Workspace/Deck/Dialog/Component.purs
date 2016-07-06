@@ -38,7 +38,6 @@ import Halogen.Component.Utils (raise')
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Card.CardType (CardType)
-import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
 import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
 import SlamData.Workspace.Deck.Dialog.Export.Component as Export

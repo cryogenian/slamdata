@@ -62,7 +62,6 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.InsertableCardType as ICT
-import SlamData.Workspace.Card.InsertableCardType (InsertableCardType, InsertableCardIOType)
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery, _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
