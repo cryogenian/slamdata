@@ -10,29 +10,29 @@ import SlamData.Workspace.Card.Port (Port)
 import Utils (singletonValue)
 
 data InsertableCardType
-  = SetupVariablesCard
-  | CacheCard
-  | SetupChartCard
-  | SetupDownloadCard
+  = CacheCard
   | DraftboardCard
   | OpenCard
+  | QueryCard
+  | SearchCard
+  | SetupChartCard
+  | SetupDownloadCard
   | SetupMarkdownCard
+  | SetupVariablesCard
   | ShowChartCard
   | ShowDownloadCard
   | ShowMarkdownCard
-  | TroubleshootCard
-  | QueryCard
-  | SearchCard
   | TableCard
+  | TroubleshootCard
 
 data InsertableCardIOType
-  = None
-  | Download
-  | Chart
-  | Variables
-  | Markdown
+  = Chart
   | Data
+  | Download
   | Draftboard
+  | Markdown
+  | None
+  | Variables
 
 derive instance eqInsertableCardType ∷ Eq InsertableCardType
 derive instance eqInsertableCardIOType ∷ Eq InsertableCardIOType
@@ -94,39 +94,42 @@ cardsThatTakeInput io =
   map fst $ Array.filter (contains io ∘ snd) inputs
 
 type Path =
-  { c :: Array InsertableCardType, io :: Array InsertableCardIOType, f :: Boolean }
+  { c ∷ Array InsertableCardType, io ∷ Array InsertableCardIOType, f ∷ Boolean }
 
-purePath :: InsertableCardIOType -> Path
+purePath ∷ InsertableCardIOType → Path
 purePath io =
   { c: [], io: [io], f: false }
 
-cardPathsFromPaths :: Array Path -> Array (Array InsertableCardType)
+cardPathsFromPaths ∷ Array Path → Array (Array InsertableCardType)
 cardPathsFromPaths = map _.c
 
-allPathsFinished :: Array Path -> Boolean
+allPathsFinished ∷ Array Path → Boolean
 allPathsFinished = Foldable.all _.f
 
-pathsBetween :: Maybe InsertableCardType -> InsertableCardType -> Array Path
+cardPathsBetween ∷ Maybe InsertableCardType → InsertableCardType -> Array (Array InsertableCardType)
+cardPathsBetween from = cardPathsFromPaths ∘ pathsBetween from
+
+pathsBetween ∷ Maybe InsertableCardType → InsertableCardType → Array Path
 pathsBetween fromCard toCard =
   Array.concat
     $ pathsBetweenIO
         <$> maybe [] Array.singleton (maybe (Just None) outputFor fromCard)
         <*> inputsFor toCard
 
-cardPathNeeded :: Array (Array InsertableCardType) -> Boolean
+cardPathNeeded ∷ Array (Array InsertableCardType) → Boolean
 cardPathNeeded cardPaths =
   not $ Array.null cardPaths || [] `Foldable.elem` cardPaths
 
-pathsBetweenIO :: InsertableCardIOType -> InsertableCardIOType -> Array Path
+pathsBetweenIO ∷ InsertableCardIOType → InsertableCardIOType → Array Path
 pathsBetweenIO fromIO toIO =
   go $ [ purePath toIO ]
   where
-  go :: Array Path -> Array Path
+  go ∷ Array Path → Array Path
   go paths | allPathsFinished paths = paths
   go paths | otherwise =
     go $ Array.concat $ expandPath fromIO <$> paths
 
-expandPath :: InsertableCardIOType -> Path -> Array Path
+expandPath ∷ InsertableCardIOType → Path → Array Path
 expandPath fromIO initialPath | initialPath.f =
   [ initialPath ]
 expandPath fromIO initialPath | maybe true (eq fromIO) (Array.head initialPath.io) =
@@ -134,13 +137,13 @@ expandPath fromIO initialPath | maybe true (eq fromIO) (Array.head initialPath.i
 expandPath fromIO initialPath | otherwise =
   maybe [] f $ Array.head initialPath.io
   where
-  f :: InsertableCardIOType -> Array Path
+  f ∷ InsertableCardIOType → Array Path
   f initialIO = Array.concat $ g <$> (cardsThatOutput initialIO)
 
-  g :: InsertableCardType -> Array Path
+  g ∷ InsertableCardType → Array Path
   g card = h card `Array.mapMaybe` (inputsFor card)
 
-  h :: InsertableCardType -> InsertableCardIOType -> Maybe Path
+  h ∷ InsertableCardType → InsertableCardIOType → Maybe Path
   h card io | io `Foldable.elem` initialPath.io = Nothing
   h card io =
     Just { c: pathCards, io: pathIO, f: pathFinished }
@@ -149,18 +152,50 @@ expandPath fromIO initialPath | otherwise =
     pathIO = Array.cons io initialPath.io
     pathCards = Array.cons card initialPath.c
 
-fromPort :: Port -> InsertableCardIOType
+fromPort ∷ Port → InsertableCardIOType
 fromPort =
   case _ of
-    Port.DownloadOptions _ -> Download
-    Port.VarMap _ -> Variables
-    Port.SlamDown _ -> Markdown
-    Port.ChartOptions _ -> Chart
-    Port.TaggedResource _ -> Data
-    Port.Draftboard -> Draftboard
-    _ -> None
+    Port.Chart _ → Chart
+    Port.DownloadOptions _ → Download
+    Port.Draftboard → Draftboard
+    Port.SlamDown _ → Markdown
+    Port.TaggedResource _ → Data
+    Port.VarMap _ → Variables
+    _ → None
 
---fromCardType :: CardType -> Maybe InsertableCardType
---fromCardType =
---  case _ of
+toCardType ∷ InsertableCardType → CardType
+toCardType =
+  case _ of
+    CacheCard → CardType.Cache
+    DraftboardCard → CardType.Draftboard
+    OpenCard → CardType.Open
+    QueryCard → CardType.Ace CardType.SQLMode
+    SearchCard → CardType.Search
+    SetupChartCard → CardType.ChartOptions
+    SetupDownloadCard → CardType.DownloadOptions
+    SetupMarkdownCard → CardType.Ace CardType.MarkdownMode
+    SetupVariablesCard → CardType.Variables
+    ShowChartCard → CardType.Chart
+    ShowDownloadCard → CardType.Download
+    ShowMarkdownCard → CardType.Markdown
+    TableCard → CardType.Table
+    TroubleshootCard → CardType.Troubleshoot
 
+fromCardType ∷ CardType → Maybe InsertableCardType
+fromCardType =
+  case _ of
+    CardType.Cache → Just CacheCard
+    CardType.Draftboard → Just DraftboardCard
+    CardType.Open → Just OpenCard
+    CardType.Ace CardType.SQLMode → Just QueryCard
+    CardType.Search → Just SearchCard
+    CardType.ChartOptions → Just SetupChartCard
+    CardType.DownloadOptions → Just SetupDownloadCard
+    CardType.Ace CardType.MarkdownMode → Just SetupMarkdownCard
+    CardType.Variables → Just SetupVariablesCard
+    CardType.Chart → Just ShowChartCard
+    CardType.Download → Just ShowDownloadCard
+    CardType.Markdown → Just ShowMarkdownCard
+    CardType.Table → Just TableCard
+    CardType.Troubleshoot → Just TroubleshootCard
+    _ -> Nothing

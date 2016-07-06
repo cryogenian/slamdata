@@ -39,6 +39,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType)
 import SlamData.Workspace.Card.Next.Component.State (State, _message, _types, initialState)
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.InsertableCardType as InsertableCardType
 
 type NextHTML = H.ComponentHTML QueryP
 type NextDSL = H.ComponentDSL State QueryP Slam
@@ -102,13 +103,8 @@ eval = coproduct cardEval nextEval
 
 cardEval :: CC.CardEvalQuery ~> NextDSL
 cardEval = case _ of
-  CC.EvalCard value output next → do
-    case value.input of
-      Nothing →
-        H.set initialState
-      Just port →
-        updatePort port
-    pure next
+  CC.EvalCard value output next →
+    updateTypes value.input $> next
   CC.Save k →
     pure $ k Card.NextAction
   CC.Load _ next →
@@ -120,45 +116,14 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-updatePort ∷ Port.Port → NextDSL Unit
-updatePort = case _ of
-  Port.Blocked →
-    H.modify
-      $ _message ?~ "There are no available next actions"
-  Port.CardError _ →
-    H.modify
-      $ _message ?~ "There are no available next actions (parent cards have errors)"
-  Port.DownloadOptions _ →
-    H.modify
-      $ (_types .~ [ CT.Download ])
-      ∘ (_message .~ Nothing)
-  Port.VarMap _ →
-    H.modify
-      $ (_types .~ [ CT.Ace CT.SQLMode, CT.Troubleshoot ])
-      ∘ (_message .~ Nothing)
-  Port.SlamDown _ →
-    H.modify
-      $ (_types .~ [ CT.Markdown ])
-      ∘ (_message .~ Nothing)
-  Port.Chart _ →
-    H.modify
-      $ (_types .~ [ CT.Chart ])
-      ∘ (_message .~ Nothing)
-  Port.TaggedResource _ →
-    H.modify
-      $ (_types .~
-           [ CT.Table
-           , CT.DownloadOptions
-           , CT.Search
-           , CT.Ace CT.SQLMode
-           , CT.ChartOptions
-           , CT.Cache
-           ])
-      ∘ (_message .~ Nothing)
-  Port.Draftboard →
-    H.modify
-      $ (_types .~ [ ])
-      ∘ (_message .~ Nothing)
+updateTypes ∷ Maybe Port.Port → NextDSL Unit
+updateTypes port =
+  H.modify $ (_types .~ cardsThatAcceptPort port)
+  where
+  cardsThatAcceptPort =
+    map InsertableCardType.toCardType
+      ∘ InsertableCardType.cardsThatTakeInput
+      ∘ maybe InsertableCardType.None InsertableCardType.fromPort
 
 nextEval :: Query ~> NextDSL
 nextEval (AddCard _ next) = pure next
