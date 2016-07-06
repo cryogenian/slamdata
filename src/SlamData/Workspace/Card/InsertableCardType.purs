@@ -111,7 +111,8 @@ allPathsFinished ∷ Array Path → Boolean
 allPathsFinished = Foldable.all _.f
 
 cardPathsBetween ∷ InsertableCardIOType → InsertableCardType -> Array (Array InsertableCardType)
-cardPathsBetween fromIO = cardPathsFromPaths ∘ pathsBetween fromIO
+cardPathsBetween fromIO toCard =
+  Array.filter (not ∘ Foldable.elem toCard) $ cardPathsFromPaths $ pathsBetween fromIO toCard
 
 pathsBetween ∷ InsertableCardIOType → InsertableCardType → Array Path
 pathsBetween fromIO toCard =
