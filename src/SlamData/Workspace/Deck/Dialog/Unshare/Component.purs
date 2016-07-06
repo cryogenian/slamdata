@@ -186,6 +186,7 @@ render state =
             ⊕ (if SM.isEmpty state.userPermissions
                   ∧ SM.isEmpty state.groupPermissions
                   ∧ Arr.null state.tokenPermissions
+                  ∧ not state.errored
                  then
                    [ HH.p_ [ HH.text "This deck hasn't been shared with anyone." ] ]
                  else [ ]
