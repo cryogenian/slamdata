@@ -76,6 +76,13 @@ _secret = lens (_.secret) (_{secret = _})
 _state ∷ ∀ r. LensP {state ∷ (Maybe PermissionState)|r} (Maybe PermissionState)
 _state = lens (_.state) (_{state = _})
 
+_actions
+  ∷ ∀ r
+  . LensP
+      {actions ∷ Map.Map QTA.PermissionId QTA.ActionR|r}
+      (Map.Map QTA.PermissionId QTA.ActionR)
+_actions = lens (_.actions) (_{actions = _})
+
 type State =
   { userPermissions ∷ SM.StrMap Permission
   , tokenPermissions ∷ Array TokenPermission
@@ -179,8 +186,9 @@ render state =
             ⊕ (if SM.isEmpty state.userPermissions
                   ∧ SM.isEmpty state.groupPermissions
                   ∧ Arr.null state.tokenPermissions
+                  ∧ not state.errored
                  then
-                   [ HH.p_ [ HH.text "This deck has no shared permissions" ] ]
+                   [ HH.p_ [ HH.text "This deck hasn't been shared with anyone." ] ]
                  else [ ]
               )
         ]
@@ -202,21 +210,21 @@ render state =
         [ HH.div
             [ HP.classes
                 $ [ B.alert, B.alertDanger ]
-                ⊕ (if somethingErrored then [ ] else [ B.hidden ])
+                ⊕ (if state.errored ∨ somethingErrored then [ ] else [ B.hidden ])
             ]
             [ HH.text
-                $ "This action couldn't be performed. "
-                ⊕ "Please check your network connection and try again"
+                $ if state.errored
+                  then
+                    "Sharing information is unavailable. To access or change the "
+                    ⊕ "sharing information for this deck please check your network connection "
+                    ⊕ "and try again."
+
+                  else
+                    "This action couldn't be performed. "
+                    ⊕ "Please check your network connection and try again."
+
             ]
-        , HH.div
-            [ HP.classes
-                $ [ B.alert, B.alertDanger ]
-                ⊕ (if state.errored then [ ] else [ B.hidden ])
-            ]
-            [ HH.text
-                $ "Couldn't share/unshare deck. "
-                ⊕ "Please check your network connection and try again"
-            ]
+
         , HH.button
             [ HE.onClick (HE.input_ Dismiss)
             , HP.buttonType HP.ButtonButton
@@ -225,7 +233,10 @@ render state =
             ]
             [ HH.text "Done" ]
         ]
+
     ]
+
+
 
 renderUserOrGroup ∷ (String × Permission) → Array HTML
 renderUserOrGroup (name × perm) =
@@ -370,6 +381,7 @@ eval (SelectElement el next) =
   next <$ H.fromEff (select el)
 eval (PermissionResumeChanged name string next) = next <$ do
   state ← H.get
+  H.modify (_{errored = false})
   let
     mbUserPerms = SM.lookup name state.userPermissions
     mbGroupPerms = SM.lookup name state.groupPermissions
@@ -377,21 +389,36 @@ eval (PermissionResumeChanged name string next) = next <$ do
     newResume | string ≡ "view" = View
               | otherwise = Edit
 
+    oldResume | string ≡ "view" = Edit
+              | otherwise = View
+
   for_ mbUserPerms \perms → do
     H.modify
-      $ _userPermissions ∘ ix name ∘ _state ?~ Modifying
-    changePermissionResumeForUser name state.deckPath newResume perms
-    H.modify
-      $ (_userPermissions ∘ ix name ∘ _resume .~ newResume)
-      ∘ (_userPermissions ∘ ix name ∘ _state .~ Nothing)
+      $ (_userPermissions ∘ ix name ∘ _state ?~ Modifying)
+      ∘ (_userPermissions ∘ ix name ∘ _resume .~ newResume)
+    mbLeftPid ← changePermissionResumeForUser name state.deckPath newResume perms
+    H.modify case mbLeftPid of
+      Nothing →
+        (_userPermissions ∘ ix name ∘ _state .~ Nothing)
+      Just leftPids →
+        (_userPermissions ∘ ix name ∘ _state ?~ ModifyError)
+        ∘ (_userPermissions ∘ ix name ∘ _actions .~ leftPids)
+        ∘ (_userPermissions ∘ ix name ∘ _resume .~ oldResume)
+
 
   for_ mbGroupPerms \perms → do
     H.modify
-      $ _groupPermissions ∘ ix name ∘ _state ?~ Modifying
-    changePermissionResumeForGroup name state.deckPath newResume perms
-    H.modify
-      $ (_groupPermissions ∘ ix name ∘ _resume .~ newResume)
-      ∘ (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
+      $ (_groupPermissions ∘ ix name ∘ _state ?~ Modifying)
+      ∘ (_groupPermissions ∘ ix name ∘ _resume .~ newResume)
+
+    mbLeftPid ← changePermissionResumeForGroup name state.deckPath newResume perms
+    H.modify case mbLeftPid of
+      Nothing →
+        (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
+      Just leftPids →
+        (_groupPermissions ∘ ix name ∘ _state ?~ ModifyError)
+        ∘ (_groupPermissions ∘ ix name ∘ _actions .~ leftPids)
+        ∘ (_groupPermissions ∘ ix name ∘ _resume .~ oldResume)
 
 
 eval (UnshareToken tokenId next) = next <$ do
@@ -414,67 +441,103 @@ eval (UnshareToken tokenId next) = next <$ do
 
 eval (Unshare name next) = next <$ do
   state ← H.get
+  H.modify (_{errored = false})
   let
     mbUserPerms = SM.lookup name state.userPermissions
     mbGroupPerms = SM.lookup name state.groupPermissions
 
   for_ mbUserPerms \userPerms → do
     H.modify $ _userPermissions ∘ ix name ∘ _state ?~ Unsharing
-    deletePermission userPerms.actions
+    leftPids ← deletePermission userPerms.actions
     H.modify
-      $ (_userPermissions %~ SM.delete name)
-      ∘ (_userPermissions ∘ ix name ∘ _state .~ Nothing)
+      if Map.isEmpty leftPids
+        then
+        (_userPermissions %~ SM.delete name)
+        ∘ (_userPermissions ∘ ix name ∘ _state .~ Nothing)
+        else
+        (_userPermissions ∘ ix name ∘ _actions .~ leftPids)
+        ∘ (_userPermissions ∘ ix name ∘ _state ?~ RevokeError)
+
 
   for_ mbGroupPerms \groupPerms → do
     H.modify $ _groupPermissions ∘ ix name ∘ _state ?~ Unsharing
-    deletePermission groupPerms.actions
+    leftPids ← deletePermission groupPerms.actions
     H.modify
-      $ (_groupPermissions %~ SM.delete name)
-      ∘ (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
+      if Map.isEmpty leftPids
+        then
+        (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
+        ∘ (_groupPermissions %~ SM.delete name)
+        else
+        (_groupPermissions ∘ ix name ∘ _actions .~ leftPids)
+        ∘ (_groupPermissions ∘ ix name ∘ _state ?~ RevokeError)
 
-slamUnit ∷ Slam Unit
-slamUnit = pure unit
 
 changePermissionResumeForUser
-  ∷ String → DirPath → ShareResume → Permission → DSL Unit
+  ∷ String
+  → DirPath
+  → ShareResume
+  → Permission
+  → DSL (Maybe (Map.Map QTA.PermissionId QTA.ActionR))
 changePermissionResumeForUser name deckPath res perm = do
-  deletePermission perm.actions
-  let
-    actions = Model.sharingActions deckPath res
-    shareRequest =
-      { users: [ QTA.UserId name ]
-      , groups: [ ]
-      , actions
-      }
+  leftPids ← deletePermission perm.actions
+  if not $ Map.isEmpty leftPids
+    then
+    pure $ Just leftPids
+    else do
+    let
+      actions = Model.sharingActions deckPath res
+      shareRequest =
+        { users: [ QTA.UserId name ]
+        , groups: [ ]
+        , actions
+        }
+    shareRes ← Q.sharePermission shareRequest
+    case shareRes of
+      Left _ → pure $ Just Map.empty
+      Right _ → pure Nothing
 
-  Q.sharePermission shareRequest
-  pure unit
 
 changePermissionResumeForGroup
-  ∷ String → DirPath → ShareResume → Permission → DSL Unit
-changePermissionResumeForGroup name deckPath res perm = do
-  deletePermission perm.actions
-  let
-    actions = Model.sharingActions deckPath res
-    shareRequest =
-      parseFilePath name
-      <#> \x → { users: [ ]
-               , groups: [ x ]
-               , actions
-               }
+  ∷ String
+  → DirPath
+  → ShareResume
+  → Permission
+  → DSL (Maybe (Map.Map QTA.PermissionId QTA.ActionR))
+changePermissionResumeForGroup name deckPath res perm =
+  case parseFilePath name of
+    Nothing → pure $ Just perm.actions
+    Just groupPath → do
+      leftPids ← deletePermission perm.actions
+      if not $ Map.isEmpty leftPids
+        then
+        pure $ Just leftPids
+        else do
+        let
+          actions = Model.sharingActions deckPath res
+          shareRequest =
+            { users: [ ]
+            , groups: [ groupPath ]
+            , actions
+            }
+        shareRes ← Q.sharePermission shareRequest
+        case shareRes of
+          Left _ → pure $ Just Map.empty
+          Right _ → pure Nothing
 
-  for_ shareRequest \x → do
-    Q.sharePermission x
-    pure unit
-
-deletePermission ∷ Map.Map QTA.PermissionId QTA.ActionR → DSL Unit
+deletePermission
+  ∷ Map.Map QTA.PermissionId QTA.ActionR
+  → DSL (Map.Map QTA.PermissionId QTA.ActionR)
 deletePermission permissionMap = do
   results ←
-    for (Map.keys permissionMap) Q.deletePermission
+    for (Map.toList permissionMap) \(pid × act) → do
+      lmap (const (pid × act))
+        <$> Q.deletePermission pid
 
-  if F.any isLeft results
-    then Debug.Trace.traceAnyA "errored"
-    else Debug.Trace.traceAnyA "ok"
+  pure $ foldMap foldFn results
+
+  where
+  foldFn (Left (pid × act)) = Map.singleton pid act
+  foldFn _ = Map.empty
 
 type AdjustedPermissions =
   { users ∷ SM.StrMap Permission
