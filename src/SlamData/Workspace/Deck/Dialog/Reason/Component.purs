@@ -63,12 +63,15 @@ comp = H.component { render, eval } where
     renderCardPathsMessage =
       case Array.length state.cardPaths of
         0 → []
-        1 → [ HH.text $ "To insert a " ++ CardType.cardName state.attemptedCardType ++ " card try adding these cards in order first." ]
-        n → [ HH.text $ "To insert a " ++ CardType.cardName state.attemptedCardType ++ " card try adding one of these sets of cards in order first." ]
+        1 → [ HH.text $ "To be able to insert a " ++ CardType.cardName state.attemptedCardType ++ " card here you can add these cards in order first." ]
+        n → [ HH.text $ "To insert a " ++ CardType.cardName state.attemptedCardType ++ " card here you can add one of these sets of cards in order first." ]
 
-    renderCardPath cardPath = HH.div_ $ map renderCard cardPath
+    renderCardPath cardPath = HH.div [ HP.classes [ HH.className "deck-dialog-cardpath" ] ] $ map renderCard cardPath
 
-    renderCard card = HH.text ""
+    renderCard card =
+      HH.div
+        [ HP.classes [HH.className "deck-dialog-cardpath-card" ] ]
+        [ HH.text $ CardType.cardName card ]
 
   eval ∷ Natural Query (H.ComponentDSL State Query g)
   eval (Dismiss next) = pure next
