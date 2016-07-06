@@ -65,8 +65,8 @@ routeSignal driver =
   routeConsumer old = do
     new ← await
     case new of
-      WorkspaceRoute path deckId action varMap → lift do
-        driver $ Workspace.toWorkspace $ Workspace.SetGlobalVarMap varMap
+      WorkspaceRoute path deckId action varMaps → lift do
+        driver $ Workspace.toWorkspace $ Workspace.SetVarMaps varMaps
 
         case old of
           Just (WorkspaceRoute path' deckId' action' _)

@@ -1,3 +1,19 @@
+{-
+Copyright 2016 SlamData, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-}
+
 module SlamData.Workspace.Deck.Dialog.Export.Component where
 
 import SlamData.Prelude
@@ -7,8 +23,10 @@ import Control.UI.Browser (select, locationString)
 import Control.UI.ZClipboard as Z
 
 import Data.Foldable as F
-import Data.StrMap as SM
+import Data.Map as Map
 import Data.Path.Pathy as Pathy
+import Data.StrMap as SM
+import Data.String.Regex as RX
 
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
@@ -26,18 +44,20 @@ import OIDCCryptUtils as OIDC
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Render.CSS as Rc
-import SlamData.Workspace.Routing (mkWorkspaceHash)
-import SlamData.Workspace.Action as WA
-import SlamData.Workspace.AccessType as AT
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.Common (glyph, fadeWhen)
+import SlamData.Render.CSS as Rc
+import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Action as WA
+import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
+import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL, encodeVarMaps)
 
 import Quasar.Advanced.Types as QTA
 
+import Utils (prettyJson)
 import Utils.Path (DirPath)
 
 data PresentAs = IFrame | URI
@@ -48,7 +68,7 @@ type DSL = H.ComponentDSL State Query Slam
 
 type State =
   { presentingAs ∷ PresentAs
-  , varMap ∷ Port.VarMap
+  , varMaps ∷ Map.Map DeckId Port.VarMap
   , sharingInput ∷ SharingInput
   , permToken ∷ Maybe QTA.TokenR
   , canRevoke ∷ Boolean
@@ -65,7 +85,7 @@ type State =
 initialState ∷ SharingInput → State
 initialState sharingInput =
   { presentingAs: URI
-  , varMap: SM.empty
+  , varMaps: Map.empty
   , sharingInput
   , permToken: Nothing
   , canRevoke: false
@@ -473,20 +493,35 @@ renderCopyVal locString state
              ⊕ ";\n"
              ⊕ "  var queryString = \"?permissionTokens=\" + slamdataTokenHash;\n"
         else "")
+    ⊕ varMaps.obj
     ⊕ "  var uri = \""
       ⊕ locString
       ⊕ "/"
       ⊕ Config.workspaceUrl
       ⊕ (if state.isLogged then "\"\n    + queryString\n    + \"" else "")
-      ⊕ mkWorkspaceHash state.sharingInput.deckPath (WA.Load AT.ReadOnly) state.varMap
+      ⊕ mkWorkspaceHash state.sharingInput.deckPath (WA.Load AT.ReadOnly) Map.empty
+      ⊕ varMaps.param
       ⊕ "\";\n"
-    ⊕ "  var iframe = \"<iframe width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" src=\\\"\" + uri + \"\\\"></iframe>\""
+    ⊕ "  var iframe = \"<iframe width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" src=\\\"\" + uri + \"\\\"></iframe>\";\n"
     ⊕ "  document.writeln(iframe);\n"
     ⊕ "})();\n"
     ⊕ "</script>"
 
+    where
+    varMaps
+      | F.all SM.isEmpty state.varMaps = { obj: "", param: "" }
+      | otherwise =
+          { obj: "  var varMaps = " ++ renderVarMaps state.varMaps ++ ";\n"
+          , param: "/?varMaps=\" + encodeURIComponent(JSON.stringify(varMaps)) + \""
+          }
+
+renderVarMaps ∷ Map.Map DeckId Port.VarMap → String
+renderVarMaps = indent <<< prettyJson <<< encodeVarMaps <<< varMapsForURL
+  where
+  indent = RX.replace (RX.regex "(\n\r?)" (RX.noFlags { global = true })) "$1  "
+
 renderURL ∷ String → State → String
-renderURL locationString state@{sharingInput, varMap, permToken, isLogged} =
+renderURL locationString state@{sharingInput, varMaps, permToken, isLogged} =
   locationString
   ⊕ "/"
   ⊕ Config.workspaceUrl
@@ -495,5 +530,4 @@ renderURL locationString state@{sharingInput, varMap, permToken, isLogged} =
       (do guard isLogged
           token ← permToken
           token.secret)
-
-  ⊕ mkWorkspaceHash sharingInput.deckPath (WA.Load AT.ReadOnly) varMap
+  ⊕ mkWorkspaceHash sharingInput.deckPath (WA.Load AT.ReadOnly) Map.empty

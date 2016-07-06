@@ -18,6 +18,8 @@ module SlamData.Workspace.Component.Query where
 
 import SlamData.Prelude
 
+import Data.Map as Map
+
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
 
@@ -30,7 +32,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import Utils.Path as UP
 
 data Query a
-  = SetGlobalVarMap Port.VarMap a
+  = SetVarMaps (Map.Map DeckId Port.URLVarMap) a
   | DismissAll a
   | Reset UP.DirPath a
   | Init a

@@ -29,6 +29,8 @@ module SlamData.Workspace.Deck.Dialog.Component
 
 import SlamData.Prelude
 
+import Data.Map as Map
+
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, (:>), cpL, cpR)
 import Halogen.HTML.Indexed as HH
@@ -36,22 +38,22 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Component.Utils (raise')
 
 import SlamData.Dialog.Error.Component as Error
-import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Card.CardType (CardType)
-import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
-import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
-import SlamData.Workspace.Deck.Dialog.Export.Component as Export
-import SlamData.Workspace.Deck.Dialog.Share.Component as Share
-import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
-import SlamData.Workspace.Deck.Dialog.Reason.Component as Reason
-import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Effects (Slam)
-
+import SlamData.Workspace.Card.CardType (CardType)
+import SlamData.Workspace.Card.Port.VarMap as Port
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Dialog.Confirm.Component as Confirm
+import SlamData.Workspace.Deck.Dialog.Export.Component as Export
+import SlamData.Workspace.Deck.Dialog.Reason.Component as Reason
+import SlamData.Workspace.Deck.Dialog.Rename.Component as Rename
+import SlamData.Workspace.Deck.Dialog.Share.Component as Share
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
+import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
 
 data Dialog
   = Error String
-  | Embed SharingInput Port.VarMap
-  | Publish SharingInput Port.VarMap
+  | Embed SharingInput (Map.Map DeckId Port.VarMap)
+  | Publish SharingInput (Map.Map DeckId Port.VarMap)
   | Reason CardType String (Array (Array CardType))
   | Share SharingInput
   | Unshare SharingInput
@@ -186,13 +188,13 @@ render state =
       , initialState: Error.State str
       }
 
-  dialog (Embed deckPath varMap) =
+  dialog (Embed deckPath varMaps) =
     HH.slot' cpEmbed unit \_ →
       { component: Export.comp
       , initialState:
           (Export.initialState deckPath)
             { presentingAs = Export.IFrame
-            , varMap = varMap
+            , varMaps = varMaps
             }
       }
 
@@ -206,13 +208,13 @@ render state =
           , confirm: "Delete"
           }
       }
-  dialog (Publish deckPath varMap) =
+  dialog (Publish deckPath varMaps) =
     HH.slot' cpPublish unit \_ →
       { component: Export.comp
       , initialState:
           (Export.initialState deckPath)
             { presentingAs = Export.URI
-            , varMap = varMap
+            , varMaps = varMaps
             }
       }
   dialog (Share deckPath) =
@@ -273,7 +275,6 @@ exportPeek ∷ ∀ a. Export.Query a → DSL Unit
 exportPeek (Export.Dismiss _) =
   raise' $ Dismiss unit
 exportPeek _ = pure unit
-
 
 sharePeek ∷ ∀ a. Share.Query a → DSL Unit
 sharePeek (Share.Dismiss _) =

@@ -31,20 +31,21 @@ import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Promise as Pr
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-import Control.UI.Browser (newTab, locationObject, locationString, setHref)
+import Control.Monad.Eff.Ref as Ref
+import Control.UI.Browser (locationObject, setHref, newTab)
 
-import Data.Array ((:))
 import Data.Array as Array
 import Data.Foldable (find, any)
-import Data.Lens as Lens
 import Data.Lens ((.~), (%~), (^?), (?~))
+import Data.Lens as Lens
 import Data.Lens.Prism.Coproduct (_Right)
+import Data.List ((:))
 import Data.List as L
+import Data.Map as Map
 import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as Set
-import Data.Map as Map
 import Data.Time (Milliseconds(..))
 
 import DOM.HTML.Location as Location
@@ -55,7 +56,6 @@ import Halogen.Component.Utils (raise', subscribeToBus')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Indexed as HH
 
-import SlamData.Config (workspaceUrl)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Workspace.AccessType as AT
@@ -73,6 +73,7 @@ import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
+import SlamData.Workspace.Card.Variables.Eval as Variables
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
@@ -102,7 +103,7 @@ render ∷ DeckOptions → DeckComponent → DCS.State → DeckHTML
 render opts deckComponent st =
   -- HACK: required so that nested finalizers get run. Since this is run inside
   -- of a separate runUI instance with Deck.Component.Nested, they will not
-  -- get invoked by normal machinery.
+  -- get invoked by normal machinery. -nf
   if st.finalized
   then HH.div_ []
   else case st.stateMode of
@@ -193,12 +194,9 @@ eval opts@{ wiring } = case _ of
         ∘ (DCS._pendingCard .~ Nothing)
       queuePendingCard wiring pending
     pure next
-  SetGlobalVarMap m next → do
-    st ← H.get
-    when (m ≠ st.globalVarMap) do
-      H.modify $ DCS._globalVarMap .~ m
-      traverse_ runCard $ DCS.variablesCards st
-    pure next
+  GetVarMaps k → do
+    deckPath ← H.gets DCS.deckPath
+    k <$> getVarMaps deckPath wiring
   FlipDeck next → do
     updateBackSide
     H.modify
@@ -216,16 +214,16 @@ eval opts@{ wiring } = case _ of
     pure next
   ZoomIn next → do
     st ← H.get
-    let deckHash = mkWorkspaceHash (DCS.deckPath st) (WA.Load opts.accessType) st.globalVarMap
+    varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+    let deckHash = mkWorkspaceHash (DCS.deckPath st) (WA.Load opts.accessType) varMaps
     H.fromEff $ locationObject >>= Location.setHash deckHash
     pure next
   ZoomOut next → do
     st ← H.get
     case st.parent of
       Just (Tuple deckId _) → do
-        let
-          deckHash =
-            mkWorkspaceHash (DCS.deckPath' st.path deckId) (WA.Load opts.accessType) st.globalVarMap
+        varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+        let deckHash = mkWorkspaceHash (DCS.deckPath' st.path deckId) (WA.Load opts.accessType) varMaps
         H.fromEff $ locationObject >>= Location.setHash deckHash
       Nothing →
         void $ H.fromEff $ setHref $ parentURL $ Left st.path
@@ -256,11 +254,13 @@ eval opts@{ wiring } = case _ of
       H.fromAff $ Bus.write (DeckFocused st.id) wiring.messaging
     pure next
   HandleMessage msg next → do
+    st <- H.get
     case msg of
-      DeckFocused focusedDeckId → do
-        st <- H.get
+      DeckFocused focusedDeckId →
         when (st.id /= focusedDeckId && st.focused) $
           H.modify (DCS._focused .~ false)
+      URLVarMapsUpdated →
+        traverse_ runCard $ DCS.variablesCards st
     pure next
   GetModel k →
     k <$> getDeckModel
@@ -268,6 +268,33 @@ eval opts@{ wiring } = case _ of
   where
   getBoundingClientWidth =
     H.fromEff ∘ map _.width ∘ getBoundingClientRect
+
+-- | Accumulates all `VarMap`s within the deck, including `VarMaps` from any
+-- | child decks within board cards.
+getVarMaps ∷ DirPath → Wiring → DeckDSL (Map.Map DeckId Port.VarMap)
+getVarMaps path wiring =
+  Map.fromList <$> (Array.foldM goCard L.Nil =<< H.gets _.modelCards)
+  where
+  goCard
+    ∷ L.List (DeckId × Port.VarMap)
+    → DeckId × Card.Model
+    → DeckDSL (L.List (DeckId × Port.VarMap))
+  goCard acc (deckId × model) =
+    case model.model of
+      Card.Variables vm →
+        pure $ (deckId × Variables.eval deckId Map.empty vm) : acc
+      Card.Draftboard dbm →
+        L.foldM goDeck acc (Map.keys dbm.decks)
+      _ ->
+        pure acc
+  goDeck
+    ∷ L.List (DeckId × Port.VarMap)
+    → DeckId
+    → DeckDSL (L.List (DeckId × Port.VarMap))
+  goDeck acc deckId =
+    getDeck path deckId wiring.decks >>= case _ of
+      Left _ → pure acc -- TODO: deck failed to load... so notify user? ignore?
+      Right deck → Array.foldM goCard acc (map (deckId × _) deck.cards)
 
 peek ∷ ∀ a. DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek opts (H.ChildF s q) =
@@ -304,7 +331,7 @@ peekBackSide opts (Back.DoAction action _) =
           (\accum → case _ of
               Cache cfp → accum { caches = cfp:accum.caches }
               Source sfp → accum { sources = sfp:accum.sources })
-          ({ deckPath, caches: [], sources: [] })
+          ({ deckPath, caches: L.Nil, sources: L.Nil })
           (fold additionalSources)
 
   in case action of
@@ -335,14 +362,16 @@ peekBackSide opts (Back.DoAction action _) =
       showDialog $ Dialog.Unshare sharingInput
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Embed → do
-      varMap ← H.gets _.globalVarMap
+      deckPath ← H.gets DCS.deckPath
       sharingInput ← getSharingInput
-      showDialog $ Dialog.Embed sharingInput varMap
+      varMaps ← getVarMaps deckPath opts.wiring
+      showDialog $ Dialog.Embed sharingInput varMaps
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish → do
-      varMap ← H.gets _.globalVarMap
+      deckPath ← H.gets DCS.deckPath
       sharingInput ← getSharingInput
-      showDialog $ Dialog.Publish sharingInput varMap
+      varMaps ← getVarMaps deckPath opts.wiring
+      showDialog $ Dialog.Publish sharingInput varMaps
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.DeleteDeck → do
       cards ← H.gets _.modelCards
@@ -359,12 +388,6 @@ peekBackSide opts (Back.DoAction action _) =
     Back.Unwrap decks →
       raise' $ H.action $ DoAction $ Unwrap decks
 peekBackSide _ _ = pure unit
-
-mkShareURL ∷ Port.VarMap → DeckDSL String
-mkShareURL varMap = do
-  loc ← H.fromEff locationString
-  path ← H.gets DCS.deckPath
-  pure $ loc ⊕ "/" ⊕ workspaceUrl ⊕ mkWorkspaceHash path (WA.Load AT.ReadOnly) varMap
 
 peekCards ∷ ∀ a. Wiring → CardSlot → CardQueryP a → DeckDSL Unit
 peekCards wiring (CardSlot cardId) = (const $ pure unit) ⨁ peekCardInner wiring cardId
@@ -557,7 +580,8 @@ runPendingCards opts source pendingCard pendingCards = do
         getCache (DCS.coordModelToCoord c) pendingCards >>= case _ of
           Just ev → pure ev
           Nothing → do
-            ev ← evalCard st.path st.globalVarMap input c
+            urlVarMaps ← H.fromEff $ Ref.readRef opts.wiring.urlVarMaps
+            ev ← evalCard st.path urlVarMaps input c
             putCardEval ev pendingCards
             putCardEval ev opts.wiring.cards
             pure ev
@@ -587,11 +611,11 @@ runInitialEval wiring = do
 -- | Evaluates a card given an input and model.
 evalCard
   ∷ DirPath
-  → Port.VarMap
+  → Map.Map DeckId Port.URLVarMap
   → Maybe (Pr.Promise Port)
   → DeckId × Card.Model
   → DeckDSL CardEval
-evalCard path globalVarMap input card = do
+evalCard path urlVarMaps input card = do
   output ← H.fromAff $ Pr.defer do
     input' ← for input Pr.wait
     case Card.modelToEval (snd card).model of
@@ -600,7 +624,7 @@ evalCard path globalVarMap input card = do
       Right cmd → do
         flip Eval.runEvalCard cmd
           { path
-          , globalVarMap
+          , urlVarMaps
           , cardCoord: DCS.coordModelToCoord card
           , input: input'
           }
@@ -695,16 +719,10 @@ runCardUpdates opts source steps = do
   updateCard st source pendingId loadedCards step = void do
     input ← for step.input (H.fromAff ∘ Pr.wait)
     output ← for step.output (H.fromAff ∘ Pr.wait)
-
+    urlVarMaps ← H.fromEff $ Ref.readRef opts.wiring.urlVarMaps
     let
       cardCoord = DCS.coordModelToCoord step.card
-
-      evalInput =
-        { path: st.path
-        , globalVarMap: st.globalVarMap
-        , input: input
-        , cardCoord
-        }
+      evalInput = { path: st.path, urlVarMaps, input, cardCoord }
       newSet = foldMap snd output
 
     H.modify $ DCS._additionalSources %~ Map.insert cardCoord newSet
@@ -772,7 +790,8 @@ saveDeck { accessType, wiring } coord = do
       Right _ → do
         when (st.level ≡ DL.root) $ do
           path' ← H.gets DCS.deckPath
-          let deckHash = mkWorkspaceHash path' (WA.Load accessType) st.globalVarMap
+          varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+          let deckHash = mkWorkspaceHash path' (WA.Load accessType) varMaps
           H.fromEff $ locationObject >>= Location.setHash deckHash
 
   saveMirroredCard st (deckId × card) =

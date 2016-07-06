@@ -34,7 +34,7 @@ module SlamData.Workspace.Card.Port
 import SlamData.Prelude
 
 import Data.Lens (PrismP, prism', TraversalP, wander)
-import SlamData.Workspace.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
+import SlamData.Workspace.Card.Port.VarMap (VarMap, URLVarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
 import SlamData.Workspace.Card.Chart.BuildOptions (BuildOptions)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Download.Model (DownloadOptions)

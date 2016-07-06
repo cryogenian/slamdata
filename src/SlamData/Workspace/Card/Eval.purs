@@ -30,23 +30,23 @@ import Data.Set as Set
 
 import Quasar.Types (SQL, FilePath)
 
-import SlamData.FileSystem.Resource as R
 import SlamData.Effects (SlamDataEffects)
+import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Variables.Model as Variables
+import SlamData.Workspace.Card.Cache.Eval as Cache
+import SlamData.Workspace.Card.ChartOptions.Eval as ChartE
+import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DO
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Markdown.Component.State.Core as MDS
 import SlamData.Workspace.Card.Markdown.Eval as MDE
 import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.Search.Interpret as Search
-import SlamData.Workspace.Card.ChartOptions.Eval as ChartE
-import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
+import SlamData.Workspace.Card.Variables.Eval as VariablesE
+import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
-import SlamData.Workspace.FormBuilder.Item.Model as FBI
 
 import Text.SlamSearch as SS
 import Text.Markdown.SlamDown as SD
@@ -117,24 +117,11 @@ evalCard input =
     ChartOptions model, _ →
       Port.Chart <$> ChartE.eval input model
     Variables model, _ →
-      pure $ Port.VarMap $ evalVariables input model
+      pure $ Port.VarMap $ VariablesE.eval (fst input.cardCoord) input.urlVarMaps model
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
       pure $ Port.DownloadOptions { resource, compress, options }
     e, i →
       EC.throwError $ "Card received unexpected input type; " <> show e <> " | " <> show i
-
-evalVariables
-  ∷ CET.CardEvalInput
-  → Variables.Model
-  → Port.VarMap
-evalVariables info model =
-  foldl alg SM.empty model.items
-  where
-    alg =
-      flip \{ name, fieldType, defaultValue } ->
-        maybe id (SM.insert name) $
-          SM.lookup name info.globalVarMap
-            <|> (FBI.defaultValueToVarMapValue fieldType =<< defaultValue)
 
 evalMarkdownForm
   ∷ ∀ m

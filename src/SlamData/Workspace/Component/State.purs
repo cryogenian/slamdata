@@ -18,7 +18,6 @@ module SlamData.Workspace.Component.State
   ( State
   , initialState
   , _accessType
-  , _globalVarMap
   , _loaded
   , _version
   , _path
@@ -29,10 +28,8 @@ module SlamData.Workspace.Component.State
 import SlamData.Prelude
 
 import Data.Lens (LensP, lens)
-import Data.StrMap as SM
 
 import SlamData.Workspace.AccessType (AccessType(..))
-import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
@@ -40,7 +37,6 @@ import Utils.Path (DirPath)
 
 type State =
   { accessType ∷ AccessType
-  , globalVarMap ∷ Port.VarMap
   , loaded ∷ Boolean
   , version ∷ Maybe String
   , path ∷ Maybe DirPath
@@ -51,7 +47,6 @@ type State =
 initialState ∷ Maybe String → State
 initialState version =
   { accessType: Editable
-  , globalVarMap: SM.empty
   , loaded: false
   , version
   , path: Nothing
@@ -61,9 +56,6 @@ initialState version =
 
 _accessType ∷ ∀ a r. LensP {accessType ∷ a|r} a
 _accessType = lens _.accessType _{accessType = _}
-
-_globalVarMap ∷ ∀ a r. LensP {globalVarMap ∷ a|r} a
-_globalVarMap = lens _.globalVarMap _{globalVarMap = _}
 
 _loaded ∷ ∀ a r. LensP {loaded ∷ a|r} a
 _loaded = lens _.loaded _{loaded = _}
