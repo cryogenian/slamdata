@@ -77,6 +77,9 @@ contains ∷ ∀ a. (Eq a) ⇒ a → Array a → Boolean
 contains x =
   isJust ∘ Array.elemIndex x
 
+takesInput ∷ InsertableCardIOType -> InsertableCardType -> Boolean
+takesInput io card = Foldable.elem card $ cardsThatTakeInput io
+
 inputsFor ∷ InsertableCardType → Array InsertableCardIOType
 inputsFor card =
   Array.concat $ map snd $ Array.filter (eq card ∘ fst) inputs

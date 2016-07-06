@@ -37,9 +37,9 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component.Query (QueryP, Query(..), _AddCardType)
-import SlamData.Workspace.Card.Next.Component.State (State, _message, _types, initialState)
+import SlamData.Workspace.Card.Next.Component.State (State, initialState, _input)
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.InsertableCardType as InsertableCardType
+import SlamData.Workspace.Card.InsertableCardType as ICT
 
 type NextHTML = H.ComponentHTML QueryP
 type NextDSL = H.ComponentDSL State QueryP Slam
@@ -55,16 +55,7 @@ nextCardComponent = CC.makeCardComponent
 
 render :: State → NextHTML
 render state =
-  case state.message of
-    Nothing →
-      HH.ul_
-        $ map nextButton state.types
-        ⊕ map disabledButton (CT.insertableCardTypes Arr.\\ state.types)
-
-    Just msg →
-      HH.div
-        [ HP.classes [ B.alert, B.alertInfo ] ]
-        [ HH.h4_ [ HH.text msg ] ]
+  HH.ul_ $ map nextButton CT.insertableCardTypes
   where
   cardTitle ∷ CT.CardType → String
   cardTitle cty = "Insert " ⊕ CT.cardName cty ⊕ " card"
@@ -79,24 +70,13 @@ render state =
           [ HP.title $ cardTitle cty
           , ARIA.label $ cardTitle cty
           , HE.onClick (HE.input_ (right ∘ AddCard cty))
+          , HP.disabled $ not $ takesInput state.input cty
           ]
           [ CT.cardGlyph cty
           , HH.p_ [ HH.text (CT.cardName cty) ]
           ]
       ]
 
-  disabledButton ∷ CT.CardType → NextHTML
-  disabledButton cty =
-    HH.li_
-      [ HH.button
-          [ HP.title $ disabledTitle cty
-          , ARIA.label $ disabledTitle cty
-          , HP.disabled true
-          ]
-          [ CT.cardGlyph cty
-          , HH.p_ [ HH.text (CT.cardName cty) ]
-          ]
-      ]
 
 eval :: QueryP ~> NextDSL
 eval = coproduct cardEval nextEval
@@ -104,7 +84,7 @@ eval = coproduct cardEval nextEval
 cardEval :: CC.CardEvalQuery ~> NextDSL
 cardEval = case _ of
   CC.EvalCard value output next →
-    updateTypes value.input $> next
+    H.modify (_input .~ value.input) $> next
   CC.Save k →
     pure $ k Card.NextAction
   CC.Load _ next →
@@ -116,14 +96,9 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-updateTypes ∷ Maybe Port.Port → NextDSL Unit
-updateTypes port =
-  H.modify $ (_types .~ cardsThatAcceptPort port)
-  where
-  cardsThatAcceptPort =
-    map InsertableCardType.toCardType
-      ∘ InsertableCardType.cardsThatTakeInput
-      ∘ maybe InsertableCardType.None InsertableCardType.fromPort
+takesInput ∷ Maybe Port.Port -> CT.CardType -> Boolean
+takesInput input =
+  maybe false (ICT.takesInput $ maybe ICT.None ICT.fromPort input) ∘ ICT.fromCardType
 
 nextEval :: Query ~> NextDSL
 nextEval (AddCard _ next) = pure next
