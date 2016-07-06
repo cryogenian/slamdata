@@ -142,7 +142,7 @@ render state =
     [ HH.h4_ [ HH.text "Unshare deck" ]
     , HH.div
         [ HP.classes
-            $ [ B.alert, B.alertInfo, HH.className "share-loadingxo" ]
+            $ [ B.alert, B.alertInfo, HH.className "share-loading" ]
             ⊕ if state.loading then [ ] else [ B.hidden ]
         ]
         [ HH.img [ HP.src "img/blue-spin.svg" ]
@@ -187,7 +187,7 @@ render state =
                   ∧ SM.isEmpty state.groupPermissions
                   ∧ Arr.null state.tokenPermissions
                  then
-                   [ HH.p_ [ HH.text "This deck has no shared permissions" ] ]
+                   [ HH.p_ [ HH.text "This deck hasn't been shared with anyone." ] ]
                  else [ ]
               )
         ]
@@ -212,13 +212,16 @@ render state =
                 ⊕ (if state.errored ∨ somethingErrored then [ ] else [ B.hidden ])
             ]
             [ HH.text
-                if state.errored
+                $ if state.errored
                   then
-                  "Couldn't share/unshare deck. "
-                  ⊕ "Please check your network connection and try again"
+                    "Sharing information is unavailable. To access or change the "
+                    ⊕ "sharing information for this deck please check your network connection "
+                    ⊕ "and try again."
+
                   else
-                  "This action couldn't be performed. "
-                  ⊕ "Please check your network connection and try again"
+                    "This action couldn't be performed. "
+                    ⊕ "Please check your network connection and try again."
+
             ]
 
         , HH.button
@@ -229,7 +232,10 @@ render state =
             ]
             [ HH.text "Done" ]
         ]
+
     ]
+
+
 
 renderUserOrGroup ∷ (String × Permission) → Array HTML
 renderUserOrGroup (name × perm) =

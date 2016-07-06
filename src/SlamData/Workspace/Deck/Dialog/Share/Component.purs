@@ -42,6 +42,7 @@ derive instance subjectTypeEq ∷ Eq SubjectType
 data ErrorType
   = Connection
   | Validation
+  | GroupList
 
 derive instance errorTypeEq ∷ Eq ErrorType
 
@@ -184,16 +185,19 @@ render state =
                              , HE.onValueChange (HE.input (ChangeSubjectType ∘ readSubjectType))
                              , HP.disabled state.submitting
                              ]
-                             [ HH.option
-                                 [ HP.value "user" ]
-                                 [ HH.text "User" ]
-                             , HH.option
-                                 [ HP.value "group" ]
-                                 [ HH.text "Group" ]
-                             , HH.option
+                             $ [ HH.option
+                                  [ HP.value "user" ]
+                                  [ HH.text "User" ]
+                               ]
+                             ⊕ (guard (not $ Arr.null state.groups)
+                                $>  HH.option
+                                      [ HP.value "group" ]
+                                      [ HH.text "Group" ]
+                               )
+                             ⊕ [ HH.option
                                  [ HP.value "token" ]
                                  [ HH.text "Token" ]
-                             ]
+                               ]
                          ]
                      ]
                  , HH.div [ HP.classes [ B.colXs6 ] ]
@@ -273,12 +277,20 @@ render state =
        $ [ HH.div
            [ HP.classes
                $ [ B.alert, B.alertDanger ]
-               ⊕ (if state.showError ∧ state.error ≡ Just Connection then [ ] else [ B.hidden ])
+               ⊕ (if state.showError
+                     ∧ (state.error ≡ Just Connection ∨ state.error ≡ Just GroupList)
+                    then [ ]
+                    else [ B.hidden ])
            , HE.onClick (HE.input_ DismissError)
            ]
            [ HH.text
-               $ "This action couldn't be performed. "
-               ⊕ "Please check your network connection and try again"
+               if state.error ≡ Just Connection
+               then
+                 "This action couldn't be performed. "
+                 ⊕ "Please check your network connection and try again"
+               else
+                 "Groups are unavailable. To share this deck with a group "
+                 ⊕ "please check your network connection and try again."
            ]
        , HH.div
            [ HP.classes
@@ -390,7 +402,9 @@ eval (Init next) = next <$ do
   res ← Q.groupInfo (rootDir </> file "")
   case res of
     Left _ →
-      showConnectionError
+      H.modify _{ error = Just GroupList
+                , showError = true
+                }
     Right grInfo →
       H.modify (_{groups = [rootFile] ⊕ grInfo.subGroups })
   H.modify (_{loading = false})
