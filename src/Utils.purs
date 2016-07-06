@@ -16,7 +16,10 @@ limitations under the License.
 
 module Utils where
 
-import Data.Maybe (Maybe(..))
+import Prelude
+import Data.Maybe (Maybe(..), maybe)
+import Data.Either (Either(..), either)
+import Data.Foldable (class Foldable, foldr)
 import Global (readFloat, isNaN)
 
 stringToNumber :: String -> Maybe Number
@@ -25,3 +28,16 @@ stringToNumber s =
   if isNaN n
   then Nothing
   else Just n
+
+singletonValue' :: ∀ a m. (Foldable m) ⇒ m a → Either Int (Maybe a)
+singletonValue' =
+  foldr f initial
+  where
+  f x (Right (Just _)) = Left 1
+  f x (Right Nothing) = Right $ Just x
+  f x (Left i) = Left $ i + 1
+  initial = Right Nothing
+
+singletonValue :: ∀ a m n. (Applicative m, Foldable n) ⇒ m a → (Int → m a) → n a → m a
+singletonValue noElements tooManyElements =
+  either tooManyElements (maybe noElements pure) <<< singletonValue'

@@ -89,7 +89,7 @@
         button {
             position: relative;
             border: none;
-            background: #aaa;
+            background: #bbb;
             color: #fff;
             width: @size;
             height: @size;
@@ -97,14 +97,6 @@
             img {
               width: 0.75rem;
               height: 0.75rem;
-            }
-            &[disabled] {
-                background: #ccc;
-                color: #666;
-                &:hover {
-                    background: #ccc;
-                    color: #666;
-                }
             }
             i.glyphicon { // BS
               font-size: 1.5rem;
@@ -120,12 +112,30 @@
                 padding: 0;
                 line-height: 0.75rem;
             }
-            &:hover {
-                background: #337ab7;
+            &:not(.sd-button-warning):not(:disabled):not(:hover) {
+                background: #999;
+            }
+            &:disabled {
+              background: #ddd;
+            }
+            &:not(:disabled):hover {
+                &:hover {
+                    background: #337ab7;
+                }
             }
             &:after {
                 content: " ";
                 font-size: 1.5rem;
+            }
+            &:not(.sd-button-warning):not(:disabled)::before {
+                content: "✔︎";
+                position: absolute;
+                top: 4px;
+                right: 4px;
+                font-size: 0.5rem;
+                line-height: 0.5rem;
+                font-weight: bold;
+                display: block;
             }
         }
     }

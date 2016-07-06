@@ -16,33 +16,18 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Next.Component.State where
 
-import Prelude
+import SlamData.Prelude
 
-import Data.Maybe as M
 import Data.Lens (LensP, lens)
 
-import SlamData.Workspace.Card.CardType as CT
+import SlamData.Workspace.Card.Port (Port)
 
 type State =
-  { types :: Array CT.CardType
-    -- This would be unnecessary after error card and autorun for every card
-    -- be implemented
-  , message :: M.Maybe String
+  { input :: Maybe Port
   }
 
-_types :: ∀ a r. LensP {types :: a |r} a
-_types = lens _.types (_{types = _})
-
-_message :: ∀ a r. LensP {message :: a|r} a
-_message = lens _.message (_{message = _})
+_input :: ∀ a r. LensP {input :: a |r} a
+_input = lens _.input (_{input = _})
 
 initialState :: State
-initialState =
-  { types:
-      [ CT.Ace CT.SQLMode
-      , CT.Ace CT.MarkdownMode
-      , CT.Open
-      , CT.Variables
-      ]
-  , message: M.Nothing
-  }
+initialState = { input: Nothing }
