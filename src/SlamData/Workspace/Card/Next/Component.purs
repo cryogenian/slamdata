@@ -67,7 +67,6 @@ render state =
           [ HP.title $ cardTitle cty
           , ARIA.label $ cardTitle cty
           , HE.onClick (HE.input_ (right ∘ addCardOrPresentReason state.input cty))
-          , HP.disabled $ not $ possibleToGetTo state.input cty
           ]
           [ CT.cardGlyph cty
           , HH.p_ [ HH.text (CT.cardName cty) ]
@@ -110,4 +109,4 @@ addCardOrPresentReason input cardType a =
 
 nextEval ∷ Query ~> NextDSL
 nextEval (AddCard _ next) = pure next
-nextEval (PresentReason _ _ next) = pure next
+nextEval (PresentReason io card next) = trace (ICT.reason (ICT.fromMaybePort io) (fromMaybe ICT.SetupChartCard (ICT.fromCardType card))) \_ -> pure next

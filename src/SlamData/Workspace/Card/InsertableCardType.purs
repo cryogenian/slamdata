@@ -1,6 +1,7 @@
 module SlamData.Workspace.Card.InsertableCardType where
 
 import Data.Array as Array
+import Data.String as String
 import Data.Foldable as Foldable
 import SlamData.Prelude
 import SlamData.Workspace.Card.CardType as CardType
@@ -162,6 +163,27 @@ expandPath fromIO initialPath | otherwise =
 fromMaybePort ∷ Maybe Port → InsertableCardIOType
 fromMaybePort input = maybe None fromPort input
 
+printIOType :: InsertableCardIOType -> String
+printIOType =
+  case _ of
+    Chart → "a chart"
+    Data → "data"
+    Download → "a download"
+    Draftboard → "a draftboard"
+    Markdown → "markdown"
+    None → "to be the first card in a deck"
+    Variables → "variables"
+
+eitherOr :: Array String -> String
+eitherOr strings =
+  case Array.length strings of
+    1 -> String.joinWith "" strings
+    n ->
+      "either "
+        ++ String.joinWith ", " (Array.take (n - 1) strings)
+        ++ " or "
+        ++ String.joinWith "" (Array.drop (n - 1) strings)
+
 fromPort ∷ Port → InsertableCardIOType
 fromPort =
   case _ of
@@ -190,6 +212,50 @@ toCardType =
     ShowMarkdownCard → CardType.Markdown
     TableCard → CardType.Table
     TroubleshootCard → CardType.Troubleshoot
+
+print ∷ InsertableCardType -> String
+print =
+  CardType.cardName ∘ toCardType
+
+aAn ∷ String -> String
+aAn s =
+  if String.toLower (String.take 1 s) `Foldable.elem` vowels
+    then "An"
+    else "A"
+  where
+  vowels = [ "a", "e", "i", "o", "u" ]
+
+reason :: InsertableCardIOType -> InsertableCardType -> String
+reason io card =
+  aAn (print card) ++ " " ++ show (print card) ++ " card can't " ++ actual
+    ++ " because it needs " ++ expected ++ action ++ "."
+  where
+  actual =
+    case io of
+      None -> "be the first card in a deck"
+      _ -> "follow a card which outputs " ++ printIOType io
+  expected =
+    eitherOr $ printIOType <$> inputsFor card
+  action =
+    maybe "" (" to " ++ _) (printAction card)
+
+printAction ∷ InsertableCardType -> Maybe String
+printAction =
+  case _ of
+    CacheCard → Just "cache"
+    DraftboardCard → Nothing
+    OpenCard → Nothing
+    QueryCard → Nothing
+    SearchCard → Just "search"
+    SetupChartCard → Just "set up a chart for"
+    SetupDownloadCard → Just "setup a download for"
+    SetupMarkdownCard → Nothing
+    SetupVariablesCard → Nothing
+    ShowChartCard → Just "show"
+    ShowDownloadCard → Just "show"
+    ShowMarkdownCard → Just "show"
+    TableCard → Just "tabulate"
+    TroubleshootCard → Just "troubleshoot"
 
 fromCardType ∷ CardType → Maybe InsertableCardType
 fromCardType =

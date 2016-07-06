@@ -449,7 +449,7 @@ peekCardEvalQuery cardCoord = case _ of
 
 
 peekAnyCard ∷ ∀ a. Wiring → DeckId × CardId → AnyCardQuery a → DeckDSL Unit
-peekAnyCard wiring cardCoord q = do
+peekAnyCard wiring cardCoord q =
   for_ (q ^? _NextQuery ∘ _Right ∘ Next._AddCardType) $ createCard wiring
 
 nextActionCard ∷ Card.Model

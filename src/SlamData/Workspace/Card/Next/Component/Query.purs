@@ -30,5 +30,6 @@ data Query a
 _AddCardType :: forall a. TraversalP (Query a) CardType
 _AddCardType = wander \f s → case s of
   AddCard cty next → flip AddCard next <$> f cty
+  PresentReason io card next → pure $ PresentReason io card next
 
 type QueryP = CardEvalQuery ⨁ Query

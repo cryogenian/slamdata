@@ -67,18 +67,18 @@ data CardType
 insertableCardTypes ∷ Array CardType
 insertableCardTypes =
   [ Ace SQLMode
-  , Ace MarkdownMode
+  , Open
   , Search
+  , Table
+  , Variables
+  , Ace MarkdownMode
+  , Markdown
+  , Download
+  , DownloadOptions
   , ChartOptions
   , Chart
-  , Markdown
-  , Table
-  , Download
-  , Variables
   , Troubleshoot
   , Cache
-  , Open
-  , DownloadOptions
   ]
 
 derive instance eqCardType ∷ Eq CardType
