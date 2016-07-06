@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Workspace.Card.Chart.ChartOptions
+module SlamData.Workspace.Card.Chart.BuildOptions
   ( BuildOptions
   , encode
   , decode
@@ -32,9 +32,9 @@ import ECharts (Option)
 
 import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.ChartOptions.Bar (buildBar)
-import SlamData.Workspace.Card.Chart.ChartOptions.Line (buildLine)
-import SlamData.Workspace.Card.Chart.ChartOptions.Pie (buildPie)
+import SlamData.Workspace.Card.Chart.BuildOptions.Bar (buildBar)
+import SlamData.Workspace.Card.Chart.BuildOptions.Line (buildLine)
+import SlamData.Workspace.Card.Chart.BuildOptions.Pie (buildPie)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 import Test.StrongCheck as SC

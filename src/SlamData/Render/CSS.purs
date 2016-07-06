@@ -193,9 +193,6 @@ cardBlockedMessage = className "card-blocked-message"
 cardEvalLine ∷ ClassName
 cardEvalLine = className "card-eval-line"
 
-exploreCardEditor ∷ ClassName
-exploreCardEditor = className "explore-card-editor"
-
 pageInput ∷ ClassName
 pageInput = className "page-input"
 
@@ -215,13 +212,13 @@ chartConfigureForm ∷ ClassName
 chartConfigureForm = className "chart-configure-form"
 
 vizCardEditor ∷ ClassName
-vizCardEditor = className "viz-card-editor"
+vizCardEditor = className "card-editor"
 
 vizChartTypeSelector ∷ ClassName
-vizChartTypeSelector = className "viz-chart-type-selector"
+vizChartTypeSelector = className "chart-type-selector"
 
 vizChartConfiguration ∷ ClassName
-vizChartConfiguration = className "viz-chart-configuration"
+vizChartConfiguration = className "chart-configuration"
 
 collapsed ∷ ClassName
 collapsed = className "collapsed"
@@ -390,11 +387,11 @@ codeGlyph = className "code-glyph"
 deckBackSide ∷ ClassName
 deckBackSide = className "sd-deck-backside"
 
-openResourceCard ∷ ClassName
-openResourceCard = className "open-resource-card"
+openCard ∷ ClassName
+openCard = className "open-card"
 
-openResourceCardMenu ∷ ClassName
-openResourceCardMenu = className "open-resource-card-menu"
+openCardMenu ∷ ClassName
+openCardMenu = className "open-card-menu"
 
 loading ∷ ClassName
 loading = className "loading"

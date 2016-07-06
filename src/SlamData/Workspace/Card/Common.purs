@@ -19,9 +19,11 @@ module SlamData.Workspace.Card.Common where
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
+import SlamData.Workspace.Deck.DeckId (DeckId)
 
 type CardOptions =
   { deck ∷ DeckOptions
   , deckComponent ∷ DeckComponent
-  , id ∷ CardId
+  , cardId ∷ CardId
+  , deckId ∷ DeckId
   }

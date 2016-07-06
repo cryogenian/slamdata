@@ -41,8 +41,8 @@ initialState =
   { types:
       [ CT.Ace CT.SQLMode
       , CT.Ace CT.MarkdownMode
-      , CT.OpenResource
-      , CT.API
+      , CT.Open
+      , CT.Variables
       ]
   , message: M.Nothing
   }

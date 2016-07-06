@@ -258,7 +258,8 @@ renderCard opts deckComponent st (deckId × card) index =
   cardOpts =
     { deck: opts
     , deckComponent
-    , id: card.cardId
+    , cardId: card.cardId
+    , deckId: deckId
     }
 
   cardComponent =

@@ -22,8 +22,6 @@ module SlamData.Workspace.Card.Draftboard.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 
 import Data.Array as Array
@@ -49,7 +47,6 @@ import Math (round, floor)
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
-import SlamData.Quasar.Data as Quasar
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT
@@ -72,7 +69,6 @@ import SlamData.Workspace.Wiring (putDeck)
 
 import Utils.CSS (zIndex)
 import Utils.DOM (elementEq, scrollTop, scrollLeft, getOffsetClientRect)
-import Utils.Path (DirPath)
 
 type DraftboardDSL = H.ParentDSL State DNS.State QueryC DNQ.QueryP Slam DeckId
 
@@ -188,7 +184,7 @@ evalBoard opts = case _ of
             ∘ (_grouping .~ grouping)
       Drag.Done _ → do
         stopDragging opts
-        CC.raiseUpdatedP' CC.StateOnlyUpdate
+        CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   Resizing deckId ev next → do
     case ev of
@@ -202,7 +198,7 @@ evalBoard opts = case _ of
           H.modify $ _moving ?~ Tuple deckId newRect
       Drag.Done _ → do
         stopDragging opts
-        CC.raiseUpdatedP' CC.StateOnlyUpdate
+        CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   SetElement el next → do
     H.modify _ { canvas = el }
@@ -217,7 +213,7 @@ evalBoard opts = case _ of
           { x: floor $ coords.x + 1.0
           , y: floor $ coords.y
           }
-        CC.raiseUpdatedP' CC.StateOnlyUpdate
+        CC.raiseUpdatedP' CC.EvalModelUpdate
     pure next
   LoadDeck deckId next → do
     queryDeck deckId
@@ -245,16 +241,16 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
     DCQ.ResizeDeck ev _ → startDragging deckId ev Resizing
     DCQ.DoAction DCQ.DeleteDeck _ → do
       deleteDeck opts deckId
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction DCQ.Wrap _ → do
       wrapDeck opts deckId
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction (DCQ.Unwrap decks) _ → do
       unwrapDeck opts deckId decks
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction DCQ.Mirror _ → do
       mirrorDeck opts deckId
-      CC.raiseUpdatedP' CC.StateOnlyUpdate
+      CC.raiseUpdatedP' CC.EvalModelUpdate
     _ → pure unit
 
   startDragging deckId ev tag =
@@ -396,32 +392,23 @@ addDeck opts deck coords = do
     addDeckAt opts deck
 
 addDeckAt ∷ CardOptions → DM.Deck → DeckPosition → DraftboardDSL Unit
-addDeckAt { deck: opts, id: cardId } deck deckPos = do
-  let
-    parentId = opts.id
-    deck' = deck { parent = Just (parentId × cardId) }
+addDeckAt { deck: opts, deckId: parentId, cardId } deck deckPos = do
+  let deck' = deck { parent = Just (parentId × cardId) }
   H.modify $ _inserting .~ true
-  deckId ← saveDeck opts.path deck'
-  case deckId of
+  deckId ← H.fromEff freshDeckId
+  putDeck opts.path deckId deck' opts.wiring.decks >>= case _ of
     Left err → do
       H.modify $ _inserting .~ false
       -- TODO: do something to notify the user saving failed
       pure unit
-    Right deckId' → void do
-      putDeck deckId' deck' opts.wiring.decks
+    Right _ → void do
       H.modify \s → s
-        { decks = Map.insert deckId' deckPos s.decks
+        { decks = Map.insert deckId deckPos s.decks
         , inserting = false
         }
-      queryDeck deckId'
+      queryDeck deckId
         $ H.action
-        $ DCQ.Load opts.path deckId' (DL.succ opts.level)
-
-saveDeck ∷ DirPath → DM.Deck → DraftboardDSL (Either Exn.Error DeckId)
-saveDeck path model = runExceptT do
-  i ← lift $ H.fromEff freshDeckId
-  ExceptT $ Quasar.save (DM.deckIndex path i) $ DM.encode model
-  pure i
+        $ DCQ.Load opts.path deckId (DL.succ opts.level)
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck { deck } deckId = do
@@ -434,19 +421,17 @@ deleteDeck { deck } deckId = do
       H.modify \s → s { decks = Map.delete deckId s.decks }
 
 wrapDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
-wrapDeck { id: cardId, deck } oldId = do
+wrapDeck { cardId, deckId: parentId, deck } oldId = do
   H.gets (Map.lookup oldId ∘ _.decks) >>= traverse_ \deckPos → do
     let
-      parentId = deck.id
       deckPos' = deckPos { x = 1.0, y = 1.0 }
       newDeck = (wrappedDeck deckPos' oldId) { parent = Just (parentId × cardId) }
-    deckId ← saveDeck deck.path newDeck
-    case deckId of
+    newId ← H.fromEff freshDeckId
+    putDeck deck.path newId newDeck deck.wiring.decks >>= case _ of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
-      Right newId → void do
-        putDeck newId newDeck deck.wiring.decks
+      Right _ → void do
         traverse_ (queryDeck oldId ∘ H.action)
           [ DCQ.SetParent (newId × CID.CardId 0)
           , DCQ.Save Nothing
@@ -466,13 +451,13 @@ unwrapDeck
   → DeckId
   → Map.Map DeckId (DeckPosition × DM.Deck)
   → DraftboardDSL Unit
-unwrapDeck opts oldId decks = void $ runMaybeT do
+unwrapDeck { deckId, cardId, deck } oldId decks = void $ runMaybeT do
   -- sort the decks here so they are ordered by position, this ensures that if
   -- decks need to be accomodated when broken out, the decks in the top left
   -- corner will maintain their position and the others will be accomodated.
   let deckList = List.sortBy (compare `on` toCoords) $ Map.toList decks
-  let coord = opts.deck.id × opts.id
-  let level' = DL.succ opts.deck.level
+  let coord = deckId × cardId
+  let level' = DL.succ deck.level
   offset ← MaybeT $ H.gets (Map.lookup oldId ∘ _.decks)
   lift do
     H.modify \s →
@@ -499,18 +484,19 @@ mirrorDeck opts oldId = do
     if Array.null modelCards'.rest
       then insertNewDeck DM.emptyDeck { mirror = DCS.coordModelToCoord <$> modelCards'.init }
       else do
-        res ←
-          saveDeck opts.deck.path
+        let
+          newDeck =
             { parent: Nothing
             , mirror: map _.cardId <$> modelCards'.init
             , cards: snd <$> modelCards'.rest
             , name: ""
             }
-        case res of
+        newId ← H.fromEff freshDeckId
+        putDeck opts.deck.path newId newDeck opts.deck.wiring.decks >>= case _ of
           Left _ →
             -- TODO: do something to notify the user saving failed
             pure unit
-          Right newId → do
+          Right _ → do
             let modelCards'' = modelCards'.init <> map (lmap (const newId)) modelCards'.rest
             queryDeck oldId $ H.action $ DCQ.SetModelCards modelCards''
             insertNewDeck DM.emptyDeck { mirror = DCS.coordModelToCoord <$> modelCards'' }
@@ -522,7 +508,7 @@ mirrorDeck opts oldId = do
         reallyAccomodateDeck (Map.toList st.decks) deckPos
 
 groupDecks ∷ CardOptions → DeckId → DeckId → DraftboardDSL Unit
-groupDecks { id: cardId, deck } deckFrom deckTo = do
+groupDecks { cardId, deckId, deck } deckFrom deckTo = do
   st ← H.get
   for_ (Map.lookup deckFrom st.decks) \rectFrom →
   for_ (Map.lookup deckTo st.decks) \rectTo → do
@@ -530,7 +516,7 @@ groupDecks { id: cardId, deck } deckFrom deckTo = do
       rectTo' = rectTo { x = 1.0, y = 1.0 }
       rectFrom' = rectFrom { x = 1.0, y = rectTo.height + 2.0 }
       newDeck = DM.emptyDeck
-        { parent = Just (deck.id × cardId)
+        { parent = Just (deckId × cardId)
         , cards = pure
           { cardId: CID.CardId 0
           , model: Card.Draftboard
@@ -541,13 +527,12 @@ groupDecks { id: cardId, deck } deckFrom deckTo = do
             }
           }
         }
-    deckId ← saveDeck deck.path newDeck
-    case deckId of
+    newId ← H.fromEff freshDeckId
+    putDeck deck.path newId newDeck deck.wiring.decks >>= case _ of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
-      Right newId → void do
-        putDeck newId newDeck deck.wiring.decks
+      Right _ → void do
         H.modify \s → s
           { decks
               = Map.insert newId rectTo

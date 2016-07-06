@@ -24,15 +24,15 @@ module SlamData.Workspace.Card.Component.Query
   , _AceQuery
   , _MarkdownQuery
   , _SearchQuery
-  , _JTableQuery
-  , _VizQuery
+  , _TableQuery
+  , _ChartOptionsQuery
   , _ChartQuery
   , _DownloadQuery
-  , _APIQuery
-  , _APIResultsQuery
+  , _VariablesQuery
+  , _TroubleshootQuery
   , _NextQuery
   , _CacheQuery
-  , _OpenResourceQuery
+  , _OpenQuery
   , _DownloadOptionsQuery
   , _DraftboardQuery
   , _ErrorQuery
@@ -50,8 +50,8 @@ import DOM.HTML.Types (HTMLElement)
 import Halogen (ChildF)
 
 import SlamData.Workspace.Card.Ace.Component.Query as Ace
-import SlamData.Workspace.Card.API.Component.Query as API
-import SlamData.Workspace.Card.APIResults.Component.Query as APIResults
+import SlamData.Workspace.Card.Variables.Component.Query as Variables
+import SlamData.Workspace.Card.Troubleshoot.Component.Query as Troubleshoot
 import SlamData.Workspace.Card.Cache.Component.Query as Cache
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.CardType (CardType)
@@ -61,15 +61,15 @@ import SlamData.Workspace.Card.Download.Component.Query as Download
 import SlamData.Workspace.Card.DownloadOptions.Component.Query as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.Query as Draftboard
 import SlamData.Workspace.Card.Error.Component.Query as Error
-import SlamData.Workspace.Card.JTable.Component.Query as JTable
+import SlamData.Workspace.Card.Table.Component.Query as Table
 import SlamData.Workspace.Card.Markdown.Component.Query as Markdown
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component.Query as Next
-import SlamData.Workspace.Card.OpenResource.Component.Query as Open
+import SlamData.Workspace.Card.Open.Component.Query as Open
 import SlamData.Workspace.Card.Pending.Component.Query as Pending
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Search.Component.Query as Search
-import SlamData.Workspace.Card.Viz.Component.Query as Viz
+import SlamData.Workspace.Card.ChartOptions.Component.Query as ChartOptions
 
 -- | The common query algebra for a card.
 -- |
@@ -99,15 +99,15 @@ data AnyCardQuery a
   = AceQuery (Ace.QueryP a)
   | MarkdownQuery (Markdown.QueryP a)
   | SearchQuery (Search.Query a)
-  | JTableQuery (JTable.QueryP a)
-  | VizQuery (Viz.QueryP a)
+  | TableQuery (Table.QueryP a)
+  | ChartOptionsQuery (ChartOptions.QueryP a)
   | ChartQuery (Chart.QueryP a)
   | DownloadQuery (Download.QueryP a)
-  | APIQuery (API.QueryP a)
-  | APIResultsQuery (APIResults.QueryP a)
+  | VariablesQuery (Variables.QueryP a)
+  | TroubleshootQuery (Troubleshoot.QueryP a)
   | NextQuery (Next.QueryP a)
   | CacheQuery (Cache.QueryP a)
-  | OpenResourceQuery (Open.QueryP a)
+  | OpenQuery (Open.QueryP a)
   | DownloadOptionsQuery (DOpts.QueryP a)
   | DraftboardQuery (Draftboard.QueryP a)
   | ErrorQuery (Error.QueryP a)
@@ -128,14 +128,14 @@ _SearchQuery = prism' SearchQuery \q → case q of
   SearchQuery q' → Just q'
   _ → Nothing
 
-_JTableQuery ∷ ∀ a. PrismP (AnyCardQuery a) (JTable.QueryP a)
-_JTableQuery = prism' JTableQuery \q → case q of
-  JTableQuery q' → Just q'
+_TableQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Table.QueryP a)
+_TableQuery = prism' TableQuery \q → case q of
+  TableQuery q' → Just q'
   _ → Nothing
 
-_VizQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Viz.QueryP a)
-_VizQuery = prism' VizQuery \q → case q of
-  VizQuery q' → Just q'
+_ChartOptionsQuery ∷ ∀ a. PrismP (AnyCardQuery a) (ChartOptions.QueryP a)
+_ChartOptionsQuery = prism' ChartOptionsQuery \q → case q of
+  ChartOptionsQuery q' → Just q'
   _ → Nothing
 
 _ChartQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Chart.QueryP a)
@@ -148,14 +148,14 @@ _DownloadQuery = prism' DownloadQuery \q → case q of
   DownloadQuery q' → Just q'
   _ → Nothing
 
-_APIQuery ∷ ∀ a. PrismP (AnyCardQuery a) (API.QueryP a)
-_APIQuery = prism' APIQuery \q → case q of
-  APIQuery q' → Just q'
+_VariablesQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Variables.QueryP a)
+_VariablesQuery = prism' VariablesQuery \q → case q of
+  VariablesQuery q' → Just q'
   _ → Nothing
 
-_APIResultsQuery ∷ ∀ a. PrismP (AnyCardQuery a) (APIResults.QueryP a)
-_APIResultsQuery = prism' APIResultsQuery \q → case q of
-  APIResultsQuery q' → Just q'
+_TroubleshootQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Troubleshoot.QueryP a)
+_TroubleshootQuery = prism' TroubleshootQuery \q → case q of
+  TroubleshootQuery q' → Just q'
   _ → Nothing
 
 _NextQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Next.QueryP a)
@@ -168,9 +168,9 @@ _CacheQuery = prism' CacheQuery \q → case q of
   CacheQuery q' → Just q'
   _ → Nothing
 
-_OpenResourceQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Open.QueryP a)
-_OpenResourceQuery = prism' OpenResourceQuery \q → case q of
-  OpenResourceQuery q' → Just q'
+_OpenQuery ∷ ∀ a. PrismP (AnyCardQuery a) (Open.QueryP a)
+_OpenQuery = prism' OpenQuery \q → case q of
+  OpenQuery q' → Just q'
   _ → Nothing
 
 _DownloadOptionsQuery ∷ ∀ a. PrismP (AnyCardQuery a) (DOpts.QueryP a)

@@ -67,10 +67,10 @@ render { model } =
     HH.input
       [ HP.inputType HP.InputText
       , HP.title "Field Name"
-      , ARIA.label "API variable name"
+      , ARIA.label "Variable name"
       , HP.value model.name
       , HE.onValueInput (HE.input \str -> Update <<< UpdateName str)
-      , HP.placeholder "API variable name"
+      , HP.placeholder "Variable name"
       ]
 
   quotedName :: String -> String
@@ -81,7 +81,7 @@ render { model } =
   typeField =
     HH.select
       [ HE.onValueChange (HE.input \str -> Update <<< UpdateFieldType str)
-      , ARIA.label $ "Type of " <> (quotedName model.name) <> " API variable"
+      , ARIA.label $ "Type of " <> (quotedName model.name) <> " variable"
       ]
       (typeOption <$> allFieldTypes)
 
@@ -111,7 +111,7 @@ render { model } =
               , ARIA.label
                   $ "Default value of "
                   <> (quotedName model.name)
-                  <> " API variable is \"true\""
+                  <> " variable is \"true\""
               ]
           , HH.span_ [ HH.text model.name ]
           ]
@@ -129,7 +129,7 @@ render { model } =
     lbl :: String
     lbl
       = "Default value"
-      <> if model.name /= "" then " for " <> (quotedName model.name) <> " API variable" else ""
+      <> if model.name /= "" then " for " <> (quotedName model.name) <> " variable" else ""
     inputType =
       fieldTypeToInputType model.fieldType
 

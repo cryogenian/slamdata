@@ -57,7 +57,6 @@ import Halogen.HTML.Indexed as HH
 import SlamData.Config (workspaceUrl)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
-import SlamData.Quasar.Data (save) as Quasar
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
@@ -83,7 +82,6 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
-import SlamData.Workspace.Deck.Model (deckIndex)
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
 import SlamData.Workspace.Model as WM
@@ -136,8 +134,8 @@ eval opts@{ wiring } = case _ of
     pure next
   ExploreFile res next → do
     H.modify
-      $ (DCS.addCard $ Card.cardModelOfType CT.JTable)
-      ∘ (DCS.addCard ∘ Card.OpenResource ∘ Just $ R.File res)
+      $ (DCS.addCard $ Card.cardModelOfType CT.Table)
+      ∘ (DCS.addCard ∘ Card.Open ∘ Just $ R.File res)
       ∘ (DCS._stateMode .~ Preparing)
     initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
     for_ initialCard $ queuePendingCard wiring
@@ -197,7 +195,7 @@ eval opts@{ wiring } = case _ of
     st ← H.get
     when (m ≠ st.globalVarMap) do
       H.modify $ DCS._globalVarMap .~ m
-      traverse_ runCard $ DCS.apiCards st
+      traverse_ runCard $ DCS.variablesCards st
     pure next
   FlipDeck next → do
     updateBackSide
@@ -717,8 +715,7 @@ saveDeck { accessType, wiring } coord = do
         Left _ → void $ WM.setRoot index st.id
         Right _ → pure unit
 
-    putDeck st.id model wiring.decks
-    Quasar.save (deckIndex st.path st.id) (Model.encode model) >>= case _ of
+    putDeck st.path st.id model wiring.decks >>= case _ of
       Left err → do
         -- TODO: do something to notify the user saving failed
         pure unit
@@ -736,8 +733,7 @@ saveDeck { accessType, wiring } coord = do
       Right deck → do
         let cards = deck.cards <#> \c → if c.cardId == card.cardId then card else c
             model = deck { cards = cards }
-        putDeck deckId model wiring.decks
-        void $ Quasar.save (deckIndex st.path deckId) $ Model.encode model
+        void $ putDeck st.path deckId model wiring.decks
 
 setDeckState ∷ DCS.State → DeckDSL Unit
 setDeckState newState =
@@ -800,7 +796,7 @@ setModel opts model =
     Nothing → do
       st ← DCS.fromModel model <$> H.get
       setDeckState st
-      runCardUpdates opts opts.id L.Nil
+      runCardUpdates opts model.id L.Nil
 
 getModelCards ∷ DeckDSL (Array (DeckId × Card.Model))
 getModelCards = do

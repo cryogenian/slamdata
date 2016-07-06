@@ -50,7 +50,7 @@ module SlamData.Workspace.Deck.Component.State
   , findLastRealCard
   , addPendingCard
   , removePendingCard
-  , apiCards
+  , variablesCards
   , fromModel
   , deckPath
   , deckPath'
@@ -312,12 +312,12 @@ findLastRealCard state =
 findLastCardType ∷ State → Maybe CT.CardType
 findLastCardType { displayCards } = Card.modelCardType ∘ _.model ∘ snd <$> A.last displayCards
 
-apiCards ∷ State → Array (DeckId × CardId)
-apiCards =
+variablesCards ∷ State → Array (DeckId × CardId)
+variablesCards =
   _.modelCards ⋙ A.mapMaybe cardTypeMatches ⋙ foldMap pure
   where
   cardTypeMatches (deckId × { cardId, model }) =
-    if Card.modelCardType model ≡ CT.API
+    if Card.modelCardType model ≡ CT.Variables
        then Just (deckId × cardId)
        else Nothing
 

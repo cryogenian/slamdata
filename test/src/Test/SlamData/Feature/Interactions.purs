@@ -47,9 +47,6 @@ exploreFile =
 accessBreadcrumb ∷ String → SlamFeature Unit
 accessBreadcrumb = Feature.click ∘ XPath.anywhere ∘ XPaths.accessBreadcrumb
 
-embedCardOutput ∷ SlamFeature Unit
-embedCardOutput = Feature.click $ XPath.anywhere XPaths.embedCardOutput
-
 browseRootFolder ∷ SlamFeature Unit
 browseRootFolder = do
   tryRepeatedlyTo do
@@ -160,21 +157,21 @@ insertMdCardInLastDeck ∷ SlamFeature Unit
 insertMdCardInLastDeck =
   Feature.click $ followingLastPreviousCardGripper XPaths.insertMdCard
 
-insertExploreCardInLastDeck ∷ SlamFeature Unit
-insertExploreCardInLastDeck =
-  Feature.click $ followingLastPreviousCardGripper XPaths.insertExploreCard
+insertOpenCardInLastDeck ∷ SlamFeature Unit
+insertOpenCardInLastDeck =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertOpenCard
 
-insertVisualizeCardInLastDeck ∷ SlamFeature Unit
-insertVisualizeCardInLastDeck =
-  Feature.click $ followingLastPreviousCardGripper XPaths.insertVisualizeCard
+insertChartOptionsCardInLastDeck ∷ SlamFeature Unit
+insertChartOptionsCardInLastDeck =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertChartOptionsCard
 
 insertDisplayMarkdownCardInLastDeck ∷ SlamFeature Unit
 insertDisplayMarkdownCardInLastDeck =
   Feature.click $ followingLastPreviousCardGripper XPaths.insertDisplayMarkdownCard
 
-insertJTableCardInLastDeck ∷ SlamFeature Unit
-insertJTableCardInLastDeck =
-  Feature.click $ followingLastPreviousCardGripper XPaths.insertJTableCard
+insertTableCardInLastDeck ∷ SlamFeature Unit
+insertTableCardInLastDeck =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertTableCard
 
 insertChartCardInLastDeck ∷ SlamFeature Unit
 insertChartCardInLastDeck =
@@ -184,20 +181,20 @@ insertCacheCardInLastDeck ∷ SlamFeature Unit
 insertCacheCardInLastDeck =
   Feature.click $ followingLastPreviousCardGripper XPaths.insertCacheCard
 
-insertApiCardInLastDeck ∷ SlamFeature Unit
-insertApiCardInLastDeck =
-  Feature.click $ followingLastPreviousCardGripper XPaths.insertApiCard
+insertVariablesCardInLastDeck ∷ SlamFeature Unit
+insertVariablesCardInLastDeck =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertVariablesCard
 
-insertApiResultsCardInLastDeck ∷ SlamFeature Unit
-insertApiResultsCardInLastDeck =
-  Feature.click $ followingLastPreviousCardGripper XPaths.insertApiResultsCard
+insertTroubleshootCardInLastDeck ∷ SlamFeature Unit
+insertTroubleshootCardInLastDeck =
+  Feature.click $ followingLastPreviousCardGripper XPaths.insertTroubleshootCard
 
-selectFileForLastExploreCard ∷ String → SlamFeature Unit
-selectFileForLastExploreCard p = do
-  Expect.resourceOpenedInLastExploreCard "/"
+selectFileForLastOpenCard ∷ String → SlamFeature Unit
+selectFileForLastOpenCard p = do
+  Expect.resourceOpenedInLastOpenCard "/"
   for_ paths \path → do
     Feature.click $ resourceXPath path
-    Expect.resourceOpenedInLastExploreCard path
+    Expect.resourceOpenedInLastOpenCard path
   where
   resourceXPath ∷ String → String
   resourceXPath rPath =
@@ -304,48 +301,48 @@ type ApiVarName = String
 type ApiVarType = String
 type ApiVarValue = String
 
-provideApiVariableBindingsForApiCard
+provideApiVariableBindingsForVariablesCard
   ∷ ApiVarName
   → ApiVarType
   → ApiVarValue
   → SlamFeature Unit
-provideApiVariableBindingsForApiCard name ty val =
-  provideValueForApiCard name
-  *> provideTypeForApiCard name ty
-  *> provideDefaultValueForApiCard name val
+provideApiVariableBindingsForVariablesCard name ty val =
+  provideValueForVariablesCard name
+  *> provideTypeForVariablesCard name ty
+  *> provideDefaultValueForVariablesCard name val
   where
-  provideValueForApiCard ∷ String → SlamFeature Unit
-  provideValueForApiCard name = do
+  provideValueForVariablesCard ∷ String → SlamFeature Unit
+  provideValueForVariablesCard name = do
     Feature.provideFieldValueUntilExpectedValue
       name
-      (XPath.first $ XPath.anywhere $ XPaths.apiCardVariableName)
+      (XPath.first $ XPath.anywhere $ XPaths.variablesCardVariableName)
       name
     Feature.pressEnter
-  provideTypeForApiCard ∷ String → String → SlamFeature Unit
-  provideTypeForApiCard name ty = do
+  provideTypeForVariablesCard ∷ String → String → SlamFeature Unit
+  provideTypeForVariablesCard name ty = do
     Feature.selectFromDropdown
-      (XPath.first $ XPath.anywhere $ XPaths.apiCardVariableTypeFor name)
+      (XPath.first $ XPath.anywhere $ XPaths.variablesCardVariableTypeFor name)
       ty
     Feature.pressEnter
 
-  provideDefaultValueForApiCard ∷ String → String → SlamFeature Unit
-  provideDefaultValueForApiCard name val = do
+  provideDefaultValueForVariablesCard ∷ String → String → SlamFeature Unit
+  provideDefaultValueForVariablesCard name val = do
     Feature.provideFieldValueUntilExpectedValue
       val
-      (XPath.first $ XPath.anywhere $ XPaths.apiCardDefaultValueFor name)
+      (XPath.first $ XPath.anywhere $ XPaths.variablesCardDefaultValueFor name)
       val
     Feature.pressEnter
 
-provideCategoryForLastVisualizeCard
+provideCategoryForLastChartCard
   ∷ String
   → SlamFeature Unit
-provideCategoryForLastVisualizeCard str =
+provideCategoryForLastChartCard str =
   Feature.selectFromDropdown
     (XPath.last $ XPath.anywhere $ XPaths.chartCategorySelector)
     str
 
-provideSeriesForLastVizualizeCard ∷ String → SlamFeature Unit
-provideSeriesForLastVizualizeCard str =
+provideSeriesForLastChartCard ∷ String → SlamFeature Unit
+provideSeriesForLastChartCard str =
   Feature.selectFromDropdown
     (XPath.last $ XPath.anywhere $ XPaths.chartSeriesOneSelector)
     str

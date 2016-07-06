@@ -31,7 +31,7 @@ test =
       "/test-mount/testDb/временный файл"
     Interact.doSaveInLastCacheCard
     Interact.accessNextCardInLastDeck
-    Interact.insertJTableCardInLastDeck
+    Interact.insertTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne", "measureTwo"]
     Interact.browseTestFolder
     Interact.accessFile "временный файл"

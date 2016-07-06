@@ -22,7 +22,7 @@ module SlamData.Workspace.Card.Port
   , _SlamDown
   , _VarMap
   , _Resource
-  , _ChartOptions
+  , _Chart
   , _DownloadOptions
   , _ResourceTag
   , _Draftboard
@@ -35,7 +35,7 @@ import SlamData.Prelude
 
 import Data.Lens (PrismP, prism', TraversalP, wander)
 import SlamData.Workspace.Card.Port.VarMap (VarMap, VarMapValue(..), parseVarMapValue, renderVarMapValue, emptyVarMap)
-import SlamData.Workspace.Card.Chart.ChartOptions (BuildOptions)
+import SlamData.Workspace.Card.Chart.BuildOptions (BuildOptions)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Download.Model (DownloadOptions)
 import Text.Markdown.SlamDown as SD
@@ -62,7 +62,7 @@ data Port
   = SlamDown (SD.SlamDownP VarMapValue)
   | VarMap VarMap
   | CardError String
-  | ChartOptions ChartPort
+  | Chart ChartPort
   | TaggedResource TaggedResourcePort
   | DownloadOptions DownloadPort
   | Draftboard
@@ -74,7 +74,7 @@ instance showPort ∷ Show Port where
       SlamDown sd → "SlamDown " <> show sd
       VarMap vm → "VarMap " <> show vm
       CardError str → "CardError " <> show str
-      ChartOptions p → "ChartOptions"
+      Chart p → "Chart"
       TaggedResource p → "TaggedResource (" <> show p.resource <> " " <> show p.tag <> ")"
       DownloadOptions p → "DownloadOptions"
       Draftboard → "Draftboard"
@@ -95,9 +95,9 @@ _CardError = prism' CardError \p → case p of
   CardError x → Just x
   _ → Nothing
 
-_ChartOptions ∷ PrismP Port ChartPort
-_ChartOptions = prism' ChartOptions \p → case p of
-  ChartOptions o → Just o
+_Chart ∷ PrismP Port ChartPort
+_Chart = prism' Chart \p → case p of
+  Chart o → Just o
   _ → Nothing
 
 _ResourceTag ∷ TraversalP Port String

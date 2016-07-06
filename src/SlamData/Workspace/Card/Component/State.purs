@@ -23,15 +23,15 @@ module SlamData.Workspace.Card.Component.State
   , _AceState
   , _MarkdownState
   , _SearchState
-  , _JTableState
-  , _VizState
+  , _TableState
+  , _ChartOptionsState
   , _ChartState
   , _DownloadState
-  , _APIState
-  , _APIResultsState
+  , _VariablesState
+  , _TroubleshootState
   , _NextState
   , _CacheState
-  , _OpenResourceState
+  , _OpenState
   , _DownloadOptionsState
   , _DraftboardState
   , _ErrorState
@@ -48,8 +48,8 @@ import Halogen (ParentState)
 
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Card.Ace.Component.State as Ace
-import SlamData.Workspace.Card.API.Component.State as API
-import SlamData.Workspace.Card.APIResults.Component.State as APIResults
+import SlamData.Workspace.Card.Variables.Component.State as Variables
+import SlamData.Workspace.Card.Troubleshoot.Component.State as Troubleshoot
 import SlamData.Workspace.Card.Cache.Component.State as Cache
 import SlamData.Workspace.Card.Chart.Component.State as Chart
 import SlamData.Workspace.Card.Component.Query (CardQuery, InnerCardQuery)
@@ -58,12 +58,12 @@ import SlamData.Workspace.Card.DownloadOptions.Component.State as DOpts
 import SlamData.Workspace.Card.Draftboard.Component.State as Draftboard
 import SlamData.Workspace.Card.Error.Component.State as Error
 import SlamData.Workspace.Card.Pending.Component.State as Pending
-import SlamData.Workspace.Card.JTable.Component.State as JTable
+import SlamData.Workspace.Card.Table.Component.State as Table
 import SlamData.Workspace.Card.Markdown.Component.State as Markdown
 import SlamData.Workspace.Card.Next.Component.State as Next
-import SlamData.Workspace.Card.OpenResource.Component.State as Open
+import SlamData.Workspace.Card.Open.Component.State as Open
 import SlamData.Workspace.Card.Search.Component.State as Search
-import SlamData.Workspace.Card.Viz.Component.State as Viz
+import SlamData.Workspace.Card.ChartOptions.Component.State as ChartOptions
 
 -- | The common state value for deck cards.
 type CardState =
@@ -85,15 +85,15 @@ data AnyCardState
   = AceState Ace.StateP
   | MarkdownState Markdown.StateP
   | SearchState Search.State
-  | JTableState JTable.State
-  | VizState Viz.StateP
+  | TableState Table.State
+  | ChartOptionsState ChartOptions.StateP
   | ChartState Chart.StateP
   | DownloadState Download.State
-  | APIState API.StateP
-  | APIResultsState APIResults.State
+  | VariablesState Variables.StateP
+  | TroubleshootState Troubleshoot.State
   | NextState Next.State
   | CacheState Cache.State
-  | OpenResourceState Open.State
+  | OpenState Open.State
   | DownloadOptionsState DOpts.State
   | DraftboardState Draftboard.StateP
   | ErrorState Error.State
@@ -114,14 +114,14 @@ _SearchState = prism' SearchState \s → case s of
   SearchState s' → Just s'
   _ → Nothing
 
-_JTableState ∷ PrismP AnyCardState JTable.State
-_JTableState = prism' JTableState \s → case s of
-  JTableState s' → Just s'
+_TableState ∷ PrismP AnyCardState Table.State
+_TableState = prism' TableState \s → case s of
+  TableState s' → Just s'
   _ → Nothing
 
-_VizState ∷ PrismP AnyCardState Viz.StateP
-_VizState = prism' VizState \s → case s of
-  VizState s' → Just s'
+_ChartOptionsState ∷ PrismP AnyCardState ChartOptions.StateP
+_ChartOptionsState = prism' ChartOptionsState \s → case s of
+  ChartOptionsState s' → Just s'
   _ → Nothing
 
 _ChartState ∷ PrismP AnyCardState Chart.StateP
@@ -134,14 +134,14 @@ _DownloadState = prism' DownloadState \s → case s of
   DownloadState s' → Just s'
   _ → Nothing
 
-_APIState ∷ PrismP AnyCardState API.StateP
-_APIState = prism' APIState \s → case s of
-  APIState s' → Just s'
+_VariablesState ∷ PrismP AnyCardState Variables.StateP
+_VariablesState = prism' VariablesState \s → case s of
+  VariablesState s' → Just s'
   _ → Nothing
 
-_APIResultsState ∷ PrismP AnyCardState APIResults.State
-_APIResultsState = prism' APIResultsState \s → case s of
-  APIResultsState s' → Just s'
+_TroubleshootState ∷ PrismP AnyCardState Troubleshoot.State
+_TroubleshootState = prism' TroubleshootState \s → case s of
+  TroubleshootState s' → Just s'
   _ → Nothing
 
 _NextState ∷ PrismP AnyCardState Next.State
@@ -154,9 +154,9 @@ _CacheState = prism' CacheState \s → case s of
   CacheState s' → Just s'
   _ → Nothing
 
-_OpenResourceState ∷ PrismP AnyCardState Open.State
-_OpenResourceState = prism' OpenResourceState \s → case s of
-  OpenResourceState s' → Just s'
+_OpenState ∷ PrismP AnyCardState Open.State
+_OpenState = prism' OpenState \s → case s of
+  OpenState s' → Just s'
   _ → Nothing
 
 _DownloadOptionsState ∷ PrismP AnyCardState DOpts.State

@@ -33,7 +33,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.API.Model as API
+import SlamData.Workspace.Card.Variables.Model as Variables
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DO
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Markdown.Component.State.Core as MDS
@@ -42,8 +42,8 @@ import SlamData.Workspace.Card.Markdown.Model as MD
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.Search.Interpret as Search
-import SlamData.Workspace.Card.Viz.Eval as VizE
-import SlamData.Workspace.Card.Viz.Model as Viz
+import SlamData.Workspace.Card.ChartOptions.Eval as ChartE
+import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.FormBuilder.Item.Model as FBI
 
 import Text.SlamSearch as SS
@@ -58,9 +58,9 @@ data Eval
   | Error String
   | Markdown String
   | MarkdownForm MD.Model
-  | OpenResource R.Resource
-  | API API.Model
-  | Viz Viz.Model
+  | Open R.Resource
+  | Variables Variables.Model
+  | ChartOptions ChartOptions.Model
   | DownloadOptions DO.State
   | Draftboard
 
@@ -73,10 +73,10 @@ instance showEval ∷ Show Eval where
       Cache str → "Cache " <> show str
       Error str → "Error " <> show str
       Markdown str → "Markdown " <> show str
-      OpenResource res → "OpenResource " <> show res
+      Open res → "Open " <> show res
       MarkdownForm m → "MarkdownForm"
-      Viz m → "Viz"
-      API m → "API" -- TODO: I don't have time to write these show instances -js
+      ChartOptions m → "ChartOptions"
+      Variables m → "Variables" -- TODO: I don't have time to write these show instances -js
       DownloadOptions m → "DownloadOptions"
       Draftboard → "Draftboard"
 
@@ -110,22 +110,22 @@ evalCard input =
       Port.TaggedResource <$> evalSearch input query resource
     Cache pathString, Just (Port.TaggedResource { resource }) →
       Port.TaggedResource <$> Cache.eval input pathString resource
-    OpenResource res, _ →
-      Port.TaggedResource <$> evalOpenResource input res
-    Viz model, _ →
-      Port.ChartOptions <$> VizE.eval input model
-    API model, _ →
-      pure $ Port.VarMap $ evalAPI input model
+    Open res, _ →
+      Port.TaggedResource <$> evalOpen input res
+    ChartOptions model, _ →
+      Port.Chart <$> ChartE.eval input model
+    Variables model, _ →
+      pure $ Port.VarMap $ evalVariables input model
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
       pure $ Port.DownloadOptions { resource, compress, options }
     e, i →
       EC.throwError $ "Card received unexpected input type; " <> show e <> " | " <> show i
 
-evalAPI
+evalVariables
   ∷ CET.CardEvalInput
-  → API.Model
+  → Variables.Model
   → Port.VarMap
-evalAPI info model =
+evalVariables info model =
   foldl alg SM.empty model.items
   where
     alg =
@@ -145,13 +145,13 @@ evalMarkdownForm doc model = do
   -- TODO: find a way to smash these annotations if possible -js
   fromEff (MDS.formStateToVarMap inputState model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)
 
-evalOpenResource
+evalOpen
   ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → R.Resource
   → CET.CardEvalT m Port.TaggedResourcePort
-evalOpenResource info res = do
+evalOpen info res = do
    filePath ← maybe (EC.throwError "No resource is selected") pure $ res ^? R._filePath
    msg ←
      QFS.messageIfFileNotFound

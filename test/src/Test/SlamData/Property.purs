@@ -49,8 +49,8 @@ main = do
   log "Check SlamData.Workspace.Card.Chart.ChartConfiguration..."
   Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration.check
 
-  log "Check SlamData.Workspace.Card.Chart.ChartOptions..."
-  Test.SlamData.Property.Workspace.Card.Chart.ChartOptions.check
+  log "Check SlamData.Workspace.Card.Chart.BuildOptions..."
+  Test.SlamData.Property.Workspace.Card.Chart.BuildOptions.check
 
   log "Check SlamData.Workspace.Card.Chart.ChartType..."
   Test.SlamData.Property.Workspace.Card.Chart.ChartType.check
@@ -58,14 +58,14 @@ main = do
   log "Check SlamData.Workspace.Card.DownloadOptions.Component.State..."
   Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State.check
 
-  log "Check SlamData.Workspace.Card.JTable.Model..."
-  Test.SlamData.Property.Workspace.Card.JTable.Model.check
+  log "Check SlamData.Workspace.Card.Table.Model..."
+  Test.SlamData.Property.Workspace.Card.Table.Model.check
 
   log "Check SlamData.Workspace.Card.Markdown.Model..."
   Test.SlamData.Property.Workspace.Card.Markdown.Model.check
 
-  log "Check SlamData.Workspace.Card.Viz.Model..."
-  Test.SlamData.Property.Workspace.Card.Viz.Model.check
+  log "Check SlamData.Workspace.Card.ChartOptions.Model..."
+  Test.SlamData.Property.Workspace.Card.ChartOptions.Model.check
 
   log "Check SlamData.Workspace.Deck.DeckId..."
   Test.SlamData.Property.Workspace.Deck.DeckId.check
