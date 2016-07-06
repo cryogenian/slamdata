@@ -78,7 +78,7 @@ contains ∷ ∀ a. (Eq a) ⇒ a → Array a → Boolean
 contains x =
   isJust ∘ Array.elemIndex x
 
-takesInput ∷ InsertableCardIOType -> InsertableCardType -> Boolean
+takesInput ∷ InsertableCardIOType → InsertableCardType → Boolean
 takesInput io card = Foldable.elem card $ cardsThatTakeInput io
 
 inputsFor ∷ InsertableCardType → Array InsertableCardIOType
@@ -110,7 +110,7 @@ cardPathsFromPaths = map _.c
 allPathsFinished ∷ Array Path → Boolean
 allPathsFinished = Foldable.all _.f
 
-cardPathsBetween ∷ InsertableCardIOType → InsertableCardType -> Array (Array InsertableCardType)
+cardPathsBetween ∷ InsertableCardIOType → InsertableCardType → Array (Array InsertableCardType)
 cardPathsBetween fromIO toCard =
   Array.filter (not ∘ Foldable.elem toCard) $ cardPathsFromPaths $ pathsBetween fromIO toCard
 
@@ -122,7 +122,7 @@ cardPathNeeded ∷ Array (Array InsertableCardType) → Boolean
 cardPathNeeded cardPaths =
   not $ Array.null cardPaths || [] `Foldable.elem` cardPaths
 
-possibleToGetTo ∷ InsertableCardIOType -> InsertableCardType -> Boolean
+possibleToGetTo ∷ InsertableCardIOType → InsertableCardType → Boolean
 possibleToGetTo io card =
   not $ Array.null $ Array.concat $ pathsBetweenIO io <$> inputsFor card
 
@@ -161,7 +161,7 @@ expandPath fromIO initialPath | otherwise =
 fromMaybePort ∷ Maybe Port → InsertableCardIOType
 fromMaybePort input = maybe None fromPort input
 
-printIOType :: InsertableCardIOType -> String
+printIOType ∷ InsertableCardIOType → String
 printIOType =
   case _ of
     Chart → "a chart"
@@ -172,11 +172,11 @@ printIOType =
     None → "to be the first card in a deck"
     Variables → "variables"
 
-eitherOr :: Array String -> String
+eitherOr ∷ Array String → String
 eitherOr strings =
   case Array.length strings of
-    1 -> String.joinWith "" strings
-    n ->
+    1 → String.joinWith "" strings
+    n →
       "either "
         ++ String.joinWith ", " (Array.take (n - 1) strings)
         ++ " or "
@@ -211,11 +211,11 @@ toCardType =
     TableCard → CardType.Table
     TroubleshootCard → CardType.Troubleshoot
 
-print ∷ InsertableCardType -> String
+print ∷ InsertableCardType → String
 print =
   CardType.cardName ∘ toCardType
 
-aAn ∷ String -> String
+aAn ∷ String → String
 aAn s =
   if String.toLower (String.take 1 s) `Foldable.elem` vowels
     then "An"
@@ -223,21 +223,21 @@ aAn s =
   where
   vowels = [ "a", "e", "i", "o", "u" ]
 
-reason :: InsertableCardIOType -> InsertableCardType -> String
+reason ∷ InsertableCardIOType → InsertableCardType → String
 reason io card =
   aAn (print card) ++ " " ++ show (print card) ++ " card can't " ++ actual
     ++ " because it needs " ++ expected ++ action ++ "."
   where
   actual =
     case io of
-      None -> "be the first card in a deck"
-      _ -> "follow a card which outputs " ++ printIOType io
+      None → "be the first card in a deck"
+      _ → "follow a card which outputs " ++ printIOType io
   expected =
     eitherOr $ printIOType <$> inputsFor card
   action =
     maybe "" (" to " ++ _) (printAction card)
 
-printAction ∷ InsertableCardType -> Maybe String
+printAction ∷ InsertableCardType → Maybe String
 printAction =
   case _ of
     CacheCard → Just "cache"
@@ -272,4 +272,4 @@ fromCardType =
     CardType.Markdown → Just ShowMarkdownCard
     CardType.Table → Just TableCard
     CardType.Troubleshoot → Just TroubleshootCard
-    _ -> Nothing
+    _ → Nothing
