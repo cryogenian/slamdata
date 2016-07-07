@@ -21,9 +21,11 @@ import SlamData.Prelude
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import DOM (DOM)
+import DOM.Event.EventTarget (eventListener, addEventListener)
+import DOM.Event.EventTypes as ET
 import DOM.Event.Types (EventTarget)
 import DOM.HTML (window)
-import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlDocumentToDocument)
+import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlDocumentToDocument, windowToEventTarget)
 import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
 import DOM.Node.Types (elementToParentNode, Element, documentToEventTarget)
@@ -71,3 +73,10 @@ documentTarget ∷ ∀ e. Eff (dom ∷ DOM|e) EventTarget
 documentTarget = htmlDocumentToEventTarget <$> (document =<< window)
   where
   htmlDocumentToEventTarget = documentToEventTarget ∘ htmlDocumentToDocument
+
+onResize ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit → Eff (dom ∷ DOM | eff) Unit
+onResize cb = do
+  let listener = eventListener \_ → cb
+  window
+    >>= windowToEventTarget
+    >>> addEventListener ET.resize listener false

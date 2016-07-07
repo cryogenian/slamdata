@@ -31,12 +31,14 @@ import Data.List as List
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.Time (Milliseconds(..))
 
 import DOM.HTML.Location as Location
 
 import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
 import Halogen.Component.Opaque.Unsafe (opaqueState)
+import Halogen.Component.Utils.Throttled (throttledEventSource_)
 import Halogen.HTML.Core (ClassName, className)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -69,6 +71,7 @@ import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Wiring (Wiring, getDeck, putDeck)
 
 import Utils.Path as UP
+import Utils.DOM (onResize)
 
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -159,6 +162,9 @@ eval ∷ Wiring → Natural Query WorkspaceDSL
 eval _ (Init next) = do
   deckId ← H.fromEff freshDeckId
   H.modify (_initialDeckId ?~ deckId)
+  H.subscribe'
+    $ throttledEventSource_ (Milliseconds 100.0) onResize
+    $ pure (H.action Resize)
   pure next
 eval _ (SetGlobalVarMap varMap next) = do
   H.modify (_globalVarMap .~ varMap)
@@ -166,6 +172,9 @@ eval _ (SetGlobalVarMap varMap next) = do
   pure next
 eval _ (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
+  pure next
+eval _ (Resize next) = do
+  queryDeck $ H.action $ Deck.UpdateCardSize
   pure next
 eval _ (Reset path next) = do
   H.modify _
