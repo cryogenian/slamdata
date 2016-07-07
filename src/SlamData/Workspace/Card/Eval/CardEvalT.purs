@@ -17,6 +17,11 @@ limitations under the License.
 module SlamData.Workspace.Card.Eval.CardEvalT
   ( CardEvalInput
   , CardEvalT
+  , addSource
+  , addCache
+  , addSources
+  , addCaches
+  , additionalSources
   , runCardEvalT
   , runCardEvalT_
   , temporaryOutputResource
@@ -26,14 +31,19 @@ import SlamData.Prelude
 
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Path
+import Data.Set as Set
 
 import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
+import Control.Monad.Writer.Class as WC
+import Control.Monad.Writer.Trans as WT
 
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Deck.DeckId as DID
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
+
 
 import Utils.Path (DirPath, FilePath)
 
@@ -44,7 +54,7 @@ type CardEvalInput =
   , globalVarMap ∷ VM.VarMap
   }
 
-type CardEvalTP m = ET.ExceptT String m
+type CardEvalTP m = ET.ExceptT String (WT.WriterT (Set.Set AdditionalSource) m)
 
 newtype CardEvalT m a = CardEvalT (CardEvalTP m a)
 
@@ -66,19 +76,68 @@ instance bindCardEvalT ∷ Monad m ⇒ Bind (CardEvalT m) where
 instance monadCardEvalT ∷ Monad m ⇒ Monad (CardEvalT m)
 
 instance monadTransCardEvalT ∷ MonadTrans CardEvalT where
-  lift = lift ⋙ CardEvalT
+  lift = lift ⋙ lift ⋙ CardEvalT
+
+instance monadWriterCardEvalT
+         ∷ (Monad m) ⇒ WC.MonadWriter (Set.Set AdditionalSource) (CardEvalT m) where
+  writer = WC.writer ⋙ lift ⋙ CardEvalT
+  listen = getCardEvalT ⋙ WC.listen ⋙ CardEvalT
+  pass = getCardEvalT ⋙ WC.pass ⋙ CardEvalT
 
 instance monadErrorCardEvalT ∷ Monad m ⇒ EC.MonadError String (CardEvalT m) where
   throwError = EC.throwError ⋙ CardEvalT
   catchError (CardEvalT m) = CardEvalT ∘ EC.catchError m ∘ (getCardEvalT ∘ _)
 
-runCardEvalT ∷ ∀ m. Functor m ⇒ CardEvalT m Port.Port → m Port.Port
+runCardEvalT
+  ∷ ∀ m
+  . Functor m
+  ⇒ CardEvalT m Port.Port
+  → m (Port.Port × (Set.Set AdditionalSource))
 runCardEvalT (CardEvalT m) =
-  ET.runExceptT m <#> either Port.CardError id
+  WT.runWriterT (ET.runExceptT m) <#> \(r × ms) →
+    (either Port.CardError id r) × ms
 
-runCardEvalT_ ∷ ∀ m. Functor m ⇒ CardEvalT m Unit → m Unit
+runCardEvalT_
+  ∷ ∀ m
+  . Functor m
+  ⇒ CardEvalT m Unit → m Unit
 runCardEvalT_ (CardEvalT m) =
-  ET.runExceptT m <#> either (const unit) id
+  WT.runWriterT (ET.runExceptT m) <#> \(x × _) → either (const unit) id x
+
+addSource
+  ∷ ∀ m
+  . (WC.MonadWriter (Set.Set AdditionalSource) m)
+  ⇒ FilePath
+  → m Unit
+addSource fp = WT.tell $ Set.singleton $ Source fp
+
+addCache
+  ∷ ∀ m
+  . (WC.MonadWriter (Set.Set AdditionalSource) m)
+  ⇒ FilePath
+  → m Unit
+addCache fp = WT.tell $ Set.singleton $ Cache fp
+
+addSources
+  ∷ ∀ m f
+  . (Foldable f, WC.MonadWriter (Set.Set AdditionalSource) m)
+  ⇒ f FilePath
+  → m Unit
+addSources fps = WT.tell $ foldMap (Set.singleton ∘ Source) fps
+
+addCaches
+  ∷ ∀ m f
+  . (Foldable f, WC.MonadWriter (Set.Set AdditionalSource) m)
+  ⇒ f FilePath
+  → m Unit
+addCaches fps = WT.tell $ foldMap (Set.singleton ∘ Cache) fps
+
+additionalSources
+  ∷ ∀ m f
+  . (Foldable f, WC.MonadWriter (Set.Set AdditionalSource) m)
+  ⇒ f AdditionalSource
+  → m Unit
+additionalSources = WT.tell ∘ foldMap Set.singleton
 
 temporaryOutputResource ∷
   ∀ r

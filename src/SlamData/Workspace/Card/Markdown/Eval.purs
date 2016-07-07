@@ -22,7 +22,7 @@ import Control.Monad.Aff.Free as AffF
 import Control.Monad.Eff.Class as Eff
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as Err
-import Control.Monad.State.Trans as State
+import Control.Monad.Writer.Trans as WT
 
 import Data.Array as A
 import Data.Date as D
@@ -32,7 +32,7 @@ import Data.Foldable as F
 import Data.Identity (Identity)
 import Data.Json.Extended as EJSON
 import Data.List as L
-import Data.NaturalTransformation as NT
+import Data.Set as Set
 import Data.String as S
 import Data.Time as DT
 
@@ -40,6 +40,7 @@ import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Quasar.Query as Quasar
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Traverse as SDT
@@ -59,9 +60,12 @@ markdownEval
   → String
   → CET.CardEvalT m Port.Port
 markdownEval { path } str = do
-  result ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries path $ SDP.parseMd str
-  doc ← either (Err.throwError ∘ Exn.message) pure result
-  pure $ Port.SlamDown doc
+  result  ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries path $ SDP.parseMd str
+  case result of
+    Left e → Err.throwError $ Exn.message e
+    Right (doc × as) → do
+      CET.additionalSources as
+      pure $ Port.SlamDown doc
 
 findFields
   ∷ ∀ a
@@ -73,21 +77,15 @@ findFields = SDT.everything (const mempty) extractField
   extractField (SD.FormField label _ _) = pure label
   extractField _ = mempty
 
-type EvalM = State.StateT Int Slam
+type EvalM = WT.WriterT (Set.Set AdditionalSource) Slam
 
-freshInt ∷ EvalM Int
-freshInt = do
-  n ← State.get ∷ EvalM Int
-  State.modify (_ + 1)
-  pure n
-
-runEvalM ∷ NT.Natural EvalM Slam
-runEvalM = flip State.evalStateT 0
+runEvalM ∷ ∀ a. EvalM a → Slam (a × (Set.Set AdditionalSource))
+runEvalM = WT.runWriterT
 
 evalEmbeddedQueries
   ∷ DirPath
   → SD.SlamDownP Port.VarMapValue
-  → Slam (SD.SlamDownP Port.VarMapValue)
+  → Slam ((SD.SlamDownP Port.VarMapValue) × (Set.Set AdditionalSource))
 evalEmbeddedQueries dir =
   runEvalM ∘
     SDE.eval
@@ -171,8 +169,13 @@ evalEmbeddedQueries dir =
     ∷ String
     → EvalM (Array EJSON.EJson)
   runQuery code = do
-    n ← freshInt
+    compiled ← Quasar.compile (Left dir) code mempty
+    case compiled of
+      Left e → Err.throwError e
+      Right {inputs} → CET.addSources inputs
+
     result ← Quasar.queryEJson dir code
+
     either
       (Err.throwError ∘ Exn.error)
       pure

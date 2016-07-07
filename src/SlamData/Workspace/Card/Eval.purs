@@ -26,6 +26,7 @@ import Control.Monad.Error.Class as EC
 import Data.Lens ((^?))
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
+import Data.Set as Set
 
 import Quasar.Types (SQL, FilePath)
 
@@ -44,6 +45,7 @@ import SlamData.Workspace.Card.Cache.Eval as Cache
 import SlamData.Workspace.Card.Search.Interpret as Search
 import SlamData.Workspace.Card.ChartOptions.Eval as ChartE
 import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.FormBuilder.Item.Model as FBI
 
 import Text.SlamSearch as SS
@@ -159,7 +161,9 @@ evalOpen info res = do
        ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
      # lift
    case msg of
-     Right Nothing → pure { resource: filePath, tag: Nothing }
+     Right Nothing → do
+       CET.addSource filePath
+       pure { resource: filePath, tag: Nothing }
      Right (Just err) →
        EC.throwError err
      Left exn →
@@ -177,10 +181,10 @@ evalQuery info sql varMap = do
     varMap' = Port.renderVarMapValue <$> varMap
     resource = CET.temporaryOutputResource info
     backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
-  plan ← lift $ QQ.compile backendPath sql varMap'
-  case plan of
+  compileResult ← lift $ QQ.compile backendPath sql varMap'
+  case compileResult of
     Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
-    Right p → pure unit -- WC.tell ["Plan: " ⊕ p]
+    Right {inputs} → CET.addSources inputs
   liftQ do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
@@ -209,13 +213,10 @@ evalSearch info queryText resource = do
     sql = QQ.templated resource template
     outputResource = CET.temporaryOutputResource info
 
-  -- WC.tell ["Generated SQL: " ⊕ sql]
-
-  plan ← lift $ QQ.compile (Right resource) sql SM.empty
-
-  case plan of
+  compileResult ← lift $ QQ.compile (Right resource) sql SM.empty
+  case compileResult of
     Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
-    Right p → pure unit -- WC.tell ["Plan: " ⊕ p]
+    Right {inputs} → CET.addSources inputs
 
   liftQ do
     QQ.viewQuery (Right resource) outputResource template SM.empty
@@ -233,7 +234,7 @@ runEvalCard
   . (Monad m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → Eval
-  → m Port.Port
+  → m (Port.Port × (Set.Set AdditionalSource))
 runEvalCard input =
   CET.runCardEvalT ∘
     evalCard input

@@ -38,6 +38,7 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Aff.Promise (Promise, wait, defer)
 import Control.Monad.Eff.Exception (message)
+import Data.Set as Set
 
 import Data.Map as Map
 
@@ -48,13 +49,14 @@ import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 
 import Utils.Path (DirPath)
 
 type CardEval =
   { card ∷ DeckId × Card.Model
   , input ∷ Maybe (Promise Port)
-  , output ∷ Maybe (Promise Port)
+  , output ∷ Maybe (Promise (Port × (Set.Set AdditionalSource)))
   }
 
 type DeckRef = Promise (Either String Deck)

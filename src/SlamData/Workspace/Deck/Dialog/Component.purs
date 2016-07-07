@@ -44,17 +44,17 @@ import SlamData.Workspace.Deck.Dialog.Export.Component as Export
 import SlamData.Workspace.Deck.Dialog.Share.Component as Share
 import SlamData.Workspace.Deck.Dialog.Unshare.Component as Unshare
 import SlamData.Workspace.Deck.Dialog.Reason.Component as Reason
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Effects (Slam)
 
-import Utils.Path (DirPath)
 
 data Dialog
   = Error String
-  | Embed DirPath Port.VarMap
-  | Publish DirPath Port.VarMap
+  | Embed SharingInput Port.VarMap
+  | Publish SharingInput Port.VarMap
   | Reason CardType String (Array (Array CardType))
-  | Share DirPath
-  | Unshare DirPath
+  | Share SharingInput
+  | Unshare SharingInput
   | Rename String
   | DeleteDeck
 
