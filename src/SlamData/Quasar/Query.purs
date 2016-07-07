@@ -48,7 +48,7 @@ import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
 import Quasar.Error (lowerQError)
 import Quasar.Mount as QM
-import Quasar.Types (AnyPath, DirPath, FilePath)
+import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
 
@@ -71,15 +71,12 @@ compile
   ⇒ AnyPath
   → SQL
   → SM.StrMap String
-  → m (Either Exn.Error String)
-compile path sql varMap = runExceptT do
+  → m (Either Exn.Error CompileResultR)
+compile path sql varMap = do
   let backendPath = either id (fromMaybe P.rootDir <<< P.parentDir) path
       sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
-  result ← ExceptT $ runQuasarF $ lmap lowerQError <$>
+  runQuasarF $ lmap lowerQError <$>
     QF.compileQuery backendPath sql' varMap
-  case S.stripPrefix "MongoDB\n" result.physicalPlanText of
-    Nothing → Err.throwError $ Exn.error "Incorrect compile response"
-    Just plan → pure plan
 
 query
   ∷ ∀ eff m
@@ -107,13 +104,15 @@ queryEJson path sql =
 -- | {{path}} template syntax to have the file's path inserted.
 viewQuery
   ∷ ∀ eff m
-  . Affable (QEff eff) m
+  . (Affable (QEff eff) m, Monad m)
   ⇒ AnyPath
   → FilePath
   → SQL
   → SM.StrMap String
   → m (Either Exn.Error Unit)
-viewQuery path dest sql vars =
+viewQuery path dest sql vars = do
+  runQuasarF $ lmap lowerQError <$>
+    QF.deleteMount (Right dest)
   runQuasarF $ lmap lowerQError <$>
     QF.updateMount (Right dest) (QM.ViewConfig
       { query: maybe sql (flip templated sql) $ either (const Nothing) Just path
