@@ -469,7 +469,7 @@ renderCopyVal locString state
              ⊕ maybe
                  "window.SLAMDATA_PERMISSION_TOKEN"
                  (\x → "\"" ⊕ QTA.runTokenHash x ⊕ "\"")
-                 (state.permToken >>= _.secret)
+                 (state.permToken <#> _.secret)
              ⊕ ";\n"
              ⊕ "  var queryString = \"?permissionTokens=\" + slamdataTokenHash;\n"
         else "")
@@ -494,6 +494,6 @@ renderURL locationString state@{sharingInput, varMap, permToken, isLogged} =
       (append "?permissionTokens=" ∘ QTA.runTokenHash)
       (do guard isLogged
           token ← permToken
-          token.secret)
+          pure $ token.secret)
 
   ⊕ mkWorkspaceHash sharingInput.deckPath (WA.Load AT.ReadOnly) varMap

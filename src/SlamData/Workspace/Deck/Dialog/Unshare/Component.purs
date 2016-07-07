@@ -609,7 +609,7 @@ prepareAndFilterTokens toks sharingInput =
         Set.fromFoldable $ map QTA.Action tr.actions
       preToken =
         { name: map QTA.runTokenName tr.name
-        , secret: maybe "" QTA.runTokenHash tr.secret
+        , secret: QTA.runTokenHash tr.secret
         , tokenId: tr.id
         , state: Nothing
         , resume: View

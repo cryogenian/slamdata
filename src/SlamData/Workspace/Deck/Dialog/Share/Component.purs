@@ -361,7 +361,7 @@ eval (Share next) = next <$ do
       Left _ →
         showConnectionError
       Right token →
-        H.modify (_{ tokenSecret = QT.runTokenHash <$> token.secret
+        H.modify (_{ tokenSecret = Just $ QT.runTokenHash token.secret
                    , submitting = false
                    })
     else do
