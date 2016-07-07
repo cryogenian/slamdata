@@ -25,9 +25,9 @@ import Quasar.Advanced.Types as QT
 import SlamData.Quasar.Security as Q
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
-import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), sharingActions)
+import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), sharingActions, SharingInput)
 
-import Utils.Path (FilePath, DirPath, rootFile)
+import Utils.Path (rootFile, FilePath)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
@@ -78,11 +78,11 @@ type State =
   , submitting ∷ Boolean
   , shareResume ∷ ShareResume
   , tokenSecret ∷ Maybe String
-  , deckPath ∷ DirPath
+  , sharingInput ∷ SharingInput
   }
 
-initialState ∷ DirPath → State
-initialState deckPath =
+initialState ∷ SharingInput → State
+initialState sharingInput =
   { subjectType: User
   , error: Nothing
   , email: ""
@@ -94,7 +94,7 @@ initialState deckPath =
   , submitting: false
   , shareResume: View
   , tokenSecret: Nothing
-  , deckPath
+  , sharingInput
   }
 
 data Query a
@@ -320,7 +320,9 @@ render state =
                    ⊕ (if isJust state.error && state.showError then [ B.hasError ] else [ ])
                , HP.buttonType HP.ButtonButton
                , HE.onClick (HE.input_ Share)
-               , HP.enabled (not state.submitting)
+               , HP.disabled (state.submitting ∨
+                              ((state.email ≡ "" ∨ state.error ≡ Just Validation)
+                               ∧ state.subjectType ≡ User))
                ]
                [ HH.text if state.submitting then "Sharing..." else  "Share" ]
            ])
@@ -346,7 +348,7 @@ eval (Share next) = next <$ do
   state ← H.get
 
   let
-    actions = sharingActions state.deckPath state.shareResume
+    actions = sharingActions state.sharingInput state.shareResume
 
   if state.subjectType ≡ Token
     then do

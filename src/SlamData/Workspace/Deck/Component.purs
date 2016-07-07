@@ -33,6 +33,7 @@ import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.UI.Browser (newTab, locationObject, locationString, setHref)
 
+import Data.Array ((:))
 import Data.Array as Array
 import Data.Foldable (find, any)
 import Data.Lens as Lens
@@ -89,6 +90,7 @@ import SlamData.Workspace.Model as WM
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Wiring (Wiring, CardEval, Cache, DeckMessage(..), getDeck, putDeck, putCardEval, getCache, makeCache)
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
@@ -222,7 +224,9 @@ eval opts@{ wiring } = case _ of
     st ← H.get
     case st.parent of
       Just (Tuple deckId _) → do
-        let deckHash = mkWorkspaceHash (DCS.deckPath' st.path deckId) (WA.Load opts.accessType) st.globalVarMap
+        let
+          deckHash =
+            mkWorkspaceHash (DCS.deckPath' st.path deckId) (WA.Load opts.accessType) st.globalVarMap
         H.fromEff $ locationObject >>= Location.setHash deckHash
       Nothing →
         void $ H.fromEff $ setHref $ parentURL $ Left st.path
@@ -291,7 +295,20 @@ peekDialog _ (Dialog.Confirm d b _) = do
 
 peekBackSide ∷ ∀ a. DeckOptions → Back.Query a → DeckDSL Unit
 peekBackSide opts (Back.DoAction action _) =
-  case action of
+  let
+    getSharingInput = do
+      deckPath ← H.gets DCS.deckPath
+      additionalSources ← H.gets _.additionalSources
+      pure
+        $ foldl
+          (\accum → case _ of
+              Cache cfp → accum { caches = cfp:accum.caches }
+              Source sfp → accum { sources = sfp:accum.sources })
+          ({ deckPath, caches: [], sources: [] })
+          (fold additionalSources)
+
+
+  in case action of
     Back.Trash → do
       state ← H.get
       lastId ← H.gets DCS.findLastRealCard
@@ -311,22 +328,22 @@ peekBackSide opts (Back.DoAction action _) =
       showDialog $ Dialog.Rename name
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Share → do
-      deckPath ← H.gets DCS.deckPath
-      showDialog $ Dialog.Share deckPath
+      sharingInput ← getSharingInput
+      showDialog $ Dialog.Share sharingInput
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Unshare → do
-      deckPath ← H.gets DCS.deckPath
-      showDialog $ Dialog.Unshare deckPath
+      sharingInput ← getSharingInput
+      showDialog $ Dialog.Unshare sharingInput
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Embed → do
       varMap ← H.gets _.globalVarMap
-      deckPath ← H.gets DCS.deckPath
-      showDialog $ Dialog.Embed deckPath varMap
+      sharingInput ← getSharingInput
+      showDialog $ Dialog.Embed sharingInput varMap
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish → do
-      deckPath ← H.gets DCS.deckPath
       varMap ← H.gets _.globalVarMap
-      showDialog $ Dialog.Publish deckPath varMap
+      sharingInput ← getSharingInput
+      showDialog $ Dialog.Publish sharingInput varMap
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.DeleteDeck → do
       cards ← H.gets _.modelCards
@@ -523,7 +540,7 @@ runPendingCards opts source pendingCard pendingCards = do
 
   for_ pendingCards \cards → do
     input ← join <$> for prevCard (flip getCache opts.wiring.cards)
-    steps ← resume st (input >>= _.output) cards
+    steps ← resume st (input >>= _.output <#> map fst) cards
     runCardUpdates opts source steps
 
   where
@@ -538,7 +555,7 @@ runPendingCards opts source pendingCard pendingCards = do
             putCardEval ev pendingCards
             putCardEval ev opts.wiring.cards
             pure ev
-      go (L.Cons step steps) step.output cs
+      go (L.Cons step steps) (map (map fst) step.output) cs
 
 -- | When we initially eval a deck we want to use whatever is in the main cache.
 -- | If we were to just queuePendingCard then everything would get freshly
@@ -573,7 +590,7 @@ evalCard path globalVarMap input card = do
     input' ← for input Pr.wait
     case Card.modelToEval (snd card).model of
       Left err →
-        pure $ Port.CardError $ "Could not evaluate card: " <> err
+        pure $ (Port.CardError $ "Could not evaluate card: " <> err) × mempty
       Right cmd → do
         flip Eval.runEvalCard cmd
           { path
@@ -595,7 +612,7 @@ runCardUpdates opts source steps = do
     pendingCm = st.id × pendingEvalCard
     nextActionStep =
       { card: st.id × nextActionCard
-      , input: _.output =<< L.last steps
+      , input: map (map fst) <$> _.output =<< L.last steps
       , output: Nothing
       }
     updateSteps =
@@ -609,6 +626,7 @@ runCardUpdates opts source steps = do
   updateResult ←
     H.fromAff $ Pr.wait $
       updateCards st { steps: updateSteps, cards: mempty, updates: mempty }
+
 
   -- Splice in the new display cards and run their updates.
   for_ (Array.head updateResult.displayCards) \card → do
@@ -645,9 +663,9 @@ runCardUpdates opts source steps = do
       let cards' = L.Cons x.card cards
           updates' = L.Cons x updates
       updateCards st $ case output of
-        Just (Port.CardError err) →
+        Just ((Port.CardError err) × _) →
           let errorCard' = st.id × errorCard
-              errorStep  = { input: x.output, output: Nothing, card: errorCard' }
+              errorStep  = { input: map (map fst) $ x.output, output: Nothing, card: errorCard' }
           in
               { steps: L.Nil
               , cards: L.Cons errorCard' cards'
@@ -672,14 +690,23 @@ runCardUpdates opts source steps = do
 
     let
       cardCoord = DCS.coordModelToCoord step.card
-      evalInput = { path: st.path, globalVarMap: st.globalVarMap, input, cardCoord }
+
+      evalInput =
+        { path: st.path
+        , globalVarMap: st.globalVarMap
+        , input: input
+        , cardCoord
+        }
+      newSet = foldMap snd output
+
+    H.modify $ DCS._additionalSources %~ Map.insert cardCoord newSet
 
     -- We always load the card when we are updating a mirrored deck. This is
     -- so mirrors will always have the most recent model.
     when (not (Set.member cardCoord loadedCards) || st.id ≠ source) $ void do
       queryCardEval cardCoord $ H.action $ LoadCard (snd step.card)
 
-    queryCardEval cardCoord $ H.action $ UpdateCard evalInput output
+    queryCardEval cardCoord $ H.action $ UpdateCard evalInput (map fst output)
 
 -- | Enqueues the card with the specified ID in the set of cards that are
 -- | pending to run and enqueues a debounced query to trigger the cards to

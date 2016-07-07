@@ -34,7 +34,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.Security as Q
 import SlamData.Render.Common (glyph, fadeWhen)
-import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..))
+import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 
 import Quasar.Advanced.Types as QTA
 
@@ -49,7 +49,7 @@ type DSL = H.ComponentDSL State Query Slam
 type State =
   { presentingAs ∷ PresentAs
   , varMap ∷ Port.VarMap
-  , deckPath ∷ DirPath
+  , sharingInput ∷ SharingInput
   , permToken ∷ Maybe QTA.TokenR
   , canRevoke ∷ Boolean
   , shouldGenerateToken ∷ Boolean
@@ -62,11 +62,11 @@ type State =
   , loading ∷ Boolean
   }
 
-initialState ∷ DirPath → State
-initialState =
+initialState ∷ SharingInput → State
+initialState sharingInput =
   { presentingAs: URI
   , varMap: SM.empty
-  , deckPath: _
+  , sharingInput
   , permToken: Nothing
   , canRevoke: false
   , shouldGenerateToken: false
@@ -353,7 +353,7 @@ eval (Init mbEl next) = next <$ do
         Right tokens →
           let
             tokenName =
-              Just $ workspaceTokenName state.deckPath oidcToken
+              Just $ workspaceTokenName state.sharingInput.deckPath oidcToken
             oldToken =
               F.find (\x → x.name ≡ tokenName) tokens
           in case oldToken of
@@ -368,7 +368,7 @@ eval (Init mbEl next) = next <$ do
                 createdRes ←
                   Q.createToken
                     tokenName
-                    (sharingActions state.deckPath View)
+                    (sharingActions state.sharingInput View)
                 H.modify _{submitting = false}
                 H.modify case createdRes of
                   Left _ →  _{errored = true}
@@ -396,10 +396,10 @@ eval (ToggleShouldGenerateToken next) = next <$ do
     Nothing →
       unless state.shouldGenerateToken do
         mbOIDC ← H.fromEff Auth.retrieveIdToken
-        deckPath ← H.gets _.deckPath
+        deckPath ← H.gets (_.deckPath ∘ _.sharingInput)
         for_ mbOIDC \oidc → do
           let
-            actions = sharingActions deckPath View
+            actions = sharingActions state.sharingInput View
             tokenName = Just $ workspaceTokenName deckPath oidc
           H.modify _{submitting = true}
           recreatedRes ← Q.createToken tokenName actions
@@ -478,7 +478,7 @@ renderCopyVal locString state
       ⊕ "/"
       ⊕ Config.workspaceUrl
       ⊕ (if state.isLogged then "\"\n    + queryString\n    + \"" else "")
-      ⊕ mkWorkspaceHash state.deckPath (WA.Load AT.ReadOnly) state.varMap
+      ⊕ mkWorkspaceHash state.sharingInput.deckPath (WA.Load AT.ReadOnly) state.varMap
       ⊕ "\";\n"
     ⊕ "  var iframe = \"<iframe width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" src=\\\"\" + uri + \"\\\"></iframe>\""
     ⊕ "  document.writeln(iframe);\n"
@@ -486,7 +486,7 @@ renderCopyVal locString state
     ⊕ "</script>"
 
 renderURL ∷ String → State → String
-renderURL locationString state@{deckPath, varMap, permToken, isLogged} =
+renderURL locationString state@{sharingInput, varMap, permToken, isLogged} =
   locationString
   ⊕ "/"
   ⊕ Config.workspaceUrl
@@ -496,4 +496,4 @@ renderURL locationString state@{deckPath, varMap, permToken, isLogged} =
           token ← permToken
           token.secret)
 
-  ⊕ mkWorkspaceHash deckPath (WA.Load AT.ReadOnly) varMap
+  ⊕ mkWorkspaceHash sharingInput.deckPath (WA.Load AT.ReadOnly) varMap

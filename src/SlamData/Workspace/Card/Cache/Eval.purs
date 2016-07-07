@@ -74,7 +74,8 @@ eval' fp resource = do
   when (fp /= outputResource)
     $ EC.throwError
     $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
-
+  CET.addSource resource
+  CET.addCache outputResource
   pure { resource: outputResource, tag: Nothing }
 
 liftQ ∷ ∀ m a. Monad m ⇒ m (Either Exn.Error a) → CET.CardEvalT m a

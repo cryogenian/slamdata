@@ -31,7 +31,7 @@ import SlamData.Quasar.Security as Q
 import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareResume)
 import SlamData.Workspace.Deck.Dialog.Share.Model as Model
 
-import Utils.Path (DirPath, parseFilePath)
+import Utils.Path (parseFilePath)
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
@@ -89,17 +89,17 @@ type State =
   , groupPermissions ∷ SM.StrMap Permission
   , loading ∷ Boolean
   , errored ∷ Boolean
-  , deckPath ∷ DirPath
+  , sharingInput ∷ Model.SharingInput
   }
 
-initialState ∷ DirPath → State
-initialState deckPath =
+initialState ∷ Model.SharingInput → State
+initialState sharingInput =
   { userPermissions: SM.empty
   , tokenPermissions: [ ]
   , groupPermissions: SM.empty
   , loading: true
   , errored: false
-  , deckPath
+  , sharingInput
   }
 
 _userPermissions ∷ ∀ a r. LensP {userPermissions ∷ a|r} a
@@ -352,12 +352,12 @@ renderToken token =
 eval ∷ Query ~> DSL
 eval (Init next) = next <$ do
   tokensRes ← Q.tokenList
-  deckPath ← H.gets _.deckPath
+  sharingInput ← H.gets _.sharingInput
   case tokensRes of
     Left e → H.modify (_{errored = true})
     Right toks →
       let
-        tokenPerms = prepareAndFilterTokens toks deckPath
+        tokenPerms = prepareAndFilterTokens toks sharingInput
       in
         H.modify (_{tokenPermissions = tokenPerms})
 
@@ -366,7 +366,7 @@ eval (Init next) = next <$ do
     Left e → H.modify (_{errored = true})
     Right ps →
       let
-        adjusted = adjustPermissions ps deckPath
+        adjusted = adjustPermissions ps sharingInput
       in
         H.modify (_{ userPermissions = adjusted.users
                    , groupPermissions = adjusted.groups
@@ -396,7 +396,7 @@ eval (PermissionResumeChanged name string next) = next <$ do
     H.modify
       $ (_userPermissions ∘ ix name ∘ _state ?~ Modifying)
       ∘ (_userPermissions ∘ ix name ∘ _resume .~ newResume)
-    mbLeftPid ← changePermissionResumeForUser name state.deckPath newResume perms
+    mbLeftPid ← changePermissionResumeForUser name state.sharingInput newResume perms
     H.modify case mbLeftPid of
       Nothing →
         (_userPermissions ∘ ix name ∘ _state .~ Nothing)
@@ -411,7 +411,7 @@ eval (PermissionResumeChanged name string next) = next <$ do
       $ (_groupPermissions ∘ ix name ∘ _state ?~ Modifying)
       ∘ (_groupPermissions ∘ ix name ∘ _resume .~ newResume)
 
-    mbLeftPid ← changePermissionResumeForGroup name state.deckPath newResume perms
+    mbLeftPid ← changePermissionResumeForGroup name state.sharingInput newResume perms
     H.modify case mbLeftPid of
       Nothing →
         (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
@@ -474,18 +474,18 @@ eval (Unshare name next) = next <$ do
 
 changePermissionResumeForUser
   ∷ String
-  → DirPath
+  → Model.SharingInput
   → ShareResume
   → Permission
   → DSL (Maybe (Map.Map QTA.PermissionId QTA.ActionR))
-changePermissionResumeForUser name deckPath res perm = do
+changePermissionResumeForUser name sharingInput res perm = do
   leftPids ← deletePermission perm.actions
   if not $ Map.isEmpty leftPids
     then
     pure $ Just leftPids
     else do
     let
-      actions = Model.sharingActions deckPath res
+      actions = Model.sharingActions sharingInput res
       shareRequest =
         { users: [ QTA.UserId name ]
         , groups: [ ]
@@ -499,11 +499,11 @@ changePermissionResumeForUser name deckPath res perm = do
 
 changePermissionResumeForGroup
   ∷ String
-  → DirPath
+  → Model.SharingInput
   → ShareResume
   → Permission
   → DSL (Maybe (Map.Map QTA.PermissionId QTA.ActionR))
-changePermissionResumeForGroup name deckPath res perm =
+changePermissionResumeForGroup name sharingInput res perm =
   case parseFilePath name of
     Nothing → pure $ Just perm.actions
     Just groupPath → do
@@ -513,7 +513,7 @@ changePermissionResumeForGroup name deckPath res perm =
         pure $ Just leftPids
         else do
         let
-          actions = Model.sharingActions deckPath res
+          actions = Model.sharingActions sharingInput res
           shareRequest =
             { users: [ ]
             , groups: [ groupPath ]
@@ -544,8 +544,8 @@ type AdjustedPermissions =
   , groups ∷ SM.StrMap Permission
   }
 
-adjustPermissions ∷ Array QTA.PermissionR → DirPath → AdjustedPermissions
-adjustPermissions prs deckPath =
+adjustPermissions ∷ Array QTA.PermissionR → Model.SharingInput → AdjustedPermissions
+adjustPermissions prs sharingInput =
   let
     folded = foldl foldFn Map.empty prs
     foldFn mp pr =
@@ -555,9 +555,9 @@ adjustPermissions prs deckPath =
     alterFn pr (Just arr) = Just $ Arr.cons pr arr
 
     sharingActionsEdit =
-      Set.fromFoldable $ map QTA.Action $ Model.sharingActions deckPath Edit
+      Set.fromFoldable $ map QTA.Action $ Model.sharingActions sharingInput Edit
     sharingActionsView =
-      Set.fromFoldable $ map QTA.Action $ Model.sharingActions deckPath View
+      Set.fromFoldable $ map QTA.Action $ Model.sharingActions sharingInput View
 
 
     obj = foldl objFoldFn { users: SM.empty, groups: SM.empty } $ Map.toList folded
@@ -594,17 +594,17 @@ adjustPermissions prs deckPath =
   in obj
 
 
-prepareAndFilterTokens ∷ Array QTA.TokenR → DirPath →  Array TokenPermission
-prepareAndFilterTokens toks deckPath =
+prepareAndFilterTokens ∷ Array QTA.TokenR → Model.SharingInput →  Array TokenPermission
+prepareAndFilterTokens toks sharingInput =
   foldMap foldFn toks
   where
   foldFn ∷ QTA.TokenR → Array TokenPermission
   foldFn tr =
     let
       sharingActionsEdit =
-        Set.fromFoldable $ map QTA.Action $ Model.sharingActions deckPath Edit
+        Set.fromFoldable $ map QTA.Action $ Model.sharingActions sharingInput Edit
       sharingActionsView =
-        Set.fromFoldable $ map QTA.Action $ Model.sharingActions deckPath View
+        Set.fromFoldable $ map QTA.Action $ Model.sharingActions sharingInput View
       actions =
         Set.fromFoldable $ map QTA.Action tr.actions
       preToken =

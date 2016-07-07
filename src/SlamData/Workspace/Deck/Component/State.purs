@@ -42,6 +42,7 @@ module SlamData.Workspace.Deck.Component.State
   , _slidingTo
   , _breakers
   , _focused
+  , _additionalSources
   , addCard
   , addCard'
   , removeCard
@@ -79,6 +80,7 @@ import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.StrMap as SM
 import Data.Set as Set
+import Data.Map as Map
 
 import Halogen.Component.Opaque.Unsafe (OpaqueState)
 import Halogen.Component.Utils.Debounced (DebounceTrigger)
@@ -95,6 +97,7 @@ import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.StateMode (StateMode(..))
 
 import Utils.Path (DirPath)
@@ -137,6 +140,7 @@ type State =
   , focused ∷ Boolean
   , finalized ∷ Boolean
   , deckElement ∷ Maybe HTMLElement
+  , additionalSources ∷ Map.Map (DeckId × CardId) (Set.Set AdditionalSource)
   }
 
 -- | A record used to represent card definitions in the deck.
@@ -171,6 +175,7 @@ initialDeck path deckId =
   , focused: false
   , finalized: false
   , deckElement: Nothing
+  , additionalSources: mempty
   }
 
 -- | The unique identifier of the deck.
@@ -262,6 +267,9 @@ _slidingTo = lens _.slidingTo _{slidingTo = _}
 
 _breakers ∷ ∀ a r. LensP {breakers ∷ a|r} a
 _breakers = lens _.breakers _{breakers = _}
+
+_additionalSources ∷ ∀ a r. LensP {additionalSources ∷ a|r} a
+_additionalSources = lens _.additionalSources _{additionalSources = _}
 
 -- | Whether the deck is at the top-level of the deck component hierarchy
 _level ∷ ∀ a r. LensP {level ∷ a|r} a
