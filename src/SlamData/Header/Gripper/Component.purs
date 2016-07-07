@@ -90,8 +90,7 @@ render sel state =
     [ HH.div
         [ ARIA.label $ label state
         ]
-        [ glyph B.glyphiconResizeVertical
-        , CSS.stylesheet $ renderStyles sel state
+        [ CSS.stylesheet $ renderStyles sel state
         ]
     ]
   where
