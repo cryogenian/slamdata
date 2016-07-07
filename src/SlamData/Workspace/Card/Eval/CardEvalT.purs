@@ -145,6 +145,6 @@ temporaryOutputResource ∷
   → FilePath
 temporaryOutputResource { path, cardCoord = deckId × cardId } =
   path
-    </> Path.dir (DID.deckIdToString deckId)
     </> Path.dir ".tmp"
+    </> Path.dir (DID.deckIdToString deckId)
     </> Path.file ("out" ⊕ CID.cardIdToString cardId)

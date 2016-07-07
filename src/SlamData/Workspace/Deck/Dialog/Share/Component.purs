@@ -369,10 +369,10 @@ eval (Share next) = next <$ do
       shareRequest ∷ QT.ShareRequestR
       shareRequest =
         { users: (if state.subjectType ≡ User
-                  then map (const $ QT.UserId state.email) actions
+                  then [ QT.UserId state.email ]
                   else [ ])
         , groups: (if state.subjectType ≡ Group
-                   then Arr.catMaybes $ map (const $ state.groupSelected) actions
+                   then foldMap pure state.groupSelected
                    else [ ])
         , actions
         }
