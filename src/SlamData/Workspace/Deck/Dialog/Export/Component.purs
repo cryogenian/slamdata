@@ -471,7 +471,7 @@ renderCopyVal locString state
                  (\x → "\"" ⊕ QTA.runTokenHash x ⊕ "\"")
                  (state.permToken <#> _.secret)
              ⊕ ";\n"
-             ⊕ "  var queryString = \"?permissionTokens=\" + slamdataTokenHash;\n"
+             ⊕ "  var queryString = \"?permissionsToken=\" + slamdataTokenHash;\n"
         else "")
     ⊕ "  var uri = \""
       ⊕ locString
@@ -480,7 +480,7 @@ renderCopyVal locString state
       ⊕ (if state.isLogged then "\"\n    + queryString\n    + \"" else "")
       ⊕ mkWorkspaceHash state.sharingInput.deckPath (WA.Load AT.ReadOnly) state.varMap
       ⊕ "\";\n"
-    ⊕ "  var iframe = \"<iframe width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" src=\\\"\" + uri + \"\\\"></iframe>\""
+    ⊕ "  var iframe = \"<iframe width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" src=\\\"\" + uri + \"\\\"></iframe>\";\n"
     ⊕ "  document.writeln(iframe);\n"
     ⊕ "})();\n"
     ⊕ "</script>"
@@ -491,7 +491,7 @@ renderURL locationString state@{sharingInput, varMap, permToken, isLogged} =
   ⊕ "/"
   ⊕ Config.workspaceUrl
   ⊕ foldMap
-      (append "?permissionTokens=" ∘ QTA.runTokenHash)
+      (append "?permissionsToken=" ∘ QTA.runTokenHash)
       (do guard isLogged
           token ← permToken
           pure $ token.secret)
