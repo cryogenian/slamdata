@@ -112,7 +112,7 @@ render opts state =
             _ → []
       , HC.style $
           case state.moving of
-            Just (deckId' × rect') | deckId == deckId' → zIndex 2 *> cssPos rect'
+            Just (deckId' × rect') | deckId == deckId' → zIndex 20 *> cssPos rect'
             _ → cssPos rect
       ]
       [ HH.slot deckId $ mkDeckComponent deckId ]

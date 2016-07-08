@@ -27,6 +27,9 @@ deck = className "sd-deck"
 deckFrame ∷ ClassName
 deckFrame = className "sd-deck-frame"
 
+deckShadow ∷ ClassName
+deckShadow = className "sd-deck-shadow"
+
 deckName ∷ ClassName
 deckName = className "sd-deck-name"
 

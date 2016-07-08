@@ -1,13 +1,17 @@
 @import "deck/common";
 @import "deck/indicator";
 
+.sd-workspace > div > .sd-deck-container {
+  top: 0;
+  left: 0;
+}
+
 .sd-deck-container {
   position: absolute;
-  top: 0;
+  top: 1px;
   right: 0;
-  left: 0;
+  left: 1px;
   bottom: 0;
-  box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.25);
 
   transition: 0.2s ease-out box-shadow;
 
@@ -17,11 +21,24 @@
     width: 100%;
     height: 100%;
     background: #fff;
+    z-index: 2;
     > * {
       opacity: 0;
       pointer-events: none;
       transition: 0.2s ease-out opacity;
     }
+  }
+
+  .sd-deck-shadow {
+    .noselect;
+    pointer-events: none;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 100%;
+    height: 100%;
+    box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.25);
+    z-index: 1;
   }
 
   & > .loading {
@@ -36,13 +53,23 @@
   }
 
   &.sd-focused {
-    z-index: 2;
+    z-index: 10;
     box-shadow: 0px 0px 16px rgba(0, 0, 0, 0.25);
+
     > div.sd-deck-frame {
+      z-index: 12;
       > * {
         opacity: 1;
         pointer-events: auto;
       }
+    }
+
+    > div.sd-deck {
+      z-index: 12;
+    }
+
+    > div.sd-deck-shadow {
+      z-index: 11;
     }
   }
 }
@@ -53,6 +80,7 @@
   bottom: @grid-size;
   width: 100%;
   overflow: hidden;
+  z-index: 2;
 }
 
 .sd-card-slider {
