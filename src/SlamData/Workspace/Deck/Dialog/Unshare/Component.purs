@@ -9,6 +9,7 @@ import Data.Array as Arr
 import Data.Foldable as F
 import Data.Lens (LensP, lens, (.~), (%~), (?~))
 import Data.Lens.Index (ix)
+import Data.List as L
 import Data.Set as Set
 import Data.Map as Map
 import Data.StrMap as SM
@@ -396,29 +397,32 @@ eval (PermissionResumeChanged name string next) = next <$ do
     H.modify
       $ (_userPermissions ∘ ix name ∘ _state ?~ Modifying)
       ∘ (_userPermissions ∘ ix name ∘ _resume .~ newResume)
-    mbLeftPid ← changePermissionResumeForUser name state.sharingInput newResume perms
-    H.modify case mbLeftPid of
-      Nothing →
-        (_userPermissions ∘ ix name ∘ _state .~ Nothing)
-      Just leftPids →
-        (_userPermissions ∘ ix name ∘ _state ?~ ModifyError)
-        ∘ (_userPermissions ∘ ix name ∘ _actions .~ leftPids)
-        ∘ (_userPermissions ∘ ix name ∘ _resume .~ oldResume)
-
+    (succeeded × actionMap) ←
+      changePermissionResumeForUser name state.sharingInput newResume perms
+    H.modify
+      $ (_userPermissions ∘ ix name ∘ _actions .~ actionMap)
+      ∘ if succeeded
+        then
+          (_userPermissions ∘ ix name ∘ _state .~ Nothing)
+        else
+          (_userPermissions ∘ ix name ∘ _state ?~ ModifyError)
+          ∘ (_userPermissions ∘ ix name ∘ _resume .~ oldResume)
 
   for_ mbGroupPerms \perms → do
     H.modify
       $ (_groupPermissions ∘ ix name ∘ _state ?~ Modifying)
       ∘ (_groupPermissions ∘ ix name ∘ _resume .~ newResume)
 
-    mbLeftPid ← changePermissionResumeForGroup name state.sharingInput newResume perms
-    H.modify case mbLeftPid of
-      Nothing →
-        (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
-      Just leftPids →
-        (_groupPermissions ∘ ix name ∘ _state ?~ ModifyError)
-        ∘ (_groupPermissions ∘ ix name ∘ _actions .~ leftPids)
-        ∘ (_groupPermissions ∘ ix name ∘ _resume .~ oldResume)
+    (succeeded × actionMap)  ←
+      changePermissionResumeForGroup name state.sharingInput newResume perms
+    H.modify
+      $ (_groupPermissions ∘ ix name ∘ _actions .~ actionMap)
+      ∘ if succeeded
+        then
+          (_groupPermissions ∘ ix name ∘ _state .~ Nothing)
+        else
+          (_groupPermissions ∘ ix name ∘ _state ?~ ModifyError)
+          ∘ (_groupPermissions ∘ ix name ∘ _resume .~ oldResume)
 
 
 eval (UnshareToken tokenId next) = next <$ do
@@ -477,12 +481,12 @@ changePermissionResumeForUser
   → Model.SharingInput
   → ShareResume
   → Permission
-  → DSL (Maybe (Map.Map QTA.PermissionId QTA.ActionR))
+  → DSL (Boolean × (Map.Map QTA.PermissionId QTA.ActionR))
 changePermissionResumeForUser name sharingInput res perm = do
   leftPids ← deletePermission perm.actions
   if not $ Map.isEmpty leftPids
     then
-    pure $ Just leftPids
+    pure $ false × leftPids
     else do
     let
       actions = Model.sharingActions sharingInput res
@@ -493,8 +497,8 @@ changePermissionResumeForUser name sharingInput res perm = do
         }
     shareRes ← Q.sharePermission shareRequest
     case shareRes of
-      Left _ → pure $ Just Map.empty
-      Right _ → pure Nothing
+      Left _ → pure $ false × Map.empty
+      Right ps → pure $ true × foldMap (\p → Map.singleton p.id p.action) ps
 
 
 changePermissionResumeForGroup
@@ -502,15 +506,15 @@ changePermissionResumeForGroup
   → Model.SharingInput
   → ShareResume
   → Permission
-  → DSL (Maybe (Map.Map QTA.PermissionId QTA.ActionR))
+  → DSL (Boolean × (Map.Map QTA.PermissionId QTA.ActionR))
 changePermissionResumeForGroup name sharingInput res perm =
   case parseFilePath name of
-    Nothing → pure $ Just perm.actions
+    Nothing → pure $ false × perm.actions
     Just groupPath → do
       leftPids ← deletePermission perm.actions
       if not $ Map.isEmpty leftPids
         then
-        pure $ Just leftPids
+        pure $ false × leftPids
         else do
         let
           actions = Model.sharingActions sharingInput res
@@ -521,8 +525,8 @@ changePermissionResumeForGroup name sharingInput res perm =
             }
         shareRes ← Q.sharePermission shareRequest
         case shareRes of
-          Left _ → pure $ Just Map.empty
-          Right _ → pure Nothing
+          Left _ → pure $ false × Map.empty
+          Right ps → pure $ true × foldMap (\p → Map.singleton p.id p.action) ps
 
 deletePermission
   ∷ Map.Map QTA.PermissionId QTA.ActionR
@@ -562,6 +566,23 @@ adjustPermissions prs sharingInput =
 
     obj = foldl objFoldFn { users: SM.empty, groups: SM.empty } $ Map.toList folded
 
+    -- Set.subset is sooooo slow :( @crygoenian
+    subset ∷ ∀ a. Ord a ⇒ Set.Set a → Set.Set a → Boolean
+    subset needle hay =
+      let
+        needleLst = L.sort $ Set.toList needle
+        hayLst = L.sort $ Set.toList hay
+
+        subset' ∷ L.List a → L.List a → Boolean
+        subset' L.Nil _ = true
+        subset' _ L.Nil = false
+        subset' needle@(L.Cons x xs) (L.Cons y ys) =
+          if x ≡ y
+          then subset' xs ys
+          else subset' needle ys
+      in subset' needleLst hayLst
+
+
     objFoldFn acc@{ users, groups } (key × arr) =
       let
         actions = foldMap (\a → Map.singleton a.id a.action) arr
@@ -575,9 +596,9 @@ adjustPermissions prs sharingInput =
         QTA.UserGranted (QTA.UserId uid) →
           let
             res
-              | sharingActionsEdit ≡ actionsSet =
+              | subset sharingActionsEdit actionsSet =
                 acc{users = SM.insert uid perm{resume = Edit} users }
-              | sharingActionsView ≡ actionsSet =
+              | subset sharingActionsView actionsSet =
                 acc{users = SM.insert uid perm users}
               | otherwise = acc
           in res
@@ -585,9 +606,9 @@ adjustPermissions prs sharingInput =
           let
             gid = Pt.printPath pt
             res
-              | sharingActionsEdit ≡ actionsSet =
+              | subset sharingActionsEdit actionsSet =
                 acc{groups = SM.insert gid perm{resume = Edit} groups }
-              | sharingActionsView ≡ actionsSet =
+              | subset sharingActionsView actionsSet =
                 acc{groups = SM.insert gid perm groups}
               | otherwise = acc
           in res
