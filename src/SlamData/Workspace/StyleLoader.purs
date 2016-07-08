@@ -64,7 +64,7 @@ retrieveStyles =
 
   stylesRgx :: Rgx.Regex
   stylesRgx =
-    Rgx.regex "cssStyleSheets=([^&]+)" Rgx.noFlags
+    Rgx.regex "stylesheets=([^&]+)" Rgx.noFlags
 
 
 createLink

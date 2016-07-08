@@ -19,22 +19,31 @@ module SlamData.Workspace.Routing
   , Routes(..)
   , mkWorkspaceHash
   , mkWorkspaceURL
+  , varMapsForURL
+  , encodeVarMaps
   ) where
 
 import SlamData.Prelude
 
+import Data.Argonaut ((~>), (:=))
+import Data.Argonaut as J
 import Data.Foldable as F
+import Data.Json.Extended as EJSON
+import Data.List ((:))
 import Data.List as L
 import Data.Map as Map
 import Data.Maybe.Unsafe as MU
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
+import Data.String as Str
 import Data.String.Regex as R
 import Data.StrMap as SM
 
+import Global (encodeURIComponent)
+
 import Routing.Match (Match)
 import Routing.Match (eitherMatch, list) as Match
-import Routing.Match.Class (lit, str, params) as Match
+import Routing.Match.Class (lit, str, param) as Match
 
 import SlamData.Config as Config
 import SlamData.Workspace.AccessType (AccessType(..))
@@ -42,28 +51,25 @@ import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId as D
 
-import Text.Parsing.Parser (runParser)
-
 import Utils.Path as UP
 
 data Routes
-  = WorkspaceRoute UP.DirPath (Maybe D.DeckId) WA.Action Port.VarMap
+  = WorkspaceRoute
+      UP.DirPath
+      (Maybe D.DeckId)
+      WA.Action
+      (Map.Map D.DeckId Port.URLVarMap)
 
 routing ∷ Match Routes
 routing
-  =  WorkspaceRoute <$> workspace <*> deckId <*> action <*> optionalVarMap
+  = WorkspaceRoute <$> workspace <*> deckId <*> action <*> optionalVarMap
 
   where
-  optionalVarMap ∷ Match Port.VarMap
-  optionalVarMap = varMap <|> pure SM.empty
+  optionalVarMap ∷ Match (Map.Map D.DeckId Port.URLVarMap)
+  optionalVarMap = varMap <|> pure Map.empty
 
-  varMap ∷ Match Port.VarMap
-  varMap = Match.params <#> Map.toList >>> foldl go SM.empty
-    where
-      go m (Tuple k str) =
-        case runParser str Port.parseVarMapValue of
-          Left err → m
-          Right v → SM.insert k v m
+  varMap ∷ Match (Map.Map D.DeckId Port.URLVarMap)
+  varMap = Match.eitherMatch $ decodeVarMaps <$> Match.param "vars"
 
   oneSlash ∷ Match Unit
   oneSlash = Match.lit ""
@@ -133,30 +139,67 @@ mkWorkspaceURL
   → String
 mkWorkspaceURL path action =
   Config.workspaceUrl
-    <> mkWorkspaceHash path action SM.empty
+    <> mkWorkspaceHash path action Map.empty
 
 mkWorkspaceHash
-  ∷ UP.DirPath    -- workspace path
-  → WA.Action     -- workspace action
-  → Port.VarMap   -- global `VarMap`
+  ∷ UP.DirPath -- workspace path
+  → WA.Action -- workspace action
+  → Map.Map D.DeckId Port.URLVarMap -- varmaps introduced by variables cards in the workspace
   → String
 mkWorkspaceHash path action varMap =
   "#"
     <> UP.encodeURIPath (P.printPath path)
     <> WA.printAction action
-    <> maybe "" ("/" <> _)  (renderVarMapQueryString varMap)
+    <> maybe "" ("/" <> _) (renderVarMapQueryString varMap)
 
-renderVarMapQueryString
-  ∷ Port.VarMap -- global `VarMap`
-  → Maybe String
-renderVarMapQueryString varMap =
-  if SM.isEmpty varMap
-     then Nothing
-     else Just $ "?" <> F.intercalate "&" (varMapComponents varMap)
+varMapsForURL ∷ Map.Map D.DeckId Port.VarMap → Map.Map D.DeckId Port.URLVarMap
+varMapsForURL = map (map go)
   where
-    varMapComponents =
-      SM.foldMap $ \key val →
-        [ key
-            <> "="
-            <> Global.encodeURIComponent (Port.renderVarMapValue val)
-        ]
+  go (Port.Literal ej) =
+    case EJSON.unroll ej of
+      EJSON.String str → str
+      EJSON.Timestamp str → str
+      EJSON.Date str → str
+      EJSON.Time str → str
+      EJSON.Interval str → str
+      EJSON.ObjectId str → str
+      _ → EJSON.renderEJson ej
+  go (Port.QueryExpr q) =
+    -- | This is not entirely legit as it will strip backticks from SQL²
+    -- | expressions as well as identifiers, as we have no information about
+    -- | the field type here... -gb
+    fromMaybe q $ Str.stripPrefix "`" =<< Str.stripSuffix "`" q
+
+decodeVarMaps ∷ String → Either String (Map.Map D.DeckId Port.URLVarMap)
+decodeVarMaps = J.jsonParser >=> J.decodeJson >=> \obj →
+  Map.fromList <$> L.foldM go L.Nil (SM.toList obj)
+  where
+  go
+    ∷ L.List (D.DeckId × Port.URLVarMap)
+    → String × J.Json
+    → Either String (L.List (D.DeckId × Port.URLVarMap))
+  go acc (key × json) = do
+    deckId ← D.stringToDeckId key
+    varMap ← J.decodeJson json
+    pure $ (deckId × varMap) : acc
+
+renderVarMapQueryString ∷ Map.Map D.DeckId Port.URLVarMap → Maybe String
+renderVarMapQueryString varMaps
+  | F.all SM.isEmpty varMaps = Nothing
+  | otherwise =
+      let json = encodeVarMaps varMaps
+      in Just $ "?vars=" <> encodeURIComponent (show json)
+
+encodeVarMaps ∷ Map.Map D.DeckId Port.URLVarMap → J.Json
+encodeVarMaps = foldl go J.jsonEmptyObject ∘ Map.toList
+  where
+  go ∷ J.Json → D.DeckId × Port.URLVarMap → J.Json
+  go acc (deckId × varMap)
+    = D.deckIdToString deckId := encodeVarMap varMap
+    ~> acc
+
+encodeVarMap ∷ Port.URLVarMap → J.Json
+encodeVarMap = foldl go J.jsonEmptyObject ∘ SM.toList
+  where
+  go ∷ J.Json → String × String → J.Json
+  go acc (k × v) = k := v ~> acc

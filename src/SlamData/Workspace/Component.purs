@@ -22,6 +22,8 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.UI.Browser (setHref, locationObject)
 
@@ -58,7 +60,7 @@ import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
-import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, _globalVarMap, initialState)
+import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, initialState)
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
@@ -68,7 +70,7 @@ import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.StateMode (StateMode(..))
-import SlamData.Workspace.Wiring (Wiring, getDeck, putDeck)
+import SlamData.Workspace.Wiring (Wiring, DeckMessage(..), putDeck, getDeck)
 
 import Utils.Path as UP
 import Utils.DOM (onResize)
@@ -113,12 +115,7 @@ render wiring state =
       _, Just path, Just deckId →
         HH.div [ HP.classes [ workspaceClass ] ]
           [ HH.slot' cpDeck unit \_ →
-             let
-               init =
-                 opaqueState $
-                   (Deck.initialDeck path deckId)
-                     { globalVarMap = state.globalVarMap
-                     }
+              let init = opaqueState $ Deck.initialDeck path deckId
               in { component: DN.comp (deckOpts path deckId) init
                  , initialState: DN.initialState
                  }
@@ -166,9 +163,11 @@ eval _ (Init next) = do
     $ throttledEventSource_ (Milliseconds 100.0) onResize
     $ pure (H.action Resize)
   pure next
-eval _ (SetGlobalVarMap varMap next) = do
-  H.modify (_globalVarMap .~ varMap)
-  queryDeck $ H.action $ Deck.SetGlobalVarMap varMap
+eval wiring (SetVarMaps urlVarMaps next) = do
+  currVarMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+  when (currVarMaps /= urlVarMaps) do
+    H.fromEff $ Ref.writeRef wiring.urlVarMaps urlVarMaps
+    H.fromAff $ Bus.write URLVarMapsUpdated wiring.messaging
   pure next
 eval _ (DismissAll next) = do
   querySignIn $ H.action SignIn.DismissSubmenu
@@ -236,9 +235,10 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
           getDeck path deckId wiring.decks >>= traverse_ \parentDeck → void do
             let cards = DBC.replacePointer oldId newId cardId parentDeck.cards
             putDeck path deckId (parentDeck { cards = cards }) wiring.decks
-          let deckHash = mkWorkspaceHash (Deck.deckPath' path newId) (WA.Load state.accessType) state.globalVarMap
+          varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+          let deckHash = mkWorkspaceHash (Deck.deckPath' path newId) (WA.Load state.accessType) varMaps
           H.fromEff $ locationObject >>= Location.setHash deckHash
-        Nothing -> do
+        Nothing → do
           let index = path </> Pathy.file "index"
           void $ Model.setRoot index newId
 
@@ -308,11 +308,10 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
         putDeck path newIdMirror mirrored wiring.decks
       else do
         let
-          mirrored ∷ DM.Deck -- Needed because of some sort of constraint-generalization bug?
           mirrored = oldModel
             { parent = parentRef
             , mirror = oldModel.mirror <> map (Tuple newIdShared ∘ _.cardId) oldModel.cards
-            , cards = mempty
+            , cards = []
             , name = oldModel.name
             }
         putDeck path oldId mirrored wiring.decks
@@ -327,7 +326,8 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
           for_ cards (DBC.unsafeUpdateCachedDraftboard wiring deckId)
       Nothing →
         void $ Model.setRoot index newIdParent
-    let deckHash = mkWorkspaceHash (Deck.deckPath' path newIdParent) (WA.Load state.accessType) state.globalVarMap
+    varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
+    let deckHash = mkWorkspaceHash (Deck.deckPath' path newIdParent) (WA.Load state.accessType) varMaps
     H.fromEff $ locationObject >>= Location.setHash deckHash
 
   peekDeck _ = pure unit

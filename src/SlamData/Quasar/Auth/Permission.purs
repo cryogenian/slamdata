@@ -108,7 +108,7 @@ retrieveTokenHashes =
     <#> map TokenHash
   where
   permissionRegex :: Rgx.Regex
-  permissionRegex = Rgx.regex "permissionsToken=([^&]+)" Rgx.noFlags
+  permissionRegex = Rgx.regex "permissionTokens=([^&]+)" Rgx.noFlags
 
   extractTokenHashsString :: String -> Maybe String
   extractTokenHashsString str =

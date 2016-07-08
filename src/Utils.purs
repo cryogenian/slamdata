@@ -17,9 +17,12 @@ limitations under the License.
 module Utils where
 
 import Prelude
-import Data.Maybe (Maybe(..), maybe)
+
+import Data.Argonaut as J
 import Data.Either (Either(..), either)
 import Data.Foldable (class Foldable, foldr)
+import Data.Maybe (Maybe(..), maybe)
+
 import Global (readFloat, isNaN)
 
 stringToNumber :: String -> Maybe Number
@@ -41,3 +44,5 @@ singletonValue' =
 singletonValue :: ∀ a m n. (Applicative m, Foldable n) ⇒ m a → (Int → m a) → n a → m a
 singletonValue noElements tooManyElements =
   either tooManyElements (maybe noElements pure) <<< singletonValue'
+
+foreign import prettyJson :: J.Json → String

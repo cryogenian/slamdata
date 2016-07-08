@@ -13,6 +13,7 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Port.VarMap
   ( VarMap
+  , URLVarMap
   , VarMapValue(..)
   , renderVarMapValue
   , parseVarMapValue
@@ -187,6 +188,11 @@ parseVarMapValue =
         <#> S.fromCharArray
 
 type VarMap = SM.StrMap VarMapValue
+
+-- | A VarMap passed through the URL - the VarMapValues are left unparsed until
+-- | they are unified with the Variables card for the deck so that values can
+-- | be parsed according to their defined type.
+type URLVarMap = SM.StrMap String
 
 emptyVarMap ∷ VarMap
 emptyVarMap = SM.empty
