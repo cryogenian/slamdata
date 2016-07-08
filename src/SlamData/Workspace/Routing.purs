@@ -69,7 +69,7 @@ routing
   optionalVarMap = varMap <|> pure Map.empty
 
   varMap ∷ Match (Map.Map D.DeckId Port.URLVarMap)
-  varMap = Match.eitherMatch $ decodeVarMaps <$> Match.param "varMaps"
+  varMap = Match.eitherMatch $ decodeVarMaps <$> Match.param "vars"
 
   oneSlash ∷ Match Unit
   oneSlash = Match.lit ""
@@ -188,7 +188,7 @@ renderVarMapQueryString varMaps
   | F.all SM.isEmpty varMaps = Nothing
   | otherwise =
       let json = encodeVarMaps varMaps
-      in Just $ "?varMaps=" <> encodeURIComponent (show json)
+      in Just $ "?vars=" <> encodeURIComponent (show json)
 
 encodeVarMaps ∷ Map.Map D.DeckId Port.URLVarMap → J.Json
 encodeVarMaps = foldl go J.jsonEmptyObject ∘ Map.toList

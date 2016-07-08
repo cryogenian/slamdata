@@ -51,14 +51,15 @@ import SlamData.Render.CSS as Rc
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Component.State (deckPath')
+import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.Dialog.Share.Model (sharingActions, ShareResume(..), SharingInput)
 import SlamData.Workspace.Routing (mkWorkspaceHash, varMapsForURL, encodeVarMaps)
 
 import Quasar.Advanced.Types as QTA
 
 import Utils (prettyJson)
-import Utils.Path (DirPath)
+import Utils.Path as UP
 
 data PresentAs = IFrame | URI
 
@@ -74,7 +75,7 @@ type State =
   , canRevoke ∷ Boolean
   , shouldGenerateToken ∷ Boolean
   , hovered ∷ Boolean
-  , isLogged ∷ Boolean
+  , isLoggedIn ∷ Boolean
   , copyRef ∷ Maybe (Ref String)
   , copyVal ∷ String
   , errored ∷ Boolean
@@ -83,15 +84,15 @@ type State =
   }
 
 initialState ∷ SharingInput → State
-initialState sharingInput =
+initialState =
   { presentingAs: URI
   , varMaps: Map.empty
-  , sharingInput
+  , sharingInput: _
   , permToken: Nothing
   , canRevoke: false
   , shouldGenerateToken: false
   , hovered: false
-  , isLogged: false
+  , isLoggedIn: false
   , copyRef: Nothing
   , copyVal: ""
   , errored: false
@@ -187,7 +188,7 @@ renderPublishURI state =
               ]
               [ HH.text "Cancel" ]
           ]
-        ⊕ ((guard state.isLogged)
+        ⊕ ((guard state.isLoggedIn)
            $>  HH.button
                  [ HP.classes [ B.btn, B.btnInfo ]
                  , HE.onClick (HE.input_ Revoke)
@@ -210,7 +211,7 @@ renderPublishURI state =
       ]
   where
   message
-    | state.isLogged =
+    | state.isLoggedIn =
         [ HH.text
           $ "Anyone has access to the following link "
           ⊕ "will be able to view the deck. You may undo this by revoking access."
@@ -274,8 +275,8 @@ renderPublishIFrame state =
                   ]
                   [ glyph B.glyphiconCopy ]
                 , HH.div [ HP.classes [ B.checkbox ] ]
-                  [ (if state.isLogged then HH.label_ else HH.p_)
-                    $ ((guard state.isLogged)
+                  [ (if state.isLoggedIn then HH.label_ else HH.p_)
+                    $ ((guard state.isLoggedIn)
                        $> HH.input
                            [ HP.inputType HP.InputCheckbox
                            , HP.checked state.shouldGenerateToken
@@ -308,7 +309,7 @@ renderPublishIFrame state =
               ]
               [ HH.text "Cancel" ]
           ]
-        ⊕ ((guard state.isLogged)
+        ⊕ ((guard state.isLoggedIn)
            $> HH.button
                 [ HP.classes [ B.btn, B.btnInfo ]
                 , HE.onClick (HE.input_ Revoke)
@@ -322,7 +323,7 @@ renderPublishIFrame state =
         ]
   where
   message
-    | state.isLogged =
+    | state.isLoggedIn =
         [ HH.text
             $ "Include a permission token so the deck "
             ⊕ "can be accessed by anyone who has the access to this script. "
@@ -361,11 +362,11 @@ eval (Init mbEl next) = next <$ do
     Nothing →
       H.modify _{ permToken = Nothing
                 , canRevoke = false
-                , isLogged = false
+                , isLoggedIn = false
                 , loading = false
                 }
     Just oidcToken → do
-      H.modify _{isLogged = true, canRevoke = true}
+      H.modify _{isLoggedIn = true, canRevoke = true}
       tokensRes ← Q.tokenList
       H.modify _{loading = false}
       case tokensRes of
@@ -373,7 +374,7 @@ eval (Init mbEl next) = next <$ do
         Right tokens →
           let
             tokenName =
-              Just $ workspaceTokenName state.sharingInput.deckPath oidcToken
+              Just $ workspaceTokenName state.sharingInput.workspacePath oidcToken
             oldToken =
               F.find (\x → x.name ≡ tokenName) tokens
           in case oldToken of
@@ -416,11 +417,11 @@ eval (ToggleShouldGenerateToken next) = next <$ do
     Nothing →
       unless state.shouldGenerateToken do
         mbOIDC ← H.fromEff Auth.retrieveIdToken
-        deckPath ← H.gets (_.deckPath ∘ _.sharingInput)
+        workspacePath ← H.gets (_.workspacePath ∘ _.sharingInput)
         for_ mbOIDC \oidc → do
           let
             actions = sharingActions state.sharingInput View
-            tokenName = Just $ workspaceTokenName deckPath oidc
+            tokenName = Just $ workspaceTokenName workspacePath oidc
           H.modify _{submitting = true}
           recreatedRes ← Q.createToken tokenName actions
           H.modify _{submitting = false}
@@ -447,18 +448,14 @@ eval (TextAreaHovered next) =
 eval (TextAreaLeft next) =
   next <$ H.modify _{hovered = false}
 
-workspaceTokenName ∷ DirPath → OIDC.IdToken → QTA.TokenName
-workspaceTokenName deckPath token =
+workspaceTokenName ∷ UP.DirPath → OIDC.IdToken → QTA.TokenName
+workspaceTokenName workspacePath token =
   let
     email =
       fromMaybe "unknown user"
         $ map OIDC.runEmail
         $ OIDC.pluckEmail token
-    workspace =
-      maybe
-        "Unknown workspace"
-        (fst ⋙ Pathy.printPath)
-        (Pathy.peel deckPath)
+    workspace = Pathy.printPath workspacePath
   in
     QTA.TokenName
       $ "publish permission granted by "
@@ -481,53 +478,77 @@ renderCopyVal ∷ String → State → String
 renderCopyVal locString state
   | state.presentingAs ≡ URI =
     renderURL locString state
-  | otherwise =
-    "<script type=\"text/javascript\">\n"
-    ⊕ "(function() {\n"
-    ⊕ (if state.isLogged
-        then "  var slamdataTokenHash = "
-             ⊕ maybe
-                 "window.SLAMDATA_PERMISSION_TOKEN"
-                 (\x → "\"" ⊕ QTA.runTokenHash x ⊕ "\"")
-                 (state.permToken >>= _.secret)
-             ⊕ ";\n"
-             ⊕ "  var queryString = \"?permissionTokens=\" + slamdataTokenHash;\n"
-        else "")
-    ⊕ varMaps.obj
-    ⊕ "  var uri = \""
-      ⊕ locString
-      ⊕ "/"
-      ⊕ Config.workspaceUrl
-      ⊕ (if state.isLogged then "\"\n    + queryString\n    + \"" else "")
-      ⊕ mkWorkspaceHash state.sharingInput.deckPath (WA.Load AT.ReadOnly) Map.empty
-      ⊕ varMaps.param
-      ⊕ "\";\n"
-    ⊕ "  var iframe = \"<iframe width=\\\"100%\\\" height=\\\"100%\\\" frameborder=\\\"0\\\" src=\\\"\" + uri + \"\\\"></iframe>\";\n"
-    ⊕ "  document.writeln(iframe);\n"
-    ⊕ "})();\n"
-    ⊕ "</script>"
+  | otherwise
+      = line """<!-- This is the generic SlamData embedding code. -->"""
+      ⊕ line """<!-- You can put this in the header or save it in a .js file included in the document -->"""
+      ⊕ line """<script type="text/javascript">"""
+      ⊕ line """var slamdata = window.SlamData = window.SlamData || {};"""
+      ⊕ line """slamdata.embed = function(options) {"""
+      ⊕ line """  var queryParts = [];"""
+      ⊕ line """  if (options.tokenHash) queryParts.push("permissionToken=" + options.tokenHash);"""
+      ⊕ line """  if (options.stylesheets) queryParts.push("stylesheets=" + options.stylesheets.map(encodeURIComponent).join(","));"""
+      ⊕ line """  var queryString = "?" + queryParts.join("&");"""
+      ⊕ line """  var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
+      ⊕ line ("""  var uri = """ ⊕ quoted workspaceURL ⊕ """ + queryString;""")
+      ⊕ line """  var iframe = document.createElement("iframe");"""
+      ⊕ line """  iframe.width = iframe.height = "100%";"""
+      ⊕ line """  iframe.frameBorder = 0;"""
+      ⊕ line """  iframe.src = uri + "#" + options.deckPath + "/" + options.deckId + "/view" + varsParam;"""
+      ⊕ line """  var deckElement = document.getElementById("sd-deck-" + options.deckId);"""
+      ⊕ line """  if (deckElement) deckElement.appendChild(iframe);"""
+      ⊕ line """};"""
+      ⊕ line """</script>"""
+      ⊕ line ""
+      ⊕ line """<!-- This is the DOM element that the deck will be embedded into -->"""
+      ⊕ line ("""<div id=""" ⊕ quoted ("sd-deck-" ⊕ deckId) ⊕ """></div>""")
+      ⊕ line ""
+      ⊕ line """<!-- This is the code that performs the deck insertion, placing it at the end of the body is suggested -->"""
+      ⊕ line """<script type="text/javascript">"""
+      ⊕ line """  SlamData.embed({"""
+      ⊕ line ("""    deckPath: """ ⊕ quoted deckPath ⊕ """,""")
+      ⊕ line ("""    deckId: """ ⊕ quoted deckId ⊕ """,""")
+      ⊕ line """    // An array of custom stylesheets URLs can be provided here"""
+      ⊕ line ("""    stylesheets: []""" ⊕ options)
+      ⊕ line """  });"""
+      ⊕ line """</script>"""
 
     where
+    line = (_ ⊕ "\n")
+    quoted s = "\"" ⊕ s ⊕ "\""
+    workspaceURL = locString ⊕ "/" ⊕ Config.workspaceUrl
+    deckId = deckIdToString state.sharingInput.deckId
+    deckPath = UP.encodeURIPath (Pathy.printPath state.sharingInput.workspacePath)
+    options = opt varMaps <> opt tokens
+    opt = case _ of
+      "" -> ""
+      s -> ",\n" ⊕ s
     varMaps
-      | F.all SM.isEmpty state.varMaps = { obj: "", param: "" }
-      | otherwise =
-          { obj: "  var varMaps = " ++ renderVarMaps state.varMaps ++ ";\n"
-          , param: "/?varMaps=\" + encodeURIComponent(JSON.stringify(varMaps)) + \""
-          }
+      | F.all SM.isEmpty state.varMaps = ""
+      | otherwise
+          = line "    // The variables for the deck(s), you can change their values here:"
+          ⊕ "    vars: " ⊕ renderVarMaps state.varMaps
+    tokens
+      | not state.isLoggedIn = ""
+      | otherwise
+          = "    tokenHash: "
+          ⊕ maybe
+              "window.SLAMDATA_PERMISSION_TOKEN"
+              (quoted ∘ QTA.runTokenHash)
+              (_.secret =<< state.permToken)
 
 renderVarMaps ∷ Map.Map DeckId Port.VarMap → String
 renderVarMaps = indent <<< prettyJson <<< encodeVarMaps <<< varMapsForURL
   where
-  indent = RX.replace (RX.regex "(\n\r?)" (RX.noFlags { global = true })) "$1  "
+  indent = RX.replace (RX.regex "(\n\r?)" (RX.noFlags { global = true })) "$1    "
 
 renderURL ∷ String → State → String
-renderURL locationString state@{sharingInput, varMaps, permToken, isLogged} =
+renderURL locationString state@{sharingInput, varMaps, permToken, isLoggedIn} =
   locationString
   ⊕ "/"
   ⊕ Config.workspaceUrl
   ⊕ foldMap
       (append "?permissionTokens=" ∘ QTA.runTokenHash)
-      (do guard isLogged
+      (do guard isLoggedIn
           token ← permToken
           token.secret)
-  ⊕ mkWorkspaceHash sharingInput.deckPath (WA.Load AT.ReadOnly) Map.empty
+  ⊕ mkWorkspaceHash (deckPath' sharingInput.workspacePath sharingInput.deckId) (WA.Load AT.ReadOnly) Map.empty

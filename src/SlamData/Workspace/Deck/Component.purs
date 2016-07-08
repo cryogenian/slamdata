@@ -324,14 +324,15 @@ peekBackSide ∷ ∀ a. DeckOptions → Back.Query a → DeckDSL Unit
 peekBackSide opts (Back.DoAction action _) =
   let
     getSharingInput = do
-      deckPath ← H.gets DCS.deckPath
+      workspacePath ← H.gets _.path
+      deckId ← H.gets _.id
       additionalSources ← H.gets _.additionalSources
       pure
         $ foldl
           (\accum → case _ of
               Cache cfp → accum { caches = cfp:accum.caches }
               Source sfp → accum { sources = sfp:accum.sources })
-          ({ deckPath, caches: L.Nil, sources: L.Nil })
+          ({ workspacePath, deckId, caches: L.Nil, sources: L.Nil })
           (fold additionalSources)
 
   in case action of

@@ -188,11 +188,11 @@ render state =
       , initialState: Error.State str
       }
 
-  dialog (Embed deckPath varMaps) =
+  dialog (Embed sharingInput varMaps) =
     HH.slot' cpEmbed unit \_ →
       { component: Export.comp
       , initialState:
-          (Export.initialState deckPath)
+          (Export.initialState sharingInput)
             { presentingAs = Export.IFrame
             , varMaps = varMaps
             }
@@ -208,11 +208,11 @@ render state =
           , confirm: "Delete"
           }
       }
-  dialog (Publish deckPath varMaps) =
+  dialog (Publish sharingInput varMaps) =
     HH.slot' cpPublish unit \_ →
       { component: Export.comp
       , initialState:
-          (Export.initialState deckPath)
+          (Export.initialState sharingInput)
             { presentingAs = Export.URI
             , varMaps = varMaps
             }

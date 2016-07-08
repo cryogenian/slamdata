@@ -69,13 +69,13 @@ http://slamdata.instance.com/notebook.html#/db/Folder/Notebook.slam/view
 ```
 one should modify the route to
 ```
-http://slamdata.instance.com/notebook.html?cssStyleSheets=css/foo.css#/db/Folder/Notebook.slam/view
+http://slamdata.instance.com/notebook.html?stylesheets=css/foo.css#/db/Folder/Notebook.slam/view
 ```
-The values of `cssStyleSheets` are decoded and then split by `,`, so to add two stylesheets one could use
+The values of `stylesheets` are decoded and then split by `,`, so to add two stylesheets one could use
 
-+ `cssStyleSheets=css/foo.css,http%3A%2F%2Ffoo.com%2Fstyles.css`
-+ `cssStyleSheets=css%2Ffoo.css,http%3A%2F%2Ffoo.com%2Fstyles.css`
-+ `cssStyleSheets=css%2Ffoo.css%2Chttp%3A%2F%2Ffoo.com%2Fstyles.css`
++ `stylesheets=css/foo.css,http%3A%2F%2Ffoo.com%2Fstyles.css`
++ `stylesheets=css%2Ffoo.css,http%3A%2F%2Ffoo.com%2Fstyles.css`
++ `stylesheets=css%2Ffoo.css%2Chttp%3A%2F%2Ffoo.com%2Fstyles.css`
 
 These URIs are checked and, if they are valid, corresponding `link` elements are added to the `head`
 
