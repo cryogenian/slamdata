@@ -69,6 +69,7 @@ renderDeck opts deckComponent st =
         , renderBackside $ st.displayMode ≡ DCS.Backside
         , renderDialog $ st.displayMode ≡ DCS.Dialog
         ]
+    , HH.div [ HP.class_ CSS.deckShadow ] []
     ]
 
   where
