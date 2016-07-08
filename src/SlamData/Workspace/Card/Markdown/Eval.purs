@@ -102,8 +102,12 @@ evalEmbeddedQueries dir =
     → String
     → EvalM Port.VarMapValue
   evalCode mid code
-    | languageIsSql mid = Port.Literal ∘ EJSON.array <$> runQuery code
+    | languageIsSql mid = Port.Literal ∘ extractCodeValue <$> runQuery code
     | otherwise = pure $ Port.QueryExpr code
+
+  extractCodeValue ∷ Array EJSON.EJson → EJSON.EJson
+  extractCodeValue [ej] = extractSingletonObject ej
+  extractCodeValue arr = EJSON.array arr
 
   languageIsSql
     ∷ Maybe SDE.LanguageId
