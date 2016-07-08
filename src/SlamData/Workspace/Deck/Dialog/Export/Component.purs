@@ -487,7 +487,7 @@ renderCopyVal locString state
       , """var slamdata = window.SlamData = window.SlamData || {};"""
       , """slamdata.embed = function(options) {"""
       , """  var queryParts = [];"""
-      , """  if (options.tokenHash) queryParts.push("permissionToken=" + options.tokenHash);"""
+      , """  if (options.permissionTokens) queryParts.push("permissionTokens=" + options.permissionTokens.join(","));"""
       , """  if (options.stylesheets) queryParts.push("stylesheets=" + options.stylesheets.map(encodeURIComponent).join(","));"""
       , """  var queryString = "?" + queryParts.join("&");"""
       , """  var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
@@ -533,11 +533,13 @@ renderCopyVal locString state
     tokens
       | not state.isLoggedIn = ""
       | otherwise
-          = "    tokenHash: "
+          = "    permissionTokens: "
+          ⊕ "["
           ⊕ maybe
               "window.SLAMDATA_PERMISSION_TOKEN"
               (quoted ∘ QTA.runTokenHash)
               (_.secret =<< state.permToken)
+          ⊕ "]"
 
 renderVarMaps ∷ Map.Map DeckId Port.VarMap → String
 renderVarMaps = indent <<< prettyJson <<< encodeVarMaps <<< varMapsForURL
