@@ -87,13 +87,9 @@ render sel state =
         ]
     , HE.onMouseDown \evt →
         HEH.preventDefault $> Just (H.action $ StartDragging evt.clientY)
+    , ARIA.label $ label state
     ]
-    [ HH.div
-        [ ARIA.label $ label state
-        ]
-        [ CSS.stylesheet $ renderStyles sel state
-        ]
-    ]
+    [ CSS.stylesheet $ renderStyles sel state ]
   where
   label ∷ State → String
   label Closed = "Show header"

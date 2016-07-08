@@ -48,7 +48,7 @@ accessBreadcrumb ∷ String → SlamFeature Unit
 accessBreadcrumb = Feature.click ∘ XPath.anywhere ∘ XPaths.accessBreadcrumb
 
 browseRootFolder ∷ SlamFeature Unit
-browseRootFolder = do
+browseRootFolder =
   tryRepeatedlyTo do
     ((Feature.clickNotRepeatedly $ XPath.anywhere XPaths.headerGripper)
      <|>
