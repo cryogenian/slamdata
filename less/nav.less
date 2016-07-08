@@ -1,3 +1,5 @@
+@import "deck/common";
+
 nav {
     background: #262626;
     position: fixed;
@@ -20,7 +22,6 @@ nav {
             a {
                 font-size: 22px;
                 color: #fff;
-                opacity: 0.8;
                 display: block;
                 &:hover {
                     opacity: 1;
@@ -107,27 +108,24 @@ nav {
 }
 
 .header-gripper {
-    width: 200px;
+    width: @grid-size;
+    height: @grid-size;
+    z-index: 999999;
     position: relative;
+    margin-left: auto;
+    margin-right: auto;
     color: white;
-    height: 0;
-    left: 50%;
-    margin-left: -100px;
     text-align: center;
-    border-top: 30px solid #262626;
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    div {
-        position: relative;
-        bottom: 26px;
-        border-bottom: 1px solid white;
-        img {
-            height: 20px;
-            display: inline-block;
-            margin-bottom: 2px;
-            margin-right: 8px;
-            position: relative;
-            bottom: 4px;
-        }
-    }
+    background: url(../img/gripper.svg) no-repeat center;
+    background-color: white;
+    transition: box-shadow 0.333s, background-color 0.333s;
+}
+
+.sd-header-gripper-opening,
+.sd-header-gripper-opened,
+.sd-header-gripper-dragging-down,
+.sd-header-gripper-dragging-up,
+.sd-header-gripper-closing {
+  background-color: #262626;
+    box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.35);
 }
