@@ -144,17 +144,7 @@ temporaryOutputResource ∷
   . { path ∷ DirPath, cardCoord ∷ DID.DeckId × CID.CardId | r }
   → FilePath
 temporaryOutputResource { path, cardCoord = deckId × cardId } =
-  outputDirectory </> outputFile
-
-  where
-  outputRoot =
-    if path ≡ Path.rootDir
-      then Path.rootDir </> Path.dir ".tmp"
-      else path
-
-  outputDirectory =
-    outputRoot </> Path.dir (DID.deckIdToString deckId)
-
-  outputFile =
-    Path.file $
-      "out" ⊕ CID.cardIdToString cardId
+  path
+    </> Path.dir ".tmp"
+    </> Path.dir (DID.deckIdToString deckId)
+    </> Path.file ("out" ⊕ CID.cardIdToString cardId)

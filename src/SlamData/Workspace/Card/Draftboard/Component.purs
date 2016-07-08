@@ -229,10 +229,19 @@ evalBoard opts = case _ of
   -- building the decks' value here when we actually trigger an unwrap. -gb
   GetDecks k → do
     decks ← H.gets _.decks
-    decks' ← runMaybeT $ for (Map.toList decks) \(deckId × position) -> do
+    decks' ← runMaybeT $ for (Map.toList decks) \(deckId × position) → do
       model ← MaybeT $ queryDeck deckId $ H.request DCQ.GetModel
       pure (deckId × (position × model))
     pure $ k $ maybe Map.empty Map.fromList decks'
+  GetDecksSharingInput k → do
+    decks ← H.gets _.decks
+    deckMbList ← for (Map.keys decks) \deckId → do
+      mbInput ← queryDeck deckId $ H.request DCQ.GetSharingInput
+      pure $ deckId × mbInput
+    pure $ k
+      $ foldMap (\(deckId × sharing) → foldMap (Map.singleton deckId) sharing) deckMbList
+
+
 
 peek ∷ ∀ a. CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL Unit
 peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q

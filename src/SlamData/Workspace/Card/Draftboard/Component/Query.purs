@@ -30,6 +30,7 @@ import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 
 data Query a
   = Grabbing DeckId DragEvent a
@@ -37,7 +38,8 @@ data Query a
   | SetElement (Maybe HTMLElement) a
   | AddDeck (Event MouseEvent) a
   | LoadDeck DeckId a
-  | GetDecks (Map.Map DeckId (DeckPosition × Deck) -> a)
+  | GetDecks (Map.Map DeckId (DeckPosition × Deck) → a)
+  | GetDecksSharingInput (Map.Map DeckId SharingInput → a)
 
 type QueryC = Coproduct CardEvalQuery Query
 

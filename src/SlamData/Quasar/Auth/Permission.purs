@@ -93,7 +93,7 @@ permissionsHeader
 permissionsHeader ps = do
   guard (not $ Arr.null ps)
   pure
-    $ RequestHeader "X-Extra-TokenHashs"
+    $ RequestHeader "X-Extra-Permisssions"
     $ Str.joinWith ","
     $ map runTokenHash ps
 
