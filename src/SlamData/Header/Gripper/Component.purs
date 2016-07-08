@@ -83,6 +83,7 @@ render sel state =
   HH.div
     [ HP.classes
         [ HH.className "header-gripper"
+        , HH.className $ className state
         ]
     , HE.onMouseDown \evt →
         HEH.preventDefault $> Just (H.action $ StartDragging evt.clientY)
@@ -99,6 +100,14 @@ render sel state =
   label (Opening _) = "Show header"
   label (Dragging Down _ _) = "Show header"
   label _ = "Hide header"
+
+  className ∷ State → String
+  className Opened = "sd-header-gripper-opened"
+  className Closed = "sd-header-gripper-closed"
+  className (Opening _) = "sd-header-gripper-opening"
+  className (Closing _) = "sd-header-gripper-closing"
+  className (Dragging Down _ _) = "sd-header-gripper-dragging-down"
+  className (Dragging Up _ _) = "sd-header-gripper-dragging-up"
 
 
 maxMargin ∷ Number
