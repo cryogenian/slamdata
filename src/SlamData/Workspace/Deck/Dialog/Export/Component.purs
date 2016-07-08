@@ -25,8 +25,9 @@ import Control.UI.ZClipboard as Z
 import Data.Foldable as F
 import Data.Map as Map
 import Data.Path.Pathy as Pathy
-import Data.StrMap as SM
+import Data.String as Str
 import Data.String.Regex as RX
+import Data.StrMap as SM
 
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 
@@ -479,38 +480,40 @@ renderCopyVal locString state
   | state.presentingAs ≡ URI =
     renderURL locString state
   | otherwise
-      = line """<!-- This is the generic SlamData embedding code. -->"""
-      ⊕ line """<!-- You can put this in the header or save it in a .js file included in the document -->"""
-      ⊕ line """<script type="text/javascript">"""
-      ⊕ line """var slamdata = window.SlamData = window.SlamData || {};"""
-      ⊕ line """slamdata.embed = function(options) {"""
-      ⊕ line """  var queryParts = [];"""
-      ⊕ line """  if (options.tokenHash) queryParts.push("permissionToken=" + options.tokenHash);"""
-      ⊕ line """  if (options.stylesheets) queryParts.push("stylesheets=" + options.stylesheets.map(encodeURIComponent).join(","));"""
-      ⊕ line """  var queryString = "?" + queryParts.join("&");"""
-      ⊕ line """  var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
-      ⊕ line ("""  var uri = """ ⊕ quoted workspaceURL ⊕ """ + queryString;""")
-      ⊕ line """  var iframe = document.createElement("iframe");"""
-      ⊕ line """  iframe.width = iframe.height = "100%";"""
-      ⊕ line """  iframe.frameBorder = 0;"""
-      ⊕ line """  iframe.src = uri + "#" + options.deckPath + "/" + options.deckId + "/view" + varsParam;"""
-      ⊕ line """  var deckElement = document.getElementById("sd-deck-" + options.deckId);"""
-      ⊕ line """  if (deckElement) deckElement.appendChild(iframe);"""
-      ⊕ line """};"""
-      ⊕ line """</script>"""
-      ⊕ line ""
-      ⊕ line """<!-- This is the DOM element that the deck will be embedded into -->"""
-      ⊕ line ("""<div id=""" ⊕ quoted ("sd-deck-" ⊕ deckId) ⊕ """></div>""")
-      ⊕ line ""
-      ⊕ line """<!-- This is the code that performs the deck insertion, placing it at the end of the body is suggested -->"""
-      ⊕ line """<script type="text/javascript">"""
-      ⊕ line """  SlamData.embed({"""
-      ⊕ line ("""    deckPath: """ ⊕ quoted deckPath ⊕ """,""")
-      ⊕ line ("""    deckId: """ ⊕ quoted deckId ⊕ """,""")
-      ⊕ line """    // An array of custom stylesheets URLs can be provided here"""
-      ⊕ line ("""    stylesheets: []""" ⊕ options)
-      ⊕ line """  });"""
-      ⊕ line """</script>"""
+      = Str.joinWith "\n"
+      [ """<!-- This is the generic SlamData embedding code. -->"""
+      , """<!-- You can put this in the header or save it in a .js file included in the document -->"""
+      , """<script type="text/javascript">"""
+      , """var slamdata = window.SlamData = window.SlamData || {};"""
+      , """slamdata.embed = function(options) {"""
+      , """  var queryParts = [];"""
+      , """  if (options.tokenHash) queryParts.push("permissionToken=" + options.tokenHash);"""
+      , """  if (options.stylesheets) queryParts.push("stylesheets=" + options.stylesheets.map(encodeURIComponent).join(","));"""
+      , """  var queryString = "?" + queryParts.join("&");"""
+      , """  var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
+      , """  var uri = """ ⊕ quoted workspaceURL ⊕ """ + queryString;"""
+      , """  var iframe = document.createElement("iframe");"""
+      , """  iframe.width = iframe.height = "100%";"""
+      , """  iframe.frameBorder = 0;"""
+      , """  iframe.src = uri + "#" + options.deckPath + "/" + options.deckId + "/view" + varsParam;"""
+      , """  var deckElement = document.getElementById("sd-deck-" + options.deckId);"""
+      , """  if (deckElement) deckElement.appendChild(iframe);"""
+      , """};"""
+      , """</script>"""
+      , ""
+      , """<!-- This is the DOM element that the deck will be embedded into -->"""
+      , """<div id=""" ⊕ quoted ("sd-deck-" ⊕ deckId) ⊕ """></div>"""
+      , ""
+      , """<!-- This is the code that performs the deck insertion, placing it at the end of the body is suggested -->"""
+      , """<script type="text/javascript">"""
+      , """  SlamData.embed({"""
+      , """    deckPath: """ ⊕ quoted deckPath ⊕ ""","""
+      , """    deckId: """ ⊕ quoted deckId ⊕ ""","""
+      , """    // An array of custom stylesheets URLs can be provided here"""
+      , """    stylesheets: []""" ⊕ options
+      , """  });"""
+      , """</script>"""
+      ]
 
     where
     line = (_ ⊕ "\n")
