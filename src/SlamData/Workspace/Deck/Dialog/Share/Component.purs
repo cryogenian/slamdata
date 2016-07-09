@@ -377,7 +377,7 @@ eval (Share next) = next <$ do
       Left _ →
         showConnectionError
       Right token →
-        H.modify (_{ tokenSecret = QT.runTokenHash <$> token.secret
+        H.modify (_{ tokenSecret = Just $ QT.runTokenHash token.secret
                    , submitting = false
                    })
     else do
@@ -385,10 +385,10 @@ eval (Share next) = next <$ do
       shareRequest ∷ QT.ShareRequestR
       shareRequest =
         { users: (if state.subjectType ≡ User
-                  then map (const $ QT.UserId state.email) actions
+                  then [ QT.UserId state.email ]
                   else [ ])
         , groups: (if state.subjectType ≡ Group
-                   then Arr.catMaybes $ map (const $ state.groupSelected) actions
+                   then foldMap pure state.groupSelected
                    else [ ])
         , actions
         }

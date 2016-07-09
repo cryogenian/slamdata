@@ -19,10 +19,12 @@ module SlamData.Workspace.Deck.Dialog.Share.Model where
 import SlamData.Prelude
 
 import Data.List (List)
+import Data.Path.Pathy ((</>))
+import Data.Path.Pathy as Pt
 
 import Quasar.Advanced.Types as QT
 
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 
 import Utils.Path (DirPath, FilePath)
 
@@ -44,47 +46,39 @@ printShareResume View = "View"
 printShareResume Edit = "Edit"
 
 sharingActions ∷ SharingInput → ShareResume → Array QT.ActionR
-sharingActions { workspacePath } View =
-  [ { operation: QT.Read
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Structural
-    }
-  , { operation: QT.Read
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Content
-    }
-  ]
-sharingActions { workspacePath } Edit =
-  [ { operation: QT.Add
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Structural
-    }
-  , { operation: QT.Add
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Content
-    }
-  , { operation: QT.Read
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Structural
-    }
-  , { operation: QT.Read
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Content
-    }
-  , { operation: QT.Modify
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Structural
-    }
-  , { operation: QT.Modify
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Content
-    }
-  , { operation: QT.Delete
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Structural
-    }
-  , { operation: QT.Delete
-    , resource: QT.Dir workspacePath
-    , accessType: QT.Content
-    }
-  ]
+sharingActions {workspacePath, sources, caches, deckId} View =
+  (workspacePath </> Pt.dir ".tmp" # QT.Dir ⋙ \resource → do
+      operation ← [ QT.Read ]
+      accessType ← [ QT.Structural, QT.Content ]
+      pure { operation, resource, accessType }
+  )
+  ⊕ (workspacePath
+     </> Pt.dir (deckIdToString deckId)
+     </> Pt.file "index"
+     # QT.File
+     ⋙ \resource →
+     pure { operation: QT.Read, resource, accessType: QT.Content }
+    )
+  ⊕ (workspacePath </> Pt.file "index" # QT.File ⋙ \resource →
+      pure { operation: QT.Read, resource, accessType: QT.Content }
+    )
+  ⊕ (flip foldMap sources $ QT.File ⋙ \resource → do
+        accessType ← [ QT.Structural, QT.Content ]
+        pure { operation: QT.Read , accessType, resource }
+    )
+  ⊕ (flip foldMap caches $ QT.File ⋙ \resource → do
+        operation ← [ QT.Read, QT.Add, QT.Delete, QT.Modify ]
+        accessType ← [ QT.Structural, QT.Content ]
+        pure { operation, accessType, resource }
+    )
+sharingActions {workspacePath, sources, caches} Edit =
+  (workspacePath # QT.Dir ⋙ \resource → do
+    operation ← [ QT.Add, QT.Delete, QT.Read, QT.Modify ]
+    accessType ← [ QT.Content, QT.Structural, QT.Mount ]
+    pure { operation, accessType, resource }
+  )
+  ⊕ (flip foldMap (sources <> caches) $ QT.File ⋙ \resource → do
+    operation ← [ QT.Read, QT.Delete, QT.Add, QT.Modify ]
+    accessType ← [ QT.Content, QT.Structural, QT.Mount ]
+    pure { operation, accessType, resource }
+  )

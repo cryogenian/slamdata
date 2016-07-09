@@ -81,7 +81,7 @@ import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..))
 import SlamData.Workspace.Deck.Component.Render as DCR
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
@@ -92,6 +92,7 @@ import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Wiring (Wiring, CardEval, Cache, DeckMessage(..), getDeck, putDeck, putCardEval, putCache, getCache, makeCache)
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
@@ -264,6 +265,8 @@ eval opts@{ wiring } = case _ of
     pure next
   GetModel k →
     k <$> getDeckModel
+  GetSharingInput k →
+    k <$> getSharingInput
 
   where
   getBoundingClientWidth =
@@ -322,20 +325,7 @@ peekDialog _ (Dialog.Confirm d b _) = do
 
 peekBackSide ∷ ∀ a. DeckOptions → Back.Query a → DeckDSL Unit
 peekBackSide opts (Back.DoAction action _) =
-  let
-    getSharingInput = do
-      workspacePath ← H.gets _.path
-      deckId ← H.gets _.id
-      additionalSources ← H.gets _.additionalSources
-      pure
-        $ foldl
-          (\accum → case _ of
-              Cache cfp → accum { caches = cfp:accum.caches }
-              Source sfp → accum { sources = sfp:accum.sources })
-          ({ workspacePath, deckId, caches: L.Nil, sources: L.Nil })
-          (fold additionalSources)
-
-  in case action of
+  case action of
     Back.Trash → do
       state ← H.get
       lastId ← H.gets DCS.findLastRealCard
@@ -869,3 +859,60 @@ getModelCards = do
       queryCardEval (deckId × card.cardId)
         $ H.request (SaveCard card.cardId $ Card.modelCardType card.model)
     pure $ deckId × (fromMaybe card currentState)
+
+getSharingInput ∷ DeckDSL SharingInput
+getSharingInput = do
+  st ← H.get
+  childrenInput ← for st.modelCards \(deckId × card) → do
+    case card.model of
+      Card.Draftboard _ → do
+        mbInputs ←
+          queryCard (deckId × card.cardId)
+            $ Lens.review CQ._DraftboardQuery
+            $ left
+            $ right
+            $ H.request DBQ.GetDecksSharingInput
+        pure $ maybe [] (foldMap pure) mbInputs
+      _ →
+        pure []
+
+  workspacePath ← H.gets _.path
+  deckId ← H.gets _.id
+  mirrorIds ← Array.nub ∘ map fst ∘ _.mirror <$> getDeckModel
+
+  additionalSources ← H.gets _.additionalSources
+  let
+    mirroredIndices =
+      L.fromFoldable $ mirrorIds <#> \mid →
+        workspacePath
+          </> Pathy.dir (deckIdToString mid)
+          </> Pathy.file "index"
+    thisDeckSharingInput =
+      foldl
+      (\accum → case _ of
+          Cache cfp → accum { caches = cfp:accum.caches }
+          Source sfp → accum { sources = sfp:accum.sources })
+      ({ workspacePath, caches: mirroredIndices, sources: L.Nil, deckId })
+      (fold additionalSources)
+
+    innerFoldFn accum child =
+      { workspacePath: accum.workspacePath
+      , deckId: accum.deckId
+      , caches:
+          L.nubBy (\a b → Pathy.printPath a ≡ Pathy.printPath b)
+            $ accum.caches ⊕ child.caches
+      , sources:
+          L.nubBy (\a b → Pathy.printPath a ≡ Pathy.printPath b)
+            $ (child.workspacePath
+                </> Pathy.dir (deckIdToString child.deckId)
+                </> Pathy.file "index"
+              )
+            : accum.sources
+            ⊕ child.sources
+
+      }
+
+    foldChildren = foldl innerFoldFn
+
+  pure
+    $ foldl foldChildren thisDeckSharingInput childrenInput

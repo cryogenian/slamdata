@@ -37,6 +37,7 @@ import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Wiring (DeckMessage, PendingMessage)
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 
 import Utils.Path as UP
 
@@ -72,6 +73,7 @@ data Query a
   | DoAction DeckAction a
   | Focus a
   | HandleMessage DeckMessage a
+  | GetSharingInput (SharingInput → a)
 
 data DeckAction
   = Mirror
