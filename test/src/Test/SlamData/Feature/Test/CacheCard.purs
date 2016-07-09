@@ -21,7 +21,7 @@ cacheCardScenario =
 
 test ∷ SlamFeature Unit
 test =
-  cacheCardScenario "Cache card output to file" [] do
+  cacheCardScenario "Cache card output to file" ["https://slamdata.atlassian.net/browse/SD-1843"] do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT measureOne, measureTwo from `/test-mount/testDb/flatViz`"
