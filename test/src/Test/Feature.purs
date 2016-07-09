@@ -38,6 +38,7 @@ module Test.Feature
   , uncheck
   , uncheckWithProperties
   , smallWaitTime
+  , logCurrentScreen
   ) where
 
 import SlamData.Prelude
@@ -66,6 +67,7 @@ import Selenium.Monad as Selenium
 import Selenium.Types (Element, Location)
 
 import Test.Feature.ActionSequence as FeatureSequence
+import Test.Feature.Log (warnMsg)
 import Test.Feature.Monad (Feature, await)
 import Test.Utils (ifTrue, ifFalse, passover, throwIfEmpty, throwIfNotEmpty, singletonValue, appendToCwd, nonWhite)
 
@@ -794,6 +796,13 @@ expectScreenshotOfElementToMatchAny diffPath maxPercent presentedPath expectedPa
     {percent} ← nonWhite diffPath
     pure $ percent < maxPercent
 
+logCurrentScreen ∷ ∀ eff o. Feature eff o Unit
+logCurrentScreen =
+  saveScreenshot path *> logScreenshot path
+  where
+  path = "current.png"
+  message = ("Screenshot taken now:\ndata:image/png;base64," ++ _)
+  logScreenshot p = (message <$> showImageFile p) >>= warnMsg
 
 -- File utilities
 showImageFile ∷ ∀ eff o. FilePath → Feature eff o String
