@@ -3,10 +3,12 @@ module Test.Feature.Scenario where
 import Prelude
 
 import Control.Apply ((*>))
-import Control.Monad.Eff.Exception (message)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (message, throw)
 import Data.Either (Either(..))
 import Data.String (joinWith)
 import Test.Feature.Log (sectionMsg, warnMsg)
+import Test.Feature (logCurrentScreen)
 import Test.Feature.Monad (Feature)
 import Selenium.Monad (attempt)
 
@@ -55,9 +57,13 @@ scenario epic before after title knownIssues actions =
       ++ knownIssuesString
 
   actions' ∷ Feature eff o Unit
-  actions' | knownIssues == [] = actions *> after
+  actions' | knownIssues == [] = do
+    e <- attempt actions
+    case e of
+      Left e' → logCurrentScreen *> (liftEff $ throw $ message e')
+      Right _ → after
   actions' = do
     e <- attempt actions
     case e of
-      Left e' → warn (message e') *> warn knownIssuesWarning *> after
+      Left e' → logCurrentScreen *> warn (message e') *> warn knownIssuesWarning *> after
       Right _ → after *> unexpectedSuccess
