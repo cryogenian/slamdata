@@ -1,12 +1,9 @@
 {-
 Copyright 2016 SlamData, Inc.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,8 +28,9 @@ import SlamData.Quasar.Auth as Auth
 
 requestAuthentication
   ∷ ProviderR
+  → String
   → ∀ e. Eff (dom ∷ DOM, random ∷ RANDOM | e) Unit
-requestAuthentication pr = do
+requestAuthentication pr redirectURIStr = do
   csrf ← (Cryptography.KeyString ∘ show) <$> random
   replay ← (Cryptography.UnhashedNonce ∘ show) <$> random
   Auth.storeKeyString csrf
@@ -48,8 +46,6 @@ requestAuthentication pr = do
     let
       nonce =
         Cryptography.hashNonce replay
-      redirectURIStr =
-        hap <> SlamData.Config.redirectURIString
       state =
         Cryptography.bindState hrefState csrf
       query =
