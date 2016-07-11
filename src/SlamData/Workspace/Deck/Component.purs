@@ -158,6 +158,7 @@ eval opts@{ wiring } = case _ of
         { stateMode = Ready
         , displayCards = [ st.id × nextActionCard ]
         , deckElement = st.deckElement
+        , responsiveSize = st.responsiveSize
         }
     pure next
   SetParent parent next →
@@ -845,6 +846,7 @@ setModel
     }
   → DeckDSL Unit
 setModel opts model = do
+  updateCardSize
   H.modify
     $ (DCS._stateMode .~ Preparing)
     ∘ DCS.fromModel model
@@ -919,5 +921,18 @@ getSharingInput = do
     $ foldl foldChildren thisDeckSharingInput childrenInput
 
 updateCardSize ∷ DeckDSL Unit
-updateCardSize =
-  void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
+updateCardSize = do
+  H.queryAll' cpCard $ left $ H.action UpdateDimensions
+  H.gets _.deckElement >>= traverse_ \el -> do
+    { width } ← H.fromEff $ getBoundingClientRect el
+    traceA "updateCardSize"
+    traceAnyA $ breakpoint width
+    H.modify $ DCS._responsiveSize .~ breakpoint width
+  where
+  breakpoint w
+    | w < 240.0 = DCS.XSmall
+    | w < 320.0 = DCS.Small
+    | w < 420.0 = DCS.Medium
+    | w < 540.0 = DCS.Large
+    | w < 720.0 = DCS.XLarge
+    | otherwise = DCS.XXLarge

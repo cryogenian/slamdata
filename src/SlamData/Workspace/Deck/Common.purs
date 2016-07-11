@@ -52,8 +52,8 @@ defaultPosition ∷ DBS.DeckPosition
 defaultPosition =
   { x: 1.0
   , y: 1.0
-  , width: 20.0
-  , height: 10.0
+  , width: 23.0
+  , height: 18.0
   }
 
 wrappedDeck ∷ DBS.DeckPosition → DeckId → Deck

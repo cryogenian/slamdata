@@ -152,27 +152,30 @@ comp =
 
 render ∷ State → HTML
 render state =
-  HH.div
-    [ HP.class_ CCSS.deckCard ]
+  -- Extra div for consistent targetting with next action card styles
+  HH.div_
     [ HH.div
-        [ HP.class_ Rc.deckBackSide ]
-        [ HH.div_
-            [ HH.form_
-                [ HH.div_
-                    [ HH.input
-                        [ HP.value state.filterString
-                        , HE.onValueInput (HE.input UpdateFilter)
-                        , ARIA.label "Filter deck and card actions"
-                        , HP.placeholder "Filter actions"
+        [ HP.class_ CCSS.deckCard ]
+        [ HH.div
+            [ HP.class_ Rc.deckBackSide ]
+            [ HH.div_
+                [ HH.form_
+                    [ HH.div_
+                        [ HH.input
+                            [ HP.value state.filterString
+                            , HE.onValueInput (HE.input UpdateFilter)
+                            , ARIA.label "Filter deck and card actions"
+                            , HP.placeholder "Filter actions"
+                            ]
+                        , HH.button
+                            [ HP.buttonType HP.ButtonButton
+                            , HE.onClick (HE.input_ (UpdateFilter ""))
+                            ]
+                            [ glyph B.glyphiconRemove ]
                         ]
-                    , HH.button
-                        [ HP.buttonType HP.ButtonButton
-                        , HE.onClick (HE.input_ (UpdateFilter ""))
-                        ]
-                        [ glyph B.glyphiconRemove ]
                     ]
+                , HH.ul_ $ map backsideAction (allBackActions state)
                 ]
-            , HH.ul_ $ map backsideAction (allBackActions state)
             ]
         ]
     ]
