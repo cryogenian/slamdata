@@ -60,12 +60,15 @@ markdownEval
   → String
   → CET.CardEvalT m Port.Port
 markdownEval { path } str = do
-  result  ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries path $ SDP.parseMd str
-  case result of
-    Left e → Err.throwError $ Exn.message e
-    Right (doc × as) → do
-      CET.additionalSources as
-      pure $ Port.SlamDown doc
+  case SDP.parseMd str of
+    Left e → Err.throwError e
+    Right sd → do
+      result  ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries path $ sd
+      case result of
+        Left e → Err.throwError $ Exn.message e
+        Right (doc × as) → do
+          CET.additionalSources as
+          pure $ Port.SlamDown doc
 
 findFields
   ∷ ∀ a
