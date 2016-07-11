@@ -163,7 +163,7 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
   {loggedIn} ← H.get
   if loggedIn
     then logOut
-    else for_ v $ requestAuthentication
+    else for_ v $ either (const $ pure unit) (H.fromEff ∘ Browser.setLocation) <=< requestAuthenticationURI
   where
   logOut ∷ SignInDSL Unit
   logOut = do
@@ -171,8 +171,8 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
       Auth.clearIdToken
       Browser.reload
   appendAuthPath s = s ++ Config.redirectURIString
-  requestAuthentication pr =
-    H.fromEff $ OIDC.requestAuthentication pr ∘ appendAuthPath =<< Browser.locationString
+  requestAuthenticationURI pr =
+    H.fromEff $ OIDC.requestAuthenticationURI pr ∘ appendAuthPath =<< Browser.locationString
 
 
 queryMenu

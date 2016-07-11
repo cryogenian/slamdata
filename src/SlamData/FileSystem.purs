@@ -35,6 +35,7 @@ import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 
 import DOM (DOM)
 
+import Halogen as H
 import Halogen.Component (parentState)
 import Halogen.Driver (Driver, runUI)
 import Halogen.Query (action)
@@ -57,6 +58,7 @@ import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQu
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
+import SlamData.Quasar.Auth as Auth
 
 import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery)
@@ -165,11 +167,26 @@ listPath query deep var dir driver = do
       putVar var (Tuple c r)
 
   sendError ∷ Error → Aff SlamDataEffects Unit
-  sendError err =
+  sendError =
+    presentError <=< listingErrorMessage
+
+  suggestedAction =
+    maybe "Please sign in." (const "Please sign out and sign in again.")
+
+  presentError message =
     when ((not $ isSearchQuery query) ∨ deep ≡ zero)
     $ driver $ toDialog $ Dialog.Show
-    $ Dialog.Error ("There is a problem listing current directory: "
-                   ⊕ message err)
+    $ Dialog.Error message
+
+  forbiddenMessage =
+    "Your browser is not currently authorized to access this directory listing. "
+
+  listingErrorMessage err =
+    case message err of
+      "An unknown error ocurred: 401 \"\"" ->
+        append forbiddenMessage <<< suggestedAction <$> H.fromEff Auth.retrieveIdToken
+      s ->
+        pure $ "There was a problem accessing this directory listing. " ++ s
 
 
   getChildren ∷ Array Resource → Aff SlamDataEffects Unit
