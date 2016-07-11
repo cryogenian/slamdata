@@ -90,7 +90,9 @@ comp wiring =
 render ∷ Wiring → State → WorkspaceHTML
 render wiring state =
   HH.div
-    [ HP.class_ (HH.className "sd-workspace")
+    [ HP.classes
+        $ (guard (AT.isReadOnly (state ^. _accessType)) $> HH.className "sd-published")
+        ⊕ [ HH.className "sd-workspace" ]
     , HE.onClick (HE.input_ DismissAll)
     ]
     $ header ⊕ deck

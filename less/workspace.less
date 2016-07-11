@@ -1,0 +1,54 @@
+.sd-workspace.sd-published {
+
+  .sd-card-header {
+    display: none;
+  }
+
+  .sd-board-inset-shadow, .sd-deck-shadow, .sd-deck-container.sd-focused {
+    box-shadow: none;
+  }
+
+  .sd-board-grid {
+    background: none;
+  }
+
+  > div > .sd-deck-container {
+
+    > .sd-deck-frame {
+     display: none;
+    }
+
+    > .sd-deck {
+      top: 0;
+      bottom: 0;
+
+      .sd-deck {
+        top: ~"calc(1.5rem - 1px)";
+        bottom: ~"calc(1.5rem - 1px)";
+
+        .sd-card-slider {
+          left: ~"calc(1.5rem - 1px)";
+          right: ~"calc(1.5rem - 1px)";
+        }
+      }
+
+      .sd-deck-shadow {
+        box-sizing: content-box;
+        border: 1px solid #ddd;
+        left: -1px;
+        top: -1px;
+      }
+
+      > .sd-card-slider {
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+
+        > .sd-card {
+          background: none;
+        }
+      }
+    }
+  }
+}
