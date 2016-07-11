@@ -37,6 +37,7 @@ import SlamData.Download.Model as D
 import SlamData.Download.Render as Rd
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.State (State)
+import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource (Resource, isFile, resourcePath, isHidden)
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Render.Common (fadeWhen)
@@ -100,7 +101,7 @@ resItem res =
   HH.button
     [ HP.classes
         $ [ B.listGroupItem ]
-        ⊕ if isHidden res then [ Rc.itemHidden ] else []
+        ⊕ if isHidden res then [ ItemCSS.itemHidden ] else []
     , HE.onClick (HE.input_ (SourceClicked res))
     ]
     [ HH.text (resourcePath res) ]

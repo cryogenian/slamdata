@@ -35,6 +35,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
+import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.FS as Quasar
 import SlamData.Render.Common (glyph)
@@ -121,7 +122,7 @@ renderHighLOD state =
     HH.li
       [ HP.classes
           $ ((guard (Just (R.getPath r) ≡ (Right <$> state.selected))) $> B.active)
-          ⊕ ((guard (R.hiddenTopLevel r)) $> RC.itemHidden)
+          ⊕ ((guard (R.hiddenTopLevel r)) $> ItemCSS.itemHidden)
       , HE.onClick (HE.input_ (right ∘ ResourceSelected r))
       , ARIA.label labelTitle
 

@@ -132,8 +132,14 @@ render opts state =
   bgSize = do
     let size = foldr maxSize { width: 0.0, height: 0.0 } state.decks
         size' = maybe size (flip maxSize size ∘ snd) state.moving
-    CSS.width $ CSS.px $ gridToPx $ size'.width + 1.0
-    CSS.height $ CSS.px $ gridToPx $ size'.height + 1.0
+    CSS.width $ CSS.px $ gridToPx $ size'.width + pad
+    CSS.height $ CSS.px $ gridToPx $ size'.height + pad
+
+  -- Leave an extra 1-grid-square gap at the edge to allow insertion of new
+  -- decks when editing
+  pad = case opts.deck.accessType of
+    AT.Editable → 1.0
+    _ -> 0.0
 
 evalCard ∷ Natural CC.CardEvalQuery DraftboardDSL
 evalCard = case _ of

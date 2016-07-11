@@ -39,6 +39,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Config as Config
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
+import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.FS as API
 import SlamData.Render.Common (fadeWhen, formGroup)
@@ -229,7 +230,7 @@ render dialog =
   renameItem res =
     HH.button [ HP.classes ([ B.listGroupItem ]
                           <> (if R.isHidden res
-                              then [ Rc.itemHidden ]
+                              then [ ItemCSS.itemHidden ]
                               else [ ]))
              , HE.onClick (HE.input_ (DirClicked res))
              ]
