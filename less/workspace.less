@@ -32,11 +32,27 @@
         }
       }
 
+      .sd-deck-frame {
+        top: 0.5rem;
+        bottom: 0.5rem;
+        left: 0.5rem;
+        right: 0.5rem;
+        width: auto;
+        height: auto;
+        // this tiny shadow is to give the top/left edge of the deck some
+        // definition over white backgrounds - the sd-deck-shadow is also used
+        // to provide a larger softer drop
+        box-shadow: 0px 0px 2px 0px rgba(0, 0, 0, 0.1);
+      }
+
       .sd-deck-shadow {
-        box-sizing: content-box;
-        border: 1px solid #ddd;
-        left: -1px;
-        top: -1px;
+        top: 0.5rem;
+        bottom: 0.5rem;
+        left: 0.5rem;
+        right: 0.5rem;
+        width: auto;
+        height: auto;
+        box-shadow: 2px 2px 8px 0px rgba(0, 0, 0, 0.15);
       }
 
       > .sd-card-slider {
