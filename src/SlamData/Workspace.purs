@@ -22,14 +22,25 @@ import Control.Coroutine (runProcess, await, ($$))
 import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (liftEff)
+import Control.UI.Browser as Browser
 
 import Ace.Config as AceConfig
+
+import Data.Nullable (toMaybe)
+
+import DOM.HTML.Document (body)
+import DOM.HTML (window)
+import DOM.HTML.Window (document)
+import DOM.Node.Element (setClassName)
+import DOM.HTML.Types (htmlElementToElement)
 
 import Halogen (Driver, runUI, parentState)
 import Halogen.Util (runHalogenAff, awaitBody)
 
 import SlamData.Config as Config
-import SlamData.Workspace.Action (Action(..))
+import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -73,6 +84,15 @@ routeSignal driver =
             | path == path' && deckId == deckId' && action == action' →
                 pure unit
           _ → do
+            when (toAccessType action == AT.ReadOnly) do
+              isEmbedded ← liftEff $ Browser.detectEmbedding
+              let bodyClass = if isEmbedded then "sd-workspace-page sd-embedded" else "sd-workspace-page"
+              void $ liftEff $
+                traverse (setClassName bodyClass <<< htmlElementToElement)
+                  <<< toMaybe
+                  =<< body
+                  =<< document
+                  =<< window
             workspace path deckId action
 
     routeConsumer (Just new)

@@ -28,3 +28,11 @@ exports.setTitle = function(t) {
         document.title = t;
     };
 };
+
+exports.detectEmbedding = function() {
+    try {
+        return window.self !== window.top;
+    } catch (e) {
+        return true;
+    }
+};
