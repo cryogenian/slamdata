@@ -41,7 +41,6 @@ import Halogen as H
 import Halogen.Component.ChildPath (injSlot, injQuery)
 import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils.Throttled (throttledEventSource_)
-import Halogen.HTML.Core (ClassName, className)
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -51,7 +50,6 @@ import SlamData.Effects (Slam)
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Header.Component as Header
 import SlamData.Quasar.Data as Quasar
-import SlamData.Render.CSS as Rc
 import SlamData.SignIn.Component as SignIn
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.AccessType as AT
@@ -92,14 +90,14 @@ comp wiring =
 render ∷ Wiring → State → WorkspaceHTML
 render wiring state =
   HH.div
-    [ HP.classes classes
+    [ HP.class_ (HH.className "sd-workspace")
     , HE.onClick (HE.input_ DismissAll)
     ]
     $ header ⊕ deck
   where
   header ∷ Array WorkspaceHTML
   header = do
-    guard (not shouldHideTopMenu)
+    guard $ AT.isEditable (state ^. _accessType)
     pure $ HH.slot' cpHeader unit \_→
       { component: Header.comp
       , initialState: H.parentState Header.initialState
@@ -109,17 +107,14 @@ render wiring state =
   deck =
     pure case state.stateMode, state.path, state.initialDeckId of
       Loading, _, _ →
-        HH.div [ HP.classes [ workspaceClass ] ]
-          []
+        HH.div_ []
       Error err, _, _→ showError err
       _, Just path, Just deckId →
-        HH.div [ HP.classes [ workspaceClass ] ]
-          [ HH.slot' cpDeck unit \_ →
-              let init = opaqueState $ Deck.initialDeck path deckId
-              in { component: DN.comp (deckOpts path deckId) init
-                 , initialState: DN.initialState
-                 }
-          ]
+        HH.slot' cpDeck unit \_ →
+          let init = opaqueState $ Deck.initialDeck path deckId
+          in { component: DN.comp (deckOpts path deckId) init
+             , initialState: DN.initialState
+             }
       _, Nothing, _ → showError "Missing workspace path"
       _, _, Nothing → showError "Missing deck id (impossible!)"
 
@@ -136,24 +131,6 @@ render wiring state =
           [ HP.class_ B.textCenter ]
           [ HH.text err ]
       ]
-
-  shouldHideTopMenu ∷ Boolean
-  shouldHideTopMenu = AT.isReadOnly (state ^. _accessType)
-
-  shouldHideEditors ∷ Boolean
-  shouldHideEditors = AT.isReadOnly (state ^. _accessType)
-
-  classes ∷ Array ClassName
-  classes =
-    if shouldHideEditors
-      then [ Rc.workspaceViewHack ]
-      else [ Rc.dashboard ]
-
-  workspaceClass ∷ ClassName
-  workspaceClass =
-    if shouldHideTopMenu
-      then className "sd-workspace-hidden-top-menu"
-      else className "sd-workspace"
 
 eval ∷ Wiring → Natural Query WorkspaceDSL
 eval _ (Init next) = do

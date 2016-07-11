@@ -18,41 +18,8 @@ module SlamData.Render.CSS where
 
 import Halogen.HTML.Core (className, ClassName)
 
-filesystem ∷ ClassName
-filesystem = className "filesystem"
-
-dashboard ∷ ClassName
-dashboard = className "dashboard"
-
 version ∷ ClassName
 version = className "version"
-
-selected ∷ ClassName
-selected = className "selected"
-
-phantom ∷ ClassName
-phantom = className "phantom"
-
-searchInput ∷ ClassName
-searchInput = className "search-input"
-
-searchClear ∷ ClassName
-searchClear = className "search-clear"
-
-searchPath ∷ ClassName
-searchPath = className "search-path"
-
-searchPathActive ∷ ClassName
-searchPathActive = className "search-path-active"
-
-searchAffix ∷ ClassName
-searchAffix = className "search-affix"
-
-searchPathBody ∷ ClassName
-searchPathBody = className "search-path-body"
-
-searchAffixEmpty ∷ ClassName
-searchAffixEmpty = className "search-affix-empty"
 
 results ∷ ClassName
 results = className "results"
@@ -60,14 +27,8 @@ results = className "results"
 header ∷ ClassName
 header = className "header"
 
-headerMenu ∷ ClassName
-headerMenu = className "header-menu"
-
 logo ∷ ClassName
 logo = className "logo"
-
-navCont ∷ ClassName
-navCont = className "nav-cont"
 
 navIcon ∷ ClassName
 navIcon = className "nav-icon"
@@ -75,29 +36,8 @@ navIcon = className "nav-icon"
 navLogo ∷ ClassName
 navLogo = className "nav-logo"
 
-search ∷ ClassName
-search = className "search"
-
 content ∷ ClassName
 content = className "content"
-
-toolbarSort ∷ ClassName
-toolbarSort = className "toolbar-sort"
-
-toolbarMenu ∷ ClassName
-toolbarMenu = className "toolbar-menu"
-
-itemIcon ∷ ClassName
-itemIcon = className "item-icon"
-
-itemToolbar ∷ ClassName
-itemToolbar = className "item-toolbar"
-
-itemContent ∷ ClassName
-itemContent = className "item-content"
-
-itemHidden ∷ ClassName
-itemHidden = className "item-hidden"
 
 invisible ∷ ClassName
 invisible = className "sd-invisible"
@@ -108,9 +48,6 @@ fileListField = className "file-list-field"
 fileListGroup ∷ ClassName
 fileListGroup = className "file-list-group"
 
-workspaceNav ∷ ClassName
-workspaceNav = className "workspace-nav"
-
 dialogDownload ∷ ClassName
 dialogDownload = className "dialog-download"
 
@@ -119,9 +56,6 @@ dialogMount = className "dialog-mount"
 
 renameDialogForm ∷ ClassName
 renameDialogForm = className "rename-dialog-form"
-
-mountSection ∷ ClassName
-mountSection = className "mount-section"
 
 mountMongoDB ∷ ClassName
 mountMongoDB = className "mount-mongodb"
@@ -151,89 +85,23 @@ mountProgressSpinner ∷ Boolean → ClassName
 mountProgressSpinner true = className "mount-progress-spinner"
 mountProgressSpinner false = className "mount-progress-spinner-hidden"
 
-workspaceViewHack ∷ ClassName
-workspaceViewHack = className "workspace-view-hack"
-
 cardInput ∷ ClassName
 cardInput = className "card-input"
-
-cardOutput ∷ ClassName
-cardOutput = className "card-output"
-
-cardOutputLabel ∷ ClassName
-cardOutputLabel = className "card-output-label"
-
-cardOutputResult ∷ ClassName
-cardOutputResult = className "card-output-result"
-
-cardNextActions ∷ ClassName
-cardNextActions = className "card-next-actions"
-
-newCardMenu ∷ ClassName
-newCardMenu = className "new-card-menu"
 
 aceContainer ∷ ClassName
 aceContainer = className "ace-container"
 
-playButton ∷ ClassName
-playButton = className "play-button"
-
-stopButton ∷ ClassName
-stopButton = className "stop-button"
-
-statusText ∷ ClassName
-statusText = className "status-text"
-
 cardFailures ∷ ClassName
 cardFailures = className "card-failures"
-
-cardBlockedMessage ∷ ClassName
-cardBlockedMessage = className "card-blocked-message"
-
-cardEvalLine ∷ ClassName
-cardEvalLine = className "card-eval-line"
-
-pageInput ∷ ClassName
-pageInput = className "page-input"
 
 pageSize ∷ ClassName
 pageSize = className "page-size"
 
-searchCardButton ∷ ClassName
-searchCardButton = className "search-card-button"
-
-nextCardList ∷ ClassName
-nextCardList = className "next-card-list"
-
-echartsContainer ∷ ClassName
-echartsContainer = className "echarts-container"
-
-chartConfigureForm ∷ ClassName
-chartConfigureForm = className "chart-configure-form"
-
-vizCardEditor ∷ ClassName
-vizCardEditor = className "card-editor"
-
-vizChartTypeSelector ∷ ClassName
-vizChartTypeSelector = className "chart-type-selector"
-
-vizChartConfiguration ∷ ClassName
-vizChartConfiguration = className "chart-configuration"
-
 collapsed ∷ ClassName
 collapsed = className "collapsed"
 
-scrollbox ∷ ClassName
-scrollbox = className "scrollbox"
-
 loadingMessage ∷ ClassName
 loadingMessage = className "loading-message"
-
-withAggregation ∷ ClassName
-withAggregation = className "with-aggregation"
-
-aggregation ∷ ClassName
-aggregation = className "aggregation"
 
 embedBox ∷ ClassName
 embedBox = className "embed-box"
@@ -262,42 +130,8 @@ refreshButton = className "refresh-button"
 shareButton ∷ ClassName
 shareButton = className "share-button"
 
-hiddenFileInput ∷ ClassName
-hiddenFileInput = className "hidden-file-input"
-
-chartConfigureHeight ∷ ClassName
-chartConfigureHeight = className "chart-configure-height"
-
-chartConfigureWidth ∷ ClassName
-chartConfigureWidth = className "chart-configure-width"
-
-
-chartCategory ∷ ClassName
-chartCategory = className "chart-category"
-
-chartMeasureOne ∷ ClassName
-chartMeasureOne = className "chart-measure-one"
-
-chartMeasureTwo ∷ ClassName
-chartMeasureTwo = className "chart-measure-two"
-
-chartDimension ∷ ClassName
-chartDimension = className "chart-dimension"
-
-chartSeriesOne ∷ ClassName
-chartSeriesOne = className "chart-series-one"
-
-chartSeriesTwo ∷ ClassName
-chartSeriesTwo = className "chart-series-two"
-
-pieChartIcon ∷ ClassName
-pieChartIcon = className "pie-chart-icon"
-
-barChartIcon ∷ ClassName
-barChartIcon = className "bar-chart-icon"
-
-lineChartIcon ∷ ClassName
-lineChartIcon = className "line-chart-icon"
+aggregation ∷ ClassName
+aggregation = className "aggregation"
 
 deleteDeckIcon ∷ ClassName
 deleteDeckIcon = className "delete-deck-icon"
@@ -305,20 +139,11 @@ deleteDeckIcon = className "delete-deck-icon"
 actionIcon ∷ ClassName
 actionIcon = className "action-icon"
 
-chartEditor ∷ ClassName
-chartEditor = className "chart-editor"
-
 chartOutput ∷ ClassName
 chartOutput = className "chart-output"
 
 glyphiconInactive ∷ ClassName
 glyphiconInactive = className "glyphicon-inactive"
-
-axisLabelParam ∷ ClassName
-axisLabelParam = className "axis-label-param"
-
-chartSizeParam ∷ ClassName
-chartSizeParam = className "chart-size-param"
 
 downloadCardEditor ∷ ClassName
 downloadCardEditor = className "download-card-editor"
@@ -328,18 +153,6 @@ downloadTypeSelector = className "download-type-selector"
 
 downloadConfiguration ∷ ClassName
 downloadConfiguration = className "download-configuration"
-
-sqlMountVarPair ∷ ClassName
-sqlMountVarPair = className "sql-mount-var-pair"
-
-sqlMountForm ∷ ClassName
-sqlMountForm = className "sql-mount-form"
-
-sqlMountAddVarPairButton ∷ ClassName
-sqlMountAddVarPairButton = className "sql-mount-add-var-pair-button"
-
-fileAction ∷ ClassName
-fileAction = className "file-action"
 
 permissionsCheckboxes ∷ ClassName
 permissionsCheckboxes = className "permissions-checkboxes"
@@ -352,7 +165,6 @@ cancelInputRunIcon = className "cancel-input-run-icon"
 
 userShareForm ∷ ClassName
 userShareForm = className "user-share-form"
-
 
 nextActionCard ∷ ClassName
 nextActionCard = className "next-action-card"

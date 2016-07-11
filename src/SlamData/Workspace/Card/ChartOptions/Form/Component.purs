@@ -53,7 +53,7 @@ import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), allAggregations)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (JSelect, ChartConfiguration)
-import SlamData.Render.CSS as Rc
+import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as CSS
 
 data Query a
   = SetConfiguration ChartConfiguration a
@@ -120,7 +120,7 @@ render
   → FormHTML
 render conf =
   HH.div
-    [ HP.classes [ Rc.chartEditor ] ]
+    [ HP.classes [ CSS.chartEditor ] ]
     $ fold
       [ if null conf.dimensions
           then foldMap (renderCategory 0) (conf.series !! 0)
@@ -144,7 +144,7 @@ render conf =
   renderDimension ix sel =
     [ HH.form
         [ CP.nonSubmit
-        , HP.classes [ Rc.chartConfigureForm, Rc.chartDimension ]
+        , HP.classes [ CSS.chartConfigureForm, CSS.chartDimension ]
         ]
         [ dimensionLabel
         , HH.slot' cpDimension ix \_ →
@@ -159,9 +159,9 @@ render conf =
     [ HH.form
         [ CP.nonSubmit
         , HP.classes
-            [ Rc.chartConfigureForm
-            , Rc.chartMeasureOne
-            , Rc.withAggregation
+            [ CSS.chartConfigureForm
+            , CSS.chartMeasureOne
+            , CSS.withAggregation
             ]
         ]
         [ measureLabel
@@ -177,8 +177,8 @@ render conf =
     [ HH.form
         [ CP.nonSubmit
         , HP.classes
-            [ Rc.chartConfigureForm
-            , Rc.chartSeriesOne
+            [ CSS.chartConfigureForm
+            , CSS.chartSeriesOne
             ]
         ]
       [ seriesLabel
@@ -194,8 +194,8 @@ render conf =
     [ HH.form
         [ CP.nonSubmit
         , HP.classes
-            [ Rc.chartConfigureForm
-            , Rc.chartCategory
+            [ CSS.chartConfigureForm
+            , CSS.chartCategory
             ]
         ]
         [ categoryLabel
@@ -213,13 +213,13 @@ render conf =
            , defaultWhen: (_ > 1)
            , mainState: sel
            , ariaLabel: renderLabel i "Measure"
-           , classes: [Rc.aggregation, B.btnPrimary]
+           , classes: [CSS.aggregation, B.btnPrimary]
            }
       else { disableWhen: (_ < 1)
            , defaultWhen: (const true)
            , mainState: sel
            , ariaLabel: renderLabel i "Measure"
-           , classes: [Rc.aggregation, B.btnPrimary]
+           , classes: [CSS.aggregation, B.btnPrimary]
            }
 
 

@@ -32,8 +32,8 @@ import Halogen.Component.Utils as HU
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
+import SlamData.FileSystem.Search.Component.CSS as CSS
 import SlamData.Render.Common (glyph)
-import SlamData.Render.CSS as Rc
 
 import Text.SlamSearch (mkQuery)
 
@@ -102,7 +102,7 @@ comp = H.component { render, eval }
 render ∷ State → HTML
 render state =
   HH.div
-    [ HP.classes [ Rc.search ] ]
+    [ HP.classes [ CSS.search ] ]
     [ HH.form
         [ HE.onSubmit (HE.input_ Submit)]
         [ HH.div
@@ -119,22 +119,22 @@ render state =
             , HH.span
                 [ HP.class_
                     if state.focused
-                      then Rc.searchPathActive
-                      else Rc.searchPath
+                      then CSS.searchPathActive
+                      else CSS.searchPath
                 ]
                 [ HH.span
-                    [ HP.class_ Rc.searchPathBody ]
+                    [ HP.class_ CSS.searchPathBody ]
                     [ HH.text state.value ]
                 , HH.span
                     [ HP.class_
                         if state.value ≡ ""
-                        then Rc.searchAffixEmpty
-                        else Rc.searchAffix
+                        then CSS.searchAffixEmpty
+                        else CSS.searchAffix
                     ]
                     [ HH.text $ "path:" ⊕ printPath (state.path) ]
                 ]
             , HH.img
-                [ HP.class_ Rc.searchClear
+                [ HP.class_ CSS.searchClear
                 , HP.src searchIcon
                 , HE.onClick (HE.input_ Clear)
                 ]
@@ -152,7 +152,7 @@ render state =
   where
   searchClasses ∷ Array HH.ClassName
   searchClasses =
-    [ B.inputGroup, Rc.searchInput] ⊕ do
+    [ B.inputGroup, CSS.searchInput] ⊕ do
       guard (not $ state.valid)
       pure B.hasError
 

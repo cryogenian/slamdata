@@ -34,7 +34,7 @@ import CSS.Size (px)
 
 import Halogen as H
 import Halogen.CustomProps as Cp
-import Halogen.HTML.CSS.Indexed as CSS
+import Halogen.HTML.CSS.Indexed as HCSS
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -45,21 +45,21 @@ import SlamData.Effects (Slam)
 import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, trySelect', _value)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Render.Common (row)
-import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType (CardType(ChartOptions))
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect)
 import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie)
-import SlamData.Workspace.Card.Common.Render (renderLowLOD)
-import SlamData.Workspace.Card.Component as CC
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port as P
+import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
 import SlamData.Workspace.Card.ChartOptions.Component.State as VCS
 import SlamData.Workspace.Card.ChartOptions.Form.Component (formComponent)
 import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
+import SlamData.Workspace.Card.Common.Render (renderLowLOD)
+import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as P
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type HTML = H.ParentHTML Form.StateP QueryC Form.QueryP Slam ChartType
@@ -124,7 +124,7 @@ renderHighLOD ∷ VCS.State → HTML
 renderHighLOD state =
     HH.div
       [ HP.classes
-          $ [ Rc.cardInput, HH.className "card-input-maximum-lod" ]
+          $ [ CSS.cardInput, HH.className "card-input-maximum-lod" ]
           ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
       ]
       [ renderEmpty $ not Set.isEmpty state.availableChartTypes
@@ -137,7 +137,7 @@ renderEmpty hidden =
     [ HP.classes
         $ [ B.alert, B.alertDanger ]
         ⊕ (guard hidden $> B.hide)
-    , CSS.style $ marginBottom $ px 12.0
+    , HCSS.style $ marginBottom $ px 12.0
     ]
     [ HH.text "There is no available chart for this dataset" ]
 
@@ -145,7 +145,7 @@ renderForm ∷ VCS.State → HTML
 renderForm state =
   HH.div
     [ HP.classes
-        $ [ Rc.vizCardEditor ]
+        $ [ CSS.vizCardEditor ]
         ⊕ (guard hidden $> B.hide)
     ]
     [ renderChartTypeSelector state
@@ -158,7 +158,7 @@ renderForm state =
 renderChartTypeSelector ∷ VCS.State → HTML
 renderChartTypeSelector state =
   HH.div
-    [ HP.classes [ Rc.vizChartTypeSelector ] ]
+    [ HP.classes [ CSS.vizChartTypeSelector ] ]
     $ foldl (foldFn state.chartType) empty state.availableChartTypes
   where
   foldFn ∷ ChartType → Array HTML → ChartType → Array HTML
@@ -178,15 +178,15 @@ renderChartTypeSelector state =
   src Bar = "img/bar.svg"
 
   cls ∷ ChartType → HH.ClassName
-  cls Pie = Rc.pieChartIcon
-  cls Line = Rc.lineChartIcon
-  cls Bar = Rc.barChartIcon
+  cls Pie = CSS.pieChartIcon
+  cls Line = CSS.lineChartIcon
+  cls Bar = CSS.barChartIcon
 
 
 renderChartConfiguration ∷ VCS.State → HTML
 renderChartConfiguration state =
   HH.div
-    [ HP.classes [ Rc.vizChartConfiguration ] ]
+    [ HP.classes [ CSS.vizChartConfiguration ] ]
     [ renderTab Pie
     , renderTab Line
     , renderTab Bar
@@ -209,9 +209,9 @@ renderChartConfiguration state =
 renderDimensions ∷ VCS.State → HTML
 renderDimensions state =
   row
-  [ chartInput Rc.axisLabelParam "Axis label angle"
+  [ chartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel (isPie state.chartType)
-  , chartInput Rc.axisLabelParam "Axis font size"
+  , chartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize (isPie state.chartType)
   ]
   where

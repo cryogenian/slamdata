@@ -48,6 +48,7 @@ import Network.HTTP.Affjax (AJAX)
 
 import Quasar.Types (FilePath)
 
+import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.FS as API
 import SlamData.Render.CSS as CSS
@@ -180,7 +181,7 @@ renderItem r =
   HH.button
     [ HP.classes $
         [ B.listGroupItem
-        ] <> if R.isHidden r then [ CSS.itemHidden ] else [ ]
+        ] <> if R.isHidden r then [ ItemCSS.itemHidden ] else [ ]
     , HE.onClick $ HE.input_ (SelectFile r)
     ]
     [ HH.text $ R.resourcePath r

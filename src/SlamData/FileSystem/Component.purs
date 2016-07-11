@@ -50,6 +50,7 @@ import Quasar.Data (QData(..))
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Breadcrumbs.Component as Breadcrumbs
+import SlamData.FileSystem.Component.CSS as CSS
 import SlamData.FileSystem.Component.Install (ChildQuery, ChildSlot, ChildState, QueryP, StateP, cpBreadcrumbs, cpDialog, cpListing, cpSearch, cpHeader, toDialog, toFs, toListing, toSearch)
 import SlamData.FileSystem.Component.Query (Query(..))
 import SlamData.FileSystem.Component.Render (sorting, toolbar)
@@ -75,7 +76,6 @@ import SlamData.Quasar.Auth (authHeaders) as API
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API
-import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (content, row)
 import SlamData.SignIn.Component as SignIn
 import SlamData.Workspace.Action (Action(..), AccessType(..))
@@ -93,7 +93,7 @@ comp = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
 render ∷ State → HTML
 render state@{ version, sort, salt, path } =
   HH.div
-    [ HP.classes [ Rc.filesystem ]
+    [ HP.classes [ CSS.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
     [ HH.slot' cpHeader unit \_ →

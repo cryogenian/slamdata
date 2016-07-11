@@ -21,7 +21,7 @@ import SlamData.Prelude
 import Data.Lens (LensP, lens, (%~), (.~))
 
 import Halogen as H
-import Halogen.HTML.CSS.Indexed as CSS
+import Halogen.HTML.CSS.Indexed as HCSS
 import Halogen.HTML.Events.Handler as HEH
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -34,8 +34,8 @@ import CSS.Size (px)
 
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Listing.Item (Item(..), itemResource)
+import SlamData.FileSystem.Listing.Item.Component.CSS as CSS
 import SlamData.FileSystem.Resource (Resource(..), Mount(..), resourceName, resourcePath, isMount, isFile, isWorkspace, isViewMount, hiddenTopLevel, root)
-import SlamData.Render.CSS as Rc
 
 type State =
   { item ∷ Item
@@ -86,11 +86,11 @@ render state = case state.item of
   Item _ → itemView state false false
   PhantomItem _ →
     HH.div
-      [ HP.classes [ B.listGroupItem, Rc.phantom ] ]
+      [ HP.classes [ B.listGroupItem, CSS.phantom ] ]
       [ HH.div
           [ HP.class_ B.row ]
           [ HH.div
-              [ HP.classes [ B.colXs8, Rc.itemContent ] ]
+              [ HP.classes [ B.colXs8, CSS.itemContent ] ]
               [ HH.span_
                   [ HH.img [ HP.src "img/spin.gif" ]
                   , HH.text $ itemName state
@@ -158,7 +158,7 @@ itemView state@{ item } selected presentActions | otherwise =
     [ HH.div
         [ HP.class_ B.row ]
         [ HH.div
-            [ HP.classes [ B.colXs8, Rc.itemContent ] ]
+            [ HP.classes [ B.colXs8, CSS.itemContent ] ]
             [ HH.a
                 [ HE.onClick \_ →
                     HEH.preventDefault $>
@@ -169,7 +169,7 @@ itemView state@{ item } selected presentActions | otherwise =
                 ]
             ]
         , HH.div
-            [ HP.classes $ [ B.colXs4, Rc.itemToolbar ] ⊕ (guard selected $> Rc.selected) ]
+            [ HP.classes $ [ B.colXs4, CSS.itemToolbar ] ⊕ (guard selected $> CSS.selected) ]
             [ itemActions presentActions item ]
         ]
     ]
@@ -178,7 +178,7 @@ itemView state@{ item } selected presentActions | otherwise =
   itemClasses =
     [ B.listGroupItem ]
     ⊕ (guard selected $> B.listGroupItemInfo)
-    ⊕ (if itemIsHidden item && presentHiddenItem state then [ Rc.itemHidden ] else [ ])
+    ⊕ (if itemIsHidden item && presentHiddenItem state then [ CSS.itemHidden ] else [ ])
 
   label ∷ String
   label | selected  = "Deselect " ++ itemName state
@@ -187,7 +187,7 @@ itemView state@{ item } selected presentActions | otherwise =
 iconClasses ∷ forall r i. Item → HP.IProp (class ∷ HP.I | r) i
 iconClasses item = HP.classes
   [ B.glyphicon
-  , Rc.itemIcon
+  , CSS.itemIcon
   , iconClass (itemResource item)
   ]
   where
@@ -203,7 +203,7 @@ itemActions presentActions item | not presentActions = HH.text ""
 itemActions presentActions item | otherwise =
   HH.ul
     [ HP.classes [ B.listInline, B.pullRight ]
-    , CSS.style $ marginBottom (px zero)
+    , HCSS.style $ marginBottom (px zero)
     ]
     (conf ⊕ common ⊕ share)
   where
@@ -233,7 +233,7 @@ itemActions presentActions item | otherwise =
           [ HE.onClick $ HE.input_ (act (itemResource item))
           , HP.title label
           , ARIA.label label
-          , HP.class_ Rc.fileAction
+          , HP.class_ CSS.fileAction
           ]
           [ HH.i [ HP.classes [ B.glyphicon, cls ] ] [] ]
       ]
