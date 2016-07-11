@@ -27,6 +27,7 @@ module Control.UI.Browser
   , hostAndProtocol
   , getHref
   , setHref
+  , detectEmbedding
   ) where
 
 import Prelude
@@ -79,3 +80,6 @@ foreign import select :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
 foreign import newTab :: forall e. String -> Eff (dom :: DOM | e) Unit
 foreign import clearValue :: forall e. HTMLElement -> Eff (dom :: DOM | e) Unit
 foreign import setTitle :: forall e. String -> Eff (dom :: DOM | e) Unit
+
+-- | Checks whether the current page is embedded in another page via iframe.
+foreign import detectEmbedding :: forall e. Eff (dom :: DOM | e) Boolean
