@@ -19,8 +19,10 @@ module SlamData.Quasar.FS
   , transitiveChildrenProducer
   , getNewName
   , move
+  , listing
   , delete
   , messageIfFileNotFound
+  , dirNotAccessible
   ) where
 
 import SlamData.Prelude
@@ -282,3 +284,17 @@ messageIfFileNotFound path defaultMsg =
   handleResult (Left QF.NotFound) = Right (Just defaultMsg)
   handleResult (Left QF.Forbidden) = Right (Just defaultMsg)
   handleResult (Right _) = Right Nothing
+
+dirNotAccessible
+  ∷ ∀ eff m
+  . (Monad m, Affable (QEff eff) m)
+  ⇒ DirPath
+  → m (Maybe String)
+dirNotAccessible path =
+  handleResult <$> runQuasarF (QF.dirMetadata path)
+  where
+  handleResult ∷ ∀ a. Either QF.QError a → Maybe String
+  handleResult (Left (QF.Error e)) = Just $ Exn.message e
+  handleResult (Left QF.NotFound) = Just "Target directory does not exist."
+  handleResult (Left QF.Forbidden) = Just "Your browser isn't currently permitted to access that directory."
+  handleResult (Right _) = Nothing

@@ -52,6 +52,7 @@ type State =
   , name :: String
   , dirs :: Array R.Resource
   , dir :: DirPath
+  , typedDir :: String
   , siblings :: Array R.Resource
   , error :: Maybe String
   }
@@ -64,6 +65,7 @@ initialState resource =
           then dropWorkspaceExt $ R.resourceName resource
           else R.resourceName resource
   , dir: R.resourceDir resource
+  , typedDir: printPath $ R.resourceDir resource
   , siblings: mempty
   , dirs: singleton R.root
   , error: Nothing
@@ -77,6 +79,9 @@ _initial = lens _.initial (_ { initial = _ })
 
 _name :: LensP State String
 _name = lens _.name (_ { name = _ })
+
+_typedDir :: LensP State String
+_typedDir = lens _.typedDir (_ { typedDir = _ })
 
 _dirs :: LensP State (Array R.Resource)
 _dirs = lens _.dirs (_ { dirs = _ })
@@ -194,7 +199,7 @@ render dialog =
           [ HP.classes [ B.formControl ]
           , HP.placeholder "New directory"
           , HE.onValueInput (HE.input DirTyped)
-          , HP.value (printPath $ dialog ^. _dir)
+          , HP.value $ dialog ^. _typedDir
           ]
       , HH.span
           [ HP.classes [ B.inputGroupBtn ] ]
@@ -241,26 +246,50 @@ eval (ToggleShowList next) = do
   H.modify validate
   pure next
 eval (Submit next) = do
-  state <- H.get
-  let src = state.initial
-      tgt = R.getPath $ renameSlam state
-  result <- API.move src tgt
-  case result of
-    Left e ->
-      H.modify (_error ?~ message e)
-    Right _ -> do
-      H.modify (_error .~ Nothing)
-      H.fromEff reload
+  dirStr <- endingInSlash <$> H.gets _.typedDir
+  maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
   pure next
+  where
+  parsedDir =
+    map (rootDir </> _) ∘ sandbox rootDir <=< parseAbsDir
+
+  presentSourceMissingError =
+    H.modify $ _error .~ Just "The file you are trying to move is unavailable, please refresh."
+
+  presentDirNotExistError =
+    H.modify $ _error .~ Just "Target directory does not exist."
+
+  presentError e =
+    H.modify $ _error .~ Just e
+
+  moveIfDirAccessible dir =
+    maybe (move dir) presentError =<< API.dirNotAccessible dir
+
+  move dir = do
+    H.modify $ (_dir .~ dir) <<< (_showList .~ false)
+    state <- H.get
+    let src = state.initial
+        tgt = R.getPath $ renameSlam state
+    result <- API.move src tgt
+    case result of
+      Left e ->
+        H.modify (_error ?~ message e)
+      Right x ->
+        maybe
+          presentSourceMissingError
+          (const $ H.modify (_error .~ Nothing) *> H.fromEff reload)
+          x
+
+  lastChar s = S.drop (S.length s - 1) s
+
+  endingInSlash s = if lastChar s == "/" then s else s ++ "/"
+
 eval (NameTyped str next) = do
   H.modify (_name .~ str)
   H.modify validate
   pure next
 eval (DirTyped str next) = do
-  maybe (pure unit) (dirItemClicked <<< R.mkDirectory <<< Left) do
-    d <- parseAbsDir str
-    s <- sandbox rootDir d
-    pure $ rootDir </> s
+  H.modify $ _typedDir .~ str
   pure next
 eval (DirClicked res next) = do
   dirItemClicked res
@@ -277,7 +306,7 @@ eval (Init next) = do
   pure next
 
 dirItemClicked :: R.Resource -> DSL Unit
-dirItemClicked res =
+dirItemClicked res = do
   case R.getPath res of
     Right _ -> pure unit
     Left dir -> do
@@ -286,3 +315,4 @@ dirItemClicked res =
         $ (_dir .~ dir)
         <<< (_showList .~ false)
         <<< (_siblings .~ either (const []) id siblings)
+        <<< (_typedDir .~ printPath dir)
