@@ -67,6 +67,7 @@ makeCardComponent def = makeCardComponentPart def render
   render component initialState = const $
     HH.div
       [ HP.classes $ [ CSS.deckCard ]
+      , ARIA.label $ (cardName def.cardType) ⊕ " card"
       , HP.ref (H.action ∘ CQ.SetHTMLElement)
       ]
       $ fold [cardLabel, card]
@@ -77,7 +78,6 @@ makeCardComponent def = makeCardComponentPart def render
       | otherwise =
           [ HH.div
               [ HP.classes [CSS.cardHeader]
-              , ARIA.label $ (cardName def.cardType) ⊕ " card"
               ]
               [ HH.div
                   [ HP.class_ CSS.cardName ]
