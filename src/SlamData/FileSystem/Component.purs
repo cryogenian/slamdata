@@ -444,10 +444,6 @@ download res = do
   hs ← H.fromEff API.authHeaders
   showDialog (Dialog.Download res)
   queryDialog Dialog.cpDownload (H.action $ Download.SetAuthHeaders hs)
-  getChildren
-    (const true)
-    (void ∘ queryDialog Dialog.cpDownload ∘ H.action ∘ Download.AddSources)
-    rootDir
   pure unit
 
 getChildren

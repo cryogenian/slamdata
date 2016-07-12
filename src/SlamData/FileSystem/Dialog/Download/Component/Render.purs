@@ -37,9 +37,8 @@ import SlamData.Download.Model as D
 import SlamData.Download.Render as Rd
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.State (State)
-import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
-import SlamData.FileSystem.Resource (Resource, isFile, resourcePath, isHidden)
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
+import SlamData.FileSystem.Resource (resourcePath, isFile)
 import SlamData.Render.Common (fadeWhen)
 import SlamData.Render.CSS as Rc
 
@@ -70,42 +69,9 @@ resField state =
     [ HP.classes [ B.formGroup, Rc.downloadSource, B.clearfix ] ]
     [ HH.label_
         [ HH.span_ [ HH.text "Source" ]
-        , HH.input
-            [ HP.classes [ B.formControl ]
-            , HE.onValueInput (HE.input SourceTyped)
-            , HP.value resValue
-            ]
-        , HH.span
-            [ HP.classes [ B.inputGroupBtn ] ]
-            [ HH.button
-                [ HP.classes [ B.btn, B.btnDefault ]
-                , HE.onClick \_ →
-                    HEH.stopPropagation $> Just (H.action ToggleList)
-                ]
-                [ HH.span [ HP.classes [ B.caret ] ]  [ ] ]
-            ]
+        , HH.text (resourcePath state.source)
         ]
-    , HH.ul
-        [ HP.classes
-            $ [ B.listGroup, Rc.fileListGroup ]
-            ⊕ fadeWhen (not $ state.showSourcesList)
-        ]
-        $ resItem <$> state.sources
     ]
-  where
-  resValue ∷ String
-  resValue = either id resourcePath $ state.source
-
-resItem ∷ Resource → H.ComponentHTML Query
-resItem res =
-  HH.button
-    [ HP.classes
-        $ [ B.listGroupItem ]
-        ⊕ if isHidden res then [ ItemCSS.itemHidden ] else []
-    , HE.onClick (HE.input_ (SourceClicked res))
-    ]
-    [ HH.text (resourcePath res) ]
-
 
 fldName ∷ State → H.ComponentHTML Query
 fldName state =
@@ -130,25 +96,26 @@ fldName state =
   tgtValue = either id id $ state.targetName
 
   ext | compressed state = ".zip"
-      | isLeft (state.options) = ".csv"
+      | isLeft state.options = ".csv"
       | otherwise = ".json"
 
 compressed ∷ State → Boolean
-compressed state =
- either (const false) (not ∘ isFile) (state.source) || state.compress
+compressed state = not isFile state.source || state.compress
 
 chkCompress ∷ State → H.ComponentHTML Query
 chkCompress state =
-  HH.div [ HP.classes [ B.formGroup ] ]
-  [ HH.label_ [ HH.span_ [ HH.text "Compress" ]
-             , HH.input [ HP.inputType HP.InputCheckbox
-                       , HP.enabled $ either (const false) isFile
-                         (state.source)
-                       , HP.checked $ compressed state
-                       , HE.onValueChange (HE.input_ ToggleCompress)
-                       ]
-             ]
-  ]
+  HH.div
+    [ HP.classes [ B.formGroup ] ]
+    [ HH.label_
+      [ HH.span_ [ HH.text "Compress" ]
+      , HH.input
+          [ HP.inputType HP.InputCheckbox
+          , HP.enabled $ isFile state.source
+          , HP.checked $ compressed state
+          , HE.onValueChange (HE.input_ ToggleCompress)
+          ]
+      ]
+    ]
 
 options ∷ State → H.ComponentHTML Query
 options state =
@@ -198,9 +165,7 @@ btnDownload state =
       $ D.toHeaders state
 
     url =
-      (encodeURI
-       $ printPath Config.data_
-       ⊕ either (const "#") resourcePath (state.source))
+      (encodeURI $ printPath Config.data_ ⊕ resourcePath state.source)
       ⊕ "?request-headers="
       ⊕ headers
 
@@ -217,8 +182,6 @@ btnDownload state =
          , HP.title "Proceed download"
          ]
      [ HH.text "Download" ]
-
-
 
 optionsCSV ∷ D.CSVOptions → H.ComponentHTML Query
 optionsCSV = Rd.optionsCSV (\lens v → ModifyCSVOpts (lens .~ v))
