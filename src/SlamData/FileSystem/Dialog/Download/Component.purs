@@ -24,8 +24,7 @@ import SlamData.Prelude
 
 import Control.UI.Browser (newTab)
 
-import Data.Array (sort, nub)
-import Data.Lens ((.~), (%~), (<>~), _Left, _Right)
+import Data.Lens ((.~), _Right, (%~), _Left)
 import Data.String as Str
 
 import Halogen as H
@@ -34,30 +33,12 @@ import SlamData.Download.Model as D
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Download.Component.Query (Query(..))
 import SlamData.FileSystem.Dialog.Download.Component.Render (render)
-import SlamData.FileSystem.Dialog.Download.Component.State (State, _authHeaders,  _compress, _error, _options, _showSourcesList, _source, _sources, _targetName, checkExists, initialState, validate)
-import SlamData.FileSystem.Resource (Resource(..), resourceName)
-
-import Utils.Path (parseAnyPath)
+import SlamData.FileSystem.Dialog.Download.Component.State (State, _authHeaders,  _compress, _error, _options, _source, _targetName, checkExists, initialState, validate)
 
 comp ∷ H.Component State Query Slam
 comp = H.component { render, eval }
 
-eval ∷ Natural Query (H.ComponentDSL State Query Slam)
-eval (SourceTyped s next) = do
-  H.modify (_source .~ maybe (Left s) (Right ∘ either Directory File)
-          (parseAnyPath s))
-  H.modify validate
-  pure next
-eval (ToggleList next) = do
-  H.modify (_showSourcesList %~ not)
-  H.modify validate
-  pure next
-eval (SourceClicked r next) = do
-  H.modify $ (_showSourcesList .~ false)
-       ∘ (_targetName .~ (Right $ resourceName r))
-       ∘ (_source .~ Right r)
-  H.modify validate
-  pure next
+eval ∷ Query ~> (H.ComponentDSL State Query Slam)
 eval (TargetTyped s next) = do
   H.modify (_targetName .~ (if isJust $ Str.indexOf "/" s then Left else Right) s)
   H.modify validate
@@ -86,14 +67,6 @@ eval (NewTab url next) = do
   H.fromEff $ newTab url
   pure next
 eval (Dismiss next) =
-  pure next
-eval (SetSources srcs next) = do
-  H.modify (_sources .~ srcs)
-  H.modify (_sources %~ sort ∘ nub)
-  pure next
-eval (AddSources srcs next) = do
-  H.modify (_sources <>~ srcs)
-  H.modify (_sources %~ sort ∘ nub)
   pure next
 eval (SetAuthHeaders as next) = do
   H.modify (_authHeaders .~ as) $> next

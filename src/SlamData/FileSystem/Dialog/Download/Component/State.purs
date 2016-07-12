@@ -19,18 +19,15 @@ module SlamData.FileSystem.Dialog.Download.Component.State where
 import SlamData.Prelude
 
 import Data.Array (findIndex)
-import Data.Either.Unsafe as U
 import Data.Lens (LensP, lens, (?~), (.~))
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
 import SlamData.Download.Model (JSONOptions, CSVOptions, initialCSVOptions)
-import SlamData.FileSystem.Resource (Resource, resourceName, root, getPath)
+import SlamData.FileSystem.Resource (Resource, resourceName, getPath)
 
 type State =
-  { source ∷ Either String Resource
-  , sources ∷ (Array Resource)
-  , showSourcesList ∷ Boolean
+  { source ∷ Resource
   , targetName ∷ Either String String
   , compress ∷ Boolean
   , options ∷ Either CSVOptions JSONOptions
@@ -40,9 +37,7 @@ type State =
 
 initialState ∷ Resource → State
 initialState res =
-  { source: Right res
-  , sources: [root, res]
-  , showSourcesList: false
+  { source: res
   , targetName:
       let name = resourceName res
       in Right $ if name ≡ "" then "archive" else name
@@ -52,14 +47,8 @@ initialState res =
   , authHeaders: []
   }
 
-_source ∷ LensP State (Either String Resource)
+_source ∷ LensP State Resource
 _source = lens _.source (_ { source = _ })
-
-_sources ∷ LensP State (Array Resource)
-_sources = lens _.sources (_ { sources = _ })
-
-_showSourcesList ∷ LensP State Boolean
-_showSourcesList = lens _.showSourcesList (_ { showSourcesList = _ })
 
 _targetName ∷ LensP State (Either String String)
 _targetName = lens _.targetName (_ { targetName = _ })
@@ -78,10 +67,6 @@ _authHeaders = lens _.authHeaders (_{authHeaders = _})
 
 validate ∷ State → State
 validate r
-  | isLeft (r.source) =
-    r # _error ?~ "Please enter a valid source path to download"
-  | not $ checkExists (U.fromRight $ r.source) (r.sources) =
-    r # _error ?~ "The source resource does not exists"
   | isLeft (r.targetName) =
     r # _error ?~ "Please enter a valid target filename"
   | otherwise =
