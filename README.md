@@ -9,10 +9,6 @@
 
 Web-based visual analytics for NoSQL data, powered by [Quasar](https://github.com/quasar-analytics/quasar).
 
-## Pre-built releases
-
-The [GitHub releases page](https://github.com/slamdata/slamdata/releases) for the project contains pre-built archives.
-
 See the [Use with Quasar](#use-with-quasar) section for next steps.
 
 ## Building from source
