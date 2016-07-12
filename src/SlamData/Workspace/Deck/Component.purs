@@ -662,20 +662,16 @@ runCardUpdates opts source steps = do
       $ (DCS._stateMode .~ Ready)
       ∘ (DCS._activeCardIndex .~ (activeCardIndex <|> lastIndex))
 
-  -- Splice in the new display cards and run their updates.
+  -- Splice in the new display cards
   for_ (Array.head updateResult.displayCards) \card → do
     let
       pendingId = DCS.coordModelToCoord card
       oldCards = Array.takeWhile (not ∘ DCS.eqCoordModel pendingId) realCards
       displayCards = oldCards <> updateResult.displayCards
-
-    H.modify
-      $ DCS._displayCards .~ displayCards
-
-    for_ updateResult.updates $
-      updateCard st source pendingId loadedCards
+    H.modify $ DCS._displayCards .~ displayCards
 
   updateActiveCardAndIndicator opts.wiring
+  for_ updateResult.updates $ updateCard st source loadedCards
   updateCardSize
 
   where
@@ -708,11 +704,10 @@ runCardUpdates opts source steps = do
   updateCard
     ∷ DCS.State
     → DeckId
-    → DeckId × CardId
     → Set.Set (DeckId × CardId)
     → CardEval
     → DeckDSL Unit
-  updateCard st source pendingId loadedCards step = void do
+  updateCard st source loadedCards step = void do
     input ← for step.input (H.fromAff ∘ Pr.wait)
     output ← for step.output (H.fromAff ∘ Pr.wait)
     urlVarMaps ← H.fromEff $ Ref.readRef opts.wiring.urlVarMaps
