@@ -46,7 +46,7 @@ test = do
     Expect.cardsInTableColumnInLastCardToContain 10 "city" "SPRINGFIELD"
     successMsg "Successfully searched for a city"
 
-  searchScenario "Search within results" ["https://slamdata.atlassian.net/browse/SD-1841"] do
+  searchScenario "Search within results" [] do
     Interact.insertOpenCardInLastDeck
     Interact.selectFileForLastOpenCard "/test-mount/testDb/zips"
     Interact.accessNextCardInLastDeck

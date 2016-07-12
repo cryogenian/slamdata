@@ -35,7 +35,7 @@ mdScenario =
 
 test :: SlamFeature Unit
 test = do
-  mdScenario "Provide and play markdown" ["https://slamdata.atlassian.net/browse/SD-1711"] do
+  mdScenario "Provide and play markdown" [] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard
       $ joinWith "\n\n"

@@ -17,7 +17,7 @@ module Test.SlamData.Feature.Test.File where
 
 import SlamData.Prelude
 
-import Test.Feature.Log (successMsg, errorMsg)
+import Test.Feature.Log (successMsg)
 import Test.Feature.Scenario (scenario)
 import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Interactions as Interact
@@ -53,7 +53,7 @@ afterAccessSharingUrl =
 
 test ∷ SlamFeature Unit
 test = do
-  fileScenario afterRename "Rename a folder" ["https://slamdata.atlassian.net/browse/SD-1711"] do
+  fileScenario afterRename "Rename a folder" [] do
     Interact.browseTestFolder
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Patients"
@@ -64,7 +64,7 @@ test = do
     Expect.file "Ϡ⨁⟶≣ΜϞ"
     successMsg "Successfully renamed a folder"
 
-  fileScenario afterMove "Move a folder" ["https://slamdata.atlassian.net/browse/SD-1639"] do
+  fileScenario afterMove "Move a folder" [] do
     Interact.browseTestFolder
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Medical data"
@@ -76,7 +76,6 @@ test = do
     Interact.accessFile "Medical data"
     Expect.file "Untitled Folder"
     successMsg "Successfully moved a folder"
-    errorMsg "This scenario succeeded, but is known to fail non-deterministically"
 
   fileScenario defaultAfterFile "Delete a folder" [] do
     Interact.browseTestFolder
