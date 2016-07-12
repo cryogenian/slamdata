@@ -6,6 +6,6 @@
 , "quasar-advanced":
     { "owner": "slamdata"
     , "repo": "quasar-advanced"
-    , "tag": "v0.2.2"
+    , "tag": "v0.2.7"
     }
 }
