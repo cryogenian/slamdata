@@ -117,6 +117,7 @@ eval opts@{ wiring } = case _ of
     pb ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
     mb ← subscribeToBus' (H.action ∘ HandleMessage) wiring.messaging
     H.modify $ DCS._breakers .~ [pb, mb]
+    updateCardSize
     pure next
   Finish next → do
     H.modify _ { finalized = true }
@@ -925,8 +926,6 @@ updateCardSize = do
   H.queryAll' cpCard $ left $ H.action UpdateDimensions
   H.gets _.deckElement >>= traverse_ \el -> do
     { width } ← H.fromEff $ getBoundingClientRect el
-    traceA "updateCardSize"
-    traceAnyA $ breakpoint width
     H.modify $ DCS._responsiveSize .~ breakpoint width
   where
   breakpoint w
