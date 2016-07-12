@@ -86,7 +86,7 @@ render state =
   nextButton cty =
     HH.li_
       [ HH.button attrs
-          [ CT.cardGlyph cty
+          [ CT.lightCardGlyph cty
           , HH.p_ [ HH.text (CT.cardName cty) ]
           ]
       ]

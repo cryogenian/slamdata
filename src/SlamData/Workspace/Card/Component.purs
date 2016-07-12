@@ -38,7 +38,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Math as Math
 
 import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, cardGlyph)
+import SlamData.Workspace.Card.CardType (CardType(..), cardClasses, cardName, darkCardGlyph)
 import SlamData.Workspace.Card.Component.CSS as CSS
 import SlamData.Workspace.Card.Component.Def (CardDef, makeQueryPrism, makeQueryPrism')
 import SlamData.Workspace.Card.Component.Query as CQ
@@ -81,8 +81,8 @@ makeCardComponent def = makeCardComponentPart def render
               ]
               [ HH.div
                   [ HP.class_ CSS.cardName ]
-                  [ cardGlyph def.cardType
-                  , HH.text $ cardName def.cardType
+                  [ darkCardGlyph def.cardType
+                  , HH.p_ [ HH.text $ cardName def.cardType ]
                   ]
               ]
           ]

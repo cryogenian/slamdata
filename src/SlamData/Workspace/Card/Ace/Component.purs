@@ -138,7 +138,7 @@ render ∷ AceConfig → State → HTML
 render cfg state =
   HH.div_
     [ renderHighLOD cfg state
-    , renderLowLOD (CT.aceCardGlyph cfg.mode) id state.levelOfDetails
+    , renderLowLOD (CT.lightCardGlyph $ CT.Ace cfg.mode) id state.levelOfDetails
     ]
 
 renderHighLOD ∷ AceConfig → State → HTML

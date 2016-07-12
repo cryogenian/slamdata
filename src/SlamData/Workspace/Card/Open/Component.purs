@@ -70,7 +70,7 @@ render ∷ State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD B.glyphiconFolderOpen left state.levelOfDetails
+    , renderLowLOD (CT.lightCardGlyph CT.Open) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ State → HTML

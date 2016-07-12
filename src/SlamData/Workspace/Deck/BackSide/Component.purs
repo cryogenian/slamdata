@@ -127,16 +127,16 @@ actionEnabled st a =
 
 actionGlyph ∷ BackAction → HTML
 actionGlyph = case _ of
-  Trash → glyph B.glyphiconTrash
-  Rename → glyph B.glyphiconPencil
-  Share → glyph B.glyphiconShare
-  Unshare → glyph B.glyphiconWrench
-  Embed → glyph B.glyphiconShareAlt
-  Publish → glyph B.glyphiconBlackboard
-  Mirror → glyph B.glyphiconDuplicate
-  Wrap → glyph B.glyphiconLogIn
-  Unwrap _ → glyph B.glyphiconLogOut
-  DeleteDeck → HH.i [ HP.classes [ Rc.actionIcon, Rc.deleteDeckIcon ] ] [ ]
+  Trash → HH.img [ HP.src "img/cardAndDeckActions/deleteCard.svg" ]
+  Rename → HH.img [ HP.src "img/cardAndDeckActions/renameDeck.svg" ]
+  Share → HH.img [ HP.src "img/cardAndDeckActions/shareDeck.svg" ]
+  Unshare → HH.img [ HP.src "img/cardAndDeckActions/unshareDeck.svg" ]
+  Embed → HH.img [ HP.src "img/cardAndDeckActions/embedDeck.svg" ]
+  Publish → HH.img [ HP.src "img/cardAndDeckActions/publishDeck.svg" ]
+  Mirror → HH.img [ HP.src "img/cardAndDeckActions/mirrorDeck.svg" ]
+  Wrap → HH.img [ HP.src "img/cardAndDeckActions/wrapDeck.svg" ]
+  Unwrap _ → HH.img [ HP.src "img/cardAndDeckActions/unwrapDeck.svg" ]
+  DeleteDeck → HH.img [ HP.src "img/cardAndDeckActions/deleteDeck.svg" ]
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam

@@ -22,7 +22,6 @@
       max-width: 30rem;
     }
     input {
-      line-height: 3rem;
       width: ~"calc(100% - 2rem)";
       height: 2rem;
       box-sizing: border-box;
@@ -83,12 +82,9 @@
             color: #fff;
             padding: 0;
             img {
-              width: 0.75rem;
-              height: 0.75rem;
-            }
-            i.glyphicon { // BS
-              font-size: 1.5rem;
-              top: -0.25rem;
+              width: 30%;
+              height: 30%;
+              margin-bottom: @grid-size;
             }
             p {
                 position: absolute;
@@ -118,9 +114,11 @@
             &:not(.sd-button-warning):not(:disabled)::before {
                 content: "✔︎";
                 position: absolute;
-                top: 4px;
-                right: 4px;
-                font-size: 0.5rem;
+                top: 0px;
+                right: 0px;
+                top: 5%;
+                right: 5%;
+                font-size: 1rem;
                 line-height: 0.5rem;
                 font-weight: bold;
                 display: block;

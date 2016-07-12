@@ -1,3 +1,5 @@
+@import "common";
+
 @keyframes fadeOut {
   0% {
     opacity: 1;
@@ -33,6 +35,11 @@
   transform: translate3d(0, 0, 0);
   pointer-events: none;
   opacity: 0;
+}
+
+.sd-card-header img {
+  height: calc(2 * @grid-size);
+  width: calc(2 * @grid-size);
 }
 
 .sd-focused > .sd-deck > .sd-card-slider .sd-card-sliding > div > .sd-deck-card > .sd-card-header {

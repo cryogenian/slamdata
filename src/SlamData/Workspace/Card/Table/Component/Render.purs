@@ -34,6 +34,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Table.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.Table.Component.State (State, currentPageInfo)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
@@ -56,7 +57,7 @@ render ∷ State → H.ComponentHTML QueryP
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD B.glyphiconThList left state.levelOfDetails
+    , renderLowLOD (CT.lightCardGlyph CT.Table) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ State → H.ComponentHTML QueryP

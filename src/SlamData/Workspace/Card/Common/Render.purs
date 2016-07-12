@@ -24,13 +24,12 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
-import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 renderLowLOD
   ∷ ∀ f p
-  . HH.ClassName
+  . H.HTML p f
   → (CC.CardEvalQuery ~> f)
   → LevelOfDetails
   → H.HTML p f
@@ -43,7 +42,7 @@ renderLowLOD icon f = case _ of
           , HP.title "Zoom or resize"
           , HE.onClick (HE.input_ (f ∘ CC.ZoomIn))
           ]
-          [ glyph icon
+          [ icon
           , HH.text "Zoom or resize"
           ]
       ]

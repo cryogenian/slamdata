@@ -18,10 +18,10 @@ module SlamData.Workspace.Card.CardType
   ( CardType(..)
   , AceMode(..)
   , cardName
-  , cardGlyph
+  , darkCardGlyph
+  , lightCardGlyph
   , cardClasses
   , aceCardName
-  , aceCardGlyph
   , aceCardClasses
   , aceMode
   , controllable
@@ -38,11 +38,7 @@ import Data.Argonaut (class EncodeJson, class DecodeJson, encodeJson, decodeJson
 
 import Halogen.HTML as H
 import Halogen.HTML.Indexed as HH
-import Halogen.Themes.Bootstrap3 as B
 import Halogen.HTML.Properties.Indexed as HP
-
-import SlamData.Render.Common (glyph)
-import SlamData.Render.CSS as Rc
 
 import Test.StrongCheck as SC
 
@@ -166,25 +162,47 @@ cardName =
     ErrorCard → "Error"
     PendingCard → "Pending"
 
-cardGlyph ∷ ∀ s f. CardType → H.HTML s f
-cardGlyph =
+darkCardGlyph ∷ ∀ s f. CardType → H.HTML s f
+darkCardGlyph =
   case _ of
-    Ace at →glyph $ aceCardGlyph at
-    Search → glyph B.glyphiconSearch
-    ChartOptions → glyph B.glyphiconPicture
-    Download → glyph B.glyphiconDownloadAlt
-    Variables → glyph B.glyphiconOpenFile
-    Troubleshoot → glyph B.glyphiconTasks
-    Chart → HH.div [ HP.classes [ Rc.glyphImage, Rc.chartGlyph ] ] [ ]
-    Markdown → HH.div [ HP.classes [ Rc.glyphImage, Rc.codeGlyph ] ] [ ]
-    Table → glyph B.glyphiconThList
-    NextAction → glyph B.glyphiconStop -- arbitrary
-    Cache → glyph B.glyphiconFloppyDisk
-    Open → glyph B.glyphiconFolderOpen
-    DownloadOptions → glyph B.glyphiconDownload
-    Draftboard → glyph B.glyphiconTh
-    ErrorCard → glyph B.glyphiconAlert
-    PendingCard → glyph B.glyphiconAlert --arbitrary
+    Ace MarkdownMode → HH.img [ HP.src "img/cardsDark/setupMarkdown.svg" ]
+    Ace SQLMode → HH.img [ HP.src "img/cardsDark/query.svg" ]
+    Search →  HH.img [ HP.src "img/cardsDark/search.svg" ]
+    ChartOptions → HH.img [ HP.src "img/cardsDark/setupChart.svg" ]
+    Download → HH.img [ HP.src "img/cardsDark/showDownload.svg" ]
+    Variables → HH.img [ HP.src "img/cardsDark/setupVariables.svg" ]
+    Troubleshoot → HH.img [ HP.src "img/cardsDark/troubleshoot.svg" ]
+    Chart → HH.img [ HP.src "img/cardsDark/showChart.svg" ]
+    Markdown → HH.img [ HP.src "img/cardsDark/showMarkdown.svg" ]
+    Table → HH.img [ HP.src "img/cardsDark/table.svg" ]
+    NextAction → HH.text ""
+    Cache → HH.img [ HP.src "img/cardsDark/cache.svg" ]
+    Open → HH.img [ HP.src "img/cardsDark/open.svg" ]
+    DownloadOptions → HH.img [ HP.src "img/cardsDark/setupDownload.svg" ]
+    Draftboard → HH.img [ HP.src "img/cardsDark/draftboard.svg" ]
+    ErrorCard → HH.text ""
+    PendingCard → HH.text ""
+
+lightCardGlyph ∷ ∀ s f. CardType → H.HTML s f
+lightCardGlyph =
+  case _ of
+    Ace MarkdownMode → HH.img [ HP.src "img/cardsLight/setupMarkdown.svg" ]
+    Ace SQLMode → HH.img [ HP.src "img/cardsLight/query.svg" ]
+    Search →  HH.img [ HP.src "img/cardsLight/search.svg" ]
+    ChartOptions → HH.img [ HP.src "img/cardsLight/setupChart.svg" ]
+    Download → HH.img [ HP.src "img/cardsLight/showDownload.svg" ]
+    Variables → HH.img [ HP.src "img/cardsLight/setupVariables.svg" ]
+    Troubleshoot → HH.img [ HP.src "img/cardsLight/troubleshoot.svg" ]
+    Chart → HH.img [ HP.src "img/cardsLight/showChart.svg" ]
+    Markdown → HH.img [ HP.src "img/cardsLight/showMarkdown.svg" ]
+    Table → HH.img [ HP.src "img/cardsLight/table.svg" ]
+    NextAction → HH.text ""
+    Cache → HH.img [ HP.src "img/cardsLight/cache.svg" ]
+    Open → HH.img [ HP.src "img/cardsLight/open.svg" ]
+    DownloadOptions → HH.img [ HP.src "img/cardsLight/setupDownload.svg" ]
+    Draftboard → HH.img [ HP.src "img/cardsLight/draftboard.svg" ]
+    ErrorCard → HH.text ""
+    PendingCard → HH.text ""
 
 cardClasses ∷ CardType → Array H.ClassName
 cardClasses =
@@ -209,10 +227,6 @@ cardClasses =
 aceCardName ∷ AceMode → String
 aceCardName MarkdownMode = "Setup Markdown"
 aceCardName SQLMode = "Query"
-
-aceCardGlyph ∷ AceMode → HH.ClassName
-aceCardGlyph MarkdownMode = B.glyphiconEdit
-aceCardGlyph SQLMode = B.glyphiconQuestionSign
 
 aceCardClasses ∷ AceMode → Array H.ClassName
 aceCardClasses MarkdownMode = [ H.className "sd-card-markdown" ]

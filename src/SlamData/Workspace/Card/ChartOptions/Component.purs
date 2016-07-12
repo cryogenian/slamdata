@@ -46,6 +46,7 @@ import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, t
 import SlamData.Quasar.Query as Quasar
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType (CardType(ChartOptions))
+import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect)
 import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
 import SlamData.Workspace.Card.Chart.Axis as Ax
@@ -117,7 +118,7 @@ render ∷ VCS.State → HTML
 render state =
   HH.div_
     [ renderHighLOD state
-    , renderLowLOD B.glyphiconPicture left state.levelOfDetails
+    , renderLowLOD (CT.lightCardGlyph CT.ChartOptions) left state.levelOfDetails
     ]
 
 renderHighLOD ∷ VCS.State → HTML
