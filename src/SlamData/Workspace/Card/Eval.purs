@@ -126,13 +126,15 @@ evalCard input =
 evalMarkdownForm
   ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ SD.SlamDownP Port.VarMapValue
+  ⇒ (Port.VarMap × (SD.SlamDownP Port.VarMapValue))
   → MD.Model
   → m Port.VarMap
-evalMarkdownForm doc model = do
+evalMarkdownForm (vm × doc) model = do
   let inputState = SDH.formStateFromDocument doc
   -- TODO: find a way to smash these annotations if possible -js
-  fromEff (MDS.formStateToVarMap inputState model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)
+  thisVarMap ←
+    fromEff (MDS.formStateToVarMap inputState model.state ∷ Eff.Eff SlamDataEffects Port.VarMap)
+  pure $ thisVarMap `SM.union` vm
 
 evalOpen
   ∷ ∀ m

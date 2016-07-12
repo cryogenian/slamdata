@@ -20,6 +20,7 @@ module SlamData.Quasar.Query
   , compile
   , query
   , queryEJson
+  , queryEJsonVM
   , viewQuery
   , fileQuery
   , all
@@ -97,6 +98,17 @@ queryEJson
 queryEJson path sql =
   runQuasarF $ lmap QF.printQError <$>
     QF.readQueryEJson path sql SM.empty Nothing
+
+queryEJsonVM
+  ∷ ∀ eff m
+  . (Functor m, Affable (QEff eff) m)
+  ⇒ DirPath
+  → SQL
+  → SM.StrMap String
+  → m (Either String (Array EJS.EJson))
+queryEJsonVM path sql vm =
+  runQuasarF $ lmap QF.printQError
+    <$> QF.readQueryEJson path sql vm Nothing
 
 -- | Runs a query creating a view mount for the query.
 -- |

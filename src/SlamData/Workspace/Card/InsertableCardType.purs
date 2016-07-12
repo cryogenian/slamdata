@@ -63,7 +63,7 @@ inputs =
   , SearchCard × [ Data ]
   , SetupChartCard × [ Data ]
   , SetupDownloadCard × [ Data ]
-  , SetupMarkdownCard × [ None ]
+  , SetupMarkdownCard × [ None, Variables ]
   , SetupVariablesCard × [ None ]
   , ShowChartCard × [ Chart ]
   , ShowDownloadCard × [ Download ]
@@ -83,11 +83,14 @@ outputs =
   , SetupDownloadCard × Download
   , SetupMarkdownCard × Markdown
   , SetupVariablesCard × Variables
+  , SetupVariablesCard × Markdown
   , ShowChartCard × Chart
   , ShowDownloadCard × Download
   , ShowMarkdownCard × Variables
+  , ShowMarkdownCard × Markdown
   , TableCard × Data
   , TroubleshootCard × Variables
+  , TroubleshootCard × Markdown
   ]
 
 contains ∷ ∀ a. (Eq a) ⇒ a → Array a → Boolean
