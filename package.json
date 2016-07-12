@@ -5,7 +5,7 @@
     "type": "git",
     "url": "https://github.com/slamdata/slamdata"
   },
-  "version": "v2.5.6",
+  "version": "v3.0.0",
   "contributors": [
     "Maxim Zimaliev <zimaliev@yandex.ru>",
     "Gary Burgess <gary@slamdata.com>",
