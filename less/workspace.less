@@ -1,3 +1,12 @@
+body.sd-workspace-page.sd-embedded {
+  background: transparent;
+
+    // override the background for an embedded deck when the root card is a board
+    .sd-workspace.sd-published > div > .sd-deck-container > .sd-deck > .sd-card-slider > .sd-card > div > .sd-deck-card > div.sd-card-draftboard {
+      background: none;
+    }
+}
+
 .sd-workspace.sd-published {
 
   .sd-card-header {
@@ -13,6 +22,13 @@
   }
 
   > div > .sd-deck-container {
+
+    > .sd-deck > .sd-card-slider > .sd-card > div > .sd-deck-card {
+      // set the background colour for a published deck when the root card is a board
+      > div.sd-card-draftboard { background: #eee; }
+      // set the background colour for any other card (less specific selector)
+      > div { background: #fff; }
+    }
 
     > .sd-deck-frame {
      display: none;
