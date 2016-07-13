@@ -221,3 +221,27 @@ test = do
     Expect.cardsInTableColumnInLastCardToBeGT 8 "year" "1950"
     Expect.cardsInTableColumnInLastCardToNotEq 8 "type" "Gold"
     successMsg "Ok, Filtered query results by changing field values"
+
+  mdScenario "Markdown chaining" [] do
+    Interact.insertMdCardInLastDeck
+    Interact.provideMdInLastMdCard $
+      "state = {!``select distinct state from `/test-mount/testDb/zips` order by asc``}"
+      <> "(!``select state from `/test-mount/testDb/zips` limit 1 ``)"
+    Interact.accessNextCardInLastDeck
+    Interact.insertDisplayMarkdownCardInLastDeck
+
+    Interact.accessNextCardInLastDeck
+    Interact.insertMdCardInLastDeck
+    Interact.provideMdInLastMdCard $
+      "city = ___"
+      <> "(!``select city from `/test-mount/testDb/zips` where state = :state[0] order by asc limit 1``)"
+    Interact.accessNextCardInLastDeck
+    Interact.insertDisplayMarkdownCardInLastDeck
+    Expect.fieldInLastMdCard "city" "text" "AGAWAM"
+    Interact.accessPreviousCardInLastDeck
+    Interact.accessPreviousCardInLastDeck
+    Interact.selectFromDropdownInLastDeck "state" "RI"
+    Interact.accessNextCardInLastDeck
+    Interact.accessNextCardInLastDeck
+    Expect.fieldInLastMdCard "city" "text" "ASHAWAY"
+    successMsg "Ok, variables from md card could be used in md card"
