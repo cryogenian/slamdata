@@ -331,16 +331,29 @@ peekBackSide opts (Back.DoAction action _) =
     Back.Trash → do
       state ← H.get
       lastId ← H.gets DCS.findLastRealCard
-      for_ (DCS.activeCardCoord state <|> lastId) \trashId → do
-        let rem = DCS.removeCard trashId state
-        DBC.childDeckIds (snd <$> fst rem) #
-          H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph state.path)
-        H.set $ snd rem
-        triggerSave Nothing
-        updateActiveCardAndIndicator opts.wiring
-        H.modify $ DCS._displayMode .~ DCS.Normal
-        DCS.activeCardCoord (snd rem)
-          # maybe (runCardUpdates opts state.id L.Nil) (queuePendingCard opts.wiring)
+      for_ (DCS.activeCardCoord state <|> lastId)  \trashId →
+        case snd trashId of
+          ErrorCardId → do
+            showDialog
+              $ Dialog.Error "You cannot delete the error card. Please, fix errors or slide to previous card."
+            H.modify (DCS._displayMode .~ DCS.Dialog)
+          NextActionCardId → do
+            showDialog
+              $ Dialog.Error "You cannot delete the next action card. Please, slide to previous card."
+            H.modify (DCS._displayMode .~ DCS.Dialog)
+          PendingCardId → do
+            showDialog
+              $ Dialog.Error "You cannot delete the pending card. Please, wait till card evaluation is finished."
+          CardId _ → do
+            let rem = DCS.removeCard trashId state
+            DBC.childDeckIds (snd <$> fst rem)
+              # H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph state.path)
+            H.set $ snd rem
+            triggerSave Nothing
+            updateActiveCardAndIndicator opts.wiring
+            H.modify $ DCS._displayMode .~ DCS.Normal
+            DCS.activeCardCoord (snd rem)
+              # maybe (runCardUpdates opts state.id L.Nil) (queuePendingCard opts.wiring)
       void $ H.queryAll' cpCard $ left $ H.action UpdateDimensions
     Back.Rename → do
       name ← H.gets _.name
