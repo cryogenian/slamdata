@@ -247,8 +247,11 @@ eval opts@{ wiring } = case _ of
   SetCardElement element next → do
     H.modify _ { deckElement = element }
     pure next
-  StopSliderTransition next →
-    H.modify (DCS._sliderTransition .~ false) $> next
+  StopSliderTransition next → do
+    sliderTransition ← H.gets _.sliderTransition
+    when sliderTransition $
+      H.modify $ DCS._sliderTransition .~ false
+    pure next
   DoAction _ next → pure next
   Focus next → do
     st ← H.get
