@@ -30,10 +30,12 @@ import Data.Date.Locale as DL
 import Data.Enum as Enum
 import Data.Foldable as F
 import Data.Identity (Identity)
+import Data.Lens ((^?), _Just)
 import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.Set as Set
 import Data.String as S
+import Data.StrMap as SM
 import Data.Time as DT
 
 import SlamData.Effects (Slam, SlamDataEffects)
@@ -59,16 +61,19 @@ markdownEval
   ⇒ CET.CardEvalInput
   → String
   → CET.CardEvalT m Port.Port
-markdownEval { path } str = do
+markdownEval { input, path } str =
   case SDP.parseMd str of
     Left e → Err.throwError e
     Right sd → do
-      result  ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries path $ sd
+      let
+        vm = fromMaybe Port.emptyVarMap $ input ^? _Just ∘ Port._VarMap
+        sm = map Port.renderVarMapValue vm
+      result  ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries sm path $ sd
       case result of
         Left e → Err.throwError $ Exn.message e
         Right (doc × as) → do
           CET.additionalSources as
-          pure $ Port.SlamDown doc
+          pure $ Port.SlamDown (vm × doc)
 
 findFields
   ∷ ∀ a
@@ -86,10 +91,11 @@ runEvalM ∷ ∀ a. EvalM a → Slam (a × (Set.Set AdditionalSource))
 runEvalM = WT.runWriterT
 
 evalEmbeddedQueries
-  ∷ DirPath
+  ∷ SM.StrMap String
+  → DirPath
   → SD.SlamDownP Port.VarMapValue
   → Slam ((SD.SlamDownP Port.VarMapValue) × (Set.Set AdditionalSource))
-evalEmbeddedQueries dir =
+evalEmbeddedQueries sm dir =
   runEvalM ∘
     SDE.eval
       { code: evalCode
@@ -105,8 +111,10 @@ evalEmbeddedQueries dir =
     → String
     → EvalM Port.VarMapValue
   evalCode mid code
-    | languageIsSql mid = Port.Literal ∘ extractCodeValue <$> runQuery code
-    | otherwise = pure $ Port.QueryExpr code
+    | languageIsSql mid =
+        Port.Literal ∘ extractCodeValue <$> runQuery code
+    | otherwise =
+        pure $ Port.QueryExpr code
 
   extractCodeValue ∷ Array EJSON.EJson → EJSON.EJson
   extractCodeValue [ej] = extractSingletonObject ej
@@ -125,14 +133,15 @@ evalEmbeddedQueries dir =
     → EJSON.EJson
   extractSingletonObject lit =
     case EJSON.unroll lit of
-      EJSON.Object [Tuple key val] → val
+      EJSON.Object [key × val] → val
       _ → lit
 
   evalValue
     ∷ String
     → EvalM Port.VarMapValue
   evalValue code = do
-    maybe (Port.Literal EJSON.null) (Port.Literal ∘ extractSingletonObject) ∘ A.head
+    maybe (Port.Literal EJSON.null) (Port.Literal ∘ extractSingletonObject)
+      ∘ A.head
       <$> runQuery code
 
   evalTextBox
@@ -141,17 +150,18 @@ evalEmbeddedQueries dir =
   evalTextBox tb = do
     let sql = getConst $ SD.traverseTextBox (map \_ → Const unit) tb
     mresult ← A.head <$> runQuery sql
-    result ← maybe (Err.throwError $ Exn.error "No results") (pure ∘ extractSingletonObject) mresult
-    case Tuple tb (EJSON.unroll result) of
-      Tuple (SD.PlainText _) (EJSON.String str) →
+    result ←
+      maybe (Err.throwError $ Exn.error "No results") (pure ∘ extractSingletonObject) mresult
+    case tb × (EJSON.unroll result) of
+      (SD.PlainText _) × (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
-      Tuple (SD.Numeric _) (EJSON.Decimal a) →
+      (SD.Numeric _) × (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
-      Tuple (SD.Time _) (EJSON.Time str) →
+      (SD.Time _) × (EJSON.Time str) →
         SD.Time ∘ pure <$> parse parseSqlTime str
-      Tuple (SD.Date _) (EJSON.Date str) →
+      (SD.Date _) × (EJSON.Date str) →
         SD.Date ∘ pure <$> parse parseSqlDate str
-      Tuple (SD.DateTime _) (EJSON.Timestamp str) →
+      (SD.DateTime _) × (EJSON.Timestamp str) →
         SD.DateTime ∘ pure <$> parseSqlTimeStamp str
       _ → Err.throwError ∘ Exn.error $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
     where
@@ -167,21 +177,25 @@ evalEmbeddedQueries dir =
   evalList code = do
     items ← map extractSingletonObject <$> runQuery code
     let limit = 500
-    pure ∘ L.toList $
-      if A.length items > limit
-        then map Port.Literal (A.take limit items) ⊕ [ SD.stringValue $ "<" ⊕ show limit ⊕ "item limit reached>" ]
-        else Port.Literal <$> items
+    pure ∘ L.toList
+      $ if A.length items > limit
+          then
+          map Port.Literal
+            (A.take limit items)
+            ⊕ [ SD.stringValue $ "<" ⊕ show limit ⊕ "item limit reached>" ]
+          else
+          Port.Literal <$> items
 
   runQuery
     ∷ String
     → EvalM (Array EJSON.EJson)
   runQuery code = do
-    compiled ← Quasar.compile (Left dir) code mempty
+    compiled ← Quasar.compile (Left dir) code sm
     case compiled of
       Left e → Err.throwError e
       Right {inputs} → CET.addSources inputs
 
-    result ← Quasar.queryEJson dir code
+    result ← Quasar.queryEJsonVM dir code sm
 
     either
       (Err.throwError ∘ Exn.error)

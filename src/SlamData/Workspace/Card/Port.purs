@@ -59,7 +59,7 @@ type TaggedResourcePort =
   }
 
 data Port
-  = SlamDown (SD.SlamDownP VarMapValue)
+  = SlamDown (VarMap × (SD.SlamDownP VarMapValue))
   | VarMap VarMap
   | CardError String
   | Chart ChartPort
@@ -80,15 +80,16 @@ instance showPort ∷ Show Port where
       Draftboard → "Draftboard"
       Blocked → "Blocked"
 
-_SlamDown ∷ PrismP Port (SD.SlamDownP VarMapValue)
-_SlamDown = prism' SlamDown \p → case p of
-  SlamDown x → Just x
-  _ → Nothing
+_SlamDown ∷ TraversalP Port (SD.SlamDownP VarMapValue)
+_SlamDown = wander \f s → case s of
+  SlamDown (vm × sd) → SlamDown ∘ (vm × _) <$> f sd
+  _ → pure s
 
-_VarMap ∷ PrismP Port VarMap
-_VarMap = prism' VarMap \p → case p of
-  VarMap x → Just x
-  _ → Nothing
+_VarMap ∷ TraversalP Port VarMap
+_VarMap = wander \f s → case s of
+  VarMap x → VarMap <$> f x
+  SlamDown (vm × sd) → SlamDown ∘ (_ × sd) <$> f vm
+  _ → pure s
 
 _CardError ∷ PrismP Port String
 _CardError = prism' CardError \p → case p of

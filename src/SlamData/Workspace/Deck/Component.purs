@@ -257,10 +257,10 @@ eval opts@{ wiring } = case _ of
       H.fromAff $ Bus.write (DeckFocused st.id) wiring.messaging
     pure next
   HandleMessage msg next → do
-    st <- H.get
+    st ← H.get
     case msg of
       DeckFocused focusedDeckId →
-        when (st.id /= focusedDeckId && st.focused) $
+        when (st.id ≠ focusedDeckId && st.focused) $
           H.modify (DCS._focused .~ false)
       URLVarMapsUpdated →
         traverse_ runCard $ DCS.variablesCards st

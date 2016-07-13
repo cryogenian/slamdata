@@ -31,10 +31,11 @@ eval
   → Map.Map DeckId Port.URLVarMap
   → Model
   → Port.VarMap
-eval deckId urlVarMaps model = foldl alg SM.empty model.items
+eval deckId urlVarMaps model =
+  foldl alg SM.empty model.items
   where
   alg =
-    flip \{ name, fieldType, defaultValue } ->
+    flip \{ name, fieldType, defaultValue } →
       maybe id (SM.insert name) $ defaultValueToVarMapValue fieldType
         =<< (SM.lookup name =<< Map.lookup deckId urlVarMaps)
         <|> defaultValue
