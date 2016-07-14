@@ -31,6 +31,12 @@ data Axis
   | CatAxis (List (Maybe Semantics))
   | TimeAxis (List (Maybe Semantics))
 
+type Axes =
+  { value ∷ Array JCursor
+  , time ∷ Array JCursor
+  , category ∷ Array JCursor
+  }
+
 isValAxis :: Axis -> Boolean
 isValAxis (ValAxis _) = true
 isValAxis _ = false

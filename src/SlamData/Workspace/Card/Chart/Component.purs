@@ -119,16 +119,18 @@ eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of
   CC.EvalCard value output next → do
     case value.input of
-      Just (Chart options) → do
+      Just (Chart options@{options = opts, chartConfig = Just config}) → do
         -- TODO: this could possibly be optimised by caching records in the state,
         -- but we'd need to know when the input dataset going into ChartOptions changes.
         -- Basically something equivalent to the old `needsToUpdate`. -gb
-        records <- either (const []) id <$> H.fromAff (Quasar.all options.resource :: Slam (Either Error JArray))
-        let option = BO.buildOptions options.options options.chartConfig records
+        records ←
+          either (const []) id
+            <$> H.fromAff (Quasar.all options.resource :: Slam (Either Error JArray))
+        let option = BO.buildOptions opts config records
         H.query unit $ H.action $ HEC.Set option
         H.query unit $ H.action HEC.Resize
         setLevelOfDetails option
-        H.modify (_chartType ?~ options.options.chartType)
+        H.modify (_chartType ?~ opts.chartType)
         pure next
       _ → do
         H.query unit $ H.action HEC.Clear
