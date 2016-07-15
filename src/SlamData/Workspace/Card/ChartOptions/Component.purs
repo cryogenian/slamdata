@@ -18,15 +18,12 @@ module SlamData.Workspace.Card.ChartOptions.Component (chartOptionsComponent) wh
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception (Error)
-
-import Data.Argonaut (JArray, JCursor)
-import Data.Array (length, null, cons, index)
+import Data.Array (cons, index)
+import Data.Foldable as F
 import Data.Int as Int
 import Data.Lens as Lens
 import Data.Lens ((.~), (^?))
 import Data.List as L
-import Data.Map as M
 import Data.Set as Set
 
 import CSS.Geometry (marginBottom)
@@ -42,14 +39,12 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, trySelect', _value)
-import SlamData.Quasar.Query as Quasar
+import SlamData.Form.Select (Select, autoSelect, newSelect, (⊝), ifSelected, trySelect', _value, isSelected)
 import SlamData.Render.Common (row)
 import SlamData.Workspace.Card.CardType (CardType(ChartOptions))
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect)
-import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
-import SlamData.Workspace.Card.Chart.Axis as Ax
+import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie)
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
@@ -266,19 +261,32 @@ cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.EvalCard info output next → do
     for (output ^? Lens._Just ∘ P._Chart) \opts → do
-      sample ← either (const []) id <$>
-        H.fromAff (Quasar.sample opts.resource 0 20 :: Slam (Either Error JArray))
-      if null sample
-        then H.modify (VCS._availableChartTypes .~ Set.empty)
-        else H.modify (VCS._sample .~ analyzeJArray sample) *> configure
+      H.modify
+        $ (VCS._availableChartTypes .~ opts.availableChartTypes)
+        ∘ (VCS._axes .~ opts.axes)
+      case Set.toList opts.availableChartTypes of
+        L.Cons ct L.Nil → H.modify (VCS._chartType .~ ct)
+        _ → pure unit
+      configure
     pure next
   CC.Activate next →
     pure next
   CC.Save k → do
     st ← H.get
-    config ← H.query st.chartType $ left $ H.request Form.GetConfiguration
+    conf ← H.query st.chartType $ left $ H.request Form.GetConfiguration
+    let
+      rawConfig = fromMaybe Form.initialState conf
+      chartConfig = case st.chartType of
+        Pie | not $ F.any isSelected rawConfig.series → Nothing
+        Pie | not $ F.any isSelected rawConfig.measures → Nothing
+        Bar | not $ F.any isSelected rawConfig.series → Nothing
+        Bar | not $ F.any isSelected rawConfig.measures → Nothing
+        Line | not $ F.any isSelected rawConfig.dimensions → Nothing
+        Line | not $ F.any isSelected rawConfig.measures → Nothing
+        _ → Just rawConfig
+
     pure ∘ k $ Card.ChartOptions
-      { chartConfig: fromMaybe Form.initialState config
+      { chartConfig
       , options:
           { chartType: st.chartType
           , axisLabelFontSize: st.axisLabelFontSize
@@ -290,9 +298,10 @@ cardEval = case _ of
       Card.ChartOptions model → do
         let st = VCS.fromModel model
         H.set st
-        H.query st.chartType
-          $ left
-          $ H.action $ Form.SetConfiguration model.chartConfig
+        for_ model.chartConfig \conf →
+          H.query st.chartType
+            $ left
+            $ H.action $ Form.SetConfiguration conf
         pure unit
       _ → pure unit
     pure next
@@ -308,26 +317,15 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-type AxisAccum =
-  { category ∷ Array JCursor
-  , value ∷ Array JCursor
-  , time ∷ Array JCursor
-  }
-
 configure ∷ DSL Unit
 configure = void do
-  axises ← getAxises
+  axes ← H.gets _.axes
   pieConf ← getOrInitial Pie
-  setConfFor Pie $ pieBarConfiguration axises pieConf
+  setConfFor Pie $ pieBarConfiguration axes pieConf
   lineConf ← getOrInitial Line
-  setConfFor Line $ lineConfiguration axises lineConf
+  setConfFor Line $ lineConfiguration axes lineConf
   barConf ← getOrInitial Bar
-  setConfFor Bar $ pieBarConfiguration axises barConf
-  let chartTypes = available axises
-  H.modify (VCS._availableChartTypes .~ available axises)
-  case Set.toList chartTypes of
-    L.Cons ct L.Nil → H.modify (VCS._chartType .~ ct)
-    _ → pure unit
+  setConfFor Bar $ pieBarConfiguration axes barConf
   where
   getOrInitial ∷ ChartType → DSL ChartConfiguration
   getOrInitial ty =
@@ -339,51 +337,27 @@ configure = void do
   setConfFor ty conf =
     void $ H.query ty $ left $ H.action $ Form.SetConfiguration conf
 
-  available ∷ AxisAccum → Set.Set ChartType
-  available axises =
-    foldMap Set.singleton
-    $ if null axises.value
-      then []
-      else if not $ null axises.category
-           then [Pie, Bar, Line]
-           else if (null axises.time) && (length axises.value < 2)
-                then []
-                else [Line]
-
-  getAxises ∷ DSL AxisAccum
-  getAxises = do
-    sample ← H.gets _.sample
-    pure $ foldl axisFolder {category: [], value: [], time: [] } $ M.toList sample
-
-  axisFolder ∷ AxisAccum → Tuple JCursor Axis → AxisAccum
-  axisFolder accum (Tuple cursor axis)
-    | Ax.isCatAxis axis = accum { category = cons cursor accum.category }
-    | Ax.isValAxis axis = accum { value = cons cursor accum.value }
-    | Ax.isTimeAxis axis = accum {time = cons cursor accum.time }
-    | otherwise = accum
-
-
   setPreviousValueFrom
     ∷ ∀ a. (Eq a) ⇒ Maybe (Select a) → Select a → Select a
   setPreviousValueFrom mbSel target  =
     (maybe id trySelect' $ mbSel >>= Lens.view _value) $ target
 
-  pieBarConfiguration ∷ AxisAccum → ChartConfiguration → ChartConfiguration
-  pieBarConfiguration axises current =
-    let allAxises = axises.category ⊕ axises.time ⊕ axises.value
+  pieBarConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
+  pieBarConfiguration axes current =
+    let allAxes = axes.category ⊕ axes.time ⊕ axes.value
         categories =
           setPreviousValueFrom (index current.series 0)
-          $ autoSelect $ newSelect allAxises
+          $ autoSelect $ newSelect allAxes
         measures =
           setPreviousValueFrom (index current.measures 0)
-          $ autoSelect $ newSelect $ depends categories axises.value
+          $ autoSelect $ newSelect $ depends categories axes.value
         firstSeries =
           setPreviousValueFrom (index current.series 1)
-          $ newSelect $ ifSelected [categories] $ allAxises ⊝ categories
+          $ newSelect $ ifSelected [categories] $ allAxes ⊝ categories
         secondSeries =
           setPreviousValueFrom (index current.series 2)
           $ newSelect $ ifSelected [categories, firstSeries]
-          $ allAxises ⊝ categories ⊝ firstSeries
+          $ allAxes ⊝ categories ⊝ firstSeries
         aggregation =
           setPreviousValueFrom (index current.aggregations 0) aggregationSelect
     in { series: [categories, firstSeries, secondSeries]
@@ -392,31 +366,31 @@ configure = void do
        , aggregations: [aggregation]
        }
 
-  lineConfiguration ∷ AxisAccum → ChartConfiguration → ChartConfiguration
-  lineConfiguration axises current =
-    let allAxises = (axises.category ⊕ axises.time ⊕ axises.value)
+  lineConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
+  lineConfiguration axes current =
+    let allAxes = (axes.category ⊕ axes.time ⊕ axes.value)
         dimensions =
           setPreviousValueFrom (index current.dimensions 0)
-          $ autoSelect $ newSelect $ dependsOnArr axises.value
+          $ autoSelect $ newSelect $ dependsOnArr axes.value
           -- This is redundant, I've put it here to notify
           -- that this behaviour differs from pieBar and can be changed.
-          $ allAxises
+          $ allAxes
         firstMeasures =
           setPreviousValueFrom (index current.measures 0)
           $ autoSelect $ newSelect $ depends dimensions
-          $ axises.value ⊝ dimensions
+          $ axes.value ⊝ dimensions
         secondMeasures =
           setPreviousValueFrom (index current.measures 1)
           $ newSelect $ ifSelected [firstMeasures]
           $ depends dimensions
-          $ axises.value ⊝ firstMeasures ⊝ dimensions
+          $ axes.value ⊝ firstMeasures ⊝ dimensions
         firstSeries =
           setPreviousValueFrom (index current.series 0)
-          $ newSelect $ ifSelected [dimensions] $ allAxises ⊝ dimensions
+          $ newSelect $ ifSelected [dimensions] $ allAxes ⊝ dimensions
         secondSeries =
           setPreviousValueFrom (index current.series 1)
           $ newSelect $ ifSelected [dimensions, firstSeries]
-          $ allAxises ⊝ dimensions ⊝ firstSeries
+          $ allAxes ⊝ dimensions ⊝ firstSeries
         firstAggregation =
           setPreviousValueFrom (index current.aggregations 0) aggregationSelect
         secondAggregation =

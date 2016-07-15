@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.ChartOptions.Component.State
   , initialState
   , _chartType
   , _availableChartTypes
-  , _sample
+  , _axes
   , _axisLabelAngle
   , _axisLabelFontSize
   , _levelOfDetails
@@ -29,15 +29,13 @@ module SlamData.Workspace.Card.ChartOptions.Component.State
 
 import SlamData.Prelude
 
-import Data.Argonaut (JCursor)
 import Data.Lens (LensP, lens)
-import Data.Map as M
 import Data.Set as Set
 
 import Halogen (ParentState)
 
 import SlamData.Effects (Slam)
-import SlamData.Workspace.Card.Chart.Axis (Axis)
+import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Common.EvalQuery (CardEvalQuery)
 import SlamData.Workspace.Card.ChartOptions.Component.Query (Query)
@@ -45,10 +43,11 @@ import SlamData.Workspace.Card.ChartOptions.Form.Component as Form
 import SlamData.Workspace.Card.ChartOptions.Model (Model)
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
+
 type State =
   { chartType ∷ ChartType
   , availableChartTypes ∷ Set.Set ChartType
-  , sample ∷ M.Map JCursor Axis
+  , axes ∷ Axes
   , axisLabelFontSize ∷ Int
   , axisLabelAngle ∷ Int
   , levelOfDetails ∷ LevelOfDetails
@@ -58,25 +57,25 @@ initialState ∷ State
 initialState =
   { chartType: Pie
   , availableChartTypes: Set.empty
-  , sample: M.empty
+  , axes: {value: [], category: [], time: []}
   , axisLabelFontSize: 12
   , axisLabelAngle: 30
   , levelOfDetails: High
   }
 
-_chartType ∷ forall a r. LensP {chartType ∷ a |r} a
+_chartType ∷ ∀ a r. LensP {chartType ∷ a |r} a
 _chartType = lens _.chartType _{chartType = _}
 
-_availableChartTypes ∷ forall a r. LensP {availableChartTypes ∷ a |r} a
+_availableChartTypes ∷ ∀ a r. LensP {availableChartTypes ∷ a |r} a
 _availableChartTypes = lens _.availableChartTypes _{availableChartTypes = _}
 
-_sample ∷ forall a r. LensP {sample ∷ a | r} a
-_sample = lens _.sample _{sample = _}
+_axes ∷ ∀ a r. LensP {axes ∷ a|r} a
+_axes = lens _.axes _{axes =_}
 
-_axisLabelFontSize ∷ forall a r. LensP {axisLabelFontSize ∷ a | r} a
+_axisLabelFontSize ∷ ∀ a r. LensP {axisLabelFontSize ∷ a | r} a
 _axisLabelFontSize = lens _.axisLabelFontSize _{axisLabelFontSize = _}
 
-_axisLabelAngle ∷ forall a r. LensP {axisLabelAngle ∷ a | r} a
+_axisLabelAngle ∷ ∀ a r. LensP {axisLabelAngle ∷ a | r} a
 _axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a

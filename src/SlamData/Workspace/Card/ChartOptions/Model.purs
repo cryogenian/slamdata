@@ -30,44 +30,46 @@ import Data.Argonaut (Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.BuildOptions as CO
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import Test.StrongCheck (arbitrary)
 import Test.StrongCheck.Gen as Gen
 
 type Model =
-  { chartConfig ∷ CC.ChartConfiguration
+  { chartConfig ∷ Maybe CC.ChartConfiguration
   , options ∷ CO.BuildOptions
   }
 
 eqModel ∷ Model → Model → Boolean
 eqModel m1 m2 =
-  CC.eqChartConfiguration m1.chartConfig m2.chartConfig
-    && CO.eqBuildOptions m1.options m2.options
+  CO.eqBuildOptions m1.options m2.options
+  && case m1.chartConfig × m2.chartConfig of
+    Nothing × Nothing → true
+    (Just o1) × (Just o2) → CC.eqChartConfiguration o1 o2
+    _  → false
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  chartConfig ← CC.genChartConfiguration
+  needCC ← arbitrary
+  chartConfig ← if needCC then Just <$> CC.genChartConfiguration else pure Nothing
   options ← CO.genBuildOptions
   pure { chartConfig, options }
 
 encode ∷ Model → Json
 encode m
-   = "chartConfig" := CC.encode m.chartConfig
-  ~> "options" := CO.encode m.options
-  ~> jsonEmptyObject
+   = "options" := CO.encode m.options
+  ~> case m.chartConfig of
+    Nothing → jsonEmptyObject
+    Just cc → ("chartConfig" := CC.encode cc
+               ~> jsonEmptyObject)
 
 decode ∷ Json → Either String Model
 decode = decodeJson >=> \obj →
   { chartConfig: _, options: _ }
-    <$> (CC.decode =<< obj .? "chartConfig")
+    <$> (((obj .? "chartConfig") >>= CC.decode <#> Just) <|> pure Nothing)
     <*> (CO.decode =<< obj .? "options")
 
 initialModel ∷ Model
 initialModel =
-  { chartConfig:
-     { series: []
-     , dimensions: []
-     , measures: []
-     , aggregations: []
-     }
+  { chartConfig: Nothing
   , options:
       { chartType: Pie
       , axisLabelFontSize: 12

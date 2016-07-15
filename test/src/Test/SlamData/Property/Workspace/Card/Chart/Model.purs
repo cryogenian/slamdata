@@ -20,35 +20,37 @@ module Test.SlamData.Property.Workspace.Card.ChartOptions.Model
   , check
   ) where
 
-import Prelude
-
-import Data.Either (Either(..))
-import Data.Foldable (fold)
+import SlamData.Prelude
 
 import SlamData.Workspace.Card.ChartOptions.Model as M
 
-import Test.StrongCheck (class Arbitrary, QC, Result(Failed), quickCheck, arbitrary)
+import Test.StrongCheck (class Arbitrary, QC, Result(..), quickCheck, arbitrary)
 import Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)
 import Test.SlamData.Property.Workspace.Card.Chart.BuildOptions (runArbBuildOptions, checkBuildOptionsEquality)
 
 newtype ArbModel = ArbModel M.Model
 
-runArbModel :: ArbModel -> M.Model
+runArbModel ∷ ArbModel → M.Model
 runArbModel (ArbModel m) = m
 
-instance arbitraryArbModel :: Arbitrary ArbModel where
+instance arbitraryArbModel ∷ Arbitrary ArbModel where
   arbitrary = do
-    options <- runArbBuildOptions <$> arbitrary
-    chartConfig <- runArbChartConfiguration <$> arbitrary
+    options ← runArbBuildOptions <$> arbitrary
+    needCC ← arbitrary
+    chartConfig ←
+      if needCC then Just <$> runArbChartConfiguration <$> arbitrary else pure Nothing
     pure $ ArbModel { options, chartConfig }
 
 
-check :: QC Unit
-check = quickCheck $ runArbModel >>> \model ->
+check ∷ QC Unit
+check = quickCheck $ runArbModel >>> \model →
   case M.decode (M.encode model) of
-    Left err -> Failed $ "Decode failed: " ++ err
-    Right model' ->
+    Left err → Failed $ "Decode failed: " ++ err
+    Right model' →
       fold
-       [ checkChartConfigEquality model.chartConfig model'.chartConfig
-       , checkBuildOptionsEquality model.options model'.options
+       [ checkBuildOptionsEquality model.options model'.options
+       , case model.chartConfig × model'.chartConfig of
+           Nothing × Nothing → Success
+           (Just opts) × (Just opts') →  checkChartConfigEquality opts opts'
+           _ → Failed "models mismatch"
        ]

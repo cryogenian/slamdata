@@ -41,6 +41,9 @@ type SelectR a =
 
 newtype Select a = Select (SelectR a)
 
+isSelected ∷ ∀ a. Select a → Boolean
+isSelected (Select {value}) = isJust value
+
 _Select ∷ ∀ a. LensP (Select a) (SelectR a)
 _Select = lens (\(Select obj) → obj) (const Select)
 
