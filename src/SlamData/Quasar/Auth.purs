@@ -32,6 +32,8 @@ module SlamData.Quasar.Auth
 import Prelude
 
 import Control.Apply as Apply
+import Control.Apply ((*>))
+import Control.Alt ((<|>))
 import Control.Bind ((=<<))
 import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff (Eff)
@@ -78,11 +80,21 @@ fromEither = E.either (\_ → M.Nothing) (M.Just)
 retrieveIdToken
   ∷ ∀ e. Eff (rsaSignTime ∷ OIDC.RSASIGNTIME, dom ∷ DOM | e) (M.Maybe OIDCT.IdToken)
 retrieveIdToken =
-  M.maybe (pure M.Nothing) verify =<< (fromEither <$> retrieveFromLocalStorage)
+  M.maybe (getNewKey <|> (signOut *> presentSignedOutMessage *> pure M.Nothing)) verify
+    =<< (fromEither <$> retrieveFromLocalStorage)
   where
   retrieveFromLocalStorage
     ∷ Eff (rsaSignTime ∷ OIDC.RSASIGNTIME, dom ∷ DOM | e) (E.Either String OIDCT.IdToken)
   retrieveFromLocalStorage = map OIDCT.IdToken <$> LS.getLocalStorage idTokenLocalStorageKey
+
+  getNewKey ∷ Eff (rsaSignTime :: OIDC.RSASIGNTIME, dom :: DOM | e) (M.Maybe OIDCT.IdToken)
+  getNewKey = ?getNewKey
+
+  signOut ∷ Eff (rsaSignTime :: OIDC.RSASIGNTIME, dom :: DOM | e) Unit
+  signOut = ?signOut
+
+  presentSignedOutMessage ∷ Eff (rsaSignTime :: OIDC.RSASIGNTIME, dom :: DOM | e) Unit
+  presentSignedOutMessage = ?presentSignOutMessage
 
   verify
     ∷ OIDCT.IdToken
