@@ -19,6 +19,7 @@ module SlamData.Workspace.Card.Chart.ChartType
   , isPie
   , isLine
   , isBar
+  , isArea
   , parseChartType
   , printChartType
   ) where
@@ -29,7 +30,7 @@ import Data.List as L
 import Test.StrongCheck as SC
 import Test.StrongCheck.Gen as Gen
 
-data ChartType = Pie | Line | Bar
+data ChartType = Pie | Line | Bar | Area
 
 isPie :: ChartType -> Boolean
 isPie Pie = true
@@ -43,16 +44,22 @@ isBar :: ChartType -> Boolean
 isBar Bar = true
 isBar _ = false
 
+isArea :: ChartType -> Boolean
+isArea Area = true
+isArea _ = false
+
 parseChartType :: String -> Either String ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
 parseChartType "bar" = pure Bar
+parseChartType "area" = pure Area
 parseChartType _ = Left "incorrect chartType"
 
 printChartType :: ChartType -> String
 printChartType Pie = "pie"
 printChartType Line = "line"
 printChartType Bar = "bar"
+printChartType Area = "area"
 
 derive instance genericChartType :: Generic ChartType
 derive instance eqChartType :: Eq ChartType
@@ -65,4 +72,4 @@ instance decodeJsonChartType :: DecodeJson ChartType where
   decodeJson json = decodeJson json >>= parseChartType
 
 instance arbitraryChartType ∷ SC.Arbitrary ChartType where
-  arbitrary = Gen.elements Pie $ L.toList [ Pie, Line, Bar ]
+  arbitrary = Gen.elements Pie $ L.toList [ Pie, Line, Bar, Area ]

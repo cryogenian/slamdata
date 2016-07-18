@@ -23,6 +23,8 @@ module SlamData.Workspace.Card.ChartOptions.Component.State
   , _axisLabelAngle
   , _axisLabelFontSize
   , _levelOfDetails
+  , _areaStacked
+  , _smooth
   , StateP
   , fromModel
   ) where
@@ -51,6 +53,8 @@ type State =
   , axisLabelFontSize ∷ Int
   , axisLabelAngle ∷ Int
   , levelOfDetails ∷ LevelOfDetails
+  , areaStacked :: Boolean
+  , smooth :: Boolean
   }
 
 initialState ∷ State
@@ -59,8 +63,10 @@ initialState =
   , availableChartTypes: Set.empty
   , axes: {value: [], category: [], time: []}
   , axisLabelFontSize: 12
-  , axisLabelAngle: 30
+  , axisLabelAngle: 0
   , levelOfDetails: High
+  , areaStacked: false
+  , smooth: false
   }
 
 _chartType ∷ ∀ a r. LensP {chartType ∷ a |r} a
@@ -81,6 +87,12 @@ _axisLabelAngle = lens _.axisLabelAngle _{axisLabelAngle = _}
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a|r} a
 _levelOfDetails = lens (_.levelOfDetails) (_{levelOfDetails = _})
 
+_smooth ∷ ∀ a r. LensP {smooth ∷ a | r} a
+_smooth = lens _.smooth _{smooth = _}
+
+_areaStacked ∷ ∀ a r. LensP {areaStacked ∷ a | r} a
+_areaStacked = lens _.areaStacked _{areaStacked = _}
+
 type StateP =
   ParentState
     State
@@ -95,4 +107,6 @@ fromModel { options } =
     { chartType = options.chartType
     , axisLabelFontSize = options.axisLabelFontSize
     , axisLabelAngle = options.axisLabelAngle
+    , areaStacked = options.areaStacked
+    , smooth = options.smooth
     }

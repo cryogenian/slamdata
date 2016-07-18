@@ -114,6 +114,7 @@ renderButton ct =
   src Pie = "img/pie-black.svg"
   src Bar = "img/bar-black.svg"
   src Line = "img/line-black.svg"
+  src Area = "img/area-black.svg"
 
 eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of

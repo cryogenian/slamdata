@@ -36,7 +36,9 @@ instance arbitraryArbBuildOptions :: Arbitrary ArbBuildOptions where
     chartType <- runArbChartType <$> arbitrary
     axisLabelAngle <- arbitrary
     axisLabelFontSize <- arbitrary
-    pure $ ArbBuildOptions { chartType, axisLabelAngle, axisLabelFontSize }
+    areaStacked <- arbitrary
+    smooth <- arbitrary
+    pure $ ArbBuildOptions { chartType, axisLabelAngle, axisLabelFontSize, areaStacked, smooth }
 
 check :: QC Unit
 check = quickCheck $ runArbBuildOptions >>> \co ->
@@ -50,4 +52,6 @@ checkBuildOptionsEquality co co' =
    [ co.chartType == co'.chartType <?> "chart type mismatch"
    , co.axisLabelAngle == co'.axisLabelAngle <?> "axis label angle mismatch"
    , co.axisLabelFontSize == co'.axisLabelFontSize <?> "axis label font size mismatch"
+   , co.areaStacked == co'.areaStacked <?> "area stacked mismatch"
+   , co.smooth == co'.smooth <?> "smooth mismatch"
    ]

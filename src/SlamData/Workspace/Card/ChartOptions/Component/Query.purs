@@ -28,6 +28,8 @@ data Query a
   = SetChartType ChartType a
   | RotateAxisLabel Int a
   | SetAxisFontSize Int a
+  | ToggleSetStacked Boolean a
+  | ToggleSetSmooth Boolean a
 
 type QueryC = Coproduct CardEvalQuery Query
 

@@ -77,10 +77,10 @@ eval info model = do
       if null axes.value
       then []
       else if not $ null axes.category
-           then [ Pie, Bar, Line ]
+           then [ Pie, Bar, Line, Area ]
            else if (null axes.time) ∧ (length axes.value < 2)
                 then []
-                else [ Line ]
+                else [ Line, Area ]
 
   when (null available)
     $ EC.throwError "There is no available chart types for this data"

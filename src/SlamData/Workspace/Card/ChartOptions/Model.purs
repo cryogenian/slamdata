@@ -73,6 +73,8 @@ initialModel =
   , options:
       { chartType: Pie
       , axisLabelFontSize: 12
-      , axisLabelAngle: 30
+      , axisLabelAngle: 0
+      , areaStacked: false
+      , smooth: false
       }
   }

@@ -41,3 +41,12 @@ lineChartIcon = className "line-chart-icon"
 
 axisLabelParam ∷ ClassName
 axisLabelParam = className "axis-label-param"
+
+areaChartIcon ∷ ClassName
+areaChartIcon = className "area-chart-icon"
+
+chartSizeParam ∷ ClassName
+chartSizeParam = className "chart-size-param"
+
+chartDetailParam ∷ ClassName
+chartDetailParam = className "chart-detail-param"

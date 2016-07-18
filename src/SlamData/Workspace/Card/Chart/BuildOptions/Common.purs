@@ -28,6 +28,8 @@ import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 
+import Color (Color, toRGBA, fromHexString, hsla, toHSLA)
+
 import ECharts (AxisRec, AxisLabel(..), TextStyle(..), textStyleDefault, axisLabelDefault)
 
 import SlamData.Form.Select (_value)
@@ -174,6 +176,33 @@ colors =
   , "#85A362"
   , "#595146"
   ]
+
+getShadeColor ∷ String → Number → Color
+getShadeColor hex alpha = 
+  setAlpha 
+    (lightenTo 
+      (fromMaybe 
+        (hsla 0.0 0.0 0.0 1.0)  
+        (fromHexString hex)) 
+      0.95) 
+    alpha
+  where
+  lightenTo :: Color → Number → Color
+  lightenTo col l' = hsla c.h c.s l' c.a
+    where
+    c = toHSLA col
+
+  setAlpha :: Color → Number → Color
+  setAlpha col a' = hsla c.h c.s c.l a'
+    where
+    c = toHSLA col 
+
+toRGBAString ∷ Color → String
+toRGBAString col = "rgba(" <> show c.r <> ", "
+                   <> show c.g <> ", "
+                   <> show c.b <> ", "
+                   <> show c.a <> ")"
+  where c = toRGBA col
 
 buildChartAxises ∷ M.Map JCursor Ax.Axis → ChartConfiguration → ChartAxises
 buildChartAxises axisMap conf =
