@@ -28,18 +28,19 @@ before_script:
   - "sh -e /etc/init.d/xvfb start"
 script:
   - npm run psa
-  - npm run property-tests
-  - npm test
+  - if test $TRAVIS_TAG; then npm run build-lite; else npm run property-tests && npm test; fi
 before_deploy:
 - mkdir -p slamdata
 - cp -r public slamdata/
 - cp jars/quasar.jar slamdata/
 - tar cjf slamdata.tar.bz2 slamdata
+- gpg --import public.key
+- gpg -e -r SlamData --trust-model always slamdata.tar.bz2
 deploy:
   provider: releases
   api-key:
     secure: TitL0gINR0xhcMdNBSFKulH7VlS+q1bAkmkWe5H5drTGesqFQprmnoHxPM8Sstfr0DGrAsSKweN/SsUpmVpK8fUE3AcK9kNqt9HXIXr2UotYa1f3jqQKc4+KRXOOf4qjEdUwYRYYMUayR4psA/mijm3WxoVG/jrOjRZAkal/NAY=
-  file: slamdata.tar.bz2
+  file: slamdata.tar.bz2.gpg
   skip_cleanup: true
   on:
     repo: slamdata/slamdata
