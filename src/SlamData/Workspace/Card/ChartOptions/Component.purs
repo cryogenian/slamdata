@@ -260,7 +260,7 @@ chartEval q = do
 cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.EvalCard info output next → do
-    for (output ^? Lens._Just ∘ P._Chart) \opts → do
+    for_ (output ^? Lens._Just ∘ P._Chart) \opts → do
       H.modify
         $ (VCS._availableChartTypes .~ opts.availableChartTypes)
         ∘ (VCS._axes .~ opts.axes)
@@ -268,6 +268,9 @@ cardEval = case _ of
         L.Cons ct L.Nil → H.modify (VCS._chartType .~ ct)
         _ → pure unit
       configure
+    for_ (output ^? Lens._Just ∘ P._CardError) \_ →
+      H.modify
+        $ (VCS._availableChartTypes .~ Set.empty)
     pure next
   CC.Activate next →
     pure next
