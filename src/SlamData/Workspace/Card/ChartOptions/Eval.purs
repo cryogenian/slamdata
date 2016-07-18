@@ -89,8 +89,9 @@ eval info model = do
     availableChartTypes = foldMap Set.singleton available
 
   -- Commented till this it would be clear how this should work exactly
---  when (isNothing model.chartConfig)
---    $ EC.throwError "Please select axes"
+  -- see https://github.com/slamdata/slamdata/issues/931
+  --  when (isNothing model.chartConfig)
+  --    $ EC.throwError "Please select axes"
 
   pure
     { options: model.options
