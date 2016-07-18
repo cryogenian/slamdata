@@ -88,8 +88,9 @@ eval info model = do
   let
     availableChartTypes = foldMap Set.singleton available
 
-  when (isNothing model.chartConfig)
-    $ EC.throwError "Please select axes"
+  -- Commented till this it would be clear how this should work exactly
+--  when (isNothing model.chartConfig)
+--    $ EC.throwError "Please select axes"
 
   pure
     { options: model.options
