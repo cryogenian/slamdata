@@ -55,6 +55,8 @@ import SlamData.Render.CSS as CSS
 
 import Utils.Path as PU
 
+import OIDCCryptUtils as OIDC
+
 type State =
   { files :: Array R.Resource
   , selectedFile :: Either String FilePath
@@ -77,7 +79,8 @@ data Query a
   | UpdateFile String a
 
 type Effects e =
-    ( avar :: AVar.AVAR
+    ( rsaSignTime ∷ OIDC.RSASIGNTIME
+    , avar :: AVar.AVAR
     , now :: Date.Now
     , ref :: Ref.REF
     , ajax :: AJAX

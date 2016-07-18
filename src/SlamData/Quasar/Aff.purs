@@ -36,7 +36,9 @@ import SlamData.Quasar.Auth.Permission (retrieveTokenHashes)
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Advanced.QuasarAF.Interpreter.Aff as QFA
 
-type QEff eff = (ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
+import OIDCCryptUtils as OIDC
+
+type QEff eff = (rsaSignTime ∷ OIDC.RSASIGNTIME, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
 
 -- | Runs a `QuasarF` request in `Aff`, using the `QError` type for errors that
 -- | may arise, which allows for convenient catching of 404 errors.

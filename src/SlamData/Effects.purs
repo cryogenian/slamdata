@@ -23,19 +23,21 @@ import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (REF)
 import Control.UI.File (READ_FILE)
 import Control.UI.ZClipboard (ZCLIPBOARD)
+import DOM.Timer (Timer)
 import Data.Date (Now)
 import Data.Date.Locale (Locale)
-import DOM.Timer (Timer)
 import ECharts.Effects (ECHARTS_INIT, ECHARTS_OPTION_SET, ECHARTS_DISPOSE, ECHARTS_RESIZE, ECHARTS_REFRESH, ECHARTS_CLEAR)
 import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
+import OIDCCryptUtils as OIDC
 
 type Slam = Aff SlamDataEffects
 
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
 
 type SlamDataRawEffects =
-  ( ajax :: AJAX
+  ( rsaSignTime ∷ OIDC.RSASIGNTIME
+  , ajax :: AJAX
   , random :: RANDOM
   , ace :: ACE
   , console :: CONSOLE
