@@ -45,6 +45,7 @@ import Data.Map as Map
 import Data.Set as Set
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.Notification as N
 import SlamData.Quasar.Data as Quasar
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardId (CardId)
@@ -86,6 +87,7 @@ type Wiring =
   , cards ∷ Cache (DeckId × CardId) CardEval
   , pending ∷ Bus.BusRW PendingMessage
   , messaging ∷ Bus.BusRW DeckMessage
+  , notify ∷ Bus.BusRW N.NotificationOptions
   , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
   }
 
@@ -99,8 +101,19 @@ makeWiring = fromAff do
   cards ← makeCache
   pending ← Bus.make
   messaging ← Bus.make
+  notify ← Bus.make
   urlVarMaps ← fromEff (newRef mempty)
-  pure { decks, activeState, cards, pending, messaging, urlVarMaps }
+  let
+    wiring =
+      { decks
+      , activeState
+      , cards
+      , pending
+      , messaging
+      , notify
+      , urlVarMaps
+      }
+  pure wiring
 
 makeCache
   ∷ ∀ m k v

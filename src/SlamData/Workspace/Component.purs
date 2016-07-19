@@ -49,6 +49,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Header.Component as Header
+import SlamData.Notification.Component as Notify
 import SlamData.Quasar.Data as Quasar
 import SlamData.SignIn.Component as SignIn
 import SlamData.Workspace.Action as WA
@@ -56,7 +57,7 @@ import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader)
+import SlamData.Workspace.Component.ChildSlot (ChildQuery, ChildSlot, ChildState, cpDeck, cpHeader, cpNotify)
 import SlamData.Workspace.Component.Query (QueryP, Query(..), fromWorkspace, fromDeck, toWorkspace, toDeck)
 import SlamData.Workspace.Component.State (State, _accessType, _initialDeckId, _loaded, _path, _version, _stateMode, initialState)
 import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
@@ -95,12 +96,19 @@ render wiring state =
         ⊕ [ HH.className "sd-workspace" ]
     , HE.onClick (HE.input_ DismissAll)
     ]
-    $ header ⊕ deck
+    $ notifications ⊕ header ⊕ deck
   where
+  notifications ∷ Array WorkspaceHTML
+  notifications =
+    pure $ HH.slot' cpNotify unit \_ →
+      { component: Notify.comp (wiring.notify)
+      , initialState: Notify.initialState
+      }
+
   header ∷ Array WorkspaceHTML
   header = do
     guard $ AT.isEditable (state ^. _accessType)
-    pure $ HH.slot' cpHeader unit \_→
+    pure $ HH.slot' cpHeader unit \_ →
       { component: Header.comp
       , initialState: H.parentState Header.initialState
       }

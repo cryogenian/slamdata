@@ -18,6 +18,7 @@ module Control.Monad.Aff.Bus
   ( make
   , read
   , write
+  , split
   , Cap
   , Bus
   , BusRW

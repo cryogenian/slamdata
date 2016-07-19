@@ -18,20 +18,21 @@ module SlamData.Workspace.Component.ChildSlot where
 
 import SlamData.Prelude
 
-import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
+import Halogen.Component.ChildPath (ChildPath, cpL, cpR, (:>))
 
 import SlamData.Header.Component as Header
+import SlamData.Notification.Component as Notify
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
 import SlamData.Workspace.Deck.Component.Nested.State as DNS
 
 type ChildQuery =
-  DNQ.QueryP ⨁ Header.QueryP
+  DNQ.QueryP ⨁ Header.QueryP ⨁ Notify.Query
 
 type ChildState =
-  DNS.State ⊹ Header.StateP
+  DNS.State ⊹ Header.StateP ⊹ Notify.State
 
 type ChildSlot =
-  Unit ⊹ Unit
+  Unit ⊹ Unit ⊹ Unit
 
 cpDeck
   ∷ ChildPath
@@ -45,4 +46,11 @@ cpHeader
       Header.StateP ChildState
       Header.QueryP ChildQuery
       Unit ChildSlot
-cpHeader = cpR
+cpHeader = cpR :> cpL
+
+cpNotify
+  ∷ ChildPath
+      Notify.State ChildState
+      Notify.Query ChildQuery
+      Unit ChildSlot
+cpNotify = cpR :> cpR
