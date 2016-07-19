@@ -3,8 +3,6 @@
 [![Coverage Status](https://coveralls.io/repos/slamdata/slamdata/badge.svg)](https://coveralls.io/r/slamdata/slamdata)
 [![Join the chat at https://gitter.im/slamdata/slamdata](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/slamdata/slamdata?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-**Issues for this project are kindly hosted by [Atlassian JIRA](https://slamdata.atlassian.net). Signup is open to anyone, so if you want to contribute, have bugs to report or features to suggest, [sign up for a JIRA account](https://slamdata.atlassian.net).**
-
 # SlamData
 
 Web-based visual analytics for NoSQL data, powered by [Quasar](https://github.com/quasar-analytics/quasar).
