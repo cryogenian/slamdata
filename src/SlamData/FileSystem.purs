@@ -43,6 +43,7 @@ import Halogen.Util (runHalogenAff, awaitBody)
 
 import Routing (matchesAff)
 
+import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Config.Version (slamDataVersion)
 import SlamData.Effects (SlamDataEffects, SlamDataRawEffects)
@@ -56,9 +57,9 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.Quasar.Auth as Auth
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
-import SlamData.Quasar.Auth as Auth
 
 import Text.SlamSearch.Printer (strQuery)
 import Text.SlamSearch.Types (SearchQuery)
@@ -71,6 +72,7 @@ main = do
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
+    forkAff Analytics.enableAnalytics
     driver ← runUI comp (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion

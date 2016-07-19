@@ -40,6 +40,7 @@ import OIDCCryptUtils as Crypt
 
 import Quasar.Advanced.Types (ProviderR)
 
+import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Quasar as Api
@@ -94,6 +95,7 @@ eval ∷ Natural Query SignInDSL
 eval (DismissSubmenu next) = dismissAll $> next
 eval (Init next) = do
   mbIdToken ← H.fromEff Auth.retrieveIdToken
+  traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
     retrieveProvidersAndUpdateMenu
     putEmailToMenu

@@ -38,13 +38,14 @@ import DOM.HTML.Types (htmlElementToElement)
 import Halogen (Driver, runUI, parentState)
 import Halogen.Util (runHalogenAff, awaitBody)
 
+import SlamData.Analytics as Analytics
 import SlamData.Config as Config
+import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
 import SlamData.Workspace.Wiring (makeWiring)
@@ -57,6 +58,7 @@ main = do
   AceConfig.set AceConfig.modePath (Config.baseUrl ⊕ "js/ace")
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
+    forkAff Analytics.enableAnalytics
     let st = Workspace.initialState (Just "3.0")
     wiring ← makeWiring
     driver ← runUI (Workspace.comp wiring) (parentState st) =<< awaitBody
