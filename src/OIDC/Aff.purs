@@ -27,11 +27,20 @@ import OIDCCryptUtils as Cryptography
 import Quasar.Advanced.Types (Provider(..), ProviderR)
 import SlamData.Quasar.Auth as Auth
 
+data Prompt = Login | None
+
+printPrompt ∷ Prompt → String
+printPrompt =
+  case _ of
+    Login → "login"
+    None → "none"
+
 requestAuthenticationURI
-  ∷ ProviderR
+  ∷ Prompt
+  → ProviderR
   → String
   → ∀ e. Eff (dom ∷ DOM, random ∷ RANDOM | e) (Either ParseError String)
-requestAuthenticationURI pr redirectURIStr = do
+requestAuthenticationURI prompt pr redirectURIStr = do
   csrf ← (Cryptography.KeyString ∘ show) <$> random
   replay ← (Cryptography.UnhashedNonce ∘ show) <$> random
   Auth.storeKeyString csrf
@@ -58,6 +67,7 @@ requestAuthenticationURI pr redirectURIStr = do
           , Tuple "scope" "openid email"
           , Tuple "state" $ Cryptography.runBoundStateJWS state
           , Tuple "nonce" $ Cryptography.runHashedNonce nonce
+          , Tuple "prompt" $ printPrompt prompt
           ]
       uri = URI.URI s h query f
     in pure $ printURI uri

@@ -174,7 +174,7 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
       Browser.reload
   appendAuthPath s = s ++ Config.redirectURIString
   requestAuthenticationURI pr =
-    H.fromEff $ OIDC.requestAuthenticationURI pr ∘ appendAuthPath =<< Browser.locationString
+    H.fromEff $ OIDC.requestAuthenticationURI OIDC.Login pr ∘ appendAuthPath =<< Browser.locationString
 
 
 queryMenu
