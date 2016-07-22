@@ -56,6 +56,7 @@ import Halogen.Component.Utils (raise', subscribeToBus')
 import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Indexed as HH
 
+import SlamData.Analytics.Event as AE
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Workspace.AccessType as AT
@@ -140,6 +141,7 @@ eval opts@{ wiring } = case _ of
       }
     pure next
   ExploreFile res next → do
+    AE.track AE.Explore wiring.analytics
     H.modify
       $ (DCS.addCard $ Card.cardModelOfType CT.Table)
       ∘ (DCS.addCard ∘ Card.Open ∘ Just $ R.File res)
@@ -372,15 +374,17 @@ peekBackSide opts (Back.DoAction action _) =
       showDialog $ Dialog.Unshare sharingInput
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Embed → do
-      deckPath ← H.gets DCS.deckPath
+      st ← H.get
+      AE.track (AE.Embed st.id) opts.wiring.analytics
       sharingInput ← getSharingInput
-      varMaps ← getVarMaps deckPath opts.wiring
+      varMaps ← getVarMaps (DCS.deckPath st) opts.wiring
       showDialog $ Dialog.Embed sharingInput varMaps
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish → do
-      deckPath ← H.gets DCS.deckPath
+      st ← H.get
+      AE.track (AE.Publish st.id) opts.wiring.analytics
       sharingInput ← getSharingInput
-      varMaps ← getVarMaps deckPath opts.wiring
+      varMaps ← getVarMaps (DCS.deckPath st) opts.wiring
       showDialog $ Dialog.Publish sharingInput varMaps
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.DeleteDeck → do
@@ -487,6 +491,7 @@ updateBackSide = do
 
 createCard ∷ Wiring → CT.CardType → DeckDSL Unit
 createCard wiring cardType = do
+  AE.track (AE.AddCard cardType) wiring.analytics
   deckId ← H.gets _.id
   (st × newCardId) ← H.gets ∘ DCS.addCard' $ Card.cardModelOfType cardType
   H.set st
@@ -593,7 +598,7 @@ runPendingCards opts source pendingCard pendingCards = do
           Just ev → pure ev
           Nothing → do
             urlVarMaps ← H.fromEff $ Ref.readRef opts.wiring.urlVarMaps
-            ev ← evalCard st.path urlVarMaps input c
+            ev ← evalCard opts.wiring.analytics st.path urlVarMaps input c
             putCardEval ev pendingCards
             putCardEval ev opts.wiring.cards
             pure ev
@@ -622,24 +627,32 @@ runInitialEval wiring = do
 
 -- | Evaluates a card given an input and model.
 evalCard
-  ∷ DirPath
+  ∷ ∀ r
+  . Bus.Bus (write ∷ Bus.Cap | r) AE.Event
+  → DirPath
   → Map.Map DeckId Port.URLVarMap
   → Maybe (Pr.Promise Port)
   → DeckId × Card.Model
   → DeckDSL CardEval
-evalCard path urlVarMaps input card = do
+evalCard bus path urlVarMaps input card = do
   output ← H.fromAff $ Pr.defer do
     input' ← for input Pr.wait
-    case Card.modelToEval (snd card).model of
-      Left err →
+    let model = (snd card).model
+    case Card.modelToEval model of
+      Left err → do
+        AE.track (AE.ErrorInCardEval $ Card.modelCardType model) bus
         pure $ (Port.CardError $ "Could not evaluate card: " <> err) × mempty
       Right cmd → do
-        flip Eval.runEvalCard cmd
+        out@(Tuple p _) ← flip Eval.runEvalCard cmd
           { path
           , urlVarMaps
           , cardCoord: DCS.coordModelToCoord card
           , input: input'
           }
+        case p of
+          Port.CardError _ → AE.track (AE.ErrorInCardEval $ Card.modelCardType model) bus
+          _ → pure unit
+        pure out
   pure { input, card, output: Just output }
 
 -- | Interprets a list of pending card evaluations into updates for the
@@ -793,7 +806,7 @@ saveDeck { accessType, wiring } coord = do
 
     putDeck st.path st.id model wiring.decks >>= case _ of
       Left err →
-        Notify.saveDeckFail err wiring.notify
+        Notify.saveDeckFail err wiring.notify wiring.analytics
       Right _ → do
         when (st.level ≡ DL.root) $ do
           path' ← H.gets DCS.deckPath
@@ -804,7 +817,7 @@ saveDeck { accessType, wiring } coord = do
   saveMirroredCard st (deckId × card) =
     getDeck st.path deckId wiring.decks >>= case _ of
       Left err →
-        Notify.saveMirrorFail err wiring.notify
+        Notify.saveMirrorFail err wiring.notify wiring.analytics
       Right deck → do
         let cards = deck.cards <#> \c → if c.cardId == card.cardId then card else c
             model = deck { cards = cards }

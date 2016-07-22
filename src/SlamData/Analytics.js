@@ -14,3 +14,11 @@ exports.identify = function (email) {
     if (window.analytics) window.analytics.identify(email, { email: email });
   };
 };
+
+exports._track = function (event) {
+  return function (props) {
+    return function () {
+      if (window.analytics) window.analytics.track(event, props);
+    };
+  };
+};

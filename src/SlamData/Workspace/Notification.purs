@@ -27,6 +27,7 @@ module SlamData.Workspace.Notification
 
 import SlamData.Prelude
 import SlamData.Notification as N
+import SlamData.Analytics.Event as AE
 
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Bus (Bus, Cap)
@@ -34,31 +35,38 @@ import Control.Monad.Aff.Free (class Affable)
 
 type DetailedError =
   ∀ r m eff
-  . (Affable (avar ∷ AVAR | eff) m)
+  . (Bind m, Affable (avar ∷ AVAR | eff) m)
   ⇒ String
   → Bus (write ∷ Cap | r) N.NotificationOptions
+  → Bus (write ∷ Cap | r) AE.Event
   → m Unit
 
 loadDeckFail ∷ DetailedError
-loadDeckFail detail =
-  N.error_ "Failed to load your deck." (Just detail) Nothing
+loadDeckFail detail nbus ebus = do
+  N.error_ "Failed to load your deck." (Just detail) Nothing nbus
+  AE.track AE.ErrorLoadingDeck ebus
 
 loadParentFail ∷ DetailedError
-loadParentFail detail =
-  N.error_ "Failed to load a parent deck." (Just detail) Nothing
+loadParentFail detail nbus ebus = do
+  N.error_ "Failed to load a parent deck." (Just detail) Nothing nbus
+  AE.track AE.ErrorLoadingDeck ebus
 
 saveDeckFail ∷ DetailedError
-saveDeckFail detail =
-  N.error_ "Failed to save your deck." (Just detail) Nothing
+saveDeckFail detail nbus ebus = do
+  N.error_ "Failed to save your deck." (Just detail) Nothing nbus
+  AE.track AE.ErrorSavingDeck ebus
 
 saveMirrorFail ∷ DetailedError
-saveMirrorFail detail =
-  N.error_ "Failed to save a mirrored card." (Just detail) Nothing
+saveMirrorFail detail nbus ebus = do
+  N.error_ "Failed to save a mirrored card." (Just detail) Nothing nbus
+  AE.track AE.ErrorSavingMirror ebus
 
 deleteDeckFail ∷ DetailedError
-deleteDeckFail detail =
-  N.error_ "Failed to delete your deck." (Just detail) Nothing
+deleteDeckFail detail nbus ebus = do
+  N.error_ "Failed to delete your deck." (Just detail) Nothing nbus
+  AE.track AE.ErrorDeletingDeck ebus
 
 setRootFail ∷ DetailedError
-setRootFail detail =
-  N.error_ "Failed to update your workspace root." (Just detail) Nothing
+setRootFail detail nbus ebus = do
+  N.error_ "Failed to update your workspace root." (Just detail) Nothing nbus
+  AE.track AE.ErrorUpdatingRoot ebus

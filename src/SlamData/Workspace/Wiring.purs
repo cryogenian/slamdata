@@ -44,6 +44,7 @@ import Control.Monad.Eff.Ref (Ref, newRef)
 import Data.Map as Map
 import Data.Set as Set
 
+import SlamData.Analytics.Event as AE
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Notification as N
 import SlamData.Quasar.Data as Quasar
@@ -88,6 +89,7 @@ type Wiring =
   , pending ∷ Bus.BusRW PendingMessage
   , messaging ∷ Bus.BusRW DeckMessage
   , notify ∷ Bus.BusRW N.NotificationOptions
+  , analytics ∷ Bus.BusRW AE.Event
   , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
   }
 
@@ -102,6 +104,7 @@ makeWiring = fromAff do
   pending ← Bus.make
   messaging ← Bus.make
   notify ← Bus.make
+  analytics ← Bus.make
   urlVarMaps ← fromEff (newRef mempty)
   let
     wiring =
@@ -111,6 +114,7 @@ makeWiring = fromAff do
       , pending
       , messaging
       , notify
+      , analytics
       , urlVarMaps
       }
   pure wiring

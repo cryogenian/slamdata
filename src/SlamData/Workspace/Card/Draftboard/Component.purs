@@ -45,6 +45,7 @@ import Halogen.HTML.Properties.Indexed as HP
 
 import Math (round, floor)
 
+import SlamData.Analytics.Event as AE
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Workspace.AccessType as AT
@@ -259,15 +260,19 @@ peek opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
     DCQ.GrabDeck ev _ → startDragging deckId ev Grabbing
     DCQ.ResizeDeck ev _ → startDragging deckId ev Resizing
     DCQ.DoAction DCQ.DeleteDeck _ → do
+      AE.track (AE.Delete deckId) opts.deck.wiring.analytics
       deleteDeck opts deckId
       CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction DCQ.Wrap _ → do
+      AE.track (AE.Wrap deckId) opts.deck.wiring.analytics
       wrapDeck opts deckId
       CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction (DCQ.Unwrap decks) _ → do
+      AE.track (AE.Collapse deckId) opts.deck.wiring.analytics
       unwrapDeck opts deckId decks
       CC.raiseUpdatedP' CC.EvalModelUpdate
     DCQ.DoAction DCQ.Mirror _ → do
+      AE.track (AE.Mirror deckId) opts.deck.wiring.analytics
       mirrorDeck opts deckId
       CC.raiseUpdatedP' CC.EvalModelUpdate
     _ → pure unit
@@ -418,7 +423,7 @@ addDeckAt { deck: opts, deckId: parentId, cardId } deck deckPos = do
   putDeck opts.path deckId deck' opts.wiring.decks >>= case _ of
     Left err → do
       H.modify $ _inserting .~ false
-      Notify.saveDeckFail err opts.wiring.notify
+      Notify.saveDeckFail err opts.wiring.notify opts.wiring.analytics
     Right _ → void do
       H.modify \s → s
         { decks = Map.insert deckId deckPos s.decks
@@ -431,7 +436,7 @@ deleteDeck { deck } deckId = do
   res ← deleteGraph deck.path deckId
   case res of
     Left err →
-      Notify.deleteDeckFail err deck.wiring.notify
+      Notify.deleteDeckFail err deck.wiring.notify deck.wiring.analytics
     Right _ →
       H.modify \s → s { decks = Map.delete deckId s.decks }
 
@@ -444,7 +449,7 @@ wrapDeck { cardId, deckId: parentId, deck } oldId = do
     newId ← H.fromEff freshDeckId
     putDeck deck.path newId newDeck deck.wiring.decks >>= case _ of
       Left err →
-        Notify.saveDeckFail err deck.wiring.notify
+        Notify.saveDeckFail err deck.wiring.notify deck.wiring.analytics
       Right _ → void do
         traverse_ (queryDeck oldId ∘ H.action)
           [ DCQ.SetParent (newId × CID.CardId 0)
@@ -508,7 +513,7 @@ mirrorDeck opts oldId = do
         newId ← H.fromEff freshDeckId
         putDeck opts.deck.path newId newDeck opts.deck.wiring.decks >>= case _ of
           Left err →
-            Notify.saveDeckFail err opts.deck.wiring.notify
+            Notify.saveDeckFail err opts.deck.wiring.notify opts.deck.wiring.analytics
           Right _ → do
             let modelCards'' = modelCards'.init <> map (lmap (const newId)) modelCards'.rest
             queryDeck oldId $ H.action $ DCQ.SetModelCards modelCards''
@@ -558,7 +563,7 @@ groupDecks { cardId, deckId, deck } deckFrom deckTo = do
         newId ← H.fromEff freshDeckId
         putDeck deck.path newId newDeck deck.wiring.decks >>= case _ of
           Left err →
-            Notify.saveDeckFail err deck.wiring.notify
+            Notify.saveDeckFail err deck.wiring.notify deck.wiring.analytics
           Right _ → void do
             H.modify \s → s
               { decks

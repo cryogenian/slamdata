@@ -61,6 +61,7 @@ main = do
     forkAff Analytics.enableAnalytics
     let st = Workspace.initialState (Just "3.0")
     wiring ← makeWiring
+    forkAff (Analytics.consumeEvents wiring.analytics)
     driver ← runUI (Workspace.comp wiring) (parentState st) =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles

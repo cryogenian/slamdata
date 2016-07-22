@@ -51,6 +51,7 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Analytics.Event as AE
 import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Header.Component as Header
@@ -177,7 +178,7 @@ eval _ (Reset path next) = do
   queryDeck $ H.action $ Deck.Reset path
   queryDeck $ H.action $ Deck.Focus
   pure next
-eval _ (Load path deckId accessType next) = do
+eval wiring (Load path deckId accessType next) = do
   oldAccessType <- H.gets _.accessType
   H.modify (_accessType .~ accessType)
 
@@ -198,6 +199,7 @@ eval _ (Load path deckId accessType next) = do
     void $ queryDeck $ H.action $ Deck.Focus
 
   loadDeck deckId = void do
+    AE.track (AE.Load deckId accessType) wiring.analytics
     H.modify _ { stateMode = Ready }
     queryDeck $ H.action $ Deck.Load path deckId DL.root
 
@@ -225,8 +227,11 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       updateParentPointer wiring path oldId newId parent
 
     case error of
-      Left err → Notify.error_ "Failed to unwrap deck." (Just err) Nothing wiring.notify
-      Right _  → updateHash wiring path state.accessType newId
+      Left err →
+        Notify.error_ "Failed to collapse deck." (Just err) Nothing wiring.notify
+      Right _  → do
+        AE.track (AE.Collapse oldId) wiring.analytics
+        updateHash wiring path state.accessType newId
 
   peekDeck (Deck.DoAction Deck.Wrap _) = void $ runMaybeT do
     state ← lift H.get
@@ -247,8 +252,11 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       updateParentPointer wiring path oldId newId deck.parent
 
     case error of
-      Left err → Notify.error_ "Failed to wrap deck." (Just err) Nothing wiring.notify
-      Right _  → updateHash wiring path state.accessType newId
+      Left err →
+        Notify.error_ "Failed to wrap deck." (Just err) Nothing wiring.notify
+      Right _  → do
+        AE.track (AE.Wrap oldId) wiring.analytics
+        updateHash wiring path state.accessType newId
 
   peekDeck (Deck.DoAction Deck.DeleteDeck _) = void $ runMaybeT do
     state  ← lift H.get
@@ -266,10 +274,13 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
           ExceptT $ map (lmap Exn.message) $ Quasar.delete $ Left path
 
     case error of
-      Left err → Notify.deleteDeckFail err wiring.notify
-      Right _  → case parent of
-        Just (deckId × _) → updateHash wiring path state.accessType deckId
-        Nothing → void $ H.fromEff $ setHref $ parentURL $ Left path
+      Left err →
+        Notify.deleteDeckFail err wiring.notify wiring.analytics
+      Right _  → do
+        AE.track (AE.Delete oldId) wiring.analytics
+        case parent of
+          Just (deckId × _) → updateHash wiring path state.accessType deckId
+          Nothing → void $ H.fromEff $ setHref $ parentURL $ Left path
 
   peekDeck (Deck.DoAction Deck.Mirror _) = void $ runMaybeT do
     state ← lift H.get
@@ -322,8 +333,11 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       updateParentPointer wiring path oldId newIdParent oldModel.parent
 
     case error of
-      Left err → Notify.error_ "Failed to mirror deck." (Just err) Nothing wiring.notify
-      Right _  → updateHash wiring path state.accessType newIdParent
+      Left err →
+        Notify.error_ "Failed to mirror deck." (Just err) Nothing wiring.notify
+      Right _  → do
+        AE.track (AE.Mirror oldId) wiring.analytics
+        updateHash wiring path state.accessType newIdParent
 
   peekDeck _ = pure unit
 
@@ -344,11 +358,12 @@ notifyWith
   . (Affable SlamDataEffects m, Monad m)
   ⇒ Notify.DetailedError
   → Bus.BusRW Notify.NotificationOptions
+  → Bus.BusRW AE.Event
   → m (Either String a)
   → m Unit
-notifyWith notify bus action =
+notifyWith notify nbus ebus action =
   action >>= case _ of
-    Left err → notify err bus
+    Left err → notify err nbus ebus
     Right _  → pure unit
 
 lefts ∷ ∀ a b. Array (Either a b) → Array a
