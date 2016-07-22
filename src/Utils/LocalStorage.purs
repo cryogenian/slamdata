@@ -25,43 +25,79 @@ import Prelude
 import Control.Bind ((>=>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Coroutine as Coroutine
+import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Rec.Class as MonadRecClass
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson, printJson)
 import Data.Either (Either(..))
 import Data.Function (Fn3, Fn2, runFn3, runFn2)
 import Data.Maybe (Maybe(..), maybe)
+import Unsafe.Coerce as U
 
 import DOM (DOM)
+import DOM.Event.Types (Event, EventTarget, EventType(..))
+import DOM.HTML as DOMHTML
+import DOM.HTML.Types as DOMHTMLTypes
+
+import Utils.DOM as DOMUtils
 
 foreign import setLocalStorageImpl
-  :: forall e. Fn2 String String (Eff (dom :: DOM|e) Unit)
+  ∷ forall eff. Fn2 String String (Eff (dom ∷ DOM | eff) Unit)
 foreign import getLocalStorageImpl
-  :: forall e a
-   . Fn3 (Maybe a) (a -> Maybe a) String (Eff (dom :: DOM|e) (Maybe String))
+  ∷ forall eff a . Fn3 (Maybe a) (a → Maybe a) String (Eff (dom ∷ DOM | eff) (Maybe String))
 foreign import removeLocalStorageImpl
-  :: forall e
-   . String -> (Eff (dom :: DOM|e)) Unit
+  ∷ forall eff . String → (Eff (dom ∷ DOM | eff)) Unit
+foreign import data Storage ∷ *
 
+type StorageEvent =
+  { target ∷ EventTarget
+  , type ∷ String
+  , bubbles ∷ Boolean
+  , cancelable ∷ Boolean
+  , key ∷ String
+  , oldValue ∷ String
+  , newValue ∷ String
+  , url ∷ String
+  , storageArea ∷ Storage
+}
+
+storageEventToEvent ∷ StorageEvent → Event
+storageEventToEvent = U.unsafeCoerce
+
+eventToStorageEvent ∷ Event → StorageEvent
+eventToStorageEvent = U.unsafeCoerce
 
 setLocalStorage
-  :: forall a e g
-   . (EncodeJson a, MonadEff (dom :: DOM|e) g)
-  => String -> a -> g Unit
+  ∷ forall a eff g
+  . (EncodeJson a, MonadEff (dom ∷ DOM | eff) g)
+  ⇒ String → a → g Unit
 setLocalStorage  key val =
   liftEff $ runFn2 setLocalStorageImpl key $ printJson $ encodeJson val
 
 getLocalStorage
-  :: forall a e g
-   . (DecodeJson a, MonadEff (dom :: DOM|e) g)
-  => String -> g (Either String a)
+  ∷ forall a eff g. (DecodeJson a, MonadEff (dom ∷ DOM | eff) g) ⇒ String → g (Either String a)
 getLocalStorage key =
   liftEff
   $ maybe (Left $ "There is no value for key " <> key) (jsonParser >=> decodeJson)
   <$> runFn3 getLocalStorageImpl Nothing Just key
 
 removeLocalStorage
-  :: forall g e
-   . (MonadEff (dom :: DOM|e) g)
-  => String -> g Unit
+  ∷ forall g eff. (MonadEff (dom ∷ DOM | eff) g) ⇒ String → g Unit
 removeLocalStorage k =
   liftEff $ removeLocalStorageImpl k
+
+storageEventProducer
+  ∷ forall g eff
+  . (MonadEff (dom ∷ DOM | eff) g)
+  ⇒ Boolean → g (Coroutine.Producer StorageEvent (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit)
+storageEventProducer capture =
+  (_ Coroutine.$~ eventToStorageEventTransformer) <$> windowEventProducer "storage"
+  where
+  eventToStorageEventTransformer =
+    MonadRecClass.forever $ Coroutine.transform eventToStorageEvent
+
+  windowEventProducer s =
+    DOMUtils.eventProducer (EventType s) capture
+      <$> liftEff (DOMHTMLTypes.windowToEventTarget <$> DOMHTML.window)

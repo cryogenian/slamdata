@@ -49,7 +49,8 @@
     "purescript-void": "^0.3.0",
     "purescript-zclipboard": "^0.3.0",
     "purescript-css": "b3fc1066d8022c30898a6aae7cdcf7fb7871ae1e",
-    "purescript-orders": "^0.1.1"
+    "purescript-orders": "^0.1.1",
+    "purescript-aff-coroutines": "v0.6.1"
   },
   "devDependencies": {
     "purescript-chalky": "^0.2.0",

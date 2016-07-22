@@ -19,11 +19,14 @@ module Utils.DOM where
 import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVAR)
+import Control.Coroutine.Aff as AffCoroutine
 import Control.Monad.Eff (Eff)
 import DOM (DOM)
-import DOM.Event.EventTarget (eventListener, addEventListener)
-import DOM.Event.EventTypes as ET
-import DOM.Event.Types (EventTarget)
+import Control.Coroutine (Producer)
+import DOM.Event.EventTarget as EventTarget
+import DOM.Event.EventTypes as EventTypes
+import DOM.Event.Types (EventTarget, EventType, Event)
 import DOM.HTML (window)
 import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlDocumentToDocument, windowToEventTarget)
 import DOM.HTML.Window (document)
@@ -76,7 +79,20 @@ documentTarget = htmlDocumentToEventTarget <$> (document =<< window)
 
 onResize ∷ ∀ eff. Eff (dom ∷ DOM | eff) Unit → Eff (dom ∷ DOM | eff) Unit
 onResize cb = do
-  let listener = eventListener \_ → cb
+  let listener = EventTarget.eventListener \_ → cb
   window
     >>= windowToEventTarget
-    >>> addEventListener ET.resize listener false
+    >>> EventTarget.addEventListener EventTypes.resize listener false
+
+eventProducer
+  ∷ forall eff
+  . EventType
+  → Boolean
+  → EventTarget
+  → Producer Event (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit
+eventProducer eventType capture eventTarget =
+  AffCoroutine.produce \emit →
+    EventTarget.addEventListener
+      eventType
+      (EventTarget.eventListener $ emit <<< Left)
+      capture eventTarget
