@@ -103,6 +103,15 @@ exports.open = function(strUrl) {
   };
 };
 
+exports.close = function(windowObjectReference) {
+  return function() {
+    windowObjectReference.close();
+  };
+};
+
+
+
+
 exports.centerPopupWindowFeatures = function(w) {
   return function(h) {
     return function(windowObjectReference) {

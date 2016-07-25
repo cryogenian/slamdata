@@ -44,6 +44,8 @@ import SlamData.AuthRedirect.RedirectHashPayload as Payload
 import SlamData.Quasar as Quasar
 import SlamData.Quasar.Auth as Auth
 
+import Utils.DOM as DOMUtils
+
 type RedirectEffects =
   ( ajax :: AX.AJAX
   , avar :: AVar.AVAR
@@ -145,6 +147,4 @@ main = do
           >>= maybe (Exn.throw "Failed to verify redirect") pure
 
       Auth.storeIdToken state.payload.idToken
-      window
-        >>= Win.location
-        >>= Loc.setHref redirectURL
+      window >>= DOMUtils.close
