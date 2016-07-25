@@ -28,7 +28,7 @@ import DOM.Event.EventTarget as EventTarget
 import DOM.Event.EventTypes as EventTypes
 import DOM.Event.Types (EventTarget, EventType, Event)
 import DOM.HTML (window)
-import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlDocumentToDocument, windowToEventTarget)
+import DOM.HTML.Types (Window, HTMLElement, htmlElementToElement, htmlDocumentToDocument, windowToEventTarget)
 import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
 import DOM.Node.Types (elementToParentNode, Element, documentToEventTarget)
@@ -46,6 +46,8 @@ foreign import elementEq ∷ ∀ eff. HTMLElement → HTMLElement → Eff (dom �
 foreign import scrollTop ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Number
 foreign import scrollLeft ∷ ∀ eff. HTMLElement → Eff (dom ∷ DOM | eff) Number
 foreign import getOffsetClientRect ∷ ∀ eff.  HTMLElement → Eff (dom ∷ DOM | eff) DOMRect
+foreign import open ∷ ∀ eff. String → String → String → Window → Eff (dom ∷ DOM | eff) Unit
+foreign import centerPopupWindowFeatures ∷ ∀ eff. Int → Int → Window → Eff (dom ∷ DOM | eff) String
 
 -- | Same as `getTextWidth` but w/o Eff wrapper. This function definitely has effects
 -- | of allocating canvas and should have `Eff (ref ∷ REF|e)` or `Eff (dom ∷ DOM|e)`

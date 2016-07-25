@@ -27,6 +27,8 @@ import SlamData.Prelude
 
 import Control.UI.Browser as Browser
 
+import DOM.HTML as DOMHTML
+
 import Halogen as H
 import Halogen.HTML.Core (className)
 import Halogen.HTML.Indexed as HH
@@ -48,6 +50,7 @@ import SlamData.Quasar.Auth as Auth
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
+import Utils.DOM as DOMUtils
 
 data Query a
   = DismissSubmenu a
@@ -165,7 +168,7 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
   {loggedIn} ← H.get
   if loggedIn
     then logOut
-    else for_ v $ either (const $ pure unit) (H.fromEff ∘ Browser.setLocation) <=< requestAuthenticationURI
+    else for_ v $ either (const $ pure unit) (H.fromEff ∘ openPopup) <=< requestAuthenticationURI
   where
   logOut ∷ SignInDSL Unit
   logOut = do
@@ -175,7 +178,10 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
   appendAuthPath s = s ++ Config.redirectURIString
   requestAuthenticationURI pr =
     H.fromEff $ OIDC.requestAuthenticationURI OIDC.Login pr ∘ appendAuthPath =<< Browser.locationString
-
+  openPopup stringUrl = do
+    window ← DOMHTML.window
+    windowFeaturesStr ← DOMUtils.centerPopupWindowFeatures 800 400 window
+    DOMUtils.open stringUrl "SignIn" windowFeaturesStr window
 
 queryMenu
   ∷ HalogenMenu.MenuQuery (Maybe ProviderR) Unit

@@ -80,7 +80,7 @@ fromEither = E.either (\_ → M.Nothing) (M.Just)
 retrieveIdToken
   ∷ ∀ e. Eff (rsaSignTime ∷ OIDC.RSASIGNTIME, dom ∷ DOM | e) (M.Maybe OIDCT.IdToken)
 retrieveIdToken =
-  M.maybe (getNewKey <|> (signOut *> presentSignedOutMessage *> pure M.Nothing)) verify
+  M.maybe (pure M.Nothing) verify
     =<< (fromEither <$> retrieveFromLocalStorage)
   where
   retrieveFromLocalStorage
@@ -88,13 +88,13 @@ retrieveIdToken =
   retrieveFromLocalStorage = map OIDCT.IdToken <$> LS.getLocalStorage idTokenLocalStorageKey
 
   getNewKey ∷ Eff (rsaSignTime :: OIDC.RSASIGNTIME, dom :: DOM | e) (M.Maybe OIDCT.IdToken)
-  getNewKey = ?getNewKey
+  getNewKey = pure M.Nothing
 
   signOut ∷ Eff (rsaSignTime :: OIDC.RSASIGNTIME, dom :: DOM | e) Unit
-  signOut = ?signOut
+  signOut = pure unit
 
   presentSignedOutMessage ∷ Eff (rsaSignTime :: OIDC.RSASIGNTIME, dom :: DOM | e) Unit
-  presentSignedOutMessage = ?presentSignOutMessage
+  presentSignedOutMessage = pure unit
 
   verify
     ∷ OIDCT.IdToken

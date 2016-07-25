@@ -68,6 +68,7 @@ requestAuthenticationURI prompt pr redirectURIStr = do
           , Tuple "state" $ Cryptography.runBoundStateJWS state
           , Tuple "nonce" $ Cryptography.runHashedNonce nonce
           , Tuple "prompt" $ printPrompt prompt
+          , Tuple "display" "popup"
           ]
       uri = URI.URI s h query f
     in pure $ printURI uri
