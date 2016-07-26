@@ -18,6 +18,9 @@ module Utils.LocalStorage
   ( getLocalStorage
   , setLocalStorage
   , removeLocalStorage
+  , getStorageEventProducer
+  , Storage
+  , StorageEvent
   ) where
 
 import Prelude
@@ -88,11 +91,10 @@ removeLocalStorage
 removeLocalStorage k =
   liftEff $ removeLocalStorageImpl k
 
-storageEventProducer
-  ∷ forall g eff
-  . (MonadEff (dom ∷ DOM | eff) g)
-  ⇒ Boolean → g (Coroutine.Producer StorageEvent (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit)
-storageEventProducer capture =
+getStorageEventProducer
+  ∷ forall eff
+  . Boolean → Eff (dom ∷ DOM, avar :: AVAR | eff) (Coroutine.Producer StorageEvent (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit)
+getStorageEventProducer capture =
   (_ Coroutine.$~ eventToStorageEventTransformer) <$> windowEventProducer "storage"
   where
   eventToStorageEventTransformer =
@@ -100,4 +102,4 @@ storageEventProducer capture =
 
   windowEventProducer s =
     DOMUtils.eventProducer (EventType s) capture
-      <$> liftEff (DOMHTMLTypes.windowToEventTarget <$> DOMHTML.window)
+      <$> (DOMHTMLTypes.windowToEventTarget <$> DOMHTML.window)

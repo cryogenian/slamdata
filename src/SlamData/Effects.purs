@@ -24,6 +24,7 @@ import Control.Monad.Eff.Ref (REF)
 import Control.UI.File (READ_FILE)
 import Control.UI.ZClipboard (ZCLIPBOARD)
 import DOM.Timer (Timer)
+import DOM (DOM)
 import Data.Date (Now)
 import Data.Date.Locale (Locale)
 import ECharts.Effects (ECHARTS_INIT, ECHARTS_OPTION_SET, ECHARTS_DISPOSE, ECHARTS_RESIZE, ECHARTS_REFRESH, ECHARTS_CLEAR)
@@ -36,10 +37,8 @@ type Slam = Aff SlamDataEffects
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
 
 type SlamDataRawEffects =
-  ( rsaSignTime ∷ OIDC.RSASIGNTIME
+  ( ace :: ACE
   , ajax :: AJAX
-  , random :: RANDOM
-  , ace :: ACE
   , console :: CONSOLE
   , echartClear :: ECHARTS_CLEAR
   , echartDispose :: ECHARTS_DISPOSE
@@ -48,9 +47,11 @@ type SlamDataRawEffects =
   , echartResize :: ECHARTS_RESIZE
   , echartSetOption :: ECHARTS_OPTION_SET
   , file :: READ_FILE
+  , locale :: Locale
   , now :: Now
+  , random :: RANDOM
   , ref :: REF
+  , rsaSignTime ∷ OIDC.RSASIGNTIME
   , timer :: Timer
   , zClipboard :: ZCLIPBOARD
-  , locale :: Locale
   )

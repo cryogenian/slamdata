@@ -26,6 +26,7 @@ module SlamData.Quasar.Auth
   , storeProvider
   , clearIdToken
   , authHeaders
+  , idTokenLocalStorageKey
   , module OIDC
   ) where
 

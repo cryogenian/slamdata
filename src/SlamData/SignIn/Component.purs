@@ -26,6 +26,9 @@ module SlamData.SignIn.Component
 import SlamData.Prelude
 
 import Control.UI.Browser as Browser
+import Control.Coroutine as Coroutine
+import Control.Coroutine.Stalling as StallingCoroutine
+import Control.Monad.Aff (Aff)
 
 import DOM.HTML as DOMHTML
 
@@ -36,6 +39,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
 import Halogen.Menu.Component.State (makeMenu)
 import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
+import Halogen.Query.EventSource as HE
 
 import OIDC.Aff as OIDC
 import OIDCCryptUtils as Crypt
@@ -50,7 +54,9 @@ import SlamData.Quasar.Auth as Auth
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
+
 import Utils.DOM as DOMUtils
+import Utils.LocalStorage as LocalStorage
 
 data Query a
   = DismissSubmenu a
@@ -96,14 +102,16 @@ render state =
 
 eval ∷ Natural Query SignInDSL
 eval (DismissSubmenu next) = dismissAll $> next
-eval (Init next) = do
+eval (Init next) = update $> next
+
+update ∷ SignInDSL Unit
+update = do
   mbIdToken ← H.fromEff Auth.retrieveIdToken
   traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
     retrieveProvidersAndUpdateMenu
     putEmailToMenu
     mbIdToken
-  pure next
   where
   putEmailToMenu ∷ Crypt.IdToken → SignInDSL Unit
   putEmailToMenu token = do
@@ -165,11 +173,20 @@ submenuPeek
   . HalogenMenu.SubmenuQuery (Maybe ProviderR) a
   → SignInDSL Unit
 submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
+  H.subscribe'
+    ∘ HE.EventSource
+    ∘ StallingCoroutine.mapStallingProducer (const $ Init unit)
+    ∘ StallingCoroutine.filter isIdTokenKeyEvent
+    ∘ StallingCoroutine.producerToStallingProducer
+    =<< H.fromEff (LocalStorage.getStorageEventProducer false)
+
   {loggedIn} ← H.get
   if loggedIn
     then logOut
     else for_ v $ either (const $ pure unit) (H.fromEff ∘ openPopup) <=< requestAuthenticationURI
+  pure unit
   where
+  isIdTokenKeyEvent o = o.key == Auth.idTokenLocalStorageKey
   logOut ∷ SignInDSL Unit
   logOut = do
     H.fromEff do
