@@ -302,10 +302,17 @@ getVarMaps path wiring =
     ∷ L.List (DeckId × Port.VarMap)
     → DeckId
     → DeckDSL (L.List (DeckId × Port.VarMap))
-  goDeck acc deckId =
-    getDeck path deckId wiring.decks >>= case _ of
-      Left _ → pure acc -- TODO: deck failed to load... so notify user? ignore?
-      Right deck → Array.foldM goCard acc (map (deckId × _) deck.cards)
+  goDeck acc deckId = do
+    res ← runExceptT do
+      deck ← ExceptT $ getDeck path deckId wiring.decks
+      mirroredCards ← ExceptT $ loadMirroredCards wiring path deck.mirror
+      pure $ mirroredCards <> (Tuple deckId <$> deck.cards)
+    case res of
+      Left err → do
+        Notify.loadDeckFail err wiring.notify wiring.analytics
+        pure acc
+      Right cards ->
+        Array.foldM goCard acc cards
 
 peek ∷ ∀ a. DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek opts (H.ChildF s q) =
@@ -831,7 +838,7 @@ loadDeck opts path deckId = do
 
   res ← runExceptT do
     deck ← ExceptT $ getDeck path deckId opts.wiring.decks
-    mirroredCards ← ExceptT $ H.fromAff $ loadMirroredCards deck.mirror
+    mirroredCards ← ExceptT $ loadMirroredCards opts.wiring path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
 
   case res of
@@ -845,12 +852,17 @@ loadDeck opts path deckId = do
         , modelCards
         , name: deck.name
         }
-  where
-  loadMirroredCards coords = do
-    let deckIds = Array.nub (fst <$> coords)
-    res ← sequence <$> runPar (traverse (Par ∘ flip (getDeck path) opts.wiring.decks) deckIds)
-    pure $ hydrateCards coords =<< map (Array.zip deckIds) res
 
+loadMirroredCards
+  :: Wiring
+  -> DirPath
+  -> Array (DeckId × CardId)
+  -> DeckDSL (Either String (Array (DeckId × Card.Model)))
+loadMirroredCards wiring path coords = H.fromAff do
+  let deckIds = Array.nub (fst <$> coords)
+  res ← sequence <$> runPar (traverse (Par ∘ flip (getDeck path) wiring.decks) deckIds)
+  pure $ hydrateCards coords =<< map (Array.zip deckIds) res
+  where
   hydrateCards coords decks =
     for coords \(deckId × cardId) →
       case find (eq deckId ∘ fst) decks of
