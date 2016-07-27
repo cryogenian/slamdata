@@ -22,6 +22,7 @@ import SlamData.Prelude
 import Ace.Config as AceConfig
 
 import Control.Monad.Aff (Aff, Canceler, cancel, forkAff)
+import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -73,7 +74,8 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
     forkAff Analytics.enableAnalytics
-    driver ← runUI comp (parentState initialState) =<< awaitBody
+    signInBus ← Bus.make
+    driver ← runUI (comp signInBus) (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)

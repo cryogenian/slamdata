@@ -26,9 +26,8 @@ module SlamData.SignIn.Component
 import SlamData.Prelude
 
 import Control.UI.Browser as Browser
-import Control.Coroutine as Coroutine
+import Control.Monad.Aff.Bus as Bus
 import Control.Coroutine.Stalling as StallingCoroutine
-import Control.Monad.Aff (Aff)
 
 import DOM.HTML as DOMHTML
 
@@ -54,12 +53,14 @@ import SlamData.Quasar.Auth as Auth
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
+import SlamData.SignIn.Bus (SignInMessage(..), SignInBusW)
 
 import Utils.DOM as DOMUtils
 import Utils.LocalStorage as LocalStorage
 
 data Query a
   = DismissSubmenu a
+  | SignedIn a
   | Init a
 
 type QueryP = Coproduct Query (H.ChildF MenuSlot ChildQuery)
@@ -80,11 +81,11 @@ type StateP = H.ParentState State (ChildState Slam) Query ChildQuery Slam ChildS
 type SignInHTML = H.ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
 type SignInDSL = H.ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp =
+comp ∷ ∀ r. SignInBusW r → H.Component StateP QueryP Slam
+comp bus =
   H.lifecycleParentComponent
     { render
-    , eval
+    , eval: eval bus
     , peek: Just (menuPeek ∘ H.runChildF)
     , initializer: Just (H.action Init)
     , finalizer: Nothing
@@ -100,9 +101,13 @@ render state =
         , initialState: H.parentState $ Menu.make []
         }
 
-eval ∷ Natural Query SignInDSL
-eval (DismissSubmenu next) = dismissAll $> next
-eval (Init next) = update $> next
+eval ∷ ∀ r. SignInBusW r → Query ~> SignInDSL
+eval _ (DismissSubmenu next) = dismissAll $> next
+eval bus (SignedIn next) =
+  sendMessage *> update $> next
+  where
+  sendMessage = H.fromAff $ Bus.write SignInSuccess bus
+eval _ (Init next) = update $> next
 
 update ∷ SignInDSL Unit
 update = do
@@ -175,7 +180,7 @@ submenuPeek
 submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
   H.subscribe'
     ∘ HE.EventSource
-    ∘ StallingCoroutine.mapStallingProducer (const $ Init unit)
+    ∘ StallingCoroutine.mapStallingProducer (const $ SignedIn unit)
     ∘ StallingCoroutine.filter isIdTokenKeyEvent
     ∘ StallingCoroutine.producerToStallingProducer
     =<< H.fromEff (LocalStorage.getStorageEventProducer false)

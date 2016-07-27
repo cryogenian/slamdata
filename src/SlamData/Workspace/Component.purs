@@ -77,6 +77,7 @@ import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash)
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Wiring (Wiring, DeckMessage(..), putDeck, getDeck)
+import SlamData.SignIn.Bus (SignInBus)
 
 import Utils.Path as UP
 import Utils.DOM (onResize)
@@ -85,18 +86,18 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ Wiring → H.Component StateP QueryP Slam
-comp wiring =
+comp ∷ Wiring → SignInBus → H.Component StateP QueryP Slam
+comp wiring signInBus =
   H.lifecycleParentComponent
-    { render: render wiring
+    { render: render wiring signInBus
     , eval: eval wiring
     , peek: Just (peek wiring ∘ H.runChildF)
     , initializer: Just $ Init unit
     , finalizer: Nothing
     }
 
-render ∷ Wiring → State → WorkspaceHTML
-render wiring state =
+render ∷ Wiring → SignInBus → State → WorkspaceHTML
+render wiring signInBus state =
   HH.div
     [ HP.classes
         $ (guard (AT.isReadOnly (state ^. _accessType)) $> HH.className "sd-published")
@@ -116,7 +117,7 @@ render wiring state =
   header = do
     guard $ AT.isEditable (state ^. _accessType)
     pure $ HH.slot' cpHeader unit \_ →
-      { component: Header.comp
+      { component: Header.comp signInBus
       , initialState: H.parentState Header.initialState
       }
 

@@ -24,6 +24,7 @@ import Control.Monad.Aff (Aff, forkAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.UI.Browser as Browser
+import Control.Monad.Aff.Bus as Bus
 
 import Ace.Config as AceConfig
 
@@ -61,8 +62,9 @@ main = do
     forkAff Analytics.enableAnalytics
     let st = Workspace.initialState (Just "3.0")
     wiring ← makeWiring
+    signInBus ← Bus.make
     forkAff (Analytics.consumeEvents wiring.analytics)
-    driver ← runUI (Workspace.comp wiring) (parentState st) =<< awaitBody
+    driver ← runUI (Workspace.comp wiring signInBus) (parentState st) =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles
 

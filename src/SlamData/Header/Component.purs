@@ -27,6 +27,7 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Effects (Slam)
 import SlamData.Header.Gripper.Component as Gripper
 import SlamData.SignIn.Component as SignIn
+import SlamData.SignIn.Bus (SignInBus)
 import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (logo)
 
@@ -70,11 +71,11 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Nothing }
+comp ∷ SignInBus → H.Component StateP QueryP Slam
+comp signInBus = H.parentComponent { render: render signInBus, eval, peek: Nothing }
 
-render ∷ Unit → HTML
-render _ =
+render ∷ SignInBus → Unit → HTML
+render signInBus _ =
   HH.nav_
     [ HH.div_
         [ HH.div_
@@ -83,12 +84,12 @@ render _ =
                 , HH.div
                     [ HP.classes [ B.pullRight ] ]
                     [ HH.slot' cpSignIn unit \_ →
-                         { component: SignIn.comp
+                         { component: SignIn.comp signInBus
                          , initialState: H.parentState SignIn.initialState
                          }
                     ]
                 , HH.slot' cpGripper unit \_ →
-                      { component: Gripper.comp "nav"
+                      { component: Gripper.comp signInBus "nav"
                       , initialState: Gripper.initialState
                       }
                 ]

@@ -80,6 +80,7 @@ import SlamData.Render.Common (content, row)
 import SlamData.SignIn.Component as SignIn
 import SlamData.Workspace.Action (Action(..), AccessType(..))
 import SlamData.Workspace.Routing (mkWorkspaceURL)
+import SlamData.SignIn.Bus (SignInBus)
 
 import Utils.DOM as D
 import Utils.Path (DirPath, getNameStr)
@@ -87,17 +88,18 @@ import Utils.Path (DirPath, getNameStr)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
+comp ∷ SignInBus → H.Component StateP QueryP Slam
+comp signInBus =
+  H.parentComponent { render: render signInBus, eval, peek: Just (peek ∘ H.runChildF) }
 
-render ∷ State → HTML
-render state@{ version, sort, salt, path } =
+render ∷ SignInBus → State → HTML
+render signInBus state@{ version, sort, salt, path } =
   HH.div
     [ HP.classes [ CSS.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
     ]
     [ HH.slot' cpHeader unit \_ →
-          { component: Header.comp
+          { component: Header.comp signInBus
           , initialState: H.parentState Header.initialState
           }
 
