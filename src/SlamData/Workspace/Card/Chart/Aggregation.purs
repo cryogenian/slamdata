@@ -19,7 +19,7 @@ module SlamData.Workspace.Card.Chart.Aggregation where
 import SlamData.Prelude
 
 import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson)
-import Data.Foldable (sum, product)
+import Data.Foldable (sum, product, maximum, minimum)
 import Data.List as L
 
 import SlamData.Form.Select (class OptionVal, Select(..))
@@ -67,9 +67,9 @@ runAggregation
   ⇒ Aggregation
   → f a
   → a
-runAggregation Maximum nums = foldl (\b a → if b > a then b else a) zero nums
-runAggregation Minimum nums = foldl (\b a → if b > a then a else b) zero nums
-runAggregation Average nums =
+runAggregation Maximum nums = fromMaybe zero $ maximum nums
+runAggregation Minimum nums = fromMaybe zero $ minimum nums
+runAggregation Average nums = 
   normalize
   $ foldl (\acc a → bimap (add one) (add a) acc)  (Tuple zero zero) nums
   where
@@ -77,11 +77,18 @@ runAggregation Average nums =
 runAggregation Sum nums = sum nums
 runAggregation Product nums = product nums
 
-aggregationSelect ∷ Select Aggregation
+aggregationSelect ∷ Select (Maybe Aggregation)
 aggregationSelect =
   Select
-     { value: Just Sum
-     , options: allAggregations
+     { value: Just $ Just Sum
+     , options: map Just allAggregations
+     }
+
+aggregationSelectWithNone ∷ Select (Maybe Aggregation)
+aggregationSelectWithNone =
+  Select
+     { value: Just Nothing
+     , options: [Nothing] <> map Just allAggregations
      }
 
 
@@ -99,3 +106,11 @@ instance optionValAggregation ∷ OptionVal Aggregation where
 
 instance arbitraryAggregation ∷ SC.Arbitrary Aggregation where
   arbitrary = Gen.elements defaultAggregation $ L.toList allAggregations
+
+newtype ArbAggregation = ArbAggregation (Maybe Aggregation)
+
+runArbAggregation ∷ ArbAggregation → (Maybe Aggregation)
+runArbAggregation (ArbAggregation m) = m
+
+instance arbitraryArbAggregation ∷ SC.Arbitrary ArbAggregation where
+  arbitrary = ArbAggregation <$> Gen.allInArray (map Just allAggregations)

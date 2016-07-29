@@ -38,7 +38,12 @@ instance arbitraryArbBuildOptions :: Arbitrary ArbBuildOptions where
     axisLabelFontSize <- arbitrary
     areaStacked <- arbitrary
     smooth <- arbitrary
-    pure $ ArbBuildOptions { chartType, axisLabelAngle, axisLabelFontSize, areaStacked, smooth }
+    bubbleMinSize <- arbitrary
+    bubbleMaxSize <- arbitrary
+    pure $ ArbBuildOptions 
+      { chartType, axisLabelAngle, axisLabelFontSize, areaStacked
+      , smooth, bubbleMinSize, bubbleMaxSize
+      }
 
 check :: QC Unit
 check = quickCheck $ runArbBuildOptions >>> \co ->
@@ -54,4 +59,6 @@ checkBuildOptionsEquality co co' =
    , co.axisLabelFontSize == co'.axisLabelFontSize <?> "axis label font size mismatch"
    , co.areaStacked == co'.areaStacked <?> "area stacked mismatch"
    , co.smooth == co'.smooth <?> "smooth mismatch"
+   , co.bubbleMinSize == co'.bubbleMinSize <?> "bubbleMinSize mismatch"
+   , co.bubbleMaxSize == co'.bubbleMaxSize <?> "bubbleMaxSize mismatch"
    ]

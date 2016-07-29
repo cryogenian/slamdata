@@ -39,8 +39,8 @@ barChartIcon = className "bar-chart-icon"
 lineChartIcon ∷ ClassName
 lineChartIcon = className "line-chart-icon"
 
-radarChartIcon ∷ ClassName
-radarChartIcon = className "radar-chart-icon"
+scatterChartIcon ∷ ClassName
+scatterChartIcon = className "scatter-chart-icon"
 
 axisLabelParam ∷ ClassName
 axisLabelParam = className "axis-label-param"

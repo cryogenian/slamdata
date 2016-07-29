@@ -16,7 +16,8 @@ limitations under the License.
 
 module SlamData.Workspace.Card.ChartOptions.Form.Component
   ( formComponent
-  , initialState
+  , getInitialState
+  , initialConfiguration
   , Query(..)
   , QueryP
   , StateP
@@ -48,10 +49,11 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
-import SlamData.Form.Select (Select(..))
+import SlamData.Form.Select (Select)
 import SlamData.Form.Select.Component as S
 import SlamData.Form.SelectPair.Component as P
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), allAggregations)
+import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, aggregationSelect, aggregationSelectWithNone)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Chart.ChartConfiguration (JSelect, ChartConfiguration)
 import SlamData.Workspace.Card.ChartOptions.Form.Component.CSS as CSS
 
@@ -59,10 +61,19 @@ data Query a
   = SetConfiguration ChartConfiguration a
   | GetConfiguration (ChartConfiguration → a)
 
-type State = ChartConfiguration
+type State =
+  { chartType ∷ ChartType
+  , chartConfiguration ∷ ChartConfiguration
+  }
 
-initialState ∷ State
-initialState =
+getInitialState ∷ ChartType → State
+getInitialState ty = 
+  { chartType: ty
+  , chartConfiguration: initialConfiguration
+  }
+
+initialConfiguration ∷ ChartConfiguration
+initialConfiguration = 
   { dimensions: []
   , series: []
   , measures: []
@@ -76,14 +87,14 @@ type ChildSlot = Either DimensionSlot (Either SeriesSlot MeasureSlot)
 
 type DimensionQuery = S.Query JCursor
 type SeriesQuery = S.Query JCursor
-type MeasureQuery = P.QueryP Aggregation JCursor
-type MeasureAggQuery = S.Query Aggregation
+type MeasureQuery = P.QueryP (Maybe Aggregation) JCursor
+type MeasureAggQuery = S.Query (Maybe Aggregation)
 type MeasureSelQuery = S.Query JCursor
 type ChildQuery = Coproduct DimensionQuery (Coproduct SeriesQuery MeasureQuery)
 
 type DimensionState = Select JCursor
 type SeriesState = Select JCursor
-type MeasureState = P.StateP Aggregation JCursor
+type MeasureState = P.StateP (Maybe Aggregation) JCursor
 type ChildState = Either DimensionState (Either SeriesState MeasureState)
 
 type FormHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
@@ -116,24 +127,35 @@ formComponent ∷ H.Component StateP QueryP Slam
 formComponent = H.parentComponent { render, eval, peek: Nothing }
 
 render
-  ∷ ChartConfiguration
+  ∷ State
   → FormHTML
-render conf =
-  HH.div
+render state = case state.chartType of
+  Scatter → HH.div
     [ HP.classes [ CSS.chartEditor ] ]
     $ fold
-      [ if null conf.dimensions
-          then foldMap (renderCategory 0) (conf.series !! 0)
-          else foldMap (renderDimension 0) (conf.dimensions !! 0)
+      [ foldMap (renderMeasure 0 aggregationSelectWithNone) (state.chartConfiguration.measures !! 0)
+      , foldMap (renderMeasure 1 aggregationSelectWithNone) (state.chartConfiguration.measures !! 1)
+      , foldMap (renderMeasure 2 aggregationSelectWithNone) (state.chartConfiguration.measures !! 2)
       , hr
-      , foldMap (renderMeasure 0) (conf.measures !! 0)
-      , foldMap (renderMeasure 1) (conf.measures !! 1)
+      , foldMap (renderSeries 0) (state.chartConfiguration.series !! 0)
+        ⊕ foldMap (renderSeries 1) (state.chartConfiguration.series !! 1)
+      , hr
+      ]
+  _ -> HH.div
+    [ HP.classes [ CSS.chartEditor ] ]
+    $ fold
+      [ if null state.chartConfiguration.dimensions
+          then foldMap (renderCategory 0) (state.chartConfiguration.series !! 0)
+          else foldMap (renderDimension 0) (state.chartConfiguration.dimensions !! 0)
+      , hr
+      , foldMap (renderMeasure 0 aggregationSelect) (state.chartConfiguration.measures !! 0)
+      , foldMap (renderMeasure 1 aggregationSelect) (state.chartConfiguration.measures !! 1)
       , hr
       , let ixes =
-          if null conf.dimensions then { fstIx: 1, sndIx: 2} else { fstIx: 0, sndIx: 1}
+          if null state.chartConfiguration.dimensions then { fstIx: 1, sndIx: 2} else { fstIx: 0, sndIx: 1}
         in
-          foldMap (renderSeries ixes.fstIx) (conf.series !! ixes.fstIx)
-          ⊕ foldMap (renderSeries ixes.sndIx) (conf.series !! ixes.sndIx)
+          foldMap (renderSeries ixes.fstIx) (state.chartConfiguration.series !! ixes.fstIx)
+          ⊕ foldMap (renderSeries ixes.sndIx) (state.chartConfiguration.series !! ixes.sndIx)
       , hr
       ]
   where
@@ -154,8 +176,8 @@ render conf =
         ]
     ]
 
-  renderMeasure ∷ Int → JSelect → Array FormHTML
-  renderMeasure ix sel =
+  renderMeasure ∷ Int → Select (Maybe Aggregation) → JSelect → Array FormHTML
+  renderMeasure ix aggSelect sel =
     [ HH.form
         [ CP.nonSubmit
         , HP.classes
@@ -167,7 +189,7 @@ render conf =
         [ measureLabel
         , HH.slot' cpMeasure ix \_ →
             { component: childMeasure ix sel
-            , initialState: H.parentState $ P.initialState aggregationSelect
+            , initialState: H.parentState $ P.initialState aggSelect
             }
         ]
     ]
@@ -223,13 +245,6 @@ render conf =
            }
 
 
-  aggregationSelect ∷ Select Aggregation
-  aggregationSelect =
-    Select
-      { options: allAggregations
-      , value: Just Sum
-      }
-
   label ∷ String → FormHTML
   label str = HH.label [ HP.classes [ B.controlLabel ] ] [ HH.text str ]
 
@@ -254,11 +269,11 @@ render conf =
 eval ∷ Natural Query FormDSL
 eval (SetConfiguration conf next) = do
   r ← H.get
-  H.set conf
-  synchronizeDimensions r.dimensions conf.dimensions
-  synchronizeSeries r.series conf.series
-  synchronizeMeasures r.measures conf.measures
-  synchronizeAggregations r.aggregations conf.aggregations
+  H.modify _{chartConfiguration = conf}
+  synchronizeDimensions r.chartConfiguration.dimensions conf.dimensions
+  synchronizeSeries r.chartConfiguration.series conf.series
+  synchronizeMeasures r.chartConfiguration.measures conf.measures
+  synchronizeAggregations r.chartConfiguration.aggregations conf.aggregations
   pure next
   where
   synchronizeDimensions ∷ Array JSelect → Array JSelect → FormDSL Unit
@@ -307,12 +322,12 @@ eval (SetConfiguration conf next) = do
         ∘ S.SetSelect
 
   synchronizeAggregations
-    ∷ Array (Select Aggregation) → Array (Select Aggregation) → FormDSL Unit
+    ∷ Array (Select (Maybe Aggregation)) → Array (Select (Maybe Aggregation)) → FormDSL Unit
   synchronizeAggregations old new =
     traverse_ (syncAggByIndex old new) $ range 0 $ getLastIndex old new
 
   syncAggByIndex
-    ∷ Array (Select Aggregation) → Array (Select Aggregation) → Int
+    ∷ Array (Select (Maybe Aggregation)) → Array (Select (Maybe Aggregation)) → Int
     → FormDSL Unit
   syncAggByIndex old new i =
     for_ (old !! i) \_ →
@@ -332,11 +347,10 @@ eval (SetConfiguration conf next) = do
 
 
 eval (GetConfiguration continue) = do
-  conf ← H.get
   dims ← getDimensions
   series ← getSeries
   measures ← getMeasures
-  r ← { dimensions: _, series: _, measures: _, aggregations: _}
+  r ← { dimensions: _, series: _, measures: _, aggregations: _ }
     <$> getDimensions
     <*> getSeries
     <*> getMeasures
@@ -345,9 +359,9 @@ eval (GetConfiguration continue) = do
   where
   getDimensions ∷ FormDSL (Array JSelect)
   getDimensions = do
-    conf ← H.get
+    state ← H.get
     map catMaybes
-      $ traverse getDimension (range' 0 $ length conf.dimensions - 1)
+      $ traverse getDimension (range' 0 $ length state.chartConfiguration.dimensions - 1)
 
   getDimension ∷ Int → FormDSL (Maybe JSelect)
   getDimension i =
@@ -356,9 +370,9 @@ eval (GetConfiguration continue) = do
 
   getSeries ∷ FormDSL (Array JSelect)
   getSeries = do
-    conf ← H.get
+    state ← H.get
     map catMaybes
-      $ traverse getSerie (range' 0 $ length conf.series - 1)
+      $ traverse getSerie (range' 0 $ length state.chartConfiguration.series - 1)
 
   getSerie ∷ Int → FormDSL (Maybe JSelect)
   getSerie i = do
@@ -367,9 +381,9 @@ eval (GetConfiguration continue) = do
 
   getMeasures ∷ FormDSL (Array JSelect)
   getMeasures = do
-    conf ← H.get
+    state ← H.get
     map catMaybes
-      $ traverse getMeasure (range' 0 $ length conf.measures - 1)
+      $ traverse getMeasure (range' 0 $ length state.chartConfiguration.measures - 1)
 
   getMeasure ∷ Int → FormDSL (Maybe JSelect)
   getMeasure i =
@@ -378,13 +392,13 @@ eval (GetConfiguration continue) = do
       $ H.ChildF unit
       $ H.request S.GetSelect
 
-  getAggregations ∷ FormDSL (Array (Select Aggregation))
+  getAggregations ∷ FormDSL (Array (Select (Maybe Aggregation)))
   getAggregations = do
-    conf ← H.get
+    state ← H.get
     map catMaybes
-      $ traverse getAggregation (range' 0 $ length conf.measures - 1)
+      $ traverse getAggregation (range' 0 $ length state.chartConfiguration.measures - 1)
 
-  getAggregation ∷ Int → FormDSL (Maybe (Select Aggregation))
+  getAggregation ∷ Int → FormDSL (Maybe (Select (Maybe Aggregation)))
   getAggregation i =
     H.query' cpMeasure i
       $ left

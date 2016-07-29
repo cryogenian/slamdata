@@ -25,6 +25,8 @@ module SlamData.Workspace.Card.ChartOptions.Component.State
   , _levelOfDetails
   , _areaStacked
   , _smooth
+  , _bubbleMinSize
+  , _bubbleMaxSize
   , StateP
   , fromModel
   ) where
@@ -55,6 +57,8 @@ type State =
   , levelOfDetails ∷ LevelOfDetails
   , areaStacked :: Boolean
   , smooth :: Boolean
+  , bubbleMinSize :: Number
+  , bubbleMaxSize :: Number
   }
 
 initialState ∷ State
@@ -67,6 +71,8 @@ initialState =
   , levelOfDetails: High
   , areaStacked: false
   , smooth: false
+  , bubbleMinSize: 1.0
+  , bubbleMaxSize: 50.0
   }
 
 _chartType ∷ ∀ a r. LensP {chartType ∷ a |r} a
@@ -93,6 +99,12 @@ _smooth = lens _.smooth _{smooth = _}
 _areaStacked ∷ ∀ a r. LensP {areaStacked ∷ a | r} a
 _areaStacked = lens _.areaStacked _{areaStacked = _}
 
+_bubbleMinSize ∷ ∀ a r. LensP {bubbleMinSize ∷ a | r} a
+_bubbleMinSize = lens _.bubbleMinSize _{bubbleMinSize = _}
+
+_bubbleMaxSize ∷ ∀ a r. LensP {bubbleMaxSize ∷ a | r} a
+_bubbleMaxSize = lens _.bubbleMaxSize _{bubbleMaxSize = _}
+
 type StateP =
   ParentState
     State
@@ -109,4 +121,6 @@ fromModel { options } =
     , axisLabelAngle = options.axisLabelAngle
     , areaStacked = options.areaStacked
     , smooth = options.smooth
+    , bubbleMinSize = options.bubbleMinSize
+    , bubbleMaxSize = options.bubbleMaxSize
     }

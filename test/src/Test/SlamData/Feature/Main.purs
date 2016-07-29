@@ -18,8 +18,6 @@ import Data.Array as Arr
 import Data.Posix.Signal (Signal(SIGTERM))
 import Data.String as Str
 
-import Database.Mongo.Mongo (connect, close)
-
 import DOM (DOM)
 
 import Node.ChildProcess as CP
@@ -52,7 +50,7 @@ import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Test.SlamData.Feature.Test.CacheCard as Cache
 import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
-import Text.Chalky (green, yellow, magenta, gray, red)
+import Text.Chalky (green, yellow, gray, red)
 
 foreign import getConfig ∷ ∀ e. Eff (fs ∷ FS|e) Config
 foreign import createReadStream
@@ -269,12 +267,7 @@ main = do
     restoreDatabase rawConfig
     log $ gray "Database restored"
 
-    log $ magenta "Connecting database"
-    db ← connect $ mongoConnectionString rawConfig
-    log $ magenta "Ok, connected"
-
     log $ yellow "Starting tests"
-
     testResults
       ← attempt
         $ runTests rawConfig
@@ -284,7 +277,6 @@ main = do
                   { filePaths =
                        map (\x → resolve [ x ] "") rawConfig.upload.filePaths }
               }
-    close db
     case testResults of
       Left e →  throwError e
       Right _ → log $ green "OK, tests are passed"

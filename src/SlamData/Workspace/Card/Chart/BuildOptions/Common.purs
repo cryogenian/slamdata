@@ -27,6 +27,7 @@ import Data.List (List(..), replicate, length)
 import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
+import Data.Maybe.Unsafe (fromJust)
 
 import Color (Color, toRGBA, fromHexString, hsla, toHSLA)
 
@@ -42,7 +43,7 @@ type ChartAxises =
   { dimensions ∷ Array (List (Maybe String))
   , series ∷ Array (List (Maybe String))
   , measures ∷ Array (List (Maybe Number))
-  , aggregations ∷ Array (Maybe Aggregation)
+  , aggregations ∷ Array (Maybe (Maybe Aggregation))
   }
 
 colors ∷ Array String
@@ -186,16 +187,24 @@ getShadeColor hex alpha =
         (fromHexString hex)) 
       0.95) 
     alpha
-  where
-  lightenTo :: Color → Number → Color
-  lightenTo col l' = hsla c.h c.s l' c.a
-    where
-    c = toHSLA col
 
-  setAlpha :: Color → Number → Color
-  setAlpha col a' = hsla c.h c.s c.l a'
-    where
-    c = toHSLA col 
+getTransparentColor ∷ String → Number → Color
+getTransparentColor hex alpha =
+  setAlpha  
+    (fromMaybe 
+      (hsla 0.0 0.0 0.0 1.0)  
+      (fromHexString hex))
+    alpha
+
+lightenTo ∷ Color → Number → Color
+lightenTo col l' = hsla c.h c.s l' c.a
+  where
+  c = toHSLA col
+
+setAlpha ∷ Color → Number → Color
+setAlpha col a' = hsla c.h c.s c.l a'
+  where
+  c = toHSLA col 
 
 toRGBAString ∷ Color → String
 toRGBAString col = "rgba(" <> show c.r <> ", "
@@ -225,7 +234,7 @@ buildChartAxises axisMap conf =
   getAxises sels =
     map Ax.runAxis $ catMaybes $ map (view _value >=> flip M.lookup axisMap) sels
 
-  aggregations ∷ Array (Maybe Aggregation)
+  aggregations ∷ Array (Maybe (Maybe Aggregation))
   aggregations = map (view _value) conf.aggregations
 
 type Key = Tuple String SeriesKey
@@ -255,8 +264,8 @@ pieBarData ∷ ChartAxises → PieBarData
 pieBarData axises =
   aggregate agg $ pieBarRawData categories firstSeries secondSeries values M.empty
   where
-  agg ∷ Aggregation
-  agg = fromMaybe Sum $ join (axises.aggregations !! 0)
+  agg ∷ Maybe Aggregation
+  agg = fromMaybe (Just Sum) $ join (axises.aggregations !! 0)
 
   categories ∷ List (Maybe String)
   categories = fromMaybe Nil $ axises.series !! 0
@@ -294,9 +303,13 @@ pieBarRawData (Cons (Just category) cs) (Cons mbFirstSerie fss)
   alterFn ∷ Number → Maybe (Array Number) → Maybe (Array Number)
   alterFn v vals = pure $ cons v $ fromMaybe [] vals
 
-aggregate ∷ Aggregation → LabeledPoints → PieBarData
-aggregate agg acc = map (runAggregation agg) acc
-
+aggregate ∷ Maybe Aggregation → LabeledPoints → PieBarData
+aggregate agg acc = case agg of
+  -- 'Nothing' is not suitable for aggreation of Pie and Bar Chart.
+  -- To avoid 'Nothing', control the options in aggreation selector.
+  -- In case that aggreation is 'Nothing', coerce it to be replaced by 'Just Sum'.
+  Nothing → map (runAggregation Sum) acc
+  _ →  map (runAggregation $ fromJust agg) acc
 
 -- Having array of pairs Key → Number and array of categories (String)
 -- 1. drop any pair theat has no category from second argument

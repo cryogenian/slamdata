@@ -30,6 +30,7 @@ import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.String as Str
+import Data.Maybe.Unsafe (fromJust)
 
 import ECharts as EC
 
@@ -61,11 +62,11 @@ lineData axises =
   in
     aggregatePairs firstAgg secondAgg lr
   where
-  firstAgg ∷ Aggregation
-  firstAgg = fromMaybe Sum $ join (axises.aggregations !! 0)
+  firstAgg ∷ Maybe Aggregation
+  firstAgg = fromMaybe (Just Sum) $ join (axises.aggregations !! 0)
 
-  secondAgg ∷ Aggregation
-  secondAgg = fromMaybe Sum $ join (axises.aggregations !! 1)
+  secondAgg ∷ Maybe Aggregation
+  secondAgg = fromMaybe (Just Sum) $ join (axises.aggregations !! 1)
 
   dimensions ∷ List (Maybe String)
   dimensions = fromMaybe Nil $ axises.dimensions !! 0
@@ -132,10 +133,17 @@ lineRawData
     case fromMaybe (Tuple [] []) acc of
       Tuple v1s v2s → pure $ Tuple (cons v1 v1s) (cons v2 v2s)
 
+-- 'Nothing' is not suitable for aggreation of Pie and Bar Chart.
+-- To avoid 'Nothing', control the options in aggreation selector.
+-- In case that aggreation is 'Nothing', coerce it to be replaced by 'Just Sum'.
+aggregatePairs ∷ Maybe Aggregation → Maybe Aggregation → LabeledPointPairs → LineData
+aggregatePairs fAgg sAgg lp = 
+  M.toList $ map 
+    ( bimap 
+        (runAggregation (if isNothing fAgg then Sum else (fromJust fAgg))) 
+        (runAggregation (if isNothing sAgg then Sum else (fromJust sAgg))) 
+    ) lp
 
-aggregatePairs ∷ Aggregation → Aggregation → LabeledPointPairs → LineData
-aggregatePairs fAgg sAgg lp =
-  M.toList $ map (bimap (runAggregation fAgg) (runAggregation sAgg)) lp
 
 buildLine
   ∷ M.Map JCursor Ax.Axis

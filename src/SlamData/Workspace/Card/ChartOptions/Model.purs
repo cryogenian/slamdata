@@ -76,5 +76,7 @@ initialModel =
       , axisLabelAngle: 0
       , areaStacked: false
       , smooth: false
+      , bubbleMinSize: 1.0
+      , bubbleMaxSize: 50.0
       }
   }
