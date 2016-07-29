@@ -77,7 +77,7 @@ eval info model = do
       if null axes.value
       then []
       else if not $ null axes.category
-           then [ Pie, Bar, Line, Area ]
+           then [ Pie, Bar, Line, Area, Radar ]
            else if (null axes.time) ∧ (length axes.value < 2)
                 then []
                 else [ Line, Area ]

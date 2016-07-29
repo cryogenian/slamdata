@@ -36,6 +36,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Bar (buildBar)
 import SlamData.Workspace.Card.Chart.BuildOptions.Line (buildLine)
 import SlamData.Workspace.Card.Chart.BuildOptions.Pie (buildPie)
 import SlamData.Workspace.Card.Chart.BuildOptions.Area (buildArea)
+import SlamData.Workspace.Card.Chart.BuildOptions.Radar (buildRadar)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 import Test.StrongCheck as SC
@@ -112,4 +113,5 @@ buildOptions_ Pie mp _ _ _ _ conf = buildPie mp conf
 buildOptions_ Bar mp angle size _ _ conf = buildBar mp angle size conf
 buildOptions_ Line mp angle size _ _ conf = buildLine mp angle size conf
 buildOptions_ Area mp angle size stacked smooth conf = buildArea mp angle size stacked smooth conf
+buildOptions_ Radar mp _ _ _ _ conf = buildRadar mp conf
 

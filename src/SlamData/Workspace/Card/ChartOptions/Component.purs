@@ -46,7 +46,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isRadar)
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
 import SlamData.Workspace.Card.ChartOptions.Component.State as VCS
@@ -173,12 +173,14 @@ renderChartTypeSelector state =
   src Line = "img/line.svg"
   src Bar = "img/bar.svg"
   src Area = "img/area.svg"
+  src Radar = "img/radar.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
   cls Line = CSS.lineChartIcon
   cls Bar = CSS.barChartIcon
   cls Area = CSS.areaChartIcon
+  cls Radar = CSS.radarChartIcon
 
 
 renderChartConfiguration ∷ VCS.State → HTML
@@ -189,6 +191,7 @@ renderChartConfiguration state =
     , renderTab Line
     , renderTab Bar
     , renderTab Area
+    , renderTab Radar
     , renderDimensions state
     ]
   where
@@ -209,9 +212,11 @@ renderDimensions ∷ VCS.State → HTML
 renderDimensions state =
   row
   [ chartInput CSS.axisLabelParam "Axis label angle"
-      (_.axisLabelAngle ⋙ show) RotateAxisLabel (isPie state.chartType)
+      (_.axisLabelAngle ⋙ show) RotateAxisLabel 
+        (isPie state.chartType || isRadar state.chartType)
   , chartInput CSS.axisLabelParam "Axis font size"
-      (_.axisLabelFontSize ⋙ show) SetAxisFontSize (isPie state.chartType)
+      (_.axisLabelFontSize ⋙ show) SetAxisFontSize 
+        (isPie state.chartType || isRadar state.chartType)
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked)ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
@@ -367,6 +372,8 @@ configure = void do
   setConfFor Bar $ pieBarConfiguration axes barConf
   areaConf ← getOrInitial Area
   setConfFor Area $ areaConfiguration axes areaConf
+  radarConf ← getOrInitial Radar
+  setConfFor Radar $ radarConfiguration axes radarConf
   where
   getOrInitial ∷ ChartType → DSL ChartConfiguration
   getOrInitial ty =
@@ -475,6 +482,32 @@ configure = void do
        , dimensions: [dimensions]
        , measures: [firstMeasures, secondMeasures]
        , aggregations: [firstAggregation, secondAggregation]
+       }
+       
+  radarConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
+  radarConfiguration axes current =
+    let allAxises = (axes.category ⊕ axes.time ⊕ axes.value)
+        dimensions =
+          setPreviousValueFrom (index current.dimensions 0)
+          $ autoSelect $ newSelect $ axes.category
+        firstMeasures =
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ ifSelected [dimensions]
+          $ axes.value
+        firstSeries =
+          setPreviousValueFrom (index current.series 0)
+          $ newSelect $ ifSelected [firstMeasures]
+          $ allAxises ⊝ dimensions ⊝ firstMeasures
+        secondSeries =
+          setPreviousValueFrom (index current.series 1)
+          $ newSelect $ ifSelected [firstSeries]
+          $ allAxises ⊝ firstSeries
+        firstAggregation =
+          setPreviousValueFrom (index current.aggregations 0) aggregationSelect
+    in { series: [firstSeries, secondSeries]
+       , dimensions: [dimensions]
+       , measures: [firstMeasures]
+       , aggregations: [firstAggregation]
        }
 
 peek ∷ ∀ a. H.ChildF ChartType Form.QueryP a → DSL Unit
