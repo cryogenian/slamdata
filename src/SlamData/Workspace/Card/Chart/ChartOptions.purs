@@ -36,6 +36,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Bar (buildBar)
 import SlamData.Workspace.Card.Chart.BuildOptions.Line (buildLine)
 import SlamData.Workspace.Card.Chart.BuildOptions.Pie (buildPie)
 import SlamData.Workspace.Card.Chart.BuildOptions.Area (buildArea)
+import SlamData.Workspace.Card.Chart.BuildOptions.Scatter (buildScatter)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 import Test.StrongCheck as SC
@@ -47,6 +48,8 @@ type BuildOptions =
   , axisLabelFontSize ∷ Int
   , areaStacked :: Boolean
   , smooth :: Boolean
+  , bubbleMinSize :: Number
+  , bubbleMaxSize :: Number
   }
 
 eqBuildOptions ∷ BuildOptions → BuildOptions → Boolean
@@ -56,6 +59,8 @@ eqBuildOptions o1 o2 =
     && o1.axisLabelFontSize ≡ o2.axisLabelFontSize
     && o1.areaStacked ≡ o2.areaStacked
     && o1.smooth ≡ o2.smooth
+    && o1.bubbleMinSize ≡ o2.bubbleMinSize
+    && o1.bubbleMaxSize ≡ o2.bubbleMaxSize
 
 genBuildOptions ∷ Gen.Gen BuildOptions
 genBuildOptions = do
@@ -64,7 +69,10 @@ genBuildOptions = do
   axisLabelFontSize ← SC.arbitrary
   areaStacked ← SC.arbitrary
   smooth ← SC.arbitrary
-  pure { chartType, axisLabelAngle, axisLabelFontSize, areaStacked, smooth }
+  bubbleMinSize ← SC.arbitrary
+  bubbleMaxSize ← SC.arbitrary
+  pure { chartType, axisLabelAngle, axisLabelFontSize
+       , areaStacked, smooth, bubbleMinSize, bubbleMaxSize }
 
 encode ∷ BuildOptions → Json
 encode m
@@ -73,16 +81,21 @@ encode m
   ~> "axisLabelFontSize" := m.axisLabelFontSize
   ~> "areaStacked" := m.areaStacked  
   ~> "smooth" := m.smooth
+  ~> "bubbleMinSize" := m.bubbleMinSize
+  ~> "bubbleMaxSize" := m.bubbleMaxSize  
   ~> jsonEmptyObject
 
 decode ∷ Json → Either String BuildOptions
 decode = decodeJson >=> \obj →
-  { chartType: _, axisLabelAngle: _, axisLabelFontSize: _, areaStacked: _, smooth: _ }
+  { chartType: _, axisLabelAngle: _, axisLabelFontSize: _
+  , areaStacked: _, smooth: _, bubbleMinSize:_, bubbleMaxSize: _ }
     <$> (obj .? "chartType")
     <*> (obj .? "axisLabelAngle")
     <*> (obj .? "axisLabelFontSize")
     <*> (obj .? "areaStacked")
     <*> (obj .? "smooth")
+    <*> (obj .? "bubbleMinSize")
+    <*> (obj .? "bubbleMaxSize")
 
 buildOptions
   ∷ BuildOptions
@@ -97,6 +110,8 @@ buildOptions args conf records =
     args.axisLabelFontSize
     args.areaStacked
     args.smooth
+    args.bubbleMinSize
+    args.bubbleMaxSize
     conf
 
 buildOptions_
@@ -106,10 +121,18 @@ buildOptions_
   → Int
   → Boolean
   → Boolean
+  → Number
+  → Number
   → ChartConfiguration
   → Option
-buildOptions_ Pie mp _ _ _ _ conf = buildPie mp conf
-buildOptions_ Bar mp angle size _ _ conf = buildBar mp angle size conf
-buildOptions_ Line mp angle size _ _ conf = buildLine mp angle size conf
-buildOptions_ Area mp angle size stacked smooth conf = buildArea mp angle size stacked smooth conf
+buildOptions_ Pie mp _ _ _ _ _ _ conf = 
+  buildPie mp conf
+buildOptions_ Bar mp angle size _ _ _ _ conf = 
+  buildBar mp angle size conf
+buildOptions_ Line mp angle size _ _ _ _ conf = 
+  buildLine mp angle size conf
+buildOptions_ Area mp angle size stacked smooth _ _ conf = 
+  buildArea mp angle size stacked smooth conf
+buildOptions_ Scatter mp _ _ _ _ bubbleMinSize bubbleMaxSize conf = 
+  buildScatter mp bubbleMinSize bubbleMaxSize conf
 

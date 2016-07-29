@@ -30,6 +30,7 @@ import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.String as Str
+import Data.Maybe.Unsafe (fromJust)
 
 import ECharts as EC
 
@@ -61,11 +62,11 @@ lineData axises =
   in
     aggregatePairs firstAgg secondAgg lr
   where
-  firstAgg ∷ Aggregation
-  firstAgg = fromMaybe Sum $ join (axises.aggregations !! 0)
+  firstAgg ∷ Maybe Aggregation
+  firstAgg = fromMaybe (Just Sum) $ join (axises.aggregations !! 0)
 
-  secondAgg ∷ Aggregation
-  secondAgg = fromMaybe Sum $ join (axises.aggregations !! 1)
+  secondAgg ∷ Maybe Aggregation
+  secondAgg = fromMaybe (Just Sum) $ join (axises.aggregations !! 1)
 
   dimensions ∷ List (Maybe String)
   dimensions = fromMaybe Nil $ axises.dimensions !! 0
@@ -133,9 +134,16 @@ lineRawData
       Tuple v1s v2s → pure $ Tuple (cons v1 v1s) (cons v2 v2s)
 
 
-aggregatePairs ∷ Aggregation → Aggregation → LabeledPointPairs → LineData
-aggregatePairs fAgg sAgg lp =
-  M.toList $ map (bimap (runAggregation fAgg) (runAggregation sAgg)) lp
+-- 'Nothing' is not suitable for aggreation of Pie and Bar Chart.
+-- To avoid 'Nothing', control the options in aggreation selector.
+-- In case that aggreation is 'Nothing', coerce it to be replaced by 'Just Sum'.
+aggregatePairs ∷ Maybe Aggregation → Maybe Aggregation → LabeledPointPairs → LineData
+aggregatePairs fAgg sAgg lp = 
+  M.toList $ map 
+    ( bimap 
+        (runAggregation (if isNothing fAgg then Sum else (fromJust fAgg))) 
+        (runAggregation (if isNothing sAgg then Sum else (fromJust sAgg)))  
+    ) lp
 
 buildArea
   ∷ M.Map JCursor Ax.Axis
@@ -237,8 +245,8 @@ buildArea axises angle size stacked smooth conf = case preSeries of
         }
       , axisLine = Just $ EC.AxisLine EC.axisLineDefault 
         { lineStyle = Just $ EC.AxisLineStyle EC.axisLineStyleDefault 
-            { color = Just ([Tuple 1.0 "rgba(184,184,184,0.8)"])
-            , width = Just 1.0
+            { color = Just "rgba(184,184,184,0.8)"
+            , width = Just 0.5
             }
         }
       , splitLine = Just $ EC.AxisSplitLine EC.axisSplitLineDefault 
@@ -296,7 +304,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
         }
       , axisLine = Just $ EC.AxisLine EC.axisLineDefault 
         { lineStyle = Just $ EC.AxisLineStyle EC.axisLineStyleDefault 
-          { color = Just ([Tuple 1.0 "rgba(184,184,184,0.8)"])
+          { color = Just "rgba(184,184,184,0.8)"
           , width = Just 1.0
           }
         }
@@ -374,16 +382,18 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
             { normal = Just $ EC.IStyle EC.istyleDefault 
               { color = Just $ EC.SimpleColor $
                   fromMaybe "#000000" $ colors !! 
-                    ( (Int.round ix) * ((A.length colors)-1) + 
-                        (1-2*(Int.round ix)) * (mod ind (A.length colors)) )            
+                    ( (Int.round ix) * ((A.length colors) - 1) + 
+                        (1 - 2 * (Int.round ix)) * (mod ind (A.length colors)) )            
               , lineStyle = Just $ EC.LineStyle EC.lineStyleDefault 
                   { width = Just 2.0 }
-              , areaStyle = Just $ EC.AreaStyle $ toRGBAString $ getShadeColor
-                  (fromMaybe "#000000" $ colors !! 
-                    ( (Int.round ix) * ((A.length colors)-1) + 
-                        (1-2*(Int.round ix)) * (mod ind (A.length colors)) )            
-                  )
-                  (if stacked then 1.0 else 0.5)
+              , areaStyle = Just $ EC.AreaStyle EC.areaStyleDefault
+                  { color = Just $ EC.SimpleColor $ toRGBAString $ getShadeColor
+                    (fromMaybe "#000000" $ colors !! 
+                      ( (Int.round ix) * ((A.length colors) - 1) + 
+                        (1 - 2 * (Int.round ix)) * (mod ind (A.length colors)) )            
+                    )
+                    (if stacked then 1.0 else 0.5)
+                  } 
               }     
             }
         }

@@ -23,7 +23,7 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
 
 import Data.Argonaut (JCursor)
-import Data.Array (cons, length, null)
+import Data.Array (cons, length, null, catMaybes)
 import Data.Lens ((^?))
 import Data.Lens as Lens
 import Data.Set as Set
@@ -35,7 +35,7 @@ import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
-import SlamData.Workspace.Card.Chart.Axis (Axis, analyzeJArray)
+import SlamData.Workspace.Card.Chart.Axis (Axis, Axes, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 
 eval
@@ -74,13 +74,8 @@ eval info model = do
     sample = analyzeJArray recordSample
     axes = getAxes sample
     available =
-      if null axes.value
-      then []
-      else if not $ null axes.category
-           then [ Pie, Bar, Line, Area ]
-           else if (null axes.time) ∧ (length axes.value < 2)
-                then []
-                else [ Line, Area ]
+      catMaybes $ map (\x → x axes) 
+        [ getMaybePie, getMaybeBar, getMaybeLine, getMaybeArea, getMaybeScatter ]
 
   when (null available)
     $ EC.throwError "There is no available chart types for this data"
@@ -101,18 +96,38 @@ eval info model = do
     , axes
     }
   where
-  getAxes
-    ∷ Map.Map JCursor Axis
-    → {category ∷ Array JCursor, value ∷ Array JCursor, time ∷ Array JCursor}
+  getAxes ∷ Map.Map JCursor Axis → Axes
   getAxes sample =
     foldl foldFn {category: [], value: [], time: []} $ Map.toList sample
 
-  foldFn
-    ∷ {category ∷ Array JCursor, value ∷ Array JCursor, time ∷ Array JCursor}
-    → JCursor × Axis
-    → {category ∷ Array JCursor, value ∷ Array JCursor, time ∷ Array JCursor}
+  foldFn ∷ Axes → JCursor × Axis → Axes
   foldFn accum (cursor × axis)
     | Ax.isCatAxis axis = accum { category = cons cursor accum.category }
     | Ax.isValAxis axis = accum { value = cons cursor accum.value }
     | Ax.isTimeAxis axis = accum { time = cons cursor accum.time }
     | otherwise = accum
+
+  getMaybePie ∷ Axes → Maybe ChartType
+  getMaybePie axes = do
+    guard $ (not $ null axes.value) ∧ (not $ null axes.category)
+    pure Pie
+
+  getMaybeBar ∷ Axes → Maybe ChartType
+  getMaybeBar axes = do
+    guard $ (not $ null axes.value) ∧ (not $ null axes.category)
+    pure Bar
+
+  getMaybeLine ∷ Axes → Maybe ChartType
+  getMaybeLine axes = do
+    guard $ (not $ null axes.value) ∧ ((not $ null axes.category) || (not $ null axes.time))
+    pure Line
+
+  getMaybeArea ∷ Axes → Maybe ChartType
+  getMaybeArea axes = do
+    guard $ (not $ null axes.value) || ((not $ null axes.category) || (not $ null axes.time))
+    pure Area
+
+  getMaybeScatter ∷ Axes → Maybe ChartType
+  getMaybeScatter axes = do
+    guard $ length axes.value >= 2
+    pure Scatter

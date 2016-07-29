@@ -30,6 +30,8 @@ data Query a
   | SetAxisFontSize Int a
   | ToggleSetStacked Boolean a
   | ToggleSetSmooth Boolean a
+  | SetBubbleMinSize Number a
+  | SetBubbleMaxSize Number a
 
 type QueryC = Coproduct CardEvalQuery Query
 

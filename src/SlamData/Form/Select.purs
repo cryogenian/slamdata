@@ -32,6 +32,10 @@ class (Eq a) ⇐ OptionVal a where
 instance optionValJCursor ∷ OptionVal JCursor where
   stringVal = show
 
+instance optionValMaybe ∷ (OptionVal a) ⇒ OptionVal (Maybe a) where
+  stringVal Nothing = "None"
+  stringVal (Just a) = stringVal a
+
 -- | `options` for available variants
 -- | `value` for selected item
 type SelectR a =
