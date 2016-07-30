@@ -31,7 +31,6 @@ import Data.List as L
 import Test.StrongCheck as SC
 import Test.StrongCheck.Gen as Gen
 
-
 data ChartType = Pie | Line | Bar | Area | Scatter
 
 isPie :: ChartType -> Boolean
