@@ -133,7 +133,7 @@ lineRawData
     case fromMaybe (Tuple [] []) acc of
       Tuple v1s v2s → pure $ Tuple (cons v1 v1s) (cons v2 v2s)
 
--- 'Nothing' is not suitable for aggreation of Pie and Bar Chart.
+-- 'Nothing' is not suitable for aggreation of Line Chart.
 -- To avoid 'Nothing', control the options in aggreation selector.
 -- In case that aggreation is 'Nothing', coerce it to be replaced by 'Just Sum'.
 aggregatePairs ∷ Maybe Aggregation → Maybe Aggregation → LabeledPointPairs → LineData

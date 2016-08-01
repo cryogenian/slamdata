@@ -19,6 +19,9 @@ module SlamData.Workspace.Card.Chart.BuildOptions.Radar where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
+import Data.Argonaut.Core (toObject)
+import Data.Argonaut.Combinators ((.?))
+import Data.Foldable (minimum, maximum)
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Function (on)
@@ -34,7 +37,7 @@ import ECharts as EC
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), runAggregation)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxises, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, mkKey, keyName, getShadeColor, toRGBAString)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxises, colors, buildChartAxises, keyName)
 
 --sample data: 
 -- Tuple ['dimA', 'dimB']  
@@ -108,8 +111,8 @@ radarData axises = Tuple (L.fromList distinctDims) $
   duplications ∷ List (Maybe String)
   duplications = fromMaybe Nil $ axises.series !! 1
 
-  agg ∷ Aggregation
-  agg = fromMaybe Sum $ join (axises.aggregations !! 0)
+  agg ∷ Maybe Aggregation
+  agg = fromMaybe (Just Sum) $ join (axises.aggregations !! 0)
 
   distinctDims ∷ List String
   distinctDims = L.sort $ L.catMaybes $ L.nub dimensions
@@ -177,9 +180,10 @@ radarData axises = Tuple (L.fromList distinctDims) $
     combine x = do
       d ← (L.head $ map fst x)
       pure $ Tuple d (applyAggregation $ map snd x)
-    
+  
+  -- agg cannot be Nothing so fromJust is safe here
   applyAggregation ∷ List Number → Number
-  applyAggregation a = runAggregation agg a
+  applyAggregation a = runAggregation (fromJust agg) a
 
   checkDimAndTransform 
     ∷ Tuple String (List (Tuple String Number)) 
@@ -206,6 +210,7 @@ buildRadar axises conf = case preSeries of
       , color = Just colors
       }
   where
+  
   legends ∷ EC.Legend
   legends =
     EC.Legend EC.legendDefault
@@ -225,7 +230,7 @@ buildRadar axises conf = case preSeries of
         , fontSize = Just 12.0 
         }
     }
-
+  
   serieNames ∷ Array String
   serieNames = 
     A.nub
@@ -235,16 +240,6 @@ buildRadar axises conf = case preSeries of
       $ map snd 
       $ snd extracted
 
-  duplicationNames ∷ Array String
-  duplicationNames = 
-    A.nub
-      $ map fst 
-      $ snd extracted
-
-  extracted ∷ RadarData
-  extracted = radarData $ buildChartAxises axises conf
-
-  
   polars ∷ Array EC.Polar
   polars = 
     let 
@@ -263,24 +258,48 @@ buildRadar axises conf = case preSeries of
         col = (toNumber i) % (toNumber nCol)
       in
         EC.Polar EC.polarDefault
-          { indicator = Just polarIndicators
+          { indicator = Just $ mkIndicatorSet i
           , center = Just $ Tuple 
                             ( EC.Percent (100.0 * (2.0 * col + 1.0) / (toNumber (nCol * 2))) )
                             ( EC.Percent (100.0 * (2.0 * row + 1.0) / (toNumber (nRow * 2))) )
           , radius = Just $ EC.Percent (75.0 / (if nRow > nCol then toNumber nRow else toNumber nCol))
-          }
+          }  
 
-  polarIndicators ∷ Array EC.Indicator
-  polarIndicators = 
-    map mkIndicator (fst extracted)
+  mkIndicatorSet ∷ Int → Array EC.Indicator
+  mkIndicatorSet i =
+    let
+      values = L.transpose 
+                $ L.toList 
+                $ map (L.toList <<< snd)
+                $ A.concat 
+                $ map snd 
+                $ snd extracted
+      minVals = case L.null values of
+        true → map (const Nothing) (fst extracted)
+        false → L.fromList $ map minimum values
+      maxVals = case L.null values of
+        true → map (const Nothing) (fst extracted)
+        false → L.fromList $ map maximum values
+      dupName = fromMaybe "" $ (map fst $ snd extracted) !! i
+    in
+      map (mkIndicator dupName) (A.zip (fst extracted) $ A.zip minVals maxVals)
 
-  mkIndicator ∷ String → EC.Indicator
-  mkIndicator d = EC.Indicator EC.indicatorDefault 
-    {text = Just d}
+  mkIndicator 
+    ∷ String
+    → Tuple String (Tuple (Maybe Number) (Maybe Number)) 
+    → EC.Indicator
+  mkIndicator dupName (Tuple dim (Tuple minVal maxVal)) = 
+    EC.Indicator EC.indicatorDefault 
+      { text = Just $ dupName ++ (if dupName == "" then "" else ": ") ++ dim
+      , min = minVal
+      , max = maxVal
+      }
 
   preSeries ∷ Array EC.Series
   preSeries = mkSeries extracted
 
+  extracted ∷ RadarData
+  extracted = radarData $ buildChartAxises axises conf
 
 mkSeries
   ∷ RadarData
@@ -297,12 +316,24 @@ mkSeries rData =
         { name = if dup ≡ "" 
                  then Nothing 
                  else Just dup
+        , tooltip = if A.null a
+                    then Just $ EC.Tooltip $ EC.tooltipDefault
+                      -- To overwrite the top tooltip display config.
+                      -- Other configurations here cannot overwrite the top one, 
+                      -- maybe due to some echarts' bugs
+                      { trigger = Just EC.TriggerItem
+                      , formatter = Just $ EC.Template " "
+                      , show = Just false }
+                    else Nothing
         }
       , radarSeries: EC.radarSeriesDefault
         { polarIndex = Just $ toNumber ind
         , "data" = if A.null a 
-                     then Just [EC.Dat $ EC.dataDefault $ EC.Many []]
-                     else Just $ map makeData a
+                   then Just [blankData]
+                   else Just $ map makeData a
+        , symbol = if A.null a 
+                   then Just $ EC.NoSymbol
+                   else Just $ EC.Circle
         }
       }
   
@@ -317,4 +348,13 @@ mkSeries rData =
     , selected: Nothing
     }
 
-
+  blankData ∷ EC.ItemData
+  blankData = EC.Dat
+    { name: Nothing
+      -- set a value to avoid display issue
+    , value: EC.Many [0.0]
+    , tooltip: Just $ EC.Tooltip $ EC.tooltipDefault 
+      { show = Just false }
+    , itemStyle: Nothing
+    , selected: Nothing
+    }
