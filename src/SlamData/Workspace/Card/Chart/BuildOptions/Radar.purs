@@ -19,8 +19,6 @@ module SlamData.Workspace.Card.Chart.BuildOptions.Radar where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor)
-import Data.Argonaut.Core (toObject)
-import Data.Argonaut.Combinators ((.?))
 import Data.Foldable (minimum, maximum)
 import Data.Array ((!!))
 import Data.Array as A
