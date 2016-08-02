@@ -65,7 +65,7 @@ render state@{ initialQuery } =
     , section "Query variables" [ propList _vars state ]
     ]
 
-eval :: Natural Query SQLMountDSL
+eval :: Query ~> SQLMountDSL
 eval (ModifyState f next) = H.modify (processState <<< f) $> next
 eval (Validate k) = do
   sql <- fromMaybe "" <$> H.query unit (H.request GetText)

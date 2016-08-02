@@ -153,7 +153,7 @@ listPath
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
 listPath query deep var dir driver = do
-  modifyVar (_2 %~ M.alter (maybe one (add one >>> pure))  deep) var
+  modifyVar (_2 %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
   canceler ← forkAff goDeeper
   modifyVar (_1 <>~ canceler) var
   where
@@ -188,7 +188,7 @@ listPath query deep var dir driver = do
       "An unknown error ocurred: 401 \"\"" ->
         append forbiddenMessage <<< suggestedAction <$> H.fromEff Auth.retrieveIdToken
       s ->
-        pure $ "There was a problem accessing this directory listing. " ++ s
+        pure $ "There was a problem accessing this directory listing. " <> s
 
 
   getChildren ∷ Array Resource → Aff SlamDataEffects Unit

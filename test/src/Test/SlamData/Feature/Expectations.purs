@@ -7,6 +7,7 @@ import Selenium.Monad (tryRepeatedlyTo)
 import Test.Feature (expectPresented, expectNotPresented, expectPresentedWithProperties, expectDownloadedTextFileToMatchFile, expectSelectValue, expectPresentedNotRepeatedly)
 import Test.SlamData.Feature.Monad (SlamFeature)
 import Test.SlamData.Feature.XPaths as XPaths
+import XPath as XPath
 
 cardsInTableColumnInLastCardToEq
   ∷ Int → String → String → SlamFeature Unit
@@ -55,7 +56,7 @@ cardsInTableColumnInLastCard f i headerText xs = do
   expectNotPresented $ XPath.index trXPath (i + 1)
   where
   trXPath =
-    tableXPath ++ "/tbody/tr"
+    tableXPath <> "/tbody/tr"
   thXPath =
     XPath.thWithExactText headerText
   tdXPath =

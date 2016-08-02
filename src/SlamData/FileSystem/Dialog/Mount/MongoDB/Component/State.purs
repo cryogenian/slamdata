@@ -36,7 +36,6 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Int as Int
 import Data.Lens (LensP, lens)
-import Data.List (fromList, fromFoldable)
 import Data.NonEmpty (NonEmpty(..), oneOf)
 import Data.Path.Pathy (parsePath, rootDir, (</>))
 import Data.Profunctor.Strong (first, second)
@@ -108,7 +107,7 @@ fromConfig { hosts, path, user, password, props } =
     , path: ""
     , user: fromMaybe "" user
     , password: fromMaybe "" password
-    , props: map (fromMaybe "") <$> fromList (SM.toList props)
+    , props: map (fromMaybe "") <$> A.fromFoldable (SM.toList props)
     }
 
 toConfig ∷ State → Either String Config
@@ -123,14 +122,13 @@ toConfig { hosts, path, user, password, props } = do
     , path: parsePath' =<< nonEmptyString path
     , user: nonEmptyString user
     , password: nonEmptyString password
-    , props: SM.fromList $ fromFoldable $
-        map nonEmptyString <$> A.filter (not isEmptyTuple) props
+    , props: SM.fromFoldable $ map nonEmptyString <$> A.filter (not isEmptyTuple) props
     }
 
 parsePath' ∷ String → Maybe PU.AnyPath
 parsePath' =
   bitraverse PU.sandbox PU.sandbox <<<
-    parsePath (Right <<< (rootDir </> _)) Right (Left <<< (rootDir </> _)) Left
+    parsePath (Left <<< (rootDir </> _)) Left (Right <<< (rootDir </> _)) Right
 
 parseHost ∷ Tuple String String → Either String Host
 parseHost (Tuple host port) = do
@@ -159,4 +157,4 @@ isEmpty ∷ String → Boolean
 isEmpty = Rx.test rxEmpty
 
 rxEmpty ∷ Rx.Regex
-rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
+rxEmpty = unsafePartial fromRight $ Rx.regex "^\\s*$" Rx.noFlags

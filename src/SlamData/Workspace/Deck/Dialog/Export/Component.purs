@@ -20,7 +20,6 @@ import SlamData.Prelude
 
 import Control.Monad.Eff.Ref (Ref, newRef, readRef, writeRef)
 import Control.UI.Browser (select, locationString)
-import Control.UI.ZClipboard as Z
 
 import Data.Foldable as F
 import Data.Map as Map
@@ -41,7 +40,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (raise)
 
-import OIDCCryptUtils as OIDC
+import OIDC.Crypt as OIDC
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
@@ -61,6 +60,8 @@ import Quasar.Advanced.Types as QTA
 
 import Utils (prettyJson)
 import Utils.Path as UP
+
+import ZClipboard as Z
 
 data PresentAs = IFrame | URI
 
@@ -544,7 +545,7 @@ renderCopyVal locString state
 renderVarMaps ∷ Map.Map DeckId Port.VarMap → String
 renderVarMaps = indent <<< prettyJson <<< encodeVarMaps <<< varMapsForURL
   where
-  indent = RX.replace (RX.regex "(\n\r?)" (RX.noFlags { global = true })) "$1    "
+  indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" (RX.noFlags { global = true })) "$1    "
 
 renderURL ∷ String → State → String
 renderURL locationString state@{sharingInput, varMaps, permToken, isLoggedIn} =

@@ -78,7 +78,6 @@ import Data.Array as A
 import Data.Foldable (maximum)
 import Data.Lens (LensP, lens)
 import Data.Lens as Lens
-import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.Set as Set

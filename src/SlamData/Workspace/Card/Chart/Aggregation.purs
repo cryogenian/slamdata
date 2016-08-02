@@ -24,7 +24,7 @@ import Data.List as L
 
 import SlamData.Form.Select (class OptionVal, Select(..))
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 data Aggregation
@@ -63,13 +63,13 @@ parseAggregation _ = Left "Incorrect aggregation string"
 
 runAggregation
   ∷ ∀  a f
-  . (Ord a, ModuloSemiring a, Foldable f)
+  . (Ord a, EuclideanRing a, Foldable f)
   ⇒ Aggregation
   → f a
   → a
 runAggregation Maximum nums = fromMaybe zero $ maximum nums
 runAggregation Minimum nums = fromMaybe zero $ minimum nums
-runAggregation Average nums = 
+runAggregation Average nums =
   normalize
   $ foldl (\acc a → bimap (add one) (add a) acc)  (Tuple zero zero) nums
   where
@@ -105,7 +105,7 @@ instance optionValAggregation ∷ OptionVal Aggregation where
   stringVal = printAggregation
 
 instance arbitraryAggregation ∷ SC.Arbitrary Aggregation where
-  arbitrary = Gen.elements defaultAggregation $ L.toList allAggregations
+  arbitrary = Gen.elements defaultAggregation $ L.fromFoldable allAggregations
 
 newtype ArbAggregation = ArbAggregation (Maybe Aggregation)
 

@@ -4,36 +4,32 @@ module Test.SlamData.Property.Workspace.FormBuilder.Item.Model
   , check
   ) where
 
-import Prelude
-import Data.Either as E
-import Data.Foldable as F
+import SlamData.Prelude
 import SlamData.Workspace.FormBuilder.Item.Model as Item
 import Test.SlamData.Property.Workspace.FormBuilder.Item.FieldType as FT
 import Test.StrongCheck ((<?>))
 import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SCA
 
 newtype ArbModel = ArbModel Item.Model
 
-runArbModel
-  :: ArbModel
-  -> Item.Model
-runArbModel (ArbModel m) =
-  m
+runArbModel ∷ ArbModel → Item.Model
+runArbModel (ArbModel m) = m
 
-instance arbitraryArbModel :: SC.Arbitrary ArbModel where
+instance arbitraryArbModel ∷ SCA.Arbitrary ArbModel where
   arbitrary = do
-    name <- SC.arbitrary
-    fieldType <- FT.runArbFieldType <$> SC.arbitrary
-    defaultValue <- SC.arbitrary
+    name ← SCA.arbitrary
+    fieldType ← FT.runArbFieldType <$> SCA.arbitrary
+    defaultValue ← SCA.arbitrary
     pure $ ArbModel { name, fieldType, defaultValue }
 
-check :: SC.QC Unit
+check ∷ forall eff. SC.SC eff Unit
 check =
-  SC.quickCheck $ runArbModel >>> \model ->
+  SC.quickCheck $ runArbModel >>> \model →
     case Item.decode (Item.encode model) of
-      E.Left err -> SC.Failed $ "Decode failed: " ++ err
-      E.Right model' ->
-        F.mconcat
+      Left err → SC.Failed $ "Decode failed: " <> err
+      Right model' →
+        fold
           [ model.name == model'.name <?> "name mismatch"
           , model.fieldType == model'.fieldType <?> "fieldType mismatch"
           , model.defaultValue == model'.defaultValue <?> "defaultValue mismatch"

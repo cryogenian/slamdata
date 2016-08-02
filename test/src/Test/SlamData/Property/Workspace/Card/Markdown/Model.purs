@@ -16,17 +16,13 @@ limitations under the License.
 
 module Test.SlamData.Property.Workspace.Card.Markdown.Model where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Alt ((<|>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Unsafe as Unsafe
 
-import Data.Date.Locale as DL
-import Data.Either (Either(..))
-import Data.Foldable (mconcat)
+import Data.JSDate (LOCALE)
 import Data.Json.Extended as EJSON
-import Data.List as L
 import Data.Set as Set
 import Data.StrMap as SM
 
@@ -36,7 +32,8 @@ import SlamData.Workspace.Card.Port.VarMap as VM
 
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
-import Test.StrongCheck (QC, Result(..), quickCheck, (<?>), class Arbitrary, arbitrary)
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype JsonEncodableVarMapValue = JsonEncodableVarMapValue VM.VarMapValue
 
@@ -60,38 +57,38 @@ instance arbitraryJsonEncodableVarMapValue ∷ Arbitrary JsonEncodableVarMapValu
       VM.Literal <$> EJSON.arbitraryJsonEncodableEJsonOfSize 1
         <|> VM.QueryExpr <$> arbitrary
 
-checkSerialization ∷ QC Unit
+checkSerialization ∷ forall eff. SC eff Unit
 checkSerialization =
   quickCheck $ map getJsonEncodableVarMapValue >>> \(SDS.SlamDownState { document, formState }) →
     let model = { input: document, state: formState }
     in case M.decode (M.encode model) of
-      Left err → Failed $ "Decode failed: " ++ err
+      Left err → Failed $ "Decode failed: " <> err
       Right model' →
-        mconcat
+        fold
          [ model.input == model'.input <?> "input mismatch: " <> show model.input <> " vs. " <> show model'.input
          , model.state == model'.state <?> "state mismatch: " <> show model.state <> " vs. " <> show model'.state
          ]
 
 unsafeRunLocale
   ∷ ∀ a
-  . Eff (locale ∷ DL.Locale) a
+  . Eff (locale ∷ LOCALE) a
   → a
 unsafeRunLocale =
   Unsafe.unsafePerformEff
 
-checkVarMapConstruction ∷ QC Unit
+checkVarMapConstruction ∷ forall eff. SC eff Unit
 checkVarMapConstruction =
   quickCheck \(SDS.SlamDownState { document, formState }) →
     let
       inputState = SDS.formStateFromDocument document
       varMap = unsafeRunLocale $ MDS.formStateToVarMap inputState formState
-      descKeys = Set.fromList $ L.toList $ SM.keys inputState
-      stateKeys = Set.fromList $ L.toList $ SM.keys varMap
+      descKeys = Set.fromFoldable $ SM.keys inputState
+      stateKeys = Set.fromFoldable $ SM.keys varMap
     in
       descKeys == stateKeys
         <?> ("Keys mismatch: " <> show descKeys <> " vs. " <> show stateKeys)
 
-check ∷ QC Unit
+check ∷ forall eff. SC eff Unit
 check = do
   checkVarMapConstruction
   checkSerialization

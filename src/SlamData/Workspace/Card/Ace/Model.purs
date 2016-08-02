@@ -29,7 +29,7 @@ import Data.Array as A
 import Data.Foldable as F
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, encodeJson, jsonEmptyObject, jsonNull)
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 import Utils.Ace (RangeRec, encodeRangeRec, decodeRangeRec, eqRangeRec, genRangeRec)

@@ -222,7 +222,7 @@ uploadFileSelected f = do
   { path, sort, salt } ← H.get
   name ←
     H.fromEff (Cf.name f)
-      <#> Rgx.replace (Rgx.regex "/" Rgx.noFlags{global=true}) ":"
+      <#> Rgx.replace (unsafePartial fromRight $ Rgx.regex "/" Rgx.noFlags{global=true}) ":"
       >>= API.getNewName path
 
   case name of

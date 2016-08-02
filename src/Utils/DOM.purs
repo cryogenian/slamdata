@@ -18,21 +18,24 @@ module Utils.DOM where
 
 import SlamData.Prelude
 
+import Control.Coroutine (Producer)
+import Control.Coroutine.Aff as AffCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Coroutine.Aff as AffCoroutine
 import Control.Monad.Eff (Eff)
+
+import Data.Nullable (toMaybe)
+
 import DOM (DOM)
-import Control.Coroutine (Producer)
 import DOM.Event.EventTarget as EventTarget
-import DOM.Event.EventTypes as EventTypes
 import DOM.Event.Types (EventTarget, EventType, Event)
 import DOM.HTML (window)
+import DOM.HTML.Event.EventTypes as EventTypes
 import DOM.HTML.Types (HTMLElement, htmlElementToElement, htmlDocumentToDocument, windowToEventTarget)
 import DOM.HTML.Window (document)
 import DOM.Node.ParentNode as P
 import DOM.Node.Types (elementToParentNode, Element, documentToEventTarget)
-import Data.Nullable (toMaybe)
+
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import waitLoaded ∷ ∀ e. Aff (dom ∷ DOM |e) Unit

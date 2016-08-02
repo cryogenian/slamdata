@@ -128,10 +128,7 @@ render config state =
       ]
       [ HH.text $ S.stringVal val ]
 
-eval
-  :: forall a b
-   . (Eq a, Eq b)
-  => Natural (Query a) (DSL a b)
+eval :: forall a b. (Eq a, Eq b) => Query a ~> DSL a b
 eval (Choose i next) = do
   H.modify (_opened .~ false)
   H.modify (_model %~ S.trySelect i)

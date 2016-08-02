@@ -18,8 +18,8 @@ module SlamData.FileSystem.Dialog.Rename.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception (message)
 import Control.Monad.Error.Class (throwError)
+import Control.Monad.Eff.Exception (message)
 import Control.UI.Browser (reload)
 
 import Data.Array (elemIndex, singleton, sort, nub)
@@ -236,7 +236,7 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval :: Natural Query DSL
+eval :: Query ~> DSL
 eval (Dismiss next) = pure next
 eval (SetShowList bool next) = do
   H.modify (_showList .~ bool)
@@ -280,10 +280,11 @@ eval (Submit next) = do
           presentSourceMissingError
           (const $ H.modify (_error .~ Nothing) *> H.fromEff reload)
           x
+    pure unit
 
   lastChar s = S.drop (S.length s - 1) s
 
-  endingInSlash s = if lastChar s == "/" then s else s ++ "/"
+  endingInSlash s = if lastChar s == "/" then s else s <> "/"
 
 eval (NameTyped str next) = do
   H.modify (_name .~ str)

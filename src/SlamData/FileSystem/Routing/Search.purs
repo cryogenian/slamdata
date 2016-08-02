@@ -36,11 +36,12 @@ import Text.SlamSearch.Types as SST
 isSearchQuery :: SST.SearchQuery -> Boolean
 isSearchQuery query =
   not $ SS.check unit query (\_ -> isNotSearchTerm)
-  where isNotSearchTerm :: SST.Term -> Boolean
-        isNotSearchTerm (SST.Term {predicate: p, labels: ls, include: i}) =
-          case ls of
-            Cons (SST.Common "path") Nil -> true
-            _ -> false
+  where
+  isNotSearchTerm :: SST.Term -> Boolean
+  isNotSearchTerm (SST.Term {predicate: p, labels: ls, include: i}) =
+    case ls of
+      Cons (SST.Common "path") Nil -> true
+      _ -> false
 
 -- | check if string satisfies predicate from `purescript-search`
 check :: SST.Predicate -> String -> Boolean
@@ -62,14 +63,15 @@ check p prj =
       (c (SST.Gte val) && c (SST.Lte val')) ||
       (c (SST.Lte val) && c (SST.Gte val'))
     _ -> true
-  where escapeGlob str = Str.replace "*" "\\*" $ Str.replace "?" "\\?" str
-        percentRgx = Rgx.regex "%" flags
-        underscoreRgx = Rgx.regex "_" flags
-        flags = Rgx.noFlags{global = true}
-        match a = MM.minimatch (Str.toLower a) (Str.toLower prj)
-        compare = Str.localeCompare prj
-        like2glob str =
-          Rgx.replace percentRgx "*" $ Rgx.replace underscoreRgx "?" $ str
+  where
+  escapeGlob str = Str.replace "*" "\\*" $ Str.replace "?" "\\?" str
+  percentRgx = unsafePartial fromRight $ Rgx.regex "%" flags
+  underscoreRgx = unsafePartial fromRight $ Rgx.regex "_" flags
+  flags = Rgx.noFlags{global = true}
+  match a = MM.minimatch (Str.toLower a) (Str.toLower prj)
+  compare = Str.localeCompare prj
+  like2glob str =
+    Rgx.replace percentRgx "*" $ Rgx.replace underscoreRgx "?" $ str
 
 -- | Extract path predicate from search query
 searchPath :: SST.SearchQuery -> Maybe String

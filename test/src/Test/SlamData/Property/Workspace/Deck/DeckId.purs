@@ -23,10 +23,10 @@ import Data.Either (Either(..))
 
 import SlamData.Workspace.Deck.DeckId (DeckId)
 
-import Test.StrongCheck (QC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ \(ci ∷ DeckId) ->
   case decodeJson (encodeJson ci) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right ci' -> ci == ci' <?> "DeckId failed to decode as encoded value"

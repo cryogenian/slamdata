@@ -24,7 +24,8 @@ import Data.Foldable (fold)
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 
 import Test.Property.ArbJson (runArbJCursor)
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.SlamData.Property.Form.Select (runArbSelect)
 import Test.SlamData.Property.Workspace.Card.Chart.Aggregation (runArbAggregation)
 
@@ -41,10 +42,10 @@ instance arbitraryArbChartConfiguration :: Arbitrary ArbChartConfiguration where
     aggregations <- map (map runArbAggregation <<< runArbSelect) <$> arbitrary
     pure $ ArbChartConfiguration { series, dimensions, measures, aggregations }
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ runArbChartConfiguration >>> \cc ->
   case CC.decode (CC.encode cc) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right cc' -> checkChartConfigEquality cc cc'
 
 checkChartConfigEquality :: CC.ChartConfiguration -> CC.ChartConfiguration -> Result

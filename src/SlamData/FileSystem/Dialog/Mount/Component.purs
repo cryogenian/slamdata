@@ -125,7 +125,7 @@ selScheme state =
             [ HP.class_ B.formControl
             , HE.onValueChange (HE.input SelectScheme <<< schemeFromString)
             ]
-            $ [ HH.option_ [] ] ++ schemeOptions
+            $ [ HH.option_ [] ] <> schemeOptions
         ]
     ]
   where
@@ -160,7 +160,7 @@ progressSpinner :: State -> HTML
 progressSpinner { saving } =
   HH.img [ HP.src "img/spin.gif", HP.class_ (Rc.mountProgressSpinner saving) ]
 
-eval :: Natural Query DSL
+eval :: Query ~> DSL
 eval (ModifyState f next) = H.modify f *> validateInput $> next
 eval (SelectScheme newScheme next) = do
   currentScheme <- map scheme <$> H.gets _.settings

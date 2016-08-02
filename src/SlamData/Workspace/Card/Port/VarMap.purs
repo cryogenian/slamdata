@@ -40,7 +40,7 @@ import Text.Parsing.Parser.String as PS
 
 import Text.Markdown.SlamDown.Syntax.Value as SDV
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 
 data VarMapValue
   = Literal EJSON.EJson

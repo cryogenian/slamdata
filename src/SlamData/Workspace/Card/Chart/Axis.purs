@@ -19,8 +19,8 @@ module SlamData.Workspace.Card.Chart.Axis where
 import SlamData.Prelude
 
 import Data.Argonaut (JCursor(..), JObject, JArray, Json, insideOut, decodeJson, encodeJson)
-import Data.Array ((!!), length)
-import Data.List (List(..), filter, fromList, catMaybes)
+import Data.Array ((!!), length, fromFoldable)
+import Data.List (List(..), filter, catMaybes)
 import Data.Map as M
 import Data.StrMap as Sm
 
@@ -81,7 +81,7 @@ analyzeJArray arr =
   -- Drop Nothings
   # catMaybes
   -- Create new Map
-  # M.fromList
+  # M.fromFoldable
   -- Drop records those keys have no relations to other keys
   # checkPairs
 
@@ -90,12 +90,12 @@ analyzeJArray arr =
   -- | to [{key: "foo", value: 1}, {key: "bar", value: 2}]
   toKeyValJArray :: Json -> JArray
   toKeyValJArray =
-    decodeJson >>> (map toKeyValJsons) >>> either (const []) fromList
+    decodeJson >>> (map toKeyValJsons) >>> either (const []) fromFoldable
 
   -- | same as `toKeyValJArray` but argument isn't encoded and it returns `List`
   toKeyValJsons :: JObject -> List Json
   toKeyValJsons =
-    Sm.toList >>> map (toKeyVals >>> Sm.fromList >>> encodeJson)
+    Sm.toList >>> map (toKeyVals >>> Sm.fromFoldable >>> encodeJson)
 
   toKeyVals :: Tuple String Json -> List (Tuple String Json)
   toKeyVals (Tuple key val) =

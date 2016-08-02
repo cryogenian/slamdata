@@ -5,9 +5,10 @@ import Control.Monad.Eff.Random (RANDOM)
 import Node.ChildProcess (CHILD_PROCESS)
 import Test.SlamData.Feature.Env (ENV)
 
-type SlamFeatureEffects e =
+type SlamFeatureEffects eff =
   ( cp :: CHILD_PROCESS
   , avar :: AVAR
   , random :: RANDOM
   , env :: ENV
-  | e)
+  | eff
+  )

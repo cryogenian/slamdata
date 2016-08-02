@@ -67,13 +67,13 @@ type State =
   }
 
 getInitialState ∷ ChartType → State
-getInitialState ty = 
+getInitialState ty =
   { chartType: ty
   , chartConfiguration: initialConfiguration
   }
 
 initialConfiguration ∷ ChartConfiguration
-initialConfiguration = 
+initialConfiguration =
   { dimensions: []
   , series: []
   , measures: []
@@ -151,16 +151,17 @@ render state = case state.chartType of
       , foldMap (renderMeasure 0 aggregationSelect) (state.chartConfiguration.measures !! 0)
       , foldMap (renderMeasure 1 aggregationSelect) (state.chartConfiguration.measures !! 1)
       , hr
-      , let ixes =
-          if null state.chartConfiguration.dimensions then { fstIx: 1, sndIx: 2} else { fstIx: 0, sndIx: 1}
-        in
-          foldMap (renderSeries ixes.fstIx) (state.chartConfiguration.series !! ixes.fstIx)
+      , foldMap (renderSeries ixes.fstIx) (state.chartConfiguration.series !! ixes.fstIx)
           ⊕ foldMap (renderSeries ixes.sndIx) (state.chartConfiguration.series !! ixes.sndIx)
       , hr
       ]
   where
   hr ∷ Array FormHTML
   hr = [ HH.hr_ ]
+
+  ixes
+    | null state.chartConfiguration.dimensions = { fstIx: 1, sndIx: 2 }
+    | otherwise = { fstIx: 0, sndIx: 1 }
 
   renderDimension ∷ Int → JSelect → Array FormHTML
   renderDimension ix sel =
@@ -266,7 +267,7 @@ render state = case state.chartType of
   renderLabel 2 str = pure $ "Third " ⊕ str
   renderLabel n str = pure $ show n ⊕ "th " ⊕ str
 
-eval ∷ Natural Query FormDSL
+eval ∷ Query ~> FormDSL
 eval (SetConfiguration conf next) = do
   r ← H.get
   H.modify _{chartConfiguration = conf}

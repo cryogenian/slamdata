@@ -23,7 +23,8 @@ import Data.Either (Either(..))
 
 import SlamData.Form.Select (Select(..))
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbSelect a = ArbSelect (Select a)
 
@@ -36,8 +37,8 @@ instance arbitraryArbSelect :: (Arbitrary a) => Arbitrary (ArbSelect a) where
     value <- arbitrary
     pure $ ArbSelect $ Select { options, value }
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ runArbSelect >>> \(s :: Select Int) ->
   case decodeJson (encodeJson s) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right s' -> s == s' <?> "Select failed to decode as encoded value"

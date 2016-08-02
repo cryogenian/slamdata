@@ -42,7 +42,7 @@ import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
 import SlamData.Workspace.Card.Draftboard.Model as DB
 import SlamData.Workspace.Card.DownloadOptions.Component.State as DLO
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 data AnyCardModel

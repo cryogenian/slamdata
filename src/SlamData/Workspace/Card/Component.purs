@@ -27,7 +27,7 @@ import SlamData.Config as Config
 
 import Data.Foldable (elem)
 import Data.Lens (PrismP, (.~), review, preview, clonePrism)
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.Component.Utils (sendAfter')
@@ -129,7 +129,7 @@ makeCardComponentPart def render =
   initialState ∷ CS.AnyCardState
   initialState = review _State def.initialState
 
-  eval ∷ Natural CQ.CardQuery CardDSL
+  eval ∷ CQ.CardQuery ~> CardDSL
   eval (CQ.UpdateCard input output next) = do
     void $ H.query unit (left (H.action (CQ.EvalCard input output)))
     pure next

@@ -24,9 +24,10 @@ import SlamData.Prelude
 
 import SlamData.Workspace.Card.ChartOptions.Model as M
 
-import Test.StrongCheck (class Arbitrary, QC, Result(..), quickCheck, arbitrary)
-import Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)
 import Test.SlamData.Property.Workspace.Card.Chart.BuildOptions (runArbBuildOptions, checkBuildOptionsEquality)
+import Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration (runArbChartConfiguration, checkChartConfigEquality)
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbModel = ArbModel M.Model
 
@@ -42,10 +43,10 @@ instance arbitraryArbModel ∷ Arbitrary ArbModel where
     pure $ ArbModel { options, chartConfig }
 
 
-check ∷ QC Unit
+check ∷ forall eff. SC eff Unit
 check = quickCheck $ runArbModel >>> \model →
   case M.decode (M.encode model) of
-    Left err → Failed $ "Decode failed: " ++ err
+    Left err → Failed $ "Decode failed: " <> err
     Right model' →
       fold
        [ checkBuildOptionsEquality model.options model'.options

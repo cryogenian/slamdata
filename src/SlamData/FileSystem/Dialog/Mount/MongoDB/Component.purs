@@ -64,7 +64,7 @@ render state =
     , section "Settings" [ propList _props state ]
     ]
 
-eval :: Natural Query (H.ComponentDSL State Query Slam)
+eval :: Query ~> H.ComponentDSL State Query Slam
 eval (ModifyState f next) = H.modify (processState <<< f) $> next
 eval (Validate k) =
   k <<< either Just (const Nothing) <<< toConfig <$> H.get
@@ -100,13 +100,16 @@ host state index =
 
   rxNonHostname :: Rx.Regex
   rxNonHostname =
-    Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
+    unsafePartial fromRight $
+      Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
 
   rejectNonPort :: String -> String
   rejectNonPort = Rx.replace rxNonPort ""
 
   rxNonPort :: Rx.Regex
-  rxNonPort = Rx.regex "[^0-9]" (Rx.noFlags { global = true })
+  rxNonPort =
+    unsafePartial fromRight $
+      Rx.regex "[^0-9]" (Rx.noFlags { global = true })
 
 userInfo :: State -> H.ComponentHTML Query
 userInfo state =
@@ -130,7 +133,7 @@ fldPath state =
 
 -- | A labelled section within the form.
 label :: String -> Array HTML -> HTML
-label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] ++ inner
+label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] <> inner
 
 -- | A basic text input field that uses a lens to read from and update the
 -- | state.
@@ -156,4 +159,4 @@ input' f state lens attrs =
       , HE.onValueInput (HE.input \val -> ModifyState (lens .~ f val))
       , HP.value (state ^. lens)
       ]
-    ++ attrs
+    <> attrs

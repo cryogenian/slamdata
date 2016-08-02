@@ -36,7 +36,7 @@ import Halogen.Menu.Component.State (makeMenu)
 import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 
 import OIDC.Aff as OIDC
-import OIDCCryptUtils as Crypt
+import OIDC.Crypt as Crypt
 
 import Quasar.Advanced.Types (ProviderR)
 
@@ -91,7 +91,7 @@ render state =
         , initialState: H.parentState $ Menu.make []
         }
 
-eval ∷ Natural Query SignInDSL
+eval ∷ Query ~> SignInDSL
 eval (DismissSubmenu next) = dismissAll $> next
 eval (Init next) = do
   mbIdToken ← H.fromEff Auth.retrieveIdToken
@@ -172,7 +172,7 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
     H.fromEff do
       Auth.clearIdToken
       Browser.reload
-  appendAuthPath s = s ++ Config.redirectURIString
+  appendAuthPath s = s <> Config.redirectURIString
   requestAuthenticationURI pr =
     H.fromEff $ OIDC.requestAuthenticationURI pr ∘ appendAuthPath =<< Browser.locationString
 

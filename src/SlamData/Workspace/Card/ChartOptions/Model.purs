@@ -30,7 +30,7 @@ import Data.Argonaut (Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
 import SlamData.Workspace.Card.Chart.ChartConfiguration as CC
 import SlamData.Workspace.Card.Chart.BuildOptions as CO
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
-import Test.StrongCheck (arbitrary)
+import Test.StrongCheck.Arbitrary (arbitrary)
 import Test.StrongCheck.Gen as Gen
 
 type Model =

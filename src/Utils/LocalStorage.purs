@@ -32,7 +32,7 @@ import Control.Monad.Rec.Class as MonadRecClass
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson, printJson)
 import Data.Either (Either(..))
-import Data.Function (Fn3, Fn2, runFn3, runFn2)
+import Data.Function.Uncurried (Fn3, Fn2, runFn3, runFn2)
 import Data.Maybe (Maybe(..), maybe)
 import Unsafe.Coerce as U
 

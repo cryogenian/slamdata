@@ -33,7 +33,7 @@ import Control.Monad.Rec.Class (forever)
 
 import Data.Array as Array
 import Data.Int as Int
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.Component.Utils (raise)

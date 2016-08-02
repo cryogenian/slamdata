@@ -26,11 +26,13 @@ module Test.Feature.ActionSequence
 import Prelude
 
 import Data.Foldable (traverse_)
+import Data.List (List)
 import Data.String (split)
-import Data.Array (replicate)
+import Data.Unfoldable (replicate)
+
 import Selenium.ActionSequence (Sequence, sendKeys, keyDown, keyUp)
-import Selenium.Types (ControlKey)
 import Selenium.Key (shiftKey)
+import Selenium.Types (ControlKey)
 
 shifted ∷ String → Sequence Unit
 shifted str = do
@@ -42,10 +44,10 @@ sendDelete ∷ Sequence Unit
 sendDelete = sendKeys "\xE017"
 
 sendBackspaces ∷ Int → Sequence Unit
-sendBackspaces n = traverse_ sendKeys $ replicate n "\xE003"
+sendBackspaces n = traverse_ sendKeys $ replicate n "\xE003" :: List String
 
 sendRights ∷ Int → Sequence Unit
-sendRights n = traverse_ sendKeys $ replicate n "\xE014"
+sendRights n = traverse_ sendKeys $ replicate n "\xE014" :: List String
 
 sendEnter ∷ Sequence Unit
 sendEnter = sendKeys "\xE007"

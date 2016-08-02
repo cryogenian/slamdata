@@ -20,9 +20,9 @@ module SlamData.Workspace.Card.Search.Interpret
 
 import SlamData.Prelude
 
-import Data.Array (filter, catMaybes, head, nub)
+import Data.Array (filter, catMaybes, head, nub, fromFoldable)
 import Data.Int as Int
-import Data.List (fromList, List)
+import Data.List (List)
 import Data.Semiring.Free (runFree)
 import Data.String (joinWith, indexOf)
 import Data.String.Regex as RX
@@ -30,6 +30,8 @@ import Data.String.Regex as RX
 import Data.Json.Extended as EJSON
 
 import Text.SlamSearch.Types as SS
+
+import Utils as Utils
 
 -- TODO: We need to really obliterate this module and replace these regular
 -- expressions and ad hoc renderers with something that targets a SQL^2 A(S/B)T,
@@ -58,7 +60,9 @@ queryToSQL fields query =
       $ fields
 
     topFieldRegex :: RX.Regex
-    topFieldRegex = RX.regex "^\\.[^\\.\\[]+|^\\[.+\\]/" RX.noFlags
+    topFieldRegex =
+      unsafePartial fromRight $
+        RX.regex "^\\.[^\\.\\[]+|^\\[.+\\]/" RX.noFlags
 
     whereOrFalse :: String
     whereOrFalse = if whereClause == "()" then "FALSE" else whereClause
@@ -67,12 +71,12 @@ queryToSQL fields query =
     whereClause =
         joinWith " OR "
       $ map oneWhereInput
-      $ fromList
+      $ fromFoldable
       $ runFree
       $ map (termToSQL fields) query
 
     oneWhereInput :: List String -> String
-    oneWhereInput s = pars $ joinWith " AND " $ fromList s
+    oneWhereInput s = pars $ joinWith " AND " $ fromFoldable s
 
 needDistinct :: String -> Boolean
 needDistinct input =
@@ -85,7 +89,7 @@ termToSQL
 termToSQL fields (SS.Term {include: include, predicate: p, labels: ls}) =
   if not include
     then "NOT " <> pars (termToSQL fields $ SS.Term {include: true, predicate: p, labels: ls})
-    else renderPredicate p $ labelsProjection fields (fromList ls)
+    else renderPredicate p $ labelsProjection fields (fromFoldable ls)
   where
     renderPredicate :: SS.Predicate -> Array String -> String
     renderPredicate p prj =
@@ -163,12 +167,17 @@ globToRegex =
     <<< RX.replace globEscapeRegex "\\$&"
   where
     globEscapeRegex =
-      RX.regex
-        "[\\-\\[\\]\\/\\{\\}\\(\\)\\+\\.\\\\\\^\\$\\|]"
-        RX.noFlags { global = true }
+      unsafePartial fromRight $
+        RX.regex
+          "[\\-\\[\\]\\/\\{\\}\\(\\)\\+\\.\\\\\\^\\$\\|]"
+          RX.noFlags { global = true }
 
-    starRegex = RX.regex "\\*" RX.noFlags { global = true }
-    askRegex = RX.regex "\\?" RX.noFlags { global = true }
+    starRegex =
+      unsafePartial fromRight $
+        RX.regex "\\*" RX.noFlags { global = true }
+    askRegex =
+      unsafePartial fromRight $
+        RX.regex "\\?" RX.noFlags { global = true }
 
 renderBinRel
   :: String
@@ -206,35 +215,39 @@ needDate :: String -> Boolean
 needDate = RX.test dateRegex
   where
     dateRegex =
-      RX.regex
-        """^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[4678]|1[02])[-](0[1-9]|[12][0-9]|30)|(19|20)[0-9]{2}[-](0[1359]|11)[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"""
-        RX.noFlags
+      unsafePartial fromRight $
+        RX.regex
+          """^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[4678]|1[02])[-](0[1-9]|[12][0-9]|30)|(19|20)[0-9]{2}[-](0[1359]|11)[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"""
+          RX.noFlags
 
 
 needTime :: String -> Boolean
 needTime = RX.test timeRegex
   where
     timeRegex =
-      RX.regex
-        "^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
-        RX.noFlags
+      unsafePartial fromRight $
+        RX.regex
+          "^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
+          RX.noFlags
 
 
 needDateTime :: String -> Boolean
 needDateTime = RX.test dtRegex
   where
     dtRegex =
-      RX.regex
-        "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
-        RX.noFlags
+      unsafePartial fromRight $
+        RX.regex
+          "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
+          RX.noFlags
 
 needInterval :: String -> Boolean
 needInterval = RX.test intervalRegex
   where
     intervalRegex =
-      RX.regex
-        "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
-        RX.noFlags
+      unsafePartial fromRight $
+        RX.regex
+          "P((([0-9]*\\.?[0-9]*)Y)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)W)?(([0-9]*\\.?[0-9]*)D)?)?(T(([0-9]*\\.?[0-9]*)H)?(([0-9]*\\.?[0-9]*)M)?(([0-9]*\\.?[0-9]*)S)?)?"
+          RX.noFlags
 
 valueToSQL :: SS.Value -> String
 valueToSQL v =
@@ -250,12 +263,14 @@ labelsProjection fields ls =
   <$> filter (RX.test $ labelsRegex ls) fields
   where
     arrFieldRgx :: RX.Regex
-    arrFieldRgx = RX.regex "\\[\\d+\\]" RX.noFlags{global = true}
+    arrFieldRgx =
+      unsafePartial fromRight $
+        RX.regex "\\[\\d+\\]" RX.noFlags{global = true}
 
 labelsRegex :: Array SS.Label -> RX.Regex
-labelsRegex [] = RX.regex ".*" RX.noFlags
+labelsRegex [] = unsafePartial fromRight $ RX.regex ".*" RX.noFlags
 labelsRegex ls =
-  RX.regex ("^" <> (foldMap mapFn ls) <> "$") RX.noFlags{ignoreCase = true}
+  unsafePartial fromRight $ RX.regex ("^" <> (foldMap mapFn ls) <> "$") RX.noFlags{ignoreCase = true}
   where
   mapFn :: SS.Label -> String
   mapFn (SS.Meta l) = mapFn (SS.Common l)
@@ -263,20 +278,20 @@ labelsRegex ls =
   mapFn (SS.Common "[*]") = "(\\[\\d+\\])"
   mapFn (SS.Common "*") = "(\\.[^\\.]+|\\[\\d+\\])"
   mapFn (SS.Common l)
-    | RX.test (RX.regex "\\[\\d+\\]" RX.noFlags) l =
+    | RX.test (unsafePartial fromRight $ RX.regex "\\[\\d+\\]" RX.noFlags) l =
         RX.replace openSquare "\\["
       $ RX.replace closeSquare "\\]"
       $ l
     | otherwise = "(\\.`" <> l <> "`|\\." <> l <> ")"
 
   openSquare :: RX.Regex
-  openSquare = RX.regex "\\[" RX.noFlags
+  openSquare = unsafePartial fromRight $ RX.regex "\\[" RX.noFlags
 
   closeSquare :: RX.Regex
-  closeSquare = RX.regex "\\]" RX.noFlags
+  closeSquare = unsafePartial fromRight $ RX.regex "\\]" RX.noFlags
 
 firstDot :: RX.Regex
-firstDot = RX.regex "^\\." RX.noFlags
+firstDot = unsafePartial fromRight $ RX.regex "^\\." RX.noFlags
 
 quote :: String -> String
 quote s = EJSON.renderEJson $ EJSON.string s

@@ -45,8 +45,8 @@ comp = H.component { render, eval } where
     [ HH.h4_
         [ HH.text
           $ "Couldn't insert a "
-          ++ CardType.cardName state.attemptedCardType
-          ++ " card into this deck"
+          <> CardType.cardName state.attemptedCardType
+          <> " card into this deck"
         ]
     , HH.div
         [ HP.classes [ HH.className "deck-dialog-body" ] ]
@@ -72,8 +72,8 @@ comp = H.component { render, eval } where
         i →
           [ HH.text
               $ "To be able to insert a "
-              ++ show (CardType.cardName state.attemptedCardType)
-              ++ " card here you can add " ++ setsOfCardsText i ++ " first:"
+              <> show (CardType.cardName state.attemptedCardType)
+              <> " card here you can add " <> setsOfCardsText i <> " first:"
           ]
 
     onlySingleCardPaths = Array.nub (Array.length <$> state.cardPaths) == [1]
@@ -93,5 +93,5 @@ comp = H.component { render, eval } where
         [ HP.classes [HH.className "deck-dialog-cardpath-card" ] ]
         [ HH.text $ CardType.cardName card ]
 
-  eval ∷ Natural Query (H.ComponentDSL State Query g)
+  eval ∷ Query ~> H.ComponentDSL State Query g
   eval (Dismiss next) = pure next

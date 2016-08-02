@@ -18,6 +18,7 @@ module SlamData.Workspace.Card.Variables.Component (variablesComponent) where
 
 import SlamData.Prelude
 
+import Data.Array as A
 import Data.List as L
 
 import Halogen as H
@@ -61,14 +62,14 @@ eval = case _ of
     pure next
   CC.Save k →
     H.query unit (H.request (FB.GetItems ⋙ left)) <#>
-      maybe [] L.fromList
+      maybe [] A.fromFoldable
         ⋙ { items: _ }
         ⋙ Card.Variables
         ⋙ k
   CC.Load card next → do
     case card of
       Card.Variables { items } →
-        void ∘ H.query unit $ H.action (FB.SetItems (L.toList items) ⋙ left)
+        void ∘ H.query unit $ H.action (FB.SetItems (L.fromFoldable items) ⋙ left)
       _ → pure unit
     pure next
   CC.SetDimensions _ next →

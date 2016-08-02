@@ -181,7 +181,7 @@ noFileSelectedMessage =
 
 fileDoesNotExist ∷ String → String
 fileDoesNotExist filename =
-  XPath.anyWithExactText $ "File " ++ filename ++ " does not exist"
+  XPath.anyWithExactText $ "File " <> filename <> " does not exist"
 
 selectFileField ∷ String
 selectFileField = XPath.inputWithPlaceholder "Select a file"
@@ -229,20 +229,20 @@ nthFile ∷ String
 nthFile = "*" `XPath.nodeWithAriaLabel` "Select "
 
 selectFile ∷ String → String
-selectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Select " ++ filename)
+selectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Select " <> filename)
 
 deselectFile ∷ String → String
-deselectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Deselect " ++ filename)
+deselectFile filename = "*" `XPath.nodeWithExactAriaLabel` ("Deselect " <> filename)
 
 accessFile ∷ String → String
 accessFile filename =
   XPath.anyWithExactText filename
-    `XPath.withPredicate` ("preceding::" ++ XPath.anyWithAriaLabel "Sort files by name")
+    `XPath.withPredicate` ("preceding::" <> XPath.anyWithAriaLabel "Sort files by name")
 
 accessBreadcrumb ∷ String → String
 accessBreadcrumb name =
   XPath.anyWithExactText name
-    `XPath.withPredicate` ("following::" ++ XPath.anyWithAriaLabel "Sort files by name")
+    `XPath.withPredicate` ("following::" <> XPath.anyWithAriaLabel "Sort files by name")
 
 cardHeading ∷ String
 cardHeading =
@@ -346,12 +346,12 @@ nextCardGripper =
 enabledPreviousCardGripper :: String
 enabledPreviousCardGripper =
   previousCardGripper
-    ++ "[ancestor-or-self::*[not(@aria-disabled = 'true')]]"
+    <> "[ancestor-or-self::*[not(@aria-disabled = 'true')]]"
 
 enabledNextCardGripper :: String
 enabledNextCardGripper =
   nextCardGripper
-    ++ "[ancestor-or-self::*[not(@aria-disabled = 'true')]]"
+    <> "[ancestor-or-self::*[not(@aria-disabled = 'true')]]"
 
 deck :: String
 deck =

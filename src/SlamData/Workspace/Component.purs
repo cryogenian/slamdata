@@ -24,11 +24,11 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
+import Control.Parallel.Class (parallel, runParallel)
 import Control.UI.Browser (setHref, locationObject)
 
 import Data.Array as Array
@@ -38,7 +38,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (Milliseconds(..))
 
 import DOM.HTML.Location as Location
 
@@ -149,7 +149,7 @@ render wiring state =
           [ HH.text err ]
       ]
 
-eval ∷ Wiring → Natural Query WorkspaceDSL
+eval ∷ Wiring → Query ~> WorkspaceDSL
 eval _ (Init next) = do
   deckId ← H.fromEff freshDeckId
   H.modify (_initialDeckId ?~ deckId)
@@ -245,7 +245,7 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
       wrapper = (wrappedDeck defaultPosition oldId) { parent = deck.parent }
 
     error ← lift $ runExceptT do
-      ExceptT $ map (errors "; ") $ H.fromAff $ runPar $ traverse Par
+      ExceptT $ map (errors "; ") $ (H.fromAff :: Slam ~> WorkspaceDSL) $ runParallel $ traverse parallel
         [ putDeck path oldId deck' wiring.decks
         , putDeck path newId wrapper wiring.decks
         ]
@@ -307,7 +307,7 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
           }
         }
     error ← lift $ runExceptT do
-      ExceptT $ map (errors "; ") $ H.fromAff $ runPar $ traverse Par
+      ExceptT $ map (errors "; ") $ (H.fromAff :: Slam ~> WorkspaceDSL) $ runParallel $ traverse parallel
         if Array.null oldModel.cards
         then
           let

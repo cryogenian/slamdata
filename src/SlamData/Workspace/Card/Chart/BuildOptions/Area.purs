@@ -25,12 +25,12 @@ import Data.Foldable as F
 import Data.Function (on)
 import Data.Int as Int
 import Data.Lens (view)
-import Data.List (List(..), replicate, length, zip, range)
+import Data.List (List(..), length, zip, range)
 import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.String as Str
-import Data.Maybe.Unsafe (fromJust)
+import Data.Unfoldable as U
 
 import ECharts as EC
 
@@ -84,7 +84,7 @@ lineData axises =
   secondValues = fromMaybe nothings $ axises.measures !! 1
 
   nothings ∷ ∀ a. List (Maybe a)
-  nothings = flip replicate Nothing $ maxLen firstValues dimensions
+  nothings = flip U.replicate Nothing $ maxLen firstValues dimensions
 
   maxLen ∷ ∀ a b. List a → List b → Int
   maxLen lstA lstB =
@@ -138,11 +138,11 @@ lineRawData
 -- To avoid 'Nothing', control the options in aggreation selector.
 -- In case that aggreation is 'Nothing', coerce it to be replaced by 'Just Sum'.
 aggregatePairs ∷ Maybe Aggregation → Maybe Aggregation → LabeledPointPairs → LineData
-aggregatePairs fAgg sAgg lp = 
-  M.toList $ map 
-    ( bimap 
-        (runAggregation (if isNothing fAgg then Sum else (fromJust fAgg))) 
-        (runAggregation (if isNothing sAgg then Sum else (fromJust sAgg)))  
+aggregatePairs fAgg sAgg lp =
+  M.toList $ map
+    ( bimap
+        (runAggregation (fromMaybe Sum fAgg))
+        (runAggregation (fromMaybe Sum sAgg))
     ) lp
 
 buildArea
@@ -189,15 +189,15 @@ buildArea axises angle size stacked smooth conf = case preSeries of
       }
 
   tooltip ∷ EC.Tooltip
-  tooltip = EC.Tooltip $ EC.tooltipDefault 
+  tooltip = EC.Tooltip $ EC.tooltipDefault
     { trigger = Just EC.TriggerAxis
-    , textStyle = Just $ EC.TextStyle EC.textStyleDefault 
+    , textStyle = Just $ EC.TextStyle EC.textStyleDefault
         { fontFamily = Just "Ubuntu"
-        , fontSize = Just 12.0 
+        , fontSize = Just 12.0
         }
-    , axisPointer = Just $ EC.TooltipAxisPointer EC.tooltipAxisPointerDefault 
+    , axisPointer = Just $ EC.TooltipAxisPointer EC.tooltipAxisPointerDefault
         { "type" = Just $ EC.LinePointer
-        , lineStyle = Just $ EC.LineStyle EC.lineStyleDefault 
+        , lineStyle = Just $ EC.LineStyle EC.lineStyleDefault
             { color = Just "rgba(170,170,170,0.8)"
             , width = Just 1.0
             , "type" = Just $ EC.Solid
@@ -243,14 +243,14 @@ buildArea axises angle size stacked smooth conf = case preSeries of
           , fontSize = Just $ Int.toNumber size
           }
         }
-      , axisLine = Just $ EC.AxisLine EC.axisLineDefault 
-        { lineStyle = Just $ EC.AxisLineStyle EC.axisLineStyleDefault 
+      , axisLine = Just $ EC.AxisLine EC.axisLineDefault
+        { lineStyle = Just $ EC.AxisLineStyle EC.axisLineStyleDefault
             { color = Just "rgba(184,184,184,0.8)"
             , width = Just 0.5
             }
         }
-      , splitLine = Just $ EC.AxisSplitLine EC.axisSplitLineDefault 
-        { lineStyle = Just $ EC.LineStyle EC.lineStyleDefault 
+      , splitLine = Just $ EC.AxisSplitLine EC.axisSplitLineDefault
+        { lineStyle = Just $ EC.LineStyle EC.lineStyleDefault
           { color = Just "rgba(204,204,204,0.2)"
           , width = Just 1.0
           }
@@ -297,19 +297,19 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
       , axisTick = Just $ EC.AxisTick EC.axisTickDefault
         { interval = interval_
         , length = Just $ 2.0
-        , lineStyle = Just $ EC.LineStyle EC.lineStyleDefault 
-          { color = Just "rgba(184,184,184,0.8)"
-          , width = Just 1.0
-          }  
-        }
-      , axisLine = Just $ EC.AxisLine EC.axisLineDefault 
-        { lineStyle = Just $ EC.AxisLineStyle EC.axisLineStyleDefault 
+        , lineStyle = Just $ EC.LineStyle EC.lineStyleDefault
           { color = Just "rgba(184,184,184,0.8)"
           , width = Just 1.0
           }
         }
-      , splitLine = Just $ EC.AxisSplitLine EC.axisSplitLineDefault 
-        { lineStyle = Just $ EC.LineStyle EC.lineStyleDefault 
+      , axisLine = Just $ EC.AxisLine EC.axisLineDefault
+        { lineStyle = Just $ EC.AxisLineStyle EC.axisLineStyleDefault
+          { color = Just "rgba(184,184,184,0.8)"
+          , width = Just 1.0
+          }
+        }
+      , splitLine = Just $ EC.AxisSplitLine EC.axisSplitLineDefault
+        { lineStyle = Just $ EC.LineStyle EC.lineStyleDefault
           { color = Just "rgba(204,204,204,0.2)"
           , width = Just 1.0
           }
@@ -325,7 +325,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
   series ∷ Array EC.Series
   series = case group of
     Tuple firsts seconds →
-      L.fromList $
+      A.fromFoldable $
       (map firstSerie $ zip (range 0 ((length (M.toList firsts))-1)) (M.toList firsts))
       <> (if needTwoAxis
           then map secondSerie $ zip (range 0 ((length (M.toList seconds))-1)) (M.toList seconds)
@@ -333,7 +333,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
          )
 
   group ∷ Tuple (Map String (Array Number)) (Map String (Array Number))
-  group = bimap nameMap nameMap $ splitSeries $ L.fromList lData
+  group = bimap nameMap nameMap $ splitSeries $ A.fromFoldable lData
 
   splitSeries
     ∷ Array (Tuple Key (Tuple Number Number))
@@ -347,7 +347,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
   nameMap = commonNameMap fillEmpties catVals
 
   arrKeys ∷ Array (Map String Number) → Array String
-  arrKeys ms = A.nub $ A.concat (L.fromList ∘ M.keys <$> ms)
+  arrKeys ms = A.nub $ A.concat (A.fromFoldable ∘ M.keys <$> ms)
 
   fillEmpties ∷ Array (Map String Number) → Array (Map String Number)
   fillEmpties ms =
@@ -364,37 +364,37 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
   secondSerie = serie 1.0
 
   serie ∷ Number → Tuple Int (Tuple String (Array Number)) → EC.Series
-  serie ix (Tuple ind (Tuple name nums)) = 
-    EC.LineSeries 
-      { common: EC.universalSeriesDefault 
-        { name = if name ≡ "" 
-                 then if needTwoAxis 
-                      then if ix ≡ 0.0 
-                           then Just $ "Left" 
+  serie ix (Tuple ind (Tuple name nums)) =
+    EC.LineSeries
+      { common: EC.universalSeriesDefault
+        { name = if name ≡ ""
+                 then if needTwoAxis
+                      then if ix ≡ 0.0
+                           then Just $ "Left"
                            else Just $ "Right"
                       else Nothing
-                 else if needTwoAxis 
+                 else if needTwoAxis
                       then if ix ≡ 0.0
-                           then Just $ "Left: " <> name 
+                           then Just $ "Left: " <> name
                            else Just $ "Right: " <> name
                       else Just name
-        , itemStyle = Just $ EC.ItemStyle EC.itemStyleDefault 
-            { normal = Just $ EC.IStyle EC.istyleDefault 
+        , itemStyle = Just $ EC.ItemStyle EC.itemStyleDefault
+            { normal = Just $ EC.IStyle EC.istyleDefault
               { color = Just $ EC.SimpleColor $
-                  fromMaybe "#000000" $ colors !! 
-                    ( (Int.round ix) * ((A.length colors) - 1) + 
-                        (1 - 2 * (Int.round ix)) * (mod ind (A.length colors)) )            
-              , lineStyle = Just $ EC.LineStyle EC.lineStyleDefault 
+                  fromMaybe "#000000" $ colors !!
+                    ( (Int.round ix) * ((A.length colors) - 1) +
+                        (1 - 2 * (Int.round ix)) * (mod ind (A.length colors)) )
+              , lineStyle = Just $ EC.LineStyle EC.lineStyleDefault
                   { width = Just 2.0 }
               , areaStyle = Just $ EC.AreaStyle EC.areaStyleDefault
                   { color = Just $ EC.SimpleColor $ toRGBAString $ getShadeColor
-                    (fromMaybe "#000000" $ colors !! 
-                      ( (Int.round ix) * ((A.length colors) - 1) + 
-                        (1 - 2 * (Int.round ix)) * (mod ind (A.length colors)) )            
+                    (fromMaybe "#000000" $ colors !!
+                      ( (Int.round ix) * ((A.length colors) - 1) +
+                        (1 - 2 * (Int.round ix)) * (mod ind (A.length colors)) )
                     )
                     (if stacked then 1.0 else 0.5)
-                  } 
-              }     
+                  }
+              }
             }
         }
       , lineSeries: EC.lineSeriesDefault
@@ -402,7 +402,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
           , yAxisIndex = Just ix
           , symbol = Just $ EC.Circle
           , symbolSize = Just $ EC.Size 0.0
-          , stack = if stacked then Just $ "stacked on" ++ (show ix) else Nothing
+          , stack = if stacked then Just $ "stacked on" <> (show ix) else Nothing
           , smooth = Just smooth
           }
       }

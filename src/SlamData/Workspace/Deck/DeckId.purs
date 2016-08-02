@@ -28,7 +28,7 @@ import Data.String as S
 import Data.String.Regex as Rx
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson)
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 newtype DeckId = DeckId String
@@ -50,7 +50,7 @@ instance arbitraryDeckId ∷ SC.Arbitrary DeckId where
 
 stringToDeckId ∷ String → Either String DeckId
 stringToDeckId str =
-  if Rx.test (Rx.regex "\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}" Rx.noFlags) str
+  if Rx.test (unsafePartial fromRight $ Rx.regex "\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}" Rx.noFlags) str
   then Right $ DeckId str
   else Left $ "Invalid DeckId: " <> str
 

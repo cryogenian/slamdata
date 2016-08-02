@@ -20,14 +20,12 @@ module Test.SlamData.Property.Workspace.Card.Table.Model
   , check
   ) where
 
-import Prelude
-
-import Data.Either (Either(..))
-import Data.Foldable (mconcat)
+import SlamData.Prelude
 
 import SlamData.Workspace.Card.Table.Model as M
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbModel = ArbModel M.Model
 
@@ -41,12 +39,12 @@ instance arbitraryArbModel :: Arbitrary ArbModel where
     pure $ ArbModel { page, pageSize }
 
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ runArbModel >>> \model ->
   case M.decode (M.encode model) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right model' ->
-      mconcat
+      fold
         [ model.page == model'.page <?> "page mismatch"
         , model.pageSize == model'.pageSize <?> "pageSize mismatch"
         ]

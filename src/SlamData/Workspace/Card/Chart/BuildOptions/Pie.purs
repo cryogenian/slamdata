@@ -23,7 +23,6 @@ import Data.Array ((!!), (:))
 import Data.Array as A
 import Data.Function (on)
 import Data.Int (toNumber, fromNumber)
-import Data.List as L
 import Data.Map as M
 import Data.String (split)
 
@@ -155,13 +154,13 @@ mkSeries pbData =
   groupped = map (map snd) $ A.groupBy (on eq ((_ !! 1) ∘ split ":" ∘ fst)) series
 
   series ∷ Array (Tuple String EC.PieSeriesRec)
-  series = map serie $ L.fromList $ M.toList group
+  series = map serie $ A.fromFoldable $ M.toList group
 
   group ∷ M.Map String (Array (Tuple String Number))
-  group = nameMap $ L.fromList $ M.toList pbData
+  group = nameMap $ A.fromFoldable $ M.toList pbData
 
   ks ∷ Array Key
-  ks = L.fromList $ M.keys pbData
+  ks = A.fromFoldable $ M.keys pbData
 
   catVals ∷ Array String
   catVals = A.nub $ map keyCategory ks
@@ -173,8 +172,7 @@ mkSeries pbData =
   filterAndMarkCategory
     ∷ Array (Tuple Key Number) → String → M.Map String (Tuple String Number)
   filterAndMarkCategory arr cat =
-      M.fromList
-    $ L.toList
+      M.fromFoldable
     $ map (bimap keyName (Tuple cat))
     $ A.filter (\(Tuple k _) → keyCategory k == cat)
     $ arr
@@ -183,7 +181,7 @@ mkSeries pbData =
     ∷ Array (M.Map String (Tuple String Number))
     → M.Map String (Array (Tuple String Number))
   mapByCategories arr =
-    map A.reverse $ foldl foldFn M.empty (L.fromList ∘ M.toList <$> arr)
+    map A.reverse $ foldl foldFn M.empty (A.fromFoldable ∘ M.toList <$> arr)
 
   nameMap ∷ Array (Tuple Key Number) → M.Map String (Array (Tuple String Number))
   nameMap = groupByCategories ⋙ mapByCategories

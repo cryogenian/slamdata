@@ -1,8 +1,6 @@
-// module Test.SlamData.Feature.Main
-
 var fs = require("fs");
 exports.getConfig = function() {
-    return require("./config.json");
+    return require("./config.js");
 };
 
 exports.createReadStream = function(from) {

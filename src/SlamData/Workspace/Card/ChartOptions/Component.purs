@@ -213,20 +213,20 @@ renderDimensions ∷ VCS.State → HTML
 renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
-      (_.axisLabelAngle ⋙ show) RotateAxisLabel 
+      (_.axisLabelAngle ⋙ show) RotateAxisLabel
         (isPie state.chartType || isScatter state.chartType)
   , intChartInput CSS.axisLabelParam "Axis font size"
-      (_.axisLabelFontSize ⋙ show) SetAxisFontSize 
+      (_.axisLabelFontSize ⋙ show) SetAxisFontSize
         (isPie state.chartType || isScatter state.chartType)
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
       (_.smooth) ToggleSetSmooth (not $ isArea state.chartType)
   , numChartInput CSS.axisLabelParam "Min size of circle"
-      (_.bubbleMinSize) UpperBoundaryCtrl (_.bubbleMaxSize) SetBubbleMinSize 
+      (_.bubbleMinSize) UpperBoundaryCtrl (_.bubbleMaxSize) SetBubbleMinSize
         (not $ isScatter state.chartType)
   , numChartInput CSS.axisLabelParam "Max size of circle"
-      (_.bubbleMaxSize) LowerBoundaryCtrl (_.bubbleMinSize) SetBubbleMaxSize 
+      (_.bubbleMaxSize) LowerBoundaryCtrl (_.bubbleMinSize) SetBubbleMaxSize
         (not $ isScatter state.chartType)
   ]
   where
@@ -274,11 +274,11 @@ renderDimensions state =
           , HP.value $ show $ getCurrentVal state
           , ARIA.label labelText
           , HE.onValueChange
-              $ pure ∘ map (right ∘ flip queryCtor unit) ∘ 
+              $ pure ∘ map (right ∘ flip queryCtor unit) ∘
                 stringToNum (getCurrentVal state) bc (getBoudary state)
           ]
       ]
-  
+
   boolChartInput
     ∷ HH.ClassName
     → String
@@ -297,7 +297,7 @@ renderDimensions state =
           [ HP.inputType HP.InputCheckbox
           , HP.checked $ valueFromState state
           , ARIA.label labelText
-          , HE.onChecked 
+          , HE.onChecked
              $ HE.input_ (right ∘ queryCtor (not $ valueFromState state))
           ]
       ]
@@ -312,9 +312,9 @@ renderDimensions state =
   stringToInt s = if s ≡ "" then Just 0 else Int.fromString s
 
   stringToNum ∷ Number → BoundaryCtrl → Number → String → Maybe Number
-  stringToNum currentVal bc boundary s = 
+  stringToNum currentVal bc boundary s =
     if (isNaN $ readFloat s) || ((readFloat s) < 0.0)
-    then Just currentVal 
+    then Just currentVal
     else case bc of
       LowerBoundaryCtrl → if (readFloat s) < boundary
           then Just boundary
@@ -322,7 +322,7 @@ renderDimensions state =
       UpperBoundaryCtrl → if (readFloat s) > boundary
           then Just boundary
           else Just $ readFloat s
-  
+
 data BoundaryCtrl
   = LowerBoundaryCtrl
   | UpperBoundaryCtrl
@@ -352,7 +352,7 @@ cardEval = case _ of
       H.modify
         $ (VCS._availableChartTypes .~ opts.availableChartTypes)
         ∘ (VCS._axes .~ opts.axes)
-      case Set.toList opts.availableChartTypes of
+      case L.fromFoldable opts.availableChartTypes of
         L.Cons ct L.Nil → H.modify (VCS._chartType .~ ct)
         _ → pure unit
       configure
@@ -570,6 +570,6 @@ configure = void do
        , measures: [firstMeasures, secondMeasures, thirdMeasures]
        , aggregations: [firstAggregation, secondAggregation]
        }
-  
+
 peek ∷ ∀ a. H.ChildF ChartType Form.QueryP a → DSL Unit
 peek _ = configure *> CC.raiseUpdatedP' CC.EvalModelUpdate

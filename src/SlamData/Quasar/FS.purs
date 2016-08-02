@@ -34,10 +34,10 @@ import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Error.Class (catchError)
-import Control.Monad.Rec.Class as MR
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Free.Trans as FT
+import Control.Monad.Rec.Class as MR
 
 import Data.Array as Arr
 import Data.Foldable as F
@@ -80,7 +80,8 @@ transitiveChildrenProducer
 transitiveChildrenProducer dirPath = do
   AP.produce \emit → do
     activeRequests ← Ref.newRef $ Set.singleton $ P.printPath dirPath
-    Aff.runAff Exn.throwException (const (pure unit)) $ go emit activeRequests dirPath
+    void $ Aff.runAff Exn.throwException (const (pure unit)) $
+      go emit activeRequests dirPath
   where
   go emit activeRequests start = do
     let strPath = P.printPath start
@@ -242,19 +243,27 @@ forceDelete res =
 
 cleanViewMounts
   ∷ ∀ eff m
-  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
+  . (Affable (QEff eff) m)
   ⇒ DirPath
   → ExceptT Exn.Error m Unit
 cleanViewMounts path =
-  CR.runProcess (producer CR.$$ consumer)
+  hoistExceptT fromAff $ CR.runProcess (producer CR.$$ consumer)
 
   where
-  producer ∷ CR.Producer (Array R.Resource) (ExceptT Exn.Error m) Unit
+
+  hoistExceptT
+    ∷ ∀ e a
+    . (Aff.Aff (QEff eff) ~> m)
+    → ExceptT e (Aff.Aff (QEff eff)) a
+    → ExceptT e m a
+  hoistExceptT nat (ExceptT m) = ExceptT (nat m)
+
+  producer ∷ CR.Producer (Array R.Resource) (ExceptT Exn.Error (Aff.Aff (QEff eff))) Unit
   producer =
     FT.hoistFreeT lift $
       transitiveChildrenProducer path
 
-  consumer ∷ CR.Consumer (Array R.Resource) (ExceptT Exn.Error m) Unit
+  consumer ∷ CR.Consumer (Array R.Resource) (ExceptT Exn.Error (Aff.Aff (QEff eff))) Unit
   consumer =
     CR.consumer \fs → do
       traverse_ deleteViewMount fs
@@ -262,7 +271,7 @@ cleanViewMounts path =
 
   deleteViewMount
     ∷ R.Resource
-    → ExceptT Exn.Error m Unit
+    → ExceptT Exn.Error (Aff.Aff (QEff eff)) Unit
   deleteViewMount =
     case _ of
       R.Mount (R.View vp) →

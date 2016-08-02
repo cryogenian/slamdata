@@ -18,18 +18,18 @@ module SlamData.Workspace.Card.Markdown.Interpret
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Eff (runPure)
+import Control.Monad.Eff.Exception (try)
 import Control.Monad.Maybe.Trans as MT
 
-import Data.Enum as Enum
-import Data.Date as D
-import Data.Date.Locale as DL
-import Data.Time as DT
+import Data.Array as A
 import Data.Functor.Compose (decompose)
 import Data.Identity (Identity(..))
+import Data.Int as Int
+import Data.JSDate as JSD
+import Data.Json.Extended as EJSON
 import Data.List as L
 import Data.Maybe as M
-import Data.Json.Extended as EJSON
 
 import SlamData.Workspace.Card.Port.VarMap as VM
 
@@ -66,15 +66,15 @@ formFieldEmptyValue field =
           SD.PlainText _ → EJSON.string ""
           SD.Numeric _ → EJSON.integer 0
           SD.Date _ → EJSON.null
-          SD.Time _ → EJSON.null
-          SD.DateTime _ → EJSON.null
+          SD.Time _ _ → EJSON.null
+          SD.DateTime _ _ → EJSON.null
       SD.CheckBoxes _ _ → EJSON.array []
       SD.RadioButtons _ _ → EJSON.array []
       SD.DropDown _ _ → EJSON.array []
 
 formFieldValueToVarMapValue
-  ∷ ∀ e m
-  . (MonadEff (locale ∷ DL.Locale | e) m, Applicative m)
+  ∷ ∀ m
+  . Monad m
   ⇒ SDS.FormFieldValue VM.VarMapValue
   → m (M.Maybe VM.VarMapValue)
 formFieldValueToVarMapValue v =
@@ -86,20 +86,11 @@ formFieldValueToVarMapValue v =
           SD.PlainText (Identity x) → pure $ EJSON.string x
           SD.Numeric (Identity x) → pure $ EJSON.decimal x
           SD.Date _ → pure ∘ EJSON.date $ SDPR.prettyPrintTextBoxValue tb'
-          SD.Time _ → pure ∘ EJSON.time $ SDPR.prettyPrintTextBoxValue tb'
-          SD.DateTime (Identity localDateTime) → do
-            let
-              year = D.Year localDateTime.date.year
-              day = D.DayOfMonth localDateTime.date.day
-              hour = DT.HourOfDay localDateTime.time.hours
-              minute = DT.MinuteOfHour localDateTime.time.minutes
-              second = DT.SecondOfMinute 0
-              millisecond = DT.MillisecondOfSecond 0
-            month ← liftMaybe $ Enum.toEnum localDateTime.date.month
-            dateTime ← MT.MaybeT ∘ liftEff $ DL.dateTime year month day hour minute second millisecond
-            pure ∘ EJSON.timestamp $ D.toISOString dateTime
+          SD.Time _ _ → pure ∘ EJSON.time $ SDPR.prettyPrintTextBoxValue tb'
+          SD.DateTime _ (Identity localDateTime) →
+            pure $ EJSON.timestamp $ either (const "") id $ mkdate localDateTime
       SD.CheckBoxes (Identity sel) _ →
-        pure ∘ EJSON.array ∘ L.fromList $ L.mapMaybe getLiteral sel
+        pure ∘ EJSON.array ∘ A.fromFoldable $ L.mapMaybe getLiteral sel
       SD.RadioButtons (Identity x) _ →
         pure ∘ EJSON.array $ getLiteral x
       SD.DropDown mx _ → do
@@ -114,3 +105,15 @@ formFieldValueToVarMapValue v =
       → MT.MaybeT n a
     liftMaybe =
       MT.MaybeT ∘ pure
+
+    mkdate localDateTime = runPure $ try $
+      JSD.toISOString $
+        JSD.jsdate
+          { year: Int.toNumber localDateTime.date.year
+          , month: Int.toNumber localDateTime.date.month
+          , day: Int.toNumber localDateTime.date.day
+          , hour: Int.toNumber localDateTime.time.hours
+          , minute: Int.toNumber localDateTime.time.minutes
+          , second: Int.toNumber $ fromMaybe 0 localDateTime.time.seconds
+          , millisecond: 0.0
+          }

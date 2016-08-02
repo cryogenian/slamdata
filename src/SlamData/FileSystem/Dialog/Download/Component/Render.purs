@@ -30,6 +30,8 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import Global as Global
+
 import Quasar.Paths as Config
 
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)

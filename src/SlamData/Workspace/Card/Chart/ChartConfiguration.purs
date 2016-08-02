@@ -37,7 +37,7 @@ import SlamData.Form.Select (Select, _value)
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, runArbAggregation)
 import SlamData.Workspace.Card.Chart.Axis (dependsOn)
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 

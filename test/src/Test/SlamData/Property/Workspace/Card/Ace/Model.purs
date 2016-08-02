@@ -11,7 +11,8 @@ import Data.Maybe (Maybe(..))
 import SlamData.Workspace.Card.Ace.Model as M
 import Utils.Ace (RangeRec)
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbRangeRec = ArbRangeRec RangeRec
 
@@ -43,7 +44,7 @@ instance arbitraryArbModel ∷ Arbitrary ArbModel where
           <*> (map (map runArbRangeRec) arbitrary)
       pure $ ArbModel $ Just r
 
-check ∷ QC Unit
+check ∷ forall eff. SC eff Unit
 check = quickCheck $ runArbModel >>> \m →
   case M.decode (M.encode m) of
     Left err → Failed $ "Decode failed: " <> err

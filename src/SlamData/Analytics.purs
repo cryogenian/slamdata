@@ -40,7 +40,7 @@ import DOM.HTML.Location as Location
 import DOM.HTML.Window as Window
 
 import Network.HTTP.Affjax as AX
-import OIDCCryptUtils.Types as OIDC
+import OIDC.Crypt.Types as OIDC
 
 import Quasar.QuasarF as QF
 import Quasar.QuasarF.Interpreter.Aff as QA
