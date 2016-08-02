@@ -269,32 +269,34 @@ buildRadar axises conf = case preSeries of
   mkIndicatorSet ∷ Int → Array EC.Indicator
   mkIndicatorSet i =
     let
-      values = L.transpose
-                $ L.fromFoldable
-                $ map (L.fromFoldable <<< snd)
-                $ A.concat
-                $ map snd
-                $ snd extracted
-      minVals = case L.null values of
-        true → map (const Nothing) (fst extracted)
-        false → A.fromFoldable $ map minimum values
-      maxVals = case L.null values of
-        true → map (const Nothing) (fst extracted)
-        false → A.fromFoldable $ map maximum values
       dupName = fromMaybe "" $ (map fst $ snd extracted) !! i
     in
-      map (mkIndicator dupName) (A.zip (fst extracted) $ A.zip minVals maxVals)
+      map (mkIndicator dupName) (fst extracted)
 
-  mkIndicator
-    ∷ String
-    → Tuple String (Tuple (Maybe Number) (Maybe Number))
-    → EC.Indicator
-  mkIndicator dupName (Tuple dim (Tuple minVal maxVal)) =
+  mkIndicator ∷ String → String → EC.Indicator
+  mkIndicator dupName dim =
     EC.Indicator EC.indicatorDefault
       { text = Just $ dupName <> (if dupName == "" then "" else ": ") <> dim
       , min = minVal
       , max = maxVal
       }
+
+  allValues ∷ Array Number
+  allValues = A.concat
+    $ map snd
+    $ A.concat
+    $ map snd
+    $ snd extracted
+
+  minVal ∷ Maybe Number
+  minVal = case A.null allValues of
+    true → Nothing
+    false → minimum allValues
+  
+  maxVal ∷ Maybe Number
+  maxVal = case A.null allValues of
+    true → Nothing
+    false → maximum allValues
 
   preSeries ∷ Array EC.Series
   preSeries = mkSeries extracted

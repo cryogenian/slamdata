@@ -136,3 +136,5 @@ buildOptions_ Area mp angle size stacked smooth _ _ conf =
   buildArea mp angle size stacked smooth conf
 buildOptions_ Scatter mp _ _ _ _ bubbleMinSize bubbleMaxSize conf =
   buildScatter mp bubbleMinSize bubbleMaxSize conf
+buildOptions_ Radar mp _ _ _ _ _ _ conf = 
+  buildRadar mp conf

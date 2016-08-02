@@ -86,4 +86,4 @@ instance decodeJsonChartType :: DecodeJson ChartType where
   decodeJson json = decodeJson json >>= parseChartType
 
 instance arbitraryChartType ∷ SC.Arbitrary ChartType where
-  arbitrary = Gen.elements Pie $ L.fromFoldable [ Pie, Line, Bar, Area, Scatter ]
+  arbitrary = Gen.elements Pie $ L.fromFoldable [ Pie, Line, Bar, Area, Scatter, Radar ]

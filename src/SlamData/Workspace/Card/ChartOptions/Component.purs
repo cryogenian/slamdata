@@ -217,10 +217,10 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-        (isPie state.chartType || isScatter state.chartType)
+        (isPie state.chartType || isScatter state.chartType || isRadar state.chartType)
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-        (isPie state.chartType || isScatter state.chartType)
+        (isPie state.chartType || isScatter state.chartType || isRadar state.chartType)
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
@@ -574,6 +574,32 @@ configure = void do
        , dimensions: []
        , measures: [firstMeasures, secondMeasures, thirdMeasures]
        , aggregations: [firstAggregation, secondAggregation]
+       }
+
+  radarConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
+  radarConfiguration axes current =
+    let allAxises = (axes.category ⊕ axes.time ⊕ axes.value)
+        dimensions =
+          setPreviousValueFrom (index current.dimensions 0)
+          $ autoSelect $ newSelect $ axes.category
+        firstMeasures =
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ ifSelected [dimensions]
+          $ axes.value
+        firstSeries =
+          setPreviousValueFrom (index current.series 0)
+          $ newSelect $ ifSelected [firstMeasures]
+          $ allAxises ⊝ dimensions ⊝ firstMeasures
+        secondSeries =
+          setPreviousValueFrom (index current.series 1)
+          $ newSelect $ ifSelected [firstSeries]
+          $ allAxises ⊝ dimensions ⊝ firstMeasures ⊝ firstSeries
+        firstAggregation =
+          setPreviousValueFrom (index current.aggregations 0) aggregationSelect
+    in { series: [firstSeries, secondSeries]
+       , dimensions: [dimensions]
+       , measures: [firstMeasures]
+       , aggregations: [firstAggregation]
        }
 
 peek ∷ ∀ a. H.ChildF ChartType Form.QueryP a → DSL Unit
