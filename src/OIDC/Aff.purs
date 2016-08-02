@@ -25,7 +25,7 @@ import Data.URI.Types as URI
 import DOM (DOM)
 import OIDCCryptUtils as Cryptography
 import Quasar.Advanced.Types (Provider(..), ProviderR)
-import SlamData.Quasar.Auth as Auth
+import SlamData.Quasar.Auth.Store as AuthStore
 
 data Prompt = Login | None
 
@@ -43,9 +43,9 @@ requestAuthenticationURI
 requestAuthenticationURI prompt pr redirectURIStr = do
   csrf ← (Cryptography.KeyString ∘ show) <$> random
   replay ← (Cryptography.UnhashedNonce ∘ show) <$> random
-  Auth.storeKeyString csrf
-  Auth.storeNonce replay
-  Auth.storeProvider $ Provider pr
+  AuthStore.storeKeyString csrf
+  AuthStore.storeNonce replay
+  AuthStore.storeProvider $ Provider pr
   hap ← hostAndProtocol
   hrefState ← map Cryptography.StateString getHref
   let authURIString = pr.openIDConfiguration.authorizationEndpoint

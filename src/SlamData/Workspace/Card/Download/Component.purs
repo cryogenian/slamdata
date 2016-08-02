@@ -114,7 +114,7 @@ cardEval = case _ of
 
 handleDownloadPort ∷ Port.DownloadPort → DSL Unit
 handleDownloadPort opts = do
-  hs ← H.fromEff API.authHeaders
+  hs ← H.fromAff API.authHeaders
   H.modify $ _url .~ url hs
   let
     fileName = UP.getNameStr $ Right opts.resource

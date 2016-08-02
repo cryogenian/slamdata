@@ -99,3 +99,9 @@ eventProducer eventType capture eventTarget =
       eventType
       (EventTarget.eventListener $ emit <<< Left)
       capture eventTarget
+
+openPopup ∷ ∀ eff. String → Eff (dom ∷ DOM | eff) Unit
+openPopup stringUrl = do
+  window ← window
+  windowFeaturesStr ← centerPopupWindowFeatures 800 600 window
+  open stringUrl "SignIn" windowFeaturesStr window

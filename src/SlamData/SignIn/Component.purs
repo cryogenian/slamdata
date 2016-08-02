@@ -29,8 +29,6 @@ import Control.UI.Browser as Browser
 import Control.Monad.Aff.Bus as Bus
 import Control.Coroutine.Stalling as StallingCoroutine
 
-import DOM.HTML as DOMHTML
-
 import Halogen as H
 import Halogen.HTML.Core (className)
 import Halogen.HTML.Indexed as HH
@@ -49,14 +47,15 @@ import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Quasar as Api
-import SlamData.Quasar.Auth as Auth
+import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
+import SlamData.Quasar.Auth.Store as AuthStore
+import SlamData.Quasar.Auth.IdTokenStorageEvents as IdTokenStorageEvents
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
 import SlamData.SignIn.Bus (SignInMessage(..), SignInBusW)
 
 import Utils.DOM as DOMUtils
-import Utils.LocalStorage as LocalStorage
 
 data Query a
   = DismissSubmenu a
@@ -107,11 +106,18 @@ eval bus (SignedIn next) =
   sendMessage *> update $> next
   where
   sendMessage = H.fromAff $ Bus.write SignInSuccess bus
-eval _ (Init next) = update $> next
+eval _ (Init next) = subscribeToIdTokenEvents *> update $> next
+
+subscribeToIdTokenEvents :: SignInDSL Unit
+subscribeToIdTokenEvents =
+  H.subscribe'
+    ∘ HE.EventSource
+    ∘ StallingCoroutine.mapStallingProducer (const $ SignedIn unit)
+    =<< H.fromEff IdTokenStorageEvents.getIdTokenStorageEvents
 
 update ∷ SignInDSL Unit
 update = do
-  mbIdToken ← H.fromEff Auth.retrieveIdToken
+  mbIdToken ← H.fromAff AuthRetrieve.retrieveIdToken
   traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
     retrieveProvidersAndUpdateMenu
@@ -178,32 +184,23 @@ submenuPeek
   . HalogenMenu.SubmenuQuery (Maybe ProviderR) a
   → SignInDSL Unit
 submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
-  H.subscribe'
-    ∘ HE.EventSource
-    ∘ StallingCoroutine.mapStallingProducer (const $ SignedIn unit)
-    ∘ StallingCoroutine.filter isIdTokenKeyEvent
-    ∘ StallingCoroutine.producerToStallingProducer
-    =<< H.fromEff (LocalStorage.getStorageEventProducer false)
-
   {loggedIn} ← H.get
   if loggedIn
     then logOut
-    else for_ v $ either (const $ pure unit) (H.fromEff ∘ openPopup) <=< requestAuthenticationURI
+    else for_ v $ either (const $ pure unit) (H.fromEff ∘ DOMUtils.openPopup) <=< requestAuthenticationURI
   pure unit
   where
-  isIdTokenKeyEvent o = o.key == Auth.idTokenLocalStorageKey
   logOut ∷ SignInDSL Unit
   logOut = do
     H.fromEff do
-      Auth.clearIdToken
+      AuthStore.clearIdToken
       Browser.reload
   appendAuthPath s = s ++ Config.redirectURIString
   requestAuthenticationURI pr =
-    H.fromEff $ OIDC.requestAuthenticationURI OIDC.Login pr ∘ appendAuthPath =<< Browser.locationString
-  openPopup stringUrl = do
-    window ← DOMHTML.window
-    windowFeaturesStr ← DOMUtils.centerPopupWindowFeatures 800 400 window
-    DOMUtils.open stringUrl "SignIn" windowFeaturesStr window
+    H.fromEff
+      $ OIDC.requestAuthenticationURI OIDC.Login pr
+      ∘ appendAuthPath
+      =<< Browser.locationString
 
 queryMenu
   ∷ HalogenMenu.MenuQuery (Maybe ProviderR) Unit

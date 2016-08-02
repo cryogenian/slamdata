@@ -1,3 +1,4 @@
+
 {-
 Copyright 2016 SlamData, Inc.
 
@@ -14,46 +15,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Quasar.Auth
-  ( authed
-  , authHeaders
-  , module OIDC
-  ) where
+module SlamData.Quasar.Auth.IdToken where
 
-import Prelude
+import SlamData.Prelude
 
-import Control.Monad.Aff.Free (class Affable, fromEff, fromAff)
-import Control.Monad.Aff (Aff)
-import Control.Monad.Eff.Class (liftEff)
+import Control.Alt ((<|>))
+import Control.Apply ((*>))
+import Control.Apply as Apply
+import Control.Bind ((=<<))
+import Control.Monad.Aff.Free (class Affable, fromEff)
+import Control.Monad.Eff (Eff)
+import Control.UI.Browser as Browser
 
 import Data.Array as A
+import Data.Either as E
 import Data.Maybe as M
+import Data.Foldable as F
+import Data.Traversable as T
 
+import DOM (DOM)
+import DOM.HTML as DOMHTML
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
 import OIDCCryptUtils.Types as OIDCT
+import OIDCCryptUtils.JSONWebKey (JSONWebKey)
 import OIDCCryptUtils as OIDC
+import OIDC.Aff as OIDCAff
 
+import SlamData.Config as Config
 import SlamData.Quasar.Auth.Permission as P
-import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 
 import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader)
+import Quasar.Advanced.Types as QAT
 
-authed
-  ∷ ∀ a eff m
-  . (Bind m, Affable (AuthRetrieve.RetrieveIdTokenEffRow eff) m)
-  ⇒ (M.Maybe OIDCT.IdToken → Array P.TokenHash → m a)
-  → m a
-authed f = do
-  idToken ← fromAff AuthRetrieve.retrieveIdToken
-  perms ← fromEff P.retrieveTokenHashes
-  f idToken perms
+import Utils.LocalStorage as LS
+import Utils.DOM as DOMUtils
 
-authHeaders
-  ∷ ∀ eff
-  . Aff (AuthRetrieve.RetrieveIdTokenEffRow eff) (Array RequestHeader)
-authHeaders = do
-  idToken ← AuthRetrieve.retrieveIdToken
-  hashes ← liftEff P.retrieveTokenHashes
-  pure $ A.catMaybes [ map authHeader idToken, permissionsHeader hashes ]

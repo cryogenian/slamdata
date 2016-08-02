@@ -443,7 +443,7 @@ configure (R.Database path) = do
 
 download ∷ R.Resource → DSL Unit
 download res = do
-  hs ← H.fromEff API.authHeaders
+  hs ← H.fromAff API.authHeaders
   showDialog (Dialog.Download res)
   queryDialog Dialog.cpDownload (H.action $ Download.SetAuthHeaders hs)
   pure unit

@@ -28,6 +28,7 @@ import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref as Ref
+import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Free.Trans as FT
 
 import Data.Array as A
@@ -54,6 +55,7 @@ import SlamData.Quasar.FS as API
 import SlamData.Render.CSS as CSS
 
 import Utils.Path as PU
+import Utils.At (INTERVAL)
 
 import OIDCCryptUtils as OIDC
 
@@ -81,11 +83,13 @@ data Query a
 type Effects e =
     ( rsaSignTime ∷ OIDC.RSASIGNTIME
     , avar :: AVar.AVAR
+    , random :: RANDOM
     , now :: Date.Now
     , ref :: Ref.REF
     , ajax :: AJAX
     , err :: EXCEPTION
     , dom :: DOM
+    , interval :: INTERVAL
     | e
     )
 

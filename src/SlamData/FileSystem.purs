@@ -58,7 +58,7 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
-import SlamData.Quasar.Auth as Auth
+import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
 
@@ -188,7 +188,7 @@ listPath query deep var dir driver = do
   listingErrorMessage err =
     case message err of
       "An unknown error ocurred: 401 \"\"" ->
-        append forbiddenMessage <<< suggestedAction <$> H.fromEff Auth.retrieveIdToken
+        append forbiddenMessage <<< suggestedAction <$> H.fromAff AuthRetrieve.retrieveIdToken
       s ->
         pure $ "There was a problem accessing this directory listing. " ++ s
 

@@ -18,11 +18,14 @@ module SlamData.Quasar.Aff where
 
 import SlamData.Prelude
 
+import Data.Date (Now)
+
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
+import Control.Monad.Eff.Random (RANDOM)
 
 import Control.Monad.Reader.Trans (runReaderT)
 
@@ -30,7 +33,7 @@ import DOM (DOM)
 
 import Network.HTTP.Affjax as AX
 
-import SlamData.Quasar.Auth (retrieveIdToken)
+import SlamData.Quasar.Auth.Retrieve (retrieveIdToken)
 import SlamData.Quasar.Auth.Permission (retrieveTokenHashes)
 
 import Quasar.Advanced.QuasarAF as QF
@@ -38,7 +41,9 @@ import Quasar.Advanced.QuasarAF.Interpreter.Aff as QFA
 
 import OIDCCryptUtils as OIDC
 
-type QEff eff = (rsaSignTime ∷ OIDC.RSASIGNTIME, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
+import Utils.At (INTERVAL)
+
+type QEff eff = (interval ∷ INTERVAL, now ∷ Now, rsaSignTime ∷ OIDC.RSASIGNTIME, random ∷ RANDOM, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
 
 -- | Runs a `QuasarF` request in `Aff`, using the `QError` type for errors that
 -- | may arise, which allows for convenient catching of 404 errors.
@@ -48,6 +53,6 @@ runQuasarF
   ⇒ QF.QuasarAFC (Either e a)
   → m (Either e a)
 runQuasarF qf = (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
-  idToken ← fromEff retrieveIdToken
+  idToken ← retrieveIdToken
   permissions ← fromEff retrieveTokenHashes
   runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }

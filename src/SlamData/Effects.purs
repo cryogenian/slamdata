@@ -24,13 +24,13 @@ import Control.Monad.Eff.Ref (REF)
 import Control.UI.File (READ_FILE)
 import Control.UI.ZClipboard (ZCLIPBOARD)
 import DOM.Timer (Timer)
-import DOM (DOM)
 import Data.Date (Now)
 import Data.Date.Locale (Locale)
 import ECharts.Effects (ECHARTS_INIT, ECHARTS_OPTION_SET, ECHARTS_DISPOSE, ECHARTS_RESIZE, ECHARTS_REFRESH, ECHARTS_CLEAR)
 import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
 import OIDCCryptUtils as OIDC
+import Utils.At (INTERVAL)
 
 type Slam = Aff SlamDataEffects
 
@@ -53,5 +53,6 @@ type SlamDataRawEffects =
   , ref :: REF
   , rsaSignTime ∷ OIDC.RSASIGNTIME
   , timer :: Timer
+  , interval :: INTERVAL
   , zClipboard :: ZCLIPBOARD
   )

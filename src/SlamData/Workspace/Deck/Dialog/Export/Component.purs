@@ -45,7 +45,7 @@ import OIDCCryptUtils as OIDC
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
-import SlamData.Quasar.Auth as Auth
+import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 import SlamData.Quasar.Security as Q
 import SlamData.Render.Common (glyph, fadeWhen)
 import SlamData.Render.CSS as Rc
@@ -358,7 +358,7 @@ eval (Init mbEl next) = next <$ do
       Z.setData "text/plain" val z
 
   -- To know if user is authed
-  mbAuthToken ← H.fromEff Auth.retrieveIdToken
+  mbAuthToken ← H.fromAff AuthRetrieve.retrieveIdToken
   case mbAuthToken of
     Nothing →
       H.modify _{ permToken = Nothing
@@ -417,7 +417,7 @@ eval (ToggleShouldGenerateToken next) = next <$ do
   case state.permToken of
     Nothing →
       unless state.shouldGenerateToken do
-        mbOIDC ← H.fromEff Auth.retrieveIdToken
+        mbOIDC ← H.fromAff AuthRetrieve.retrieveIdToken
         workspacePath ← H.gets (_.workspacePath ∘ _.sharingInput)
         for_ mbOIDC \oidc → do
           let

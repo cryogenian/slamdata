@@ -34,7 +34,7 @@ import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component.CSS as CCSS
-import SlamData.Quasar.Auth (retrieveIdToken)
+import SlamData.Quasar.Auth.Retrieve (retrieveIdToken)
 
 import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -211,7 +211,7 @@ eval (UpdateFilter str next) =
 eval (UpdateCardType cty ctys next) =
   H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Map.empty :: DeckMap }) $> next
 eval (Init next) = next <$ do
-  isLogged ← map isJust $ H.fromEff retrieveIdToken
+  isLogged ← map isJust $ H.fromAff retrieveIdToken
   H.modify (_ { isLogged = isLogged })
 eval (SetUnwrappable decks next) =
   H.modify (_ { unwrappableDecks = decks }) $> next
