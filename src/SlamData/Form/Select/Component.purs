@@ -21,7 +21,6 @@ import SlamData.Prelude
 import Data.Array (length, range, zipWith, singleton)
 import Data.Int as Int
 import Data.Lens ((^.))
-import Data.Maybe.Unsafe (fromJust)
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -36,72 +35,73 @@ import SlamData.Form.Select as S
 data Query s a
   = Choose Int a
   | SetSelect (S.Select s) a
-  | GetValue (Maybe s -> a)
-  | GetSelect (S.Select s -> a)
+  | GetValue (Maybe s → a)
+  | GetSelect (S.Select s → a)
   | ToggleOpened a
 
 type SelectConfig r =
-  { disableWhen :: Int -> Boolean
-  , defaultWhen :: Int -> Boolean
-  , ariaLabel :: Maybe String
+  { disableWhen ∷ Int → Boolean
+  , defaultWhen ∷ Int → Boolean
+  , ariaLabel ∷ Maybe String
   | r
   }
 
 primarySelect
-  :: forall a
+  ∷ forall a
    . (S.OptionVal a)
-  => Maybe String
-  -> H.Component (S.Select a) (Query a) Slam
+  ⇒ Maybe String
+  → H.Component (S.Select a) (Query a) Slam
 primarySelect mbLabel =
   select { disableWhen: (_ < 2), defaultWhen: (_ > 1), ariaLabel: mbLabel }
 
 secondarySelect
-  :: forall a
+  ∷ forall a
    . (S.OptionVal a)
-  => Maybe String
-  -> H.Component (S.Select a) (Query a) Slam
+  ⇒ Maybe String
+  → H.Component (S.Select a) (Query a) Slam
 secondarySelect mbLabel =
   select { disableWhen: (_ < 1), defaultWhen: const true, ariaLabel: mbLabel }
 
 select
-  :: forall a r
-   . (S.OptionVal a)
-  => SelectConfig r
-  -> H.Component (S.Select a) (Query a) Slam
+  ∷ forall a r
+   . S.OptionVal a
+  ⇒ SelectConfig r
+  → H.Component (S.Select a) (Query a) Slam
 select config =
   H.component { render: render config, eval }
 
 render
-  :: forall a r
-   . (S.OptionVal a)
-  => SelectConfig r
-  -> S.Select a
-  -> H.ComponentHTML (Query a)
+  ∷ forall a r
+  . S.OptionVal a
+  ⇒ SelectConfig r
+  → S.Select a
+  → H.ComponentHTML (Query a)
 render config state =
-  HH.select ([ HP.classes [ B.formControl ]
-              -- `fromJust` is safe here because we know that value are `show`n ints
-            , HE.onValueChange (HE.input (Choose <<< fromJust <<< Int.fromString))
-            , HP.disabled $ config.disableWhen len
-            ]
-           <> maybe [] (singleton <<< ARIA.label) config.ariaLabel)
-  (defOption <> (zipWith (option selected) opts (range 0 len)))
+  HH.select
+    ([ HP.classes [ B.formControl ]
+       -- `fromJust` is safe here because we know that value are `show`n ints
+     , HE.onValueChange (HE.input (Choose <<< unsafePartial fromJust <<< Int.fromString))
+     , HP.disabled $ config.disableWhen len
+     ]
+    <> maybe [] (singleton <<< ARIA.label) config.ariaLabel)
+    (defOption <> (zipWith (option selected) opts (range 0 len)))
   where
-  len :: Int
+  len ∷ Int
   len = length opts
 
-  opts :: Array a
+  opts ∷ Array a
   opts = state ^. S._options
 
-  selected :: Maybe a
+  selected ∷ Maybe a
   selected = state ^. S._value
 
-  defOption :: Array (H.ComponentHTML (Query a))
+  defOption ∷ Array (H.ComponentHTML (Query a))
   defOption =
     if config.defaultWhen len
     then singleton $ defaultOption selected
     else [ ]
 
-  defaultOption :: Maybe a -> H.ComponentHTML (Query a)
+  defaultOption ∷ Maybe a → H.ComponentHTML (Query a)
   defaultOption val =
     HH.option
       [ HP.selected (val == Nothing)
@@ -109,7 +109,7 @@ render config state =
       ]
       [ HH.text "Select axis source" ]
 
-  option :: Maybe a -> a -> Int -> H.ComponentHTML (Query a)
+  option ∷ Maybe a → a → Int → H.ComponentHTML (Query a)
   option currentVal val i =
     HH.option
       [ HP.selected (pure val == currentVal)
@@ -117,7 +117,7 @@ render config state =
       ]
       [ HH.text (S.stringVal val) ]
 
-eval :: forall a. (Eq a) => Natural (Query a) (H.ComponentDSL (S.Select a) (Query a) Slam)
+eval ∷ forall a. Eq a ⇒ Query a ~> H.ComponentDSL (S.Select a) (Query a) Slam
 eval (Choose i next) = H.modify (S.trySelect i) $> next
 eval (SetSelect s next) = H.set s $> next
 eval (GetValue continue) = map continue $ H.gets (_ ^. S._value)

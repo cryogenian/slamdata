@@ -23,7 +23,8 @@ import Data.Either (Either(..))
 
 import SlamData.Workspace.Card.CardId (CardId(..))
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbCardId = ArbCardId CardId
 
@@ -33,8 +34,8 @@ runArbCardId (ArbCardId m) = m
 instance arbitraryArbCardId :: Arbitrary ArbCardId where
   arbitrary = ArbCardId <<< CardId <$> arbitrary
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ runArbCardId >>> \ci ->
   case decodeJson (encodeJson ci) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right ci' -> ci == ci' <?> "CardId failed to decode as encoded value"

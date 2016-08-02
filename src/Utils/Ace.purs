@@ -38,7 +38,7 @@ import Data.Traversable as T
 import Data.Tuple (Tuple(..), fst, snd)
 import DOM (DOM)
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
 
 type Effects e = (ace :: ACE, dom :: DOM, ref :: REF|e)
@@ -61,10 +61,10 @@ type RangeRec =
 
 genRangeRec ∷ Gen.Gen RangeRec
 genRangeRec = do
-  startRow ← SC.arbitrary
-  startColumn ← SC.arbitrary
-  endRow ← SC.arbitrary
-  endColumn ← SC.arbitrary
+  startRow ← SCA.arbitrary
+  startColumn ← SCA.arbitrary
+  endRow ← SCA.arbitrary
+  endColumn ← SCA.arbitrary
   pure { startRow, startColumn, endRow, endColumn }
 
 eqRangeRec :: RangeRec -> RangeRec -> Boolean

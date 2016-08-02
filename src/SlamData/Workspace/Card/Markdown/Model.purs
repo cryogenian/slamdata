@@ -24,9 +24,8 @@ import SlamData.Prelude
 
 import Data.Identity (runIdentity)
 import Data.Functor.Compose (Compose(..))
-import Data.Argonaut (Json, jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
+import Data.Argonaut (Json, JObject, jsonEmptyObject, encodeJson, decodeJson, (~>), (:=), (.?))
 import Data.HugeNum as HN
-import Data.List as L
 import Data.StrMap as SM
 import Data.Traversable as T
 import SlamData.Workspace.Card.Port.VarMap as VM
@@ -34,7 +33,7 @@ import SlamData.Workspace.Card.Port.VarMap as VM
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Halogen.Component.State as SDS
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 -- | The serialization model used for markdown cards.
@@ -46,7 +45,7 @@ type Model =
 genModel ∷ Gen.Gen Model
 genModel = do
   input ← SC.arbitrary
-  state ← SM.fromList ∘ L.toList <$> Gen.arrayOf (Tuple <$> SC.arbitrary <*> SC.arbitrary)
+  state ← SM.fromFoldable <$> Gen.arrayOf (Tuple <$> SC.arbitrary <*> SC.arbitrary)
   pure { input, state }
 
 eqModel ∷ Model → Model → Boolean
@@ -435,37 +434,31 @@ decodeTextBox =
           SD.Numeric ∘ Compose <$>
             T.traverse (decodeExpr decodeHugeNum) value
         "datetime" →
-          SD.DateTime ∘ Compose <$>
+          SD.DateTime (decodePrecision obj) ∘ Compose <$>
             T.traverse (decodeExpr decodeDateTime) value
         "date" →
           SD.Date ∘ Compose <$>
             T.traverse (decodeExpr decodeDate) value
         "time" →
-          SD.Time ∘ Compose <$>
+          SD.Time (decodePrecision obj) ∘ Compose <$>
             T.traverse (decodeExpr decodeTime) value
         _ → Left $ "Unknown text box type '" ⊕ ty ⊕ "'"
 
   where
-    decodeHugeNum
-      ∷ Json
-      → Either String HN.HugeNum
+    decodeHugeNum ∷ Json → Either String HN.HugeNum
     decodeHugeNum =
       decodeJson
         >=> HN.fromString
         >>> maybe (Left "Error decoding number") Right
 
-    decodeDateTime
-      ∷ Json
-      → Either String SD.DateTimeValue
+    decodeDateTime ∷ Json → Either String SD.DateTimeValue
     decodeDateTime =
       decodeJson >=> \obj → do
         date ← obj .? "date" >>= decodeDate
         time ← obj .? "time" >>= decodeTime
         pure { date, time }
 
-    decodeDate
-      ∷ Json
-      → Either String SD.DateValue
+    decodeDate ∷ Json → Either String SD.DateValue
     decodeDate =
       decodeJson >=> \obj → do
         year ← obj .? "year"
@@ -473,14 +466,19 @@ decodeTextBox =
         day ← obj .? "day"
         pure { year, month, day }
 
-    decodeTime
-      ∷ Json
-      → Either String SD.TimeValue
+    decodeTime ∷ Json → Either String SD.TimeValue
     decodeTime =
       decodeJson >=> \obj → do
         hours ← obj .? "hours"
         minutes ← obj .? "minutes"
-        pure { hours, minutes }
+        seconds ← (obj .? "seconds") <|> pure Nothing
+        pure { hours, minutes, seconds }
+
+    decodePrecision ∷ JObject -> SD.TimePrecision
+    decodePrecision obj =
+      if either (const false) id $ (_ == "seconds") <$> obj .? "prec"
+      then SD.Seconds
+      else SD.Minutes
 
 
 -- Note: we use strings to represent numeric values to avoid losing precision
@@ -497,17 +495,19 @@ encodeTextBox tb =
       "type" := "numeric"
         ~> "value" := map (encodeExpr (encodeJson ∘ HN.toString)) x
         ~> jsonEmptyObject
-    SD.DateTime (Compose x) →
+    SD.DateTime prec (Compose x) →
       "type" := "datetime"
         ~> "value" := map (encodeExpr encodeDateTime) x
+        ~> "prec" := encodePrecision prec
         ~> jsonEmptyObject
     SD.Date (Compose x) →
       "type" := "date"
         ~> "value" := map (encodeExpr encodeDate) x
         ~> jsonEmptyObject
-    SD.Time (Compose x) →
+    SD.Time prec (Compose x) →
       "type" := "time"
         ~> "value" := map (encodeExpr encodeTime) x
+        ~> "prec" := encodePrecision prec
         ~> jsonEmptyObject
 
   where
@@ -526,6 +526,11 @@ encodeTextBox tb =
       "date" := encodeDate date
         ~> "time" := encodeTime time
         ~> jsonEmptyObject
+
+    encodePrecision =
+      encodeJson ∘ case _ of
+        SD.Seconds -> "seconds"
+        SD.Minutes -> "minutes"
 
 
 encodeFormFieldValue

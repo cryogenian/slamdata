@@ -29,7 +29,7 @@ module SlamData.Workspace.Card.Chart.ChartType
 import SlamData.Prelude
 import Data.Argonaut (fromString, class EncodeJson, class DecodeJson, decodeJson)
 import Data.List as L
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 data ChartType = Pie | Line | Bar | Area | Scatter | Radar
@@ -86,4 +86,4 @@ instance decodeJsonChartType :: DecodeJson ChartType where
   decodeJson json = decodeJson json >>= parseChartType
 
 instance arbitraryChartType ∷ SC.Arbitrary ChartType where
-  arbitrary = Gen.elements Pie $ L.toList [ Pie, Line, Bar, Area, Scatter, Radar ]
+  arbitrary = Gen.elements Pie $ L.fromFoldable [ Pie, Line, Bar, Area, Scatter ]

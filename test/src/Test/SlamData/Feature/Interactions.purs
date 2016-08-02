@@ -1,17 +1,20 @@
 module Test.SlamData.Feature.Interactions where
 
 import SlamData.Prelude
-import Control.Monad.Eff.Class (liftEff)
+
 import Data.Array as Arr
 import Data.Map as Map
 import Data.String as Str
+
 import Selenium.Monad (get, refresh, getCurrentUrl, tryRepeatedlyTo)
+
 import Test.Feature as Feature
 import Test.Feature.Log as Log
+import Test.SlamData.Feature.Expectations as Expect
 import Test.SlamData.Feature.Monad (SlamFeature, getConfig, waitTime)
 import Test.SlamData.Feature.XPaths as XPaths
-import Test.SlamData.Feature.Expectations as Expect
 import Test.Utils (appendToCwd)
+
 import XPath as XPath
 
 followingLastPreviousCardGripper :: String -> String
@@ -102,8 +105,7 @@ moveFile fileName oldLocation newLocation = do
 uploadFile ∷ String → SlamFeature Unit
 uploadFile =
   Feature.provideFileInputValue (XPath.anywhere $ XPaths.uploadFile)
-    <=< liftEff
-    ∘ appendToCwd
+    <=< appendToCwd
 
 provideFileSearchString ∷ String → SlamFeature Unit
 provideFileSearchString value =

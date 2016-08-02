@@ -11,6 +11,7 @@ import SlamData.Workspace.FormBuilder.Item.Model (EqModel(..))
 import Test.SlamData.Property.Workspace.FormBuilder.Item.Model as Item
 import Test.StrongCheck ((<?>))
 import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SCA
 
 newtype ArbModel = ArbModel FB.Model
 
@@ -20,15 +21,15 @@ runArbModel
 runArbModel (ArbModel m) =
   m
 
-instance arbitraryArbModel :: SC.Arbitrary ArbModel where
+instance arbitraryArbModel :: SCA.Arbitrary ArbModel where
   arbitrary =
     ArbModel <<< { items : _ } <<< map Item.runArbModel
-      <$> SC.arbitrary
+      <$> SCA.arbitrary
 
-check :: SC.QC Unit
+check :: forall eff. SC.SC eff Unit
 check =
   SC.quickCheck $ runArbModel >>> \model ->
     case FB.decode (FB.encode model) of
-      E.Left err -> SC.Failed $ "Decode failed: " ++ err
+      E.Left err -> SC.Failed $ "Decode failed: " <> err
       E.Right model' ->
         (EqModel <$> model.items) == (EqModel <$> model'.items) <?> "items mismatch"

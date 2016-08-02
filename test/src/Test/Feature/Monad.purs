@@ -23,8 +23,6 @@ import Control.Monad.Eff.Exception (EXCEPTION, throw)
 import Control.Monad.Reader.Class (ask)
 import Data.Either (either)
 import Data.Maybe (fromMaybe)
-import Graphics.EasyImage (EASY_IMAGE)
-import Graphics.ImageDiff (IMAGE_MAGICK)
 import Node.Buffer (BUFFER)
 import Node.FS (FS)
 import Node.Process (PROCESS)
@@ -36,8 +34,6 @@ import Selenium.Types (ControlKey)
 
 type FeatureEffects eff =
     ( platform ∷ PLATFORM
-    , imageDiff ∷ IMAGE_MAGICK
-    , easyImage ∷ EASY_IMAGE
     , err ∷ EXCEPTION
     , fs ∷ FS
     , process ∷ PROCESS

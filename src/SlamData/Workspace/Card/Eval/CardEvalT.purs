@@ -143,7 +143,7 @@ temporaryOutputResource ∷
   ∀ r
   . { path ∷ DirPath, cardCoord ∷ DID.DeckId × CID.CardId | r }
   → FilePath
-temporaryOutputResource { path, cardCoord = deckId × cardId } =
+temporaryOutputResource { path, cardCoord: deckId × cardId } =
   path
     </> Path.dir ".tmp"
     </> Path.dir (DID.deckIdToString deckId)

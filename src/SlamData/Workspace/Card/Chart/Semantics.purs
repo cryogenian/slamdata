@@ -26,7 +26,7 @@ import Data.Array as A
 import Data.Int as Int
 import Data.List (List(..), catMaybes)
 import Data.List as L
-import Data.Map (Map, keys, update, lookup, fromList)
+import Data.Map (Map, keys, update, lookup, fromFoldable)
 import Data.String (take)
 import Data.String.Regex (Regex, noFlags, regex, match, test)
 
@@ -111,7 +111,7 @@ checkPredicate p lst = pureST do
   -- `reverse`s. And this is worse then converting list to array before `traverse_`
   -- ```
   --  let arr :: Array _
-  --      arr = L.fromList lst
+  --      arr = L.fromFoldable lst
   --  in traverse_ (checkPredicateTraverseFn p corrects incorrects filtered) arr
   -- ```
   foldl
@@ -220,7 +220,7 @@ analyzeNumber s = do
   pure $ Value num
 
 percentRegex :: Regex
-percentRegex = regex """^(-?\d+(\.\d+)?)\%$""" noFlags
+percentRegex = unsafePartial fromRight $ regex """^(-?\d+(\.\d+)?)\%$""" noFlags
 
 analyzePercent :: String -> Maybe Semantics
 analyzePercent input = do
@@ -230,7 +230,7 @@ analyzePercent input = do
   pure $ Percent num
 
 moneyRegex :: Regex
-moneyRegex = regex rgxStr noFlags
+moneyRegex = unsafePartial fromRight $ regex rgxStr noFlags
   where
   rgxStr = "^" <> curSymbols <> """?(([0-9]{1,3},([0-9]{3},)*[0-9]{3}|[0-9]+)(.[0-9][0-9])?)$"""
   curSymbols :: String
@@ -248,7 +248,7 @@ analyzeMoney str = do
   pure $ Money num currencySymbol
 
 dateRegex :: Regex
-dateRegex = regex rgxStr noFlags
+dateRegex = unsafePartial fromRight $ regex rgxStr noFlags
   where
   rgxStr = "^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[0-1]|0[1-9]|[1-2][0-9]) (2[0-3]|[0-1][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z|[+-](?:2[0-3]|[0-1][0-9]):[0-5][0-9])?$"
 
@@ -258,7 +258,7 @@ analyzeDate str = do
   pure $ Time str
 
 jsonToSemantics :: Json -> Map JCursor Semantics
-jsonToSemantics j = fromList $ catMaybes $ map (traverse analyze) $ toPrims j
+jsonToSemantics j = fromFoldable $ catMaybes $ map (traverse analyze) $ toPrims j
 
 jarrayToSemantics :: JArray -> Map JCursor (List (Maybe Semantics))
 jarrayToSemantics arr = foldl foldFn initial mapArr
@@ -267,7 +267,7 @@ jarrayToSemantics arr = foldl foldFn initial mapArr
   mapArr = map jsonToSemantics arr
 
   initial :: Map JCursor (List (Maybe Semantics))
-  initial = fromList $ map (flip Tuple Nil) ks
+  initial = fromFoldable $ map (flip Tuple Nil) ks
 
   ks :: List JCursor
   ks = L.nub $ foldMap keys mapArr

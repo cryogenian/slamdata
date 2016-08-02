@@ -42,7 +42,7 @@ import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeD
 
 import Text.Parsing.Parser as P
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 type Model =

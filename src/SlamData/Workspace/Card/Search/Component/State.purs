@@ -16,8 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Card.Search.Component.State where
 
-import SlamData.Prelude
-
 import Data.Lens (LensP, lens)
 
 type State =

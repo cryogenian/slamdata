@@ -19,16 +19,16 @@ module SlamData.Effects where
 import Ace.Types (ACE)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (REF)
+import Control.Monad.Eff.Timer (TIMER)
 import Control.UI.File (READ_FILE)
-import Control.UI.ZClipboard (ZCLIPBOARD)
-import Data.Date (Now)
-import Data.Date.Locale (Locale)
-import DOM.Timer (Timer)
-import ECharts.Effects (ECHARTS_INIT, ECHARTS_OPTION_SET, ECHARTS_DISPOSE, ECHARTS_RESIZE, ECHARTS_REFRESH, ECHARTS_CLEAR)
+import Data.JSDate (LOCALE)
+import ECharts.Effects (ECHARTS)
 import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
+import ZClipboard (ZCLIPBOARD)
 
 type Slam = Aff SlamDataEffects
 
@@ -39,16 +39,11 @@ type SlamDataRawEffects =
   , random :: RANDOM
   , ace :: ACE
   , console :: CONSOLE
-  , echartClear :: ECHARTS_CLEAR
-  , echartDispose :: ECHARTS_DISPOSE
-  , echartInit :: ECHARTS_INIT
-  , echartRefresh :: ECHARTS_REFRESH
-  , echartResize :: ECHARTS_RESIZE
-  , echartSetOption :: ECHARTS_OPTION_SET
+  , echarts :: ECHARTS
   , file :: READ_FILE
-  , now :: Now
+  , now :: NOW
   , ref :: REF
-  , timer :: Timer
+  , timer :: TIMER
   , zClipboard :: ZCLIPBOARD
-  , locale :: Locale
+  , locale :: LOCALE
   )

@@ -29,7 +29,7 @@ import Data.Argonaut (Json, JCursor(..), jsonEmptyObject, (~>), (:=), fromArray,
 import Data.Array as A
 import Data.String as S
 
-import Test.StrongCheck (class Arbitrary, arbitrary)
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen (Gen, chooseInt, suchThat, vectorOf, oneOf)
 
 newtype ArbJson = ArbJson Json

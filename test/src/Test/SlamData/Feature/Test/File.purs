@@ -53,7 +53,7 @@ afterAccessSharingUrl =
 
 test ∷ SlamFeature Unit
 test = do
-  fileScenario afterRename "Rename a folder" [] do
+  fileScenario afterRename "Rename a folder" ["https://github.com/slamdata/slamdata/issues/987"] do
     Interact.browseTestFolder
     Interact.createFolder
     Interact.renameFile "Untitled Folder" "Patients"

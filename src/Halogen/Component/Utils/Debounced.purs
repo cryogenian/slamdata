@@ -21,12 +21,16 @@ module Halogen.Component.Utils.Debounced
   ) where
 
 import Prelude
+
 import Control.Monad.Aff (Aff)
+
 import Data.Lens (LensP, view, (?~))
 import Data.Maybe (Maybe(..))
-import Data.Time (Milliseconds)
+import Data.Time.Duration (Milliseconds)
+
 import Halogen as H
-import Utils.Debounced (debouncedEventSource, DebounceEffects)
+
+import Utils.Debounced (DebounceEffects, debouncedEventSource)
 
 type DebounceTrigger f g = f Unit → g Unit
 

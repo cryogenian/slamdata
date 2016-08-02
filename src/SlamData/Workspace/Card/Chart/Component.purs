@@ -122,7 +122,7 @@ eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of
   CC.EvalCard value output next → do
     case value.input of
-      Just (Chart options@{options = opts, chartConfig = Just config}) → do
+      Just (Chart options@{ options: opts, chartConfig: Just config }) → do
         -- TODO: this could possibly be optimised by caching records in the state,
         -- but we'd need to know when the input dataset going into ChartOptions changes.
         -- Basically something equivalent to the old `needsToUpdate`. -gb

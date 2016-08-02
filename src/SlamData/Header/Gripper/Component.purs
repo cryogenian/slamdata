@@ -19,13 +19,13 @@ module SlamData.Header.Gripper.Component where
 import SlamData.Prelude
 
 
-import DOM.HTML (window)
-import DOM.HTML.Window as Win
-import DOM.HTML.Types as Ht
-import DOM.Event.EventTarget as Etr
-import DOM.Event.EventTypes as Etp
-import DOM.Node.ParentNode as Pn
 import Data.Nullable as N
+import DOM.Event.EventTarget as Etr
+import DOM.HTML (window)
+import DOM.HTML.Event.EventTypes as Etp
+import DOM.HTML.Types as Ht
+import DOM.HTML.Window as Win
+import DOM.Node.ParentNode as Pn
 import DOM.Node.Types as Dt
 
 import CSS.Geometry (marginTop)
@@ -45,6 +45,8 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Effects (Slam)
+
+import Unsafe.Coerce (unsafeCoerce)
 
 data Query a
   = Init a
@@ -158,7 +160,7 @@ eval sel (Init next) = do
       <#> N.toMaybe
   let
     evntify ∷ ∀ a. a → { clientY ∷ Number }
-    evntify = Unsafe.Coerce.unsafeCoerce
+    evntify = unsafeCoerce
 
     docTarget = Ht.htmlDocumentToEventTarget doc
 

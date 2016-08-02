@@ -1,7 +1,5 @@
 module Test.SlamData.Feature.Data where
 
-import Prelude
-
 fileFromInitialFileList :: String
 fileFromInitialFileList = "/test-mount/testDb/cities"
 

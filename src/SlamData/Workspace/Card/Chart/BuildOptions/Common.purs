@@ -23,11 +23,10 @@ import Data.Array (catMaybes, cons, (!!))
 import Data.Array as A
 import Data.Int (toNumber)
 import Data.Lens (view)
-import Data.List (List(..), replicate, length)
-import Data.List as L
+import Data.List (List(..), length)
 import Data.Map (Map)
 import Data.Map as M
-import Data.Maybe.Unsafe (fromJust)
+import Data.Unfoldable (replicate)
 
 import Color (Color, toRGBA, fromHexString, hsla, toHSLA)
 
@@ -179,20 +178,20 @@ colors =
   ]
 
 getShadeColor ∷ String → Number → Color
-getShadeColor hex alpha = 
-  setAlpha 
-    (lightenTo 
-      (fromMaybe 
-        (hsla 0.0 0.0 0.0 1.0)  
-        (fromHexString hex)) 
-      0.95) 
+getShadeColor hex alpha =
+  setAlpha
+    (lightenTo
+      (fromMaybe
+        (hsla 0.0 0.0 0.0 1.0)
+        (fromHexString hex))
+      0.95)
     alpha
 
 getTransparentColor ∷ String → Number → Color
 getTransparentColor hex alpha =
-  setAlpha  
-    (fromMaybe 
-      (hsla 0.0 0.0 0.0 1.0)  
+  setAlpha
+    (fromMaybe
+      (hsla 0.0 0.0 0.0 1.0)
       (fromHexString hex))
     alpha
 
@@ -204,7 +203,7 @@ lightenTo col l' = hsla c.h c.s l' c.a
 setAlpha ∷ Color → Number → Color
 setAlpha col a' = hsla c.h c.s c.l a'
   where
-  c = toHSLA col 
+  c = toHSLA col
 
 toRGBAString ∷ Color → String
 toRGBAString col = "rgba(" <> show c.r <> ", "
@@ -309,7 +308,7 @@ aggregate agg acc = case agg of
   -- To avoid 'Nothing', control the options in aggreation selector.
   -- In case that aggreation is 'Nothing', coerce it to be replaced by 'Just Sum'.
   Nothing → map (runAggregation Sum) acc
-  _ →  map (runAggregation $ fromJust agg) acc
+  Just agg' →  map (runAggregation agg') acc
 
 -- Having array of pairs Key → Number and array of categories (String)
 -- 1. drop any pair theat has no category from second argument
@@ -327,8 +326,7 @@ commonNameMap fn catVals = mapByCategories ∘ fn ∘ groupByCategories
   markAndFilterCategory
     ∷ Array (Tuple Key Number) → String → Map String Number
   markAndFilterCategory arr cat =
-      M.fromList
-    $ L.toList
+      M.fromFoldable
     $ map (lmap keyName)
     $ A.filter (\(Tuple k _) → keyCategory k == cat)
     $ arr
@@ -336,7 +334,7 @@ commonNameMap fn catVals = mapByCategories ∘ fn ∘ groupByCategories
   mapByCategories
     ∷ Array (Map String Number) → Map String (Array Number)
   mapByCategories arr =
-    map A.reverse $ foldl foldFn M.empty (L.fromList ∘ M.toList <$> arr)
+    map A.reverse $ foldl foldFn M.empty (A.fromFoldable ∘ M.toList <$> arr)
 
   foldFn
     ∷ Map String (Array Number)

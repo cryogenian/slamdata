@@ -90,7 +90,7 @@ render r =
         ]
     ]
 
-eval :: Natural Query (H.ComponentDSL State Query Slam)
+eval :: Query ~> H.ComponentDSL State Query Slam
 eval (Update path sort salt next) = do
   H.set $ mkBreadcrumbs path sort salt
   pure next

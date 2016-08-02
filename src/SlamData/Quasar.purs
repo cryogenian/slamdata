@@ -24,7 +24,7 @@ import Control.Monad.Eff.Exception as Exn
 import Data.Argonaut ((~>), (:=))
 import Data.Argonaut as JS
 import Data.Array as Arr
-import Data.MediaType (MediaType(..), mediaTypeToString)
+import Data.MediaType (MediaType(..), unMediaType)
 import Data.String as S
 
 import Global (encodeURIComponent)
@@ -90,8 +90,8 @@ encodeURI str =
 reqHeadersToJSON ∷ Array RequestHeader → JS.Json
 reqHeadersToJSON = foldl go JS.jsonEmptyObject
   where
-  go obj (Accept mime) = "Accept" := mediaTypeToString mime ~> obj
-  go obj (ContentType mime) = "Content-Type" := mediaTypeToString mime ~> obj
+  go obj (Accept mime) = "Accept" := unMediaType mime ~> obj
+  go obj (ContentType mime) = "Content-Type" := unMediaType mime ~> obj
   go obj (RequestHeader k v) = k := v ~> obj
 
 -- | Returns `Nothing` in case the authorization service is not available, and `Just` in case

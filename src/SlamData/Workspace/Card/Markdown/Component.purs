@@ -52,7 +52,7 @@ markdownComponent cardId = CC.makeCardComponent
   { cardType: CT.Markdown
   , component:
       H.lifecycleParentComponent
-        { render: render ("card-" ++ CID.cardIdToString cardId)
+        { render: render ("card-" <> CID.cardIdToString cardId)
         , eval
         , peek: Just (peek ∘ H.runChildF)
         , initializer: Just $ right (H.action Init)

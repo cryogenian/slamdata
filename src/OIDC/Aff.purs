@@ -23,7 +23,7 @@ import Data.StrMap as Sm
 import Data.URI (printURI, runParseURI)
 import Data.URI.Types as URI
 import DOM (DOM)
-import OIDCCryptUtils as Cryptography
+import OIDC.Crypt as Cryptography
 import Quasar.Advanced.Types (ProviderR)
 import SlamData.Quasar.Auth as Auth
 

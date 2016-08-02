@@ -25,13 +25,13 @@ module SlamData.Workspace.Deck.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
 import Control.Monad.Aff.Promise as Pr
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-import Control.Monad.Eff.Ref as Ref
+import Control.Parallel.Class (parallel, runParallel)
 import Control.UI.Browser (locationObject, setHref, newTab)
 
 import Data.Array as Array
@@ -42,11 +42,10 @@ import Data.Lens.Prism.Coproduct (_Right)
 import Data.List ((:))
 import Data.List as L
 import Data.Map as Map
-import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as Set
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (Milliseconds(..))
 
 import DOM.HTML.Location as Location
 
@@ -57,24 +56,26 @@ import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Indexed as HH
 
 import SlamData.Analytics.Event as AE
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery, _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Draftboard.Component.Query as DBQ
 import SlamData.Workspace.Card.Eval as Eval
+import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Variables.Eval as Variables
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
@@ -85,6 +86,7 @@ import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
 import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
@@ -93,8 +95,6 @@ import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Wiring (Wiring, CardEval, Cache, DeckMessage(..), getDeck, putDeck, putCardEval, putCache, getCache, makeCache)
-import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
-import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
@@ -284,7 +284,7 @@ eval opts@{ wiring } = case _ of
 -- | child decks within board cards.
 getVarMaps ∷ DirPath → Wiring → DeckDSL (Map.Map DeckId Port.VarMap)
 getVarMaps path wiring =
-  Map.fromList <$> (Array.foldM goCard L.Nil =<< H.gets _.modelCards)
+  Map.fromFoldable <$> (Array.foldM goCard L.Nil =<< H.gets _.modelCards)
   where
   goCard
     ∷ L.List (DeckId × Port.VarMap)
@@ -360,7 +360,7 @@ peekBackSide opts (Back.DoAction action _) =
           CardId _ → do
             let rem = DCS.removeCard trashId state
             DBC.childDeckIds (snd <$> fst rem)
-              # H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph state.path)
+              # (H.fromAff :: Slam ~> DeckDSL) ∘ runParallel ∘ traverse_ (parallel ∘ DBC.deleteGraph state.path)
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator opts.wiring
@@ -587,7 +587,7 @@ runPendingCards opts source pendingCard pendingCards = do
   st ← H.get
   let
     pendingCoord = DCS.coordModelToCoord pendingCard
-    splitCards = L.span (not ∘ DCS.eqCoordModel pendingCoord) $ L.toList st.modelCards
+    splitCards = L.span (not ∘ DCS.eqCoordModel pendingCoord) $ L.fromFoldable st.modelCards
     prevCard = DCS.coordModelToCoord <$> L.last splitCards.init
     pendingCards = L.Cons pendingCard <$> L.tail splitCards.rest
 
@@ -622,7 +622,7 @@ runInitialEval wiring = do
   cards ← makeCache
 
   let
-    cardCoords = DCS.coordModelToCoord <$> L.toList st.modelCards
+    cardCoords = DCS.coordModelToCoord <$> L.fromFoldable st.modelCards
     source = st.id
 
   for_ cardCoords \coord → do
@@ -716,7 +716,7 @@ runCardUpdates opts source steps = do
   updateCards st = case _ of
     { steps: L.Nil, cards, updates } →
       pure
-        { displayCards: L.fromList $ L.reverse cards
+        { displayCards: Array.fromFoldable $ L.reverse cards
         , updates: L.reverse updates
         }
     { steps: L.Cons x xs, cards, updates } → do
@@ -858,9 +858,9 @@ loadMirroredCards
   -> DirPath
   -> Array (DeckId × CardId)
   -> DeckDSL (Either String (Array (DeckId × Card.Model)))
-loadMirroredCards wiring path coords = H.fromAff do
+loadMirroredCards wiring path coords = (H.fromAff :: Slam ~> DeckDSL) do
   let deckIds = Array.nub (fst <$> coords)
-  res ← sequence <$> runPar (traverse (Par ∘ flip (getDeck path) wiring.decks) deckIds)
+  res ← sequence <$> runParallel (traverse (parallel ∘ flip (getDeck path) wiring.decks) deckIds)
   pure $ hydrateCards coords =<< map (Array.zip deckIds) res
   where
   hydrateCards coords decks =

@@ -22,7 +22,6 @@ import Data.Argonaut (JCursor)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
-import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.String (split)
@@ -114,7 +113,7 @@ mkSeries pbData = xAxis × series × longestCat
     }
 
   keysArray ∷ Array Key
-  keysArray = L.fromList $ M.keys pbData
+  keysArray = A.fromFoldable $ M.keys pbData
 
   catVals ∷ Array String
   catVals = A.nub $ map keyCategory keysArray
@@ -124,7 +123,7 @@ mkSeries pbData = xAxis × series × longestCat
     F.maximumBy (\a b → compare (Str.length a) (Str.length b)) catVals
 
   series ∷ Array EC.Series
-  series = map serie $ L.fromList $ M.toList group
+  series = map serie $ A.fromFoldable $ M.toList group
 
   serie ∷ Tuple String (Array Number) → EC.Series
   serie (Tuple name nums) =
@@ -148,13 +147,13 @@ mkSeries pbData = xAxis × series × longestCat
   simpleData n = EC.Value $ EC.Simple n
 
   group ∷ Map String (Array Number)
-  group = nameMap $ L.fromList $ M.toList pbData
+  group = nameMap $ A.fromFoldable $ M.toList pbData
 
   nameMap ∷ Array (Tuple Key Number) → Map String (Array Number)
   nameMap = commonNameMap fillEmpties catVals
 
   arrKeys ∷ Array (Map String Number) → Array String
-  arrKeys ms = A.nub $ A.concat (L.fromList ∘ M.keys <$> ms)
+  arrKeys ms = A.nub $ A.concat (A.fromFoldable ∘ M.keys <$> ms)
 
   fillEmpties ∷ Array (Map String Number) → Array (Map String Number)
   fillEmpties ms =

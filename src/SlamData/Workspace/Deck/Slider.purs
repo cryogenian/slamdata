@@ -28,7 +28,6 @@ import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
-import Data.Ord (max, min)
 import Data.Tuple as Tuple
 
 import CSS (CSS)

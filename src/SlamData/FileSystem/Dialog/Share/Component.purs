@@ -23,7 +23,6 @@ module SlamData.FileSystem.Dialog.Share.Component
 import SlamData.Prelude
 
 import Control.UI.Browser (select)
-import Control.UI.ZClipboard as Z
 
 import Halogen as H
 import Halogen.CustomProps as CP
@@ -38,6 +37,8 @@ import DOM.HTML.Types (HTMLElement, htmlElementToElement)
 import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Render.Common (glyph)
 import SlamData.Effects (Slam)
+
+import ZClipboard as Z
 
 newtype State = State String
 

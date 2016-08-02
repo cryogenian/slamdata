@@ -34,5 +34,5 @@ getConfig = _.config <$> ask
 
 waitTime :: Int -> SlamFeature Unit
 waitTime t = do
-  warnMsg $ "Warning: Tests manually waited for " ++ show t ++ " milliseconds."
+  warnMsg $ "Warning: Tests manually waited for " <> show t <> " milliseconds."
   later t $ pure unit

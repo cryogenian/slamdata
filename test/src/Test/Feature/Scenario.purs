@@ -30,22 +30,22 @@ scenario epic before after title knownIssues actions =
   sectionMsg title' *> before *> actions'
   where
   title' ∷ String
-  title' = epic ++ ": " ++ title
+  title' = epic <> ": " <> title
 
   knownIssuesString ∷ String
   knownIssuesString = separate $ indent <$> knownIssues
 
   knownIssuesWarning ∷ String
-  knownIssuesWarning = "These known issues caused this scenario to fail:\n" ++ knownIssuesString
+  knownIssuesWarning = "These known issues caused this scenario to fail:\n" <> knownIssuesString
 
   separate ∷ Array String → String
   separate = joinWith "\n"
 
   indent ∷ String → String
-  indent s = "  " ++ s
+  indent s = "  " <> s
 
   warning ∷ String → String
-  warning s = "Warning: " ++ s
+  warning s = "Warning: " <> s
 
   warn ∷ String → Feature eff o Unit
   warn = warnMsg <<< warning
@@ -54,7 +54,7 @@ scenario epic before after title knownIssues actions =
   unexpectedSuccess =
     warn
       $ "Ok despite known issues, if these issues are resolved please remove them\n"
-      ++ knownIssuesString
+      <> knownIssuesString
 
   actions' ∷ Feature eff o Unit
   actions' | knownIssues == [] = do

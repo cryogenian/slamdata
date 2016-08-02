@@ -25,7 +25,9 @@ module SlamData.Workspace.FormBuilder.Component
 
 import SlamData.Prelude
 
+import Data.Array as A
 import Data.List as L
+import Data.Unfoldable as U
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -58,10 +60,7 @@ formBuilderComponent
 formBuilderComponent =
   H.parentComponent { render, eval, peek: Just peek }
 
-eval
-  :: forall g
-   . (Applicative g)
-  => Natural Query (FormBuilderDSL g)
+eval :: forall g. Applicative g => Query ~> FormBuilderDSL g
 eval (GetItems k) = do
   { items } <- H.get
   -- the last item is always empty
@@ -71,8 +70,7 @@ eval (GetItems k) = do
 eval (SetItems items next) = do
   -- clear out the existing children
   H.set emptyState
-  L.replicateM (L.length items + 1) $
-    H.modify addItem
+  U.replicateA (L.length items + 1) (H.modify addItem) :: FormBuilderDSL g (L.List Unit)
 
   let
     stepItem i m =
@@ -133,7 +131,7 @@ render { items } =
                 , HH.th_ [ HH.text "Default value" ]
                 ]
             ]
-        , HH.tbody_ $ L.fromList (renderItem <$> items)
+        , HH.tbody_ $ A.fromFoldable (renderItem <$> items)
         ]
 
     renderItem

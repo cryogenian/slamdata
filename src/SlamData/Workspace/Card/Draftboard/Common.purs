@@ -28,13 +28,12 @@ import SlamData.Prelude
 import Control.Coroutine (Producer, runProcess, ($$), await)
 import Control.Monad.Aff (Aff, runAff)
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
-import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT, withExceptT)
+import Control.Parallel.Class (parallel, runParallel)
 
 import Data.Array as Array
-import Data.List as L
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
@@ -60,7 +59,7 @@ transitiveGraphProducer
   → Producer (Tuple DeckId (Either String (Array DeckId))) m Unit
 transitiveGraphProducer path deckId = produce \emit → do
   pending ← Ref.newRef $ Set.singleton deckId
-  runAff Exn.throwException (const (pure unit)) $
+  void $ runAff Exn.throwException (const (pure unit)) $
     go emit pending deckId
 
   where
@@ -72,7 +71,7 @@ transitiveGraphProducer path deckId = produce \emit → do
         fromEff $ emit (Left (Tuple parentId (Left err)))
       Right cids → do
         fromEff $ emit (Left (Tuple parentId (Right cids)))
-        runPar $ traverse_ (Par ∘ go emit pending) cids
+        runParallel $ traverse_ (parallel ∘ go emit pending) cids
 
     fromEff $ Ref.modifyRef pending (Set.delete parentId)
     remaining ← fromEff $ Ref.readRef pending
@@ -112,7 +111,7 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
   where
   getDeckIds =
     case _ of
-      CM.Draftboard { decks } → L.fromList $ Map.keys decks
+      CM.Draftboard { decks } → Array.fromFoldable $ Map.keys decks
       _ → []
 
 deleteGraph
@@ -121,14 +120,14 @@ deleteGraph
   ⇒ DirPath
   → DeckId
   → m (Either String Unit)
-deleteGraph path parentId = fromAff $ runExceptT do
+deleteGraph path parentId = (fromAff :: Aff (QEff eff) ~> m) $ runExceptT do
   cids ← ExceptT $ transitiveChildren path parentId
   void
     $ withExceptT Exn.message
     $ ExceptT
     $ map sequence
-    $ runPar
-    $ traverse (Par ∘ delete)
+    $ runParallel
+    $ traverse (parallel ∘ delete)
     $ Array.cons parentId cids
 
   where
@@ -145,7 +144,7 @@ replacePointer from to cid = map replace
   where
   replace model =
     case model of
-      { cardId, model = CM.Draftboard { decks } } | cardId ≡ cid →
+      { cardId, model: CM.Draftboard { decks } } | cardId ≡ cid →
         { cardId, model: CM.Draftboard { decks: update decks } }
       _ → model
 

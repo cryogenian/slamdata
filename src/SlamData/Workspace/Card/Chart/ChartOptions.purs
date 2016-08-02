@@ -40,7 +40,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Scatter (buildScatter)
 import SlamData.Workspace.Card.Chart.BuildOptions.Radar (buildRadar)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 type BuildOptions =
@@ -80,10 +80,10 @@ encode m
    = "chartType" := m.chartType
   ~> "axisLabelAngle" := m.axisLabelAngle
   ~> "axisLabelFontSize" := m.axisLabelFontSize
-  ~> "areaStacked" := m.areaStacked  
+  ~> "areaStacked" := m.areaStacked
   ~> "smooth" := m.smooth
   ~> "bubbleMinSize" := m.bubbleMinSize
-  ~> "bubbleMaxSize" := m.bubbleMaxSize  
+  ~> "bubbleMaxSize" := m.bubbleMaxSize
   ~> jsonEmptyObject
 
 decode ∷ Json → Either String BuildOptions
@@ -126,16 +126,13 @@ buildOptions_
   → Number
   → ChartConfiguration
   → Option
-buildOptions_ Pie mp _ _ _ _ _ _ conf = 
+buildOptions_ Pie mp _ _ _ _ _ _ conf =
   buildPie mp conf
-buildOptions_ Bar mp angle size _ _ _ _ conf = 
+buildOptions_ Bar mp angle size _ _ _ _ conf =
   buildBar mp angle size conf
-buildOptions_ Line mp angle size _ _ _ _ conf = 
+buildOptions_ Line mp angle size _ _ _ _ conf =
   buildLine mp angle size conf
-buildOptions_ Area mp angle size stacked smooth _ _ conf = 
+buildOptions_ Area mp angle size stacked smooth _ _ conf =
   buildArea mp angle size stacked smooth conf
-buildOptions_ Scatter mp _ _ _ _ bubbleMinSize bubbleMaxSize conf = 
+buildOptions_ Scatter mp _ _ _ _ bubbleMinSize bubbleMaxSize conf =
   buildScatter mp bubbleMinSize bubbleMaxSize conf
-buildOptions_ Radar mp _ _ _ _ _ _ conf = 
-  buildRadar mp conf
-

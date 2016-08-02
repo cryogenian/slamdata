@@ -43,19 +43,14 @@ module Test.Feature
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throw)
 
 import Data.Array (elemIndex)
-import Data.Foldable as F
 import Data.List (toUnfoldable)
 import Data.List as L
 import Data.Map as Map
 import Data.String as String
-
-import Graphics.EasyImage as Ge
-import Graphics.ImageDiff as Gi
 
 import Node.Buffer (toString)
 import Node.Encoding (Encoding(..))
@@ -69,7 +64,7 @@ import Selenium.Types (Element, Location)
 import Test.Feature.ActionSequence as FeatureSequence
 import Test.Feature.Log (warnMsg)
 import Test.Feature.Monad (Feature, await)
-import Test.Utils (ifTrue, ifFalse, passover, throwIfEmpty, throwIfNotEmpty, singletonValue, appendToCwd, nonWhite)
+import Test.Utils (appendToCwd, ifTrue, throwIfNotEmpty, singletonValue, throwIfEmpty, passover)
 
 import XPath as XPath
 
@@ -105,7 +100,7 @@ findAtLeastOneNotRepeatedly ∷ ∀ eff o. XPath → Feature eff o (Array Elemen
 findAtLeastOneNotRepeatedly xPath =
   headOrThrow =<< findAll xPath
   where
-  headOrThrow = passover (liftEff ∘ throwIfEmpty noElementsMessage)
+  headOrThrow = passover (throwIfEmpty noElementsMessage)
   noElementsMessage = XPath.errorMessage "Couldn't find an element" xPath
 
 find ∷ ∀ eff o. XPath → Feature eff o Element
@@ -134,7 +129,7 @@ findAtLeastOneWithPropertiesNotRepeatedly properties xPath =
     =<< findAllNotRepeatedly xPath
   where
   headOrThrow =
-    passover (liftEff ∘ throwIfEmpty noElementsMessage)
+    passover (throwIfEmpty noElementsMessage)
   noElementsMessage =
     XPath.errorMessage
       (withPropertiesMessage properties "Couldn't find an element")
@@ -247,7 +242,7 @@ validateJustTrue error xPath _ = liftEff $ throw $ error xPath
 
 expectNotPresentedAria ∷ ∀ eff o. Properties → XPath → Feature eff o Unit
 expectNotPresentedAria properties xPath =
-  liftEff ∘ throwIfNotEmpty message
+  throwIfNotEmpty message
     =<< findAllWithPropertiesNotRepeatedly properties notHiddenXPath
   where
   notHiddenXPath =
@@ -363,54 +358,6 @@ expectPresentedWithPropertiesNotRepeatedly properties xPath =
   ariaMessage =
     "Expected no true values for \"aria-hidden\" on elements or their ancestors found"
 
--- | Expect a screenshot of the node found with the provided XPath to match any
--- | of the images with the provided image paths.
--- |
--- | Due to rendering differences between platforms you may need to
--- | provide paths to expected images for each platform.
-expectScreenshotToMatchAny
-  ∷ ∀ eff o
-  . FilePath
-  → Number
-  → XPath
-  → String
-  → Array XPath
-  → Feature eff o Unit
-expectScreenshotToMatchAny dp mp =
-  expectScreenshotToMatchAnyWithProperties dp mp Map.empty
-
--- | Expect a screenshot of the node found with the provided XPath which have
--- | the provided properties to match any of the images with the provided image
--- | paths.
--- |
--- | Due to rendering differences between platforms you may need to
--- | provide paths to expected images for each platform.
-expectScreenshotToMatchAnyWithProperties
-  ∷ ∀ eff o
-  . FilePath
-  → Number
-  → Properties
-  → XPath
-  → FilePath
-  → Array FilePath
-  → Feature eff o Unit
-expectScreenshotToMatchAnyWithProperties diffPath maxPercent properties xpath presentedPath expectedPaths =
-  tryRepeatedlyTo
-    $ ifFalse throwMessage
-    =<< expectScreenshotOfElementToMatchAny diffPath maxPercent presentedPath expectedPaths
-    =<< findWithPropertiesNotRepeatedly properties xpath
-  where
-  throwMessage =
-    liftEff ∘ throw ∘ message =<< showImageFile presentedPath
-  message =
-    flip XPath.errorMessage xpath ∘ withPropertiesMessage properties ∘ rawMessage
-  rawMessage imageString =
-    "Expected at least one of these images:\n\n"
-      ⊕ String.joinWith "\n" expectedPaths
-      ⊕ "\n\nto match this screenshot:\n"
-      ⊕ imageString
-      ⊕ "\n\nof the element found"
-
 -- | Expect the select node found with the provided XPath to have the option
 -- | with the provided text selected.
 -- |
@@ -440,7 +387,7 @@ expectDownloadedTextFileToMatchFile
   → FilePath
   → Feature eff o Unit
 expectDownloadedTextFileToMatchFile downloadFolder downloadedFileName expectedFilePath = do
-  expectedString ← liftEff $ appendToCwd expectedFilePath
+  expectedString ← appendToCwd expectedFilePath
   expectedFile ← lift $ readTextFile UTF8 $ expectedString
   let filePath = downloadFolder ⊕ "/" ⊕ downloadedFileName
   await ("Expected file " ⊕ filePath ⊕ " to be downloaded") do
@@ -765,43 +712,12 @@ elementsWithProperties properties =
   elementsPropertiesTuples =
     traverse (\el → Tuple el <$> getPropertiesForElement el)
 
-expectScreenshotOfElementToMatchAny
-  ∷ ∀ eff o
-  . FilePath
-  → Number
-  → FilePath
-  → Array FilePath
-  → Element
-  → Feature eff o Boolean
-expectScreenshotOfElementToMatchAny diffPath maxPercent presentedPath expectedPaths el = do
-  size ← getSize el
-  location ← getLocation el
-  saveScreenshot presentedPath
-  liftAff
-    $ Ge.cropInPlace
-        size.width
-        size.height
-        location.x
-        location.y
-        presentedPath
-  F.any id <$> traverse expectScreenshotOfElementToMatch expectedPaths
-  where
-  expectScreenshotOfElementToMatch expectedPath = liftAff do
-    Gi.diff
-      { expected: expectedPath
-      , actual: presentedPath
-      , diff: Just diffPath
-      , shadow: false
-      }
-    {percent} ← nonWhite diffPath
-    pure $ percent < maxPercent
-
 logCurrentScreen ∷ ∀ eff o. Feature eff o Unit
 logCurrentScreen =
   saveScreenshot path *> logScreenshot path
   where
   path = "current.png"
-  message = ("Screenshot taken now:\ndata:image/png;base64," ++ _)
+  message = ("Screenshot taken now:\ndata:image/png;base64," <> _)
   logScreenshot p = (message <$> showImageFile p) >>= warnMsg
 
 -- File utilities
@@ -809,6 +725,6 @@ showImageFile ∷ ∀ eff o. FilePath → Feature eff o String
 showImageFile =
   showBuffer <=< readBuffer <=< getFullPath
   where
-  getFullPath = liftEff ∘ appendToCwd
+  getFullPath = appendToCwd
   readBuffer = lift ∘ readFile
   showBuffer = liftEff ∘ toString Base64

@@ -25,12 +25,12 @@ import Data.Foldable as F
 import Data.Function (on)
 import Data.Int as Int
 import Data.Lens (view)
-import Data.List (List(..), replicate, length)
+import Data.List (List(..), length)
 import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.String as Str
-import Data.Maybe.Unsafe (fromJust)
+import Data.Unfoldable (replicate)
 
 import ECharts as EC
 
@@ -137,11 +137,11 @@ lineRawData
 -- To avoid 'Nothing', control the options in aggreation selector.
 -- In case that aggreation is 'Nothing', coerce it to be replaced by 'Just Sum'.
 aggregatePairs ∷ Maybe Aggregation → Maybe Aggregation → LabeledPointPairs → LineData
-aggregatePairs fAgg sAgg lp = 
-  M.toList $ map 
-    ( bimap 
-        (runAggregation (if isNothing fAgg then Sum else (fromJust fAgg))) 
-        (runAggregation (if isNothing sAgg then Sum else (fromJust sAgg))) 
+aggregatePairs fAgg sAgg lp =
+  M.toList $ map
+    ( bimap
+        (runAggregation (fromMaybe Sum fAgg))
+        (runAggregation (fromMaybe Sum sAgg))
     ) lp
 
 
@@ -278,7 +278,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData =
   series ∷ Array EC.Series
   series = case group of
     Tuple firsts seconds →
-      L.fromList $
+      A.fromFoldable $
       (map firstSerie $ M.toList firsts)
       <> (if needTwoAxis
           then map secondSerie $ M.toList seconds
@@ -286,7 +286,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData =
          )
 
   group ∷ Tuple (Map String (Array Number)) (Map String (Array Number))
-  group = bimap nameMap nameMap $ splitSeries $ L.fromList lData
+  group = bimap nameMap nameMap $ splitSeries $ A.fromFoldable lData
 
   splitSeries
     ∷ Array (Tuple Key (Tuple Number Number))
@@ -300,7 +300,7 @@ mkSeries needTwoAxis (Tuple ty interval_) lData =
   nameMap = commonNameMap fillEmpties catVals
 
   arrKeys ∷ Array (Map String Number) → Array String
-  arrKeys ms = A.nub $ A.concat (L.fromList ∘ M.keys <$> ms)
+  arrKeys ms = A.nub $ A.concat (A.fromFoldable ∘ M.keys <$> ms)
 
   fillEmpties ∷ Array (Map String Number) → Array (Map String Number)
   fillEmpties ms =

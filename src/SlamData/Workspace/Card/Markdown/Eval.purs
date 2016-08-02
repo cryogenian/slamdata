@@ -25,18 +25,15 @@ import Control.Monad.Error.Class as Err
 import Control.Monad.Writer.Trans as WT
 
 import Data.Array as A
-import Data.Date as D
-import Data.Date.Locale as DL
-import Data.Enum as Enum
-import Data.Foldable as F
 import Data.Identity (Identity)
-import Data.Lens ((^?), _Just)
+import Data.Int as Int
+import Data.JSDate as JSD
 import Data.Json.Extended as EJSON
+import Data.Lens ((^?), _Just)
 import Data.List as L
 import Data.Set as Set
 import Data.String as S
 import Data.StrMap as SM
-import Data.Time as DT
 
 import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -157,12 +154,12 @@ evalEmbeddedQueries sm dir =
         pure ∘ SD.PlainText $ pure str
       (SD.Numeric _) × (EJSON.Decimal a) →
         pure ∘ SD.Numeric $ pure a
-      (SD.Time _) × (EJSON.Time str) →
-        SD.Time ∘ pure <$> parse parseSqlTime str
+      (SD.Time prec _) × (EJSON.Time str) →
+        SD.Time prec ∘ pure <$> parse parseSqlTime str
       (SD.Date _) × (EJSON.Date str) →
         SD.Date ∘ pure <$> parse parseSqlDate str
-      (SD.DateTime _) × (EJSON.Timestamp str) →
-        SD.DateTime ∘ pure <$> parseSqlTimeStamp str
+      (SD.DateTime prec _) × (EJSON.Timestamp str) →
+        SD.DateTime prec ∘ pure <$> parseSqlTimeStamp str
       _ → Err.throwError ∘ Exn.error $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
     where
       parse ∷ ∀ s a. P.Parser s a → s → EvalM a
@@ -177,7 +174,7 @@ evalEmbeddedQueries sm dir =
   evalList code = do
     items ← map extractSingletonObject <$> runQuery code
     let limit = 500
-    pure ∘ L.toList
+    pure ∘ L.fromFoldable
       $ if A.length items > limit
           then
           map Port.Literal
@@ -229,7 +226,7 @@ many1 p =
 parseNat ∷ P.Parser String Int
 parseNat =
   many1 parseDigit
-    <#> F.foldl (\a i → a * 10 + i) 0
+    <#> foldl (\a i → a * 10 + i) 0
 
 hyphen ∷ P.Parser String Unit
 hyphen = void $ PS.string "-"
@@ -252,23 +249,25 @@ parseSqlTime = do
   colon
   minutes ← parseNat
   colon
-  _ ← parseNat -- seconds
-  pure { hours, minutes }
+  seconds ← Just <$> parseNat
+  pure { hours, minutes, seconds }
 
 -- | Parses a date-time string into the user's current locale.
 parseSqlTimeStamp
   ∷ String
   → EvalM SD.DateTimeValue
 parseSqlTimeStamp str = do
-  case D.fromString str of
-    Nothing → Err.throwError ∘ Exn.error $ "Invalid date: " ⊕ show str
-    Just d → Eff.liftEff do
-      D.Year year ← DL.year d
-      month ← Enum.fromEnum <$> DL.month d
-      D.DayOfMonth day ← DL.dayOfMonth d
-      DT.HourOfDay hours ← DL.hourOfDay d
-      DT.MinuteOfHour minutes ← DL.minuteOfHour d
+  d <- Eff.liftEff $ JSD.parse str
+  case JSD.isValid d of
+    false → Err.throwError ∘ Exn.error $ "Invalid date: " ⊕ show str
+    true → Eff.liftEff do
+      year ← Int.round <$> JSD.getFullYear d
+      month ← (_ + 1) ∘ Int.round <$> JSD.getMonth d
+      day ← Int.round <$> JSD.getDate d
+      hours ← Int.round <$> JSD.getHours d
+      minutes ← Int.round <$> JSD.getMinutes d
+      seconds ← Just ∘ Int.round <$> JSD.getSeconds d
       pure
         { date: { year , month , day }
-        , time: { hours , minutes }
+        , time: { hours , minutes, seconds }
         }

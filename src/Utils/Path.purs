@@ -22,11 +22,10 @@ module Utils.Path
 import Prelude
 
 import Control.Alt ((<|>))
-import Control.Bind ((=<<))
 
 import Data.Array (intersect, null, (:))
 import Data.Char as Ch
-import Data.Either (Either(..), either)
+import Data.Either (Either(..), either, fromRight)
 import Data.Maybe (Maybe, maybe, fromMaybe)
 import Data.Path.Pathy (Sandboxed, Unsandboxed, Abs, Path, File, Rel, Dir, DirName(..), FileName(..), peel, rootDir, (</>), file, canonicalize, printPath, parseAbsDir, parseAbsFile, dir, relativeTo, renameDir)
 import Data.Path.Pathy as P
@@ -34,11 +33,15 @@ import Data.String (split, joinWith, trim, replace, drop, take, lastIndexOf, len
 import Data.String.Regex as Rgx
 import Data.Tuple (snd, fst)
 
-import Text.SlamSearch.Parser.Tokens (keyChars)
+import Global as Global
 
 import Quasar.Types (AnyPath, DirPath, FilePath)
 
+import Partial.Unsafe (unsafePartial)
+
 import SlamData.Config as Config
+
+import Text.SlamSearch.Parser.Tokens (keyChars)
 
 infixl 6 renameDirExt as <./>
 
@@ -93,7 +96,7 @@ dropWorkspaceExt name = take (length name - length Config.workspaceExtension - 1
 decodeURIPath :: String -> String
 decodeURIPath uri =
   Global.decodeURIComponent $
-  Rgx.replace (Rgx.regex "\\+" Rgx.noFlags{global=true}) " " uri
+    Rgx.replace (unsafePartial fromRight $ Rgx.regex "\\+" Rgx.noFlags{global=true}) " " uri
 
 encodeURIPath :: String -> String
 encodeURIPath path =

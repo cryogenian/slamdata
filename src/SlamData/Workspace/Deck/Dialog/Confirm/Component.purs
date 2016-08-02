@@ -60,5 +60,5 @@ comp = H.component { render, eval } where
           ]
       ]
 
-  eval ∷ Natural Query (H.ComponentDSL State Query g)
+  eval ∷ Query ~> H.ComponentDSL State Query g
   eval (Confirm _ next) = pure next

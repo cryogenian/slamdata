@@ -23,17 +23,17 @@ import Data.Either (Either(..))
 
 import SlamData.FileSystem.Resource (Resource)
 
-import Test.StrongCheck (QC, Result(..), quickCheck)
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck \(res ∷ Resource) ->
   case decodeJson (encodeJson res) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right res'
       | res == res' -> Success
       | otherwise ->
           Failed
-            $ "Decoded resource " ++ show res' ++ " does not match encoded resource " ++ show res
-            ++ "\n\tEncoded res: " ++ show (encodeJson res)
-            ++ "\n\tEncoded res': " ++ show (encodeJson res')
-            ++ "\nIf you see this, please tell Gary!"
+            $ "Decoded resource " <> show res' <> " does not match encoded resource " <> show res
+            <> "\n\tEncoded res: " <> show (encodeJson res)
+            <> "\n\tEncoded res': " <> show (encodeJson res')
+            <> "\nIf you see this, please tell Gary!"

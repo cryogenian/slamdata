@@ -42,7 +42,7 @@ import DOM (DOM)
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
-import OIDCCryptUtils.Types as OIDC
+import OIDC.Crypt.Types as OIDC
 
 import SlamData.Quasar.Auth.Permission as P
 

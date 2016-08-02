@@ -22,8 +22,6 @@ module SlamData.Workspace.Card.Download.Component.State
   , _fileName
   ) where
 
-import SlamData.Prelude
-
 import Data.Lens (LensP, lens)
 
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))

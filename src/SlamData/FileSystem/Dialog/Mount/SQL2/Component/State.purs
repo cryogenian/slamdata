@@ -58,4 +58,4 @@ isEmptyVar :: Tuple String String -> Boolean
 isEmptyVar (Tuple name value) = Rx.test rxEmpty name && Rx.test rxEmpty value
 
 rxEmpty :: Rx.Regex
-rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
+rxEmpty = unsafePartial fromRight $ Rx.regex "^\\s*$" Rx.noFlags

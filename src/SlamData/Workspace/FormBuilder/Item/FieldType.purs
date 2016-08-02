@@ -31,7 +31,7 @@ import Data.List as L
 
 import Halogen.HTML.Properties.Indexed as HP
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 data FieldType
@@ -56,7 +56,7 @@ instance arbitraryFieldType ∷ SC.Arbitrary FieldType where
   arbitrary =
     Gen.elements
       StringFieldType
-      (L.toList allFieldTypes)
+      (L.fromFoldable allFieldTypes)
 
 
 allFieldTypes ∷ Array FieldType

@@ -23,7 +23,7 @@ import SlamData.Workspace.Card.Port.VarMap as VM
 import SlamData.Workspace.Card.Markdown.Interpret as MDI
 
 import Data.BrowserFeatures (BrowserFeatures)
-import Data.Date.Locale as DL
+import Data.JSDate (LOCALE)
 import Data.StrMap as SM
 
 import Text.Markdown.SlamDown as SD
@@ -42,7 +42,7 @@ initialState =
 
 formStateToVarMap
   ∷ ∀ m e
-  . (MonadEff (locale ∷ DL.Locale | e) m, Applicative m)
+  . (MonadEff (locale ∷ LOCALE | e) m, Applicative m)
   ⇒ SDH.SlamDownFormState VM.VarMapValue
   → SDH.SlamDownFormState VM.VarMapValue
   → m VM.VarMap

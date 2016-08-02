@@ -37,7 +37,6 @@ import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils.Drag as Drag
 import Halogen.Component.Utils (raise')
-import Halogen.CustomEvents (mouseEventToPageEvent)
 import Halogen.HTML.CSS.Indexed as HC
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -143,7 +142,7 @@ render opts state =
     AT.Editable → 1.0
     _ -> 0.0
 
-evalCard ∷ Natural CC.CardEvalQuery DraftboardDSL
+evalCard ∷ CC.CardEvalQuery ~> DraftboardDSL
 evalCard = case _ of
   CC.EvalCard _ _ next →
     pure next
@@ -165,7 +164,7 @@ evalCard = case _ of
   CC.ZoomIn next →
     pure next
 
-evalBoard ∷ CardOptions → Natural Query DraftboardDSL
+evalBoard ∷ CardOptions → Query ~> DraftboardDSL
 evalBoard opts = case _ of
   Grabbing deckId ev next → do
     case ev of
@@ -215,11 +214,10 @@ evalBoard opts = case _ of
     H.modify _ { canvas = el }
     pure next
   AddDeck e next → do
-    let e' = mouseEventToPageEvent e
     H.gets _.canvas >>= traverse_ \el → do
-      same ← H.fromEff (elementEq el e'.target)
+      same ← H.fromEff (elementEq el e.target)
       when same do
-        coords ← pageToGrid { x: e'.pageX, y: e'.pageY } el
+        coords ← pageToGrid { x: e.pageX, y: e.pageY } el
         addDeck opts DM.emptyDeck
           { x: floor $ coords.x + 1.0
           , y: floor $ coords.y
@@ -241,7 +239,7 @@ evalBoard opts = case _ of
     decks' ← runMaybeT $ for (Map.toList decks) \(deckId × position) → do
       model ← MaybeT $ queryDeck deckId $ H.request DCQ.GetModel
       pure (deckId × (position × model))
-    pure $ k $ maybe Map.empty Map.fromList decks'
+    pure $ k $ maybe Map.empty Map.fromFoldable decks'
   GetDecksSharingInput k → do
     decks ← H.gets _.decks
     deckMbList ← for (Map.keys decks) \deckId → do

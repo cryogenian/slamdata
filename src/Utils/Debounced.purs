@@ -23,22 +23,20 @@ import Control.Coroutine.Stalling (producerToStallingProducer)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Ref (REF, newRef, readRef, writeRef)
+import Control.Monad.Eff.Timer (TIMER, setTimeout, clearTimeout)
 
 import Data.Either (Either(..))
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
-import Data.NaturalTransformation (Natural)
-import Data.Time (Milliseconds(..))
-
-import DOM.Timer (Timer, timeout, clearTimeout)
+import Data.Time.Duration (Milliseconds(..))
 
 import Halogen.Query.EventSource (EventSource(..))
 
 import Utils.AffableProducer (produce)
 
-type DebounceEffects eff = (ref :: REF, avar :: AVAR, timer :: Timer | eff)
+type DebounceEffects eff = (ref :: REF, avar :: AVAR, timer :: TIMER | eff)
 
 -- | Sets up and subscribes to an `EventSource` that will emit values after a
 -- | delay.
@@ -52,7 +50,7 @@ type DebounceEffects eff = (ref :: REF, avar :: AVAR, timer :: Timer | eff)
 debouncedEventSource
   :: forall f g eff
    . (Monad g)
-  => Natural (Eff (DebounceEffects eff)) g
+  => (Eff (DebounceEffects eff) ~> g)
   -> (EventSource f (Aff (DebounceEffects eff)) -> g Unit)
   -> Milliseconds
   -> g (f Unit -> Aff (DebounceEffects eff) Unit)
@@ -65,7 +63,7 @@ debouncedEventSource lift subscribe (Milliseconds ms) = do
 
   pure \act -> liftEff do
     maybe (pure unit) clearTimeout =<< readRef timeoutRef
-    timeoutId <- timeout (Int.floor ms) $
+    timeoutId <- setTimeout (Int.floor ms) $
       maybe (pure unit) (_ $ (Left act)) =<< readRef emitRef
     writeRef timeoutRef (Just timeoutId)
     pure unit

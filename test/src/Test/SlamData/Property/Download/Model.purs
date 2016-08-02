@@ -5,7 +5,8 @@ import Prelude
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import SlamData.Download.Model as D
 
 newtype ArbArrayMode = ArbArrayMode D.ArrayMode
@@ -20,7 +21,7 @@ instance arbitraryArbArrayMode :: Arbitrary ArbArrayMode where
                        then pure D.Flatten
                        else map D.Separate arbitrary
 
-checkArrayMode :: QC Unit
+checkArrayMode :: forall eff. SC eff Unit
 checkArrayMode = quickCheck $ runArbArrayMode >>> \am ->
   case decodeJson (encodeJson am) of
     Left err -> Failed $ "Decode failed: " <> err
@@ -39,7 +40,7 @@ instance arbitraryArbMultiValueMode :: Arbitrary ArbMultiValueMode where
                                then D.ArrayWrapped
                                else D.LineDelimited
 
-checkMultiValueMode :: QC Unit
+checkMultiValueMode :: forall eff. SC eff Unit
 checkMultiValueMode = quickCheck $ runArbMultiValueMode >>> \mm ->
   case decodeJson (encodeJson mm) of
     Left err -> Failed $ "Decode failed: " <> err
@@ -57,7 +58,7 @@ instance arbitraryArbPrecisionMode :: Arbitrary ArbPrecisionMode where
                               then D.Readable
                               else D.Precise
 
-checkPrecisionMode :: QC Unit
+checkPrecisionMode :: forall eff. SC eff Unit
 checkPrecisionMode = quickCheck $ runArbPrecisionMode >>> \pm ->
   case decodeJson (encodeJson pm) of
     Left err -> Failed $ "Decode failed: " <> err
@@ -95,19 +96,19 @@ instance arbitraryArbJSONOptions :: Arbitrary ArbJSONOptions where
          <*> (map runArbPrecisionMode arbitrary)
     pure $ ArbJSONOptions $ D.JSONOptions r
 
-checkCSVOptions :: QC Unit
+checkCSVOptions :: forall eff. SC eff Unit
 checkCSVOptions = quickCheck $ runArbCSVOptions >>> \opts ->
   case decodeJson (encodeJson opts) of
     Left err -> Failed $ "Decode failed: " <> err
     Right opts' -> opts == opts' <?> "Decoded csv options doesn't match encoded"
 
-checkJSONOptions :: QC Unit
+checkJSONOptions :: forall eff. SC eff Unit
 checkJSONOptions = quickCheck $ runArbJSONOptions >>> \opts ->
   case decodeJson (encodeJson opts) of
     Left err -> Failed $ "Decode failed: " <> err
     Right opts' -> opts == opts' <?> "Decoded json options doesn't match encoded"
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = do
   checkPrecisionMode
   checkMultiValueMode

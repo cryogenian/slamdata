@@ -20,7 +20,7 @@ import SlamData.Prelude
 
 import Data.Lens (lens, LensP, (.~))
 import Data.Path.Pathy (printPath, rootDir)
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
