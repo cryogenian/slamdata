@@ -292,7 +292,7 @@ buildRadar axises conf = case preSeries of
   minVal = case A.null allValues of
     true → Nothing
     false → minimum allValues
-  
+
   maxVal ∷ Maybe Number
   maxVal = case A.null allValues of
     true → Nothing
