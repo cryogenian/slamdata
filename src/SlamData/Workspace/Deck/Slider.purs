@@ -63,7 +63,7 @@ import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 
 import Utils.CSS as CSSUtils
 
-render ∷ DeckOptions → DeckComponent → State → Boolean → DeckHTML
+render ∷ DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
 render opts deckComponent st visible =
   HH.div
     ([ HP.key "deck-cards"
@@ -226,7 +226,7 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard ∷ DeckOptions → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
+renderCard ∷ DeckOptions → (DeckOptions → DeckComponent) → State → (DeckId × Card.Model) → Int → DeckHTML
 renderCard opts deckComponent st (deckId × card) index =
   HH.div
     [ HP.key key

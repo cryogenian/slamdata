@@ -39,7 +39,6 @@ module SlamData.Workspace.Deck.Component.State
   , _sliderTransition
   , _sliderTranslateX
   , _cardElementWidth
-  , _level
   , _slidingTo
   , _breakers
   , _focused
@@ -95,7 +94,6 @@ import SlamData.Workspace.Card.Model as Card
 
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 import SlamData.Workspace.StateMode (StateMode(..))
@@ -146,7 +144,6 @@ type State =
   , sliderTransition ∷ Boolean
   , sliderTranslateX ∷ Number
   , cardElementWidth ∷ Maybe Number
-  , level ∷ DL.DeckLevel
   , slidingTo ∷ Maybe GripperDef
   , breakers ∷ Array (Breaker Unit)
   , focused ∷ Boolean
@@ -182,7 +179,6 @@ initialDeck path deckId =
   , sliderTransition: false
   , sliderTranslateX: 0.0
   , cardElementWidth: Nothing
-  , level: DL.root
   , slidingTo: Nothing
   , breakers: mempty
   , focused: false
@@ -281,10 +277,6 @@ _breakers = lens _.breakers _{breakers = _}
 
 _additionalSources ∷ ∀ a r. LensP {additionalSources ∷ a|r} a
 _additionalSources = lens _.additionalSources _{additionalSources = _}
-
--- | Whether the deck is at the top-level of the deck component hierarchy
-_level ∷ ∀ a r. LensP {level ∷ a|r} a
-_level = lens _.level _{level = _}
 
 _focused ∷ ∀ a r. LensP {focused ∷ a|r} a
 _focused = lens _.focused _{focused = _}
