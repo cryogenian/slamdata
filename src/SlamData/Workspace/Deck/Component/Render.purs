@@ -21,6 +21,8 @@ module SlamData.Workspace.Deck.Component.Render
 
 import SlamData.Prelude
 
+import Data.List as L
+
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Events.Handler as HEH
@@ -38,7 +40,6 @@ import SlamData.Workspace.Deck.Component.CSS as CSS
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..))
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Slider as Slider
@@ -52,7 +53,7 @@ renderError err =
         [ HH.text err ]
     ]
 
-renderDeck ∷ DeckOptions → DeckComponent → DCS.State → DeckHTML
+renderDeck ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 renderDeck opts deckComponent st =
   HH.div
     (deckClasses st
@@ -60,7 +61,7 @@ renderDeck opts deckComponent st =
      ⊕ Slider.containerProperties st)
     [ HH.div
         [ HP.class_ CSS.deckFrame ]
-        $ frameElements opts.accessType st ⊕ [ renderName st.name ]
+        $ frameElements opts ⊕ [ renderName st.name ]
     , HH.div
         [ HP.class_ CSS.deck
         , HP.key "deck"
@@ -108,10 +109,10 @@ renderName name =
     [ HP.class_ CSS.deckName ]
     [ HH.text name ]
 
-frameElements ∷ AT.AccessType → DCS.State → Array DeckHTML
-frameElements accessType st
+frameElements ∷ DeckOptions → Array DeckHTML
+frameElements { accessType, cursor }
   | accessType ≡ AT.ReadOnly = mempty
-  | st.level ≡ DL.root = rootFrameElements
+  | L.null cursor = rootFrameElements
   | otherwise = childFrameElements
 
 rootFrameElements ∷ Array DeckHTML

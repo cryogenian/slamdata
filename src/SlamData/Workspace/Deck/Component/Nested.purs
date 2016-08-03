@@ -59,7 +59,7 @@ comp opts deckState =
   deckComponent' ∷ (DCQ.Query Unit → Eff SlamDataEffects Unit) → H.Component DCS.StateP DCQ.QueryP Slam
   deckComponent' emitter =
     opaque $ H.lifecycleParentComponent
-      { render: DC.render opts (comp opts)
+      { render: DC.render opts comp
       , eval: \query → do
           res ← DC.eval opts query
           case query of
@@ -76,7 +76,9 @@ comp opts deckState =
   render ∷ DNS.State → HTML
   render _ =
     HH.div
-      [ HP.ref (left ∘ H.action ∘ DNQ.Ref) ]
+      [ HP.classes [ HH.className "sd-deck-nested" ]
+      , HP.ref (left ∘ H.action ∘ DNQ.Ref)
+      ]
       []
 
   eval ∷ DNQ.Query ~> DSL

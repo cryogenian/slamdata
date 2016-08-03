@@ -23,7 +23,7 @@ import SlamData.Workspace.Deck.DeckId (DeckId)
 
 type CardOptions =
   { deck ∷ DeckOptions
-  , deckComponent ∷ DeckComponent
+  , deckComponent ∷ DeckOptions → DeckComponent
   , cardId ∷ CardId
   , deckId ∷ DeckId
   }

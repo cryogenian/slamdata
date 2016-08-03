@@ -70,7 +70,6 @@ import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.Notification as Notify
@@ -137,9 +136,9 @@ render wiring state =
 
   deckOpts path deckId =
     { path
-    , level: DL.root
     , accessType: state.accessType
     , wiring
+    , cursor: List.Nil
     }
 
   showError err =
@@ -201,7 +200,7 @@ eval wiring (Load path deckId accessType next) = do
   loadDeck deckId = void do
     AE.track (AE.Load deckId accessType) wiring.analytics
     H.modify _ { stateMode = Ready }
-    queryDeck $ H.action $ Deck.Load path deckId DL.root
+    queryDeck $ H.action $ Deck.Load path deckId
 
   loadRoot =
     rootDeck path >>=
