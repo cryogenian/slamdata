@@ -181,15 +181,9 @@ colors =
   , "#595146"
   ]
 
-getShadeColor ∷ String → Number → Color
-getShadeColor hex alpha =
-  setAlpha
-    (lightenTo
-      (fromMaybe
-        (hsla 0.0 0.0 0.0 1.0)
-        (fromHexString hex))
-      0.95)
-    alpha
+getShadeColor ∷ Color → Number → Color
+getShadeColor color alpha =
+  setAlpha (lightenTo color 0.95) alpha
 
 getTransparentColor ∷ String → Number → Color
 getTransparentColor hex alpha =
@@ -375,3 +369,103 @@ addAxisLabelAngleAndFontSize angle size = do
     E.textStyle do
       E.fontSize size
       E.fontFamily "Ubuntu sans"
+
+type LabeledPointPairs = M.Map Key ((Array Number) × (Array Number))
+type LineData = List (Key × (Number × Number))
+
+buildLineData ∷ ChartAxes → LineData
+buildLineData axises =
+  let
+    lr =
+      lineRawData
+        dimensions
+        firstSeries
+        secondSeries
+        firstValues
+        secondValues
+        M.empty
+  in
+    aggregatePairs firstAgg secondAgg lr
+  where
+  firstAgg ∷ Maybe Aggregation
+  firstAgg = fromMaybe (Just Sum) $ join (axises.aggregations !! 0)
+
+  secondAgg ∷ Maybe Aggregation
+  secondAgg = fromMaybe (Just Sum) $ join (axises.aggregations !! 1)
+
+  dimensions ∷ List (Maybe String)
+  dimensions = fromMaybe Nil $ axises.dimensions !! 0
+
+  firstValues ∷ List (Maybe Number)
+  firstValues = fromMaybe Nil $ axises.measures !! 0
+
+  firstSeries ∷ List (Maybe String)
+  firstSeries = fromMaybe nothings $ axises.series !! 0
+
+  secondSeries ∷ List (Maybe String)
+  secondSeries = fromMaybe nothings $ axises.series !! 1
+
+  secondValues ∷ List (Maybe Number)
+  secondValues = fromMaybe nothings $ axises.measures !! 1
+
+  nothings ∷ ∀ a. List (Maybe a)
+  nothings = flip replicate Nothing $ maxLen firstValues dimensions
+
+  maxLen ∷ ∀ a b. List a → List b → Int
+  maxLen lstA lstB =
+    let lA = length lstA
+        lB = length lstB
+    in if lA > lB then lA else lB
+
+
+lineRawData
+  ∷ List (Maybe String)
+  → List (Maybe String)
+  → List (Maybe String)
+  → List (Maybe Number)
+  → List (Maybe Number)
+  → LabeledPointPairs
+  → LabeledPointPairs
+lineRawData Nil _ _ _ _ acc = acc
+lineRawData _ Nil _ _ _ acc = acc
+lineRawData _ _ Nil _ _ acc = acc
+lineRawData _ _ _ Nil _ acc = acc
+lineRawData _ _ _ _ Nil acc = acc
+lineRawData (Cons Nothing _) _ _ _ _ acc = acc
+lineRawData
+  (Cons (Just dimension) dims)
+  (Cons mbFirstSerie firstSeries)
+  (Cons mbSecondSerie secondSeries)
+  (Cons mbFirstValue firstValues)
+  (Cons mbSecondValue secondValues)
+  acc =
+    lineRawData dims firstSeries secondSeries firstValues secondValues
+    $ M.alter (alterFn $ firstVal × secondVal) key acc
+  where
+  firstVal ∷ Number
+  firstVal = fromMaybe zero mbFirstValue
+
+  secondVal ∷ Number
+  secondVal = fromMaybe zero mbSecondValue
+
+  key ∷ Key
+  key = mkKey dimension mbFirstSerie mbSecondSerie
+
+  alterFn
+    ∷ Number × Number
+    → Maybe ((Array Number) × (Array Number))
+    → Maybe ((Array Number) × (Array Number))
+  alterFn (v1 × v2) acc =
+    case fromMaybe ([] × []) acc of
+      v1s × v2s → pure $ (cons v1 v1s) × (cons v2 v2s)
+
+-- 'Nothing' is not suitable for aggreation of Pie and Bar Chart.
+-- To avoid 'Nothing', control the options in aggreation selector.
+-- In case that aggreation is 'Nothing', coerce it to be replaced by 'Just Sum'.
+aggregatePairs ∷ Maybe Aggregation → Maybe Aggregation → LabeledPointPairs → LineData
+aggregatePairs fAgg sAgg =
+  M.toList ∘ map
+    ( bimap
+        (runAggregation (fromMaybe Sum fAgg))
+        (runAggregation (fromMaybe Sum sAgg))
+    )
