@@ -185,13 +185,9 @@ getShadeColor ∷ Color → Number → Color
 getShadeColor color alpha =
   setAlpha (lightenTo color 0.95) alpha
 
-getTransparentColor ∷ String → Number → Color
-getTransparentColor hex alpha =
-  setAlpha
-    (fromMaybe
-      (hsla 0.0 0.0 0.0 1.0)
-      (fromHexString hex))
-    alpha
+getTransparentColor ∷ Color → Number → Color
+getTransparentColor color alpha =
+  setAlpha color alpha
 
 lightenTo ∷ Color → Number → Color
 lightenTo col l' = hsla c.h c.s l' c.a
@@ -234,7 +230,8 @@ buildChartAxes axisMap conf =
   aggregations ∷ Array (Maybe (Maybe Aggregation))
   aggregations = map (view _value) conf.aggregations
 
-type Key = String × Maybe (String × Maybe String)
+type Key = String × SeriesKey
+type SeriesKey = Maybe (String × (Maybe String))
 
 keyCategory ∷ Key → String
 keyCategory (cat × _) = cat

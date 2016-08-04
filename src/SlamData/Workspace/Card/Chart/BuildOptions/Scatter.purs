@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.Chart.BuildOptions.Scatter where
 
 import SlamData.Prelude
 
+import Color as C
+
 import Data.Argonaut (JCursor)
 import Data.Array as A
 import Data.Function (on)
@@ -26,18 +28,20 @@ import Data.List (List(..))
 import Data.Map (Map)
 
 import ECharts.Monad (DSL)
+import ECharts.Commands as E
+import ECharts.Types as ET
 import ECharts.Types.Phantom (OptionI)
+import ECharts.Types.Phantom as ETP
 
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, runAggregation)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
---import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxises, colors, buildChartAxises, keyName, toRGBAString, getTransparentColor)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxes, colors, buildChartAxes, keyName, toRGBAString, getTransparentColor)
 
+type ScatterData = Array (String × (Array ((Array Number) × (Maybe Number))))
 
---type ScatterData = Array (Tuple String (Array (Tuple (Array Number) (Maybe Number))))
-{-
-scatterData ∷ ChartAxises → ScatterData
-scatterData axises = A.fromFoldable
+buildScatterData ∷ ChartAxes → ScatterData
+buildScatterData axes = A.fromFoldable
   --output sample: ( Tuple "A" ((Tuple [1,1] 3) : (Tuple [2,2] 6)) : Tuple "B" ((Tuple [1,1] 9)) )
   $ L.catMaybes
   $ map combine
@@ -48,79 +52,74 @@ scatterData axises = A.fromFoldable
   $ L.catMaybes
   $ map mkPoint
   $ tagSeriesKey seriesKeys
-  $ map
-      (\x → Tuple [fst $ fst x, snd $ fst x] (snd x))
-      (L.zip (L.zip firstValues secondValues) thirdValues)
+  $ map (\(k × v) → [ fst k, snd k ] × v)
+  $ L.zip (L.zip firstValues secondValues) thirdValues
 
   where
   firstValues ∷ List (Maybe Number)
-  firstValues = fromMaybe Nil $ A.index axises.measures 0
+  firstValues = fromMaybe Nil $ A.index axes.measures 0
 
   secondValues ∷ List (Maybe Number)
-  secondValues = fromMaybe Nil $ A.index axises.measures 1
+  secondValues = fromMaybe Nil $ A.index axes.measures 1
 
   thirdValues ∷ List (Maybe Number)
-  thirdValues = fromMaybe (map (const Nothing) firstValues) (A.index axises.measures 2)
+  thirdValues = fromMaybe (map (const Nothing) firstValues) (A.index axes.measures 2)
 
   firstSeries ∷ List (Maybe String)
-  firstSeries = fromMaybe Nil $ A.index axises.series 0
+  firstSeries = fromMaybe Nil $ A.index axes.series 0
 
   secondSeries ∷ List (Maybe String)
-  secondSeries = fromMaybe Nil $ A.index axises.series 1
+  secondSeries = fromMaybe Nil $ A.index axes.series 1
 
   firstAgg ∷ Maybe Aggregation
-  firstAgg = fromMaybe Nothing $ join (A.index axises.aggregations 0)
+  firstAgg = fromMaybe Nothing $ join (A.index axes.aggregations 0)
 
   secondAgg ∷ Maybe Aggregation
-  secondAgg = fromMaybe Nothing $ join (A.index axises.aggregations 1)
+  secondAgg = fromMaybe Nothing $ join (A.index axes.aggregations 1)
 
   thirdAgg ∷ Maybe Aggregation
-  thirdAgg = fromMaybe Nothing $ join (A.index axises.aggregations 2)
+  thirdAgg = fromMaybe Nothing $ join (A.index axes.aggregations 2)
 
   tagSeriesKey
     ∷ List SeriesKey
-    → List (Tuple (Array (Maybe Number)) (Maybe Number))
-    → List (Tuple SeriesKey (Tuple (Array (Maybe Number)) (Maybe Number)))
-  tagSeriesKey k v = case L.null k of
-    true → map (Tuple Nothing) v
-    false → L.zip k v
+    → List ((Array (Maybe Number)) × (Maybe Number))
+    → List (SeriesKey × ((Array (Maybe Number)) × (Maybe Number)))
+  tagSeriesKey k v = case k of
+    L.Nil → map (Nothing × _) v
+    _ → L.zip k v
 
   mkPoint
-    ∷ Tuple SeriesKey (Tuple (Array (Maybe Number)) (Maybe Number))
-    → Maybe (Tuple String (Tuple (Array Number) (Maybe Number)))
-  mkPoint (Tuple a (Tuple [v1, v2] v3)) = case A.index axises.measures 2 of
+    ∷ SeriesKey × ((Array (Maybe Number)) × (Maybe Number))
+    → Maybe (String × ((Array Number) × (Maybe Number)))
+  mkPoint (a × ([v1, v2]  × v3)) = case A.index axes.measures 2 of
     Just m →
-      case v1, v2, v3 of
-        Just v1', Just v2', Just v3' → Just $ Tuple
-          (keyName (Tuple "" a))
-          (Tuple [v1', v2'] v3)
-        _, _, _ → Nothing
+      case v1 × v2 × v3 of
+        Just v1' × Just v2' × Just v3' → Just $ (keyName ("" × a)) × ([v1', v2'] × v3)
+        __ → Nothing
     Nothing →
-      case v1, v2 of
-        Just v1', Just v2' → Just $ Tuple
-          (keyName (Tuple "" a))
-          (Tuple [v1', v2'] v3)
-        _, _ → Nothing
-  mkPoint (Tuple _ (Tuple _ _)) = Nothing
+      case v1 × v2 of
+        Just v1' × Just v2' → Just $ (keyName ("" × a)) × ([v1', v2'] × v3)
+        _ → Nothing
+  mkPoint _ = Nothing
 
   seriesKeys ∷ List SeriesKey
-  seriesKeys = map (mkSeriesKey <$> fst <*> snd)
-    (L.zip firstSeries $ secondSeries <> map (const Nothing) firstSeries)
+  seriesKeys =
+    map (mkSeriesKey <$> fst <*> snd)
+    (L.zip firstSeries $ secondSeries ⊕ map (const Nothing) firstSeries)
 
   mkSeriesKey ∷ Maybe String → Maybe String → SeriesKey
-  mkSeriesKey f s =
-    f >>= \f → pure $ Tuple f s
+  mkSeriesKey f s = map (_ × s) f
 
   combine
-    ∷ List (Tuple String (Tuple (Array Number) (Maybe Number)))
-    → Maybe (Tuple String (Array (Tuple (Array Number) (Maybe Number))))
+    ∷ List (String × ((Array Number) × (Maybe Number)))
+    → Maybe (String × (Array ((Array Number) × (Maybe Number))))
   combine x = do
-    y <- (L.head $ map fst x)
-    pure $ Tuple y (A.fromFoldable $ applyAggregation $ map snd x)
+    y ← L.head $ map fst x
+    pure $ y × (A.fromFoldable $ applyAggregation $ map snd x)
 
   applyAggregation
-    ∷ List (Tuple (Array Number) (Maybe Number))
-    → List (Tuple (Array Number) (Maybe Number))
+    ∷ List ((Array Number) × (Maybe Number))
+    → List ((Array Number) × (Maybe Number))
   applyAggregation l =
     let
       fv = L.catMaybes $ map (flip A.index 0 <<< fst) l
@@ -130,206 +129,117 @@ scatterData axises = A.fromFoldable
       sv' = applyAggregation' secondAgg sv
       tv' = applyAggregation'' thirdAgg tv
     in
-      case [(isNothing firstAgg), (isNothing secondAgg), (isNothing thirdAgg)] of
-        [true, true, true] → l
-        [false, false, false] →
-          L.singleton
-            (Tuple [fromMaybe zero $ L.head fv', fromMaybe zero $ L.head sv']
-              (fromMaybe Nothing $ L.head tv'))
+      case firstAgg × secondAgg × thirdAgg of
+        Nothing × Nothing × Nothing → l
+        Just _ × Just _ × Just _ →
+          pure
+          $ [fromMaybe zero $ L.head fv', fromMaybe zero $ L.head sv' ]
+          × (fromMaybe Nothing $ L.head tv')
         _ →
-          map (\x → Tuple [fst $ fst x, snd $ fst x] (snd x)) (L.zip (L.zip fv' sv') tv')
+          map (\(k × v) → [fst k, snd k] × v) $ L.zip (L.zip fv' sv') tv'
     where
     applyAggregation' ∷ Maybe Aggregation → List Number → List Number
-    applyAggregation' agg vs =
-      case agg of
-        Nothing -> vs
-        Just agg' ->
-          let v = runAggregation agg' vs
-          in map (\_ → v) vs
+    applyAggregation' mbAgg vs =
+      fromMaybe vs do
+        agg ← mbAgg
+        let v = runAggregation agg vs
+        pure $ map (\_ → v) vs
     applyAggregation'' ∷ Maybe Aggregation → List (Maybe Number) → List (Maybe Number)
-    applyAggregation'' agg vs =
-      case agg of
-        Nothing -> vs
-        Just agg' ->
-          if isJust $ A.index axises.measures 2
-          -- When (isJust $ A.index axises.measures 2) is true, the function mkPoint
-          -- will filter out all Nothing values in thirdValues, so vs here contains no
-          -- Nothing values and (map fromJust vs) is safe.
-               then let v = runAggregation agg' $ map (unsafePartial fromJust) vs
-                    in map (\x → Just v) vs
-               else vs
+    applyAggregation'' mbAgg vs =
+      fromMaybe vs do
+        agg ← mbAgg
+        -- When there is third element of axes.measures, the function mkPoint
+        -- will filter out all Nothing values in thirdValues, so vs here contains no
+        -- Nothing values and (map fromJust vs) is safe.
+        A.index axes.measures 2
+        let v = runAggregation agg $ map (unsafePartial fromJust) vs
+        pure $ map (\_ → Just v) vs
 
--}
+
 buildScatter
   ∷ Map JCursor Ax.Axis
   → Number
   → Number
   → ChartConfiguration
   → DSL OptionI
-buildScatter axises bubbleMinSize bubbleMaxSize conf =
-  pure unit
-  {-
-  case preSeries of
-  series →
-    EC.Option EC.optionDefault
-      { series = Just $ map Just series
-      , xAxis = Just valueAxis
-      , yAxis = Just valueAxis
-      , tooltip = Just tooltip
-      , legend = Just $ mkLegend series
-      , color = Just colors
-      }
+buildScatter axes bubbleMinSize bubbleMaxSize conf = do
+  E.tooltip do
+    E.triggerAxis
+    E.textStyle do
+      E.fontFamily "Ubuntu sans"
+      E.fontSize 12
+    E.axisPointer do
+      E.crossAxisPointer
+      E.crossStyle do
+        E.color $ C.rgba 170 170 170 0.6
+        E.widthNum 0.2
+        E.solidLine
+
+  E.colors colors
+
+  E.xAxis valueAxis
+  E.yAxis valueAxis
+
+  E.legend do
+    E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.items $ map ET.strItem legendNames
+
+  E.series $ traverse_ (E.scatter ∘ serie) $ A.zip (A.range 0 (A.length scatterData)) scatterData
   where
-  mkLegend ∷ Array EC.Series → EC.Legend
-  mkLegend ss =
-    EC.Legend EC.legendDefault
-      { "data" = Just $ map EC.legendItemDefault $ extractNames ss
-      , textStyle = Just $ EC.TextStyle EC.textStyleDefault
-          { fontFamily = Just "Ubuntu" }
-      }
+  scatterData ∷ ScatterData
+  scatterData = buildScatterData $ buildChartAxes axes conf
 
-  tooltip ∷ EC.Tooltip
-  tooltip = EC.Tooltip $ EC.tooltipDefault
-    { trigger = Just EC.TriggerAxis
-    , textStyle = Just $ EC.TextStyle EC.textStyleDefault
-        { fontFamily = Just "Ubuntu"
-        , fontSize = Just 12.0
-        }
-    , axisPointer = Just $ EC.TooltipAxisPointer EC.tooltipAxisPointerDefault
-        { "type" = Just $ EC.CrossPointer
-        , crossStyle = Just $ EC.LineStyle EC.lineStyleDefault
-            { color = Just "rgba(170,170,170,0.6)"
-            , width = Just 0.2
-            , "type" = Just $ EC.Solid
-            }
-        }
-    }
+  valueAxis ∷ ∀ i. DSL (ETP.AxisI i)
+  valueAxis = do
+    E.axisType $ ET.Value
+    E.axisLabel $ E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.axisLine $ E.lineStyle do
+      E.color $ C.rgba 184 184 184 0.8
+      E.width 1
+    E.splitLine $ E.lineStyle do
+      E.color $ C.rgba 204 204 204 0.2
+      E.width 1
 
-  extractNames ∷ Array EC.Series → Array String
-  extractNames ss = A.nub $ A.catMaybes $ map extractName ss
-
-  extractName ∷ EC.Series → Maybe String
-  extractName (EC.ScatterSeries r) = r.common.name
-  extractName _ = Nothing
-
-  extracted ∷ ScatterData
-  extracted = scatterData $ buildChartAxises axises conf
-
-  valueAxis ∷ EC.Axises
-  valueAxis = EC.OneAxis valueAxis'
-
-  valueAxis' ∷ EC.Axis
-  valueAxis' =
-    EC.Axis EC.axisDefault
-      { "type" = Just EC.ValueAxis
-      , axisLabel = Just $ EC.AxisLabel EC.axisLabelDefault
-        { textStyle = Just $ EC.TextStyle EC.textStyleDefault
-          { fontFamily = Just "Ubuntu"
-          }
-        }
-      , axisLine = Just $ EC.AxisLine EC.axisLineDefault
-        { lineStyle = Just $ EC.AxisLineStyle EC.axisLineStyleDefault
-            { color = Just "rgba(184,184,184,0.8)"
-            , width = Just 1.0
-            }
-        }
-      , splitLine = Just $ EC.AxisSplitLine EC.axisSplitLineDefault
-        { lineStyle = Just $ EC.LineStyle EC.lineStyleDefault
-          { color = Just "rgba(204,204,204,0.2)"
-          , width = Just 1.0
-          }
-         }
-      }
-
-  preSeries ∷ Array EC.Series
-  preSeries = mkSeries extracted bubbleMinSize bubbleMaxSize
-
-
-mkSeries
-  ∷ ScatterData
-  → Number
-  → Number
-  → (Array EC.Series)
-mkSeries sData bubbleMinSize bubbleMaxSize =
-  series
-  where
-  series ∷ Array EC.Series
-  series = map serie (A.zip (A.range 0 ((A.length sData) - 1)) sData)
+  legendNames ∷ Array String
+  legendNames = map fst scatterData
 
   serie
-    ∷ Tuple Int (Tuple String (Array (Tuple (Array Number) (Maybe Number))))
-    → EC.Series
-  serie (Tuple ind (Tuple name nums)) =
-    EC.ScatterSeries
-      { common: EC.universalSeriesDefault
-        { name = if name ≡ ""
-                 then Nothing
-                 else Just name
-        , itemStyle = Just $ EC.ItemStyle EC.itemStyleDefault
-          { normal = Just $ EC.IStyle EC.istyleDefault
-            { color = Just $ EC.SimpleColor $ toRGBAString $ getTransparentColor
-                (fromMaybe "#000000" (A.index colors (mod ind (A.length colors))))
-                0.5
-            }
-          }
-        }
-      , scatterSeries: EC.scatterSeriesDefault
-        { "data" = Just $ map xyrData nums
-        , large = Just true
-        , symbol = Just EC.Circle
-        , symbolSize = case thirdMeasureRange of
-                         Just (Tuple rMin rMax) →
-                           Just $ EC.ArrayMappingFunc
-                             (radiusMapper bubbleMinSize bubbleMaxSize rMin rMax)
-                         _ → Nothing
+    ∷ Int × (String × (Array ((Array Number) × (Maybe Number))))
+    → DSL ETP.ScatterI
+  serie (ind × (name × nums)) = do
+    let
+      color = fromMaybe (C.rgba 0 0 0 1.0) $ A.index colors $ mod ind $ A.length colors
+    when (name ≠ "") $ E.name name
+    E.itemStyle $ E.normalItemStyle do
+      E.color $ getTransparentColor color 0.5
+    E.symbol $ ET.Circle
+    for_ thirdMeasureRange \(rMin × rMax) →
+      E.symbolSizeArrFunc $ radiusMapper bubbleMinSize bubbleMaxSize rMin rMax
+    E.buildItems $ for_ nums \(arr × mbSize) →
+      E.addItem $ E.values $ arr ⊕ foldMap pure mbSize
 
-        }
-      }
+  thirdMeasureRange ∷ Maybe (Number × Number)
+  thirdMeasureRange =
+    guard (not $ A.null thirdValues) $> (minVal × maxVal)
     where
-    xyrData ∷ Tuple (Array Number) (Maybe Number) → EC.ItemData
-    xyrData a = EC.Value $
-      EC.XYR { x: fromMaybe zero $ A.index (fst a) 0
-             , y: fromMaybe zero $ A.index (fst a) 1
-             , r: snd a
-             }
+    thirdValues ∷ Array Number
+    thirdValues = A.sort $ A.catMaybes $ map snd $ A.concat $ map snd scatterData
 
-    thirdMeasureRange ∷ Maybe (Tuple Number Number)
-    thirdMeasureRange = case A.length thirdValues of
-      0  → Nothing
-      _  → Just (Tuple minVal maxVal)
-      where
-      thirdValues ∷ Array Number
-      thirdValues = A.catMaybes $ map snd (A.concat $ map snd sData)
+    maxVal ∷ Number
+    maxVal = fromMaybe zero $ A.last thirdValues
 
-      maxVal ∷ Number
-      maxVal = fromMaybe zero (A.head $ A.reverse $ A.sort thirdValues)
+    minVal ∷ Number
+    minVal = fromMaybe zero $ A.head thirdValues
 
-      minVal ∷ Number
-      minVal = fromMaybe zero (A.head $ A.sort thirdValues)
-
-    radiusMapper
-      ∷ Number
-      → Number
-      → Number
-      → Number
-      → (Array Number → Number)
-    radiusMapper bMin bMax rMin rMax =
-      if rMin == rMax
-      then func1
-      else func2
-      where
-      func1 ∷ Array Number → Number
-      func1 [x, y, r] = if r < bMin
-               then bMin
-               else if r > bMax
-                    then bMax
-                    else r
-      -- default circle size 4.0
-      func1 _ = 4.0
-
-      func2 ∷ Array Number → Number
-      func2 [x, y, r] =
-        bMin * (1.0 - (r - rMin) / (rMax - rMin)) + bMax * (r - rMin) / (rMax - rMin)
-      -- default circle size 4.0
-      func2 _ = 4.0
--}
+  radiusMapper
+    ∷ Number
+    → Number
+    → Number
+    → Number
+    → Array Number
+    → Number
+  radiusMapper bMin bMax rMin rMax [x, y, r] =
+    if rMin ≡ rMax
+      then if r < bMin then bMin else if r > bMax then bMax else r
+      else bMin * (one - (r - rMin) / (rMax - rMin)) + bMax * (r - rMin) / (rMax - rMin)
+  radiusMapper _ _ _ _ _ = 4.0
