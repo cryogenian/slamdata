@@ -21,11 +21,8 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 import Data.Array ((!!), (:))
 import Data.Array as A
-import Data.Foldable as F
-import Data.Function (on)
-import Data.Int (toNumber, fromNumber)
+import Data.Int (toNumber)
 import Data.Map as M
-import Data.String (split)
 
 import ECharts.Monad (DSL)
 import ECharts.Commands as E
@@ -37,7 +34,7 @@ import Math (floor)
 
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, keyCategory, keyName, colors, buildChartAxes, buildPieBarData, saturateLast, keyMbSeries1, printKey, keyMbSeries2)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, keyCategory, colors, buildChartAxes, buildPieBarData, saturateLast, printKey)
 
 
 rowLength ∷ Int
@@ -101,7 +98,7 @@ buildPie axes conf = do
 
 
   -- | Series groupped by category and series1
-  serieGroups ∷ ∀ i. Array (Array (DSL ETP.PieSeriesI))
+  serieGroups ∷ Array (Array (DSL ETP.PieSeriesI))
   serieGroups = map (map serie) grouppedBySeries
 
   -- | series matrix enumerated by first series and then by second series

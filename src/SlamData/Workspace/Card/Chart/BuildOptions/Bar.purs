@@ -77,9 +77,9 @@ buildBar axes angle size conf = do
   legendItems = L.filter (_ ≠ "") $ M.keys namedSeries
 
   labelHeight ∷ String → Int
-  labelHeight longestCat =
+  labelHeight longest =
     let
-      width = getTextWidthPure longestCat $ "normal " <> show size <> "px Ubuntu"
+      width = getTextWidthPure longest $ "normal " <> show size <> "px Ubuntu"
     in
       Int.round
         $ add 24.0

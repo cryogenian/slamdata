@@ -36,7 +36,7 @@ import ECharts.Types.Phantom as ETP
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, runAggregation)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxes, colors, buildChartAxes, keyName, toRGBAString, getTransparentColor)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxes, colors, buildChartAxes, keyName, getTransparentColor)
 
 type ScatterData = Array (String × (Array ((Array Number) × (Maybe Number))))
 

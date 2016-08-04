@@ -21,13 +21,13 @@ import SlamData.Prelude
 import Color as C
 
 import Data.Argonaut (JCursor)
-import Data.Array ((!!), cons)
+import Data.Array ((!!))
 import Data.Array as A
 import Data.Foldable as F
 import Data.Function (on)
 import Data.Int as Int
 import Data.Lens (view)
-import Data.List (List(..), length, zip, range)
+import Data.List (List, zip, range)
 import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
@@ -40,10 +40,9 @@ import ECharts.Types.Phantom (OptionI)
 import ECharts.Types.Phantom as ETP
 
 import SlamData.Form.Select (_value)
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), runAggregation)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, ChartAxes, LineData, LabeledPointPairs, commonNameMap, keyCategory, colors, addAxisLabelAngleAndFontSize, buildChartAxes, buildLineData, getShadeColor)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, LineData, commonNameMap, keyCategory, colors, addAxisLabelAngleAndFontSize, buildChartAxes, buildLineData, getShadeColor)
 
 import Math as Math
 
@@ -152,9 +151,9 @@ buildArea axes angle size stacked smooth conf = do
     fromMaybe "" $ F.maximumBy (\a b → compare (Str.length a) (Str.length b)) catVals
 
   labelHeight ∷ String → Int
-  labelHeight longestCat =
+  labelHeight longest =
     let
-      width = getTextWidthPure longestCat $ "normal " <> show size <> "px Ubuntu"
+      width = getTextWidthPure longest $ "normal " <> show size <> "px Ubuntu"
     in
       Int.round
         $ add 24.0

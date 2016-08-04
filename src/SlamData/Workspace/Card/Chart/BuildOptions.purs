@@ -25,13 +25,12 @@ module SlamData.Workspace.Card.Chart.BuildOptions
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor, Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
-import Data.Map as M
+import Data.Argonaut (JArray, Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
 
 import ECharts.Monad (DSL)
 import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
+import SlamData.Workspace.Card.Chart.Axis (analyzeJArray)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Workspace.Card.Chart.BuildOptions.Bar (buildBar)
 import SlamData.Workspace.Card.Chart.BuildOptions.Line (buildLine)

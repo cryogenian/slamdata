@@ -31,7 +31,7 @@ import Data.Unfoldable (replicate)
 import Color (Color, toRGBA, fromHexString, hsla, toHSLA)
 
 import ECharts.Monad (DSL)
-import ECharts.Types.Phantom (OptionI, AxisI)
+import ECharts.Types.Phantom (AxisI)
 import ECharts.Commands as E
 
 import SlamData.Form.Select (_value)
