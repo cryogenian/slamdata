@@ -25,16 +25,17 @@ import Data.List as L
 import Data.List (List(..))
 import Data.Map (Map)
 
-import ECharts as EC
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, runAggregation)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxises, colors, buildChartAxises, keyName, toRGBAString, getTransparentColor)
+--import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxises, colors, buildChartAxises, keyName, toRGBAString, getTransparentColor)
 
 
-type ScatterData = Array (Tuple String (Array (Tuple (Array Number) (Maybe Number))))
-
+--type ScatterData = Array (Tuple String (Array (Tuple (Array Number) (Maybe Number))))
+{-
 scatterData ∷ ChartAxises → ScatterData
 scatterData axises = A.fromFoldable
   --output sample: ( Tuple "A" ((Tuple [1,1] 3) : (Tuple [2,2] 6)) : Tuple "B" ((Tuple [1,1] 9)) )
@@ -158,14 +159,17 @@ scatterData axises = A.fromFoldable
                     in map (\x → Just v) vs
                else vs
 
-
+-}
 buildScatter
   ∷ Map JCursor Ax.Axis
   → Number
   → Number
   → ChartConfiguration
-  → EC.Option
-buildScatter axises bubbleMinSize bubbleMaxSize conf = case preSeries of
+  → DSL OptionI
+buildScatter axises bubbleMinSize bubbleMaxSize conf =
+  pure unit
+  {-
+  case preSeries of
   series →
     EC.Option EC.optionDefault
       { series = Just $ map Just series
@@ -328,3 +332,4 @@ mkSeries sData bubbleMinSize bubbleMaxSize =
         bMin * (1.0 - (r - rMin) / (rMax - rMin)) + bMax * (r - rMin) / (rMax - rMin)
       -- default circle size 4.0
       func2 _ = 4.0
+-}

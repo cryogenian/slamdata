@@ -27,20 +27,23 @@ import Data.Map as M
 import Data.String (split)
 import Data.String as Str
 
-import ECharts as EC
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
 import Math as Math
 
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, commonNameMap, keyCategory, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, pieBarData)
+--import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, commonNameMap, keyCategory, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, pieBarData)
 
 import Utils.DOM (getTextWidthPure)
 
 buildBar
-  ∷ M.Map JCursor Ax.Axis → Int → Int → ChartConfiguration → EC.Option
-buildBar axises angle size conf = case preSeries of
-  xAxisR × series × longestCat  →
+  ∷ M.Map JCursor Ax.Axis → Int → Int → ChartConfiguration → DSL OptionI
+buildBar axises angle size conf =
+  pure unit
+--  case preSeries of
+{-  xAxisR × series × longestCat  →
     EC.Option EC.optionDefault
       { series = Just $ map Just series
       , xAxis = Just $ EC.OneAxis $ EC.Axis
@@ -162,3 +165,4 @@ mkSeries pbData = xAxis × series × longestCat
 
   fill ∷ Map String Number → String → Map String Number
   fill m key = M.alter (maybe (Just 0.0) Just) key m
+-}

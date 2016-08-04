@@ -30,7 +30,9 @@ import Data.Unfoldable (replicate)
 
 import Color (Color, toRGBA, fromHexString, hsla, toHSLA)
 
-import ECharts (AxisRec, AxisLabel(..), TextStyle(..), textStyleDefault, axisLabelDefault)
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI, AxisI)
+import ECharts.Commands as E
 
 import SlamData.Form.Select (_value)
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), runAggregation)
@@ -38,15 +40,17 @@ import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, JSelect)
 import SlamData.Workspace.Card.Chart.Semantics (Semantics, printSemantics, semanticsToNumber)
 
-type ChartAxises =
+type ChartAxes =
   { dimensions ∷ Array (List (Maybe String))
   , series ∷ Array (List (Maybe String))
   , measures ∷ Array (List (Maybe Number))
   , aggregations ∷ Array (Maybe (Maybe Aggregation))
   }
 
-colors ∷ Array String
+colors ∷ Array Color
 colors =
+  A.catMaybes
+  $ map fromHexString
   [ "#93A9A6"
   , "#CDA71F"
   , "#EB6F76"
@@ -212,8 +216,8 @@ toRGBAString col = "rgba(" <> show c.r <> ", "
                    <> show c.a <> ")"
   where c = toRGBA col
 
-buildChartAxises ∷ M.Map JCursor Ax.Axis → ChartConfiguration → ChartAxises
-buildChartAxises axisMap conf =
+buildChartAxes ∷ M.Map JCursor Ax.Axis → ChartConfiguration → ChartAxes
+buildChartAxes axisMap conf =
   { dimensions: dimensions
   , series: series
   , measures: measures
@@ -236,21 +240,35 @@ buildChartAxises axisMap conf =
   aggregations ∷ Array (Maybe (Maybe Aggregation))
   aggregations = map (view _value) conf.aggregations
 
-type Key = Tuple String SeriesKey
-type SeriesKey = Maybe (Tuple String (Maybe String))
+type Key = String × Maybe (String × Maybe String)
 
 keyCategory ∷ Key → String
-keyCategory (Tuple cat _) = cat
+keyCategory (cat × _) = cat
 
 keyMbSeries1 ∷ Key → Maybe String
-keyMbSeries1 (Tuple _ mbT) = mbT >>= (pure ∘ fst)
+keyMbSeries1 (_ × mbT) = mbT >>= (pure ∘ fst)
 
 keyMbSeries2 ∷ Key → Maybe String
-keyMbSeries2 (Tuple _ mbT) = mbT >>= snd
+keyMbSeries2 (_ × mbT) = mbT >>= snd
+
+saturateLast ∷ Key → Key
+saturateLast = case _ of
+  cat × Just (ser1 × Just ser2) → cat × Just (ser1 × Nothing)
+  cat × Just (ser1 × Nothing) → cat × Nothing
+  cat × Nothing → cat × Nothing
 
 mkKey ∷ String → Maybe String → Maybe String → Key
 mkKey cat f s =
-  Tuple cat (f >>= \f → pure $ Tuple f s)
+  Tuple cat (f >>= \f → pure $ f × s)
+
+printKey ∷ Key → String
+printKey (cat × mbT) =
+  cat <> case mbT of
+    Nothing → ""
+    Just (ser1 × mbS2) →
+      ":" <> ser1 <> case mbS2 of
+        Nothing → ""
+        Just ser2 → ":" <> ser2
 
 keyName ∷ Key → String
 keyName k =
@@ -259,8 +277,8 @@ keyName k =
 type LabeledPoints = M.Map Key (Array Number)
 type PieBarData = M.Map Key Number
 
-pieBarData ∷ ChartAxises → PieBarData
-pieBarData axises =
+buildPieBarData ∷ ChartAxes → PieBarData
+buildPieBarData axises =
   aggregate agg $ pieBarRawData categories firstSeries secondSeries values M.empty
   where
   agg ∷ Maybe Aggregation
@@ -282,7 +300,9 @@ pieBarData axises =
   nothings = replicate (length values) Nothing
 
 pieBarRawData
-  ∷ List (Maybe String) → List (Maybe String) → List (Maybe String)
+  ∷ List (Maybe String)
+  → List (Maybe String)
+  → List (Maybe String)
   → List (Maybe Number) → LabeledPoints → LabeledPoints
 pieBarRawData Nil _ _ _ acc = acc
 pieBarRawData _ Nil _ _ acc = acc
@@ -316,15 +336,17 @@ aggregate agg acc = case agg of
 -- 3. apply first argument to groupped maps
 -- 4. make final map from category to array of values
 commonNameMap
-  ∷ (Array (Map String Number) → Array (Map String Number)) → Array String
-  → Array (Tuple Key Number) → Map String (Array Number)
+  ∷ (Array (Map String Number) → Array (Map String Number))
+  → Array String
+  → Array (Key × Number)
+  → Map String (Array Number)
 commonNameMap fn catVals = mapByCategories ∘ fn ∘ groupByCategories
   where
-  groupByCategories ∷ Array (Tuple Key Number) → Array (Map String Number)
+  groupByCategories ∷ Array (Key × Number) → Array (Map String Number)
   groupByCategories arr = map (markAndFilterCategory arr) catVals
 
   markAndFilterCategory
-    ∷ Array (Tuple Key Number) → String → Map String Number
+    ∷ Array (Key × Number) → String → Map String Number
   markAndFilterCategory arr cat =
       M.fromFoldable
     $ map (lmap keyName)
@@ -338,20 +360,18 @@ commonNameMap fn catVals = mapByCategories ∘ fn ∘ groupByCategories
 
   foldFn
     ∷ Map String (Array Number)
-    → Array (Tuple String Number)
+    → Array (String × Number)
     → Map String (Array Number)
   foldFn m tpls = foldl (\m (Tuple k n) → M.alter (alterNamed n) k m) m tpls
 
   alterNamed ∷ Number → Maybe (Array Number) → Maybe (Array Number)
   alterNamed n ns = Just $ A.cons n $ fromMaybe [] ns
 
-mixAxisLabelAngleAndFontSize ∷ Int → Int → AxisRec → AxisRec
-mixAxisLabelAngleAndFontSize angle size r =
-  r { axisLabel = Just $ AxisLabel axisLabelDefault
-      { rotate = Just $ toNumber angle
-      , textStyle = Just $ TextStyle textStyleDefault
-        { fontSize = Just $ toNumber size
-        , fontFamily = Just "Ubuntu sans"
-        }
-      }
-    }
+
+addAxisLabelAngleAndFontSize ∷ ∀ i. Int → Int → DSL (AxisI i)
+addAxisLabelAngleAndFontSize angle size = do
+  E.axisLabel do
+    E.rotate $ toNumber angle
+    E.textStyle do
+      E.fontSize size
+      E.fontFamily "Ubuntu sans"

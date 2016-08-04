@@ -21,194 +21,138 @@ import SlamData.Prelude
 import Data.Argonaut (JCursor)
 import Data.Array ((!!), (:))
 import Data.Array as A
+import Data.Foldable as F
 import Data.Function (on)
 import Data.Int (toNumber, fromNumber)
 import Data.Map as M
 import Data.String (split)
 
-import ECharts as EC
+import ECharts.Monad (DSL)
+import ECharts.Commands as E
+import ECharts.Types as ET
+import ECharts.Types.Phantom (OptionI)
+import ECharts.Types.Phantom as ETP
 
 import Math (floor)
 
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, keyCategory, keyName, colors, buildChartAxises, pieBarData)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, keyCategory, keyName, colors, buildChartAxes, buildPieBarData, saturateLast, keyMbSeries1, printKey, keyMbSeries2)
 
-buildPie ∷ M.Map JCursor Ax.Axis → ChartConfiguration → EC.Option
-buildPie axises conf =
-  EC.Option $ EC.optionDefault
-    { tooltip = tooltip
-    , series = Just $ map Just series
-    , legend = legend
-    , color = Just colors
-    }
+
+rowLength ∷ Int
+rowLength = 4
+
+buildPie ∷ M.Map JCursor Ax.Axis → ChartConfiguration → DSL OptionI
+buildPie axes conf = do
+  E.tooltip E.triggerItem
+
+  E.series series
+
+  E.legend do
+    when (A.length legendNames > 20) E.hidden
+    E.leftLeft
+    E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.orient ET.Vertical
+    E.items $ map ET.strItem legendNames
+
+  E.colors colors
   where
-  tooltip ∷ Maybe EC.Tooltip
-  tooltip = Just $ EC.Tooltip $ EC.tooltipDefault { trigger = Just EC.TriggerItem }
-
-  extractedData ∷ PieBarData
-  extractedData = pieBarData $ buildChartAxises axises conf
-
-  series ∷ Array EC.Series
-  series = mkSeries extractedData
-
-  legend ∷ Maybe EC.Legend
-  legend =
-    let
-      extracted = extractNames series
-    in guard (A.length extracted < 20)
-      $> EC.Legend EC.legendDefault
-        { "data" = Just $ map EC.legendItemDefault $ extractNames series
-        , orient = Just EC.Vertical
-        , x = Just EC.XLeft
-        , textStyle = Just $ EC.TextStyle EC.textStyleDefault
-            { fontFamily = Just "Ubuntu sans" }
-        }
-
-  extractNames ∷ Array EC.Series → Array String
-  extractNames ss = A.nub $ A.catMaybes $ A.concatMap extractName ss
-
-  extractName ∷ EC.Series → Array (Maybe String)
-  extractName (EC.PieSeries r) = map extractOneDatum $ fromMaybe [] r.pieSeries."data"
-  extractName _ = []
-
-  extractOneDatum ∷ EC.ItemData → Maybe String
-  extractOneDatum (EC.Dat r) = r.name
-  extractOneDatum _ = Nothing
-
-mkSeries ∷ PieBarData → Array EC.Series
-mkSeries pbData =
-  A.concat (A.zipWith (rows $ A.length groupped) (A.range 0 $ A.length groupped) groupped)
-  where
-  rows ∷ Int → Int → Array EC.PieSeriesRec → Array EC.Series
-  rows count ix arr =
-    A.zipWith (donut count ix $ A.length arr) (A.range 0 $ A.length arr) arr
-
-  donut ∷ Int → Int → Int → Int → EC.PieSeriesRec → EC.Series
-  donut rowCount rowIx donutCount donutIx r = case maxRadius rowCount rowIx of
-    Tuple maxR center → EC.PieSeries
-      { common:
-          EC.universalSeriesDefault
-            { itemStyle = Just $ EC.ItemStyle
-                { emphasis: Nothing
-                , normal: Just $ EC.IStyle $ EC.istyleDefault
-                    { label = Just $ EC.ItemLabel $ EC.itemLabelDefault
-                        { show = Just false }
-                    , labelLine = Just $ EC.ItemLabelLine
-                        $ EC.itemLabelLineDefault { show = Just false }
-                    }
-                }
-            }
-      , pieSeries:
-          r
-            { radius = radius maxR donutCount donutIx
-            , center = center
-            , startAngle = Just $ toNumber $ (45 * donutIx) `mod` 360
-            }
-      }
-
-  maxRadius ∷ Int → Int → Tuple Number (Maybe EC.Center)
-  maxRadius count ix =
-    let countNum = toNumber count
-        ixNum = toNumber ix
-    in if count <= rowLength
-       then maxRadiusOneRow countNum ixNum
-       else maxRadiusManyRows countNum ixNum
-
-  maxRadiusOneRow ∷ Number → Number → Tuple Number (Maybe EC.Center)
-  maxRadiusOneRow count ix =
-    let r = 85.0 / count
-        step = 100.0 / count
-        modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber count
-        x = 55.0 + (modulus + 0.5 - count/2.0) * step
-        y = 50.0
-        c = Just $ Tuple (EC.Percent x) (EC.Percent y)
-    in Tuple r c
-
-  maxRadiusManyRows ∷ Number → Number → Tuple Number (Maybe EC.Center)
-  maxRadiusManyRows count ix =
-    let l = toNumber rowLength
-        r = 85.0 / l
-        step = 100.0 / l
-        modulus = maybe 0.0 toNumber $ mod <$> fromNumber ix <*> fromNumber l
-        x = 55.0 + (modulus - l/2.0 + 0.5) * step
-        y = 1.2 * floor (ix/l) * r + r
-        c = Just $ Tuple (EC.Percent x) (EC.Percent y)
-    in Tuple r c
-
-  radius ∷ Number → Int → Int → Maybe EC.Radius
-  radius max count ix =
-    if count == 1
-    then Just $ EC.R (EC.Percent max)
-    else donutRadius max (toNumber count) (toNumber ix)
-
-  donutRadius ∷ Number → Number → Number → Maybe EC.Radius
-  donutRadius max count ix =
-    let step = max / (count + 1.0)
-        record = { inner: EC.Percent (step * (ix + 1.0))
-                 , outer: EC.Percent (step * (ix + 2.0))
-                 }
-    in Just $ EC.Rs record
-
-  groupped ∷ Array (Array EC.PieSeriesRec)
-  groupped = map (map snd) $ A.groupBy (on eq ((_ !! 1) ∘ split ":" ∘ fst)) series
-
-  series ∷ Array (Tuple String EC.PieSeriesRec)
-  series = map serie $ A.fromFoldable $ M.toList group
-
-  group ∷ M.Map String (Array (Tuple String Number))
-  group = nameMap $ A.fromFoldable $ M.toList pbData
+  pieBarData ∷ PieBarData
+  pieBarData = buildPieBarData $ buildChartAxes axes conf
 
   ks ∷ Array Key
-  ks = A.fromFoldable $ M.keys pbData
+  ks = A.fromFoldable $ M.keys pieBarData
 
   catVals ∷ Array String
   catVals = A.nub $ map keyCategory ks
 
-  groupByCategories
-    ∷ Array (Tuple Key Number) → Array (M.Map String (Tuple String Number))
-  groupByCategories arr = map (filterAndMarkCategory arr) catVals
+  legendNames ∷ Array String
+  legendNames =
+    A.nub $ foldMap (pure ∘ printKey) $ M.keys pieBarData
 
-  filterAndMarkCategory
-    ∷ Array (Tuple Key Number) → String → M.Map String (Tuple String Number)
-  filterAndMarkCategory arr cat =
-      M.fromFoldable
-    $ map (bimap keyName (Tuple cat))
-    $ A.filter (\(Tuple k _) → keyCategory k == cat)
-    $ arr
+  -- | group data by category if there is first series
+  grouppedByCat ∷ Array (Array (Key × Number))
+  grouppedByCat =
+    A.groupBy (\(k × v) (k' × v') → (snd k $> fst k) ≡ (snd k' $> fst k'))
+    $ A.fromFoldable
+    $ M.toList pieBarData
 
-  mapByCategories
-    ∷ Array (M.Map String (Tuple String Number))
-    → M.Map String (Array (Tuple String Number))
-  mapByCategories arr =
-    map A.reverse $ foldl foldFn M.empty (A.fromFoldable ∘ M.toList <$> arr)
+  -- | group data by first series if there is second series
+  grouppedBySeries ∷ Array (Array (Array (Key × Number)))
+  grouppedBySeries =
+    map (A.groupBy (\(k × v) (k' × v') →
+                     ((snd k >>= snd) *> (snd k <#> fst)) ≡ ((snd k' >>= snd) *> (snd k' <#> fst))))
+      grouppedByCat
 
-  nameMap ∷ Array (Tuple Key Number) → M.Map String (Array (Tuple String Number))
-  nameMap = groupByCategories ⋙ mapByCategories
+  serie ∷ Array (Key × Number) → DSL ETP.PieSeriesI
+  serie pairs = do
+    traverse_ (E.name ∘ printKey ∘ saturateLast ∘ fst) $ A.head pairs
+    E.buildItems $ for_ pairs \(key × value) →
+      E.addItem do
+        E.value value
+        E.name $ printKey key
+    E.label do
+      E.normalLabel E.hidden
+      E.emphasisLabel E.hidden
+    E.labelLine do
+      E.normalLabelLine E.hidden
+      E.emphasisLabelLine E.hidden
 
-  foldFn
-    ∷ M.Map String (Array (Tuple String Number))
-    → Array (Tuple String (Tuple String Number))
-    → M.Map String (Array (Tuple String Number))
-  foldFn m tpls =
-    foldl (\m (Tuple k n) → M.alter (alterNamed n) k m) m tpls
 
-  alterNamed
-    ∷ Tuple String Number → Maybe (Array (Tuple String Number))
-    → Maybe (Array (Tuple String Number))
-  alterNamed n ns = Just $ n : fromMaybe [] ns
+  -- | Series groupped by category and series1
+  serieGroups ∷ ∀ i. Array (Array (DSL ETP.PieSeriesI))
+  serieGroups = map (map serie) grouppedBySeries
 
-  serie
-    ∷ Tuple String (Array (Tuple String Number))
-    → Tuple String EC.PieSeriesRec
-  serie (Tuple k tpls) =
-    Tuple k $ EC.pieSeriesDefault { "data" = Just $ map (dat k) $ tpls }
+  -- | series matrix enumerated by first series and then by second series
+  enumeratedSeries ∷ Array (Int × (Array (Int × (DSL ETP.PieSeriesI))))
+  enumeratedSeries =
+    A.zip (A.range 0 $ A.length serieGroups)
+    $ map (\ss → A.zip (A.range 0 $ A.length ss) ss)
+    $ serieGroups
 
-  dat ∷ String → Tuple String Number → EC.ItemData
-  dat str (Tuple s n) =
-    EC.Dat $
-      (EC.dataDefault $ EC.Simple n)
-        { name = Just $ s <> (if str == "" then "" else ":" <> str) }
+  maxOneRow ∷ Int → Int → {r ∷ Number, center ∷ ET.Point }
+  maxOneRow count ix =
+    let r = 85.0 / toNumber count
+        step = 100.0 / toNumber count
+        modulus = toNumber $ mod ix count
+        x = ET.Percent $ 55.0 + (modulus + 0.5 - (toNumber count) / 2.0) * step
+        y = ET.Percent $ 55.0
+        center = ET.Point { x, y }
+    in {r, center}
 
-rowLength ∷ Int
-rowLength = 4
+  maxManyRows ∷ Int → Int → {r ∷ Number, center ∷ ET.Point }
+  maxManyRows count ix =
+    let
+      nLength = toNumber rowLength
+      r = 85.0 / nLength
+      step = 85.0 / nLength
+      modulus = toNumber $ mod ix count
+      x = ET.Percent $ 55.0 + (modulus - nLength / 2.0 + 0.5) * step
+      y = ET.Percent $ 1.2 * floor (toNumber ix / nLength) * r + r
+      center = ET.Point {x, y}
+    in {r, center}
+
+  totalDonuts ∷ Int
+  totalDonuts = A.length enumeratedSeries
+
+  series ∷ ∀ i. DSL (pie ∷ ETP.I|i)
+  series =
+    for_ enumeratedSeries \(dIx × ss) →
+      for_ ss \(pIx × pieCommands) → do
+        let
+          totalPies = A.length ss
+          maxR =
+            if totalPies <= rowLength
+            then maxOneRow totalPies pIx
+            else maxManyRows totalPies pIx
+          step = maxR.r / toNumber (totalDonuts + 1)
+        E.pie do
+          pieCommands
+          E.center maxR.center
+          E.radius $ ET.Radius
+            if totalDonuts ≡ 1
+            then { start: ET.Pixel 0, end: ET.Percent maxR.r }
+            else { start: ET.Percent (step * toNumber (dIx + 1))
+                 , end: ET.Percent (step * toNumber (dIx + 2))
+                 }

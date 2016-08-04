@@ -32,22 +32,23 @@ import Data.Map as M
 import Data.String as Str
 import Data.Unfoldable as U
 
-import ECharts as EC
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
 import SlamData.Form.Select (_value)
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), runAggregation)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, ChartAxises, commonNameMap, keyCategory, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, mkKey, getShadeColor, toRGBAString)
+--import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, ChartAxises, commonNameMap, keyCategory, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, mkKey, getShadeColor, toRGBAString)
 
 import Math as Math
 
 import Utils (stringToNumber)
 import Utils.DOM (getTextWidthPure)
 
-type LabeledPointPairs = M.Map Key (Tuple (Array Number) (Array Number))
-type LineData = L.List (Tuple Key (Tuple Number Number))
-
+--type LabeledPointPairs = M.Map Key (Tuple (Array Number) (Array Number))
+--type LineData = L.List (Tuple Key (Tuple Number Number))
+{-
 lineData ∷ ChartAxises → LineData
 lineData axises =
   let
@@ -143,17 +144,20 @@ aggregatePairs fAgg sAgg lp =
     ( bimap
         (runAggregation (fromMaybe Sum fAgg))
         (runAggregation (fromMaybe Sum sAgg))
-    ) lp
 
+) lp
+-}
 buildArea
   ∷ M.Map JCursor Ax.Axis
-   → Int
-   → Int
-   → Boolean
-   → Boolean
-   → ChartConfiguration
-   → EC.Option
-buildArea axises angle size stacked smooth conf = case preSeries of
+  → Int
+  → Int
+  → Boolean
+  → Boolean
+  → ChartConfiguration
+  → DSL OptionI
+buildArea axises angle size stacked smooth conf =
+  pure unit
+{-  case preSeries of
   xAxis × series × longestCat →
     EC.Option EC.optionDefault
       { series = Just $ map Just series
@@ -409,3 +413,4 @@ mkSeries needTwoAxis (Tuple ty interval_) lData stacked smooth =
 
   simpleData ∷ Number → EC.ItemData
   simpleData n = EC.Value $ EC.Simple n
+-}

@@ -27,7 +27,8 @@ import Data.Lens ((.~), (?~))
 import CSS.Geometry as CG
 import CSS.Size (px)
 
-import ECharts as EC
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
 import Halogen as H
 import Halogen.ECharts as HEC
@@ -129,14 +130,14 @@ eval = case _ of
           either (const []) id
             <$> H.fromAff (Quasar.all options.resource :: Slam (Either Error JArray))
         let option = BO.buildOptions opts config records
-        H.query unit $ H.action $ HEC.Set option
+        H.query unit $ H.action $ HEC.Reset option
         H.query unit $ H.action HEC.Resize
-        setLevelOfDetails option
+--        setLevelOfDetails option
         H.modify (_chartType ?~ opts.chartType)
-        pure next
       _ → do
         H.query unit $ H.action HEC.Clear
-        pure next
+        pure unit
+    pure next
   CC.Activate next →
     pure next
   CC.Save k →
@@ -155,15 +156,15 @@ eval = case _ of
     when (state.height ≠ intHeight) do
       H.query unit $ H.action $ HEC.SetHeight $ intHeight - heightPadding
       H.modify _{ height = intHeight }
-    mbOpts ← H.query unit $ H.request HEC.GetOptions
-    for_ (join mbOpts) \opts → do
-      setLevelOfDetails opts
+--    mbOpts ← H.query unit $ H.request HEC.GetOptions
+--    for_ (join mbOpts) \opts → do
+--      setLevelOfDetails opts
     pure next
   CC.ModelUpdated _ next →
     pure next
   CC.ZoomIn next →
     pure next
-
+{-
 setLevelOfDetails ∷ EC.Option → ChartDSL Unit
 setLevelOfDetails (EC.Option r) = do
   state ← H.get
@@ -183,3 +184,4 @@ setLevelOfDetails (EC.Option r) = do
     .~ if (state.height - yOffset) < 200 ∨ state.width < 300
          then Low
          else High
+-}
