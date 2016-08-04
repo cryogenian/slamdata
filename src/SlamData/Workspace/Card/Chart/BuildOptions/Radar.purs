@@ -44,33 +44,25 @@ type RadarData = Tuple (Array String) (Array (Tuple String (Array (Tuple String 
 radarData ∷ ChartAxises → RadarData
 radarData axises = Tuple (A.fromFoldable distinctDims) $
   A.fromFoldable
-    $ map (\x → Tuple
-                  (fst x)
-                  (A.fromFoldable $ L.catMaybes $ map checkDimAndTransform $ snd x))
+    $ map (map (A.fromFoldable <<< L.catMaybes <<< map checkDimAndTransform))
     -- output sample:
     -- ( Tuple ''
     --         ( (Tuple 'series1' (Tuple 'dimA' 1 : Tuple 'dimB' 5))
     --         : (Tuple 'series2' (Tuple 'dimA' 1 : Tuple 'dimB' 5)) )
     -- )
-    $ map (\x → Tuple
-                  (fst x)
-                  (map combineDim $ snd x))
+    $ map (map (map combineDim))
     -- output sample:
     -- ( Tuple ''
     --         ( (Tuple 'series1' (Tuple 'dimA' 1 : Tuple 'dimB' 2 : Tuple 'dimB' 3))
     --         : (Tuple 'series2' (Tuple 'dimA' 1 : Tuple 'dimB' 2 : Tuple 'dimB' 3)) )
     -- )
-    $ map (\x → Tuple
-                  (fst x)
-                  (L.catMaybes $ map combineSerie $ snd x))
+    $ map (map (L.catMaybes <<< map combineSerie))
     -- output sample:
     -- ( Tuple ''
     --         ( (Tuple 'series1' (Tuple 'dimA' 1) : Tuple 'series1' (Tuple 'dimB' 2) : Tuple 'series1' (Tuple 'dimB' 3))
     --         : (Tuple 'series2' (Tuple 'dimA' 1) : Tuple 'series2' (Tuple 'dimB' 2) : Tuple 'series2' (Tuple 'dimB' 3)) ) 
     -- )
-    $ map (\x → Tuple
-                  (fst x)
-                  (L.groupBy ((==) `on` fst) $ L.sortBy (compare `on` fst) $ snd x))
+    $ map (map (L.groupBy ((==) `on` fst) <<< L.sortBy (compare `on` fst)))
     -- output sample:
     -- ( Tuple ''
     --         ( Tuple 'series1' (Tuple 'dimA' 1) : Tuple 'series1' (Tuple 'dimB' 2)
@@ -140,7 +132,7 @@ radarData axises = Tuple (A.fromFoldable distinctDims) $
   filterInvalid
     ∷ Tuple (Maybe String) (Tuple SeriesKey (Tuple (Maybe String) (Maybe Number)))
     → Maybe (Tuple String (Tuple String (Tuple String Number)))
-  filterInvalid (Tuple a (Tuple b (Tuple c d))) =
+  filterInvalid (a × b × c × d) =
     case c, d of
       Just c', Just d' →
         Just $ Tuple
@@ -155,27 +147,22 @@ radarData axises = Tuple (A.fromFoldable distinctDims) $
     ∷ List (Tuple String (Tuple String (Tuple String Number)))
     → Maybe (Tuple String (List (Tuple String (Tuple String Number))))
   combineDup x = do
-    d ← (L.head $ map fst x)
+    d ← L.head $ map fst x
     pure $ Tuple d $ map snd x
 
   combineSerie
     ∷ List (Tuple String (Tuple String Number))
     → Maybe (Tuple String (List (Tuple String Number)))
   combineSerie x = do
-    k ← (L.head $ map fst x)
+    k ← L.head $ map fst x
     pure $ Tuple k $ map snd x
 
   combineDim
     ∷ Tuple String (List (Tuple String Number))
     → Tuple String (List (Tuple String Number))
   combineDim x =
-    Tuple
-      (fst x)
-      (L.catMaybes $ map combine groupsByDim)
+    map (L.catMaybes <<< map combine <<< L.groupBy ((==) `on` fst) <<< L.sortBy (compare `on` fst)) x
     where
-    groupsByDim ∷ List (List (Tuple String Number))
-    groupsByDim = L.groupBy ((==) `on` fst) $ L.sortBy (compare `on` fst) $ snd x
- 
     combine ∷ List (Tuple String Number) → Maybe (Tuple String Number)
     combine x = do
       d ← (L.head $ map fst x)
@@ -201,8 +188,7 @@ buildRadar
   ∷ Map JCursor Ax.Axis
   → ChartConfiguration
   → EC.Option
-buildRadar axises conf = case preSeries of
-  series →
+buildRadar axises conf =
     EC.Option EC.optionDefault
       { series = Just $ map Just series
       , polar = Just polars
@@ -289,17 +275,13 @@ buildRadar axises conf = case preSeries of
     $ snd extracted
 
   minVal ∷ Maybe Number
-  minVal = case A.null allValues of
-    true → Nothing
-    false → minimum allValues
+  minVal = minimum allValues
 
   maxVal ∷ Maybe Number
-  maxVal = case A.null allValues of
-    true → Nothing
-    false → maximum allValues
+  maxVal = maximum allValues
 
-  preSeries ∷ Array EC.Series
-  preSeries = mkSeries extracted
+  series ∷ Array EC.Series
+  series = mkSeries extracted
 
   extracted ∷ RadarData
   extracted = radarData $ buildChartAxises axises conf
@@ -316,9 +298,7 @@ mkSeries rData =
   serie (Tuple ind (Tuple dup a)) =
     EC.RadarSeries
       { common: EC.universalSeriesDefault
-        { name = if dup ≡ ""
-                 then Nothing
-                 else Just dup
+        { name = guard (dup == "") $> dup
         , tooltip = if A.null a
                     then Just $ EC.Tooltip $ EC.tooltipDefault
                       -- To overwrite the top tooltip display config.
@@ -331,12 +311,12 @@ mkSeries rData =
         }
       , radarSeries: EC.radarSeriesDefault
         { polarIndex = Just $ toNumber ind
-        , "data" = if A.null a
-                   then Just [blankData]
-                   else Just $ map makeData a
-        , symbol = if A.null a
-                   then Just $ EC.NoSymbol
-                   else Just $ EC.Circle
+        , "data" = Just if A.null a
+                   then [blankData]
+                   else map makeData a
+        , symbol = Just if A.null a
+                   then EC.NoSymbol
+                   else EC.Circle
         }
       }
  
