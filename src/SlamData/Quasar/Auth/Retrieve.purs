@@ -117,64 +117,12 @@ retrieveIdToken =
            $ (\idToken → (ExceptT $ verify idToken) <|> (ExceptT getNewToken))
            =<< ExceptT retrieveFromLocalStorage)
   where
-  retrieveFromLocalStorage
-    ∷ Aff (RetrieveIdTokenEffRow eff) (E.Either String OIDCT.IdToken)
-  retrieveFromLocalStorage = do
+  getNewToken ∷ Aff (RetrieveIdTokenEffRow eff) (Either String OIDCT.IdToken)
+  getNewToken = pure $ Left $ "Pending: update getNewToken to use new reauthentication"
+
+  retrieveFromLocalStorage ∷ Aff (RetrieveIdTokenEffRow eff) (Either String OIDCT.IdToken)
+  retrieveFromLocalStorage =
     map OIDCT.IdToken <$> LS.getLocalStorage AuthKeys.idTokenLocalStorageKey
-
-  retrieveGettingIdTokenUntil
-    ∷ Aff (RetrieveIdTokenEffRow eff) (E.Either String Milliseconds)
-  retrieveGettingIdTokenUntil = do
-    map Milliseconds <$> LS.getLocalStorage AuthKeys.gettingIdTokenUntilKey
-
-  storeGettingIdTokenUntil ∷ ∀ e. Milliseconds → Aff (dom ∷ DOM |e) Unit
-  storeGettingIdTokenUntil ms = do
-    LS.setLocalStorage AuthKeys.gettingIdTokenUntilKey (runMilliseconds ms)
-
-  getNewToken ∷ Aff (RetrieveIdTokenEffRow eff) (E.Either String OIDCT.IdToken)
-  getNewToken = do
-    now ← liftEff Date.nowEpochMilliseconds
-    gettingNewIdTokenUntilE ← retrieveGettingIdTokenUntil
-    idTokenEventProducer ← liftEff $ IdTokenStorageEvents.getIdTokenStorageEvents
-    case gettingNewIdTokenUntilE of
-      Left _ → f now idTokenEventProducer
-      Right gettingNewIdTokenUntil → do
-        if now < gettingNewIdTokenUntil
-          then (liftEff $ log "g") *> g gettingNewIdTokenUntil idTokenEventProducer
-          else (liftEff $ log "f") *> f now idTokenEventProducer
-
-  f now idTokenEventProducer = do
-    x <- storeGettingIdTokenUntil now
-      *> requestReauthentication
-      *> retrieveFromLocalStorageAfterEvent idTokenEventProducer (addSeconds 30 now)
-    storeGettingIdTokenUntil (Milliseconds 0.0)
-    pure x
-
-  g gettingNewIdTokenUntil idTokenEventProducer =
-    retrieveFromLocalStorageAfterEvent idTokenEventProducer gettingNewIdTokenUntil
-
-  requestReauthentication = do
-    providerR ← liftEff retrieveProviderR
-    maybe (pure unit) (either (const $ pure unit) (liftEff ∘ DOMUtils.openPopup) <=< liftEff ∘ requestAuthenticationURI) providerR
-
-  retrieveFromLocalStorageAfterEvent idTokenEventProducer timeoutAt =
-    race
-      (fromStallingProducer idTokenEventProducer *> (liftEff $ log "eventhandle") *> retrieveFromLocalStorage)
-      (At.at timeoutAt $ pure $ Left "No token recieved before timeout.")
-
-  runMilliseconds ∷ Milliseconds → Number
-  runMilliseconds (Milliseconds ms) = ms
-
-  addSeconds ∷ Int → Milliseconds → Milliseconds
-  addSeconds seconds = Milliseconds ∘ (_ + (Int.toNumber seconds * 1000.0)) ∘ runMilliseconds
-
-  appendAuthPath s = s ++ Config.redirectURIString
-
-  requestAuthenticationURI ∷ _ → _ (Either _ String)
-  requestAuthenticationURI pr =
-    OIDCAff.requestAuthenticationURI OIDCAff.None pr
-      ∘ appendAuthPath
-      =<< Browser.locationString
 
   verify
     ∷ OIDCT.IdToken

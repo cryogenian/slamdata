@@ -98,7 +98,8 @@ eventProducer eventType capture eventTarget =
     EventTarget.addEventListener
       eventType
       (EventTarget.eventListener $ emit <<< Left)
-      capture eventTarget
+      capture
+      eventTarget
 
 openPopup ∷ ∀ eff. String → Eff (dom ∷ DOM | eff) Unit
 openPopup stringUrl = do

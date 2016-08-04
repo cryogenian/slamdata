@@ -47,10 +47,6 @@ storeKeyString (OIDCT.KeyString ks) =
     AuthKeys.keyStringLocalStorageKey
     ks
 
-storeGettingNewIdTokenUntil ∷ ∀ e. Boolean → Eff (dom ∷ DOM |e) Unit
-storeGettingNewIdTokenUntil =
-  LS.setLocalStorage AuthKeys.gettingIdTokenUntilKey
-
 storeNonce ∷ ∀ e. OIDCT.UnhashedNonce → Eff (dom ∷ DOM |e) Unit
 storeNonce (OIDCT.UnhashedNonce n) =
   LS.setLocalStorage
