@@ -44,25 +44,30 @@ type RadarData = Tuple (Array String) (Array (Tuple String (Array (Tuple String 
 radarData ∷ ChartAxises → RadarData
 radarData axises = Tuple (A.fromFoldable distinctDims) $
   A.fromFoldable
-    $ map (map (A.fromFoldable <<< L.catMaybes <<< map checkDimAndTransform))
-    -- output sample:
-    -- ( Tuple ''
-    --         ( (Tuple 'series1' (Tuple 'dimA' 1 : Tuple 'dimB' 5))
-    --         : (Tuple 'series2' (Tuple 'dimA' 1 : Tuple 'dimB' 5)) )
-    -- )
-    $ map (map (map combineDim))
-    -- output sample:
-    -- ( Tuple ''
-    --         ( (Tuple 'series1' (Tuple 'dimA' 1 : Tuple 'dimB' 2 : Tuple 'dimB' 3))
-    --         : (Tuple 'series2' (Tuple 'dimA' 1 : Tuple 'dimB' 2 : Tuple 'dimB' 3)) )
-    -- )
-    $ map (map (L.catMaybes <<< map combineSerie))
-    -- output sample:
-    -- ( Tuple ''
-    --         ( (Tuple 'series1' (Tuple 'dimA' 1) : Tuple 'series1' (Tuple 'dimB' 2) : Tuple 'series1' (Tuple 'dimB' 3))
-    --         : (Tuple 'series2' (Tuple 'dimA' 1) : Tuple 'series2' (Tuple 'dimB' 2) : Tuple 'series2' (Tuple 'dimB' 3)) ) 
-    -- )
-    $ map (map (L.groupBy ((==) `on` fst) <<< L.sortBy (compare `on` fst)))
+    $ map (map (A.fromFoldable
+      <<< L.catMaybes
+      <<< map checkDimAndTransform
+      -- output sample:
+      -- ( Tuple ''
+      --         ( (Tuple 'series1' (Tuple 'dimA' 1 : Tuple 'dimB' 5))
+      --         : (Tuple 'series2' (Tuple 'dimA' 1 : Tuple 'dimB' 5)) )
+      -- )
+      <<< map combineDim
+      -- output sample:
+      -- ( Tuple ''
+      --         ( (Tuple 'series1' (Tuple 'dimA' 1 : Tuple 'dimB' 2 : Tuple 'dimB' 3))
+      --         : (Tuple 'series2' (Tuple 'dimA' 1 : Tuple 'dimB' 2 : Tuple 'dimB' 3)) )
+      -- )
+      <<< L.catMaybes
+      <<< map combineSerie
+      -- output sample:
+      -- ( Tuple ''
+      --         ( (Tuple 'series1' (Tuple 'dimA' 1) : Tuple 'series1' (Tuple 'dimB' 2) : Tuple 'series1' (Tuple 'dimB' 3))
+      --         : (Tuple 'series2' (Tuple 'dimA' 1) : Tuple 'series2' (Tuple 'dimB' 2) : Tuple 'series2' (Tuple 'dimB' 3)) ) 
+      -- )
+      <<< L.groupBy ((==) `on` fst)
+      <<< L.sortBy (compare `on` fst)
+    ))
     -- output sample:
     -- ( Tuple ''
     --         ( Tuple 'series1' (Tuple 'dimA' 1) : Tuple 'series1' (Tuple 'dimB' 2)
@@ -298,7 +303,7 @@ mkSeries rData =
   serie (Tuple ind (Tuple dup a)) =
     EC.RadarSeries
       { common: EC.universalSeriesDefault
-        { name = guard (dup == "") $> dup
+        { name = guard (dup /= "") $> dup
         , tooltip = if A.null a
                     then Just $ EC.Tooltip $ EC.tooltipDefault
                       -- To overwrite the top tooltip display config.
