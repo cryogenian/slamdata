@@ -179,7 +179,7 @@ cardPositionCSS index = do
 
 cardSliderTransformCSS ∷ Int → Number → CSS
 cardSliderTransformCSS activeCardIndex translateX =
-  CSSUtils.transform $ spy
+  CSSUtils.transform
     $ CSSUtils.translate3d ((show (-100 * activeCardIndex)) ⊕ "%") "0" "0"
     ⊕ CSSUtils.translate3d ((show (-cardSpacingPx * Int.toNumber activeCardIndex)) ⊕ "px") "0" "0"
     ⊕ CSSUtils.translate3d ((show translateX) ⊕ "px") "0" "0"
