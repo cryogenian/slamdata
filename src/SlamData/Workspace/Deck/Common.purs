@@ -18,6 +18,7 @@ module SlamData.Workspace.Deck.Common where
 
 import SlamData.Prelude
 
+import Data.List as L
 import Data.Map as Map
 
 import Halogen as H
@@ -31,7 +32,6 @@ import SlamData.Workspace.Deck.Component.ChildSlot (ChildSlot, ChildQuery, Child
 import SlamData.Workspace.Deck.Component.Query (Query)
 import SlamData.Workspace.Deck.Component.State (State)
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.Model (Deck, emptyDeck)
 import SlamData.Workspace.Wiring (Wiring)
 
@@ -43,9 +43,9 @@ type DeckDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
 type DeckOptions =
   { path ∷ DirPath
-  , level ∷ DeckLevel
   , accessType ∷ AccessType
   , wiring ∷ Wiring
+  , cursor ∷ L.List DeckId
   }
 
 defaultPosition ∷ DBS.DeckPosition

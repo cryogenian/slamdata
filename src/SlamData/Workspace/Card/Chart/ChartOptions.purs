@@ -93,10 +93,10 @@ decode = decodeJson >=> \obj →
     <$> (obj .? "chartType")
     <*> (obj .? "axisLabelAngle")
     <*> (obj .? "axisLabelFontSize")
-    <*> (obj .? "areaStacked")
-    <*> (obj .? "smooth")
-    <*> (obj .? "bubbleMinSize")
-    <*> (obj .? "bubbleMaxSize")
+    <*> ((obj .? "areaStacked") <|> (pure false))
+    <*> ((obj .? "smooth") <|> (pure false))
+    <*> ((obj .? "bubbleMinSize") <|> (pure 1.0))
+    <*> ((obj .? "bubbleMaxSize") <|> (pure 50.0))
 
 buildOptions
   ∷ BuildOptions

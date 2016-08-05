@@ -63,7 +63,6 @@ import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString, freshDeckId)
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Wiring (putDeck)
@@ -108,6 +107,7 @@ render opts state =
     HH.div
       [ HP.key $ deckIdToString deckId
       , HP.classes $
+          (guard (List.null opts.deck.cursor) $> HH.className "sd-deck-top-level") <>
           case state.grouping of
             Just deckId' | deckId == deckId' → [ HH.className "grouping" ]
             _ → []
@@ -119,9 +119,11 @@ render opts state =
       [ HH.slot deckId $ mkDeckComponent deckId ]
 
   mkDeckComponent id _ =
-    { component: opts.deckComponent (opaqueState $ DCS.initialDeck opts.deck.path id)
+    { component: opts.deckComponent deckOpts (opaqueState $ DCS.initialDeck opts.deck.path id)
     , initialState: DNS.initialState
     }
+    where
+    deckOpts = opts.deck { cursor = List.Cons opts.deckId opts.deck.cursor }
 
   cssPos rect = do
     CSS.position CSS.absolute
@@ -227,7 +229,7 @@ evalBoard opts = case _ of
   LoadDeck deckId next → do
     queryDeck deckId
       $ H.action
-      $ DCQ.Load opts.deck.path deckId (DL.succ opts.deck.level)
+      $ DCQ.Load opts.deck.path deckId
     pure next
   -- TODO: hopefully we can get rid of this later, as it's relatively expensive
   -- and will run quite frequently, as it's used to enable the `Unwrap` action.
@@ -337,8 +339,8 @@ clampDeck ∷ DeckPosition → DeckPosition
 clampDeck rect =
   { x: if rect.x < 0.0 then 0.0 else rect.x
   , y: if rect.y < 0.0 then 0.0 else rect.y
-  , width: if rect.width < 10.0 then 10.0 else rect.width
-  , height: if rect.height < 10.0 then 10.0 else rect.height
+  , width: if rect.width < 6.0 then 6.0 else rect.width
+  , height: if rect.height < 4.0 then 4.0 else rect.height
   }
 
 roundDeck ∷ DeckPosition → DeckPosition
@@ -472,7 +474,6 @@ unwrapDeck { deckId, cardId, deck: opts } oldId decks = void $ runMaybeT do
   -- corner will maintain their position and the others will be accomodated.
   let deckList = List.sortBy (compare `on` toCoords) $ Map.toList decks
   let coord = deckId × cardId
-  let level' = DL.succ opts.level
   offset ← MaybeT $ H.gets (Map.lookup oldId ∘ _.decks)
   lift do
     H.modify \s →
@@ -482,7 +483,7 @@ unwrapDeck { deckId, cardId, deck: opts } oldId decks = void $ runMaybeT do
       putDeck opts.path deckId deck' opts.wiring.decks
       queryDeck deckId
         $ H.action
-        $ DCQ.Load opts.path deckId level'
+        $ DCQ.Load opts.path deckId
   where
   reinsert offset acc (deckId × (pos × deck)) =
     Map.insert deckId (updatePos (Map.toList acc) offset pos) acc
@@ -578,6 +579,6 @@ queryDeck deckId = H.query deckId ∘ right
 loadAndFocus ∷ DeckOptions → DeckId → DraftboardDSL Unit
 loadAndFocus opts deckId =
   traverse_ (queryDeck deckId ∘ H.action)
-    [ DCQ.Load opts.path deckId (DL.succ opts.level)
+    [ DCQ.Load opts.path deckId
     , DCQ.Focus
     ]

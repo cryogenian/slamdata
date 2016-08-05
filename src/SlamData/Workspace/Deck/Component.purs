@@ -84,7 +84,6 @@ import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..
 import SlamData.Workspace.Deck.Component.Render as DCR
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
@@ -102,7 +101,7 @@ import Utils.Path (DirPath)
 initialState ∷ DirPath → DeckId → DCS.StateP
 initialState path = opaqueState ∘ DCS.initialDeck path
 
-render ∷ DeckOptions → DeckComponent → DCS.State → DeckHTML
+render ∷ DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 render opts deckComponent st =
   -- HACK: required so that nested finalizers get run. Since this is run inside
   -- of a separate runUI instance with Deck.Component.Nested, they will not
@@ -125,13 +124,11 @@ eval opts@{ wiring } = case _ of
     H.modify _ { finalized = true }
     H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
     pure next
-  Load dir deckId level next → do
-    H.modify $ DCS._level .~ level
+  Load dir deckId next → do
     loadDeck opts dir deckId
     pure next
-  SetModel deckId model level next → do
+  SetModel deckId model next → do
     state ← H.get
-    H.modify $ DCS._level .~ level
     setModel opts
       { path: state.path
       , id: deckId
@@ -204,7 +201,7 @@ eval opts@{ wiring } = case _ of
     deckPath ← H.gets DCS.deckPath
     k <$> getVarMaps deckPath wiring
   FlipDeck next → do
-    updateBackSide
+    updateBackSide opts
     H.modify
       $ DCS._displayMode
       %~ case _ of
@@ -465,8 +462,8 @@ updateActiveState wiring = do
     for_ (DCS.cardCoordFromIndex cardIndex st) \coord →
       void $ queryCardEval coord $ H.action CQ.ActivateCard
 
-updateBackSide ∷ DeckDSL Unit
-updateBackSide = do
+updateBackSide ∷ DeckOptions → DeckDSL Unit
+updateBackSide { cursor } = do
   state ← H.get
   let ty = DCS.activeCardType state
   let tys = Card.modelCardType ∘ _.model ∘ snd <$> state.displayCards
@@ -490,7 +487,7 @@ updateBackSide = do
       -- of the following hold:
       --   - a board is a child of another board
       --   - there is only one deck inside a root board
-      when (state.level /= DL.root || Map.size decks == 1) $
+      when (not (L.null cursor) || Map.size decks == 1) $
         void $ lift $
           H.query' cpBackSide unit $ H.action $ Back.SetUnwrappable decks
 
@@ -789,7 +786,7 @@ getDeckModel = do
 
 -- | Saves the deck as JSON, using the current values present in the state.
 saveDeck ∷ DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
-saveDeck { accessType, wiring } coord = do
+saveDeck { accessType, wiring, cursor } coord = do
   st ← H.get
   when (AT.isEditable accessType) do
     modelCards ← Array.span (not ∘ eq st.id ∘ fst) <$> getModelCards
@@ -815,7 +812,7 @@ saveDeck { accessType, wiring } coord = do
       Left err →
         Notify.saveDeckFail err wiring.notify wiring.analytics
       Right _ → do
-        when (st.level ≡ DL.root) $ do
+        when (L.null cursor) $ do
           path' ← H.gets DCS.deckPath
           varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
           let deckHash = mkWorkspaceHash path' (WA.Load accessType) varMaps

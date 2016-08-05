@@ -100,4 +100,4 @@ decode = decodeJson >=> \obj → do
     <$> obj .? "series"
     <*> obj .? "dimensions"
     <*> obj .? "measures"
-    <*> obj .? "aggregations"
+    <*> ((obj .? "aggregations") <|> ((obj .? "aggregations") <#> map (map Just)))
