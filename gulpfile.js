@@ -158,10 +158,17 @@ var mkBundleTask = function (name, main) {
               },
               output: { filename: name + ".js" },
               module: {
-                  loaders: [{
-                      include: /\.json$/,
-                      loaders: ["json-loader"]
-                  }]
+                  loaders: [
+                      {
+                          include: /\.json$/,
+                          loaders: ["json-loader"]
+
+                      },
+                      {
+                          test: require.resolve("echarts"),
+                          loader: "expose?echarts"
+                      }
+                  ]
               }
           })).pipe(gulp.dest("public/js"));
   });
@@ -176,7 +183,7 @@ gulp.task("bundle", [
 ]);
 
 gulp.task("make-bundle", function () {
-  sequence("make", "bundle")
+    sequence("make", "bundle");
 });
 
 gulp.task("bundle-test", ["bundle"], function() {

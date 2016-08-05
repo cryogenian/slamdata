@@ -22,143 +22,103 @@ import Data.Argonaut (JCursor)
 import Data.Array as A
 import Data.Foldable as F
 import Data.Int as Int
+import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.String (split)
 import Data.String as Str
 
-import ECharts as EC
+import ECharts.Monad (DSL)
+import ECharts.Commands as E
+import ECharts.Types as ET
+import ECharts.Types.Phantom (OptionI)
+import ECharts.Types.Phantom as ETP
 
 import Math as Math
 
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, commonNameMap, keyCategory, colors, mixAxisLabelAngleAndFontSize, buildChartAxises, pieBarData)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (Key, PieBarData, commonNameMap, keyCategory, colors, addAxisLabelAngleAndFontSize, buildChartAxes, buildPieBarData)
 
 import Utils.DOM (getTextWidthPure)
 
 buildBar
-  ∷ M.Map JCursor Ax.Axis → Int → Int → ChartConfiguration → EC.Option
-buildBar axises angle size conf = case preSeries of
-  xAxisR × series × longestCat  →
-    EC.Option EC.optionDefault
-      { series = Just $ map Just series
-      , xAxis = Just $ EC.OneAxis $ EC.Axis
-                $ mixAxisLabelAngleAndFontSize angle size xAxisR
-      , yAxis = Just yAxis
-      , tooltip = Just tooltip
-      , legend = mkLegend series
-      , color = Just colors
-      , grid = Just $ EC.Grid EC.gridDefault
-          { y2 = Just $ EC.Pixel $ labelHeight $ fromMaybe "" longestCat
-          }
-      }
+  ∷ M.Map JCursor Ax.Axis
+  → Int
+  → Int
+  → ChartConfiguration
+  → DSL OptionI
+buildBar axes angle size conf = do
+  E.tooltip E.triggerAxis
+
+  E.colors colors
+
+  E.xAxis do
+    E.axisType ET.Category
+    E.items $ map ET.strItem catVals
+    E.interval 0
+    addAxisLabelAngleAndFontSize angle size
+
+  E.yAxis $ E.axisType ET.Value
+  E.legend do
+    E.textStyle $ E.fontFamily "Ubuntu sans"
+    when (L.length legendItems > 40) E.hidden
+    unless (L.length legendItems > 40)
+      $ E.items $ map ET.strItem legendItems
+
+  E.grid $ E.bottomPx $ labelHeight longestCat
+
+  E.series $ for_ (M.toList namedSeries) (E.bar ∘ series)
   where
-  labelHeight ∷ String → Number
-  labelHeight longestCat =
+  pieBarData ∷ PieBarData
+  pieBarData = buildPieBarData $ buildChartAxes axes conf
+
+  legendItems ∷ L.List String
+  legendItems = L.filter (_ ≠ "") $ M.keys namedSeries
+
+  labelHeight ∷ String → Int
+  labelHeight longest =
     let
-      width = getTextWidthPure longestCat $ "normal " <> show size <> "px Ubuntu"
+      width = getTextWidthPure longest $ "normal " <> show size <> "px Ubuntu"
     in
-      add 24.0
+      Int.round
+        $ add 24.0
         $ Math.max (Int.toNumber size + 2.0)
         $ Math.abs
         $ width
         * Math.sin (Int.toNumber angle / 180.0 * Math.pi)
 
-
-  tooltip ∷ EC.Tooltip
-  tooltip = EC.Tooltip $ EC.tooltipDefault { trigger = Just EC.TriggerAxis }
-
-  mkLegend ∷ Array EC.Series → Maybe EC.Legend
-  mkLegend ss =
-    let
-      legendNames = extractNames ss
-    in guard (A.length legendNames < 40)
-       $> EC.Legend EC.legendDefault
-            { "data" = Just $ map EC.legendItemDefault $ extractNames ss
-            , textStyle = Just $ EC.TextStyle EC.textStyleDefault
-                { fontFamily = Just "Ubuntu sans" }
-            }
-
-  extractNames ∷ Array EC.Series → Array String
-  extractNames ss = A.catMaybes $ map extractName ss
-
-  extractName ∷ EC.Series → Maybe String
-  extractName (EC.BarSeries r) = r.common.name
-  extractName _ = Nothing
-
-  preSeries ∷ EC.AxisRec × (Array EC.Series) × (Maybe String)
-  preSeries = mkSeries extracted
-
-  extracted ∷ PieBarData
-  extracted = pieBarData $ buildChartAxises axises conf
-
-  yAxis ∷ EC.Axises
-  yAxis =
-    EC.OneAxis
-      $ EC.Axis
-      $ EC.axisDefault
-        { "type" = Just EC.ValueAxis
-        }
-
-mkSeries ∷ PieBarData → EC.AxisRec × (Array EC.Series) × (Maybe String)
-mkSeries pbData = xAxis × series × longestCat
-  where
-  xAxis ∷ EC.AxisRec
-  xAxis = EC.axisDefault
-    { "type" = Just EC.CategoryAxis
-    , "data" = Just $ map EC.CommonAxisData catVals
-    , axisTick = Just $
-        EC.AxisTick EC.axisTickDefault { interval = Just $ EC.Custom zero }
-    }
-
-  keysArray ∷ Array Key
-  keysArray = A.fromFoldable $ M.keys pbData
-
   catVals ∷ Array String
   catVals = A.nub $ map keyCategory keysArray
 
-  longestCat ∷ Maybe String
+  longestCat ∷ String
   longestCat =
-    F.maximumBy (\a b → compare (Str.length a) (Str.length b)) catVals
+    fromMaybe "" $ F.maximumBy (\a b → compare (Str.length a) (Str.length b)) catVals
 
-  series ∷ Array EC.Series
-  series = map serie $ A.fromFoldable $ M.toList group
+  keysArray ∷ Array Key
+  keysArray = A.fromFoldable $ M.keys pieBarData
 
-  serie ∷ Tuple String (Array Number) → EC.Series
-  serie (Tuple name nums) =
-    EC.BarSeries
-      { common:
-          EC.universalSeriesDefault
-            { name = if name == "" then Nothing else Just name }
-      , barSeries:
-          EC.barSeriesDefault
-            { "data" = Just $ map simpleData nums
-            , stack = Just $ "total " <> stackFromName name
-            }
-      }
+  namedSeries ∷ Map String (Array Number)
+  namedSeries = nameMap $ A.fromFoldable $ M.toList pieBarData
 
-  stackFromName ∷ String → String
-  stackFromName str = case split ":" str of
-    [x, _, _] → x
-    _ → ""
-
-  simpleData ∷ Number → EC.ItemData
-  simpleData n = EC.Value $ EC.Simple n
-
-  group ∷ Map String (Array Number)
-  group = nameMap $ A.fromFoldable $ M.toList pbData
-
-  nameMap ∷ Array (Tuple Key Number) → Map String (Array Number)
+  nameMap ∷ Array (Key × Number) → Map String (Array Number)
   nameMap = commonNameMap fillEmpties catVals
-
-  arrKeys ∷ Array (Map String Number) → Array String
-  arrKeys ms = A.nub $ A.concat (A.fromFoldable ∘ M.keys <$> ms)
 
   fillEmpties ∷ Array (Map String Number) → Array (Map String Number)
   fillEmpties ms =
     let ks = arrKeys ms
     in map (\m → foldl fill m ks) ms
 
+  arrKeys ∷ Array (Map String Number) → Array String
+  arrKeys ms = A.nub $ A.concat (A.fromFoldable ∘ M.keys <$> ms)
+
   fill ∷ Map String Number → String → Map String Number
   fill m key = M.alter (maybe (Just 0.0) Just) key m
+
+  series ∷ String × (Array Number) → DSL ETP.BarSeriesI
+  series (name × nums) = do
+    when (name /= "") $ E.name name
+    E.items $ map ET.numItem nums
+    E.stack $ "total " <> case split ":" name of
+      [x, _, _] → x
+      _ → ""
