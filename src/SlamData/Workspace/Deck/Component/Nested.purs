@@ -24,7 +24,8 @@ import SlamData.Prelude
 
 import Control.Coroutine.Stalling as SCR
 import Control.Monad.Aff (runAff)
-import Control.Monad.Aff.AVar (makeVar, putVar, takeVar)
+import Control.Monad.Aff.AVar (AVar, makeVar, putVar, takeVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff (Eff)
 
 import Data.Maybe.Unsafe (fromJust)
@@ -36,6 +37,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource as HE
 
 import SlamData.Effects (SlamDataEffects, Slam)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component as DC
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
@@ -48,8 +50,8 @@ import Utils.AffableProducer (produce)
 type DSL = H.ComponentDSL DNS.State DNQ.QueryP Slam
 type HTML = H.ComponentHTML DNQ.QueryP
 
-comp ∷ DeckOptions → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
-comp opts deckState =
+comp ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
+comp requestNewIdTokenBus opts deckState =
   H.lifecycleComponent
     { render
     , eval: coproduct eval evalProxy
@@ -61,16 +63,16 @@ comp opts deckState =
   deckComponent' ∷ (DCQ.Query Unit → Eff SlamDataEffects Unit) → H.Component DCS.StateP DCQ.QueryP Slam
   deckComponent' emitter =
     opaque $ H.lifecycleParentComponent
-      { render: DC.render opts (comp opts)
+      { render: DC.render requestNewIdTokenBus opts (comp requestNewIdTokenBus opts)
       , eval: \query → do
-          res ← DC.eval opts query
+          res ← DC.eval requestNewIdTokenBus opts query
           case query of
             DCQ.DoAction a _ → H.fromEff $ emitter $ DCQ.DoAction a unit
             DCQ.GrabDeck a _ → H.fromEff $ emitter $ DCQ.GrabDeck a unit
             DCQ.ResizeDeck a _ → H.fromEff $ emitter $ DCQ.ResizeDeck a unit
             _ → pure unit
           pure res
-      , peek: Just (DC.peek opts)
+      , peek: Just (DC.peek requestNewIdTokenBus opts)
       , initializer: Just (H.action DCQ.Init)
       , finalizer: Nothing
       }

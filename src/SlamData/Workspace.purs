@@ -42,6 +42,7 @@ import Halogen.Util (runHalogenAff, awaitBody)
 import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
+import SlamData.Quasar.Auth.Reauthentication as Reauthentication
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
@@ -63,8 +64,9 @@ main = do
     let st = Workspace.initialState (Just "3.0")
     wiring ← makeWiring
     signInBus ← Bus.make
+    requestNewIdTokenBus ← Reauthentication.reauthentication
     forkAff (Analytics.consumeEvents wiring.analytics)
-    driver ← runUI (Workspace.comp wiring signInBus) (parentState st) =<< awaitBody
+    driver ← runUI (Workspace.comp requestNewIdTokenBus wiring signInBus) (parentState st) =<< awaitBody
     forkAff (routeSignal driver)
   StyleLoader.loadStyles
 

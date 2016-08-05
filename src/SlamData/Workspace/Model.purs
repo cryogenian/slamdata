@@ -25,8 +25,10 @@ module SlamData.Workspace.Model
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT, withExceptT)
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
@@ -36,6 +38,7 @@ import Quasar.Types (FilePath)
 import SlamData.Quasar.Aff (QEff)
 import SlamData.Quasar.Data as QD
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 
 type Workspace =
   { root ∷ Maybe DeckId
@@ -55,24 +58,26 @@ decode = decodeJson >=> \obj ->
   } <$> obj .? "root"
 
 getRoot
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → m (Either String DeckId)
-getRoot file = runExceptT do
-  json ← ExceptT $ QD.load file
+getRoot requestNewIdTokenBus file = runExceptT do
+  json ← ExceptT $ QD.load requestNewIdTokenBus file
   ws ← ExceptT $ pure $ decode json
   maybe (ExceptT $ pure $ Left "No root") pure ws.root
 
 setRoot
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → DeckId
   → m (Either String Unit)
-setRoot file root =
+setRoot requestNewIdTokenBus file root =
   map (lmap Exn.message)
-    $ QD.save file
+    $ QD.save requestNewIdTokenBus file
         $ encode
         $ { root: Just root }
 

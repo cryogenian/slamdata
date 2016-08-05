@@ -23,6 +23,7 @@ import Ace.Config as AceConfig
 
 import Control.Monad.Aff (Aff, Canceler, cancel, forkAff)
 import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -58,6 +59,8 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.Quasar.Auth.Reauthentication as Reauthentication
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
@@ -75,11 +78,12 @@ main = do
   runHalogenAff do
     forkAff Analytics.enableAnalytics
     signInBus ← Bus.make
-    driver ← runUI (comp signInBus) (parentState initialState) =<< awaitBody
+    requestNewIdTokenBus ← Reauthentication.reauthentication
+    driver ← runUI (comp requestNewIdTokenBus signInBus) (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)
-    forkAff $ routeSignal driver
+    forkAff $ routeSignal requestNewIdTokenBus driver
 
 setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
 setSlamDataTitle version =
@@ -89,26 +93,30 @@ initialAVar ∷ Tuple (Canceler SlamDataEffects) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
 routeSignal
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ ∀ r
+  . Bus (write ∷ Cap | r) (AVar EIdToken)
+  → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
-routeSignal driver = do
+routeSignal requestNewIdTokenBus driver = do
   avar ← makeVar' initialAVar
   routeTpl ← matchesAff routing
   pure unit
-  uncurry (redirects driver avar) routeTpl
+  uncurry (redirects requestNewIdTokenBus driver avar) routeTpl
 
 
 redirects
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ ∀ r
+  . Bus (write ∷ Cap | r) (AVar EIdToken)
+  → Driver QueryP SlamDataRawEffects
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   → Maybe Routes → Routes
   → Aff SlamDataEffects Unit
-redirects _ _ _ Index = updateURL Nothing Asc Nothing rootDir
-redirects _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
-redirects _ _ _ (SortAndQ sort query) =
+redirects _ _ _ _ Index = updateURL Nothing Asc Nothing rootDir
+redirects _ _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
+redirects _ _ _ _ (SortAndQ sort query) =
   let queryParts = splitQuery query
   in updateURL queryParts.query sort Nothing queryParts.path
-redirects driver var mbOld (Salted sort query salt) = do
+redirects requestNewIdTokenBus driver var mbOld (Salted sort query salt) = do
   Tuple canceler _ ← takeVar var
   cancel canceler $ error "cancel search"
   putVar var initialAVar
@@ -124,8 +132,8 @@ redirects driver var mbOld (Salted sort query salt) = do
     driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
     driver $ toSearch $ Search.SetValid true
     driver $ toSearch $ Search.SetPath queryParts.path
-    listPath query zero var queryParts.path driver
-    maybe (checkMount queryParts.path driver) (const $ pure unit) queryParts.query
+    listPath requestNewIdTokenBus query zero var queryParts.path driver
+    maybe (checkMount requestNewIdTokenBus queryParts.path driver) (const $ pure unit) queryParts.query
     else
     driver $ toSearch $ Search.SetLoading false
   where
@@ -139,28 +147,32 @@ redirects driver var mbOld (Salted sort query salt) = do
     pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
 
 checkMount
-  ∷ DirPath
+  ∷ ∀ r
+  . Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
-checkMount path driver = do
-  result ← Quasar.mountInfo path
+checkMount requestNewIdTokenBus path driver = do
+  result ← Quasar.mountInfo requestNewIdTokenBus path
   for_ result \_ →
     driver $ left $ action $ SetIsMount true
 
 listPath
-  ∷ SearchQuery
+  ∷ ∀ r
+  . Bus (write ∷ Cap | r) (AVar EIdToken)
+  → SearchQuery
   → Int
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
-listPath query deep var dir driver = do
+listPath requestNewIdTokenBus query deep var dir driver = do
   modifyVar (_2 %~ M.alter (maybe one (add one >>> pure))  deep) var
   canceler ← forkAff goDeeper
   modifyVar (_1 <>~ canceler) var
   where
   goDeeper = do
-    Quasar.children dir >>= either sendError getChildren
+    Quasar.children requestNewIdTokenBus dir >>= either sendError getChildren
     modifyVar (_2 %~ M.update (\v → guard (v > one) $> (v - one)) deep) var
     Tuple c r ← takeVar var
     if (foldl (+) zero $ M.values r) ≡ zero
@@ -188,7 +200,8 @@ listPath query deep var dir driver = do
   listingErrorMessage err =
     case message err of
       "An unknown error ocurred: 401 \"\"" ->
-        append forbiddenMessage <<< suggestedAction <$> H.fromAff AuthRetrieve.retrieveIdToken
+        append forbiddenMessage <<< suggestedAction
+          <$> H.fromAff (AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
       s ->
         pure $ "There was a problem accessing this directory listing. " ++ s
 
@@ -199,7 +212,7 @@ listPath query deep var dir driver = do
         toAdd = map Item $ filter (filterByQuery query) ress
 
     driver $ toListing $ Listing.Adds toAdd
-    traverse_ (\n → listPath query (deep + one) var n driver)
+    traverse_ (\n → listPath requestNewIdTokenBus query (deep + one) var n driver)
       (guard (isSearchQuery query) *> next)
 
 

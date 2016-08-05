@@ -24,8 +24,10 @@ import Control.Coroutine.Stalling (($$?))
 import Control.Coroutine.Stalling as StallingCoroutine
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.AVar (AVar, AVAR)
 import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Aff.Bus (Bus, Cap)
+import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -52,16 +54,16 @@ import OIDCCryptUtils as OIDC
 import SlamData.Config as Config
 import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Auth.IdTokenStorageEvents as IdTokenStorageEvents
+import SlamData.Quasar.Auth.Reauthentication as Reauthentication
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+
 import OIDC.Aff as OIDCAff
 
 import Quasar.Advanced.Types as QAT
 
 import Utils.LocalStorage as LS
 import Utils.DOM as DOMUtils
-import Utils.At as At
-import Utils.At (INTERVAL)
-
-foreign import log :: forall eff. String → Eff (dom :: DOM | eff) Unit
+import Utils (passover)
 
 race ∷ Aff _ _ → Aff _ _ → Aff _ _
 race a1 a2 = do
@@ -107,47 +109,39 @@ fromStallingProducer producer = do
     (producer $$? (Coroutine.consumer \e → liftAff (AVar.putVar var e) $> Just unit))
   AVar.takeVar var
 
-type RetrieveIdTokenEffRow eff = (now ∷ Now, interval ∷ INTERVAL, rsaSignTime :: OIDC.RSASIGNTIME, avar :: AVAR, dom :: DOM, random :: RANDOM | eff)
+type RetrieveIdTokenEffRow eff = (rsaSignTime :: OIDC.RSASIGNTIME, avar :: AVAR, dom :: DOM, random :: RANDOM | eff)
 
-retrieveIdToken ∷ ∀ eff. Aff (RetrieveIdTokenEffRow eff) (M.Maybe OIDCT.IdToken)
-retrieveIdToken =
+retrieveIdToken ∷ ∀ r eff. (Bus (write ∷ Cap | r) (AVar EIdToken)) → Aff (RetrieveIdTokenEffRow eff) (M.Maybe OIDCT.IdToken)
+retrieveIdToken requestNewIdTokenBus =
   fromEither
     <$> spy
     <$> (runExceptT
            $ (\idToken → (ExceptT $ verify idToken) <|> (ExceptT getNewToken))
            =<< ExceptT retrieveFromLocalStorage)
   where
-  getNewToken ∷ Aff (RetrieveIdTokenEffRow eff) (Either String OIDCT.IdToken)
-  getNewToken = pure $ Left $ "Pending: update getNewToken to use new reauthentication"
+  getNewToken ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken
+  getNewToken =
+    AVar.takeVar =<< passover (flip Bus.write requestNewIdTokenBus) =<< AVar.makeVar
 
-  retrieveFromLocalStorage ∷ Aff (RetrieveIdTokenEffRow eff) (Either String OIDCT.IdToken)
+  retrieveFromLocalStorage ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken
   retrieveFromLocalStorage =
     map OIDCT.IdToken <$> LS.getLocalStorage AuthKeys.idTokenLocalStorageKey
 
-  verify
-    ∷ OIDCT.IdToken
-    → Aff (RetrieveIdTokenEffRow eff) (Either String OIDCT.IdToken)
+  verify ∷ OIDCT.IdToken → Aff (RetrieveIdTokenEffRow eff) EIdToken
   verify idToken = do
     verified ← liftEff $ verifyBoolean idToken
     if verified
       then do
-        liftEff $ log "verified"
         pure $ Right idToken
       else do
-        liftEff $ log "unverified"
         pure $ Left "Token invalid"
 
-  verifyBoolean
-    ∷ OIDCT.IdToken
-    → Eff (RetrieveIdTokenEffRow eff) Boolean
+  verifyBoolean ∷ OIDCT.IdToken → Eff (RetrieveIdTokenEffRow eff) Boolean
   verifyBoolean idToken = do
     jwks ← map (M.fromMaybe []) retrieveJwks
     F.or <$> T.traverse (verifyBooleanWithJwk idToken) jwks
 
-  verifyBooleanWithJwk
-    ∷ OIDCT.IdToken
-    → JSONWebKey
-    → Eff (RetrieveIdTokenEffRow eff) Boolean
+  verifyBooleanWithJwk ∷ OIDCT.IdToken → JSONWebKey → Eff (RetrieveIdTokenEffRow eff) Boolean
   verifyBooleanWithJwk idToken jwk = do
     issuer ← retrieveIssuer
     clientId ← retrieveClientID

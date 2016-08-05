@@ -18,6 +18,8 @@ module SlamData.FileSystem.Dialog.Rename.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception (message)
 import Control.Monad.Error.Class (throwError)
 import Control.UI.Browser (reload)
@@ -41,9 +43,10 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.FS as API
-import SlamData.Render.Common (fadeWhen, formGroup)
 import SlamData.Render.CSS as Rc
+import SlamData.Render.Common (fadeWhen, formGroup)
 
 import Utils.Path (DirPath, dropWorkspaceExt)
 
@@ -143,177 +146,177 @@ data Query a
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-comp :: H.Component State Query Slam
-comp =
+comp :: ∀ r. Bus (write ∷ Cap | r) (AVar EIdToken) → H.Component State Query Slam
+comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
     , eval
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
-
-render :: State -> HTML
-render dialog =
-  modalDialog
-  [ modalHeader "Move/rename"
-  , modalBody
-    $ HH.form
-        [ HP.classes [ Rc.renameDialogForm ]
-        , Cp.nonSubmit
-        , HE.onClick \_ ->
-            HEH.stopPropagation $> Just (H.action (SetShowList false))
-        ]
-        [ nameInput
-        , dirDropdownField
-        , dirDropdownList
-        , errorMessage
-        ]
-  , modalFooter
-      [ HH.button
-          [ HP.classes [ B.btn ]
-          , HE.onClick (HE.input_ Dismiss)
-          ]
-          [ HH.text "Cancel" ]
-      , HH.button
-          [ HP.classes [ B.btn, B.btnPrimary ]
-          , HP.disabled $ isJust $ dialog.error
-          , HE.onClick (HE.input_ Submit)
-          ]
-          [ HH.text "Rename" ]
-      ]
-  ]
   where
-  nameInput :: HTML
-  nameInput =
-    formGroup [ HH.input [ HP.classes [ B.formControl ]
-                        , HP.value (dialog.name)
-                        , HP.placeholder "New name"
-                        , HE.onValueInput (HE.input NameTyped)
-                        ]
-              ]
-
-  dirDropdownField :: HTML
-  dirDropdownField =
-    HH.div
-      [ HP.classes [ B.inputGroup ] ]
-      [ HH.input
-          [ HP.classes [ B.formControl ]
-          , HP.placeholder "New directory"
-          , HE.onValueInput (HE.input DirTyped)
-          , HP.value $ dialog ^. _typedDir
+  render :: State -> HTML
+  render dialog =
+    modalDialog
+    [ modalHeader "Move/rename"
+    , modalBody
+      $ HH.form
+          [ HP.classes [ Rc.renameDialogForm ]
+          , Cp.nonSubmit
+          , HE.onClick \_ ->
+              HEH.stopPropagation $> Just (H.action (SetShowList false))
           ]
-      , HH.span
-          [ HP.classes [ B.inputGroupBtn ] ]
-          [ HH.button
-              [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick \_ ->
-                  HEH.stopPropagation $> Just (H.action ToggleShowList)
-              , ARIA.label "Select a destination folder"
-              , HP.title "Select a destination folder"
-              ]
-              [ HH.span [ HP.classes [ B.caret ] ] [ ] ]
+          [ nameInput
+          , dirDropdownField
+          , dirDropdownList
+          , errorMessage
           ]
-      ]
-  dirDropdownList :: HTML
-  dirDropdownList =
-    HH.ul [ HP.classes $ [ B.listGroup, Rc.fileListGroup ]
-           <> fadeWhen (not $ dialog.showList) ]
-    $ renameItem <$> dialog.dirs
+    , modalFooter
+        [ HH.button
+            [ HP.classes [ B.btn ]
+            , HE.onClick (HE.input_ Dismiss)
+            ]
+            [ HH.text "Cancel" ]
+        , HH.button
+            [ HP.classes [ B.btn, B.btnPrimary ]
+            , HP.disabled $ isJust $ dialog.error
+            , HE.onClick (HE.input_ Submit)
+            ]
+            [ HH.text "Rename" ]
+        ]
+    ]
+    where
+    nameInput :: HTML
+    nameInput =
+      formGroup [ HH.input [ HP.classes [ B.formControl ]
+                          , HP.value (dialog.name)
+                          , HP.placeholder "New name"
+                          , HE.onValueInput (HE.input NameTyped)
+                          ]
+                ]
 
-  errorMessage :: HTML
-  errorMessage =
-    HH.div [ HP.classes $ [ B.alert, B.alertDanger ]
-            <> fadeWhen (isNothing (dialog.error)) ]
-    $ maybe [ ] (pure <<< HH.text) (dialog.error)
+    dirDropdownField :: HTML
+    dirDropdownField =
+      HH.div
+        [ HP.classes [ B.inputGroup ] ]
+        [ HH.input
+            [ HP.classes [ B.formControl ]
+            , HP.placeholder "New directory"
+            , HE.onValueInput (HE.input DirTyped)
+            , HP.value $ dialog ^. _typedDir
+            ]
+        , HH.span
+            [ HP.classes [ B.inputGroupBtn ] ]
+            [ HH.button
+                [ HP.classes [ B.btn, B.btnDefault ]
+                , HE.onClick \_ ->
+                    HEH.stopPropagation $> Just (H.action ToggleShowList)
+                , ARIA.label "Select a destination folder"
+                , HP.title "Select a destination folder"
+                ]
+                [ HH.span [ HP.classes [ B.caret ] ] [ ] ]
+            ]
+        ]
+    dirDropdownList :: HTML
+    dirDropdownList =
+      HH.ul [ HP.classes $ [ B.listGroup, Rc.fileListGroup ]
+             <> fadeWhen (not $ dialog.showList) ]
+      $ renameItem <$> dialog.dirs
 
-  renameItem :: R.Resource -> HTML
-  renameItem res =
-    HH.button [ HP.classes ([ B.listGroupItem ]
-                          <> (if R.isHidden res
-                              then [ ItemCSS.itemHidden ]
-                              else [ ]))
-             , HE.onClick (HE.input_ (DirClicked res))
-             ]
-    [ HH.text (R.resourcePath res) ]
+    errorMessage :: HTML
+    errorMessage =
+      HH.div [ HP.classes $ [ B.alert, B.alertDanger ]
+              <> fadeWhen (isNothing (dialog.error)) ]
+      $ maybe [ ] (pure <<< HH.text) (dialog.error)
 
-eval :: Natural Query DSL
-eval (Dismiss next) = pure next
-eval (SetShowList bool next) = do
-  H.modify (_showList .~ bool)
-  H.modify validate
-  pure next
-eval (ToggleShowList next) = do
-  H.modify (_showList %~ not)
-  H.modify validate
-  pure next
-eval (Submit next) = do
-  dirStr <- endingInSlash <$> H.gets _.typedDir
-  maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
-  pure next
-  where
-  parsedDir =
-    map (rootDir </> _) ∘ sandbox rootDir <=< parseAbsDir
+    renameItem :: R.Resource -> HTML
+    renameItem res =
+      HH.button [ HP.classes ([ B.listGroupItem ]
+                            <> (if R.isHidden res
+                                then [ ItemCSS.itemHidden ]
+                                else [ ]))
+               , HE.onClick (HE.input_ (DirClicked res))
+               ]
+      [ HH.text (R.resourcePath res) ]
 
-  presentSourceMissingError =
-    H.modify $ _error .~ Just "The file you are trying to move is unavailable, please refresh."
+  eval :: Natural Query DSL
+  eval (Dismiss next) = pure next
+  eval (SetShowList bool next) = do
+    H.modify (_showList .~ bool)
+    H.modify validate
+    pure next
+  eval (ToggleShowList next) = do
+    H.modify (_showList %~ not)
+    H.modify validate
+    pure next
+  eval (Submit next) = do
+    dirStr <- endingInSlash <$> H.gets _.typedDir
+    maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
+    pure next
+    where
+    parsedDir =
+      map (rootDir </> _) ∘ sandbox rootDir <=< parseAbsDir
 
-  presentDirNotExistError =
-    H.modify $ _error .~ Just "Target directory does not exist."
+    presentSourceMissingError =
+      H.modify $ _error .~ Just "The file you are trying to move is unavailable, please refresh."
 
-  presentError e =
-    H.modify $ _error .~ Just e
+    presentDirNotExistError =
+      H.modify $ _error .~ Just "Target directory does not exist."
 
-  moveIfDirAccessible dir =
-    maybe (move dir) presentError =<< API.dirNotAccessible dir
+    presentError e =
+      H.modify $ _error .~ Just e
 
-  move dir = do
-    H.modify $ (_dir .~ dir) <<< (_showList .~ false)
+    moveIfDirAccessible dir =
+      maybe (move dir) presentError =<< API.dirNotAccessible requestNewIdTokenBus dir
+
+    move dir = do
+      H.modify $ (_dir .~ dir) <<< (_showList .~ false)
+      state <- H.get
+      let src = state.initial
+          tgt = R.getPath $ renameSlam state
+      result <- API.move requestNewIdTokenBus src tgt
+      case result of
+        Left e ->
+          H.modify (_error ?~ message e)
+        Right x ->
+          maybe
+            presentSourceMissingError
+            (const $ H.modify (_error .~ Nothing) *> H.fromEff reload)
+            x
+
+    lastChar s = S.drop (S.length s - 1) s
+
+    endingInSlash s = if lastChar s == "/" then s else s ++ "/"
+
+  eval (NameTyped str next) = do
+    H.modify (_name .~ str)
+    H.modify validate
+    pure next
+  eval (DirTyped str next) = do
+    H.modify $ _typedDir .~ str
+    pure next
+  eval (DirClicked res next) = do
+    dirItemClicked res
+    pure next
+  eval (SetSiblings ss next) = do
+    H.modify (_siblings .~ ss)
+    pure next
+  eval (AddDirs ds next) = do
+    H.modify (_dirs %~ append ds >>> nub >>> sort)
+    pure next
+  eval (Init next) = do
     state <- H.get
-    let src = state.initial
-        tgt = R.getPath $ renameSlam state
-    result <- API.move src tgt
-    case result of
-      Left e ->
-        H.modify (_error ?~ message e)
-      Right x ->
-        maybe
-          presentSourceMissingError
-          (const $ H.modify (_error .~ Nothing) *> H.fromEff reload)
-          x
+    dirItemClicked $ R.parent $ state.initial
+    pure next
 
-  lastChar s = S.drop (S.length s - 1) s
-
-  endingInSlash s = if lastChar s == "/" then s else s ++ "/"
-
-eval (NameTyped str next) = do
-  H.modify (_name .~ str)
-  H.modify validate
-  pure next
-eval (DirTyped str next) = do
-  H.modify $ _typedDir .~ str
-  pure next
-eval (DirClicked res next) = do
-  dirItemClicked res
-  pure next
-eval (SetSiblings ss next) = do
-  H.modify (_siblings .~ ss)
-  pure next
-eval (AddDirs ds next) = do
-  H.modify (_dirs %~ append ds >>> nub >>> sort)
-  pure next
-eval (Init next) = do
-  state <- H.get
-  dirItemClicked $ R.parent $ state.initial
-  pure next
-
-dirItemClicked :: R.Resource -> DSL Unit
-dirItemClicked res = do
-  case R.getPath res of
-    Right _ -> pure unit
-    Left dir -> do
-      siblings <- API.children dir
-      H.modify
-        $ (_dir .~ dir)
-        <<< (_showList .~ false)
-        <<< (_siblings .~ either (const []) id siblings)
-        <<< (_typedDir .~ printPath dir)
+  dirItemClicked :: R.Resource -> DSL Unit
+  dirItemClicked res = do
+    case R.getPath res of
+      Right _ -> pure unit
+      Left dir -> do
+        siblings <- API.children requestNewIdTokenBus dir
+        H.modify
+          $ (_dir .~ dir)
+          <<< (_showList .~ false)
+          <<< (_siblings .~ either (const []) id siblings)
+          <<< (_typedDir .~ printPath dir)

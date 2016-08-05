@@ -21,6 +21,9 @@ module SlamData.Workspace.Deck.Component.Render
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
+
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Events.Handler as HEH
@@ -29,6 +32,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Deck.BackSide.Component as Back
@@ -52,8 +56,8 @@ renderError err =
         [ HH.text err ]
     ]
 
-renderDeck ∷ DeckOptions → DeckComponent → DCS.State → DeckHTML
-renderDeck opts deckComponent st =
+renderDeck ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DeckComponent → DCS.State → DeckHTML
+renderDeck requestNewIdTokenBus opts deckComponent st =
   HH.div
     (deckClasses st
      ⊕ deckProperties
@@ -65,7 +69,7 @@ renderDeck opts deckComponent st =
         [ HP.class_ CSS.deck
         , HP.key "deck"
         ]
-        [ Slider.render opts deckComponent st $ st.displayMode ≡ DCS.Normal
+        [ Slider.render requestNewIdTokenBus opts deckComponent st $ st.displayMode ≡ DCS.Normal
         , renderBackside $ st.displayMode ≡ DCS.Backside
         , renderDialog $ st.displayMode ≡ DCS.Dialog
         ]
@@ -79,14 +83,14 @@ renderDeck opts deckComponent st =
       [ HP.classes $ [CSS.dialogWrapper] ⊕ (guard (not visible) $> CSS.invisible)
       , ARIA.hidden $ show $ not visible
       ]
-      [ dialogSlot ]
+      [ dialogSlot requestNewIdTokenBus ]
 
   renderBackside visible =
     HH.div
       [ HP.classes $ [CSS.cardSlider] ⊕ (guard (not visible) $> CSS.invisible)
       , ARIA.hidden $ show $ not visible
       ]
-      [ backside ]
+      [ backside requestNewIdTokenBus ]
 
 deckClasses ∷ ∀ r. DCS.State → Array (HP.IProp (HP.InteractiveEvents (HP.GlobalProperties r)) (Query Unit))
 deckClasses st =
@@ -130,19 +134,19 @@ childFrameElements =
   , deckIndicator
   ]
 
-dialogSlot ∷ DeckHTML
-dialogSlot =
+dialogSlot ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckHTML
+dialogSlot requestNewIdTokenBus =
   HH.slot' cpDialog unit \_ →
-    { component: Dialog.comp
+    { component: Dialog.comp requestNewIdTokenBus
     , initialState: H.parentState Dialog.initialState
     }
 
-backside ∷ DeckHTML
-backside =
+backside ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckHTML
+backside requestNewIdTokenBus =
   HH.div
     [ HP.classes [ CSS.card ] ]
     [ HH.slot' cpBackSide unit \_ →
-        { component: Back.comp
+        { component: Back.comp requestNewIdTokenBus
         , initialState: Back.initialState
         }
     ]

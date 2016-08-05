@@ -25,13 +25,15 @@ module SlamData.Workspace.Deck.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Par (Par(..), runPar)
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
+import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Aff.Promise as Pr
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-import Control.Monad.Eff.Ref as Ref
 import Control.UI.Browser (locationObject, setHref, newTab)
 
 import Data.Array as Array
@@ -59,6 +61,7 @@ import Halogen.HTML.Indexed as HH
 import SlamData.Analytics.Event as AE
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
@@ -102,8 +105,8 @@ import Utils.Path (DirPath)
 initialState ∷ DirPath → DeckId → DCS.StateP
 initialState path = opaqueState ∘ DCS.initialDeck path
 
-render ∷ DeckOptions → DeckComponent → DCS.State → DeckHTML
-render opts deckComponent st =
+render ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DeckComponent → DCS.State → DeckHTML
+render requestNewIdTokenBus opts deckComponent st =
   -- HACK: required so that nested finalizers get run. Since this is run inside
   -- of a separate runUI instance with Deck.Component.Nested, they will not
   -- get invoked by normal machinery. -nf
@@ -111,10 +114,10 @@ render opts deckComponent st =
   then HH.div_ []
   else case st.stateMode of
     Error err → DCR.renderError err
-    _ → DCR.renderDeck opts deckComponent st
+    _ → DCR.renderDeck requestNewIdTokenBus opts deckComponent st
 
-eval ∷ DeckOptions → Query ~> DeckDSL
-eval opts@{ wiring } = case _ of
+eval ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → Query ~> DeckDSL
+eval requestNewIdTokenBus opts@{ wiring } = case _ of
   Init next → do
     pb ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
     mb ← subscribeToBus' (H.action ∘ HandleMessage) wiring.messaging
@@ -127,7 +130,7 @@ eval opts@{ wiring } = case _ of
     pure next
   Load dir deckId level next → do
     H.modify $ DCS._level .~ level
-    loadDeck opts dir deckId
+    loadDeck requestNewIdTokenBus opts dir deckId
     pure next
   SetModel deckId model level next → do
     state ← H.get
@@ -148,7 +151,7 @@ eval opts@{ wiring } = case _ of
       ∘ (DCS._stateMode .~ Preparing)
     initialCard ← H.gets (map DCS.coordModelToCoord ∘ Array.head ∘ _.modelCards)
     for_ initialCard $ queuePendingCard wiring
-    saveDeck opts Nothing
+    saveDeck requestNewIdTokenBus opts Nothing
     updateIndicator
     pure next
   Publish next → do
@@ -178,19 +181,19 @@ eval opts@{ wiring } = case _ of
       , modelCards
       , name: st.name
       }
-    saveDeck opts Nothing
+    saveDeck requestNewIdTokenBus opts Nothing
     pure next
   GetId k →
     k <$> H.gets _.id
   GetParent k →
     k <$> H.gets _.parent
   Save coord next →
-    saveDeck opts coord $> next
+    saveDeck requestNewIdTokenBus opts coord $> next
   RunPendingCards { source, pendingCard, cards } next → do
     st ← H.get
     let pendingCoord = DCS.coordModelToCoord pendingCard
     when (any (DCS.eqCoordModel pendingCoord) st.modelCards) do
-      runPendingCards opts source pendingCard cards
+      runPendingCards requestNewIdTokenBus opts source pendingCard cards
     pure next
   QueuePendingCard next → do
     H.gets _.pendingCard >>= traverse_ \pending → do
@@ -202,7 +205,7 @@ eval opts@{ wiring } = case _ of
     pure next
   GetVarMaps k → do
     deckPath ← H.gets DCS.deckPath
-    k <$> getVarMaps deckPath wiring
+    k <$> getVarMaps requestNewIdTokenBus deckPath wiring
   FlipDeck next → do
     updateBackSide
     H.modify
@@ -282,8 +285,8 @@ eval opts@{ wiring } = case _ of
 
 -- | Accumulates all `VarMap`s within the deck, including `VarMaps` from any
 -- | child decks within board cards.
-getVarMaps ∷ DirPath → Wiring → DeckDSL (Map.Map DeckId Port.VarMap)
-getVarMaps path wiring =
+getVarMaps ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DirPath → Wiring → DeckDSL (Map.Map DeckId Port.VarMap)
+getVarMaps requestNewIdTokenBus path wiring =
   Map.fromList <$> (Array.foldM goCard L.Nil =<< H.gets _.modelCards)
   where
   goCard
@@ -303,36 +306,36 @@ getVarMaps path wiring =
     → DeckId
     → DeckDSL (L.List (DeckId × Port.VarMap))
   goDeck acc deckId =
-    getDeck path deckId wiring.decks >>= case _ of
+    getDeck requestNewIdTokenBus path deckId wiring.decks >>= case _ of
       Left _ → pure acc -- TODO: deck failed to load... so notify user? ignore?
       Right deck → Array.foldM goCard acc (map (deckId × _) deck.cards)
 
-peek ∷ ∀ a. DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
-peek opts (H.ChildF s q) =
+peek ∷ ∀ a s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
+peek requestNewIdTokenBus opts (H.ChildF s q) =
   (peekCards opts.wiring ⊹ (\_ _ → pure unit) $ s)
-   ⨁ peekBackSide opts
+   ⨁ peekBackSide requestNewIdTokenBus opts
    ⨁ (const $ pure unit)
-   ⨁ (peekDialog opts ⨁ (const $ pure unit))
+   ⨁ (peekDialog requestNewIdTokenBus opts ⨁ (const $ pure unit))
    $ q
 
-peekDialog ∷ ∀ a. DeckOptions → Dialog.Query a → DeckDSL Unit
-peekDialog _ (Dialog.Show _ _) =
+peekDialog ∷ ∀ a s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → Dialog.Query a → DeckDSL Unit
+peekDialog _ _ (Dialog.Show _ _) =
   H.modify (DCS._displayMode .~ DCS.Dialog)
-peekDialog _ (Dialog.Dismiss _) =
+peekDialog _ _ (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
-peekDialog _ (Dialog.FlipToFront _) =
+peekDialog _ _ (Dialog.FlipToFront _) =
   H.modify (DCS._displayMode .~ DCS.Normal)
-peekDialog opts (Dialog.SetDeckName name _) =
+peekDialog requestNewIdTokenBus opts (Dialog.SetDeckName name _) =
   H.modify ((DCS._displayMode .~ DCS.Normal) ∘ (DCS._name .~ name))
-    *> saveDeck opts Nothing
-peekDialog _ (Dialog.Confirm d b _) = do
+    *> saveDeck requestNewIdTokenBus opts Nothing
+peekDialog _ _ (Dialog.Confirm d b _) = do
   H.modify (DCS._displayMode .~ DCS.Backside)
   case d of
     Dialog.DeleteDeck | b → raise' $ H.action $ DoAction DeleteDeck
     _ → pure unit
 
-peekBackSide ∷ ∀ a. DeckOptions → Back.Query a → DeckDSL Unit
-peekBackSide opts (Back.DoAction action _) =
+peekBackSide ∷ ∀ a s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → Back.Query a → DeckDSL Unit
+peekBackSide requestNewIdTokenBus opts (Back.DoAction action _) =
   case action of
     Back.Trash → do
       state ← H.get
@@ -353,7 +356,7 @@ peekBackSide opts (Back.DoAction action _) =
           CardId _ → do
             let rem = DCS.removeCard trashId state
             DBC.childDeckIds (snd <$> fst rem)
-              # H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph state.path)
+              # H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph requestNewIdTokenBus state.path)
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator opts.wiring
@@ -377,14 +380,14 @@ peekBackSide opts (Back.DoAction action _) =
       st ← H.get
       AE.track (AE.Embed st.id) opts.wiring.analytics
       sharingInput ← getSharingInput
-      varMaps ← getVarMaps (DCS.deckPath st) opts.wiring
+      varMaps ← getVarMaps requestNewIdTokenBus (DCS.deckPath st) opts.wiring
       showDialog $ Dialog.Embed sharingInput varMaps
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish → do
       st ← H.get
       AE.track (AE.Publish st.id) opts.wiring.analytics
       sharingInput ← getSharingInput
-      varMaps ← getVarMaps (DCS.deckPath st) opts.wiring
+      varMaps ← getVarMaps requestNewIdTokenBus (DCS.deckPath st) opts.wiring
       showDialog $ Dialog.Publish sharingInput varMaps
       H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.DeleteDeck → do
@@ -401,7 +404,7 @@ peekBackSide opts (Back.DoAction action _) =
       raise' $ H.action $ DoAction Wrap
     Back.Unwrap decks →
       raise' $ H.action $ DoAction $ Unwrap decks
-peekBackSide _ _ = pure unit
+peekBackSide _ _ _ = pure unit
 
 peekCards ∷ ∀ a. Wiring → CardSlot → CardQueryP a → DeckDSL Unit
 peekCards wiring (CardSlot cardId) = (const $ pure unit) ⨁ peekCardInner wiring cardId
@@ -571,12 +574,14 @@ queuePendingCard wiring pendingCoord = do
       Bus.write { source: st.id, pendingCard, cards } wiring.pending
 
 runPendingCards
-  ∷ DeckOptions
+  ∷ ∀ r
+  . Bus.Bus (write ∷ Bus.Cap | r) (AVar EIdToken)
+  → DeckOptions
   → DeckId
   → DeckId × Card.Model
   → Cache (DeckId × CardId) CardEval
   → DeckDSL Unit
-runPendingCards opts source pendingCard pendingCards = do
+runPendingCards requestNewIdTokenBus opts source pendingCard pendingCards = do
   st ← H.get
   let
     pendingCoord = DCS.coordModelToCoord pendingCard
@@ -598,7 +603,7 @@ runPendingCards opts source pendingCard pendingCards = do
           Just ev → pure ev
           Nothing → do
             urlVarMaps ← H.fromEff $ Ref.readRef opts.wiring.urlVarMaps
-            ev ← evalCard opts.wiring.analytics st.path urlVarMaps input c
+            ev ← evalCard requestNewIdTokenBus opts.wiring.analytics st.path urlVarMaps input c
             putCardEval ev pendingCards
             putCardEval ev opts.wiring.cards
             pure ev
@@ -627,14 +632,15 @@ runInitialEval wiring = do
 
 -- | Evaluates a card given an input and model.
 evalCard
-  ∷ ∀ r
-  . Bus.Bus (write ∷ Bus.Cap | r) AE.Event
+  ∷ ∀ r s
+  . Bus.Bus (write ∷ Bus.Cap | r) (AVar EIdToken)
+  → Bus.Bus (write ∷ Bus.Cap | s) AE.Event
   → DirPath
   → Map.Map DeckId Port.URLVarMap
   → Maybe (Pr.Promise Port)
   → DeckId × Card.Model
   → DeckDSL CardEval
-evalCard bus path urlVarMaps input card = do
+evalCard requestNewIdTokenBus bus path urlVarMaps input card = do
   output ← H.fromAff $ Pr.defer do
     input' ← for input Pr.wait
     let model = (snd card).model
@@ -643,7 +649,7 @@ evalCard bus path urlVarMaps input card = do
         AE.track (AE.ErrorInCardEval $ Card.modelCardType model) bus
         pure $ (Port.CardError $ "Could not evaluate card: " <> err) × mempty
       Right cmd → do
-        out@(Tuple p _) ← flip Eval.runEvalCard cmd
+        out@(Tuple p _) ← flip (Eval.runEvalCard requestNewIdTokenBus) cmd
           { path
           , urlVarMaps
           , cardCoord: DCS.coordModelToCoord card
@@ -781,8 +787,8 @@ getDeckModel = do
     }
 
 -- | Saves the deck as JSON, using the current values present in the state.
-saveDeck ∷ DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
-saveDeck { accessType, wiring } coord = do
+saveDeck ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
+saveDeck requestNewIdTokenBus { accessType, wiring } coord = do
   st ← H.get
   when (AT.isEditable accessType) do
     modelCards ← Array.span (not ∘ eq st.id ∘ fst) <$> getModelCards
@@ -800,11 +806,11 @@ saveDeck { accessType, wiring } coord = do
 
     when (isNothing st.parent) do
       let index = st.path </> Pathy.file "index"
-      WM.getRoot index >>= case _ of
-        Left _ → void $ WM.setRoot index st.id
+      WM.getRoot requestNewIdTokenBus index >>= case _ of
+        Left _ → void $ WM.setRoot requestNewIdTokenBus index st.id
         Right _ → pure unit
 
-    putDeck st.path st.id model wiring.decks >>= case _ of
+    putDeck requestNewIdTokenBus st.path st.id model wiring.decks >>= case _ of
       Left err →
         Notify.saveDeckFail err wiring.notify wiring.analytics
       Right _ → do
@@ -815,22 +821,22 @@ saveDeck { accessType, wiring } coord = do
           H.fromEff $ locationObject >>= Location.setHash deckHash
 
   saveMirroredCard st (deckId × card) =
-    getDeck st.path deckId wiring.decks >>= case _ of
+    getDeck requestNewIdTokenBus st.path deckId wiring.decks >>= case _ of
       Left err →
         Notify.saveMirrorFail err wiring.notify wiring.analytics
       Right deck → do
         let cards = deck.cards <#> \c → if c.cardId == card.cardId then card else c
             model = deck { cards = cards }
-        void $ putDeck st.path deckId model wiring.decks
+        void $ putDeck requestNewIdTokenBus st.path deckId model wiring.decks
 
-loadDeck ∷ DeckOptions → DirPath → DeckId → DeckDSL Unit
-loadDeck opts path deckId = do
+loadDeck ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DirPath → DeckId → DeckDSL Unit
+loadDeck requestNewIdTokenBus opts path deckId = do
   H.modify
     $ (DCS._stateMode .~ Loading)
     ∘ (DCS._displayCards .~ [ deckId × pendingEvalCard ])
 
   res ← runExceptT do
-    deck ← ExceptT $ getDeck path deckId opts.wiring.decks
+    deck ← ExceptT $ getDeck requestNewIdTokenBus path deckId opts.wiring.decks
     mirroredCards ← ExceptT $ H.fromAff $ loadMirroredCards deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
 
@@ -848,7 +854,7 @@ loadDeck opts path deckId = do
   where
   loadMirroredCards coords = do
     let deckIds = Array.nub (fst <$> coords)
-    res ← sequence <$> runPar (traverse (Par ∘ flip (getDeck path) opts.wiring.decks) deckIds)
+    res ← sequence <$> runPar (traverse (Par ∘ flip (getDeck requestNewIdTokenBus path) opts.wiring.decks) deckIds)
     pure $ hydrateCards coords =<< map (Array.zip deckIds) res
 
   hydrateCards coords decks =

@@ -22,6 +22,8 @@ module SlamData.Quasar.Mount
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as Err
@@ -37,14 +39,16 @@ import Quasar.Mount.View as QMountV
 import Quasar.Types (DirPath, FilePath)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 
 mountInfo
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → DirPath
   → m (Either Exn.Error QMountMDB.Config)
-mountInfo path = runExceptT do
-  result ← ExceptT $ runQuasarF $ lmap lowerQError <$>
+mountInfo requestNewIdTokenBus path = runExceptT do
+  result ← ExceptT $ runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.getMount (Left path)
   case result of
     QM.MongoDBConfig config → pure config
@@ -52,23 +56,25 @@ mountInfo path = runExceptT do
       P.printPath path <> " is not a MongoDB mount point"
 
 viewInfo
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → m (Either Exn.Error QMountV.Config)
-viewInfo path = runExceptT do
-  result ← ExceptT $ runQuasarF $ lmap lowerQError <$>
+viewInfo requestNewIdTokenBus path = runExceptT do
+  result ← ExceptT $ runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.getMount (Right path)
   case result of
     QM.ViewConfig config → pure config
     _ → Err.throwError $ Exn.error $ P.printPath path <> " is not an SQL² view"
 
 saveMount
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ DirPath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → DirPath
   → QMountMDB.Config
   → m (Either Exn.Error Unit)
-saveMount path config =
-  runQuasarF $ lmap lowerQError <$>
+saveMount requestNewIdTokenBus path config =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.updateMount (Left path) (QM.MongoDBConfig config)

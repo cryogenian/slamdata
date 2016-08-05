@@ -19,6 +19,8 @@ module SlamData.Quasar where
 import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception as Exn
 
 import Data.Argonaut ((~>), (:=))
@@ -33,6 +35,7 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 
 import Quasar.Advanced.Types (ProviderR) as Auth
 import Quasar.Advanced.QuasarAF as QF
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
 
@@ -97,10 +100,11 @@ reqHeadersToJSON = foldl go JS.jsonEmptyObject
 -- | Returns `Nothing` in case the authorization service is not available, and `Just` in case
 -- | Quasar responded with a valid array of OIDC providers.
 retrieveAuthProviders
-  ∷ ∀ eff
-  . Aff (QEff eff) (Exn.Error ⊹ (Maybe (Array Auth.ProviderR)))
-retrieveAuthProviders =
-  runQuasarF QF.authProviders <#> case _ of
+  ∷ ∀ r eff
+  . (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → Aff (QEff eff) (Exn.Error ⊹ (Maybe (Array Auth.ProviderR)))
+retrieveAuthProviders requestNewIdTokenBus =
+  runQuasarF requestNewIdTokenBus QF.authProviders <#> case _ of
     Left (QF.Error err) → Left err
     Left QF.NotFound → Right Nothing
     Left QF.Forbidden → Right Nothing

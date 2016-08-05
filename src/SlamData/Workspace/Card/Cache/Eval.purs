@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.Cache.Eval where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
@@ -27,6 +29,7 @@ import Data.StrMap as SM
 
 import Quasar.Types (FilePath)
 import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -35,32 +38,34 @@ import SlamData.Workspace.Card.Port as Port
 import Utils.Path as PU
 
 eval
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → CET.CardEvalInput
   → Maybe String
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort
-eval info mfp resource =
+eval requestNewIdTokenBus info mfp resource =
   case mfp of
-    Nothing -> eval' (CET.temporaryOutputResource info) resource
+    Nothing -> eval' requestNewIdTokenBus (CET.temporaryOutputResource info) resource
     Just pt ->
       case PU.parseAnyPath pt of
-        Just (Right fp) → eval' fp resource
+        Just (Right fp) → eval' requestNewIdTokenBus fp resource
         _ → EC.throwError $ pt ⊕ " is not a valid file path"
 
 eval'
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ PU.FilePath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → PU.FilePath
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort
-eval' fp resource = do
+eval' requestNewIdTokenBus fp resource = do
 
   outputResource ← liftQ $
-    QQ.fileQuery resource fp "select * from {{path}}" SM.empty
+    QQ.fileQuery requestNewIdTokenBus resource fp "select * from {{path}}" SM.empty
 
-  liftQ $ QFS.messageIfFileNotFound
+  liftQ $ QFS.messageIfFileNotFound requestNewIdTokenBus
     outputResource
     "Error saving file, please try another location"
 

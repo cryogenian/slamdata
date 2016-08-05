@@ -24,6 +24,8 @@ module SlamData.Quasar.Data
 import SlamData.Prelude
 
 import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
 
 import Data.Argonaut as JS
@@ -34,15 +36,17 @@ import Quasar.Error (lowerQError)
 import Quasar.Types (FilePath, AnyPath)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 
 makeFile
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → QData
   → m (Either Exn.Error Unit)
-makeFile path content =
-  runQuasarF $ lmap lowerQError <$>
+makeFile requestNewIdTokenBus path content =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.writeFile path content
 
 -- | Saves a single JSON value to a file.
@@ -50,13 +54,14 @@ makeFile path content =
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 save
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → JS.Json
   → m (Either Exn.Error Unit)
-save path json =
-  runQuasarF $ lmap lowerQError <$>
+save requestNewIdTokenBus path json =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.writeFile path (JSON Readable [json])
 
 -- | Loads a single JSON value from a file.
@@ -64,21 +69,23 @@ save path json =
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 load
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → m (Either String JS.Json)
-load file =
-  runQuasarF (QF.readFile Readable file Nothing) <#> case _ of
+load requestNewIdTokenBus file =
+  runQuasarF requestNewIdTokenBus (QF.readFile Readable file Nothing) <#> case _ of
     Right [file] → Right file
     Right _ → Left "Unexpected result when loading value from file"
     Left err → Left (QF.printQError err)
 
 delete
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ AnyPath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → AnyPath
   → m (Either Exn.Error Unit)
-delete path =
-  runQuasarF $ lmap lowerQError <$>
+delete requestNewIdTokenBus path =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.deleteData path

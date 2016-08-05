@@ -27,6 +27,8 @@ import SlamData.Prelude
 
 import Control.UI.Browser as Browser
 import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.Bus (Bus, Cap)
+import Control.Monad.Aff.AVar (AVar)
 import Control.Coroutine.Stalling as StallingCoroutine
 
 import Halogen as H
@@ -47,13 +49,14 @@ import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Quasar as Api
+import SlamData.Quasar.Auth.IdTokenStorageEvents as IdTokenStorageEvents
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 import SlamData.Quasar.Auth.Store as AuthStore
-import SlamData.Quasar.Auth.IdTokenStorageEvents as IdTokenStorageEvents
+import SlamData.SignIn.Bus (SignInMessage(..), SignInBusW)
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
-import SlamData.SignIn.Bus (SignInMessage(..), SignInBusW)
 
 import Utils.DOM as DOMUtils
 
@@ -80,129 +83,132 @@ type StateP = H.ParentState State (ChildState Slam) Query ChildQuery Slam ChildS
 type SignInHTML = H.ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
 type SignInDSL = H.ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. SignInBusW r → H.Component StateP QueryP Slam
-comp bus =
+comp
+  ∷ ∀ r s
+  . (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → SignInBusW s
+  → H.Component StateP QueryP Slam
+comp requestNewIdTokenBus signInBus =
   H.lifecycleParentComponent
     { render
-    , eval: eval bus
+    , eval
     , peek: Just (menuPeek ∘ H.runChildF)
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
-
-render ∷ State → SignInHTML
-render state =
-  HH.div
-    [ HP.classes $ [ className "sd-sign-in" ] ]
-    $ guard (not state.hidden)
-    $> HH.slot MenuSlot \_ →
-        { component: HalogenMenu.menuComponent
-        , initialState: H.parentState $ Menu.make []
-        }
-
-eval ∷ ∀ r. SignInBusW r → Query ~> SignInDSL
-eval _ (DismissSubmenu next) = dismissAll $> next
-eval bus (SignedIn next) =
-  sendMessage *> update $> next
   where
-  sendMessage = H.fromAff $ Bus.write SignInSuccess bus
-eval _ (Init next) = subscribeToIdTokenEvents *> update $> next
-
-subscribeToIdTokenEvents :: SignInDSL Unit
-subscribeToIdTokenEvents =
-  H.subscribe'
-    ∘ HE.EventSource
-    ∘ StallingCoroutine.mapStallingProducer (const $ SignedIn unit)
-    =<< H.fromEff IdTokenStorageEvents.getIdTokenStorageEvents
-
-update ∷ SignInDSL Unit
-update = do
-  mbIdToken ← H.fromAff AuthRetrieve.retrieveIdToken
-  traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
-  maybe
-    retrieveProvidersAndUpdateMenu
-    putEmailToMenu
-    mbIdToken
-  where
-  putEmailToMenu ∷ Crypt.IdToken → SignInDSL Unit
-  putEmailToMenu token = do
-    H.query MenuSlot
-      $ left
-      $ H.action
-      $ HalogenMenu.SetMenu
-      $ makeMenu
-        [ { label:
-              fromMaybe "unknown user"
-              $ map Crypt.runEmail
-              $ Crypt.pluckEmail token
-          , submenu:
-              [ { label: "🔒 Sign out"
-                , shortcutLabel: Nothing
-                , value: Nothing
-                }
-              ]
+  render ∷ State → SignInHTML
+  render state =
+    HH.div
+      [ HP.classes $ [ className "sd-sign-in" ] ]
+      $ guard (not state.hidden)
+      $> HH.slot MenuSlot \_ →
+          { component: HalogenMenu.menuComponent
+          , initialState: H.parentState $ Menu.make []
           }
-        ]
-    H.modify (_{loggedIn = true})
 
-  retrieveProvidersAndUpdateMenu ∷ SignInDSL Unit
-  retrieveProvidersAndUpdateMenu = do
-    eProviders ← H.fromAff $ Api.retrieveAuthProviders
-    case eProviders of
-      Left _ → H.modify (_{hidden = true})
-      Right Nothing → H.modify (_{hidden = true})
-      Right (Just []) → H.modify (_{hidden = true})
-      Right (Just providers) →
-        void
-        $ H.query MenuSlot
+  eval ∷ Query ~> SignInDSL
+  eval  (DismissSubmenu next) = dismissAll $> next
+  eval  (SignedIn next) =
+    sendMessage *> update $> next
+    where
+    sendMessage = H.fromAff $ Bus.write SignInSuccess signInBus
+  eval (Init next) = subscribeToIdTokenEvents *> update $> next
+
+  subscribeToIdTokenEvents :: SignInDSL Unit
+  subscribeToIdTokenEvents =
+    H.subscribe'
+      ∘ HE.EventSource
+      ∘ StallingCoroutine.mapStallingProducer (const $ SignedIn unit)
+      =<< H.fromEff IdTokenStorageEvents.getIdTokenStorageEvents
+
+  update ∷ SignInDSL Unit
+  update = do
+    mbIdToken ← H.fromAff $ AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+    traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
+    maybe
+      retrieveProvidersAndUpdateMenu
+      putEmailToMenu
+      mbIdToken
+    where
+    putEmailToMenu ∷ Crypt.IdToken → SignInDSL Unit
+    putEmailToMenu token = do
+      H.query MenuSlot
         $ left
         $ H.action
         $ HalogenMenu.SetMenu
         $ makeMenu
-          [ { label: "🔓 Sign in"
-            , submenu: Menu.makeSubmenuItem <$> providers
+          [ { label:
+                fromMaybe "unknown user"
+                $ map Crypt.runEmail
+                $ Crypt.pluckEmail token
+            , submenu:
+                [ { label: "🔒 Sign out"
+                  , shortcutLabel: Nothing
+                  , value: Nothing
+                  }
+                ]
             }
           ]
+      H.modify (_{loggedIn = true})
 
+    retrieveProvidersAndUpdateMenu ∷ SignInDSL Unit
+    retrieveProvidersAndUpdateMenu = do
+      eProviders ← H.fromAff $ Api.retrieveAuthProviders requestNewIdTokenBus
+      case eProviders of
+        Left _ → H.modify (_{hidden = true})
+        Right Nothing → H.modify (_{hidden = true})
+        Right (Just []) → H.modify (_{hidden = true})
+        Right (Just providers) →
+          void
+          $ H.query MenuSlot
+          $ left
+          $ H.action
+          $ HalogenMenu.SetMenu
+          $ makeMenu
+            [ { label: "🔓 Sign in"
+              , submenu: Menu.makeSubmenuItem <$> providers
+              }
+            ]
 
-dismissAll ∷ SignInDSL Unit
-dismissAll =
-  queryMenu $
-    H.action HalogenMenu.DismissSubmenu
+  dismissAll ∷ SignInDSL Unit
+  dismissAll =
+    queryMenu $
+      H.action HalogenMenu.DismissSubmenu
 
-menuPeek
-  ∷ ∀ a
-  . Menu.QueryP a
-  → SignInDSL Unit
-menuPeek =
-  coproduct
-    (const (pure unit))
-    (submenuPeek ∘ H.runChildF)
+  menuPeek
+    ∷ ∀ a
+    . Menu.QueryP a
+    → SignInDSL Unit
+  menuPeek =
+    coproduct
+      (const (pure unit))
+      (submenuPeek ∘ H.runChildF)
 
-submenuPeek
-  ∷ ∀ a
-  . HalogenMenu.SubmenuQuery (Maybe ProviderR) a
-  → SignInDSL Unit
-submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
-  {loggedIn} ← H.get
-  if loggedIn
-    then logOut
-    else for_ v $ either (const $ pure unit) (H.fromEff ∘ DOMUtils.openPopup) <=< requestAuthenticationURI
-  pure unit
-  where
-  logOut ∷ SignInDSL Unit
-  logOut = do
-    H.fromEff do
-      AuthStore.clearIdToken
-      Browser.reload
-  appendAuthPath s = s ++ Config.redirectURIString
-  requestAuthenticationURI pr =
-    H.fromEff
-      $ OIDC.requestAuthenticationURI OIDC.Login pr
-      ∘ appendAuthPath
-      =<< Browser.locationString
+  submenuPeek
+    ∷ ∀ a
+    . HalogenMenu.SubmenuQuery (Maybe ProviderR) a
+    → SignInDSL Unit
+  submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
+    {loggedIn} ← H.get
+    if loggedIn
+      then logOut
+      else for_ v $ either (const $ pure unit) (H.fromEff ∘ DOMUtils.openPopup) <=< requestAuthenticationURI
+    pure unit
+    where
+    logOut ∷ SignInDSL Unit
+    logOut = do
+      H.fromEff do
+        AuthStore.clearIdToken
+        Browser.reload
+    appendAuthPath s = s ++ Config.redirectURIString
+    requestAuthenticationURI pr =
+      H.fromEff
+        $ OIDC.requestAuthenticationURI OIDC.Login pr
+        ∘ appendAuthPath
+        =<< Browser.locationString
 
-queryMenu
-  ∷ HalogenMenu.MenuQuery (Maybe ProviderR) Unit
-  → SignInDSL Unit
-queryMenu q = void $ H.query MenuSlot (left q)
+  queryMenu
+    ∷ HalogenMenu.MenuQuery (Maybe ProviderR) Unit
+    → SignInDSL Unit
+  queryMenu q = void $ H.query MenuSlot (left q)

@@ -27,6 +27,8 @@ import SlamData.Prelude
 
 import Control.Coroutine (Producer, runProcess, ($$), await)
 import Control.Monad.Aff (Aff, runAff)
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Eff.Exception as Exn
@@ -42,6 +44,7 @@ import Data.Set as Set
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Aff (QEff)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as CM
@@ -53,12 +56,13 @@ import Utils.AffableProducer (produce)
 import Utils.Path (DirPath)
 
 transitiveGraphProducer
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → DeckId
   → Producer (Tuple DeckId (Either String (Array DeckId))) m Unit
-transitiveGraphProducer path deckId = produce \emit → do
+transitiveGraphProducer requestNewIdTokenBus path deckId = produce \emit → do
   pending ← Ref.newRef $ Set.singleton deckId
   runAff Exn.throwException (const (pure unit)) $
     go emit pending deckId
@@ -81,21 +85,22 @@ transitiveGraphProducer path deckId = produce \emit → do
       fromEff $ emit (Right unit)
 
   loadChildIds parentId = runExceptT do
-    json ← ExceptT $ Quasar.load (DM.deckIndex path parentId)
+    json ← ExceptT $ Quasar.load requestNewIdTokenBus (DM.deckIndex path parentId)
     ExceptT $ pure $ childDeckIds ∘ _.cards <$> DM.decode json
 
 transitiveChildren
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → DeckId
   → m (Either String (Array DeckId))
-transitiveChildren path deckId = fromAff go
+transitiveChildren requestNewIdTokenBus path deckId = fromAff go
   where
   go ∷ Aff (QEff eff) (Either String (Array DeckId))
   go = do
     ref ← fromEff $ Ref.newRef (Right [])
-    runProcess (transitiveGraphProducer path deckId $$ collectIds ref)
+    runProcess (transitiveGraphProducer requestNewIdTokenBus path deckId $$ collectIds ref)
     fromEff $ Ref.readRef ref
 
   collectIds ref = do
@@ -116,13 +121,14 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
       _ → []
 
 deleteGraph
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → DeckId
   → m (Either String Unit)
-deleteGraph path parentId = fromAff $ runExceptT do
-  cids ← ExceptT $ transitiveChildren path parentId
+deleteGraph requestNewIdTokenBus path parentId = fromAff $ runExceptT do
+  cids ← ExceptT $ transitiveChildren requestNewIdTokenBus path parentId
   void
     $ withExceptT Exn.message
     $ ExceptT
@@ -133,7 +139,7 @@ deleteGraph path parentId = fromAff $ runExceptT do
 
   where
   delete deckId =
-    Quasar.delete $ Left $ path </> Pathy.dir (deckIdToString deckId)
+    Quasar.delete requestNewIdTokenBus $ Left $ path </> Pathy.dir (deckIdToString deckId)
 
 replacePointer
   ∷ DeckId

@@ -29,6 +29,9 @@ module SlamData.Workspace.Deck.Dialog.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Bus (Bus, Cap)
+import Control.Monad.Aff.AVar (AVar)
+
 import Data.Map as Map
 
 import Halogen as H
@@ -39,6 +42,7 @@ import Halogen.Component.Utils (raise')
 
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Effects (Slam)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Workspace.Card.CardType (CardType)
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.Deck.DeckId (DeckId)
@@ -166,126 +170,126 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
-
-render ∷ State → HTML
-render state =
-  HH.div
-    [ HP.classes [ HH.className "deck-dialog" ] ]
-    $ foldMap (pure ∘ dialog) state
+comp ∷ ∀ r. (Bus (write ∷ Cap | r) (AVar EIdToken)) → H.Component StateP QueryP Slam
+comp requestNewIdTokenBus = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
   where
+  render ∷ State → HTML
+  render state =
+    HH.div
+      [ HP.classes [ HH.className "deck-dialog" ] ]
+      $ foldMap (pure ∘ dialog) state
+    where
 
-  dialog (Rename name) =
-    HH.slot' cpRename unit \_ →
-      { component: Rename.comp
-      , initialState: { newName: name }
-      }
+    dialog (Rename name) =
+      HH.slot' cpRename unit \_ →
+        { component: Rename.comp
+        , initialState: { newName: name }
+        }
 
-  dialog (Error str) =
-    HH.slot' cpError unit \_ →
-      { component: Error.nonModalComp
-      , initialState: Error.State str
-      }
+    dialog (Error str) =
+      HH.slot' cpError unit \_ →
+        { component: Error.nonModalComp
+        , initialState: Error.State str
+        }
 
-  dialog (Embed sharingInput varMaps) =
-    HH.slot' cpEmbed unit \_ →
-      { component: Export.comp
-      , initialState:
-          (Export.initialState sharingInput)
-            { presentingAs = Export.IFrame
-            , varMaps = varMaps
+    dialog (Embed sharingInput varMaps) =
+      HH.slot' cpEmbed unit \_ →
+        { component: Export.comp requestNewIdTokenBus
+        , initialState:
+            (Export.initialState sharingInput)
+              { presentingAs = Export.IFrame
+              , varMaps = varMaps
+              }
+        }
+
+    dialog DeleteDeck =
+      HH.slot' cpDeleteDeck unit \_ →
+        { component: Confirm.comp
+        , initialState:
+            { title: "Delete deck"
+            , body: "Are you sure you want to delete this deck?"
+            , cancel: "Cancel"
+            , confirm: "Delete"
             }
-      }
+        }
+    dialog (Publish sharingInput varMaps) =
+      HH.slot' cpPublish unit \_ →
+        { component: Export.comp requestNewIdTokenBus
+        , initialState:
+            (Export.initialState sharingInput)
+              { presentingAs = Export.URI
+              , varMaps = varMaps
+              }
+        }
+    dialog (Share deckPath) =
+      HH.slot' cpShare unit \_ →
+        { component: Share.comp requestNewIdTokenBus
+        , initialState: Share.initialState deckPath
+        }
 
-  dialog DeleteDeck =
-    HH.slot' cpDeleteDeck unit \_ →
-      { component: Confirm.comp
-      , initialState:
-          { title: "Delete deck"
-          , body: "Are you sure you want to delete this deck?"
-          , cancel: "Cancel"
-          , confirm: "Delete"
-          }
-      }
-  dialog (Publish sharingInput varMaps) =
-    HH.slot' cpPublish unit \_ →
-      { component: Export.comp
-      , initialState:
-          (Export.initialState sharingInput)
-            { presentingAs = Export.URI
-            , varMaps = varMaps
-            }
-      }
-  dialog (Share deckPath) =
-    HH.slot' cpShare unit \_ →
-      { component: Share.comp
-      , initialState: Share.initialState deckPath
-      }
+    dialog (Unshare deckPath) =
+      HH.slot' cpUnshare unit \_ →
+        { component: Unshare.comp requestNewIdTokenBus
+        , initialState: Unshare.initialState deckPath
+        }
 
-  dialog (Unshare deckPath) =
-    HH.slot' cpUnshare unit \_ →
-      { component: Unshare.comp
-      , initialState: Unshare.initialState deckPath
-      }
-
-  dialog (Reason attemptedCardType reason cardPaths) =
-    HH.slot' cpReason unit \_ →
-      { component: Reason.comp
-      , initialState: { attemptedCardType, reason, cardPaths }
-      }
+    dialog (Reason attemptedCardType reason cardPaths) =
+      HH.slot' cpReason unit \_ →
+        { component: Reason.comp
+        , initialState: { attemptedCardType, reason, cardPaths }
+        }
 
 
-eval ∷ Natural Query DSL
-eval (Dismiss next) = H.set Nothing $> next
-eval (FlipToFront next) = H.set Nothing $> next
-eval (SetDeckName _ next) = H.set Nothing $> next
-eval (Confirm _ _ next) = H.set Nothing $> next
-eval (Show d next) = H.set (Just d) $> next
+  eval ∷ Natural Query DSL
+  eval (Dismiss next) = H.set Nothing $> next
+  eval (FlipToFront next) = H.set Nothing $> next
+  eval (SetDeckName _ next) = H.set Nothing $> next
+  eval (Confirm _ _ next) = H.set Nothing $> next
+  eval (Show d next) = H.set (Just d) $> next
 
-peek ∷ ∀ a. ChildQuery a → DSL Unit
-peek =
-  renamePeek
-  ⨁ errorPeek
-  ⨁ deleteDeckPeek
-  ⨁ exportPeek
-  ⨁ exportPeek
-  ⨁ sharePeek
-  ⨁ unsharePeek
-  ⨁ reasonPeek
+  peek ∷ ∀ a. ChildQuery a → DSL Unit
+  peek =
+    renamePeek
+    ⨁ errorPeek
+    ⨁ deleteDeckPeek
+    ⨁ exportPeek
+    ⨁ exportPeek
+    ⨁ sharePeek
+    ⨁ unsharePeek
+    ⨁ reasonPeek
 
--- Send `Dismiss` after child's `Dismiss` to simplify parent of
--- this component peeking. (I.e. it can observe only this component queries and
--- don't provide separate handlers for embed dialog)
-renamePeek ∷ ∀ a. Rename.Query a → DSL Unit
-renamePeek (Rename.Dismiss _) = raise' $ Dismiss unit
-renamePeek (Rename.Rename name _) = raise' $ SetDeckName name unit
-renamePeek _ = pure unit
+  -- Send `Dismiss` after child's `Dismiss` to simplify parent of
+  -- this component peeking. (I.e. it can observe only this component queries and
+  -- don't provide separate handlers for embed dialog)
+  renamePeek ∷ ∀ a. Rename.Query a → DSL Unit
+  renamePeek (Rename.Dismiss _) = raise' $ Dismiss unit
+  renamePeek (Rename.Rename name _) = raise' $ SetDeckName name unit
+  renamePeek _ = pure unit
 
-errorPeek ∷ ∀ a. Error.Query a → DSL Unit
-errorPeek (Error.Dismiss _) =
-  raise' $ Dismiss unit
+  errorPeek ∷ ∀ a. Error.Query a → DSL Unit
+  errorPeek (Error.Dismiss _) =
+    raise' $ Dismiss unit
 
-deleteDeckPeek ∷ ∀ a. Confirm.Query a → DSL Unit
-deleteDeckPeek (Confirm.Confirm b _) = do
-  H.get >>= traverse_ \dialog →
-    raise' $ Confirm dialog b unit
+  deleteDeckPeek ∷ ∀ a. Confirm.Query a → DSL Unit
+  deleteDeckPeek (Confirm.Confirm b _) = do
+    H.get >>= traverse_ \dialog →
+      raise' $ Confirm dialog b unit
 
-exportPeek ∷ ∀ a. Export.Query a → DSL Unit
-exportPeek (Export.Dismiss _) =
-  raise' $ Dismiss unit
-exportPeek _ = pure unit
+  exportPeek ∷ ∀ a. Export.Query a → DSL Unit
+  exportPeek (Export.Dismiss _) =
+    raise' $ Dismiss unit
+  exportPeek _ = pure unit
 
-sharePeek ∷ ∀ a. Share.Query a → DSL Unit
-sharePeek (Share.Dismiss _) =
-  raise' $ Dismiss unit
-sharePeek _ = pure unit
+  sharePeek ∷ ∀ a. Share.Query a → DSL Unit
+  sharePeek (Share.Dismiss _) =
+    raise' $ Dismiss unit
+  sharePeek _ = pure unit
 
-unsharePeek ∷ ∀ a. Unshare.Query a → DSL Unit
-unsharePeek (Unshare.Dismiss _) =
-  raise' $ Dismiss unit
-unsharePeek _ = pure unit
+  unsharePeek ∷ ∀ a. Unshare.Query a → DSL Unit
+  unsharePeek (Unshare.Dismiss _) =
+    raise' $ Dismiss unit
+  unsharePeek _ = pure unit
 
-reasonPeek ∷ ∀ a. Reason.Query a → DSL Unit
-reasonPeek (Reason.Dismiss _) =
-  raise' $ FlipToFront unit
+  reasonPeek ∷ ∀ a. Reason.Query a → DSL Unit
+  reasonPeek (Reason.Dismiss _) =
+    raise' $ FlipToFront unit

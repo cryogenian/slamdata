@@ -19,6 +19,8 @@ module SlamData.Quasar.Security where
 import SlamData.Prelude
 
 import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception as Exn
 
 import Quasar.Advanced.QuasarAF as QF
@@ -27,75 +29,84 @@ import Quasar.Types as QT
 import Quasar.Advanced.Types as QTA
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 
 sharePermission
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ QTA.ShareRequestR
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → QTA.ShareRequestR
   → m (Exn.Error ⊹ (Array QTA.PermissionR))
-sharePermission req = do
-  runQuasarF $ lmap lowerQError
+sharePermission requestNewIdTokenBus req = do
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError
     <$> QF.sharePermission req
 
 groupInfo
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ QT.FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → QT.FilePath
   → m (Exn.Error ⊹ QTA.GroupInfoR)
-groupInfo groupPath =
-  runQuasarF $ lmap lowerQError
+groupInfo requestNewIdTokenBus groupPath =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError
     <$> QF.groupInfo groupPath
 
 createToken
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ Maybe QTA.TokenName
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → Maybe QTA.TokenName
   → Array QTA.ActionR
   → m (Exn.Error ⊹ QTA.TokenR)
-createToken mbName actions =
-  runQuasarF $ lmap lowerQError
+createToken requestNewIdTokenBus mbName actions =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError
     <$> QF.createToken mbName actions
 
 tokenList
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ m (Exn.Error ⊹ (Array QTA.TokenR))
-tokenList =
-  runQuasarF $ lmap lowerQError
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → m (Exn.Error ⊹ (Array QTA.TokenR))
+tokenList requestNewIdTokenBus =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError
     <$> QF.tokenList
 
 deleteToken
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ QTA.TokenId
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → QTA.TokenId
   → m (Exn.Error ⊹ Unit)
-deleteToken tid =
-  runQuasarF $ lmap lowerQError
+deleteToken requestNewIdTokenBus tid =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError
     <$> QF.deleteToken tid
 
 tokenInfo
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ QTA.TokenId
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → QTA.TokenId
   → m (Exn.Error ⊹ QTA.TokenR)
-tokenInfo tid =
-  runQuasarF $ lmap lowerQError
+tokenInfo requestNewIdTokenBus tid =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError
     <$> QF.tokenInfo tid
 
 permissionList
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ Boolean
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → Boolean
   → m (Exn.Error ⊹ (Array QTA.PermissionR))
-permissionList isTransitive =
-  runQuasarF $ lmap lowerQError
+permissionList requestNewIdTokenBus isTransitive =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError
     <$> QF.permissionList isTransitive
 
 deletePermission
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ QTA.PermissionId
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → QTA.PermissionId
   → m (Exn.Error ⊹ Unit)
-deletePermission pid =
-  runQuasarF $ lmap lowerQError
+deletePermission requestNewIdTokenBus pid =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError
     <$> QF.deletePermission pid

@@ -14,9 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Quasar.Auth.Reauthentication (reauthentication) where
+module SlamData.Quasar.Auth.Reauthentication (reauthentication, EIdToken) where
 
-import SlamData.Prelude
 import Control.Coroutine as Coroutine
 import Control.Coroutine.Stalling (($$?))
 import Control.Coroutine.Stalling as StallingCoroutine
@@ -29,19 +28,22 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Aff.Promise (Promise)
 import Control.Monad.Aff.Promise as Promise
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (RANDOM)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Rec.Class (forever)
 import Control.UI.Browser as Browser
+import SlamData.Prelude
 import DOM (DOM)
 import OIDC.Aff as OIDCAff
 import OIDCCryptUtils (RSASIGNTIME)
 import OIDCCryptUtils.Types (IdToken(..))
-import Quasar.Advanced.Types (Provider(..))
+import Quasar.Advanced.Types as QAT
 import SlamData.Config as Config
 import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
 import SlamData.Quasar.Auth.Keys as AuthKeys
-import Text.Parsing.StringParser (ParseError)
+import Text.Parsing.StringParser (ParseError(..))
 import Utils (passover)
 import Utils.DOM as DOMUtils
 import Utils.LocalStorage as LocalStorage
@@ -80,23 +82,23 @@ fromStallingProducer producer = do
   AVar.takeVar var
 
 -- | Write an AVar to the returned bus to get a new OIDC id token from the given provider
-reauthentication ∷ ∀ eff. Provider → Aff (ReauthEffects eff) (BusRW (AVar EIdToken))
-reauthentication (Provider providerR) = do
+reauthentication ∷ ∀ eff. Aff (ReauthEffects eff) (BusRW (AVar EIdToken))
+reauthentication =
   (\state → passover (forever ∘ reauthenticate state <=< Bus.read) =<< Bus.make)
     =<< AVar.makeVar' (Nothing ∷ Maybe (Promise EIdToken))
-  where
-  reauthenticate ∷ AVar (Maybe (Promise EIdToken)) → AVar EIdToken → Aff (ReauthEffects eff) Unit
-  reauthenticate stateAvar replyAvar =
-    maybe
-      (const (putState Nothing) =<< reply =<< passover (putState ∘ Just) =<< requestNewIdToken)
-      reply
-      =<< AVar.takeVar stateAvar
-    where
-    putState ∷ Maybe (Promise EIdToken) → Aff (ReauthEffects eff) Unit
-    putState = AVar.putVar stateAvar
 
-    reply ∷ Promise EIdToken → Aff (ReauthEffects eff) Unit
-    reply = AVar.putVar replyAvar <=< Promise.wait
+reauthenticate ∷ ∀ eff. AVar (Maybe (Promise EIdToken)) → AVar EIdToken → Aff (ReauthEffects eff) Unit
+reauthenticate stateAvar replyAvar =
+  maybe
+    (const (putState Nothing) =<< reply =<< passover (putState ∘ Just) =<< requestNewIdToken)
+    reply
+    =<< AVar.takeVar stateAvar
+  where
+  putState ∷ Maybe (Promise EIdToken) → Aff (ReauthEffects eff) Unit
+  putState = AVar.putVar stateAvar
+
+  reply ∷ Promise EIdToken → Aff (ReauthEffects eff) Unit
+  reply = AVar.putVar replyAvar <=< Promise.wait
 
   openReauthenticationPopup ∷ Aff (ReauthEffects eff) Unit
   openReauthenticationPopup =
@@ -107,24 +109,30 @@ reauthentication (Provider providerR) = do
 
   requestNewIdToken ∷ Aff (ReauthEffects eff) (Promise EIdToken)
   requestNewIdToken =
-    openReauthenticationPopup *> Promise.defer retrieveFromLocalStorageOnChange
+    openReauthenticationPopup *> Promise.defer retrieveIdTokenFromLSOnChange
 
-  retrieveFromLocalStorageOnChange ∷ Aff (ReauthEffects eff) EIdToken
-  retrieveFromLocalStorageOnChange =
+  retrieveIdTokenFromLSOnChange ∷ Aff (ReauthEffects eff) EIdToken
+  retrieveIdTokenFromLSOnChange =
     race
-      (const retrieveFromLocalStorage =<< fromStallingProducer =<< liftEff getIdTokenStorageEvents)
+      (const retrieveIdTokenFromLS =<< fromStallingProducer =<< liftEff getIdTokenStorageEvents)
       (Aff.later' Config.reauthenticationTimeout $ pure $ Left "No token recieved before timeout.")
 
-  retrieveFromLocalStorage ∷ Aff (ReauthEffects eff) (Either String IdToken)
-  retrieveFromLocalStorage =
+  retrieveIdTokenFromLS ∷ Aff (ReauthEffects eff) (Either String IdToken)
+  retrieveIdTokenFromLS =
     map IdToken <$> LocalStorage.getLocalStorage AuthKeys.idTokenLocalStorageKey
+
+  retrieveProviderRFromLS ∷ Eff (ReauthEffects eff) (Either String QAT.ProviderR)
+  retrieveProviderRFromLS =
+    map QAT.runProvider <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
 
   appendAuthPath ∷ String → String
   appendAuthPath s = (s ++ _) Config.redirectURIString
 
-  requestReauthenticationURI ∷ Aff (ReauthEffects eff) (Either ParseError String)
+  runParseError ∷ ParseError → String
+  runParseError (ParseError s) = s
+
+  requestReauthenticationURI ∷ Aff (ReauthEffects eff) (Either String String)
   requestReauthenticationURI =
-    liftEff
-      $ OIDCAff.requestAuthenticationURI OIDCAff.None providerR
-      ∘ appendAuthPath
-      =<< Browser.locationString
+    liftEff do
+      redirectUri <- appendAuthPath <$> Browser.locationString
+      runExceptT $ (ExceptT ∘ map (bimap runParseError id) ∘ flip (OIDCAff.requestAuthenticationURI OIDCAff.None) redirectUri) =<< ExceptT retrieveProviderRFromLS

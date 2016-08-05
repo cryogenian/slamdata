@@ -33,6 +33,8 @@ import SlamData.Prelude
 
 import Control.Apply (lift2)
 import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as Err
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
@@ -52,6 +54,7 @@ import Quasar.Mount as QM
 import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
@@ -67,47 +70,51 @@ templated res = S.replace "{{path}}" ("`" <> P.printPath res <> "`")
 -- | {{path}} template syntax to have the file's path inserted, and the file's
 -- | parent directory will be used to determine the backend to use in Quasar.
 compile
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ AnyPath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → AnyPath
   → SQL
   → SM.StrMap String
   → m (Either Exn.Error CompileResultR)
-compile path sql varMap = do
+compile requestNewIdTokenBus path sql varMap = do
   let backendPath = either id (fromMaybe P.rootDir <<< P.parentDir) path
       sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
-  runQuasarF $ lmap lowerQError <$>
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.compileQuery backendPath sql' varMap
 
 query
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → DirPath
   → SQL
   → m (Either String JS.JArray)
-query path sql =
-  runQuasarF $ lmap QF.printQError <$>
+query requestNewIdTokenBus path sql =
+  runQuasarF requestNewIdTokenBus $ lmap QF.printQError <$>
     QF.readQuery Readable path sql SM.empty Nothing
 
 queryEJson
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → DirPath
   → SQL
   → m (Either String (Array EJS.EJson))
-queryEJson path sql =
-  runQuasarF $ lmap QF.printQError <$>
+queryEJson requestNewIdTokenBus path sql =
+  runQuasarF requestNewIdTokenBus $ lmap QF.printQError <$>
     QF.readQueryEJson path sql SM.empty Nothing
 
 queryEJsonVM
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → DirPath
   → SQL
   → SM.StrMap String
   → m (Either String (Array EJS.EJson))
-queryEJsonVM path sql vm =
-  runQuasarF $ lmap QF.printQError
+queryEJsonVM requestNewIdTokenBus path sql vm =
+  runQuasarF requestNewIdTokenBus $ lmap QF.printQError
     <$> QF.readQueryEJson path sql vm Nothing
 
 -- | Runs a query creating a view mount for the query.
@@ -115,17 +122,18 @@ queryEJsonVM path sql vm =
 -- | If a file path is provided for the input path the query can use the
 -- | {{path}} template syntax to have the file's path inserted.
 viewQuery
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Affable (QEff eff) m, Monad m)
-  ⇒ AnyPath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → AnyPath
   → FilePath
   → SQL
   → SM.StrMap String
   → m (Either Exn.Error Unit)
-viewQuery path dest sql vars = do
-  runQuasarF $ lmap lowerQError <$>
+viewQuery requestNewIdTokenBus path dest sql vars = do
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.deleteMount (Right dest)
-  runQuasarF $ lmap lowerQError <$>
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.updateMount (Right dest) (QM.ViewConfig
       { query: maybe sql (flip templated sql) $ either (const Nothing) Just path
       , vars
@@ -138,47 +146,51 @@ viewQuery path dest sql vars = do
 -- | The returned value is the output path returned by Quasar. For some queries
 -- | this will be the input file rather than the specified destination.
 fileQuery
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → FilePath
   → SQL
   → SM.StrMap String
   → m (Either Exn.Error FilePath)
-fileQuery file dest sql vars =
+fileQuery requestNewIdTokenBus file dest sql vars =
   let backendPath = fromMaybe P.rootDir (P.parentDir file)
-  in runQuasarF $ bimap lowerQError _.out <$>
+  in runQuasarF requestNewIdTokenBus $ bimap lowerQError _.out <$>
     QF.writeQuery backendPath dest (templated file sql) vars
 
 all
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → m (Either Exn.Error JS.JArray)
-all file =
-  runQuasarF $ lmap lowerQError <$>
+all requestNewIdTokenBus file =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.readFile Readable file Nothing
 
 sample
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → Int
   → Int
   → m (Either Exn.Error JS.JArray)
-sample file offset limit =
-  runQuasarF $ lmap lowerQError <$>
+sample requestNewIdTokenBus file offset limit =
+  runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.readFile Readable file (Just { limit, offset })
 
 count
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → m (Either Exn.Error Int)
-count file = runExceptT do
+count requestNewIdTokenBus file = runExceptT do
   let backendPath = fromMaybe P.rootDir (P.parentDir file)
       sql = templated file "SELECT COUNT(*) as total FROM {{path}}"
-  result ← ExceptT $ runQuasarF $ lmap lowerQError <$>
+  result ← ExceptT $ runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
     QF.readQuery Readable backendPath sql SM.empty Nothing
   pure $ fromMaybe 0 (readTotal result)
   where
@@ -191,12 +203,13 @@ count file = runExceptT do
       <=< Arr.head
 
 fields
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  → FilePath
   → m (Either Exn.Error (Array String))
-fields file = runExceptT do
-  jarr ← ExceptT $ sample file 0 100
+fields requestNewIdTokenBus file = runExceptT do
+  jarr ← ExceptT $ sample requestNewIdTokenBus file 0 100
   case jarr of
     [] → Err.throwError $ Exn.error "empty file"
     _ → pure $ Arr.nub $ getFields =<< jarr

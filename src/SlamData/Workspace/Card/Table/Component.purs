@@ -22,6 +22,8 @@ module SlamData.Workspace.Card.Table.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class (throwError)
 
@@ -32,21 +34,22 @@ import Data.Lens ((.~), (?~))
 import Halogen as H
 
 import SlamData.Effects (Slam)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Table.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.Table.Component.Render (render)
 import SlamData.Workspace.Card.Table.Component.State as JTS
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ComponentDSL JTS.State QueryP Slam
 
-tableComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-tableComponent =
+tableComponent ∷ ∀ r. Bus (write ∷ Cap | r) (AVar EIdToken) → H.Component CC.CardStateP CC.CardQueryP Slam
+tableComponent requestNewIdTokenBus =
   CC.makeCardComponent
     { cardType: CT.Table
     , component: H.component { render, eval: evalCard ⨁ evalTable }
@@ -54,98 +57,97 @@ tableComponent =
     , _State: CC._TableState
     , _Query: CC.makeQueryPrism CC._TableQuery
     }
+  where
+  -- | Evaluates generic card queries.
+  evalCard ∷ CC.CardEvalQuery ~> DSL
+  evalCard = case _ of
+    CC.EvalCard info output next → do
+      for_ info.input $ CEQ.runCardEvalT_ ∘ runTable
+      pure next
+    CC.Activate next →
+      pure next
+    CC.Save k →
+      pure ∘ k =<< H.gets (Card.Table ∘ JTS.toModel)
+    CC.Load card next → do
+      case card of
+        Card.Table model → H.set $ JTS.fromModel model
+        _ → pure unit
+      pure next
+    CC.SetDimensions dims next → do
+      H.modify
+        $ JTS._levelOfDetails
+        .~ if dims.width < 336.0 ∨ dims.height < 240.0
+             then Low
+             else High
+      pure next
+    CC.ModelUpdated _ next →
+      pure next
+    CC.ZoomIn next →
+      pure next
 
--- | Evaluates generic card queries.
+  runTable
+    ∷ Port.Port
+    → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
+  runTable =
+    case _ of
+      Port.TaggedResource trp → updateTable trp
+      _ → throwError "Expected a TaggedResource input"
 
-evalCard ∷ CC.CardEvalQuery ~> DSL
-evalCard = case _ of
-  CC.EvalCard info output next → do
-    for_ info.input $ CEQ.runCardEvalT_ ∘ runTable
-    pure next
-  CC.Activate next →
-    pure next
-  CC.Save k →
-    pure ∘ k =<< H.gets (Card.Table ∘ JTS.toModel)
-  CC.Load card next → do
-    case card of
-      Card.Table model → H.set $ JTS.fromModel model
-      _ → pure unit
-    pure next
-  CC.SetDimensions dims next → do
-    H.modify
-      $ JTS._levelOfDetails
-      .~ if dims.width < 336.0 ∨ dims.height < 240.0
-           then Low
-           else High
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+  updateTable
+    ∷ Port.TaggedResourcePort
+    → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
+  updateTable { resource, tag } = do
+    oldInput ← lift $ H.gets _.input
+    when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
+      $ lift $ resetState
 
-runTable
-  ∷ Port.Port
-  → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
-runTable =
-  case _ of
-    Port.TaggedResource trp → updateTable trp
-    _ → throwError "Expected a TaggedResource input"
+    size ←
+      lift (Quasar.count requestNewIdTokenBus resource)
+        >>= either (throwError ∘ Exn.message) pure
 
-updateTable
-  ∷ Port.TaggedResourcePort
-  → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
-updateTable { resource, tag } = do
-  oldInput ← lift $ H.gets _.input
-  when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
-    $ lift $ resetState
+    lift $ H.modify $ JTS._input ?~ { resource, size, tag }
+    p ← lift $ H.gets JTS.pendingPageInfo
 
-  size ←
-    lift (Quasar.count resource)
-      >>= either (throwError ∘ Exn.message) pure
+    items ←
+      lift (Quasar.sample requestNewIdTokenBus resource ((p.page - 1) * p.pageSize) p.pageSize)
+        >>= either (throwError ∘ Exn.message) pure
 
-  lift $ H.modify $ JTS._input ?~ { resource, size, tag }
-  p ← lift $ H.gets JTS.pendingPageInfo
+    lift $
+      H.modify
+        $ (JTS._isEnteringPageSize .~ false)
+        ∘ (JTS._result ?~
+             { json: JSON.fromArray items
+             , page: p.page
+             , pageSize: p.pageSize
+             })
 
-  items ←
-    lift (Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize)
-      >>= either (throwError ∘ Exn.message) pure
+  -- | Resets the state while preserving settings like page size.
+  resetState ∷ DSL Unit
+  resetState = H.modify (JTS._result .~ Nothing)
 
-  lift $
-    H.modify
-      $ (JTS._isEnteringPageSize .~ false)
-      ∘ (JTS._result ?~
-           { json: JSON.fromArray items
-           , page: p.page
-           , pageSize: p.pageSize
-           })
+  -- | Evaluates table-specific card queries.
+  evalTable ∷ Query ~> (H.ComponentDSL JTS.State QueryP Slam)
+  evalTable = case _ of
+    StepPage step next → do
+      H.modify (JTS.stepPage step)
+      refresh
+      pure next
+    ChangePageSize pageSize next → do
+      for_ (Int.fromString pageSize) (H.modify ∘ JTS.resizePage)
+      refresh
+      pure next
+    StartEnterCustomPageSize next →
+      H.modify (JTS._isEnteringPageSize .~ true) $> next
+    SetCustomPageSize size next →
+      H.modify (JTS.setPageSize size) $> next
+    SetCustomPage page next →
+      H.modify (JTS.setPage page) $> next
+    Update next →
+      refresh $> next
 
--- | Resets the state while preserving settings like page size.
-resetState ∷ DSL Unit
-resetState = H.modify (JTS._result .~ Nothing)
-
--- | Evaluates table-specific card queries.
-evalTable ∷ Query ~> (H.ComponentDSL JTS.State QueryP Slam)
-evalTable = case _ of
-  StepPage step next → do
-    H.modify (JTS.stepPage step)
-    refresh
-    pure next
-  ChangePageSize pageSize next → do
-    for_ (Int.fromString pageSize) (H.modify ∘ JTS.resizePage)
-    refresh
-    pure next
-  StartEnterCustomPageSize next →
-    H.modify (JTS._isEnteringPageSize .~ true) $> next
-  SetCustomPageSize size next →
-    H.modify (JTS.setPageSize size) $> next
-  SetCustomPage page next →
-    H.modify (JTS.setPage page) $> next
-  Update next →
-    refresh $> next
-
-refresh ∷ DSL Unit
-refresh = do
-  input ← H.gets _.input
-  for_ input \{ resource, tag } →
-    CEQ.runCardEvalT_ $ updateTable { resource, tag }
-  CC.raiseUpdatedC' CC.StateOnlyUpdate
+  refresh ∷ DSL Unit
+  refresh = do
+    input ← H.gets _.input
+    for_ input \{ resource, tag } →
+      CEQ.runCardEvalT_ $ updateTable { resource, tag }
+    CC.raiseUpdatedC' CC.StateOnlyUpdate

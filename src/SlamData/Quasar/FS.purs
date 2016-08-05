@@ -30,6 +30,8 @@ import SlamData.Prelude
 
 import Control.Coroutine as CR
 import Control.Monad.Aff as Aff
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
@@ -53,38 +55,41 @@ import Quasar.FS as QFS
 import Quasar.FS.Resource as QR
 import Quasar.Types (AnyPath, DirPath, FilePath)
 
-import SlamData.Quasar.Aff (QEff, runQuasarF)
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 
 import Utils.AffableProducer as AP
 import Utils.Completions (memoizeCompletionStrs)
 
 children
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → m (Either Exn.Error (Array R.Resource))
-children dir = runExceptT do
-  cs ← ExceptT $ listing dir
+children requestNewIdTokenBus dir = runExceptT do
+  cs ← ExceptT $ listing requestNewIdTokenBus dir
   let result = (R._root .~ dir) <$> cs
   lift $ fromAff $ memoizeCompletionStrs dir result
   pure result
 
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → CR.Producer (Array R.Resource) m Unit
-transitiveChildrenProducer dirPath = do
+transitiveChildrenProducer requestNewIdTokenBus dirPath = do
   AP.produce \emit → do
     activeRequests ← Ref.newRef $ Set.singleton $ P.printPath dirPath
     Aff.runAff Exn.throwException (const (pure unit)) $ go emit activeRequests dirPath
   where
   go emit activeRequests start = do
     let strPath = P.printPath start
-    eitherChildren ← children start
+    eitherChildren ← children requestNewIdTokenBus start
     liftEff $ Ref.modifyRef activeRequests $ Set.delete strPath
     for_ eitherChildren \items → do
       liftEff $ emit $ Left items
@@ -97,12 +102,13 @@ transitiveChildrenProducer dirPath = do
       liftEff ∘ emit $ Right unit
 
 listing
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → m (Either Exn.Error (Array R.Resource))
-listing p =
-  bimap lowerQError (map toResource) <$> runQuasarF (QF.dirMetadata p)
+listing requestNewIdTokenBus p =
+  bimap lowerQError (map toResource) <$> runQuasarF requestNewIdTokenBus (QF.dirMetadata p)
   where
   toResource ∷ QFS.Resource → R.Resource
   toResource res = case res of
@@ -121,13 +127,14 @@ listing p =
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
 getNewName
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → String
   → m (Either Exn.Error String)
-getNewName parent name = do
-  result ← runQuasarF (QF.dirMetadata parent)
+getNewName requestNewIdTokenBus parent name = do
+  result ← runQuasarF requestNewIdTokenBus (QF.dirMetadata parent)
   pure case result of
     Left (QF.Error err) → Left err
     Right items | exists name items → Right (getNewName' items 1)
@@ -154,16 +161,17 @@ getNewName parent name = do
 -- | Will return `Just` in case the resource was successfully moved, and
 -- | `Nothing` in case no resource existed at the requested source path.
 move
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ R.Resource
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → R.Resource
   → AnyPath
   → m (Either Exn.Error (Maybe AnyPath))
-move src tgt = do
+move requestNewIdTokenBus src tgt = do
   let srcPath = R.getPath src
-  runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
+  runExceptT ∘ traverse (cleanViewMounts requestNewIdTokenBus) $ srcPath ^? _Left
   result ←
-    runQuasarF case src of
+    runQuasarF requestNewIdTokenBus case src of
       R.Mount _ → QF.moveMount srcPath tgt
       _ → QF.moveData srcPath tgt
   pure
@@ -174,18 +182,19 @@ move src tgt = do
       Left QF.Forbidden → Right Nothing
 
 delete
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ R.Resource
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → R.Resource
   → m (Either Exn.Error (Maybe R.Resource))
-delete resource =
+delete requestNewIdTokenBus resource =
   runExceptT $
     if R.isMount resource || alreadyInTrash resource
     then
-      forceDelete resource $> Nothing
+      forceDelete requestNewIdTokenBus resource $> Nothing
     else
       moveToTrash resource `catchError` \(err ∷ Exn.Error) →
-        forceDelete resource $> Nothing
+        forceDelete requestNewIdTokenBus resource $> Nothing
 
   where
   msg ∷ String
@@ -198,8 +207,8 @@ delete resource =
     let
       d = (res ^. R._root) </> P.dir Config.trashFolder
       path = (res # R._root .~ d) ^. R._path
-    name ← ExceptT $ getNewName d (res ^. R._name)
-    ExceptT $ move res (path # R._nameAnyPath .~ name)
+    name ← ExceptT $ getNewName requestNewIdTokenBus d (res ^. R._name)
+    ExceptT $ move requestNewIdTokenBus res (path # R._nameAnyPath .~ name)
     pure ∘ Just $ R.Directory d
 
   alreadyInTrash ∷ R.Resource → Boolean
@@ -225,34 +234,36 @@ delete resource =
           else alreadyInTrash' d
 
 forceDelete
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ R.Resource
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → R.Resource
   → ExceptT Exn.Error m Unit
-forceDelete res =
+forceDelete requestNewIdTokenBus res =
   case res of
     R.Mount _ →
-      ExceptT ∘ runQuasarF $ lmap lowerQError <$>
+      ExceptT ∘ runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
         QF.deleteMount (R.getPath res)
     _ → do
       let path = R.getPath res
-      traverse cleanViewMounts $ path ^? _Left
-      ExceptT ∘ runQuasarF $ lmap lowerQError <$>
+      traverse (cleanViewMounts requestNewIdTokenBus) $ path ^? _Left
+      ExceptT ∘ runQuasarF requestNewIdTokenBus $ lmap lowerQError <$>
         QF.deleteData path
 
 cleanViewMounts
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → ExceptT Exn.Error m Unit
-cleanViewMounts path =
+cleanViewMounts requestNewIdTokenBus path =
   CR.runProcess (producer CR.$$ consumer)
 
   where
   producer ∷ CR.Producer (Array R.Resource) (ExceptT Exn.Error m) Unit
   producer =
     FT.hoistFreeT lift $
-      transitiveChildrenProducer path
+      transitiveChildrenProducer requestNewIdTokenBus path
 
   consumer ∷ CR.Consumer (Array R.Resource) (ExceptT Exn.Error m) Unit
   consumer =
@@ -266,19 +277,20 @@ cleanViewMounts path =
   deleteViewMount =
     case _ of
       R.Mount (R.View vp) →
-        ExceptT ∘ runQuasarF $
+        ExceptT ∘ runQuasarF requestNewIdTokenBus $
           lmap lowerQError <$>
             QF.deleteMount (Right vp)
       _ → pure unit
 
 messageIfFileNotFound
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → FilePath
   → String
   → m (Either Exn.Error (Maybe String))
-messageIfFileNotFound path defaultMsg =
-  handleResult <$> runQuasarF (QF.fileMetadata path)
+messageIfFileNotFound requestNewIdTokenBus path defaultMsg =
+  handleResult <$> runQuasarF requestNewIdTokenBus (QF.fileMetadata path)
   where
   handleResult ∷ ∀ a. Either QF.QError a → Either Exn.Error (Maybe String)
   handleResult (Left (QF.Error e)) = Left e
@@ -287,12 +299,13 @@ messageIfFileNotFound path defaultMsg =
   handleResult (Right _) = Right Nothing
 
 dirNotAccessible
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → m (Maybe String)
-dirNotAccessible path =
-  handleResult <$> runQuasarF (QF.dirMetadata path)
+dirNotAccessible requestNewIdTokenBus path =
+  handleResult <$> runQuasarF requestNewIdTokenBus (QF.dirMetadata path)
   where
   handleResult ∷ ∀ a. Either QF.QError a → Maybe String
   handleResult (Left (QF.Error e)) = Just $ Exn.message e
@@ -301,12 +314,13 @@ dirNotAccessible path =
   handleResult (Right _) = Nothing
 
 fileNotAccessible
-  ∷ ∀ eff m
+  ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → FilePath
   → m (Maybe String)
-fileNotAccessible path =
-  handleResult <$> runQuasarF (QF.fileMetadata path)
+fileNotAccessible requestNewIdTokenBus path =
+  handleResult <$> runQuasarF requestNewIdTokenBus (QF.fileMetadata path)
   where
   handleResult ∷ ∀ a. Either QF.QError a → Maybe String
   handleResult (Left (QF.Error e)) = Just $ Exn.message e

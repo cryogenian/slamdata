@@ -35,6 +35,7 @@ module SlamData.Workspace.Wiring
 import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (AVar, makeVar', takeVar, putVar, modifyVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Aff.Promise (Promise, wait, defer)
@@ -47,14 +48,15 @@ import Data.Set as Set
 import SlamData.Analytics.Event as AE
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Notification as N
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.Data as Quasar
-import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.CardId (CardId)
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port.VarMap as Port
-import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
-import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
+import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Model (Deck, deckIndex, decode, encode)
 
 import Utils.Path (DirPath)
 
@@ -126,16 +128,17 @@ makeCache
 makeCache = fromAff (makeVar' mempty)
 
 putDeck
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Affable SlamDataEffects m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → DeckId
   → Deck
   → Cache DeckId DeckRef
   → m (Either String Unit)
-putDeck path deckId deck cache = fromAff do
+putDeck requestNewIdTokenBus path deckId deck cache = fromAff do
   ref ← defer do
-    res ← Quasar.save (deckIndex path deckId) $ encode deck
+    res ← Quasar.save requestNewIdTokenBus (deckIndex path deckId) $ encode deck
     when (isLeft res) do
       modifyVar (Map.delete deckId) cache
     pure $ bimap message (const deck) res
@@ -153,13 +156,14 @@ putDeck' deckId deck =
   putCache deckId (pure (Right deck))
 
 getDeck
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Affable SlamDataEffects m)
-  ⇒ DirPath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → DirPath
   → DeckId
   → Cache DeckId DeckRef
   → m (Either String Deck)
-getDeck path deckId cache = fromAff do
+getDeck requestNewIdTokenBus path deckId cache = fromAff do
   decks ← takeVar cache
   case Map.lookup deckId decks of
     Just ref → do
@@ -167,7 +171,7 @@ getDeck path deckId cache = fromAff do
       wait ref
     Nothing → do
       ref ← defer do
-        res ← (decode =<< _) <$> Quasar.load (deckIndex path deckId)
+        res ← (decode =<< _) <$> Quasar.load requestNewIdTokenBus (deckIndex path deckId)
         when (isLeft res) do
           modifyVar (Map.delete deckId) cache
         pure res

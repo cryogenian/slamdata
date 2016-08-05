@@ -22,6 +22,9 @@ module SlamData.Workspace.Card.Open.Component
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
+
 import Data.Array as Arr
 import Data.Lens as Lens
 import Data.Lens ((?~), (.~), (%~))
@@ -37,9 +40,10 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.FS as Quasar
-import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as RC
+import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
@@ -51,8 +55,8 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-openComponent ∷ Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
-openComponent mres =
+openComponent ∷ ∀ r. Bus (write ∷ Cap | r) (AVar EIdToken) → Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
+openComponent requestNewIdTokenBus mres =
   CC.makeCardComponent
     { cardType: CT.Open
     , component: H.lifecycleComponent
@@ -65,161 +69,161 @@ openComponent mres =
     , _State: CC._OpenState
     , _Query: CC.makeQueryPrism CC._OpenQuery
     }
-
-render ∷ State → HTML
-render state =
-  HH.div_
-    [ renderHighLOD state
-    , renderLowLOD (CT.lightCardGlyph CT.Open) left state.levelOfDetails
-    ]
-
-renderHighLOD ∷ State → HTML
-renderHighLOD state =
-  HH.div
-    [ HP.classes
-         $ [ HH.className "card-input-maximum-lod" ]
-         ⊕ (B.hidden <$ guard (state.levelOfDetails ≠ High))
-    ]
-    [ HH.div [ HP.classes [ RC.openCardMenu ] ]
-      [ HH.button
-          ([ HP.class_ RC.formButton
-           ] ⊕ case parentDir of
-                Nothing →
-                  [ HP.disabled true ]
-                Just r →
-                  [ HE.onClick (HE.input_ (right ∘ (ResourceSelected r)))
-                  , HP.title "Up a directory"
-                  , ARIA.label "Up a directory"
-                  ]
-          )
-          [ glyphForDeselectOrUp ]
-      , HH.p
-          [ ARIA.label $ "Selected resource: " ⊕ selectedLabel ]
-          [ HH.text selectedLabel ]
-      ]
-    , HH.ul_ $ map renderItem state.items
-    ]
-
   where
-  glyphForDeselectOrUp ∷ HTML
-  glyphForDeselectOrUp | isJust state.selected = glyph B.glyphiconRemove
-  glyphForDeselectOrUp | otherwise = glyph B.glyphiconChevronUp
+  render ∷ State → HTML
+  render state =
+    HH.div_
+      [ renderHighLOD state
+      , renderLowLOD (CT.lightCardGlyph CT.Open) left state.levelOfDetails
+      ]
 
-  selectedLabel ∷ String
-  selectedLabel =
-    fromMaybe ""
-    $ map printPath state.selected
-    <|> (pure $ printPath state.browsing)
-
-  parentDir ∷ Maybe R.Resource
-  parentDir =
-    R.Directory
-    <$> ((state.selected $> state.browsing)
-         <|> (fst <$> peel state.browsing))
-
-  renderItem ∷ R.Resource → HTML
-  renderItem r =
-    HH.li
+  renderHighLOD ∷ State → HTML
+  renderHighLOD state =
+    HH.div
       [ HP.classes
-          $ ((guard (Just (R.getPath r) ≡ (Right <$> state.selected))) $> B.active)
-          ⊕ ((guard (R.hiddenTopLevel r)) $> ItemCSS.itemHidden)
-      , HE.onClick (HE.input_ (right ∘ ResourceSelected r))
-      , ARIA.label labelTitle
+           $ [ HH.className "card-input-maximum-lod" ]
+           ⊕ (B.hidden <$ guard (state.levelOfDetails ≠ High))
+      ]
+      [ HH.div [ HP.classes [ RC.openCardMenu ] ]
+        [ HH.button
+            ([ HP.class_ RC.formButton
+             ] ⊕ case parentDir of
+                  Nothing →
+                    [ HP.disabled true ]
+                  Just r →
+                    [ HE.onClick (HE.input_ (right ∘ (ResourceSelected r)))
+                    , HP.title "Up a directory"
+                    , ARIA.label "Up a directory"
+                    ]
+            )
+            [ glyphForDeselectOrUp ]
+        , HH.p
+            [ ARIA.label $ "Selected resource: " ⊕ selectedLabel ]
+            [ HH.text selectedLabel ]
+        ]
+      , HH.ul_ $ map renderItem state.items
+      ]
 
-      ]
-      [ HH.a
-          [ HP.title labelTitle ]
-          [ glyphForResource r
-          , HH.text $ R.resourceName r
-          ]
-      ]
     where
-    labelTitle ∷ String
-    labelTitle =
-      "Select " ⊕ R.resourcePath r
+    glyphForDeselectOrUp ∷ HTML
+    glyphForDeselectOrUp | isJust state.selected = glyph B.glyphiconRemove
+    glyphForDeselectOrUp | otherwise = glyph B.glyphiconChevronUp
 
-glyphForResource ∷ R.Resource → HTML
-glyphForResource = case _ of
-  R.File _ → glyph B.glyphiconFile
-  R.Workspace _ → glyph B.glyphiconBook
-  R.Directory _ → glyph B.glyphiconFolderOpen
-  R.Mount (R.Database _) → glyph B.glyphiconHdd
-  R.Mount (R.View _) → glyph B.glyphiconFile
+    selectedLabel ∷ String
+    selectedLabel =
+      fromMaybe ""
+      $ map printPath state.selected
+      <|> (pure $ printPath state.browsing)
 
-eval ∷ QueryP ~> DSL
-eval = cardEval ⨁ openEval
+    parentDir ∷ Maybe R.Resource
+    parentDir =
+      R.Directory
+      <$> ((state.selected $> state.browsing)
+           <|> (fst <$> peel state.browsing))
 
-cardEval ∷ CC.CardEvalQuery ~> DSL
-cardEval = case _ of
-  CC.EvalCard info output next →
-    pure next
-  CC.Activate next →
-    pure next
-  CC.Save k → do
-    mbRes ← H.gets _.selected
-    k ∘ Card.Open <$>
-      case mbRes of
-        Just res → pure ∘ Just $ R.File res
-        Nothing → do
-          br ← H.gets _.browsing
-          pure ∘ Just $ R.Directory br
-  CC.Load card next → do
-    case card of
-      Card.Open (Just (res @ R.File _)) → resourceSelected res
-      _ → pure unit
-    pure next
-  CC.SetDimensions dims next → do
-    H.modify
-      $ (_levelOfDetails
-         .~ if dims.width < 288.0 ∨ dims.height < 240.0
-              then Low
-              else High)
-    pure next
-  CC.ModelUpdated _ next →
-    pure next
-  CC.ZoomIn next →
-    pure next
+    renderItem ∷ R.Resource → HTML
+    renderItem r =
+      HH.li
+        [ HP.classes
+            $ ((guard (Just (R.getPath r) ≡ (Right <$> state.selected))) $> B.active)
+            ⊕ ((guard (R.hiddenTopLevel r)) $> ItemCSS.itemHidden)
+        , HE.onClick (HE.input_ (right ∘ ResourceSelected r))
+        , ARIA.label labelTitle
 
-openEval ∷ Query ~> DSL
-openEval (ResourceSelected r next) = do
-  resourceSelected r
-  CC.raiseUpdatedC' CC.EvalModelUpdate
-  pure next
-openEval (Init mres next) = do
-  updateItems *> rearrangeItems
-  traverse_ resourceSelected mres
-  pure next
+        ]
+        [ HH.a
+            [ HP.title labelTitle ]
+            [ glyphForResource r
+            , HH.text $ R.resourceName r
+            ]
+        ]
+      where
+      labelTitle ∷ String
+      labelTitle =
+        "Select " ⊕ R.resourcePath r
 
-resourceSelected ∷ R.Resource → DSL Unit
-resourceSelected r = do
-  case R.getPath r of
-    Right fp → do
-      for_ (fst <$> peel fp) \dp → do
-        oldBrowsing ← H.gets _.browsing
-        unless (oldBrowsing ≡ dp) do
-          H.modify (_browsing .~ dp)
-          updateItems
-      H.modify (_selected ?~ fp)
-    Left dp → do
+  glyphForResource ∷ R.Resource → HTML
+  glyphForResource = case _ of
+    R.File _ → glyph B.glyphiconFile
+    R.Workspace _ → glyph B.glyphiconBook
+    R.Directory _ → glyph B.glyphiconFolderOpen
+    R.Mount (R.Database _) → glyph B.glyphiconHdd
+    R.Mount (R.View _) → glyph B.glyphiconFile
+
+  eval ∷ QueryP ~> DSL
+  eval = cardEval ⨁ openEval
+
+  cardEval ∷ CC.CardEvalQuery ~> DSL
+  cardEval = case _ of
+    CC.EvalCard info output next →
+      pure next
+    CC.Activate next →
+      pure next
+    CC.Save k → do
+      mbRes ← H.gets _.selected
+      k ∘ Card.Open <$>
+        case mbRes of
+          Just res → pure ∘ Just $ R.File res
+          Nothing → do
+            br ← H.gets _.browsing
+            pure ∘ Just $ R.Directory br
+    CC.Load card next → do
+      case card of
+        Card.Open (Just (res @ R.File _)) → resourceSelected res
+        _ → pure unit
+      pure next
+    CC.SetDimensions dims next → do
       H.modify
-        $ (_browsing .~ dp)
-        ∘ (_selected .~ Nothing)
-      updateItems
-  rearrangeItems
+        $ (_levelOfDetails
+           .~ if dims.width < 288.0 ∨ dims.height < 240.0
+                then Low
+                else High)
+      pure next
+    CC.ModelUpdated _ next →
+      pure next
+    CC.ZoomIn next →
+      pure next
 
-updateItems ∷ DSL Unit
-updateItems = do
-  cs ← Quasar.children =<< H.gets _.browsing
-  mbSel ← H.gets _.selected
-  H.modify (_items .~ foldMap id cs)
+  openEval ∷ Query ~> DSL
+  openEval (ResourceSelected r next) = do
+    resourceSelected r
+    CC.raiseUpdatedC' CC.EvalModelUpdate
+    pure next
+  openEval (Init mres next) = do
+    updateItems *> rearrangeItems
+    traverse_ resourceSelected mres
+    pure next
 
-rearrangeItems ∷ DSL Unit
-rearrangeItems = do
-  H.modify $ _items %~ Arr.sortBy sortFn
-  where
-  sortFn ∷ R.Resource → R.Resource → Ordering
-  sortFn a b
-    | R.hiddenTopLevel a && R.hiddenTopLevel b = compare a b
-    | R.hiddenTopLevel a = GT
-    | R.hiddenTopLevel b = LT
-    | otherwise = compare a b
+  resourceSelected ∷ R.Resource → DSL Unit
+  resourceSelected r = do
+    case R.getPath r of
+      Right fp → do
+        for_ (fst <$> peel fp) \dp → do
+          oldBrowsing ← H.gets _.browsing
+          unless (oldBrowsing ≡ dp) do
+            H.modify (_browsing .~ dp)
+            updateItems
+        H.modify (_selected ?~ fp)
+      Left dp → do
+        H.modify
+          $ (_browsing .~ dp)
+          ∘ (_selected .~ Nothing)
+        updateItems
+    rearrangeItems
+
+  updateItems ∷ DSL Unit
+  updateItems = do
+    cs ← Quasar.children requestNewIdTokenBus =<< H.gets _.browsing
+    mbSel ← H.gets _.selected
+    H.modify (_items .~ foldMap id cs)
+
+  rearrangeItems ∷ DSL Unit
+  rearrangeItems = do
+    H.modify $ _items %~ Arr.sortBy sortFn
+    where
+    sortFn ∷ R.Resource → R.Resource → Ordering
+    sortFn a b
+      | R.hiddenTopLevel a && R.hiddenTopLevel b = compare a b
+      | R.hiddenTopLevel a = GT
+      | R.hiddenTopLevel b = LT
+      | otherwise = compare a b

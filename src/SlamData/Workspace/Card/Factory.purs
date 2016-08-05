@@ -21,32 +21,36 @@ module SlamData.Workspace.Card.Factory
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
+
 import Halogen as H
 
-import SlamData.Workspace.Card.Model as Card
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent, Status(..))
-import SlamData.Workspace.Card.Variables.Component (variablesComponent)
-import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
+import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Component (chartComponent)
+import SlamData.Workspace.Card.ChartOptions.Component (chartOptionsComponent)
 import SlamData.Workspace.Card.Common (CardOptions)
 import SlamData.Workspace.Card.Component (CardComponent)
-import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
 import SlamData.Workspace.Card.Download.Component (downloadComponent)
 import SlamData.Workspace.Card.DownloadOptions.Component as DOpts
+import SlamData.Workspace.Card.Draftboard.Component (draftboardComponent)
 import SlamData.Workspace.Card.Error.Component as Error
-import SlamData.Workspace.Card.Pending.Component as Pending
-import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Markdown.Component (markdownComponent)
+import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component (nextCardComponent)
 import SlamData.Workspace.Card.Open.Component (openComponent)
+import SlamData.Workspace.Card.Pending.Component as Pending
 import SlamData.Workspace.Card.Query.Eval (queryEval)
-import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.Search.Component (searchComponent)
-import SlamData.Workspace.Card.ChartOptions.Component (chartOptionsComponent)
+import SlamData.Workspace.Card.Table.Component (tableComponent)
+import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
+import SlamData.Workspace.Card.Variables.Component (variablesComponent)
 
-cardComponent ∷ Card.Model → CardOptions → CardComponent
-cardComponent card opts =
+cardComponent ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → Card.Model → CardOptions → CardComponent
+cardComponent requestNewIdTokenBus card opts =
   case card.model of
     Card.Ace mode _ →
       aceComponent
@@ -55,19 +59,19 @@ cardComponent card opts =
         }
     Card.Search _ → searchComponent
     Card.ChartOptions _ → chartOptionsComponent
-    Card.Chart → chartComponent
+    Card.Chart → chartComponent requestNewIdTokenBus
     Card.Markdown _ → markdownComponent card.cardId
-    Card.Table _ → tableComponent
-    Card.Download → downloadComponent
+    Card.Table _ → tableComponent requestNewIdTokenBus
+    Card.Download → downloadComponent requestNewIdTokenBus
     Card.Variables _ → variablesComponent
     Card.Troubleshoot → troubleshootComponent
     Card.NextAction → nextCardComponent
     Card.Cache _ → cacheCardComponent
-    Card.Open mres → openComponent mres
+    Card.Open mres → openComponent requestNewIdTokenBus mres
     Card.DownloadOptions _ → DOpts.comp
     Card.ErrorCard → Error.comp
     Card.PendingCard → Pending.comp
-    Card.Draftboard _ → draftboardComponent opts
+    Card.Draftboard _ → draftboardComponent requestNewIdTokenBus opts
 
 aceEval ∷ CT.AceMode → AceEval
 aceEval CT.MarkdownMode = const $ H.modify _{status = Ready}

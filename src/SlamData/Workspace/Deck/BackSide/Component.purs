@@ -18,6 +18,9 @@ module SlamData.Workspace.Deck.BackSide.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
+
 import Data.Foldable as F
 import Data.String as Str
 import Data.Map as Map
@@ -36,6 +39,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component.CSS as CCSS
 import SlamData.Quasar.Auth.Retrieve (retrieveIdToken)
 
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
 import SlamData.Workspace.Deck.DeckId (DeckId)
 import SlamData.Workspace.Deck.Model (Deck)
@@ -141,77 +145,77 @@ actionGlyph = case _ of
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp ∷ H.Component State Query Slam
-comp =
+comp ∷ ∀ r. Bus (write ∷ Cap | r) (AVar EIdToken) → H.Component State Query Slam
+comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
     , eval
     , finalizer: Nothing
     , initializer: Just (H.action Init)
     }
-
-render ∷ State → HTML
-render state =
-  -- Extra div for consistent targetting with next action card styles
-  HH.div_
-    [ HH.div
-        [ HP.class_ CCSS.deckCard ]
-        [ HH.div
-            [ HP.class_ Rc.deckBackSide ]
-            [ HH.div_
-                [ HH.form_
-                    [ HH.div_
-                        [ HH.input
-                            [ HP.value state.filterString
-                            , HE.onValueInput (HE.input UpdateFilter)
-                            , ARIA.label "Filter deck and card actions"
-                            , HP.placeholder "Filter actions"
-                            ]
-                        , HH.button
-                            [ HP.buttonType HP.ButtonButton
-                            , HE.onClick (HE.input_ (UpdateFilter ""))
-                            ]
-                            [ glyph B.glyphiconRemove ]
-                        ]
-                    ]
-                , HH.ul_ $ map backsideAction (allBackActions state)
-                ]
-            ]
-        ]
-    ]
   where
-
-  filterString ∷ String
-  filterString = Str.toLower state.filterString
-
-  backsideAction ∷ BackAction → HTML
-  backsideAction action =
-    HH.li_
-      [ HH.button attrs
-          [ icon
-          , HH.p_ [ HH.text $ labelAction action ]
+  render ∷ State → HTML
+  render state =
+    -- Extra div for consistent targetting with next action card styles
+    HH.div_
+      [ HH.div
+          [ HP.class_ CCSS.deckCard ]
+          [ HH.div
+              [ HP.class_ Rc.deckBackSide ]
+              [ HH.div_
+                  [ HH.form_
+                      [ HH.div_
+                          [ HH.input
+                              [ HP.value state.filterString
+                              , HE.onValueInput (HE.input UpdateFilter)
+                              , ARIA.label "Filter deck and card actions"
+                              , HP.placeholder "Filter actions"
+                              ]
+                          , HH.button
+                              [ HP.buttonType HP.ButtonButton
+                              , HE.onClick (HE.input_ (UpdateFilter ""))
+                              ]
+                              [ glyph B.glyphiconRemove ]
+                          ]
+                      ]
+                  , HH.ul_ $ map backsideAction (allBackActions state)
+                  ]
+              ]
           ]
       ]
     where
-      attrs =
-        [ HP.title lbl
-        , ARIA.label lbl
-        , HP.disabled (not enabled)
-        , HP.buttonType HP.ButtonButton
-        ] ⊕ if enabled then [ HE.onClick (HE.input_ (DoAction action)) ] else [ ]
 
-      enabled = Str.contains filterString (Str.toLower $ labelAction action) && actionEnabled state action
-      lbl = labelAction action ⊕ if enabled then "" else " disabled"
-      icon = actionGlyph action
+    filterString ∷ String
+    filterString = Str.toLower state.filterString
 
-eval ∷ Query ~> DSL
-eval (DoAction _ next) = pure next
-eval (UpdateFilter str next) =
-  H.modify (_ { filterString = str }) $> next
-eval (UpdateCardType cty ctys next) =
-  H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Map.empty :: DeckMap }) $> next
-eval (Init next) = next <$ do
-  isLogged ← map isJust $ H.fromAff retrieveIdToken
-  H.modify (_ { isLogged = isLogged })
-eval (SetUnwrappable decks next) =
-  H.modify (_ { unwrappableDecks = decks }) $> next
+    backsideAction ∷ BackAction → HTML
+    backsideAction action =
+      HH.li_
+        [ HH.button attrs
+            [ icon
+            , HH.p_ [ HH.text $ labelAction action ]
+            ]
+        ]
+      where
+        attrs =
+          [ HP.title lbl
+          , ARIA.label lbl
+          , HP.disabled (not enabled)
+          , HP.buttonType HP.ButtonButton
+          ] ⊕ if enabled then [ HE.onClick (HE.input_ (DoAction action)) ] else [ ]
+
+        enabled = Str.contains filterString (Str.toLower $ labelAction action) && actionEnabled state action
+        lbl = labelAction action ⊕ if enabled then "" else " disabled"
+        icon = actionGlyph action
+
+  eval ∷ Query ~> DSL
+  eval (DoAction _ next) = pure next
+  eval (UpdateFilter str next) =
+    H.modify (_ { filterString = str }) $> next
+  eval (UpdateCardType cty ctys next) =
+    H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Map.empty :: DeckMap }) $> next
+  eval (Init next) = next <$ do
+    isLogged ← map isJust $ H.fromAff $ retrieveIdToken requestNewIdTokenBus
+    H.modify (_ { isLogged = isLogged })
+  eval (SetUnwrappable decks next) =
+    H.modify (_ { unwrappableDecks = decks }) $> next

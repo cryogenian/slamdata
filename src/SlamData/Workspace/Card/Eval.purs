@@ -18,8 +18,10 @@ module SlamData.Workspace.Card.Eval where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff as Eff
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable, fromEff)
+import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
 
@@ -32,6 +34,7 @@ import Quasar.Types (SQL, FilePath)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Cache.Eval as Cache
@@ -83,12 +86,13 @@ instance showEval ∷ Show Eval where
       Draftboard → "Draftboard"
 
 evalCard
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → CET.CardEvalInput
   → Eval
   → CET.CardEvalT m Port.Port
-evalCard input =
+evalCard requestNewIdTokenBus input =
   case _, input.input of
     Error msg, _ →
       pure $ Port.CardError msg
@@ -101,21 +105,21 @@ evalCard input =
     Draftboard, _ →
       pure Port.Draftboard
     Query sql, Just (Port.VarMap varMap) →
-      Port.TaggedResource <$> evalQuery input sql varMap
+      Port.TaggedResource <$> evalQuery requestNewIdTokenBus input sql varMap
     Query sql, _ →
-      Port.TaggedResource <$> evalQuery input sql Port.emptyVarMap
+      Port.TaggedResource <$> evalQuery requestNewIdTokenBus input sql Port.emptyVarMap
     Markdown txt, _ →
-      MDE.markdownEval input txt
+      MDE.markdownEval requestNewIdTokenBus input txt
     MarkdownForm model, (Just (Port.SlamDown doc)) →
       lift $ Port.VarMap <$> evalMarkdownForm doc model
     Search query, Just (Port.TaggedResource { resource }) →
-      Port.TaggedResource <$> evalSearch input query resource
+      Port.TaggedResource <$> evalSearch requestNewIdTokenBus input query resource
     Cache pathString, Just (Port.TaggedResource { resource }) →
-      Port.TaggedResource <$> Cache.eval input pathString resource
+      Port.TaggedResource <$> Cache.eval requestNewIdTokenBus input pathString resource
     Open res, _ →
-      Port.TaggedResource <$> evalOpen input res
+      Port.TaggedResource <$> evalOpen requestNewIdTokenBus input res
     ChartOptions model, _ →
-      Port.Chart <$> ChartE.eval input model
+      Port.Chart <$> ChartE.eval requestNewIdTokenBus input model
     Variables model, _ →
       pure $ Port.VarMap $ VariablesE.eval (fst input.cardCoord) input.urlVarMaps model
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
@@ -137,15 +141,17 @@ evalMarkdownForm (vm × doc) model = do
   pure $ thisVarMap `SM.union` vm
 
 evalOpen
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → CET.CardEvalInput
   → R.Resource
   → CET.CardEvalT m Port.TaggedResourcePort
-evalOpen info res = do
+evalOpen requestNewIdTokenBus info res = do
    filePath ← maybe (EC.throwError "No resource is selected") pure $ res ^? R._filePath
    msg ←
      QFS.messageIfFileNotFound
+       requestNewIdTokenBus
        filePath
        ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
      # lift
@@ -159,61 +165,65 @@ evalOpen info res = do
        EC.throwError $ Exn.message exn
 
 evalQuery
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → CET.CardEvalInput
   → SQL
   → Port.VarMap
   → CET.CardEvalT m Port.TaggedResourcePort
-evalQuery info sql varMap = do
+evalQuery requestNewIdTokenBus info sql varMap = do
   let
     varMap' = Port.renderVarMapValue <$> varMap
     resource = CET.temporaryOutputResource info
     backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
-  compileResult ← lift $ QQ.compile backendPath sql varMap'
+  compileResult ← lift $ QQ.compile requestNewIdTokenBus backendPath sql varMap'
   case compileResult of
     Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
     Right { inputs } → do
-      validateResources inputs
+      validateResources requestNewIdTokenBus inputs
       CET.addSources inputs
   liftQ do
-    QQ.viewQuery backendPath resource sql varMap'
-    QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
+    QQ.viewQuery requestNewIdTokenBus backendPath resource sql varMap'
+    QFS.messageIfFileNotFound requestNewIdTokenBus resource "Requested collection doesn't exist"
   pure { resource, tag: pure sql }
 
 evalSearch
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → CET.CardEvalInput
   → String
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort
-evalSearch info queryText resource = do
+evalSearch requestNewIdTokenBus info queryText resource = do
   query ← case SS.mkQuery queryText of
     Left _ → EC.throwError "Incorrect query string"
     Right q → pure q
 
   fields ← liftQ do
     QFS.messageIfFileNotFound
+      requestNewIdTokenBus
       resource
       ("Input resource " ⊕ Path.printPath resource ⊕ " doesn't exist")
-    QQ.fields resource
+    QQ.fields requestNewIdTokenBus resource
 
   let
     template = Search.queryToSQL fields query
     sql = QQ.templated resource template
     outputResource = CET.temporaryOutputResource info
 
-  compileResult ← lift $ QQ.compile (Right resource) sql SM.empty
+  compileResult ← lift $ QQ.compile requestNewIdTokenBus (Right resource) sql SM.empty
   case compileResult of
     Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
     Right { inputs } → do
-      validateResources inputs
+      validateResources requestNewIdTokenBus inputs
       CET.addSources inputs
 
   liftQ do
-    QQ.viewQuery (Right resource) outputResource template SM.empty
+    QQ.viewQuery requestNewIdTokenBus (Right resource) outputResource template SM.empty
     QFS.messageIfFileNotFound
+      requestNewIdTokenBus
       outputResource
       "Error making search temporary resource"
 
@@ -223,23 +233,25 @@ liftQ ∷ ∀ m a. Monad m ⇒ m (Either Exn.Error a) → CET.CardEvalT m a
 liftQ = either (EC.throwError ∘ Exn.message) pure <=< lift
 
 runEvalCard
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → CET.CardEvalInput
   → Eval
   → m (Port.Port × (Set.Set AdditionalSource))
-runEvalCard input =
+runEvalCard requestNewIdTokenBus input =
   CET.runCardEvalT ∘
-    evalCard input
+    evalCard requestNewIdTokenBus input
 
 -- TODO: This really needs to be parallel, but we need `MonadPar`.
 validateResources
-  ∷ ∀ m f
+  ∷ ∀ m r f
   . (Monad m, Affable SlamDataEffects m, Foldable f)
-  ⇒ f FilePath
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → f FilePath
   → CET.CardEvalT m Unit
-validateResources =
+validateResources requestNewIdTokenBus =
   traverse_ \path → do
-    noAccess ← lift $ QFS.fileNotAccessible path
+    noAccess ← lift $ QFS.fileNotAccessible requestNewIdTokenBus path
     for_ noAccess \reason →
       EC.throwError $ "Resource unavailable: `" ⊕ Path.printPath path ⊕ "`. " ⊕ reason

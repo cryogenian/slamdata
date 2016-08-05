@@ -18,6 +18,8 @@ module SlamData.Workspace.Card.ChartOptions.Eval where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
@@ -30,28 +32,30 @@ import Data.Set as Set
 import Data.Map as Map
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Quasar.Query as QQ
-import SlamData.Workspace.Card.Eval.CardEvalT as CET
-import SlamData.Workspace.Card.Port as Port
-import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 import SlamData.Workspace.Card.Chart.Axis (Axis, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
+import SlamData.Workspace.Card.ChartOptions.Model as ChartOptions
+import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Port as Port
 
 eval
-  ∷ ∀ m
+  ∷ ∀ m r
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  → CET.CardEvalInput
   → ChartOptions.Model
   → CET.CardEvalT m Port.ChartPort
-eval info model = do
+eval requestNewIdTokenBus info model = do
   resource ←
     info.input
       ^? Lens._Just ∘ Port._Resource
       # maybe (EC.throwError "Expected Resource input") pure
 
   numRecords ←
-    QQ.count resource
+    QQ.count requestNewIdTokenBus resource
       # lift
       >>= either (EC.throwError ∘ Exn.message) pure
 
@@ -63,7 +67,7 @@ eval info model = do
       ⊕ "Please consider using a 'limit' or 'group by' clause in the query to reduce the result size."
 
   recordSample ←
-    QQ.sample resource 0 20
+    QQ.sample requestNewIdTokenBus resource 0 20
       # lift
       >>= either (const $ EC.throwError "Error getting input resource") pure
 

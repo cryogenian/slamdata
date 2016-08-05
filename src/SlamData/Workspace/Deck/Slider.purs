@@ -23,6 +23,9 @@ module SlamData.Workspace.Deck.Slider
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Bus (Bus, Cap)
+
 import Data.Array ((..))
 import Data.Array as Array
 import Data.Int as Int
@@ -43,6 +46,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Config as Config
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Render.CSS as ClassNames
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId (CardId)
@@ -64,8 +68,8 @@ import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 
 import Utils.CSS as CSSUtils
 
-render ∷ DeckOptions → DeckComponent → State → Boolean → DeckHTML
-render opts deckComponent st visible =
+render ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DeckComponent → State → Boolean → DeckHTML
+render requestNewIdTokenBus opts deckComponent st visible =
   HH.div
     ([ HP.key "deck-cards"
      , HP.classes [ ClassNames.cardSlider ]
@@ -75,7 +79,7 @@ render opts deckComponent st visible =
          cardSliderTransitionCSS st.sliderTransition
      ]
      ⊕ (guard (not visible) $> (HP.class_ ClassNames.invisible)))
-    $ map (Tuple.uncurry $ renderCard opts deckComponent st)
+    $ map (Tuple.uncurry $ renderCard requestNewIdTokenBus opts deckComponent st)
     $ Array.zip st.displayCards (0 .. Array.length st.displayCards)
 
 startSliding ∷ Event MouseEvent → GripperDef → DeckDSL Unit
@@ -227,8 +231,8 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard ∷ DeckOptions → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
-renderCard opts deckComponent st (deckId × card) index =
+renderCard ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
+renderCard requestNewIdTokenBus opts deckComponent st (deckId × card) index =
   HH.div
     [ HP.key key
     , HP.classes classes
@@ -270,6 +274,6 @@ renderCard opts deckComponent st (deckId × card) index =
     }
 
   cardComponent =
-    { component: Factory.cardComponent card cardOpts
+    { component: Factory.cardComponent requestNewIdTokenBus card cardOpts
     , initialState: H.parentState CardC.initialCardState
     }
