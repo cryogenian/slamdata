@@ -29,6 +29,8 @@ import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Aff.Promise (Promise)
 import Control.Monad.Aff.Promise as Promise
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Ref (Ref, REF)
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
@@ -98,7 +100,7 @@ reauthenticate stateAvar replyAvar =
   putState = AVar.putVar stateAvar
 
   reply ∷ Promise EIdToken → Aff (ReauthEffects eff) Unit
-  reply = AVar.putVar replyAvar <=< Promise.wait
+  reply = void ∘ Aff.forkAff ∘ AVar.putVar replyAvar <=< Promise.wait
 
   openReauthenticationPopup ∷ Aff (ReauthEffects eff) Unit
   openReauthenticationPopup =
