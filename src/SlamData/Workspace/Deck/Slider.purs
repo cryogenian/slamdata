@@ -179,19 +179,14 @@ cardPositionCSS index = do
 
 cardSliderTransformCSS ∷ Int → Number → CSS
 cardSliderTransformCSS activeCardIndex translateX =
-  CSSUtils.transform
-    $ CSSUtils.translate3d (cardSliderTranslateX activeCardIndex translateX) "0" "0"
+  CSSUtils.transform $ spy
+    $ CSSUtils.translate3d ((show (-100 * activeCardIndex)) ⊕ "%") "0" "0"
+    ⊕ CSSUtils.translate3d ((show (-cardSpacingPx * Int.toNumber activeCardIndex)) ⊕ "px") "0" "0"
+    ⊕ CSSUtils.translate3d ((show translateX) ⊕ "px") "0" "0"
 
 cardSliderTransitionCSS ∷ Boolean → CSS
 cardSliderTransitionCSS false = CSSUtils.transition "none"
 cardSliderTransitionCSS true = CSSUtils.transition "all 0.125s"
-
-cardSliderTranslateX ∷ Int → Number → String
-cardSliderTranslateX activeCardIndex translateX =
-  CSSUtils.calc
-    $ "(-100% - " ⊕ show cardSpacingPx ⊕ "px)"
-    ⊕ " * " ⊕ show activeCardIndex
-    ⊕ " + " ⊕ show translateX ⊕ "px"
 
 dropEffect ∷ Boolean → String
 dropEffect true = "execute"

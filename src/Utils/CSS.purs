@@ -33,6 +33,9 @@ width = key (fromString "width")
 left :: String -> CSS
 left = key (fromString "left")
 
+marginLeft :: String -> CSS
+marginLeft = key (fromString "margin-left")
+
 transform :: String -> CSS
 transform = key (fromString "transform")
 
