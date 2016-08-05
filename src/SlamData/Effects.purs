@@ -25,7 +25,7 @@ import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Timer (TIMER)
 import Control.UI.File (READ_FILE)
 import Data.JSDate (LOCALE)
-import ECharts.Effects (ECHARTS)
+import ECharts.Types (ECHARTS)
 import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
 import ZClipboard (ZCLIPBOARD)
@@ -35,15 +35,15 @@ type Slam = Aff SlamDataEffects
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
 
 type SlamDataRawEffects =
-  ( ajax :: AJAX
-  , random :: RANDOM
-  , ace :: ACE
-  , console :: CONSOLE
-  , echarts :: ECHARTS
-  , file :: READ_FILE
-  , now :: NOW
-  , ref :: REF
-  , timer :: TIMER
-  , zClipboard :: ZCLIPBOARD
-  , locale :: LOCALE
+  ( ajax ∷ AJAX
+  , random ∷ RANDOM
+  , ace ∷ ACE
+  , console ∷ CONSOLE
+  , echarts ∷ ECHARTS
+  , file ∷ READ_FILE
+  , now ∷ NOW
+  , ref ∷ REF
+  , timer ∷ TIMER
+  , zClipboard ∷ ZCLIPBOARD
+  , locale ∷ LOCALE
   )

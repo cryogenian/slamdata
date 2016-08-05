@@ -21,13 +21,19 @@ import SlamData.Prelude
 import Control.Monad.Eff.Exception (Error)
 
 import Data.Argonaut (JArray)
+import Data.Array as A
+import Data.Foreign (Foreign, ForeignError(TypeMismatch), readInt, readString)
+import Data.Foreign.Class (readProp)
 import Data.Int (toNumber, floor)
 import Data.Lens ((.~), (?~))
+import Data.String as Str
 
 import CSS.Geometry as CG
 import CSS.Size (px)
 
-import ECharts as EC
+import ECharts.Monad (buildObj)
+
+import Global (readFloat, isNaN)
 
 import Halogen as H
 import Halogen.ECharts as HEC
@@ -128,16 +134,16 @@ eval = case _ of
         -- Basically something equivalent to the old `needsToUpdate`. -gb
         records ←
           either (const []) id
-            <$> H.fromAff (Quasar.all options.resource :: Slam (Either Error JArray))
-        let option = BO.buildOptions opts config records
-        H.query unit $ H.action $ HEC.Set option
+            <$> H.fromAff (Quasar.all options.resource ∷ Slam (Either Error JArray))
+        let optionDSL = BO.buildOptions opts config records
+        H.query unit $ H.action $ HEC.Reset optionDSL
         H.query unit $ H.action HEC.Resize
-        setLevelOfDetails option
+        setLevelOfDetails $ buildObj optionDSL
         H.modify (_chartType ?~ opts.chartType)
-        pure next
       _ → do
         H.query unit $ H.action HEC.Clear
-        pure next
+        pure unit
+    pure next
   CC.Activate next →
     pure next
   CC.Save k →
@@ -165,22 +171,27 @@ eval = case _ of
   CC.ZoomIn next →
     pure next
 
-setLevelOfDetails ∷ EC.Option → ChartDSL Unit
-setLevelOfDetails (EC.Option r) = do
+setLevelOfDetails ∷ Foreign → ChartDSL Unit
+setLevelOfDetails fOption = do
   state ← H.get
   let
-    runGrid (EC.Grid r) = r
-    runPercentOrPixel total (EC.Percent pct) = total * pct / 100.0
-    runPercentOrPixel _ (EC.Pixel pxs) = pxs
-    yOffset =
-      floor
-        $ fromMaybe zero
-        $ r.grid
-        >>= runGrid
-        ⋙ _.y2
-        <#> runPercentOrPixel (toNumber state.width)
-  H.modify
+    eBottom = do
+      grids ← readProp "grid" fOption
+      grid ← maybe (Left $ TypeMismatch "Array of grids" "Empty array") Right $ A.head grids
+      readProp "bottom" grid
+
+    eBottomPx = either (const Nothing) Just $ readInt =<< eBottom
+
+    eBottomPct = do
+      pctStr ← either (const Nothing) Just $ readString =<< eBottom
+      str ← Str.stripSuffix "%" pctStr
+      let num = readFloat str
+      guard (not $ isNaN num)
+      pure $ floor $ num / 100.0 * toNumber state.height
+
+  for_ (eBottomPx <|> eBottomPct <|> pure zero) \bottomPx →
+    H.modify
     $ _levelOfDetails
-    .~ if (state.height - yOffset) < 200 ∨ state.width < 300
+    .~ if (state.height - bottomPx) < 200 ∨ state.width < 300
          then Low
          else High

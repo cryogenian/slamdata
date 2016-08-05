@@ -25,12 +25,12 @@ module SlamData.Workspace.Card.Chart.BuildOptions
 
 import SlamData.Prelude
 
-import Data.Argonaut (JArray, JCursor, Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
-import Data.Map as M
+import Data.Argonaut (JArray, Json, (.?), decodeJson, jsonEmptyObject, (~>), (:=))
 
-import ECharts (Option)
+import ECharts.Monad (DSL)
+import ECharts.Types.Phantom (OptionI)
 
-import SlamData.Workspace.Card.Chart.Axis (analyzeJArray, Axis)
+import SlamData.Workspace.Card.Chart.Axis (analyzeJArray)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
 import SlamData.Workspace.Card.Chart.BuildOptions.Bar (buildBar)
 import SlamData.Workspace.Card.Chart.BuildOptions.Line (buildLine)
@@ -47,10 +47,10 @@ type BuildOptions =
   { chartType ∷ ChartType
   , axisLabelAngle ∷ Int
   , axisLabelFontSize ∷ Int
-  , areaStacked :: Boolean
-  , smooth :: Boolean
-  , bubbleMinSize :: Number
-  , bubbleMaxSize :: Number
+  , areaStacked ∷ Boolean
+  , smooth ∷ Boolean
+  , bubbleMinSize ∷ Number
+  , bubbleMaxSize ∷ Number
   }
 
 eqBuildOptions ∷ BuildOptions → BuildOptions → Boolean
@@ -102,39 +102,13 @@ buildOptions
   ∷ BuildOptions
   → ChartConfiguration
   → JArray
-  → Option
+  → DSL OptionI
 buildOptions args conf records =
-  buildOptions_
-    args.chartType
-    (analyzeJArray records)
-    args.axisLabelAngle
-    args.axisLabelFontSize
-    args.areaStacked
-    args.smooth
-    args.bubbleMinSize
-    args.bubbleMaxSize
-    conf
-
-buildOptions_
-  ∷ ChartType
-  → M.Map JCursor Axis
-  → Int
-  → Int
-  → Boolean
-  → Boolean
-  → Number
-  → Number
-  → ChartConfiguration
-  → Option
-buildOptions_ Pie mp _ _ _ _ _ _ conf =
-  buildPie mp conf
-buildOptions_ Bar mp angle size _ _ _ _ conf =
-  buildBar mp angle size conf
-buildOptions_ Line mp angle size _ _ _ _ conf =
-  buildLine mp angle size conf
-buildOptions_ Area mp angle size stacked smooth _ _ conf =
-  buildArea mp angle size stacked smooth conf
-buildOptions_ Scatter mp _ _ _ _ bubbleMinSize bubbleMaxSize conf =
-  buildScatter mp bubbleMinSize bubbleMaxSize conf
-buildOptions_ Radar mp _ _ _ _ _ _ conf = 
-  buildRadar mp conf
+  let
+    mp = analyzeJArray records
+  in case args.chartType of
+    Pie → buildPie mp conf
+    Bar → buildBar mp args.axisLabelAngle args.axisLabelFontSize conf
+    Line → buildLine mp args.axisLabelAngle args.axisLabelFontSize conf
+    Area → buildArea mp args.axisLabelAngle args.axisLabelFontSize args.areaStacked args.smooth conf
+    Scatter → buildScatter mp args.bubbleMinSize args.bubbleMaxSize conf
