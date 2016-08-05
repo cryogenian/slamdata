@@ -141,10 +141,7 @@ radarData axises = Tuple (A.fromFoldable distinctDims) $
     case c, d of
       Just c', Just d' →
         Just $ Tuple
-                ( case a of
-                    Just a' → a'
-                    _ → ""
-                )
+                (fromMaybe "" a)
                 (Tuple (keyName (Tuple "" b)) (Tuple c' d'))
       _, _ → Nothing
  
@@ -170,7 +167,7 @@ radarData axises = Tuple (A.fromFoldable distinctDims) $
     where
     combine ∷ List (Tuple String Number) → Maybe (Tuple String Number)
     combine x = do
-      d ← (L.head $ map fst x)
+      d ← L.head $ map fst x
       pure $ Tuple d (applyAggregation $ map snd x)
  
   applyAggregation ∷ List Number → Number
@@ -181,12 +178,12 @@ radarData axises = Tuple (A.fromFoldable distinctDims) $
   checkDimAndTransform
     ∷ Tuple String (List (Tuple String Number))
     → Maybe (Tuple String (Array Number))
-  checkDimAndTransform a = case (L.length $ snd a) == L.length distinctDims of
-    true → Just $
-      Tuple
+  checkDimAndTransform a = 
+    if (L.length $ snd a) == L.length distinctDims
+      then Just $ Tuple
         (fst a)
         (A.fromFoldable $ map snd $ snd a)
-    _ → Nothing
+      else Nothing
 
 
 buildRadar
