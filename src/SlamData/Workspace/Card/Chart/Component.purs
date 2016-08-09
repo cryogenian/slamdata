@@ -122,6 +122,7 @@ renderButton ct =
   src Line = "img/line-black.svg"
   src Area = "img/area-black.svg"
   src Scatter = "img/scatter-black.svg"
+  src Radar = "img/radar-black.svg"
 
 eval ∷ CC.CardEvalQuery ~> ChartDSL
 eval = case _ of

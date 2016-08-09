@@ -37,6 +37,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Line (buildLine)
 import SlamData.Workspace.Card.Chart.BuildOptions.Pie (buildPie)
 import SlamData.Workspace.Card.Chart.BuildOptions.Area (buildArea)
 import SlamData.Workspace.Card.Chart.BuildOptions.Scatter (buildScatter)
+import SlamData.Workspace.Card.Chart.BuildOptions.Radar (buildRadar)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 import Test.StrongCheck.Arbitrary as SC
@@ -111,3 +112,4 @@ buildOptions args conf records =
     Line → buildLine mp args.axisLabelAngle args.axisLabelFontSize conf
     Area → buildArea mp args.axisLabelAngle args.axisLabelFontSize args.areaStacked args.smooth conf
     Scatter → buildScatter mp args.bubbleMinSize args.bubbleMaxSize conf
+    Radar → buildRadar mp conf
