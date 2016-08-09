@@ -78,7 +78,10 @@ scheme s = if isLeft s then MongoDB else SQL2
 -- | Checks whether the state is saveable: no validation errors, and has a name
 -- | entered/type selected.
 canSave :: State -> Boolean
-canSave st = isNothing st.message && isJust st.settings && st.name /= ""
+canSave st
+  = isNothing st.message
+  && isJust st.settings
+  && (not st.new || st.name /= "")
 
 validate :: State -> Maybe String
 validate { new, name, settings } = either Just (const Nothing) $ runExcept do
