@@ -29,20 +29,24 @@ import Data.Map (Map)
 import Data.Int (toNumber)
 import Math ((%))
 
-import ECharts as EC
+import ECharts.Monad (DSL)
+import ECharts.Commands as E
+import ECharts.Types as ET
+import ECharts.Types.Phantom (OptionI)
+import ECharts.Types.Phantom as ETP
 
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation(..), runAggregation)
 import SlamData.Workspace.Card.Chart.Axis as Ax
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration)
-import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxises, colors, buildChartAxises, keyName)
+import SlamData.Workspace.Card.Chart.BuildOptions.Common (SeriesKey, ChartAxes, colors, buildChartAxes, keyName)
 
 --sample data:
 -- Tuple ['dimA', 'dimB']
 --       [ (Tuple '' [(Tuple 'series1' [1, 5]), (Tuple 'series2' [1, 5])]) ]
 type RadarData = Tuple (Array String) (Array (Tuple String (Array (Tuple String (Array Number)))))
 
-radarData ∷ ChartAxises → RadarData
-radarData axises = Tuple (A.fromFoldable distinctDims) $
+buildRadarData ∷ ChartAxes → RadarData
+buildRadarData axes = Tuple (A.fromFoldable distinctDims) $
   A.fromFoldable
     $ map (map (A.fromFoldable
       <<< L.catMaybes
@@ -94,19 +98,19 @@ radarData axises = Tuple (A.fromFoldable distinctDims) $
  
   where
   dimensions ∷ List (Maybe String)
-  dimensions = fromMaybe Nil $ axises.dimensions !! 0
+  dimensions = fromMaybe Nil $ axes.dimensions !! 0
 
   values ∷ List (Maybe Number)
-  values = fromMaybe Nil $ axises.measures !! 0
+  values = fromMaybe Nil $ axes.measures !! 0
 
   series ∷ List (Maybe String)
-  series = fromMaybe Nil $ axises.series !! 0
+  series = fromMaybe Nil $ axes.series !! 0
 
   duplications ∷ List (Maybe String)
-  duplications = fromMaybe Nil $ axises.series !! 1
+  duplications = fromMaybe Nil $ axes.series !! 1
 
   agg ∷ Maybe Aggregation
-  agg = fromMaybe (Just Sum) $ join (axises.aggregations !! 0)
+  agg = fromMaybe (Just Sum) $ join (axes.aggregations !! 0)
 
   distinctDims ∷ List String
   distinctDims = L.sort $ L.catMaybes $ L.nub dimensions
@@ -185,41 +189,38 @@ radarData axises = Tuple (A.fromFoldable distinctDims) $
         (A.fromFoldable $ map snd $ snd a)
       else Nothing
 
-
 buildRadar
   ∷ Map JCursor Ax.Axis
   → ChartConfiguration
-  → EC.Option
-buildRadar axises conf =
-    EC.Option EC.optionDefault
-      { series = Just $ map Just series
-      , polar = Just polars
-      , tooltip = Just tooltip
-      , legend = Just $ legends
-      , color = Just colors
-      }
-  where
- 
-  legends ∷ EC.Legend
-  legends =
-    EC.Legend EC.legendDefault
-      { "data" = Just $ map EC.legendItemDefault serieNames
-      , x = Just EC.XLeft
-      , y = Just EC.YTop
-      , orient = Just EC.Vertical
-      , textStyle = Just $ EC.TextStyle EC.textStyleDefault
-          { fontFamily = Just "Ubuntu" }
-      }
+  → DSL OptionI
+buildRadar axes conf = do
+  E.tooltip do
+    E.triggerItem
+    E.textStyle do
+      E.fontFamily "Ubuntu sans"
+      E.fontSize 12
 
-  tooltip ∷ EC.Tooltip
-  tooltip = EC.Tooltip $ EC.tooltipDefault
-    { trigger = Just EC.TriggerAxis
-    , textStyle = Just $ EC.TextStyle EC.textStyleDefault
-        { fontFamily = Just "Ubuntu"
-        , fontSize = Just 12.0
-        }
-    }
- 
+  E.legend do
+    E.items $ map ET.strItem serieNames
+    E.orient ET.Vertical
+    E.leftPosition $ ET.LeftHP
+    E.topTop
+    E.textStyle do
+      E.fontFamily "Ubuntu sans"
+
+  E.colors colors
+
+  E.radars
+    $ traverse_ E.radar radars
+
+  E.titles
+    $ traverse_ E.title titles
+
+  E.series
+    $ traverse_ (E.radarSeries ∘ serie)
+    $ A.zip (A.range 0 (A.length $ snd radarData)) (snd radarData)
+
+  where
   serieNames ∷ Array String
   serieNames =
     A.nub
@@ -227,17 +228,20 @@ buildRadar axises conf =
       $ A.concat
       $ map (map fst)
       $ map snd
-      $ snd extracted
+      $ snd radarData
 
-  polars ∷ Array EC.Polar
-  polars =
-    let
-      numPolar = A.length $ snd extracted
-    in
-      map (mkPolar numPolar) (A.range 0 $ numPolar - 1)
+  dupNames ∷ Array String
+  dupNames = map fst $ snd radarData
+
+  numDup ∷ Int
+  numDup = A.length dupNames
+
+  titles ∷ Array (DSL ETP.TitleI)
+  titles =
+    map (mkTitle numDup) (A.range 0 $ numDup - 1)
     where
-    mkPolar ∷ Int → Int → EC.Polar
-    mkPolar n i =
+    mkTitle ∷ Int → Int → DSL ETP.TitleI
+    mkTitle n i = do
       let
         -- max number of plot in one row: 4
         maxCol = 4
@@ -245,36 +249,66 @@ buildRadar axises conf =
         nCol = if n <= maxCol then n else maxCol
         row = toNumber (i / nCol)
         col = (toNumber i) % (toNumber nCol)
-      in
-        EC.Polar EC.polarDefault
-          { indicator = Just $ mkIndicatorSet i
-          , center = Just $ Tuple
-                            ( EC.Percent (100.0 * (2.0 * col + 1.0) / (toNumber (nCol * 2))) )
-                            ( EC.Percent (100.0 * (2.0 * row + 1.0) / (toNumber (nRow * 2))) )
-          , radius = Just $ EC.Percent (75.0 / (if nRow > nCol then toNumber nRow else toNumber nCol))
-          } 
+      E.text $ fromMaybe "" $ dupNames !! i
+      E.textStyle do
+        E.fontFamily "Ubuntu sans"
+        E.fontSize 12
+      E.left
+        $ ET.Percent
+        $ 100.0 * (2.0 * col + 1.0) / (toNumber (nCol * 2))
+          -- adjust the position to the center
+          - 0.3
+      E.top
+        $ ET.Percent
+        $ 100.0 * (2.0 * row + 1.0) / (toNumber (nRow * 2))
+          - (75.0 / (if nRow > nCol then toNumber nRow else toNumber nCol))
+      E.textCenter
+      E.textBottom
 
-  mkIndicatorSet ∷ Int → Array EC.Indicator
+  radars ∷ Array (DSL ETP.RadarI)
+  radars =
+    map (mkPolar numDup) (A.range 0 $ numDup - 1)
+    where
+    mkPolar ∷ Int → Int → DSL ETP.RadarI
+    mkPolar n i = do
+      let
+        -- max number of plot in one row: 4
+        maxCol = 4
+        nRow = (n / maxCol + 1)
+        nCol = if n <= maxCol then n else maxCol
+        row = toNumber (i / nCol)
+        col = (toNumber i) % (toNumber nCol)
+      E.indicators
+        $ traverse_ E.indicator $ mkIndicatorSet i
+      E.nameGap 10.0
+      E.center $ ET.Point
+        { x: ET.Percent $ 100.0 * (2.0 * col + 1.0) / (toNumber (nCol * 2))
+        , y: ET.Percent $ 100.0 * (2.0 * row + 1.0) / (toNumber (nRow * 2))
+        }
+      E.singleValueRadius
+        $ ET.SingleValueRadius
+        $ ET.Percent
+        $ 75.0 / (if nRow > nCol then toNumber nRow else toNumber nCol)
+
+  mkIndicatorSet ∷ Int → Array (DSL ETP.IndicatorI)
   mkIndicatorSet i =
     let
-      dupName = fromMaybe "" $ (map fst $ snd extracted) !! i
+      dupName = fromMaybe "" $ (map fst $ snd radarData) !! i
     in
-      map (mkIndicator dupName) (fst extracted)
+      map mkIndicator (fst radarData)
 
-  mkIndicator ∷ String → String → EC.Indicator
-  mkIndicator dupName dim =
-    EC.Indicator EC.indicatorDefault
-      { text = Just $ dupName <> (if dupName == "" then "" else ": ") <> dim
-      , min = minVal
-      , max = maxVal
-      }
+  mkIndicator ∷ String → DSL ETP.IndicatorI
+  mkIndicator dim = do
+    E.name $ dim
+    when (isJust minVal) $ E.min $ fromMaybe zero minVal
+    when (isJust maxVal) $ E.max $ fromMaybe zero maxVal
 
   allValues ∷ Array Number
   allValues = A.concat
     $ map snd
     $ A.concat
     $ map snd
-    $ snd extracted
+    $ snd radarData
 
   minVal ∷ Maybe Number
   minVal = minimum allValues
@@ -282,64 +316,30 @@ buildRadar axises conf =
   maxVal ∷ Maybe Number
   maxVal = maximum allValues
 
-  series ∷ Array EC.Series
-  series = mkSeries extracted
+  radarData ∷ RadarData
+  radarData = buildRadarData $ buildChartAxes axes conf
 
-  extracted ∷ RadarData
-  extracted = radarData $ buildChartAxises axises conf
+serie
+  ∷ Tuple Int (Tuple String (Array (Tuple String (Array Number))))
+  → DSL ETP.RadarSeriesI
+serie (ind × (dup × a)) = do
+  when (dup ≠ "") $ E.name dup
+  E.radarIndex $ toNumber ind
+  E.symbol ET.Circle
+  if A.null a
+    then E.buildItems $ E.addItem blankData
+    else E.buildItems $ for_ a \x →
+      E.addItem $ makeData x
 
-mkSeries
-  ∷ RadarData
-  → (Array EC.Series)
-mkSeries rData =
-  map serie (A.zip (A.range 0 ((A.length $ snd rData) - 1)) (snd rData))
-  where
-  serie
-    ∷ Tuple Int (Tuple String (Array (Tuple String (Array Number))))
-    → EC.Series
-  serie (Tuple ind (Tuple dup a)) =
-    EC.RadarSeries
-      { common: EC.universalSeriesDefault
-        { name = guard (dup /= "") $> dup
-        , tooltip = if A.null a
-                    then Just $ EC.Tooltip $ EC.tooltipDefault
-                      -- To overwrite the top tooltip display config.
-                      -- Other configurations here cannot overwrite the top one,
-                      -- maybe due to some echarts' bugs
-                      { trigger = Just EC.TriggerItem
-                      , formatter = Just $ EC.Template " "
-                      , show = Just false }
-                    else Nothing
-        }
-      , radarSeries: EC.radarSeriesDefault
-        { polarIndex = Just $ toNumber ind
-        , "data" = Just if A.null a
-                   then [blankData]
-                   else map makeData a
-        , symbol = Just if A.null a
-                   then EC.NoSymbol
-                   else EC.Circle
-        }
-      }
- 
-  makeData
-    ∷ Tuple String (Array Number)
-    → EC.ItemData
-  makeData (Tuple name values) = EC.Dat
-    { name: Just name
-    , value: EC.Many values
-    , tooltip: Nothing
-    , itemStyle: Nothing
-    , selected: Nothing
-    }
+makeData
+  ∷ Tuple String (Array Number)
+  → DSL ETP.ItemI
+makeData (name × values) = do
+    E.name name
+    E.values values
 
-  blankData ∷ EC.ItemData
-  blankData = EC.Dat
-    { name: Nothing
-      -- set a value to avoid display issue
-    , value: EC.Many [0.0]
-    , tooltip: Just $ EC.Tooltip $ EC.tooltipDefault
-      { show = Just false }
-    , itemStyle: Nothing
-    , selected: Nothing
-    }
+blankData ∷ DSL ETP.ItemI
+blankData = do
+  -- set a value to avoid display issue
+  E.values [0.0]
+  E.symbol ET.None

@@ -112,3 +112,4 @@ buildOptions args conf records =
     Line → buildLine mp args.axisLabelAngle args.axisLabelFontSize conf
     Area → buildArea mp args.axisLabelAngle args.axisLabelFontSize args.areaStacked args.smooth conf
     Scatter → buildScatter mp args.bubbleMinSize args.bubbleMaxSize conf
+    Radar → buildRadar mp conf
