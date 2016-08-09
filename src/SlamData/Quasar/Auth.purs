@@ -20,9 +20,10 @@ module SlamData.Quasar.Auth
   , module OIDC
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable, fromEff, fromAff)
@@ -43,6 +44,8 @@ import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 
 import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader)
 
+import Utils (passover)
+
 authed
   ∷ ∀ a r eff m
   . (Bind m, Affable (AuthRetrieve.RetrieveIdTokenEffRow eff) m)
@@ -50,7 +53,8 @@ authed
   → (M.Maybe OIDCT.IdToken → Array P.TokenHash → m a)
   → m a
 authed requestNewIdTokenBus f = do
-  idToken ← fromAff $ AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+  fromEff $ Control.Monad.Eff.Console.log "authed start"
+  idToken ← fromAff $ passover (\x -> (traceA "authed:") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus
   perms ← fromEff P.retrieveTokenHashes
   f idToken perms
 
@@ -59,6 +63,7 @@ authHeaders
   . (Bus (write ∷ Cap | r) (AVar EIdToken))
   → Aff (AuthRetrieve.RetrieveIdTokenEffRow eff) (Array RequestHeader)
 authHeaders requestNewIdTokenBus = do
-  idToken ← AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+  fromEff $ Control.Monad.Eff.Console.log "authHeaders start"
+  idToken ← passover (\x -> (traceA "authHeaders") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus
   hashes ← liftEff P.retrieveTokenHashes
   pure $ A.catMaybes [ map authHeader idToken, permissionsHeader hashes ]

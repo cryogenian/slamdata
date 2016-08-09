@@ -124,7 +124,8 @@ comp requestNewIdTokenBus signInBus =
 
   update ∷ SignInDSL Unit
   update = do
-    mbIdToken ← H.fromAff $ AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+    H.fromEff $ Control.Monad.Eff.Console.log "signIn start"
+    mbIdToken ← H.fromAff $ Utils.passover (\x -> (traceA "signIn") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus
     traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
     maybe
       retrieveProvidersAndUpdateMenu

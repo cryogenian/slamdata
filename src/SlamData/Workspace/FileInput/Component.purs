@@ -30,6 +30,7 @@ import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Random (RANDOM)
+import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Free.Trans as FT
 
@@ -87,6 +88,7 @@ type Effects e =
     ( rsaSignTime ∷ OIDC.RSASIGNTIME
     , avar :: AVar.AVAR
     , random :: RANDOM
+    , console :: CONSOLE
     , now :: Date.Now
     , ref :: Ref.REF
     , ajax :: AJAX

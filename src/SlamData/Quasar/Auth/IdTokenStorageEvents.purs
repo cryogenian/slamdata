@@ -31,6 +31,6 @@ getIdTokenStorageEvents
 getIdTokenStorageEvents =
   StallingCoroutine.filter isIdTokenKeyEvent
     ∘ StallingCoroutine.producerToStallingProducer
-    <$> LocalStorage.getStorageEventProducer true
+    <$> LocalStorage.getStorageEventProducer false
   where
   isIdTokenKeyEvent o = o.key == AuthKeys.idTokenLocalStorageKey

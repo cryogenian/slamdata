@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-
 module SlamData.FileSystem (main) where
 
 import SlamData.Prelude
@@ -25,9 +24,11 @@ import Control.Monad.Aff (Aff, Canceler, cancel, forkAff)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
+import Control.Monad.Aff.Promise (Promise)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error, message, Error)
+import Control.Monad.Eff.Ref as Ref
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (filter, mapMaybe)
@@ -77,8 +78,13 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
     forkAff Analytics.enableAnalytics
+    traceA "1"
     signInBus ← Bus.make
-    requestNewIdTokenBus ← Reauthentication.reauthentication
+    traceA "2"
+    stateRef ← liftEff $ Ref.newRef (Nothing ∷ Maybe (Promise EIdToken))
+    requestNewIdTokenBus ← Bus.make
+    Reauthentication.reauthentication stateRef requestNewIdTokenBus
+    traceA "3"
     driver ← runUI (comp requestNewIdTokenBus signInBus) (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion

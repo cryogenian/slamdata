@@ -70,7 +70,7 @@ notifyTimeout :: Int
 notifyTimeout = 500
 
 reauthenticationTimeout :: Int
-reauthenticationTimeout = 15000
+reauthenticationTimeout = 5000
 
 resizeEChartsTimeout :: Int
 resizeEChartsTimeout = 0

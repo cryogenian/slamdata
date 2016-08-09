@@ -23,8 +23,10 @@ import Control.Coroutine.Aff (produce)
 import Control.Monad.Aff (Aff, forkAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Ref as Ref
 import Control.UI.Browser as Browser
 import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.Promise (Promise)
 
 import Ace.Config as AceConfig
 
@@ -43,6 +45,7 @@ import SlamData.Analytics as Analytics
 import SlamData.Config as Config
 import SlamData.Effects (SlamDataRawEffects, SlamDataEffects)
 import SlamData.Quasar.Auth.Reauthentication as Reauthentication
+import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action (Action(..), toAccessType)
 import SlamData.Workspace.Component as Workspace
@@ -64,7 +67,9 @@ main = do
     let st = Workspace.initialState (Just "3.0")
     wiring ← makeWiring
     signInBus ← Bus.make
-    requestNewIdTokenBus ← Reauthentication.reauthentication
+    stateRef ← liftEff $ Ref.newRef (Nothing ∷ Maybe (Promise EIdToken))
+    requestNewIdTokenBus ← Bus.make
+    Reauthentication.reauthentication stateRef requestNewIdTokenBus
     forkAff (Analytics.consumeEvents wiring.analytics)
     driver ← runUI (Workspace.comp requestNewIdTokenBus wiring signInBus) (parentState st) =<< awaitBody
     forkAff (routeSignal driver)

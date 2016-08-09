@@ -32,6 +32,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (Ref, REF)
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Rec.Class (forever)
@@ -46,7 +47,7 @@ import SlamData.Config as Config
 import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
 import SlamData.Quasar.Auth.Keys as AuthKeys
 import Text.Parsing.StringParser (ParseError(..))
-import Utils (passover)
+import Utils (passoverM)
 import Utils.DOM as DOMUtils
 import Utils.LocalStorage as LocalStorage
 
@@ -58,6 +59,7 @@ type EIdToken = Either String IdToken
 type ReauthEffects eff =
   ( rsaSignTime :: RSASIGNTIME
   , avar :: AVAR
+  , ref :: REF
   , dom :: DOM
   , random :: RANDOM
   | eff)
@@ -84,23 +86,29 @@ fromStallingProducer producer = do
   AVar.takeVar var
 
 -- | Write an AVar to the returned bus to get a new OIDC id token from the given provider
-reauthentication ∷ ∀ eff. Aff (ReauthEffects eff) (BusRW (AVar EIdToken))
-reauthentication =
-  (\state → passover (forever ∘ reauthenticate state <=< Bus.read) =<< Bus.make)
-    =<< AVar.makeVar' (Nothing ∷ Maybe (Promise EIdToken))
+reauthentication ∷ ∀ eff. _ → _ → Aff (ReauthEffects eff) Unit
+reauthentication stateRef requestBus =
+  void $ Aff.forkAff $ forever (Aff.forkAff ∘ reauthenticate stateRef =<< Bus.read requestBus)
 
-reauthenticate ∷ ∀ eff. AVar (Maybe (Promise EIdToken)) → AVar EIdToken → Aff (ReauthEffects eff) Unit
-reauthenticate stateAvar replyAvar =
-  maybe
-    (const (putState Nothing) =<< reply =<< passover (putState ∘ Just) =<< requestNewIdToken)
-    reply
-    =<< AVar.takeVar stateAvar
+reauthenticate ∷ ∀ eff. Ref (Maybe (Promise EIdToken)) → AVar EIdToken → Aff (ReauthEffects eff) Unit
+reauthenticate stateRef replyAvar = do
+  state ← liftEff $ Ref.readRef stateRef
+  case state of
+    Nothing → do
+      traceA "re no"
+      idTokenPromise ← requestNewIdToken
+      putState $ Just idTokenPromise
+      reply idTokenPromise
+      --putState Nothing
+    Just idTokenPromise → do
+      traceA "re ju"
+      reply idTokenPromise
   where
   putState ∷ Maybe (Promise EIdToken) → Aff (ReauthEffects eff) Unit
-  putState = AVar.putVar stateAvar
+  putState = liftEff ∘ Ref.writeRef stateRef
 
   reply ∷ Promise EIdToken → Aff (ReauthEffects eff) Unit
-  reply = void ∘ Aff.forkAff ∘ AVar.putVar replyAvar <=< Promise.wait
+  reply = void ∘ AVar.putVar replyAvar <=< Promise.wait
 
   openReauthenticationPopup ∷ Aff (ReauthEffects eff) Unit
   openReauthenticationPopup =
@@ -110,14 +118,15 @@ reauthenticate stateAvar replyAvar =
       =<< requestReauthenticationURI
 
   requestNewIdToken ∷ Aff (ReauthEffects eff) (Promise EIdToken)
-  requestNewIdToken =
-    openReauthenticationPopup *> Promise.defer retrieveIdTokenFromLSOnChange
+  requestNewIdToken = Promise.defer do
+    openReauthenticationPopup
+    retrieveIdTokenFromLSOnChange
 
   retrieveIdTokenFromLSOnChange ∷ Aff (ReauthEffects eff) EIdToken
   retrieveIdTokenFromLSOnChange =
     race
       (const retrieveIdTokenFromLS =<< fromStallingProducer =<< liftEff getIdTokenStorageEvents)
-      (Aff.later' Config.reauthenticationTimeout $ pure $ Left "No token recieved before timeout.")
+      (Aff.later' Config.reauthenticationTimeout $ pure $ Left "No token received before timeout.")
 
   retrieveIdTokenFromLS ∷ Aff (ReauthEffects eff) (Either String IdToken)
   retrieveIdTokenFromLS =

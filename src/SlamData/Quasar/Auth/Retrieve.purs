@@ -31,6 +31,7 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
@@ -109,19 +110,24 @@ fromStallingProducer producer = do
     (producer $$? (Coroutine.consumer \e → liftAff (AVar.putVar var e) $> Just unit))
   AVar.takeVar var
 
-type RetrieveIdTokenEffRow eff = (rsaSignTime :: OIDC.RSASIGNTIME, avar :: AVAR, dom :: DOM, random :: RANDOM | eff)
+type RetrieveIdTokenEffRow eff = (console :: CONSOLE, rsaSignTime :: OIDC.RSASIGNTIME, avar :: AVAR, dom :: DOM, random :: RANDOM | eff)
 
 retrieveIdToken ∷ ∀ r eff. (Bus (write ∷ Cap | r) (AVar EIdToken)) → Aff (RetrieveIdTokenEffRow eff) (M.Maybe OIDCT.IdToken)
 retrieveIdToken requestNewIdTokenBus =
   fromEither
-    <$> spy
     <$> (runExceptT
            $ (\idToken → (ExceptT $ verify idToken) <|> (ExceptT getNewToken))
            =<< ExceptT retrieveFromLocalStorage)
   where
   getNewToken ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken
-  getNewToken =
-    AVar.takeVar =<< passover (flip Bus.write requestNewIdTokenBus) =<< AVar.makeVar
+  getNewToken = do
+    tokenVar ← AVar.makeVar
+    traceAnyA "getNewToken 1"
+    Bus.write tokenVar requestNewIdTokenBus
+    traceAnyA "getNewToken 2"
+    x ← AVar.takeVar tokenVar
+    traceAnyA "getNewToken 3"
+    pure x
 
   retrieveFromLocalStorage ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken
   retrieveFromLocalStorage =
@@ -131,10 +137,8 @@ retrieveIdToken requestNewIdTokenBus =
   verify idToken = do
     verified ← liftEff $ verifyBoolean idToken
     if verified
-      then do
-        pure $ Right idToken
-      else do
-        pure $ Left "Token invalid"
+      then pure $ Right idToken
+      else pure $ Left "Token invalid."
 
   verifyBoolean ∷ OIDCT.IdToken → Eff (RetrieveIdTokenEffRow eff) Boolean
   verifyBoolean idToken = do
