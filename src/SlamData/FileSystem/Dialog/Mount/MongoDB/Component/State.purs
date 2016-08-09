@@ -43,6 +43,8 @@ import Data.String.Regex as Rx
 import Data.StrMap as SM
 import Data.URI.Host as URI
 
+import Global as Global
+
 import Text.Parsing.StringParser (runParser)
 
 import Quasar.Mount.MongoDB (Config, Host)
@@ -103,10 +105,10 @@ processState s = s
 fromConfig ∷ Config → State
 fromConfig { hosts, path, user, password, props } =
   processState
-    { hosts: bimap URI.printHost show <$> oneOf hosts
+    { hosts: bimap URI.printHost (maybe "" show) <$> oneOf hosts
     , path: ""
-    , user: fromMaybe "" user
-    , password: fromMaybe "" password
+    , user: maybe "" Global.decodeURIComponent user
+    , password: maybe "" Global.decodeURIComponent password
     , props: map (fromMaybe "") <$> A.fromFoldable (SM.toList props)
     }
 
@@ -120,8 +122,8 @@ toConfig { hosts, path, user, password, props } = do
   pure
     { hosts: hosts'
     , path: parsePath' =<< nonEmptyString path
-    , user: nonEmptyString user
-    , password: nonEmptyString password
+    , user: Global.encodeURIComponent <$> nonEmptyString user
+    , password: Global.encodeURIComponent <$> nonEmptyString password
     , props: SM.fromFoldable $ map nonEmptyString <$> A.filter (not isEmptyTuple) props
     }
 
