@@ -153,14 +153,14 @@ buildRadarData axes = Tuple (A.fromFoldable distinctDims) $
     ∷ List (Tuple String (Tuple String (Tuple String Number)))
     → Maybe (Tuple String (List (Tuple String (Tuple String Number))))
   combineDup x = do
-    d ← L.head $ map fst x
+    d ← fst <$> L.head x
     pure $ Tuple d $ map snd x
 
   combineSerie
     ∷ List (Tuple String (Tuple String Number))
     → Maybe (Tuple String (List (Tuple String Number)))
   combineSerie x = do
-    k ← L.head $ map fst x
+    k ← fst <$> L.head x
     pure $ Tuple k $ map snd x
 
   combineDim
@@ -171,13 +171,11 @@ buildRadarData axes = Tuple (A.fromFoldable distinctDims) $
     where
     combine ∷ List (Tuple String Number) → Maybe (Tuple String Number)
     combine x = do
-      d ← L.head $ map fst x
+      d ← fst <$> L.head x
       pure $ Tuple d (applyAggregation $ map snd x)
  
   applyAggregation ∷ List Number → Number
-  applyAggregation a = case agg of
-    Just agg' → runAggregation agg' a
-    _ → runAggregation Sum a
+  applyAggregation = runAggregation (fromMaybe Sum agg)
 
   checkDimAndTransform
     ∷ Tuple String (List (Tuple String Number))
