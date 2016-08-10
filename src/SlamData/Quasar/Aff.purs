@@ -36,7 +36,7 @@ import DOM (DOM)
 
 import Network.HTTP.Affjax as AX
 
-import SlamData.Quasar.Auth.Retrieve (retrieveIdToken)
+import SlamData.Quasar.Auth.Retrieve (retrieveIdToken, fromEither)
 import SlamData.Quasar.Auth.Permission (retrieveTokenHashes)
 import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 
@@ -60,6 +60,6 @@ runQuasarF
   → m (Either e a)
 runQuasarF requestNewIdTokenBus qf = (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
   fromEff $ Control.Monad.Eff.Console.log "runQuasarF start"
-  idToken ← passover (\x -> (traceA "runQuasarF") *> (traceAnyA x)) =<< retrieveIdToken requestNewIdTokenBus
+  idToken ← fromEither <$> (passover (\x -> (traceA "runQuasarF") *> (traceAnyA x)) =<< retrieveIdToken requestNewIdTokenBus)
   permissions ← fromEff retrieveTokenHashes
   runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }

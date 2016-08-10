@@ -112,21 +112,17 @@ fromStallingProducer producer = do
 
 type RetrieveIdTokenEffRow eff = (console :: CONSOLE, rsaSignTime :: OIDC.RSASIGNTIME, avar :: AVAR, dom :: DOM, random :: RANDOM | eff)
 
-retrieveIdToken ∷ ∀ r eff. (Bus (write ∷ Cap | r) (AVar EIdToken)) → Aff (RetrieveIdTokenEffRow eff) (M.Maybe OIDCT.IdToken)
+retrieveIdToken ∷ ∀ r eff. (Bus (write ∷ Cap | r) (AVar EIdToken)) → Aff (RetrieveIdTokenEffRow eff) _
 retrieveIdToken requestNewIdTokenBus =
-  fromEither
-    <$> (runExceptT
-           $ (\idToken → (ExceptT $ verify idToken) <|> (ExceptT getNewToken))
-           =<< ExceptT retrieveFromLocalStorage)
+  runExceptT
+    $ (\idToken → (ExceptT $ verify idToken) <|> (ExceptT getNewToken))
+    =<< ExceptT retrieveFromLocalStorage
   where
   getNewToken ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken
   getNewToken = do
     tokenVar ← AVar.makeVar
-    traceAnyA "getNewToken 1"
     Bus.write tokenVar requestNewIdTokenBus
-    traceAnyA "getNewToken 2"
     x ← AVar.takeVar tokenVar
-    traceAnyA "getNewToken 3"
     pure x
 
   retrieveFromLocalStorage ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken

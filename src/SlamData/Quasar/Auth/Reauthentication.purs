@@ -56,6 +56,9 @@ import Utils.LocalStorage as LocalStorage
 -- TODO: Update to Purescript 0.9.x
 
 type EIdToken = Either String IdToken
+
+--type State = { cachedToken ∷ Maybe IdToken, promisedToken ∷ Maybe (Promise EIdToken) }
+
 type ReauthEffects eff =
   ( rsaSignTime :: RSASIGNTIME
   , avar :: AVAR
@@ -88,7 +91,7 @@ fromStallingProducer producer = do
 -- | Write an AVar to the returned bus to get a new OIDC id token from the given provider
 reauthentication ∷ ∀ eff. _ → _ → Aff (ReauthEffects eff) Unit
 reauthentication stateRef requestBus =
-  void $ Aff.forkAff $ forever (Aff.forkAff ∘ reauthenticate stateRef =<< Bus.read requestBus)
+  void $ Aff.forkAff $ forever (reauthenticate stateRef =<< Bus.read requestBus)
 
 reauthenticate ∷ ∀ eff. Ref (Maybe (Promise EIdToken)) → AVar EIdToken → Aff (ReauthEffects eff) Unit
 reauthenticate stateRef replyAvar = do
@@ -98,11 +101,11 @@ reauthenticate stateRef replyAvar = do
       traceA "re no"
       idTokenPromise ← requestNewIdToken
       putState $ Just idTokenPromise
-      reply idTokenPromise
-      --putState Nothing
+      void $ Aff.forkAff $ reply idTokenPromise
+      -- putState Nothing
     Just idTokenPromise → do
       traceA "re ju"
-      reply idTokenPromise
+      void $ Aff.forkAff $ reply idTokenPromise
   where
   putState ∷ Maybe (Promise EIdToken) → Aff (ReauthEffects eff) Unit
   putState = liftEff ∘ Ref.writeRef stateRef

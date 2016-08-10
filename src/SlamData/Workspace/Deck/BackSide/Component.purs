@@ -37,7 +37,7 @@ import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as Rc
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component.CSS as CCSS
-import SlamData.Quasar.Auth.Retrieve (retrieveIdToken)
+import SlamData.Quasar.Auth.Retrieve (fromEither, retrieveIdToken)
 
 import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
@@ -215,7 +215,7 @@ comp requestNewIdTokenBus =
   eval (UpdateCardType cty ctys next) =
     H.modify (_ { activeCardType = cty, cardTypes = ctys, unwrappableDecks = Map.empty :: DeckMap }) $> next
   eval (Init next) = next <$ do
-    isLogged ← map isJust $ H.fromAff $ retrieveIdToken requestNewIdTokenBus
+    isLogged ← map isJust $ H.fromAff $ fromEither <$> (retrieveIdToken requestNewIdTokenBus)
     H.modify (_ { isLogged = isLogged })
   eval (SetUnwrappable decks next) =
     H.modify (_ { unwrappableDecks = decks }) $> next

@@ -205,9 +205,12 @@ listPath requestNewIdTokenBus query deep var dir driver = do
 
   listingErrorMessage err =
     case message err of
-      "An unknown error ocurred: 401 \"\"" ->
-        append forbiddenMessage <<< suggestedAction
-          <$> H.fromAff (AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
+      "An unknown error ocurred: 401 \"\"" -> do
+        traceAnyA "listing error message start"
+        y ← append forbiddenMessage <<< suggestedAction
+          <$> H.fromAff (AuthRetrieve.fromEither <$> (Utils.passover (\x -> (traceA "signIn") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus))
+        traceAnyA "listing error message end"
+        pure y
       s ->
         pure $ "There was a problem accessing this directory listing. " ++ s
 

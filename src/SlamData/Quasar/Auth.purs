@@ -54,7 +54,7 @@ authed
   → m a
 authed requestNewIdTokenBus f = do
   fromEff $ Control.Monad.Eff.Console.log "authed start"
-  idToken ← fromAff $ passover (\x -> (traceA "authed:") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+  idToken ← fromAff $ AuthRetrieve.fromEither <$> (passover (\x -> (traceA "authed:") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
   perms ← fromEff P.retrieveTokenHashes
   f idToken perms
 
@@ -64,6 +64,6 @@ authHeaders
   → Aff (AuthRetrieve.RetrieveIdTokenEffRow eff) (Array RequestHeader)
 authHeaders requestNewIdTokenBus = do
   fromEff $ Control.Monad.Eff.Console.log "authHeaders start"
-  idToken ← passover (\x -> (traceA "authHeaders") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+  idToken ← AuthRetrieve.fromEither <$> (passover (\x -> (traceA "authHeaders") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
   hashes ← liftEff P.retrieveTokenHashes
   pure $ A.catMaybes [ map authHeader idToken, permissionsHeader hashes ]

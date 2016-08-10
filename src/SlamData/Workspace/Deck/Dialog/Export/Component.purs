@@ -361,7 +361,7 @@ comp requestNewIdTokenBus = H.component { render, eval }
         Z.setData "text/plain" val z
 
     -- To know if user is authed
-    mbAuthToken ← H.fromAff $ AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+    mbAuthToken ← H.fromAff $ AuthRetrieve.fromEither <$> (Utils.passover (\x -> (traceA "signIn") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
     case mbAuthToken of
       Nothing →
         H.modify _{ permToken = Nothing
