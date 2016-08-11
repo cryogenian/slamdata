@@ -39,7 +39,7 @@ import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
 import SlamData.FileSystem.Resource (Resource)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Render.Common (fadeWhen)
 
 import Utils.Path (DirPath, FilePath)
@@ -133,84 +133,84 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Query ⨁ (H.ChildF ChildSlot ChildQuery)
 type DialogDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. Bus (write ∷ Cap | r) (AVar EIdToken) → H.Component StateP QueryP Slam
+comp ∷ ∀ r. RequestIdTokenBus r → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus =
-  H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
+  H.parentComponent { render: render requestNewIdTokenBus, eval, peek: Just (peek <<< H.runChildF) }
+
+render ∷ ∀ r. RequestIdTokenBus r → State → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+render requestNewIdTokenBus state =
+  HH.div
+    [ HP.classes ([B.modal] <> fadeWhen (isNothing state))
+    , HE.onMouseDown (HE.input_ Dismiss)
+    ]
+    $ maybe [] (singleton <<< dialog) state
   where
-  render ∷ State → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
-  render state =
-    HH.div
-      [ HP.classes ([B.modal] <> fadeWhen (isNothing state))
-      , HE.onMouseDown (HE.input_ Dismiss)
-      ]
-      $ maybe [] (singleton <<< dialog) state
-    where
-    dialog (Error str) =
-      HH.slot' cpError unit \_ →
-        { component: Error.comp
-        , initialState: Error.State str
-        }
-    dialog (Share str) =
-      HH.slot' cpShare unit \_ →
-        { component: Share.comp
-        , initialState: Share.State str
-        }
-    dialog (Rename res) =
-      HH.slot' cpRename unit \_ →
-        { component: Rename.comp requestNewIdTokenBus
-        , initialState: Rename.initialState res
-        }
-    dialog (Download res) =
-      HH.slot' cpDownload unit \_ →
-        { component: Download.comp
-        , initialState: Download.initialState res
-        }
-    dialog (Mount parent name settings) =
-      HH.slot' cpMount unit \_ →
-        { component: Mount.comp requestNewIdTokenBus
-        , initialState: H.parentState (Mount.initialState parent name settings)
-        }
-    dialog (Explore fp) =
-      HH.slot' cpExplore unit \_ →
-        { component: Explore.comp
-        , initialState: Explore.initialState fp
-        }
+  dialog (Error str) =
+    HH.slot' cpError unit \_ →
+      { component: Error.comp
+      , initialState: Error.State str
+      }
+  dialog (Share str) =
+    HH.slot' cpShare unit \_ →
+      { component: Share.comp
+      , initialState: Share.State str
+      }
+  dialog (Rename res) =
+    HH.slot' cpRename unit \_ →
+      { component: Rename.comp requestNewIdTokenBus
+      , initialState: Rename.initialState res
+      }
+  dialog (Download res) =
+    HH.slot' cpDownload unit \_ →
+      { component: Download.comp
+      , initialState: Download.initialState res
+      }
+  dialog (Mount parent name settings) =
+    HH.slot' cpMount unit \_ →
+      { component: Mount.comp requestNewIdTokenBus
+      , initialState: H.parentState (Mount.initialState parent name settings)
+      }
+  dialog (Explore fp) =
+    HH.slot' cpExplore unit \_ →
+      { component: Explore.comp
+      , initialState: Explore.initialState fp
+      }
 
-  eval ∷ Natural Query (H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot)
-  eval (Dismiss next) = H.set Nothing $> next
-  eval (Show d next) = H.set (Just d) $> next
+eval ∷ Natural Query (H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot)
+eval (Dismiss next) = H.set Nothing $> next
+eval (Show d next) = H.set (Just d) $> next
 
-  -- | Children can only close dialog. Other peeking in `FileSystem`
-  peek ∷ ∀ a. ChildQuery a → DialogDSL Unit
-  peek =
-    mountPeek
-    ⨁ downloadPeek
-    ⨁ errorPeek
-    ⨁ sharePeek
-    ⨁ renamePeek
-    ⨁ explorePeek
+-- | Children can only close dialog. Other peeking in `FileSystem`
+peek ∷ ∀ a. ChildQuery a → DialogDSL Unit
+peek =
+  mountPeek
+  ⨁ downloadPeek
+  ⨁ errorPeek
+  ⨁ sharePeek
+  ⨁ renamePeek
+  ⨁ explorePeek
 
-  errorPeek ∷ ∀ a. Error.Query a → DialogDSL Unit
-  errorPeek (Error.Dismiss _) = H.set Nothing
+errorPeek ∷ ∀ a. Error.Query a → DialogDSL Unit
+errorPeek (Error.Dismiss _) = H.set Nothing
 
-  sharePeek ∷ ∀ a. Share.Query a → DialogDSL Unit
-  sharePeek (Share.Dismiss _) = H.set Nothing
-  sharePeek _ = pure unit
+sharePeek ∷ ∀ a. Share.Query a → DialogDSL Unit
+sharePeek (Share.Dismiss _) = H.set Nothing
+sharePeek _ = pure unit
 
-  renamePeek ∷ ∀ a. Rename.Query a → DialogDSL Unit
-  renamePeek (Rename.Dismiss _) = H.set Nothing
-  renamePeek _ = pure unit
+renamePeek ∷ ∀ a. Rename.Query a → DialogDSL Unit
+renamePeek (Rename.Dismiss _) = H.set Nothing
+renamePeek _ = pure unit
 
-  mountPeek ∷ ∀ a. Mount.QueryP a → DialogDSL Unit
-  mountPeek = go ⨁ const (pure unit)
-    where
-    go (Mount.Dismiss _) = H.set Nothing
-    go _ = pure unit
+mountPeek ∷ ∀ a. Mount.QueryP a → DialogDSL Unit
+mountPeek = go ⨁ const (pure unit)
+  where
+  go (Mount.Dismiss _) = H.set Nothing
+  go _ = pure unit
 
-  downloadPeek ∷ ∀ a. Download.Query a → DialogDSL Unit
-  downloadPeek (Download.Dismiss _) = H.set Nothing
-  downloadPeek _ = pure unit
+downloadPeek ∷ ∀ a. Download.Query a → DialogDSL Unit
+downloadPeek (Download.Dismiss _) = H.set Nothing
+downloadPeek _ = pure unit
 
-  explorePeek ∷ ∀ a. Explore.Query a → DialogDSL Unit
-  explorePeek (Explore.Dismiss _) = H.set Nothing
-  explorePeek _ = pure unit
+explorePeek ∷ ∀ a. Explore.Query a → DialogDSL Unit
+explorePeek (Explore.Dismiss _) = H.set Nothing
+explorePeek _ = pure unit

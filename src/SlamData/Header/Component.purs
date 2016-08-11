@@ -33,7 +33,7 @@ import SlamData.SignIn.Component as SignIn
 import SlamData.SignIn.Bus (SignInBus)
 import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (logo)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 
 type State = Unit
 initialState ∷ State
@@ -75,32 +75,32 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. Bus (write ∷ Cap | r) (AVar EIdToken) → SignInBus → H.Component StateP QueryP Slam
+comp ∷ ∀ r. RequestIdTokenBus r → SignInBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus signInBus =
-  H.parentComponent { render, eval, peek: Nothing }
-  where
-  render ∷ Unit → HTML
-  render _ =
-    HH.nav_
-      [ HH.div_
-          [ HH.div_
-              [ HH.div [ HP.classes [ Rc.header ] ]
-                  [ logo $ Just "3.0"
-                  , HH.div
-                      [ HP.classes [ B.pullRight ] ]
-                      [ HH.slot' cpSignIn unit \_ →
-                           { component: SignIn.comp requestNewIdTokenBus signInBus
-                           , initialState: H.parentState SignIn.initialState
-                           }
-                      ]
-                  , HH.slot' cpGripper unit \_ →
-                        { component: Gripper.comp signInBus "nav"
-                        , initialState: Gripper.initialState
-                        }
-                  ]
-              ]
-          ]
-      ]
+  H.parentComponent { render: render requestNewIdTokenBus signInBus, eval, peek: Nothing }
 
-  eval ∷ Query ~> DSL
-  eval = absurd ∘ getConst
+render ∷ ∀ r. RequestIdTokenBus r → SignInBus → Unit → HTML
+render requestNewIdTokenBus signInBus _ =
+  HH.nav_
+    [ HH.div_
+        [ HH.div_
+            [ HH.div [ HP.classes [ Rc.header ] ]
+                [ logo $ Just "3.0"
+                , HH.div
+                    [ HP.classes [ B.pullRight ] ]
+                    [ HH.slot' cpSignIn unit \_ →
+                         { component: SignIn.comp requestNewIdTokenBus signInBus
+                         , initialState: H.parentState SignIn.initialState
+                         }
+                    ]
+                , HH.slot' cpGripper unit \_ →
+                      { component: Gripper.comp signInBus "nav"
+                      , initialState: Gripper.initialState
+                      }
+                ]
+            ]
+        ]
+    ]
+
+eval ∷ Query ~> DSL
+eval = absurd ∘ getConst

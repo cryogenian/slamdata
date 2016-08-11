@@ -44,7 +44,7 @@ import Data.Set as Set
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Aff (QEff)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as CM
@@ -58,7 +58,7 @@ import Utils.Path (DirPath)
 transitiveGraphProducer
   ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → DeckId
   → Producer (Tuple DeckId (Either String (Array DeckId))) m Unit
@@ -91,7 +91,7 @@ transitiveGraphProducer requestNewIdTokenBus path deckId = produce \emit → do
 transitiveChildren
   ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → DeckId
   → m (Either String (Array DeckId))
@@ -123,7 +123,7 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
 deleteGraph
   ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → DeckId
   → m (Either String Unit)

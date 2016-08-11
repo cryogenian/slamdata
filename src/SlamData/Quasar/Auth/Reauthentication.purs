@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Quasar.Auth.Reauthentication (reauthentication, EIdToken) where
+module SlamData.Quasar.Auth.Reauthentication (reauthentication, EIdToken, RequestIdTokenBus) where
 
 import Control.Coroutine as Coroutine
 import Control.Coroutine.Stalling (($$?))
@@ -23,7 +23,7 @@ import Control.Monad.Aff (Aff)
 import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar (AVar, AVAR, AffAVar)
 import Control.Monad.Aff.AVar as AVar
-import Control.Monad.Aff.Bus (BusRW)
+import Control.Monad.Aff.Bus (Bus, Cap, BusRW)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Aff.Promise (Promise)
@@ -54,6 +54,7 @@ import Utils.LocalStorage as LocalStorage
 -- TODO: Replace popup with iframe
 -- TODO: Replace localstorage events and retrieval with iframe events and location
 -- TODO: Update to Purescript 0.9.x
+type RequestIdTokenBus r = Bus (write ∷ Cap | r) (AVar EIdToken)
 
 type EIdToken = Either String IdToken
 

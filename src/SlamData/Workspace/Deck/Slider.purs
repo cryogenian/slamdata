@@ -46,7 +46,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Config as Config
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Render.CSS as ClassNames
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId (CardId)
@@ -68,7 +68,7 @@ import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 
 import Utils.CSS as CSSUtils
 
-render ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DeckComponent → State → Boolean → DeckHTML
+render ∷ ∀ r. RequestIdTokenBus r → DeckOptions → DeckComponent → State → Boolean → DeckHTML
 render requestNewIdTokenBus opts deckComponent st visible =
   HH.div
     ([ HP.key "deck-cards"
@@ -231,7 +231,7 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
+renderCard ∷ ∀ r. RequestIdTokenBus r → DeckOptions → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
 renderCard requestNewIdTokenBus opts deckComponent st (deckId × card) index =
   HH.div
     [ HP.key key

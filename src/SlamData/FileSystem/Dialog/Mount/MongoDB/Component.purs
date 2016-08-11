@@ -47,116 +47,116 @@ import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State (MountHost, Moun
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Quasar.Mount as API
 import SlamData.Render.CSS as Rc
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 
 type Query = SettingsQuery State
 
 type HTML = H.ComponentHTML Query
 
-comp :: ∀ r. (Bus (write ∷ Cap | r) (AVar EIdToken)) → H.Component State Query Slam
-comp requestNewIdTokenBus = H.component { render, eval }
+comp ∷ ∀ r. RequestIdTokenBus r → H.Component State Query Slam
+comp requestNewIdTokenBus = H.component { render, eval: eval requestNewIdTokenBus }
+
+render ∷ State → HTML
+render state =
+  HH.div
+    [ HP.key "mount-mongodb"
+    , HP.class_ Rc.mountMongoDB
+    ]
+    [ section "Server(s)" [ hosts state ]
+    , section "Authentication" [ userInfo state, fldPath state ]
+    , section "Settings" [ propList _props state ]
+    ]
+
+eval ∷ ∀ r. RequestIdTokenBus r → Natural Query (H.ComponentDSL State Query Slam)
+eval _ (ModifyState f next) = H.modify (processState <<< f) $> next
+eval _ (Validate k) =
+  k <<< either Just (const Nothing) <<< toConfig <$> H.get
+
+eval requestNewIdTokenBus (Submit parent name k) = do
+  st <- H.get
+  case toConfig st of
+    Left err →
+      pure $ k $ Left $ error err
+    Right config → do
+      let path = parent </> dir name
+      result <- API.saveMount requestNewIdTokenBus path config
+      pure $ k $ map (const (Database path)) result
+
+hosts ∷ State → H.ComponentHTML Query
+hosts state =
+  HH.div
+    [ HP.class_ Rc.mountHostList ]
+    $ host state <$> 0 .. (length state.hosts - 1)
+
+host ∷ State → Int → H.ComponentHTML Query
+host state index =
+  HH.div
+    [ HP.class_ Rc.mountHost ]
+    [ label "Host"
+        [ input' rejectNonHostname state (_hosts <<< ix index <<< _host) [] ]
+    , label "Port"
+        [ input' rejectNonPort state (_hosts <<< ix index <<< _port) [] ]
+    ]
   where
-  render :: State -> HTML
-  render state =
-    HH.div
-      [ HP.key "mount-mongodb"
-      , HP.class_ Rc.mountMongoDB
+  rejectNonHostname ∷ String → String
+  rejectNonHostname = Rx.replace rxNonHostname ""
+
+  rxNonHostname ∷ Rx.Regex
+  rxNonHostname =
+    Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
+
+  rejectNonPort ∷ String → String
+  rejectNonPort = Rx.replace rxNonPort ""
+
+  rxNonPort ∷ Rx.Regex
+  rxNonPort = Rx.regex "[^0-9]" (Rx.noFlags { global = true })
+
+userInfo ∷ State → H.ComponentHTML Query
+userInfo state =
+  HH.div
+    [ HP.classes [B.formGroup, Rc.mountUserInfo] ]
+    [ fldUser state, fldPass state ]
+
+fldUser ∷ State → H.ComponentHTML Query
+fldUser state =
+  label "Username" [ input state _user [] ]
+
+fldPass ∷ State → H.ComponentHTML Query
+fldPass state =
+  label "Password" [ input state _password [ HP.inputType HP.InputPassword ] ]
+
+fldPath ∷ State → H.ComponentHTML Query
+fldPath state =
+  HH.div
+    [ HP.class_ Rc.mountPath ]
+    [ label "Database" [ input state _path [] ] ]
+
+-- | A labelled section within the form.
+label ∷ String → Array HTML → HTML
+label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] ++ inner
+
+-- | A basic text input field that uses a lens to read from and update the
+-- | state.
+input
+  ∷ State
+  → TraversalP State String
+  → Array (Cp.InputProp Query)
+  → HTML
+input state lens =
+  input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
+
+-- | A basic text input field that uses a lens to read from and update the
+-- | state, and allows for the input value to be modified.
+input'
+  ∷ (String → String)
+  → State
+  → TraversalP State String
+  → Array (Cp.InputProp Query)
+  → HTML
+input' f state lens attrs =
+  HH.input
+    $ [ HP.class_ B.formControl
+      , HE.onValueInput (HE.input \val → ModifyState (lens .~ f val))
+      , HP.value (state ^. lens)
       ]
-      [ section "Server(s)" [ hosts state ]
-      , section "Authentication" [ userInfo state, fldPath state ]
-      , section "Settings" [ propList _props state ]
-      ]
-
-  eval :: Natural Query (H.ComponentDSL State Query Slam)
-  eval (ModifyState f next) = H.modify (processState <<< f) $> next
-  eval (Validate k) =
-    k <<< either Just (const Nothing) <<< toConfig <$> H.get
-
-  eval (Submit parent name k) = do
-    st <- H.get
-    case toConfig st of
-      Left err ->
-        pure $ k $ Left $ error err
-      Right config → do
-        let path = parent </> dir name
-        result <- API.saveMount requestNewIdTokenBus path config
-        pure $ k $ map (const (Database path)) result
-
-  hosts :: State -> H.ComponentHTML Query
-  hosts state =
-    HH.div
-      [ HP.class_ Rc.mountHostList ]
-      $ host state <$> 0 .. (length state.hosts - 1)
-
-  host :: State -> Int -> H.ComponentHTML Query
-  host state index =
-    HH.div
-      [ HP.class_ Rc.mountHost ]
-      [ label "Host"
-          [ input' rejectNonHostname state (_hosts <<< ix index <<< _host) [] ]
-      , label "Port"
-          [ input' rejectNonPort state (_hosts <<< ix index <<< _port) [] ]
-      ]
-    where
-    rejectNonHostname :: String -> String
-    rejectNonHostname = Rx.replace rxNonHostname ""
-
-    rxNonHostname :: Rx.Regex
-    rxNonHostname =
-      Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
-
-    rejectNonPort :: String -> String
-    rejectNonPort = Rx.replace rxNonPort ""
-
-    rxNonPort :: Rx.Regex
-    rxNonPort = Rx.regex "[^0-9]" (Rx.noFlags { global = true })
-
-  userInfo :: State -> H.ComponentHTML Query
-  userInfo state =
-    HH.div
-      [ HP.classes [B.formGroup, Rc.mountUserInfo] ]
-      [ fldUser state, fldPass state ]
-
-  fldUser :: State -> H.ComponentHTML Query
-  fldUser state =
-    label "Username" [ input state _user [] ]
-
-  fldPass :: State -> H.ComponentHTML Query
-  fldPass state =
-    label "Password" [ input state _password [ HP.inputType HP.InputPassword ] ]
-
-  fldPath :: State -> H.ComponentHTML Query
-  fldPath state =
-    HH.div
-      [ HP.class_ Rc.mountPath ]
-      [ label "Database" [ input state _path [] ] ]
-
-  -- | A labelled section within the form.
-  label :: String -> Array HTML -> HTML
-  label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] ++ inner
-
-  -- | A basic text input field that uses a lens to read from and update the
-  -- | state.
-  input
-    :: State
-    -> TraversalP State String
-    -> Array (Cp.InputProp Query)
-    -> HTML
-  input state lens =
-    input' id state lens -- can't eta reduce further here as the typechecker doesn't like it
-
-  -- | A basic text input field that uses a lens to read from and update the
-  -- | state, and allows for the input value to be modified.
-  input'
-    :: (String -> String)
-    -> State
-    -> TraversalP State String
-    -> Array (Cp.InputProp Query)
-    -> HTML
-  input' f state lens attrs =
-    HH.input
-      $ [ HP.class_ B.formControl
-        , HE.onValueInput (HE.input \val -> ModifyState (lens .~ f val))
-        , HP.value (state ^. lens)
-        ]
-      ++ attrs
+    ++ attrs

@@ -32,7 +32,7 @@ import Data.Set as Set
 import Data.Map as Map
 
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Chart.Axis (Axis, analyzeJArray)
 import SlamData.Workspace.Card.Chart.Axis as Ax
@@ -44,7 +44,7 @@ import SlamData.Workspace.Card.Port as Port
 eval
   ∷ ∀ m r
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → CET.CardEvalInput
   → ChartOptions.Model
   → CET.CardEvalT m Port.ChartPort

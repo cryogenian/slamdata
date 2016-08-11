@@ -54,7 +54,7 @@ import Quasar.Types (FilePath)
 
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Quasar.FS as API
 import SlamData.Render.CSS as CSS
 
@@ -64,13 +64,13 @@ import Utils.At (INTERVAL)
 import OIDCCryptUtils as OIDC
 
 type State =
-  { files :: Array R.Resource
-  , selectedFile :: Either String FilePath
-  , currentFilePath :: String
-  , showFiles :: Boolean
+  { files ∷ Array R.Resource
+  , selectedFile ∷ Either String FilePath
+  , currentFilePath ∷ String
+  , showFiles ∷ Boolean
   }
 
-initialState :: State
+initialState ∷ State
 initialState =
   { files: []
   , selectedFile: Left "No file selected"
@@ -81,124 +81,124 @@ initialState =
 data Query a
   = ToggleFileList a
   | SelectFile R.Resource a
-  | GetSelectedFile (Either String FilePath -> a)
+  | GetSelectedFile (Either String FilePath → a)
   | UpdateFile String a
 
 type Effects e =
     ( rsaSignTime ∷ OIDC.RSASIGNTIME
-    , avar :: AVar.AVAR
-    , random :: RANDOM
-    , console :: CONSOLE
-    , now :: Date.Now
-    , ref :: Ref.REF
-    , ajax :: AJAX
-    , err :: EXCEPTION
-    , dom :: DOM
-    , interval :: INTERVAL
+    , avar ∷ AVar.AVAR
+    , random ∷ RANDOM
+    , console ∷ CONSOLE
+    , now ∷ Date.Now
+    , ref ∷ Ref.REF
+    , ajax ∷ AJAX
+    , err ∷ EXCEPTION
+    , dom ∷ DOM
+    , interval ∷ INTERVAL
     | e
     )
 
-fileInputComponent :: forall e r. Bus (write :: Cap | r) (AVar EIdToken) -> H.Component State Query (Aff (Effects e))
+fileInputComponent ∷ forall e r. RequestIdTokenBus r → H.Component State Query (Aff (Effects e))
 fileInputComponent requestNewIdTokenBus =
-  H.component { render, eval }
-  where
-  appendFiles :: Array R.Resource -> State -> State
-  appendFiles files state =
-    state
-      { files = A.sort $ A.nub $ state.files <> files
-      }
+  H.component { render, eval: eval requestNewIdTokenBus }
 
-  eval :: Natural Query (H.ComponentDSL State Query (Aff (Effects e)))
-  eval q =
-    case q of
-      ToggleFileList next -> do
-        shouldShowFiles <- H.get <#> _.showFiles >>> not
-        H.modify (_ { showFiles = shouldShowFiles })
-        when shouldShowFiles $ do
-          let
-            fileProducer =
-              FT.hoistFreeT H.liftH $ API.transitiveChildrenProducer requestNewIdTokenBus P.rootDir
-            fileConsumer =
-              CR.consumer \fs -> H.modify (appendFiles fs) $> Nothing
-          CR.runProcess (fileProducer CR.$$ fileConsumer)
-        pure next
-      SelectFile r next ->
-        case R.getPath r of
-          Left _ -> pure next
-          Right file -> do
-            H.modify \state ->
-              state
-                { selectedFile = pure file
-                , currentFilePath = R.resourcePath r
-                , showFiles = false
+appendFiles ∷ Array R.Resource → State → State
+appendFiles files state =
+  state
+    { files = A.sort $ A.nub $ state.files <> files
+    }
+
+eval ∷ ∀ e r. RequestIdTokenBus r → Natural Query (H.ComponentDSL State Query (Aff (Effects e)))
+eval requestNewIdTokenBus q =
+  case q of
+    ToggleFileList next → do
+      shouldShowFiles <- H.get <#> _.showFiles >>> not
+      H.modify (_ { showFiles = shouldShowFiles })
+      when shouldShowFiles $ do
+        let
+          fileProducer =
+            FT.hoistFreeT H.liftH $ API.transitiveChildrenProducer requestNewIdTokenBus P.rootDir
+          fileConsumer =
+            CR.consumer \fs → H.modify (appendFiles fs) $> Nothing
+        CR.runProcess (fileProducer CR.$$ fileConsumer)
+      pure next
+    SelectFile r next →
+      case R.getPath r of
+        Left _ → pure next
+        Right file → do
+          H.modify \state →
+            state
+              { selectedFile = pure file
+              , currentFilePath = R.resourcePath r
+              , showFiles = false
+              }
+          pure next
+    GetSelectedFile k →
+      k <$> H.gets _.selectedFile
+    UpdateFile "" next → do
+      H.modify $ _{ selectedFile = Left "No file selected"
+                , currentFilePath = ""
                 }
-            pure next
-      GetSelectedFile k ->
-        k <$> H.gets _.selectedFile
-      UpdateFile "" next -> do
-        H.modify $ _{ selectedFile = Left "No file selected"
-                  , currentFilePath = ""
-                  }
-        pure next
-      UpdateFile path next -> do
-        H.modify $ _{ selectedFile =
-                       lmap (\x -> "\"" <> x <> "\" is an incorrect path for a file")
-                       $ fileFromString path
-                  , currentFilePath = path
-                  }
-        pure next
+      pure next
+    UpdateFile path next → do
+      H.modify $ _{ selectedFile =
+                     lmap (\x → "\"" <> x <> "\" is an incorrect path for a file")
+                     $ fileFromString path
+                , currentFilePath = path
+                }
+      pure next
 
-  render :: State -> H.ComponentHTML Query
-  render st =
-    HH.div_
-      $ [ HH.div
-            [ HP.classes [ B.inputGroup , CSS.fileListField ] ]
-            [ HH.input $
-                [ HP.class_ B.formControl
-                , HP.placeholder "Select a file"
-                , HE.onValueInput (HE.input UpdateFile)
-                , HP.value st.currentFilePath
-                ]
-            , HH.span
-                [ HP.class_ B.inputGroupBtn ]
-                [ HH.button
-                    [ HP.classes [ B.btn , B.btnDefault ]
-                    , HP.buttonType HP.ButtonButton
-                    , ARIA.label toggleLabel
-                    , HP.title toggleLabel
-                    , HE.onClick \_ ->
-                        HEH.stopPropagation $> Just (H.action ToggleFileList)
-                    ]
-                    [ HH.span [ HP.class_ B.caret ] [ ]
-                    ]
-                ]
-            ]
-        ] <> fileList
-    where
-    toggleLabel = if st.showFiles then "Hide file list" else "Show file list"
-    fileList =
-      if st.showFiles
-      then
-        [ HH.ul
-            [ HP.classes $
-                [ CSS.fileListGroup
-                , B.listGroup
-                ]
-            ]
-            $ renderItem <$> st.files
-        ]
-      else []
-
-  renderItem :: R.Resource -> H.ComponentHTML Query
-  renderItem r =
-    HH.button
-      [ HP.classes $
-          [ B.listGroupItem
-          ] <> if R.isHidden r then [ ItemCSS.itemHidden ] else [ ]
-      , HE.onClick $ HE.input_ (SelectFile r)
+render ∷ State → H.ComponentHTML Query
+render st =
+  HH.div_
+    $ [ HH.div
+          [ HP.classes [ B.inputGroup , CSS.fileListField ] ]
+          [ HH.input $
+              [ HP.class_ B.formControl
+              , HP.placeholder "Select a file"
+              , HE.onValueInput (HE.input UpdateFile)
+              , HP.value st.currentFilePath
+              ]
+          , HH.span
+              [ HP.class_ B.inputGroupBtn ]
+              [ HH.button
+                  [ HP.classes [ B.btn , B.btnDefault ]
+                  , HP.buttonType HP.ButtonButton
+                  , ARIA.label toggleLabel
+                  , HP.title toggleLabel
+                  , HE.onClick \_ →
+                      HEH.stopPropagation $> Just (H.action ToggleFileList)
+                  ]
+                  [ HH.span [ HP.class_ B.caret ] [ ]
+                  ]
+              ]
+          ]
+      ] <> fileList
+  where
+  toggleLabel = if st.showFiles then "Hide file list" else "Show file list"
+  fileList =
+    if st.showFiles
+    then
+      [ HH.ul
+          [ HP.classes $
+              [ CSS.fileListGroup
+              , B.listGroup
+              ]
+          ]
+          $ renderItem <$> st.files
       ]
-      [ HH.text $ R.resourcePath r
-      ]
+    else []
 
-  fileFromString :: String -> Either String FilePath
-  fileFromString path = maybe (Left path) Right (PU.parseFilePath path)
+renderItem ∷ R.Resource → H.ComponentHTML Query
+renderItem r =
+  HH.button
+    [ HP.classes $
+        [ B.listGroupItem
+        ] <> if R.isHidden r then [ ItemCSS.itemHidden ] else [ ]
+    , HE.onClick $ HE.input_ (SelectFile r)
+    ]
+    [ HH.text $ R.resourcePath r
+    ]
+
+fileFromString ∷ String → Either String FilePath
+fileFromString path = maybe (Left path) Right (PU.parseFilePath path)

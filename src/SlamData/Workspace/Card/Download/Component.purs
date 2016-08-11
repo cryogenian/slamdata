@@ -40,7 +40,7 @@ import SlamData.Download.Model as D
 import SlamData.Effects (Slam)
 import SlamData.Quasar (reqHeadersToJSON, encodeURI)
 import SlamData.Quasar.Auth as API
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Render.CSS.New as CSS
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Component as CC
@@ -56,86 +56,86 @@ import Utils.DOM (getTextWidthPure)
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-downloadComponent ∷ ∀ r. Bus (write ∷ Cap | r) (AVar EIdToken) → CC.CardComponent
+downloadComponent ∷ ∀ r. RequestIdTokenBus r → CC.CardComponent
 downloadComponent requestNewIdTokenBus = CC.makeCardComponent
   { cardType: CT.Download
-  , component: H.component { render, eval }
+  , component: H.component { render, eval: eval requestNewIdTokenBus }
   , initialState: initialState
   , _State: CC._DownloadState
   , _Query: CC.makeQueryPrism CC._DownloadQuery
   }
-  where
-  render ∷ State → HTML
-  render state =
-    HH.div_
-      [ HH.a
-          [ HP.class_ CSS.formButton
-          , HP.href state.url
-          , ARIA.label $ fullDownloadString state
-          , HP.title $ fullDownloadString state
-          ]
-          [ HH.text $ buttonText state ]
-      ]
 
-  buttonText ∷ State → String
-  buttonText state
-    | state.levelOfDetails ≡ Low = "Download"
-    | otherwise = fullDownloadString state
+render ∷ State → HTML
+render state =
+  HH.div_
+    [ HH.a
+        [ HP.class_ CSS.formButton
+        , HP.href state.url
+        , ARIA.label $ fullDownloadString state
+        , HP.title $ fullDownloadString state
+        ]
+        [ HH.text $ buttonText state ]
+    ]
 
-  fullDownloadString ∷ State → String
-  fullDownloadString state = "Download " ⊕ state.fileName
+buttonText ∷ State → String
+buttonText state
+  | state.levelOfDetails ≡ Low = "Download"
+  | otherwise = fullDownloadString state
 
-  eval ∷ QueryP ~> DSL
-  eval = coproduct cardEval (absurd ∘ getConst)
+fullDownloadString ∷ State → String
+fullDownloadString state = "Download " ⊕ state.fileName
 
-  cardEval ∷ CC.CardEvalQuery ~> DSL
-  cardEval = case _ of
-    CC.EvalCard info output next → do
-      for_ (info.input ^? Lens._Just ∘ Port._DownloadOptions) handleDownloadPort
-      pure next
-    CC.Activate next →
-      pure next
-    CC.Save k →
-      pure (k Card.Download)
-    CC.Load json next →
-      pure next
-    CC.SetDimensions dims next → do
-      textWidth ← H.gets $ flip getTextWidthPure "normal 14px Ubuntu" ∘ _.fileName
-      let
-        buttonPadding = 24.0
-        cardPadding = 24.0
-        grippersWidth = 48.0
-      H.modify
-        $ _levelOfDetails
-        .~ if dims.width < textWidth + buttonPadding + cardPadding + grippersWidth
-             then Low
-             else High
-      pure next
-    CC.ModelUpdated _ next →
-      pure next
-    CC.ZoomIn next →
-      pure next
+eval ∷ ∀ r. RequestIdTokenBus r → QueryP ~> DSL
+eval requestNewIdTokenBus = coproduct (cardEval requestNewIdTokenBus) (absurd ∘ getConst)
 
-  handleDownloadPort ∷ Port.DownloadPort → DSL Unit
-  handleDownloadPort opts = do
-    hs ← H.fromAff $ API.authHeaders requestNewIdTokenBus
-    H.modify $ _url .~ url hs
+cardEval ∷ ∀ r. RequestIdTokenBus r → CC.CardEvalQuery ~> DSL
+cardEval requestNewIdTokenBus = case _ of
+  CC.EvalCard info output next → do
+    for_ (info.input ^? Lens._Just ∘ Port._DownloadOptions) $ handleDownloadPort requestNewIdTokenBus
+    pure next
+  CC.Activate next →
+    pure next
+  CC.Save k →
+    pure (k Card.Download)
+  CC.Load json next →
+    pure next
+  CC.SetDimensions dims next → do
+    textWidth ← H.gets $ flip getTextWidthPure "normal 14px Ubuntu" ∘ _.fileName
     let
-      fileName = UP.getNameStr $ Right opts.resource
-      ext | opts.compress = ".zip"
-      ext | isRight opts.options = ".json"
-      ext | otherwise = ".csv"
-    H.modify $ _fileName .~ (fileName ⊕ ext)
-    where
+      buttonPadding = 24.0
+      cardPadding = 24.0
+      grippersWidth = 48.0
+    H.modify
+      $ _levelOfDetails
+      .~ if dims.width < textWidth + buttonPadding + cardPadding + grippersWidth
+           then Low
+           else High
+    pure next
+  CC.ModelUpdated _ next →
+    pure next
+  CC.ZoomIn next →
+    pure next
 
-    url hs =
-      (encodeURI (printPath Paths.data_ ⊕ printPath opts.resource))
-      ⊕ headersPart hs
+handleDownloadPort ∷ ∀ r. RequestIdTokenBus r → Port.DownloadPort → DSL Unit
+handleDownloadPort requestNewIdTokenBus opts = do
+  hs ← H.fromAff $ API.authHeaders requestNewIdTokenBus
+  H.modify $ _url .~ url hs
+  let
+    fileName = UP.getNameStr $ Right opts.resource
+    ext | opts.compress = ".zip"
+    ext | isRight opts.options = ".json"
+    ext | otherwise = ".csv"
+  H.modify $ _fileName .~ (fileName ⊕ ext)
+  where
 
-    headersPart hs =
-      "?request-headers="
-        ⊕ (Global.encodeURIComponent
-             $ show
-             $ reqHeadersToJSON
-             $ append hs
-             $ D.toHeaders opts)
+  url hs =
+    (encodeURI (printPath Paths.data_ ⊕ printPath opts.resource))
+    ⊕ headersPart hs
+
+  headersPart hs =
+    "?request-headers="
+      ⊕ (Global.encodeURIComponent
+           $ show
+           $ reqHeadersToJSON
+           $ append hs
+           $ D.toHeaders opts)

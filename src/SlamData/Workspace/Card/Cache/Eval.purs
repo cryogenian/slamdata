@@ -29,7 +29,7 @@ import Data.StrMap as SM
 
 import Quasar.Types (FilePath)
 import SlamData.Effects (SlamDataEffects)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -40,7 +40,7 @@ import Utils.Path as PU
 eval
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → CET.CardEvalInput
   → Maybe String
   → FilePath
@@ -56,7 +56,7 @@ eval requestNewIdTokenBus info mfp resource =
 eval'
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → PU.FilePath
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort
