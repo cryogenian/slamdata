@@ -31,7 +31,7 @@ import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
@@ -108,21 +108,24 @@ fromStallingProducer producer = do
   var ← AVar.makeVar
   StallingCoroutine.runStallingProcess
     (producer $$? (Coroutine.consumer \e → liftAff (AVar.putVar var e) $> Just unit))
-  AVar.takeVar var
+  x ← AVar.takeVar var
+  traceAny x \_ -> pure x
 
 type RetrieveIdTokenEffRow eff = (console :: CONSOLE, rsaSignTime :: OIDC.RSASIGNTIME, avar :: AVAR, dom :: DOM, random :: RANDOM | eff)
 
 retrieveIdToken ∷ ∀ r eff. (Bus (write ∷ Cap | r) (AVar EIdToken)) → Aff (RetrieveIdTokenEffRow eff) _
 retrieveIdToken requestNewIdTokenBus =
-  runExceptT
+  (runExceptT
     $ (\idToken → (ExceptT $ verify idToken) <|> (ExceptT getNewToken))
-    =<< ExceptT retrieveFromLocalStorage
+    =<< ExceptT retrieveFromLocalStorage)
   where
   getNewToken ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken
   getNewToken = do
     tokenVar ← AVar.makeVar
     Bus.write tokenVar requestNewIdTokenBus
+    liftEff $ log "before take"
     x ← AVar.takeVar tokenVar
+    liftEff $ log "after take"
     pure x
 
   retrieveFromLocalStorage ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken

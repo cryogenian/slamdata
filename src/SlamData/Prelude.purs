@@ -43,6 +43,8 @@ module SlamData.Prelude
   , module Data.Tuple
   , module Data.Void
   , module Debug.Trace
+  , traceA
+  , traceAnyA
   )
   where
 
@@ -72,7 +74,7 @@ import Data.Traversable (class Traversable, traverse, sequence, for)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Void (Void, absurd)
 
-import Debug.Trace
+import Debug.Trace (traceAny, spy)
 
 
 flipCompose ∷ ∀ a b c d. Semigroupoid a ⇒ a b c → a c d → a b d
@@ -109,3 +111,6 @@ infixr 5 either as ⊹
 infixr 5 coproduct as ⨁
 
 infixr 4 type Tuple as ×
+
+traceAnyA = const $ pure unit
+traceA = const $ pure unit

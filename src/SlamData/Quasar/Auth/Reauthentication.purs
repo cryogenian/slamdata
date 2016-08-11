@@ -57,8 +57,6 @@ import Utils.LocalStorage as LocalStorage
 
 type EIdToken = Either String IdToken
 
---type State = { cachedToken ∷ Maybe IdToken, promisedToken ∷ Maybe (Promise EIdToken) }
-
 type ReauthEffects eff =
   ( rsaSignTime :: RSASIGNTIME
   , avar :: AVAR
@@ -81,17 +79,17 @@ race a1 a2 = do
     if e == 1 then AVar.killVar va err else pure unit
     AVar.putVar ve (e + 1)
 
-fromStallingProducer :: forall o eff. StallingCoroutine.StallingProducer o (Aff (avar ∷ AVAR | eff)) Unit → AffAVar eff o
-fromStallingProducer producer = do
-  var ← AVar.makeVar
-  StallingCoroutine.runStallingProcess
-    (producer $$? (Coroutine.consumer \e → liftAff (AVar.putVar var e) $> Just unit))
-  AVar.takeVar var
+firstValueFromStallingProducer :: forall o eff. StallingCoroutine.StallingProducer o (Aff (avar ∷ AVAR | eff)) Unit → AffAVar eff o
+firstValueFromStallingProducer producer = do
+  firstValue ← AVar.makeVar
+  Aff.forkAff $ StallingCoroutine.runStallingProcess
+    (producer $$? (Coroutine.consumer \o → liftAff (AVar.putVar firstValue o) $> Just unit))
+  AVar.takeVar firstValue
 
 -- | Write an AVar to the returned bus to get a new OIDC id token from the given provider
 reauthentication ∷ ∀ eff. _ → _ → Aff (ReauthEffects eff) Unit
 reauthentication stateRef requestBus =
-  void $ Aff.forkAff $ forever (reauthenticate stateRef =<< Bus.read requestBus)
+  void $ Aff.forkAff $ forever (Aff.forkAff ∘ reauthenticate stateRef =<< Bus.read requestBus)
 
 reauthenticate ∷ ∀ eff. Ref (Maybe (Promise EIdToken)) → AVar EIdToken → Aff (ReauthEffects eff) Unit
 reauthenticate stateRef replyAvar = do
@@ -101,11 +99,11 @@ reauthenticate stateRef replyAvar = do
       traceA "re no"
       idTokenPromise ← requestNewIdToken
       putState $ Just idTokenPromise
-      void $ Aff.forkAff $ reply idTokenPromise
-      -- putState Nothing
+      reply idTokenPromise
+      putState Nothing
     Just idTokenPromise → do
       traceA "re ju"
-      void $ Aff.forkAff $ reply idTokenPromise
+      reply idTokenPromise
   where
   putState ∷ Maybe (Promise EIdToken) → Aff (ReauthEffects eff) Unit
   putState = liftEff ∘ Ref.writeRef stateRef
@@ -128,7 +126,7 @@ reauthenticate stateRef replyAvar = do
   retrieveIdTokenFromLSOnChange ∷ Aff (ReauthEffects eff) EIdToken
   retrieveIdTokenFromLSOnChange =
     race
-      (const retrieveIdTokenFromLS =<< fromStallingProducer =<< liftEff getIdTokenStorageEvents)
+      (const retrieveIdTokenFromLS =<< firstValueFromStallingProducer =<< liftEff getIdTokenStorageEvents)
       (Aff.later' Config.reauthenticationTimeout $ pure $ Left "No token received before timeout.")
 
   retrieveIdTokenFromLS ∷ Aff (ReauthEffects eff) (Either String IdToken)
