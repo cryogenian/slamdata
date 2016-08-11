@@ -55,6 +55,8 @@ import SlamData.Workspace.Routing (Routes(..), routing)
 import SlamData.Workspace.StyleLoader as StyleLoader
 import SlamData.Workspace.Wiring (makeWiring)
 
+import Routing as Routing
+
 import Utils.Path as UP
 
 main ∷ Eff SlamDataEffects Unit

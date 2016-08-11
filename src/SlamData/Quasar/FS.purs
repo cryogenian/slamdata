@@ -30,16 +30,14 @@ import SlamData.Prelude
 
 import Control.Coroutine as CR
 import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Error.Class (catchError)
-import Control.Monad.Rec.Class as MR
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Free.Trans as FT
+import Control.Monad.Rec.Class as MR
 
 import Data.Array as Arr
 import Data.Foldable as F
@@ -58,7 +56,7 @@ import Quasar.Types (AnyPath, DirPath, FilePath)
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 
 import Utils.AffableProducer as AP
 import Utils.Completions (memoizeCompletionStrs)
@@ -66,7 +64,7 @@ import Utils.Completions (memoizeCompletionStrs)
 children
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → m (Either Exn.Error (Array R.Resource))
 children requestNewIdTokenBus dir = runExceptT do
@@ -79,13 +77,14 @@ children requestNewIdTokenBus dir = runExceptT do
 transitiveChildrenProducer
   ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → CR.Producer (Array R.Resource) m Unit
 transitiveChildrenProducer requestNewIdTokenBus dirPath = do
   AP.produce \emit → do
     activeRequests ← Ref.newRef $ Set.singleton $ P.printPath dirPath
-    Aff.runAff Exn.throwException (const (pure unit)) $ go emit activeRequests dirPath
+    void $ Aff.runAff Exn.throwException (const (pure unit)) $
+      go emit activeRequests dirPath
   where
   go emit activeRequests start = do
     let strPath = P.printPath start
@@ -104,7 +103,7 @@ transitiveChildrenProducer requestNewIdTokenBus dirPath = do
 listing
   ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → m (Either Exn.Error (Array R.Resource))
 listing requestNewIdTokenBus p =
@@ -129,7 +128,7 @@ listing requestNewIdTokenBus p =
 getNewName
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → String
   → m (Either Exn.Error String)
@@ -163,7 +162,7 @@ getNewName requestNewIdTokenBus parent name = do
 move
   ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → R.Resource
   → AnyPath
   → m (Either Exn.Error (Maybe AnyPath))
@@ -184,7 +183,7 @@ move requestNewIdTokenBus src tgt = do
 delete
   ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → R.Resource
   → m (Either Exn.Error (Maybe R.Resource))
 delete requestNewIdTokenBus resource =
@@ -236,7 +235,7 @@ delete requestNewIdTokenBus resource =
 forceDelete
   ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → R.Resource
   → ExceptT Exn.Error m Unit
 forceDelete requestNewIdTokenBus res =
@@ -251,21 +250,29 @@ forceDelete requestNewIdTokenBus res =
         QF.deleteData path
 
 cleanViewMounts
-  ∷ ∀ eff r m
-  . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ∷ ∀ eff m r
+  . (Affable (QEff eff) m)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → ExceptT Exn.Error m Unit
 cleanViewMounts requestNewIdTokenBus path =
-  CR.runProcess (producer CR.$$ consumer)
+  hoistExceptT fromAff $ CR.runProcess (producer CR.$$ consumer)
 
   where
-  producer ∷ CR.Producer (Array R.Resource) (ExceptT Exn.Error m) Unit
+
+  hoistExceptT
+    ∷ ∀ e a
+    . (Aff.Aff (QEff eff) ~> m)
+    → ExceptT e (Aff.Aff (QEff eff)) a
+    → ExceptT e m a
+  hoistExceptT nat (ExceptT m) = ExceptT (nat m)
+
+  producer ∷ CR.Producer (Array R.Resource) (ExceptT Exn.Error (Aff.Aff (QEff eff))) Unit
   producer =
     FT.hoistFreeT lift $
       transitiveChildrenProducer requestNewIdTokenBus path
 
-  consumer ∷ CR.Consumer (Array R.Resource) (ExceptT Exn.Error m) Unit
+  consumer ∷ CR.Consumer (Array R.Resource) (ExceptT Exn.Error (Aff.Aff (QEff eff))) Unit
   consumer =
     CR.consumer \fs → do
       traverse_ deleteViewMount fs
@@ -273,7 +280,7 @@ cleanViewMounts requestNewIdTokenBus path =
 
   deleteViewMount
     ∷ R.Resource
-    → ExceptT Exn.Error m Unit
+    → ExceptT Exn.Error (Aff.Aff (QEff eff)) Unit
   deleteViewMount =
     case _ of
       R.Mount (R.View vp) →
@@ -285,7 +292,7 @@ cleanViewMounts requestNewIdTokenBus path =
 messageIfFileNotFound
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → FilePath
   → String
   → m (Either Exn.Error (Maybe String))
@@ -301,7 +308,7 @@ messageIfFileNotFound requestNewIdTokenBus path defaultMsg =
 dirNotAccessible
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → DirPath
   → m (Maybe String)
 dirNotAccessible requestNewIdTokenBus path =
@@ -316,7 +323,7 @@ dirNotAccessible requestNewIdTokenBus path =
 fileNotAccessible
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus r
   → FilePath
   → m (Maybe String)
 fileNotAccessible requestNewIdTokenBus path =

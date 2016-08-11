@@ -95,4 +95,4 @@ propList _props state =
         , E.onValueInput (E.input \val -> ModifyState (lens .~ val))
         , P.value (state ^. lens)
         ]
-      ++ attrs
+      <> attrs

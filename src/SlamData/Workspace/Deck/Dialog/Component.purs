@@ -241,7 +241,7 @@ render requestNewIdTokenBus state =
       }
 
 
-eval ∷ Natural Query DSL
+eval ∷ Query ~> DSL
 eval (Dismiss next) = H.set Nothing $> next
 eval (FlipToFront next) = H.set Nothing $> next
 eval (SetDeckName _ next) = H.set Nothing $> next

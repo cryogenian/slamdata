@@ -197,9 +197,9 @@ eitherOr strings =
     1 → String.joinWith "" strings
     n →
       "either "
-        ++ String.joinWith ", " (Array.take (n - 1) strings)
-        ++ " or "
-        ++ String.joinWith "" (Array.drop (n - 1) strings)
+        <> String.joinWith ", " (Array.take (n - 1) strings)
+        <> " or "
+        <> String.joinWith "" (Array.drop (n - 1) strings)
 
 fromPort ∷ Port → InsertableCardIOType
 fromPort =
@@ -244,17 +244,17 @@ aAn s =
 
 reason ∷ InsertableCardIOType → InsertableCardType → String
 reason io card =
-  aAn (print card) ++ " " ++ show (print card) ++ " card can't " ++ actual
-    ++ " because it needs " ++ expected ++ action ++ "."
+  aAn (print card) <> " " <> show (print card) <> " card can't " <> actual
+    <> " because it needs " <> expected <> action <> "."
   where
   actual =
     case io of
       None → "be the first card in a deck"
-      _ → "follow a card which outputs " ++ printIOType io
+      _ → "follow a card which outputs " <> printIOType io
   expected =
     eitherOr $ printIOType <$> inputsFor card
   action =
-    maybe "" (" to " ++ _) (printAction card)
+    maybe "" (" to " <> _) (printAction card)
 
 printAction ∷ InsertableCardType → Maybe String
 printAction =

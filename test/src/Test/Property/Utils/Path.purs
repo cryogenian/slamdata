@@ -27,7 +27,7 @@ import Data.Foldable (foldl)
 import Data.Path.Pathy (Path, Rel, Dir, Sandboxed, (</>), dir, file, rootDir)
 import Data.String (null)
 
-import Test.StrongCheck (class Arbitrary, arbitrary)
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.StrongCheck.Gen (Gen, suchThat, chooseInt, vectorOf)
 
 import Utils.Path (FilePath, DirPath)

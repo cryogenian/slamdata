@@ -13,7 +13,8 @@ import SlamData.Workspace.LevelOfDetails as LOD
 
 import Test.Property.Utils.Path (runArbFilePath)
 import Test.SlamData.Property.Download.Model (runArbCSVOptions, runArbJSONOptions)
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbState = ArbState M.State
 
@@ -28,7 +29,7 @@ instance arbitraryArbState :: Arbitrary ArbState where
          <*> (map (map runArbFilePath) arbitrary)
     pure $ ArbState r
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ runArbState >>> \m ->
   case M.decode (M.encode m) of
     Left err -> Failed $ "Decode failed: " <> err

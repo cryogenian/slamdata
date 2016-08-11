@@ -36,13 +36,14 @@ import SlamData.Prelude
 import Data.Array as A
 import Data.Int as Int
 import Data.Lens (LensP, lens)
-import Data.List (fromList, fromFoldable)
 import Data.NonEmpty (NonEmpty(..), oneOf)
 import Data.Path.Pathy (parsePath, rootDir, (</>))
 import Data.Profunctor.Strong (first, second)
 import Data.String.Regex as Rx
 import Data.StrMap as SM
 import Data.URI.Host as URI
+
+import Global as Global
 
 import Text.Parsing.StringParser (runParser)
 
@@ -104,11 +105,11 @@ processState s = s
 fromConfig ∷ Config → State
 fromConfig { hosts, path, user, password, props } =
   processState
-    { hosts: bimap URI.printHost show <$> oneOf hosts
+    { hosts: bimap URI.printHost (maybe "" show) <$> oneOf hosts
     , path: ""
-    , user: fromMaybe "" user
-    , password: fromMaybe "" password
-    , props: map (fromMaybe "") <$> fromList (SM.toList props)
+    , user: maybe "" Global.decodeURIComponent user
+    , password: maybe "" Global.decodeURIComponent password
+    , props: map (fromMaybe "") <$> A.fromFoldable (SM.toList props)
     }
 
 toConfig ∷ State → Either String Config
@@ -121,16 +122,15 @@ toConfig { hosts, path, user, password, props } = do
   pure
     { hosts: hosts'
     , path: parsePath' =<< nonEmptyString path
-    , user: nonEmptyString user
-    , password: nonEmptyString password
-    , props: SM.fromList $ fromFoldable $
-        map nonEmptyString <$> A.filter (not isEmptyTuple) props
+    , user: Global.encodeURIComponent <$> nonEmptyString user
+    , password: Global.encodeURIComponent <$> nonEmptyString password
+    , props: SM.fromFoldable $ map nonEmptyString <$> A.filter (not isEmptyTuple) props
     }
 
 parsePath' ∷ String → Maybe PU.AnyPath
 parsePath' =
   bitraverse PU.sandbox PU.sandbox <<<
-    parsePath (Right <<< (rootDir </> _)) Right (Left <<< (rootDir </> _)) Left
+    parsePath (Left <<< (rootDir </> _)) Left (Right <<< (rootDir </> _)) Right
 
 parseHost ∷ Tuple String String → Either String Host
 parseHost (Tuple host port) = do
@@ -159,4 +159,4 @@ isEmpty ∷ String → Boolean
 isEmpty = Rx.test rxEmpty
 
 rxEmpty ∷ Rx.Regex
-rxEmpty = Rx.regex "^\\s*$" Rx.noFlags
+rxEmpty = unsafePartial fromRight $ Rx.regex "^\\s*$" Rx.noFlags

@@ -40,8 +40,8 @@ import Control.UI.Browser as Browser
 import SlamData.Prelude
 import DOM (DOM)
 import OIDC.Aff as OIDCAff
-import OIDCCryptUtils (RSASIGNTIME)
-import OIDCCryptUtils.Types (IdToken(..))
+import OIDC.Crypt (RSASIGNTIME)
+import OIDC.Crypt.Types (IdToken(..))
 import Quasar.Advanced.Types as QAT
 import SlamData.Config as Config
 import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
@@ -139,7 +139,7 @@ reauthenticate stateRef replyAvar = do
     map QAT.runProvider <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
 
   appendAuthPath ∷ String → String
-  appendAuthPath s = (s ++ _) Config.redirectURIString
+  appendAuthPath s = (s <> _) Config.redirectURIString
 
   runParseError ∷ ParseError → String
   runParseError (ParseError s) = s

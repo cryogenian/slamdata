@@ -17,10 +17,32 @@ limitations under the License.
 module Test.SlamData.Property where
 
 import Prelude
-import Control.Monad.Eff.Console (log)
-import Test.StrongCheck (QC)
 
-main :: QC Unit
+import Control.Monad.Eff.Console (log)
+
+import Test.SlamData.Property.Download.Model as Test.SlamData.Property.Download.Model
+import Test.SlamData.Property.FileSystem.Resource as Test.SlamData.Property.FileSystem.Resource
+import Test.SlamData.Property.Form.Select as Test.SlamData.Property.Form.Select
+import Test.SlamData.Property.Workspace.Card.Ace.Model as Test.SlamData.Property.Workspace.Card.Ace.Model
+import Test.SlamData.Property.Workspace.Card.CardId as Test.SlamData.Property.Workspace.Card.CardId
+import Test.SlamData.Property.Workspace.Card.CardType as Test.SlamData.Property.Workspace.Card.CardType
+import Test.SlamData.Property.Workspace.Card.Chart.Aggregation as Test.SlamData.Property.Workspace.Card.Chart.Aggregation
+import Test.SlamData.Property.Workspace.Card.Chart.BuildOptions as Test.SlamData.Property.Workspace.Card.Chart.BuildOptions
+import Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration as Test.SlamData.Property.Workspace.Card.Chart.ChartConfiguration
+import Test.SlamData.Property.Workspace.Card.Chart.ChartType as Test.SlamData.Property.Workspace.Card.Chart.ChartType
+import Test.SlamData.Property.Workspace.Card.ChartOptions.Model as Test.SlamData.Property.Workspace.Card.ChartOptions.Model
+import Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State as Test.SlamData.Property.Workspace.Card.DownloadOptions.Component.State
+import Test.SlamData.Property.Workspace.Card.Markdown.Model as Test.SlamData.Property.Workspace.Card.Markdown.Model
+import Test.SlamData.Property.Workspace.Card.Model as Test.SlamData.Property.Workspace.Card.Model
+import Test.SlamData.Property.Workspace.Card.Table.Model as Test.SlamData.Property.Workspace.Card.Table.Model
+import Test.SlamData.Property.Workspace.Deck.DeckId as Test.SlamData.Property.Workspace.Deck.DeckId
+import Test.SlamData.Property.Workspace.Deck.Model as Test.SlamData.Property.Workspace.Deck.Model
+import Test.SlamData.Property.Workspace.FormBuilder.Item.Model as Test.SlamData.Property.Workspace.FormBuilder.Item.Model
+import Test.SlamData.Property.Workspace.FormBuilder.Model as Test.SlamData.Property.Workspace.FormBuilder.Model
+
+import Test.StrongCheck (SC)
+
+main :: forall eff. SC eff Unit
 main = do
   log "Check SlamData.Download.Model..."
   Test.SlamData.Property.Download.Model.check

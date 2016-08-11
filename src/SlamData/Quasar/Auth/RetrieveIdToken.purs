@@ -38,9 +38,9 @@ import DOM.HTML as DOMHTML
 
 import Network.HTTP.RequestHeader (RequestHeader)
 
-import OIDCCryptUtils.Types as OIDCT
-import OIDCCryptUtils.JSONWebKey (JSONWebKey)
-import OIDCCryptUtils as OIDC
+import OIDC.Crypt.Types as OIDCT
+import OIDC.Crypt.JSONWebKey (JSONWebKey)
+import OIDC.Crypt as OIDC
 import OIDC.Aff as OIDCAff
 
 import SlamData.Config as Config

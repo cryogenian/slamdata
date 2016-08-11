@@ -22,7 +22,7 @@ import Data.Array as A
 import Data.Char (fromCharCode)
 import Data.Int as Int
 import Data.Json.JTable as JT
-import Data.String (fromChar)
+import Data.String (singleton)
 
 import Halogen as H
 import Halogen.HTML.Events.Handler as HEH
@@ -183,7 +183,7 @@ pageSizeControls showCustom pageSize =
   dividerOption =
     [ HH.option
         [ HP.disabled true ]
-        [ HH.text $ fromChar $ fromCharCode 8212 ]
+        [ HH.text $ singleton $ fromCharCode 8212 ]
     ]
 
   -- If a custom value has been entered, create an entry for it in the dropdown

@@ -99,7 +99,7 @@ render state = case state.item of
           ]
       ]
 
-eval ∷ Natural Query DSL
+eval ∷ Query ~> DSL
 eval (Toggle next) = H.modify (_item %~ toggle) $> next
   where
   toggle (Item r) = SelectedItem r
@@ -181,8 +181,8 @@ itemView state@{ item } selected presentActions | otherwise =
     ⊕ (if itemIsHidden item && presentHiddenItem state then [ CSS.itemHidden ] else [ ])
 
   label ∷ String
-  label | selected  = "Deselect " ++ itemName state
-  label | otherwise = "Select " ++ itemName state
+  label | selected  = "Deselect " <> itemName state
+  label | otherwise = "Select " <> itemName state
 
 iconClasses ∷ forall r i. Item → HP.IProp (class ∷ HP.I | r) i
 iconClasses item = HP.classes

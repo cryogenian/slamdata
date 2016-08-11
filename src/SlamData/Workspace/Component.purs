@@ -22,15 +22,13 @@ module SlamData.Workspace.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
+import Control.Parallel.Class (parallel, runParallel)
 import Control.UI.Browser (setHref, locationObject)
 
 import Data.Array as Array
@@ -40,7 +38,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (Milliseconds(..))
 
 import DOM.HTML.Location as Location
 
@@ -74,7 +72,6 @@ import SlamData.Workspace.Deck.Common (wrappedDeck, defaultPosition)
 import SlamData.Workspace.Deck.Component as Deck
 import SlamData.Workspace.Deck.Component.Nested as DN
 import SlamData.Workspace.Deck.DeckId (DeckId, freshDeckId)
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Model as Model
 import SlamData.Workspace.Notification as Notify
@@ -141,9 +138,9 @@ render requestNewIdTokenBus wiring signInBus state =
 
   deckOpts path deckId =
     { path
-    , level: DL.root
     , accessType: state.accessType
     , wiring
+    , cursor: List.Nil
     }
 
   showError err =
@@ -153,7 +150,7 @@ render requestNewIdTokenBus wiring signInBus state =
           [ HH.text err ]
       ]
 
-eval ∷ ∀ r. RequestIdTokenBus r → Wiring → Natural Query WorkspaceDSL
+eval ∷ ∀ r. RequestIdTokenBus r → Wiring → Query ~> WorkspaceDSL
 eval _ _ (Init next) = do
   deckId ← H.fromEff freshDeckId
   H.modify (_initialDeckId ?~ deckId)
@@ -205,7 +202,7 @@ eval requestNewIdTokenBus wiring (Load path deckId accessType next) = do
   loadDeck deckId = void do
     AE.track (AE.Load deckId accessType) wiring.analytics
     H.modify _ { stateMode = Ready }
-    queryDeck $ H.action $ Deck.Load path deckId DL.root
+    queryDeck $ H.action $ Deck.Load path deckId
 
   loadRoot =
     rootDeck requestNewIdTokenBus path >>=
@@ -249,7 +246,7 @@ peek requestNewIdTokenBus wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const
       wrapper = (wrappedDeck defaultPosition oldId) { parent = deck.parent }
 
     error ← lift $ runExceptT do
-      ExceptT $ map (errors "; ") $ H.fromAff $ runPar $ traverse Par
+      ExceptT $ map (errors "; ") $ (H.fromAff :: Slam ~> WorkspaceDSL) $ runParallel $ traverse parallel
         [ putDeck requestNewIdTokenBus path oldId deck' wiring.decks
         , putDeck requestNewIdTokenBus path newId wrapper wiring.decks
         ]
@@ -311,7 +308,7 @@ peek requestNewIdTokenBus wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const
           }
         }
     error ← lift $ runExceptT do
-      ExceptT $ map (errors "; ") $ H.fromAff $ runPar $ traverse Par
+      ExceptT $ map (errors "; ") $ (H.fromAff :: Slam ~> WorkspaceDSL) $ runParallel $ traverse parallel
         if Array.null oldModel.cards
         then
           let

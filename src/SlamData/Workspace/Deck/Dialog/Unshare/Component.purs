@@ -18,12 +18,10 @@ module SlamData.Workspace.Deck.Dialog.Unshare.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar, makeVar, takeVar, putVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
-import Control.Monad.Aff.Par (runPar, Par(..))
+import Control.Monad.Aff.AVar (makeVar, takeVar, putVar)
 import Control.Monad.Eff.Ref (newRef, modifyRef, readRef)
+import Control.Parallel.Class (parallel, runParallel)
 import Control.UI.Browser (select)
-import Control.UI.ZClipboard as Z
 
 import Data.Array as Arr
 import Data.Foldable as F
@@ -54,6 +52,8 @@ import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareRe
 import SlamData.Workspace.Deck.Dialog.Share.Model as Model
 
 import Utils.Path (parseFilePath)
+
+import ZClipboard as Z
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
@@ -566,7 +566,7 @@ deletePermission
 deletePermission requestNewIdTokenBus permissionMap = do
   r ← H.fromEff  $ newRef $ Map.empty × Map.size permissionMap
   resultVar ← H.fromAff makeVar
-  H.fromAff $ runPar $ for_ (Map.toList permissionMap) $ Par ∘ \(pid × act) → do
+  H.fromAff $ runParallel $ for_ (Map.toList permissionMap) $ parallel ∘ \(pid × act) → do
     result ← Q.deletePermission requestNewIdTokenBus pid
     H.fromEff $ modifyRef r \(acc × count) → acc × (count - 1)
     case result of
@@ -600,8 +600,8 @@ adjustPermissions prs sharingInput =
     subset ∷ ∀ a. Ord a ⇒ Set.Set a → Set.Set a → Boolean
     subset needle hay =
       let
-        needleLst = L.sort $ Set.toList needle
-        hayLst = L.sort $ Set.toList hay
+        needleLst = L.sort $ L.fromFoldable needle
+        hayLst = L.sort $ L.fromFoldable hay
 
         subset' ∷ L.List a → L.List a → Boolean
         subset' L.Nil _ = true

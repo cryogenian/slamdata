@@ -38,6 +38,8 @@ import DOM.Node.Node as Node
 import DOM.Node.ParentNode as ParentNode
 import DOM.Node.Types (Node, elementToNode)
 
+import Global as Global
+
 retrieveStyles
   :: forall e
    . Eff (dom :: DOM|e) (Array URI.URIRef)
@@ -64,7 +66,7 @@ retrieveStyles =
 
   stylesRgx :: Rgx.Regex
   stylesRgx =
-    Rgx.regex "stylesheets=([^&]+)" Rgx.noFlags
+    unsafePartial fromRight $ Rgx.regex "stylesheets=([^&]+)" Rgx.noFlags
 
 
 createLink

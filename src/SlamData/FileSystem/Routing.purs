@@ -25,6 +25,8 @@ import SlamData.Prelude
 
 import Data.Path.Pathy as P
 
+import Global as Global
+
 import Routing.Match (Match, eitherMatch)
 import Routing.Match.Class (param)
 

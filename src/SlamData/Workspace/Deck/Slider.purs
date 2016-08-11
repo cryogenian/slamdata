@@ -23,15 +23,11 @@ module SlamData.Workspace.Deck.Slider
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
-
 import Data.Array ((..))
 import Data.Array as Array
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
 import Data.Lens as Lens
-import Data.Ord (max, min)
 import Data.Tuple as Tuple
 
 import CSS (CSS)
@@ -68,7 +64,7 @@ import SlamData.Workspace.Deck.Gripper.Def (GripperDef(..))
 
 import Utils.CSS as CSSUtils
 
-render ∷ ∀ r. RequestIdTokenBus r → DeckOptions → DeckComponent → State → Boolean → DeckHTML
+render ∷ ∀ r. RequestIdTokenBus r → DeckOptions → (DeckOptions → DeckComponent) → State → Boolean → DeckHTML
 render requestNewIdTokenBus opts deckComponent st visible =
   HH.div
     ([ HP.key "deck-cards"
@@ -185,18 +181,13 @@ cardPositionCSS index = do
 cardSliderTransformCSS ∷ Int → Number → CSS
 cardSliderTransformCSS activeCardIndex translateX =
   CSSUtils.transform
-    $ CSSUtils.translate3d (cardSliderTranslateX activeCardIndex translateX) "0" "0"
+    $ CSSUtils.translate3d ((show (-100 * activeCardIndex)) ⊕ "%") "0" "0"
+    ⊕ CSSUtils.translate3d ((show (-cardSpacingPx * Int.toNumber activeCardIndex)) ⊕ "px") "0" "0"
+    ⊕ CSSUtils.translate3d ((show translateX) ⊕ "px") "0" "0"
 
 cardSliderTransitionCSS ∷ Boolean → CSS
 cardSliderTransitionCSS false = CSSUtils.transition "none"
 cardSliderTransitionCSS true = CSSUtils.transition "all 0.125s"
-
-cardSliderTranslateX ∷ Int → Number → String
-cardSliderTranslateX activeCardIndex translateX =
-  CSSUtils.calc
-    $ "(-100% - " ⊕ show cardSpacingPx ⊕ "px)"
-    ⊕ " * " ⊕ show activeCardIndex
-    ⊕ " + " ⊕ show translateX ⊕ "px"
 
 dropEffect ∷ Boolean → String
 dropEffect true = "execute"
@@ -231,7 +222,7 @@ cardSpacingGridSquares = 2.0
 cardSpacingPx ∷ Number
 cardSpacingPx = cardSpacingGridSquares * Config.gridPx
 
-renderCard ∷ ∀ r. RequestIdTokenBus r → DeckOptions → DeckComponent → State → (DeckId × Card.Model) → Int → DeckHTML
+renderCard ∷ ∀ r. RequestIdTokenBus r → DeckOptions → (DeckOptions → DeckComponent) → State → (DeckId × Card.Model) → Int → DeckHTML
 renderCard requestNewIdTokenBus opts deckComponent st (deckId × card) index =
   HH.div
     [ HP.key key

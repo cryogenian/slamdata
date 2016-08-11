@@ -18,7 +18,6 @@ module Halogen.Component.Utils.Drag where
 
 import Prelude
 
-import Control.Bind ((=<<))
 import Control.Monad.Aff (Canceler(..), forkAff, launchAff, runAff)
 import Control.Monad.Aff.AVar (makeVar, makeVar', takeVar, putVar, AVAR)
 import Control.Monad.Aff.Class (class MonadAff)
@@ -29,13 +28,13 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 
 import DOM (DOM)
 import DOM.Event.EventTarget (EventListener, eventListener, addEventListener, removeEventListener)
-import DOM.Event.EventTypes (mousemove, mouseup)
 import DOM.HTML (window)
+import DOM.HTML.Event.EventTypes (mousemove, mouseup)
 import DOM.HTML.Types (windowToEventTarget)
 
 import Halogen as H
 import Halogen.HTML.Events.Types (Event, MouseEvent)
-import Halogen.CustomEvents (mouseEventToPageEvent, domEventToMouseEvent, PageEvent)
+import Halogen.CustomEvents (domEventToMouseEvent)
 
 type DragData =
   { x ∷ Number
@@ -47,8 +46,8 @@ type DragData =
   }
 
 data DragEvent
-  = Move (Event PageEvent) DragData
-  | Done (Event PageEvent)
+  = Move (Event MouseEvent) DragData
+  | Done (Event MouseEvent)
 
 type DragEffects eff =
   ( dom ∷ DOM
@@ -68,13 +67,12 @@ begin
           ∷ Canceler (DragEffects eff)
       }
 begin ev = fromAff do
-  let ev' = mouseEventToPageEvent ev
-      initX = ev'.pageX
-      initY = ev'.pageY
+  let initX = ev.pageX
+      initY = ev.pageY
 
   handler ← makeVar
   remove ← makeVar
-  event ← makeVar' ev'
+  event ← makeVar' ev
 
   forkAff do
     handler' ← takeVar handler
@@ -88,7 +86,7 @@ begin ev = fromAff do
         mouseMove ∷ EventListener (DragEffects eff)
         mouseMove = eventListener \e → runAff (const (pure unit)) (const (pure unit)) do
           event' ← takeVar event
-          let e' = mouseEventToPageEvent $ domEventToMouseEvent e
+          let e' = domEventToMouseEvent e
               x1 = event'.pageX
               y1 = event'.pageY
               x2 = e'.pageX
@@ -106,9 +104,8 @@ begin ev = fromAff do
 
         mouseUp ∷ EventListener (DragEffects eff)
         mouseUp = eventListener \e → do
-          let e' = mouseEventToPageEvent $ domEventToMouseEvent e
           remove'
-          handler' (Done e')
+          handler' $ Done (domEventToMouseEvent e)
 
     liftEff do
       win ← windowToEventTarget <$> window
@@ -117,7 +114,7 @@ begin ev = fromAff do
 
     putVar remove remove'
 
-  let subscription = launchAff <<< putVar handler
+  let subscription = void <<< launchAff <<< putVar handler
       canceler = Canceler \_ → do
         liftEff =<< takeVar remove
         pure true

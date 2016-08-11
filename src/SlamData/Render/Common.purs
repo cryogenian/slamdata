@@ -19,7 +19,7 @@ module SlamData.Render.Common where
 import SlamData.Prelude
 
 import Data.Char (fromCharCode)
-import Data.String (fromChar)
+import Data.String (singleton)
 
 import Halogen.HTML.Core (HTML, ClassName)
 import Halogen.HTML.Events.Handler (EventHandler)
@@ -99,7 +99,7 @@ closeButton handler =
   H.button [ P.class_ B.close
            , E.onClick (map Just <$> handler)
            ]
-  [ H.span_ [ H.text (fromChar $ fromCharCode 215) ] ]
+  [ H.span_ [ H.text (singleton $ fromCharCode 215) ] ]
 
 fadeWhen ∷ Boolean → Array ClassName
 fadeWhen true = [ B.fade ]

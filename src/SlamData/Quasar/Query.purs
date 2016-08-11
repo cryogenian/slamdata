@@ -41,11 +41,11 @@ import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Argonaut as JS
 import Data.Array as Arr
+import Data.Int as Int
 import Data.Json.Extended as EJS
-import Data.List as L
 import Data.Path.Pathy as P
-import Data.StrMap as SM
 import Data.String as S
+import Data.StrMap as SM
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
@@ -196,7 +196,7 @@ count requestNewIdTokenBus file = runExceptT do
   where
   readTotal ∷ JS.JArray → Maybe Int
   readTotal =
-    Data.Int.fromNumber
+    Int.fromNumber
       <=< JS.toNumber
       <=< SM.lookup "total"
       <=< JS.toObject
@@ -242,7 +242,7 @@ fields requestNewIdTokenBus file = runExceptT do
           map (\x → "[" <> show x <> "]") $ Arr.range 0 $ Arr.length jarr - 1
 
       goObj ∷ Array String → JS.JObject → Array String
-      goObj acc = Arr.concat <<< map (goTuple acc) <<< L.fromList <<< SM.toList
+      goObj acc = Arr.concat <<< map (goTuple acc) <<< Arr.fromFoldable <<< SM.toList
 
       goTuple ∷ Array String → Tuple String JS.Json → Array String
       goTuple acc (Tuple key json) =

@@ -23,7 +23,7 @@ import Control.Monad.Error.Class (throwError)
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (Milliseconds(..))
 
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card

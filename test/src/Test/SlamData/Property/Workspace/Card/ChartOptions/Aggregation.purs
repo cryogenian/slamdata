@@ -20,22 +20,24 @@ import Prelude
 
 import Data.Argonaut (encodeJson, decodeJson)
 import Data.Either (Either(..))
+import Data.Maybe (Maybe(Just))
 
 import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, allAggregations)
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary)
 import Test.StrongCheck.Gen (allInArray)
 
-newtype ArbAggregation = ArbAggregation Aggregation
+newtype ArbAggregation = ArbAggregation (Maybe Aggregation)
 
-runArbAggregation :: ArbAggregation -> Aggregation
+runArbAggregation :: ArbAggregation -> (Maybe Aggregation)
 runArbAggregation (ArbAggregation m) = m
 
 instance arbitraryArbAggregation :: Arbitrary ArbAggregation where
-  arbitrary = ArbAggregation <$> allInArray allAggregations
+  arbitrary = ArbAggregation <$> allInArray (map Just allAggregations)
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ runArbAggregation >>> \ct ->
   case decodeJson (encodeJson ct) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right ct' -> ct == ct' <?> "Aggregation failed to decode as encoded value"

@@ -158,7 +158,7 @@ tdWithTh tableXPath thXPath tdXPath =
 
 selectWithOptionsWithExactTexts ∷ Array String → String
 selectWithOptionsWithExactTexts optionTexts =
-  "select" `XPath.withDescendants` (map optionWithExactText optionTexts)
+  "select" `withDescendants` (map optionWithExactText optionTexts)
   where
   optionWithExactText = nodeWithExactText "option"
 
@@ -180,7 +180,7 @@ precedingSibling ∷ String → String → String
 precedingSibling x y = x ⊕ "/preceding-sibling::" ⊕ y
 
 not :: String -> String
-not s = "not(" ++ s ++ ")"
+not s = "not(" <> s <> ")"
 
 any ∷ String
 any = "*"

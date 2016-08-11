@@ -176,7 +176,7 @@ render requestNewIdTokenBus state =
       , initialState: Explore.initialState fp
       }
 
-eval ∷ Natural Query (H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot)
+eval ∷ Query ~> H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 eval (Dismiss next) = H.set Nothing $> next
 eval (Show d next) = H.set (Just d) $> next
 

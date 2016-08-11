@@ -15,18 +15,18 @@ limitations under the License.
 -}
 
 module Control.UI.File
-       ( fileListToArray
-       , files
-       , newReader
-       , newReaderEff
-       , readAsBinaryString
-       , readAsBinaryStringEff
-       , name
-       , File
-       , FileList
-       , FileReader
-       , READ_FILE
-       ) where
+  ( fileListToArray
+  , files
+  , newReader
+  , newReaderEff
+  , readAsBinaryString
+  , readAsBinaryStringEff
+  , name
+  , File
+  , FileList
+  , FileReader
+  , READ_FILE
+  ) where
 
 import Prelude
 
@@ -34,7 +34,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Aff (Aff, makeAff)
 
-import Data.Function (Fn3, runFn3)
+import Data.Function.Uncurried (Fn3, runFn3)
 import Data.Maybe (Maybe(..))
 
 import DOM (DOM)

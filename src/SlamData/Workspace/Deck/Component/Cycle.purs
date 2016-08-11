@@ -16,8 +16,6 @@ limitations under the License.
 
 module SlamData.Workspace.Deck.Component.Cycle where
 
-import SlamData.Prelude
-
 import Halogen as H
 import SlamData.Effects (Slam)
 import SlamData.Workspace.Deck.Component.Nested.Query (QueryP)

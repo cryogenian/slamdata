@@ -24,7 +24,8 @@ import Data.Foldable (fold)
 import SlamData.Workspace.Card.Chart.BuildOptions as CO
 
 import Test.SlamData.Property.Workspace.Card.Chart.ChartType (runArbChartType)
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbBuildOptions = ArbBuildOptions CO.BuildOptions
 
@@ -38,12 +39,17 @@ instance arbitraryArbBuildOptions :: Arbitrary ArbBuildOptions where
     axisLabelFontSize <- arbitrary
     areaStacked <- arbitrary
     smooth <- arbitrary
-    pure $ ArbBuildOptions { chartType, axisLabelAngle, axisLabelFontSize, areaStacked, smooth }
+    bubbleMinSize <- arbitrary
+    bubbleMaxSize <- arbitrary
+    pure $ ArbBuildOptions 
+      { chartType, axisLabelAngle, axisLabelFontSize, areaStacked
+      , smooth, bubbleMinSize, bubbleMaxSize
+      }
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ runArbBuildOptions >>> \co ->
   case CO.decode (CO.encode co) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right co' -> checkBuildOptionsEquality co co'
 
 checkBuildOptionsEquality :: CO.BuildOptions -> CO.BuildOptions -> Result
@@ -54,4 +60,6 @@ checkBuildOptionsEquality co co' =
    , co.axisLabelFontSize == co'.axisLabelFontSize <?> "axis label font size mismatch"
    , co.areaStacked == co'.areaStacked <?> "area stacked mismatch"
    , co.smooth == co'.smooth <?> "smooth mismatch"
+   , co.bubbleMinSize == co'.bubbleMinSize <?> "bubbleMinSize mismatch"
+   , co.bubbleMaxSize == co'.bubbleMaxSize <?> "bubbleMaxSize mismatch"
    ]

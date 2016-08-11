@@ -70,7 +70,7 @@ render { newName } =
         ]
     ]
 
-eval ∷ Natural Query (H.ComponentDSL State Query Slam)
+eval ∷ Query ~> H.ComponentDSL State Query Slam
 eval (SetNewName string next) = H.modify (_ { newName = string }) $> next
 eval (Rename string next) = pure next
 eval (Dismiss next) = pure next

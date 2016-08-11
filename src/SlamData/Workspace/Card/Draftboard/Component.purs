@@ -39,7 +39,6 @@ import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaqueState)
 import Halogen.Component.Utils.Drag as Drag
 import Halogen.Component.Utils (raise')
-import Halogen.CustomEvents (mouseEventToPageEvent)
 import Halogen.HTML.CSS.Indexed as HC
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
@@ -67,7 +66,6 @@ import SlamData.Workspace.Deck.Component.Nested.State as DNS
 import SlamData.Workspace.Deck.Component.Query as DCQ
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString, freshDeckId)
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Model as DM
 import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Wiring (putDeck)
@@ -112,6 +110,7 @@ render opts state =
     HH.div
       [ HP.key $ deckIdToString deckId
       , HP.classes $
+          (guard (List.null opts.deck.cursor) $> HH.className "sd-deck-top-level") <>
           case state.grouping of
             Just deckId' | deckId == deckId' → [ HH.className "grouping" ]
             _ → []
@@ -123,9 +122,11 @@ render opts state =
       [ HH.slot deckId $ mkDeckComponent deckId ]
 
   mkDeckComponent id _ =
-    { component: opts.deckComponent (opaqueState $ DCS.initialDeck opts.deck.path id)
+    { component: opts.deckComponent deckOpts (opaqueState $ DCS.initialDeck opts.deck.path id)
     , initialState: DNS.initialState
     }
+    where
+    deckOpts = opts.deck { cursor = List.Cons opts.deckId opts.deck.cursor }
 
   cssPos rect = do
     CSS.position CSS.absolute
@@ -146,7 +147,7 @@ render opts state =
     AT.Editable → 1.0
     _ -> 0.0
 
-evalCard ∷ Natural CC.CardEvalQuery DraftboardDSL
+evalCard ∷ CC.CardEvalQuery ~> DraftboardDSL
 evalCard = case _ of
   CC.EvalCard _ _ next →
     pure next
@@ -168,7 +169,7 @@ evalCard = case _ of
   CC.ZoomIn next →
     pure next
 
-evalBoard ∷ ∀ r. RequestIdTokenBus r → CardOptions → Natural Query DraftboardDSL
+evalBoard ∷ ∀ r. RequestIdTokenBus r → CardOptions → Query ~> DraftboardDSL
 evalBoard requestNewIdTokenBus opts = case _ of
   Grabbing deckId ev next → do
     case ev of
@@ -218,11 +219,10 @@ evalBoard requestNewIdTokenBus opts = case _ of
     H.modify _ { canvas = el }
     pure next
   AddDeck e next → do
-    let e' = mouseEventToPageEvent e
     H.gets _.canvas >>= traverse_ \el → do
-      same ← H.fromEff (elementEq el e'.target)
+      same ← H.fromEff (elementEq el e.target)
       when same do
-        coords ← pageToGrid { x: e'.pageX, y: e'.pageY } el
+        coords ← pageToGrid { x: e.pageX, y: e.pageY } el
         addDeck requestNewIdTokenBus opts DM.emptyDeck
           { x: floor $ coords.x + 1.0
           , y: floor $ coords.y
@@ -232,7 +232,7 @@ evalBoard requestNewIdTokenBus opts = case _ of
   LoadDeck deckId next → do
     queryDeck deckId
       $ H.action
-      $ DCQ.Load opts.deck.path deckId (DL.succ opts.deck.level)
+      $ DCQ.Load opts.deck.path deckId
     pure next
   -- TODO: hopefully we can get rid of this later, as it's relatively expensive
   -- and will run quite frequently, as it's used to enable the `Unwrap` action.
@@ -244,7 +244,7 @@ evalBoard requestNewIdTokenBus opts = case _ of
     decks' ← runMaybeT $ for (Map.toList decks) \(deckId × position) → do
       model ← MaybeT $ queryDeck deckId $ H.request DCQ.GetModel
       pure (deckId × (position × model))
-    pure $ k $ maybe Map.empty Map.fromList decks'
+    pure $ k $ maybe Map.empty Map.fromFoldable decks'
   GetDecksSharingInput k → do
     decks ← H.gets _.decks
     deckMbList ← for (Map.keys decks) \deckId → do
@@ -342,8 +342,8 @@ clampDeck ∷ DeckPosition → DeckPosition
 clampDeck rect =
   { x: if rect.x < 0.0 then 0.0 else rect.x
   , y: if rect.y < 0.0 then 0.0 else rect.y
-  , width: if rect.width < 10.0 then 10.0 else rect.width
-  , height: if rect.height < 10.0 then 10.0 else rect.height
+  , width: if rect.width < 6.0 then 6.0 else rect.width
+  , height: if rect.height < 4.0 then 4.0 else rect.height
   }
 
 roundDeck ∷ DeckPosition → DeckPosition
@@ -479,7 +479,6 @@ unwrapDeck requestNewIdTokenBus { deckId, cardId, deck: opts } oldId decks = voi
   -- corner will maintain their position and the others will be accomodated.
   let deckList = List.sortBy (compare `on` toCoords) $ Map.toList decks
   let coord = deckId × cardId
-  let level' = DL.succ opts.level
   offset ← MaybeT $ H.gets (Map.lookup oldId ∘ _.decks)
   lift do
     H.modify \s →
@@ -489,7 +488,7 @@ unwrapDeck requestNewIdTokenBus { deckId, cardId, deck: opts } oldId decks = voi
       putDeck requestNewIdTokenBus opts.path deckId deck' opts.wiring.decks
       queryDeck deckId
         $ H.action
-        $ DCQ.Load opts.path deckId level'
+        $ DCQ.Load opts.path deckId
   where
   reinsert offset acc (deckId × (pos × deck)) =
     Map.insert deckId (updatePos (Map.toList acc) offset pos) acc
@@ -585,6 +584,6 @@ queryDeck deckId = H.query deckId ∘ right
 loadAndFocus ∷ DeckOptions → DeckId → DraftboardDSL Unit
 loadAndFocus opts deckId =
   traverse_ (queryDeck deckId ∘ H.action)
-    [ DCQ.Load opts.path deckId (DL.succ opts.level)
+    [ DCQ.Load opts.path deckId
     , DCQ.Focus
     ]

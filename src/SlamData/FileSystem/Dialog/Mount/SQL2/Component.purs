@@ -25,8 +25,6 @@ module SlamData.FileSystem.Dialog.Mount.SQL2.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Array (filter)
@@ -68,7 +66,7 @@ render state@{ initialQuery } =
     , section "Query variables" [ propList _vars state ]
     ]
 
-eval ∷ ∀ r. RequestIdTokenBus r → Natural Query SQLMountDSL
+eval ∷ ∀ r. RequestIdTokenBus r → Query ~> SQLMountDSL
 eval _ (ModifyState f next) = H.modify (processState <<< f) $> next
 eval _ (Validate k) = do
   sql <- fromMaybe "" <$> H.query unit (H.request GetText)

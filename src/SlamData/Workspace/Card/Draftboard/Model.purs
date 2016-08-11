@@ -29,10 +29,9 @@ module SlamData.Workspace.Card.Draftboard.Model
 import SlamData.Prelude
 import Data.Argonaut as J
 import Data.Argonaut ((~>), (:=), (.?))
-import Data.List as L
 import Data.Map as Map
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 type DeckPosition =
@@ -80,7 +79,7 @@ eqModel m1 m2 =
 
 genModel ∷ Gen.Gen Model
 genModel = do
-  decks ← Map.fromList ∘ L.toList <$> Gen.arrayOf (Tuple <$> SC.arbitrary <*> genDeckPosition)
+  decks ← Map.fromFoldable <$> Gen.arrayOf (Tuple <$> SC.arbitrary <*> genDeckPosition)
   pure { decks }
 
 emptyModel ∷ Model

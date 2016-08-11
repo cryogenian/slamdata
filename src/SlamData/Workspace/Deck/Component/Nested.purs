@@ -24,11 +24,8 @@ import SlamData.Prelude
 
 import Control.Coroutine.Stalling as SCR
 import Control.Monad.Aff (runAff)
-import Control.Monad.Aff.AVar (AVar, makeVar, putVar, takeVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
+import Control.Monad.Aff.AVar (makeVar, putVar, takeVar)
 import Control.Monad.Eff (Eff)
-
-import Data.Maybe.Unsafe (fromJust)
 
 import Halogen as H
 import Halogen.Component.Opaque.Unsafe (opaque, opaqueQuery)
@@ -37,7 +34,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource as HE
 
 import SlamData.Effects (SlamDataEffects, Slam)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component as DC
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ
@@ -50,7 +47,7 @@ import Utils.AffableProducer (produce)
 type DSL = H.ComponentDSL DNS.State DNQ.QueryP Slam
 type HTML = H.ComponentHTML DNQ.QueryP
 
-comp ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
+comp ∷ ∀ r. RequestIdTokenBus r → DeckOptions → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
 comp requestNewIdTokenBus opts deckState =
   H.lifecycleComponent
     { render
@@ -63,7 +60,7 @@ comp requestNewIdTokenBus opts deckState =
   deckComponent' ∷ (DCQ.Query Unit → Eff SlamDataEffects Unit) → H.Component DCS.StateP DCQ.QueryP Slam
   deckComponent' emitter =
     opaque $ H.lifecycleParentComponent
-      { render: DC.render requestNewIdTokenBus opts (comp requestNewIdTokenBus opts)
+      { render: DC.render requestNewIdTokenBus opts (comp requestNewIdTokenBus)
       , eval: \query → do
           res ← DC.eval requestNewIdTokenBus opts query
           case query of
@@ -80,25 +77,27 @@ comp requestNewIdTokenBus opts deckState =
   render ∷ DNS.State → HTML
   render _ =
     HH.div
-      [ HP.ref (left ∘ H.action ∘ DNQ.Ref) ]
+      [ HP.classes [ HH.className "sd-deck-nested" ]
+      , HP.ref (left ∘ H.action ∘ DNQ.Ref)
+      ]
       []
 
   eval ∷ DNQ.Query ~> DSL
   eval = case _ of
     DNQ.Init next → do
-      el ← fromJust <$> H.gets _.el
+      el ← unsafePartial fromJust <$> H.gets _.el
       emitter ← H.fromAff makeVar
       H.subscribe $
         HE.EventSource $
           SCR.producerToStallingProducer $ produce \emit →
-            runAff (const (pure unit)) (const (pure unit)) $
+            void $ runAff (const (pure unit)) (const (pure unit)) $
               putVar emitter (emit <<< Left)
       emitter' ← H.fromAff $ takeVar emitter
       driver ← H.fromAff $ H.runUI (deckComponent' (emitter' ∘ right)) deckState el
       H.modify _ { driver = Just (DNS.Driver driver) }
       pure next
     DNQ.Finish next → do
-      DNS.Driver driver ← fromJust <$> H.gets _.driver
+      DNS.Driver driver ← unsafePartial fromJust <$> H.gets _.driver
       H.fromAff $ driver $ opaqueQuery $ DCQ.Finish next
     DNQ.Ref el next → do
       H.modify _ { el = el }
@@ -112,5 +111,5 @@ comp requestNewIdTokenBus opts deckState =
     DCQ.ResizeDeck _ next → pure next
     -- The rest we'll just pass through
     query → do
-      DNS.Driver driver ← fromJust <$> H.gets _.driver
+      DNS.Driver driver ← unsafePartial fromJust <$> H.gets _.driver
       H.fromAff $ driver $ opaqueQuery query

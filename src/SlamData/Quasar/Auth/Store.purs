@@ -23,7 +23,7 @@ import Control.Monad.Eff (Eff)
 import DOM (DOM)
 
 
-import OIDCCryptUtils.Types as OIDCT
+import OIDC.Crypt.Types as OIDCT
 
 import SlamData.Quasar.Auth.Keys as AuthKeys
 

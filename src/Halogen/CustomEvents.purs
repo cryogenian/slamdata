@@ -21,14 +21,5 @@ import Halogen.HTML.Events.Types (Event, MouseEvent)
 
 import Unsafe.Coerce (unsafeCoerce)
 
-type PageEvent =
-  ( pageX ∷ Number
-  , pageY ∷ Number
-  | MouseEvent
-  )
-
-mouseEventToPageEvent ∷ Event MouseEvent → Event PageEvent
-mouseEventToPageEvent = unsafeCoerce
-
 domEventToMouseEvent ∷ DOM.Event → Event MouseEvent
 domEventToMouseEvent = unsafeCoerce

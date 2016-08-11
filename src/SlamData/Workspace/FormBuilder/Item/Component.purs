@@ -141,7 +141,7 @@ render { model } =
         pre "false" = Right false
         pre str = Left str
 
-eval :: forall g. Natural Query (ItemDSL g)
+eval :: forall g. Query ~> ItemDSL g
 eval q =
   case q of
     Update q ->
@@ -152,7 +152,7 @@ eval q =
     GetModel k ->
       k <<< Lens.view _model <$> H.get
 
-evalUpdate :: forall g. Natural UpdateQuery (ItemDSL g)
+evalUpdate :: forall g. UpdateQuery ~> ItemDSL g
 evalUpdate q =
   case q of
     UpdateName str next -> do

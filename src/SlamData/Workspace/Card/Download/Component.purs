@@ -34,6 +34,8 @@ import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
+import Global as Global
+
 import Quasar.Paths as Paths
 
 import SlamData.Download.Model as D

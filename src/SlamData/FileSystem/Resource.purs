@@ -59,23 +59,21 @@ module SlamData.FileSystem.Resource
 
 import SlamData.Prelude
 
-import Data.Argonaut.Combinators ((~>), (:=), (.?))
-import Data.Argonaut.Core (jsonEmptyObject)
-import Data.Argonaut.Decode (class DecodeJson, decodeJson)
-import Data.Argonaut.Encode (class EncodeJson)
+import Data.Argonaut (class EncodeJson, class DecodeJson, decodeJson, jsonEmptyObject, (~>), (:=), (.?))
 import Data.Foreign (ForeignError(..)) as F
 import Data.Foreign.Class (class IsForeign, readProp) as F
-import Data.Foreign.NullOrUndefined (runNullOrUndefined) as F
+import Data.Foreign.NullOrUndefined (unNullOrUndefined) as F
 import Data.Lens (lens, prism', PrismP, LensP, TraversalP, wander)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as S
+import Data.StrMap as SM
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Listing.Sort (Sort(..))
 
 import Test.Property.Utils.Path as TP
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 import Utils.Path ((<./>))
@@ -379,7 +377,7 @@ instance resourceIsForeign ∷ F.IsForeign Resource where
     ty ← F.readProp "type" f
     mountType ←
       F.readProp "mount" f
-      <#> F.runNullOrUndefined
+      <#> F.unNullOrUndefined
 
     template ← case ty of
       "directory" →
@@ -416,7 +414,7 @@ instance decodeJsonResource ∷ DecodeJson Resource where
     path ← obj .? "path"
     let
       mountType =
-        Data.StrMap.lookup "mount" obj
+        SM.lookup "mount" obj
         >>= decodeJson
         ⋙ either (const Nothing) pure
     case resType of

@@ -9,7 +9,7 @@ import Control.Monad.Aff.Reattempt (reattempt)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console as Ec
-import Control.Monad.Eff.Exception (Error, EXCEPTION, message, error)
+import Control.Monad.Eff.Exception (EXCEPTION, Error, message)
 import Control.Monad.Eff.Ref (REF, newRef, modifyRef, readRef)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Reader.Trans (runReaderT)
@@ -18,26 +18,21 @@ import Data.Array as Arr
 import Data.Posix.Signal (Signal(SIGTERM))
 import Data.String as Str
 
-import Database.Mongo.Mongo (connect, close)
-
 import DOM (DOM)
 
 import Node.ChildProcess as CP
 import Node.FS (FS)
-import Node.FS.Aff (unlink, mkdir, chmod)
-import Node.FS.Perms as Np
+import Node.FS.Aff (mkdir, unlink)
 import Node.Path (resolve)
 import Node.Process as Process
 import Node.Rimraf (rimraf)
 import Node.Stream (Readable, Duplex, pipe, onClose)
 
-import Platform (getPlatform, runOs, runPlatform)
-
 import Quasar.Spawn.Util.Starter (starter, expectStdOut, expectStdErr)
 
 import Selenium (quit)
 import Selenium.Browser (Browser(..), browserCapabilities)
-import Selenium.Builder (withCapabilities, build, usingServer)
+import Selenium.Builder (withCapabilities, build)
 import Selenium.Monad (setWindowSize)
 import Selenium.Types (SELENIUM)
 
@@ -52,7 +47,7 @@ import Test.SlamData.Feature.Test.Markdown as Markdown
 import Test.SlamData.Feature.Test.Search as Search
 import Test.SlamData.Feature.Test.CacheCard as Cache
 import Test.SlamData.Feature.Test.FlipDeck as FlipDeck
-import Text.Chalky (green, yellow, magenta, gray, red)
+import Text.Chalky (green, yellow, gray, red)
 
 foreign import getConfig ∷ ∀ e. Eff (fs ∷ FS|e) Config
 foreign import createReadStream
@@ -85,7 +80,6 @@ tests = do
 runTests ∷ Config → Aff Effects Unit
 runTests config = do
   driver ← build do
-    usingServer "http://127.0.0.1:4444/wd/hub"
     withCapabilities $ browserCapabilities Chrome
 
   let
@@ -101,9 +95,9 @@ runTests config = do
 
 copyFile
   ∷ ∀ e
-   . String
-   → String
-   → Aff (fs ∷ FS, avar ∷ AVAR, err ∷ EXCEPTION|e) Unit
+  . String
+  → String
+  → Aff (fs ∷ FS, avar ∷ AVAR, err ∷ EXCEPTION|e) Unit
 copyFile source tgt = do
   apathize $ unlink to
   readFrom ← createReadStream from
@@ -112,6 +106,7 @@ copyFile source tgt = do
 
   liftEff
     $ onClose writeTo
+    $ void
     $ runAff
         (const $ pure unit)
         (const $ pure unit)
@@ -155,7 +150,6 @@ quasarArgs config =
 seleniumArgs ∷ Config → Array String
 seleniumArgs config =
   [ "-jar", resolve [config.selenium.jar] ""
-  , "-port", "4444"
   ]
 
 mongoConnectionString ∷ Config → String
@@ -177,44 +171,9 @@ restoreDatabase rawConfig = do
   liftEff $ CP.exec
     rawConfig.restoreCmd
     CP.defaultExecOptions
-    (launchAff <<< putVar var)
+    (void <<< launchAff <<< putVar var)
   res ← takeVar var
   traverse_ throwError res.error
-
-
-chromeDriverForOS ∷ String → Maybe String
-chromeDriverForOS "win32" = Just "win.exe"
-chromeDriverForOS "darwin" = Just "mac"
-chromeDriverForOS "linux" = Just "linux"
-chromeDriverForOS _ = Nothing
-
-exeSuffix ∷ String → String
-exeSuffix "win.exe" = ".exe"
-exeSuffix _ = ""
-
-copyChromeDriver ∷ Aff Effects Unit
-copyChromeDriver = do
-  platform ← getPlatform
-  let
-    chromeDriverName =
-      platform
-      >>= runPlatform
-      >>> _.os
-      >>> runOs
-      >>> _.family
-      <#> Str.toLower
-      >>= chromeDriverForOS
-  case chromeDriverName of
-    Nothing → throwError $ error $ "Unknown OS, only Mac, Win and Linux are supported"
-    Just driverName →
-      let
-        suffix = exeSuffix driverName
-        oldName = "test/chromedriver/" ⊕ driverName
-        newName = "chromedriver" ⊕ suffix
-        allPerms = Np.mkPerms Np.all Np.all Np.all
-      in
-        copyFile oldName newName
-        *> chmod newName allPerms
 
 
 main ∷ Eff Effects Unit
@@ -225,7 +184,7 @@ main = do
 
   rawConfig ← getConfig
 
-  runAff errHandler (const $ Process.exit 0) do
+  void $ runAff errHandler (const $ Process.exit 0) do
     log $ gray "Creating data folder for MongoDB"
     cleanMkDir "tmp/data"
     log $ gray "Empting test folder"
@@ -235,11 +194,6 @@ main = do
     copyFile
       "test/quasar-config.json"
       "tmp/test/quasar-config.json"
-
-
-    log $ gray "Copying chromedriver"
-    copyChromeDriver
-    log $ gray "Ok, chromedriver is copied"
 
     mongo ←
       startProc
@@ -269,12 +223,7 @@ main = do
     restoreDatabase rawConfig
     log $ gray "Database restored"
 
-    log $ magenta "Connecting database"
-    db ← connect $ mongoConnectionString rawConfig
-    log $ magenta "Ok, connected"
-
     log $ yellow "Starting tests"
-
     testResults
       ← attempt
         $ runTests rawConfig
@@ -284,7 +233,6 @@ main = do
                   { filePaths =
                        map (\x → resolve [ x ] "") rawConfig.upload.filePaths }
               }
-    close db
     case testResults of
       Left e →  throwError e
       Right _ → log $ green "OK, tests are passed"

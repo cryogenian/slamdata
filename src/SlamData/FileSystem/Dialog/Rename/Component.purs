@@ -18,10 +18,8 @@ module SlamData.FileSystem.Dialog.Rename.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
-import Control.Monad.Eff.Exception (message)
 import Control.Monad.Error.Class (throwError)
+import Control.Monad.Eff.Exception (message)
 import Control.UI.Browser (reload)
 
 import Data.Array (elemIndex, singleton, sort, nub)
@@ -239,7 +237,7 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval ∷ ∀ r. RequestIdTokenBus r → Natural Query DSL
+eval ∷ ∀ r. RequestIdTokenBus r → Query ~> DSL
 eval _ (Dismiss next) = pure next
 eval _ (SetShowList bool next) = do
   H.modify (_showList .~ bool)
@@ -283,10 +281,11 @@ eval requestNewIdTokenBus (Submit next) = do
           presentSourceMissingError
           (const $ H.modify (_error .~ Nothing) *> H.fromEff reload)
           x
+    pure unit
 
   lastChar s = S.drop (S.length s - 1) s
 
-  endingInSlash s = if lastChar s == "/" then s else s ++ "/"
+  endingInSlash s = if lastChar s == "/" then s else s <> "/"
 
 eval _ (NameTyped str next) = do
   H.modify (_name .~ str)

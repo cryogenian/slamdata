@@ -16,15 +16,15 @@ limitations under the License.
 
 module Test.SlamData.Property.Workspace.Card.Chart.ChartType where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Argonaut (encodeJson, decodeJson)
-import Data.Either (Either(..))
-import Data.List (toList)
+import Data.List as L
 
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, quickCheck, (<?>))
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary)
 import Test.StrongCheck.Gen (elements)
 
 newtype ArbChartType = ArbChartType ChartType
@@ -37,13 +37,13 @@ instance arbitraryArbChartType :: Arbitrary ArbChartType where
     ArbChartType <$>
       elements
         Pie
-        (toList
+        (L.fromFoldable
           [ Line
           , Bar
           ])
 
-check :: QC Unit
+check :: forall eff. SC eff Unit
 check = quickCheck $ runArbChartType >>> \ct ->
   case decodeJson (encodeJson ct) of
-    Left err -> Failed $ "Decode failed: " ++ err
+    Left err -> Failed $ "Decode failed: " <> err
     Right ct' -> ct == ct' <?> "ChartType failed to decode as encoded value"

@@ -21,11 +21,9 @@ module Test.SlamData.Property.Workspace.Card.Model
   , checkCardEquality
   ) where
 
-import Prelude
+import SlamData.Prelude
 
 import Data.Argonaut as J
-import Data.Either (Either(..))
-import Data.Foldable (mconcat)
 
 import SlamData.Workspace.Card.Model as Card
 
@@ -33,28 +31,29 @@ import Test.SlamData.Property.Workspace.Card.CardId (runArbCardId)
 
 import Test.StrongCheck ((<?>))
 import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SCA
 
 newtype ArbCard = ArbCard Card.Model
 
 runArbCard ∷ ArbCard → Card.Model
 runArbCard (ArbCard m) = m
 
-instance arbitraryArbCard ∷ SC.Arbitrary ArbCard where
+instance arbitraryArbCard ∷ SCA.Arbitrary ArbCard where
   arbitrary = do
-    cardId ← runArbCardId <$> SC.arbitrary
-    model ← SC.arbitrary
+    cardId ← runArbCardId <$> SCA.arbitrary
+    model ← SCA.arbitrary
     pure $ ArbCard { cardId, model }
 
-check ∷ SC.QC Unit
+check ∷ forall eff. SC.SC eff Unit
 check =
   SC.quickCheck $ runArbCard >>> \model →
     case Card.decode (Card.encode model) of
-      Left err -> SC.Failed $ "Decode failed: " ++ err
+      Left err -> SC.Failed $ "Decode failed: " <> err
       Right model' -> checkCardEquality model model'
 
 checkCardEquality ∷ Card.Model → Card.Model → SC.Result
 checkCardEquality model model' =
-  mconcat
+  fold
    [ model.cardId == model'.cardId <?> "cardId mismatch"
    , model.model == model'.model <?> ("model mismatch:\n " <> show (J.encodeJson model.model) <> "\n" <> show (J.encodeJson model'.model))
    ]

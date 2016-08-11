@@ -29,7 +29,7 @@ import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Bus (Bus, Cap, write)
 import Control.Monad.Aff.Free (class Affable, fromAff)
 
-import Data.Time (Milliseconds)
+import Data.Time.Duration (Milliseconds)
 
 data Notification
   = Info String

@@ -26,7 +26,7 @@ module SlamData.Workspace.Card.Table.Model
 import SlamData.Prelude
 
 import Data.Argonaut (Json, (:=), (~>), (.?), decodeJson, jsonEmptyObject)
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
 type Model =

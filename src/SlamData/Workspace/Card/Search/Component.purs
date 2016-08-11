@@ -72,10 +72,10 @@ render state =
         [ glyph B.glyphiconRemove ]
     ]
 
-eval ∷ Natural Query DSL
+eval ∷ Query ~> DSL
 eval = coproduct cardEval searchEval
 
-cardEval ∷ Natural CC.CardEvalQuery DSL
+cardEval ∷ CC.CardEvalQuery ~> DSL
 cardEval = case _ of
   CC.EvalCard input output next →
     pure next
@@ -96,7 +96,7 @@ cardEval = case _ of
   CC.ZoomIn next →
     pure next
 
-searchEval ∷ Natural SearchQuery DSL
+searchEval ∷ SearchQuery ~> DSL
 searchEval (UpdateSearch str next) = do
   H.modify (_searchString .~ str)
   CC.raiseUpdatedC' CC.EvalModelUpdate

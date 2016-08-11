@@ -73,7 +73,7 @@ render { varMap } =
           ]
       ]
 
-eval ∷ Natural QueryP TroubleshootDSL
+eval ∷ QueryP ~> TroubleshootDSL
 eval = coproduct evalCard (absurd ∘ getConst)
 
 evalCard ∷ CC.CardEvalQuery ~> TroubleshootDSL

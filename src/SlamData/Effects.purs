@@ -19,40 +19,33 @@ module SlamData.Effects where
 import Ace.Types (ACE)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Console (CONSOLE)
+import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (REF)
+import Control.Monad.Eff.Timer (TIMER)
 import Control.UI.File (READ_FILE)
-import Control.UI.ZClipboard (ZCLIPBOARD)
-import DOM.Timer (Timer)
-import Data.Date (Now)
-import Data.Date.Locale (Locale)
-import ECharts.Effects (ECHARTS_INIT, ECHARTS_OPTION_SET, ECHARTS_DISPOSE, ECHARTS_RESIZE, ECHARTS_REFRESH, ECHARTS_CLEAR)
+import Data.JSDate (LOCALE)
+import ECharts.Types (ECHARTS)
+import OIDC.Crypt (RSASIGNTIME)
 import Halogen (HalogenEffects)
 import Network.HTTP.Affjax (AJAX)
-import OIDCCryptUtils as OIDC
-import Utils.At (INTERVAL)
+import ZClipboard (ZCLIPBOARD)
 
 type Slam = Aff SlamDataEffects
 
 type SlamDataEffects = HalogenEffects SlamDataRawEffects
 
 type SlamDataRawEffects =
-  ( ace :: ACE
-  , ajax :: AJAX
-  , console :: CONSOLE
-  , echartClear :: ECHARTS_CLEAR
-  , echartDispose :: ECHARTS_DISPOSE
-  , echartInit :: ECHARTS_INIT
-  , echartRefresh :: ECHARTS_REFRESH
-  , echartResize :: ECHARTS_RESIZE
-  , echartSetOption :: ECHARTS_OPTION_SET
-  , file :: READ_FILE
-  , locale :: Locale
-  , now :: Now
-  , random :: RANDOM
-  , ref :: REF
-  , rsaSignTime ∷ OIDC.RSASIGNTIME
-  , timer :: Timer
-  , interval :: INTERVAL
-  , zClipboard :: ZCLIPBOARD
+  ( ajax ∷ AJAX
+  , random ∷ RANDOM
+  , ace ∷ ACE
+  , console ∷ CONSOLE
+  , echarts ∷ ECHARTS
+  , file ∷ READ_FILE
+  , now ∷ NOW
+  , ref ∷ REF
+  , timer ∷ TIMER
+  , rsaSignTime ∷ RSASIGNTIME
+  , zClipboard ∷ ZCLIPBOARD
+  , locale ∷ LOCALE
   )

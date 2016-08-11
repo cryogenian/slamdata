@@ -36,6 +36,8 @@ import DOM.HTML (window)
 import DOM.HTML.Location as Location
 import DOM.HTML.Window as Window
 
+import Global as Global
+
 import Network.HTTP.RequestHeader (RequestHeader(..))
 
 import Quasar.Advanced.Types (TokenHash(..), runTokenHash)
@@ -69,8 +71,7 @@ runUser :: User -> String
 runUser (User s) = s
 
 type PermissionShareRequest =
-  {
-    resource :: R.Resource
+  { resource :: R.Resource
   , targets :: Either (Ne.NonEmpty Array Group) (Ne.NonEmpty Array User)
   , permissions :: Permissions
   }
@@ -108,7 +109,9 @@ retrieveTokenHashes =
     <#> map TokenHash
   where
   permissionRegex :: Rgx.Regex
-  permissionRegex = Rgx.regex "permissionTokens=([^&]+)" Rgx.noFlags
+  permissionRegex =
+    unsafePartial fromRight $
+      Rgx.regex "permissionTokens=([^&]+)" Rgx.noFlags
 
   extractTokenHashsString :: String -> Maybe String
   extractTokenHashsString str =

@@ -27,8 +27,6 @@ module SlamData.FileSystem.Dialog.Mount.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception (Error, message)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except.Trans (ExceptT, runExceptT)
@@ -129,7 +127,7 @@ selScheme state =
             [ HP.class_ B.formControl
             , HE.onValueChange (HE.input SelectScheme <<< schemeFromString)
             ]
-            $ [ HH.option_ [] ] ++ schemeOptions
+            $ [ HH.option_ [] ] <> schemeOptions
         ]
     ]
   where
@@ -164,7 +162,7 @@ progressSpinner :: State -> HTML
 progressSpinner { saving } =
   HH.img [ HP.src "img/spin.gif", HP.class_ (Rc.mountProgressSpinner saving) ]
 
-eval ∷ ∀ r. RequestIdTokenBus r → Natural Query DSL
+eval ∷ ∀ r. RequestIdTokenBus r → Query ~> DSL
 eval _ (ModifyState f next) = H.modify f *> validateInput $> next
 eval _ (SelectScheme newScheme next) = do
   currentScheme <- map scheme <$> H.gets _.settings

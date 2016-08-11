@@ -32,7 +32,7 @@ import Data.Json.Extended as EJSON
 import Data.List ((:))
 import Data.List as L
 import Data.Map as Map
-import Data.Maybe.Unsafe as MU
+import Data.Maybe as M
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as P
 import Data.String as Str
@@ -81,7 +81,7 @@ routing
   mkResource parts =
     case L.last parts of
       Just filename | filename /= "" →
-        let dirParts = MU.fromJust (L.init parts)
+        let dirParts = unsafePartial M.fromJust (L.init parts)
             filePart = P.file filename
             path = foldr (\part acc → P.dir part </> acc) filePart dirParts
         in Right $ P.rootDir </> path
@@ -114,7 +114,9 @@ routing
     | otherwise = Right input
 
   extensionRegex ∷ R.Regex
-  extensionRegex = R.regex ("\\." <> Config.workspaceExtension <> "$") R.noFlags
+  extensionRegex =
+    unsafePartial fromRight $
+      R.regex ("\\." <> Config.workspaceExtension <> "$") R.noFlags
 
   checkExtension ∷ String → Boolean
   checkExtension = R.test extensionRegex
@@ -172,7 +174,7 @@ varMapsForURL = map (map go)
 
 decodeVarMaps ∷ String → Either String (Map.Map D.DeckId Port.URLVarMap)
 decodeVarMaps = J.jsonParser >=> J.decodeJson >=> \obj →
-  Map.fromList <$> L.foldM go L.Nil (SM.toList obj)
+  Map.fromFoldable <$> L.foldM go L.Nil (SM.toList obj)
   where
   go
     ∷ L.List (D.DeckId × Port.URLVarMap)

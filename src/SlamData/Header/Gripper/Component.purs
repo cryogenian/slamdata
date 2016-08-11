@@ -23,13 +23,13 @@ import Control.Monad.Aff as Aff
 import Control.Monad.Rec.Class (forever)
 import Control.Coroutine.Stalling as StallingCoroutine
 
-import DOM.HTML (window)
-import DOM.HTML.Window as Win
-import DOM.HTML.Types as Ht
-import DOM.Event.EventTarget as Etr
-import DOM.Event.EventTypes as Etp
-import DOM.Node.ParentNode as Pn
 import Data.Nullable as N
+import DOM.Event.EventTarget as Etr
+import DOM.HTML (window)
+import DOM.HTML.Event.EventTypes as Etp
+import DOM.HTML.Types as Ht
+import DOM.HTML.Window as Win
+import DOM.Node.ParentNode as Pn
 import DOM.Node.Types as Dt
 
 import CSS.Geometry (marginTop)
@@ -53,6 +53,8 @@ import SlamData.Effects (Slam)
 import SlamData.SignIn.Bus (SignInBusR)
 
 import Utils.AffableProducer (produceAff)
+
+import Unsafe.Coerce (unsafeCoerce)
 
 data Query a
   = Init a
@@ -167,7 +169,7 @@ eval sel bus (Init next) = do
       <#> N.toMaybe
   let
     evntify ∷ ∀ a. a → { clientY ∷ Number }
-    evntify = Unsafe.Coerce.unsafeCoerce
+    evntify = unsafeCoerce
 
     docTarget = Ht.htmlDocumentToEventTarget doc
 

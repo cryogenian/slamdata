@@ -34,11 +34,12 @@ import Data.Foldable (any)
 import Data.Lens ((^.))
 
 import SlamData.Form.Select (Select, _value)
-import SlamData.Workspace.Card.Chart.Aggregation (Aggregation)
+import SlamData.Workspace.Card.Chart.Aggregation (Aggregation, runArbAggregation)
 import SlamData.Workspace.Card.Chart.Axis (dependsOn)
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
+
 
 type JSelect = Select JCursor
 
@@ -55,7 +56,7 @@ type ChartConfiguration =
   { series ∷ Array JSelect
   , dimensions ∷ Array JSelect
   , measures ∷ Array JSelect
-  , aggregations ∷ Array (Select Aggregation)
+  , aggregations ∷ Array (Select (Maybe Aggregation))
   }
 
 eqChartConfiguration ∷ ChartConfiguration → ChartConfiguration → Boolean
@@ -79,7 +80,7 @@ genChartConfiguration = do
   series ← Gen.arrayOf genJSelect
   dimensions ← Gen.arrayOf genJSelect
   measures ← Gen.arrayOf genJSelect
-  aggregations ← SC.arbitrary
+  aggregations ← map (map runArbAggregation) <$> SC.arbitrary
   pure { series, dimensions, measures, aggregations }
   where
     genJSelect ∷ Gen.Gen JSelect
@@ -99,4 +100,4 @@ decode = decodeJson >=> \obj → do
     <$> obj .? "series"
     <*> obj .? "dimensions"
     <*> obj .? "measures"
-    <*> obj .? "aggregations"
+    <*> ((obj .? "aggregations") <|> ((obj .? "aggregations") <#> map (map Just)))

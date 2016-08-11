@@ -90,7 +90,7 @@ render state@{ items } =
     [ HP.classes [ B.listGroup, Rc.results ] ]
     $ zipItems (install state) items
 
-eval :: Natural Query DSL
+eval :: Query ~> DSL
 eval (Reset next) = H.modify (_items .~ mempty) $> next
 eval (Add item next) = H.modify (_items %~ nub <<< cons item) $> next
 eval (Adds items next) = do

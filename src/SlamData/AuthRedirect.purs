@@ -24,13 +24,13 @@ import Control.Monad.Aff as Aff
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Now as Now
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Maybe.Trans as MBT
 import Control.Monad.Eff.Random (RANDOM)
 
 import Data.Foldable as F
-import Data.Date as Date
 
 import DOM as DOM
 import DOM.HTML (window)
@@ -39,7 +39,7 @@ import DOM.HTML.Window as Win
 
 import Network.HTTP.Affjax as AX
 
-import OIDCCryptUtils as OIDC
+import OIDC.Crypt as OIDC
 
 import SlamData.AuthRedirect.RedirectHashPayload as Payload
 import SlamData.Quasar as Quasar
@@ -54,7 +54,7 @@ type RedirectEffects =
   , dom :: DOM.DOM
   , random :: RANDOM
   , err :: Exn.EXCEPTION
-  , now :: Date.Now
+  , now :: Now.NOW
   , ref ∷ Ref.REF
   , rsaSignTime :: OIDC.RSASIGNTIME
   )
@@ -119,7 +119,7 @@ verifyRedirect st issuer jwk = do
 main :: Eff RedirectEffects Unit
 main = do
   -- We're getting token too fast. It isn't valid until next second (I think)
-  Aff.runAff Exn.throwException (const (pure unit)) do
+  void $ Aff.runAff Exn.throwException (const (pure unit)) do
     state <- liftEff retrieveRedirectState
     -- First, retrieve the provider that matches our stored ClientID.
     maybeOpenIDConfiguration ← liftEff $ map _.openIDConfiguration <$> AuthRetrieve.retrieveProviderR

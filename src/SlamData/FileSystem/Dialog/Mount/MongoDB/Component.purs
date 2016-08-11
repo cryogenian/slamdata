@@ -24,8 +24,6 @@ module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
 import SlamData.Prelude
 
 import Control.Monad.Eff.Exception (error)
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 
 import Data.Array ((..), length)
 import Data.Lens (TraversalP, (^.), (.~))
@@ -67,7 +65,7 @@ render state =
     , section "Settings" [ propList _props state ]
     ]
 
-eval ∷ ∀ r. RequestIdTokenBus r → Natural Query (H.ComponentDSL State Query Slam)
+eval :: ∀ r. RequestIdTokenBus r → Query ~> H.ComponentDSL State Query Slam
 eval _ (ModifyState f next) = H.modify (processState <<< f) $> next
 eval _ (Validate k) =
   k <<< either Just (const Nothing) <<< toConfig <$> H.get
@@ -103,13 +101,16 @@ host state index =
 
   rxNonHostname ∷ Rx.Regex
   rxNonHostname =
-    Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
+    unsafePartial fromRight $
+      Rx.regex "[^0-9a-z\\-\\._~%]" (Rx.noFlags { ignoreCase = true, global = true })
 
   rejectNonPort ∷ String → String
   rejectNonPort = Rx.replace rxNonPort ""
 
-  rxNonPort ∷ Rx.Regex
-  rxNonPort = Rx.regex "[^0-9]" (Rx.noFlags { global = true })
+  rxNonPort :: Rx.Regex
+  rxNonPort =
+    unsafePartial fromRight $
+      Rx.regex "[^0-9]" (Rx.noFlags { global = true })
 
 userInfo ∷ State → H.ComponentHTML Query
 userInfo state =
@@ -133,7 +134,7 @@ fldPath state =
 
 -- | A labelled section within the form.
 label ∷ String → Array HTML → HTML
-label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] ++ inner
+label text inner = HH.label_ $ [ HH.span_ [ HH.text text ] ] <> inner
 
 -- | A basic text input field that uses a lens to read from and update the
 -- | state.
@@ -159,4 +160,4 @@ input' f state lens attrs =
       , HE.onValueInput (HE.input \val → ModifyState (lens .~ f val))
       , HP.value (state ^. lens)
       ]
-    ++ attrs
+    <> attrs

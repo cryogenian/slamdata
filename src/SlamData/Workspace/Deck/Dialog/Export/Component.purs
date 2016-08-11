@@ -18,11 +18,8 @@ module SlamData.Workspace.Deck.Dialog.Export.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Ref (Ref, newRef, readRef, writeRef)
 import Control.UI.Browser (select, locationString)
-import Control.UI.ZClipboard as Z
 
 import Data.Foldable as F
 import Data.Map as Map
@@ -43,7 +40,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 import Halogen.Component.Utils (raise)
 
-import OIDCCryptUtils as OIDC
+import OIDC.Crypt as OIDC
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
@@ -64,6 +61,8 @@ import Quasar.Advanced.Types as QTA
 
 import Utils (prettyJson)
 import Utils.Path as UP
+
+import ZClipboard as Z
 
 data PresentAs = IFrame | URI
 
@@ -361,7 +360,7 @@ eval requestNewIdTokenBus (Init mbEl next) = next <$ do
       Z.setData "text/plain" val z
 
   -- To know if user is authed
-  mbAuthToken ← H.fromAff $ AuthRetrieve.fromEither <$> (Utils.passover (\x -> (traceA "signIn") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
+  mbAuthToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus
   case mbAuthToken of
     Nothing →
       H.modify _{ permToken = Nothing
@@ -492,14 +491,14 @@ renderCopyVal locString state
       , """slamdata.embed = function(options) {"""
       , """  var queryParts = [];"""
       , """  if (options.permissionTokens) queryParts.push("permissionTokens=" + options.permissionTokens.join(","));"""
-      , """  if (options.stylesheets) queryParts.push("stylesheets=" + options.stylesheets.map(encodeURIComponent).join(","));"""
+      , """  if (options.stylesheets && options.stylesheets.length) queryParts.push("stylesheets=" + options.stylesheets.map(encodeURIComponent).join(","));"""
       , """  var queryString = "?" + queryParts.join("&");"""
       , """  var varsParam = options.vars ? "/?vars=" + encodeURIComponent(JSON.stringify(options.vars)) : "";"""
       , """  var uri = """ ⊕ quoted workspaceURL ⊕ """ + queryString;"""
       , """  var iframe = document.createElement("iframe");"""
       , """  iframe.width = iframe.height = "100%";"""
       , """  iframe.frameBorder = 0;"""
-      , """  iframe.src = uri + "#" + options.deckPath + "/" + options.deckId + "/view" + varsParam;"""
+      , """  iframe.src = uri + "#" + options.deckPath + options.deckId + "/view" + varsParam;"""
       , """  var deckElement = document.getElementById("sd-deck-" + options.deckId);"""
       , """  if (deckElement) deckElement.appendChild(iframe);"""
       , """};"""
@@ -548,7 +547,7 @@ renderCopyVal locString state
 renderVarMaps ∷ Map.Map DeckId Port.VarMap → String
 renderVarMaps = indent <<< prettyJson <<< encodeVarMaps <<< varMapsForURL
   where
-  indent = RX.replace (RX.regex "(\n\r?)" (RX.noFlags { global = true })) "$1    "
+  indent = RX.replace (unsafePartial fromRight $ RX.regex "(\n\r?)" (RX.noFlags { global = true })) "$1    "
 
 renderURL ∷ String → State → String
 renderURL locationString state@{sharingInput, varMaps, permToken, isLoggedIn} =

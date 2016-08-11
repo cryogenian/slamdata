@@ -21,7 +21,6 @@ import SlamData.Prelude
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.UI.Browser (select)
-import Control.UI.ZClipboard as Z
 
 import Data.Array as Arr
 import Data.String as Str
@@ -47,6 +46,8 @@ import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), sharingActions, SharingInput)
 
 import Utils.Path (rootFile, FilePath)
+
+import ZClipboard as Z
 
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam

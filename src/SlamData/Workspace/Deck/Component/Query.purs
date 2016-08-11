@@ -33,7 +33,6 @@ import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port.VarMap (VarMap)
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Workspace.Deck.DeckLevel (DeckLevel)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Wiring (DeckMessage, PendingMessage)
@@ -51,8 +50,8 @@ data Query a
   | SetParent (Tuple DeckId CardId) a
   | ExploreFile UP.FilePath a
   | Publish a
-  | Load UP.DirPath DeckId DeckLevel a
-  | SetModel DeckId Deck DeckLevel a
+  | Load UP.DirPath DeckId a
+  | SetModel DeckId Deck a
   | GetModel (Deck → a)
   | GetModelCards (Array (DeckId × Card.Model) → a)
   | SetModelCards (Array (DeckId × Card.Model)) a

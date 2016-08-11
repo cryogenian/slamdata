@@ -24,13 +24,17 @@ import Data.Argonaut (class DecodeJson, class EncodeJson, JCursor, decodeJson, j
 import Data.Array (filter, length, head, (!!), elemIndex)
 import Data.Lens (LensP, lens, view, (^.), (?~), (.~))
 import Data.Monoid.Conj (Conj(..), runConj)
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 
 class (Eq a) ⇐ OptionVal a where
   stringVal ∷ a → String
 
 instance optionValJCursor ∷ OptionVal JCursor where
   stringVal = show
+
+instance optionValMaybe ∷ (OptionVal a) ⇒ OptionVal (Maybe a) where
+  stringVal Nothing = "None"
+  stringVal (Just a) = stringVal a
 
 -- | `options` for available variants
 -- | `value` for selected item

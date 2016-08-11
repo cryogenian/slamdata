@@ -27,10 +27,13 @@ import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff.Class (liftEff)
 
 import Data.Either as E
-import Data.Time (Milliseconds(..))
+import Data.Int as Int
+import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
-import Halogen.Query.EventSource as He
+import Halogen.Query.EventSource as ES
+
+import Math as Math
 
 import Utils.AffableProducer (produce)
 
@@ -96,16 +99,16 @@ oneTimeEventSource
   ∷ ∀ f eff
   . Milliseconds
   → f Unit
-  → He.EventSource f (Aff (avar ∷ AVAR | eff))
+  → H.EventSource f (Aff (avar ∷ AVAR | eff))
 oneTimeEventSource (Milliseconds n) action =
-  He.EventSource
+  ES.EventSource
   $ SCR.producerToStallingProducer
   $ produce \emit →
-      runAff (const $ pure unit) (const $ pure unit)
-      $ later' (Data.Int.floor $ Math.max n zero)
-      $ liftEff do
-        emit $ E.Left action
-        emit $ E.Right unit
+      void $ runAff (const $ pure unit) (const $ pure unit)
+        $ later' (Int.floor $ Math.max n zero)
+        $ liftEff do
+          emit $ E.Left action
+          emit $ E.Right unit
 
 subscribeToBus'
   ∷ ∀ s s' f f' p a r eff
@@ -115,10 +118,10 @@ subscribeToBus'
 subscribeToBus' k bus = do
   breaker ← fromAff makeVar
   H.subscribe'
-    $ He.EventSource
+    $ ES.EventSource
     $ SCR.producerToStallingProducer
     $ produce \emit →
-        runAff (const $ pure unit) (const $ pure unit) do
+        void $ runAff (const $ pure unit) (const $ pure unit) do
           loop ← EventLoop.forever do
             a ← Bus.read bus
             forkAff $ H.fromEff $ emit $ E.Left (k a)

@@ -26,9 +26,10 @@ import Data.Array (zipWith)
 
 import SlamData.Workspace.Deck.Model as Model
 
-import Test.StrongCheck (QC, Result(..), class Arbitrary, arbitrary, quickCheck)
-import Test.SlamData.Property.Workspace.Card.Model (runArbCard, checkCardEquality)
 import Test.SlamData.Property.Workspace.Card.CardId (runArbCardId)
+import Test.SlamData.Property.Workspace.Card.Model (runArbCard, checkCardEquality)
+import Test.StrongCheck (SC, Result(..), quickCheck, (<?>))
+import Test.StrongCheck.Arbitrary (class Arbitrary, arbitrary)
 
 newtype ArbDeck = ArbDeck Model.Deck
 
@@ -43,7 +44,7 @@ instance arbitraryArbWorkspace ∷ Arbitrary ArbDeck where
     name ← arbitrary
     pure $ ArbDeck { cards, parent, mirror, name }
 
-check ∷ QC Unit
+check ∷ forall eff. SC eff Unit
 check = quickCheck $ runArbDeck ⋙ \model →
   case Model.decode (Model.encode model) of
     Left err → Failed $ "Decode failed: " ⊕ err

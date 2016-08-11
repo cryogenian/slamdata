@@ -210,10 +210,10 @@ toHeaders
      , options :: Either CSVOptions JSONOptions|r}
   -> Array RequestHeader
 toHeaders r =
-  encHeaderArray r.compress ++ [ acceptHeader ]
+  encHeaderArray r.compress <> [ acceptHeader ]
   where
   acceptHeader :: RequestHeader
-  acceptHeader = Accept $ MediaType $ mimeType r.options ++ attachmentDisposition
+  acceptHeader = Accept $ MediaType $ mimeType r.options <> attachmentDisposition
 
   encHeaderArray :: Boolean -> Array RequestHeader
   encHeaderArray true = [ RequestHeader "Accept-Encoding" "gzip" ]
@@ -233,7 +233,7 @@ toHeaders r =
   mimeType (Right (JSONOptions opts)) =
     let suffix = if opts.precision == Precise then ";mode=precise" else ""
         subtype = if opts.multivalues == ArrayWrapped then "json" else "ldjson"
-    in "application/" ++ subtype ++ suffix
+    in "application/" <> subtype <> suffix
   esc :: String -> String
   esc s =
     (\a -> "\"" <> a <> "\"")
@@ -243,6 +243,6 @@ toHeaders r =
     s
     where
     grx :: String -> Rx.Regex
-    grx pat = Rx.regex pat Rx.noFlags { global = true }
+    grx pat = unsafePartial fromRight $ Rx.regex pat Rx.noFlags { global = true }
 
 data OutputType = CSV | JSON

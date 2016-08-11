@@ -21,8 +21,7 @@ module SlamData.Workspace.Deck.Component.Render
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
+import Data.List as L
 
 import Halogen as H
 import Halogen.HTML.Events.Indexed as HE
@@ -32,7 +31,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Deck.BackSide.Component as Back
@@ -42,7 +41,6 @@ import SlamData.Workspace.Deck.Component.CSS as CSS
 import SlamData.Workspace.Deck.Component.Cycle (DeckComponent)
 import SlamData.Workspace.Deck.Component.Query (Query(..))
 import SlamData.Workspace.Deck.Component.State as DCS
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Slider as Slider
@@ -56,7 +54,7 @@ renderError err =
         [ HH.text err ]
     ]
 
-renderDeck ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DeckComponent → DCS.State → DeckHTML
+renderDeck ∷ ∀ r. RequestIdTokenBus r → DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 renderDeck requestNewIdTokenBus opts deckComponent st =
   HH.div
     (deckClasses st
@@ -64,7 +62,7 @@ renderDeck requestNewIdTokenBus opts deckComponent st =
      ⊕ Slider.containerProperties st)
     [ HH.div
         [ HP.class_ CSS.deckFrame ]
-        $ frameElements opts.accessType st ⊕ [ renderName st.name ]
+        $ frameElements opts ⊕ [ renderName st.name ]
     , HH.div
         [ HP.class_ CSS.deck
         , HP.key "deck"
@@ -112,10 +110,10 @@ renderName name =
     [ HP.class_ CSS.deckName ]
     [ HH.text name ]
 
-frameElements ∷ AT.AccessType → DCS.State → Array DeckHTML
-frameElements accessType st
+frameElements ∷ DeckOptions → Array DeckHTML
+frameElements { accessType, cursor }
   | accessType ≡ AT.ReadOnly = mempty
-  | st.level ≡ DL.root = rootFrameElements
+  | L.null cursor = rootFrameElements
   | otherwise = childFrameElements
 
 rootFrameElements ∷ Array DeckHTML
@@ -134,14 +132,14 @@ childFrameElements =
   , deckIndicator
   ]
 
-dialogSlot ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckHTML
+dialogSlot ∷ ∀ r. RequestIdTokenBus r → DeckHTML
 dialogSlot requestNewIdTokenBus =
   HH.slot' cpDialog unit \_ →
     { component: Dialog.comp requestNewIdTokenBus
     , initialState: H.parentState Dialog.initialState
     }
 
-backside ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckHTML
+backside ∷ ∀ r. RequestIdTokenBus r → DeckHTML
 backside requestNewIdTokenBus =
   HH.div
     [ HP.classes [ CSS.card ] ]

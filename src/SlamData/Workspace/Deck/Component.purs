@@ -25,15 +25,13 @@ module SlamData.Workspace.Deck.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.EventLoop as EventLoop
-import Control.Monad.Aff.Par (Par(..), runPar)
 import Control.Monad.Aff.Promise as Pr
 import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
+import Control.Parallel.Class (parallel, runParallel)
 import Control.UI.Browser (locationObject, setHref, newTab)
 
 import Data.Array as Array
@@ -44,11 +42,10 @@ import Data.Lens.Prism.Coproduct (_Right)
 import Data.List ((:))
 import Data.List as L
 import Data.Map as Map
-import Data.Ord (max)
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
 import Data.Set as Set
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (Milliseconds(..))
 
 import DOM.HTML.Location as Location
 
@@ -59,25 +56,27 @@ import Halogen.Component.Utils.Debounced (fireDebouncedQuery')
 import Halogen.HTML.Indexed as HH
 
 import SlamData.Analytics.Event as AE
+import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
 import SlamData.Workspace.Card.CardType as CT
-import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component (CardQueryP, CardQuery(..), InnerCardQuery, AnyCardQuery, _NextQuery)
 import SlamData.Workspace.Card.Component.Query as CQ
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Draftboard.Component.Query as DBQ
 import SlamData.Workspace.Card.Eval as Eval
+import SlamData.Workspace.Card.InsertableCardType as ICT
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Next.Component as Next
 import SlamData.Workspace.Card.Port (Port)
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Variables.Eval as Variables
+import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
 import SlamData.Workspace.Deck.BackSide.Component as Back
 import SlamData.Workspace.Deck.Common (DeckOptions, DeckHTML, DeckDSL)
 import SlamData.Workspace.Deck.Component.ChildSlot (cpBackSide, cpCard, cpIndicator, ChildQuery, ChildSlot, CardSlot(..), cpDialog)
@@ -86,8 +85,8 @@ import SlamData.Workspace.Deck.Component.Query (QueryP, Query(..), DeckAction(..
 import SlamData.Workspace.Deck.Component.Render as DCR
 import SlamData.Workspace.Deck.Component.State as DCS
 import SlamData.Workspace.Deck.DeckId (DeckId, deckIdToString)
-import SlamData.Workspace.Deck.DeckLevel as DL
 import SlamData.Workspace.Deck.Dialog.Component as Dialog
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Indicator.Component as Indicator
 import SlamData.Workspace.Deck.Model as Model
 import SlamData.Workspace.Deck.Slider as Slider
@@ -96,8 +95,6 @@ import SlamData.Workspace.Notification as Notify
 import SlamData.Workspace.Routing (mkWorkspaceHash, mkWorkspaceURL)
 import SlamData.Workspace.StateMode (StateMode(..))
 import SlamData.Workspace.Wiring (Wiring, CardEval, Cache, DeckMessage(..), getDeck, putDeck, putCardEval, putCache, getCache, makeCache)
-import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource(..))
-import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 
 import Utils.DOM (getBoundingClientRect)
 import Utils.Path (DirPath)
@@ -105,7 +102,7 @@ import Utils.Path (DirPath)
 initialState ∷ DirPath → DeckId → DCS.StateP
 initialState path = opaqueState ∘ DCS.initialDeck path
 
-render ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DeckComponent → DCS.State → DeckHTML
+render ∷ ∀ r. RequestIdTokenBus r → DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 render requestNewIdTokenBus opts deckComponent st =
   -- HACK: required so that nested finalizers get run. Since this is run inside
   -- of a separate runUI instance with Deck.Component.Nested, they will not
@@ -116,7 +113,7 @@ render requestNewIdTokenBus opts deckComponent st =
     Error err → DCR.renderError err
     _ → DCR.renderDeck requestNewIdTokenBus opts deckComponent st
 
-eval ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → Query ~> DeckDSL
+eval ∷ ∀ r. RequestIdTokenBus r → DeckOptions → Query ~> DeckDSL
 eval requestNewIdTokenBus opts@{ wiring } = case _ of
   Init next → do
     pb ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
@@ -128,13 +125,11 @@ eval requestNewIdTokenBus opts@{ wiring } = case _ of
     H.modify _ { finalized = true }
     H.gets _.breakers >>= traverse_ (H.fromAff ∘ EventLoop.break')
     pure next
-  Load dir deckId level next → do
-    H.modify $ DCS._level .~ level
+  Load dir deckId next → do
     loadDeck requestNewIdTokenBus opts dir deckId
     pure next
-  SetModel deckId model level next → do
+  SetModel deckId model next → do
     state ← H.get
-    H.modify $ DCS._level .~ level
     setModel opts
       { path: state.path
       , id: deckId
@@ -207,7 +202,7 @@ eval requestNewIdTokenBus opts@{ wiring } = case _ of
     deckPath ← H.gets DCS.deckPath
     k <$> getVarMaps requestNewIdTokenBus deckPath wiring
   FlipDeck next → do
-    updateBackSide
+    updateBackSide opts
     H.modify
       $ DCS._displayMode
       %~ case _ of
@@ -285,9 +280,9 @@ eval requestNewIdTokenBus opts@{ wiring } = case _ of
 
 -- | Accumulates all `VarMap`s within the deck, including `VarMaps` from any
 -- | child decks within board cards.
-getVarMaps ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DirPath → Wiring → DeckDSL (Map.Map DeckId Port.VarMap)
+getVarMaps ∷ ∀ r. RequestIdTokenBus r → DirPath → Wiring → DeckDSL (Map.Map DeckId Port.VarMap)
 getVarMaps requestNewIdTokenBus path wiring =
-  Map.fromList <$> (Array.foldM goCard L.Nil =<< H.gets _.modelCards)
+  Map.fromFoldable <$> (Array.foldM goCard L.Nil =<< H.gets _.modelCards)
   where
   goCard
     ∷ L.List (DeckId × Port.VarMap)
@@ -305,12 +300,19 @@ getVarMaps requestNewIdTokenBus path wiring =
     ∷ L.List (DeckId × Port.VarMap)
     → DeckId
     → DeckDSL (L.List (DeckId × Port.VarMap))
-  goDeck acc deckId =
-    getDeck requestNewIdTokenBus path deckId wiring.decks >>= case _ of
-      Left _ → pure acc -- TODO: deck failed to load... so notify user? ignore?
-      Right deck → Array.foldM goCard acc (map (deckId × _) deck.cards)
+  goDeck acc deckId = do
+    res ← runExceptT do
+      deck ← ExceptT $ getDeck requestNewIdTokenBus path deckId wiring.decks
+      mirroredCards ← ExceptT $ loadMirroredCards requestNewIdTokenBus wiring path deck.mirror
+      pure $ mirroredCards <> (Tuple deckId <$> deck.cards)
+    case res of
+      Left err → do
+        Notify.loadDeckFail err wiring.notify wiring.analytics
+        pure acc
+      Right cards ->
+        Array.foldM goCard acc cards
 
-peek ∷ ∀ a s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
+peek ∷ ∀ a r. RequestIdTokenBus r → DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek requestNewIdTokenBus opts (H.ChildF s q) =
   (peekCards opts.wiring ⊹ (\_ _ → pure unit) $ s)
    ⨁ peekBackSide requestNewIdTokenBus opts
@@ -318,7 +320,7 @@ peek requestNewIdTokenBus opts (H.ChildF s q) =
    ⨁ (peekDialog requestNewIdTokenBus opts ⨁ (const $ pure unit))
    $ q
 
-peekDialog ∷ ∀ a s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → Dialog.Query a → DeckDSL Unit
+peekDialog ∷ ∀ a r. RequestIdTokenBus r → DeckOptions → Dialog.Query a → DeckDSL Unit
 peekDialog _ _ (Dialog.Show _ _) =
   H.modify (DCS._displayMode .~ DCS.Dialog)
 peekDialog _ _ (Dialog.Dismiss _) =
@@ -334,7 +336,7 @@ peekDialog _ _ (Dialog.Confirm d b _) = do
     Dialog.DeleteDeck | b → raise' $ H.action $ DoAction DeleteDeck
     _ → pure unit
 
-peekBackSide ∷ ∀ a s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → Back.Query a → DeckDSL Unit
+peekBackSide ∷ ∀ a r. RequestIdTokenBus r → DeckOptions → Back.Query a → DeckDSL Unit
 peekBackSide requestNewIdTokenBus opts (Back.DoAction action _) =
   case action of
     Back.Trash → do
@@ -356,7 +358,7 @@ peekBackSide requestNewIdTokenBus opts (Back.DoAction action _) =
           CardId _ → do
             let rem = DCS.removeCard trashId state
             DBC.childDeckIds (snd <$> fst rem)
-              # H.fromAff ∘ runPar ∘ traverse_ (Par ∘ DBC.deleteGraph requestNewIdTokenBus state.path)
+              # (H.fromAff :: Slam ~> DeckDSL) ∘ runParallel ∘ traverse_ (parallel ∘ DBC.deleteGraph requestNewIdTokenBus state.path)
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator opts.wiring
@@ -461,8 +463,8 @@ updateActiveState wiring = do
     for_ (DCS.cardCoordFromIndex cardIndex st) \coord →
       void $ queryCardEval coord $ H.action CQ.ActivateCard
 
-updateBackSide ∷ DeckDSL Unit
-updateBackSide = do
+updateBackSide ∷ DeckOptions → DeckDSL Unit
+updateBackSide { cursor } = do
   state ← H.get
   let ty = DCS.activeCardType state
   let tys = Card.modelCardType ∘ _.model ∘ snd <$> state.displayCards
@@ -486,7 +488,7 @@ updateBackSide = do
       -- of the following hold:
       --   - a board is a child of another board
       --   - there is only one deck inside a root board
-      when (state.level /= DL.root || Map.size decks == 1) $
+      when (not (L.null cursor) || Map.size decks == 1) $
         void $ lift $
           H.query' cpBackSide unit $ H.action $ Back.SetUnwrappable decks
 
@@ -575,7 +577,7 @@ queuePendingCard wiring pendingCoord = do
 
 runPendingCards
   ∷ ∀ r
-  . Bus.Bus (write ∷ Bus.Cap | r) (AVar EIdToken)
+  . RequestIdTokenBus r
   → DeckOptions
   → DeckId
   → DeckId × Card.Model
@@ -585,7 +587,7 @@ runPendingCards requestNewIdTokenBus opts source pendingCard pendingCards = do
   st ← H.get
   let
     pendingCoord = DCS.coordModelToCoord pendingCard
-    splitCards = L.span (not ∘ DCS.eqCoordModel pendingCoord) $ L.toList st.modelCards
+    splitCards = L.span (not ∘ DCS.eqCoordModel pendingCoord) $ L.fromFoldable st.modelCards
     prevCard = DCS.coordModelToCoord <$> L.last splitCards.init
     pendingCards = L.Cons pendingCard <$> L.tail splitCards.rest
 
@@ -620,7 +622,7 @@ runInitialEval wiring = do
   cards ← makeCache
 
   let
-    cardCoords = DCS.coordModelToCoord <$> L.toList st.modelCards
+    cardCoords = DCS.coordModelToCoord <$> L.fromFoldable st.modelCards
     source = st.id
 
   for_ cardCoords \coord → do
@@ -633,7 +635,7 @@ runInitialEval wiring = do
 -- | Evaluates a card given an input and model.
 evalCard
   ∷ ∀ r s
-  . Bus.Bus (write ∷ Bus.Cap | r) (AVar EIdToken)
+  . RequestIdTokenBus r
   → Bus.Bus (write ∷ Bus.Cap | s) AE.Event
   → DirPath
   → Map.Map DeckId Port.URLVarMap
@@ -715,7 +717,7 @@ runCardUpdates opts source steps = do
   updateCards st = case _ of
     { steps: L.Nil, cards, updates } →
       pure
-        { displayCards: L.fromList $ L.reverse cards
+        { displayCards: Array.fromFoldable $ L.reverse cards
         , updates: L.reverse updates
         }
     { steps: L.Cons x xs, cards, updates } → do
@@ -787,8 +789,8 @@ getDeckModel = do
     }
 
 -- | Saves the deck as JSON, using the current values present in the state.
-saveDeck ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
-saveDeck requestNewIdTokenBus { accessType, wiring } coord = do
+saveDeck ∷ ∀ r. RequestIdTokenBus r → DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
+saveDeck requestNewIdTokenBus { accessType, wiring, cursor } coord = do
   st ← H.get
   when (AT.isEditable accessType) do
     modelCards ← Array.span (not ∘ eq st.id ∘ fst) <$> getModelCards
@@ -814,7 +816,7 @@ saveDeck requestNewIdTokenBus { accessType, wiring } coord = do
       Left err →
         Notify.saveDeckFail err wiring.notify wiring.analytics
       Right _ → do
-        when (st.level ≡ DL.root) $ do
+        when (L.null cursor) $ do
           path' ← H.gets DCS.deckPath
           varMaps ← H.fromEff $ Ref.readRef wiring.urlVarMaps
           let deckHash = mkWorkspaceHash path' (WA.Load accessType) varMaps
@@ -829,7 +831,7 @@ saveDeck requestNewIdTokenBus { accessType, wiring } coord = do
             model = deck { cards = cards }
         void $ putDeck requestNewIdTokenBus st.path deckId model wiring.decks
 
-loadDeck ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → DeckOptions → DirPath → DeckId → DeckDSL Unit
+loadDeck ∷ ∀ r. RequestIdTokenBus r → DeckOptions → DirPath → DeckId → DeckDSL Unit
 loadDeck requestNewIdTokenBus opts path deckId = do
   H.modify
     $ (DCS._stateMode .~ Loading)
@@ -837,7 +839,7 @@ loadDeck requestNewIdTokenBus opts path deckId = do
 
   res ← runExceptT do
     deck ← ExceptT $ getDeck requestNewIdTokenBus path deckId opts.wiring.decks
-    mirroredCards ← ExceptT $ H.fromAff $ loadMirroredCards deck.mirror
+    mirroredCards ← ExceptT $ loadMirroredCards requestNewIdTokenBus opts.wiring path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
 
   case res of
@@ -851,12 +853,19 @@ loadDeck requestNewIdTokenBus opts path deckId = do
         , modelCards
         , name: deck.name
         }
-  where
-  loadMirroredCards coords = do
-    let deckIds = Array.nub (fst <$> coords)
-    res ← sequence <$> runPar (traverse (Par ∘ flip (getDeck requestNewIdTokenBus path) opts.wiring.decks) deckIds)
-    pure $ hydrateCards coords =<< map (Array.zip deckIds) res
 
+loadMirroredCards
+  ∷ ∀ r
+  . RequestIdTokenBus r
+  → Wiring
+  → DirPath
+  → Array (DeckId × CardId)
+  → DeckDSL (Either String (Array (DeckId × Card.Model)))
+loadMirroredCards requestNewIdTokenBus wiring path coords = (H.fromAff :: Slam ~> DeckDSL) do
+  let deckIds = Array.nub (fst <$> coords)
+  res ← sequence <$> runParallel (traverse (parallel ∘ flip (getDeck requestNewIdTokenBus path) wiring.decks) deckIds)
+  pure $ hydrateCards coords =<< map (Array.zip deckIds) res
+  where
   hydrateCards coords decks =
     for coords \(deckId × cardId) →
       case find (eq deckId ∘ fst) decks of

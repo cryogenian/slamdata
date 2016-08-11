@@ -40,7 +40,7 @@ import Halogen.HTML as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
 
-import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SC
 
 data CardType
   = Ace AceMode

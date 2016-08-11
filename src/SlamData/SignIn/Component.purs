@@ -27,8 +27,6 @@ import SlamData.Prelude
 
 import Control.UI.Browser as Browser
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.Bus (Bus, Cap)
-import Control.Monad.Aff.AVar (AVar)
 import Control.Coroutine.Stalling as StallingCoroutine
 
 import Halogen as H
@@ -41,7 +39,7 @@ import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 import Halogen.Query.EventSource as HE
 
 import OIDC.Aff as OIDC
-import OIDCCryptUtils as Crypt
+import OIDC.Crypt as Crypt
 
 import Quasar.Advanced.Types (ProviderR)
 
@@ -124,8 +122,7 @@ subscribeToIdTokenEvents =
 
 update ∷ ∀ r. RequestIdTokenBus r → SignInDSL Unit
 update requestNewIdTokenBus = do
-  H.fromEff $ Control.Monad.Eff.Console.log "signIn start"
-  mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> (Utils.passover (\x -> (traceA "signIn") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
+  mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus
   traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
     retrieveProvidersAndUpdateMenu
@@ -202,7 +199,7 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
     H.fromEff do
       AuthStore.clearIdToken
       Browser.reload
-  appendAuthPath s = s ++ Config.redirectURIString
+  appendAuthPath s = s <> Config.redirectURIString
   requestAuthenticationURI pr =
     H.fromEff
       $ OIDC.requestAuthenticationURI OIDC.Login pr

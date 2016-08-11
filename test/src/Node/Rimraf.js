@@ -1,5 +1,3 @@
-// module Node.Rimraf
-
 var rm = require('rimraf');
 
 exports.rimraf = function(str) {

@@ -108,10 +108,10 @@ _Chart = prism' Chart \p → case p of
   _ → Nothing
 
 _ResourceTag ∷ TraversalP Port String
-_ResourceTag = wander \f s → case s of
-  TaggedResource o@{tag = Just tag} →
+_ResourceTag = wander \f → case _ of
+  TaggedResource o@{tag: Just tag} →
     TaggedResource ∘ o{tag = _} ∘ Just <$> f tag
-  _ → pure s
+  s → pure s
 
 _Resource ∷ TraversalP Port PU.FilePath
 _Resource = wander \f s → case s of

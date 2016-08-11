@@ -22,7 +22,7 @@ module SlamData.AuthRedirect.RedirectHashPayload
 
 import SlamData.Prelude
 
-import Data.List as L
+import Data.Array as A
 import Data.String as S
 import Data.StrMap as SM
 
@@ -30,7 +30,7 @@ import Text.Parsing.StringParser as P
 import Text.Parsing.StringParser.Combinators as PC
 import Text.Parsing.StringParser.String as PS
 
-import OIDCCryptUtils.Types as OIDC
+import OIDC.Crypt.Types as OIDC
 
 type RedirectHashPayload =
   { idToken :: OIDC.IdToken
@@ -41,9 +41,9 @@ type RedirectHashPayload =
 
 parameterParser :: P.Parser (Tuple String String)
 parameterParser = do
-  key <- PC.many (PS.noneOf ['=']) <#> L.fromList >>> S.fromCharArray
+  key <- PC.many (PS.noneOf ['=']) <#> A.fromFoldable >>> S.fromCharArray
   PS.char '='
-  val <- PC.many (PS.noneOf ['&']) <#> L.fromList >>> S.fromCharArray
+  val <- PC.many (PS.noneOf ['&']) <#> A.fromFoldable >>> S.fromCharArray
   pure $ Tuple key val
 
 parametersParser :: P.Parser (SM.StrMap String)

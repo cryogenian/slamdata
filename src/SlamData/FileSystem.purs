@@ -22,9 +22,7 @@ import Ace.Config as AceConfig
 
 import Control.Monad.Aff (Aff, Canceler, cancel, forkAff)
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
-import Control.Monad.Aff.Promise (Promise)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error, message, Error)
@@ -61,7 +59,7 @@ import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
 import SlamData.Quasar.Auth.Reauthentication as Reauthentication
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
@@ -81,7 +79,7 @@ main = do
     traceA "1"
     signInBus ← Bus.make
     traceA "2"
-    stateRef ← liftEff $ Ref.newRef (Nothing ∷ Maybe (Promise EIdToken))
+    stateRef ← liftEff $ Ref.newRef Nothing
     requestNewIdTokenBus ← Bus.make
     Reauthentication.reauthentication stateRef requestNewIdTokenBus
     traceA "3"
@@ -100,7 +98,7 @@ initialAVar = Tuple mempty M.empty
 
 routeSignal
   ∷ ∀ r
-  . Bus (write ∷ Cap | r) (AVar EIdToken)
+  . RequestIdTokenBus r
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
 routeSignal requestNewIdTokenBus driver = do
@@ -112,7 +110,7 @@ routeSignal requestNewIdTokenBus driver = do
 
 redirects
   ∷ ∀ r
-  . Bus (write ∷ Cap | r) (AVar EIdToken)
+  . RequestIdTokenBus r
   → Driver QueryP SlamDataRawEffects
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   → Maybe Routes → Routes
@@ -154,7 +152,7 @@ redirects requestNewIdTokenBus driver var mbOld (Salted sort query salt) = do
 
 checkMount
   ∷ ∀ r
-  . Bus (write ∷ Cap | r) (AVar EIdToken)
+  . RequestIdTokenBus r
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
@@ -165,7 +163,7 @@ checkMount requestNewIdTokenBus path driver = do
 
 listPath
   ∷ ∀ r
-  . Bus (write ∷ Cap | r) (AVar EIdToken)
+  . RequestIdTokenBus r
   → SearchQuery
   → Int
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
@@ -173,7 +171,7 @@ listPath
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
 listPath requestNewIdTokenBus query deep var dir driver = do
-  modifyVar (_2 %~ M.alter (maybe one (add one >>> pure))  deep) var
+  modifyVar (_2 %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
   canceler ← forkAff goDeeper
   modifyVar (_1 <>~ canceler) var
   where
@@ -208,11 +206,11 @@ listPath requestNewIdTokenBus query deep var dir driver = do
       "An unknown error ocurred: 401 \"\"" -> do
         traceAnyA "listing error message start"
         y ← append forbiddenMessage <<< suggestedAction
-          <$> H.fromAff (AuthRetrieve.fromEither <$> (Utils.passover (\x -> (traceA "signIn") *> (traceAnyA x)) =<< AuthRetrieve.retrieveIdToken requestNewIdTokenBus))
+          <$> H.fromAff (AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
         traceAnyA "listing error message end"
         pure y
       s ->
-        pure $ "There was a problem accessing this directory listing. " ++ s
+        pure $ "There was a problem accessing this directory listing. " <> s
 
 
   getChildren ∷ Array Resource → Aff SlamDataEffects Unit

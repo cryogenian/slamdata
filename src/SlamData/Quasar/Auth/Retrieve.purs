@@ -36,21 +36,19 @@ import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Date as Date
-import Data.Date (Now)
 import Data.Int as Int
 import Data.Either as E
 import Data.Maybe as M
 import Data.Foldable as F
-import Data.Time (Milliseconds(..))
 import Data.Traversable as T
 import Control.UI.Browser as Browser
 
 import DOM (DOM)
 import DOM.HTML as DOMHTML
 
-import OIDCCryptUtils.Types as OIDCT
-import OIDCCryptUtils.JSONWebKey (JSONWebKey)
-import OIDCCryptUtils as OIDC
+import OIDC.Crypt.Types as OIDCT
+import OIDC.Crypt.JSONWebKey (JSONWebKey)
+import OIDC.Crypt as OIDC
 
 import SlamData.Config as Config
 import SlamData.Quasar.Auth.Keys as AuthKeys

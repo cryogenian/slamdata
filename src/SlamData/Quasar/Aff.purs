@@ -18,8 +18,6 @@ module SlamData.Quasar.Aff where
 
 import SlamData.Prelude
 
-import Data.Date (Now)
-
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.AVar as AVar
@@ -43,12 +41,11 @@ import SlamData.Quasar.Auth.Reauthentication (EIdToken)
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Advanced.QuasarAF.Interpreter.Aff as QFA
 
-import OIDCCryptUtils as OIDC
+import OIDC.Crypt as OIDC
 
 import Utils (passover)
-import Utils.At (INTERVAL)
 
-type QEff eff = (interval ∷ INTERVAL, console ∷ CONSOLE, now ∷ Now, rsaSignTime ∷ OIDC.RSASIGNTIME, random ∷ RANDOM, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
+type QEff eff = (console ∷ CONSOLE, rsaSignTime ∷ OIDC.RSASIGNTIME, random ∷ RANDOM, ajax ∷ AX.AJAX, dom ∷ DOM, avar ∷ AVar.AVAR, ref ∷ Ref.REF, err ∷ Exn.EXCEPTION | eff)
 
 -- | Runs a `QuasarF` request in `Aff`, using the `QError` type for errors that
 -- | may arise, which allows for convenient catching of 404 errors.
@@ -59,7 +56,6 @@ runQuasarF
   → QF.QuasarAFC (Either e a)
   → m (Either e a)
 runQuasarF requestNewIdTokenBus qf = (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
-  fromEff $ Control.Monad.Eff.Console.log "runQuasarF start"
   idToken ← fromEither <$> (passover (\x -> (traceA "runQuasarF") *> (traceAnyA x)) =<< retrieveIdToken requestNewIdTokenBus)
   permissions ← fromEff retrieveTokenHashes
   runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }
