@@ -200,9 +200,7 @@ buildRadar axes conf = do
 
   E.legend do
     E.items $ map ET.strItem serieNames
-    E.orient ET.Vertical
-    E.leftPosition $ ET.LeftHP
-    E.topTop
+    E.topBottom
     E.textStyle do
       E.fontFamily "Ubuntu sans"
 
@@ -243,10 +241,12 @@ buildRadar axes conf = do
       let
         -- max number of plot in one row: 4
         maxCol = 4
-        nRow = (n / maxCol + 1)
+        nRow = ((n - 1) / maxCol + 1)
         nCol = if n <= maxCol then n else maxCol
         row = toNumber (i / nCol)
         col = (toNumber i) % (toNumber nCol)
+        rowHight = 100.0 / (toNumber nRow)
+        spaceCoeff = 0.85
       E.text $ fromMaybe "" $ dupNames !! i
       E.textStyle do
         E.fontFamily "Ubuntu sans"
@@ -259,7 +259,7 @@ buildRadar axes conf = do
       E.top
         $ ET.Percent
         $ 100.0 * (2.0 * row + 1.0) / (toNumber (nRow * 2))
-          - (75.0 / (if nRow > nCol then toNumber nRow else toNumber nCol))
+          - (rowHight * spaceCoeff) / 2.0
       E.textCenter
       E.textBottom
 
@@ -272,7 +272,7 @@ buildRadar axes conf = do
       let
         -- max number of plot in one row: 4
         maxCol = 4
-        nRow = (n / maxCol + 1)
+        nRow = ((n - 1) / maxCol + 1)
         nCol = if n <= maxCol then n else maxCol
         row = toNumber (i / nCol)
         col = (toNumber i) % (toNumber nCol)
