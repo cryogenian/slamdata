@@ -45,14 +45,23 @@ scatterChartIcon = className "scatter-chart-icon"
 radarChartIcon ∷ ClassName
 radarChartIcon = className "radar-chart-icon"
 
-axisLabelParam ∷ ClassName
-axisLabelParam = className "axis-label-param"
+funnelChartIcon ∷ ClassName
+funnelChartIcon = className "funnel-chart-icon"
 
 areaChartIcon ∷ ClassName
 areaChartIcon = className "area-chart-icon"
+
+axisLabelParam ∷ ClassName
+axisLabelParam = className "axis-label-param"
 
 chartSizeParam ∷ ClassName
 chartSizeParam = className "chart-size-param"
 
 chartDetailParam ∷ ClassName
 chartDetailParam = className "chart-detail-param"
+
+funnelChartOrderParam ∷ ClassName
+funnelChartOrderParam = className "funnel-chart-order-param"
+
+funnelChartAlignParam ∷ ClassName
+funnelChartAlignParam = className "funnel-chart-align-param"

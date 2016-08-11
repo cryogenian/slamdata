@@ -47,7 +47,7 @@ import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Chart.Aggregation (aggregationSelect, aggregationSelectWithNone)
 import SlamData.Workspace.Card.Chart.Axis (Axes)
 import SlamData.Workspace.Card.Chart.ChartConfiguration (ChartConfiguration, depends, dependsOnArr)
-import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar)
+import SlamData.Workspace.Card.Chart.ChartType (ChartType(..), isPie, isArea, isScatter, isRadar, isFunnel)
 import SlamData.Workspace.Card.ChartOptions.Component.CSS as CSS
 import SlamData.Workspace.Card.ChartOptions.Component.Query (QueryC, Query(..))
 import SlamData.Workspace.Card.ChartOptions.Component.State as VCS
@@ -176,6 +176,7 @@ renderChartTypeSelector state =
   src Area = "img/area.svg"
   src Scatter = "img/scatter.svg"
   src Radar = "img/radar.svg"
+  src Funnel = "img/funnel.svg"
 
   cls ∷ ChartType → HH.ClassName
   cls Pie = CSS.pieChartIcon
@@ -184,6 +185,7 @@ renderChartTypeSelector state =
   cls Area = CSS.areaChartIcon
   cls Scatter = CSS.scatterChartIcon
   cls Radar = CSS.radarChartIcon
+  cls Funnel = CSS.funnelChartIcon
 
 
 renderChartConfiguration ∷ VCS.State → HTML
@@ -196,6 +198,7 @@ renderChartConfiguration state =
     , renderTab Area
     , renderTab Scatter
     , renderTab Radar
+    , renderTab Funnel
     , renderDimensions state
     ]
   where
@@ -217,10 +220,16 @@ renderDimensions state =
   row
   [ intChartInput CSS.axisLabelParam "Axis label angle"
       (_.axisLabelAngle ⋙ show) RotateAxisLabel
-        (isPie state.chartType || isScatter state.chartType || isRadar state.chartType)
+        (isPie state.chartType 
+          || isScatter state.chartType 
+          || isRadar state.chartType
+          || isFunnel state.chartType)
   , intChartInput CSS.axisLabelParam "Axis font size"
       (_.axisLabelFontSize ⋙ show) SetAxisFontSize
-        (isPie state.chartType || isScatter state.chartType || isRadar state.chartType)
+        (isPie state.chartType 
+          || isScatter state.chartType 
+          || isRadar state.chartType
+          || isFunnel state.chartType)
   , boolChartInput CSS.chartDetailParam "If stack"
       (_.areaStacked) ToggleSetStacked (not $ isArea state.chartType)
   , boolChartInput CSS.chartDetailParam "If smooth"
@@ -231,8 +240,46 @@ renderDimensions state =
   , numChartInput CSS.axisLabelParam "Max size of circle"
       (_.bubbleMaxSize) LowerBoundaryCtrl (_.bubbleMinSize) SetBubbleMaxSize
         (not $ isScatter state.chartType)
+  , optionSelect CSS.funnelChartOrderParam "Order" ["ascending", "descending"]
+      (_.funnelOrder) SetFunnelOrder (not $ isFunnel state.chartType) 
+  , optionSelect CSS.funnelChartAlignParam "Alignment" ["right", "left", "center"]
+      (_.funnelAlign) SetFunnelAlign (not $ isFunnel state.chartType)   
   ]
   where
+  optionSelect
+    ∷ HH.ClassName
+    → String
+    → Array String
+    → (VCS.State → String)
+    → (String → Unit → Query Unit)
+    → Boolean → HTML
+  optionSelect cls labelText opts valueFromState queryCtor isHidden =
+    HH.form
+      [ HP.classes
+          $ [ B.colXs6, cls ]
+          ⊕ (guard isHidden $> B.hide)
+      , Cp.nonSubmit
+      ]
+      [ label labelText
+      , HH.select
+        [ HP.classes [ B.formControl ]
+        , HE.onValueChange
+            $ pure ∘ map (right ∘ flip queryCtor unit) ∘ Just
+        ]
+        (options opts (valueFromState state))
+      ]
+    where
+    options ∷ Array String → String → Array HTML
+    options arrStr currentVal = map mkOption arrStr
+      where
+      mkOption ∷ String → HTML
+      mkOption val =
+        HH.option
+          [ HP.selected (val == currentVal)
+          , HP.value val
+          ]
+          [ HH.text val ]
+
   intChartInput
     ∷ HH.ClassName
     → String
@@ -344,6 +391,8 @@ chartEval q = do
     ToggleSetSmooth smooth n → H.modify (VCS._smooth .~ smooth) $> n
     SetBubbleMinSize bubbleMinSize n → H.modify (VCS._bubbleMinSize .~ bubbleMinSize) $> n
     SetBubbleMaxSize bubbleMaxSize n → H.modify (VCS._bubbleMaxSize .~ bubbleMaxSize) $> n
+    SetFunnelOrder funnelOrder n → H.modify (VCS._funnelOrder .~ funnelOrder) $> n
+    SetFunnelAlign funnelAlign n → H.modify (VCS._funnelAlign .~ funnelAlign) $> n
   configure
   CC.raiseUpdatedP' CC.EvalModelUpdate
   pure next
@@ -380,6 +429,10 @@ cardEval = case _ of
         Area | not $ F.any isSelected rawConfig.dimensions → Nothing
         Area | not $ F.any isSelected rawConfig.measures → Nothing
         Scatter | not $ F.any isSelected rawConfig.measures → Nothing
+        Radar | not $ F.any isSelected rawConfig.dimensions → Nothing
+        Radar | not $ F.any isSelected rawConfig.measures → Nothing
+        Funnel | not $ F.any isSelected rawConfig.dimensions → Nothing
+        Funnel | not $ F.any isSelected rawConfig.measures → Nothing
         _ → Just rawConfig
 
     pure ∘ k $ Card.ChartOptions
@@ -392,6 +445,8 @@ cardEval = case _ of
           , smooth: st.smooth
           , bubbleMinSize: st.bubbleMinSize
           , bubbleMaxSize: st.bubbleMaxSize
+          , funnelOrder: st.funnelOrder
+          , funnelAlign: st.funnelAlign
           }
       }
   CC.Load card next → do
@@ -433,6 +488,8 @@ configure = void do
   setConfigFor Scatter $ scatterConfiguration axes scatterConf
   radarConf ← getOrInitial Radar
   setConfigFor Radar $ radarConfiguration axes radarConf
+  funnelConf ← getOrInitial Funnel
+  setConfigFor Funnel $ funnelConfiguration axes funnelConf
   where
   getOrInitial ∷ ChartType → DSL ChartConfiguration
   getOrInitial ty =
@@ -597,6 +654,28 @@ configure = void do
         firstAggregation =
           setPreviousValueFrom (index current.aggregations 0) aggregationSelect
     in { series: [firstSeries, secondSeries]
+       , dimensions: [dimensions]
+       , measures: [firstMeasures]
+       , aggregations: [firstAggregation]
+       }
+
+  funnelConfiguration ∷ Axes → ChartConfiguration → ChartConfiguration
+  funnelConfiguration axes current =
+    let allAxises = (axes.category ⊕ axes.time ⊕ axes.value)
+        dimensions =
+          setPreviousValueFrom (index current.dimensions 0)
+          $ autoSelect $ newSelect $ axes.category
+        firstMeasures =
+          setPreviousValueFrom (index current.measures 0)
+          $ autoSelect $ newSelect $ ifSelected [dimensions]
+          $ axes.value
+        firstSeries =
+          setPreviousValueFrom (index current.series 0)
+          $ newSelect $ ifSelected [firstMeasures]
+          $ allAxises ⊝ dimensions ⊝ firstMeasures
+        firstAggregation =
+          setPreviousValueFrom (index current.aggregations 0) aggregationSelect
+    in { series: [firstSeries]
        , dimensions: [dimensions]
        , measures: [firstMeasures]
        , aggregations: [firstAggregation]
