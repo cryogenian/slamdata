@@ -62,6 +62,7 @@ import SlamData.Workspace.Card.Port as Port
 data CardEvalQuery a
   = EvalCard CardEvalInput (Maybe Port.Port) a
   | Activate a
+  | Deactivate a
   | Save (AnyCardModel → a)
   | Load AnyCardModel a
   | SetDimensions { width ∷ Number, height ∷ Number } a

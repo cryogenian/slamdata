@@ -238,6 +238,10 @@ eval opts@{ wiring } = case _ of
       Slider.startSliding mouseEvent gDef
     pure next
   StopSlidingAndSnap mouseEvent next → do
+    st ← H.get
+    for_ st.activeCardIndex \oldIndex →
+      for_ (DCS.cardCoordFromIndex oldIndex st) \coord →
+        void $ queryCardEval coord $ H.action CQ.DeactivateCard
     Slider.stopSlidingAndSnap mouseEvent
     updateIndicator
     updateActiveState wiring

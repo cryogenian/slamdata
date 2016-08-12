@@ -52,6 +52,7 @@ cardComponent card opts =
       aceComponent
         { mode
         , eval: aceEval mode
+        , wiring: opts.deck.wiring
         }
     Card.Search _ → searchComponent
     Card.ChartOptions _ → chartOptionsComponent

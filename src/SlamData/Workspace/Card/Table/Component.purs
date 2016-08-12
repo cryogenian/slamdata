@@ -64,6 +64,8 @@ evalCard = case _ of
     pure next
   CC.Activate next →
     pure next
+  CC.Deactivate next →
+    pure next
   CC.Save k →
     pure ∘ k =<< H.gets (Card.Table ∘ JTS.toModel)
   CC.Load card next → do
