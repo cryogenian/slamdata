@@ -142,14 +142,14 @@ buildFunnel axes order align conf = do
   E.tooltip do
     E.triggerItem
     E.textStyle do
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
       E.fontSize 12
 
   E.legend do
     E.items $ map ET.strItem dimNames
     E.topBottom
     E.textStyle do
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
 
   E.colors colors
 
@@ -190,7 +190,7 @@ buildFunnel axes order align conf = do
         spaceCoeff = 0.9
       E.text $ fromMaybe "" $ dupNames !! i
       E.textStyle do
-        E.fontFamily "Ubuntu sans"
+        E.fontFamily "Ubuntu, sans"
         E.fontSize 12
       E.left
         $ ET.Percent
@@ -249,7 +249,7 @@ buildFunnel axes order align conf = do
     E.label do
       E.normalLabel do
         E.textStyle do
-          E.fontFamily "Ubuntu sans"
+          E.fontFamily "Ubuntu, sans"
 
   makeData
     ∷ Tuple String Number

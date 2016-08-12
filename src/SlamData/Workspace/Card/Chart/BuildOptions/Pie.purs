@@ -49,7 +49,7 @@ buildPie axes conf = do
   E.legend do
     when (A.length legendNames > 20) E.hidden
     E.leftLeft
-    E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
     E.orient ET.Vertical
     E.items $ map ET.strItem legendNames
 

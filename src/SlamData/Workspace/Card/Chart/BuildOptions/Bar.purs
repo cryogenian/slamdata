@@ -61,7 +61,7 @@ buildBar axes angle size conf = do
 
   E.yAxis $ E.axisType ET.Value
   E.legend do
-    E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
     when (L.length legendItems > 40) E.hidden
     unless (L.length legendItems > 40)
       $ E.items $ map ET.strItem legendItems

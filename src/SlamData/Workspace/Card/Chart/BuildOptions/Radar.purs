@@ -195,14 +195,14 @@ buildRadar axes conf = do
   E.tooltip do
     E.triggerItem
     E.textStyle do
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
       E.fontSize 12
 
   E.legend do
     E.items $ map ET.strItem serieNames
     E.topBottom
     E.textStyle do
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
 
   E.colors colors
 
@@ -249,7 +249,7 @@ buildRadar axes conf = do
         spaceCoeff = 0.85
       E.text $ fromMaybe "" $ dupNames !! i
       E.textStyle do
-        E.fontFamily "Ubuntu sans"
+        E.fontFamily "Ubuntu, sans"
         E.fontSize 12
       E.left
         $ ET.Percent
