@@ -25,6 +25,7 @@ test =
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT measureOne, measureTwo from `/test-mount/testDb/flatViz`"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertCacheCardInLastDeck
     Interact.provideSaveDestinationInLastCacheCard

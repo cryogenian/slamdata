@@ -33,13 +33,18 @@ import Ace.Halogen.Component (AceQuery(..), AceState, Autocomplete(..), aceConst
 import Ace.Types (Editor)
 
 import Data.Lens ((.~))
+import Data.Time.Duration (Milliseconds(..))
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
+import SlamData.Notification as N
+import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.Ace.Component.Query (QueryP)
 import SlamData.Workspace.Card.Ace.Component.State (State, StateP, Status(..), initialState, _levelOfDetails, _status, isNew, isLoading, isReady)
@@ -48,6 +53,7 @@ import SlamData.Workspace.Card.Common.Render (renderLowLOD)
 import SlamData.Workspace.Card.Component as CC
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
+import SlamData.Workspace.Wiring (Wiring)
 
 import Utils.Ace (getRangeRecs, readOnly)
 
@@ -58,6 +64,7 @@ type AceEval = CC.CardEvalInput → DSL Unit
 type AceConfig =
   { mode ∷ CT.AceMode
   , eval ∷ AceEval
+  , wiring ∷ Wiring
   }
 
 aceComponent ∷ AceConfig → H.Component CC.CardStateP CC.CardQueryP Slam
@@ -80,6 +87,12 @@ eval cfg (CC.EvalCard info output next) = do
 eval cfg (CC.Activate next) = do
   mbEditor ← H.query unit $ H.request GetEditor
   for_ (join mbEditor) $ H.fromEff ∘ Editor.focus
+  pure next
+eval cfg (CC.Deactivate next) = do
+  st ← H.get
+  when st.dirty do
+    N.info_ "Don't forget to run your query to see the latest result."
+      Nothing (Just $ Milliseconds 3000.0) cfg.wiring.notify
   pure next
 eval cfg (CC.Save k) = do
   status ← H.gets _.status
@@ -106,6 +119,7 @@ eval _ (CC.Load card next) = do
     Card.Ace CT.MarkdownMode Nothing →
       H.modify $ _status .~ Ready
     _ → pure unit
+  H.modify _ { dirty = false }
   pure next
 eval _ (CC.SetDimensions dims next) = do
   H.modify
@@ -114,17 +128,15 @@ eval _ (CC.SetDimensions dims next) = do
   mbEditor ← H.query unit $ H.request GetEditor
   for_ (join mbEditor) $ H.fromEff ∘ Editor.resize Nothing
   pure next
-eval _ (CC.ModelUpdated _ next) =
+eval _ (CC.ModelUpdated _ next) = do
+  H.modify _ { dirty = false }
   pure next
 eval _ (CC.ZoomIn next) =
   pure next
 
 peek ∷ ∀ x. AceQuery x → DSL Unit
 peek = case _ of
-  TextChanged _ → do
-    status ← H.gets _.status
-    when (isReady status) $
-      CC.raiseUpdatedP CC.EvalModelUpdate
+  TextChanged _ → H.modify _ { dirty = true }
   _ → pure unit
 
 aceSetup ∷ AceConfig → Editor → Slam Unit
@@ -149,5 +161,17 @@ renderHighLOD cfg state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ HH.div [ HP.class_ (HH.className "sd-ace-inset-shadow") ] []
+    , HH.div
+        [ HP.class_ (HH.className "sd-ace-toolbar") ]
+        [ HH.button
+            [ HP.class_ (HH.className "sd-ace-run")
+            , HP.title "Run Query"
+            , ARIA.label "Run query"
+            , HE.onClick (HE.input_ (CC.ModelUpdated CC.EvalModelUpdate))
+            ]
+            [ glyph B.glyphiconPlay
+            , HH.text "Run Query"
+            ]
+        ]
     , HH.Slot (aceConstructor unit (aceSetup cfg) (Just Live) )
     ]

@@ -155,6 +155,8 @@ cardEval = case _ of
     pure next
   CC.Activate next →
     pure next
+  CC.Deactivate next →
+    pure next
   CC.Save k → do
     mbRes ← H.gets _.selected
     k ∘ Card.Open <$>
