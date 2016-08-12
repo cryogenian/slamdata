@@ -36,10 +36,13 @@ import Data.Lens ((.~))
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
+import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
+import SlamData.Render.Common (glyph)
 import SlamData.Render.CSS as CSS
 import SlamData.Workspace.Card.Ace.Component.Query (QueryP)
 import SlamData.Workspace.Card.Ace.Component.State (State, StateP, Status(..), initialState, _levelOfDetails, _status, isNew, isLoading, isReady)
@@ -66,7 +69,7 @@ aceComponent cfg = CC.makeCardComponent
   , component: H.parentComponent
       { render: render cfg
       , eval: eval cfg
-      , peek: Just (peek ∘ H.runChildF)
+      , peek: Nothing
       }
   , initialState: H.parentState initialState
   , _State: CC._AceState
@@ -119,14 +122,6 @@ eval _ (CC.ModelUpdated _ next) =
 eval _ (CC.ZoomIn next) =
   pure next
 
-peek ∷ ∀ x. AceQuery x → DSL Unit
-peek = case _ of
-  TextChanged _ → do
-    status ← H.gets _.status
-    when (isReady status) $
-      CC.raiseUpdatedP CC.EvalModelUpdate
-  _ → pure unit
-
 aceSetup ∷ AceConfig → Editor → Slam Unit
 aceSetup cfg editor = liftEff do
   Editor.setTheme "ace/theme/chrome" editor
@@ -149,5 +144,12 @@ renderHighLOD cfg state =
         ⊕ (guard (state.levelOfDetails ≠ High) $> B.hidden)
     ]
     [ HH.div [ HP.class_ (HH.className "sd-ace-inset-shadow") ] []
+    , HH.button
+        [ HP.class_ (HH.className "sd-ace-run")
+        , HP.title "Run query"
+        , ARIA.label "Run query"
+        , HE.onClick (HE.input_ (CC.ModelUpdated CC.EvalModelUpdate))
+        ]
+        [ glyph B.glyphiconPlay ]
     , HH.Slot (aceConstructor unit (aceSetup cfg) (Just Live) )
     ]

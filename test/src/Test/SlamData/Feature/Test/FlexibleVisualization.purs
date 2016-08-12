@@ -98,6 +98,7 @@ test =
         , "ORDER BY ct DESC"
         , "LIMIT 30"
         ]
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     successMsg "Will insert Table card"
     Interact.insertTableCardInLastDeck

@@ -23,6 +23,7 @@ mkTwoCardTestDeck = do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "select measureOne from `/test-mount/testDb/flatViz`"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne"]

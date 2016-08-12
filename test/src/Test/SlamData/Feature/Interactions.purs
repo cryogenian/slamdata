@@ -378,3 +378,7 @@ filterNextActions =
 confirmDeckAction ∷ SlamFeature Unit
 confirmDeckAction =
   Feature.click $ XPath.anywhere $ XPath.anyWithExactText "Confirm"
+
+runQuery ∷ SlamFeature Unit
+runQuery =
+  Feature.click $ XPath.anywhere $ XPaths.runQuery
