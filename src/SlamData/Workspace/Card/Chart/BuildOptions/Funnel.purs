@@ -164,8 +164,7 @@ buildFunnel axes order align conf = do
   dimNames ∷ Array String
   dimNames =
     A.nub
-      $ A.concat
-      $ map (map fst)
+      $ A.concatMap (map fst)
       $ map snd funnelData
 
   dupNames ∷ Array String
@@ -247,6 +246,10 @@ buildFunnel axes order align conf = do
       _ → E.funnelCenter
     E.buildItems $ for_ a \x →
       E.addItem $ makeData x
+    E.label do
+      E.normalLabel do
+        E.textStyle do
+          E.fontFamily "Ubuntu sans"
 
   makeData
     ∷ Tuple String Number
