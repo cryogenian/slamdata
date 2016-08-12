@@ -183,6 +183,7 @@ test = do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertTableCardInLastDeck
     Expect.cardsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
@@ -209,6 +210,7 @@ test = do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertTableCardInLastDeck
     Interact.accessPreviousCardInLastDeck

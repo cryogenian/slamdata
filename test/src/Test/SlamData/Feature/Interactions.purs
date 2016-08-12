@@ -381,4 +381,4 @@ confirmDeckAction =
 
 runQuery ∷ SlamFeature Unit
 runQuery =
-  Feature.click $ XPath.anywhere $ XPaths.runQuery
+  Feature.click $ XPath.last $ XPath.anywhere $ XPath.anyWithExactAriaLabel "Run query"

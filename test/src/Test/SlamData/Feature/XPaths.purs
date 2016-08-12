@@ -356,7 +356,3 @@ enabledNextCardGripper =
 deck :: String
 deck =
   XPath.anyWithExactAriaLabel $ "Deck"
-
-runQuery :: String
-runQuery =
-  XPath.anyWithExactAriaLabel $ "Run query"
