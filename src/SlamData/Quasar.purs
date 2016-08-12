@@ -102,6 +102,5 @@ retrieveAuthProviders
 retrieveAuthProviders =
   runQuasarF QF.authProviders <#> case _ of
     Left (QF.Error err) → Left err
-    Left QF.NotFound → Right Nothing
-    Left QF.Forbidden → Right Nothing
+    Left _ → Right Nothing
     Right providers → Right (Just providers)

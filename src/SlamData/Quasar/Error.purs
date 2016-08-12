@@ -14,17 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery where
+module SlamData.Quasar.Error where
 
 import SlamData.Prelude
 
-import Quasar.Error (QError)
+import Control.Monad.Eff.Exception as Exn
+import Control.Monad.Error.Class (class MonadError, throwError)
 
-import SlamData.FileSystem.Resource (Mount)
+import Quasar.Error (QError(..))
 
-import Utils.Path (DirPath)
+throw ∷ ∀ m a. (MonadError QError m) ⇒ String → m a
+throw = throwError ∘ msgToQError
 
-data SettingsQuery s a
-  = ModifyState (s -> s) a
-  | Validate (Maybe String -> a)
-  | Submit DirPath String (Either QError Mount -> a)
+msgToQError :: String → QError
+msgToQError = Error ∘ Exn.error

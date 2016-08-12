@@ -23,9 +23,10 @@ import Ace.Config as AceConfig
 
 import Control.Monad.Aff (Aff, Canceler, cancel, forkAff)
 import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
+import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (error, message, Error)
+import Control.Monad.Eff.Exception (message, error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (filter, mapMaybe)
@@ -40,6 +41,8 @@ import Halogen.Component (parentState)
 import Halogen.Driver (Driver, runUI)
 import Halogen.Query (action)
 import Halogen.Util (runHalogenAff, awaitBody)
+
+import Quasar.Error as QE
 
 import Routing (matchesAff)
 
@@ -73,7 +76,8 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
     forkAff Analytics.enableAnalytics
-    driver ← runUI comp (parentState initialState) =<< awaitBody
+    qbus ← Bus.make
+    driver ← runUI (comp qbus) (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)
@@ -168,9 +172,9 @@ listPath query deep var dir driver = do
       else
       putVar var (Tuple c r)
 
-  sendError ∷ Error → Aff SlamDataEffects Unit
+  sendError ∷ QE.QError → Aff SlamDataEffects Unit
   sendError =
-    presentError <=< listingErrorMessage
+    presentError <=< listingErrorMessage <<< QE.lowerQError
 
   suggestedAction =
     maybe "Please sign in." (const "Please sign out and sign in again.")

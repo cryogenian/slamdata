@@ -23,7 +23,7 @@ module SlamData.FileSystem.Dialog.Mount.MongoDB.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception (error)
+import Control.Monad.Except.Trans (ExceptT(..), except, runExceptT)
 
 import Data.Array ((..), length)
 import Data.Lens (TraversalP, (^.), (.~))
@@ -44,6 +44,7 @@ import SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery (SettingsQuery(..))
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State (MountHost, MountProp, State, _host, _hosts, _password, _path, _port, _props, _user, initialState, processState, fromConfig, toConfig)
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Quasar.Mount as API
+import SlamData.Quasar.Error as QE
 import SlamData.Render.CSS as Rc
 
 type Query = SettingsQuery State
@@ -68,16 +69,13 @@ eval :: Query ~> H.ComponentDSL State Query Slam
 eval (ModifyState f next) = H.modify (processState <<< f) $> next
 eval (Validate k) =
   k <<< either Just (const Nothing) <<< toConfig <$> H.get
-
 eval (Submit parent name k) = do
-  st <- H.get
-  case toConfig st of
-    Left err ->
-      pure $ k $ Left $ error err
-    Right config → do
-      let path = parent </> dir name
-      result <- API.saveMount path config
-      pure $ k $ map (const (Database path)) result
+  k <$> runExceptT do
+    st <- lift H.get
+    config <- except $ lmap QE.msgToQError $ toConfig st
+    let path = parent </> dir name
+    ExceptT $ API.saveMount path config
+    pure $ Database path
 
 hosts :: State -> H.ComponentHTML Query
 hosts state =

@@ -18,6 +18,8 @@ module SlamData.FileSystem.Dialog.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Bus as Bus
+
 import Data.Array (singleton)
 
 import Halogen as H
@@ -30,12 +32,13 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Dialog.Error.Component as Error
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Dialog.Download.Component as Download
+import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Dialog.Mount.Component (MountSettings)
 import SlamData.FileSystem.Dialog.Mount.Component as Mount
 import SlamData.FileSystem.Dialog.Rename.Component as Rename
 import SlamData.FileSystem.Dialog.Share.Component as Share
-import SlamData.FileSystem.Dialog.Explore.Component as Explore
 import SlamData.FileSystem.Resource (Resource)
+import SlamData.GlobalError as GE
 import SlamData.Render.Common (fadeWhen)
 
 import Utils.Path (DirPath, FilePath)
@@ -129,11 +132,19 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Query ⨁ (H.ChildF ChildSlot ChildQuery)
 type DialogDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
+comp ∷ Bus.BusW GE.GlobalError → H.Component StateP QueryP Slam
+comp bus =
+  H.parentComponent
+    { render: render bus
+    , eval
+    , peek: Just (peek <<< H.runChildF)
+    }
 
-render ∷ State → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
-render state =
+render
+  ∷ Bus.BusW GE.GlobalError
+  → State
+  → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+render bus state =
   HH.div
     [ HP.classes ([B.modal] <> fadeWhen (isNothing state))
     , HE.onMouseDown (HE.input_ Dismiss)
@@ -152,7 +163,7 @@ render state =
       }
   dialog (Rename res) =
     HH.slot' cpRename unit \_ →
-      { component: Rename.comp
+      { component: Rename.comp bus
       , initialState: Rename.initialState res
       }
   dialog (Download res) =
@@ -162,7 +173,7 @@ render state =
       }
   dialog (Mount parent name settings) =
     HH.slot' cpMount unit \_ →
-      { component: Mount.comp
+      { component: Mount.comp bus
       , initialState: H.parentState (Mount.initialState parent name settings)
       }
   dialog (Explore fp) =

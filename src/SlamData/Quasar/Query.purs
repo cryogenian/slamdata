@@ -27,14 +27,13 @@ module SlamData.Quasar.Query
   , sample
   , count
   , fields
+  , module Quasar.Error
   ) where
 
 import SlamData.Prelude
 
 import Control.Apply (lift2)
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as Err
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Argonaut as JS
@@ -47,11 +46,12 @@ import Data.StrMap as SM
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Data (JSONMode(..))
-import Quasar.Error (lowerQError)
+import Quasar.Error (QError)
 import Quasar.Mount as QM
 import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Error (throw)
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
@@ -72,32 +72,31 @@ compile
   ⇒ AnyPath
   → SQL
   → SM.StrMap String
-  → m (Either Exn.Error CompileResultR)
-compile path sql varMap = do
-  let backendPath = either id (fromMaybe P.rootDir <<< P.parentDir) path
-      sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
-  runQuasarF $ lmap lowerQError <$>
-    QF.compileQuery backendPath sql' varMap
+  → m (Either QError CompileResultR)
+compile path sql varMap =
+  let
+    backendPath = either id (fromMaybe P.rootDir <<< P.parentDir) path
+    sql' = maybe sql (flip templated sql) $ either (const Nothing) Just path
+  in
+    runQuasarF $ QF.compileQuery backendPath sql' varMap
 
 query
   ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
   ⇒ DirPath
   → SQL
-  → m (Either String JS.JArray)
+  → m (Either QError JS.JArray)
 query path sql =
-  runQuasarF $ lmap QF.printQError <$>
-    QF.readQuery Readable path sql SM.empty Nothing
+  runQuasarF $ QF.readQuery Readable path sql SM.empty Nothing
 
 queryEJson
   ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
   ⇒ DirPath
   → SQL
-  → m (Either String (Array EJS.EJson))
+  → m (Either QError (Array EJS.EJson))
 queryEJson path sql =
-  runQuasarF $ lmap QF.printQError <$>
-    QF.readQueryEJson path sql SM.empty Nothing
+  runQuasarF $ QF.readQueryEJson path sql SM.empty Nothing
 
 queryEJsonVM
   ∷ ∀ eff m
@@ -105,10 +104,9 @@ queryEJsonVM
   ⇒ DirPath
   → SQL
   → SM.StrMap String
-  → m (Either String (Array EJS.EJson))
+  → m (Either QError (Array EJS.EJson))
 queryEJsonVM path sql vm =
-  runQuasarF $ lmap QF.printQError
-    <$> QF.readQueryEJson path sql vm Nothing
+  runQuasarF $ QF.readQueryEJson path sql vm Nothing
 
 -- | Runs a query creating a view mount for the query.
 -- |
@@ -121,11 +119,11 @@ viewQuery
   → FilePath
   → SQL
   → SM.StrMap String
-  → m (Either Exn.Error Unit)
+  → m (Either QError Unit)
 viewQuery path dest sql vars = do
-  runQuasarF $ lmap lowerQError <$>
+  runQuasarF $
     QF.deleteMount (Right dest)
-  runQuasarF $ lmap lowerQError <$>
+  runQuasarF $
     QF.updateMount (Right dest) (QM.ViewConfig
       { query: maybe sql (flip templated sql) $ either (const Nothing) Just path
       , vars
@@ -144,20 +142,19 @@ fileQuery
   → FilePath
   → SQL
   → SM.StrMap String
-  → m (Either Exn.Error FilePath)
+  → m (Either QError FilePath)
 fileQuery file dest sql vars =
   let backendPath = fromMaybe P.rootDir (P.parentDir file)
-  in runQuasarF $ bimap lowerQError _.out <$>
+  in runQuasarF $ map _.out <$>
     QF.writeQuery backendPath dest (templated file sql) vars
 
 all
   ∷ ∀ eff m
   . Affable (QEff eff) m
   ⇒ FilePath
-  → m (Either Exn.Error JS.JArray)
+  → m (Either QError JS.JArray)
 all file =
-  runQuasarF $ lmap lowerQError <$>
-    QF.readFile Readable file Nothing
+  runQuasarF $ QF.readFile Readable file Nothing
 
 sample
   ∷ ∀ eff m
@@ -165,20 +162,19 @@ sample
   ⇒ FilePath
   → Int
   → Int
-  → m (Either Exn.Error JS.JArray)
+  → m (Either QError JS.JArray)
 sample file offset limit =
-  runQuasarF $ lmap lowerQError <$>
-    QF.readFile Readable file (Just { limit, offset })
+  runQuasarF $ QF.readFile Readable file (Just { limit, offset })
 
 count
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ FilePath
-  → m (Either Exn.Error Int)
+  → m (Either QError Int)
 count file = runExceptT do
   let backendPath = fromMaybe P.rootDir (P.parentDir file)
       sql = templated file "SELECT COUNT(*) as total FROM {{path}}"
-  result ← ExceptT $ runQuasarF $ lmap lowerQError <$>
+  result ← ExceptT $ runQuasarF $
     QF.readQuery Readable backendPath sql SM.empty Nothing
   pure $ fromMaybe 0 (readTotal result)
   where
@@ -194,11 +190,11 @@ fields
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ FilePath
-  → m (Either Exn.Error (Array String))
+  → m (Either QError (Array String))
 fields file = runExceptT do
   jarr ← ExceptT $ sample file 0 100
   case jarr of
-    [] → Err.throwError $ Exn.error "empty file"
+    [] → throw "empty file"
     _ → pure $ Arr.nub $ getFields =<< jarr
 
   where

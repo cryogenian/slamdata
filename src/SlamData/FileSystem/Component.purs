@@ -23,7 +23,8 @@ module SlamData.FileSystem.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception (error, message)
+import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Eff.Exception (error)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Error.Class (throwError)
 import Control.UI.Browser (setLocation, locationString, clearValue)
@@ -70,6 +71,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.GlobalError as GE
 import SlamData.Header.Component as Header
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
@@ -87,11 +89,19 @@ import Utils.Path (DirPath, getNameStr)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp = H.parentComponent { render, eval, peek: Just (peek ∘ H.runChildF) }
+comp ∷ Bus.BusRW GE.GlobalError → H.Component StateP QueryP Slam
+comp bus =
+  -- TODO: read from busR and show dialog as appropriate -gb
+  case Bus.split bus of
+    busR × busW →
+      H.parentComponent
+        { render: render busW
+        , eval: eval busW
+        , peek: Just (peek busW ∘ H.runChildF)
+        }
 
-render ∷ State → HTML
-render state@{ version, sort, salt, path } =
+render ∷ Bus.BusW GE.GlobalError → State → HTML
+render bus state@{ version, sort, salt, path } =
   HH.div
     [ HP.classes [ CSS.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
@@ -120,42 +130,42 @@ render state@{ version, sort, salt, path } =
             }
         ]
     , HH.slot' cpDialog unit \_ →
-        { component: Dialog.comp
+        { component: Dialog.comp bus
         , initialState: H.parentState Dialog.initialState
         }
     ]
 
-eval ∷ Query ~> DSL
-eval (Resort next) = do
+eval ∷ Bus.BusW GE.GlobalError → Query ~> DSL
+eval _ (Resort next) = do
   { sort, salt, path } ← H.get
   searchValue ← H.query' cpSearch unit (H.request Search.GetValue)
   H.fromEff $ setLocation $ browseURL searchValue (notSort sort) salt path
   pure next
-eval (SetPath path next) = H.modify (_path .~ path) *> updateBreadcrumbs $> next
-eval (SetSort sort next) = do
+eval _ (SetPath path next) = H.modify (_path .~ path) *> updateBreadcrumbs $> next
+eval _ (SetSort sort next) = do
   H.modify (_sort .~ sort)
   updateBreadcrumbs
   resort
   pure next
-eval (SetSalt salt next) = H.modify (_salt .~ salt) *> updateBreadcrumbs $> next
-eval (SetIsMount isMount next) = H.modify (_isMount .~ isMount) $> next
-eval (ShowHiddenFiles next) = do
+eval _ (SetSalt salt next) = H.modify (_salt .~ salt) *> updateBreadcrumbs $> next
+eval _ (SetIsMount isMount next) = H.modify (_isMount .~ isMount) $> next
+eval _ (ShowHiddenFiles next) = do
   H.modify (_showHiddenFiles .~ true)
   queryListing $ H.action (Listing.SetIsHidden false)
   pure next
-eval (HideHiddenFiles next) = do
+eval _ (HideHiddenFiles next) = do
   H.modify (_showHiddenFiles .~ false)
   queryListing $ H.action (Listing.SetIsHidden true)
   pure next
-eval (Configure next) = do
+eval bus (Configure next) = do
   path ← H.gets _.path
-  configure (R.Database path)
+  configure bus (R.Database path)
   pure next
-eval (MakeMount next) = do
+eval _ (MakeMount next) = do
   path ← H.gets _.path
   showDialog (Dialog.Mount path "" Nothing)
   pure next
-eval (MakeFolder next) = do
+eval bus (MakeFolder next) = do
   result ← runExceptT do
     path ← lift $ H.gets _.path
     dirName ← ExceptT $ API.getNewName path Config.newFolderName
@@ -169,36 +179,42 @@ eval (MakeFolder next) = do
     pure dirRes
   case result of
     Left err →
-      showDialog $ Dialog.Error
-        $ "There was a problem creating the directory: "
-        ⊕ message err
+      case GE.fromQError err of
+        Left msg →
+          showDialog $ Dialog.Error
+            $ "There was a problem creating the directory: " ⊕ msg
+        Right ge →
+          H.fromAff $ Bus.write ge bus
     Right dirRes →
       void $ queryListing $ H.action $ Listing.Add (Item dirRes)
   pure next
 
-eval (MakeWorkspace next) = do
+eval bus (MakeWorkspace next) = do
   path ← H.gets _.path
   let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
   name ← API.getNewName path newWorkspaceName
   case name of
     Left err →
-      -- This error isn't strictly true as we're not actually creating the
-      -- workspace here, but saying there was a problem "creating a name for the
-      -- workspace" would be a little strange
-      showDialog $ Dialog.Error
-        $ "There was a problem creating the workspace: "
-        ⊕ message err
+      case GE.fromQError err of
+        Left msg →
+          -- This error isn't strictly true as we're not actually creating the
+          -- workspace here, but saying there was a problem "creating a name for the
+          -- workspace" would be a little strange
+          showDialog $ Dialog.Error
+            $ "There was a problem creating the workspace: " ⊕ msg
+        Right ge →
+          H.fromAff $ Bus.write ge bus
     Right name' → do
       H.fromEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
   pure next
 
-eval (UploadFile el next) = do
+eval _ (UploadFile el next) = do
   mbInput ← H.fromEff $ D.querySelector "input" el
   for_ mbInput \input →
     void $ H.fromEff $ Be.raiseEvent "click" input
   pure next
 
-eval (FileListChanged el next) = do
+eval bus (FileListChanged el next) = do
   fileArr ← map Cf.fileListToArray $ (H.fromAff $ Cf.files el)
   H.fromEff $ clearValue el
   case head fileArr of
@@ -206,19 +222,19 @@ eval (FileListChanged el next) = do
       let err ∷ Slam Unit
           err = throwError $ error "empty filelist"
       in H.fromAff err
-    Just f → uploadFileSelected f
+    Just f → uploadFileSelected bus f
   pure next
 
-eval (Download next) = do
+eval _ (Download next) = do
   path ← H.gets _.path
   download (R.Directory path)
   pure next
 
-eval (SetVersion version next) = H.modify (_version .~ Just version) $> next
-eval (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
+eval _ (SetVersion version next) = H.modify (_version .~ Just version) $> next
+eval _ (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
 
-uploadFileSelected ∷ Cf.File → DSL Unit
-uploadFileSelected f = do
+uploadFileSelected ∷ Bus.BusW GE.GlobalError → Cf.File → DSL Unit
+uploadFileSelected bus f = do
   { path, sort, salt } ← H.get
   name ←
     H.fromEff (Cf.name f)
@@ -226,7 +242,7 @@ uploadFileSelected f = do
       >>= API.getNewName path
 
   case name of
-    Left err → showDialog $ Dialog.Error (message err)
+    Left err → handleError err
     Right name' → do
       reader ← H.fromEff Cf.newReaderEff
       content' ← H.fromAff $ Cf.readAsBinaryString f reader
@@ -245,8 +261,7 @@ uploadFileSelected f = do
       queryListing $ H.action $
         Listing.Filter (not ∘ eq res ∘ itemResource)
       case f' of
-        Left err →
-          showDialog $ Dialog.Error (message err)
+        Left err → handleError err
         Right _ →
           void $ queryListing $ H.action $ Listing.Add (Item res)
 
@@ -260,23 +275,28 @@ uploadFileSelected f = do
         let trimmed = S.trim content'
         in F.all isJust [S.stripPrefix "[" trimmed, S.stripSuffix "]" trimmed]
 
-peek ∷ ∀ a. ChildQuery a → DSL Unit
-peek =
-  listingPeek
+  handleError err =
+    case GE.fromQError err of
+      Left msg → showDialog $ Dialog.Error msg
+      Right ge → H.fromAff $ Bus.write ge bus
+
+peek ∷ ∀ a. Bus.BusW GE.GlobalError → ChildQuery a → DSL Unit
+peek bus =
+  listingPeek bus
   ⨁ searchPeek
   ⨁ const (pure unit)
-  ⨁ dialogPeek
+  ⨁ dialogPeek bus
   ⨁ const (pure unit)
 
-listingPeek ∷ ∀ a. Listing.QueryP a → DSL Unit
-listingPeek = go ⨁ (itemPeek ∘ H.runChildF)
+listingPeek ∷ ∀ a. Bus.BusW GE.GlobalError → Listing.QueryP a → DSL Unit
+listingPeek bus = go ⨁ (itemPeek bus ∘ H.runChildF)
   where
   go (Listing.Add _ _) = resort
   go (Listing.Adds _ _) = resort
   go _ = pure unit
 
-itemPeek ∷ ∀ a. Item.Query a → DSL Unit
-itemPeek (Item.Open res _) = do
+itemPeek ∷ ∀ a. Bus.BusW GE.GlobalError → Item.Query a → DSL Unit
+itemPeek _ (Item.Open res _) = do
   { sort, salt, path } ← H.get
   loc ← H.fromEff locationString
   for_ (preview R._filePath res) \fp →
@@ -287,12 +307,12 @@ itemPeek (Item.Open res _) = do
     H.fromEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
 
 
-itemPeek (Item.Configure (R.Mount mount) _) = configure mount
-itemPeek (Item.Move res _) = do
+itemPeek bus (Item.Configure (R.Mount mount) _) = configure bus mount
+itemPeek _ (Item.Move res _) = do
   showDialog $ Dialog.Rename res
   flip getDirectories rootDir \x →
     void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
-itemPeek (Item.Remove res _) = do
+itemPeek bus (Item.Remove res _) = do
   -- Replace actual item with phantom
   queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
   queryListing $ H.action $ Listing.Add (PhantomItem res)
@@ -307,7 +327,11 @@ itemPeek (Item.Remove res _) = do
     Left err → do
       -- Error occured: put item back and show dialog
       void $ queryListing $ H.action $ Listing.Add (Item res)
-      showDialog $ Dialog.Error (message err)
+      case GE.fromQError err of
+        Left msg →
+          showDialog $ Dialog.Error msg
+        Right ge →
+          H.fromAff $ Bus.write ge bus
     Right mbRes →
       -- Item has been deleted: probably add trash folder
       for_ mbRes \res' →
@@ -315,7 +339,7 @@ itemPeek (Item.Remove res _) = do
 
   resort
 
-itemPeek (Item.Share res _) = do
+itemPeek bus (Item.Share res _) = do
   path ← H.gets _.path
   loc ← map (_ ⊕ "/") $ H.fromEff locationString
   for_ (preview R._filePath res) \fp → do
@@ -323,16 +347,19 @@ itemPeek (Item.Share res _) = do
     name ← API.getNewName path newWorkspaceName
     case name of
       Left err →
-        showDialog $ Dialog.Error
-          $ "There was a problem creating the workspace: "
-          ⊕ message err
+        case GE.fromQError err of
+          Left msg →
+            showDialog $ Dialog.Error
+              $ "There was a problem creating the workspace: " ⊕ msg
+          Right ge →
+            H.fromAff $ Bus.write ge bus
       Right name' → do
         showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
   for_ (preview R._Workspace res) \wp → do
     showDialog (Dialog.Share $ append loc $ mkWorkspaceURL wp (Load ReadOnly))
 
-itemPeek (Item.Download res _) = download res
-itemPeek _ = pure unit
+itemPeek _ (Item.Download res _) = download res
+itemPeek _ _ = pure unit
 
 searchPeek ∷ ∀ a. Search.Query a → DSL Unit
 searchPeek (Search.Clear _) = do
@@ -346,27 +373,30 @@ searchPeek (Search.Submit _) = do
   H.fromEff $ setLocation $ browseURL value sort salt path
 searchPeek _ = pure unit
 
-dialogPeek ∷ ∀ a. Dialog.QueryP a → DSL Unit
-dialogPeek = const (pure unit) ⨁ dialogChildrenPeek ∘ H.runChildF
+dialogPeek ∷ ∀ a. Bus.BusW GE.GlobalError → Dialog.QueryP a → DSL Unit
+dialogPeek bus = const (pure unit) ⨁ dialogChildrenPeek bus ∘ H.runChildF
 
-dialogChildrenPeek ∷ ∀ a. Dialog.ChildQuery a → DSL Unit
-dialogChildrenPeek q = do
+dialogChildrenPeek ∷ ∀ a. Bus.BusW GE.GlobalError → Dialog.ChildQuery a → DSL Unit
+dialogChildrenPeek bus q = do
   for_ (prjQuery Dialog.cpMount q) mountPeek
-  for_ (prjQuery Dialog.cpExplore q) explorePeek
+  for_ (prjQuery Dialog.cpExplore q) (explorePeek bus)
 
-explorePeek ∷ ∀ a. Explore.Query a → DSL Unit
-explorePeek (Explore.Explore fp name next) = do
+explorePeek ∷ ∀ a. Bus.BusW GE.GlobalError → Explore.Query a → DSL Unit
+explorePeek bus (Explore.Explore fp name next) = do
   { path } ← H.get
   let newWorkspaceName = name ⊕ "." ⊕ Config.workspaceExtension
   name ← API.getNewName path newWorkspaceName
   case name of
     Left err →
-      showDialog $ Dialog.Error
-        $ "There was a problem creating the workspace: "
-        ⊕ message err
+      case GE.fromQError err of
+        Left msg →
+          showDialog $ Dialog.Error
+            $ "There was a problem creating the workspace: " ⊕ msg
+        Right ge →
+          H.fromAff $ Bus.write ge bus
     Right name' →
       H.fromEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
-explorePeek _ = pure unit
+explorePeek _ _ = pure unit
 
 mountPeek ∷ ∀ a. Mount.QueryP a → DSL Unit
 mountPeek = go ⨁ const (pure unit)
@@ -410,31 +440,37 @@ resort = do
     >>= traverse_ \isSearching →
       void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
-configure ∷ R.Mount → DSL Unit
-configure (R.View path) = do
-  viewInfo ← API.viewInfo path
-  showDialog
-    case viewInfo of
+configure ∷ Bus.BusW GE.GlobalError → R.Mount → DSL Unit
+configure bus (R.View path) = do
+  API.viewInfo path >>=
+    case _ of
       Left err →
-        Dialog.Error
-          $ "There was a problem reading the mount settings: "
-          ⊕ show err
+        case GE.fromQError err of
+          Left msg →
+            showDialog $ Dialog.Error
+              $ "There was a problem reading the mount settings: "
+              ⊕ msg
+          Right ge →
+            H.fromAff $ Bus.write ge bus
       Right info →
-        Dialog.Mount
+        showDialog $ Dialog.Mount
           (fromMaybe rootDir (parentDir path))
           (getNameStr (Right path))
           (Just (Right (SQL2.stateFromViewInfo info)))
 
-configure (R.Database path) = do
-  viewInfo ← API.mountInfo path
-  showDialog
-    case viewInfo of
+configure bus (R.Database path) = do
+  API.mountInfo path >>=
+    case _ of
       Left err →
-        Dialog.Error
-          $ "There was a problem reading the mount settings: "
-          ⊕ message err
+        case GE.fromQError err of
+          Left msg →
+            showDialog $ Dialog.Error
+              $ "There was a problem reading the mount settings: "
+              ⊕ msg
+          Right ge →
+            H.fromAff $ Bus.write ge bus
       Right config →
-        Dialog.Mount
+        showDialog $ Dialog.Mount
           (fromMaybe rootDir (parentDir path))
           (getNameStr (Left path))
           (Just (Left (MongoDB.fromConfig config)))

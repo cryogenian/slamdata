@@ -41,7 +41,7 @@
     "purescript-oidc-crypt-utils": "^3.0.0",
     "purescript-pathy": "^2.0.0",
     "purescript-profunctor-lenses": "^1.0.0",
-    "purescript-quasar": "^3.0.0",
+    "purescript-quasar": "garyb/purescript-quasar#ccd13a771e44aab67f91711630e0e5fcb24905b2",
     "purescript-routing": "^2.0.0",
     "purescript-search": "^1.0.0",
     "purescript-these": "^1.0.0",

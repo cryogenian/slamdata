@@ -24,6 +24,7 @@ module SlamData.Quasar.FS
   , messageIfFileNotFound
   , dirNotAccessible
   , fileNotAccessible
+  , module Quasar.Error
   ) where
 
 import SlamData.Prelude
@@ -48,14 +49,14 @@ import Data.Set as Set
 import Data.String as S
 
 import Quasar.Advanced.QuasarAF as QF
-import Quasar.Error (lowerQError)
+import Quasar.Error (QError)
 import Quasar.FS as QFS
 import Quasar.FS.Resource as QR
 import Quasar.Types (AnyPath, DirPath, FilePath)
 
-import SlamData.Quasar.Aff (QEff, runQuasarF)
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
+import SlamData.Quasar.Aff (QEff, runQuasarF)
 
 import Utils.AffableProducer as AP
 import Utils.Completions (memoizeCompletionStrs)
@@ -64,7 +65,7 @@ children
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ DirPath
-  → m (Either Exn.Error (Array R.Resource))
+  → m (Either QError (Array R.Resource))
 children dir = runExceptT do
   cs ← ExceptT $ listing dir
   let result = (R._root .~ dir) <$> cs
@@ -101,9 +102,9 @@ listing
   ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
   ⇒ DirPath
-  → m (Either Exn.Error (Array R.Resource))
+  → m (Either QError (Array R.Resource))
 listing p =
-  bimap lowerQError (map toResource) <$> runQuasarF (QF.dirMetadata p)
+  map (map toResource) <$> runQuasarF (QF.dirMetadata p)
   where
   toResource ∷ QFS.Resource → R.Resource
   toResource res = case res of
@@ -126,13 +127,15 @@ getNewName
   . (Monad m, Affable (QEff eff) m)
   ⇒ DirPath
   → String
-  → m (Either Exn.Error String)
+  → m (Either QError String)
 getNewName parent name = do
   result ← runQuasarF (QF.dirMetadata parent)
   pure case result of
-    Left (QF.Error err) → Left err
-    Right items | exists name items → Right (getNewName' items 1)
-    _ → Right name
+    Right items
+      | exists name items → Right (getNewName' items 1)
+      | otherwise → Right name
+    Left QF.NotFound → Right name
+    Left err → Left err
   where
 
   getNewName' ∷ Array QFS.Resource → Int → String
@@ -159,7 +162,7 @@ move
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ R.Resource
   → AnyPath
-  → m (Either Exn.Error (Maybe AnyPath))
+  → m (Either QError (Maybe AnyPath))
 move src tgt = do
   let srcPath = R.getPath src
   runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
@@ -171,21 +174,20 @@ move src tgt = do
     case result of
       Right _ → Right (Just tgt)
       Left QF.NotFound → Right Nothing
-      Left (QF.Error err) → Left err
-      Left QF.Forbidden → Right Nothing
+      Left err → Left err
 
 delete
   ∷ ∀ eff m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ R.Resource
-  → m (Either Exn.Error (Maybe R.Resource))
+  → m (Either QError (Maybe R.Resource))
 delete resource =
   runExceptT $
     if R.isMount resource || alreadyInTrash resource
     then
       forceDelete resource $> Nothing
     else
-      moveToTrash resource `catchError` \(err ∷ Exn.Error) →
+      moveToTrash resource `catchError` \(err ∷ QError) →
         forceDelete resource $> Nothing
 
   where
@@ -194,7 +196,7 @@ delete resource =
 
   moveToTrash
     ∷ R.Resource
-    → ExceptT Exn.Error m (Maybe R.Resource)
+    → ExceptT QError m (Maybe R.Resource)
   moveToTrash res = do
     let
       d = (res ^. R._root) </> P.dir Config.trashFolder
@@ -229,23 +231,21 @@ forceDelete
   ∷ ∀ eff m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ R.Resource
-  → ExceptT Exn.Error m Unit
+  → ExceptT QError m Unit
 forceDelete res =
   case res of
     R.Mount _ →
-      ExceptT ∘ runQuasarF $ lmap lowerQError <$>
-        QF.deleteMount (R.getPath res)
+      ExceptT ∘ runQuasarF $ QF.deleteMount (R.getPath res)
     _ → do
       let path = R.getPath res
       traverse cleanViewMounts $ path ^? _Left
-      ExceptT ∘ runQuasarF $ lmap lowerQError <$>
-        QF.deleteData path
+      ExceptT ∘ runQuasarF $ QF.deleteData path
 
 cleanViewMounts
   ∷ ∀ eff m
   . (Affable (QEff eff) m)
   ⇒ DirPath
-  → ExceptT Exn.Error m Unit
+  → ExceptT QError m Unit
 cleanViewMounts path =
   hoistExceptT fromAff $ CR.runProcess (producer CR.$$ consumer)
 
@@ -258,12 +258,12 @@ cleanViewMounts path =
     → ExceptT e m a
   hoistExceptT nat (ExceptT m) = ExceptT (nat m)
 
-  producer ∷ CR.Producer (Array R.Resource) (ExceptT Exn.Error (Aff.Aff (QEff eff))) Unit
+  producer ∷ CR.Producer (Array R.Resource) (ExceptT QError (Aff.Aff (QEff eff))) Unit
   producer =
     FT.hoistFreeT lift $
       transitiveChildrenProducer path
 
-  consumer ∷ CR.Consumer (Array R.Resource) (ExceptT Exn.Error (Aff.Aff (QEff eff))) Unit
+  consumer ∷ CR.Consumer (Array R.Resource) (ExceptT QError (Aff.Aff (QEff eff))) Unit
   consumer =
     CR.consumer \fs → do
       traverse_ deleteViewMount fs
@@ -271,13 +271,11 @@ cleanViewMounts path =
 
   deleteViewMount
     ∷ R.Resource
-    → ExceptT Exn.Error (Aff.Aff (QEff eff)) Unit
+    → ExceptT QError (Aff.Aff (QEff eff)) Unit
   deleteViewMount =
     case _ of
       R.Mount (R.View vp) →
-        ExceptT ∘ runQuasarF $
-          lmap lowerQError <$>
-            QF.deleteMount (Right vp)
+        ExceptT ∘ runQuasarF $ QF.deleteMount (Right vp)
       _ → pure unit
 
 messageIfFileNotFound
@@ -285,14 +283,13 @@ messageIfFileNotFound
   . (Monad m, Affable (QEff eff) m)
   ⇒ FilePath
   → String
-  → m (Either Exn.Error (Maybe String))
+  → m (Either QError (Maybe String))
 messageIfFileNotFound path defaultMsg =
   handleResult <$> runQuasarF (QF.fileMetadata path)
   where
-  handleResult ∷ ∀ a. Either QF.QError a → Either Exn.Error (Maybe String)
-  handleResult (Left (QF.Error e)) = Left e
+  handleResult ∷ ∀ a. Either QF.QError a → Either QError (Maybe String)
   handleResult (Left QF.NotFound) = Right (Just defaultMsg)
-  handleResult (Left QF.Forbidden) = Right (Just defaultMsg)
+  handleResult (Left err) = Left err
   handleResult (Right _) = Right Nothing
 
 dirNotAccessible
@@ -307,6 +304,7 @@ dirNotAccessible path =
   handleResult (Left (QF.Error e)) = Just $ Exn.message e
   handleResult (Left QF.NotFound) = Just "Target directory does not exist."
   handleResult (Left QF.Forbidden) = Just "Your browser isn't currently permitted to access that directory."
+  handleResult (Left QF.PaymentRequired) = Just "Payment is required to access the directory."
   handleResult (Right _) = Nothing
 
 fileNotAccessible
@@ -321,4 +319,5 @@ fileNotAccessible path =
   handleResult (Left (QF.Error e)) = Just $ Exn.message e
   handleResult (Left QF.NotFound) = Just "Target file does not exist."
   handleResult (Left QF.Forbidden) = Just "Your browser isn't currently permitted to access that file."
+  handleResult (Left QF.PaymentRequired) = Just "Payment is required to access the file."
   handleResult (Right _) = Nothing

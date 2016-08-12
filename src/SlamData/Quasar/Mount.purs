@@ -18,57 +18,53 @@ module SlamData.Quasar.Mount
   ( mountInfo
   , viewInfo
   , saveMount
+  , module Quasar.Error
   ) where
 
 import SlamData.Prelude
 
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as Err
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 
 import Data.Path.Pathy as P
 
 import Quasar.Advanced.QuasarAF as QF
-import Quasar.Error (lowerQError)
+import Quasar.Error (QError)
 import Quasar.Mount as QM
 import Quasar.Mount.MongoDB as QMountMDB
 import Quasar.Mount.View as QMountV
 import Quasar.Types (DirPath, FilePath)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Error (throw)
 
 mountInfo
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ DirPath
-  → m (Either Exn.Error QMountMDB.Config)
+  → m (Either QError QMountMDB.Config)
 mountInfo path = runExceptT do
-  result ← ExceptT $ runQuasarF $ lmap lowerQError <$>
-    QF.getMount (Left path)
+  result ← ExceptT $ runQuasarF $ QF.getMount (Left path)
   case result of
     QM.MongoDBConfig config → pure config
-    _ → Err.throwError $ Exn.error $
-      P.printPath path <> " is not a MongoDB mount point"
+    _ → throw $ P.printPath path <> " is not a MongoDB mount point"
 
 viewInfo
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ FilePath
-  → m (Either Exn.Error QMountV.Config)
+  → m (Either QError QMountV.Config)
 viewInfo path = runExceptT do
-  result ← ExceptT $ runQuasarF $ lmap lowerQError <$>
-    QF.getMount (Right path)
+  result ← ExceptT $ runQuasarF $ QF.getMount (Right path)
   case result of
     QM.ViewConfig config → pure config
-    _ → Err.throwError $ Exn.error $ P.printPath path <> " is not an SQL² view"
+    _ → throw $ P.printPath path <> " is not an SQL² view"
 
 saveMount
   ∷ ∀ eff m
   . Affable (QEff eff) m
   ⇒ DirPath
   → QMountMDB.Config
-  → m (Either Exn.Error Unit)
+  → m (Either QError Unit)
 saveMount path config =
-  runQuasarF $ lmap lowerQError <$>
-    QF.updateMount (Left path) (QM.MongoDBConfig config)
+  runQuasarF $ QF.updateMount (Left path) (QM.MongoDBConfig config)

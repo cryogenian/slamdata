@@ -18,8 +18,8 @@ module SlamData.FileSystem.Dialog.Rename.Component where
 
 import SlamData.Prelude
 
+import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Eff.Exception (message)
 import Control.UI.Browser (reload)
 
 import Data.Array (elemIndex, singleton, sort, nub)
@@ -41,6 +41,7 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
+import SlamData.GlobalError as GE
 import SlamData.Quasar.FS as API
 import SlamData.Render.Common (fadeWhen, formGroup)
 import SlamData.Render.CSS as Rc
@@ -143,11 +144,11 @@ data Query a
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-comp :: H.Component State Query Slam
-comp =
+comp :: Bus.BusW GE.GlobalError -> H.Component State Query Slam
+comp bus =
   H.lifecycleComponent
     { render
-    , eval
+    , eval: eval bus
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
@@ -236,17 +237,17 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval :: Query ~> DSL
-eval (Dismiss next) = pure next
-eval (SetShowList bool next) = do
+eval :: Bus.BusW GE.GlobalError -> Query ~> DSL
+eval _ (Dismiss next) = pure next
+eval _ (SetShowList bool next) = do
   H.modify (_showList .~ bool)
   H.modify validate
   pure next
-eval (ToggleShowList next) = do
+eval _ (ToggleShowList next) = do
   H.modify (_showList %~ not)
   H.modify validate
   pure next
-eval (Submit next) = do
+eval bus (Submit next) = do
   dirStr <- endingInSlash <$> H.gets _.typedDir
   maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
   pure next
@@ -274,7 +275,9 @@ eval (Submit next) = do
     result <- API.move src tgt
     case result of
       Left e ->
-        H.modify (_error ?~ message e)
+        case GE.fromQError e of
+          Left msg -> H.modify (_error ?~ msg)
+          Right ge -> H.fromAff $ Bus.write ge bus
       Right x ->
         maybe
           presentSourceMissingError
@@ -286,23 +289,23 @@ eval (Submit next) = do
 
   endingInSlash s = if lastChar s == "/" then s else s <> "/"
 
-eval (NameTyped str next) = do
+eval _ (NameTyped str next) = do
   H.modify (_name .~ str)
   H.modify validate
   pure next
-eval (DirTyped str next) = do
+eval _ (DirTyped str next) = do
   H.modify $ _typedDir .~ str
   pure next
-eval (DirClicked res next) = do
+eval _ (DirClicked res next) = do
   dirItemClicked res
   pure next
-eval (SetSiblings ss next) = do
+eval _ (SetSiblings ss next) = do
   H.modify (_siblings .~ ss)
   pure next
-eval (AddDirs ds next) = do
+eval _ (AddDirs ds next) = do
   H.modify (_dirs %~ append ds >>> nub >>> sort)
   pure next
-eval (Init next) = do
+eval _ (Init next) = do
   state <- H.get
   dirItemClicked $ R.parent $ state.initial
   pure next

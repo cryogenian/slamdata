@@ -14,17 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.FileSystem.Dialog.Mount.Common.SettingsQuery where
+
+module SlamData.GlobalError where
 
 import SlamData.Prelude
 
-import Quasar.Error (QError)
+import Quasar.Error as QE
 
-import SlamData.FileSystem.Resource (Mount)
+data GlobalError
+  = PaymentRequired
+  | AuthRequired
 
-import Utils.Path (DirPath)
-
-data SettingsQuery s a
-  = ModifyState (s -> s) a
-  | Validate (Maybe String -> a)
-  | Submit DirPath String (Either QError Mount -> a)
+fromQError ∷ QE.QError → Either String GlobalError
+fromQError = case _ of
+  QE.PaymentRequired → Right PaymentRequired
+  QE.Forbidden → Right AuthRequired
+  err → Left (QE.printQError err)
