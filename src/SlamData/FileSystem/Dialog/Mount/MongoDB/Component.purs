@@ -51,7 +51,7 @@ type Query = SettingsQuery State
 
 type HTML = H.ComponentHTML Query
 
-comp ∷ ∀ r. RequestIdTokenBus r → H.Component State Query Slam
+comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus = H.component { render, eval: eval requestNewIdTokenBus }
 
 render ∷ State → HTML
@@ -65,7 +65,7 @@ render state =
     , section "Settings" [ propList _props state ]
     ]
 
-eval :: ∀ r. RequestIdTokenBus r → Query ~> H.ComponentDSL State Query Slam
+eval :: ∀ r. RequestIdTokenBus → Query ~> H.ComponentDSL State Query Slam
 eval _ (ModifyState f next) = H.modify (processState <<< f) $> next
 eval _ (Validate k) =
   k <<< either Just (const Nothing) <<< toConfig <$> H.get

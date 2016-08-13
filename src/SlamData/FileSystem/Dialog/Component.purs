@@ -133,11 +133,11 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Query ⨁ (H.ChildF ChildSlot ChildQuery)
 type DialogDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. RequestIdTokenBus r → H.Component StateP QueryP Slam
+comp ∷ ∀ r. RequestIdTokenBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus =
   H.parentComponent { render: render requestNewIdTokenBus, eval, peek: Just (peek <<< H.runChildF) }
 
-render ∷ ∀ r. RequestIdTokenBus r → State → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+render ∷ ∀ r. RequestIdTokenBus → State → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 render requestNewIdTokenBus state =
   HH.div
     [ HP.classes ([B.modal] <> fadeWhen (isNothing state))

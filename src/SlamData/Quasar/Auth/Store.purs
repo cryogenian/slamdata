@@ -17,25 +17,19 @@ limitations under the License.
 module SlamData.Quasar.Auth.Store where
 
 import Prelude
-
 import Control.Monad.Eff (Eff)
-
+import Data.Either (Either)
 import DOM (DOM)
-
-
 import OIDC.Crypt.Types as OIDCT
-
-import SlamData.Quasar.Auth.Keys as AuthKeys
-
 import Quasar.Advanced.Types as QAT
-
+import SlamData.Quasar.Auth.Keys as AuthKeys
 import Utils.LocalStorage as LS
 
-storeIdToken ∷ ∀ e. OIDCT.IdToken → Eff (dom ∷ DOM | e) Unit
-storeIdToken (OIDCT.IdToken idToken) =
+storeIdToken ∷ ∀ e. Either String OIDCT.IdToken → Eff (dom ∷ DOM | e) Unit
+storeIdToken idToken =
   LS.setLocalStorage
     AuthKeys.idTokenLocalStorageKey
-    idToken
+    $ OIDCT.runIdToken <$> idToken
 
 storeProvider ∷ ∀ e. QAT.Provider → Eff (dom ∷ DOM | e) Unit
 storeProvider =
@@ -56,4 +50,3 @@ storeNonce (OIDCT.UnhashedNonce n) =
 clearIdToken ∷ ∀ e. Eff (dom ∷ DOM |e) Unit
 clearIdToken =
   LS.removeLocalStorage AuthKeys.idTokenLocalStorageKey
-

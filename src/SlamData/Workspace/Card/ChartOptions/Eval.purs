@@ -44,7 +44,7 @@ import SlamData.Workspace.Card.Port as Port
 eval
   ∷ ∀ m r
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → CET.CardEvalInput
   → ChartOptions.Model
   → CET.CardEvalT m Port.ChartPort

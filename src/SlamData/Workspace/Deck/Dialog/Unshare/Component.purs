@@ -154,7 +154,7 @@ type AdjustedPermissions =
   , groups ∷ SM.StrMap Permission
   }
 
-comp ∷ ∀ r. RequestIdTokenBus r → H.Component State Query Slam
+comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
@@ -376,7 +376,7 @@ renderToken token =
     ]
 
 
-eval ∷ ∀ r. RequestIdTokenBus r → Query ~> DSL
+eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
 eval requestNewIdTokenBus (Init next) = next <$ do
   tokensRes ← Q.tokenList requestNewIdTokenBus
   sharingInput ← H.gets _.sharingInput
@@ -504,7 +504,7 @@ eval requestNewIdTokenBus (Unshare name next) = next <$ do
 
 changePermissionResumeForUser
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → String
   → Model.SharingInput
   → ShareResume
@@ -531,7 +531,7 @@ changePermissionResumeForUser requestNewIdTokenBus name sharingInput res perm = 
 
 changePermissionResumeForGroup
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → String
   → Model.SharingInput
   → ShareResume
@@ -560,7 +560,7 @@ changePermissionResumeForGroup requestNewIdTokenBus name sharingInput res perm =
 
 deletePermission
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → Map.Map QTA.PermissionId QTA.ActionR
   → DSL (Map.Map QTA.PermissionId QTA.ActionR)
 deletePermission requestNewIdTokenBus permissionMap = do

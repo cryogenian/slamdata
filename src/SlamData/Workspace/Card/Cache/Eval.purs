@@ -40,7 +40,7 @@ import Utils.Path as PU
 eval
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → CET.CardEvalInput
   → Maybe String
   → FilePath
@@ -56,7 +56,7 @@ eval requestNewIdTokenBus info mfp resource =
 eval'
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → PU.FilePath
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort

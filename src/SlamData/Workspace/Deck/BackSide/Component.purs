@@ -145,7 +145,7 @@ actionGlyph = case _ of
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp ∷ ∀ r. RequestIdTokenBus r → H.Component State Query Slam
+comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
@@ -208,7 +208,7 @@ render state =
       lbl = labelAction action ⊕ if enabled then "" else " disabled"
       icon = actionGlyph action
 
-eval ∷ ∀ r. RequestIdTokenBus r → Query ~> DSL
+eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
 eval _ (DoAction _ next) = pure next
 eval _ (UpdateFilter str next) =
   H.modify (_ { filterString = str }) $> next

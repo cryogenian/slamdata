@@ -130,7 +130,7 @@ data Query a
   | InitZClipboard String (Maybe HTMLElement) a
   | SelectElement HTMLElement a
 
-comp ∷ ∀ r. RequestIdTokenBus r → H.Component State Query Slam
+comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
@@ -349,7 +349,7 @@ render state =
    ]
 
 
-eval ∷ ∀ r. RequestIdTokenBus r → Query ~> DSL
+eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
 eval _ (Dismiss next) = pure next
 eval _ (ChangeSubjectType st next) = do
   H.modify (_{subjectType = st})

@@ -57,7 +57,7 @@ import Utils.Path (DirPath)
 transitiveGraphProducer
   ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → DeckId
   → Producer (Tuple DeckId (Either String (Array DeckId))) m Unit
@@ -90,7 +90,7 @@ transitiveGraphProducer requestNewIdTokenBus path deckId = produce \emit → do
 transitiveChildren
   ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → DeckId
   → m (Either String (Array DeckId))
@@ -122,7 +122,7 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
 deleteGraph
   ∷ ∀ eff r m
   . Affable (QEff eff) m
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → DeckId
   → m (Either String Unit)

@@ -83,7 +83,7 @@ type SignInDSL = H.ParentDSL State (ChildState Slam) Query ChildQuery Slam Child
 
 comp
   ∷ ∀ r s
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → SignInBusW s
   → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus signInBus =
@@ -105,7 +105,7 @@ render state =
         , initialState: H.parentState $ Menu.make []
         }
 
-eval ∷ ∀ r s. RequestIdTokenBus r → SignInBusW s → Query ~> SignInDSL
+eval ∷ ∀ r s. RequestIdTokenBus → SignInBusW s → Query ~> SignInDSL
 eval _ _ (DismissSubmenu next) = dismissAll $> next
 eval requestNewIdTokenBus signInBus (SignedIn next) =
   sendMessage *> update requestNewIdTokenBus $> next
@@ -120,7 +120,7 @@ subscribeToIdTokenEvents =
     ∘ StallingCoroutine.mapStallingProducer (const $ SignedIn unit)
     =<< H.fromEff IdTokenStorageEvents.getIdTokenStorageEvents
 
-update ∷ ∀ r. RequestIdTokenBus r → SignInDSL Unit
+update ∷ ∀ r. RequestIdTokenBus → SignInDSL Unit
 update requestNewIdTokenBus = do
   mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus
   traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)

@@ -56,7 +56,7 @@ import Utils.Path (DirPath)
 markdownEval
   ∷ ∀ m r
   . (Monad m, AffF.Affable SlamDataEffects m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → CET.CardEvalInput
   → String
   → CET.CardEvalT m Port.Port
@@ -91,7 +91,7 @@ runEvalM = WT.runWriterT
 
 evalEmbeddedQueries
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → SM.StrMap String
   → DirPath
   → SD.SlamDownP Port.VarMapValue

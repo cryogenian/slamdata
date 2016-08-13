@@ -75,11 +75,11 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. RequestIdTokenBus r → SignInBus → H.Component StateP QueryP Slam
+comp ∷ ∀ r. RequestIdTokenBus → SignInBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus signInBus =
   H.parentComponent { render: render requestNewIdTokenBus signInBus, eval, peek: Nothing }
 
-render ∷ ∀ r. RequestIdTokenBus r → SignInBus → Unit → HTML
+render ∷ ∀ r. RequestIdTokenBus → SignInBus → Unit → HTML
 render requestNewIdTokenBus signInBus _ =
   HH.nav_
     [ HH.div_

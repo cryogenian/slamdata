@@ -77,7 +77,7 @@ type DraftboardDSL = H.ParentDSL State DNS.State QueryC DNQ.QueryP Slam DeckId
 
 type DraftboardHTML = H.ParentHTML DNS.State QueryC DNQ.QueryP Slam DeckId
 
-draftboardComponent ∷ ∀ r. RequestIdTokenBus r → CardOptions → CC.CardComponent
+draftboardComponent ∷ ∀ r. RequestIdTokenBus → CardOptions → CC.CardComponent
 draftboardComponent requestNewIdTokenBus opts = CC.makeCardComponent
   { cardType: CT.Draftboard
   , component: H.parentComponent
@@ -169,7 +169,7 @@ evalCard = case _ of
   CC.ZoomIn next →
     pure next
 
-evalBoard ∷ ∀ r. RequestIdTokenBus r → CardOptions → Query ~> DraftboardDSL
+evalBoard ∷ ∀ r. RequestIdTokenBus → CardOptions → Query ~> DraftboardDSL
 evalBoard requestNewIdTokenBus opts = case _ of
   Grabbing deckId ev next → do
     case ev of
@@ -255,7 +255,7 @@ evalBoard requestNewIdTokenBus opts = case _ of
 
 
 
-peek ∷ ∀ a r. RequestIdTokenBus r → CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL Unit
+peek ∷ ∀ a r. RequestIdTokenBus → CardOptions → H.ChildF DeckId DNQ.QueryP a → DraftboardDSL Unit
 peek requestNewIdTokenBus opts (H.ChildF deckId q) = coproduct (const (pure unit)) peekDeck q
   where
   peekDeck ∷ DCQ.Query a → DraftboardDSL Unit
@@ -309,7 +309,7 @@ pxToGrid = (_ / Config.gridPx)
 gridToPx ∷ Number → Number
 gridToPx = (_ * Config.gridPx)
 
-stopDragging ∷ ∀ r. RequestIdTokenBus r → CardOptions → DraftboardDSL Unit
+stopDragging ∷ ∀ r. RequestIdTokenBus → CardOptions → DraftboardDSL Unit
 stopDragging requestNewIdTokenBus opts = do
   st ← H.get
   for_ st.moving \(deckId × rect) → do
@@ -407,7 +407,7 @@ loadDecks =
   H.gets (Map.keys ∘ _.decks) >>=
     traverse_ (raise' ∘ right ∘ H.action ∘ LoadDeck)
 
-addDeck ∷ ∀ r. RequestIdTokenBus r → CardOptions → DM.Deck → { x ∷ Number, y ∷ Number } → DraftboardDSL Unit
+addDeck ∷ ∀ r. RequestIdTokenBus → CardOptions → DM.Deck → { x ∷ Number, y ∷ Number } → DraftboardDSL Unit
 addDeck requestNewIdTokenBus opts deck coords = do
   decks ← Map.toList <$> H.gets _.decks
   let
@@ -418,7 +418,7 @@ addDeck requestNewIdTokenBus opts deck coords = do
   for_ (accomodateDeck decks coords deckPos) $
     addDeckAt requestNewIdTokenBus opts deck
 
-addDeckAt ∷ ∀ r. RequestIdTokenBus r → CardOptions → DM.Deck → DeckPosition → DraftboardDSL Unit
+addDeckAt ∷ ∀ r. RequestIdTokenBus → CardOptions → DM.Deck → DeckPosition → DraftboardDSL Unit
 addDeckAt requestNewIdTokenBus { deck: opts, deckId: parentId, cardId } deck deckPos = do
   let deck' = deck { parent = Just (parentId × cardId) }
   H.modify $ _inserting .~ true
@@ -434,7 +434,7 @@ addDeckAt requestNewIdTokenBus { deck: opts, deckId: parentId, cardId } deck dec
         }
       loadAndFocus opts deckId
 
-deleteDeck ∷ ∀ r. RequestIdTokenBus r → CardOptions → DeckId → DraftboardDSL Unit
+deleteDeck ∷ ∀ r. RequestIdTokenBus → CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck requestNewIdTokenBus { deck } deckId = do
   res ← deleteGraph requestNewIdTokenBus deck.path deckId
   case res of
@@ -443,7 +443,7 @@ deleteDeck requestNewIdTokenBus { deck } deckId = do
     Right _ →
       H.modify \s → s { decks = Map.delete deckId s.decks }
 
-wrapDeck ∷ ∀ r. RequestIdTokenBus r → CardOptions → DeckId → DraftboardDSL Unit
+wrapDeck ∷ ∀ r. RequestIdTokenBus → CardOptions → DeckId → DraftboardDSL Unit
 wrapDeck requestNewIdTokenBus { cardId, deckId: parentId, deck } oldId = do
   H.gets (Map.lookup oldId ∘ _.decks) >>= traverse_ \deckPos → do
     let
@@ -468,7 +468,7 @@ wrapDeck requestNewIdTokenBus { cardId, deckId: parentId, deck } oldId = do
 
 unwrapDeck
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → CardOptions
   → DeckId
   → Map.Map DeckId (DeckPosition × DM.Deck)
@@ -500,7 +500,7 @@ unwrapDeck requestNewIdTokenBus { deckId, cardId, deck: opts } oldId decks = voi
         }
   toCoords (_ × (pos × _)) = Tuple pos.x pos.y
 
-mirrorDeck ∷ ∀ r. RequestIdTokenBus r → CardOptions → DeckId → DraftboardDSL Unit
+mirrorDeck ∷ ∀ r. RequestIdTokenBus → CardOptions → DeckId → DraftboardDSL Unit
 mirrorDeck requestNewIdTokenBus opts oldId = do
   queryDeck oldId (H.request DCQ.GetModelCards) >>= traverse_ \modelCards → do
     let modelCards' = Array.span (not ∘ eq oldId ∘ fst) modelCards
@@ -529,7 +529,7 @@ mirrorDeck requestNewIdTokenBus opts oldId = do
       addDeckAt requestNewIdTokenBus opts deck $
         reallyAccomodateDeck (Map.toList st.decks) deckPos
 
-groupDecks ∷ ∀ r. RequestIdTokenBus r → CardOptions → DeckId → DeckId → DraftboardDSL Unit
+groupDecks ∷ ∀ r. RequestIdTokenBus → CardOptions → DeckId → DeckId → DraftboardDSL Unit
 groupDecks requestNewIdTokenBus { cardId, deckId, deck } deckFrom deckTo = do
   st ← H.get
   for_ (Map.lookup deckFrom st.decks) \rectFrom →

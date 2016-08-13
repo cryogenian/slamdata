@@ -111,50 +111,6 @@ fromStallingProducer producer = do
 
 type RetrieveIdTokenEffRow eff = (console :: CONSOLE, rsaSignTime :: OIDC.RSASIGNTIME, avar :: AVAR, dom :: DOM, random :: RANDOM | eff)
 
-retrieveIdToken ∷ ∀ r eff. (Bus (write ∷ Cap | r) (AVar EIdToken)) → Aff (RetrieveIdTokenEffRow eff) _
+retrieveIdToken ∷ ∀ r eff. (Bus (write ∷ Cap | r) (AVar EIdToken)) → Aff (RetrieveIdTokenEffRow eff) EIdToken
 retrieveIdToken requestNewIdTokenBus =
-  (runExceptT
-    $ (\idToken → (ExceptT $ verify idToken) <|> (ExceptT getNewToken))
-    =<< ExceptT retrieveFromLocalStorage)
-  where
-  getNewToken ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken
-  getNewToken = do
-    tokenVar ← AVar.makeVar
-    Bus.write tokenVar requestNewIdTokenBus
-    liftEff $ log "before take"
-    x ← AVar.takeVar tokenVar
-    liftEff $ log "after take"
-    pure x
-
-  retrieveFromLocalStorage ∷ Aff (RetrieveIdTokenEffRow eff) EIdToken
-  retrieveFromLocalStorage =
-    map OIDCT.IdToken <$> LS.getLocalStorage AuthKeys.idTokenLocalStorageKey
-
-  verify ∷ OIDCT.IdToken → Aff (RetrieveIdTokenEffRow eff) EIdToken
-  verify idToken = do
-    verified ← liftEff $ verifyBoolean idToken
-    if verified
-      then pure $ Right idToken
-      else pure $ Left "Token invalid."
-
-  verifyBoolean ∷ OIDCT.IdToken → Eff (RetrieveIdTokenEffRow eff) Boolean
-  verifyBoolean idToken = do
-    jwks ← map (M.fromMaybe []) retrieveJwks
-    F.or <$> T.traverse (verifyBooleanWithJwk idToken) jwks
-
-  verifyBooleanWithJwk ∷ OIDCT.IdToken → JSONWebKey → Eff (RetrieveIdTokenEffRow eff) Boolean
-  verifyBooleanWithJwk idToken jwk = do
-    issuer ← retrieveIssuer
-    clientId ← retrieveClientID
-    nonce ← retrieveNonce
-    M.fromMaybe (pure false)
-      $ Apply.lift4 (OIDC.verifyIdToken idToken) issuer clientId nonce (M.Just jwk)
-
-  retrieveIssuer =
-    map (_.issuer <<< _.openIDConfiguration) <$> retrieveProviderR
-
-  retrieveJwks =
-    map (_.jwks <<< _.openIDConfiguration) <$> retrieveProviderR
-
-  ifFalseLeft ∷ ∀ a b. a → b → Boolean → Either a b
-  ifFalseLeft x y boolean = if boolean then Right y else Left x
+  AVar.takeVar =<< passover (flip Bus.write requestNewIdTokenBus) =<< AVar.makeVar

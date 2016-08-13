@@ -86,7 +86,7 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceHTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type WorkspaceDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. RequestIdTokenBus r → Wiring → SignInBus → H.Component StateP QueryP Slam
+comp ∷ ∀ r. RequestIdTokenBus → Wiring → SignInBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus wiring signInBus =
   H.lifecycleParentComponent
     { render: render requestNewIdTokenBus wiring signInBus
@@ -96,7 +96,7 @@ comp requestNewIdTokenBus wiring signInBus =
     , finalizer: Nothing
     }
 
-render ∷ ∀ r. RequestIdTokenBus r → Wiring → SignInBus → State → WorkspaceHTML
+render ∷ ∀ r. RequestIdTokenBus → Wiring → SignInBus → State → WorkspaceHTML
 render requestNewIdTokenBus wiring signInBus state =
   HH.div
     [ HP.classes
@@ -150,7 +150,7 @@ render requestNewIdTokenBus wiring signInBus state =
           [ HH.text err ]
       ]
 
-eval ∷ ∀ r. RequestIdTokenBus r → Wiring → Query ~> WorkspaceDSL
+eval ∷ ∀ r. RequestIdTokenBus → Wiring → Query ~> WorkspaceDSL
 eval _ _ (Init next) = do
   deckId ← H.fromEff freshDeckId
   H.modify (_initialDeckId ?~ deckId)
@@ -208,10 +208,10 @@ eval requestNewIdTokenBus wiring (Load path deckId accessType next) = do
     rootDeck requestNewIdTokenBus path >>=
       either (\err → H.modify $ _stateMode .~ Error err) loadDeck
 
-rootDeck ∷ ∀ r. RequestIdTokenBus r → UP.DirPath → WorkspaceDSL (Either String DeckId)
+rootDeck ∷ ∀ r. RequestIdTokenBus → UP.DirPath → WorkspaceDSL (Either String DeckId)
 rootDeck requestNewIdTokenBus path = Model.getRoot requestNewIdTokenBus (path </> Pathy.file "index")
 
-peek ∷ ∀ a r. RequestIdTokenBus r → Wiring → ChildQuery a → WorkspaceDSL Unit
+peek ∷ ∀ a r. RequestIdTokenBus → Wiring → ChildQuery a → WorkspaceDSL Unit
 peek requestNewIdTokenBus wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
   where
   peekDeck (Deck.DoAction (Deck.Unwrap decks) _) = void $ runMaybeT do
@@ -381,7 +381,7 @@ errors m es = case (lefts es) of
 updateParentPointer
   ∷ ∀ m r
   . (Affable SlamDataEffects m, Monad m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → Wiring
   → UP.DirPath
   → DeckId

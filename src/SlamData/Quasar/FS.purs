@@ -64,7 +64,7 @@ import Utils.Completions (memoizeCompletionStrs)
 children
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → m (Either Exn.Error (Array R.Resource))
 children requestNewIdTokenBus dir = runExceptT do
@@ -77,7 +77,7 @@ children requestNewIdTokenBus dir = runExceptT do
 transitiveChildrenProducer
   ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → CR.Producer (Array R.Resource) m Unit
 transitiveChildrenProducer requestNewIdTokenBus dirPath = do
@@ -103,7 +103,7 @@ transitiveChildrenProducer requestNewIdTokenBus dirPath = do
 listing
   ∷ ∀ eff r m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → m (Either Exn.Error (Array R.Resource))
 listing requestNewIdTokenBus p =
@@ -128,7 +128,7 @@ listing requestNewIdTokenBus p =
 getNewName
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → String
   → m (Either Exn.Error String)
@@ -162,7 +162,7 @@ getNewName requestNewIdTokenBus parent name = do
 move
   ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → R.Resource
   → AnyPath
   → m (Either Exn.Error (Maybe AnyPath))
@@ -183,7 +183,7 @@ move requestNewIdTokenBus src tgt = do
 delete
   ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → R.Resource
   → m (Either Exn.Error (Maybe R.Resource))
 delete requestNewIdTokenBus resource =
@@ -235,7 +235,7 @@ delete requestNewIdTokenBus resource =
 forceDelete
   ∷ ∀ eff r m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → R.Resource
   → ExceptT Exn.Error m Unit
 forceDelete requestNewIdTokenBus res =
@@ -252,7 +252,7 @@ forceDelete requestNewIdTokenBus res =
 cleanViewMounts
   ∷ ∀ eff m r
   . (Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → ExceptT Exn.Error m Unit
 cleanViewMounts requestNewIdTokenBus path =
@@ -292,7 +292,7 @@ cleanViewMounts requestNewIdTokenBus path =
 messageIfFileNotFound
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → FilePath
   → String
   → m (Either Exn.Error (Maybe String))
@@ -308,7 +308,7 @@ messageIfFileNotFound requestNewIdTokenBus path defaultMsg =
 dirNotAccessible
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → DirPath
   → m (Maybe String)
 dirNotAccessible requestNewIdTokenBus path =
@@ -323,7 +323,7 @@ dirNotAccessible requestNewIdTokenBus path =
 fileNotAccessible
   ∷ ∀ eff r m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ RequestIdTokenBus r
+  ⇒ RequestIdTokenBus
   → FilePath
   → m (Maybe String)
 fileNotAccessible requestNewIdTokenBus path =

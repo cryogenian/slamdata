@@ -60,7 +60,7 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type ChartHTML = H.ParentHTML HEC.EChartsState CC.CardEvalQuery HEC.EChartsQuery Slam Unit
 type ChartDSL = H.ParentDSL State HEC.EChartsState CC.CardEvalQuery HEC.EChartsQuery Slam Unit
 
-chartComponent ∷ ∀ r. RequestIdTokenBus r → H.Component CC.CardStateP CC.CardQueryP Slam
+chartComponent ∷ ∀ r. RequestIdTokenBus → H.Component CC.CardStateP CC.CardQueryP Slam
 chartComponent requestNewIdTokenBus = CC.makeCardComponent
   { cardType: CT.Chart
   , component: H.parentComponent { render, eval: eval requestNewIdTokenBus, peek: Nothing }
@@ -125,7 +125,7 @@ renderButton ct =
   src Scatter = "img/scatter-black.svg"
   src Radar = "img/radar-black.svg"
 
-eval ∷ ∀ r. RequestIdTokenBus r → CC.CardEvalQuery ~> ChartDSL
+eval ∷ ∀ r. RequestIdTokenBus → CC.CardEvalQuery ~> ChartDSL
 eval requestNewIdTokenBus = case _ of
   CC.EvalCard value output next → do
     case value.input of

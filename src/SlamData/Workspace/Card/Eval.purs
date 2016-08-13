@@ -34,7 +34,7 @@ import Quasar.Types (SQL, FilePath)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Cache.Eval as Cache
@@ -86,9 +86,9 @@ instance showEval ∷ Show Eval where
       Draftboard → "Draftboard"
 
 evalCard
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus
   → CET.CardEvalInput
   → Eval
   → CET.CardEvalT m Port.Port
@@ -143,7 +143,7 @@ evalMarkdownForm (vm × doc) model = do
 evalOpen
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus
   → CET.CardEvalInput
   → R.Resource
   → CET.CardEvalT m Port.TaggedResourcePort
@@ -167,7 +167,7 @@ evalOpen requestNewIdTokenBus info res = do
 evalQuery
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus
   → CET.CardEvalInput
   → SQL
   → Port.VarMap
@@ -191,7 +191,7 @@ evalQuery requestNewIdTokenBus info sql varMap = do
 evalSearch
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus
   → CET.CardEvalInput
   → String
   → FilePath
@@ -235,7 +235,7 @@ liftQ = either (EC.throwError ∘ Exn.message) pure <=< lift
 runEvalCard
   ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus
   → CET.CardEvalInput
   → Eval
   → m (Port.Port × (Set.Set AdditionalSource))
@@ -247,7 +247,7 @@ runEvalCard requestNewIdTokenBus input =
 validateResources
   ∷ ∀ m r f
   . (Monad m, Affable SlamDataEffects m, Foldable f)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus
   → f FilePath
   → CET.CardEvalT m Unit
 validateResources requestNewIdTokenBus =

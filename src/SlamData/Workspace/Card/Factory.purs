@@ -21,12 +21,9 @@ module SlamData.Workspace.Card.Factory
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
-
 import Halogen as H
 
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent, Status(..))
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT
@@ -49,7 +46,7 @@ import SlamData.Workspace.Card.Table.Component (tableComponent)
 import SlamData.Workspace.Card.Troubleshoot.Component (troubleshootComponent)
 import SlamData.Workspace.Card.Variables.Component (variablesComponent)
 
-cardComponent ∷ ∀ s. (Bus (write ∷ Cap | s) (AVar EIdToken)) → Card.Model → CardOptions → CardComponent
+cardComponent ∷ RequestIdTokenBus → Card.Model → CardOptions → CardComponent
 cardComponent requestNewIdTokenBus card opts =
   case card.model of
     Card.Ace mode _ →

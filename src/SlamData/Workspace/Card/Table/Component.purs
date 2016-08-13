@@ -48,7 +48,7 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ComponentDSL JTS.State QueryP Slam
 
-tableComponent ∷ ∀ r. RequestIdTokenBus r → H.Component CC.CardStateP CC.CardQueryP Slam
+tableComponent ∷ ∀ r. RequestIdTokenBus → H.Component CC.CardStateP CC.CardQueryP Slam
 tableComponent requestNewIdTokenBus =
   CC.makeCardComponent
     { cardType: CT.Table
@@ -59,7 +59,7 @@ tableComponent requestNewIdTokenBus =
     }
 
 -- | Evaluates generic card queries.
-evalCard ∷ ∀ r. RequestIdTokenBus r → CC.CardEvalQuery ~> DSL
+evalCard ∷ ∀ r. RequestIdTokenBus → CC.CardEvalQuery ~> DSL
 evalCard requestNewIdTokenBus = case _ of
   CC.EvalCard info output next → do
     for_ info.input $ CEQ.runCardEvalT_ ∘ runTable requestNewIdTokenBus
@@ -87,7 +87,7 @@ evalCard requestNewIdTokenBus = case _ of
 
 runTable
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → Port.Port
   → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
 runTable requestNewIdTokenBus =
@@ -97,7 +97,7 @@ runTable requestNewIdTokenBus =
 
 updateTable
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → Port.TaggedResourcePort
   → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
 updateTable requestNewIdTokenBus { resource, tag } = do
@@ -130,7 +130,7 @@ resetState ∷ DSL Unit
 resetState = H.modify (JTS._result .~ Nothing)
 
 -- | Evaluates table-specific card queries.
-evalTable ∷ ∀ r. RequestIdTokenBus r → Query ~> (H.ComponentDSL JTS.State QueryP Slam)
+evalTable ∷ ∀ r. RequestIdTokenBus → Query ~> (H.ComponentDSL JTS.State QueryP Slam)
 evalTable requestNewIdTokenBus = case _ of
   StepPage step next → do
     H.modify (JTS.stepPage step)
@@ -149,7 +149,7 @@ evalTable requestNewIdTokenBus = case _ of
   Update next →
     refresh requestNewIdTokenBus $> next
 
-refresh ∷ ∀ r. RequestIdTokenBus r → DSL Unit
+refresh ∷ ∀ r. RequestIdTokenBus → DSL Unit
 refresh requestNewIdTokenBus = do
   input ← H.gets _.input
   for_ input \{ resource, tag } →

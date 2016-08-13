@@ -54,7 +54,7 @@ type QueryP = Coproduct Query (H.ChildF Unit AceQuery)
 type SQLMountDSL = H.ParentDSL State AceState Query AceQuery Slam Unit
 type SQLMountHTML = H.ParentHTML AceState Query AceQuery Slam Unit
 
-comp ∷ ∀ r. RequestIdTokenBus r → H.Component StateP QueryP Slam
+comp ∷ ∀ r. RequestIdTokenBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus = H.parentComponent { render, eval: eval requestNewIdTokenBus, peek: Nothing }
 
 render ∷ State → SQLMountHTML
@@ -66,7 +66,7 @@ render state@{ initialQuery } =
     , section "Query variables" [ propList _vars state ]
     ]
 
-eval ∷ ∀ r. RequestIdTokenBus r → Query ~> SQLMountDSL
+eval ∷ ∀ r. RequestIdTokenBus → Query ~> SQLMountDSL
 eval _ (ModifyState f next) = H.modify (processState <<< f) $> next
 eval _ (Validate k) = do
   sql <- fromMaybe "" <$> H.query unit (H.request GetText)

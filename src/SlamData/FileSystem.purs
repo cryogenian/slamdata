@@ -79,9 +79,7 @@ main = do
     traceA "1"
     signInBus ← Bus.make
     traceA "2"
-    stateRef ← liftEff $ Ref.newRef Nothing
-    requestNewIdTokenBus ← Bus.make
-    Reauthentication.reauthentication stateRef requestNewIdTokenBus
+    requestNewIdTokenBus ← Reauthentication.reauthentication
     traceA "3"
     driver ← runUI (comp requestNewIdTokenBus signInBus) (parentState initialState) =<< awaitBody
     forkAff do
@@ -98,7 +96,7 @@ initialAVar = Tuple mempty M.empty
 
 routeSignal
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
 routeSignal requestNewIdTokenBus driver = do
@@ -110,7 +108,7 @@ routeSignal requestNewIdTokenBus driver = do
 
 redirects
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → Driver QueryP SlamDataRawEffects
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   → Maybe Routes → Routes
@@ -152,7 +150,7 @@ redirects requestNewIdTokenBus driver var mbOld (Salted sort query salt) = do
 
 checkMount
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
@@ -163,7 +161,7 @@ checkMount requestNewIdTokenBus path driver = do
 
 listPath
   ∷ ∀ r
-  . RequestIdTokenBus r
+  . RequestIdTokenBus
   → SearchQuery
   → Int
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))

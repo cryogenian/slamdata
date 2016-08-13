@@ -54,22 +54,22 @@ foreign import removeLocalStorageImpl
   ∷ forall eff . String → (Eff (dom ∷ DOM | eff)) Unit
 foreign import data Storage ∷ *
 
-type StorageEvent =
+type StorageEvent a =
   { target ∷ EventTarget
   , type ∷ String
   , bubbles ∷ Boolean
   , cancelable ∷ Boolean
   , key ∷ String
-  , oldValue ∷ String
-  , newValue ∷ String
+  , oldValue ∷ a
+  , newValue ∷ a
   , url ∷ String
   , storageArea ∷ Storage
 }
 
-storageEventToEvent ∷ StorageEvent → Event
+storageEventToEvent ∷ forall a. StorageEvent a → Event
 storageEventToEvent = U.unsafeCoerce
 
-eventToStorageEvent ∷ Event → StorageEvent
+eventToStorageEvent ∷ forall a. Event → StorageEvent a
 eventToStorageEvent = U.unsafeCoerce
 
 setLocalStorage
@@ -92,8 +92,8 @@ removeLocalStorage k =
   liftEff $ removeLocalStorageImpl k
 
 getStorageEventProducer
-  ∷ forall eff
-  . Boolean → Eff (dom ∷ DOM, avar :: AVAR | eff) (Coroutine.Producer StorageEvent (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit)
+  ∷ forall eff a
+  . Boolean → Eff (dom ∷ DOM, avar :: AVAR | eff) (Coroutine.Producer (StorageEvent a) (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit)
 getStorageEventProducer capture =
   (_ Coroutine.$~ eventToStorageEventTransformer) <$> windowEventProducer "storage"
   where

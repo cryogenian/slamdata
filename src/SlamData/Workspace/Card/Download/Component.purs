@@ -58,7 +58,7 @@ import Utils.DOM (getTextWidthPure)
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-downloadComponent ∷ ∀ r. RequestIdTokenBus r → CC.CardComponent
+downloadComponent ∷ ∀ r. RequestIdTokenBus → CC.CardComponent
 downloadComponent requestNewIdTokenBus = CC.makeCardComponent
   { cardType: CT.Download
   , component: H.component { render, eval: eval requestNewIdTokenBus }
@@ -87,10 +87,10 @@ buttonText state
 fullDownloadString ∷ State → String
 fullDownloadString state = "Download " ⊕ state.fileName
 
-eval ∷ ∀ r. RequestIdTokenBus r → QueryP ~> DSL
+eval ∷ ∀ r. RequestIdTokenBus → QueryP ~> DSL
 eval requestNewIdTokenBus = coproduct (cardEval requestNewIdTokenBus) (absurd ∘ getConst)
 
-cardEval ∷ ∀ r. RequestIdTokenBus r → CC.CardEvalQuery ~> DSL
+cardEval ∷ ∀ r. RequestIdTokenBus → CC.CardEvalQuery ~> DSL
 cardEval requestNewIdTokenBus = case _ of
   CC.EvalCard info output next → do
     for_ (info.input ^? Lens._Just ∘ Port._DownloadOptions) $ handleDownloadPort requestNewIdTokenBus
@@ -118,7 +118,7 @@ cardEval requestNewIdTokenBus = case _ of
   CC.ZoomIn next →
     pure next
 
-handleDownloadPort ∷ ∀ r. RequestIdTokenBus r → Port.DownloadPort → DSL Unit
+handleDownloadPort ∷ ∀ r. RequestIdTokenBus → Port.DownloadPort → DSL Unit
 handleDownloadPort requestNewIdTokenBus opts = do
   hs ← H.fromAff $ API.authHeaders requestNewIdTokenBus
   H.modify $ _url .~ url hs

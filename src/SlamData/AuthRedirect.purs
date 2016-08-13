@@ -30,8 +30,6 @@ import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Maybe.Trans as MBT
 import Control.Monad.Eff.Random (RANDOM)
 
-import Data.Foldable as F
-
 import DOM as DOM
 import DOM.HTML (window)
 import DOM.HTML.Location as Loc
@@ -42,7 +40,6 @@ import Network.HTTP.Affjax as AX
 import OIDC.Crypt as OIDC
 
 import SlamData.AuthRedirect.RedirectHashPayload as Payload
-import SlamData.Quasar as Quasar
 import SlamData.Quasar.Auth.Store as AuthStore
 import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 
@@ -68,23 +65,23 @@ type RedirectState =
 
 retrieveRedirectState :: Eff RedirectEffects RedirectState
 retrieveRedirectState = do
-  hash <- window >>= Win.location >>= Loc.hash
+  hash ← window >>= Win.location >>= Loc.hash
 
-  payload <-
+  payload ←
     Payload.parseUriHash hash #
-      either (Exn.throw <<< show) pure
+      either (fail ∘ show) pure
 
-  keyString <-
+  keyString ←
     AuthRetrieve.retrieveKeyString >>=
-      maybe (Exn.throw "Failed to retrieve KeyString from local storage") pure
+      maybe (fail "Failed to retrieve KeyString from local storage") pure
 
-  unhashedNonce <-
+  unhashedNonce ←
     AuthRetrieve.retrieveNonce >>=
-      maybe (Exn.throw "Failed to retrieve UnhashedNonce from local storage") pure
+      maybe (fail "Failed to retrieve UnhashedNonce from local storage") pure
 
-  clientID <-
+  clientID ←
     AuthRetrieve.retrieveClientID >>=
-      maybe (Exn.throw "Failed to retrieve ClientID from local storage") pure
+      maybe (fail "Failed to retrieve ClientID from local storage") pure
 
   pure
     { payload
@@ -114,13 +111,14 @@ verifyRedirect st issuer jwk = do
       # pure
       # MBT.MaybeT
 
-
+fail :: ∀ a. String → Eff RedirectEffects a
+fail s = AuthStore.storeIdToken (Left s) *> (window >>= DOMUtils.close) *> Exn.throw s
 
 main :: Eff RedirectEffects Unit
 main = do
   -- We're getting token too fast. It isn't valid until next second (I think)
   void $ Aff.runAff Exn.throwException (const (pure unit)) do
-    state <- liftEff retrieveRedirectState
+    state ← liftEff retrieveRedirectState
     -- First, retrieve the provider that matches our stored ClientID.
     maybeOpenIDConfiguration ← liftEff $ map _.openIDConfiguration <$> AuthRetrieve.retrieveProviderR
 
@@ -129,13 +127,14 @@ main = do
         liftEff do
           -- Try to verify the IdToken against each of the provider's jwks,
           -- stopping at the first success.
-          RedirectURL redirectURL <-
+          RedirectURL redirectURL ←
             openIDConfiguration.jwks
               <#> verifyRedirect state openIDConfiguration.issuer
                 # foldl ((<|>)) empty
                 # MBT.runMaybeT
-              >>= maybe (Exn.throw "Failed to verify redirect") pure
+              >>= maybe (fail "Failed to verify redirect") pure
 
-          AuthStore.storeIdToken state.payload.idToken
-      Nothing → pure unit
+          AuthStore.storeIdToken $ Right state.payload.idToken
+      Nothing →
+        liftEff $ fail "Failed to retrieve provider from local storage"
     liftEff $ window >>= DOMUtils.close
