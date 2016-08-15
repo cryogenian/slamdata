@@ -15,10 +15,7 @@ public/js/*.js
 !public/js/echarts*
 public/css/*.css
 !public/css/bootstrap*.css
-.psci_modules
-.psci
 .*
-phantomjsdriver.log
 npm-debug.log
-chromedriver
-chromedriver.exe
+!.gitignore
+!.travis.yml

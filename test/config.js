@@ -5,7 +5,6 @@ module.exports = {
   },
   restoreCmd: "mongorestore --host 127.0.0.1 -d testDb --port 63174 --drop test/dump/demo",
   selenium: {
-    jar: require("selenium-server").path,
     waitTime: 30000
   },
   slamdataUrl: "http://localhost:63175",
