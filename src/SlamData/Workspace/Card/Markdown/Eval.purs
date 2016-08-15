@@ -17,12 +17,8 @@ module SlamData.Workspace.Card.Markdown.Eval
 
 import SlamData.Prelude
 
-import Control.Monad.Aff as Aff
 import Control.Monad.Aff.Free as AffF
-import Control.Monad.Eff.Class as Eff
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as Err
-import Control.Monad.Writer.Trans as WT
+import Control.Monad.Eff (Eff)
 
 import Data.Array as A
 import Data.Identity (Identity)
@@ -31,15 +27,14 @@ import Data.JSDate as JSD
 import Data.Json.Extended as EJSON
 import Data.Lens ((^?), _Just)
 import Data.List as L
-import Data.Set as Set
 import Data.String as S
 import Data.StrMap as SM
 
-import SlamData.Effects (Slam, SlamDataEffects)
+import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Error as QE
+import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
-import SlamData.Quasar.Query as Quasar
-import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 
 import Text.Markdown.SlamDown as SD
 import Text.Markdown.SlamDown.Traverse as SDT
@@ -60,17 +55,13 @@ markdownEval
   → CET.CardEvalT m Port.Port
 markdownEval { input, path } str =
   case SDP.parseMd str of
-    Left e → Err.throwError e
+    Left e → QE.throw e
     Right sd → do
       let
         vm = fromMaybe Port.emptyVarMap $ input ^? _Just ∘ Port._VarMap
         sm = map Port.renderVarMapValue vm
-      result  ← lift ∘ AffF.fromAff ∘ Aff.attempt ∘ evalEmbeddedQueries sm path $ sd
-      case result of
-        Left e → Err.throwError $ Exn.message e
-        Right (doc × as) → do
-          CET.additionalSources as
-          pure $ Port.SlamDown (vm × doc)
+      doc ← evalEmbeddedQueries sm path sd
+      pure $ Port.SlamDown (vm × doc)
 
 findFields
   ∷ ∀ a
@@ -82,31 +73,27 @@ findFields = SDT.everything (const mempty) extractField
   extractField (SD.FormField label _ _) = pure label
   extractField _ = mempty
 
-type EvalM = WT.WriterT (Set.Set AdditionalSource) Slam
-
-runEvalM ∷ ∀ a. EvalM a → Slam (a × (Set.Set AdditionalSource))
-runEvalM = WT.runWriterT
-
 evalEmbeddedQueries
-  ∷ SM.StrMap String
+  ∷ forall m
+  . (Monad m, AffF.Affable SlamDataEffects m)
+  ⇒ SM.StrMap String
   → DirPath
   → SD.SlamDownP Port.VarMapValue
-  → Slam ((SD.SlamDownP Port.VarMapValue) × (Set.Set AdditionalSource))
+  → CET.CardEvalT m (SD.SlamDownP Port.VarMapValue)
 evalEmbeddedQueries sm dir =
-  runEvalM ∘
-    SDE.eval
-      { code: evalCode
-      , textBox: evalTextBox
-      , value: evalValue
-      , list: evalList
-      }
+  SDE.eval
+    { code: evalCode
+    , textBox: evalTextBox
+    , value: evalValue
+    , list: evalList
+    }
 
   where
 
   evalCode
     ∷ Maybe SDE.LanguageId
     → String
-    → EvalM Port.VarMapValue
+    → CET.CardEvalT m Port.VarMapValue
   evalCode mid code
     | languageIsSql mid =
         Port.Literal ∘ extractCodeValue <$> runQuery code
@@ -135,7 +122,7 @@ evalEmbeddedQueries sm dir =
 
   evalValue
     ∷ String
-    → EvalM Port.VarMapValue
+    → CET.CardEvalT m Port.VarMapValue
   evalValue code = do
     maybe (Port.Literal EJSON.null) (Port.Literal ∘ extractSingletonObject)
       ∘ A.head
@@ -143,12 +130,12 @@ evalEmbeddedQueries sm dir =
 
   evalTextBox
     ∷ SD.TextBox (Const String)
-    → EvalM (SD.TextBox Identity)
+    → CET.CardEvalT m (SD.TextBox Identity)
   evalTextBox tb = do
     let sql = getConst $ SD.traverseTextBox (map \_ → Const unit) tb
     mresult ← A.head <$> runQuery sql
     result ←
-      maybe (Err.throwError $ Exn.error "No results") (pure ∘ extractSingletonObject) mresult
+      maybe (QE.throw "No results") (pure ∘ extractSingletonObject) mresult
     case tb × (EJSON.unroll result) of
       (SD.PlainText _) × (EJSON.String str) →
         pure ∘ SD.PlainText $ pure str
@@ -158,19 +145,22 @@ evalEmbeddedQueries sm dir =
         SD.Time prec ∘ pure <$> parse parseSqlTime str
       (SD.Date _) × (EJSON.Date str) →
         SD.Date ∘ pure <$> parse parseSqlDate str
-      (SD.DateTime prec _) × (EJSON.Timestamp str) →
-        SD.DateTime prec ∘ pure <$> parseSqlTimeStamp str
-      _ → Err.throwError ∘ Exn.error $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
+      (SD.DateTime prec _) × (EJSON.Timestamp str) → do
+        lift (AffF.fromEff (parseSqlTimeStamp str)) >>=
+          case _ of
+            Left msg → QE.throw msg
+            Right dt → pure $ SD.DateTime prec (pure dt)
+      _ → QE.throw $ "Type error: " ⊕ show result ⊕ " does not match " ⊕ show tb
     where
-      parse ∷ ∀ s a. P.Parser s a → s → EvalM a
+      parse ∷ ∀ s a. P.Parser s a → s → CET.CardEvalT m a
       parse p str =
         case P.runParser str p of
-          Left err → Err.throwError ∘ Exn.error $ "Parse error: " ⊕ show err
+          Left err → QE.throw $ "Parse error: " ⊕ show err
           Right a → pure a
 
   evalList
     ∷ String
-    → EvalM (L.List Port.VarMapValue)
+    → CET.CardEvalT m (L.List Port.VarMapValue)
   evalList code = do
     items ← map extractSingletonObject <$> runQuery code
     let limit = 500
@@ -185,19 +175,11 @@ evalEmbeddedQueries sm dir =
 
   runQuery
     ∷ String
-    → EvalM (Array EJSON.EJson)
+    → CET.CardEvalT m (Array EJSON.EJson)
   runQuery code = do
-    compiled ← Quasar.compile (Left dir) code sm
-    case compiled of
-      Left e → Err.throwError e
-      Right {inputs} → CET.addSources inputs
-
-    result ← Quasar.queryEJsonVM dir code sm
-
-    either
-      (Err.throwError ∘ Exn.error)
-      pure
-      result
+    {inputs} ← CET.liftQ $ Quasar.compile (Left dir) code sm
+    CET.addSources inputs
+    CET.liftQ $ Quasar.queryEJsonVM dir code sm
 
 parseDigit ∷ P.Parser String Int
 parseDigit =
@@ -254,20 +236,21 @@ parseSqlTime = do
 
 -- | Parses a date-time string into the user's current locale.
 parseSqlTimeStamp
-  ∷ String
-  → EvalM SD.DateTimeValue
+  ∷ ∀ eff
+  . String
+  → Eff (locale :: JSD.LOCALE | eff) (Either String SD.DateTimeValue)
 parseSqlTimeStamp str = do
-  d <- Eff.liftEff $ JSD.parse str
+  d <- JSD.parse str
   case JSD.isValid d of
-    false → Err.throwError ∘ Exn.error $ "Invalid date: " ⊕ show str
-    true → Eff.liftEff do
+    false → pure $ Left $ "Invalid date: " ⊕ show str
+    true → do
       year ← Int.round <$> JSD.getFullYear d
       month ← (_ + 1) ∘ Int.round <$> JSD.getMonth d
       day ← Int.round <$> JSD.getDate d
       hours ← Int.round <$> JSD.getHours d
       minutes ← Int.round <$> JSD.getMinutes d
       seconds ← Just ∘ Int.round <$> JSD.getSeconds d
-      pure
+      pure $ Right
         { date: { year , month , day }
         , time: { hours , minutes, seconds }
         }

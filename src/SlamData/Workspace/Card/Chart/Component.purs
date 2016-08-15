@@ -18,7 +18,6 @@ module SlamData.Workspace.Card.Chart.Component (chartComponent) where
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception (Error)
 
 import Data.Argonaut (JArray)
 import Data.Array as A
@@ -45,6 +44,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
+import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
 import SlamData.Workspace.Card.CardType as CT
@@ -134,7 +134,7 @@ eval = case _ of
         -- Basically something equivalent to the old `needsToUpdate`. -gb
         records ←
           either (const []) id
-            <$> H.fromAff (Quasar.all options.resource ∷ Slam (Either Error JArray))
+            <$> H.fromAff (Quasar.all options.resource ∷ Slam (Either QE.QError JArray))
         let optionDSL = BO.buildOptions opts config records
         H.query unit $ H.action $ HEC.Reset optionDSL
         H.query unit $ H.action HEC.Resize

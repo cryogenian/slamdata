@@ -30,3 +30,8 @@ fromQError = case _ of
   QE.PaymentRequired → Right PaymentRequired
   QE.Forbidden → Right AuthRequired
   err → Left (QE.printQError err)
+
+toQError ∷ GlobalError → QE.QError
+toQError = case _ of
+  PaymentRequired → QE.PaymentRequired
+  AuthRequired → QE.Forbidden

@@ -59,6 +59,7 @@ import SlamData.Analytics.Event as AE
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
+import SlamData.Quasar.Error as QE
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId (CardId(..), _CardId)
@@ -306,7 +307,7 @@ getVarMaps path wiring =
       pure $ mirroredCards <> (Tuple deckId <$> deck.cards)
     case res of
       Left err → do
-        Notify.loadDeckFail err wiring.notify wiring.analytics
+        Notify.loadDeckFail err wiring
         pure acc
       Right cards ->
         Array.foldM goCard acc cards
@@ -602,7 +603,7 @@ runPendingCards opts source pendingCard pendingCards = do
           Just ev → pure ev
           Nothing → do
             urlVarMaps ← H.fromEff $ Ref.readRef opts.wiring.urlVarMaps
-            ev ← evalCard opts.wiring.analytics st.path urlVarMaps input c
+            ev ← evalCard opts.wiring st.path urlVarMaps input c
             putCardEval ev pendingCards
             putCardEval ev opts.wiring.cards
             pure ev
@@ -631,32 +632,39 @@ runInitialEval wiring = do
 
 -- | Evaluates a card given an input and model.
 evalCard
-  ∷ ∀ r
-  . Bus.Bus (write ∷ Bus.Cap | r) AE.Event
+  ∷ Wiring
   → DirPath
   → Map.Map DeckId Port.URLVarMap
   → Maybe (Pr.Promise Port)
   → DeckId × Card.Model
   → DeckDSL CardEval
-evalCard bus path urlVarMaps input card = do
+evalCard wiring path urlVarMaps input card = do
   output ← H.fromAff $ Pr.defer do
     input' ← for input Pr.wait
     let model = (snd card).model
     case Card.modelToEval model of
       Left err → do
-        AE.track (AE.ErrorInCardEval $ Card.modelCardType model) bus
+        AE.track (AE.ErrorInCardEval $ Card.modelCardType model) wiring.analytics
         pure $ (Port.CardError $ "Could not evaluate card: " <> err) × mempty
-      Right cmd → do
-        out@(Tuple p _) ← flip Eval.runEvalCard cmd
-          { path
-          , urlVarMaps
-          , cardCoord: DCS.coordModelToCoord card
-          , input: input'
-          }
-        case p of
-          Port.CardError _ → AE.track (AE.ErrorInCardEval $ Card.modelCardType model) bus
-          _ → pure unit
-        pure out
+      Right cmd →
+        let
+          args =
+            { path
+            , urlVarMaps
+            , cardCoord: DCS.coordModelToCoord card
+            , input: input'
+            }
+        in
+          Eval.runEvalCard args cmd >>= case _ of
+            Left ge → do
+              Bus.write ge wiring.globalError
+              pure $ (Port.CardError $ "Could not evaluate card") × mempty
+            Right out@(Tuple p _) → do
+              case p of
+                Port.CardError _ →
+                  AE.track (AE.ErrorInCardEval $ Card.modelCardType model) wiring.analytics
+                _ → pure unit
+              pure out
   pure { input, card, output: Just output }
 
 -- | Interprets a list of pending card evaluations into updates for the
@@ -810,7 +818,7 @@ saveDeck { accessType, wiring, cursor } coord = do
 
     putDeck st.path st.id model wiring.decks >>= case _ of
       Left err →
-        Notify.saveDeckFail err wiring.notify wiring.analytics
+        Notify.saveDeckFail err wiring
       Right _ → do
         when (L.null cursor) $ do
           path' ← H.gets DCS.deckPath
@@ -821,7 +829,7 @@ saveDeck { accessType, wiring, cursor } coord = do
   saveMirroredCard st (deckId × card) =
     getDeck st.path deckId wiring.decks >>= case _ of
       Left err →
-        Notify.saveMirrorFail err wiring.notify wiring.analytics
+        Notify.saveMirrorFail err wiring
       Right deck → do
         let cards = deck.cards <#> \c → if c.cardId == card.cardId then card else c
             model = deck { cards = cards }
@@ -854,7 +862,7 @@ loadMirroredCards
   :: Wiring
   -> DirPath
   -> Array (DeckId × CardId)
-  -> DeckDSL (Either String (Array (DeckId × Card.Model)))
+  -> DeckDSL (Either QE.QError (Array (DeckId × Card.Model)))
 loadMirroredCards wiring path coords = (H.fromAff :: Slam ~> DeckDSL) do
   let deckIds = Array.nub (fst <$> coords)
   res ← sequence <$> runParallel (traverse (parallel ∘ flip (getDeck path) wiring.decks) deckIds)
@@ -863,10 +871,10 @@ loadMirroredCards wiring path coords = (H.fromAff :: Slam ~> DeckDSL) do
   hydrateCards coords decks =
     for coords \(deckId × cardId) →
       case find (eq deckId ∘ fst) decks of
-        Nothing → Left "Deck not found"
+        Nothing → Left (QE.msgToQError "Deck not found")
         Just (_ × deck) →
           case find (eq cardId ∘ _.cardId) deck.cards of
-            Nothing → Left "Card not found"
+            Nothing → Left (QE.msgToQError "Card not found")
             Just card → Right (deckId × card)
 
 setModel

@@ -26,47 +26,60 @@ module SlamData.Workspace.Notification
   ) where
 
 import SlamData.Prelude
-import SlamData.Notification as N
-import SlamData.Analytics.Event as AE
 
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Bus (Bus, Cap)
-import Control.Monad.Aff.Free (class Affable)
+import Control.Monad.Aff.Bus as Bus
+import Control.Monad.Aff.Free (class Affable, fromAff)
+
+import SlamData.Analytics.Event as AE
+import SlamData.GlobalError as GE
+import SlamData.Notification as N
+import SlamData.Quasar.Error as QE
+import SlamData.Workspace.Wiring (Wiring)
 
 type DetailedError =
-  ∀ r m eff
+  ∀ m eff
   . (Bind m, Affable (avar ∷ AVAR | eff) m)
-  ⇒ String
-  → Bus (write ∷ Cap | r) N.NotificationOptions
-  → Bus (write ∷ Cap | r) AE.Event
+  ⇒ QE.QError
+  → Wiring
   → m Unit
 
+notifyError
+  ∷ ∀ m eff
+  . (Bind m, Affable (avar ∷ AVAR | eff) m)
+  ⇒ String
+  → AE.Event
+  → QE.QError
+  → Wiring
+  → m Unit
+notifyError msg event err wiring = do
+  case GE.fromQError err of
+    Left msg -> do
+      N.error_ msg (Just msg) Nothing wiring.notify
+      AE.track event wiring.analytics
+    Right ge ->
+      fromAff $ Bus.write ge wiring.globalError
+
 loadDeckFail ∷ DetailedError
-loadDeckFail detail nbus ebus = do
-  N.error_ "Failed to load your deck." (Just detail) Nothing nbus
-  AE.track AE.ErrorLoadingDeck ebus
+loadDeckFail =
+  notifyError "Failed to load your deck." AE.ErrorLoadingDeck
 
 loadParentFail ∷ DetailedError
-loadParentFail detail nbus ebus = do
-  N.error_ "Failed to load a parent deck." (Just detail) Nothing nbus
-  AE.track AE.ErrorLoadingDeck ebus
+loadParentFail =
+  notifyError "Failed to load a parent deck." AE.ErrorLoadingDeck
 
 saveDeckFail ∷ DetailedError
-saveDeckFail detail nbus ebus = do
-  N.error_ "Failed to save your deck." (Just detail) Nothing nbus
-  AE.track AE.ErrorSavingDeck ebus
+saveDeckFail =
+  notifyError "Failed to save your deck." AE.ErrorSavingDeck
 
 saveMirrorFail ∷ DetailedError
-saveMirrorFail detail nbus ebus = do
-  N.error_ "Failed to save a mirrored card." (Just detail) Nothing nbus
-  AE.track AE.ErrorSavingMirror ebus
+saveMirrorFail =
+  notifyError "Failed to save a mirrored card." AE.ErrorSavingMirror
 
 deleteDeckFail ∷ DetailedError
-deleteDeckFail detail nbus ebus = do
-  N.error_ "Failed to delete your deck." (Just detail) Nothing nbus
-  AE.track AE.ErrorDeletingDeck ebus
+deleteDeckFail =
+  notifyError "Failed to delete your deck." AE.ErrorDeletingDeck
 
 setRootFail ∷ DetailedError
-setRootFail detail nbus ebus = do
-  N.error_ "Failed to update your workspace root." (Just detail) Nothing nbus
-  AE.track AE.ErrorUpdatingRoot ebus
+setRootFail =
+  notifyError "Failed to update your workspace root." AE.ErrorUpdatingRoot

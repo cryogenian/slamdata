@@ -20,8 +20,6 @@ import SlamData.Prelude
 
 import Control.Monad.Eff as Eff
 import Control.Monad.Aff.Free (class Affable, fromEff)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as EC
 
 import Data.Lens ((^?))
 import Data.Path.Pathy as Path
@@ -32,6 +30,8 @@ import Quasar.Types (SQL, FilePath)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.FileSystem.Resource as R
+import SlamData.GlobalError as GE
+import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Cache.Eval as Cache
@@ -95,7 +95,7 @@ evalCard input =
     _, Just Port.Blocked →
       pure Port.Blocked
     Pass, Nothing →
-      EC.throwError "Card expected an input value"
+      QE.throw "Card expected an input value"
     Pass, Just port →
       pure port
     Draftboard, _ →
@@ -121,7 +121,7 @@ evalCard input =
     DownloadOptions { compress, options }, Just (Port.TaggedResource { resource }) →
       pure $ Port.DownloadOptions { resource, compress, options }
     e, i →
-      EC.throwError $ "Card received unexpected input type; " <> show e <> " | " <> show i
+      QE.throw $ "Card received unexpected input type; " <> show e <> " | " <> show i
 
 evalMarkdownForm
   ∷ ∀ m
@@ -143,20 +143,18 @@ evalOpen
   → R.Resource
   → CET.CardEvalT m Port.TaggedResourcePort
 evalOpen info res = do
-   filePath ← maybe (EC.throwError "No resource is selected") pure $ res ^? R._filePath
-   msg ←
+   filePath ← maybe (QE.throw "No resource is selected") pure $
+    res ^? R._filePath
+   msg ← CET.liftQ $
      QFS.messageIfFileNotFound
        filePath
        ("File " ⊕ Path.printPath filePath ⊕ " doesn't exist")
-     # lift
    case msg of
-     Right Nothing → do
+     Nothing → do
        CET.addSource filePath
        pure { resource: filePath, tag: Nothing }
-     Right (Just err) →
-       EC.throwError err
-     Left exn →
-       EC.throwError $ Exn.message exn
+     Just err →
+       QE.throw err
 
 evalQuery
   ∷ ∀ m
@@ -170,13 +168,12 @@ evalQuery info sql varMap = do
     varMap' = Port.renderVarMapValue <$> varMap
     resource = CET.temporaryOutputResource info
     backendPath = Left $ fromMaybe Path.rootDir (Path.parentDir resource)
-  compileResult ← lift $ QQ.compile backendPath sql varMap'
-  case compileResult of
-    Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
-    Right { inputs } → do
-      validateResources inputs
-      CET.addSources inputs
-  liftQ do
+  { inputs } ← CET.liftQ
+    $ lmap (QE.prefixMessage "Error compiling query")
+    <$> QQ.compile backendPath sql varMap'
+  validateResources inputs
+  CET.addSources inputs
+  CET.liftQ do
     QQ.viewQuery backendPath resource sql varMap'
     QFS.messageIfFileNotFound resource "Requested collection doesn't exist"
   pure { resource, tag: pure sql }
@@ -190,10 +187,10 @@ evalSearch
   → CET.CardEvalT m Port.TaggedResourcePort
 evalSearch info queryText resource = do
   query ← case SS.mkQuery queryText of
-    Left _ → EC.throwError "Incorrect query string"
+    Left _ → QE.throw "Incorrect query string"
     Right q → pure q
 
-  fields ← liftQ do
+  fields ← CET.liftQ do
     QFS.messageIfFileNotFound
       resource
       ("Input resource " ⊕ Path.printPath resource ⊕ " doesn't exist")
@@ -206,12 +203,15 @@ evalSearch info queryText resource = do
 
   compileResult ← lift $ QQ.compile (Right resource) sql SM.empty
   case compileResult of
-    Left err → EC.throwError $ "Error compiling query: " ⊕ Exn.message err
+    Left err →
+      case GE.fromQError err of
+        Left msg → QE.throw $ "Error compiling query: " ⊕ msg
+        Right _ → QE.throw $ "Error compiling query: " ⊕ QE.printQError err
     Right { inputs } → do
       validateResources inputs
       CET.addSources inputs
 
-  liftQ do
+  CET.liftQ do
     QQ.viewQuery (Right resource) outputResource template SM.empty
     QFS.messageIfFileNotFound
       outputResource
@@ -219,15 +219,12 @@ evalSearch info queryText resource = do
 
   pure { resource: outputResource, tag: pure sql }
 
-liftQ ∷ ∀ m a. Monad m ⇒ m (Either Exn.Error a) → CET.CardEvalT m a
-liftQ = either (EC.throwError ∘ Exn.message) pure <=< lift
-
 runEvalCard
   ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → Eval
-  → m (Port.Port × (Set.Set AdditionalSource))
+  → m (Either GE.GlobalError (Port.Port × (Set.Set AdditionalSource)))
 runEvalCard input =
   CET.runCardEvalT ∘
     evalCard input
@@ -242,4 +239,4 @@ validateResources =
   traverse_ \path → do
     noAccess ← lift $ QFS.fileNotAccessible path
     for_ noAccess \reason →
-      EC.throwError $ "Resource unavailable: `" ⊕ Path.printPath path ⊕ "`. " ⊕ reason
+      QE.throw $ "Resource unavailable: `" ⊕ Path.printPath path ⊕ "`. " ⊕ reason

@@ -22,9 +22,6 @@ module SlamData.Workspace.Card.Table.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class (throwError)
-
 import Data.Argonaut.Core as JSON
 import Data.Int as Int
 import Data.Lens ((.~), (?~))
@@ -32,15 +29,17 @@ import Data.Lens ((.~), (?~))
 import Halogen as H
 
 import SlamData.Effects (Slam)
+import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.CardType as CT
 import SlamData.Workspace.Card.Common.EvalQuery as CEQ
 import SlamData.Workspace.Card.Component as CC
+import SlamData.Workspace.Card.Eval.CardEvalT as CET
+import SlamData.Workspace.Card.Model as Card
+import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.Card.Table.Component.Query (QueryP, PageStep(..), Query(..))
 import SlamData.Workspace.Card.Table.Component.Render (render)
 import SlamData.Workspace.Card.Table.Component.State as JTS
-import SlamData.Workspace.Card.Model as Card
-import SlamData.Workspace.Card.Port as Port
 import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ComponentDSL JTS.State QueryP Slam
@@ -89,7 +88,7 @@ runTable
 runTable =
   case _ of
     Port.TaggedResource trp → updateTable trp
-    _ → throwError "Expected a TaggedResource input"
+    _ → QE.throw "Expected a TaggedResource input"
 
 updateTable
   ∷ Port.TaggedResourcePort
@@ -99,16 +98,13 @@ updateTable { resource, tag } = do
   when (((oldInput <#> _.resource) ≠ pure resource) || ((oldInput >>= _.tag) ≠ tag))
     $ lift $ resetState
 
-  size ←
-    lift (Quasar.count resource)
-      >>= either (throwError ∘ Exn.message) pure
+  size ← CET.liftQ $ Quasar.count resource
 
   lift $ H.modify $ JTS._input ?~ { resource, size, tag }
   p ← lift $ H.gets JTS.pendingPageInfo
 
-  items ←
-    lift (Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize)
-      >>= either (throwError ∘ Exn.message) pure
+  items ← CET.liftQ $
+    Quasar.sample resource ((p.page - 1) * p.pageSize) p.pageSize
 
   lift $
     H.modify

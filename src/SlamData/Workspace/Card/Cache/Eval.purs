@@ -19,14 +19,14 @@ module SlamData.Workspace.Card.Cache.Eval where
 import SlamData.Prelude
 
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Error.Class as EC
 
 import Data.Path.Pathy as Path
 import Data.StrMap as SM
 
 import Quasar.Types (FilePath)
+
 import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -47,7 +47,7 @@ eval info mfp resource =
     Just pt ->
       case PU.parseAnyPath pt of
         Just (Right fp) → eval' fp resource
-        _ → EC.throwError $ pt ⊕ " is not a valid file path"
+        _ → QE.throw $ pt ⊕ " is not a valid file path"
 
 eval'
   ∷ ∀ m
@@ -57,10 +57,10 @@ eval'
   → CET.CardEvalT m Port.TaggedResourcePort
 eval' fp resource = do
 
-  outputResource ← liftQ $
+  outputResource ← CET.liftQ $
     QQ.fileQuery resource fp "select * from {{path}}" SM.empty
 
-  liftQ $ QFS.messageIfFileNotFound
+  CET.liftQ $ QFS.messageIfFileNotFound
     outputResource
     "Error saving file, please try another location"
 
@@ -72,11 +72,8 @@ eval' fp resource = do
   -- in the expected location, and the rest of the deck can run as the Save
   -- failing has not effect on the output. -gb
   when (fp /= outputResource)
-    $ EC.throwError
+    $ QE.throw
     $ "Resource: " ⊕ Path.printPath outputResource ⊕ " hasn't been modified"
   CET.addSource resource
   CET.addCache outputResource
   pure { resource: outputResource, tag: Nothing }
-
-liftQ ∷ ∀ m a. Monad m ⇒ m (Either Exn.Error a) → CET.CardEvalT m a
-liftQ = either (EC.throwError ∘ Exn.message) pure <=< lift

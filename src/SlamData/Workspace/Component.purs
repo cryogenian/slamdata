@@ -32,12 +32,12 @@ import Control.Parallel.Class (parallel, runParallel)
 import Control.UI.Browser (setHref, locationObject)
 
 import Data.Array as Array
-import Data.Foldable (intercalate)
 import Data.Lens ((^.), (.~), (?~))
 import Data.List as List
 import Data.Map as Map
 import Data.Path.Pathy ((</>))
 import Data.Path.Pathy as Pathy
+import Data.String as Str
 import Data.Time.Duration (Milliseconds(..))
 
 import DOM.HTML.Location as Location
@@ -54,12 +54,14 @@ import Halogen.Themes.Bootstrap3 as B
 import SlamData.Analytics.Event as AE
 import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.FileSystem.Routing (parentURL)
+import SlamData.GlobalError as GE
 import SlamData.Header.Component as Header
 import SlamData.Notification.Component as NC
 import SlamData.Quasar.Data as Quasar
+import SlamData.Quasar.Error as QE
 import SlamData.SignIn.Component as SignIn
-import SlamData.Workspace.Action as WA
 import SlamData.Workspace.AccessType as AT
+import SlamData.Workspace.Action as WA
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.Draftboard.Common as DBC
 import SlamData.Workspace.Card.Model as Card
@@ -203,10 +205,14 @@ eval wiring (Load path deckId accessType next) = do
     queryDeck $ H.action $ Deck.Load path deckId
 
   loadRoot =
-    rootDeck path >>=
-      either (\err → H.modify $ _stateMode .~ Error err) loadDeck
+    rootDeck path >>= either handleError loadDeck
 
-rootDeck ∷ UP.DirPath → WorkspaceDSL (Either String DeckId)
+  handleError err =
+    case GE.fromQError err of
+      Left msg → H.modify $ _stateMode .~ Error msg
+      Right ge → H.fromAff $ Bus.write ge wiring.globalError
+
+rootDeck ∷ UP.DirPath → WorkspaceDSL (Either QE.QError DeckId)
 rootDeck path = Model.getRoot (path </> Pathy.file "index")
 
 peek ∷ ∀ a. Wiring → ChildQuery a → WorkspaceDSL Unit
@@ -227,7 +233,11 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
 
     case error of
       Left err →
-        Notify.error_ "Failed to collapse deck." (Just err) Nothing wiring.notify
+        case GE.fromQError err of
+          Left msg →
+            Notify.error_ "Failed to collapse deck." (Just msg) Nothing wiring.notify
+          Right ge →
+            H.fromAff $ Bus.write ge wiring.globalError
       Right _  → do
         AE.track (AE.Collapse oldId) wiring.analytics
         updateHash wiring path state.accessType newId
@@ -252,7 +262,11 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
 
     case error of
       Left err →
-        Notify.error_ "Failed to wrap deck." (Just err) Nothing wiring.notify
+        case GE.fromQError err of
+          Left msg →
+            Notify.error_ "Failed to wrap deck." (Just msg) Nothing wiring.notify
+          Right ge →
+            H.fromAff $ Bus.write ge wiring.globalError
       Right _  → do
         AE.track (AE.Wrap oldId) wiring.analytics
         updateHash wiring path state.accessType newId
@@ -270,11 +284,11 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
           lift $ for_ cards (DBC.unsafeUpdateCachedDraftboard wiring deckId)
           ExceptT $ putDeck path deckId (parentDeck { cards = cards }) wiring.decks
         Nothing →
-          ExceptT $ map (lmap Exn.message) $ Quasar.delete $ Left path
+          ExceptT $ Quasar.delete $ Left path
 
     case error of
       Left err →
-        Notify.deleteDeckFail err wiring.notify wiring.analytics
+        Notify.deleteDeckFail err wiring
       Right _  → do
         AE.track (AE.Delete oldId) wiring.analytics
         case parent of
@@ -333,7 +347,11 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
 
     case error of
       Left err →
-        Notify.error_ "Failed to mirror deck." (Just err) Nothing wiring.notify
+        case GE.fromQError err of
+          Left msg →
+            Notify.error_ "Failed to mirror deck." (Just msg) Nothing wiring.notify
+          Right ge →
+            H.fromAff $ Bus.write ge wiring.globalError
       Right _  → do
         AE.track (AE.Mirror oldId) wiring.analytics
         updateHash wiring path state.accessType newIdParent
@@ -356,13 +374,12 @@ notifyWith
   ∷ ∀ m a
   . (Affable SlamDataEffects m, Monad m)
   ⇒ Notify.DetailedError
-  → Bus.BusRW Notify.NotificationOptions
-  → Bus.BusRW AE.Event
-  → m (Either String a)
+  → Wiring
+  → m (Either QE.QError a)
   → m Unit
-notifyWith notify nbus ebus action =
+notifyWith notify wiring action =
   action >>= case _ of
-    Left err → notify err nbus ebus
+    Left err → notify err wiring
     Right _  → pure unit
 
 lefts ∷ ∀ a b. Array (Either a b) → Array a
@@ -371,10 +388,13 @@ lefts = Array.mapMaybe fromLeft
 fromLeft ∷ ∀ a b. Either a b → Maybe a
 fromLeft = either Just (const Nothing)
 
-errors ∷ ∀ m b. (Monoid m) ⇒ m → Array (Either m b) → Either m Unit
-errors m es = case (lefts es) of
+errors ∷ ∀ a. String → Array (Either QE.QError a) → Either QE.QError Unit
+errors m es = case lefts es of
   [] → Right unit
-  ss → Left $ intercalate m ss
+  ss →
+    case sequence $ map (either Right Left ∘ GE.fromQError) ss of
+      Left ge -> Left $ GE.toQError ge
+      Right msgs -> Left $ QE.Error $ Exn.error (Str.joinWith m msgs)
 
 updateParentPointer
   ∷ ∀ m
@@ -384,7 +404,7 @@ updateParentPointer
   → DeckId
   → DeckId
   → Maybe (DeckId × CID.CardId)
-  → ExceptT String m Unit
+  → ExceptT QE.QError m Unit
 updateParentPointer wiring path oldId newId = case _ of
   Just (deckId × cardId) → do
     parentDeck ← ExceptT $ getDeck path deckId wiring.decks
