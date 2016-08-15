@@ -112,13 +112,13 @@ reauthenticate stateRef replyAvar = do
   case state of
     Nothing → do
       idTokenPromise ← requestIdToken
-      putState $ Just idTokenPromise
-      void $ Aff.forkAff $ reply idTokenPromise *> putState Nothing
+      writeState $ Just idTokenPromise
+      void $ Aff.forkAff $ reply idTokenPromise *> writeState Nothing
     Just idTokenPromise → do
       void $ Aff.forkAff $ reply idTokenPromise
   where
-  putState ∷ Maybe (Promise EIdToken) → Aff (ReauthEffects eff) Unit
-  putState = liftEff ∘ Ref.writeRef stateRef
+  writeState ∷ Maybe (Promise EIdToken) → Aff (ReauthEffects eff) Unit
+  writeState = liftEff ∘ Ref.writeRef stateRef
 
   reply ∷ Promise EIdToken → Aff (ReauthEffects eff) Unit
   reply = AVar.putVar replyAvar ∘ (\x -> traceAny x \_ -> x) <=< Promise.wait
@@ -139,8 +139,8 @@ reauthenticate stateRef replyAvar = do
 
   configureHiddenIFrame uri iFrameElement = do
     DOMHTMLIFrameElement.setSrc uri iFrameElement
-    DOMHTMLIFrameElement.setWidth "0" iFrameElement
-    DOMHTMLIFrameElement.setHeight "0" iFrameElement
+    DOMHTMLIFrameElement.setWidth "500" iFrameElement
+    DOMHTMLIFrameElement.setHeight "500" iFrameElement
     pure iFrameElement
 
   appendIFrameToBody iFrameElement = do
@@ -175,8 +175,11 @@ reauthenticate stateRef replyAvar = do
   retrieveIdTokenFromLSOnChange ∷ Aff (ReauthEffects eff) EIdToken
   retrieveIdTokenFromLSOnChange =
     race
-      (const retrieveIdTokenFromLS =<< firstValueFromStallingProducer =<< liftEff getIdTokenStorageEvents)
+      (validTokenIdFromIdTokenStorageEvent =<< firstValueFromStallingProducer =<< liftEff getIdTokenStorageEvents)
       (Aff.later' Config.reauthenticationTimeout $ pure $ Left "No token received before timeout.")
+
+  validTokenIdFromIdTokenStorageEvent ∷ _ -> _ EIdToken
+  validTokenIdFromIdTokenStorageEvent = either (pure ∘ Left) verify ∘ _.newValue 
 
   retrieveIdTokenFromLS ∷ Aff (ReauthEffects eff) EIdToken
   retrieveIdTokenFromLS =

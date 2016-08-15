@@ -19,7 +19,6 @@ module Utils.LocalStorage
   , setLocalStorage
   , removeLocalStorage
   , getStorageEventProducer
-  , Storage
   , StorageEvent
   ) where
 
@@ -35,6 +34,7 @@ import Control.Monad.Rec.Class as MonadRecClass
 
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, jsonParser, encodeJson, printJson)
 import Data.Either (Either(..))
+import Data.Foreign (Foreign)
 import Data.Function.Uncurried (Fn3, Fn2, runFn3, runFn2)
 import Data.Maybe (Maybe(..), maybe)
 import Unsafe.Coerce as U
@@ -52,39 +52,37 @@ foreign import getLocalStorageImpl
   ∷ forall eff a . Fn3 (Maybe a) (a → Maybe a) String (Eff (dom ∷ DOM | eff) (Maybe String))
 foreign import removeLocalStorageImpl
   ∷ forall eff . String → (Eff (dom ∷ DOM | eff)) Unit
-foreign import data Storage ∷ *
 
 type StorageEvent a =
   { target ∷ EventTarget
-  , type ∷ String
   , bubbles ∷ Boolean
   , cancelable ∷ Boolean
-  , key ∷ String
+  , key ∷ Foreign
   , oldValue ∷ a
   , newValue ∷ a
   , url ∷ String
-  , storageArea ∷ Storage
-}
+  , storageArea ∷ Foreign
+  }
 
-storageEventToEvent ∷ forall a. StorageEvent a → Event
-storageEventToEvent = U.unsafeCoerce
-
-eventToStorageEvent ∷ forall a. Event → StorageEvent a
+eventToStorageEvent ∷ Event → StorageEvent Foreign
 eventToStorageEvent = U.unsafeCoerce
 
 setLocalStorage
   ∷ forall a eff g
   . (EncodeJson a, MonadEff (dom ∷ DOM | eff) g)
   ⇒ String → a → g Unit
-setLocalStorage  key val =
-  liftEff $ runFn2 setLocalStorageImpl key $ printJson $ encodeJson val
+setLocalStorage key val =
+  liftEff
+    $ runFn2 setLocalStorageImpl key
+    $ printJson
+    $ encodeJson val
 
 getLocalStorage
   ∷ forall a eff g. (DecodeJson a, MonadEff (dom ∷ DOM | eff) g) ⇒ String → g (Either String a)
 getLocalStorage key =
   liftEff
-  $ maybe (Left $ "There is no value for key " <> key) (jsonParser >=> decodeJson)
-  <$> runFn3 getLocalStorageImpl Nothing Just key
+    $ maybe (Left $ "There is no value for key " <> key) (jsonParser >=> decodeJson)
+    <$> runFn3 getLocalStorageImpl Nothing Just key
 
 removeLocalStorage
   ∷ forall g eff. (MonadEff (dom ∷ DOM | eff) g) ⇒ String → g Unit
@@ -92,8 +90,9 @@ removeLocalStorage k =
   liftEff $ removeLocalStorageImpl k
 
 getStorageEventProducer
-  ∷ forall eff a
-  . Boolean → Eff (dom ∷ DOM, avar :: AVAR | eff) (Coroutine.Producer (StorageEvent a) (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit)
+  ∷ forall eff
+  . Boolean
+  → Eff (dom ∷ DOM, avar :: AVAR | eff) (Coroutine.Producer (StorageEvent Foreign) (Aff (dom ∷ DOM, avar ∷ AVAR | eff)) Unit)
 getStorageEventProducer capture =
   (_ Coroutine.$~ eventToStorageEventTransformer) <$> windowEventProducer "storage"
   where

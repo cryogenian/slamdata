@@ -21,23 +21,27 @@ import Control.Coroutine.Stalling (StallingProducer)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
+import Data.Argonaut (decodeJson, jsonParser)
+import Data.Foreign as Foreign
 import DOM (DOM)
 import SlamData.Prelude
 import SlamData.Quasar.Auth.Keys as AuthKeys
--- See https://github.com/slamdata/purescript-stalling-coroutines/issues/5
--- import OIDC.Crypt.Types (IdToken(..))
+import OIDC.Crypt.Types (IdToken(..))
 import Utils.LocalStorage as LocalStorage
 import Utils.LocalStorage (StorageEvent)
 
 getIdTokenStorageEvents
   ∷ ∀ eff
-  . Eff (dom :: DOM, avar :: AVAR | eff) (StallingProducer (StorageEvent (Either String String)) (Aff (dom :: DOM, avar :: AVAR | eff)) Unit)
+  . Eff (dom :: DOM, avar :: AVAR | eff) (StallingProducer (StorageEvent (Either String IdToken)) (Aff (dom :: DOM, avar :: AVAR | eff)) Unit)
 getIdTokenStorageEvents =
-  -- See https://github.com/slamdata/purescript-stalling-coroutines/issues/5
-  StallingCoroutine.filter isIdTokenKeyEvent
+  StallingCoroutine.mapStallingProducer stringValuesToIdTokens
+    ∘ StallingCoroutine.filter isIdTokenKeyEvent
     ∘ StallingCoroutine.producerToStallingProducer
     <$> LocalStorage.getStorageEventProducer false
   where
-  isIdTokenKeyEvent o = o.key == AuthKeys.idTokenLocalStorageKey
-  -- See https://github.com/slamdata/purescript-stalling-coroutines/issues/5
-  -- stringValuesToIdTokens e = e { newValue = map IdToken e.newValue, oldValue = map IdToken e.oldValue }
+  isIdTokenKeyEvent o = Foreign.readString o.key == Right AuthKeys.idTokenLocalStorageKey
+  stringValuesToIdTokens e =
+    e
+      { newValue = IdToken <$> (decodeJson =<< jsonParser =<< (lmap show $ Foreign.readString e.newValue))
+      , oldValue = IdToken <$> (decodeJson =<< jsonParser =<< (lmap show $ Foreign.readString e.oldValue))
+      }
