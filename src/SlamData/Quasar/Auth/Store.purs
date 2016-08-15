@@ -35,6 +35,10 @@ storeProvider ∷ ∀ e. QAT.Provider → Eff (dom ∷ DOM | e) Unit
 storeProvider =
   LS.setLocalStorage AuthKeys.providerLocalStorageKey
 
+clearProvider ∷ ∀ e. Eff (dom ∷ DOM | e) Unit
+clearProvider =
+  LS.removeLocalStorage AuthKeys.providerLocalStorageKey
+
 storeKeyString ∷ ∀ e. OIDCT.KeyString → Eff (dom ∷ DOM |e) Unit
 storeKeyString (OIDCT.KeyString ks) =
   LS.setLocalStorage

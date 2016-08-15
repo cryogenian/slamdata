@@ -198,6 +198,7 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
   logOut = do
     H.fromEff do
       AuthStore.clearIdToken
+      AuthStore.clearProvider
       Browser.reload
   appendAuthPath s = s <> Config.redirectURIString
   requestAuthenticationURI pr =

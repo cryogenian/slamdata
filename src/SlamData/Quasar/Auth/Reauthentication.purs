@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Quasar.Auth.Reauthentication (reauthentication, EIdToken, RequestIdTokenBus) where
+module SlamData.Quasar.Auth.Reauthentication
+  (reauthentication, EIdToken, AuthenticationError, RequestIdTokenBus)
+  where
 
 import Data.Foldable as F
 import Data.Foreign as Foreign
@@ -62,15 +64,16 @@ import SlamData.Config as Config
 import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
 import SlamData.Quasar.Auth.Keys as AuthKeys
 import Text.Parsing.StringParser (ParseError(..))
-import Utils.DOM as DOMUtils
+--import Utils.DOM as DOMUtils
 import Utils.LocalStorage as LocalStorage
+import Utils as Utils
 
--- TODO: Replace popup with iframe
--- TODO: Replace localstorage events and retrieval with iframe events and location
--- TODO: Update to Purescript 0.9.x
+data AuthenticationError =
+  IdTokenInvalid | IdTokenUnavailable String | BrowserError String | NoAuthenticationAttempted String
+
 type RequestIdTokenBus = BusW (AVar EIdToken)
 
-type EIdToken = Either String IdToken
+type EIdToken = Either AuthenticationError IdToken
 
 type ReauthEffects eff =
   ( rsaSignTime ∷ RSASIGNTIME
@@ -121,17 +124,17 @@ reauthenticate stateRef replyAvar = do
   writeState = liftEff ∘ Ref.writeRef stateRef
 
   reply ∷ Promise EIdToken → Aff (ReauthEffects eff) Unit
-  reply = AVar.putVar replyAvar ∘ (\x -> traceAny x \_ -> x) <=< Promise.wait
+  reply = AVar.putVar replyAvar <=< Promise.wait
 
-  openReauthenticationPopup ∷ Aff (ReauthEffects eff) Unit
-  openReauthenticationPopup =
+  requestReauthenticationSilently ∷ Aff (ReauthEffects eff) (Either AuthenticationError DOMNodeTypes.Node)
+  requestReauthenticationSilently =
     either
-      (const $ pure unit)
-      (liftEff ∘ void ∘ openHiddenIframe)
+      (const $ pure $ Left $ NoAuthenticationAttempted "No previously used auth provider available.")
+      (liftEff ∘ map (lmap BrowserError) ∘ appendHiddenIFrameToBody)
       =<< requestReauthenticationURI
 
-  openHiddenIframe ∷ _
-  openHiddenIframe uri =
+  appendHiddenIFrameToBody ∷ String → Eff (ReauthEffects eff) (Either String DOMNodeTypes.Node)
+  appendHiddenIFrameToBody uri =
     either
       (pure ∘ Left)
       (appendIFrameToBody <=< configureHiddenIFrame uri)
@@ -139,36 +142,40 @@ reauthenticate stateRef replyAvar = do
 
   configureHiddenIFrame uri iFrameElement = do
     DOMHTMLIFrameElement.setSrc uri iFrameElement
-    DOMHTMLIFrameElement.setWidth "500" iFrameElement
-    DOMHTMLIFrameElement.setHeight "500" iFrameElement
+    DOMHTMLIFrameElement.setWidth "0" iFrameElement
+    DOMHTMLIFrameElement.setHeight "0" iFrameElement
     pure iFrameElement
 
-  appendIFrameToBody iFrameElement = do
-    either
-      (pure ∘ Left)
-      (const (pure $ Right iFrameElement) <=< appendIFrameToNode iFrameElement)
-      =<< getBodyNode
+  appendIFrameToBody iFrameElement =
+    traverse (appendIFrameToNode iFrameElement) =<< getBodyNode
 
-  appendIFrameToNode ∷ _
   appendIFrameToNode iFrameElement node =
-    flip DOMNode.appendChild node
+    Utils.passover (flip DOMNode.appendChild node)
       $ DOMHTMLTypes.htmlElementToNode
       $ DOMHTMLTypes.htmlIFrameElementToHTMLElement iFrameElement
 
   createIFrameElement ∷ Eff (ReauthEffects eff) (Either String DOMHTMLTypes.HTMLIFrameElement)
   createIFrameElement =
     (lmap show ∘ DOMHTMLTypes.readHTMLIFrameElement ∘ Foreign.toForeign)
-      <$> (DOMNodeDocument.createElement "iframe" ∘ DOMHTMLTypes.htmlDocumentToDocument =<< DOMHTMLWindow.document =<< DOMHTML.window)
+      <$> createElement "iframe"
+
+  createElement ∷ String → Eff (ReauthEffects eff) DOMNodeTypes.Element
+  createElement name =
+    DOMNodeDocument.createElement name
+      ∘ DOMHTMLTypes.htmlDocumentToDocument
+      =<< DOMHTMLWindow.document
+      =<< DOMHTML.window
 
   getBodyNode ∷ Eff (ReauthEffects eff) (Either String DOMNodeTypes.Node)
   getBodyNode =
-    (maybe (Left "Couldn't get body element") Right ∘ map DOMHTMLTypes.htmlElementToNode ∘ Nullable.toMaybe) <$> (DOMHTMLDocument.body =<< DOMHTMLWindow.document =<< DOMHTML.window)
+    (maybe (Left "Couldn't find body element.") Right ∘ map DOMHTMLTypes.htmlElementToNode ∘ Nullable.toMaybe)
+      <$> (DOMHTMLDocument.body =<< DOMHTMLWindow.document =<< DOMHTML.window)
 
   requestIdToken ∷ Aff (ReauthEffects eff) (Promise EIdToken)
   requestIdToken = Promise.defer do
     idToken ← retrieveIdTokenFromLS
     either
-      (const $ openReauthenticationPopup *> retrieveIdTokenFromLSOnChange)
+      (const $ (either (pure ∘ Left) (const $ retrieveIdTokenFromLSOnChange)) =<< requestReauthenticationSilently)
       (const $ pure idToken)
       idToken
 
@@ -176,14 +183,14 @@ reauthenticate stateRef replyAvar = do
   retrieveIdTokenFromLSOnChange =
     race
       (validTokenIdFromIdTokenStorageEvent =<< firstValueFromStallingProducer =<< liftEff getIdTokenStorageEvents)
-      (Aff.later' Config.reauthenticationTimeout $ pure $ Left "No token received before timeout.")
+      (Aff.later' Config.reauthenticationTimeout $ pure $ Left $ IdTokenUnavailable "No id token received before timeout.")
 
-  validTokenIdFromIdTokenStorageEvent ∷ _ -> _ EIdToken
-  validTokenIdFromIdTokenStorageEvent = either (pure ∘ Left) verify ∘ _.newValue 
+  validTokenIdFromIdTokenStorageEvent ∷ LocalStorage.StorageEvent (Either String IdToken) -> Aff (ReauthEffects eff) EIdToken
+  validTokenIdFromIdTokenStorageEvent = either (pure ∘ Left) verify ∘ lmap IdTokenUnavailable ∘ _.newValue
 
   retrieveIdTokenFromLS ∷ Aff (ReauthEffects eff) EIdToken
   retrieveIdTokenFromLS =
-    either (pure ∘ Left) verify =<< (flip bind (map IdToken) <$> retrieveRaw)
+    either (pure ∘ Left ∘ IdTokenUnavailable) verify =<< (flip bind (map IdToken) <$> retrieveRaw)
     where
     retrieveRaw ∷ Aff (ReauthEffects eff) (Either String (Either String String))
     retrieveRaw = LocalStorage.getLocalStorage AuthKeys.idTokenLocalStorageKey
@@ -211,7 +218,7 @@ reauthenticate stateRef replyAvar = do
     verified ← liftEff $ verifyBoolean idToken
     if verified
       then pure $ Right idToken
-      else pure $ Left "Token invalid."
+      else pure $ Left IdTokenInvalid
 
   verifyBoolean ∷ IdToken → Eff (ReauthEffects eff) Boolean
   verifyBoolean idToken = do
