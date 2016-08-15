@@ -82,6 +82,7 @@ data CardQuery a
   = UpdateCard CardEvalInput (Maybe Port) a
   | SaveCard CardId CardType (Card.Model → a)
   | ActivateCard a
+  | DeactivateCard a
   | LoadCard Card.Model a
   | UpdateDimensions a
   | SetHTMLElement (Maybe HTMLElement) a

@@ -60,6 +60,8 @@ eval = case _ of
     pure next
   CC.Activate next →
     pure next
+  CC.Deactivate next →
+    pure next
   CC.Save k →
     H.query unit (H.request (FB.GetItems ⋙ left)) <#>
       maybe [] A.fromFoldable

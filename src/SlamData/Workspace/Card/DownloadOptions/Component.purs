@@ -143,6 +143,8 @@ cardEval = case _ of
     pure next
   CC.Activate next →
     pure next
+  CC.Deactivate next →
+    pure next
   CC.Save k →
     map (k ∘ Card.DownloadOptions) H.get
   CC.Load card next → do

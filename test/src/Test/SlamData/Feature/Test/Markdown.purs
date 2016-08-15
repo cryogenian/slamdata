@@ -52,6 +52,7 @@ test = do
           , "color = [x]Red []Green [x]Blue"
           , "type = (x)Gold ()Silver ()Bronze"
           ]
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
     Expect.fieldInLastMdCard "discipline" "text" ""
@@ -82,10 +83,12 @@ test = do
   mdScenario "Change and play markdown" [] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard "discipline = __"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
     Interact.accessPreviousCardInLastDeck
     Interact.provideMdInLastMdCard "sport =  __ (Bobsleigh)"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
 
     Expect.fieldInLastMdCard "sport" "text" "Bobsleigh"
@@ -100,6 +103,7 @@ test = do
       , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
     Expect.fieldInLastMdCard "discipline" "text" "Figure skating"
@@ -171,6 +175,7 @@ test = do
       , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
     Expect.displayMarkdownCardPresented
@@ -178,6 +183,7 @@ test = do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertTableCardInLastDeck
     Expect.cardsInTableColumnInLastCardToEq 2 "discipline" "Figure skating"
@@ -196,6 +202,7 @@ test = do
       , "type = (!``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` LIMIT 1``) !``SELECT DISTINCT type FROM `/test-mount/testDb/olympics` OFFSET 1``"
       , "gender = [!``SELECT gender FROM `/test-mount/testDb/olympics` LIMIT 1``] !``SELECT DISTINCT gender FROM `/test-mount/testDb/olympics` ``"
       ]
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
     Expect.displayMarkdownCardPresented
@@ -203,6 +210,7 @@ test = do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "SELECT * FROM `/test-mount/testDb/olympics` WHERE discipline = :discipline AND type NOT IN :type[_] AND gender IN :gender[_] AND year > :year AND country IN :country[_]"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertTableCardInLastDeck
     Interact.accessPreviousCardInLastDeck
@@ -227,6 +235,7 @@ test = do
     Interact.provideMdInLastMdCard $
       "state = {!``select distinct state from `/test-mount/testDb/zips` order by asc``}"
       <> "(!``select state from `/test-mount/testDb/zips` limit 1 ``)"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
 
@@ -235,6 +244,7 @@ test = do
     Interact.provideMdInLastMdCard $
       "city = ___"
       <> "(!``select city from `/test-mount/testDb/zips` where state = :state[0] order by asc limit 1``)"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
     Expect.fieldInLastMdCard "city" "text" "AGAWAM"

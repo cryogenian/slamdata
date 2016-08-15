@@ -46,12 +46,14 @@ data Status
 type State =
   { levelOfDetails ∷ LevelOfDetails
   , status ∷ Status
+  , dirty ∷ Boolean
   }
 
 initialState ∷ State
 initialState =
   { levelOfDetails: High
   , status: New
+  , dirty: false
   }
 
 _levelOfDetails ∷ ∀ a r. LensP {levelOfDetails ∷ a |r} a

@@ -147,6 +147,8 @@ eval = case _ of
     pure next
   CC.Activate next →
     pure next
+  CC.Deactivate next →
+    pure next
   CC.Save k →
     pure $ k Card.Chart
   CC.Load _ next →

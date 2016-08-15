@@ -46,7 +46,6 @@
     "purescript-psa": "^0.3.9",
     "rimraf": "^2.4.3",
     "run-sequence": "^1.1.5",
-    "selenium-server": "2.53.1",
     "selenium-webdriver": "2.53.2",
     "webpack-stream": "^2.1.0"
   },

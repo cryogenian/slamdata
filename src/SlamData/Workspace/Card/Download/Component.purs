@@ -93,6 +93,8 @@ cardEval = case _ of
     pure next
   CC.Activate next →
     pure next
+  CC.Deactivate next →
+    pure next
   CC.Save k →
     pure (k Card.Download)
   CC.Load json next →

@@ -414,6 +414,8 @@ cardEval = case _ of
     pure next
   CC.Activate next →
     pure next
+  CC.Deactivate next →
+    pure next
   CC.Save k → do
     st ← H.get
     conf ← H.query st.chartType $ left $ H.request Form.GetConfiguration
