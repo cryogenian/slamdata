@@ -54,7 +54,7 @@ import Text.Parsing.Parser.String as PS
 import Utils.Path (DirPath)
 
 markdownEval
-  ∷ ∀ m r
+  ∷ ∀ m
   . (Monad m, AffF.Affable SlamDataEffects m)
   ⇒ RequestIdTokenBus
   → CET.CardEvalInput
@@ -90,8 +90,7 @@ runEvalM ∷ ∀ a. EvalM a → Slam (a × (Set.Set AdditionalSource))
 runEvalM = WT.runWriterT
 
 evalEmbeddedQueries
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → SM.StrMap String
   → DirPath
   → SD.SlamDownP Port.VarMapValue

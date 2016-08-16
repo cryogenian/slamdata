@@ -27,8 +27,6 @@ import SlamData.Prelude
 
 import Control.Coroutine (Producer, runProcess, ($$), await)
 import Control.Monad.Aff (Aff, runAff)
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Eff.Ref as Ref

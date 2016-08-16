@@ -18,9 +18,6 @@ module SlamData.FileSystem.Dialog.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
-
 import Data.Array (singleton)
 
 import Halogen as H
@@ -133,11 +130,11 @@ type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Query ⨁ (H.ChildF ChildSlot ChildQuery)
 type DialogDSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. RequestIdTokenBus → H.Component StateP QueryP Slam
+comp ∷ RequestIdTokenBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus =
   H.parentComponent { render: render requestNewIdTokenBus, eval, peek: Just (peek <<< H.runChildF) }
 
-render ∷ ∀ r. RequestIdTokenBus → State → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
+render ∷ RequestIdTokenBus → State → H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 render requestNewIdTokenBus state =
   HH.div
     [ HP.classes ([B.modal] <> fadeWhen (isNothing state))

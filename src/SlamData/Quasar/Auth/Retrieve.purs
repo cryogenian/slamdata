@@ -21,21 +21,12 @@ import SlamData.Prelude
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
-import Control.Monad.Eff (Eff)
 
 import Data.Either as E
 import Data.Maybe as M
 
-import DOM (DOM)
-
-import OIDC.Crypt.Types as OIDCT
-
-import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus, EIdToken, ReauthEffects)
 
-import Quasar.Advanced.Types as QAT
-
-import Utils.LocalStorage as LS
 import Utils (passover)
 
 fromEither ∷ ∀ a b. E.Either a b → M.Maybe b

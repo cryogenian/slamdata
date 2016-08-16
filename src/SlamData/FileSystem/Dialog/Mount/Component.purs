@@ -72,11 +72,11 @@ type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
-comp :: ∀ r. RequestIdTokenBus → H.Component StateP QueryP Slam
+comp :: RequestIdTokenBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus =
   H.parentComponent { render: render requestNewIdTokenBus, eval: eval requestNewIdTokenBus, peek: Just (peek <<< H.runChildF) }
 
-render :: ∀ r. RequestIdTokenBus → State → HTML
+render :: RequestIdTokenBus → State → HTML
 render requestNewIdTokenBus state@{ new } =
   modalDialog
     [ modalHeader "Mount"
@@ -162,7 +162,7 @@ progressSpinner :: State -> HTML
 progressSpinner { saving } =
   HH.img [ HP.src "img/spin.gif", HP.class_ (Rc.mountProgressSpinner saving) ]
 
-eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
+eval ∷ RequestIdTokenBus → Query ~> DSL
 eval _ (ModifyState f next) = H.modify f *> validateInput $> next
 eval _ (SelectScheme newScheme next) = do
   currentScheme <- map scheme <$> H.gets _.settings

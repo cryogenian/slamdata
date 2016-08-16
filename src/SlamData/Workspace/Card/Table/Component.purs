@@ -22,8 +22,6 @@ module SlamData.Workspace.Card.Table.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class (throwError)
 
@@ -48,7 +46,7 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 
 type DSL = H.ComponentDSL JTS.State QueryP Slam
 
-tableComponent ∷ ∀ r. RequestIdTokenBus → H.Component CC.CardStateP CC.CardQueryP Slam
+tableComponent ∷ RequestIdTokenBus → H.Component CC.CardStateP CC.CardQueryP Slam
 tableComponent requestNewIdTokenBus =
   CC.makeCardComponent
     { cardType: CT.Table
@@ -59,7 +57,7 @@ tableComponent requestNewIdTokenBus =
     }
 
 -- | Evaluates generic card queries.
-evalCard ∷ ∀ r. RequestIdTokenBus → CC.CardEvalQuery ~> DSL
+evalCard ∷ RequestIdTokenBus → CC.CardEvalQuery ~> DSL
 evalCard requestNewIdTokenBus = case _ of
   CC.EvalCard info output next → do
     for_ info.input $ CEQ.runCardEvalT_ ∘ runTable requestNewIdTokenBus
@@ -86,8 +84,7 @@ evalCard requestNewIdTokenBus = case _ of
     pure next
 
 runTable
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → Port.Port
   → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
 runTable requestNewIdTokenBus =
@@ -96,8 +93,7 @@ runTable requestNewIdTokenBus =
     _ → throwError "Expected a TaggedResource input"
 
 updateTable
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → Port.TaggedResourcePort
   → CC.CardEvalT (H.ComponentDSL JTS.State QueryP Slam) Unit
 updateTable requestNewIdTokenBus { resource, tag } = do
@@ -130,7 +126,7 @@ resetState ∷ DSL Unit
 resetState = H.modify (JTS._result .~ Nothing)
 
 -- | Evaluates table-specific card queries.
-evalTable ∷ ∀ r. RequestIdTokenBus → Query ~> (H.ComponentDSL JTS.State QueryP Slam)
+evalTable ∷ RequestIdTokenBus → Query ~> (H.ComponentDSL JTS.State QueryP Slam)
 evalTable requestNewIdTokenBus = case _ of
   StepPage step next → do
     H.modify (JTS.stepPage step)
@@ -149,7 +145,7 @@ evalTable requestNewIdTokenBus = case _ of
   Update next →
     refresh requestNewIdTokenBus $> next
 
-refresh ∷ ∀ r. RequestIdTokenBus → DSL Unit
+refresh ∷ RequestIdTokenBus → DSL Unit
 refresh requestNewIdTokenBus = do
   input ← H.gets _.input
   for_ input \{ resource, tag } →

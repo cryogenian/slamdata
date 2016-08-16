@@ -250,7 +250,7 @@ forceDelete requestNewIdTokenBus res =
         QF.deleteData path
 
 cleanViewMounts
-  ∷ ∀ eff m r
+  ∷ ∀ eff m
   . (Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → DirPath

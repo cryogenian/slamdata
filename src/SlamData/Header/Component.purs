@@ -18,9 +18,6 @@ module SlamData.Header.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
-
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.Component.ChildPath (ChildPath, cpL, cpR)
@@ -75,11 +72,11 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. RequestIdTokenBus → SignInBus → H.Component StateP QueryP Slam
+comp ∷ RequestIdTokenBus → SignInBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus signInBus =
   H.parentComponent { render: render requestNewIdTokenBus signInBus, eval, peek: Nothing }
 
-render ∷ ∀ r. RequestIdTokenBus → SignInBus → Unit → HTML
+render ∷ RequestIdTokenBus → SignInBus → Unit → HTML
 render requestNewIdTokenBus signInBus _ =
   HH.nav_
     [ HH.div_

@@ -18,8 +18,6 @@ module SlamData.Workspace.Deck.Dialog.Share.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.UI.Browser (select)
 
 import Data.Array as Arr
@@ -130,7 +128,7 @@ data Query a
   | InitZClipboard String (Maybe HTMLElement) a
   | SelectElement HTMLElement a
 
-comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
+comp ∷ RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
@@ -349,7 +347,7 @@ render state =
    ]
 
 
-eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
+eval ∷ RequestIdTokenBus → Query ~> DSL
 eval _ (Dismiss next) = pure next
 eval _ (ChangeSubjectType st next) = do
   H.modify (_{subjectType = st})

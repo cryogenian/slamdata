@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.ChartOptions.Eval where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as EC
@@ -42,7 +40,7 @@ import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 
 eval
-  ∷ ∀ m r
+  ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ RequestIdTokenBus
   → CET.CardEvalInput

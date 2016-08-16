@@ -47,7 +47,7 @@ import Utils.AffableProducer (produce)
 type DSL = H.ComponentDSL DNS.State DNQ.QueryP Slam
 type HTML = H.ComponentHTML DNQ.QueryP
 
-comp ∷ ∀ r. RequestIdTokenBus → DeckOptions → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
+comp ∷ RequestIdTokenBus → DeckOptions → DCS.StateP → H.Component DNS.State DNQ.QueryP Slam
 comp requestNewIdTokenBus opts deckState =
   H.lifecycleComponent
     { render

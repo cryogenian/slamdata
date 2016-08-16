@@ -89,7 +89,7 @@ import Utils.Path (DirPath, getNameStr)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. RequestIdTokenBus → SignInBus → H.Component StateP QueryP Slam
+comp ∷ RequestIdTokenBus → SignInBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus signInBus =
   H.parentComponent
     { render: render requestNewIdTokenBus signInBus
@@ -97,7 +97,7 @@ comp requestNewIdTokenBus signInBus =
     , peek: Just (peek requestNewIdTokenBus ∘ H.runChildF)
     }
 
-render ∷ ∀ r. RequestIdTokenBus → SignInBus → State → HTML
+render ∷ RequestIdTokenBus → SignInBus → State → HTML
 render requestNewIdTokenBus signInBus state@{ version, sort, salt, path } =
   HH.div
     [ HP.classes [ CSS.filesystem ]
@@ -132,7 +132,7 @@ render requestNewIdTokenBus signInBus state@{ version, sort, salt, path } =
         }
     ]
 
-eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
+eval ∷ RequestIdTokenBus → Query ~> DSL
 eval _ (Resort next) = do
   { sort, salt, path } ← H.get
   searchValue ← H.query' cpSearch unit (H.request Search.GetValue)
@@ -224,7 +224,7 @@ eval requestNewIdTokenBus (Download next) = do
 eval _ (SetVersion version next) = H.modify (_version .~ Just version) $> next
 eval _ (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
 
-uploadFileSelected ∷ ∀ r. RequestIdTokenBus → Cf.File → DSL Unit
+uploadFileSelected ∷ RequestIdTokenBus → Cf.File → DSL Unit
 uploadFileSelected requestNewIdTokenBus f = do
   { path, sort, salt } ← H.get
   name ←
@@ -267,7 +267,7 @@ uploadFileSelected requestNewIdTokenBus f = do
         let trimmed = S.trim content'
         in F.all isJust [S.stripPrefix "[" trimmed, S.stripSuffix "]" trimmed]
 
-peek ∷ ∀ a r. RequestIdTokenBus → ChildQuery a → DSL Unit
+peek ∷ ∀ a. RequestIdTokenBus → ChildQuery a → DSL Unit
 peek requestNewIdTokenBus =
   listingPeek requestNewIdTokenBus
   ⨁ searchPeek
@@ -275,7 +275,7 @@ peek requestNewIdTokenBus =
   ⨁ dialogPeek requestNewIdTokenBus
   ⨁ const (pure unit)
 
-listingPeek ∷ ∀ a r. RequestIdTokenBus → Listing.QueryP a → DSL Unit
+listingPeek ∷ ∀ a. RequestIdTokenBus → Listing.QueryP a → DSL Unit
 listingPeek requestNewIdTokenBus =
   go ⨁ (itemPeek requestNewIdTokenBus ∘ H.runChildF)
   where
@@ -283,7 +283,7 @@ listingPeek requestNewIdTokenBus =
   go (Listing.Adds _ _) = resort
   go _ = pure unit
 
-itemPeek ∷ ∀ a r. RequestIdTokenBus → Item.Query a → DSL Unit
+itemPeek ∷ ∀ a. RequestIdTokenBus → Item.Query a → DSL Unit
 itemPeek _ (Item.Open res _) = do
   { sort, salt, path } ← H.get
   loc ← H.fromEff locationString
@@ -354,16 +354,16 @@ searchPeek (Search.Submit _) = do
   H.fromEff $ setLocation $ browseURL value sort salt path
 searchPeek _ = pure unit
 
-dialogPeek ∷ ∀ a r. RequestIdTokenBus → Dialog.QueryP a → DSL Unit
+dialogPeek ∷ ∀ a. RequestIdTokenBus → Dialog.QueryP a → DSL Unit
 dialogPeek requestNewIdTokenBus =
   const (pure unit) ⨁ dialogChildrenPeek requestNewIdTokenBus ∘ H.runChildF
 
-dialogChildrenPeek ∷ ∀ a r. RequestIdTokenBus → Dialog.ChildQuery a → DSL Unit
+dialogChildrenPeek ∷ ∀ a. RequestIdTokenBus → Dialog.ChildQuery a → DSL Unit
 dialogChildrenPeek requestNewIdTokenBus q = do
   for_ (prjQuery Dialog.cpMount q) mountPeek
   for_ (prjQuery Dialog.cpExplore q) (explorePeek requestNewIdTokenBus)
 
-explorePeek ∷ ∀ a r. RequestIdTokenBus → Explore.Query a → DSL Unit
+explorePeek ∷ ∀ a. RequestIdTokenBus → Explore.Query a → DSL Unit
 explorePeek requestNewIdTokenBus (Explore.Explore fp name next) = do
   { path } ← H.get
   let newWorkspaceName = name ⊕ "." ⊕ Config.workspaceExtension
@@ -419,7 +419,7 @@ resort = do
     >>= traverse_ \isSearching →
       void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
-configure ∷ ∀ r. RequestIdTokenBus → R.Mount → DSL Unit
+configure ∷ RequestIdTokenBus → R.Mount → DSL Unit
 configure requestNewIdTokenBus (R.View path) = do
   viewInfo ← API.viewInfo requestNewIdTokenBus path
   showDialog
@@ -448,7 +448,7 @@ configure requestNewIdTokenBus (R.Database path) = do
           (getNameStr (Left path))
           (Just (Left (MongoDB.fromConfig config)))
 
-download ∷ ∀ r. RequestIdTokenBus → R.Resource → DSL Unit
+download ∷ RequestIdTokenBus → R.Resource → DSL Unit
 download requestNewIdTokenBus res = do
   hs ← H.fromAff $ API.authHeaders requestNewIdTokenBus
   showDialog (Dialog.Download res)
@@ -456,8 +456,7 @@ download requestNewIdTokenBus res = do
   pure unit
 
 getChildren
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → (R.Resource → Boolean)
   → (Array R.Resource → DSL Unit)
   → DirPath
@@ -472,7 +471,7 @@ getChildren requestNewIdTokenBus pred cont start = do
       traverse_ (getChildren requestNewIdTokenBus pred cont) parents
     _ → pure unit
 
-getDirectories ∷ ∀ r. RequestIdTokenBus → (Array R.Resource → DSL Unit) → DirPath → DSL Unit
+getDirectories ∷ RequestIdTokenBus → (Array R.Resource → DSL Unit) → DirPath → DSL Unit
 getDirectories requestNewIdTokenBus = getChildren requestNewIdTokenBus (R.isDirectory ∨ R.isDatabaseMount)
 
 showDialog ∷ Dialog.Dialog → DSL Unit

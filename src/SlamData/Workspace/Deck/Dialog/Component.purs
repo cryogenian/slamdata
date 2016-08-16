@@ -29,9 +29,6 @@ module SlamData.Workspace.Deck.Dialog.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.Bus (Bus, Cap)
-import Control.Monad.Aff.AVar (AVar)
-
 import Data.Map as Map
 
 import Halogen as H
@@ -170,11 +167,11 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ ∀ r. RequestIdTokenBus → H.Component StateP QueryP Slam
+comp ∷ RequestIdTokenBus → H.Component StateP QueryP Slam
 comp requestNewIdTokenBus =
   H.parentComponent { render: render requestNewIdTokenBus, eval, peek: Just (peek ∘ H.runChildF) }
 
-render ∷ ∀ r. RequestIdTokenBus → State → HTML
+render ∷ RequestIdTokenBus → State → HTML
 render requestNewIdTokenBus state =
   HH.div
     [ HP.classes [ HH.className "deck-dialog" ] ]

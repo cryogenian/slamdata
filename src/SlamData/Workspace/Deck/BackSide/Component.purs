@@ -18,9 +18,6 @@ module SlamData.Workspace.Deck.BackSide.Component where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
-
 import Data.Foldable as F
 import Data.String as Str
 import Data.Map as Map
@@ -145,7 +142,7 @@ actionGlyph = case _ of
 type HTML = H.ComponentHTML Query
 type DSL = H.ComponentDSL State Query Slam
 
-comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
+comp ∷ RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
@@ -208,7 +205,7 @@ render state =
       lbl = labelAction action ⊕ if enabled then "" else " disabled"
       icon = actionGlyph action
 
-eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
+eval ∷ RequestIdTokenBus → Query ~> DSL
 eval _ (DoAction _ next) = pure next
 eval _ (UpdateFilter str next) =
   H.modify (_ { filterString = str }) $> next

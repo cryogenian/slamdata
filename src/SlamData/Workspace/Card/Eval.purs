@@ -18,8 +18,6 @@ module SlamData.Workspace.Card.Eval where
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable, fromEff)
 import Control.Monad.Eff as Eff
 import Control.Monad.Eff.Exception as Exn
