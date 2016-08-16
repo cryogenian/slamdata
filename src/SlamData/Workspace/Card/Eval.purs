@@ -20,6 +20,8 @@ import SlamData.Prelude
 
 import Control.Monad.Eff as Eff
 import Control.Monad.Aff.Free (class Affable, fromEff)
+import Control.Monad.Error.Class (throwError)
+import Control.Parallel.Class (class MonadPar, parTraverse_)
 
 import Data.Lens ((^?))
 import Data.Path.Pathy as Path
@@ -84,7 +86,7 @@ instance showEval ∷ Show Eval where
 
 evalCard
   ∷ ∀ m
-  . (Monad m, Affable SlamDataEffects m)
+  . (MonadPar m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → Eval
   → CET.CardEvalT m Port.Port
@@ -158,7 +160,7 @@ evalOpen info res = do
 
 evalQuery
   ∷ ∀ m
-  . (Monad m, Affable SlamDataEffects m)
+  . (MonadPar m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → SQL
   → Port.VarMap
@@ -180,7 +182,7 @@ evalQuery info sql varMap = do
 
 evalSearch
   ∷ ∀ m
-  . (Monad m, Affable SlamDataEffects m)
+  . (MonadPar m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → String
   → FilePath
@@ -221,7 +223,7 @@ evalSearch info queryText resource = do
 
 runEvalCard
   ∷ ∀ m
-  . (Monad m, Affable SlamDataEffects m)
+  . (MonadPar m, Affable SlamDataEffects m)
   ⇒ CET.CardEvalInput
   → Eval
   → m (Either GE.GlobalError (Port.Port × (Set.Set AdditionalSource)))
@@ -229,14 +231,13 @@ runEvalCard input =
   CET.runCardEvalT ∘
     evalCard input
 
--- TODO: This really needs to be parallel, but we need `MonadPar`.
 validateResources
   ∷ ∀ m f
-  . (Monad m, Affable SlamDataEffects m, Foldable f)
+  . (MonadPar m, Affable SlamDataEffects m, Foldable f)
   ⇒ f FilePath
   → CET.CardEvalT m Unit
 validateResources =
-  traverse_ \path → do
+  parTraverse_ \path → do
     noAccess ← lift $ QFS.fileNotAccessible path
     for_ noAccess \reason →
-      QE.throw $ "Resource unavailable: `" ⊕ Path.printPath path ⊕ "`. " ⊕ reason
+      throwError $ QE.prefixMessage ("Resource `" ⊕ Path.printPath path ⊕ "` is unavailable") reason

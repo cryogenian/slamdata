@@ -23,15 +23,18 @@ import Quasar.Error as QE
 
 data GlobalError
   = PaymentRequired
-  | AuthRequired
+  | Unauthorized
+  | Forbidden
 
 fromQError ∷ QE.QError → Either String GlobalError
 fromQError = case _ of
   QE.PaymentRequired → Right PaymentRequired
-  QE.Forbidden → Right AuthRequired
+  QE.Unauthorized → Right Unauthorized
+  QE.Forbidden → Right Forbidden
   err → Left (QE.printQError err)
 
 toQError ∷ GlobalError → QE.QError
 toQError = case _ of
   PaymentRequired → QE.PaymentRequired
-  AuthRequired → QE.Forbidden
+  Unauthorized → QE.Unauthorized
+  Forbidden → QE.Forbidden

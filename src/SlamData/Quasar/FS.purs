@@ -296,28 +296,14 @@ dirNotAccessible
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ DirPath
-  → m (Maybe String)
+  → m (Maybe QF.QError)
 dirNotAccessible path =
-  handleResult <$> runQuasarF (QF.dirMetadata path)
-  where
-  handleResult ∷ ∀ a. Either QF.QError a → Maybe String
-  handleResult (Left (QF.Error e)) = Just $ Exn.message e
-  handleResult (Left QF.NotFound) = Just "Target directory does not exist."
-  handleResult (Left QF.Forbidden) = Just "Your browser isn't currently permitted to access that directory."
-  handleResult (Left QF.PaymentRequired) = Just "Payment is required to access the directory."
-  handleResult (Right _) = Nothing
+  either Just (const Nothing) <$> runQuasarF (QF.dirMetadata path)
 
 fileNotAccessible
   ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ FilePath
-  → m (Maybe String)
+  → m (Maybe QF.QError)
 fileNotAccessible path =
-  handleResult <$> runQuasarF (QF.fileMetadata path)
-  where
-  handleResult ∷ ∀ a. Either QF.QError a → Maybe String
-  handleResult (Left (QF.Error e)) = Just $ Exn.message e
-  handleResult (Left QF.NotFound) = Just "Target file does not exist."
-  handleResult (Left QF.Forbidden) = Just "Your browser isn't currently permitted to access that file."
-  handleResult (Left QF.PaymentRequired) = Just "Payment is required to access the file."
-  handleResult (Right _) = Nothing
+  either Just (const Nothing) <$> runQuasarF (QF.fileMetadata path)

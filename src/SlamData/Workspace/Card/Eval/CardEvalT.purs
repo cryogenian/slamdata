@@ -39,6 +39,7 @@ import Control.Monad.Error.Class as EC
 import Control.Monad.Except.Trans as ET
 import Control.Monad.Writer.Class as WC
 import Control.Monad.Writer.Trans as WT
+import Control.Parallel.Class as Par
 
 import Quasar.Error (QError)
 
@@ -91,6 +92,9 @@ instance monadWriterCardEvalT
 instance monadErrorCardEvalT ∷ Monad m ⇒ EC.MonadError QError (CardEvalT m) where
   throwError = EC.throwError ⋙ CardEvalT
   catchError (CardEvalT m) = CardEvalT ∘ EC.catchError m ∘ (getCardEvalT ∘ _)
+
+instance monadParCardEvalT ∷ Par.MonadPar m ⇒ Par.MonadPar (CardEvalT m) where
+  par f (CardEvalT ma) (CardEvalT mb) = CardEvalT (Par.par f ma mb)
 
 runCardEvalT
   ∷ ∀ m

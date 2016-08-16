@@ -39,9 +39,10 @@
     "purescript-markdown": "^7.0.0",
     "purescript-minimatch": "^0.2.0",
     "purescript-oidc-crypt-utils": "^3.0.0",
+    "purescript-parallel": "4951a7dbc83b61481f29cf8960619a9a21050718",
     "purescript-pathy": "^2.0.0",
     "purescript-profunctor-lenses": "^1.0.0",
-    "purescript-quasar": "garyb/purescript-quasar#ccd13a771e44aab67f91711630e0e5fcb24905b2",
+    "purescript-quasar": "garyb/purescript-quasar#4b20b91d722c774c0c5afdd5fb804db914a0e775",
     "purescript-routing": "^2.0.0",
     "purescript-search": "^1.0.0",
     "purescript-these": "^1.0.0",
@@ -60,5 +61,8 @@
     "purescript-quasar-test-starter": "quasar-test-starter#^0.1.0",
     "purescript-strongcheck": "^1.1.1",
     "purescript-webdriver": "^2.0.0"
+  },
+  "resolutions": {
+    "purescript-parallel": "4951a7dbc83b61481f29cf8960619a9a21050718"
   }
 }

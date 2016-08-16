@@ -262,7 +262,9 @@ eval bus (Submit next) = do
     H.modify $ _error .~ Just "Target directory does not exist."
 
   presentError e =
-    H.modify $ _error .~ Just e
+    case GE.fromQError e of
+      Left msg → H.modify $ _error .~ Just msg
+      Right ge → H.fromAff $ Bus.write ge bus
 
   moveIfDirAccessible dir =
     maybe (move dir) presentError =<< API.dirNotAccessible dir
