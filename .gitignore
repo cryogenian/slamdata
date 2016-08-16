@@ -16,9 +16,6 @@ public/js/*.js
 public/css/*.css
 !public/css/bootstrap*.css
 .*
-phantomjsdriver.log
 npm-debug.log
-chromedriver
-chromedriver.exe
-!/.gitignore
-!/.travis.yml
+!.gitignore
+!.travis.yml

@@ -23,6 +23,7 @@ mkTwoCardTestDeck = do
     Interact.insertQueryCardInLastDeck
     Interact.provideQueryInLastQueryCard
       "select measureOne from `/test-mount/testDb/flatViz`"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertTableCardInLastDeck
     Expect.tableColumnsAre ["measureOne"]
@@ -53,6 +54,7 @@ test = do
   flipDeckScenario "Share deck" [] do
     Interact.insertMdCardInLastDeck
     Interact.provideMdInLastMdCard "Quarterly"
+    Interact.runQuery
     Interact.accessNextCardInLastDeck
     Interact.insertDisplayMarkdownCardInLastDeck
     Expect.textInDisplayMarkdownCard "Quarterly"

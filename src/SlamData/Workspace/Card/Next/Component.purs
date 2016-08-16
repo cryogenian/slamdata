@@ -111,6 +111,8 @@ cardEval = case _ of
     H.modify (_input .~ value.input) $> next
   CC.Activate next →
     pure next
+  CC.Deactivate next →
+    pure next
   CC.Save k →
     pure $ k Card.NextAction
   CC.Load _ next →

@@ -28,7 +28,7 @@ import Node.Process as Process
 import Node.Rimraf (rimraf)
 import Node.Stream (Readable, Duplex, pipe, onClose)
 
-import Quasar.Spawn.Util.Starter (starter, expectStdOut, expectStdErr)
+import Quasar.Spawn.Util.Starter (expectStdOut, starter)
 
 import Selenium (quit)
 import Selenium.Browser (Browser(..), browserCapabilities)
@@ -147,11 +147,6 @@ quasarArgs config =
   , "-L", "/slamdata"
   ]
 
-seleniumArgs ∷ Config → Array String
-seleniumArgs config =
-  [ "-jar", resolve [config.selenium.jar] ""
-  ]
-
 mongoConnectionString ∷ Config → String
 mongoConnectionString config =
   "mongodb://"
@@ -210,14 +205,6 @@ main = do
         (quasarArgs rawConfig)
         (expectStdOut "Server started listening on port")
     liftEff $ modifyRef procs (Arr.cons quasar)
-
-    selenium ←
-      startProc
-        "Selenium"
-        "java"
-        (seleniumArgs rawConfig)
-        (expectStdErr "Selenium Server is up and running")
-    liftEff $ modifyRef procs (Arr.cons selenium)
 
     log $ gray "Restoring database"
     restoreDatabase rawConfig
