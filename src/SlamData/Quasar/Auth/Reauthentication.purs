@@ -49,8 +49,9 @@ import DOM (DOM)
 import DOM.Node.Node as DOMNode
 import DOM.Node.Document as DOMNodeDocument
 import DOM.HTML as DOMHTML
-import DOM.Node.Types as DOMNodeTypes
+import DOM.Node.Types (Node, Element)
 import DOM.HTML.Types as DOMHTMLTypes
+import DOM.HTML.Types (HTMLIFrameElement)
 import DOM.HTML.Document as DOMHTMLDocument
 import DOM.HTML.HTMLIFrameElement as DOMHTMLIFrameElement
 import DOM.HTML.Window as DOMHTMLWindow
@@ -69,8 +70,11 @@ import Utils.DOM as DOMUtils
 import Utils.LocalStorage as LocalStorage
 import Utils as Utils
 
-data AuthenticationError =
-  IdTokenInvalid | IdTokenUnavailable String | DOMError String | NoAuthProviderInLocalStorage
+data AuthenticationError
+  = IdTokenInvalid
+  | IdTokenUnavailable String
+  | DOMError String
+  | NoAuthProviderInLocalStorage
 
 instance semigroupAuthenticationError ∷ Semigroup AuthenticationError where
   append x y = y
@@ -130,155 +134,209 @@ authenticate stateRef replyAvar = do
   reply ∷ Promise EIdToken → Aff (ReauthEffects eff) Unit
   reply = AVar.putVar replyAvar <=< Promise.wait
 
-  requestReauthenticationSilently ∷ Aff (ReauthEffects eff) (Either AuthenticationError DOMNodeTypes.Node)
-  requestReauthenticationSilently =
+requestReauthenticationSilently
+  ∷ ∀ eff. Aff (ReauthEffects eff) EIdToken
+requestReauthenticationSilently = do
+  either (pure ∘ Left) await =<< request
+  where
+  await reauthenticationIFrameNode = do
+    idToken ← retrieveIdTokenFromLSOnChange
+    liftEff $ removeBodyChild reauthenticationIFrameNode
+    pure idToken
+  request =
     either
       (const $ pure $ Left $ NoAuthProviderInLocalStorage)
       (liftEff ∘ map (lmap DOMError) ∘ appendHiddenIFrameToBody)
       =<< requestReauthenticationURI OIDCAff.None
 
-  requestPromptedAuthentication ∷ Aff (ReauthEffects eff) (Either AuthenticationError Unit)
-  requestPromptedAuthentication =
+requestPromptedAuthentication ∷ ∀ eff. Aff (ReauthEffects eff) EIdToken
+requestPromptedAuthentication =
+  request *> retrieveIdTokenFromLSOnChange
+  where
+  request =
     either
       (const $ pure $ Left $ NoAuthProviderInLocalStorage)
       (map Right ∘ liftEff ∘ DOMUtils.openPopup)
       =<< requestReauthenticationURI OIDCAff.Login
 
-  appendHiddenIFrameToBody ∷ String → Eff (ReauthEffects eff) (Either String DOMNodeTypes.Node)
-  appendHiddenIFrameToBody uri =
-    either
-      (pure ∘ Left)
-      (appendIFrameToBody <=< configureHiddenIFrame uri)
-      =<< createIFrameElement
+appendHiddenIFrameToBody ∷ ∀ eff. String → Eff (ReauthEffects eff) (Either String Node)
+appendHiddenIFrameToBody uri =
+  either
+    (pure ∘ Left)
+    (appendIFrameToBody <=< configureHiddenIFrame uri)
+    =<< createIFrameElement
 
-  configureHiddenIFrame uri iFrameElement = do
-    DOMHTMLIFrameElement.setSrc uri iFrameElement
-    DOMHTMLIFrameElement.setWidth "0" iFrameElement
-    DOMHTMLIFrameElement.setHeight "0" iFrameElement
-    pure iFrameElement
+configureHiddenIFrame
+  ∷ ∀ eff
+  . String
+  → HTMLIFrameElement
+  → Eff (ReauthEffects eff) HTMLIFrameElement
+configureHiddenIFrame uri iFrameElement = do
+  DOMHTMLIFrameElement.setSrc uri iFrameElement
+  DOMHTMLIFrameElement.setWidth "0" iFrameElement
+  DOMHTMLIFrameElement.setHeight "0" iFrameElement
+  pure iFrameElement
 
-  appendIFrameToBody iFrameElement =
-    traverse (appendIFrameToNode iFrameElement) =<< getBodyNode
+appendIFrameToBody
+  ∷ ∀ eff
+  . HTMLIFrameElement
+  → Eff (ReauthEffects eff) (Either String Node)
+appendIFrameToBody iFrameElement =
+  traverse (appendIFrameToNode iFrameElement) =<< getBodyNode
 
-  appendIFrameToNode iFrameElement node =
-    Utils.passover (flip DOMNode.appendChild node)
-      $ DOMHTMLTypes.htmlElementToNode
-      $ DOMHTMLTypes.htmlIFrameElementToHTMLElement iFrameElement
+appendIFrameToNode
+  ∷ ∀ eff
+  . HTMLIFrameElement
+  → Node
+  → Eff (ReauthEffects eff) Node
+appendIFrameToNode iFrameElement node =
+  Utils.passover (flip DOMNode.appendChild node)
+    $ DOMHTMLTypes.htmlElementToNode
+    $ DOMHTMLTypes.htmlIFrameElementToHTMLElement iFrameElement
 
-  createIFrameElement ∷ Eff (ReauthEffects eff) (Either String DOMHTMLTypes.HTMLIFrameElement)
-  createIFrameElement =
-    (lmap show ∘ DOMHTMLTypes.readHTMLIFrameElement ∘ Foreign.toForeign)
-      <$> createElement "iframe"
+createIFrameElement ∷ ∀ eff. Eff (ReauthEffects eff) (Either String HTMLIFrameElement)
+createIFrameElement =
+  (lmap show ∘ DOMHTMLTypes.readHTMLIFrameElement ∘ Foreign.toForeign)
+    <$> createElement "iframe"
 
-  createElement ∷ String → Eff (ReauthEffects eff) DOMNodeTypes.Element
-  createElement name =
-    DOMNodeDocument.createElement name
-      ∘ DOMHTMLTypes.htmlDocumentToDocument
-      =<< DOMHTMLWindow.document
-      =<< DOMHTML.window
+createElement ∷ ∀ eff.  String → Eff (ReauthEffects eff) Element
+createElement name =
+  DOMNodeDocument.createElement name
+    ∘ DOMHTMLTypes.htmlDocumentToDocument
+    =<< DOMHTMLWindow.document
+    =<< DOMHTML.window
 
-  removeBodyChild ∷ DOMNodeTypes.Node → Eff (ReauthEffects eff) (Either String DOMNodeTypes.Node)
-  removeBodyChild child = either (pure ∘ Left) (map Right ∘ DOMNode.removeChild child) =<< getBodyNode
+removeBodyChild ∷ ∀ eff.  Node → Eff (ReauthEffects eff) (Either String Node)
+removeBodyChild child =
+  either (pure ∘ Left) (map Right ∘ DOMNode.removeChild child) =<< getBodyNode
 
-  getBodyNode ∷ Eff (ReauthEffects eff) (Either String DOMNodeTypes.Node)
-  getBodyNode =
-    (maybe (Left "Couldn't find body element.") Right ∘ map DOMHTMLTypes.htmlElementToNode ∘ Nullable.toMaybe)
-      <$> (DOMHTMLDocument.body =<< DOMHTMLWindow.document =<< DOMHTML.window)
+getBodyNode ∷ ∀ eff. Eff (ReauthEffects eff) (Either String Node)
+getBodyNode =
+  toEitherStringNode
+    <$> (DOMHTMLDocument.body =<< DOMHTMLWindow.document =<< DOMHTML.window)
+  where
+  toEitherStringNode =
+    maybe
+      (Left "Couldn't find body element.")
+      Right
+      ∘ map DOMHTMLTypes.htmlElementToNode
+      ∘ Nullable.toMaybe
 
-  requestIdToken ∷ Aff (ReauthEffects eff) (Promise EIdToken)
-  requestIdToken = Promise.defer do
-    idToken ← retrieveIdTokenFromLS
-    provider ← liftEff $ retrieveProvider
-    (case idToken of
-      Left (IdTokenUnavailable _) | isJust provider →
-        runExceptT
-          $ ExceptT (either (pure ∘ Left) reauthenticate =<< requestReauthenticationSilently)
-          <|> ExceptT (requestPromptedAuthentication *> retrieveIdTokenFromLSOnChange)
-      Left IdTokenInvalid →
-        (either (pure ∘ Left) reauthenticate =<< requestReauthenticationSilently)
-      _ ->
-        pure idToken) >>= Utils.passover (either (const $ liftEff AuthStore.clearProvider) (const $ pure unit))
-
-  reauthenticate ∷ DOMNodeTypes.Node → Aff (ReauthEffects eff) EIdToken
-  reauthenticate iFrameNode =
-    -- Failures to remove the IFrame are not returned.
-    Utils.passover (const $ liftEff $ removeBodyChild iFrameNode) =<< retrieveIdTokenFromLSOnChange
-
-  retrieveIdTokenFromLSOnChange ∷ Aff (ReauthEffects eff) EIdToken
-  retrieveIdTokenFromLSOnChange =
-    race
-      (validTokenIdFromIdTokenStorageEvent =<< firstValueFromStallingProducer =<< liftEff getIdTokenStorageEvents)
-      (Aff.later' Config.reauthenticationTimeout $ pure $ Left $ IdTokenUnavailable "No id token received before timeout.")
-
-  validTokenIdFromIdTokenStorageEvent ∷ LocalStorage.StorageEvent (Either String IdToken) -> Aff (ReauthEffects eff) EIdToken
-  validTokenIdFromIdTokenStorageEvent = either (pure ∘ Left) verify ∘ lmap IdTokenUnavailable ∘ _.newValue
-
-  retrieveIdTokenFromLS ∷ Aff (ReauthEffects eff) EIdToken
-  retrieveIdTokenFromLS =
-    either (pure ∘ Left ∘ IdTokenUnavailable) verify =<< (flip bind (map IdToken) <$> retrieveRaw)
-    where
-    retrieveRaw ∷ Aff (ReauthEffects eff) (Either String (Either String String))
-    retrieveRaw = LocalStorage.getLocalStorage AuthKeys.idTokenLocalStorageKey
-
-  retrieveProviderRFromLS ∷ Eff (ReauthEffects eff) (Either String QAT.ProviderR)
-  retrieveProviderRFromLS =
-    map QAT.runProvider <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
-
-  appendAuthPath ∷ String → String
-  appendAuthPath s = (s <> _) Config.redirectURIString
-
-  runParseError ∷ ParseError → String
-  runParseError (ParseError s) = s
-
-  requestReauthenticationURI ∷ OIDCAff.Prompt → Aff (ReauthEffects eff) (Either String String)
-  requestReauthenticationURI prompt =
-    liftEff do
-      redirectUri ← appendAuthPath <$> Browser.locationString
+requestIdToken ∷ ∀ eff. Aff (ReauthEffects eff) (Promise EIdToken)
+requestIdToken = Promise.defer do
+  startIdToken ← retrieveIdTokenFromLS
+  provider ← liftEff $ retrieveProvider
+  idToken ← case startIdToken of
+    Left (IdTokenUnavailable _) | isJust provider →
       runExceptT
-        $ (ExceptT ∘ map (bimap runParseError id) ∘ flip (OIDCAff.requestAuthenticationURI prompt) redirectUri)
-        =<< ExceptT retrieveProviderRFromLS
+        $ ExceptT requestReauthenticationSilently
+        <|> ExceptT requestPromptedAuthentication
+    Left IdTokenInvalid →
+      requestReauthenticationSilently
+    _ ->
+      pure startIdToken
+  either (const $ liftEff AuthStore.clearProvider) (const $ pure unit) idToken
+  pure idToken
 
-  verify ∷ IdToken → Aff (ReauthEffects eff) EIdToken
-  verify idToken = do
-    verified ← liftEff $ verifyBoolean idToken
-    if verified
-      then pure $ Right idToken
-      else pure $ Left IdTokenInvalid
+retrieveIdTokenFromLSOnChange ∷ ∀ eff. Aff (ReauthEffects eff) EIdToken
+retrieveIdTokenFromLSOnChange =
+  race
+    (validTokenIdFromIdTokenStorageEvent
+      =<< firstValueFromStallingProducer
+      =<< liftEff getIdTokenStorageEvents)
+    (Aff.later'
+      Config.reauthenticationTimeout
+      $ pure $ Left $ IdTokenUnavailable "No id token received before timeout.")
 
-  verifyBoolean ∷ IdToken → Eff (ReauthEffects eff) Boolean
-  verifyBoolean idToken = do
-    jwks ← map (fromMaybe []) retrieveJwks
-    F.or <$> T.traverse (verifyBooleanWithJwk idToken) jwks
+validTokenIdFromIdTokenStorageEvent
+  ∷ ∀ eff
+  . LocalStorage.StorageEvent (Either String IdToken)
+  → Aff (ReauthEffects eff) EIdToken
+validTokenIdFromIdTokenStorageEvent =
+  either (pure ∘ Left) verify ∘ lmap IdTokenUnavailable ∘ _.newValue
 
-  verifyBooleanWithJwk ∷ IdToken → JSONWebKey → Eff (ReauthEffects eff) Boolean
-  verifyBooleanWithJwk idToken jwk = do
-    issuer ← retrieveIssuer
-    clientId ← retrieveClientID
-    nonce ← retrieveNonce
-    fromMaybe (pure false)
-      $ Apply.lift4 (OIDCCrypt.verifyIdToken idToken) issuer clientId nonce (Just jwk)
+retrieveIdTokenFromLS ∷ ∀ eff. Aff (ReauthEffects eff) EIdToken
+retrieveIdTokenFromLS =
+  either
+    (pure ∘ Left ∘ IdTokenUnavailable)
+    verify
+    =<< (flip bind (map IdToken) <$> retrieveRaw)
+  where
+  retrieveRaw ∷ Aff (ReauthEffects eff) (Either String (Either String String))
+  retrieveRaw = LocalStorage.getLocalStorage AuthKeys.idTokenLocalStorageKey
 
-  retrieveProvider =
-    LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey <#> fromEither
+retrieveProviderRFromLS ∷ ∀ eff. Eff (ReauthEffects eff) (Either String QAT.ProviderR)
+retrieveProviderRFromLS =
+  map QAT.runProvider <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
 
-  retrieveProviderR = map QAT.runProvider <$> retrieveProvider
+appendAuthPath ∷ String → String
+appendAuthPath s = (s <> _) Config.redirectURIString
 
-  retrieveIssuer =
-    map (_.issuer <<< _.openIDConfiguration) <$> retrieveProviderR
+runParseError ∷ ParseError → String
+runParseError (ParseError s) = s
 
-  retrieveJwks =
-    map (_.jwks <<< _.openIDConfiguration) <$> retrieveProviderR
+requestReauthenticationURI
+  ∷ ∀ eff
+  . OIDCAff.Prompt
+  → Aff (ReauthEffects eff) (Either String String)
+requestReauthenticationURI prompt =
+  liftEff do
+    redirectUri ← appendAuthPath <$> Browser.locationString
+    runExceptT
+      $ ExceptT ∘ request redirectUri
+      =<< ExceptT retrieveProviderRFromLS
+  where
+  request redirectUri =
+    map (bimap runParseError id)
+      ∘ flip (OIDCAff.requestAuthenticationURI prompt) redirectUri
 
-  retrieveClientID =
-    map _.clientID <$> retrieveProviderR
+verify ∷ ∀ eff. IdToken → Aff (ReauthEffects eff) EIdToken
+verify idToken = do
+  verified ← liftEff $ verifyBoolean idToken
+  if verified
+    then pure $ Right idToken
+    else pure $ Left IdTokenInvalid
 
-  retrieveNonce =
-    LocalStorage.getLocalStorage AuthKeys.nonceLocalStorageKey <#>
-      either (\_ → Nothing) (Just <<< UnhashedNonce)
+verifyBoolean ∷ ∀ eff. IdToken → Eff (ReauthEffects eff) Boolean
+verifyBoolean idToken = do
+  jwks ← map (fromMaybe []) retrieveJwks
+  F.or <$> T.traverse (verifyBooleanWithJwk idToken) jwks
 
-  ifFalseLeft ∷ ∀ a b. a → b → Boolean → Either a b
-  ifFalseLeft x y boolean = if boolean then Right y else Left x
+verifyBooleanWithJwk ∷ ∀ eff. IdToken → JSONWebKey → Eff (ReauthEffects eff) Boolean
+verifyBooleanWithJwk idToken jwk = do
+  issuer ← retrieveIssuer
+  clientId ← retrieveClientID
+  nonce ← retrieveNonce
+  fromMaybe (pure false)
+    $ Apply.lift4 (OIDCCrypt.verifyIdToken idToken) issuer clientId nonce (Just jwk)
 
-  fromEither ∷ ∀ a b. Either a b → Maybe b
-  fromEither = either (\_ → Nothing) (Just)
+retrieveProvider ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe QAT.Provider)
+retrieveProvider =
+  LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey <#> fromEither
+
+retrieveProviderR ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe QAT.ProviderR)
+retrieveProviderR = map QAT.runProvider <$> retrieveProvider
+
+retrieveIssuer ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe OIDCCrypt.Issuer)
+retrieveIssuer =
+  map (_.issuer <<< _.openIDConfiguration) <$> retrieveProviderR
+
+retrieveJwks ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe (Array JSONWebKey))
+retrieveJwks =
+  map (_.jwks <<< _.openIDConfiguration) <$> retrieveProviderR
+
+retrieveClientID ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe OIDCCrypt.ClientID)
+retrieveClientID =
+  map _.clientID <$> retrieveProviderR
+
+retrieveNonce ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe UnhashedNonce)
+retrieveNonce =
+  LocalStorage.getLocalStorage AuthKeys.nonceLocalStorageKey <#>
+    either (\_ → Nothing) (Just <<< UnhashedNonce)
+
+ifFalseLeft ∷ ∀ a b. a → b → Boolean → Either a b
+ifFalseLeft x y boolean = if boolean then Right y else Left x
+
+fromEither ∷ ∀ a b. Either a b → Maybe b
+fromEither = either (\_ → Nothing) (Just)
 
