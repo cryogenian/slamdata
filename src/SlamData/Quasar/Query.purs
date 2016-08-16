@@ -33,8 +33,6 @@ import SlamData.Prelude
 
 import Control.Apply (lift2)
 import Control.Monad.Aff.Free (class Affable)
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as Err
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
@@ -54,7 +52,7 @@ import Quasar.Mount as QM
 import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String
@@ -70,9 +68,9 @@ templated res = S.replace "{{path}}" ("`" <> P.printPath res <> "`")
 -- | {{path}} template syntax to have the file's path inserted, and the file's
 -- | parent directory will be used to determine the backend to use in Quasar.
 compile
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → AnyPath
   → SQL
   → SM.StrMap String
@@ -84,9 +82,9 @@ compile requestNewIdTokenBus path sql varMap = do
     QF.compileQuery backendPath sql' varMap
 
 query
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → DirPath
   → SQL
   → m (Either String JS.JArray)
@@ -95,9 +93,9 @@ query requestNewIdTokenBus path sql =
     QF.readQuery Readable path sql SM.empty Nothing
 
 queryEJson
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → DirPath
   → SQL
   → m (Either String (Array EJS.EJson))
@@ -106,9 +104,9 @@ queryEJson requestNewIdTokenBus path sql =
     QF.readQueryEJson path sql SM.empty Nothing
 
 queryEJsonVM
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → DirPath
   → SQL
   → SM.StrMap String
@@ -122,9 +120,9 @@ queryEJsonVM requestNewIdTokenBus path sql vm =
 -- | If a file path is provided for the input path the query can use the
 -- | {{path}} template syntax to have the file's path inserted.
 viewQuery
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Affable (QEff eff) m, Monad m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → AnyPath
   → FilePath
   → SQL
@@ -146,9 +144,9 @@ viewQuery requestNewIdTokenBus path dest sql vars = do
 -- | The returned value is the output path returned by Quasar. For some queries
 -- | this will be the input file rather than the specified destination.
 fileQuery
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . Affable (QEff eff) m
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → FilePath
   → SQL
@@ -160,9 +158,9 @@ fileQuery requestNewIdTokenBus file dest sql vars =
     QF.writeQuery backendPath dest (templated file sql) vars
 
 all
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . Affable (QEff eff) m
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → m (Either Exn.Error JS.JArray)
 all requestNewIdTokenBus file =
@@ -170,9 +168,9 @@ all requestNewIdTokenBus file =
     QF.readFile Readable file Nothing
 
 sample
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . Affable (QEff eff) m
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → Int
   → Int
@@ -182,9 +180,9 @@ sample requestNewIdTokenBus file offset limit =
     QF.readFile Readable file (Just { limit, offset })
 
 count
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → m (Either Exn.Error Int)
 count requestNewIdTokenBus file = runExceptT do
@@ -203,9 +201,9 @@ count requestNewIdTokenBus file = runExceptT do
       <=< Arr.head
 
 fields
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → m (Either Exn.Error (Array String))
 fields requestNewIdTokenBus file = runExceptT do

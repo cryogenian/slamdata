@@ -112,7 +112,7 @@ data Query a
   | TextAreaHovered a
   | TextAreaLeft a
 
-comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
+comp ∷ RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus = H.component { render, eval: eval requestNewIdTokenBus }
 
 render ∷ State → H.ComponentHTML Query
@@ -344,7 +344,7 @@ renderPublishIFrame state =
         ]
 
 
-eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
+eval ∷ RequestIdTokenBus → Query ~> DSL
 eval _ (Dismiss next) = pure next
 eval requestNewIdTokenBus (Init mbEl next) = next <$ do
   state ← H.get

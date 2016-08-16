@@ -141,7 +141,7 @@ evalMarkdownForm (vm × doc) model = do
   pure $ thisVarMap `SM.union` vm
 
 evalOpen
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ RequestIdTokenBus
   → CET.CardEvalInput
@@ -165,7 +165,7 @@ evalOpen requestNewIdTokenBus info res = do
        EC.throwError $ Exn.message exn
 
 evalQuery
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ RequestIdTokenBus
   → CET.CardEvalInput
@@ -189,7 +189,7 @@ evalQuery requestNewIdTokenBus info sql varMap = do
   pure { resource, tag: pure sql }
 
 evalSearch
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ RequestIdTokenBus
   → CET.CardEvalInput
@@ -233,7 +233,7 @@ liftQ ∷ ∀ m a. Monad m ⇒ m (Either Exn.Error a) → CET.CardEvalT m a
 liftQ = either (EC.throwError ∘ Exn.message) pure <=< lift
 
 runEvalCard
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ RequestIdTokenBus
   → CET.CardEvalInput
@@ -245,7 +245,7 @@ runEvalCard requestNewIdTokenBus input =
 
 -- TODO: This really needs to be parallel, but we need `MonadPar`.
 validateResources
-  ∷ ∀ m r f
+  ∷ ∀ m f
   . (Monad m, Affable SlamDataEffects m, Foldable f)
   ⇒ RequestIdTokenBus
   → f FilePath

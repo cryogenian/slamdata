@@ -15,7 +15,7 @@ limitations under the License.
 -}
 
 module SlamData.Quasar.Auth.Reauthentication
-  (reauthentication, EIdToken, AuthenticationError, RequestIdTokenBus)
+  (reauthentication, ReauthEffects, EIdToken, AuthenticationError, RequestIdTokenBus)
   where
 
 import Data.Foldable as F

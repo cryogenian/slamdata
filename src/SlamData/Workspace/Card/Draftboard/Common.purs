@@ -55,7 +55,7 @@ import Utils.AffableProducer (produce)
 import Utils.Path (DirPath)
 
 transitiveGraphProducer
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → DirPath
@@ -88,7 +88,7 @@ transitiveGraphProducer requestNewIdTokenBus path deckId = produce \emit → do
     ExceptT $ pure $ childDeckIds ∘ _.cards <$> DM.decode json
 
 transitiveChildren
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . Affable (QEff eff) m
   ⇒ RequestIdTokenBus
   → DirPath
@@ -120,7 +120,7 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
       _ → []
 
 deleteGraph
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . Affable (QEff eff) m
   ⇒ RequestIdTokenBus
   → DirPath

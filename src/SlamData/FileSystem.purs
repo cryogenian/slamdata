@@ -26,7 +26,6 @@ import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error, message, Error)
-import Control.Monad.Eff.Ref as Ref
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (filter, mapMaybe)
@@ -76,11 +75,8 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
     forkAff Analytics.enableAnalytics
-    traceA "1"
     signInBus ← Bus.make
-    traceA "2"
     requestNewIdTokenBus ← Reauthentication.reauthentication
-    traceA "3"
     driver ← runUI (comp requestNewIdTokenBus signInBus) (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion
@@ -95,8 +91,7 @@ initialAVar ∷ Tuple (Canceler SlamDataEffects) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
 routeSignal
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
 routeSignal requestNewIdTokenBus driver = do
@@ -107,8 +102,7 @@ routeSignal requestNewIdTokenBus driver = do
 
 
 redirects
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → Driver QueryP SlamDataRawEffects
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   → Maybe Routes → Routes
@@ -149,8 +143,7 @@ redirects requestNewIdTokenBus driver var mbOld (Salted sort query salt) = do
     pure $ oldQuery ≠ query ∨ oldSalt ≡ salt
 
 checkMount
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
@@ -160,8 +153,7 @@ checkMount requestNewIdTokenBus path driver = do
     driver $ left $ action $ SetIsMount true
 
 listPath
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → SearchQuery
   → Int
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))

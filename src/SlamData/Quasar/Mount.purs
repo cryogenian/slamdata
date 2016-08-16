@@ -22,8 +22,6 @@ module SlamData.Quasar.Mount
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Error.Class as Err
@@ -39,12 +37,12 @@ import Quasar.Mount.View as QMountV
 import Quasar.Types (DirPath, FilePath)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 
 mountInfo
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → DirPath
   → m (Either Exn.Error QMountMDB.Config)
 mountInfo requestNewIdTokenBus path = runExceptT do
@@ -56,9 +54,9 @@ mountInfo requestNewIdTokenBus path = runExceptT do
       P.printPath path <> " is not a MongoDB mount point"
 
 viewInfo
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → m (Either Exn.Error QMountV.Config)
 viewInfo requestNewIdTokenBus path = runExceptT do
@@ -69,9 +67,9 @@ viewInfo requestNewIdTokenBus path = runExceptT do
     _ → Err.throwError $ Exn.error $ P.printPath path <> " is not an SQL² view"
 
 saveMount
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . Affable (QEff eff) m
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → DirPath
   → QMountMDB.Config
   → m (Either Exn.Error Unit)

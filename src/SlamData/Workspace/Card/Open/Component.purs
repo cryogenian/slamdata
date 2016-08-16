@@ -22,9 +22,6 @@ module SlamData.Workspace.Card.Open.Component
 
 import SlamData.Prelude
 
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
-
 import Data.Array as Arr
 import Data.Lens as Lens
 import Data.Lens ((?~), (.~), (%~))
@@ -55,7 +52,7 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type HTML = H.ComponentHTML QueryP
 type DSL = H.ComponentDSL State QueryP Slam
 
-openComponent ∷ ∀ r. RequestIdTokenBus → Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
+openComponent ∷ RequestIdTokenBus → Maybe R.Resource → H.Component CC.CardStateP CC.CardQueryP Slam
 openComponent requestNewIdTokenBus mres =
   CC.makeCardComponent
     { cardType: CT.Open
@@ -150,10 +147,10 @@ glyphForResource = case _ of
   R.Mount (R.Database _) → glyph B.glyphiconHdd
   R.Mount (R.View _) → glyph B.glyphiconFile
 
-eval ∷ ∀ r. RequestIdTokenBus → QueryP ~> DSL
+eval ∷ RequestIdTokenBus → QueryP ~> DSL
 eval requestNewIdTokenBus = cardEval requestNewIdTokenBus ⨁ openEval requestNewIdTokenBus
 
-cardEval ∷ ∀ r. RequestIdTokenBus → CC.CardEvalQuery ~> DSL
+cardEval ∷ RequestIdTokenBus → CC.CardEvalQuery ~> DSL
 cardEval requestNewIdTokenBus = case _ of
   CC.EvalCard info output next →
     pure next
@@ -184,7 +181,7 @@ cardEval requestNewIdTokenBus = case _ of
   CC.ZoomIn next →
     pure next
 
-openEval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
+openEval ∷ RequestIdTokenBus → Query ~> DSL
 openEval requestNewIdTokenBus (ResourceSelected r next) = do
   resourceSelected requestNewIdTokenBus r
   CC.raiseUpdatedC' CC.EvalModelUpdate
@@ -194,7 +191,7 @@ openEval requestNewIdTokenBus (Init mres next) = do
   traverse_ (resourceSelected requestNewIdTokenBus) mres
   pure next
 
-resourceSelected ∷ ∀ r. RequestIdTokenBus → R.Resource → DSL Unit
+resourceSelected ∷ RequestIdTokenBus → R.Resource → DSL Unit
 resourceSelected requestNewIdTokenBus r = do
   case R.getPath r of
     Right fp → do
@@ -211,7 +208,7 @@ resourceSelected requestNewIdTokenBus r = do
       updateItems requestNewIdTokenBus
   rearrangeItems
 
-updateItems ∷ ∀ r. RequestIdTokenBus → DSL Unit
+updateItems ∷ RequestIdTokenBus → DSL Unit
 updateItems requestNewIdTokenBus = do
   cs ← Quasar.children requestNewIdTokenBus =<< H.gets _.browsing
   mbSel ← H.gets _.selected

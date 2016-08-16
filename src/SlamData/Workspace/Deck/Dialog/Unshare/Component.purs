@@ -154,7 +154,7 @@ type AdjustedPermissions =
   , groups ∷ SM.StrMap Permission
   }
 
-comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
+comp ∷ RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
@@ -376,7 +376,7 @@ renderToken token =
     ]
 
 
-eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
+eval ∷ RequestIdTokenBus → Query ~> DSL
 eval requestNewIdTokenBus (Init next) = next <$ do
   tokensRes ← Q.tokenList requestNewIdTokenBus
   sharingInput ← H.gets _.sharingInput
@@ -503,8 +503,7 @@ eval requestNewIdTokenBus (Unshare name next) = next <$ do
 
 
 changePermissionResumeForUser
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → String
   → Model.SharingInput
   → ShareResume
@@ -530,8 +529,7 @@ changePermissionResumeForUser requestNewIdTokenBus name sharingInput res perm = 
 
 
 changePermissionResumeForGroup
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → String
   → Model.SharingInput
   → ShareResume
@@ -559,12 +557,11 @@ changePermissionResumeForGroup requestNewIdTokenBus name sharingInput res perm =
           Right ps → pure $ true × foldMap (\p → Map.singleton p.id p.action) ps
 
 deletePermission
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → Map.Map QTA.PermissionId QTA.ActionR
   → DSL (Map.Map QTA.PermissionId QTA.ActionR)
 deletePermission requestNewIdTokenBus permissionMap = do
-  r ← H.fromEff  $ newRef $ Map.empty × Map.size permissionMap
+  r ← H.fromEff $ newRef $ Map.empty × Map.size permissionMap
   resultVar ← H.fromAff makeVar
   H.fromAff $ runParallel $ for_ (Map.toList permissionMap) $ parallel ∘ \(pid × act) → do
     result ← Q.deletePermission requestNewIdTokenBus pid

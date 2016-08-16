@@ -38,7 +38,7 @@ import SlamData.Workspace.Card.Port as Port
 import Utils.Path as PU
 
 eval
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ RequestIdTokenBus
   → CET.CardEvalInput
@@ -54,7 +54,7 @@ eval requestNewIdTokenBus info mfp resource =
         _ → EC.throwError $ pt ⊕ " is not a valid file path"
 
 eval'
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Monad m, Affable SlamDataEffects m)
   ⇒ RequestIdTokenBus
   → PU.FilePath

@@ -54,7 +54,7 @@ renderError err =
         [ HH.text err ]
     ]
 
-renderDeck ∷ ∀ r. RequestIdTokenBus → DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
+renderDeck ∷ RequestIdTokenBus → DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 renderDeck requestNewIdTokenBus opts deckComponent st =
   HH.div
     (deckClasses st
@@ -132,14 +132,14 @@ childFrameElements =
   , deckIndicator
   ]
 
-dialogSlot ∷ ∀ r. RequestIdTokenBus → DeckHTML
+dialogSlot ∷ RequestIdTokenBus → DeckHTML
 dialogSlot requestNewIdTokenBus =
   HH.slot' cpDialog unit \_ →
     { component: Dialog.comp requestNewIdTokenBus
     , initialState: H.parentState Dialog.initialState
     }
 
-backside ∷ ∀ r. RequestIdTokenBus → DeckHTML
+backside ∷ RequestIdTokenBus → DeckHTML
 backside requestNewIdTokenBus =
   HH.div
     [ HP.classes [ CSS.card ] ]

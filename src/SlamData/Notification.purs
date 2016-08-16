@@ -43,7 +43,7 @@ type NotificationOptions =
   }
 
 notify_
-  ∷ ∀ r m eff
+  ∷ ∀ m r eff
   . (Affable (avar ∷ AVAR | eff) m)
   ⇒ Notification
   → Maybe String
@@ -54,7 +54,7 @@ notify_ notification detail timeout bus =
   fromAff $ write { notification, detail, timeout } bus
 
 info_
-  ∷ ∀ r m eff
+  ∷ ∀ m r eff
   . (Affable (avar ∷ AVAR | eff) m)
   ⇒ String
   → Maybe String
@@ -64,7 +64,7 @@ info_
 info_ = notify_ <<< Info
 
 warn_
-  ∷ ∀ r m eff
+  ∷ ∀ m r eff
   . (Affable (avar ∷ AVAR | eff) m)
   ⇒ String
   → Maybe String
@@ -74,7 +74,7 @@ warn_
 warn_ = notify_ <<< Warning
 
 error_
-  ∷ ∀ r m eff
+  ∷ ∀ m r eff
   . (Affable (avar ∷ AVAR | eff) m)
   ⇒ String
   → Maybe String

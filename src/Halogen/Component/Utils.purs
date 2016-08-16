@@ -111,7 +111,7 @@ oneTimeEventSource (Milliseconds n) action =
           emit $ E.Right unit
 
 subscribeToBus'
-  ∷ ∀ s s' f f' p a r eff
+  ∷ ∀ r s s' f f' p a eff
   . (a → f Unit)
   → Bus.Bus (read ∷ Bus.Cap | r) a
   → H.ParentDSL s s' f f' (Aff (avar ∷ AVAR | eff)) p (EventLoop.Breaker Unit)

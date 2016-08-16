@@ -27,7 +27,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Free.Trans (hoistFreeT)
 
 produce
-  :: forall a r m eff
+  :: forall a m r eff
    . (Functor m, Affable (avar :: AVAR | eff) m)
   => ((Either a r -> Eff (avar :: AVAR | eff) Unit) -> Eff (avar :: AVAR | eff) Unit)
   -> Producer a m r

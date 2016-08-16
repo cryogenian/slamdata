@@ -35,7 +35,6 @@ module SlamData.Workspace.Wiring
 import SlamData.Prelude
 
 import Control.Monad.Aff.AVar (AVar, makeVar', takeVar, putVar, modifyVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Free (class Affable, fromAff, fromEff)
 import Control.Monad.Aff.Promise (Promise, wait, defer)
@@ -48,7 +47,7 @@ import Data.Set as Set
 import SlamData.Analytics.Event as AE
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Notification as N
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
@@ -128,9 +127,9 @@ makeCache
 makeCache = fromAff (makeVar' mempty)
 
 putDeck
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus
   → DirPath
   → DeckId
   → Deck
@@ -156,9 +155,9 @@ putDeck' deckId deck =
   putCache deckId (pure (Right deck))
 
 getDeck
-  ∷ ∀ r m
+  ∷ ∀ m
   . (Affable SlamDataEffects m)
-  ⇒ Bus (write ∷ Cap | r) (AVar EIdToken)
+  ⇒ RequestIdTokenBus
   → DirPath
   → DeckId
   → Cache DeckId DeckRef

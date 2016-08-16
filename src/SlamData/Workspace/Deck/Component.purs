@@ -102,7 +102,7 @@ import Utils.Path (DirPath)
 initialState ∷ DirPath → DeckId → DCS.StateP
 initialState path = opaqueState ∘ DCS.initialDeck path
 
-render ∷ ∀ r. RequestIdTokenBus → DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
+render ∷ RequestIdTokenBus → DeckOptions → (DeckOptions → DeckComponent) → DCS.State → DeckHTML
 render requestNewIdTokenBus opts deckComponent st =
   -- HACK: required so that nested finalizers get run. Since this is run inside
   -- of a separate runUI instance with Deck.Component.Nested, they will not
@@ -113,7 +113,7 @@ render requestNewIdTokenBus opts deckComponent st =
     Error err → DCR.renderError err
     _ → DCR.renderDeck requestNewIdTokenBus opts deckComponent st
 
-eval ∷ ∀ r. RequestIdTokenBus → DeckOptions → Query ~> DeckDSL
+eval ∷ RequestIdTokenBus → DeckOptions → Query ~> DeckDSL
 eval requestNewIdTokenBus opts@{ wiring } = case _ of
   Init next → do
     pb ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
@@ -280,7 +280,7 @@ eval requestNewIdTokenBus opts@{ wiring } = case _ of
 
 -- | Accumulates all `VarMap`s within the deck, including `VarMaps` from any
 -- | child decks within board cards.
-getVarMaps ∷ ∀ r. RequestIdTokenBus → DirPath → Wiring → DeckDSL (Map.Map DeckId Port.VarMap)
+getVarMaps ∷ RequestIdTokenBus → DirPath → Wiring → DeckDSL (Map.Map DeckId Port.VarMap)
 getVarMaps requestNewIdTokenBus path wiring =
   Map.fromFoldable <$> (Array.foldM goCard L.Nil =<< H.gets _.modelCards)
   where
@@ -312,7 +312,7 @@ getVarMaps requestNewIdTokenBus path wiring =
       Right cards ->
         Array.foldM goCard acc cards
 
-peek ∷ ∀ a r. RequestIdTokenBus → DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
+peek ∷ ∀ a. RequestIdTokenBus → DeckOptions → H.ChildF ChildSlot ChildQuery a → DeckDSL Unit
 peek requestNewIdTokenBus opts (H.ChildF s q) =
   (peekCards opts.wiring ⊹ (\_ _ → pure unit) $ s)
    ⨁ peekBackSide requestNewIdTokenBus opts
@@ -320,7 +320,7 @@ peek requestNewIdTokenBus opts (H.ChildF s q) =
    ⨁ (peekDialog requestNewIdTokenBus opts ⨁ (const $ pure unit))
    $ q
 
-peekDialog ∷ ∀ a r. RequestIdTokenBus → DeckOptions → Dialog.Query a → DeckDSL Unit
+peekDialog ∷ ∀ a. RequestIdTokenBus → DeckOptions → Dialog.Query a → DeckDSL Unit
 peekDialog _ _ (Dialog.Show _ _) =
   H.modify (DCS._displayMode .~ DCS.Dialog)
 peekDialog _ _ (Dialog.Dismiss _) =
@@ -336,7 +336,7 @@ peekDialog _ _ (Dialog.Confirm d b _) = do
     Dialog.DeleteDeck | b → raise' $ H.action $ DoAction DeleteDeck
     _ → pure unit
 
-peekBackSide ∷ ∀ a r. RequestIdTokenBus → DeckOptions → Back.Query a → DeckDSL Unit
+peekBackSide ∷ ∀ a. RequestIdTokenBus → DeckOptions → Back.Query a → DeckDSL Unit
 peekBackSide requestNewIdTokenBus opts (Back.DoAction action _) =
   case action of
     Back.Trash → do
@@ -576,8 +576,7 @@ queuePendingCard wiring pendingCoord = do
       Bus.write { source: st.id, pendingCard, cards } wiring.pending
 
 runPendingCards
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → DeckOptions
   → DeckId
   → DeckId × Card.Model
@@ -634,7 +633,7 @@ runInitialEval wiring = do
 
 -- | Evaluates a card given an input and model.
 evalCard
-  ∷ ∀ r s
+  ∷ ∀ s
   . RequestIdTokenBus
   → Bus.Bus (write ∷ Bus.Cap | s) AE.Event
   → DirPath
@@ -789,7 +788,7 @@ getDeckModel = do
     }
 
 -- | Saves the deck as JSON, using the current values present in the state.
-saveDeck ∷ ∀ r. RequestIdTokenBus → DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
+saveDeck ∷ RequestIdTokenBus → DeckOptions → Maybe (DeckId × CardId) → DeckDSL Unit
 saveDeck requestNewIdTokenBus { accessType, wiring, cursor } coord = do
   st ← H.get
   when (AT.isEditable accessType) do
@@ -831,7 +830,7 @@ saveDeck requestNewIdTokenBus { accessType, wiring, cursor } coord = do
             model = deck { cards = cards }
         void $ putDeck requestNewIdTokenBus st.path deckId model wiring.decks
 
-loadDeck ∷ ∀ r. RequestIdTokenBus → DeckOptions → DirPath → DeckId → DeckDSL Unit
+loadDeck ∷ RequestIdTokenBus → DeckOptions → DirPath → DeckId → DeckDSL Unit
 loadDeck requestNewIdTokenBus opts path deckId = do
   H.modify
     $ (DCS._stateMode .~ Loading)
@@ -855,8 +854,7 @@ loadDeck requestNewIdTokenBus opts path deckId = do
         }
 
 loadMirroredCards
-  ∷ ∀ r
-  . RequestIdTokenBus
+  ∷ RequestIdTokenBus
   → Wiring
   → DirPath
   → Array (DeckId × CardId)

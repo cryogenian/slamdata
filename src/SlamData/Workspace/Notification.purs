@@ -34,7 +34,7 @@ import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
 
 type DetailedError =
-  ∀ r m eff
+  ∀ m r eff
   . (Bind m, Affable (avar ∷ AVAR | eff) m)
   ⇒ String
   → Bus (write ∷ Cap | r) N.NotificationOptions

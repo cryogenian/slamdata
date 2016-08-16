@@ -144,7 +144,7 @@ data Query a
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-comp ∷ ∀ r. RequestIdTokenBus → H.Component State Query Slam
+comp ∷ RequestIdTokenBus → H.Component State Query Slam
 comp requestNewIdTokenBus =
   H.lifecycleComponent
     { render
@@ -237,7 +237,7 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval ∷ ∀ r. RequestIdTokenBus → Query ~> DSL
+eval ∷ RequestIdTokenBus → Query ~> DSL
 eval _ (Dismiss next) = pure next
 eval _ (SetShowList bool next) = do
   H.modify (_showList .~ bool)
@@ -308,7 +308,7 @@ eval requestNewIdTokenBus (Init next) = do
   dirItemClicked requestNewIdTokenBus $ R.parent $ state.initial
   pure next
 
-dirItemClicked ∷ ∀ r. RequestIdTokenBus → R.Resource → DSL Unit
+dirItemClicked ∷ RequestIdTokenBus → R.Resource → DSL Unit
 dirItemClicked requestNewIdTokenBus res = do
   case R.getPath res of
     Right _ → pure unit

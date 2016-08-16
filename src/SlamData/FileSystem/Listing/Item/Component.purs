@@ -184,7 +184,7 @@ itemView state@{ item } selected presentActions | otherwise =
   label | selected  = "Deselect " <> itemName state
   label | otherwise = "Select " <> itemName state
 
-iconClasses ∷ forall r i. Item → HP.IProp (class ∷ HP.I | r) i
+iconClasses ∷ forall i r. Item → HP.IProp (class ∷ HP.I | r) i
 iconClasses item = HP.classes
   [ B.glyphicon
   , CSS.itemIcon

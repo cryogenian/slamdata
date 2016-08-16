@@ -44,7 +44,7 @@ data Event
   | ErrorInCardEval CardType
 
 track
-  ∷ ∀ r m eff
+  ∷ ∀ m r eff
   . (Affable (avar ∷ AVAR | eff) m)
   ⇒ Event
   → Bus.Bus (write ∷ Bus.Cap | r) Event

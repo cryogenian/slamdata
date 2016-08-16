@@ -28,7 +28,6 @@ import SlamData.Prelude
 import Control.UI.Browser as Browser
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
-import Control.Coroutine.Stalling as StallingCoroutine
 
 import Halogen as H
 import Halogen.HTML.Core (className)
@@ -37,18 +36,14 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
 import Halogen.Menu.Component.State (makeMenu)
 import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
-import Halogen.Query.EventSource as HE
 
-import OIDC.Aff as OIDC
 import OIDC.Crypt as Crypt
 
 import Quasar.Advanced.Types (ProviderR, Provider(..))
 
 import SlamData.Analytics as Analytics
-import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Quasar as Api
-import SlamData.Quasar.Auth.IdTokenStorageEvents as IdTokenStorageEvents
 import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
 import SlamData.Quasar.Auth.Store as AuthStore

@@ -62,7 +62,7 @@ import Utils.AffableProducer as AP
 import Utils.Completions (memoizeCompletionStrs)
 
 children
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → DirPath
@@ -75,7 +75,7 @@ children requestNewIdTokenBus dir = runExceptT do
 
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → DirPath
@@ -101,7 +101,7 @@ transitiveChildrenProducer requestNewIdTokenBus dirPath = do
       liftEff ∘ emit $ Right unit
 
 listing
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → DirPath
@@ -126,7 +126,7 @@ listing requestNewIdTokenBus p =
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
 getNewName
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → DirPath
@@ -160,7 +160,7 @@ getNewName requestNewIdTokenBus parent name = do
 -- | Will return `Just` in case the resource was successfully moved, and
 -- | `Nothing` in case no resource existed at the requested source path.
 move
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → R.Resource
@@ -181,7 +181,7 @@ move requestNewIdTokenBus src tgt = do
       Left QF.Forbidden → Right Nothing
 
 delete
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → R.Resource
@@ -233,7 +233,7 @@ delete requestNewIdTokenBus resource =
           else alreadyInTrash' d
 
 forceDelete
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → R.Resource
@@ -290,7 +290,7 @@ cleanViewMounts requestNewIdTokenBus path =
       _ → pure unit
 
 messageIfFileNotFound
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → FilePath
@@ -306,7 +306,7 @@ messageIfFileNotFound requestNewIdTokenBus path defaultMsg =
   handleResult (Right _) = Right Nothing
 
 dirNotAccessible
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → DirPath
@@ -321,7 +321,7 @@ dirNotAccessible requestNewIdTokenBus path =
   handleResult (Right _) = Nothing
 
 fileNotAccessible
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Monad m, Affable (QEff eff) m)
   ⇒ RequestIdTokenBus
   → FilePath

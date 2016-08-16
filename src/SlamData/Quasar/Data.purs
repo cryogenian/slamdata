@@ -24,8 +24,6 @@ module SlamData.Quasar.Data
 import SlamData.Prelude
 
 import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Aff.AVar (AVar)
-import Control.Monad.Aff.Bus (Bus, Cap)
 import Control.Monad.Aff.Free (class Affable)
 
 import Data.Argonaut as JS
@@ -36,12 +34,12 @@ import Quasar.Error (lowerQError)
 import Quasar.Types (FilePath, AnyPath)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (EIdToken)
+import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 
 makeFile
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . Affable (QEff eff) m
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → QData
   → m (Either Exn.Error Unit)
@@ -54,9 +52,9 @@ makeFile requestNewIdTokenBus path content =
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 save
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . Affable (QEff eff) m
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → JS.Json
   → m (Either Exn.Error Unit)
@@ -69,9 +67,9 @@ save requestNewIdTokenBus path json =
 -- | Even though the path is expected to be absolute it should not include the
 -- | `/data/fs` part of the path for the API.
 load
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → FilePath
   → m (Either String JS.Json)
 load requestNewIdTokenBus file =
@@ -81,9 +79,9 @@ load requestNewIdTokenBus file =
     Left err → Left (QF.printQError err)
 
 delete
-  ∷ ∀ eff r m
+  ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ (Bus (write ∷ Cap | r) (AVar EIdToken))
+  ⇒ RequestIdTokenBus
   → AnyPath
   → m (Either Exn.Error Unit)
 delete requestNewIdTokenBus path =
