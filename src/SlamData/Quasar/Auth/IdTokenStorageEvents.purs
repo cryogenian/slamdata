@@ -34,14 +34,17 @@ getIdTokenStorageEvents
   ∷ ∀ eff
   . Eff (dom :: DOM, avar :: AVAR | eff) (StallingProducer (StorageEvent (Either String IdToken)) (Aff (dom :: DOM, avar :: AVAR | eff)) Unit)
 getIdTokenStorageEvents =
-  StallingCoroutine.mapStallingProducer stringValuesToIdTokens
+  StallingCoroutine.mapStallingProducer valuesToEitherStringIdTokens
     ∘ StallingCoroutine.filter isIdTokenKeyEvent
     ∘ StallingCoroutine.producerToStallingProducer
     <$> LocalStorage.getStorageEventProducer false
   where
-  isIdTokenKeyEvent o = Foreign.readString o.key == Right AuthKeys.idTokenLocalStorageKey
-  stringValuesToIdTokens e =
+  isIdTokenKeyEvent o =
+    Foreign.readString o.key == Right AuthKeys.idTokenLocalStorageKey
+  valuesToEitherStringIdTokens e =
     e
-      { newValue = IdToken <$> (decodeJson =<< jsonParser =<< (lmap show $ Foreign.readString e.newValue))
-      , oldValue = IdToken <$> (decodeJson =<< jsonParser =<< (lmap show $ Foreign.readString e.oldValue))
+      { newValue = foreignToEitherStringIdToken e.newValue
+      , oldValue = foreignToEitherStringIdToken e.oldValue
       }
+  foreignToEitherStringIdToken =
+    map IdToken <=< decodeJson <=< jsonParser <=< lmap show ∘ Foreign.readString

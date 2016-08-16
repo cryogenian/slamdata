@@ -44,39 +44,17 @@ import Data.Traversable as T
 import Control.UI.Browser as Browser
 
 import DOM (DOM)
-import DOM.HTML as DOMHTML
 
 import OIDC.Crypt.Types as OIDCT
-import OIDC.Crypt.JSONWebKey (JSONWebKey)
 import OIDC.Crypt as OIDC
 
-import SlamData.Config as Config
 import SlamData.Quasar.Auth.Keys as AuthKeys
-import SlamData.Quasar.Auth.IdTokenStorageEvents as IdTokenStorageEvents
-import SlamData.Quasar.Auth.Reauthentication as Reauthentication
 import SlamData.Quasar.Auth.Reauthentication (EIdToken)
-
-import OIDC.Aff as OIDCAff
 
 import Quasar.Advanced.Types as QAT
 
 import Utils.LocalStorage as LS
-import Utils.DOM as DOMUtils
 import Utils (passover)
-
-race ∷ Aff _ _ → Aff _ _ → Aff _ _
-race a1 a2 = do
-  va <- AVar.makeVar -- the `a` value
-  ve <- AVar.makeVar -- the error count (starts at 0)
-  AVar.putVar ve 0
-  c1 <- Aff.forkAff $ either (maybeKill va ve) (AVar.putVar va) =<< Aff.attempt a1
-  c2 <- Aff.forkAff $ either (maybeKill va ve) (AVar.putVar va) =<< Aff.attempt a2
-  AVar.takeVar va `Aff.cancelWith` (c1 <> c2)
-  where
-  maybeKill va ve err = do
-    e <- AVar.takeVar ve
-    if e == 1 then AVar.killVar va err else pure unit
-    AVar.putVar ve (e + 1)
 
 fromEither ∷ ∀ a b. E.Either a b → M.Maybe b
 fromEither = E.either (\_ → M.Nothing) (M.Just)
@@ -106,8 +84,7 @@ fromStallingProducer producer = do
   var ← AVar.makeVar
   StallingCoroutine.runStallingProcess
     (producer $$? (Coroutine.consumer \e → liftAff (AVar.putVar var e) $> Just unit))
-  x ← AVar.takeVar var
-  traceAny x \_ -> pure x
+  AVar.takeVar var
 
 type RetrieveIdTokenEffRow eff = (console :: CONSOLE, rsaSignTime :: OIDC.RSASIGNTIME, avar :: AVAR, dom :: DOM, random :: RANDOM | eff)
 

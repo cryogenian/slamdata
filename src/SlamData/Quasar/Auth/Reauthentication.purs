@@ -63,13 +63,17 @@ import Quasar.Advanced.Types as QAT
 import SlamData.Config as Config
 import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
 import SlamData.Quasar.Auth.Keys as AuthKeys
+import SlamData.Quasar.Auth.Store as AuthStore
 import Text.Parsing.StringParser (ParseError(..))
---import Utils.DOM as DOMUtils
+import Utils.DOM as DOMUtils
 import Utils.LocalStorage as LocalStorage
 import Utils as Utils
 
 data AuthenticationError =
-  IdTokenInvalid | IdTokenUnavailable String | BrowserError String | NoAuthenticationAttempted String
+  IdTokenInvalid | IdTokenUnavailable String | DOMError String | NoAuthProviderInLocalStorage
+
+instance semigroupAuthenticationError ∷ Semigroup AuthenticationError where
+  append x y = y
 
 type RequestIdTokenBus = BusW (AVar EIdToken)
 
@@ -97,20 +101,20 @@ firstValueFromStallingProducer producer = do
 writeOnlyBus ∷ ∀ a. BusRW a → BusW a
 writeOnlyBus = snd ∘ Bus.split
 
--- | Write an AVar to the returned bus to get a new OIDC id token from the given provider
+-- | Write an AVar to the returned bus to get a valid OIDC id token from the given provider.
 reauthentication ∷ ∀ eff. Aff (ReauthEffects eff) RequestIdTokenBus
 reauthentication = do
   stateRef ← liftEff $ Ref.newRef Nothing
   requestBus ← Bus.make
-  Aff.forkAff $ forever (reauthenticate stateRef =<< Bus.read requestBus)
+  Aff.forkAff $ forever (authenticate stateRef =<< Bus.read requestBus)
   pure $ writeOnlyBus requestBus
 
-reauthenticate
+authenticate
   ∷ ∀ eff
   . Ref (Maybe (Promise EIdToken))
   → AVar EIdToken
   → Aff (ReauthEffects eff) Unit
-reauthenticate stateRef replyAvar = do
+authenticate stateRef replyAvar = do
   state ← liftEff $ Ref.readRef stateRef
   case state of
     Nothing → do
@@ -129,9 +133,16 @@ reauthenticate stateRef replyAvar = do
   requestReauthenticationSilently ∷ Aff (ReauthEffects eff) (Either AuthenticationError DOMNodeTypes.Node)
   requestReauthenticationSilently =
     either
-      (const $ pure $ Left $ NoAuthenticationAttempted "No previously used auth provider available.")
-      (liftEff ∘ map (lmap BrowserError) ∘ appendHiddenIFrameToBody)
-      =<< requestReauthenticationURI
+      (const $ pure $ Left $ NoAuthProviderInLocalStorage)
+      (liftEff ∘ map (lmap DOMError) ∘ appendHiddenIFrameToBody)
+      =<< requestReauthenticationURI OIDCAff.None
+
+  requestPromptedAuthentication ∷ Aff (ReauthEffects eff) (Either AuthenticationError Unit)
+  requestPromptedAuthentication =
+    either
+      (const $ pure $ Left $ NoAuthProviderInLocalStorage)
+      (map Right ∘ liftEff ∘ DOMUtils.openPopup)
+      =<< requestReauthenticationURI OIDCAff.Login
 
   appendHiddenIFrameToBody ∷ String → Eff (ReauthEffects eff) (Either String DOMNodeTypes.Node)
   appendHiddenIFrameToBody uri =
@@ -166,6 +177,9 @@ reauthenticate stateRef replyAvar = do
       =<< DOMHTMLWindow.document
       =<< DOMHTML.window
 
+  removeBodyChild ∷ DOMNodeTypes.Node → Eff (ReauthEffects eff) (Either String DOMNodeTypes.Node)
+  removeBodyChild child = either (pure ∘ Left) (map Right ∘ DOMNode.removeChild child) =<< getBodyNode
+
   getBodyNode ∷ Eff (ReauthEffects eff) (Either String DOMNodeTypes.Node)
   getBodyNode =
     (maybe (Left "Couldn't find body element.") Right ∘ map DOMHTMLTypes.htmlElementToNode ∘ Nullable.toMaybe)
@@ -174,10 +188,21 @@ reauthenticate stateRef replyAvar = do
   requestIdToken ∷ Aff (ReauthEffects eff) (Promise EIdToken)
   requestIdToken = Promise.defer do
     idToken ← retrieveIdTokenFromLS
-    either
-      (const $ (either (pure ∘ Left) (const $ retrieveIdTokenFromLSOnChange)) =<< requestReauthenticationSilently)
-      (const $ pure idToken)
-      idToken
+    provider ← liftEff $ retrieveProvider
+    (case idToken of
+      Left (IdTokenUnavailable _) | isJust provider →
+        runExceptT
+          $ ExceptT (either (pure ∘ Left) reauthenticate =<< requestReauthenticationSilently)
+          <|> ExceptT (requestPromptedAuthentication *> retrieveIdTokenFromLSOnChange)
+      Left IdTokenInvalid →
+        (either (pure ∘ Left) reauthenticate =<< requestReauthenticationSilently)
+      _ ->
+        pure idToken) >>= Utils.passover (either (const $ liftEff AuthStore.clearProvider) (const $ pure unit))
+
+  reauthenticate ∷ DOMNodeTypes.Node → Aff (ReauthEffects eff) EIdToken
+  reauthenticate iFrameNode =
+    -- Failures to remove the IFrame are not returned.
+    Utils.passover (const $ liftEff $ removeBodyChild iFrameNode) =<< retrieveIdTokenFromLSOnChange
 
   retrieveIdTokenFromLSOnChange ∷ Aff (ReauthEffects eff) EIdToken
   retrieveIdTokenFromLSOnChange =
@@ -205,12 +230,12 @@ reauthenticate stateRef replyAvar = do
   runParseError ∷ ParseError → String
   runParseError (ParseError s) = s
 
-  requestReauthenticationURI ∷ Aff (ReauthEffects eff) (Either String String)
-  requestReauthenticationURI =
+  requestReauthenticationURI ∷ OIDCAff.Prompt → Aff (ReauthEffects eff) (Either String String)
+  requestReauthenticationURI prompt =
     liftEff do
       redirectUri ← appendAuthPath <$> Browser.locationString
       runExceptT
-        $ (ExceptT ∘ map (bimap runParseError id) ∘ flip (OIDCAff.requestAuthenticationURI OIDCAff.None) redirectUri)
+        $ (ExceptT ∘ map (bimap runParseError id) ∘ flip (OIDCAff.requestAuthenticationURI prompt) redirectUri)
         =<< ExceptT retrieveProviderRFromLS
 
   verify ∷ IdToken → Aff (ReauthEffects eff) EIdToken

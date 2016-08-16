@@ -26,6 +26,7 @@ module SlamData.SignIn.Component
 import SlamData.Prelude
 
 import Control.UI.Browser as Browser
+import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus as Bus
 import Control.Coroutine.Stalling as StallingCoroutine
 
@@ -41,7 +42,7 @@ import Halogen.Query.EventSource as HE
 import OIDC.Aff as OIDC
 import OIDC.Crypt as Crypt
 
-import Quasar.Advanced.Types (ProviderR)
+import Quasar.Advanced.Types (ProviderR, Provider(..))
 
 import SlamData.Analytics as Analytics
 import SlamData.Config as Config
@@ -56,11 +57,10 @@ import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
 
-import Utils.DOM as DOMUtils
+import Utils (passover)
 
 data Query a
   = DismissSubmenu a
-  | SignedIn a
   | Init a
 
 type QueryP = Coproduct Query (H.ChildF MenuSlot ChildQuery)
@@ -82,15 +82,15 @@ type SignInHTML = H.ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
 type SignInDSL = H.ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
 
 comp
-  ∷ ∀ r s
+  ∷ ∀ s
   . RequestIdTokenBus
   → SignInBusW s
   → H.Component StateP QueryP Slam
-comp requestNewIdTokenBus signInBus =
+comp requestIdTokenBus signInBus =
   H.lifecycleParentComponent
     { render
-    , eval: eval requestNewIdTokenBus signInBus
-    , peek: Just (menuPeek ∘ H.runChildF)
+    , eval: eval requestIdTokenBus signInBus
+    , peek: Just (menuPeek requestIdTokenBus signInBus ∘ H.runChildF)
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
@@ -105,24 +105,13 @@ render state =
         , initialState: H.parentState $ Menu.make []
         }
 
-eval ∷ ∀ r s. RequestIdTokenBus → SignInBusW s → Query ~> SignInDSL
+eval ∷ ∀ s. RequestIdTokenBus → SignInBusW s → Query ~> SignInDSL
 eval _ _ (DismissSubmenu next) = dismissAll $> next
-eval requestNewIdTokenBus signInBus (SignedIn next) =
-  sendMessage *> update requestNewIdTokenBus $> next
-  where
-  sendMessage = H.fromAff $ Bus.write SignInSuccess signInBus
-eval requestNewIdTokenBus _ (Init next) = subscribeToIdTokenEvents *> update requestNewIdTokenBus $> next
+eval requestIdTokenBus _ (Init next) = update requestIdTokenBus $> next
 
-subscribeToIdTokenEvents :: SignInDSL Unit
-subscribeToIdTokenEvents =
-  H.subscribe'
-    ∘ HE.EventSource
-    ∘ StallingCoroutine.mapStallingProducer (const $ SignedIn unit)
-    =<< H.fromEff IdTokenStorageEvents.getIdTokenStorageEvents
-
-update ∷ ∀ r. RequestIdTokenBus → SignInDSL Unit
-update requestNewIdTokenBus = do
-  mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+update ∷ RequestIdTokenBus → SignInDSL Unit
+update requestIdTokenBus = do
+  mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestIdTokenBus
   traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
     retrieveProvidersAndUpdateMenu
@@ -152,7 +141,7 @@ update requestNewIdTokenBus = do
 
   retrieveProvidersAndUpdateMenu ∷ SignInDSL Unit
   retrieveProvidersAndUpdateMenu = do
-    eProviders ← H.fromAff $ Api.retrieveAuthProviders requestNewIdTokenBus
+    eProviders ← H.fromAff $ Api.retrieveAuthProviders requestIdTokenBus
     case eProviders of
       Left _ → H.modify (_{hidden = true})
       Right Nothing → H.modify (_{hidden = true})
@@ -175,23 +164,25 @@ dismissAll =
     H.action HalogenMenu.DismissSubmenu
 
 menuPeek
-  ∷ ∀ a
-  . Menu.QueryP a
+  ∷ ∀ a r
+  . RequestIdTokenBus
+  → SignInBusW r
+  → Menu.QueryP a
   → SignInDSL Unit
-menuPeek =
+menuPeek requestIdTokenBus signInBus =
   coproduct
     (const (pure unit))
-    (submenuPeek ∘ H.runChildF)
+    (submenuPeek requestIdTokenBus signInBus ∘ H.runChildF)
 
 submenuPeek
-  ∷ ∀ a
-  . HalogenMenu.SubmenuQuery (Maybe ProviderR) a
+  ∷ ∀ a r
+  . RequestIdTokenBus
+  → SignInBusW r
+  → HalogenMenu.SubmenuQuery (Maybe ProviderR) a
   → SignInDSL Unit
-submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
+submenuPeek requestIdTokenBus signInBus (HalogenMenu.SelectSubmenuItem providerR _) = do
   {loggedIn} ← H.get
-  if loggedIn
-    then logOut
-    else for_ v $ either (const $ pure unit) (H.fromEff ∘ DOMUtils.openPopup) <=< requestAuthenticationURI
+  if loggedIn then logOut else logIn
   pure unit
   where
   logOut ∷ SignInDSL Unit
@@ -200,12 +191,18 @@ submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
       AuthStore.clearIdToken
       AuthStore.clearProvider
       Browser.reload
-  appendAuthPath s = s <> Config.redirectURIString
-  requestAuthenticationURI pr =
-    H.fromEff
-      $ OIDC.requestAuthenticationURI OIDC.Login pr
-      ∘ appendAuthPath
-      =<< Browser.locationString
+  logIn ∷ SignInDSL Unit
+  logIn = do
+    for_ providerR $ H.fromEff ∘ AuthStore.storeProvider ∘ Provider
+    H.fromAff
+      -- TODO: Add notifications here.
+      $ either (const $ pure unit) (const $ Bus.write SignInSuccess signInBus)
+      =<< AVar.takeVar
+      =<< passover (flip Bus.write requestIdTokenBus)
+      =<< AVar.makeVar
+    update requestIdTokenBus
+    -- TODO: Reattempt failed actions without loosing state, remove reload.
+    H.fromEff Browser.reload
 
 queryMenu
   ∷ HalogenMenu.MenuQuery (Maybe ProviderR) Unit

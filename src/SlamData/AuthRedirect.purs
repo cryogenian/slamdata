@@ -20,121 +20,29 @@ module SlamData.AuthRedirect
 
 import SlamData.Prelude
 
-import Control.Monad.Aff as Aff
-import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Now as Now
-import Control.Monad.Eff.Exception as Exn
-import Control.Monad.Eff.Ref as Ref
-import Control.Monad.Maybe.Trans as MBT
-import Control.Monad.Eff.Random (RANDOM)
 
 import DOM as DOM
 import DOM.HTML (window)
 import DOM.HTML.Location as Loc
 import DOM.HTML.Window as Win
 
-import Network.HTTP.Affjax as AX
-
-import OIDC.Crypt as OIDC
-
 import SlamData.AuthRedirect.RedirectHashPayload as Payload
 import SlamData.Quasar.Auth.Store as AuthStore
-import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
+
+import OIDC.Crypt.Types (IdToken)
 
 import Utils.DOM as DOMUtils
 
-type RedirectEffects =
-  ( ajax :: AX.AJAX
-  , avar :: AVar.AVAR
-  , dom :: DOM.DOM
-  , random :: RANDOM
-  , err :: Exn.EXCEPTION
-  , now :: Now.NOW
-  , ref ∷ Ref.REF
-  , rsaSignTime :: OIDC.RSASIGNTIME
-  )
+type RedirectEffects = (dom :: DOM.DOM)
 
-type RedirectState =
-  { payload :: Payload.RedirectHashPayload
-  , keyString :: OIDC.KeyString
-  , unhashedNonce :: OIDC.UnhashedNonce
-  , clientID :: OIDC.ClientID
-  }
+type RedirectState = Payload.RedirectHashPayload
 
-retrieveRedirectState :: Eff RedirectEffects RedirectState
-retrieveRedirectState = do
-  hash ← window >>= Win.location >>= Loc.hash
+getHash :: Eff RedirectEffects String
+getHash = window >>= Win.location >>= Loc.hash
 
-  payload ←
-    Payload.parseUriHash hash #
-      either (fail ∘ show) pure
-
-  keyString ←
-    AuthRetrieve.retrieveKeyString >>=
-      maybe (fail "Failed to retrieve KeyString from local storage") pure
-
-  unhashedNonce ←
-    AuthRetrieve.retrieveNonce >>=
-      maybe (fail "Failed to retrieve UnhashedNonce from local storage") pure
-
-  clientID ←
-    AuthRetrieve.retrieveClientID >>=
-      maybe (fail "Failed to retrieve ClientID from local storage") pure
-
-  pure
-    { payload
-    , keyString
-    , unhashedNonce
-    , clientID
-    }
-
-newtype RedirectURL = RedirectURL String
-
-verifyRedirect
-  :: RedirectState
-  -> OIDC.Issuer
-  -> OIDC.JSONWebKey
-  -> MBT.MaybeT (Eff RedirectEffects) RedirectURL
-verifyRedirect st issuer jwk = do
-  -- Fail immediately if the IdToken fails to verify.
-  OIDC.verifyIdToken st.payload.idToken issuer st.clientID st.unhashedNonce jwk
-    # lift
-    >>= guard
-  -- If the IdToken has been verified,
-  -- then we may proceed to extract the redirect URL.
-
-  OIDC.unbindState st.payload.state st.keyString
-    <#> OIDC.runStateString
-    >>> RedirectURL
-      # pure
-      # MBT.MaybeT
-
-fail :: ∀ a. String → Eff RedirectEffects a
-fail s = AuthStore.storeIdToken (Left s) *> (window >>= DOMUtils.close) *> Exn.throw s
+parseIdToken :: String -> Either String IdToken
+parseIdToken = Payload.parseUriHash >>> map _.idToken >>> lmap show
 
 main :: Eff RedirectEffects Unit
-main = do
-  -- We're getting token too fast. It isn't valid until next second (I think)
-  void $ Aff.runAff Exn.throwException (const (pure unit)) do
-    state ← liftEff retrieveRedirectState
-    -- First, retrieve the provider that matches our stored ClientID.
-    maybeOpenIDConfiguration ← liftEff $ map _.openIDConfiguration <$> AuthRetrieve.retrieveProviderR
-
-    case maybeOpenIDConfiguration of
-      Just openIDConfiguration →
-        liftEff do
-          -- Try to verify the IdToken against each of the provider's jwks,
-          -- stopping at the first success.
-          RedirectURL redirectURL ←
-            openIDConfiguration.jwks
-              <#> verifyRedirect state openIDConfiguration.issuer
-                # foldl ((<|>)) empty
-                # MBT.runMaybeT
-              >>= maybe (fail "Failed to verify redirect") pure
-
-          AuthStore.storeIdToken $ Right state.payload.idToken
-      Nothing →
-        liftEff $ fail "Failed to retrieve provider from local storage"
-    liftEff $ window >>= DOMUtils.close
+main = (getHash >>= parseIdToken >>> AuthStore.storeIdToken) *> (window >>= DOMUtils.close)
