@@ -36,7 +36,7 @@ import Quasar.Types (FilePath)
 import SlamData.Quasar.Aff (QEff)
 import SlamData.Quasar.Data as QD
 import SlamData.Workspace.Deck.DeckId (DeckId)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 type Workspace =
   { root ∷ Maybe DeckId

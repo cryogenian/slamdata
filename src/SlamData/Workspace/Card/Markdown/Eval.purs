@@ -39,7 +39,7 @@ import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
 import SlamData.Workspace.Card.Port as Port
 import SlamData.Quasar.Query as Quasar
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Workspace.Deck.AdditionalSource (AdditionalSource)
 
 import Text.Markdown.SlamDown as SD

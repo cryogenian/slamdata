@@ -57,9 +57,9 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
-import SlamData.Quasar.Auth.Reauthentication as Reauthentication
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
-import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
+import SlamData.Quasar.Auth.Authentication as Authentication
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication as AuthRetrieve
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
 
@@ -76,7 +76,7 @@ main = do
   runHalogenAff do
     forkAff Analytics.enableAnalytics
     signInBus ← Bus.make
-    requestNewIdTokenBus ← Reauthentication.reauthentication
+    requestNewIdTokenBus ← Authentication.authentication
     driver ← runUI (comp requestNewIdTokenBus signInBus) (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion
@@ -196,7 +196,7 @@ listPath requestNewIdTokenBus query deep var dir driver = do
       "An unknown error ocurred: 401 \"\"" -> do
         traceAnyA "listing error message start"
         y ← append forbiddenMessage <<< suggestedAction
-          <$> H.fromAff (AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus)
+          <$> H.fromAff (AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestNewIdTokenBus)
         traceAnyA "listing error message end"
         pure y
       s ->

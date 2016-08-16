@@ -31,7 +31,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Deck.BackSide.Component as Back

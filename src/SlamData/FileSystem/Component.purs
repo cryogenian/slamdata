@@ -73,7 +73,7 @@ import SlamData.FileSystem.Search.Component as Search
 import SlamData.Header.Component as Header
 import SlamData.Quasar (ldJSON) as API
 import SlamData.Quasar.Auth (authHeaders) as API
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Quasar.Data (makeFile, save) as API
 import SlamData.Quasar.FS (children, delete, getNewName) as API
 import SlamData.Quasar.Mount (mountInfo, viewInfo) as API

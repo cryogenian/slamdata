@@ -34,7 +34,7 @@ import Quasar.Error (lowerQError)
 import Quasar.Types (FilePath, AnyPath)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 makeFile
   ∷ ∀ eff m

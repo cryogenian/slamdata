@@ -41,7 +41,7 @@ import Data.Set as Set
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.Quasar.Aff (QEff)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Quasar.Data as Quasar
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as CM

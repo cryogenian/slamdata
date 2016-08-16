@@ -42,7 +42,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Config as Config
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Render.CSS as ClassNames
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId (CardId)

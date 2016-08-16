@@ -32,9 +32,8 @@ import DOM (DOM)
 
 import Network.HTTP.Affjax as AX
 
-import SlamData.Quasar.Auth.Retrieve (retrieveIdToken, fromEither)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus, getIdToken, fromEither)
 import SlamData.Quasar.Auth.Permission (retrieveTokenHashes)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
 
 import Quasar.Advanced.QuasarAF as QF
 import Quasar.Advanced.QuasarAF.Interpreter.Aff as QFA
@@ -52,6 +51,6 @@ runQuasarF
   → QF.QuasarAFC (Either e a)
   → m (Either e a)
 runQuasarF requestNewIdTokenBus qf = (fromAff ∷ ∀ x. Aff (QEff eff) x → m x) do
-  idToken ← fromEither <$> retrieveIdToken requestNewIdTokenBus
+  idToken ← fromEither <$> getIdToken requestNewIdTokenBus
   permissions ← fromEff retrieveTokenHashes
   runReaderT (QFA.eval qf) { basePath: "", idToken, permissions }

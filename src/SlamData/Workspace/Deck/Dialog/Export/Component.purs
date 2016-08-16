@@ -44,8 +44,8 @@ import OIDC.Crypt as OIDC
 
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
-import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication as AuthRetrieve
 import SlamData.Quasar.Security as Q
 import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (glyph, fadeWhen)
@@ -360,7 +360,7 @@ eval requestNewIdTokenBus (Init mbEl next) = next <$ do
       Z.setData "text/plain" val z
 
   -- To know if user is authed
-  mbAuthToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+  mbAuthToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestNewIdTokenBus
   case mbAuthToken of
     Nothing →
       H.modify _{ permToken = Nothing
@@ -420,7 +420,7 @@ eval requestNewIdTokenBus (ToggleShouldGenerateToken next) = next <$ do
   case state.permToken of
     Nothing →
       unless state.shouldGenerateToken do
-        mbOIDC ← H.fromAff $ AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+        mbOIDC ← H.fromAff $ AuthRetrieve.getIdToken requestNewIdTokenBus
         workspacePath ← H.gets (_.workspacePath ∘ _.sharingInput)
         for_ mbOIDC \oidc → do
           let

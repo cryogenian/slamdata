@@ -52,7 +52,7 @@ import Quasar.Mount as QM
 import Quasar.Types (AnyPath, DirPath, FilePath, CompileResultR)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 -- | This is template string where actual path is encoded like {{path}}
 type SQL = String

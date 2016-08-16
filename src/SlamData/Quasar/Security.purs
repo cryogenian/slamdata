@@ -27,7 +27,7 @@ import Quasar.Types as QT
 import Quasar.Advanced.Types as QTA
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 sharePermission
   ∷ ∀ eff m

@@ -56,7 +56,7 @@ import SlamData.Effects (Slam, SlamDataEffects)
 import SlamData.FileSystem.Routing (parentURL)
 import SlamData.Header.Component as Header
 import SlamData.Notification.Component as NC
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Quasar.Data as Quasar
 import SlamData.SignIn.Bus (SignInBus)
 import SlamData.SignIn.Component as SignIn

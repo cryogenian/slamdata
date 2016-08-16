@@ -37,7 +37,7 @@ import Halogen.Component.Utils (raise)
 
 import Quasar.Advanced.Types as QT
 
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Quasar.Security as Q
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)

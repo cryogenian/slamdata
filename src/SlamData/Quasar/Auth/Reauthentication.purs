@@ -14,14 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-module SlamData.Quasar.Auth.Reauthentication
-  (reauthentication, ReauthEffects, EIdToken, AuthenticationError, RequestIdTokenBus)
-  where
+module SlamData.Quasar.Auth.Authentication
+  ( authentication
+  , getIdToken
+  , fromEither
+  , AuthEffects
+  , EIdToken
+  , AuthenticationError
+  , RequestIdTokenBus
+  ) where
 
-import Data.Foldable as F
-import Data.Foreign as Foreign
-import Data.Traversable as T
-import Data.Nullable as Nullable
 import Control.Apply as Apply
 import Control.Coroutine as Coroutine
 import Control.Coroutine.Stalling (($$?))
@@ -33,42 +35,55 @@ import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.Bus (BusRW, BusW)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Aff.Class (liftAff)
-import Control.Parallel.Class (race)
 import Control.Monad.Aff.Promise (Promise)
 import Control.Monad.Aff.Promise as Promise
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Ref (Ref, REF)
-import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (RANDOM)
+import Control.Monad.Eff.Ref (Ref, REF)
+import Control.Monad.Eff.Ref as Ref
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Rec.Class (forever)
+import Control.Parallel.Class (race)
 import Control.UI.Browser as Browser
-import SlamData.Prelude
 import DOM (DOM)
-import DOM.Node.Node as DOMNode
-import DOM.Node.Document as DOMNodeDocument
 import DOM.HTML as DOMHTML
-import DOM.Node.Types (Node, Element)
-import DOM.HTML.Types as DOMHTMLTypes
-import DOM.HTML.Types (HTMLIFrameElement)
 import DOM.HTML.Document as DOMHTMLDocument
 import DOM.HTML.HTMLIFrameElement as DOMHTMLIFrameElement
+import DOM.HTML.Types (HTMLIFrameElement)
+import DOM.HTML.Types as DOMHTMLTypes
 import DOM.HTML.Window as DOMHTMLWindow
+import DOM.Node.Document as DOMNodeDocument
+import DOM.Node.Node as DOMNode
+import DOM.Node.Types (Node, Element)
+import Data.Either as E
+import Data.Foldable as F
+import Data.Foreign as Foreign
+import Data.Maybe as M
+import Data.Nullable as Nullable
+import Data.Traversable as T
 import OIDC.Aff as OIDCAff
-import OIDC.Crypt as OIDCCrypt
 import OIDC.Crypt (RSASIGNTIME)
-import OIDC.Crypt.Types (IdToken(..), UnhashedNonce(..))
+import OIDC.Crypt as OIDCCrypt
 import OIDC.Crypt.JSONWebKey (JSONWebKey)
+import OIDC.Crypt.Types (IdToken(..), UnhashedNonce(..))
 import Quasar.Advanced.Types as QAT
 import SlamData.Config as Config
+import SlamData.Prelude
 import SlamData.Quasar.Auth.IdTokenStorageEvents (getIdTokenStorageEvents)
 import SlamData.Quasar.Auth.Keys as AuthKeys
 import SlamData.Quasar.Auth.Store as AuthStore
 import Text.Parsing.StringParser (ParseError(..))
+import Utils (passover)
 import Utils.DOM as DOMUtils
 import Utils.LocalStorage as LocalStorage
-import Utils as Utils
+
+fromEither ∷ ∀ a b. E.Either a b → M.Maybe b
+fromEither = E.either (\_ → M.Nothing) (M.Just)
+
+getIdToken ∷ ∀ eff. RequestIdTokenBus → Aff (AuthEffects eff) EIdToken
+getIdToken requestNewIdTokenBus =
+  AVar.takeVar =<< passover (flip Bus.write requestNewIdTokenBus) =<< AVar.makeVar
 
 data AuthenticationError
   = IdTokenInvalid
@@ -83,7 +98,7 @@ type RequestIdTokenBus = BusW (AVar EIdToken)
 
 type EIdToken = Either AuthenticationError IdToken
 
-type ReauthEffects eff =
+type AuthEffects eff =
   ( rsaSignTime ∷ RSASIGNTIME
   , avar ∷ AVAR
   , ref ∷ REF
@@ -106,8 +121,8 @@ writeOnlyBus ∷ ∀ a. BusRW a → BusW a
 writeOnlyBus = snd ∘ Bus.split
 
 -- | Write an AVar to the returned bus to get a valid OIDC id token from the given provider.
-reauthentication ∷ ∀ eff. Aff (ReauthEffects eff) RequestIdTokenBus
-reauthentication = do
+authentication ∷ ∀ eff. Aff (AuthEffects eff) RequestIdTokenBus
+authentication = do
   stateRef ← liftEff $ Ref.newRef Nothing
   requestBus ← Bus.make
   Aff.forkAff $ forever (authenticate stateRef =<< Bus.read requestBus)
@@ -117,7 +132,7 @@ authenticate
   ∷ ∀ eff
   . Ref (Maybe (Promise EIdToken))
   → AVar EIdToken
-  → Aff (ReauthEffects eff) Unit
+  → Aff (AuthEffects eff) Unit
 authenticate stateRef replyAvar = do
   state ← liftEff $ Ref.readRef stateRef
   case state of
@@ -128,20 +143,20 @@ authenticate stateRef replyAvar = do
     Just idTokenPromise → do
       void $ Aff.forkAff $ reply idTokenPromise
   where
-  writeState ∷ Maybe (Promise EIdToken) → Aff (ReauthEffects eff) Unit
+  writeState ∷ Maybe (Promise EIdToken) → Aff (AuthEffects eff) Unit
   writeState = liftEff ∘ Ref.writeRef stateRef
 
-  reply ∷ Promise EIdToken → Aff (ReauthEffects eff) Unit
+  reply ∷ Promise EIdToken → Aff (AuthEffects eff) Unit
   reply = AVar.putVar replyAvar <=< Promise.wait
 
 requestReauthenticationSilently
-  ∷ ∀ eff. Aff (ReauthEffects eff) EIdToken
+  ∷ ∀ eff. Aff (AuthEffects eff) EIdToken
 requestReauthenticationSilently = do
   either (pure ∘ Left) await =<< request
   where
-  await reauthenticationIFrameNode = do
+  await authenticationIFrameNode = do
     idToken ← retrieveIdTokenFromLSOnChange
-    liftEff $ removeBodyChild reauthenticationIFrameNode
+    liftEff $ removeBodyChild authenticationIFrameNode
     pure idToken
   request =
     either
@@ -149,7 +164,7 @@ requestReauthenticationSilently = do
       (liftEff ∘ map (lmap DOMError) ∘ appendHiddenIFrameToBody)
       =<< requestReauthenticationURI OIDCAff.None
 
-requestPromptedAuthentication ∷ ∀ eff. Aff (ReauthEffects eff) EIdToken
+requestPromptedAuthentication ∷ ∀ eff. Aff (AuthEffects eff) EIdToken
 requestPromptedAuthentication =
   request *> retrieveIdTokenFromLSOnChange
   where
@@ -159,7 +174,7 @@ requestPromptedAuthentication =
       (map Right ∘ liftEff ∘ DOMUtils.openPopup)
       =<< requestReauthenticationURI OIDCAff.Login
 
-appendHiddenIFrameToBody ∷ ∀ eff. String → Eff (ReauthEffects eff) (Either String Node)
+appendHiddenIFrameToBody ∷ ∀ eff. String → Eff (AuthEffects eff) (Either String Node)
 appendHiddenIFrameToBody uri =
   either
     (pure ∘ Left)
@@ -170,7 +185,7 @@ configureHiddenIFrame
   ∷ ∀ eff
   . String
   → HTMLIFrameElement
-  → Eff (ReauthEffects eff) HTMLIFrameElement
+  → Eff (AuthEffects eff) HTMLIFrameElement
 configureHiddenIFrame uri iFrameElement = do
   DOMHTMLIFrameElement.setSrc uri iFrameElement
   DOMHTMLIFrameElement.setWidth "0" iFrameElement
@@ -180,7 +195,7 @@ configureHiddenIFrame uri iFrameElement = do
 appendIFrameToBody
   ∷ ∀ eff
   . HTMLIFrameElement
-  → Eff (ReauthEffects eff) (Either String Node)
+  → Eff (AuthEffects eff) (Either String Node)
 appendIFrameToBody iFrameElement =
   traverse (appendIFrameToNode iFrameElement) =<< getBodyNode
 
@@ -188,29 +203,29 @@ appendIFrameToNode
   ∷ ∀ eff
   . HTMLIFrameElement
   → Node
-  → Eff (ReauthEffects eff) Node
+  → Eff (AuthEffects eff) Node
 appendIFrameToNode iFrameElement node =
-  Utils.passover (flip DOMNode.appendChild node)
+  passover (flip DOMNode.appendChild node)
     $ DOMHTMLTypes.htmlElementToNode
     $ DOMHTMLTypes.htmlIFrameElementToHTMLElement iFrameElement
 
-createIFrameElement ∷ ∀ eff. Eff (ReauthEffects eff) (Either String HTMLIFrameElement)
+createIFrameElement ∷ ∀ eff. Eff (AuthEffects eff) (Either String HTMLIFrameElement)
 createIFrameElement =
   (lmap show ∘ DOMHTMLTypes.readHTMLIFrameElement ∘ Foreign.toForeign)
     <$> createElement "iframe"
 
-createElement ∷ ∀ eff.  String → Eff (ReauthEffects eff) Element
+createElement ∷ ∀ eff.  String → Eff (AuthEffects eff) Element
 createElement name =
   DOMNodeDocument.createElement name
     ∘ DOMHTMLTypes.htmlDocumentToDocument
     =<< DOMHTMLWindow.document
     =<< DOMHTML.window
 
-removeBodyChild ∷ ∀ eff.  Node → Eff (ReauthEffects eff) (Either String Node)
+removeBodyChild ∷ ∀ eff.  Node → Eff (AuthEffects eff) (Either String Node)
 removeBodyChild child =
   either (pure ∘ Left) (map Right ∘ DOMNode.removeChild child) =<< getBodyNode
 
-getBodyNode ∷ ∀ eff. Eff (ReauthEffects eff) (Either String Node)
+getBodyNode ∷ ∀ eff. Eff (AuthEffects eff) (Either String Node)
 getBodyNode =
   toEitherStringNode
     <$> (DOMHTMLDocument.body =<< DOMHTMLWindow.document =<< DOMHTML.window)
@@ -222,7 +237,7 @@ getBodyNode =
       ∘ map DOMHTMLTypes.htmlElementToNode
       ∘ Nullable.toMaybe
 
-requestIdToken ∷ ∀ eff. Aff (ReauthEffects eff) (Promise EIdToken)
+requestIdToken ∷ ∀ eff. Aff (AuthEffects eff) (Promise EIdToken)
 requestIdToken = Promise.defer do
   startIdToken ← retrieveIdTokenFromLS
   provider ← liftEff $ retrieveProvider
@@ -238,34 +253,34 @@ requestIdToken = Promise.defer do
   either (const $ liftEff AuthStore.clearProvider) (const $ pure unit) idToken
   pure idToken
 
-retrieveIdTokenFromLSOnChange ∷ ∀ eff. Aff (ReauthEffects eff) EIdToken
+retrieveIdTokenFromLSOnChange ∷ ∀ eff. Aff (AuthEffects eff) EIdToken
 retrieveIdTokenFromLSOnChange =
   race
     (validTokenIdFromIdTokenStorageEvent
       =<< firstValueFromStallingProducer
       =<< liftEff getIdTokenStorageEvents)
     (Aff.later'
-      Config.reauthenticationTimeout
+      Config.authenticationTimeout
       $ pure $ Left $ IdTokenUnavailable "No id token received before timeout.")
 
 validTokenIdFromIdTokenStorageEvent
   ∷ ∀ eff
   . LocalStorage.StorageEvent (Either String IdToken)
-  → Aff (ReauthEffects eff) EIdToken
+  → Aff (AuthEffects eff) EIdToken
 validTokenIdFromIdTokenStorageEvent =
   either (pure ∘ Left) verify ∘ lmap IdTokenUnavailable ∘ _.newValue
 
-retrieveIdTokenFromLS ∷ ∀ eff. Aff (ReauthEffects eff) EIdToken
+retrieveIdTokenFromLS ∷ ∀ eff. Aff (AuthEffects eff) EIdToken
 retrieveIdTokenFromLS =
   either
     (pure ∘ Left ∘ IdTokenUnavailable)
     verify
     =<< (flip bind (map IdToken) <$> retrieveRaw)
   where
-  retrieveRaw ∷ Aff (ReauthEffects eff) (Either String (Either String String))
+  retrieveRaw ∷ Aff (AuthEffects eff) (Either String (Either String String))
   retrieveRaw = LocalStorage.getLocalStorage AuthKeys.idTokenLocalStorageKey
 
-retrieveProviderRFromLS ∷ ∀ eff. Eff (ReauthEffects eff) (Either String QAT.ProviderR)
+retrieveProviderRFromLS ∷ ∀ eff. Eff (AuthEffects eff) (Either String QAT.ProviderR)
 retrieveProviderRFromLS =
   map QAT.runProvider <$> LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey
 
@@ -278,7 +293,7 @@ runParseError (ParseError s) = s
 requestReauthenticationURI
   ∷ ∀ eff
   . OIDCAff.Prompt
-  → Aff (ReauthEffects eff) (Either String String)
+  → Aff (AuthEffects eff) (Either String String)
 requestReauthenticationURI prompt =
   liftEff do
     redirectUri ← appendAuthPath <$> Browser.locationString
@@ -290,19 +305,19 @@ requestReauthenticationURI prompt =
     map (bimap runParseError id)
       ∘ flip (OIDCAff.requestAuthenticationURI prompt) redirectUri
 
-verify ∷ ∀ eff. IdToken → Aff (ReauthEffects eff) EIdToken
+verify ∷ ∀ eff. IdToken → Aff (AuthEffects eff) EIdToken
 verify idToken = do
   verified ← liftEff $ verifyBoolean idToken
   if verified
     then pure $ Right idToken
     else pure $ Left IdTokenInvalid
 
-verifyBoolean ∷ ∀ eff. IdToken → Eff (ReauthEffects eff) Boolean
+verifyBoolean ∷ ∀ eff. IdToken → Eff (AuthEffects eff) Boolean
 verifyBoolean idToken = do
   jwks ← map (fromMaybe []) retrieveJwks
   F.or <$> T.traverse (verifyBooleanWithJwk idToken) jwks
 
-verifyBooleanWithJwk ∷ ∀ eff. IdToken → JSONWebKey → Eff (ReauthEffects eff) Boolean
+verifyBooleanWithJwk ∷ ∀ eff. IdToken → JSONWebKey → Eff (AuthEffects eff) Boolean
 verifyBooleanWithJwk idToken jwk = do
   issuer ← retrieveIssuer
   clientId ← retrieveClientID
@@ -310,33 +325,26 @@ verifyBooleanWithJwk idToken jwk = do
   fromMaybe (pure false)
     $ Apply.lift4 (OIDCCrypt.verifyIdToken idToken) issuer clientId nonce (Just jwk)
 
-retrieveProvider ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe QAT.Provider)
+retrieveProvider ∷ ∀ eff. Eff (AuthEffects eff) (Maybe QAT.Provider)
 retrieveProvider =
   LocalStorage.getLocalStorage AuthKeys.providerLocalStorageKey <#> fromEither
 
-retrieveProviderR ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe QAT.ProviderR)
+retrieveProviderR ∷ ∀ eff. Eff (AuthEffects eff) (Maybe QAT.ProviderR)
 retrieveProviderR = map QAT.runProvider <$> retrieveProvider
 
-retrieveIssuer ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe OIDCCrypt.Issuer)
+retrieveIssuer ∷ ∀ eff. Eff (AuthEffects eff) (Maybe OIDCCrypt.Issuer)
 retrieveIssuer =
   map (_.issuer <<< _.openIDConfiguration) <$> retrieveProviderR
 
-retrieveJwks ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe (Array JSONWebKey))
+retrieveJwks ∷ ∀ eff. Eff (AuthEffects eff) (Maybe (Array JSONWebKey))
 retrieveJwks =
   map (_.jwks <<< _.openIDConfiguration) <$> retrieveProviderR
 
-retrieveClientID ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe OIDCCrypt.ClientID)
+retrieveClientID ∷ ∀ eff. Eff (AuthEffects eff) (Maybe OIDCCrypt.ClientID)
 retrieveClientID =
   map _.clientID <$> retrieveProviderR
 
-retrieveNonce ∷ ∀ eff. Eff (ReauthEffects eff) (Maybe UnhashedNonce)
+retrieveNonce ∷ ∀ eff. Eff (AuthEffects eff) (Maybe UnhashedNonce)
 retrieveNonce =
   LocalStorage.getLocalStorage AuthKeys.nonceLocalStorageKey <#>
     either (\_ → Nothing) (Just <<< UnhashedNonce)
-
-ifFalseLeft ∷ ∀ a b. a → b → Boolean → Either a b
-ifFalseLeft x y boolean = if boolean then Right y else Left x
-
-fromEither ∷ ∀ a b. Either a b → Maybe b
-fromEither = either (\_ → Nothing) (Just)
-

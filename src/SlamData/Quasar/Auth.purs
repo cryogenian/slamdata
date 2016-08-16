@@ -29,34 +29,33 @@ import Control.Monad.Eff.Class (liftEff)
 import Data.Array as A
 import Data.Maybe as M
 
-
 import Network.HTTP.RequestHeader (RequestHeader)
 
 import OIDC.Crypt.Types as OIDCT
 import OIDC.Crypt as OIDC
 
 import SlamData.Quasar.Auth.Permission as P
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus, ReauthEffects)
-import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus, AuthEffects)
+import SlamData.Quasar.Auth.Authentication as AuthRetrieve
 
 import Quasar.Advanced.QuasarAF.Interpreter.Affjax (authHeader, permissionsHeader)
 
 authed
   ∷ ∀ a eff m
-  . (Bind m, Affable (ReauthEffects eff) m)
+  . (Bind m, Affable (AuthEffects eff) m)
   ⇒ RequestIdTokenBus
   → (M.Maybe OIDCT.IdToken → Array P.TokenHash → m a)
   → m a
 authed requestNewIdTokenBus f = do
-  idToken ← fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+  idToken ← fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestNewIdTokenBus
   perms ← fromEff P.retrieveTokenHashes
   f idToken perms
 
 authHeaders
   ∷ ∀ eff
   . RequestIdTokenBus
-  → Aff (ReauthEffects eff) (Array RequestHeader)
+  → Aff (AuthEffects eff) (Array RequestHeader)
 authHeaders requestNewIdTokenBus = do
-  idToken ← AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestNewIdTokenBus
+  idToken ← AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestNewIdTokenBus
   hashes ← liftEff P.retrieveTokenHashes
   pure $ A.catMaybes [ map authHeader idToken, permissionsHeader hashes ]

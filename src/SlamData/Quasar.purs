@@ -33,7 +33,7 @@ import Network.HTTP.RequestHeader (RequestHeader(..))
 
 import Quasar.Advanced.Types (ProviderR) as Auth
 import Quasar.Advanced.QuasarAF as QF
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
 

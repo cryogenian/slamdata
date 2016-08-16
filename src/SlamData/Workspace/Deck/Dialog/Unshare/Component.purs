@@ -45,7 +45,7 @@ import Halogen.CustomProps as Cp
 import Quasar.Advanced.Types as QTA
 
 import SlamData.Effects (Slam)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Quasar.Security as Q
 import SlamData.Render.Common (glyph)
 import SlamData.Workspace.Deck.Dialog.Share.Model (ShareResume(..), printShareResume)

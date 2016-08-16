@@ -47,7 +47,7 @@ import Math (round, floor)
 import SlamData.Analytics.Event as AE
 import SlamData.Config as Config
 import SlamData.Effects (Slam)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Card.CardId as CID
 import SlamData.Workspace.Card.CardType as CT

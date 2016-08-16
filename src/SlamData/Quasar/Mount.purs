@@ -37,7 +37,7 @@ import Quasar.Mount.View as QMountV
 import Quasar.Types (DirPath, FilePath)
 
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 mountInfo
   ∷ ∀ eff m

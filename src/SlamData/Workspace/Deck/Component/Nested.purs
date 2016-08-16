@@ -34,7 +34,7 @@ import Halogen.HTML.Properties.Indexed as HP
 import Halogen.Query.EventSource as HE
 
 import SlamData.Effects (SlamDataEffects, Slam)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Workspace.Deck.Common (DeckOptions)
 import SlamData.Workspace.Deck.Component as DC
 import SlamData.Workspace.Deck.Component.Nested.Query as DNQ

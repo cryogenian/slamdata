@@ -23,7 +23,7 @@ import SlamData.Prelude
 
 import Halogen as H
 
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 import SlamData.Workspace.Card.Ace.Component (AceEval, aceComponent, Status(..))
 import SlamData.Workspace.Card.Cache.Component (cacheCardComponent)
 import SlamData.Workspace.Card.CardType as CT

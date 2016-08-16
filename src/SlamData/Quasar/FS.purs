@@ -56,7 +56,7 @@ import Quasar.Types (AnyPath, DirPath, FilePath)
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
 import SlamData.Quasar.Aff (QEff, runQuasarF)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 import Utils.AffableProducer as AP
 import Utils.Completions (memoizeCompletionStrs)

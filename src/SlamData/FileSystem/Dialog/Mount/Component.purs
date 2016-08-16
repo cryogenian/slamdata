@@ -54,7 +54,7 @@ import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..), schemes, schemeToStr
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
 import SlamData.Quasar.FS as Api
 import SlamData.Render.CSS as Rc
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 type ChildState = Either SQL2.StateP MongoDB.State
 type ChildQuery = Coproduct SQL2.QueryP MongoDB.Query

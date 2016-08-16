@@ -30,7 +30,7 @@ import SlamData.SignIn.Component as SignIn
 import SlamData.SignIn.Bus (SignInBus)
 import SlamData.Render.CSS as Rc
 import SlamData.Render.Common (logo)
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 type State = Unit
 initialState ∷ State

@@ -45,7 +45,7 @@ import SlamData.FileSystem.Dialog.Mount.MongoDB.Component.State (MountHost, Moun
 import SlamData.FileSystem.Resource (Mount(..))
 import SlamData.Quasar.Mount as API
 import SlamData.Render.CSS as Rc
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
 
 type Query = SettingsQuery State
 

@@ -44,8 +44,8 @@ import Quasar.Advanced.Types (ProviderR, Provider(..))
 import SlamData.Analytics as Analytics
 import SlamData.Effects (Slam)
 import SlamData.Quasar as Api
-import SlamData.Quasar.Auth.Reauthentication (RequestIdTokenBus)
-import SlamData.Quasar.Auth.Retrieve as AuthRetrieve
+import SlamData.Quasar.Auth.Authentication (RequestIdTokenBus)
+import SlamData.Quasar.Auth.Authentication as AuthRetrieve
 import SlamData.Quasar.Auth.Store as AuthStore
 import SlamData.SignIn.Bus (SignInMessage(..), SignInBusW)
 import SlamData.SignIn.Component.State (State, initialState)
@@ -106,7 +106,7 @@ eval requestIdTokenBus _ (Init next) = update requestIdTokenBus $> next
 
 update ∷ RequestIdTokenBus → SignInDSL Unit
 update requestIdTokenBus = do
-  mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.retrieveIdToken requestIdTokenBus
+  mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken requestIdTokenBus
   traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
     retrieveProvidersAndUpdateMenu
