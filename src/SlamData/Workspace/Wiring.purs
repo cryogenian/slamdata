@@ -135,15 +135,15 @@ putDeck
   ⇒ DirPath
   → DeckId
   → Deck
-  → Cache DeckId DeckRef
+  → Wiring
   → m (Either QE.QError Unit)
-putDeck path deckId deck cache = fromAff do
+putDeck path deckId deck wiring = fromAff do
   ref ← defer do
     res ← Quasar.save (deckIndex path deckId) $ encode deck
     when (isLeft res) do
-      modifyVar (Map.delete deckId) cache
+      modifyVar (Map.delete deckId) wiring.decks
     pure $ const deck <$> res
-  putCache deckId ref cache
+  putCache deckId ref wiring.decks
   rmap (const unit) <$> wait ref
 
 putDeck'
@@ -161,21 +161,21 @@ getDeck
   . (Affable SlamDataEffects m)
   ⇒ DirPath
   → DeckId
-  → Cache DeckId DeckRef
+  → Wiring
   → m (Either QE.QError Deck)
-getDeck path deckId cache = fromAff do
-  decks ← takeVar cache
+getDeck path deckId wiring = fromAff do
+  decks ← takeVar wiring.decks
   case Map.lookup deckId decks of
     Just ref → do
-      putVar cache decks
+      putVar wiring.decks decks
       wait ref
     Nothing → do
       ref ← defer do
         res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load (deckIndex path deckId)
         when (isLeft res) do
-          modifyVar (Map.delete deckId) cache
+          modifyVar (Map.delete deckId) wiring.decks
         pure res
-      putVar cache (Map.insert deckId ref decks)
+      putVar wiring.decks (Map.insert deckId ref decks)
       wait ref
 
 getCache

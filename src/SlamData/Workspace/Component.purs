@@ -228,7 +228,7 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
     let deck' = deck { parent = parent }
 
     error ← lift $ runExceptT do
-      req1 ← ExceptT $ putDeck path newId deck' wiring.decks
+      req1 ← ExceptT $ putDeck path newId deck' wiring
       updateParentPointer wiring path oldId newId parent
 
     case error of
@@ -255,8 +255,8 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
 
     error ← lift $ runExceptT do
       ExceptT $ map (errors "; ") $ (H.fromAff :: Slam ~> WorkspaceDSL) $ runParallel $ traverse parallel
-        [ putDeck path oldId deck' wiring.decks
-        , putDeck path newId wrapper wiring.decks
+        [ putDeck path oldId deck' wiring
+        , putDeck path newId wrapper wiring
         ]
       updateParentPointer wiring path oldId newId deck.parent
 
@@ -279,10 +279,10 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
     error  ← lift $ runExceptT do
       case parent of
         Just (deckId × cardId) → do
-          parentDeck ← ExceptT $ getDeck path deckId wiring.decks
+          parentDeck ← ExceptT $ getDeck path deckId wiring
           let cards = DBC.replacePointer oldId Nothing cardId parentDeck.cards
           lift $ for_ cards (DBC.unsafeUpdateCachedDraftboard wiring deckId)
-          ExceptT $ putDeck path deckId (parentDeck { cards = cards }) wiring.decks
+          ExceptT $ putDeck path deckId (parentDeck { cards = cards }) wiring
         Nothing →
           ExceptT $ Quasar.delete $ Left path
 
@@ -326,8 +326,8 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
           let
             mirrored = oldModel { parent = parentRef }
           in
-            [ putDeck path oldId mirrored wiring.decks
-            , putDeck path newIdMirror mirrored wiring.decks
+            [ putDeck path oldId mirrored wiring
+            , putDeck path newIdMirror mirrored wiring
             ]
         else
           let
@@ -338,11 +338,11 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
               , name = oldModel.name
               }
           in
-            [ putDeck path oldId mirrored wiring.decks
-            , putDeck path newIdMirror (mirrored { name = "" }) wiring.decks
-            , putDeck path newIdShared (oldModel { name = "" }) wiring.decks
+            [ putDeck path oldId mirrored wiring
+            , putDeck path newIdMirror (mirrored { name = "" }) wiring
+            , putDeck path newIdShared (oldModel { name = "" }) wiring
             ]
-      ExceptT $ putDeck path newIdParent wrappedDeck wiring.decks
+      ExceptT $ putDeck path newIdParent wrappedDeck wiring
       updateParentPointer wiring path oldId newIdParent oldModel.parent
 
     case error of
@@ -407,10 +407,10 @@ updateParentPointer
   → ExceptT QE.QError m Unit
 updateParentPointer wiring path oldId newId = case _ of
   Just (deckId × cardId) → do
-    parentDeck ← ExceptT $ getDeck path deckId wiring.decks
+    parentDeck ← ExceptT $ getDeck path deckId wiring
     let cards = DBC.replacePointer oldId (Just newId) cardId parentDeck.cards
     lift $ for_ cards (DBC.unsafeUpdateCachedDraftboard wiring deckId)
-    ExceptT $ putDeck path deckId (parentDeck { cards = cards }) wiring.decks
+    ExceptT $ putDeck path deckId (parentDeck { cards = cards }) wiring
   Nothing →
     ExceptT $ Model.setRoot (path </> Pathy.file "index") newId
 

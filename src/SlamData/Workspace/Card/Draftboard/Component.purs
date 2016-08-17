@@ -422,7 +422,7 @@ addDeckAt { deck: opts, deckId: parentId, cardId } deck deckPos = do
   let deck' = deck { parent = Just (parentId × cardId) }
   H.modify $ _inserting .~ true
   deckId ← H.fromEff freshDeckId
-  putDeck opts.path deckId deck' opts.wiring.decks >>= case _ of
+  putDeck opts.path deckId deck' opts.wiring >>= case _ of
     Left err → do
       H.modify $ _inserting .~ false
       Notify.saveDeckFail err opts.wiring
@@ -449,7 +449,7 @@ wrapDeck { cardId, deckId: parentId, deck } oldId = do
       deckPos' = deckPos { x = 1.0, y = 1.0 }
       newDeck = (wrappedDeck deckPos' oldId) { parent = Just (parentId × cardId) }
     newId ← H.fromEff freshDeckId
-    putDeck deck.path newId newDeck deck.wiring.decks >>= case _ of
+    putDeck deck.path newId newDeck deck.wiring >>= case _ of
       Left err →
         Notify.saveDeckFail err deck.wiring
       Right _ → void do
@@ -482,7 +482,7 @@ unwrapDeck { deckId, cardId, deck: opts } oldId decks = void $ runMaybeT do
       s { decks = foldl (reinsert offset) (Map.delete oldId s.decks) deckList }
     for_ deckList \(deckId × (_ × deck)) → do
       let deck' = deck { parent = Just coord }
-      putDeck opts.path deckId deck' opts.wiring.decks
+      putDeck opts.path deckId deck' opts.wiring
       queryDeck deckId
         $ H.action
         $ DCQ.Load opts.path deckId
@@ -512,7 +512,7 @@ mirrorDeck opts oldId = do
             , name: ""
             }
         newId ← H.fromEff freshDeckId
-        putDeck opts.deck.path newId newDeck opts.deck.wiring.decks >>= case _ of
+        putDeck opts.deck.path newId newDeck opts.deck.wiring >>= case _ of
           Left err →
             Notify.saveDeckFail err opts.deck.wiring
           Right _ → do
@@ -562,7 +562,7 @@ groupDecks { cardId, deckId, deck } deckFrom deckTo = do
               }
             }
         newId ← H.fromEff freshDeckId
-        putDeck deck.path newId newDeck deck.wiring.decks >>= case _ of
+        putDeck deck.path newId newDeck deck.wiring >>= case _ of
           Left err →
             Notify.saveDeckFail err deck.wiring
           Right _ → void do

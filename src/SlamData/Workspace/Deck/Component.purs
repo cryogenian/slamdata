@@ -314,7 +314,7 @@ getVarMaps path wiring =
     → DeckDSL (L.List (DeckId × Port.VarMap))
   goDeck acc deckId = do
     res ← runExceptT do
-      deck ← ExceptT $ getDeck path deckId wiring.decks
+      deck ← ExceptT $ getDeck path deckId wiring
       mirroredCards ← ExceptT $ loadMirroredCards wiring path deck.mirror
       pure $ mirroredCards <> (Tuple deckId <$> deck.cards)
     case res of
@@ -818,7 +818,7 @@ saveDeck { accessType, wiring, cursor } coord = do
         Left _ → void $ WM.setRoot index st.id
         Right _ → pure unit
 
-    putDeck st.path st.id model wiring.decks >>= case _ of
+    putDeck st.path st.id model wiring >>= case _ of
       Left err →
         Notify.saveDeckFail err wiring
       Right _ → do
@@ -829,13 +829,13 @@ saveDeck { accessType, wiring, cursor } coord = do
           H.fromEff $ locationObject >>= Location.setHash deckHash
 
   saveMirroredCard st (deckId × card) =
-    getDeck st.path deckId wiring.decks >>= case _ of
+    getDeck st.path deckId wiring >>= case _ of
       Left err →
         Notify.saveMirrorFail err wiring
       Right deck → do
         let cards = deck.cards <#> \c → if c.cardId == card.cardId then card else c
             model = deck { cards = cards }
-        void $ putDeck st.path deckId model wiring.decks
+        void $ putDeck st.path deckId model wiring
 
 loadDeck ∷ DeckOptions → DirPath → DeckId → DeckDSL Unit
 loadDeck opts path deckId = do
@@ -844,7 +844,7 @@ loadDeck opts path deckId = do
     ∘ (DCS._displayCards .~ [ deckId × pendingEvalCard ])
 
   res ← runExceptT do
-    deck ← ExceptT $ getDeck path deckId opts.wiring.decks
+    deck ← ExceptT $ getDeck path deckId opts.wiring
     mirroredCards ← ExceptT $ loadMirroredCards opts.wiring path deck.mirror
     pure $ deck × (mirroredCards <> (Tuple deckId <$> deck.cards))
 
@@ -867,7 +867,7 @@ loadMirroredCards
   -> DeckDSL (Either QE.QError (Array (DeckId × Card.Model)))
 loadMirroredCards wiring path coords = (H.fromAff :: Slam ~> DeckDSL) do
   let deckIds = Array.nub (fst <$> coords)
-  res ← sequence <$> runParallel (traverse (parallel ∘ flip (getDeck path) wiring.decks) deckIds)
+  res ← sequence <$> runParallel (traverse (parallel ∘ flip (getDeck path) wiring) deckIds)
   pure $ hydrateCards coords =<< map (Array.zip deckIds) res
   where
   hydrateCards coords decks =
