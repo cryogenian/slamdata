@@ -32,6 +32,8 @@ data Query a
   | ToggleSetSmooth Boolean a
   | SetBubbleMinSize Number a
   | SetBubbleMaxSize Number a
+  | SetFunnelOrder String a
+  | SetFunnelAlign String a
 
 type QueryC = Coproduct CardEvalQuery Query
 

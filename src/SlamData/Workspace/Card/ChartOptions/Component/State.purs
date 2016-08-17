@@ -27,6 +27,8 @@ module SlamData.Workspace.Card.ChartOptions.Component.State
   , _smooth
   , _bubbleMinSize
   , _bubbleMaxSize
+  , _funnelOrder
+  , _funnelAlign
   , StateP
   , fromModel
   ) where
@@ -59,6 +61,8 @@ type State =
   , smooth :: Boolean
   , bubbleMinSize :: Number
   , bubbleMaxSize :: Number
+  , funnelOrder :: String
+  , funnelAlign :: String
   }
 
 initialState ∷ State
@@ -73,6 +77,8 @@ initialState =
   , smooth: false
   , bubbleMinSize: 1.0
   , bubbleMaxSize: 50.0
+  , funnelOrder: "descending"
+  , funnelAlign: "center"
   }
 
 _chartType ∷ ∀ a r. LensP {chartType ∷ a |r} a
@@ -105,6 +111,12 @@ _bubbleMinSize = lens _.bubbleMinSize _{bubbleMinSize = _}
 _bubbleMaxSize ∷ ∀ a r. LensP {bubbleMaxSize ∷ a | r} a
 _bubbleMaxSize = lens _.bubbleMaxSize _{bubbleMaxSize = _}
 
+_funnelOrder ∷ ∀ a r. LensP {funnelOrder ∷ a | r} a
+_funnelOrder = lens _.funnelOrder _{funnelOrder = _}
+
+_funnelAlign ∷ ∀ a r. LensP {funnelAlign ∷ a | r} a
+_funnelAlign = lens _.funnelAlign _{funnelAlign = _}
+
 type StateP =
   ParentState
     State
@@ -123,4 +135,6 @@ fromModel { options } =
     , smooth = options.smooth
     , bubbleMinSize = options.bubbleMinSize
     , bubbleMaxSize = options.bubbleMaxSize
+    , funnelOrder = options.funnelOrder
+    , funnelAlign = options.funnelAlign
     }

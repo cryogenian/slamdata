@@ -38,6 +38,7 @@ import SlamData.Workspace.Card.Chart.BuildOptions.Pie (buildPie)
 import SlamData.Workspace.Card.Chart.BuildOptions.Area (buildArea)
 import SlamData.Workspace.Card.Chart.BuildOptions.Scatter (buildScatter)
 import SlamData.Workspace.Card.Chart.BuildOptions.Radar (buildRadar)
+import SlamData.Workspace.Card.Chart.BuildOptions.Funnel (buildFunnel)
 import SlamData.Workspace.Card.Chart.ChartType (ChartType(..))
 
 import Test.StrongCheck.Arbitrary as SC
@@ -51,6 +52,8 @@ type BuildOptions =
   , smooth ∷ Boolean
   , bubbleMinSize ∷ Number
   , bubbleMaxSize ∷ Number
+  , funnelOrder ∷ String
+  , funnelAlign ∷ String
   }
 
 eqBuildOptions ∷ BuildOptions → BuildOptions → Boolean
@@ -62,6 +65,8 @@ eqBuildOptions o1 o2 =
     && o1.smooth ≡ o2.smooth
     && o1.bubbleMinSize ≡ o2.bubbleMinSize
     && o1.bubbleMaxSize ≡ o2.bubbleMaxSize
+    && o1.funnelOrder ≡ o2.funnelOrder
+    && o1.funnelAlign ≡ o2.funnelAlign
 
 genBuildOptions ∷ Gen.Gen BuildOptions
 genBuildOptions = do
@@ -72,8 +77,11 @@ genBuildOptions = do
   smooth ← SC.arbitrary
   bubbleMinSize ← SC.arbitrary
   bubbleMaxSize ← SC.arbitrary
+  funnelOrder ← SC.arbitrary
+  funnelAlign ← SC.arbitrary
   pure { chartType, axisLabelAngle, axisLabelFontSize
-       , areaStacked, smooth, bubbleMinSize, bubbleMaxSize }
+       , areaStacked, smooth, bubbleMinSize, bubbleMaxSize
+       , funnelOrder, funnelAlign }
 
 encode ∷ BuildOptions → Json
 encode m
@@ -84,12 +92,15 @@ encode m
   ~> "smooth" := m.smooth
   ~> "bubbleMinSize" := m.bubbleMinSize
   ~> "bubbleMaxSize" := m.bubbleMaxSize
+  ~> "funnelOrder" := m.funnelOrder
+  ~> "funnelAlign" := m.funnelAlign
   ~> jsonEmptyObject
 
 decode ∷ Json → Either String BuildOptions
 decode = decodeJson >=> \obj →
   { chartType: _, axisLabelAngle: _, axisLabelFontSize: _
-  , areaStacked: _, smooth: _, bubbleMinSize:_, bubbleMaxSize: _ }
+  , areaStacked: _, smooth: _, bubbleMinSize:_, bubbleMaxSize: _
+  , funnelOrder: _, funnelAlign: _ }
     <$> (obj .? "chartType")
     <*> (obj .? "axisLabelAngle")
     <*> (obj .? "axisLabelFontSize")
@@ -97,6 +108,8 @@ decode = decodeJson >=> \obj →
     <*> ((obj .? "smooth") <|> (pure false))
     <*> ((obj .? "bubbleMinSize") <|> (pure 1.0))
     <*> ((obj .? "bubbleMaxSize") <|> (pure 50.0))
+    <*> ((obj .? "funnelOrder") <|> (pure "descending"))
+    <*> ((obj .? "funnelAlign") <|> (pure "center"))
 
 buildOptions
   ∷ BuildOptions
@@ -113,3 +126,4 @@ buildOptions args conf records =
     Area → buildArea mp args.axisLabelAngle args.axisLabelFontSize args.areaStacked args.smooth conf
     Scatter → buildScatter mp args.bubbleMinSize args.bubbleMaxSize conf
     Radar → buildRadar mp conf
+    Funnel → buildFunnel mp args.funnelOrder args.funnelAlign conf

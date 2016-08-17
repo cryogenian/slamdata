@@ -365,7 +365,7 @@ addAxisLabelAngleAndFontSize angle size = do
     E.rotate $ toNumber angle
     E.textStyle do
       E.fontSize size
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
 
 type LabeledPointPairs = M.Map Key ((Array Number) × (Array Number))
 type LineData = List (Key × (Number × Number))

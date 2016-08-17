@@ -76,7 +76,8 @@ eval info model = do
     available =
       catMaybes $ map (\x → x axes) 
         [ getMaybePie, getMaybeBar, getMaybeLine
-        , getMaybeArea, getMaybeScatter, getMaybeRadar ]
+        , getMaybeArea, getMaybeScatter, getMaybeRadar
+        , getMaybeFunnel ]
 
   when (null available)
     $ EC.throwError "There is no available chart types for this data"
@@ -137,3 +138,8 @@ eval info model = do
   getMaybeRadar axes = do
     guard $ (not $ null axes.value) ∧ ((not $ null axes.category) || (not $ null axes.time))
     pure Radar
+
+  getMaybeFunnel ∷ Axes → Maybe ChartType
+  getMaybeFunnel axes = do
+    guard $ (not $ null axes.value) ∧ ((not $ null axes.category) || (not $ null axes.time))
+    pure Funnel

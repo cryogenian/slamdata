@@ -41,9 +41,11 @@ instance arbitraryArbBuildOptions :: Arbitrary ArbBuildOptions where
     smooth <- arbitrary
     bubbleMinSize <- arbitrary
     bubbleMaxSize <- arbitrary
+    funnelOrder <- arbitrary
+    funnelAlign <- arbitrary
     pure $ ArbBuildOptions 
       { chartType, axisLabelAngle, axisLabelFontSize, areaStacked
-      , smooth, bubbleMinSize, bubbleMaxSize
+      , smooth, bubbleMinSize, bubbleMaxSize, funnelOrder, funnelAlign
       }
 
 check :: forall eff. SC eff Unit
@@ -62,4 +64,6 @@ checkBuildOptionsEquality co co' =
    , co.smooth == co'.smooth <?> "smooth mismatch"
    , co.bubbleMinSize == co'.bubbleMinSize <?> "bubbleMinSize mismatch"
    , co.bubbleMaxSize == co'.bubbleMaxSize <?> "bubbleMaxSize mismatch"
+   , co.funnelOrder == co'.funnelOrder <?> "funnelOrder mismatch"
+   , co.funnelAlign == co'.funnelAlign <?> "funnelAlign mismatch"
    ]
