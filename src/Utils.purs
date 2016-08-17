@@ -42,21 +42,8 @@ singletonValue ∷ ∀ a m n. (Applicative m, Foldable n) ⇒ m a → (Int → m
 singletonValue noElements tooManyElements =
   either tooManyElements (maybe noElements pure) <<< singletonValue'
 
-ifFalse ∷ ∀ m. (Applicative m) ⇒ m Unit → Boolean → m Unit
-ifFalse f boolean =
-  if boolean then pure unit else f
-
-ifTrue ∷ ∀ m. (Applicative m) ⇒ m Unit → Boolean → m Unit
-ifTrue f boolean =
-  if boolean then f else pure unit
-
 passover ∷ ∀ a b m. (Applicative m) ⇒ (a → m b) → a → m a
 passover f x =
   f x *> pure x
-
-passoverM ∷ ∀ a b m. (Monad m) ⇒ (a → m b) → a → m a
-passoverM f x = do
-  f x
-  pure x
 
 foreign import prettyJson ∷ J.Json → String
