@@ -72,6 +72,7 @@ import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (browseURL)
 import SlamData.FileSystem.Routing.Salt (newSalt)
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.GlobalError as GE
 import SlamData.Header.Component as Header
 import SlamData.Quasar (ldJSON) as API
@@ -90,20 +91,18 @@ import Utils.Path (DirPath, getNameStr)
 type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
-comp ∷ Bus.BusRW GE.GlobalError → H.Component StateP QueryP Slam
-comp bus =
-  case Bus.split bus of
-    _ × busW →
-      H.lifecycleParentComponent
-        { render: render busW
-        , eval: eval bus
-        , peek: Just (peek busW ∘ H.runChildF)
-        , initializer: Just (H.action Init)
-        , finalizer: Nothing
-        }
+comp ∷ Wiring → H.Component StateP QueryP Slam
+comp wiring =
+  H.lifecycleParentComponent
+    { render: render wiring
+    , eval: eval wiring
+    , peek: Just (peek wiring ∘ H.runChildF)
+    , initializer: Just (H.action Init)
+    , finalizer: Nothing
+    }
 
-render ∷ Bus.BusW GE.GlobalError → State → HTML
-render bus state@{ version, sort, salt, path } =
+render ∷ Wiring → State → HTML
+render wiring state@{ version, sort, salt, path } =
   HH.div
     [ HP.classes [ CSS.filesystem ]
     , HE.onClick (HE.input_ DismissSignInSubmenu)
@@ -132,14 +131,14 @@ render bus state@{ version, sort, salt, path } =
             }
         ]
     , HH.slot' cpDialog unit \_ →
-        { component: Dialog.comp bus
+        { component: Dialog.comp wiring
         , initialState: H.parentState Dialog.initialState
         }
     ]
 
-eval ∷ Bus.BusRW GE.GlobalError → Query ~> DSL
-eval bus (Init next) = do
-  subscribeToBus' (H.action ∘ HandleError) bus
+eval ∷ Wiring → Query ~> DSL
+eval wiring (Init next) = do
+  subscribeToBus' (H.action ∘ HandleError) wiring.globalError
   pure next
 eval _ (Resort next) = do
   { sort, salt, path } ← H.get
@@ -162,15 +161,15 @@ eval _ (HideHiddenFiles next) = do
   H.modify (_showHiddenFiles .~ false)
   queryListing $ H.action (Listing.SetIsHidden true)
   pure next
-eval bus (Configure next) = do
+eval wiring (Configure next) = do
   path ← H.gets _.path
-  configure bus (R.Database path)
+  configure wiring (R.Database path)
   pure next
 eval _ (MakeMount next) = do
   path ← H.gets _.path
   showDialog (Dialog.Mount path "" Nothing)
   pure next
-eval bus (MakeFolder next) = do
+eval wiring (MakeFolder next) = do
   result ← runExceptT do
     path ← lift $ H.gets _.path
     dirName ← ExceptT $ API.getNewName path Config.newFolderName
@@ -189,12 +188,12 @@ eval bus (MakeFolder next) = do
           showDialog $ Dialog.Error
             $ "There was a problem creating the directory: " ⊕ msg
         Right ge →
-          H.fromAff $ Bus.write ge bus
+          H.fromAff $ Bus.write ge wiring.globalError
     Right dirRes →
       void $ queryListing $ H.action $ Listing.Add (Item dirRes)
   pure next
 
-eval bus (MakeWorkspace next) = do
+eval wiring (MakeWorkspace next) = do
   path ← H.gets _.path
   let newWorkspaceName = Config.newWorkspaceName ⊕ "." ⊕ Config.workspaceExtension
   name ← API.getNewName path newWorkspaceName
@@ -208,7 +207,7 @@ eval bus (MakeWorkspace next) = do
           showDialog $ Dialog.Error
             $ "There was a problem creating the workspace: " ⊕ msg
         Right ge →
-          H.fromAff $ Bus.write ge bus
+          H.fromAff $ Bus.write ge wiring.globalError
     Right name' → do
       H.fromEff $ setLocation $ mkWorkspaceURL (path </> dir name') New
   pure next
@@ -219,7 +218,7 @@ eval _ (UploadFile el next) = do
     void $ H.fromEff $ Be.raiseEvent "click" input
   pure next
 
-eval bus (FileListChanged el next) = do
+eval wiring (FileListChanged el next) = do
   fileArr ← map Cf.fileListToArray $ (H.fromAff $ Cf.files el)
   H.fromEff $ clearValue el
   case head fileArr of
@@ -227,7 +226,7 @@ eval bus (FileListChanged el next) = do
       let err ∷ Slam Unit
           err = throwError $ error "empty filelist"
       in H.fromAff err
-    Just f → uploadFileSelected bus f
+    Just f → uploadFileSelected wiring f
   pure next
 
 eval _ (Download next) = do
@@ -241,12 +240,8 @@ eval _ (HandleError ge next) = do
   showDialog $ Dialog.Error $ GE.print ge
   pure next
 
-uploadFileSelected
-  ∷ ∀ r
-  . Bus.Bus (write ∷ Bus.Cap | r) GE.GlobalError
-  → Cf.File
-  → DSL Unit
-uploadFileSelected bus f = do
+uploadFileSelected ∷ Wiring → Cf.File → DSL Unit
+uploadFileSelected wiring f = do
   { path, sort, salt } ← H.get
   name ←
     H.fromEff (Cf.name f)
@@ -290,24 +285,24 @@ uploadFileSelected bus f = do
   handleError err =
     case GE.fromQError err of
       Left msg → showDialog $ Dialog.Error msg
-      Right ge → H.fromAff $ Bus.write ge bus
+      Right ge → H.fromAff $ Bus.write ge wiring.globalError
 
-peek ∷ ∀ a. Bus.BusW GE.GlobalError → ChildQuery a → DSL Unit
-peek bus =
-  listingPeek bus
+peek ∷ ∀ a. Wiring → ChildQuery a → DSL Unit
+peek wiring =
+  listingPeek wiring
   ⨁ searchPeek
   ⨁ const (pure unit)
-  ⨁ dialogPeek bus
+  ⨁ dialogPeek wiring
   ⨁ const (pure unit)
 
-listingPeek ∷ ∀ a. Bus.BusW GE.GlobalError → Listing.QueryP a → DSL Unit
-listingPeek bus = go ⨁ (itemPeek bus ∘ H.runChildF)
+listingPeek ∷ ∀ a. Wiring → Listing.QueryP a → DSL Unit
+listingPeek wiring = go ⨁ (itemPeek wiring ∘ H.runChildF)
   where
   go (Listing.Add _ _) = resort
   go (Listing.Adds _ _) = resort
   go _ = pure unit
 
-itemPeek ∷ ∀ a. Bus.BusW GE.GlobalError → Item.Query a → DSL Unit
+itemPeek ∷ ∀ a. Wiring → Item.Query a → DSL Unit
 itemPeek _ (Item.Open res _) = do
   { sort, salt, path } ← H.get
   loc ← H.fromEff locationString
@@ -319,12 +314,12 @@ itemPeek _ (Item.Open res _) = do
     H.fromEff $ setLocation $ append (loc ⊕ "/") $ mkWorkspaceURL wp (Load Editable)
 
 
-itemPeek bus (Item.Configure (R.Mount mount) _) = configure bus mount
+itemPeek wiring (Item.Configure (R.Mount mount) _) = configure wiring mount
 itemPeek _ (Item.Move res _) = do
   showDialog $ Dialog.Rename res
   flip getDirectories rootDir \x →
     void $ queryDialog Dialog.cpRename $ H.action (Rename.AddDirs x)
-itemPeek bus (Item.Remove res _) = do
+itemPeek wiring (Item.Remove res _) = do
   -- Replace actual item with phantom
   queryListing $ H.action $ Listing.Filter (not ∘ eq res ∘ itemResource)
   queryListing $ H.action $ Listing.Add (PhantomItem res)
@@ -343,7 +338,7 @@ itemPeek bus (Item.Remove res _) = do
         Left msg →
           showDialog $ Dialog.Error msg
         Right ge →
-          H.fromAff $ Bus.write ge bus
+          H.fromAff $ Bus.write ge wiring.globalError
     Right mbRes →
       -- Item has been deleted: probably add trash folder
       for_ mbRes \res' →
@@ -351,7 +346,7 @@ itemPeek bus (Item.Remove res _) = do
 
   resort
 
-itemPeek bus (Item.Share res _) = do
+itemPeek wiring (Item.Share res _) = do
   path ← H.gets _.path
   loc ← map (_ ⊕ "/") $ H.fromEff locationString
   for_ (preview R._filePath res) \fp → do
@@ -364,7 +359,7 @@ itemPeek bus (Item.Share res _) = do
             showDialog $ Dialog.Error
               $ "There was a problem creating the workspace: " ⊕ msg
           Right ge →
-            H.fromAff $ Bus.write ge bus
+            H.fromAff $ Bus.write ge wiring.globalError
       Right name' → do
         showDialog (Dialog.Share $ append loc $  mkWorkspaceURL (path </> dir name') $ Exploring fp)
   for_ (preview R._Workspace res) \wp → do
@@ -385,16 +380,16 @@ searchPeek (Search.Submit _) = do
   H.fromEff $ setLocation $ browseURL value sort salt path
 searchPeek _ = pure unit
 
-dialogPeek ∷ ∀ a. Bus.BusW GE.GlobalError → Dialog.QueryP a → DSL Unit
-dialogPeek bus = const (pure unit) ⨁ dialogChildrenPeek bus ∘ H.runChildF
+dialogPeek ∷ ∀ a. Wiring → Dialog.QueryP a → DSL Unit
+dialogPeek wiring = const (pure unit) ⨁ dialogChildrenPeek wiring ∘ H.runChildF
 
-dialogChildrenPeek ∷ ∀ a. Bus.BusW GE.GlobalError → Dialog.ChildQuery a → DSL Unit
-dialogChildrenPeek bus q = do
+dialogChildrenPeek ∷ ∀ a. Wiring → Dialog.ChildQuery a → DSL Unit
+dialogChildrenPeek wiring q = do
   for_ (prjQuery Dialog.cpMount q) mountPeek
-  for_ (prjQuery Dialog.cpExplore q) (explorePeek bus)
+  for_ (prjQuery Dialog.cpExplore q) (explorePeek wiring)
 
-explorePeek ∷ ∀ a. Bus.BusW GE.GlobalError → Explore.Query a → DSL Unit
-explorePeek bus (Explore.Explore fp name next) = do
+explorePeek ∷ ∀ a. Wiring → Explore.Query a → DSL Unit
+explorePeek wiring (Explore.Explore fp name next) = do
   { path } ← H.get
   let newWorkspaceName = name ⊕ "." ⊕ Config.workspaceExtension
   name ← API.getNewName path newWorkspaceName
@@ -405,7 +400,7 @@ explorePeek bus (Explore.Explore fp name next) = do
           showDialog $ Dialog.Error
             $ "There was a problem creating the workspace: " ⊕ msg
         Right ge →
-          H.fromAff $ Bus.write ge bus
+          H.fromAff $ Bus.write ge wiring.globalError
     Right name' →
       H.fromEff $ setLocation  $ mkWorkspaceURL (path </> dir name') $ Exploring fp
 explorePeek _ _ = pure unit
@@ -452,12 +447,8 @@ resort = do
     >>= traverse_ \isSearching →
       void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
-configure
-  ∷ ∀ r
-  . Bus.Bus (write ∷ Bus.Cap | r) GE.GlobalError
-  → R.Mount
-  → DSL Unit
-configure bus (R.View path) = do
+configure ∷ Wiring → R.Mount → DSL Unit
+configure wiring (R.View path) = do
   API.viewInfo path >>=
     case _ of
       Left err →
@@ -467,14 +458,14 @@ configure bus (R.View path) = do
               $ "There was a problem reading the mount settings: "
               ⊕ msg
           Right ge →
-            H.fromAff $ Bus.write ge bus
+            H.fromAff $ Bus.write ge wiring.globalError
       Right info →
         showDialog $ Dialog.Mount
           (fromMaybe rootDir (parentDir path))
           (getNameStr (Right path))
           (Just (Right (SQL2.stateFromViewInfo info)))
 
-configure bus (R.Database path) = do
+configure wiring (R.Database path) = do
   API.mountInfo path >>=
     case _ of
       Left err →
@@ -484,7 +475,7 @@ configure bus (R.Database path) = do
               $ "There was a problem reading the mount settings: "
               ⊕ msg
           Right ge →
-            H.fromAff $ Bus.write ge bus
+            H.fromAff $ Bus.write ge wiring.globalError
       Right config →
         showDialog $ Dialog.Mount
           (fromMaybe rootDir (parentDir path))

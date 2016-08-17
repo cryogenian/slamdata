@@ -53,6 +53,7 @@ import SlamData.FileSystem.Dialog.Mount.Component.State (MountSettings, State, _
 import SlamData.FileSystem.Dialog.Mount.MongoDB.Component as MongoDB
 import SlamData.FileSystem.Dialog.Mount.Scheme (Scheme(..), schemes, schemeToString, schemeFromString)
 import SlamData.FileSystem.Dialog.Mount.SQL2.Component as SQL2
+import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.Quasar.FS as Api
 import SlamData.Render.CSS as Rc
 
@@ -72,11 +73,11 @@ type HTML = H.ParentHTML ChildState Query ChildQuery Slam ChildSlot
 type StateP = H.ParentState State ChildState Query ChildQuery Slam ChildSlot
 type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 
-comp :: Bus.BusW GE.GlobalError -> H.Component StateP QueryP Slam
-comp bus =
+comp :: Wiring -> H.Component StateP QueryP Slam
+comp wiring =
   H.parentComponent
     { render
-    , eval: eval bus
+    , eval: eval wiring
     , peek: Just (peek <<< H.runChildF)
     }
 
@@ -166,7 +167,7 @@ progressSpinner :: State -> HTML
 progressSpinner { saving } =
   HH.img [ HP.src "img/spin.gif", HP.class_ (Rc.mountProgressSpinner saving) ]
 
-eval :: Bus.BusW GE.GlobalError -> Query ~> DSL
+eval :: Wiring -> Query ~> DSL
 eval _ (ModifyState f next) = H.modify f *> validateInput $> next
 eval _ (SelectScheme newScheme next) = do
   currentScheme <- map scheme <$> H.gets _.settings
@@ -176,27 +177,31 @@ eval _ (SelectScheme newScheme next) = do
   pure next
 eval _ (Dismiss next) = pure next
 eval _ (NotifySave next) = pure next
-eval bus (Save k) = do
+eval wiring (Save k) = do
   { parent, name, new } <- H.get
   H.modify (_saving .~ true)
   newName <-
     if new then Api.getNewName parent name else pure (pure name)
   case newName of
     Left err → do
-      handleQError bus err
+      handleQError wiring.globalError err
       pure $ k Nothing
     Right newName' -> do
       result <- querySettings (H.request (SQ.Submit parent newName'))
       mount <- case result of
         Just (Right m) -> pure (Just m)
         Just (Left err) -> do
-          handleQError bus err
+          handleQError wiring.globalError err
           pure Nothing
         Nothing -> pure Nothing
       H.modify (_saving .~ false)
       pure $ k mount
 
-handleQError :: Bus.BusW GE.GlobalError -> Api.QError -> DSL Unit
+handleQError
+  :: forall r
+   . Bus.Bus (write :: Bus.Cap | r) GE.GlobalError
+  -> Api.QError
+  -> DSL Unit
 handleQError bus err =
   case GE.fromQError err of
     Left msg -> H.modify (_message ?~ formatError msg)

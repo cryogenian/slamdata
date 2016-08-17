@@ -41,6 +41,7 @@ import SlamData.Dialog.Render (modalDialog, modalHeader, modalBody, modalFooter)
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Listing.Item.Component.CSS as ItemCSS
 import SlamData.FileSystem.Resource as R
+import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.FS as API
 import SlamData.Render.Common (fadeWhen, formGroup)
@@ -144,11 +145,11 @@ data Query a
 type DSL = H.ComponentDSL State Query Slam
 type HTML = H.ComponentHTML Query
 
-comp :: Bus.BusW GE.GlobalError -> H.Component State Query Slam
-comp bus =
+comp :: Wiring -> H.Component State Query Slam
+comp wiring =
   H.lifecycleComponent
     { render
-    , eval: eval bus
+    , eval: eval wiring
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
@@ -237,7 +238,7 @@ render dialog =
              ]
     [ HH.text (R.resourcePath res) ]
 
-eval :: Bus.BusW GE.GlobalError -> Query ~> DSL
+eval :: Wiring -> Query ~> DSL
 eval _ (Dismiss next) = pure next
 eval _ (SetShowList bool next) = do
   H.modify (_showList .~ bool)
@@ -247,7 +248,7 @@ eval _ (ToggleShowList next) = do
   H.modify (_showList %~ not)
   H.modify validate
   pure next
-eval bus (Submit next) = do
+eval wiring (Submit next) = do
   dirStr <- endingInSlash <$> H.gets _.typedDir
   maybe presentDirNotExistError moveIfDirAccessible (parsedDir dirStr)
   pure next
@@ -264,7 +265,7 @@ eval bus (Submit next) = do
   presentError e =
     case GE.fromQError e of
       Left msg → H.modify $ _error .~ Just msg
-      Right ge → H.fromAff $ Bus.write ge bus
+      Right ge → H.fromAff $ Bus.write ge wiring.globalError
 
   moveIfDirAccessible dir =
     maybe (move dir) presentError =<< API.dirNotAccessible dir
@@ -279,7 +280,7 @@ eval bus (Submit next) = do
       Left e ->
         case GE.fromQError e of
           Left msg -> H.modify (_error ?~ msg)
-          Right ge -> H.fromAff $ Bus.write ge bus
+          Right ge -> H.fromAff $ Bus.write ge wiring.globalError
       Right x ->
         maybe
           presentSourceMissingError

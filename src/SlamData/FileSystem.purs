@@ -59,6 +59,7 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
+import SlamData.FileSystem.Wiring as Wiring
 import SlamData.GlobalError as GE
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
@@ -75,12 +76,12 @@ main = do
   AceConfig.set AceConfig.themePath (Config.baseUrl ⊕ "js/ace")
   runHalogenAff do
     forkAff Analytics.enableAnalytics
-    qbus ← Bus.make
-    driver ← runUI (comp qbus) (parentState initialState) =<< awaitBody
+    wiring ← Wiring.makeWiring
+    driver ← runUI (comp wiring) (parentState initialState) =<< awaitBody
     forkAff do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)
-    forkAff $ routeSignal qbus driver
+    forkAff $ routeSignal wiring.globalError driver
 
 setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
 setSlamDataTitle version =
