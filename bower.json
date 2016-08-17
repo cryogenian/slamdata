@@ -33,7 +33,7 @@
     "purescript-halogen-menu": "^2.0.0",
     "purescript-halogen": "^0.11.0",
     "purescript-js-timers": "^1.0.0",
-    "purescript-jtable": "^2.0.0",
+    "purescript-jtable": "^2.0.1",
     "purescript-maps": "^1.1.0",
     "purescript-markdown-halogen": "^2.0.0",
     "purescript-markdown": "^7.0.0",
