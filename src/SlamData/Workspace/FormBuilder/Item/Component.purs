@@ -27,6 +27,7 @@ import Data.Lens ((^?), (.~), (?~))
 import Data.Lens as Lens
 
 import Halogen as H
+import Halogen.HTML.Core as HC
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -34,6 +35,8 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 
 import SlamData.Workspace.FormBuilder.Item.Component.State (Model, State, EqModel(..), _defaultValue, _fieldType, _model, _name, decode, defaultValueToVarMapValue, emptyValueOfFieldType, encode, initialModel, initialState, runEqModel)
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
+
+import Unsafe.Coerce (unsafeCoerce)
 
 data UpdateQuery a
   = UpdateName String a
@@ -117,13 +120,13 @@ render { model } =
           ]
       _ ->
           HH.input
-            [ HP.inputType inputType
-            , HP.value (fromMaybe "" model.defaultValue)
-            , HE.onValueInput
-                $ HE.input \str -> Update <<< UpdateDefaultValue str
-            , ARIA.label lbl
-            , HP.placeholder lbl
-            ]
+            $ fieldType
+            <> [ HP.value (fromMaybe "" model.defaultValue)
+               , HE.onValueInput
+                   $ HE.input \str -> Update <<< UpdateDefaultValue str
+               , ARIA.label lbl
+               , HP.placeholder lbl
+               ]
 
     where
     lbl :: String
@@ -132,6 +135,23 @@ render { model } =
       <> if model.name /= "" then " for " <> (quotedName model.name) <> " variable" else ""
     inputType =
       fieldTypeToInputType model.fieldType
+    fieldType = case model.fieldType of
+      DateTimeFieldType ->
+        [ HP.inputType inputType
+        , secondsStep
+        ]
+      TimeFieldType ->
+        [ HP.inputType inputType
+        , secondsStep
+        ]
+      _ ->
+        [ HP.inputType inputType ]
+
+    secondsStep ∷ forall r i. HP.IProp r i
+    secondsStep = refine $ HC.Attr Nothing (HC.attrName "step") "1"
+      where
+      refine :: HC.Prop i -> HP.IProp r i
+      refine = unsafeCoerce
 
     _StringBoolean :: Lens.PrismP String Boolean
     _StringBoolean = Lens.prism re pre

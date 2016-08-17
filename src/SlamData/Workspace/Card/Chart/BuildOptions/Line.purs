@@ -70,7 +70,7 @@ buildLine axes angle size conf = do
 
   E.legend do
     E.items $ map ET.strItem legendNames
-    E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
 
   E.tooltip E.triggerItem
 
@@ -93,7 +93,7 @@ buildLine axes angle size conf = do
   yAxis = do
     E.axisType ET.Value
     E.axisLabel $ E.textStyle do
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
       E.fontSize size
 
   xAxisPair ∷ ET.AxisType × Maybe Int

@@ -36,6 +36,7 @@ import Data.Argonaut ((~>), (:=), (.?))
 import Data.Argonaut as J
 import Data.Lens (LensP, lens)
 import Data.Json.Extended as EJSON
+import Data.String as Str
 
 import SlamData.Workspace.Card.Port.VarMap as Port
 import SlamData.Workspace.FormBuilder.Item.FieldType (FieldType(..), _FieldTypeDisplayName, allFieldTypes, fieldTypeToInputType)
@@ -133,9 +134,9 @@ defaultValueToVarMapValue
 defaultValueToVarMapValue ty str =
   case ty of
     StringFieldType → Just $ Port.Literal $ EJSON.string str
-    DateTimeFieldType → Just $ Port.Literal $ EJSON.timestamp str
+    DateTimeFieldType → Just $ Port.Literal $ EJSON.timestamp (fixupDateTime str)
     DateFieldType → Just $ Port.Literal $ EJSON.date str
-    TimeFieldType → Just $ Port.Literal $ EJSON.time str
+    TimeFieldType → Just $ Port.Literal $ EJSON.time (fixupTime str)
     IntervalFieldType → Just $ Port.Literal $ EJSON.interval str
     ObjectIdFieldType → Just $ Port.Literal $ EJSON.objectId str
     SqlExprFieldType → Just $ Port.QueryExpr $ str
@@ -144,3 +145,15 @@ defaultValueToVarMapValue ty str =
     _ →
       P.runParser str EJSON.parseEJson
         # either (\_ → Nothing) (Port.Literal >>> Just)
+
+  where
+  -- TODO: we _really_ should have a better representation for date/time in ejson
+  fixupDateTime :: String -> String
+  fixupDateTime dt =
+    let
+      t = Str.drop 11 dt
+      t' = fromMaybe t (Str.stripSuffix "Z" t)
+    in
+      Str.take 11 dt <> fixupTime t' <> "Z"
+  fixupTime :: String -> String
+  fixupTime t = if Str.length t == 5 then t <> ":00" else t

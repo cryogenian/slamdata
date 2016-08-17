@@ -61,7 +61,7 @@ buildArea axes angle size stacked smooth conf = do
   E.tooltip do
     E.triggerAxis
     E.textStyle do
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
       E.fontSize 12
     E.axisPointer do
       E.lineAxisPointer
@@ -100,7 +100,7 @@ buildArea axes angle size stacked smooth conf = do
 
   E.legend do
     E.items $ map ET.strItem legendNames
-    E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
 
   E.series series
   where
@@ -123,7 +123,7 @@ buildArea axes angle size stacked smooth conf = do
   yAxis = do
     E.axisType ET.Value
     E.axisLabel $ E.textStyle do
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
       E.fontSize size
     E.axisLine $ E.lineStyle do
       E.color $ C.rgba 184 184 184 0.8

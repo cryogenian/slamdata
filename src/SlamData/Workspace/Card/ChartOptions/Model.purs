@@ -78,5 +78,7 @@ initialModel =
       , smooth: false
       , bubbleMinSize: 1.0
       , bubbleMaxSize: 50.0
+      , funnelOrder: "descending"
+      , funnelAlign: "center"
       }
   }

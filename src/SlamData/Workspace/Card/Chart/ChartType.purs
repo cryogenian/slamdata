@@ -22,6 +22,7 @@ module SlamData.Workspace.Card.Chart.ChartType
   , isArea
   , isScatter
   , isRadar
+  , isFunnel
   , parseChartType
   , printChartType
   ) where
@@ -32,7 +33,7 @@ import Data.List as L
 import Test.StrongCheck.Arbitrary as SC
 import Test.StrongCheck.Gen as Gen
 
-data ChartType = Pie | Line | Bar | Area | Scatter | Radar
+data ChartType = Pie | Line | Bar | Area | Scatter | Radar | Funnel
 
 isPie :: ChartType -> Boolean
 isPie Pie = true
@@ -58,6 +59,10 @@ isRadar :: ChartType -> Boolean
 isRadar Radar = true
 isRadar _ = false
 
+isFunnel :: ChartType -> Boolean
+isFunnel Funnel = true
+isFunnel _ = false
+
 parseChartType :: String -> Either String ChartType
 parseChartType "pie" = pure Pie
 parseChartType "line" = pure Line
@@ -65,6 +70,7 @@ parseChartType "bar" = pure Bar
 parseChartType "area" = pure Area
 parseChartType "scatter" = pure Scatter
 parseChartType "radar" = pure Radar
+parseChartType "funnel" = pure Funnel
 parseChartType _ = Left "incorrect chartType"
 
 printChartType :: ChartType -> String
@@ -74,6 +80,7 @@ printChartType Bar = "bar"
 printChartType Area = "area"
 printChartType Scatter = "scatter"
 printChartType Radar = "radar"
+printChartType Funnel = "funnel"
 
 derive instance genericChartType :: Generic ChartType
 derive instance eqChartType :: Eq ChartType
@@ -86,4 +93,11 @@ instance decodeJsonChartType :: DecodeJson ChartType where
   decodeJson json = decodeJson json >>= parseChartType
 
 instance arbitraryChartType ∷ SC.Arbitrary ChartType where
-  arbitrary = Gen.elements Pie $ L.fromFoldable [ Pie, Line, Bar, Area, Scatter, Radar ]
+  arbitrary = Gen.elements Pie $ L.fromFoldable 
+    [ Pie
+    , Line
+    , Bar
+    , Area
+    , Scatter
+    , Radar
+    , Funnel ]

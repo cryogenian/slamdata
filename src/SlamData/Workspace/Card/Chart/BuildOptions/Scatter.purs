@@ -166,7 +166,7 @@ buildScatter axes bubbleMinSize bubbleMaxSize conf = do
   E.tooltip do
     E.triggerAxis
     E.textStyle do
-      E.fontFamily "Ubuntu sans"
+      E.fontFamily "Ubuntu, sans"
       E.fontSize 12
     E.axisPointer do
       E.crossAxisPointer
@@ -181,7 +181,7 @@ buildScatter axes bubbleMinSize bubbleMaxSize conf = do
   E.yAxis valueAxis
 
   E.legend do
-    E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.textStyle $ E.fontFamily "Ubuntu, sans"
     E.items $ map ET.strItem legendNames
 
   E.series $ traverse_ (E.scatter ∘ serie) $ A.zip (A.range 0 (A.length scatterData)) scatterData
@@ -192,7 +192,7 @@ buildScatter axes bubbleMinSize bubbleMaxSize conf = do
   valueAxis ∷ ∀ i. DSL (ETP.AxisI i)
   valueAxis = do
     E.axisType $ ET.Value
-    E.axisLabel $ E.textStyle $ E.fontFamily "Ubuntu sans"
+    E.axisLabel $ E.textStyle $ E.fontFamily "Ubuntu, sans"
     E.axisLine $ E.lineStyle do
       E.color $ C.rgba 184 184 184 0.8
       E.width 1
