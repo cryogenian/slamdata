@@ -25,8 +25,8 @@ import SlamData.Prelude
 
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff.Exception (error)
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Error.Class (throwError)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.UI.Browser (setLocation, locationString, clearValue)
 import Control.UI.Browser.Event as Be
 import Control.UI.File as Cf
@@ -42,6 +42,7 @@ import Data.String.Regex as Rgx
 
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath, injSlot, prjQuery, injQuery)
+import Halogen.Component.Utils (subscribeToBus')
 import Halogen.HTML.Events.Indexed as HE
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
@@ -91,13 +92,14 @@ type DSL = H.ParentDSL State ChildState Query ChildQuery Slam ChildSlot
 
 comp ∷ Bus.BusRW GE.GlobalError → H.Component StateP QueryP Slam
 comp bus =
-  -- TODO: read from busR and show dialog as appropriate -gb
   case Bus.split bus of
-    busR × busW →
-      H.parentComponent
+    _ × busW →
+      H.lifecycleParentComponent
         { render: render busW
-        , eval: eval busW
+        , eval: eval bus
         , peek: Just (peek busW ∘ H.runChildF)
+        , initializer: Just (H.action Init)
+        , finalizer: Nothing
         }
 
 render ∷ Bus.BusW GE.GlobalError → State → HTML
@@ -135,7 +137,10 @@ render bus state@{ version, sort, salt, path } =
         }
     ]
 
-eval ∷ Bus.BusW GE.GlobalError → Query ~> DSL
+eval ∷ Bus.BusRW GE.GlobalError → Query ~> DSL
+eval bus (Init next) = do
+  subscribeToBus' (H.action ∘ HandleError) bus
+  pure next
 eval _ (Resort next) = do
   { sort, salt, path } ← H.get
   searchValue ← H.query' cpSearch unit (H.request Search.GetValue)
@@ -232,8 +237,15 @@ eval _ (Download next) = do
 
 eval _ (SetVersion version next) = H.modify (_version .~ Just version) $> next
 eval _ (DismissSignInSubmenu next) = dismissSignInSubmenu $> next
+eval _ (HandleError ge next) = do
+  showDialog $ Dialog.Error $ GE.print ge
+  pure next
 
-uploadFileSelected ∷ Bus.BusW GE.GlobalError → Cf.File → DSL Unit
+uploadFileSelected
+  ∷ ∀ r
+  . Bus.Bus (write ∷ Bus.Cap | r) GE.GlobalError
+  → Cf.File
+  → DSL Unit
 uploadFileSelected bus f = do
   { path, sort, salt } ← H.get
   name ←
@@ -440,7 +452,11 @@ resort = do
     >>= traverse_ \isSearching →
       void $ queryListing $ H.action $ Listing.SortBy (sortItem isSearching sort)
 
-configure ∷ Bus.BusW GE.GlobalError → R.Mount → DSL Unit
+configure
+  ∷ ∀ r
+  . Bus.Bus (write ∷ Bus.Cap | r) GE.GlobalError
+  → R.Mount
+  → DSL Unit
 configure bus (R.View path) = do
   API.viewInfo path >>=
     case _ of

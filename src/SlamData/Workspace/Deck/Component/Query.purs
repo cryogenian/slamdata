@@ -28,15 +28,16 @@ import DOM.HTML.Types (HTMLElement)
 import Halogen.Component.Opaque.Unsafe (OpaqueQuery)
 import Halogen.HTML.Events.Types (Event, MouseEvent)
 
+import SlamData.GlobalError (GlobalError)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Draftboard.Model (DeckPosition)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port.VarMap (VarMap)
 import SlamData.Workspace.Deck.DeckId (DeckId)
+import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 import SlamData.Workspace.Deck.Gripper.Def (GripperDef)
 import SlamData.Workspace.Deck.Model (Deck)
 import SlamData.Workspace.Wiring (DeckMessage, PendingMessage)
-import SlamData.Workspace.Deck.Dialog.Share.Model (SharingInput)
 
 import Utils.Path as UP
 
@@ -73,6 +74,7 @@ data Query a
   | Focus a
   | HandleMessage DeckMessage a
   | GetSharingInput (SharingInput → a)
+  | HandleError GlobalError a
 
 data DeckAction
   = Mirror

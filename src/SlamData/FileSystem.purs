@@ -26,7 +26,7 @@ import Control.Monad.Aff.AVar (makeVar', takeVar, putVar, modifyVar, AVar)
 import Control.Monad.Aff.Bus as Bus
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (message, error)
+import Control.Monad.Eff.Exception (error)
 import Control.UI.Browser (setTitle, replaceLocation)
 
 import Data.Array (filter, mapMaybe)
@@ -36,7 +36,6 @@ import Data.Path.Pathy ((</>), rootDir, parseAbsDir, sandbox, currentDir)
 
 import DOM (DOM)
 
-import Halogen as H
 import Halogen.Component (parentState)
 import Halogen.Driver (Driver, runUI)
 import Halogen.Query (action)
@@ -60,7 +59,7 @@ import SlamData.FileSystem.Routing (Routes(..), routing, browseURL)
 import SlamData.FileSystem.Routing.Salt (Salt, newSalt)
 import SlamData.FileSystem.Routing.Search (isSearchQuery, searchPath, filterByQuery)
 import SlamData.FileSystem.Search.Component as Search
-import SlamData.Quasar.Auth as Auth
+import SlamData.GlobalError as GE
 import SlamData.Quasar.FS (children) as Quasar
 import SlamData.Quasar.Mount (mountInfo) as Quasar
 
@@ -81,7 +80,7 @@ main = do
     forkAff do
       setSlamDataTitle slamDataVersion
       driver (left $ action $ SetVersion slamDataVersion)
-    forkAff $ routeSignal driver
+    forkAff $ routeSignal qbus driver
 
 setSlamDataTitle ∷ ∀ e. String → Aff (dom ∷ DOM|e) Unit
 setSlamDataTitle version =
@@ -91,26 +90,30 @@ initialAVar ∷ Tuple (Canceler SlamDataEffects) (M.Map Int Int)
 initialAVar = Tuple mempty M.empty
 
 routeSignal
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ ∀ r
+  . Bus.Bus (write ∷ Bus.Cap | r) GE.GlobalError
+  → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
-routeSignal driver = do
+routeSignal bus driver = do
   avar ← makeVar' initialAVar
   routeTpl ← matchesAff routing
   pure unit
-  uncurry (redirects driver avar) routeTpl
+  uncurry (redirects bus driver avar) routeTpl
 
 
 redirects
-  ∷ Driver QueryP SlamDataRawEffects
+  ∷ ∀ r
+  . Bus.Bus (write ∷ Bus.Cap | r) GE.GlobalError
+  → Driver QueryP SlamDataRawEffects
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   → Maybe Routes → Routes
   → Aff SlamDataEffects Unit
-redirects _ _ _ Index = updateURL Nothing Asc Nothing rootDir
-redirects _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
-redirects _ _ _ (SortAndQ sort query) =
+redirects _ _ _ _ Index = updateURL Nothing Asc Nothing rootDir
+redirects _ _ _ _ (Sort sort) = updateURL Nothing sort Nothing rootDir
+redirects _ _ _ _ (SortAndQ sort query) =
   let queryParts = splitQuery query
   in updateURL queryParts.query sort Nothing queryParts.path
-redirects driver var mbOld (Salted sort query salt) = do
+redirects bus driver var mbOld (Salted sort query salt) = do
   Tuple canceler _ ← takeVar var
   cancel canceler $ error "cancel search"
   putVar var initialAVar
@@ -126,7 +129,7 @@ redirects driver var mbOld (Salted sort query salt) = do
     driver $ toSearch $ Search.SetValue $ fromMaybe "" queryParts.query
     driver $ toSearch $ Search.SetValid true
     driver $ toSearch $ Search.SetPath queryParts.path
-    listPath query zero var queryParts.path driver
+    listPath bus query zero var queryParts.path driver
     maybe (checkMount queryParts.path driver) (const $ pure unit) queryParts.query
     else
     driver $ toSearch $ Search.SetLoading false
@@ -150,13 +153,15 @@ checkMount path driver = do
     driver $ left $ action $ SetIsMount true
 
 listPath
-  ∷ SearchQuery
+  ∷ ∀ r
+  . Bus.Bus (write ∷ Bus.Cap | r) GE.GlobalError
+  → SearchQuery
   → Int
   → AVar (Tuple (Canceler SlamDataEffects) (M.Map Int Int))
   → DirPath
   → Driver QueryP SlamDataRawEffects
   → Aff SlamDataEffects Unit
-listPath query deep var dir driver = do
+listPath bus query deep var dir driver = do
   modifyVar (_2 %~ M.alter (pure ∘ maybe 1 (_ + 1)) deep) var
   canceler ← forkAff goDeeper
   modifyVar (_1 <>~ canceler) var
@@ -173,27 +178,18 @@ listPath query deep var dir driver = do
       putVar var (Tuple c r)
 
   sendError ∷ QE.QError → Aff SlamDataEffects Unit
-  sendError =
-    presentError <=< listingErrorMessage <<< QE.lowerQError
-
-  suggestedAction =
-    maybe "Please sign in." (const "Please sign out and sign in again.")
+  sendError err =
+    case GE.fromQError err of
+      Left msg →
+        presentError $
+          "There was a problem accessing this directory listing. " <> msg
+      Right ge →
+        Bus.write ge bus
 
   presentError message =
     when ((not $ isSearchQuery query) ∨ deep ≡ zero)
     $ driver $ toDialog $ Dialog.Show
     $ Dialog.Error message
-
-  forbiddenMessage =
-    "Your browser is not currently authorized to access this directory listing. "
-
-  listingErrorMessage err =
-    case message err of
-      "An unknown error ocurred: 401 \"\"" ->
-        append forbiddenMessage <<< suggestedAction <$> H.fromEff Auth.retrieveIdToken
-      s ->
-        pure $ "There was a problem accessing this directory listing. " <> s
-
 
   getChildren ∷ Array Resource → Aff SlamDataEffects Unit
   getChildren ress = do
@@ -201,7 +197,7 @@ listPath query deep var dir driver = do
         toAdd = map Item $ filter (filterByQuery query) ress
 
     driver $ toListing $ Listing.Adds toAdd
-    traverse_ (\n → listPath query (deep + one) var n driver)
+    traverse_ (\n → listPath bus query (deep + one) var n driver)
       (guard (isSearchQuery query) *> next)
 
 

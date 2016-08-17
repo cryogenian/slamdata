@@ -20,6 +20,7 @@ import DOM.HTML.Types (HTMLElement)
 
 import SlamData.FileSystem.Listing.Sort (Sort)
 import SlamData.FileSystem.Routing.Salt (Salt)
+import SlamData.GlobalError (GlobalError)
 
 import Utils.Path (DirPath)
 
@@ -40,3 +41,5 @@ data Query a
   | FileListChanged HTMLElement a
   | SetVersion String a
   | DismissSignInSubmenu a
+  | Init a
+  | HandleError GlobalError a

@@ -59,6 +59,7 @@ import SlamData.Analytics.Event as AE
 import SlamData.Effects (Slam)
 import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Routing (parentURL)
+import SlamData.GlobalError as GE
 import SlamData.Quasar.Error as QE
 import SlamData.Workspace.AccessType as AT
 import SlamData.Workspace.Action as WA
@@ -119,6 +120,9 @@ eval opts@{ wiring } = case _ of
     pb ← subscribeToBus' (H.action ∘ RunPendingCards) wiring.pending
     mb ← subscribeToBus' (H.action ∘ HandleMessage) wiring.messaging
     H.modify $ DCS._breakers .~ [pb, mb]
+    when (L.null opts.cursor) do
+      eb ← subscribeToBus' (H.action ∘ HandleError) wiring.globalError
+      H.modify $ DCS._breakers %~ (Array.cons eb)
     updateCardSize
     pure next
   Finish next → do
@@ -277,6 +281,10 @@ eval opts@{ wiring } = case _ of
     k <$> getDeckModel
   GetSharingInput k →
     k <$> getSharingInput
+  HandleError ge next → do
+    showDialog $ Dialog.Error $ GE.print ge
+    traceAnyA ("HandleError" × ge)
+    pure next
 
   where
   getBoundingClientWidth =
@@ -325,7 +333,7 @@ peek opts (H.ChildF s q) =
    $ q
 
 peekDialog ∷ ∀ a. DeckOptions → Dialog.Query a → DeckDSL Unit
-peekDialog _ (Dialog.Show _ _) =
+peekDialog _ (Dialog.Show _ _) = do
   H.modify (DCS._displayMode .~ DCS.Dialog)
 peekDialog _ (Dialog.Dismiss _) =
   H.modify (DCS._displayMode .~ DCS.Backside)
@@ -351,11 +359,9 @@ peekBackSide opts (Back.DoAction action _) =
           ErrorCardId → do
             showDialog
               $ Dialog.Error "You cannot delete the error card. Please, fix errors or slide to previous card."
-            H.modify (DCS._displayMode .~ DCS.Dialog)
           NextActionCardId → do
             showDialog
               $ Dialog.Error "You cannot delete the next action card. Please, slide to previous card."
-            H.modify (DCS._displayMode .~ DCS.Dialog)
           PendingCardId → do
             showDialog
               $ Dialog.Error "You cannot delete the pending card. Please, wait till card evaluation is finished."
@@ -373,36 +379,29 @@ peekBackSide opts (Back.DoAction action _) =
     Back.Rename → do
       name ← H.gets _.name
       showDialog $ Dialog.Rename name
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Share → do
       sharingInput ← getSharingInput
       showDialog $ Dialog.Share sharingInput
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Unshare → do
       sharingInput ← getSharingInput
       showDialog $ Dialog.Unshare sharingInput
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Embed → do
       st ← H.get
       AE.track (AE.Embed st.id) opts.wiring.analytics
       sharingInput ← getSharingInput
       varMaps ← getVarMaps (DCS.deckPath st) opts.wiring
       showDialog $ Dialog.Embed sharingInput varMaps
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.Publish → do
       st ← H.get
       AE.track (AE.Publish st.id) opts.wiring.analytics
       sharingInput ← getSharingInput
       varMaps ← getVarMaps (DCS.deckPath st) opts.wiring
       showDialog $ Dialog.Publish sharingInput varMaps
-      H.modify (DCS._displayMode .~ DCS.Dialog)
     Back.DeleteDeck → do
       cards ← H.gets _.modelCards
       if Array.null cards
         then raise' $ H.action $ DoAction DeleteDeck
-        else do
-          showDialog Dialog.DeleteDeck
-          H.modify (DCS._displayMode .~ DCS.Dialog)
+        else showDialog Dialog.DeleteDeck
     Back.Mirror → do
       H.modify $ DCS._displayMode .~ DCS.Normal
       raise' $ H.action $ DoAction Mirror
@@ -416,10 +415,9 @@ peekCards ∷ ∀ a. Wiring → CardSlot → CardQueryP a → DeckDSL Unit
 peekCards wiring (CardSlot cardId) = (const $ pure unit) ⨁ peekCardInner wiring cardId
 
 showDialog ∷ Dialog.Dialog → DeckDSL Unit
-showDialog =
-  queryDialog
-    ∘ H.action
-    ∘ Dialog.Show
+showDialog dlg = do
+  queryDialog $ H.action $ Dialog.Show dlg
+  H.modify (DCS._displayMode .~ DCS.Dialog)
 
 queryDialog ∷ Dialog.Query Unit → DeckDSL Unit
 queryDialog q = H.query' cpDialog unit (left q) *> pure unit
@@ -531,7 +529,7 @@ peekAnyCard wiring cardCoord q = do
 
 presentReason ∷ (Maybe Port.Port) -> CT.CardType → DeckDSL Unit
 presentReason input cardType =
-  traverse_ showDialog dialog *> H.modify (DCS._displayMode .~ DCS.Dialog)
+  traverse_ showDialog dialog
   where
   insertableCardType = ICT.fromCardType cardType
   ioType = ICT.fromMaybePort input
