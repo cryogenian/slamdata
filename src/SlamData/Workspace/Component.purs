@@ -117,7 +117,7 @@ render wiring state =
   header = do
     guard $ AT.isEditable (state ^. _accessType)
     pure $ HH.slot' cpHeader unit \_ →
-      { component: Header.comp
+      { component: Header.comp wiring
       , initialState: H.parentState Header.initialState
       }
 
@@ -205,15 +205,15 @@ eval wiring (Load path deckId accessType next) = do
     queryDeck $ H.action $ Deck.Load path deckId
 
   loadRoot =
-    rootDeck path >>= either handleError loadDeck
+    rootDeck wiring path >>= either handleError loadDeck
 
   handleError err =
     case GE.fromQError err of
       Left msg → H.modify $ _stateMode .~ Error msg
       Right ge → H.fromAff $ Bus.write ge wiring.globalError
 
-rootDeck ∷ UP.DirPath → WorkspaceDSL (Either QE.QError DeckId)
-rootDeck path = Model.getRoot (path </> Pathy.file "index")
+rootDeck ∷ Wiring → UP.DirPath → WorkspaceDSL (Either QE.QError DeckId)
+rootDeck wiring path = Model.getRoot wiring (path </> Pathy.file "index")
 
 peek ∷ ∀ a. Wiring → ChildQuery a → WorkspaceDSL Unit
 peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
@@ -284,7 +284,7 @@ peek wiring = ((const $ pure unit) ⨁ peekDeck) ⨁ (const $ pure unit)
           lift $ for_ cards (DBC.unsafeUpdateCachedDraftboard wiring deckId)
           ExceptT $ putDeck path deckId (parentDeck { cards = cards }) wiring
         Nothing →
-          ExceptT $ Quasar.delete $ Left path
+          ExceptT $ Quasar.delete wiring $ Left path
 
     case error of
       Left err →
@@ -412,7 +412,7 @@ updateParentPointer wiring path oldId newId = case _ of
     lift $ for_ cards (DBC.unsafeUpdateCachedDraftboard wiring deckId)
     ExceptT $ putDeck path deckId (parentDeck { cards = cards }) wiring
   Nothing →
-    ExceptT $ Model.setRoot (path </> Pathy.file "index") newId
+    ExceptT $ Model.setRoot wiring (path </> Pathy.file "index") newId
 
 updateHash
   ∷ ∀ m

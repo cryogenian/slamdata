@@ -69,6 +69,9 @@ defaultPageSize = 10
 notifyTimeout :: Int
 notifyTimeout = 500
 
+authenticationTimeout :: Int
+authenticationTimeout = 5000
+
 resizeEChartsTimeout :: Int
 resizeEChartsTimeout = 0
 

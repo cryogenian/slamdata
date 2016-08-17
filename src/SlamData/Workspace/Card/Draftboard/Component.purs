@@ -435,7 +435,7 @@ addDeckAt { deck: opts, deckId: parentId, cardId } deck deckPos = do
 
 deleteDeck ∷ CardOptions → DeckId → DraftboardDSL Unit
 deleteDeck { deck } deckId = do
-  res ← deleteGraph deck.path deckId
+  res ← deleteGraph deck.wiring deck.path deckId
   case res of
     Left err →
       Notify.deleteDeckFail err deck.wiring

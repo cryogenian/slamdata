@@ -56,29 +56,31 @@ import Quasar.Types (AnyPath, DirPath, FilePath)
 
 import SlamData.Config as Config
 import SlamData.FileSystem.Resource as R
-import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Aff (QEff, runQuasarF, Wiring)
 
 import Utils.AffableProducer as AP
 import Utils.Completions (memoizeCompletionStrs)
 
 children
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Wiring r
+  → DirPath
   → m (Either QError (Array R.Resource))
-children dir = runExceptT do
-  cs ← ExceptT $ listing dir
+children wiring dir = runExceptT do
+  cs ← ExceptT $ listing wiring dir
   let result = (R._root .~ dir) <$> cs
   lift $ fromAff $ memoizeCompletionStrs dir result
   pure result
 
 -- | Produces a stream of the transitive children of a path
 transitiveChildrenProducer
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Wiring r
+  → DirPath
   → CR.Producer (Array R.Resource) m Unit
-transitiveChildrenProducer dirPath = do
+transitiveChildrenProducer wiring dirPath = do
   AP.produce \emit → do
     activeRequests ← Ref.newRef $ Set.singleton $ P.printPath dirPath
     void $ Aff.runAff Exn.throwException (const (pure unit)) $
@@ -86,7 +88,7 @@ transitiveChildrenProducer dirPath = do
   where
   go emit activeRequests start = do
     let strPath = P.printPath start
-    eitherChildren ← children start
+    eitherChildren ← children wiring start
     liftEff $ Ref.modifyRef activeRequests $ Set.delete strPath
     for_ eitherChildren \items → do
       liftEff $ emit $ Left items
@@ -99,12 +101,13 @@ transitiveChildrenProducer dirPath = do
       liftEff ∘ emit $ Right unit
 
 listing
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Wiring r
+  → DirPath
   → m (Either QError (Array R.Resource))
-listing p =
-  map (map toResource) <$> runQuasarF (QF.dirMetadata p)
+listing wiring p =
+  map (map toResource) <$> runQuasarF wiring (QF.dirMetadata p)
   where
   toResource ∷ QFS.Resource → R.Resource
   toResource res = case res of
@@ -123,13 +126,14 @@ listing p =
 -- | resource. If the name already exists in the path a number is appended to
 -- | the end of the name.
 getNewName
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Wiring r
+  → DirPath
   → String
   → m (Either QError String)
-getNewName parent name = do
-  result ← runQuasarF (QF.dirMetadata parent)
+getNewName wiring parent name = do
+  result ← runQuasarF wiring (QF.dirMetadata parent)
   pure case result of
     Right items
       | exists name items → Right (getNewName' items 1)
@@ -158,16 +162,17 @@ getNewName parent name = do
 -- | Will return `Just` in case the resource was successfully moved, and
 -- | `Nothing` in case no resource existed at the requested source path.
 move
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ R.Resource
+  ⇒ Wiring r
+  → R.Resource
   → AnyPath
   → m (Either QError (Maybe AnyPath))
-move src tgt = do
+move wiring src tgt = do
   let srcPath = R.getPath src
-  runExceptT ∘ traverse cleanViewMounts $ srcPath ^? _Left
+  runExceptT ∘ traverse (cleanViewMounts wiring) $ srcPath ^? _Left
   result ←
-    runQuasarF case src of
+    runQuasarF wiring case src of
       R.Mount _ → QF.moveMount srcPath tgt
       _ → QF.moveData srcPath tgt
   pure
@@ -177,18 +182,19 @@ move src tgt = do
       Left err → Left err
 
 delete
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ R.Resource
+  ⇒ Wiring r
+  → R.Resource
   → m (Either QError (Maybe R.Resource))
-delete resource =
+delete wiring resource =
   runExceptT $
     if R.isMount resource || alreadyInTrash resource
     then
-      forceDelete resource $> Nothing
+      forceDelete wiring resource $> Nothing
     else
       moveToTrash resource `catchError` \(err ∷ QError) →
-        forceDelete resource $> Nothing
+        forceDelete wiring resource $> Nothing
 
   where
   msg ∷ String
@@ -201,8 +207,8 @@ delete resource =
     let
       d = (res ^. R._root) </> P.dir Config.trashFolder
       path = (res # R._root .~ d) ^. R._path
-    name ← ExceptT $ getNewName d (res ^. R._name)
-    ExceptT $ move res (path # R._nameAnyPath .~ name)
+    name ← ExceptT $ getNewName wiring d (res ^. R._name)
+    ExceptT $ move wiring res (path # R._nameAnyPath .~ name)
     pure ∘ Just $ R.Directory d
 
   alreadyInTrash ∷ R.Resource → Boolean
@@ -228,25 +234,27 @@ delete resource =
           else alreadyInTrash' d
 
 forceDelete
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, MR.MonadRec m, Affable (QEff eff) m)
-  ⇒ R.Resource
+  ⇒ Wiring r
+  → R.Resource
   → ExceptT QError m Unit
-forceDelete res =
+forceDelete wiring res =
   case res of
     R.Mount _ →
-      ExceptT ∘ runQuasarF $ QF.deleteMount (R.getPath res)
+      ExceptT ∘ runQuasarF wiring $ QF.deleteMount (R.getPath res)
     _ → do
       let path = R.getPath res
-      traverse cleanViewMounts $ path ^? _Left
-      ExceptT ∘ runQuasarF $ QF.deleteData path
+      traverse (cleanViewMounts wiring) $ path ^? _Left
+      ExceptT ∘ runQuasarF wiring $ QF.deleteData path
 
 cleanViewMounts
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Wiring r
+  → DirPath
   → ExceptT QError m Unit
-cleanViewMounts path =
+cleanViewMounts wiring path =
   hoistExceptT fromAff $ CR.runProcess (producer CR.$$ consumer)
 
   where
@@ -261,7 +269,7 @@ cleanViewMounts path =
   producer ∷ CR.Producer (Array R.Resource) (ExceptT QError (Aff.Aff (QEff eff))) Unit
   producer =
     FT.hoistFreeT lift $
-      transitiveChildrenProducer path
+      transitiveChildrenProducer wiring path
 
   consumer ∷ CR.Consumer (Array R.Resource) (ExceptT QError (Aff.Aff (QEff eff))) Unit
   consumer =
@@ -275,17 +283,18 @@ cleanViewMounts path =
   deleteViewMount =
     case _ of
       R.Mount (R.View vp) →
-        ExceptT ∘ runQuasarF $ QF.deleteMount (Right vp)
+        ExceptT ∘ runQuasarF wiring $ QF.deleteMount (Right vp)
       _ → pure unit
 
 messageIfFileNotFound
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ Wiring r
+  → FilePath
   → String
   → m (Either QError (Maybe String))
-messageIfFileNotFound path defaultMsg =
-  handleResult <$> runQuasarF (QF.fileMetadata path)
+messageIfFileNotFound wiring path defaultMsg =
+  handleResult <$> runQuasarF wiring (QF.fileMetadata path)
   where
   handleResult ∷ ∀ a. Either QF.QError a → Either QError (Maybe String)
   handleResult (Left QF.NotFound) = Right (Just defaultMsg)
@@ -293,17 +302,19 @@ messageIfFileNotFound path defaultMsg =
   handleResult (Right _) = Right Nothing
 
 dirNotAccessible
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Wiring r
+  → DirPath
   → m (Maybe QF.QError)
-dirNotAccessible path =
-  either Just (const Nothing) <$> runQuasarF (QF.dirMetadata path)
+dirNotAccessible wiring path =
+  either Just (const Nothing) <$> runQuasarF wiring (QF.dirMetadata path)
 
 fileNotAccessible
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ Wiring r
+  → FilePath
   → m (Maybe QF.QError)
-fileNotAccessible path =
-  either Just (const Nothing) <$> runQuasarF (QF.fileMetadata path)
+fileNotAccessible wiring path =
+  either Just (const Nothing) <$> runQuasarF wiring (QF.fileMetadata path)

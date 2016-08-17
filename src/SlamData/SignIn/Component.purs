@@ -26,6 +26,8 @@ module SlamData.SignIn.Component
 import SlamData.Prelude
 
 import Control.UI.Browser as Browser
+import Control.Monad.Aff.AVar as AVar
+import Control.Monad.Aff.Bus as Bus
 
 import Halogen as H
 import Halogen.HTML.Core (className)
@@ -35,19 +37,22 @@ import Halogen.Menu.Component (MenuQuery(..), menuComponent) as HalogenMenu
 import Halogen.Menu.Component.State (makeMenu)
 import Halogen.Menu.Submenu.Component (SubmenuQuery(..)) as HalogenMenu
 
-import OIDC.Aff as OIDC
 import OIDC.Crypt as Crypt
 
-import Quasar.Advanced.Types (ProviderR)
+import Quasar.Advanced.Types (ProviderR, Provider(..))
 
 import SlamData.Analytics as Analytics
-import SlamData.Config as Config
 import SlamData.Effects (Slam)
 import SlamData.Quasar as Api
-import SlamData.Quasar.Auth as Auth
+import SlamData.Quasar.Aff (Wiring)
+import SlamData.Quasar.Auth.Authentication as AuthRetrieve
+import SlamData.Quasar.Auth.Store as AuthStore
+import SlamData.SignIn.Bus (SignInMessage(..))
 import SlamData.SignIn.Component.State (State, initialState)
 import SlamData.SignIn.Menu.Component.Query (QueryP) as Menu
 import SlamData.SignIn.Menu.Component.State (StateP, makeSubmenuItem, make) as Menu
+
+import Utils (passover)
 
 data Query a
   = DismissSubmenu a
@@ -71,12 +76,15 @@ type StateP = H.ParentState State (ChildState Slam) Query ChildQuery Slam ChildS
 type SignInHTML = H.ParentHTML (ChildState Slam) Query ChildQuery Slam ChildSlot
 type SignInDSL = H.ParentDSL State (ChildState Slam) Query ChildQuery Slam ChildSlot
 
-comp ∷ H.Component StateP QueryP Slam
-comp =
+comp
+  ∷ ∀ r
+  . Wiring r
+  → H.Component StateP QueryP Slam
+comp wiring =
   H.lifecycleParentComponent
     { render
-    , eval
-    , peek: Just (menuPeek ∘ H.runChildF)
+    , eval: eval wiring
+    , peek: Just (menuPeek wiring ∘ H.runChildF)
     , initializer: Just (H.action Init)
     , finalizer: Nothing
     }
@@ -91,16 +99,18 @@ render state =
         , initialState: H.parentState $ Menu.make []
         }
 
-eval ∷ Query ~> SignInDSL
-eval (DismissSubmenu next) = dismissAll $> next
-eval (Init next) = do
-  mbIdToken ← H.fromEff Auth.retrieveIdToken
+eval ∷ ∀ r. Wiring r → Query ~> SignInDSL
+eval _ (DismissSubmenu next) = dismissAll $> next
+eval wiring (Init next) = update wiring $> next
+
+update ∷ ∀ r. Wiring r → SignInDSL Unit
+update wiring = do
+  mbIdToken ← H.fromAff $ AuthRetrieve.fromEither <$> AuthRetrieve.getIdToken wiring.requestNewIdTokenBus
   traverse_ H.fromEff $ Analytics.identify <$> (Crypt.pluckEmail =<< mbIdToken)
   maybe
     retrieveProvidersAndUpdateMenu
     putEmailToMenu
     mbIdToken
-  pure next
   where
   putEmailToMenu ∷ Crypt.IdToken → SignInDSL Unit
   putEmailToMenu token = do
@@ -125,7 +135,7 @@ eval (Init next) = do
 
   retrieveProvidersAndUpdateMenu ∷ SignInDSL Unit
   retrieveProvidersAndUpdateMenu = do
-    eProviders ← H.fromAff $ Api.retrieveAuthProviders
+    eProviders ← H.fromAff $ Api.retrieveAuthProviders wiring
     case eProviders of
       Left _ → H.modify (_{hidden = true})
       Right Nothing → H.modify (_{hidden = true})
@@ -142,40 +152,49 @@ eval (Init next) = do
             }
           ]
 
-
 dismissAll ∷ SignInDSL Unit
 dismissAll =
   queryMenu $
     H.action HalogenMenu.DismissSubmenu
 
 menuPeek
-  ∷ ∀ a
-  . Menu.QueryP a
+  ∷ ∀ a r
+  . Wiring r
+  → Menu.QueryP a
   → SignInDSL Unit
-menuPeek =
+menuPeek wiring =
   coproduct
     (const (pure unit))
-    (submenuPeek ∘ H.runChildF)
+    (submenuPeek wiring ∘ H.runChildF)
 
 submenuPeek
-  ∷ ∀ a
-  . HalogenMenu.SubmenuQuery (Maybe ProviderR) a
+  ∷ ∀ a r
+  . Wiring r
+  → HalogenMenu.SubmenuQuery (Maybe ProviderR) a
   → SignInDSL Unit
-submenuPeek (HalogenMenu.SelectSubmenuItem v _) = do
+submenuPeek wiring (HalogenMenu.SelectSubmenuItem providerR _) = do
   {loggedIn} ← H.get
-  if loggedIn
-    then logOut
-    else for_ v $ either (const $ pure unit) (H.fromEff ∘ Browser.setLocation) <=< requestAuthenticationURI
+  if loggedIn then logOut else logIn
+  pure unit
   where
   logOut ∷ SignInDSL Unit
   logOut = do
     H.fromEff do
-      Auth.clearIdToken
+      AuthStore.clearIdToken
+      AuthStore.clearProvider
       Browser.reload
-  appendAuthPath s = s <> Config.redirectURIString
-  requestAuthenticationURI pr =
-    H.fromEff $ OIDC.requestAuthenticationURI pr ∘ appendAuthPath =<< Browser.locationString
-
+  logIn ∷ SignInDSL Unit
+  logIn = do
+    for_ providerR $ H.fromEff ∘ AuthStore.storeProvider ∘ Provider
+    H.fromAff
+      -- TODO: Add notifications here.
+      $ either (const $ pure unit) (const $ Bus.write SignInSuccess wiring.signInBus)
+      =<< AVar.takeVar
+      =<< passover (flip Bus.write wiring.requestNewIdTokenBus)
+      =<< AVar.makeVar
+    update wiring
+    -- TODO: Reattempt failed actions without loosing state, remove reload.
+    H.fromEff Browser.reload
 
 queryMenu
   ∷ HalogenMenu.MenuQuery (Maybe ProviderR) Unit

@@ -44,23 +44,23 @@ import SlamData.FileSystem.Resource as R
 import SlamData.FileSystem.Wiring (Wiring)
 import SlamData.GlobalError as GE
 import SlamData.Quasar.FS as API
-import SlamData.Render.Common (fadeWhen, formGroup)
 import SlamData.Render.CSS as Rc
+import SlamData.Render.Common (fadeWhen, formGroup)
 
 import Utils.Path (DirPath, dropWorkspaceExt)
 
 type State =
-  { showList :: Boolean
-  , initial :: R.Resource
-  , name :: String
-  , dirs :: Array R.Resource
-  , dir :: DirPath
-  , typedDir :: String
-  , siblings :: Array R.Resource
-  , error :: Maybe String
+  { showList ∷ Boolean
+  , initial ∷ R.Resource
+  , name ∷ String
+  , dirs ∷ Array R.Resource
+  , dir ∷ DirPath
+  , typedDir ∷ String
+  , siblings ∷ Array R.Resource
+  , error ∷ Maybe String
   }
 
-initialState :: R.Resource -> State
+initialState ∷ R.Resource → State
 initialState resource =
   { showList: false
   , initial: resource
@@ -74,31 +74,31 @@ initialState resource =
   , error: Nothing
   }
 
-_showList :: LensP State Boolean
+_showList ∷ LensP State Boolean
 _showList = lens _.showList (_ { showList = _ })
 
-_initial :: LensP State R.Resource
+_initial ∷ LensP State R.Resource
 _initial = lens _.initial (_ { initial = _ })
 
-_name :: LensP State String
+_name ∷ LensP State String
 _name = lens _.name (_ { name = _ })
 
-_typedDir :: LensP State String
+_typedDir ∷ LensP State String
 _typedDir = lens _.typedDir (_ { typedDir = _ })
 
-_dirs :: LensP State (Array R.Resource)
+_dirs ∷ LensP State (Array R.Resource)
 _dirs = lens _.dirs (_ { dirs = _ })
 
-_dir :: LensP State DirPath
+_dir ∷ LensP State DirPath
 _dir = lens _.dir (_ { dir = _ })
 
-_siblings :: LensP State (Array R.Resource)
+_siblings ∷ LensP State (Array R.Resource)
 _siblings = lens _.siblings (_ { siblings = _ })
 
-_error :: LensP State (Maybe String)
+_error ∷ LensP State (Maybe String)
 _error = lens _.error (_ { error = _ })
 
-renameSlam :: State -> R.Resource
+renameSlam ∷ State → R.Resource
 renameSlam r =
   let initial = r.initial
       name = r.name
@@ -108,7 +108,7 @@ renameSlam r =
   in initial # (R._name .~ nameWithExt)
            <<< (R._root .~ r.dir)
 
-validate :: State -> State
+validate ∷ State → State
 validate r
   | r.initial == renameSlam r = r # _error .~ Nothing
   | otherwise = r # _error .~ either Just (const Nothing) do
@@ -154,7 +154,7 @@ comp wiring =
     , finalizer: Nothing
     }
 
-render :: State -> HTML
+render ∷ State → HTML
 render dialog =
   modalDialog
   [ modalHeader "Move/rename"
@@ -162,7 +162,7 @@ render dialog =
     $ HH.form
         [ HP.classes [ Rc.renameDialogForm ]
         , Cp.nonSubmit
-        , HE.onClick \_ ->
+        , HE.onClick \_ →
             HEH.stopPropagation $> Just (H.action (SetShowList false))
         ]
         [ nameInput
@@ -185,7 +185,7 @@ render dialog =
       ]
   ]
   where
-  nameInput :: HTML
+  nameInput ∷ HTML
   nameInput =
     formGroup [ HH.input [ HP.classes [ B.formControl ]
                         , HP.value (dialog.name)
@@ -194,7 +194,7 @@ render dialog =
                         ]
               ]
 
-  dirDropdownField :: HTML
+  dirDropdownField ∷ HTML
   dirDropdownField =
     HH.div
       [ HP.classes [ B.inputGroup ] ]
@@ -208,7 +208,7 @@ render dialog =
           [ HP.classes [ B.inputGroupBtn ] ]
           [ HH.button
               [ HP.classes [ B.btn, B.btnDefault ]
-              , HE.onClick \_ ->
+              , HE.onClick \_ →
                   HEH.stopPropagation $> Just (H.action ToggleShowList)
               , ARIA.label "Select a destination folder"
               , HP.title "Select a destination folder"
@@ -216,19 +216,19 @@ render dialog =
               [ HH.span [ HP.classes [ B.caret ] ] [ ] ]
           ]
       ]
-  dirDropdownList :: HTML
+  dirDropdownList ∷ HTML
   dirDropdownList =
     HH.ul [ HP.classes $ [ B.listGroup, Rc.fileListGroup ]
            <> fadeWhen (not $ dialog.showList) ]
     $ renameItem <$> dialog.dirs
 
-  errorMessage :: HTML
+  errorMessage ∷ HTML
   errorMessage =
     HH.div [ HP.classes $ [ B.alert, B.alertDanger ]
             <> fadeWhen (isNothing (dialog.error)) ]
     $ maybe [ ] (pure <<< HH.text) (dialog.error)
 
-  renameItem :: R.Resource -> HTML
+  renameItem ∷ R.Resource → HTML
   renameItem res =
     HH.button [ HP.classes ([ B.listGroupItem ]
                           <> (if R.isHidden res
@@ -268,14 +268,14 @@ eval wiring (Submit next) = do
       Right ge → H.fromAff $ Bus.write ge wiring.globalError
 
   moveIfDirAccessible dir =
-    maybe (move dir) presentError =<< API.dirNotAccessible dir
+    maybe (move dir) presentError =<< API.dirNotAccessible wiring dir
 
   move dir = do
     H.modify $ (_dir .~ dir) <<< (_showList .~ false)
-    state <- H.get
+    state ← H.get
     let src = state.initial
         tgt = R.getPath $ renameSlam state
-    result <- API.move src tgt
+    result ← API.move wiring src tgt
     case result of
       Left e ->
         case GE.fromQError e of
@@ -299,8 +299,8 @@ eval _ (NameTyped str next) = do
 eval _ (DirTyped str next) = do
   H.modify $ _typedDir .~ str
   pure next
-eval _ (DirClicked res next) = do
-  dirItemClicked res
+eval wiring (DirClicked res next) = do
+  dirItemClicked wiring res
   pure next
 eval _ (SetSiblings ss next) = do
   H.modify (_siblings .~ ss)
@@ -308,17 +308,17 @@ eval _ (SetSiblings ss next) = do
 eval _ (AddDirs ds next) = do
   H.modify (_dirs %~ append ds >>> nub >>> sort)
   pure next
-eval _ (Init next) = do
+eval wiring (Init next) = do
   state <- H.get
-  dirItemClicked $ R.parent $ state.initial
+  dirItemClicked wiring $ R.parent $ state.initial
   pure next
 
-dirItemClicked :: R.Resource -> DSL Unit
-dirItemClicked res = do
+dirItemClicked ∷ Wiring → R.Resource → DSL Unit
+dirItemClicked wiring res = do
   case R.getPath res of
-    Right _ -> pure unit
-    Left dir -> do
-      siblings <- API.children dir
+    Right _ → pure unit
+    Left dir → do
+      siblings ← API.children wiring dir
       H.modify
         $ (_dir .~ dir)
         <<< (_showList .~ false)

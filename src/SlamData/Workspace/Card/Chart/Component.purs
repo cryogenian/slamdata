@@ -44,6 +44,7 @@ import Halogen.HTML.Properties.Indexed.ARIA as ARIA
 import Halogen.Themes.Bootstrap3 as B
 
 import SlamData.Effects (Slam)
+import SlamData.Quasar.Aff (Wiring)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Render.CSS as RC
@@ -59,10 +60,10 @@ import SlamData.Workspace.LevelOfDetails (LevelOfDetails(..))
 type ChartHTML = H.ParentHTML HEC.EChartsState CC.CardEvalQuery HEC.EChartsQuery Slam Unit
 type ChartDSL = H.ParentDSL State HEC.EChartsState CC.CardEvalQuery HEC.EChartsQuery Slam Unit
 
-chartComponent ∷ H.Component CC.CardStateP CC.CardQueryP Slam
-chartComponent = CC.makeCardComponent
+chartComponent ∷ ∀ r. Wiring r → H.Component CC.CardStateP CC.CardQueryP Slam
+chartComponent wiring = CC.makeCardComponent
   { cardType: CT.Chart
-  , component: H.parentComponent { render, eval, peek: Nothing }
+  , component: H.parentComponent { render, eval: eval wiring, peek: Nothing }
   , initialState: H.parentState initialState
   , _State: CC._ChartState
   , _Query: CC.makeQueryPrism CC._ChartQuery
@@ -124,8 +125,8 @@ renderButton ct =
   src Scatter = "img/scatter-black.svg"
   src Radar = "img/radar-black.svg"
 
-eval ∷ CC.CardEvalQuery ~> ChartDSL
-eval = case _ of
+eval ∷ ∀ r. Wiring r → CC.CardEvalQuery ~> ChartDSL
+eval wiring = case _ of
   CC.EvalCard value output next → do
     case value.input of
       Just (Chart options@{ options: opts, chartConfig: Just config }) → do
@@ -134,9 +135,9 @@ eval = case _ of
         -- Basically something equivalent to the old `needsToUpdate`. -gb
         records ←
           either (const []) id
-            <$> H.fromAff (Quasar.all options.resource ∷ Slam (Either QE.QError JArray))
+            <$> H.fromAff (Quasar.all wiring options.resource ∷ Slam (Either QE.QError JArray))
         let optionDSL = BO.buildOptions opts config records
-        H.query unit $ H.action $ HEC.Reset optionDSL
+        H.query unit $ H.action $ HEC.Set optionDSL
         H.query unit $ H.action HEC.Resize
         setLevelOfDetails $ buildObj optionDSL
         H.modify (_chartType ?~ opts.chartType)

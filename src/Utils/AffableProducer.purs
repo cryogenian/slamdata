@@ -18,16 +18,26 @@ module Utils.AffableProducer where
 
 import SlamData.Prelude
 
-import Control.Coroutine (Producer)
+import Control.Coroutine (Producer, producer)
+import Control.Monad.Aff (Aff, forkAff)
 import Control.Coroutine.Aff as CCA
-import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.AVar (AVAR, makeVar, putVar, takeVar)
 import Control.Monad.Aff.Free (class Affable, fromAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Free.Trans (hoistFreeT)
 
 produce
-  :: forall a r m eff
+  :: forall a m r eff
    . (Functor m, Affable (avar :: AVAR | eff) m)
   => ((Either a r -> Eff (avar :: AVAR | eff) Unit) -> Eff (avar :: AVAR | eff) Unit)
   -> Producer a m r
 produce = hoistFreeT fromAff <<< CCA.produce
+
+produceAff
+  :: forall a r eff
+   . ((Either a r -> Aff (avar :: AVAR | eff) Unit) -> Aff (avar :: AVAR | eff) Unit)
+  -> Producer a (Aff (avar :: AVAR | eff)) r
+produceAff recv = do
+  v <- lift makeVar
+  lift (forkAff (recv (putVar v)))
+  producer (takeVar v)

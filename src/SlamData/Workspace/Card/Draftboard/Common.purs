@@ -55,10 +55,11 @@ import Utils.Path (DirPath)
 transitiveGraphProducer
   ∷ ∀ eff m
   . (Functor m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Wiring
+  → DirPath
   → DeckId
   → Producer (Tuple DeckId (Either QE.QError (Array DeckId))) m Unit
-transitiveGraphProducer path deckId = produce \emit → do
+transitiveGraphProducer wiring path deckId = produce \emit → do
   pending ← Ref.newRef $ Set.singleton deckId
   void $ runAff Exn.throwException (const (pure unit)) $
     go emit pending deckId
@@ -81,21 +82,22 @@ transitiveGraphProducer path deckId = produce \emit → do
       fromEff $ emit (Right unit)
 
   loadChildIds parentId = runExceptT do
-    json ← ExceptT $ Quasar.load (DM.deckIndex path parentId)
+    json ← ExceptT $ Quasar.load wiring (DM.deckIndex path parentId)
     ExceptT $ pure $ childDeckIds ∘ _.cards <$> lmap QE.msgToQError (DM.decode json)
 
 transitiveChildren
   ∷ ∀ eff m
   . Affable (QEff eff) m
-  ⇒ DirPath
+  ⇒ Wiring
+  → DirPath
   → DeckId
   → m (Either QE.QError (Array DeckId))
-transitiveChildren path deckId = fromAff go
+transitiveChildren wiring path deckId = fromAff go
   where
   go ∷ Aff (QEff eff) (Either QE.QError (Array DeckId))
   go = do
     ref ← fromEff $ Ref.newRef (Right [])
-    runProcess (transitiveGraphProducer path deckId $$ collectIds ref)
+    runProcess (transitiveGraphProducer wiring path deckId $$ collectIds ref)
     fromEff $ Ref.readRef ref
 
   collectIds ref = do
@@ -118,11 +120,12 @@ childDeckIds = (_ >>= getDeckIds ∘ _.model)
 deleteGraph
   ∷ ∀ eff m
   . Affable (QEff eff) m
-  ⇒ DirPath
+  ⇒ Wiring
+  → DirPath
   → DeckId
   → m (Either QE.QError Unit)
-deleteGraph path parentId = (fromAff :: Aff (QEff eff) ~> m) $ runExceptT do
-  cids ← ExceptT $ transitiveChildren path parentId
+deleteGraph wiring path parentId = (fromAff :: Aff (QEff eff) ~> m) $ runExceptT do
+  cids ← ExceptT $ transitiveChildren wiring path parentId
   void
     $ ExceptT
     $ map sequence
@@ -132,7 +135,7 @@ deleteGraph path parentId = (fromAff :: Aff (QEff eff) ~> m) $ runExceptT do
 
   where
   delete deckId =
-    Quasar.delete $ Left $ path </> Pathy.dir (deckIdToString deckId)
+    Quasar.delete wiring $ Left $ path </> Pathy.dir (deckIdToString deckId)
 
 replacePointer
   ∷ DeckId

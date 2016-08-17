@@ -27,9 +27,13 @@ import Control.Monad.Aff.Free (class Affable, fromAff)
 
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
+import SlamData.Quasar.Auth.Authentication as Auth
+import SlamData.SignIn.Bus (SignInBus)
 
 type Wiring =
   { globalError ∷ Bus.BusRW GE.GlobalError
+  , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
+  , signInBus ∷ SignInBus
   }
 
 makeWiring
@@ -38,7 +42,12 @@ makeWiring
   ⇒ m Wiring
 makeWiring = fromAff do
   globalError ← Bus.make
+  requestNewIdTokenBus ← Auth.authentication
+  signInBus ← Bus.make
   let
     wiring =
-      { globalError }
+      { globalError
+      , requestNewIdTokenBus
+      , signInBus
+      }
   pure wiring

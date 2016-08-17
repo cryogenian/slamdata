@@ -76,13 +76,13 @@ type QueryP = Coproduct Query (H.ChildF ChildSlot ChildQuery)
 comp :: Wiring -> H.Component StateP QueryP Slam
 comp wiring =
   H.parentComponent
-    { render
+    { render: render wiring
     , eval: eval wiring
     , peek: Just (peek <<< H.runChildF)
     }
 
-render :: State -> HTML
-render state@{ new } =
+render :: Wiring → State → HTML
+render wiring state@{ new } =
   modalDialog
     [ modalHeader "Mount"
     , modalBody $
@@ -103,10 +103,10 @@ render state@{ new } =
   settings ss = case ss of
     Left initialState ->
       HH.slot' cpMongoDB unit \_ ->
-        { component: MongoDB.comp, initialState }
+        { component: MongoDB.comp wiring, initialState }
     Right initialState ->
       HH.slot' cpSQL unit \_ ->
-        { component: SQL2.comp, initialState: H.parentState initialState }
+        { component: SQL2.comp wiring, initialState: H.parentState initialState }
 
 fldName :: State -> HTML
 fldName state =
@@ -181,7 +181,7 @@ eval wiring (Save k) = do
   { parent, name, new } <- H.get
   H.modify (_saving .~ true)
   newName <-
-    if new then Api.getNewName parent name else pure (pure name)
+    if new then Api.getNewName wiring parent name else pure (pure name)
   case newName of
     Left err → do
       handleQError wiring.globalError err

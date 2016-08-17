@@ -368,7 +368,7 @@ peekBackSide opts (Back.DoAction action _) =
           CardId _ → do
             let rem = DCS.removeCard trashId state
             DBC.childDeckIds (snd <$> fst rem)
-              # (H.fromAff :: Slam ~> DeckDSL) ∘ runParallel ∘ traverse_ (parallel ∘ DBC.deleteGraph state.path)
+              # (H.fromAff :: Slam ~> DeckDSL) ∘ runParallel ∘ traverse_ (parallel ∘ DBC.deleteGraph opts.wiring state.path)
             H.set $ snd rem
             triggerSave Nothing
             updateActiveCardAndIndicator opts.wiring
@@ -657,7 +657,7 @@ evalCard wiring path urlVarMaps input card = do
             , input: input'
             }
         in
-          Eval.runEvalCard args cmd >>= case _ of
+          Eval.runEvalCard wiring args cmd >>= case _ of
             Left ge → do
               Bus.write ge wiring.globalError
               pure $ (Port.CardError $ "Could not evaluate card") × mempty
@@ -814,8 +814,8 @@ saveDeck { accessType, wiring, cursor } coord = do
 
     when (isNothing st.parent) do
       let index = st.path </> Pathy.file "index"
-      WM.getRoot index >>= case _ of
-        Left _ → void $ WM.setRoot index st.id
+      WM.getRoot wiring index >>= case _ of
+        Left _ → void $ WM.setRoot wiring index st.id
         Right _ → pure unit
 
     putDeck st.path st.id model wiring >>= case _ of

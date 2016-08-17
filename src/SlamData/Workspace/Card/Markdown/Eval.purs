@@ -31,6 +31,7 @@ import Data.String as S
 import Data.StrMap as SM
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Aff (Wiring)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.Query as Quasar
 import SlamData.Workspace.Card.Eval.CardEvalT as CET
@@ -48,19 +49,20 @@ import Text.Parsing.Parser.String as PS
 import Utils.Path (DirPath)
 
 markdownEval
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, AffF.Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Wiring r
+  → CET.CardEvalInput
   → String
   → CET.CardEvalT m Port.Port
-markdownEval { input, path } str =
+markdownEval wiring { input, path } str =
   case SDP.parseMd str of
     Left e → QE.throw e
     Right sd → do
       let
         vm = fromMaybe Port.emptyVarMap $ input ^? _Just ∘ Port._VarMap
         sm = map Port.renderVarMapValue vm
-      doc ← evalEmbeddedQueries sm path sd
+      doc ← evalEmbeddedQueries wiring sm path sd
       pure $ Port.SlamDown (vm × doc)
 
 findFields
@@ -74,13 +76,14 @@ findFields = SDT.everything (const mempty) extractField
   extractField _ = mempty
 
 evalEmbeddedQueries
-  ∷ forall m
+  ∷ forall r m
   . (Monad m, AffF.Affable SlamDataEffects m)
-  ⇒ SM.StrMap String
+  ⇒ Wiring r
+  → SM.StrMap String
   → DirPath
   → SD.SlamDownP Port.VarMapValue
   → CET.CardEvalT m (SD.SlamDownP Port.VarMapValue)
-evalEmbeddedQueries sm dir =
+evalEmbeddedQueries wiring sm dir =
   SDE.eval
     { code: evalCode
     , textBox: evalTextBox
@@ -177,9 +180,9 @@ evalEmbeddedQueries sm dir =
     ∷ String
     → CET.CardEvalT m (Array EJSON.EJson)
   runQuery code = do
-    {inputs} ← CET.liftQ $ Quasar.compile (Left dir) code sm
+    {inputs} ← CET.liftQ $ Quasar.compile wiring (Left dir) code sm
     CET.addSources inputs
-    CET.liftQ $ Quasar.queryEJsonVM dir code sm
+    CET.liftQ $ Quasar.queryEJsonVM wiring dir code sm
 
 parseDigit ∷ P.Parser String Int
 parseDigit =

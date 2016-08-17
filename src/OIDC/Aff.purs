@@ -24,19 +24,28 @@ import Data.URI (printURI, runParseURI)
 import Data.URI.Types as URI
 import DOM (DOM)
 import OIDC.Crypt as Cryptography
-import Quasar.Advanced.Types (ProviderR)
-import SlamData.Quasar.Auth as Auth
+import Quasar.Advanced.Types (ProviderR, Provider(..))
+import SlamData.Quasar.Auth.Store as AuthStore
+
+data Prompt = Login | None
+
+printPrompt ∷ Prompt → String
+printPrompt =
+  case _ of
+    Login → "login"
+    None → "none"
 
 requestAuthenticationURI
-  ∷ ProviderR
+  ∷ Prompt
+  → ProviderR
   → String
   → ∀ e. Eff (dom ∷ DOM, random ∷ RANDOM | e) (Either ParseError String)
-requestAuthenticationURI pr redirectURIStr = do
+requestAuthenticationURI prompt pr redirectURIStr = do
   csrf ← (Cryptography.KeyString ∘ show) <$> random
   replay ← (Cryptography.UnhashedNonce ∘ show) <$> random
-  Auth.storeKeyString csrf
-  Auth.storeNonce replay
-  Auth.storeClientId pr.clientID
+  AuthStore.storeKeyString csrf
+  AuthStore.storeNonce replay
+  AuthStore.storeProvider $ Provider pr
   hap ← hostAndProtocol
   hrefState ← map Cryptography.StateString getHref
   let authURIString = pr.openIDConfiguration.authorizationEndpoint
@@ -58,6 +67,8 @@ requestAuthenticationURI pr redirectURIStr = do
           , Tuple "scope" "openid email"
           , Tuple "state" $ Cryptography.runBoundStateJWS state
           , Tuple "nonce" $ Cryptography.runHashedNonce nonce
+          , Tuple "prompt" $ printPrompt prompt
+          , Tuple "display" "popup"
           ]
       uri = URI.URI s h query f
     in pure $ printURI uri

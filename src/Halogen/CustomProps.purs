@@ -26,7 +26,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 type InputProp f = IProp (InteractiveEvents (GlobalProperties (accept ∷ I, autocomplete ∷ I, autofocus ∷ I, checked ∷ I, disabled ∷ I, form ∷ I, formaction ∷ I, formenctype ∷ I, formmethod ∷ I, formnovalidate ∷ I, formtarget ∷ I, height ∷ I, list ∷ I, max ∷ I, min ∷ I, multiple ∷ I, onAbort ∷ I, onChange ∷ I, onError ∷ I, onInput ∷ I, onInvalid ∷ I, onLoad ∷ I, onSearch ∷ I, onSelect ∷ I, pattern ∷ I, placeholder ∷ I, readonly ∷ I, required ∷ I, size ∷ I, src ∷ I, step ∷ I, inputType ∷ I, value ∷ I, width ∷ I))) (f Unit)
 
-nonSubmit ∷ ∀ i r . IProp (onSubmit ∷ I | r) i
+nonSubmit ∷ ∀ i r. IProp (onSubmit ∷ I | r) i
 nonSubmit = unsafeCoerce unrefined
   where
   unrefined ∷ H.Prop i

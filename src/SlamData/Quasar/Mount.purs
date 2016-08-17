@@ -35,36 +35,39 @@ import Quasar.Mount.MongoDB as QMountMDB
 import Quasar.Mount.View as QMountV
 import Quasar.Types (DirPath, FilePath)
 
-import SlamData.Quasar.Aff (QEff, runQuasarF)
+import SlamData.Quasar.Aff (QEff, runQuasarF, Wiring)
 import SlamData.Quasar.Error (throw)
 
 mountInfo
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ DirPath
+  ⇒ Wiring r
+  → DirPath
   → m (Either QError QMountMDB.Config)
-mountInfo path = runExceptT do
-  result ← ExceptT $ runQuasarF $ QF.getMount (Left path)
+mountInfo wiring path = runExceptT do
+  result ← ExceptT $ runQuasarF wiring $ QF.getMount (Left path)
   case result of
     QM.MongoDBConfig config → pure config
     _ → throw $ P.printPath path <> " is not a MongoDB mount point"
 
 viewInfo
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . (Monad m, Affable (QEff eff) m)
-  ⇒ FilePath
+  ⇒ Wiring r
+  → FilePath
   → m (Either QError QMountV.Config)
-viewInfo path = runExceptT do
-  result ← ExceptT $ runQuasarF $ QF.getMount (Right path)
+viewInfo wiring path = runExceptT do
+  result ← ExceptT $ runQuasarF wiring $ QF.getMount (Right path)
   case result of
     QM.ViewConfig config → pure config
     _ → throw $ P.printPath path <> " is not an SQL² view"
 
 saveMount
-  ∷ ∀ eff m
+  ∷ ∀ r eff m
   . Affable (QEff eff) m
-  ⇒ DirPath
+  ⇒ Wiring r
+  → DirPath
   → QMountMDB.Config
   → m (Either QError Unit)
-saveMount path config =
-  runQuasarF $ QF.updateMount (Left path) (QM.MongoDBConfig config)
+saveMount wiring path config =
+  runQuasarF wiring $ QF.updateMount (Left path) (QM.MongoDBConfig config)

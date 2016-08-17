@@ -47,8 +47,10 @@ import SlamData.Analytics.Event as AE
 import SlamData.Effects (SlamDataEffects)
 import SlamData.GlobalError as GE
 import SlamData.Notification as N
+import SlamData.Quasar.Auth.Authentication as Auth
 import SlamData.Quasar.Data as Quasar
 import SlamData.Quasar.Error as QE
+import SlamData.SignIn.Bus (SignInBus)
 import SlamData.Workspace.Card.CardId (CardId)
 import SlamData.Workspace.Card.Model as Card
 import SlamData.Workspace.Card.Port (Port)
@@ -92,7 +94,9 @@ type Wiring =
   , notify ∷ Bus.BusRW N.NotificationOptions
   , globalError ∷ Bus.BusRW GE.GlobalError
   , analytics ∷ Bus.BusRW AE.Event
+  , requestNewIdTokenBus ∷ Auth.RequestIdTokenBus
   , urlVarMaps ∷ Ref (Map.Map DeckId Port.URLVarMap)
+  , signInBus ∷ SignInBus
   }
 
 makeWiring
@@ -108,7 +112,9 @@ makeWiring = fromAff do
   notify ← Bus.make
   globalError ← Bus.make
   analytics ← Bus.make
+  requestNewIdTokenBus ← Auth.authentication
   urlVarMaps ← fromEff (newRef mempty)
+  signInBus ← Bus.make
   let
     wiring =
       { decks
@@ -119,7 +125,9 @@ makeWiring = fromAff do
       , notify
       , globalError
       , analytics
+      , requestNewIdTokenBus
       , urlVarMaps
+      , signInBus
       }
   pure wiring
 
@@ -139,7 +147,7 @@ putDeck
   → m (Either QE.QError Unit)
 putDeck path deckId deck wiring = fromAff do
   ref ← defer do
-    res ← Quasar.save (deckIndex path deckId) $ encode deck
+    res ← Quasar.save wiring (deckIndex path deckId) $ encode deck
     when (isLeft res) do
       modifyVar (Map.delete deckId) wiring.decks
     pure $ const deck <$> res
@@ -171,7 +179,7 @@ getDeck path deckId wiring = fromAff do
       wait ref
     Nothing → do
       ref ← defer do
-        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load (deckIndex path deckId)
+        res ← ((lmap QE.msgToQError ∘ decode) =<< _) <$> Quasar.load wiring (deckIndex path deckId)
         when (isLeft res) do
           modifyVar (Map.delete deckId) wiring.decks
         pure res

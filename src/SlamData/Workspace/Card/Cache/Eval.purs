@@ -26,6 +26,7 @@ import Data.StrMap as SM
 import Quasar.Types (FilePath)
 
 import SlamData.Effects (SlamDataEffects)
+import SlamData.Quasar.Aff (Wiring)
 import SlamData.Quasar.Error as QE
 import SlamData.Quasar.FS as QFS
 import SlamData.Quasar.Query as QQ
@@ -35,32 +36,34 @@ import SlamData.Workspace.Card.Port as Port
 import Utils.Path as PU
 
 eval
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ CET.CardEvalInput
+  ⇒ Wiring r
+  → CET.CardEvalInput
   → Maybe String
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort
-eval info mfp resource =
+eval wiring info mfp resource =
   case mfp of
-    Nothing -> eval' (CET.temporaryOutputResource info) resource
+    Nothing -> eval' wiring (CET.temporaryOutputResource info) resource
     Just pt ->
       case PU.parseAnyPath pt of
-        Just (Right fp) → eval' fp resource
+        Just (Right fp) → eval' wiring fp resource
         _ → QE.throw $ pt ⊕ " is not a valid file path"
 
 eval'
-  ∷ ∀ m
+  ∷ ∀ r m
   . (Monad m, Affable SlamDataEffects m)
-  ⇒ PU.FilePath
+  ⇒ Wiring r
+  → PU.FilePath
   → FilePath
   → CET.CardEvalT m Port.TaggedResourcePort
-eval' fp resource = do
+eval' wiring fp resource = do
 
   outputResource ← CET.liftQ $
-    QQ.fileQuery resource fp "select * from {{path}}" SM.empty
+    QQ.fileQuery wiring resource fp "select * from {{path}}" SM.empty
 
-  CET.liftQ $ QFS.messageIfFileNotFound
+  CET.liftQ $ QFS.messageIfFileNotFound wiring
     outputResource
     "Error saving file, please try another location"
 

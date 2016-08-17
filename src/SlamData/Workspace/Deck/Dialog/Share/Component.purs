@@ -37,6 +37,7 @@ import Halogen.Component.Utils (raise)
 
 import Quasar.Advanced.Types as QT
 
+import SlamData.Quasar.Aff (Wiring)
 import SlamData.Quasar.Security as Q
 import SlamData.Effects (Slam)
 import SlamData.Render.Common (glyph)
@@ -127,11 +128,11 @@ data Query a
   | InitZClipboard String (Maybe HTMLElement) a
   | SelectElement HTMLElement a
 
-comp ∷ H.Component State Query Slam
-comp =
+comp ∷ ∀ r. Wiring r → H.Component State Query Slam
+comp wiring =
   H.lifecycleComponent
     { render
-    , eval
+    , eval: eval wiring
     , finalizer: Nothing
     , initializer: Just (H.action Init)
     }
@@ -346,16 +347,16 @@ render state =
    ]
 
 
-eval ∷ Query ~> DSL
-eval (Dismiss next) = pure next
-eval (ChangeSubjectType st next) = do
+eval ∷ ∀ r. Wiring r → Query ~> DSL
+eval _ (Dismiss next) = pure next
+eval _ (ChangeSubjectType st next) = do
   H.modify (_{subjectType = st})
   unless (st ≡ User)
     $ H.modify (_{ error = Nothing
                  , showError = false
                  })
   pure next
-eval (Share next) = next <$ do
+eval wiring (Share next) = next <$ do
   H.modify (_{ error = Nothing
              , showError = false
              , submitting = true
@@ -370,7 +371,7 @@ eval (Share next) = next <$ do
   if state.subjectType ≡ Token
     then do
     res ←
-      Q.createToken
+      Q.createToken wiring
         (if state.tokenName ≡ "" then Nothing else Just $ QT.TokenName state.tokenName)
         actions
 
@@ -393,16 +394,16 @@ eval (Share next) = next <$ do
                    else [ ])
         , actions
         }
-    res ← Q.sharePermission shareRequest
+    res ← Q.sharePermission wiring shareRequest
     case res of
       Left _ →
         showConnectionError
       Right [] →
         showConnectionError
       _ → raise $ H.action Dismiss
-eval (DismissError next) =
+eval _ (DismissError next) =
   H.modify (_{showError = false}) $> next
-eval (EmailChanged str next) = do
+eval _ (EmailChanged str next) = do
   let
     incorrectEmail = emailIsIncorrect str
   H.modify (_{email = str})
@@ -417,8 +418,8 @@ eval (EmailChanged str next) = do
                , showError = false
                })
   pure next
-eval (Init next) = next <$ do
-  res ← Q.groupInfo (rootDir </> file "")
+eval requestNewIdTokenBus (Init next) = next <$ do
+  res ← Q.groupInfo requestNewIdTokenBus (rootDir </> file "")
   case res of
     Left _ →
       H.modify _{ error = Just GroupList
@@ -427,22 +428,22 @@ eval (Init next) = next <$ do
     Right grInfo →
       H.modify (_{groups = [rootFile] ⊕ grInfo.subGroups })
   H.modify (_{loading = false})
-eval (GroupSelected grpString next) = next <$ do
+eval _ (GroupSelected grpString next) = next <$ do
   groups ← H.gets _.groups
   let
     group =
       Arr.findIndex (\x → grpString ≡ Pt.printPath x) groups
       >>= Arr.index groups
   H.modify (_{groupSelected = group})
-eval (TokenNameChanged str next) =
+eval _ (TokenNameChanged str next) =
   H.modify (_{tokenName = str}) $> next
-eval (ChangeShareResume sr next) =
+eval _ (ChangeShareResume sr next) =
   H.modify (_{shareResume = sr}) $> next
-eval (InitZClipboard token mbEl next) =
+eval _ (InitZClipboard token mbEl next) =
   next <$ for_ mbEl \el → do
     H.fromEff $ Z.make (htmlElementToElement el)
       >>= Z.onCopy (Z.setData "text/plain" token)
-eval (SelectElement el next) =
+eval _ (SelectElement el next) =
   next <$ H.fromEff (select el)
 
 emailIsIncorrect ∷ String → Boolean
