@@ -283,7 +283,6 @@ eval opts@{ wiring } = case _ of
     k <$> getSharingInput
   HandleError ge next → do
     showDialog $ Dialog.Error $ GE.print ge
-    traceAnyA ("HandleError" × ge)
     pure next
 
   where
